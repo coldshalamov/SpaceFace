@@ -12,6 +12,7 @@ import {
   forecastTransitFor,
 } from '../../systems/sectorSim.js';
 import { BINDINGS } from '../bindings.js';
+import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 
 const FACTION_COLOR = Object.create(null);
 const FACTION_NAME = Object.create(null);
@@ -1192,7 +1193,17 @@ export const starmapScreen = {
 
   _onAction(action) {
     if (action === 'objective-localmap') {
-      pushScreen(this._ctx, 'localmap');
+      // Legacy starmap CTA: route through the unified map at LOCAL focus (retain objective intent).
+      const objective = resolveStarmapObjective(this._ctx.state);
+      const wp = this._ctx.state && this._ctx.state.nav && this._ctx.state.nav.waypoint;
+      openGalaxyMap(this._ctx, {
+        focus: MAP_FOCUS.LOCAL,
+        sectorId: (objective && objective.sectorId) || (wp && wp.sectorId) || null,
+        missionId: (objective && objective.missionId) || (wp && wp.missionId) || null,
+        stationId: (objective && objective.stationId) || (wp && wp.stationId) || null,
+        pos: (wp && wp.pos) || (objective && objective.pos) || null,
+        source: 'starmap-objective',
+      });
       this._ctx.bus.emit('toast', { text: 'Opening Local Map for the active objective', kind: 'info', ttl: 3000 });
       return;
     }

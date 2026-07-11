@@ -175,8 +175,8 @@ assert.match(source, /resolveStarmapObjective\(this\._ctx\.state\)/,
   'Star Map UI must resolve its objective from live state');
 assert.match(source, /world:requestRoute/, 'objective route action must reuse world:requestRoute');
 assert.match(source, /ui:setCourse/, 'objective route action must reuse ui:setCourse');
-assert.match(source, /pushScreen\(this\._ctx, 'localmap'\)/,
-  'local objective action must hand off through the shared screen manager path');
+assert.match(source, /openGalaxyMap\(this\._ctx,[\s\S]*MAP_FOCUS\.LOCAL/,
+  'local objective action must hand off through the unified map authority at LOCAL focus');
 assert.match(source, /BINDINGS\.starmap\.label/, 'Star Map visible key labels must read src/ui/bindings.js');
 assert.doesNotMatch(source, /<div>M close/, 'Star Map footer must not hard-code the M key label');
 assert.match(source, /class="sm-close" type="button" aria-label="Close Star Map">Close \(\$\{BINDINGS\.starmap\.label\}\)<\/button>/,

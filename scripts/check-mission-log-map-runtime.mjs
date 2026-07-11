@@ -78,12 +78,14 @@ try {
       sectorName: 'Tethys Junction',
       reason: 'Deliver runtime provisions to Tethys Junction',
     });
-    const starButton = log && log.querySelector('.sf-mlog-btn-map[data-screen-id="starmap"]');
-    const recStarButton = log && log.querySelector('.sf-mlog-rec-map[data-screen-id="starmap"]');
+    const starButton = log && log.querySelector('.sf-mlog-btn-map[data-screen-id="galaxyMap"][data-map-focus="galaxy"]');
+    const recStarButton = log && log.querySelector('.sf-mlog-rec-map[data-screen-id="galaxyMap"][data-map-focus="galaxy"]');
     const starText = visibleText('[data-screen="missionLog"]');
     if (starButton) starButton.click();
     await new Promise((resolve) => setTimeout(resolve, 120));
     const starTop = sm.top && sm.top();
+    const starDef = sm.getActiveScreenDef && sm.getActiveScreenDef();
+    const starLevel = starDef && typeof starDef._activeLevel === 'function' ? starDef._activeLevel() : null;
 
     const starLocalMission = {
       id: 'mission_runtime_star_local',
@@ -116,6 +118,8 @@ try {
     if (starLocalButton) starLocalButton.click();
     await new Promise((resolve) => setTimeout(resolve, 160));
     const starLocalTop = sm.top && sm.top();
+    const starLocalDef = sm.getActiveScreenDef && sm.getActiveScreenDef();
+    const starLocalLevel = starLocalDef && typeof starLocalDef._activeLevel === 'function' ? starLocalDef._activeLevel() : null;
 
     const localMission = {
       id: 'mission_runtime_local',
@@ -136,29 +140,34 @@ try {
       reason: 'Scan the local runtime site',
       pos: { x: 240, z: -80 },
     });
-    const localButton = log && log.querySelector('.sf-mlog-btn-map[data-screen-id="localmap"]');
-    const recLocalButton = log && log.querySelector('.sf-mlog-rec-map[data-screen-id="localmap"]');
+    const localButton = log && log.querySelector('.sf-mlog-btn-map[data-screen-id="galaxyMap"][data-map-focus="local"]');
+    const recLocalButton = log && log.querySelector('.sf-mlog-rec-map[data-screen-id="galaxyMap"][data-map-focus="local"]');
     const localText = visibleText('[data-screen="missionLog"]');
     if (localButton) localButton.click();
     await new Promise((resolve) => setTimeout(resolve, 160));
     const localTop = sm.top && sm.top();
-    const localMap = document.getElementById('sf-localmap');
-    const localMapText = (localMap?.textContent || '').replace(/\s+/g, ' ').trim();
+    const localDef = sm.getActiveScreenDef && sm.getActiveScreenDef();
+    const localLevel = localDef && typeof localDef._activeLevel === 'function' ? localDef._activeLevel() : null;
+    const galaxyMap = document.getElementById('sf-galaxymap');
+    const galaxyMapText = (galaxyMap?.textContent || '').replace(/\s+/g, ' ').trim();
 
     return {
       starButton: !!starButton,
       recStarButton: !!recStarButton,
       starText,
       starTop,
+      starLevel,
       starLocalButton: !!starLocalButton,
       starLocalText,
       starLocalTop,
+      starLocalLevel,
       localButton: !!localButton,
       recLocalButton: !!recLocalButton,
       localText,
       localTop,
-      localMapVisible: !!(localMap && localMap.getBoundingClientRect().width > 500),
-      localMapText,
+      localLevel,
+      galaxyMapVisible: !!(galaxyMap && galaxyMap.getBoundingClientRect().width > 400),
+      galaxyMapText,
     };
   });
 
@@ -166,23 +175,26 @@ try {
   assert.equal(report.starButton, true, 'off-sector tracked mission should render a Star Map button');
   assert.equal(report.recStarButton, true, 'tracked recommendation should render a Star Map button');
   assert.match(report.starText, /STAR MAP/, 'off-sector Mission Log text should include the Star Map handoff');
-  assert.equal(report.starTop, 'starmap', 'clicking the off-sector handoff should open the Star Map');
+  assert.equal(report.starTop, 'galaxyMap', 'clicking the off-sector handoff should open the unified galaxyMap');
+  assert.equal(report.starLevel, 'galaxy', 'off-sector handoff should open galaxyMap at GALAXY focus');
   assert.equal(report.starLocalButton, true, 'Star Map local objective should render a Local Map handoff button');
   assert.match(report.starLocalText, /LOCAL MAP|Open Local Map/i,
     'Star Map local objective should explain the Local Map handoff');
-  assert.equal(report.starLocalTop, 'localmap', 'clicking the Star Map local objective handoff should open the Local Map');
+  assert.equal(report.starLocalTop, 'galaxyMap', 'clicking the Star Map local objective handoff should open galaxyMap');
+  assert.equal(report.starLocalLevel, 'local', 'legacy starmap Local Map CTA should open galaxyMap at LOCAL focus');
   assert.equal(report.localButton, true, 'same-sector tracked mission should render a Local Map button');
   assert.equal(report.recLocalButton, true, 'tracked recommendation should render a Local Map button');
   assert.match(report.localText, /LOCAL MAP/, 'same-sector Mission Log text should include the Local Map handoff');
-  assert.equal(report.localTop, 'localmap', 'clicking the same-sector handoff should open the Local Map');
-  assert.equal(report.localMapVisible, true, 'Local Map should be visible after clicking the Mission Log handoff');
-  assert.doesNotMatch(report.localMapText, /Off-sector fix/, 'same-sector Local Map handoff should not show off-sector copy');
-  assert.match(report.localMapText, /Sector fix|Helios Prime/, 'same-sector Local Map handoff should show local sector context');
+  assert.equal(report.localTop, 'galaxyMap', 'clicking the same-sector handoff should open the unified galaxyMap');
+  assert.equal(report.localLevel, 'local', 'same-sector handoff should open galaxyMap at LOCAL focus');
+  assert.equal(report.galaxyMapVisible, true, 'galaxyMap should be visible after clicking the Mission Log handoff');
+  assert.match(report.galaxyMapText, /Tactical Command Table|Inspector|Layers/i,
+    'galaxyMap shell should render after the Mission Log handoff');
   assert.deepEqual(issues.errorIssues(), [], 'mission log map runtime should not record page errors');
 
   mkdirSync(dirname(SHOT), { recursive: true });
   await page.screenshot({ path: SHOT, type: 'jpeg', quality: 88 });
-  console.log(`Mission Log map runtime OK: off-sector -> ${report.starTop}, same-sector -> ${report.localTop}; screenshot ${SHOT}`);
+  console.log(`Mission Log map runtime OK: off-sector -> ${report.starTop}/${report.starLevel}, same-sector -> ${report.localTop}/${report.localLevel}; screenshot ${SHOT}`);
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();

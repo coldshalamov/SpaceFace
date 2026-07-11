@@ -11,6 +11,7 @@
 
 import { isConfirmOpen } from './confirm.js';
 import { BINDINGS } from './bindings.js';
+import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
 
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
@@ -147,15 +148,18 @@ export function createUiInput(ctx, screenManager) {
         screenManager.pushScreen('pause');
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
-      // REVAMP 2.1 — both map keys now open the single zoomable galaxy map (LOCAL→SYSTEM→SECTOR→GALAXY).
-      // The legacy 'localmap'/'starmap' screens stay registered as a fallback until BP-03 retires them
-      // after the parity checklist passes; revert these two cases to restore the split maps if needed.
+      // Map authority: N → galaxyMap LOCAL focus; M → galaxyMap GALAXY (star-chart) focus.
+      // Legacy localmap/starmap screens remain registered for tools/checks only.
       case BINDINGS.localmap.key:
       case BINDINGS.localmap.label:
-        ev.preventDefault(); screenManager.pushScreen('galaxyMap'); return;
+        ev.preventDefault();
+        openGalaxyMap({ state, bus, screenManager }, { focus: MAP_FOCUS.LOCAL, source: 'keyboard' });
+        return;
       case BINDINGS.starmap.key:
       case BINDINGS.starmap.label:
-        ev.preventDefault(); screenManager.pushScreen('galaxyMap'); return;
+        ev.preventDefault();
+        openGalaxyMap({ state, bus, screenManager }, { focus: MAP_FOCUS.GALAXY, source: 'keyboard' });
+        return;
       case BINDINGS.techTree.key:
       case BINDINGS.techTree.label:
         ev.preventDefault(); screenManager.pushScreen('techTree'); return;
@@ -467,6 +471,11 @@ export function createUiInput(ctx, screenManager) {
     bus.emit('audio:cue', { id: 'ui_open' });
   }
 
+  function openMapFromTouch(focus) {
+    openGalaxyMap({ state, bus, screenManager }, { focus, source: 'touch' });
+    bus.emit('audio:cue', { id: 'ui_open' });
+  }
+
   function handleTouchUi() {
     if (isConfirmOpen() || screenManager.isOpen() || state.mode !== 'flight') return;
     if (touchActionPressed('dock')) { routeTouchUiAction('dock'); return; }
@@ -487,8 +496,9 @@ export function createUiInput(ctx, screenManager) {
       return false;
     }
     if (action === 'missionLog') { openScreenFromTouch('missionLog'); return true; }
-    if (action === 'localmap') { openScreenFromTouch('localmap'); return true; }
-    if (action === 'starmap') { openScreenFromTouch('starmap'); return true; }
+    // Touch Local / Star keep product labels on the overlay but open the unified map with focus.
+    if (action === 'localmap') { openMapFromTouch(MAP_FOCUS.LOCAL); return true; }
+    if (action === 'starmap') { openMapFromTouch(MAP_FOCUS.GALAXY); return true; }
     if (action === 'pause') { openScreenFromTouch('pause'); return true; }
     return false;
   }
@@ -537,9 +547,8 @@ export function createUiInput(ctx, screenManager) {
         }
       }
 
-      // Keyboard nav-chart binding already toggles through starmap.onKey(); mirror that with
-      // View/Select so controller players can open and close the strategic map with one control.
-      if (top === 'starmap' && gp.actions.map && gp.actions.map.pressed) {
+      // View/Select toggles the unified map closed when it (or a legacy map surface) is topmost.
+      if (isMapScreenId(top) && gp.actions.map && gp.actions.map.pressed) {
         screenManager.popScreen();
         bus.emit('ui:cancel', {});
         bus.emit('audio:cue', { id: 'ui_back' });
@@ -595,7 +604,8 @@ export function createUiInput(ctx, screenManager) {
         bus.emit('audio:cue', { id: 'ui_open' });
       }
       if (gp.actions.map && gp.actions.map.pressed) {
-        screenManager.pushScreen('starmap');
+        openGalaxyMap({ state, bus, screenManager }, { focus: MAP_FOCUS.GALAXY, source: 'gamepad' });
+        bus.emit('audio:cue', { id: 'ui_open' });
       }
       if (gp.actions.codex && gp.actions.codex.pressed) {
         screenManager.pushScreen('codex');

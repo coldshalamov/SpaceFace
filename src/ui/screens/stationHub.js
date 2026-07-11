@@ -28,6 +28,7 @@ import { missionConsequenceSummary } from '../missionPreflight.js';
 import { missionStandingRequirement } from '../missionPreflight.js';
 import { missionRouteIntel, missionCargoFootprint, fmtHoldUnits } from '../missionPreflight.js';
 import { BINDINGS } from '../bindings.js';
+import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { glyphSvg } from '../uiPrimitives.js';
 import { STATION_BROADCASTS } from '../../systems/stationBroadcast.js';
 // Command-deck effect layer (vanilla DOM/canvas factories; view-only, no sim import).
@@ -2307,7 +2308,7 @@ export const stationHub = {
   },
 
   /** Plot Route: select + ping the destination, and — once the contract is accepted/tracked — open the
-   *  Local or Star Map for its waypoint (same local-vs-jump split the Mission Log uses). */
+   *  unified galaxyMap at LOCAL or GALAXY focus (same local-vs-jump split the Mission Log uses). */
   _plotContractRoute(missionId) {
     if (missionId != null) this._selectContract(missionId);
     const ctx = this._ctx;
@@ -2319,7 +2320,14 @@ export const stationHub = {
       const wp = state.nav && state.nav.waypoint;
       const cur = state.world && state.world.currentSectorId;
       const local = !!(wp && (wp.pos || (wp.sectorId && cur && wp.sectorId === cur)));
-      ctx.bus.emit('ui:pushScreen', { id: local ? 'localmap' : 'starmap' });
+      openGalaxyMap(ctx, {
+        focus: local ? MAP_FOCUS.LOCAL : MAP_FOCUS.GALAXY,
+        missionId: mission.id,
+        sectorId: (wp && wp.sectorId) || mission.destSectorId || null,
+        stationId: mission.destStationId || (wp && wp.stationId) || null,
+        pos: wp && wp.pos ? wp.pos : null,
+        source: 'stationHub',
+      });
       return;
     }
     const board = state.missions && state.missions.boards && state.missions.boards[this._stationId];

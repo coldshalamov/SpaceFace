@@ -133,7 +133,13 @@ export function createGameState(seed) {
     drill: null,
     claims: { bodies: [] },
     traffic: { freighters: [] },
-    ui: { screenStack: [], docked: false, activeStationTab: 'market', radarRange: 4000, toasts: [], alerts: [], trackedMissionId: null, starmapView: { cx: 0, cy: 0, zoom: 1 } },
+    ui: {
+      screenStack: [], docked: false, activeStationTab: 'market', radarRange: 4000, toasts: [], alerts: [],
+      trackedMissionId: null, starmapView: { cx: 0, cy: 0, zoom: 1 },
+      // One-shot map-authority open payload (mapAuthority.js → galaxyMap.onShow). Not gameplay-critical;
+      // cleared on consume. Defaults null so saves without the field hydrate cleanly.
+      mapOpenIntent: null,
+    },
 
     // --- static catalogs (filled from src/data/* at boot; NOT serialized) ---
     content: {},

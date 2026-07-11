@@ -15,6 +15,7 @@ import {
   missionConsequenceSummary,
   missionTimePacing,
 } from '../missionPreflight.js';
+import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -182,19 +183,29 @@ export function missionMapAction(state, mission, isTracked) {
   const sameSector = targetSectorId && currentSectorId && targetSectorId === currentSectorId;
   const hasLocalFix = !!(wp && wp.pos);
   if (hasLocalFix || sameSector || !targetSectorId) {
-    return {
-      screenId: 'localmap',
+    return mapHandoffAction({
+      focus: MAP_FOCUS.LOCAL,
       label: 'LOCAL MAP',
       title: 'Open Local Map',
       body: 'Show the live objective marker and nearby contacts.',
-    };
+      missionId: mission.id,
+      sectorId: targetSectorId,
+      stationId: mission.destStationId || (wp && wp.stationId) || null,
+      pos: wp && wp.pos ? wp.pos : null,
+      source: 'missionLog',
+    });
   }
-  return {
-    screenId: 'starmap',
+  return mapHandoffAction({
+    focus: MAP_FOCUS.GALAXY,
     label: 'STAR MAP',
     title: 'Open Star Map',
     body: 'Plot or review the jump route to this objective.',
-  };
+    missionId: mission.id,
+    sectorId: targetSectorId,
+    stationId: mission.destStationId || (wp && wp.stationId) || null,
+    pos: null,
+    source: 'missionLog',
+  });
 }
 
 function tradeRouteWaypoint(state) {
@@ -243,19 +254,27 @@ export function tradeRouteMapAction(state, waypoint = tradeRouteWaypoint(state))
   const sameSector = targetSectorId && currentSectorId && targetSectorId === currentSectorId;
   const hasLocalFix = !!waypoint.pos;
   if (hasLocalFix || sameSector || !targetSectorId) {
-    return {
-      screenId: 'localmap',
+    return mapHandoffAction({
+      focus: MAP_FOCUS.LOCAL,
       label: 'LOCAL MAP',
       title: 'Open Local Map',
       body: 'Show the trade destination marker and nearby station contacts.',
-    };
+      sectorId: targetSectorId,
+      stationId: waypoint.stationId || null,
+      pos: waypoint.pos || null,
+      source: 'missionLog-trade',
+    });
   }
-  return {
-    screenId: 'starmap',
+  return mapHandoffAction({
+    focus: MAP_FOCUS.GALAXY,
     label: 'STAR MAP',
     title: 'Open Star Map',
     body: 'Plot or review the jump route to this trade destination.',
-  };
+    sectorId: targetSectorId,
+    stationId: waypoint.stationId || null,
+    pos: null,
+    source: 'missionLog-trade',
+  });
 }
 
 function tradeRouteAction(state) {
@@ -471,11 +490,50 @@ function serviceReadinessAction(state, activeMissions) {
   return null;
 }
 
-function openMapScreen(ctx, screenId) {
-  if (!screenId) return;
-  const mgr = getManager(ctx);
-  if (mgr && typeof mgr.pushScreen === 'function') mgr.pushScreen(screenId);
-  else if (ctx && ctx.bus) ctx.bus.emit('ui:pushScreen', { id: screenId });
+function mapOpenIntentFromButton(btn) {
+  if (!btn) return { focus: MAP_FOCUS.SYSTEM, source: 'missionLog' };
+  const sectorId = btn.getAttribute('data-map-sector-id') || null;
+  const stationId = btn.getAttribute('data-map-station-id') || null;
+  const missionId = btn.getAttribute('data-mid') || null;
+  const focus = btn.getAttribute('data-map-focus')
+    || btn.getAttribute('data-screen-id')
+    || MAP_FOCUS.SYSTEM;
+  let pos = null;
+  const px = Number(btn.getAttribute('data-map-pos-x'));
+  const pz = Number(btn.getAttribute('data-map-pos-z'));
+  if (Number.isFinite(px) && Number.isFinite(pz)) pos = { x: px, z: pz };
+  return {
+    focus,
+    screenId: btn.getAttribute('data-screen-id') || 'galaxyMap',
+    sectorId,
+    stationId,
+    missionId,
+    pos,
+    source: 'missionLog',
+  };
+}
+
+function openMapScreen(ctx, screenIdOrIntent, maybeIntent) {
+  const intent = (screenIdOrIntent && typeof screenIdOrIntent === 'object')
+    ? screenIdOrIntent
+    : { screenId: screenIdOrIntent, ...(maybeIntent || {}) };
+  // Normal-player map authority: always open galaxyMap; preserve LOCAL/STAR focus + target intent.
+  openGalaxyMap(ctx, {
+    ...intent,
+    source: (intent && intent.source) || 'missionLog',
+  });
+}
+
+function mapActionButtonAttrs(mapAction, missionId) {
+  if (!mapAction) return '';
+  const pos = mapAction.pos;
+  return ' data-screen-id="' + escapeHtml(mapAction.screenId) + '"'
+    + ' data-map-focus="' + escapeHtml(mapAction.focus || MAP_FOCUS.SYSTEM) + '"'
+    + (mapAction.sectorId ? ' data-map-sector-id="' + escapeHtml(mapAction.sectorId) + '"' : '')
+    + (mapAction.stationId ? ' data-map-station-id="' + escapeHtml(mapAction.stationId) + '"' : '')
+    + (pos && Number.isFinite(pos.x) ? ' data-map-pos-x="' + escapeHtml(String(pos.x)) + '"' : '')
+    + (pos && Number.isFinite(pos.z) ? ' data-map-pos-z="' + escapeHtml(String(pos.z)) + '"' : '')
+    + ' data-mid="' + escapeHtml(missionId || mapAction.missionId || '') + '"';
 }
 
 function isMissionLogKey(ev) {
@@ -812,7 +870,7 @@ export const missionLogScreen = {
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
         this._render();
       } else if (act === 'openMap') {
-        openMapScreen(ctx, btn.getAttribute('data-screen-id'));
+        openMapScreen(ctx, mapOpenIntentFromButton(btn));
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
     });
@@ -826,7 +884,7 @@ export const missionLogScreen = {
       if (act === 'track') {
         ctx.bus.emit('ui:trackMission', { missionId });
       } else if (act === 'openMap') {
-        openMapScreen(ctx, btn.getAttribute('data-screen-id'));
+        openMapScreen(ctx, mapOpenIntentFromButton(btn));
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
         return;
       } else if (act === 'abandon') {
@@ -971,7 +1029,7 @@ export const missionLogScreen = {
         '<button class="sf-mlog-btn-track' + (isTracked ? ' active' : '') + '" type="button" data-act="track" data-mid="' + escapeHtml(m.id) + '" aria-label="' + escapeHtml(isTracked ? 'Tracking ' + titleText : 'Track navigation for ' + titleText) + '">' +
           (isTracked ? 'TRACKING' : 'TRACK NAV') +
         '</button>' +
-        (mapAction ? '<button class="sf-mlog-btn-map" type="button" data-act="openMap" data-screen-id="' + escapeHtml(mapAction.screenId) + '" data-mid="' + escapeHtml(m.id) + '" title="' + escapeHtml(mapAction.title) + '" aria-label="' + escapeHtml(mapAction.title) + '">' + escapeHtml(mapAction.label) + '</button>' : '') +
+        (mapAction ? '<button class="sf-mlog-btn-map" type="button" data-act="openMap"' + mapActionButtonAttrs(mapAction, m.id) + ' title="' + escapeHtml(mapAction.title) + '" aria-label="' + escapeHtml(mapAction.title) + '">' + escapeHtml(mapAction.label) + '</button>' : '') +
         '<button class="sf-mlog-btn-abandon" type="button" data-act="abandon" data-mid="' + escapeHtml(m.id) + '" aria-label="' + escapeHtml('Abandon ' + titleText) + '">ABANDON</button>';
       card.appendChild(btns);
 
@@ -1014,7 +1072,7 @@ export const missionLogScreen = {
         (a.meta ? '<div class="sf-mlog-rec-meta mono">' + escapeHtml(a.meta) + '</div>' : '') +
         ((a.action === 'track' && a.missionId) || a.mapAction ? '<div class="sf-mlog-rec-actions">' +
           (a.action === 'track' && a.missionId ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="track" data-mid="' + escapeHtml(a.missionId) + '">' + escapeHtml(a.actionLabel || 'TRACK NAV') + '</button>' : '') +
-          (a.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap" data-screen-id="' + escapeHtml(a.mapAction.screenId) + '" data-mid="' + escapeHtml(a.missionId || '') + '" title="' + escapeHtml(a.mapAction.body || a.mapAction.title || '') + '">' + escapeHtml(a.mapAction.label) + '</button>' : '') +
+          (a.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap"' + mapActionButtonAttrs(a.mapAction, a.missionId || a.mapAction.missionId || '') + ' title="' + escapeHtml(a.mapAction.body || a.mapAction.title || '') + '">' + escapeHtml(a.mapAction.label) + '</button>' : '') +
         '</div>' : '') +
       '</div>'
     )).join('');

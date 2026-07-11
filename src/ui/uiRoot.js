@@ -18,6 +18,7 @@ import { controlPrompt } from './controlPrompts.js';
 import { setPromptScheme } from './controlPrompts.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { projectLockedReticle } from '../combat/autoTargetMode.js';
+import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -381,7 +382,29 @@ export const ui = {
     this.input = createUiInput(ctx, this.screenManager);
 
     // navigation fallback events (screens may emit these if they can't reach the manager)
-    this.bus.on('ui:pushScreen', ({ id }) => { if (id) this.screenManager.pushScreen(id); });
+    this.bus.on('ui:pushScreen', (payload = {}) => {
+      const id = payload && payload.id;
+      if (!id) return;
+      // Map authority: any localmap/starmap/galaxyMap push becomes galaxyMap + focus intent.
+      if (isMapScreenId(id)) {
+        openGalaxyMap({
+          state: this.state,
+          bus: this.bus,
+          screenManager: this.screenManager,
+        }, {
+          screenId: id,
+          focus: payload.focus,
+          sectorId: payload.sectorId,
+          missionId: payload.missionId,
+          stationId: payload.stationId,
+          pos: payload.pos,
+          label: payload.label,
+          source: payload.source || 'ui:pushScreen',
+        });
+        return;
+      }
+      this.screenManager.pushScreen(id);
+    });
     this.bus.on('ui:popScreen', () => this.screenManager.popScreen());
     this.bus.on('ui:replaceScreen', ({ id }) => { if (id) this.screenManager.replaceScreen(id); });
     this.bus.on('ui:closeAll', () => this.screenManager.closeAll());

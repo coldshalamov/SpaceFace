@@ -217,10 +217,14 @@ assert.match(uiInputSrc, /action === 'dock'[\s\S]*dockInRange[\s\S]*doDock\(\)/,
   'UI input must route the touch Dock button through the shared docking path');
 assert.match(uiInputSrc, /touchActionPressed\('missionLog'\)[\s\S]*openScreenFromTouch\('missionLog'\)/,
   'UI input must route the touch Log button to the shared Mission Log screen');
-assert.match(uiInputSrc, /touchActionPressed\('localmap'\)[\s\S]*openScreenFromTouch\('localmap'\)/,
-  'UI input must route the touch Map button to the shared Local Map screen');
-assert.match(uiInputSrc, /touchActionPressed\('starmap'\)[\s\S]*openScreenFromTouch\('starmap'\)/,
-  'UI input must route the touch Star button to the shared Star Map screen');
+assert.match(uiInputSrc, /touchActionPressed\('localmap'\)[\s\S]*routeTouchUiAction\('localmap'\)/,
+  'UI input must route the touch Map button through the shared touch UI router');
+assert.match(uiInputSrc, /action === 'localmap'[\s\S]*openMapFromTouch\(MAP_FOCUS\.LOCAL\)|openGalaxyMap\([\s\S]*MAP_FOCUS\.LOCAL/,
+  'UI input must open galaxyMap at LOCAL focus for the touch Local Map button');
+assert.match(uiInputSrc, /touchActionPressed\('starmap'\)[\s\S]*routeTouchUiAction\('starmap'\)/,
+  'UI input must route the touch Star button through the shared touch UI router');
+assert.match(uiInputSrc, /action === 'starmap'[\s\S]*openMapFromTouch\(MAP_FOCUS\.GALAXY\)|openGalaxyMap\([\s\S]*MAP_FOCUS\.GALAXY/,
+  'UI input must open galaxyMap at GALAXY focus for the touch Star Map button');
 assert.match(uiInputSrc, /touchActionPressed\('pause'\)[\s\S]*openScreenFromTouch\('pause'\)/,
   'UI input must route the touch Pause button to the shared Pause screen');
 assert.match(localmapSrc, /<button class="lm-close" type="button" aria-label="Close Local Map">Close \(\$\{localMapKey\}\)<\/button>/,
@@ -249,8 +253,10 @@ assert.match(uiInputSrc, /gp\.actions\.accept[\s\S]*dockInRange[\s\S]*doDock\(\)
   'UI input must let gamepad A/Cross dock when the dock prompt is active');
 assert.match(uiInputSrc, /case BINDINGS\.dock\.key:\s*case BINDINGS\.dock\.label:\s*case 'Enter':/,
   'UI input must route the live dock key, visible dock label, and Enter to the dock action');
-assert.match(uiInputSrc, /top === 'starmap'[\s\S]*gp\.actions\.map[\s\S]*screenManager\.popScreen\(\)/,
-  'UI input must let gamepad View/Select close the Star Map after opening it');
+assert.match(uiInputSrc, /isMapScreenId\(top\)[\s\S]*gp\.actions\.map[\s\S]*screenManager\.popScreen\(\)/,
+  'UI input must let gamepad View/Select close the unified map (or legacy map surfaces) after opening it');
+assert.match(uiInputSrc, /gp\.actions\.map[\s\S]*openGalaxyMap\([\s\S]*MAP_FOCUS\.GALAXY/,
+  'UI input must open galaxyMap from gamepad View/Select');
 assert.match(screenManagerSrc, /state\.mode === 'menu' && stack\.length === 1 && top\(\) === 'mainMenu'/,
   'ScreenManager must treat the root title menu as a locked modal route');
 assert.match(uiInputSrc, /function closeActiveModal\(def\)[\s\S]*screenManager\.locked[\s\S]*if \(locked\) return false;[\s\S]*def && def\.id === 'station'[\s\S]*undock\(\)/,

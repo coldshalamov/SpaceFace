@@ -49,7 +49,8 @@ function state(overrides = {}) {
       },
     },
   }), m, true);
-  assert.equal(action.screenId, 'localmap', 'tracked same-sector missions should hand off to the Local Map');
+  assert.equal(action.screenId, 'galaxyMap', 'tracked same-sector missions should open the unified galaxyMap');
+  assert.equal(action.focus, 'local', 'same-sector handoff should request LOCAL focus');
   assert.equal(action.label, 'LOCAL MAP', 'same-sector handoff should have a player-facing label');
 }
 
@@ -65,7 +66,8 @@ function state(overrides = {}) {
       },
     },
   }), m, true);
-  assert.equal(action.screenId, 'starmap', 'tracked off-sector missions should hand off to the Star Map');
+  assert.equal(action.screenId, 'galaxyMap', 'tracked off-sector missions should open the unified galaxyMap');
+  assert.equal(action.focus, 'galaxy', 'off-sector handoff should request GALAXY focus');
   assert.equal(action.label, 'STAR MAP', 'off-sector handoff should have a player-facing label');
 }
 
@@ -93,7 +95,8 @@ function state(overrides = {}) {
     },
   }), [m], m.id);
   assert.equal(actions[0].label, 'TRACKED', 'tracked mission should remain the first recommendation');
-  assert.equal(actions[0].mapAction.screenId, 'starmap', 'tracked recommendation should carry the Star Map handoff');
+  assert.equal(actions[0].mapAction.screenId, 'galaxyMap', 'tracked recommendation should open the unified galaxyMap');
+  assert.equal(actions[0].mapAction.focus, 'galaxy', 'tracked recommendation should request GALAXY focus');
 }
 
 {
@@ -109,7 +112,8 @@ function state(overrides = {}) {
       },
     },
   }));
-  assert.equal(action.screenId, 'starmap', 'off-sector trade routes should hand off to the Star Map');
+  assert.equal(action.screenId, 'galaxyMap', 'off-sector trade routes should open the unified galaxyMap');
+  assert.equal(action.focus, 'galaxy', 'off-sector trade handoff should request GALAXY focus');
   assert.equal(action.label, 'STAR MAP', 'off-sector trade handoff should have a player-facing label');
 }
 
@@ -127,7 +131,8 @@ function state(overrides = {}) {
       },
     },
   }));
-  assert.equal(action.screenId, 'localmap', 'same-sector trade routes should hand off to the Local Map');
+  assert.equal(action.screenId, 'galaxyMap', 'same-sector trade routes should open the unified galaxyMap');
+  assert.equal(action.focus, 'local', 'same-sector trade handoff should request LOCAL focus');
   assert.equal(action.label, 'LOCAL MAP', 'same-sector trade handoff should have a player-facing label');
 }
 
@@ -147,7 +152,11 @@ assert.match(source, /toggle\.setAttribute\('aria-expanded'/,
   'Mission Log completed toggle must update aria-expanded with the visible completed list state');
 assert.match(source, /sf-mlog-btn-map/, 'active mission map handoff must have a dedicated style hook');
 assert.match(source, /sf-mlog-rec-map/, 'recommendation map handoff must have a dedicated style hook');
-assert.match(source, /ui:pushScreen/, 'map handoff must fall back to the shared UI screen event');
-assert.match(source, /pushScreen\(screenId\)/, 'map handoff must use the live screen manager when available');
+assert.match(source, /openGalaxyMap|mapHandoffAction/,
+  'map handoff must route through the shared map authority');
+assert.match(source, /data-map-focus/,
+  'map handoff buttons must expose explicit focus data for the unified map');
+assert.match(source, /openGalaxyMap\(ctx/,
+  'map handoff must open the unified galaxyMap through map authority');
 
-console.log('Mission Log map handoff OK: tracked objectives route players to Local Map or Star Map.');
+console.log('Mission Log map handoff OK: tracked objectives open galaxyMap at LOCAL or GALAXY focus.');

@@ -21,6 +21,7 @@
 import { SECTORS } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
+import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
 
 // ---------------------------------------------------------------------------------------------
 // Static catalogs (pure — safe at import time).
@@ -52,6 +53,71 @@ export function levelForZoom(zoom) {
   if (z >= LEVEL_LOCAL_AT) return 'local';
   if (z >= LEVEL_SYSTEM_AT) return 'system';
   return 'galaxy';
+}
+
+/** Initial zoom scalar for a map-authority focus preset (LOCAL / SYSTEM / GALAXY). */
+export function zoomForMapFocus(focus) {
+  const f = normalizeMapFocus(focus);
+  if (f === MAP_FOCUS.LOCAL) return LEVEL_LOCAL_AT + 0.5;
+  if (f === MAP_FOCUS.GALAXY) return Math.max(ZOOM_MIN, LEVEL_SYSTEM_AT - 0.5);
+  return LEVEL_SYSTEM_AT + 0.5;
+}
+
+/**
+ * Apply a one-shot map open intent to view state (zoom + camera centers).
+ * Pure enough for headless checks: mutates `view` and returns it.
+ * `view` shape: { zoom, targetZoom, cams: { galaxy, system, local } }.
+ */
+export function applyMapOpenIntentToView(view, intent, state) {
+  if (!view) return view;
+  const focus = normalizeMapFocus(intent && intent.focus);
+  const z = zoomForMapFocus(focus);
+  view.zoom = z;
+  view.targetZoom = z;
+
+  const player = state ? playerEntity(state) : null;
+  const px = player && player.pos ? player.pos.x : 0;
+  const pz = player && player.pos ? player.pos.z : 0;
+  if (!view.cams) {
+    view.cams = {
+      galaxy: { cx: 0, cy: 0, zoom: 1 },
+      system: { cx: 0, cy: 0, zoom: 1.5 },
+      local: { cx: px, cy: pz, zoom: 1.5 },
+    };
+  }
+  if (view.cams.local) {
+    view.cams.local.cx = px;
+    view.cams.local.cy = pz;
+  }
+  if (view.cams.system) {
+    view.cams.system.cx = 0;
+    view.cams.system.cy = 0;
+  }
+
+  const pos = intent && intent.pos;
+  if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
+    if (focus === MAP_FOCUS.LOCAL && view.cams.local) {
+      view.cams.local.cx = pos.x;
+      view.cams.local.cy = pos.z;
+    } else if (focus === MAP_FOCUS.SYSTEM && view.cams.system) {
+      view.cams.system.cx = pos.x;
+      view.cams.system.cy = pos.z;
+    }
+  }
+
+  // Off-sector / star-chart focus: center the galaxy cam on the target sector node when known.
+  const sectorId = intent && intent.sectorId;
+  if (focus === MAP_FOCUS.GALAXY && sectorId && state && view.cams.galaxy) {
+    const rec = sectorRecordById(state, sectorId);
+    const p = rec && rec.position;
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y != null ? p.y : p.z)) {
+      view.cams.galaxy.cx = p.x;
+      view.cams.galaxy.cy = p.y != null ? p.y : p.z;
+    }
+  }
+
+  view.openIntent = intent || null;
+  return view;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1285,23 +1351,21 @@ export const galaxyMapScreen = {
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
     this._visible = true;
-    this._zoom = LEVEL_SYSTEM_AT + 0.5;
-    this._targetZoom = this._zoom;
     this._selectedTarget = null;
     this._hoverTarget = null;
     this._scanRings = [];
 
-    // Reset camera centers to players / sector origin
+    // Consume map-authority open intent (LOCAL vs STAR/GALAXY focus + optional target fix).
     const state = this._ctx && this._ctx.state;
-    if (state) {
-      const player = playerEntity(state);
-      const px = player ? player.pos.x : 0;
-      const pz = player ? player.pos.z : 0;
-      this._cams.local.cx = px;
-      this._cams.local.cy = pz;
-      this._cams.system.cx = 0;
-      this._cams.system.cy = 0;
-    }
+    const intent = takeMapOpenIntent(state) || { focus: MAP_FOCUS.SYSTEM };
+    const view = applyMapOpenIntentToView({
+      zoom: this._zoom,
+      targetZoom: this._targetZoom,
+      cams: this._cams,
+    }, intent, state);
+    this._zoom = view.zoom;
+    this._targetZoom = view.targetZoom;
+    this._openIntent = view.openIntent || intent;
 
     if (!HAS_DOC) return;
     this._resize();

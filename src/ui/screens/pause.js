@@ -7,6 +7,7 @@
 import { confirm } from '../confirm.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS } from '../../data/sectors.js';
+import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
 
 const STYLE_ID = 'sf-pause-menu-style';
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -194,27 +195,55 @@ export function pauseMapAction(state) {
   const wp = state && state.nav && state.nav.waypoint;
   if (!wp) return null;
   const commitment = routeCommitment(state, wp);
+  const currentSectorId = state && state.world && state.world.currentSectorId || null;
   if (commitment.kind !== 'inter-system') {
     const place = commitment.targetSectorName ? ' in ' + commitment.targetSectorName : ' in this system';
     const hint = commitment.kind === 'local'
       ? 'Open Local Map (' + BINDINGS.localmap.label + ') for the live marker' + place + '; no jump route is required.'
       : 'Open Local Map (' + BINDINGS.localmap.label + ') for the live marker in this system.';
-    return {
-      screenId: 'localmap',
+    // One public map surface: galaxyMap + LOCAL focus (not dual-primary localmap/starmap).
+    const handoff = mapHandoffAction({
+      focus: MAP_FOCUS.LOCAL,
       label: 'Local Map (' + BINDINGS.localmap.label + ')',
+      title: 'Open Local Map',
+      body: hint,
+      sectorId: wp.sectorId || currentSectorId || null,
+      stationId: wp.stationId || null,
+      pos: wp.pos || null,
+      missionId: wp.missionId || null,
+      source: 'pause',
+    });
+    return {
+      ...handoff,
       hint,
       commitment: commitment.kind,
       objectiveLabel: commitment.objectiveLabel,
     };
   }
   const target = commitment.targetSectorName ? ' to ' + commitment.targetSectorName : '';
-  return {
-    screenId: 'starmap',
+  const hint = 'Open Star Map (' + BINDINGS.starmap.label + ') to review the inter-system route' + target + ' before committing a jump.';
+  // Inter-system review still uses the same galaxyMap surface with GALAXY focus.
+  const handoff = mapHandoffAction({
+    focus: MAP_FOCUS.GALAXY,
     label: 'Star Map (' + BINDINGS.starmap.label + ')',
     hint: 'Open Star Map (' + BINDINGS.starmap.label + ') to review the inter-system route' + target + ' before committing a jump.',
     commitment: commitment.kind,
     objectiveLabel: commitment.objectiveLabel,
   };
+}
+
+/** Open the pause map review CTA through mapAuthority (never pushScreen localmap|starmap). */
+function openPauseMapReview(ctx, mapAction) {
+  if (!mapAction) return false;
+  return openGalaxyMap(ctx, {
+    focus: mapAction.focus,
+    sectorId: mapAction.sectorId,
+    stationId: mapAction.stationId,
+    pos: mapAction.pos,
+    missionId: mapAction.missionId,
+    label: mapAction.label,
+    source: (mapAction.source) || 'pause',
+  });
 }
 
 function routeNextText(mapAction) {
@@ -360,7 +389,7 @@ export const pauseScreen = {
     // UI-polish scope this cycle; a first-class station tab would be promotion).
     mk('Operations', () => nav(ctx, 'pushScreen', 'automation'));
     const mapAction = pauseMapAction(ctx && ctx.state);
-    if (mapAction) mk('Review ' + mapAction.label, () => nav(ctx, 'pushScreen', mapAction.screenId));
+    if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction));
     mk('Help / Controls', () => nav(ctx, 'pushScreen', 'help'));
     mk('Codex', () => nav(ctx, 'pushScreen', 'codex'));
     // Main Menu discards the current session entirely — confirm with the live run context first.
