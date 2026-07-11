@@ -298,7 +298,10 @@ function craftDistress(sectorId, wantKind) {
     assert.equal(!!e.data.ai.passive, false, 'bait springs on approach');
     assert.equal(isHostileToPlayer(e, 0, state), true, 'sprung bait is hostile');
   }
-  assert(log.voice.some((v) => v.encounterId === id && /Gotcha/.test(v.text)), 'bait spring line');
+  // Spring bark is a variant array (seeded pick) — accept any distress_bait_spring line, not one fixed phrase.
+  assert(log.voice.some((v) => v.encounterId === id && (
+    /Gotcha|Got you|Trap set|Bait taken|Spring it|Light them up|Burn them down/i.test(v.text || '')
+  )), 'bait spring line');
   killAs(sim, live.ids, state.playerId);
   tickS(sim, 2);
   assert(log.receipts.some((r) => r.encounterId === id && /BAIT BROKEN/.test(r.text)), 'bait broken receipt');
@@ -330,7 +333,9 @@ function craftDistress(sectorId, wantKind) {
     assert.equal(isHostileToPlayer(h, 0, state), false, 'convoy is not a threat');
   }
   const first = log.voice.find((v) => v.encounterId === id);
-  assert(first && /convoy on the lane/.test(first.text), 'departure announced on the ticker line');
+  // convoy_depart is a variant array — accept any departure ticker phrasing, not one fixed line.
+  assert(first && /convoy|bulk haul|escorted train|Lane traffic|freighters rolling/i.test(first.text || ''),
+    'departure announced on the ticker line');
   tickS(sim, 235);                                     // transit + arrival
   const tp = log.pressure.filter((p) => p.stationId === 'st_tethys_hub');
   assert.equal(tp.length, 1, 'arrival applies market pressure exactly once');

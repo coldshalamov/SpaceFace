@@ -65,17 +65,36 @@ function blipColor(e, playerTeam, mode, state) {
     if (e.data && e.data.isGate) return COL.gate;
     return e.factionId && FACTION_COLOR[e.factionId] ? FACTION_COLOR[e.factionId] : COL.station;
   }
+  // Faction tint for friendly/neutral traffic when known (role/intent still carried by shape).
+  if (!isHostileToPlayer(e, playerTeam, state) && e.factionId && FACTION_COLOR[e.factionId]) {
+    return FACTION_COLOR[e.factionId];
+  }
   return semanticColor(shipState(e, playerTeam, state), mode);
 }
 
+/**
+ * Role/intent shape without labels: patrol diamond, hauler square, courier thin diamond,
+ * named contact gets a slightly larger mark. Hostility still overrides via semanticShape.
+ */
+function contactBlipShape(e, playerTeam, state) {
+  if (isHostileToPlayer(e, playerTeam, state)) return semanticShape('hostile');
+  const role = String((e.data && (e.data.trafficRole || e.data.role)) || '').toLowerCase();
+  if (role === 'patrol' || role === 'escort') return 'diamond';
+  if (role === 'courier' || role === 'rescue') return 'diamond';
+  if (role === 'hauler' || role === 'miner' || role === 'smuggler') return 'square';
+  if (e.data && e.data.namedLaneContactId) return 'diamond';
+  return semanticShape(shipState(e, playerTeam, state));
+}
+
 // Redundant blip shape so hostility is readable without color (colorblind mode). Caller sets fillStyle.
-function drawShipShape(g, x, y, shape) {
+function drawShipShape(g, x, y, shape, scale = 1) {
+  const s = scale > 0 ? scale : 1;
   if (shape === 'triangle') {
-    g.beginPath(); g.moveTo(x, y - 3); g.lineTo(x + 2.8, y + 2.5); g.lineTo(x - 2.8, y + 2.5); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(x, y - 3 * s); g.lineTo(x + 2.8 * s, y + 2.5 * s); g.lineTo(x - 2.8 * s, y + 2.5 * s); g.closePath(); g.fill();
   } else if (shape === 'diamond') {
-    g.beginPath(); g.moveTo(x, y - 3); g.lineTo(x + 3, y); g.lineTo(x, y + 3); g.lineTo(x - 3, y); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(x, y - 3 * s); g.lineTo(x + 3 * s, y); g.lineTo(x, y + 3 * s); g.lineTo(x - 3 * s, y); g.closePath(); g.fill();
   } else {
-    g.fillRect(x - 2, y - 2, 4, 4);
+    g.fillRect(x - 2 * s, y - 2 * s, 4 * s, 4 * s);
   }
 }
 
@@ -606,7 +625,16 @@ export function createRadar(ctx) {
         const isHostile = isHostileToPlayer(e, playerTeam, state);
         const glowBlur  = isHostile ? 7 + 3 * Math.sin(now * 0.004) : 5;
         glow(g, col, glowBlur);
-        drawShipShape(g, bx, by, semanticShape(shipState(e, playerTeam, state)));
+        const named = !!(e.data && e.data.namedLaneContactId);
+        drawShipShape(g, bx, by, contactBlipShape(e, playerTeam, state), named ? 1.35 : 1);
+        // Named contact: thin outer ring (identity, not text spam).
+        if (named && !isHostile) {
+          g.strokeStyle = col;
+          g.lineWidth = 1;
+          g.globalAlpha = 0.55;
+          g.beginPath(); g.arc(bx, by, 5.5, 0, Math.PI * 2); g.stroke();
+          g.globalAlpha = 1;
+        }
         noGlow(g);
       }
 

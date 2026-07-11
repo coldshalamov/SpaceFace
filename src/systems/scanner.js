@@ -292,19 +292,37 @@ export function isHostileToPlayer(e, playerTeam, state) {
 }
 
 // One-word contact state for the strip. Derelicts read DERELICT; player-aligned ships WINGMAN/ALLY;
-// opposing ships resolve to HOSTILE / PATROL / TRADER / MINER via AI signals, with a plain team
-// fallback so a contact never renders blank (respects the "one word" contract).
+// opposing ships resolve to HOSTILE / PATROL / HAULER / COURIER / MINER via trafficRole + AI signals,
+// with a plain team fallback so a contact never renders blank (respects the "one word" contract).
+// Intent is the operational role (who they are / what they're doing), not a prose wall.
 export function contactStateWord(e, playerTeam, state) {
   if (isWreckLike(e)) return 'DERELICT';
   const playerId = state && state.playerId;
   if (e.team === 0 && e.id !== playerId) return (e.data && e.data.isWingman) ? 'WINGMAN' : 'ALLY';
-  const ai = e.data && e.data.ai;
-  const combat = e.data && e.data.combat;
+  const data = e.data || {};
+  const ai = data.ai;
+  const combat = data.combat;
   const targetsPlayer = !!(combat && playerId != null && combat.targetId === playerId);
   const attacking = !!(ai && (ai.fsm === 'attack' || ai.fsm === 'pursue' || ai.fsm === 'strafe'));
   if ((attacking || targetsPlayer) && isHostileToPlayer(e, playerTeam, state)) return 'HOSTILE';
+
+  // Traffic / encounter role is the primary readability channel (faction lives on the faction chip).
+  const trafficRole = String(data.trafficRole || data.role || (ai && ai.encounterRole) || '').toLowerCase();
+  if (trafficRole === 'patrol' || trafficRole === 'escort') return trafficRole === 'escort' ? 'ESCORT' : 'PATROL';
+  if (trafficRole === 'miner' || trafficRole === 'mining' || trafficRole === 'mining_barge') return 'MINER';
+  if (trafficRole === 'courier') return 'COURIER';
+  if (trafficRole === 'hauler' || trafficRole === 'freighter') return 'HAULER';
+  if (trafficRole === 'smuggler') return 'SMUGGLER';
+  if (trafficRole === 'rescue') return 'RESCUE';
+  if (trafficRole === 'pirate' || trafficRole === 'raider') {
+    return isHostileToPlayer(e, playerTeam, state) ? 'HOSTILE' : 'RAIDER';
+  }
+
   if (ai) {
     if (ai.lawful) return 'PATROL';
+    const ctx = String(ai.spawnContext || ai.context || '');
+    if (ctx === 'patrol') return 'PATROL';
+    if (ctx === 'convoy_civilian') return 'HAULER';
     if (ai.passive) return 'TRADER';
     const arch = String(ai.archetype || '');
     if (arch.includes('min')) return 'MINER';

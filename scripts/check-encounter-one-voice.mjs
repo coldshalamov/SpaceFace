@@ -14,6 +14,7 @@ import { createSimulation } from '../src/core/sim.js';
 import { encounterDirector, planEncounterShape } from '../src/systems/encounterDirector.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { ENCOUNTERS, ENCOUNTER_BARKS } from '../src/data/encounters.js';
 import { mulberry32, hash32 } from '../src/core/rng.js';
 
@@ -133,13 +134,16 @@ function assertNoModal(emitted, label) {
 }
 {
   // Ambush while CRUISING: snare warning must be danger-tier and precede the snare by ≥1 s.
-  const { sim, state, voice, snares, emitted } = boot(62, 'sector_sker_haven', { x: 1600, z: -1200 }, null);
-  state.player.cruise = { phase: 'cruising', t: 3, stumbleT: 0 };
+  // Zone centers are sector-local; encounter anchors are galactic-global — place the player in
+  // global space so playerNearZone / snare telegraph match live free-flight coordinates.
   const zone = zonesForSector('sector_sker_haven').find((z) => z.type === 'ambush_lane');
+  const globalPos = sectorLocalToGlobalForSector(zone.center, 'sector_sker_haven');
+  const { sim, state, voice, snares, emitted } = boot(62, 'sector_sker_haven', globalPos, null);
+  state.player.cruise = { phase: 'cruising', t: 3, stumbleT: 0 };
   const { id } = forceFire(sim, 'ambush_snare', 'sector_sker_haven', { zone });
   const warnAt = state.simTime;
   tickS(sim, 6);
-  const warn = voice.find((v) => v.encounterId === id && /snare/i.test(v.text));
+  const warn = voice.find((v) => v.encounterId === id && /snare|Mass-snare|Break vector/i.test(v.text));
   assert(warn, 'cruising into an ambush telegraphs the snare');
   assert.equal(warn.channel, 'alert', 'snare warning is danger-tier');
   assert.equal(snares.length, 1, 'exactly one snare per shape instance (never chain-snared)');

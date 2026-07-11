@@ -67,6 +67,9 @@ const P = {
 // Centers/radii align to src/data/sectorAnchors.js so a label sits on real content, not empty space.
 const CORE_SECTOR_ZONES = {
   // ── S1 Helios Prime — safe Concord core (enemyDensity 0: NO hostile spawns; readability only) ──
+  // Living pocket: civilian_core + trade_lane + patrol_corridor schedule ambient traders, one
+  // civilian/economy beat (trader_run / convoy), and lawful patrol_scan / patrol_beat. Named lane
+  // contacts are stamped by traffic.js (not combat named_hunter — Helios has no ambush zone).
   sector_helios_prime: [
     { id: 'zone_helios_core', name: 'Concord Core', type: 'civilian_core', factionId: 'faction_scn',
       reason: 'Solar Concord\'s clean, licensed heart — customs-scanned traffic, no open weapons.',
@@ -74,6 +77,10 @@ const CORE_SECTOR_ZONES = {
     { id: 'zone_helios_claim', name: 'Sanctioned Claim', type: 'mining_belt', factionId: 'faction_scn',
       reason: 'A safe starter claim the Concord keeps clear so green pilots can learn to mine.',
       center: { x: 720, z: -260 }, radius: 420, threat: 0 },
+    // Freight spine between Helios Station and Coalition — anchors convoy/trader economy beats.
+    { id: 'zone_helios_freight', name: 'Helios Freight Spine', type: 'trade_lane', factionId: 'faction_mts',
+      reason: 'Licensed bulk moves between Helios Station and the Coalition yard — the core economy\'s short hop.',
+      center: { x: 180, z: 330 }, radius: 900, threat: 0 },
     { id: 'zone_helios_lane', name: 'Customs Corridor', type: 'patrol_corridor', factionId: 'faction_scn',
       reason: 'Every inbound ship is scanned here before it reaches the core.',
       center: { x: 0, z: 1900 }, radius: 1300, presence: P.patrol([2, 3]) },

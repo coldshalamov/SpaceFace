@@ -8,6 +8,7 @@ import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { DAMAGE_MODEL } from '../data/combatDefs.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer } from '../systems/scanner.js';
+import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -46,6 +47,9 @@ const ROLE_LABEL = {
   multirole: 'Multirole', interceptor: 'Interceptor', mining_barge: 'Mining Barge',
   corvette: 'Corvette', heavy_hauler: 'Heavy Hauler', explorer: 'Explorer',
   gunship: 'Gunship', battlecruiser: 'Battlecruiser', flagship: 'Flagship',
+  // Ambient traffic roles (traffic.js TRAFFIC_ROLES) — short, scannable.
+  hauler: 'Hauler', courier: 'Courier', miner: 'Miner', patrol: 'Patrol',
+  escort: 'Escort', smuggler: 'Smuggler', pirate: 'Raider', rescue: 'Rescue',
 };
 
 const GIMMICK_LABELS = {
@@ -56,20 +60,26 @@ const GIMMICK_LABELS = {
   'pd-screen': 'PD SCREEN',
   'pd_screen': 'PD SCREEN',
   'ram-plate': 'RAM-PLATE',
-  'ram_plate': 'RAM-PLATE'
+  'ram_plate': 'RAM-PLATE',
+  ...LANE_GIMMICK_LABELS,
 };
 
 function getGimmickLabel(gimmick) {
   if (!gimmick) return '';
   const normalized = String(gimmick).toLowerCase().replace(/_/g, '-');
-  return GIMMICK_LABELS[normalized] || String(gimmick).toUpperCase();
+  return GIMMICK_LABELS[normalized] || GIMMICK_LABELS[String(gimmick).toLowerCase()] || String(gimmick).toUpperCase();
 }
 
 function entityName(e) {
   if (!e) return '—';
   if (e.type === 'ship') {
-    const def = e.data && e.data.defId ? SHIP_BY_ID.get(e.data.defId) : null;
-    return (e.data && e.data.name) || (def && def.name) || 'Unknown Ship';
+    const d = e.data || {};
+    const ai = d.ai || {};
+    // Named/gimmick-readable identity first (lane contacts, bosses, callsigns) — never portraits.
+    const named = d.name || ai.name || d.callsign || d.scanLabel || d.trafficLabel;
+    if (named) return named;
+    const def = d.defId ? SHIP_BY_ID.get(d.defId) : null;
+    return (def && def.name) || 'Unknown Ship';
   }
   if (e.type === 'station') {
     if (e.data && e.data.isGate) return e.data.name || 'Jump Gate';
@@ -84,7 +94,12 @@ function entityName(e) {
 function entityClass(e) {
   if (!e) return '';
   if (e.type === 'ship') {
-    const def = e.data && e.data.defId ? SHIP_BY_ID.get(e.data.defId) : null;
+    const d = e.data || {};
+    // Traffic role beats hull class for ambient readability (HAULER vs "Freighter").
+    const trafficRole = d.trafficRole || d.role;
+    if (trafficRole && ROLE_LABEL[trafficRole]) return ROLE_LABEL[trafficRole];
+    if (trafficRole) return trafficRole;
+    const def = d.defId ? SHIP_BY_ID.get(d.defId) : null;
     const role = e.role || (def && def.role) || '';
     return ROLE_LABEL[role] || role || 'Ship';
   }
@@ -209,21 +224,23 @@ export function createTargetPanel(ctx) {
     if (armorScale !== lastArmorScale) { fillArmor.style.transform = armorScale; lastArmorScale = armorScale; }
     if (shieldScale !== lastShieldScale) { fillShield.style.transform = shieldScale; lastShieldScale = shieldScale; }
 
-    // Contact identity (BP-10): faction · role · threat tier · level — legible combat readout.
+    // Contact identity: faction · role · intent(state) · threat pips — no portraits, no text walls.
     if (t.type === 'ship' || t.type === 'drone') {
       const player = state.entities.get(state.playerId);
       const playerTeam = player ? player.team : 0;
       const hostile = isHostileToPlayer(t, playerTeam, state);
       const tier = contactThreatTier(t, hostile);
-      const stateWord = contactStateWord(t, playerTeam, state);
+      const stateWord = contactStateWord(t, playerTeam, state); // intent / operational role word
       const role = entityClass(t);
       const level = t.data && t.data.level;
       const fac = t.factionId ? FACTION_BY_ID.get(t.factionId) : null;
       const facShort = fac ? (fac.short || fac.name) : '—';
-      const idKey = `${tid}:${facShort}:${role}:${stateWord}:${tier}:${level}`;
+      const callsign = t.data && t.data.callsign;
+      const idKey = `${tid}:${facShort}:${role}:${stateWord}:${tier}:${level}:${callsign || ''}`;
       if (idKey !== lastIdentityKey) {
         lastIdentityKey = idKey;
         const levelBit = level != null ? ` · L${level}` : '';
+        // Compact: faction · hull/traffic role · intent word · threat pips.
         setText(elIdentity, `${facShort} · ${role} · ${stateWord} · ${tierPips(tier)}${levelBit}`);
       }
       if (elIdentity.style.display !== 'block') elIdentity.style.display = 'block';
@@ -268,7 +285,7 @@ export function createTargetPanel(ctx) {
       elWeak.style.display = 'none';
     }
 
-    // Gimmick tag
+    // Gimmick / readable quirk tag (bounty hunters + named lane freighters)
     const gimmick = t.data && (t.data.bountyGimmick || t.data.gimmick || t.data.bountyTag);
     const gimmickLabel = getGimmickLabel(gimmick);
     if (gimmickLabel) {

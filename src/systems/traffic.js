@@ -38,13 +38,17 @@ import {
   FREIGHT_MARKET_KEYS_FALLBACK,
   liveVolumeForSector,
 } from '../economy/freightCausality.js';
+import { pickNamedLaneContact } from '../data/laneContacts.js';
 
 const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
-const MAX_PER_SECTOR = 6;
+// Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
+const MAX_PER_SECTOR = 8;
+const CORE_MIN_TRAFFIC = 6;    // high-security / high-tpm cores never feel empty
 const DEFAULT_TRAFFIC = 3;     // sectors without explicit trafficPerMin get a small ambient count
 const SPEED = 28;              // wu/s — slow, reads as a heavy freighter
 const DOCK_RANGE = 60;         // how close before "docking" (trading)
 const TRADE_INTERVAL_S = 8;    // min seconds between trades per freighter (staggered)
+const POCKET_CLUSTER_R = 420;  // first freighters cluster near a pocket station for sensor density
 
 // Causal traffic roles (spec §12.1). Each role is a distinct, READABLE behavior — not a combat-AI
 // skin. The hull + speed + archetype encode the role's identity; the update loop encodes its
@@ -90,6 +94,15 @@ function roleMixForSector(sector) {
   if (sec.security === 'secure' || sec.factionControl === 'strong' || (numericSecurity != null && numericSecurity >= 0.6)) {
     out.patrol *= 2.5; out.escort *= 1.8; out.pirate = 0;
   }
+  // Professional core pocket (Helios-class): licensed traders + one lawful presence — no smuggler
+  // scenery in the first-hour safe lane (smugglers still exist elsewhere via lower security).
+  if (numericSecurity != null && numericSecurity >= 0.9) {
+    out.smuggler = 0;
+    out.pirate = 0;
+    out.hauler *= 1.4;
+    out.courier *= 1.2;
+    out.patrol *= 1.6;
+  }
   return out;
 }
 function pickRole(roleWeights, rng) {
@@ -98,6 +111,40 @@ function pickRole(roleWeights, rng) {
   let r = rng() * total;
   for (const [id, w] of Object.entries(roleWeights)) { r -= Math.max(0, w); if (r <= 0) return id; }
   return 'hauler';
+}
+
+/** Ambient count from trafficPerMin — core pockets floor at CORE_MIN_TRAFFIC. */
+function ambientCountForSector(sector) {
+  const tpm = sector && sector.trafficPerMin;
+  let count;
+  if (typeof tpm === 'number') {
+    // denser reading for high-tpm cores: tpm/3 instead of /4 so Helios (18) → 6
+    count = Math.min(MAX_PER_SECTOR, Math.round(tpm / 3));
+  } else {
+    count = DEFAULT_TRAFFIC;
+  }
+  const sec = Number.isFinite(sector && sector.security) ? sector.security : null;
+  if (sec != null && sec >= 0.85 && count > 0) {
+    count = Math.min(MAX_PER_SECTOR, Math.max(CORE_MIN_TRAFFIC, count));
+  }
+  return count;
+}
+
+/**
+ * Professional first-hour mix: guarantee ≥1 lawful patrol + majority traders in high-sec.
+ * Pure: takes pre-picked roles and returns a corrected array of the same length.
+ */
+function ensurePocketRoleMix(roles, sector) {
+  const sec = Number.isFinite(sector && sector.security) ? sector.security : null;
+  if (sec == null || sec < 0.85 || !roles.length) return roles;
+  const out = roles.slice();
+  const hasPatrol = out.includes('patrol');
+  if (!hasPatrol) out[0] = 'patrol';
+  // Prefer traders for remaining civilian slots (readable ambient economy).
+  for (let i = 0; i < out.length; i++) {
+    if (out[i] === 'smuggler' || out[i] === 'pirate') out[i] = (i % 2 === 0) ? 'hauler' : 'courier';
+  }
+  return out;
 }
 
 export const traffic = {
@@ -140,12 +187,9 @@ export const traffic = {
     if (!sector || !this.helpers || !this.helpers.spawnEntity) return;
     const sectorId = sector.id || (p && p.sectorId) || (this.state.world && this.state.world.currentSectorId) || 'unknown';
     this._resetRngForSector(sectorId);
-    // No freighters in the player's home on a brand-new game (feels dead before the economy warms),
-    // and none where the sector explicitly says so. Otherwise a small ambient count.
-    const tpm = sector.trafficPerMin;
-    let count;
-    if (typeof tpm === 'number') count = Math.min(MAX_PER_SECTOR, Math.round(tpm / 4));
-    else count = DEFAULT_TRAFFIC;
+    // Density from trafficPerMin; high-sec cores floor at CORE_MIN_TRAFFIC (spec2/04 core pocket).
+    // Explicit trafficPerMin:0 still means "hollow" (frontier silence).
+    const count = ambientCountForSector(sector);
     if (count <= 0) return;
 
     const stations = this._sectorStations();
@@ -158,26 +202,52 @@ export const traffic = {
     // Continuous or after adopt: only top-up toward the target count.
     const already = (this.state.traffic.freighters || []).length;
     const need = Math.max(0, count - already);
-    if (need <= 0) return;
+    if (need <= 0) {
+      this._ensureNamedLaneContact(sectorId, sector, stations);
+      return;
+    }
 
     const roleWeights = roleMixForSector(sector);
+    const roles = [];
+    for (let i = 0; i < need; i++) roles.push(pickRole(roleWeights, () => this._rng()));
+    const pocketRoles = ensurePocketRoleMix(roles, sector);
+
+    // Pocket anchor: cluster the first freighters near the busiest station so sensor-range
+    // density holds for the first-hour Helios play space (not scattered to far yards only).
+    const pocketStation = this._pocketStation(stations, sectorId);
+
     for (let i = 0; i < need; i++) {
-      const role = pickRole(roleWeights, () => this._rng());
+      const role = pocketRoles[i] || 'hauler';
       const def = TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler;
-      const station = stations[Math.floor(this._rng() * stations.length)] || stations[0];
+      const station = (i < Math.min(4, need) && pocketStation)
+        ? pocketStation
+        : (stations[Math.floor(this._rng() * stations.length)] || stations[0]);
       // spawn near the station but offset so they don't overlap it
       const ang = this._rng() * Math.PI * 2;
-      const r = 140 + this._rng() * 120;
+      const r = (i < Math.min(4, need))
+        ? (90 + this._rng() * (POCKET_CLUSTER_R * 0.45))
+        : (140 + this._rng() * 120);
       const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+      const aiSpec = {
+        archetype: def.archetype,
+        passive: true, // traffic never opens fire on a clean player
+      };
+      // Lawful patrol presence: WANTED gate is the only path to hostility (scanner/aiPorts).
+      if (role === 'patrol' || role === 'escort') {
+        aiSpec.lawful = true;
+        aiSpec.spawnContext = 'patrol';
+      } else {
+        aiSpec.spawnContext = 'convoy_civilian';
+      }
       const spec = makeShipEntitySpec(def.ship, {
-        team: def.team,                    // 2 neutral civilian / 3 hostile raider
+        team: def.team,                    // 2 neutral civilian
         factionId: sector.factionId || 'faction_free',
         pos,
-        ai: { archetype: def.archetype, passive: true }, // passive: AI skips offensive behavior
+        ai: aiSpec,
       });
       const ent = this.helpers.spawnEntity(spec);
       if (!ent) continue;
-      this._stampTrafficDurableIdentity(ent, sectorId, role, def, i);
+      this._stampTrafficDurableIdentity(ent, sectorId, role, def, already + i);
       const target = this._pickStation(stations);
       const manifest = this._assignManifest(ent, role, target, sectorId);
       this._active.push(ent.id);
@@ -192,6 +262,103 @@ export const traffic = {
         manifest,
       });
     }
+    this._ensureNamedLaneContact(sectorId, sector, stations);
+  },
+
+  /**
+   * Prefer Helios Station (or first station) as the pocket density anchor so ≥3 freighters
+   * sit inside default radar/sensor range of the first-hour play space.
+   */
+  _pocketStation(stations, sectorId) {
+    if (!stations || !stations.length) return null;
+    if (sectorId === 'sector_helios_prime') {
+      for (const s of stations) {
+        const id = (s.data && (s.data.stationId || s.data.id)) || s.id;
+        if (id === 'station_helios') return s;
+      }
+    }
+    return stations[0];
+  },
+
+  /**
+   * Stamp exactly one deterministic named lane contact onto ambient traffic in this sector
+   * (or spawn a dedicated freighter if none match the contact's role). Reuses freight causality
+   * manifests — no parallel economy authority. Idempotent per sector presence.
+   */
+  _ensureNamedLaneContact(sectorId, sector, stations) {
+    this._ensureState();
+    const list = this.state.traffic.freighters || [];
+    // Already have a live named contact?
+    for (const rec of list) {
+      const e = this.state.entities && this.state.entities.get(rec.id);
+      if (e && e.alive && e.data && e.data.namedLaneContactId) return;
+    }
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const contact = pickNamedLaneContact(sectorId, seed);
+    if (!contact) return;
+
+    // Prefer an existing freighter with matching role. If none matches, spawn the authored
+    // contact's own role/hull; never put a courier identity on a patrol (or vice versa).
+    let rec = list.find((r) => r.role === contact.role) || null;
+    let ent = rec && this.state.entities.get(rec.id);
+    if (!ent || !ent.alive) {
+      if (!this.helpers || !this.helpers.spawnEntity || !stations || !stations.length) return;
+      const role = contact.role || 'hauler';
+      const def = TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler;
+      const station = this._pocketStation(stations, sectorId) || stations[0];
+      const ang = this._rng() * Math.PI * 2;
+      const r = 110 + this._rng() * 80;
+      const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+      const aiSpec = {
+        archetype: def.archetype,
+        passive: true,
+        spawnContext: (role === 'patrol' || role === 'escort') ? 'patrol' : 'convoy_civilian',
+      };
+      if (role === 'patrol' || role === 'escort') aiSpec.lawful = true;
+      const spec = makeShipEntitySpec(contact.ship || def.ship, {
+        team: def.team,
+        factionId: (sector && sector.factionId) || 'faction_free',
+        pos,
+        ai: aiSpec,
+      });
+      ent = this.helpers.spawnEntity(spec);
+      if (!ent) return;
+      this._stampTrafficDurableIdentity(ent, sectorId, role, def, list.length);
+      const target = this._pickStation(stations);
+      const manifest = this._assignManifest(ent, role, target, sectorId);
+      this._active.push(ent.id);
+      rec = {
+        id: ent.id,
+        role,
+        targetId: target.id,
+        waitT: 0,
+        nextTradeT: 3,
+        orbitPhase: this._rng() * Math.PI * 2,
+        dockSeq: 0,
+        manifest,
+      };
+      list.push(rec);
+    }
+    this._stampNamedLaneContact(ent, contact);
+  },
+
+  _stampNamedLaneContact(ent, contact) {
+    if (!ent || !contact) return;
+    if (!ent.data) ent.data = {};
+    ent.data.namedLaneContactId = contact.id;
+    ent.data.name = contact.name;
+    ent.data.callsign = contact.callsign;
+    ent.data.gimmick = contact.gimmick;
+    ent.data.trafficLabel = contact.callsign;
+    ent.data.scanLabel = contact.callsign;
+    if (ent.data.ai) {
+      ent.data.ai.name = contact.name;
+      // Named patrol keeps lawful; named freighter stays passive civilian.
+      if (contact.role === 'patrol' || contact.role === 'escort') {
+        ent.data.ai.lawful = true;
+        ent.data.ai.spawnContext = 'patrol';
+      }
+    }
   },
 
   /**
@@ -202,10 +369,22 @@ export const traffic = {
     if (!ent) return;
     if (!ent.data) ent.data = {};
     ent.data.trafficRole = role;
-    ent.data.trafficLabel = (def && def.label) || role;
+    // Don't clobber a named lane callsign already stamped.
+    if (!ent.data.namedLaneContactId) {
+      ent.data.trafficLabel = (def && def.label) || role;
+    }
+    ent.data.role = role; // readability for target panel / scanner
     ent.homeSectorId = sectorId;
     ent.data.homeSectorId = sectorId;
     if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
+    // AI readability tags (hostility still team/passive/lawful + WANTED gate — never factionId).
+    if (!ent.data.ai) ent.data.ai = {};
+    if (role === 'patrol' || role === 'escort') {
+      ent.data.ai.lawful = true;
+      if (!ent.data.ai.spawnContext) ent.data.ai.spawnContext = 'patrol';
+    } else if (!ent.data.ai.spawnContext) {
+      ent.data.ai.spawnContext = 'convoy_civilian';
+    }
     if (ent.data.worldRecordId) return;
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const qx = ent.pos ? Math.round(ent.pos.x / 4) * 4 : 0;

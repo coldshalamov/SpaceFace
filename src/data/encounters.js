@@ -53,7 +53,8 @@ export const ENCOUNTERS = Object.freeze({
     pressureCost: 40,
     cooldownS: 300,
     proximity: true,
-    gates: Object.freeze({ minCargoValue: 240 }),      // no cargo worth tolling → no toll (motive rule)
+    // maxSecurity: never fire in Concord-safe cores (Helios freight spine is trade_lane but not Reach turf).
+    gates: Object.freeze({ minCargoValue: 240, maxSecurity: 0.75 }),
     factionId: 'faction_reach',
     context: 'encounter',                              // hostile-capable; held passive during the demand
     squad: Object.freeze({ archetypes: Object.freeze(['reaver_pirate', 'corsair_raider']), size: Object.freeze([2, 3]), doctrine: 'scavenger', formation: 'wedge' }),
