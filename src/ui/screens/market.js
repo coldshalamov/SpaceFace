@@ -12,6 +12,7 @@ import { escapeHtml } from '../comms.js';
 import { getCycle } from '../../systems/economy.js';
 import { predictPriceCurve, regimeLabel } from '../../systems/economyCycles.js';
 import { createCircularGauge, createRouteBeam, createSupplyTree, createMorphLabel, createRippleField } from '../effects/index.js';
+import { presentCommodityIntel } from '../marketIntelPresenter.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STEP_PRESETS = [1, 10, 100];
@@ -545,6 +546,7 @@ export function createMarketPanel(ctx) {
       '</div>' +
       '<div class="st-stage-cell st-stage-cell--inspector">' +
         '<div class="st-stage-lbl">TRADE INSPECTOR</div>' +
+        '<div class="st-intel-inspector" data-intel-inspector role="group" aria-label="Market intelligence"></div>' +
         '<div class="st-inspector-row"><span class="st-insp-lbl">QUOTE (max load)</span><span class="st-insp-quote mono">—</span></div>' +
         '<div class="st-inspector-row"><span class="st-insp-lbl">FLOODING IMPACT</span><span class="st-insp-flood-mount"></span></div>' +
         '<div class="st-inspector-row"><span class="st-insp-lbl">PROJECTED PROFIT</span><span class="st-insp-profit mono">—</span></div>' +
@@ -564,6 +566,7 @@ export function createMarketPanel(ctx) {
   stage.appendChild(stageOverlay);
 
   // Trade inspector elements
+  const inspIntel = stage.querySelector('[data-intel-inspector]');
   const inspQuote = stage.querySelector('.st-insp-quote');
   const inspFloodMount = stage.querySelector('.st-insp-flood-mount');
   const inspProfit = stage.querySelector('.st-insp-profit');
@@ -1144,9 +1147,9 @@ export function createMarketPanel(ctx) {
           <canvas class="st-spark" width="160" height="40" title="Recent price trend"></canvas>
           <span class="st-row-role st-role--none" title="role"><span class="st-row-role-glyph">—</span><span class="st-row-role-lbl">NEUTRAL</span></span>
         </div>
-        <span class="st-slotline st-cmdty-purpose">${escapeHtml(commodityPurpose(c))}</span>
+        <span class="st-slotline st-cmdty-purpose" hidden>${escapeHtml(commodityPurpose(c))}</span>
         <span class="st-slotline st-market-mission-line"></span>
-        <span class="st-slotline st-best-known-line"></span>
+        <div class="st-slotline st-best-known-line st-intel-strip" data-intel-strip role="group" aria-label="Market intel"></div>
         <div class="st-card-prices">
           <div class="st-card-price-col">
             <span class="st-price-lbl">Station sells</span>
@@ -1228,11 +1231,22 @@ export function createMarketPanel(ctx) {
         missionLine.textContent = missionMatch ? trackedMarketActionText(missionInfo) : '';
         missionLine.hidden = !missionMatch;
       }
-      const bestLine = card.querySelector('.st-best-known-line');
-      if (bestLine) renderBestKnownLine(bestLine, state, cmdtyId, stationId);
       const owned = (p.cargo.items[cmdtyId]) || 0;
       const buyP = unitPrice(ctx, stationId, cmdtyId, 'buy');
       const sellP = unitPrice(ctx, stationId, cmdtyId, 'sell');
+      const maxBuy = maxBuyable(ctx, stationId, cmdtyId);
+      const qtySel = selectedQtyFor(qtyState[cmdtyId] || 1, tradeMode === 'sell' ? owned : maxBuy);
+      const strip = card.querySelector('[data-intel-strip]');
+      if (strip) {
+        const knownRoute = lastBestTrades.find((t) => t && t.cmdtyId === cmdtyId) || null;
+        renderIntelStrip(strip, state, stationId, cmdtyId, {
+          liveBuy: buyP,
+          liveSell: sellP,
+          qty: qtySel,
+          side: tradeMode,
+          route: knownRoute,
+        });
+      }
       card.querySelector('.st-owned').textContent = owned;
       card.querySelector('.st-buy').textContent = fmtCr(buyP);
       card.querySelector('.st-sell').textContent = fmtCr(sellP);
@@ -1257,7 +1271,6 @@ export function createMarketPanel(ctx) {
       const vol = def && def.volPerU > 0 ? def.volPerU : 1;
       const freeVolume = Math.max(0, (p.cargo.capVolume || 0) - (p.cargo.usedVolume || 0));
       const room = freeVolume >= vol;
-      const maxBuy = maxBuyable(ctx, stationId, cmdtyId);
       const buyQty = selectedQtyFor(qtyState[cmdtyId] || 1, maxBuy);
       const sellQty = selectedQtyFor(qtyState[cmdtyId] || 1, owned);
       const buyTotal = buyP * buyQty;
@@ -1457,13 +1470,101 @@ export function createMarketPanel(ctx) {
     ledgerList.appendChild(frag);
   }
 
-  function renderBestKnownLine(el, state, cmdtyId, stationId) {
+  /**
+   * Scannable intel strip: age / conf / known-vs-live / margin / flood / cargo / risk chips
+   * plus the SPEC2/05 best-known sell button when memory exists. No essay wall.
+   */
+  function renderIntelStrip(el, state, stationId, cmdtyId, opts = {}) {
+    if (!el) return;
+    const def = COMMODITY_BY_ID.get(cmdtyId);
+    let impactPct = null;
+    const econ = ctx.registry && ctx.registry.get && ctx.registry.get('economy');
+    const qty = Math.max(0, Math.floor(Number(opts.qty) || 0));
+    let quoteUnit = null;
+    if (econ && typeof econ.quote === 'function' && qty > 0) {
+      try {
+        const q = econ.quote(stationId, cmdtyId, opts.side === 'sell' ? 'sell' : 'buy', qty);
+        if (q && q.ok !== false) {
+          if (typeof q.priceImpactPct === 'number') impactPct = q.priceImpactPct;
+          quoteUnit = usableQuoteUnit(q);
+        }
+      } catch (_) { /* quote is advisory only */ }
+    }
+    const view = presentCommodityIntel({
+      state,
+      commodityId: cmdtyId,
+      stationId,
+      liveBuy: opts.liveBuy,
+      liveSell: opts.liveSell,
+      qty,
+      quoteUnit,
+      priceImpactPct: impactPct,
+      side: opts.side === 'sell' ? 'sell' : 'buy',
+      def,
+      route: opts.route || null,
+    });
+    const frag = document.createDocumentFragment();
+    const chipRow = document.createElement('div');
+    chipRow.className = 'st-intel-chips';
+    chipRow.setAttribute('aria-label', view.ariaSummary || 'Market intel');
+    for (const [index, c] of (view.chips || []).entries()) {
+      if (index > 0) chipRow.appendChild(document.createTextNode(' '));
+      const chip = document.createElement('span');
+      chip.className = 'sf-chip sf-chip--' + (c.tone || 'muted');
+      chip.setAttribute('data-intel-chip', c.id);
+      chip.title = c.title || c.text;
+      chip.textContent = c.text;
+      chipRow.appendChild(chip);
+    }
+    frag.appendChild(chipRow);
+
     const best = bestKnownSellFor(state, cmdtyId, stationId);
-    if (!best) { el.textContent = ''; el.hidden = true; return; }
-    const label = formatBestKnownSellLine(state, best);
+    if (best) {
+      const age = ageLabel(state, best.seenAt).replace(' ago', '');
+      const jumps = best.jumps == null ? '?' : best.jumps;
+      const label = 'BEST ' + fmtCr(best.sell) + ' · ' + best.stationName + ' · ' + age + ' · ' + jumps + 'J';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('data-act', 'best-known');
+      btn.setAttribute('data-station', best.stationId);
+      btn.title = 'Set course to ' + best.stationName;
+      btn.setAttribute('aria-label', label);
+      btn.textContent = label;
+      frag.appendChild(btn);
+    }
+
     el.hidden = false;
-    el.innerHTML = '<button type="button" data-act="best-known" data-station="' + escapeHtml(best.stationId) +
-      '" title="Set course to ' + escapeHtml(best.stationName) + '">' + escapeHtml(label) + '</button>';
+    el.textContent = '';
+    el.appendChild(frag);
+    el.setAttribute('aria-label', view.ariaSummary || 'Market intel');
+  }
+
+  function renderIntelInspector(mount, view) {
+    if (!mount) return;
+    mount.textContent = '';
+    const rows = (view && view.inspectorRows) || [];
+    if (!rows.length) {
+      mount.hidden = true;
+      return;
+    }
+    mount.hidden = false;
+    const frag = document.createDocumentFragment();
+    for (const row of rows) {
+      const line = document.createElement('div');
+      line.className = 'st-inspector-row';
+      line.setAttribute('data-intel-row', row.id);
+      const lbl = document.createElement('span');
+      lbl.className = 'st-insp-lbl';
+      lbl.textContent = row.label;
+      const val = document.createElement('span');
+      val.className = 'mono st-insp-intel-val';
+      val.setAttribute('data-tone', row.tone || 'muted');
+      val.textContent = row.value;
+      line.appendChild(lbl);
+      line.appendChild(val);
+      frag.appendChild(line);
+    }
+    mount.appendChild(frag);
   }
 
   function applyPriceHeat(el, heat) {
@@ -1515,6 +1616,9 @@ export function createMarketPanel(ctx) {
       margin: t.margin,
       loadUnits: t.loadUnits,
       loadProfit: t.loadProfit,
+      intelLabel: t.intelLabel,
+      intelSource: t.intelSource,
+      seenAtT: t.seenAtT,
     };
   }
 
@@ -1566,30 +1670,62 @@ export function createMarketPanel(ctx) {
   function refreshInspector(state, stationId, cmdtyId, def, route) {
     const econ = ctx.registry && ctx.registry.get && ctx.registry.get('economy');
     const maxBuy = maxBuyable(ctx, stationId, cmdtyId);
+    const liveBuy = unitPrice(ctx, stationId, cmdtyId, 'buy');
+    const liveSell = unitPrice(ctx, stationId, cmdtyId, 'sell');
     // Cargo-aware quote: what would the max affordable load cost, and how would it move the price?
     let quoteText = '—';
     let flood01 = 0;
+    let impactPct = null;
+    let quoteUnit = null;
     if (econ && typeof econ.quote === 'function' && maxBuy > 0) {
       try {
         const q = econ.quote(stationId, cmdtyId, 'buy', maxBuy);
         if (q && q.ok !== false) {
           const unit = usableQuoteUnit(q) || 0;
+          quoteUnit = unit || null;
           const total = (q.total != null ? q.total : unit * maxBuy) || 0;
           const impact = (typeof q.priceImpactPct === 'number') ? q.priceImpactPct : 0;
+          impactPct = impact;
           quoteText = formatCargoUnits(maxBuy) + 'u @ ' + fmtCr(Math.round(unit)) + ' = ' + fmtCr(Math.round(total)) + ' CR';
-          // flooding gauge: how much would buying maxBuy push the local price UP (0=none, 1=severe).
-          // priceImpactPct is fractional; map |impact|>0.25 to full.
-          flood01 = Math.max(0, Math.min(1, Math.abs(impact) / 0.25));
+          // priceImpactPct is percent points (12 = +12%). Map 25% impact → full gauge.
+          flood01 = Math.max(0, Math.min(1, Math.abs(impact) / 25));
         }
       } catch (_) {}
     }
     inspQuote.textContent = quoteText;
-    if (stageFx && stageFx.flood) { try { stageFx.flood.setValue(flood01, { kind: flood01 > 0.66 ? 'danger' : flood01 > 0.33 ? 'warn' : 'good', label: Math.round(flood01 * 100) + '% price impact' }); } catch (_) {} }
+    if (stageFx && stageFx.flood) {
+      try {
+        stageFx.flood.setValue(flood01, {
+          kind: flood01 > 0.66 ? 'danger' : flood01 > 0.33 ? 'warn' : 'good',
+          label: impactPct == null
+            ? 'No price impact'
+            : (Math.round(Math.abs(impactPct) * 10) / 10) + '% price impact',
+        });
+      } catch (_) {}
+    }
 
-    // Projected profit: only meaningful after a transaction (a cost basis exists in tradeLots).
-    // Show the route's potential profit as a forecast; the morph fires (up/down colour) on change.
-    const profit = route && route.loadProfit ? route.loadProfit : 0;
-    const profitText = profit > 0 ? '+' + fmtCr(profit) + ' CR' : '—';
+    const view = presentCommodityIntel({
+      state,
+      commodityId: cmdtyId,
+      stationId,
+      liveBuy,
+      liveSell,
+      qty: maxBuy,
+      quoteUnit,
+      priceImpactPct: impactPct,
+      side: 'buy',
+      def,
+      route,
+    });
+    renderIntelInspector(inspIntel, view);
+
+    // Projected profit: prefer presenter expected margin, else route load profit.
+    const profit = (view.margin && view.margin.expected != null)
+      ? view.margin.expected
+      : (route && route.loadProfit ? route.loadProfit : 0);
+    const profitText = profit > 0
+      ? '+' + fmtCr(profit) + ' CR' + (view.margin && view.margin.caveat ? ' · known' : '')
+      : '—';
     if (stageFx && stageFx.profit) { try { stageFx.profit.set(profitText, { dir: profit > 0 ? 'up' : undefined }); } catch (_) {} }
     else inspProfit.textContent = profitText;
   }
