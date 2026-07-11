@@ -2,14 +2,15 @@
 // Premium 3D engineering view: file-tree fit hierarchy, central 3D stage with hardpoint highlights
 // and power-flow beams, circular stat gauges, ghost preview on hover, and amber/red invalid-fit
 // path interruption. Fit/unfit emits ui:fitModule / ui:unfitModule; ships system owns mutation.
-// Module shop emits ui:buyModule. Read-only over sim state; UI emits intents only.
+// Module shop emits ui:buyModule after shared confirm for positive-cost buys.
+// Read-only over sim state; UI emits intents only.
 import { buildSlotList, getDerivedStats, fits } from '../../systems/ships.js';
 import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { SECTORS } from '../../data/sectors.js';
 import { TECH_NODES } from '../../data/tech.js';
-import { confirm } from '../confirm.js';
+import { confirm, isConfirmOpen } from '../confirm.js';
 import { escapeHtml } from '../comms.js';
 import { createShipEngineeringStage } from '../shipEngineeringStage.js';
 import { createFitTree } from '../fitTree.js';
@@ -47,10 +48,57 @@ ALL_BUYABLE.sort((a, b) => {
 
 const SIZE_RANK = { S: 1, M: 2, L: 3 };
 
+/** Remaining credits at or below this after a paid buy is treated as operationally risky (station
+ *  services / insurance deductible scale). Danger styling when the spend leaves this thin reserve. */
+const OPS_RISK_BALANCE_CR = 500;
+
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
 function techName(id) {
   const node = TECH_BY_ID.get(id);
   return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
+}
+
+/**
+ * Danger confirm when the spend is ≥50% of available credits, or would leave a thin operational
+ * reserve (≤ OPS_RISK_BALANCE_CR). Free / zero-cost actions are never danger.
+ */
+export function isOutfittingSpendDanger(price, credits) {
+  const cost = Math.max(0, Number(price) || 0);
+  const avail = Math.max(0, Number(credits) || 0);
+  if (cost <= 0) return false;
+  if (avail > 0 && cost >= avail * 0.5) return true;
+  const remaining = avail - cost;
+  return remaining >= 0 && remaining <= OPS_RISK_BALANCE_CR;
+}
+
+/**
+ * Build confirm() options for a paid module purchase. Names the module + formatted cost.
+ * Zero-cost: returns null (caller skips the dialog).
+ */
+export function describeOutfittingSpendConfirm(def, credits, opts = {}) {
+  if (!def) return null;
+  const price = Math.max(0, Number(def.price) || 0);
+  if (price <= 0) return null;
+  const avail = Math.max(0, Number(credits) || 0);
+  const remaining = Math.max(0, avail - price);
+  const fitSlotIndex = opts.fitSlotIndex;
+  const willFit = Number.isInteger(fitSlotIndex) && fitSlotIndex >= 0;
+  const danger = isOutfittingSpendDanger(price, avail);
+  const fitLine = willFit
+    ? ' Will fit into an open hardpoint on confirmation.'
+    : ' Goes to module inventory.';
+  const riskLine = danger
+    ? (avail > 0 && price >= avail * 0.5
+      ? ' This spends at least half your credits.'
+      : ' Remaining balance after purchase is operationally thin (' + fmtCr(remaining) + ' CR).')
+    : '';
+  return {
+    title: 'Buy ' + def.name + '?',
+    body: 'Cost: ' + fmtCr(price) + ' CR.' + fitLine + riskLine,
+    confirmLabel: willFit ? 'Buy & Fit' : 'Buy',
+    cancelLabel: 'Cancel',
+    danger,
+  };
 }
 
 export function describeOutfittingPurchase(def, player = {}, slots = [], fittings = []) {
@@ -662,13 +710,49 @@ export function createOutfittingPanel(ctx) {
 
   invList.addEventListener('mouseout', () => { previewFit = null; refreshStage(); });
 
-  shopList.addEventListener('click', (ev) => {
+  // Single native Buy path for pointer / keyboard / gamepad activation (button click). Paid buys
+  // await shared confirm before ui:buyModule; free actions skip the dialog. Re-entry while a
+  // confirm is open cannot double-emit.
+  let buyConfirmBusy = false;
+  shopList.addEventListener('click', async (ev) => {
     const btn = ev.target.closest('[data-act="buy"]');
     if (!btn || btn.disabled) return;
-    const defId = btn.closest('[data-shop]').getAttribute('data-shop');
-    const fitSlotIndex = Number(btn.getAttribute('data-fit-slot'));
+    if (buyConfirmBusy || isConfirmOpen()) return;
+
+    const row = btn.closest('[data-shop]');
+    if (!row) return;
+    const defId = row.getAttribute('data-shop');
+    const def = FITTABLE_BY_ID.get(defId);
+    const fitSlotRaw = btn.getAttribute('data-fit-slot');
+    const fitSlotIndex = fitSlotRaw == null || fitSlotRaw === '' ? NaN : Number(fitSlotRaw);
     const payload = { defId };
     if (Number.isInteger(fitSlotIndex) && fitSlotIndex >= 0) payload.fitSlotIndex = fitSlotIndex;
+
+    const price = Math.max(0, Number(def && def.price) || 0);
+    if (price > 0) {
+      // Ensure cancel restores focus to this Buy control (confirm captures activeElement as opener).
+      try { btn.focus({ preventScroll: true }); } catch (_) {
+        try { btn.focus(); } catch (__) {}
+      }
+      const credits = Math.max(0, Number(ctx.state.player && ctx.state.player.credits) || 0);
+      const confirmOpts = describeOutfittingSpendConfirm(def, credits, {
+        fitSlotIndex: payload.fitSlotIndex,
+      });
+      if (confirmOpts) {
+        buyConfirmBusy = true;
+        let ok = false;
+        try {
+          ok = await confirm(confirmOpts);
+        } finally {
+          buyConfirmBusy = false;
+        }
+        if (!ok) {
+          ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          return;
+        }
+      }
+    }
+
     ctx.bus.emit('ui:buyModule', payload);
     ctx.bus.emit('audio:cue', { id: 'ui_click' });
     setTimeout(() => refresh(), 50);
