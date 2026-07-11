@@ -3,6 +3,7 @@
 // save system is implemented it owns newGame() and this delegates to it.
 import * as THREE from 'three';
 import { createGameState } from './core/gameState.js';
+import { bootstrapProfileSettingsBeforeRegistry } from './core/graphicsProfileBootstrap.js';
 import { createBus } from './core/eventBus.js';
 import { createRegistry } from './core/registry.js';
 import { startLoop } from './core/loop.js';
@@ -12,6 +13,8 @@ import { makeEnemySpawnSpec } from './systems/combat.js';
 import { NEW_GAME } from './data/newGameDefaults.js';
 import { createTelemetry } from './systems/telemetry.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
+import { createTimeEffects } from './core/timeEffects.js';
+import { createRunTransitionGuard } from './core/runTransitionGuard.js';
 import { applyAccessibility } from './ui/accessibility.js';
 import { getAuthoredUpgradeQueueStats } from './render/partsLibrary.js';
 import {
@@ -73,6 +76,13 @@ async function boot() {
   try {
     const seed = (Date.now() & 0x7fffffff) >>> 0;
     const state = createGameState(seed);
+    // Renderer/VFX are initialized before the save system in registry order. Consume the persisted
+    // profile first so their boot resources match the player's settings on the very first frame.
+    // This is read-only and therefore leaves the raw profile byte-identical.
+    bootstrapProfileSettingsBeforeRegistry(state);
+    const timeEffects = createTimeEffects(state);
+    const runTransitionGuard = createRunTransitionGuard();
+    timeEffects.set('runtime:boot-menu', { scale: 0 });
     const bus = createBus();
     const contract = await loadScenarioContract(new URL('./data/scenarios/47a.scenario.json', import.meta.url), SCENARIO_47A_CONTRACT_PATH);
     const helpers = {
@@ -80,12 +90,15 @@ async function boot() {
       scenarioContractPath: contract.path,
       scenarioContractHash: contract.sha256,
     };
-    const ctx = { state, bus, three: THREE, registry: null, helpers };
+    const ctx = { state, bus, three: THREE, registry: null, helpers, timeEffects };
 
     const registry = createRegistry(ctx);
     ctx.registry = registry;
     registry.init();
-    helpers.finalizeLoadedGame = (payload) => finalizeLoadedGame(state, bus, registry, payload || {});
+    helpers.beginLoadedGameTransition = () => runTransitionGuard.begin('load');
+    helpers.finalizeLoadedGame = (payload) => finalizeLoadedGame(
+      state, bus, registry, runTransitionGuard, payload || {},
+    );
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', () => {
         try { registry.destroy(); } catch (_) { /* teardown must not throw during navigation */ }
@@ -107,14 +120,27 @@ async function boot() {
     // gameState default). The world is created on New Game (game:new) and restored on Continue
     // (the save system handles game:load and emits save:loaded).
     bus.on('game:new', (opts) => {
-      startNewGame(state, helpers, bus, registry, opts || {}).catch((error) => {
-        console.error('[SpaceFace] new game startup failed', error);
-        failGameStart(state, bus, error, 'Game assets failed to load. See console.');
-      });
+      const startNewGameTransition = () => {
+        const transitionToken = runTransitionGuard.begin('new-game');
+        startNewGame(
+          state, helpers, bus, registry, runTransitionGuard, transitionToken, opts || {},
+        ).catch((error) => {
+          if (!runTransitionGuard.isCurrent(transitionToken)) return;
+          console.error('[SpaceFace] new game startup failed', error);
+          failGameStart(
+            state, bus, error, 'Game assets failed to load. See console.',
+            runTransitionGuard, transitionToken,
+          );
+        });
+      };
+      const saveSystem = registry.get('save');
+      if (saveSystem && typeof saveSystem.deferRunTransition === 'function'
+        && saveSystem.deferRunTransition(startNewGameTransition)) return;
+      startNewGameTransition();
     });
 
     startLoop(state, registry);
-    if (SF_DEBUG) window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, THREE, telemetry, eventTrace });
+    if (SF_DEBUG) window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace });
     // The title route must become usable promptly. Heavy shader/asset warmup is sector-scoped in
     // renderer.js once a run exists; running the all-archetype precompile here competes with the
     // New Game authored-visual queue and can strand Launch in loading on software WebGL.
@@ -123,7 +149,7 @@ async function boot() {
 
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
     if (SF_DEBUG) {
-      window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, THREE, telemetry, eventTrace });
+      window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace });
       console.log('[SpaceFace] booted -> main menu. seed=%d', seed);
     }
 
@@ -175,19 +201,23 @@ function bootstrapScene(state, helpers, bus, registry) {
 }
 
 // Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
-async function startNewGame(state, helpers, bus, registry, opts) {
+async function startNewGame(state, helpers, bus, registry, runTransitionGuard, transitionToken, opts) {
+  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
   for (const e of [...state.entityList]) {
     bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId });
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
   }
   state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
 
   resetRunState(state, opts || {});
   resetCombatInputMode(state, registry);
   enterLoadingMode(state, bus);
+  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
 
   for (const name of ['world', 'factions', 'economy', 'automation', 'intervention', 'sectorSim', 'missions', 'aiEncounter', 'crafting', 'traffic', 'drill', 'claims', 'beacons']) {
     const sys = registry.get(name);
     if (sys && typeof sys.newGame === 'function') sys.newGame();
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
   }
 
   const ships = registry.get('ships');
@@ -200,43 +230,76 @@ async function startNewGame(state, helpers, bus, registry, opts) {
     state.player.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
     state.player.researchPoints = NEW_GAME.researchPoints || 0;
   }
+  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
 
   const libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
   if (!libraryReady) {
     throw new Error('Authored ship asset library did not preload; refusing to start flight with procedural fallback ships.');
   }
   bootstrapScene(state, helpers, bus, registry);
+  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
   if (opts.name) state.player.name = opts.name;
   if (opts.difficulty) state.settings.gameplay.difficulty = opts.difficulty;
-  const visualsReady = await waitForInitialAuthoredVisuals(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+  const visualsReady = await waitForInitialAuthoredVisuals(
+    state,
+    INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+    () => runTransitionGuard.isCurrent(transitionToken),
+  );
+  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
   if (!visualsReady) {
     throw new Error('Initial authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
   }
   await waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
-  enterFlightMode(state, bus);
-  bus.emit('game:started', {});
-  if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
+  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+  runTransitionGuard.commit(transitionToken, () => {
+    enterFlightMode(state, bus);
+    if (!runTransitionGuard.isCurrent(transitionToken)) return;
+    bus.emit('game:started', {});
+    if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
+  });
+  return { stale: false };
 }
 
-async function finalizeLoadedGame(state, bus, registry, payload = {}) {
+async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payload = {}) {
+  const transitionToken = payload.transitionToken || runTransitionGuard.begin('load');
+  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
   resetCombatInputMode(state, registry);
   enterLoadingMode(state, bus);
+  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
   try {
     const libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!libraryReady) {
       throw new Error('Authored ship asset library did not preload after save load; refusing to enter flight with procedural fallback ships.');
     }
-    const visualsReady = await waitForInitialAuthoredVisuals(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+    const visualsReady = await waitForInitialAuthoredVisuals(
+      state,
+      INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+      () => runTransitionGuard.isCurrent(transitionToken),
+    );
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!visualsReady) {
       throw new Error('Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
     }
     await waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
-    enterFlightMode(state, bus);
-    bus.emit('ui:closeAll', {});
-    if (SF_DEBUG) console.log('[SpaceFace] loaded game entered flight. slot=%s', payload.slot || 'unknown');
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    runTransitionGuard.commit(transitionToken, () => {
+      enterFlightMode(state, bus);
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      bus.emit('ui:closeAll', {});
+      if (SF_DEBUG) console.log('[SpaceFace] loaded game entered flight. slot=%s', payload.slot || 'unknown');
+    });
+    return { stale: false };
   } catch (error) {
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     console.error('[SpaceFace] loaded game startup failed', error);
-    failGameStart(state, bus, error, 'Loaded game assets failed to load. See console.');
+    failGameStart(
+      state, bus, error, 'Loaded game assets failed to load. See console.',
+      runTransitionGuard, transitionToken,
+    );
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    throw error;
   }
 }
 
@@ -248,26 +311,36 @@ function resetCombatInputMode(state, registry) {
 }
 
 function enterLoadingMode(state, bus) {
+  const timeEffects = createTimeEffects(state);
+  timeEffects.set('runtime:loading', { scale: 0 });
   const previousMode = state.mode;
   state.mode = 'loading';
-  state.timeScale = 0;
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
 }
 
 function enterFlightMode(state, bus) {
+  const timeEffects = createTimeEffects(state);
   const previousMode = state.mode;
   state.mode = 'flight';
-  state.timeScale = 1;
+  timeEffects.clear('runtime:boot-menu');
+  timeEffects.clear('runtime:loading');
+  timeEffects.clear('runtime:start-failed');
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
 }
 
-function failGameStart(state, bus, error, text) {
-  state.timeScale = 0;
+function failGameStart(state, bus, error, text, runTransitionGuard = null, transitionToken = null) {
+  if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
+  const timeEffects = createTimeEffects(state);
+  timeEffects.set('runtime:start-failed', { scale: 0 });
+  timeEffects.clear('runtime:boot-menu');
+  timeEffects.clear('runtime:loading');
   const previousMode = state.mode;
   state.mode = 'menu';
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
+  if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
   bus.emit('game:startFailed', { error: error && error.message ? error.message : String(error) });
   bus.emit('toast', { text, kind: 'error', ttl: 8 });
+  return true;
 }
 
 async function waitForAuthoredPartLibrary(state, timeoutMs = 20000) {
@@ -281,11 +354,12 @@ async function waitForAuthoredPartLibrary(state, timeoutMs = 20000) {
   return result;
 }
 
-async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000) {
+async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000, isCurrent = null) {
   const started = nowMs();
   let readiness = authoredVisualReadiness(state);
   while (!readiness.ready && nowMs() - started < timeoutMs) {
     await nextFrame();
+    if (isCurrent && !isCurrent()) return false;
     readiness = authoredVisualReadiness(state);
   }
   if (readiness.ready) return true;
@@ -356,7 +430,7 @@ function resetRunState(state, opts = {}) {
   const cameraShake = state.camera && state.camera.shakeOffset;
 
   state.meta = fresh.meta;
-  state.timeScale = 1;
+  createTimeEffects(state).reset();
   state.accumulator = 0;
   state.simTime = 0;
   state.tick = 0;

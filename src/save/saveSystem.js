@@ -19,10 +19,10 @@ import { restoreCombatState, serializeCombatState } from '../combat/persistence.
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import { COORDINATE_SCHEMA, applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
+import { PROFILE_SETTINGS_KEY, readProfileSettings } from '../core/graphicsProfileBootstrap.js';
 
 const LS_PREFIX = 'sf.save.';
 const INDEX_KEY = LS_PREFIX + 'index';
-const PROFILE_SETTINGS_KEY = 'sf.settings.profile.v1';
 const FMT = 'spaceface-save';
 const AUTOSAVE_SLOT = 'auto';
 const AUTOSAVE_DEBOUNCE_MS = 10000; // ≤1 autosave write per 10s (§4.5)
@@ -71,7 +71,9 @@ export const save = {
     // UI / input route F5/F9 and menu buttons through these (§4.4).
     bus.on('game:save', (p) => this.save((p && p.slot) || 'quick', { reason: 'manual' }));
     bus.on('game:load', (p) => this.load((p && p.slot) || 'latest'));
-    bus.on('settings:changed', () => this._writeProfileSettings());
+    bus.on('settings:changed', (payload) => {
+      if (!payload || payload.persist !== false) this._writeProfileSettings();
+    });
 
     // Death/respawn gate autosave (combat signals via events, not a state.player.dead field).
     bus.on('player:death', () => { this._playerDead = true; });
@@ -235,16 +237,7 @@ export const save = {
   },
 
   _readProfileSettings() {
-    if (typeof localStorage === 'undefined') return null;
-    try {
-      const raw = localStorage.getItem(PROFILE_SETTINGS_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return parsed && parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : null;
-    } catch (err) {
-      this.bus && this.bus.emit && this.bus.emit('save:error', { slot: 'settings', reason: 'settings_read_failed' });
-      return null;
-    }
+    return readProfileSettings(typeof localStorage === 'undefined' ? null : localStorage);
   },
 
   _loadProfileSettings() {
@@ -761,9 +754,12 @@ export const save = {
           );
         }
       }
-      // nudge audio to re-read restored volumes (audio's handler re-applies all audio settings
-      // on section:'audio'); render reads settings.video directly each frame, no event needed.
-      if (!this._pendingRunTransition) this.bus.emit('settings:changed', { section: 'audio' });
+      // Reconcile restored runtime resources without treating load as a user edit. The save/profile
+      // listener ignores persist:false, so Continue does not rewrite the raw profile or timestamp.
+      if (!this._pendingRunTransition) {
+        this.bus.emit('settings:changed', { section: 'audio', key: null, persist: false, source: 'save-load' });
+        this.bus.emit('settings:changed', { section: 'video', key: null, persist: false, source: 'save-load' });
+      }
     } catch (error) {
       restoreError = error;
     } finally {

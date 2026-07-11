@@ -15,7 +15,7 @@
 //   Tether:          _initTetherCable (L1202) · _updateTetherCable (L1278) · _onTetherSnap (L1461) · _onTetherLatch (L1483) · _initArcPreview/_updateArcPreview (rung 12, after _updateTetherCable)
 //   Cruise/jump:     _onCruiseCharging/Engaged/Dropped (L1504/1520/1537) · _onJumpStart/Arrive (L1786/1793) · _warpStreak (L1799)
 //   Engine trails:   _onThrust (L1670) · _emitEngineTrail (L1849) · _emitReverseNozzleTrail (L1691) · _onBoost (L1729) · _onDash (L1761)
-//   AI cues:         _onAiTelegraph (L1575) · _onAiFlee (L1583) · _onAiFormationBroken (L1598)
+//   AI cues:         _onAiTelegraph (doctrine FLYBY/TETHER/CHARGE) · _updateDoctrineTells · _onAiFlee · _onAiFormationBroken
 //   Presentation:    _onPresentationCue (L772) · _presentationStyle (L863) · _spawnPresentationSprite (L828)
 //   Trails/sockets:  _refreshTrailCandidates (L463) · _trailSocketObjects (L560) · _writeTrailSocketPose (L496)
 //   Energy volumes:  _initEnergy (L1971) · _updateEnergy (L1961)  [createEnergyVolume imported from ./energy/]
@@ -106,6 +106,23 @@ const TRAIL_CAMERA_SKIP_DIST = 2800;
 const TRAIL_SCREEN_CHECK_MAX = 8;
 const TRAIL_REDUCED_CADENCE = 3;
 const TRAIL_REDUCED_EMIT_CAP = 18;
+
+// M1 doctrine telegraphs (ai:telegraph). Sim already holds fire ≥30 ticks; VFX sustains a
+// doctrine-specific world cue for that window, linked to the live enemy or a truthful offscreen
+// directional marker. Fixed pool — no per-event allocation in the update loop.
+// Lifetime ownership: state.tick / startTick / deadlineTick (pause/tab render dt must not
+// consume the pre-consequence window). Frame-dt age is only a headless fallback when tick is absent.
+const DOCTRINE_TELL_POOL = 4;
+const DOCTRINE_TELL_KIND = Object.freeze({
+  FLYBY: 'flyby',
+  TETHER: 'tether',
+  CHARGE: 'charge',
+  GENERIC: 'generic',
+});
+// 30 ticks @ 60 Hz = 0.5s; floor keeps a readable window even if payload omits durationTicks.
+const DOCTRINE_TELL_MIN_LIFE = 0.5;
+const DOCTRINE_TELL_PULSE = 0.11;
+const DOCTRINE_TELL_OFFSCREEN_R = 58;
 
 // Optional subsystem cadence (Hz) — full-rate when active, slept when inactive.
 const VFX_SEAM_MARKERS_HZ = 20;
@@ -207,6 +224,19 @@ export const vfx = {
     this._projectileTrailsWereRelevant = false;
     this._seamMarkersWereRelevant = false;
     this._energyPlumeWasRelevant = false;
+    this._doctrineTells = [];
+    for (let i = 0; i < DOCTRINE_TELL_POOL; i++) {
+      this._doctrineTells.push({
+        alive: false, age: 0, life: 0, pulse: 0, entityId: null, targetId: null,
+        kind: DOCTRINE_TELL_KIND.GENERIC, doctrineId: null, telegraphKind: null,
+        durationTicks: 30, startTick: null, deadlineTick: null,
+        offscreen: false, reduced: false,
+      });
+    }
+    this._doctrineTellActive = 0;
+    this._doctrineTellStarts = 0;
+    this._lastDoctrineTell = null;
+    this._doctrineTellScreenScratch = new THREE.Vector3();
 
     // colour scratch objects (reused; no per-event allocation)
     this._c0 = new THREE.Color();
@@ -219,10 +249,12 @@ export const vfx = {
 
   inspect() {
     const last = this._lastPresentationCue ? { ...this._lastPresentationCue } : null;
+    const lastTell = this._lastDoctrineTell ? { ...this._lastDoctrineTell } : null;
     return {
       schema: 'spaceface.vfxInspect.v1',
       sceneAttached: !!this._scene,
       particleCap: this._cap || 0,
+      particleBurst: this._burst || 0,
       liveParticles: this._liveCount || 0,
       liveSprites: this._liveSpriteCount || 0,
       activeLights: this._activeLightCount || 0,
@@ -231,6 +263,11 @@ export const vfx = {
         particlesSpawned: this._presentationParticleCount || 0,
         lightsActivated: this._presentationLightCount || 0,
         last,
+      },
+      doctrineTells: {
+        starts: this._doctrineTellStarts || 0,
+        active: this._doctrineTellActive || 0,
+        last: lastTell,
       },
       trails: this._trailBudgetDiag ? { ...this._trailBudgetDiag } : emptyTrailBudgetDiag(),
       projectileTrails: this._projectileTrailDiag ? { ...this._projectileTrailDiag } : emptyProjectileTrailDiag(),
@@ -374,6 +411,90 @@ export const vfx = {
     this._flameMaterial = null;
   },
 
+  // Reconcile the one GPU point cloud with the live particle-quality setting. The Points object,
+  // material, sprite pools, and subscriptions stay stable; only its geometry/SoA capacity moves.
+  // This makes current→max→current a resource migration rather than a second VFX init.
+  _syncParticleQuality() {
+    const video = this.state && this.state.settings && this.state.settings.video || {};
+    const quality = video.particleQuality || 'high';
+    const nextCap = PARTICLE_CAP[quality] || PARTICLE_CAP.high;
+    this._burst = QUALITY_BURST[quality] || 1.0;
+    if (!this._scene || !this._points || !this._pGeo || nextCap === this._cap) return false;
+
+    const oldGeo = this._pGeo;
+    const oldCap = this._cap || 0;
+    const oldLiveCount = this._liveCount || 0;
+    const oldActive = this._activeParticles;
+    const old = {};
+    const scalarFields = [
+      '_px', '_py', '_pz', '_vx', '_vy', '_vz', '_age', '_life', '_drag',
+      '_size0', '_size1', '_cr0', '_cg0', '_cb0', '_cr1', '_cg1', '_cb1',
+      '_pTrailAxis', '_pTrailStretch',
+    ];
+    for (const field of scalarFields) old[field] = this[field];
+    old._pPos = this._pPos;
+    old._pCol = this._pCol;
+    old._pSize = this._pSize;
+    old._pAlpha = this._pAlpha;
+
+    const geo = new THREE.BufferGeometry();
+    this._pPos = new Float32Array(nextCap * 3);
+    this._pCol = new Float32Array(nextCap * 3);
+    this._pSize = new Float32Array(nextCap);
+    this._pAlpha = new Float32Array(nextCap);
+    this._pTrailAxis = new Float32Array(nextCap);
+    this._pTrailStretch = new Float32Array(nextCap);
+    geo.setAttribute('position', new THREE.BufferAttribute(this._pPos, 3));
+    geo.setAttribute('aColor', new THREE.BufferAttribute(this._pCol, 3));
+    geo.setAttribute('aSize', new THREE.BufferAttribute(this._pSize, 1));
+    geo.setAttribute('aAlpha', new THREE.BufferAttribute(this._pAlpha, 1));
+    geo.setAttribute('aTrailAxis', new THREE.BufferAttribute(this._pTrailAxis, 1));
+    geo.setAttribute('aTrailStretch', new THREE.BufferAttribute(this._pTrailStretch, 1));
+
+    for (const field of scalarFields) {
+      if (field === '_pTrailAxis' || field === '_pTrailStretch') continue;
+      this[field] = new Float32Array(nextCap);
+    }
+    this._alive = new Uint8Array(nextCap);
+    this._activeParticles = new Int32Array(nextCap);
+    this._activeParticlePos = new Int32Array(nextCap);
+    this._activeParticlePos.fill(-1);
+    this._freeParticles = new Int32Array(nextCap);
+
+    const keep = Math.min(oldLiveCount, nextCap);
+    for (let dst = 0; dst < keep; dst++) {
+      const src = oldActive[dst];
+      if (!(src >= 0 && src < oldCap)) continue;
+      for (const field of scalarFields) this[field][dst] = old[field][src];
+      const src3 = src * 3;
+      const dst3 = dst * 3;
+      this._pPos[dst3] = old._pPos[src3];
+      this._pPos[dst3 + 1] = old._pPos[src3 + 1];
+      this._pPos[dst3 + 2] = old._pPos[src3 + 2];
+      this._pCol[dst3] = old._pCol[src3];
+      this._pCol[dst3 + 1] = old._pCol[src3 + 1];
+      this._pCol[dst3 + 2] = old._pCol[src3 + 2];
+      this._pSize[dst] = old._pSize[src];
+      this._pAlpha[dst] = old._pAlpha[src];
+      this._alive[dst] = 1;
+      this._activeParticles[dst] = dst;
+      this._activeParticlePos[dst] = dst;
+    }
+
+    this._cap = nextCap;
+    this._liveCount = keep;
+    this._head = keep % nextCap;
+    this._pDrawMax = keep;
+    this._freeParticleCount = nextCap - keep;
+    for (let i = 0; i < this._freeParticleCount; i++) this._freeParticles[i] = nextCap - 1 - i;
+    geo.setDrawRange(0, keep);
+    for (const attr of Object.values(geo.attributes)) attr.needsUpdate = true;
+    this._pGeo = geo;
+    this._points.geometry = geo;
+    if (oldGeo && oldGeo !== geo && typeof oldGeo.dispose === 'function') oldGeo.dispose();
+    return true;
+  },
+
   _subscribe() {
     const bus = this.bus;
     const add = (name, fn) => this._subs.push(bus.on(name, fn));
@@ -390,6 +511,10 @@ export const vfx = {
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._markEntityCacheDirty(); });
     add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); });
     add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); });
+    add('settings:changed', (p) => {
+      if (!p || p.section !== 'video') return;
+      if (p.key === 'particleQuality' || p.key == null) this._syncParticleQuality();
+    });
     add('player:death', (p) => this._explode({ pos: p && p.pos, radius: 12 }, true));
     add('mining:start', (p) => this._onMiningStart(p));
     add('mining:stop', () => this._onMiningStop());
@@ -429,8 +554,15 @@ export const vfx = {
   },
 
   _isReduced() {
-    const v = this.state && this.state.settings && this.state.settings.video;
-    return !!(v && (v.motionReduce || v.flashReduce));
+    const settings = this.state && this.state.settings;
+    const v = settings && settings.video;
+    const a = settings && settings.accessibility;
+    // motionReduce lives under video; flashReduce is authored under accessibility (and may be
+    // mirrored onto video by settings UI). Either flag must keep danger tells readable, not silent.
+    return !!(
+      (v && (v.motionReduce || v.flashReduce))
+      || (a && a.flashReduce)
+    );
   },
 
   // -------------------------------------------------------------------------
@@ -1330,6 +1462,11 @@ export const vfx = {
     // entity:destroyed fires for ALL entities (incl. projectiles/pickups). Only blow up things with
     // meaningful size; projectiles/pickups despawn cleanly. entity:killed already handled ships, so
     // here we cover asteroids/wrecks/drones that never emit entity:killed.
+    // saveSystem._clearEntities() emits reason:'save_restore' for every live entity before
+    // rehydrate — silent despawn only (no explosion/particles/lights). Prevents F9 restore
+    // from filling the particle cap and hitching 100–250ms. Real combat/mining/sector destroys
+    // omit this reason and still explode.
+    if (p && p.reason === 'save_restore') return;
     if (!this._scene) return;
     const t = p.type;
     if (t === 'projectile' || t === 'pickup' || t === 'fx') return;
@@ -2239,14 +2376,374 @@ export const vfx = {
     this._flashLight({ x: pos.x, z: pos.z }, '#39d0ff', 6.0, 8, 220);
   },
 
-  // AI telegraph / flee / formation break markers (spec2/02 §3). These are subtle world-space
-  // flashes over the relevant entity so the player can read intent without reading log text.
+  // AI telegraph / flee / formation break markers (spec2/02 §3 + M1 doctrine tells).
+  // Doctrine telegraphs are enemy-linked (or truthful offscreen direction) and sustain for the
+  // full pre-consequence window (default ≥30 sim ticks). Sim owns the hold-fire gate; VFX only
+  // presents — never writes sim state, never uses wall-clock for lifetime.
+  // Lifetime: state.tick / startTick / deadlineTick so pause/tab render frames cannot burn the window.
   _onAiTelegraph(p) {
     this._emitJuiceCue('ai.telegraph', p, 1);
     if (!this._scene) return;
-    const e = this._ent(p && p.entityId);
-    if (!e || !e.pos) return;
-    this._spawnSprite(SPR_RING, e.pos.x, 0, e.pos.z, 0.55, e.radius || 8, (e.radius || 8) * 2.4, 0.55, 0.0, '#ffcc44', 0, 0);
+    this._beginDoctrineTell(p || {});
+  },
+
+  _classifyDoctrineTell(p) {
+    const kind = String((p && p.kind) || '');
+    const doctrineId = String((p && p.doctrineId) || '');
+    if (kind === 'engine_flare' || doctrineId === 'interceptor_flyby') return DOCTRINE_TELL_KIND.FLYBY;
+    if (kind === 'attach_spool' || doctrineId === 'tether_control_raider') return DOCTRINE_TELL_KIND.TETHER;
+    if (kind === 'weapon_charge' || doctrineId === 'ranged_disengager') return DOCTRINE_TELL_KIND.CHARGE;
+    return DOCTRINE_TELL_KIND.GENERIC;
+  },
+
+  _doctrineTellStyle(tellKind, reduced) {
+    // Locked palette tokens (spec2/00 §3). Reduced-motion/flash keeps shape+direction readable
+    // with rings only, lower peak opacity, and no event lights.
+    if (tellKind === DOCTRINE_TELL_KIND.FLYBY) {
+      return {
+        color0: '#ff5c5c', color1: '#ffb35c', light: '#ff7040',
+        coreOp: reduced ? 0.55 : 0.78, ringOp: reduced ? 0.48 : 0.62,
+        linkOp: reduced ? 0.42 : 0.55, useLight: !reduced,
+      };
+    }
+    if (tellKind === DOCTRINE_TELL_KIND.TETHER) {
+      return {
+        color0: '#39d0ff', color1: '#d7e6ff', light: '#5fd7ff',
+        coreOp: reduced ? 0.52 : 0.72, ringOp: reduced ? 0.46 : 0.58,
+        linkOp: reduced ? 0.40 : 0.55, useLight: !reduced,
+      };
+    }
+    if (tellKind === DOCTRINE_TELL_KIND.CHARGE) {
+      return {
+        color0: '#ffb35c', color1: '#ffffff', light: '#ffcc66',
+        coreOp: reduced ? 0.55 : 0.80, ringOp: reduced ? 0.48 : 0.65,
+        linkOp: reduced ? 0.42 : 0.58, useLight: !reduced,
+      };
+    }
+    return {
+      color0: '#ffcc44', color1: '#ffb35c', light: '#ffcc44',
+      coreOp: reduced ? 0.45 : 0.55, ringOp: reduced ? 0.40 : 0.55,
+      linkOp: reduced ? 0.35 : 0.45, useLight: !reduced,
+    };
+  },
+
+  _beginDoctrineTell(p) {
+    const entityId = p.entityId;
+    const targetId = p.targetId != null ? p.targetId : (this.state && this.state.playerId);
+    const tellKind = this._classifyDoctrineTell(p);
+    const durationTicks = Math.max(30, Math.floor(Number(p.durationTicks) || 30));
+    // Prefer payload tick, else live sim tick; null → headless age/life fallback only.
+    const startTick = Number.isInteger(p.tick) ? p.tick
+      : (this.state && Number.isInteger(this.state.tick) ? this.state.tick : null);
+    const deadlineTick = startTick != null ? startTick + durationTicks : null;
+    // Frame-dt life is only used when tick is unavailable (headless / no sim clock).
+    const life = Math.max(DOCTRINE_TELL_MIN_LIFE, durationTicks / 60);
+    const reduced = this._isReduced();
+    const enemy = this._ent(entityId);
+    const offscreen = !this._doctrineTellOnScreen(enemy);
+
+    // Prefer reusing a slot already tracking this entity; else free → LRU (soonest deadline / lowest life).
+    let slot = null;
+    const pool = this._doctrineTells;
+    for (let i = 0; i < pool.length; i++) {
+      if (pool[i].alive && pool[i].entityId === entityId) { slot = pool[i]; break; }
+    }
+    if (!slot) {
+      for (let i = 0; i < pool.length; i++) {
+        if (!pool[i].alive) { slot = pool[i]; break; }
+      }
+    }
+    if (!slot) {
+      let worst = pool[0];
+      for (let i = 1; i < pool.length; i++) {
+        const a = pool[i];
+        const aRem = a.deadlineTick != null && Number.isInteger(this.state && this.state.tick)
+          ? (a.deadlineTick - this.state.tick)
+          : (a.life - a.age);
+        const wRem = worst.deadlineTick != null && Number.isInteger(this.state && this.state.tick)
+          ? (worst.deadlineTick - this.state.tick)
+          : (worst.life - worst.age);
+        if (aRem < wRem) worst = a;
+      }
+      slot = worst;
+    }
+
+    const wasAlive = slot.alive;
+    slot.alive = true;
+    slot.age = 0;
+    slot.life = life;
+    slot.pulse = 0;
+    slot.entityId = entityId;
+    slot.targetId = targetId;
+    slot.kind = tellKind;
+    slot.doctrineId = p.doctrineId || null;
+    slot.telegraphKind = p.kind || null;
+    slot.durationTicks = durationTicks;
+    slot.startTick = startTick;
+    slot.deadlineTick = deadlineTick;
+    slot.offscreen = offscreen;
+    slot.reduced = reduced;
+    if (!wasAlive) this._doctrineTellActive = Math.min(DOCTRINE_TELL_POOL, (this._doctrineTellActive || 0) + 1);
+    this._doctrineTellStarts = (this._doctrineTellStarts || 0) + 1;
+    this._lastDoctrineTell = {
+      kind: tellKind,
+      telegraphKind: slot.telegraphKind,
+      doctrineId: slot.doctrineId,
+      entityId,
+      targetId,
+      durationTicks,
+      life,
+      startTick,
+      deadlineTick,
+      offscreen,
+      reduced,
+      tick: startTick,
+    };
+
+    this._spawnDoctrineTellPulse(slot, true);
+  },
+
+  _doctrineTellOnScreen(entity) {
+    if (!entity || !entity.pos) return false;
+    const camera = this.state && this.state.render && this.state.render.camera;
+    if (!camera || typeof camera.project !== 'function') {
+      // Headless / no camera: treat as on-screen if near the player so link cues still fire.
+      const pp = this._playerPos();
+      const d = Math.hypot((entity.pos.x || 0) - (pp.x || 0), (entity.pos.z || 0) - (pp.z || 0));
+      return d < 900;
+    }
+    const scratch = this._doctrineTellScreenScratch || this._trailScreenScratch;
+    const local = this._toLocalXZ(
+      Number.isFinite(entity.pos.x) ? entity.pos.x : 0,
+      Number.isFinite(entity.pos.z) ? entity.pos.z : 0,
+      this._entityLocalXZ,
+    );
+    scratch.set(local.x, 0, local.z);
+    scratch.project(camera);
+    const pad = 0.12;
+    return scratch.x >= -1 - pad && scratch.x <= 1 + pad
+      && scratch.y >= -1 - pad && scratch.y <= 1 + pad
+      && scratch.z >= -1 && scratch.z <= 1;
+  },
+
+  _doctrineTellEndpoints(slot) {
+    const enemy = this._ent(slot.entityId);
+    const target = this._ent(slot.targetId) || this._ent(this.state && this.state.playerId);
+    const player = this.helpers && this.helpers.player
+      ? this.helpers.player()
+      : this._ent(this.state && this.state.playerId);
+    const enemyPos = enemy && enemy.pos ? enemy.pos : null;
+    const targetPos = (target && target.pos) || (player && player.pos) || null;
+    return { enemy, target, player, enemyPos, targetPos };
+  },
+
+  _spawnDoctrineTellPulse(slot, isStart) {
+    if (!this._scene || !slot) return;
+    const style = this._doctrineTellStyle(slot.kind, slot.reduced);
+    const { enemy, enemyPos, targetPos, player } = this._doctrineTellEndpoints(slot);
+    const onScreen = this._doctrineTellOnScreen(enemy);
+    slot.offscreen = !onScreen;
+
+    // Truthful offscreen directional cue near the player along the real enemy bearing.
+    if (!onScreen || !enemyPos) {
+      const origin = (player && player.pos) || targetPos || this._playerPos();
+      if (!origin) return;
+      let dx = 0;
+      let dz = 1;
+      if (enemyPos) {
+        dx = (enemyPos.x || 0) - (origin.x || 0);
+        dz = (enemyPos.z || 0) - (origin.z || 0);
+      } else if (Number.isFinite(slot._lastDx) && Number.isFinite(slot._lastDz)) {
+        dx = slot._lastDx;
+        dz = slot._lastDz;
+      }
+      const len = Math.hypot(dx, dz) || 1;
+      const ux = dx / len;
+      const uz = dz / len;
+      slot._lastDx = dx;
+      slot._lastDz = dz;
+      const cx = (origin.x || 0) + ux * DOCTRINE_TELL_OFFSCREEN_R;
+      const cz = (origin.z || 0) + uz * DOCTRINE_TELL_OFFSCREEN_R;
+      this._spawnDoctrineTellOffscreenCue(slot, style, cx, cz, ux, uz, isStart);
+      return;
+    }
+
+    // On-screen: mark the live enemy and draw a contact link toward the actual target.
+    const r = (enemy && enemy.radius) || 8;
+    this._spawnDoctrineTellEnemyMark(slot, style, enemyPos.x, enemyPos.z, r, isStart);
+    if (targetPos) {
+      this._spawnDoctrineTellLink(slot, style, enemyPos.x, enemyPos.z, targetPos.x, targetPos.z, isStart);
+    }
+  },
+
+  _spawnDoctrineTellEnemyMark(slot, style, x, z, r, isStart) {
+    const reduced = slot.reduced;
+    const life = reduced ? 0.38 : (isStart ? 0.48 : 0.28);
+    const s0 = Math.max(4, r * 0.9);
+    const s1 = Math.max(10, r * (slot.kind === DOCTRINE_TELL_KIND.CHARGE ? 3.2 : 2.6));
+    // Rings carry the tell under reduced flash; full mode adds a core flash on start only.
+    this._spawnSprite(SPR_RING, x, 0, z, life, s0, s1, style.ringOp, 0.0, style.color0, 0, 0);
+    if (isStart && !reduced) {
+      this._spawnSprite(SPR_FLASH, x, 0, z, 0.18, s0 * 0.55, s1 * 0.75, style.coreOp, 0.0, style.color1, 0, 0);
+    } else if (isStart && reduced) {
+      this._spawnSprite(SPR_RING, x, 0, z, 0.42, s0 * 0.7, s1 * 0.95, style.coreOp * 0.9, 0.0, style.color1, 0, 0);
+    }
+    if (slot.kind === DOCTRINE_TELL_KIND.FLYBY) {
+      // Engine-flare twin rings trailing the intercept read.
+      this._spawnSprite(SPR_RING, x, 0, z, life * 1.15, s0 * 0.55, s1 * 1.35, style.ringOp * 0.7, 0.0, style.color1, 0, 0);
+    } else if (slot.kind === DOCTRINE_TELL_KIND.TETHER) {
+      this._spawnSprite(SPR_FRESNEL, x, 0, z, life * 1.1, s0 * 0.8, s1 * 1.1, style.ringOp * 0.85, 0.0, style.color0, 0, 0);
+    } else if (slot.kind === DOCTRINE_TELL_KIND.CHARGE) {
+      this._spawnSprite(SPR_FLASH, x, 0, z, reduced ? 0.28 : 0.22, s0 * 0.4, s0 * 1.1, style.coreOp, 0.0, style.color1, 0, 0);
+    }
+    if (style.useLight && isStart) {
+      this._flashLight({ x, z }, style.light, reduced ? 1.4 : 2.6, 9, 140);
+    }
+  },
+
+  _spawnDoctrineTellLink(slot, style, ax, az, bx, bz, isStart) {
+    const dx = bx - ax;
+    const dz = bz - az;
+    const dist = Math.hypot(dx, dz) || 1;
+    const ux = dx / dist;
+    const uz = dz / dist;
+    const reduced = slot.reduced;
+    const segs = reduced ? 5 : (isStart ? 9 : 6);
+    const burstMul = this._burst || 1;
+    const n = Math.max(3, Math.round(segs * burstMul));
+    this._c0.set(style.color0);
+    this._c1.set(style.color1);
+
+    // Contact-linked filament: samples the real segment so the tell cannot lie about who is aiming.
+    for (let i = 1; i <= n; i++) {
+      const t = i / (n + 1);
+      const px = ax + dx * t;
+      const pz = az + dz * t;
+      const drift = (Math.random() - 0.5) * (reduced ? 2.5 : 5);
+      const pxp = -uz * drift;
+      const pzp = ux * drift;
+      const sp = (reduced ? 4 : 8) + Math.random() * (reduced ? 6 : 14);
+      // Doctrine-shaped motion bias along the link.
+      let vx = ux * sp * 0.35 + pxp * 0.4;
+      let vz = uz * sp * 0.35 + pzp * 0.4;
+      if (slot.kind === DOCTRINE_TELL_KIND.FLYBY) {
+        vx = ux * sp * 1.4;
+        vz = uz * sp * 1.4;
+      } else if (slot.kind === DOCTRINE_TELL_KIND.TETHER) {
+        vx = ux * sp * 0.25 + pxp;
+        vz = uz * sp * 0.25 + pzp;
+      } else if (slot.kind === DOCTRINE_TELL_KIND.CHARGE) {
+        vx = ux * sp * 0.9;
+        vz = uz * sp * 0.9;
+      }
+      this._spawnParticle(
+        px + pxp * 0.2, pz + pzp * 0.2,
+        vx, vz,
+        (reduced ? 0.28 : 0.22) + Math.random() * 0.12,
+        slot.kind === DOCTRINE_TELL_KIND.CHARGE ? 2.2 : 1.6,
+        0.15,
+        this._c0, this._c1,
+        2.2, 0, 0,
+      );
+    }
+
+    // Midpoint accent so the link reads at a glance even when ships are small on screen.
+    const mx = ax + dx * 0.5;
+    const mz = az + dz * 0.5;
+    const midLife = reduced ? 0.36 : 0.24;
+    if (slot.kind === DOCTRINE_TELL_KIND.TETHER) {
+      this._spawnSprite(SPR_RING, mx, 0, mz, midLife, 3.5, 9.0, style.linkOp, 0.0, style.color0, 0, 0);
+    } else if (slot.kind === DOCTRINE_TELL_KIND.CHARGE) {
+      this._spawnSprite(SPR_FLASH, mx, 0, mz, midLife * 0.85, 2.5, 6.5, style.linkOp, 0.0, style.color1, 0, 0);
+    } else if (slot.kind === DOCTRINE_TELL_KIND.FLYBY) {
+      this._spawnSprite(SPR_PUFF, mx, 0, mz, midLife, 3.0, 8.0, style.linkOp * 0.85, 0.0, style.color1, ux * 6, uz * 6);
+    }
+
+    // Target end tick — confirms who is under threat without HUD text.
+    this._spawnSprite(
+      reduced ? SPR_RING : SPR_FLASH,
+      bx, 0, bz,
+      reduced ? 0.32 : 0.16,
+      3.0, reduced ? 8.0 : 6.0,
+      style.linkOp * 0.9, 0.0, style.color0, 0, 0,
+    );
+  },
+
+  _spawnDoctrineTellOffscreenCue(slot, style, cx, cz, ux, uz, isStart) {
+    const reduced = slot.reduced;
+    const life = reduced ? 0.42 : 0.32;
+    // Directional chevron of rings/particles pointing at the real bearing (not a random edge).
+    this._spawnSprite(SPR_RING, cx, 0, cz, life, 5.0, 14.0, style.ringOp, 0.0, style.color0, 0, 0);
+    if (isStart) {
+      this._spawnSprite(
+        reduced ? SPR_RING : SPR_FLASH,
+        cx, 0, cz, life * 0.9, 3.5, 9.0, style.coreOp, 0.0, style.color1, 0, 0,
+      );
+    }
+    this._c0.set(style.color0);
+    this._c1.set(style.color1);
+    const n = reduced ? 5 : 8;
+    for (let i = 0; i < n; i++) {
+      const along = 6 + i * (reduced ? 4.5 : 5.5);
+      const px = cx + ux * along;
+      const pz = cz + uz * along;
+      const sp = 10 + i * 3;
+      this._spawnParticle(
+        px, pz,
+        ux * sp, uz * sp,
+        0.22 + i * 0.02, 1.8, 0.1,
+        this._c0, this._c1, 2.4, 0, 0,
+      );
+    }
+    // Kind glyph so FLYBY / TETHER / CHARGE remain distinct off-screen.
+    if (slot.kind === DOCTRINE_TELL_KIND.TETHER) {
+      this._spawnSprite(SPR_FRESNEL, cx, 0, cz, life * 1.1, 4.0, 11.0, style.ringOp * 0.8, 0.0, style.color0, 0, 0);
+    } else if (slot.kind === DOCTRINE_TELL_KIND.CHARGE) {
+      this._spawnSprite(SPR_FLASH, cx, 0, cz, life * 0.85, 3.0, 7.5, style.coreOp, 0.0, style.color1, 0, 0);
+    } else if (slot.kind === DOCTRINE_TELL_KIND.FLYBY) {
+      this._spawnSprite(SPR_PUFF, cx + ux * 8, 0, cz + uz * 8, life, 4.0, 10.0, style.linkOp, 0.0, style.color1, ux * 12, uz * 12);
+    }
+    if (style.useLight && isStart) {
+      this._flashLight({ x: cx, z: cz }, style.light, 1.8, 10, 110);
+    }
+  },
+
+  _updateDoctrineTells(dt) {
+    const pool = this._doctrineTells;
+    if (!pool || !this._doctrineTellActive) return;
+    const tick = this.state && Number.isInteger(this.state.tick) ? this.state.tick : null;
+    let live = 0;
+    for (let i = 0; i < pool.length; i++) {
+      const slot = pool[i];
+      if (!slot.alive) continue;
+      // Tick-owned lifetime: paused/tab render frames (dt) must not burn the sim warning window.
+      if (slot.deadlineTick != null && tick != null) {
+        if (tick > slot.deadlineTick) {
+          slot.alive = false;
+          slot.startTick = null;
+          slot.deadlineTick = null;
+          continue;
+        }
+      } else {
+        // Headless fallback only when sim tick is unavailable.
+        slot.age += dt;
+        if (slot.age >= slot.life) {
+          slot.alive = false;
+          continue;
+        }
+      }
+      live++;
+      // Re-resolve on/off screen each pulse so a flyby that enters frame gains the enemy link.
+      // Pulse cadence still uses frame dt (visual only; does not retire the tell).
+      slot.pulse += dt;
+      if (slot.pulse >= DOCTRINE_TELL_PULSE) {
+        slot.pulse = 0;
+        // Keep reduced flag current if the player toggles accessibility mid-telegraph.
+        slot.reduced = this._isReduced();
+        this._spawnDoctrineTellPulse(slot, false);
+      }
+    }
+    this._doctrineTellActive = live;
   },
 
   _onAiFlee(p) {
@@ -2705,6 +3202,8 @@ export const vfx = {
     } else {
       sub.tetherCable = 0;
     }
+    // M1 doctrine telegraphs — sustain FLYBY/TETHER/CHARGE cues across the pre-fire window.
+    if (this._doctrineTellActive > 0) this._updateDoctrineTells(dt);
     if (this._arcPreviewActive()) {
       this._updateArcPreview(dt);
       sub.arcPreview = 1;

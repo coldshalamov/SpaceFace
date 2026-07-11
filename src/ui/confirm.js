@@ -23,6 +23,7 @@ function injectStyle() {
   #sf-confirm-root { position:fixed; inset:0; z-index:5000; display:flex; align-items:center;
     justify-content:center; background:rgba(3,5,10,.82);
     opacity:0; transition:opacity .16s var(--ease); pointer-events:auto; }
+  #sf-confirm-root:empty { display:none; pointer-events:none; }
   #sf-confirm-root.sf-confirm--in { opacity:1; }
   .sf-confirm { width:min(440px, 92vw); background:linear-gradient(180deg,var(--panel-2),var(--panel));
     border:1px solid var(--panel-edge); border-radius:var(--r-lg); padding:var(--sp-5);

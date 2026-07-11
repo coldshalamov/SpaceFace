@@ -449,27 +449,10 @@ export const render = {
     const rim = new THREE.DirectionalLight(corePalette.rim, SECTOR_LIGHT_INTENSITIES.rim); rim.position.set(-70, 50, -60); scene.add(rim);
     const fill = new THREE.DirectionalLight(corePalette.fill, SECTOR_LIGHT_INTENSITIES.fill); fill.position.set(20, 30, 120); scene.add(fill);
 
-    // Real shadow maps (graphics spec Workstream G). Gated behind settings.video.shadows (default
-    // true). The key light becomes a shadow caster with a tight frustum that follows the player so
-    // ships/stations cast real shadows on the play plane — a groundedness the contact-shadow disc
-    // only faked. The bloom contract (bloom.js) is untouched: shadows write to the depth buffer
-    // during the normal scene render, before bloom samples it.
+    // Real shadow maps (graphics spec Workstream G). Keep one reusable key light regardless of the
+    // boot setting; _ensureKeyLightShadows configures it once and _syncShadowMapEnabled gates work.
+    // This lets a default shadows:false profile enable shadows live without allocating a new light.
     const shadowsOn = !(state.settings && state.settings.video && state.settings.video.shadows === false);
-    if (shadowsOn) {
-      renderer.shadowMap.enabled = false;
-      renderer.shadowMap.type = THREE.PCFShadowMap; // hard PCF, ~half the sample cost of PCFSoft
-      key.castShadow = true;
-      key.shadow.mapSize.set(1024, 1024); // was 2048 — quarters shadow-pass VRAM + render cost; a top-down game reads shadows as groundedness, not focal detail
-      // Orthographic frustum sized to the local play area around the player (updated per frame in
-      // renderFrame to follow the player). Tight bounds = crisp shadows at usable resolution.
-      const SC = key.shadow.camera;
-      SC.near = 10; SC.far = 600;
-      SC.left = -700; SC.right = 700; SC.top = 700; SC.bottom = -700;
-      SC.updateProjectionMatrix();
-      key.shadow.bias = -0.0008;
-      key.shadow.normalBias = 0.04;
-      key.target = new THREE.Object3D(); scene.add(key.target);
-    }
 
     const cam = createChaseCamera(state);
     const spaceBg = createSpaceBackground(scene, state, { renderer, camera: cam.obj, debug: SF_DEBUG });
@@ -556,10 +539,11 @@ export const render = {
     this._sectorPaletteRig = createSectorPaletteRig(scene, ambient, key, rim, fill);
     this._sectorPaletteTarget = corePalette;
     state.render.sectorPalette = corePalette;
-    this._keyLight = shadowsOn ? key : null; // referenced by _updateShadowFollow() each frame
+    this._keyLight = key; // retained while disabled so current→max→current can reconcile live
     this._shadowSettingOn = shadowsOn;
     this._shadowReceiversDirty = true;
     this._shadowReceiverCount = 0;
+    this._ensureKeyLightShadows();
     this._contactShadowPool = createContactShadowPool(scene);
     this._shipAuxPool = createShipAuxPool(scene);
     // LOD projector viewport (CSS px); onResize refreshes it. Initialize from drawSize so the first
@@ -730,13 +714,16 @@ export const render = {
     // Live-apply video settings changes. Without this, dragging Bloom strength / FOV / particle
     // quality in the settings screen did nothing (only the initial value was used) — a "slider that
     // doesn't work" sore thumb. We forward the values to the systems that own them.
-    bus.on('settings:changed', (p) => {
+    if (typeof this._videoSettingsOff === 'function') this._videoSettingsOff();
+    this._videoSettingsOff = bus.on('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       const vd = state.settings.video;
       this._syncPostOptions();
       if (p.key === 'shadows' || p.key == null) {
         this._shadowSettingOn = vd.shadows !== false;
         this._shadowReceiversDirty = true;
+        this._ensureKeyLightShadows();
+        this._syncShadowMapEnabled();
       }
       if (p.key === 'renderScale' || p.key === 'pixelRatioCap' || p.key == null) this.onResize();
       if ((p.key === 'dynamicResolution' || p.key == null) && this._adaptive) {
@@ -784,7 +771,9 @@ export const render = {
     });
     bus.on('save:loaded', () => { this._meshReconcileDirty = true; });
 
-    window.addEventListener('resize', () => this.onResize());
+    if (this._resizeHandler) window.removeEventListener('resize', this._resizeHandler);
+    this._resizeHandler = () => this.onResize();
+    window.addEventListener('resize', this._resizeHandler);
     // Apply persisted video/post settings once bloom exists (createBloom defaults otherwise win).
     this._syncPostOptions();
   },
@@ -1414,6 +1403,30 @@ export const render = {
     const enabled = this._shadowReceiverCount > 0;
     this.renderer.shadowMap.enabled = enabled;
     this._keyLight.castShadow = enabled;
+  },
+
+  _ensureKeyLightShadows() {
+    const key = this._keyLight;
+    const renderer = this.renderer;
+    if (!key || !renderer || !renderer.shadowMap) return false;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+    if (!key.userData.spacefaceShadowConfigured) {
+      key.castShadow = false;
+      key.shadow.mapSize.set(1024, 1024);
+      const camera = key.shadow.camera;
+      camera.near = 10; camera.far = 600;
+      camera.left = -700; camera.right = 700; camera.top = 700; camera.bottom = -700;
+      camera.updateProjectionMatrix();
+      key.shadow.bias = -0.0008;
+      key.shadow.normalBias = 0.04;
+      if (key.target && !key.target.parent && this.scene) this.scene.add(key.target);
+      key.userData.spacefaceShadowConfigured = true;
+    }
+    if (!this._shadowSettingOn) {
+      renderer.shadowMap.enabled = false;
+      key.castShadow = false;
+    }
+    return true;
   },
 
   // Accepts authoritative galactic-global XZ (and optional y); projects the frame-local point.
