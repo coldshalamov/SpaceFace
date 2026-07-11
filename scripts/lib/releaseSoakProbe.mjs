@@ -15,7 +15,10 @@ import { collectPageIssues } from './browser-issues.mjs';
 import { loadPlaywright } from './load-playwright.mjs';
 import {
   RELEASE_SOAK_SCHEMA,
+  PERFORMANCE_ATTRIBUTION_SCHEMA,
   PERF_BUDGET,
+  ATTRIBUTION_ROUTE_TAGS,
+  ATTRIBUTION_DIAGNOSTIC_VARIANTS,
   strictWorktreeFingerprint,
   summarizeSamples,
   validateArtifactFiles,
@@ -23,6 +26,7 @@ import {
   validateNoQualityShortcuts,
   validateMemoryEvidence,
   validateReleaseSoakEvidence,
+  validatePerformanceAttribution,
   validateSettingsTruth,
 } from './releaseSoakContracts.mjs';
 import {
@@ -130,17 +134,21 @@ export async function runReleaseSoakProbe({
     const finalMemory = await readPostGcMemorySnapshot(page, 'docked-market-end');
 
     await undockForRecovery(page, doLog);
-    const flightSamples = await sampleRafWindow(page, {
+    const flightWindow = await sampleRafWindow(page, {
       phaseTag: 'flight_steady',
       warmupMs: 5_000,
       sampleMs: 5_000,
+      enableGpuTimers: true,
     });
+    const flightSamples = flightWindow.samples;
     const contextLoss = await probeWebGlContextLoss(page, { outputDir, log: doLog });
-    const recoverySamples = await sampleRafWindow(page, {
+    const recoveryWindow = await sampleRafWindow(page, {
       phaseTag: 'context_recover_steady',
       warmupMs: 5_000,
       sampleMs: 5_000,
+      enableGpuTimers: true,
     });
+    const recoverySamples = recoveryWindow.samples;
     const samples = [...flightSamples, ...recoverySamples];
     assert(samples.length > 0, 'steady-state rAF sampler produced no finite frame samples');
     const finalSettings = await readSettingsTruth(page);
@@ -157,12 +165,20 @@ export async function runReleaseSoakProbe({
       frameMs: summarizeSamples(samples),
       samples,
       phases: {
-        flight_steady: summarizeSamples(flightSamples),
-        context_recover_steady: summarizeSamples(recoverySamples),
+        flight_steady: {
+          ...summarizeSamples(flightSamples),
+          attribution: flightWindow.attribution,
+        },
+        context_recover_steady: {
+          ...summarizeSamples(recoverySamples),
+          attribution: recoveryWindow.attribution,
+        },
       },
+      windows: [flightWindow.attribution, recoveryWindow.attribution].filter(Boolean),
       thresholdsClaimed: true,
       notes: [
         'Continuous requestAnimationFrame deltas from uninterrupted steady-state windows.',
+        'Rich attribution is one end-of-window snapshot (reset at window start) — not per-frame object churn.',
         'Save/load/dock/trade and the controlled context fault are lifecycle evidence, not steady-state frame samples.',
         'No quality settings or authored assets were changed.',
       ],
@@ -543,43 +559,655 @@ async function probeWebGlContextLoss(page, { outputDir, log }) {
   return result;
 }
 
-async function sampleRafWindow(page, { phaseTag, warmupMs, sampleMs }) {
-  assert(['flight_steady', 'context_recover_steady'].includes(phaseTag), `unsupported steady-state phase: ${phaseTag}`);
+/**
+ * Steady-window rAF sampler with end-of-window rich attribution.
+ * Prefer reset-at-start + one snapshot-at-end over per-frame metric objects.
+ *
+ * @returns {{ samples: object[], attribution: object }}
+ */
+async function sampleRafWindow(page, {
+  phaseTag,
+  warmupMs,
+  sampleMs,
+  enableGpuTimers = true,
+  requireAuthoredFlight = null,
+  requireDocked = null,
+  requireMiningOrTether = false,
+} = {}) {
+  const allowed = new Set([...ATTRIBUTION_ROUTE_TAGS, 'flight_steady', 'context_recover_steady']);
+  assert(allowed.has(phaseTag), `unsupported steady-state phase: ${phaseTag}`);
   assert(Number.isFinite(warmupMs) && warmupMs >= 0, 'rAF warmup must be finite and non-negative');
-  assert(Number.isFinite(sampleMs) && sampleMs >= 5_000, 'rAF sample window must cover at least five seconds');
-  return page.evaluate(async ({ tag, warmup, duration }) => {
+  // Attribution-only routes (market / mining) may use shorter windows; soak steady phases stay ≥5s.
+  const minSampleMs = (phaseTag === 'flight_steady' || phaseTag === 'context_recover_steady') ? 5_000 : 1_000;
+  assert(Number.isFinite(sampleMs) && sampleMs >= minSampleMs, `rAF sample window must cover at least ${minSampleMs} ms`);
+
+  const needFlight = requireAuthoredFlight != null
+    ? requireAuthoredFlight
+    : (phaseTag === 'flight_steady' || phaseTag === 'context_recover_steady' || phaseTag === 'mining_tether_active');
+  const needDocked = requireDocked != null
+    ? requireDocked
+    : phaseTag === 'docked_market_ui';
+
+  return page.evaluate(async ({
+    tag, warmup, duration, gpuOn, needFlight: needFlightFlag, needDocked: needDockedFlag, needMining,
+  }) => {
     if (document.visibilityState !== 'visible') throw new Error(`steady-state ${tag} requires a visible document`);
     const state = window.SF?.state;
     const player = state?.entityList?.find((entity) => entity?.id === state.playerId);
-    if (state?.mode !== 'flight' || state?.ui?.docked !== false || player?.mesh?.userData?.authoredAssetState !== 'authored') {
-      throw new Error(`steady-state ${tag} requires authored active flight`);
+
+    if (needFlightFlag) {
+      if (state?.mode !== 'flight' || state?.ui?.docked !== false || player?.mesh?.userData?.authoredAssetState !== 'authored') {
+        throw new Error(`steady-state ${tag} requires authored active flight`);
+      }
+    }
+    if (needDockedFlag) {
+      if (state?.ui?.docked !== true) throw new Error(`steady-state ${tag} requires docked UI path`);
+    }
+
+    function readSettingsSlice() {
+      const video = state?.settings?.video || {};
+      return {
+        video: {
+          renderScale: video.renderScale,
+          pixelRatioCap: video.pixelRatioCap,
+          shadows: video.shadows,
+          bloom: video.bloom,
+          bloomStrength: video.bloomStrength,
+          particleQuality: video.particleQuality,
+          renderGraph: video.renderGraph,
+          dynamicResolution: video.dynamicResolution,
+        },
+        dynResScale: Number.isFinite(state?.render?.dynResScale) ? state.render.dynResScale : 1,
+        timeScale: Number.isFinite(state?.timeScale) ? state.timeScale : 1,
+      };
+    }
+
+    function readRouteProof() {
+      const perf = window.__SPACEFACE_PERF__ && typeof window.__SPACEFACE_PERF__.getReport === 'function'
+        ? window.__SPACEFACE_PERF__.getReport()
+        : null;
+      const diag = window.__THREE_GAME_DIAGNOSTICS__ && typeof window.__THREE_GAME_DIAGNOSTICS__.getReport === 'function'
+        ? window.__THREE_GAME_DIAGNOSTICS__.getReport()
+        : null;
+      const vfxSub = (perf && perf.counters && perf.counters.vfxSubsystems) || {};
+      const entities = (perf && perf.entities) || {};
+      const docked = state?.ui?.docked === true;
+      const stationScreen = document.querySelector('[data-screen="station"]');
+      const stationVisible = !!(stationScreen && !stationScreen.hidden
+        && getComputedStyle(stationScreen).display !== 'none'
+        && stationScreen.getBoundingClientRect().width > 2);
+      const miningActive = (Number(vfxSub.miningBeam) || 0) > 0;
+      const tetherActive = (Number(vfxSub.tetherCable) || 0) > 0;
+      return {
+        mode: state?.mode || null,
+        docked,
+        uiOnlyPath: docked === true,
+        uiOnlyPathNote: docked
+          ? 'Docked station market/hub — UI-dominant path; renderer still runs (not zero-cost).'
+          : null,
+        stationScreenVisible: stationVisible,
+        entityCounts: entities,
+        entityTotal: Number(entities.total) || (state?.entityList?.length || 0),
+        vfxSubsystems: { ...vfxSub },
+        miningVfxActive: miningActive,
+        tetherVfxActive: tetherActive,
+        authoredAssetState: player?.mesh?.userData?.authoredAssetState || null,
+        tick: Number(state?.tick) || 0,
+        post: diag?.post || null,
+      };
+    }
+
+    function setGpuTimersEnabled(on) {
+      const timers = state?.render?.gpuTimers;
+      if (timers && typeof timers.setEnabled === 'function') {
+        try { timers.setEnabled(!!on); } catch (_) { /* capability may refuse */ }
+        if (on && typeof timers.reset === 'function') {
+          try { timers.reset(); } catch (_) { /* ignore */ }
+        }
+      }
+    }
+
+    function setRenderWorkEnabled(on) {
+      const perf = window.__SPACEFACE_PERF__ || state?.perfRuntime;
+      if (perf && typeof perf.setRenderWorkEnabled === 'function') {
+        try { perf.setRenderWorkEnabled(!!on); } catch (_) { /* ignore */ }
+      }
+    }
+
+    function resetProbes() {
+      try { if (window.__SPACEFACE_PERF__?.reset) window.__SPACEFACE_PERF__.reset(); } catch (_) { /* ignore */ }
+      try { if (window.__THREE_GAME_DIAGNOSTICS__?.reset) window.__THREE_GAME_DIAGNOSTICS__.reset(); } catch (_) { /* ignore */ }
+      try { if (state?.render?.resetPostTelemetrySample) state.render.resetPostTelemetrySample(); } catch (_) { /* ignore */ }
+      if (state?.render?.gpuTimers && typeof state.render.gpuTimers.reset === 'function') {
+        try { state.render.gpuTimers.reset(); } catch (_) { /* ignore */ }
+      }
+    }
+
+    function buildAttribution(frameSummary, settingsStart, settingsEnd, routeStart, routeEnd) {
+      const perf = window.__SPACEFACE_PERF__ && typeof window.__SPACEFACE_PERF__.getReport === 'function'
+        ? window.__SPACEFACE_PERF__.getReport()
+        : null;
+      const diag = window.__THREE_GAME_DIAGNOSTICS__ && typeof window.__THREE_GAME_DIAGNOSTICS__.getReport === 'function'
+        ? window.__THREE_GAME_DIAGNOSTICS__.getReport()
+        : null;
+      const gpu = state?.render?.gpuTimers && typeof state.render.gpuTimers.getReport === 'function'
+        ? state.render.gpuTimers.getReport()
+        : (diag?.post?.gpuTimers || { available: false, status: 'unavailable', reason: 'not-installed' });
+
+      const phases = perf?.phases || {};
+      const loop = perf?.loop || {};
+      const renderWork = perf?.renderWork || {};
+      const memory = diag?.memory || {};
+      const render = diag?.render || {};
+      const post = diag?.post || routeEnd?.post || null;
+
+      return {
+        routeTag: tag,
+        frameMs: frameSummary,
+        sampleCount: frameSummary.sampleCount,
+        cpu: {
+          frameCallback: perf?.frameCallback || null,
+          frameUntracked: perf?.frameUntracked || null,
+          phases: {
+            sim: phases.sim || null,
+            simFrame: phases.simFrame || null,
+            render: phases.render || null,
+            vfx: phases.vfx || null,
+            feel: phases.feel || null,
+            ui: phases.ui || null,
+          },
+          renderWork: {
+            prepareFrame: renderWork.prepareFrame || null,
+            drawPreparedFrame: renderWork.drawPreparedFrame || null,
+            entityViewSync: renderWork.entityViewSync || null,
+            bloomScene: renderWork.bloomScene || null,
+            bloomDownsample: renderWork.bloomDownsample || null,
+            bloomUpsample: renderWork.bloomUpsample || null,
+            bloomComposite: renderWork.bloomComposite || null,
+          },
+        },
+        loop: {
+          stepsThisFrame: loop.stepsThisFrame,
+          maxStepsThisFrame: loop.maxStepsThisFrame,
+          shedBacklogFrames: loop.shedBacklogFrames,
+          accumulatorS: loop.accumulatorS,
+          lastFrameDtMs: loop.lastFrameDtMs,
+        },
+        draw: {
+          calls: render.calls,
+          triangles: render.triangles,
+          points: render.points,
+          lines: render.lines,
+          geometries: memory.geometries,
+          textures: memory.textures,
+          programs: memory.programs,
+        },
+        post: post ? {
+          activePath: post.activePath,
+          bloomSelected: post.bloomSelected,
+          bloomPasses: post.bloomPasses,
+          fullFramePasses: post.fullFramePasses,
+          renderTargetCount: post.renderTargetCount,
+          bufferWidth: post.bufferWidth,
+          bufferHeight: post.bufferHeight,
+          dynResScale: post.dynResScale,
+          bloom: post.bloom || null,
+          renderGraphDetails: post.renderGraphDetails || null,
+        } : null,
+        routeProof: {
+          ...(routeEnd || routeStart || {}),
+          start: routeStart || null,
+          end: routeEnd || null,
+        },
+        settings: {
+          start: settingsStart,
+          end: settingsEnd,
+        },
+        gpuTimers: {
+          available: gpu?.available === true,
+          status: gpu?.status || (gpu?.available ? 'available' : 'unavailable'),
+          reason: gpu?.reason || null,
+          extension: gpu?.extension || null,
+          enabled: gpu?.enabled === true,
+          lastDisjoint: gpu?.lastDisjoint === true,
+          pending: gpu?.pending,
+          passes: gpu?.passes || null,
+        },
+        capturedAt: new Date().toISOString(),
+      };
     }
 
     const raf = () => new Promise((resolve) => requestAnimationFrame(resolve));
     const warmupStart = performance.now();
     while (performance.now() - warmupStart < warmup) await raf();
 
-    const samples = [];
-    const sampleStart = performance.now();
-    let previous = await raf();
-    while (performance.now() - sampleStart < duration) {
-      const timestamp = await raf();
-      const frameMs = timestamp - previous;
-      previous = timestamp;
-      if (Number.isFinite(frameMs) && frameMs > 0) {
-        samples.push({
-          atMs: timestamp,
-          frameMs,
-          phaseTag: tag,
-          tick: Number(window.SF?.state?.tick),
-          mode: window.SF?.state?.mode || null,
-          docked: window.SF?.state?.ui?.docked === true,
-          visibility: document.visibilityState,
-        });
+    const settingsStart = readSettingsSlice();
+    const routeStart = readRouteProof();
+    if (needMining) {
+      if (!routeStart.miningVfxActive && !routeStart.tetherVfxActive) {
+        throw new Error(`steady-state ${tag} requires active mining or tether VFX proof`);
       }
     }
-    return samples;
-  }, { tag: phaseTag, warmup: warmupMs, duration: sampleMs });
+
+    // Opt-in measurement window only. Always disable CPU/GPU gates on exit.
+    setRenderWorkEnabled(true);
+    setGpuTimersEnabled(gpuOn);
+    try {
+      resetProbes();
+
+      const samples = [];
+      const sampleStart = performance.now();
+      let previous = await raf();
+      while (performance.now() - sampleStart < duration) {
+        const timestamp = await raf();
+        const frameMs = timestamp - previous;
+        previous = timestamp;
+        if (Number.isFinite(frameMs) && frameMs > 0) {
+          // Lightweight rAF sample only — no per-frame perf/diag object churn.
+          samples.push({
+            atMs: timestamp,
+            frameMs,
+            phaseTag: tag,
+            tick: Number(window.SF?.state?.tick),
+            mode: window.SF?.state?.mode || null,
+            docked: window.SF?.state?.ui?.docked === true,
+            visibility: document.visibilityState,
+          });
+        }
+      }
+
+      // Allow a couple of frames so async GPU query readback can settle without spinning.
+      await raf();
+      await raf();
+      if (state?.render?.gpuTimers && typeof state.render.gpuTimers.poll === 'function') {
+        try { state.render.gpuTimers.poll(); } catch (_) { /* ignore */ }
+      }
+
+      const settingsEnd = readSettingsSlice();
+      const routeEnd = readRouteProof();
+
+      // Local percentile summary matching summarizeSamples contract keys.
+      const values = samples.map((sample) => sample.frameMs).filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
+      const pct = (ratio) => (values.length ? values[Math.min(values.length - 1, Math.ceil((values.length - 1) * ratio))] : null);
+      const frameSummary = {
+        sampleCount: values.length,
+        p50: pct(0.50),
+        p95: pct(0.95),
+        p99: pct(0.99),
+        max: values.length ? values[values.length - 1] : null,
+        hitchesOver32Ms: values.filter((v) => v > 32).length,
+      };
+
+      const attribution = buildAttribution(frameSummary, settingsStart, settingsEnd, routeStart, routeEnd);
+      return { samples, attribution };
+    } finally {
+      setGpuTimersEnabled(false);
+      setRenderWorkEnabled(false);
+    }
+  }, {
+    tag: phaseTag,
+    warmup: warmupMs,
+    duration: sampleMs,
+    gpuOn: enableGpuTimers === true,
+    needFlight,
+    needDocked,
+    needMining: requireMiningOrTether === true,
+  });
+}
+
+
+/**
+ * Pure diagnostic A/B helpers (testable without a browser).
+ * These mutate a state-like object. NOT shippable fixes — measurement arms only.
+ */
+function snapshotDiagnosticSettings(state) {
+  return {
+    timeScale: Number.isFinite(state?.timeScale) ? state.timeScale : 1,
+    bloom: state?.settings?.video ? state.settings.video.bloom : true,
+    spaceBgVisible: state?.render?.spaceBg?.group?.visible !== false,
+    entityIsolationActive: state?.render?.perfEntityIsolation?.inspect?.().active === true,
+    label: 'DIAGNOSTIC-ONLY — not a shippable fix',
+  };
+}
+
+function applyDiagnosticVariantToState(state, snap, variantId) {
+  assert(ATTRIBUTION_DIAGNOSTIC_VARIANTS.includes(variantId), `unknown diagnostic variant: ${variantId}`);
+  if (!state) throw new Error('state unavailable for diagnostic variant');
+  const label = 'DIAGNOSTIC-ONLY — not a shippable fix';
+  if (variantId === 'baseline') {
+    state.timeScale = snap.timeScale;
+    if (state.settings?.video) state.settings.video.bloom = snap.bloom;
+    if (state.render?.spaceBg?.group) state.render.spaceBg.group.visible = snap.spaceBgVisible;
+    state.render?.perfEntityIsolation?.restore?.();
+    return { id: variantId, diagnostic: false, label: 'baseline (restored defaults)', applied: true };
+  }
+  if (variantId === 'sim_paused') {
+    state.timeScale = 0;
+    return { id: variantId, diagnostic: true, label, applied: true, timeScale: 0 };
+  }
+  if (variantId === 'bloom_off') {
+    if (state.settings?.video) state.settings.video.bloom = false;
+    return { id: variantId, diagnostic: true, label, applied: true, bloom: false };
+  }
+  if (variantId === 'background_hidden') {
+    if (!state.render?.spaceBg?.group) throw new Error('space background group unavailable');
+    state.render.spaceBg.group.visible = false;
+    return { id: variantId, diagnostic: true, label, applied: true, spaceBgVisible: false };
+  }
+  if (variantId === 'non_player_entities_hidden') {
+    const isolation = state.render?.perfEntityIsolation;
+    if (!isolation?.hideNonPlayer) throw new Error('renderer entity isolation unavailable');
+    return { id: variantId, diagnostic: true, label, applied: true, ...isolation.hideNonPlayer() };
+  }
+  throw new Error(`unhandled diagnostic variant ${variantId}`);
+}
+
+function restoreDiagnosticVariantToState(state, snap) {
+  if (!state || !snap) return { restored: true, reason: 'nothing-to-restore' };
+  state.timeScale = snap.timeScale;
+  if (state.settings?.video) state.settings.video.bloom = snap.bloom;
+  if (state.render?.spaceBg?.group) state.render.spaceBg.group.visible = snap.spaceBgVisible;
+  state.render?.perfEntityIsolation?.restore?.();
+  const videoBloom = state.settings?.video?.bloom;
+  const spaceBgVisible = state.render?.spaceBg?.group?.visible !== false;
+  const ok = state.timeScale === snap.timeScale && videoBloom === snap.bloom
+    && spaceBgVisible === snap.spaceBgVisible
+    && state.render?.perfEntityIsolation?.inspect?.().active !== true;
+  return {
+    restored: ok === true,
+    diagnostic: true,
+    label: 'DIAGNOSTIC-ONLY — restored settings/timeScale exactly',
+    timeScale: state.timeScale,
+    bloom: videoBloom,
+    spaceBgVisible,
+  };
+}
+
+/**
+ * Diagnostic A/B switches for attribution only. Guarantees exact restoration of settings/timeScale.
+ * These are NOT shippable fixes.
+ */
+async function applyDiagnosticVariant(page, variantId) {
+  assert(ATTRIBUTION_DIAGNOSTIC_VARIANTS.includes(variantId), `unknown diagnostic variant: ${variantId}`);
+  return page.evaluate((id) => {
+    const state = window.SF?.state;
+    if (!state) throw new Error('SF.state unavailable for diagnostic variant');
+    const label = 'DIAGNOSTIC-ONLY — not a shippable fix';
+    if (!window.__SF_PERF_ATTRIBUTION_RESTORE__) {
+      window.__SF_PERF_ATTRIBUTION_RESTORE__ = {
+        timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 1,
+        bloom: state.settings?.video ? state.settings.video.bloom : true,
+        spaceBgVisible: state.render?.spaceBg?.group?.visible !== false,
+        entityIsolationActive: state.render?.perfEntityIsolation?.inspect?.().active === true,
+        label,
+      };
+    }
+    const snap = window.__SF_PERF_ATTRIBUTION_RESTORE__;
+    if (id === 'baseline') {
+      state.timeScale = snap.timeScale;
+      if (state.settings?.video) state.settings.video.bloom = snap.bloom;
+      if (state.render?.spaceBg?.group) state.render.spaceBg.group.visible = snap.spaceBgVisible;
+      state.render?.perfEntityIsolation?.restore?.();
+      try { window.SF?.bus?.emit('settings:changed', { section: 'video', key: 'bloom' }); } catch (_) { /* ignore */ }
+      return { id, diagnostic: false, label: 'baseline (restored defaults)', applied: true };
+    }
+    if (id === 'sim_paused') {
+      state.timeScale = 0;
+      return { id, diagnostic: true, label, applied: true, timeScale: 0 };
+    }
+    if (id === 'bloom_off') {
+      if (state.settings?.video) state.settings.video.bloom = false;
+      try { window.SF?.bus?.emit('settings:changed', { section: 'video', key: 'bloom' }); } catch (_) { /* ignore */ }
+      return { id, diagnostic: true, label, applied: true, bloom: false };
+    }
+    if (id === 'background_hidden') {
+      if (!state.render?.spaceBg?.group) throw new Error('space background group unavailable');
+      state.render.spaceBg.group.visible = false;
+      return { id, diagnostic: true, label, applied: true, spaceBgVisible: false };
+    }
+    if (id === 'non_player_entities_hidden') {
+      const isolation = state.render?.perfEntityIsolation;
+      if (!isolation?.hideNonPlayer) throw new Error('renderer entity isolation unavailable');
+      return { id, diagnostic: true, label, applied: true, ...isolation.hideNonPlayer() };
+    }
+    throw new Error(`unhandled diagnostic variant ${id}`);
+  }, variantId);
+}
+
+async function restoreDiagnosticVariant(page) {
+  return page.evaluate(() => {
+    const state = window.SF?.state;
+    const snap = window.__SF_PERF_ATTRIBUTION_RESTORE__;
+    if (!state || !snap) return { restored: true, reason: 'nothing-to-restore' };
+    state.timeScale = snap.timeScale;
+    if (state.settings?.video) state.settings.video.bloom = snap.bloom;
+    if (state.render?.spaceBg?.group) state.render.spaceBg.group.visible = snap.spaceBgVisible;
+    state.render?.perfEntityIsolation?.restore?.();
+    try { window.SF?.bus?.emit('settings:changed', { section: 'video', key: 'bloom' }); } catch (_) { /* ignore */ }
+    const videoBloom = state.settings?.video?.bloom;
+    const spaceBgVisible = state.render?.spaceBg?.group?.visible !== false;
+    const ok = state.timeScale === snap.timeScale && videoBloom === snap.bloom
+      && spaceBgVisible === snap.spaceBgVisible
+      && state.render?.perfEntityIsolation?.inspect?.().active !== true;
+    delete window.__SF_PERF_ATTRIBUTION_RESTORE__;
+    return {
+      restored: ok === true,
+      diagnostic: true,
+      label: 'DIAGNOSTIC-ONLY — restored settings/timeScale exactly',
+      timeScale: state.timeScale,
+      bloom: videoBloom,
+      spaceBgVisible,
+    };
+  });
+}
+
+/**
+ * Ensure mining or tether VFX is active for route proof.
+ * DIAGNOSTIC STRESS: emits mining:start/tick on the bus — not the player input path.
+ */
+async function ensureMiningOrTetherVfx(page) {
+  return page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf?.state;
+    if (!state) return { ok: false, reason: 'no-state' };
+    const player = state.entityList?.find((e) => e?.id === state.playerId);
+    if (!player || state.ui?.docked) return { ok: false, reason: 'not-in-flight' };
+    let asteroid = null;
+    for (const e of state.entityList || []) {
+      if (e && e.alive !== false && e.type === 'asteroid') { asteroid = e; break; }
+    }
+    if (!asteroid) return { ok: false, reason: 'no-asteroid' };
+    try {
+      // Diagnostic stress only: bus events, not player mining/tether input actions.
+      sf.bus.emit('mining:start', { targetId: asteroid.id });
+      sf.bus.emit('mining:tick', {
+        targetId: asteroid.id,
+        oreId: asteroid.data?.typeId || 'ast_metallic',
+      });
+    } catch (err) {
+      return { ok: false, reason: String(err && err.message || err) };
+    }
+    const perf = window.__SPACEFACE_PERF__?.getReport?.();
+    const vfx = perf?.counters?.vfxSubsystems || {};
+    return {
+      ok: true,
+      diagnostic: true,
+      diagnosticStress: true,
+      playerInputPath: false,
+      label: 'DIAGNOSTIC STRESS — bus-emitted mining:start/tick (not player input path)',
+      targetId: asteroid.id,
+      vfx,
+    };
+  });
+}
+
+function buildPerformanceAttributionDocument({
+  taskId = 'performance-attribution',
+  runtimeKind = 'browser',
+  windows = [],
+  variants = [],
+  notes = [],
+} = {}) {
+  return {
+    schema: PERFORMANCE_ATTRIBUTION_SCHEMA,
+    kind: 'diagnostic-measurement',
+    qualityPreserving: true,
+    taskId,
+    generatedAt: new Date().toISOString(),
+    runtimeKind,
+    notes: [
+      'Measurement-first frame-pacing attribution. No structural optimization claimed.',
+      'Diagnostic A/B variants (sim_paused, bloom_off) must restore settings/timeScale exactly.',
+      ...notes,
+    ],
+    windows,
+    variants,
+  };
+}
+
+/**
+ * Disable CPU/GPU measurement gates after a sampling window (best-effort).
+ */
+async function disableMeasurementGates(page) {
+  return page.evaluate(() => {
+    try {
+      if (window.__SPACEFACE_PERF__ && typeof window.__SPACEFACE_PERF__.setRenderWorkEnabled === 'function') {
+        window.__SPACEFACE_PERF__.setRenderWorkEnabled(false);
+      }
+    } catch (_) { /* ignore */ }
+    try {
+      const timers = window.SF?.state?.render?.gpuTimers;
+      if (timers && typeof timers.setEnabled === 'function') timers.setEnabled(false);
+    } catch (_) { /* ignore */ }
+    return { renderWorkEnabled: window.__SPACEFACE_PERF__?.renderWorkEnabled === true };
+  }).catch(() => ({ renderWorkEnabled: false }));
+}
+
+/**
+ * Collect multi-route attribution windows with optional diagnostic A/B variants.
+ * Each diagnostic variant body is failure-atomic: restore settings/timeScale + disable
+ * measurement gates in finally.
+ */
+async function samplePerformanceAttribution(page, {
+  routes = ['flight_steady', 'docked_market_ui'],
+  variants = ['baseline'],
+  warmupMs = 2_000,
+  sampleMs = 5_000,
+  log = () => {},
+  navigateToRoute = null,
+} = {}) {
+  const windows = [];
+  const variantResults = [];
+
+  for (const variantId of variants) {
+    log(`[attribution] diagnostic variant ${variantId}`);
+    let appliedAll = true;
+    let restoredAll = true;
+    let variantLabel = variantId === 'baseline' ? 'baseline (restored defaults)' : 'DIAGNOSTIC-ONLY';
+    for (const routeTag of routes) {
+      log(`[attribution] route ${routeTag} @ ${variantId}`);
+      if (typeof navigateToRoute === 'function') {
+        await navigateToRoute(page, routeTag, log);
+      } else {
+        if (routeTag === 'mining_tether_active') {
+          await ensureMiningOrTetherVfx(page);
+          await page.waitForTimeout(400);
+        }
+        if (routeTag === 'docked_market_ui') {
+          const docked = await isDocked(page);
+          if (!docked) {
+            log(`[attribution] skip ${routeTag}: not docked`);
+            continue;
+          }
+          await ensureMarketOpen(page).catch(() => {});
+        }
+        if (routeTag === 'flight_steady' || routeTag === 'mining_tether_active' || routeTag === 'context_recover_steady') {
+          const docked = await isDocked(page);
+          if (docked) {
+            log(`[attribution] skip ${routeTag}: still docked`);
+            continue;
+          }
+        }
+      }
+
+      // Route navigation may legitimately change timeScale (dock=0, flight=1). Capture the
+      // authority after navigation, then apply and restore one diagnostic arm around this window.
+      const routeBaseline = await page.evaluate(() => {
+        const state = window.SF?.state;
+        if (!state) throw new Error('SF.state unavailable for route attribution baseline');
+        return {
+          timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 1,
+          bloom: state.settings?.video ? state.settings.video.bloom : true,
+          spaceBgVisible: state.render?.spaceBg?.group?.visible !== false,
+        };
+      });
+      let applied = null;
+      let restored = { restored: false };
+      try {
+        await page.evaluate((baseline) => {
+          window.__SF_PERF_ATTRIBUTION_RESTORE__ = { ...baseline, label: 'DIAGNOSTIC-ONLY — immutable route baseline' };
+        }, routeBaseline);
+        applied = await applyDiagnosticVariant(page, variantId);
+        variantLabel = applied?.label || variantLabel;
+        const result = await sampleRafWindow(page, {
+          phaseTag: routeTag,
+          warmupMs,
+          sampleMs: routeTag === 'docked_market_ui' ? Math.max(1_000, sampleMs) : sampleMs,
+          enableGpuTimers: true,
+          requireMiningOrTether: routeTag === 'mining_tether_active',
+        });
+        if (result?.attribution) {
+          result.attribution.diagnosticVariant = variantId;
+          result.attribution.diagnostic = variantId !== 'baseline';
+          if (routeTag === 'mining_tether_active') {
+            result.attribution.routeProof = {
+              ...(result.attribution.routeProof || {}),
+              diagnosticStress: true,
+              playerInputPath: false,
+              routeNote: 'DIAGNOSTIC STRESS — mining VFX via bus events, not player input path',
+            };
+          }
+          windows.push(result.attribution);
+        }
+      } finally {
+        restored = await restoreDiagnosticVariant(page).catch((err) => ({
+          restored: false,
+          reason: String(err && err.message || err),
+        }));
+        if (restored?.timeScale !== routeBaseline.timeScale
+          || restored?.bloom !== routeBaseline.bloom
+          || restored?.spaceBgVisible !== routeBaseline.spaceBgVisible) {
+          restored = {
+            ...restored,
+            restored: false,
+            reason: `route baseline mismatch: expected timeScale=${routeBaseline.timeScale}, bloom=${routeBaseline.bloom}, spaceBgVisible=${routeBaseline.spaceBgVisible}`,
+          };
+        }
+        await disableMeasurementGates(page);
+      }
+      appliedAll = appliedAll && applied?.applied === true;
+      restoredAll = restoredAll && restored?.restored === true;
+    }
+    variantResults.push({
+      id: variantId,
+      diagnostic: variantId !== 'baseline',
+      applied: appliedAll,
+      restored: restoredAll,
+      label: variantLabel,
+    });
+  }
+
+  const doc = buildPerformanceAttributionDocument({
+    taskId: 'performance-attribution-ab',
+    windows,
+    variants: variantResults,
+    notes: [
+      'mining_tether_active is DIAGNOSTIC STRESS via bus-emitted mining events (not player input path).',
+    ],
+  });
+  const validation = validatePerformanceAttribution(doc);
+  doc.validation = validation;
+  return { document: doc, validation };
 }
 
 async function readPlayerSnapshot(page) {
@@ -731,8 +1359,16 @@ function normalizeCleanup(runtime, report) {
 }
 
 async function writeTelemetry(outputDir, { performance, memory, errors, contextLoss }, log) {
+  const attribution = buildPerformanceAttributionDocument({
+    taskId: 'release-soak-steady-windows',
+    runtimeKind: 'browser',
+    windows: performance?.windows || [],
+    variants: [],
+    notes: performance?.notes || [],
+  });
   await Promise.all([
     writeFile(path.join(outputDir, 'performance-telemetry.json'), `${JSON.stringify(performance, null, 2)}\n`, 'utf8'),
+    writeFile(path.join(outputDir, 'performance-attribution.json'), `${JSON.stringify(attribution, null, 2)}\n`, 'utf8'),
     writeFile(path.join(outputDir, 'memory-telemetry.json'), `${JSON.stringify(memory, null, 2)}\n`, 'utf8'),
     writeFile(path.join(outputDir, 'error-telemetry.json'), `${JSON.stringify(errors, null, 2)}\n`, 'utf8'),
     writeFile(path.join(outputDir, 'context-loss-telemetry.json'), `${JSON.stringify(contextLoss, null, 2)}\n`, 'utf8'),
@@ -743,6 +1379,7 @@ async function writeTelemetry(outputDir, { performance, memory, errors, contextL
 function buildArtifactDescriptors(root, outputDir, routeResult, cycleResults) {
   const entries = [
     ['telemetry', 'performance-telemetry.json'],
+    ['telemetry', 'performance-attribution.json'],
     ['telemetry', 'memory-telemetry.json'],
     ['telemetry', 'error-telemetry.json'],
     ['telemetry', 'context-loss-telemetry.json'],
@@ -775,4 +1412,180 @@ function withTimeout(promise, timeoutMs, label) {
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs} ms`)), timeoutMs); })]).finally(() => clearTimeout(timer));
 }
 
-export { allocateOutputDir };
+/**
+ * Full headed attribution matrix on the canonical browser game route.
+ * Writes performance-attribution.json under outputDir. Does not fork game serving policy.
+ */
+async function runPerformanceAttributionProbe({
+  root,
+  outputRoot = null,
+  taskId = 'performance-attribution',
+  viewport = DEFAULT_VIEWPORT,
+  routes = [...ATTRIBUTION_ROUTE_TAGS],
+  variants = [...ATTRIBUTION_DIAGNOSTIC_VARIANTS],
+  warmupMs = 2_000,
+  sampleMs = 5_000,
+  flightTimeoutMs = 150_000,
+  dockTimeoutMs = 90_000,
+  log = () => {},
+} = {}) {
+  assert(root, 'runPerformanceAttributionProbe requires root');
+  const outRoot = outputRoot || path.join(root, '.devshots', 'perf');
+  const outputDir = await allocateOutputDir(outRoot, taskId);
+  const logLines = [];
+  const doLog = (message) => {
+    const line = `${new Date().toISOString()} ${message}`;
+    logLines.push(line);
+    log(line);
+  };
+
+  let ownedServer = null;
+  let browser = null;
+  let context = null;
+  let page = null;
+  let canonicalUrlTracker = null;
+  let cleanupReport = null;
+  let contextLossDone = false;
+
+  try {
+    ownedServer = await acquireVisualProbeServer({ root });
+    assert.equal(ownedServer.ownsServer, true, 'attribution probe must own its canonical in-process server');
+    const rootUrl = ownedServer.baseUrl;
+    ({ page, browser, context } = await launchBrowser(viewport));
+    canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
+    await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    page.setDefaultTimeout(30_000);
+    page.setDefaultNavigationTimeout(60_000);
+    await page.bringToFront();
+    doLog(`browser canonical root ${rootUrl}`);
+
+    let routeResult = null;
+    try {
+      routeResult = await runBrowserPublicRoute({
+        page,
+        outputDir,
+        expectedRootUrl: rootUrl,
+        log: doLog,
+        flightTimeoutMs,
+        dockTimeoutMs,
+      });
+    } catch (error) {
+      // The market/hub route is binding when requested. For flight-only attribution, a live
+      // dock-input UI regression may be recorded as an explicit blocked route while retaining the
+      // already-proven authored flight path and docked sim state for a clean undock. Never waive the
+      // market route itself: callers requesting docked_market_ui still fail closed.
+      const marketRequested = routes.includes('docked_market_ui');
+      const docked = await isDocked(page);
+      const mayContinueWithoutMarket = !marketRequested && error?.routePhase === 'dock-input' && docked;
+      if (!mayContinueWithoutMarket) throw error;
+      routeResult = {
+        pass: true,
+        partial: true,
+        blockedRoute: 'docked_market_ui',
+        blockedReason: error.message,
+        routeProgress: error.routeProgress || [],
+      };
+      doLog('[attribution] docked market UI is blocked; continuing only requested flight routes from proven docked state');
+    }
+    assert.equal(routeResult?.pass === true, true, 'public route must pass for attribution matrix');
+    assert.equal(await isDocked(page), true, 'public route must finish docked');
+    if (routes.includes('docked_market_ui')) await ensureMarketOpen(page);
+
+    const navigateToRoute = async (pg, routeTag, routeLog) => {
+      if (routeTag === 'docked_market_ui') {
+        if (!(await isDocked(pg))) {
+          await pg.keyboard.press('KeyE');
+          await pg.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 30_000 });
+        }
+        await ensureMarketOpen(pg);
+        routeLog('[attribution] navigated docked_market_ui');
+        return;
+      }
+      if (routeTag === 'flight_steady' || routeTag === 'mining_tether_active' || routeTag === 'context_recover_steady') {
+        if (await isDocked(pg)) {
+          await undockForRecovery(pg, routeLog);
+        }
+        if (routeTag === 'mining_tether_active') {
+          const arm = await ensureMiningOrTetherVfx(pg);
+          if (!arm?.ok) routeLog(`[attribution] mining diagnostic stress arm: ${arm?.reason || 'unknown'}`);
+          await pg.waitForTimeout(400);
+        }
+        if (routeTag === 'context_recover_steady' && !contextLossDone) {
+          await probeWebGlContextLoss(pg, { outputDir, log: routeLog });
+          contextLossDone = true;
+          if (await isDocked(pg)) await undockForRecovery(pg, routeLog);
+        }
+        routeLog(`[attribution] navigated ${routeTag}`);
+      }
+    };
+
+    // Prefer docked first while still docked from public route, then flight arms, then post-context.
+    const orderedRoutes = [];
+    for (const tag of ['docked_market_ui', 'flight_steady', 'mining_tether_active', 'context_recover_steady']) {
+      if (routes.includes(tag)) orderedRoutes.push(tag);
+    }
+    for (const tag of routes) {
+      if (!orderedRoutes.includes(tag)) orderedRoutes.push(tag);
+    }
+
+    const { document, validation } = await samplePerformanceAttribution(page, {
+      routes: orderedRoutes,
+      variants,
+      warmupMs,
+      sampleMs,
+      log: doLog,
+      navigateToRoute,
+    });
+
+    document.runtimeKind = 'browser';
+    document.taskId = taskId;
+    document.routePass = routeResult?.pass === true;
+    document.validation = validation;
+
+    const outPath = path.join(outputDir, 'performance-attribution.json');
+    await writeFile(outPath, `${JSON.stringify(document, null, 2)}\n`, 'utf8');
+    await writeFile(path.join(outputDir, 'run.log'), `${logLines.join('\n')}\n`, 'utf8');
+
+    cleanupReport = await closeOwnedResources({ page, context, browser, server: ownedServer, canonicalUrlTracker });
+    const restoreOk = Array.isArray(document.variants)
+      && document.variants.length > 0
+      && document.variants.every((v) => v.restored === true);
+    const pass = validation.pass === true && document.routePass === true && restoreOk === true;
+
+    return {
+      pass,
+      outputDir,
+      outPath,
+      document,
+      validation,
+      routeResult,
+      restoreOk,
+      cleanupReport,
+    };
+  } catch (error) {
+    if (page && !page.isClosed()) {
+      await page.screenshot({ path: path.join(outputDir, 'failure-screenshot.png'), type: 'png', animations: 'allow' }).catch(() => {});
+    }
+    throw error;
+  } finally {
+    if (!cleanupReport) {
+      await closeOwnedResources({ page, context, browser, server: ownedServer, canonicalUrlTracker }).catch(() => null);
+    }
+    await writeFile(path.join(outputDir, 'run.log'), `${logLines.join('\n')}\n`, 'utf8').catch(() => {});
+  }
+}
+
+export {
+  allocateOutputDir,
+  sampleRafWindow,
+  samplePerformanceAttribution,
+  applyDiagnosticVariant,
+  restoreDiagnosticVariant,
+  ensureMiningOrTetherVfx,
+  buildPerformanceAttributionDocument,
+  snapshotDiagnosticSettings,
+  applyDiagnosticVariantToState,
+  restoreDiagnosticVariantToState,
+  disableMeasurementGates,
+  runPerformanceAttributionProbe,
+};

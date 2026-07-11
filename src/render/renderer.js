@@ -17,6 +17,7 @@ import { installDiagnostics } from './diagnostics.js';
 import { getPostRenderTargetTelemetry, resetPostRenderTargetSampleCounter } from './postTelemetry.js';
 import { precompilePipelines } from './precompile.js';
 import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
+import { createGpuTimers } from './gpuTimers.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
@@ -492,6 +493,12 @@ export const render = {
       canvas.addEventListener('webglcontextlost', (ev) => {
         ev.preventDefault();        // allow restoration
         this._contextLost = true;
+        // Abandon GPU timer query refs without end/delete — the GL context is dead.
+        if (this._gpuTimers && typeof this._gpuTimers.abandon === 'function') {
+          try { this._gpuTimers.abandon(); } catch (_) { /* ignore */ }
+        }
+        this._gpuTimers = null;
+        if (state.render) state.render.gpuTimers = null;
         if (typeof console !== 'undefined') console.warn('[render] WebGL context lost — awaiting restore');
         bus.emit('toast', { text: 'Graphics context lost — recovering…', kind: 'warn', ttl: 4 });
       }, false);
@@ -511,6 +518,16 @@ export const render = {
           invalidatePartsLibraryCaches(renderer);
           // Rebuild the bloom post-process pipeline (its render targets are tied to the lost context).
           if (this.bloom && typeof this.bloom.rebuild === 'function') this.bloom.rebuild();
+          // Fresh GPU timer set bound to the restored context (default OFF).
+          try {
+            const glRestored = this.renderer.getContext && this.renderer.getContext();
+            this._gpuTimers = createGpuTimers(glRestored);
+            state.render.gpuTimers = this._gpuTimers;
+          } catch (timerErr) {
+            if (typeof console !== 'undefined') console.warn('[render] gpu timers recreate failed:', timerErr);
+            this._gpuTimers = null;
+            state.render.gpuTimers = null;
+          }
           // Force every entity mesh to rebuild so geometries/materials re-upload. The cleanest way
           // is to clear + reconcile: dispose the CPU mesh objects, then reconcileMeshes() rebuilds
           // them from the live entityList via the visual factory.
@@ -549,14 +566,55 @@ export const render = {
     // LOD projector viewport (CSS px); onResize refreshes it. Initialize from drawSize so the first
     // frame before onResize has sane values.
     { const dpr = renderer.getPixelRatio() || 1; this.viewport = { width: drawSize.x / dpr, height: drawSize.y / dpr }; }
-    try { this.bloom = createBloom(renderer, drawSize.x, drawSize.y); }
-    catch (err) { console.warn('[render] bloom unavailable, falling back:', err); this.bloom = null; }
+    // Capability-gated GPU timer queries (default OFF). Used only by measurement probes.
+    try {
+      const gl = renderer.getContext && renderer.getContext();
+      this._gpuTimers = createGpuTimers(gl);
+      state.render.gpuTimers = this._gpuTimers;
+    } catch (err) {
+      console.warn('[render] gpu timers unavailable:', err);
+      this._gpuTimers = null;
+      state.render.gpuTimers = null;
+    }
+    try {
+      this.bloom = createBloom(renderer, drawSize.x, drawSize.y, {
+        getPerf: () => state.perfRuntime,
+        getGpuTimers: () => this._gpuTimers,
+      });
+    } catch (err) { console.warn('[render] bloom unavailable, falling back:', err); this.bloom = null; }
     this._postOptionsSig = null;
     // Collision/socket/landing-contact debug visualization (spec §12.5). OFF by default; toggled via
     // the render system handle (state.render.debug.toggle) — wired to F7 in ui/input.js.
     try { this.collisionDebug = createCollisionDebug(this); }
     catch (err) { console.warn('[render] collision debug unavailable:', err); this.collisionDebug = null; }
     this._meshes = new Map(); // entityId -> Object3D
+    // Measurement-only entity-layer isolation. The probe never reaches into the
+    // renderer's private mesh map; this owner-held seam snapshots each mesh's
+    // exact visibility and restores it atomically after the sample window.
+    let entityIsolationRestore = null;
+    state.render.perfEntityIsolation = {
+      hideNonPlayer: () => {
+        if (entityIsolationRestore) throw new Error('non-player entity isolation already active');
+        const visibility = [];
+        for (const [id, mesh] of this._meshes) {
+          if (!mesh || id === state.playerId) continue;
+          visibility.push([id, mesh, mesh.visible]);
+          mesh.visible = false;
+        }
+        entityIsolationRestore = visibility;
+        return { active: true, hidden: visibility.length };
+      },
+      restore: () => {
+        const visibility = entityIsolationRestore;
+        if (!visibility) return { restored: true, active: false, restoredCount: 0 };
+        for (const [, mesh, wasVisible] of visibility) {
+          if (mesh) mesh.visible = wasVisible;
+        }
+        entityIsolationRestore = null;
+        return { restored: true, active: false, restoredCount: visibility.length };
+      },
+      inspect: () => ({ active: !!entityIsolationRestore, hidden: entityIsolationRestore ? entityIsolationRestore.length : 0 }),
+    };
     this._meshBuildQueue = [];
     this._meshBuildQueueHead = 0;
     this._meshBuildQueuedIds = new Set();
@@ -1021,7 +1079,11 @@ export const render = {
   },
 
   syncEntityViews(alpha) {
-    const started = typeof performance !== 'undefined' ? performance.now() : 0;
+    // Opt-in CPU attribution only — no performance.now()/ring write when disabled.
+    const useCpu = !!(this.state && this.state.perfRuntime
+      && this.state.perfRuntime.renderWorkEnabled
+      && typeof this.state.perfRuntime.recordRenderWork === 'function');
+    const started = useCpu && typeof performance !== 'undefined' ? performance.now() : 0;
     const now = typeof performance !== 'undefined' ? performance.now() * 0.001 : 0;
     const bounds = this._entityViewCullBounds();
     let totalMeshes = 0;
@@ -1113,9 +1175,8 @@ export const render = {
       cullHalfX: Math.round(bounds.halfX),
       cullHalfZ: Math.round(bounds.halfZ),
     };
-    const perf = this.state.perfRuntime;
-    if (perf && typeof perf.recordRenderWork === 'function' && started) {
-      perf.recordRenderWork('entityViewSync', performance.now() - started);
+    if (useCpu && started) {
+      this.state.perfRuntime.recordRenderWork('entityViewSync', performance.now() - started);
     }
     this._publishHlodDiagnostics();
   },
@@ -1264,6 +1325,10 @@ export const render = {
     // webglcontextrestored rebuilds GPU resources. (cam.follow etc. would run against a dead
     // renderer; the context-restore handler re-applies everything that matters when it returns.)
     if (this._contextLost) return false;
+    // Attribution CPU timer — opt-in only (perfRuntime.renderWorkEnabled default false).
+    const perf = this.state && this.state.perfRuntime;
+    const useCpu = !!(perf && perf.renderWorkEnabled && typeof perf.recordRenderWork === 'function');
+    const t0 = useCpu ? performance.now() : 0;
     // M2: observe frameOriginSeq before any global→local projection this frame.
     // On change, reproject cached local meshes/camera/VFX by delta (entities stay galactic-global).
     if (this._frameMembrane) {
@@ -1295,6 +1360,7 @@ export const render = {
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
       if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
+    if (useCpu) perf.recordRenderWork('prepareFrame', performance.now() - t0);
     return true;
   },
 
@@ -1342,6 +1408,14 @@ export const render = {
 
   drawPreparedFrame() {
     if (this._contextLost) return false;
+    // Attribution timers: CPU via recordRenderWork only when renderWorkEnabled (default OFF).
+    // GPU queries only when gpuTimers.enabled — and never nested: bloom pass groups own GPU
+    // spans on the bloom path; the outer drawPreparedFrame GPU span is only for renderGraph/straight.
+    const perf = this.state && this.state.perfRuntime;
+    const gpu = this._gpuTimers;
+    const useCpu = !!(perf && perf.renderWorkEnabled && typeof perf.recordRenderWork === 'function');
+    const useGpu = gpu && gpu.enabled && typeof gpu.begin === 'function';
+    const t0 = useCpu ? performance.now() : 0;
     // Post options sync on settings:changed, init, context restore, and render-graph creation —
     // not every draw (video settings are event-driven).
     // Render path selection (INTEGRATION_MAP §8.1). The SpaceRenderGraph is a capability-aware HDR
@@ -1352,14 +1426,26 @@ export const render = {
     // render graph composites with contact-depth AO.
     if (this.state.settings.video.renderGraph && this._ensureRenderGraph()) {
       this._lastRenderPath = 'renderGraph';
-      this._renderGraph.render(this.scene, this.cam.obj, { time: this._bgTime || 0 });
+      if (useGpu) gpu.begin('drawPreparedFrame');
+      try {
+        this._renderGraph.render(this.scene, this.cam.obj, { time: this._bgTime || 0 });
+      } finally {
+        if (useGpu) gpu.end();
+      }
     } else if (this.bloom && this.state.settings.video.bloom !== false) {
       this._lastRenderPath = 'bloom';
+      // bloom.render() records bloomScene/Downsample/Upsample/Composite CPU+GPU groups.
       this.bloom.render(this.scene, this.cam.obj);
     } else {
       this._lastRenderPath = 'straight';
-      this.renderer.render(this.scene, this.cam.obj);
+      if (useGpu) gpu.begin('drawPreparedFrame');
+      try {
+        this.renderer.render(this.scene, this.cam.obj);
+      } finally {
+        if (useGpu) gpu.end();
+      }
     }
+    if (useCpu) perf.recordRenderWork('drawPreparedFrame', performance.now() - t0);
     return true;
   },
 
@@ -1539,6 +1625,10 @@ export const render = {
       ? this._renderGraph.diagnostics()
       : null;
 
+    const gpuTimers = this._gpuTimers && typeof this._gpuTimers.getCapability === 'function'
+      ? this._gpuTimers.getCapability()
+      : { available: false, status: 'unavailable', reason: 'not-installed', enabled: false };
+
     return {
       activePath,
       bloomSelected,
@@ -1557,6 +1647,8 @@ export const render = {
       lastAllocationReason: telemetry.lastAllocationReason,
       bloom: bloomDiag,
       renderGraphDetails: renderGraphDiag,
+      gpuTimers,
+      dynResScale: Number.isFinite(this.state?.render?.dynResScale) ? this.state.render.dynResScale : 1,
     };
   },
 

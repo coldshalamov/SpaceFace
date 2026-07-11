@@ -12,6 +12,8 @@ import { lstat, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export const RELEASE_SOAK_SCHEMA = 'spaceface.releaseSoak.v1';
+/** Structured full-quality frame-pacing attribution output (measurement-only; not primary soak acceptance). */
+export const PERFORMANCE_ATTRIBUTION_SCHEMA = 'spaceface.performanceAttribution.v1';
 export const REQUIRED_PRIMARY_CYCLE_MARKS = Object.freeze([
   'undock',
   'flight-input',
@@ -31,6 +33,23 @@ export const PERF_BUDGET = Object.freeze({
   maxHeapGrowthBytes: 30 * 1024 * 1024,
 });
 export const REQUIRED_STEADY_PHASES = Object.freeze(['flight_steady', 'context_recover_steady']);
+
+/** Route tags supported by the attribution sampler (additive; does not weaken soak gates). */
+export const ATTRIBUTION_ROUTE_TAGS = Object.freeze([
+  'flight_steady',
+  'mining_tether_active',
+  'docked_market_ui',
+  'context_recover_steady',
+]);
+
+/** Diagnostic A/B variants — attribution only; must restore settings/timeScale exactly. */
+export const ATTRIBUTION_DIAGNOSTIC_VARIANTS = Object.freeze([
+  'baseline',
+  'sim_paused',
+  'bloom_off',
+  'background_hidden',
+  'non_player_entities_hidden',
+]);
 
 export function validateReleaseSoakEvidence(envelope, { requireArtifacts = true } = {}) {
   const failures = [];
@@ -389,6 +408,103 @@ export function summarizeSamples(samples) {
     max: values.length ? values[values.length - 1] : null,
     hitchesOver32Ms: values.filter((value) => value > PERF_BUDGET.hitchThresholdMs).length,
   };
+}
+
+/**
+ * Additive optional validation for performance-attribution.json.
+ * Does not participate in primary release-soak acceptance and never weakens soak gates.
+ */
+export function validatePerformanceAttribution(doc) {
+  const failures = [];
+  if (!doc || typeof doc !== 'object') {
+    return { pass: false, failures: ['attribution document must be an object'] };
+  }
+  if (doc.schema !== PERFORMANCE_ATTRIBUTION_SCHEMA) {
+    failures.push(`schema must be ${PERFORMANCE_ATTRIBUTION_SCHEMA}`);
+  }
+  if (doc.kind !== 'diagnostic-measurement') {
+    failures.push('kind must be "diagnostic-measurement" (not a shippable fix)');
+  }
+  if (doc.qualityPreserving !== true) {
+    failures.push('qualityPreserving must be true (no resolution/effect/asset shortcuts)');
+  }
+  if (!Array.isArray(doc.windows) || doc.windows.length === 0) {
+    failures.push('windows array is required and must be non-empty');
+  } else {
+    for (let i = 0; i < doc.windows.length; i += 1) {
+      failures.push(...validateAttributionWindow(doc.windows[i], i));
+    }
+  }
+  if (doc.variants != null) {
+    if (!Array.isArray(doc.variants)) failures.push('variants must be an array when present');
+    else {
+      for (const variant of doc.variants) {
+        if (!ATTRIBUTION_DIAGNOSTIC_VARIANTS.includes(variant?.id) && variant?.id !== 'baseline') {
+          // allow listed ids only
+          if (!nonempty(variant?.id)) failures.push('each variant needs an id');
+        }
+        if (variant && variant.diagnostic !== true && variant.id !== 'baseline') {
+          failures.push(`variant ${variant.id} must be labeled diagnostic:true`);
+        }
+        if (variant && variant.restored !== true) {
+          failures.push(`variant ${variant?.id || '<missing>'} must report restored:true`);
+        }
+      }
+    }
+  }
+  return { pass: failures.length === 0, failures: [...new Set(failures)] };
+}
+
+function validateAttributionWindow(window, index) {
+  const failures = [];
+  const prefix = `windows[${index}]`;
+  if (!window || typeof window !== 'object') return [`${prefix} must be an object`];
+  if (!ATTRIBUTION_ROUTE_TAGS.includes(window.routeTag) && !REQUIRED_STEADY_PHASES.includes(window.routeTag)) {
+    if (!nonempty(window.routeTag)) failures.push(`${prefix}.routeTag is required`);
+  }
+  const frame = window.frameMs || window.raf;
+  if (!frame || typeof frame !== 'object') failures.push(`${prefix}.frameMs (rAF summary) is required`);
+  else {
+    for (const key of ['sampleCount', 'p50', 'p95', 'p99', 'max', 'hitchesOver32Ms']) {
+      if (!(key in frame)) failures.push(`${prefix}.frameMs.${key} is required`);
+    }
+  }
+  if (!window.routeProof || typeof window.routeProof !== 'object') {
+    failures.push(`${prefix}.routeProof is required`);
+  } else {
+    if (typeof window.routeProof.mode !== 'string') failures.push(`${prefix}.routeProof.mode is required`);
+    if (typeof window.routeProof.docked !== 'boolean') failures.push(`${prefix}.routeProof.docked is required`);
+    if (window.routeTag === 'docked_market_ui') {
+      if (window.routeProof.docked !== true) failures.push(`${prefix} docked_market_ui must prove docked=true`);
+      if (window.routeProof.uiOnlyPath !== true) {
+        failures.push(`${prefix} docked_market_ui must label uiOnlyPath=true (not zero-cost render)`);
+      }
+    }
+    if (window.routeTag === 'mining_tether_active') {
+      const vfx = window.routeProof.vfxSubsystems || {};
+      const mining = Number(vfx.miningBeam) || 0;
+      const tether = Number(vfx.tetherCable) || 0;
+      if (mining < 1 && tether < 1) {
+        failures.push(`${prefix} mining_tether_active must prove miningBeam or tetherCable VFX active`);
+      }
+    }
+  }
+  if (!window.settings || typeof window.settings !== 'object') {
+    failures.push(`${prefix}.settings start/end truth is required`);
+  } else {
+    if (!window.settings.start || !window.settings.end) failures.push(`${prefix}.settings.start/end required`);
+  }
+  if (!window.gpuTimers || typeof window.gpuTimers !== 'object') {
+    failures.push(`${prefix}.gpuTimers capability status is required`);
+  } else if (!['available', 'unavailable', 'ok', 'disjoint'].includes(window.gpuTimers.status)
+    && window.gpuTimers.available !== true && window.gpuTimers.available !== false) {
+    failures.push(`${prefix}.gpuTimers must report available/status`);
+  }
+  // Optional rich fields — when present, shape-check only.
+  if (window.cpu && typeof window.cpu !== 'object') failures.push(`${prefix}.cpu must be an object`);
+  if (window.draw && typeof window.draw !== 'object') failures.push(`${prefix}.draw must be an object`);
+  if (window.post && typeof window.post !== 'object') failures.push(`${prefix}.post must be an object`);
+  return failures;
 }
 
 export function percentile(sorted, ratio) {

@@ -169,6 +169,9 @@ export function ensurePerfRuntime(state) {
     autosaveLast: null,
   };
   const renderWorkStats = Object.create(null);
+  // Opt-in CPU render-work attribution. Default OFF so production frames never pay
+  // performance.now() + ring sample cost. Measurement probes enable for a window only.
+  let renderWorkEnabled = false;
 
   function statForSystem(name) {
     const key = name || 'unknown';
@@ -183,6 +186,12 @@ export function ensurePerfRuntime(state) {
   const api = {
     __spacefacePerfV1: true,
     RING_N,
+    get renderWorkEnabled() { return renderWorkEnabled; },
+    isRenderWorkEnabled() { return renderWorkEnabled === true; },
+    setRenderWorkEnabled(on) {
+      renderWorkEnabled = !!on;
+      return renderWorkEnabled;
+    },
     beginFrame(frameDt) {
       const ms = Number.isFinite(frameDt) ? frameDt * 1000 : 0;
       loop.lastFrameDtMs = ms;
@@ -206,6 +215,8 @@ export function ensurePerfRuntime(state) {
       sample(statForSystem(name), ms);
     },
     recordRenderWork(name, ms) {
+      // Defense-in-depth: no ring write when measurement is disabled.
+      if (!renderWorkEnabled) return;
       sample(statForRenderWork(name), ms);
     },
     recordPhase(name, ms) {

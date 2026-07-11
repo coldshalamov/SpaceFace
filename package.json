@@ -122,6 +122,7 @@
     "check:encounter-voice": "node scripts/check-encounter-one-voice.mjs",
     "check:one-voice": "node scripts/check-one-voice.mjs",
     "check:release-soak": "node scripts/check-release-soak.mjs",
+    "check:perf:attribution": "node scripts/check-performance-attribution.mjs",
     "check:named-captains": "node scripts/check-named-captains.mjs",
     "check:sector-postcard": "node scripts/check-sector-postcard.mjs",
     "check:station-bubbles": "node scripts/check-station-bubbles.mjs",
