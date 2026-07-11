@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { damp } from '../core/math.js';
 import { globalToFrame } from '../core/coordinates.js';
+import { isHostileToPlayer } from '../systems/scanner.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 import { CameraDirectorMode, createCameraDirector } from './cameraDirector.js';
 
@@ -169,7 +170,8 @@ export function resolveChaseComposition(state, player, focus) {
   // Combat composes player + nearest threat instead of only following the player.
   for (const e of state.entities.values()) {
     if (e === player) continue;
-    if (e.type !== 'ship' || e.alive === false || e.team === player.team || e.hull <= 0 || !e.pos) continue;
+    if (e.type !== 'ship' || e.alive === false || e.hull <= 0 || !e.pos) continue;
+    if (!isHostileToPlayer(e, player.team, state)) continue;
     const dx = e.pos.x - player.pos.x;
     const dz = e.pos.z - player.pos.z;
     const d2 = dx * dx + dz * dz;
@@ -511,6 +513,13 @@ export function createChaseCamera(state) {
         }
         targetZoom = baseZoom * _speedZoomFactor;
         targetZoom *= (1 + _contextZoomBias);
+        const tether = state.player && state.player.tether;
+        if (!directorOwnsComposition && tether && tether.active) {
+          // Mining/neutral massline keeps the ordinary chase camera. Slowing to work a tether must
+          // never make speed-zoom collapse the battlefield around player + rock; preserve the
+          // player's selected tactical distance and let context bias widen from there.
+          targetZoom = Math.max(targetZoom, baseZoom * (1 + _contextZoomBias));
+        }
       }
       // scripted push-zoom (dock fly-in / jump / kill-cam): multiplies the view while active, then
       // decays. Negative factors push IN (tighter). Applied to targetZoom so it eases through the

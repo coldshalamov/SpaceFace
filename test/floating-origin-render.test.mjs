@@ -74,6 +74,7 @@ function makeShip(id, pos, opts = {}) {
     prevPitch: 0,
     maxSpeed: 120,
     flags: { noInterp: !!opts.noInterp },
+    data: opts.data || {},
   };
 }
 
@@ -331,7 +332,11 @@ test('camera follow uses frame-local target; relative composition preserved at f
 test('camera director pair framing works in frame-local space at far origin', () => {
   const state = makeState(LARGE_ORIGIN, 1);
   const player = makeShip(1, LARGE_GLOBAL, { team: 0, radius: 6 });
-  const target = makeShip(9, NEARBY_GLOBAL, { team: 1, radius: 8 });
+  const target = makeShip(9, NEARBY_GLOBAL, {
+    team: 1,
+    radius: 8,
+    data: { encounter: { id: 'floating-origin-hostile' } },
+  });
   state.entities.set(1, player);
   state.entities.set(9, target);
   state.player = { tether: { active: true, targetId: 9 }, flybyFocus: { active: false } };

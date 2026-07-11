@@ -17,7 +17,16 @@ const ASPECT = 16 / 9;
 const TILT = 60;
 
 function entity(id, x, z, radius = 6, extra = {}) {
-  return { id, type: 'ship', alive: true, hull: 100, pos: { x, z }, radius, ...extra };
+  return {
+    id,
+    type: 'ship',
+    alive: true,
+    hull: 100,
+    pos: { x, z },
+    radius,
+    data: { encounter: { id: 'camera-director-check-hostile' } },
+    ...extra,
+  };
 }
 
 function stateFor(player, others = [], options = {}) {
@@ -196,7 +205,7 @@ assert.equal(recover.mode, CameraDirectorMode.RECOVER, 'invalid tether target en
 const recovered = runFor(handoffDirector, 0.5, 1 / 60, tetherState, player, view({ followX: 12, followZ: -4, followZoom: 68 }));
 assert.equal(recovered.mode, CameraDirectorMode.FOLLOW, 'recovery returns to normal follow after its ease');
 
-const recoverPlayer = entity(301, 0, 0, 7);
+const recoverPlayer = entity(301, 0, 0, 7, { team: 0 });
 const recoverTarget = entity(302, 150, 0, 8);
 const recoverState = stateFor(recoverPlayer, [recoverTarget], {
   targetId: recoverTarget.id,

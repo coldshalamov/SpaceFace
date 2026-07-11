@@ -13,7 +13,7 @@ import {
   CameraDirectorMode,
   createCameraDirector,
 } from '../src/render/cameraDirector.js';
-import { resolveChaseComposition } from '../src/render/camera.js';
+import { createChaseCamera, resolveChaseComposition } from '../src/render/camera.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import { flybyFocus, pickFlybyTarget } from '../src/systems/flybyFocus.js';
@@ -34,6 +34,7 @@ function entity(id, x, z, radius = 6, extra = {}) {
     pos: { x, z },
     radius,
     vel: { x: 0, z: 0 },
+    data: { encounter: { id: 'camera-test-hostile' } },
     ...extra,
   };
 }
@@ -158,6 +159,90 @@ test('asteroid mining tether never zooms closer than normal tactical view', () =
   assert.ok(frame.zoom >= CAMERA_DIRECTOR_MIN_ZOOM, 'zoom remains legal');
 });
 
+test('stale Focus lease on a mining tether fails closed and keeps threat-aware FOLLOW', () => {
+  const player = entity(1, 0, 0, 7, { team: 0, type: 'ship' });
+  const rock = {
+    id: 52,
+    type: 'asteroid',
+    alive: true,
+    pos: { x: 38, z: 6 },
+    radius: 15,
+    hull: 200,
+  };
+  const nearbyAttacker = entity(53, -180, 30, 8, {
+    team: 1,
+    vel: { x: 90, z: -10 },
+    data: { encounter: { id: 'camera-regression-hostile' } },
+  });
+  const state = stateFor(player, [rock, nearbyAttacker], {
+    focusActive: true,
+    focusTargetId: rock.id,
+    tetherActive: true,
+    tetherTargetId: rock.id,
+    targetId: rock.id,
+  });
+  const director = createCameraDirector();
+  director.syncFollow(0, 0, TACTICAL_ZOOM);
+  const frame = settle(director, 0.5, state, player, view({ followZoom: TACTICAL_ZOOM }));
+  const chase = resolveChaseComposition(state, player, { x: 0, z: 0 });
+
+  assert.equal(frame.mode, CameraDirectorMode.FOLLOW,
+    'invalid asteroid Focus cannot bypass the mining-tether FOLLOW contract');
+  assert.equal(frame.targetId, null, 'invalid Focus target never owns camera pair state');
+  assert.ok(frame.zoom + 1e-9 >= TACTICAL_ZOOM,
+    `mining view ${frame.zoom} must not collapse inside tactical ${TACTICAL_ZOOM}`);
+  assert.equal(chase.hasThreatFocus, true,
+    'ordinary chase composition still sees the nearby attacker while mining');
+  assert.ok(chase.zoomBias > 0,
+    'nearby attacker widens ordinary mining context instead of being cropped');
+});
+
+test('live mining camera never tightens inside tactical view while nearby threats remain active', () => {
+  globalThis.window = { innerWidth: 1600, innerHeight: 900 };
+  const player = entity(1, 0, 0, 7, {
+    team: 0,
+    type: 'ship',
+    vel: { x: 0, z: 0 },
+    maxSpeed: 120,
+  });
+  const rock = {
+    id: 54,
+    type: 'asteroid',
+    alive: true,
+    pos: { x: 44, z: 8 },
+    radius: 16,
+    hull: 200,
+  };
+  const nearbyAttacker = entity(55, -190, 25, 8, {
+    team: 1,
+    data: { encounter: { id: 'camera-regression-hostile-live' } },
+  });
+  const state = stateFor(player, [rock, nearbyAttacker], {
+    tetherActive: true,
+    tetherTargetId: rock.id,
+  });
+  state.settings = { video: { fov: FOV, motionReduce: false } };
+  state.camera = { zoom: TACTICAL_ZOOM, tilt: TILT, lookAhead: 18, lerp: 6, trauma: 0 };
+  state.input = { aimWorld: null };
+
+  const camera = createChaseCamera(state);
+  camera.snapToPlayer();
+  for (let i = 0; i < 90; i++) camera.follow(DT);
+  const frame = camera.composition();
+  const effectiveZoom = Math.hypot(
+    camera.obj.position.x - state.camera.focus.x,
+    camera.obj.position.y,
+    camera.obj.position.z - state.camera.focus.z,
+  );
+
+  assert.equal(frame.mode, CameraDirectorMode.FOLLOW,
+    'live asteroid tether never promotes to pair director');
+  assert.ok(effectiveZoom + 1e-6 >= TACTICAL_ZOOM,
+    `live mining zoom ${effectiveZoom} must not tighten inside tactical ${TACTICAL_ZOOM}`);
+  assert.ok(Math.abs(state.camera.focus.x - rock.pos.x * 0.5) > 5,
+    'mining camera does not midpoint-lock player and asteroid');
+});
+
 test('friendly non-hostile ship tether does not enter combat pair mode', () => {
   const player = entity(1, 0, 0, 7, { team: 0 });
   const ally = entity(4, 55, 0, 8, { team: 0 });
@@ -173,6 +258,45 @@ test('friendly non-hostile ship tether does not enter combat pair mode', () => {
     'non-hostile ship tether is ordinary, not combat pair');
   assert.ok(frame.zoom + 1e-9 >= TACTICAL_ZOOM,
     'non-hostile tether must not zoom closer than tactical');
+});
+
+test('team mismatch without live hostility cannot authorize Focus or tether pair framing', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  const neutralTrader = entity(5, 70, 0, 8, {
+    team: 1,
+    data: { ai: { archetype: 'trader' } },
+  });
+  const state = stateFor(player, [neutralTrader], {
+    focusActive: true,
+    focusTargetId: neutralTrader.id,
+    tetherActive: true,
+    tetherTargetId: neutralTrader.id,
+    targetId: neutralTrader.id,
+  });
+  const director = createCameraDirector();
+  director.syncFollow(0, 0, TACTICAL_ZOOM);
+  const frame = settle(director, 0.5, state, player);
+
+  assert.equal(frame.mode, CameraDirectorMode.FOLLOW,
+    'camera authority fails neutral when affiliation differs but hostility is not live');
+  assert.equal(frame.targetId, null, 'neutral team mismatch never owns pair camera target');
+});
+
+test('neutral team mismatch does not create false ordinary chase threat bias', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  const neutralTrader = entity(6, 90, 15, 8, {
+    team: 1,
+    data: { ai: { archetype: 'trader' } },
+  });
+  const state = stateFor(player, [neutralTrader]);
+  const composition = resolveChaseComposition(state, player, { x: 0, z: 0 });
+
+  assert.equal(composition.hasThreatFocus, false,
+    'trader affiliation mismatch is not battlefield threat context');
+  assert.equal(composition.nearbyEnemies, 0,
+    'neutral trader is not counted as a nearby enemy');
+  assert.equal(composition.zoomBias, 0,
+    'neutral traffic cannot widen or steer ordinary chase framing');
 });
 
 test('ordinary tether composition stays modest and keeps threat context bias', () => {
@@ -300,6 +424,52 @@ test('Focus release returns to FOLLOW cleanly without sticky pair target', () =>
   assert.equal(done.mode, CameraDirectorMode.FOLLOW, 'Focus release ends in FOLLOW');
   assert.equal(done.targetId, null, 'pair target clears on release');
   assert.ok(done.zoom <= CAMERA_DIRECTOR_ENGINE_MAX_ZOOM);
+});
+
+test('Focus release and immediate same-target re-latch remain continuous', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  const hostile = entity(10, 120, 20, 8, { team: 1 });
+  const state = stateFor(player, [hostile], {
+    focusActive: true,
+    focusTargetId: hostile.id,
+  });
+  const director = createCameraDirector();
+  director.syncFollow(0, 0, TACTICAL_ZOOM);
+  settle(director, 0.5, state, player);
+
+  state.player.flybyFocus.active = false;
+  state.player.flybyFocus.targetId = null;
+  const recovering = director.step(DT, state, player, view());
+  assert.equal(recovering.mode, CameraDirectorMode.RECOVER);
+  const recoveryPose = {
+    x: recovering.focusX,
+    z: recovering.focusZ,
+    zoom: recovering.zoom,
+  };
+
+  state.player.flybyFocus.active = true;
+  state.player.flybyFocus.targetId = hostile.id;
+  const relatched = director.step(DT, state, player, view());
+  assert.equal(relatched.mode, CameraDirectorMode.FOCUS_PAIR,
+    'same hostile can reacquire during recovery without waiting for FOLLOW');
+  assert.equal(relatched.targetId, hostile.id);
+  assert.ok(Math.hypot(relatched.focusX - recoveryPose.x, relatched.focusZ - recoveryPose.z) < 2,
+    'first re-latch frame preserves focus continuity');
+  assert.ok(Math.abs(relatched.zoom - recoveryPose.zoom) < 2,
+    'first re-latch frame preserves zoom continuity');
+
+  const pair = settle(director, CAMERA_DIRECTOR_EASE_S + 0.05, state, player);
+  assert.equal(pair.mode, CameraDirectorMode.FOCUS_PAIR);
+  state.player.flybyFocus.active = false;
+  state.player.flybyFocus.targetId = null;
+  let previousZoom = pair.zoom;
+  for (let i = 0; i < Math.ceil((CAMERA_DIRECTOR_EASE_S + 0.05) / DT); i++) {
+    const frame = director.step(DT, state, player, view());
+    assert.ok(frame.zoom <= previousZoom + 1e-8,
+      'normal release zoom moves monotonically toward tactical FOLLOW');
+    previousZoom = frame.zoom;
+  }
+  assert.equal(director.output.mode, CameraDirectorMode.FOLLOW);
 });
 
 test('asteroid tether never arms Flyby Focus acquisition', () => {

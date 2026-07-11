@@ -1,4 +1,5 @@
 import { globalToFrame } from '../core/coordinates.js';
+import { isHostileToPlayer } from '../systems/scanner.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 
 export const CAMERA_DIRECTOR_MIN_ZOOM = 58;
@@ -74,30 +75,20 @@ function entityRadius(entity) {
 export function isCombatPairTetherTarget(state, player, target) {
   if (!target || target.alive === false) return false;
   if (target.type !== 'ship' && target.type !== 'drone') return false;
-  const tTeam = target.team;
   const pTeam = player && player.team;
-  if (tTeam == null || pTeam == null || tTeam === pTeam || tTeam === 2) return false;
-  const ai = target.data && target.data.ai || {};
-  if (ai.passive) return false;
-  if (ai.lawful) {
-    const wantedHeat = Number(state && state.player && state.player.heat) || 0;
-    if (wantedHeat < 0.15) return false;
-  }
-  // In the canonical team model, non-passive/non-lawful team 1 is hostile. Unknown affiliations
-  // fail neutral so a missing field can never create an unexplained combat-camera takeover.
-  return tTeam === 1;
+  if (pTeam == null) return false;
+  // Share the same fresh hostility oracle as Flyby Focus acquisition and the contact strip. A raw
+  // team mismatch is not authorization: traders, parleying raiders, and clean patrols stay neutral.
+  return isHostileToPlayer(target, pTeam, state);
 }
 
-function isActiveHostileThreat(player, entity, primaryTarget) {
+function isActiveHostileThreat(state, player, entity, primaryTarget) {
   if (!entity || entity === player || entity === primaryTarget) return false;
   if (entity.alive === false || !entity.pos) return false;
   if (entity.type !== 'ship' && entity.type !== 'drone') return false;
   if (entity.hull != null && entity.hull <= 0) return false;
-  const tTeam = entity.team;
-  if (tTeam == null) return false;
   const pTeam = player && player.team;
-  if (pTeam != null) return tTeam !== pTeam;
-  return tTeam !== 0;
+  return pTeam != null && isHostileToPlayer(entity, pTeam, state);
 }
 
 function requiredZoomForLocal(
@@ -137,7 +128,7 @@ function requiredThreatContextZoom(
   const range2 = range * range;
   let required = CAMERA_DIRECTOR_MIN_ZOOM;
   for (const ent of state.entities.values()) {
-    if (!isActiveHostileThreat(player, ent, primaryTarget)) continue;
+    if (!isActiveHostileThreat(state, player, ent, primaryTarget)) continue;
     const dx = ent.pos.x - player.pos.x;
     const dz = ent.pos.z - player.pos.z;
     if (dx * dx + dz * dz > range2) continue;
@@ -261,9 +252,15 @@ export function createCameraDirector() {
       if (focus && focus.active) {
         targetId = focus.targetId;
         target = entityFor(state, targetId);
-        if (target) {
+        if (target && isCombatPairTetherTarget(state, player, target)) {
           requestedMode = CameraDirectorMode.FOCUS_PAIR;
           pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
+        } else {
+          // Presentation fails closed if a stale/corrupt Focus lease points at mining clutter,
+          // civilians, allies, or clean lawful traffic. The sim clears the lease on its next tick;
+          // the render path must not expose even one pair-camera takeover frame in the meantime.
+          targetId = null;
+          target = null;
         }
       }
       if (requestedMode === CameraDirectorMode.FOLLOW && tether && tether.active) {

@@ -19,6 +19,7 @@ function ship(id, x, z, team = 'enemy') {
     hull: 100,
     alive: true,
     pos: { x, z },
+    data: team === 'enemy' ? { encounter: { id: 'camera-composition-check-hostile' } } : {},
   };
 }
 
@@ -35,6 +36,7 @@ function payload(id, x, z) {
 function stateWith(entities, attachments = {}) {
   return {
     entities: new Map(entities.map((entity) => [entity.id, entity])),
+    playerId: 1,
     combat: { attachments: { byId: attachments } },
   };
 }
