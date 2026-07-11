@@ -11,6 +11,11 @@ import { COMMODITIES }  from '../../data/commodities.js';
 import { missionPreflight } from '../missionPreflight.js';
 import { missionConsequenceSummary } from '../missionPreflight.js';
 import { mountContactPortrait } from '../portraitArt.js';
+import {
+  stationContactMemoryFor,
+  stationContactMemoryLine,
+  stationContactStanding,
+} from '../../data/stationContacts.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -531,7 +536,9 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
     tags.push({ label, text, kind });
   };
 
-  if (contact.canonicalKey) add('Recurring', contact.roleLabel || ROLE_LABELS[role] || 'known contact', 'story');
+  const memory = stationContactMemoryFor(state, contact.id);
+  if (memory && memory.met) add('Contact', stationContactStanding(memory), 'story');
+  else if (contact.canonicalKey) add('Contact', 'New recurring contact', 'story');
 
   if (role === 'merchant') {
     const route = bestTradeRoute(state, stationId);
@@ -1020,15 +1027,35 @@ export function createBarPanel(ctx) {
     const card = btn.closest('[data-contact]');
     const contactId = card.getAttribute('data-contact');
     const choiceId  = btn.getAttribute('data-choice');
-    ctx.bus.emit('ui:talkContact', { contactId, choiceId });
-    ctx.bus.emit('audio:cue', { id: 'ui_click' });
-
-    // Find the contact and build a real reply
     const contact = currentContacts.find(c => c.id === contactId);
     const reply   = card.querySelector('.st-bar-reply');
     if (!reply || !contact) return;
+    ctx.bus.emit('ui:talkContact', {
+      contactId,
+      choiceId,
+      stationId: currentStationId,
+      canonicalKey: contact.canonicalKey || null,
+      name: contact.name,
+    });
+    ctx.bus.emit('audio:cue', { id: 'ui_click' });
+
+    // Find the contact and build a real reply
 
     const result = buildReply(contact.role, choiceId, ctx, currentStationId, contact);
+
+    // The contact system consumes synchronously, so reflect continuity immediately rather than
+    // making the player leave/re-enter the Bar to see that this conversation happened.
+    const memory = stationContactMemoryFor(ctx.state || {}, contactId);
+    const memoryLine = card.querySelector('.st-bar-line');
+    if (memoryLine) memoryLine.textContent = stationContactMemoryLine(memory, contact.line);
+    const intel = card.querySelector('.st-bar-intel');
+    if (intel) {
+      intel.innerHTML = barContactIntelTags(contact, ctx.state || {}, currentStationId).map((tag) =>
+        '<span class="st-bar-intel-chip st-bar-intel-chip--' + escapeHtml(tag.kind || 'info') + '">' +
+          '<b>' + escapeHtml(tag.label) + '</b> ' + escapeHtml(tag.text) +
+        '</span>'
+      ).join('');
+    }
 
     // Clear any previous mission buttons
     const oldOffer = reply.parentNode.querySelector('.st-bar-offer');
@@ -1123,12 +1150,13 @@ export function createBarPanel(ctx) {
 
       const body = document.createElement('div');
       body.className = 'st-bar-body';
+      const memory = stationContactMemoryFor(ctx.state || {}, c.id);
       body.innerHTML =
         '<div class="st-bar-name">' + escapeHtml(c.name) +
           ' <span class="st-bar-role mono">' + escapeHtml(roleLabel) +
           (fac ? ' · ' + escapeHtml(fac.short || fac.name) : '') +
           '</span></div>' +
-        '<div class="st-bar-line">' + escapeHtml(c.line) + '</div>' +
+        '<div class="st-bar-line">' + escapeHtml(stationContactMemoryLine(memory, c.line)) + '</div>' +
         '<div class="st-bar-intel">' +
           barContactIntelTags(c, ctx.state || {}, currentStationId).map((tag) =>
             '<span class="st-bar-intel-chip st-bar-intel-chip--' + escapeHtml(tag.kind || 'info') + '">' +
@@ -1139,7 +1167,7 @@ export function createBarPanel(ctx) {
         '<div class="st-bar-choices">' +
           choices.map(ch => '<button data-choice="' + escapeHtml(ch.id) + '">' + escapeHtml(ch.label) + '</button>').join('') +
         '</div>' +
-        '<div class="st-bar-reply mono"></div>';
+        '<div class="st-bar-reply mono" role="status" aria-live="polite" aria-atomic="true"></div>';
 
       mountContactPortrait(avatarHost, c, { className: 'st-bar-avatar', size: 64, factionColor: fac && fac.color });
       card.appendChild(avatarHost);

@@ -16,6 +16,7 @@ import { createMarketPanel } from './market.js';
 import { createShipyardPanel } from './shipyard.js';
 import { createOutfittingPanel } from './outfitting.js';
 import { createServicesPanel } from './services.js';
+import { buildDockArrival } from '../dockArrival.js';
 import { createManufacturePanel } from './manufacture.js';
 import { createFactionsPanel, tierFor, factionStandingGuidance } from './factions.js';
 import { createBarPanel } from './bar.js';
@@ -1062,6 +1063,7 @@ export const stationHub = {
   _undockChargeTimer: null,
   _exitInFlight: false,
   _setInspectorOpen: null,
+  _stationLifeEl: null,
 
   /** Build the screen DOM once and cache it. Called by uiRoot/screenManager. */
   mount(rootEl, ctx) {
@@ -1122,6 +1124,31 @@ export const stationHub = {
     const factionStripe = document.createElement('div');
     factionStripe.className = 'st-faction-stripe';
     centerStage.appendChild(factionStripe);
+
+    // Returning-dock causality strip. First dock keeps the authored handoff as the sole instructor,
+    // so this stays hidden until that one-voice surface is gone.
+    const stationLife = document.createElement('section');
+    stationLife.className = 'st-life-strip';
+    stationLife.hidden = true;
+    stationLife.setAttribute('aria-label', 'Local station activity');
+    stationLife.innerHTML =
+      '<button type="button" class="st-life-primary st-meta-btn"></button>' +
+      '<span class="st-life-news"></span>' +
+      '<span class="st-life-traffic mono"></span>' +
+      '<span class="st-life-paperwork mono"></span>';
+    centerStage.appendChild(stationLife);
+    this._stationLifeEl = stationLife;
+    stationLife.querySelector('.st-life-primary').addEventListener('click', () => {
+      const target = stationLife.getAttribute('data-primary-target');
+      if (target === 'undock') {
+        if (this._undockBtn) this._undockBtn.focus({ preventScroll: true });
+        return;
+      }
+      if (TABS.some((tab) => tab.id === target) || target === 'hold') {
+        this.setTab(target, { focusRail: true });
+        ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+      }
+    });
 
     // Hidden effect mounts only (no layout). Keeps command-deck effect factories parkable.
     // NOT a permanent service dock / bullseye — Services tool owns verbs.
@@ -1262,6 +1289,7 @@ export const stationHub = {
       if (ev.target.closest('[data-handoff-dismiss]')) {
         this._handoffDismissed = true;
         handoff.hidden = true;
+        this._refreshStationLife();
         try {
           if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('sf-station-handoff-dismissed', '1');
         } catch (_) { /* ignore */ }
@@ -3503,7 +3531,9 @@ export const stationHub = {
     this._resolveStation();
     if (this._stationId && this._stationId !== oldId) {
       this._triggerArrivalEdgeTrace();
-      this._playArrivalBroadcast();
+      const handoffOwnsVoice = !this._handoffDismissed
+        && firstDockHandoffVisible(this._ctx && this._ctx.state, this._stationId);
+      if (!handoffOwnsVoice) this._playArrivalBroadcast();
     }
     this._refreshTopbar();
     this._refreshGraffiti();
@@ -3513,6 +3543,7 @@ export const stationHub = {
     this._refreshOriginRail();
     this._refreshLadderRail();
     this._refreshHandoff();
+    this._refreshStationLife();
     this._refreshSchematicAndNodes();
     this._refreshEconAndReadiness();
     // Command-deck effects resume on show; the scanner-grid "console acquisition" sweep fires ONLY on
@@ -3556,6 +3587,7 @@ export const stationHub = {
     this._refreshOriginRail();
     this._refreshLadderRail();
     this._refreshHandoff();
+    this._refreshStationLife();
     this._refreshSchematicAndNodes();
     this._refreshEconAndReadiness();
     this._updateInspector();
@@ -3585,6 +3617,33 @@ export const stationHub = {
     this._airlockEl.appendChild(frag);
   },
 
+  _refreshStationLife() {
+    const el = this._stationLifeEl;
+    if (!el) return;
+    const state = this._ctx && this._ctx.state;
+    const stn = this._stationDef();
+    const handoffOwnsVoice = !this._handoffDismissed && firstDockHandoffVisible(state, this._stationId);
+    if (!state || !stn || handoffOwnsVoice) {
+      el.hidden = true;
+      return;
+    }
+    const model = buildDockArrival(state, stn);
+    const primary = el.querySelector('.st-life-primary');
+    const news = el.querySelector('.st-life-news');
+    const traffic = el.querySelector('.st-life-traffic');
+    const paperwork = el.querySelector('.st-life-paperwork');
+    primary.textContent = model.primaryAction;
+    primary.setAttribute('aria-label', `${model.primaryAction}. ${model.serviceState}.`);
+    el.setAttribute('data-primary-target', model.primaryTarget);
+    news.textContent = model.news || '';
+    news.hidden = !model.news;
+    traffic.textContent = model.traffic || '';
+    traffic.hidden = !model.traffic;
+    paperwork.textContent = model.paperwork || '';
+    paperwork.hidden = !model.paperwork;
+    el.hidden = false;
+  },
+
   /** Subscribe to the data-change events that should rebuild the relevant panel (§5.5). Only the
    *  active panel is refreshed to stay cheap; switching tabs refreshes on demand. */
   _subscribe() {
@@ -3598,6 +3657,7 @@ export const stationHub = {
     };
     const refreshDeparture = () => { if (this._visible()) this._refreshDeparture(); };
     const refreshHandoff = () => { if (this._visible()) this._refreshHandoff(); };
+    const refreshStationLife = () => { if (this._visible()) this._refreshStationLife(); };
     const refreshOrigins = () => { if (this._visible()) this._refreshOriginRail(); };
     const refreshLadders = () => { if (this._visible()) this._refreshLadderRail(); };
     // market-affecting
@@ -3668,6 +3728,9 @@ export const stationHub = {
     bus.on('dock:docked', refreshLadders);
     bus.on('economy:eventStarted', onActive(['market']));
     bus.on('economy:eventEnded', onActive(['market']));
+    bus.on('news:headline', refreshStationLife);
+    bus.on('news:dockCards', refreshStationLife);
+    bus.on('stationLife:trafficChanged', refreshStationLife);
     // Implicit Back (Esc/B/E via input gate, backdrop via screenManager) and any external
     // station:exitRequest land here — one owner for clean→confirm→committed undock.
     bus.on('station:exitRequest', (payload) => {
@@ -5376,6 +5439,17 @@ button.st-departure-chip:hover { background: rgba(255,255,255,0.055); }
   background: var(--st-surface); box-shadow: var(--st-shadow); }
 .st-handoff-step-title { font-size: .84rem; }
 .st-handoff-step-copy { font-size: .76rem; line-height: 1.5; color: var(--ink-dim); }
+
+/* Returning-dock life strip: one compact action + real local receipts, never a second essay. */
+.st-life-strip { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 4px 14px;
+  border-bottom: 1px solid var(--st-line); color: var(--ink-dim); font-size: .72rem; overflow: hidden; }
+.st-life-strip[hidden] { display: none; }
+.st-life-strip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-life-strip > span + span { padding-left: 10px; border-left: 1px solid var(--st-line); }
+.st-life-primary { flex: none; color: var(--accent); }
+.st-life-news { flex: 1 1 45%; color: var(--ink); }
+.st-life-traffic { flex: 1 1 34%; }
+.st-life-paperwork { flex: none; color: var(--warn); }
 
 /* Tab panels + content */
 .st-tabpanel { padding: 22px 26px; }
