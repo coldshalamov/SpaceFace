@@ -4,6 +4,14 @@
 // dynamic without violating the no-yaw-follow rule (we never rotate the camera's heading).
 import * as THREE from 'three';
 import { damp } from '../core/math.js';
+import { globalToFrame } from '../core/coordinates.js';
+import { readFrameOrigin } from './frameCoordinates.js';
+import { CameraDirectorMode, createCameraDirector } from './cameraDirector.js';
+
+// M2 floating origin: chase focus / camera pose are frame-local. Entity.pos stays galactic-global.
+const _frameOriginScratch = { x: 0, z: 0 };
+const _playerLocalScratch = { x: 0, z: 0 };
+const _playerLocalProxy = { pos: _playerLocalScratch };
 
 const THREAT_COMPOSE_RANGE = 600;
 const THREAT_COMPOSE_MAX_BIAS = 42;
@@ -291,11 +299,23 @@ export function createChaseCamera(state) {
   let _compositionBiasX = 0;
   let _compositionBiasZ = 0;
   let _contextZoomBias = 0;
+  const cameraDirector = createCameraDirector();
+  let _directorFrame = cameraDirector.output;
+  const _directorView = {
+    followX: 0,
+    followZ: 0,
+    followZoom: DEFAULT_ZOOM,
+    fov: cam.fov,
+    aspect: cam.aspect,
+    tiltDeg: c.tilt || 60,
+  };
 
   function snapToEntity(p) {
     if (!p || !p.pos) return false;
-    const px = finiteOr(p.pos.x, 0);
-    const pz = finiteOr(p.pos.z, 0);
+    const frameOrigin = readFrameOrigin(state, _frameOriginScratch);
+    globalToFrame(p.pos, frameOrigin, _playerLocalScratch);
+    const px = _playerLocalScratch.x;
+    const pz = _playerLocalScratch.z;
     c.focus.set(px, 0, pz);
     _dynamicZoom = finiteOr(c.zoom, DEFAULT_ZOOM);
     _speedZoomFactor = SPEED_ZOOM_MIN;
@@ -304,6 +324,7 @@ export function createChaseCamera(state) {
     cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
     cam.lookAt(c.focus.x, 0, c.focus.z);
     cam.updateMatrixWorld(true);
+    _directorFrame = cameraDirector.reset(px, pz, _dynamicZoom);
     _snappedPlayerId = p.id;
     return true;
   }
@@ -321,6 +342,27 @@ export function createChaseCamera(state) {
       const p = state.entities.get(state.playerId);
       return snapToEntity(p);
     },
+    // M2: on frameOriginSeq change, reproject local focus/camera so the frame does not one-frame jump.
+    // Composition biases are relative and stay valid; director absolute focus is shifted by the same delta.
+    reprojectFrame(dx, dz) {
+      const ox = Number.isFinite(dx) ? dx : 0;
+      const oz = Number.isFinite(dz) ? dz : 0;
+      if (ox === 0 && oz === 0) return;
+      if (c.focus) {
+        c.focus.x += ox;
+        c.focus.z += oz;
+      }
+      cam.position.x += ox;
+      cam.position.z += oz;
+      if (cameraDirector && typeof cameraDirector.reprojectFrame === 'function') {
+        cameraDirector.reprojectFrame(ox, oz);
+      } else if (_directorFrame) {
+        _directorFrame.focusX = finiteOr(_directorFrame.focusX, 0) + ox;
+        _directorFrame.focusZ = finiteOr(_directorFrame.focusZ, 0) + oz;
+      }
+      cam.updateMatrixWorld(true);
+    },
+    composition() { return _directorFrame; },
     // pushZoom(factor, durationS): factor>0 pushes the camera OUT (wider), factor<0 pushes IN
     // (tighter) for `durationS`, easing in and out. e.g. pushZoom(0.25, 0.8) widens 25% over 0.8s;
     // pushZoom(-0.04, 0.25) tightens to 0.96x for 0.25s (kill-cam kiss). The effect is additive on
@@ -350,17 +392,27 @@ export function createChaseCamera(state) {
       let fx = finiteOr(c.focus.x, 0), fz = finiteOr(c.focus.z, 0);
       let bankForLean = 0;
       let playerSpeed = 0;
+      let directorOwnsComposition = false;
       if (p && p.pos) {
         if (_snappedPlayerId !== p.id || !Number.isFinite(c.focus.x) || !Number.isFinite(c.focus.z)) {
           snapToEntity(p);
         }
-        fx = finiteOr(p.pos.x, 0); fz = finiteOr(p.pos.z, 0);
+        // Frame-local player target: composition biases stay relative (global deltas === local deltas).
+        const frameOrigin = readFrameOrigin(state, _frameOriginScratch);
+        globalToFrame(p.pos, frameOrigin, _playerLocalScratch);
+        _playerLocalProxy.pos = _playerLocalScratch;
+        fx = _playerLocalScratch.x;
+        fz = _playerLocalScratch.z;
         const vx = p.vel ? finiteOr(p.vel.x, 0) : 0;
         const vz = p.vel ? finiteOr(p.vel.z, 0) : 0;
         playerSpeed = Math.hypot(vx, vz);
         const focusGap = Math.hypot(c.focus.x - fx, c.focus.z - fz);
-        if (focusGap > Math.max(320, _dynamicZoom * 2.6)) {
+        if (_directorFrame.mode === CameraDirectorMode.FOLLOW
+          && focusGap > Math.max(320, _dynamicZoom * 2.6)) {
           snapToEntity(p);
+          globalToFrame(p.pos, readFrameOrigin(state, _frameOriginScratch), _playerLocalScratch);
+          fx = _playerLocalScratch.x;
+          fz = _playerLocalScratch.z;
         }
         if (playerSpeed > 1) {
           const laCap = isCruising(state) ? LOOKAHEAD_MAX_CRUISE : LOOKAHEAD_MAX;
@@ -372,36 +424,63 @@ export function createChaseCamera(state) {
         fz += aimLead.z;
         const baseFx = fx;
         const baseFz = fz;
-        const composition = resolveChaseComposition(state, p, { x: baseFx, z: baseFz });
-        const motionScale = isMotionReduced(state) ? 0.35 : 1;
-        const desiredBiasX = (composition.x - baseFx) * motionScale;
-        const desiredBiasZ = (composition.z - baseFz) * motionScale;
-        _compositionBiasX = dampSlewed(_compositionBiasX, desiredBiasX, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
-        _compositionBiasZ = dampSlewed(_compositionBiasZ, desiredBiasZ, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
-        _contextZoomBias = damp(_contextZoomBias, (composition.zoomBias || 0) * motionScale, CONTEXT_ZOOM_LERP, frameDt);
-        fx = baseFx + _compositionBiasX;
-        fz = baseFz + _compositionBiasZ;
-        const desiredSafe = clampFocusToPlayerSafeRect({ x: fx, z: fz }, p, {
-          zoom: _dynamicZoom,
-          fov: cam.fov,
-          aspect: cam.aspect,
-        });
-        fx = desiredSafe.x;
-        fz = desiredSafe.z;
-        // FR-5: during the recenter window, ease the accumulated lookahead/aim/composition bias
-        // toward the ship so a boost-release or slingshot glides to center rather than snapping.
-        if (_recenterT > 0) {
-          _recenterT = Math.max(0, _recenterT - frameDt);
-          const biasScale = recenterBiasScale(_recenterT, _recenterDur);
-          fx = p.pos.x + (fx - p.pos.x) * biasScale;
-          fz = p.pos.z + (fz - p.pos.z) * biasScale;
+        _directorView.followX = baseFx;
+        _directorView.followZ = baseFz;
+        _directorView.followZoom = resolveBaseZoom() * _speedZoomFactor;
+        _directorView.fov = cam.fov;
+        _directorView.aspect = cam.aspect;
+        _directorView.tiltDeg = c.tilt || 60;
+        // Seed pair entry from the pose the player actually saw last frame, not the director's
+        // undamped FOLLOW request. Functional pair framing is identical under reduced motion.
+        if (_directorFrame.mode === CameraDirectorMode.FOLLOW) {
+          _directorFrame = cameraDirector.syncFollow(c.focus.x, c.focus.z, _dynamicZoom);
+        }
+        _directorFrame = cameraDirector.step(frameDt, state, p, _directorView);
+        directorOwnsComposition = _directorFrame.mode !== CameraDirectorMode.FOLLOW;
+        if (directorOwnsComposition) {
+          fx = _directorFrame.focusX;
+          fz = _directorFrame.focusZ;
+          _compositionBiasX = 0;
+          _compositionBiasZ = 0;
+          _contextZoomBias = 0;
+        } else {
+          // Seed focus is frame-local; threat/tether biases are pure relative offsets (origin-invariant).
+          const composition = resolveChaseComposition(state, p, { x: baseFx, z: baseFz });
+          const motionScale = isMotionReduced(state) ? 0.35 : 1;
+          const desiredBiasX = (composition.x - baseFx) * motionScale;
+          const desiredBiasZ = (composition.z - baseFz) * motionScale;
+          _compositionBiasX = dampSlewed(_compositionBiasX, desiredBiasX, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
+          _compositionBiasZ = dampSlewed(_compositionBiasZ, desiredBiasZ, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
+          _contextZoomBias = damp(_contextZoomBias, (composition.zoomBias || 0) * motionScale, CONTEXT_ZOOM_LERP, frameDt);
+          fx = baseFx + _compositionBiasX;
+          fz = baseFz + _compositionBiasZ;
+          const desiredSafe = clampFocusToPlayerSafeRect({ x: fx, z: fz }, _playerLocalProxy, {
+            zoom: _dynamicZoom,
+            fov: cam.fov,
+            aspect: cam.aspect,
+          });
+          fx = desiredSafe.x;
+          fz = desiredSafe.z;
+          // FR-5: during the recenter window, ease the accumulated lookahead/aim/composition bias
+          // toward the ship so a boost-release or slingshot glides to center rather than snapping.
+          if (_recenterT > 0) {
+            _recenterT = Math.max(0, _recenterT - frameDt);
+            const biasScale = recenterBiasScale(_recenterT, _recenterDur);
+            fx = _playerLocalScratch.x + (fx - _playerLocalScratch.x) * biasScale;
+            fz = _playerLocalScratch.z + (fz - _playerLocalScratch.z) * biasScale;
+          }
         }
         // counter-lean uses the ship's bank (already smoothed); fraction tuned for chase readability
         bankForLean = (Number.isFinite(p.bank) ? p.bank : 0) * 0.068;
       }
       const followLerp = finiteOr(c.lerp, 6);
-      c.focus.x = damp(c.focus.x, fx, followLerp, frameDt);
-      c.focus.z = damp(c.focus.z, fz, followLerp, frameDt);
+      if (directorOwnsComposition) {
+        c.focus.x = fx;
+        c.focus.z = fz;
+      } else {
+        c.focus.x = damp(c.focus.x, fx, followLerp, frameDt);
+        c.focus.z = damp(c.focus.z, fz, followLerp, frameDt);
+      }
 
       // --- dynamic zoom ---
       // Rank-13: chaseClose setting forces a tighter base; otherwise honor c.zoom (default 72).
@@ -417,27 +496,28 @@ export function createChaseCamera(state) {
         }
         targetZoom = baseZoom * _speedZoomFactor;
         targetZoom *= (1 + _contextZoomBias);
-        // Flyby Focus (overnight B1): pull camera in slightly so player + pass target stay framed.
-        const ff = state.player && state.player.flybyFocus;
-        if (ff && Number.isFinite(ff.zoom) && ff.zoom > 0.01) {
-          targetZoom *= (1 - Math.min(0.22, ff.zoom * 0.18));
-        }
       }
       // scripted push-zoom (dock fly-in / jump / kill-cam): multiplies the view while active, then
       // decays. Negative factors push IN (tighter). Applied to targetZoom so it eases through the
       // same _dynamicZoom damping as everything else.
       if (Math.abs(_pushZoom) > 0.0001) {
-        targetZoom *= (1 + _pushZoom);
+        if (!directorOwnsComposition) targetZoom *= (1 + _pushZoom);
         _pushZoom += -_pushZoom * _pushZoomDecay * frameDt;
         if (Math.abs(_pushZoom) < 0.0001) _pushZoom = 0;
       }
-      _dynamicZoom = damp(_dynamicZoom, targetZoom, ZOOM_LERP, frameDt);
-      if (p && p.pos) {
-        const safeFocus = clampFocusToPlayerSafeRect(c.focus, p, { zoom: _dynamicZoom, fov: cam.fov, aspect: cam.aspect });
+      _dynamicZoom = directorOwnsComposition
+        ? _directorFrame.zoom
+        : damp(_dynamicZoom, targetZoom, ZOOM_LERP, frameDt);
+      if (p && p.pos && !directorOwnsComposition) {
+        // Safe-rect is frame-local (player proxy holds projected XZ for this frame).
+        const safeFocus = clampFocusToPlayerSafeRect(c.focus, _playerLocalProxy, { zoom: _dynamicZoom, fov: cam.fov, aspect: cam.aspect });
         if (safeFocus.clamped) {
           c.focus.x = safeFocus.x;
           c.focus.z = safeFocus.z;
         }
+      }
+      if (!directorOwnsComposition) {
+        _directorFrame = cameraDirector.syncFollow(c.focus.x, c.focus.z, _dynamicZoom);
       }
       computeOffset(_dynamicZoom);
       let shakeRoll = 0;

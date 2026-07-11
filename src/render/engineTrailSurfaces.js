@@ -122,6 +122,37 @@ const TRAIL_STREAK_FRAG = /* glsl */`
   }
 `;
 
+const INSTANCED_TRAIL_STREAK_VERT = /* glsl */`
+  attribute vec3 aTrailColor;
+  attribute float aTrailOpacity;
+  varying vec2 vTrailUv;
+  varying vec3 vTrailColor;
+  varying float vTrailOpacity;
+  void main() {
+    vTrailUv = uv;
+    vTrailColor = aTrailColor;
+    vTrailOpacity = aTrailOpacity;
+    gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+  }
+`;
+
+const INSTANCED_TRAIL_STREAK_FRAG = /* glsl */`
+  precision mediump float;
+  ${TRAIL_GLSL_LIB}
+  uniform float uTrailScroll;
+  uniform float uTrailTime;
+  varying vec2 vTrailUv;
+  varying vec3 vTrailColor;
+  varying float vTrailOpacity;
+  void main() {
+    float along = fract(vTrailUv.y + uTrailScroll);
+    float side = vTrailUv.x * 2.0 - 1.0;
+    float streak = trailSampleProcedural(along, side, uTrailTime);
+    if (streak < 0.008) discard;
+    gl_FragColor = vec4(vTrailColor * (0.65 + streak * 0.55), vTrailOpacity * streak);
+  }
+`;
+
 export function createTrailStreakMaterial(color) {
   return new THREE.ShaderMaterial({
     uniforms: {
@@ -134,6 +165,22 @@ export function createTrailStreakMaterial(color) {
     fragmentShader: TRAIL_STREAK_FRAG,
     transparent: true,
     depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+  });
+}
+
+export function createInstancedTrailStreakMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTrailScroll: { value: 0 },
+      uTrailTime: { value: 0 },
+    },
+    vertexShader: INSTANCED_TRAIL_STREAK_VERT,
+    fragmentShader: INSTANCED_TRAIL_STREAK_FRAG,
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
   });
@@ -160,9 +207,70 @@ export function createTrailStreakSlot(scene) {
 }
 
 export function initTrailStreakPool(scene, cap) {
-  const pool = [];
-  for (let i = 0; i < cap; i++) pool.push(createTrailStreakSlot(scene));
+  const pool = createTrailStreakPool(cap);
+  scene.add(pool.mesh);
   return pool;
+}
+
+function createTrailStreakPool(cap) {
+  const capacity = Math.max(1, Math.floor(cap || 1));
+  const geometry = createTrailStreakGeometry().clone();
+  const colorAttribute = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
+  const opacityAttribute = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
+  colorAttribute.setUsage(THREE.DynamicDrawUsage);
+  opacityAttribute.setUsage(THREE.DynamicDrawUsage);
+  geometry.setAttribute('aTrailColor', colorAttribute);
+  geometry.setAttribute('aTrailOpacity', opacityAttribute);
+
+  const mesh = new THREE.InstancedMesh(geometry, createInstancedTrailStreakMaterial(), capacity);
+  mesh.name = 'SF_TrailStreakInstances';
+  mesh.count = 0;
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 11;
+
+  return {
+    mesh,
+    capacity,
+    colorAttribute,
+    opacityAttribute,
+    _transform: new THREE.Object3D(),
+  };
+}
+
+export function updateTrailStreakInstance(pool, index, {
+  x, y, z, vx, vz, width, length, opacity, color,
+}) {
+  if (!pool || !pool.mesh || index < 0 || index >= pool.capacity || !Number.isInteger(index)) {
+    throw new RangeError(`trail instance index ${index} exceeds pool capacity`);
+  }
+  const transform = pool._transform;
+  transform.position.set(x, y || 0.4, z);
+  transform.rotation.set(0, Math.atan2(vz || 0, vx || 0) - Math.PI * 0.5, 0);
+  transform.scale.set(Math.max(0.01, width), 1, Math.max(0.01, length));
+  transform.updateMatrix();
+  pool.mesh.setMatrixAt(index, transform.matrix);
+  pool.colorAttribute.setXYZ(index,
+    color && Number.isFinite(color.r) ? color.r : 1,
+    color && Number.isFinite(color.g) ? color.g : 1,
+    color && Number.isFinite(color.b) ? color.b : 1);
+  pool.opacityAttribute.setX(index, Math.max(0, opacity));
+}
+
+export function commitTrailStreakInstances(pool, liveCount, { scroll, time } = {}) {
+  if (!pool || !pool.mesh || liveCount < 0 || liveCount > pool.capacity || !Number.isInteger(liveCount)) {
+    throw new RangeError(`trail live count ${liveCount} exceeds pool capacity`);
+  }
+  pool.mesh.count = liveCount;
+  pool.mesh.instanceMatrix.needsUpdate = true;
+  pool.colorAttribute.needsUpdate = true;
+  pool.opacityAttribute.needsUpdate = true;
+  pool.mesh.material.uniforms.uTrailTime.value = time || 0;
+  pool.mesh.material.uniforms.uTrailScroll.value = scroll || 0;
+}
+
+export function clearTrailStreakInstances(pool) {
+  if (pool && pool.mesh) pool.mesh.count = 0;
 }
 
 export function updateTrailStreakMesh(mesh, {
@@ -217,12 +325,23 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
   let count = 0;
 
   return {
+    // Samples are frame-local XZ (callers project global→local before push).
     push(x, z, rot) {
       pts[head * 3] = x;
       pts[head * 3 + 1] = z;
       pts[head * 3 + 2] = rot;
       head = (head + 1) % nSeg;
       if (count < nSeg) count++;
+    },
+    // M2: shift stored samples on frame-origin rebase without dropping the trail history.
+    reproject(dx, dz) {
+      const ox = Number.isFinite(dx) ? dx : 0;
+      const oz = Number.isFinite(dz) ? dz : 0;
+      if (ox === 0 && oz === 0) return;
+      for (let i = 0; i < nSeg; i++) {
+        pts[i * 3] += ox;
+        pts[i * 3 + 1] += oz;
+      }
     },
     rebuild(opacity, scroll, time) {
       if (opacity != null) mat.uniforms.uOpacity.value = opacity;
@@ -264,7 +383,14 @@ export function createPrecompileTrailSurfaces() {
     createRibbonTrailMaterial('#7fe0ff'),
   );
   ribbon.name = 'SF_Precompile_RibbonTrail';
-  const streak = new THREE.Mesh(createTrailStreakGeometry(), createTrailStreakMaterial('#88aaff'));
+  const streakPool = createTrailStreakPool(1);
+  updateTrailStreakInstance(streakPool, 0, {
+    x: 0, y: 0.4, z: 0, vx: 1, vz: 0,
+    width: 1, length: 4, opacity: 0.8,
+    color: new THREE.Color('#88aaff'),
+  });
+  commitTrailStreakInstances(streakPool, 1, { scroll: 0.17, time: 0.8 });
+  const streak = streakPool.mesh;
   streak.name = 'SF_Precompile_TrailStreak';
   return { ribbon, streak };
 }

@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 
 import { createSimulation } from '../src/core/sim.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 
 assert.equal(typeof window, 'undefined', 'this check must run headless');
 assert.ok(existsSync(new URL('../src/systems/pirateRumor.js', import.meta.url)),
@@ -86,7 +87,7 @@ function testAmbushesSurfaceZoneHeadline() {
 
 function testCivilianLaneDeathsCount() {
   const t = boot(1313, 'sector_tethys_junction');
-  const lanePos = { x: 500, z: 1500 };
+  const lanePos = sectorLocalToGlobalForSector({ x: 500, z: 1500 }, 'sector_tethys_junction');
   for (let i = 0; i < REQUIRED_RUMOR_EVENTS; i++) {
     const hauler = t.sim.spawn({
       type: 'ship',

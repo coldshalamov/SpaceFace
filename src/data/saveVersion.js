@@ -5,4 +5,6 @@
 // v6: player-authored navigation intent persists route/waypoint/autoTravel across Continue.
 // v7: BP-01.1 loss-ledger provenance persists across Continue.
 // v8: BP-01/C11 battle-aftermath wreck markers persist across Continue.
-export const CURRENT_VERSION = 8;
+// v9: all persisted spatial positions use galactic-global XZ (`global_v1`).
+// v10: first-dock Hauler/Hunter/Prospector origin progress persists under data.careerOrigins.
+export const CURRENT_VERSION = 10;

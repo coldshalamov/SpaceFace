@@ -26,11 +26,11 @@ import * as THREE from 'three';
 import { createEnergyVolume, createPlumeVolume, createMasslineRibbonMaterial, updateEnergyMaterial } from './energy/energyMaterials.js';
 import {
   buildParticleTrailMaterial,
+  commitTrailStreakInstances,
   createPrecompileTrailSurfaces,
   createRibbonTrail,
-  hideTrailStreakMesh,
   initTrailStreakPool,
-  updateTrailStreakMesh,
+  updateTrailStreakInstance,
 } from './engineTrailSurfaces.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import {
@@ -41,6 +41,7 @@ import {
   buildProjectileTrailSpawnPlan,
   assertProjectileTrailProfileContracts,
 } from './vfxProfiles.js';
+import { createRenderFrameMembrane } from './frameCoordinates.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 
@@ -176,6 +177,14 @@ export const vfx = {
     this._socketReferenceForward = new THREE.Vector3(-1, 0, 0);
     this._driveScratch = { drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0 };
     this._zeroPos = { x: 0, z: 0 };
+    // M2: VFX particle/sprite/trail XZ is frame-local; spawn inputs stay galactic-global.
+    this._frameMembrane = createRenderFrameMembrane().reset(ctx.state);
+    this._spawnLocalXZ = { x: 0, z: 0 };
+    this._entityLocalXZ = { x: 0, z: 0 };
+    // Renderer prepareFrame calls this on frameOriginSeq change (no effect erasure).
+    if (ctx.state && ctx.state.render) {
+      ctx.state.render.vfxReprojectFrame = (dx, dz) => this.reprojectFrame(dx, dz);
+    }
     this._liveSpriteCount = 0;
     this._activeLightCount = 0;
     this._presentationCueCount = 0;
@@ -320,9 +329,10 @@ export const vfx = {
     for (let i = 0; i < TRAIL_STREAK_CAP; i++) {
       this._ts.push({
         alive: false, age: 0, life: 1, size0: 1, size1: 1, op0: 1,
-        x: 0, y: 0, z: 0, vx: 0, vz: 0, stretch: 3.2,
+        x: 0, y: 0, z: 0, vx: 0, vz: 0, stretch: 3.2, r: 1, g: 1, b: 1,
       });
     }
+    this._trailStreakColor = new THREE.Color();
     this._tsHead = 0;
     this._liveTrailStreakCount = 0;
     this._activeTrailStreaks = new Int32Array(TRAIL_STREAK_CAP);
@@ -424,6 +434,92 @@ export const vfx = {
   },
 
   // -------------------------------------------------------------------------
+  // M2 frame-local membrane (spawn inputs are galactic-global; GPU state is local)
+  // -------------------------------------------------------------------------
+  _syncFrameMembrane() {
+    if (!this._frameMembrane) return null;
+    const rebase = this._frameMembrane.sync(this.state);
+    if (rebase.changed) this.reprojectFrame(rebase.dx, rebase.dz);
+    return rebase;
+  },
+
+  _toLocalXZ(x, z, out) {
+    const target = out || this._spawnLocalXZ || { x: 0, z: 0 };
+    if (!this._frameMembrane) {
+      target.x = Number.isFinite(x) ? x : 0;
+      target.z = Number.isFinite(z) ? z : 0;
+      return target;
+    }
+    // Reuse target as the global input scratch (globalToFrame reads before writing).
+    const gx = Number.isFinite(x) ? x : 0;
+    const gz = Number.isFinite(z) ? z : 0;
+    target.x = gx;
+    target.z = gz;
+    return this._frameMembrane.toLocal(target, target);
+  },
+
+  /**
+   * Shift all live local VFX anchors by origin rebase delta. Does not retire effects or lower quality.
+   * Aligns the internal membrane to the current world origin so a later sync is a no-op (no double shift).
+   */
+  reprojectFrame(dx, dz) {
+    const ox = Number.isFinite(dx) ? dx : 0;
+    const oz = Number.isFinite(dz) ? dz : 0;
+    if (ox !== 0 || oz !== 0) {
+      // Particles
+      if (this._px && this._pz && this._alive) {
+        const n = this._cap || 0;
+        for (let i = 0; i < n; i++) {
+          if (!this._alive[i]) continue;
+          this._px[i] += ox;
+          this._pz[i] += oz;
+        }
+      }
+      // Sprites
+      if (this._spr && this._spritePool) {
+        for (let i = 0; i < this._spr.length; i++) {
+          const st = this._spr[i];
+          if (!st || !st.alive) continue;
+          st.x += ox;
+          st.z += oz;
+          const spr = this._spritePool[i];
+          if (spr) {
+            spr.position.x += ox;
+            spr.position.z += oz;
+          }
+        }
+      }
+      // Trail streaks
+      if (this._ts) {
+        for (let i = 0; i < this._ts.length; i++) {
+          const st = this._ts[i];
+          if (!st || !st.alive) continue;
+          st.x += ox;
+          st.z += oz;
+        }
+      }
+      // Event lights
+      if (this._lights) {
+        for (const slot of this._lights) {
+          if (!slot || !slot.obj) continue;
+          slot.obj.position.x += ox;
+          slot.obj.position.z += oz;
+        }
+      }
+      // Ribbon engine trails store history in frame-local sample buffers — shift, then rebuild.
+      if (this._ribbonTrails && this._ribbonTrails.size) {
+        for (const trail of this._ribbonTrails.values()) {
+          if (!trail) continue;
+          if (typeof trail.reproject === 'function') trail.reproject(ox, oz);
+          if (typeof trail.rebuild === 'function') trail.rebuild(null, null, this._t);
+        }
+      }
+    }
+    // Prevent double-reproject when both renderer prepareFrame and vfx.update observe the same seq.
+    if (this._frameMembrane) this._frameMembrane.reset(this.state);
+  },
+
+  // -------------------------------------------------------------------------
   // Particle / sprite allocation
   // -------------------------------------------------------------------------
   _spawnParticle(x, z, vx, vz, life, size0, size1, c0, c1, drag, y, vy, trailAxis, trailStretch) {
@@ -436,7 +532,9 @@ export const vfx = {
     this._head = (i + 1) % cap;
     if (!this._alive[i]) this._activateParticle(i);
 
-    this._px[i] = x; this._py[i] = y || 0; this._pz[i] = z;
+    // Galactic-global spawn → frame-local GPU pose (Helios origin-zero is identity).
+    const local = this._toLocalXZ(x, z, this._spawnLocalXZ);
+    this._px[i] = local.x; this._py[i] = y || 0; this._pz[i] = local.z;
     this._vx[i] = vx; this._vy[i] = vy || 0; this._vz[i] = vz;
     this._age[i] = 0; this._life[i] = life; this._drag[i] = drag;
     this._size0[i] = size0; this._size1[i] = size1;
@@ -455,11 +553,12 @@ export const vfx = {
     else i = this._sHead;
     this._sHead = (i + 1) % n;
 
+    const local = this._toLocalXZ(x, z, this._spawnLocalXZ);
     const st = this._spr[i];
     const wasAlive = st.alive;
     st.alive = true; st.kind = kind; st.age = 0; st.life = life;
     st.size0 = size0; st.size1 = size1; st.op0 = op0; st.op1 = op1;
-    st.x = x; st.y = y || 0; st.z = z; st.vx = vx || 0; st.vz = vz || 0;
+    st.x = local.x; st.y = y || 0; st.z = local.z; st.vx = vx || 0; st.vz = vz || 0;
     st.roll = Math.random() * Math.PI * 2;
 
     const spr = this._spritePool[i];
@@ -471,7 +570,7 @@ export const vfx = {
     spr.material.color.set(color);
     spr.material.opacity = op0;
     spr.material.rotation = st.roll;
-    spr.position.set(x, y || 0, z);
+    spr.position.set(local.x, y || 0, local.z);
     spr.scale.setScalar(size0);
     return st;
   },
@@ -486,30 +585,26 @@ export const vfx = {
     this._tsHead = (i + 1) % n;
     const st = this._ts[i];
     const wasAlive = st.alive;
+    const local = this._toLocalXZ(x, z, this._spawnLocalXZ);
     st.alive = true;
     st.age = 0;
     st.life = life;
     st.size0 = size0;
     st.size1 = size1;
     st.op0 = op0;
-    st.x = x;
+    st.x = local.x;
     st.y = y || 0;
-    st.z = z;
+    st.z = local.z;
     st.vx = vx || 0;
     st.vz = vz || 0;
     st.stretch = 3.2;
+    this._trailStreakColor.set(color);
+    st.r = this._trailStreakColor.r;
+    st.g = this._trailStreakColor.g;
+    st.b = this._trailStreakColor.b;
     if (!wasAlive) this._activateTrailStreak(i);
-    const mesh = this._trailStreakPool[i];
-    mesh.material.uniforms.uColor.value.set(color);
-    const scroll = ((this._t || 0) * 0.35) % 1;
-    updateTrailStreakMesh(mesh, {
-      x, y, z, vx: st.vx, vz: st.vz,
-      width: size0 * 0.42,
-      length: size0 * st.stretch,
-      opacity: op0,
-      scroll,
-      time: this._t || 0,
-    });
+    this._writeTrailStreakInstance(i, this._activeTrailStreakPos[i], size0, op0);
+    this._commitTrailStreakInstances();
     return st;
   },
 
@@ -526,30 +621,26 @@ export const vfx = {
     const w = Math.max(0.04, width);
     const len = Math.max(0.5, length);
     const baseSize = w / 0.42;
+    const local = this._toLocalXZ(x, z, this._spawnLocalXZ);
     st.alive = true;
     st.age = 0;
     st.life = life;
     st.size0 = baseSize;
     st.size1 = baseSize;
     st.op0 = op0;
-    st.x = x;
+    st.x = local.x;
     st.y = y || 0;
-    st.z = z;
+    st.z = local.z;
     st.vx = vx || 0;
     st.vz = vz || 0;
     st.stretch = len / baseSize;
+    this._trailStreakColor.set(color);
+    st.r = this._trailStreakColor.r;
+    st.g = this._trailStreakColor.g;
+    st.b = this._trailStreakColor.b;
     if (!wasAlive) this._activateTrailStreak(i);
-    const mesh = this._trailStreakPool[i];
-    mesh.material.uniforms.uColor.value.set(color);
-    const scroll = ((this._t || 0) * 0.35) % 1;
-    updateTrailStreakMesh(mesh, {
-      x, y, z, vx: st.vx, vz: st.vz,
-      width: w,
-      length: len,
-      opacity: op0,
-      scroll,
-      time: this._t || 0,
-    });
+    this._writeTrailStreakInstance(i, this._activeTrailStreakPos[i], baseSize, op0);
+    this._commitTrailStreakInstances();
     return st;
   },
 
@@ -562,7 +653,6 @@ export const vfx = {
     const st = this._ts[i];
     if (!st || !st.alive) return;
     st.alive = false;
-    hideTrailStreakMesh(this._trailStreakPool[i]);
     const pos = this._activeTrailStreakPos[i];
     if (pos >= 0) {
       const lastPos = --this._liveTrailStreakCount;
@@ -574,6 +664,25 @@ export const vfx = {
       this._activeTrailStreakPos[i] = -1;
     }
     this._freeTrailStreaks[this._freeTrailStreakCount++] = i;
+  },
+
+  _writeTrailStreakInstance(i, packedIndex, scale, opacity) {
+    const s = this._ts[i];
+    updateTrailStreakInstance(this._trailStreakPool, packedIndex, {
+      x: s.x, y: s.y, z: s.z, vx: s.vx, vz: s.vz,
+      width: scale * 0.42,
+      length: scale * (s.stretch || 3.2),
+      opacity,
+      color: s,
+    });
+  },
+
+  _commitTrailStreakInstances() {
+    const scroll = ((this._t || 0) * 0.35) % 1;
+    commitTrailStreakInstances(this._trailStreakPool, this._liveTrailStreakCount, {
+      scroll,
+      time: this._t || 0,
+    });
   },
 
   _activateParticle(i) {
@@ -757,10 +866,17 @@ export const vfx = {
     );
     if (this._socketForward.lengthSq() < 1e-8) this._socketForward.set(-1, 0, 0);
     this._socketForward.normalize().applyQuaternion(this._socketWorldQuat).normalize();
+    // Mesh matrix is frame-local; spawn helpers expect galactic-global XZ (convert once here).
+    const globalXZ = this._frameMembrane
+      ? this._frameMembrane.toGlobal(
+        { x: this._socketWorldPos.x, z: this._socketWorldPos.z },
+        this._entityLocalXZ,
+      )
+      : { x: this._socketWorldPos.x, z: this._socketWorldPos.z };
     return this._writeTrailSocketPose(
-      this._socketWorldPos.x,
+      globalXZ.x,
       this._socketWorldPos.y,
-      this._socketWorldPos.z,
+      globalXZ.z,
       this._socketForward.x,
       this._socketForward.y,
       this._socketForward.z,
@@ -1453,15 +1569,20 @@ export const vfx = {
     if (!target || !target.alive) { this._onMiningStop(); return; }
 
     // Ship origin: use SOCKET_Trail_Main offset rotated to the ship's front (mining drill is forward)
+    // Geometry endpoints are computed in galactic-global space, then projected to frame-local for Three.
     const cf = Math.cos(player.rot), sf = Math.sin(player.rot);
     const fwd = (player.radius || 6) * 0.7;
-    const sx = player.pos.x + cf * fwd, sz = player.pos.z + sf * fwd;
+    const sxG = player.pos.x + cf * fwd, szG = player.pos.z + sf * fwd;
 
     // Target contact point on the asteroid surface facing the ship
-    const dx = sx - target.pos.x, dz = sz - target.pos.z;
+    const dx = sxG - target.pos.x, dz = szG - target.pos.z;
     const dist = Math.hypot(dx, dz) || 1;
     const r = target.radius || 6;
-    const tx = target.pos.x + (dx / dist) * r, tz = target.pos.z + (dz / dist) * r;
+    const txG = target.pos.x + (dx / dist) * r, tzG = target.pos.z + (dz / dist) * r;
+    const sLocal = this._toLocalXZ(sxG, szG, this._spawnLocalXZ);
+    const tLocal = this._toLocalXZ(txG, tzG, this._entityLocalXZ);
+    const sx = sLocal.x, sz = sLocal.z;
+    const tx = tLocal.x, tz = tLocal.z;
 
     // Beam ribbon: perpendicular to the beam direction, thin strip
     const nx = -(dz / dist), nz = (dx / dist); // perpendicular
@@ -1490,9 +1611,10 @@ export const vfx = {
     beam.glow.material.opacity = 0.15 + 0.1 * Math.sin(beam.t * 6);
 
     // Emit beam trail particles along the beam length for extra energy feel
+    // Spawn helpers expect galactic-global XZ.
     if (Math.random() < 0.6) {
       const frac = Math.random();
-      const px = sx + (tx - sx) * frac, pz = sz + (tz - sz) * frac;
+      const px = sxG + (txG - sxG) * frac, pz = szG + (tzG - szG) * frac;
       const drift = 3 + Math.random() * 5;
       this._c0.set('#ffffff'); this._c1.set(beam.color);
       this._spawnParticle(px, pz, (Math.random() - 0.5) * drift, (Math.random() - 0.5) * drift,
@@ -1698,10 +1820,12 @@ export const vfx = {
 
     // Ray from just off the hull along the predicted exit vector; length scales with the
     // convertible speed so a hotter swing draws a longer throw.
+    // Direction is origin-invariant; start point is projected to frame-local for mesh verts.
     const ux = Math.cos(preview.exitAngle), uz = Math.sin(preview.exitAngle);
     const px = -uz, pz = ux;   // ray perpendicular
     const startR = (player.radius || 6) + 2;
-    const sx = player.pos.x + ux * startR, sz = player.pos.z + uz * startR;
+    const sLocal = this._toLocalXZ(player.pos.x + ux * startR, player.pos.z + uz * startR, this._spawnLocalXZ);
+    const sx = sLocal.x, sz = sLocal.z;
     const len = Math.max(24, Math.min(130, (preview.peakSpeed || 0) * 0.8));
 
     const DASHES = arc.DASHES;
@@ -1758,15 +1882,20 @@ export const vfx = {
     // Endpoints: ship nose -> target visual surface point. Stations use a small collision radius so
     // docking feels sane, but their visible body/ring is much larger. Using the collision radius made
     // masslines appear to attach to empty space in the center of a station.
+    // Chord math stays galactic-global; mesh buffer writes are frame-local.
     const cf = Math.cos(player.rot), sf = Math.sin(player.rot);
     const noseR = (player.radius || 6);
-    const ax = player.pos.x + cf * noseR, az = player.pos.z + sf * noseR;
-    let dx = anchorEnt.pos.x - ax, dz = anchorEnt.pos.z - az;
-    const dist = Math.hypot(dx, dz) || 1;
+    const axG = player.pos.x + cf * noseR, azG = player.pos.z + sf * noseR;
+    let dxG = anchorEnt.pos.x - axG, dzG = anchorEnt.pos.z - azG;
+    const dist = Math.hypot(dxG, dzG) || 1;
     const tr = tetherVisualRadius(anchorEnt);
-    const bx = anchorEnt.pos.x - (dx / dist) * tr * 0.88, bz = anchorEnt.pos.z - (dz / dist) * tr * 0.88;
-    dx = bx - ax; dz = bz - az;
+    const bxG = anchorEnt.pos.x - (dxG / dist) * tr * 0.88, bzG = anchorEnt.pos.z - (dzG / dist) * tr * 0.88;
+    let dx = bxG - axG; let dz = bzG - azG;
     const chord = Math.hypot(dx, dz) || 1;
+    const aLocal = this._toLocalXZ(axG, azG, this._spawnLocalXZ);
+    const bLocal = this._toLocalXZ(bxG, bzG, this._entityLocalXZ);
+    const ax = aLocal.x, az = aLocal.z;
+    const bx = bLocal.x, bz = bLocal.z;
     const visualTime = Number.isFinite(this.state && this.state.simTime)
       ? this.state.simTime
       : (typeof performance !== 'undefined' ? performance.now() / 1000 : Date.now() / 1000);
@@ -1894,7 +2023,8 @@ export const vfx = {
     cable.anchorCore.material.opacity = (0.48 + 0.28 * l + whipEnv * 0.2 + cable.reelGlow * 0.42) * cable.fade;
     cable.targetHaloActive = isLargeAnchor;
     if (cable.targetHalo) {
-      cable.targetHalo.position.set(anchorEnt.pos.x, 1.58, anchorEnt.pos.z);
+      const haloLocal = this._toLocalXZ(anchorEnt.pos.x, anchorEnt.pos.z, this._entityLocalXZ);
+      cable.targetHalo.position.set(haloLocal.x, 1.58, haloLocal.z);
       cable.targetHalo.scale.setScalar(Math.max(anchorScale * 1.6, tr * 1.08));
       cable.targetHalo.rotation.y = visualTime * 0.65;
       cable.targetHalo.material.color.copy(this._ctmp);
@@ -1903,10 +2033,11 @@ export const vfx = {
     setTetherCableVisible(cable, true);
 
     // Near-break shiver: sparks crawl the line when the strain is critical.
+    // Spawn expects galactic-global XZ.
     if (s > 0.85 && Math.random() < 0.5) {
       const frac = Math.random();
       this._c0.set('#ffffff'); this._c1.copy(this._tetherColorHot);
-      this._spawnParticle(ax + dx * frac, az + dz * frac,
+      this._spawnParticle(axG + dx * frac, azG + dz * frac,
         px * (Math.random() - 0.5) * 14, pz * (Math.random() - 0.5) * 14,
         0.12 + Math.random() * 0.1, 1.0, 0.0, this._c0, this._c1, 3.2, 0, 0);
     }
@@ -1956,17 +2087,19 @@ export const vfx = {
       if (!e || !e.alive || e.type !== 'asteroid') continue;
       const seams = e.data && e.data.seams;
       if (!seams || !seams.length) continue;
+      // Range cull stays galactic-global (origin-invariant); instance matrices are frame-local.
       const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
       if (dx * dx + dz * dz > 640 * 640) continue;      // draw range
       const scanned = (e.data.scanHighlightUntil || 0) > simTime;
       const cr = Math.cos(e.rot || 0), sr = Math.sin(e.rot || 0);
       for (let s = 0; s < seams.length && n < sm.CAP; s++) {
         const lo = seams[s].localOffset || { x: 0, z: 0 };
-        const wx = e.pos.x + lo.x * cr - lo.z * sr;
-        const wz = e.pos.z + lo.x * sr + lo.z * cr;
+        const wxG = e.pos.x + lo.x * cr - lo.z * sr;
+        const wzG = e.pos.z + lo.x * sr + lo.z * cr;
+        const wLocal = this._toLocalXZ(wxG, wzG, this._spawnLocalXZ);
         const scale = (scanned ? 1.5 : 0.9) * pulse * Math.min(2.2, 0.7 + (e.radius || 8) * 0.05);
         this._seamMat4.makeScale(scale, 1, scale);
-        this._seamMat4.setPosition(wx, 1.8, wz);
+        this._seamMat4.setPosition(wLocal.x, 1.8, wLocal.z);
         sm.mesh.setMatrixAt(n, this._seamMat4);
         this._ctmp.copy(scanned ? this._seamHot : this._seamDim);
         if (scanned) this._ctmp.multiplyScalar(pulse * 1.15);
@@ -2526,6 +2659,8 @@ export const vfx = {
       if (this.state.render && this.state.render.scene) { this._initPools(); this._subscribeOnce(); }
       if (!this._scene) return;
     }
+    // Observe frameOriginSeq even if renderer already reprojected — same-origin is a no-op.
+    this._syncFrameMembrane();
     let dt = frameDt;
     if (!(dt > 0)) return;
     if (dt > 0.1) dt = 0.1; // clamp pauses/tab-switches so particles don't teleport
@@ -2923,14 +3058,17 @@ export const vfx = {
   },
 
   _placeEnergyPlumeFallback(plume, player, length, width) {
+    // _trailSocketWorldPose returns galactic-global XZ; convert for Three.js placement.
     const socket = this._trailSocketWorldPose(player);
     if (socket) {
-      plume.position.set(socket.x, socket.y || 0, socket.z);
+      const local = this._toLocalXZ(socket.x, socket.z, this._spawnLocalXZ);
+      plume.position.set(local.x, socket.y || 0, local.z);
     } else {
       const cf = Math.cos(player.rot || 0);
       const sf = Math.sin(player.rot || 0);
       const back = (player.radius || 4) * 0.85;
-      plume.position.set(player.pos.x - cf * back, 0, player.pos.z - sf * back);
+      const local = this._toLocalXZ(player.pos.x - cf * back, player.pos.z - sf * back, this._spawnLocalXZ);
+      plume.position.set(local.x, 0, local.z);
     }
     plume.rotation.set(0, socket ? socket.rotationY : -(player.rot || 0), 0);
     plume.scale.set(length, width, width);
@@ -2960,7 +3098,8 @@ export const vfx = {
     const dx = other.pos.x - player.pos.x, dz = other.pos.z - player.pos.z;
     const dist = Math.hypot(dx, dz);
     if (!(dist > 0.5)) { ribbon.visible = false; return; }
-    ribbon.position.set(player.pos.x, 0, player.pos.z);
+    const pLocal = this._toLocalXZ(player.pos.x, player.pos.z, this._spawnLocalXZ);
+    ribbon.position.set(pLocal.x, 0, pLocal.z);
     ribbon.rotation.y = Math.atan2(dz, dx);
     ribbon.scale.set(1, 1, dist);
     ribbon.visible = true;
@@ -3066,11 +3205,13 @@ export const vfx = {
   // peak intensity, and arm a decay rate. Intensity eases up over ~50ms then decays exponentially
   // — reads as a sharp flash, not a fade-in. `decayRate` ~ 6-10 (higher = snappier).
   // `color` may be a hex number (0xffb060) OR a CSS string ('#ffb060') — normalized internally.
+  // `pos` is galactic-global XZ (same as entity.pos / event payloads); GPU placement is frame-local.
   _flashLight(pos, color, peak, decayRate, dist) {
     const pool = this._lights;
     if (!pool || !pos) return false;
     // Cull if the event is far from the player (lights far away contribute nothing visible but
     // still cost a per-fragment eval). Generous radius so nearby fights still light up.
+    // Distance uses global coordinates so the cull is origin-invariant.
     const pp = this._playerPos();
     const d = Math.hypot((pos.x || 0) - pp.x, (pos.z || 0) - pp.z);
     if (d > 700) return false;
@@ -3081,7 +3222,8 @@ export const vfx = {
       slot.active = true;
       this._activeLightCount++;
     }
-    obj.position.set(pos.x || 0, 12, pos.z || 0); // lift above the play plane
+    const local = this._toLocalXZ(pos.x || 0, pos.z || 0, this._spawnLocalXZ);
+    obj.position.set(local.x, 12, local.z); // lift above the play plane
     if (typeof color === 'number') obj.color.setHex(color);
     else obj.color.set(color); // CSS string ('#ffb060', 'rgb(...)', named)
     if (dist) obj.distance = dist;
@@ -3153,8 +3295,10 @@ export const vfx = {
 
     const px = e.pos && Number.isFinite(e.pos.x) ? e.pos.x : 0;
     const pz = e.pos && Number.isFinite(e.pos.z) ? e.pos.z : 0;
+    // playerX/Z are galactic-global; cameraX/Z are frame-local (Three camera).
     const distPlayer = Math.hypot(px - ctx.playerX, pz - ctx.playerZ);
-    const distCamera = Math.hypot(px - ctx.cameraX, pz - ctx.cameraZ);
+    const local = this._toLocalXZ(px, pz, this._entityLocalXZ);
+    const distCamera = Math.hypot(local.x - ctx.cameraX, local.z - ctx.cameraZ);
     const data = e.data || {};
 
     if (data.wingmanOf || data.isWingman) return TRAIL_TIER.NORMAL;
@@ -3188,11 +3332,12 @@ export const vfx = {
     const camera = ctx.camera;
     if (!camera || typeof camera.project !== 'function') return true;
     const scratch = this._trailScreenScratch;
-    scratch.set(
+    const local = this._toLocalXZ(
       e.pos && Number.isFinite(e.pos.x) ? e.pos.x : 0,
-      0,
       e.pos && Number.isFinite(e.pos.z) ? e.pos.z : 0,
+      this._entityLocalXZ,
     );
+    scratch.set(local.x, 0, local.z);
     scratch.project(camera);
     const pad = 0.18;
     return scratch.x >= -1 - pad && scratch.x <= 1 + pad
@@ -3445,13 +3590,14 @@ export const vfx = {
         trail = createRibbonTrail(this._scene, this._engineColor(e), 30, w);
         this._ribbonTrails.set(e.id, trail);
       }
-      // sample from engine nozzle (rear of ship)
+      // sample from engine nozzle (rear of ship); socket/entity XZ are galactic-global → frame-local
       const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
       const back = (e.radius || 14) * 0.88;
       const sock = this._trailSocketWorldPose(e);
-      const tx = sock ? sock.x : e.pos.x - cf * back;
-      const tz = sock ? sock.z : e.pos.z - sf * back;
-      trail.push(tx, tz, sock ? sock.angle + Math.PI : e.rot);
+      const txG = sock ? sock.x : e.pos.x - cf * back;
+      const tzG = sock ? sock.z : e.pos.z - sf * back;
+      const local = this._toLocalXZ(txG, tzG, this._spawnLocalXZ);
+      trail.push(local.x, local.z, sock ? sock.angle + Math.PI : e.rot);
       trail.rebuild(0.16 + Math.min(1, driveInfo.drive) * 0.38 + driveInfo.boost * 0.12, (this._t * 0.35) % 1, this._t);
       active = true;
     }
@@ -3575,10 +3721,8 @@ export const vfx = {
 
   _integrateTrailStreaks(dt) {
     if (this._liveTrailStreakCount <= 0) return;
-    const pool = this._trailStreakPool;
     const st = this._ts;
     const active = this._activeTrailStreaks;
-    const scroll = ((this._t || 0) * 0.35) % 1;
     let cursor = 0;
     while (cursor < this._liveTrailStreakCount) {
       const i = active[cursor];
@@ -3590,16 +3734,10 @@ export const vfx = {
       s.z += s.vz * dt;
       const scale = s.size0 + (s.size1 - s.size0) * t;
       const op = s.op0 * (1 - t * 0.85);
-      updateTrailStreakMesh(pool[i], {
-        x: s.x, y: s.y, z: s.z, vx: s.vx, vz: s.vz,
-        width: scale * 0.42,
-        length: scale * (s.stretch || 3.2),
-        opacity: op,
-        scroll,
-        time: this._t || 0,
-      });
+      this._writeTrailStreakInstance(i, cursor, scale, op);
       cursor++;
     }
+    this._commitTrailStreakInstances();
   },
 
   _integrateSprites(dt) {
@@ -3707,12 +3845,22 @@ export function runProjectileTrailEmissionSelfCheck() {
   if (!pt.byClass.plasma || pt.byClass.plasma.particles <= 0) fail('plasma class should emit heat');
   if (!pt.byClass.rail || pt.byClass.rail.streaks <= 0) fail('rail class should emit thin streaks');
 
-  const live = system._trailStreakPool && system._trailStreakPool.find((m) => m.visible);
-  const st = system._ts && system._ts.find((s) => s.alive);
+  const live = system._trailStreakPool && system._trailStreakPool.mesh.count > 0
+    ? system._trailStreakPool.mesh
+    : null;
+  const liveIndex = system._ts ? system._ts.findIndex((s) => s.alive) : -1;
+  const st = liveIndex >= 0 ? system._ts[liveIndex] : null;
+  let railScale = null;
   if (!live) fail('rail streak mesh should be visible');
   else {
-    if (live.scale.x >= 0.2) fail(`rail streak width must stay thin, got ${live.scale.x}`);
-    if (live.scale.z <= 3) fail(`rail streak length must stay long, got ${live.scale.z}`);
+    const packedIndex = system._activeTrailStreakPos[liveIndex];
+    const matrix = new THREE.Matrix4();
+    const scale = new THREE.Vector3();
+    live.getMatrixAt(packedIndex, matrix);
+    scale.setFromMatrixScale(matrix);
+    railScale = scale;
+    if (scale.x >= 0.2) fail(`rail streak width must stay thin, got ${scale.x}`);
+    if (scale.z <= 3) fail(`rail streak length must stay long, got ${scale.z}`);
   }
   if (!st || st.size0 !== st.size1) fail('projectile rail streak must use constant width (size0 === size1)');
 
@@ -3720,7 +3868,9 @@ export function runProjectileTrailEmissionSelfCheck() {
   return {
     ok: true,
     projectileTrails: pt,
-    rail: live ? { width: live.scale.x, length: live.scale.z, size0: st && st.size0, size1: st && st.size1 } : null,
+    rail: live && railScale
+      ? { width: railScale.x, length: railScale.z, size0: st && st.size0, size1: st && st.size1 }
+      : null,
     subsystem: system.inspect().subsystems.lastFrame.projectileTrails,
   };
 }

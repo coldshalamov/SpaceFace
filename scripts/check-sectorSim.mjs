@@ -168,7 +168,7 @@ function checkDeserializeReseeds() {
 // 5: v2→current migration round-trip — the headline integrity gate (ADR's untested-migration risk).
 // ------------------------------------------------------------------------------------------
 function checkMigrationRoundTrip() {
-  assert.equal(CURRENT_VERSION, 6, 'CURRENT_VERSION should include the nav persistence save schema bump');
+  assert.ok(CURRENT_VERSION >= 6, 'CURRENT_VERSION should retain the nav persistence migration floor');
 
   // A v2-era blob has no data.sectorSim at all.
   const v2Data = {

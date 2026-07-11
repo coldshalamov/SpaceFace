@@ -7,7 +7,91 @@
 // CURRENT_VERSION lives in src/data/saveVersion.js (the single source of truth) and is re-exported
 // here for convenience.
 // When the schema changes: bump CURRENT_VERSION in saveVersion.js and append { from:N-1, to:N, fn }.
+import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
+import { COORDINATE_SCHEMA } from '../core/coordinates.js';
+
 export { CURRENT_VERSION } from '../data/saveVersion.js';
+
+function finiteXZ(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+    && Number.isFinite(value.x) && Number.isFinite(value.z);
+}
+
+function offsetPos(value, sectorId) {
+  if (!finiteXZ(value)) return;
+  const origin = sectorGlobalOrigin(sectorId);
+  value.x += origin.x;
+  value.z += origin.z;
+}
+
+function offsetFields(value, sectorId) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)
+    || !Number.isFinite(value.x) || !Number.isFinite(value.z)) return;
+  const origin = sectorGlobalOrigin(sectorId);
+  value.x += origin.x;
+  value.z += origin.z;
+}
+
+function migrateV8ToV9(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+  if (!data.world || typeof data.world !== 'object' || Array.isArray(data.world)) data.world = {};
+  // Migrations are normally version-gated, but keep this step safe to re-run in isolation too.
+  if (data.world.coordinateSchema === COORDINATE_SCHEMA) {
+    data.world.frameOrigin = { x: 0, z: 0 };
+    data.world.frameOriginSeq = 0;
+    return;
+  }
+  const currentSectorId = data.world.currentSectorId || 'sector_helios_prime';
+  data.world.coordinateSchema = COORDINATE_SCHEMA;
+  data.world.frameOrigin = { x: 0, z: 0 };
+  data.world.frameOriginSeq = 0;
+
+  if (data.entities && typeof data.entities === 'object') {
+    offsetPos(data.entities.player && data.entities.player.pos, currentSectorId);
+    if (Array.isArray(data.entities.persistent)) {
+      for (const entity of data.entities.persistent) offsetPos(entity && entity.pos, currentSectorId);
+    }
+  }
+  offsetPos(data.world.entryPoint, currentSectorId);
+
+  for (const [sectorId, pings] of Object.entries(data.world.scanPings || {})) {
+    if (Array.isArray(pings)) for (const ping of pings) offsetPos(ping && ping.pos, sectorId);
+  }
+  for (const [sectorId, pending] of Object.entries(data.world.pendingSpawns || {})) {
+    if (Array.isArray(pending)) {
+      for (const request of pending) offsetPos(request && request.position, request && request.sectorId || sectorId);
+    }
+  }
+
+  if (data.nav && typeof data.nav === 'object') {
+    const waypoint = data.nav.waypoint;
+    offsetPos(waypoint && waypoint.pos, waypoint && waypoint.sectorId || currentSectorId);
+    offsetPos(data.nav.autopilot && data.nav.autopilot.target, currentSectorId);
+  }
+  for (const [sectorId, markers] of Object.entries(data.aftermathWrecks && data.aftermathWrecks.bySector || {})) {
+    if (Array.isArray(markers)) for (const marker of markers) offsetPos(marker && marker.pos, marker && marker.sectorId || sectorId);
+  }
+  if (Array.isArray(data.claims && data.claims.bodies)) {
+    for (const body of data.claims.bodies) offsetFields(body, body && body.sectorId || currentSectorId);
+  }
+  if (data.automation && typeof data.automation === 'object') {
+    if (Array.isArray(data.automation.drones)) {
+      for (const drone of data.automation.drones) offsetPos(drone && drone.originPos, drone && drone.sectorId || currentSectorId);
+    }
+    if (Array.isArray(data.automation.outposts)) {
+      for (const outpost of data.automation.outposts) offsetPos(outpost && outpost.pos, outpost && outpost.sectorId || currentSectorId);
+    }
+  }
+  if (Array.isArray(data.missions && data.missions.active)) {
+    for (const mission of data.missions.active) {
+      if (!mission || typeof mission !== 'object') continue;
+      const sectorId = mission.sectorId || mission.destSectorId || currentSectorId;
+      offsetPos(mission.pos, sectorId);
+      offsetPos(mission.targetPos, sectorId);
+      offsetPos(mission.waypoint && mission.waypoint.pos, mission.waypoint && mission.waypoint.sectorId || sectorId);
+    }
+  }
+}
 
 export const MIGRATIONS = [
   {
@@ -131,6 +215,26 @@ export const MIGRATIONS = [
         data.aftermathWrecks.bySector = {};
       }
       if (typeof data.aftermathWrecks.seed !== 'number') data.aftermathWrecks.seed = 0;
+    },
+  },
+  {
+    from: 8,
+    to: 9,
+    fn: migrateV8ToV9,
+  },
+  // v10: optional, non-binding first-dock career origins. Old saves start with a clean origin
+  // container; each origin system overlays its own versioned defaults during deserialize.
+  {
+    from: 9,
+    to: 10,
+    fn(data) {
+      if (!data.careerOrigins || typeof data.careerOrigins !== 'object' || Array.isArray(data.careerOrigins)) {
+        data.careerOrigins = {
+          schemaId: 'spaceface.careerOrigins.v1',
+          schemaVersion: 1,
+          origins: {},
+        };
+      }
     },
   },
 ];

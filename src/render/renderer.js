@@ -17,8 +17,17 @@ import { installDiagnostics } from './diagnostics.js';
 import { getPostRenderTargetTelemetry, resetPostRenderTargetSampleCounter } from './postTelemetry.js';
 import { precompilePipelines } from './precompile.js';
 import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
+import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
+
+// M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
+const _meshLocalXZ = { x: 0, z: 0 };
+const _cullLocalXZ = { x: 0, z: 0 };
+const _shadowLocalXZ = { x: 0, z: 0 };
+const _w2sLocalXZ = { x: 0, z: 0 };
+const _rayGlobalXZ = { x: 0, z: 0 };
+const _socketGlobalXZ = { x: 0, z: 0 };
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const SECTOR_PALETTE_LERP_SECONDS = 1.5;
@@ -141,8 +150,9 @@ function syncContactShadowPool(pool, entities, meshes) {
     if (!mesh || !(mesh.userData && mesh.userData.hasContactShadow)) continue;
     ensureContactShadowCapacity(pool, count + 1);
     const radius = Number(mesh.userData.contactShadowRadius) || Math.max(16, (entity.radius || 28) * 1.4);
-    const x = entity.pos && Number.isFinite(entity.pos.x) ? entity.pos.x : mesh.position.x;
-    const z = entity.pos && Number.isFinite(entity.pos.z) ? entity.pos.z : mesh.position.z;
+    // Prefer mesh frame-local pose (authoritative for Three.js after syncEntityViews).
+    const x = Number.isFinite(mesh.position.x) ? mesh.position.x : 0;
+    const z = Number.isFinite(mesh.position.z) ? mesh.position.z : 0;
     seen.add(entity.id);
     const prev = records.get(entity.id);
     if (!prev || prev.index !== count ||
@@ -417,6 +427,7 @@ export const render = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this._frameMembrane = createRenderFrameMembrane().reset(ctx.state);
     const state = ctx.state, bus = ctx.bus;
 
     const canvas = document.getElementById('gl-canvas');
@@ -902,7 +913,8 @@ export const render = {
       if (!e || e.alive === false || e._noMesh || this._meshes.has(id)) continue;
       const m = this.vf.build(e);
       if (!m) { e._noMesh = true; continue; }
-      m.position.set(e.pos.x, 0, e.pos.z);
+      const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
+      m.position.set(local.x, 0, local.z);
       m.rotation.y = -e.rot;
       if (e.type === 'ship' || e.type === 'station') { attachContactShadow(m, e); configureShadowCasters(m); }
       e.mesh = m; e.view = { root: m };
@@ -934,7 +946,8 @@ export const render = {
     if (old) { this.scene.remove(old); disposeObject(old); this._meshes.delete(id); this._shadowReceiversDirty = true; }
     const m = this.vf.build(e);
     if (!m) return;
-    m.position.set(e.pos.x, 0, e.pos.z);
+    const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
+    m.position.set(local.x, 0, local.z);
     m.rotation.y = -e.rot;
     // carry the bank pose so the rebuilt hull doesn't momentarily sit level mid-turn
     const hull = m.userData && m.userData.hull;
@@ -952,6 +965,7 @@ export const render = {
   _entityViewCullBounds() {
     const camObj = this.cam && this.cam.obj;
     const cameraState = this.state && this.state.camera || {};
+    // Camera focus is frame-local after the M2 chase camera membrane.
     const focus = cameraState.focus || (camObj && camObj.position) || { x: 0, z: 0 };
     const zoom = Number.isFinite(cameraState.zoom)
       ? cameraState.zoom
@@ -978,9 +992,43 @@ export const render = {
     if (!e || !bounds || e.id === this.state.playerId) return false;
     if (e.flags && (e.flags.forceRender || e.flags.neverCull)) return false;
     if (!e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) return false;
+    const local = this._frameMembrane.toLocal(e.pos, _cullLocalXZ);
     const radius = Math.max(0, Number(e.radius) || 0);
-    return Math.abs(e.pos.x - bounds.x) > bounds.halfX + radius
-      || Math.abs(e.pos.z - bounds.z) > bounds.halfZ + radius;
+    return Math.abs(local.x - bounds.x) > bounds.halfX + radius
+      || Math.abs(local.z - bounds.z) > bounds.halfZ + radius;
+  },
+
+  /** Reproject all render-owned local caches when frameOriginSeq advances (no sim mutation). */
+  _applyFrameOriginRebase(dx, dz) {
+    if (!(dx || dz)) return;
+    for (const m of this._meshes.values()) {
+      if (!m || !m.position) continue;
+      m.position.x += dx;
+      m.position.z += dz;
+    }
+    // Hazard zone discs/rings are render-owned local anchors (not rebuilt every frame).
+    if (this._hazardVisuals && this._hazardVisuals.length) {
+      for (const obj of this._hazardVisuals) {
+        if (!obj || !obj.position) continue;
+        obj.position.x += dx;
+        obj.position.z += dz;
+      }
+    }
+    // Contact-shadow instance records cache local XZ; force refresh next sync.
+    if (this._contactShadowPool && this._contactShadowPool.records) {
+      this._contactShadowPool.records.clear();
+    }
+    if (this.cam && typeof this.cam.reprojectFrame === 'function') {
+      this.cam.reprojectFrame(dx, dz);
+    } else if (this.state && this.state.camera && this.state.camera.focus) {
+      this.state.camera.focus.x += dx;
+      this.state.camera.focus.z += dz;
+    }
+    // VFX owns particle/sprite/trail local anchors — reproject without erasing effects.
+    try {
+      const vfxSys = this.state && this.state.render && this.state.render.vfxReprojectFrame;
+      if (typeof vfxSys === 'function') vfxSys(dx, dz);
+    } catch (_) { /* optional */ }
   },
 
   syncEntityViews(alpha) {
@@ -992,6 +1040,7 @@ export const render = {
     let fullSynced = 0;
     let culled = 0;
     let lodChecked = 0;
+    const membrane = this._frameMembrane;
     for (const [id, m] of this._meshes) {
       totalMeshes++;
       const e = this.state.entities.get(id);
@@ -1001,12 +1050,14 @@ export const render = {
       if (viewCulled) culled++;
       const hull = m.userData && m.userData.hull;   // bankable inner group (ships only)
       if (e.flags.noInterp) {
-        m.position.set(e.pos.x, 0, e.pos.z); m.rotation.y = -e.rot;
+        const local = membrane.toLocal(e.pos, _meshLocalXZ);
+        m.position.set(local.x, 0, local.z); m.rotation.y = -e.rot;
         if (hull && e.bank != null) hull.rotation.x = e.bank; // roll around forward axis; +bank banks right
         if (hull && e.pitch != null) hull.rotation.z = e.pitch; // pitch lean nose up/down
       } else {
-        m.position.x = e.prevPos.x + (e.pos.x - e.prevPos.x) * alpha;
-        m.position.z = e.prevPos.z + (e.pos.z - e.prevPos.z) * alpha;
+        const local = membrane.interpolateLocal(e.prevPos, e.pos, alpha, _meshLocalXZ);
+        m.position.x = local.x;
+        m.position.z = local.z;
         m.position.y = 0;
         let dr = e.rot - e.prevRot;
         dr = ((dr + Math.PI) % (Math.PI * 2)) - Math.PI; if (dr < -Math.PI) dr += Math.PI * 2;
@@ -1029,7 +1080,8 @@ export const render = {
       // without a lod state (no closure attached).
       if (m.userData.lod && m.userData.updateLod) {
         lodChecked++;
-        const px = projectedWidthPx(e.pos, e.radius, this.cam.obj, this.viewport);
+        // Camera and mesh share frame-local space; pass mesh local XZ (not galactic-global).
+        const px = projectedWidthPx(m.position, e.radius, this.cam.obj, this.viewport);
         // The player ship is a focal, readable object at normal flight scale. Authored LOD1 can hide
         // too much silhouette detail, so keep player control on LOD0 and reserve reduction for NPCs.
         const level = e.id === this.state.playerId ? 'lod0' : m.userData.lod.resolve(px);
@@ -1137,9 +1189,15 @@ export const render = {
       debris:          { color: '#778899', centerAlpha: 0.12, edgeAlpha: 0.03, ring: false, ringColor: 0x778899 },
     };
 
+    const membrane = this._frameMembrane;
     for (const hz of sector.hazards) {
       const style = hazardStyles[hz.type] || hazardStyles.debris;
       const intensityScale = hz.intensity != null ? hz.intensity : 0.5;
+      // Hazard centers are galactic-global world data; Three.js placement is frame-local.
+      const center = hz.center || { x: 0, z: 0 };
+      const local = membrane
+        ? membrane.toLocal(center, _meshLocalXZ)
+        : { x: center.x || 0, z: center.z || 0 };
 
       // --- Main disc ---
       const discGeo = new THREE.CircleGeometry(hz.radius, 64);
@@ -1153,7 +1211,7 @@ export const render = {
       });
       const disc = new THREE.Mesh(discGeo, discMat);
       disc.rotation.x = -Math.PI / 2;
-      disc.position.set(hz.center.x, -0.5, hz.center.z);
+      disc.position.set(local.x, -0.5, local.z);
       disc.renderOrder = -3; // below contact shadows
       disc.frustumCulled = false;
       this.scene.add(disc);
@@ -1174,7 +1232,7 @@ export const render = {
         });
         const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.rotation.x = -Math.PI / 2;
-        ring.position.set(hz.center.x, -0.4, hz.center.z);
+        ring.position.set(local.x, -0.4, local.z);
         ring.renderOrder = -2;
         ring.frustumCulled = false;
         this.scene.add(ring);
@@ -1217,6 +1275,12 @@ export const render = {
     // webglcontextrestored rebuilds GPU resources. (cam.follow etc. would run against a dead
     // renderer; the context-restore handler re-applies everything that matters when it returns.)
     if (this._contextLost) return false;
+    // M2: observe frameOriginSeq before any global→local projection this frame.
+    // On change, reproject cached local meshes/camera/VFX by delta (entities stay galactic-global).
+    if (this._frameMembrane) {
+      const rebase = this._frameMembrane.sync(this.state);
+      if (rebase.changed) this._applyFrameOriginRebase(rebase.dx, rebase.dz);
+    }
     // Dynamic resolution: measure real frame time and nudge the internal render scale to hold a smooth
     // framerate on weak/software GPUs (adaptiveQuality.js). Cheap; only resizes targets on a change.
     if (this._adaptive) this._adaptive.update(frameDt);
@@ -1322,7 +1386,13 @@ export const render = {
     if (!this._keyLight) return;
     if (!this.renderer.shadowMap || !this.renderer.shadowMap.enabled) return;
     const p = this.state.playerId ? (this.state.entities && this.state.entities.get(this.state.playerId)) : null;
-    const px = p ? p.pos.x : 0, pz = p ? p.pos.z : 0;
+    let px = 0;
+    let pz = 0;
+    if (p && p.pos && this._frameMembrane) {
+      const local = this._frameMembrane.toLocal(p.pos, _shadowLocalXZ);
+      px = local.x;
+      pz = local.z;
+    }
     this._keyLight.position.set(px + 60, 140, pz + 40);
     this._keyLight.target.position.set(px, 0, pz);
     this._keyLight.target.updateMatrixWorld();
@@ -1346,9 +1416,14 @@ export const render = {
     this._keyLight.castShadow = enabled;
   },
 
+  // Accepts authoritative galactic-global XZ (and optional y); projects the frame-local point.
   worldToScreen(v) {
     this.cam.obj.updateMatrixWorld();
-    _pt.set(v.x, v.y || 0, v.z).project(this.cam.obj);
+    const membrane = this._frameMembrane;
+    const local = membrane
+      ? membrane.toLocal(v, _w2sLocalXZ)
+      : { x: v && v.x, z: v && v.z };
+    _pt.set(local.x, (v && v.y) || 0, local.z).project(this.cam.obj);
     return {
       x: (_pt.x * 0.5 + 0.5) * window.innerWidth,
       y: (-_pt.y * 0.5 + 0.5) * window.innerHeight,
@@ -1356,11 +1431,15 @@ export const render = {
     };
   },
 
+  // Plane pick returns authoritative galactic-global XZ (input systems keep global aimWorld).
   raycastToPlane(ndc) {
     _v2.set(ndc.x, ndc.y);
     _ray.setFromCamera(_v2, this.cam.obj);
     const hit = _ray.ray.intersectPlane(_plane, _pt);
-    return hit ? { x: hit.x, z: hit.z } : { x: 0, z: 0 };
+    if (!hit) return { x: 0, z: 0 };
+    const membrane = this._frameMembrane;
+    if (!membrane) return { x: hit.x, z: hit.z };
+    return membrane.toGlobal({ x: hit.x, z: hit.z }, _rayGlobalXZ);
   },
 
   // World XZ of a named attachment socket on an entity's mesh, or null if the entity has no mesh or no
@@ -1414,10 +1493,15 @@ export const render = {
     );
     if (SOCKET_FORWARD.lengthSq() < 1e-8) SOCKET_FORWARD.set(1, 0, 0);
     SOCKET_FORWARD.normalize().applyQuaternion(SOCKET_WORLD_QUAT).normalize();
+    // Mesh matrix is frame-local; external helpers speak galactic-global XZ.
+    const membrane = this._frameMembrane;
+    const globalXZ = membrane
+      ? membrane.toGlobal({ x: SOCKET_WORLD_POS.x, z: SOCKET_WORLD_POS.z }, _socketGlobalXZ)
+      : { x: SOCKET_WORLD_POS.x, z: SOCKET_WORLD_POS.z };
     return {
-      x: SOCKET_WORLD_POS.x,
+      x: globalXZ.x,
       y: SOCKET_WORLD_POS.y,
-      z: SOCKET_WORLD_POS.z,
+      z: globalXZ.z,
       forwardX: SOCKET_FORWARD.x,
       forwardY: SOCKET_FORWARD.y,
       forwardZ: SOCKET_FORWARD.z,

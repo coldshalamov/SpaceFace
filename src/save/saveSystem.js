@@ -17,6 +17,8 @@ import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
+import { createTimeEffects } from '../core/timeEffects.js';
+import { COORDINATE_SCHEMA, applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 
 const LS_PREFIX = 'sf.save.';
 const INDEX_KEY = LS_PREFIX + 'index';
@@ -58,9 +60,11 @@ export const save = {
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
     this._restoring = false;           // guards autosave re-entrancy during load / boot enterSector
+    this._pendingRunTransition = null; // latest load/new-game request queued by restore event re-entry
     this._lastAutosaveAt = 0;          // wall-clock ms of last autosave write (debounce)
     this._lastAutosavePlaytime = 0;    // meta.playtimeS at last interval autosave
     this._playerDead = false;          // set by player:death, cleared by player:respawn (autosave gate)
+    this._restoreSequence = 0;         // unique transient freeze owner for overlapping visual gates
 
     const bus = this.bus;
     this._loadProfileSettings();
@@ -98,6 +102,20 @@ export const save = {
     }
   },
 
+  /**
+   * Serialize route starts against the synchronous destructive restore phase. Callers retain
+   * responsibility for starting immediately when this returns false. While restoring, only the
+   * latest callback survives so a burst of reentrant load/new-game requests has one clear winner.
+   */
+  deferRunTransition(callback) {
+    if (typeof callback !== 'function') {
+      throw new TypeError('deferred run transition callback must be a function');
+    }
+    if (!this._restoring) return false;
+    this._pendingRunTransition = callback;
+    return true;
+  },
+
   // ── serialization ─────────────────────────────────────────────────────────────────────────
 
   /** Build the `data` payload (plain JSON, deps-first key order). No mesh/THREE/Map/fn/Infinity. */
@@ -113,6 +131,7 @@ export const save = {
     data.entities = this._serializeEntities();
     data.combat = serializeCombatState(state);
     data.missions = this._callSerialize('missions') || this._serializeMissions();
+    data.careerOrigins = this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {});
     data.scenario = this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {});
     data.automation = this._callSerialize('automation') || this._serializeAutomation();
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
@@ -565,13 +584,43 @@ export const save = {
   // re-apply player pose → restore persistent entities → remap semantic combat state →
   // restore missions/automation/settings → rebuild rng → save:loaded → unpause.
   _restore(data, slot) {
+    if (this._restoring) {
+      const marker = { queued: true, stale: true, slot };
+      this.deferRunTransition(() => {
+        try {
+          return this._restore(data, slot);
+        } catch (error) {
+          console.error('[save] deferred restore failed', error);
+          this.bus.emit('save:error', { slot, reason: 'load_failed' });
+          return { restored: false, slot, error: true };
+        }
+      });
+      return marker;
+    }
+
     const state = this.state;
     this._restoring = true;
-    const prevTimeScale = state.timeScale;
     const finalizeLoadedGame = this.helpers && typeof this.helpers.finalizeLoadedGame === 'function'
       ? this.helpers.finalizeLoadedGame
       : null;
-    state.timeScale = 0; // freeze the sim during the swap
+    const beginLoadedGameTransition = this.helpers
+      && typeof this.helpers.beginLoadedGameTransition === 'function'
+      ? this.helpers.beginLoadedGameTransition
+      : null;
+    // Reserve ownership before any restore event can synchronously start a newer route.
+    // The token travels to the async visual finalizer so stale completions become no-ops.
+    const transitionToken = beginLoadedGameTransition ? beginLoadedGameTransition() : null;
+    const timeEffects = createTimeEffects(state); // fixtures may call _restore without init()
+    const previousSequence = Number.isSafeInteger(this._restoreSequence) ? this._restoreSequence : 0;
+    this._restoreSequence = previousSequence + 1;
+    const restoreSource = `save:restore:${this._restoreSequence}`;
+    this.bus.emit('save:restoring', { slot, source: restoreSource });
+    timeEffects.reset();
+    timeEffects.set(restoreSource, { scale: 0 });
+    let finalizerPending = false;
+    let drainedRunTransition = null;
+    let restoreError = null;
+    let hadPendingRunTransition = false;
     const entityIdRemap = new Map();
 
     try {
@@ -619,6 +668,14 @@ export const save = {
       // enterSector's _placePlayer clobbers position → re-apply the saved pose now.
       this._applySavedPose(savedPlayer);
 
+      // The frame is runtime-only. Derive it from the restored global player pose before any
+      // persistent actor or physics body can be created at an unnecessarily large local offset.
+      const loadedPlayer = state.entities.get(state.playerId);
+      if (loadedPlayer && loadedPlayer.pos) {
+        const loadedOrigin = deriveFrameOrigin(loadedPlayer.pos, { x: 0, z: 0 });
+        applyFrameOrigin(state, loadedOrigin);
+      }
+
       // 10. restore persistent saved actors after sector regeneration, which despawns non-player
       // entities from the previous live sector.
       this._spawnPersistentEntities(data.entities && data.entities.persistent, entityIdRemap);
@@ -631,6 +688,7 @@ export const save = {
 
       // 13. restore missions/automation/settings.
       this._restoreMissions(data.missions);
+      this._callDeserialize('careerOrigins', data.careerOrigins);
       this._restoreScenario(data.scenario);
       const missionsSys = this.registry && this.registry.get && this.registry.get('missions');
       if (missionsSys && typeof missionsSys.spawnTargetsForSector === 'function' && sectorId) {
@@ -677,27 +735,68 @@ export const save = {
       state.save.currentSlot = slot;
       const previousMode = state.mode;
       state.mode = finalizeLoadedGame ? 'loading' : 'flight';
-      state.timeScale = finalizeLoadedGame ? 0 : 1;
       if (previousMode !== state.mode) {
         this.bus.emit('mode:changed', { mode: state.mode, previousMode });
       }
 
       this.bus.emit('save:loaded', { slot, visualGatePending: !!finalizeLoadedGame });
       if (finalizeLoadedGame) {
-        Promise.resolve(finalizeLoadedGame({ slot })).catch((err) => {
+        let finalizerResult;
+        try {
+          const finalizerPayload = transitionToken ? { slot, transitionToken } : { slot };
+          finalizerResult = finalizeLoadedGame(finalizerPayload);
+          finalizerPending = true;
+        } catch (err) {
           console.error('[save] finalizeLoadedGame', err);
           this.bus.emit('save:error', { slot, reason: 'visual_gate_failed' });
-        });
+        }
+        if (finalizerPending) {
+          Promise.resolve(finalizerResult).then(
+            () => timeEffects.clear(restoreSource),
+            (err) => {
+              timeEffects.clear(restoreSource);
+              console.error('[save] finalizeLoadedGame', err);
+              this.bus.emit('save:error', { slot, reason: 'visual_gate_failed' });
+            },
+          );
+        }
       }
       // nudge audio to re-read restored volumes (audio's handler re-applies all audio settings
       // on section:'audio'); render reads settings.video directly each frame, no event needed.
-      this.bus.emit('settings:changed', { section: 'audio' });
+      if (!this._pendingRunTransition) this.bus.emit('settings:changed', { section: 'audio' });
+    } catch (error) {
+      restoreError = error;
     } finally {
-      if (!Number.isFinite(state.timeScale)) state.timeScale = finalizeLoadedGame ? 0 : (prevTimeScale || 1);
+      if (!finalizerPending) timeEffects.clear(restoreSource);
+      const pendingRunTransition = this._pendingRunTransition;
+      hadPendingRunTransition = !!pendingRunTransition;
+      this._pendingRunTransition = null;
       this._restoring = false;
       this._lastAutosaveAt = nowMs(); // don't immediately autosave from the load's own sector:enter
       this._lastAutosavePlaytime = state.meta.playtimeS;
+      if (pendingRunTransition) {
+        try {
+          drainedRunTransition = pendingRunTransition();
+        } catch (error) {
+          // Never let a newer queued callback replace an exception already leaving this restore.
+          console.error('[save] deferred run transition failed', error);
+          this.bus.emit('save:error', { reason: 'deferred_transition_failed' });
+        }
+      }
     }
+    if (restoreError) {
+      if (hadPendingRunTransition) {
+        return {
+          restored: false,
+          stale: true,
+          superseded: true,
+          slot,
+          drained: drainedRunTransition,
+        };
+      }
+      throw restoreError;
+    }
+    return { restored: true, slot, drained: drainedRunTransition };
   },
 
   _restoreMeta(m) {
@@ -1098,6 +1197,9 @@ function normalizeWorldSaveRecord(world) {
   const out = (world && typeof world === 'object' && !Array.isArray(world)) ? world : {};
   if (!out.currentSectorId) out.currentSectorId = DEFAULT_START_SECTOR;
   if (!out.scanPings || typeof out.scanPings !== 'object' || Array.isArray(out.scanPings)) out.scanPings = {};
+  out.coordinateSchema = COORDINATE_SCHEMA;
+  out.frameOrigin = { x: 0, z: 0 };
+  out.frameOriginSeq = 0;
   const fuel = (out.fuel && typeof out.fuel === 'object' && !Array.isArray(out.fuel)) ? out.fuel : {};
   const hasValidMax = Number.isFinite(fuel.max) && fuel.max > 0;
   const max = hasValidMax ? fuel.max : 100;

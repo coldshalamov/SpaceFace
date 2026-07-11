@@ -69,7 +69,7 @@ export function createGameState(seed) {
     meta: { version: CURRENT_VERSION, seed, playtimeS: 0, createdAt: '', lastSavedAt: '' },
     settings: defaultSettings(),
     mode: 'menu',          // 'menu' | 'flight' | 'paused'
-    timeScale: 1,          // 0 = paused (sim frozen), 1 = normal, >1 fast-forward
+    timeScale: 1,          // transient derived scalar; only core/timeEffects.js mutates after init
 
     // --- core sim runtime ---
     entities: new Map(),
@@ -97,6 +97,7 @@ export function createGameState(seed) {
     factions: {},
     conflicts: {},
     missions: { boards: {}, active: [], completedLog: [], receipts: [], nextId: 1, config: null },
+    careers: { origins: {} },
     scenario: {
       schemaVersion: 1,
       active: null,
@@ -113,7 +114,12 @@ export function createGameState(seed) {
              endgameChoice: null, endgameOffered: false, endgameDeclined: [], persistentCargo: [] },
     crafting: { queues: {} },
     aiEncounter: { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] },
-    world: { sectors: {}, currentSectorId: null, activeSector: { stations: [], fields: [], hazards: [], pois: [], gates: [] }, discovery: {}, scanPings: {}, entryPoint: { x: 0, z: 0, heading: 0 } },
+    world: {
+      sectors: {}, currentSectorId: null,
+      activeSector: { stations: [], fields: [], hazards: [], pois: [], gates: [] },
+      discovery: {}, scanPings: {}, entryPoint: { x: 0, z: 0, heading: 0 },
+      coordinateSchema: 'global_v1', frameOrigin: { x: 0, z: 0 }, frameOriginSeq: 0,
+    },
     jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },
     fuel: { current: 100, max: 100 },
     nav: { route: null, autoTravel: false, waypoint: null, autopilot: { active: false, target: null, targetEntityId: null, label: '', arrivalRadius: 36, status: 'idle' } },

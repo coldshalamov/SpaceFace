@@ -7,6 +7,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { zoneAt, zoneThreat } from '../data/sectorZones.js';
+import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { wreckClassById } from '../data/wreckClasses.js';
 
 const STATE_VERSION = 1;
@@ -109,7 +110,8 @@ function makeMarker(state, payload, entity) {
   if (!sectorId) return null;
   const pos = posFrom(payload, entity);
   if (!pos) return null;
-  const zone = zoneAt(sectorId, pos.x, pos.z);
+  const local = globalToSectorLocalForSector(pos, sectorId);
+  const zone = zoneAt(sectorId, local.x, local.z);
   if (!zone) return null;
   const type = entity && entity.type || payload && payload.type;
   if (!SHIPLIKE_TYPES.has(type)) return null;

@@ -22,6 +22,7 @@ const COLLISION_MATERIALS = Object.freeze({
 const DYNAMIC_SPATIAL_QUERY_MIN_COLLIDABLES = 96;
 const DYNAMIC_SPATIAL_QUERY_MIN_ASTEROIDS = 96;
 const PICKUP_SPATIAL_PAIR_THRESHOLD = 128;
+const ZERO_FRAME_ORIGIN = Object.freeze({ x: 0, z: 0 });
 
 export const physics = {
   name: 'physics',
@@ -234,6 +235,8 @@ export const physics = {
       this._sg02Init = createSg02DynamicBodyOwner({
         mode: 'rapier-dynamic',
         publishTelemetry: shouldPublishSg02Telemetry(state),
+        frameOrigin: worldFrameOrigin(state),
+        frameOriginSeq: worldFrameOriginSeq(state),
       })
         .then((owner) => {
           const currentBackend = state.settings && state.settings.gameplay && state.settings.gameplay.physicsBackend;
@@ -242,6 +245,7 @@ export const physics = {
             return null;
           }
           this._sg02 = owner;
+          this._syncSg02FrameOrigin(state);
           return owner;
         })
         .catch((err) => {
@@ -268,6 +272,7 @@ export const physics = {
     }
 
     this._sg02.publishTelemetry = shouldPublishSg02Telemetry(state);
+    this._syncSg02FrameOrigin(state);
     this._syncSg02DynamicAuthorityEntities(state);
     this._reconcileCombatPhysicsBeforeStep();
     const sdiag = this._sg02.step(dt);
@@ -285,6 +290,11 @@ export const physics = {
     this._diag.sg02SyncFullEntities = sdiag.syncFullEntities || 0;
     this._diag.sg02SyncStaticEntities = sdiag.syncStaticEntities || 0;
     this._diag.sg02SyncDynamicEntities = sdiag.syncDynamicEntities || 0;
+  },
+
+  _syncSg02FrameOrigin(state) {
+    if (!this._sg02 || typeof this._sg02.setFrameOrigin !== 'function') return false;
+    return this._sg02.setFrameOrigin(worldFrameOrigin(state), worldFrameOriginSeq(state));
   },
 
   _syncSg02DynamicAuthorityEntities(state) {
@@ -657,6 +667,16 @@ export const physics = {
 function usesSg02DynamicAuthority(state) {
   const gameplay = state && state.settings && state.settings.gameplay;
   return gameplay && gameplay.physicsBackend === 'rapier-dynamic';
+}
+
+function worldFrameOrigin(state) {
+  const origin = state && state.world && state.world.frameOrigin;
+  return origin && typeof origin === 'object' ? origin : ZERO_FRAME_ORIGIN;
+}
+
+function worldFrameOriginSeq(state) {
+  const seq = state && state.world && state.world.frameOriginSeq;
+  return Number.isSafeInteger(seq) && seq >= 0 ? seq : 0;
 }
 
 function shouldMaintainDynamicSpatialHash(state) {

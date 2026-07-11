@@ -10,10 +10,12 @@ import {
   resolvePhysicsBodySpec,
   writePhysicsTelemetry,
 } from './physicsAuthority.js';
+import { frameToGlobal, globalToFrame } from './coordinates.js';
 
 export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
 export const SG02_DYNAMIC_BODY_OWNER_QUANTUM = 1e-4;
+const POSE_RESYNC_EPS2 = 1e-4;
 
 const CAPTURE_SLACK_S = 0.1;
 const MAX_STRETCH_RATIO = 0.45;
@@ -114,6 +116,13 @@ export class Sg02DynamicBodyOwner {
     this._liveStaticEntityIds = new Set();
     this._liveDynamicEntityIds = new Set();
     this._staticLayerVersion = null;
+    this._frameOrigin = {
+      x: finite(options.frameOrigin && options.frameOrigin.x),
+      z: finite(options.frameOrigin && options.frameOrigin.z),
+    };
+    this._frameOriginSeq = normalizeFrameOriginSeq(options.frameOriginSeq);
+    this._frameScratch = { x: 0, z: 0 };
+    this._globalScratch = { x: 0, z: 0 };
     this._diagnostics = {
       schemaVersion: SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
       tick: 0,
@@ -128,11 +137,28 @@ export class Sg02DynamicBodyOwner {
       syncStaticEntities: 0,
       syncDynamicEntities: 0,
       syncStaticVersion: -1,
+      frameOriginSeq: this._frameOriginSeq,
     };
     this.tick = 0;
     this.accumulator = 0;
     this.mode = String(options.mode || 'sg02-dynamic-lab');
     this.publishTelemetry = options.publishTelemetry !== false;
+  }
+
+  getFrameOrigin() { return this._frameOrigin; }
+  getFrameOriginSeq() { return this._frameOriginSeq; }
+
+  setFrameOrigin(origin, seq) {
+    const nx = finite(origin && origin.x);
+    const nz = finite(origin && origin.z);
+    const nseq = normalizeFrameOriginSeq(seq);
+    if (this._frameOrigin.x === nx && this._frameOrigin.z === nz && this._frameOriginSeq === nseq) return false;
+    this._frameOrigin.x = nx;
+    this._frameOrigin.z = nz;
+    this._frameOriginSeq = nseq;
+    this._diagnostics.frameOriginSeq = nseq;
+    this._reprojectAllBodiesToFrame();
+    return true;
   }
 
   syncFromEntities(entities = []) {
@@ -259,8 +285,8 @@ export class Sg02DynamicBodyOwner {
     const owner = this.records.get(input.ownerId);
     const target = this.records.get(input.targetId);
     if (!owner || !target || owner === target) return false;
-    const sourceWorld = worldPoint(input.sourceWorld, owner.body.translation());
-    const targetWorld = worldPoint(input.targetWorld, target.body.translation());
+    const sourceWorld = this._globalPointToFrameLocal(input.sourceWorld, owner.body.translation());
+    const targetWorld = this._globalPointToFrameLocal(input.targetWorld, target.body.translation());
     const restLength = positive(input.restLength, distance2d(sourceWorld, targetWorld));
     const attachment = {
       id: attachmentId,
@@ -321,10 +347,10 @@ export class Sg02DynamicBodyOwner {
   getAttachmentTelemetry(input = {}) {
     const attachment = this._findAttachment(input);
     if (!attachment) return null;
-    const source = worldAnchor(attachment.owner, attachment.anchorA);
-    const target = worldAnchor(attachment.target, attachment.anchorB);
-    const dx = target.x - source.x;
-    const dz = target.z - source.z;
+    const sourceLocal = worldAnchor(attachment.owner, attachment.anchorA);
+    const targetLocal = worldAnchor(attachment.target, attachment.anchorB);
+    const dx = targetLocal.x - sourceLocal.x;
+    const dz = targetLocal.z - sourceLocal.z;
     const distance = Math.hypot(dx, dz);
     const nx = distance > 1e-9 ? dx / distance : 1;
     const nz = distance > 1e-9 ? dz / distance : 0;
@@ -344,6 +370,8 @@ export class Sg02DynamicBodyOwner {
       : stretch * spring.K + damping * Math.max(0, relativeSpeed);
     const telemetryTension = Math.max(0, springState.lastTension || fallbackTension);
     const telemetryImpulse = Math.max(0, springState.lastImpulse || telemetryTension * this.fixedDt);
+    const source = frameToGlobal(sourceLocal, this._frameOrigin);
+    const target = frameToGlobal(targetLocal, this._frameOrigin);
     return Object.freeze({
       schemaVersion: SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
       attachmentId: attachment.id,
@@ -448,11 +476,15 @@ export class Sg02DynamicBodyOwner {
 
   _createRecord(entity, spec) {
     const R = this.RAPIER;
-    const pos = vector3(entity.pos);
+    const local = globalToFrame(entity.pos, this._frameOrigin, this._frameScratch);
+    const posX = local.x;
+    const posZ = local.z;
+    const globalX = finite(entity.pos && entity.pos.x);
+    const globalZ = finite(entity.pos && entity.pos.z);
     const vel = vector3(entity.vel);
     const material = CONTACT_MATERIALS[spec.material] || CONTACT_MATERIALS.default;
     const desc = (spec.dynamic ? R.RigidBodyDesc.dynamic() : R.RigidBodyDesc.fixed())
-      .setTranslation(pos.x, 0, pos.z)
+      .setTranslation(posX, 0, posZ)
       .setRotation(quatFromYaw(finite(entity.rot)))
       .setLinvel(vel.x, 0, vel.z)
       .setAngvel({ x: 0, y: finite(entity.angVel), z: 0 })
@@ -499,8 +531,8 @@ export class Sg02DynamicBodyOwner {
       controlTorque: zero3(),
       expected: { vx: 0, vz: 0, wy: 0 },
       kinematics: {
-        x: pos.x,
-        z: pos.z,
+        x: posX,
+        z: posZ,
         vx: vel.x,
         vz: vel.z,
         yaw: finite(entity.rot),
@@ -509,8 +541,8 @@ export class Sg02DynamicBodyOwner {
       maxSpeed: Infinity,
       snapshot: {
         id: entity.id,
-        x: quantize(pos.x, this.quantum),
-        z: quantize(pos.z, this.quantum),
+        x: quantize(globalX, this.quantum),
+        z: quantize(globalZ, this.quantum),
         yaw: quantize(finite(entity.rot), this.quantum),
         vx: quantize(vel.x, this.quantum),
         vz: quantize(vel.z, this.quantum),
@@ -533,6 +565,11 @@ export class Sg02DynamicBodyOwner {
   _syncRecord(entity, spec) {
     const rec = this.records.get(entity.id);
     if (!recordMatchesSpec(rec, spec)) {
+      if (rec && massPropertiesOnlyChanged(rec, spec) && this._updateMassPropertiesInPlace(rec, spec)) {
+        rec.entity = entity;
+        this._maybeResyncBodyPose(rec, entity);
+        return rec;
+      }
       if (rec) this._removeRecord(entity.id, rec);
       const next = this._createRecord(entity, spec);
       this.records.set(entity.id, next);
@@ -540,7 +577,79 @@ export class Sg02DynamicBodyOwner {
       return next;
     }
     rec.entity = entity;
+    this._maybeResyncBodyPose(rec, entity);
     return rec;
+  }
+
+  _maybeResyncBodyPose(rec, entity) {
+    if (!rec || !rec.body || !entity) return false;
+    const local = globalToFrame(entity.pos, this._frameOrigin, this._frameScratch);
+    const p = rec.body.translation();
+    const dx = local.x - finite(p.x);
+    const dz = local.z - finite(p.z);
+    const noInterp = !!(entity.flags && entity.flags.noInterp);
+    if (!noInterp && dx * dx + dz * dz <= POSE_RESYNC_EPS2) return false;
+
+    const yaw = finite(entity.rot);
+    const vx = finite(entity.vel && entity.vel.x);
+    const vz = finite(entity.vel && entity.vel.z);
+    const wy = finite(entity.angVel);
+    rec.body.setTranslation({ x: local.x, y: 0, z: local.z }, true);
+    rec.body.setRotation(quatFromYaw(yaw), true);
+    rec.body.setLinvel({ x: vx, y: 0, z: vz }, true);
+    rec.body.setAngvel({ x: 0, y: wy, z: 0 }, true);
+    const kin = rec.kinematics || (rec.kinematics = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, wy: 0 });
+    Object.assign(kin, { x: local.x, z: local.z, vx, vz, yaw, wy });
+    rec.snapshot.id = entity.id;
+    rec.snapshot.x = quantize(finite(entity.pos && entity.pos.x), this.quantum);
+    rec.snapshot.z = quantize(finite(entity.pos && entity.pos.z), this.quantum);
+    rec.snapshot.yaw = quantize(yaw, this.quantum);
+    rec.snapshot.vx = quantize(vx, this.quantum);
+    rec.snapshot.vz = quantize(vz, this.quantum);
+    rec.snapshot.wy = quantize(wy, this.quantum);
+    rec.snapshot.revision = rec.revision;
+    if (noInterp && entity.flags) entity.flags.noInterp = false;
+    return true;
+  }
+
+  _reprojectAllBodiesToFrame() {
+    for (const rec of this.records.values()) {
+      if (!rec.entity || !rec.body) continue;
+      const local = globalToFrame(rec.entity.pos, this._frameOrigin, this._frameScratch);
+      rec.body.setTranslation({ x: local.x, y: 0, z: local.z }, true);
+      const kin = rec.kinematics || (rec.kinematics = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, wy: 0 });
+      kin.x = local.x;
+      kin.z = local.z;
+      rec.snapshot.x = quantize(finite(rec.entity.pos && rec.entity.pos.x), this.quantum);
+      rec.snapshot.z = quantize(finite(rec.entity.pos && rec.entity.pos.z), this.quantum);
+    }
+  }
+
+  _globalPointToFrameLocal(source, fallbackTranslation) {
+    if (source && typeof source === 'object' && (source.x != null || source.z != null)) {
+      const local = globalToFrame(source, this._frameOrigin, this._frameScratch);
+      return { x: local.x, y: finite(source.y), z: local.z };
+    }
+    return worldPoint(source, fallbackTranslation);
+  }
+
+  _updateMassPropertiesInPlace(rec, spec) {
+    if (!rec.body || typeof rec.body.setAdditionalMassProperties !== 'function') return false;
+    try {
+      rec.body.setAdditionalMassProperties(
+        spec.mass,
+        vector3(spec.centerOfMass),
+        { x: 1, y: spec.inertiaY, z: 1 },
+        { x: 0, y: 0, z: 0, w: 1 },
+        true,
+      );
+      rec.spec = spec;
+      rec.revision = spec.revision;
+      rec.snapshot.revision = spec.revision;
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   _writeSyncDiagnostics(mode, full, statics, dynamics, staticVersion) {
@@ -624,8 +733,9 @@ export class Sg02DynamicBodyOwner {
   _syncEntityFromKinematics(rec, kinematics) {
     const pos = rec.entity.pos || (rec.entity.pos = { x: 0, z: 0 });
     const vel = rec.entity.vel || (rec.entity.vel = { x: 0, z: 0 });
-    pos.x = kinematics.x;
-    pos.z = kinematics.z;
+    const global = frameToGlobal(kinematics, this._frameOrigin, this._globalScratch);
+    pos.x = global.x;
+    pos.z = global.z;
     vel.x = kinematics.vx;
     vel.z = kinematics.vz;
     rec.entity.rot = kinematics.yaw;
@@ -1327,6 +1437,17 @@ function recordMatchesSpec(rec, spec) {
     rec.spec.material === spec.material;   // material drives collider friction/restitution/groups
 }
 
+function massPropertiesOnlyChanged(rec, spec) {
+  if (!rec || !rec.spec || !spec) return false;
+  const current = rec.spec;
+  const massChanged = current.mass !== spec.mass || current.inertiaY !== spec.inertiaY;
+  return massChanged &&
+    current.dynamic === spec.dynamic &&
+    current.ccd === spec.ccd &&
+    current.radius === spec.radius &&
+    current.material === spec.material;
+}
+
 function wrapAngle(value) {
   let out = finite(value);
   while (out <= -Math.PI) out += Math.PI * 2;
@@ -1349,4 +1470,10 @@ function smoothstep(value) {
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeFrameOriginSeq(seq) {
+  if (Number.isSafeInteger(seq) && seq >= 0) return seq;
+  const n = Math.trunc(finite(seq));
+  return n >= 0 ? n : 0;
 }

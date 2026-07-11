@@ -7,6 +7,7 @@ import { createSimulation } from '../src/core/sim.js';
 import { scanner } from '../src/systems/scanner.js';
 import { aftermathWrecks, aftermathForSector } from '../src/systems/aftermathWrecks.js';
 import { save as saveSystem } from '../src/save/saveSystem.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 
 assert.equal(typeof window, 'undefined', 'this check must run headless');
 assert.ok(existsSync(new URL('../src/systems/aftermathWrecks.js', import.meta.url)),
@@ -62,7 +63,10 @@ function boot(seed = 717) {
 }
 
 function emitKill(t, i, overrides = {}) {
-  const pos = overrides.pos || { x: 1420 + i * 8, z: 760 + i * 6 };
+  const pos = overrides.pos || sectorLocalToGlobalForSector(
+    { x: 1420 + i * 8, z: 760 + i * 6 },
+    'sector_pallas_drift',
+  );
   const victim = t.sim.spawn({
     type: overrides.type || 'ship',
     team: 1,
@@ -109,7 +113,7 @@ function testZoneKillsRecordBoundedProvenanceAndNews() {
     id: 99999,
     killerId: t.state.playerId,
     type: 'ship',
-    pos: { x: -2400, z: -2400 },
+    pos: sectorLocalToGlobalForSector({ x: -2400, z: -2400 }, 'sector_pallas_drift'),
     victimClass: 'out_of_zone',
   });
   assert.equal(aftermathForSector(t.state, 'sector_pallas_drift').length, 3,
@@ -119,7 +123,7 @@ function testZoneKillsRecordBoundedProvenanceAndNews() {
     id: t.state.playerId,
     killerId: 44,
     type: 'ship',
-    pos: { x: 1420, z: 760 },
+    pos: sectorLocalToGlobalForSector({ x: 1420, z: 760 }, 'sector_pallas_drift'),
     victimClass: 'player_ship',
   });
   assert.equal(aftermathForSector(t.state, 'sector_pallas_drift').length, 3,

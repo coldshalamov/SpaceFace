@@ -5,6 +5,7 @@
 import { pickVariant } from '../ui/marketNews.js';
 import { zoneAt, zonesForSector } from '../data/sectorZones.js';
 import { hash32 } from '../core/rng.js';
+import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 
 export const PIRATE_RUMOR_THRESHOLD = 3;
 export const PIRATE_RUMOR_DECAY_PER_S = 0.003;
@@ -114,7 +115,8 @@ export const pirateRumor = {
     const sectorId = currentSectorId(this.state);
     const pos = payload.pos || entity.pos;
     if (!sectorId || !pos) return;
-    const zone = zoneAt(sectorId, pos.x || 0, pos.z || 0);
+    const local = globalToSectorLocalForSector(pos, sectorId);
+    const zone = zoneAt(sectorId, local.x, local.z);
     if (!zone) return;
     this._addHeat({
       sectorId,

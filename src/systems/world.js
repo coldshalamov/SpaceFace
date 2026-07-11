@@ -5,14 +5,19 @@
 // the jump state machine (IDLE→CHARGING→JUMPING→COOLDOWN), fuel, hazard membership, POI scan
 // reveal, and the Dijkstra route helper.
 //
-// enterSector(sectorId, {fromJump}) is the entry point main.js calls at boot
-//   (registry.get('world').enterSector(startSectorId)). It despawns the previous sector's
-//   scoped entities (NOT the player), spawns the new sector from data, sets
-//   state.world.currentSectorId / activeSector / state.bounds, places the player at an
-//   entry point, and emits sector:enter. It does NOT auto-run on game:started.
+// M2a continuous corridor (Helios↔Ceres↔Tethys):
+//   - entity.pos is galactic-global; free-flight membership never teleports the player.
+//   - world-owned residentSectors track FULL / REDUCED / RECORD_ONLY with a hard cap.
+//   - enterSector still serves boot + intentional gate/drive jumps (may place at target).
+//   - Continuous membership changes never call the legacy global-wipe helper.
 //
-// Determinism (§0.5): all generation uses a per-sector seeded stream
-//   state.world.rng = mulberry32(hash32(meta.seed, sectorId, seq)); never Math.random().
+// enterSector(sectorId, {fromJump}) is the entry point main.js calls at boot
+//   (registry.get('world').enterSector(startSectorId)). It materializes the target + bounded
+//   corridor prefetch, sets state.world.currentSectorId / activeSector / corridor bounds,
+//   places the player only on non-continuous enters, and emits sector:enter.
+//
+// Determinism (§0.5): sector content uses mulberry32(hash32(meta.seed, sectorId, epoch));
+//   epoch is first materialization and does not change on membership jitter. Never Math.random().
 // Single-writer (§0.6): world owns world.*/jump/fuel/nav; it emits economy:chargeCredits for
 //   gate tolls and never writes credits/cargo/rep directly. (Radiation hull drain is an
 //   environmental effect applied to the entity hull, which has no separate combat owner.)
@@ -21,6 +26,18 @@ import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drif
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { planZoneSpawns, zoneAt, zoneThreat } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
+import { applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
+import {
+  CORRIDOR_SECTOR_IDS,
+  RESIDENCY_MATERIALIZED_CAP,
+  RESIDENCY_TIER,
+  corridorPlayableBounds,
+  isCorridorSector,
+  planMaterializedResidents,
+  sectorGlobalOrigin,
+  sectorLocalToGlobalForSector,
+  sectorMembershipAtGlobal,
+} from '../data/sectorCoordinates.js';
 
 // ---- global tuning constants (design 05 "GLOBAL TUNING CONSTANTS" + "Formulas") -------------
 const DEFAULT_WORLD_RADIUS = 4000;
@@ -109,9 +126,20 @@ export const world = {
     this._scanT = 0;              // active sector-scan elapsed
     this._scanning = false;
     this._driveTierId = null;     // resolved from equipped jump-drive module (null → T1 default)
-    this._sectorSeq = 0;          // monotonic, disambiguates re-entry into the same sector
+    this._sectorSeq = 0;          // legacy counter (kept for compat; residency epoch owns content RNG)
     this._hazardSet = new Set();      // hazard zone indices the player is currently inside
     this._hazardNextSet = new Set();  // scratch set reused while computing the next frame
+    // Floating-origin scratch (allocation-free no-shift path).
+    this._frameOriginScratch = { x: 0, z: 0 };
+    // Ensure coordinate membrane defaults exist even if state was hand-built.
+    if (!state.world.coordinateSchema) state.world.coordinateSchema = 'global_v1';
+    if (!state.world.frameOrigin || typeof state.world.frameOrigin !== 'object') {
+      state.world.frameOrigin = { x: 0, z: 0 };
+    }
+    if (!Number.isSafeInteger(state.world.frameOriginSeq) || state.world.frameOriginSeq < 0) {
+      state.world.frameOriginSeq = 0;
+    }
+    this._ensureResidencyState();
 
     // --- event wiring (§4.4) ---
     bus.on('world:requestJump', (p) => this._onRequestJump(p || {}));
@@ -152,56 +180,69 @@ export const world = {
   },
 
   // =========================================================================================
-  // enterSector — load a sector's contents (the spine of the system)
+  // enterSector — load / switch membership (boot, gate/drive jump, or continuous)
   // =========================================================================================
   /**
-   * Despawn the previous sector's scoped entities, spawn the target sector from data, set
-   * world/bounds, place the player at an entry point, and emit sector:enter.
+   * Materialize the target sector (+ corridor prefetch), update residency tiers, optionally
+   * place the player at an entry point (boot / intentional jump only), emit sector:enter.
+   * Free-flight continuous transitions use { continuous:true, noTeleport:true } and never
+   * place the player or global-wipe entities.
    * @param {string} sectorId
-   * @param {{fromJump?:boolean, via?:string, fromSectorId?:string}} [opts]
+   * @param {{fromJump?:boolean, via?:string, fromSectorId?:string, continuous?:boolean, noTeleport?:boolean, placePlayer?:boolean}} [opts]
    */
   enterSector(sectorId, opts = {}) {
     const state = this.state;
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     if (!sector) { console.warn('[world] enterSector: unknown sector', sectorId); return null; }
 
-    const fromSectorId = opts.fromSectorId || state.world.currentSectorId || null;
-    // Despawn the OLD sector's contents (everything sector-scoped except the player).
-    if (state.world.currentSectorId) {
-      this.bus.emit('sector:exit', { sectorId: state.world.currentSectorId });
-    }
-    this._despawnSectorEntities();
+    this._ensureResidencyState();
+    const fromSectorId = opts.fromSectorId != null ? opts.fromSectorId : (state.world.currentSectorId || null);
+    const continuous = !!opts.continuous;
+    const noTeleport = continuous || !!opts.noTeleport;
+    // Place on boot and intentional jumps only — never on free-flight membership.
+    const placePlayer = !noTeleport && opts.placePlayer !== false;
 
-    // Per-sector deterministic RNG stream (§0.5).
-    state.world.rng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, this._sectorSeq++));
-    const rng = state.world.rng;
+    const prevSectorId = state.world.currentSectorId || null;
+    if (prevSectorId && prevSectorId !== sectorId) {
+      this.bus.emit('sector:exit', { sectorId: prevSectorId, continuous, noTeleport });
+    }
 
     // Discovery overlay bookkeeping (§3.8) — entering reveals the sector + one hop.
+    // Free-flight membership jitter must not inflate visitedCount.
     const disc = this._discoveryFor(sectorId);
     const firstVisit = !disc.discovered;
     disc.discovered = true;
-    disc.visitedCount = (disc.visitedCount || 0) + 1;
+    if (!continuous) disc.visitedCount = (disc.visitedCount || 0) + 1;
 
-    // World radius / bounds.
-    const worldRadius = sector.worldRadius || DEFAULT_WORLD_RADIUS;
-    state.bounds = { radius: worldRadius, hardRadius: worldRadius + 500, center: { x: 0, z: 0 } };
+    // Corridor-global outer fence (not a per-sector disk trap). Non-corridor intentional
+    // enters still get a sector-local soft fence so legacy far systems stay bounded.
+    this._applyPlayableBounds(sectorId);
 
-    // Compute the entry point: come in near the gate to the sector we arrived from.
-    const entryPoint = this._entryPointFor(sector, fromSectorId, rng);
+    // Entry point for jump/boot placement (galactic-global). Continuous path leaves pose alone.
+    // Computed before residency so placePlayer/gate tight-cap neighbor ranking uses the
+    // destination entry pose — not the pre-teleport player position.
+    const rec = state.world.residentSectors && state.world.residentSectors[sectorId];
+    const epoch = rec && Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    const entryRng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, epoch, 'entry'));
+    const entryPoint = this._entryPointFor(sector, fromSectorId, entryRng);
     state.world.entryPoint = entryPoint;
 
-    // Build the live activeSector instance (entity-id handles for everything we spawn).
-    const active = { stations: [], fields: [], hazards: [], pois: [], gates: [], enemies: [], dressing: [] };
+    // Membership + residency plan (materialize FULL current + REDUCED neighbors, evict over cap).
+    const reason = continuous
+      ? 'free_flight'
+      : (opts.fromJump ? (opts.via || 'jump') : 'enter');
+    // placePlayer: rank from destination entry. Free-flight / noTeleport: rank from live player pose.
+    const focusGlobal = placePlayer
+      ? { x: entryPoint.x, z: entryPoint.z }
+      : (this._playerGlobalPos() || sectorGlobalOrigin(sectorId));
+    this._applyResidencyPlan(sectorId, {
+      reason,
+      noTeleport,
+      focusGlobal,
+    });
 
-    this._spawnStations(sector, active, rng);
-    this._spawnFields(sector, active, disc, rng);
-    this._spawnGates(sector, active, rng);
-    this._spawnPOIs(sector, active, disc, rng);
-    this._spawnDressing(sector, active, rng);
-    this._spawnHazards(sector, active);
-    this._spawnEnemies(sector, active, rng);
-    this._spawnBossIfDue(sector, active, rng);
-
+    const active = state.world.sectorContents[sectorId]
+      || (state.world.sectorContents[sectorId] = this._emptySectorBag());
     state.world.activeSector = active;
     state.world.currentSectorId = sectorId;
     if (!this._hazardSet) this._hazardSet = new Set();
@@ -209,8 +250,7 @@ export const world = {
     this._hazardSet.clear();
     this._hazardNextSet.clear();
 
-    // Place the player ship at the entry point (move existing entity; world never spawns the player).
-    this._placePlayer(entryPoint);
+    if (placePlayer) this._placePlayer(entryPoint);
     this._resolveShipModules();
     this._flushPendingSpawns(sectorId, sector);
 
@@ -221,27 +261,371 @@ export const world = {
     // Reveal direct neighbors on the map ("see one hop ahead") without marking them visited.
     for (const nb of (sector.neighbors || [])) this._discoveryFor(nb);
 
-    this.bus.emit('sector:enter', { sectorId, sector, entryPoint, firstVisit });
+    this.bus.emit('world:membership', {
+      sectorId,
+      previousSectorId: prevSectorId,
+      reason,
+      tick: state.tick | 0,
+      noTeleport,
+    });
+    this.bus.emit('sector:enter', { sectorId, sector, entryPoint, firstVisit, continuous, noTeleport });
     return active;
   },
 
-  // --- despawn everything sector-scoped (NOT the player) ------------------------------------
+  // --- residency foundation (M2a) -----------------------------------------------------------
+  _ensureResidencyState() {
+    const state = this.state;
+    if (!state.world.residentSectors || typeof state.world.residentSectors !== 'object') {
+      state.world.residentSectors = {};
+    }
+    if (!state.world.sectorContents || typeof state.world.sectorContents !== 'object') {
+      state.world.sectorContents = {};
+    }
+    if (!state.world.activeSector || typeof state.world.activeSector !== 'object') {
+      state.world.activeSector = this._emptySectorBag();
+    }
+  },
+
+  _emptySectorBag() {
+    return { stations: [], fields: [], hazards: [], pois: [], gates: [], enemies: [], dressing: [] };
+  },
+
+  _playerGlobalPos() {
+    const player = this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return null;
+    return player.pos;
+  },
+
+  _neighborLookup(sectorId) {
+    const s = this.state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    return s ? (s.neighbors || []) : [];
+  },
+
+  _applyPlayableBounds(membershipSectorId) {
+    const state = this.state;
+    if (isCorridorSector(membershipSectorId) || CORRIDOR_SECTOR_IDS.some((id) => {
+      const t = state.world.residentSectors && state.world.residentSectors[id];
+      return t && t.tier && t.tier !== RESIDENCY_TIER.RECORD_ONLY;
+    })) {
+      const b = corridorPlayableBounds(SECTORS, DEFAULT_WORLD_RADIUS);
+      state.bounds = {
+        radius: b.radius,
+        hardRadius: b.hardRadius,
+        center: { x: b.center.x, z: b.center.z },
+      };
+      return;
+    }
+    // Non-corridor intentional enter: keep a sector-centered soft fence (legacy far systems).
+    const sector = state.world.sectors[membershipSectorId] || SECTOR_BY_ID.get(membershipSectorId);
+    const worldRadius = (sector && sector.worldRadius) || DEFAULT_WORLD_RADIUS;
+    const sectorOrigin = sectorGlobalOrigin(membershipSectorId);
+    state.bounds = {
+      radius: worldRadius,
+      hardRadius: worldRadius + 500,
+      center: { x: sectorOrigin.x, z: sectorOrigin.z },
+    };
+  },
+
+  /**
+   * Apply FULL/REDUCED/RECORD_ONLY plan for membership. Materializes missing residents,
+   * demotes extras, never global-wipes, never touches the player.
+   */
+  _applyResidencyPlan(membershipSectorId, opts = {}) {
+    const state = this.state;
+    this._ensureResidencyState();
+    const focus = opts.focusGlobal
+      || this._playerGlobalPos()
+      || sectorGlobalOrigin(membershipSectorId);
+    const previousTiers = new Map();
+    for (const id of Object.keys(state.world.residentSectors)) {
+      previousTiers.set(id, state.world.residentSectors[id].tier);
+    }
+    const plan = planMaterializedResidents(
+      membershipSectorId,
+      focus,
+      previousTiers,
+      RESIDENCY_MATERIALIZED_CAP,
+      (id) => this._neighborLookup(id),
+    );
+
+    // Materialize / promote first so demotion never leaves the player with zero content mid-plan.
+    for (const id of plan.materialize) {
+      const tier = plan.tiers.get(id);
+      this._ensureSectorMaterialized(id, tier);
+      this._setResidentMeta(id, tier, opts.reason || 'residency');
+    }
+    // Demote everyone marked RECORD_ONLY (scoped despawn only).
+    for (const id of plan.demote) {
+      const prev = state.world.residentSectors[id];
+      if (prev && prev.tier !== RESIDENCY_TIER.RECORD_ONLY) {
+        this._demoteSectorToRecordOnly(id);
+      } else {
+        this._setResidentMeta(id, RESIDENCY_TIER.RECORD_ONLY, opts.reason || 'residency');
+      }
+    }
+    // Sync FULL/REDUCED transitions for already-materialized bags (enemies/dressing LOD).
+    for (const id of plan.materialize) {
+      const tier = plan.tiers.get(id);
+      this._syncSectorTierContent(id, tier);
+    }
+
+    this.bus.emit('world:residency', {
+      sectors: Object.keys(state.world.residentSectors).sort().map((sectorId) => ({
+        sectorId,
+        tier: state.world.residentSectors[sectorId].tier,
+        epoch: state.world.residentSectors[sectorId].epoch,
+      })),
+      membershipSectorId,
+      reason: opts.reason || 'residency',
+      tick: state.tick | 0,
+      noTeleport: !!opts.noTeleport,
+    });
+  },
+
+  _setResidentMeta(sectorId, tier, reason) {
+    const state = this.state;
+    const prev = state.world.residentSectors[sectorId];
+    const epoch = prev && Number.isFinite(prev.epoch) ? prev.epoch : 0;
+    state.world.residentSectors[sectorId] = {
+      tier,
+      epoch,
+      reason: reason || (prev && prev.reason) || 'residency',
+      lastTouchTick: state.tick | 0,
+    };
+  },
+
+  /**
+   * First materialization creates the sector bag with epoch-stable RNG.
+   * FULL includes combat/dressing; REDUCED is structural only.
+   */
+  _ensureSectorMaterialized(sectorId, tier) {
+    const state = this.state;
+    const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    if (!sector) return;
+    let rec = state.world.residentSectors[sectorId];
+    if (!rec) {
+      rec = { tier: RESIDENCY_TIER.RECORD_ONLY, epoch: 0, reason: 'init', lastTouchTick: state.tick | 0 };
+      state.world.residentSectors[sectorId] = rec;
+    }
+    const existing = state.world.sectorContents[sectorId];
+    if (existing && (rec.tier === RESIDENCY_TIER.FULL || rec.tier === RESIDENCY_TIER.REDUCED)
+        && (existing.stations.length || existing.gates.length || existing.fields.length)) {
+      return; // already live — do not re-roll content on membership jitter
+    }
+
+    const epoch = Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    // Epoch-stable content stream: (meta.seed, sectorId, epoch). Does not use state.rng.
+    state.world.rng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, epoch));
+    const rng = state.world.rng;
+    const disc = this._discoveryFor(sectorId);
+    const active = this._emptySectorBag();
+
+    this._spawnStations(sector, active, rng);
+    this._spawnFields(sector, active, disc, rng);
+    this._spawnGates(sector, active, rng);
+    this._spawnPOIs(sector, active, disc, rng);
+    this._spawnHazards(sector, active);
+    if (tier === RESIDENCY_TIER.FULL) {
+      this._spawnDressing(sector, active, rng);
+      this._spawnEnemies(sector, active, rng);
+      this._spawnBossIfDue(sector, active, rng);
+    }
+
+    state.world.sectorContents[sectorId] = active;
+    rec.tier = tier;
+    rec.epoch = epoch;
+    rec.materializedAtTick = state.tick | 0;
+  },
+
+  /** Promote/demote live content between FULL and REDUCED without rematerializing anchors. */
+  _syncSectorTierContent(sectorId, tier) {
+    const state = this.state;
+    const rec = state.world.residentSectors[sectorId];
+    if (!rec || rec.tier === tier) {
+      // Still may need FULL extras if bag was created as REDUCED.
+      if (tier === RESIDENCY_TIER.FULL) this._promoteSectorToFull(sectorId);
+      if (tier === RESIDENCY_TIER.REDUCED) this._stripSectorFullExtras(sectorId);
+      this._setResidentMeta(sectorId, tier, rec && rec.reason);
+      return;
+    }
+    if (tier === RESIDENCY_TIER.FULL) this._promoteSectorToFull(sectorId);
+    if (tier === RESIDENCY_TIER.REDUCED) this._stripSectorFullExtras(sectorId);
+    this._setResidentMeta(sectorId, tier, rec.reason);
+  },
+
+  _promoteSectorToFull(sectorId) {
+    const state = this.state;
+    const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    const active = state.world.sectorContents[sectorId];
+    if (!sector || !active) return;
+    // Already has combat presence → nothing to do.
+    if ((active.enemies && active.enemies.length) || (active.dressing && active.dressing.length)) return;
+    const rec = state.world.residentSectors[sectorId] || { epoch: 0 };
+    const epoch = Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    // Separate stream so structural epoch RNG is not re-consumed.
+    state.world.rng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, epoch, 'full_extra'));
+    const rng = state.world.rng;
+    this._spawnDressing(sector, active, rng);
+    this._spawnEnemies(sector, active, rng);
+    this._spawnBossIfDue(sector, active, rng);
+  },
+
+  _stripSectorFullExtras(sectorId) {
+    const state = this.state;
+    const active = state.world.sectorContents[sectorId];
+    if (!active) return;
+    // Remove enemies + dressing only; keep stations/gates/fields/pois/hazards.
+    const kill = new Set();
+    for (const id of (active.enemies || [])) kill.add(id);
+    for (const d of (active.dressing || [])) if (d && d.id != null) kill.add(d.id);
+    this._despawnEntityIds(kill, sectorId);
+    active.enemies = [];
+    active.dressing = [];
+    if (active.boss) delete active.boss;
+  },
+
+  _demoteSectorToRecordOnly(sectorId) {
+    this._despawnEntitiesForSector(sectorId);
+    if (this.state.world.sectorContents) {
+      this.state.world.sectorContents[sectorId] = this._emptySectorBag();
+    }
+    this._setResidentMeta(sectorId, RESIDENCY_TIER.RECORD_ONLY, 'evict');
+  },
+
+  /**
+   * Test/harness hook: force a tier transition (used by residency tests for eviction).
+   * @param {string} sectorId
+   * @param {string} tier
+   * @param {{reason?:string}} [opts]
+   */
+  _setSectorTier(sectorId, tier, opts = {}) {
+    this._ensureResidencyState();
+    if (tier === RESIDENCY_TIER.RECORD_ONLY) {
+      this._demoteSectorToRecordOnly(sectorId);
+    } else if (tier === RESIDENCY_TIER.REDUCED || tier === RESIDENCY_TIER.FULL) {
+      this._ensureSectorMaterialized(sectorId, tier);
+      this._syncSectorTierContent(sectorId, tier);
+      this._setResidentMeta(sectorId, tier, opts.reason || 'test');
+    }
+    this.bus.emit('world:residency', {
+      sectors: Object.keys(this.state.world.residentSectors).sort().map((id) => ({
+        sectorId: id,
+        tier: this.state.world.residentSectors[id].tier,
+        epoch: this.state.world.residentSectors[id].epoch,
+      })),
+      membershipSectorId: this.state.world.currentSectorId,
+      reason: opts.reason || 'test',
+      tick: this.state.tick | 0,
+      noTeleport: true,
+    });
+  },
+
+  /** Scoped despawn: only entities owned by homeSectorId. Never player / persistent / mission-pinned. */
+  _despawnEntitiesForSector(sectorId) {
+    const state = this.state;
+    const list = state.entityList;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const e = list[i];
+      if (!e) continue;
+      if (this._isProtectedFromResidency(e)) continue;
+      const home = e.homeSectorId || (e.data && e.data.homeSectorId);
+      if (home !== sectorId) continue;
+      this._destroyEntityAtIndex(i);
+    }
+  },
+
+  _despawnEntityIds(idSet, sectorId) {
+    if (!idSet || idSet.size === 0) return;
+    const state = this.state;
+    const list = state.entityList;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const e = list[i];
+      if (!e || !idSet.has(e.id)) continue;
+      if (this._isProtectedFromResidency(e)) continue;
+      if (sectorId) {
+        const home = e.homeSectorId || (e.data && e.data.homeSectorId);
+        if (home && home !== sectorId) continue;
+      }
+      this._destroyEntityAtIndex(i);
+    }
+  },
+
+  _isProtectedFromResidency(e) {
+    const state = this.state;
+    if (!e) return true;
+    if (e.id === state.playerId) return true;
+    if (e.isPlayer) return true;
+    if (e.flags && (e.flags.persistent || e.flags.missionPinned)) return true;
+    if (e.data && (e.data.persistent || e.data.missionPinned || e.data.missionId)) return true;
+    return false;
+  },
+
+  _destroyEntityAtIndex(i) {
+    const state = this.state;
+    const list = state.entityList;
+    const e = list[i];
+    if (!e) return;
+    e.alive = false;
+    this.bus.emit('entity:destroyed', {
+      id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId,
+    });
+    state.entities.delete(e.id);
+    state.freeIds.push(e.id);
+    const last = list.pop();
+    if (i < list.length) list[i] = last;
+  },
+
+  /**
+   * LEGACY global wipe — retained only for emergency tooling. Continuous residency and
+   * enterSector MUST NOT call this (M2a: no global wipe on continuous or bounded jump).
+   * @deprecated use _despawnEntitiesForSector
+   */
   _despawnSectorEntities() {
     const state = this.state;
     const list = state.entityList;
     for (let i = list.length - 1; i >= 0; i--) {
       const e = list[i];
-      if (e.id === state.playerId) continue;          // keep the flyable ship
-      e.alive = false;
-      // Emit cleanup so render disposes meshes immediately (we run outside the sim sweep).
-      this.bus.emit('entity:destroyed', {
-        id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId,
-      });
-      state.entities.delete(e.id);
-      state.freeIds.push(e.id);
-      const last = list.pop();
-      if (i < list.length) list[i] = last;
+      if (this._isProtectedFromResidency(e)) continue;
+      this._destroyEntityAtIndex(i);
     }
+  },
+
+  _stampHomeSector(ent, sectorId) {
+    if (!ent || !sectorId) return ent;
+    ent.homeSectorId = sectorId;
+    if (!ent.data) ent.data = {};
+    ent.data.homeSectorId = sectorId;
+    if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
+    return ent;
+  },
+
+  // Free-flight membership: nearest corridor origin; no teleport / vel zero / noInterp.
+  _tickResidency(state) {
+    if (state.mode !== 'flight') return;
+    // Skip membership auto-switch while gate/drive tunnel is in progress.
+    if (state.jump && (state.jump.state === 'CHARGING' || state.jump.state === 'JUMPING')) return;
+    const player = state.entities.get(state.playerId);
+    if (!player || !player.pos) return;
+    const next = sectorMembershipAtGlobal(player.pos, CORRIDOR_SECTOR_IDS);
+    if (!next || next === state.world.currentSectorId) return;
+    // Only auto-switch when both current and next are corridor (or current is unset/corridor).
+    if (state.world.currentSectorId && !isCorridorSector(state.world.currentSectorId)) return;
+    this.enterSector(next, {
+      continuous: true,
+      noTeleport: true,
+      fromSectorId: state.world.currentSectorId,
+    });
+  },
+
+  // --- coordinate helpers (sector-local authored → galactic-global, once at spawn) ----------
+  /** Compose sector-local XZ into galactic-global for the given sector id. */
+  _toGlobal(local, sectorId, out) {
+    return sectorLocalToGlobalForSector(local, sectorId, out);
+  },
+
+  /** Sector galactic origin as a plain {x,z} (may share frozen table entries — treat read-only). */
+  _sectorOrigin(sectorId) {
+    return sectorGlobalOrigin(sectorId);
   },
 
   // --- spawn helpers ------------------------------------------------------------------------
@@ -251,11 +635,13 @@ export const world = {
     const n = stations.length;
     stations.forEach((st, i) => {
       // Authored anchors win; procedural ring is fallback for dev sectors missing pos.
+      // RNG order preserved: roll ang/ringR before conversion even when pos is authored.
       const ang = (Math.PI * 2 * i) / Math.max(1, n) + rng() * 0.6;
       const ringR = wr * (0.28 + rng() * 0.22);
-      const pos = st.pos
+      const local = st.pos
         ? { x: st.pos.x, z: st.pos.z }
         : { x: Math.cos(ang) * ringR, z: Math.sin(ang) * ringR };
+      const pos = this._toGlobal(local, sector.id);
       const size = st.size || 'M';
       const dockRadius = size === 'L' ? 90 : size === 'S' ? 60 : 72;
       const collisionRadius = size === 'L' ? 42 : size === 'S' ? 26 : 34;
@@ -269,19 +655,23 @@ export const world = {
           services: st.services || [], factionId: st.factionId || sector.factionId,
           name: st.name, size,
           contested: !!st.contested, repGated: !!st.repGated, sectorId: sector.id,
+          homeSectorId: sector.id,
           archetypeGlb: st.archetypeGlb || null,
           landmark: !!st.landmark,
           landmarkGlb: st.landmarkGlb || null,
         },
       });
-      active.stations.push({ id: ent.id, stationId: st.id, pos });
+      this._stampHomeSector(ent, sector.id);
+      active.stations.push({ id: ent.id, stationId: st.id, pos: { x: pos.x, z: pos.z } });
     });
   },
 
   // Asteroid FIELDS: clusters of real ASTEROIDS-type rocks so mining oreTables resolve.
   _spawnFields(sector, active, disc, rng) {
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
-    const params = FIELDS[sector.tier] || FIELDS[3] || FIELDS[1];
+    const baseParams = FIELDS[sector.tier] || FIELDS[3] || FIELDS[1];
+    // Shallow copy so we can attach homeSectorId without mutating the shared FIELDS catalog.
+    const params = { ...baseParams, _homeSectorId: sector.id };
     const fieldDefs = sector.fields || [];
     if (!fieldDefs.length) return;
 
@@ -296,24 +686,29 @@ export const world = {
         ? Math.max(1, Math.round(fdef.count * (1 - 0.6 * depleted)))
         : Math.max(4, Math.round(budget * share * (1 - 0.6 * depleted)));
       // Authored fields may pin their center/radius for onboarding or landmark readability.
+      // Math stays sector-local for layout/RNG; convert the center once for live records + rocks.
       const cang = rng() * Math.PI * 2;
       const cR = wr * (0.35 + rng() * 0.4);
-      const center = fdef.center
+      const centerLocal = fdef.center
         ? { x: fdef.center.x, z: fdef.center.z }
         : { x: Math.cos(cang) * cR, z: Math.sin(cang) * cR };
+      const center = this._toGlobal(centerLocal, sector.id);
       const clusterR = fdef.clusterRadius || params.clusterRadius || 450;
       const astIds = [];
       for (let i = 0; i < count; i++) {
         const a = this._spawnAsteroid(fdef, params, center, clusterR, rng);
-        if (a) astIds.push(a.id);
+        if (a) {
+          this._stampHomeSector(a, sector.id);
+          astIds.push(a.id);
+        }
       }
-      active.fields.push({ id: fdef.id, type: fdef.type, center, asteroidIds: astIds });
+      active.fields.push({ id: fdef.id, type: fdef.type, center: { x: center.x, z: center.z }, asteroidIds: astIds });
     }
   },
 
   _spawnAsteroid(fdef, params, center, clusterR, rng) {
     const def = AST_BY_ID.get(fdef.type) || AST_BY_ID.get('ast_common_rock');
-    // disc-uniform scatter inside the cluster
+    // disc-uniform scatter inside the cluster (center is already galactic-global)
     const ang = rng() * Math.PI * 2;
     const r = clusterR * Math.sqrt(rng());
     const pos = { x: center.x + Math.cos(ang) * r, z: center.z + Math.sin(ang) * r };
@@ -339,6 +734,9 @@ export const world = {
         fieldId: fdef.id,
       },
     });
+    // Asteroid fields are always spawned for a concrete sector bag — recover id from field center bag via caller.
+    // homeSectorId is stamped by _spawnAsteroidInSector when available; fallback leaves data open.
+    if (params && params._homeSectorId) this._stampHomeSector(ent, params._homeSectorId);
     ent.data.seams = deriveAsteroidSeams(this.state.meta.seed, ent.id, ent.radius, {
       hash32: this.helpers.hash32,
       mulberry32: this.helpers.mulberry32,
@@ -360,6 +758,7 @@ export const world = {
         data: {
           stationId: null, isGate: true, gateTo: nbId, dockRadius,
           placeScale: dockRadius / 14,
+          homeSectorId: sector.id,
           collisionRadius,
           services: [], factionId: sector.factionId,
           name: opts.wormhole ? 'Wormhole' : `Gate → ${nb ? nb.name : nbId}`,
@@ -369,13 +768,14 @@ export const world = {
           archetypeGlb: opts.archetypeGlb || 'place_gate_jump_ring',
         },
       });
+      this._stampHomeSector(ent, sector.id);
       active.gates.push({ id: ent.id, to: nbId, pos, wormhole: !!opts.wormhole });
     };
     if (authored) {
       for (const g of authored) {
         if (!g.to || !g.pos) continue;
         const isWh = !!g.wormhole;
-        spawnGate(g.to, { x: g.pos.x, z: g.pos.z }, {
+        spawnGate(g.to, this._toGlobal(g.pos, sector.id), {
           wormhole: isWh,
           gatedBy: isWh && sector.wormholeTo ? sector.wormholeTo.gatedBy : null,
           archetypeGlb: g.archetypeGlb,
@@ -387,11 +787,13 @@ export const world = {
       const nb = safeSector(this.state, nbId);
       const ang = this._bearingTo(sector, nb, rng);
       const gateR = wr * 0.82;
-      spawnGate(nbId, { x: Math.cos(ang) * gateR, z: Math.sin(ang) * gateR });
+      spawnGate(nbId, this._toGlobal({ x: Math.cos(ang) * gateR, z: Math.sin(ang) * gateR }, sector.id));
     }
     if (sector.wormholeTo) {
       const ang = rng() * Math.PI * 2;
-      spawnGate(sector.wormholeTo.sectorId, { x: Math.cos(ang) * wr * 0.6, z: Math.sin(ang) * wr * 0.6 }, {
+      spawnGate(sector.wormholeTo.sectorId, this._toGlobal({
+        x: Math.cos(ang) * wr * 0.6, z: Math.sin(ang) * wr * 0.6,
+      }, sector.id), {
         wormhole: true, gatedBy: sector.wormholeTo.gatedBy,
       });
     }
@@ -404,7 +806,10 @@ export const world = {
     for (const poi of (sector.pois || [])) {
       const ang = rng() * Math.PI * 2;
       const r = wr * (0.2 + rng() * 0.6);
-      const pos = poi.pos ? { x: poi.pos.x, z: poi.pos.z } : { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
+      const local = poi.pos
+        ? { x: poi.pos.x, z: poi.pos.z }
+        : { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
+      const pos = this._toGlobal(local, sector.id);
       if (!disc.pois[poi.id]) disc.pois[poi.id] = { discovered: false, identified: false };
       const placeId = poi.landmarkGlb
         ? String(poi.landmarkGlb).replace(/^places\//, '').replace(/\.glb$/, '')
@@ -426,9 +831,14 @@ export const world = {
           placeId,
           visualRadius,
           placeRadius: visualRadius,
+          homeSectorId: sector.id,
         },
       });
-      active.pois.push({ id: ent.id, poiId: poi.id, type: poi.type, pos, hidden: !!poi.hidden, claimable: !!poi.claimable });
+      this._stampHomeSector(ent, sector.id);
+      active.pois.push({
+        id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },
+        hidden: !!poi.hidden, claimable: !!poi.claimable,
+      });
     }
   },
 
@@ -448,15 +858,16 @@ export const world = {
   _spawnCoreDressing(sector, active, rng, paletteClass) {
     const gates = active.gates || [];
     const stations = active.stations || [];
+    const origin = this._sectorOrigin(sector.id);
     for (let i = 0; i < Math.min(4, gates.length * 2); i++) {
       const gate = gates[i % Math.max(1, gates.length)];
       if (!gate || !gate.pos) continue;
       const t = i % 2 === 0 ? 0.46 : 0.62;
       const side = i % 2 === 0 ? 1 : -1;
-      const pos = offsetAlongRadial(gate.pos, t, side * (95 + rng() * 35));
+      const pos = offsetAlongRadial(gate.pos, t, side * (95 + rng() * 35), origin);
       this._spawnPlaceProp(active, sector, 'place_lane_beacon', pos, {
         paletteClass,
-        rot: bearingFromOrigin(pos),
+        rot: bearingFromOrigin(pos, origin),
         name: 'Lane Beacon',
         placeScale: 1,
       });
@@ -464,7 +875,7 @@ export const world = {
     for (let i = 0; i < Math.min(2, stations.length); i++) {
       const station = stations[i];
       if (!station || !station.pos) continue;
-      const pos = offsetAlongRadial(station.pos, 1.0, 150 + rng() * 70);
+      const pos = offsetAlongRadial(station.pos, 1.0, 150 + rng() * 70, origin);
       this._spawnPlaceProp(active, sector, 'place_station_billboard', pos, {
         paletteClass,
         rot: bearingToward(station.pos, pos),
@@ -511,11 +922,12 @@ export const world = {
     const fields = active.fields || [];
     const gates = active.gates || [];
     const pois = active.pois || [];
+    const origin = this._sectorOrigin(sector.id);
     if (gates[0] && gates[0].pos) {
-      const pos = offsetAlongRadial(gates[0].pos, 0.76, 120 + rng() * 60);
+      const pos = offsetAlongRadial(gates[0].pos, 0.76, 120 + rng() * 60, origin);
       this._spawnPlaceProp(active, sector, 'place_nav_buoy', pos, {
         paletteClass,
-        rot: bearingFromOrigin(pos),
+        rot: bearingFromOrigin(pos, origin),
         name: 'Flickering Nav Buoy',
       });
     }
@@ -547,7 +959,9 @@ export const world = {
   _spawnAnomalyDressing(sector, active, rng, paletteClass) {
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
     const pois = active.pois || [];
-    const anchor = pois[0] && pois[0].pos ? pois[0].pos : { x: wr * 0.24, z: -wr * 0.18 };
+    const anchor = pois[0] && pois[0].pos
+      ? pois[0].pos
+      : this._toGlobal({ x: wr * 0.24, z: -wr * 0.18 }, sector.id);
     const base = rng() * Math.PI * 2;
     this._spawnPlaceProp(active, sector, 'place_nav_buoy', polarOffset(anchor, base, 180 + rng() * 80), {
       paletteClass,
@@ -586,20 +1000,24 @@ export const world = {
         worldDressing: true,
         paletteClass,
         sectorId: sector.id,
+        homeSectorId: sector.id,
         name: options.name || placeId,
         visualRadius: radius,
         placeRadius: radius,
       },
     });
+    this._stampHomeSector(ent, sector.id);
     active.dressing.push({ id: ent.id, placeId, pos: { x: pos.x, z: pos.z }, paletteClass });
     return ent;
   },
 
   // Hazard zones: pure data tags on activeSector (flight/combat/ai read these); no entity needed.
+  // Centers are converted once from sector-local authorship into galactic-global.
   _spawnHazards(sector, active) {
     for (const hz of (sector.hazards || [])) {
+      const center = this._toGlobal(hz.center, sector.id);
       active.hazards.push({
-        type: hz.type, center: { x: hz.center.x, z: hz.center.z },
+        type: hz.type, center: { x: center.x, z: center.z },
         radius: hz.radius, intensity: hz.intensity, moving: !!hz.moving,
       });
     }
@@ -636,11 +1054,13 @@ export const world = {
     if (zonePlan.length) {
       const player = this.state.entities.get(this.state.playerId);
       const starterSafe = starterSafeRadius(sector);
+      const sectorOrigin = this._sectorOrigin(sector.id);
       for (const intent of zonePlan) {
-        const pos = intent.pos;
+        // Zone plans are sector-local; convert once at the spawn boundary.
+        const pos = this._toGlobal(intent.pos, sector.id);
         if (intent.context === 'zone_hostile') {
           // Never drop a hostile in the tutorial-safe bubble or on top of the player at entry.
-          if (starterSafe > 0 && dist2(pos, { x: 0, z: 0 }) < starterSafe * starterSafe) continue;
+          if (starterSafe > 0 && dist2(pos, sectorOrigin) < starterSafe * starterSafe) continue;
           if (player && player.pos && dist2(pos, player.pos) < ZONE_HOSTILE_PLAYER_CLEARANCE * ZONE_HOSTILE_PLAYER_CLEARANCE) continue;
         }
         const spec = makeEnemySpawnSpec(intent.archetypeId, clamp(intent.level, lvLo, lvHi + 2), pos, { factionId: intent.factionId });
@@ -653,6 +1073,7 @@ export const world = {
         spec.data.ai.zoneName = intent.zoneName;
         tagAiSpawnContext(spec, sector, sec, intent.context);
         const ent = this.helpers.spawnEntity(spec);
+        this._stampHomeSector(ent, sector.id);
         active.enemies.push(ent.id);
       }
     } else if (grant > 0) {
@@ -665,6 +1086,7 @@ export const world = {
         const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos);
         tagAiSpawnContext(spec, sector, sec, 'ambient');
         const ent = this.helpers.spawnEntity(spec);
+        this._stampHomeSector(ent, sector.id);
         active.enemies.push(ent.id);
       }
     }
@@ -691,6 +1113,7 @@ export const world = {
         const spec = makeEnemySpawnSpec('patrol_lawman', clamp(level, lvLo, lvHi + 2), pos);
         tagAiSpawnContext(spec, sector, sec, 'bounty_hunter');
         const ent = this.helpers.spawnEntity(spec);
+        this._stampHomeSector(ent, sector.id);
         active.enemies.push(ent.id);
       }
     }
@@ -710,10 +1133,12 @@ export const world = {
     const rec = disc.pois[bossPoi.id] || (disc.pois[bossPoi.id] = { discovered: false, identified: false });
     if (rec.bossDefeated) return; // already beaten this save — don't respawn
     // Place the boss near the POI marker (or a deterministic ring position if the POI is unplaced).
+    // Convert sector-local authorship once into galactic-global.
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
-    const pos = bossPoi.pos
+    const local = bossPoi.pos
       ? { x: bossPoi.pos.x, z: bossPoi.pos.z }
       : (() => { const ang = rng() * Math.PI * 2, r = wr * 0.45; return { x: Math.cos(ang) * r, z: Math.sin(ang) * r }; })();
+    const pos = this._toGlobal(local, sector.id);
     const [lvLo, lvHi] = sector.enemyLevel || [10, 15];
     const level = clamp(lvHi, lvLo, 15);
     const spec = makeEnemySpawnSpec('dreadnought_boss', level, pos);
@@ -722,6 +1147,7 @@ export const world = {
     spec.data.bossPoiId = bossPoi.id; // links back to the discovery record to mark defeated
     spec.data.bossSectorId = sector.id;
     const ent = this.helpers.spawnEntity(spec);
+    this._stampHomeSector(ent, sector.id);
     active.enemies.push(ent.id);
     active.boss = { entityId: ent.id, poiId: bossPoi.id };
   },
@@ -736,7 +1162,8 @@ export const world = {
     for (let attempt = 0; attempt < AMBIENT_SPAWN_ATTEMPTS; attempt++) {
       const ang = rng() * Math.PI * 2;
       const r = wr * (0.3 + rng() * 0.5);
-      const pos = { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
+      // Ring math is sector-local; convert once around the sector's global origin.
+      const pos = this._toGlobal({ x: Math.cos(ang) * r, z: Math.sin(ang) * r }, sector.id);
       if (this._ambientSpawnIsSafe(pos, sector, active)) return pos;
     }
     return null;
@@ -744,7 +1171,7 @@ export const world = {
 
   _ambientSpawnIsSafe(pos, sector, active) {
     const starterSafe = starterSafeRadius(sector);
-    if (starterSafe > 0 && dist2(pos, { x: 0, z: 0 }) < starterSafe * starterSafe) return false;
+    if (starterSafe > 0 && dist2(pos, this._sectorOrigin(sector.id)) < starterSafe * starterSafe) return false;
     for (const st of (active && active.stations) || []) {
       const radius = stationSafeRadius(st);
       if (st && st.pos && dist2(pos, st.pos) < radius * radius) return false;
@@ -782,7 +1209,7 @@ export const world = {
     if (!player || !player.pos) return false;
     if (this._playerInPortNoHostileSpawnZone(active, player)) return true;
     const starterSafe = starterSafeRadius(sector);
-    if (starterSafe > 0 && dist2(player.pos, { x: 0, z: 0 }) < starterSafe * starterSafe) return true;
+    if (starterSafe > 0 && dist2(player.pos, this._sectorOrigin(sector.id)) < starterSafe * starterSafe) return true;
     return false;
   },
 
@@ -805,18 +1232,21 @@ export const world = {
   },
 
   // --- entry point + player placement -------------------------------------------------------
+  // Returns galactic-global entry coordinates for the target sector (heading is sector-local-facing).
   _entryPointFor(sector, fromSectorId, rng) {
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
     if (fromSectorId && (sector.neighbors || []).includes(fromSectorId)) {
       // arrive near the gate back to where we came from, facing inward
       const ang = this._bearingTo(sector, safeSector(this.state, fromSectorId), rng);
       const r = wr * 0.78;
-      const x = Math.cos(ang) * r, z = Math.sin(ang) * r;
-      const heading = Math.atan2(-z, -x); // face origin
-      return { x, z, heading };
+      const lx = Math.cos(ang) * r, lz = Math.sin(ang) * r;
+      const heading = Math.atan2(-lz, -lx); // face sector origin
+      const global = this._toGlobal({ x: lx, z: lz }, sector.id);
+      return { x: global.x, z: global.z, heading };
     }
-    // first/home spawn: near origin
-    return { x: 0, z: 0, heading: 0 };
+    // first/home spawn: near the sector's galactic origin
+    const origin = this._sectorOrigin(sector.id);
+    return { x: origin.x, z: origin.z, heading: 0 };
   },
 
   _placePlayer(entryPoint) {
@@ -906,10 +1336,38 @@ export const world = {
       default: break;
     }
 
+    this._tickFrameOrigin(state);
+    this._tickResidency(state);
     this._tickScan(dt, state);
     this._tickHazards(dt, state);
     this._tickZoneLabel(state);
     this._tickPOIScan(state);
+  },
+
+  // Floating origin owner: derive a snapped frame from the player global position.
+  // On an actual change, mutate only world.frameOrigin / frameOriginSeq and emit a receipt.
+  // No-shift path reuses scratch and allocates nothing per tick.
+  _tickFrameOrigin(state) {
+    const player = state.entities.get(state.playerId);
+    if (!player || !player.pos) return;
+    const world = state.world;
+    if (!world.frameOrigin || typeof world.frameOrigin !== 'object') {
+      world.frameOrigin = { x: 0, z: 0 };
+    }
+    const scratch = this._frameOriginScratch || (this._frameOriginScratch = { x: 0, z: 0 });
+    const next = deriveFrameOrigin(player.pos, world.frameOrigin, scratch);
+    const cur = world.frameOrigin;
+    if (cur.x === next.x && cur.z === next.z) return;
+
+    const prevX = cur.x;
+    const prevZ = cur.z;
+    if (!applyFrameOrigin(state, next)) return;
+    // Shift path only: allocate a deterministic receipt payload.
+    this.bus.emit('world:originShift', {
+      previous: { x: prevX, z: prevZ },
+      next: { x: cur.x, z: cur.z },
+      seq: world.frameOriginSeq,
+    });
   },
 
   // Named-zone awareness (WORLD_OVERHAUL_2_1): announce when the player crosses into a named zone so
@@ -919,7 +1377,9 @@ export const world = {
     const player = state.entities.get(state.playerId);
     if (!player || !player.pos) return;
     const sectorId = state.world.currentSectorId;
-    const zone = zoneAt(sectorId, player.pos.x, player.pos.z);
+    // Named zones are authored sector-local; convert the player global focus into local for the lookup.
+    const origin = this._sectorOrigin(sectorId);
+    const zone = zoneAt(sectorId, player.pos.x - origin.x, player.pos.z - origin.z);
     const prevId = state.world.currentZoneId || null;
     const nextId = zone ? zone.id : null;
     if (nextId === prevId) return;
@@ -978,7 +1438,8 @@ export const world = {
       interdicted = state.rng() < chance;
     }
 
-    // Load the new sector (re-seeds world.rng, despawns old, spawns new, places player).
+    // Intentional jump: residency plan + place player at target entry. Does not global-wipe
+    // other bounded residents (scoped demote/evict only when over the materialization cap).
     this.enterSector(target, { fromJump: true, via, fromSectorId });
 
     if (via === 'drive' && interdicted) {
@@ -1018,6 +1479,7 @@ export const world = {
       const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos);
       tagAiSpawnContext(spec, sector, sector, origin ? 'spawn_request' : 'interdiction');
       const ent = this.helpers.spawnEntity(spec);
+      this._stampHomeSector(ent, sector.id);
       placed.push(ent.id);
     }
     if (!placed.length) return;
@@ -1455,6 +1917,9 @@ export const world = {
       discovery: state.world.discovery,
       scanPings: state.world.scanPings || {},
       pendingSpawns: state.world.pendingSpawns || {},
+      // v9: entity/overlay positions are already galactic-global. Persist schema tag only —
+      // frameOrigin / frameOriginSeq are runtime boundary values and must not re-offset poses.
+      coordinateSchema: state.world.coordinateSchema || 'global_v1',
       sectorOwners: this._ownerOverlay(),
       jump: {
         state: state.jump.state, targetSectorId: state.jump.targetSectorId, via: state.jump.via,
@@ -1480,6 +1945,18 @@ export const world = {
     state.world.scanPings = (data.scanPings && typeof data.scanPings === 'object') ? data.scanPings : {};
     state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};
     if (data.currentSectorId) state.world.currentSectorId = data.currentSectorId;
+    // Coordinate schema is global_v1 for v9+. Always reset the runtime frame on load rather
+    // than trusting a stale rendering frame that may have been smuggled into a payload.
+    state.world.coordinateSchema = (data.coordinateSchema === 'global_v1' || data.coordinateSchema == null)
+      ? 'global_v1'
+      : String(data.coordinateSchema);
+    if (!state.world.frameOrigin || typeof state.world.frameOrigin !== 'object') {
+      state.world.frameOrigin = { x: 0, z: 0 };
+    } else {
+      state.world.frameOrigin.x = 0;
+      state.world.frameOrigin.z = 0;
+    }
+    state.world.frameOriginSeq = 0;
     if (data.jump) {
       // restore overlay fields but never resume a mid-charge/jump (avoid a stuck FSM on load)
       Object.assign(state.jump, data.jump);
@@ -1504,6 +1981,19 @@ export const world = {
     state.world.discovery = {};
     state.world.scanPings = {};
     state.world.pendingSpawns = {};
+    state.world.residentSectors = {};
+    state.world.sectorContents = {};
+    state.world.activeSector = this._emptySectorBag();
+    state.world.currentSectorId = null;
+    // Coordinate membrane: new games always start at global_v1 with a zero runtime frame.
+    state.world.coordinateSchema = 'global_v1';
+    if (!state.world.frameOrigin || typeof state.world.frameOrigin !== 'object') {
+      state.world.frameOrigin = { x: 0, z: 0 };
+    } else {
+      state.world.frameOrigin.x = 0;
+      state.world.frameOrigin.z = 0;
+    }
+    state.world.frameOriginSeq = 0;
     this._seedChartedDiscovery();
     state.jump.state = 'IDLE'; state.jump.targetSectorId = null; state.jump.via = null;
     state.jump.chargeT = 0; state.jump.chargeNeeded = 0; state.jump.cooldownT = 0;
@@ -1535,12 +2025,19 @@ function polarOffset(origin, angle, distance) {
   };
 }
 
-function offsetAlongRadial(pos, t, sideOffset) {
-  const angle = Math.atan2(pos.z, pos.x);
-  const base = { x: pos.x * t, z: pos.z * t };
+// Radial offset relative to a sector origin (default galactic 0,0 for Helios-local legacy).
+// When pos is already galactic-global, pass the sector's global origin so t scales from the sector center.
+function offsetAlongRadial(pos, t, sideOffset, origin = null) {
+  const ox = origin ? origin.x : 0;
+  const oz = origin ? origin.z : 0;
+  const lx = pos.x - ox;
+  const lz = pos.z - oz;
+  const angle = Math.atan2(lz, lx);
+  const baseX = ox + lx * t;
+  const baseZ = oz + lz * t;
   return {
-    x: base.x + Math.cos(angle + Math.PI / 2) * sideOffset,
-    z: base.z + Math.sin(angle + Math.PI / 2) * sideOffset,
+    x: baseX + Math.cos(angle + Math.PI / 2) * sideOffset,
+    z: baseZ + Math.sin(angle + Math.PI / 2) * sideOffset,
   };
 }
 
@@ -1551,8 +2048,10 @@ function midpoint(a, b, t) {
   };
 }
 
-function bearingFromOrigin(pos) {
-  return Math.atan2(pos.z, pos.x);
+function bearingFromOrigin(pos, origin = null) {
+  const ox = origin ? origin.x : 0;
+  const oz = origin ? origin.z : 0;
+  return Math.atan2(pos.z - oz, pos.x - ox);
 }
 
 function bearingToward(from, to) {

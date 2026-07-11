@@ -36,13 +36,20 @@
 
 import { hash32, mulberry32 } from '../core/rng.js';
 import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
+import {
+  globalToSectorLocalForSector,
+  sectorLocalToGlobalForSector,
+} from '../data/sectorCoordinates.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { ENCOUNTERS, NAMED_CAPTAINS, barkText, receiptText } from '../data/encounters.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
 import { ENCOUNTER_SCRIPTS } from './encounterScripts.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { removeCargo } from './cargo.js';
 import { activityForEncounterSpawn, roeForActivity, setEntityDoctrine } from '../ai/doctrine.js';
+
+const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 
 // ── schedule budget (per sector-day) ─────────────────────────────────────────────────────────────
 const MAX_MAJOR_PER_DAY = 1;
@@ -204,7 +211,8 @@ export const encounterDirector = {
     const p = this.player();
     const sectorId = this._currentSectorId();
     if (!p || !sectorId) return;
-    const zone = zoneAt(sectorId, p.pos.x, p.pos.z);
+    const local = globalToSectorLocalForSector(p.pos, sectorId);
+    const zone = zoneAt(sectorId, local.x, local.z);
     const zt = zoneThreat(zone);
     const sec = sectorSecurityOf(state);
     const cargoBand = Math.min(1, this.cargoValue() / 2000);
@@ -460,6 +468,7 @@ export const encounterDirector = {
       const ai = spec.data.ai;
       ai.squadId = live.squadId;
       ai.doctrine = sh.doctrine || ai.doctrine;
+      if (sh.combatDoctrineId) ai.combatDoctrineId = sh.combatDoctrineId;
       if (sh.formation) ai.formation = sh.formation;
       ai.spawnContext = sh.context;
       ai.sectorId = live.sectorId;
@@ -854,6 +863,13 @@ export function planEncounterShape(enc, zone, sectorId, dayIndex, seq, rng) {
 function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
   const squadId = `enc_${sectorId}_${dayIndex}_${enc.id}_${seq}`;
   const levelBand = zoneLevelBand(zone);
+  // Authored zone centers are sector-local, while every live entity/world anchor is galactic-global.
+  // Compose once at the planner boundary so squad jitter, proximity gates, telegraphs, and wrecks all
+  // share the same authoritative coordinate space off Helios.
+  const globalZone = {
+    ...zone,
+    center: sectorLocalToGlobalForSector(zone.center, sectorId),
+  };
   const ships = [];
   // Civilian route life flies the LOCAL flag (a hauler out of Sker is a Reach press-gang run, not
   // an MTS liner); combat shapes keep their authored faction identity.
@@ -866,16 +882,16 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
     const branch = genuine ? enc.genuine : enc.bait;
     factionId = branch.factionId;
     variantKind = genuine ? 'distress_genuine' : 'distress_bait';
-    addSquad(ships, branch.squad, branch.factionId, branch.context, zone, levelBand, rng, genuine ? 'victim' : 'bait');
+    addSquad(ships, branch.squad, branch.factionId, branch.context, globalZone, levelBand, rng, genuine ? 'victim' : 'bait');
     if (genuine && branch.threat) {
-      addSquad(ships, branch.threat, branch.threat.factionId, branch.threat.context, zone, levelBand, rng, 'threat');
+      addSquad(ships, branch.threat, branch.threat.factionId, branch.threat.context, globalZone, levelBand, rng, 'threat');
     }
   } else if (enc.script === 'namedHunter') {
     // Composition is resolved at fire time from the live named-captain roster (grudges evolve).
   } else {
     const mainRole = (enc.script === 'convoy' || enc.script === 'traderRun') ? 'hauler' : 'squad';
-    addSquad(ships, enc.squad, factionId, enc.context, zone, levelBand, rng, mainRole);
-    if (enc.escort) addSquad(ships, enc.escort, enc.escort.factionId, enc.escort.context || 'patrol', zone, levelBand, rng, 'escort');
+    addSquad(ships, enc.squad, factionId, enc.context, globalZone, levelBand, rng, mainRole);
+    if (enc.escort) addSquad(ships, enc.escort, enc.escort.factionId, enc.escort.context || 'patrol', globalZone, levelBand, rng, 'escort');
   }
 
   return {
@@ -887,7 +903,7 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
     squadId,
     zoneId: zone.id,
     zoneName: zone.name,
-    zoneCenter: { x: zone.center.x, z: zone.center.z },
+    zoneCenter: { x: globalZone.center.x, z: globalZone.center.z },
     zoneRadius: zone.radius || 400,
     factionId,
     bark: enc.bark,
@@ -908,6 +924,7 @@ function addSquad(ships, squad, factionId, context, zone, levelBand, rng, role) 
     const level = Math.round(levelBand[0] + (levelBand[1] - levelBand[0]) * (0.4 + rng() * 0.6));
     ships.push({
       archetype,
+      combatDoctrineId: ENEMY_BY_ID.get(archetype)?.combatDoctrineId || null,
       level,
       pos: jitter(zone, rng, Math.min(zone.radius || 260, 260)),
       factionId,
