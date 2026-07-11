@@ -63,6 +63,30 @@ const SOCKET_WORLD_QUAT = new THREE.Quaternion();
 const SOCKET_WORLD_SCALE = new THREE.Vector3();
 const SOCKET_FORWARD = new THREE.Vector3();
 const RUNTIME_MESH_BUILD_BUDGET = 2;
+
+function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
+  if (!entity || entity._noMesh || meshes.has(entity.id) || queuedIds.has(entity.id)) return;
+  queue.push(entity.id);
+  queuedIds.add(entity.id);
+}
+
+/**
+ * Queue authored-readiness-critical ships before bulk world geometry while retaining the same
+ * bounded per-frame build budget. New Game can spawn hundreds of asteroids/props before its late
+ * traffic and 47-A ships; FIFO entity order otherwise strands those ships behind non-gating meshes.
+ */
+export function enqueueMissingMeshBuilds(entityList, meshes, queuedIds, queue) {
+  for (const entity of entityList) {
+    if (entity && entity.type === 'ship') {
+      enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
+    }
+  }
+  for (const entity of entityList) {
+    if (!entity || entity.type === 'ship') continue;
+    enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
+  }
+}
+
 function getContactShadowTex() {
   if (_shadowTex) return _shadowTex;
   const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -989,14 +1013,14 @@ export const render = {
       const e = state.entities.get(id);
       if (!e || e.alive === false) { this.scene.remove(m); disposeObject(m); this._meshes.delete(id); this._shadowReceiversDirty = true; }
     }
-    // Queue alive entities that lack meshes (fx are particle-managed by vfx -> mark + skip).
-    for (const e of state.entityList) {
-      if (e._noMesh || this._meshes.has(e.id)) continue;
-      if (!this._meshBuildQueuedIds.has(e.id)) {
-        this._meshBuildQueue.push(e.id);
-        this._meshBuildQueuedIds.add(e.id);
-      }
-    }
+    // Queue authored-readiness-critical ships first, then every remaining world entity. The drain
+    // budget stays bounded; this changes admission order only and does not drop or downgrade visuals.
+    enqueueMissingMeshBuilds(
+      state.entityList,
+      this._meshes,
+      this._meshBuildQueuedIds,
+      this._meshBuildQueue,
+    );
     const built = this._drainMeshBuildQueue(buildBudget);
     this._meshReconcileDirty = this._meshBuildQueueHead < this._meshBuildQueue.length;
     if (!this._meshReconcileDirty) this._initialMeshReconcileComplete = true;

@@ -70,6 +70,19 @@ try {
         shieldMax: player.shieldMax,
         pos: { x: player.pos && player.pos.x || 0, z: player.pos && player.pos.z || 0 },
       } : null,
+      ships: (state.entityList || [])
+        .filter((entity) => entity && entity.alive !== false && entity.type === 'ship')
+        .map((entity) => ({
+          id: entity.id,
+          defId: entity.data && entity.data.defId || null,
+          isPlayer: entity.id === state.playerId,
+          authoredAssetState: entity.mesh && entity.mesh.userData
+            ? entity.mesh.userData.authoredAssetState || null
+            : null,
+          authoredAssetMode: entity.mesh && entity.mesh.userData
+            ? entity.mesh.userData.authoredAssetMode || null
+            : null,
+        })),
       gpu,
       loaderDiagnostics,
       assetFailureVisible: /Game assets failed to load/i.test(visibleOverlayText),
@@ -89,6 +102,9 @@ try {
     generatedAt: new Date().toISOString(),
     pass: report.mode === 'flight'
       && report.player && report.player.alive
+      && report.ships.length > 0
+      && report.ships.every((ship) => ship.authoredAssetState === 'authored'
+        && ship.authoredAssetMode === 'release')
       && !report.assetFailureVisible
       && !report.shipDestroyedVisible
       && !(report.gpu && report.gpu.software)
@@ -102,6 +118,13 @@ try {
 
   assert.equal(report.mode, 'flight', 'Electron New Game must enter flight mode');
   assert(report.player && report.player.alive, 'Electron New Game must leave the player alive on launch');
+  assert(report.ships.length > 0, 'Electron New Game must publish its live ship set');
+  assert.deepEqual(
+    report.ships.filter((ship) => ship.authoredAssetState !== 'authored'
+      || ship.authoredAssetMode !== 'release'),
+    [],
+    `Electron New Game must author every live player/NPC ship: ${JSON.stringify(report.ships)}`,
+  );
   assert.equal(report.assetFailureVisible, false, 'Electron New Game must not show the asset failure toast');
   assert.equal(report.shipDestroyedVisible, false, 'Electron New Game must not show the death banner during launch');
   assert(report.gpu && report.gpu.renderer, 'Electron New Game must publish GPU diagnostics');
@@ -109,7 +132,7 @@ try {
   assert.deepEqual(errorIssues, [], `Electron New Game should not report page errors: ${JSON.stringify(summarizeIssues(errorIssues))}`);
   assert.deepEqual(gpuProcessFailures, [], `Electron GPU process should not crash during New Game launch: ${JSON.stringify(gpuProcessFailures)}`);
 
-  console.log(`Electron New Game launch OK - mode=${report.mode}, player=${report.player.id}, gpu=${report.gpu.renderer}`);
+  console.log(`Electron New Game launch OK - mode=${report.mode}, player=${report.player.id}, authoredShips=${report.ships.length}, gpu=${report.gpu.renderer}`);
   console.log(`[electron-new-game] report: ${REPORT_PATH}`);
 } finally {
   if (app) await app.close().catch(() => {});
