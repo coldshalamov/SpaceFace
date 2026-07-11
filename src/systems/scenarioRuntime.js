@@ -1,5 +1,7 @@
 import { formatScenarioIssue, validateScenarioDocument } from '../contracts/scenarioSchemas.js';
 import { FIGURES } from '../data/narrative.js';
+import { CombatDoctrineId } from '../ai/combatDoctrine.js';
+import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 
 export const SCENARIO_RUNTIME_SCHEMA_VERSION = 1;
 const SCENARIO_EVIDENCE_EVENT_CAP = 512;
@@ -200,6 +202,7 @@ function syncLiveColdStartCombatants(runtime) {
       if (!entity.data._liveColdStartActivated) {
         entity.team = Number.isFinite(ai.activationTeam) ? ai.activationTeam : entity.team;
         if (ai.activationFactionId) entity.factionId = ai.activationFactionId;
+        authorizeLiveColdStartActor(state, entity, safe);
         entity.data._liveColdStartActivated = true;
       }
       ai.passive = false;
@@ -209,6 +212,7 @@ function syncLiveColdStartCombatants(runtime) {
       entity.team = 0;
       entity.factionId = 'faction_free';
       ai.passive = true;
+      ai.roe = RulesOfEngagement.HOLD_FIRE;
       if (entity.data.combat) {
         entity.data.combat.targetId = null;
         entity.data.combat.lockTarget = null;
@@ -220,6 +224,31 @@ function syncLiveColdStartCombatants(runtime) {
       }
     }
   }
+}
+
+function authorizeLiveColdStartActor(state, entity, safe) {
+  const ai = entity.data && entity.data.ai;
+  if (!ai) return;
+  const isTug = ai.preferredRole === 'tug' || ai.role === '47a_thief';
+  ai.combatDoctrineId = isTug
+    ? CombatDoctrineId.TETHER_CONTROL_RAIDER
+    : CombatDoctrineId.RANGED_DISENGAGER;
+  ai.motive = isTug ? 'recover_evidence_spindle' : 'screen_recovery_claim';
+  ai.engagementTrigger = safe && safe.provoked ? 'player_attack' : 'explicit_refusal';
+  ai.zoneId = 'zone_47a_wreck_field';
+  ai.approachTelegraph = isTug ? 'attach_spool' : 'weapon_charge';
+  ai.noFireResponseWindowS = 0.5;
+  ai.activity = normalizeActivity({
+    kind: ActivityKind.ATTACK_RUN,
+    reason: `47a:${ai.engagementTrigger}:${isTug ? 'tug' : 'screen'}`,
+    anchor: entity.pos,
+    leashRadius: 2600,
+    preferredRange: isTug ? 180 : 620,
+    startedTick: Number.isInteger(state && state.tick) ? state.tick : Math.round((state && state.simTime || 0) * 60),
+    targetId: state && state.playerId,
+    encounterId: 'scenario.47a.mass-discrepancy',
+  });
+  ai.roe = RulesOfEngagement.WEAPONS_FREE;
 }
 
 function noteSafeOpeningTether(runtime, payload) {

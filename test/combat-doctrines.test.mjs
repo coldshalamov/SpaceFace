@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { ContactKind, ManeuverKind, ObjectiveKind } from '../src/ai/contracts.js';
-import { ActivityKind, RulesOfEngagement } from '../src/ai/doctrine.js';
+import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../src/ai/doctrine.js';
 import { ManeuverPlanner } from '../src/ai/maneuver.js';
 import { PerceptionMemory } from '../src/ai/perception.js';
 import { createSG03ActionPort } from '../src/ai/sg03ActionPort.js';
@@ -507,23 +507,41 @@ for (const ship of ambush.ships) {
 // Real SG-03 cancellation regression is kept separate from the lightweight stack fixture.
 {
   const actor = realPortShip(701, 1, 0);
-  const target = realPortShip(702, 2, 100);
-  const state = { tick: 0, entities: new Map([[actor.id, actor], [target.id, target]]) };
+  const target = realPortShip(702, 0, 100);
+  actor.data.ai = {
+    passive: false,
+    hostileTeams: [0],
+    motive: 'assigned_interdiction',
+    engagementTrigger: 'authorized_hostile_spawn',
+    zoneId: 'zone_real_port_fixture',
+    approachTelegraph: 'engine_flare',
+    noFireResponseWindowS: 0.5,
+    combatDoctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    activity: normalizeActivity({ kind: ActivityKind.ATTACK_RUN, reason: 'real_port_fixture', anchor: actor.pos, leashRadius: 1200, startedTick: 0 }),
+    roe: RulesOfEngagement.WEAPONS_FREE,
+  };
+  const state = {
+    tick: 30, playerId: target.id, player: { heat: 0 },
+    world: { currentSectorId: 'sector_ceres_belt' },
+    entities: new Map([[actor.id, actor], [target.id, target]]),
+    entityList: [actor, target],
+  };
   const ctx = { state, bus: null, helpers: {} };
   const kernel = getCombatKernel(ctx);
   assert.equal(kernel.catalog.actions.get('action_burst').cancelWindows.length, 0,
     'real cancellation fixture uses an action with no authored cancel window');
   const port = createSG03ActionPort(ctx, { controllerId: 'doctrine_cancel_test' });
   const handle = port.start(actor.id, 'action_burst', {
-    tick: 0, targetId: target.id,
+    tick: 30, targetId: target.id,
     target: { id: target.id, kind: ContactKind.SHIP, pos: target.pos },
     squadId: 'real_port_fixture', objective: ObjectiveKind.FOCUS,
+    objectiveReason: 'combat_doctrine:interceptor_flyby:strike',
   });
   assert(handle, 'real SG-03 port queues the non-cancel-window burst action');
   kernel.actions.advance();
   assert.equal(state.combat.actions.activeByActor[String(actor.id)]?.actionId, 'action_burst');
   const interrupted = port.interrupt(actor.id, handle, {
-    tick: 0, reason: 'doctrine_target_invalid', source: 'ai', nextActionId: null, nextTargetId: null,
+    tick: 30, reason: 'doctrine_target_invalid', source: 'ai', nextActionId: null, nextTargetId: null,
   });
   assert.equal(interrupted, true, 'real SG-03 port directly cancels an invalid-target action into hold');
   assert.equal(state.combat.actions.activeByActor[String(actor.id)], undefined,

@@ -10,7 +10,12 @@ for (const aggregate of ['check:ai', 'check:sg06']) {
   assert.equal(matches.length, 1, `${aggregate} wires the M1.5 doctrine gate exactly once`);
 }
 
-const result = spawnSync(process.execPath, ['test/combat-doctrines.test.mjs'], {
+const result = spawnSync(process.execPath, [
+  '--test',
+  'test/combat-doctrines.test.mjs',
+  'test/ai-engagement-authority.test.mjs',
+  'test/ai-engagement-sg03.test.mjs',
+], {
   cwd: new URL('..', import.meta.url),
   stdio: 'inherit',
 });

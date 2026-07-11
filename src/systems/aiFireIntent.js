@@ -1,5 +1,6 @@
 import { ObjectiveKind } from '../ai/contracts.js';
 import { canFireByDoctrine } from '../ai/doctrine.js';
+import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
 import { isPlayerWanted } from './heat.js';
 
 const RECENT_DEFENSIVE_DAMAGE_TICKS = 180;
@@ -16,14 +17,16 @@ export function applyAIFiringIntent(decision, state) {
   const objective = decision.directive && decision.directive.objective;
   const targetId = objective && objective.targetId;
   const attack = objective && (objective.kind === ObjectiveKind.FOCUS || objective.kind === ObjectiveKind.ENGAGE);
+  const combatDoctrine = decision.combatDoctrine || null;
 
-  if (!attack || targetId == null) {
+  if (!attack || targetId == null || (combatDoctrine && !combatDoctrine.fireWindow)) {
     clearFire(intent);
     return;
   }
 
   const target = state.entities.get(targetId);
   const ai = data.ai || {};
+  const recentlyDamaged = recentlyDamagedBy(state, e.id, targetId);
   const permitted = canFireByDoctrine({
     activity: ai.activity,
     roe: ai.roe,
@@ -31,9 +34,19 @@ export function applyAIFiringIntent(decision, state) {
     target,
     self: e,
     wanted: isPlayerWanted(state),
-    recentlyDamaged: recentlyDamagedBy(state, e.id, targetId),
+    recentlyDamaged,
   });
-  if (!permitted) {
+  const authorization = permitted ? authorizeAIEngagement({
+    state,
+    self: e,
+    target,
+    tick: state.tick,
+    objectiveReason: objective.reason,
+    hostile: isHostileForAI(state, e, target),
+    wanted: isPlayerWanted(state),
+    recentlyDamaged,
+  }) : null;
+  if (!permitted || !authorization || !authorization.ok) {
     clearFire(intent);
     return;
   }

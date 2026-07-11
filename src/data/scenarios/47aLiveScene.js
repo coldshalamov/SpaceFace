@@ -1,4 +1,5 @@
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../../systems/ships.js';
+import { CombatDoctrineId } from '../../ai/combatDoctrine.js';
 
 export const SCENARIO_47A_ID = 'scenario.47a.mass-discrepancy';
 export const SCENARIO_47A_CONTRACT_PATH = 'src/data/scenarios/47a.scenario.json';
@@ -219,6 +220,9 @@ export function spawn47aScenarioCast(simOrOptions) {
 }
 
 export function configure47aTacticalAI(entity, { squadId, doctrine, preferredRole, capabilities }) {
+  const combatDoctrineId = preferredRole === 'tug'
+    ? CombatDoctrineId.TETHER_CONTROL_RAIDER
+    : CombatDoctrineId.RANGED_DISENGAGER;
   entity.data = entity.data || {};
   entity.data.ai = Object.assign({}, entity.data.ai, {
     passive: true,
@@ -228,6 +232,12 @@ export function configure47aTacticalAI(entity, { squadId, doctrine, preferredRol
     capabilities,
     sensorRange: 1800,
     formation: doctrine === 'official' ? 'line' : 'wedge',
+    combatDoctrineId,
+    motive: preferredRole === 'tug' ? 'recover_evidence_spindle' : 'screen_recovery_claim',
+    engagementTrigger: 'scenario_gate_pending',
+    zoneId: 'zone_47a_wreck_field',
+    approachTelegraph: combatDoctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER ? 'attach_spool' : 'weapon_charge',
+    noFireResponseWindowS: 0.5,
   });
 }
 

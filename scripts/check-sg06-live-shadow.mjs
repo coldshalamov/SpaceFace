@@ -4,6 +4,7 @@ import { core } from '../src/core/coreSystem.js';
 import { createGameState } from '../src/core/gameState.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../src/ai/doctrine.js';
+import { CombatDoctrineId } from '../src/ai/combatDoctrine.js';
 import { actions } from '../src/systems/actions.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
@@ -28,6 +29,13 @@ const actor = helpers.spawnEntity(makeShipSpec({
     doctrine: 'scavenger',
     preferredRole: 'leader',
     capabilities: ['drive', 'sensor', 'weapon', 'ranged'],
+    combatDoctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    hostileTeams: [0],
+    motive: 'assigned_interdiction',
+    engagementTrigger: 'authorized_hostile_spawn',
+    zoneId: 'zone_live_shadow',
+    approachTelegraph: 'engine_flare',
+    noFireResponseWindowS: 0.5,
     activity: normalizeActivity({
       kind: ActivityKind.ATTACK_RUN,
       reason: 'live_shadow:attack_probe',
@@ -62,7 +70,7 @@ assert.equal(helpers.aiSensors.frameFor(actor.id, state.tick).contacts.some((con
 assert.equal(helpers.aiRoster.listSquads(state.tick).length, 1,
   'production SG-06 roster should include the tactical wing');
 
-for (let i = 0; i < 8; i++) stepShadowHarness(harness, tacticalAI);
+for (let i = 0; i < 38; i++) stepShadowHarness(harness, tacticalAI);
 
 const events = state.combat.trace.events;
 const aiRequests = events.filter((event) =>

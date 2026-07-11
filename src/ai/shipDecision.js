@@ -172,6 +172,7 @@ export class BehaviorExecutor {
         targetId: selected.targetId,
         target: selected.targetContact || null,
         objective: directive.objective.kind,
+        objectiveReason: directive.objective.reason || null,
         squadId: directive.squadId,
       });
       const gate = normalizeGate(this.actionPort.canStart(entityId, selected.actionId, request));

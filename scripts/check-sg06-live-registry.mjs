@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../src/ai/doctrine.js';
+import { CombatDoctrineId } from '../src/ai/combatDoctrine.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRegistry } from '../src/core/registry.js';
@@ -17,13 +18,13 @@ try {
 
   const player = helpers.spawnEntity(makeShipSpec({
     team: 0,
-    x: 180,
+    x: 2780,
     factionId: 'faction_free',
     role: 'player_probe_target',
   }));
   const actor = helpers.spawnEntity(makeShipSpec({
     team: 1,
-    x: 0,
+    x: 2600,
     factionId: 'faction_vael',
     ai: {
       squadId: 'sg06_live_registry_wing',
@@ -31,10 +32,17 @@ try {
       doctrine: 'scavenger',
       preferredRole: 'leader',
       capabilities: ['drive', 'sensor', 'weapon', 'ranged'],
+      combatDoctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+      hostileTeams: [0],
+      motive: 'assigned_interdiction',
+      engagementTrigger: 'authorized_hostile_spawn',
+      zoneId: 'zone_live_registry_probe',
+      approachTelegraph: 'engine_flare',
+      noFireResponseWindowS: 0.5,
       activity: normalizeActivity({
         kind: ActivityKind.ATTACK_RUN,
         reason: 'live_registry:attack_probe',
-        anchor: { x: 0, z: 0 },
+        anchor: { x: 2600, z: 0 },
         leashRadius: 1200,
       }),
       roe: RulesOfEngagement.WEAPONS_FREE,
@@ -46,7 +54,7 @@ try {
   const legacyIntent = Object.freeze({ fire: false, sentinel: 'live-registry-must-not-touch-legacy-intent' });
   actor.data.intent = legacyIntent;
 
-  for (let i = 0; i < 10; i++) registry.step(DT);
+  for (let i = 0; i < 38; i++) registry.step(DT);
 
   const events = state.combat.trace.events;
   const aiRequest = events.find((event) =>

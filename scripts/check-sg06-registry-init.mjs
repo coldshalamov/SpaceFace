@@ -4,6 +4,7 @@ import { core } from '../src/core/coreSystem.js';
 import { createGameState } from '../src/core/gameState.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../src/ai/doctrine.js';
+import { CombatDoctrineId } from '../src/ai/combatDoctrine.js';
 import { physics } from '../src/core/physics.js';
 import { actions } from '../src/systems/actions.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
@@ -30,6 +31,13 @@ const actor = helpers.spawnEntity(makeShipSpec({
     doctrine: 'scavenger',
     preferredRole: 'leader',
     capabilities: ['drive', 'sensor', 'weapon', 'ranged'],
+    combatDoctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    hostileTeams: [0],
+    motive: 'assigned_interdiction',
+    engagementTrigger: 'authorized_hostile_spawn',
+    zoneId: 'zone_registry_probe',
+    approachTelegraph: 'engine_flare',
+    noFireResponseWindowS: 0.5,
     activity: normalizeActivity({
       kind: ActivityKind.ATTACK_RUN,
       reason: 'registry_init:attack_probe',
@@ -47,7 +55,7 @@ actor.data.intent = legacyIntent;
 
 await ensureSg02Ready(harness);
 
-for (let i = 0; i < 10; i++) stepHarness(harness);
+for (let i = 0; i < 38; i++) stepHarness(harness);
 
 const events = state.combat.trace.events;
 const aiRequest = events.find((event) =>

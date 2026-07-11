@@ -1,5 +1,11 @@
 import { getCombatKernel } from '../combat/kernel.js';
 import { ContactKind, wrapAngle } from './contracts.js';
+import {
+  authorizeAIEngagement,
+  isHostileForAI,
+  isOffensiveActionDef,
+} from './engagementAuthority.js';
+import { isPlayerWanted } from '../systems/heat.js';
 
 const TACTICAL_ACTION_DEF_FLAG = '__spacefaceTacticalActionDef';
 const TACTICAL_PROFILE = Object.freeze({
@@ -119,6 +125,8 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
       if (!def) return { ok: false, reason: 'unknown_action' };
       const entity = liveEntity(state, entityId);
       if (!entity || !entity.alive) return { ok: false, reason: 'actor_missing' };
+      const authorization = authorizeOffensiveAction(state, entity, def, request);
+      if (!authorization.ok) return { ok: false, reason: `engagement:${authorization.reason}` };
       const capabilityView = fastCapabilityView(state, kernel, entityId) || {};
       const combat = liveCombatRuntime(state, entityId) || {};
       const capabilities = capabilityView.capabilities || combat.capabilities || {};
@@ -147,6 +155,8 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
     start(entityId, actionId, request = {}) {
       const def = kernel.catalog.actions.get(actionId);
       if (!def) return null;
+      const entity = liveEntity(state, entityId);
+      if (!entity || !authorizeOffensiveAction(state, entity, def, request).ok) return null;
       const payload = {
         actorId: entityId,
         actionId,
@@ -155,6 +165,7 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
         metadata: {
           squadId: request.squadId == null ? null : String(request.squadId),
           objective: request.objective || null,
+          objectiveReason: request.objectiveReason || null,
         },
       };
       if (def.target && def.target.kind === 'entity') {
@@ -209,6 +220,21 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
     inspect(entityId) {
       return kernel.inspect({ entityId, actorId: entityId, limit: 128 });
     },
+  });
+}
+
+function authorizeOffensiveAction(state, actor, def, request) {
+  if (!isOffensiveActionDef(def)) return { ok: true, reason: 'not_offensive' };
+  const target = liveEntity(state, request && request.targetId);
+  return authorizeAIEngagement({
+    state,
+    self: actor,
+    target,
+    tick: request && request.tick,
+    objectiveReason: request && request.objectiveReason,
+    hostile: isHostileForAI(state, actor, target),
+    wanted: isPlayerWanted(state),
+    recentlyDamaged: false,
   });
 }
 

@@ -80,5 +80,11 @@ scenarioRuntime.update();
 assert.equal(h.scavenger.team, 1, 'explicit refusal outside protection authorizes the encounter after warning');
 assert.equal(h.scavenger.data.ai.passive, false);
 assert.equal(h.scavenger.data.combat.targetId, h.player.id);
+assert.equal(h.scavenger.data.ai.engagementTrigger, 'explicit_refusal');
+assert.equal(h.scavenger.data.ai.motive, 'screen_recovery_claim');
+assert.equal(h.scavenger.data.ai.zoneId, 'zone_47a_wreck_field');
+assert.equal(h.scavenger.data.ai.combatDoctrineId, 'ranged_disengager');
+assert.equal(h.scavenger.data.ai.roe, 'weapons_free');
+assert.equal(h.scavenger.data.ai.activity.targetId, h.player.id);
 
 console.log('story-safe-opening: deterministic action/radius/response gate passed');
