@@ -163,6 +163,39 @@ const STATION_TYPE_PURPOSE = {
   research: 'Research stations value scans, exotic materials, and tech-linked opportunities.',
 };
 
+
+/** Invariant Station OS root classes — must survive every onShow / _resolveStation. */
+export const STATION_HUB_ROOT_BASE_CLASSES = Object.freeze([
+  'st-hub',
+  'st-hub--desk',
+  'st-hub--os',
+  'panel',
+]);
+
+/** Closed set of exclusive station-type root modifiers (`st-hub--{type}`). */
+export const STATION_HUB_TYPE_CLASSES = Object.freeze(
+  Object.keys(STATION_TYPE_PURPOSE).map((t) => `st-hub--${t}`),
+);
+
+/**
+ * Apply hub root class invariants + exclusive station-type modifier.
+ * Uses classList only — never wholesale className assignment — so concurrent
+ * modifiers (`st-hub--engineering`, `trace-active`) survive repeated resolve/show.
+ *
+ * @param {Element|{classList: DOMTokenList}} el hub root element
+ * @param {string|null|undefined} stationType e.g. 'trade_hub', 'military'
+ * @returns {Element|{classList: DOMTokenList}|null}
+ */
+export function applyStationHubRootClasses(el, stationType) {
+  if (!el || !el.classList) return el || null;
+  for (const c of STATION_HUB_ROOT_BASE_CLASSES) el.classList.add(c);
+  // Exclusive type swap from a closed allowlist — never strip desk/os/engineering.
+  for (const c of STATION_HUB_TYPE_CLASSES) el.classList.remove(c);
+  const typeClass = stationType ? `st-hub--${stationType}` : null;
+  if (typeClass && STATION_HUB_TYPE_CLASSES.includes(typeClass)) el.classList.add(typeClass);
+  return el;
+}
+
 function stationTypeLabel(type) {
   if (!type) return 'Station';
   return titleCaseWords(type);
@@ -2506,10 +2539,8 @@ export const stationHub = {
     this._stationId = sid || null;
     if (this._el) {
       const stn = this._stationDef();
-      this._el.className = 'st-hub panel';
-      if (stn && stn.type) {
-        this._el.classList.add(`st-hub--${stn.type}`);
-      }
+      // classList only: preserve desk/os bases + engineering/trace modifiers.
+      applyStationHubRootClasses(this._el, stn && stn.type);
     }
     return this._stationId;
   },
