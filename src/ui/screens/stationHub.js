@@ -735,6 +735,24 @@ function missionRecommendationReason(m, preflight, readiness, consequences) {
   return 'Best board pick: ready now, ' + reward + ', Risk ' + risk + ', ' + route + '.';
 }
 
+/**
+ * Keyboard activation for focusable mission cards (role=button).
+ * Enter/Space on the card itself select it — same path as a body click.
+ * Nested native action controls (Accept etc.) must not re-trigger card selection.
+ * Returns { missionId } when the key should activate selection; null otherwise.
+ */
+export function resolveMissionCardKeyboardSelection(ev) {
+  if (!ev || (ev.key !== 'Enter' && ev.key !== ' ')) return null;
+  const target = ev.target;
+  if (!target || typeof target.closest !== 'function') return null;
+  const card = target.closest('.st-mission-card');
+  // Nested buttons/inputs own their own activation; do not also select the card.
+  if (!card || target !== card) return null;
+  const mid = card.getAttribute('data-mid');
+  if (mid == null || mid === '') return null;
+  return { missionId: String(mid) };
+}
+
 export function recommendMissionBoardOffer(slots = [], state = {}) {
   const firstLoopSafeWork = firstLoopNeedsSafeWork(state);
   let candidates = (Array.isArray(slots) ? slots : [])
@@ -1945,14 +1963,19 @@ export const stationHub = {
     const recommend = panel.querySelector('.st-mission-recommend');
     const list = panel.querySelector('.st-mission-list');
     const center = panel.querySelector('.st-ops-center');
+    // Shared card-selection path for pointer click and keyboard Enter/Space (role=button parity).
+    const selectMissionCard = (missionId) => {
+      if (missionId == null || missionId === '') return;
+      this._selectContract(missionId);
+      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    };
     const handleMissionAction = (ev) => {
       const actionEl = ev.target.closest('[data-act]');
       // A click on the card body (not a control) selects the contract → drives the center preflight.
       if (!actionEl) {
         const card = ev.target.closest('.st-mission-card');
         if (card && card.getAttribute('data-mid')) {
-          this._selectContract(card.getAttribute('data-mid'));
-          ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+          selectMissionCard(card.getAttribute('data-mid'));
         }
         return;
       }
@@ -1966,7 +1989,15 @@ export const stationHub = {
       }
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
     };
+    const handleMissionCardKeydown = (ev) => {
+      const resolved = resolveMissionCardKeyboardSelection(ev);
+      if (!resolved) return;
+      // Space must not scroll the station workspace; Enter is prevented for consistent activation.
+      ev.preventDefault();
+      selectMissionCard(resolved.missionId);
+    };
     list.addEventListener('click', handleMissionAction);
+    list.addEventListener('keydown', handleMissionCardKeydown);
     recommend.addEventListener('click', handleMissionAction);
     center.addEventListener('click', handleMissionAction);
     status.addEventListener('click', handleMissionAction);
