@@ -61,6 +61,9 @@ const DEFAULTS = Object.freeze({
   maxApproachClosingSpeed: 34,
   friendlySeparationRadius: 118,
   friendlySeparationWeight: 0.82,
+  shipCollisionLookahead: 180,
+  shipCollisionClearance: 34,
+  shipCollisionWeight: 0.72,
 });
 const EMPTY_TRAJECTORY = Object.freeze([]);
 
@@ -88,6 +91,7 @@ export class ManeuverPlanner {
         smoothedForward: 0,
         smoothedRight: 0,
         smoothedTorqueYaw: 0,
+        collisionPasses: new Map(),
       };
       this.byEntity.set(entityId, runtime);
     }
@@ -112,6 +116,7 @@ export class ManeuverPlanner {
       : desiredForIntent(intent, self, target, perception.contacts, this.seed, entityId, this.config);
 
     desired = applyFriendlySeparation(desired, self, perception.contacts, this.config);
+    desired = applyShipCollisionAvoidance(desired, self, perception.contacts, this.seed, entityId, tick, runtime, this.config);
     desired = applyObstacleAvoidance(desired, self, perception.contacts, this.config);
     const speed = Math.hypot(self.vel.x, self.vel.z);
     const commanded = Math.hypot(desired.x, desired.z);
@@ -259,6 +264,9 @@ function predictFormationSlot(intent, predictionTicks) {
 }
 
 function desiredForIntent(intent, self, target, contacts, seed, entityId, config) {
+  if (intent.flightPoint && Number.isFinite(intent.flightPoint.x) && Number.isFinite(intent.flightPoint.z)) {
+    return seekPoint(self, intent.flightPoint, 1);
+  }
   switch (intent.kind) {
     case ManeuverKind.INTERCEPT:
       return target ? intercept(self, target, config.interceptHorizonTicks, intent.lateralSign) : seekPoint(self, intent.formationSlot, 0.7);
@@ -366,6 +374,49 @@ function applyFriendlySeparation(desired, self, contacts, config) {
     const strength = saturate(1 - dist / clearance) * config.friendlySeparationWeight;
     x += dx / dist * strength;
     z += dz / dist * strength;
+  }
+  return { x, z, arrivalDistance: desired.arrivalDistance };
+}
+
+function applyShipCollisionAvoidance(desired, self, contacts, seed, entityId, tick, runtime, config) {
+  const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
+  let x = dir.x, z = dir.z;
+  const rightX = -dir.z;
+  const rightZ = dir.x;
+  const passes = runtime.collisionPasses || (runtime.collisionPasses = new Map());
+  for (const contact of contacts) {
+    if (!contact || contact.kind !== ContactKind.SHIP || contact.id === self.id || contact.alive === false) continue;
+    const dx = contact.pos.x - self.pos.x;
+    const dz = contact.pos.z - self.pos.z;
+    const distance = Math.hypot(dx, dz);
+    const ahead = dx * dir.x + dz * dir.z;
+    const lateral = dx * rightX + dz * rightZ;
+    const clearance = config.shipCollisionClearance + self.radius + contact.radius;
+    let pass = passes.get(contact.id) || null;
+    const passed = pass && ((self.pos.x - contact.pos.x) * pass.forwardX +
+      (self.pos.z - contact.pos.z) * pass.forwardZ > clearance * 1.5);
+    if (pass && (passed || tick > pass.untilTick || distance > config.shipCollisionLookahead * 2.4)) {
+      passes.delete(contact.id);
+      pass = null;
+    }
+    if (!pass && ahead > 0 && ahead <= config.shipCollisionLookahead && Math.abs(lateral) < clearance) {
+      const deterministicSide = hashUnit(seed, entityId, contact.id, 'ship_collision_pass') < 0.5 ? -1 : 1;
+      const side = Math.abs(lateral) <= clearance * 0.15 ? deterministicSide : (lateral < 0 ? 1 : -1);
+      pass = {
+        forwardX: dir.x,
+        forwardZ: dir.z,
+        pointX: contact.pos.x + dir.x * clearance * 3 + rightX * side * clearance * 1.7,
+        pointZ: contact.pos.z + dir.z * clearance * 3 + rightZ * side * clearance * 1.7,
+        untilTick: tick + 240,
+      };
+      passes.set(contact.id, pass);
+    }
+    if (!pass) continue;
+    const passDirection = unit2(pass.pointX - self.pos.x, pass.pointZ - self.pos.z, dir.x, dir.z);
+    const proximity = saturate(1 - distance / (config.shipCollisionLookahead * 1.5));
+    const blend = clamp(0.65 + proximity * config.shipCollisionWeight, 0, 1);
+    x = x * (1 - blend) + passDirection.x * blend;
+    z = z * (1 - blend) + passDirection.z * blend;
   }
   return { x, z, arrivalDistance: desired.arrivalDistance };
 }

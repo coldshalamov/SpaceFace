@@ -122,6 +122,18 @@ export function createTacticalAISystem({
             tick,
           });
         }
+        if (doctrine && doctrine.phaseChanged && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
+          ctxRef.bus.emit('ai:doctrinePhase', {
+            entityId: decision.entityId,
+            targetId: doctrine.targetId,
+            doctrineId: doctrine.doctrineId,
+            flightProfile: doctrine.flightProfile,
+            phase: doctrine.phase,
+            fireWindow: doctrine.fireWindow,
+            maneuverKind: doctrine.maneuverKind,
+            tick,
+          });
+        }
         applyAIFiringIntent(decision, state);
       }
     },

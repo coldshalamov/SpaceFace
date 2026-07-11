@@ -13,6 +13,7 @@ for (const aggregate of ['check:ai', 'check:sg06']) {
 const result = spawnSync(process.execPath, [
   '--test',
   'test/combat-doctrines.test.mjs',
+  'test/professional-enemy-maneuvers.test.mjs',
   'test/ai-engagement-authority.test.mjs',
   'test/ai-engagement-sg03.test.mjs',
 ], {

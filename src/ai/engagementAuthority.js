@@ -15,7 +15,7 @@ const LAWFUL_STATION_FACTIONS = new Set([
   'faction_free',
 ]);
 const DOCTRINE_FIRE_PHASES = Object.freeze({
-  interceptor_flyby: new Set(['strike']),
+  interceptor_flyby: new Set(['strike', 'commit']),
   ranged_disengager: new Set(['fire_window']),
   tether_control_raider: new Set(),
 });

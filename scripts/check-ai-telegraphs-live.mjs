@@ -75,7 +75,7 @@ const ranged = runLiveCase({
   roe: RulesOfEngagement.WEAPONS_FREE,
   wanted: false,
   combatDoctrineId: CombatDoctrineId.RANGED_DISENGAGER,
-  ticks: 48,
+  ticks: 90,
   targetX: 620,
 });
 assert.equal(ranged.telegraphs.length, 1, 'ranged doctrine emits one actual charge event');
