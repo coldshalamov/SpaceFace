@@ -17,11 +17,13 @@ procedural family build — that coexists with the catalog via a narrow override
 
 ## Runtime source
 
-The live game does **not** load the GLB. The zero-build runtime renders the Kestrel from
-`src/render/ships/kestrelHero.js` (code-native Three.js geometry). The GLB is the review/DCC
-interchange asset and the source of geometry metrics in the manifest. Canvas-generated decals
-(the `BORROWED TIME` stencil, ghost, shark mouth, thirteen tallies) live in the runtime model
-only and are documented in the manifest, not embedded in the GLB.
+The player Kestrel loads the production Borrowed Time body from
+`assets/ships/release/parts/wholeships/kestrel.glb`. Its editable source is
+`assets/ships/parts/blender/kestrel_borrowed_time_production.blend`, rebuilt by
+`tools/blender/build_kestrel_borrowed_time.py`. The code-native `src/render/ships/kestrelHero.js`
+body is a startup/readiness shell only: release flight refuses to begin unless the validated GLB
+replaces it. NPC Kestrels deliberately stay on the modular authored hull path. The local
+`kestrel_reference.glb` remains the deterministic interchange/reference model for this package.
 
 ## Source of truth (spec §17.2)
 

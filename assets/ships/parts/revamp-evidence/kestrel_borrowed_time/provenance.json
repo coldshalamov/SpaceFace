@@ -1,0 +1,26 @@
+{
+  "schema": "spaceface.assetProvenance.v1",
+  "assetId": "wholeship_kestrel",
+  "title": "SF-K0 Kestrel / Borrowed Time production revamp",
+  "origin": "User-supplied SpaceFace archive; geometry, decals, and source textures declared original to the SpaceFace SF-K0 rebuild.",
+  "receivedFrom": "local user-supplied files under C:/Users/93rob/Downloads",
+  "sourceArchives": [
+    {
+      "path": "C:/Users/93rob/Downloads/SpaceFace_SF-K0_Borrowed-Time_Revamp.zip",
+      "sha256": "5457DACD44B63CF170ECF65DB253BB607D7615B8DDBD3CF97666D155BA355000",
+      "bytes": 257011395,
+      "role": "editable Blender source, art-direction floor, source textures and validation"
+    },
+    {
+      "path": "C:/Users/93rob/Downloads/SpaceFace_SF-K0_Borrowed-Time_Runtime.zip",
+      "sha256": "D4ABD62179F9DFEDE39F4DF8275B2C4DBC1064E0EC3FDC936AF7BC448E0759E8",
+      "bytes": 74488211,
+      "role": "runtime LOD candidates and round-trip validation"
+    }
+  ],
+  "thirdPartyDeclaration": "Package docs/THIRD_PARTY.md declares no third-party meshes, texture packs, kitbash libraries, downloaded commercial/free models, or YouTube assets.",
+  "licenseDecision": "Accepted as user-provided, project-original source material for this SpaceFace workspace. No separately licensed third-party content is shipped.",
+  "productionPolicy": "Archives are a quality and art-direction floor, not a blind drop-in. Shipping output is rebuilt, consolidated, validated, and evidenced in-repo.",
+  "recordedAt": "2026-07-11T04:20:00Z",
+  "packet": "K0-KESTREL-VISUAL-REVAMP-001"
+}

@@ -1,0 +1,52 @@
+{
+  "packet": "K0-KESTREL-VISUAL-REVAMP-001",
+  "gateOk": true,
+  "gateErrors": [],
+  "totalTriangles": 28692,
+  "hullTriangles": 4868,
+  "lodTriangles": {
+    "lod0": 18876,
+    "lod1": 8364,
+    "lod2": 1452
+  },
+  "drawEstimates": {
+    "lod0": 9,
+    "lod1": 9,
+    "lod2": 7
+  },
+  "sockets": [
+    "SOCKET_Camera_Focus",
+    "SOCKET_Cargo_Ventral",
+    "SOCKET_Engine_Main",
+    "SOCKET_Mining_Front",
+    "SOCKET_RCS_Port",
+    "SOCKET_RCS_Starboard",
+    "SOCKET_Trail_Main",
+    "SOCKET_Utility_Dorsal",
+    "SOCKET_Weapon_Front"
+  ],
+  "materials": [
+    "Material_Mechanical",
+    "Material_Cyan",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Warm"
+  ],
+  "tangentPrimitiveCount": 25,
+  "uvPrimitiveCount": 25,
+  "removedPlumes": [
+    "Engine_Plume_HotCore",
+    "Engine_Plume_Inner",
+    "Engine_Plume_Outer",
+    "Studio_Floor",
+    "Studio_Pad",
+    "Studio_Pad_LightRing",
+    "material:Material_Plume_HotCore",
+    "material:Material_Plume_Inner",
+    "material:Material_Plume_Outer"
+  ],
+  "sourceSha256": "C48BCD2CD7AA9B8DAF4AC253221ED259DB781A1BF0602EDB7286D916191D6502",
+  "targetSha256": "D5D930BAD5B0A08975D78AF1DA3ED3049285A74FD9E812EDF1EEDB4A6D38D13B",
+  "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\wholeships\\kestrel.glb",
+  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\blender\\kestrel_borrowed_time_production.blend"
+}
