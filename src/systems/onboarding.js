@@ -61,12 +61,13 @@ const BEATS = [
     line: 'Contract 47-A: thrust to the beacon.',
     done: 'beaconRange',
   },
-  { // B1 THE DERELICT (~1:30) — tether trio
+  { // B1 THE DERELICT (~1:30) — tether/massline trio
     key: 'derelict',
-    line: 'Latch it. G.',
+    line: 'Latch it. Massline.',
     followups: [
-      { on: 'tether:latched', line: 'Winch in. Hold ArrowUp.' },
-      { on: 'tether:reelMax', line: 'Cut and coast. G.' },
+      // Neutral verbs only — default reelIn is unbound (hold tether reels); cut is tether edge, not G.
+      { on: 'tether:latched', line: 'Winch in. Hold tether to reel.' },
+      { on: 'tether:reel', line: 'Cut and coast. Tap tether to cut.' },
     ],
     done: 'tether:released',
   },
@@ -150,6 +151,9 @@ export const onboarding = {
 
     // ── First-hour beat events (spec2/03) ─────────────────────────────────────────────────
     bus.on('tether:latched', () => this._onBeatEvent('tether:latched'));
+    // Production winch path (attachments.reel) emits tether:reel {before,after}. Gate the B1 cut
+    // follow-up on rest length <= TETHER_REEL_MAX_WU so loose pay-out/early ticks do not teach cut.
+    bus.on('tether:reel', (p) => this._onTetherReel(p || {}));
     bus.on('tether:released', () => this._onBeatEvent('tether:released'));
     bus.on('tether:broke', () => this._onBeatEvent('tether:released'));
     bus.on('scan:pulse', () => this._onBeatEvent('scan:hit'));
@@ -390,6 +394,15 @@ export const onboarding = {
     else if (beat.key === 'snare') this._spawnPirate();
     else if (beat.key === 'dock') this._setObjectiveWaypoint(true);
     else if (beat.key === 'choice') this._openChoice();
+  },
+
+  // B1 reel follow-up: only when the production tether:reel payload shows a tight winch.
+  // attachments.reel emits { before, after } rest lengths (wu). TETHER_REEL_MAX_WU is the
+  // winched-enough teach-cut threshold (spec2/03 B1: reel <= 60 wu).
+  _onTetherReel(payload) {
+    const after = Number(payload && payload.after);
+    if (!Number.isFinite(after) || after > TETHER_REEL_MAX_WU) return;
+    this._onBeatEvent('tether:reel', payload);
   },
 
   // Route a gameplay event to the current beat's followups + DONE resolution.

@@ -14,9 +14,7 @@ Timing gates: a beat's text may only fire when the previous beat's DONE conditio
 text silence has passed. All lines ≤ 12 words, dry-rigger voice.
 - **B0 WAKE (0:00)** — no modal. Black → fade in over 2 s. Single line (tutorial tier):
   "Thrust to the beacon." DONE: within 420 wu of beacon. Teaches: mouse-nose + W.
-- **B1 THE DERELICT (≈1:30)** — derelict wreck near beacon. "Latch it. G." → latch → "Winch in.
-  Hold ArrowUp." → reel < 60 wu → "Cut and coast. G." DONE: released. Teaches tether trio. The
-  wreck drops 2 salvage pickups on release (vacuum shows itself — no line needed).
+- **B1 THE DERELICT (≈1:30)** — derelict wreck near beacon. "Latch it. Massline." → latch → "Winch in. Hold tether to reel." → reel ≤ 60 wu (production `tether:reel` after) → "Cut and coast. Tap tether to cut." DONE: released. Teaches tether trio. The wreck drops 2 salvage pickups on release (vacuum shows itself — no line needed).
 - **B2 FIRST SEAM (≈3:00)** — "Pulse. C." → scanner lights a marked rock's seams → "Beam the bright
   seams. RMB." → first vent-bonus chime gets ONE line: "Release in the amber. Remember that." DONE:
   3 ore collected. Teaches scan + seam aim + heat rhythm.

@@ -60,6 +60,13 @@ function extractBeats(src) {
 }
 
 const BEATS = extractBeats(onboardingSrc);
+// ── B1 control truth: massline verb + production tether:reel ─────────────────────────────────
+assert.doesNotMatch(onboardingSrc, /Latch it\. G\./, 'B1 must not teach Latch it. G. (G is combat computer)');
+assert.doesNotMatch(onboardingSrc, /tether:reelMax/, 'B1 must not listen for dead tether:reelMax');
+assert.match(onboardingSrc, /Latch it\. Massline\./, 'B1 entry must teach massline (control prompt authority)');
+assert.match(onboardingSrc, /on:\s*'tether:reel'/, 'B1 cut follow-up must use production tether:reel');
+assert.match(onboardingSrc, /_onTetherReel/, 'B1 must gate reel follow-up on tether:reel payload');
+
 assert.equal(BEATS.length, 6, 'there must be exactly 6 first-hour beats (spec2/03 §2)');
 
 // Spec §2 beat keys in order.
@@ -143,7 +150,7 @@ function simulateFirstHour(beats) {
     // B1: advance at ~94s (DONE+4), followups on latch/reel/cut, DONE on release ~150s.
     { t: 94, advance: true },
     { t: 110, followup: { beat: 'derelict', event: 'tether:latched' } },
-    { t: 130, followup: { beat: 'derelict', event: 'tether:reelMax' } },
+    { t: 130, followup: { beat: 'derelict', event: 'tether:reel' } },
     { t: 150, done: 'derelict' },
     // B2: advance ~154, followup on scan, DONE at 3 ore ~210s.
     { t: 154, advance: true },
