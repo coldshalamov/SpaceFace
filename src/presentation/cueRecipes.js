@@ -12,6 +12,23 @@ export const PRESENTATION_LANES = Object.freeze([
 ]);
 
 export const PRESENTATION_RECIPES = Object.freeze({
+  'mining.survey.pulse': miningRecipe(0.52, 30, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'pulse']),
+  'mining.survey.resolved': miningRecipe(0.58, 30, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'resolved']),
+  'mining.extraction.locked': miningRecipe(0.5, 1, 'mining_beam', 'vfx.direct_mining_beam', ['mining', 'extraction', 'locked']),
+  'mining.seam.quality': miningRecipe(0.64, 1, 'seam', 'vfx.direct_mining_seam', ['mining', 'seam']),
+  'mining.fracture.anticipation': miningRecipe(0.72, 60, 'asteroid', 'vfx.direct_mining_fracture', ['mining', 'fracture', 'anticipation']),
+  'mining.fracture.released': miningRecipe(0.78, 4, 'asteroid', 'vfx.direct_mining_fracture', ['mining', 'fracture', 'released']),
+  'mining.rich_core.exposed': miningRecipe(0.86, 30, 'rich_core', 'vfx.direct_mining_core', ['mining', 'rich_core', 'exposed']),
+  'mining.rich_core.charge': miningRecipe(0.7, 30, 'rich_core', 'vfx.direct_mining_core', ['mining', 'rich_core', 'charge']),
+  'mining.rich_core.completed': miningRecipe(0.92, 30, 'rich_core', 'vfx.direct_mining_core', ['mining', 'rich_core', 'completed']),
+  'mining.rich_core.fizzle': miningRecipe(0.62, 30, 'rich_core', 'vfx.direct_mining_core', ['mining', 'rich_core', 'fizzle']),
+  'mining.chunk.tether_required': miningRecipe(0.74, 30, 'bulk_chunk', 'vfx.direct_mining_chunk', ['mining', 'chunk', 'tether_required']),
+  'mining.chunk.mass_engaged': miningRecipe(0.7, 30, 'bulk_chunk', 'vfx.direct_tether_attach', ['mining', 'chunk', 'mass_engaged']),
+  'mining.cargo.mass_settled': miningRecipe(0.48, 30, 'cargo', 'vfx.direct_cargo_mass', ['mining', 'cargo', 'mass']),
+  'mining.cargo.full': miningRecipe(0.82, 30, 'cargo', 'vfx.direct_cargo_full', ['mining', 'cargo', 'full']),
+  'mining.field.aftermath': miningRecipe(0.58, 30, 'field', 'vfx.direct_field_memory', ['mining', 'field', 'aftermath']),
+  'mining.heat.overheated': miningRecipe(0.8, 60, 'drill_heat', 'vfx.direct_drill_ui', ['mining', 'drill', 'heat', 'overheated']),
+  'mining.vent.ready': miningRecipe(0.66, 60, 'drill_heat', 'vfx.direct_drill_ui', ['mining', 'drill', 'vent', 'ready']),
   'combat.doctrine.setup': recipe({
     importance: 0.56,
     dedupeWindowTicks: 30,
@@ -356,6 +373,17 @@ function laneSet(vfx, ui = 'ui.none', accessibility = 'accessibility.none') {
     ui,
     accessibility,
   };
+}
+
+function miningRecipe(importance, dedupeWindowTicks, material, vfx, tags) {
+  return recipe({
+    importance,
+    dedupeWindowTicks,
+    material,
+    lanes: laneSet(vfx),
+    budgets: {},
+    tags,
+  });
 }
 
 for (const [id, value] of Object.entries(PRESENTATION_RECIPES)) {

@@ -599,6 +599,7 @@ export const vfx = {
     add('ai:telegraph', (p) => this._onAiTelegraph(p));
     add('ai:flee', (p) => this._onAiFlee(p));
     add('ai:formationBroken', (p) => this._onAiFormationBroken(p));
+    add('presentation:cue', (p) => this._onDirectMiningPresentationCue(p));
     add('presentation:vfxCue', (p) => this._onPresentationCue(p));
     add('jump:start', (p) => this._onJumpStart(p));
     add('jump:arrive', (p) => this._onJumpArrive(p));
@@ -1431,6 +1432,67 @@ export const vfx = {
       lightsActivated,
       flashReduced: !!p.flashReduced,
     };
+  },
+
+  _onDirectMiningPresentationCue(p) {
+    const id = p && p.id || '';
+    if (!id.startsWith('mining.')) return;
+    const tags = Array.isArray(p.tags) ? p.tags : [];
+    if (id === 'mining.seam.quality') {
+      if (tags.includes('on_seam')) {
+        this._miningSeamPulseId = p.targetId;
+        this._miningSeamPulseUntil = (this.state && this.state.simTime || 0) + 0.6;
+      } else if (this._miningSeamPulseId === p.targetId) {
+        this._miningSeamPulseId = null;
+      }
+      return;
+    }
+    if (!this._scene) return;
+    const pos = this._posFrom(p, p.targetId);
+    if (!pos) return;
+    const target = this._ent(p.targetId);
+    const radius = Math.max(4, target && target.radius || 8);
+    if (id === 'mining.fracture.anticipation') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.5, radius * 0.45, radius * 1.12, 0.62, 0, '#ffb35c', 0, 0);
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.78, radius * 0.3, radius * 0.86, 0.38, 0, '#d7e6ff', 0, 0);
+      return;
+    }
+    if (id === 'mining.fracture.released') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.42, radius * 0.7, radius * 2.6, 0.72, 0, '#ffb35c', 0, 0);
+      this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.85, radius * 0.65, radius * 2.1, 0.34, 0, '#d7e6ff', 0, 0);
+      return;
+    }
+    if (id === 'mining.rich_core.exposed') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.7, radius * 0.3, radius * 1.5, 0.82, 0, '#8d66ff', 0, 0);
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 1.0, radius * 0.18, radius * 1.05, 0.58, 0, '#d7e6ff', 0, 0);
+      this._flashLight({ x: pos.x, z: pos.z }, '#8d66ff', 2.8, 8, 150);
+      return;
+    }
+    if (id === 'mining.rich_core.charge') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.75, radius * 0.78, radius * 0.34, 0.62, 0, '#d7e6ff', 0, 0);
+      return;
+    }
+    if (id === 'mining.rich_core.completed') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.58, radius * 0.25, radius * 2.2, 0.9, 0, '#8d66ff', 0, 0);
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.82, radius * 0.18, radius * 1.55, 0.7, 0, '#d7e6ff', 0, 0);
+      this._c0.set('#d7e6ff'); this._c1.set('#8d66ff');
+      const count = Math.max(6, Math.min(12, Math.round(8 * (this._burst || 1))));
+      for (let k = 0; k < count; k++) {
+        const a = Math.random() * Math.PI * 2;
+        const speed = 7 + Math.random() * 12;
+        this._spawnParticle(pos.x, pos.z, Math.cos(a) * speed, Math.sin(a) * speed,
+          0.65 + Math.random() * 0.3, 3.0, 0.45, this._c0, this._c1, 1.6, 0, 3 + Math.random() * 4);
+      }
+      this._flashLight({ x: pos.x, z: pos.z }, '#d7e6ff', 3.8, 7, 180);
+      return;
+    }
+    if (id === 'mining.rich_core.fizzle') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.55, radius * 1.1, radius * 0.2, 0.54, 0, '#ff5c5c', 0, 0);
+      return;
+    }
+    if (id === 'mining.chunk.tether_required') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.82, radius * 0.9, radius * 1.35, 0.58, 0, '#ffb35c', 0, 0);
+    }
   },
 
   _presentationPos(p) {
@@ -2292,8 +2354,11 @@ export const vfx = {
     this._scene.add(mesh);
     this._seamMarkers = { mesh, CAP };
     this._seamMat4 = new THREE.Matrix4();
-    this._seamDim = new THREE.Color('#c96a3a');     // ember — visible but quiet
-    this._seamHot = new THREE.Color('#ffd9a0');     // scanner-lit — aim here
+    this._seamDim = new THREE.Color('#ffb35c');     // amber — visible but quiet
+    this._seamHot = new THREE.Color('#d7e6ff');     // scanner-lit — aim here
+    this._seamLock = new THREE.Color('#39d0ff');    // active seam confirmation
+    this._miningSeamPulseId = null;
+    this._miningSeamPulseUntil = 0;
   },
 
   _updateSeamMarkers(dt) {
@@ -2315,18 +2380,19 @@ export const vfx = {
       const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
       if (dx * dx + dz * dz > 640 * 640) continue;      // draw range
       const scanned = (e.data.scanHighlightUntil || 0) > simTime;
+      const seamLocked = e.id === this._miningSeamPulseId && simTime <= this._miningSeamPulseUntil;
       const cr = Math.cos(e.rot || 0), sr = Math.sin(e.rot || 0);
       for (let s = 0; s < seams.length && n < sm.CAP; s++) {
         const lo = seams[s].localOffset || { x: 0, z: 0 };
         const wxG = e.pos.x + lo.x * cr - lo.z * sr;
         const wzG = e.pos.z + lo.x * sr + lo.z * cr;
         const wLocal = this._toLocalXZ(wxG, wzG, this._spawnLocalXZ);
-        const scale = (scanned ? 1.5 : 0.9) * pulse * Math.min(2.2, 0.7 + (e.radius || 8) * 0.05);
+        const scale = (seamLocked ? 1.8 : scanned ? 1.5 : 0.9) * pulse * Math.min(2.2, 0.7 + (e.radius || 8) * 0.05);
         this._seamMat4.makeScale(scale, 1, scale);
         this._seamMat4.setPosition(wLocal.x, 1.8, wLocal.z);
         sm.mesh.setMatrixAt(n, this._seamMat4);
-        this._ctmp.copy(scanned ? this._seamHot : this._seamDim);
-        if (scanned) this._ctmp.multiplyScalar(pulse * 1.15);
+        this._ctmp.copy(seamLocked ? this._seamLock : scanned ? this._seamHot : this._seamDim);
+        if (scanned || seamLocked) this._ctmp.multiplyScalar(pulse * 1.15);
         sm.mesh.setColorAt(n, this._ctmp);
         n++;
       }

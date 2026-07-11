@@ -1,6 +1,7 @@
 import { getPresentationRecipe } from '../presentation/cueRecipes.js';
 import { normalizePresentationEvent } from '../presentation/cueSchema.js';
 import { damageLayerHierarchy, grammarForDoctrine, isLiveDoctrineId } from '../presentation/combatChoreography.js';
+import { classifyDrillWarning, fieldDepletionBand, seamQualityTag } from '../presentation/miningChoreography.js';
 
 export const PRESENTATION_ORCHESTRATOR_SCHEMA_VERSION = 1;
 
@@ -33,6 +34,8 @@ export const presentationOrchestrator = {
     this._suppressed = 0;
     this._lastCue = null;
     this._doctrineCycles = new Map();
+    this._miningCycle = null;
+    this._lastMiningCargoTick = -Infinity;
     this._subscriptions = [
       this.bus.on('scenario:beatEntered', (payload) => this._onScenarioBeat(payload || {})),
       this.bus.on('tether:attached', (payload) => this._onTetherAttached(payload || {})),
@@ -83,6 +86,24 @@ export const presentationOrchestrator = {
       this.bus.on('projectile:nearMiss', (payload) => this._onProjectileNearMiss(payload || {})),
       this.bus.on('entity:killed', (payload) => this._onEntityKilled(payload || {})),
       this.bus.on('entity:destroyed', (payload) => this._clearDoctrineCyclesFor(payload && payload.id)),
+      this.bus.on('scan:pulse', (payload) => this._onMiningSurveyPulse(payload || {})),
+      this.bus.on('scan:completed', (payload) => this._onMiningSurveyResolved(payload || {})),
+      this.bus.on('mining:start', (payload) => this._onMiningStart(payload || {})),
+      this.bus.on('mining:stop', (payload) => this._onMiningStop(payload || {})),
+      this.bus.on('mining:tick', (payload) => this._onMiningTick(payload || {})),
+      this.bus.on('mining:yield', () => { this._lastMiningCargoTick = currentTick(this.state); }),
+      this.bus.on('asteroid:chunked', (payload) => this._onMiningFracture(payload || {})),
+      this.bus.on('mining:richCoreExposed', (payload) => this._onMiningRichCore('mining.rich_core.exposed', 'mining:richCoreExposed', payload || {})),
+      this.bus.on('mining:richCoreChargeStart', (payload) => this._onMiningRichCore('mining.rich_core.charge', 'mining:richCoreChargeStart', payload || {})),
+      this.bus.on('mining:richCoreCompleted', (payload) => this._onMiningRichCore('mining.rich_core.completed', 'mining:richCoreCompleted', payload || {})),
+      this.bus.on('mining:richCoreFizzle', (payload) => this._onMiningRichCore('mining.rich_core.fizzle', 'mining:richCoreFizzle', payload || {})),
+      this.bus.on('mining:bulkRequiresTether', (payload) => this._onMiningBulkRequiresTether(payload || {})),
+      this.bus.on('pickup:collected', (payload) => this._onMiningPickupCollected(payload || {})),
+      this.bus.on('cargo:massSettled', (payload) => this._onMiningCargoMass(payload || {})),
+      this.bus.on('cargo:full', (payload) => this._onMiningCargoFull(payload || {})),
+      this.bus.on('fieldDepletion:changed', (payload) => this._onMiningFieldAftermath(payload || {})),
+      this.bus.on('drill:warn', (payload) => this._onMiningDrillWarning(payload || {})),
+      this.bus.on('sector:enter', () => this._resetMiningRuntime()),
       this.bus.on('combat:subsystemDisabled', (payload) => this._emitCue('subsystem.disabled', payload || {}, {
         sourceEvent: 'combat:subsystemDisabled',
         targetId: payload && payload.targetId,
@@ -115,6 +136,7 @@ export const presentationOrchestrator = {
   _resetRuntime() {
     if (this._lastByDedupeKey) this._lastByDedupeKey.clear();
     if (this._doctrineCycles) this._doctrineCycles.clear();
+    this._resetMiningRuntime();
     this._laneCounts = {};
     this._laneTick = -1;
     this._lastCue = null;
@@ -222,6 +244,18 @@ export const presentationOrchestrator = {
       targetId: payload.targetId,
       material: 'massline',
     });
+    const target = this.state && this.state.entities && this.state.entities.get(payload.targetId);
+    if (target && target.data && target.data.isChunk) {
+      this._emitCue('mining.chunk.mass_engaged', payload, {
+        sourceEvent: 'tether:attached',
+        sourceId: payload.actorId,
+        targetId: payload.targetId,
+        material: 'bulk_chunk',
+        magnitude: Math.max(1, Number(target.data.bulkMassU) || Number(target.mass) || 1),
+        sequence: payload.attachmentId ?? null,
+        tags: ['tether', 'mass_engaged'],
+      });
+    }
     const cycle = payload.actorId == null ? null : this._doctrineCycles.get(payload.actorId);
     if (!cycle || cycle.doctrineId !== 'tether_control_raider' || cycle.targetId !== payload.targetId) return;
     // Attachment creation is the tether doctrine's first truthful control outcome. If a legacy
@@ -292,6 +326,203 @@ export const presentationOrchestrator = {
     for (const [sourceId, cycle] of this._doctrineCycles) {
       if (cycle.targetId === entityId) this._doctrineCycles.delete(sourceId);
     }
+  },
+
+  _onMiningSurveyPulse(payload) {
+    this._emitCue('mining.survey.pulse', payload, {
+      sourceEvent: 'scan:pulse',
+      sourceId: this.state.playerId,
+      material: 'survey',
+      sequence: currentTick(this.state),
+    });
+  },
+
+  _onMiningSurveyResolved(payload) {
+    const found = payload.found || {};
+    this._emitCue('mining.survey.resolved', payload, {
+      sourceEvent: 'scan:completed',
+      sourceId: this.state.playerId,
+      material: 'survey',
+      magnitude: Math.max(1, Number(found.asteroids) || 0),
+      sequence: payload.sectorId || currentTick(this.state),
+      tags: [`asteroids_${Math.max(0, Number(found.asteroids) || 0)}`],
+    });
+  },
+
+  _onMiningStart(payload) {
+    const sourceId = payload.minerId ?? this.state.playerId;
+    const targetId = payload.targetId ?? null;
+    if (targetId == null) return;
+    this._miningCycle = {
+      sourceId,
+      targetId,
+      startedTick: currentTick(this.state),
+      active: true,
+      lastSeamQuality: null,
+      fractureAnticipated: false,
+    };
+    this._emitCue('mining.extraction.locked', payload, {
+      sourceEvent: 'mining:start',
+      sourceId,
+      targetId,
+      material: 'mining_beam',
+      sequence: this._miningCycle.startedTick,
+    });
+  },
+
+  _onMiningStop(payload) {
+    const cycle = this._miningCycle;
+    if (!cycle || (payload.targetId != null && payload.targetId !== cycle.targetId)) return;
+    cycle.active = false;
+  },
+
+  _onMiningTick(payload) {
+    const cycle = this._miningCycle;
+    if (!cycle) return;
+    const quality = seamQualityTag(payload);
+    if (quality !== cycle.lastSeamQuality) {
+      cycle.lastSeamQuality = quality;
+      this._emitCue('mining.seam.quality', payload, {
+        sourceEvent: 'mining:tick',
+        sourceId: cycle.sourceId,
+        targetId: cycle.targetId,
+        material: 'seam',
+        magnitude: Math.max(0.01, Number(payload.yieldMult) || 0.35),
+        sequence: quality,
+        tags: [quality],
+      });
+    }
+    if (cycle.fractureAnticipated) return;
+    const target = this.state && this.state.entities && this.state.entities.get(cycle.targetId);
+    const data = target && target.data;
+    const hp = Number(data && data.oreHP);
+    const hpMax = Number(data && data.oreHPMax);
+    if (!(hpMax > 0) || hp / hpMax > 0.2) return;
+    cycle.fractureAnticipated = true;
+    this._emitCue('mining.fracture.anticipation', payload, {
+      sourceEvent: 'mining:tick',
+      sourceId: cycle.sourceId,
+      targetId: cycle.targetId,
+      material: 'asteroid',
+      magnitude: Math.max(0, 1 - hp / hpMax),
+      sequence: cycle.startedTick,
+      tags: ['fracture', 'imminent'],
+    });
+  },
+
+  _onMiningFracture(payload) {
+    const cycle = this._miningCycle;
+    const sourceId = payload.minerId ?? (cycle && cycle.sourceId) ?? this.state.playerId;
+    const targetId = payload.parentId ?? (cycle && cycle.targetId) ?? null;
+    if (targetId == null) return;
+    this._emitCue('mining.fracture.released', payload, {
+      sourceEvent: 'asteroid:chunked',
+      sourceId,
+      targetId,
+      material: 'asteroid',
+      sequence: targetId,
+      tags: ['fracture', 'chunks'],
+    });
+  },
+
+  _onMiningRichCore(cueId, sourceEvent, payload) {
+    const cycle = this._miningCycle;
+    const targetId = payload.asteroidId ?? (cycle && cycle.targetId) ?? null;
+    if (targetId == null) return;
+    this._emitCue(cueId, payload, {
+      sourceEvent,
+      sourceId: payload.minerId ?? (cycle && cycle.sourceId) ?? this.state.playerId,
+      targetId,
+      material: 'rich_core',
+      magnitude: Math.max(1, Number(payload.qty) || Number(payload.multiplier) || 1),
+      sequence: targetId,
+      tags: [payload.commodityId, cueId.split('.').at(-1)].filter(Boolean),
+    });
+  },
+
+  _onMiningBulkRequiresTether(payload) {
+    this._emitCue('mining.chunk.tether_required', payload, {
+      sourceEvent: 'mining:bulkRequiresTether',
+      sourceId: this.state.playerId,
+      targetId: payload.asteroidId,
+      material: 'bulk_chunk',
+      magnitude: Math.max(1, Number(payload.massU) || 1),
+      sequence: payload.asteroidId ?? null,
+      tags: [payload.commodityId, 'tether_required'].filter(Boolean),
+    });
+  },
+
+  _onMiningPickupCollected(payload) {
+    if (payload.collectorId !== this.state.playerId) return;
+    if (payload.kind !== 'ore' && payload.kind !== 'cargo') return;
+    this._lastMiningCargoTick = currentTick(this.state);
+  },
+
+  _onMiningCargoMass(payload) {
+    const tick = currentTick(this.state);
+    if (tick - this._lastMiningCargoTick > 2) return;
+    const cargo = payload.cargo || {};
+    const cap = Math.max(0, Number(cargo.capVolume) || 0);
+    const used = Math.max(0, Number(payload.usedU) || Number(cargo.usedVolume) || 0);
+    const ratio = cap > 0 ? Math.min(1, used / cap) : 0;
+    const band = ratio >= 0.9 ? 'heavy' : ratio >= 0.6 ? 'loaded' : 'light';
+    this._emitCue('mining.cargo.mass_settled', payload, {
+      sourceEvent: 'cargo:massSettled',
+      sourceId: this.state.playerId,
+      targetId: this._miningCycle && this._miningCycle.targetId,
+      material: 'cargo',
+      magnitude: Math.max(1, Number(payload.massT) || Number(cargo.usedMass) || 0),
+      sequence: band,
+      tags: [band, `load_${Math.round(ratio * 10)}`],
+    });
+  },
+
+  _onMiningCargoFull(payload) {
+    const tick = currentTick(this.state);
+    const activeMining = !!(this._miningCycle && this._miningCycle.active);
+    if (!activeMining && tick - this._lastMiningCargoTick > 2) return;
+    this._emitCue('mining.cargo.full', payload, {
+      sourceEvent: 'cargo:full',
+      sourceId: this.state.playerId,
+      targetId: this._miningCycle && this._miningCycle.targetId,
+      material: 'cargo',
+      sequence: payload.commodityId || 'hold',
+      tags: [payload.commodityId, 'full'].filter(Boolean),
+    });
+  },
+
+  _onMiningFieldAftermath(payload) {
+    if (payload.reason !== 'asteroid_destroyed') return;
+    const band = fieldDepletionBand(payload.depleted);
+    this._emitCue('mining.field.aftermath', payload, {
+      sourceEvent: 'fieldDepletion:changed',
+      sourceId: this.state.playerId,
+      targetId: payload.fieldId || null,
+      material: 'field',
+      magnitude: Math.max(0, Number(payload.depleted) || 0),
+      sequence: band,
+      tags: [band, payload.sectorId].filter(Boolean),
+    });
+  },
+
+  _onMiningDrillWarning(payload) {
+    const kind = classifyDrillWarning(payload.text);
+    if (!kind) return;
+    const cueId = kind === 'overheated' ? 'mining.heat.overheated'
+      : kind === 'vent_ready' ? 'mining.vent.ready'
+        : 'mining.cargo.full';
+    this._emitCue(cueId, payload, {
+      sourceEvent: 'drill:warn',
+      sourceId: this.state.playerId,
+      material: kind === 'cargo_full' ? 'cargo' : 'drill_heat',
+      sequence: kind,
+      tags: ['drill', kind],
+    });
+  },
+
+  _resetMiningRuntime() {
+    this._miningCycle = null;
+    this._lastMiningCargoTick = -Infinity;
   },
 
   _onReleaseRated(payload) {
