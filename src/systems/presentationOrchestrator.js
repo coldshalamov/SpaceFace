@@ -2,6 +2,13 @@ import { getPresentationRecipe } from '../presentation/cueRecipes.js';
 import { normalizePresentationEvent } from '../presentation/cueSchema.js';
 import { damageLayerHierarchy, grammarForDoctrine, isLiveDoctrineId } from '../presentation/combatChoreography.js';
 import { classifyDrillWarning, fieldDepletionBand, seamQualityTag } from '../presentation/miningChoreography.js';
+import {
+  arrivalHeading,
+  cruiseDropCueId,
+  jumpFailureTag,
+  sectorPaletteTag,
+  travelSequence,
+} from '../presentation/travelChoreography.js';
 
 export const PRESENTATION_ORCHESTRATOR_SCHEMA_VERSION = 1;
 
@@ -36,6 +43,10 @@ export const presentationOrchestrator = {
     this._doctrineCycles = new Map();
     this._miningCycle = null;
     this._lastMiningCargoTick = -Infinity;
+    this._travelCycle = null;
+    this._travelRecoveryPending = null;
+    this._lastCorridorSequence = null;
+    this._lastTravelSectorId = null;
     this._subscriptions = [
       this.bus.on('scenario:beatEntered', (payload) => this._onScenarioBeat(payload || {})),
       this.bus.on('tether:attached', (payload) => this._onTetherAttached(payload || {})),
@@ -86,6 +97,18 @@ export const presentationOrchestrator = {
       this.bus.on('projectile:nearMiss', (payload) => this._onProjectileNearMiss(payload || {})),
       this.bus.on('entity:killed', (payload) => this._onEntityKilled(payload || {})),
       this.bus.on('entity:destroyed', (payload) => this._clearDoctrineCyclesFor(payload && payload.id)),
+      this.bus.on('cruise:charging', (payload) => this._onTravelCruiseCharging(payload || {})),
+      this.bus.on('cruise:engaged', (payload) => this._onTravelCruiseEngaged(payload || {})),
+      this.bus.on('cruise:dropped', (payload) => this._onTravelCruiseDropped(payload || {})),
+      this.bus.on('gate:range', (payload) => this._onTravelGateRange(payload || {})),
+      this.bus.on('world:membership', (payload) => this._onTravelMembership(payload || {})),
+      this.bus.on('jump:chargeStart', (payload) => this._onTravelJumpChargeStart(payload || {})),
+      this.bus.on('jump:chargeTick', (payload) => this._onTravelJumpChargeTick(payload || {})),
+      this.bus.on('jump:start', (payload) => this._onTravelJumpCommitted(payload || {})),
+      this.bus.on('jump:chargeAbort', (payload) => this._onTravelJumpFailed(payload || {})),
+      this.bus.on('jump:arrive', (payload) => this._onTravelJumpArrive(payload || {})),
+      this.bus.on('sector:discovered', (payload) => this._onTravelSectorDiscovered(payload || {})),
+      this.bus.on('interdiction:triggered', (payload) => this._onTravelInterdiction(payload || {})),
       this.bus.on('scan:pulse', (payload) => this._onMiningSurveyPulse(payload || {})),
       this.bus.on('scan:completed', (payload) => this._onMiningSurveyResolved(payload || {})),
       this.bus.on('mining:start', (payload) => this._onMiningStart(payload || {})),
@@ -103,7 +126,10 @@ export const presentationOrchestrator = {
       this.bus.on('cargo:full', (payload) => this._onMiningCargoFull(payload || {})),
       this.bus.on('fieldDepletion:changed', (payload) => this._onMiningFieldAftermath(payload || {})),
       this.bus.on('drill:warn', (payload) => this._onMiningDrillWarning(payload || {})),
-      this.bus.on('sector:enter', () => this._resetMiningRuntime()),
+      this.bus.on('sector:enter', (payload) => {
+        this._resetMiningRuntime();
+        this._onTravelSectorEnter(payload || {});
+      }),
       this.bus.on('combat:subsystemDisabled', (payload) => this._emitCue('subsystem.disabled', payload || {}, {
         sourceEvent: 'combat:subsystemDisabled',
         targetId: payload && payload.targetId,
@@ -111,6 +137,8 @@ export const presentationOrchestrator = {
         material: 'subsystem',
       })),
       this.bus.on('scenario:branchResolved', (payload) => this._onScenarioBranchResolved(payload || {})),
+      this.bus.on('game:new', () => this._resetRuntime()),
+      this.bus.on('game:started', () => this._resetRuntime()),
       this.bus.on('save:loaded', () => this._resetRuntime()),
     ];
   },
@@ -137,6 +165,7 @@ export const presentationOrchestrator = {
     if (this._lastByDedupeKey) this._lastByDedupeKey.clear();
     if (this._doctrineCycles) this._doctrineCycles.clear();
     this._resetMiningRuntime();
+    this._resetTravelRuntime();
     this._laneCounts = {};
     this._laneTick = -1;
     this._lastCue = null;
@@ -326,6 +355,287 @@ export const presentationOrchestrator = {
     for (const [sourceId, cycle] of this._doctrineCycles) {
       if (cycle.targetId === entityId) this._doctrineCycles.delete(sourceId);
     }
+  },
+
+  _onTravelCruiseCharging(payload) {
+    this._resumeTravel('cruise:charging', payload, payload.playerId ?? this.state.playerId);
+    this._emitCue('travel.cruise.charging', payload, {
+      sourceEvent: 'cruise:charging',
+      sourceId: payload.playerId ?? this.state.playerId,
+      material: 'cruise',
+      sequence: currentTick(this.state),
+      tags: ['cruise', 'charging'],
+    });
+  },
+
+  _onTravelCruiseEngaged(payload) {
+    this._emitCue('travel.cruise.engaged', payload, {
+      sourceEvent: 'cruise:engaged',
+      sourceId: payload.playerId ?? this.state.playerId,
+      material: 'cruise',
+      sequence: currentTick(this.state),
+      tags: ['cruise', 'engaged'],
+    });
+  },
+
+  _onTravelCruiseDropped(payload) {
+    const cueId = cruiseDropCueId(payload.reason);
+    const sourceId = payload.playerId ?? this.state.playerId;
+    this._emitCue(cueId, payload, {
+      sourceEvent: 'cruise:dropped',
+      sourceId,
+      material: 'cruise',
+      sequence: currentTick(this.state),
+      tags: ['cruise', payload.reason || 'unknown', payload.was || 'unknown'],
+    });
+    if (cueId === 'travel.cruise.interrupted') {
+      this._travelRecoveryPending = { reason: payload.reason || 'interrupted', sequence: currentTick(this.state) };
+    }
+  },
+
+  _onTravelGateRange(payload) {
+    if (!payload.inRange || payload.gateId == null) return;
+    this._emitCue('travel.gate.approach', payload, {
+      sourceEvent: 'gate:range',
+      sourceId: payload.shipId ?? this.state.playerId,
+      targetId: payload.gateId,
+      material: 'gate',
+      sequence: payload.gateTo || payload.gateId,
+      tags: ['approach', 'gate', payload.gateTo].filter(Boolean),
+    });
+  },
+
+  _onTravelMembership(payload) {
+    if (!(payload.noTeleport || payload.reason === 'free_flight')) return;
+    const from = payload.previousSectorId || (this.state.world && this.state.world.currentSectorId) || null;
+    const to = payload.sectorId || null;
+    if (!to || from === to) return;
+    const sequence = travelSequence(from, to, 'continuous');
+    this._lastCorridorSequence = sequence;
+    const sector = this.state.world && this.state.world.sectors && this.state.world.sectors[to];
+    this._emitCue('travel.corridor.continuity', payload, {
+      sourceEvent: 'world:membership',
+      sourceId: this.state.playerId,
+      targetId: to,
+      material: 'corridor',
+      sequence,
+      tags: ['corridor', 'continuous', from, to, sectorPaletteTag(sector)].filter(Boolean),
+    });
+  },
+
+  _onTravelJumpChargeStart(payload) {
+    const from = this.state.world && this.state.world.currentSectorId || null;
+    const to = payload.targetSectorId || null;
+    const via = payload.via || 'gate';
+    this._resumeTravel('jump:chargeStart', payload, to);
+    const sequence = `${travelSequence(from, to, via)}@${currentTick(this.state)}`;
+    this._travelCycle = {
+      from,
+      to,
+      via,
+      sequence,
+      commitWindow: false,
+      committed: false,
+      entry: null,
+      interdicted: false,
+    };
+    this._emitCue('travel.jump.aligning', payload, {
+      sourceEvent: 'jump:chargeStart',
+      sourceId: this.state.playerId,
+      targetId: to,
+      material: 'jump_drive',
+      magnitude: Math.max(1, Number(payload.chargeNeeded) || 0),
+      sequence,
+      tags: ['alignment', via, from, to].filter(Boolean),
+    });
+  },
+
+  _onTravelJumpChargeTick(payload) {
+    const cycle = this._travelCycle;
+    const progress = Number(payload.progress) || 0;
+    if (!cycle || cycle.commitWindow || progress < 0.72) return;
+    cycle.commitWindow = true;
+    this._emitCue('travel.jump.commit_window', payload, {
+      sourceEvent: 'jump:chargeTick',
+      sourceId: this.state.playerId,
+      targetId: cycle.to,
+      material: 'jump_drive',
+      magnitude: Math.max(1, progress),
+      sequence: cycle.sequence,
+      tags: ['commit', 'anticipation', cycle.via],
+    });
+  },
+
+  _onTravelJumpCommitted(payload) {
+    const cycle = this._travelCycle || {
+      from: payload.from || null,
+      to: payload.to || null,
+      via: payload.via || 'jump',
+      sequence: `${travelSequence(payload.from, payload.to, payload.via)}@${currentTick(this.state)}`,
+      commitWindow: true,
+      committed: false,
+      entry: null,
+      interdicted: false,
+    };
+    this._travelCycle = cycle;
+    if (cycle.committed) return;
+    cycle.committed = true;
+    const enriched = { ...payload, position: payload.fromPos || payload.position || null };
+    this._emitCue('travel.jump.committed', enriched, {
+      sourceEvent: 'jump:start',
+      sourceId: this.state.playerId,
+      targetId: cycle.to,
+      material: 'jump_drive',
+      sequence: cycle.sequence,
+      tags: ['commit', 'no_return', cycle.via, cycle.from, cycle.to].filter(Boolean),
+    });
+    this._emitCue('travel.transition.continuity', enriched, {
+      sourceEvent: 'jump:start',
+      sourceId: cycle.from,
+      targetId: cycle.to,
+      material: 'jump_drive',
+      sequence: cycle.sequence,
+      tags: ['continuity', cycle.via, cycle.from, cycle.to].filter(Boolean),
+    });
+  },
+
+  _onTravelJumpFailed(payload) {
+    const cycle = this._travelCycle;
+    const targetId = cycle && cycle.to || null;
+    const reason = payload.reason || 'unknown';
+    const sequence = cycle && cycle.sequence || `failure@${currentTick(this.state)}`;
+    this._emitCue('travel.jump.failed', payload, {
+      sourceEvent: 'jump:chargeAbort',
+      sourceId: this.state.playerId,
+      targetId,
+      material: 'jump_drive',
+      sequence,
+      tags: ['failure', jumpFailureTag(reason), reason],
+    });
+    this._travelRecoveryPending = { reason, sequence };
+    this._travelCycle = null;
+  },
+
+  _onTravelSectorDiscovered(payload) {
+    const to = payload.sectorId || null;
+    const cycle = this._travelCycle;
+    const from = cycle && cycle.from || this._lastTravelSectorId || null;
+    if (!to || !from || to === from) return;
+    const sequence = cycle && cycle.sequence || travelSequence(from, to, 'discovery');
+    this._emitCue('travel.discovery.mapped', payload, {
+      sourceEvent: 'sector:discovered',
+      sourceId: this.state.playerId,
+      targetId: to,
+      material: 'discovery',
+      sequence,
+      tags: ['discovery', 'mapped', from, to].filter(Boolean),
+    });
+  },
+
+  _onTravelSectorEnter(payload) {
+    const sectorId = payload.sectorId || null;
+    if (!sectorId) return;
+    const continuous = !!(payload.continuous || payload.noTeleport);
+    const cycle = this._travelCycle;
+    if (!continuous && (!cycle || cycle.to !== sectorId)) {
+      this._lastTravelSectorId = sectorId;
+      return;
+    }
+    const sequence = continuous
+      ? (this._lastCorridorSequence || travelSequence(null, sectorId, 'continuous'))
+      : cycle.sequence;
+    const player = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    const heading = continuous && player && Number.isFinite(player.rot)
+      ? player.rot
+      : arrivalHeading(payload);
+    const position = continuous && player && player.pos
+      ? { x: player.pos.x, y: player.pos.y || 0, z: player.pos.z }
+      : (payload.entryPoint || null);
+    const enriched = {
+      ...payload,
+      position,
+      heading,
+      direction: { x: Math.cos(heading), z: Math.sin(heading) },
+    };
+    if (cycle && !continuous) cycle.entry = { sectorId, position, heading };
+    this._emitCue('travel.arrival.oriented', enriched, {
+      sourceEvent: 'sector:enter',
+      sourceId: this.state.playerId,
+      targetId: sectorId,
+      material: 'arrival',
+      sequence,
+      tags: ['arrival', 'oriented', continuous ? 'continuous' : cycle.via],
+    });
+    this._emitCue('travel.arrival.sector_identity', enriched, {
+      sourceEvent: 'sector:enter',
+      sourceId: this.state.playerId,
+      targetId: sectorId,
+      material: 'sector',
+      sequence,
+      tags: ['arrival', 'sector_identity', sectorPaletteTag(payload.sector), payload.firstVisit ? 'first_visit' : 'return'].filter(Boolean),
+    });
+    this._lastTravelSectorId = sectorId;
+  },
+
+  _onTravelInterdiction(payload) {
+    const cycle = this._travelCycle;
+    if (cycle) cycle.interdicted = true;
+    const sectorId = payload.sectorId || cycle && cycle.to || null;
+    const enriched = { ...payload, position: payload.spawnPos || payload.position || null };
+    this._emitCue('travel.interdiction.triggered', enriched, {
+      sourceEvent: 'interdiction:triggered',
+      sourceId: sectorId,
+      targetId: this.state.playerId,
+      material: 'interdiction',
+      magnitude: Math.max(1, Number(payload.ambushCount) || 1),
+      sequence: cycle && cycle.sequence || `${sectorId || 'unknown'}@${currentTick(this.state)}`,
+      tags: ['interdiction', 'contested', `ambush_${Math.max(0, Number(payload.ambushCount) || 0)}`],
+    });
+  },
+
+  _onTravelJumpArrive(payload) {
+    const cycle = this._travelCycle;
+    const sectorId = payload.sectorId || cycle && cycle.to || null;
+    const contested = !!(payload.interdicted || cycle && cycle.interdicted);
+    const cueId = contested ? 'travel.aftermath.contested' : 'travel.aftermath.clear';
+    const enriched = { ...payload, position: payload.toPos || payload.position || null };
+    this._emitCue(cueId, enriched, {
+      sourceEvent: 'jump:arrive',
+      sourceId: this.state.playerId,
+      targetId: sectorId,
+      material: 'arrival',
+      magnitude: Math.max(1, Number(payload.ambushCount) || 0),
+      sequence: cycle && cycle.sequence || `${sectorId || 'unknown'}@${currentTick(this.state)}`,
+      tags: ['aftermath', contested ? 'contested' : 'clear', cycle && cycle.via].filter(Boolean),
+    });
+    if (contested) {
+      this._travelRecoveryPending = { reason: 'interdiction', sequence: cycle && cycle.sequence || currentTick(this.state) };
+    }
+    this._travelCycle = null;
+  },
+
+  _resumeTravel(sourceEvent, payload, targetId) {
+    const pending = this._travelRecoveryPending;
+    if (!pending) return false;
+    this._emitCue('travel.recovery.resumed', payload, {
+      sourceEvent,
+      sourceId: this.state.playerId,
+      targetId: targetId ?? null,
+      material: 'travel_recovery',
+      sequence: pending.sequence,
+      tags: ['recovery', 'resumed', pending.reason].filter(Boolean),
+    });
+    this._travelRecoveryPending = null;
+    return true;
+  },
+
+  _resetTravelRuntime() {
+    this._travelCycle = null;
+    this._travelRecoveryPending = null;
+    this._lastCorridorSequence = null;
+    this._lastTravelSectorId = null;
   },
 
   _onMiningSurveyPulse(payload) {

@@ -13,7 +13,7 @@
 //   Explosions:      _onKilled (L896) · _onDestroyed (L909) · _explode (L920) · _explodeSmall (L1008) · _explodeCapital (L1042)
 //   Mining:          _initMiningBeam (L1072) · _onMiningStart/Stop (L1112/1128) · _updateMiningBeam (L1136) · _onMiningTick (L1607) · _onMiningYield (L1649) · _initSeamMarkers (L1397)
 //   Tether:          _initTetherCable (L1202) · _updateTetherCable (L1278) · _onTetherSnap (L1461) · _onTetherLatch (L1483) · _initArcPreview/_updateArcPreview (rung 12, after _updateTetherCable)
-//   Cruise/jump:     _onCruiseCharging/Engaged/Dropped (L1504/1520/1537) · _onJumpStart/Arrive (L1786/1793) · _warpStreak (L1799)
+//   Cruise/jump:     _onCruiseCharging/Engaged/Dropped · _onDirectTravelPresentationCue · _spawnTravelVectorWake
 //   Engine trails:   _onThrust (L1670) · _emitEngineTrail (L1849) · _emitReverseNozzleTrail (L1691) · _onBoost (L1729) · _onDash (L1761)
 //   AI cues:         _onAiTelegraph (doctrine FLYBY/TETHER/CHARGE) · _updateDoctrineTells · _onAiFlee · _onAiFormationBroken
 //   Presentation:    _onPresentationCue (L772) · _presentationStyle (L863) · _spawnPresentationSprite (L828)
@@ -600,9 +600,8 @@ export const vfx = {
     add('ai:flee', (p) => this._onAiFlee(p));
     add('ai:formationBroken', (p) => this._onAiFormationBroken(p));
     add('presentation:cue', (p) => this._onDirectMiningPresentationCue(p));
+    add('presentation:cue', (p) => this._onDirectTravelPresentationCue(p));
     add('presentation:vfxCue', (p) => this._onPresentationCue(p));
-    add('jump:start', (p) => this._onJumpStart(p));
-    add('jump:arrive', (p) => this._onJumpArrive(p));
     add('pickup:collected', (p) => this._onPickup(p));
   },
 
@@ -1394,6 +1393,9 @@ export const vfx = {
 
   _onPresentationCue(p) {
     if (!this._scene || !p) return;
+    // Cruise owns its directional travel grammar directly below. Keep the legacy cue receipt for
+    // audio/contracts, but do not fan it back into the generic presentation particle family.
+    if (typeof p.id === 'string' && p.id.startsWith('cruise.')) return;
     const particlesRequested = budgetInt(p.particles);
     const lightsRequested = budgetInt(p.lights);
     if (particlesRequested <= 0 && lightsRequested <= 0) return;
@@ -1492,6 +1494,124 @@ export const vfx = {
     }
     if (id === 'mining.chunk.tether_required') {
       this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.82, radius * 0.9, radius * 1.35, 0.58, 0, '#ffb35c', 0, 0);
+    }
+  },
+
+  _onDirectTravelPresentationCue(p) {
+    const id = p && p.id || '';
+    if (!id.startsWith('travel.') || id.startsWith('travel.cruise.')) return;
+    if (!this._scene) return;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
+    const pos = p.position || this._posFrom(p, p.targetId ?? p.sourceId) || (player && player.pos);
+    if (!pos) return;
+    const reduced = this._isReduced();
+    const payload = p.payload || {};
+    const heading = Number.isFinite(payload.heading)
+      ? payload.heading
+      : (player && Number.isFinite(player.rot) ? player.rot : 0);
+    const supplied = p.direction;
+    const dx = supplied && Number.isFinite(supplied.x) ? supplied.x : Math.cos(heading);
+    const dz = supplied && Number.isFinite(supplied.z) ? supplied.z : Math.sin(heading);
+    const palette = this._travelPalette(p.tags);
+    const critical = id === 'travel.interdiction.triggered' || id === 'travel.jump.failed';
+    if (reduced && !critical) {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.48, 4, 11, 0.24, 0, palette.primary, dx * 2, dz * 2);
+      return;
+    }
+
+    if (id === 'travel.gate.approach') {
+      for (let i = 0; i < 3; i++) {
+        const offset = 10 + i * 9;
+        this._spawnSprite(SPR_RING, pos.x - dx * offset, 0, pos.z - dz * offset,
+          0.58 + i * 0.12, 4 + i, 9 + i * 2, 0.5 - i * 0.1, 0, i === 0 ? '#39d0ff' : '#d7e6ff', dx * 5, dz * 5);
+      }
+      return;
+    }
+    if (id === 'travel.corridor.continuity') {
+      for (let i = -1; i <= 1; i++) {
+        const along = i * 10;
+        this._spawnSprite(SPR_RING, pos.x + dx * along, 0, pos.z + dz * along,
+          0.55 + (i + 1) * 0.08, 3.5, 7.5, 0.2 + (i + 1) * 0.08, 0, palette.primary, dx * 5, dz * 5);
+      }
+      return;
+    }
+    if (id === 'travel.jump.aligning') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.72, 16, 6, 0.55, 0, '#39d0ff', 0, 0);
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.92, 24, 9, 0.3, 0, '#d7e6ff', 0, 0);
+      return;
+    }
+    if (id === 'travel.jump.commit_window') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.48, 13, 5, 0.68, 0, '#ffb35c', dx * 4, dz * 4);
+      return;
+    }
+    if (id === 'travel.jump.committed') {
+      this._spawnTravelVectorWake(pos, dx, dz, 24, '#d7e6ff', '#39d0ff', 78, 1.15);
+      this._spawnSprite(SPR_RING, pos.x + dx * 5, 0, pos.z + dz * 5, 1.18, 4, 24, 0.58, 0, '#39d0ff', dx * 18, dz * 18);
+      return;
+    }
+    if (id === 'travel.transition.continuity') {
+      this._spawnSprite(SPR_RING, pos.x - dx * 8, 0, pos.z - dz * 8, 1.18, 14, 3, 0.38, 0, '#d7e6ff', dx * 22, dz * 22);
+      return;
+    }
+    if (id === 'travel.arrival.oriented') {
+      this._spawnTravelVectorWake(pos, dx, dz, reduced ? 5 : 12, palette.secondary, palette.primary, 38, 0.62);
+      this._spawnSprite(SPR_RING, pos.x + dx * 8, 0, pos.z + dz * 8, 0.68, 4, 16, 0.52, 0, palette.primary, dx * 6, dz * 6);
+      return;
+    }
+    if (id === 'travel.arrival.sector_identity') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.9, 7, 24, 0.38, 0, palette.primary, 0, 0);
+      return;
+    }
+    if (id === 'travel.discovery.mapped') {
+      // Discovery already owns the map/toast/postcard receipt. Keep this semantic cue visual-silent
+      // so arrival remains one readable world-space beat instead of another concentric ring.
+      return;
+    }
+    if (id === 'travel.interdiction.triggered') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.6, 26, 8, reduced ? 0.44 : 0.72, 0, '#ff5c5c', 0, 0);
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.82, 34, 12, reduced ? 0.26 : 0.42, 0, '#ffb35c', 0, 0);
+      this._spawnTravelVectorWake(pos, -dx, -dz, reduced ? 4 : 10, '#ffb35c', '#ff5c5c', 34, 0.54);
+      return;
+    }
+    if (id === 'travel.jump.failed') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.58, 14, 4, reduced ? 0.4 : 0.62, 0, '#ff5c5c', 0, 0);
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.8, 20, 7, reduced ? 0.2 : 0.3, 0, '#ffb35c', 0, 0);
+      return;
+    }
+    if (id === 'travel.recovery.resumed') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.72, 4, 17, 0.44, 0, '#39d0ff', dx * 3, dz * 3);
+      return;
+    }
+    if (id === 'travel.aftermath.contested') {
+      // The immediately preceding interdiction receipt owns the danger compression rings.
+      return;
+    }
+    if (id === 'travel.aftermath.clear') {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.82, 5, 20, 0.32, 0, palette.secondary, 0, 0);
+    }
+  },
+
+  _travelPalette(tags) {
+    const list = Array.isArray(tags) ? tags : [];
+    if (list.includes('palette_belt')) return { primary: '#ffb35c', secondary: '#d7e6ff' };
+    if (list.includes('palette_fringe')) return { primary: '#ff5c5c', secondary: '#ffb35c' };
+    if (list.includes('palette_anomaly')) return { primary: '#8d66ff', secondary: '#54ffb0' };
+    return { primary: '#39d0ff', secondary: '#d7e6ff' };
+  },
+
+  _spawnTravelVectorWake(pos, dx, dz, count, color0, color1, speed, life) {
+    this._c0.set(color0);
+    this._c1.set(color1);
+    const nx = -dz;
+    const nz = dx;
+    for (let i = 0; i < count; i++) {
+      const row = i % 5;
+      const lateral = (row - 2) * 1.7;
+      const behind = 4 + Math.floor(i / 5) * 3.2;
+      const x = pos.x - dx * behind + nx * lateral;
+      const z = pos.z - dz * behind + nz * lateral;
+      const stride = speed * (0.72 + row * 0.06);
+      this._spawnParticle(x, z, dx * stride, dz * stride, life, 2.1, 0, this._c0, this._c1, 0.7, 0, 0);
     }
   },
 
@@ -2458,22 +2578,17 @@ export const vfx = {
     }
   },
 
-  // Cruise state juice (spec2/02 §1 + §3). Charging = warm spool glow; engaged = cool wide
-  // engine flare + screen-space speed lines already driven by feel; dropped = snared spark flash.
+  // Cruise state juice (spec2/02 §1 + §3), sharing the same directional travel grammar as jumps.
+  // Locked palette only; no radial starburst or generic flash.
   _onCruiseCharging(p) {
     this._emitJuiceCue('cruise.charging', p, 1);
     if (!this._scene) return;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
     if (!player || !player.pos) return;
-    this._c0.set('#ffd080'); this._c1.set('#ff8840');
-    for (let k = 0; k < 10; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const v = 8 + Math.random() * 14;
-      this._spawnParticle(player.pos.x, player.pos.z, Math.cos(a) * v, Math.sin(a) * v,
-        0.35 + Math.random() * 0.25, 1.2, 0.0, this._c0, this._c1, 2.0, 0, 0);
-    }
-    this._spawnSprite(SPR_RING, player.pos.x, 0, player.pos.z, 0.55, 4.0, 14.0, 0.6, 0.0, '#ffb040', 0, 0);
-    this._flashLight({ x: player.pos.x, z: player.pos.z }, '#ffb040', 2.0, 8, 100);
+    const dx = Math.cos(player.rot || 0), dz = Math.sin(player.rot || 0);
+    if (!this._isReduced()) this._spawnTravelVectorWake(player.pos, dx, dz, 8, '#d7e6ff', '#39d0ff', 22, 0.48);
+    this._spawnSprite(SPR_RING, player.pos.x - dx * 4, 0, player.pos.z - dz * 4,
+      0.62, 12, 5, this._isReduced() ? 0.24 : 0.5, 0, '#39d0ff', dx * 3, dz * 3);
   },
 
   _onCruiseEngaged(p) {
@@ -2481,16 +2596,10 @@ export const vfx = {
     if (!this._scene) return;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
     if (!player || !player.pos) return;
-    this._c0.set('#a6e8ff'); this._c1.set('#39d0ff');
-    for (let k = 0; k < 24; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const v = 28 + Math.random() * 42;
-      this._spawnParticle(player.pos.x, player.pos.z, Math.cos(a) * v, Math.sin(a) * v,
-        0.5 + Math.random() * 0.35, 1.6, 0.0, this._c0, this._c1, 1.6, 0, 0);
-    }
-    this._spawnSprite(SPR_FLASH, player.pos.x, 0, player.pos.z, 0.25, 6.0, 18.0, 0.9, 0.0, '#d8f8ff', 0, 0);
-    this._spawnSprite(SPR_RING, player.pos.x, 0, player.pos.z, 0.70, 8.0, 28.0, 0.75, 0.0, '#39d0ff', 0, 0);
-    this._flashLight({ x: player.pos.x, z: player.pos.z }, '#d8f8ff', 4.0, 6, 220);
+    const dx = Math.cos(player.rot || 0), dz = Math.sin(player.rot || 0);
+    if (!this._isReduced()) this._spawnTravelVectorWake(player.pos, dx, dz, 20, '#d7e6ff', '#39d0ff', 62, 0.72);
+    this._spawnSprite(SPR_RING, player.pos.x + dx * 5, 0, player.pos.z + dz * 5,
+      0.72, 4, 22, this._isReduced() ? 0.28 : 0.62, 0, '#39d0ff', dx * 12, dz * 12);
   },
 
   _onCruiseDropped(p) {
@@ -2498,15 +2607,14 @@ export const vfx = {
     if (!this._scene) return;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
     if (!player || !player.pos) return;
-    this._c0.set('#ffffff'); this._c1.set('#ff5c5c');
-    for (let k = 0; k < 14; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const v = 18 + Math.random() * 34;
-      this._spawnParticle(player.pos.x, player.pos.z, Math.cos(a) * v, Math.sin(a) * v,
-        0.3 + Math.random() * 0.2, 1.3, 0.0, this._c0, this._c1, 2.8, 0, 0);
+    const dx = Math.cos(player.rot || 0), dz = Math.sin(player.rot || 0);
+    const quiet = p && p.reason === 'manual';
+    const primary = quiet ? '#39d0ff' : '#ff5c5c';
+    if (!quiet && !this._isReduced()) {
+      this._spawnTravelVectorWake(player.pos, -dx, -dz, 10, '#ffb35c', '#ff5c5c', 30, 0.48);
     }
-    this._spawnSprite(SPR_RING, player.pos.x, 0, player.pos.z, 0.40, 6.0, 18.0, 0.8, 0.0, '#ff5c5c', 0, 0);
-    this._flashLight({ x: player.pos.x, z: player.pos.z }, '#ff5c5c', 3.0, 8, 160);
+    this._spawnSprite(SPR_RING, player.pos.x, 0, player.pos.z,
+      quiet ? 0.35 : 0.55, quiet ? 8 : 18, quiet ? 12 : 5, this._isReduced() ? 0.24 : (quiet ? 0.34 : 0.62), 0, primary, 0, 0);
   },
 
   _onChargeDetonated(p) {
@@ -3125,48 +3233,6 @@ export const vfx = {
       this._spawnParticle(bx, bz, svx + Math.cos(a) * sp, svz + Math.sin(a) * sp, 0.45, 3.0, 0.0, this._c0, this._c1, 1.2, 0, 0);
     }
     if (e.id === this.state.playerId) this.helpers.camera && this.helpers.camera.addTrauma(0.28);  // punch
-  },
-
-  _onJumpStart(p) {
-    if (!this._scene) return;
-    const player = this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
-    const pos = this._posFrom(p, this.state.playerId) || (player ? player.pos : null);
-    if (!pos) return;
-    this._warpStreak(pos.x, pos.z, true);
-  },
-  _onJumpArrive(p) {
-    if (!this._scene) return;
-    const pos = this._posFrom(p, this.state.playerId);
-    if (!pos) return;
-    this._warpStreak(pos.x, pos.z, false);
-  },
-  _warpStreak(x, z, outward) {
-    // Radial streak burst of fast blue-white particles (elongation is faked via very fast velocity +
-    // near-zero drag so each dot rakes across many pixels per frame). Two coupled rings of streaks at
-    // different speeds give a tunnel-rush feel; a bright core flash punches the moment of the jump.
-    this._c0.set('#dff0ff'); this._c1.set('#3050ff');
-    const n = Math.max(48, Math.round(90 * (this._burst || 1)));
-    for (let k = 0; k < n; k++) {
-      const a = (k / n) * Math.PI * 2 + Math.random() * 0.05;
-      const sp = outward ? (170 + Math.random() * 110) : -(130 + Math.random() * 100);
-      // when inward, spawn far and fly toward centre
-      const r0 = outward ? (Math.random() * 6) : (180 + Math.random() * 60);
-      const px = x + Math.cos(a) * r0, pz = z + Math.sin(a) * r0;
-      this._spawnParticle(px, pz, Math.cos(a) * sp, Math.sin(a) * sp, 0.5 + Math.random() * 0.2, 2.4, 0.0, this._c0, this._c1, 0.35, 0, 0);
-    }
-    // a sparser inner ring of brighter, slower streaks for layered depth
-    this._c0.set('#ffffff'); this._c1.set('#5080ff');
-    const m = Math.max(20, Math.round(36 * (this._burst || 1)));
-    for (let k = 0; k < m; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = outward ? (90 + Math.random() * 60) : -(70 + Math.random() * 50);
-      const r0 = outward ? 0 : (120 + Math.random() * 40);
-      const px = x + Math.cos(a) * r0, pz = z + Math.sin(a) * r0;
-      this._spawnParticle(px, pz, Math.cos(a) * sp, Math.sin(a) * sp, 0.45, 3.0, 0.0, this._c0, this._c1, 0.5, 0, 0);
-    }
-    // core flash + expanding portal ring
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.22, 6, 22, 0.9, 0.0, '#e8f2ff', 0, 0);
-    this._spawnSprite(SPR_RING, x, 0, z, 0.5, 4, 60, 0.7, 0.0, '#bfe0ff', 0, 0);
   },
 
   _onPickup(p) {

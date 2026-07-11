@@ -12,6 +12,24 @@ export const PRESENTATION_LANES = Object.freeze([
 ]);
 
 export const PRESENTATION_RECIPES = Object.freeze({
+  'travel.cruise.charging': travelRecipe(0.5, 30, 'cruise', 'vfx.direct_cruise_existing', ['travel', 'cruise', 'charging']),
+  'travel.cruise.engaged': travelRecipe(0.64, 30, 'cruise', 'vfx.direct_cruise_existing', ['travel', 'cruise', 'engaged']),
+  'travel.cruise.cancelled': travelRecipe(0.38, 12, 'cruise', 'vfx.direct_cruise_existing', ['travel', 'cruise', 'cancelled']),
+  'travel.cruise.interrupted': travelRecipe(0.76, 12, 'cruise', 'vfx.direct_cruise_existing', ['travel', 'cruise', 'interrupted']),
+  'travel.gate.approach': travelRecipe(0.52, 60, 'gate', 'vfx.direct_travel_gate', ['travel', 'approach', 'gate']),
+  'travel.corridor.continuity': travelRecipe(0.44, 30, 'corridor', 'vfx.direct_travel_corridor', ['travel', 'continuity', 'corridor']),
+  'travel.jump.aligning': travelRecipe(0.56, 30, 'jump_drive', 'vfx.direct_travel_alignment', ['travel', 'alignment']),
+  'travel.jump.commit_window': travelRecipe(0.7, 60, 'jump_drive', 'vfx.direct_travel_commit', ['travel', 'commit', 'anticipation']),
+  'travel.jump.committed': travelRecipe(0.82, 60, 'jump_drive', 'vfx.direct_travel_commit', ['travel', 'commit', 'no_return']),
+  'travel.transition.continuity': travelRecipe(0.68, 60, 'jump_drive', 'vfx.direct_travel_transition', ['travel', 'continuity', 'transition']),
+  'travel.arrival.oriented': travelRecipe(0.72, 30, 'arrival', 'vfx.direct_travel_arrival', ['travel', 'arrival', 'oriented']),
+  'travel.arrival.sector_identity': travelRecipe(0.58, 30, 'sector', 'vfx.direct_travel_identity', ['travel', 'arrival', 'sector_identity']),
+  'travel.discovery.mapped': travelRecipe(0.62, 30, 'discovery', 'vfx.direct_travel_discovery', ['travel', 'discovery', 'mapped']),
+  'travel.interdiction.triggered': travelRecipe(0.92, 30, 'interdiction', 'vfx.direct_travel_interdiction', ['travel', 'disruption', 'interdiction']),
+  'travel.jump.failed': travelRecipe(0.7, 20, 'jump_drive', 'vfx.direct_travel_failure', ['travel', 'disruption', 'failure']),
+  'travel.recovery.resumed': travelRecipe(0.48, 30, 'travel_recovery', 'vfx.direct_travel_recovery', ['travel', 'recovery', 'resumed']),
+  'travel.aftermath.clear': travelRecipe(0.46, 30, 'arrival', 'vfx.direct_travel_aftermath', ['travel', 'aftermath', 'clear']),
+  'travel.aftermath.contested': travelRecipe(0.84, 30, 'arrival', 'vfx.direct_travel_aftermath', ['travel', 'aftermath', 'contested']),
   'mining.survey.pulse': miningRecipe(0.52, 30, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'pulse']),
   'mining.survey.resolved': miningRecipe(0.58, 30, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'resolved']),
   'mining.extraction.locked': miningRecipe(0.5, 1, 'mining_beam', 'vfx.direct_mining_beam', ['mining', 'extraction', 'locked']),
@@ -376,6 +394,17 @@ function laneSet(vfx, ui = 'ui.none', accessibility = 'accessibility.none') {
 }
 
 function miningRecipe(importance, dedupeWindowTicks, material, vfx, tags) {
+  return recipe({
+    importance,
+    dedupeWindowTicks,
+    material,
+    lanes: laneSet(vfx),
+    budgets: {},
+    tags,
+  });
+}
+
+function travelRecipe(importance, dedupeWindowTicks, material, vfx, tags) {
   return recipe({
     importance,
     dedupeWindowTicks,
