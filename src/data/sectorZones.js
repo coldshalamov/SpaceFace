@@ -1,4 +1,6 @@
 // src/data/sectorZones.js — NAMED ZONES per sector (the "why does this exist here" layer).
+
+import { FRONTIER_ZONES } from './frontierRegions/index.js';
 //
 // Problem this solves: content used to be scattered on random radial rings, so a sector read as a
 // flat disc of unrelated dots — "a test room." This module gives every sector a set of NAMED zones,
@@ -63,7 +65,7 @@ const P = {
 
 // Zone entries: { id, name, type, factionId, reason, center:{x,z}, radius, threat?, presence? }.
 // Centers/radii align to src/data/sectorAnchors.js so a label sits on real content, not empty space.
-export const SECTOR_ZONES = {
+const CORE_SECTOR_ZONES = {
   // ── S1 Helios Prime — safe Concord core (enemyDensity 0: NO hostile spawns; readability only) ──
   sector_helios_prime: [
     { id: 'zone_helios_core', name: 'Concord Core', type: 'civilian_core', factionId: 'faction_scn',
@@ -214,6 +216,11 @@ export const SECTOR_ZONES = {
       reason: 'Cold rock at the edge of known space — thin air, thinner margins.',
       center: { x: 0, z: -500 }, radius: 820 },
   ],
+};
+
+export const SECTOR_ZONES = {
+  ...CORE_SECTOR_ZONES,
+  ...FRONTIER_ZONES,
 };
 
 /** All zones for a sector (empty array if the sector has no authored zones → legacy behaviour). */

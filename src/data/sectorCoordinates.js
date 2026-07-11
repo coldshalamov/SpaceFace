@@ -13,6 +13,7 @@
 // stay record-only until a later milestone expands the resident graph.
 
 import { sectorLocalToGlobal } from '../core/coordinates.js';
+import { FRONTIER_ORIGINS, FRONTIER_SECTOR_IDS } from './frontierRegions/index.js';
 
 /** Finite XZ component (matches core/coordinates finite policy). */
 function finiteXZ(value) {
@@ -40,6 +41,7 @@ export const SECTOR_GLOBAL_ORIGINS = Object.freeze({
   sector_sker_haven: Object.freeze({ x: -7 * SECTOR_ORIGIN_LATTICE_WU, z: 8 * SECTOR_ORIGIN_LATTICE_WU }),
   sector_veil_nebula: Object.freeze({ x: 7 * SECTOR_ORIGIN_LATTICE_WU, z: 9 * SECTOR_ORIGIN_LATTICE_WU }),
   sector_ashfall_reach: Object.freeze({ x: 4 * SECTOR_ORIGIN_LATTICE_WU, z: 11 * SECTOR_ORIGIN_LATTICE_WU }),
+  ...FRONTIER_ORIGINS,
 });
 
 /** M2a continuous corridor membership set (stable order for deterministic ties). */
@@ -47,6 +49,14 @@ export const CORRIDOR_SECTOR_IDS = Object.freeze([
   'sector_helios_prime',
   'sector_ceres_belt',
   'sector_tethys_junction',
+  'sector_vesta_forge',
+  'sector_pallas_drift',
+  'sector_io_reach',
+  'sector_charon_expanse',
+  'sector_sker_haven',
+  'sector_veil_nebula',
+  'sector_ashfall_reach',
+  ...FRONTIER_SECTOR_IDS,
 ]);
 
 /** Live residency tiers for the M2a streaming foundation. */

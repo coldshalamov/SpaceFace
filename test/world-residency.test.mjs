@@ -498,7 +498,8 @@ test('no Math.random / Date.now in world source; corridor constants exported', (
   const code = WORLD_SRC.replace(/\/\/.*$/gm, '');
   assert.equal(/Math\.random\s*\(/.test(code), false);
   assert.equal(/Date\.now\s*\(/.test(code), false);
-  assert.deepEqual([...CORRIDOR_SECTOR_IDS], [HELIOS, CERES, TETHYS]);
+  assert.equal(CORRIDOR_SECTOR_IDS.length, 24);
+  assert.deepEqual(CORRIDOR_SECTOR_IDS.slice(0, 3), [HELIOS, CERES, TETHYS]);
 });
 
 test('enterSector does not call global-wipe helper path for continuous membership', () => {
@@ -524,4 +525,42 @@ test('multi-sector materialization preserves per-sector bags without clobbering 
   world.enterSector(HELIOS, { continuous: true, noTeleport: true });
   assert.equal(state.world.sectorContents[CERES].stations.length, ceresStationCount);
   assert.equal(aliveIds(state).length > 1, true);
+});
+
+test('save/load clears stale residency bags so the saved sector rematerializes structural entities', () => {
+  const { state, world, player } = bootWorld(37);
+  world.enterSector(HELIOS);
+  const saved = world.serialize();
+  assert.ok(state.world.activeSector.stations.length >= 1);
+  assert.ok(state.world.activeSector.gates.length >= 1);
+
+  // Match saveSystem's runtime-entity clear while deliberately leaving the old world bags in place.
+  for (const entity of state.entityList) {
+    if (!entity || entity.id === player.id) continue;
+    entity.alive = false;
+    state.entities.delete(entity.id);
+  }
+  assert.ok(state.world.sectorContents[HELIOS].stations.length >= 1, 'precondition: stale bag survives');
+
+  world.deserialize(saved);
+  assert.deepEqual(state.world.residentSectors, {});
+  assert.deepEqual(state.world.sectorContents, {});
+  assert.equal(state.world.activeSector.stations.length, 0);
+
+  world.enterSector(saved.currentSectorId, { placePlayer: false });
+  assert.ok(state.world.activeSector.stations.length >= 1, 'stations rematerialize after load');
+  assert.ok(state.world.activeSector.gates.length >= 1, 'gates rematerialize after load');
+  const liveStationIds = state.world.activeSector.stations.filter((entry) => state.entities.get(entry.id)?.alive);
+  assert.equal(liveStationIds.length, state.world.activeSector.stations.length);
+});
+
+test('newGame rebuilds the mutable canonical 24-sector world table after state reset', () => {
+  const { state, world } = bootWorld(39);
+  state.world.sectors = {};
+  world.newGame();
+  assert.equal(Object.keys(state.world.sectors).length, 24);
+  assert.deepEqual(Object.keys(state.world.sectors), SECTORS.map((sector) => sector.id));
+  for (const sector of SECTORS) {
+    assert.equal(state.world.sectors[sector.id].owner, sector.factionId);
+  }
 });

@@ -2,6 +2,8 @@
 // Procedural scatter is NOT used for stations, gates, fields, or POIs when anchors exist.
 // Gate positions are deterministic bearings toward neighbor star-map nodes (no RNG jitter).
 
+import { FRONTIER_ANCHORS, FRONTIER_CORE_GATE_PATCHES } from './frontierRegions/index.js';
+
 const GATE_R = 0.82;
 
 function bearingGate(sector, neighbor) {
@@ -14,7 +16,7 @@ function bearingGate(sector, neighbor) {
 }
 
 /** @type {Record<string, { stations?: object[], gates?: object[], fields?: object[], pois?: object[] }>} */
-export const SECTOR_ANCHORS = {
+const CORE_SECTOR_ANCHORS = {
   sector_helios_prime: {
     stations: [
       { id: 'station_helios', pos: { x: 1280, z: -420 }, archetypeGlb: 'place_station_trade_hub', landmark: true },
@@ -31,6 +33,7 @@ export const SECTOR_ANCHORS = {
     pois: [
       { id: 'poi_tutorial', pos: { x: 380, z: -120 }, landmarkGlb: 'place_lane_beacon' },
       { id: 'poi_memorial', pos: { x: 1680, z: -820 }, landmarkGlb: 'place_station_billboard', landmark: true },
+      { id: 'poi_helios_yard', pos: { x: -1760, z: -1260 }, landmarkGlb: 'place_debris_chunk' },
     ],
   },
   sector_ceres_belt: {
@@ -197,6 +200,16 @@ export const SECTOR_ANCHORS = {
       { id: 'poi_vault', pos: { x: -1480, z: 320 }, landmarkGlb: 'place_debris_chunk' },
     ],
   },
+};
+
+export const SECTOR_ANCHORS = {
+  ...Object.fromEntries(Object.entries(CORE_SECTOR_ANCHORS).map(([sectorId, anchor]) => {
+    const additions = FRONTIER_CORE_GATE_PATCHES[sectorId];
+    return [sectorId, additions
+      ? { ...anchor, gates: [...(anchor.gates || []), ...additions] }
+      : anchor];
+  })),
+  ...FRONTIER_ANCHORS,
 };
 
 /** Merge anchor overlays into a sector definition (pure data). */

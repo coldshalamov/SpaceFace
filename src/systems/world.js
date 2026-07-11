@@ -1675,7 +1675,7 @@ export const world = {
     };
 
     while (pq.length) {
-      // pop the smallest-dist node (linear scan; graph is tiny — 10 nodes)
+      // Pop the smallest-dist node (linear scan; the canonical graph is only 24 nodes).
       let bi = 0;
       for (let i = 1; i < pq.length; i++) {
         if ((dist.get(pq[i]) ?? Infinity) < (dist.get(pq[bi]) ?? Infinity)) bi = i;
@@ -1941,6 +1941,12 @@ export const world = {
   deserialize(data) {
     if (!data) return;
     const state = this.state;
+    // Sector entities are runtime-only and save load clears them before re-entering the saved
+    // sector. Drop all residency bags as well, otherwise stale structural IDs make the
+    // materializer believe stations/gates are still live and the loaded sector appears empty.
+    state.world.residentSectors = {};
+    state.world.sectorContents = {};
+    state.world.activeSector = this._emptySectorBag();
     if (data.discovery) state.world.discovery = data.discovery;
     state.world.scanPings = (data.scanPings && typeof data.scanPings === 'object') ? data.scanPings : {};
     state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};
@@ -1978,6 +1984,12 @@ export const world = {
   newGame() {
     const state = this.state;
     // reset overlay + jump/fuel to defaults; the home sector is entered by main.js post-boot.
+    // main.startNewGame replaces state.world with a fresh record after system init, so rebuild the
+    // mutable ownership/map table here instead of relying on init's now-discarded copy.
+    state.world.sectors = {};
+    for (const sector of SECTORS) {
+      state.world.sectors[sector.id] = { ...sector, owner: sector.factionId };
+    }
     state.world.discovery = {};
     state.world.scanPings = {};
     state.world.pendingSpawns = {};

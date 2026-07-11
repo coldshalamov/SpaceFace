@@ -1,7 +1,8 @@
-// src/data/sectors.js – 10-sector core->frontier graph.
+// src/data/sectors.js – canonical 24-sector persistent galaxy graph.
 // Sector IDs use sector_ prefix; station IDs use station_ prefix; faction IDs use faction_ prefix.
 // Fixed geography (stations/gates/fields/POIs) merged from sectorAnchors.js — see design/world-identity/PIPELINE.md.
 import { applySectorAnchors } from './sectorAnchors.js';
+import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegions/index.js';
 // Per ARCHITECTURE §0.8:
 //   dangerTier(s) = clamp(round((1 - s.security) * 5), 0, 5)
 //   wealthIndex(s) = clamp(0.3 + 0.16*tier + 0.10*(1-security), 0.3, 1.6)
@@ -32,7 +33,7 @@ export const SECTOR_PALETTE_CLASSES = {
   },
 };
 
-export const SECTORS = [
+const CORE_SECTORS = [
   {
     id: 'sector_helios_prime', name: 'Helios Prime', tier: 0, security: 0.98, charted: true,
     factionId: 'faction_scn', position: { x: 0, y: 0 }, worldRadius: 3500,
@@ -246,6 +247,16 @@ export const SECTORS = [
       { id: 'poi_vault', type: 'cache',   name: 'Ancient Vault', hidden: true },
     ],
   },
+];
+
+export const SECTORS = [
+  ...CORE_SECTORS.map((sector) => {
+    const additions = FRONTIER_CORE_NEIGHBOR_PATCHES[sector.id];
+    return additions
+      ? { ...sector, neighbors: [...sector.neighbors, ...additions] }
+      : sector;
+  }),
+  ...FRONTIER_SECTORS,
 ].map(applySectorAnchors);
 
 // Security helper functions per ARCHITECTURE §0.8.

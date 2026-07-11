@@ -331,6 +331,11 @@ export const physics = {
 
   _resetSg02AfterLoad() {
     this._disableSg02DynamicAuthority();
+    // Entity restore rebuilds station/gate objects while UI docking alerts were cleared by the
+    // previous dock. Reset edge caches so the first post-load physics step re-emits range=true
+    // even when the rematerialized structural entity keeps the same stable station/gate id.
+    this._dockStationId = null;
+    this._gateEntityId = null;
     if (this.state) this._publishRuntime(this.state);
   },
 

@@ -296,7 +296,7 @@ export function buildSystemModel(state, sectorId) {
   if (record && Array.isArray(record.stations)) {
     for (const st of record.stations) {
       if (!st || !st.id || seenIds.has(st.id)) continue;
-      const anchor = st.anchor || st.position || null; // sectorAnchors may merge a position in
+      const anchor = st.pos || st.anchor || st.position || null; // sectorAnchors merges canonical pos
       points.push({
         id: st.id,
         kind: 'station',
@@ -741,6 +741,12 @@ const CSS = `
   line-height: 1.4;
 }
 
+#sf-galaxymap .gm-inspector-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 #sf-galaxymap .gm-inspector-empty {
   color: var(--ink-mute, #5e7393);
   font-style: italic;
@@ -1034,6 +1040,10 @@ export const galaxyMapScreen = {
   _view: null,
   _clickTargets: [],
   _isHostile: null,
+  _inspectorDetails: null,
+  _setCourseButton: null,
+  _inspectorDetailsHtml: null,
+  _setCourseHandler: null,
 
   // Flagship strategic table UI states
   _layers: {
@@ -1064,6 +1074,9 @@ export const galaxyMapScreen = {
   mount(rootEl, ctx) {
     injectStyle();
     this._ctx = ctx;
+    if (HAS_DOC && rootEl && this._setCourseButton && this._setCourseHandler) {
+      this._setCourseButton.removeEventListener('click', this._setCourseHandler);
+    }
     this._root = rootEl;
     if (!HAS_DOC || !rootEl) return this;
 
@@ -1118,7 +1131,10 @@ export const galaxyMapScreen = {
         <div class="gm-right-inspector">
           <div class="gm-inspector-header">Inspector</div>
           <div class="gm-inspector-content">
-            <div class="gm-inspector-empty">No target selected. Click a sector, station, or contact to inspect.</div>
+            <div class="gm-inspector-details">
+              <div class="gm-inspector-empty">No target selected. Click a sector, station, or contact to inspect.</div>
+            </div>
+            <button class="gm-ins-btn" id="gm-set-course-btn" type="button" hidden disabled>Set Waypoint</button>
           </div>
         </div>
       </div>
@@ -1127,6 +1143,15 @@ export const galaxyMapScreen = {
     this._body = rootEl.querySelector('.gm-viewport');
     this._canvas = rootEl.querySelector('canvas');
     this._g = this._canvas.getContext('2d');
+    this._inspectorDetails = rootEl.querySelector('.gm-inspector-details');
+    this._setCourseButton = rootEl.querySelector('#gm-set-course-btn');
+    this._inspectorDetailsHtml = null;
+    if (!this._setCourseHandler) {
+      this._setCourseHandler = () => galaxyMapScreen._activateSelectedCourse();
+    }
+    if (this._setCourseButton) {
+      this._setCourseButton.addEventListener('click', this._setCourseHandler);
+    }
 
     // Populate commodity dropdown
     const commSelect = rootEl.querySelector('#gm-commodity-select');
@@ -1306,7 +1331,10 @@ export const galaxyMapScreen = {
       }
 
       const refreshTick = now - galaxyMapScreen._lastDrawTime >= 64;
-      if (refreshTick) { galaxyMapScreen._resize(); }
+      if (refreshTick) {
+        galaxyMapScreen._lastDrawTime = now;
+        galaxyMapScreen._resize();
+      }
       if (refreshTick || zoomChanged) { galaxyMapScreen._draw(); galaxyMapScreen._updateInspector(); }
 
       galaxyMapScreen._animFrame = requestAnimationFrame(loop);
@@ -1394,12 +1422,19 @@ export const galaxyMapScreen = {
 
   _updateInspector() {
     if (!HAS_DOC || !this._root) return;
-    const contentEl = this._root.querySelector('.gm-inspector-content');
-    if (!contentEl) return;
+    const detailsEl = this._inspectorDetails || this._root.querySelector('.gm-inspector-details');
+    const btn = this._setCourseButton || this._root.querySelector('#gm-set-course-btn');
+    if (!detailsEl || !btn) return;
 
     const t = this._selectedTarget;
     if (!t) {
-      contentEl.innerHTML = `<div class="gm-inspector-empty">No target selected. Click a sector, station, or contact to inspect.</div>`;
+      const emptyHtml = `<div class="gm-inspector-empty">No target selected. Click a sector, station, or contact to inspect.</div>`;
+      if (this._inspectorDetailsHtml !== emptyHtml) {
+        detailsEl.innerHTML = emptyHtml;
+        this._inspectorDetailsHtml = emptyHtml;
+      }
+      if (!btn.hidden) btn.hidden = true;
+      if (!btn.disabled) btn.disabled = true;
       return;
     }
 
@@ -1407,6 +1442,7 @@ export const galaxyMapScreen = {
     if (!state) return;
 
     let html = '';
+    let buttonLabel = 'Track Target';
 
     if (t.kind === 'sector') {
       const record = sectorRecordById(state, t.id);
@@ -1497,7 +1533,7 @@ export const galaxyMapScreen = {
         }
       }
 
-      html += `<button class="gm-ins-btn" id="gm-set-course-btn" type="button">Plot Course</button>`;
+      buttonLabel = 'Plot Course';
 
     } else if (t.kind === 'station' || t.kind === 'gate') {
       const faction = factionNameOf(t.factionId);
@@ -1568,7 +1604,7 @@ export const galaxyMapScreen = {
         `;
       }
 
-      html += `<button class="gm-ins-btn" id="gm-set-course-btn" type="button">Set Waypoint</button>`;
+      buttonLabel = 'Set Waypoint';
 
     } else if (t.kind === 'zone') {
       html += `
@@ -1589,8 +1625,8 @@ export const galaxyMapScreen = {
           </div>
         </div>
 
-        <button class="gm-ins-btn" id="gm-set-course-btn" type="button">Align Autopilot</button>
       `;
+      buttonLabel = 'Align Autopilot';
     } else if (t.kind === 'waypoint') {
       const player = playerEntity(state);
       const dist = player && Number.isFinite(t.x) && Number.isFinite(t.z)
@@ -1614,8 +1650,8 @@ export const galaxyMapScreen = {
           </div>
         </div>
 
-        <button class="gm-ins-btn" id="gm-set-course-btn" type="button">Track Waypoint</button>
       `;
+      buttonLabel = 'Track Waypoint';
     } else {
       // General contact
       html += `
@@ -1632,27 +1668,28 @@ export const galaxyMapScreen = {
           </div>
         </div>
 
-        <button class="gm-ins-btn" id="gm-set-course-btn" type="button">Track Target</button>
       `;
+      buttonLabel = 'Track Target';
     }
 
-    contentEl.innerHTML = html;
-
-    // Attach click handler to Set Course button
-    const btn = contentEl.querySelector('#gm-set-course-btn');
-    if (btn) {
-      btn.addEventListener('click', () => {
-        const payload = resolveCourseTarget(t);
-        if (payload) {
-          if (payload.type === 'sector' && payload.sectorId) {
-            galaxyMapScreen._ctx.bus.emit('world:requestRoute', { targetSectorId: payload.sectorId, mode: 'fuel' });
-          }
-          galaxyMapScreen._ctx.bus.emit('ui:setCourse', payload);
-          galaxyMapScreen._ctx.bus.emit('toast', { text: 'Course set: ' + (payload.label || 'target'), kind: 'info', ttl: 3 });
-          popCurrentScreen(galaxyMapScreen._ctx);
-        }
-      });
+    if (this._inspectorDetailsHtml !== html) {
+      detailsEl.innerHTML = html;
+      this._inspectorDetailsHtml = html;
     }
+    if (btn.textContent !== buttonLabel) btn.textContent = buttonLabel;
+    if (btn.hidden) btn.hidden = false;
+    if (btn.disabled) btn.disabled = false;
+  },
+
+  _activateSelectedCourse() {
+    const payload = resolveCourseTarget(this._selectedTarget);
+    if (!payload || !this._ctx || !this._ctx.bus) return;
+    if (payload.type === 'sector' && payload.sectorId) {
+      this._ctx.bus.emit('world:requestRoute', { targetSectorId: payload.sectorId, mode: 'fuel' });
+    }
+    this._ctx.bus.emit('ui:setCourse', payload);
+    this._ctx.bus.emit('toast', { text: 'Course set: ' + (payload.label || 'target'), kind: 'info', ttl: 3 });
+    popCurrentScreen(this._ctx);
   },
 
   _selectSearchTarget(target) {

@@ -67,6 +67,7 @@ export const stationSideEventDirector = {
     s.accum = (s.accum || 0) + dt;
     if (s.accum < 1) return;                 // 1 Hz — no per-frame work
     s.accum = 0;
+    this._sweepActive(state, s);
     if (state.mode && state.mode !== 'flight') return;        // pacing is flight-only (cosmetic + spawn)
     if (isDocked(state) || isTutorialActive(state)) return;
     const now = state.simTime || 0;
@@ -211,6 +212,34 @@ export const stationSideEventDirector = {
       if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(eventId, 1);
       if (!rec.ids.length) delete s.active[eventId];
       break;
+    }
+  },
+
+  // Some cleanup paths mark/remove an entity before an entity:destroyed notification can reach
+  // this director. Reconcile the active ledger at the existing 1 Hz cadence so a dead patrol can
+  // never pin spawnBudget. The event-driven path remains the fast path; removed records make this
+  // sweep idempotent.
+  _sweepActive(state, s = ensureState(state)) {
+    const entities = state && state.entities;
+    if (!entities || typeof entities.get !== 'function') return;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    for (const eventId of Object.keys(s.active)) {
+      const rec = s.active[eventId];
+      if (!rec || !Array.isArray(rec.ids)) {
+        delete s.active[eventId];
+        continue;
+      }
+      let released = 0;
+      rec.ids = rec.ids.filter((id) => {
+        const entity = entities.get(id);
+        if (entity && entity.alive !== false) return true;
+        released++;
+        return false;
+      });
+      if (released > 0 && budget && typeof budget.releaseSome === 'function') {
+        budget.releaseSome(eventId, released);
+      }
+      if (!rec.ids.length) delete s.active[eventId];
     }
   },
 

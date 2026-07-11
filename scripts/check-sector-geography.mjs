@@ -37,7 +37,7 @@ for (const sector of SECTORS) {
   }
 }
 
-check('sector count is 10', SECTORS.length === 10, `got ${SECTORS.length}`);
+check('sector count is 24', SECTORS.length === 24, `got ${SECTORS.length}`);
 
 console.log(`\nsector-geography: ${ok} ok, ${fail} fail`);
 process.exit(fail ? 1 : 0);

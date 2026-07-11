@@ -23,6 +23,7 @@ testPlannerDeterminismAndShape();
 testAffinity();
 testCosmeticPath();
 testBudgetedHappyPathAndIdempotentRelease();
+testSilentDeathSweepReleasesBudget();
 testSpawnShortfall();
 testCapOneConcurrent();
 testVisibleStationGating();
@@ -74,7 +75,14 @@ function makeCtx({ stationTypeId = 'military', stationDist = 200, seed = 7 } = {
       release(id) { spy.releases.push([id, 'all']); return real.release(id); },
       current: () => real.current(), available: () => real.available(), max: () => real.max(), reset: () => real.reset(),
     },
-    spawnEntity(spec) { spawns.push(spec); if (ctl.spawnReturnsNull) return null; return { id: 'e' + (++spawnN), data: {} }; },
+    spawnEntity(spec) {
+      spawns.push(spec);
+      if (ctl.spawnReturnsNull) return null;
+      const entity = { ...spec, id: 'e' + (++spawnN), alive: true, data: { ...(spec.data || {}) } };
+      state.entities.set(entity.id, entity);
+      state.entityList.push(entity);
+      return entity;
+    },
   };
   const ctx = { bus, state, helpers };
   return { ctx, bus, state, station, player, voiceCalls, spy, spawns, ctl, real };
@@ -179,6 +187,23 @@ function testBudgetedHappyPathAndIdempotentRelease() {
     bus.emit('entity:destroyed', { id: 'e1' });
     assert.equal(spy.releases.length, 1, 'duplicate destroy is a no-op (idempotent via active-map lookup)');
     assert.equal(real.current(), 0, 'still zero after the duplicate');
+  });
+}
+
+function testSilentDeathSweepReleasesBudget() {
+  guarded(() => {
+    const { ctx, state, station, spy, real } = makeCtx();
+    const sys = freshDir(); sys.init(ctx);
+    const item = { eventId: 'p_silent', kind: 'patrol_launch', budget: 1, path: 'outbound-past-traffic', durationS: 60, bearing: 0, sectorId: 'sec_a', stationId: 'st_helios' };
+    sys._fire(state, station, item, 100);
+    const entity = state.entities.get('e1');
+    assert.ok(entity);
+    entity.alive = false; // no entity:destroyed event
+    state.simTime += 1;
+    sys.update(1, state);
+    assert.equal(real.current(), 0, '1 Hz sweep releases a silently dead patrol reservation');
+    assert.deepEqual(ensureState(state).active, {});
+    assert.deepStrictEqual(spy.releases, [['p_silent', 1]]);
   });
 }
 
