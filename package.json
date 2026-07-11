@@ -387,6 +387,8 @@
     "files": [
       "build/web/**",
       "electron/**",
+      "scripts/lib/gameServer.cjs",
+      "scripts/lib/electronLaunchProtocol.cjs",
       "package.json",
       "assets/cinematics/**",
       "assets/ui/**",

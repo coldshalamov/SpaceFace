@@ -41,14 +41,24 @@ if not exist "node_modules\.bin\electron.cmd" (
 )
 
 echo Launching SpaceFace desktop app...
-echo You can close this window after the game opens.
+echo This launcher will not close an existing game or test process.
 echo.
 
-call npm run electron
-if %errorlevel% neq 0 (
+node scripts\launch-electron.mjs
+set LAUNCH_EXIT=%errorlevel%
+if %LAUNCH_EXIT% equ 2 (
+    echo.
+    echo SpaceFace is still starting. The launcher left it running.
+    echo Check the diagnostic log printed above if no window appears.
+    echo.
+    pause
+    popd
+    exit /b 2
+)
+if %LAUNCH_EXIT% neq 0 (
     echo.
     echo ERROR: SpaceFace desktop app failed to launch.
-    echo Please check the error above.
+    echo The specific reason and diagnostic log are printed above.
     echo.
     pause
     popd
@@ -56,6 +66,5 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo Game closed.
-pause >nul
+echo Launcher handoff complete. SpaceFace will keep running if this window closes.
 popd
