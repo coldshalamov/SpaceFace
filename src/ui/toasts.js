@@ -7,9 +7,17 @@
 // hears the message without focus steal and without re-speaking the "dismiss" control name.
 // Danger/assertive interruptions belong to alerts.js — this channel stays polite always.
 //
+// One-voice (ONEVOICE-ALERT-DEDUPE / spec2/06):
+//   • Arbiter-origin mirrors (`_fromVoice`) never render — the floor is top-center only.
+//   • Short alert semantics owned by alerts.announce (cargo full / shields down / …) never
+//     render here either, even when a parallel emitter (floatingText) fires a plain toast.
+//   • Transaction ACKs, rep deltas, buy/sell, and other mechanical action toasts pass through.
+//
 // Focus lifecycle (dismiss only): arrival never steals focus. If a focused toast is keyboard-
 // dismissed or expires, focus moves to the nearest remaining toast, else a valid previous
 // control / active-screen fallback — never silently to body when a restorable target exists.
+
+import { isVoiceOwnedAlertToast } from './alerts.js';
 
 const MAX = 5;
 const KIND_ICON = { success: '✓', good: '✓', error: '✕', danger: '✕', warn: '!', info: '›', credits: '¢', rep: '◈' };
@@ -128,6 +136,10 @@ export function createToasts(ctx) {
     // Rendering it here too would double the voice, so drop it. Mechanical action toasts (no
     // _fromVoice — buy/sell/errors/pickups) are unaffected: they are an allowed separate channel.
     if (_fromVoice) return;
+    // Parallel short-status mirrors of arbiter-owned alert keys (CARGO FULL, SHIELDS DOWN, …).
+    // floatingText and legacy bridges may still emit these; the floor already speaks them once.
+    // Long tutorial lines and transaction ACKs are not in the owned set and still render.
+    if (isVoiceOwnedAlertToast(text)) return;
     // Grouping: if an identical toast (same text + kind) is already live and recent (within 2.5s of
     // its birth), collapse into it — bump a count badge and refresh its TTL instead of stacking N
     // copies ("Platinum x1" five times becomes "Platinum x1 ×5"). Keeps the feed readable under

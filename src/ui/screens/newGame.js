@@ -134,12 +134,19 @@ function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.
 // Fires only once per profile (localStorage flag), so returning players skip straight into flight.
 const FIRST_RUN_LINE = 'Helios System. Third shift. The manifest is wrong.';
 const FIRST_RUN_FLAG = 'sf.firstRunIntroSeen';
-function showFirstRunSplash() {
+function showFirstRunSplash(ctx) {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-  if (localStorage.getItem(FIRST_RUN_FLAG)) return; // already seen — no splash
+  if (localStorage.getItem(FIRST_RUN_FLAG)) {
+    if (ctx && ctx.bus) ctx.bus.emit('ui:firstRunSplash:done', { skipped: true });
+    return; // already seen — no splash
+  }
   localStorage.setItem(FIRST_RUN_FLAG, '1');
+  if (ctx && ctx.bus) ctx.bus.emit('ui:firstRunSplash:active', { line: FIRST_RUN_LINE });
   const splash = document.createElement('div');
   splash.className = 'sf-firstrun-splash';
+  splash.setAttribute('role', 'status');
+  splash.setAttribute('aria-live', 'polite');
+  splash.setAttribute('aria-atomic', 'true');
   const line = document.createElement('div');
   line.className = 'sf-firstrun-splash__line';
   line.textContent = FIRST_RUN_LINE;
@@ -150,7 +157,10 @@ function showFirstRunSplash() {
     splash.classList.add('open');
     setTimeout(() => {
       splash.classList.remove('open');
-      setTimeout(() => { if (splash.parentNode) splash.remove(); }, 600);
+      setTimeout(() => {
+        if (splash.parentNode) splash.remove();
+        if (ctx && ctx.bus) ctx.bus.emit('ui:firstRunSplash:done', { skipped: false });
+      }, 600);
     }, 2500);
   });
 }

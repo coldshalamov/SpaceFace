@@ -35,6 +35,23 @@ function installLoggedAsserts() {
 }
 installLoggedAsserts();
 
+function assertEarlyTargetPipeline(source) {
+  const match = source.match(/const UPDATE_ORDER\s*=\s*\[([\s\S]*?)\];/);
+  assert.ok(match, 'registry must declare UPDATE_ORDER');
+  const systems = match[1].split(',').map((name) => name.trim()).filter(Boolean);
+  const inputIndex = systems.indexOf('input');
+  const assistIndex = systems.indexOf('autoTargetAssist');
+  const focusIndex = systems.indexOf('flybyFocus');
+  const scannerIndex = systems.indexOf('scanner');
+  assert.equal(inputIndex, 0, 'registry UPDATE_ORDER must run input first');
+  assert.equal(assistIndex, inputIndex + 1, 'autoTargetAssist must resolve immediately after input');
+  assert.ok(scannerIndex > assistIndex, 'scanner must run after input target-assist resolution');
+  if (focusIndex >= 0) {
+    assert.ok(focusIndex > assistIndex && focusIndex < scannerIndex,
+      'flybyFocus may run between autoTargetAssist and scanner for exact-target authority');
+  }
+}
+
 // 1. Both modality modules exist + export their factories.
 assert.ok(existsSync(join(ROOT, 'src/systems/gamepad.js')), 'src/systems/gamepad.js must exist (gamepad modality)');
 assert.ok(existsSync(join(ROOT, 'src/systems/touch.js')), 'src/systems/touch.js must exist (touch modality)');
@@ -110,8 +127,12 @@ assert.match(autoTargetAssistSrc, /toggleAutoTarget/,
   'autoTargetAssist shell must delegate auto-target toggle to autoTargetMode');
 assert.doesNotMatch(autoTargetAssistSrc, /autopursuitHeld/,
   'autoTargetAssist auto-target toggle must not be gated on MMB/autopursuit state');
-assert.match(registrySrc, /input,\s*autoTargetAssist,\s*scanner/,
-  'registry UPDATE_ORDER must run autoTargetAssist immediately after input');
+assertEarlyTargetPipeline(registrySrc);
+assert.throws(
+  () => assertEarlyTargetPipeline('const UPDATE_ORDER = [input, scanner, autoTargetAssist, flybyFocus];'),
+  /autoTargetAssist must resolve immediately after input/,
+  'input modality gate must reject scanner running before autoTargetAssist',
+);
 assert.match(registrySrc, /input, autoTargetAssist/,
   'registry SYSTEMS init must call autoTargetAssist.init for auto-target capture listeners');
 assert.match(registrySrc, /destroy\(\)/,
@@ -188,13 +209,17 @@ assert.match(touchSrc, /Number\(win\.innerWidth\)/, 'Touch auto-detect must read
 assert.match(uiRootSrc, /controlPrompt\('flight', 'kbm'\)/, 'UI root must source keyboard flight hints from controlPrompts.js');
 assert.match(uiRootSrc, /controlPrompt\('flight', 'gamepad'\)/, 'UI root must source gamepad flight hints from controlPrompts.js');
 assert.match(promptSrc, /RMB mine/, 'Keyboard flight hints must describe the mining control as mining, not sampling');
-assert.match(promptSrc, /opens the Mission Log/, 'Keyboard first-flight hint must teach the objective-home shortcut before the player docks');
+assert.match(promptSrc, /\$\{BINDINGS\.missionLog\.label\} log/,
+  'Persistent keyboard flight chrome must keep the objective-home shortcut discoverable');
+assert.match(promptSrc, /firstFlight: 'W thrusts\. A D steer\. Mouse aims\.'/,
+  'Keyboard first-flight hint must remain a single terse flight verb cluster');
 assert.match(promptSrc, /LT mine/, 'Gamepad flight hints must advertise LT/L2 mining');
 assert.match(promptSrc, /A dock/, 'Gamepad flight hints must advertise A/Cross docking');
 assert.match(promptSrc, /R3 countermeasure/, 'Gamepad flight/combat hints must advertise R3 countermeasure');
-assert.match(promptSrc, /Start pause\/log/, 'Gamepad flight hints must surface the Mission Log route through Pause');
-assert.match(promptSrc, /Start opens pause\/log/, 'Gamepad first-flight hint must teach the controller path to Mission Log');
-assert.match(settingsSrc, /Start pause\/log/, 'Gamepad settings copy must match the shipped Start pause/log route');
+assert.match(promptSrc, /Start → Pause → Mission Log/, 'Gamepad flight hints must surface the truthful Mission Log route through Pause');
+assert.match(promptSrc, /firstFlight: 'Left stick flies\. Right stick aims\.'/,
+  'Gamepad first-flight hint must remain one terse modality-truthful cluster');
+assert.match(helpSrc, /Start \/ Options → Pause → Mission Log/, 'Help Controls must document the truthful gamepad Mission Log route');
 assert.match(promptSrc, /Mine button/, 'Touch flight hints must advertise the touch mining button');
 assert.match(touchSrc, /data-act="localmap"/, 'Touch overlay must expose a Local Map menu button');
 assert.match(touchSrc, /data-act="missionLog"/, 'Touch overlay must expose a Mission Log menu button');
@@ -245,7 +270,8 @@ assert.match(uiInputSrc, /if \(modalOpen\)[\s\S]*if \(key === 'Escape'\)[\s\S]*c
   'Keyboard Escape must close a modal before text-entry targets keep ordinary typing');
 assert.match(promptSrc, /Dock\/Map\/Log\/Star\/Pause buttons/, 'Touch flight hints must match the actual touch menu buttons');
 assert.match(promptSrc, /Tap Dock when the station prompt appears/, 'Touch tutorial docking copy must teach the touch Dock button');
-assert.match(promptSrc, /Log opens the Mission Log/, 'Touch first-flight hint must teach the objective-home button');
+assert.match(promptSrc, /firstFlight: 'Left stick flies\. Right stick aims\.'/,
+  'Touch first-flight hint must remain one terse modality-truthful cluster');
 assert.match(helpSrc, /Mine beam[\s\S]*LT \/ L2/, 'Help Controls must document gamepad mining');
 assert.match(helpSrc, /Countermeasure[\s\S]*R3/, 'Help Controls must document gamepad countermeasure');
 assert.match(helpSrc, /Dock \/ activate[\s\S]*A \/ X \(when prompted\)/, 'Help Controls must document gamepad dock/activate');

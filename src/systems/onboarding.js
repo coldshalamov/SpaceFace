@@ -20,8 +20,6 @@
 // (narrative). A player who missed the ephemeral comms toast can always see "what should I do now"
 // without opening a menu.
 
-import { STORY_BEATS } from '../data/missions.js';
-import { BEAT_CONTENT } from '../data/narrative.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { controlPrompt, currentPromptModality } from '../ui/controlPrompts.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -60,7 +58,7 @@ const PORT_SAFE_SPAWN_RADIUS_WU = 1200;
 //      (fed by nav.waypoint.reason while onboarding waypoint is active).
 //   2. #sf-onboarding panel is demoted during B0: progress/status only (no competing verb copy).
 //   3. Transient tutorial voice (_sayTutorial) speaks the beat line once.
-//   4. firstFlight control-hint wall is deferred until B0 DONE + silence.
+//   4. firstFlight control-hint wall is deferred until the staged B0-B5 rail is finished.
 //   5. Mission Log / story longform stay on-demand context (not a second primary command).
 const BEATS = [
   { // B0 WAKE (0:00) — one verb; HUD owns the persistent line
@@ -78,22 +76,22 @@ const BEATS = [
     ],
     done: 'tether:released',
   },
-  { // B2 FIRST SEAM (~3:00) — scan + mine
+  { // B2 FIRST SEAM (~3:00) — scan + mine; modality-neutral verbs
     key: 'seam',
-    line: 'Pulse. C.',
+    line: 'Pulse the scanner.',
     followups: [
-      { on: 'scan:hit', line: 'Beam the bright seams. RMB.' },
+      { on: 'scan:hit', line: 'Beam the bright seams.' },
     ],
     done: 'oreCollected',
   },
   { // B3 THE SNARE (~5:00) — weak pirate interdicts, flees at 30%, dumps cargo
     key: 'snare',
-    line: 'Trouble. Pulse Laser S follows your cursor.',
+    line: 'Trouble. Fire on the raider.',
     done: 'pirateGone',
   },
   { // B4 DOCK (~7:00) — sell flow + ONE recommended contract
     key: 'dock',
-    line: 'Helios. E when close.',
+    line: 'Helios. Dock when close.',
     followups: [
       { on: 'sold', line: "Board's got one job for you." },
     ],
@@ -139,8 +137,12 @@ export const onboarding = {
     this._gateControlInRange = false;
     this._derelictId = null;
     this._pirateId = null;
+    this._firstRunSplashPending = false;
 
     const bus = this.bus;
+    // The first-run splash is the sole opening line. B0 waits until it is physically removed.
+    bus.on('ui:firstRunSplash:active', () => { this._firstRunSplashPending = true; });
+    bus.on('ui:firstRunSplash:done', () => { this._firstRunSplashPending = false; });
     // Start only for a fresh game. Loaded saves emit save:loaded (no tutorial for a returning pilot).
     bus.on('game:started', () => this._begin());
     // On load, a returning pilot doesn't get the tutorial — but they DO get the story objective
@@ -190,7 +192,7 @@ export const onboarding = {
     bus.on('combat:damage', (p) => {
       if (!p || !p.isPlayer || !p.brokeShield) return;
       this._showHint('firstShieldDrop',
-        'Shields down! Disengage and stay clear of fire — shields recharge automatically after a few seconds.');
+        'Break contact. Shields recharge when fire stops.');
     });
 
     // First station approach: enriches the existing dock prompt with what stations offer.
@@ -212,7 +214,7 @@ export const onboarding = {
     // First cargo full: teach the player to sell.
     bus.on('cargo:full', () => {
       this._showHint('firstCargoFull',
-        'Cargo hold full! Dock at a station to audit or sell the sample and free up space.');
+        'Dock and sell cargo to free hold space.');
     });
 
     // ── Mid/late-game system onboarding (P1-10) ─────────────────────────────────────────────
@@ -229,7 +231,7 @@ export const onboarding = {
     // the tutorial's dock step) so returning players who skipped the tutorial still get oriented.
     bus.on('dock:docked', () => {
       this._showHint('firstHub',
-        'Station hub: use the left rail for Market, Missions, Services, Shipyard, Outfitting, Manufacture, Factions, and Bar. First loop: audit the hold, accept one low-risk job, then undock when Departure Check looks safe.');
+        'Use the left rail. Departure Check owns undock.');
     });
 
     // Deep-drill (ant-farm mining): the first time the player activates a drill on an asteroid.
@@ -288,6 +290,9 @@ export const onboarding = {
   _showHint(key, text) {
     const st = this.state;
     if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return;
+    // The staged B0-B5 rail is already the tutorial. Contextual walls wait until it finishes so a
+    // combat hit, dock range, or cargo edge cannot queue a second lesson behind the current verb.
+    if (this._tutorialRailOwnsVoice()) return;
     if (!st.player.hints) st.player.hints = {};
     if (st.player.hints[key]) return;
     st.player.hints[key] = true;
@@ -298,6 +303,11 @@ export const onboarding = {
     const said = voice && typeof voice.say === 'function'
       && voice.say({ channel: 'tutorial', text, kind: 'info', ttl: 7, id: 'tutorial:hint:' + key });
     if (!said) this.bus.emit('toast', { text, kind: 'info', ttl: 7 });
+  },
+
+  _tutorialRailOwnsVoice() {
+    const ob = this.state && this.state.onboarding;
+    return !!(ob && ob.active && !ob.finished);
   },
 
   _isOre(id) { return !!id && ORE_PREFIXES.some((p) => String(id).startsWith(p)); },
@@ -342,7 +352,20 @@ export const onboarding = {
   _beginStoryMode() {
     this._storyMode = true;
     this._storySig = '';
+    this._retireTutorialPanel();
     this._refreshStory();
+  },
+
+  _retireTutorialPanel() {
+    if (this._panel) this._panel.remove();
+    this._panel = null;
+    this._bodyEl = null;
+    this._titleEl = null;
+    this._countEl = null;
+    this._stepsEl = null;
+    this._progressEl = null;
+    this._flavorEl = null;
+    this._kickerLabelEl = null;
   },
 
   _teardown() {
@@ -391,6 +414,8 @@ export const onboarding = {
     if (!ob || !ob.active || ob.finished) return;
     const nextIndex = ob.currentBeat + 1;
     if (nextIndex >= BEATS.length) return;
+    // First-run opening line owns the screen until its fade has completed.
+    if (nextIndex === 0 && this._firstRunSplashPending) return;
     // Silence gate: the previous beat must have DONE'd AND ≥SILENCE_S passed since the last text.
     if (nextIndex > 0) {
       const prev = BEATS[nextIndex - 1];
@@ -514,61 +539,17 @@ export const onboarding = {
     this._clearObjectiveWaypoint();
     // Tell the story system the tutorial is over so it can release the deferred cold-start voice.
     this.bus.emit('tutorial:finished', {});
-    // Transition the panel into STORY MODE (P2-14): it now persistently shows the current story beat
-    // objective so the player always knows what to do next.
+    // The HUD mission tracker is the one persistent objective owner after B5. Retire this tutorial
+    // panel so story prose cannot compete with verb + destination + radar-marker guidance.
     this._storyMode = true;
+    this._retireTutorialPanel();
     this._refreshStory();
   },
 
-  // Story-mode objective tracker (P2-14). Reuses the onboarding panel slot to persistently show the
-  // current story beat's objective + direction hint. Called once on tutorial finish / save load, and
-  // refreshed each frame in update() so it tracks beatIndex as the player progresses.
-  _ensureStoryPanel() {
-    if (this._panel && this._storyMode) return this._panel;
-    this._injectStyle();
-    this._buildPanel();
-    // Hide the step dots in story mode (they're tutorial-specific); show the objective body only.
-    if (this._stepsEl) this._stepsEl.style.display = 'none';
-    if (this._countEl) {
-      this._countEl.textContent = '';
-      this._countEl.removeAttribute('aria-label');
-    }
-    if (this._kickerLabelEl) this._kickerLabelEl.textContent = 'Story';
-    this._storyMode = true;
-    return this._panel;
-  },
-
+  // Story objectives persist through the HUD mission tracker. This system deliberately keeps no
+  // second story/lore panel; the comms backlog remains available on demand.
   _refreshStory() {
-    if (!this._storyMode) return;
-    const panel = this._ensureStoryPanel();
-    if (!panel || !this._titleEl) return;
-    const beat = (this.state.story && this.state.story.beatIndex) || 0;
-    const sb = STORY_BEATS[beat];
-    // The concrete objective (data/missions.js STORY_BEATS) is the actionable "what to do"; the
-    // narrative BEAT_CONTENT.hint is the in-world Captain's Log voice shown as flavor underneath.
-    const content = BEAT_CONTENT[beat];
-    const objective = (sb && sb.objective) || '';
-    const hint = (content && content.hint) || '';
-    const sig = `${beat}\u0001${objective}\u0001${hint}`;
-    if (sig === this._storySig) return;
-    this._storySig = sig;
-    if (!sb) {
-      if (this._titleEl.textContent !== '') this._titleEl.textContent = '';
-      if (this._flavorEl) { this._flavorEl.remove(); this._flavorEl = null; }
-      return;
-    }
-    if (this._titleEl.textContent !== objective) this._titleEl.textContent = objective;
-    if (hint) {
-      if (!this._flavorEl) {
-        this._flavorEl = document.createElement('div');
-        this._flavorEl.className = 'sf-ob-flavor';
-        this._bodyEl.appendChild(this._flavorEl);
-      }
-      if (this._flavorEl.textContent !== hint) this._flavorEl.textContent = hint;
-    } else if (this._flavorEl) {
-      this._flavorEl.remove();
-      this._flavorEl = null;
-    }
+    if (this._storyMode) this._retireTutorialPanel();
   },
 
   // Keep the objective panel's assistive-tree state in sync with the modal UI. When a modal or
@@ -596,8 +577,8 @@ export const onboarding = {
     try { this._syncModalAccessibility(); } catch (_) { /* non-critical a11y mirror */ }
 
     // ── First-flight control-hint wall ───────────────────────────────────────────────────
-    // Suppress while B0 still owns the floor (one-verb hierarchy). Only arm after B0 is DONE
-    // and ≥SILENCE_S of text silence — or when the first-hour tutorial is inactive/finished.
+    // The staged tutorial already teaches every opening verb. The generic control wall waits until
+    // the entire rail finishes, then appears after three seconds of free flight for skippers/returners.
     if (this._firstFlightPending && state.mode === 'flight') {
       if (!this._firstFlightB0Released(state)) {
         this._firstFlightTimer = 0;
@@ -614,13 +595,6 @@ export const onboarding = {
     // ── Contextual control bar ───────────────────────────────────────────────────────────
     try { this._updateControlBar(state); } catch (_) { /* non-critical */ }
 
-    // ── Story objective tracker (P2-14) — persists after the tutorial finishes ───────────
-    // Refresh the story panel each frame so it tracks beatIndex. Throttled like the tutorial path.
-    if (this._storyMode && state.mode === 'flight') {
-      this._storyAccum = (this._storyAccum || 0) + dt;
-      if (this._storyAccum >= 0.5) { this._storyAccum = 0; this._refreshStory(); }
-    }
-
     // ── First-hour pacing (only while active) ────────────────────────────────────────────
     const ob = state.onboarding;
     if (!ob || !ob.active) return;
@@ -636,18 +610,10 @@ export const onboarding = {
     } catch (_) { /* never let onboarding break the loop */ }
   },
 
-  // True when firstFlight may fire without stacking on the B0 thrust verb.
+  // True when firstFlight may fire without stacking on any B0-B5 teaching beat.
   _firstFlightB0Released(state) {
     const ob = state && state.onboarding;
-    // Tutorial off / finished / never started → control wall is free to teach.
-    if (!ob || !ob.active || ob.finished) return true;
-    // B0 still open (or not yet entered) → keep the wall silent.
-    const wakeDoneAt = ob.beatDoneAt && ob.beatDoneAt.wake;
-    if (wakeDoneAt == null) return false;
-    // Require the same ≥SILENCE_S gate as inter-beat pacing after B0 DONE / last tutorial text.
-    const now = state.simTime || 0;
-    const lastText = Number.isFinite(this._lastTextAtS) ? this._lastTextAtS : -Infinity;
-    return (now - Math.max(wakeDoneAt, lastText)) >= SILENCE_S;
+    return !ob || !ob.active || !!ob.finished;
   },
 
   // Determine the player's current activity and update the bottom control hint bar to show
@@ -661,6 +627,15 @@ export const onboarding = {
       this._controlHintsEl = el || null;
     }
     if (!el) return;
+
+    // During B0-B5 the HUD objective + one attention line own instruction. Hide the multi-verb
+    // control laundry; it returns automatically after the rail finishes.
+    const onboardingState = state.onboarding;
+    if (onboardingState && onboardingState.active && !onboardingState.finished) {
+      if (el.textContent) el.textContent = '';
+      this._lastControlMode = 'tutorial-rail';
+      return;
+    }
 
     let mode = 'flight';
 
@@ -977,9 +952,6 @@ export const onboarding = {
     body.className = 'sf-ob-body';
     const title = document.createElement('div');
     title.className = 'sf-ob-title';
-    title.setAttribute('role', 'status');
-    title.setAttribute('aria-live', 'polite');
-    title.setAttribute('aria-atomic', 'true');
     body.appendChild(title);
 
     const steps = document.createElement('div');
@@ -1002,20 +974,19 @@ export const onboarding = {
   },
 
   // Render the current beat into the objective panel.
-  // B0 hierarchy: the HUD mission tracker owns the sole persistent actionable verb (via
-  // nav.waypoint.reason). This panel keeps progress/status (step count + dots) and demotes the
-  // duplicate objective title so it is not a second always-on command surface.
-  // The title element is stable so its polite live region only announces on real text changes.
+  // The HUD mission tracker owns the sole persistent actionable verb (via nav.waypoint.reason).
+  // This panel is progress/status only for every B0-B5 beat; tutorial verbs speak once through the
+  // voice arbiter and never become a second persistent command or assistive live region.
   _refreshBeatPanel() {
     if (!this._panel || this._storyMode) return;
     const ob = this.state.onboarding; if (!ob) return;
     const beat = BEATS[ob.currentBeat];
     const idx = ob.currentBeat < 0 ? -1 : ob.currentBeat;
-    const demoteObjectiveCopy = !!(beat && beat.key === 'wake');
+    // Every beat, including 'wake', is demoted here; HUD owns the persistent verb for B0-B5.
+    const demoteObjectiveCopy = true;
 
     if (this._kickerLabelEl) {
-      // B0: frame as status/progress, not a second "Objective" authority.
-      const kicker = demoteObjectiveCopy ? 'Status' : 'Objective';
+      const kicker = 'Status';
       if (this._kickerLabelEl.textContent !== kicker) this._kickerLabelEl.textContent = kicker;
     }
 
@@ -1030,8 +1001,8 @@ export const onboarding = {
 
     if (this._titleEl) {
       const line = beat ? (beat.line || '') : '';
-      // Keep textContent in sync for status contracts / beat transitions; during B0 hide the
-      // duplicate verb from the visual + assistive tree (HUD owns the persistent line).
+      // Keep textContent in sync for beat tests while hiding the duplicate verb from the visual and
+      // assistive trees. The one transient tutorial line already routes through _sayTutorial().
       if (this._titleEl.textContent !== line) this._titleEl.textContent = line;
       if (demoteObjectiveCopy) {
         if (this._titleEl.style.display !== 'none') this._titleEl.style.display = 'none';

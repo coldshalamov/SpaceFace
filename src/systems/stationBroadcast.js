@@ -119,6 +119,12 @@ export function nearestVisibleStation(state, range = NEAR_RANGE) {
   return best;
 }
 
+/** True while the staged first-hour tutorial owns the voice channel (spec2/00 one-voice). */
+export function isOnboardingActive(state) {
+  const ob = state && state.onboarding;
+  return !!(ob && ob.active && !ob.finished);
+}
+
 export const stationBroadcast = {
   name: 'stationBroadcast',
 
@@ -165,6 +171,9 @@ export const stationBroadcast = {
   _tick() {
     const state = this._state;
     if (!state || state.mode !== 'flight') return;
+    // One-voice: yield the channel entirely while the first-hour tutorial is active.
+    // Cosmetic only — no sim writes; speech resumes after tutorial completion.
+    if (isOnboardingActive(state)) return;
     const now = state.simTime || 0;
 
     if ((now - this._lastCombatAt) < COMBAT_SILENCE_S) return;   // in/just-after combat → silent

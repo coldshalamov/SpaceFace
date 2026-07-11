@@ -936,16 +936,9 @@ function injectHudCss() {
   .sf-radar--expanded { width:340px !important; height:340px !important; }
   /* Canvas is centered so compact/expanded size changes stay anchored on the player marker. */
   .sf-radar canvas { display:block; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
-  .sf-radar-legend { width:220px; display:grid; grid-template-columns:repeat(5, auto); gap:4px 9px; justify-content:center;
-    color:var(--text-secondary); font-family:var(--mono); font-size:9px; letter-spacing:.04em;
-    text-shadow:none; }
-  .sf-radar-legend span { display:flex; align-items:center; gap:4px; white-space:nowrap; }
-  .sf-radar-legend i { display:inline-block; width:7px; height:7px; flex:0 0 auto; }
-  .sf-radar-legend .stn { background:var(--visor-cyan); }
-  .sf-radar-legend .gate { border:1px solid #b99cff; border-radius:50%; }
-  .sf-radar-legend .rock { background:#6e7b8c; border-radius:50%; }
-  .sf-radar-legend .bad { width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-bottom:7px solid var(--visor-red); }
-  .sf-radar-legend .obj { transform:rotate(45deg); border:1px solid var(--visor-amber); }
+  .sf-radar-objective-key { width:220px; text-align:center; color:var(--visor-amber);
+    font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.1em;
+    text-transform:uppercase; text-shadow:none; }
   /* HUD sub-panel surface — now chromeless. Legibility comes from hard text-shadow on the content. */
   .sf-hudpanel { background:none; border:none; box-shadow:none; }
   .sf-target { width:220px; display:flex; flex-direction:column; gap:5px; text-align:right; contain:layout paint style;
@@ -1156,11 +1149,7 @@ function injectHudCss() {
     .sf-radar-wrap { gap:4px; }
     .sf-radar { width:132px; height:132px; }
     .sf-radar canvas { width:132px !important; height:132px !important; }
-    /* On a narrow pane the legend collides with the left-side micro-bars; the radar is small and
-       contacts are color/shape-coded (and the briefing explains them), so drop it here. */
-    .sf-radar-legend { display:none; }
-    .sf-radar-legend i { width:6px; height:6px; }
-    .sf-radar-legend .bad { border-left-width:3px; border-right-width:3px; border-bottom-width:6px; }
+    .sf-radar-objective-key { width:150px; font-size:8px; letter-spacing:.06em; line-height:1.25; }
 
     .sf-cluster { left:8px; right:8px; bottom:8px; transform:none; display:flex; flex-wrap:wrap;
       justify-content:center; gap:4px 14px; }
@@ -1214,15 +1203,15 @@ function injectHudCss() {
   }
 
   /* ===== HUD mission tracker — chromeless, with an edge marker; relocated into the bottom-left column ===== */
-  .sf-mission-tracker { position:relative; max-width:280px;
-    padding-left:10px; border-left:2px solid var(--visor-cyan-dim);
-    box-shadow:none; pointer-events:none; contain:layout paint style; }
-  .sf-mt-title { font-family:var(--mono); font-size:12px; color:var(--text-primary); letter-spacing:.06em;
+  .sf-mission-tracker { position:relative; width:320px; max-width:calc(100vw - 32px);
+    padding:10px 12px; border-left:3px solid var(--visor-amber);
+    background:rgba(5,9,18,.92); box-shadow:none; pointer-events:none; contain:layout paint style; }
+  .sf-mt-title { font-family:var(--mono); font-size:10px; color:var(--visor-amber); letter-spacing:.18em;
     margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     text-shadow:none; }
-  .sf-mt-obj { font-family:var(--mono); font-size:11px; color:var(--text-secondary); margin-bottom:2px;
+  .sf-mt-obj { font-family:var(--mono); font-size:13px; line-height:1.35; color:var(--text-primary); margin-bottom:5px;
     text-shadow:none; }
-  .sf-mt-time { font-family:var(--mono); font-size:10px; color:var(--text-secondary); letter-spacing:.08em;
+  .sf-mt-time { font-family:var(--mono); font-size:10px; color:var(--visor-amber); letter-spacing:.1em;
     text-shadow:none; }
   .sf-mt-time.sf-mt-urgent { color:var(--visor-amber); text-shadow:none; }
   @media (max-width: 760px) {

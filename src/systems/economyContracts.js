@@ -57,6 +57,12 @@ const FUEL_CMDTY = 'cmdty_fuel_cells';
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const round = Math.round;
 
+/** True while the staged first-hour tutorial owns the voice channel (spec2/00 one-voice). */
+export function isOnboardingActive(state) {
+  const ob = state && state.onboarding;
+  return !!(ob && ob.active && !ob.finished);
+}
+
 // ── ECON-P4 pure field-contract helpers (emit-only discipline; no missions authority) ─────────
 
 /** Stable board-ready offer id: eco_<stationId>_<epoch>. Pure. */
@@ -184,7 +190,10 @@ export const economyContracts = {
       if (!offer) return; // calm field → strict no-op
 
       // EMIT-ONLY: never writes state.missions — missions.js owns boards/active.
+      // Durable offer + station-epoch state always land; only the nonessential news voice
+      // is suppressed while onboarding owns the one-voice channel (spec2/00 + first-hour).
       this.bus.emit('mission:offered', offer);
+      if (isOnboardingActive(this.state)) return;
       // One news line, through the arbiter (falls back to a toast exactly like marketNews).
       const line = `Contract posted at ${info.name}: ${offer.title}`;
       const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'

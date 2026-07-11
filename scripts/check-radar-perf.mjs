@@ -9,7 +9,7 @@ const coreSource = readFileSync('src/core/coreSystem.js', 'utf8');
 const requiredRadarFeatures = [
   ['DPI-scaled canvas', 'devicePixelRatio'],
   ['expanded tactical radar', 'sf-radar--expanded'],
-  ['legend', 'sf-radar-legend'],
+  ['single active-objective key', 'sf-radar-objective-key'],
   ['station and gate blips', "type === 'station'"],
   ['pickup blips', "type === 'pickup'"],
   ['asteroid blips', 'drawAsteroidBlip'],

@@ -52,8 +52,12 @@ assert.ok(!src.includes("document.querySelector('.sf-alert--dock')"),
   'control bar must not query the dock alert DOM during flight updates');
 assert.ok(!src.includes("document.querySelector('.sf-alert--info')"),
   'control bar must not query the gate alert DOM during flight updates');
-assert.match(src, /_storySig/, 'story objective refresh should cache its last rendered content signature');
-assert.match(src, /sig === this\._storySig/, 'story objective refresh should skip DOM rebuilds when the objective text is unchanged');
+assert.match(src, /_retireTutorialPanel\(\)/,
+  'story transition should retire the tutorial panel so the HUD remains the single objective owner');
+assert.match(src, /_refreshStory\(\)\s*\{[\s\S]*?_retireTutorialPanel\(\)/,
+  'story refresh should keep the obsolete parallel story panel retired');
+assert.doesNotMatch(src, /_ensureStoryPanel/,
+  'onboarding should not rebuild a second persistent story/lore panel');
 
 // ── spec2/03 supersedes the intro modal: the first hour is PACED, not a modal ────────────────
 // The old fresh-game intro card (.sf-ob-intro, Begin/Skip, Pulse-Laser legend) is GONE by design
@@ -91,16 +95,18 @@ assert.ok(codexBindingMentions.length >= 1,
   'controlPrompts.js should source codex control copy from BINDINGS.codex.label');
 assert.match(promptSrc, /station: `\$\{BINDINGS\.dock\.label\} dock[\s\S]*Hub: arrow keys change tabs[\s\S]*Enter\/Space act/,
   'keyboard station control bar must teach hub tab navigation and activation');
-assert.match(promptSrc, /firstStation: `Stations offer[\s\S]*arrow keys change tabs[\s\S]*Enter\/Space acts[\s\S]*Escape undocks/,
-  'keyboard first-station hint must explain how to operate the station hub after docking');
+assert.match(promptSrc, /firstStation: `Review Departure Check before \$\{BINDINGS\.dock\.label\} or Escape undocks\.`/,
+  'keyboard first-station hint must be one terse, binding-truthful departure verb');
 assert.match(promptSrc, /station: 'A dock[\s\S]*Hub: LB\/RB tabs[\s\S]*D-pad\/left stick focus[\s\S]*A act[\s\S]*B undock'/,
   'gamepad station control bar must teach LB/RB tab cycling, focus, activation, and undock');
-assert.match(promptSrc, /firstStation: 'Stations offer[\s\S]*LB\/RB changes tabs[\s\S]*D-pad or left stick moves focus[\s\S]*A acts[\s\S]*B undocks\./,
-  'gamepad first-station hint must explain controller station hub flow after docking');
+assert.match(promptSrc, /firstStation: 'Review Departure Check before B undocks\.'/,
+  'gamepad first-station hint must be one terse controller departure verb');
 assert.match(promptSrc, /station: `\$\{BINDINGS\.dock\.label\} dock[\s\S]*Hub: tap tabs\/actions[\s\S]*Tap Undock when ready/,
   'touch station control bar must teach touch station tab/action flow');
-assert.match(promptSrc, /firstStation: `Stations offer[\s\S]*tap tabs and actions directly[\s\S]*tap Undock when Departure Check looks safe/,
-  'touch first-station hint must explain touch station hub flow after docking');
+assert.match(promptSrc, /firstStation: 'Review Departure Check, then tap Undock\.'/,
+  'touch first-station hint must be one terse touch departure verb');
+assert.match(src, /_tutorialRailOwnsVoice\(\)/,
+  'contextual control walls must yield while B0-B5 owns tutorial speech');
 for (const staleDockCopy of [/Press Enter at the dock prompt/, /Press ENTER to dock/, /Enter to dock/]) {
   assert.doesNotMatch(src, staleDockCopy,
     `onboarding.js must not use stale hard-coded dock copy: ${staleDockCopy}`);

@@ -13,15 +13,15 @@ the one-voice gate). The fix is PACING, not deletion: one beat → one verb → 
 Timing gates: a beat's text may only fire when the previous beat's DONE condition fired AND ≥ 4 s of
 text silence has passed. All lines ≤ 12 words, dry-rigger voice.
 - **B0 WAKE (0:00)** — no modal. Black → fade in over 2 s. Single line (tutorial tier):
-  "Thrust to the beacon." DONE: within 420 wu of beacon. Teaches: mouse-nose + W.
+  "Contract 47-A: thrust to the beacon." DONE: within 420 wu of beacon. Teaches thrust toward the marked objective; modality-specific chrome owns physical controls.
 - **B1 THE DERELICT (≈1:30)** — derelict wreck near beacon. "Latch it. Massline." → latch → "Winch in. Hold tether to reel." → reel ≤ 60 wu (production `tether:reel` after) → "Cut and coast. Tap tether to cut." DONE: released. Teaches tether trio. The wreck drops 2 salvage pickups on release (vacuum shows itself — no line needed).
-- **B2 FIRST SEAM (≈3:00)** — "Pulse. C." → scanner lights a marked rock's seams → "Beam the bright
-  seams. RMB." → first vent-bonus chime gets ONE line: "Release in the amber. Remember that." DONE:
+- **B2 FIRST SEAM (≈3:00)** — "Pulse the scanner." → scanner lights a marked rock's seams → "Beam
+  the bright seams." → first vent-bonus chime gets ONE line: "Release in the amber. Remember that." DONE:
   3 ore collected. Teaches scan + seam aim + heat rhythm.
 - **B3 THE SNARE (≈5:00)** — scripted weak pirate interdicts (spawn 700 wu, attackRun telegraph).
-  "Trouble. Guns follow your cursor." He flees at 30% hull, dumping cargo. If player dies: respawn
+  "Trouble. Fire on the raider." He flees at 30% hull, dumping cargo. If player dies: respawn
   at beacon full-heal, pirate stays damaged (no punishment spiral). DONE: pirate dead or fled.
-- **B4 DOCK (≈7:00)** — "Helios. E when close." Auto-dock prompt at range. Inside: sell flow
+- **B4 DOCK (≈7:00)** — "Helios. Dock when close." The modality-specific dock prompt appears at range. Inside: sell flow
   highlights the SELL tab once (existing hub tab glow), then "Board's got one job for you." —
   mission board shows exactly ONE recommended contract (recommendation engine exists).
 - **B5 CHOICE (≈12:00)** — completing that contract opens three side-by-side offers, one per loop:

@@ -257,9 +257,16 @@ assert.match(onboardingSrc, /'reaver_pirate'/, 'B3 must spawn a pirate-archetype
 assert.match(onboardingSrc, /makeEnemySpawnSpec/, 'B3 must use the canonical enemy spawn builder');
 assert.match(onboardingSrc, /pirateFled/, 'B3 must track the pirate-fled state (flee counts as DONE)');
 assert.match(onboardingSrc, /loot:drop/, 'B3 must drop cargo when the pirate flees (≥1 pickup)');
-// Respawn ≤3s: combat.respawnPlayer grants 3s invuln; verify the invuln window.
+// Respawn ≤3s (spec2/03 §5.4): combat.respawnPlayer must full-heal immediately (no death spiral).
+// Invuln window may use UNDOCK_INVULN_S (shared soft-respawn grace) — assert the constant exists
+// and respawn assigns _invulnUntil from it (duration is grace, not the respawn delay).
 const combatSrc = read('src/systems/combat.js');
-assert.match(combatSrc, /_invulnUntil = state\.simTime \+ 3/, 'respawn must grant ≤3s invuln (full-heal, no spiral)');
+assert.match(combatSrc, /UNDOCK_INVULN_S\s*=\s*\d+/, 'respawn invuln constant (UNDOCK_INVULN_S) must be authored');
+assert.match(
+  combatSrc,
+  /_invulnUntil\s*=\s*state\.simTime\s*\+\s*UNDOCK_INVULN_S/,
+  'respawn must grant a finite invuln window via UNDOCK_INVULN_S (full-heal, no spiral)',
+);
 assert.match(combatSrc, /t\.hull = t\.hullMax; t\.shield = t\.shieldMax; t\.cap = t\.capMax/, 'respawn must full-heal (no punishment spiral)');
 
 // ── B1 derelict + B5 choice must be wired ─────────────────────────────────────────────────────
@@ -310,8 +317,10 @@ for (const desc of diffDescs) {
   // Match the class token without requiring a CSS-leading '.' — live mount is className = 'sf-mission-tracker'.
   assert.match(hudSrc, /sf-mission-tracker/,
     'HUD mission tracker (sf-mission-tracker) must exist as the primary B0 command surface');
-  assert.match(hudSrc, /waypoint\.onboarding/,
-    'HUD tracker must still surface the onboarding waypoint command during B0');
+  assert.match(hudSrc, /const navWaypoint = state\.nav && state\.nav\.waypoint/,
+    'HUD tracker must consume the active navigation waypoint during B0');
+  assert.match(hudSrc, /navWaypoint && navWaypoint\.reason/,
+    'HUD tracker must surface the onboarding waypoint verb during B0');
   assert.match(hudSrc, /mtObj|sf-mt-obj/,
     'HUD tracker must expose an objective line (sf-mt-obj / mtObj) for the single B0 verb');
 

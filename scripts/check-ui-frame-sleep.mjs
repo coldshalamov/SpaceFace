@@ -210,7 +210,7 @@ function checkFullscreenCompositorShellsSleep() {
   const dockOverlay = blockFor(css, '#sf-dock-overlay');
   const dockOverlayInjected = blockFor(uiRoot, '.sf-dock-fade');
   const controlHints = blockFor(css, '#control-hints');
-  const radarLegend = blockFor(uiRoot, '.sf-radar-legend');
+  const radarObjectiveKey = blockFor(uiRoot, '.sf-radar-objective-key');
   const lockRing = blockFor(uiRoot, '.sf-lockring');
   const lockRingActive = blockFor(uiRoot, '.sf-lockring.active');
   const lockDiamond = blockFor(uiRoot, '.sf-lockdiamond');
@@ -233,9 +233,9 @@ function checkFullscreenCompositorShellsSleep() {
   assert.doesNotMatch(controlHints, /box-shadow\s*:/, 'flight hint bar should not use shadow compositing during gameplay');
   assert.doesNotMatch(controlHints, /text-shadow\s*:/, 'flight hint bar should not use text-shadow compositing during gameplay');
   assert.doesNotMatch(controlHints, /transition\s*:/, 'flight hint bar should not keep an idle compositor transition during gameplay');
-  assert.doesNotMatch(radarLegend, /text-shadow:\s*var\(--text-shadow-hard\)/, 'radar legend should stay flat next to the live canvas');
+  assert.doesNotMatch(radarObjectiveKey, /text-shadow:\s*var\(--text-shadow-hard\)/, 'radar objective key should stay flat next to the live canvas');
   assert.doesNotMatch(blockFor(uiRoot, '.sf-radar'), /transition\s*:/, 'radar dial should not keep idle width/height transitions next to the live canvas');
-  assert.doesNotMatch(uiRoot, /\.sf-radar-legend \.stn\s*\{[^}]*box-shadow/i, 'radar legend swatches should not glow next to the live canvas');
+  assert.doesNotMatch(uiRoot, /\.sf-radar-legend/, 'removed generic radar legend must not re-enter the live compositor tree');
   assert.match(lockRing, /display:\s*none/, 'idle lock ring should not stay in the compositor tree');
   assert.match(lockRingActive, /display:\s*block/, 'active lock ring should still mount for lock feedback');
   assert.match(lockDiamond, /display:\s*none/, 'idle target diamond should not keep its pulsing glow mounted');

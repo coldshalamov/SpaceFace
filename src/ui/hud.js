@@ -209,10 +209,24 @@ function mtFmtTime(s) {
   return `${m}m ${sec < 10 ? '0' : ''}${sec}s`;
 }
 
-function mtStoryTitle(beat) {
-  if (!beat) return 'Story Objective';
-  const id = String(beat.id || `Beat ${beat.beat}`);
-  return id.replace(/^b\d+_?/i, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+function mtWaypointDistance(state, wp) {
+  const pos = wp && wp.pos;
+  const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (!pos || !player || !player.pos) return 'ROUTE PENDING';
+  const dist = Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z);
+  return dist >= 1000 ? `${(dist / 1000).toFixed(1)}k WU` : `${Math.round(dist)} WU`;
+}
+
+function mtObjectiveAction(action, wp) {
+  const verb = String(action || 'Open the Mission Log').trim();
+  const destination = String(wp && (wp.sectorName || wp.label || wp.mapLabel) || '').trim();
+  if (!destination || /\b(to|at|near)\b/i.test(verb) || verb.toLowerCase().includes(destination.toLowerCase())) return verb;
+  return `${verb} · ${destination}`;
+}
+
+function mtMarkerLine(state, wp, suffix = '') {
+  const route = wp && wp.pos ? `◆ AMBER DIAMOND · ${mtWaypointDistance(state, wp)}` : 'NO RADAR ROUTE';
+  return suffix ? `${route} · ${suffix}` : route;
 }
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
@@ -415,6 +429,10 @@ export function createHud(ctx, alerts) {
   const missionTracker = document.createElement('div');
   missionTracker.className = 'sf-mission-tracker';
   missionTracker.style.display = 'none';
+  // Distance changes continuously; this is a labelled region, not a live region, so assistive
+  // technology does not announce the objective again on every HUD refresh.
+  missionTracker.setAttribute('role', 'region');
+  missionTracker.setAttribute('aria-label', 'Active objective');
   missionTracker.innerHTML =
     '<div class="sf-mt-title mono"></div>' +
     '<div class="sf-mt-obj mono"></div>' +
@@ -1982,6 +2000,16 @@ export function createHud(ctx, alerts) {
   let lastObjectivesSig = '';
   function refreshObjectives() {
     objDirty = false;
+    // The mission tracker is the one persistent command surface. Once a route or tracked mission
+    // owns attention, the old multi-mission list becomes optional Mission Log context instead of a
+    // second stack the player must interpret.
+    const routeOwnsAttention = !!(state.nav && state.nav.waypoint)
+      || !!(state.ui && state.ui.trackedMissionId);
+    if (routeOwnsAttention) {
+      lastObjectivesSig = '__active-objective-owns-attention__';
+      setDisplay(objWrap, false);
+      return;
+    }
     const active = (state.missions && state.missions.active) || [];
     const items = [];
     for (const m of active.slice(0, 4)) {
@@ -2719,31 +2747,34 @@ export function createHud(ctx, alerts) {
       const trackedId = state.ui && state.ui.trackedMissionId;
       const active = (state.missions && state.missions.active) || [];
       const tracked = trackedId ? active.find((m) => m.id === trackedId && m.status === 'active') : null;
+      const navWaypoint = state.nav && state.nav.waypoint;
       if (tracked) {
-        setText(mtTitle, tracked.title || 'Mission');
-        setText(mtObj, mtObjectiveText(tracked));
+        setText(mtTitle, 'ACTIVE OBJECTIVE');
+        setText(mtObj, mtObjectiveAction(navWaypoint && navWaypoint.reason || mtObjectiveText(tracked), navWaypoint));
         if (tracked.deadline_s != null && Number.isFinite(tracked.deadline_s)) {
           const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
-          setText(mtTime, mtFmtTime(remaining));
+          setText(mtTime, mtMarkerLine(state, navWaypoint, mtFmtTime(remaining)));
           mtTime.classList.toggle('sf-mt-urgent', remaining < 120);
           setDisplay(mtTime, true);
         } else {
-          setDisplay(mtTime, false);
+          setText(mtTime, mtMarkerLine(state, navWaypoint));
+          mtTime.classList.remove('sf-mt-urgent');
+          setDisplay(mtTime, true);
         }
         setDisplay(missionTracker, true);
-      } else if (state.nav && state.nav.waypoint && state.nav.waypoint.onboarding) {
-        const wp = state.nav.waypoint;
-        setText(mtTitle, 'Tutorial Objective');
-        setText(mtObj, wp.reason || wp.label || 'Follow the yellow signal');
-        setText(mtTime, `${BINDINGS.localmap.label} Local Map`);
+      } else if (navWaypoint) {
+        const wp = navWaypoint;
+        setText(mtTitle, 'ACTIVE OBJECTIVE');
+        setText(mtObj, mtObjectiveAction(wp.reason || wp.label || 'Follow the marked route', wp));
+        setText(mtTime, mtMarkerLine(state, wp));
         mtTime.classList.remove('sf-mt-urgent');
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
       } else if (state.story && STORY_BEATS[state.story.beatIndex]) {
         const beat = STORY_BEATS[state.story.beatIndex];
-        setText(mtTitle, `Story: ${mtStoryTitle(beat)}`);
+        setText(mtTitle, 'ACTIVE OBJECTIVE');
         setText(mtObj, beat.objective || 'Open the mission log for your next objective');
-        setText(mtTime, `${BINDINGS.missionLog.label} Mission Log · ${BINDINGS.localmap.label} Local Map`);
+        setText(mtTime, `NO RADAR ROUTE · ${BINDINGS.missionLog.label} MISSION LOG`);
         mtTime.classList.remove('sf-mt-urgent');
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
@@ -2762,13 +2793,23 @@ export function createHud(ctx, alerts) {
     // --- target panel: DOM/compositor surface; update on a fixed HUD cadence ---
     if (targetTick) {
       const tgtId = (state.player || {}).targetId;
+      const target = tgtId != null ? state.entities.get(tgtId) : null;
+      const player = state.entities.get(state.playerId);
+      const combatRelevant = target && (target.type === 'ship' || target.type === 'drone')
+        && isHostileToPlayer(target, player ? player.team : 0, state);
+      const miningRelevant = target && target.type === 'asteroid';
+      const routeOwnsAttention = !!(state.nav && state.nav.waypoint);
       let weakPoint = null;
       if (tgtId != null && revealedWeakPoints.size) {
         const wp = revealedWeakPoints.get(tgtId);
         if (wp && (!wp.until || (state.simTime || 0) < wp.until)) weakPoint = wp;
         else if (wp) revealedWeakPoints.delete(tgtId);
       }
-      targetPanel.update({ slow, weakPoint });
+      if (routeOwnsAttention && target && !combatRelevant && !miningRelevant) {
+        if (targetPanel.el.style.display !== 'none') targetPanel.el.style.display = 'none';
+      } else {
+        targetPanel.update({ slow, weakPoint });
+      }
     }
 
     // --- combat HUD: lock ring, weapon heat bars, target diamond (every frame for heat reactivity) ---
@@ -2832,6 +2873,7 @@ export function createHud(ctx, alerts) {
   function updateObjectiveArrow(p, slow) {
     // Priority: durable nav waypoint (mission/trade/story), else legacy mission-local waypoint.
     const tracked = state.ui.trackedMissionId;
+    const objectiveOwnsAttention = !!tracked || !!(state.nav && state.nav.waypoint);
     const active = (state.missions && state.missions.active) || [];
     const m = tracked ? active.find((x) => x.id === tracked) : active[0];
     let wp = null, wpLabel = null, navMeta = null;
@@ -2853,17 +2895,9 @@ export function createHud(ctx, alerts) {
     }
     if (!wp && navMeta) {
       setDisplay(arrow, false);
-      setDisplay(elNavReadout, true);
-      // Route/cross-sector guidance — not a live target with a distance, so render plain text
-      // (no "[ TARGET LOCK ]" / distance brackets, which only fit an in-range fix).
+      setDisplay(elNavReadout, false);
+      // Cross-sector guidance already lives in the dominant ACTIVE OBJECTIVE tracker.
       setClass(elNavReadout, 'sf-nav--lock', false);
-      const label = wpLabel || navMeta.label || 'Waypoint';
-      const route = mtRouteGuidance(state, navMeta);
-      const distText = route ? route.next : (navMeta.sectorName || (navMeta.sectorId ? 'Off-sector' : 'No local fix'));
-      if (label !== lastNavLabel) { setText(elNavLabel, label); lastNavLabel = label; }
-      if (distText !== lastNavDist) { setText(elNavDist, distText); lastNavDist = distText; }
-      const etaText = route ? route.summary : `${BINDINGS.starmap.label} Star Map`;
-      if (etaText !== lastNavEta) { setText(elNavEta, etaText); lastNavEta = etaText; }
       return;
     }
     if (!wp || !p || !helpers.worldToScreen) {
@@ -2877,9 +2911,10 @@ export function createHud(ctx, alerts) {
     const dist = Math.hypot(wp.x - p.pos.x, wp.z - p.pos.z);
     const speed = Math.hypot(p.vel.x, p.vel.z);
     const etaS = speed > 5 ? dist / speed : Infinity;
-    setDisplay(elNavReadout, true);
-    // Live in-range fix: this is the real "[ TARGET LOCK: <label> ]" + "[ NNN u ]" case (§3E).
-    setClass(elNavReadout, 'sf-nav--lock', true);
+    // A mission/navigation fix is not a combat target lock. Keep this legacy readout hidden while
+    // the active-objective tracker owns the same label/distance; the off-screen arrow still guides.
+    setDisplay(elNavReadout, !objectiveOwnsAttention);
+    setClass(elNavReadout, 'sf-nav--lock', false);
     const label = wpLabel || '—';
     arrow.title = label;
     if (label !== lastNavLabel) { setText(elNavLabel, label); lastNavLabel = label; }

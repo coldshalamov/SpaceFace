@@ -151,7 +151,7 @@ function drawTargetRing(g, bx, by, C) {
 }
 
 function waypointLabel(wp) {
-  const raw = wp && (wp.mapLabel || wp.label || wp.reason || wp.sectorName || 'Goal');
+  const raw = wp && (wp.sectorName || wp.label || wp.mapLabel || 'Objective');
   const text = String(raw || 'Goal').replace(/\s+/g, ' ').trim();
   return (text || 'Goal').toUpperCase().slice(0, 18);
 }
@@ -174,12 +174,12 @@ function drawWaypointDiamond(g, x, y, label) {
   glow(g, COL.objective, 12);
   g.strokeStyle = COL.objective;
   g.fillStyle = 'rgba(255,227,107,0.16)';
-  g.lineWidth = 1.6;
+  g.lineWidth = 2.4;
   g.beginPath();
-  g.moveTo(x, y - 6);
-  g.lineTo(x + 6, y);
-  g.lineTo(x, y + 6);
-  g.lineTo(x - 6, y);
+  g.moveTo(x, y - 9);
+  g.lineTo(x + 9, y);
+  g.lineTo(x, y + 9);
+  g.lineTo(x - 9, y);
   g.closePath();
   g.fill();
   g.stroke();
@@ -187,10 +187,10 @@ function drawWaypointDiamond(g, x, y, label) {
   g.lineWidth = 1.0;
   g.stroke();
   noGlow(g);
-  g.globalAlpha = 0.2;
+  g.globalAlpha = 0.48;
   g.beginPath();
-  g.arc(x, y, 11, 0, Math.PI * 2);
-  g.fill();
+  g.arc(x, y, 14, 0, Math.PI * 2);
+  g.stroke();
   g.restore();
   drawWaypointLabel(g, label, x, y + 9);
 }
@@ -291,16 +291,12 @@ export function createRadar(ctx) {
   let expanded = false;
   dial.appendChild(canvas);
 
-  // ── legend ────────────────────────────────────────────────────────────────────────────────
-  const legend = document.createElement('div');
-  legend.className = 'sf-radar-legend';
-  legend.innerHTML = ''
-    + '<span><i class="stn"></i>Station</span>'
-    + '<span><i class="gate"></i>Gate</span>'
-    + '<span><i class="rock"></i>Rock</span>'
-    + '<span><i class="bad"></i>Hostile</span>'
-    + '<span><i class="obj"></i>Goal</span>';
-  wrap.append(dial, legend);
+  // Exact objective key only. Contact identities live in the compact overview; the old five-color
+  // legend made the mission marker compete with stations, rocks, and hostiles.
+  const objectiveKey = document.createElement('div');
+  objectiveKey.className = 'sf-radar-objective-key mono';
+  objectiveKey.hidden = true;
+  wrap.append(dial, objectiveKey);
 
   // ── expanded toggle ───────────────────────────────────────────────────────────────────────
   // Toggling .sf-radar--expanded grows the dial and switches to the larger tactical canvas.
@@ -308,7 +304,6 @@ export function createRadar(ctx) {
   function setExpanded(v) {
     expanded = v;
     dial.classList.toggle('sf-radar--expanded', v);
-    legend.style.display = v ? 'none' : '';
     if (v) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
     else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
     wrap.style.cssText = v
@@ -704,6 +699,9 @@ export function createRadar(ctx) {
     const wp  = state.nav && state.nav.waypoint;
     const pos = wp && wp.pos;
     const wpLabel = waypointLabel(wp);
+    const objectiveKeyText = wp ? `◆ AMBER DIAMOND · ${wpLabel}` : '';
+    if (objectiveKey.textContent !== objectiveKeyText) objectiveKey.textContent = objectiveKeyText;
+    objectiveKey.hidden = !wp;
     if (wp && !pos) {
       g.save();
       const x = C, y = C - R + 18;

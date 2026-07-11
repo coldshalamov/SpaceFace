@@ -75,10 +75,18 @@ assert.doesNotMatch(onboardingSource, /tab labels at top/i,
   'first dock onboarding copy must not describe the old top-tab layout');
 assert.match(onboardingSource, /left rail/,
   'first dock onboarding copy must teach the actual station left rail');
-assert.match(onboardingSource, /audit the hold, accept one low-risk job/,
-  'first dock onboarding copy must match the handoff rail loop');
-assert.match(onboardingSource, /Departure Check looks safe/,
-  'first dock onboarding copy must reinforce Departure Check before undocking');
+assert.match(onboardingSource, /Use the left rail\. Departure Check owns undock\./,
+  'firstHub copy must point at the handoff owner without repeating its full checklist');
+assert.match(onboardingSource, /_tutorialRailOwnsVoice\(\)/,
+  'firstHub hint must yield while the staged B0-B5 tutorial is active');
+assert.match(stationSource, /beatDoneAt\.dock/,
+  'handoff sell step must complete from the live B4 receipt');
+assert.match(stationSource, /beatDoneAt\.choice/,
+  'handoff must hide/complete from the live B5 receipt');
+assert.doesNotMatch(stationSource, /ob\.done|done\.sell|done\.next/,
+  'handoff must not consume the obsolete onboarding.done shape');
+assert.match(stationSource, /focusedTab[\s\S]*replacement\.focus/,
+  'handoff refresh must restore focus after replacing its step DOM');
 
 assert.equal(pkg.scripts['check:first-dock-handoff'], 'node scripts/check-first-dock-handoff.mjs',
   'package.json must expose the first dock handoff guard');

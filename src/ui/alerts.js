@@ -11,7 +11,8 @@
 //      channel 'alert') instead of stacking its own pill, so nothing ever talks over anything else.
 //      This module also PRESENTS that floor (voice:surface / voice:clear) as the top pill in #alerts
 //      — the single top-center transient surface. Toasts.js suppresses the arbiter's _fromVoice
-//      mirror so the voice is not duplicated bottom-right.
+//      mirror AND any parallel short-status toast that matches VOICE_OWNED_ALERT_TEXTS, so the
+//      voice is not duplicated bottom-right or via a second live region.
 //
 import { BINDINGS, promptLabel } from './bindings.js';
 
@@ -19,6 +20,44 @@ import { BINDINGS, promptLabel } from './bindings.js';
 // binding-sourced dock alert (no ttl). The dock key handling lives in input.js.
 
 const SEV_RANK = { danger: 3, dock: 2.5, warn: 2, info: 1 };
+
+// ── Mechanical one-voice ownership (ONEVOICE-ALERT-DEDUPE) ─────────────────────────────────────
+// Short status lines that THIS module always routes through the arbiter (announce → voice:say).
+// Parallel emitters (e.g. floatingText cargo:full toast, legacy alert→toast bridges) must not also
+// push them into #toasts / #toast-live — that would double-speak tutorial/danger semantics.
+// Long tutorial copy ("Cargo hold full! Dock at…") is NOT listed: onboarding owns that via the
+// tutorial channel; transaction ACKs and numeric/loot floaters are never in this set.
+export const VOICE_OWNED_ALERT_TEXTS = Object.freeze([
+  'CARGO FULL',
+  'CARGO HOLD FULL',
+  'SHIELDS DOWN',
+  'SHIELD DOWN',
+  'TAKING FIRE',
+  'OUT OF FUEL',
+]);
+
+/** Normalize a status line for ownership compare (case/punct-insensitive exact short match). */
+export function normalizeAlertToastText(text) {
+  return String(text || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[!.,…:]+$/g, '')
+    .trim();
+}
+
+/**
+ * True when `text` is a short alert semantic owned by the one-voice floor.
+ * Used by toasts.js to drop parallel announcements; safe for long tutorial/ACK strings (false).
+ */
+export function isVoiceOwnedAlertToast(text) {
+  if (text == null || text === '') return false;
+  const n = normalizeAlertToastText(text);
+  if (!n) return false;
+  for (let i = 0; i < VOICE_OWNED_ALERT_TEXTS.length; i++) {
+    if (normalizeAlertToastText(VOICE_OWNED_ALERT_TEXTS[i]) === n) return true;
+  }
+  return false;
+}
 
 export function createAlerts(ctx) {
   const { bus } = ctx;
@@ -31,11 +70,10 @@ export function createAlerts(ctx) {
     if (rec.el) return rec.el;
     const el = document.createElement('div');
     el.className = `sf-alert sf-alert--${rec.sev}`;
-    // Announce these to assistive tech. danger pulses visually; it must also be spoken. We use
-    // role="status" + a polite/assertive live region keyed to severity so screen readers read combat
-    // alerts ("SHIELDS DOWN", "MISSILE LOCK") as they appear.
-    el.setAttribute('role', 'status');
-    el.setAttribute('aria-live', rec.sev === 'danger' ? 'assertive' : 'polite');
+    // Persistent condition chips are discoverable status text, never a second automatic voice.
+    // Transient/danger speech belongs to the single arbiter floor below.
+    el.setAttribute('role', 'group');
+    el.setAttribute('aria-live', 'off');
     el.setAttribute('aria-atomic', 'true');
     const txt = document.createElement('span');
     txt.className = 'sf-alert__text';
@@ -74,7 +112,7 @@ export function createAlerts(ctx) {
     const shownSet = new Set(shown);
     for (const rec of arr) {
       const el = ensureEl(rec);
-      rec._txt.textContent = rec.text;
+      if (rec._txt.textContent !== rec.text) rec._txt.textContent = rec.text;
       if (shownSet.has(rec)) {
         if (el.parentNode !== root) root.appendChild(el);
       } else if (el.parentNode) {
@@ -134,8 +172,29 @@ export function createAlerts(ctx) {
   // The arbiter serializes every transient attention line to one floor and hands it here. We render
   // it as a pill flagged `--floor` (CSS order:-1 keeps it atop the status pills). Exactly one floor
   // exists at a time — the arbiter clears the old id before surfacing the next.
+  // Live-region policy: write textContent only when the spoken line changes so cargo-full /
+  // shield-down (and any other floor line) never fire a second AT utterance for the same text.
   let floorEl = null;
   let floorId = null;
+  let floorSpokenText = null;
+  let politeLive = null;
+  let dangerLive = null;
+
+  function ensureFloorAnnouncers() {
+    if (politeLive && dangerLive) return;
+    politeLive = document.createElement('div');
+    politeLive.className = 'sr-only';
+    politeLive.setAttribute('role', 'status');
+    politeLive.setAttribute('aria-live', 'polite');
+    politeLive.setAttribute('aria-atomic', 'true');
+    dangerLive = document.createElement('div');
+    dangerLive.className = 'sr-only';
+    dangerLive.setAttribute('role', 'alert');
+    dangerLive.setAttribute('aria-live', 'assertive');
+    dangerLive.setAttribute('aria-atomic', 'true');
+    root.appendChild(politeLive);
+    root.appendChild(dangerLive);
+  }
 
   function floorSeverity(p) {
     if (p.kind === 'danger' || (p.channel === 'alert' && (p.priority | 0) >= 100)) return 'danger';
@@ -149,7 +208,8 @@ export function createAlerts(ctx) {
     const sev = floorSeverity(p);
     if (!floorEl) {
       floorEl = document.createElement('div');
-      floorEl.setAttribute('role', 'status');
+      floorEl.setAttribute('role', 'group');
+      floorEl.setAttribute('aria-live', 'off');
       floorEl.setAttribute('aria-atomic', 'true');
       const txt = document.createElement('span');
       txt.className = 'sf-alert__text';
@@ -159,9 +219,19 @@ export function createAlerts(ctx) {
     floorEl.className = `sf-alert sf-alert--floor sf-alert--${sev}`;
     // Danger is announced assertively (mirrors the prior danger-pill a11y behavior); every other
     // voice is polite so it never interrupts a screen reader mid-sentence.
-    floorEl.setAttribute('aria-live', sev === 'danger' ? 'assertive' : 'polite');
+    // Identical line already on the floor (same-id coalesce / re-surface) — keep DOM, no re-speak.
+    if (floorEl.parentNode === root && floorSpokenText === p.text) return;
     floorEl._txt.textContent = p.text;
+    floorSpokenText = p.text;
     if (floorEl.parentNode !== root) root.appendChild(floorEl);
+    ensureFloorAnnouncers();
+    if (sev === 'danger') {
+      politeLive.textContent = '';
+      dangerLive.textContent = p.text;
+    } else {
+      dangerLive.textContent = '';
+      politeLive.textContent = p.text;
+    }
   }
 
   function clearFloor(p) {
@@ -169,7 +239,10 @@ export function createAlerts(ctx) {
     // Ignore a stale clear for a floor already replaced by a newer surface.
     if (p && p.id != null && String(p.id) !== floorId) return;
     if (floorEl.parentNode) floorEl.parentNode.removeChild(floorEl);
+    if (politeLive) politeLive.textContent = '';
+    if (dangerLive) dangerLive.textContent = '';
     floorId = null;
+    floorSpokenText = null;
   }
 
   // --- event wiring ---
@@ -198,7 +271,8 @@ export function createAlerts(ctx) {
     else clear('gate');
   });
 
-  // incoming fire on the player — transient one-shots → the one-voice floor.
+  // incoming fire on the player — transient one-shots → the one-voice floor ONLY (no parallel pill
+  // or toast). shield-down is listed in VOICE_OWNED_ALERT_TEXTS so toasts.js drops any mirror.
   bus.on('combat:damage', (p) => {
     if (!p || !p.isPlayer) return;
     if (p.brokeShield) announce({ key: 'shield-down', sev: 'danger', text: 'SHIELDS DOWN', ttl: 3 });
@@ -210,6 +284,9 @@ export function createAlerts(ctx) {
     if (locked) raise({ key: 'lock', sev: 'danger', text: 'MISSILE LOCK', ttl: 2 });
     else clear('lock');
   });
+  // cargo-full: arbiter owns the short status line. floatingText may still emit a parallel
+  // toast('CARGO FULL') — toasts.js drops it via isVoiceOwnedAlertToast. Numeric/loot floaters
+  // are untouched. Tutorial longform ("Cargo hold full! Dock…") stays on the tutorial channel.
   bus.on('cargo:full', () => announce({ key: 'cargo-full', sev: 'warn', text: 'CARGO HOLD FULL', ttl: 2.5 }));
   bus.on('fuel:empty', () => announce({ key: 'fuel', sev: 'danger', text: 'OUT OF FUEL', ttl: 4 }));
 

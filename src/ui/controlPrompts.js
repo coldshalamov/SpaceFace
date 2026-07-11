@@ -9,10 +9,10 @@ const KBM_PROMPTS = Object.freeze({
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. W / Up thrusts, A D / arrows steer, and the mouse aims.',
   tutorialMine: 'The Kestrel is armed: LMB or Space fires the Pulse Laser S. Hold RMB on the marked rock to mine the mass reading, then collect the drift.',
   tutorialDock: `Follow the cyan station arrow. Press ${BINDINGS.dock.label} at the dock prompt. Bring the discrepancy back before someone edits it out.`,
-  firstFlight: `W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/Space fires the Pulse Laser S, RMB mines marked rocks, Shift boosts, ${BINDINGS.localmap.label} opens the local map, ${BINDINGS.starmap.label} opens the star map, ${BINDINGS.missionLog.label} opens the Mission Log, ${BINDINGS.dock.label} docks.`,
-  firstCombat: 'Hostile detected! LMB or Space to fire. G toggles auto-target — guns lock hostiles while you steer with the mouse.',
-  firstStation: `Stations offer repairs, trading, upgrades, and mission boards. Press ${BINDINGS.dock.label} to dock; inside the hub, arrow keys change tabs, Enter/Space acts, and Departure Check shows what needs attention before ${BINDINGS.dock.label}/Escape undocks.`,
-  firstGate: `Jump gates connect star systems. Open the Star Map (${BINDINGS.starmap.label}) to plot a jump route.`,
+  firstFlight: 'W thrusts. A D steer. Mouse aims.',
+  firstCombat: 'Fire with LMB or Space. G toggles auto-target.',
+  firstStation: `Review Departure Check before ${BINDINGS.dock.label} or Escape undocks.`,
+  firstGate: `Open the Star Map (${BINDINGS.starmap.label}). Plot a gate route.`,
 });
 
 const GAMEPAD_PROMPTS = Object.freeze({
@@ -24,10 +24,10 @@ const GAMEPAD_PROMPTS = Object.freeze({
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Left stick flies and right stick aims.',
   tutorialMine: 'The Kestrel is armed: RT fires the Pulse Laser S. Hold LT on the marked rock to mine the mass reading, then collect the drift.',
   tutorialDock: 'Follow the cyan station arrow. Press A at the dock prompt. Bring the discrepancy back before someone edits it out.',
-  firstFlight: 'Left stick flies, right stick aims, RT fires the Pulse Laser S, LT mines marked rocks, RB boosts, View opens the star map, Start opens Pause, then choose Mission Log, and A docks.',
-  firstCombat: 'Hostile detected! RT to fire. Hold right-stick aim on a target to lock on. X cycles targets.',
-  firstStation: 'Stations offer repairs, trading, upgrades, and mission boards. Press A to dock; inside the hub, LB/RB changes tabs, D-pad or left stick moves focus, A acts, and Departure Check shows what needs attention before B undocks.',
-  firstGate: 'Jump gates connect star systems. Press View to open the Star Map and plot a jump route.',
+  firstFlight: 'Left stick flies. Right stick aims.',
+  firstCombat: 'Fire with RT. X cycles targets.',
+  firstStation: 'Review Departure Check before B undocks.',
+  firstGate: 'Open the Star Map with View. Plot a gate route.',
 });
 
 const TOUCH_PROMPTS = Object.freeze({
@@ -39,30 +39,31 @@ const TOUCH_PROMPTS = Object.freeze({
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Left stick flies and right stick aims.',
   tutorialMine: 'The Kestrel is armed: Fire shoots the Pulse Laser S. Hold Mine on the marked rock to mine the mass reading, then collect the drift.',
   tutorialDock: 'Follow the cyan station arrow. Tap Dock when the station prompt appears. Bring the discrepancy back before someone edits it out.',
-  firstFlight: 'Left stick flies, right stick aims, Fire shoots, Mine mines marked rocks, Boost dashes, Dock works at station prompts, Map opens the local map, Log opens the Mission Log, Star opens the star map, and Pause opens the menu.',
-  firstCombat: 'Hostile detected! Fire to shoot. Hold right-stick aim on a target to lock on.',
-  firstStation: 'Stations offer repairs, trading, upgrades, and mission boards. Tap Dock to enter; inside the hub, tap tabs and actions directly, then tap Undock when Departure Check looks safe.',
-  firstGate: 'Jump gates connect star systems. Tap Star to open the Star Map and plot a jump route.',
+  firstFlight: 'Left stick flies. Right stick aims.',
+  firstCombat: 'Tap Fire. Aim with the right stick.',
+  firstStation: 'Review Departure Check, then tap Undock.',
+  firstGate: 'Tap Star. Plot a gate route.',
 });
 
 // HELM ASSIST (GDD §4.1, the 2.0 default scheme) — kbm copy for "the nose follows the mouse".
 // Only keys whose copy mentions movement are overridden; everything else falls through to the
 // classic table. Keep verbs honest: don't promise mechanics that haven't shipped.
+// Neutral massline/tether verbs only — no hard-coded F (rebindable; static prompts cannot resolve live labels).
 const KBM_HELM_OVERRIDES = Object.freeze({
-  flight: `Mouse steer+aim  •  W thrust  •  S reverse  •  A D strafe  •  Space brake  •  LMB fire  •  RMB mine  •  Shift boost  •  F massline  •  MMB course/pursue  •  G combat computer  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
-  combat: 'G combat computer (guns lead)  •  MMB pursue locked ship  •  F massline (soft latch; flyby focus expands it)  •  LMB fire  •  Space brake',
-  tutorialFlight: 'Follow the yellow nav arrow. Nose follows the mouse — W thrusts, Space brakes. F is massline.',
-  firstFlight: `Nose follows the mouse. W thrust, Space brake, Shift boost. F massline, G combat computer, MMB set course/pursue when targeted. ${BINDINGS.dock.label} docks.`,
-  firstCombat: 'Hostile! G = combat computer (guns track). MMB pursues. At high speed a FLYBY FOCUS window opens — tap F to latch.',
+  flight: `Mouse steer+aim  •  W thrust  •  S reverse  •  A D strafe  •  Space brake  •  LMB fire  •  RMB mine  •  Shift boost  •  massline  •  MMB course/pursue  •  G auto-target  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
+  combat: 'G auto-target (guns track lock)  •  MMB pursue locked ship  •  massline (soft latch; flyby focus expands it)  •  LMB fire  •  Space brake',
+  tutorialFlight: 'Follow the yellow nav arrow. Nose follows the mouse — W thrusts, Space brakes. Massline latches soft targets.',
+  firstFlight: 'Nose follows the mouse. W thrusts. Space brakes.',
+  firstCombat: 'G toggles auto-target. Guns track lock.',
 });
 
 // PILOT (the default scheme) — keyboard flies, mouse fights. Same override-only policy as helm.
 const KBM_PILOT_OVERRIDES = Object.freeze({
-  flight: `W thrust  •  A D turn  •  Space brake  •  Mouse aim  •  LMB fire  •  MMB pursue/course  •  G combat computer  •  F massline  •  Shift boost  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
-  combat: 'MMB pursue locked ship  •  G combat computer  •  F massline (flyby focus expands latch)  •  LMB fire  •  flight keys break pursuit',
-  tutorialFlight: 'Follow the yellow nav arrow. W thrusts; A/D turn; Space brakes; mouse aims; F is massline.',
-  firstFlight: `W thrust, Space brake, A/D turn. Mouse aims. MMB pursue or set course to stations. G combat computer. F massline. ${BINDINGS.dock.label} docks.`,
-  firstCombat: 'Lock target → MMB pursue. G combat computer for gun lead. High-speed pass triggers FLYBY FOCUS — F to latch.',
+  flight: `W thrust  •  A D turn  •  Space brake  •  Mouse aim  •  LMB fire  •  MMB pursue/course  •  G auto-target  •  massline  •  Shift boost  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
+  combat: 'MMB pursue locked ship  •  G auto-target  •  massline (flyby focus expands latch)  •  LMB fire  •  flight keys break pursuit',
+  tutorialFlight: 'Follow the yellow nav arrow. W thrusts; A/D turn; Space brakes; mouse aims; massline latches soft targets.',
+  firstFlight: 'W thrusts. A D turn. Space brakes. Mouse aims.',
+  firstCombat: 'G toggles auto-target. Guns track lock.',
 });
 
 // Active kbm scheme — uiRoot keeps this current from settings (boot + settings:changed).

@@ -17,18 +17,18 @@ for (const [modality, label] of firstStationPrompts) {
 
 assert.match(
   controlPrompt('firstStation', 'kbm'),
-  /Departure Check shows what needs attention before .*\/Escape undocks/,
-  'keyboard/mouse prompt should point to the readiness gate before E/Escape undock',
+  /Review Departure Check before .* or Escape undocks/,
+  'keyboard/mouse prompt should tersely point to the readiness gate before E/Escape undock',
 );
 assert.match(
   controlPrompt('firstStation', 'gamepad'),
-  /Departure Check shows what needs attention before B undocks/,
-  'gamepad prompt should point to the readiness gate before B undocks',
+  /Review Departure Check before B undocks/,
+  'gamepad prompt should tersely point to the readiness gate before B undocks',
 );
 assert.match(
   controlPrompt('firstStation', 'touch'),
-  /Departure Check looks safe/,
-  'touch prompt should keep the existing Departure Check safety language',
+  /Review Departure Check, then tap Undock/,
+  'touch prompt should tersely point to the readiness gate before Undock',
 );
 
 console.log('Departure Check prompt parity OK');
