@@ -101,6 +101,50 @@ const checks = [
       'maximum-scale=1.0',
     ],
   },
+  {
+    // Status toasts (incl. onboarding hints) must be exposed to AT via a polite live region.
+    // Shell hosts the region so it exists before modules load; toasts.js writes status text only.
+    path: 'index.html',
+    label: 'status toast polite live region shell',
+    needs: [
+      'id="toasts"',
+      'id="toast-live"',
+      'aria-live="polite"',
+      'aria-atomic="true"',
+      'role="status"',
+      'class="sr-only"',
+    ],
+    forbids: [
+      // Toast shell must not be assertive — danger/assertive alerts own that channel (alerts.js).
+      'id="toast-live" class="sr-only" role="status" aria-live="assertive"',
+      'id="toasts" aria-live="assertive"',
+    ],
+  },
+  {
+    path: 'src/ui/toasts.js',
+    label: 'status toasts announce once without focus steal or assertive live',
+    needs: [
+      "getElementById('toast-live')",
+      'function announceStatus',
+      'announceStatus(text, r.count)',
+      'announceStatus(text, 1)',
+      "el.setAttribute('role', 'button')",
+      "el.setAttribute('tabindex', '0')",
+      // Decorative icon must not pollute the accessible name / double-speak.
+      "icon.setAttribute('aria-hidden', 'true')",
+      // Contract comment anchors (must stay polite; never steal focus).
+      'Do NOT put aria-live on the card',
+      'Do NOT call focus()',
+    ],
+    forbids: [
+      // No focus steal on toast push/group.
+      '.focus()',
+      // Toast channel never uses assertive (alerts.js owns danger interrupts).
+      "setAttribute('aria-live', 'assertive')",
+      'aria-live="assertive"',
+      "aria-live', 'assertive'",
+    ],
+  },
 ];
 
 let fail = 0;

@@ -1,6 +1,11 @@
 // Toasts (ARCHITECTURE §5, spec "Toasts") — transient bottom-right notifications.
 // Driven by the `toast` event {text,kind,ttl}. Max 5 rendered, slide-in, auto-dismiss,
 // click to dismiss. Purely cosmetic → uses performance.now() / DOM only (no sim state).
+//
+// A11y: visual toast cards are interactive dismiss controls (role=button). Status text is
+// announced once through a dedicated polite live region (#toast-live) so assistive tech
+// hears the message without focus steal and without re-speaking the "dismiss" control name.
+// Danger/assertive interruptions belong to alerts.js — this channel stays polite always.
 
 const MAX = 5;
 const KIND_ICON = { success: '✓', good: '✓', error: '✕', danger: '✕', warn: '!', info: '›', credits: '¢', rep: '◈' };
@@ -8,8 +13,23 @@ const KIND_ICON = { success: '✓', good: '✓', error: '✕', danger: '✕', wa
 export function createToasts(ctx) {
   const { bus } = ctx;
   const root = document.getElementById('toasts');
+  const liveRegion = document.getElementById('toast-live');
   const live = []; // { el, born, ttl }
   let nextWakeAt = Infinity;
+  let lastAnnounced = '';
+
+  function announceStatus(text, count = 1) {
+    if (!liveRegion || !text) return;
+    // Status text only — never "dismiss" / control chrome (that lives on the focusable card).
+    const msg = count > 1 ? text + ' (×' + count + ')' : text;
+    // Same-string re-announce: clear first so polite regions fire again after grouping bumps
+    // that collapse to an identical message, or after a later identical toast.
+    if (msg === lastAnnounced) {
+      liveRegion.textContent = '';
+    }
+    liveRegion.textContent = msg;
+    lastAnnounced = msg;
+  }
 
   function push({ text = '', kind = 'info', ttl = 4, _fromVoice = false } = {}) {
     if (!root || !text) return;
@@ -39,6 +59,7 @@ export function createToasts(ctx) {
         }
         r.badge.textContent = '×' + r.count;
         r.el.setAttribute('aria-label', text + ' (×' + r.count + ', dismiss)');
+        announceStatus(text, r.count);
         recomputeNextWake();
         return;
       }
@@ -47,6 +68,7 @@ export function createToasts(ctx) {
     el.className = `sf-toast sf-toast--${kind}`;
     const icon = document.createElement('span');
     icon.className = 'sf-toast__icon';
+    icon.setAttribute('aria-hidden', 'true');
     icon.textContent = KIND_ICON[kind] || '›';
     const body = document.createElement('span');
     body.className = 'sf-toast__text';
@@ -54,6 +76,8 @@ export function createToasts(ctx) {
     el.append(icon, body);
     // Click-to-dismiss is advertised by the cursor:pointer styling; expose the same affordance to
     // keyboard users (Enter/Space) and to AT as a dismissible control.
+    // Do NOT put aria-live on the card — announcement is via #toast-live (status once).
+    // Do NOT call focus() — status must not steal keyboard focus from flight/UI.
     el.setAttribute('role', 'button');
     el.setAttribute('tabindex', '0');
     el.setAttribute('aria-label', text + ' (dismiss)');
@@ -61,10 +85,11 @@ export function createToasts(ctx) {
     el.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); dismiss(rec); }
     });
-    // newest on top
+    // newest on top; #toast-live is sr-only and rides to the end of the flex stack via prepend
     root.prepend(el);
     const rec = { el, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1 };
     live.unshift(rec);
+    announceStatus(text, 1);
     recomputeNextWake();
     // animate in next frame
     requestAnimationFrame(() => el.classList.add('sf-toast--in'));

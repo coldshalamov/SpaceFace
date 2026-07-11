@@ -23,7 +23,11 @@
     <div id="hud"></div>
     <div id="modal-backdrop"></div>
     <div id="screens"></div>
-    <div id="toasts"></div>
+    <div id="toasts">
+      <!-- Status-only polite live region: toasts stack as interactive dismiss controls;
+           announcing pure text here once avoids re-reading the whole stack and the "dismiss" name. -->
+      <div id="toast-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+    </div>
     <div id="alerts"></div>
     <div id="boot-overlay"><div class="boot-inner">SPACEFACE<span class="boot-sub">initializing systems…</span></div></div>
   </div>
