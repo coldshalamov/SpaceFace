@@ -84,6 +84,23 @@ const checks = [
       'DO NOT add a second toggle',
     ],
   },
+  {
+    // WCAG 1.4.4 Resize Text: browser zoom must remain available.
+    // In-game UI scale is an enhancement, not a substitute for page zoom.
+    path: 'index.html',
+    label: 'viewport allows browser zoom',
+    needs: [
+      'name="viewport"',
+      'width=device-width',
+      'initial-scale=1',
+    ],
+    forbids: [
+      'user-scalable=no',
+      'user-scalable=0',
+      'maximum-scale=1',
+      'maximum-scale=1.0',
+    ],
+  },
 ];
 
 let fail = 0;
