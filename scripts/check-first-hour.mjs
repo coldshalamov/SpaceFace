@@ -296,5 +296,89 @@ for (const desc of diffDescs) {
   assert.ok(words <= 8, `difficulty copy ≤8 words FAILED: "${desc}" (${words} words)`);
 }
 
+// ── B0 one-verb exclusivity (UIUX-B0-ONE-VERB / SPEC2/03 §1–2) ─────────────────
+// During active B0 (wake): no simultaneous non-empty onboarding-panel objective AND
+// HUD tracker command. firstFlight control wall defers until B0 DONE + silence.
+// Mission Log stays optional on-demand context (not a second always-on teacher).
+// Source/headless contract — deterministic even when the browser runtime probe is
+// blocked by the authored-asset startup gate.
+{
+  const hudSrc = read('src/ui/hud.js');
+  const missionLogSrc = read('src/ui/screens/missionLog.js');
+
+  // Primary persistent command surface remains the HUD mission tracker (onboarding waypoint branch).
+  // Match the class token without requiring a CSS-leading '.' — live mount is className = 'sf-mission-tracker'.
+  assert.match(hudSrc, /sf-mission-tracker/,
+    'HUD mission tracker (sf-mission-tracker) must exist as the primary B0 command surface');
+  assert.match(hudSrc, /waypoint\.onboarding/,
+    'HUD tracker must still surface the onboarding waypoint command during B0');
+  assert.match(hudSrc, /mtObj|sf-mt-obj/,
+    'HUD tracker must expose an objective line (sf-mt-obj / mtObj) for the single B0 verb');
+
+  // firstFlight must not fire on a bare 3s flight timer while B0 is active.
+  // Accept the real production gate (_firstFlightB0Released) or any B0/wake/silence
+  // expression between the pending-timer and _showHint — not a fictional helper whitelist.
+  const ffTimerIdx = onboardingSrc.search(/_firstFlightPending\s*&&\s*state\.mode\s*===\s*['"]flight['"]/);
+  assert.ok(ffTimerIdx >= 0, 'firstFlight pending timer must run only in flight mode');
+  const ffShowIdx = (() => {
+    const a = onboardingSrc.indexOf("_showHint('firstFlight'", ffTimerIdx);
+    const b = onboardingSrc.indexOf('_showHint("firstFlight"', ffTimerIdx);
+    if (a < 0) return b;
+    if (b < 0) return a;
+    return Math.min(a, b);
+  })();
+  assert.ok(ffShowIdx >= 0, 'firstFlight timer path must still call _showHint(\'firstFlight\') after the deferral gate');
+  // Span from pending-timer to showHint only — pre-B0 bare 3s path has no gate markers here.
+  const ffGateSpan = onboardingSrc.slice(ffTimerIdx, ffShowIdx);
+  const hasFirstFlightB0Gate =
+    /_firstFlightB0Released\s*\(/.test(ffGateSpan)
+    || /beatDoneAt/.test(ffGateSpan)
+    || /['"]wake['"]/.test(ffGateSpan)
+    || /currentBeat\s*[>\=!]+\s*0/.test(ffGateSpan)
+    || /SILENCE_S/.test(ffGateSpan)
+    || /_lastTextAtS/.test(ffGateSpan)
+    || /\.finished\b/.test(ffGateSpan)
+    || /oneVerb|b0Complete|wakeDone|firstFlightAllowed|deferFirstFlight|B0Released/i.test(ffGateSpan);
+  assert.ok(hasFirstFlightB0Gate,
+    'firstFlight hint wall must defer until B0 completion/silence '
+    + '(gate on wake DONE + silence — e.g. _firstFlightB0Released — between the pending timer and '
+    + '_showHint; bare 3s fire with no B0 gate must fail)');
+
+  // Panel must demote/suppress non-empty B0 objective title while the HUD tracker owns the command.
+  // Acceptable shapes: empty title for wake, key!=='wake' gate, display/aria hide, or demote flag.
+  // Extract is CRLF-safe (\r?\n) — Windows working trees use CRLF in onboarding.js.
+  const refreshMatch = onboardingSrc.match(/_refreshBeatPanel\(\)\s*\{([\s\S]*?)\r?\n  \},?\r?\n/);
+  assert.ok(refreshMatch, '_refreshBeatPanel must exist (panel objective render path)');
+  const refreshBody = refreshMatch[1];
+  const titlePath = refreshBody.match(/_titleEl[\s\S]{0,800}/) || [refreshBody];
+  const titleChunk = titlePath[0];
+  const demotesWakePanel =
+    // Explicit wake/B0 demotion in the refresh body
+    (
+      /['"]wake['"]/.test(refreshBody)
+      && (
+        /textContent\s*=\s*['"]{2}/.test(titleChunk)
+        || /line\s*=\s*['"]{2}/.test(refreshBody)
+        || /\?\s*['"]{2}\s*:/.test(refreshBody)
+        || /demote|suppress|oneVerb|statusOnly|hudOwns|trackerOwns|panelCommand/i.test(refreshBody)
+        || /style\.display\s*=\s*['"]none['"]/.test(titleChunk)
+        || /setAttribute\(\s*['"]aria-hidden['"]\s*,\s*['"]true['"]\s*\)/.test(titleChunk)
+      )
+    )
+    // Title only when not wake
+    || /key\s*!==\s*['"]wake['"]/.test(refreshBody);
+  assert.ok(demotesWakePanel,
+    'B0 one-verb: onboarding-panel objective title must be demoted/suppressed during active wake '
+    + 'so it does not duplicate the HUD tracker command (preserve progress/status only)');
+
+  // Mission Log remains optional context — onboarding must not force-push it as a B0 teacher.
+  assert.doesNotMatch(onboardingSrc, /pushScreen\(\s*['"]missionLog['"]\s*\)/,
+    'onboarding must not force-open Mission Log during B0 (optional context only)');
+  // Mission Log may still document the route when the player opens it — that is fine; it must not
+  // be required by the first-hour pacing engine as a second always-on command surface.
+  assert.match(missionLogSrc, /RECOMMENDED NEXT|recommendedNext|recommended next/i,
+    'Mission Log may still expose optional RECOMMENDED NEXT context when opened on demand');
+}
+
 console.log(`First-hour OK — 6 beats in order, ${allLines.length} tutorial lines ≤${MAX_WORDS} words, ` +
-  `one-voice overlap=0, B3 flee/loot/respawn wired, §4 funnel milestones present.`);
+  `one-voice overlap=0, B0 one-verb exclusivity gated, B3 flee/loot/respawn wired, §4 funnel milestones present.`);

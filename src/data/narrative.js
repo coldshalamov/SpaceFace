@@ -241,6 +241,8 @@ export const GRAFFITI = {
 export const BEAT_CONTENT = [
   { // B0 — COLD START
     beat: 0, phase: 1,
+    // Flavor-only Captain's Log voice (story-mode panel / Mission Log context). Not a flight
+    // command — first-flight B0 uses the one-verb hierarchy (HUD tracker + single tutorial bark).
     hint: 'Contract 47-A. Recover the sample. Deliver it. The weight on accept will not be the weight on delivery. That is not your problem.',
     // Bulkhead: the previous crew's last words. Set by _fireColdStart() on game:started so it's there
     // from the first frame. This beat's graffiti only adds the airlock line (seen on first dock).

@@ -55,8 +55,15 @@ const B3_TUTORIAL_HULL_MULT = 0.42;
 const B1_DERELICT_OFFSET_WU = 80;   // B1 derelict spawn distance from beacon
 const PORT_SAFE_SPAWN_RADIUS_WU = 1200;
 
+// B0 one-verb hierarchy (UIUX-B0-ONE-VERB):
+//   1. HUD mission tracker (.sf-mission-tracker) is the sole persistent actionable objective
+//      (fed by nav.waypoint.reason while onboarding waypoint is active).
+//   2. #sf-onboarding panel is demoted during B0: progress/status only (no competing verb copy).
+//   3. Transient tutorial voice (_sayTutorial) speaks the beat line once.
+//   4. firstFlight control-hint wall is deferred until B0 DONE + silence.
+//   5. Mission Log / story longform stay on-demand context (not a second primary command).
 const BEATS = [
-  { // B0 WAKE (0:00)
+  { // B0 WAKE (0:00) — one verb; HUD owns the persistent line
     key: 'wake',
     line: 'Contract 47-A: thrust to the beacon.',
     done: 'beaconRange',
@@ -588,13 +595,19 @@ export const onboarding = {
     // Modal UI hides the objective via CSS; mirror that in assistive state without focus side-effects.
     try { this._syncModalAccessibility(); } catch (_) { /* non-critical a11y mirror */ }
 
-    // ── First-flight hint (runs independently of the tutorial chain) ──────────────────────
+    // ── First-flight control-hint wall ───────────────────────────────────────────────────
+    // Suppress while B0 still owns the floor (one-verb hierarchy). Only arm after B0 is DONE
+    // and ≥SILENCE_S of text silence — or when the first-hour tutorial is inactive/finished.
     if (this._firstFlightPending && state.mode === 'flight') {
-      this._firstFlightTimer += dt;
-      if (this._firstFlightTimer > 3.0) {
-        this._firstFlightPending = false;
-        this._showHint('firstFlight',
-          controlPrompt('firstFlight', this._promptModality()));
+      if (!this._firstFlightB0Released(state)) {
+        this._firstFlightTimer = 0;
+      } else {
+        this._firstFlightTimer += dt;
+        if (this._firstFlightTimer > 3.0) {
+          this._firstFlightPending = false;
+          this._showHint('firstFlight',
+            controlPrompt('firstFlight', this._promptModality()));
+        }
       }
     }
 
@@ -621,6 +634,20 @@ export const onboarding = {
       this._checkPirateFlee();
       this._setObjectiveWaypoint(false);
     } catch (_) { /* never let onboarding break the loop */ }
+  },
+
+  // True when firstFlight may fire without stacking on the B0 thrust verb.
+  _firstFlightB0Released(state) {
+    const ob = state && state.onboarding;
+    // Tutorial off / finished / never started → control wall is free to teach.
+    if (!ob || !ob.active || ob.finished) return true;
+    // B0 still open (or not yet entered) → keep the wall silent.
+    const wakeDoneAt = ob.beatDoneAt && ob.beatDoneAt.wake;
+    if (wakeDoneAt == null) return false;
+    // Require the same ≥SILENCE_S gate as inter-beat pacing after B0 DONE / last tutorial text.
+    const now = state.simTime || 0;
+    const lastText = Number.isFinite(this._lastTextAtS) ? this._lastTextAtS : -Infinity;
+    return (now - Math.max(wakeDoneAt, lastText)) >= SILENCE_S;
   },
 
   // Determine the player's current activity and update the bottom control hint bar to show
@@ -839,10 +866,13 @@ export const onboarding = {
       if (existing && existing.onboarding) st.nav.waypoint = null;
       return;
     }
+    // HUD mission tracker reads wp.reason || wp.label as the sole persistent actionable line
+    // (hud.js Tutorial Objective branch). Prefer the beat verb in reason; keep short nav label.
     st.nav.waypoint = {
       onboarding: true,
       pos: { x: target.pos.x, z: target.pos.z },
-      label: target.label || (beat && beat.line) || 'Objective',
+      label: target.label || 'Beacon',
+      reason: (beat && beat.line) || target.label || 'Objective',
     };
   },
 
@@ -971,13 +1001,23 @@ export const onboarding = {
     this._syncModalAccessibility();
   },
 
-  // Render the current beat into the objective panel (the one-verb line + progress for B2).
+  // Render the current beat into the objective panel.
+  // B0 hierarchy: the HUD mission tracker owns the sole persistent actionable verb (via
+  // nav.waypoint.reason). This panel keeps progress/status (step count + dots) and demotes the
+  // duplicate objective title so it is not a second always-on command surface.
   // The title element is stable so its polite live region only announces on real text changes.
   _refreshBeatPanel() {
     if (!this._panel || this._storyMode) return;
     const ob = this.state.onboarding; if (!ob) return;
     const beat = BEATS[ob.currentBeat];
     const idx = ob.currentBeat < 0 ? -1 : ob.currentBeat;
+    const demoteObjectiveCopy = !!(beat && beat.key === 'wake');
+
+    if (this._kickerLabelEl) {
+      // B0: frame as status/progress, not a second "Objective" authority.
+      const kicker = demoteObjectiveCopy ? 'Status' : 'Objective';
+      if (this._kickerLabelEl.textContent !== kicker) this._kickerLabelEl.textContent = kicker;
+    }
 
     if (this._countEl) {
       const countText = (idx >= 0 ? (idx + 1) : 0) + ' / ' + BEATS.length;
@@ -990,7 +1030,18 @@ export const onboarding = {
 
     if (this._titleEl) {
       const line = beat ? (beat.line || '') : '';
+      // Keep textContent in sync for status contracts / beat transitions; during B0 hide the
+      // duplicate verb from the visual + assistive tree (HUD owns the persistent line).
       if (this._titleEl.textContent !== line) this._titleEl.textContent = line;
+      if (demoteObjectiveCopy) {
+        if (this._titleEl.style.display !== 'none') this._titleEl.style.display = 'none';
+        if (this._titleEl.getAttribute('aria-hidden') !== 'true') {
+          this._titleEl.setAttribute('aria-hidden', 'true');
+        }
+      } else {
+        if (this._titleEl.style.display === 'none') this._titleEl.style.display = '';
+        if (this._titleEl.hasAttribute('aria-hidden')) this._titleEl.removeAttribute('aria-hidden');
+      }
     }
 
     // B2 shows 47-A sample collection progress.

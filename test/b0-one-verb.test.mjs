@@ -1,0 +1,375 @@
+// UIUX-B0-ONE-VERB-STATIC-TEST-GROK-001
+// Independent static contract for golden-route B0 one-verb hierarchy.
+//
+// Evidence (UIUX-NEXT-P1-EVIDENCE-GROK-001) + spec2/03 FIRST_HOUR:
+//   1. Exactly one concise actionable verb on one persistent surface.
+//   2. Onboarding panel must not duplicate the HUD objective command.
+//   3. firstFlight control-hint wall cannot fire while B0 is active.
+//   4. Transient voice stays one concise tutorial beat.
+//   5. Mission Log / story narrative stay non-primary, on-demand context.
+//
+// Production exports are preferred; source anchors supplement non-exported seams.
+// Does not edit production. Run:
+//   node test/b0-one-verb.test.mjs
+// Adjacent checks (not modified by this lane):
+//   npm run check:onboarding
+//   npm run check:first-hour
+//   npm run check:one-voice
+
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+import { STORY_BEATS } from '../src/data/missions.js';
+import { BEAT_CONTENT } from '../src/data/narrative.js';
+import { BINDINGS } from '../src/ui/bindings.js';
+import { CONTROL_PROMPTS, controlPrompt } from '../src/ui/controlPrompts.js';
+import { onboarding } from '../src/systems/onboarding.js';
+import { missionLogScreen } from '../src/ui/screens/missionLog.js';
+
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
+const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
+
+const ONBOARDING_SRC = read('../src/systems/onboarding.js');
+const HUD_SRC = read('../src/ui/hud.js');
+const MISSION_LOG_SRC = read('../src/ui/screens/missionLog.js');
+const STORY_SRC = read('../src/systems/story.js');
+const MISSIONS_SYS_SRC = read('../src/systems/missions.js');
+
+const MAX_TUTORIAL_WORDS = 12;
+const B0_VERB_CLASS = /thrust|beacon|mass signal|47-A/i;
+
+const failures = [];
+const passes = [];
+
+function check(name, fn) {
+  try {
+    fn();
+    passes.push(name);
+  } catch (err) {
+    failures.push({
+      name,
+      message: err && err.message ? err.message : String(err),
+    });
+  }
+}
+
+// ── Source helpers ────────────────────────────────────────────────────────────
+
+/** Extract the authored BEATS table (same approach as check-first-hour). */
+function extractBeats(src) {
+  const beatsBlock = src.match(/const BEATS = \[([\s\S]*?)\n\];/);
+  assert.ok(beatsBlock, 'BEATS table must exist in onboarding.js (spec2/03 §2)');
+  const body = beatsBlock[1];
+  const beats = [];
+  const beatRegex = /key:\s*'([a-z_]+)'[\s\S]*?line:\s*'((?:[^'\\]|\\.)*)'/g;
+  let m;
+  while ((m = beatRegex.exec(body)) !== null) {
+    const key = m[1];
+    const line = m[2].replace(/\\'/g, "'");
+    const followups = [];
+    const fuRegex = /\{\s*on:\s*'([^']+)',\s*line:\s*'((?:[^'\\]|\\.)*)'\s*\}/g;
+    const segStart = m.index;
+    const nextKey = body.indexOf('key:', segStart + 1);
+    const seg = body.slice(segStart, nextKey === -1 ? body.length : nextKey);
+    let f;
+    while ((f = fuRegex.exec(seg)) !== null) {
+      followups.push({ on: f[1], line: f[2].replace(/\\'/g, "'") });
+    }
+    beats.push({ key, line, followups });
+  }
+  return beats;
+}
+
+function wordCount(text) {
+  return String(text || '').trim().split(/\s+/).filter(Boolean).length;
+}
+
+/** Best-effort method body extractor for contract scans. */
+function extractMethodBody(src, methodName) {
+  const re = new RegExp(
+    `${methodName}\\s*\\([^)]*\\)\\s*\\{`,
+  );
+  const m = re.exec(src);
+  if (!m) return '';
+  let i = m.index + m[0].length;
+  let depth = 1;
+  while (i < src.length && depth > 0) {
+    const ch = src[i];
+    if (ch === '{') depth += 1;
+    else if (ch === '}') depth -= 1;
+    i += 1;
+  }
+  return src.slice(m.index + m[0].length, i - 1);
+}
+
+function panelDemotesWakeTitle(refreshBody) {
+  if (!refreshBody) return false;
+  // Preferred: explicit wake demotion around title / line assignment.
+  if (
+    /key\s*===\s*'wake'[\s\S]{0,240}(line\s*=\s*['"]{2}|textContent\s*=\s*['"]{2}|continue|return|suppress|demote|status)/i
+      .test(refreshBody)
+  ) {
+    return true;
+  }
+  if (
+    /\(beat\.key\s*===\s*'wake'\)\s*\?\s*['"]{2}/.test(refreshBody)
+    || /wake[\s\S]{0,120}(hudOwns|panelOwns|statusOnly|demoteB0|primarySurface)/i.test(refreshBody)
+  ) {
+    return true;
+  }
+  // Title only assigned when not wake / when panel owns the objective.
+  if (
+    /key\s*!==\s*'wake'[\s\S]{0,120}beat\.line/.test(refreshBody)
+    || /panelOwns|ownsObjective|hudOwnsObjective/.test(refreshBody)
+  ) {
+    return true;
+  }
+  // Panel never mirrors beat.line into the title at all (status/progress only).
+  const assignsBeatLineToTitle =
+    (/beat\.line/.test(refreshBody) || /line\s*=\s*beat\s*\?/.test(refreshBody))
+    && /_titleEl\.textContent/.test(refreshBody);
+  if (!assignsBeatLineToTitle) return true;
+  return false;
+}
+
+function firstFlightGatedAgainstB0(block) {
+  if (!block) return false;
+  // Bare timer-after-flight is the defect: multi-verb wall during B0 teaching.
+  const bareTimerOnly =
+    /_firstFlightPending\s*&&\s*state\.mode\s*===\s*'flight'[\s\S]{0,220}_firstFlightTimer\s*>\s*3\.0[\s\S]{0,120}_showHint\(\s*'firstFlight'/.test(block)
+    && !/wake|beatDoneAt|currentBeat|SILENCE|finished|b0|B0|onboarding/i.test(
+      block.replace(/_firstFlightPending|_firstFlightTimer|_showHint\(\s*'firstFlight'[\s\S]*$/, ''),
+    );
+
+  if (bareTimerOnly) return false;
+
+  // Accept any explicit deferral seam that references B0/wake completion or silence.
+  return /wake|beatDoneAt|currentBeat|SILENCE|_b0|b0Done|b0Complete|afterB0|untilB0|defer.*[Bb]0|[Bb]0.*defer|finished|onboarding/i
+    .test(block);
+}
+
+// ── Production exports smoke ──────────────────────────────────────────────────
+
+check('production onboarding system export is present', () => {
+  assert.equal(onboarding.name, 'onboarding');
+  assert.equal(typeof onboarding.init, 'function');
+  assert.equal(typeof onboarding.update, 'function');
+});
+
+check('production controlPrompt / CONTROL_PROMPTS export firstFlight wall copy', () => {
+  assert.equal(typeof controlPrompt, 'function');
+  assert.ok(CONTROL_PROMPTS.kbm && CONTROL_PROMPTS.kbm.firstFlight, 'kbm firstFlight catalog entry');
+  const wall = controlPrompt('firstFlight', 'kbm');
+  assert.ok(wall && wall.length > 40, 'firstFlight resolves to a multi-control wall string');
+  // Multi-verb wall: not a single B0 thrust instruction.
+  assert.ok(wordCount(wall) > MAX_TUTORIAL_WORDS, 'firstFlight wall exceeds one-verb tutorial length');
+});
+
+check('production STORY_BEATS[0] is longform context, not the B0 flight verb', () => {
+  assert.ok(Array.isArray(STORY_BEATS) && STORY_BEATS.length > 0);
+  const cold = STORY_BEATS[0];
+  assert.equal(cold.id, 'cold_start');
+  assert.ok(cold.objective && cold.objective.length > 40, 'story objective is paragraph-scale context');
+  assert.ok(wordCount(cold.objective) > MAX_TUTORIAL_WORDS, 'story objective is not the ≤12-word B0 verb');
+});
+
+check('production BEAT_CONTENT[0] is narrative flavor, not a second flight command', () => {
+  assert.ok(Array.isArray(BEAT_CONTENT) && BEAT_CONTENT.length > 0);
+  const content = BEAT_CONTENT[0];
+  assert.equal(content.beat, 0);
+  assert.ok(content.hint, 'Captain\'s Log hint exists as on-demand/story flavor');
+  assert.ok(wordCount(content.hint) > MAX_TUTORIAL_WORDS, 'narrative hint is not the concise B0 verb');
+});
+
+check('production missionLogScreen is an on-demand screen export', () => {
+  assert.ok(missionLogScreen && typeof missionLogScreen === 'object');
+  assert.ok(
+    typeof missionLogScreen.mount === 'function'
+      || typeof missionLogScreen.open === 'function'
+      || typeof missionLogScreen.show === 'function'
+      || typeof missionLogScreen.render === 'function'
+      || missionLogScreen.id === 'missionLog'
+      || /missionLog/.test(String(missionLogScreen.name || missionLogScreen.id || '')),
+    'mission log must be a screen module (on-demand), not a flight HUD chip',
+  );
+});
+
+check('Mission Log binding is a discrete on-demand control', () => {
+  assert.ok(BINDINGS.missionLog, 'BINDINGS.missionLog exists');
+  assert.ok(BINDINGS.missionLog.key || BINDINGS.missionLog.label, 'mission log has a key/label');
+});
+
+// ── 1. One concise actionable B0 verb ─────────────────────────────────────────
+
+const BEATS = extractBeats(ONBOARDING_SRC);
+const b0 = BEATS.find((b) => b.key === 'wake') || BEATS[0];
+
+check('B0 is the wake beat with one authored entry line', () => {
+  assert.ok(b0, 'wake beat must exist');
+  assert.equal(b0.key, 'wake');
+  assert.ok(b0.line && b0.line.trim().length > 0, 'B0 entry line must be authored');
+  assert.equal((b0.followups || []).length, 0, 'B0 has no followup wall — one concise tutorial beat only');
+});
+
+check('B0 line is one concise actionable verb (≤12 words, thrust/beacon class)', () => {
+  const words = wordCount(b0.line);
+  assert.ok(words <= MAX_TUTORIAL_WORDS, `B0 line ≤${MAX_TUTORIAL_WORDS} words (got ${words}): "${b0.line}"`);
+  assert.match(b0.line, B0_VERB_CLASS, `B0 line must teach thrust/beacon class: "${b0.line}"`);
+  assert.ok(!/!/.test(b0.line), 'B0 is not an emergency beat — no exclamation');
+  // Spec voice is imperative; reject multi-clause laundry lists.
+  assert.ok(
+    (b0.line.match(/,/g) || []).length <= 1,
+    `B0 line must stay one verb, not a control laundry list: "${b0.line}"`,
+  );
+});
+
+// ── 2. One persistent surface — HUD owns command; panel does not duplicate ────
+
+check('HUD mission tracker is the persistent Tutorial Objective surface for onboarding waypoints', () => {
+  assert.match(HUD_SRC, /sf-mission-tracker/, 'HUD mounts .sf-mission-tracker');
+  assert.match(HUD_SRC, /sf-mt-obj/, 'HUD mounts .sf-mt-obj objective line');
+  assert.match(
+    HUD_SRC,
+    /waypoint\.onboarding[\s\S]{0,200}Tutorial Objective/,
+    'onboarding waypoint path paints Tutorial Objective on the HUD tracker',
+  );
+  assert.match(
+    HUD_SRC,
+    /wp\.reason\s*\|\|\s*wp\.label/,
+    'HUD tracker shows the onboarding waypoint reason/label as the actionable line',
+  );
+});
+
+check('B0 forces an onboarding waypoint that feeds the HUD tracker', () => {
+  assert.match(
+    ONBOARDING_SRC,
+    /beat\.key\s*===\s*'wake'[\s\S]{0,120}_setObjectiveWaypoint\(true\)/,
+    'B0 wake entry must stamp the onboarding waypoint',
+  );
+  assert.match(ONBOARDING_SRC, /onboarding:\s*true/, 'waypoint is marked onboarding for the HUD branch');
+});
+
+check('onboarding panel does not duplicate the HUD B0 objective command', () => {
+  const refresh = extractMethodBody(ONBOARDING_SRC, '_refreshBeatPanel');
+  assert.ok(refresh.length > 40, '_refreshBeatPanel body must be extractable');
+
+  // Forbidden: unconditional beat.line → title for every beat including wake (dual command surfaces).
+  const unconditionalMirror =
+    /const line = beat \? \(beat\.line \|\| ''\) : '';\s*\n\s*if \(this\._titleEl\.textContent !== line\) this\._titleEl\.textContent = line;/.test(refresh)
+    || (
+      /line\s*=\s*beat\s*\?\s*\(beat\.line\s*\|\|\s*''\)\s*:\s*''/.test(refresh)
+      && /_titleEl\.textContent\s*=\s*line/.test(refresh)
+      && !panelDemotesWakeTitle(refresh)
+    );
+
+  assert.ok(
+    !unconditionalMirror,
+    'B0 panel must not unconditionally mirror beat.line into .sf-ob-title while HUD owns the verb',
+  );
+  assert.ok(
+    panelDemotesWakeTitle(refresh),
+    'B0 wake: onboarding panel title must be demoted (empty/status) so HUD remains the sole command surface',
+  );
+
+  // Progress/status may remain (step dots, kicker, B2 sample bar) — not re-asserted as forbidden.
+  assert.match(ONBOARDING_SRC, /sf-ob-steps|sf-ob-progress|sf-ob-count/, 'panel may keep progress/status chrome');
+});
+
+// ── 3. firstFlight cannot fire while B0 is active ─────────────────────────────
+
+check('firstFlight control-hint wall is deferred until B0 is complete/silent', () => {
+  assert.match(ONBOARDING_SRC, /_showHint\(\s*'firstFlight'/, 'firstFlight hint path exists');
+  assert.match(ONBOARDING_SRC, /_firstFlightPending/, 'firstFlight is scheduled via pending flag');
+
+  // Inspect the live update block, not the earlier init/reset occurrence of
+  // `_firstFlightPending` (which is intentionally far from the showHint call).
+  const showAt = ONBOARDING_SRC.indexOf("_showHint('firstFlight'");
+  const gateAt = ONBOARDING_SRC.lastIndexOf('_firstFlightB0Released(state)', showAt);
+  assert.ok(showAt >= 0 && gateAt >= 0 && gateAt < showAt,
+    'firstFlight schedule must pass the explicit B0-release gate before _showHint');
+  const block = ONBOARDING_SRC.slice(Math.max(0, gateAt - 400), showAt + 80);
+
+  assert.ok(
+    firstFlightGatedAgainstB0(block),
+    'firstFlight must not fire on a bare flight+3s timer while B0 wake is still teaching thrust',
+  );
+
+  // Stronger: gate must mention wake completion, beatDoneAt, or equivalent B0 silence.
+  assert.match(
+    block,
+    /wake|beatDoneAt|currentBeat|SILENCE|b0|B0|finished/i,
+    'firstFlight deferral must reference B0/wake completion or silence (not only mode===flight)',
+  );
+});
+
+// ── 4. Voice: one concise tutorial beat ───────────────────────────────────────
+
+check('tutorial voice is a single chokepoint with one B0 beat line', () => {
+  assert.match(ONBOARDING_SRC, /_sayTutorial\(text\)/, 'single tutorial-voice chokepoint');
+  assert.match(
+    ONBOARDING_SRC,
+    /channel:\s*'tutorial'[\s\S]{0,80}id:\s*'tutorial:beat'/,
+    'B0 entry voice uses the tutorial channel with stable beat id (one voice at a time)',
+  );
+  assert.match(
+    ONBOARDING_SRC,
+    /_sayTutorial\(beat\.line\)/,
+    'beat entry speaks only the authored line through _sayTutorial',
+  );
+  // No parallel B0 splash/modal voice stack.
+  assert.doesNotMatch(ONBOARDING_SRC, /sf-ob-intro|_showIntro/, 'no intro modal competing with B0 voice');
+});
+
+// ── 5. Mission Log / story context non-primary / on-demand ────────────────────
+
+check('Mission Log RECOMMENDED NEXT is screen-local (on-demand), not a flight HUD surface', () => {
+  assert.match(MISSION_LOG_SRC, /RECOMMENDED NEXT/, 'mission log can show recommended rail when open');
+  assert.doesNotMatch(
+    HUD_SRC,
+    /RECOMMENDED NEXT/,
+    'HUD must not paint Mission Log RECOMMENDED NEXT as a second always-on teacher',
+  );
+  // Binding opens the log — it is not auto-flight UI.
+  assert.ok(BINDINGS.missionLog, 'player opens Mission Log via binding / pause route');
+});
+
+check('story cold-start / longform yield the channel while tutorial B0 owns the opening', () => {
+  assert.match(STORY_SRC, /_onboardingActive\(\)/, 'story checks onboarding-active');
+  assert.match(STORY_SRC, /_tutorialOwnsOpening\(\)/, 'story defers while tutorial owns opening');
+  assert.match(STORY_SRC, /_coldStartDeferred/, 'cold-start is deferred, not a second t=0 command');
+  assert.match(STORY_SRC, /tutorial:finished/, 'story releases after tutorial finishes');
+  assert.match(
+    MISSIONS_SYS_SRC,
+    /_tutorialOwnsOpening\(\)/,
+    'missions must not force story waypoint/toast over the tutorial opening',
+  );
+});
+
+check('story objective longform is distinct from the B0 flight verb', () => {
+  const storyObj = STORY_BEATS[0].objective;
+  assert.notEqual(
+    storyObj.trim().toLowerCase(),
+    b0.line.trim().toLowerCase(),
+    'story objective must not be a second copy of the B0 verb line',
+  );
+  // Story copy may mention 47-A / beacon, but must not be the sole ≤12-word thrust teacher.
+  assert.ok(wordCount(storyObj) > wordCount(b0.line), 'story context is longer than the B0 verb');
+});
+
+// ── Report ────────────────────────────────────────────────────────────────────
+
+const total = passes.length + failures.length;
+console.log(`B0 one-verb static: ${passes.length}/${total} passed`);
+for (const name of passes) console.log(`  PASS  ${name}`);
+for (const f of failures) {
+  console.log(`  FAIL  ${f.name}`);
+  console.log(`        ${f.message}`);
+}
+
+if (failures.length) {
+  process.exitCode = 1;
+  console.error(`\nB0 one-verb static FAILED — ${failures.length} assertion(s).`);
+} else {
+  console.log('\nB0 one-verb static OK — one verb, one surface, deferred firstFlight, on-demand log/story.');
+}

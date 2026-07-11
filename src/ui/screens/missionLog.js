@@ -541,18 +541,27 @@ function isMissionLogKey(ev) {
   return key === BINDINGS.missionLog.key || key === BINDINGS.missionLog.label;
 }
 
+/** True while first-hour tutorial B0–B5 still owns the flight floor. */
+function isFirstHourTutorialActive(state) {
+  const ob = state && state.onboarding;
+  return !!(ob && ob.active && !ob.finished);
+}
+
 function storyActionForBeat(beat, state) {
   const story = state && state.story || {};
   const branch = story.branch || null;
   const chainProgress = story.chainProgress || 0;
+  // During B0 flight, the HUD tracker owns the sole persistent verb. Mission Log remains
+  // on-demand context — do not reframe the longform spine as a second primary command.
+  const tutorialActive = isFirstHourTutorialActive(state);
   switch (beat && beat.beat) {
     case 0:
       return {
-        tone: 'primary',
-        label: 'STORY',
+        tone: tutorialActive ? 'info' : 'primary',
+        label: tutorialActive ? 'BRIEF' : 'STORY',
         title: 'Follow the anomaly',
         body: 'Mine the 47-A signal, then dock at Helios before the manifest rolls over.',
-        meta: 'Mining',
+        meta: tutorialActive ? 'Context' : 'Mining',
       };
     case 1:
       return {
@@ -1043,15 +1052,20 @@ export const missionLogScreen = {
   // Story objective tracker (P2-14): the current beat's concrete objective + reward, so the mission
   // log answers "what should I do now" even with no active contracts. Reads state.story.beatIndex
   // (owned by missions.js) + the STORY_BEATS table (objective/reward/introduces per beat).
+  // During first-hour tutorial B0, this is on-demand context only — the HUD owns the flight verb.
   _renderStory(state) {
     if (!this._storyEl) return;
     const beat = (state.story && state.story.beatIndex) || 0;
     const sb = STORY_BEATS[beat];
     if (!sb) { this._storyEl.innerHTML = ''; return; }
+    const tutorialActive = isFirstHourTutorialActive(state);
     const introduces = sb.introduces ? '<div class="sf-mlog-story-introduces">Introduces: ' + escapeHtml(storyIntroducesDisplayName(sb.introduces)) + '</div>' : '';
+    const beatLabel = tutorialActive
+      ? ('Context · Beat ' + beat + ' / 7 · ' + storyBeatDisplayName(sb.id))
+      : ('Beat ' + beat + ' / 7 · ' + storyBeatDisplayName(sb.id));
     this._storyEl.innerHTML =
-      '<div class="sf-mlog-story-card">' +
-        '<div class="sf-mlog-story-beat">Beat ' + beat + ' / 7 · ' + escapeHtml(storyBeatDisplayName(sb.id)) + '</div>' +
+      '<div class="sf-mlog-story-card' + (tutorialActive ? ' sf-mlog-story-card--context' : '') + '">' +
+        '<div class="sf-mlog-story-beat">' + escapeHtml(beatLabel) + '</div>' +
         '<div class="sf-mlog-story-objective">' + escapeHtml(sb.objective) + '</div>' +
         introduces +
       '</div>';

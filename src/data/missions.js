@@ -206,6 +206,9 @@ export const OFFER_MIX = {
 };
 
 // 8-beat story spine FSM.
+// cold_start.objective is longform spine copy for Mission Log / post-tutorial story tracker —
+// on-demand context, not the first-flight B0 verb. During B0 the HUD mission tracker owns the
+// single persistent actionable line (onboarding waypoint reason: "Contract 47-A: thrust to the beacon.").
 export const STORY_BEATS = [
   { beat: 0, id: 'cold_start',     objective: 'Follow the 47-A mass signal, sample the discrepancy, then dock at Helios before the manifest is rewritten.',
     reward: { credits: 400, rep: { faction: 'home', amount: 5 }, unlock: 'mod_mining_laser_s' }, introduces: 'mining', next: 1 },
