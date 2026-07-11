@@ -23,6 +23,10 @@ const checks = [
       "el.style && el.style.display === 'none'",
       'p.hidden',
       "p.getAttribute && p.getAttribute('aria-hidden') === 'true'",
+      // Focus restore on modal pop: opener must be connected+visible; else top-screen fallback.
+      'function _isRestorableOpener',
+      'function _restoreFocus',
+      'function _ensureFocusIn',
     ],
   },
   {
@@ -132,13 +136,15 @@ const checks = [
       "el.setAttribute('tabindex', '0')",
       // Decorative icon must not pollute the accessible name / double-speak.
       "icon.setAttribute('aria-hidden', 'true')",
-      // Contract comment anchors (must stay polite; never steal focus).
+      // Contract comment anchors (must stay polite; never steal focus on arrival).
       'Do NOT put aria-live on the card',
       'Do NOT call focus()',
+      // Dismiss/expire focus restore (not arrival steal).
+      'function restoreFocusAfterDismiss',
+      'function nearestRemainingToast',
+      'lastExternalFocus',
     ],
     forbids: [
-      // No focus steal on toast push/group.
-      '.focus()',
       // Toast channel never uses assertive (alerts.js owns danger interrupts).
       "setAttribute('aria-live', 'assertive')",
       'aria-live="assertive"',
@@ -160,6 +166,22 @@ for (const check of checks) {
     fail++;
   } else {
     console.log(`ok   ${check.path} - ${check.label}`);
+  }
+}
+
+// Dismiss-path tryFocus may call .focus(); push/group must never steal focus on arrival.
+{
+  const src = await readFile(join(ROOT, 'src/ui/toasts.js'), 'utf8');
+  const pushStart = src.indexOf('function push(');
+  const dismissStart = src.indexOf('function dismiss(');
+  if (pushStart < 0 || dismissStart < 0 || dismissStart <= pushStart) {
+    console.log('FAIL src/ui/toasts.js - push must not steal focus: cannot locate push/dismiss bodies');
+    fail++;
+  } else if (/\.focus\s*\(/.test(src.slice(pushStart, dismissStart))) {
+    console.log('FAIL src/ui/toasts.js - push must not steal focus: .focus( found in push/group path');
+    fail++;
+  } else {
+    console.log('ok   src/ui/toasts.js - push must not steal focus');
   }
 }
 

@@ -24,6 +24,11 @@ try {
   const page = await browser.newPage({ viewport: { width: 960, height: 640 }, deviceScaleFactor: 1 });
   const issues = collectPageIssues(page);
 
+  // Skip boot cinematic so its capture-phase fence cannot swallow Enter/Space meant for the
+  // confirm dialog (same sessionStorage gate used by other UI runtime probes).
+  await page.addInitScript(() => {
+    try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
+  });
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => document.getElementById('ui-root'), null, { timeout: 15000 });
 

@@ -80,8 +80,26 @@ export function createScreenManager(ctx) {
   function _autoFocusEnabled(rec) {
     return !(rec && rec.def && rec.def.data && rec.def.data.autoFocus === false);
   }
+  // Opener is restorable only when still connected, visible, and not inert/disabled.
+  // Hidden or detached openers fall through to the deterministic top-screen fallback.
+  function _isRestorableOpener(el) {
+    if (!el || el === document.body || el === document.documentElement) return false;
+    if (!el.isConnected || typeof el.focus !== 'function') return false;
+    if (el.disabled) return false;
+    if (el.hidden) return false;
+    if (el.getAttribute && el.getAttribute('aria-hidden') === 'true') return false;
+    if (el.style && (el.style.display === 'none' || el.style.visibility === 'hidden')) return false;
+    let p = el.parentNode;
+    while (p && p !== document && p !== document.documentElement) {
+      if (p.hidden) return false;
+      if (p.getAttribute && p.getAttribute('aria-hidden') === 'true') return false;
+      if (p.style && (p.style.display === 'none' || p.style.visibility === 'hidden')) return false;
+      p = p.parentNode;
+    }
+    return true;
+  }
   function _restoreFocus(el, visibleRoot) {
-    if (!el || !el.isConnected || typeof el.focus !== 'function') return false;
+    if (!_isRestorableOpener(el)) return false;
     if (visibleRoot && !visibleRoot.contains(el)) return false;
     try { el.focus(); return document.activeElement === el; } catch (e) { return false; }
   }
@@ -89,7 +107,7 @@ export function createScreenManager(ctx) {
     if (!rec || !rec.el) return;
     if (!_autoFocusEnabled(rec)) return;
     const active = document.activeElement;
-    if (!active || !rec.el.contains(active)) _focusFirst();
+    if (!active || !rec.el.contains(active) || !_isRestorableOpener(active)) _focusFirst();
   }
   // one document-level trap listener (active whenever a modal is open)
   document.addEventListener('keydown', _trapKeydown);
@@ -224,17 +242,20 @@ export function createScreenManager(ctx) {
     stack.pop();
     const restoreTarget = focusStack.pop();
     syncVisibility();
-    if (!stack.length) {
-      const canRestoreOutsideScreens = restoreTarget && (!screensRoot || !screensRoot.contains(restoreTarget));
-      if (!canRestoreOutsideScreens || !_restoreFocus(restoreTarget, null)) clearModalFocus();
-    }
     const next = activeDef();
     if (next && next.onShow) { try { next.onShow(ctx); } catch (e) { console.error(e); } }
     if (next && next.refresh) { try { next.refresh(ctx); } catch (e) { console.error(e); } }
+    // Focus after visibility + onShow so the newly exposed top screen is the fallback root.
     if (stack.length) {
       const nextId = stack[stack.length - 1];
       const nextRec = nextId && registry.get(nextId);
+      // Prefer the captured opener when still connected, visible, and inside the top screen.
+      // Invalid openers → deterministic first focusable in the exposed screen (locked root menu too).
       if (!_restoreFocus(restoreTarget, nextRec && nextRec.el)) _ensureFocusIn(nextRec);
+    } else {
+      // Empty stack: restore outside-screens opener (HUD / previous control) when still valid.
+      const canRestoreOutsideScreens = restoreTarget && (!screensRoot || !screensRoot.contains(restoreTarget));
+      if (!canRestoreOutsideScreens || !_restoreFocus(restoreTarget, null)) clearModalFocus();
     }
   }
 
