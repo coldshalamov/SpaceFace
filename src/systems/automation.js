@@ -91,6 +91,11 @@ export const AUTOMATION_PASSIVE_TUNING = Object.freeze({
   outpostAutosellMult: OUTPOST_AUTOSELL_MULT,
 });
 
+// Offline catch-up receipt schema (summary event + meta.lastOfflineReceipt).
+export const OFFLINE_RECEIPT_SCHEMA_ID = 'spaceface.automationOfflineReceipt.v1';
+// Hard upper bound strictly below 1 so presence always out-earns offline for the same gross.
+export const OFFLINE_EFF_MAX = 0.999;
+
 export function passiveCapPerMinForTier(balance = AUTO_BALANCE, tier = 1) {
   const bal = balance || AUTO_BALANCE;
   const ref = bal.activeRefByTier || AUTO_BALANCE.activeRefByTier || [];
@@ -112,6 +117,101 @@ export function creditPassiveFromBudget(grossAmount, capBudget) {
     remainingBudget: budget - take,
     overflow: Math.max(0, gross - take),
   };
+}
+
+// Clamp offline efficiency to [0, OFFLINE_EFF_MAX] so offline never matches or beats presence.
+export function clampOfflineEff(eff, defaultEff = 0.6) {
+  const fallback = Number.isFinite(defaultEff) ? defaultEff : 0.6;
+  const raw = Number.isFinite(eff) ? eff : fallback;
+  return clamp(raw, 0, OFFLINE_EFF_MAX);
+}
+
+// Resolve wall-clock elapsed for offline catch-up. Negative / non-finite fail closed (0 elapsed).
+export function resolveOfflineElapsed(lastTickMs, nowMs, offlineCapSec = 14400) {
+  const cap = Number.isFinite(offlineCapSec) && offlineCapSec > 0 ? offlineCapSec : 14400;
+  if (!Number.isFinite(lastTickMs) || lastTickMs <= 0) {
+    return { elapsedSec: 0, rawSec: 0, capped: false, failClosed: 'no_baseline' };
+  }
+  if (!Number.isFinite(nowMs)) {
+    return { elapsedSec: 0, rawSec: 0, capped: false, failClosed: 'bad_now' };
+  }
+  const rawSec = (nowMs - lastTickMs) / 1000;
+  if (!(rawSec > 0)) {
+    return {
+      elapsedSec: 0,
+      rawSec,
+      capped: false,
+      failClosed: rawSec < 0 ? 'negative_wall' : 'zero_elapsed',
+    };
+  }
+  const elapsedSec = Math.min(rawSec, cap);
+  return {
+    elapsedSec,
+    rawSec,
+    capped: rawSec > cap,
+    failClosed: null,
+  };
+}
+
+// Size the passive token bucket for a multi-minute offline window (cap/min * minutes).
+export function offlineCapBudgetForElapsed(passiveCapPerMin, elapsedSec) {
+  const cap = Math.max(0, passiveCapPerMin || 0);
+  const elapsed = Math.max(0, elapsedSec || 0);
+  return cap * (elapsed / 60);
+}
+
+// Apply offlineEff then the passive per-window cap. Pure; no side effects.
+export function settleOfflinePassive({ grossCr = 0, offlineEff = 0.6, capBudget = 0 } = {}) {
+  const eff = clampOfflineEff(offlineEff);
+  const gross = Math.max(0, grossCr || 0);
+  const grossOffline = gross * eff;
+  const settlement = creditPassiveFromBudget(grossOffline, capBudget);
+  return {
+    offlineEff: eff,
+    grossCr: gross,
+    grossOfflineCr: grossOffline,
+    credited: settlement.credited,
+    overflowDropped: settlement.overflow,
+    remainingBudget: settlement.remainingBudget,
+    debitedBudget: settlement.debitedBudget,
+    // Presence earns full gross through the same cap; offline is strictly lower when eff < 1 and gross > 0.
+    presenceAdvantage: eff < 1,
+  };
+}
+
+export function buildOfflineReceipt(parts = {}) {
+  const receipt = {
+    schemaId: OFFLINE_RECEIPT_SCHEMA_ID,
+    windowStartMs: parts.windowStartMs || 0,
+    nowMs: parts.nowMs || 0,
+    elapsedSec: Math.round(parts.elapsedSec || 0),
+    rawElapsedSec: Math.round(parts.rawElapsedSec || 0),
+    elapsedCapped: !!parts.elapsedCapped,
+    failClosed: parts.failClosed || null,
+    skipped: !!parts.skipped,
+    skipReason: parts.skipReason || null,
+    offlineEff: parts.offlineEff != null ? parts.offlineEff : 0,
+    passiveCapPerMin: parts.passiveCapPerMin || 0,
+    capBudgetCr: parts.capBudgetCr || 0,
+    grossCr: Math.round(parts.grossCr || 0),
+    grossOfflineCr: Math.round(parts.grossOfflineCr || 0),
+    credited: Math.round(parts.credited || 0),
+    overflowDropped: Math.round(parts.overflowDropped || 0),
+    droneCr: Math.round(parts.droneCr || 0),
+    traderCr: Math.round(parts.traderCr || 0),
+    outpostCr: Math.round(parts.outpostCr || 0),
+    cycles: parts.cycles || 0,
+    lost: parts.lost || 0,
+    upkeep: Math.round(parts.upkeep || 0),
+    upkeepCharged: Math.round(parts.upkeepCharged || 0),
+    upkeepUnpaid: Math.round(parts.upkeepUnpaid || 0),
+    distressed: !!parts.distressed,
+    // Offline never emits economy:applyTradePressure (owner-safe: economy sole market writer).
+    tradePressureEvents: parts.tradePressureEvents != null ? parts.tradePressureEvents : 0,
+    ownerSafePressure: parts.ownerSafePressure !== false,
+    grantIntentsOnly: parts.grantIntentsOnly !== false,
+  };
+  return receipt;
 }
 
 export function droneGrossCrPerMin(def, orePrice, count = 1) {
@@ -1128,28 +1228,115 @@ export const automation = {
 
   // ------------------------------------------------------------------------------------------
   // OFFLINE / AWAY CATCH-UP (spec): one coarse pass over elapsed time, capped + offlineEff-scaled.
+  // Deterministic cap accounting, idempotent re-entry, grant/charge intents only, owner-safe
+  // pressure (no economy:applyTradePressure — markets stay economy-owned).
+  // opts.nowMs — injectable wall clock for tests (default Date.now).
   // ------------------------------------------------------------------------------------------
-  runOfflineCatchup() {
+  runOfflineCatchup(opts = {}) {
     const a = this.state.automation;
-    if (!a) return;
+    if (!a) return null;
+    this.meta(); // ensure meta bag
     const bal = a.balance || AUTO_BALANCE;
-    const last = (a.meta && a.meta.lastTickTime) || 0;
-    if (!last) { a.meta.lastTickTime = nowMs(); return; }
-    let elapsed = (nowMs() - last) / 1000;
-    elapsed = clamp(elapsed, 0, bal.offlineCapSec || 14400); // guard negative clock + cap at 4h
-    a.meta.lastTickTime = nowMs();
-    if (elapsed < 1) return;
+    const now = Number.isFinite(opts.nowMs) ? opts.nowMs : nowMs();
+    const windowStart = (a.meta && a.meta.lastTickTime) || 0;
 
-    const offlineEff = bal.offlineEff != null ? bal.offlineEff : 0.6;
-    // Size the cap bucket to the WHOLE elapsed window (capLimit/min * minutes), not one minute —
-    // otherwise the hard clamp would credit at most one minute's cap for up to 4h away. This keeps
-    // the offline lump cap-consistent (avg/min <= capLimit) while letting it actually catch up.
-    this._capBudget = this.passiveCapPerMin() * (elapsed / 60);
+    // Bootstrap: no baseline yet — stamp now, no credits (fail closed).
+    if (!windowStart) {
+      a.meta.lastTickTime = now;
+      const receipt = buildOfflineReceipt({
+        windowStartMs: 0, nowMs: now, failClosed: 'no_baseline', skipped: true, skipReason: 'no_baseline',
+      });
+      a.meta.lastOfflineReceipt = receipt;
+      this.bus.emit('automation:offlineSummary', receipt);
+      return receipt;
+    }
 
-    let droneCr = 0, traderCr = 0, cycles = 0, lost = 0;
+    // Idempotent re-load / double save:loaded: same window start already settled → no second grant.
+    if (a.meta.lastOfflineWindowStart === windowStart) {
+      const prior = a.meta.lastOfflineReceipt || buildOfflineReceipt({
+        windowStartMs: windowStart, nowMs: now, skipped: true, skipReason: 'idempotent',
+      });
+      const receipt = buildOfflineReceipt({
+        ...prior,
+        windowStartMs: windowStart,
+        nowMs: now,
+        skipped: true,
+        skipReason: 'idempotent',
+        credited: 0,
+        upkeepCharged: 0,
+        upkeepUnpaid: 0,
+        tradePressureEvents: 0,
+        ownerSafePressure: true,
+        grantIntentsOnly: true,
+      });
+      a.meta.lastOfflineReceipt = receipt;
+      a.meta.lastTickTime = now;
+      this.bus.emit('automation:offlineSummary', receipt);
+      return receipt;
+    }
 
-    // drones: fill buffer (capped), bank value
+    const capSec = bal.offlineCapSec != null ? bal.offlineCapSec : 14400;
+    const resolved = resolveOfflineElapsed(windowStart, now, capSec);
+
+    // Fail closed on negative/non-finite wall time; stamp clock so we don't spin.
+    if (resolved.failClosed) {
+      a.meta.lastTickTime = now;
+      a.meta.lastOfflineWindowStart = windowStart;
+      const receipt = buildOfflineReceipt({
+        windowStartMs: windowStart,
+        nowMs: now,
+        elapsedSec: 0,
+        rawElapsedSec: resolved.rawSec,
+        failClosed: resolved.failClosed,
+        skipped: true,
+        skipReason: resolved.failClosed,
+        tradePressureEvents: 0,
+        ownerSafePressure: true,
+        grantIntentsOnly: true,
+      });
+      a.meta.lastOfflineReceipt = receipt;
+      this.bus.emit('automation:offlineSummary', receipt);
+      return receipt;
+    }
+
+    const elapsed = resolved.elapsedSec;
+    // Sub-second absence is a no-op (still mark window so double-fire is idempotent).
+    if (elapsed < 1) {
+      a.meta.lastTickTime = now;
+      a.meta.lastOfflineWindowStart = windowStart;
+      const receipt = buildOfflineReceipt({
+        windowStartMs: windowStart,
+        nowMs: now,
+        elapsedSec: elapsed,
+        rawElapsedSec: resolved.rawSec,
+        elapsedCapped: resolved.capped,
+        skipped: true,
+        skipReason: 'elapsed_lt_1',
+        offlineEff: clampOfflineEff(bal.offlineEff != null ? bal.offlineEff : 0.6),
+        tradePressureEvents: 0,
+        ownerSafePressure: true,
+        grantIntentsOnly: true,
+      });
+      a.meta.lastOfflineReceipt = receipt;
+      this.bus.emit('automation:offlineSummary', receipt);
+      return receipt;
+    }
+
+    // Claim this window before side effects so a re-entrant call cannot double-grant.
+    a.meta.lastOfflineWindowStart = windowStart;
+    a.meta.lastTickTime = now;
+
+    const offlineEff = clampOfflineEff(bal.offlineEff != null ? bal.offlineEff : 0.6);
+    const passiveCapPerMin = this.passiveCapPerMin();
+    // Size the cap bucket to the WHOLE elapsed window (cap/min * minutes), not one minute.
+    const capBudget = offlineCapBudgetForElapsed(passiveCapPerMin, elapsed);
+    this._capBudget = capBudget;
+
+    let droneCr = 0, traderCr = 0, outpostCr = 0, cycles = 0, lost = 0;
+
+    // drones: fill buffer (capped), bank value through the offline funnel later
     for (const g of a.drones) {
+      if (g.status === 'distressed') continue;
       const def = DRONE_BY_ID.get(g.defId) || g;
       const room = (g.bufferCap || def.bufferCap || 0) - (g.buffer || 0);
       const mined = Math.min((def.mineRate || 0) * (g.count || 1) * elapsed, room);
@@ -1158,21 +1345,28 @@ export const automation = {
       g.buffer = 0;
       droneCr += v;
     }
-    // outposts: fill storage (capped), autosell at -20%
+    // outposts: fill storage (capped), autosell at -20% (owner-safe: no market pressure emit)
     for (const o of a.outposts) {
+      if (o.status === 'distressed' || o.status === 'raided') continue;
       const def = OUTPOST_BY_ID.get(o.defId) || o;
       const level = o.level || 1;
       const outRate = (def.outRate || 0) * Math.pow(1.6, level - 1);
-      const cap = (def.storageCap || 0) * Math.pow(1.7, level - 1);
-      const produced = Math.min(outRate * elapsed, cap);
-      if (def.recipe && def.recipe.passive) droneCr += produced;
-      else droneCr += produced * this._orePrice(def.recipe && def.recipe.output ? Object.keys(def.recipe.output)[0] : DRONE_ORE_ID) * 0.8;
+      const storageCap = (def.storageCap || 0) * Math.pow(1.7, level - 1);
+      const room = storageCap - (o.storage || 0);
+      const produced = Math.min(outRate * elapsed, Math.max(0, room));
+      o.storage = (o.storage || 0) + produced;
+      const sellable = o.storage || 0;
+      if (sellable <= 0) continue;
+      const income = outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId));
+      o.storage = 0;
+      outpostCr += income;
     }
-    // traders: complete floor(elapsed/cycleTime) cycles with one aggregated survival roll
+    // traders: complete floor(elapsed/cycleTime) cycles with one aggregated survival roll.
+    // Owner-safe pressure: do NOT emit economy:applyTradePressure offline (economy sole market writer).
     for (let i = a.traders.length - 1; i >= 0; i--) {
       const t = a.traders[i];
       const def = TRADER_BY_ID.get(t.defId) || t;
-      if (!t.route) continue;
+      if (!t.route || t.status === 'distressed') continue;
       const n = Math.floor(elapsed / (def.cycleTime || 180));
       if (n <= 0) continue;
       const pLoss = this._traderLossProb(t, def, a);
@@ -1186,30 +1380,81 @@ export const automation = {
       const per = this._computeTraderProfit(t, def);
       traderCr += Math.max(0, per) * n;
       cycles += n;
+      // hotness rises for completed offline cycles (management cost preserved)
+      t.hotness = clamp((t.hotness || 0) + HOTNESS_GAIN * Math.min(n, 8), 0, 1);
     }
 
-    // realized credits scaled by offlineEff (presence is always better), then funnelled through cap.
-    const grossOffline = (droneCr + traderCr) * offlineEff;
-    const credited = grossOffline > 0 ? this.creditPassive(grossOffline, 'offline') : 0;
-    // deduct upkeep for the elapsed window, clamped to available credits; distress any unpaid remainder
+    const grossCr = droneCr + traderCr + outpostCr;
+    const settlement = settleOfflinePassive({ grossCr, offlineEff, capBudget });
+    this._capBudget = settlement.remainingBudget;
+    // creditPassive uses the residual bucket; pass pre-scaled grossOffline so offlineEff is not applied twice.
+    // We emit grantCredits ourselves here (via creditPassive) with the already-capped credited amount.
+    let credited = 0;
+    if (settlement.credited > 0) {
+      // Bypass second offlineEff: feed credited amount as a hard grant through the funnel with infinite
+      // remaining? No — settlement already applied the window cap. Emit grant intent only via bus.
+      this.bus.emit('economy:grantCredits', { amount: settlement.credited, reason: 'automation:offline' });
+      this.meta().totalPassiveEarnedLifetime = (this.meta().totalPassiveEarnedLifetime || 0) + settlement.credited;
+      const stats = this.state.player && this.state.player.stats;
+      if (stats) stats.totalPassiveEarnedLifetime = (stats.totalPassiveEarnedLifetime || 0) + settlement.credited;
+      this.bus.emit('automation:incomeCredited', { amount: settlement.credited, source: 'offline' });
+      credited = settlement.credited;
+    }
+
+    // deduct upkeep for the elapsed window, clamped to available credits; distress unpaid remainder.
+    // Read credits for affordability only — never write player.credits (economy is sole writer).
     const upkeep = Math.round(this.totalUpkeepPerMin(a) * (elapsed / 60));
     const playerCredits = (this.state.player && this.state.player.credits) || 0;
-    const charge = Math.min(upkeep, playerCredits);
+    const charge = Math.min(upkeep, Math.max(0, playerCredits));
     const unpaid = upkeep - charge;
     if (charge > 0) this.bus.emit('economy:chargeCredits', { amount: charge, reason: 'automation:upkeep:offline' });
+    let distressed = false;
     if (unpaid > 0) {
       this._distressAll(a);
+      distressed = true;
       this.bus.emit('toast', { text: `Offline upkeep underpaid by ${unpaid} cr; assets distressed`, kind: 'warn', ttl: 4 });
     }
 
-    const hrs = (elapsed / 3600).toFixed(1);
-    this.bus.emit('automation:offlineSummary', {
-      elapsedSec: Math.round(elapsed), droneCr: Math.round(droneCr * offlineEff),
-      traderCr: Math.round(traderCr * offlineEff), credited, cycles, lost, upkeep,
+    const receipt = buildOfflineReceipt({
+      windowStartMs: windowStart,
+      nowMs: now,
+      elapsedSec: elapsed,
+      rawElapsedSec: resolved.rawSec,
+      elapsedCapped: resolved.capped,
+      failClosed: null,
+      skipped: false,
+      offlineEff: settlement.offlineEff,
+      passiveCapPerMin,
+      capBudgetCr: capBudget,
+      grossCr,
+      grossOfflineCr: settlement.grossOfflineCr,
+      credited,
+      overflowDropped: settlement.overflowDropped,
+      droneCr: droneCr * settlement.offlineEff,
+      traderCr: traderCr * settlement.offlineEff,
+      outpostCr: outpostCr * settlement.offlineEff,
+      cycles,
+      lost,
+      upkeep,
+      upkeepCharged: charge,
+      upkeepUnpaid: unpaid,
+      distressed,
+      tradePressureEvents: 0,
+      ownerSafePressure: true,
+      grantIntentsOnly: true,
     });
-    if (credited > 0 || cycles > 0 || lost > 0) {
-      this.bus.emit('toast', { text: `While away (${hrs}h): +${credited} cr, ${cycles} cycles${lost ? `, ${lost} lost` : ''}`, kind: 'info', ttl: 6 });
+    a.meta.lastOfflineReceipt = receipt;
+    this.bus.emit('automation:offlineSummary', receipt);
+
+    const hrs = (elapsed / 3600).toFixed(1);
+    if (credited > 0 || cycles > 0 || lost > 0 || distressed) {
+      this.bus.emit('toast', {
+        text: `While away (${hrs}h): +${credited} cr, ${cycles} cycles${lost ? `, ${lost} lost` : ''}`,
+        kind: 'info',
+        ttl: 6,
+      });
     }
+    return receipt;
   },
 
   // ------------------------------------------------------------------------------------------
@@ -1290,8 +1535,15 @@ export const automation = {
   balance() { return (this.state.automation && this.state.automation.balance) || AUTO_BALANCE; },
   meta() {
     const a = this.state.automation;
-    if (!a.meta) a.meta = { lastTickTime: 0, totalPassiveEarnedLifetime: 0, lostAssetsLog: [], rngSeed: 0 };
+    if (!a.meta) {
+      a.meta = {
+        lastTickTime: 0, totalPassiveEarnedLifetime: 0, lostAssetsLog: [], rngSeed: 0,
+        lastOfflineWindowStart: 0, lastOfflineReceipt: null,
+      };
+    }
     if (!a.meta.lostAssetsLog) a.meta.lostAssetsLog = [];
+    if (a.meta.lastOfflineWindowStart == null) a.meta.lastOfflineWindowStart = 0;
+    if (a.meta.lastOfflineReceipt === undefined) a.meta.lastOfflineReceipt = null;
     return a.meta;
   },
 
@@ -1402,6 +1654,8 @@ export const automation = {
     if (a.meta.totalPassiveEarnedLifetime == null) a.meta.totalPassiveEarnedLifetime = 0;
     if (!a.meta.lostAssetsLog) a.meta.lostAssetsLog = [];
     if (a.meta.rngSeed == null) a.meta.rngSeed = 0;
+    if (a.meta.lastOfflineWindowStart == null) a.meta.lastOfflineWindowStart = 0;
+    if (a.meta.lastOfflineReceipt === undefined) a.meta.lastOfflineReceipt = null;
   },
 
   // ------------------------------------------------------------------------------------------
@@ -1432,7 +1686,15 @@ export const automation = {
     return {
       drones, traders: a.traders, outposts: a.outposts, fleet,
       fleetCap: a.fleetCap, balance: a.balance, accumulators: a.accumulators,
-      meta: { lastTickTime: a.meta.lastTickTime, totalPassiveEarnedLifetime: a.meta.totalPassiveEarnedLifetime, lostAssetsLog: a.meta.lostAssetsLog, rngSeed: a.meta.rngSeed },
+      meta: {
+        lastTickTime: a.meta.lastTickTime,
+        totalPassiveEarnedLifetime: a.meta.totalPassiveEarnedLifetime,
+        lostAssetsLog: a.meta.lostAssetsLog,
+        rngSeed: a.meta.rngSeed,
+        // Offline idempotency + last receipt (plain JSON — re-load must not double-grant).
+        lastOfflineWindowStart: a.meta.lastOfflineWindowStart || 0,
+        lastOfflineReceipt: a.meta.lastOfflineReceipt || null,
+      },
       nextId: this._nextId,
     };
   },
@@ -1500,7 +1762,10 @@ function makeDefaultAutomation() {
     fleetCap: 0,
     balance: Object.assign({}, AUTO_BALANCE),
     accumulators: { creditBuffer: 0, upkeepDebt: 0 },
-    meta: { lastTickTime: 0, totalPassiveEarnedLifetime: 0, lostAssetsLog: [], rngSeed: 0 },
+    meta: {
+      lastTickTime: 0, totalPassiveEarnedLifetime: 0, lostAssetsLog: [], rngSeed: 0,
+      lastOfflineWindowStart: 0, lastOfflineReceipt: null,
+    },
   };
 }
 

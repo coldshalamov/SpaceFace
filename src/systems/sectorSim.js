@@ -28,6 +28,13 @@ import {
   filterNewEmbodimentIntents,
   mergeAppliedIntentIds,
 } from '../sim/sector/embodiment.js';
+import {
+  pressureShareRecipe,
+  abstractBaselineVolume,
+  liveVolumeForSector,
+  scaleVolume,
+  FREIGHT_CAUSE,
+} from '../economy/freightCausality.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -326,21 +333,46 @@ export const sectorSim = {
       // spike can propagate into prices even before local stocks visibly collapse.
       const lanePressure = clamp(node.pricePressure + (node.danger - dangerIndex(sec)) * 0.18 + (node.danger - 0.45) * 0.035, -1, 1);
       if (Math.abs(lanePressure) < 0.002) continue;
+
+      // ECON-P2 conservation: live freighter volume + abstract pressure ≤ old abstract baseline.
+      // Live traffic only exists in the current sector; offscreen sectors keep full abstract share.
+      const liveVol = liveVolumeForSector(this.state, sec.id);
+
       for (const station of sec.stations) {
         if (!station || !station.id) continue;
         const goods = STATION_GOODS[station.type] || DEFAULT_GOODS;
-        const total = Math.round(Math.abs(lanePressure) * 72 * days);
-        if (total <= 0) continue;
+        const baseline = abstractBaselineVolume({
+          lanePressure,
+          days,
+          goodsCount: goods.length,
+        });
+        if (baseline <= 0) continue;
+        const recipe = pressureShareRecipe({
+          baselineVolume: baseline,
+          liveVolume: liveVol,
+        });
+        if (recipe.abstractShare <= 0 || recipe.abstractScale <= 0) continue;
+
         const sign = lanePressure > 0 ? -1 : 1; // economy vol<0 drains stock -> price rises
+        // Old per-good share, then scale by abstractScale so sum(|vol|) == abstractShare (± rounding).
+        const rawShare = Math.max(1, Math.round((Math.round(Math.abs(lanePressure) * 72 * days)) / goods.length));
         for (let i = 0; i < goods.length; i++) {
-          const share = Math.max(1, Math.round(total / goods.length));
+          const vol = scaleVolume(sign * rawShare, recipe.abstractScale);
+          if (vol === 0) continue;
           this.bus.emit('economy:applyTradePressure', {
             stationId: station.id,
             good: goods[i],
-            vol: sign * share,
+            vol,
             sectorId: sec.id,
-            source: 'sector_field',
+            source: recipe.liveShare > 0 ? FREIGHT_CAUSE.PRESSURE_SHARE : FREIGHT_CAUSE.ABSTRACT_LANE,
+            cause: recipe.cause,
             pressure: lanePressure,
+            pressureShare: {
+              baselineVolume: recipe.baselineVolume,
+              liveShare: recipe.liveShare,
+              abstractShare: recipe.abstractShare,
+              abstractScale: recipe.abstractScale,
+            },
           });
         }
       }

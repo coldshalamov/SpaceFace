@@ -157,6 +157,50 @@ export function selectEconContract(signal) {
   return best;
 }
 
+/**
+ * isCalmField(signal) -> boolean. PURE: true when no field-contract template fires.
+ * Used by checks and preflight adapters that need a strict silent no-op on quiet sectors.
+ */
+export function isCalmField(signal) {
+  return selectEconContract(signal) == null;
+}
+
+/**
+ * thresholdGate(signal, key) -> boolean. PURE diagnostic for the named ECON_CONTRACT_THRESHOLDS
+ * gate (scarcity / surplus / dangerFloor / blockadeScarcity). Does not select a template.
+ */
+export function thresholdGate(signal, key) {
+  if (!signal) return false;
+  const t = ECON_CONTRACT_THRESHOLDS;
+  switch (key) {
+    case 'scarcity':
+      return signal.driver
+        && signal.driver.pricePressure === 'route_scarcity'
+        && signal.pricePressure > t.scarcityPressure;
+    case 'surplus':
+      return signal.driver
+        && signal.driver.pricePressure === 'route_surplus'
+        && signal.pricePressure < t.surplusPressure;
+    case 'blockade': {
+      const disrupted = signal.driver
+        && (signal.driver.pricePressure === 'infrastructure_disruption'
+          || signal.driver.danger === 'infrastructure_disruption');
+      return !!(disrupted && signal.pricePressure > t.blockadeScarcity);
+    }
+    case 'risingDanger': {
+      const rising = (signal.trend && signal.trend.danger || 0) > t.dangerTrendRising;
+      const tagged = signal.driver && (
+        signal.driver.danger === 'contested_space'
+        || signal.driver.danger === 'interdiction_wave'
+        || signal.driver.danger === 'graph_flow'
+      );
+      return !!(rising && tagged && signal.danger > t.dangerFloor);
+    }
+    default:
+      return false;
+  }
+}
+
 /** Fill an offer's cause prose. PURE. */
 export function fillCause(template, tokens) {
   return String(template)

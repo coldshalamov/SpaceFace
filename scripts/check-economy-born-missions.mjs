@@ -5,8 +5,8 @@
 //     produces EXACTLY ONE offer on dock, naming the commodity AND the cause (enumerated tag).
 //   - Determinism: same seed+epoch+field ⇒ the same offer, bit for bit.
 //   - EMIT-ONLY: the system routes through `mission:offered` and NEVER writes state.missions
-//     (missions.js owns boards/active). The check itself plays the consumer role to prove the
-//     offer is accept-path compatible: spliced into a board, the REAL missions.js accepts it,
+//     (missions.js owns boards/active). The REAL missions.js listener boards the shaped offer,
+//     accepts it through the normal player intent, instantiates it,
 //     instantiates it, and — once the cargo is delivered — pays via economy:grantCredits.
 //   - Dedupe per station-epoch (no double-offer on re-dock); a calm field is a STRICT no-op
 //     (golden-sim safe); pay is tethered to the LIVE modeled pressure, not a constant.
@@ -234,18 +234,20 @@ function testAcceptPathAndPayout() {
   const sys = freshSys();
   sys.init({ bus, state, helpers });
 
-  // The consumer role (a future missions.js seam): board the emitted offer via missions' OWN
-  // ensureBoard machinery. Production economyContracts never does this — the check is the shim.
+  // Observe the offer only. Production missions.js owns board injection.
   let offer = null;
   bus.on('mission:offered', (p) => {
     if (!p || p.source !== 'economyContract') return;
     offer = p;
-    const board = missionsSys.ensureBoard(p.stationId);
-    if (board) board.slots.push(p);
   });
 
   bus.emit('dock:docked', { stationId: STATION.id });
-  assert.ok(offer, 'offer emitted and boarded by the consumer shim');
+  assert.ok(offer, 'offer emitted');
+  const board = missionsSys.ensureBoard(offer.stationId);
+  assert.equal(board.slots.filter((candidate) => candidate.id === offer.id).length, 1,
+    'production missions listener boards the field offer exactly once');
+  assert.ok(bus.emitLog.some((e) => e.evt === 'mission:offerBoarded'
+    && e.payload && e.payload.offerId === offer.id), 'board receipt emitted');
 
   // Accept through the EXISTING intent path (ui:acceptMission → missions.acceptMission).
   bus.emit('ui:acceptMission', { missionId: offer.id });

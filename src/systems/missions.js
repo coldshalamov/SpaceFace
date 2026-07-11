@@ -217,6 +217,10 @@ export const missions = {
     bus.on('ui:acceptMission', (p) => this.acceptMission(p && p.missionId));
     bus.on('ui:abandonMission', (p) => this.abandonMission(p && p.missionId));
     bus.on('ui:trackMission', (p) => { if (p && p.missionId) this.trackMission(p.missionId); });
+    // Economy-born contracts are emit-only producers. Missions remains the sole board/active
+    // authority and boards only a complete, normal offer shape; discovery-only salvage hooks keep
+    // their existing consumers and cannot accidentally become malformed board entries.
+    bus.on('mission:offered', (p) => this._onExternalBoardOffer(p));
 
     // ── Docking: refresh expired boards, run delivery/passenger/escort/salvage objectives ────
     bus.on('dock:docked', (p) => {
@@ -301,6 +305,39 @@ export const missions = {
     state.missions.boards[stationId] = board;
     this.bus.emit('mission:updated', { missionId: null });
     return board;
+  },
+
+  /**
+   * Adopt an emit-only field contract into the normal board without accepting it.
+   * Idempotent by stable offer id and capped at one economyContract row per station epoch.
+   */
+  _onExternalBoardOffer(rawOffer) {
+    if (!rawOffer || rawOffer.source !== 'economyContract') return false;
+    if (!rawOffer.id || !rawOffer.type || !rawOffer.stationId || !rawOffer.params) return false;
+    const info = STATION_INFO.get(rawOffer.stationId);
+    if (!info || !TYPE_BY_ID.has(rawOffer.type)) return false;
+    const epoch = this._epoch();
+    if (Number.isFinite(rawOffer.expiresAtEpoch) && rawOffer.expiresAtEpoch <= epoch) return false;
+    if ((this.state.missions.active || []).some((m) => m && m.id === rawOffer.id)) return false;
+    if ((this.state.missions.completedLog || []).some((m) => m && m.id === rawOffer.id)) return false;
+
+    const board = this.ensureBoard(rawOffer.stationId);
+    if (!board || !Array.isArray(board.slots)) return false;
+    if (board.slots.some((offer) => offer && offer.id === rawOffer.id)) return false;
+    if (board.slots.some((offer) => offer && offer.source === 'economyContract')) return false;
+
+    let offer;
+    try { offer = JSON.parse(JSON.stringify(rawOffer)); } catch (_) { return false; }
+    board.slots.unshift(offer);
+    this.bus.emit('mission:updated', { missionId: null, offerId: offer.id, stationId: offer.stationId });
+    this.bus.emit('mission:offerBoarded', {
+      offerId: offer.id,
+      stationId: offer.stationId,
+      source: offer.source,
+      causeTag: offer.cause && offer.cause.tag || null,
+      epoch: board.refreshEpoch,
+    });
+    return true;
   },
 
   _boardNeedsStoryBranchIntro(info, board) {

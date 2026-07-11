@@ -128,6 +128,7 @@ export const save = {
     data.player = this._serializePlayer();
     data.cargo = this._serializeCargo();
     data.economy = this._callSerialize('economy') || {};
+    data.economyContracts = this._callSerialize('economyContracts') || {};
     data.factions = this._callSerialize('factions') || {};
     data.world = this._callSerialize('world') || {};
     data.entities = this._serializeEntities();
@@ -632,6 +633,7 @@ export const save = {
       this._restorePlayer(data.player);
       this._restoreCargo(data.cargo);
       this._callDeserialize('economy', data.economy);
+      this._callDeserialize('economyContracts', data.economyContracts);
       this._callDeserialize('factions', data.factions);
       this._callDeserialize('world', data.world); // sets currentSectorId; does NOT spawn entities
 

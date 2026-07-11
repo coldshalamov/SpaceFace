@@ -209,6 +209,8 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   // (1) additive flats + mass + cargo pct + utility aggregates
   let shieldFlat = 0, shieldRegenFlat = 0, hullFlat = 0, cargoFlat = 0, cargoCapPct = 0;
   let moduleMass = 0, continuousDrain = 0;
+  let hiddenCargoPct = Math.max(0, Math.min(1, Number(eff.hiddenCargoPct) || 0));
+  let scannerCloak = Math.max(0, Math.min(1, Number(eff.scannerCloak) || 0));
   let damageReductionMult = 1; // multiplicative stacking of hardeners (§ formulas)
   for (const d of equipped) {
     if (!d) continue;
@@ -220,6 +222,14 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     hullFlat += mods.hullFlat || 0;
     cargoFlat += mods.cargoFlat || 0;
     cargoCapPct += mods.cargoCapPct || 0;
+    // Smuggling utilities are capability ratings, not additive economy bonuses. Taking the
+    // strongest fitted module prevents stacking the same hidden volume or scan evasion twice.
+    if (Number.isFinite(mods.hiddenCargoPct)) {
+      hiddenCargoPct = Math.max(hiddenCargoPct, Math.max(0, Math.min(1, mods.hiddenCargoPct)));
+    }
+    if (Number.isFinite(mods.scannerCloak)) {
+      scannerCloak = Math.max(scannerCloak, Math.max(0, Math.min(1, mods.scannerCloak)));
+    }
     if (mods.damageReductionPct) damageReductionMult *= (1 - mods.damageReductionPct);
   }
 
@@ -295,7 +305,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
       dashCooldown: bdef.dashCooldown || 3,
     },
     // informational extras (read by combat/ui; not part of the flat copy)
-    continuousDrain, damageReductionMult,
+    continuousDrain, damageReductionMult, hiddenCargoPct, scannerCloak,
   };
 }
 

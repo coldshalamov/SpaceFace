@@ -10,6 +10,11 @@ import {
 } from '../data/missions.js';
 import { SECTORS } from '../data/sectors.js';
 import { forecastTransitFor, sectorSignalFor } from '../systems/sectorSim.js';
+import {
+  smugglingPreflightCopy,
+  buildIllicitStacksFromCargo,
+  buildProjectedMissionStacks,
+} from '../economy/customsRisk.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -183,6 +188,54 @@ export function missionConsequenceSummary(m) {
   }
 
   return { reward, repReward, repPenalty, collateral, chips };
+}
+
+/**
+ * missionSmugglingRisk(m, state) — pure projection of scan/fine/hidden-hold math for a
+ * smuggling_run (or any mission that stages illicit cargo). Never charges; never writes heat.
+ * Returns null when the mission is not a smuggling surface.
+ */
+export function missionSmugglingRisk(m, state) {
+  if (!m || m.type !== 'smuggling_run') return null;
+
+  const cargo = state && state.player && state.player.cargo || {};
+  const liveStacks = buildIllicitStacksFromCargo(cargo);
+  const projected = buildProjectedMissionStacks(m);
+  // Prefer live hold when the player already staged cargo; else project the contract load.
+  const stacks = liveStacks.length ? liveStacks : projected;
+
+  const destSectorId = missionDestSectorId(m);
+  const sector = destSectorId ? SECTOR_BY_ID.get(destSectorId) : null;
+  const security = sector && Number.isFinite(Number(sector.security))
+    ? Number(sector.security)
+    : 0.5;
+
+  const em = state && state.player && state.player.efficiencyMods || {};
+  const playerEntity = state && state.entities && state.entities.get && state.playerId != null
+    ? state.entities.get(state.playerId)
+    : null;
+  const derived = playerEntity && playerEntity.data && playerEntity.data.derived || {};
+  const cloak = Number(derived.scannerCloak != null ? derived.scannerCloak : em.scannerCloak) || 0;
+  const hiddenCargoPct = Number(derived.hiddenCargoPct != null ? derived.hiddenCargoPct : em.hiddenCargoPct) || 0;
+  const capVolume = Number.isFinite(cargo.capVolume) ? cargo.capVolume : 0;
+
+  // Hot-until reads: player.customsHotUntil (map or number) — lead may also write hotGates.
+  const hotUntil = (state && state.player && (
+    state.player.customsHotUntil != null
+      ? state.player.customsHotUntil
+      : state.player.hotGates
+  )) || null;
+
+  return smugglingPreflightCopy({
+    security,
+    cloak,
+    hotUntil,
+    simTime: Number(state && state.simTime) || 0,
+    factionId: sector && sector.factionId || m.factionId || null,
+    stacks,
+    capVolume,
+    hiddenCargoPct,
+  });
 }
 
 export function missionCargoFootprint(m) {
@@ -591,9 +644,17 @@ export function missionPreflight(m, state) {
   if (routeIntelWarning) warnings.push(routeIntelWarning);
   if (pacingWarning) warnings.push(pacingWarning);
 
+  // ECON-P4: smuggling risk adapters — scan/fine/hidden-hold projection chips (no authority writes).
+  const smuggling = missionSmugglingRisk(m, state);
+  if (smuggling) {
+    for (const chip of smuggling.chips) chips.push(chip);
+    if (smuggling.warning) warnings.push(smuggling.warning);
+  }
+
   return {
     blocker: blockers[0] || null,
     warning: warnings[0] || null,
     chips,
+    smuggling: smuggling || null,
   };
 }

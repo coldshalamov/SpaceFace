@@ -29,6 +29,14 @@ import {
   getCycle as getCycleCore, cycleFactorAt, maybeAdvanceRegime, createCycle,
   serializeCycles, deserializeCycles,
 } from './economyCycles.js';
+import {
+  hiddenHoldCapacity,
+  remainingIllicit,
+  scanChance,
+  hotUntilActive,
+  HOT_DURATION_S,
+} from '../economy/customsRisk.js';
+import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
 const BASE_EQ_DEFAULT = 1000;      // baseEq before sizeFactor
@@ -48,6 +56,9 @@ const SCAN_LO = 0.02, SCAN_HI = 0.95;
 const FINE_MULT = { legal: 0, restricted: 0.8, illegal: 1.2, contraband: 1.5 };
 const REP_HIT_LO = 2, REP_HIT_HI = 25;
 const BRIBE_FRAC = 0.30;
+const REGIONAL_PRESSURE_RECIPES = Object.freeze(
+  Object.values(allRegionalPressureRecipes()).flat(),
+);
 
 export const ECONOMY_PRICE_TUNING = Object.freeze({
   baseEqDefault: BASE_EQ_DEFAULT,
@@ -326,6 +337,10 @@ export const economy = {
       this.rollSpontaneousEvent(state);
     }
 
+    // Authored regional production/consumption enters through the existing stock authority.
+    // Recipe units are per simulated minute, so the identity pressure stays gentle and bounded.
+    this.applyRegionalSupply(tickDt);
+
     // 3) drift every station+commodity stock toward effectiveEq, recompute cached prices
     const markets = econ.markets;
     for (const sid in markets) {
@@ -354,6 +369,20 @@ export const economy = {
     this.propagateEvents(state);
 
     this.bus.emit('economy:tick', { t: state.simTime, ticksElapsed: clock.ticksElapsed });
+  },
+
+  applyRegionalSupply(tickDt) {
+    const minuteShare = Math.max(0, Number(tickDt) || 0) / 60;
+    if (!(minuteShare > 0)) return;
+    for (const recipe of REGIONAL_PRESSURE_RECIPES) {
+      if (!recipe.stationId || !(recipe.units > 0)) continue;
+      this.applyStockPressure(
+        recipe.stationId,
+        recipe.commodityId,
+        recipe.role === 'consume' ? 'buy' : 'sell',
+        recipe.units * minuteShare,
+      );
+    }
   },
 
   /** Cache lastMid/lastBuy/lastSell on an entry from its current stock. */
@@ -821,15 +850,38 @@ export const economy = {
   // -------------------------------------------------------------------------------------------
   // CONTRABAND SCAN & FINES
   // -------------------------------------------------------------------------------------------
-  /** List illicit stacks currently in the hold: [{ commodityId, qty, def }]. */
+  /** Active fitted smuggling capabilities. Derived ship stats are the live authority; the
+   * efficiency bag remains a migration fallback for older saves/tools. */
+  smugglingCapabilities(state) {
+    const entity = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const derived = entity && entity.data && entity.data.derived || {};
+    const legacy = state.player && state.player.efficiencyMods || {};
+    return {
+      hiddenCargoPct: clamp(Number(derived.hiddenCargoPct != null ? derived.hiddenCargoPct : legacy.hiddenCargoPct) || 0, 0, 1),
+      scannerCloak: clamp(Number(derived.scannerCloak != null ? derived.scannerCloak : legacy.scannerCloak) || 0, 0, 1),
+    };
+  },
+
+  /** List scan-exposed illicit stacks currently in the hold: [{ commodityId, qty, def }]. */
   illicitCargo(state) {
-    const out = [];
+    const all = [];
     const items = state.player.cargo.items;
     for (const id in items) {
       const def = commodityDef(state, id);
-      if (def && def.legality && def.legality !== 'legal') out.push({ commodityId: id, qty: items[id], def });
+      if (def && def.legality && def.legality !== 'legal') all.push({ commodityId: id, qty: items[id], def });
     }
-    return out;
+    if (!all.length) return all;
+    const caps = this.smugglingCapabilities(state);
+    const hiddenCapacity = hiddenHoldCapacity({
+      capVolume: state.player.cargo.capVolume,
+      hiddenCargoPct: caps.hiddenCargoPct,
+    });
+    if (!(hiddenCapacity > 0)) return all;
+    return remainingIllicit({ stacks: all, hiddenCapacity }).exposedStacks.map((stack) => ({
+      commodityId: stack.commodityId,
+      qty: stack.qty,
+      def: commodityDef(state, stack.commodityId),
+    }));
   },
 
   currentSecurity() {
@@ -840,9 +892,7 @@ export const economy = {
   },
 
   scannerCloak(state) {
-    // optional ship perk; defaults 0. (efficiencyMods could carry a cloak rating in future.)
-    const em = state.player && state.player.efficiencyMods;
-    return (em && em.scannerCloak) || 0;
+    return this.smugglingCapabilities(state).scannerCloak;
   },
 
   /** Run a scan check against any contraband in the hold. Emits player:scannedByPatrol + (if found)
@@ -855,9 +905,23 @@ export const economy = {
     if (!hasContraband) return { found: false };
     const security = p.security != null ? p.security : this.currentSecurity();
     const cloak = (p.scannerCloak != null ? p.scannerCloak : this.scannerCloak(state));
-    const pScan = clamp(BASE_SCAN * (1 + security) - cloak, SCAN_LO, SCAN_HI);
+    const factionId = p.factionId || (p.patrolId && this.factionOfEntity(p.patrolId)) || this.scanningFaction(state);
+    const hotMap = state.player.customsHotUntil || null;
+    const hot = hotUntilActive(hotMap, state.simTime, factionId);
+    const pScan = scanChance({ security, cloak, hot });
     const roll = this._rng();
-    if (roll > pScan) return { found: false }; // evaded
+    if (roll > pScan) {
+      if (factionId) {
+        if (!state.player.customsHotUntil || typeof state.player.customsHotUntil !== 'object') {
+          state.player.customsHotUntil = {};
+        }
+        state.player.customsHotUntil[factionId] = Math.max(
+          Number(state.player.customsHotUntil[factionId]) || 0,
+          state.simTime + HOT_DURATION_S,
+        );
+      }
+      return { found: false }; // evaded; this faction's gates remember the run
+    }
     // CAUGHT — compute fine, confiscate, rep hit
     let fine = 0;
     const confiscated = [];
@@ -883,7 +947,6 @@ export const economy = {
       state.player.bounty = (state.player.bounty || 0) + round(unpaid * 0.5);
     }
     // reputation hit with the scanning faction
-    const factionId = p.factionId || (p.patrolId && this.factionOfEntity(p.patrolId)) || this.scanningFaction(state);
     const repHit = -clamp(fine / 2000, REP_HIT_LO, REP_HIT_HI);
     if (factionId) this.bus.emit('faction:repDelta', { factionId, delta: round(repHit), reason: 'contraband' });
     this.bus.emit('contraband:scanned', {

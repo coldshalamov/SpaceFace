@@ -30,7 +30,9 @@ import { FACTION_META } from '../data/factions.js';
 import { MISSION_TYPES, MISSION_TUNING } from '../data/missions.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { sectorSignalFor, effectiveDangerTierFor } from './sectorSim.js';
-import { selectEconContract, fillCause, SCARCITY_PAY_SCALE, BLOCKADE_PAY_SCALE, BLOCKADE_RELIEF_CMDTYS } from '../data/economyContractTemplates.js';
+import {
+  selectEconContract, fillCause, SCARCITY_PAY_SCALE, BLOCKADE_PAY_SCALE, BLOCKADE_RELIEF_CMDTYS,
+} from '../data/economyContractTemplates.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -55,6 +57,53 @@ const FUEL_CMDTY = 'cmdty_fuel_cells';
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const round = Math.round;
 
+// ── ECON-P4 pure field-contract helpers (emit-only discipline; no missions authority) ─────────
+
+/** Stable board-ready offer id: eco_<stationId>_<epoch>. Pure. */
+export function stableFieldOfferId(stationId, epoch) {
+  return `eco_${stationId}_${epoch}`;
+}
+
+/** Contract board epoch from simTime + refreshSec (missions config default 600). Pure. */
+export function fieldContractEpoch(simTime, refreshSec = 600) {
+  const step = Number(refreshSec) > 0 ? Number(refreshSec) : 600;
+  return Math.floor((Number(simTime) || 0) / step);
+}
+
+/** True when this station already evaluated the given epoch. Pure over the dedupe bag. */
+export function isStationEpochEvaluated(own, stationId, epoch) {
+  if (!own || !stationId) return false;
+  const bag = own.evaluatedEpochByStation;
+  return !!(bag && bag[stationId] === epoch);
+}
+
+/**
+ * Mark station+epoch evaluated in the local dedupe bag ONLY.
+ * Does NOT write state.missions (missions.js owns boards/active).
+ * Returns the bag for chaining; null when own is missing.
+ */
+export function markStationEpochEvaluated(own, stationId, epoch) {
+  if (!own || typeof own !== 'object' || !stationId) return null;
+  if (!own.evaluatedEpochByStation || typeof own.evaluatedEpochByStation !== 'object') {
+    own.evaluatedEpochByStation = {};
+  }
+  own.evaluatedEpochByStation[stationId] = epoch;
+  return own;
+}
+
+/** Ensure / return the local dedupe state bag (economyContracts only — not missions). */
+export function ensureFieldContractState(state) {
+  if (!state || typeof state !== 'object') return { evaluatedEpochByStation: {} };
+  if (!state.economyContracts || typeof state.economyContracts !== 'object') {
+    state.economyContracts = { evaluatedEpochByStation: {} };
+  }
+  if (!state.economyContracts.evaluatedEpochByStation
+      || typeof state.economyContracts.evaluatedEpochByStation !== 'object') {
+    state.economyContracts.evaluatedEpochByStation = {};
+  }
+  return state.economyContracts;
+}
+
 // Map-space sector distance → wu (same shape missions.js uses; deterministic, bounded).
 function sectorDistanceWu(aSectorId, bSectorId) {
   if (!aSectorId || !bSectorId || aSectorId === bSectorId) return 600;
@@ -76,10 +125,8 @@ export const economyContracts = {
     this._ensureState();
     this._onDocked = (p) => this._handleDock(p && p.stationId);
     this.bus.on('dock:docked', this._onDocked);
-    // Fresh runs / loads reset only the dedupe memory — the offers themselves re-derive from
-    // (seed, stationId, epoch, field), so a re-emitted offer is bit-identical, never a duplicate id.
+    // Fresh runs reset dedupe. Loads restore it through deserialize before save:loaded fires.
     this.bus.on('game:started', () => this.newGame());
-    this.bus.on('save:loaded', () => this.newGame());
   },
 
   newGame() {
@@ -87,17 +134,39 @@ export const economyContracts = {
   },
 
   _ensureState() {
-    const s = this.state;
-    if (!s.economyContracts || typeof s.economyContracts !== 'object') {
-      s.economyContracts = { evaluatedEpochByStation: {} };
+    return ensureFieldContractState(this.state);
+  },
+
+  serialize() {
+    const own = this._ensureState();
+    return { evaluatedEpochByStation: { ...own.evaluatedEpochByStation } };
+  },
+
+  deserialize(data) {
+    const source = data && data.evaluatedEpochByStation;
+    const evaluatedEpochByStation = {};
+    if (source && typeof source === 'object') {
+      for (const stationId of Object.keys(source).sort()) {
+        const epoch = Number(source[stationId]);
+        if (Number.isFinite(epoch)) evaluatedEpochByStation[stationId] = Math.floor(epoch);
+      }
     }
-    if (!s.economyContracts.evaluatedEpochByStation) s.economyContracts.evaluatedEpochByStation = {};
-    return s.economyContracts;
+    this.state.economyContracts = { evaluatedEpochByStation };
   },
 
   _epoch() {
     const cfg = (this.state.missions && this.state.missions.config) || MISSION_TUNING;
-    return Math.floor((this.state.simTime || 0) / (cfg.refreshSec || 600));
+    return fieldContractEpoch(this.state.simTime, cfg.refreshSec || 600);
+  },
+
+  /**
+   * Public station+epoch dedupe read — true when this station already evaluated the current
+   * (or supplied) epoch. Emit-only system; never writes missions boards.
+   */
+  hasEvaluated(stationId, epoch = null) {
+    const own = this._ensureState();
+    const ep = epoch != null ? epoch : this._epoch();
+    return isStationEpochEvaluated(own, stationId, ep);
   },
 
   _handleDock(stationId) {
@@ -108,12 +177,13 @@ export const economyContracts = {
       const own = this._ensureState();
       const epoch = this._epoch();
       // Dedupe per station-epoch: one field evaluation, offer or not.
-      if (own.evaluatedEpochByStation[stationId] === epoch) return;
-      own.evaluatedEpochByStation[stationId] = epoch;
+      if (isStationEpochEvaluated(own, stationId, epoch)) return;
+      markStationEpochEvaluated(own, stationId, epoch);
 
       const offer = this.planOffer(info, epoch);
       if (!offer) return; // calm field → strict no-op
 
+      // EMIT-ONLY: never writes state.missions — missions.js owns boards/active.
       this.bus.emit('mission:offered', offer);
       // One news line, through the arbiter (falls back to a toast exactly like marketNews).
       const line = `Contract posted at ${info.name}: ${offer.title}`;
@@ -237,8 +307,9 @@ export const economyContracts = {
     });
     const title = this._titleFor(typeId, selected.template.key, params, info, destStationId, commodity);
 
+    // Board-ready offer: stable id, cause-named prose, accept-path shape. Emit-only consumer.
     return {
-      id: `eco_${info.id}_${epoch}`,
+      id: stableFieldOfferId(info.id, epoch),
       source: 'economyContract',
       type: typeId,
       stationId: info.id,

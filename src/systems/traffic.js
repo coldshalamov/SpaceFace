@@ -26,6 +26,18 @@ import {
   RECORD_KIND,
   stableRecordId,
 } from '../world/worldRecords.js';
+import {
+  buildCargoManifest,
+  buildArrivalIntent,
+  buildLossIntent,
+  filterNewFreightIntents,
+  mergeAppliedFreightIds,
+  pressureShareRecipe,
+  abstractBaselineVolume,
+  FREIGHT_TRADING_ROLES,
+  FREIGHT_MARKET_KEYS_FALLBACK,
+  liveVolumeForSector,
+} from '../economy/freightCausality.js';
 
 const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 const MAX_PER_SECTOR = 6;
@@ -95,8 +107,8 @@ export const traffic = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
-    // live freighter records: id -> {targetId, waitT, nextTradeT}
-    this.state.traffic = { freighters: [], rngSeed: hash32(this.state.meta && this.state.meta.seed, 'traffic', 'boot') };
+    // live freighter records: id -> {targetId, waitT, nextTradeT, manifest, dockSeq}
+    this._ensureState();
     this._active = []; // entity ids we spawned (for cleanup)
     this._stationScratch = [];
 
@@ -104,6 +116,8 @@ export const traffic = {
     // Canonical seam is sector:exit (world never emits sector:leave). Continuous handoffs prune
     // dead tracking only; hard exits fully clean up freighters.
     this.bus.on('sector:exit', (p) => this._onSectorExit(p));
+    // ECON-P2: freighter loss → owner-safe scarcity intents + named news (no wallet writes).
+    this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
   },
 
   _onSectorExit(p) {
@@ -164,14 +178,18 @@ export const traffic = {
       const ent = this.helpers.spawnEntity(spec);
       if (!ent) continue;
       this._stampTrafficDurableIdentity(ent, sectorId, role, def, i);
+      const target = this._pickStation(stations);
+      const manifest = this._assignManifest(ent, role, target, sectorId);
       this._active.push(ent.id);
       this.state.traffic.freighters.push({
         id: ent.id,
         role,
-        targetId: this._pickStation(stations).id,
+        targetId: target.id,
         waitT: 0,
         nextTradeT: 2 + i * 1.5, // stagger trades so they don't all hit the market at once
         orbitPhase: this._rng() * Math.PI * 2, // patrols orbit on a per-ship phase
+        dockSeq: 0,
+        manifest,
       });
     }
   },
@@ -230,13 +248,24 @@ export const traffic = {
       }
       tracked.add(e.id);
       this._active.push(e.id);
+      const role = d.trafficRole || 'hauler';
+      const target = (stations && stations.length) ? this._pickStation(stations) : null;
+      // Preserve durable cargo manifest across rematerialize / continuous handoff (M2).
+      let manifest = d.cargoManifest || null;
+      if (!manifest || !Array.isArray(manifest.lines)) {
+        manifest = this._assignManifest(e, role, target, sectorId);
+      } else {
+        e.data.cargoManifest = manifest;
+      }
       this.state.traffic.freighters.push({
         id: e.id,
-        role: d.trafficRole || 'hauler',
-        targetId: (stations && stations.length) ? this._pickStation(stations).id : null,
+        role,
+        targetId: target ? target.id : null,
         waitT: 0,
         nextTradeT: 2 + adoptIdx * 1.5,
         orbitPhase: this._rng() * Math.PI * 2,
+        dockSeq: d.freightDockSeq | 0,
+        manifest,
       });
       adoptIdx++;
     }
@@ -270,7 +299,13 @@ export const traffic = {
       for (const id of this._active) { try { helper(id); } catch (_) {} }
     }
     this._active = [];
+    this._ensureState();
     this.state.traffic.freighters = [];
+    // Hard exit drops the view — clear arrival/loss ledgers so rematerialized freighters
+    // can re-dock without colliding with prior sector dockSeq intent ids. Continuous
+    // handoff uses _pruneDead only and keeps the ledger (M2 durable identity).
+    this.state.traffic.appliedArrivalIds = [];
+    this.state.traffic.appliedLossIds = [];
   },
 
   /** Drop tracking for freighters already despawned by residency demotion (continuous handoff). */
@@ -328,10 +363,10 @@ export const traffic = {
       const dist = Math.hypot(dx, dz);
       const aimAngle = Math.atan2(dz, dx);
       if (dist < DOCK_RANGE) {
-        // arrived: emit a trade (moves the market), wait, pick a new destination
+        // arrived: emit owner-safe freight arrival (manifest → stock pressure), wait, re-route
         rec.nextTradeT -= dt;
         if (rec.nextTradeT <= 0 && role.trades) {
-          this._emitTrade(target);
+          this._emitArrival(e, rec, target);
           rec.nextTradeT = TRADE_INTERVAL_S + this._rng() * 6;
         }
         rec.waitT = 2.5 + this._rng() * 2;
@@ -443,24 +478,220 @@ export const traffic = {
     setIntent(e, 0, 1, false, false, null, Math.atan2(tz - e.pos.z, tx - e.pos.x));
   },
 
-  // Emit a small randomized trade at the station — moves the market (now correctly, via the fixed
-  // stock-pressure path) so NPC traffic is a real economic actor, not just scenery.
-  _emitTrade(station) {
-    const stationId = station.data && station.data.stationId;
-    if (!stationId) return;
-    const market = this.state.economy && this.state.economy.markets && this.state.economy.markets[stationId];
-    if (!market) return;
-    const ids = Object.keys(market);
-    if (!ids.length) return;
-    const commodityId = ids[Math.floor(this._rng() * ids.length)];
-    const side = this._rng() < 0.5 ? 'buy' : 'sell';
-    const qty = 3 + Math.floor(this._rng() * 18);
-    this.bus.emit('aiTrader:requestTrade', { stationId, commodityId, side, qty });
+  /**
+   * Deterministic cargo manifest from station market keys (ECON-P2). Stamped on entity.data
+   * so scanners / rematerialize / continuous handoff can read it without re-rolling.
+   */
+  _assignManifest(ent, role, station, sectorId) {
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const freighterKey = (ent && ent.data && ent.data.worldRecordId)
+      || (ent && ent.id != null ? String(ent.id) : `traffic:${role}`);
+    const stationId = station && station.data && station.data.stationId;
+    const market = stationId
+      && this.state.economy
+      && this.state.economy.markets
+      && this.state.economy.markets[stationId];
+    const manifest = buildCargoManifest({
+      seed,
+      freighterKey,
+      role: role || 'hauler',
+      market: market || FREIGHT_MARKET_KEYS_FALLBACK,
+    });
+    if (ent) {
+      if (!ent.data) ent.data = {};
+      ent.data.cargoManifest = manifest;
+      if (sectorId && ent.data.sectorId == null) ent.data.sectorId = sectorId;
+    }
+    return manifest;
+  },
+
+  /**
+   * Owner-safe arrival: emit aiTrader:requestTrade per manifest line (economy stock-only path).
+   * Idempotent per freighter dockSeq. Never writes credits/cargo/stock/rep/heat here.
+   */
+  _emitArrival(entity, rec, station) {
+    const stationId = station && station.data && station.data.stationId;
+    if (!stationId || !rec) return;
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const freighterKey = (entity && entity.data && entity.data.worldRecordId)
+      || String(rec.id);
+    const sectorId = (this.state.world && this.state.world.currentSectorId) || null;
+    const role = rec.role || 'hauler';
+    if (!FREIGHT_TRADING_ROLES.includes(role)) return;
+
+    let manifest = rec.manifest
+      || (entity && entity.data && entity.data.cargoManifest)
+      || null;
+    if (!manifest || !Array.isArray(manifest.lines) || !manifest.lines.length) {
+      manifest = this._assignManifest(entity, role, station, sectorId);
+      rec.manifest = manifest;
+    }
+
+    // Conservation: live arrivals share the old abstract lane budget with sectorSim pressure.
+    const liveVol = liveVolumeForSector(this.state, sectorId);
+    // Use a unit baseline floor so a quiet field still allows embodied trade; sectorSim
+    // scales its own abstract share with the same recipe against the real baseline.
+    const recipe = pressureShareRecipe({
+      baselineVolume: Math.max(liveVol, abstractBaselineVolume({
+        lanePressure: 0.25, days: 0.25, goodsCount: Math.max(1, (manifest.lines || []).length),
+      })),
+      liveVolume: liveVol || manifest.totalQty || 0,
+    });
+
+    const dockSeq = rec.dockSeq | 0;
+    const intent = buildArrivalIntent({
+      seed,
+      freighterKey,
+      freighterId: rec.id,
+      stationId,
+      sectorId,
+      dockSeq,
+      manifest,
+      liveScale: recipe.liveScale > 0 ? recipe.liveScale : 1,
+    });
+
+    const t = this.state.traffic;
+    const fresh = filterNewFreightIntents([intent], t.appliedArrivalIds);
+    if (!fresh.length) {
+      rec.dockSeq = dockSeq + 1;
+      return; // already applied this dock intent
+    }
+
+    for (const trade of intent.trades) {
+      this.bus.emit('aiTrader:requestTrade', {
+        stationId: trade.stationId,
+        commodityId: trade.commodityId,
+        side: trade.side,
+        qty: trade.qty,
+        cause: intent.cause,
+        source: intent.source,
+        intentId: intent.intentId,
+        freighterId: rec.id,
+      });
+    }
+    this.bus.emit('freight:arrival', intent);
+    t.appliedArrivalIds = mergeAppliedFreightIds(t.appliedArrivalIds, fresh);
+    rec.dockSeq = dockSeq + 1;
+    if (entity && entity.data) entity.data.freightDockSeq = rec.dockSeq;
+
+    // After delivery, refresh manifest for the next leg (still deterministic per dockSeq key).
+    const nextKey = `${freighterKey}:leg:${rec.dockSeq}`;
+    const nextManifest = buildCargoManifest({
+      seed,
+      freighterKey: nextKey,
+      role,
+      market: (this.state.economy && this.state.economy.markets && this.state.economy.markets[stationId])
+        || FREIGHT_MARKET_KEYS_FALLBACK,
+    });
+    rec.manifest = nextManifest;
+    if (entity && entity.data) entity.data.cargoManifest = nextManifest;
+  },
+
+  /**
+   * Owner-safe loss on freighter kill: scarcity pressure + named news payload.
+   * Idempotent per freighterKey. Does not write wallet/cargo/rep/heat.
+   */
+  _onEntityKilled(p) {
+    if (!p || p.id == null) return;
+    this._ensureState();
+    const list = this.state.traffic.freighters || [];
+    let rec = null;
+    let idx = -1;
+    for (let i = 0; i < list.length; i++) {
+      if (list[i] && list[i].id === p.id) { rec = list[i]; idx = i; break; }
+    }
+    const ent = this.state.entities && this.state.entities.get && this.state.entities.get(p.id);
+    const role = (rec && rec.role)
+      || (ent && ent.data && ent.data.trafficRole)
+      || null;
+    if (!rec && !(ent && ent.data && ent.data.trafficRole)) return;
+    if (role && !FREIGHT_TRADING_ROLES.includes(role) && !(rec && rec.manifest && rec.manifest.totalQty)) {
+      // Non-trading traffic (patrol/escort) — drop tracking only.
+      if (idx >= 0) list.splice(idx, 1);
+      return;
+    }
+
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const freighterKey = (ent && ent.data && ent.data.worldRecordId)
+      || (rec && rec.id != null ? String(rec.id) : String(p.id));
+    const sectorId = p.sectorId
+      || (this.state.world && this.state.world.currentSectorId)
+      || null;
+    const stationId = this._nearestStationId(ent && ent.pos)
+      || (rec && rec.targetId && this._stationIdForEntity(rec.targetId));
+    const manifest = (rec && rec.manifest)
+      || (ent && ent.data && ent.data.cargoManifest)
+      || buildCargoManifest({ seed, freighterKey, role: role || 'hauler', market: FREIGHT_MARKET_KEYS_FALLBACK });
+
+    const intent = buildLossIntent({
+      seed,
+      freighterKey,
+      freighterId: p.id,
+      stationId,
+      sectorId,
+      manifest,
+      killerId: p.killerId,
+      seq: this.state.tick | 0,
+    });
+
+    const t = this.state.traffic;
+    const fresh = filterNewFreightIntents([intent], t.appliedLossIds);
+    if (fresh.length) {
+      for (const pr of intent.pressures) {
+        if (!pr.stationId) continue;
+        this.bus.emit('economy:applyTradePressure', {
+          stationId: pr.stationId,
+          good: pr.good,
+          commodityId: pr.commodityId,
+          vol: pr.vol,
+          sectorId: pr.sectorId,
+          source: pr.source,
+          cause: pr.cause,
+          intentId: intent.intentId,
+          freighterId: p.id,
+        });
+      }
+      this.bus.emit('freight:loss', intent);
+      if (intent.news) {
+        this.bus.emit('news:headline', {
+          ...intent.news,
+          headline: null, // presentation may fill from newsTemplates
+        });
+      }
+      t.appliedLossIds = mergeAppliedFreightIds(t.appliedLossIds, fresh);
+    }
+
+    if (idx >= 0) list.splice(idx, 1);
+    const activeIdx = this._active.indexOf(p.id);
+    if (activeIdx >= 0) this._active.splice(activeIdx, 1);
+  },
+
+  _nearestStationId(pos) {
+    if (!pos) return null;
+    const stations = this._sectorStations();
+    let best = null;
+    let bestD = Infinity;
+    for (const s of stations) {
+      if (!s || !s.pos) continue;
+      const d = Math.hypot(s.pos.x - pos.x, s.pos.z - pos.z);
+      if (d < bestD) {
+        bestD = d;
+        best = s;
+      }
+    }
+    return best && best.data && best.data.stationId ? best.data.stationId : null;
+  },
+
+  _stationIdForEntity(entityId) {
+    const e = this.state.entities && this.state.entities.get && this.state.entities.get(entityId);
+    return e && e.data && e.data.stationId ? e.data.stationId : null;
   },
 
   _ensureState() {
     if (!this.state.traffic) this.state.traffic = { freighters: [] };
     if (!Array.isArray(this.state.traffic.freighters)) this.state.traffic.freighters = [];
+    if (!Array.isArray(this.state.traffic.appliedArrivalIds)) this.state.traffic.appliedArrivalIds = [];
+    if (!Array.isArray(this.state.traffic.appliedLossIds)) this.state.traffic.appliedLossIds = [];
     if (!Number.isFinite(this.state.traffic.rngSeed) || (this.state.traffic.rngSeed >>> 0) === 0) {
       this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', this.state.world && this.state.world.currentSectorId);
     }
@@ -478,7 +709,12 @@ export const traffic = {
 
   newGame() {
     this._active = [];
-    this.state.traffic = { freighters: [], rngSeed: hash32(this.state.meta && this.state.meta.seed, 'traffic', 'boot') };
+    this.state.traffic = {
+      freighters: [],
+      appliedArrivalIds: [],
+      appliedLossIds: [],
+      rngSeed: hash32(this.state.meta && this.state.meta.seed, 'traffic', 'boot'),
+    };
   },
 };
 

@@ -59,6 +59,21 @@ export const HEADLINE_TEMPLATES = Object.freeze({
     'The Reach bleeds {station} of {noun}; premiums climb',
     'Ambushes off {station} — insurers flag {name}',
   ],
+  // ECON-P2 freight embodiment — live hauler loss / arrival (cause-tagged)
+  freight_loss: [
+    'Freighter lost near {station} — {noun} runs thin',
+    '{station}: inbound {noun} freighter destroyed; shelves tighten',
+    'Lane kill: {name} shipment never reaches {station}',
+    'Hauler down off {station}; insurers flag {noun}',
+    '{station} scarcity spike after {noun} freighter loss',
+  ],
+  freight_arrival: [
+    '{station} takes delivery of {noun}',
+    'Inbound freighter offloads {name} at {station}',
+    '{noun} lands at {station} — stocks ease',
+    'Hauler docked at {station}; {name} hits the floor',
+    '{station}: freight arrival softens {noun} prices',
+  ],
   // generic fallback for unknown event types
   event: [
     '{station}: {name} market unsettled',
@@ -86,6 +101,10 @@ export const CARD_TEMPLATES = Object.freeze({
     title: '{name} Blockade', body: '{noun} is frozen at {station}. Spreads are punishing until it lifts.' },
   piracy:   { badge: 'PIRACY', tone: 'danger',
     title: 'Piracy: {name}', body: 'Raiders are hitting {noun} runs near {station}. Escort or reroute.' },
+  freight_loss: { badge: 'FREIGHT LOSS', tone: 'danger',
+    title: 'Freighter Lost: {name}', body: 'A hauler carrying {noun} was destroyed near {station}. Expect tighter stock.' },
+  freight_arrival: { badge: 'ARRIVAL', tone: 'good',
+    title: 'Freight Arrival: {name}', body: '{noun} just landed at {station}. Live traffic moved the market.' },
   event:    { badge: 'NOTICE', tone: 'info',
     title: '{name} Advisory', body: '{noun} market is unsettled at {station}.' },
 });
@@ -97,6 +116,8 @@ export function normalizeKind(type) {
   if (t === 'boom' || t === 'surplus') return 'boom';
   if (t === 'blockade' || t === 'embargo') return 'blockade';
   if (t === 'piracy' || t === 'piracy_spike' || t === 'raid') return 'piracy';
+  if (t === 'freight_loss' || t === 'freight_destroyed' || t === 'hauler_lost') return 'freight_loss';
+  if (t === 'freight_arrival' || t === 'hauler_arrival') return 'freight_arrival';
   return 'event';
 }
 
