@@ -305,6 +305,8 @@
     "check:m3:career-ladders": "node --test test/career-ladders-contract.test.mjs test/hauler-ladder.test.mjs test/hunter-ladder.test.mjs test/prospector-ladder.test.mjs test/career-ladders-live-integration.test.mjs test/career-ladder-ui-view.test.mjs && node scripts/check-career-ladders-live-integration.mjs",
     "check:m3:career-ladders:browser": "node scripts/check-career-ladders-browser.mjs",
     "check:m3:career-ladders:electron": "node scripts/check-career-ladders-electron.mjs",
+    "check:career-ladder-ui": "node scripts/check-career-ladder-ui.mjs",
+    "check:career-ladder-ui:browser": "node scripts/check-career-ladder-ui-browser.mjs",
     "check:base-build-guidance": "node scripts/check-base-build-guidance.mjs",
     "check:claims-guidance": "node scripts/check-claims-guidance.mjs",
     "check:flight:v3": "node test/flightV3.spec.mjs",

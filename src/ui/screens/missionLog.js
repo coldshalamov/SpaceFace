@@ -1,6 +1,7 @@
 // src/ui/screens/missionLog.js — In-flight mission log.
 // Shows all active + recently completed missions with progress, timer, reward, and a TRACK button.
-// READ-ONLY on state; emits ui:trackMission + ui:abandonMission intents only (§5, §0.6).
+// READ-ONLY on state; emits ui:trackMission + ui:abandonMission (+ career:ladder choose/recover/abandon)
+// intents only (§5, §0.6). No career progression or owner writes from this surface.
 //
 // Export: missionLogScreen  (id 'missionLog').
 
@@ -16,6 +17,7 @@ import {
   missionTimePacing,
 } from '../missionPreflight.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
+import { buildMissionLogCareerChip } from '../careerLadderView.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -509,7 +511,7 @@ function mapOpenIntentFromButton(btn) {
     stationId,
     missionId,
     pos,
-    source: 'missionLog',
+    source: btn.getAttribute('data-map-source') || 'missionLog',
   };
 }
 
@@ -533,8 +535,216 @@ function mapActionButtonAttrs(mapAction, missionId) {
     + (mapAction.stationId ? ' data-map-station-id="' + escapeHtml(mapAction.stationId) + '"' : '')
     + (pos && Number.isFinite(pos.x) ? ' data-map-pos-x="' + escapeHtml(String(pos.x)) + '"' : '')
     + (pos && Number.isFinite(pos.z) ? ' data-map-pos-z="' + escapeHtml(String(pos.z)) + '"' : '')
+    + (mapAction.source ? ' data-map-source="' + escapeHtml(mapAction.source) + '"' : '')
     + ' data-mid="' + escapeHtml(missionId || mapAction.missionId || '') + '"';
 }
+
+/** Resolve named contact + location for a career chip (read-only map + mission join). */
+function careerContactLocation(chip, state) {
+  if (!chip) return { contact: null, location: null };
+  const map = chip.mapAction || null;
+  const stationId = map && map.stationId ? map.stationId : null;
+  const stn = stationId ? STATION_INFO.get(stationId) : null;
+  const sectorId = (map && map.sectorId) || (stn && stn.sectorId) || null;
+  const sec = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
+  const locationParts = [];
+  if (stn && stn.name) locationParts.push(stn.name);
+  else if (stationId) locationParts.push(prettyId(stationId, 'Station'));
+  if (sec && sec.name) locationParts.push(sec.name);
+  else if (sectorId && !(stn && stn.sectorName)) locationParts.push(prettyId(sectorId, 'Sector'));
+  else if (stn && stn.sectorName && !(sec && sec.name)) locationParts.push(stn.sectorName);
+  const location = locationParts.length ? locationParts.join(' · ') : null;
+
+  // Contact: faction short (linked ladder mission) or professional path title — never portraits.
+  let contact = chip.title || null;
+  const linkedId = chip.linkedMissionId || null;
+  if (linkedId && state && state.missions && Array.isArray(state.missions.active)) {
+    const m = state.missions.active.find((x) => x && x.id === linkedId);
+    if (m && m.factionId) {
+      const fac = FACTION_BY_ID.get(m.factionId);
+      if (fac && (fac.short || fac.name)) {
+        contact = String(fac.short || fac.name);
+      }
+    }
+  }
+  return { contact, location };
+}
+
+/**
+ * Compact consequence preview — linked mission stakes, choice seal, or recovery hint.
+ * Labels only; no raw receipt dumps or owner-field math beyond missionConsequenceSummary.
+ */
+function careerConsequencePreview(chip, state) {
+  if (!chip) return null;
+  if (chip.canChoose && Array.isArray(chip.choices) && chip.choices.length) {
+    const labels = chip.choices
+      .filter((c) => c && c.id && c.enabled !== false)
+      .map((c) => c.label || c.id)
+      .filter(Boolean)
+      .slice(0, 3);
+    if (labels.length) return 'Seals: ' + labels.join(' · ');
+  }
+  const linkedId = chip.linkedMissionId || null;
+  if (linkedId && state && state.missions && Array.isArray(state.missions.active)) {
+    const m = state.missions.active.find((x) => x && x.id === linkedId);
+    if (m) {
+      const c = missionConsequenceSummary(m);
+      const bits = [];
+      if (c.reward > 0) bits.push('+' + formatCredits(c.reward));
+      if (c.repReward > 0) bits.push('+' + c.repReward + ' rep');
+      if (c.collateral > 0) bits.push(formatCredits(c.collateral) + ' stake');
+      if (c.repPenalty < 0) bits.push(c.repPenalty + ' rep miss');
+      if (bits.length) return bits.join(' · ');
+    }
+  }
+  const recovery = chip.recovery;
+  if (
+    recovery
+    && (chip.status === 'recovering' || chip.status === 'step_failed')
+    && !chip.canRecover
+    && Number.isFinite(recovery.secondsLeft)
+    && recovery.secondsLeft > 0
+  ) {
+    return 'Retry in ' + Math.ceil(recovery.secondsLeft) + 's';
+  }
+  return null;
+}
+
+function careerStatusMod(status) {
+  const s = String(status || '').toLowerCase();
+  if (s === 'active') return 'active';
+  if (s === 'offered') return 'offered';
+  if (s === 'step_failed' || s === 'failed') return 'failed';
+  if (s === 'recovering') return 'recovering';
+  if (s === 'completed' || s === 'complete') return 'complete';
+  if (s === 'abandoned') return 'abandoned';
+  return 'idle';
+}
+
+/** HTML for mission-log career ladder chips (pure presenter → DOM). No accept; no owner writes. */
+function careerChipHtml(chip, state) {
+  if (!chip) return '';
+  const careerId = chip.careerId || '';
+  const title = chip.title || careerId || 'Career path';
+  const stepTitle = chip.stepTitle || '';
+  const statusLabel = chip.statusLabel || chip.status || '';
+  const statusMod = careerStatusMod(chip.status || statusLabel);
+  const progressLabel = chip.progressLabel
+    || ((chip.stepsTotal > 0)
+      ? ('Step ' + (chip.stepsDone || 0) + '/' + chip.stepsTotal)
+      : '');
+  const progressAria = (chip.stepsTotal > 0)
+    ? ('Progress: step ' + Math.min(chip.stepsTotal, Math.max(1, (chip.stepsDone || 0) + (chip.status === 'completed' ? 0 : 1))) + ' of ' + chip.stepsTotal)
+    : (progressLabel || 'Progress');
+  const mapAction = chip.mapAction;
+  const mapLabel = (mapAction && mapAction.label) || 'MAP';
+  const mapTitle = (mapAction && (mapAction.title || mapAction.body)) || ('Open map for ' + (stepTitle || title));
+  const choices = (chip.canChoose && Array.isArray(chip.choices)) ? chip.choices : [];
+  const linkedId = chip.linkedMissionId || null;
+  const collapsed = !!chip.collapsed;
+  const place = careerContactLocation(chip, state);
+  const consequence = careerConsequencePreview(chip, state);
+  const placeLine = [place.contact, place.location].filter(Boolean).join(' · ');
+
+  let actions = '';
+  if (mapAction) {
+    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-map" type="button"'
+      + ' data-career-act="openMap" data-career-id="' + escapeHtml(careerId) + '"'
+      + mapActionButtonAttrs(mapAction, linkedId || mapAction.missionId || '')
+      + ' title="' + escapeHtml(mapTitle) + '"'
+      + ' aria-label="' + escapeHtml(mapTitle) + '">'
+      + escapeHtml(mapLabel) + '</button>';
+  }
+  if (chip.canRecover) {
+    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-recover" type="button"'
+      + ' data-career-act="recover" data-career-id="' + escapeHtml(careerId) + '"'
+      + ' aria-label="' + escapeHtml('Retry ' + (stepTitle || title)) + '">RETRY</button>';
+  }
+  if (linkedId) {
+    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-track" type="button"'
+      + ' data-career-act="track" data-career-id="' + escapeHtml(careerId) + '"'
+      + ' data-mid="' + escapeHtml(linkedId) + '"'
+      + ' aria-label="' + escapeHtml('Track navigation for ' + title) + '">TRACK NAV</button>';
+  }
+  if (chip.canAbandon && !collapsed) {
+    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-abandon" type="button"'
+      + ' data-career-act="abandon" data-career-id="' + escapeHtml(careerId) + '"'
+      + ' data-career-title="' + escapeHtml(title) + '"'
+      + ' aria-label="' + escapeHtml('Abandon ' + title) + '">ABANDON</button>';
+  }
+
+  let choiceHtml = '';
+  if (choices.length) {
+    choiceHtml = '<div class="sf-mlog-career-choices" role="group" aria-label="Path decisions">'
+      + choices.map((c) => {
+        if (!c || !c.id) return '';
+        const label = c.label || c.id;
+        const blocked = c.enabled === false;
+        return '<button class="sf-mlog-career-btn sf-mlog-career-btn-choice" type="button"'
+          + ' data-career-act="choose" data-career-id="' + escapeHtml(careerId) + '"'
+          + ' data-choice-id="' + escapeHtml(c.id) + '"'
+          + (blocked ? ' disabled' : '')
+          + ' aria-label="' + escapeHtml(label + ' for ' + (stepTitle || title)) + '">'
+          + escapeHtml(label) + '</button>';
+      }).join('')
+      + '</div>';
+  }
+
+  return '<div class="sf-mlog-career'
+    + (collapsed ? ' sf-mlog-career--collapsed' : '')
+    + ' sf-mlog-career--' + statusMod + '"'
+    + ' data-testid="mission-log-career-chip"'
+    + ' data-career-id="' + escapeHtml(careerId) + '"'
+    + ' data-career-status="' + escapeHtml(String(chip.status || statusLabel || '')) + '"'
+    + ' role="region"'
+    + ' aria-label="' + escapeHtml(title + (statusLabel ? (', ' + statusLabel) : '')) + '">'
+    + '<div class="sf-mlog-career-top">'
+    +   '<span class="sf-mlog-career-title">' + escapeHtml(title) + '</span>'
+    +   (statusLabel
+      ? '<span class="sf-mlog-career-status mono" role="status">' + escapeHtml(String(statusLabel)) + '</span>'
+      : '')
+    + '</div>'
+    + (stepTitle
+      ? '<div class="sf-mlog-career-step mono">' + escapeHtml(stepTitle) + '</div>'
+      : '')
+    + (placeLine
+      ? '<div class="sf-mlog-career-place mono" aria-label="'
+        + escapeHtml([place.contact ? ('Contact ' + place.contact) : '', place.location ? ('Location ' + place.location) : ''].filter(Boolean).join(', '))
+        + '">'
+        + (place.contact
+          ? '<span class="sf-mlog-career-contact">' + escapeHtml(place.contact) + '</span>'
+          : '')
+        + (place.contact && place.location ? '<span class="sf-mlog-career-place-sep" aria-hidden="true"> · </span>' : '')
+        + (place.location
+          ? '<span class="sf-mlog-career-location">' + escapeHtml(place.location) + '</span>'
+          : '')
+        + '</div>'
+      : '')
+    + (chip.objective
+      ? '<div class="sf-mlog-career-objective">' + escapeHtml(chip.objective) + '</div>'
+      : '')
+    + (progressLabel
+      ? '<div class="sf-mlog-career-progress mono" aria-label="' + escapeHtml(progressAria) + '">'
+        + escapeHtml(progressLabel) + '</div>'
+      : '')
+    + (chip.nextAction
+      ? '<div class="sf-mlog-career-next" aria-live="polite">' + escapeHtml(chip.nextAction) + '</div>'
+      : '')
+    + (consequence
+      ? '<div class="sf-mlog-career-consequence mono" aria-label="Consequence preview">'
+        + escapeHtml(consequence) + '</div>'
+      : '')
+    + (chip.failureLine
+      ? '<div class="sf-mlog-career-fail" aria-live="polite">' + escapeHtml(chip.failureLine) + '</div>'
+      : '')
+    + (chip.receiptLine
+      ? '<div class="sf-mlog-career-receipt" aria-live="polite">' + escapeHtml(chip.receiptLine) + '</div>'
+      : '')
+    + choiceHtml
+    + (actions ? '<div class="sf-mlog-career-actions" role="group" aria-label="Career actions">' + actions + '</div>' : '')
+    + '</div>';
+}
+
 
 function isMissionLogKey(ev) {
   const key = ev && ev.key;
@@ -807,6 +1017,7 @@ export const missionLogScreen = {
 
   mount(rootEl, ctx) {
     this._ctx = ctx;
+    this._rootEl = rootEl;
     injectStyle();
 
     rootEl.innerHTML = '';
@@ -819,8 +1030,9 @@ export const missionLogScreen = {
       '<span class="sf-mlog-hint mono">' + BINDINGS.missionLog.label + ' to close</span>' +
       '<button class="sf-mlog-close" type="button" aria-label="Close Mission Log">CLOSE</button>';
     rootEl.appendChild(head);
+    this._closeBtn = head.querySelector('.sf-mlog-close');
 
-    head.querySelector('.sf-mlog-close').addEventListener('click', () => {
+    this._closeBtn.addEventListener('click', () => {
       const mgr = getManager(ctx);
       if (mgr) mgr.popScreen();
     });
@@ -847,6 +1059,20 @@ export const missionLogScreen = {
     const recEl = el('div', 'sf-mlog-recommend');
     rootEl.insertBefore(recEl, activeH);
     this._recommendEl = recEl;
+
+    // Career ladder chip (CL-UI-03): after story/recommended, before active missions.
+    // Read-only path strip — choose/recover/abandon + map/track only; no accept from flight log.
+    const careerH = el('div', 'sf-mlog-section-h sf-mlog-section-career', 'CAREER LADDER');
+    careerH.id = 'sf-mlog-career-heading';
+    careerH.hidden = true;
+    rootEl.insertBefore(careerH, activeH);
+    const careerEl = el('div', 'sf-mlog-career-list');
+    careerEl.setAttribute('role', 'region');
+    careerEl.setAttribute('aria-labelledby', 'sf-mlog-career-heading');
+    careerEl.hidden = true;
+    rootEl.insertBefore(careerEl, activeH);
+    this._careerHeader = careerH;
+    this._careerEl = careerEl;
 
     // Completed missions section
     const compH = el('div', 'sf-mlog-section-h sf-mlog-section-comp');
@@ -882,6 +1108,75 @@ export const missionLogScreen = {
         openMapScreen(ctx, mapOpenIntentFromButton(btn));
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
+    });
+
+    careerEl.addEventListener('click', async (ev) => {
+      const btn = ev.target.closest('[data-career-act]');
+      if (!btn || !careerEl.contains(btn) || btn.disabled) return;
+      const act = btn.getAttribute('data-career-act');
+      const careerId = btn.getAttribute('data-career-id');
+      if (!act) return;
+
+      if (act === 'openMap') {
+        openMapScreen(ctx, mapOpenIntentFromButton(btn));
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        return;
+      }
+      if (act === 'track') {
+        const missionId = btn.getAttribute('data-mid');
+        if (missionId) {
+          ctx.bus.emit('ui:trackMission', { missionId });
+          ctx.bus.emit('audio:cue', { id: 'ui_click' });
+          this._render();
+        }
+        return;
+      }
+      if (act === 'choose') {
+        const choiceId = btn.getAttribute('data-choice-id');
+        if (!careerId || !choiceId) return;
+        ctx.bus.emit('career:ladder:choose', { careerId, choiceId });
+        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+        this._render();
+        return;
+      }
+      if (act === 'recover') {
+        if (!careerId) return;
+        ctx.bus.emit('career:ladder:recover', { careerId });
+        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+        this._render();
+        return;
+      }
+      if (act === 'abandon') {
+        if (!careerId) return;
+        const title = btn.getAttribute('data-career-title') || careerId;
+        const ok = await confirm({
+          title: 'Abandon path?',
+          body: 'Close ' + title + '? Other professional paths stay open.',
+          confirmLabel: 'Abandon',
+          cancelLabel: 'Keep path',
+          danger: true,
+        });
+        if (!ok) return;
+        ctx.bus.emit('career:ladder:abandon', { careerId });
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        this._render();
+      }
+    });
+
+    // Keyboard/controller-friendly roving among career CTAs (Arrow keys). Enter/Space are native.
+    careerEl.addEventListener('keydown', (ev) => {
+      const key = ev.key;
+      if (key !== 'ArrowRight' && key !== 'ArrowLeft' && key !== 'ArrowDown' && key !== 'ArrowUp') {
+        return;
+      }
+      const buttons = Array.from(careerEl.querySelectorAll('button[data-career-act]:not([disabled])'));
+      if (buttons.length < 2) return;
+      const i = buttons.indexOf(document.activeElement);
+      if (i < 0) return;
+      ev.preventDefault();
+      const dir = (key === 'ArrowRight' || key === 'ArrowDown') ? 1 : -1;
+      const next = buttons[(i + dir + buttons.length) % buttons.length];
+      if (next) next.focus();
     });
 
     // Delegated click handler for buttons
@@ -925,12 +1220,19 @@ export const missionLogScreen = {
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
     this._render();
+    this._focusPrimaryControl();
   },
 
   onHide() {},
 
-  refresh(ctx) {
+  /**
+   * Event-driven refresh. Periodic low-cadence ticks from uiRoot must no-op:
+   * a full repaint every 18 frames recreates aria-live nodes, detaches confirm
+   * openers, and wipes focus. Real bus handlers call _render() directly.
+   */
+  refresh(ctx, options = {}) {
     if (ctx) this._ctx = ctx;
+    if (options && options.periodic) return;
     this._render();
   },
 
@@ -943,6 +1245,26 @@ export const missionLogScreen = {
     return false;
   },
 
+  /** Focus first actionable career CTA (map/recover/choice), else CLOSE. */
+  _focusPrimaryControl() {
+    const career = this._careerEl;
+    let target = null;
+    if (career && !career.hidden) {
+      target = career.querySelector(
+        'button[data-career-act="openMap"]:not([disabled]),'
+        + 'button[data-career-act="recover"]:not([disabled]),'
+        + 'button[data-career-act="choose"]:not([disabled]),'
+        + 'button[data-career-act]:not([disabled])',
+      );
+    }
+    if (!target) target = this._closeBtn || null;
+    if (target && typeof target.focus === 'function') {
+      try { target.focus({ preventScroll: true }); } catch (_) {
+        try { target.focus(); } catch (__) { /* ignore */ }
+      }
+    }
+  },
+
   _subscribe() {
     if (this._subbed || !this._ctx) return;
     this._subbed = true;
@@ -953,6 +1275,13 @@ export const missionLogScreen = {
     bus.on('mission:completed', refresh);
     bus.on('mission:failed', refresh);
     bus.on('mission:expired', refresh);
+    bus.on('career:ladder:progress', refresh);
+    bus.on('career:ladder:stepActive', refresh);
+    bus.on('career:ladder:stepFailed', refresh);
+    bus.on('career:ladder:stepDone', refresh);
+    bus.on('career:ladder:stepRecovered', refresh);
+    bus.on('career:ladder:choiceResolved', refresh);
+    bus.on('career:ladder:completed', refresh);
   },
 
   _visible() {
@@ -974,6 +1303,7 @@ export const missionLogScreen = {
     // always a valid "what should I do now" even with zero active contracts.
     this._renderStory(state);
     this._renderRecommendations(state, activeMissions, tracked);
+    this._renderCareerChip(state);
 
     this._listEl.innerHTML = '';
 
@@ -1092,6 +1422,82 @@ export const missionLogScreen = {
     )).join('');
   },
 
+  /**
+   * Capture focused career CTA semantics before chip repaint.
+   * Null when focus is outside the career list (never steal).
+   */
+  _captureCareerFocusToken() {
+    if (typeof document === 'undefined' || !this._careerEl) return null;
+    const active = document.activeElement;
+    if (!active || typeof this._careerEl.contains !== 'function') return null;
+    if (!this._careerEl.contains(active)) return null;
+    const btn = active.closest && active.closest('[data-career-act]');
+    if (!btn || !this._careerEl.contains(btn)) return null;
+    return {
+      act: btn.getAttribute('data-career-act') || '',
+      careerId: btn.getAttribute('data-career-id') || '',
+      choiceId: btn.getAttribute('data-choice-id') || '',
+      mid: btn.getAttribute('data-mid') || '',
+    };
+  },
+
+  /**
+   * Restore focus to the matching enabled career CTA when the semantic action still exists.
+   */
+  _restoreCareerFocusToken(token) {
+    if (!token || !token.act || !this._careerEl || this._careerEl.hidden) return;
+    if (typeof document === 'undefined') return;
+    const active = document.activeElement;
+    if (active
+      && active !== document.body
+      && active !== document.documentElement
+      && typeof this._careerEl.contains === 'function'
+      && !this._careerEl.contains(active)
+      && this._rootEl
+      && typeof this._rootEl.contains === 'function'
+      && this._rootEl.contains(active)) {
+      return;
+    }
+    let sel = 'button[data-career-act="' + token.act + '"]';
+    if (token.careerId) sel += '[data-career-id="' + token.careerId + '"]';
+    if (token.choiceId) sel += '[data-choice-id="' + token.choiceId + '"]';
+    if (token.mid) sel += '[data-mid="' + token.mid + '"]';
+    const target = this._careerEl.querySelector(sel + ':not([disabled])');
+    if (!target || target.disabled || target.hidden) return;
+    if (typeof target.focus !== 'function') return;
+    try { target.focus({ preventScroll: true }); } catch (_) {
+      try { target.focus(); } catch (__) { /* ignore */ }
+    }
+  },
+
+  /**
+   * Career ladder strip for the flight log (CL-UI-03).
+   * Presenter-only model; emits career:ladder choose/recover/abandon + map/track intents.
+   * Never accept/decline from this surface; never write ladder/owner state.
+   */
+  _renderCareerChip(state) {
+    if (!this._careerEl) return;
+    const focusToken = this._captureCareerFocusToken();
+    const registry = this._ctx && this._ctx.registry;
+    let model = null;
+    try {
+      model = buildMissionLogCareerChip(state, registry);
+    } catch (_) {
+      model = null;
+    }
+    const chips = (model && model.visible && Array.isArray(model.chips)) ? model.chips : [];
+    if (!chips.length) {
+      this._careerEl.innerHTML = '';
+      this._careerEl.hidden = true;
+      if (this._careerHeader) this._careerHeader.hidden = true;
+      return;
+    }
+    if (this._careerHeader) this._careerHeader.hidden = false;
+    this._careerEl.hidden = false;
+    this._careerEl.innerHTML = chips.map((chip) => careerChipHtml(chip, state)).join('');
+    this._restoreCareerFocusToken(focusToken);
+  },
+
   _renderCompleted() {
     if (!this._compListEl || !this._ctx) return;
     const log = (this._ctx.state.missions && this._ctx.state.missions.completedLog) || [];
@@ -1183,6 +1589,66 @@ const CSS = `
   color: var(--warn); background: rgba(255,205,76,.08); }
 .sf-mlog-rec-action:hover { border-color: var(--accent); color: var(--accent); background: rgba(57,208,255,.1); }
 .sf-mlog-rec-map { border-color: rgba(57,208,255,.55); color: var(--accent); background: rgba(57,208,255,.08); }
+
+/* Career ladder chip (CL-UI-03) — non-diegetic strip; no visor/portrait chrome. */
+.sf-mlog-section-career { color: var(--accent-2, var(--accent)); }
+.sf-mlog-career-list { padding: 4px 16px 8px; display: flex; flex-direction: column; gap: 8px; }
+.sf-mlog-career-list[hidden], .sf-mlog-section-career[hidden] { display: none; }
+.sf-mlog-career { border: 1px solid rgba(57,208,255,.45); border-radius: 8px; padding: 11px 14px;
+  background: rgba(8,16,28,.62); }
+.sf-mlog-career--collapsed { opacity: .72; border-color: rgba(88,112,145,.4); }
+.sf-mlog-career--active { border-color: rgba(57,208,255,.7); box-shadow: 0 0 10px rgba(57,208,255,.1); }
+.sf-mlog-career--offered { border-color: rgba(141,102,255,.45); }
+.sf-mlog-career--failed, .sf-mlog-career--recovering {
+  border-color: rgba(255,198,77,.5); box-shadow: 0 0 8px rgba(255,198,77,.08); }
+.sf-mlog-career--complete { border-color: rgba(98,224,138,.35); }
+.sf-mlog-career--abandoned { border-color: rgba(88,112,145,.4); opacity: .78; }
+.sf-mlog-career-top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.sf-mlog-career-title { flex: 1; font-size: .9rem; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+.sf-mlog-career-status { flex: none; font-size: .58rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent); padding: 1px 6px; border-radius: 4px; background: rgba(57,208,255,.1);
+  border: 1px solid rgba(57,208,255,.28); }
+.sf-mlog-career--failed .sf-mlog-career-status,
+.sf-mlog-career--recovering .sf-mlog-career-status { color: var(--warn, #ffc64d);
+  border-color: rgba(255,198,77,.4); background: rgba(255,198,77,.1); }
+.sf-mlog-career--complete .sf-mlog-career-status { color: var(--good, #62e08a);
+  border-color: rgba(98,224,138,.35); background: rgba(98,224,138,.08); }
+.sf-mlog-career--offered .sf-mlog-career-status { color: #b89cff;
+  border-color: rgba(141,102,255,.4); background: rgba(141,102,255,.1); }
+.sf-mlog-career-step { font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-mute); margin-bottom: 4px; }
+.sf-mlog-career-place { font-size: .66rem; letter-spacing: .04em; color: var(--ink-mute);
+  margin-bottom: 4px; overflow-wrap: anywhere; }
+.sf-mlog-career-contact { color: var(--ink-dim); }
+.sf-mlog-career-location { color: var(--accent); }
+.sf-mlog-career-objective { font-size: .84rem; line-height: 1.35; color: var(--ink); font-weight: 600;
+  margin-bottom: 4px; overflow-wrap: anywhere; }
+.sf-mlog-career-progress { font-size: .68rem; color: var(--ink-mute); letter-spacing: .06em;
+  margin-bottom: 4px; }
+.sf-mlog-career-next { font-size: .74rem; line-height: 1.35; color: var(--ink-dim); margin-bottom: 4px;
+  overflow-wrap: anywhere; }
+.sf-mlog-career-consequence { font-size: .64rem; letter-spacing: .03em; color: var(--energy, #9fd4ff);
+  margin-bottom: 4px; overflow-wrap: anywhere; }
+.sf-mlog-career-fail { font-size: .74rem; line-height: 1.35; color: var(--warn, #ffc64d); margin-bottom: 4px;
+  overflow-wrap: anywhere; }
+.sf-mlog-career-receipt { font-size: .7rem; line-height: 1.3; color: var(--ink-mute); margin-bottom: 4px;
+  overflow-wrap: anywhere; }
+.sf-mlog-career-choices { display: flex; flex-wrap: wrap; gap: 7px; margin: 6px 0 4px; }
+.sf-mlog-career-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+.sf-mlog-career-btn { font-size: .66rem; padding: 8px 12px; min-height: 44px; min-width: 44px;
+  border-color: var(--panel-edge); color: var(--ink-dim); background: rgba(255,255,255,.03); }
+.sf-mlog-career-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.sf-mlog-career-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sf-mlog-career-btn:disabled { opacity: .4; cursor: default; }
+.sf-mlog-career-btn-map { border-color: rgba(57,208,255,.55); color: var(--accent);
+  background: rgba(57,208,255,.08); }
+.sf-mlog-career-btn-recover { border-color: rgba(255,198,77,.45); color: var(--warn, #ffc64d);
+  background: rgba(255,198,77,.08); }
+.sf-mlog-career-btn-track { border-color: var(--panel-edge-2); }
+.sf-mlog-career-btn-abandon { border-color: rgba(255,84,112,.35); color: var(--ink-mute); }
+.sf-mlog-career-btn-abandon:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+.sf-mlog-career-btn-choice { border-color: rgba(57,208,255,.4); color: var(--ink);
+  background: rgba(57,208,255,.06); }
 
 .sf-mlog-list { flex: 1; overflow-y: auto; padding: 6px 16px 10px; display: flex; flex-direction: column; gap: 10px; }
 

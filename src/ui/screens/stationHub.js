@@ -30,6 +30,7 @@ import { missionStandingRequirement } from '../missionPreflight.js';
 import { missionRouteIntel, missionCargoFootprint, fmtHoldUnits } from '../missionPreflight.js';
 import { BINDINGS } from '../bindings.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
+import { buildLadderRailModel } from '../careerLadderView.js';
 import { glyphSvg } from '../uiPrimitives.js';
 import { STATION_BROADCASTS } from '../../systems/stationBroadcast.js';
 import { confirm, isConfirmOpen } from '../confirm.js';
@@ -646,12 +647,13 @@ function firstDockStoryIndex(state) {
 export function firstDockHandoffVisible(state, stationId) {
   if (!state || !stationId) return false;
   const ob = state.onboarding || null;
-  const done = ob && ob.done || {};
+  const beatDoneAt = ob && ob.beatDoneAt || {};
   const storyIndex = firstDockStoryIndex(state);
-  const firstLoopOpen = !!ob && ob.finished !== true && done.next !== true;
+  const firstLoopOpen = !!ob && ob.active === true && ob.finished !== true;
   const earlyStory = storyIndex != null && storyIndex <= 1;
+  if (ob && (ob.finished === true || beatDoneAt.choice != null)) return false;
   if (!firstLoopOpen && !earlyStory) return false;
-  if (activeMissionCount(state) > 0 && (done.sell === true || done.next === true || (ob && ob.finished === true))) return false;
+  if (activeMissionCount(state) > 0 && beatDoneAt.dock != null) return false;
   return true;
 }
 
@@ -663,12 +665,12 @@ function firstDockDepartureTarget(chips) {
 
 export function firstDockHandoffSteps(state = {}) {
   const ob = state.onboarding || {};
-  const done = ob.done || {};
+  const beatDoneAt = ob.beatDoneAt || {};
   const activeJobs = activeMissionCount(state);
-  const missionDone = activeJobs > 0 || done.next === true;
+  const missionDone = activeJobs > 0 || beatDoneAt.choice != null || ob.finished === true;
   const departureChips = departureReadinessChips(state);
   const departure = departureReadinessSummary(departureChips);
-  const marketDone = done.sell === true;
+  const marketDone = beatDoneAt.dock != null;
   const hasCargo = cargoUsedUnits(state) > 0;
   // Verbs that match what the button does (open Hold to sell / Missions to accept / Services to fix).
   return [
@@ -768,8 +770,8 @@ function missionRiskTier(m) {
 function firstLoopNeedsSafeWork(state) {
   const ob = state && state.onboarding;
   if (!ob || ob.finished === true) return false;
-  const done = ob.done || {};
-  return done.next !== true;
+  const beatDoneAt = ob.beatDoneAt || {};
+  return beatDoneAt.choice == null && activeMissionCount(state) === 0;
 }
 
 function missionRiskCopy(riskValue) {
@@ -1051,6 +1053,9 @@ export const stationHub = {
   _busyEl: null,
   _originRailEl: null,
   _originSelectedId: null,
+  _ladderRailEl: null,
+  _ladderSelectedId: null,
+  _ladderModel: null,
   _activeRefreshJob: null,
   _activeRefreshRaf: 0,
   _activeRefreshTimer: 0,
@@ -1183,6 +1188,59 @@ export const stationHub = {
       ctx.bus.emit(`career:origin:${verb}`, { careerId: this._originSelectedId });
       ctx.bus.emit('audio:cue', { id: verb === 'accept' ? 'ui_accept' : 'ui_tab' });
       this._refreshOriginRail();
+    });
+
+    // Professional career ladders: compact non-binding strip adjacent to the origin rail.
+    // Pure presenter model only; mutations are career:ladder:* intents (no state writes).
+    // No visor/portrait chrome; no idle motion (respects html.sf-reduce-motion).
+    const ladderRail = document.createElement('section');
+    ladderRail.className = 'st-ladder-rail';
+    ladderRail.hidden = true;
+    ladderRail.setAttribute('role', 'region');
+    ladderRail.setAttribute('aria-labelledby', 'st-ladder-rail-title');
+    ladderRail.setAttribute('data-testid', 'career-ladder-rail');
+    try {
+      if (typeof document !== 'undefined'
+        && document.documentElement
+        && document.documentElement.classList.contains('sf-reduce-motion')) {
+        ladderRail.setAttribute('data-reduce-motion', '1');
+      }
+    } catch (_) { /* ignore */ }
+    ladderRail.innerHTML =
+      '<div class="st-ladder-head">' +
+        '<span id="st-ladder-rail-title" class="st-ladder-kicker mono">Professional path</span>' +
+        '<span class="st-ladder-note">Optional. Paths never lock each other.</span>' +
+      '</div>' +
+      '<div class="st-ladder-careers" role="group" aria-label="Professional career ladders"></div>' +
+      '<div class="st-ladder-panel">' +
+        '<div class="st-ladder-meta">' +
+          '<span class="st-ladder-detail" aria-live="polite" aria-atomic="true"></span>' +
+          '<span class="st-ladder-progress mono"></span>' +
+        '</div>' +
+        '<p class="st-ladder-objective"></p>' +
+        '<p class="st-ladder-where mono" hidden></p>' +
+        '<p class="st-ladder-prereq" hidden></p>' +
+        '<p class="st-ladder-fail" aria-live="polite" hidden></p>' +
+        '<p class="st-ladder-receipt" aria-live="polite" hidden></p>' +
+        '<div class="st-ladder-choices" role="group" aria-label="Path decisions" hidden></div>' +
+        '<div class="st-ladder-actions">' +
+          '<button type="button" class="st-ladder-accept st-meta-btn" data-ladder-action="accept" data-testid="career-ladder-accept">Start path</button>' +
+          '<button type="button" class="st-ladder-decline st-meta-btn" data-ladder-action="decline" data-testid="career-ladder-decline">Not now</button>' +
+          '<button type="button" class="st-ladder-recover st-meta-btn" data-ladder-action="recover" data-testid="career-ladder-recover">Retry</button>' +
+          '<button type="button" class="st-ladder-abandon st-meta-btn" data-ladder-action="abandon" data-testid="career-ladder-abandon">Abandon</button>' +
+          '<button type="button" class="st-ladder-map st-meta-btn" data-ladder-action="openMap" data-testid="career-ladder-map">Map</button>' +
+          '<button type="button" class="st-ladder-log st-meta-btn" data-ladder-action="missionLog" data-testid="career-ladder-mission-log">Missions</button>' +
+        '</div>' +
+      '</div>';
+    centerStage.appendChild(ladderRail);
+    this._ladderRailEl = ladderRail;
+    this._ladderSelectedId = null;
+    this._ladderModel = null;
+    ladderRail.addEventListener('click', (ev) => {
+      this._onLadderRailClick(ev);
+    });
+    ladderRail.addEventListener('keydown', (ev) => {
+      this._onLadderRailKeydown(ev);
     });
 
     // Disposable first-dock checklist (single strip, dismissible — never permanent multi-card chrome).
@@ -1326,26 +1384,38 @@ export const stationHub = {
     commsPanel.innerHTML = `
       <div class="st-comms-panel-head">
         <span>Comms Log</span>
-        <span class="st-comms-panel-close">CLOSE [X]</span>
+        <button type="button" class="st-comms-panel-close" aria-label="Close comms log">CLOSE [X]</button>
       </div>
       <div class="st-comms-panel-body">
-        <div class="st-comms-panel-row"><span class="sender">ATCX</span> CLEARED FOR DEPARTURE.</div>
-        <div class="st-comms-panel-row"><span class="sender">TRADER</span> ANYONE SELLING ORE?</div>
-        <div class="st-comms-panel-row"><span class="sender">STATION</span> REMINDER: CONTRABAND SCANS ARE ACTIVE.</div>
+        <div class="st-comms-panel-row">No queued station traffic.</div>
       </div>
     `;
+    commsPanel.id = 'st-comms-panel';
+    commsPanel.setAttribute('aria-hidden', 'true');
+    commsPanel.inert = true;
     screen.appendChild(commsPanel);
 
-    commsPanel.querySelector('.st-comms-panel-close').addEventListener('click', () => {
-      commsPanel.classList.remove('open');
-    });
+    const setCommsPanelOpen = (open) => {
+      commsPanel.classList.toggle('open', !!open);
+      commsPanel.setAttribute('aria-hidden', open ? 'false' : 'true');
+      commsPanel.inert = !open;
+      commsTicker.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) commsPanel.querySelector('.st-comms-panel-close').focus({ preventScroll: true });
+      else commsTicker.focus({ preventScroll: true });
+    };
 
-    // Comms Ticker
-    const commsTicker = document.createElement('div');
+    // Quiet, explicit control. Ambient placeholder chatter must not compete with first-dock copy.
+    const commsTicker = document.createElement('button');
+    commsTicker.type = 'button';
     commsTicker.className = 'st-comms-ticker';
-    commsTicker.innerHTML = '<span class="sender">ATCX</span> CLEARED FOR DEPARTURE. &nbsp;&nbsp;&nbsp; <span class="sender">TRADER</span> ANYONE SELLING ORE?';
+    commsTicker.textContent = 'COMMS LOG';
+    commsTicker.setAttribute('aria-controls', 'st-comms-panel');
+    commsTicker.setAttribute('aria-expanded', 'false');
+    commsPanel.querySelector('.st-comms-panel-close').addEventListener('click', () => {
+      setCommsPanelOpen(false);
+    });
     commsTicker.addEventListener('click', () => {
-      commsPanel.classList.toggle('open');
+      setCommsPanelOpen(!commsPanel.classList.contains('open'));
     });
     screen.appendChild(commsTicker);
 
@@ -2834,6 +2904,462 @@ export const stationHub = {
     }
   },
 
+  /**
+   * Capture a stable focus token while focus is inside the ladder rail.
+   * Returns null when focus is outside so repaint never steals it.
+   * Token kinds: career | action | choice.
+   */
+  _captureLadderFocusToken() {
+    if (typeof document === 'undefined' || !this._ladderRailEl) return null;
+    const active = document.activeElement;
+    if (!active || typeof this._ladderRailEl.contains !== 'function') return null;
+    if (!this._ladderRailEl.contains(active)) return null;
+    const career = active.closest && active.closest('[data-ladder-career]');
+    if (career && this._ladderRailEl.contains(career)) {
+      return { kind: 'career', id: career.getAttribute('data-ladder-career') || '' };
+    }
+    const choice = active.closest && active.closest('[data-ladder-choice]');
+    if (choice && this._ladderRailEl.contains(choice)) {
+      return { kind: 'choice', id: choice.getAttribute('data-ladder-choice') || '' };
+    }
+    const action = active.closest && active.closest('[data-ladder-action]');
+    if (action && this._ladderRailEl.contains(action)) {
+      return { kind: 'action', action: action.getAttribute('data-ladder-action') || '' };
+    }
+    return null;
+  },
+
+  /**
+   * Restore focus to the enabled visible control matching a pre-repaint token.
+   * No-op when token is null (focus was outside the rail) or control is gone/disabled.
+   */
+  _restoreLadderFocusToken(token) {
+    if (!token || !this._ladderRailEl || this._ladderRailEl.hidden) return;
+    if (typeof document === 'undefined') return;
+    // If focus landed on a live control outside the rail during repaint, never steal it.
+    const active = document.activeElement;
+    if (active
+      && active !== document.body
+      && active !== document.documentElement
+      && typeof this._ladderRailEl.contains === 'function'
+      && !this._ladderRailEl.contains(active)
+      && this._el
+      && typeof this._el.contains === 'function'
+      && this._el.contains(active)) {
+      return;
+    }
+    let target = null;
+    if (token.kind === 'career' && token.id) {
+      // Prefer the post-repaint selected career when the prior focus was a branch control
+      // (covers Arrow/Home/End selection that updates _ladderSelectedId before refresh).
+      const preferId = this._ladderSelectedId || token.id;
+      target = this._ladderRailEl.querySelector('[data-ladder-career="' + preferId + '"]')
+        || this._ladderRailEl.querySelector('[data-ladder-career="' + token.id + '"]');
+    } else if (token.kind === 'choice' && token.id) {
+      target = this._ladderRailEl.querySelector(
+        '[data-ladder-choice="' + token.id + '"]:not([disabled])',
+      );
+    } else if (token.kind === 'action' && token.action) {
+      target = this._ladderRailEl.querySelector(
+        '[data-ladder-action="' + token.action + '"]:not([disabled])',
+      );
+    }
+    if (!target || target.disabled || target.hidden) return;
+    if (typeof target.focus !== 'function') return;
+    try { target.focus({ preventScroll: true }); } catch (_) {
+      try { target.focus(); } catch (__) { /* ignore */ }
+    }
+  },
+
+  /**
+   * Professional ladder rail — pure presenter paint only.
+   * Emits career:ladder:* intents; never writes state.careers.ladders or owner fields.
+   */
+  _refreshLadderRail() {
+    if (!this._ladderRailEl) return;
+    // Preserve focus across career/action/choice rebuilds when focus is inside the rail.
+    const focusToken = this._captureLadderFocusToken();
+    const ctx = this._ctx;
+    const state = ctx && ctx.state;
+    const registry = ctx && ctx.registry;
+    let model;
+    try {
+      model = buildLadderRailModel(state, registry);
+    } catch (err) {
+      console.error('[stationHub] buildLadderRailModel failed', err);
+      model = { nonBinding: true, visible: false, note: '', cards: [] };
+    }
+    this._ladderModel = model;
+    const cards = model && Array.isArray(model.cards) ? model.cards : [];
+    const visible = !!(model && model.visible && cards.length);
+    this._ladderRailEl.hidden = !visible;
+    // Keep reduced-motion flag in sync with accessibility root class.
+    try {
+      if (typeof document !== 'undefined' && document.documentElement) {
+        if (document.documentElement.classList.contains('sf-reduce-motion')) {
+          this._ladderRailEl.setAttribute('data-reduce-motion', '1');
+        } else {
+          this._ladderRailEl.removeAttribute('data-reduce-motion');
+        }
+      }
+    } catch (_) { /* ignore */ }
+    if (!visible) {
+      this._ladderSelectedId = null;
+      return;
+    }
+
+    const priority = { active: 0, recovering: 1, step_failed: 2, offered: 3, latent: 4, declined: 5, completed: 6 };
+    if (!cards.some((c) => c && c.careerId === this._ladderSelectedId)) {
+      const ranked = cards.slice().sort((a, b) =>
+        (priority[a && a.status] ?? 9) - (priority[b && b.status] ?? 9));
+      this._ladderSelectedId = ranked[0] && ranked[0].careerId;
+    }
+
+    const careersEl = this._ladderRailEl.querySelector('.st-ladder-careers');
+    if (careersEl) {
+      // All branch controls stay tabbable (tabindex=0) so gamepad D-pad focus traversal
+      // can reach non-selected careers. Selected state is aria-pressed + is-selected only;
+      // keyboard Arrow/Home/End still drive selection via _onLadderRailKeydown.
+      careersEl.innerHTML = cards.map((card) => {
+        const id = String(card.careerId || '');
+        const selected = id === this._ladderSelectedId;
+        const statusLabel = String(card.statusLabel || card.status || '');
+        const a11y = (card.title || id) + ', ' + statusLabel
+          + (card.progressLabel ? ', ' + card.progressLabel : '');
+        return '<button type="button" class="st-ladder-choice' + (selected ? ' is-selected' : '')
+          + (card.collapsed ? ' is-resolved' : '') + '" data-ladder-career="' + escapeHtml(id)
+          + '" data-testid="career-ladder-choice-' + escapeHtml(id)
+          + '" aria-pressed="' + (selected ? 'true' : 'false')
+          + '" aria-label="' + escapeHtml(a11y)
+          + '" tabindex="0">'
+          + '<span class="st-ladder-choice-name">' + escapeHtml(card.title || id)
+          + '</span><span class="st-ladder-choice-status mono">'
+          + escapeHtml(statusLabel) + '</span></button>';
+      }).join('');
+    }
+
+    const selected = cards.find((c) => c && c.careerId === this._ladderSelectedId) || cards[0];
+    if (!selected) return;
+
+    const detail = this._ladderRailEl.querySelector('.st-ladder-detail');
+    const progress = this._ladderRailEl.querySelector('.st-ladder-progress');
+    const objective = this._ladderRailEl.querySelector('.st-ladder-objective');
+    const whereEl = this._ladderRailEl.querySelector('.st-ladder-where');
+    const prereq = this._ladderRailEl.querySelector('.st-ladder-prereq');
+    const fail = this._ladderRailEl.querySelector('.st-ladder-fail');
+    const receipt = this._ladderRailEl.querySelector('.st-ladder-receipt');
+    const choicesEl = this._ladderRailEl.querySelector('.st-ladder-choices');
+    const accept = this._ladderRailEl.querySelector('[data-ladder-action="accept"]');
+    const decline = this._ladderRailEl.querySelector('[data-ladder-action="decline"]');
+    const recover = this._ladderRailEl.querySelector('[data-ladder-action="recover"]');
+    const abandon = this._ladderRailEl.querySelector('[data-ladder-action="abandon"]');
+    const mapBtn = this._ladderRailEl.querySelector('[data-ladder-action="openMap"]');
+    const logBtn = this._ladderRailEl.querySelector('[data-ladder-action="missionLog"]');
+
+    const place = ladderContactAndLocation(state, registry, selected);
+
+    if (detail) {
+      const lines = [];
+      if (selected.nextAction) lines.push(selected.nextAction);
+      if (selected.teach) lines.push(selected.teach);
+      if (selected.attemptMultLabel) lines.push(selected.attemptMultLabel);
+      detail.textContent = lines.join(' · ') || 'Optional professional path.';
+    }
+    if (progress) {
+      const label = selected.progressLabel || '';
+      progress.textContent = label;
+      progress.hidden = !label;
+      // Prefer truthful step index for a11y (step N of M), not only completed count.
+      const stepOf = Number.isFinite(selected.stepIndex) && Number.isFinite(selected.stepsTotal)
+        && selected.stepsTotal > 0
+        ? Math.min(selected.stepsTotal, Math.max(1, (Number(selected.stepIndex) || 0) + 1))
+        : null;
+      if (label && stepOf != null) {
+        progress.setAttribute('aria-label',
+          'Progress: step ' + stepOf + ' of ' + selected.stepsTotal);
+      } else if (label && Number.isFinite(selected.stepsDone) && Number.isFinite(selected.stepsTotal)) {
+        progress.setAttribute('aria-label',
+          'Progress: step ' + selected.stepsDone + ' of ' + selected.stepsTotal);
+      } else if (label) {
+        progress.setAttribute('aria-label', 'Progress: ' + label);
+      } else {
+        progress.removeAttribute('aria-label');
+      }
+    }
+    if (objective) {
+      objective.textContent = selected.objective || '';
+      objective.hidden = !selected.objective;
+    }
+    if (whereEl) {
+      const bits = [];
+      if (place.contact) bits.push(place.contact);
+      if (place.location) bits.push(place.location);
+      const whereText = bits.join(' · ');
+      whereEl.textContent = whereText;
+      whereEl.hidden = !whereText;
+      if (whereText) {
+        whereEl.setAttribute('aria-label',
+          (place.contact ? 'Contact ' + place.contact : '')
+          + (place.contact && place.location ? ', ' : '')
+          + (place.location ? 'Location ' + place.location : ''));
+      } else {
+        whereEl.removeAttribute('aria-label');
+      }
+    }
+    if (prereq) {
+      const show = !!(selected.prereqLabel && !selected.prereqMet);
+      prereq.textContent = selected.prereqLabel || '';
+      prereq.hidden = !show;
+    }
+    if (fail) {
+      const failText = selected.failureLine
+        || (selected.recovery && !selected.recovery.ready && selected.recovery.secondsLeft > 0
+          ? ('Wait ' + selected.recovery.secondsLeft + 's, then retry.')
+          : '');
+      fail.textContent = failText || '';
+      fail.hidden = !failText;
+    }
+    if (receipt) {
+      receipt.textContent = selected.receiptLine || '';
+      receipt.hidden = !selected.receiptLine;
+    }
+    if (choicesEl) {
+      const showChoices = !!(selected.canChoose && Array.isArray(selected.choices) && selected.choices.length);
+      choicesEl.hidden = !showChoices;
+      if (showChoices) {
+        const stepDef = ladderStepDefForCard(registry, selected);
+        choicesEl.innerHTML = selected.choices.map((ch) => {
+          const cid = String(ch.id || '');
+          const enabled = ch.enabled !== false;
+          const blocked = ch.blockedReason ? String(ch.blockedReason) : '';
+          const preview = ladderChoiceConsequencePreview(stepDef, cid);
+          const label = String(ch.label || cid);
+          const buttonText = preview ? (label + ' · ' + preview) : label;
+          const aria = label + ' for ' + (selected.stepTitle || selected.title || 'path')
+            + (preview ? '. ' + preview : '')
+            + (blocked ? '. ' + blocked : '');
+          return '<button type="button" class="st-ladder-path-choice st-meta-btn" data-ladder-choice="'
+            + escapeHtml(cid) + '" data-testid="career-ladder-path-choice-' + escapeHtml(cid)
+            + '"' + (enabled ? '' : ' disabled')
+            + ' aria-label="' + escapeHtml(aria) + '"'
+            + (preview || blocked
+              ? ' title="' + escapeHtml(preview || blocked) + '"'
+              : '')
+            + '>' + escapeHtml(buttonText) + '</button>';
+        }).join('');
+      } else {
+        choicesEl.innerHTML = '';
+      }
+    }
+
+    const title = selected.title || selected.careerId || 'path';
+    const stepTitle = selected.stepTitle || title;
+    if (accept) {
+      accept.disabled = !selected.canAccept;
+      accept.hidden = !(selected.canAccept || selected.status === 'latent' || selected.status === 'offered' || selected.status === 'declined');
+      accept.setAttribute('aria-label', 'Start ' + title);
+    }
+    if (decline) {
+      decline.disabled = !selected.canDecline;
+      decline.hidden = !selected.canDecline && !selected.canAccept;
+      decline.setAttribute('aria-label', 'Not now: ' + title);
+    }
+    if (recover) {
+      recover.disabled = !selected.canRecover;
+      recover.hidden = !(selected.status === 'recovering' || selected.status === 'step_failed' || selected.canRecover);
+      recover.setAttribute('aria-label', 'Retry ' + stepTitle);
+    }
+    if (abandon) {
+      abandon.disabled = !selected.canAbandon;
+      abandon.hidden = !selected.canAbandon;
+      abandon.setAttribute('aria-label', 'Abandon ' + title);
+    }
+    if (mapBtn) {
+      const hasMap = !!(selected.mapAction);
+      mapBtn.disabled = !hasMap;
+      mapBtn.hidden = !hasMap;
+      mapBtn.textContent = (selected.mapAction && selected.mapAction.label) || 'Map';
+      mapBtn.setAttribute('aria-label', 'Open map for ' + stepTitle);
+      if (hasMap && selected.mapAction.source) {
+        mapBtn.setAttribute('data-map-source', selected.mapAction.source);
+      } else {
+        mapBtn.removeAttribute('data-map-source');
+      }
+    }
+    if (logBtn) {
+      logBtn.hidden = false;
+      logBtn.setAttribute('aria-label', 'Open mission log for ' + title);
+    }
+
+    // Restore focus to the pre-repaint career/action/choice when it still exists.
+    this._restoreLadderFocusToken(focusToken);
+  },
+
+  _ladderSelectedCard() {
+    const cards = this._ladderModel && this._ladderModel.cards;
+    if (!Array.isArray(cards) || !this._ladderSelectedId) return null;
+    return cards.find((c) => c && c.careerId === this._ladderSelectedId) || null;
+  },
+
+  async _onLadderRailClick(ev) {
+    const rail = this._ladderRailEl;
+    const ctx = this._ctx;
+    if (!rail || !ctx || !ctx.bus) return;
+
+    const careerBtn = ev.target.closest('[data-ladder-career]');
+    if (careerBtn && rail.contains(careerBtn)) {
+      this._ladderSelectedId = careerBtn.getAttribute('data-ladder-career');
+      this._refreshLadderRail();
+      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+      return;
+    }
+
+    const pathChoice = ev.target.closest('[data-ladder-choice]');
+    if (pathChoice && rail.contains(pathChoice) && this._ladderSelectedId) {
+      if (pathChoice.disabled) return;
+      const choiceId = pathChoice.getAttribute('data-ladder-choice');
+      if (!choiceId) return;
+      ctx.bus.emit('career:ladder:choose', {
+        careerId: this._ladderSelectedId,
+        choiceId,
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      this._refreshLadderRail();
+      return;
+    }
+
+    const action = ev.target.closest('[data-ladder-action]');
+    if (!action || !rail.contains(action)) return;
+    if (action.disabled) return;
+    const verb = action.getAttribute('data-ladder-action');
+    if (!verb) return;
+
+    if (verb === 'openMap') {
+      const card = this._ladderSelectedCard();
+      if (card && card.mapAction) {
+        openGalaxyMap(ctx, card.mapAction);
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      }
+      return;
+    }
+    if (verb === 'missionLog') {
+      const mgr = getManager(ctx);
+      let opened = false;
+      if (mgr && typeof mgr.pushScreen === 'function') {
+        mgr.pushScreen('missionLog');
+        opened = true;
+      } else if (ctx.bus) {
+        ctx.bus.emit('ui:pushScreen', { id: 'missionLog' });
+        opened = true;
+      }
+      if (opened) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      return;
+    }
+
+    if (!this._ladderSelectedId) return;
+
+    if (verb === 'abandon') {
+      if (isConfirmOpen()) return;
+      const card = this._ladderSelectedCard();
+      const title = (card && card.title) || this._ladderSelectedId;
+      const ok = await confirm({
+        title: 'Abandon path?',
+        body: 'Close ' + title + '? Other professional paths stay open.',
+        confirmLabel: 'Abandon',
+        cancelLabel: 'Keep path',
+        danger: true,
+      });
+      if (!ok) return;
+      ctx.bus.emit('career:ladder:abandon', { careerId: this._ladderSelectedId });
+      ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      this._refreshLadderRail();
+      return;
+    }
+
+    if (verb === 'accept') {
+      ctx.bus.emit('career:ladder:accept', { careerId: this._ladderSelectedId });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      this._refreshLadderRail();
+      return;
+    }
+    if (verb === 'decline') {
+      ctx.bus.emit('career:ladder:decline', { careerId: this._ladderSelectedId });
+      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+      this._refreshLadderRail();
+      return;
+    }
+    if (verb === 'recover') {
+      ctx.bus.emit('career:ladder:recover', { careerId: this._ladderSelectedId });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      this._refreshLadderRail();
+    }
+  },
+
+  _onLadderRailKeydown(ev) {
+    const rail = this._ladderRailEl;
+    if (!rail || rail.hidden || !rail.contains(ev.target)) return;
+
+    const key = ev.key;
+    // Escape must reach station exit owner — never trap.
+    if (key === 'Escape') return;
+
+    const careerButtons = Array.from(rail.querySelectorAll('[data-ladder-career]'));
+    if (!careerButtons.length) return;
+
+    // D-pad / arrows: roving career selection when focus is inside the rail.
+    if (key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown'
+      || key === 'Home' || key === 'End') {
+      const onCareer = ev.target.closest('[data-ladder-career]');
+      const onAction = ev.target.closest('[data-ladder-action], [data-ladder-choice]');
+      if (onAction && !onCareer) return;
+
+      const currentId = this._ladderSelectedId
+        || (onCareer && onCareer.getAttribute('data-ladder-career'));
+      let idx = Math.max(0, careerButtons.findIndex(
+        (b) => b.getAttribute('data-ladder-career') === currentId));
+      if (key === 'ArrowRight' || key === 'ArrowDown') idx = (idx + 1) % careerButtons.length;
+      else if (key === 'ArrowLeft' || key === 'ArrowUp') idx = (idx - 1 + careerButtons.length) % careerButtons.length;
+      else if (key === 'Home') idx = 0;
+      else if (key === 'End') idx = careerButtons.length - 1;
+      else return;
+
+      ev.preventDefault();
+      ev.stopPropagation();
+      const next = careerButtons[idx];
+      this._ladderSelectedId = next.getAttribute('data-ladder-career');
+      this._refreshLadderRail();
+      const focusBtn = rail.querySelector('[data-ladder-career="' + this._ladderSelectedId + '"]');
+      if (focusBtn && typeof focusBtn.focus === 'function') {
+        try { focusBtn.focus({ preventScroll: true }); } catch (_) {
+          try { focusBtn.focus(); } catch (__) { /* ignore */ }
+        }
+      }
+      if (this._ctx && this._ctx.bus) this._ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+      return;
+    }
+
+    // Enter/Space on a career button: primary enabled action (accept|recover|first choose).
+    if (key === 'Enter' || key === ' ') {
+      if (ev.target.closest('[data-ladder-action], [data-ladder-choice]')) return;
+      if (!ev.target.closest('[data-ladder-career]') && ev.target !== rail) return;
+      const card = this._ladderSelectedCard();
+      if (!card) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      let primary = null;
+      if (card.canAccept) {
+        primary = rail.querySelector('[data-ladder-action="accept"]');
+      } else if (card.canRecover) {
+        primary = rail.querySelector('[data-ladder-action="recover"]');
+      } else if (card.canChoose) {
+        primary = rail.querySelector('[data-ladder-choice]:not([disabled])');
+      }
+      if (primary && !primary.disabled) {
+        primary.click();
+      }
+    }
+  },
+
   _refreshHandoff() {
     if (!this._handoffEl) return;
     const state = this._ctx && this._ctx.state;
@@ -2841,7 +3367,15 @@ export const stationHub = {
     this._handoffEl.hidden = !visible;
     if (!visible) return;
     const stepsEl = this._handoffEl.querySelector('.st-handoff-steps');
-    if (stepsEl) stepsEl.innerHTML = firstDockHandoffSteps(state).map((step) => handoffStepHtml(step)).join('');
+    if (stepsEl) {
+      const active = document.activeElement;
+      const focusedTab = active && stepsEl.contains(active) && active.getAttribute('data-handoff-tab');
+      stepsEl.innerHTML = firstDockHandoffSteps(state).map((step) => handoffStepHtml(step)).join('');
+      if (focusedTab) {
+        const replacement = stepsEl.querySelector('[data-handoff-tab="' + focusedTab + '"]');
+        if (replacement) replacement.focus({ preventScroll: true });
+      }
+    }
   },
 
   /** Abort an in-progress Undock hold charge. @returns {boolean} true if a charge was aborted */
@@ -2977,6 +3511,7 @@ export const stationHub = {
     this._refreshPurpose();
     this._refreshDeparture();
     this._refreshOriginRail();
+    this._refreshLadderRail();
     this._refreshHandoff();
     this._refreshSchematicAndNodes();
     this._refreshEconAndReadiness();
@@ -3019,6 +3554,7 @@ export const stationHub = {
     this._refreshPurpose();
     this._refreshDeparture();
     this._refreshOriginRail();
+    this._refreshLadderRail();
     this._refreshHandoff();
     this._refreshSchematicAndNodes();
     this._refreshEconAndReadiness();
@@ -3063,6 +3599,7 @@ export const stationHub = {
     const refreshDeparture = () => { if (this._visible()) this._refreshDeparture(); };
     const refreshHandoff = () => { if (this._visible()) this._refreshHandoff(); };
     const refreshOrigins = () => { if (this._visible()) this._refreshOriginRail(); };
+    const refreshLadders = () => { if (this._visible()) this._refreshLadderRail(); };
     // market-affecting
     bus.on('economy:tradeCompleted', onActive(['market', 'services', 'hold']));
     bus.on('economy:tradeCompleted', refreshHandoff);
@@ -3098,6 +3635,7 @@ export const stationHub = {
       this._refreshDeparture();
       this._refreshHandoff();
       this._refreshOriginRail();
+      this._refreshLadderRail();
     });
     bus.on('mission:accepted', (payload) => {
       if (!this._visible()) return;
@@ -3106,17 +3644,28 @@ export const stationHub = {
       this._refreshDeparture();
       this._refreshHandoff();
       this._refreshOriginRail();
+      this._refreshLadderRail();
     });
-    bus.on('mission:completed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); refreshOrigins(); });
-    bus.on('mission:failed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); refreshOrigins(); });
-    bus.on('mission:expired', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); });
+    bus.on('mission:completed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); refreshOrigins(); refreshLadders(); });
+    bus.on('mission:failed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); refreshOrigins(); refreshLadders(); });
+    bus.on('mission:expired', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); refreshLadders(); });
     bus.on('career:origins:offered', refreshOrigins);
     bus.on('career:origins:accepted', refreshOrigins);
     bus.on('career:origins:declined', refreshOrigins);
     bus.on('career:origins:abandoned', refreshOrigins);
-    bus.on('career:origin:completed', refreshOrigins);
+    bus.on('career:origin:completed', () => { refreshOrigins(); refreshLadders(); });
     bus.on('hunterOrigin:completed', refreshOrigins);
     bus.on('origin:prospector:completed', refreshOrigins);
+    // Ladder system → rail refresh (CL-UI-02 contract subscribe_refresh)
+    bus.on('career:ladder:offered', refreshLadders);
+    bus.on('career:ladder:stepActive', refreshLadders);
+    bus.on('career:ladder:stepDone', refreshLadders);
+    bus.on('career:ladder:stepFailed', refreshLadders);
+    bus.on('career:ladder:stepRecovered', refreshLadders);
+    bus.on('career:ladder:completed', refreshLadders);
+    bus.on('career:ladder:progress', refreshLadders);
+    bus.on('career:ladder:choiceResolved', refreshLadders);
+    bus.on('dock:docked', refreshLadders);
     bus.on('economy:eventStarted', onActive(['market']));
     bus.on('economy:eventEnded', onActive(['market']));
     // Implicit Back (Esc/B/E via input gate, backdrop via screenManager) and any external
@@ -3175,6 +3724,137 @@ function missionDestName(m) {
   if (sector) return sector.name;
   if (rawDest) return prettyId(rawDest);
   return 'the target area';
+}
+
+/** Read-only ladder definition for a presenter card (never mutates state). */
+function ladderDefinitionFor(registry, careerId) {
+  if (!careerId || !registry || typeof registry.get !== 'function') return null;
+  try {
+    const sys = registry.get('careerLadders');
+    if (sys && typeof sys.getDefinition === 'function') {
+      return sys.getDefinition(careerId) || null;
+    }
+  } catch (_) { /* ignore */ }
+  return null;
+}
+
+function ladderStepDefForCard(registry, card) {
+  if (!card) return null;
+  const def = ladderDefinitionFor(registry, card.careerId);
+  if (!def || !Array.isArray(def.steps)) return null;
+  if (card.stepId) {
+    const byId = def.steps.find((s) => s && s.id === card.stepId);
+    if (byId) return byId;
+  }
+  if (Number.isFinite(card.stepIndex) && def.steps[card.stepIndex]) {
+    return def.steps[card.stepIndex];
+  }
+  return def.steps[0] || null;
+}
+
+/**
+ * Named contact + location for the ladder rail (truthful reads only).
+ * Contact: linked mission contact/client, else desk/step title, else faction short name.
+ * Location: mapAction station/sector or linked mission destination names.
+ */
+function ladderContactAndLocation(state, registry, card) {
+  const out = { contact: null, location: null };
+  if (!card) return out;
+
+  const linkedId = card.linkedMissionId || null;
+  let linked = null;
+  if (linkedId && state && state.missions && Array.isArray(state.missions.active)) {
+    linked = state.missions.active.find((m) => m && String(m.id) === String(linkedId)) || null;
+  }
+
+  // Contact — never invent lore; only names already present on mission/def/faction meta.
+  if (linked) {
+    const named = linked.contactName || linked.giverName || linked.clientName || null;
+    if (named && String(named).trim()) out.contact = String(named).trim();
+    else {
+      const fac = linked.factionId ? FACTION_BY_ID.get(linked.factionId) : null;
+      if (fac) out.contact = fac.short || fac.name || null;
+    }
+  }
+  if (!out.contact) {
+    const stepDef = ladderStepDefForCard(registry, card);
+    const params = stepDef && stepDef.params;
+    const factionId = (params && params.factionId)
+      || (stepDef && stepDef.factionId)
+      || null;
+    if (factionId) {
+      const fac = FACTION_BY_ID.get(factionId);
+      if (fac) out.contact = fac.short || fac.name || null;
+    }
+    // Desk-style step titles double as the contact desk when no person is named.
+    if (!out.contact && card.stepTitle) {
+      out.contact = String(card.stepTitle);
+    } else if (!out.contact && card.title) {
+      out.contact = String(card.title);
+    }
+  }
+
+  // Location — map handoff first, then linked mission dest, then step params.
+  const map = card.mapAction || null;
+  const stationId = (map && map.stationId)
+    || (linked && linked.destStationId)
+    || null;
+  const sectorId = (map && map.sectorId)
+    || (linked && (linked.destSectorId || linked.sectorId))
+    || null;
+  const station = stationId ? STATION_BY_ID.get(stationId) : null;
+  const sector = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
+  const stationName = (station && station.name)
+    || (linked && (linked.destName || linked.destStationName))
+    || (stationId ? prettyId(stationId) : null);
+  const sectorName = (sector && sector.name)
+    || (linked && linked.destSectorName)
+    || (sectorId ? prettyId(sectorId) : null);
+  if (stationName && sectorName && stationName !== sectorName) {
+    out.location = stationName + ' · ' + sectorName;
+  } else {
+    out.location = stationName || sectorName || null;
+  }
+  return out;
+}
+
+/**
+ * Copy-safe consequence preview from registered choice intents (credits/rep only).
+ * Never dumps debug payloads or heat/cargo writes.
+ */
+function ladderChoiceConsequencePreview(stepDef, choiceId) {
+  if (!stepDef || !Array.isArray(stepDef.choices) || !choiceId) return '';
+  const ch = stepDef.choices.find((c) => c && c.id === choiceId);
+  if (!ch) return '';
+  // Prefer an authored short preview string if present.
+  if (typeof ch.preview === 'string' && ch.preview.trim()) return ch.preview.trim();
+  if (typeof ch.consequencePreview === 'string' && ch.consequencePreview.trim()) {
+    return ch.consequencePreview.trim();
+  }
+  const cons = Array.isArray(ch.consequences) ? ch.consequences : [];
+  if (!cons.length) return '';
+  const bits = [];
+  let cr = 0;
+  let crCharge = 0;
+  for (const intent of cons) {
+    if (!intent || typeof intent !== 'object') continue;
+    const ev = String(intent.event || '');
+    const p = intent.payload || {};
+    if (ev === 'economy:grantCredits' && Number.isFinite(p.amount) && p.amount > 0) {
+      cr += Math.round(p.amount);
+    } else if (ev === 'economy:chargeCredits' && Number.isFinite(p.amount) && p.amount > 0) {
+      crCharge += Math.round(p.amount);
+    } else if (ev === 'faction:repDelta' && Number.isFinite(p.delta) && p.factionId) {
+      const fac = FACTION_BY_ID.get(p.factionId);
+      const name = (fac && (fac.short || fac.name)) || prettyId(p.factionId);
+      const sign = p.delta > 0 ? '+' : '';
+      bits.push(name + ' ' + sign + Math.round(p.delta));
+    }
+  }
+  if (cr > 0) bits.unshift('+' + cr.toLocaleString('en-US') + ' cr');
+  if (crCharge > 0) bits.unshift('−' + crCharge.toLocaleString('en-US') + ' cr');
+  // Cap at two chips so the strip stays a strip, not a prose wall.
+  return bits.slice(0, 2).join(' · ');
 }
 
 function missionClientName(m) {
@@ -3422,6 +4102,47 @@ const STATION_CSS = `
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; }
 .st-origin-action .st-meta-btn { padding: 6px 9px; white-space: nowrap; }
 .st-origin-action .st-meta-btn:disabled { opacity: .4; cursor: default; }
+/* Professional ladder rail (CL-UI-02): compact strip; no visor/portrait/idle animation */
+.st-ladder-rail { display: grid; grid-template-columns: minmax(150px, .7fr) minmax(260px, 1.2fr) minmax(320px, 1.2fr);
+  align-items: start; gap: 10px; padding: 8px 16px; border-bottom: 1px solid rgba(57,208,255,.18);
+  background: linear-gradient(90deg, rgba(57,208,255,.05), rgba(8,15,25,.18)); flex: none; }
+.st-ladder-rail[hidden] { display: none; }
+.st-ladder-head { display: grid; gap: 2px; min-width: 0; }
+.st-ladder-kicker { color: var(--st-accent); font-size: .62rem; letter-spacing: .15em; text-transform: uppercase; }
+.st-ladder-note { color: var(--ink-dim); font-size: .69rem; line-height: 1.3; }
+.st-ladder-careers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.st-ladder-choice { display: flex; justify-content: space-between; align-items: center; gap: 5px; min-width: 0;
+  min-height: 44px; padding: 10px 9px; border: 1px solid rgba(140,174,202,.24); border-radius: 4px;
+  color: var(--ink-dim); background: rgba(6,13,22,.52); text-align: left; cursor: pointer; }
+.st-ladder-choice:hover { color: var(--ink); border-color: rgba(57,208,255,.48); }
+.st-ladder-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.st-ladder-choice.is-selected { color: var(--ink); border-color: var(--st-accent); background: rgba(57,208,255,.1); }
+.st-ladder-choice.is-resolved { opacity: .56; }
+.st-ladder-choice-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .76rem; font-weight: 700; }
+.st-ladder-choice-status { flex: none; color: var(--ink-mute); font-size: .53rem; letter-spacing: .08em; text-transform: uppercase; }
+.st-ladder-panel { display: grid; gap: 4px; min-width: 0; }
+.st-ladder-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; min-width: 0; }
+.st-ladder-detail { color: var(--ink-dim); font-size: .69rem; line-height: 1.25; flex: 1 1 120px; min-width: 0;
+  overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.st-ladder-progress { color: var(--ink-mute); font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; flex: none; }
+.st-ladder-objective, .st-ladder-where, .st-ladder-prereq, .st-ladder-fail, .st-ladder-receipt {
+  margin: 0; font-size: .69rem; line-height: 1.3; color: var(--ink-dim); }
+.st-ladder-objective { color: var(--ink); }
+.st-ladder-where { color: var(--ink-mute); letter-spacing: .04em; }
+.st-ladder-prereq { color: var(--ink-mute); }
+.st-ladder-fail { color: var(--warn, #ffc64d); }
+.st-ladder-receipt { color: var(--ink-mute); }
+.st-ladder-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-ladder-choices[hidden], .st-ladder-where[hidden], .st-ladder-prereq[hidden], .st-ladder-fail[hidden],
+.st-ladder-receipt[hidden], .st-ladder-objective[hidden], .st-ladder-progress[hidden] { display: none; }
+.st-ladder-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.st-ladder-actions .st-meta-btn, .st-ladder-path-choice {
+  min-height: 44px; min-width: 44px; padding: 8px 12px; white-space: nowrap; }
+.st-ladder-actions .st-meta-btn:disabled, .st-ladder-path-choice:disabled { opacity: .4; cursor: default; }
+.st-ladder-actions .st-meta-btn:focus-visible, .st-ladder-path-choice:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; }
+.st-ladder-recover:not(:disabled) { color: var(--warn, #ffc64d); border-color: rgba(255,198,77,.4); }
+.st-ladder-abandon:not(:disabled) { color: var(--danger, #ff5470); border-color: rgba(255,84,112,.35); }
 .st-handoff { display: grid; gap: 6px; padding: 8px 16px; border-bottom: 1px solid rgba(57,208,255,.18); flex: none; }
 .st-handoff-head { display: flex; flex-direction: column; gap: 1px; }
 .st-handoff-label { color: var(--st-accent); font-size: .58rem; letter-spacing: .16em; text-transform: uppercase; }
@@ -3534,6 +4255,7 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-hub--os .st-content { flex: 1 1 0; min-height: 0; }
 .st-hub--os .st-handoff--strip { flex: none; padding: 6px 12px; gap: 6px; }
 .st-hub--os .st-origin-rail { padding: 6px 12px; gap: 8px; }
+.st-hub--os .st-ladder-rail { padding: 6px 12px; gap: 8px; }
 .st-hub--os .st-handoff-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .st-hub--os .st-handoff-dismiss { margin-left: auto; font-size: .72rem; padding: 4px 10px; }
 .st-hub--os .st-handoff-steps { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -3874,6 +4596,9 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
   .st-origin-rail { grid-template-columns: 1fr; }
   .st-origin-head { grid-template-columns: auto 1fr; align-items: baseline; gap: 8px; }
   .st-origin-action { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .st-ladder-rail { grid-template-columns: 1fr; }
+  .st-ladder-head { grid-template-columns: auto 1fr; align-items: baseline; gap: 8px; }
+  .st-ladder-careers { grid-template-columns: 1fr; }
 }
 
 /* shipyard */
