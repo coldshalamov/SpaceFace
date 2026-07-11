@@ -224,6 +224,10 @@ export const MIGRATIONS = [
   },
   // v10: optional, non-binding first-dock career origins. Old saves start with a clean origin
   // container; each origin system overlays its own versioned defaults during deserialize.
+  // CL-00 careerLadders intentionally are not seeded on this historical v9-to-v10 step.
+  // CURRENT_VERSION is already 11; missing careerLadders default through the registered
+  // careerLadders system deserialize path, without pretending this older migration was live
+  // for ladders or introducing a competing save-version bump.
   {
     from: 9,
     to: 10,
@@ -235,6 +239,7 @@ export const MIGRATIONS = [
           origins: {},
         };
       }
+      // Missing careerLadders intentionally default during system deserialize.
     },
   },
 ];

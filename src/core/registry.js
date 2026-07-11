@@ -44,6 +44,7 @@ import { factions } from '../systems/factions.js';
 import { sectorSim } from '../systems/sectorSim.js';   // ADR-0002 / V2 §33 — offscreen stat sim
 import { missions } from '../systems/missions.js';
 import { careerOrigins } from '../careers/origins/careerOrigins.js';
+import { careerLadders } from '../careers/ladders/careerLadders.js';
 import { story } from '../systems/story.js';
 import { scenarioRuntime } from '../systems/scenarioRuntime.js';
 import { presentationOrchestrator } from '../systems/presentationOrchestrator.js';
@@ -106,7 +107,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, voiceArbiter, input, autoTargetAssist, flybyFocus, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, fieldDepletion, cargo, fragileCargo, economy,
-    automation, wingmen, intervention, lossLedger, spawnBudget, world, encounterDirector, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, careerOrigins, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
+    automation, wingmen, intervention, lossLedger, spawnBudget, world, encounterDirector, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, careerOrigins, careerLadders, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // scanReveal, buildIdentity, and pirateDisguise subscribe to scanner's scan:pulse seam. scanReveal
@@ -155,7 +156,7 @@ export function createRegistry(ctx) {
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
     input, autoTargetAssist, flybyFocus, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, aiSlot, barkDirector, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, fieldDepletion, cargo, fragileCargo, automation, wingmen, crafting,
-    economy, intervention, world, encounterDirector, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, missions, careerOrigins, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, voiceArbiter,
+    economy, intervention, world, encounterDirector, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, missions, careerOrigins, careerLadders, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, voiceArbiter,
   ];
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
   // after combat/physics have settled. It is read-only telemetry — it writes only its own
@@ -176,6 +177,8 @@ export function createRegistry(ctx) {
 
   return {
     systems: SYSTEMS,
+    /** Sim step order (same object refs as SYSTEMS slots). Exposed for contract tests. */
+    updateOrder: UPDATE_ORDER,
     ctx,
     get(name) { return byName.get(name); },
     init() { for (const s of SYSTEMS) { if (s.init) s.init(ctx); } },

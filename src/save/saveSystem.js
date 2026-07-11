@@ -134,6 +134,7 @@ export const save = {
     data.combat = serializeCombatState(state);
     data.missions = this._callSerialize('missions') || this._serializeMissions();
     data.careerOrigins = this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {});
+    data.careerLadders = this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {});
     data.scenario = this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {});
     data.automation = this._callSerialize('automation') || this._serializeAutomation();
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
@@ -682,6 +683,7 @@ export const save = {
       // 13. restore missions/automation/settings.
       this._restoreMissions(data.missions);
       this._callDeserialize('careerOrigins', data.careerOrigins);
+      this._callDeserialize('careerLadders', data.careerLadders);
       this._restoreScenario(data.scenario);
       const missionsSys = this.registry && this.registry.get && this.registry.get('missions');
       if (missionsSys && typeof missionsSys.spawnTargetsForSector === 'function' && sectorId) {
