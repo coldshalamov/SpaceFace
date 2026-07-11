@@ -37,4 +37,6 @@ canvas (z0) < vignette (z5) < hud (z10) < modal-backdrop (z90) < screens (z100) 
 
 `npm run check:ui-a11y`, `npm run check:wcag-contrast`, `npm run check:ui:perf` (frame sleep + radar perf + identity), `npm run check:player-facing-labels`, `npm run check:ui-identity`, `node scripts/check-ui-screen-imports.mjs`.
 
-Known-red (per `design/CURRENT_BUILD_STATUS.md`): `check-ui-screen-imports` has failures in the dirty tree — fix or rebaseline before broad release claims.
+Current: `check-ui-screen-imports` passes 41/41. The active-objective panel intentionally omits
+generic map-key copy; the always-mounted `controlPrompts.js` flight route owns those binding-backed
+hints so objective guidance stays one-voice.

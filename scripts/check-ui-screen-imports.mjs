@@ -269,9 +269,12 @@ if (!missionLogSrc.includes("const activeMissions = active.filter((m) => m && m.
   console.log('ok   missionLogScreen - completed ledger refreshes on empty active state');
   ok++;
 }
+// The dominant active-objective panel intentionally omits the generic Local Map hint; the
+// always-mounted control prompt below owns that route so one objective does not compete with a
+// second navigation instruction. Assert only the binding-backed labels hud.js actually renders,
+// then assert the complete flight-control route through controlPrompts.js.
 if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
   || !hudSrc.includes('BINDINGS.dock.label')
-  || !hudSrc.includes('BINDINGS.localmap.label')
   || !hudSrc.includes('BINDINGS.starmap.label')
   || !hudSrc.includes('BINDINGS.missionLog.label')
   || !alertsSrc.includes("import { BINDINGS, promptLabel } from './bindings.js'")
