@@ -45,6 +45,7 @@ import {
   pushCampaignHistory,
   pushCampaignReceipt,
   pushChoiceLog,
+  primaryCommsForBeat,
 } from '../story/campaign47a/index.js';
 
 const ASHFALL = 'sector_ashfall_reach';
@@ -70,6 +71,7 @@ export const story = {
 
     // ── The core hook: missions advanced the story spine. Fire that beat's devices. ──────────
     bus.on('story:beatAdvanced', (p) => this._onBeatAdvanced(p || {}));
+    bus.on('story:elroyResolved', (p) => this._onElroyResolved(p || {}));
 
     // ── Ambient + trap comms timer (driven from update()). ───────────────────────────────────
     bus.on('game:started', () => this._onNewGame());
@@ -84,14 +86,12 @@ export const story = {
     bus.on('dock:docked', (p) => this._onDocked(p || {}));
     // ── Bulkhead graffiti (player's own hand) fires on sector enter / beat — handled in beat logic.
 
-    // ── Elroy beat (B2): the civilian tag flicker. Hook the player's first kill. ─────────────
-    bus.on('entity:killed', (p) => this._onKill(p || {}));
-
     // ── Endgame (B7): present the choice once the gate is met; detect the wormhole jump (C). ─
     bus.on('sector:enter', (p) => this._onSectorEnter(p || {}));
     bus.on('jump:chargeStart', (p) => this._onJumpChargeStart(p || {}));
     // UI intent: player accepted an endgame choice from the overlay.
     bus.on('ui:endgameChoose', (p) => this._onEndgameChoose(p || {}));
+    bus.on('ui:endgameDecline', (p) => this._onEndgameDecline(p || {}));
     // Ending C: loop-return receipt/sandbox only — never resets beatIndex or closes flight.
     bus.on('endgame:loopBack', (p) => this._onEndgameLoopBack(p || {}));
     // UI intent: player opened/took/dropped the ledger with the Kurtz figure.
@@ -166,9 +166,13 @@ export const story = {
     //    so it reads as the Captain's Log, not a tutorial popup. The missions system ALSO emits its
     //    own beat toast; we suppress duplication by emitting ours on a distinct channel the UI can
     //    prefer (comms 'story' category). We keep the missions toast for compatibility.
-    this._fireComms({
+    const primary = primaryCommsForBeat(toIndex);
+    this._fireComms(primary ? {
+      id: primary.id, sender: primary.sender, text: primary.text,
+      category: 'story', ttl: 9, persist: false, campaign47aBeat: toIndex,
+    } : {
       id: `beat_hint_${toIndex}`, sender: 'CAPTAIN\u2019S LOG', text: content.hint,
-      category: 'story', ttl: 9, persist: false,
+      category: 'story', ttl: 9, persist: false, campaign47aBeat: toIndex,
     });
 
     // 3. Graffiti for this beat (location-tagged). Bulkhead graffiti fires on sector-enter too, but
@@ -370,20 +374,25 @@ export const story = {
       if (g.where === 'bulkhead') continue; // bulkhead shows in flight, not at the airlock
       this.bus.emit('graffiti:show', { line: g.line, where: g.where, beat: s.beatIndex, author: g.author || null, dockedStationId: stationId });
     }
+    if (stationId === 'station_ashcache' && s.endgameOffered && !s.endgameChoice
+        && Array.isArray(s.endgameDeclined) && s.endgameDeclined.length >= 3) {
+      this.bus.emit('endgame:promptChoiceE', { promptText: 'ACCEPT THE NEXT RUN?' });
+    }
   },
 
   // =========================================================================================
   // B2 — FIRST BLOOD (Elroy): the civilian tag flicker.
   // =========================================================================================
-  _onKill({ killerId, id }) {
-    const state = this.state;
-    if (state.playerId && killerId !== state.playerId) return; // only the player's kills
-    const s = state.story;
-    if (!s || s.beatIndex !== 2) return; // only relevant at B2 (the first kill IS the story beat)
-    // Emit the tag-flicker HUD lie: a CIVILIAN VESSEL — REGISTERED tag appears for 0.5s before the
-    // kill feed overwrites it. The UI renders this as a transient tag on the kill feed.
+  _onElroyResolved({ entityId }) {
+    const s = this.state && this.state.story;
+    if (!s) return;
+    s.flags = s.flags || {};
+    if (s.flags.elroyTagResolved) return;
+    s.flags.elroyTagResolved = true;
+    // Emit before missions advances B2 so synchronous listener order cannot skip the half-second
+    // civilian identity. The ordinary kill feed then overwrites it.
     this.bus.emit('hud:tagFlicker', {
-      entityId: id, tag: 'CIVILIAN VESSEL \u2014 REGISTERED', durationMs: 500,
+      entityId, tag: 'CIVILIAN VESSEL \u2014 REGISTERED', durationMs: 500,
       note: 'Elroy, Maintenance Division, Pit Engineering. Filed the recycler report six weeks ago. Tag was double-billed by Rook.',
     });
   },
@@ -406,8 +415,11 @@ export const story = {
       id: 'endgame_offer', sender: 'CONCORD ADMIN', text: 'CONTRACT 47-A: FINAL DISPOSITION AVAILABLE. REVIEW AT YOUR DISCRETION.',
       category: 'story', ttl: 0, persist: true,
     });
-    // Tell the UI to present the choice overlay (it will emit ui:endgameChoose).
-    this.bus.emit('endgame:offer', { choices: this._availableChoices() });
+    // A/B are physical contracts on the Ashfall mission board. C/D/E are world actions.
+    const missions = this.registry && this.registry.get && this.registry.get('missions');
+    if (missions && typeof missions.postEndgameDispositionOffers === 'function') {
+      missions.postEndgameDispositionOffers();
+    }
   },
 
   _endgameGateMet() {
@@ -449,7 +461,12 @@ export const story = {
     if (via !== 'drive') return;
     if (!this._endgameGateMet()) return;
     // only if the player meets Choice C's preconditions (full load, no active missions)
-    if (!COND.noActiveMissions(state) || !COND.fullLoad(state)) return;
+    if (!COND.noActiveMissions(state) || !COND.fullLoad(state)) {
+      if (s.flags && s.flags.hasLedger) {
+        this.bus.emit('endgame:promptChoiceD', { promptText: 'KEEP THE LEDGER AND STAY?' });
+      }
+      return;
+    }
     // Fire the Vale line the instant the drive begins charging (per the spine doc timing note),
     // THEN present the prompt.
     this._fireCommsById('story_vale_goodwork');
@@ -464,6 +481,8 @@ export const story = {
     if (!def) return;
     if (typeof def.requires === 'function' && !def.requires(state)) return;
     s.endgameChoice = def.id;
+    const missions = this.registry && this.registry.get && this.registry.get('missions');
+    if (missions && typeof missions.clearEndgameDispositionOffers === 'function') missions.clearEndgameDispositionOffers();
     // HUD-on-accept line + bulkhead graffiti.
     if (def.hudOnAccept) {
       this._fireComms({ id: `endgame_accept_${def.id}`, sender: 'CONCORD ADMIN', text: def.hudOnAccept, category: 'story', ttl: 0, persist: true });
@@ -474,6 +493,12 @@ export const story = {
     this._applyEndgameConsequences(def);
     this.bus.emit('endgame:chosen', { choice: def.id, key: def.key, title: def.title });
     this._sayStoryLine(`Ending: ${def.title}`, 8);
+  },
+
+  _onEndgameDecline({ choice }) {
+    const s = this.state && this.state.story;
+    if (!s || s.endgameChoice || !choice) return;
+    if (!s.endgameDeclined.includes(choice)) s.endgameDeclined.push(choice);
   },
 
   _applyEndgameConsequences(def) {

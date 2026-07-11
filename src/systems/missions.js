@@ -37,6 +37,8 @@ import {
   STORY_BRANCH_INTRO_TAG,
 } from '../data/missions.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
+import { zonesForSector } from '../data/sectorZones.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
@@ -48,15 +50,19 @@ import {
 } from '../world/worldRecords.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
-import { removeCargo } from './cargo.js';
+import { addCargo, removeCargo } from './cargo.js';
 // Campaign 47-A sidecar: observe/gate/receipt only — never owns beatIndex/branch/rewards.
 import {
   ensureCampaign47aState,
+  buildMissionBoardContract,
+  buildEndgameBoardOffers,
   failEncounter,
   initCampaignSidecar,
   isBeatStepsComplete,
+  getEmbodiedLocation,
   recordBeatStep,
   syncObservedBeat,
+  recoveryCommsForBeat,
 } from '../story/campaign47a/index.js';
 
 // ── Static lookups (built once from pure data) ───────────────────────────────────────────────
@@ -300,11 +306,83 @@ export const missions = {
     if (!info) return null; // gates / unknown stations have no board
     const epoch = this._epoch();
     let board = state.missions.boards[stationId];
-    if (board && board.refreshEpoch === epoch && board.slots && !this._boardNeedsStoryBranchIntro(info, board)) return board;
+    if (board && board.refreshEpoch === epoch && board.slots && !this._boardNeedsStoryBranchIntro(info, board)) {
+      if (this._syncEmbodiedStoryOffer(info, board, epoch)) {
+        this.bus.emit('mission:updated', { missionId: null, stationId });
+      }
+      return board;
+    }
     board = { refreshEpoch: epoch, slots: this._generateOffers(info, epoch) };
+    this._syncEmbodiedStoryOffer(info, board, epoch);
     state.missions.boards[stationId] = board;
     this.bus.emit('mission:updated', { missionId: null });
     return board;
+  },
+
+  /** Keep one authored 47-A contract on the correct live board. The board remains the only
+   * acceptance authority; this seam never auto-accepts, advances the cursor, or grants rewards. */
+  _syncEmbodiedStoryOffer(info, board, epoch = this._epoch()) {
+    if (!info || !board || !Array.isArray(board.slots)) return false;
+    const story = this.state && this.state.story;
+    const beat = story && (story.beatIndex | 0);
+    const branch = story && story.branch || null;
+    const chainStep = story && (story.chainProgress | 0);
+    const seed = this.state && this.state.meta && this.state.meta.seed || 1;
+    const offer = buildMissionBoardContract(beat, { seed, epoch, branch, chainStep });
+    const activeTags = new Set((this.state.missions.active || [])
+      .filter((mission) => mission && mission.status === 'active' && mission.storyTag)
+      .map((mission) => mission.storyTag));
+    const keepTag = offer && offer.type ? offer.storyTag : null;
+    const before = board.slots.length;
+    board.slots = board.slots.filter((candidate) => !(
+      candidate && typeof candidate.storyTag === 'string'
+      && candidate.storyTag.startsWith('campaign47a:')
+      && candidate.storyTag !== keepTag
+    ));
+    if (!offer || !offer.type || offer.stationId !== info.id || activeTags.has(offer.storyTag)) {
+      return board.slots.length !== before;
+    }
+    if (board.slots.some((candidate) => candidate && candidate.storyTag === offer.storyTag)) {
+      return board.slots.length !== before;
+    }
+    board.slots.unshift(offer);
+    return true;
+  },
+
+  _refreshEmbodiedStoryBoards() {
+    let changed = false;
+    const epoch = this._epoch();
+    for (const [stationId, board] of Object.entries(this.state.missions.boards || {})) {
+      const info = STATION_INFO.get(stationId);
+      if (this._syncEmbodiedStoryOffer(info, board, epoch)) changed = true;
+    }
+    if (changed) this.bus.emit('mission:updated', { missionId: null });
+    return changed;
+  },
+
+  /** Publish the two contract endings as physical Ashfall board rows. */
+  postEndgameDispositionOffers() {
+    const stationId = 'station_ashcache';
+    const board = this.ensureBoard(stationId);
+    if (!board || !Array.isArray(board.slots)) return false;
+    const seed = this.state.meta && this.state.meta.seed || 1;
+    const offers = buildEndgameBoardOffers({ seed, epoch: this._epoch() });
+    const active = new Set(board.slots.map((offer) => offer && offer.storyDisposition).filter(Boolean));
+    for (const offer of offers) if (!active.has(offer.storyDisposition)) board.slots.unshift(offer);
+    this.bus.emit('mission:updated', { missionId: null, stationId });
+    return true;
+  },
+
+  clearEndgameDispositionOffers() {
+    let changed = false;
+    for (const board of Object.values(this.state.missions.boards || {})) {
+      if (!board || !Array.isArray(board.slots)) continue;
+      const before = board.slots.length;
+      board.slots = board.slots.filter((offer) => !(offer && offer.storyDisposition));
+      changed = changed || board.slots.length !== before;
+    }
+    if (changed) this.bus.emit('mission:updated', { missionId: null });
+    return changed;
   },
 
   /**
@@ -645,6 +723,12 @@ export const missions = {
     }
     const { offer, board } = this._findOffer(missionId);
     if (!offer) return false;
+    if (offer.storyDisposition) {
+      const choice = offer.storyDisposition;
+      this.clearEndgameDispositionOffers();
+      this.bus.emit('ui:endgameChoose', { choice, source: 'ashfall_mission_board', offerId: offer.id });
+      return true;
+    }
     const preflight = this._acceptPreflight(offer);
     if (!preflight.ok) {
       this.bus.emit('toast', { text: preflight.reason, kind: 'error', ttl: 3 });
@@ -664,6 +748,15 @@ export const missions = {
     // Remove from the board so it can't be re-accepted / doesn't reappear this visit.
     if (board) board.slots = board.slots.filter((o) => o.id !== offer.id);
     state.missions.active.push(inst);
+    if (inst.preloadedCargo && inst.params && inst.params.cmdtyId) {
+      const loaded = addCargo(state, inst.params.cmdtyId, Math.max(1, inst.params.qty || 1));
+      if (loaded < Math.max(1, inst.params.qty || 1)) {
+        state.missions.active.pop();
+        if (board && !board.slots.some((candidate) => candidate.id === offer.id)) board.slots.unshift(offer);
+        this.bus.emit('toast', { text: 'Cargo hold cannot receive the sealed manifest', kind: 'error', ttl: 3 });
+        return false;
+      }
+    }
 
     // Spawn any immediate/deferred targets (if the player is already in the target sector).
     this._ensureMissionTargets(inst);
@@ -799,6 +892,10 @@ export const missions = {
       needsTargets: !!(def && this._typeSpawnsTargets(offer.type)),
       status: 'active',
       storyTag: offer.storyTag || null,
+      storyContractId: offer.storyContractId || null,
+      campaign47aBeat: Number.isFinite(offer.campaign47aBeat) ? offer.campaign47aBeat : null,
+      storyTarget: offer.storyTarget ? JSON.parse(JSON.stringify(offer.storyTarget)) : null,
+      preloadedCargo: !!offer.preloadedCargo,
       storyBranch: offer.storyBranch || null,
       title: offer.title,
       chainNextSeed: (def && def.chainable) ? this._chainSeed(offer) : null,
@@ -937,11 +1034,13 @@ export const missions = {
     const sector = SECTOR_BY_ID.get(m.destSectorId);
     const station = STATION_INFO.get(m.destStationId);
     const title = m.title || 'Mission';
+    const destination = station && station.name || sector && sector.name || title;
     const base = {
       kind: 'mission',
       missionId: m.id,
       missionType: m.type,
-      label: title,
+      label: destination,
+      missionTitle: title,
       reason: missionNavReason(m, station, sector),
       stationId: m.destStationId || null,
       sectorId: m.destSectorId || null,
@@ -1121,7 +1220,7 @@ export const missions = {
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
     this._clearCompletedTradeWaypoint(p);
-    this._storyTrigger('trade', p); // first-sell story beat fires on any sell
+    // B1 now advances through its authored board mission, not an unrelated market sale.
   },
 
   _clearCompletedTradeWaypoint(p) {
@@ -1168,13 +1267,19 @@ export const missions = {
   _onKill(p) {
     if (!p) return;
     const byPlayer = p.killerId === this.state.playerId;
-    if (byPlayer) this._storyTrigger('kill', p);
     if (!byPlayer) return; // mission kills only count for the player
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active') continue;
       if (m.type !== 'bounty_hunt' && m.type !== 'patrol_clear') continue;
       if (!m.targetEntityIds.includes(p.id)) continue;
+      if (m.storyTag === 'campaign47a:b2:elroy') {
+        this.bus.emit('story:elroyResolved', {
+          entityId: p.id,
+          missionId: m.id,
+          storyTargetId: m.storyTarget && m.storyTarget.id || 'npc_elroy',
+        });
+      }
       m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
       m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + 1);
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
@@ -1396,6 +1501,7 @@ export const missions = {
     if (m.chainNextSeed != null) this._tryChain(m);
 
     // ── story chain progress (B5 branch chains) ──
+    this._advanceEmbodiedStoryMission(m);
     this._advanceStoryChain(m);
 
     this.bus.emit('mission:completed', completedPayload);
@@ -1590,17 +1696,35 @@ export const missions = {
       if (n <= 0) return;
       const pool = ['reaver_pirate', 'corsair_raider', 'wasp_swarmer'];
       for (let i = 0; i < n; i++) {
-        const typeId = pool[Math.floor(rng() * pool.length)];
+        const storyTarget = i === 0 && m.storyTarget ? m.storyTarget : null;
+        const typeId = storyTarget && storyTarget.archetype || pool[Math.floor(rng() * pool.length)];
         const level = Math.round(lvLo + (lvHi - lvLo) * (0.4 + rng() * 0.6));
-        const pos = missionHostileSpawnPos(this.state, { x: px, z: pz }, rng);
+        const pos = storyTarget
+          ? missionStoryTargetSpawnPos(m, storyTarget, rng)
+          : missionHostileSpawnPos(this.state, { x: px, z: pz }, rng);
         if (!pos) continue;
-        const spec = makeEnemySpawnSpec(typeId, level, pos);
+        const spec = makeEnemySpawnSpec(typeId, level, pos, { factionId: storyTarget && storyTarget.factionId });
         spec.data = spec.data || {};
         spec.data.missionTag = m.id; // attribution helper (kill resolver matches by entity id below)
+        if (storyTarget) {
+          spec.data.storyTargetId = storyTarget.id || null;
+          spec.data.storyTargetRole = storyTarget.role || null;
+          spec.data.registry = storyTarget.registry || null;
+          spec.data.name = storyTarget.name || null;
+          spec.data.scanLabel = storyTarget.label || storyTarget.name || 'UNKNOWN';
+          spec.data.ai = spec.data.ai || {};
+          spec.data.ai.name = storyTarget.name || storyTarget.label || null;
+        }
         const ent = helpers.spawnEntity(spec);
         if (ent) {
           this._stampMissionTargetIdentity(ent, m, adopted + i);
           m.targetEntityIds.push(ent.id);
+          if (storyTarget && storyTarget.namedCaptainId) {
+            this.bus.emit('encounter:namedCaptainBound', {
+              captainId: storyTarget.namedCaptainId, entityId: ent.id,
+              missionId: m.id, sectorId: m.destSectorId,
+            });
+          }
         }
       }
     } else if (m.type === 'escort') {
@@ -1783,11 +1907,34 @@ export const missions = {
 
     const want = BEAT_TRIGGER[beat.beat];
     if (!want) return;
-    // Discrete first-X triggers (B1–B3, B6). B4/B5/B7 handled elsewhere.
+    // B1/B2 are embodied board contracts and advance in _advanceEmbodiedStoryMission.
+    if (beat.beat === 1 || beat.beat === 2) return;
+    // Discrete first-X triggers (B3/B6). B4/B5/B7 handled elsewhere.
     if (want === kind && stepResult && stepResult.ok
         && isBeatStepsComplete(this.state, beat.beat)) {
       this._advanceStory(beat);
     }
+  },
+
+  /** Complete B1/B2 only through the authored 47-A contracts. Sidecar observes first; missions
+   * remains the sole cursor and reward authority. */
+  _advanceEmbodiedStoryMission(m) {
+    const story = this.state && this.state.story;
+    const beat = story && STORY_BEATS[story.beatIndex];
+    if (!beat || !m || !m.storyTag) return false;
+    const expected = beat.beat === 1 ? 'campaign47a:b1:honest_work'
+      : beat.beat === 2 ? 'campaign47a:b2:elroy' : null;
+    if (!expected || m.storyTag !== expected) return false;
+    this._ensureCampaignSidecar();
+    const signal = beat.beat === 1 ? 'mission:completed' : 'entity:killed';
+    const observed = recordBeatStep(this.state, signal, {
+      missionId: m.id,
+      storyTag: m.storyTag,
+      storyTargetId: m.storyTarget && m.storyTarget.id || null,
+    }, this.state.simTime || 0);
+    if (!observed || !observed.ok || !isBeatStepsComplete(this.state, beat.beat)) return false;
+    this._advanceStory(beat, { skipCredits: true });
+    return true;
   },
 
   /** B5 branch-chain progress: completing a branch mission ticks chainProgress toward the goal. */
@@ -1797,7 +1944,16 @@ export const missions = {
     if (!beat || beat.beat !== 5 || !story.branch) return;
     const wantType = BRANCH_CHAIN_TYPE[story.branch];
     const wantCount = BRANCH_CHAIN_COUNT[story.branch];
-    if (m.type !== wantType) return;
+    const expectedTag = `campaign47a:b5:${story.branch}:`;
+    const route = getEmbodiedLocation(5, story.branch);
+    // Exact-route compatibility keeps pre-tag Continue missions viable without restoring the old
+    // type-only shortcut: faction, origin, and destination must all match the authored leg.
+    const legacyExactRoute = !m.storyTag && route
+      && m.factionId === BRANCH_FACTION[story.branch]
+      && m.stationId === route.stationId
+      && m.destStationId === route.destStationId
+      && m.destSectorId === route.destSectorId;
+    if (m.type !== wantType || !(m.storyTag && m.storyTag.startsWith(expectedTag)) && !legacyExactRoute) return;
     const nextProgress = (story.chainProgress || 0) + 1;
     // Gate canonical chain progress through the sidecar failure/recovery state first.
     // The sidecar still never advances the live cursor or grants a reward.
@@ -1810,7 +1966,10 @@ export const missions = {
     if (!observed || !observed.ok) return;
     story.chainProgress = nextProgress;
     if (story.chainProgress >= wantCount) { story.chainProgress = 0; this._advanceStory(beat); }
-    else this.bus.emit('toast', { text: `Proving Ground: ${story.chainProgress}/${wantCount}`, kind: 'info', ttl: 3 });
+    else {
+      this._refreshEmbodiedStoryBoards();
+      this.bus.emit('toast', { text: `Proving Ground: ${story.chainProgress}/${wantCount}`, kind: 'info', ttl: 3 });
+    }
   },
 
   /** B4: accepting a faction intro contract sets the branch. */
@@ -1858,13 +2017,13 @@ export const missions = {
     // asset_deployed) via _storyTrigger; the precredits is only a soft hint (handled at advance).
   },
 
-  _advanceStory(beat) {
+  _advanceStory(beat, options = {}) {
     const story = this.state.story;
     if (story.beatIndex !== beat.beat) return; // already advanced
     const fromIndex = story.beatIndex;
     // Grant beat reward (credits + rep + unlock flag).
     if (beat.reward) {
-      if (beat.reward.credits) this.bus.emit('economy:grantCredits', { amount: beat.reward.credits, reason: `story:${beat.id}` });
+      if (beat.reward.credits && !options.skipCredits) this.bus.emit('economy:grantCredits', { amount: beat.reward.credits, reason: `story:${beat.id}` });
       if (beat.reward.rep) {
         const rep = beat.reward.rep;
         if (rep.faction) {
@@ -1886,6 +2045,7 @@ export const missions = {
 
     this.bus.emit('story:beatAdvanced', { fromIndex, toIndex, branch: story.branch || undefined });
     if (toIndex === 4) this._refreshStoryBranchIntroBoards();
+    this._refreshEmbodiedStoryBoards();
     // Sidecar observes canonical advance (clears fail context for new beat; never writes rewards).
     this._syncCampaignSidecarAfterAdvance();
     // Direction toast: tell the player what the NEW current beat wants.
@@ -1932,6 +2092,17 @@ export const missions = {
     failEncounter(this.state, reason || 'mission_failed', this.state.simTime || 0, {
       encounterId: m && m.id != null ? String(m.id) : null,
     });
+    const line = recoveryCommsForBeat(bi);
+    if (line) {
+      this.bus.emit('comms:popup', {
+        sender: line.sender,
+        text: line.text,
+        category: 'story',
+        ttl: 7,
+        persist: false,
+        id: `${line.id}:${m && m.id || 'mission'}`,
+      });
+    }
   },
 
   // =========================================================================================
@@ -2136,6 +2307,22 @@ function missionHostileSpawnPos(state, origin, rng) {
   return null;
 }
 
+/** Place an authored target inside its named sector zone so the ordinary entity:killed event can
+ * create a real aftermathWrecks marker. Zone centers are sector-local; live entities are global. */
+function missionStoryTargetSpawnPos(mission, target, rng) {
+  const sectorId = mission && mission.destSectorId;
+  const zoneId = target && target.zoneId;
+  const zone = zonesForSector(sectorId).find((candidate) => candidate && candidate.id === zoneId);
+  if (!zone || !zone.center) return null;
+  const angle = rng() * Math.PI * 2;
+  const radius = Math.sqrt(rng()) * Math.max(40, Math.min(240, (zone.radius || 400) * 0.35));
+  const local = {
+    x: zone.center.x + Math.cos(angle) * radius,
+    z: zone.center.z + Math.sin(angle) * radius,
+  };
+  return sectorLocalToGlobalForSector(local, sectorId);
+}
+
 function outsideMissionPortSafety(state, pos) {
   const active = state && state.world && state.world.activeSector || {};
   for (const station of active.stations || []) {
@@ -2186,13 +2373,13 @@ const BRANCH_CHAIN_COUNT = { traders: 3, patrol: 2, free: 2 };
 // Direction hints shown when a beat becomes current (Captain's Log north star).
 const BEAT_HINT = {
   0: 'Cold Start: mine ore from an asteroid field, then dock to sell or deliver it.',
-  1: 'Honest Work: buy low and sell high — haul a cargo to a neighbouring station.',
-  2: 'First Blood: arm up and destroy a hostile ship.',
+  1: 'Honest Work: accept Kessler\'s sealed alloy run from the Helios board.',
+  2: 'First Blood: close Rook\'s UNKNOWN tag in the Charon ambush zone.',
   3: 'Bigger Boat: earn credits and buy a bigger hull at a shipyard.',
   4: 'Pick a Side: accept an intro contract from a faction to choose your path.',
   5: 'Proving Ground: complete your faction\'s mission chain.',
   6: 'Empire Seed: deploy your first passive asset (drone, trader, or outpost).',
-  7: 'The Deep Reach: amass 100,000cr and 50 rep with your faction, then claim the stars.',
+  7: 'The Deep Reach: reach Ashfall and choose through its board, ledger, or wormhole.',
 };
 
 function storyBeatTitle(beat) {

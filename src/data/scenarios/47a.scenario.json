@@ -210,7 +210,7 @@
       "speakerActorId": "contact_kessler",
       "speaker": "KESSLER",
       "channel": "comms",
-      "text": "Two scavenger burns inbound. One shoots, one steals. Keep the spindle moving.",
+      "text": "Scavengers are shadowing the wreck. They want the sealed spindle. They are holding fire.",
       "presentationEventId": "scenario.comms.kessler"
     },
     {
@@ -270,8 +270,8 @@
       "order": 3,
       "timeStartS": 75,
       "timeEndS": 165,
-      "title": "Two scavengers arrive, one harasses and one steals",
-      "intent": "Combat starts as a contest over the spindle, not a detached DPS race.",
+      "title": "Scavengers approach in formation and demand the sealed spindle",
+      "intent": "A deliberate Massline claim triggers a clear motive, warning, escape window, then a contest over the spindle.",
       "requiredActors": ["player_kestrel", "evidence_spindle_47a", "scavenger_harasser", "scavenger_thief"],
       "requiredMechanics": ["combat.weapon_fire", "ai.screen_tug_steal", "counter_tether.cut", "counter_tether.dash"],
       "requiredPresentation": ["ui.counter_tether_warning", "audio.hostile_lock", "vfx.weapon_hits", "camera.threat_composition", "accessibility.directional_warning"],

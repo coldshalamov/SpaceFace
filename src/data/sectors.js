@@ -232,7 +232,7 @@ const CORE_SECTORS = [
     trafficPerMin: 0, enemyDensity: 0.80, enemyLevel: [10, 15],
     neighbors: ['sector_charon_expanse'],
     stations: [
-      { id: 'station_ashcache', name: 'Ruined Cache Station', type: 'blackmarket', factionId: 'faction_vael', size: 'S', services: ['repair','refuel'], repGated: true },
+      { id: 'station_ashcache', name: 'Ruined Cache Station', type: 'blackmarket', factionId: 'faction_vael', size: 'S', services: ['repair','refuel','missions'], repGated: true },
     ],
     fields: [
       { id: 'f_ash_1', type: 'ast_rare_exotic', countWeight: 1.0 },

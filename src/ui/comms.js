@@ -9,7 +9,7 @@
 //   2. GRAFFITI   — listens to `graffiti:show{ line, where }`. 'bulkhead' = a line that appears on
 //                   the player's own HUD (their ship's interior). airlock/shipyard/etc. = lines the
 //                   station hub surfaces (rendered there via a DOM hook the hub queries).
-//   3. ENDGAME    — listens to `endgame:offer` / `endgame:promptChoiceC`. A modal that presents the
+//   3. ENDGAME    — A/B live on the Ashfall board; C/D/E use short contextual confirmations.
 //                   five choices (A–E). Emits `ui:endgameChoose{ choice }`.
 //
 // Pure DOM + event listeners. Reads ctx.state only for the backlog; never mutates sim state (§0.6).
@@ -74,18 +74,22 @@ export function createComms(ctx) {
   let nextSweepAt = Infinity;
 
   // ── One-voice gate (GDD §8.1, minimal pass) ──────────────────────────────────────────────
-  // While an onboarding/intro modal is up, non-critical chatter queues instead of stacking a
-  // text wall behind the modal. Once clear, held lines drip out one every few seconds. Alert-ish
+  // While tutorial or an actionable route owns attention, non-critical chatter queues instead of
+  // stacking a text wall. Once clear, held lines drip out one every few seconds. Alert-ish
   // categories bypass the gate; stale ambient lines (>60 s) drop silently — old small talk is
   // noise, not information.
   const held = [];
   let nextDripAt = 0;
   const GATE_BYPASS = /alert|danger|critical|warning/i;
-  function introGateActive() {
-    return !!document.querySelector('.sf-ob-intro');
+  function attentionGateActive() {
+    const ob = state && state.onboarding;
+    if (ob && ob.active && !ob.finished) return true;
+    if (state && state.nav && state.nav.waypoint) return true;
+    const trackedId = state && state.ui && state.ui.trackedMissionId;
+    return !!trackedId || !!document.querySelector('.sf-firstrun-splash');
   }
   function tickHeldComms() {
-    if (!held.length || introGateActive()) return;
+    if (!held.length || attentionGateActive()) return;
     const now = performance.now();
     if (now < nextDripAt) return;
     while (held.length) {
@@ -108,7 +112,7 @@ export function createComms(ctx) {
       if (!backlogOpen) backlogBtn.classList.add('sf-comm-backlog-btn--pulse');
       return;
     }
-    if (!fromQueue && introGateActive() && !GATE_BYPASS.test(p.category || '')) {
+    if (!fromQueue && attentionGateActive() && !GATE_BYPASS.test(p.category || '')) {
       p._heldAt = performance.now();
       held.push(p);
       return;
@@ -317,96 +321,73 @@ export function createComms(ctx) {
 
   // expose a reader for the station hub (it imports nothing from here; it reads state.ui.graffiti)
 
-  // ── 4. Endgame choice modal ──────────────────────────────────────────────────────────────
-  const endgameModal = document.createElement('div');
-  endgameModal.className = 'sf-endgame';
-  endgameModal.id = 'sf-endgame';
-  endgameModal.setAttribute('role', 'dialog');
-  endgameModal.setAttribute('aria-modal', 'true');
-  endgameModal.setAttribute('aria-labelledby', 'sf-endgame-title');
-  endgameModal.innerHTML =
-    '<div class="sf-endgame__panel">' +
-      '<div class="sf-endgame__head"><h2 id="sf-endgame-title" class="sf-endgame__title">CONTRACT 47-A \u2014 FINAL DISPOSITION</h2>' +
-      '<div class="sf-endgame__sub">One contract. One disposition. The others expire the moment you choose.</div></div>' +
-      '<div class="sf-endgame__choices"></div>' +
-      '<div class="sf-endgame__footer">None of these is the good ending. The game ends the way it began.</div>' +
-    '</div>';
-  document.getElementById('ui-root').appendChild(endgameModal);
-  const endgameChoicesEl = endgameModal.querySelector('.sf-endgame__choices');
-  let endgameOpen = false;
-  let choiceCModalOpen = false;
-
-  function presentEndgame({ choices }) {
-    if (!choices || !choices.length) return;
-    endgameChoicesEl.innerHTML = '';
-    const frag = document.createDocumentFragment();
-    for (const c of choices) {
-      const card = document.createElement('div');
-      card.className = `sf-endgame__choice sf-endgame__choice--${c.id}`;
-      const reqNote = c.requires ? '' : '';
-      card.innerHTML =
-        `<div class="sf-endgame__choice-head"><span class="sf-endgame__choice-id mono">${c.id}</span>` +
-        `<span class="sf-endgame__choice-title">${escapeHtml(c.title)}</span></div>` +
-        `<div class="sf-endgame__choice-board mono">${c.boardText ? escapeHtml(c.boardText) : '<span class="sf-endgame__choice-noboard">(no board entry \u2014 this one is not a contract)</span>'}</div>` +
-        `<div class="sf-endgame__choice-summary">${escapeHtml(c.summary)}</div>` +
-        `<div class="sf-endgame__choice-cost">${escapeHtml(c.hiddenCost)}</div>` +
-        `<div class="sf-endgame__choice-actions"><button class="sf-endgame__accept" data-choice="${c.id}">ACCEPT</button></div>`;
-      frag.appendChild(card);
-    }
-    endgameChoicesEl.appendChild(frag);
-    endgameOpen = true;
-    endgameModal.classList.add('open');
-    endgameModal.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('ui-modal-open');
-  }
-
-  endgameChoicesEl.addEventListener('click', (ev) => {
-    const btn = ev.target.closest('.sf-endgame__accept');
-    if (!btn) return;
-    const choice = btn.dataset.choice;
-    if (!choice) return;
-    bus.emit('ui:endgameChoose', { choice });
-    closeEndgame();
-  });
-
-  function closeEndgame() {
-    endgameOpen = false;
-    endgameModal.classList.remove('open');
-    endgameModal.setAttribute('aria-hidden', 'true');
-    // only release the modal-open lock if no screen is up
-    if (!(ctx.screenManager && ctx.screenManager.isOpen && ctx.screenManager.isOpen())) {
-      document.body.classList.remove('ui-modal-open');
-    }
-  }
-
-  bus.on('endgame:offer', presentEndgame);
-  // Choice C is a separate Yes/No prompt (not the 5-card modal) — present it inline.
-  bus.on('endgame:promptChoiceC', ({ promptText }) => {
+  // ── 4. Contextual ending confirmations. Contract endings A/B remain board rows. ──────────
+  let choiceModalOpen = false;
+  function presentPhysicalChoice(choice, promptText, hint, declineEffect = null) {
+    if (choiceModalOpen) return;
     const wrap = document.createElement('div');
-    choiceCModalOpen = true;
+    choiceModalOpen = true;
     wrap.className = 'sf-endgame sf-endgame--c';
     wrap.setAttribute('role', 'dialog');
     wrap.setAttribute('aria-modal', 'true');
     wrap.innerHTML =
       '<div class="sf-endgame__panel sf-endgame__panel--c">' +
-      '<div class="sf-endgame__c-prompt">' + escapeHtml(promptText || 'JUMP WITHOUT DESTINATION?') + '</div>' +
-      '<div class="sf-endgame__c-hint">The wormhole is not an exit. It is the system telling you that you are already in the only place you were ever going to be.</div>' +
+      '<div class="sf-endgame__c-prompt">' + escapeHtml(promptText) + '</div>' +
+      '<div class="sf-endgame__c-hint">' + escapeHtml(hint) + '</div>' +
       '<div class="sf-endgame__c-actions"><button class="sf-endgame__c-yes">YES</button><button class="sf-endgame__c-no">NO</button></div>' +
       '</div>';
     document.getElementById('ui-root').appendChild(wrap);
     requestAnimationFrame(() => wrap.classList.add('open'));
     const cleanup = () => {
-      choiceCModalOpen = false;
+      choiceModalOpen = false;
       wrap.classList.remove('open');
       setTimeout(() => wrap.remove(), 220);
     };
-    wrap.querySelector('.sf-endgame__c-yes').addEventListener('click', () => { bus.emit('ui:endgameChoose', { choice: 'C' }); cleanup(); });
+    wrap.querySelector('.sf-endgame__c-yes').addEventListener('click', () => { bus.emit('ui:endgameChoose', { choice }); cleanup(); });
     wrap.querySelector('.sf-endgame__c-no').addEventListener('click', () => {
-      // declining C records it for Choice E eligibility
-      const s = state.story || (state.story = {});
-      if (!Array.isArray(s.endgameDeclined)) s.endgameDeclined = [];
-      if (!s.endgameDeclined.includes('C')) s.endgameDeclined.push('C');
-      bus.emit('jump:chargeAbort', { reason: 'choice_c_declined' });
+      bus.emit('ui:endgameDecline', { choice });
+      if (typeof declineEffect === 'function') declineEffect();
+      cleanup();
+    });
+  }
+  bus.on('endgame:promptChoiceC', ({ promptText }) => presentPhysicalChoice(
+    'C', promptText || 'JUMP WITHOUT DESTINATION?',
+    'The wormhole files a return, not an escape.',
+    () => bus.emit('jump:chargeAbort', { reason: 'choice_c_declined' }),
+  ));
+  bus.on('endgame:promptChoiceD', ({ promptText }) => presentPhysicalChoice(
+    'D', promptText || 'KEEP THE LEDGER AND STAY?', 'Ashfall needs a witness more than a pilot.',
+    () => bus.emit('jump:chargeAbort', { reason: 'choice_d_declined' }),
+  ));
+  bus.on('endgame:promptChoiceE', ({ promptText }) => presentPhysicalChoice(
+    'E', promptText || 'ACCEPT THE NEXT RUN?', '47-A closes. Another manifest opens.',
+  ));
+  bus.on('scenario:safeOpeningDemand', () => {
+    if (choiceModalOpen) return;
+    const wrap = document.createElement('div');
+    choiceModalOpen = true;
+    wrap.className = 'sf-endgame sf-endgame--c';
+    wrap.setAttribute('role', 'dialog');
+    wrap.setAttribute('aria-modal', 'true');
+    wrap.innerHTML =
+      '<div class="sf-endgame__panel sf-endgame__panel--c">' +
+      '<div class="sf-endgame__c-prompt">SCAVENGER CLAIM: SEALED SPINDLE</div>' +
+      '<div class="sf-endgame__c-hint">They hold fire in a wedge. Cut loose safely, or refuse and use the twelve-second escape window.</div>' +
+      '<div class="sf-endgame__c-actions"><button class="sf-endgame__c-yes">CUT LINE</button><button class="sf-endgame__c-no">REFUSE</button></div>' +
+      '</div>';
+    document.getElementById('ui-root').appendChild(wrap);
+    requestAnimationFrame(() => wrap.classList.add('open'));
+    const cleanup = () => {
+      choiceModalOpen = false;
+      wrap.classList.remove('open');
+      setTimeout(() => wrap.remove(), 220);
+    };
+    wrap.querySelector('.sf-endgame__c-yes').addEventListener('click', () => {
+      bus.emit('scenario:scavengerResponse', { choice: 'yield' });
+      cleanup();
+    });
+    wrap.querySelector('.sf-endgame__c-no').addEventListener('click', () => {
+      bus.emit('scenario:scavengerResponse', { choice: 'refuse' });
       cleanup();
     });
   });
@@ -434,7 +415,7 @@ export function createComms(ctx) {
   }, 60);
 
   function isModalOpen() {
-    return endgameOpen || choiceCModalOpen;
+    return choiceModalOpen;
   }
 
   return { tick, pushComms, openBacklog, closeBacklog, isModalOpen };

@@ -96,6 +96,7 @@ export const encounterDirector = {
       // Budget bookkeeping + script event routing.
       this.bus.on('entity:destroyed', (p) => this._onEntityGone(p));
       this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
+      this.bus.on('encounter:namedCaptainBound', (p) => this._onExternalNamedBound(p));
       this.bus.on('combat:damage', (p) => this._onCombatDamage(p));
       this.bus.on('contraband:scanned', (p) => this._routeToScript('patrolScan', 'contrabandScanned', p));
       this.bus.on('scan:pulse', (p) => this._routeToScript('distress', 'scanPulse', p));
@@ -296,6 +297,8 @@ export const encounterDirector = {
     const g = shape.gates || {};
     if (g.minCargoValue && this.cargoValue() < g.minCargoValue) return false;
     if (g.bountyOnly && (((state.player && state.player.bounty) | 0) <= 0)) return false;
+    if (Number.isFinite(g.maxSecurity) && sectorSecurityOf(state) > g.maxSecurity) return false;
+    if (Number.isFinite(g.minSecurity) && sectorSecurityOf(state) < g.minSecurity) return false;
     if (g.claimsOnly) {
       const sectorId = this._currentSectorId();
       const bodies = (state.claims && state.claims.bodies) || [];
@@ -734,6 +737,15 @@ export const encounterDirector = {
     if (!p || p.id == null) return;
     const dir = ensureDirectorState(this.state);
     const byPlayer = p.killerId != null && p.killerId === this.state.playerId;
+    const externalCaptainId = dir.externalNamed && dir.externalNamed[p.id];
+    if (externalCaptainId) {
+      const named = dir.named[externalCaptainId] || (dir.named[externalCaptainId] = {});
+      named.alive = false;
+      named.lastSeenSector = this._currentSectorId();
+      named.kills = (named.kills || 0) + (byPlayer ? 0 : 1);
+      delete dir.externalNamed[p.id];
+      this.emit('encounter:namedCaptainDefeated', { captainId: externalCaptainId, entityId: p.id, byPlayer });
+    }
     let handled = null;
     for (const lid of Object.keys(dir.live)) {
       const live = dir.live[lid];
@@ -754,6 +766,15 @@ export const encounterDirector = {
         if (dx * dx + dz * dz <= 1500 * 1500) { this._scriptEvent(live, 'guardKill', p); break; }
       }
     }
+  },
+
+  _onExternalNamedBound(p) {
+    if (!p || !p.captainId || p.entityId == null) return;
+    const dir = ensureDirectorState(this.state);
+    const named = dir.named[p.captainId] || (dir.named[p.captainId] = { alive: true, tier: 0, escapes: 0, kills: 0, lastSeenSector: null });
+    if (named.alive === false) return;
+    named.lastSeenSector = p.sectorId || this._currentSectorId();
+    dir.externalNamed[p.entityId] = p.captainId;
   },
 
   _onCombatDamage(p) {
@@ -827,11 +848,19 @@ export function planEncounters(seed, sectorId, dayIndex, zones) {
   if (!zonesByType.size) return out;
   const presentTypes = new Set(zonesByType.keys());
 
+  // Sector security for planner gates (e.g. pirate_toll.maxSecurity — no Reach tolls in Helios).
+  const secDef = SECTORS.find((s) => s.id === sectorId);
+  const sectorSecurity = secDef && Number.isFinite(secDef.security) ? secDef.security : 0.5;
+
   let seq = 0;
   const scheduleTier = (tier, maxCount, delayLo, delaySpan) => {
-    const candidates = Object.values(ENCOUNTERS).filter(
-      (e) => e.tier === tier && e.zoneTypes && e.zoneTypes.some((zt) => presentTypes.has(zt)),
-    );
+    const candidates = Object.values(ENCOUNTERS).filter((e) => {
+      if (e.tier !== tier || !e.zoneTypes || !e.zoneTypes.some((zt) => presentTypes.has(zt))) return false;
+      const g = e.gates || {};
+      if (Number.isFinite(g.maxSecurity) && sectorSecurity > g.maxSecurity) return false;
+      if (Number.isFinite(g.minSecurity) && sectorSecurity < g.minSecurity) return false;
+      return true;
+    });
     if (!candidates.length) return;
     const roll = rng();
     let count;
@@ -890,7 +919,13 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
   let variantKind = null;
 
   if (enc.variant === 'distress') {
-    const genuine = rng() < (Number.isFinite(enc.genuineChance) ? enc.genuineChance : 0.6);
+    // High-sec cores (Helios-class): never plan bait — a "mayday" that springs Reach guns
+    // in Concord space breaks the professional first-hour pocket. Genuine distress still rolls.
+    const secDefForDistress = SECTORS.find((s) => s.id === sectorId);
+    const secForDistress = secDefForDistress && Number.isFinite(secDefForDistress.security)
+      ? secDefForDistress.security : 0.5;
+    let genuine = rng() < (Number.isFinite(enc.genuineChance) ? enc.genuineChance : 0.6);
+    if (secForDistress >= 0.85) genuine = true;
     const branch = genuine ? enc.genuine : enc.bait;
     factionId = branch.factionId;
     variantKind = genuine ? 'distress_genuine' : 'distress_bait';
@@ -1002,6 +1037,7 @@ function freshState() {
     window: [],
     cooldowns: {},
     named: {},
+    externalNamed: {},
     receipts: [],
     stats: { fired: 0, resolved: 0, fizzled: 0 },
     lastMeaningfulAt: -1e9,
@@ -1036,6 +1072,7 @@ function ensureDirectorState(state) {
   if (!Array.isArray(d.window)) d.window = [];
   if (!d.cooldowns || typeof d.cooldowns !== 'object') d.cooldowns = {};
   if (!d.named || typeof d.named !== 'object' || Array.isArray(d.named)) d.named = {};
+  if (!d.externalNamed || typeof d.externalNamed !== 'object' || Array.isArray(d.externalNamed)) d.externalNamed = {};
   if (!Array.isArray(d.receipts)) d.receipts = [];
   if (!d.stats || typeof d.stats !== 'object') d.stats = { fired: 0, resolved: 0, fizzled: 0 };
   if (!('plannedKey' in d)) d.plannedKey = null;

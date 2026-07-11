@@ -18,8 +18,13 @@ export const scenarioRuntime = {
     this.helpers.applyScenarioBranch = (branchId, options = {}) => applyScenarioBranch(this, branchId, options);
     this._subscriptions = [
       this.bus.on('combat:actionStarted', (payload) => recordScenarioEvidenceEvent(this, 'combat:actionStarted', payload || {})),
-      this.bus.on('tether:attached', (payload) => recordScenarioEvidenceEvent(this, 'tether:attached', payload || {})),
+      this.bus.on('tether:attached', (payload) => {
+        recordScenarioEvidenceEvent(this, 'tether:attached', payload || {});
+        noteSafeOpeningTether(this, payload || {});
+      }),
       this.bus.on('tether:broken', (payload) => recordScenarioEvidenceEvent(this, 'tether:broken', payload || {})),
+      this.bus.on('combat:damage', (payload) => noteSafeOpeningProvocation(this, payload || {})),
+      this.bus.on('scenario:scavengerResponse', (payload) => noteSafeOpeningResponse(this, payload || {})),
     ];
     ensureScenarioState(this.state);
 
@@ -108,6 +113,7 @@ function activateScenario(runtime, contract) {
     unresolvedActorIds,
     enteredBeatIds: [],
     evidence: { schemaVersion: SCENARIO_RUNTIME_SCHEMA_VERSION, events: [] },
+    safeOpening: { spindleClaimed: false, demandIssuedAt: null, noFireUntilS: null, response: null, provoked: false },
   };
   runtime._lastBeatId = null;
 
@@ -162,12 +168,34 @@ function syncLiveColdStartCombatants(runtime) {
   const activeBeatId = scenario.active && scenario.active.activeBeatId || null;
   const entered = Array.isArray(scenario.enteredBeatIds) ? scenario.enteredBeatIds : [];
   const playerId = state.playerId;
+  const safe = scenario.safeOpening || (scenario.safeOpening = {});
+  const now = state.simTime || 0;
+  const scavengerBeat = activeBeatId === 'scavenger_arrival' || entered.includes('scavenger_arrival');
+  const storyReady = !!(state.story && (state.story.beatIndex | 0) >= 2);
+  const outsideProtection = playerOutsideHeliosProtection(state);
+  if (scavengerBeat && safe.spindleClaimed && storyReady && outsideProtection && !Number.isFinite(safe.demandIssuedAt)) {
+    safe.demandIssuedAt = now;
+    safe.noFireUntilS = null;
+    runtime.bus.emit('comms:popup', {
+      id: 'scenario.47a.scavenger_demand', sender: 'SCAVENGER WING', category: 'story', ttl: 10,
+      text: 'Cut the line and drift clear. Refuse, and we close in after twelve seconds.',
+    });
+    runtime.bus.emit('scenario:safeOpeningDemand', {
+      motive: 'claim_evidence_spindle', responseRequired: true,
+      formation: 'wedge', approachRange: 1900,
+    });
+  }
+  const engagementAuthorized = !!safe.provoked
+    || (scavengerBeat && safe.spindleClaimed && storyReady && outsideProtection
+      && safe.response === 'refuse' && Number.isFinite(safe.noFireUntilS) && now >= safe.noFireUntilS);
   for (const entity of state.entityList || []) {
     if (!entity || entity.type !== 'ship' || !entity.data) continue;
     const ai = entity.data.ai;
     if (!ai || !ai.liveColdStartSafe) continue;
     const activationBeat = ai.dormantUntilBeat || null;
-    const active = !activationBeat || activeBeatId === activationBeat || entered.includes(activationBeat);
+    const beatActive = !activationBeat || activeBeatId === activationBeat || entered.includes(activationBeat);
+    const isScavenger = activationBeat === 'scavenger_arrival';
+    const active = beatActive && (!isScavenger || engagementAuthorized);
     if (active) {
       if (!entity.data._liveColdStartActivated) {
         entity.team = Number.isFinite(ai.activationTeam) ? ai.activationTeam : entity.team;
@@ -192,6 +220,50 @@ function syncLiveColdStartCombatants(runtime) {
       }
     }
   }
+}
+
+function noteSafeOpeningTether(runtime, payload) {
+  const state = runtime.state;
+  if (payload.actorId !== state.playerId || payload.targetId == null) return;
+  const target = state.entities && state.entities.get(payload.targetId);
+  if (!target || !target.data || target.data.scenarioActorId !== 'evidence_spindle_47a') return;
+  const scenario = ensureScenarioState(state);
+  const safe = scenario.safeOpening || (scenario.safeOpening = {});
+  safe.spindleClaimed = true;
+  safe.claimedAtS = state.simTime || 0;
+}
+
+function noteSafeOpeningProvocation(runtime, payload) {
+  if (payload.attackerId !== runtime.state.playerId || payload.targetId == null) return;
+  const target = runtime.state.entities && runtime.state.entities.get(payload.targetId);
+  const ai = target && target.data && target.data.ai;
+  if (!ai || !ai.liveColdStartSafe || ai.dormantUntilBeat !== 'scavenger_arrival') return;
+  const scenario = ensureScenarioState(runtime.state);
+  const safe = scenario.safeOpening || (scenario.safeOpening = {});
+  safe.provoked = true;
+}
+
+function noteSafeOpeningResponse(runtime, payload) {
+  const choice = payload && payload.choice;
+  if (choice !== 'yield' && choice !== 'refuse') return;
+  const scenario = ensureScenarioState(runtime.state);
+  const safe = scenario.safeOpening || (scenario.safeOpening = {});
+  if (!Number.isFinite(safe.demandIssuedAt)) return;
+  safe.response = choice;
+  if (choice === 'refuse') safe.noFireUntilS = (runtime.state.simTime || 0) + 12;
+  else safe.noFireUntilS = null;
+}
+
+function playerOutsideHeliosProtection(state) {
+  if (!state || !state.world || state.world.currentSectorId !== 'sector_helios_prime') return false;
+  const player = state.entities && state.entities.get(state.playerId);
+  if (!player || !player.pos) return false;
+  const station = (state.entityList || []).find((entity) => entity && entity.alive !== false
+    && entity.data && entity.data.stationId === 'station_helios');
+  if (!station || !station.pos) return false;
+  const dx = player.pos.x - station.pos.x;
+  const dz = player.pos.z - station.pos.z;
+  return dx * dx + dz * dz >= 1200 * 1200;
 }
 
 function recordScenarioEvidenceEvent(runtime, type, payload) {
@@ -626,6 +698,9 @@ function normalizeScenarioState(data) {
     unresolvedActorIds: Array.isArray(src.unresolvedActorIds) ? src.unresolvedActorIds.filter((id) => typeof id === 'string') : [],
     enteredBeatIds: Array.isArray(src.enteredBeatIds) ? src.enteredBeatIds.filter((id) => typeof id === 'string') : [],
     evidence: normalizeScenarioEvidence(src.evidence),
+    safeOpening: src.safeOpening && typeof src.safeOpening === 'object' && !Array.isArray(src.safeOpening)
+      ? clonePlain(src.safeOpening)
+      : { spindleClaimed: false, demandIssuedAt: null, noFireUntilS: null, response: null, provoked: false },
   };
   if (src.resolution && typeof src.resolution === 'object' && !Array.isArray(src.resolution)) {
     out.resolution = clonePlain(src.resolution);
