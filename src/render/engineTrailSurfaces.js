@@ -372,6 +372,8 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
       geo.attributes.aTrailUv.needsUpdate = true;
     },
     getMaterial() { return mat; },
+    /** Owner-root accessor for measurement isolation (do not mutate topology). */
+    getMesh() { return mesh; },
     clear() { count = 0; },
     dispose() { scene.remove(mesh); geo.dispose(); mat.dispose(); },
   };

@@ -244,7 +244,75 @@ export const vfx = {
     this._ctmp = new THREE.Color();
 
     this._initPools();
+    // Measurement-only VFX owner seam. It snapshots only roots this system owns;
+    // event lights remain visible/intensity-driven to avoid shader recompiles.
+    this._perfVfxIsolationRestore = null;
+    if (ctx.state && ctx.state.render) {
+      ctx.state.render.perfVfxIsolation = {
+        hideAll: () => this._hidePerfVfxRoots(),
+        restore: () => this._restorePerfVfxRoots(),
+        reassert: () => this._reassertPerfVfxRoots(),
+        inspect: () => ({
+          active: !!this._perfVfxIsolationRestore,
+          hidden: this._perfVfxIsolationRestore ? this._perfVfxIsolationRestore.length : 0,
+          scope: this._perfVfxIsolationRestore ? 'vfx_owner_roots' : null,
+        }),
+      };
+    }
     this._subscribe();
+  },
+
+  _perfVfxRoots() {
+    const roots = [];
+    const seen = new Set();
+    const add = (object) => {
+      if (!object || object.isObject3D !== true || seen.has(object)) return;
+      seen.add(object);
+      roots.push(object);
+    };
+    add(this._points);
+    add(this._trailStreakPool && this._trailStreakPool.mesh);
+    for (const sprite of this._spritePool || []) add(sprite);
+    if (this._miningBeam) { add(this._miningBeam.mesh); add(this._miningBeam.glow); }
+    if (this._tetherCable) {
+      for (const key of ['mesh', 'glow', 'band', 'anchor', 'anchorCore', 'targetHalo']) add(this._tetherCable[key]);
+    }
+    add(this._arcPreview && this._arcPreview.mesh);
+    add(this._seamMarkers && this._seamMarkers.mesh);
+    if (this._energy) {
+      add(this._energy.ribbon);
+      for (const plume of this._energy.plumes || []) add(plume);
+    }
+    for (const trail of this._ribbonTrails?.values?.() || []) add(trail.getMesh?.());
+    return roots;
+  },
+
+  _hidePerfVfxRoots() {
+    if (this._perfVfxIsolationRestore) throw new Error('VFX isolation already active');
+    const restore = this._perfVfxRoots().map((object) => [object, object.visible]);
+    this._perfVfxIsolationRestore = restore;
+    this._reassertPerfVfxRoots();
+    return { active: true, hidden: restore.length, scope: 'vfx_owner_roots' };
+  },
+
+  _reassertPerfVfxRoots() {
+    if (!this._perfVfxIsolationRestore) return { active: false, hidden: 0 };
+    const captured = new Set(this._perfVfxIsolationRestore.map(([object]) => object));
+    for (const object of this._perfVfxRoots()) {
+      if (captured.has(object)) continue;
+      this._perfVfxIsolationRestore.push([object, object.visible]);
+      captured.add(object);
+    }
+    for (const [object] of this._perfVfxIsolationRestore) if (object) object.visible = false;
+    return { active: true, hidden: this._perfVfxIsolationRestore.length };
+  },
+
+  _restorePerfVfxRoots() {
+    const restore = this._perfVfxIsolationRestore;
+    if (!restore) return { restored: true, active: false, restoredCount: 0 };
+    for (const [object, wasVisible] of restore) if (object) object.visible = wasVisible;
+    this._perfVfxIsolationRestore = null;
+    return { restored: true, active: false, restoredCount: restore.length, scope: 'vfx_owner_roots' };
   },
 
   inspect() {
@@ -3155,6 +3223,10 @@ export const vfx = {
       // render may have come up after vfx.init (defensive) — try once to attach pools
       if (this.state.render && this.state.render.scene) { this._initPools(); this._subscribeOnce(); }
       if (!this._scene) return;
+    }
+    if (this._perfVfxIsolationRestore) {
+      this._reassertPerfVfxRoots();
+      return;
     }
     // Observe frameOriginSeq even if renderer already reprojected — same-origin is a no-op.
     this._syncFrameMembrane();

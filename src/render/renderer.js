@@ -136,7 +136,7 @@ function syncContactShadowPool(pool, entities, meshes) {
     if (!entity || entity.alive === false || entity._noShadow) continue;
     if (entity.type !== 'ship' && entity.type !== 'station') continue;
     const mesh = meshes && meshes.get(entity.id);
-    if (mesh && mesh.userData && mesh.userData.hasContactShadow) desired++;
+    if (mesh && mesh.visible !== false && mesh.userData && mesh.userData.hasContactShadow) desired++;
   }
   ensureContactShadowCapacity(pool, desired);
   let count = 0;
@@ -148,7 +148,7 @@ function syncContactShadowPool(pool, entities, meshes) {
     if (!entity || entity.alive === false || entity._noShadow) continue;
     if (entity.type !== 'ship' && entity.type !== 'station') continue;
     const mesh = meshes && meshes.get(entity.id);
-    if (!mesh || !(mesh.userData && mesh.userData.hasContactShadow)) continue;
+    if (!mesh || mesh.visible === false || !(mesh.userData && mesh.userData.hasContactShadow)) continue;
     ensureContactShadowCapacity(pool, count + 1);
     const radius = Number(mesh.userData.contactShadowRadius) || Math.max(16, (entity.radius || 28) * 1.4);
     // Prefer mesh frame-local pose (authoritative for Three.js after syncEntityViews).
@@ -305,7 +305,7 @@ function syncShipAuxPools(pool, entities, meshes) {
   for (const entity of entities) {
     if (!entity || entity.alive === false || entity.type !== 'ship') continue;
     const root = meshes && meshes.get(entity.id);
-    if (!root || !root.userData) continue;
+    if (!root || root.visible === false || !root.userData) continue;
     if (root.userData.shieldBubble && entity.shield > 0) desiredShield++;
     const navSources = getPooledNavLightSources(root);
     for (const source of navSources) desiredNav += Math.max(0, source.count || 0);
@@ -325,7 +325,7 @@ function syncShieldAuxPool(pool, entities, meshes) {
   for (const entity of entities) {
     if (!entity || entity.alive === false || entity.type !== 'ship') continue;
     const root = meshes && meshes.get(entity.id);
-    const bubble = root && root.userData && root.userData.shieldBubble;
+    const bubble = root && root.visible !== false && root.userData && root.userData.shieldBubble;
     if (!bubble) continue;
     bubble.visible = false;
     if (!(entity.shield > 0)) continue;
@@ -353,7 +353,7 @@ function syncNavLightAuxPool(pool, entities, meshes) {
   for (const entity of entities) {
     if (!entity || entity.alive === false || entity.type !== 'ship') continue;
     const root = meshes && meshes.get(entity.id);
-    if (!root) continue;
+    if (!root || root.visible === false) continue;
     const sources = getPooledNavLightSources(root);
     for (const source of sources) {
       source.visible = false;
@@ -592,28 +592,80 @@ export const render = {
     // renderer's private mesh map; this owner-held seam snapshots each mesh's
     // exact visibility and restores it atomically after the sample window.
     let entityIsolationRestore = null;
+    const hideEntityRoots = (predicate, scope) => {
+      if (entityIsolationRestore) throw new Error('entity isolation already active');
+      const visibility = [];
+      const meshes = new Set();
+      for (const [id, mesh] of this._meshes) {
+        const entity = state.entities && state.entities.get ? state.entities.get(id) : null;
+        if (!mesh || !predicate(entity, id)) continue;
+        visibility.push([id, mesh, mesh.visible]);
+        meshes.add(mesh);
+        mesh.visible = false;
+      }
+      entityIsolationRestore = { scope, predicate, visibility, meshes };
+      return { active: true, hidden: visibility.length, scope };
+    };
     state.render.perfEntityIsolation = {
-      hideNonPlayer: () => {
-        if (entityIsolationRestore) throw new Error('non-player entity isolation already active');
-        const visibility = [];
+      hideNonPlayer: () => hideEntityRoots((_entity, id) => id !== state.playerId, 'non_player_entities'),
+      hideStationsPlaces: () => hideEntityRoots((entity) => !!(entity && (
+        entity.type === 'station'
+        || (entity.type === 'fx' && entity.data
+          && (typeof entity.data.placeId === 'string' || typeof entity.data.landmarkGlb === 'string'))
+      )), 'stations_places'),
+      hideNonPlayerShips: () => hideEntityRoots((entity, id) => !!(entity && id !== state.playerId
+        && (entity.type === 'ship' || entity.type === 'drone')), 'non_player_ships'),
+      reassert: () => {
+        const record = entityIsolationRestore;
+        if (!record) return { active: false, hidden: 0, scope: null };
         for (const [id, mesh] of this._meshes) {
-          if (!mesh || id === state.playerId) continue;
-          visibility.push([id, mesh, mesh.visible]);
+          const entity = state.entities && state.entities.get ? state.entities.get(id) : null;
+          if (!mesh || !record.predicate(entity, id)) continue;
+          if (!record.meshes.has(mesh)) {
+            record.visibility.push([id, mesh, mesh.visible]);
+            record.meshes.add(mesh);
+          }
           mesh.visible = false;
         }
-        entityIsolationRestore = visibility;
-        return { active: true, hidden: visibility.length };
+        return { active: true, hidden: record.visibility.length, scope: record.scope };
       },
       restore: () => {
-        const visibility = entityIsolationRestore;
-        if (!visibility) return { restored: true, active: false, restoredCount: 0 };
+        const record = entityIsolationRestore;
+        if (!record) return { restored: true, active: false, restoredCount: 0 };
+        const visibility = record.visibility || [];
         for (const [, mesh, wasVisible] of visibility) {
           if (mesh) mesh.visible = wasVisible;
         }
         entityIsolationRestore = null;
-        return { restored: true, active: false, restoredCount: visibility.length };
+        return { restored: true, active: false, restoredCount: visibility.length, scope: record.scope };
       },
-      inspect: () => ({ active: !!entityIsolationRestore, hidden: entityIsolationRestore ? entityIsolationRestore.length : 0 }),
+      inspect: () => ({
+        active: !!entityIsolationRestore,
+        hidden: entityIsolationRestore ? entityIsolationRestore.visibility.length : 0,
+        scope: entityIsolationRestore ? entityIsolationRestore.scope : null,
+      }),
+    };
+    // Diagnostic-only shader/fill classifier. Scene override identity is restored exactly;
+    // no authored/shared material is mutated or replaced on an entity.
+    const perfBasicMaterial = new THREE.MeshBasicMaterial({ color: 0x808080, fog: true });
+    const perfDepthMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, colorWrite: false, depthTest: true, depthWrite: true });
+    let materialIsolationRestore = null;
+    state.render.perfMaterialIsolation = {
+      apply: (mode) => {
+        if (materialIsolationRestore) throw new Error('material isolation already active');
+        if (mode !== 'basic' && mode !== 'depth') throw new Error(`unknown material isolation mode: ${mode}`);
+        materialIsolationRestore = { overrideMaterial: scene.overrideMaterial, mode };
+        scene.overrideMaterial = mode === 'basic' ? perfBasicMaterial : perfDepthMaterial;
+        return { active: true, mode };
+      },
+      restore: () => {
+        const record = materialIsolationRestore;
+        if (!record) return { restored: true, active: false, mode: null };
+        scene.overrideMaterial = record.overrideMaterial;
+        materialIsolationRestore = null;
+        return { restored: true, active: false, mode: record.mode };
+      },
+      inspect: () => ({ active: !!materialIsolationRestore, mode: materialIsolationRestore ? materialIsolationRestore.mode : null }),
     };
     this._meshBuildQueue = [];
     this._meshBuildQueueHead = 0;
@@ -1408,6 +1460,10 @@ export const render = {
 
   drawPreparedFrame() {
     if (this._contextLost) return false;
+    // Entity roots may spawn/rebuild and VFX events may fire between render updates;
+    // reassert diagnostic owner seams immediately before draw so nothing leaks a frame.
+    try { this.state?.render?.perfEntityIsolation?.reassert?.(); } catch (_) { /* diagnostic only */ }
+    try { this.state?.render?.perfVfxIsolation?.reassert?.(); } catch (_) { /* diagnostic only */ }
     // Attribution timers: CPU via recordRenderWork only when renderWorkEnabled (default OFF).
     // GPU queries only when gpuTimers.enabled — and never nested: bloom pass groups own GPU
     // spans on the bloom path; the outer drawPreparedFrame GPU span is only for renderGraph/straight.

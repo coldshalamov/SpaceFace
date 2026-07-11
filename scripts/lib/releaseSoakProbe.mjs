@@ -375,6 +375,21 @@ async function runSoakCycle(page, { index, outputDir, log }) {
 async function undockForRecovery(page, log) {
   assert.equal(await isDocked(page), true, 'context-recovery flight must begin from the comparable docked-market state');
   await page.keyboard.press('KeyE');
+  // The station departure owner may require a confirmation UI after E. When the
+  // station UI itself is the already-recorded blocked route, finish through the
+  // same canonical committed event rather than mutating dock state directly.
+  const publicUndock = await page.waitForFunction(() => window.SF?.state?.ui?.docked === false,
+    null, { timeout: 2_000 }).then(() => true).catch(() => false);
+  if (!publicUndock) {
+    await page.evaluate(() => {
+      window.SF?.bus?.emit('dock:undocked', {
+        committed: true,
+        source: 'performance-attribution-recovery',
+        diagnostic: true,
+      });
+    });
+    log('[attribution] committed undock recovery after blocked station UI');
+  }
   await page.waitForFunction(() => {
     const state = window.SF?.state;
     const player = state?.entityList?.find((entity) => entity?.id === state.playerId);
@@ -866,6 +881,8 @@ function snapshotDiagnosticSettings(state) {
     bloom: state?.settings?.video ? state.settings.video.bloom : true,
     spaceBgVisible: state?.render?.spaceBg?.group?.visible !== false,
     entityIsolationActive: state?.render?.perfEntityIsolation?.inspect?.().active === true,
+    vfxIsolationActive: state?.render?.perfVfxIsolation?.inspect?.().active === true,
+    materialIsolationActive: state?.render?.perfMaterialIsolation?.inspect?.().active === true,
     label: 'DIAGNOSTIC-ONLY — not a shippable fix',
   };
 }
@@ -879,6 +896,8 @@ function applyDiagnosticVariantToState(state, snap, variantId) {
     if (state.settings?.video) state.settings.video.bloom = snap.bloom;
     if (state.render?.spaceBg?.group) state.render.spaceBg.group.visible = snap.spaceBgVisible;
     state.render?.perfEntityIsolation?.restore?.();
+    state.render?.perfVfxIsolation?.restore?.();
+    state.render?.perfMaterialIsolation?.restore?.();
     return { id: variantId, diagnostic: false, label: 'baseline (restored defaults)', applied: true };
   }
   if (variantId === 'sim_paused') {
@@ -899,6 +918,27 @@ function applyDiagnosticVariantToState(state, snap, variantId) {
     if (!isolation?.hideNonPlayer) throw new Error('renderer entity isolation unavailable');
     return { id: variantId, diagnostic: true, label, applied: true, ...isolation.hideNonPlayer() };
   }
+  if (variantId === 'stations_places_hidden') {
+    const isolation = state.render?.perfEntityIsolation;
+    if (!isolation?.hideStationsPlaces) throw new Error('renderer station/place isolation unavailable');
+    return { id: variantId, diagnostic: true, label, applied: true, ...isolation.hideStationsPlaces() };
+  }
+  if (variantId === 'non_player_ships_hidden') {
+    const isolation = state.render?.perfEntityIsolation;
+    if (!isolation?.hideNonPlayerShips) throw new Error('renderer ship isolation unavailable');
+    return { id: variantId, diagnostic: true, label, applied: true, ...isolation.hideNonPlayerShips() };
+  }
+  if (variantId === 'vfx_hidden') {
+    const isolation = state.render?.perfVfxIsolation;
+    if (!isolation?.hideAll) throw new Error('VFX isolation unavailable');
+    return { id: variantId, diagnostic: true, label, applied: true, ...isolation.hideAll() };
+  }
+  if (variantId === 'material_basic_override' || variantId === 'material_depth_override') {
+    const isolation = state.render?.perfMaterialIsolation;
+    if (!isolation?.apply) throw new Error('renderer material isolation unavailable');
+    const mode = variantId === 'material_basic_override' ? 'basic' : 'depth';
+    return { id: variantId, diagnostic: true, label, applied: true, ...isolation.apply(mode) };
+  }
   throw new Error(`unhandled diagnostic variant ${variantId}`);
 }
 
@@ -908,11 +948,15 @@ function restoreDiagnosticVariantToState(state, snap) {
   if (state.settings?.video) state.settings.video.bloom = snap.bloom;
   if (state.render?.spaceBg?.group) state.render.spaceBg.group.visible = snap.spaceBgVisible;
   state.render?.perfEntityIsolation?.restore?.();
+  state.render?.perfVfxIsolation?.restore?.();
+  state.render?.perfMaterialIsolation?.restore?.();
   const videoBloom = state.settings?.video?.bloom;
   const spaceBgVisible = state.render?.spaceBg?.group?.visible !== false;
   const ok = state.timeScale === snap.timeScale && videoBloom === snap.bloom
     && spaceBgVisible === snap.spaceBgVisible
-    && state.render?.perfEntityIsolation?.inspect?.().active !== true;
+    && state.render?.perfEntityIsolation?.inspect?.().active !== true
+    && state.render?.perfVfxIsolation?.inspect?.().active !== true
+    && state.render?.perfMaterialIsolation?.inspect?.().active !== true;
   return {
     restored: ok === true,
     diagnostic: true,
@@ -939,6 +983,8 @@ async function applyDiagnosticVariant(page, variantId) {
         bloom: state.settings?.video ? state.settings.video.bloom : true,
         spaceBgVisible: state.render?.spaceBg?.group?.visible !== false,
         entityIsolationActive: state.render?.perfEntityIsolation?.inspect?.().active === true,
+        vfxIsolationActive: state.render?.perfVfxIsolation?.inspect?.().active === true,
+        materialIsolationActive: state.render?.perfMaterialIsolation?.inspect?.().active === true,
         label,
       };
     }
@@ -948,6 +994,8 @@ async function applyDiagnosticVariant(page, variantId) {
       if (state.settings?.video) state.settings.video.bloom = snap.bloom;
       if (state.render?.spaceBg?.group) state.render.spaceBg.group.visible = snap.spaceBgVisible;
       state.render?.perfEntityIsolation?.restore?.();
+      state.render?.perfVfxIsolation?.restore?.();
+      state.render?.perfMaterialIsolation?.restore?.();
       try { window.SF?.bus?.emit('settings:changed', { section: 'video', key: 'bloom' }); } catch (_) { /* ignore */ }
       return { id, diagnostic: false, label: 'baseline (restored defaults)', applied: true };
     }
@@ -970,6 +1018,27 @@ async function applyDiagnosticVariant(page, variantId) {
       if (!isolation?.hideNonPlayer) throw new Error('renderer entity isolation unavailable');
       return { id, diagnostic: true, label, applied: true, ...isolation.hideNonPlayer() };
     }
+    if (id === 'stations_places_hidden') {
+      const isolation = state.render?.perfEntityIsolation;
+      if (!isolation?.hideStationsPlaces) throw new Error('renderer station/place isolation unavailable');
+      return { id, diagnostic: true, label, applied: true, ...isolation.hideStationsPlaces() };
+    }
+    if (id === 'non_player_ships_hidden') {
+      const isolation = state.render?.perfEntityIsolation;
+      if (!isolation?.hideNonPlayerShips) throw new Error('renderer ship isolation unavailable');
+      return { id, diagnostic: true, label, applied: true, ...isolation.hideNonPlayerShips() };
+    }
+    if (id === 'vfx_hidden') {
+      const isolation = state.render?.perfVfxIsolation;
+      if (!isolation?.hideAll) throw new Error('VFX isolation unavailable');
+      return { id, diagnostic: true, label, applied: true, ...isolation.hideAll() };
+    }
+    if (id === 'material_basic_override' || id === 'material_depth_override') {
+      const isolation = state.render?.perfMaterialIsolation;
+      if (!isolation?.apply) throw new Error('renderer material isolation unavailable');
+      const mode = id === 'material_basic_override' ? 'basic' : 'depth';
+      return { id, diagnostic: true, label, applied: true, ...isolation.apply(mode) };
+    }
     throw new Error(`unhandled diagnostic variant ${id}`);
   }, variantId);
 }
@@ -983,12 +1052,16 @@ async function restoreDiagnosticVariant(page) {
     if (state.settings?.video) state.settings.video.bloom = snap.bloom;
     if (state.render?.spaceBg?.group) state.render.spaceBg.group.visible = snap.spaceBgVisible;
     state.render?.perfEntityIsolation?.restore?.();
+    state.render?.perfVfxIsolation?.restore?.();
+    state.render?.perfMaterialIsolation?.restore?.();
     try { window.SF?.bus?.emit('settings:changed', { section: 'video', key: 'bloom' }); } catch (_) { /* ignore */ }
     const videoBloom = state.settings?.video?.bloom;
     const spaceBgVisible = state.render?.spaceBg?.group?.visible !== false;
     const ok = state.timeScale === snap.timeScale && videoBloom === snap.bloom
       && spaceBgVisible === snap.spaceBgVisible
-      && state.render?.perfEntityIsolation?.inspect?.().active !== true;
+      && state.render?.perfEntityIsolation?.inspect?.().active !== true
+      && state.render?.perfVfxIsolation?.inspect?.().active !== true
+      && state.render?.perfMaterialIsolation?.inspect?.().active !== true;
     delete window.__SF_PERF_ATTRIBUTION_RESTORE__;
     return {
       restored: ok === true,

@@ -49,6 +49,11 @@ export const ATTRIBUTION_DIAGNOSTIC_VARIANTS = Object.freeze([
   'bloom_off',
   'background_hidden',
   'non_player_entities_hidden',
+  'stations_places_hidden',
+  'non_player_ships_hidden',
+  'vfx_hidden',
+  'material_basic_override',
+  'material_depth_override',
 ]);
 
 export function validateReleaseSoakEvidence(envelope, { requireArtifacts = true } = {}) {

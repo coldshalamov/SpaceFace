@@ -56,15 +56,30 @@ test('render-work CPU attribution is default-off and explicitly gated', () => {
 
 test('diagnostic variants round-trip timeScale and bloom exactly', () => {
   let entityIsolationActive = false;
+  let entityIsolationScope = null;
+  let vfxIsolationActive = false;
+  let materialIsolationActive = false;
   const state = {
     timeScale: 0.75,
     settings: { video: { bloom: true } },
     render: {
       spaceBg: { group: { visible: true } },
       perfEntityIsolation: {
-        hideNonPlayer() { entityIsolationActive = true; return { active: true, hidden: 17 }; },
-        restore() { entityIsolationActive = false; return { restored: true, active: false, restoredCount: 17 }; },
-        inspect() { return { active: entityIsolationActive, hidden: entityIsolationActive ? 17 : 0 }; },
+        hideNonPlayer() { entityIsolationActive = true; entityIsolationScope = 'all'; return { active: true, hidden: 17 }; },
+        hideStationsPlaces() { entityIsolationActive = true; entityIsolationScope = 'stations_places'; return { active: true, hidden: 4 }; },
+        hideNonPlayerShips() { entityIsolationActive = true; entityIsolationScope = 'non_player_ships'; return { active: true, hidden: 3 }; },
+        restore() { entityIsolationActive = false; entityIsolationScope = null; return { restored: true, active: false, restoredCount: 17 }; },
+        inspect() { return { active: entityIsolationActive, hidden: entityIsolationActive ? 17 : 0, scope: entityIsolationScope }; },
+      },
+      perfVfxIsolation: {
+        hideAll() { vfxIsolationActive = true; return { active: true, hidden: 22 }; },
+        restore() { vfxIsolationActive = false; return { restored: true, active: false, restoredCount: 22 }; },
+        inspect() { return { active: vfxIsolationActive, hidden: vfxIsolationActive ? 22 : 0 }; },
+      },
+      perfMaterialIsolation: {
+        apply(mode) { materialIsolationActive = true; return { active: true, mode }; },
+        restore() { materialIsolationActive = false; return { restored: true, active: false }; },
+        inspect() { return { active: materialIsolationActive }; },
       },
     },
   };
@@ -86,6 +101,22 @@ test('diagnostic variants round-trip timeScale and bloom exactly', () => {
   assert.equal(entityIsolationActive, true);
   assert.equal(restoreDiagnosticVariantToState(state, snapshot).restored, true);
   assert.equal(entityIsolationActive, false);
+  for (const [id, expected] of [
+    ['stations_places_hidden', 4],
+    ['non_player_ships_hidden', 3],
+    ['vfx_hidden', 22],
+  ]) {
+    const applied = applyDiagnosticVariantToState(state, snapshot, id);
+    assert.equal(applied.hidden, expected, `${id} applies its owner-scoped visibility seam`);
+    assert.equal(restoreDiagnosticVariantToState(state, snapshot).restored, true);
+  }
+  for (const id of ['material_basic_override', 'material_depth_override']) {
+    const applied = applyDiagnosticVariantToState(state, snapshot, id);
+    assert.equal(applied.mode, id === 'material_basic_override' ? 'basic' : 'depth');
+    assert.equal(materialIsolationActive, true);
+    assert.equal(restoreDiagnosticVariantToState(state, snapshot).restored, true);
+    assert.equal(materialIsolationActive, false);
+  }
 });
 
 test('GPU timers are unavailable without an extension and reject nested begin', () => {
@@ -123,11 +154,13 @@ test('GPU timers are unavailable without an extension and reject nested begin', 
 });
 
 test('controller command is wired and restoration is failure-atomic', async () => {
-  const [pkg, commandSource, probeSource, rendererSource, bloomSource] = await Promise.all([
+  const [pkg, commandSource, probeSource, rendererSource, vfxSource, trailSource, bloomSource] = await Promise.all([
     readFile(new URL('../package.json', import.meta.url), 'utf8').then(JSON.parse),
     readFile(new URL('../scripts/check-performance-attribution.mjs', import.meta.url), 'utf8'),
     readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8'),
     readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/render/vfx.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/render/engineTrailSurfaces.js', import.meta.url), 'utf8'),
     readFile(new URL('../src/render/bloom.js', import.meta.url), 'utf8'),
   ]);
   assert.equal(pkg.scripts['check:perf:attribution'], 'node scripts/check-performance-attribution.mjs');
@@ -136,5 +169,21 @@ test('controller command is wired and restoration is failure-atomic', async () =
   assert.match(probeSource, /finally\s*\{[\s\S]*restoreDiagnosticVariant[\s\S]*disableMeasurementGates/);
   assert.match(rendererSource, /perf\.renderWorkEnabled/);
   assert.match(rendererSource, /perfEntityIsolation/);
+  assert.match(rendererSource, /perfEntityIsolation\?\.reassert/);
+  assert.match(rendererSource, /entity\.type === 'station'/);
+  assert.match(rendererSource, /entity\.type === 'fx'[\s\S]*placeId[\s\S]*landmarkGlb/);
+  assert.match(rendererSource, /entity\.type === 'ship' \|\| entity\.type === 'drone'/);
+  assert.match(rendererSource, /mesh\.visible !== false/);
+  assert.match(rendererSource, /root\.visible !== false/);
+  assert.match(rendererSource, /perfMaterialIsolation/);
+  assert.match(rendererSource, /overrideMaterial: scene\.overrideMaterial/);
+  assert.match(rendererSource, /scene\.overrideMaterial = record\.overrideMaterial/);
+  assert.match(vfxSource, /perfVfxIsolation/);
+  assert.match(vfxSource, /_ribbonTrails\?\.values/);
+  assert.match(vfxSource, /trail\.getMesh\?\.\(\)/);
+  assert.match(vfxSource, /for \(const object of this\._perfVfxRoots\(\)\)/);
+  assert.match(trailSource, /getMesh\(\) \{ return mesh; \}/);
+  assert.match(probeSource, /committed:\s*true/);
+  assert.match(probeSource, /performance-attribution-recovery/);
   assert.match(bloomSource, /perf\.renderWorkEnabled/);
 });
