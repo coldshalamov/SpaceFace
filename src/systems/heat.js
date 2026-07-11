@@ -124,6 +124,11 @@ export const heat = {
 
     // A faction going hostile is the strongest "the law noticed" signal short of a kill.
     bus.on('faction:aggro', () => this._raise(FactionsAggroAdd, 'faction hostile'));
+
+    // Intentional clear (e.g. Ending A record expunge). Sole heat writer path via _setHeat.
+    bus.on('heat:clear', (p) => {
+      this._setHeat(0, (p && p.reason) || 'heat:clear');
+    });
   },
 
   // Is the victim faction currently hostile to the player? If yes, the kill is legitimate combat,

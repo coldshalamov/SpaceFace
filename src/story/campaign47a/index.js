@@ -1,0 +1,93 @@
+// Campaign 47-A public API — pure deterministic sidecar / data library (M5 task 1).
+// Not registered. Does not own beatIndex / branch / endgame* / rewards.
+// Lead integration: import descriptors + meta helpers; wire via missions/story adapter later.
+
+export {
+  AUTHORITY_EVENTS,
+  BEAT_STATUS,
+  BRANCH_CHAIN,
+  BRANCH_FACTION,
+  BRANCH_IDS,
+  BRANCH_OPPOSING,
+  CAMPAIGN_BEATS,
+  CAMPAIGN_EVENTS,
+  CAMPAIGN_ID,
+  CAMPAIGN_SCHEMA_VERSION,
+  CAMPAIGN_STATE_KEY,
+  CAMPAIGN_STATE_PATH,
+  DISCARDED_OWNERSHIP_FIELDS,
+  ENDGAME_NET_WORTH_CR,
+  ENDGAME_REP_MIN,
+  ENDINGS,
+  FAIL_RECOVERY_COOLDOWN_S,
+  MAX_FAILURES_PER_BEAT,
+  OUTPOST_SPECIALIZATIONS,
+  STORY_BRANCH_INTRO_TAG,
+  STORY_BRANCH_INTROS,
+  beatDefAt,
+  branchFactionId,
+  branchIntroDef,
+  branchOpposingFactionId,
+  endingDef,
+  mapOutpostDefToSpec,
+  outpostSpecDef,
+} from './campaignData.js';
+
+export {
+  applyCampaign47aSaveBlob,
+  createCampaign47aState,
+  ensureCampaign47aState,
+  ensureStoryRoot,
+  migrateCampaign47aState,
+  pushCampaignHistory,
+  pushCampaignReceipt,
+  pushChoiceLog,
+  serializeCampaign47aState,
+  validateCampaign47aState,
+} from './campaignSchema.js';
+
+export {
+  buildBranchIntroAcceptReceipt,
+  buildChainProgressReceipt,
+  buildEncounterFailReceipt,
+  buildEncounterRecoverReceipt,
+  buildEndingDescriptorReceipt,
+  buildOutpostSpecReceipt,
+  buildStepProgressReceipt,
+  receiptId,
+  receiptsEqual,
+} from './campaignReceipts.js';
+
+export {
+  describeAllBranchIntroOffers,
+  describeBeatRewardDoc,
+  describeBranchIntroOffer,
+  describeBranchRepDeltas,
+  describeChainRequirement,
+  describeEndingConsequences,
+  describeOutpostDeployObserve,
+  inferBranchFromIntroPayload,
+  isLiveBranchIntroPayload,
+} from './campaignIntents.js';
+
+export {
+  checkEndingRequirements,
+  describeEnding,
+  failEncounter,
+  getBeatStepStatus,
+  getCampaignPublicView,
+  initCampaignSidecar,
+  isBeatStepsComplete,
+  listAvailableEndings,
+  listBeats,
+  listBranchIntroOffers,
+  listEndings,
+  listOutpostSpecializations,
+  noteSandboxMode,
+  observeEndgameGate,
+  readCanonicalStory,
+  recordBeatStep,
+  recoverEncounter,
+  selectOutpostSpecialization,
+  syncObservedBeat,
+} from './campaignTransitions.js';

@@ -441,7 +441,14 @@ function hasCargo(s, id) {
   return (items[id] || 0) > 0;
 }
 function declinedAll(s, choiceIds) {
-  const decl = (s.story && s.story.flags && s.story.flags.endgameDeclined) || [];
+  // Canonical path is state.story.endgameDeclined (top-level, written by UI/story).
+  // Fall back to legacy flags.endgameDeclined only when the top-level field is absent.
+  let decl = [];
+  if (s.story && Array.isArray(s.story.endgameDeclined)) {
+    decl = s.story.endgameDeclined;
+  } else if (s.story && s.story.flags && Array.isArray(s.story.flags.endgameDeclined)) {
+    decl = s.story.flags.endgameDeclined;
+  }
   return choiceIds.every((id) => decl.includes(id));
 }
 

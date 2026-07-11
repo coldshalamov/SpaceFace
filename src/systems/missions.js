@@ -44,6 +44,15 @@ import { makeEnemySpawnSpec } from './combat.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
 import { removeCargo } from './cargo.js';
+// Campaign 47-A sidecar: observe/gate/receipt only — never owns beatIndex/branch/rewards.
+import {
+  ensureCampaign47aState,
+  failEncounter,
+  initCampaignSidecar,
+  isBeatStepsComplete,
+  recordBeatStep,
+  syncObservedBeat,
+} from '../story/campaign47a/index.js';
 
 // ── Static lookups (built once from pure data) ───────────────────────────────────────────────
 const TYPE_BY_ID = new Map(MISSION_TYPES.map((t) => [t.type, t]));
@@ -1381,6 +1390,7 @@ export const missions = {
     this._emitMissionDebrief(m, 'failed', reason || 'failed');
     this.bus.emit('mission:failed', { missionId: m.id, reason: reason || 'failed' });
     this.bus.emit('toast', { text: `Mission FAILED: ${m.title}`, kind: 'error', ttl: 4 });
+    this._recordStoryMissionFailure(m, reason || 'failed');
     this._cleanupTargets(m);
     this._removeActive(m.id, index);
     this.bus.emit('mission:updated', { missionId: m.id });
@@ -1626,12 +1636,30 @@ export const missions = {
   /** A gameplay event happened that may satisfy the current story beat's trigger. */
   _storyTrigger(kind, data) {
     const story = this.state.story;
+    if (!story) return;
+    this._ensureCampaignSidecar();
     const beat = STORY_BEATS[story.beatIndex];
     if (!beat) return; // past the end → sandbox
+
+    // Sidecar step/fail recovery observer (never advances beatIndex itself).
+    const signal = STORY_SIGNAL_BY_KIND[kind];
+    const stepResult = signal
+      ? recordBeatStep(this.state, signal, data || {}, this.state.simTime || 0)
+      : null;
+
+    // B0 is ordered AND: mining:yield then dock:docked — gate on isBeatStepsComplete.
+    if (beat.beat === 0) {
+      if (isBeatStepsComplete(this.state, 0)) this._advanceStory(beat);
+      return;
+    }
+
     const want = BEAT_TRIGGER[beat.beat];
     if (!want) return;
-    // gate-only beats (B3/B6/B7) advance via _checkStoryGates, not a discrete trigger.
-    if (want === kind) this._advanceStory(beat);
+    // Discrete first-X triggers (B1–B3, B6). B4/B5/B7 handled elsewhere.
+    if (want === kind && stepResult && stepResult.ok
+        && isBeatStepsComplete(this.state, beat.beat)) {
+      this._advanceStory(beat);
+    }
   },
 
   /** B5 branch-chain progress: completing a branch mission ticks chainProgress toward the goal. */
@@ -1642,7 +1670,17 @@ export const missions = {
     const wantType = BRANCH_CHAIN_TYPE[story.branch];
     const wantCount = BRANCH_CHAIN_COUNT[story.branch];
     if (m.type !== wantType) return;
-    story.chainProgress = (story.chainProgress || 0) + 1;
+    const nextProgress = (story.chainProgress || 0) + 1;
+    // Gate canonical chain progress through the sidecar failure/recovery state first.
+    // The sidecar still never advances the live cursor or grants a reward.
+    this._ensureCampaignSidecar();
+    const observed = recordBeatStep(this.state, 'mission:completed', {
+      missionType: m.type,
+      branch: story.branch,
+      chainProgress: nextProgress,
+    }, this.state.simTime || 0);
+    if (!observed || !observed.ok) return;
+    story.chainProgress = nextProgress;
     if (story.chainProgress >= wantCount) { story.chainProgress = 0; this._advanceStory(beat); }
     else this.bus.emit('toast', { text: `Proving Ground: ${story.chainProgress}/${wantCount}`, kind: 'info', ttl: 3 });
   },
@@ -1655,10 +1693,21 @@ export const missions = {
     if (!isStoryBranchIntroOffer(inst, this.state)) return;
     const branch = inst.storyBranch || Object.keys(BRANCH_FACTION).find((b) => BRANCH_FACTION[b] === inst.factionId);
     if (!branch || BRANCH_FACTION[branch] !== inst.factionId || !BRANCH_INTRO_BY_BRANCH.has(branch)) return;
+    // Sidecar observes/gates the live intro accept before canonical branch/reward mutation.
+    this._ensureCampaignSidecar();
+    const observed = recordBeatStep(this.state, 'mission:accepted', {
+      storyTag: STORY_BRANCH_INTRO_TAG,
+      type: inst.type,
+      factionId: inst.factionId,
+      branch,
+      storyBranch: branch,
+    }, this.state.simTime || 0);
+    if (!observed || !observed.ok || !isBeatStepsComplete(this.state, 4)) return;
     story.branch = branch;
     inst.storyTag = STORY_BRANCH_INTRO_TAG;
     inst.storyBranch = branch;
     // B4 reward: chosen faction +15, opposing -10 (these have no other channel → emit directly).
+    // Single opposing map only (patrol→free, free→scn, traders→dmc).
     this.bus.emit('faction:repDelta', { factionId: inst.factionId, delta: 15, reason: 'story_branch' });
     const opposing = branch === 'patrol' ? 'faction_free' : (branch === 'free' ? 'faction_scn' : 'faction_dmc');
     this.bus.emit('faction:repDelta', { factionId: opposing, delta: -10, reason: 'story_branch_opposing' });
@@ -1709,6 +1758,8 @@ export const missions = {
 
     this.bus.emit('story:beatAdvanced', { fromIndex, toIndex, branch: story.branch || undefined });
     if (toIndex === 4) this._refreshStoryBranchIntroBoards();
+    // Sidecar observes canonical advance (clears fail context for new beat; never writes rewards).
+    this._syncCampaignSidecarAfterAdvance();
     // Direction toast: tell the player what the NEW current beat wants.
     // NOTE: the sandbox fallback (past B7) deliberately does NOT grant a title. Per
     // ENDGAME-B7-REDESIGN.md, "None of these choices is rewarded with a title." The story system
@@ -1719,6 +1770,40 @@ export const missions = {
     const dir = (nextBeat && story.beatIndex !== fromIndex) ? BEAT_HINT[nextBeat.beat] : 'The contracts continue. The count never ends.';
     if (dir) this._sayStoryLine(dir, 6);
     this.bus.emit('mission:updated', { missionId: null });
+  },
+
+  /** Lazily attach campaign47a sidecar under state.story (meta only). */
+  _ensureCampaignSidecar() {
+    const state = this.state;
+    if (!state.story) state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 };
+    ensureCampaign47aState(state);
+  },
+
+  /** Sync observedBeatIndex after missions advances the live spine. */
+  _syncCampaignSidecarAfterAdvance() {
+    const state = this.state;
+    this._ensureCampaignSidecar();
+    syncObservedBeat(state, state.simTime || 0);
+  },
+
+  /**
+   * Story-relevant mission failure → namespaced sidecar fail (no beat advance, no director receipt).
+   * Recovery is via dock/reoffer signals through recordBeatStep → recoverEncounter cooldown.
+   */
+  _recordStoryMissionFailure(m, reason) {
+    const story = this.state && this.state.story;
+    if (!story) return;
+    const bi = story.beatIndex | 0;
+    if (bi < 0 || bi > 7) return;
+    // Relevant when tagged story contract, branch chain, or any active spine beat.
+    const tagged = !!(m && (m.storyTag || m.storyBranch));
+    const chainType = story.branch ? BRANCH_CHAIN_TYPE[story.branch] : null;
+    const onChain = !!(chainType && m && m.type === chainType);
+    if (!tagged && !onChain) return;
+    this._ensureCampaignSidecar();
+    failEncounter(this.state, reason || 'mission_failed', this.state.simTime || 0, {
+      encounterId: m && m.id != null ? String(m.id) : null,
+    });
   },
 
   // =========================================================================================
@@ -1772,7 +1857,9 @@ export const missions = {
     state.missions.receipts = [];
     state.missions.nextId = 1;
     state.missions.config = MISSION_TUNING;
+    // Clear story spine + any prior campaign47a sidecar (nested under state.story).
     state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 };
+    initCampaignSidecar(state, state.simTime || 0);
     this._spawnSeq = 0;
     this._navRefreshT = 0;
     this._lastWaypointRouteKey = null;
@@ -1825,6 +1912,9 @@ export const missions = {
       ...a, targetEntityIds: [], _escorteeId: null, _escorteeArrived: false, status: a.status || 'active',
     }));
     if (data.story) state.story = data.story;
+    // Sidecar lives inside already-serialized state.story — migrate/init without save schema change.
+    ensureCampaign47aState(state);
+    syncObservedBeat(state, state.simTime || 0);
     // Drop active missions whose destination no longer resolves (soft-lock guard).
     state.missions.active = state.missions.active.filter((m) => {
       if (m.destStationId && !STATION_INFO.get(m.destStationId) && m.destStationId !== m.stationId) {
@@ -1938,9 +2028,10 @@ function distSq(a, b) {
   return dx * dx + dz * dz;
 }
 
-// Story-beat trigger kind (first-X model). Gate-only beats (3/6/7) use discrete events / gates.
+// Story-beat trigger kind (first-X model). B0 is ordered multi-step (mine then dock) via sidecar.
+// Gate-only beats (4/5/7) use branch accept / chain count / credit-rep gates.
 const BEAT_TRIGGER = {
-  0: 'mine',           // first mining yield
+  0: null,             // ordered mine → dock (sidecar isBeatStepsComplete gate)
   1: 'trade',          // first sell
   2: 'kill',           // first player kill
   3: 'ship_purchased', // buy any ship (T2 gate is a soft hint)
@@ -1948,6 +2039,16 @@ const BEAT_TRIGGER = {
   5: null,             // branch chain (handled in _advanceStoryChain)
   6: 'asset_deployed', // first passive asset
   7: null,             // net-worth gate (handled in _checkStoryGates)
+};
+
+/** Map missions story kinds → campaign47a step signals (observe/gate only). */
+const STORY_SIGNAL_BY_KIND = {
+  mine: 'mining:yield',
+  trade: 'economy:tradeCompleted',
+  kill: 'entity:killed',
+  ship_purchased: 'ship:purchased',
+  asset_deployed: 'asset:deployed',
+  dock: 'dock:docked',
 };
 
 // Per-branch B5 chain requirements (spec B5).

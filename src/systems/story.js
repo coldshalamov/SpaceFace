@@ -37,6 +37,15 @@ import {
   COLD_START,
 } from '../data/narrative.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
+// Campaign 47-A sidecar: ending sandbox/receipt meta only — endgameChoice stays canonical on state.story.
+import {
+  describeEnding,
+  ensureCampaign47aState,
+  noteSandboxMode,
+  pushCampaignHistory,
+  pushCampaignReceipt,
+  pushChoiceLog,
+} from '../story/campaign47a/index.js';
 
 const ASHFALL = 'sector_ashfall_reach';
 
@@ -83,6 +92,8 @@ export const story = {
     bus.on('jump:chargeStart', (p) => this._onJumpChargeStart(p || {}));
     // UI intent: player accepted an endgame choice from the overlay.
     bus.on('ui:endgameChoose', (p) => this._onEndgameChoose(p || {}));
+    // Ending C: loop-return receipt/sandbox only — never resets beatIndex or closes flight.
+    bus.on('endgame:loopBack', (p) => this._onEndgameLoopBack(p || {}));
     // UI intent: player opened/took/dropped the ledger with the Kurtz figure.
     bus.on('ui:kurtzInteract', (p) => this._onKurtzInteract(p || {}));
 
@@ -451,6 +462,7 @@ export const story = {
     if (!s || s.endgameChoice) return;
     const def = ENDGAME_CHOICES.find((c) => c.id === choice || c.key === choice);
     if (!def) return;
+    if (typeof def.requires === 'function' && !def.requires(state)) return;
     s.endgameChoice = def.id;
     // HUD-on-accept line + bulkhead graffiti.
     if (def.hudOnAccept) {
@@ -468,18 +480,17 @@ export const story = {
     const bus = this.bus;
     const state = this.state;
     if (def.id === 'A') {
-      // Concord rep → +700; clear heat/criminal record; surcharges gone (modelled as rep + credits).
+      // Concord rep → +700; clear heat via heat sole writer; MTS +100.
       bus.emit('faction:repDelta', { factionId: 'faction_scn', delta: 700, reason: 'endgame_clean_uniform' });
-      if (state.player) state.player.heat = 0;
+      bus.emit('heat:clear', { reason: 'endgame_clean_uniform' });
       bus.emit('faction:repDelta', { factionId: 'faction_mts', delta: 100, reason: 'endgame_clean_uniform' });
     } else if (def.id === 'B') {
       // Identity disappears from public records. Modelled as a flag; HUD phase stays 3 and the UI
       // stops showing the player's own rep delta (handled in the HUD phase listener).
       state.story.flags.identityErased = true;
     } else if (def.id === 'C') {
-      // Loop-back: the campaign resets to the Pit. We emit an event the missions system can catch
-      // to reset beatIndex (next run). The HUD prints "CARGO: STABLE." (handled by the HUD phase).
-      // No money changes hands — the payout was always a lie.
+      // Loop-return: emit endgame:loopBack for sidecar/sandbox receipt. Does NOT reset beatIndex
+      // or close flight — post-ending play continues in sandbox (listener records only).
       bus.emit('endgame:loopBack', {});
     } else if (def.id === 'D') {
       // Stay at Ashfall. The ledger stays in cargo (already there). Flag the stay.
@@ -489,6 +500,68 @@ export const story = {
       bus.emit('economy:grantCredits', { amount: 1200, reason: 'contract_47a_settlement' });
       state.story.flags.contract47bPending = true;
     }
+    // Attach campaign sandbox mode + ending descriptor receipt; endgameChoice remains canonical.
+    this._attachEndingCampaignReceipt(def);
+  },
+
+  /**
+   * Record ending descriptor + sandbox mode on campaign47a sidecar.
+   * Never writes endgameChoice (already set by _onEndgameChoose). No extra toasts.
+   */
+  _attachEndingCampaignReceipt(def) {
+    if (!def || !def.id) return;
+    const state = this.state;
+    const simTime = state.simTime || 0;
+    const declined = (state.story && Array.isArray(state.story.endgameDeclined))
+      ? state.story.endgameDeclined
+      : [];
+    ensureCampaign47aState(state);
+    const described = describeEnding(def.id, simTime, declined);
+    if (described && described.ok) {
+      const own = state.story && state.story.campaign47a;
+      if (own && described.receipt) pushCampaignReceipt(own, described.receipt);
+      if (described.def && described.def.sandbox && described.def.sandbox.mode) {
+        noteSandboxMode(state, described.def.sandbox.mode, simTime);
+      }
+      if (own) {
+        pushChoiceLog(own, {
+          kind: 'ending_chosen',
+          endingId: def.id,
+          endgameChoice: state.story.endgameChoice,
+        }, simTime);
+        pushCampaignHistory(own, {
+          kind: 'ending_chosen',
+          endingId: def.id,
+          sandboxMode: described.def && described.def.sandbox ? described.def.sandbox.mode : null,
+        }, simTime);
+      }
+    }
+  },
+
+  /**
+   * Ending C loop-back: record loop-return sandbox/receipt only.
+   * Does not reset state.story.beatIndex/branch/flags, does not change mode/flight.
+   */
+  _onEndgameLoopBack(_p) {
+    const state = this.state;
+    const s = state.story;
+    if (!s) return;
+    const simTime = state.simTime || 0;
+    ensureCampaign47aState(state);
+    noteSandboxMode(state, 'loop_return', simTime);
+    const own = s.campaign47a;
+    if (own) {
+      own.flags = own.flags || {};
+      own.flags.loop_return_recorded = true;
+      own.flags.wormhole_return = true;
+      pushCampaignHistory(own, {
+        kind: 'loop_return',
+        endgameChoice: s.endgameChoice || 'C',
+        beatIndex: s.beatIndex,
+        note: 'sandbox continue — spine not reset',
+      }, simTime);
+    }
+    // Post-ending play continues: leave mode/flight and beatIndex untouched.
   },
 
   // =========================================================================================

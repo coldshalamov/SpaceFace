@@ -1031,7 +1031,9 @@ export const automation = {
       status: 'producing', ratePerMin: 0,
     };
     this.state.automation.outposts.push(o);
-    this.bus.emit('asset:deployed', { kind: 'outpost', id: o.id });
+    // Enrich payload with stable defId so story/campaign sidecar can tag specialization.
+    // automation remains sole outpost deployer — no second ownership system.
+    this.bus.emit('asset:deployed', { kind: 'outpost', id: o.id, defId: def.id || defId });
     this.toast(`Outpost established in ${prettySector(o.sectorId)}`, 'success');
     return true;
   },
