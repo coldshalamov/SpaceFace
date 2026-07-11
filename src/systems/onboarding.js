@@ -117,6 +117,14 @@ export const onboarding = {
     this.gamepad = ctx.gamepad;
     this.touch = ctx.touch;
     this._panel = null;
+    this._bodyEl = null;
+    this._titleEl = null;
+    this._countEl = null;
+    this._stepsEl = null;
+    this._progressEl = null;
+    this._flavorEl = null;
+    this._kickerLabelEl = null;
+    this._modalAriaHidden = null;
     this._accum = 0;
     this._lastTextAtS = -Infinity;
     this._controlHintsEl = null;
@@ -333,6 +341,14 @@ export const onboarding = {
   _teardown() {
     const ob = this.state.onboarding; if (ob) ob.active = false;
     if (this._panel) { this._panel.remove(); this._panel = null; }
+    this._bodyEl = null;
+    this._titleEl = null;
+    this._countEl = null;
+    this._stepsEl = null;
+    this._progressEl = null;
+    this._flavorEl = null;
+    this._kickerLabelEl = null;
+    this._modalAriaHidden = null;
     this._clearObjectiveWaypoint();
     this._storyMode = false;
     this._storySig = '';
@@ -505,12 +521,12 @@ export const onboarding = {
     this._injectStyle();
     this._buildPanel();
     // Hide the step dots in story mode (they're tutorial-specific); show the objective body only.
-    const steps = this._panel.querySelector('.sf-ob-steps');
-    if (steps) steps.style.display = 'none';
-    const count = this._panel.querySelector('.sf-ob-count');
-    if (count) count.textContent = '';
-    const kicker = this._panel.querySelector('.sf-ob-kicker span');
-    if (kicker) kicker.textContent = 'Story';
+    if (this._stepsEl) this._stepsEl.style.display = 'none';
+    if (this._countEl) {
+      this._countEl.textContent = '';
+      this._countEl.removeAttribute('aria-label');
+    }
+    if (this._kickerLabelEl) this._kickerLabelEl.textContent = 'Story';
     this._storyMode = true;
     return this._panel;
   },
@@ -518,9 +534,7 @@ export const onboarding = {
   _refreshStory() {
     if (!this._storyMode) return;
     const panel = this._ensureStoryPanel();
-    if (!panel) return;
-    const body = panel.querySelector('.sf-ob-body');
-    if (!body) return;
+    if (!panel || !this._titleEl) return;
     const beat = (this.state.story && this.state.story.beatIndex) || 0;
     const sb = STORY_BEATS[beat];
     // The concrete objective (data/missions.js STORY_BEATS) is the actionable "what to do"; the
@@ -531,22 +545,49 @@ export const onboarding = {
     const sig = `${beat}\u0001${objective}\u0001${hint}`;
     if (sig === this._storySig) return;
     this._storySig = sig;
-    if (!sb) { body.innerHTML = ''; return; }
-    body.innerHTML = '';
-    const titleEl = document.createElement('div');
-    titleEl.className = 'sf-ob-title';
-    titleEl.textContent = objective;
-    body.appendChild(titleEl);
+    if (!sb) {
+      if (this._titleEl.textContent !== '') this._titleEl.textContent = '';
+      if (this._flavorEl) { this._flavorEl.remove(); this._flavorEl = null; }
+      return;
+    }
+    if (this._titleEl.textContent !== objective) this._titleEl.textContent = objective;
     if (hint) {
-      const flavorEl = document.createElement('div');
-      flavorEl.className = 'sf-ob-flavor';
-      flavorEl.textContent = hint;
-      body.appendChild(flavorEl);
+      if (!this._flavorEl) {
+        this._flavorEl = document.createElement('div');
+        this._flavorEl.className = 'sf-ob-flavor';
+        this._bodyEl.appendChild(this._flavorEl);
+      }
+      if (this._flavorEl.textContent !== hint) this._flavorEl.textContent = hint;
+    } else if (this._flavorEl) {
+      this._flavorEl.remove();
+      this._flavorEl = null;
+    }
+  },
+
+  // Keep the objective panel's assistive-tree state in sync with the modal UI. When a modal or
+  // dock screen hides the panel via CSS, we also mark it aria-hidden so screen readers do not
+  // traverse the hidden content; removing the class restores it accurately.
+  _syncModalAccessibility() {
+    if (!this._panel) return;
+    const modalOpen = !!(document.body && document.body.classList.contains('ui-modal-open'));
+    if (modalOpen) {
+      if (this._panel.getAttribute('aria-hidden') !== 'true') {
+        this._panel.setAttribute('aria-hidden', 'true');
+        this._modalAriaHidden = true;
+      }
+    } else {
+      if (this._panel.hasAttribute('aria-hidden')) {
+        this._panel.removeAttribute('aria-hidden');
+        this._modalAriaHidden = false;
+      }
     }
   },
 
   // per-frame: proximity check for the starter claim + panel fade-out + contextual hints + control bar.
   update(dt, state) {
+    // Modal UI hides the objective via CSS; mirror that in assistive state without focus side-effects.
+    try { this._syncModalAccessibility(); } catch (_) { /* non-critical a11y mirror */ }
+
     // ── First-flight hint (runs independently of the tutorial chain) ──────────────────────
     if (this._firstFlightPending && state.mode === 'flight') {
       this._firstFlightTimer += dt;
@@ -887,43 +928,92 @@ export const onboarding = {
     const root = document.getElementById('ui-root') || document.body;
     const el = document.createElement('div');
     el.id = PANEL_ID;
-    el.innerHTML = '<div class="sf-ob-card"><div class="sf-ob-kicker"><span>Objective</span><span class="sf-ob-count"></span></div>'
-      + '<div class="sf-ob-body"></div><div class="sf-ob-steps"></div></div>';
+    el.setAttribute('role', 'region');
+    el.setAttribute('aria-label', 'Objective tracker');
+
+    const card = document.createElement('div');
+    card.className = 'sf-ob-card';
+
+    const kicker = document.createElement('div');
+    kicker.className = 'sf-ob-kicker';
+    const kickerLabel = document.createElement('span');
+    kickerLabel.textContent = 'Objective';
+    const count = document.createElement('span');
+    count.className = 'sf-ob-count';
+    kicker.appendChild(kickerLabel);
+    kicker.appendChild(count);
+
+    const body = document.createElement('div');
+    body.className = 'sf-ob-body';
+    const title = document.createElement('div');
+    title.className = 'sf-ob-title';
+    title.setAttribute('role', 'status');
+    title.setAttribute('aria-live', 'polite');
+    title.setAttribute('aria-atomic', 'true');
+    body.appendChild(title);
+
+    const steps = document.createElement('div');
+    steps.className = 'sf-ob-steps';
+    steps.setAttribute('aria-hidden', 'true');
+
+    card.appendChild(kicker);
+    card.appendChild(body);
+    card.appendChild(steps);
+    el.appendChild(card);
     root.appendChild(el);
+
     this._panel = el;
+    this._kickerLabelEl = kickerLabel;
+    this._countEl = count;
+    this._bodyEl = body;
+    this._titleEl = title;
+    this._stepsEl = steps;
+    this._syncModalAccessibility();
   },
 
   // Render the current beat into the objective panel (the one-verb line + progress for B2).
+  // The title element is stable so its polite live region only announces on real text changes.
   _refreshBeatPanel() {
     if (!this._panel || this._storyMode) return;
     const ob = this.state.onboarding; if (!ob) return;
     const beat = BEATS[ob.currentBeat];
     const idx = ob.currentBeat < 0 ? -1 : ob.currentBeat;
-    const body = this._panel.querySelector('.sf-ob-body');
-    const count = this._panel.querySelector('.sf-ob-count');
-    const steps = this._panel.querySelector('.sf-ob-steps');
-    if (count) count.textContent = (idx >= 0 ? (idx + 1) : 0) + ' / ' + BEATS.length;
-    if (body && beat) {
-      body.innerHTML = '';
-      const titleEl = document.createElement('div');
-      titleEl.className = 'sf-ob-title';
-      titleEl.textContent = beat.line || '';
-      body.appendChild(titleEl);
-      // B2 shows 47-A sample collection progress.
-      if (beat.key === 'seam') {
-        const progressEl = document.createElement('div');
-        progressEl.className = 'sf-ob-progress';
-        progressEl.textContent = 'SAMPLE: ' + Math.min(ob.oreCollected || 0, SEAM_ORE_TARGET) + ' / ' + SEAM_ORE_TARGET;
-        body.appendChild(progressEl);
+
+    if (this._countEl) {
+      const countText = (idx >= 0 ? (idx + 1) : 0) + ' / ' + BEATS.length;
+      if (this._countEl.textContent !== countText) this._countEl.textContent = countText;
+      const stepLabel = 'step ' + (idx >= 0 ? (idx + 1) : 0) + ' of ' + BEATS.length;
+      if (this._countEl.getAttribute('aria-label') !== stepLabel) {
+        this._countEl.setAttribute('aria-label', stepLabel);
       }
     }
-    if (steps) {
-      steps.innerHTML = '';
+
+    if (this._titleEl) {
+      const line = beat ? (beat.line || '') : '';
+      if (this._titleEl.textContent !== line) this._titleEl.textContent = line;
+    }
+
+    // B2 shows 47-A sample collection progress.
+    if (beat && beat.key === 'seam') {
+      if (!this._progressEl) {
+        this._progressEl = document.createElement('div');
+        this._progressEl.className = 'sf-ob-progress';
+        this._bodyEl.appendChild(this._progressEl);
+      }
+      const progText = 'SAMPLE: ' + Math.min(ob.oreCollected || 0, SEAM_ORE_TARGET) + ' / ' + SEAM_ORE_TARGET;
+      if (this._progressEl.textContent !== progText) this._progressEl.textContent = progText;
+    } else if (this._progressEl) {
+      this._progressEl.remove();
+      this._progressEl = null;
+    }
+
+    if (this._stepsEl) {
+      this._stepsEl.innerHTML = '';
       BEATS.forEach((b, i) => {
         const d = document.createElement('div');
         const isDone = ob.beatDoneAt[b.key] != null;
         d.className = 'sf-ob-dot' + (isDone ? ' done' : (i === idx ? ' curr' : ''));
-        steps.appendChild(d);
+        this._stepsEl.appendChild(d);
       });
     }
   },
