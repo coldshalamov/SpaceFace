@@ -41,6 +41,11 @@ import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import {
+  RECORD_KIND,
+  missionIdentityOf,
+  stableRecordId,
+} from '../world/worldRecords.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
 import { removeCargo } from './cargo.js';
@@ -1459,14 +1464,77 @@ export const missions = {
   _ensureMissionTargets(m) {
     if (!m.needsTargets) return;
     if (this.state.world.currentSectorId !== m.destSectorId) return; // defer until the player arrives
-    if (m.targetEntityIds.length > 0) return;                        // already spawned
+    // Continue: adopt rematerialized hosts before deciding to spawn (avoids duplicate targets).
+    this._adoptLiveMissionTargets(m);
+    if (m.targetEntityIds.length > 0) return;                        // already present (spawned or adopted)
     this._spawnTargetsFor(m);
     this._refreshTrackedMissionNav(m);
+  },
+
+  /**
+   * Adopt live entities rematerialized from world.records (or still alive with missionTag)
+   * into m.targetEntityIds so Continue never double-spawns mission targets.
+   * World rematerializes before missions restore; mission deserialize clears targetEntityIds.
+   */
+  _adoptLiveMissionTargets(m) {
+    if (!m || !m.id) return 0;
+    const existing = new Set(m.targetEntityIds || []);
+    const list = this.state.entityList || [];
+    let adopted = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || !e.alive || e.isPlayer) continue;
+      const mid = missionIdentityOf(e);
+      if (mid == null || String(mid) !== String(m.id)) continue;
+      if (existing.has(e.id)) continue;
+      // Re-stamp durable mission identity if rematerialize omitted a field.
+      this._stampMissionTargetIdentity(e, m, adopted);
+      existing.add(e.id);
+      m.targetEntityIds.push(e.id);
+      if (e.data && e.data.escortee) {
+        m._escorteeId = e.id;
+        m._escorteeArrived = !!m._escorteeArrived;
+      }
+      adopted++;
+    }
+    return adopted;
+  },
+
+  /**
+   * Stamp homeSectorId + missionId/missionTag/missionPinned + stable worldRecordId before
+   * first demotion so capture/kill/Continue keep one mission-target identity.
+   */
+  _stampMissionTargetIdentity(ent, m, seq) {
+    if (!ent || !m) return;
+    if (!ent.data) ent.data = {};
+    const sectorId = m.destSectorId
+      || ent.homeSectorId
+      || ent.data.homeSectorId
+      || (this.state.world && this.state.world.currentSectorId);
+    ent.data.missionTag = m.id;
+    ent.data.missionId = m.id;
+    ent.data.missionPinned = true;
+    ent.flags = ent.flags || {};
+    ent.flags.missionPinned = true;
+    if (sectorId) {
+      ent.homeSectorId = sectorId;
+      ent.data.homeSectorId = sectorId;
+      if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
+    }
+    if (ent.data.worldRecordId || !sectorId) return;
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const key = `mission:${m.id}:${seq | 0}`;
+    ent.data.worldRecordId = stableRecordId(seed, sectorId, RECORD_KIND.MISSION_TARGET, key);
+    ent.data.identityKey = key;
+    ent.data.durable = true;
+    ent.data.recordCreatedTick = this.state.tick | 0;
   },
 
   _spawnTargetsFor(m) {
     const helpers = this.helpers;
     if (!helpers || !helpers.spawnEntity) return;
+    // Prefer live rematerialized hosts (Continue) over fresh spawns.
+    this._adoptLiveMissionTargets(m);
     const player = helpers.player ? helpers.player() : this.state.entities.get(this.state.playerId);
     const px = player ? player.pos.x : 0, pz = player ? player.pos.z : 0;
     const seed = helpers.hash32 ? helpers.hash32(this.state.meta.seed, m.id, this._spawnSeq++) : (this._spawnSeq++ + 1);
@@ -1477,8 +1545,11 @@ export const missions = {
     if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
       // Spawn only the targets still owed (objectiveTarget - progress) so a mid-mission save/load or
       // partial clear doesn't re-spawn already-killed hostiles and leave an orphan.
+      // Adopted rematerialized hosts count toward the remaining quota.
       const remaining = Math.max(0, (m.objectiveTarget || 1) - (m.objectiveProgress || 0));
-      const n = m.type === 'patrol_clear' ? remaining : Math.min(1, remaining);
+      const adopted = (m.targetEntityIds || []).length;
+      const want = m.type === 'patrol_clear' ? remaining : Math.min(1, remaining);
+      const n = Math.max(0, want - adopted);
       if (n <= 0) return;
       const pool = ['reaver_pirate', 'corsair_raider', 'wasp_swarmer'];
       for (let i = 0; i < n; i++) {
@@ -1490,9 +1561,15 @@ export const missions = {
         spec.data = spec.data || {};
         spec.data.missionTag = m.id; // attribution helper (kill resolver matches by entity id below)
         const ent = helpers.spawnEntity(spec);
-        if (ent) m.targetEntityIds.push(ent.id);
+        if (ent) {
+          this._stampMissionTargetIdentity(ent, m, adopted + i);
+          m.targetEntityIds.push(ent.id);
+        }
       }
     } else if (m.type === 'escort') {
+      // Already adopted a live escortee from world.records — do not double-spawn.
+      if (m._escorteeId != null && this.state.entities.get(m._escorteeId)) return;
+      if ((m.targetEntityIds || []).length > 0) return;
       // Real escortee: a friendly (team 0) ship that TRAVELS toward the destination. It needs to
       // survive (mission fails if it dies — _onEntityDestroyed) and arrive (gates completion).
       const ang = rng() * Math.PI * 2, r = 60 + rng() * 40;
@@ -1506,7 +1583,12 @@ export const missions = {
       delete spec.data.ai;
       spec.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 };
       const ent = helpers.spawnEntity(spec);
-      if (ent) { m._escorteeId = ent.id; m._escorteeArrived = false; m.targetEntityIds.push(ent.id); }
+      if (ent) {
+        this._stampMissionTargetIdentity(ent, m, 0);
+        m._escorteeId = ent.id;
+        m._escorteeArrived = false;
+        m.targetEntityIds.push(ent.id);
+      }
     }
     if (m.targetEntityIds.length) this.bus.emit('mission:updated', { missionId: m.id });
   },
@@ -1581,12 +1663,15 @@ export const missions = {
   spawnTargetsForSector(sectorId) {
     if (!sectorId) return;
     // Spawn (or re-spawn after load) deferred targets for any active mission keyed to this sector.
+    // Continue order: world rematerializes mission_target records first; adopt those live IDs
+    // before any fresh spawn so targetEntityIds (cleared on deserialize) do not duplicate.
     for (const m of this.state.missions.active) {
       if (m.status !== 'active' || !m.needsTargets) continue;
       if (m.destSectorId !== sectorId) continue;
       m.targetEntityIds = m.targetEntityIds.filter((id) => {
         const e = this.state.entities.get(id); return e && e.alive;
       });
+      this._adoptLiveMissionTargets(m);
       if (m.targetEntityIds.length === 0 && (m.objectiveProgress < m.objectiveTarget)) {
         this._spawnTargetsFor(m);
       }
@@ -1596,7 +1681,13 @@ export const missions = {
   _onSectorExit(p) {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
-    // Escort abandoned: an in-flight escortee was spawned in the sector the player is now leaving.
+    // Continuous free-flight membership handoff: keep escorts, target ids, and escortee links.
+    // World residency may still demote RECORD_ONLY entities; enter re-spawns missing targets.
+    // Hard teardown only for intentional jump / load / non-continuous boundaries (M2-C1).
+    if (p && (p.continuous || p.noTeleport)) return;
+
+    // Escort abandoned (hard boundary only): live dest-sector rule — if the player intentionally
+    // leaves the escort destination while an escortee is in flight, the contract is voided.
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active' || m.type !== 'escort') continue;
@@ -1604,7 +1695,7 @@ export const missions = {
         this._failMission(m, i, 'escort_abandoned');
       }
     }
-    // Targets in the exited sector are despawned by world; clear our id list so we re-spawn on return.
+    // Targets in the exited sector are despawned by world on hard leave; clear ids for re-spawn.
     for (const m of this.state.missions.active) {
       if (m.needsTargets && m.destSectorId === sectorId) { m.targetEntityIds = []; m._escorteeId = null; }
     }

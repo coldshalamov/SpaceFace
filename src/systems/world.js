@@ -38,6 +38,34 @@ import {
   sectorLocalToGlobalForSector,
   sectorMembershipAtGlobal,
 } from '../data/sectorCoordinates.js';
+import {
+  RECORD_KIND,
+  applyRecordVitals,
+  bindEntityToRecord,
+  captureEntityRecord,
+  createEmptyRecordsBag,
+  deserializeRecordsBag,
+  ensureWorldRecords,
+  entityHasDurableMarkers,
+  entityIsDurableCandidate,
+  findLiveEntityForRecord,
+  markRecordDestroyed,
+  missionIdentityOf,
+  recordShouldRematerialize,
+  recordsForSector,
+  serializeRecordsBag,
+  spawnSpecFromRecord,
+  stableRecordId,
+  upsertRecord,
+} from '../world/worldRecords.js';
+import {
+  consumeEmbodimentPayload,
+  createEmptyEmbodimentCache,
+  embodimentRecordIntents,
+  normalizeEmbodimentCache,
+  recordFromEmbodimentIntent,
+  serializeEmbodimentCache,
+} from '../world/embodimentRecipes.js';
 
 // ---- global tuning constants (design 05 "GLOBAL TUNING CONSTANTS" + "Formulas") -------------
 const DEFAULT_WORLD_RADIUS = 4000;
@@ -120,6 +148,10 @@ export const world = {
     if (Object.keys(state.world.discovery).length === 0) this._seedChartedDiscovery();
     if (!state.world.scanPings || typeof state.world.scanPings !== 'object') state.world.scanPings = {};
     if (!state.world.pendingSpawns || typeof state.world.pendingSpawns !== 'object') state.world.pendingSpawns = {};
+    // M2-C2 durable world-entity records (global-space). Runtime residency bags stay separate.
+    ensureWorldRecords(state.world);
+    // M2-C2/C3 latest-epoch recipe cache. It is bounded data, not a live-entity authority.
+    state.world.embodiment = normalizeEmbodimentCache(state.world.embodiment);
 
     // Runtime-only flags (not serialized).
     this._combatLock = false;     // last combat:lockChanged value
@@ -155,7 +187,87 @@ export const world = {
     bus.on('ui:purchaseSurveyData', (p) => this._onPurchaseSurveyData(p || {}));
     // Mark the boss POI defeated when the dreadnought dies, so it does not respawn on sector
     // re-entry or save reload. (The entity carries data.isBoss + data.bossSectorId/bossPoiId.)
-    bus.on('entity:killed', (p) => this._onBossKilled(p || {}));
+    bus.on('entity:killed', (p) => {
+      this._onBossKilled(p || {});
+      this._onDurableEntityKilled(p || {});
+    });
+    bus.on('sectorsim:embodiment', (p) => this._onSectorEmbodiment(p || {}));
+  },
+
+  /** Cache sectorSim recipes only. Live entities remain forbidden on this event boundary. */
+  _onSectorEmbodiment(payload) {
+    const worldState = this.state && this.state.world;
+    if (!worldState) return 0;
+    const current = normalizeEmbodimentCache(worldState.embodiment);
+    const result = consumeEmbodimentPayload(current, payload);
+    worldState.embodiment = result.cache;
+    return result.accepted;
+  },
+
+  /**
+   * Preserve destroyed outcomes on durable records so rematerialize never re-rolls kills.
+   * Kill may happen while FULL (before demote ever wrote the bag) — derive/stamp identity
+   * and upsert a snapshot first so markRecordDestroyed cannot no-op on a missing byId entry.
+   * Traffic/mission targets stamped only with markers (missionTag/trafficRole) get an id here.
+   */
+  _onDurableEntityKilled(p) {
+    if (!p || p.id == null) return;
+    const e = this.state.entities.get(p.id);
+    if (!e) return;
+    const d = e.data || (e.data = {});
+    // Boss path already recorded outcome:defeated — do not clobber with destroyed.
+    if (d.isBoss) return;
+    const state = this.state;
+    // Derive durable identity even when bag empty and no prior demote stamp.
+    if (!d.worldRecordId) {
+      if (!entityHasDurableMarkers(e, state.playerId)) return;
+      const sectorId = e.homeSectorId || d.homeSectorId || d.sectorId || state.world.currentSectorId;
+      if (!sectorId) return;
+      if (!e.homeSectorId && !d.homeSectorId) {
+        e.homeSectorId = sectorId;
+        d.homeSectorId = sectorId;
+      }
+      if (d.sectorId == null) d.sectorId = sectorId;
+      const kind = d.trafficRole || d.convoyId || d.itinerary
+        ? RECORD_KIND.CONVOY
+        : (missionIdentityOf(d) || d.missionPinned || (e.flags && e.flags.missionPinned)
+          ? RECORD_KIND.MISSION_TARGET
+          : RECORD_KIND.NPC);
+      const keyHint = missionIdentityOf(d)
+        || d.trafficRole
+        || d.lootTableId
+        || d.enemyTypeId
+        || d.defId
+        || e.type
+        || 'killed';
+      this._assignDurableRecordId(e, sectorId, kind, `kill:${keyHint}`, state.world.sectorContents && state.world.sectorContents[sectorId]);
+    }
+    if (!d.worldRecordId) return;
+    const bag = ensureWorldRecords(state.world);
+    if (!bag.byId[d.worldRecordId]) {
+      // Entity may already be alive=false; capture still needs a durable stub.
+      const sectorId = e.homeSectorId || d.homeSectorId || d.sectorId || state.world.currentSectorId;
+      const snap = captureEntityRecord(
+        Object.assign({}, e, { alive: true, data: d, homeSectorId: sectorId }),
+        {
+          sectorId,
+          seed: (state.meta && state.meta.seed) || 1,
+          tick: state.tick | 0,
+          recordId: d.worldRecordId,
+          identityKey: d.identityKey,
+          durableReason: 'kill',
+        },
+      );
+      if (snap) {
+        snap.alive = false;
+        snap.outcome = 'destroyed';
+        upsertRecord(bag, snap);
+      }
+    }
+    this.markWorldRecordDestroyed(d.worldRecordId, {
+      outcome: 'destroyed',
+      pos: e.pos ? { x: e.pos.x, z: e.pos.z } : undefined,
+    });
   },
 
   _onBossKilled(p) {
@@ -172,6 +284,13 @@ export const world = {
     rec.bossDefeated = true;
     rec.discovered = true;
     rec.identified = true;
+    // Durable outcome: boss identity stays defeated across demote/promote/Continue.
+    if (d.worldRecordId) {
+      this.markWorldRecordDestroyed(d.worldRecordId, {
+        outcome: 'defeated',
+        pos: e.pos ? { x: e.pos.x, z: e.pos.z } : undefined,
+      });
+    }
     // Clear the live boss handle so the active sector knows it's gone.
     if (this.state.world.activeSector && this.state.world.activeSector.boss) {
       delete this.state.world.activeSector.boss;
@@ -284,6 +403,7 @@ export const world = {
     if (!state.world.activeSector || typeof state.world.activeSector !== 'object') {
       state.world.activeSector = this._emptySectorBag();
     }
+    ensureWorldRecords(state.world);
   },
 
   _emptySectorBag() {
@@ -425,10 +545,18 @@ export const world = {
     this._spawnGates(sector, active, rng);
     this._spawnPOIs(sector, active, disc, rng);
     this._spawnHazards(sector, active);
+    // Durable records rematerialize before ambient re-roll so identity/outcomes never reroll.
+    const rematerialized = this._rematerializeSectorRecords(sectorId, active, tier);
     if (tier === RESIDENCY_TIER.FULL) {
       this._spawnDressing(sector, active, rng);
-      this._spawnEnemies(sector, active, rng);
-      this._spawnBossIfDue(sector, active, rng);
+      // Only re-roll ambient combatants when this sector has no prior durable NPC/convoy history.
+      if (!rematerialized.hadCombatHistory) {
+        this._spawnEnemies(sector, active, rng);
+        this._spawnBossIfDue(sector, active, rng);
+      } else {
+        // Boss still respects discovery.bossDefeated when no boss record was rematerialized.
+        if (!rematerialized.spawnedBoss) this._spawnBossIfDue(sector, active, rng);
+      }
     }
 
     state.world.sectorContents[sectorId] = active;
@@ -458,22 +586,38 @@ export const world = {
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     const active = state.world.sectorContents[sectorId];
     if (!sector || !active) return;
-    // Already has combat presence → nothing to do.
-    if ((active.enemies && active.enemies.length) || (active.dressing && active.dressing.length)) return;
+    // Rematerialize durable combat/convoy/mission records first (idempotent).
+    const rematerialized = this._rematerializeSectorRecords(sectorId, active, RESIDENCY_TIER.FULL);
+    // Already has combat presence → keep anchors; still may need dressing.
+    if ((active.enemies && active.enemies.length) || (active.dressing && active.dressing.length)) {
+      if (!(active.dressing && active.dressing.length)) {
+        const rec = state.world.residentSectors[sectorId] || { epoch: 0 };
+        const epoch = Number.isFinite(rec.epoch) ? rec.epoch : 0;
+        state.world.rng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, epoch, 'full_extra'));
+        this._spawnDressing(sector, active, state.world.rng);
+      }
+      return;
+    }
     const rec = state.world.residentSectors[sectorId] || { epoch: 0 };
     const epoch = Number.isFinite(rec.epoch) ? rec.epoch : 0;
     // Separate stream so structural epoch RNG is not re-consumed.
     state.world.rng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, epoch, 'full_extra'));
     const rng = state.world.rng;
     this._spawnDressing(sector, active, rng);
-    this._spawnEnemies(sector, active, rng);
-    this._spawnBossIfDue(sector, active, rng);
+    if (!rematerialized.hadCombatHistory) {
+      this._spawnEnemies(sector, active, rng);
+      this._spawnBossIfDue(sector, active, rng);
+    } else if (!rematerialized.spawnedBoss) {
+      this._spawnBossIfDue(sector, active, rng);
+    }
   },
 
   _stripSectorFullExtras(sectorId) {
     const state = this.state;
     const active = state.world.sectorContents[sectorId];
     if (!active) return;
+    // Capture durable combat/convoy outcomes before stripping live extras.
+    this._captureSectorDurableRecords(sectorId, { reason: 'strip_full' });
     // Remove enemies + dressing only; keep stations/gates/fields/pois/hazards.
     const kill = new Set();
     for (const id of (active.enemies || [])) kill.add(id);
@@ -485,11 +629,215 @@ export const world = {
   },
 
   _demoteSectorToRecordOnly(sectorId) {
+    // Write epoch-stable durable records before scoped despawn (identity must not reroll).
+    this._captureSectorDurableRecords(sectorId, { reason: 'evict' });
     this._despawnEntitiesForSector(sectorId);
     if (this.state.world.sectorContents) {
       this.state.world.sectorContents[sectorId] = this._emptySectorBag();
     }
     this._setResidentMeta(sectorId, RESIDENCY_TIER.RECORD_ONLY, 'evict');
+  },
+
+  // =========================================================================================
+  // M2-C2 durable records — capture on demote, rematerialize on promote (exactly once)
+  // =========================================================================================
+
+  /**
+   * Snapshot durable ships/wrecks/mission targets for a sector into world.records.
+   * Does not touch structural stations/gates/asteroids (authored rematerialize).
+   */
+  _captureSectorDurableRecords(sectorId, opts = {}) {
+    const state = this.state;
+    const bag = ensureWorldRecords(state.world);
+    const recMeta = state.world.residentSectors && state.world.residentSectors[sectorId];
+    const epoch = recMeta && Number.isFinite(recMeta.epoch) ? recMeta.epoch : 0;
+    const tick = state.tick | 0;
+    const seed = (state.meta && state.meta.seed) || 1;
+    const list = state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e) continue;
+      const home = e.homeSectorId || (e.data && e.data.homeSectorId);
+      const dataSector = e.data && e.data.sectorId;
+      // Require explicit sector ownership — never attach homeless traffic to the wrong bag.
+      const ownedHere = home === sectorId || dataSector === sectorId;
+      if (!ownedHere) continue;
+      if (!entityIsDurableCandidate(e, state.playerId)) continue;
+      // Protected mission-pinned still get a durable record for Continue rematerialize,
+      // even though live despawn skips them.
+      const captured = captureEntityRecord(e, {
+        sectorId,
+        seed,
+        epoch,
+        tick,
+        createdTick: (e.data && e.data.recordCreatedTick) || tick,
+        durableReason: opts.reason || 'evict',
+      });
+      if (!captured) continue;
+      upsertRecord(bag, captured);
+      if (e.data) e.data.worldRecordId = captured.recordId;
+    }
+  },
+
+  /**
+   * Rematerialize durable records into a live sector bag. Idempotent: skips when a live
+   * entity already carries the record id. Does not advance state.rng.
+   * @returns {{ spawned:number, hadCombatHistory:boolean, spawnedBoss:boolean }}
+   */
+  _rematerializeSectorRecords(sectorId, active, tier) {
+    const state = this.state;
+    const bag = ensureWorldRecords(state.world);
+    // sectorSim remains recipe-only; world adopts current recipes only at FULL promotion.
+    if (tier === RESIDENCY_TIER.FULL) this._reconcileEmbodimentRecords(sectorId, bag);
+    const list = recordsForSector(bag, sectorId);
+    let spawned = 0;
+    let hadCombatHistory = false;
+    let spawnedBoss = false;
+    for (const rec of list) {
+      if (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss) {
+        hadCombatHistory = true;
+      }
+      if (!recordShouldRematerialize(rec, tier)) continue;
+      // Exactly-once: never double-spawn a live entity for the same record.
+      const existing = findLiveEntityForRecord(state.entityList, rec.recordId);
+      if (existing) {
+        if (active && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.kind === RECORD_KIND.MISSION_TARGET)) {
+          if (active.enemies && !active.enemies.includes(existing.id) && existing.type === 'ship') {
+            active.enemies.push(existing.id);
+          }
+        }
+        continue;
+      }
+      const ent = this._spawnFromDurableRecord(rec, sectorId);
+      if (!ent) continue;
+      spawned++;
+      if (ent.data && ent.data.isBoss) {
+        spawnedBoss = true;
+        if (active) active.boss = { entityId: ent.id, poiId: ent.data.bossPoiId || rec.bossPoiId };
+      }
+      if (active && ent.type === 'ship') {
+        if (!active.enemies) active.enemies = [];
+        if (!active.enemies.includes(ent.id)) active.enemies.push(ent.id);
+      }
+    }
+    return { spawned, hadCombatHistory, spawnedBoss };
+  },
+
+  /**
+   * Reconcile the latest bounded sector recipe snapshot into durable records.
+   * Existing records are never overwritten (preserves damage/destroyed outcomes). Stale active
+   * generated recipes retire once their live body is gone; destroyed tombstones stay under the
+   * existing MAX_RECORDS_PER_SECTOR bound so an old outcome cannot be re-rolled.
+   */
+  _reconcileEmbodimentRecords(sectorId, bag = ensureWorldRecords(this.state.world)) {
+    const intents = embodimentRecordIntents(this.state.world.embodiment, sectorId);
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const sector = this.state.world.sectors && this.state.world.sectors[sectorId];
+    const current = [];
+    for (const intent of intents) {
+      const rec = recordFromEmbodimentIntent(intent, {
+        seed,
+        tick: this.state.tick | 0,
+        fallbackFactionId: (sector && (sector.owner || sector.factionId)) || 'faction_free',
+      });
+      if (rec) current.push(rec);
+    }
+    const currentIds = new Set(current.map((rec) => rec.recordId));
+
+    // Delete only stale, still-active generated recipes with no live body. Player-authored
+    // outcomes (destroyed/defeated) are history and remain as bounded tombstones.
+    for (const rec of recordsForSector(bag, sectorId)) {
+      if (rec.recordSource !== 'sector_embodiment' || currentIds.has(rec.recordId)) continue;
+      if (rec.outcome === 'destroyed' || rec.outcome === 'defeated') continue;
+      if (findLiveEntityForRecord(this.state.entityList, rec.recordId)) continue;
+      delete bag.byId[rec.recordId];
+    }
+
+    let inserted = 0;
+    for (const rec of current) {
+      // Never overwrite an existing active/damaged/destroyed record for this identity.
+      if (bag.byId[rec.recordId]) continue;
+      if (upsertRecord(bag, rec)) inserted++;
+    }
+    return { inserted, retained: current.length - inserted, current: current.length };
+  },
+
+  /**
+   * Spawn one live entity from a durable record. Prefers makeEnemySpawnSpec for NPC archetypes.
+   */
+  _spawnFromDurableRecord(rec, sectorId) {
+    if (!rec || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    const state = this.state;
+    let ent = null;
+    if (rec.enemyTypeId && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss)) {
+      const pos = { x: rec.pos.x, z: rec.pos.z };
+      const level = Number.isFinite(rec.level) ? rec.level : 1;
+      const spec = makeEnemySpawnSpec(rec.enemyTypeId, level, pos, { factionId: rec.factionId || undefined });
+      if (rec.ai && spec.data) {
+        spec.data.ai = Object.assign({}, spec.data.ai || {}, rec.ai);
+      }
+      if (rec.isBoss && spec.data) {
+        spec.data.isBoss = true;
+        spec.data.bossPoiId = rec.bossPoiId;
+        spec.data.bossSectorId = rec.bossSectorId || sectorId;
+      }
+      if (rec.missionId && spec.data) {
+        spec.data.missionId = rec.missionId;
+        spec.data.missionTag = rec.missionId;
+        spec.data.missionPinned = true;
+        spec.flags = Object.assign({}, spec.flags, { missionPinned: true });
+      }
+      ent = this.helpers.spawnEntity(spec);
+    } else {
+      const spec = spawnSpecFromRecord(rec);
+      if (!spec) return null;
+      // Convoy / freighter shell via ship def when present.
+      if (rec.kind === RECORD_KIND.CONVOY && rec.shipDefId) {
+        // Keep spawnSpecFromRecord shell; shipDefId already stamped on data.defId.
+      }
+      ent = this.helpers.spawnEntity(spec);
+    }
+    if (!ent) return null;
+    applyRecordVitals(ent, rec);
+    bindEntityToRecord(ent, rec);
+    this._stampHomeSector(ent, rec.homeSectorId || sectorId);
+    // Restore pose after stamp (global — never re-add sector origin).
+    if (ent.pos) {
+      ent.pos.x = rec.pos.x;
+      ent.pos.z = rec.pos.z;
+    }
+    return ent;
+  },
+
+  /**
+   * Public/test hook: upsert a durable record for an entity (or plain record object).
+   */
+  upsertWorldRecord(input) {
+    const state = this.state;
+    const bag = ensureWorldRecords(state.world);
+    if (input && input.recordId && input.kind && input.pos) {
+      return upsertRecord(bag, input);
+    }
+    if (input && input.id != null) {
+      const e = state.entities.get(input.id) || input;
+      const sectorId = e.homeSectorId || (e.data && e.data.homeSectorId) || state.world.currentSectorId;
+      const captured = captureEntityRecord(e, {
+        sectorId,
+        seed: (state.meta && state.meta.seed) || 1,
+        tick: state.tick | 0,
+      });
+      return captured ? upsertRecord(bag, captured) : null;
+    }
+    return null;
+  },
+
+  /** Mark durable record destroyed (player kill / outcome). Keeps identity for no-reroll. */
+  markWorldRecordDestroyed(recordId, opts = {}) {
+    const bag = ensureWorldRecords(this.state.world);
+    return markRecordDestroyed(bag, recordId, {
+      tick: this.state.tick | 0,
+      ...opts,
+    });
   },
 
   /**
@@ -556,7 +904,8 @@ export const world = {
     if (e.id === state.playerId) return true;
     if (e.isPlayer) return true;
     if (e.flags && (e.flags.persistent || e.flags.missionPinned)) return true;
-    if (e.data && (e.data.persistent || e.data.missionPinned || e.data.missionId)) return true;
+    // missionTag is the live mission spawn marker (missions.js); treat as pinned identity.
+    if (e.data && (e.data.persistent || e.data.missionPinned || e.data.missionId || e.data.missionTag)) return true;
     return false;
   },
 
@@ -1074,6 +1423,7 @@ export const world = {
         tagAiSpawnContext(spec, sector, sec, intent.context);
         const ent = this.helpers.spawnEntity(spec);
         this._stampHomeSector(ent, sector.id);
+        this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, intent.archetypeId || 'npc', active);
         active.enemies.push(ent.id);
       }
     } else if (grant > 0) {
@@ -1087,6 +1437,7 @@ export const world = {
         tagAiSpawnContext(spec, sector, sec, 'ambient');
         const ent = this.helpers.spawnEntity(spec);
         this._stampHomeSector(ent, sector.id);
+        this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, typeId || 'npc', active);
         active.enemies.push(ent.id);
       }
     }
@@ -1114,9 +1465,29 @@ export const world = {
         tagAiSpawnContext(spec, sector, sec, 'bounty_hunter');
         const ent = this.helpers.spawnEntity(spec);
         this._stampHomeSector(ent, sector.id);
+        this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, 'patrol_lawman:hunter', active);
         active.enemies.push(ent.id);
       }
     }
+  },
+
+  /**
+   * Stamp a stable worldRecordId at first spawn so demote/promote never re-keys identity.
+   * Does not write the bag yet — capture happens on demote/strip.
+   */
+  _assignDurableRecordId(ent, sectorId, kind, keyHint, active) {
+    if (!ent || !ent.data) return null;
+    if (ent.data.worldRecordId) return ent.data.worldRecordId;
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const seq = (active && (active._durableSeq = (active._durableSeq || 0) + 1)) || 0;
+    const qx = ent.pos ? Math.round(ent.pos.x / 4) * 4 : 0;
+    const qz = ent.pos ? Math.round(ent.pos.z / 4) * 4 : 0;
+    const key = `${keyHint || ent.type || 'e'}:${seq}:${qx}:${qz}`;
+    const recordId = stableRecordId(seed, sectorId, kind || RECORD_KIND.NPC, key);
+    ent.data.worldRecordId = recordId;
+    ent.data.identityKey = key;
+    ent.data.recordCreatedTick = this.state.tick | 0;
+    return recordId;
   },
 
   // Boss encounter (V2 § frontier capstone): a sector authored with a `poi_boss` POI hosts the
@@ -1148,6 +1519,7 @@ export const world = {
     spec.data.bossSectorId = sector.id;
     const ent = this.helpers.spawnEntity(spec);
     this._stampHomeSector(ent, sector.id);
+    this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, `boss:${bossPoi.id}`, active);
     active.enemies.push(ent.id);
     active.boss = { entityId: ent.id, poiId: bossPoi.id };
   },
@@ -1912,11 +2284,29 @@ export const world = {
   // =========================================================================================
   serialize() {
     const state = this.state;
+    // Capture live durable entities into the bag before save so mid-route Continue
+    // restores NPC/convoy/mission outcomes without depending on residency bags.
+    const membership = state.world.currentSectorId;
+    if (membership) this._captureSectorDurableRecords(membership, { reason: 'serialize' });
+    // Also snapshot any other FULL/REDUCED resident that still has live entities.
+    const residents = state.world.residentSectors || {};
+    for (const sid of Object.keys(residents)) {
+      if (sid === membership) continue;
+      const tier = residents[sid] && residents[sid].tier;
+      if (tier === RESIDENCY_TIER.FULL || tier === RESIDENCY_TIER.REDUCED) {
+        this._captureSectorDurableRecords(sid, { reason: 'serialize' });
+      }
+    }
     return {
       currentSectorId: state.world.currentSectorId,
       discovery: state.world.discovery,
       scanPings: state.world.scanPings || {},
       pendingSpawns: state.world.pendingSpawns || {},
+      // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
+      records: serializeRecordsBag(ensureWorldRecords(state.world)),
+      // Latest sectorSim recipes are bounded per sector and needed because sectorSim restores its
+      // applied-id set on Continue (it correctly will not re-emit the same epoch).
+      embodiment: serializeEmbodimentCache(state.world.embodiment),
       // v9: entity/overlay positions are already galactic-global. Persist schema tag only —
       // frameOrigin / frameOriginSeq are runtime boundary values and must not re-offset poses.
       coordinateSchema: state.world.coordinateSchema || 'global_v1',
@@ -1950,6 +2340,9 @@ export const world = {
     if (data.discovery) state.world.discovery = data.discovery;
     state.world.scanPings = (data.scanPings && typeof data.scanPings === 'object') ? data.scanPings : {};
     state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};
+    // Durable records restore before enterSector rematerializes them exactly once.
+    state.world.records = deserializeRecordsBag(data.records);
+    state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
     if (data.currentSectorId) state.world.currentSectorId = data.currentSectorId;
     // Coordinate schema is global_v1 for v9+. Always reset the runtime frame on load rather
     // than trusting a stale rendering frame that may have been smuggled into a payload.
@@ -1963,6 +2356,9 @@ export const world = {
       state.world.frameOrigin.z = 0;
     }
     state.world.frameOriginSeq = 0;
+    // Never rehydrate runtime residency bags from disk (even if smuggled).
+    if (data.residentSectors) { /* intentionally ignored */ }
+    if (data.sectorContents) { /* intentionally ignored */ }
     if (data.jump) {
       // restore overlay fields but never resume a mid-charge/jump (avoid a stuck FSM on load)
       Object.assign(state.jump, data.jump);
@@ -1978,7 +2374,8 @@ export const world = {
       }
     }
     // NOTE: the active sector's entities are NOT serialized; the save load sequence re-enters
-    // the saved sector to repopulate it (calling enterSector after deserialize).
+    // the saved sector to repopulate it (calling enterSector after deserialize). Durable
+    // world.records rematerialize inside _ensureSectorMaterialized during that enter.
   },
 
   newGame() {
@@ -1993,6 +2390,8 @@ export const world = {
     state.world.discovery = {};
     state.world.scanPings = {};
     state.world.pendingSpawns = {};
+    state.world.records = createEmptyRecordsBag();
+    state.world.embodiment = createEmptyEmbodimentCache();
     state.world.residentSectors = {};
     state.world.sectorContents = {};
     state.world.activeSector = this._emptySectorBag();

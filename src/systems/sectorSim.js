@@ -7,6 +7,7 @@
 //   • price pressure -> economy:applyTradePressure intents
 //   • influence -> factions.addOffscreenTension() -> existing territory-flip single writer
 //   • transit exposure -> projectile:hit intent -> combat remains the sole health writer
+//   • embodiment recipes -> sectorsim:embodiment intents for world C2 rematerialize (no live entities)
 //
 // No agent population is simulated. Complexity is O((V + E) * factions) per coarse field step.
 import { SECTORS, dangerIndex, dangerTier } from '../data/sectors.js';
@@ -20,6 +21,13 @@ import {
   readSectorField,
   sectorFieldDigest,
 } from './dangerModel.js';
+import {
+  EMBODIMENT_SCHEMA_ID,
+  projectFieldEmbodiment,
+  projectSectorEmbodiment,
+  filterNewEmbodimentIntents,
+  mergeAppliedIntentIds,
+} from '../sim/sector/embodiment.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -34,10 +42,13 @@ const MARKET_CADENCE_DAYS = 0.25;        // stock intents are batched; no event-
 const RISK_CADENCE_DAYS = 1;
 const OFFLINE_CAP_SEC = 14400;
 const OFFLINE_EFF = 0.6;
+/** Max simulated days a single offline catch-up may integrate (cap wall→days mapping). */
+const OFFLINE_CAP_DAYS = Math.max(1, Math.floor((OFFLINE_CAP_SEC * OFFLINE_EFF) / DAY_SECONDS));
 const SECURITY_MIN = 0.02, SECURITY_MAX = 0.99;
 const DENSITY_MIN = 0, DENSITY_MAX = 0.80;
 const MAX_IMPULSES = 256;
 const MAX_INTEL_ALERTS = 3;
+const MAX_APPLIED_EMBODIMENT_IDS = 4096;
 
 const STATION_GOODS = Object.freeze({
   refinery: ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_fuel_cells'],
@@ -136,6 +147,14 @@ export const sectorSim = {
     if (!Number.isFinite(m.riskAccumulatorDays)) m.riskAccumulatorDays = 0;
     if (!Number.isFinite(m.modelVersion)) m.modelVersion = SECTOR_FIELD_VERSION;
     if (!m.lastIntel || typeof m.lastIntel !== 'object') m.lastIntel = {};
+    // Embodiment idempotency bag: tracks which recipe intentIds were already emitted for the
+    // current field epoch quantum so continuous enter / re-project never double-applies.
+    if (!ss.embodiment || typeof ss.embodiment !== 'object') ss.embodiment = {};
+    const emb = ss.embodiment;
+    if (!Number.isFinite(emb.epochKey)) emb.epochKey = -1;
+    if (!Array.isArray(emb.appliedIds)) emb.appliedIds = [];
+    if (!Number.isFinite(emb.lastDigest)) emb.lastDigest = 0;
+    if (!Number.isFinite(emb.lastEmitSimT)) emb.lastEmitSimT = 0;
     return ss;
   },
 
@@ -273,11 +292,16 @@ export const sectorSim = {
       alerts = this._emitStrategicIntel(before, next, riskDays);
     }
 
+    // Scalar→record recipes for all stable sectors (idempotent by intentId + epoch quantum).
+    const emb = this._projectAndEmitEmbodiment({ source, sectorIds: null });
+
     this.bus.emit('sectorsim:fieldAdvanced', {
       source, days, epochDays: next.epochDays, digest: ss.meta.lastDigest,
       impulseCount: pending.length, losses, alerts,
+      embodimentCount: emb.emitted,
+      embodimentDigest: emb.digest,
     });
-    return { losses, alerts };
+    return { losses, alerts, embodiment: emb };
   },
 
   _projectLegacyDrift(field) {
@@ -497,18 +521,37 @@ export const sectorSim = {
   _onSectorExit(p) {
     const id = p && p.sectorId;
     if (!id) return;
+    const continuous = !!(p && (p.continuous || p.noTeleport));
     this._sectorRec(id).lastEnterSimT = this.state.simTime || 0;
-    this._ensureState().meta.lastWallT = Date.now();
+    // Continuous free-flight handoffs must not stamp wall-clock (that would skew offline catch-up
+    // and encourage double application on the next membership edge). Hard exits may.
+    if (!continuous) this._ensureState().meta.lastWallT = Date.now();
   },
 
   _onSectorEnter(p) {
     const id = p && p.sectorId;
     if (!id) return;
+    const continuous = !!(p && (p.continuous || p.noTeleport));
     const rec = this._sectorRec(id);
     const elapsed = Math.max(0, (this.state.simTime || 0) - (rec.lastEnterSimT || 0));
     rec.lastEnterSimT = this.state.simTime || 0;
-    if (elapsed > DAY_SECONDS) this.bus.emit('sectorsim:reconcile', { sectorId: id, elapsedSimT: elapsed, signal: this.signal(id) });
-    this._emitIntel(id, 'sector_entry', elapsed / DAY_SECONDS);
+
+    // Project recipes for rematerialize consumers. Never advances the field; idempotent so a
+    // continuous Voronoi handoff cannot re-apply the same epoch's economy/embodiment twice.
+    this._projectAndEmitEmbodiment({
+      source: continuous ? 'continuous_enter' : 'sector_enter',
+      sectorIds: [id],
+    });
+
+    // Hard enter only: long absence reconcile + entry intel. Continuous is a soft membership edge.
+    if (!continuous) {
+      if (elapsed > DAY_SECONDS) {
+        this.bus.emit('sectorsim:reconcile', {
+          sectorId: id, elapsedSimT: elapsed, signal: this.signal(id), continuous: false,
+        });
+      }
+      this._emitIntel(id, 'sector_entry', elapsed / DAY_SECONDS);
+    }
     this._refreshDiagnostics();
   },
 
@@ -519,15 +562,21 @@ export const sectorSim = {
 
   runOfflineCatchup() {
     const ss = this._ensureState();
+    // Wall-clock is UX-only for mapping absence → capped days. The field kernel itself (dangerModel
+    // + embodiment projection) never reads wall-clock; replay modes should call _advanceModel with
+    // explicit simTime-derived days instead.
     const now = Date.now();
     const last = ss.meta.lastWallT || 0;
     if (!last) { ss.meta.lastWallT = now; return; }
     const elapsed = clamp((now - last) / 1000, 0, OFFLINE_CAP_SEC);
     ss.meta.lastWallT = now;
     if (elapsed < DAY_SECONDS) return;
-    const days = Math.max(1, Math.floor((elapsed * OFFLINE_EFF) / DAY_SECONDS));
+    const days = clamp(Math.max(1, Math.floor((elapsed * OFFLINE_EFF) / DAY_SECONDS)), 1, OFFLINE_CAP_DAYS);
     const result = this._advanceModel(days, 'offline');
-    this.bus.emit('sectorsim:offlineSummary', { elapsedSec: Math.round(elapsed), days, losses: result.losses });
+    this.bus.emit('sectorsim:offlineSummary', {
+      elapsedSec: Math.round(elapsed), days, losses: result.losses,
+      embodimentCount: result.embodiment && result.embodiment.emitted || 0,
+    });
     this.bus.emit('toast', {
       text: `While away (${(elapsed / 3600).toFixed(1)}h): sector field advanced ${days} days`,
       kind: 'info', ttl: 6,
@@ -539,6 +588,7 @@ export const sectorSim = {
       sectors: {},
       impulses: [],
       field: null,
+      embodiment: { epochKey: -1, appliedIds: [], lastDigest: 0, lastEmitSimT: 0 },
       meta: {
         rngSeed: 0, lastTickSimT: this.state.simTime || 0, lastWallT: Date.now(), lossLog: [],
         nextImpulseSeq: 1, transitCounter: 0, marketAccumulatorDays: 0,
@@ -555,6 +605,12 @@ export const sectorSim = {
       sectors: clonePlain(ss.sectors),
       field: clonePlain(this._ensureField()),
       impulses: clonePlain(ss.impulses.slice(-MAX_IMPULSES)),
+      embodiment: {
+        epochKey: Number.isFinite(ss.embodiment.epochKey) ? ss.embodiment.epochKey : -1,
+        appliedIds: (ss.embodiment.appliedIds || []).slice(-MAX_APPLIED_EMBODIMENT_IDS),
+        lastDigest: ss.embodiment.lastDigest || 0,
+        lastEmitSimT: ss.embodiment.lastEmitSimT || 0,
+      },
       meta: {
         rngSeed: ss.meta.rngSeed || 0,
         lastTickSimT: ss.meta.lastTickSimT || 0,
@@ -576,6 +632,13 @@ export const sectorSim = {
     ss.sectors = data && data.sectors || {};
     ss.field = data && data.field || null;
     ss.impulses = data && Array.isArray(data.impulses) ? data.impulses.slice(-MAX_IMPULSES) : [];
+    const emb = data && data.embodiment || {};
+    ss.embodiment = {
+      epochKey: Number.isFinite(emb.epochKey) ? emb.epochKey : -1,
+      appliedIds: Array.isArray(emb.appliedIds) ? emb.appliedIds.slice(-MAX_APPLIED_EMBODIMENT_IDS) : [],
+      lastDigest: emb.lastDigest || 0,
+      lastEmitSimT: emb.lastEmitSimT || 0,
+    };
     const m = data && data.meta || {};
     ss.meta = {
       rngSeed: m.rngSeed || 0,
@@ -602,6 +665,88 @@ export const sectorSim = {
   effectiveDanger(sectorId) { return effectiveDangerFor(this.state, sectorId); },
   signal(sectorId) { return sectorSignalFor(this.state, sectorId); },
   transitForecast(sectorId, opts) { return forecastTransitFor(this.state, sectorId, opts); },
+
+  /**
+   * Project scalar field → embodiment intents and emit only new ones.
+   * Does not create entities. Does not write credits/cargo/rep/hull.
+   * @param {{ source?: string, sectorIds?: string[]|null }} opts
+   * @returns {{ emitted: number, total: number, digest: number, epochKey: number, intents: object[] }}
+   */
+  _projectAndEmitEmbodiment(opts = {}) {
+    const ss = this._ensureState();
+    const field = this._ensureField();
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const sectorIds = Array.isArray(opts.sectorIds) && opts.sectorIds.length
+      ? opts.sectorIds.slice().sort((a, b) => a.localeCompare(b))
+      : SECTORS.map((s) => s.id).sort((a, b) => a.localeCompare(b));
+
+    const projected = projectFieldEmbodiment({
+      field,
+      sectorIds,
+      sectorsById: SECTOR_BY_ID,
+      seed,
+      baseDangerFor: (id) => {
+        const base = SECTOR_BY_ID.get(id);
+        return base ? dangerIndex(base) : 0.35;
+      },
+    });
+
+    // Epoch quantum roll-forward clears applied ids so a new epoch can emit fresh recipes.
+    if (ss.embodiment.epochKey !== projected.epochKey) {
+      ss.embodiment.epochKey = projected.epochKey;
+      ss.embodiment.appliedIds = [];
+    }
+
+    const fresh = filterNewEmbodimentIntents(projected.intents, ss.embodiment.appliedIds);
+    if (fresh.length) {
+      ss.embodiment.appliedIds = mergeAppliedIntentIds(
+        ss.embodiment.appliedIds, fresh, MAX_APPLIED_EMBODIMENT_IDS,
+      );
+      ss.embodiment.lastDigest = projected.digest;
+      ss.embodiment.lastEmitSimT = Number(this.state.simTime) || 0;
+      this.bus.emit('sectorsim:embodiment', {
+        schemaId: EMBODIMENT_SCHEMA_ID,
+        source: opts.source || 'field',
+        epochDays: projected.epochDays,
+        epochKey: projected.epochKey,
+        digest: projected.digest,
+        sectorIds,
+        intents: fresh,
+        // Explicit non-authority note for consumers (world C2 / traffic later).
+        createsEntities: false,
+        writesCredits: false,
+        writesCargo: false,
+        writesRep: false,
+        writesHull: false,
+      });
+    } else {
+      ss.embodiment.lastDigest = projected.digest;
+    }
+
+    return {
+      emitted: fresh.length,
+      total: projected.intents.length,
+      digest: projected.digest,
+      epochKey: projected.epochKey,
+      intents: fresh,
+    };
+  },
+
+  /** Read-only pure projection for a single sector (tests / diagnostics). */
+  projectEmbodiment(sectorId) {
+    const field = this._ensureField();
+    const node = field && field.nodes && field.nodes[sectorId];
+    if (!node) return [];
+    const base = SECTOR_BY_ID.get(sectorId);
+    return projectSectorEmbodiment({
+      sectorId,
+      sector: base,
+      node,
+      seed: (this.state.meta && this.state.meta.seed) || 1,
+      epochDays: field.epochDays || 0,
+      baseDanger: base ? dangerIndex(base) : 0.35,
+    });
+  },
 
   _emitIntel(sectorId, reason, elapsedDays) {
     const signal = this.signal(sectorId);

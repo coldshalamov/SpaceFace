@@ -9,6 +9,10 @@
 // When the schema changes: bump CURRENT_VERSION in saveVersion.js and append { from:N-1, to:N, fn }.
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { COORDINATE_SCHEMA } from '../core/coordinates.js';
+import {
+  createEmptyRecordsBag,
+  normalizeRecordsBag,
+} from '../world/worldRecords.js';
 
 export { CURRENT_VERSION } from '../data/saveVersion.js';
 
@@ -224,10 +228,11 @@ export const MIGRATIONS = [
   },
   // v10: optional, non-binding first-dock career origins. Old saves start with a clean origin
   // container; each origin system overlays its own versioned defaults during deserialize.
-  // CL-00 careerLadders intentionally are not seeded on this historical v9-to-v10 step.
-  // CURRENT_VERSION is already 11; missing careerLadders default through the registered
-  // careerLadders system deserialize path, without pretending this older migration was live
-  // for ladders or introducing a competing save-version bump.
+  // CL-00 careerLadders intentionally NOT seeded here: CURRENT_VERSION is already 11 (M2-C2
+  // owns live v11). Piggybacking ladders onto historical v9→v10 is not a live migration claim.
+  // Continue for missing data.careerLadders defaults via save deserialize →
+  // careerLadders.deserialize(null|undefined) → migrateCareerLaddersBlob empty container.
+  // This packet does NOT bump saveVersion to v12 (saveVersion.js out of allowlist; M2 C2 owns v11).
   {
     from: 9,
     to: 10,
@@ -239,7 +244,43 @@ export const MIGRATIONS = [
           origins: {},
         };
       }
-      // Missing careerLadders intentionally default during system deserialize.
+      // Do not seed careerLadders on this historical step (see comment above).
     },
   },
+  // v11: durable world-entity records (M2-C2). Absent/old → empty bag (fail closed).
+  // Never re-adds sector origins to global_v1 poses. Strips smuggled runtime residency bags.
+  // Idempotent: re-running on an already-normalized bag is a no-op for spatial fields.
+  // CL-00: still no careerLadders seed and no v12 bump in this packet.
+  {
+    from: 10,
+    to: 11,
+    fn: migrateV10ToV11,
+  },
 ];
+
+/**
+ * v10 → v11: seed world.records; strip runtime-only residency/frame smuggled keys from world overlay.
+ * Does NOT offset positions (already galactic-global since v9).
+ */
+function migrateV10ToV11(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+  if (!data.world || typeof data.world !== 'object' || Array.isArray(data.world)) data.world = {};
+  // Durable records: absent → empty; present → normalize (drops corrupt entries).
+  if (!data.world.records || typeof data.world.records !== 'object' || Array.isArray(data.world.records)) {
+    data.world.records = createEmptyRecordsBag();
+  } else {
+    data.world.records = normalizeRecordsBag(data.world.records);
+  }
+  // Runtime-only — never authoritative on disk.
+  if ('frameOrigin' in data.world) {
+    data.world.frameOrigin = { x: 0, z: 0 };
+  }
+  if ('frameOriginSeq' in data.world) {
+    data.world.frameOriginSeq = 0;
+  }
+  if ('residentSectors' in data.world) delete data.world.residentSectors;
+  if ('sectorContents' in data.world) delete data.world.sectorContents;
+  // Preserve peer career keys if present (origins/ladders). Missing careerLadders is OK —
+  // Continue defaults via system deserialize (no v12 seed in this packet).
+  if (data.world.coordinateSchema == null) data.world.coordinateSchema = COORDINATE_SCHEMA;
+}

@@ -191,9 +191,13 @@ export const automation = {
     bus.on('save:loaded', () => this.runOfflineCatchup());
     bus.on('game:started', () => { this.meta().lastTickTime = nowMs(); });
 
-    // The world despawns sector-scoped entities on sector exit — our flying drones go with them, so
-    // drop the stale ids (they re-spawn from the group when the player returns to the home sector).
-    bus.on('sector:exit', () => { for (const g of this.state.automation.drones) g.entityIds = []; });
+    // Hard sector exit: world despawns sector-scoped entities — drop stale drone entity ids
+    // (they re-spawn from the group when the player returns). Continuous free-flight membership
+    // preserves live drone ids across Voronoi handoffs (M2-C1).
+    bus.on('sector:exit', (p) => {
+      if (p && (p.continuous || p.noTeleport)) return;
+      for (const g of this.state.automation.drones) g.entityIds = [];
+    });
 
     // Tech can raise the drone tier cap → just affects gating/cap; nothing to do eagerly.
   },

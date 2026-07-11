@@ -37,12 +37,15 @@ export const spawnBudget = {
     this.helpers.spawnBudget = api;
 
     if (this.bus && typeof this.bus.on === 'function') {
-      // Reset on sector:EXIT (fired at the START of a jump, before the destination sector spawns) — NOT
-      // sector:enter. world.js reserves its ambient allotment DURING enterSector, before it emits
-      // sector:enter; resetting on enter would wipe that reservation. Exiting clears the old sector's
-      // ledger (its entities are despawned with the sector); the first-ever entry has no exit, and
-      // ensureBudgetState already starts the ledger empty. save:loaded also resets (re-entry re-reserves).
-      this.bus.on('sector:exit', () => api.reset());
+      // Reset on hard sector:EXIT (intentional jump / load boundary) — NOT continuous free-flight
+      // membership handoffs, and NOT sector:enter. world.js reserves ambient allotment DURING
+      // enterSector before sector:enter; resetting on enter would wipe that reservation.
+      // Continuous exits keep live entities and their budget slots (M2-C1). save:loaded always
+      // resets (re-entry re-reserves). First-ever entry has no exit; ensureBudgetState starts empty.
+      this.bus.on('sector:exit', (p) => {
+        if (isContinuousHandoff(p)) return;
+        api.reset();
+      });
       this.bus.on('save:loaded', () => api.reset());
     }
   },
@@ -148,4 +151,9 @@ function clampInt(v, lo, hi) {
   if (v < lo) return lo;
   if (v > hi) return hi;
   return v;
+}
+
+/** Free-flight membership handoff: world emits continuous/noTeleport on Voronoi edge crosses. */
+function isContinuousHandoff(p) {
+  return !!(p && (p.continuous || p.noTeleport));
 }

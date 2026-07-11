@@ -59,7 +59,7 @@ export const gateControlDirector = {
       this._onJump = () => this._resolveScene(this.state, 'jump');
       this._onAbort = () => this._resolveScene(this.state, 'abort');
       this._onGone = (p) => this._onEntityDestroyed(p);
-      this._onExit = () => this._onSectorExit();
+      this._onExit = (p) => this._onSectorExit(p);
       this._onLoaded = () => this._onSaveLoaded();
       this.bus.on('jump:chargeStart', this._onCharge);
       this.bus.on('jump:start', this._onJump);
@@ -201,9 +201,13 @@ export const gateControlDirector = {
     if (scene.wingId && budget && typeof budget.releaseSome === 'function') budget.releaseSome(scene.wingId, 1);
   },
 
-  _onSectorExit() {
+  _onSectorExit(p) {
+    // Continuous free-flight membership handoff (M2-C1): keep an active gate scene across
+    // Voronoi edges. Hard clear only on intentional jump / load / non-continuous exit.
+    // spawnBudget self-resets its ledger on hard sector:exit — no releaseSome here.
+    if (p && (p.continuous || p.noTeleport)) return;
     const g = ensureState(this.state);
-    g.scene = null;             // spawnBudget self-resets its ledger on sector:exit — no releaseSome
+    g.scene = null;
   },
 
   _onSaveLoaded() { this.state.gateControl = freshState(); },

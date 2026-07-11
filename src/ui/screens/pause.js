@@ -226,7 +226,17 @@ export function pauseMapAction(state) {
   const handoff = mapHandoffAction({
     focus: MAP_FOCUS.GALAXY,
     label: 'Star Map (' + BINDINGS.starmap.label + ')',
-    hint: 'Open Star Map (' + BINDINGS.starmap.label + ') to review the inter-system route' + target + ' before committing a jump.',
+    title: 'Open Star Map',
+    body: hint,
+    sectorId: wp.sectorId || null,
+    stationId: wp.stationId || null,
+    pos: null,
+    missionId: wp.missionId || null,
+    source: 'pause',
+  });
+  return {
+    ...handoff,
+    hint,
     commitment: commitment.kind,
     objectiveLabel: commitment.objectiveLabel,
   };

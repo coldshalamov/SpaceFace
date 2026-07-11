@@ -15,12 +15,17 @@
 //     by the player (piracy!) which raises heat via the heat system.
 //   - Route logic: pick a random station in-sector, fly toward it (slow, no boost), on proximity
 //     "dock" (emit aiTrader:requestTrade with a small random commodity/qty), wait briefly, pick a
-//     new station. Loop. Despawn on sector:leave (view-gated, V2 §34).
+//     new station. Loop. Hard sector:exit cleans up freighters; continuous membership handoff
+//     preserves still-alive traffic (world residency owns scoped despawn; M2-C1).
 //   - Single-writer: traffic owns only its own spawned entities (tracked in state.traffic); it
 //     never touches player state. Economy impact is via the event bus.
 
 import { makeShipEntitySpec } from './ships.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
+import {
+  RECORD_KIND,
+  stableRecordId,
+} from '../world/worldRecords.js';
 
 const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 const MAX_PER_SECTOR = 6;
@@ -96,14 +101,31 @@ export const traffic = {
     this._stationScratch = [];
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
-    this.bus.on('sector:leave', () => this._cleanup());
+    // Canonical seam is sector:exit (world never emits sector:leave). Continuous handoffs prune
+    // dead tracking only; hard exits fully clean up freighters.
+    this.bus.on('sector:exit', (p) => this._onSectorExit(p));
+  },
+
+  _onSectorExit(p) {
+    if (p && (p.continuous || p.noTeleport)) {
+      this._pruneDead();
+      return;
+    }
+    this._cleanup();
   },
 
   _onSectorEnter(p) {
-    this._cleanup(); // wipe previous sector's freighters (view-gated)
+    const continuous = !!(p && (p.continuous || p.noTeleport));
+    if (continuous) {
+      // Soft handoff: keep still-alive freighters; only top-up ambient for the new membership.
+      this._pruneDead();
+    } else {
+      this._cleanup(); // hard enter: wipe previous sector's freighters (view-gated)
+    }
     const sector = p && p.sector;
     if (!sector || !this.helpers || !this.helpers.spawnEntity) return;
-    this._resetRngForSector(sector.id || (p && p.sectorId) || (this.state.world && this.state.world.currentSectorId) || 'unknown');
+    const sectorId = sector.id || (p && p.sectorId) || (this.state.world && this.state.world.currentSectorId) || 'unknown';
+    this._resetRngForSector(sectorId);
     // No freighters in the player's home on a brand-new game (feels dead before the economy warms),
     // and none where the sector explicitly says so. Otherwise a small ambient count.
     const tpm = sector.trafficPerMin;
@@ -115,8 +137,17 @@ export const traffic = {
     const stations = this._sectorStations();
     if (stations.length < 1) return; // nowhere to haul to
 
+    // Continue / rematerialize: adopt live convoy freighters (world.records) before ambient top-up
+    // so we never double freighters after hard enter rematerialized durable traffic.
+    this._adoptRematerializedTraffic(sectorId, stations);
+
+    // Continuous or after adopt: only top-up toward the target count.
+    const already = (this.state.traffic.freighters || []).length;
+    const need = Math.max(0, count - already);
+    if (need <= 0) return;
+
     const roleWeights = roleMixForSector(sector);
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < need; i++) {
       const role = pickRole(roleWeights, () => this._rng());
       const def = TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler;
       const station = stations[Math.floor(this._rng() * stations.length)] || stations[0];
@@ -132,7 +163,7 @@ export const traffic = {
       });
       const ent = this.helpers.spawnEntity(spec);
       if (!ent) continue;
-      if (ent.data) { ent.data.trafficRole = role; ent.data.trafficLabel = def.label; }
+      this._stampTrafficDurableIdentity(ent, sectorId, role, def, i);
       this._active.push(ent.id);
       this.state.traffic.freighters.push({
         id: ent.id,
@@ -142,6 +173,72 @@ export const traffic = {
         nextTradeT: 2 + i * 1.5, // stagger trades so they don't all hit the market at once
         orbitPhase: this._rng() * Math.PI * 2, // patrols orbit on a per-ship phase
       });
+    }
+  },
+
+  /**
+   * Stamp homeSectorId + stable worldRecordId before first demotion so capture/kill never
+   * attaches homeless freighters to the wrong sector bag.
+   */
+  _stampTrafficDurableIdentity(ent, sectorId, role, def, seq) {
+    if (!ent) return;
+    if (!ent.data) ent.data = {};
+    ent.data.trafficRole = role;
+    ent.data.trafficLabel = (def && def.label) || role;
+    ent.homeSectorId = sectorId;
+    ent.data.homeSectorId = sectorId;
+    if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
+    if (ent.data.worldRecordId) return;
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const qx = ent.pos ? Math.round(ent.pos.x / 4) * 4 : 0;
+    const qz = ent.pos ? Math.round(ent.pos.z / 4) * 4 : 0;
+    const key = `traffic:${role || 'hauler'}:${seq | 0}:${qx}:${qz}`;
+    const recordId = stableRecordId(seed, sectorId, RECORD_KIND.CONVOY, key);
+    ent.data.worldRecordId = recordId;
+    ent.data.identityKey = key;
+    ent.data.durable = true;
+    ent.data.recordCreatedTick = this.state.tick | 0;
+  },
+
+  /**
+   * Bind rematerialized convoy freighters into traffic tracking without re-spawning.
+   */
+  _adoptRematerializedTraffic(sectorId, stations) {
+    if (!sectorId) return;
+    const tracked = new Set((this.state.traffic.freighters || []).map((f) => f && f.id));
+    const list = this.state.entityList || [];
+    let adoptIdx = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || !e.alive || e.type !== 'ship' || e.isPlayer) continue;
+      const d = e.data || {};
+      if (!d.trafficRole && !d.worldRecordId) continue;
+      // Only adopt freighters that look like traffic/convoy.
+      if (!d.trafficRole && !(d.durable && d.worldRecordId)) continue;
+      if (!d.trafficRole) continue;
+      const home = e.homeSectorId || d.homeSectorId || d.sectorId;
+      if (home && home !== sectorId) continue;
+      if (tracked.has(e.id)) continue;
+      // Ensure durable stamps survive even if rematerialize omitted a field.
+      if (!e.homeSectorId && !d.homeSectorId) {
+        e.homeSectorId = sectorId;
+        d.homeSectorId = sectorId;
+      }
+      if (d.sectorId == null) d.sectorId = sectorId;
+      if (!d.worldRecordId) {
+        this._stampTrafficDurableIdentity(e, sectorId, d.trafficRole, { label: d.trafficLabel }, adoptIdx);
+      }
+      tracked.add(e.id);
+      this._active.push(e.id);
+      this.state.traffic.freighters.push({
+        id: e.id,
+        role: d.trafficRole || 'hauler',
+        targetId: (stations && stations.length) ? this._pickStation(stations).id : null,
+        waitT: 0,
+        nextTradeT: 2 + adoptIdx * 1.5,
+        orbitPhase: this._rng() * Math.PI * 2,
+      });
+      adoptIdx++;
     }
   },
 
@@ -174,6 +271,20 @@ export const traffic = {
     }
     this._active = [];
     this.state.traffic.freighters = [];
+  },
+
+  /** Drop tracking for freighters already despawned by residency demotion (continuous handoff). */
+  _pruneDead() {
+    this._ensureState();
+    const list = this.state.traffic.freighters || [];
+    const aliveIds = [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      const rec = list[i];
+      const e = this.state.entities && this.state.entities.get(rec.id);
+      if (!e || !e.alive) list.splice(i, 1);
+      else aliveIds.push(rec.id);
+    }
+    this._active = aliveIds;
   },
 
   update(dt, state) {

@@ -31,9 +31,14 @@ export const wingmen = {
     this.helpers = ctx.helpers;
 
     // Spawn wingmen when the player enters a sector (world emits sector:enter on entry).
+    // _spawnWingmen skips fleet entries that already have a live _liveId (continuous handoff).
     this.bus.on('sector:enter', () => this._spawnWingmen());
-    // Despawn live wingmen when leaving a sector (they re-spawn at the next sector).
-    this.bus.on('sector:leave', () => this._despawnWingmen());
+    // Canonical seam is sector:exit (world never emits sector:leave). Continuous free-flight
+    // membership preserves live wingmen; hard jump/load boundaries despawn and re-spawn on enter.
+    this.bus.on('sector:exit', (p) => {
+      if (p && (p.continuous || p.noTeleport)) return;
+      this._despawnWingmen();
+    });
     // Order changes from the AutomationPanel UI → update the live entity's AI archetype.
     // The UI emits ui:fleetOrder {shipId, order, kind, targetRef}; automation.handleOrder resolves
     // kind→order. We read the resolved order off the fleet entry after handleOrder runs (automation
@@ -75,17 +80,20 @@ export const wingmen = {
     const player = state.entities.get(state.playerId);
     if (!player) return;
 
+    let spawned = 0;
     for (const fs of fleet) {
-      if (fs._liveId) continue; // already spawned this sector
+      if (fs._liveId) continue; // already live (continuous handoff or same-sector re-enter)
       const spec = this._buildWingmanSpec(fs, player);
       if (!spec) continue;
       const e = this.helpers.spawnEntity(spec);
       fs._liveId = e.id;
       e.data.wingmanOf = fs.id; // link live entity → fleet ledger entry
       e.data.isWingman = true;  // flag for render/AI (friend marker, no bounty, no loot)
+      spawned++;
     }
-    if (fleet.some((fs) => fs._liveId)) {
-      this.bus.emit('toast', { text: fleet.length + ' wingman' + (fleet.length > 1 ? 's' : '') + ' deployed', kind: 'good', ttl: 3 });
+    // Toast only when new wingmen materialize — continuous membership re-entry must not re-bark.
+    if (spawned > 0) {
+      this.bus.emit('toast', { text: spawned + ' wingman' + (spawned > 1 ? 's' : '') + ' deployed', kind: 'good', ttl: 3 });
     }
   },
 

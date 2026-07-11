@@ -7,4 +7,5 @@
 // v8: BP-01/C11 battle-aftermath wreck markers persist across Continue.
 // v9: all persisted spatial positions use galactic-global XZ (`global_v1`).
 // v10: first-dock Hauler/Hunter/Prospector origin progress persists under data.careerOrigins.
-export const CURRENT_VERSION = 10;
+// v11: durable world-entity records (convoys/NPCs/mission targets/wrecks) under world.records.
+export const CURRENT_VERSION = 11;

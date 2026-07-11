@@ -25,9 +25,11 @@ assert.match(wmSrc, /makeShipEntitySpec/, 'wingmen.js must build live entities v
 assert.match(wmSrc, /team: 0/, 'wingmen must spawn as team: 0 (player-aligned — AI auto-targets team-1 hostiles)');
 assert.match(wmSrc, /_liveId/, 'wingmen must track the live entity id on the fleet entry (_liveId)');
 
-// 2. Spawns on sector enter + despawns on sector leave (re-spawn at next sector).
+// 2. Spawns on sector enter + hard-despawns on sector:exit (canonical world seam; continuous
+// free-flight handoffs preserve live wingmen — see M2-C1 continuous handoff).
 assert.match(wmSrc, /bus\.on\('sector:enter'/, 'wingmen must spawn on sector:enter');
-assert.match(wmSrc, /bus\.on\('sector:leave'/, 'wingmen must despawn on sector:leave');
+assert.match(wmSrc, /bus\.on\('sector:exit'/, 'wingmen must hard-despawn on sector:exit (not dead sector:leave)');
+assert.doesNotMatch(wmSrc, /bus\.on\('sector:leave'/, 'wingmen must not listen for dead sector:leave event');
 
 // 3. Death routes through the existing onHitAsset path (ledger stays the source of truth).
 assert.match(wmSrc, /combat:hitAsset/, 'wingman death must emit combat:hitAsset (so automation.onHitAsset removes the fleet entry)');

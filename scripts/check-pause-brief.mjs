@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { MAP_FOCUS, MAP_SCREEN_ID } from '../src/ui/mapAuthority.js';
 import { pauseExitConfirmBody, pauseMapAction, pauseStatusLines } from '../src/ui/screens/pause.js';
 
 const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
@@ -122,11 +123,22 @@ assert.match(lines.objective, /Sell Food at Meridian Exchange/);
 assert.match(lines.next, /Star Map \(M\).*Meridian/);
 assert.match(lines.next, /before committing a jump/);
 
+// Map review CTA: one public surface (galaxyMap) + MAP_FOCUS vocabulary.
+// Product labels remain Local Map (N) / Star Map (M); commitment/hint copy preserved.
+assert.match(pauseSrc, /mapHandoffAction|openGalaxyMap/,
+  'pause map action should route through mapAuthority (not dual-primary legacy screens)');
+assert.doesNotMatch(pauseSrc, /screenId:\s*['"]localmap['"]/,
+  'pause must not hardcode screenId localmap (use galaxyMap + MAP_FOCUS.LOCAL)');
+assert.doesNotMatch(pauseSrc, /screenId:\s*['"]starmap['"]/,
+  'pause must not hardcode screenId starmap (use galaxyMap + MAP_FOCUS.GALAXY)');
+
 let mapAction = pauseMapAction({
   world: { currentSectorId: 'sector_helios' },
   nav: { waypoint: { label: 'Sell Food at Vesta Exchange', pos: { x: 100, z: -60 }, sectorId: 'sector_helios' } },
 });
-assert.equal(mapAction.screenId, 'localmap');
+assert.equal(mapAction.screenId, MAP_SCREEN_ID);
+assert.equal(mapAction.screenId, 'galaxyMap');
+assert.equal(mapAction.focus, MAP_FOCUS.LOCAL);
 assert.equal(mapAction.label, 'Local Map (N)');
 assert.equal(mapAction.commitment, 'local');
 assert.match(mapAction.hint, /live marker/);
@@ -136,7 +148,9 @@ mapAction = pauseMapAction({
   world: { currentSectorId: 'sector_helios' },
   nav: { waypoint: { label: 'Sell Food at Meridian Exchange', sectorId: 'sector_meridian' } },
 });
-assert.equal(mapAction.screenId, 'starmap');
+assert.equal(mapAction.screenId, MAP_SCREEN_ID);
+assert.equal(mapAction.screenId, 'galaxyMap');
+assert.equal(mapAction.focus, MAP_FOCUS.GALAXY);
 assert.equal(mapAction.label, 'Star Map (M)');
 assert.equal(mapAction.commitment, 'inter-system');
 assert.match(mapAction.hint, /inter-system route/);

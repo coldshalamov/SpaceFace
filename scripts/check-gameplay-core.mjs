@@ -6128,12 +6128,13 @@ function checkWingmenSpawnAsLiveEntities() {
   assert.ok(ctx.events.some((ev) => ev.e === 'combat:hitAsset' && ev.p && ev.p.assetKind === 'fleet'),
     'wingman death must emit combat:hitAsset {assetKind:"fleet"} so automation.onHitAsset removes the ledger entry');
 
-  // 4. sector:leave despawns remaining wingmen (clears _liveId).
+  // 4. Hard sector:exit despawns remaining wingmen (clears _liveId). Continuous handoffs skip
+  // _despawnWingmen; this path exercises the intentional jump/load teardown.
   const beforeCount = ctx.state.entityList.filter((e) => e.data && e.data.isWingman && e.alive).length;
-  assert.ok(beforeCount >= 1, 'at least one wingman should still be alive before sector leave');
+  assert.ok(beforeCount >= 1, 'at least one wingman should still be alive before hard sector:exit');
   wingmen._despawnWingmen();
   for (const fs of ctx.state.automation.fleet) {
-    assert.ok(!fs._liveId, 'sector:leave should clear _liveId on all fleet entries');
+    assert.ok(!fs._liveId, 'hard sector:exit should clear _liveId on all fleet entries');
   }
 
   // 5. Empty fleet → no spawn, no crash.

@@ -88,9 +88,9 @@ export const encounterDirector = {
     ensureDirectorState(this.state);
 
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('sector:enter', (p) => this._onSectorEnter(p && p.sectorId));
+      this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
       this.bus.on('day:tick', () => this._planSector(this._currentSectorId()));
-      this.bus.on('sector:exit', () => this._onSectorExit());
+      this.bus.on('sector:exit', (p) => this._onSectorExit(p));
       // Durable-merge on load: keep named captains / receipts / cooldowns, rebuild transients.
       this.bus.on('save:loaded', () => this._onSaveLoaded());
       // Budget bookkeeping + script event routing.
@@ -127,7 +127,14 @@ export const encounterDirector = {
 
   // ═══ SCHEDULING ═══════════════════════════════════════════════════════════════════════════════
 
-  _onSectorEnter(sectorId) {
+  _onSectorEnter(p) {
+    // Continuous free-flight membership is a soft handoff (M2-C1). Soft exit preserves
+    // live/pending/pressure/active; continuous enter must NOT reseed grace pressure, clear the
+    // pacing window, or replan (which wipes pending for a new sector-day key). Intentional
+    // jump / load / boot enters still get the entry breath and planner.
+    if (p && (p.continuous || p.noTeleport)) return;
+
+    const sectorId = p && typeof p === 'object' ? p.sectorId : p;
     const state = this.state;
     const dir = ensureDirectorState(state);
     const now = state.simTime || 0;
@@ -140,7 +147,12 @@ export const encounterDirector = {
     this._planSector(sectorId);
   },
 
-  _onSectorExit() {
+  _onSectorExit(p) {
+    // Continuous free-flight membership is a soft handoff — preserve live encounters, pending
+    // beats, and active spawn ledger so fights can cross Voronoi edges (M2-C1). Hard teardown
+    // only for intentional jump / load / non-continuous boundaries.
+    if (p && (p.continuous || p.noTeleport)) return;
+
     const dir = ensureDirectorState(this.state);
     // Live encounters in the sector we left resolve as abandoned (named grudges still book).
     for (const id of Object.keys(dir.live)) {
@@ -153,7 +165,7 @@ export const encounterDirector = {
     }
     dir.live = {};
     dir.pending = [];
-    dir.active = {};                                   // spawnBudget resets its own ledger on sector:exit
+    dir.active = {};                                   // spawnBudget hard-resets on non-continuous exit
     dir.plannedKey = null;                             // same-day re-entry must replan
   },
 

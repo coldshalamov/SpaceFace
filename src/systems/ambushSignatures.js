@@ -23,7 +23,12 @@ export const ambushSignatures = {
     this._subs = [];
     ensureState(this.state);
     this._listen('scan:pulse', (p) => this._onScanPulse(p));
-    this._listen('sector:exit', () => { if (this.state) this.state.ambushSignatures = freshState(); });
+    // Continuous free-flight membership handoff (M2-C1): keep active ambush tells so scan
+    // reveals survive Voronoi edges. Hard wipe only on intentional jump / load / non-continuous exit.
+    this._listen('sector:exit', (p) => {
+      if (p && (p.continuous || p.noTeleport)) return;
+      if (this.state) this.state.ambushSignatures = freshState();
+    });
   },
 
   newGame() {
