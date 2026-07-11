@@ -94,6 +94,104 @@ export class AssetContractError extends Error {
 }
 
 /**
+ * Process-wide shared KTX2Loader ownership for authored-asset runtimes.
+ *
+ * Three.js warns when multiple KTX2Loader instances initialize (each loads the Basis
+ * transcoder and allocates a worker pool). Main flight and New Game ship preview each
+ * create their own authored-asset runtime; they must share one loader. Reference counting
+ * keeps the shared loader alive while any runtime still owns it, so disposing the preview
+ * runtime cannot revoke the main runtime's transcoder mid-session.
+ *
+ * `acquire(renderer)` re-runs `detectSupport(renderer)` so each runtime still stamps
+ * support against its own WebGL/WebGPU context before loads proceed.
+ *
+ * @param {{ createLoader?: () => Promise<{ detectSupport?: Function, dispose?: Function }> }} [options]
+ * @returns {{ acquire: Function, release: Function, peek: Function }}
+ */
+export function createSharedKtx2LoaderOwner(options = {}) {
+  const createLoader = typeof options.createLoader === 'function'
+    ? options.createLoader
+    : createDefaultKtx2Loader;
+  let shared = null;
+
+  async function acquire(renderer) {
+    if (!shared) {
+      const entry = {
+        refs: 0,
+        loader: null,
+        ready: null,
+      };
+      entry.ready = Promise.resolve()
+        .then(() => createLoader())
+        .then((loader) => {
+          entry.loader = loader;
+          return loader;
+        });
+      shared = entry;
+    }
+
+    const entry = shared;
+    entry.refs += 1;
+    try {
+      const loader = await entry.ready;
+      if (renderer && loader && typeof loader.detectSupport === 'function') {
+        loader.detectSupport(renderer);
+      }
+      return loader;
+    } catch (error) {
+      releaseEntry(entry);
+      throw error;
+    }
+  }
+
+  function release(loader) {
+    if (!shared) return;
+    // Only the shared generation may be released through this owner. A stale handle from a
+    // previous fully-retired generation is ignored so double-release cannot poison a new loader.
+    if (loader != null && shared.loader != null && loader !== shared.loader) return;
+    releaseEntry(shared);
+  }
+
+  function releaseEntry(entry) {
+    if (!entry || entry.refs <= 0) return;
+    entry.refs -= 1;
+    if (entry.refs > 0) return;
+    if (shared === entry) shared = null;
+    // Prefer synchronous dispose once the loader exists so runtime retirement matches the
+    // prior disposableDecoders timing. If create is still in flight, dispose after settle.
+    if (entry.loader && typeof entry.loader.dispose === 'function') {
+      try { entry.loader.dispose(); } catch (_) { /* dispose is best-effort */ }
+      return;
+    }
+    entry.ready.then((loader) => {
+      try {
+        if (loader && typeof loader.dispose === 'function') loader.dispose();
+      } catch (_) { /* dispose is best-effort */ }
+    }).catch(() => { /* creation failure: nothing to dispose */ });
+  }
+
+  function peek() {
+    if (!shared) return null;
+    return Object.freeze({
+      refCount: shared.refs,
+      loader: shared.loader,
+    });
+  }
+
+  return Object.freeze({ acquire, release, peek });
+}
+
+async function createDefaultKtx2Loader() {
+  const { KTX2Loader } = await import('three/addons/loaders/KTX2Loader.js');
+  const ktx2 = new KTX2Loader();
+  ktx2.setTranscoderPath(ASSET_RUNTIME_DECODER_CONTRACT.ktx2TranscoderPath);
+  return ktx2;
+}
+
+/** Module-lifetime shared KTX2 owner used by every authored-asset runtime in this process. */
+const sharedKtx2LoaderOwner = createSharedKtx2LoaderOwner();
+
+/**
  * Load and validate one authored GLB part. Failures resolve to null by contract: the caller's
  * procedural part remains authoritative and no entity may disappear because an asset is absent.
  */
@@ -233,13 +331,19 @@ async function createRuntime(renderer) {
 async function attachRuntimeDecoders(gltf, renderer, decoders, disposableDecoders) {
   if (typeof gltf.setKTX2Loader === 'function') {
     try {
-      const { KTX2Loader } = await import('three/addons/loaders/KTX2Loader.js');
-      const ktx2 = new KTX2Loader();
-      ktx2.setTranscoderPath(ASSET_RUNTIME_DECODER_CONTRACT.ktx2TranscoderPath);
-      if (renderer && typeof ktx2.detectSupport === 'function') ktx2.detectSupport(renderer);
-      gltf.setKTX2Loader(ktx2);
-      disposableDecoders.push(ktx2);
-      decoders.ktx2 = true;
+      // Shared across runtimes (main + preview). Runtime retirement only releases a ref —
+      // it must not dispose() the underlying KTX2Loader while another runtime still holds it.
+      const ktx2 = await sharedKtx2LoaderOwner.acquire(renderer);
+      try {
+        gltf.setKTX2Loader(ktx2);
+        disposableDecoders.push({
+          dispose() { sharedKtx2LoaderOwner.release(ktx2); },
+        });
+        decoders.ktx2 = true;
+      } catch (attachError) {
+        sharedKtx2LoaderOwner.release(ktx2);
+        throw attachError;
+      }
     } catch (error) {
       warnOnce('ktx2-loader', '[assetLoader] KTX2/BasisU decoder unavailable; release-compressed textures will fail', error);
     }

@@ -1,14 +1,20 @@
 #!/usr/bin/env node
-// Release soak gate: 30 sim-minutes of live headless gameplay systems.
+// Milestone 6 release soak harness.
 //
-// This is intentionally not a browser/render test. It exercises the backend release promises:
-// deterministic replay, shared spawnBudget cap, no long-lived director leaks, and no untelegraphed
-// combat spawns. Initial world ambient is allowed only at sector entry; later combat squads must be
-// backed by encounter telemetry before their ships appear.
+// Modes:
+//   --mode contract   Fast synthetic CI contract validation (default, no browser).
+//   --mode headless   Deterministic 30-minute sim replay + spawn budget checks.
+//   --mode browser    Headed browser soak over repeated game loops.
+//   --mode electron   Electron shell soak over repeated game loops.
+//   --mode local      Long local evidence mode (browser + electron).
+//
+// Writes evidence under .devshots/spec2/ and a submission manifest under
+// .campaign/M6-RELEASE-SOAK-OPENCODE/submission.json.
 
 import assert from 'node:assert/strict';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
@@ -21,51 +27,252 @@ import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { stationSideEventDirector } from '../src/systems/stationSideEventDirector.js';
 import { gateControlDirector } from '../src/systems/gateControlDirector.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
+import {
+  RELEASE_SOAK_SCHEMA,
+  strictWorktreeFingerprint,
+  validateArtifactFiles,
+  validateReleaseSoakEvidence,
+} from './lib/releaseSoakContracts.mjs';
+import { runReleaseSoakProbe } from './lib/releaseSoakProbe.mjs';
 
-const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const CAMPAIGN_DIR = path.join(ROOT, '.campaign', 'M6-RELEASE-SOAK-OPENCODE');
+const OUTPUT_ROOT = path.join(ROOT, '.devshots', 'spec2');
+
+const MODE = parseMode(process.argv);
+const CYCLES = parseCycles(process.argv);
 const SOAK_SECONDS = 30 * 60;
 const SECTOR_ID = 'sector_sker_haven';
 const SEEDS = [47, 109];
-let sections = 0;
 
-function ok(label) {
-  sections++;
-  console.log(`  ok ${label}`);
+await mkdir(CAMPAIGN_DIR, { recursive: true });
+await mkdir(OUTPUT_ROOT, { recursive: true });
+
+let startFingerprint = null;
+let fingerprintError = null;
+try {
+  startFingerprint = await strictWorktreeFingerprint(ROOT);
+} catch (error) {
+  fingerprintError = error;
+  console.error(`[check-release-soak] worktree fingerprint failed closed: ${error.message || error}`);
+}
+let pass = fingerprintError == null;
+let sections = [];
+let outputs = [];
+let primaryError = null;
+
+try {
+  if (fingerprintError) throw fingerprintError;
+  if (MODE === 'contract') {
+    const result = await runContractMode();
+    pass = result.pass;
+    sections = result.sections;
+    outputs = result.outputs;
+  } else if (MODE === 'headless') {
+    const result = runHeadlessSoak();
+    pass = result.pass;
+    sections = result.sections;
+    outputs = result.outputs;
+  } else if (MODE === 'browser') {
+    const result = await runReleaseSoakProbe({
+      root: ROOT,
+      runtime: 'browser',
+      mode: 'browser',
+      cycles: cycleCountFor(CYCLES, 'browser', 2),
+      outputRoot: OUTPUT_ROOT,
+      taskId: 'release-soak-browser',
+      log: (line) => console.log(`[release-soak-browser] ${line}`),
+    });
+    assert.equal(result.startFingerprint.digest, startFingerprint.digest, 'browser probe fingerprint must match submission fingerprint');
+    pass = result.pass;
+    outputs.push({ kind: 'browser', dir: result.outputDir, evidence: result.evidence });
+  } else if (MODE === 'electron') {
+    const result = await runReleaseSoakProbe({
+      root: ROOT,
+      runtime: 'electron',
+      mode: 'electron',
+      cycles: cycleCountFor(CYCLES, 'electron', 2),
+      outputRoot: OUTPUT_ROOT,
+      taskId: 'release-soak-electron',
+      log: (line) => console.log(`[release-soak-electron] ${line}`),
+    });
+    assert.equal(result.startFingerprint.digest, startFingerprint.digest, 'Electron probe fingerprint must match submission fingerprint');
+    pass = result.pass;
+    outputs.push({ kind: 'electron', dir: result.outputDir, evidence: result.evidence });
+  } else if (MODE === 'local') {
+    const browser = await runReleaseSoakProbe({
+      root: ROOT,
+      runtime: 'browser',
+      mode: 'local',
+      cycles: cycleCountFor(CYCLES, 'browser', 6),
+      outputRoot: OUTPUT_ROOT,
+      taskId: 'release-soak-browser-local',
+      log: (line) => console.log(`[release-soak-browser-local] ${line}`),
+    });
+    const electron = await runReleaseSoakProbe({
+      root: ROOT,
+      runtime: 'electron',
+      mode: 'local',
+      cycles: cycleCountFor(CYCLES, 'electron', 6),
+      outputRoot: OUTPUT_ROOT,
+      taskId: 'release-soak-electron-local',
+      log: (line) => console.log(`[release-soak-electron-local] ${line}`),
+    });
+    assert.equal(browser.startFingerprint.digest, startFingerprint.digest, 'local browser fingerprint must match submission fingerprint');
+    assert.equal(electron.startFingerprint.digest, startFingerprint.digest, 'local Electron fingerprint must match submission fingerprint');
+    pass = browser.pass && electron.pass;
+    outputs.push({ kind: 'browser', dir: browser.outputDir, evidence: browser.evidence });
+    outputs.push({ kind: 'electron', dir: electron.outputDir, evidence: electron.evidence });
+  } else {
+    throw new Error(`Unknown mode: ${MODE}`);
+  }
+} catch (error) {
+  primaryError = error;
+  pass = false;
 }
 
-function source(path) {
-  return readFileSync(join(ROOT, path), 'utf8');
+// Independently reload and revalidate runtime evidence. Submission acceptance
+// never trusts the probe's in-memory `validation.pass` claim.
+const revalidatedOutputs = [];
+if (outputs.length > 0) {
+  const finalFingerprint = await strictWorktreeFingerprint(ROOT).catch((error) => ({ error }));
+  for (const output of outputs) {
+    const evidencePath = path.join(output.dir, 'evidence.json');
+    const failures = [];
+    let evidence = null;
+    try {
+      evidence = JSON.parse(await readFile(evidencePath, 'utf8'));
+      failures.push(...validateReleaseSoakEvidence(evidence).failures);
+      failures.push(...(await validateArtifactFiles(ROOT, evidence.artifacts, { requireClaims: true })).failures);
+      if (evidence.runtimeKind !== output.kind) failures.push('output kind does not match evidence runtimeKind');
+      if (evidence.primaryAcceptance !== true) failures.push('runtime evidence did not claim primary acceptance');
+      if (finalFingerprint.error) failures.push(`final worktree fingerprint failed: ${finalFingerprint.error.message || finalFingerprint.error}`);
+      else if (finalFingerprint.digest !== evidence.worktreeDigest) failures.push('final worktree fingerprint does not match evidence');
+    } catch (error) {
+      failures.push(`evidence revalidation failed: ${error.message || error}`);
+    }
+    revalidatedOutputs.push({ output, evidencePath, evidence, pass: failures.length === 0, failures: [...new Set(failures)] });
+  }
+  if (revalidatedOutputs.some((result) => !result.pass)) {
+    pass = false;
+    primaryError ||= new Error(`runtime evidence failed independent revalidation: ${JSON.stringify(revalidatedOutputs.flatMap((result) => result.failures))}`);
+  }
 }
 
-assertStaticContracts();
-ok('static contracts: release soak is 30 minutes and spawn clients use spawnBudget');
+const submission = {
+  schema: 'spaceface.campaignSubmission.v1',
+  campaign: 'M6-RELEASE-SOAK-OPENCODE',
+  generatedAt: new Date().toISOString(),
+  mode: MODE,
+  worktreeId: startFingerprint?.id || null,
+  worktreeDigest: startFingerprint?.digest || null,
+  acceptanceEligible: MODE === 'browser' || MODE === 'electron' || MODE === 'local',
+  primaryAcceptance: pass && revalidatedOutputs.length > 0 && revalidatedOutputs.every((result) => result.pass),
+  pass,
+  outputs: revalidatedOutputs.map((result) => ({
+    kind: result.output.kind,
+    evidencePath: path.relative(ROOT, result.evidencePath).replace(/\\/g, '/'),
+    pass: result.pass,
+    primaryAcceptance: result.pass && result.evidence?.primaryAcceptance === true,
+    failures: result.failures,
+  })),
+  sections,
+  primaryError: primaryError ? { message: primaryError.message, stack: primaryError.stack } : null,
+};
 
-for (const seed of SEEDS) {
-  const first = runSoak(seed);
-  const second = runSoak(seed);
-  assert.deepEqual(second.digest, first.digest, `seed ${seed}: release soak must replay deterministically`);
-  assertRunHealth(first, `seed ${seed}`);
-  printRun(first);
+await writeFile(
+  path.join(CAMPAIGN_DIR, 'submission.json'),
+  `${JSON.stringify(submission, null, 2)}\n`,
+  'utf8',
+);
+
+if (!pass || primaryError) {
+  console.error(`[check-release-soak] FAIL in ${MODE} mode: ${primaryError?.message || 'see submission.json'}`);
+  console.error(`[check-release-soak] submission: ${path.relative(ROOT, path.join(CAMPAIGN_DIR, 'submission.json'))}`);
+  process.exit(1);
 }
-ok(`${SEEDS.length} seeds replay deterministically and stay within release budgets`);
 
-console.log(`[check-release-soak] PASS - ${sections} sections green`);
+console.log(`[check-release-soak] PASS in ${MODE} mode`);
+console.log(`[check-release-soak] submission: ${path.relative(ROOT, path.join(CAMPAIGN_DIR, 'submission.json'))}`);
+
+// ---------------------------------------------------------------------------
+// Mode implementations
+// ---------------------------------------------------------------------------
+
+async function runContractMode() {
+  const sections = [];
+  const outputs = [];
+
+  // 1. Synthetic evidence envelope must validate.
+  const syntheticEnvelope = buildSyntheticEnvelope();
+  const validation = validateReleaseSoakEvidence(syntheticEnvelope, { requireArtifacts: false });
+  assert.equal(validation.pass, true, `synthetic evidence envelope invalid: ${JSON.stringify(validation.failures)}`);
+  sections.push('synthetic evidence schema validates');
+
+  // 2. Reject a forged/missing evidence envelope.
+  const forged = { ...syntheticEnvelope, schema: 'forged' };
+  const forgedValidation = validateReleaseSoakEvidence(forged, { requireArtifacts: false });
+  assert.equal(forgedValidation.pass, false, 'forged schema must be rejected');
+  sections.push('forged evidence schema rejected');
+
+  const missingMemory = { ...syntheticEnvelope };
+  delete missingMemory.memory;
+  const missingValidation = validateReleaseSoakEvidence(missingMemory, { requireArtifacts: false });
+  assert.equal(missingValidation.pass, false, 'missing memory section must be rejected');
+  sections.push('missing memory section rejected');
+
+  // 3. Quality shortcut detection.
+  const shortcutEnvelope = buildSyntheticEnvelope({
+    quality: { settingsOverridesApplied: true },
+  });
+  const shortcutValidation = validateReleaseSoakEvidence(shortcutEnvelope, { requireArtifacts: false });
+  assert.equal(shortcutValidation.pass, false, 'quality shortcuts must be rejected');
+  sections.push('quality shortcuts rejected');
+
+  // 4. Headless sim determinism contract runs inline (fast path).
+  const headless = runHeadlessSoak();
+  assert.equal(headless.pass, true, `headless determinism contract failed: ${headless.sections.join('; ')}`);
+  sections.push('headless determinism contract green');
+
+  return { pass: true, sections, outputs };
+}
+
+function runHeadlessSoak() {
+  const sections = [];
+
+  assertStaticContracts();
+  sections.push('static contracts: release soak is 30 minutes and spawn clients use spawnBudget');
+
+  for (const seed of SEEDS) {
+    const first = runDeterministicSoak(seed);
+    const second = runDeterministicSoak(seed);
+    assert.deepEqual(second.digest, first.digest, `seed ${seed}: release soak must replay deterministically`);
+    assertRunHealth(first, `seed ${seed}`);
+    sections.push(`seed ${seed} deterministic and healthy`);
+  }
+
+  return { pass: true, sections, outputs: [] };
+}
+
+// ---------------------------------------------------------------------------
+// Headless deterministic soak helpers (preserved from the prior release soak)
+// ---------------------------------------------------------------------------
 
 function assertStaticContracts() {
   assert.equal(SOAK_SECONDS, 1800, 'release soak must cover exactly 30 sim-minutes');
-  assert.match(source('src/systems/spawnBudget.js'), /const DEFAULT_MAX = 12/,
+  assert.match(readFileSync(path.join(ROOT, 'src/systems/spawnBudget.js'), 'utf8'), /const DEFAULT_MAX = 12/,
     'shared spawn budget target must stay at the release cap of 12');
-  assert.match(source('src/systems/world.js'), /budget\.request\(grant,\s*'world_ambient'\)/,
+  assert.match(readFileSync(path.join(ROOT, 'src/systems/world.js'), 'utf8'), /budget\.request\(grant,\s*'world_ambient'\)/,
     'world ambient must reserve through spawnBudget');
-  assert.match(source('src/systems/encounterDirector.js'), /budget\.request\(ships\.length,\s*live\.squadId\)/,
+  assert.match(readFileSync(path.join(ROOT, 'src/systems/encounterDirector.js'), 'utf8'), /budget\.request\(ships\.length,\s*live\.squadId\)/,
     'encounterDirector must reserve squads through spawnBudget');
-  assert.match(source('src/systems/stationSideEventDirector.js'), /budget\.request\(1,\s*item\.eventId\)/,
+  assert.match(readFileSync(path.join(ROOT, 'src/systems/stationSideEventDirector.js'), 'utf8'), /budget\.request\(1,\s*item\.eventId\)/,
     'station side events must reserve through spawnBudget');
-  assert.match(source('src/systems/gateControlDirector.js'), /budget\.request\(n,\s*wingId\)/,
+  assert.match(readFileSync(path.join(ROOT, 'src/systems/gateControlDirector.js'), 'utf8'), /budget\.request\(n,\s*wingId\)/,
     'gate control wings must reserve through spawnBudget');
 }
 
-function runSoak(seed) {
+function runDeterministicSoak(seed) {
   const sim = createSimulation({
     seed,
     systems: [
@@ -153,10 +360,11 @@ function runSoak(seed) {
     samples.push(sampleState(state, sec, baselineEntities));
   }
 
-  // Final cleanup window: lets referee/despawnAt releases land if the last meaningful event fired
-  // near the 30-minute boundary. This does not extend the measured soak; it prevents false leaks.
+  // Quiescent drain: stop all flight-only planners before waiting out existing lifetimes.
+  // Continuing guidePlayer across the 1800s day boundary can legitimately schedule a brand-new
+  // station-side event during the alleged cleanup window, making a fresh event look like a leak.
+  state.mode = 'menu';
   for (let sec = 0; sec < 90; sec++) {
-    guidePlayer(state, zones, SOAK_SECONDS + sec);
     runReferee(bus, state, referee);
     sim.runTicks(60, SIM_DT);
   }
@@ -343,7 +551,7 @@ function classifySpawn(state, entity, telegraphed) {
     record.reason = 'gate-control-wing';
     return record;
   }
-  if (context === 'ambient' || context === 'zone_hostile' || context === 'zone_patrol' || context === 'bounty_hunter') {
+  if (context === 'ambient' || context === 'zone_hostile' || context === 'zone_patrol' || context === 'patrol' || context === 'bounty_hunter') {
     record.allowed = t <= 0.1;
     record.reason = record.allowed ? 'sector-entry-ambient' : 'late-world-spawn';
     return record;
@@ -403,14 +611,124 @@ function findNonFiniteEntity(state) {
   return null;
 }
 
-function printRun(run) {
-  const telegraphs = run.events.filter((e) => e.type === 'encounter');
-  const maxBudget = maxOf(run.samples, 'budgetUsed');
-  const maxShips = maxOf(run.samples, 'liveShips');
-  const maxEntityDrift = maxOf(run.samples, 'entitiesOverBaseline');
-  console.log(`  seed ${run.seed}: encounters=${telegraphs.length} sideEvents=${run.sideEvents.length} gateCharges=${run.gateEvents.filter((e) => e.type === 'charge').length} peakBudget=${maxBudget}/12 peakShips=${maxShips}/12 entityDrift=${maxEntityDrift}`);
-}
-
 function round(value) {
   return Number.isFinite(value) ? Math.round(value * 1000) / 1000 : value;
+}
+
+// ---------------------------------------------------------------------------
+// Synthetic envelope builder for contract-mode tests
+// ---------------------------------------------------------------------------
+
+function buildSyntheticEnvelope(overrides = {}) {
+  const base = {
+    schema: RELEASE_SOAK_SCHEMA,
+    taskId: 'release-soak-contract',
+    generatedAt: new Date().toISOString(),
+    worktreeId: 'contract-test',
+    worktreeDigest: 'a'.repeat(64),
+    runtimeKind: 'synthetic',
+    mode: 'contract',
+    cycles: { count: 1, results: [{ index: 0, docked: true, sampleCount: 60 }] },
+    primaryAcceptance: false,
+    inputSource: 'keyboard-mouse',
+    injectedState: false,
+    checks: [
+      { name: 'schema', status: 'pass' },
+      { name: 'determinism', status: 'pass' },
+      { name: 'quality', status: 'pass' },
+    ],
+    artifacts: [],
+    quality: {
+      settingsOverridesApplied: false,
+      physicsSimplification: false,
+      authoredAssetFallback: false,
+      authoredReady: true,
+      startSettings: { video: { renderScale: 0.85, pixelRatioCap: 1.5, shadows: false, bloom: true, particleQuality: 'high' } },
+      endSettings: { video: { renderScale: 0.85, pixelRatioCap: 1.5, shadows: false, bloom: true, particleQuality: 'high' } },
+      settingsPass: true,
+    },
+    performance: {
+      frameMs: { sampleCount: 360, p50: 16, p95: 16, p99: 16, max: 16, hitchesOver32Ms: 0 },
+      samples: [
+        ...Array.from({ length: 180 }, () => ({ frameMs: 16, phaseTag: 'flight_steady' })),
+        ...Array.from({ length: 180 }, () => ({ frameMs: 16, phaseTag: 'context_recover_steady' })),
+      ],
+      phases: {
+        flight_steady: { sampleCount: 180, p50: 16, p95: 16, p99: 16, max: 16, hitchesOver32Ms: 0 },
+        context_recover_steady: { sampleCount: 180, p50: 16, p95: 16, p99: 16, max: 16, hitchesOver32Ms: 0 },
+      },
+      thresholdsClaimed: false,
+      notes: ['synthetic'],
+    },
+    memory: {
+      heapBytesStart: 100 * 1024 * 1024,
+      heapBytesEnd: 115 * 1024 * 1024,
+      heapGrowthBytes: 15 * 1024 * 1024,
+      geometries: { start: 40, end: 42, delta: 2 },
+      textures: { start: 80, end: 81, delta: 1 },
+      programs: { start: 24, end: 24, delta: 0 },
+      withinBudget: true,
+      retainedAfterGc: true,
+      comparableState: 'docked-market',
+      startSnapshot: { phaseTag: 'docked-market-start', docked: true },
+      endSnapshot: { phaseTag: 'docked-market-end', docked: true },
+    },
+    errors: {
+      pageErrors: [],
+      requestFailures: [],
+      glErrors: [],
+      consoleErrors: [],
+      httpErrors: [],
+      warnings: [],
+      all: [],
+    },
+    contextLoss: { available: true, before: false, lost: true, after: false, recovered: true },
+    cleanup: { pageClosed: true, browserDisconnected: true, serverReleased: true, processExited: true, portsReleased: true },
+  };
+  return mergeDeep(base, overrides);
+}
+
+function mergeDeep(target, source) {
+  const out = { ...target };
+  for (const key of Object.keys(source)) {
+    const val = source[key];
+    if (val && typeof val === 'object' && !Array.isArray(val)) {
+      out[key] = mergeDeep(out[key] || {}, val);
+    } else {
+      out[key] = val;
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// CLI helpers
+// ---------------------------------------------------------------------------
+
+function parseMode(argv) {
+  const flag = argv.find((arg) => arg.startsWith('--mode='));
+  if (flag) return flag.slice('--mode='.length);
+  const idx = argv.indexOf('--mode');
+  if (idx >= 0 && argv[idx + 1]) return argv[idx + 1];
+  return 'contract';
+}
+
+function parseCycles(argv) {
+  const flag = argv.find((arg) => arg.startsWith('--cycles='));
+  const raw = flag ? flag.slice('--cycles='.length) : '';
+  if (!raw) return {};
+  const parsed = Number(raw);
+  if (Number.isInteger(parsed) && parsed > 0) return { browser: parsed, electron: parsed };
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+function cycleCountFor(parsed, runtime, fallback) {
+  const value = parsed?.[runtime];
+  if (value == null) return fallback;
+  if (!Number.isInteger(value) || value < 1) throw new Error(`--cycles for ${runtime} must be a positive integer`);
+  return value;
 }

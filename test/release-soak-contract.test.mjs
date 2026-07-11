@@ -3,7 +3,7 @@
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -22,6 +22,8 @@ import {
   validateReleaseSoakEvidence,
   validateSettingsTruth,
 } from '../scripts/lib/releaseSoakContracts.mjs';
+
+const PROBE_SOURCE = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
 
 const DEFAULT_VIDEO = Object.freeze({
   renderScale: 0.85,
@@ -160,6 +162,7 @@ function buildPrimaryEnvelope(overrides = {}) {
           'flight-input',
           'save-written',
           'load-restored',
+          'economy-restored',
           'docked',
           'market-opened',
           'trade-roundtrip',
@@ -719,6 +722,10 @@ async function testRejectsArtifactByteAndHashMismatch() {
 // ─── Run (node:test — each case independent so concurrent source repair is visible) ─
 
 test('schema accepts valid envelope', () => testSchemaAcceptsValidEnvelope());
+test('multi-cycle market roundtrip resets public Buy mode', () => {
+  assert.match(PROBE_SOURCE, /\[data-trade-mode=["']buy["']\]/,
+    'each market roundtrip must select Buy because the prior cycle finishes on Sell');
+});
 test('rejects forged schema', () => testRejectsForgedSchema());
 test('rejects missing memory section', () => testRejectsMissingMemorySection());
 test('rejects failing checks', () => testRejectsFailingChecks());
