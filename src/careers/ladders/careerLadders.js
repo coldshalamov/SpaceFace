@@ -165,6 +165,10 @@ export function createCareerLaddersSystem() {
           this.choose(payload.careerId, payload.choiceId, payload);
         }
       });
+      // CL-UI-01: bus mirror of existing recover() — UI emits intent, system owns transition.
+      this._listen(CAREER_LADDER_EVENTS.RECOVER, (payload) => {
+        if (payload && payload.careerId) this.recover(payload.careerId, payload);
+      });
     },
 
     newGame() {

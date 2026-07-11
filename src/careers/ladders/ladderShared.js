@@ -33,6 +33,7 @@ export const CAREER_LADDER_EVENTS = Object.freeze({
   DECLINE: 'career:ladder:decline',
   ABANDON: 'career:ladder:abandon',
   CHOOSE: 'career:ladder:choose',
+  RECOVER: 'career:ladder:recover',
   // system → world
   OFFERED: 'career:ladder:offered',
   STEP_ACTIVE: 'career:ladder:stepActive',

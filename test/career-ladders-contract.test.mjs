@@ -14,6 +14,7 @@ import { MIGRATIONS, CURRENT_VERSION } from '../src/save/migrations.js';
 import {
   CAREER_LADDERS_SCHEMA_ID,
   CAREER_LADDERS_SCHEMA_VERSION,
+  CAREER_LADDER_EVENTS,
   LADDER_STATUS,
   clearLadderDefinitions,
   createCareerLaddersSystem,
@@ -479,6 +480,61 @@ test('failure + recovery path works with cooldown gate', () => {
   assert.equal(ok.ok, true);
   assert.equal(state.careers.ladders.fixture_runner.status, LADDER_STATUS.ACTIVE);
   assert.equal(state.careers.ladders.fixture_runner.attemptMult, 0.85);
+});
+
+test('CL-UI-01: career:ladder:recover bus mirror + no duplicate on repeated init', () => {
+  // Constant is the UI → system intent name (micro-seam only; no new authority).
+  assert.equal(CAREER_LADDER_EVENTS.RECOVER, 'career:ladder:recover');
+
+  const { state, bus, system, events } = makeHarness();
+  system.offer('fixture_runner', { ignorePrereqs: true });
+  system.accept('fixture_runner', { ignorePrereqs: true });
+  system.applySignal('fixture_runner', { kind: 'fail', code: 'deadline' });
+  assert.equal(state.careers.ladders.fixture_runner.status, LADDER_STATUS.RECOVERING);
+
+  // Cooldown still gates via bus path (same as direct recover()).
+  events.length = 0;
+  bus.emit(CAREER_LADDER_EVENTS.RECOVER, { careerId: 'fixture_runner' });
+  assert.equal(state.careers.ladders.fixture_runner.status, LADDER_STATUS.RECOVERING);
+  assert.equal(
+    events.filter((e) => e.event === CAREER_LADDER_EVENTS.STEP_RECOVERED).length,
+    0,
+    'cooldown must block bus recover the same as direct recover()',
+  );
+
+  state.simTime = 200;
+  events.length = 0;
+  bus.emit(CAREER_LADDER_EVENTS.RECOVER, { careerId: 'fixture_runner' });
+  assert.equal(state.careers.ladders.fixture_runner.status, LADDER_STATUS.ACTIVE);
+  assert.equal(state.careers.ladders.fixture_runner.attemptMult, 0.85);
+  const recoveredOnce = events.filter((e) => e.event === CAREER_LADDER_EVENTS.STEP_RECOVERED);
+  assert.equal(recoveredOnce.length, 1, 'single bus recover → single STEP_RECOVERED');
+
+  // Repeated init must not stack listeners (destroy unsubscribes first).
+  const attemptsBefore = state.careers.ladders.fixture_runner.steps.step_a.attempts;
+  system.init({ state, bus, registry: { get: () => null } });
+  system.init({ state, bus, registry: { get: () => null } });
+  // After re-init leaf is still active; put it back into recoverable state without double-fail.
+  system.applySignal('fixture_runner', { kind: 'fail', code: 'deadline2' });
+  assert.equal(state.careers.ladders.fixture_runner.status, LADDER_STATUS.RECOVERING);
+  state.simTime = 250;
+  events.length = 0;
+  const attemptsAtRecover = state.careers.ladders.fixture_runner.steps.step_a.attempts;
+  bus.emit(CAREER_LADDER_EVENTS.RECOVER, { careerId: 'fixture_runner' });
+  assert.equal(state.careers.ladders.fixture_runner.status, LADDER_STATUS.ACTIVE);
+  const recoveredAfterReinit = events.filter((e) => e.event === CAREER_LADDER_EVENTS.STEP_RECOVERED);
+  assert.equal(
+    recoveredAfterReinit.length,
+    1,
+    'after repeated init, one bus emit must yield exactly one STEP_RECOVERED (no stacked listeners)',
+  );
+  assert.equal(
+    state.careers.ladders.fixture_runner.steps.step_a.attempts,
+    attemptsAtRecover + 1,
+    'one recover → one attempt bump (duplicate listeners would double-bump)',
+  );
+  // Sanity: we did advance attempts overall (not a no-op path).
+  assert.ok(state.careers.ladders.fixture_runner.steps.step_a.attempts > attemptsBefore);
 });
 
 test('branch choice emits consequence intents only once', () => {
