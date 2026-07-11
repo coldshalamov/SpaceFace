@@ -299,7 +299,7 @@
     "check:mission-navigation": "node scripts/check-mission-navigation.mjs",
     "check:starmap-objective": "node scripts/check-starmap-objective-handoff.mjs",
     "check:mission-log-map": "node scripts/check-mission-log-map-handoff.mjs",
-    "check:map-authority": "node scripts/check-map-authority.mjs",
+    "check:map-authority": "node scripts/check-map-authority.mjs && node --test test/unified-map-professional.test.mjs",
     "check:m2:map-cutover": "node scripts/check-m2-map-cutover.mjs",
     "check:m2:continuous-handoff": "node scripts/check-m2-continuous-handoff.mjs",
     "check:m2:sector-embodiment": "node scripts/check-m2-sector-embodiment.mjs",

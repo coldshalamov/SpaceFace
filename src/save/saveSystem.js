@@ -1455,7 +1455,10 @@ function sanitizeNavLeg(leg) {
 function sanitizeNavWaypoint(waypoint) {
   if (!waypoint || typeof waypoint !== 'object' || Array.isArray(waypoint)) return null;
   const out = {};
-  for (const field of ['kind', 'missionId', 'missionType', 'stationId', 'sectorId', 'sectorName', 'label', 'reason', 'commodityId']) {
+  for (const field of [
+    'kind', 'missionId', 'missionType', 'stationId', 'sectorId', 'sectorName',
+    'label', 'reason', 'mapLabel', 'markerId', 'markerKind', 'commodityId',
+  ]) {
     const value = navString(waypoint[field]);
     if (value) out[field] = value;
   }

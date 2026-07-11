@@ -64,6 +64,96 @@ export function zoomForMapFocus(focus) {
 }
 
 /**
+ * Deterministic screen composition shared by runtime CSS variables and layout checks.
+ * The map never lets tools float over the canvas: wide = three columns, compact =
+ * horizontal layer rail + canvas/inspector, narrow = a single vertical stack.
+ */
+export function resolveGalaxyMapLayout(width, height) {
+  const w = Math.max(320, Number(width) || 0);
+  const h = Math.max(480, Number(height) || 0);
+  if (w >= 1180) {
+    const headerH = 58;
+    const layersW = 190;
+    const inspectorW = 300;
+    return {
+      mode: 'wide',
+      header: { x: 0, y: 0, width: w, height: headerH },
+      layers: { x: 0, y: headerH, width: layersW, height: h - headerH },
+      viewport: { x: layersW, y: headerH, width: w - layersW - inspectorW, height: h - headerH },
+      inspector: { x: w - inspectorW, y: headerH, width: inspectorW, height: h - headerH },
+    };
+  }
+  if (w >= 760) {
+    const headerH = 72;
+    const layersH = 58;
+    const inspectorW = Math.min(280, Math.max(232, Math.round(w * 0.27)));
+    return {
+      mode: 'compact',
+      header: { x: 0, y: 0, width: w, height: headerH },
+      layers: { x: 0, y: headerH, width: w, height: layersH },
+      viewport: { x: 0, y: headerH + layersH, width: w - inspectorW, height: h - headerH - layersH },
+      inspector: { x: w - inspectorW, y: headerH + layersH, width: inspectorW, height: h - headerH - layersH },
+    };
+  }
+  const headerH = 104;
+  const layersH = 54;
+  const inspectorH = Math.min(190, Math.max(150, Math.round(h * 0.25)));
+  return {
+    mode: 'narrow',
+    header: { x: 0, y: 0, width: w, height: headerH },
+    layers: { x: 0, y: headerH, width: w, height: layersH },
+    viewport: { x: 0, y: headerH + layersH, width: w, height: h - headerH - layersH - inspectorH },
+    inspector: { x: 0, y: h - inspectorH, width: w, height: inspectorH },
+  };
+}
+
+/** Clamp a left-aligned canvas label inside the live viewport. */
+export function clampMapLabelX(textWidth, desiredX, viewportWidth, padding = 8) {
+  const pad = Math.max(0, Number(padding) || 0);
+  const width = Math.max(0, Number(viewportWidth) || 0);
+  const labelWidth = Math.max(0, Number(textWidth) || 0);
+  const maxX = Math.max(pad, width - pad - labelWidth);
+  return Math.max(pad, Math.min(Number(desiredX) || 0, maxX));
+}
+
+/** Only gamepad entry claims DOM focus; keyboard/pointer entry keeps canvas control uninterrupted. */
+export function mapFocusButtonSelector(intent) {
+  if (!intent || intent.source !== 'gamepad') return null;
+  const focus = normalizeMapFocus(intent.focus);
+  return `.gm-scale-btn[data-focus="${focus}"]`;
+}
+
+/** Stable semantic priority for overlapping click targets. Active objectives always win. */
+export function mapTargetPriority(target) {
+  if (!target) return -1;
+  if (target.objective === true || target.kind === 'waypoint' || target.markerKind === 'mission-objective') return 100;
+  if (target.missionId) return 90;
+  return 10;
+}
+
+/** Pick a hit by semantic priority first, distance second, then source order for determinism. */
+export function pickMapTargetAt(targets, x, y) {
+  let best = null;
+  let bestPriority = -Infinity;
+  let bestD2 = Infinity;
+  for (const target of targets || []) {
+    if (!target) continue;
+    const dx = x - target.sx;
+    const dy = y - target.sy;
+    const d2 = dx * dx + dy * dy;
+    const radius = target.radiusPx || 14;
+    if (d2 > radius * radius) continue;
+    const priority = mapTargetPriority(target);
+    if (priority > bestPriority || (priority === bestPriority && d2 < bestD2)) {
+      best = target;
+      bestPriority = priority;
+      bestD2 = d2;
+    }
+  }
+  return best;
+}
+
+/**
  * Resolve missionId/stationId (and optional pos/sector fallbacks) from a map open intent
  * into a click-target-shaped object for selection/inspector focus.
  * Pure — no DOM. Returns null when the intent has no mission/station target (plain N/M).
@@ -724,6 +814,8 @@ const CSS = `
   padding: 12px 20px;
   border-bottom: 1px solid var(--panel-edge, #1d3350);
   background: rgba(8, 14, 26, 0.85);
+  min-height: var(--gm-header-h, 58px);
+  box-sizing: border-box;
 }
 
 #sf-galaxymap .gm-title {
@@ -809,6 +901,32 @@ const CSS = `
   color: var(--accent, #39d0ff);
 }
 
+#sf-galaxymap .gm-scale-buttons {
+  display: flex;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid rgba(57, 208, 255, 0.18);
+  border-radius: 5px;
+}
+
+#sf-galaxymap .gm-scale-btn {
+  min-width: 54px;
+  padding: 5px 7px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink-dim, #7e93b3);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#sf-galaxymap .gm-scale-btn.is-current,
+#sf-galaxymap .gm-scale-btn[aria-pressed="true"] {
+  border-color: var(--accent, #39d0ff);
+  color: #fff;
+  background: rgba(57, 208, 255, 0.12);
+}
+
 #sf-galaxymap .gm-close {
   background: transparent;
   border: 1px solid var(--panel-edge, #1d3350);
@@ -837,7 +955,8 @@ const CSS = `
 }
 
 #sf-galaxymap .gm-left-rail {
-  width: 200px;
+  width: 190px;
+  box-sizing: border-box;
   border-right: 1px solid var(--panel-edge, #1d3350);
   background: rgba(6, 11, 22, 0.75);
   display: flex;
@@ -955,6 +1074,9 @@ const CSS = `
 #sf-galaxymap .gm-viewport {
   flex: 1;
   position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 #sf-galaxymap canvas {
@@ -968,6 +1090,7 @@ const CSS = `
 
 #sf-galaxymap .gm-right-inspector {
   width: 300px;
+  box-sizing: border-box;
   border-left: 1px solid var(--panel-edge, #1d3350);
   background: rgba(6, 11, 22, 0.75);
   display: flex;
@@ -1063,6 +1186,104 @@ const CSS = `
   background: rgba(57, 208, 255, 0.2);
   box-shadow: 0 0 12px rgba(57, 208, 255, 0.3);
 }
+
+/* Compact windows keep one canvas and one inspector; layers become a horizontal tool rail. */
+#sf-galaxymap[data-layout="compact"] .gm-head {
+  min-height: var(--gm-header-h, 72px);
+  box-sizing: border-box;
+  gap: 8px;
+  padding: 9px 12px;
+}
+#sf-galaxymap[data-layout="compact"] .gm-title { font-size: .9rem; }
+#sf-galaxymap[data-layout="compact"] .gm-search-container { max-width: 220px; }
+#sf-galaxymap[data-layout="compact"] .gm-level { display: none; }
+#sf-galaxymap[data-layout="compact"] .gm-body-container {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--gm-inspector-w, 260px);
+  grid-template-rows: var(--gm-rail-h, 58px) minmax(0, 1fr);
+}
+#sf-galaxymap[data-layout="compact"] .gm-left-rail {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  width: auto;
+  min-width: 0;
+  padding: 7px 10px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  border-right: 0;
+  border-bottom: 1px solid var(--panel-edge, #1d3350);
+}
+#sf-galaxymap[data-layout="compact"] .gm-rail-title { margin: 0; padding: 0; border: 0; flex: 0 0 auto; }
+#sf-galaxymap[data-layout="compact"] .gm-layer-buttons {
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: row;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+#sf-galaxymap[data-layout="compact"] .gm-layer-btn { min-width: 96px; padding: 7px 9px; }
+#sf-galaxymap[data-layout="compact"] .gm-rail-commodity { margin: 0; min-width: 132px; }
+#sf-galaxymap[data-layout="compact"] .gm-rail-commodity label,
+#sf-galaxymap[data-layout="compact"] .gm-rail-footer { display: none; }
+#sf-galaxymap[data-layout="compact"] .gm-viewport { grid-column: 1; grid-row: 2; }
+#sf-galaxymap[data-layout="compact"] .gm-right-inspector {
+  grid-column: 2;
+  grid-row: 2;
+  width: auto;
+  padding: 12px;
+}
+
+/* Very narrow windows stack the same three authorities without overlays or hidden actions. */
+#sf-galaxymap[data-layout="narrow"] .gm-head {
+  min-height: var(--gm-header-h, 104px);
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 8px 10px;
+}
+#sf-galaxymap[data-layout="narrow"] .gm-title { font-size: .82rem; flex: 1 1 auto; }
+#sf-galaxymap[data-layout="narrow"] .gm-close { order: 2; }
+#sf-galaxymap[data-layout="narrow"] .gm-scale-buttons { order: 3; }
+#sf-galaxymap[data-layout="narrow"] .gm-search-container { order: 4; flex-basis: 100%; max-width: none; }
+#sf-galaxymap[data-layout="narrow"] .gm-level { display: none; }
+#sf-galaxymap[data-layout="narrow"] .gm-body-container {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: var(--gm-rail-h, 54px) minmax(0, 1fr) var(--gm-inspector-h, 170px);
+}
+#sf-galaxymap[data-layout="narrow"] .gm-left-rail {
+  grid-row: 1;
+  width: auto;
+  min-width: 0;
+  padding: 6px 8px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  border-right: 0;
+  border-bottom: 1px solid var(--panel-edge, #1d3350);
+}
+#sf-galaxymap[data-layout="narrow"] .gm-rail-title,
+#sf-galaxymap[data-layout="narrow"] .gm-rail-commodity,
+#sf-galaxymap[data-layout="narrow"] .gm-rail-footer { display: none; }
+#sf-galaxymap[data-layout="narrow"] .gm-layer-buttons {
+  min-width: 0;
+  flex: 1;
+  flex-direction: row;
+  overflow-x: auto;
+}
+#sf-galaxymap[data-layout="narrow"] .gm-layer-btn { min-width: 94px; padding: 7px 8px; }
+#sf-galaxymap[data-layout="narrow"] .gm-viewport { grid-row: 2; }
+#sf-galaxymap[data-layout="narrow"] .gm-right-inspector {
+  grid-row: 3;
+  width: auto;
+  padding: 10px 12px;
+  border-left: 0;
+  border-top: 1px solid var(--panel-edge, #1d3350);
+}
+#sf-galaxymap[data-layout="narrow"] .gm-inspector-content { gap: 7px; }
 `;
 
 let _styleInjected = false;
@@ -1299,6 +1520,7 @@ export const galaxyMapScreen = {
   _setCourseButton: null,
   _inspectorDetailsHtml: null,
   _setCourseHandler: null,
+  _scaleButtons: [],
 
   // Flagship strategic table UI states
   _layers: {
@@ -1342,6 +1564,11 @@ export const galaxyMapScreen = {
         <div class="gm-search-container">
           <input type="text" class="gm-search-input" placeholder="Search galaxy... (Press /)" aria-label="Search map" />
           <div class="gm-search-results" hidden></div>
+        </div>
+        <div class="gm-scale-buttons" role="group" aria-label="Map scale">
+          <button class="gm-scale-btn" type="button" data-focus="local" aria-pressed="false">Local</button>
+          <button class="gm-scale-btn" type="button" data-focus="system" aria-pressed="false">System</button>
+          <button class="gm-scale-btn" type="button" data-focus="galaxy" aria-pressed="false">Galaxy</button>
         </div>
         <div class="gm-level">Scale <b data-level>GALAXY</b></div>
         <button class="gm-close" type="button" aria-label="Close Map">Close</button>
@@ -1407,6 +1634,12 @@ export const galaxyMapScreen = {
     if (this._setCourseButton) {
       this._setCourseButton.addEventListener('click', this._setCourseHandler);
     }
+    this._scaleButtons = Array.from(rootEl.querySelectorAll('.gm-scale-btn'));
+    this._scaleButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        this._setScaleFocus(button.getAttribute('data-focus'));
+      });
+    });
 
     // Populate commodity dropdown
     const commSelect = rootEl.querySelector('#gm-commodity-select');
@@ -1558,6 +1791,7 @@ export const galaxyMapScreen = {
     // Visible selection/inspector focus from missionId/stationId when resolvable.
     // Focus-only opens leave _selectedTarget null (do not invent a station).
     this._selectedTarget = view.openTarget || null;
+    this._syncScaleButtons();
 
     // Cancel any prior animation frame before (re)starting so top-map re-show cannot stack rAF loops.
     if (this._animFrame != null && typeof cancelAnimationFrame !== 'undefined') {
@@ -1567,6 +1801,13 @@ export const galaxyMapScreen = {
 
     if (!HAS_DOC) return;
     this._resize();
+    const focusSelector = mapFocusButtonSelector(intent);
+    if (focusSelector && this._root) {
+      const initialControl = this._root.querySelector(focusSelector);
+      if (initialControl && typeof initialControl.focus === 'function') {
+        try { initialControl.focus({ preventScroll: true }); } catch (_) { initialControl.focus(); }
+      }
+    }
     this._lastTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     this._lastDrawTime = 0;
 
@@ -1612,6 +1853,44 @@ export const galaxyMapScreen = {
       cancelAnimationFrame(this._animFrame);
     }
     this._animFrame = null;
+  },
+
+  _setScaleFocus(focus, { draw = true } = {}) {
+    const zoom = zoomForMapFocus(focus);
+    this._zoom = zoom;
+    this._targetZoom = zoom;
+    this._syncScaleButtons();
+    if (draw && HAS_DOC) this._draw();
+    return levelForZoom(zoom);
+  },
+
+  _syncScaleButtons() {
+    if (!HAS_DOC) return;
+    const level = levelForZoom(this._zoom);
+    for (const button of this._scaleButtons || []) {
+      const current = button.getAttribute('data-focus') === level;
+      if (button.classList && typeof button.classList.toggle === 'function') {
+        button.classList.toggle('is-current', current);
+      } else if (button.classList) {
+        if (current) button.classList.add('is-current');
+        else button.classList.remove('is-current');
+      }
+      button.setAttribute('aria-pressed', current ? 'true' : 'false');
+    }
+  },
+
+  _applyResponsiveLayout(width, height) {
+    if (!this._root) return null;
+    const layout = resolveGalaxyMapLayout(width, height);
+    if (this._root.dataset) this._root.dataset.layout = layout.mode;
+    const style = this._root.style;
+    if (style && typeof style.setProperty === 'function') {
+      style.setProperty('--gm-header-h', `${layout.header.height}px`);
+      style.setProperty('--gm-inspector-w', `${layout.inspector.width}px`);
+      style.setProperty('--gm-rail-h', `${layout.layers.height}px`);
+      style.setProperty('--gm-inspector-h', `${layout.inspector.height}px`);
+    }
+    return layout;
   },
 
   onKey(event, ctx) {
@@ -2026,13 +2305,7 @@ export const galaxyMapScreen = {
     }
 
     // Hover hit test
-    let best = null, bestD2 = Infinity;
-    for (const t of this._clickTargets) {
-      const dx = mx - t.sx, dy = my - t.sy;
-      const d2 = dx * dx + dy * dy;
-      const rad = t.radiusPx || 14;
-      if (d2 <= rad * rad && d2 < bestD2) { best = t; bestD2 = d2; }
-    }
+    const best = pickMapTargetAt(this._clickTargets, mx, my);
     if (best !== this._hoverTarget) {
       this._hoverTarget = best;
       this._draw();
@@ -2068,6 +2341,7 @@ export const galaxyMapScreen = {
 
     this._zoom = nextZoom;
     this._targetZoom = nextZoom;
+    this._syncScaleButtons();
 
     if (oldLevel === newLevel) {
       const cam = this._cams[newLevel];
@@ -2090,13 +2364,7 @@ export const galaxyMapScreen = {
     const mx = ev.clientX - rect.left;
     const my = ev.clientY - rect.top;
 
-    let best = null, bestD2 = Infinity;
-    for (const t of this._clickTargets) {
-      const dx = mx - t.sx, dy = my - t.sy;
-      const d2 = dx * dx + dy * dy;
-      const rad = t.radiusPx || 14;
-      if (d2 <= rad * rad && d2 < bestD2) { best = t; bestD2 = d2; }
-    }
+    const best = pickMapTargetAt(this._clickTargets, mx, my);
 
     if (best) {
       this._selectedTarget = best;
@@ -2112,13 +2380,7 @@ export const galaxyMapScreen = {
     const mx = ev.clientX - rect.left;
     const my = ev.clientY - rect.top;
 
-    let best = null, bestD2 = Infinity;
-    for (const t of this._clickTargets) {
-      const dx = mx - t.sx, dy = my - t.sy;
-      const d2 = dx * dx + dy * dy;
-      const rad = t.radiusPx || 14;
-      if (d2 <= rad * rad && d2 < bestD2) { best = t; bestD2 = d2; }
-    }
+    const best = pickMapTargetAt(this._clickTargets, mx, my);
 
     if (best) {
       const payload = resolveCourseTarget(best);
@@ -2135,6 +2397,13 @@ export const galaxyMapScreen = {
 
   _resize() {
     if (!HAS_DOC || !this._body || !this._canvas) return;
+    const viewportW = Number(this._root && this._root.clientWidth)
+      || (typeof window !== 'undefined' && Number(window.innerWidth))
+      || this._body.clientWidth;
+    const viewportH = Number(this._root && this._root.clientHeight)
+      || (typeof window !== 'undefined' && Number(window.innerHeight))
+      || this._body.clientHeight;
+    this._applyResponsiveLayout(viewportW, viewportH);
     const w = this._body.clientWidth, h = this._body.clientHeight;
     const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
     const cw = Math.max(2, Math.floor(w * dpr));
@@ -2412,14 +2681,6 @@ export const galaxyMapScreen = {
         g.restore();
       }
     }
-    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
-      const wx = sx(wp.pos.x);
-      const wy = sz(wp.pos.z);
-      drawWaypointPin(g, wx, wy, waypointMapLabel(wp));
-      const target = waypointClickTarget(wp, wx, wy);
-      if (target) this._clickTargets.push(target);
-    }
-
     // Zones
     for (const z of model.zones) {
       const x = sx(z.x), y = sz(z.z), rr = z.radius * baseScale * cam.zoom;
@@ -2483,7 +2744,8 @@ export const galaxyMapScreen = {
       g.shadowBlur = 0;
 
       g.fillStyle = 'rgba(207,227,255,0.85)'; g.font = '10px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle';
-      g.fillText(p.name, x + 10, y);
+      const pointLabelX = clampMapLabelX(g.measureText(p.name).width, x + 10, w, 8);
+      g.fillText(p.name, pointLabelX, y);
 
       // Services Overlay
       if (this._layers.services && (isStation || isGate)) {
@@ -2491,7 +2753,9 @@ export const galaxyMapScreen = {
         const services = record && record.services ? record.services : [];
         if (services.length > 0) {
           g.fillStyle = 'rgba(57,208,255,0.45)'; g.font = '8px monospace';
-          g.fillText(services.map(s => s[0].toUpperCase()).join('|'), x + 10, y + 10);
+          const serviceText = services.map(s => s[0].toUpperCase()).join('|');
+          const serviceX = clampMapLabelX(g.measureText(serviceText).width, x + 10, w, 8);
+          g.fillText(serviceText, serviceX, y + 10);
         }
       }
 
@@ -2524,6 +2788,16 @@ export const galaxyMapScreen = {
       }
 
       g.restore();
+    }
+
+    // Objective marker renders after ambient geography so it cannot disappear under a station,
+    // gate label, zone, or market chip. It also has explicit hit-test priority.
+    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
+      const wx = sx(wp.pos.x);
+      const wy = sz(wp.pos.z);
+      drawWaypointPin(g, wx, wy, waypointMapLabel(wp), w);
+      const target = waypointClickTarget(wp, wx, wy);
+      if (target) this._clickTargets.push(target);
     }
   },
 
@@ -2564,14 +2838,6 @@ export const galaxyMapScreen = {
       g.beginPath(); g.moveTo(sx(px), sz(pz)); g.lineTo(sx(wp.pos.x), sz(wp.pos.z)); g.stroke();
       g.restore();
     }
-    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
-      const wx = sx(wp.pos.x);
-      const wy = sz(wp.pos.z);
-      drawWaypointPin(g, wx, wy, waypointMapLabel(wp));
-      const target = waypointClickTarget(wp, wx, wy);
-      if (target) this._clickTargets.push(target);
-    }
-
     // Contacts
     for (const c of model.contacts) {
       const x = sx(c.x), y = sz(c.z);
@@ -2616,7 +2882,8 @@ export const galaxyMapScreen = {
       g.restore();
 
       g.fillStyle = 'rgba(207,227,255,0.8)'; g.font = '9px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle';
-      g.fillText(c.name, x + 8, y);
+      const contactLabelX = clampMapLabelX(g.measureText(c.name).width, x + 8, w, 8);
+      g.fillText(c.name, contactLabelX, y);
     }
 
     // Player position
@@ -2625,6 +2892,15 @@ export const galaxyMapScreen = {
     g.translate(w / 2, h / 2); g.rotate(Math.PI + (player ? player.rot : 0));
     g.beginPath(); g.moveTo(8, 0); g.lineTo(-6, -5.5); g.lineTo(-6, 5.5); g.closePath(); g.fill();
     g.restore();
+
+    // The tracked objective is the final local-map paint and the highest-priority hit target.
+    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
+      const wx = sx(wp.pos.x);
+      const wy = sz(wp.pos.z);
+      drawWaypointPin(g, wx, wy, waypointMapLabel(wp), w);
+      const target = waypointClickTarget(wp, wx, wy);
+      if (target) this._clickTargets.push(target);
+    }
   },
 };
 
@@ -2643,7 +2919,7 @@ function waypointMapLabel(wp) {
   return (label || 'Waypoint').slice(0, 28);
 }
 
-function drawWaypointPin(g, x, y, label) {
+function drawWaypointPin(g, x, y, label, viewportWidth = Infinity) {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return;
   g.save();
   g.strokeStyle = '#ffd24a';
@@ -2660,6 +2936,11 @@ function drawWaypointPin(g, x, y, label) {
   g.fill();
   g.stroke();
   g.shadowBlur = 0;
+  g.beginPath();
+  g.arc(x, y, 13, 0, Math.PI * 2);
+  g.strokeStyle = 'rgba(255,210,74,0.82)';
+  g.lineWidth = 1;
+  g.stroke();
   g.strokeStyle = '#ffffff';
   g.lineWidth = 1;
   g.stroke();
@@ -2667,10 +2948,14 @@ function drawWaypointPin(g, x, y, label) {
   g.font = 'bold 10px monospace';
   g.textAlign = 'left';
   g.textBaseline = 'middle';
+  const textWidth = g.measureText ? g.measureText(label).width : 0;
+  const labelX = Number.isFinite(viewportWidth)
+    ? clampMapLabelX(textWidth, x + 12, viewportWidth, 8)
+    : x + 12;
   g.strokeStyle = 'rgba(4,8,16,0.9)';
   g.lineWidth = 3;
-  g.strokeText(label, x + 12, y);
-  g.fillText(label, x + 12, y);
+  g.strokeText(label, labelX, y);
+  g.fillText(label, labelX, y);
   g.restore();
 }
 
@@ -2682,11 +2967,14 @@ function waypointClickTarget(wp, sx, sy) {
     sy,
     radiusPx: 22,
     kind: 'waypoint',
+    objective: true,
+    markerKind: wp.markerKind || (wp.missionId || wp.onboarding ? 'mission-objective' : 'navigation'),
     id: 'active-waypoint',
     x: wp.pos.x,
     z: wp.pos.z,
     name: label,
     detail: wp.reason || wp.label || wp.mapLabel || 'Active navigation waypoint',
+    missionId: wp.missionId || null,
     targetEntityId: wp.targetEntityId,
     stationId: wp.stationId,
   };
