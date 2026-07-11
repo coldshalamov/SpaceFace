@@ -281,7 +281,9 @@ export const tetherGameplay = {
     const def = attachmentDef(kernel, attachment.defId);
     if (!def) return false;
 
-    const maxStep = positive(def.reelRate, 0) * Math.max(0, Number(dt) || 0);
+    const policy = typeof attachments.reelPolicy === 'function' ? attachments.reelPolicy(attachment.id) : null;
+    const reelRate = policy && Number.isFinite(policy.reelRate) ? policy.reelRate : def.reelRate;
+    const maxStep = positive(reelRate, 0) * Math.max(0, Number(dt) || 0);
     if (!(maxStep > 0)) return false;
     const requested = clamp(reelDelta, -maxStep, maxStep);
     const minLength = positive(def.minLength, 0);
@@ -312,7 +314,11 @@ export const tetherGameplay = {
     if (!attachment || attachment.state !== 'active') return;
     const kernel = combatKernel(this);
     const def = attachmentDef(kernel, attachment.defId);
-    const threshold = positive(def && (def.breakTension || (def.break && def.break.maxTension)), 0);
+    const policy = typeof attachments.breakPolicy === 'function' ? attachments.breakPolicy(attachment.id) : null;
+    const threshold = positive(
+      (policy && policy.maxTension) || (def && (def.breakTension || (def.break && def.break.maxTension))),
+      0,
+    );
     if (!(threshold > 0)) return;
     const ratio = Math.max(0, finite(attachment.lastTension) / threshold);
     this._lastStrainT = now;

@@ -194,9 +194,12 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
     },
 
     interrupt(entityId, _handle, context = {}) {
-      const nextDef = kernel.catalog.actions.get(context.nextActionId);
       const current = activeActionFor(state, entityId);
       if (!current) return true;
+      if (context.nextActionId == null && context.reason === 'doctrine_target_invalid') {
+        return kernel.actions.cancelActive(entityId, context.reason);
+      }
+      const nextDef = kernel.catalog.actions.get(context.nextActionId);
       const currentDef = kernel.catalog.actions.get(current.actionId);
       if (!currentDef || !nextDef) return false;
       const timeline = kernel.actions.phaseAt(current.actionId, state.tick - current.startedTick);

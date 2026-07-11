@@ -139,6 +139,22 @@ export function ensurePhysicsBodySpec(entity) {
   return body;
 }
 
+/** Keep the save-safe physics authoring record aligned with ships-owned derived mass. */
+export function syncDerivedPhysicsMass(entity, mass, inertiaY) {
+  // A derived-stat refresh changes exactly two authored values. Re-normalizing the entire body
+  // would replace the save-safe record and invalidate WeakMap caches even when those values did
+  // not change, so preserve an existing body object and initialize only when one is absent.
+  const body = authoredPhysicsBody(entity) || ensurePhysicsBodySpec(entity);
+  if (!body) return null;
+  const nextMass = positive(mass, body.mass);
+  const nextInertiaY = positive(inertiaY, body.inertiaY);
+  if (body.mass === nextMass && body.inertiaY === nextInertiaY) return body;
+  body.mass = nextMass;
+  body.inertiaY = nextInertiaY;
+  body.revision = Math.max(0, Math.trunc(finite(body.revision))) + 1;
+  return body;
+}
+
 export function measureThrusterAuthority(entity) {
   const body = ensurePhysicsBodySpec(entity);
   if (!body || !body.thrusters.length) return normalizeAuthority({});

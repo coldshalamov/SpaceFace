@@ -6,14 +6,55 @@ import { SIM_DT } from '../core/sim.js';
 
 const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 140, maxImpulse: 90, graceTicks: 1 });
 
+/** Resolve player spool strength from immutable attachment data. Ratings are max-folded by ships;
+ *  this layer scales only the standard tether's break policy and never mutates the catalog. */
+export function effectiveTetherBreak(def, owner) {
+  const base = def && def.break ? def.break : null;
+  if (!base) return null;
+  if (!def || def.id !== 'tether_standard') return { ...base };
+  const raw = Number(owner && owner.data && owner.data.derived && owner.data.derived.tetherSpoolMult);
+  const mult = Number.isFinite(raw) ? Math.max(1, Math.min(6, raw)) : 1;
+  return {
+    ...base,
+    maxTension: Number.isFinite(base.maxTension) ? base.maxTension * mult : base.maxTension,
+    maxImpulse: Number.isFinite(base.maxImpulse) ? base.maxImpulse * mult : base.maxImpulse,
+    maxYank: Number.isFinite(base.maxYank) ? base.maxYank * mult : base.maxYank,
+  };
+}
+
+/** Resolve every player-facing tether capability from immutable catalog data. Strength and reel
+ * rate are independent max-folded ratings; active attachments snapshot this policy at creation so
+ * a refit cannot silently rewrite an already-deployed line. */
+export function effectiveTetherPolicy(def, owner) {
+  const baseReelRate = Number.isFinite(def && def.reelRate) ? def.reelRate : 0;
+  if (!def || def.id !== 'tether_standard') {
+    return { break: effectiveTetherBreak(def, owner), reelRate: baseReelRate };
+  }
+  const rawReel = Number(owner && owner.data && owner.data.derived && owner.data.derived.tetherReelRateMult);
+  const reelMult = Number.isFinite(rawReel) ? Math.max(1, rawReel) : 1;
+  return {
+    break: effectiveTetherBreak(def, owner),
+    reelRate: baseReelRate * reelMult,
+  };
+}
+
 // Builds the winch/heat/overload policy def that masslineController.stepMassline consumes. The
 // physical break thresholds come from the attachment def's `break` block (authored in combatDefs);
 // the winch/heat/reel policy comes from the generated DEFAULT_MASSLINE_DEF so the controller's
 // mass-ratio-driven behavior (heavy target stalls the winch, sustained overload breaks the line)
 // is the live contract, not an ad-hoc scripted tether.
-function masslineDefFor(def, breakPolicy = null) {
+function masslineDefFor(def, tetherPolicy = null) {
+  const breakPolicy = tetherPolicy && tetherPolicy.break;
   const brk = breakPolicy || (def && def.break) || {};
-  const reelRate = Number.isFinite(def && def.reelRate) ? def.reelRate : null;
+  const reelRate = Number.isFinite(tetherPolicy && tetherPolicy.reelRate)
+    ? tetherPolicy.reelRate
+    : (Number.isFinite(def && def.reelRate) ? def.reelRate : null);
+  // Authored massline.overloadGraceS (combatDefs) widens the mild-overload hold window for capture
+  // rhythm without difficulty multipliers. Catastrophic ratio still snaps immediately.
+  const authoredGrace = def && def.massline && Number(def.massline.overloadGraceS);
+  const overloadGraceS = Number.isFinite(authoredGrace) && authoredGrace > 0 ? authoredGrace : 0.22;
+  const authoredCat = def && def.massline && Number(def.massline.catastrophicRatio);
+  const catastrophicRatio = Number.isFinite(authoredCat) && authoredCat > 1 ? authoredCat : 1.75;
   return {
     minLength: Number.isFinite(def && def.minLength) ? def.minLength : undefined,
     maxLength: Number.isFinite(def && def.maxLength) ? def.maxLength : undefined,
@@ -22,8 +63,8 @@ function masslineDefFor(def, breakPolicy = null) {
     maxTension: Number.isFinite(brk.maxTension) ? brk.maxTension : 140,
     maxImpulse: Number.isFinite(brk.maxImpulse) ? brk.maxImpulse : 90,
     maxYank: Number.isFinite(brk.maxYank) ? brk.maxYank : 420,
-    overloadGraceS: 0.22,
-    catastrophicRatio: 1.75,
+    overloadGraceS,
+    catastrophicRatio,
   };
 }
 
@@ -32,6 +73,22 @@ export function createAttachmentService(context) {
 
   function get(attachmentId) {
     return state.combat.attachments.byId[String(attachmentId)] || null;
+  }
+
+  function breakPolicy(attachmentId) {
+    const attachment = get(attachmentId);
+    if (!attachment) return null;
+    const def = catalog.attachments.get(attachment.defId);
+    if (!def) return null;
+    return breakForAttachment(def, entity(attachment.ownerId), entity(attachment.targetId), attachment);
+  }
+
+  function reelPolicy(attachmentId) {
+    const attachment = get(attachmentId);
+    if (!attachment) return null;
+    const def = catalog.attachments.get(attachment.defId);
+    if (!def) return null;
+    return policyForAttachment(def, entity(attachment.ownerId), attachment);
   }
 
   function create(spec) {
@@ -80,6 +137,7 @@ export function createAttachmentService(context) {
       lastImpulse: 0,
       nearBreakWarned: false,
       actionInstanceId: spec.actionInstanceId || null,
+      tetherPolicy: effectiveTetherPolicy(def, owner),
     };
     const physicsResult = createPhysicsAttachment(attachment, def);
     if (!physicsResult.ok) return fail(physicsResult.reason, physicsResult.error);
@@ -343,7 +401,8 @@ export function createAttachmentService(context) {
       // avoid destabilizing the solver with per-tick joint recreation.
       const masslinePolicy = def.massline && def.massline.enabled;
       if (masslinePolicy && state.tick - attachment.createdTick >= grace) {
-        const masslineDef = masslineDefFor(def, breakPolicy);
+        const activePolicy = policyForAttachment(def, owner, attachment);
+        const masslineDef = masslineDefFor(def, { ...activePolicy, break: breakPolicy });
         if (!attachment.masslineRuntime) {
           // Seed the winch from the ACTUAL attachment rest length, not the def's defaultLength,
           // so a neutral (no-reel) command holds the engagement distance rather than drifting the
@@ -458,7 +517,7 @@ export function createAttachmentService(context) {
       .sort(byId);
   }
 
-  return Object.freeze({ get, create, reel, cut, breakAttachment, breakOwnedBy, breakOrphans, reconcilePhysics, transfer, updateTelemetryAndBreak, onPhysicsBreak, listForEntity });
+  return Object.freeze({ get, breakPolicy, reelPolicy, create, reel, cut, breakAttachment, breakOwnedBy, breakOrphans, reconcilePhysics, transfer, updateTelemetryAndBreak, onPhysicsBreak, listForEntity });
 
   function combatPhysics() {
     return helpers && helpers.combatPhysics;
@@ -558,7 +617,16 @@ export function createAttachmentService(context) {
       const reelRevision = Math.max(0, Math.trunc(Number(attachment && attachment.reelRevision) || 0));
       if (reelRevision <= 0) return { ...LEGACY_47A_MASSLINE_BREAK };
     }
-    return def && def.break ? { ...def.break } : null;
+    return policyForAttachment(def, owner, attachment).break;
+  }
+
+  function policyForAttachment(def, owner, attachment = null) {
+    if (attachment && attachment.tetherPolicy && typeof attachment.tetherPolicy === 'object') {
+      return attachment.tetherPolicy;
+    }
+    const policy = effectiveTetherPolicy(def, owner);
+    if (attachment) attachment.tetherPolicy = policy;
+    return policy;
   }
 
   function fail(reason, error = null) {

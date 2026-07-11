@@ -8,6 +8,7 @@ import {
   stableId,
 } from './contracts.js';
 import { applyDoctrineToSelection } from './doctrine.js';
+import { applyCombatDoctrineToSelection } from './combatDoctrine.js';
 
 const DEFAULTS = Object.freeze({
   minCommitTicks: 18,
@@ -25,7 +26,7 @@ export class ShipUtilitySelector {
     this.freeze = config.freezeResults === false ? identity : Object.freeze;
   }
 
-  select({ tick, entityId, perception, directive, actionDefs, current = null }) {
+  select({ tick, entityId, perception, directive, actionDefs, current = null, combatDoctrine = null }) {
     const self = perception && perception.self;
     if (!self) throw new Error(`ship ${entityId} has no sensor self-frame`);
     const defs = preparedActionDefs(actionDefs);
@@ -71,6 +72,7 @@ export class ShipUtilitySelector {
     }
     if (selected) selected.maneuver = maneuverFor(selectedActionDef, directive, target, freeze);
     if (selected) selected = applyDoctrineToSelection({ selected, perception, directive, tick, freeze });
+    if (selected && combatDoctrine) selected = applyCombatDoctrineToSelection(selected, combatDoctrine);
     if (selected) stripActionMetadata(selected);
 
     if (this.trace) {
@@ -133,15 +135,17 @@ export class BehaviorExecutor {
     let reason = same ? 'same_selection' : 'selection_changed';
 
     if (state.actionId && !same) {
+      const forceInterrupt = selected.forceInterrupt === true;
       const minCommit = Math.max(this.config.minCommitTicks, selected.minCommitTicks || 0);
       const margin = Math.max(this.config.switchMargin, selected.switchMargin || 0);
-      const maySwitch = emergency || dwell >= minCommit;
-      const worthSwitch = emergency || selected.utility >= state.utility + margin;
+      const maySwitch = forceInterrupt || emergency || dwell >= minCommit;
+      const worthSwitch = forceInterrupt || emergency || selected.utility >= state.utility + margin;
       if (!maySwitch || !worthSwitch) {
         decision = 'hold_current';
         reason = !maySwitch ? 'minimum_commit_window' : 'switch_margin';
       } else {
-        const interruptReason = emergency ? 'emergency_interrupt' : `utility_switch:${selected.actionId || 'hold'}`;
+        const interruptReason = forceInterrupt ? 'doctrine_target_invalid'
+          : (emergency ? 'emergency_interrupt' : `utility_switch:${selected.actionId || 'hold'}`);
         const interrupted = !!this.actionPort.interrupt(entityId, state.handle, this.freeze({
           tick, reason: interruptReason, source: 'ai', nextActionId: selected.actionId, nextTargetId: selected.targetId,
         }));

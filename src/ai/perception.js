@@ -86,8 +86,11 @@ export class PerceptionMemory {
         pos: contact.pos,
         vel: contact.vel,
         radius: contact.radius,
+        alive: contact.alive,
+        valid: contact.valid,
         confidence,
         threat: contact.threat,
+        hostile: contact.hostile,
         targetId: contact.targetId,
         ownerId: contact.ownerId,
         attachmentId: contact.attachmentId,
@@ -99,11 +102,15 @@ export class PerceptionMemory {
         disabled: contact.disabled,
         objectiveValue: contact.objectiveValue,
         massClass: contact.massClass,
+        operationalMassBand: contact.operationalMassBand,
+        mobilityBand: contact.mobilityBand,
+        cargoBand: contact.cargoBand,
+        tetherabilityBand: contact.tetherabilityBand,
         tags: contact.tags,
         firstSeenTick: contact.firstSeenTick,
         lastSeenTick: contact.lastSeenTick,
         ageTicks,
-        visible: ageTicks === 0,
+        visible: contact.visible !== false && ageTicks === 0,
       }));
     }
     if (freeze === Object.freeze) {
@@ -142,7 +149,7 @@ function liveSnapshot(memory, now, memoryTicks, confidenceFloor) {
     if (confidence < confidenceFloor) continue;
     contact.confidence = confidence;
     contact.ageTicks = ageTicks;
-    contact.visible = ageTicks === 0;
+    contact.visible = contact.visible !== false && ageTicks === 0;
     contacts.push(contact);
   }
   const snapshot = memory.snapshot || (memory.snapshot = { tick: now, self: null, contacts, events: [] });

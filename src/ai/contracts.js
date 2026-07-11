@@ -249,6 +249,11 @@ function neutralSelf(entityId) {
     subsystemFractions: Object.freeze({}),
     activity: null,
     roe: 'weapons_free',
+    combatDoctrineId: null,
+    operationalMassBand: 'medium',
+    mobilityBand: 'medium',
+    cargoBand: 'empty',
+    tetherabilityBand: 'good',
   });
 }
 
@@ -270,6 +275,11 @@ function normalizeSelf(value, entityId) {
     subsystemFractions: Object.freeze(isPlainObject(value.subsystemFractions) ? { ...value.subsystemFractions } : {}),
     activity: normalizeActivityView(value.activity),
     roe: normalizeRoeView(value.roe),
+    combatDoctrineId: normalizeDoctrineIdView(value.combatDoctrineId),
+    operationalMassBand: normalizeBand(value.operationalMassBand, ['light', 'medium', 'heavy', 'capital'], 'medium'),
+    mobilityBand: normalizeBand(value.mobilityBand, ['low', 'medium', 'high'], 'medium'),
+    cargoBand: normalizeBand(value.cargoBand, ['empty', 'light', 'valuable', 'rich'], 'empty'),
+    tetherabilityBand: normalizeBand(value.tetherabilityBand, ['poor', 'fair', 'good', 'excellent'], 'good'),
   };
 }
 
@@ -283,6 +293,9 @@ function normalizeContact(value) {
     pos: freezeVec(value.pos),
     vel: freezeVec(value.vel),
     radius: Math.max(0, finite(value.radius, 0)),
+    alive: value.alive !== false,
+    valid: value.valid !== false,
+    visible: value.visible !== false,
     confidence: saturate(finite(value.confidence, 1)),
     threat: saturate(finite(value.threat, 0)),
     hostile: value.hostile === true ? true : (value.hostile === false ? false : null),
@@ -297,6 +310,10 @@ function normalizeContact(value) {
     disabled: !!value.disabled,
     objectiveValue: Math.max(0, finite(value.objectiveValue, 0)),
     massClass: Math.max(0, finite(value.massClass, 1)),
+    operationalMassBand: normalizeBand(value.operationalMassBand, ['light', 'medium', 'heavy', 'capital'], 'medium'),
+    mobilityBand: normalizeBand(value.mobilityBand, ['low', 'medium', 'high'], 'medium'),
+    cargoBand: normalizeBand(value.cargoBand, ['empty', 'light', 'valuable', 'rich'], 'empty'),
+    tetherabilityBand: normalizeBand(value.tetherabilityBand, ['poor', 'fair', 'good', 'excellent'], 'good'),
     tags: Object.freeze(Array.isArray(value.tags) ? [...new Set(value.tags)].sort() : []),
   });
 }
@@ -336,6 +353,16 @@ function normalizeActivityView(value) {
 function normalizeRoeView(value) {
   const text = String(value || 'weapons_free');
   return ROE_VALUES.has(text) ? text : 'weapons_free';
+}
+
+function normalizeDoctrineIdView(value) {
+  const id = String(value || '');
+  return ['interceptor_flyby', 'tether_control_raider', 'ranged_disengager'].includes(id) ? id : null;
+}
+
+function normalizeBand(value, values, fallback) {
+  const text = String(value || '');
+  return values.includes(text) ? text : fallback;
 }
 
 function freezeWithFlag(value, flag, freeze = Object.freeze) {

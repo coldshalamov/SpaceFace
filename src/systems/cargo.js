@@ -90,8 +90,13 @@ export const cargo = {
     this.helpers = ctx.helpers;
     busRef = ctx.bus;
     this._dirty = false;
+    this._massDirty = false;
 
     const state = this.state, bus = this.bus;
+    // Collapse any number of synchronous cargo mutations into one settled mass receipt during
+    // cargo's registered simulation update. Consumers can refresh physics once per tick without
+    // delaying or weakening the authoritative cargo:changed UI/data signal.
+    bus.on('cargo:changed', () => { this._massDirty = true; });
 
     // Ejected ore / dropped cargo / loose modules collected by the player ship → hold or inventory.
     bus.on('pickup:collected', ({ collectorId, kind, amount, commodityId }) => {
@@ -113,6 +118,7 @@ export const cargo = {
     const setCap = (shipId, cargoCap) => {
       if (shipId !== state.playerId) return;
       if (typeof cargoCap === 'number' && cargoCap >= 0) {
+        if (state.player.cargo.capVolume === cargoCap) return;
         state.player.cargo.capVolume = cargoCap;
         this._dirty = true; // backstop recompute (a cap *decrease* leaves used > cap until volume drops)
       }
@@ -127,6 +133,11 @@ export const cargo = {
 
   update(dt, state) {
     if (this._dirty) { this.recompute(); this._dirty = false; }
+    if (this._massDirty) {
+      this._massDirty = false;
+      const c = state.player.cargo;
+      this.bus.emit('cargo:massSettled', { cargo: c, usedU: c.usedVolume, massT: c.usedMass });
+    }
   },
 
   /** Authoritative full recompute of usedVolume/usedMass from items (drift backstop). */

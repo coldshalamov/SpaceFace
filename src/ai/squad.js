@@ -10,6 +10,7 @@ import {
   stableId,
   wrapAngle,
 } from './contracts.js';
+import { normalizeCombatDoctrineId } from './combatDoctrine.js';
 
 const DEFAULTS = Object.freeze({
   formation: 'wedge',
@@ -116,6 +117,7 @@ export class SquadCommander {
         tick,
         squadId,
         memberId: member.id,
+        combatDoctrineId: member.combatDoctrineId,
         role,
         tactic: selected.id,
         focusTargetId: focus ? focus.id : null,
@@ -229,6 +231,7 @@ function normalizeMember(member, index) {
     id: member.id,
     preferredRole: member.preferredRole || null,
     capabilities: Object.freeze(Array.isArray(member.capabilities) ? [...new Set(member.capabilities)].sort() : []),
+    combatDoctrineId: normalizeCombatDoctrineId(member.combatDoctrineId),
   });
 }
 

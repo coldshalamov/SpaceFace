@@ -6,12 +6,22 @@ export const CAMERA_DIRECTOR_MIN_ZOOM = 58;
 // allowed to use the chase camera's existing legal 330 ceiling when conservative bounds need it.
 export const CAMERA_DIRECTOR_MAX_ZOOM = 180;
 export const CAMERA_DIRECTOR_ENGINE_MAX_ZOOM = 330;
+// Standard combat-pair margin: content stays inside NDC +/-0.80 → 10% context each side.
 export const CAMERA_DIRECTOR_SAFE_NDC = 0.8;
+// Flyby Focus primary pair: 15–20% context margin each side (NDC 0.60–0.70). 0.65 ≈ 17.5%.
+export const CAMERA_DIRECTOR_FOCUS_SAFE_NDC = 0.65;
 export const CAMERA_DIRECTOR_EASE_S = 0.35;
+
+// Nearby active hostiles expand Focus/combat-tether zoom so attackers are not cropped off-frame.
+export const CAMERA_DIRECTOR_THREAT_CONTEXT_RANGE = 280;
 
 // Pair framing is functional geometry, so motion-reduction preferences do not alter its pose.
 // Decorative shake remains outside the director in the chase-camera presentation layer.
 // M2: focus outputs are frame-local; entity.pos is read as galactic-global and projected here.
+//
+// CAMERA-FOCUS-SEPARATION: ordinary mining/asteroid/non-hostile tether never enters combat pair
+// modes (TETHER_PAIR / FOCUS_PAIR). Only hostile ship/drone massline and Flyby Focus do. Ordinary
+// tether stays FOLLOW so chase composition can apply modest bias + threat-aware zoom-out.
 
 export const CameraDirectorMode = Object.freeze({
   FOLLOW: 'FOLLOW',
@@ -31,6 +41,7 @@ const FIT_SEARCH_STEPS = 24;
 const _frameOriginScratch = { x: 0, z: 0 };
 const _entityLocalA = { x: 0, z: 0 };
 const _entityLocalB = { x: 0, z: 0 };
+const _entityLocalThreat = { x: 0, z: 0 };
 
 function finiteOr(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
@@ -57,24 +68,88 @@ function entityRadius(entity) {
   return Math.max(0, finiteOr(entity && entity.radius, DEFAULT_RADIUS));
 }
 
-function requiredZoomForLocal(localX, localZ, radius, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt) {
+/** Hostile ship/drone massline may request combat pair framing; asteroids, civilians, and clean-law
+ * patrols may not. Keep this presentation classification aligned with the live team model without
+ * importing a sim system into render code. */
+export function isCombatPairTetherTarget(state, player, target) {
+  if (!target || target.alive === false) return false;
+  if (target.type !== 'ship' && target.type !== 'drone') return false;
+  const tTeam = target.team;
+  const pTeam = player && player.team;
+  if (tTeam == null || pTeam == null || tTeam === pTeam || tTeam === 2) return false;
+  const ai = target.data && target.data.ai || {};
+  if (ai.passive) return false;
+  if (ai.lawful) {
+    const wantedHeat = Number(state && state.player && state.player.heat) || 0;
+    if (wantedHeat < 0.15) return false;
+  }
+  // In the canonical team model, non-passive/non-lawful team 1 is hostile. Unknown affiliations
+  // fail neutral so a missing field can never create an unexplained combat-camera takeover.
+  return tTeam === 1;
+}
+
+function isActiveHostileThreat(player, entity, primaryTarget) {
+  if (!entity || entity === player || entity === primaryTarget) return false;
+  if (entity.alive === false || !entity.pos) return false;
+  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+  if (entity.hull != null && entity.hull <= 0) return false;
+  const tTeam = entity.team;
+  if (tTeam == null) return false;
+  const pTeam = player && player.team;
+  if (pTeam != null) return tTeam !== pTeam;
+  return tTeam !== 0;
+}
+
+function requiredZoomForLocal(
+  localX, localZ, radius, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt,
+  safeNdc = CAMERA_DIRECTOR_SAFE_NDC,
+) {
   const r = Math.max(0, finiteOr(radius, DEFAULT_RADIUS));
+  const safe = Math.max(0.2, finiteOr(safeNdc, CAMERA_DIRECTOR_SAFE_NDC));
   const dx = Math.abs(localX - focusX) + r;
   const dz = Math.abs(localZ - focusZ);
   // Treat entity.radius as a sphere, not a ground-plane disc. A sphere can consume one full radius
   // along both the camera-up and camera-depth axes regardless of chase tilt.
   const depthReserve = cosTilt * dz + r;
-  const horizontal = dx / (CAMERA_DIRECTOR_SAFE_NDC * tanHalfFov * aspect) + depthReserve;
-  const vertical = (sinTilt * dz + r) / (CAMERA_DIRECTOR_SAFE_NDC * tanHalfFov) + depthReserve;
+  const horizontal = dx / (safe * tanHalfFov * aspect) + depthReserve;
+  const vertical = (sinTilt * dz + r) / (safe * tanHalfFov) + depthReserve;
   return Math.max(horizontal, vertical, CAMERA_DIRECTOR_MIN_ZOOM);
 }
 
-function requiredZoomForEntity(entity, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, localOut) {
+function requiredZoomForEntity(
+  entity, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, localOut,
+  safeNdc = CAMERA_DIRECTOR_SAFE_NDC,
+) {
   const local = globalToFrame(entity.pos, frameOrigin, localOut || _entityLocalA);
   return requiredZoomForLocal(
     local.x, local.z, entityRadius(entity),
-    focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt,
+    focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, safeNdc,
   );
+}
+
+function requiredThreatContextZoom(
+  state, player, primaryTarget, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
+) {
+  if (!state || !player || !player.pos || !state.entities || typeof state.entities.values !== 'function') {
+    return CAMERA_DIRECTOR_MIN_ZOOM;
+  }
+  const range = CAMERA_DIRECTOR_THREAT_CONTEXT_RANGE;
+  const range2 = range * range;
+  let required = CAMERA_DIRECTOR_MIN_ZOOM;
+  for (const ent of state.entities.values()) {
+    if (!isActiveHostileThreat(player, ent, primaryTarget)) continue;
+    const dx = ent.pos.x - player.pos.x;
+    const dz = ent.pos.z - player.pos.z;
+    if (dx * dx + dz * dz > range2) continue;
+    required = Math.max(
+      required,
+      requiredZoomForEntity(
+        ent, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
+        _entityLocalThreat, CAMERA_DIRECTOR_SAFE_NDC,
+      ),
+    );
+  }
+  return required;
 }
 
 export function createCameraDirector() {
@@ -122,11 +197,23 @@ export function createCameraDirector() {
     transitionElapsed = 0;
   }
 
-  function requiredPairZoom(first, second, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin) {
+  function requiredPairZoom(first, second, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, safeNdc) {
     return Math.max(
-      requiredZoomForEntity(first, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, _entityLocalA),
-      requiredZoomForEntity(second, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, _entityLocalB),
+      requiredZoomForEntity(first, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, _entityLocalA, safeNdc),
+      requiredZoomForEntity(second, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, _entityLocalB, safeNdc),
     );
+  }
+
+  function requiredCombatZoom(
+    state, player, target, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+  ) {
+    const pairRequired = requiredPairZoom(
+      player, target, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+    );
+    const threatRequired = requiredThreatContextZoom(
+      state, player, target, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
+    );
+    return Math.max(pairRequired, threatRequired);
   }
 
   return {
@@ -166,14 +253,39 @@ export function createCameraDirector() {
       let requestedMode = CameraDirectorMode.FOLLOW;
       let targetId = null;
       let target = null;
-      if (tether && tether.active) {
-        targetId = tether.targetId;
-        target = entityFor(state, targetId);
-        if (target) requestedMode = CameraDirectorMode.TETHER_PAIR;
-      } else if (focus && focus.active) {
+      let pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
+
+      // Combat Focus is authoritative when active. Ordinary (asteroid/non-hostile) tether never
+      // steals combat pair ownership — leave FOLLOW so chase composition stays modest + threat-aware.
+      // Hostile ship/drone massline may own TETHER_PAIR after Focus latches onto the same contact.
+      if (focus && focus.active) {
         targetId = focus.targetId;
         target = entityFor(state, targetId);
-        if (target) requestedMode = CameraDirectorMode.FOCUS_PAIR;
+        if (target) {
+          requestedMode = CameraDirectorMode.FOCUS_PAIR;
+          pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
+        }
+      }
+      if (requestedMode === CameraDirectorMode.FOLLOW && tether && tether.active) {
+        targetId = tether.targetId;
+        target = entityFor(state, targetId);
+        if (target && isCombatPairTetherTarget(state, player, target)) {
+          requestedMode = CameraDirectorMode.TETHER_PAIR;
+          pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
+        } else {
+          // Non-combat tether: drop pair intent; keep FOLLOW.
+          targetId = null;
+          target = null;
+        }
+      } else if (
+        requestedMode === CameraDirectorMode.FOCUS_PAIR
+        && tether && tether.active
+        && tether.targetId === focus.targetId
+        && isCombatPairTetherTarget(state, player, target)
+      ) {
+        // Same-target Focus→tether handoff: combat massline takes pair ownership without a jump.
+        requestedMode = CameraDirectorMode.TETHER_PAIR;
+        pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
       }
 
       const playerValid = !!(player && player.pos && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z));
@@ -196,6 +308,7 @@ export function createCameraDirector() {
         const pLz = _entityLocalA.z;
         const tLx = _entityLocalB.x;
         const tLz = _entityLocalB.z;
+        // Primary pair midpoint stays on player + authoritative Focus/tether target (not the crowd).
         const desiredX = (
           Math.min(pLx - playerRadius, tLx - targetRadius)
           + Math.max(pLx + playerRadius, tLx + targetRadius)
@@ -204,8 +317,8 @@ export function createCameraDirector() {
           Math.min(pLz - playerRadius, tLz - targetRadius)
           + Math.max(pLz + playerRadius, tLz + targetRadius)
         ) * 0.5;
-        const desiredRequired = requiredPairZoom(
-          player, target, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
+        const desiredRequired = requiredCombatZoom(
+          state, player, target, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
         );
         const impossible = desiredRequired > CAMERA_DIRECTOR_ENGINE_MAX_ZOOM + 1e-9;
         const fitLimit = desiredRequired <= CAMERA_DIRECTOR_MAX_ZOOM + 1e-9
@@ -229,8 +342,8 @@ export function createCameraDirector() {
           candidateZoom = output.zoom + (clamp(desiredRequired, CAMERA_DIRECTOR_MIN_ZOOM, CAMERA_DIRECTOR_ENGINE_MAX_ZOOM) - output.zoom) * followAlpha;
         }
 
-        let required = requiredPairZoom(
-          player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
+        let required = requiredCombatZoom(
+          state, player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
         );
         if (!impossible && required > fitLimit) {
           const startX = candidateX;
@@ -241,16 +354,16 @@ export function createCameraDirector() {
             const mid = (lo + hi) * 0.5;
             const probeX = startX + (desiredX - startX) * mid;
             const probeZ = startZ + (desiredZ - startZ) * mid;
-            const probeRequired = requiredPairZoom(
-              player, target, probeX, probeZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
+            const probeRequired = requiredCombatZoom(
+              state, player, target, probeX, probeZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
             );
             if (probeRequired <= fitLimit) hi = mid;
             else lo = mid;
           }
           candidateX = startX + (desiredX - startX) * hi;
           candidateZ = startZ + (desiredZ - startZ) * hi;
-          required = requiredPairZoom(
-            player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
+          required = requiredCombatZoom(
+            state, player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
           );
         }
 

@@ -373,8 +373,16 @@ export const weapons = {
     const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0;
     if (capLeft < energyCost) return capLeft;
 
-    const heatPerShot = w.heat != null ? w.heat : (def.heatPerShot != null ? def.heatPerShot : 0);
-    const heatMax = w.heatMax != null ? w.heatMax : (def.heatMax != null ? def.heatMax : Infinity);
+    // Prefer instance heat when authored (ships.makeWeaponRuntime copies heatPerShot → heat).
+    // Treat heatMax as inactive when there is no positive heat cost so default heatMax:100 on
+    // non-heat weapons cannot invent a false lockout path.
+    const heatPerShot = (() => {
+      if (w.heat != null && Number.isFinite(w.heat) && w.heat > 0) return w.heat;
+      if (def.heatPerShot != null && Number.isFinite(def.heatPerShot)) return def.heatPerShot;
+      return 0;
+    })();
+    const heatMaxRaw = w.heatMax != null ? w.heatMax : (def.heatMax != null ? def.heatMax : Infinity);
+    const heatMax = heatPerShot > 0 && Number.isFinite(heatMaxRaw) && heatMaxRaw > 0 ? heatMaxRaw : Infinity;
     if ((w._heat || 0) >= heatMax) return capLeft;            // overheated
     if ((w._heat || 0) + heatPerShot > heatMax) return capLeft; // this shot would overheat → lock out
 

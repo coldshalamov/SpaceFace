@@ -110,6 +110,18 @@ export function createTacticalAISystem({
       lastManeuverRequests.length = 0;
       for (const decision of result.decisions || []) {
         if (decision && decision.maneuver) lastManeuverRequests.push(decision.maneuver);
+        const doctrine = decision && decision.combatDoctrine;
+        if (doctrine && doctrine.telegraphStarted && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
+          ctxRef.bus.emit('ai:telegraph', {
+            entityId: decision.entityId,
+            targetId: doctrine.targetId,
+            doctrineId: doctrine.doctrineId,
+            phase: doctrine.phase,
+            kind: doctrine.telegraph.kind,
+            durationTicks: doctrine.telegraph.durationTicks,
+            tick,
+          });
+        }
         applyAIFiringIntent(decision, state);
       }
     },

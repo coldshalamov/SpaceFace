@@ -8,8 +8,11 @@ export const WEAPONS = [
   // --- SMALL (S slot) ---
   {
     id: 'wpn_pulse_laser_s', name: 'Pulse Laser S', slotType: 'weapon', size: 'S', tier: 1, mass: 2, price: 4500,
-    dmg: 8, rof: 4.0, dps: 32, damageType: 'energy', energyCost: 3,
+    // Starter reliability: a forgiving, sustainable gun. Its draw stays below Hitch regeneration,
+    // and it deliberately has no heat cycle; advanced weapons introduce vent rhythm later.
+    dmg: 8, rof: 5.5, dps: 44, damageType: 'energy', energyCost: 2,
     projSpeed: 320, range: 600, tracking: 'fixed', spreadDeg: 0.6,
+    heatPerShot: 0,
   },
   {
     id: 'wpn_autocannon_s', name: 'Autocannon S', slotType: 'weapon', size: 'S', tier: 1, mass: 4, price: 5200,

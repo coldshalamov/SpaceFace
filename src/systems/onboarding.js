@@ -848,6 +848,8 @@ export const onboarding = {
       pos: { x: target.pos.x, z: target.pos.z },
       label: target.label || 'Beacon',
       reason: (beat && beat.line) || target.label || 'Objective',
+      markerKind: 'objective',
+      mapLabel: '◆ AMBER DIAMOND',
     };
   },
 

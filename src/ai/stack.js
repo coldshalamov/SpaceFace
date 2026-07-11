@@ -11,6 +11,7 @@ import { PerceptionMemory, aggregatePerceivedTelemetry } from './perception.js';
 import { BehaviorExecutor, ShipUtilitySelector } from './shipDecision.js';
 import { SquadCommander } from './squad.js';
 import { ExplainabilityTrace } from './trace.js';
+import { CombatDoctrineRuntime, normalizeCombatDoctrineId, overrideDirectiveForCombatDoctrine } from './combatDoctrine.js';
 
 const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
 const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
@@ -45,6 +46,7 @@ export class TacticalAIStack {
     const maneuverConfig = { ...(config.maneuver || {}), freezeResults: this.freezeResults };
     if (!this.freezeResults && maneuverConfig.includeTrajectory === undefined) maneuverConfig.includeTrajectory = false;
     this.maneuver = new ManeuverPlanner({ seed: this.seed, trace: traceForLayer(activeTrace, TraceLayer.MANEUVER), config: maneuverConfig });
+    this.combatDoctrine = new CombatDoctrineRuntime({ seed: this.seed });
     const runtimeConfig = config.runtime && typeof config.runtime === 'object' ? config.runtime : {};
     this.memberBatchSize = normalizeOptionalPositiveInt(runtimeConfig.memberBatchSize);
     this.memberBatchTargetTicks = normalizePositiveInt(runtimeConfig.memberBatchTargetTicks, 1);
@@ -84,7 +86,8 @@ export class TacticalAIStack {
     const activeMembers = this.memberBatchEnabled ? this._activeDecisionMembers(orderedMembers) : null;
     for (const member of orderedMembers) {
       let perception = this.memberBatchEnabled ? this.perceptionCache.get(member.id) : null;
-      if (!this.memberBatchEnabled || !perception || activeMembers.has(member.id)) {
+      const doctrineMember = normalizeCombatDoctrineId(member.combatDoctrineId) != null;
+      if (!this.memberBatchEnabled || !perception || activeMembers.has(member.id) || doctrineMember) {
         const frame = !this.freezeResults && typeof this.ports.sensors.liveFrameFor === 'function'
           ? this.ports.sensors.liveFrameFor(member.id, tick)
           : this.ports.sensors.frameFor(member.id, tick);
@@ -115,13 +118,18 @@ export class TacticalAIStack {
         const perception = perceptionsByEntity.get(member.id);
         const directive = squadResult.directives.get(member.id);
         if (!perception || !directive) continue;
-        if (this.memberBatchEnabled && !activeMembers.has(member.id) && this.lastDecisionByEntity.has(member.id)) {
+        const doctrineId = normalizeCombatDoctrineId(directive.combatDoctrineId, perception.self && perception.self.combatDoctrineId);
+        if (this.memberBatchEnabled && !doctrineId && !activeMembers.has(member.id) && this.lastDecisionByEntity.has(member.id)) {
           const cached = retickDecision(this.lastDecisionByEntity.get(member.id), tick);
           this.ports.maneuver.request(cached.maneuver);
           decisions.push(cached);
           continue;
         }
-        const actionDefs = this.ports.actions.list(member.id, this._actionContext(tick, perception, directive)) || [];
+        const combatDoctrine = doctrineId ? this.combatDoctrine.update({
+          tick, entityId: member.id, doctrineId, perception, directive,
+        }) : null;
+        const effectiveDirective = combatDoctrine ? overrideDirectiveForCombatDoctrine(directive, combatDoctrine) : directive;
+        const actionDefs = this.ports.actions.list(member.id, this._actionContext(tick, perception, effectiveDirective)) || [];
         const current = !this.freezeResults && typeof this.executor.current === 'function'
           ? this.executor.current(member.id)
           : this.executor.inspect(member.id);
@@ -129,19 +137,21 @@ export class TacticalAIStack {
           tick,
           entityId: member.id,
           perception,
-          directive,
+          directive: effectiveDirective,
           actionDefs,
           current,
+          combatDoctrine,
         });
-        const behavior = this.executor.update({ tick, entityId: member.id, selected, directive, perception });
-        const request = this.maneuver.plan({ tick, entityId: member.id, perception, behavior, directive });
+        const behavior = this.executor.update({ tick, entityId: member.id, selected, directive: effectiveDirective, perception });
+        const request = this.maneuver.plan({ tick, entityId: member.id, perception, behavior, directive: effectiveDirective });
         this.ports.maneuver.request(request);
         const decision = freeze({
           entityId: member.id,
           squadId: squadDef.id,
-          directive,
+          directive: effectiveDirective,
           action: behavior,
           maneuver: request,
+          combatDoctrine,
         });
         if (this.memberBatchEnabled) this.lastDecisionByEntity.set(member.id, decision);
         decisions.push(decision);
@@ -179,6 +189,7 @@ export class TacticalAIStack {
       perception: entityId == null ? this.memory.inspect() : this.memory.inspect(entityId),
       behavior: entityId == null ? this.executor.inspect() : this.executor.inspect(entityId),
       maneuver: entityId == null ? this.maneuver.inspect() : this.maneuver.inspect(entityId),
+      combatDoctrine: this.combatDoctrine.inspect(entityId),
       trace: this.trace.query({
         ...traceQuery,
         entityId: entityId === undefined ? traceQuery.entityId : entityId,
@@ -192,6 +203,7 @@ export class TacticalAIStack {
     this.memory.forgetEntity(entityId);
     this.executor.forget(entityId);
     this.maneuver.forget(entityId);
+    this.combatDoctrine.forget(entityId);
     this.perceptionCache.delete(entityId);
     this.lastDecisionByEntity.delete(entityId);
     this.entitySquad.delete(entityId);
@@ -272,6 +284,7 @@ function normalizeRoster(value, freezeResults = true) {
         id: normalized.id,
         preferredRole: normalized.preferredRole || null,
         capabilities: freeze(Array.isArray(normalized.capabilities) ? [...new Set(normalized.capabilities)].sort() : []),
+        combatDoctrineId: normalizeCombatDoctrineId(normalized.combatDoctrineId),
       });
     });
     return freeze({
@@ -315,6 +328,7 @@ function rosterSignature(squad) {
       id: stableId(member.id),
       preferredRole: member.preferredRole,
       capabilities: member.capabilities,
+      combatDoctrineId: member.combatDoctrineId,
     })),
   });
 }

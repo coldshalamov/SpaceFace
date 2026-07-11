@@ -14,6 +14,11 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
 import { normalizeActivity, normalizeRoe, roeForActivity } from '../ai/doctrine.js';
+import {
+  CombatDoctrineId,
+  DOCTRINE_TELEGRAPH_TICKS,
+  normalizeCombatDoctrineId,
+} from '../ai/combatDoctrine.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
@@ -127,8 +132,20 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   spec.data.miningBeam = null;
   spec.data.ai = {
     archetype: def.aiArchetype,
+    combatDoctrineId: normalizeCombatDoctrineId(def.combatDoctrineId),
     lawful: !!def.factionLawful,
     capabilities: tacticalCapabilitiesFor(def),
+    // Every armed actor carries an inspectable reason for escalation. Encounter/mission callers
+    // may replace these defaults with their authored demand; the fallback still fails legibly
+    // instead of producing an anonymous team-1 murder-top.
+    motive: opts.motive || (def.factionLawful ? 'law_enforcement' : 'assigned_interdiction'),
+    engagementTrigger: opts.engagementTrigger || opts.trigger
+      || (def.factionLawful ? 'wanted_status' : 'authorized_hostile_spawn'),
+    zoneId: opts.zoneId || 'sector_hostile_zone',
+    approachTelegraph: opts.approachTelegraph || doctrineTelegraphFor(def.combatDoctrineId),
+    noFireResponseWindowS: Number.isFinite(opts.noFireResponseWindowS)
+      ? Math.max(0.5, opts.noFireResponseWindowS)
+      : DOCTRINE_TELEGRAPH_TICKS / 60,
   };
   const doctrine = defaultDoctrineFor(def, pos);
   spec.data.ai.activity = doctrine.activity;
@@ -147,10 +164,17 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   return spec;
 }
 
+function doctrineTelegraphFor(doctrineId) {
+  if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'attach_spool';
+  if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'weapon_charge';
+  return 'engine_flare';
+}
+
 function tacticalCapabilitiesFor(def) {
   const caps = new Set(BASE_AI_CAPABILITIES);
   if (Array.isArray(def.weapons) && def.weapons.length) caps.add('ranged');
   for (const capability of ARCHETYPE_TACTICAL_CAPABILITIES[def.aiArchetype] || []) caps.add(capability);
+  if (def.combatDoctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) caps.add('tug');
   if (def.factionLawful) caps.add('disable');
   if (def.reinforcements) caps.add('screen');
   if (def.shipClass === 'capital') {

@@ -10,6 +10,7 @@ import {
   wrapAngle,
 } from '../ai/contracts.js';
 import { normalizeActivity, normalizeRoe } from '../ai/doctrine.js';
+import { normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 import { isPlayerWanted } from './heat.js';
@@ -279,6 +280,7 @@ export const aiPorts = {
         id: entity.id,
         preferredRole: ai.preferredRole || ai.role || null,
         capabilities: this._capabilitiesFor(entity, tick),
+        combatDoctrineId: normalizeCombatDoctrineId(ai.combatDoctrineId),
       }));
     }
 
@@ -480,6 +482,7 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     ? cacheOwner._subsystemFractionsFor(entity, runtime)
     : freeze(subsystemFractions(runtime));
   const activity = normalizeActivity(ai.activity);
+  const bands = operationalBandsFor(state, entity, runtime, attachmentIndex);
   return freeze({
     id: entity.id,
     team: entity.team == null ? null : entity.team,
@@ -496,6 +499,8 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     subsystemFractions: subsystemFractionView,
     activity,
     roe: normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free'),
+    combatDoctrineId: normalizeCombatDoctrineId(ai.combatDoctrineId),
+    ...bands,
   });
 }
 
@@ -518,6 +523,7 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
       ? cacheOwner._tagsFor(other, runtime)
       : tagsFor(other, runtime, freeze);
     const hostile = isHostile(state, self, other);
+    const bands = operationalBandsFor(state, other, runtime, attachmentIndex);
     out.push({
       id: other.id,
       kind,
@@ -526,6 +532,9 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
       pos: vec2(other.pos, freeze),
       vel: vec2(other.vel, freeze),
       radius: positive(other.radius, 0),
+      alive: true,
+      valid: true,
+      visible: true,
       confidence: confidenceFor(distance, range, state, self),
       threat: threatFor(state, self, other),
       hostile,
@@ -537,6 +546,7 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
       ownedBySelf: false,
       objectiveValue: objectiveValueFor(other),
       massClass: Math.max(1, Math.round(Math.log2(positive(other.mass, 1) + 1))),
+      ...bands,
       tags,
     });
   }
@@ -567,6 +577,9 @@ function attachmentContacts(state, self, range, activeAttachments = null, freeze
       pos: freeze(pos),
       vel: freeze(relativeVelocity(owner, target)),
       radius: 2,
+      alive: true,
+      valid: true,
+      visible: true,
       confidence: endpointVisible ? 1 : confidenceFor(distance, range, state, self),
       hostile,
       threat: hostile ? 0.85 : 0.25,
@@ -581,10 +594,21 @@ function attachmentContacts(state, self, range, activeAttachments = null, freeze
       ownedBySelf,
       objectiveValue: 0,
       massClass: 1,
-      tags: ownedBySelf ? OWNED_TETHER_TAGS : HOSTILE_TETHER_TAGS,
+      operationalMassBand: 'light',
+      mobilityBand: 'low',
+      cargoBand: 'empty',
+      tetherabilityBand: 'poor',
+      tags: tetherTags(ownedBySelf, attachment, owner, target),
     });
   }
   return out;
+}
+
+function tetherTags(ownedBySelf, attachment, owner, target) {
+  const base = ownedBySelf ? OWNED_TETHER_TAGS : HOSTILE_TETHER_TAGS;
+  const length = distance2(owner && owner.pos, target && target.pos);
+  const slack = positive(attachment && attachment.restLength, 0) - length;
+  return slack >= 6 ? Object.freeze([...base, 'slack']) : base;
 }
 
 function recentEventIndexFor(state, tick) {
@@ -737,9 +761,39 @@ function attachmentsFor(index, entityId) {
 function rosterSignature(squad) {
   let text = `${squad.id}|${squad.doctrine}|${squad.faction}|${squad.formation}|${squad.formationSpacing}|${squad.formationBound}`;
   for (const member of squad.members) {
-    text += `;${stableId(member.id)}:${member.preferredRole || ''}:${(member.capabilities || []).join('+')}`;
+    text += `;${stableId(member.id)}:${member.preferredRole || ''}:${member.combatDoctrineId || ''}:${(member.capabilities || []).join('+')}`;
   }
   return text;
+}
+
+function operationalBandsFor(state, entity, runtime, attachmentIndex) {
+  const mass = operationalMassFor(state, entity);
+  const maxSpeed = positive(entity && entity.maxSpeed, positive(entity && entity.flightModel && entity.flightModel.maxSpeed, 0));
+  const turnRate = positive(entity && entity.turnRate, positive(entity && entity.flightModel && entity.flightModel.maxYawRate, 0));
+  const cargoMass = cargoMassFor(state, entity);
+  const tethered = attachmentsFor(attachmentIndex, entity && entity.id).length > 0;
+  const disabled = isDisabled(runtime, entity);
+  return {
+    operationalMassBand: mass < 40 ? 'light' : mass < 140 ? 'medium' : mass < 700 ? 'heavy' : 'capital',
+    mobilityBand: maxSpeed >= 135 || turnRate >= 2 ? 'high' : (maxSpeed > 0 && maxSpeed < 80) || (turnRate > 0 && turnRate < 0.8) ? 'low' : 'medium',
+    cargoBand: cargoMass < 1 ? 'empty' : cargoMass < 10 ? 'light' : cargoMass < 40 ? 'valuable' : 'rich',
+    tetherabilityBand: tethered ? 'poor' : disabled ? 'excellent' : mass >= 700 ? 'fair' : mass >= 140 ? 'good' : 'excellent',
+  };
+}
+
+function operationalMassFor(state, entity) {
+  if (!entity) return 1;
+  if (state && entity.id === state.playerId) {
+    const derived = entity.data && entity.data.derived;
+    if (Number.isFinite(derived && derived.operationalMass)) return Math.max(1, derived.operationalMass);
+  }
+  return positive(entity.mass, positive(entity.physicsBody && entity.physicsBody.mass, 1));
+}
+
+function cargoMassFor(state, entity) {
+  if (!entity) return 0;
+  const data = entity.data || {};
+  return Math.max(0, finite(data.cargoMass, finite(data.derived && data.derived.cargoMass)));
 }
 
 function combatRuntimeFor(state, entityId) {

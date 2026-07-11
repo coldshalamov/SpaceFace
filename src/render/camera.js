@@ -214,29 +214,44 @@ export function resolveChaseComposition(state, player, focus) {
 }
 
 function resolveTetherCompositionAnchor(state, player) {
-  const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId;
-  if (!attachments || !state.entities || typeof state.entities.get !== 'function') return null;
+  if (!state || !player || !state.entities || typeof state.entities.get !== 'function') return null;
 
   let x = 0;
   let z = 0;
   let weightTotal = 0;
-  for (const attachment of Object.values(attachments)) {
-    if (!attachment || attachment.state !== 'active') continue;
-    let otherId = null;
-    if (attachment.ownerId === player.id) otherId = attachment.targetId;
-    else if (attachment.targetId === player.id) otherId = attachment.ownerId;
-    if (otherId == null) continue;
+  const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (attachments) {
+    for (const attachment of Object.values(attachments)) {
+      if (!attachment || attachment.state !== 'active') continue;
+      let otherId = null;
+      if (attachment.ownerId === player.id) otherId = attachment.targetId;
+      else if (attachment.targetId === player.id) otherId = attachment.ownerId;
+      if (otherId == null) continue;
 
-    const other = state.entities.get(otherId);
-    if (!other || !other.alive || !other.pos) continue;
-    const isPayload = other.type === 'payload' || !!(other.data && other.data.tetherPayload);
-    const weight = isPayload ? 1.35 : 1.0;
-    x += other.pos.x * weight;
-    z += other.pos.z * weight;
-    weightTotal += weight;
+      const other = state.entities.get(otherId);
+      if (!other || !other.alive || !other.pos) continue;
+      const isPayload = other.type === 'payload' || !!(other.data && other.data.tetherPayload);
+      const weight = isPayload ? 1.35 : 1.0;
+      x += other.pos.x * weight;
+      z += other.pos.z * weight;
+      weightTotal += weight;
+    }
   }
 
-  if (weightTotal <= 0) return null;
+  // Ordinary mining/massline: state.player.tether is the HUD-facing authority and may be present
+  // before combat.attachments is mirrored. Use it so modest tether composition + threat context
+  // still work when the director intentionally stays on FOLLOW for non-hostile latches.
+  if (weightTotal <= 0) {
+    const tether = state.player && state.player.tether;
+    if (tether && tether.active && tether.targetId != null) {
+      const other = state.entities.get(tether.targetId);
+      if (other && other.alive !== false && other.pos
+        && Number.isFinite(other.pos.x) && Number.isFinite(other.pos.z)) {
+        return { x: other.pos.x, z: other.pos.z };
+      }
+    }
+    return null;
+  }
   return { x: x / weightTotal, z: z / weightTotal };
 }
 

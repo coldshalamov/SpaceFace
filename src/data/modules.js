@@ -112,7 +112,17 @@ export const MODULES = [
   },
   {
     id: 'mod_winch_hd', name: 'Heavy-Duty Winch', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
-    energyDraw: 2, mods: { tetherReelRateMult: 1.80, tetherBreakMult: 1.25 },
+    energyDraw: 2, mods: { tetherReelRateMult: 1.80, tetherSpoolMult: 1.5 },
+  },
+  {
+    id: 'mod_massline_spool_m', name: 'Industrial Massline Spool', slotType: 'utility', size: 'M', tier: 3,
+    mass: 8, price: 46000, requiresTech: 'tech_bulk_logistics',
+    energyDraw: 4, mods: { tetherSpoolMult: 3 },
+  },
+  {
+    id: 'mod_massline_spool_l', name: 'Capital Massline Spool', slotType: 'utility', size: 'L', tier: 5,
+    mass: 20, price: 220000, requiresTech: 'tech_flagship_command',
+    energyDraw: 8, mods: { tetherSpoolMult: 6 },
   },
   {
     id: 'mod_charge_rack', name: 'Impulse Charge Rack', slotType: 'utility', size: 'S', tier: 1, mass: 2, price: 18000,

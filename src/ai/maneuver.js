@@ -261,10 +261,10 @@ function predictFormationSlot(intent, predictionTicks) {
 function desiredForIntent(intent, self, target, contacts, seed, entityId, config) {
   switch (intent.kind) {
     case ManeuverKind.INTERCEPT:
-      return target ? intercept(self, target, config.interceptHorizonTicks) : seekPoint(self, intent.formationSlot, 0.7);
+      return target ? intercept(self, target, config.interceptHorizonTicks, intent.lateralSign) : seekPoint(self, intent.formationSlot, 0.7);
     case ManeuverKind.ORBIT: {
       const orbitRadius = Math.max(1, Number.isFinite(intent.preferredRange) ? intent.preferredRange : config.orbitRadius);
-      return target ? orbit(self, target, orbitRadius, seed, entityId) : seekPoint(self, intent.formationSlot, 0.7);
+      return target ? orbit(self, target, orbitRadius, seed, entityId, intent.lateralSign) : seekPoint(self, intent.formationSlot, 0.7);
     }
     case ManeuverKind.SCREEN:
       return screen(self, target, intent.formationSlot);
@@ -283,18 +283,25 @@ function desiredForIntent(intent, self, target, contacts, seed, entityId, config
   }
 }
 
-function intercept(self, target, horizonTicks) {
+function intercept(self, target, horizonTicks, lateralSign = 0) {
   const distance = distance2(self.pos, target.pos);
   const horizon = clamp(distance / 12, 6, horizonTicks);
   const point = { x: target.pos.x + target.vel.x * horizon / 60, z: target.pos.z + target.vel.z * horizon / 60 };
+  if (lateralSign) {
+    const dx = target.pos.x - self.pos.x, dz = target.pos.z - self.pos.z;
+    const length = Math.hypot(dx, dz) || 1;
+    const offset = clamp(distance * 0.28, 45, 140) * (lateralSign < 0 ? -1 : 1);
+    point.x += -dz / length * offset;
+    point.z += dx / length * offset;
+  }
   return seekPoint(self, point, 1);
 }
 
-function orbit(self, target, radius, seed, entityId) {
+function orbit(self, target, radius, seed, entityId, lateralSign = 0) {
   const dx = target.pos.x - self.pos.x, dz = target.pos.z - self.pos.z;
   const dist = Math.hypot(dx, dz) || 1;
   const radial = (dist - radius) / Math.max(40, radius);
-  const side = hashUnit(seed, entityId, 'orbit') < 0.5 ? -1 : 1;
+  const side = lateralSign ? (lateralSign < 0 ? -1 : 1) : (hashUnit(seed, entityId, 'orbit') < 0.5 ? -1 : 1);
   const tangentX = -dz / dist * side, tangentZ = dx / dist * side;
   const radialX = dx / dist * clamp(radial, -1, 1), radialZ = dz / dist * clamp(radial, -1, 1);
   return { x: tangentX + radialX * 1.15, z: tangentZ + radialZ * 1.15, arrivalDistance: Math.abs(dist - radius) };

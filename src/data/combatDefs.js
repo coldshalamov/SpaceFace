@@ -219,18 +219,21 @@ export const ATTACHMENT_DEFS = Object.freeze([
     // boost HOLDS; hard overloads (short-reeled line + full boost, fixed station anchor at speed)
     // SNAP. Verified by check-tether-gameplay + check:sg02:tether-break together — if you move
     // the socket further forward, re-run both before touching these numbers.
-    breakTension: 420000,
+    // CORE-COMBAT-LOOP: effective break budget approximately doubles the pre-pass baseline
+    // (420k/7.6k/6k → 840k/15.2k/12k) so standard capture holds ≥2.5s while severe overload still snaps.
+    breakTension: 840000,
     snapImpulseNoise: 0,
     // maxYank: the line snaps on a SHARP jerk (rate-of-change of radial relative speed), never on
     // steady pull. Calibrated against measured flight yanks: a plain reel-in to min length produces
     // yank ~2400, and a max-speed (218 wu/s) orbit at minLength(18) produces centripetal yank
-    // ~2600. So normal-acrobatics yank tops out ~3000; 6000 sits comfortably above all normal
+    // ~2600. So normal-acrobatics yank tops out ~3000; doubled budget sits well above normal
     // flight (reel-in, slingshot, dogfight, orbit, throttle bumps) and only yields to genuine
     // violence — boost-into-line, hard ramming, dash impulse. The masslineController harden term
     // raises this budget further under sustained load (pull-behind-fleeing-target protection).
-    break: { maxTension: 420000, maxImpulse: 7600, maxYank: 6000, graceTicks: 4, stiffness: 90, damping: 6 },
+    break: { maxTension: 840000, maxImpulse: 15200, maxYank: 12000, graceTicks: 4, stiffness: 90, damping: 6 },
     spring: { K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 0.72, reelSafeStretchRatio: 0.66 },
-    massline: { enabled: true },
+    // overloadGraceS: mild overload hold window for capture rhythm; catastrophic ratio still snaps immediately.
+    massline: { enabled: true, overloadGraceS: 1.1 },
     limits: { maxPerOwner: 1 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
   },

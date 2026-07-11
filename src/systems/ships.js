@@ -13,6 +13,7 @@ import { MODULES } from '../data/modules.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { BEAMS } from '../data/mining.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
+import { syncDerivedPhysicsMass } from '../core/physicsAuthority.js';
 
 // ---- catalog lookup tables (built once at module load) ------------------------------------
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -209,6 +210,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   // (1) additive flats + mass + cargo pct + utility aggregates
   let shieldFlat = 0, shieldRegenFlat = 0, hullFlat = 0, cargoFlat = 0, cargoCapPct = 0;
   let moduleMass = 0, continuousDrain = 0;
+  let tetherSpoolMult = 1, tetherReelRateMult = 1;
   let hiddenCargoPct = Math.max(0, Math.min(1, Number(eff.hiddenCargoPct) || 0));
   let scannerCloak = Math.max(0, Math.min(1, Number(eff.scannerCloak) || 0));
   let damageReductionMult = 1; // multiplicative stacking of hardeners (§ formulas)
@@ -222,6 +224,12 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     hullFlat += mods.hullFlat || 0;
     cargoFlat += mods.cargoFlat || 0;
     cargoCapPct += mods.cargoCapPct || 0;
+    if (Number.isFinite(mods.tetherSpoolMult) && mods.tetherSpoolMult > 0) {
+      tetherSpoolMult = Math.max(tetherSpoolMult, mods.tetherSpoolMult);
+    }
+    if (Number.isFinite(mods.tetherReelRateMult) && mods.tetherReelRateMult > 0) {
+      tetherReelRateMult = Math.max(tetherReelRateMult, mods.tetherReelRateMult);
+    }
     // Smuggling utilities are capability ratings, not additive economy bonuses. Taking the
     // strongest fitted module prevents stacking the same hidden volume or scan evasion twice.
     if (Number.isFinite(mods.hiddenCargoPct)) {
@@ -235,7 +243,9 @@ export function getDerivedStats(defId, fittings = [], player = null) {
 
   // (2) mass + handling baseline
   const baseMass = shipDef.mass;
-  const totalMass = baseMass + moduleMass;
+  const dryMass = baseMass + moduleMass;
+  const cargoMass = Math.max(0, Number(player && player.cargo && player.cargo.usedMass) || 0);
+  const totalMass = dryMass + cargoMass;
   const massRatio = totalMass / baseMass;
   const handling = shipDef.handling || 1;
   // Banking: per-hull roll-into-turn aggressiveness. Heavier loads bank less (mass dampens it),
@@ -295,7 +305,9 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     bankFactor,
     flightClass,
     flightModel,
+    dryMass, cargoMass, operationalMass: totalMass,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
+    tetherSpoolMult, tetherReelRateMult,
     cargoCap,
     boost: {
       max: bdef.max || 0,
@@ -402,7 +414,7 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
   const miningBeam = buildMiningBeam(shipDef, fittings, isPlayer);
 
   return {
-    type: 'ship', factionId, team,
+    type: 'ship', factionId, team, isPlayer: !!isPlayer,
     pos: pos || { x: 0, z: 0 }, rot,
     radius: derived.radius, mass: derived.mass,
     flightClass: derived.flightClass, flightModel: derived.flightModel,
@@ -446,12 +458,16 @@ export const ships = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this._cargoMassRefreshPending = false;
     const bus = this.bus;
 
     // re-derive on fit/research changes coming from other systems
     bus.on('module:equipped', ({ shipId }) => this.recomputeEntity(shipId));
     bus.on('module:unequipped', ({ shipId }) => this.recomputeEntity(shipId));
     bus.on('tech:researched', () => this.recomputeActiveShip());
+    bus.on('cargo:changed', () => { this._cargoMassRefreshPending = true; });
+    bus.on('cargo:massSettled', () => this.flushCargoMassRefresh());
+    bus.on('save:loaded', () => this.flushCargoMassRefresh());
 
     // UI intent events (§4.4): the UI emits these; ships owns the mutation + credit emits.
     bus.on('ui:buyShip', (p) => this.buyShip(p || {}));
@@ -461,7 +477,8 @@ export const ships = {
     bus.on('ui:unlockTech', (p) => this.unlockTech((p && p.nodeId) || null));
   },
 
-  // event-only system; no per-tick work
+  // Event-only system. Cargo owns the registered per-tick coalescing boundary and emits one
+  // cargo:massSettled receipt after all synchronous mutations in its update.
   update(/* dt, state */) {},
 
   // ---- helpers ----------------------------------------------------------------------------
@@ -490,7 +507,7 @@ export const ships = {
       const owned = isPlayer ? this.ownedShip() : null;
       fit = (owned && owned.fittings) || [];
     }
-    const player = this.state.player;
+    const player = isPlayer ? this.state.player : null;
     const prev = e.data.derived || {};
     const derived = getDerivedStats(defId, fit, player);
 
@@ -628,6 +645,27 @@ export const ships = {
     this.bus.emit('module:purchased', { defId, price, fitSlotIndex: equipped ? fitSlotIndex : null });
     this.bus.emit('toast', { text: (equipped ? 'Purchased and equipped ' : 'Purchased ') + def.name, kind: 'success', ttl: 3 });
     return true;
+  },
+
+  flushCargoMassRefresh() {
+    if (!this._cargoMassRefreshPending) return null;
+    this._cargoMassRefreshPending = false;
+    const e = this.activeShipEntity();
+    if (!e || !e.data) return null;
+    const previous = e.data.derived || {};
+    const cargoMass = Math.max(0, Number(this.state.player && this.state.player.cargo && this.state.player.cargo.usedMass) || 0);
+    if (previous.cargoMass === cargoMass) return previous;
+    const owned = this.ownedShip();
+    const next = getDerivedStats(e.data.defId, (owned && owned.fittings) || [], this.state.player);
+    e.data.derived = next;
+    copyOperationalMassOntoEntity(e, next);
+    this.bus.emit('ship:massChanged', {
+      shipId: e.id,
+      dryMass: next.dryMass,
+      cargoMass: next.cargoMass,
+      operationalMass: next.operationalMass,
+    });
+    return next;
   },
 
   // ---- shipyard: buy / sell ship ----------------------------------------------------------
@@ -842,4 +880,16 @@ function copyDerivedOntoEntity(e, d) {
   e.flightClass = d.flightClass;
   e.flightModel = d.flightModel;
   e.radius = d.radius; e.mass = d.mass;
+  syncDerivedPhysicsMass(e, d.operationalMass, d.flightModel && d.flightModel.inertia);
+}
+
+/** Apply only fields that depend on operational mass; cargo churn must not rebuild combat/runtime
+ * arrays or emit the broad refit events owned by recomputeEntity(). */
+function copyOperationalMassOntoEntity(e, d) {
+  e.thrust = d.thrust; e.turnRate = d.turnRate; e.maxSpeed = d.maxSpeed; e.drag = d.drag;
+  e.bankFactor = d.bankFactor;
+  e.flightClass = d.flightClass;
+  e.flightModel = d.flightModel;
+  e.mass = d.operationalMass;
+  syncDerivedPhysicsMass(e, d.operationalMass, d.flightModel && d.flightModel.inertia);
 }
