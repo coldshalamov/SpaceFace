@@ -66,6 +66,7 @@ import {
   makeShipEntitySpec,
 } from '../src/systems/ships.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+import { buildOnboardingObjectiveWaypoint } from '../src/systems/onboarding.js';
 import { effectiveTetherBreak } from '../src/combat/attachments.js';
 import { resolveHudNavStation } from '../src/ui/hud.js';
 import { STORY_BEATS } from '../src/data/missions.js';
@@ -697,7 +698,7 @@ await check('objective exposes one action, destination, distance, and distinctiv
   assert.match(hudSrc, /sf-nav-readout/, 'HUD exposes nav readout (destination + distance)');
   assert.match(hudSrc, /sf-mission-tracker/, 'HUD exposes mission tracker action line');
 
-  // Construct the live onboarding B0 waypoint shape (onboarding._setObjectiveWaypoint).
+  // Exercise the same canonical builder used by onboarding._setObjectiveWaypoint.
   const player = { id: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, alive: true, type: 'ship' };
   const beacon = {
     id: 2, type: 'beacon', alive: true,
@@ -710,21 +711,16 @@ await check('objective exposes one action, destination, distance, and distinctiv
     entityList: [player, beacon],
     onboarding: { active: true, finished: false, currentBeat: 0 },
     story: { beatIndex: 0 },
-    nav: {
-      waypoint: {
-        onboarding: true,
-        pos: { x: beacon.pos.x, z: beacon.pos.z },
-        label: 'Beacon',
-        reason: 'Contract 47-A: thrust to the beacon.',
-        // Mirrors onboarding._setObjectiveWaypoint: the objective owns one unmistakable radar glyph.
-        markerKind: 'objective',
-        mapLabel: '◆ AMBER DIAMOND',
-      },
-    },
+    nav: { waypoint: null },
     missions: { active: [] },
     ui: { trackedMissionId: null },
     world: { currentSectorId: HELIOS },
   };
+
+  state.nav.waypoint = buildOnboardingObjectiveWaypoint(
+    { key: 'wake', line: 'Contract 47-A: thrust to the beacon.' },
+    { ...beacon, label: 'Beacon' },
+  );
 
   const wp = state.nav.waypoint;
   const action = String(wp.reason || '').trim();
@@ -744,6 +740,9 @@ await check('objective exposes one action, destination, distance, and distinctiv
     markerIdentity,
     'objective must expose a distinctive mission marker identity (markerId | markerKind | mapLabel) distinct from generic contacts',
   );
+  assert.equal(wp.markerId, 'onboarding:wake', 'objective marker id must be deterministic and beat-stable');
+  assert.equal(wp.markerKind, 'mission-objective', 'objective marker kind must be canonical across UI surfaces');
+  assert.equal(wp.mapLabel, '◆ AMBER DIAMOND', 'objective marker map label must match the HUD/radar key');
   // Soft live story beat still exists as fallback context after tutorial.
   assert.ok(STORY_BEATS && STORY_BEATS.length > 0, 'STORY_BEATS table is live');
 

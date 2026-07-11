@@ -111,6 +111,27 @@ const ORE_PREFIXES = [
   'cmdty_crystal', 'cmdty_gas', 'cmdty_scrap', 'cmdty_salvage',
 ];
 
+export const ONBOARDING_OBJECTIVE_MARKER = Object.freeze({
+  markerKind: 'mission-objective',
+  mapLabel: '◆ AMBER DIAMOND',
+});
+
+// Canonical live waypoint builder shared with headless first-ten-minute acceptance. Marker identity
+// is beat-stable and independent of ephemeral entity ids, so UI/radar/map surfaces agree after load.
+export function buildOnboardingObjectiveWaypoint(beat, target) {
+  if (!target || !target.pos) return null;
+  const beatKey = String(beat && beat.key || 'objective').replace(/[^a-z0-9_-]+/gi, '-').toLowerCase();
+  return {
+    onboarding: true,
+    pos: { x: target.pos.x, z: target.pos.z },
+    label: target.label || 'Beacon',
+    reason: (beat && beat.line) || target.label || 'Objective',
+    markerId: `onboarding:${beatKey}`,
+    markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
+    mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
+  };
+}
+
 export const onboarding = {
   name: 'onboarding',
 
@@ -843,14 +864,7 @@ export const onboarding = {
     }
     // HUD mission tracker reads wp.reason || wp.label as the sole persistent actionable line
     // (hud.js Tutorial Objective branch). Prefer the beat verb in reason; keep short nav label.
-    st.nav.waypoint = {
-      onboarding: true,
-      pos: { x: target.pos.x, z: target.pos.z },
-      label: target.label || 'Beacon',
-      reason: (beat && beat.line) || target.label || 'Objective',
-      markerKind: 'objective',
-      mapLabel: '◆ AMBER DIAMOND',
-    };
+    st.nav.waypoint = buildOnboardingObjectiveWaypoint(beat, target);
   },
 
   _clearObjectiveWaypoint() {
