@@ -6,6 +6,14 @@
 
 import { THRESHOLD as WANTED_THRESHOLD, isPlayerWanted } from '../../systems/heat.js';
 import {
+  buildOriginContractOffer,
+  CAREER_ORIGIN_CONTRACTS,
+  createOriginRouteState,
+  normalizeOriginRouteState,
+  ORIGIN_ROLE_KITS,
+  ORIGIN_ROUTE_STATUS,
+} from './careerOriginContracts.js';
+import {
   acceptOrigin as acceptHaulerOrigin,
   declineOrigin as declineHaulerOrigin,
   evaluateStepSignal as evaluateHaulerStepSignal,
@@ -115,7 +123,28 @@ function createMeta() {
     firstDockStationId: null,
     offerNonce: 0,
     lastBundleKey: null,
+    routes: {
+      hunter: createOriginRouteState('hunter'),
+      prospector: createOriginRouteState('prospector'),
+    },
+    upgradeReceipts: {},
   };
+}
+
+function ensureRouteMeta(meta) {
+  if (!meta.routes || typeof meta.routes !== 'object') meta.routes = {};
+  for (const careerId of Object.keys(CAREER_ORIGIN_CONTRACTS)) {
+    const current = meta.routes[careerId];
+    const normalized = normalizeOriginRouteState(careerId, current);
+    if (current && typeof current === 'object') {
+      for (const key of Object.keys(current)) delete current[key];
+      Object.assign(current, normalized);
+    } else {
+      meta.routes[careerId] = normalized;
+    }
+  }
+  if (!meta.upgradeReceipts || typeof meta.upgradeReceipts !== 'object') meta.upgradeReceipts = {};
+  return meta.routes;
 }
 
 export function ensureCareerOriginsState(state) {
@@ -124,6 +153,7 @@ export function ensureCareerOriginsState(state) {
   if (!state.careers.origins || typeof state.careers.origins !== 'object') state.careers.origins = {};
   const origins = state.careers.origins;
   if (!origins[META_KEY] || typeof origins[META_KEY] !== 'object') origins[META_KEY] = createMeta();
+  ensureRouteMeta(origins[META_KEY]);
   ensureHaulerOriginState(state);
   ensureHunterOriginState(state, seedOf(state));
   ensureProspectorOriginState(state, simTimeOf(state));
@@ -131,7 +161,8 @@ export function ensureCareerOriginsState(state) {
 }
 
 export function getCareerOfferView(state, careerId = null) {
-  ensureCareerOriginsState(state);
+  const origins = ensureCareerOriginsState(state);
+  const routes = origins[META_KEY].routes;
   const views = {
     hauler: (() => {
       const own = ensureHaulerOriginState(state);
@@ -146,6 +177,7 @@ export function getCareerOfferView(state, careerId = null) {
         canDecline: own.status === 'offered',
         nonBinding: true,
         rewardCredits: HAULER_COMPLETION_REWARD.credits,
+        upgradeKit: ORIGIN_ROLE_KITS.hauler,
       };
     })(),
     hunter: (() => {
@@ -156,11 +188,16 @@ export function getCareerOfferView(state, careerId = null) {
         line: 'Legal HOSTILE marks only. Heat voids the bag.',
         acceptLabel: 'Take hunter path',
         declineLabel: 'Decline',
-        status: own.offer.status,
-        canAccept: own.offer.status === HUNTER_OFFER_STATUS.OFFERED,
-        canDecline: own.offer.status === HUNTER_OFFER_STATUS.OFFERED,
+        status: routes.hunter.status === ORIGIN_ROUTE_STATUS.IDLE
+          ? own.offer.status : routes.hunter.status,
+        canAccept: routes.hunter.status === ORIGIN_ROUTE_STATUS.IDLE
+          && own.offer.status === HUNTER_OFFER_STATUS.OFFERED,
+        canDecline: routes.hunter.status === ORIGIN_ROUTE_STATUS.IDLE
+          && own.offer.status === HUNTER_OFFER_STATUS.OFFERED,
         nonBinding: true,
         rewardCredits: own.reward.credits,
+        contractCount: CAREER_ORIGIN_CONTRACTS.hunter.length,
+        upgradeKit: ORIGIN_ROLE_KITS.hunter,
       };
     })(),
     prospector: (() => {
@@ -171,11 +208,14 @@ export function getCareerOfferView(state, careerId = null) {
         line: 'Scan, crack, sell. A full hold jams you.',
         acceptLabel: view.acceptLabel || 'Take the kit',
         declineLabel: 'Decline',
-        status: view.status,
-        canAccept: !!view.canAccept,
-        canDecline: !!view.canDecline,
+        status: routes.prospector.status === ORIGIN_ROUTE_STATUS.IDLE
+          ? view.status : routes.prospector.status,
+        canAccept: routes.prospector.status === ORIGIN_ROUTE_STATUS.IDLE && !!view.canAccept,
+        canDecline: routes.prospector.status === ORIGIN_ROUTE_STATUS.IDLE && !!view.canDecline,
         nonBinding: true,
         rewardCredits: view.rewardPreview && view.rewardPreview.credits,
+        contractCount: CAREER_ORIGIN_CONTRACTS.prospector.length,
+        upgradeKit: ORIGIN_ROLE_KITS.prospector,
       };
     })(),
   };
@@ -187,13 +227,17 @@ export function getCareerOfferView(state, careerId = null) {
 }
 
 export function getCareerProgress(state, careerId = null) {
-  ensureCareerOriginsState(state);
+  const origins = ensureCareerOriginsState(state);
+  const routes = origins[META_KEY].routes;
   const views = {
     hauler: JSON.parse(JSON.stringify(ensureHaulerOriginState(state))),
-    hunter: hunterOriginPresentation(state),
-    prospector: prospectorProgressSnapshot(
-      ensureProspectorOriginState(state, simTimeOf(state)), simTimeOf(state),
-    ),
+    hunter: { ...hunterOriginPresentation(state), contractRoute: JSON.parse(JSON.stringify(routes.hunter)) },
+    prospector: {
+      ...prospectorProgressSnapshot(
+        ensureProspectorOriginState(state, simTimeOf(state)), simTimeOf(state),
+      ),
+      contractRoute: JSON.parse(JSON.stringify(routes.prospector)),
+    },
   };
   return careerId ? (views[careerId] || null) : views;
 }
@@ -276,7 +320,10 @@ export function createCareerOriginsSystem() {
       this.registry = ctx.registry || null;
       this._subs = [];
       ensureCareerOriginsState(this.state);
-      this._listen('dock:docked', (payload) => offerCareerOriginsAtDock(this.state, payload || {}, this.bus));
+      this._listen('dock:docked', (payload) => {
+        offerCareerOriginsAtDock(this.state, payload || {}, this.bus);
+        this._resumeRoutesAtDock(payload || {});
+      });
       this._listen(CAREER_ORIGINS_EVENTS.ACCEPT, (payload) => {
         if (payload && payload.careerId) this.accept(payload.careerId);
       });
@@ -298,6 +345,9 @@ export function createCareerOriginsSystem() {
       this._listen('heat:changed', (payload) => this._onHeatChanged(payload || {}));
       this._listen('ai:telegraph', (payload) => this._onAiTelegraph(payload || {}));
       this._listen('entity:killed', (payload) => this._onEntityKilled(payload || {}));
+      this._listen('career:origin:completed', (payload) => {
+        if (payload && payload.careerId) this._grantOriginUpgrade(payload.careerId);
+      });
     },
 
     newGame() {
@@ -324,6 +374,7 @@ export function createCareerOriginsSystem() {
     deserialize(blob) {
       const result = deserializeCareerOrigins(this.state, blob);
       this._resetScratch();
+      this._restoreRouteMarkers();
       return result;
     },
     getOfferView(careerId) { return getCareerOfferView(this.state, careerId); },
@@ -349,12 +400,37 @@ export function createCareerOriginsSystem() {
           const own = ensureHaulerOriginState(this.state);
           own.activeContract.offerId = posted.offerId || result.missionOffer.id;
           own.activeContract.missionId = posted.missionId;
+          this._stampMissionMarker(id, posted.missionId, result.missionOffer);
           emitIntents(this.bus, result.intents);
         }
       } else if (id === 'hunter') {
-        result = acceptHunterOrigin(this.state, { simTime: t }, this.bus);
+        const before = serializeHunterOrigin(this.state);
+        const beforeRoute = JSON.parse(JSON.stringify(this._route(id)));
+        // Defer public acceptance signals until missions has accepted the authored contract.
+        result = acceptHunterOrigin(this.state, { simTime: t }, null);
+        if (result && result.ok) {
+          const posted = this._startMissionRoute(id);
+          if (!posted.ok) {
+            deserializeHunterOrigin(before, this.state, seedOf(this.state));
+            ensureCareerOriginsState(this.state)[META_KEY].routes[id] = beforeRoute;
+            return posted;
+          }
+          result = { ...result, missionId: posted.missionId, offerId: posted.offerId };
+        }
       } else if (id === 'prospector') {
-        result = acceptProspectorOrigin(this.state, this.bus);
+        const before = serializeProspectorOrigin(this.state);
+        const beforeRoute = JSON.parse(JSON.stringify(this._route(id)));
+        // Defer public acceptance signals until missions has accepted the authored contract.
+        result = acceptProspectorOrigin(this.state, null);
+        if (result && result.ok) {
+          const posted = this._startMissionRoute(id);
+          if (!posted.ok) {
+            deserializeProspectorOrigin(this.state, before);
+            ensureCareerOriginsState(this.state)[META_KEY].routes[id] = beforeRoute;
+            return posted;
+          }
+          result = { ...result, missionId: posted.missionId, offerId: posted.offerId };
+        }
       } else {
         return { ok: false, reason: 'unknown_career' };
       }
@@ -389,7 +465,19 @@ export function createCareerOriginsSystem() {
       } else if (id === 'hunter') result = abandonHunterOrigin(this.state, { simTime: t }, this.bus);
       else if (id === 'prospector') result = abandonProspectorOrigin(this.state, this.bus);
       else return { ok: false, reason: 'unknown_career' };
-      if (result && result.ok) emit(this.bus, CAREER_ORIGINS_EVENTS.ABANDONED, { careerId: id, nonBinding: true });
+      if (result && result.ok) {
+        const route = this._route(id);
+        if (route && route.status !== ORIGIN_ROUTE_STATUS.COMPLETED) {
+          const missions = this._missionAuthority();
+          if (route.activeMissionId && missions && typeof missions.abandonMission === 'function') {
+            missions.abandonMission(route.activeMissionId);
+          }
+          route.status = ORIGIN_ROUTE_STATUS.ABANDONED;
+          route.activeMissionId = null;
+          route.activeOfferId = null;
+        }
+        emit(this.bus, CAREER_ORIGINS_EVENTS.ABANDONED, { careerId: id, nonBinding: true });
+      }
       return result;
     },
 
@@ -415,23 +503,27 @@ export function createCareerOriginsSystem() {
 
     _onMissionCompleted(payload) {
       const own = ensureHaulerOriginState(this.state);
-      if (own.status !== 'active' || !own.activeContract) return;
-      if (payload.missionId !== own.activeContract.missionId) return;
-      const result = evaluateHaulerStepSignal(this.state, own.activeContract.stepId === 'market_spread'
-        ? { kind: 'market_spread', missionId: payload.missionId, missionPaid: true }
-        : { kind: 'mission_completed', missionId: payload.missionId, missionPaid: true },
-      simTimeOf(this.state));
-      if (result && result.ok) emitIntents(this.bus, result.intents);
+      if (own.status === 'active' && own.activeContract
+        && payload.missionId === own.activeContract.missionId) {
+        const result = evaluateHaulerStepSignal(this.state, own.activeContract.stepId === 'market_spread'
+          ? { kind: 'market_spread', missionId: payload.missionId, missionPaid: true }
+          : { kind: 'mission_completed', missionId: payload.missionId, missionPaid: true },
+        simTimeOf(this.state));
+        if (result && result.ok) emitIntents(this.bus, result.intents);
+      }
+      this._completeMissionRouteLink(payload);
     },
 
     _onMissionFailed(payload) {
       const own = ensureHaulerOriginState(this.state);
-      if (own.status !== 'active' || !own.activeContract) return;
-      if (payload.missionId !== own.activeContract.missionId) return;
-      const result = evaluateHaulerStepSignal(this.state, {
-        kind: 'mission_failed', missionId: payload.missionId, reason: payload.reason || 'mission_failed',
-      }, simTimeOf(this.state));
-      if (result && result.ok) emitIntents(this.bus, result.intents);
+      if (own.status === 'active' && own.activeContract
+        && payload.missionId === own.activeContract.missionId) {
+        const result = evaluateHaulerStepSignal(this.state, {
+          kind: 'mission_failed', missionId: payload.missionId, reason: payload.reason || 'mission_failed',
+        }, simTimeOf(this.state));
+        if (result && result.ok) emitIntents(this.bus, result.intents);
+      }
+      this._failMissionRouteLink(payload);
     },
 
     _onTradeCompleted(payload) {
@@ -450,6 +542,250 @@ export function createCareerOriginsSystem() {
         }, simTimeOf(this.state));
       }
       handleTradeCompleted(this.state, payload, this.bus);
+    },
+
+    _missionAuthority() {
+      return this.registry && typeof this.registry.get === 'function'
+        ? this.registry.get('missions') : null;
+    },
+
+    _route(careerId) {
+      const origins = ensureCareerOriginsState(this.state);
+      return origins && origins[META_KEY] && origins[META_KEY].routes[careerId] || null;
+    },
+
+    _startMissionRoute(careerId) {
+      const route = this._route(careerId);
+      if (!route) return { ok: false, reason: 'route_unavailable' };
+      route.status = ORIGIN_ROUTE_STATUS.ACTIVE;
+      route.contractIndex = 0;
+      route.activeMissionId = null;
+      route.activeOfferId = null;
+      route.attempt = 0;
+      route.completedContractIds = [];
+      route.startedAtS = simTimeOf(this.state);
+      route.completedAtS = null;
+      route.lastFailure = null;
+      return this._postRouteContract(careerId);
+    },
+
+    _postRouteContract(careerId) {
+      const route = this._route(careerId);
+      const missions = this._missionAuthority();
+      if (!route || !missions || typeof missions.postAndAcceptAuthoredOffer !== 'function') {
+        return { ok: false, reason: 'missions_unavailable' };
+      }
+      const offer = buildOriginContractOffer(this.state, careerId, route.contractIndex, route.attempt);
+      if (!offer) return { ok: false, reason: 'contract_missing' };
+      const posted = missions.postAndAcceptAuthoredOffer(offer);
+      if (!posted || !posted.ok) {
+        return { ok: false, reason: posted && posted.reason || 'mission_post_failed' };
+      }
+      route.status = ORIGIN_ROUTE_STATUS.ACTIVE;
+      route.activeMissionId = posted.missionId;
+      route.activeOfferId = posted.offerId || offer.id;
+      route.lastFailure = null;
+      this._stampMissionMarker(careerId, posted.missionId, offer);
+      emit(this.bus, CAREER_ORIGINS_EVENTS.PROGRESS, {
+        careerId,
+        contractId: offer.originContractId,
+        contractIndex: route.contractIndex,
+        contractCount: CAREER_ORIGIN_CONTRACTS[careerId].length,
+        missionId: posted.missionId,
+        markerId: offer.markerId,
+        destinationSectorId: offer.destSectorId,
+        destinationStationId: offer.destStationId,
+      });
+      return { ok: true, missionId: posted.missionId, offerId: route.activeOfferId, offer };
+    },
+
+    _stampMissionMarker(careerId, missionId, offer) {
+      if (!missionId || !offer) return false;
+      const marker = {
+        markerId: offer.markerId || `origin:${careerId}:${offer.originContractId || offer.originStepId || 'active'}`,
+        markerKind: 'mission-objective',
+        mapLabel: offer.mapLabel || offer.description || offer.title || 'Career objective',
+        originCareer: careerId,
+        originContractId: offer.originContractId || offer.originStepId || null,
+        originContractIndex: Number.isInteger(offer.originContractIndex) ? offer.originContractIndex : null,
+      };
+      const active = this.state.missions && this.state.missions.active;
+      const mission = Array.isArray(active) ? active.find((candidate) => candidate.id === missionId) : null;
+      if (mission) Object.assign(mission, marker);
+      const waypoint = this.state.nav && this.state.nav.waypoint;
+      if (waypoint && waypoint.missionId === missionId) {
+        Object.assign(waypoint, marker);
+        emit(this.bus, 'nav:waypoint', { ...waypoint });
+      }
+      return !!mission;
+    },
+
+    _restoreRouteMarkers() {
+      const hauler = ensureHaulerOriginState(this.state);
+      if (hauler.status === 'active' && hauler.activeContract) {
+        this._stampMissionMarker('hauler', hauler.activeContract.missionId, {
+          markerId: `origin:hauler:${hauler.activeContract.stepId}`,
+          originStepId: hauler.activeContract.stepId,
+          mapLabel: 'Complete the active freight contract',
+        });
+      }
+      for (const careerId of Object.keys(CAREER_ORIGIN_CONTRACTS)) {
+        const route = this._route(careerId);
+        if (!route || !route.activeMissionId) continue;
+        const offer = buildOriginContractOffer(this.state, careerId, route.contractIndex, route.attempt);
+        this._stampMissionMarker(careerId, route.activeMissionId, offer);
+      }
+    },
+
+    _completeMissionRouteLink(payload) {
+      const missionId = payload && payload.missionId;
+      if (!missionId) return false;
+      for (const careerId of Object.keys(CAREER_ORIGIN_CONTRACTS)) {
+        const route = this._route(careerId);
+        if (!route || route.status !== ORIGIN_ROUTE_STATUS.ACTIVE
+          || route.activeMissionId !== missionId) continue;
+        const def = CAREER_ORIGIN_CONTRACTS[careerId][route.contractIndex];
+        if (!def) return false;
+        if (!route.completedContractIds.includes(def.id)) route.completedContractIds.push(def.id);
+        route.contractIndex += 1;
+        route.activeMissionId = null;
+        route.activeOfferId = null;
+        route.attempt = 0;
+        if (route.contractIndex >= CAREER_ORIGIN_CONTRACTS[careerId].length) {
+          this._finishMissionRoute(careerId);
+          return true;
+        }
+        const next = this._postRouteContract(careerId);
+        if (!next.ok) {
+          route.status = ORIGIN_ROUTE_STATUS.RECOVERING;
+          route.lastFailure = { reason: next.reason, atS: simTimeOf(this.state) };
+        }
+        return true;
+      }
+      return false;
+    },
+
+    _failMissionRouteLink(payload) {
+      const missionId = payload && payload.missionId;
+      if (!missionId) return false;
+      for (const careerId of Object.keys(CAREER_ORIGIN_CONTRACTS)) {
+        const route = this._route(careerId);
+        if (!route || route.activeMissionId !== missionId) continue;
+        route.status = ORIGIN_ROUTE_STATUS.RECOVERING;
+        route.activeMissionId = null;
+        route.activeOfferId = null;
+        route.attempt += 1;
+        route.lastFailure = {
+          reason: String(payload.reason || 'mission_failed'),
+          atS: simTimeOf(this.state),
+          recovery: 'dock_to_reissue',
+        };
+        emit(this.bus, CAREER_ORIGINS_EVENTS.PROGRESS, {
+          careerId,
+          recovering: true,
+          contractIndex: route.contractIndex,
+          attempt: route.attempt,
+          recovery: 'Dock to reissue the writ.',
+        });
+        return true;
+      }
+      return false;
+    },
+
+    _resumeRoutesAtDock() {
+      for (const careerId of Object.keys(CAREER_ORIGIN_CONTRACTS)) {
+        const route = this._route(careerId);
+        if (!route || route.status !== ORIGIN_ROUTE_STATUS.RECOVERING
+          || route.activeMissionId) continue;
+        this._postRouteContract(careerId);
+      }
+      for (const careerId of CAREER_IDS) this._grantOriginUpgrade(careerId);
+    },
+
+    _finishMissionRoute(careerId) {
+      const route = this._route(careerId);
+      if (!route || route.status === ORIGIN_ROUTE_STATUS.COMPLETED) return false;
+      route.status = ORIGIN_ROUTE_STATUS.COMPLETED;
+      route.completedAtS = simTimeOf(this.state);
+      route.activeMissionId = null;
+      route.activeOfferId = null;
+      if (careerId === 'hunter') {
+        const own = getHunterOriginState(this.state);
+        if (own && own.offer.status !== HUNTER_OFFER_STATUS.COMPLETED) {
+          own.offer.status = HUNTER_OFFER_STATUS.COMPLETED;
+          own.phase = HUNTER_PHASE.COMPLETE;
+          own.stepIndex = CAREER_ORIGIN_CONTRACTS.hunter.length;
+          own.stepId = null;
+          if (!own.reward.granted) {
+            own.reward.granted = true;
+            own.reward.grantedAtSimTime = simTimeOf(this.state);
+            emit(this.bus, 'economy:grantCredits', {
+              amount: own.reward.credits, reason: 'origin:hunter:complete',
+            });
+          }
+          emit(this.bus, 'hunterOrigin:completed', {
+            careerId, reward: { ...own.reward }, simTime: simTimeOf(this.state),
+          });
+        }
+      } else if (careerId === 'prospector') {
+        const own = ensureProspectorOriginState(this.state, simTimeOf(this.state));
+        if (own.status !== PROSPECTOR_STATUS.COMPLETED) {
+          own.status = PROSPECTOR_STATUS.COMPLETED;
+          own.completedAt = simTimeOf(this.state);
+          own.activeStepId = null;
+          own.stepIndex = CAREER_ORIGIN_CONTRACTS.prospector.length - 1;
+          if (!own.rewardGranted) {
+            own.rewardGranted = true;
+            own.reward.grantedAt = simTimeOf(this.state);
+            emit(this.bus, 'economy:grantCredits', {
+              amount: own.reward.credits, reason: 'origin:prospector:complete',
+            });
+          }
+          emit(this.bus, 'origin:prospector:completed', {
+            originId: careerId, binding: false, reward: { ...own.reward, granted: true },
+            simTime: simTimeOf(this.state),
+          });
+        }
+      }
+      emit(this.bus, 'career:origin:completed', {
+        careerId,
+        nonBinding: true,
+        contractCount: route.completedContractIds.length,
+        upgradeKit: ORIGIN_ROLE_KITS[careerId],
+      });
+      this._grantOriginUpgrade(careerId);
+      return true;
+    },
+
+    _grantOriginUpgrade(careerId) {
+      const origins = ensureCareerOriginsState(this.state);
+      const meta = origins && origins[META_KEY];
+      const kit = ORIGIN_ROLE_KITS[careerId];
+      if (!meta || !kit || meta.upgradeReceipts[careerId]) return false;
+      if (careerId === 'hauler') {
+        if (ensureHaulerOriginState(this.state).status !== 'completed') return false;
+      } else {
+        const route = meta.routes[careerId];
+        if (!route || route.status !== ORIGIN_ROUTE_STATUS.COMPLETED) return false;
+      }
+      const ships = this.registry && typeof this.registry.get === 'function'
+        ? this.registry.get('ships') : null;
+      if (!ships || typeof ships.grantModule !== 'function') return false;
+      const granted = ships.grantModule({
+        defId: kit.defId,
+        reason: `career_origin:${careerId}:complete`,
+      });
+      if (!granted) return false;
+      meta.upgradeReceipts[careerId] = {
+        defId: kit.defId,
+        label: kit.label,
+        grantedAtS: simTimeOf(this.state),
+      };
+      if (meta.routes[careerId]) meta.routes[careerId].upgradeGranted = true;
+      emit(this.bus, 'toast', {
+        text: `${kit.label} issued. Fit it at Outfitting.`, kind: 'success', ttl: 5,
+      });
+      return true;
     },
 
     _updateHunter() {

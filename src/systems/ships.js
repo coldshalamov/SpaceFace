@@ -647,6 +647,18 @@ export const ships = {
     return true;
   },
 
+  /** Add a mission/career reward through the ships-owned inventory authority, without charging
+   *  credits. Callers own idempotent reward receipts; ships owns validation + mutation. */
+  grantModule({ defId, reason = 'reward' }) {
+    const def = defById(defId);
+    const p = this.state.player;
+    if (!def || !p || !Array.isArray(p.moduleInventory)) return false;
+    const item = { instanceId: this.nextInstanceId(), defId };
+    p.moduleInventory.push(item);
+    this.bus.emit('module:granted', { defId, instanceId: item.instanceId, reason });
+    return true;
+  },
+
   flushCargoMassRefresh() {
     if (!this._cargoMassRefreshPending) return null;
     this._cargoMassRefreshPending = false;

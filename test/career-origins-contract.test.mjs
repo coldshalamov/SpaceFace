@@ -100,7 +100,7 @@ test('one first-dock bundle exposes three independent, non-binding offers', () =
   assert.equal(state.careers.origins.__meta.offerNonce, 1);
 });
 
-test('all origins can be accepted together and Hauler binds the missions-owned active id', () => {
+test('all origins can be accepted together and each binds a missions-owned active id', () => {
   const { state, bus, system, posted } = makeHarness();
   bus.emit('dock:docked', { stationId: 'station_helios' });
 
@@ -111,8 +111,10 @@ test('all origins can be accepted together and Hauler binds the missions-owned a
   assert.equal(hauler.ok, true);
   assert.equal(hunter.ok, true);
   assert.equal(prospector.ok, true);
-  assert.equal(posted.length, 1);
+  assert.equal(posted.length, 3);
   assert.equal(posted[0].storyTag, 'origin.hauler.v1:manifest_truth');
+  assert.equal(posted[1].storyTag, 'origin.hunter.v1:yard_writ');
+  assert.equal(posted[2].storyTag, 'origin.prospector.v1:ceres_survey');
   assert.equal(state.careers.origins.hauler.activeContract.offerId, posted[0].id);
   assert.equal(state.careers.origins.hauler.activeContract.missionId, `active_${posted[0].id}`);
   assert.equal(state.careers.origins.hunter.offer.status, 'accepted');
@@ -152,6 +154,8 @@ test('Hauler offer enters the real missions authority and binds its runtime miss
   assert.equal(result.ok, true);
   assert.equal(state.missions.active.length, 1);
   assert.equal(state.missions.active[0].storyTag, 'origin.hauler.v1:manifest_truth');
+  assert.equal(state.missions.active[0].markerId, 'origin:hauler:manifest_truth');
+  assert.equal(state.nav.waypoint.markerId, 'origin:hauler:manifest_truth');
   assert.equal(state.missions.active[0].params.cmdtyId, 'cmdty_food');
   assert.equal(state.ui.trackedMissionId, state.missions.active[0].id);
   assert.equal(state.careers.origins.hauler.activeContract.missionId, state.missions.active[0].id);
