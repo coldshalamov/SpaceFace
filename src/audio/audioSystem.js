@@ -18,6 +18,11 @@ import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
+import {
+  createCuePriorityBus,
+  isPriorityCue,
+  PRIORITY_DUCK_THRESHOLD,
+} from './cuePriorityBus.js';
 
 // --- positional model (ARCHITECTURE / spec) ---
 const D_NEAR = 40;     // wu — full volume within this
@@ -95,6 +100,11 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   // Without these they collapse to the generic sfx_ui_click; each now maps to its own SPEC2/07 recipe.
   ui_open: 'sfx_ui_open', ui_back: 'sfx_ui_back', ui_tab: 'sfx_ui_tab', ui_tick: 'sfx_ui_tab',
   ui_deny: 'sfx_ui_error', ui_alert: 'sfx_ui_alert', ui_dock: 'sfx_dock_clunk',
+  // Station hub / mission-log navigation cues (must not collapse to generic click).
+  ui_accept: 'sfx_ui_confirm', ui_undock: 'sfx_undock_release',
+  ui_charge_start: 'sfx_jump_charge', ui_charge_abort: 'sfx_ui_back',
+  // Salvage scan resolve — soft Focus-adjacent ping, distinct from lock_acquired.
+  scan_resolve: 'sfx_scan_pulse',
   // Gameplay cues with dedicated recipes (drill.js loot/hazard, countermeasures.js, combat shield break).
   loot_collect: 'sfx_loot_collect', mining_core_fizzle: 'sfx_mining_core_fizzle',
   shield_break: 'sfx.shieldBreak', cm_chaff: 'sfx_cm_chaff', cm_ecm: 'sfx_cm_ecm',
@@ -128,7 +138,7 @@ export function getBusForRecipe(recipe, recipeId) {
   if ((recipe && recipe.category === 'engine') || id.includes('engine') || id.includes('boost') || id.includes('dash') || id.includes('cruise') || id.includes('brake')) {
     return 'engine';
   }
-  if ((recipe && recipe.category === 'mining') || id.includes('mining') || id.includes('ambient') || id.includes('station_hum') || id.includes('room_tone')) {
+  if ((recipe && recipe.category === 'mining') || id.includes('mining') || id.includes('ambient') || id.includes('station_hum') || id.includes('room_tone') || id.includes('fringe') || id.includes('anomaly') || id.includes('traffic') || id.includes('machinery') || id.includes('pad')) {
     return 'ambient';
   }
   if ((recipe && recipe.category === 'weapon') || (recipe && recipe.category === 'explosion') || id.includes('wpn') || id.includes('explosion') || id.includes('shield') || id.includes('armor') || id.includes('hull') || id.includes('kill') || id.includes('tether') || id.includes('detonate') || id.includes('hit')) {
@@ -199,6 +209,29 @@ export const audio = {
     rt._loopPositionDirty = true;
     rt._nextLoopPositionUpdate = 0;
     rt._musicThreatScratch = [];
+    // First-hour identity + mix hierarchy (cosmetic audio only — never mutates gameplay).
+    rt._priorityBus = createCuePriorityBus();
+    rt._priorityEngineProbe = { role: 'engineLoop', loop: true };
+    rt._priorityWeaponProbe = { role: 'weaponLoop', loop: true };
+    rt._priorityDuckEngine = 1;
+    rt._priorityDuckWeapon = 1;
+    rt._criticalSquelchUntilMs = 0;
+    rt._engineTier = 'idle';
+    rt._engineTierSince = 0;
+    rt._engineTelemetry = {
+      tier: 'idle',
+      f1: 55,
+      f2: 55,
+      noiseG: 0.0001,
+      humG: 0.48,
+      massNorm: 1,
+      duck: 1,
+    };
+    rt._lastAccelTransitionMs = 0;
+    rt._lastTrafficBlipAt = 0;
+    rt._lastMachineryAt = 0;
+    rt._lastSquelchEndTime = 0;
+    rt.sidechainDuck = 1;
     this.rt = rt;
 
     const bus = this.bus;
@@ -222,7 +255,8 @@ export const audio = {
       const pos = p && p.pos;
       const target = p && p.combatantId ? this.state.entities.get(p.combatantId) : null;
       const position = pos || (target ? { x: target.pos.x, z: target.pos.z } : null);
-      this.play('sfx_explosion_small', { position, gain: 0.7, rate: 1.6 });
+      this._applyPriorityCue({ id: 'shield.collapse', importance: 0.92, playerRelevance: 1 });
+      this.play('sfx.shieldBreak', { position, gain: 0.7, critical: true });
     });
     bus.on('shieldRestored', () => {});
     bus.on('entity:killed', (p) => this._onKilled(p));
@@ -250,19 +284,34 @@ export const audio = {
     bus.on('jump:chargeStart', () => {
       this._duckMusic();
       this.play('sfx_jump_charge', { gain: 0.5, rate: 0.6 }); // early charge buildup
+      this.play('sfx_travel_motif', { gain: 0.35, rate: 0.85 });
     });
     bus.on('jump:start', (p) => this._onJump(p));
     // Jump arrival: play the decompression whoosh when the player ACTUALLY materializes at the
     // destination (the jump:arrive event from world.js after the 1.2s tunnel). Previously arrival
     // was silent — _onJump used a fixed 400ms setTimeout that raced the real arrival time and never
     // fired on aborted jumps. Subscribing to the real event syncs the sound to the visual exactly.
-    bus.on('jump:arrive', () => this.play('sfx_jump_arrive', { gain: 0.7 }));
+    bus.on('jump:arrive', () => {
+      this.play('sfx_jump_arrive', { gain: 0.7 });
+      this.play('sfx_travel_motif', { gain: 0.28, rate: 1.25 });
+    });
     // Mining yield: each ore chunk gained was silent (only the per-tick beam impact had sound).
     // A soft impact ping makes the reward loop read — throttled so a burst of yields isn't noise.
     bus.on('mining:yield', (p) => this._onMiningYield(p));
+    bus.on('mining:seamHit', (p) => this._onSeamHit(p));
+    bus.on('weapons:vent', (p) => {
+      if (p && p.ownerId === this.state.playerId && p.phase === 'end') this._onVentBonus(p);
+    });
+    bus.on('charge:detonated', (p) => {
+      const hits = p && Array.isArray(p.hits) ? p.hits.length : 0;
+      this.play('sfx.chargeDetonate', {
+        position: p && p.pos,
+        gain: clamp(0.55 + hits * 0.08, 0.55, 1),
+      });
+    });
     // Low-fuel alarm: fuel:empty fired with no sound (no warning before you're stranded). A short
     // alert cue surfaces the emergency. (The continuous low-health alarm is a separate poller.)
-    bus.on('fuel:empty', () => this._onCue('alert'));
+    bus.on('fuel:empty', () => this._onCue({ id: 'alert', importance: 0.9, duck: true }));
     // Tech research + ship purchase: the two biggest credit sinks were silent. A confirm chime
     // makes the payoff of a major purchase/upgrade land.
     bus.on('tech:researched', () => this.play('sfx_mission_complete', { gain: 0.6 }));
@@ -275,12 +324,37 @@ export const audio = {
     });
     bus.on('ship:boostStop', (p) => {});
     bus.on('ship:dash', (p) => {
-      // Dash: louder, higher-pitched whoosh for the signature ability.
-      // Player-only (a fleet of dashing NPCs would be noise).
-      if (p && p.shipId === this.state.playerId) this.play('sfx_boost_whoosh', { gain: 0.6, rate: 1.4 });
+      // Dash: layered whoosh+thump (juice recipe), player-only.
+      if (p && p.shipId === this.state.playerId) this.play('sfx.shipDash', { gain: 0.7 });
+    });
+    // Cruise travel grammar (existing sim events; recipes already in juice table).
+    // Sustained cruise drone is the engine-hum 'cruise' tier (65 Hz fifth) — do NOT
+    // start a second continuous_oscillator via play() (would leak a loop voice).
+    bus.on('cruise:charging', () => this.play('sfx.cruiseCharging', { gain: 0.45 }));
+    bus.on('cruise:engaged', () => {
+      this.play('sfx_travel_motif', { gain: 0.35, rate: 1.05 });
+    });
+    bus.on('cruise:snared', () => {
+      this._applyPriorityCue({ id: 'cruise.snared', importance: 0.88, playerRelevance: 1 });
+      this.play('sfx.cruiseSnared', { gain: 0.75, critical: true });
+    });
+    // Focus / scan pulse — one clear transition motif on an existing scanner seam.
+    bus.on('scan:pulse', () => {
+      if (this._motionReduced()) return;
+      this.play('sfx_scan_pulse', { gain: 0.45 });
+    });
+    // One-voice comms squelch (never overlaps; queue by gate).
+    bus.on('comms:popup', (p) => this._onCommsPopup(p));
+    // Live priority duck from presentation importance (Destiny hierarchy).
+    bus.on('presentation:cue', (p) => {
+      if (p && isPriorityCue(p)) this._applyPriorityCue(p);
     });
     bus.on('toast', (p) => this._onCue((p && (p.kind === 'error' ? 'error' : 'click'))));
-    bus.on('alert', (p) => this._onCue('alert'));
+    bus.on('alert', (p) => this._onCue({
+      id: 'alert',
+      importance: (p && (p.sev === 'danger' || p.sev === 'warn')) ? 0.9 : 0.75,
+      duck: !!(p && (p.sev === 'danger' || p.sev === 'warn')),
+    }));
     bus.on('audio:cue', (p) => this._onCue(p));
     bus.on('settings:changed', (p) => { if (!p || p.section === 'audio' || p.section == null) this._applySettings(); });
 
@@ -365,9 +439,59 @@ export const audio = {
     this._applySettings();
     try { if (ctx.state === 'suspended') ctx.resume(); } catch (_) {}
 
+    // Continuous layers must start once the graph exists (P0.1 — ensure paths were dead).
+    this._ensureContinuousSources();
     this._buildMusic();
     this._startFrameLoop();
     return ctx;
+  },
+
+  /** Start continuous engine / brake / tether graphs once AudioContext is live. */
+  _ensureContinuousSources() {
+    this._ensureEngineHum();
+    this._ensureBrakeHiss();
+    this._ensureTetherHum();
+  },
+
+  _wallClockMs() {
+    return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  },
+
+  _motionReduced() {
+    const s = this.state && this.state.settings;
+    return !!(s && s.video && s.video.motionReduce);
+  },
+
+  /**
+   * Apply cue-priority duck envelope to weaponLoop / engineLoop targets.
+   * Critical speech / objective / warning also opens a short squelch window so UI & weapon
+   * one-shots do not stack over the important cue (Destiny mix hierarchy).
+   */
+  _applyPriorityCue(cue) {
+    const rt = this.rt;
+    if (!rt || !rt._priorityBus) return null;
+    const nowMs = this._wallClockMs();
+    const envelope = rt._priorityBus.applyCue(cue, nowMs);
+    if (!envelope) return null;
+    rt._criticalSquelchUntilMs = Math.max(rt._criticalSquelchUntilMs || 0, envelope.endMs);
+    return envelope;
+  },
+
+  _isCriticalSquelchActive() {
+    const rt = this.rt;
+    if (!rt) return false;
+    return this._wallClockMs() < (rt._criticalSquelchUntilMs || 0);
+  },
+
+  /** True when a recipe/id should cut through the squelch window (speech/objective/critical). */
+  _isPriorityVoice(recipeId, opts) {
+    if (opts && (opts.critical || opts.priorityCue)) return true;
+    const id = String(recipeId || '');
+    if (id.includes('squelch') || id.includes('alert') || id.includes('mission') || id.includes('lock_acquired')) return true;
+    if (id.includes('shieldBreak') || id.includes('cruiseSnared') || id.includes('player_death')) return true;
+    if (id.startsWith('presentation.') || id.includes('objective') || id.includes('comms')) return true;
+    const cat = (AUDIO_RECIPE_BY_ID[recipeId] && AUDIO_RECIPE_BY_ID[recipeId].category) || '';
+    return cat === 'comms';
   },
 
   // Pause/resume handler. Ducks music to silence and stops alarm scheduling so the pause menu is
@@ -455,6 +579,13 @@ export const audio = {
     if (!recipe) return null;
     opts = opts || {};
 
+    const busName = getBusForRecipe(recipe, recipeId);
+    // Strict hierarchy: while speech / objective / critical warning owns the ear,
+    // do not stack weapon fire or routine UI noise on top of it.
+    if (this._isCriticalSquelchActive() && !this._isPriorityVoice(recipeId, opts)) {
+      if (busName === 'ui' || busName === 'combat') return null;
+    }
+
     let att = 1, pan = 0, rate = opts.rate || 1;
     if (opts.position) {
       const p = this._playerPos();
@@ -463,12 +594,14 @@ export const audio = {
       att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
       pan = clamp((opts.position.x - p.x) / PAN_SPAN, -1, 1);
     }
-    const callGain = (opts.gain == null ? 1 : opts.gain);
+    let callGain = (opts.gain == null ? 1 : opts.gain);
+    if (this._motionReduced() && (busName === 'ambient' || recipeId.includes('traffic') || recipeId.includes('machinery'))) {
+      callGain *= 0.35;
+    }
     const recipeAmp = (recipe.gainEnvelope && recipe.gainEnvelope.peak) || this._ampFor(recipe);
     const peak = Math.min(1, recipeAmp * callGain * att);
     if (peak < 0.0008) return null;
 
-    const busName = getBusForRecipe(recipe, recipeId);
     let targetBus = rt.sfxBus;
     if (busName === 'engine') targetBus = rt.engineBus;
     else if (busName === 'ambient') targetBus = rt.ambientBus;
@@ -492,6 +625,8 @@ export const audio = {
     }, rt._caches);
     voice.busName = busName;
     voice._panner = panner;
+    voice.loop = !!recipe.loop || (recipe.type && String(recipe.type).startsWith('continuous'));
+    voice.role = busName === 'engine' ? 'engineLoop' : (recipe.category === 'weapon' && voice.loop ? 'weaponLoop' : busName);
     rt.voices.push(voice);
     return voice;
   },
@@ -551,7 +686,15 @@ export const audio = {
     if (!ctx || ctx.state !== 'running') return;
     if (rt.loops['beam_' + ownerId]) return;
     const v = this._startLoopVoice('sfx_wpn_beam_laser', pos, 0.85);
-    if (v) { v.trackId = ownerId; rt.loops['beam_' + ownerId] = v; this._markLoopPositionDirty(); }
+    if (v) {
+      v.trackId = ownerId;
+      v.role = 'weaponLoop';
+      v.loop = true;
+      v.busName = 'combat';
+      v._baseGain = v.callGain != null ? v.callGain : 0.85;
+      rt.loops['beam_' + ownerId] = v;
+      this._markLoopPositionDirty();
+    }
   },
 
   _stopBeam(ownerId) {
@@ -697,12 +840,33 @@ export const audio = {
       att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
       pan = clamp((position.x - pp.x) / PAN_SPAN, -1, 1);
     }
-    let dest = rt.sfxBus, panner = null;
-    if (ctx.createStereoPanner) { panner = ctx.createStereoPanner(); panner.pan.value = pan; panner.connect(rt.sfxBus); dest = panner; }
+    // Shared-bus reconciliation: loops must hit the same per-bus gains as one-shots
+    // (combat slider, ambient sidechain duck, engine bus, etc.). Never bypass onto sfxBus.
+    const busName = getBusForRecipe(recipe, recipeId);
+    let targetBus = rt.sfxBus;
+    if (busName === 'engine') targetBus = rt.engineBus || rt.sfxBus;
+    else if (busName === 'ambient') targetBus = rt.ambientBus || rt.sfxBus;
+    else if (busName === 'combat') targetBus = rt.combatBus || rt.sfxBus;
+    else if (busName === 'ui') targetBus = rt.uiBus || rt.sfxBus;
+    else if (busName === 'comms') targetBus = rt.commsBus || rt.sfxBus;
+
+    let dest = targetBus;
+    let panner = null;
+    if (pan !== 0 && ctx.createStereoPanner) {
+      panner = ctx.createStereoPanner();
+      panner.pan.value = pan;
+      panner.connect(targetBus);
+      dest = panner;
+    }
     const peak = Math.min(1, this._ampFor(recipe) * (gain == null ? 1 : gain) * att);
     const v = playRecipe(ctx, recipe, dest, { peakGain: Math.max(0.02, peak), id: rt._nextVoiceId++ }, rt._caches);
     v._panner = panner;
     v._baseGain = this._ampFor(recipe) * (gain == null ? 1 : gain);
+    v.busName = busName;
+    v.loop = true;
+    v.role = busName === 'engine'
+      ? 'engineLoop'
+      : ((recipe.category === 'weapon' || String(recipeId).includes('wpn')) ? 'weaponLoop' : busName);
     rt.voices.push(v);
     return v;
   },
@@ -714,40 +878,51 @@ export const audio = {
   },
 
   _onDocked(p) {
-    // Docking sequence: metallic clunk impact + confirmation chime
+    // Docking sequence: metallic clunk impact + confirmation chime + place mood
     this.play('sfx_dock_clunk', { gain: 0.9 });
     // Slight delay on the confirmation chime so it feels like clunk-then-lock
     setTimeout(() => this.play('sfx_ui_confirm', { gain: 0.6, rate: 0.7 }), 180);
     this.rt._docked = true;
+    this.rt._dockStationId = p && p.stationId ? p.stationId : null;
     this._markMusicDirty();
-    // Start ambient station hum loop
-    this._startStationHum();
+    // Start ambient station hum loop (faction-tinted when possible)
+    this._startStationHum(p);
   },
 
   _onUndocked() {
     this.rt._docked = false;
+    this.rt._dockStationId = null;
     this._markMusicDirty();
-    // Stop station hum
+    // Soft release whoosh then stop station hum — undock is decompress, not another clunk.
+    this.play('sfx_undock_release', { gain: 0.55 });
     this._stopStationHum();
   },
 
-  _startStationHum() {
+  _startStationHum(p) {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx || ctx.state !== 'running') return;
     if (rt.loops.stationHum) return;
+    // Place identity: Helios / SCN trade hubs sit slightly brighter; others cooler/darker.
+    // Read-only station/sector ids — never mutates gameplay state.
+    const stationId = (p && p.stationId) || rt._dockStationId || '';
+    const sectorId = (this.state.world && this.state.world.currentSectorId) || '';
+    const isHelios = String(stationId).includes('helios') || String(sectorId).includes('helios');
+    const baseFreq = isHelios ? 66 : 58;
+    const ventCenter = isHelios ? 340 : 280;
+    const humPeak = isHelios ? 0.045 : 0.038;
     // Build a layered station hum: low drone + ventilation noise
     const humOsc = ctx.createOscillator();
     humOsc.type = 'triangle';
-    humOsc.frequency.value = 60;
+    humOsc.frequency.value = baseFreq;
     const humOsc2 = ctx.createOscillator();
     humOsc2.type = 'sine';
-    humOsc2.frequency.value = 120.2; // slight detune for chorus
+    humOsc2.frequency.value = baseFreq * 2 + (isHelios ? 0.4 : 0.2); // slight detune for chorus
     const humGain = ctx.createGain();
     humGain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    humGain.gain.linearRampToValueAtTime(0.04, ctx.currentTime + 2.0); // slow fade in
+    humGain.gain.linearRampToValueAtTime(humPeak, ctx.currentTime + 2.0); // slow fade in
     const humFilter = ctx.createBiquadFilter();
     humFilter.type = 'lowpass';
-    humFilter.frequency.value = 200;
+    humFilter.frequency.value = isHelios ? 230 : 190;
     humFilter.Q.value = 1.0;
     // Ventilation layer: filtered noise
     const ventBuf = getNoiseBuffer(ctx, rt._caches);
@@ -755,23 +930,25 @@ export const audio = {
     ventSrc.buffer = ventBuf;
     ventSrc.loop = true;
     const ventGain = ctx.createGain();
-    ventGain.gain.value = 0.015;
+    ventGain.gain.value = isHelios ? 0.012 : 0.015;
     const ventFilter = ctx.createBiquadFilter();
     ventFilter.type = 'bandpass';
-    ventFilter.frequency.value = 300;
+    ventFilter.frequency.value = ventCenter;
     ventFilter.Q.value = 0.5;
     humOsc.connect(humFilter);
     humOsc2.connect(humFilter);
     humFilter.connect(humGain);
     ventSrc.connect(ventFilter);
-    ventFilter.connect(humGain);
-    humGain.connect(rt.sfxBus);
+    ventFilter.connect(ventGain);
+    ventGain.connect(humGain);
+    humGain.connect(rt.ambientBus);
     try { humOsc.start(ctx.currentTime); humOsc2.start(ctx.currentTime); ventSrc.start(ctx.currentTime); } catch (_) {}
     rt.loops.stationHum = {
       nodes: [humOsc, humOsc2, ventSrc, humGain, humFilter, ventFilter, ventGain],
       gain: humGain, sources: [humOsc, humOsc2, ventSrc], extra: [],
       startedAt: ctx.currentTime, loop: true, stopAt: Infinity, _stopped: false,
-      releaseDur: 1.5, callGain: 0.04, id: rt._nextVoiceId++,
+      releaseDur: 1.5, callGain: humPeak, id: rt._nextVoiceId++,
+      role: 'ambient', busName: 'ambient',
     };
   },
 
@@ -819,11 +996,25 @@ export const audio = {
     if (!id) { this.play('sfx_ui_click', { gain: 0.7 }); return; }
     const rid = resolveAudioCueRecipeId(id);
     const opts = (cue && typeof cue === 'object') ? cue : {};
+    const importance = Number.isFinite(opts.importance)
+      ? opts.importance
+      : (opts.duck ? Math.max(PRIORITY_DUCK_THRESHOLD, 0.85) : 0);
+    // Priority duck for high-importance presentation / objective / warning cues.
+    if (opts.duck || importance >= PRIORITY_DUCK_THRESHOLD) {
+      this._applyPriorityCue({
+        id: opts.cueId || id,
+        audioId: id,
+        importance: Math.max(importance, PRIORITY_DUCK_THRESHOLD),
+        playerRelevance: Number.isFinite(opts.playerRelevance) ? opts.playerRelevance : 1,
+      });
+    }
     if (opts.duck) this._duckMusic(opts.duckSeconds || 0.8);
+    const isCritical = importance >= PRIORITY_DUCK_THRESHOLD || !!opts.duck;
     this.play(rid, {
       gain: opts.gain == null ? 0.8 : opts.gain,
       position: opts.position || null,
       rate: opts.rate || 1,
+      critical: isCritical,
     });
   },
 
@@ -1417,12 +1608,19 @@ export const audio = {
     // Apply setting gains with current sidechain factor
     this._applySettings();
 
+    // Priority duck continuous loops before engine/weapon gain writes
+    this._updatePriorityDuckGains();
+
+    // Ensure continuous graphs once context is running (gesture may land after first events).
+    if (ctx.state === 'running' && !rt.engineOsc1) this._ensureContinuousSources();
+
     // Update continuous procedural sources
     this._updateEngineHum();
     this._updateBrakeHiss(dt);
     this._updateTetherHum();
     this._updatePads(now);
     this._updateStationMurmur(now);
+    this._updatePlaceContext(now);
 
     // recover music gain after a duck (skip while paused — _onPause manages the bus)
     if (!rt._paused && rt._duckUntil && now >= rt._duckUntil && rt.musicBus) {
@@ -1464,7 +1662,18 @@ export const audio = {
       let att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
       const pan = clamp((e.pos.x - pp.x) / PAN_SPAN, -1, 1);
       const t = now == null ? rt.ctx.currentTime : now;
-      try { v.gain.gain.setTargetAtTime(Math.max(0.0001, (v._baseGain || 0.3) * att), t, 0.05); } catch (_) {}
+      const isWeaponLoop = v.role === 'weaponLoop'
+        || (v.busName === 'combat' && v.loop);
+      const priorityDuck = isWeaponLoop
+        ? (rt._priorityDuckWeapon == null ? 1 : rt._priorityDuckWeapon)
+        : 1;
+      try {
+        v.gain.gain.setTargetAtTime(
+          Math.max(0.0001, (v._baseGain || 0.3) * att * priorityDuck),
+          t,
+          0.05,
+        );
+      } catch (_) {}
       if (v._panner) { try { v._panner.pan.setTargetAtTime(pan, t, 0.05); } catch (_) {} }
     };
     for (const k in rt.loops) apply(rt.loops[k]);
@@ -1517,19 +1726,35 @@ export const audio = {
     if (!ctx) return;
 
     let recipeId = 'sfx_squelch_ambient';
+    let critical = false;
     if (category === 'story' || category === 'priority') {
       recipeId = 'sfx_squelch_story';
+      critical = true;
+      this._applyPriorityCue({
+        id: `comms.${category}`,
+        importance: 0.9,
+        playerRelevance: 1,
+      });
     } else if (category === 'danger' || category === 'warning' || category === 'alert') {
       recipeId = 'sfx_squelch_danger';
+      critical = true;
+      // Danger/story comms own the ear briefly so weapon/UI one-shots cannot stack.
+      this._applyPriorityCue({
+        id: `comms.${category}`,
+        importance: 0.9,
+        playerRelevance: 1,
+      });
     }
 
-    this.play(recipeId, { gain: 0.8, startTime });
+    this.play(recipeId, { gain: 0.8, startTime, critical });
   },
 
   _ensureEngineHum() {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx || rt.engineOsc1) return;
 
+    // Layered propulsion bus: osc1 saw + osc2 sine (detune 6 ct) + sub sine + noise air.
+    // Gain master for priority duck; voice peak lives on engineBus budgets.
     const humGain = ctx.createGain();
     humGain.gain.value = 0.8;
 
@@ -1541,6 +1766,12 @@ export const audio = {
     osc2.type = 'sine';
     osc2.frequency.value = 55;
     osc2.detune.value = 6;
+
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.value = 27.5;
+    const subGain = ctx.createGain();
+    subGain.gain.value = 0.12;
 
     const noise = ctx.createBufferSource();
     noise.buffer = getNoiseBuffer(ctx, rt._caches);
@@ -1556,7 +1787,9 @@ export const audio = {
 
     osc1.connect(humGain);
     osc2.connect(humGain);
-    
+    sub.connect(subGain);
+    subGain.connect(humGain);
+
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
     noiseGain.connect(humGain);
@@ -1566,48 +1799,134 @@ export const audio = {
     try {
       osc1.start(ctx.currentTime);
       osc2.start(ctx.currentTime);
+      sub.start(ctx.currentTime);
       noise.start(ctx.currentTime);
     } catch (_) {}
 
     rt.engineHumGain = humGain;
     rt.engineOsc1 = osc1;
     rt.engineOsc2 = osc2;
+    rt.engineSub = sub;
+    rt.engineSubGain = subGain;
     rt.engineNoise = noise;
     rt.engineNoiseGain = noiseGain;
+    rt.engineNoiseFilter = noiseFilter;
+    rt._engineTier = 'idle';
+  },
+
+  /**
+   * Resolve thrust tier from live flight state (read-only).
+   * Spec2/07: idle 55 / thrust 78 / boost 110+noise / cruise 65 clean fifth.
+   */
+  _resolveEngineTier(player) {
+    const cruise = this.state.player && this.state.player.cruise;
+    if (cruise && cruise.phase === 'cruising') return 'cruise';
+    if (player && player.flags && player.flags.boosting) return 'boost';
+    const input = this.state.input;
+    const thrusting = !!(input && (
+      Math.abs(Number(input.moveZ) || 0) > 0.02 ||
+      Math.abs(Number(input.moveX) || 0) > 0.02
+    ));
+    return thrusting ? 'thrust' : 'idle';
+  },
+
+  _engineTierRank(tier) {
+    if (tier === 'idle') return 0;
+    if (tier === 'thrust') return 1;
+    if (tier === 'boost') return 2;
+    if (tier === 'cruise') return 3;
+    return 0;
   },
 
   _updateEngineHum() {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx || !rt.engineOsc1 || rt._paused) return;
 
-    const player = this.state.entities.get(this.state.playerId);
-    const boosting = !!(player && player.flags && player.flags.boosting);
-    const cruise = this.state.player && this.state.player.cruise;
-    const cruising = cruise && cruise.phase === 'cruising';
-    
-    const thrusting = !!(this.state.input && (
-      Math.abs(Number(this.state.input.moveZ) || 0) > 0.02 ||
-      Math.abs(Number(this.state.input.moveX) || 0) > 0.02
-    ));
+    // Ensure continuous graph if context was rebuilt mid-session.
+    if (!rt.engineHumGain) this._ensureEngineHum();
 
-    let f1 = 55, f2 = 55, d2 = 6, noiseG = 0.0001;
-    if (cruising) {
-      f1 = 65;
-      f2 = 65 * 1.5;
-      d2 = 0;
-    } else if (boosting) {
-      f1 = 110;
-      f2 = 110;
-      noiseG = 0.06;
-    } else if (thrusting) {
-      f1 = 78;
-      f2 = 78;
+    const player = this.state.entities.get(this.state.playerId);
+    const tier = this._resolveEngineTier(player);
+    const prev = rt._engineTier || 'idle';
+    const nowMs = this._wallClockMs();
+
+    // Acceleration transition motif when stepping energy UP (idle→thrust, thrust→boost).
+    // Throttled; skipped under motion-reduce (accessibility).
+    if (tier !== prev) {
+      const steppedUp = this._engineTierRank(tier) > this._engineTierRank(prev)
+        && (prev === 'idle' || prev === 'thrust')
+        && (tier === 'thrust' || tier === 'boost');
+      if (steppedUp && !this._motionReduced() && (nowMs - (rt._lastAccelTransitionMs || 0)) > 280) {
+        rt._lastAccelTransitionMs = nowMs;
+        this.play('sfx_accel_transition', { gain: tier === 'boost' ? 0.4 : 0.28 });
+      }
+      rt._engineTier = tier;
+      rt._engineTierSince = nowMs;
     }
 
-    rt.engineOsc1.frequency.setTargetAtTime(f1, ctx.currentTime, 0.1);
-    rt.engineOsc2.frequency.setTargetAtTime(f2, ctx.currentTime, 0.1);
-    rt.engineOsc2.detune.setTargetAtTime(d2, ctx.currentTime, 0.1);
-    rt.engineNoiseGain.gain.setTargetAtTime(noiseG, ctx.currentTime, 0.15);
+    // Mass-aware sub (read entity.derived only — ships owns writes).
+    const derived = player && player.derived;
+    const mass = Number(derived && (derived.mass || derived.hullMass)) || 1;
+    const massNorm = clamp(mass / 120, 0.55, 1.8);
+
+    // Spec frequencies are exact; place identity lives in the station/palette layers.
+    let f1 = 55, f2 = 55, d2 = 6, noiseG = 0.0001, noiseHz = 300, subG = 0.08 * massNorm, humG = 0.55;
+    if (tier === 'cruise') {
+      f1 = 65;
+      f2 = 65 * 1.5; // clean fifth
+      d2 = 0;
+      noiseG = 0.008;
+      noiseHz = 220;
+      subG = 0.1 * massNorm;
+      humG = 0.62;
+    } else if (tier === 'boost') {
+      f1 = 110;
+      f2 = 110;
+      d2 = 4;
+      noiseG = 0.06;
+      noiseHz = 480;
+      subG = 0.16 * massNorm;
+      humG = 0.85;
+    } else if (tier === 'thrust') {
+      f1 = 78;
+      f2 = 78;
+      d2 = 6;
+      noiseG = 0.02;
+      noiseHz = 340;
+      subG = 0.12 * massNorm;
+      humG = 0.72;
+    } else {
+      // idle — quiet living hum at the exact 55 Hz contract
+      humG = 0.48;
+    }
+
+    // Priority duck mult on continuous engine loop (weapon loops handled separately).
+    const duck = rt._priorityDuckEngine == null ? 1 : rt._priorityDuckEngine;
+    humG *= duck;
+
+    // Portamento ~300 ms (setTarget timeConstant ≈ 0.1).
+    const tc = 0.1;
+    const t = ctx.currentTime;
+    try {
+      rt.engineOsc1.frequency.setTargetAtTime(f1, t, tc);
+      rt.engineOsc2.frequency.setTargetAtTime(f2, t, tc);
+      rt.engineOsc2.detune.setTargetAtTime(d2, t, tc);
+      if (rt.engineSub) rt.engineSub.frequency.setTargetAtTime(f1 * 0.5, t, tc);
+      if (rt.engineSubGain) rt.engineSubGain.gain.setTargetAtTime(subG, t, 0.12);
+      rt.engineNoiseGain.gain.setTargetAtTime(noiseG * duck, t, 0.15);
+      if (rt.engineNoiseFilter) rt.engineNoiseFilter.frequency.setTargetAtTime(noiseHz, t, 0.12);
+      if (rt.engineHumGain) rt.engineHumGain.gain.setTargetAtTime(Math.max(0.0001, humG), t, 0.08);
+    } catch (_) {}
+
+    // Mutate a stable telemetry object for harness/evidence traces (no per-frame allocation).
+    const telemetry = rt._engineTelemetry;
+    telemetry.tier = tier;
+    telemetry.f1 = f1;
+    telemetry.f2 = f2;
+    telemetry.noiseG = noiseG;
+    telemetry.humG = humG;
+    telemetry.massNorm = massNorm;
+    telemetry.duck = duck;
   },
 
   _ensureBrakeHiss() {
@@ -1638,11 +1957,14 @@ export const audio = {
 
   _updateBrakeHiss(dt) {
     const rt = this.rt, ctx = rt.ctx;
-    if (!ctx || !rt.brakeGain || rt._paused) return;
+    if (!ctx || rt._paused) return;
+    if (!rt.brakeGain) this._ensureBrakeHiss();
+    if (!rt.brakeGain) return;
 
     const player = this.state.entities.get(this.state.playerId);
-    const speed = player ? Math.hypot(player.vel.x, player.vel.z) : 0;
-    const braking = !!(this.state.input && this.state.input.actions.brake);
+    const speed = player && player.vel ? Math.hypot(player.vel.x, player.vel.z) : 0;
+    const actions = this.state.input && this.state.input.actions;
+    const braking = !!(actions && actions.brake) || !!(this.state.input && this.state.input.brake);
 
     let decel = 0;
     if (rt._prevSpeed !== undefined) {
@@ -1652,7 +1974,7 @@ export const audio = {
 
     let targetGain = 0.0001;
     if (braking && speed > 20) {
-      targetGain = Math.min(0.25, decel * 0.04);
+      targetGain = Math.min(0.25, Math.max(0.04, decel * 0.04));
     }
 
     rt.brakeGain.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.05);
@@ -1681,7 +2003,9 @@ export const audio = {
 
   _updateTetherHum() {
     const rt = this.rt, ctx = rt.ctx;
-    if (!ctx || !rt.tetherOsc || rt._paused) return;
+    if (!ctx || rt._paused) return;
+    if (!rt.tetherOsc) this._ensureTetherHum();
+    if (!rt.tetherOsc) return;
 
     const tether = this.state.player && this.state.player.tether;
     const active = !!(tether && tether.active);
@@ -1698,6 +2022,31 @@ export const audio = {
     rt.tetherOsc.frequency.setTargetAtTime(targetFreq, ctx.currentTime, 0.05);
     rt.tetherHum.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.05);
     rt.tetherHum.gainValue = targetGain;
+  },
+
+  /** Apply cue-priority envelope gains to continuous engine + weapon loops each frame. */
+  _updatePriorityDuckGains() {
+    const rt = this.rt;
+    if (!rt || !rt._priorityBus) return;
+    const nowMs = this._wallClockMs();
+    rt._priorityDuckEngine = rt._priorityBus.gainFor(rt._priorityEngineProbe, nowMs);
+    rt._priorityDuckWeapon = rt._priorityBus.gainFor(rt._priorityWeaponProbe, nowMs);
+
+    // Scale active beam/weapon loops without touching music/critical one-shots.
+    const wDuck = rt._priorityDuckWeapon;
+    if (rt.loops) {
+      for (const key in rt.loops) {
+        const v = rt.loops[key];
+        if (!v || !v.gain || !v.gain.gain) continue;
+        const isWeaponLoop = key.startsWith('beam_') || v.role === 'weaponLoop'
+          || (v.busName === 'combat' && v.loop);
+        if (!isWeaponLoop) continue;
+        const base = v._baseGain != null ? v._baseGain : (v.callGain != null ? v.callGain : 0.5);
+        try {
+          v.gain.gain.setTargetAtTime(Math.max(0.0001, base * wDuck), rt.ctx.currentTime, 0.04);
+        } catch (_) {}
+      }
+    }
   },
 
   _startPad(className, startTime) {
@@ -1722,6 +2071,9 @@ export const audio = {
     nodes.push(lfo, lfoGain);
 
     if (className === 'core') {
+      // Core: exact clean-fifths family (A2+E3); Helios varies only the layer balance.
+      const sectorId = this.state.world && this.state.world.currentSectorId;
+      const isHelios = sectorId && String(sectorId).includes('helios');
       const freqs = [110, 164.81, 220, 329.63];
       for (let i = 0; i < 4; i++) {
         const osc = ctx.createOscillator();
@@ -1729,7 +2081,7 @@ export const audio = {
         osc.frequency.value = freqs[i];
         
         const g = ctx.createGain();
-        g.gain.value = i < 2 ? 0.15 : 0.08;
+        g.gain.value = i < 2 ? (isHelios ? 0.16 : 0.14) : (isHelios ? 0.09 : 0.07);
         lfoGain.connect(g.gain);
 
         osc.connect(g);
@@ -1911,10 +2263,39 @@ export const audio = {
   _updateStationMurmur(now) {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx || !rt._docked || rt._paused) return;
+    if (this._motionReduced()) return;
 
     if (now - (rt._lastMurmurTime || 0) >= 8 + Math.random() * 10) {
       rt._lastMurmurTime = now;
       this._playPAMurmur();
+    }
+  },
+
+  /**
+   * Restrained place context: sparse station machinery when docked; quiet Helios traffic
+   * blips only in calm undocked flight. Silence discipline — never a constant bed of noise.
+   */
+  _updatePlaceContext(now) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || rt._paused || this._motionReduced()) return;
+    if (rt.threat != null && rt.threat >= 0.35) return; // combat owns the mix
+
+    if (rt._docked) {
+      if (now - (rt._lastMachineryAt || 0) >= 6 + Math.random() * 8) {
+        rt._lastMachineryAt = now;
+        this.play('sfx_station_machinery', { gain: 0.12 });
+      }
+      return;
+    }
+
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    const isHelios = sectorId && String(sectorId).includes('helios');
+    if (!isHelios) return;
+    if (rt.musicState === 'combat' || rt.musicState === 'tense') return;
+
+    if (now - (rt._lastTrafficBlipAt || 0) >= 14 + Math.random() * 18) {
+      rt._lastTrafficBlipAt = now;
+      this.play('sfx_traffic_blip', { gain: 0.08, rate: 0.9 + Math.random() * 0.25 });
     }
   },
 
@@ -1924,9 +2305,14 @@ export const audio = {
 
     const syllables = 4 + Math.floor(Math.random() * 5);
     let time = ctx.currentTime;
+    // Helios PA sits slightly brighter (still unintelligible).
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    const isHelios = sectorId && String(sectorId).includes('helios');
+    const base = isHelios ? 390 : 350;
+    const peak = isHelios ? 0.012 : 0.015;
 
     for (let i = 0; i < syllables; i++) {
-      const freq = 350 + Math.random() * 250;
+      const freq = base + Math.random() * 250;
       const dur = 0.08 + Math.random() * 0.12;
       
       const o = ctx.createOscillator();
@@ -1935,13 +2321,13 @@ export const audio = {
 
       const filter = ctx.createBiquadFilter();
       filter.type = 'bandpass';
-      filter.frequency.value = 600;
+      filter.frequency.value = isHelios ? 700 : 600;
       filter.Q.value = 2.0;
 
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.0001, time);
-      g.gain.linearRampToValueAtTime(0.015, time + 0.01);
-      g.gain.setValueAtTime(0.015, time + dur - 0.01);
+      g.gain.linearRampToValueAtTime(peak, time + 0.01);
+      g.gain.setValueAtTime(peak, time + dur - 0.01);
       g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
 
       o.connect(filter);

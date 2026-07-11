@@ -75,6 +75,9 @@ class MockAudioContext {
   createGain() { return new MockGainNode(); }
   createOscillator() { return new MockOscillatorNode(); }
   createBiquadFilter() { return new MockBiquadFilterNode(); }
+  createWaveShaper() {
+    return { curve: null, oversample: 'none', connect() {}, disconnect() {} };
+  }
   createDynamicsCompressor() {
     return {
       threshold: new MockAudioParam(-6),
@@ -104,6 +107,7 @@ globalThis.window = {
 // Import the systems
 import { RECIPES } from '../src/data/audioRecipes.js';
 import { audio, AUDIO_RECIPE_BY_ID, resolveAudioCueRecipeId } from '../src/audio/audioSystem.js';
+import { createCuePriorityBus } from '../src/audio/cuePriorityBus.js';
 import { SECTOR_PALETTE_CLASSES } from '../src/data/sectors.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -141,67 +145,60 @@ console.log('Check 1 PASSED: All 14 required spec recipes are defined.');
 // CHECK 2: Mix Budget & Headroom (60s Combat Simulation)
 // ==========================================
 console.log('\nRunning Check 2: Mix Budget...');
-// We simulate a worst-case scenario over 60 seconds with active voices decay
-const voicesList = [];
+// Drive the real audio.play scheduler and rt.voices list for a scripted 60-second combat mix.
+const budgetCtx = new MockAudioContext();
+audio.state = {
+  playerId: 'budget-player',
+  entities: new Map([['budget-player', { id: 'budget-player', pos: { x: 0, z: 0 } }]]),
+  settings: { audio: {} },
+};
+audio.rt = {
+  ctx: budgetCtx,
+  masterGain: budgetCtx.createGain(),
+  sfxBus: budgetCtx.createGain(),
+  musicBus: budgetCtx.createGain(),
+  engineBus: budgetCtx.createGain(),
+  ambientBus: budgetCtx.createGain(),
+  combatBus: budgetCtx.createGain(),
+  uiBus: budgetCtx.createGain(),
+  commsBus: budgetCtx.createGain(),
+  voices: [],
+  loops: {},
+  _caches: {},
+  _nextVoiceId: 1,
+  _criticalSquelchUntilMs: 0,
+};
 let maxActive = 0;
 let maxPeak = 0;
 
-// Simulate triggering many combat hits simultaneously
 const dt = 1 / 60;
 for (let t = 0; t < 60; t += dt) {
-  // Evict active voices that have ended
-  for (let i = voicesList.length - 1; i >= 0; i--) {
-    const v = voicesList[i];
-    if (t - v.start > v.duration) {
-      voicesList.splice(i, 1);
-    }
-  }
-
-  // Trigger triggers periodically
+  budgetCtx.currentTime = t;
+  audio._gcVoices(t);
   if (Math.abs(t % 0.8) < dt) {
-    // start 4 hits
     for (let c = 0; c < 4; c++) {
-      if (voicesList.length >= 12) {
-        // Oldest-quietest eviction
-        let oldestIdx = 0;
-        let oldestT = Infinity;
-        for (let j = 0; j < voicesList.length; j++) {
-          if (voicesList[j].start < oldestT) {
-            oldestT = voicesList[j].start;
-            oldestIdx = j;
-          }
-        }
-        voicesList.splice(oldestIdx, 1);
-      }
-      voicesList.push({ start: t, duration: 0.15, gain: 0.25 * 0.25119 }); // combat bus scaling
+      audio.play('sfx.shieldHit', { gain: 0.25 });
     }
   }
 
   if (Math.abs(t % 4.0) < dt) {
-    // major explosion
-    if (voicesList.length >= 12) {
-      voicesList.splice(0, 1);
-    }
-    voicesList.push({ start: t, duration: 0.6, gain: 0.7 * 0.25119 }); // combat bus scaling
+    audio.play('sfx.killSmall', { gain: 0.7 });
   }
 
-  // Check voice count
-  maxActive = Math.max(maxActive, voicesList.length);
-  assert(voicesList.length <= 12, `Voice count exceeded 12: currently ${voicesList.length}`);
+  maxActive = Math.max(maxActive, audio.rt.voices.length);
+  assert(audio.rt.voices.length <= 12,
+    `Live scheduler voice count exceeded 12: currently ${audio.rt.voices.length}`);
 
-  // Calculate master peak (linear sum of active voice gains scaled by master gain -6dBFS = 0.501187)
   let sumG = 0;
-  for (const v of voicesList) {
-    sumG += v.gain;
-  }
-  const currentPeak = sumG * 0.501187;
+  for (const voice of audio.rt.voices) sumG += voice.callGain * 0.25119;
+  const currentPeak = sumG * 0.501187; // combat bus then master limiter target
   maxPeak = Math.max(maxPeak, currentPeak);
 }
 
-console.log(`Peak simulated voice count: ${maxActive} (max budget: 12)`);
-console.log(`Peak simulated master peak: ${maxPeak.toFixed(4)} (max headroom: 0.5012)`);
+console.log(`Peak live-scheduler voice count: ${maxActive} (max budget: 12)`);
+console.log(`Peak live-scheduler master peak: ${maxPeak.toFixed(4)} (max headroom: 0.5012)`);
 assert(maxPeak <= 0.501187, 'Master peak headroom limit of -6dBFS exceeded!');
-console.log('Check 2 PASSED: Headroom and voice budget enforced successfully.');
+console.log('Check 2 PASSED: live scheduler enforces headroom and voice budget.');
 
 // ==========================================
 // CHECK 3: Tether Hum Monotonicity
@@ -356,9 +353,11 @@ const EMITTED_CUES = {
   ui_open: { distinct: true }, ui_back: { distinct: true }, ui_tab: { distinct: true },
   ui_tick: { distinct: true }, ui_deny: { distinct: true }, ui_alert: { distinct: true },
   ui_dock: { distinct: true }, ui_confirm: { distinct: true }, ui_click: { distinct: false },
+  ui_accept: { distinct: true }, ui_undock: { distinct: true },
+  ui_charge_start: { distinct: true }, ui_charge_abort: { distinct: true },
   click: { distinct: false }, hover: { distinct: true }, confirm: { distinct: true },
   deny: { distinct: true }, alert: { distinct: true }, error: { distinct: true },
-  lock_acquired: { distinct: true },
+  lock_acquired: { distinct: true }, scan_resolve: { distinct: true },
   // Gameplay
   loot_collect: { distinct: true }, mining_core_fizzle: { distinct: true },
   shield_break: { distinct: true }, cm_chaff: { distinct: true }, cm_ecm: { distinct: true },
@@ -423,5 +422,148 @@ assert(unlisted.length === 0,
   `Add each to EMITTED_CUES with an intended resolution so it can't silently collapse to a click.`);
 console.log(`Check 6 PASSED: ${Object.keys(EMITTED_CUES).length} semantic cues resolve to real recipes; ` +
   `${discovered.size} discovered literal cues all covered, none collapse unintentionally.`);
+
+// ==========================================
+// CHECK 7: Continuous layers + priority bus + place recipes (first-hour identity floor)
+// ==========================================
+console.log('\nRunning Check 7: Continuous layers / priority wiring / place recipes...');
+const audioSrc = fs.readFileSync(path.join(__dirname, '../src/audio/audioSystem.js'), 'utf8');
+assert.match(audioSrc, /_ensureContinuousSources\s*\(/, 'audioSystem must own _ensureContinuousSources');
+assert.match(audioSrc, /this\._ensureEngineHum\s*\(\)/, 'ensure path must call _ensureEngineHum');
+assert.match(audioSrc, /this\._ensureBrakeHiss\s*\(\)/, 'ensure path must call _ensureBrakeHiss');
+assert.match(audioSrc, /this\._ensureTetherHum\s*\(\)/, 'ensure path must call _ensureTetherHum');
+assert.match(audioSrc, /createCuePriorityBus/, 'live graph must import createCuePriorityBus');
+assert.match(audioSrc, /comms:popup/, 'comms squelch must subscribe to comms:popup');
+assert.match(audioSrc, /scan:pulse/, 'Focus motif must bind existing scan:pulse seam');
+assert.match(audioSrc, /cruise:charging/, 'cruise travel grammar must bind cruise:charging');
+assert.match(audioSrc, /sfx_travel_motif/, 'travel motif recipe must be used');
+assert.match(audioSrc, /sfx_accel_transition/, 'acceleration transition motif must be used');
+assert.match(audioSrc, /sfx_undock_release/, 'undock mood must use undock release recipe');
+assert.match(audioSrc, /_isCriticalSquelchActive/, 'critical squelch gate must exist');
+assert.match(audioSrc, /_updatePriorityDuckGains/, 'priority duck must apply to continuous loops each frame');
+assert.match(audioSrc, /bus\.on\('mining:seamHit'/, 'seam reward recipe must be reachable');
+assert.match(audioSrc, /bus\.on\('weapons:vent'/, 'vent reward recipe must be reachable');
+assert.match(audioSrc, /bus\.on\('charge:detonated'/, 'impulse detonation recipe must be reachable');
+assert.equal(AUDIO_RECIPE_BY_ID['sfx.shieldHit'].category, 'weapon',
+  'shield hits must route through the combat bus');
+assert.equal(AUDIO_RECIPE_BY_ID['sfx.playerDamage'].category, 'weapon',
+  'player damage must route through the combat bus');
+
+const placeRecipes = [
+  'sfx_fringe_tick', 'sfx_anomaly_swell', 'sfx_accel_transition', 'sfx_undock_release',
+  'sfx_scan_pulse', 'sfx_travel_motif', 'sfx_station_machinery', 'sfx_traffic_blip',
+];
+for (const rid of placeRecipes) {
+  assert(AUDIO_RECIPE_BY_ID[rid], `First-hour place/identity recipe ${rid} must be defined`);
+}
+
+// Live continuous ensure: after mock context + ensure, engine oscillators exist
+const engState = {
+  playerId: 'p1',
+  entities: new Map([
+    ['p1', { id: 'p1', pos: { x: 0, z: 0 }, flags: { boosting: false }, vel: { x: 0, z: 0 }, derived: { mass: 80 } }],
+  ]),
+  player: { cruise: { phase: 'idle' }, tether: { active: false, strain: 0 } },
+  input: { moveX: 0, moveZ: 0, actions: { brake: false } },
+  world: { currentSectorId: 'sector_helios_prime', sectors: { sector_helios_prime: { id: 'sector_helios_prime', palette: SECTOR_PALETTE_CLASSES.core } } },
+  settings: { audio: {}, video: { motionReduce: false } },
+  ui: {},
+};
+const engCtx = new MockAudioContext();
+audio.state = engState;
+audio.bus = { on() {} };
+audio.rt = {
+  ctx: engCtx,
+  musicBus: engCtx.createGain(),
+  ambientBus: engCtx.createGain(),
+  engineBus: engCtx.createGain(),
+  combatBus: engCtx.createGain(),
+  uiBus: engCtx.createGain(),
+  commsBus: engCtx.createGain(),
+  masterGain: engCtx.createGain(),
+  sfxBus: engCtx.createGain(),
+  _caches: {},
+  _paused: false,
+  _priorityBus: null,
+  _priorityEngineProbe: { role: 'engineLoop', loop: true },
+  _priorityWeaponProbe: { role: 'weaponLoop', loop: true },
+  _priorityDuckEngine: 1,
+  _priorityDuckWeapon: 1,
+  _engineTelemetry: {
+    tier: 'idle', f1: 55, f2: 55, noiseG: 0.0001, humG: 0.48, massNorm: 1, duck: 1,
+  },
+  pads: {},
+  loops: {},
+  voices: [],
+  sidechainDuck: 1,
+};
+audio.rt._priorityBus = createCuePriorityBus();
+audio._ensureContinuousSources();
+assert(audio.rt.engineOsc1, 'Engine osc1 must exist after ensure');
+assert(audio.rt.engineOsc2, 'Engine osc2 must exist after ensure');
+assert(audio.rt.engineNoiseGain, 'Engine noise layer must exist after ensure');
+assert(audio.rt.brakeGain, 'Brake hiss must exist after ensure');
+assert(audio.rt.tetherOsc, 'Tether hum must exist after ensure');
+
+// Tier frequencies: idle → thrust → boost → cruise.
+const tiers = [
+  { moveZ: 0, boosting: false, cruise: 'idle', expect: 55, name: 'idle', sector: 'sector_helios_prime' },
+  { moveZ: 0, boosting: false, cruise: 'idle', expect: 55, name: 'idle', sector: 'sector_ceres_belt' },
+  { moveZ: 1, boosting: false, cruise: 'idle', expect: 78, name: 'thrust', sector: 'sector_helios_prime' },
+  { moveZ: 1, boosting: true, cruise: 'idle', expect: 110, name: 'boost', sector: 'sector_helios_prime' },
+  { moveZ: 0, boosting: false, cruise: 'cruising', expect: 65, name: 'cruise', sector: 'sector_helios_prime' },
+];
+for (const row of tiers) {
+  engState.world.currentSectorId = row.sector;
+  engState.input.moveZ = row.moveZ;
+  engState.entities.get('p1').flags.boosting = row.boosting;
+  engState.player.cruise = { phase: row.cruise };
+  audio._updateEngineHum();
+  // setTargetAtTime on mock may not update .value — read telemetry
+  const tel = audio.rt._engineTelemetry;
+  assert(tel && tel.tier === row.name, `Engine tier must resolve to ${row.name}, got ${tel && tel.tier}`);
+  assert(Math.abs(tel.f1 - row.expect) < 0.01, `Engine ${row.name} f1 must be ${row.expect} in ${row.sector}, got ${tel.f1}`);
+}
+// Loop voices must share the same bus routing as one-shots (no sfxBus bypass).
+assert.match(
+  audioSrc,
+  /_startLoopVoice[\s\S]{0,900}getBusForRecipe/,
+  'loop voices must route via getBusForRecipe for shared bus reconciliation',
+);
+assert.match(
+  audioSrc,
+  /_startLoopVoice[\s\S]{0,1200}combatBus/,
+  'loop voices must be able to target combatBus',
+);
+
+// Positional refreshes run after priority duck updates. They must preserve the duck rather
+// than restoring a moving beam to its full base gain.
+const beamTarget = {
+  id: 'beam-target',
+  type: 'ship',
+  pos: { x: 120, z: 0 },
+  alive: true,
+};
+engState.entities.set(beamTarget.id, beamTarget);
+const beamGain = engCtx.createGain();
+const beamVoice = {
+  trackId: beamTarget.id,
+  role: 'weaponLoop',
+  busName: 'combat',
+  loop: true,
+  _baseGain: 0.8,
+  gain: beamGain,
+};
+audio.rt.loops.beam_test = beamVoice;
+audio.rt._priorityDuckWeapon = 0.4;
+audio._updateLoopPositions(engCtx.currentTime);
+const beamGainTarget = beamGain.gain.timeline.at(-1);
+assert.equal(beamGainTarget.type, 'target');
+assert(
+  beamGainTarget.val < 0.8 * 0.5,
+  `positional beam refresh must retain priority duck, got ${beamGainTarget.val}`,
+);
+
+console.log('Check 7 PASSED: continuous ensures, priority wiring, place recipes, thrust tiers.');
 
 console.log('\n--- ALL AUDIO IDENTITY CHECKS PASSED SUCCESSFULLY ---');

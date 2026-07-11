@@ -350,7 +350,7 @@ export const RECIPES = [
   // --- SPEC2/07 Juice Table SFX (1:1 bindings) ---
   {
     id: 'sfx.shieldHit',
-    category: 'ui',
+    category: 'weapon',
     type: 'oscillator',
     baseFreq: 880,
     freqSweep: [880, 660],
@@ -447,7 +447,7 @@ export const RECIPES = [
   },
   {
     id: 'sfx.playerDamage',
-    category: 'ui',
+    category: 'weapon',
     type: 'oscillator',
     baseFreq: 220,
     gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.15 },
@@ -595,6 +595,94 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.005, sustain: 0.8, release: 0.02 },
     filterType: 'bandpass', filterFreq: 800, filterQ: 3.0,
     distortionAmount: 0.6,
+  },
+
+  // --- Place one-shots (palette pads; sparse, silence-disciplined) ---
+  // category 'mining' is the ambient peak tier (0.3); getBusForRecipe routes id tokens to ambient bus.
+  {
+    id: 'sfx_fringe_tick',
+    category: 'mining',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.04 },
+    filterType: 'bandpass', filterFreq: 2800, filterQ: 4.0,
+  },
+  {
+    id: 'sfx_anomaly_swell',
+    category: 'mining',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 55,
+    freqSweep: [55, 148],
+    sweepTimeS: 0.9,
+    gainEnvelope: { attack: 0.12, sustain: 0.0, release: 0.7 },
+    filterType: 'lowpass', filterFreq: 420,
+    reverbMix: 0.45, reverbDecay: 1.8,
+  },
+
+  // --- First-hour identity motifs (procedural, exclusive roles) ---
+  // Accel step: idle→thrust / thrust→boost — short sub + air, never reused for UI.
+  {
+    id: 'sfx_accel_transition',
+    category: 'engine',
+    type: 'layered',
+    layers: ['sfx_dash_thump', 'sfx_boost_whoosh'],
+    gainMult: 0.55,
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.18 },
+  },
+  // Undock release: soft airy decompress (dock is clunk; undock is release).
+  {
+    id: 'sfx_undock_release',
+    category: 'engine',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.03, sustain: 0.0, release: 0.45 },
+    filterType: 'bandpass', filterFreq: 380, filterQ: 0.55,
+  },
+  // Scan pulse / Focus transition — soft ascending fifth pair (distinct from lock_acquired).
+  {
+    id: 'sfx_scan_pulse',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 392,
+    freqSweep: [392, 588],
+    sweepTimeS: 0.14,
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.22 },
+    filterType: 'highpass', filterFreq: 280,
+  },
+  // Travel arc stinger (jump charge peak / cruise engage) — clean two-tone rise, not UI confirm.
+  {
+    id: 'sfx_travel_motif',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 98,
+    freqSweep: [98, 196],
+    sweepTimeS: 0.55,
+    gainEnvelope: { attack: 0.04, sustain: 0.15, release: 0.35 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 1.2,
+  },
+  // Restrained station machinery tick (docked only; sparse).
+  {
+    id: 'sfx_station_machinery',
+    category: 'mining',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.08 },
+    filterType: 'bandpass', filterFreq: 180, filterQ: 2.5,
+  },
+  // Distant traffic context (Helios calm flight only; very quiet).
+  {
+    id: 'sfx_traffic_blip',
+    category: 'mining',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 520,
+    freqSweep: [520, 410],
+    sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.5,
   },
 ];
 
