@@ -640,6 +640,48 @@ export const missions = {
     return true;
   },
 
+  /**
+   * Missions-owned seam for authored, deterministic contracts such as M3 Hauler steps.
+   * The caller supplies a normal board offer; this method alone inserts and accepts it so
+   * collateral, active ids, mission navigation, rewards, and receipts keep one authority.
+   */
+  postAndAcceptAuthoredOffer(rawOffer) {
+    if (!rawOffer || typeof rawOffer !== 'object') return { ok: false, reason: 'bad_offer' };
+    const offer = JSON.parse(JSON.stringify(rawOffer));
+    if (!offer.id || !offer.type || !offer.stationId || !offer.params) {
+      return { ok: false, reason: 'bad_offer_shape' };
+    }
+    const duplicate = (this.state.missions.active || []).find((mission) => (
+      mission && mission.status === 'active' && offer.storyTag
+      && mission.storyTag === offer.storyTag
+    ));
+    if (duplicate) return { ok: true, missionId: duplicate.id, offerId: offer.id, reused: true };
+
+    if (!this.state.missions.boards || typeof this.state.missions.boards !== 'object') {
+      this.state.missions.boards = {};
+    }
+    let board = this.state.missions.boards[offer.stationId];
+    if (!board || typeof board !== 'object') {
+      board = { refreshEpoch: this._epoch(), slots: [] };
+      this.state.missions.boards[offer.stationId] = board;
+    }
+    if (!Array.isArray(board.slots)) board.slots = [];
+    board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
+    board.slots.unshift(offer);
+
+    if (!this.acceptMission(offer.id)) {
+      board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
+      return { ok: false, reason: 'accept_failed', offerId: offer.id };
+    }
+    const mission = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.status === 'active'
+      && ((offer.storyTag && candidate.storyTag === offer.storyTag) || candidate.id === offer.id)
+    ));
+    return mission
+      ? { ok: true, missionId: mission.id, offerId: offer.id, reused: false }
+      : { ok: false, reason: 'accepted_instance_missing', offerId: offer.id };
+  },
+
   _acceptPreflight(offer) {
     if (offer && offer.factionId) {
       const minRep = missionOfferMinRep(offer, this.state);

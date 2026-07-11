@@ -494,7 +494,7 @@ function departureReadinessChips(state) {
   ];
 }
 
-function departureReadinessSummary(chips) {
+export function departureReadinessSummary(chips) {
   const list = Array.isArray(chips) ? chips.filter(Boolean) : [];
   const issues = list.filter((chip) => chip.kind === 'bad' || chip.kind === 'warn');
   const hasBad = issues.some((chip) => chip.kind === 'bad');
@@ -505,13 +505,15 @@ function departureReadinessSummary(chips) {
     .map((chip) => (String(chip.label || 'Check') + ': ' + String(chip.text || '')).trim())
     .filter((text) => text.length > 2)
     .join('; ');
+  const title = issueText
+    ? 'Departure Check: ' + status + '. ' + issueText + '. Undock remains available.'
+    : 'Departure Check: READY. Tracked work, cargo, fuel, and hull look serviceable.';
   return {
     state,
     status,
     label: '⏏ UNDOCK · ' + status,
-    title: issueText
-      ? 'Departure Check: ' + status + '. ' + issueText + '. Undock remains available.'
-      : 'Departure Check: READY. Tracked work, cargo, fuel, and hull look serviceable.',
+    title,
+    accessibleLabel: 'Undock. ' + title,
   };
 }
 
@@ -924,6 +926,8 @@ export const stationHub = {
   _stationId: null,
   _subbed: false,
   _busyEl: null,
+  _originRailEl: null,
+  _originSelectedId: null,
   _activeRefreshJob: null,
   _activeRefreshRaf: 0,
   _activeRefreshTimer: 0,
@@ -1013,6 +1017,45 @@ export const stationHub = {
     centerStage.appendChild(statusRow);
     this._econBadge = statusRow.querySelector('.st-econ-badge');
     this._econMorphMount = statusRow.querySelector('.st-econ-mount');
+
+    // First-dock career origins: one compact, non-binding action rail. It is intentionally
+    // independent of the disposable station checklist below and delegates every mutation to the
+    // registered careerOrigins authority.
+    const originRail = document.createElement('section');
+    originRail.className = 'st-origin-rail';
+    originRail.hidden = true;
+    originRail.setAttribute('aria-labelledby', 'st-origin-rail-title');
+    originRail.setAttribute('data-testid', 'career-origin-rail');
+    originRail.innerHTML =
+      '<div class="st-origin-head">' +
+        '<span id="st-origin-rail-title" class="st-origin-kicker mono">Choose a first run</span>' +
+        '<span class="st-origin-note">Optional. Paths never lock each other.</span>' +
+      '</div>' +
+      '<div class="st-origin-choices" role="group" aria-label="Career origin paths"></div>' +
+      '<div class="st-origin-action">' +
+        '<span class="st-origin-detail" aria-live="polite"></span>' +
+        '<button type="button" class="st-origin-accept st-meta-btn" data-origin-action="accept" data-testid="career-origin-accept">Start path</button>' +
+        '<button type="button" class="st-origin-decline st-meta-btn" data-origin-action="decline" data-testid="career-origin-decline">Not now</button>' +
+      '</div>';
+    centerStage.appendChild(originRail);
+    this._originRailEl = originRail;
+    this._originSelectedId = null;
+    originRail.addEventListener('click', (ev) => {
+      const choice = ev.target.closest('[data-origin-career]');
+      if (choice && originRail.contains(choice)) {
+        this._originSelectedId = choice.getAttribute('data-origin-career');
+        this._refreshOriginRail();
+        ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+        return;
+      }
+      const action = ev.target.closest('[data-origin-action]');
+      if (!action || !originRail.contains(action) || !this._originSelectedId) return;
+      const verb = action.getAttribute('data-origin-action');
+      if (verb !== 'accept' && verb !== 'decline') return;
+      ctx.bus.emit(`career:origin:${verb}`, { careerId: this._originSelectedId });
+      ctx.bus.emit('audio:cue', { id: verb === 'accept' ? 'ui_accept' : 'ui_tab' });
+      this._refreshOriginRail();
+    });
 
     // Disposable first-dock checklist (single strip, dismissible — never permanent multi-card chrome).
     const handoff = document.createElement('div');
@@ -2579,8 +2622,59 @@ export const stationHub = {
       const summary = departureReadinessSummary(chips);
       this._undockBtn.textContent = summary.label;
       this._undockBtn.title = summary.title;
-      this._undockBtn.setAttribute('aria-label', summary.title);
+      this._undockBtn.setAttribute('aria-label', summary.accessibleLabel);
       this._undockBtn.setAttribute('data-readiness', summary.state);
+    }
+  },
+
+  _refreshOriginRail() {
+    if (!this._originRailEl) return;
+    const registry = this._ctx && this._ctx.registry;
+    const origins = registry && typeof registry.get === 'function' && registry.get('careerOrigins');
+    const view = origins && typeof origins.getOfferView === 'function'
+      ? origins.getOfferView()
+      : null;
+    const offers = view && Array.isArray(view.offers) ? view.offers : [];
+    const available = offers.filter((offer) => offer && (offer.canAccept || offer.canDecline));
+    this._originRailEl.hidden = available.length === 0;
+    if (!available.length) {
+      this._originSelectedId = null;
+      return;
+    }
+    if (!available.some((offer) => offer.careerId === this._originSelectedId)) {
+      this._originSelectedId = available[0].careerId;
+    }
+
+    const choices = this._originRailEl.querySelector('.st-origin-choices');
+    if (choices) {
+      choices.innerHTML = offers.map((offer) => {
+        const id = String(offer.careerId || '');
+        const selected = id === this._originSelectedId;
+        const inactive = !(offer.canAccept || offer.canDecline);
+        const status = inactive ? String(offer.status || 'closed') : 'available';
+        return '<button type="button" class="st-origin-choice' + (selected ? ' is-selected' : '')
+          + (inactive ? ' is-resolved' : '') + '" data-origin-career="' + escapeHtml(id)
+          + '" data-testid="career-origin-choice-' + escapeHtml(id) + '" aria-pressed="'
+          + (selected ? 'true' : 'false') + '"><span class="st-origin-choice-name">'
+          + escapeHtml(offer.title || id) + '</span><span class="st-origin-choice-status mono">'
+          + escapeHtml(status) + '</span></button>';
+      }).join('');
+    }
+
+    const selected = offers.find((offer) => offer.careerId === this._originSelectedId) || available[0];
+    const detail = this._originRailEl.querySelector('.st-origin-detail');
+    const accept = this._originRailEl.querySelector('[data-origin-action="accept"]');
+    const decline = this._originRailEl.querySelector('[data-origin-action="decline"]');
+    if (detail) detail.textContent = selected.line || 'Optional starter work.';
+    if (accept) {
+      accept.textContent = selected.acceptLabel || 'Start path';
+      accept.disabled = !selected.canAccept;
+      accept.setAttribute('aria-label', `${selected.acceptLabel || 'Start path'}: ${selected.title}`);
+    }
+    if (decline) {
+      decline.textContent = selected.declineLabel || 'Not now';
+      decline.disabled = !selected.canDecline;
+      decline.setAttribute('aria-label', `${selected.declineLabel || 'Not now'}: ${selected.title}`);
     }
   },
 
@@ -2608,6 +2702,7 @@ export const stationHub = {
     this._refreshRailServiceStatus();
     this._refreshPurpose();
     this._refreshDeparture();
+    this._refreshOriginRail();
     this._refreshHandoff();
     this._refreshSchematicAndNodes();
     this._refreshEconAndReadiness();
@@ -2648,6 +2743,7 @@ export const stationHub = {
     this._refreshRailServiceStatus();
     this._refreshPurpose();
     this._refreshDeparture();
+    this._refreshOriginRail();
     this._refreshHandoff();
     this._refreshSchematicAndNodes();
     this._refreshEconAndReadiness();
@@ -2691,9 +2787,11 @@ export const stationHub = {
     };
     const refreshDeparture = () => { if (this._visible()) this._refreshDeparture(); };
     const refreshHandoff = () => { if (this._visible()) this._refreshHandoff(); };
+    const refreshOrigins = () => { if (this._visible()) this._refreshOriginRail(); };
     // market-affecting
     bus.on('economy:tradeCompleted', onActive(['market', 'services', 'hold']));
     bus.on('economy:tradeCompleted', refreshHandoff);
+    bus.on('economy:tradeCompleted', refreshOrigins);
     bus.on('economy:tick', onActive(['market', 'hold']));
     bus.on('cargo:changed', onActive(['market', 'outfit', 'services', 'hold']));
     bus.on('cargo:changed', refreshDeparture);
@@ -2724,6 +2822,7 @@ export const stationHub = {
       if (this._activePanelId() === 'missions') this._refreshMissions();
       this._refreshDeparture();
       this._refreshHandoff();
+      this._refreshOriginRail();
     });
     bus.on('mission:accepted', (payload) => {
       if (!this._visible()) return;
@@ -2731,10 +2830,18 @@ export const stationHub = {
       if (this._activePanelId() === 'missions') this._refreshMissions();
       this._refreshDeparture();
       this._refreshHandoff();
+      this._refreshOriginRail();
     });
-    bus.on('mission:completed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); });
-    bus.on('mission:failed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); });
+    bus.on('mission:completed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); refreshOrigins(); });
+    bus.on('mission:failed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); refreshOrigins(); });
     bus.on('mission:expired', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); });
+    bus.on('career:origins:offered', refreshOrigins);
+    bus.on('career:origins:accepted', refreshOrigins);
+    bus.on('career:origins:declined', refreshOrigins);
+    bus.on('career:origins:abandoned', refreshOrigins);
+    bus.on('career:origin:completed', refreshOrigins);
+    bus.on('hunterOrigin:completed', refreshOrigins);
+    bus.on('origin:prospector:completed', refreshOrigins);
     bus.on('economy:eventStarted', onActive(['market']));
     bus.on('economy:eventEnded', onActive(['market']));
   },
@@ -3013,6 +3120,28 @@ const STATION_CSS = `
 .st-purpose-sub { display: flex; flex-direction: column; gap: 4px; color: var(--ink-mute); font-size: .72rem; line-height: 1.35; margin-top: 4px; }
 .st-purpose-tab { color: var(--ink-dim); }
 
+.st-origin-rail { display: grid; grid-template-columns: minmax(150px, .7fr) minmax(300px, 1.4fr) minmax(290px, 1fr);
+  align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid rgba(57,208,255,.22);
+  background: linear-gradient(90deg, rgba(57,208,255,.07), rgba(8,15,25,.2)); flex: none; }
+.st-origin-rail[hidden] { display: none; }
+.st-origin-head { display: grid; gap: 2px; min-width: 0; }
+.st-origin-kicker { color: var(--st-accent); font-size: .62rem; letter-spacing: .15em; text-transform: uppercase; }
+.st-origin-note { color: var(--ink-dim); font-size: .69rem; line-height: 1.3; }
+.st-origin-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.st-origin-choice { display: flex; justify-content: space-between; align-items: center; gap: 5px; min-width: 0;
+  padding: 7px 9px; border: 1px solid rgba(140,174,202,.24); border-radius: 4px;
+  color: var(--ink-dim); background: rgba(6,13,22,.52); text-align: left; cursor: pointer; }
+.st-origin-choice:hover { color: var(--ink); border-color: rgba(57,208,255,.48); }
+.st-origin-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.st-origin-choice.is-selected { color: var(--ink); border-color: var(--st-accent); background: rgba(57,208,255,.1); }
+.st-origin-choice.is-resolved { opacity: .56; }
+.st-origin-choice-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .76rem; font-weight: 700; }
+.st-origin-choice-status { flex: none; color: var(--ink-mute); font-size: .53rem; letter-spacing: .08em; text-transform: uppercase; }
+.st-origin-action { display: grid; grid-template-columns: minmax(120px, 1fr) auto auto; align-items: center; gap: 6px; min-width: 0; }
+.st-origin-detail { color: var(--ink-dim); font-size: .69rem; line-height: 1.25; overflow: hidden;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; }
+.st-origin-action .st-meta-btn { padding: 6px 9px; white-space: nowrap; }
+.st-origin-action .st-meta-btn:disabled { opacity: .4; cursor: default; }
 .st-handoff { display: grid; gap: 6px; padding: 8px 16px; border-bottom: 1px solid rgba(57,208,255,.18); flex: none; }
 .st-handoff-head { display: flex; flex-direction: column; gap: 1px; }
 .st-handoff-label { color: var(--st-accent); font-size: .58rem; letter-spacing: .16em; text-transform: uppercase; }
@@ -3124,6 +3253,7 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-hub--os .st-center-stage { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 .st-hub--os .st-content { flex: 1 1 0; min-height: 0; }
 .st-hub--os .st-handoff--strip { flex: none; padding: 6px 12px; gap: 6px; }
+.st-hub--os .st-origin-rail { padding: 6px 12px; gap: 8px; }
 .st-hub--os .st-handoff-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .st-hub--os .st-handoff-dismiss { margin-left: auto; font-size: .72rem; padding: 4px 10px; }
 .st-hub--os .st-handoff-steps { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -3461,6 +3591,9 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 
 @media (max-width: 900px) {
   .st-stage-grid { grid-template-columns: 1fr; grid-template-rows: none; }
+  .st-origin-rail { grid-template-columns: 1fr; }
+  .st-origin-head { grid-template-columns: auto 1fr; align-items: baseline; gap: 8px; }
+  .st-origin-action { grid-template-columns: minmax(0, 1fr) auto auto; }
 }
 
 /* shipyard */
