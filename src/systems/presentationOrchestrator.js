@@ -1,5 +1,6 @@
 import { getPresentationRecipe } from '../presentation/cueRecipes.js';
 import { normalizePresentationEvent } from '../presentation/cueSchema.js';
+import { damageLayerHierarchy, grammarForDoctrine, isLiveDoctrineId } from '../presentation/combatChoreography.js';
 
 export const PRESENTATION_ORCHESTRATOR_SCHEMA_VERSION = 1;
 
@@ -31,14 +32,10 @@ export const presentationOrchestrator = {
     this._emitted = 0;
     this._suppressed = 0;
     this._lastCue = null;
+    this._doctrineCycles = new Map();
     this._subscriptions = [
       this.bus.on('scenario:beatEntered', (payload) => this._onScenarioBeat(payload || {})),
-      this.bus.on('tether:attached', (payload) => this._emitCue('tether.attach', payload || {}, {
-        sourceEvent: 'tether:attached',
-        sourceId: payload && payload.actorId,
-        targetId: payload && payload.targetId,
-        material: 'massline',
-      })),
+      this.bus.on('tether:attached', (payload) => this._onTetherAttached(payload || {})),
       this.bus.on('tether:nearBreak', (payload) => this._emitCue('tether.near_break', payload || {}, {
         sourceEvent: 'tether:nearBreak',
         sourceId: payload && payload.actorId,
@@ -80,6 +77,12 @@ export const presentationOrchestrator = {
       // presentation:cue is emitted. The releaseScore drives magnitude so adapters can scale.
       this.bus.on('tether:releaseRated', (payload) => this._onReleaseRated(payload || {})),
       this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {})),
+      this.bus.on('ai:telegraph', (payload) => this._onDoctrineTelegraph(payload || {})),
+      this.bus.on('combat:fire', (payload) => this._onCombatFire(payload || {})),
+      this.bus.on('combat:actionStarted', (payload) => this._onCombatActionStarted(payload || {})),
+      this.bus.on('projectile:nearMiss', (payload) => this._onProjectileNearMiss(payload || {})),
+      this.bus.on('entity:killed', (payload) => this._onEntityKilled(payload || {})),
+      this.bus.on('entity:destroyed', (payload) => this._clearDoctrineCyclesFor(payload && payload.id)),
       this.bus.on('combat:subsystemDisabled', (payload) => this._emitCue('subsystem.disabled', payload || {}, {
         sourceEvent: 'combat:subsystemDisabled',
         targetId: payload && payload.targetId,
@@ -111,6 +114,7 @@ export const presentationOrchestrator = {
 
   _resetRuntime() {
     if (this._lastByDedupeKey) this._lastByDedupeKey.clear();
+    if (this._doctrineCycles) this._doctrineCycles.clear();
     this._laneCounts = {};
     this._laneTick = -1;
     this._lastCue = null;
@@ -133,14 +137,161 @@ export const presentationOrchestrator = {
   },
 
   _onCombatDamage(payload) {
-    if (!payload.brokeShield) return;
-    this._emitCue('shield.collapse', payload, {
-      sourceEvent: 'combat:damage',
-      sourceId: payload.attackerId,
-      targetId: payload.targetId,
-      material: 'shield',
-      magnitude: Math.max(1, Number(payload.applied) || Number(payload.amount) || 0),
+    const layers = damageLayerHierarchy(payload);
+    const hasLayerReceipt = Number.isFinite(payload.shieldDamage) || Number.isFinite(payload.armorDamage) || Number.isFinite(payload.hullDamage);
+    if (hasLayerReceipt) {
+      this._emitCue('combat.damage.applied', payload, {
+        sourceEvent: 'combat:damage',
+        sourceId: payload.attackerId,
+        targetId: payload.targetId,
+        material: payload.dominantLayer || layers[layers.length - 1] || 'damage',
+        magnitude: Math.max(1, Number(payload.applied) || Number(payload.amount) || 0),
+        tags: layers,
+      });
+      if (payload.targetId === this.state.playerId || payload.isPlayer) {
+        this._emitCue('combat.player.hit', payload, {
+          sourceEvent: 'combat:damage',
+          sourceId: payload.attackerId,
+          targetId: payload.targetId,
+          material: payload.dominantLayer || layers[layers.length - 1] || 'damage',
+          magnitude: Math.max(1, Number(payload.applied) || Number(payload.amount) || 0),
+          tags: layers,
+        });
+      }
+    }
+    // Keep the established shield-collapse cue as the terminal receipt for this event; existing
+    // headless checks and alert consumers use it as the authoritative break acknowledgement.
+    if (payload.brokeShield) {
+      this._emitCue('shield.collapse', payload, {
+        sourceEvent: 'combat:damage',
+        sourceId: payload.attackerId,
+        targetId: payload.targetId,
+        material: 'shield',
+        magnitude: Math.max(1, Number(payload.applied) || Number(payload.amount) || 0),
+      });
+    }
+    const killed = Number(payload.after && payload.after.hull) <= 0 && Number(payload.before && payload.before.hull) > 0;
+    this._completeDoctrineCycle(payload.attackerId, payload.targetId, killed ? 'kill' : 'hit', payload);
+  },
+
+  _onDoctrineTelegraph(payload) {
+    const sourceId = payload.entityId ?? payload.sourceId ?? null;
+    const targetId = payload.targetId ?? null;
+    const doctrineId = payload.doctrineId || null;
+    if (sourceId == null || targetId == null || !isLiveDoctrineId(doctrineId)) return;
+    const grammar = grammarForDoctrine(doctrineId);
+    const cycle = { sourceId, targetId, doctrineId, grammar, actionEmitted: false, startedTick: currentTick(this.state) };
+    this._doctrineCycles.set(sourceId, cycle);
+    const common = {
+      sourceEvent: 'ai:telegraph',
+      sourceId,
+      targetId,
+      material: 'doctrine',
+      sequence: cycle.startedTick,
+    };
+    this._emitCue('combat.doctrine.setup', payload, {
+      ...common,
+      tags: [doctrineId, grammar.shape, 'setup'],
     });
+    this._emitCue('combat.doctrine.telegraph', payload, {
+      ...common,
+      magnitude: Math.max(1, Number(payload.durationTicks) || grammar.telegraphTicks),
+      tags: [doctrineId, grammar.shape, grammar.telegraphKind, 'telegraph'],
+    });
+  },
+
+  _onCombatFire(payload) {
+    const sourceId = payload.ownerId ?? payload.sourceId ?? null;
+    const cycle = sourceId == null ? null : this._doctrineCycles.get(sourceId);
+    this._emitDoctrineAction(cycle, { ...payload, pos: payload.origin || payload.pos }, 'combat:fire');
+  },
+
+  _onCombatActionStarted(payload) {
+    const sourceId = payload.actorId ?? null;
+    const cycle = sourceId == null ? null : this._doctrineCycles.get(sourceId);
+    if (!cycle || cycle.doctrineId !== 'tether_control_raider' || payload.actionId !== 'action_attach') return;
+    const targetId = payload.target && payload.target.entityId;
+    if (targetId != null && targetId !== cycle.targetId) return;
+    this._emitDoctrineAction(cycle, payload, 'combat:actionStarted');
+  },
+
+  _onTetherAttached(payload) {
+    this._emitCue('tether.attach', payload, {
+      sourceEvent: 'tether:attached',
+      sourceId: payload.actorId,
+      targetId: payload.targetId,
+      material: 'massline',
+    });
+    const cycle = payload.actorId == null ? null : this._doctrineCycles.get(payload.actorId);
+    if (!cycle || cycle.doctrineId !== 'tether_control_raider' || cycle.targetId !== payload.targetId) return;
+    // Attachment creation is the tether doctrine's first truthful control outcome. If a legacy
+    // producer skipped combat:actionStarted, preserve the full receipt sequence without faking fire.
+    this._emitDoctrineAction(cycle, payload, 'tether:attached');
+    this._completeDoctrineCycle(payload.actorId, payload.targetId, 'attached', payload, 'tether:attached');
+  },
+
+  _emitDoctrineAction(cycle, payload, sourceEvent) {
+    if (!cycle || cycle.actionEmitted) return false;
+    cycle.actionEmitted = true;
+    this._emitCue('combat.doctrine.action', payload, {
+      sourceEvent,
+      sourceId: cycle.sourceId,
+      targetId: cycle.targetId,
+      material: 'doctrine',
+      sequence: cycle.startedTick,
+      tags: [cycle.doctrineId, cycle.grammar.shape, payload.actionId || cycle.grammar.actionKind, 'action'],
+    });
+    return true;
+  },
+
+  _onProjectileNearMiss(payload) {
+    this._emitCue('combat.near_miss', payload, {
+      sourceEvent: 'projectile:nearMiss',
+      sourceId: payload.ownerId,
+      targetId: payload.targetId,
+      material: payload.damageType || 'projectile',
+      magnitude: Math.max(1, Number(payload.distance) || 1),
+      sequence: payload.projectileId ?? null,
+    });
+    this._completeDoctrineCycle(payload.ownerId, payload.targetId, 'near_miss', payload);
+  },
+
+  _onEntityKilled(payload) {
+    const targetId = payload.id ?? payload.targetId ?? payload.victimId ?? null;
+    if (payload.killerId === this.state.playerId) {
+      this._emitCue('combat.player.kill', payload, {
+        sourceEvent: 'entity:killed',
+        sourceId: payload.killerId,
+        targetId,
+        material: 'kill',
+      });
+    }
+    this._completeDoctrineCycle(payload.killerId, targetId, 'kill', payload);
+    this._clearDoctrineCyclesFor(targetId);
+  },
+
+  _completeDoctrineCycle(sourceId, targetId, outcome, payload, sourceEvent = null) {
+    if (sourceId == null) return false;
+    const cycle = this._doctrineCycles.get(sourceId);
+    if (!cycle || (targetId != null && cycle.targetId !== targetId)) return false;
+    this._emitCue('combat.doctrine.aftermath', payload, {
+      sourceEvent: sourceEvent || (outcome === 'near_miss' ? 'projectile:nearMiss' : outcome === 'kill' ? 'entity:killed' : 'combat:damage'),
+      sourceId,
+      targetId: cycle.targetId,
+      material: 'doctrine',
+      sequence: cycle.startedTick,
+      tags: [cycle.doctrineId, cycle.grammar.shape, cycle.grammar.aftermathKind, outcome, 'aftermath'],
+    });
+    this._doctrineCycles.delete(sourceId);
+    return true;
+  },
+
+  _clearDoctrineCyclesFor(entityId) {
+    if (entityId == null || !this._doctrineCycles) return;
+    this._doctrineCycles.delete(entityId);
+    for (const [sourceId, cycle] of this._doctrineCycles) {
+      if (cycle.targetId === entityId) this._doctrineCycles.delete(sourceId);
+    }
   },
 
   _onReleaseRated(payload) {

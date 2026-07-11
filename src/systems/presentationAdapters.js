@@ -23,6 +23,7 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
 });
 
 const UI_CUES = Object.freeze({
+  'combat.player.kill': uiCue('presentation:combat:player-kill', 'info', 'TARGET DESTROYED', 1.4),
   'tether.attach': uiCue('presentation:tether:attach', 'info', 'MASSLINE ATTACHED', 1.4),
   'tether.near_break': uiCue('presentation:tether:near-break', 'warn', 'MASSLINE STRAIN', 1.2),
   'tether.break': uiCue('presentation:tether:break', 'danger', 'MASSLINE BROKEN', 1.8),
@@ -45,6 +46,7 @@ const UI_CUES = Object.freeze({
 });
 
 const CAPTIONS = Object.freeze({
+  'combat.player.kill': 'Target destroyed.',
   'tether.attach': 'Massline attached.',
   'tether.near_break': 'Massline strain rising.',
   'tether.break': 'Massline broken.',
@@ -150,11 +152,16 @@ export const presentationAdapters = {
   },
 
   _applyVfx(cue) {
+    const lane = cue && cue.lanes && cue.lanes.vfx || null;
+    if (!lane || lane === 'vfx.none') return null;
+    if (lane.startsWith('vfx.direct_')) {
+      return { event: 'direct_vfx_owner', lane, reconciled: true };
+    }
     const budget = cue && cue.budgets || {};
     const flashReduced = !!(this.state && this.state.settings && this.state.settings.accessibility && this.state.settings.accessibility.flashReduce);
     const payload = {
       id: cue.id,
-      lane: cue.lanes && cue.lanes.vfx || null,
+      lane,
       particles: Math.max(0, Math.floor(finite(budget.particles, 0) * (flashReduced ? 0.5 : 1))),
       lights: Math.max(0, Math.floor(finite(budget.lights, 0) * (flashReduced ? 0 : 1))),
       flashReduced,
@@ -164,6 +171,7 @@ export const presentationAdapters = {
       material: cue.material || 'unknown',
       sourceId: cue.sourceId ?? null,
       targetId: cue.targetId ?? null,
+      tags: Array.isArray(cue.tags) ? [...cue.tags] : [],
     };
     this.bus.emit('presentation:vfxCue', payload);
     return { event: 'presentation:vfxCue', particles: payload.particles, lights: payload.lights, flashReduced };
@@ -225,6 +233,7 @@ function uiCue(key, sev, text, ttl) {
 }
 
 function shapeForCue(id) {
+  if (id === 'combat.player.kill') return 'cross';
   if (id && id.startsWith('tether.')) return 'arc';
   if (id === 'shield.collapse') return 'ring';
   if (id === 'subsystem.disabled') return 'bracket';

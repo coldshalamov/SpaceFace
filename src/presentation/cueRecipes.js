@@ -12,6 +12,70 @@ export const PRESENTATION_LANES = Object.freeze([
 ]);
 
 export const PRESENTATION_RECIPES = Object.freeze({
+  'combat.doctrine.setup': recipe({
+    importance: 0.56,
+    dedupeWindowTicks: 30,
+    material: 'doctrine',
+    lanes: laneSet('vfx.direct_ai_telegraph'),
+    budgets: {},
+    tags: ['combat', 'doctrine', 'setup'],
+  }),
+  'combat.doctrine.telegraph': recipe({
+    importance: 0.76,
+    dedupeWindowTicks: 30,
+    material: 'doctrine',
+    lanes: laneSet('vfx.direct_ai_telegraph'),
+    budgets: {},
+    tags: ['combat', 'doctrine', 'telegraph'],
+  }),
+  'combat.doctrine.action': recipe({
+    importance: 0.72,
+    dedupeWindowTicks: 1,
+    material: 'doctrine',
+    lanes: laneSet('vfx.direct_combat_fire'),
+    budgets: {},
+    tags: ['combat', 'doctrine', 'action'],
+  }),
+  'combat.doctrine.aftermath': recipe({
+    importance: 0.68,
+    dedupeWindowTicks: 1,
+    material: 'doctrine',
+    lanes: laneSet('vfx.direct_combat_aftermath'),
+    budgets: {},
+    tags: ['combat', 'doctrine', 'aftermath'],
+  }),
+  'combat.damage.applied': recipe({
+    importance: 0.66,
+    dedupeWindowTicks: 0,
+    material: 'damage',
+    lanes: laneSet('vfx.direct_combat_damage'),
+    budgets: {},
+    tags: ['combat', 'damage'],
+  }),
+  'combat.near_miss': recipe({
+    importance: 0.7,
+    dedupeWindowTicks: 12,
+    material: 'projectile',
+    lanes: laneSet('vfx.combat_near_miss'),
+    budgets: { particles: 12 },
+    tags: ['combat', 'near_miss'],
+  }),
+  'combat.player.hit': recipe({
+    importance: 0.78,
+    dedupeWindowTicks: 4,
+    material: 'damage',
+    lanes: laneSet('vfx.direct_player_damage'),
+    budgets: {},
+    tags: ['combat', 'player', 'damage'],
+  }),
+  'combat.player.kill': recipe({
+    importance: 0.86,
+    dedupeWindowTicks: 4,
+    material: 'kill',
+    lanes: laneSet('vfx.direct_entity_killed', 'ui.combat_kill', 'accessibility.combat_kill'),
+    budgets: { uiPulses: 1 },
+    tags: ['combat', 'player', 'kill'],
+  }),
   'tether.attach': recipe({
     importance: 0.78,
     dedupeWindowTicks: 6,
@@ -281,6 +345,16 @@ function recipe({ importance, dedupeWindowTicks, material, lanes, budgets, tags 
     lanes: Object.freeze({ ...lanes }),
     budgets: Object.freeze({ ...budgets }),
     tags: Object.freeze([...(tags || [])]),
+  };
+}
+
+function laneSet(vfx, ui = 'ui.none', accessibility = 'accessibility.none') {
+  return {
+    camera: 'camera.none',
+    vfx,
+    audio: 'audio.none',
+    ui,
+    accessibility,
   };
 }
 

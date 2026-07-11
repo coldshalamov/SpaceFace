@@ -22,6 +22,7 @@ const COLLISION_MATERIALS = Object.freeze({
 const DYNAMIC_SPATIAL_QUERY_MIN_COLLIDABLES = 96;
 const DYNAMIC_SPATIAL_QUERY_MIN_ASTEROIDS = 96;
 const PICKUP_SPATIAL_PAIR_THRESHOLD = 128;
+const PLAYER_PROJECTILE_NEAR_MISS_MARGIN = 22;
 const ZERO_FRAME_ORIGIN = Object.freeze({ x: 0, z: 0 });
 
 export const physics = {
@@ -35,6 +36,8 @@ export const physics = {
     this._prevPosScratch = { x: 0, z: 0 };
     this._segmentHitScratch = createSegmentHitRecord();
     this._bestSegmentHitScratch = createSegmentHitRecord();
+    this._nearMissClosestScratch = { x: 0, z: 0, distance: 0 };
+    this._nearMissEmitted = new WeakSet();
     this._pairMaterialScratch = createPairMaterialRecord();
     this._pairMarks = new Map(); // low id -> Map<high id, stamp>; avoids per-frame string pair keys
     this._pairStamp = 1;
@@ -70,6 +73,7 @@ export const physics = {
       sg02SyncDynamicEntities: 0,
       sweptShipContacts: 0,
       sweptProjectileHits: 0,
+      nearMissReceipts: 0,
       pickupCollections: 0,
       pickupPairChecks: 0,
       pickupSpatialQueries: 0,
@@ -81,6 +85,7 @@ export const physics = {
     const t0 = nowMs();
     this._diag.sweptShipContacts = 0;
     this._diag.sweptProjectileHits = 0;
+    this._diag.nearMissReceipts = 0;
     this._diag.pickupCollections = 0;
     this._diag.pickupPairChecks = 0;
     this._diag.pickupSpatialQueries = 0;
@@ -477,6 +482,7 @@ export const physics = {
         }
       }
       if (!bestTarget) {
+        this._considerProjectileNearMiss(proj, start, end, state);
         if (limit.expired) {
           proj.pos.x = end.x;
           proj.pos.z = end.z;
@@ -490,6 +496,30 @@ export const physics = {
       proj.alive = false;
       this._diag.sweptProjectileHits++;
     }
+  },
+
+  _considerProjectileNearMiss(proj, start, end, state) {
+    if (!this.bus || this._nearMissEmitted.has(proj)) return;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    if (!player || !player.alive || !player.pos || proj.ownerId === player.id) return;
+    if (proj.team != null && player.team != null && proj.team === player.team) return;
+    const hitRadius = (proj.radius || 0) + (player.radius || 0);
+    const closest = closestPointOnSegmentInto(this._nearMissClosestScratch, start, end, player.pos);
+    if (closest.distance <= hitRadius || closest.distance > hitRadius + PLAYER_PROJECTILE_NEAR_MISS_MARGIN) return;
+    this._nearMissEmitted.add(proj);
+    const pd = proj.data || {};
+    this.bus.emit('projectile:nearMiss', {
+      projectileId: proj.id,
+      ownerId: proj.ownerId == null ? null : proj.ownerId,
+      targetId: player.id,
+      weaponId: pd.weaponId || null,
+      damageType: pd.damageType || 'kinetic',
+      distance: closest.distance,
+      pos: { x: closest.x, z: closest.z },
+      direction: segmentDirection(start, end),
+      tick: Number.isFinite(state.tick) ? state.tick | 0 : 0,
+    });
+    this._diag.nearMissReceipts++;
   },
 
   resolvePair(a, b, dist, dx, dz, bus, state) {
@@ -965,6 +995,26 @@ function previousPosInto(out, e, dt) {
   out.x = e.pos.x - ((e.vel && e.vel.x) || 0) * dt;
   out.z = e.pos.z - ((e.vel && e.vel.z) || 0) * dt;
   return out;
+}
+
+function closestPointOnSegmentInto(out, start, end, point) {
+  const dx = end.x - start.x;
+  const dz = end.z - start.z;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 > 1e-9
+    ? clamp01(((point.x - start.x) * dx + (point.z - start.z) * dz) / len2)
+    : 0;
+  out.x = start.x + dx * t;
+  out.z = start.z + dz * t;
+  out.distance = Math.hypot(out.x - point.x, out.z - point.z);
+  return out;
+}
+
+function segmentDirection(start, end) {
+  const dx = end.x - start.x;
+  const dz = end.z - start.z;
+  const length = Math.hypot(dx, dz);
+  return length > 1e-9 ? { x: dx / length, z: dz / length } : { x: 0, z: 0 };
 }
 
 function projectileSweepLimit(projectile, start, end) {

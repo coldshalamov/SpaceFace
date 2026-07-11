@@ -1328,7 +1328,8 @@ export const vfx = {
             0.18, 1.4, 0.0, this._c0, this._c1, 3.0, 0, 0);
         }
       }
-    } else if (p.armorHit) {
+    }
+    if (p.armorHit) {
       this._emitJuiceCue('combat.damage.armor', p, 1);
       // Armor hit (Top-50 rank-5): 10–16 spark particles + chunk sprite; metallic clank.
       const col = this._engineColor(tgt);
@@ -1344,7 +1345,8 @@ export const vfx = {
       this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.32, 1.4, 2.8, 0.75, 0.0, '#c0a080',
         (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
       this._flashLight({ x: pos.x, z: pos.z }, col, 2.6, 13, 100);
-    } else if (p.hullHit) {
+    }
+    if (p.hullHit) {
       this._emitJuiceCue('combat.damage.hull', p, 1);
       // Hull hit (Top-50 rank-5): denser smoke + more embers so hull damage is obvious.
       const col = this._engineColor(tgt);
@@ -1483,6 +1485,23 @@ export const vfx = {
   _presentationStyle(p) {
     const id = (p && p.id) || '';
     const lane = (p && p.lane) || '';
+    if (id === 'combat.near_miss' || lane.includes('combat_near_miss')) {
+      return presentationStyle('#d7e6ff', '#ffb35c', SPR_FLASH, {
+        spread: 0.18,
+        lightPeak: 0,
+        lightDistance: 0,
+        speed0: 52,
+        speedJitter: 20,
+        life0: 0.18,
+        lifeJitter: 0.08,
+        size0: 0.8,
+        size1: 0.08,
+        spriteLife: 0.12,
+        spriteSize0: 0.25,
+        spriteSize1: 1.5,
+        spriteOpacity: 0.5,
+      });
+    }
     if (id === 'shield.collapse' || lane.includes('shield')) {
       return presentationStyle('#ffffff', '#66ccff', SPR_FRESNEL, { radial: true, echoRing: true, lightPeak: 6.0, lightDistance: 220, speed0: 24, speedJitter: 44, size0: 2.1 });
     }
