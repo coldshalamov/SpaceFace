@@ -14,6 +14,9 @@
 
 const STYLE_ID = 'sf-confirm-style';
 let _openResolver = null;   // tracks the currently-open dialog's resolver so only one is live at a time
+// True while the live confirm chain owns body.ui-modal-open (vs. a screen/dock session).
+// Inherited across supersession so B does not steal teardown rights from a screen-owned class.
+let _confirmOwnsModalOpen = false;
 
 function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
@@ -56,6 +59,52 @@ function getRoot() {
   return root;
 }
 
+/** Opener is restorable only when still connected, visible, and not inert/disabled. */
+function isRestorableTarget(el) {
+  if (!el || el === document.body || el === document.documentElement) return false;
+  if (!el.isConnected || typeof el.focus !== 'function') return false;
+  if (el.disabled) return false;
+  if (el.hidden) return false;
+  if (el.getAttribute && el.getAttribute('aria-hidden') === 'true') return false;
+  if (el.style && (el.style.display === 'none' || el.style.visibility === 'hidden')) return false;
+  let p = el.parentNode;
+  while (p && p !== document && p !== document.documentElement && p !== document.body) {
+    if (p.hidden) return false;
+    if (p.getAttribute && p.getAttribute('aria-hidden') === 'true') return false;
+    if (p.style && (p.style.display === 'none' || p.style.visibility === 'hidden')) return false;
+    p = p.parentNode;
+  }
+  return true;
+}
+
+function tryFocus(el) {
+  if (!isRestorableTarget(el)) return false;
+  try {
+    el.focus({ preventScroll: true });
+  } catch (e) {
+    try { el.focus(); } catch (_) { return false; }
+  }
+  return document.activeElement === el;
+}
+
+/** First focusable control in the visible active #screens child (toast/screenManager parity). */
+function tryFocusActiveScreen() {
+  const screens = document.getElementById('screens');
+  if (!screens || screens.style.display === 'none') return false;
+  const kids = screens.children || [];
+  for (let i = 0; i < kids.length; i++) {
+    const screenEl = kids[i];
+    if (!screenEl || screenEl.style.display === 'none') continue;
+    const items = screenEl.querySelectorAll
+      ? screenEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+      : [];
+    for (let j = 0; j < items.length; j++) {
+      if (tryFocus(items[j])) return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Show a confirmation dialog. Resolves true on confirm, false on cancel/Esc/backdrop.
  * @param {object} opts
@@ -70,6 +119,9 @@ export function confirm(opts) {
   opts = opts || {};
   injectStyle();
   // If a dialog is already open, reject it as cancelled (only one live at a time — avoids stacking).
+  // Capture pre-supersession so a second confirm inherits modal-open ownership from the first
+  // when the first still holds ui-modal-open during its delayed close cleanup.
+  const wasConfirmOpen = !!_openResolver;
   if (_openResolver) { const r = _openResolver; _openResolver = null; r(false); }
 
   const root = getRoot();
@@ -77,7 +129,13 @@ export function confirm(opts) {
   root._sfConfirmToken = token;
   // capture the element that had focus before opening so we can restore it on close
   const opener = document.activeElement;
-  const hadModalOpen = document.body.classList.contains('ui-modal-open');
+  // Screen-owned modal: leave body class alone. Confirm-owned (including supersession transfer):
+  // remove on our final delayed cleanup only. Inherit chain ownership on supersession —
+  // do not treat every supersession as confirm-owned (would strip a screen/dock class).
+  const hadModalOpen = wasConfirmOpen
+    ? !_confirmOwnsModalOpen
+    : document.body.classList.contains('ui-modal-open');
+  _confirmOwnsModalOpen = !hadModalOpen;
 
   const titleCls = 'sf-confirm__title' + (opts.danger ? ' sf-confirm__title--danger' : '');
   const dialog = document.createElement('div');
@@ -139,17 +197,36 @@ export function confirm(opts) {
     if (settled) return;
     settled = true;
     root.classList.remove('sf-confirm--in');
-    if (!hadModalOpen) document.body.classList.remove('ui-modal-open');
-    root.removeEventListener('click', onBackdropClick);
-    document.removeEventListener('focusin', onFocusIn, true);
-    _openResolver = null;
+    // Keep modal/input-fence ownership until delayed cleanup completes so keyboard cannot race
+    // the fade-out while focus still lives on dialog controls. Supersession still works via
+    // settled + token check (second confirm() nulls _openResolver then takes ownership).
     setTimeout(() => {
       const sameDialog = root._sfConfirmToken === token;
+      root.removeEventListener('click', onBackdropClick);
+      document.removeEventListener('focusin', onFocusIn, true);
       if (sameDialog) {
-        if (opener && typeof opener.focus === 'function') { try { opener.focus(); } catch (e) {} }
+        // Validate opener restorability; fall back to first valid control in visible active screen.
+        let restored = false;
+        if (isRestorableTarget(opener)) {
+          try { opener.focus({ preventScroll: true }); }
+          catch (e) {
+            try { opener.focus(); } catch (_) {}
+          }
+          restored = document.activeElement === opener;
+        }
+        if (!restored) tryFocusActiveScreen();
+        // Avoid leaving focus inside the dialog about to be removed.
+        const active = document.activeElement;
+        if (active && root.contains && root.contains(active) && typeof active.blur === 'function') {
+          try { active.blur(); } catch (e) {}
+        }
         if (root.parentNode) root.innerHTML = '';
         root._sfConfirmToken = null;
+        if (!hadModalOpen) document.body.classList.remove('ui-modal-open');
+        // Final sameDialog cleanup ends the chain; clear ownership flag either way.
+        _confirmOwnsModalOpen = false;
       }
+      if (_openResolver === close) _openResolver = null;
       _resolve(v);
     }, 160);
   };
