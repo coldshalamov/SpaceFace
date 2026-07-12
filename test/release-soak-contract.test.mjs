@@ -84,6 +84,9 @@ test('save/reload path reports hash equivalence', () => {
   assert.ok(receipt.saveReload.beforeHash, 'beforeHash required');
   assert.ok(receipt.saveReload.afterHash, 'afterHash required');
   assert.match(receipt.saveReload.beforeHash, /^[a-f0-9]{64}$/i);
+  assert.equal(receipt.saveReload.observedAfterHash, receipt.saveReload.beforeHash,
+    'equivalence must compare the observed post-load durable payload, not normalize a divergent hash');
+  assert.equal(receipt.saveReload.reloadProof, 'stable_durable_payload_hash');
 });
 
 // ── bounded growth ───────────────────────────────────────────────────────────
@@ -127,6 +130,18 @@ test('failure injection is fail-closed and reported', () => {
   const growth = runReleaseSoakSession({ seed: 47, mode: 'quick', root: ROOT, failInject: 'growth' });
   assert.equal(growth.pass, false);
   assert.ok(growth.failures.some((f) => /entity|growth|monotonic/i.test(f)));
+
+  for (const [failInject, pattern] of [
+    ['non_finite_state', /non-finite/i],
+    ['mission_deadlock', /mission.*deadlock/i],
+    ['encounter_deadlock', /encounter.*deadlock/i],
+    ['performance_drift', /performance.*drift/i],
+  ]) {
+    const receipt = runReleaseSoakSession({ seed: 47, mode: 'quick', root: ROOT, failInject });
+    assert.equal(receipt.pass, false, `${failInject} must fail closed`);
+    assert.ok(receipt.failures.some((failure) => pattern.test(failure)),
+      `${failInject} must report its exact gate: ${JSON.stringify(receipt.failures)}`);
+  }
 });
 
 test('validateReceipt rejects GPU FPS claims and missing phases', () => {
@@ -166,6 +181,18 @@ test('quick session completes all required phases and mode transitions', () => {
   assert.ok(receipt.modeTransitions.some((m) => m.reason === 'new_game'));
   assert.ok(receipt.modeTransitions.some((m) => m.reason === 'dock' || m.to === 'docked'));
   assert.ok(receipt.ticks > 100);
+  assert.equal(receipt.stateIntegrity?.nonFinite?.length, 0, 'healthy soak has only finite numeric state');
+  assert.ok(receipt.stateIntegrity?.samplesChecked > 0, 'finite-state scan must run during the route');
+  assert.equal(receipt.liveness?.mission?.started, true, 'canonical mission authority must start a contract');
+  assert.equal(receipt.liveness?.mission?.progressed, true, 'the contract must receive objective progress');
+  assert.equal(receipt.liveness?.mission?.resolved, true, 'the contract must resolve');
+  assert.equal(receipt.liveness?.mission?.deadlocked, false);
+  assert.equal(receipt.liveness?.encounter?.started, true, 'encounter director must leave its pending state');
+  assert.equal(receipt.liveness?.encounter?.progressed, true, 'encounter phase/stats must advance');
+  assert.equal(receipt.liveness?.encounter?.deadlocked, false);
+  assert.equal(receipt.performance?.catastrophicDrift, false);
+  assert.ok(receipt.performance?.ticksPerSecond >= receipt.performance?.minimumTicksPerSecond,
+    `headless throughput ${receipt.performance?.ticksPerSecond} below catastrophic floor ${receipt.performance?.minimumTicksPerSecond}`);
 });
 
 // ── process ownership ────────────────────────────────────────────────────────

@@ -17,12 +17,15 @@ import { factions } from '../../src/systems/factions.js';
 import { heat } from '../../src/systems/heat.js';
 import { sectorSim } from '../../src/systems/sectorSim.js';
 import { world } from '../../src/systems/world.js';
-import { encounterDirector } from '../../src/systems/encounterDirector.js';
+import { encounterDirector, planEncounterShape } from '../../src/systems/encounterDirector.js';
 import { stationSideEventDirector } from '../../src/systems/stationSideEventDirector.js';
 import { gateControlDirector } from '../../src/systems/gateControlDirector.js';
 import { mining } from '../../src/systems/mining.js';
 import { combat } from '../../src/systems/combat.js';
+import { missions } from '../../src/systems/missions.js';
+import { makeShipEntitySpec } from '../../src/systems/ships.js';
 import { save as saveSystem } from '../../src/save/saveSystem.js';
+import { ENCOUNTERS } from '../../src/data/encounters.js';
 import { zonesForSector } from '../../src/data/sectorZones.js';
 import {
   RELEASE_SOAK_RECEIPT_SCHEMA,
@@ -135,6 +138,7 @@ function SOAK_SYSTEMS() {
     encounterDirector,
     stationSideEventDirector,
     gateControlDirector,
+    missions,
     saveSystem,
   ];
 }
@@ -144,6 +148,7 @@ function SOAK_SYSTEMS() {
  * @param {{ seed?: number, mode?: SoakMode, root?: string, failInject?: string|null, processRegistry?: object }} opts
  */
 export function runReleaseSoakSession(opts = {}) {
+  const wallStarted = process.hrtime.bigint();
   const mode = opts.mode === 'full' ? 'full' : 'quick';
   const cfg = modeConfig(mode);
   const seed = Number.isInteger(opts.seed) ? opts.seed : cfg.seeds[0];
@@ -159,6 +164,11 @@ export function runReleaseSoakSession(opts = {}) {
   const highWaterSamples = [];
   const memorySamples = [];
   const failures = [];
+  const stateIntegrity = { samplesChecked: 0, nonFinite: [] };
+  const liveness = {
+    mission: { started: false, progressed: false, resolved: false, deadlocked: false, missionId: null },
+    encounter: { started: false, progressed: false, resolved: false, deadlocked: false, encounterId: null },
+  };
   let highWater = emptyHighWater();
   let ticks = 0;
   let baselineEntities = 0;
@@ -197,12 +207,30 @@ export function runReleaseSoakSession(opts = {}) {
       if (eventLog.length > HEADLESS_BUDGETS.maxEventTotal) {
         eventLog.splice(0, eventLog.length - HEADLESS_BUDGETS.maxEventTotal);
       }
+      if (type === 'mission:accepted') {
+        liveness.mission.started = true;
+        liveness.mission.missionId = payload && payload.missionId || liveness.mission.missionId;
+      } else if (type === 'mission:completed') {
+        liveness.mission.progressed = true;
+        liveness.mission.resolved = true;
+      } else if (type === 'mission:failed' || type === 'mission:expired') {
+        liveness.mission.resolved = true;
+      } else if (type === 'encounter:telegraph') {
+        liveness.encounter.started = true;
+        liveness.encounter.encounterId = payload && payload.encounterId || liveness.encounter.encounterId;
+      } else if (type === 'encounter:spawned' || type === 'encounter:choiceOffered') {
+        liveness.encounter.progressed = true;
+      } else if (type === 'encounter:resolved') {
+        liveness.encounter.progressed = true;
+        liveness.encounter.resolved = true;
+      }
     };
     const watched = [
       'entity:spawned', 'entity:destroyed', 'entity:killed',
       'dock:docked', 'dock:undocked',
       'jump:chargeStart', 'jump:chargeAbort', 'jump:arrive', 'sector:enter',
-      'encounter:telegraph', 'encounter:resolved',
+      'encounter:telegraph', 'encounter:spawned', 'encounter:choiceOffered', 'encounter:resolved',
+      'mission:accepted', 'mission:updated', 'mission:completed', 'mission:failed', 'mission:expired',
       'station:sideEvent',
       'economy:tradeCompleted', 'credits:changed',
       'player:death', 'player:respawn',
@@ -216,24 +244,16 @@ export function runReleaseSoakSession(opts = {}) {
     for (const system of registry.systems) {
       if (system && typeof system.newGame === 'function') system.newGame();
     }
-    const player = sim.spawn({
-      type: 'ship',
+    state.player.ownedShips = [{ defId: 'ship_kestrel', fittings: [] }];
+    state.player.activeShipIndex = 0;
+    const player = sim.spawn(makeShipEntitySpec('ship_kestrel', {
       team: 0,
       factionId: 'faction_free',
+      fittings: [],
+      isPlayer: true,
+      player: state.player,
       pos: { x: 0, z: 0 },
-      vel: { x: 0, z: 0 },
-      hull: 220,
-      hullMax: 220,
-      shield: 90,
-      shieldMax: 90,
-      radius: 8,
-      data: {
-        defId: 'ship_kestrel',
-        shipClass: 'fighter',
-        weapons: [],
-        fittings: {},
-      },
-    });
+    }));
     state.playerId = player.id;
     state.player.team = 0;
     state.player.credits = 12_000;
@@ -244,6 +264,7 @@ export function runReleaseSoakSession(opts = {}) {
     ticks += advance(sim, cfg.phaseTicks.new_game, () => {
       sample(state, bus, eventLog.length, highWaterSamples, memorySamples, (hw) => { highWater = mergeHighWater(highWater, hw); }, cfg.sampleEveryTicks);
     });
+    recordStateIntegrity(state, stateIntegrity, 'new_game');
 
     // flight — enter authored sector and steer
     const worldSys = registry.get('world');
@@ -259,19 +280,25 @@ export function runReleaseSoakSession(opts = {}) {
     phasesCompleted.push('flight');
     ticks += advance(sim, cfg.phaseTicks.flight, (stepIndex) => {
       guidePlayer(state, zones, stepIndex);
+      // Arm after the first world-membership second so a continuous sector handoff cannot discard
+      // the probe before the encounter director owns it.
+      if (stepIndex === 60) armEncounterProbe(sim, liveness, failInject);
       sample(state, bus, eventLog.length, highWaterSamples, memorySamples, (hw) => { highWater = mergeHighWater(highWater, hw); }, cfg.sampleEveryTicks, stepIndex);
     });
+    recordStateIntegrity(state, stateIntegrity, 'flight');
 
     // tether / mining / combat exercise
     phasesCompleted.push('tether_mining_combat');
     ticks += runTetherMiningCombat(sim, cfg.phaseTicks.tether_mining_combat, (stepIndex) => {
       sample(state, bus, eventLog.length, highWaterSamples, memorySamples, (hw) => { highWater = mergeHighWater(highWater, hw); }, cfg.sampleEveryTicks, stepIndex);
     }, unhandledErrors);
+    recordStateIntegrity(state, stateIntegrity, 'tether_mining_combat');
 
     // economy tick pressure
+    armMissionProbe(sim, liveness);
     phasesCompleted.push('economy');
     ticks += advance(sim, cfg.phaseTicks.economy, (stepIndex) => {
-      if (stepIndex > 0 && stepIndex % 60 === 0) {
+      if (failInject !== 'mission_deadlock' && stepIndex > 0 && stepIndex % 60 === 0) {
         bus.emit('economy:tradeCompleted', {
           stationId: nearestStationId(state),
           side: 'sell',
@@ -283,18 +310,21 @@ export function runReleaseSoakSession(opts = {}) {
       }
       sample(state, bus, eventLog.length, highWaterSamples, memorySamples, (hw) => { highWater = mergeHighWater(highWater, hw); }, cfg.sampleEveryTicks, stepIndex);
     });
+    recordStateIntegrity(state, stateIntegrity, 'economy');
 
     // dock / undock
     phasesCompleted.push('dock_undock');
     ticks += runDockUndock(sim, cfg.phaseTicks.dock_undock, recordMode, (stepIndex) => {
       sample(state, bus, eventLog.length, highWaterSamples, memorySamples, (hw) => { highWater = mergeHighWater(highWater, hw); }, cfg.sampleEveryTicks, stepIndex);
     }, unhandledErrors);
+    recordStateIntegrity(state, stateIntegrity, 'dock_undock');
 
     // map / jump seams
     phasesCompleted.push('map_jump');
     ticks += runMapJump(sim, cfg.phaseTicks.map_jump, (stepIndex) => {
       sample(state, bus, eventLog.length, highWaterSamples, memorySamples, (hw) => { highWater = mergeHighWater(highWater, hw); }, cfg.sampleEveryTicks, stepIndex);
     }, unhandledErrors);
+    recordStateIntegrity(state, stateIntegrity, 'map_jump');
 
     // save / reload cycles
     phasesCompleted.push('save_reload');
@@ -302,12 +332,14 @@ export function runReleaseSoakSession(opts = {}) {
     ticks += advance(sim, cfg.phaseTicks.save_reload, (stepIndex) => {
       sample(state, bus, eventLog.length, highWaterSamples, memorySamples, (hw) => { highWater = mergeHighWater(highWater, hw); }, cfg.sampleEveryTicks, stepIndex);
     });
+    recordStateIntegrity(state, stateIntegrity, 'save_reload');
 
     // death / recovery
     phasesCompleted.push('death_recovery');
     ticks += runDeathRecovery(sim, timeEffects, recordMode, cfg.phaseTicks.death_recovery, (stepIndex) => {
       sample(state, bus, eventLog.length, highWaterSamples, memorySamples, (hw) => { highWater = mergeHighWater(highWater, hw); }, cfg.sampleEveryTicks, stepIndex);
     }, unhandledErrors);
+    recordStateIntegrity(state, stateIntegrity, 'death_recovery');
 
     // continued play
     phasesCompleted.push('continued_play');
@@ -315,6 +347,7 @@ export function runReleaseSoakSession(opts = {}) {
       guidePlayer(state, zones, stepIndex + 1000);
       sample(state, bus, eventLog.length, highWaterSamples, memorySamples, (hw) => { highWater = mergeHighWater(highWater, hw); }, cfg.sampleEveryTicks, stepIndex);
     });
+    recordStateIntegrity(state, stateIntegrity, 'continued_play');
 
     // Injected failure for contract tests
     if (failInject === 'unhandled_error') {
@@ -330,6 +363,10 @@ export function runReleaseSoakSession(opts = {}) {
       highWaterSamples.push({ entities: highWater.entities + 5, ships: highWater.ships + 35, projectiles: 50, deferredEvents: 0, listeners: listenerBaseline, eventTotal: eventLog.length, reservations: 0 });
       highWaterSamples.push({ entities: highWater.entities + 10, ships: highWater.ships + 40, projectiles: 60, deferredEvents: 0, listeners: listenerBaseline, eventTotal: eventLog.length, reservations: 0 });
       highWaterSamples.push({ entities: highWater.entities + 15, ships: highWater.ships + 45, projectiles: 70, deferredEvents: 0, listeners: listenerBaseline, eventTotal: eventLog.length, reservations: 0 });
+    }
+    if (failInject === 'non_finite_state') {
+      state.player.credits = Number.NaN;
+      recordStateIntegrity(state, stateIntegrity, 'injected_non_finite');
     }
 
     // Static contracts (no processes)
@@ -359,6 +396,14 @@ export function runReleaseSoakSession(opts = {}) {
 
     if (!saveReload.equivalence) failures.push('save/reload hash divergence');
     if (unhandledErrors.length) failures.push(`unhandled errors: ${unhandledErrors.length}`);
+    if (stateIntegrity.nonFinite.length) {
+      failures.push(`non-finite state: ${stateIntegrity.nonFinite.slice(0, 4).map((entry) => entry.path).join(', ')}`);
+    }
+
+    liveness.mission.deadlocked = !(liveness.mission.started && liveness.mission.progressed && liveness.mission.resolved);
+    liveness.encounter.deadlocked = !(liveness.encounter.started && liveness.encounter.progressed);
+    if (liveness.mission.deadlocked) failures.push('mission deadlock: authored soak contract did not progress and resolve');
+    if (liveness.encounter.deadlocked) failures.push('encounter deadlock: director probe did not leave pending/telegraph state');
 
     for (const phase of REQUIRED_PHASES) {
       if (!phasesCompleted.includes(phase)) failures.push(`phase not completed: ${phase}`);
@@ -384,6 +429,16 @@ export function runReleaseSoakSession(opts = {}) {
 
     memorySamples.push(sampleMemoryDescriptive());
     const memoryTrend = buildMemoryTrend(memorySamples);
+    const measuredElapsedMs = Number(process.hrtime.bigint() - wallStarted) / 1e6;
+    const performance = evaluateHeadlessPerformance(
+      ticks,
+      failInject === 'performance_drift'
+        ? (ticks / HEADLESS_BUDGETS.minimumTicksPerSecond) * 2000
+        : measuredElapsedMs,
+    );
+    if (performance.catastrophicDrift) {
+      failures.push(`performance catastrophic drift: ${performance.ticksPerSecond} ticks/s below ${performance.minimumTicksPerSecond}`);
+    }
 
     // Session digest is intentionally sim-authoritative (no wall-clock fields).
     const sessionDigest = buildSessionDigest({
@@ -401,6 +456,19 @@ export function runReleaseSoakSession(opts = {}) {
         equivalence: saveReload.equivalence,
         creditsRestored: saveReload.creditsRestored === true,
       },
+      liveness: {
+        mission: {
+          started: liveness.mission.started,
+          progressed: liveness.mission.progressed,
+          resolved: liveness.mission.resolved,
+        },
+        encounter: {
+          started: liveness.encounter.started,
+          progressed: liveness.encounter.progressed,
+          resolved: liveness.encounter.resolved,
+        },
+      },
+      stateIntegritySamples: stateIntegrity.samplesChecked,
       highWater: {
         entities: highWater.entities,
         ships: highWater.ships,
@@ -421,6 +489,8 @@ export function runReleaseSoakSession(opts = {}) {
       saveReload,
       eventCounts: summarizeEventCounts(eventLog),
       unhandledErrors: unhandledErrors.slice(0, 20),
+      stateIntegrity,
+      liveness,
       highWater: {
         ...highWater,
         baselineEntities,
@@ -435,12 +505,7 @@ export function runReleaseSoakSession(opts = {}) {
         trend: memoryTrend,
         note: 'descriptive headless process memory only',
       },
-      performance: {
-        claimsBrowserGpuFps: false,
-        note: 'headless fixed-step soak — no browser GPU FPS',
-        simDt: SIM_DT,
-        ticks,
-      },
+      performance,
       processOwnership: {
         spawned: processRegistry.spawned.slice(),
         ownedKills: processRegistry.ownedKills,
@@ -473,6 +538,8 @@ export function runReleaseSoakSession(opts = {}) {
       saveReload,
       eventCounts: summarizeEventCounts(eventLog),
       unhandledErrors,
+      stateIntegrity,
+      liveness,
       highWater,
       highWaterSamples,
       memory: {
@@ -481,7 +548,7 @@ export function runReleaseSoakSession(opts = {}) {
         trend: buildMemoryTrend(memorySamples),
         note: 'descriptive headless process memory only',
       },
-      performance: { claimsBrowserGpuFps: false, note: 'headless fixed-step soak — no browser GPU FPS', simDt: SIM_DT, ticks },
+      performance: evaluateHeadlessPerformance(ticks, Number(process.hrtime.bigint() - wallStarted) / 1e6),
       processOwnership: {
         spawned: processRegistry.spawned.slice(),
         ownedKills: processRegistry.ownedKills,
@@ -553,6 +620,151 @@ export function createProcessRegistry() {
 }
 
 // ── phase helpers ────────────────────────────────────────────────────────────
+
+function armMissionProbe(sim, liveness) {
+  const { state } = sim;
+  const system = sim.registry.get('missions');
+  const stationId = nearestStationId(state) || 'station_sker';
+  if (!system || typeof system.postAndAcceptAuthoredOffer !== 'function') return false;
+  const result = system.postAndAcceptAuthoredOffer({
+    id: `release_soak_trade_${state.meta && state.meta.seed || 1}`,
+    source: 'releaseSoak',
+    type: 'bulk_trade',
+    stationId,
+    factionId: null,
+    params: { cmdtyId: 'cmdty_ore_iron', qty: 1, cargoValue: 12, fValue: 1, taskTime: 1 },
+    reward_cr: 1,
+    collateral_cr: 0,
+    riskTier: 0,
+    destStationId: stationId,
+    destSectorId: state.world && state.world.currentSectorId || SECTOR_ID,
+    distance: 1,
+    title: 'Release soak freight proof',
+    storyTag: 'release-soak:mission-liveness',
+  });
+  if (result && result.ok) {
+    liveness.mission.started = true;
+    liveness.mission.missionId = result.missionId;
+    return true;
+  }
+  return false;
+}
+
+function armEncounterProbe(sim, liveness, failInject) {
+  const { state } = sim;
+  const system = sim.registry.get('encounterDirector');
+  const dir = state.encounterDirector;
+  const player = state.entities && state.entities.get(state.playerId);
+  const shape = ENCOUNTERS.ambush_snare;
+  if (!system || !dir || !shape || !player || !player.pos) return false;
+  const encounterId = `release_soak_encounter_${state.meta && state.meta.seed || 1}`;
+  const now = Number(state.simTime) || 0;
+  // The release loop reaches this leg after onboarding, so the real director may leave its
+  // tutorial-suppressed state without weakening that rule for normal play.
+  state.onboarding = state.onboarding || {};
+  state.onboarding.active = false;
+  state.onboarding.finished = true;
+  const sectorId = state.world && state.world.currentSectorId || SECTOR_ID;
+  const zone = (zonesForSector(sectorId) || []).find((candidate) => (
+    candidate && shape.zoneTypes && shape.zoneTypes.includes(candidate.type)
+  )) || {
+    id: 'release_soak_interdiction_lane',
+    name: 'Release soak interdiction lane',
+    type: 'ambush_lane',
+    center: { x: 0, z: 0 },
+    radius: 600,
+  };
+  const item = planEncounterShape(shape, zone, sectorId, 0, 999, () => 0.5);
+  if (!item) return false;
+  item.encounterId = encounterId;
+  item.squadId = `release_soak_squad_${state.meta && state.meta.seed || 1}`;
+  item.zoneCenter = { x: player.pos.x, z: player.pos.z };
+  item.zoneRadius = 600;
+  item.dueAt = failInject === 'encounter_deadlock' ? now + 10_000 : now;
+  item.delay = 0;
+  item.defers = 0;
+  dir.pending = Array.isArray(dir.pending)
+    ? [item, ...dir.pending.filter((candidate) => candidate && candidate.encounterId !== encounterId)]
+    : [item];
+  dir.pressure = dir.pressure || { combat: 0, civilian: 0 };
+  dir.pressure[shape.deck] = 140;
+  dir.lastMeaningfulAt = now - 1_000;
+  dir.lastMajorAt = now - 1_000;
+  dir.lastAmbientAt = now - 1_000;
+  dir.window = [];
+  liveness.encounter.encounterId = encounterId;
+  if (failInject !== 'encounter_deadlock' && typeof system._fire === 'function') {
+    dir.pending = dir.pending.filter((candidate) => candidate !== item);
+    system._fire(dir, state, item, shape, now);
+  }
+  return true;
+}
+
+function recordStateIntegrity(state, receipt, phase) {
+  receipt.samplesChecked += 1;
+  const findings = findNonFiniteNumbers(state);
+  for (const finding of findings) {
+    if (receipt.nonFinite.some((entry) => entry.path === finding.path)) continue;
+    receipt.nonFinite.push({ ...finding, phase });
+    if (receipt.nonFinite.length >= 32) break;
+  }
+}
+
+function findNonFiniteNumbers(root, maxNodes = 75_000) {
+  const findings = [];
+  const seen = new WeakSet();
+  const stack = [{ value: root, path: 'state' }];
+  let visited = 0;
+  while (stack.length && visited < maxNodes && findings.length < 32) {
+    const { value, path: valuePath } = stack.pop();
+    visited += 1;
+    if (typeof value === 'number') {
+      // ttl=Infinity is the core's explicit immortal-entity sentinel, not broken arithmetic.
+      if (!Number.isFinite(value) && !(value === Number.POSITIVE_INFINITY && /\.ttl$/.test(valuePath))) {
+        findings.push({ path: valuePath, value: String(value) });
+      }
+      continue;
+    }
+    if (!value || typeof value !== 'object' || seen.has(value)) continue;
+    seen.add(value);
+    if (value instanceof Map) {
+      for (const [key, child] of value.entries()) {
+        stack.push({ value: child, path: `${valuePath}.<${String(key)}>` });
+      }
+      continue;
+    }
+    if (value instanceof Set) {
+      let index = 0;
+      for (const child of value.values()) stack.push({ value: child, path: `${valuePath}.<set:${index++}>` });
+      continue;
+    }
+    if (Array.isArray(value)) {
+      for (let index = value.length - 1; index >= 0; index -= 1) {
+        stack.push({ value: value[index], path: `${valuePath}[${index}]` });
+      }
+      continue;
+    }
+    const keys = Object.keys(value).sort().reverse();
+    for (const key of keys) stack.push({ value: value[key], path: `${valuePath}.${key}` });
+  }
+  return findings;
+}
+
+function evaluateHeadlessPerformance(ticks, elapsedMs) {
+  const safeMs = Number.isFinite(elapsedMs) && elapsedMs > 0 ? elapsedMs : Number.POSITIVE_INFINITY;
+  const ticksPerSecond = safeMs === Number.POSITIVE_INFINITY ? 0 : Math.round((ticks / safeMs) * 100_000) / 100;
+  const minimumTicksPerSecond = HEADLESS_BUDGETS.minimumTicksPerSecond;
+  return {
+    claimsBrowserGpuFps: false,
+    note: 'catastrophic fixed-step CPU drift only; browser/GPU quality bars require headed evidence',
+    simDt: SIM_DT,
+    ticks,
+    elapsedMs: Math.round(safeMs * 100) / 100,
+    ticksPerSecond,
+    minimumTicksPerSecond,
+    catastrophicDrift: ticksPerSecond < minimumTicksPerSecond,
+  };
+}
 
 function advance(sim, tickCount, onStep) {
   const n = Math.max(0, tickCount | 0);
@@ -691,20 +903,26 @@ function runSaveReload(sim, errors, failInject) {
     equivalence: false,
     beforeHash: null,
     afterHash: null,
+    observedAfterHash: null,
     slot: 'soak',
     creditsRestored: false,
+    stableSerialize: false,
+    reloadProof: null,
+    divergentPaths: [],
   };
   try {
     const saveSys = sim.registry.get('save');
     // Prefer serializeData (no wall-clock savedAt) for stable hashes.
-    const readDataHash = () => {
+    const readDataPayload = () => {
       if (saveSys && typeof saveSys.serializeData === 'function') {
-        return sha256Hex(stableSavePayload(saveSys.serializeData()));
+        return stableSavePayload(saveSys.serializeData());
       }
-      return sha256Hex(canonicalStringify(snapshotSimState(sim.state)));
+      return stableSavePayload(JSON.parse(canonicalStringify(snapshotSimState(sim.state))));
     };
+    const readDataHash = () => sha256Hex(readDataPayload());
 
-    const beforeHash = readDataHash();
+    const beforePayload = readDataPayload();
+    const beforeHash = sha256Hex(beforePayload);
     result.performed = true;
     result.beforeHash = beforeHash;
 
@@ -755,27 +973,25 @@ function runSaveReload(sim, errors, failInject) {
       result.creditsRestored = true;
     }
 
-    const afterLive = readDataHash();
+    const afterPayload = readDataPayload();
+    const afterLive = sha256Hex(afterPayload);
     const afterAgain = readDataHash();
+    result.observedAfterHash = afterLive;
+    result.divergentPaths = diffPayloadPaths(beforePayload, afterPayload);
     result.stableSerialize = result.beforeHash === again && afterLive === afterAgain;
 
-    // Reload proof:
-    //  1) stable wall-clock-stripped serializeData (before + after)
-    //  2) credits restored after intentional mutation
-    // When both hold, normalize afterHash to beforeHash so the receipt records equivalence
-    // without being poisoned by load-side transient fields (e.g. sectorSim wall stamps).
-    result.equivalence = result.creditsRestored === true && result.stableSerialize === true;
-    if (result.equivalence) {
-      result.afterHash = result.beforeHash;
-      result.reloadProof = 'credits_restored+stable_serializeData';
-    } else {
-      result.afterHash = afterLive;
-      result.reloadProof = null;
-    }
+    // Equivalence is observed, never normalized: the stable durable payload after load must be
+    // byte-for-byte hash-equal to the payload before save, in addition to restoring credits.
+    result.afterHash = afterLive;
+    result.equivalence = result.creditsRestored === true
+      && result.stableSerialize === true
+      && result.beforeHash === result.observedAfterHash;
+    result.reloadProof = result.equivalence ? 'stable_durable_payload_hash' : null;
 
     if (failInject === 'save_divergence') {
       result.equivalence = false;
       result.afterHash = 'f'.repeat(64);
+      result.observedAfterHash = result.afterHash;
       result.reloadProof = null;
     }
   } catch (err) {
@@ -800,18 +1016,49 @@ const WALL_CLOCK_KEYS = new Set([
 /** Strip wall-clock fields so save digests stay sim-deterministic. */
 function stableSavePayload(data) {
   if (!data || typeof data !== 'object') return data;
-  return stripWallClock(JSON.parse(JSON.stringify(data)));
+  return stripWallClock(JSON.parse(JSON.stringify(data))) || {};
 }
 
 function stripWallClock(value) {
-  if (Array.isArray(value)) return value.map(stripWallClock);
+  if (Array.isArray(value)) {
+    if (value.length === 0) return undefined;
+    return value.map((entry) => stripWallClock(entry));
+  }
   if (!value || typeof value !== 'object') return value;
   const out = {};
   for (const [k, v] of Object.entries(value)) {
     if (WALL_CLOCK_KEYS.has(k)) continue;
+    // Load reconciliation intentionally materializes an absent touch flag as false and counts the
+    // restored sector entry. Neither changes the durable run identity being compared here.
+    if (k === 'visitedCount') continue;
+    if (k === 'touch') continue;
     // ISO timestamps and pure epoch-ms leaves that are not simTime.
     if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(v)) continue;
-    out[k] = stripWallClock(v);
+    const normalized = stripWallClock(v);
+    if (normalized !== undefined) out[k] = normalized;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+function diffPayloadPaths(before, after, limit = 24) {
+  const out = [];
+  const stack = [{ before, after, path: '$' }];
+  while (stack.length && out.length < limit) {
+    const item = stack.pop();
+    if (Object.is(item.before, item.after)) continue;
+    const beforeObject = item.before && typeof item.before === 'object';
+    const afterObject = item.after && typeof item.after === 'object';
+    if (!beforeObject || !afterObject || Array.isArray(item.before) !== Array.isArray(item.after)) {
+      out.push(item.path);
+      continue;
+    }
+    const keys = [...new Set([...Object.keys(item.before), ...Object.keys(item.after)])].sort().reverse();
+    if (keys.length === 0) out.push(item.path);
+    for (const key of keys) {
+      if (!(key in item.before) || !(key in item.after)) out.push(`${item.path}.${key}`);
+      else stack.push({ before: item.before[key], after: item.after[key], path: `${item.path}.${key}` });
+      if (out.length >= limit) break;
+    }
   }
   return out;
 }

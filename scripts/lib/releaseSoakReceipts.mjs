@@ -29,6 +29,7 @@ export const HEADLESS_BUDGETS = Object.freeze({
   maxListenerGrowth: 8,
   maxDeferredGrowth: 64,
   maxHeapGrowthMbDescriptive: 512, // descriptive only; not a GPU/FPS claim
+  minimumTicksPerSecond: 120, // catastrophic CPU drift only; real browser/GPU bars remain headed
 });
 
 export function sha256Hex(value) {
@@ -238,6 +239,21 @@ export function validateReceipt(receipt, { mode = 'quick' } = {}) {
     failures.push('passing receipt cannot carry unhandled errors');
   }
   if (!receipt.highWater || typeof receipt.highWater !== 'object') failures.push('highWater required');
+  if (!receipt.stateIntegrity || !Array.isArray(receipt.stateIntegrity.nonFinite)) {
+    failures.push('stateIntegrity.nonFinite required');
+  } else if (receipt.stateIntegrity.nonFinite.length > 0 && receipt.pass === true) {
+    failures.push('passing receipt cannot contain non-finite state');
+  }
+  if (!receipt.liveness || !receipt.liveness.mission || !receipt.liveness.encounter) {
+    failures.push('mission and encounter liveness receipts required');
+  } else {
+    if (receipt.liveness.mission.deadlocked === true && receipt.pass === true) {
+      failures.push('passing receipt cannot contain a mission deadlock');
+    }
+    if (receipt.liveness.encounter.deadlocked === true && receipt.pass === true) {
+      failures.push('passing receipt cannot contain an encounter deadlock');
+    }
+  }
   if (!receipt.memory || typeof receipt.memory !== 'object') failures.push('memory section required');
   else if (receipt.memory.claimsBrowserGpuFps === true) {
     failures.push('headless receipt must never claim browser GPU FPS');
@@ -245,6 +261,11 @@ export function validateReceipt(receipt, { mode = 'quick' } = {}) {
   if (typeof receipt.pass !== 'boolean') failures.push('pass must be boolean');
   if (receipt.performance && receipt.performance.claimsBrowserGpuFps === true) {
     failures.push('performance section must not claim browser GPU FPS from headless data');
+  }
+  if (!receipt.performance || !Number.isFinite(receipt.performance.ticksPerSecond)) {
+    failures.push('headless performance throughput required');
+  } else if (receipt.performance.catastrophicDrift === true && receipt.pass === true) {
+    failures.push('passing receipt cannot contain catastrophic headless performance drift');
   }
   if (Array.isArray(receipt.failures) && receipt.pass === true && receipt.failures.length > 0) {
     failures.push('pass=true with non-empty failures');
