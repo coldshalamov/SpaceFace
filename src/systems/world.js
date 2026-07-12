@@ -1423,8 +1423,9 @@ export const world = {
         // Zone plans are sector-local; convert once at the spawn boundary.
         const pos = this._toGlobal(intent.pos, sector.id);
         if (intent.context === 'zone_hostile') {
-          // Never drop a hostile in the tutorial-safe bubble or on top of the player at entry.
+          // Never drop authored danger inside tutorial/port/arrival protection or on the player.
           if (starterSafe > 0 && dist2(pos, sectorOrigin) < starterSafe * starterSafe) continue;
+          if (!this._ambientSpawnIsSafe(pos, sector, active)) continue;
           if (player && player.pos && dist2(pos, player.pos) < ZONE_HOSTILE_PLAYER_CLEARANCE * ZONE_HOSTILE_PLAYER_CLEARANCE) continue;
         }
         const spec = makeEnemySpawnSpec(intent.archetypeId, clamp(intent.level, lvLo, lvHi + 2), pos, { factionId: intent.factionId });

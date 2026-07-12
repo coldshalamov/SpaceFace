@@ -5528,12 +5528,18 @@ function checkAmbientHostileSpawnSafetyContract() {
 
   spawned.length = 0;
   world.enterSector('sector_ceres_belt');
-  const ambient = spawned.filter((e) => e.data && e.data.ai && e.data.ai.spawnContext === 'ambient');
-  assert(ambient.length > 0, 'lawful station sectors may still spawn non-player-hunting patrol ambience');
-  assert(ambient.every((e) => e.data.ai.lawful === true), 'lawful station-sector ambience should be patrols, not random pirates');
+  const lawfulPatrols = spawned.filter((e) => e.data && e.data.ai && e.data.ai.spawnContext === 'patrol');
+  const namedZoneHostiles = spawned.filter((e) => e.data && e.data.ai && e.data.ai.spawnContext === 'zone_hostile');
+  assert(lawfulPatrols.length > 0, 'lawful station sectors should retain non-player-hunting patrol presence');
+  assert(lawfulPatrols.every((e) => e.data.ai.lawful === true && !isHostileToPlayer(e, 0, state)),
+    'clean-player patrol presence must stay lawful and non-hostile');
+  assert(namedZoneHostiles.length > 0, 'Ceres danger should remain authored into named pirate zones');
+  assert(namedZoneHostiles.every((e) => e.data.ai.zoneId && isHostileToPlayer(e, 0, state)),
+    'named pirate-zone presence should remain intentionally hostile and geographically legible');
   const stations = state.world.activeSector.stations || [];
   const gates = state.world.activeSector.gates || [];
-  for (const enemy of ambient) {
+  const player = state.entities.get(state.playerId);
+  for (const enemy of namedZoneHostiles) {
     for (const station of stations) {
       assert(distance2(enemy.pos, station.pos) >= 1000 * 1000,
         'ambient hostiles must not spawn inside station safe space');
@@ -5542,6 +5548,8 @@ function checkAmbientHostileSpawnSafetyContract() {
       assert(distance2(enemy.pos, gate.pos) >= 800 * 800,
         'ambient hostiles must not spawn on the arrival/gate safe bubble');
     }
+    assert(!player || distance2(enemy.pos, player.pos) >= 1200 * 1200,
+      'named-zone hostiles must not spawn on top of the arriving player');
   }
 }
 
