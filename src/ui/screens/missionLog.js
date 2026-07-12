@@ -134,6 +134,13 @@ function objectiveText(m) {
     case 'escort':
       return `Escort to ${dest}`;
     case 'recon_scan':
+      if (p.originSurveySample) {
+        const scans = Math.max(1, p.scanTargets || 1);
+        const mined = Math.max(0, prog - scans);
+        return p.surveyComplete
+          ? `Mine sample ${mined}/${Math.max(1, p.sampleQty || 1)} ${cmdtyName(p.sampleCmdtyId)}`
+          : 'Scan a Ceres asteroid field';
+      }
       return `Scan ${prog}/${tgt} targets`;
     case 'smuggling_run':
       return `Deliver contraband to ${dest}`;
@@ -162,7 +169,9 @@ function nextStepText(m) {
     case 'escort':
       return 'Next: stay near the convoy route and protect the objective until arrival.';
     case 'recon_scan':
-      return 'Next: follow tracked nav and scan each marked site.';
+      return p.originSurveySample && p.surveyComplete
+        ? 'Next: mine the requested sample from the scanned field; only your extraction counts.'
+        : 'Next: follow tracked nav and scan each marked site.';
     case 'smuggling_run':
       return 'Next: deliver quietly to ' + dest + '; avoid scans and keep an escape route.';
     default:

@@ -823,7 +823,10 @@ export function buildMissionLogOriginChoiceModel(state, api = null) {
   const cards = view.offers
     .filter((offer) => {
       if (!offer) return false;
-      if (focused) return offer.careerId === focused && recoveringStatuses.has(offer.status);
+      if (focused) {
+        return offer.careerId === focused
+          && (!!offer.canAccept || recoveringStatuses.has(offer.status));
+      }
       return !!offer.canAccept || !!offer.canDecline || recoveringStatuses.has(offer.status);
     })
     .map((offer) => {
@@ -839,7 +842,9 @@ export function buildMissionLogOriginChoiceModel(state, api = null) {
         objective: offer.line,
         nextAction: recovering
           ? 'Reissue the same first contract. Progress is not skipped.'
-          : `Choose this start to ${offer.verb || 'begin'} through a real contract now.`,
+          : (focused
+            ? `Continue the ${offer.title} path with its next physical contract.`
+            : `Choose this start to ${offer.verb || 'begin'} through a real contract now.`),
         receiptLine: kit
           ? `Primary start issues ${kit.label} immediately; other paths remain open.`
           : 'Other paths remain open.',

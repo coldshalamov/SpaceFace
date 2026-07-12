@@ -190,6 +190,13 @@ test('Prospector public route advances scan to extraction to sale through real m
   bus.emit('scan:completed', { sectorId: 'sector_ceres_belt', found: { asteroids: 1 } });
   route = state.careers.origins.__meta.routes.prospector;
   mission = state.missions.active.find((m) => m.id === route.activeMissionId);
+  assert.equal(mission.type, 'recon_scan');
+  assert.equal(mission.params.surveyComplete, true);
+  assert.equal(mission.objectiveProgress, 1);
+
+  bus.emit('mining:yield', { minerId: state.playerId, commodityId: 'cmdty_ore_iron', qty: 3 });
+  route = state.careers.origins.__meta.routes.prospector;
+  mission = state.missions.active.find((m) => m.id === route.activeMissionId);
   assert.equal(mission.type, 'mining_quota');
   assert.equal(state.nav.waypoint.markerId, 'origin:prospector:iron_sample');
 

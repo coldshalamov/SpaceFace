@@ -148,6 +148,9 @@ export function buildHaulerStepMissionOffer(state, step, attempt, offerNonce, op
     commodityId: step.commodityId,
     qty: step.qty,
     params,
+    // The first-hour path is accepted in flight, so mission authority must put the sealed
+    // manifest in the hold. The player is proving custody, not shopping for their own contract.
+    preloadedCargo: step.missionType === 'cargo_delivery',
     objectiveTarget: step.qty,
     objectiveProgress: 0,
     // Origin-tagged so the chain can filter mission:completed without hijacking the board.

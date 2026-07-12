@@ -206,6 +206,12 @@ function missionNavReason(m, station, sector) {
       ? 'Choose: fire to close the tag, or reel Elroy inside sixty'
       : 'Scan the marked vessel before acting';
   }
+  if (m.type === 'recon_scan' && p.originSurveySample) {
+    const sample = CMDTY_BY_ID.get(p.sampleCmdtyId);
+    return p.surveyComplete
+      ? `Mine ${p.sampleQty || 1}u ${sample ? sample.name : 'sample'} from the scanned seam`
+      : `Scan an asteroid field in ${sectorName}`;
+  }
   switch (m.type) {
     case 'cargo_delivery': return `Deliver ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
     case 'bulk_trade': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
@@ -995,7 +1001,9 @@ export const missions = {
       case 'mining_quota': return params.qty;
       case 'patrol_clear': return params.clearCount;
       case 'bounty_hunt': return 1;
-      case 'recon_scan': return params.scanTargets;
+      case 'recon_scan': return params.originSurveySample
+        ? Math.max(1, params.scanTargets || 1) + Math.max(1, params.sampleQty || 1)
+        : params.scanTargets;
       default: return 1; // boolean-at-dest types
     }
   },
@@ -1486,6 +1494,17 @@ export const missions = {
     }
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
+      if (m.status === 'active' && m.type === 'recon_scan'
+        && m.params && m.params.originSurveySample && m.params.surveyComplete) {
+        const playerMined = p.minerId == null || p.minerId === this.state.playerId;
+        const inSurveySector = this.state.world.currentSectorId === m.destSectorId;
+        if (playerMined && inSurveySector && p.commodityId === m.params.sampleCmdtyId) {
+          m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + Math.max(0, p.qty || 0));
+          if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
+          else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
+          continue;
+        }
+      }
       if (m.status !== 'active' || m.type !== 'mining_quota') continue;
       if (m.params.cmdtyId !== p.commodityId) continue;
       m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + (p.qty || 0));
@@ -1551,6 +1570,23 @@ export const missions = {
       if (m.status !== 'active' || m.type !== 'recon_scan') continue;
       // only count if the player is in the mission's target sector
       if (this.state.world.currentSectorId !== m.destSectorId) continue;
+      if (m.params && m.params.originSurveySample) {
+        if (m.params.surveyComplete) continue;
+        const targetId = p && p.targetId;
+        const target = targetId != null && this.state.entities && this.state.entities.get(targetId);
+        const asteroidReading = !!(p && p.found && Number(p.found.asteroids) > 0)
+          || !!(target && target.type === 'asteroid');
+        if (!asteroidReading) continue;
+        m.params.surveyComplete = true;
+        m.objectiveProgress = Math.max(1, m.params.scanTargets || 1);
+        this._refreshTrackedMissionNav(m);
+        this.bus.emit('mission:updated', {
+          missionId: m.id,
+          objectiveProgress: m.objectiveProgress,
+          surveyComplete: true,
+        });
+        continue;
+      }
       m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + 1);
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
@@ -2038,12 +2074,21 @@ export const missions = {
     if (m.factionId && penalty < 0) {
       this.bus.emit('faction:repDelta', { factionId: m.factionId, delta: penalty, reason: `mission_failed:${m.type}` });
     }
+    // A preloaded manifest belongs to the failed contract. Remove the remaining sealed quantity
+    // through cargo authority so abandoning and reissuing cannot duplicate freight.
+    let contractCargoRemoved = 0;
+    if (m.preloadedCargo && m.params && m.params.cmdtyId) {
+      contractCargoRemoved = removeCargo(
+        this.state, m.params.cmdtyId, Math.max(1, m.params.qty || 1),
+      );
+    }
     // Collateral is forfeited (already charged at accept — nothing to refund).
     this._logCompletion(m.type, 0, false);
     this._recordMissionReceipt(m, 'failed', reason || 'failed', {
       rewardCr: 0,
       collateralLostCr: m.collateral_cr || 0,
       repDelta: penalty,
+      contractCargoRemoved,
     });
     this._emitMissionDebrief(m, 'failed', reason || 'failed');
     this.bus.emit('mission:failed', {

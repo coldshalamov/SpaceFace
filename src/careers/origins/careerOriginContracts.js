@@ -95,10 +95,18 @@ const HUNTER_CONTRACTS = Object.freeze([
 
 const PROSPECTOR_CONTRACTS = Object.freeze([
   Object.freeze({
-    id: 'ceres_survey', title: 'Ceres Deposit Survey', type: 'recon_scan',
+    id: 'ceres_survey', title: 'Ceres Survey Sample', type: 'recon_scan',
     stationId: 'station_helios', destSectorId: 'sector_ceres_belt', factionId: 'faction_dmc',
-    riskTier: 0, rewardCr: 140, description: 'Pulse one Ceres field. Grade the nearest deposit.',
-    objective: 'Survey a Ceres asteroid field', params: Object.freeze({ scanTargets: 1 }),
+    riskTier: 0, rewardCr: 220,
+    description: 'Pulse one Ceres field, then cut a three-unit iron sample from the scanned seam.',
+    objective: 'Survey a Ceres field and mine a 3u iron sample',
+    params: Object.freeze({
+      scanTargets: 1,
+      originSurveySample: true,
+      sampleCmdtyId: 'cmdty_ore_iron',
+      sampleQty: 3,
+      surveyComplete: false,
+    }),
   }),
   Object.freeze({
     id: 'iron_sample', title: 'Iron Seam Sample', type: 'mining_quota',
