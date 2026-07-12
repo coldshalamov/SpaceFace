@@ -1,6 +1,7 @@
 import { ObjectiveKind } from '../ai/contracts.js';
 import { canFireByDoctrine } from '../ai/doctrine.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
+import { assessFriendlyFireLane } from '../ai/fireDiscipline.js';
 import { isPlayerWanted } from './heat.js';
 
 const RECENT_DEFENSIVE_DAMAGE_TICKS = 180;
@@ -51,14 +52,31 @@ export function applyAIFiringIntent(decision, state) {
     return;
   }
 
-  intent.fire = true;
-  intent.aimAngle = leadAngleFor(e, target, data.weapons);
+  const aimAngle = leadAngleFor(e, target, data.weapons);
   const combat = data.combat || (data.combat = {});
   combat.targetId = targetId;
+  const lane = assessFriendlyFireLane({
+    shooter: e,
+    target,
+    aimAngle,
+    entities: state.entityList || state.entities,
+  });
+  if (!lane.clear) {
+    clearFire(intent, lane.reason, lane.blockerId);
+    intent.aimAngle = aimAngle;
+    return;
+  }
+
+  intent.fire = true;
+  intent.fireBlockReason = null;
+  intent.fireBlockerId = null;
+  intent.aimAngle = aimAngle;
 }
 
-function clearFire(intent) {
+function clearFire(intent, reason = null, blockerId = null) {
   intent.fire = false;
+  intent.fireBlockReason = reason;
+  intent.fireBlockerId = blockerId;
 }
 
 function mutableIntent(data) {

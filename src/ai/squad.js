@@ -56,6 +56,10 @@ export class SquadCommander {
       contactsScratch: [],
       tacticCandidatesScratch: [],
       capabilityScratch: new Set(),
+      targetAssignmentsScratch: new Map(),
+      targetLoadScratch: new Map(),
+      hostileTargetsScratch: [],
+      assignmentMembersScratch: [],
     };
     this.squads.set(definition.id, state);
     return this.inspect(definition.id);
@@ -90,6 +94,7 @@ export class SquadCommander {
       squad.currentTactic = selected.id;
       squad.tacticSinceTick = tick;
     }
+    const targetAssignments = allocateCombatTargets(squad, selected.id, contacts, focus);
 
     const leader = chooseLeaderPerception(squad, perceptions);
     if (leader && leader.self) {
@@ -113,7 +118,10 @@ export class SquadCommander {
       const breakFormation = (squad.breakUntil.get(member.id) || -1) >= tick;
       if (!breakFormation) squad.breakReason.delete(member.id);
       const formationSlot = formationSlotFor(squad, leader, index, squad.members.length);
-      const objective = objectiveFor(selected.id, role, focus, bestObjective, bestTether, perception, freeze);
+      const allocationActive = targetAssignments !== null && targetAssignments.has(member.id);
+      const assignedTarget = allocationActive ? targetAssignments.get(member.id) : null;
+      const objective = objectiveFor(selected.id, role, focus, bestObjective, bestTether, perception,
+        assignedTarget, allocationActive, freeze);
       const directive = freeze({
         tick,
         squadId,
@@ -337,7 +345,8 @@ function formationSlotFor(squad, leaderPerception, index, count) {
   return { x: base.x + c * localZ - s * localX, z: base.z + s * localZ + c * localX };
 }
 
-function objectiveFor(tactic, role, focus, objective, tether, perception, freeze = Object.freeze) {
+function objectiveFor(tactic, role, focus, objective, tether, perception, assignedTarget = null,
+  allocationActive = false, freeze = Object.freeze) {
   if (tactic === 'fighting_retreat') return freezeObjective(ObjectiveKind.RETREAT, null, 'director_or_attrition', freeze);
   if (tactic === 'cut_and_scatter') return freezeObjective(role === SquadRole.SUPPORT || role === SquadRole.STRIKER ? ObjectiveKind.COUNTER_TETHER_CUT : ObjectiveKind.SCREEN, tether && tether.id, 'exposed_tether', freeze);
   if (tactic === 'overload_and_break') return freezeObjective(perception && perception.self.tethered ? ObjectiveKind.COUNTER_TETHER_OVERLOAD : ObjectiveKind.SCREEN, tether && tether.id, 'tethered_member', freeze);
@@ -347,8 +356,78 @@ function objectiveFor(tactic, role, focus, objective, tether, perception, freeze
     return freezeObjective(ObjectiveKind.SCREEN, objective && objective.id, 'protect_specialist', freeze);
   }
   if (tactic === 'hold_formation') return freezeObjective(ObjectiveKind.HOLD, null, 'weak_contact_picture', freeze);
+  if (allocationActive) {
+    if (!assignedTarget) return freezeObjective(ObjectiveKind.SCREEN, focus && focus.id, 'fire_lane_reserve', freeze);
+    if (tactic === 'contain_and_disable') return freezeObjective(ObjectiveKind.ENGAGE, assignedTarget.id, 'disable_assignment', freeze);
+    return freezeObjective(ObjectiveKind.FOCUS, assignedTarget.id, `${tactic}_assignment`, freeze);
+  }
   if (tactic === 'contain_and_disable') return freezeObjective(ObjectiveKind.ENGAGE, focus && focus.id, 'disable_focus', freeze);
   return freezeObjective(ObjectiveKind.FOCUS, focus && focus.id, tactic, freeze);
+}
+
+function allocateCombatTargets(squad, tactic, contacts, focus) {
+  if (!['swarm_pincer', 'standoff_focus', 'contain_and_disable'].includes(tactic)) return null;
+  const targets = squad.hostileTargetsScratch;
+  targets.length = 0;
+  for (const contact of contacts) {
+    if (contact.kind !== ContactKind.SHIP || contact.hostileVotes <= contact.friendlyVotes) continue;
+    targets.push(contact);
+  }
+  targets.sort((a, b) => {
+    if (focus) {
+      if (a.id === focus.id && b.id !== focus.id) return -1;
+      if (b.id === focus.id && a.id !== focus.id) return 1;
+    }
+    const scoreA = finiteTargetPriority(a);
+    const scoreB = finiteTargetPriority(b);
+    return scoreB - scoreA || stableId(a.id).localeCompare(stableId(b.id));
+  });
+
+  const assignments = squad.targetAssignmentsScratch;
+  const loads = squad.targetLoadScratch;
+  assignments.clear();
+  loads.clear();
+  for (const member of squad.members) assignments.set(member.id, null);
+  const members = squad.assignmentMembersScratch;
+  members.length = 0;
+  for (const member of squad.members) {
+    const role = squad.roles.get(member.id);
+    if (role === SquadRole.LEADER || role === SquadRole.STRIKER || role === SquadRole.SUPPORT) members.push(member);
+  }
+  members.sort((a, b) => assignmentRoleRank(squad.roles.get(a.id)) - assignmentRoleRank(squad.roles.get(b.id))
+    || stableId(a.id).localeCompare(stableId(b.id)));
+
+  for (const member of members) {
+    let assigned = null;
+    for (const target of targets) {
+      const load = loads.get(target.id) || 0;
+      if (load >= attackerCapacity(target)) continue;
+      assigned = target;
+      loads.set(target.id, load + 1);
+      break;
+    }
+    assignments.set(member.id, assigned);
+  }
+  return assignments;
+}
+
+function attackerCapacity(contact) {
+  if (contact.operationalMassBand === 'capital') return 4;
+  if (contact.operationalMassBand === 'heavy') return 3;
+  return 2;
+}
+
+function finiteTargetPriority(contact) {
+  return (Number.isFinite(contact.threat) ? contact.threat : 0) * 4
+    + (Number.isFinite(contact.confidence) ? contact.confidence : 0)
+    + (contact.tethered ? 0.25 : 0);
+}
+
+function assignmentRoleRank(role) {
+  if (role === SquadRole.LEADER) return 0;
+  if (role === SquadRole.STRIKER) return 1;
+  if (role === SquadRole.SUPPORT) return 2;
+  return 3;
 }
 
 function selectObjectiveContact(contacts) {
