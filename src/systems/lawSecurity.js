@@ -14,13 +14,17 @@ import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { isPlayerWanted } from './heat.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { effectiveRegionalSecurity } from './regionalEcology.js';
+import {
+  authorityResponsePolicy,
+  rankLawfulResponders,
+  reserveArrivalPoint,
+} from '../law/authorityResponse.js';
 
-export const LAW_SECURITY_VERSION = 1;
+export const LAW_SECURITY_VERSION = 2;
 export const AMBIENT_TOLL_VALUE_FLOOR = 120;
 
 const RESPONSE_GRACE_S = 6;
 const RESPONSE_CLEARANCE = 320;
-const RESPONSE_PATROL_CAP = 2;
 const RECEIPT_CAP = 24;
 const AMBIENT_SCAN_INTERVAL_TICKS = 30;
 const LAW_FACTIONS = new Set(['faction_scn', 'faction_mts', 'faction_dmc', 'faction_free']);
@@ -120,8 +124,12 @@ export const lawSecurity = {
     }
 
     if (attacker.id === state.playerId && target.id !== state.playerId) {
+      const jurisdiction = protectedStationAt(state, target) || (player && protectedStationAt(state, player));
+      if (jurisdiction && (isLawful(target) || isProtectedCivilian(target))) {
+        this._openIncident(attacker, target, jurisdiction, isLawful(target) ? 'player_assault' : 'player_piracy');
+        return;
+      }
       if (isLawful(target)) {
-        const jurisdiction = protectedStationAt(state, target) || (player && protectedStationAt(state, player));
         if (jurisdiction) this._openIncident(attacker, target, jurisdiction, 'player_assault');
         else this._authorizeResponder(target, attacker, null, 'self_defense');
       } else {
@@ -130,10 +138,11 @@ export const lawSecurity = {
       return;
     }
 
-    const targetProtected = target.id === state.playerId || isLawful(target);
+    const targetProtected = target.id === state.playerId || isLawful(target) || isProtectedCivilian(target);
     if (!targetProtected || isLawful(attacker)) return;
     const jurisdiction = protectedStationAt(state, target);
-    if (jurisdiction) this._openIncident(attacker, target, jurisdiction, 'hostile_fire');
+    if (jurisdiction) this._openIncident(attacker, target, jurisdiction,
+      target.id === state.playerId || isLawful(target) ? 'hostile_fire' : 'npc_piracy');
     else if (isLawful(target) && target.type !== 'station') this._authorizeResponder(target, attacker, null, 'self_defense');
   },
 
@@ -210,20 +219,23 @@ export const lawSecurity = {
       startedAt: state.simTime || 0,
       lastDamageAt: state.simTime || 0,
       responderIds: [],
-      status: 'responding',
+      status: 'distress',
     };
+    const policy = authorityResponsePolicy(effectiveLawSecurity(state));
+    incident.security = policy.security;
+    incident.dispatchDelayS = policy.dispatchDelayS;
+    incident.dispatchAt = incident.startedAt + policy.dispatchDelayS;
+    incident.responderCap = policy.responderCap;
+    incident.reserveAllowed = policy.reserveAllowed;
+    incident.challengeWindowS = policy.challengeWindowS;
     own.incidents[key] = incident;
-    const responders = this._respondersFor(incident, victim);
-    for (const responder of responders) {
-      this._authorizeResponder(responder, attacker, incident, 'security_response');
-      incident.responderIds.push(responder.id);
-    }
-    this._say('alert', 'CONTROL: hostile fire logged. Patrol responding. Clear the station ring.', `law:response:${incident.id}`, jurisdiction.factionId);
+    this._say('alert', `CONTROL: distress logged. Patrol ETA ${policy.dispatchDelayS.toFixed(2)} seconds.`, `law:distress:${incident.id}`, jurisdiction.factionId);
+    this._emit('law:distressRaised', publicIncident(incident));
     this._emit('law:incidentOpened', publicIncident(incident));
     this._recordReceipt({
-      incidentId: incident.id, cause, outcome: 'patrol_dispatched', attackerId: attacker.id,
+      incidentId: incident.id, cause, outcome: 'distress_received', attackerId: attacker.id,
       targetId: victim.id, stationId: jurisdiction.stationId,
-      text: 'HOSTILE FIRE LOGGED — patrol responding; clear the station ring.',
+      text: `DISTRESS RECEIVED — patrol dispatch in ${policy.dispatchDelayS.toFixed(2)} seconds.`,
     });
     return incident;
   },
@@ -232,30 +244,68 @@ export const lawSecurity = {
     const state = this.state;
     const station = entityById(state, incident.stationEntityId) || stationByPublicId(state, incident.stationId);
     const anchor = station && station.pos || victim.pos;
-    const out = [];
-    if (isLawful(victim) && victim.type !== 'station') out.push(victim);
-    for (const entity of state.entityList || []) {
-      if (out.length >= RESPONSE_PATROL_CAP) break;
-      if (!entity || entity.alive === false || entity.id === incident.attackerId || out.includes(entity)) continue;
-      if (!isLawful(entity) || entity.type !== 'ship' || distance2(entity.pos, anchor) > Math.pow(incident.radius + 700, 2)) continue;
-      out.push(entity);
-    }
-    if (!out.length && typeof this.helpers.spawnEntity === 'function') {
-      const angle = hashUnit(state.meta && state.meta.seed || 1, incident.id, 'response') * Math.PI * 2;
-      const radius = Math.min(720, Math.max(260, incident.radius * 0.62));
-      const pos = { x: anchor.x + Math.cos(angle) * radius, z: anchor.z + Math.sin(angle) * radius };
+    const candidates = isLawful(victim) && victim.type === 'ship'
+      ? [victim, ...(state.entityList || [])]
+      : (state.entityList || []);
+    const out = rankLawfulResponders(candidates, anchor, {
+      aggressorId: incident.attackerId,
+      cap: incident.responderCap,
+      radius: incident.radius + 1000,
+    });
+    const reserveCount = incident.reserveAllowed
+      ? Math.max(0, incident.responderCap - out.length)
+      : 0;
+    for (let index = 0; index < reserveCount && typeof this.helpers.spawnEntity === 'function'; index++) {
+      const pos = reserveArrivalPoint({
+        anchor,
+        aggressorPos: entityById(state, incident.attackerId)?.pos,
+        jurisdictionRadius: incident.radius,
+        seed: state.meta && state.meta.seed || 1,
+        incidentId: `${incident.id}:${index}`,
+      });
       const spec = makeEnemySpawnSpec('patrol_lawman', 3, pos, {
         factionId: incident.factionId || 'faction_scn',
         motive: 'jurisdiction_enforcement',
         engagementTrigger: 'security_response',
         zoneId: `jurisdiction:${incident.stationId}`,
         approachTelegraph: 'patrol_challenge',
-        noFireResponseWindowS: 1,
+        noFireResponseWindowS: incident.challengeWindowS,
       });
       const spawned = this.helpers.spawnEntity(spec);
-      if (spawned) out.push(spawned);
+      if (spawned) {
+        const ai = spawned.data && spawned.data.ai;
+        if (ai) ai.spawnContext = 'security_response';
+        out.push(spawned);
+      }
     }
     return out;
+  },
+
+  _dispatchIncident(incident, victim, attacker) {
+    const responders = this._respondersFor(incident, victim);
+    incident.dispatchedAt = this.state.simTime || 0;
+    incident.status = responders.length ? 'responding' : 'monitoring';
+    for (const responder of responders) {
+      this._authorizeResponder(responder, attacker, incident, 'security_response');
+      incident.responderIds.push(responder.id);
+    }
+    const payload = publicIncident(incident);
+    this._emit('law:dispatchStarted', payload);
+    if (responders.length) {
+      this._say('alert', `CONTROL: ${responders.length} patrol unit${responders.length === 1 ? '' : 's'} intercepting the aggressor.`, `law:dispatch:${incident.id}`, incident.factionId);
+      this._recordReceipt({
+        incidentId: incident.id, cause: incident.cause, outcome: 'patrol_dispatched',
+        attackerId: incident.attackerId, targetId: incident.victimId, stationId: incident.stationId,
+        text: `PATROL DISPATCHED — ${responders.length} unit${responders.length === 1 ? '' : 's'} intercepting the aggressor.`,
+      });
+    } else {
+      this._say('alert', 'CONTROL: no patrol in range. Distress remains active.', `law:dispatch:none:${incident.id}`, incident.factionId);
+      this._recordReceipt({
+        incidentId: incident.id, cause: incident.cause, outcome: 'dispatch_unavailable',
+        attackerId: incident.attackerId, targetId: incident.victimId, stationId: incident.stationId,
+        text: 'NO PATROL IN RANGE — distress remains active.',
+      });
+    }
   },
 
   _authorizeResponder(responder, attacker, incident, motive) {
@@ -270,7 +320,7 @@ export const lawSecurity = {
     ai.engagementTrigger = motive === 'self_defense' ? 'player_attack' : 'security_response';
     ai.zoneId = incident ? `jurisdiction:${incident.stationId}` : String(ai.zoneId || 'patrol_route');
     ai.approachTelegraph = 'patrol_challenge';
-    ai.noFireResponseWindowS = 1;
+    ai.noFireResponseWindowS = incident ? incident.challengeWindowS : 1;
     ai.roe = RulesOfEngagement.WEAPONS_FREE;
     const anchor = incident
       ? (stationByPublicId(state, incident.stationId)?.pos || responder.pos)
@@ -291,13 +341,17 @@ export const lawSecurity = {
   },
 
   _updateIncident(key, incident) {
-    if (!incident || incident.status !== 'responding') return;
+    if (!incident || !['distress', 'responding', 'monitoring'].includes(incident.status)) return;
     const state = this.state;
     const attacker = entityById(state, incident.attackerId);
+    const victim = entityById(state, incident.victimId);
     const station = entityById(state, incident.stationEntityId) || stationByPublicId(state, incident.stationId);
     const now = state.simTime || 0;
     let outcome = null;
     if (!attacker || attacker.alive === false) outcome = 'threat_cleared';
+    else if (incident.status === 'distress' && now >= incident.dispatchAt) {
+      this._dispatchIncident(incident, victim || station, attacker);
+    }
     else if (station && distance2(attacker.pos, station.pos) > Math.pow(incident.radius + RESPONSE_CLEARANCE, 2)
       && now - incident.lastDamageAt >= RESPONSE_GRACE_S
       && !(attacker.id === state.playerId && isPlayerWanted(state))) {
@@ -431,6 +485,15 @@ function isLawful(entity) {
   return ai.lawful === true || (entity.type === 'station' && LAW_FACTIONS.has(entity.factionId));
 }
 
+function isProtectedCivilian(entity) {
+  if (!entity || entity.type !== 'ship') return false;
+  const data = entity.data || {};
+  const ai = data.ai || {};
+  const role = String(data.trafficRole || ai.role || ai.archetype || '').toLowerCase();
+  return entity.team === 2 || ai.spawnContext === 'convoy_civilian'
+    || ['hauler', 'courier', 'miner', 'trader', 'civilian', 'fleeing_trader'].some((word) => role.includes(word));
+}
+
 function entityById(state, id) {
   return id == null || !state || !state.entities || typeof state.entities.get !== 'function' ? null : state.entities.get(id) || null;
 }
@@ -476,10 +539,6 @@ function distance2(a, b) {
   return dx * dx + dz * dz;
 }
 
-function hashUnit(...values) {
-  return hash32(...values) / 0xffffffff;
-}
-
 function publicIncident(incident) {
   return {
     id: incident.id,
@@ -492,6 +551,11 @@ function publicIncident(incident) {
     outcome: incident.outcome || null,
     responderIds: incident.responderIds.slice(),
     startedAt: incident.startedAt,
+    dispatchAt: incident.dispatchAt || null,
+    dispatchedAt: incident.dispatchedAt || null,
+    dispatchDelayS: incident.dispatchDelayS || null,
+    responderCap: incident.responderCap || 0,
+    security: incident.security,
     resolvedAt: incident.resolvedAt || null,
   };
 }

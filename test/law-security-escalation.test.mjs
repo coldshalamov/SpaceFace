@@ -126,6 +126,8 @@ function boot(opts = {}) {
     encounterReceipts: [],
     incidentsOpened: [],
     incidentsResolved: [],
+    distressRaised: [],
+    dispatchStarted: [],
     parleyStarted: [],
     parleyDemand: [],
     parleyResolved: [],
@@ -136,6 +138,8 @@ function boot(opts = {}) {
   bus.on('encounter:receipt', (p) => log.encounterReceipts.push(clone(p)));
   bus.on('law:incidentOpened', (p) => log.incidentsOpened.push(clone(p)));
   bus.on('law:incidentResolved', (p) => log.incidentsResolved.push(clone(p)));
+  bus.on('law:distressRaised', (p) => log.distressRaised.push(clone(p)));
+  bus.on('law:dispatchStarted', (p) => log.dispatchStarted.push(clone(p)));
   bus.on('pirateParley:started', (p) => log.parleyStarted.push(clone(p)));
   bus.on('pirateParley:demand', (p) => log.parleyDemand.push(clone(p)));
   bus.on('pirateParley:resolved', (p) => log.parleyResolved.push(clone(p)));
@@ -488,7 +492,7 @@ test('4. player attack inside station protection forces protected withdrawal ins
 
 // ── 5. Hostile fire on player in protection → one incident; patrol assigned ─────
 
-test('5. non-lawful damage to player in lawful station protection opens one incident and assigns existing patrol (same team 1)', () => {
+test('5. protected hostile fire raises distress, then assigns the nearest patrol after a readable dispatch delay', () => {
   withForbiddenNondeterminism(() => {
     const t = boot({
       sectorId: HELIOS_SECTOR,
@@ -522,16 +526,28 @@ test('5. non-lawful damage to player in lawful station protection opens one inci
     assert.equal(opened.cause, 'hostile_fire');
     assert.equal(opened.attackerId, pirate.id);
     assert.equal(opened.stationId, 'station_helios');
-    assert.equal(opened.status, 'responding');
+    assert.equal(opened.status, 'distress');
+    assert.equal(t.log.distressRaised.length, 1, 'distress phase is visible before dispatch');
 
     const incidents = lawOwn(t.state).incidents;
     const keys = Object.keys(incidents);
     assert.equal(keys.length, 1, 'one live incident record');
     const inc = incidents[keys[0]];
-    assert.ok(inc.responderIds.includes(patrol.id), 'existing lawful patrol is assigned responder');
+    assert.deepEqual(inc.responderIds, [], 'no responder is armed during the distress phase');
+    assert.equal(inc.dispatchAt - inc.startedAt, 1.25, 'maximum-security Helios still preserves a readable ETA');
 
-    const p = entity(t.state, patrol);
+    let p = entity(t.state, patrol);
     const pirateE = entity(t.state, pirate);
+    assert.equal(p.data.ai.securityTargetId, undefined, 'patrol remains neutral before dispatch');
+    assert.equal(isHostileForAI(t.state, p, pirateE), false);
+    stepSeconds(t.sim, 0.9);
+    assert.equal(t.log.dispatchStarted.length, 0, 'dispatch cannot arm early');
+    stepSeconds(t.sim, 0.5);
+
+    assert.equal(t.log.dispatchStarted.length, 1, 'dispatch phase begins once ETA elapses');
+    p = entity(t.state, patrol);
+    const liveIncident = Object.values(lawOwn(t.state).incidents)[0];
+    assert.ok(liveIncident.responderIds.includes(patrol.id), 'existing lawful patrol is assigned responder');
     assert.equal(p.data.ai.securityTargetId, pirate.id, 'patrol securityTargetId is the pirate');
     assert.equal(p.data.ai.engagementTrigger, 'security_response');
     assert.equal(p.data.ai.motive, 'jurisdiction_enforcement');
@@ -746,5 +762,91 @@ test('8. same seed and event tape produce identical receipts and responder selec
     const idC = c.responderSelection[0]?.id;
     assert.ok(idA && idC, 'both seeds open an incident');
     assert.notEqual(idA, idC, 'control: different seed yields different incident id');
+  });
+});
+
+test('9. high-security reserve response arrives at range and scales to jurisdiction strength', () => {
+  withForbiddenNondeterminism(() => {
+    const t = boot({
+      sectorId: HELIOS_SECTOR,
+      security: 0.95,
+      playerPos: { x: 100, z: 0 },
+      station: { stationId: 'station_helios', factionId: 'faction_scn' },
+    });
+    const pirate = spawnPirate(t.sim, {
+      pos: { x: 260, z: 20 },
+      team: 1,
+      spawnContext: 'encounter',
+      extras: { motive: 'scripted_ambush', engagementTrigger: 'encounter_phase' },
+    });
+    emitDamage(t.bus, { attackerId: pirate.id, targetId: t.player.id, applied: 20 });
+    const incident = Object.values(lawOwn(t.state).incidents)[0];
+    assert.equal(incident.responderCap, 3);
+    stepSeconds(t.sim, incident.dispatchDelayS + 0.5);
+    assert.equal(t.log.dispatchStarted.length, 1);
+    const dispatched = t.log.dispatchStarted[0];
+    assert.equal(dispatched.responderIds.length, 3, 'maximum-security reserve fields a three-ship response');
+    for (const id of dispatched.responderIds) {
+      const responder = t.state.entities.get(id);
+      assert.ok(responder);
+      assert.ok(Math.hypot(responder.pos.x - pirate.pos.x, responder.pos.z - pirate.pos.z) >= 900,
+        'reserve responder starts with a visible intercept leg, not adjacent teleportation');
+      assert.equal(responder.data.ai.securityTargetId, pirate.id);
+      assert.equal(isHostileToPlayer(responder, 0, t.state), false,
+        'security response never becomes globally hostile to the neutral player');
+    }
+    t.sim.dispose();
+  });
+});
+
+test('10. violence against protected civilians identifies the real NPC or player aggressor', () => {
+  withForbiddenNondeterminism(() => {
+    const npcCase = boot({ sectorId: HELIOS_SECTOR, security: 0.95, playerPos: { x: 80, z: 0 } });
+    const civilian = spawnPirate(npcCase.sim, {
+      pos: { x: 180, z: 0 }, team: 2, factionId: 'faction_free', spawnContext: 'convoy_civilian',
+      archetype: 'fleeing_trader', passive: true,
+    });
+    const raider = spawnPirate(npcCase.sim, {
+      pos: { x: 260, z: 0 }, team: 1, spawnContext: 'encounter',
+      extras: { motive: 'lane_predation', engagementTrigger: 'ambush_sprung' },
+    });
+    emitDamage(npcCase.bus, { attackerId: raider.id, targetId: civilian.id, applied: 14 });
+    assert.equal(npcCase.log.distressRaised.length, 1);
+    assert.equal(npcCase.log.distressRaised[0].attackerId, raider.id);
+    assert.equal(npcCase.log.distressRaised[0].victimId, civilian.id);
+    assert.equal(npcCase.log.distressRaised[0].cause, 'npc_piracy');
+    npcCase.sim.dispose();
+
+    const playerCase = boot({ sectorId: HELIOS_SECTOR, security: 0.95, playerPos: { x: 80, z: 0 } });
+    const trader = spawnPirate(playerCase.sim, {
+      pos: { x: 180, z: 0 }, team: 2, factionId: 'faction_free', spawnContext: 'convoy_civilian',
+      archetype: 'fleeing_trader', passive: true,
+    });
+    emitDamage(playerCase.bus, { attackerId: playerCase.player.id, targetId: trader.id, applied: 14 });
+    assert.equal(playerCase.log.distressRaised.length, 1);
+    assert.equal(playerCase.log.distressRaised[0].attackerId, playerCase.player.id);
+    assert.equal(playerCase.log.distressRaised[0].cause, 'player_piracy');
+    playerCase.sim.dispose();
+  });
+});
+
+test('11. deep lawless violence receives no implausible instant police response', () => {
+  withForbiddenNondeterminism(() => {
+    const t = boot({
+      sectorId: LOW_SEC_SECTOR,
+      security: 0.2,
+      playerPos: { x: 5000, z: 0 },
+      station: false,
+    });
+    const pirate = spawnPirate(t.sim, {
+      pos: { x: 5120, z: 0 }, team: 1, spawnContext: 'encounter',
+      extras: { motive: 'lane_predation', engagementTrigger: 'ambush_sprung' },
+    });
+    emitDamage(t.bus, { attackerId: pirate.id, targetId: t.player.id, applied: 18 });
+    stepSeconds(t.sim, 8);
+    assert.equal(t.log.distressRaised.length, 0);
+    assert.equal(t.log.dispatchStarted.length, 0);
+    assert.equal(Object.keys(lawOwn(t.state).incidents).length, 0);
+    t.sim.dispose();
   });
 });
