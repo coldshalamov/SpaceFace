@@ -1,8 +1,7 @@
 // Pause menu (ARCHITECTURE §5.4, design/specs/09). Opened by ESC in flight.
 // Resume / Settings / Save / Load / Mission Log / Help / Main Menu.
-// On show: freeze sim (sim:pause + timeScale=0). On resume: sim:resume + timeScale=1.
-// UI emits intents only; it never mutates owned sim state beyond the documented
-// timeScale/mode toggle that the loop reads (§2.2 — timeScale gates stepSim).
+// ScreenManager owns aggregate pause/resume events and the time-effects request. This screen owns
+// only pause-mode presentation and navigation intents.
 
 import { confirm } from '../confirm.js';
 import { BINDINGS } from '../bindings.js';
@@ -417,15 +416,12 @@ export const pauseScreen = {
   },
 
   _resume(ctx) {
-    ctx.state.timeScale = 1;
     if (ctx.state.mode === 'paused') ctx.state.mode = 'flight';
-    ctx.bus.emit('sim:resume', {});
     nav(ctx, 'popScreen');
   },
 
   _toMenu(ctx) {
     ctx.state.mode = 'menu';
-    ctx.bus.emit('sim:pause', {});
     const mgr = getManager(ctx);
     if (mgr) {
       if (mgr.closeAll) mgr.closeAll();
@@ -437,9 +433,7 @@ export const pauseScreen = {
   },
 
   onShow(ctx) {
-    ctx.state.timeScale = 0;
     if (ctx.state.mode === 'flight') ctx.state.mode = 'paused';
-    ctx.bus.emit('sim:pause', {});
     renderFlightBrief(ctx);
     if (els && els.bResume) try { els.bResume.focus(); } catch (e) {}
   },
