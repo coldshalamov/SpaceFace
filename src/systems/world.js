@@ -29,6 +29,7 @@ import { planZoneSpawns, zoneAt, zoneThreat } from '../data/sectorZones.js'; // 
 import { applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import {
   CORRIDOR_SECTOR_IDS,
+  HELIOS_STARTER_PROTECTION_RADIUS_WU,
   RESIDENCY_MATERIALIZED_CAP,
   RESIDENCY_TIER,
   corridorPlayableBounds,
@@ -100,7 +101,7 @@ const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const LAWFUL_ENEMIES = ['patrol_lawman'];
 const PIRATE_ENEMIES = ['reaver_pirate', 'wasp_swarmer', 'corsair_raider'];
 const FRONTIER_ENEMIES = ['corsair_raider', 'reaver_pirate', 'wasp_swarmer'];
-const STARTER_SAFE_RADIUS = 1400;
+const STARTER_SAFE_RADIUS = HELIOS_STARTER_PROTECTION_RADIUS_WU;
 const STATION_SAFE_RADIUS = 1100;
 const GATE_SAFE_RADIUS = 900;
 const AMBIENT_SPAWN_ATTEMPTS = 24;

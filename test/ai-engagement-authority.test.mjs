@@ -111,7 +111,9 @@ test('response/telegraph window and exact doctrine fire phase are authoritative'
     objectiveReason: 'combat_doctrine:interceptor_flyby:engine_flare',
   }), { ok: false, reason: 'doctrine_fire_window' });
 
-  assert.deepEqual(authorize(stateWith()), { ok: true, reason: 'authorized' });
+  assert.deepEqual(authorize(stateWith(authorizedAI(), {
+    playerPos: { x: 1600, z: 0 },
+  })), { ok: true, reason: 'authorized' });
 });
 
 test('fresh hostility is mandatory even if a stale decision names the player', () => {
@@ -130,6 +132,26 @@ test('Helios station protection blocks criminal fire but permits lawful wanted e
     zoneId: 'zone_helios_core',
   }), { playerPos: { x: 900, z: 0 }, wanted: true });
   assert.deepEqual(authorize(law, { wanted: true }), { ok: true, reason: 'authorized' });
+});
+
+test('the full Helios starter sanctuary is protected even beyond the station patrol ring', () => {
+  const inside = stateWith(authorizedAI(), {
+    playerPos: { x: 1390, z: 0 },
+    enemyPos: { x: 1600, z: 0 },
+    // Keep the physical station far away so this assertion exercises the starter sanctuary,
+    // not the ordinary station-centered patrol radius.
+    stationPos: { x: 3200, z: 0 },
+  });
+  assert.equal(protectedStationAt(inside, inside.entities.get(1))?.stationId, 'station_helios');
+  assert.deepEqual(authorize(inside), { ok: false, reason: 'station_protection' });
+
+  const outside = stateWith(authorizedAI(), {
+    playerPos: { x: 1410, z: 0 },
+    enemyPos: { x: 1600, z: 0 },
+    stationPos: { x: 3200, z: 0 },
+  });
+  assert.equal(protectedStationAt(outside, outside.entities.get(1)), null);
+  assert.deepEqual(authorize(outside), { ok: true, reason: 'authorized' });
 });
 
 test('passive and hold-fire transitions clear stale weapon intent in the live AI port sweep', () => {

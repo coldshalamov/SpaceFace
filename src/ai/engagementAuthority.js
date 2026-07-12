@@ -1,12 +1,15 @@
 import { normalizeCombatDoctrineId } from './combatDoctrine.js';
 import { RulesOfEngagement, normalizeActivity, normalizeRoe } from './doctrine.js';
 import { bubblesFor } from '../data/stationBubbles.js';
+import {
+  HELIOS_STARTER_PROTECTION_RADIUS_WU,
+  sectorGlobalOrigin,
+} from '../data/sectorCoordinates.js';
 import { isPlayerWanted } from '../systems/heat.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 
 const TICKS_PER_SECOND = 60;
 const MIN_RESPONSE_WINDOW_S = 0.5;
-const HELIOS_PROTECTION_RADIUS = 1200;
 const LAWFUL_STATION_PROTECTION_MIN = 600;
 const LAWFUL_STATION_FACTIONS = new Set([
   'faction_scn',
@@ -120,6 +123,24 @@ export function isOffensiveActionDef(def) {
 export function protectedStationAt(state, entity) {
   if (!state || !entity || !entity.pos) return null;
   const stations = stationEntities(state);
+  const sectorId = state.world && state.world.currentSectorId;
+  if (sectorId === 'sector_helios_prime') {
+    const origin = sectorGlobalOrigin(sectorId);
+    const dx = entity.pos.x - origin.x;
+    const dz = entity.pos.z - origin.z;
+    if (dx * dx + dz * dz <= HELIOS_STARTER_PROTECTION_RADIUS_WU * HELIOS_STARTER_PROTECTION_RADIUS_WU) {
+      const helios = stations.find((station) => {
+        const stationId = station && station.data && station.data.stationId || station && station.stationId;
+        return stationId === 'station_helios';
+      }) || null;
+      return Object.freeze({
+        stationId: 'station_helios',
+        entityId: helios && helios.id != null ? helios.id : null,
+        factionId: helios && (helios.factionId || helios.data && helios.data.factionId) || 'faction_scn',
+        radius: HELIOS_STARTER_PROTECTION_RADIUS_WU,
+      });
+    }
+  }
   for (const station of stations) {
     if (!station || station.alive === false || !station.pos) continue;
     const stationId = station.data && station.data.stationId || station.stationId || station.id;
@@ -127,7 +148,7 @@ export function protectedStationAt(state, entity) {
     if (stationId !== 'station_helios' && !LAWFUL_STATION_FACTIONS.has(factionId)) continue;
     const rings = bubblesFor(station);
     const radius = stationId === 'station_helios'
-      ? Math.max(HELIOS_PROTECTION_RADIUS, rings.patrol.radius)
+      ? Math.max(HELIOS_STARTER_PROTECTION_RADIUS_WU, rings.patrol.radius)
       : Math.max(LAWFUL_STATION_PROTECTION_MIN, rings.patrol.radius);
     const dx = entity.pos.x - station.pos.x;
     const dz = entity.pos.z - station.pos.z;

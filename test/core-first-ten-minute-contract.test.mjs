@@ -39,6 +39,7 @@ import { SECTORS } from '../src/data/sectors.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { SHIPS } from '../src/data/ships.js';
+import { HELIOS_STARTER_PROTECTION_RADIUS_WU } from '../src/data/sectorCoordinates.js';
 import { DOCTRINE_TELEGRAPH_TICKS } from '../src/ai/combatDoctrine.js';
 import { pirateDoctrineForEntity, pirateDoctrineReadout } from '../src/data/pirateDoctrines.js';
 import { actions } from '../src/systems/actions.js';
@@ -80,8 +81,7 @@ const SUSTAIN_SHOTS = 20;
 const SUSTAIN_S = 4;
 const CAPTURE_HOLD_S = 2.5;
 const TOLERANCE_MULT = 2.0;
-// Mirrors src/systems/world.js STARTER_SAFE_RADIUS (module-private; pinned by source + behavior).
-const HELIOS_STARTER_SAFE_RADIUS = 1400;
+const HELIOS_STARTER_SAFE_RADIUS = HELIOS_STARTER_PROTECTION_RADIUS_WU;
 
 const failures = [];
 const passes = [];
@@ -190,8 +190,10 @@ await check('global default NEW_GAME is Helios starter Hitch, not Casual-gated',
   assert.doesNotMatch(ngSrc, /casualOnly|casual_only|difficulty\s*===\s*['"]casual['"]/i,
     'newGameDefaults must not gate starter contract behind Casual');
   const worldSrc = read('../src/systems/world.js');
-  assert.match(worldSrc, /STARTER_SAFE_RADIUS\s*=\s*1400/,
-    'world.js must keep Helios starter safe radius at 1400 wu');
+  assert.equal(HELIOS_STARTER_SAFE_RADIUS, 1400,
+    'shared Helios starter sanctuary radius stays at 1400 wu');
+  assert.match(worldSrc, /STARTER_SAFE_RADIUS\s*=\s*HELIOS_STARTER_PROTECTION_RADIUS_WU/,
+    'world.js must consume the shared Helios sanctuary radius');
   assert.match(worldSrc, /sector_helios_prime.*STARTER_SAFE|starterSafeRadius/,
     'world.js must apply starter safe radius on Helios');
   // Difficulty must not be the only path that enables starter protection.

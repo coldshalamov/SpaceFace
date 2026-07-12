@@ -23,6 +23,13 @@ function finiteXZ(value) {
 /** Documented lattice spacing (world units) between adjacent map-graph nodes. */
 export const SECTOR_ORIGIN_LATTICE_WU = 4096;
 
+/**
+ * New-game Helios sanctuary centered on the authored sector origin. World spawning and the final
+ * AI firing authority share this value so a clean pilot cannot cross an invisible jurisdiction
+ * seam while still inside the protected starter pocket.
+ */
+export const HELIOS_STARTER_PROTECTION_RADIUS_WU = 1400;
+
 /** Fail-closed default sector for unknown ids (v8 migration compatibility). */
 export const DEFAULT_SECTOR_ID = 'sector_helios_prime';
 
