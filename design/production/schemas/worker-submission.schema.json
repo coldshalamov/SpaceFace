@@ -31,7 +31,7 @@
     "meaningfulCycles": { "type": "integer", "minimum": 0 },
     "evidencePaths": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 },
+      "items": { "$ref": "#/definitions/containedRelativePath" },
       "uniqueItems": true
     },
     "changes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
@@ -89,6 +89,16 @@
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
     },
+    "containedRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Relative, contained path: no absolute forms, no ':' (blocks drive letters and NTFS ADS), no '..' traversal, no leading slash. Reserved Windows device names are additionally rejected by the runtime validator (case-insensitively; JSON Schema patterns cannot express that portably).",
+      "pattern": "^(?![\\\\/])(?!.*:)(?!(^|.*[\\\\/])\\.\\.([\\\\/]|$)).+$"
+    },
+    "strictIsoUtc": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+    },
     "continuation": {
       "type": "object",
       "additionalProperties": false,
@@ -113,10 +123,10 @@
           ]
         },
         "checkpointHash": { "$ref": "#/definitions/digest" },
-        "checkpointPath": { "type": "string", "minLength": 1 },
+        "checkpointPath": { "$ref": "#/definitions/containedRelativePath" },
         "lastCompletedStep": { "type": "string", "minLength": 1 },
         "processStatus": { "enum": ["running", "exited", "terminated", "unknown"] },
-        "heartbeatAt": { "type": "string", "format": "date-time" }
+        "heartbeatAt": { "$ref": "#/definitions/strictIsoUtc" }
       }
     },
     "blockerEvidence": {
@@ -134,7 +144,7 @@
           ]
         },
         "observation": { "type": "string", "minLength": 20 },
-        "evidencePath": { "type": "string", "minLength": 1 },
+        "evidencePath": { "$ref": "#/definitions/containedRelativePath" },
         "attemptedRemedies": {
           "type": "array",
           "items": { "type": "string", "minLength": 10 },

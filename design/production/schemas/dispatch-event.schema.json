@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/dispatch-event.schema.json",
+  "title": "SpaceFace Controller Dispatch Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "logId",
+    "sequence",
+    "eventId",
+    "at",
+    "controllerSessionId",
+    "action",
+    "packetId",
+    "lane",
+    "briefHash",
+    "detailsReceipt",
+    "previousRecordHash",
+    "recordHash"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "logId": { "const": "dispatch-events" },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "eventId": { "type": "string", "minLength": 1 },
+    "at": { "type": "string", "format": "date-time" },
+    "controllerSessionId": { "type": "string", "minLength": 1 },
+    "action": {
+      "enum": [
+        "dispatch",
+        "solo_action",
+        "agent_return",
+        "blocker_claim",
+        "blocker_audit",
+        "lane_change",
+        "compaction_resume",
+        "violation"
+      ]
+    },
+    "packetId": { "type": ["string", "null"] },
+    "lane": { "type": ["string", "null"] },
+    "briefHash": { "$ref": "#/definitions/digestOrNull" },
+    "detailsReceipt": { "$ref": "#/definitions/controllerArtifact" },
+    "previousRecordHash": { "$ref": "#/definitions/digestOrNull" },
+    "recordHash": { "$ref": "#/definitions/digest" }
+  },
+  "definitions": {
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "digestOrNull": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/definitions/digest" }
+      ]
+    },
+    "controllerArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relativePath", "sha256", "bytes", "kind"],
+      "properties": {
+        "relativePath": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/definitions/digest" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "kind": { "enum": ["dispatch", "solo_action", "agent_return", "blocker_claim", "blocker_audit", "lane_change", "compaction_resume", "violation"] }
+      }
+    }
+  }
+}
