@@ -3,3 +3,23 @@ node_modules/
 build/
 dist/
 /nul
+.campaign/
+
+# Local agent/tool scratch artifacts (never production source)
+/-
+/.zcode/
+/scripts/_*.mjs
+/scripts/lib/_*.mjs
+/scripts/check-test-temp.mjs
+*.bak
+*.locked
+*.prev
+*.repair
+*.pre_repair_bak
+*.rewrite
+
+# Reproducible Blender/export intermediates and pre-promotion backups
+*.blend1
+**/_export_tmp.glb
+**/__pycache__/
+/assets/ships/m4_helios_hub/evidence/pre_promote_backups/
