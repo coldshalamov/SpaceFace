@@ -6165,6 +6165,7 @@ function checkIronmanDeathEndsTheRun() {
     const state = {
       playerId: 1, simTime: 42,
       settings: { gameplay: { difficulty } },
+      combat: {},
       player: { credits: 100, insurance: { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: 'station_helios' }, ownedShips: [{ defId: 'ship_pelican', fittings: [] }], activeShipIndex: 0, cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 100, capMass: 100 } },
       entities: new Map(),
       world: { currentSectorId: 'sector_helios_prime', activeSector: { stations: [{ stationId: 'station_helios', pos: { x: 320, z: -80 } }] } },

@@ -265,7 +265,12 @@ test('Ironman remains final and idempotent', () => {
   assert.equal(events.filter((entry) => entry.event === 'player:death').length, 1);
   assert.equal(events.filter((entry) => entry.event === 'game:over').length, 1);
   assert.equal(events.filter((entry) => entry.event === 'player:respawn').length, 0);
-  assert.equal(events.find((entry) => entry.event === 'game:over').payload.recoverable, false);
+  const gameOver = events.find((entry) => entry.event === 'game:over').payload;
+  assert.equal(gameOver.recoverable, false);
+  assert.equal(state.combat.lastPlayerDefeat.schemaVersion, 1);
+  assert.equal(state.combat.lastPlayerDefeat.killerId, 9);
+  assert.deepEqual(state.combat.lastPlayerDefeat, gameOver.receipt,
+    'Ironman retains the exact final defeat receipt consumed by the run-over screen');
   assert.equal(player.alive, false);
 });
 
