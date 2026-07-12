@@ -309,7 +309,7 @@ export const world = {
    * Free-flight continuous transitions use { continuous:true, noTeleport:true } and never
    * place the player or global-wipe entities.
    * @param {string} sectorId
-   * @param {{fromJump?:boolean, via?:string, fromSectorId?:string, continuous?:boolean, noTeleport?:boolean, placePlayer?:boolean}} [opts]
+   * @param {{fromJump?:boolean, via?:string, fromSectorId?:string, continuous?:boolean, noTeleport?:boolean, placePlayer?:boolean, restoreDurableRecords?:boolean}} [opts]
    */
   enterSector(sectorId, opts = {}) {
     const state = this.state;
@@ -360,6 +360,7 @@ export const world = {
       reason,
       noTeleport,
       focusGlobal,
+      restoreDurableRecords: opts.restoreDurableRecords === true,
     });
 
     const active = state.world.sectorContents[sectorId]
@@ -473,7 +474,10 @@ export const world = {
     // Materialize / promote first so demotion never leaves the player with zero content mid-plan.
     for (const id of plan.materialize) {
       const tier = plan.tiers.get(id);
-      this._ensureSectorMaterialized(id, tier);
+      const restoreDurableRecords = opts.restoreDurableRecords === true
+        && id === membershipSectorId
+        && tier === RESIDENCY_TIER.FULL;
+      this._ensureSectorMaterialized(id, tier, { restoreDurableRecords });
       this._setResidentMeta(id, tier, opts.reason || 'residency');
     }
     // Demote everyone marked RECORD_ONLY (scoped despawn only).
@@ -488,7 +492,10 @@ export const world = {
     // Sync FULL/REDUCED transitions for already-materialized bags (enemies/dressing LOD).
     for (const id of plan.materialize) {
       const tier = plan.tiers.get(id);
-      this._syncSectorTierContent(id, tier);
+      const restoreDurableRecords = opts.restoreDurableRecords === true
+        && id === membershipSectorId
+        && tier === RESIDENCY_TIER.FULL;
+      this._syncSectorTierContent(id, tier, { restoreDurableRecords });
     }
 
     this.bus.emit('world:residency', {
@@ -520,7 +527,7 @@ export const world = {
    * First materialization creates the sector bag with epoch-stable RNG.
    * FULL includes combat/dressing; REDUCED is structural only.
    */
-  _ensureSectorMaterialized(sectorId, tier) {
+  _ensureSectorMaterialized(sectorId, tier, opts = {}) {
     const state = this.state;
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     if (!sector) return;
@@ -548,7 +555,7 @@ export const world = {
     this._spawnPOIs(sector, active, disc, rng);
     this._spawnHazards(sector, active);
     // Durable records rematerialize before ambient re-roll so identity/outcomes never reroll.
-    const rematerialized = this._rematerializeSectorRecords(sectorId, active, tier);
+    const rematerialized = this._rematerializeSectorRecords(sectorId, active, tier, opts);
     if (tier === RESIDENCY_TIER.FULL) {
       this._spawnDressing(sector, active, rng);
       // Only re-roll ambient combatants when this sector has no prior durable NPC/convoy history.
@@ -568,28 +575,33 @@ export const world = {
   },
 
   /** Promote/demote live content between FULL and REDUCED without rematerializing anchors. */
-  _syncSectorTierContent(sectorId, tier) {
+  _syncSectorTierContent(sectorId, tier, opts = {}) {
     const state = this.state;
     const rec = state.world.residentSectors[sectorId];
     if (!rec || rec.tier === tier) {
       // Still may need FULL extras if bag was created as REDUCED.
-      if (tier === RESIDENCY_TIER.FULL) this._promoteSectorToFull(sectorId);
+      if (tier === RESIDENCY_TIER.FULL) this._promoteSectorToFull(sectorId, opts);
       if (tier === RESIDENCY_TIER.REDUCED) this._stripSectorFullExtras(sectorId);
       this._setResidentMeta(sectorId, tier, rec && rec.reason);
       return;
     }
-    if (tier === RESIDENCY_TIER.FULL) this._promoteSectorToFull(sectorId);
+    if (tier === RESIDENCY_TIER.FULL) this._promoteSectorToFull(sectorId, opts);
     if (tier === RESIDENCY_TIER.REDUCED) this._stripSectorFullExtras(sectorId);
     this._setResidentMeta(sectorId, tier, rec.reason);
   },
 
-  _promoteSectorToFull(sectorId) {
+  _promoteSectorToFull(sectorId, opts = {}) {
     const state = this.state;
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     const active = state.world.sectorContents[sectorId];
     if (!sector || !active) return;
     // Rematerialize durable combat/convoy/mission records first (idempotent).
-    const rematerialized = this._rematerializeSectorRecords(sectorId, active, RESIDENCY_TIER.FULL);
+    const rematerialized = this._rematerializeSectorRecords(
+      sectorId,
+      active,
+      RESIDENCY_TIER.FULL,
+      opts,
+    );
     // Already has combat presence → keep anchors; still may need dressing.
     if ((active.enemies && active.enemies.length) || (active.dressing && active.dressing.length)) {
       if (!(active.dressing && active.dressing.length)) {
@@ -686,11 +698,13 @@ export const world = {
    * entity already carries the record id. Does not advance state.rng.
    * @returns {{ spawned:number, hadCombatHistory:boolean, spawnedBoss:boolean }}
    */
-  _rematerializeSectorRecords(sectorId, active, tier) {
+  _rematerializeSectorRecords(sectorId, active, tier, opts = {}) {
     const state = this.state;
     const bag = ensureWorldRecords(state.world);
     // sectorSim remains recipe-only; world adopts current recipes only at FULL promotion.
-    if (tier === RESIDENCY_TIER.FULL) this._reconcileEmbodimentRecords(sectorId, bag);
+    if (tier === RESIDENCY_TIER.FULL && opts.restoreDurableRecords !== true) {
+      this._reconcileEmbodimentRecords(sectorId, bag);
+    }
     const list = recordsForSector(bag, sectorId);
     let spawned = 0;
     let hadCombatHistory = false;

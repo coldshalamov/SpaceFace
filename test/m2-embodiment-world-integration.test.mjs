@@ -20,6 +20,7 @@ import {
 import {
   RECORD_KIND,
   recordsForSector,
+  serializeRecordsBag,
   stableRecordId,
 } from '../src/world/worldRecords.js';
 import { stableIntentId } from '../src/sim/sector/embodiment.js';
@@ -219,4 +220,59 @@ test('recipe provenance survives spawn, capture, world save, and Continue restor
   const restored = liveForRecord(second.state, intent.proposedRecordId)[0];
   assert.ok(restored);
   assert.equal(restored.data.recordSource, 'sector_embodiment');
+});
+
+test('Continue restores epoch-N durable records before a later promotion reconciles epoch N+1 recipes', () => {
+  const seed = 91;
+  const epochN = [
+    recipe('convoy_itinerary', 20, 0, seed),
+    recipe('patrol_presence', 20, 0, seed),
+    recipe('raid_presence', 20, 0, seed),
+  ];
+  const epochN1 = [
+    recipe('convoy_itinerary', 21, 1, seed),
+    recipe('patrol_presence', 21, 1, seed),
+    recipe('raid_presence', 21, 1, seed),
+  ];
+
+  const first = bootWorld(seed);
+  first.bus.emit('sectorsim:embodiment', payload(20, epochN));
+  first.world._rematerializeSectorRecords(CERES, first.world._emptySectorBag(), RESIDENCY_TIER.FULL);
+  const savedRecords = serializeRecordsBag(first.state.world.records);
+  first.bus.emit('sectorsim:embodiment', payload(21, epochN1));
+
+  const second = bootWorld(seed);
+  second.world.deserialize({
+    currentSectorId: CERES,
+    records: structuredClone(savedRecords),
+    embodiment: structuredClone(first.state.world.embodiment),
+  });
+  const beforeContinue = JSON.stringify(serializeRecordsBag(second.state.world.records));
+  second.world.enterSector(CERES, { placePlayer: false, restoreDurableRecords: true });
+  const afterContinue = JSON.stringify(serializeRecordsBag(second.state.world.records));
+
+  assert.equal(afterContinue, beforeContinue,
+    'Continue must rematerialize the serialized durable bag byte-identically');
+  assert.equal(second.state.world.embodiment.bySector[CERES].epochKey, 21,
+    'Continue must retain the newer recipe cache for later reconciliation');
+  for (const intent of epochN) {
+    assert.ok(second.state.world.records.byId[intent.proposedRecordId], 'saved epoch-N record remains');
+    assert.equal(liveForRecord(second.state, intent.proposedRecordId).length, 1,
+      'saved epoch-N record rematerializes once');
+  }
+  for (const intent of epochN1) {
+    assert.equal(second.state.world.records.byId[intent.proposedRecordId], undefined,
+      'newer recipe does not replace serialized records during Continue');
+  }
+
+  second.world._demoteSectorToRecordOnly(CERES);
+  second.world.enterSector(CERES, { placePlayer: false });
+  for (const intent of epochN) {
+    assert.equal(second.state.world.records.byId[intent.proposedRecordId], undefined,
+      'ordinary later promotion retires stale epoch-N active records');
+  }
+  for (const intent of epochN1) {
+    assert.ok(second.state.world.records.byId[intent.proposedRecordId],
+      'ordinary later promotion reconciles the retained epoch-N+1 recipe');
+  }
 });

@@ -975,12 +975,15 @@ export const save = {
 
       // 9. regenerate the saved sector's contents around the player.
       // world.deserialize already restored durable world.records and cleared residency bags.
-      // enterSector → _applyResidencyPlan rematerializes FULL/REDUCED from records exactly once
-      // (no double sector-origin offset; poses are galactic-global since v9).
+      // enterSector → _applyResidencyPlan rematerializes FULL/REDUCED from records exactly once.
+      // Continue restores the serialized durable bag before adopting any newer cached sectorSim
+      // recipe epoch; a later ordinary promotion may reconcile that cache normally.
       const worldSys = this.registry.get('world');
       const sectorId = state.world.currentSectorId;
       if (worldSys && typeof worldSys.enterSector === 'function' && sectorId) {
-        try { worldSys.enterSector(sectorId); } catch (err) { console.error('[save] enterSector', err); }
+        try {
+          worldSys.enterSector(sectorId, { restoreDurableRecords: true });
+        } catch (err) { console.error('[save] enterSector', err); }
       }
       // enterSector's _placePlayer clobbers position → re-apply the saved pose now.
       this._applySavedPose(savedPlayer);
