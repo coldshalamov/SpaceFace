@@ -45,7 +45,8 @@ const TRANSIENT_ENTITY_SAVE_KEYS = new Set([
   'bank',
   'bankVel',
 ]);
-const TRANSIENT_ENTITY_FLAGS = new Set(['boosting', 'noInterp', 'docked', 'invuln']);
+const TRANSIENT_ENTITY_FLAGS = new Set(['boosting', 'noInterp', 'docked']);
+const TRANSIENT_PLAYER_FLAGS = new Set(['invuln']);
 
 // Save-key → serialize/deserialize plan (§4.5 map). Order is the load/restore order (deps first).
 // `get(state, system)` reads the key's payload; `set(state, system, data)` restores it. Systems that
@@ -1667,7 +1668,7 @@ function plainEntity(e, isPlayer) {
     if (shouldSkipEntitySaveKey(k)) continue;
     const v = e[k];
     if (k === 'flags') {
-      const flags = sanitizeEntityFlagsForSave(v);
+      const flags = sanitizeEntityFlagsForSave(v, isPlayer);
       if (Object.keys(flags).length) out.flags = flags;
     } else if (k === 'boost') {
       const boost = sanitizeBoostForSave(v);
@@ -1693,11 +1694,12 @@ function shouldSkipEntitySaveKey(key) {
   return isUnsafePlainKey(key) || key.charAt(0) === '_' || TRANSIENT_ENTITY_SAVE_KEYS.has(key);
 }
 
-function sanitizeEntityFlagsForSave(flags) {
+function sanitizeEntityFlagsForSave(flags, isPlayer = false) {
   if (!flags || typeof flags !== 'object' || Array.isArray(flags)) return {};
   const out = {};
   for (const k in flags) {
-    if (isUnsafePlainKey(k) || k.charAt(0) === '_' || TRANSIENT_ENTITY_FLAGS.has(k)) continue;
+    if (isUnsafePlainKey(k) || k.charAt(0) === '_' || TRANSIENT_ENTITY_FLAGS.has(k) ||
+        (isPlayer && TRANSIENT_PLAYER_FLAGS.has(k))) continue;
     const cv = clonePlain(flags[k]);
     if (cv !== undefined) out[k] = cv;
   }
