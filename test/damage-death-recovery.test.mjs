@@ -8,6 +8,7 @@ import {
   buildRecoveryPlan,
   formatDefeatCause,
 } from '../src/combat/playerDefeat.js';
+import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { combat } from '../src/systems/combat.js';
 import { gameOverScreen } from '../src/ui/screens/gameOver.js';
 
@@ -132,6 +133,31 @@ test('live combat damage carries maxima required for truthful percentages', () =
   assert.equal(damage.after.armorMax, 30);
   assert.equal(damage.after.hullMax, 140);
   assert.equal(damage.weaponId, 'wpn_autocannon_s');
+});
+
+test('direct combat routing rejects damage while the player is dock-protected', () => {
+  const state = makeState();
+  state.ui = { docked: true };
+  state.entities.get(1).flags = { docked: false, invuln: false };
+  const events = [];
+  const bus = {
+    on() { return () => {}; },
+    emit(event, payload) { events.push({ event, payload }); },
+  };
+  combat.init({ state, bus, helpers: {}, registry: { get() { return null; } } });
+  const player = state.entities.get(1);
+  const beforeHull = player.hull;
+  const result = combat.ensureKernel().routeDamage({
+    attackerId: 9,
+    targetId: player.id,
+    packet: scalarHitToDamagePacket({ damage: 80, damageType: 'kinetic', pos: player.pos }),
+    origin: { kind: 'test', id: 'direct-docked-route' },
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'target_docked');
+  assert.equal(player.hull, beforeHull);
+  assert.equal(events.some((entry) => entry.event === 'combat:damage'), false);
 });
 
 test('recovery plan returns to last lawful dock with a starter-safe deductible and persistent cargo protection', () => {

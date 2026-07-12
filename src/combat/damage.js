@@ -26,6 +26,7 @@ export function createDamageRouter(context, statusService, options = {}) {
 
     if (!target || !target.alive) return rejected('target_missing', input, packet);
     if (!packet.flags.allowAnyTarget && !['ship', 'station', 'drone'].includes(target.type)) return rejected('target_not_damageable', input, packet);
+    if (!packet.flags.ignoreInvulnerability && playerDockProtected(state, target)) return rejected('target_docked', input, packet);
     if (target.flags && target.flags.invuln && !packet.flags.ignoreInvulnerability) return rejected('target_invulnerable', input, packet);
     if (!packet.flags.ignoreFriendlyFire && attacker && attacker.id !== target.id && attacker.team != null && target.team != null && attacker.team === target.team) {
       return rejected('friendly_fire', input, packet);
@@ -453,6 +454,12 @@ function integerOrUndefined(value) {
 
 function hasImpulse(impulse) {
   return !!resolveImpulseVector({ pos: { x: 0, z: 0 } }, null, impulse);
+}
+
+function playerDockProtected(state, target) {
+  if (!state || !target || target.id !== state.playerId) return false;
+  if (target.flags && target.flags.docked) return true;
+  return !!(state.ui && state.ui.docked);
 }
 
 function clamp01(value) {
