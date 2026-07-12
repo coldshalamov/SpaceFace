@@ -2,6 +2,12 @@
   "schema": "spaceface.m4AshlineFinalize.v1",
   "packet": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001",
   "family": "ashline",
+  "isolation": {
+    "defaultPlayWired": false,
+    "partsManifestTouched": false,
+    "releasePartsTouched": false,
+    "k0HeliosUntouched": true
+  },
   "finalized": [
     {
       "id": "ashline_dart",
@@ -9,15 +15,15 @@
       "assetId": "SF_WHOLESHIP_ASHLINE_DART",
       "source": "assets/ships/m4_ashline/source/wholeships/ashline_dart.glb",
       "candidate": "assets/ships/m4_ashline/release_candidates/wholeships/ashline_dart.glb",
-      "sourceBytes": 18570144,
-      "candidateBytes": 7924448,
-      "sourceSha256": "10890BC8286826B251A5F4DFEF8E0A109CACB0334CAC161D34E2A2F9A2DE2B41",
-      "candidateSha256": "194C74B938EC847F16034F07253176935FC9CE1DA3FE95A98FC0BA6EBD58A0C4",
-      "sourceTextureCount": 20,
-      "releaseTextureCount": 20,
-      "releaseImageCount": 30,
-      "ktx2ImageCount": 30,
-      "meshoptBufferViewCount": 93,
+      "sourceBytes": 23866252,
+      "candidateBytes": 10181192,
+      "sourceSha256": "21C8A8946D5A0578FFC7B77C8BC8D3D67CE672856E3E6C48617C73231204698B",
+      "candidateSha256": "40CDA52B8B3639FDB19F9FEB4E8AD3B3F088B54BE321051C418DEB0A130F55FF",
+      "sourceTextureCount": 24,
+      "releaseTextureCount": 24,
+      "releaseImageCount": 36,
+      "ktx2ImageCount": 36,
+      "meshoptBufferViewCount": 81,
       "extensionsUsed": [
         "EXT_meshopt_compression",
         "KHR_materials_emissive_strength",
@@ -29,6 +35,7 @@
         "Material_Cyan",
         "Material_Glass",
         "Material_Hull",
+        "Material_Red_Paint",
         "Material_Warm"
       ],
       "meshopt": "EXT_meshopt_compression",
@@ -40,15 +47,15 @@
       "assetId": "SF_WHOLESHIP_ASHLINE_LODE",
       "source": "assets/ships/m4_ashline/source/wholeships/ashline_lode.glb",
       "candidate": "assets/ships/m4_ashline/release_candidates/wholeships/ashline_lode.glb",
-      "sourceBytes": 18776280,
-      "candidateBytes": 7980952,
-      "sourceSha256": "1FFDF08CEA3B8C454B4EE3F3D6FC374B7877FDB85BF722B7344F6D996DBC04B9",
-      "candidateSha256": "10A97FFFB95B2AA38A938E82635529E4A23CC7A39BD339C138ED074DA0B68ADD",
-      "sourceTextureCount": 20,
-      "releaseTextureCount": 20,
-      "releaseImageCount": 30,
-      "ktx2ImageCount": 30,
-      "meshoptBufferViewCount": 93,
+      "sourceBytes": 24173480,
+      "candidateBytes": 10273312,
+      "sourceSha256": "7C158C1C333C6C4F19A9DA42ED748BA8D654A399BA6F783AD384B9154A0BFCD2",
+      "candidateSha256": "73FC9972272233F2049179CEDC8887594549D380C9B18B18E41E8B798F56FD23",
+      "sourceTextureCount": 24,
+      "releaseTextureCount": 24,
+      "releaseImageCount": 36,
+      "ktx2ImageCount": 36,
+      "meshoptBufferViewCount": 77,
       "extensionsUsed": [
         "EXT_meshopt_compression",
         "KHR_materials_emissive_strength",
@@ -60,6 +67,7 @@
         "Material_Cyan",
         "Material_Glass",
         "Material_Hull",
+        "Material_Red_Paint",
         "Material_Warm"
       ],
       "meshopt": "EXT_meshopt_compression",
@@ -71,15 +79,15 @@
       "assetId": "SF_WHOLESHIP_ASHLINE_RIG",
       "source": "assets/ships/m4_ashline/source/wholeships/ashline_rig.glb",
       "candidate": "assets/ships/m4_ashline/release_candidates/wholeships/ashline_rig.glb",
-      "sourceBytes": 18495872,
-      "candidateBytes": 7884436,
-      "sourceSha256": "F2C60370953E59EF5985676042AD6B211A9462B4293B7112BC01FC65C06E9052",
-      "candidateSha256": "9619DF91A835A0649E9AC532575ED3A7FE0A67F324F4175F351B9F9CC1C85437",
-      "sourceTextureCount": 20,
-      "releaseTextureCount": 20,
-      "releaseImageCount": 30,
-      "ktx2ImageCount": 30,
-      "meshoptBufferViewCount": 81,
+      "sourceBytes": 23695408,
+      "candidateBytes": 10131344,
+      "sourceSha256": "1352352911313168C55FF0A05A76B62E55105DC873A005DE9FE7C88F9B946160",
+      "candidateSha256": "43465F8FCDDA62BD55AE0D8D0552A817265C8B3F96ED008796A13A7C48FE1D49",
+      "sourceTextureCount": 24,
+      "releaseTextureCount": 24,
+      "releaseImageCount": 36,
+      "ktx2ImageCount": 36,
+      "meshoptBufferViewCount": 77,
       "extensionsUsed": [
         "EXT_meshopt_compression",
         "KHR_materials_emissive_strength",
@@ -91,17 +99,11 @@
         "Material_Cyan",
         "Material_Warm",
         "Material_Glass",
-        "Material_Hull"
+        "Material_Hull",
+        "Material_Red_Paint"
       ],
       "meshopt": "EXT_meshopt_compression",
       "ktx2": "KHR_texture_basisu/KTX2"
     }
-  ],
-  "promotion": {
-    "canonicalSource": true,
-    "releasePublished": true,
-    "runtimeWired": true,
-    "releaseBuildPending": false,
-    "runtimeWiringPending": false
-  }
+  ]
 }

@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.m4AshlineShipMetrics.v1",
-  "packet": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001",
+  "packet": "M4-ASHLINE-QUALITY-PARITY-002",
   "shipKey": "lode",
   "spec": {
     "id": "ashline_lode",
@@ -12,17 +12,17 @@
   "sourceGlb": "assets/ships/m4_ashline/source/wholeships/ashline_lode.glb",
   "releaseCandidateGlb": "assets/ships/m4_ashline/release_candidates/wholeships/ashline_lode.glb",
   "blend": "assets/ships/m4_ashline/blender/ashline_lode_production.blend",
-  "sha256_source": "7BE1C651A3C8FA50E59816DD7325A7FA155DAAC5D377A717E3505B03C07F6AFB",
+  "sha256_source": "3956985882D4C7F430414AF3FAB67DEBD2FA3BB8A41B41BC8AD4571C1DAB37C5",
   "report": {
     "file": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline\\source\\wholeships\\ashline_lode.glb",
-    "bytes": 846340,
-    "totalTriangles": 15670,
-    "hullTriangles": 6866,
+    "bytes": 1518968,
+    "totalTriangles": 25836,
+    "hullTriangles": 9516,
     "lodBreakdown": {
       "lod0": {
-        "triangles": 10368,
-        "primitives": 8,
-        "drawEstimate": 8,
+        "triangles": 18868,
+        "primitives": 9,
+        "drawEstimate": 9,
         "nodes": [
           {
             "name": "LOD0_Gun_Assembly",
@@ -38,7 +38,7 @@
           },
           {
             "name": "LOD0_Merged_Material_Cyan",
-            "tris": 252
+            "tris": 1756
           },
           {
             "name": "LOD0_Merged_Material_Glass",
@@ -46,22 +46,26 @@
           },
           {
             "name": "LOD0_Merged_Material_Hull",
-            "tris": 4292
+            "tris": 6608
           },
           {
             "name": "LOD0_Merged_Material_Mechanical",
-            "tris": 3464
+            "tris": 6124
+          },
+          {
+            "name": "LOD0_Merged_Material_Red_Paint",
+            "tris": 940
           },
           {
             "name": "LOD0_Merged_Material_Warm",
-            "tris": 1080
+            "tris": 2160
           }
         ]
       },
       "lod1": {
-        "triangles": 3706,
-        "primitives": 7,
-        "drawEstimate": 7,
+        "triangles": 6822,
+        "primitives": 8,
+        "drawEstimate": 8,
         "nodes": [
           {
             "name": "LOD1_Gun_Assembly",
@@ -77,7 +81,7 @@
           },
           {
             "name": "LOD1_Merged_Material_Cyan",
-            "tris": 100
+            "tris": 732
           },
           {
             "name": "LOD1_Merged_Material_Glass",
@@ -85,46 +89,26 @@
           },
           {
             "name": "LOD1_Merged_Material_Hull",
-            "tris": 1802
+            "tris": 2774
           },
           {
             "name": "LOD1_Merged_Material_Mechanical",
-            "tris": 1272
+            "tris": 2390
+          },
+          {
+            "name": "LOD1_Merged_Material_Red_Paint",
+            "tris": 394
           }
         ]
       },
       "lod2": {
-        "triangles": 1584,
-        "primitives": 7,
-        "drawEstimate": 7,
+        "triangles": 134,
+        "primitives": 1,
+        "drawEstimate": 1,
         "nodes": [
           {
-            "name": "LOD2_Gun_Assembly",
-            "tris": 144
-          },
-          {
-            "name": "LOD2_HOOK_DRIVE_CORE",
-            "tris": 24
-          },
-          {
-            "name": "LOD2_HOOK_DRIVE_FAN",
-            "tris": 26
-          },
-          {
-            "name": "LOD2_Merged_Material_Cyan",
-            "tris": 42
-          },
-          {
-            "name": "LOD2_Merged_Material_Glass",
-            "tris": 32
-          },
-          {
             "name": "LOD2_Merged_Material_Hull",
-            "tris": 772
-          },
-          {
-            "name": "LOD2_Merged_Material_Mechanical",
-            "tris": 544
+            "tris": 134
           }
         ]
       }
@@ -145,11 +129,12 @@
       "Material_Cyan",
       "Material_Glass",
       "Material_Hull",
+      "Material_Red_Paint",
       "Material_Warm"
     ],
-    "primitiveCount": 23,
-    "tangentPrimitiveCount": 23,
-    "uvPrimitiveCount": 23,
+    "primitiveCount": 19,
+    "tangentPrimitiveCount": 19,
+    "uvPrimitiveCount": 19,
     "spacefaceAsset": {
       "contractVersion": 1,
       "assetId": "SF_WHOLESHIP_ASHLINE_LODE",
@@ -166,11 +151,11 @@
       "partId": "wholeship_ashline_lode",
       "category": "wholeships",
       "sourceRole": "whole-ship hull",
-      "packet": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001",
+      "packet": "M4-ASHLINE-QUALITY-PARITY-002",
       "family": "ashline",
       "role": "heavy_brawler",
-      "triangleCount": 15670,
-      "hullTriangleCount": 6866,
+      "triangleCount": 25836,
+      "hullTriangleCount": 9516,
       "deliverableRole": "candidate_multi_lod",
       "lods": [
         "lod0",
@@ -181,25 +166,25 @@
       "blenderBasis": "Z-up",
       "exportBasis": "Y-up glTF",
       "lod0AabbSize": [
-        23.624999046325684,
+        22.424999237060547,
         4.330000042915344,
         9.975000381469727
       ],
       "collisionBounds": {
         "min": [
-          -5.433750152587891,
-          -0.9958999752998352,
-          -2.294250011444092
+          -10.315500259399414,
+          -1.9917999505996704,
+          -4.588500022888184
         ],
         "max": [
-          5.433750152587891,
-          0.9958999752998352,
-          2.294250011444092
-        ],
-        "size": [
-          10.867500305175781,
+          10.315500259399414,
           1.9917999505996704,
           4.588500022888184
+        ],
+        "size": [
+          20.631000518798828,
+          3.983599901199341,
+          9.177000045776367
         ]
       }
     },
@@ -207,26 +192,26 @@
       {
         "lod": "lod0",
         "decimate_ratio": 1.0,
-        "mesh_count": 8,
-        "triangles": 10368,
+        "mesh_count": 9,
+        "triangles": 18868,
         "meshes": [
           {
             "name": "LOD0_Merged_Material_Hull",
-            "tris": 4292,
+            "tris": 6608,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD0_Merged_Material_Mechanical",
-            "tris": 3464,
+            "tris": 6124,
             "materials": [
               "Material_Mechanical"
             ]
           },
           {
             "name": "LOD0_Merged_Material_Cyan",
-            "tris": 252,
+            "tris": 1756,
             "materials": [
               "Material_Cyan"
             ]
@@ -240,9 +225,16 @@
           },
           {
             "name": "LOD0_Merged_Material_Warm",
-            "tris": 1080,
+            "tris": 2160,
             "materials": [
               "Material_Warm"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Red_Paint",
+            "tris": 940,
+            "materials": [
+              "Material_Red_Paint"
             ]
           },
           {
@@ -268,31 +260,31 @@
           }
         ],
         "removed_close_only": [],
-        "draw_estimate": 8
+        "draw_estimate": 9
       },
       {
         "lod": "lod1",
         "decimate_ratio": 0.42,
-        "mesh_count": 7,
-        "triangles": 3706,
+        "mesh_count": 8,
+        "triangles": 6822,
         "meshes": [
           {
             "name": "LOD1_Merged_Material_Hull",
-            "tris": 1802,
+            "tris": 2774,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD1_Merged_Material_Mechanical",
-            "tris": 1272,
+            "tris": 2390,
             "materials": [
               "Material_Mechanical"
             ]
           },
           {
             "name": "LOD1_Merged_Material_Cyan",
-            "tris": 100,
+            "tris": 732,
             "materials": [
               "Material_Cyan"
             ]
@@ -302,6 +294,13 @@
             "tris": 78,
             "materials": [
               "Material_Glass"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Red_Paint",
+            "tris": 394,
+            "materials": [
+              "Material_Red_Paint"
             ]
           },
           {
@@ -341,118 +340,73 @@
           "Panel_Line_01",
           "Panel_Line_02",
           "Panel_Line_03",
-          "Antenna_Loop"
+          "Antenna_Loop",
+          "Parity_Pod_Latch_P_0",
+          "Parity_Pod_Latch_P_1",
+          "Parity_Pod_Latch_P_2",
+          "Parity_Pod_Latch_P_3",
+          "Parity_Pod_Latch_P_4",
+          "Parity_Pod_Latch_S_0",
+          "Parity_Pod_Latch_S_1",
+          "Parity_Pod_Latch_S_2",
+          "Parity_Pod_Latch_S_3",
+          "Parity_Pod_Latch_S_4"
         ],
-        "draw_estimate": 7
+        "draw_estimate": 8
       },
       {
         "lod": "lod2",
         "decimate_ratio": 0.18,
-        "mesh_count": 7,
-        "triangles": 1584,
+        "mesh_count": 1,
+        "triangles": 134,
         "meshes": [
           {
             "name": "LOD2_Merged_Material_Hull",
-            "tris": 772,
+            "tris": 134,
             "materials": [
               "Material_Hull"
             ]
-          },
-          {
-            "name": "LOD2_Merged_Material_Mechanical",
-            "tris": 544,
-            "materials": [
-              "Material_Mechanical"
-            ]
-          },
-          {
-            "name": "LOD2_Merged_Material_Cyan",
-            "tris": 42,
-            "materials": [
-              "Material_Cyan"
-            ]
-          },
-          {
-            "name": "LOD2_Merged_Material_Glass",
-            "tris": 32,
-            "materials": [
-              "Material_Glass"
-            ]
-          },
-          {
-            "name": "LOD2_HOOK_DRIVE_FAN",
-            "tris": 26,
-            "materials": [
-              "Material_Mechanical"
-            ]
-          },
-          {
-            "name": "LOD2_HOOK_DRIVE_CORE",
-            "tris": 24,
-            "materials": [
-              "Material_Cyan"
-            ]
-          },
-          {
-            "name": "LOD2_Gun_Assembly",
-            "tris": 144,
-            "materials": [
-              "Material_Mechanical"
-            ]
           }
         ],
-        "removed_close_only": [
-          "Hazard_Chevron_00",
-          "Hazard_Chevron_01",
-          "Hazard_Chevron_02",
-          "Hazard_Chevron_03",
-          "Hazard_Chevron_04",
-          "Hazard_Chevron_00.001",
-          "Hazard_Chevron_01.001",
-          "Hazard_Chevron_02.001",
-          "Hazard_Chevron_03.001",
-          "Hazard_Chevron_04.001",
-          "Panel_Line_00",
-          "Panel_Line_01",
-          "Panel_Line_02",
-          "Panel_Line_03",
-          "Antenna_Loop"
-        ],
-        "draw_estimate": 7
+        "removed_close_only": [],
+        "draw_estimate": 1
       }
     ],
     "lod0AabbSize": [
-      23.624999046325684,
+      22.424999237060547,
       4.330000042915344,
       9.975000381469727
     ],
     "collisionBounds": {
       "min": [
-        -5.433750152587891,
-        -0.9958999752998352,
-        -2.294250011444092
+        -10.315500259399414,
+        -1.9917999505996704,
+        -4.588500022888184
       ],
       "max": [
-        5.433750152587891,
-        0.9958999752998352,
-        2.294250011444092
-      ],
-      "size": [
-        10.867500305175781,
+        10.315500259399414,
         1.9917999505996704,
         4.588500022888184
+      ],
+      "size": [
+        20.631000518798828,
+        3.983599901199341,
+        9.177000045776367
       ]
     },
-    "sha256": "7BE1C651A3C8FA50E59816DD7325A7FA155DAAC5D377A717E3505B03C07F6AFB"
+    "sha256": "3956985882D4C7F430414AF3FAB67DEBD2FA3BB8A41B41BC8AD4571C1DAB37C5"
   },
   "renders": [
     "assets/ships/m4_ashline/evidence/lode/renders/forward_34.png",
     "assets/ships/m4_ashline/evidence/lode/renders/rear_34.png",
     "assets/ships/m4_ashline/evidence/lode/renders/top_ortho.png",
+    "assets/ships/m4_ashline/evidence/lode/renders/side_ortho.png",
     "assets/ships/m4_ashline/evidence/lode/renders/readability_close.png",
     "assets/ships/m4_ashline/evidence/lode/renders/readability_under45px.png",
     "assets/ships/m4_ashline/evidence/lode/renders/readability_120px.png",
+    "assets/ships/m4_ashline/evidence/lode/renders/silhouette_gray_45px.png",
+    "assets/ships/m4_ashline/evidence/lode/renders/silhouette_gray_120px.png",
     "assets/ships/m4_ashline/evidence/lode/renders/gamesky_forward_34.png"
   ],
-  "builtAt": "2026-07-12T09:38:31Z"
+  "builtAt": "2026-07-12T20:40:13Z"
 }

@@ -1,20 +1,20 @@
 {
   "schema": "spaceface.m4AshlineFamilyMetrics.v1",
-  "packet": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001",
+  "packet": "M4-ASHLINE-QUALITY-PARITY-002",
   "familyId": "ashline",
-  "builtAt": "2026-07-12T09:39:39Z",
-  "elapsedSec": 201.98,
+  "builtAt": "2026-07-12T20:41:15Z",
+  "elapsedSec": 231.31,
   "ships": [
     {
       "key": "dart",
       "id": "ashline_dart",
       "role": "flyby_interceptor",
-      "totalTriangles": 12500,
-      "hullTriangles": 6358,
+      "totalTriangles": 20486,
+      "hullTriangles": 9188,
       "lodTriangles": {
-        "lod0": 8184,
-        "lod1": 3016,
-        "lod2": 1288
+        "lod0": 15452,
+        "lod1": 4796,
+        "lod2": 226
       },
       "lod0AabbSize": [
         15.775000095367432,
@@ -23,19 +23,19 @@
       ],
       "collisionBounds": {
         "min": [
-          -3.6282498836517334,
-          -0.5284448266029358,
-          -1.3914999961853027
+          -7.256499767303467,
+          -1.0568896532058716,
+          -2.7829999923706055
         ],
         "max": [
-          3.6282498836517334,
-          0.5284448266029358,
-          1.3914999961853027
-        ],
-        "size": [
           7.256499767303467,
           1.0568896532058716,
           2.7829999923706055
+        ],
+        "size": [
+          14.512999534606934,
+          2.113779306411743,
+          5.565999984741211
         ]
       },
       "sockets": [
@@ -54,9 +54,10 @@
         "Material_Cyan",
         "Material_Glass",
         "Material_Hull",
+        "Material_Red_Paint",
         "Material_Warm"
       ],
-      "sha256": "7EF24C57184FBFD087C86B7FED10C9A9D6D827AC01D2AE1EB975D09E30C8A354",
+      "sha256": "D6C1AEF862193505802D318B3576ED66AF33D5F37B9E1685C760AADB7F22943C",
       "sourceGlb": "assets/ships/m4_ashline/source/wholeships/ashline_dart.glb",
       "blend": "assets/ships/m4_ashline/blender/ashline_dart_production.blend"
     },
@@ -64,33 +65,33 @@
       "key": "lode",
       "id": "ashline_lode",
       "role": "heavy_brawler",
-      "totalTriangles": 15670,
-      "hullTriangles": 6866,
+      "totalTriangles": 25836,
+      "hullTriangles": 9516,
       "lodTriangles": {
-        "lod0": 10368,
-        "lod1": 3706,
-        "lod2": 1584
+        "lod0": 18868,
+        "lod1": 6822,
+        "lod2": 134
       },
       "lod0AabbSize": [
-        23.624999046325684,
+        22.424999237060547,
         4.330000042915344,
         9.975000381469727
       ],
       "collisionBounds": {
         "min": [
-          -5.433750152587891,
-          -0.9958999752998352,
-          -2.294250011444092
+          -10.315500259399414,
+          -1.9917999505996704,
+          -4.588500022888184
         ],
         "max": [
-          5.433750152587891,
-          0.9958999752998352,
-          2.294250011444092
-        ],
-        "size": [
-          10.867500305175781,
+          10.315500259399414,
           1.9917999505996704,
           4.588500022888184
+        ],
+        "size": [
+          20.631000518798828,
+          3.983599901199341,
+          9.177000045776367
         ]
       },
       "sockets": [
@@ -109,9 +110,10 @@
         "Material_Cyan",
         "Material_Glass",
         "Material_Hull",
+        "Material_Red_Paint",
         "Material_Warm"
       ],
-      "sha256": "7BE1C651A3C8FA50E59816DD7325A7FA155DAAC5D377A717E3505B03C07F6AFB",
+      "sha256": "3956985882D4C7F430414AF3FAB67DEBD2FA3BB8A41B41BC8AD4571C1DAB37C5",
       "sourceGlb": "assets/ships/m4_ashline/source/wholeships/ashline_lode.glb",
       "blend": "assets/ships/m4_ashline/blender/ashline_lode_production.blend"
     },
@@ -119,33 +121,33 @@
       "key": "rig",
       "id": "ashline_rig",
       "role": "tether_control_raider",
-      "totalTriangles": 10302,
-      "hullTriangles": 3658,
+      "totalTriangles": 16206,
+      "hullTriangles": 6648,
       "lodTriangles": {
-        "lod0": 6580,
-        "lod1": 2514,
-        "lod2": 1196
+        "lod0": 11744,
+        "lod1": 4318,
+        "lod2": 132
       },
       "lod0AabbSize": [
         17.71500015258789,
-        5.9700000286102295,
+        4.849999904632568,
         4.974999904632568
       ],
       "collisionBounds": {
         "min": [
-          -4.0744500160217285,
-          -1.3731000423431396,
-          -1.1442500352859497
+          -8.148900032043457,
+          -2.2309999465942383,
+          -2.2885000705718994
         ],
         "max": [
-          4.0744500160217285,
-          1.3731000423431396,
-          1.1442500352859497
+          8.148900032043457,
+          2.2309999465942383,
+          2.2885000705718994
         ],
         "size": [
-          8.148900032043457,
-          2.7462000846862793,
-          2.2885000705718994
+          16.297800064086914,
+          4.461999893188477,
+          4.577000141143799
         ]
       },
       "sockets": [
@@ -165,31 +167,18 @@
         "Material_Cyan",
         "Material_Warm",
         "Material_Glass",
-        "Material_Hull"
+        "Material_Hull",
+        "Material_Red_Paint"
       ],
-      "sha256": "273774CC280A4EDF43982E73E79E96BB1435ECB97443AEAB09C315BBDCD4B141",
+      "sha256": "C2ED5DB14ECDFE31FE862807563437A489671A7E4827F5C445BC5B3FA9F0DE51",
       "sourceGlb": "assets/ships/m4_ashline/source/wholeships/ashline_rig.glb",
       "blend": "assets/ships/m4_ashline/blender/ashline_rig_production.blend"
     }
   ],
-  "promotion": {
-    "canonicalSource": true,
-    "defaultPlayWired": true,
-    "partsManifestUpdated": true,
+  "isolation": {
+    "root": "assets/ships/m4_ashline",
+    "touchesDefaultManifests": false,
     "overwritesK0OrHelios": false,
-    "hostileRoles": [
-      {
-        "id": "ashline_dart",
-        "role": "flyby_interceptor"
-      },
-      {
-        "id": "ashline_lode",
-        "role": "heavy_brawler"
-      },
-      {
-        "id": "ashline_rig",
-        "role": "tether_control_raider"
-      }
-    ]
+    "wiredDefaultPlay": false
   }
 }

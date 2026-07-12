@@ -39,11 +39,12 @@ from mathutils import Matrix, Vector
 
 ROOT = Path(__file__).resolve().parents[2]
 FAMILY_ROOT = ROOT / 'assets' / 'ships' / 'm4_ashline'
-PACKET = 'M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001'
+PACKET = 'M4-ASHLINE-QUALITY-PARITY-002'
 FAMILY_ID = 'ashline'
 
 CANONICAL_MATERIAL_NAMES = (
-    'Material_Hull', 'Material_Mechanical', 'Material_Cyan', 'Material_Warm', 'Material_Glass',
+    'Material_Hull', 'Material_Mechanical', 'Material_Red_Paint',
+    'Material_Cyan', 'Material_Warm', 'Material_Glass',
 )
 
 LOD_RECIPES = (
@@ -370,20 +371,40 @@ def make_cone(name: str, radius1: float, radius2: float, depth: float,
     return obj
 
 
-def _make_solid_image(name: str, rgba: tuple[int, int, int, int], size: int = 64,
-                      non_color: bool = False) -> bpy.types.Image:
+def _make_solid_image(name: str, rgba: tuple[int, int, int, int], size: int = 128,
+                      non_color: bool = False, role: str = 'base') -> bpy.types.Image:
+    """Deterministic authored micro-surface map.
+
+    The first Ashline pass transported valid maps, but its normal map was flat and its other maps
+    were nearly neutral.  The parity pass keeps the family trim-sheet economy while baking panel
+    seams, fastener dimples, brushed direction and restrained service wear into every material.
+    """
     img = bpy.data.images.get(name)
     if img is None:
         img = bpy.data.images.new(name, width=size, height=size, alpha=True)
         pixels: list[float] = []
         for y in range(size):
             for x in range(size):
-                n = ((x * 17 + y * 31) % 13) / 255.0
-                # Mild panel grid
-                grid = 0.03 if (x % 16 < 1 or y % 16 < 1) else 0.0
-                r = max(0.0, min(1.0, rgba[0] / 255.0 + n * 0.04 - grid))
-                g = max(0.0, min(1.0, rgba[1] / 255.0 + n * 0.03 - grid))
-                b = max(0.0, min(1.0, rgba[2] / 255.0 + n * 0.02 - grid))
+                seed = ((x * 17 + y * 31 + (x * y) * 3) % 29) / 28.0
+                seam_x = x % 32
+                seam_y = y % 32
+                seam = seam_x <= 1 or seam_y <= 1
+                fastener = ((x - 5) % 32 in (0, 1) and (y - 5) % 32 in (0, 1))
+                brush = math.sin((x * 0.55 + y * 0.08)) * 0.5 + 0.5
+                if role == 'normal':
+                    nx = 0.5 + (0.10 if seam_x == 1 else -0.10 if seam_x == 0 else 0.012 * (seed - 0.5))
+                    ny = 0.5 + (0.10 if seam_y == 1 else -0.10 if seam_y == 0 else 0.012 * (brush - 0.5))
+                    nz = 0.93 if seam else (0.88 if fastener else 1.0)
+                    r, g, b = nx, ny, nz
+                elif role == 'orm':
+                    r = 0.70 if seam else (0.78 if fastener else 0.90 - seed * 0.035)
+                    g = max(0.04, min(0.96, rgba[1] / 255.0 + (brush - 0.5) * 0.10 + (0.12 if seam else 0.0)))
+                    b = max(0.0, min(1.0, rgba[2] / 255.0 + (0.02 if fastener else 0.0)))
+                else:
+                    wear = 0.055 if fastener else (-0.045 if seam else (seed - 0.5) * 0.035)
+                    r = max(0.0, min(1.0, rgba[0] / 255.0 + wear))
+                    g = max(0.0, min(1.0, rgba[1] / 255.0 + wear * 0.72))
+                    b = max(0.0, min(1.0, rgba[2] / 255.0 + wear * 0.46))
                 a = rgba[3] / 255.0
                 pixels.extend([r, g, b, a])
         img.pixels = pixels
@@ -406,7 +427,7 @@ def _wire_material_maps(mat: bpy.types.Material, base_rgba: tuple[int, int, int,
     bsdf.location = (100, 0)
     links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
 
-    base_img = _make_solid_image(f'{mat.name}_baseColor', base_rgba, size=64)
+    base_img = _make_solid_image(f'{mat.name}_baseColor', base_rgba, role='base')
     tex_base = nodes.new('ShaderNodeTexImage')
     tex_base.image = base_img
     tex_base.location = (-700, 200)
@@ -415,7 +436,7 @@ def _wire_material_maps(mat: bpy.types.Material, base_rgba: tuple[int, int, int,
     ao = 230
     g = int(max(0, min(255, rough * 255)))
     b = int(max(0, min(255, metal * 255)))
-    orm_img = _make_solid_image(f'{mat.name}_orm', (ao, g, b, 255), size=64, non_color=True)
+    orm_img = _make_solid_image(f'{mat.name}_orm', (ao, g, b, 255), non_color=True, role='orm')
     tex_orm = nodes.new('ShaderNodeTexImage')
     tex_orm.image = orm_img
     tex_orm.location = (-700, -50)
@@ -426,7 +447,7 @@ def _wire_material_maps(mat: bpy.types.Material, base_rgba: tuple[int, int, int,
     if 'Metallic' in bsdf.inputs:
         links.new(sep.outputs['Blue'], bsdf.inputs['Metallic'])
 
-    nrm_img = _make_solid_image(f'{mat.name}_normal', (128, 128, 255, 255), size=64, non_color=True)
+    nrm_img = _make_solid_image(f'{mat.name}_normal', (128, 128, 255, 255), non_color=True, role='normal')
     tex_n = nodes.new('ShaderNodeTexImage')
     tex_n.image = nrm_img
     tex_n.location = (-700, -320)
@@ -456,10 +477,13 @@ def create_canonical_materials() -> dict[str, bpy.types.Material]:
         # Reach frontier language: oxidized gunmetal, readable red threat seams, amber service marks.
         # Material_Cyan keeps the established semantic slot name so runtime tint/damage hooks remain
         # compatible, but its authored appearance is deliberately hostile sodium-red.
-        'Material_Hull': ((86, 62, 58, 255), 0.5, 0.38, None, 0.0),
-        'Material_Mechanical': ((35, 32, 34, 255), 0.64, 0.52, None, 0.0),
-        'Material_Cyan': ((76, 16, 14, 255), 0.31, 0.2, (1.0, 0.07, 0.035), 2.1),
-        'Material_Warm': ((78, 38, 12, 255), 0.42, 0.18, (1.0, 0.38, 0.08), 1.35),
+        'Material_Hull': ((108, 76, 69, 255), 0.5, 0.38, None, 0.0),
+        'Material_Mechanical': ((47, 43, 45, 255), 0.64, 0.52, None, 0.0),
+        'Material_Red_Paint': ((116, 28, 24, 255), 0.46, 0.24, None, 0.0),
+        'Material_Cyan': ((76, 16, 14, 255), 0.31, 0.2, (1.0, 0.07, 0.035), 1.25),
+        # Service paint is deliberately non-emissive; it identifies construction without reading
+        # as a cloud of detached lamps at the game camera.
+        'Material_Warm': ((112, 55, 18, 255), 0.42, 0.18, None, 0.0),
         'Material_Glass': ((38, 10, 9, 180), 0.1, 0.08, (0.42, 0.025, 0.015), 0.35),
     }
     out: dict[str, bpy.types.Material] = {}
@@ -623,8 +647,14 @@ def add_identity_rails(coll: bpy.types.Collection, mats: dict[str, bpy.types.Mat
     """Cyan seam rails — family kinship at small scales. Runtime coords."""
     out = []
     for side, z in (('P', z_off - 0.55), ('S', z_off + 0.55)):
+        bracket = make_box(
+            f'Identity_Rail_Bracket_{side}', (length + 0.18, 0.12, 0.18),
+            (x0 + length * 0.5, y - 0.065, z), mats['Material_Mechanical'], coll, detail=1,
+        )
+        bevel_object(bracket, 0.015, 2)
+        out.append(bracket)
         rail = make_box(
-            f'Identity_Rail_{side}', (length, 0.06, 0.08),
+            f'Identity_Rail_{side}', (length, 0.045, 0.075),
             (x0 + length * 0.5, y, z), mats['Material_Cyan'], coll, detail=1,
         )
         bevel_object(rail, 0.012, 2)
@@ -658,6 +688,150 @@ def add_hazard_chevrons(coll: bpy.types.Collection, mats: dict[str, bpy.types.Ma
         )
         bevel_object(c, 0.01, 2)
         out.append(c)
+    return out
+
+
+def add_quality_parity_layer(ship_key: str, coll: bpy.types.Collection,
+                             mats: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
+    """Second-pass construction detail at Borrowed Time's macro/meso hierarchy.
+
+    Every piece overlaps a primary structure.  LOD1 retains silhouette-bearing armor, intakes and
+    engine anatomy; LOD2 drops the close-only service fasteners and vent blades.
+    """
+    out: list[bpy.types.Object] = []
+    hull, mech = mats['Material_Hull'], mats['Material_Mechanical']
+    paint, threat, warm = mats['Material_Red_Paint'], mats['Material_Cyan'], mats['Material_Warm']
+
+    def box(name: str, size: tuple[float, float, float], loc: tuple[float, float, float],
+            mat: bpy.types.Material, *, detail: int = 1, close: bool = False,
+            rotation: tuple[float, float, float] = (0, 0, 0), component: str = '',
+            lod2_core: bool = False):
+        obj = make_box(name, size, loc, mat, coll, rotation=rotation, detail=detail,
+                       close_only=close, component=component)
+        bevel_object(obj, max(0.012, min(size) * 0.08), 3 if not close else 2)
+        if lod2_core:
+            obj['sf_lod2_core'] = True
+        out.append(obj)
+        return obj
+
+    def cyl(name: str, radius: float, depth: float, loc: tuple[float, float, float],
+            mat: bpy.types.Material, *, detail: int = 1, close: bool = False,
+            component: str = ''):
+        obj = make_cylinder(name, radius, depth, loc, mat, coll, vertices=28,
+                            detail=detail, component=component, keep_separate=bool(component))
+        if close:
+            obj['sf_close_only'] = True
+        bevel_object(obj, max(0.012, radius * 0.08), 3)
+        out.append(obj)
+        return obj
+
+    if ship_key == 'dart':
+        # Continuous primary envelope: a tapered arrow whose macro mass survives with emissives off.
+        box('SilhouetteCore_Dart_Main', (11.8, 1.48, 2.15), (-0.2, 0.08, 0), hull,
+            lod2_core=True)
+        dart_nose = make_cone('SilhouetteCore_Dart_Nose', 0.78, 0.12, 3.35,
+                              (6.55, 0.08, 0), hull, coll, vertices=32)
+        bevel_object(dart_nose, 0.045, 3); dart_nose['sf_lod2_core'] = True; out.append(dart_nose)
+        box('SilhouetteCore_Dart_Aft', (4.5, 1.75, 2.75), (-5.75, 0.08, 0), hull,
+            lod2_core=True)
+        # A layered arrow: faceted prow armor, recessed dorsal keel, swept shoulder plates.
+        box('Parity_Dorsal_Keel', (8.8, 0.24, 0.62), (0.65, 1.18, 0), mech)
+        box('Parity_Prow_Armor', (3.6, 0.72, 1.25), (4.85, 0.34, 0), hull)
+        for side, sign in (('P', -1), ('S', 1)):
+            box(f'SilhouetteCore_Dart_Shoulder_{side}', (4.4, 0.34, 1.55),
+                (0.1, 0.25, sign * 1.62), hull,
+                rotation=(0, 0, math.radians(sign * 9)), lod2_core=True)
+            box(f'Parity_Swept_Armor_{side}', (3.45, 0.18, 1.10),
+                (0.45, 0.52, sign * 1.76), paint,
+                rotation=(0, 0, math.radians(sign * 9)))
+            box(f'Parity_Threat_Strake_{side}', (3.2, 0.07, 0.12),
+                (1.25, 0.62, sign * 2.18), threat)
+            box(f'Parity_Intake_Lip_{side}', (1.65, 0.56, 0.18),
+                (-2.15, 0.12, sign * 1.28), warm)
+            # Rooted RCS blister and segmented armor fasteners.
+            box(f'Parity_RCS_Blister_{side}', (0.72, 0.42, 0.48),
+                (0.95, 0.22, sign * 2.48), mech, component='rcs')
+            for i, x in enumerate((-1.9, -0.8, 0.3, 1.4, 2.5)):
+                box(f'Parity_Fastener_{side}_{i}', (0.14, 0.12, 0.14),
+                    (x, 0.84, sign * 0.91), warm, detail=2, close=True)
+        # Mechanical nozzle stacks, visible during the two-ship Focus pass.
+        for side, sign in (('P', -1), ('S', 1)):
+            cyl(f'Parity_Nozzle_Ring_{side}', 0.61, 0.18, (-6.58, 0, sign * 0.55), hull,
+                component='engine')
+            for i in range(6):
+                ang = i * math.tau / 6
+                box(f'Parity_Nozzle_Tooth_{side}_{i}', (0.34, 0.16, 0.12),
+                    (-6.72, math.sin(ang) * 0.38, sign * 0.55 + math.cos(ang) * 0.38),
+                    mech, detail=2, close=True, component='engine')
+        for i, x in enumerate((-2.9, -2.35, -1.8, -1.25, -0.7, -0.15)):
+            box(f'Parity_Dorsal_Vent_{i}', (0.28, 0.10, 0.58), (x, 1.08, 0), mech,
+                detail=2, close=True)
+
+    elif ship_key == 'lode':
+        # One armored load-bearing slab with broad shoulders and a blunt breach prow.
+        box('SilhouetteCore_Maul_Main', (20.8, 2.35, 5.25), (-0.6, 0.18, 0), hull,
+            lod2_core=True)
+        box('SilhouetteCore_Maul_Casemate', (11.0, 2.85, 8.55), (-0.4, 0.20, 0), hull,
+            lod2_core=True)
+        box('SilhouetteCore_Maul_Aft', (5.8, 3.15, 6.45), (-8.75, 0.12, 0), hull,
+            lod2_core=True)
+        box('SilhouetteCore_Maul_Prow', (4.5, 3.05, 5.65), (8.55, 0.12, 0), hull,
+            lod2_core=True)
+        # Armor reads as load path, not another stretched box.
+        for i, x in enumerate((-6.6, -3.7, -0.8, 2.1, 5.0)):
+            box(f'Parity_Dorsal_Armor_{i}', (2.45, 0.34, 2.35), (x, 1.63, 0), paint)
+            box(f'Parity_Dorsal_Seam_{i}', (0.10, 0.10, 2.05), (x + 1.1, 1.83, 0), threat)
+        for side, sign in (('P', -1), ('S', 1)):
+            for i, x in enumerate((-3.7, -1.1, 1.5, 4.1)):
+                box(f'Parity_Casemate_Rib_{side}_{i}', (0.30, 2.55, 1.18),
+                    (x, 0.0, sign * 4.68), mech)
+            box(f'Parity_Broadside_Rail_{side}', (8.4, 0.10, 0.15),
+                (-0.3, 1.64, sign * 4.92), threat)
+            box(f'Parity_Aft_Shoulder_{side}', (4.6, 1.15, 1.35),
+                (-7.55, 0.52, sign * 2.35), hull)
+            for i in range(5):
+                box(f'Parity_Pod_Latch_{side}_{i}', (0.28, 0.24, 0.36),
+                    (-3.2 + i * 1.55, 1.32, sign * 4.12), warm, detail=2, close=True)
+        # Breach prow teeth and a readable armored sensor crown.
+        for i, z in enumerate((-1.20, -0.60, 0.0, 0.60, 1.20)):
+            box(f'Parity_Ram_Tooth_{i}', (1.35, 0.32, 0.30), (10.55, 0.65, z), mech)
+        box('Parity_Bridge_Crown', (2.8, 0.34, 1.65), (8.1, 1.82, 0), hull)
+        box('Parity_Bridge_Threat_Slit', (1.6, 0.10, 1.18), (8.72, 1.98, 0), threat)
+        for side, sign in (('P', -1), ('S', 1)):
+            cyl(f'Parity_Engine_Ring_{side}', 0.90, 0.24, (-11.05, 0, sign * 0.95), hull,
+                component='engine')
+
+    else:  # rig / Hook
+        # Primary hull, grounded aft machinery and boom root form one silhouette.
+        box('SilhouetteCore_Hook_Main', (14.8, 2.45, 3.65), (-0.35, 0.12, 0.05), hull,
+            lod2_core=True)
+        box('SilhouetteCore_Hook_Aft', (4.4, 2.75, 3.35), (-6.5, 0.05, 0.15), hull,
+            lod2_core=True)
+        box('SilhouetteCore_Hook_BoomRoot', (4.6, 1.45, 2.35), (3.1, -0.15, -1.25), hull,
+            lod2_core=True)
+        box('SilhouetteCore_Hook_Boom', (5.7, 0.78, 0.85), (6.0, -0.35, -2.15), mech,
+            lod2_core=True)
+        # The Hook's working capture mechanism gets explicit load-bearing braces and cable path.
+        box('Parity_Winch_Bed', (3.6, 0.42, 2.4), (0.7, 1.22, -0.72), hull)
+        for i, x in enumerate((-0.4, 0.7, 1.8)):
+            box(f'Parity_Winch_Rib_{i}', (0.28, 1.05, 2.6), (x, 0.82, -0.72), mech)
+        for i, x in enumerate((3.1, 4.35, 5.6, 6.85)):
+            box(f'Parity_Boom_Truss_{i}', (0.22, 0.95, 1.05),
+                (x, -0.28, -2.22 - (i % 2) * 0.15), hull)
+        box('Parity_Boom_Threat_Line', (5.6, 0.10, 0.12), (5.35, 0.12, -2.60), threat)
+        cyl('Parity_Cable_Guide', 0.42, 0.38, (7.68, -0.44, -2.73), warm,
+            component='tether')
+        for side, sign in (('P', -1), ('S', 1)):
+            box(f'Parity_Bay_Shoulder_{side}', (4.8, 0.72, 0.72),
+                (0.35, -1.46, sign * 1.25), hull)
+            for i, x in enumerate((-1.3, -0.2, 0.9, 2.0)):
+                box(f'Parity_Bay_Latch_{side}_{i}', (0.22, 0.26, 0.28),
+                    (x, -2.02, sign * 1.15), warm, detail=2, close=True)
+        box('Parity_Cabin_Armor', (3.2, 0.34, 1.75), (3.55, 1.56, 0.35), paint)
+        box('Parity_Cabin_Threat_Slit', (2.0, 0.09, 1.15), (4.0, 1.76, 0.38), threat)
+        cyl('Parity_Engine_Ring', 1.04, 0.25, (-7.58, 0.05, 0.2), hull,
+            component='engine')
+
     return out
 
 
@@ -952,8 +1126,8 @@ def build_lode_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types.Mater
     # Convert the old freight massing into a readable hostile casemate: layered armor shoulders,
     # a blunt breach prow, and paired broadside batteries. At combat scale the weapon banks make
     # the Maul unmistakably heavier than the Dart or asymmetric Hook.
-    ram = make_cone('Hull_Breach_Ram', 1.45, 0.5, 2.8, (10.7, 0.0, 0.0), hull, coll, vertices=12)
-    bevel_object(ram, 0.055, 3)
+    ram = make_box('Hull_Breach_Ram', (3.0, 2.65, 4.2), (10.15, 0.0, 0.0), hull, coll)
+    bevel_object(ram, 0.10, 4)
     parts.append(ram)
     prow_plate = make_box('Armor_Prow_Plate', (2.5, 2.4, 3.5), (8.8, 0.2, 0.0), hull, coll)
     bevel_object(prow_plate, 0.08, 4)
@@ -1087,12 +1261,12 @@ def build_rig_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types.Materi
     mast_base = make_box('Utility_Mast_Base', (1.15, 0.45, 1.15), (-0.35, 1.15, 0.05), hull, coll, detail=1)
     bevel_object(mast_base, 0.03, 2)
     parts.append(mast_base)
-    mast = make_box('Utility_Mast', (0.55, 2.4, 0.55), (-0.35, 2.0, 0.05), mech, coll)
+    mast = make_box('Utility_Mast', (0.48, 1.45, 0.48), (-0.35, 1.65, 0.05), mech, coll)
     bevel_object(mast, 0.035, 3)
     parts.append(mast)
     dish = make_cylinder(
-        'Utility_Dish', 0.72, 0.14, (-0.35, 3.15, 0.05),
-        cyan, coll, vertices=24, detail=1,
+        'Utility_Dish', 0.40, 0.12, (-0.35, 2.35, 0.05),
+        mats['Material_Red_Paint'], coll, vertices=24, detail=1,
         rotation=(math.radians(90), 0, 0),  # face up in Blender (+Z)
     )
     parts.append(dish)
@@ -1229,7 +1403,12 @@ def build_lod_collection(
     }
     removed_close = []
 
-    for obj in source_objects:
+    # LOD2 is deliberately authored from a small set of contiguous macro envelopes.  Decimating
+    # every LOD0 greeble preserved background gaps and made the three roles converge at 45 px.
+    lod2_cores = [o for o in source_objects if bool(o.get('sf_lod2_core'))]
+    selected_sources = lod2_cores if lod_name == 'lod2' and lod2_cores else source_objects
+
+    for obj in selected_sources:
         if obj.type != 'MESH':
             continue
         if drop_close_only and is_close_only(obj):
@@ -1407,7 +1586,9 @@ def create_collision_hull(export_coll: bpy.types.Collection, root: bpy.types.Obj
         return None
     size = (max_c - min_c) * 0.92
     center = (min_c + max_c) * 0.5
-    bpy.ops.mesh.primitive_cube_add(size=1.0, location=center)
+    # Blender's size=1 cube spans one metre; use size=2 with half-extents so the baked POSITION
+    # accessor is the intended 92% envelope rather than the previous accidental 46% envelope.
+    bpy.ops.mesh.primitive_cube_add(size=2.0, location=center)
     col = bpy.context.active_object
     col.name = 'COLLISION_HULL'
     col.scale = (size.x * 0.5, size.y * 0.5, size.z * 0.5)
@@ -1418,12 +1599,16 @@ def create_collision_hull(export_coll: bpy.types.Collection, root: bpy.types.Obj
     set_parent_keep_world(col, root)
     # Measurable helper: export mesh, mark non-render / collision
     col.hide_render = True
-    col['spaceface'] = {
+    collision_meta = {
         'collision': True,
         'helper': True,
         'nonRender': True,
         'role': 'collision',
     }
+    if 'RIG' in root.name:
+        collision_meta['compoundParts'] = ['primaryHullEnvelope', 'captureBoomEnvelope']
+        collision_meta['boomIncludedInPrimaryAabb'] = True
+    col['spaceface'] = collision_meta
     col['sf_collision'] = True
     col['sf_non_render'] = True
     # Ensure UVs so export doesn't drop the prim
@@ -1434,6 +1619,7 @@ def create_collision_hull(export_coll: bpy.types.Collection, root: bpy.types.Obj
 
 def export_glb(path: Path, objects: list[bpy.types.Object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_name(f'.{path.stem}.{os.getpid()}.{time.time_ns()}.glb')
     ensure_object_mode()
     deselect_all()
     for o in objects:
@@ -1446,7 +1632,7 @@ def export_glb(path: Path, objects: list[bpy.types.Object]) -> None:
             o.hide_render = False
         o.select_set(True)
     kwargs = dict(
-        filepath=str(path),
+        filepath=str(temp_path),
         export_format='GLB',
         use_selection=True,
         export_apply=True,
@@ -1464,10 +1650,11 @@ def export_glb(path: Path, objects: list[bpy.types.Object]) -> None:
         bpy.ops.export_scene.gltf(**kwargs)
     except TypeError:
         bpy.ops.export_scene.gltf(
-            filepath=str(path), export_format='GLB', use_selection=True,
+            filepath=str(temp_path), export_format='GLB', use_selection=True,
             export_apply=True, export_yup=True, export_extras=True,
             export_texcoords=True, export_normals=True, export_tangents=True,
         )
+    promote_with_retry(temp_path, path)
     deselect_all()
     log(f'Exported GLB → {path}')
 
@@ -1906,16 +2093,17 @@ def render_evidence(ship_key: str, root: bpy.types.Object, lod0_meshes: list[bpy
 
     # Blender Z-up camera placements (X forward, Z up, Y port)
     shots = [
-        ('forward_34', (center.x + extent * 1.35, center.y - extent * 0.85, center.z + extent * 0.7), 50),
-        ('rear_34', (center.x - extent * 1.4, center.y + extent * 0.75, center.z + extent * 0.65), 50),
+        ('forward_34', (center.x + extent * 1.95, center.y - extent * 1.20, center.z + extent * 0.90), 48),
+        ('rear_34', (center.x - extent * 1.95, center.y + extent * 1.15, center.z + extent * 0.85), 48),
         ('top_ortho', (center.x, center.y, center.z + extent * 2.4), 40),
-        ('readability_close', (center.x + extent * 0.8, center.y - extent * 0.45, center.z + extent * 0.4), 58),
+        ('side_ortho', (center.x, center.y - extent * 2.2, center.z + extent * 0.10), 45),
+        ('readability_close', (center.x + extent * 1.55, center.y - extent * 0.95, center.z + extent * 0.72), 52),
     ]
     written = []
     look = (center.x, center.y, center.z)
     for name, loc, lens in shots:
         cam = ensure_camera(f'Cam_{name}', loc, look, lens)
-        if name == 'top_ortho':
+        if name in ('top_ortho', 'side_ortho'):
             cam.data.type = 'ORTHO'
             cam.data.ortho_scale = extent * 2.6
         else:
@@ -1937,8 +2125,8 @@ def render_evidence(ship_key: str, root: bpy.types.Object, lod0_meshes: list[bpy
         scene.render.resolution_y = res
         cam = ensure_camera(
             'Cam_read_scale',
-            (center.x + extent * 0.95, center.y - extent * 0.6, center.z + extent * 0.55),
-            look, 40,
+            (center.x + extent * 1.85, center.y - extent * 1.12, center.z + extent * 0.82),
+            look, 48,
         )
         cam.data.type = 'PERSP'
         scene.camera = cam
@@ -1950,6 +2138,43 @@ def render_evidence(ship_key: str, root: bpy.types.Object, lod0_meshes: list[bpy
             promote_with_retry(temp, out)
         written.append(str(out.relative_to(ROOT)).replace('\\', '/') if out.exists() else str(out))
 
+    # Held-out silhouette proof: identical camera, emissives disabled, compositor grayscale.
+    emission_inputs: list[tuple[Any, float]] = []
+    for mat in bpy.data.materials:
+        if not mat.use_nodes or not mat.node_tree:
+            continue
+        for node in mat.node_tree.nodes:
+            if node.type == 'BSDF_PRINCIPLED' and 'Emission Strength' in node.inputs:
+                inp = node.inputs['Emission Strength']
+                emission_inputs.append((inp, float(inp.default_value)))
+                inp.default_value = 0.0
+    silhouette_engine = scene.render.engine
+    silhouette_ok = False
+    try:
+        scene.render.engine = 'BLENDER_WORKBENCH'
+        scene.display.shading.light = 'STUDIO'
+        scene.display.shading.color_type = 'SINGLE'
+        scene.display.shading.single_color = (0.62, 0.62, 0.62)
+        scene.display.shading.show_shadows = True
+        scene.display.shading.show_cavity = True
+        silhouette_ok = True
+    except Exception as exc:
+        log(f'WARN grayscale workbench unavailable: {exc}')
+    if silhouette_ok:
+        for name, res in (('silhouette_gray_45px', 48), ('silhouette_gray_120px', 128)):
+            scene.render.resolution_x = res
+            scene.render.resolution_y = res
+            out = renders / f'{name}.png'
+            temp = out.with_name(f'.{out.stem}.{os.getpid()}.{time.time_ns()}.png')
+            scene.render.filepath = str(temp)
+            bpy.ops.render.render(write_still=True)
+            if temp.exists():
+                promote_with_retry(temp, out)
+            written.append(str(out.relative_to(ROOT)).replace('\\', '/') if out.exists() else str(out))
+    for inp, value in emission_inputs:
+        inp.default_value = value
+    scene.render.engine = silhouette_engine
+
     world = scene.world
     if world and world.use_nodes:
         bg = world.node_tree.nodes.get('Background')
@@ -1960,8 +2185,8 @@ def render_evidence(ship_key: str, root: bpy.types.Object, lod0_meshes: list[bpy
     scene.render.resolution_y = 540
     cam = ensure_camera(
         'Cam_gamesky',
-        (center.x + extent * 1.0, center.y - extent * 0.65, center.z + extent * 0.55),
-        look, 45,
+        (center.x + extent * 1.85, center.y - extent * 1.12, center.z + extent * 0.82),
+        look, 48,
     )
     cam.data.type = 'PERSP'
     scene.camera = cam
@@ -1988,6 +2213,7 @@ def build_one_ship(ship_key: str) -> dict[str, Any]:
     mats = create_canonical_materials()
     authoring = new_collection('AUTHORING')
     parts = BUILDERS[ship_key](authoring, mats)
+    parts.extend(add_quality_parity_layer(ship_key, authoring, mats))
     log(f'Authoring parts: {len(parts)} meshes, tris={sum(tri_count_object(p) for p in parts)}')
 
     all_lod_meshes: list[bpy.types.Object] = []

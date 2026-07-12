@@ -1,17 +1,17 @@
 {
   "gateOk": true,
   "gateErrors": [],
-  "totalTriangles": 15670,
-  "hullTriangles": 6866,
+  "totalTriangles": 25836,
+  "hullTriangles": 9516,
   "lodTriangles": {
-    "lod0": 10368,
-    "lod1": 3706,
-    "lod2": 1584
+    "lod0": 18868,
+    "lod1": 6822,
+    "lod2": 134
   },
   "drawEstimates": {
-    "lod0": 8,
-    "lod1": 7,
-    "lod2": 7
+    "lod0": 9,
+    "lod1": 8,
+    "lod2": 1
   },
   "sockets": [
     "SOCKET_Camera_Focus",
@@ -29,33 +29,34 @@
     "Material_Cyan",
     "Material_Glass",
     "Material_Hull",
+    "Material_Red_Paint",
     "Material_Warm"
   ],
-  "tangentPrimitiveCount": 23,
-  "uvPrimitiveCount": 23,
+  "tangentPrimitiveCount": 19,
+  "uvPrimitiveCount": 19,
   "lod0AabbSize": [
-    23.624999046325684,
+    22.424999237060547,
     4.330000042915344,
     9.975000381469727
   ],
   "collisionBounds": {
     "min": [
-      -5.433750152587891,
-      -0.9958999752998352,
-      -2.294250011444092
+      -10.315500259399414,
+      -1.9917999505996704,
+      -4.588500022888184
     ],
     "max": [
-      5.433750152587891,
-      0.9958999752998352,
-      2.294250011444092
-    ],
-    "size": [
-      10.867500305175781,
+      10.315500259399414,
       1.9917999505996704,
       4.588500022888184
+    ],
+    "size": [
+      20.631000518798828,
+      3.983599901199341,
+      9.177000045776367
     ]
   },
-  "sourceSha256": "7BE1C651A3C8FA50E59816DD7325A7FA155DAAC5D377A717E3505B03C07F6AFB",
+  "sourceSha256": "3956985882D4C7F430414AF3FAB67DEBD2FA3BB8A41B41BC8AD4571C1DAB37C5",
   "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline\\source\\wholeships\\ashline_lode.glb",
   "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline\\blender\\ashline_lode_production.blend"
 }

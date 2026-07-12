@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.m4AshlineShipMetrics.v1",
-  "packet": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001",
+  "packet": "M4-ASHLINE-QUALITY-PARITY-002",
   "shipKey": "rig",
   "spec": {
     "id": "ashline_rig",
@@ -12,17 +12,17 @@
   "sourceGlb": "assets/ships/m4_ashline/source/wholeships/ashline_rig.glb",
   "releaseCandidateGlb": "assets/ships/m4_ashline/release_candidates/wholeships/ashline_rig.glb",
   "blend": "assets/ships/m4_ashline/blender/ashline_rig_production.blend",
-  "sha256_source": "273774CC280A4EDF43982E73E79E96BB1435ECB97443AEAB09C315BBDCD4B141",
+  "sha256_source": "C2ED5DB14ECDFE31FE862807563437A489671A7E4827F5C445BC5B3FA9F0DE51",
   "report": {
     "file": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline\\source\\wholeships\\ashline_rig.glb",
-    "bytes": 583696,
-    "totalTriangles": 10302,
-    "hullTriangles": 3658,
+    "bytes": 1066216,
+    "totalTriangles": 16206,
+    "hullTriangles": 6648,
     "lodBreakdown": {
       "lod0": {
-        "triangles": 6580,
-        "primitives": 9,
-        "drawEstimate": 9,
+        "triangles": 11744,
+        "primitives": 10,
+        "drawEstimate": 10,
         "nodes": [
           {
             "name": "LOD0_Gun_Assembly",
@@ -38,11 +38,11 @@
           },
           {
             "name": "LOD0_HOOK_TETHER_SPOOL",
-            "tris": 512
+            "tris": 956
           },
           {
             "name": "LOD0_Merged_Material_Cyan",
-            "tris": 320
+            "tris": 604
           },
           {
             "name": "LOD0_Merged_Material_Glass",
@@ -50,22 +50,26 @@
           },
           {
             "name": "LOD0_Merged_Material_Hull",
-            "tris": 2288
+            "tris": 4612
           },
           {
             "name": "LOD0_Merged_Material_Mechanical",
-            "tris": 2568
+            "tris": 3536
+          },
+          {
+            "name": "LOD0_Merged_Material_Red_Paint",
+            "tris": 280
           },
           {
             "name": "LOD0_Merged_Material_Warm",
-            "tris": 432
+            "tris": 1296
           }
         ]
       },
       "lod1": {
-        "triangles": 2514,
-        "primitives": 8,
-        "drawEstimate": 8,
+        "triangles": 4318,
+        "primitives": 9,
+        "drawEstimate": 9,
         "nodes": [
           {
             "name": "LOD1_Gun_Assembly",
@@ -81,11 +85,11 @@
           },
           {
             "name": "LOD1_HOOK_TETHER_SPOOL",
-            "tris": 214
+            "tris": 400
           },
           {
             "name": "LOD1_Merged_Material_Cyan",
-            "tris": 128
+            "tris": 248
           },
           {
             "name": "LOD1_Merged_Material_Glass",
@@ -93,50 +97,30 @@
           },
           {
             "name": "LOD1_Merged_Material_Hull",
-            "tris": 960
+            "tris": 1936
           },
           {
             "name": "LOD1_Merged_Material_Mechanical",
-            "tris": 896
+            "tris": 1302
+          },
+          {
+            "name": "LOD1_Merged_Material_Red_Paint",
+            "tris": 116
           }
         ]
       },
       "lod2": {
-        "triangles": 1196,
-        "primitives": 8,
-        "drawEstimate": 8,
+        "triangles": 132,
+        "primitives": 2,
+        "drawEstimate": 2,
         "nodes": [
           {
-            "name": "LOD2_Gun_Assembly",
-            "tris": 52
-          },
-          {
-            "name": "LOD2_HOOK_DRIVE_CORE",
-            "tris": 76
-          },
-          {
-            "name": "LOD2_HOOK_DRIVE_FAN",
-            "tris": 84
-          },
-          {
-            "name": "LOD2_HOOK_TETHER_SPOOL",
-            "tris": 92
-          },
-          {
-            "name": "LOD2_Merged_Material_Cyan",
-            "tris": 54
-          },
-          {
-            "name": "LOD2_Merged_Material_Glass",
-            "tris": 44
-          },
-          {
             "name": "LOD2_Merged_Material_Hull",
-            "tris": 410
+            "tris": 100
           },
           {
             "name": "LOD2_Merged_Material_Mechanical",
-            "tris": 384
+            "tris": 32
           }
         ]
       }
@@ -158,11 +142,12 @@
       "Material_Cyan",
       "Material_Warm",
       "Material_Glass",
-      "Material_Hull"
+      "Material_Hull",
+      "Material_Red_Paint"
     ],
-    "primitiveCount": 26,
-    "tangentPrimitiveCount": 26,
-    "uvPrimitiveCount": 26,
+    "primitiveCount": 22,
+    "tangentPrimitiveCount": 22,
+    "uvPrimitiveCount": 22,
     "spacefaceAsset": {
       "contractVersion": 1,
       "assetId": "SF_WHOLESHIP_ASHLINE_RIG",
@@ -179,11 +164,11 @@
       "partId": "wholeship_ashline_rig",
       "category": "wholeships",
       "sourceRole": "whole-ship hull",
-      "packet": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001",
+      "packet": "M4-ASHLINE-QUALITY-PARITY-002",
       "family": "ashline",
       "role": "tether_control_raider",
-      "triangleCount": 10302,
-      "hullTriangleCount": 3658,
+      "triangleCount": 16206,
+      "hullTriangleCount": 6648,
       "deliverableRole": "candidate_multi_lod",
       "lods": [
         "lod0",
@@ -195,24 +180,24 @@
       "exportBasis": "Y-up glTF",
       "lod0AabbSize": [
         17.71500015258789,
-        5.9700000286102295,
+        4.849999904632568,
         4.974999904632568
       ],
       "collisionBounds": {
         "min": [
-          -4.0744500160217285,
-          -1.3731000423431396,
-          -1.1442500352859497
+          -8.148900032043457,
+          -2.2309999465942383,
+          -2.2885000705718994
         ],
         "max": [
-          4.0744500160217285,
-          1.3731000423431396,
-          1.1442500352859497
+          8.148900032043457,
+          2.2309999465942383,
+          2.2885000705718994
         ],
         "size": [
-          8.148900032043457,
-          2.7462000846862793,
-          2.2885000705718994
+          16.297800064086914,
+          4.461999893188477,
+          4.577000141143799
         ]
       }
     },
@@ -220,19 +205,19 @@
       {
         "lod": "lod0",
         "decimate_ratio": 1.0,
-        "mesh_count": 9,
-        "triangles": 6580,
+        "mesh_count": 10,
+        "triangles": 11744,
         "meshes": [
           {
             "name": "LOD0_Merged_Material_Hull",
-            "tris": 2288,
+            "tris": 4612,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD0_Merged_Material_Mechanical",
-            "tris": 2568,
+            "tris": 3536,
             "materials": [
               "Material_Mechanical"
             ]
@@ -245,15 +230,22 @@
             ]
           },
           {
+            "name": "LOD0_Merged_Material_Red_Paint",
+            "tris": 280,
+            "materials": [
+              "Material_Red_Paint"
+            ]
+          },
+          {
             "name": "LOD0_Merged_Material_Cyan",
-            "tris": 320,
+            "tris": 604,
             "materials": [
               "Material_Cyan"
             ]
           },
           {
             "name": "LOD0_Merged_Material_Warm",
-            "tris": 432,
+            "tris": 1296,
             "materials": [
               "Material_Warm"
             ]
@@ -281,31 +273,31 @@
           },
           {
             "name": "LOD0_HOOK_TETHER_SPOOL",
-            "tris": 512,
+            "tris": 956,
             "materials": [
               "Material_Warm"
             ]
           }
         ],
         "removed_close_only": [],
-        "draw_estimate": 9
+        "draw_estimate": 10
       },
       {
         "lod": "lod1",
         "decimate_ratio": 0.42,
-        "mesh_count": 8,
-        "triangles": 2514,
+        "mesh_count": 9,
+        "triangles": 4318,
         "meshes": [
           {
             "name": "LOD1_Merged_Material_Hull",
-            "tris": 960,
+            "tris": 1936,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD1_Merged_Material_Mechanical",
-            "tris": 896,
+            "tris": 1302,
             "materials": [
               "Material_Mechanical"
             ]
@@ -318,8 +310,15 @@
             ]
           },
           {
+            "name": "LOD1_Merged_Material_Red_Paint",
+            "tris": 116,
+            "materials": [
+              "Material_Red_Paint"
+            ]
+          },
+          {
             "name": "LOD1_Merged_Material_Cyan",
-            "tris": 128,
+            "tris": 248,
             "materials": [
               "Material_Cyan"
             ]
@@ -347,7 +346,7 @@
           },
           {
             "name": "LOD1_HOOK_TETHER_SPOOL",
-            "tris": 214,
+            "tris": 400,
             "materials": [
               "Material_Warm"
             ]
@@ -362,119 +361,78 @@
           "Panel_Line_01",
           "Panel_Line_02",
           "Panel_Line_03",
-          "Antenna_Loop"
+          "Antenna_Loop",
+          "Parity_Bay_Latch_P_0",
+          "Parity_Bay_Latch_P_1",
+          "Parity_Bay_Latch_P_2",
+          "Parity_Bay_Latch_P_3",
+          "Parity_Bay_Latch_S_0",
+          "Parity_Bay_Latch_S_1",
+          "Parity_Bay_Latch_S_2",
+          "Parity_Bay_Latch_S_3"
         ],
-        "draw_estimate": 8
+        "draw_estimate": 9
       },
       {
         "lod": "lod2",
         "decimate_ratio": 0.18,
-        "mesh_count": 8,
-        "triangles": 1196,
+        "mesh_count": 2,
+        "triangles": 132,
         "meshes": [
           {
             "name": "LOD2_Merged_Material_Hull",
-            "tris": 410,
+            "tris": 100,
             "materials": [
               "Material_Hull"
             ]
           },
           {
             "name": "LOD2_Merged_Material_Mechanical",
-            "tris": 384,
+            "tris": 32,
             "materials": [
               "Material_Mechanical"
-            ]
-          },
-          {
-            "name": "LOD2_Merged_Material_Glass",
-            "tris": 44,
-            "materials": [
-              "Material_Glass"
-            ]
-          },
-          {
-            "name": "LOD2_Merged_Material_Cyan",
-            "tris": 54,
-            "materials": [
-              "Material_Cyan"
-            ]
-          },
-          {
-            "name": "LOD2_HOOK_DRIVE_FAN",
-            "tris": 84,
-            "materials": [
-              "Material_Mechanical"
-            ]
-          },
-          {
-            "name": "LOD2_HOOK_DRIVE_CORE",
-            "tris": 76,
-            "materials": [
-              "Material_Cyan"
-            ]
-          },
-          {
-            "name": "LOD2_Gun_Assembly",
-            "tris": 52,
-            "materials": [
-              "Material_Mechanical"
-            ]
-          },
-          {
-            "name": "LOD2_HOOK_TETHER_SPOOL",
-            "tris": 92,
-            "materials": [
-              "Material_Warm"
             ]
           }
         ],
-        "removed_close_only": [
-          "Hazard_Chevron_00",
-          "Hazard_Chevron_01",
-          "Hazard_Chevron_02",
-          "Hazard_Chevron_03",
-          "Panel_Line_00",
-          "Panel_Line_01",
-          "Panel_Line_02",
-          "Panel_Line_03",
-          "Antenna_Loop"
-        ],
-        "draw_estimate": 8
+        "removed_close_only": [],
+        "draw_estimate": 2
       }
     ],
     "lod0AabbSize": [
       17.71500015258789,
-      5.9700000286102295,
+      4.849999904632568,
       4.974999904632568
     ],
     "collisionBounds": {
       "min": [
-        -4.0744500160217285,
-        -1.3731000423431396,
-        -1.1442500352859497
+        -8.148900032043457,
+        -2.2309999465942383,
+        -2.2885000705718994
       ],
       "max": [
-        4.0744500160217285,
-        1.3731000423431396,
-        1.1442500352859497
+        8.148900032043457,
+        2.2309999465942383,
+        2.2885000705718994
       ],
       "size": [
-        8.148900032043457,
-        2.7462000846862793,
-        2.2885000705718994
+        16.297800064086914,
+        4.461999893188477,
+        4.577000141143799
       ]
     },
-    "sha256": "273774CC280A4EDF43982E73E79E96BB1435ECB97443AEAB09C315BBDCD4B141"
+    "sha256": "C2ED5DB14ECDFE31FE862807563437A489671A7E4827F5C445BC5B3FA9F0DE51"
   },
   "renders": [
     "assets/ships/m4_ashline/evidence/rig/renders/forward_34.png",
     "assets/ships/m4_ashline/evidence/rig/renders/rear_34.png",
     "assets/ships/m4_ashline/evidence/rig/renders/top_ortho.png",
+    "assets/ships/m4_ashline/evidence/rig/renders/side_ortho.png",
     "assets/ships/m4_ashline/evidence/rig/renders/readability_close.png",
     "assets/ships/m4_ashline/evidence/rig/renders/readability_under45px.png",
     "assets/ships/m4_ashline/evidence/rig/renders/readability_120px.png",
+    "assets/ships/m4_ashline/evidence/rig/renders/silhouette_gray_45px.png",
+    "assets/ships/m4_ashline/evidence/rig/renders/silhouette_gray_120px.png",
     "assets/ships/m4_ashline/evidence/rig/renders/gamesky_forward_34.png"
   ],
-  "builtAt": "2026-07-12T09:39:39Z"
+  "builtAt": "2026-07-12T20:41:15Z"
 }
