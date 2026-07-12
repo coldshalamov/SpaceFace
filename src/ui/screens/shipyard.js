@@ -13,12 +13,16 @@ import { dockInteriorIdForArchetype } from '../shipPreviewMount.js';
 import { escapeHtml } from '../comms.js';
 import { createShipEngineeringStage } from '../shipEngineeringStage.js';
 import { createMorphLabel } from '../effects/index.js';
-import { buildSlotList, getDerivedStats } from '../../systems/ships.js';
+import { buildSlotList } from '../../systems/ships.js';
 import {
-  compareHulls,
   describeHullRole,
   getLatticeRow,
 } from '../../data/shipRoleLattice.js';
+import {
+  presentGaugePacket,
+  presentHullCompare,
+  stockPreviewPlayer,
+} from '../presenters/engineeringPreview.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
@@ -150,43 +154,12 @@ function hullPurpose(def) {
   }
 }
 
-function activeOwnedDefId(player) {
-  const p = player || {};
-  const owned = (p.ownedShips || [])[p.activeShipIndex || 0];
-  return owned && owned.defId ? owned.defId : null;
-}
-
-/** Real derived-stat compare of selected hull vs owned active hull (no fake stats). */
+/**
+ * Real derived-stat compare of selected hull vs owned active hull.
+ * Authority: src/ui/presenters/engineeringPreview.js → ships.getDerivedStats (stock fittings).
+ */
 export function describeShipyardHullCompare(candidateDef, player = {}) {
-  if (!candidateDef) return null;
-  const currentId = activeOwnedDefId(player) || 'ship_kestrel';
-  if (candidateDef.id === currentId) {
-    const self = describeHullRole(candidateDef.id);
-    return {
-      kind: 'current',
-      title: candidateDef.name + ' is your active hull',
-      body: self ? self.identityLine : hullPurpose(candidateDef),
-      compare: null,
-    };
-  }
-  // Stock-hull compare: empty fittings on both, zero cargo mass so rows are hull-vs-hull
-  // (not fitted-current vs bare-candidate). Numbers still come only from getDerivedStats.
-  const stockPlayer = { ...(player || {}), cargo: { usedMass: 0 }, efficiencyMods: (player && player.efficiencyMods) || {} };
-  const candDerived = getDerivedStats(candidateDef.id, [], stockPlayer);
-  const curDerived = getDerivedStats(currentId, [], stockPlayer);
-  const compare = compareHulls(candidateDef.id, currentId, candDerived, curDerived);
-  if (!compare) return null;
-  const better = compare.rows.filter((r) => r.tone === 'better').map((r) => r.label);
-  const worse = compare.rows.filter((r) => r.tone === 'worse').map((r) => r.label);
-  const adj = compare.adjacencyFromCurrent ? ' On your upgrade path.' : '';
-  const betterText = better.length ? 'Gains ' + better.slice(0, 3).join(', ') : 'No clear gains';
-  const worseText = worse.length ? '; trades away ' + worse.slice(0, 3).join(', ') : '';
-  return {
-    kind: 'compare',
-    title: candidateDef.name + ' vs ' + (compare.currentName || 'current hull'),
-    body: (compare.candidateWhy || hullPurpose(candidateDef)) + ' ' + betterText + worseText + '.' + adj,
-    compare,
-  };
+  return presentHullCompare(candidateDef, player);
 }
 
 function hullNextStep(def) {
@@ -431,6 +404,9 @@ function renderComparePanel(cmpPanel, player, selectedDefId) {
       return n ? n.name : id;
     }).join(', ')
     : '';
+  const basisNote = packet.note
+    ? '<div class="st-sy-cmp-slots">' + escapeHtml(packet.note) + '</div>'
+    : '';
   cmpPanel.innerHTML =
     '<div class="st-sy-cmp-h">' +
       '<span class="st-sy-cmp-name">' + escapeHtml(c.candidateName) + '</span>' +
@@ -445,6 +421,7 @@ function renderComparePanel(cmpPanel, player, selectedDefId) {
       '<div class="st-sy-cmp-sep"></div>' +
       rowsHtml +
     '</div>' +
+    basisNote +
     (adj ? '<div class="st-sy-cmp-slots"><b>Upgrade path</b> · ' + escapeHtml(adj) + '</div>' : '');
 }
 
@@ -811,18 +788,21 @@ export function createShipyardPanel(ctx) {
     const p = ctx.state.player;
     const def = SHIP_BY_ID.get(selectedDefId);
     if (!def) return;
-    // Candidate hull baseline stats (no modules fitted).
-    const stats = getDerivedStats(selectedDefId, [], p);
-    stage.setGauges({
-      mass: stats.mass,
-      capMax: stats.capMax,
-      capRegen: stats.capRegen,
-      shieldMax: stats.shieldMax,
-      cargoCap: stats.cargoCap,
-      maxSpeed: stats.maxSpeed,
-      continuousDrain: stats.continuousDrain,
-    });
-    stage.setLabel('<span class="mono">T' + def.tier + '</span> · ' + escapeHtml(def.name));
+    // Stock hull gauges only: empty fittings + zero cargo (canonical engineering preview).
+    const gauges = presentGaugePacket(selectedDefId, [], stockPreviewPlayer(p));
+    if (gauges.ok) {
+      stage.setGauges({
+        mass: gauges.mass,
+        capMax: gauges.capMax,
+        capRegen: gauges.capRegen,
+        shieldMax: gauges.shieldMax,
+        cargoCap: gauges.cargoCap,
+        maxSpeed: gauges.maxSpeed,
+        continuousDrain: gauges.continuousDrain,
+      });
+    }
+    stage.setLabel('<span class="mono">T' + def.tier + '</span> · ' + escapeHtml(def.name) +
+      ' <span class="st-sy-stock-tag">stock</span>');
   }
 
   // ---- event listeners ----

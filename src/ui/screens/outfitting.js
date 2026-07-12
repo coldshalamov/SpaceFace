@@ -4,7 +4,7 @@
 // path interruption. Fit/unfit emits ui:fitModule / ui:unfitModule; ships system owns mutation.
 // Module shop emits ui:buyModule after shared confirm for positive-cost buys.
 // Read-only over sim state; UI emits intents only.
-import { buildSlotList, getDerivedStats, fits } from '../../systems/ships.js';
+import { buildSlotList, fits } from '../../systems/ships.js';
 import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
@@ -15,6 +15,11 @@ import { escapeHtml } from '../comms.js';
 import { createShipEngineeringStage } from '../shipEngineeringStage.js';
 import { createFitTree } from '../fitTree.js';
 import { createMorphLabel } from '../effects/index.js';
+import {
+  presentGaugePacket,
+  presentModuleFitPreview,
+  presentShopModuleDelta,
+} from '../presenters/engineeringPreview.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
@@ -516,24 +521,48 @@ export function createOutfittingPanel(ctx) {
       fitTree.setPreview(-1, null);
     }
 
-    // Stats: use preview fittings if any.
-    const previewFittings = previewFit ? fittings.slice() : null;
-    if (previewFittings) {
-      if (previewFit.remove) previewFittings[previewFit.slotIndex] = null;
-      else previewFittings[previewFit.slotIndex] = previewFit.defId;
+    // Stats: live fittings, or ghost preview via canonical engineering presenter.
+    let gauges;
+    let ghostLabel = false;
+    if (previewFit && previewFit.defId && previewFit.slotIndex >= 0 && !previewFit.remove) {
+      const ghost = presentModuleFitPreview({
+        defId: def.id,
+        fittings,
+        moduleId: previewFit.defId,
+        slotIndex: previewFit.slotIndex,
+        player: ctx.state.player,
+      });
+      gauges = ghost.ok ? ghost.gauges : presentGaugePacket(def.id, fittings, ctx.state.player);
+      ghostLabel = !!ghost.ok;
+    } else if (previewFit && previewFit.remove && previewFit.slotIndex >= 0) {
+      const ghost = presentModuleFitPreview({
+        defId: def.id,
+        fittings,
+        slotIndex: previewFit.slotIndex,
+        remove: true,
+        player: ctx.state.player,
+      });
+      gauges = ghost.ok ? ghost.gauges : presentGaugePacket(def.id, fittings, ctx.state.player);
+      ghostLabel = !!ghost.ok;
+    } else {
+      gauges = presentGaugePacket(def.id, fittings, ctx.state.player);
     }
-    const stats = getDerivedStats(def.id, previewFittings || fittings, ctx.state.player);
-    stage.setGauges({
-      mass: stats.mass,
-      capMax: stats.capMax,
-      capRegen: stats.capRegen,
-      shieldMax: stats.shieldMax,
-      cargoCap: stats.cargoCap,
-      maxSpeed: stats.maxSpeed,
-      continuousDrain: stats.continuousDrain,
-    });
+    if (gauges && gauges.ok !== false && gauges.mass != null) {
+      stage.setGauges({
+        mass: gauges.mass,
+        capMax: gauges.capMax,
+        capRegen: gauges.capRegen,
+        shieldMax: gauges.shieldMax,
+        cargoCap: gauges.cargoCap,
+        maxSpeed: gauges.maxSpeed,
+        continuousDrain: gauges.continuousDrain,
+      });
+    }
+    const unavail = previewFit && previewFit.slotIndex < 0
+      ? ' <span class="st-outfit-ghost-label" title="No compatible hardpoint">unavailable</span>'
+      : '';
     stage.setLabel('<span class="mono">' + escapeHtml(def.name) + '</span>' +
-      (previewFit ? ' <span class="st-outfit-ghost-label">preview</span>' : ''));
+      (ghostLabel ? ' <span class="st-outfit-ghost-label">preview</span>' : '') + unavail);
   }
 
   function renderMissionAdvisor() {
@@ -624,23 +653,26 @@ export function createOutfittingPanel(ctx) {
 
       const purchase = describeOutfittingPurchase(def, p, slots, fittings);
 
+      // Truthful loadout deltas: ships.getDerivedStats via engineeringPreview (never raw mods keys).
       let deltaHtml = '';
-      if (owned && def.mods) {
-        const fittedSlotIdx = slots.findIndex((s, i) => s.type === def.slotType && owned.fittings[i]);
-        const fittedDef = fittedSlotIdx >= 0 ? FITTABLE_BY_ID.get(owned.fittings[fittedSlotIdx]) : null;
-        if (fittedDef && fittedDef.mods) {
-          const deltas = [];
-          const allKeys = new Set([...Object.keys(def.mods), ...Object.keys(fittedDef.mods)]);
-          for (const key of allKeys) {
-            const nv = def.mods[key]; const ov = fittedDef.mods[key];
-            if (typeof nv !== 'number' || typeof ov !== 'number') continue;
-            const d = nv - ov;
-            if (Math.abs(d) < 0.001) continue;
-            const sign = d > 0 ? '+' : '';
-            const cls = d > 0 ? 'up' : 'down';
-            deltas.push('<span class="st-delta ' + cls + '">' + sign + (Number.isInteger(d) ? d : d.toFixed(1)) + ' ' + key.replace(/([A-Z])/g, ' $1').toLowerCase() + '</span>');
-          }
-          if (deltas.length) deltaHtml = '<div class="st-shop-delta">' + deltas.join(' ') + '</div>';
+      if (owned) {
+        const shopDelta = presentShopModuleDelta({
+          defId: owned.defId,
+          fittings,
+          moduleId: def.id,
+          player: p,
+        });
+        if (shopDelta.ok && shopDelta.chips.length) {
+          const chips = shopDelta.chips.map((chip) => {
+            const cls = chip.tone === 'better' ? 'up' : (chip.tone === 'worse' ? 'down' : '');
+            return '<span class="st-delta' + (cls ? ' ' + cls : '') + '">' + escapeHtml(chip.label) + '</span>';
+          });
+          deltaHtml = '<div class="st-shop-delta" title="' + escapeHtml(shopDelta.detail || 'Derived loadout preview') + '">' +
+            chips.join(' ') + '</div>';
+        } else if (!shopDelta.ok && purchase.hasSlot === false) {
+          deltaHtml = '<div class="st-shop-delta st-shop-delta--unavail" title="' +
+            escapeHtml(shopDelta.detail || 'Unavailable') + '">' +
+            '<span class="st-delta">' + escapeHtml(shopDelta.detail || 'No compatible hardpoint') + '</span></div>';
         }
       }
 
