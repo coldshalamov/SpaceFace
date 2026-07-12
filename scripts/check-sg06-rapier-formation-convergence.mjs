@@ -18,6 +18,13 @@ const first = await runScenario();
 const second = await runScenario();
 const flybyFirst = await runHostileFlybyScenario();
 const flybySecond = await runHostileFlybyScenario();
+const capitalApproach = await runHostileFlybyScenario({ targetRadius: 34, targetMass: 800 });
+const explicitRamApproach = await runHostileFlybyScenario({
+  targetRadius: 34,
+  targetMass: 800,
+  interceptorMass: 240,
+  ramPlate: true,
+});
 
 assert.deepEqual(second.summary, first.summary, 'SG-06 formation convergence harness should replay deterministically');
 assert.equal(first.summary.allDynamic, true, 'all tactical ships should run as SG-02 dynamic bodies');
@@ -39,8 +46,22 @@ assert(flybyFirst.minTargetSeparation >= 26,
   `flyby must clear both hulls instead of colliding, separation=${flybyFirst.minTargetSeparation}`);
 assert(flybyFirst.acceptedManeuvers > 0 && flybyFirst.flushedManeuvers > 0,
   'hostile trajectory must pass through actual aiPorts maneuver authority');
+assert(capitalApproach.minTargetSeparation >= 130,
+  `ordinary interceptor must leave capital-mass approach room, separation=${capitalApproach.minTargetSeparation}`);
+assert.equal(capitalApproach.ramAuthorized, false, 'ordinary interceptor never receives ram authority');
+assert.equal(explicitRamApproach.ramAuthorized, true, 'heavy ram-plate actor receives explicit ram authority');
+assert.equal(explicitRamApproach.sanctuaryRamAuthorized, false,
+  'station-jurisdiction withdrawal revokes ram authority before planning');
+assert(explicitRamApproach.phases.includes('commit'),
+  `heavy ram-plate actor retains its committed approach: ${explicitRamApproach.phases.join(' -> ')}`);
+assert(explicitRamApproach.phases.indexOf('engine_flare') < explicitRamApproach.phases.indexOf('commit'),
+  'ram authorization remains downstream of the readable engine-flare telegraph');
 
-console.log('SG-06 Rapier formation + hostile flyby trajectory checks OK', JSON.stringify(flybyFirst));
+console.log('SG-06 Rapier formation + hostile flyby trajectory checks OK', JSON.stringify({
+  flyby: flybyFirst,
+  capitalApproach,
+  explicitRamApproach,
+}));
 
 async function runScenario() {
   const harness = makeHarness();
@@ -128,15 +149,21 @@ async function runScenario() {
   return { summary };
 }
 
-async function runHostileFlybyScenario() {
+async function runHostileFlybyScenario(options = {}) {
   const harness = makeHarness();
   const { state, helpers } = harness;
   state.world.currentSectorId = 'sector_ceres_belt';
   state.world.sectors.sector_ceres_belt = { id: 'sector_ceres_belt', tier: 2, security: 0.35 };
-  const player = helpers.spawnEntity(makeTargetSpec({ x: 420, z: 0 }));
+  const player = helpers.spawnEntity(makeTargetSpec({
+    x: 420,
+    z: 0,
+    radius: options.targetRadius,
+    mass: options.targetMass,
+  }));
   const interceptor = helpers.spawnEntity(makeShipSpec({
     x: -80,
     z: -42,
+    mass: options.interceptorMass,
     ai: {
       squadId: 'sg06_hostile_flyby',
       doctrine: 'scavenger',
@@ -163,9 +190,16 @@ async function runHostileFlybyScenario() {
     },
   }));
   interceptor.data.combat = { targetId: player.id };
+  if (options.ramPlate) interceptor.data.intent = { ramPlate: true };
   state.playerId = player.id;
   harness.rebuildSpatialHash();
   await ensureSg02Ready(harness);
+  const initialSensor = helpers.aiSensors.frameFor(interceptor.id, state.tick | 0);
+  const ramAuthorized = initialSensor.self.ramAuthorized === true;
+  interceptor.data.ai.sanctuaryWithdrawn = true;
+  const sanctuarySensor = helpers.aiSensors.frameFor(interceptor.id, state.tick | 0);
+  const sanctuaryRamAuthorized = sanctuarySensor.self.ramAuthorized === true;
+  interceptor.data.ai.sanctuaryWithdrawn = false;
 
   const tacticalAI = createTacticalAISystem({
     seed: state.meta.seed,
@@ -208,6 +242,8 @@ async function runHostileFlybyScenario() {
     bestReformHeadingError: round3(bestReformHeadingError),
     acceptedManeuvers: inspect.acceptedManeuvers,
     flushedManeuvers: inspect.flushedManeuvers,
+    ramAuthorized,
+    sanctuaryRamAuthorized,
   };
   disposeHarness(harness);
   return summary;
@@ -270,13 +306,13 @@ async function ensureSg02Ready(harness) {
   assert.equal(harness.state.physicsRuntime.diagnostics.sg02Ready, true, 'physics diagnostics should mark SG-02 ready');
 }
 
-function makeShipSpec({ x, z, ai }) {
+function makeShipSpec({ x, z, ai, mass = 32 }) {
   return {
     type: 'ship',
     alive: true,
     collides: true,
     radius: 12,
-    mass: 32,
+    mass,
     thrust: 90,
     turnRate: 3,
     drag: 1.2,
@@ -304,13 +340,13 @@ function makeShipSpec({ x, z, ai }) {
   };
 }
 
-function makeTargetSpec({ x, z }) {
+function makeTargetSpec({ x, z, radius = 14, mass = 34 }) {
   return {
     type: 'ship',
     alive: true,
     collides: true,
-    radius: 14,
-    mass: 34,
+    radius,
+    mass,
     thrust: 90,
     turnRate: 3,
     drag: 1.2,

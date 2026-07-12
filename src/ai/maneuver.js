@@ -64,6 +64,11 @@ const DEFAULTS = Object.freeze({
   shipCollisionLookahead: 180,
   shipCollisionClearance: 34,
   shipCollisionWeight: 0.72,
+  heavyTargetClearance: 24,
+  capitalTargetClearance: 52,
+  heavyTargetClosingSpeed: 22,
+  capitalTargetClosingSpeed: 16,
+  massApproachRangeMult: 2.8,
 });
 const EMPTY_TRAJECTORY = Object.freeze([]);
 
@@ -116,7 +121,7 @@ export class ManeuverPlanner {
       : desiredForIntent(intent, self, target, perception.contacts, this.seed, entityId, this.config);
 
     desired = applyFriendlySeparation(desired, self, perception.contacts, this.config);
-    desired = applyShipCollisionAvoidance(desired, self, perception.contacts, this.seed, entityId, tick, runtime, this.config);
+    desired = applyShipCollisionAvoidance(desired, self, perception.contacts, intent, this.seed, entityId, tick, runtime, this.config);
     desired = applyObstacleAvoidance(desired, self, perception.contacts, this.config);
     const speed = Math.hypot(self.vel.x, self.vel.z);
     const commanded = Math.hypot(desired.x, desired.z);
@@ -144,9 +149,12 @@ export class ManeuverPlanner {
     const slowRadius = approachSlowRadius(kind, formationBound, this.config);
     const envelope = motionEnvelope(kind, intent, arrival, formationDistance, formationBound, this.config);
     const closing = target ? closingSpeed(self, target) : 0;
+    const localClosingLimit = target
+      ? closeApproachLimit(kind, intent, self, target, this.config, envelope.maxClosingSpeed)
+      : envelope.maxClosingSpeed;
     const velocityAlongDesired = self.vel.x * desiredUnit.x + self.vel.z * desiredUnit.z;
     const speedLimited = speed > envelope.maxSpeed + this.config.speedBrakeSlack;
-    const closingLimited = target && closing > envelope.maxClosingSpeed + this.config.closingBrakeSlack;
+    const closingLimited = target && closing > localClosingLimit + this.config.closingBrakeSlack;
     let throttle = arrival < slowRadius ? saturate(arrival / slowRadius) : 1;
 
     if (envelope.maxSpeed > 0 && speed > envelope.maxSpeed) {
@@ -216,6 +224,7 @@ export class ManeuverPlanner {
           speed,
           speedBudget: envelope.maxSpeed,
           closingSpeed: closing,
+          closingLimit: localClosingLimit,
           speedLimited,
           closingLimited,
           angleError,
@@ -378,7 +387,7 @@ function applyFriendlySeparation(desired, self, contacts, config) {
   return { x, z, arrivalDistance: desired.arrivalDistance };
 }
 
-function applyShipCollisionAvoidance(desired, self, contacts, seed, entityId, tick, runtime, config) {
+function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, entityId, tick, runtime, config) {
   const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
   let x = dir.x, z = dir.z;
   const rightX = -dir.z;
@@ -386,12 +395,14 @@ function applyShipCollisionAvoidance(desired, self, contacts, seed, entityId, ti
   const passes = runtime.collisionPasses || (runtime.collisionPasses = new Map());
   for (const contact of contacts) {
     if (!contact || contact.kind !== ContactKind.SHIP || contact.id === self.id || contact.alive === false) continue;
+    if (contact.id === intent.targetId && explicitRamApproach(intent, self)) continue;
     const dx = contact.pos.x - self.pos.x;
     const dz = contact.pos.z - self.pos.z;
     const distance = Math.hypot(dx, dz);
     const ahead = dx * dir.x + dz * dir.z;
     const lateral = dx * rightX + dz * rightZ;
-    const clearance = config.shipCollisionClearance + self.radius + contact.radius;
+    const clearance = config.shipCollisionClearance + self.radius + contact.radius
+      + massClearanceFor(contact, intent, self, config);
     let pass = passes.get(contact.id) || null;
     const passed = pass && ((self.pos.x - contact.pos.x) * pass.forwardX +
       (self.pos.z - contact.pos.z) * pass.forwardZ > clearance * 1.5);
@@ -419,6 +430,36 @@ function applyShipCollisionAvoidance(desired, self, contacts, seed, entityId, ti
     z = z * (1 - blend) + passDirection.z * blend;
   }
   return { x, z, arrivalDistance: desired.arrivalDistance };
+}
+
+function closeApproachLimit(kind, intent, self, target, config, fallback) {
+  if (explicitRamApproach(intent, self) || tetherApproach(kind)) return fallback;
+  const clearance = config.shipCollisionClearance + self.radius + target.radius
+    + massClearanceFor(target, intent, self, config);
+  const distance = distance2(self.pos, target.pos);
+  if (distance > clearance * config.massApproachRangeMult) return fallback;
+  if (target.operationalMassBand === 'capital') return Math.min(fallback, config.capitalTargetClosingSpeed);
+  if (target.operationalMassBand === 'heavy') return Math.min(fallback, config.heavyTargetClosingSpeed);
+  return fallback;
+}
+
+function massClearanceFor(contact, intent, self, config) {
+  if (contact.id === intent.targetId && (explicitRamApproach(intent, self) || tetherApproach(intent.kind))) return 0;
+  if (contact.operationalMassBand === 'capital') return config.capitalTargetClearance;
+  if (contact.operationalMassBand === 'heavy') return config.heavyTargetClearance;
+  return 0;
+}
+
+function explicitRamApproach(intent, self) {
+  if (!intent || intent.ramAuthorized !== true || !self) return false;
+  if (self.operationalMassBand !== 'heavy' && self.operationalMassBand !== 'capital') return false;
+  const activity = self.activity;
+  if (!activity || activity.kind !== 'attack_run') return false;
+  return !String(activity.reason || '').includes('station_jurisdiction');
+}
+
+function tetherApproach(kind) {
+  return kind === ManeuverKind.APPROACH_SOCKET || kind === ManeuverKind.CUT_TETHER;
 }
 
 function applyObstacleAvoidance(desired, self, contacts, config) {

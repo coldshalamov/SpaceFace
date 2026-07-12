@@ -556,6 +556,7 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     : freeze(subsystemFractions(runtime));
   const activity = effectiveActivityForAI(ai);
   const bands = operationalBandsFor(state, entity, runtime, attachmentIndex);
+  const ramAuthorized = explicitRamAuthorization(entity, ai, activity, bands);
   return freeze({
     id: entity.id,
     team: entity.team == null ? null : entity.team,
@@ -573,8 +574,25 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     activity,
     roe: normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free'),
     combatDoctrineId: normalizeCombatDoctrineId(ai.combatDoctrineId),
+    ramAuthorized,
     ...bands,
   });
+}
+
+function explicitRamAuthorization(entity, ai, activity, bands) {
+  const intent = entity && entity.data && entity.data.intent || {};
+  const trigger = String(ai && ai.engagementTrigger || '');
+  const telegraph = String(ai && ai.approachTelegraph || '');
+  const activityReason = String(activity && activity.reason || '');
+  const heavyEnough = bands && (bands.operationalMassBand === 'heavy' || bands.operationalMassBand === 'capital');
+  return intent.ramPlate === true
+    && heavyEnough
+    && ai && ai.passive !== true
+    && ai.sanctuaryWithdrawn !== true
+    && activity && activity.kind === 'attack_run'
+    && !activityReason.includes('station_jurisdiction')
+    && trigger.length > 0 && trigger !== 'demand_pending'
+    && telegraph.length > 0;
 }
 
 function entityContacts(state, self, range, helpers = null, attachmentIndex = null, freeze = Object.freeze, candidateScratch = null, outScratch = null, cacheOwner = null, candidateOverride = null) {

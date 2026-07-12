@@ -87,6 +87,7 @@ export class CombatDoctrineRuntime {
       this.byEntity.set(entityId, record);
     }
     record.lastTick = tick;
+    record.ramAuthorized = self && self.ramAuthorized === true;
     record.outcome = null;
     record.telegraphStartedTick = null;
 
@@ -161,6 +162,7 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
       targetId: doctrine.maneuverTargetId,
       preferredRange: doctrine.preferredRange,
       lateralSign: doctrine.lateralSign,
+      ramAuthorized: doctrine.ramAuthorized === true,
       flightPoint: doctrine.flightPoint,
       formationLocked: doctrine.formationLocked,
       breakFormation: !doctrine.formationLocked,
@@ -267,6 +269,7 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile) {
     outcome: null,
     closestDistance: Infinity,
     flightPoint: null,
+    ramAuthorized: false,
     lastTick: tick,
     seed,
     entityId,
@@ -361,6 +364,7 @@ function snapshot(record, target, directive) {
     telegraph: record.telegraph,
     telegraphStarted: record.telegraphStartedTick === record.lastTick,
     fireWindow: !!record.fireWindow,
+    ramAuthorized: record.ramAuthorized === true,
     phaseChanged: !!target && record.phaseChangedTick === record.lastTick,
     formationLocked,
     maneuverTargetId,
