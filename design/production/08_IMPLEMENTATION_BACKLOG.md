@@ -6,7 +6,7 @@ This is the first implementation wave beneath `design/vision/ALPHA_PROGRAM.md`. 
 machinery that makes later Grok/Claude/OpenCode/Codex campaigns persistent and independently
 verifiable. It does not authorize edits across an active asset/render ownership signal.
 
-## Current factory status — 2026-07-10
+## Current factory status — 2026-07-12
 
 | Packet | Current truth | Next legal action |
 |---|---|---|
@@ -15,7 +15,8 @@ verifiable. It does not authorize edits across an active asset/render ownership 
 | PROD-002 | Read-only audit candidate returned with useful grounded findings. It has not passed the full campaign acceptance state. | Preserve as input evidence; independently verify/hash-bind before marking accepted. |
 | PROD-004 | Counter candidate and 21/21 fixture result exist, but accounting is self-reported, corrupt logs reset, blockers are forgeable, and live state is stale. REVISE. | Build the automatic hash-chained supervisor/journal and reconciliation fixtures. |
 | CAP-000 | Read-only capability matrix returned; several routes remain unverified or constrained (notably Grok generation and OpenCode balance). Candidate evidence, not final acceptance. | Pin exact binaries/models and finish the missing smokes when available. |
-| ASSET-001/002, EVID-001/002, OBS-001 | Grounded packets and partial implementation/evidence now exist in the dirty tree. | Reconcile and commit by ownership. Continue active non-overlapping lanes without grandfathering v1 evidence. |
+| ASSET-001/002, EVID-001/002 | Grounded packets and partial implementation/evidence exist. | Reconcile by ownership without grandfathering v1 evidence. |
+| OBS-001 | Phase A passive in-memory recorder core is committed at `14bfed98`; all four focused checks and 5/5 observer tests pass. Registry/main/filesystem/media integration is intentionally absent. | Complete Phase B browser integration and the matched browser pair; keep media under OBS-002 and do not claim OBS-001 exit yet. |
 
 The dependency columns below describe the future fully automated controller. For the current
 campaign, the 2026-07-12 SAFE waiver permits controller-supervised targeted integration and does not
@@ -92,9 +93,9 @@ separate implementation packet with a held-out replay, preventing an agent from 
 
 1. Reconcile and commit completed dirty work in logical ownership-safe chunks; never bulk-stage the
    tree or absorb active writer lanes.
-2. Protect the active tether/targeting/massline, Ashline, and Helios lanes while finishing M1 public-
+2. Protect the active tether/targeting/massline, the isolated Ashline HOLD/unwired candidate, and Helios lanes while finishing M1 public-
    route acceptance and continuing independent M3–M6 families in parallel.
-3. Run EVID-001/EVID-002 and implement observatory/control machinery opportunistically without
-   serializing the game behind it.
+3. Run EVID-001/EVID-002 and complete OBS-001 Phase B/browser integration opportunistically without
+   serializing the game behind it; keep OBS-002 media and OBS-004 headed route acceptance open.
 4. Keep worker output external until the controller reviews and integrates exact targeted paths.
 5. Do not schedule another SAFE repair or review cycle in this campaign.
