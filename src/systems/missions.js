@@ -63,6 +63,7 @@ import {
   getBiggerBoatRoute,
   getPickSideStake,
   getEmpireSeedProgram,
+  getDeepReachOperation,
   getEmbodiedLocation,
   recordBeatStep,
   syncObservedBeat,
@@ -363,16 +364,24 @@ export const missions = {
     const branch = story && story.branch || null;
     const chainStep = story && (story.chainProgress | 0);
     const seed = this.state && this.state.meta && this.state.meta.seed || 1;
-    const offer = buildMissionBoardContract(beat, { seed, epoch, branch, chainStep });
+    const flags = story && story.flags || {};
+    const offer = buildMissionBoardContract(beat, {
+      seed, epoch, branch, chainStep,
+      elroyOutcome: flags.elroy_outcome,
+      assetId: flags.empire_seed_asset_id,
+      operationComplete: !!flags.deep_reach_operation_complete,
+      legacy: !!flags.elroy_outcome_legacy || !flags.elroy_outcome,
+    });
     const activeTags = new Set((this.state.missions.active || [])
       .filter((mission) => mission && mission.status === 'active' && mission.storyTag)
       .map((mission) => mission.storyTag));
     const keepTag = offer && offer.type ? offer.storyTag : null;
     const before = board.slots.length;
     board.slots = board.slots.filter((candidate) => !(
-      candidate && typeof candidate.storyTag === 'string'
-      && candidate.storyTag.startsWith('campaign47a:')
-      && candidate.storyTag !== keepTag
+       candidate && typeof candidate.storyTag === 'string'
+       && candidate.storyTag.startsWith('campaign47a:')
+       && !candidate.storyTag.startsWith('campaign47a:ending:')
+       && candidate.storyTag !== keepTag
     ));
     if (!offer || !offer.type || offer.stationId !== info.id || activeTags.has(offer.storyTag)) {
       return board.slots.length !== before;
@@ -969,6 +978,7 @@ export const missions = {
       preloadedCargo: !!offer.preloadedCargo,
       storyBranch: offer.storyBranch || null,
       storyStake: offer.storyStake || null,
+      storyOperation: offer.storyOperation || null,
       title: offer.title,
       summary: offer.summary || null,
       source: offer.source || null,
@@ -1372,6 +1382,24 @@ export const missions = {
         pos: asteroid && asteroid.pos ? { x: asteroid.pos.x, z: asteroid.pos.z } : null,
       };
     }
+    if (beat.beat === 7 && state.story && state.story.flags && !state.story.flags.deep_reach_operation_complete) {
+      const flags = state.story.flags;
+      const op = getDeepReachOperation(flags.elroy_outcome);
+      const info = STATION_INFO.get(op.stationId);
+      const station = currentSectorId === (info && info.sectorId) ? this._liveStation(op.stationId) : null;
+      const replacementPending = flags.deep_reach_asset_lost || flags.empire_seed_pending_id;
+      return {
+        ...base,
+        label: op.label,
+        reason: replacementPending
+          ? `Replace and program the lost seed before ${op.label}`
+          : op.instruction,
+        stationId: op.stationId,
+        sectorId: info && info.sectorId || currentSectorId,
+        sectorName: info && SECTOR_BY_ID.get(info.sectorId)?.name || null,
+        pos: station && station.pos ? { x: station.pos.x, z: station.pos.z } : null,
+      };
+    }
     const station = this._nearestStation();
     if (station) {
       const stationId = station.data && station.data.stationId || null;
@@ -1658,6 +1686,14 @@ export const missions = {
 
   _onContract47aB6AssetDeployed(p) {
     const story = this.state && this.state.story;
+    if (story && story.beatIndex === 7 && story.flags && story.flags.deep_reach_asset_lost) {
+      if (!p || p.kind !== 'drone' || p.id == null) return false;
+      story.flags.empire_seed_pending_id = p.id;
+      story.flags.empire_seed_pending_def = p.defId || null;
+      this._refreshNavigation({ forceStory: true, silent: true });
+      this._sayStoryLine('Replacement deployed. Restore the seed program.', 5);
+      return true;
+    }
     if (!story || story.beatIndex !== 6) {
       this._storyTrigger('asset_deployed', p || {});
       return false;
@@ -1678,6 +1714,20 @@ export const missions = {
 
   _onContract47aB6ProgramAssigned(p) {
     const story = this.state && this.state.story;
+    if (story && story.beatIndex === 7 && story.flags && story.flags.deep_reach_asset_lost) {
+      const program = getEmpireSeedProgram(story.flags.elroy_outcome);
+      if (!p || p.kind !== 'drone' || p.id !== story.flags.empire_seed_pending_id) return false;
+      if (p.templateId !== program.templateId) return false;
+      story.flags.empire_seed_asset_id = p.id;
+      story.flags.empire_seed_variant = program.id;
+      delete story.flags.empire_seed_pending_id;
+      delete story.flags.empire_seed_pending_def;
+      delete story.flags.deep_reach_asset_lost;
+      this._refreshEmbodiedStoryBoards();
+      this._refreshNavigation({ forceStory: true, silent: true });
+      this._sayStoryLine('Seed rebound. Deep Reach operation reposted.', 5);
+      return true;
+    }
     if (!story || story.beatIndex !== 6 || !story.flags) return false;
     const program = getEmpireSeedProgram(story.flags.elroy_outcome);
     if (!p || p.kind !== 'drone' || p.id !== story.flags.empire_seed_pending_id) return false;
@@ -1706,6 +1756,21 @@ export const missions = {
 
   _onContract47aB6AssetLost(p) {
     const story = this.state && this.state.story;
+    if (story && story.beatIndex === 7 && story.flags
+      && !story.flags.deep_reach_operation_complete
+      && p && p.kind === 'drone' && p.id === story.flags.empire_seed_asset_id) {
+      story.flags.deep_reach_asset_lost = true;
+      delete story.flags.empire_seed_asset_id;
+      for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+        const m = this.state.missions.active[i];
+        if (m && m.status === 'active' && String(m.storyTag || '').startsWith('campaign47a:b7:')) {
+          this._failMission(m, i, 'seed_asset_lost');
+        }
+      }
+      this._refreshNavigation({ forceStory: true, silent: true });
+      this._sayStoryLine('Deep Reach seed lost. Deploy a replacement.', 5);
+      return true;
+    }
     if (!story || story.beatIndex !== 6 || !story.flags) return false;
     if (!p || p.kind !== 'drone' || p.id !== story.flags.empire_seed_pending_id) return false;
     delete story.flags.empire_seed_pending_id;
@@ -1947,6 +2012,7 @@ export const missions = {
     this._advanceEmbodiedStoryMission(m);
     this._completeContract47aB4Intro(m);
     this._advanceStoryChain(m);
+    this._completeContract47aB7Operation(m);
 
     this.bus.emit('mission:completed', completedPayload);
     // GF-4: a bigger celebratory ring + light burst at the player on completion (the triumphant
@@ -2514,6 +2580,22 @@ export const missions = {
     return true;
   },
 
+  _completeContract47aB7Operation(m) {
+    const story = this.state && this.state.story;
+    const beat = story && STORY_BEATS[story.beatIndex];
+    if (!beat || beat.beat !== 7 || !m || story.flags && story.flags.deep_reach_operation_complete) return false;
+    if (!String(m.storyTag || '').startsWith('campaign47a:b7:')) return false;
+    const assetId = m.params && m.params.assetId;
+    if (!assetId || !story.flags || assetId !== story.flags.empire_seed_asset_id) return false;
+    const op = getDeepReachOperation(story.flags.elroy_outcome);
+    if (m.storyOperation !== op.id || m.type !== op.type) return false;
+    story.flags.deep_reach_operation_complete = true;
+    story.flags.deep_reach_variant = op.id;
+    story.flags.deep_reach_asset_id = assetId;
+    this._advanceStory(beat);
+    return true;
+  },
+
   /** Credit / net-worth gated beats: show a hint while unmet, advance once met (never hard-block). */
   _checkStoryGates() {
     const story = this.state.story;
@@ -2521,6 +2603,8 @@ export const missions = {
     if (!beat) return;
     const credits = this.state.player.credits | 0;
     if (beat.beat === 7) {
+      const legacy = !!(story.flags && story.flags.elroy_outcome_legacy) || !(story.flags && story.flags.elroy_outcome);
+      if (!legacy) return;
       // North star: 100k net worth AND rep>=50 with chosen faction.
       const netWorth = this._netWorth();
       const facRep = story.branch ? this._repOf(BRANCH_FACTION[story.branch]) : this._maxRep();
@@ -2596,6 +2680,9 @@ export const missions = {
     if (!story) return;
     const bi = story.beatIndex | 0;
     if (bi < 0 || bi > 7) return;
+    // B7 is observe-only metadata. Losing the bound seed fails/reposts the physical mission, but
+    // must not strand the ending sidecar in a failed state after the replacement is rebound.
+    if (bi === 7 && reason === 'seed_asset_lost') return;
     // Relevant when tagged story contract, branch chain, or any active spine beat.
     const tagged = !!(m && (m.storyTag || m.storyBranch));
     const chainType = story.branch ? BRANCH_CHAIN_TYPE[story.branch] : null;

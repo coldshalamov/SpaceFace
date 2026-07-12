@@ -255,7 +255,7 @@ export const CAMPAIGN_BEATS = Object.freeze([
     beat: 7,
     id: 'deep_reach',
     title: 'The Deep Reach',
-    objective: 'Meet endgame gates, then choose an ending. Sandbox continues after.',
+    objective: 'Use the Empire Seed in Ashfall, then meet the ending gates.',
     /** B7 only observes the live gate/advance — no sidecar completion authority. */
     steps: Object.freeze([]),
     observeOnly: true,

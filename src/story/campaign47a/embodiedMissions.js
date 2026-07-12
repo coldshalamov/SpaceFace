@@ -68,6 +68,16 @@ const EMPIRE_SEED_PROGRAMS = B({
   custody: B({ id: 'custody_watch', templateId: 'patrol_guard', label: 'Custody Watch Drone' }),
   force: B({ id: 'force_logistics', templateId: 'mine_to_depot', label: 'Manifest Logistics Drone' }),
 });
+const DEEP_REACH_OPERATIONS = B({
+  custody: B({
+    id: 'custody_watch_reach', type: 'patrol_clear', stationId: 'station_coalition',
+    factionId: 'faction_scn', label: 'Deep Reach Watch', instruction: 'Carry the watch drone into the Deep Reach patrol',
+  }),
+  force: B({
+    id: 'force_manifest_reach', type: 'bulk_trade', stationId: 'station_tethys',
+    factionId: 'faction_mts', label: 'Deep Reach Manifest', instruction: 'Carry the logistics drone manifest into Deep Reach',
+  }),
+});
 
 export const EMBODIED_MISSIONS = Object.freeze([
   B({
@@ -187,6 +197,11 @@ export function getEmpireSeedProgram(elroyOutcome) {
   return { outcome: key, ...EMPIRE_SEED_PROGRAMS[key] };
 }
 
+export function getDeepReachOperation(elroyOutcome) {
+  const key = elroyOutcome === 'custody' ? 'custody' : 'force';
+  return { outcome: key, ...DEEP_REACH_OPERATIONS[key] };
+}
+
 export function listEmbodiedMissions() { return EMBODIED_MISSIONS.slice(); }
 export function isCanonicalContactSignal(signal) { return CANONICAL_CONTACT_SIGNALS.includes(String(signal || '')); }
 export function isCanonicalIntentEvent(eventName) { return CANONICAL_INTENT_EVENTS.includes(String(eventName || '')); }
@@ -235,7 +250,9 @@ function stableOfferId(seed, beat, epoch, step, branch) {
 
 export function buildMissionBoardContract(beatIndex, options = {}) {
   const def = embodiedMissionAt(beatIndex);
-  if (!def || !def.missionBoardContract) return null;
+  if (!def) return null;
+  if (def.beat === 7) return buildDeepReachOperationOffer(options);
+  if (!def.missionBoardContract) return null;
   if (def.beat === 4) return { beat: 4, kind: 'existing_branch_intro', storyTag: STORY_BRANCH_INTRO_TAG };
   const seed = (Number(options.seed) >>> 0) || 1;
   const epoch = Math.max(0, Number(options.epoch) | 0);
@@ -251,6 +268,27 @@ export function buildMissionBoardContract(beatIndex, options = {}) {
     campaign47aBeat: def.beat,
     storyContractId: base.storyTag,
     source: 'campaign47a.embodied',
+  };
+}
+
+function buildDeepReachOperationOffer(options) {
+  if (!options.assetId || options.operationComplete || options.legacy) return null;
+  const seed = (Number(options.seed) >>> 0) || 1;
+  const epoch = Math.max(0, Number(options.epoch) | 0);
+  const op = getDeepReachOperation(options.elroyOutcome);
+  const assetKey = String(options.assetId).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const storyTag = `campaign47a:b7:${op.outcome}:${assetKey}`;
+  const params = op.type === 'patrol_clear'
+    ? { clearCount: 3, targetStrength: 2.6, assetId: options.assetId, fValue: 2.1, taskTime: 120 }
+    : { cmdtyId: 'cmdty_refined_metals', qty: 12, assetId: options.assetId, fValue: 2, taskTime: 90 };
+  return {
+    id: stableOfferId(seed, 7, epoch, 0, storyTag),
+    type: op.type, storyTag, storyContractId: storyTag, storyOperation: op.id,
+    factionId: op.factionId, stationId: op.stationId,
+    destStationId: 'station_ashcache', destSectorId: 'sector_ashfall_reach',
+    reward_cr: 2200, collateral_cr: 0, riskTier: 4, minRep: 50, time_limit_s: 0, distance: 5200,
+    params, title: op.label.toUpperCase(), expiresAtEpoch: epoch + 2,
+    campaign47aBeat: 7, source: 'campaign47a.deep_reach',
   };
 }
 

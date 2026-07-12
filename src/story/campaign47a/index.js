@@ -114,6 +114,7 @@ export {
   getBiggerBoatRoute,
   getPickSideStake,
   getEmpireSeedProgram,
+  getDeepReachOperation,
   getEmbodiedLocation,
   getFailureRecovery,
   getNamedCaptainBinding,

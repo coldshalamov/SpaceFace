@@ -224,6 +224,6 @@ export const STORY_BEATS = [
     reward: { credits: 2500, unlock: 'module_unlock' }, introduces: 'chaining+passive_preview', next: 6 },
   { beat: 6, id: 'empire_seed',    objective: 'Deploy a drone, then assign the program selected by the Elroy outcome.',
     reward: { credits: 3000, unlock: 'passive_income' }, introduces: 'passive_income', next: 7 },
-  { beat: 7, id: 'deep_reach',     objective: 'Reach 100,000cr net worth and 50 faction rep, then buy a capital hull or build and defend an outpost.',
-    reward: { title: 'Sector Baron', unlock: 'newgame_plus' }, introduces: 'endgame', next: null },
+  { beat: 7, id: 'deep_reach',     objective: 'Use the Empire Seed in a physical Ashfall operation, then review final dispositions.',
+    reward: { credits: 5000, unlock: 'newgame_plus' }, introduces: 'endgame', next: null },
 ];
