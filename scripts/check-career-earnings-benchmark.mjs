@@ -26,6 +26,8 @@ import { NEW_GAME } from '../src/data/newGameDefaults.js';
 import { SECTORS, dangerTier } from '../src/data/sectors.js';
 import { SHIPS } from '../src/data/ships.js';
 import { WEAPONS } from '../src/data/weapons.js';
+import { TECH_NODES } from '../src/data/tech.js';
+import { ORIGIN_ROLE_KITS } from '../src/careers/origins/careerOriginContracts.js';
 import {
   FIELD_DEPLETION_RECOVERY_PER_S,
   fieldMemoryReadout,
@@ -37,6 +39,12 @@ import { cargo as cargoSystem, addCargo, removeCargo } from '../src/systems/carg
 import { economy as economySystem, SERVICE_PRICES } from '../src/systems/economy.js';
 import { bulkHaulPayoutForChunk, BULK_HAUL_MIN_U } from '../src/systems/mining.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+import {
+  buildSlotList,
+  fits,
+  fittingsFromDefaultModules,
+  getDerivedStats,
+} from '../src/systems/ships.js';
 
 assert.equal(typeof window, 'undefined', 'career earnings benchmark must run headless');
 
@@ -57,7 +65,11 @@ function restoreNondeterminism() {
 }
 
 // ---- constants ----------------------------------------------------------------------------
-const HORIZON_S = 30 * 60; // sustained 30 minutes
+// The package gate invokes both canonical windows. A single invocation stays useful for diagnosis.
+const minutesArgIndex = process.argv.indexOf('--minutes');
+const requestedMinutes = minutesArgIndex >= 0 ? Number(process.argv[minutesArgIndex + 1]) : NaN;
+let HORIZON_S = Math.max(60, (Number.isFinite(requestedMinutes) ? requestedMinutes * 60
+  : Number(process.env.SPACEFACE_CAREER_HORIZON_S)) || 30 * 60);
 const SEED_HAULER = 0xC4EE_A001;
 const SEED_HUNTER = 0xC4EE_B002;
 const SEED_PROSPECTOR = 0xC4EE_C003;
@@ -86,6 +98,7 @@ const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
+const TECH_BY_ID = new Map(TECH_NODES.map((node) => [node.id, node]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const STATION_TO_SECTOR = new Map();
 const STATION_BY_ID = new Map();
@@ -207,6 +220,8 @@ function bootSim(seed) {
   state.player.stats = state.player.stats || {
     tradesCount: 0, lifetimeProfit: 0, biggestSingleProfit: 0, smuggledValue: 0,
   };
+  state.player.researchPoints = NEW_GAME.researchPoints || 0;
+  state.player.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
   state.simTime = 0;
   state.world = state.world || {};
   state.world.currentSectorId = NEW_GAME.startingSectorId;
@@ -283,6 +298,106 @@ function emptyReceiptBase(career, seed, ship, equipment) {
   };
 }
 
+function loadoutPlan(career, phase = 'starter') {
+  const kit = ORIGIN_ROLE_KITS[career];
+  if (!kit) return null;
+  const starter = phase !== 'mid';
+  if (career === 'hauler') {
+    return {
+      shipId: starter ? NEW_GAME.shipId : 'ship_mule',
+      required: starter
+        ? [...NEW_GAME.fittedModules, kit.defId]
+        : ['wpn_pulse_laser_s', 'mod_engine_ion_m', 'mod_shield_booster_s', kit.defId],
+      minCargo: starter ? 40 : 120,
+    };
+  }
+  if (career === 'hunter') {
+    return {
+      shipId: starter ? NEW_GAME.shipId : 'ship_wasp',
+      required: starter
+        ? [...NEW_GAME.fittedModules, kit.defId]
+        : ['wpn_pulse_laser_s', 'wpn_autocannon_s', 'mod_engine_ion_m', 'mod_shield_booster_s', kit.defId],
+      minCargo: starter ? 40 : 10,
+    };
+  }
+  return {
+    shipId: starter ? NEW_GAME.shipId : 'ship_pelican',
+    required: starter
+      ? [...NEW_GAME.fittedModules, kit.defId]
+      : ['wpn_pulse_laser_s', 'mod_mining_laser_s', 'mod_engine_ion_m', 'mod_shield_booster_s', kit.defId],
+    minCargo: starter ? 40 : 55,
+  };
+}
+
+function assessLoadoutViability(career, phase = 'starter') {
+  const plan = loadoutPlan(career, phase);
+  const ship = plan && SHIP_BY_ID.get(plan.shipId);
+  if (!plan || !ship) return { viable: false, reason: 'missing_plan_or_hull' };
+  const fittings = fittingsFromDefaultModules(plan.shipId, plan.required);
+  const fittedIds = fittings.filter(Boolean);
+  const slots = buildSlotList(ship);
+  const kit = MODULE_BY_ID.get(ORIGIN_ROLE_KITS[career].defId);
+  const requiredDefs = plan.required.map((id) => MODULE_BY_ID.get(id) || WEAPON_BY_ID.get(id)).filter(Boolean);
+  const missing = plan.required.filter((id) => !fittedIds.includes(id));
+  const player = {
+    cargo: { usedMass: career === 'hauler' ? Math.min(ship.cargo, plan.minCargo) : 0 },
+    efficiencyMods: {},
+  };
+  const derived = getDerivedStats(plan.shipId, fittings, player);
+  const utilityFit = slots.some((slot) => slot.type === 'utility' && fits(slot, kit))
+    && fittedIds.includes(kit.id);
+  const kinetic = requiredDefs.find((def) => def.slotType === 'weapon'
+    && (def.damageType === 'kinetic' || def.damageType === 'explosive'));
+  const ammoUnitsPerFight = kinetic ? Math.ceil(8 * Math.max(1, kinetic.rof || 1)) : 0;
+  const ammoDef = CMDTY_BY_ID.get('cmdty_munitions');
+  const ammoReserve = {
+    required: ammoUnitsPerFight > 0,
+    unitsPerFight: ammoUnitsPerFight,
+    cargoVolume: r2(ammoUnitsPerFight * (ammoDef && ammoDef.volPerU || 1)),
+    serviceCost: round(ammoUnitsPerFight * SERVICE_PRICES.ammoCrPerUnit),
+  };
+  const researchGates = unresolvedTech([ship, ...requiredDefs], {
+    player: { researchedNodes: NEW_GAME.researchedNodes || [] },
+  });
+  return {
+    viable: missing.length === 0 && utilityFit && derived.cargoCap >= plan.minCargo
+      && derived.operationalMass > 0 && derived.maxSpeed > 0,
+    career,
+    phase,
+    shipId: plan.shipId,
+    required: plan.required,
+    fittedIds,
+    missing,
+    roleKitId: kit && kit.id,
+    utilityFit,
+    cargoCap: derived.cargoCap,
+    minimumCargo: plan.minCargo,
+    operationalMass: r2(derived.operationalMass),
+    maxSpeed: r2(derived.maxSpeed),
+    capRegen: r2(derived.capRegen),
+    continuousDrain: r2(derived.continuousDrain),
+    ammoReserve,
+    researchGates,
+  };
+}
+
+function unresolvedTech(defs, state) {
+  const researched = new Set(state.player.researchedNodes || []);
+  const missing = [];
+  for (const def of defs) {
+    if (!def || !def.requiresTech || researched.has(def.requiresTech)) continue;
+    if (!missing.includes(def.requiresTech)) missing.push(def.requiresTech);
+  }
+  return missing.map((techId) => {
+    const node = TECH_BY_ID.get(techId);
+    return {
+      techId,
+      credits: node && node.cost && node.cost.credits || 0,
+      researchPoints: node && node.cost && node.cost.rp || 0,
+    };
+  });
+}
+
 // ---- HAULER -------------------------------------------------------------------------------
 function runHauler() {
   const seed = SEED_HAULER;
@@ -326,20 +441,26 @@ function runHauler() {
   }
   if (!deepSell.ok) receipt.defects.push(`market_tier_liquidation_failed:${deepSell.reason || 'unknown'}`);
 
-  // Deterministic early-career commodity pick from live quotes (no exotics).
-  let best = null;
-  for (const c of COMMODITIES) {
-    if (c.legality !== 'legal') continue;
-    if (c.basePrice > EARLY_CMDTY_MAX_BASE) continue;
-    const qb = ctx.econ.quote(buyStationId, c.id, 'buy', 1);
-    const qs = ctx.econ.quote(sellStationId, c.id, 'sell', 1);
-    if (!qb.ok || !qs.ok) continue;
-    const margin = qs.unitAvg - qb.unitAvg;
-    if (!(margin > 0)) continue;
-    if (!best || margin > best.margin) {
-      best = { cmdtyId: c.id, name: c.name, margin, buy: qb.unitAvg, sell: qs.unitAvg, basePrice: c.basePrice, vol: c.volPerU };
+  // Deterministic early-career commodity pick from live quotes (no exotics). Long windows retire
+  // a route when its real bid/ask spread collapses, then choose the next still-profitable lane.
+  const exhaustedCommodityIds = new Set();
+  const selectBestRoute = () => {
+    let selected = null;
+    for (const c of COMMODITIES) {
+      if (c.legality !== 'legal' || c.basePrice > EARLY_CMDTY_MAX_BASE
+        || exhaustedCommodityIds.has(c.id)) continue;
+      const qb = ctx.econ.quote(buyStationId, c.id, 'buy', 1);
+      const qs = ctx.econ.quote(sellStationId, c.id, 'sell', 1);
+      if (!qb.ok || !qs.ok) continue;
+      const margin = qs.unitAvg - qb.unitAvg;
+      if (!(margin > 0)) continue;
+      if (!selected || margin > selected.margin) {
+        selected = { cmdtyId: c.id, name: c.name, margin, buy: qb.unitAvg, sell: qs.unitAvg, basePrice: c.basePrice, vol: c.volPerU };
+      }
     }
-  }
+    return selected;
+  };
+  let best = selectBestRoute();
   if (!best) {
     receipt.defects.push('no_positive_early_career_route');
     finalizeReceipt(receipt, ctx);
@@ -354,6 +475,7 @@ function runHauler() {
     initialSell: r2(best.sell),
     initialMargin: r2(best.margin),
   };
+  receipt.routeHistory = [{ ...receipt.route, startedAtS: 0 }];
 
   let t = 0;
   let loops = 0;
@@ -384,6 +506,29 @@ function runHauler() {
     receipt.travelTimeS += leg1;
     currentSectorId = buySector.id;
     currentStationId = buyStationId;
+
+    const liveBuy = ctx.econ.quote(buyStationId, best.cmdtyId, 'buy', 1);
+    const liveSell = ctx.econ.quote(sellStationId, best.cmdtyId, 'sell', 1);
+    const liveMargin = liveBuy.ok && liveSell.ok ? liveSell.unitAvg - liveBuy.unitAvg : -Infinity;
+    if (!(liveMargin > 0)) {
+      marketExhaustion = true;
+      exhaustedCommodityIds.add(best.cmdtyId);
+      const replacement = selectBestRoute();
+      if (!replacement) {
+        receipt.loops.push({
+          loop: loops, fail: 'all_early_routes_exhausted', t: r1(t),
+          retiredCommodityId: best.cmdtyId, liveMargin: r2(liveMargin),
+        });
+        break;
+      }
+      receipt.routeHistory.push({
+        buyStationId, sellStationId, commodityId: replacement.cmdtyId,
+        commodityName: replacement.name, initialBuy: r2(replacement.buy),
+        initialSell: r2(replacement.sell), initialMargin: r2(replacement.margin),
+        startedAtS: r1(t), retiredCommodityId: best.cmdtyId,
+      });
+      best = replacement;
+    }
 
     // Buy as many units as credits + cargo + stock allow (live execute).
     const freeVol = ctx.state.player.cargo.capVolume - ctx.state.player.cargo.usedVolume;
@@ -486,6 +631,9 @@ function runHauler() {
   receipt.inventoryRemoved = cargoDestroyed;
   receipt.inventoryDelta = inventoryUnits(ctx.state.player.cargo);
   receipt.elapsedS = r1(t);
+  receipt.equipment.activePhase = upgraded ? 'mid' : 'starter';
+  receipt.equipment.plannedMidLoadout = assessLoadoutViability('hauler', 'mid');
+  receipt.loadoutViability = assessLoadoutViability('hauler', receipt.equipment.activePhase);
   finalizeReceipt(receipt, ctx);
   return receipt;
 }
@@ -536,6 +684,8 @@ function runHunter() {
 
   let t = 0;
   let loops = 0;
+  let completedMissions = 0;
+  let failedMissions = 0;
   let upgraded = false;
   let currentSectorId = homeSectorId;
   const dayIndex = 0;
@@ -626,7 +776,10 @@ function runHunter() {
     const reward = missionRewardCr('bounty_hunt', distance, riskTier, strength, 1, 1);
     // Bounty board also pays enemy.bountyCr as kill bonus when present (live enemy data).
     const killBonus = enemySpec.data?.bountyCr || 0;
-    const gross = reward + killBonus;
+    // Mission counterplay: a deterministic fraction of marks break contact or force withdrawal.
+    // The attempt still consumes travel, toll, time, and repair; failed writs pay nothing.
+    const missionSucceeded = (hash32(seed, 'hunter_counterplay', loops + 1) % 7) !== 0;
+    const gross = missionSucceeded ? reward + killBonus : 0;
 
     // Repair before collecting (station services on return) — cost reserved.
     // Apply repair charge now so capital stays honest mid-route.
@@ -640,6 +793,8 @@ function runHunter() {
 
     ctx.econ.grantCredits(gross, `mission:bounty_hunt:${loops}`);
     receipt.missionProceeds += gross;
+    if (missionSucceeded) completedMissions += 1;
+    else failedMissions += 1;
 
     // Return home (dock + board refresh overhead)
     const legHome = travelTimeS(currentSectorId, homeSectorId) + DOCK_OVERHEAD_S;
@@ -647,7 +802,9 @@ function runHunter() {
       // reward already paid in-field; travel incomplete is fine
       loops += 1;
       receipt.loops.push({
-        loop: loops, t: r1(t), reward, killBonus, fightS: r1(fightS), ehp, dps,
+        loop: loops, t: r1(t), reward: missionSucceeded ? reward : 0,
+        killBonus: missionSucceeded ? killBonus : 0, outcome: missionSucceeded ? 'completed' : 'countered',
+        fightS: r1(fightS), ehp, dps,
         damageTaken: r1(damageTaken), repairCr, ammoThis, partialReturn: true,
         enemyId: enemy.id, weaponId: weapon.id, creditsAfter: ctx.state.player.credits | 0,
       });
@@ -665,8 +822,9 @@ function runHunter() {
     receipt.loops.push({
       loop: loops,
       t: r1(t),
-      reward,
-      killBonus,
+      reward: missionSucceeded ? reward : 0,
+      killBonus: missionSucceeded ? killBonus : 0,
+      outcome: missionSucceeded ? 'completed' : 'countered',
       fightS: r1(fightS),
       ehp,
       dps,
@@ -685,24 +843,39 @@ function runHunter() {
     if (!upgraded && midShip && midWpn) {
       const need = midShip.price + midWpn.price;
       if ((ctx.state.player.credits | 0) >= need) {
-        ctx.econ.chargeCredits(midShip.price, 'shipyard:ship_wasp');
-        ctx.econ.chargeCredits(midWpn.price, 'outfitting:wpn_autocannon_s');
-        receipt.purchaseSpend += midShip.price + midWpn.price;
-        setHull(ctx.state, midShip.id);
-        ensureAmmo(40);
-        upgraded = true;
-        receipt.equipment.upgradedAtLoop = loops;
-        receipt.equipment.upgradeCost = need;
+        const techGates = unresolvedTech([midShip, midWpn], ctx.state);
+        if (techGates.length) {
+          receipt.equipment.upgradeBlockedBy = {
+            kind: 'research',
+            gates: techGates,
+            availableCredits: ctx.state.player.credits | 0,
+            availableResearchPoints: ctx.state.player.researchPoints || 0,
+          };
+        } else {
+          ctx.econ.chargeCredits(midShip.price, 'shipyard:ship_wasp');
+          ctx.econ.chargeCredits(midWpn.price, 'outfitting:wpn_autocannon_s');
+          receipt.purchaseSpend += midShip.price + midWpn.price;
+          setHull(ctx.state, midShip.id);
+          ensureAmmo(40);
+          upgraded = true;
+          receipt.equipment.upgradedAtLoop = loops;
+          receipt.equipment.upgradeCost = need;
+        }
       }
     }
   }
 
-  receipt.completedLoops = loops;
+  receipt.completedLoops = completedMissions;
+  receipt.missionAttempts = loops;
+  receipt.failedMissions = failedMissions;
   receipt.inventoryCreated = ammoPurchased;
   receipt.inventoryRemoved = ammoConsumed;
   receipt.missionCost = 0; // no collateral on bounty_hunt
   receipt.elapsedS = r1(t);
   receipt.marketExhaustion = false;
+  receipt.equipment.activePhase = upgraded ? 'mid' : 'starter';
+  receipt.equipment.plannedMidLoadout = assessLoadoutViability('hunter', 'mid');
+  receipt.loadoutViability = assessLoadoutViability('hunter', receipt.equipment.activePhase);
   finalizeReceipt(receipt, ctx);
   return receipt;
 }
@@ -725,7 +898,9 @@ function runProspector() {
   const midShip = SHIP_BY_ID.get('ship_pelican');
   const starterBeam = MODULE_BY_ID.get('mod_mining_laser_s') || BEAMS.find((b) => b.id === 'beam_mk1');
   const midBeam = MODULE_BY_ID.get('mod_mining_beam_m') || BEAMS.find((b) => b.id === 'beam_mk2');
-  const fieldId = 'f_helios_starter';
+  const fieldIds = ['f_helios_starter', 'f_helios_outer'];
+  let fieldIndex = 0;
+  let fieldId = fieldIds[fieldIndex];
   const fieldSectorId = 'sector_helios_prime';
   const sellStationId = 'station_helios';
   const refineStationId = 'station_ceres';
@@ -737,7 +912,7 @@ function runProspector() {
     starterBeam: starterBeam && (starterBeam.id || 'beam_mk1'),
     midShip: midShip && midShip.id,
     midBeam: midBeam && (midBeam.id || 'beam_mk2'),
-    fieldId,
+    fieldIds: fieldIds.slice(),
     asteroidType: ast && ast.id,
   });
   receipt.adapters = adapters;
@@ -773,6 +948,25 @@ function runProspector() {
   }
 
   while (t < HORIZON_S) {
+    const openingReadout = fieldMemoryReadout(ctx.state, fieldId);
+    if (openingReadout.band === 'depleted') {
+      marketExhaustion = true;
+      const nextFieldId = fieldIds[fieldIndex + 1];
+      const rotationS = MINING_TRANSIT_S * 2;
+      if (!nextFieldId || t + rotationS > HORIZON_S) {
+        receipt.loops.push({
+          loop: loops, fail: 'all_local_fields_depleted', fieldId, t: r1(t),
+        });
+        break;
+      }
+      advanceEconomy(ctx, rotationS);
+      t += rotationS;
+      receipt.travelTimeS += rotationS;
+      fieldIndex += 1;
+      fieldId = nextFieldId;
+      receipt.fieldRotations = receipt.fieldRotations || [];
+      receipt.fieldRotations.push({ from: openingReadout.fieldId, to: fieldId, atS: r1(t) });
+    }
     const beam = upgraded && midBeam ? midBeam : starterBeam;
     const ship = upgraded && midShip ? midShip : starter;
     ctx.state.player.cargo.capVolume = ship.cargo;
@@ -799,7 +993,7 @@ function runProspector() {
       sectorId: fieldSectorId,
       extractedU: yieldU,
       simTime: ctx.state.simTime,
-      asteroidId: `ast_${asteroidsMined}`,
+      asteroidId: `${fieldId}:ast_${asteroidsMined}`,
       tick: asteroidsMined,
     });
     asteroidsMined += 1;
@@ -919,13 +1113,23 @@ function runProspector() {
       const beamPrice = midBeam.price || 22000;
       const need = midShip.price + beamPrice;
       if ((ctx.state.player.credits | 0) >= need) {
-        ctx.econ.chargeCredits(midShip.price, 'shipyard:ship_pelican');
-        ctx.econ.chargeCredits(beamPrice, 'outfitting:mod_mining_beam_m');
-        receipt.purchaseSpend += midShip.price + beamPrice;
-        setHull(ctx.state, midShip.id);
-        upgraded = true;
-        receipt.equipment.upgradedAtLoop = loops;
-        receipt.equipment.upgradeCost = need;
+        const techGates = unresolvedTech([midShip, midBeam], ctx.state);
+        if (techGates.length) {
+          receipt.equipment.upgradeBlockedBy = {
+            kind: 'research',
+            gates: techGates,
+            availableCredits: ctx.state.player.credits | 0,
+            availableResearchPoints: ctx.state.player.researchPoints || 0,
+          };
+        } else {
+          ctx.econ.chargeCredits(midShip.price, 'shipyard:ship_pelican');
+          ctx.econ.chargeCredits(beamPrice, 'outfitting:mod_mining_beam_m');
+          receipt.purchaseSpend += midShip.price + beamPrice;
+          setHull(ctx.state, midShip.id);
+          upgraded = true;
+          receipt.equipment.upgradedAtLoop = loops;
+          receipt.equipment.upgradeCost = need;
+        }
       }
     }
 
@@ -946,8 +1150,12 @@ function runProspector() {
   receipt.inventoryDelta = inventoryUnits(ctx.state.player.cargo);
   receipt.asteroidsMined = asteroidsMined;
   receipt.fieldFinal = fieldMemoryReadout(ctx.state, fieldId);
+  receipt.fieldFinals = fieldIds.map((id) => fieldMemoryReadout(ctx.state, id));
   receipt.elapsedS = r1(t);
   receipt.fieldRecoveryPerS = FIELD_DEPLETION_RECOVERY_PER_S;
+  receipt.equipment.activePhase = upgraded ? 'mid' : 'starter';
+  receipt.equipment.plannedMidLoadout = assessLoadoutViability('prospector', 'mid');
+  receipt.loadoutViability = assessLoadoutViability('prospector', receipt.equipment.activePhase);
   finalizeReceipt(receipt, ctx);
   return receipt;
 }
@@ -992,8 +1200,10 @@ function assertCareer(receipt, bands) {
   if (receipt.creditsPerMin > bands.hi) {
     fails.push(`implausible_dominant ${receipt.creditsPerMin} cr/min > ${bands.hi} (2.5× A(T1))`);
   }
-  // Ladder: 30 min profit must not buy a freighter alone (freighter target ~4 h).
-  if (receipt.earnedValue > LADDER_FREIGHTER_PRICE * LADDER_MAX_30MIN_FRAC_OF_FREIGHTER) {
+  // Ladder: the 30-minute checkpoint must not buy a freighter alone. The 90-minute window is
+  // allowed to cross that threshold, but still has the same sustained-income dominance ceiling.
+  if (HORIZON_S <= 30 * 60
+    && receipt.earnedValue > LADDER_FREIGHTER_PRICE * LADDER_MAX_30MIN_FRAC_OF_FREIGHTER) {
     fails.push(
       `ladder_too_fast earnedValue=${receipt.earnedValue} > ${Math.round(LADDER_FREIGHTER_PRICE * LADDER_MAX_30MIN_FRAC_OF_FREIGHTER)} `
       + `(${LADDER_MAX_30MIN_FRAC_OF_FREIGHTER * 100}% of freighter ${LADDER_FREIGHTER_PRICE})`,
@@ -1010,6 +1220,41 @@ function assertCareer(receipt, bands) {
   }
   // No free starting cargo.
   if (startU !== 0) fails.push(`free_start_inventory units=${startU}`);
+  if (!receipt.loadoutViability || !receipt.loadoutViability.viable) {
+    fails.push(`unviable_loadout ${JSON.stringify(receipt.loadoutViability || null)}`);
+  }
+  if (!receipt.equipment || !receipt.equipment.plannedMidLoadout
+    || !receipt.equipment.plannedMidLoadout.viable) {
+    fails.push(`unviable_planned_mid_loadout ${JSON.stringify(receipt.equipment && receipt.equipment.plannedMidLoadout || null)}`);
+  }
+
+  if (HORIZON_S >= 90 * 60) {
+    if ((receipt.elapsedS || 0) < HORIZON_S * 0.95) {
+      fails.push(`window_not_sustained elapsed=${receipt.elapsedS} horizon=${HORIZON_S}`);
+    }
+    if (receipt.career === 'hauler' && (!receipt.routeHistory || receipt.routeHistory.length < 2)) {
+      fails.push('hauler_never_rotated_exhausted_market');
+    }
+    if (receipt.career === 'prospector' && (!receipt.fieldRotations || receipt.fieldRotations.length < 1)) {
+      fails.push('prospector_never_rotated_depleted_field');
+    }
+    if (receipt.career === 'hunter') {
+      const blocked = receipt.equipment && receipt.equipment.upgradeBlockedBy;
+      const plannedGates = receipt.equipment.plannedMidLoadout.researchGates || [];
+      if (receipt.equipment.upgradedAtLoop != null
+        || !plannedGates.some((gate) => gate.techId === 'tech_combat_basics')
+        || (blocked && blocked.kind !== 'research')) {
+        fails.push('hunter_bypassed_or_failed_to_report_research_gate');
+      }
+      const ammo = receipt.equipment.plannedMidLoadout.ammoReserve;
+      if (!ammo.required || ammo.unitsPerFight <= 0 || ammo.serviceCost <= 0) {
+        fails.push('hunter_mid_loadout_omits_ammunition_risk');
+      }
+      if (!(receipt.repairCost > 0) || !(receipt.failedMissions > 0)) {
+        fails.push('hunter_route_omits_repair_or_counterplay_risk');
+      }
+    }
+  }
 
   // Capital path: never ended below zero after any completed loop (spot check).
   for (const loop of receipt.loops || []) {
@@ -1042,6 +1287,10 @@ function assertCrossCareer(receipts, bands) {
     if (r.creditsPerMin > A_T2 * 1.25) {
       fails.push(`${r.career} exceeds 1.25×A(T2)=${A_T2 * 1.25} at ${r.creditsPerMin} cr/min`);
     }
+  }
+  const roleKits = new Set(receipts.map((receipt) => receipt.loadoutViability && receipt.loadoutViability.roleKitId));
+  if (roleKits.size !== 3 || roleKits.has(undefined)) {
+    fails.push('career_loadout_identity_flattened_or_missing');
   }
   return { ok: fails.length === 0, fails, bands };
 }
@@ -1084,9 +1333,13 @@ const allOk = hauler.ok && hunter.ok && prospector.ok && cross.ok && elapsedMs <
 // Human table
 const HR = '-'.repeat(96);
 console.log(HR);
-console.log('SpaceFace M3 career earnings benchmark — sustained 30 min (truthful live kernels)');
+console.log(`SpaceFace M3 career earnings benchmark — sustained ${HORIZON_S / 60} min (truthful live kernels)`);
 console.log(`A(T)=activeRefByTier [${A_TIER.join(', ')}]  band cr/min: dead<${bands.dead}  healthy[${bands.lo},${bands.hi}]  cross≤${BAND_CROSS_MAX}×`);
-console.log(`Ladder guard: 30m net ≤ ${bands.ladderMax30mNet} cr (${LADDER_MAX_30MIN_FRAC_OF_FREIGHTER * 100}% of freighter ${LADDER_FREIGHTER_PRICE})`);
+if (HORIZON_S <= 30 * 60) {
+  console.log(`Ladder guard: 30m net ≤ ${bands.ladderMax30mNet} cr (${LADDER_MAX_30MIN_FRAC_OF_FREIGHTER * 100}% of freighter ${LADDER_FREIGHTER_PRICE})`);
+} else {
+  console.log('Ladder guard: 90m may purchase one legal role upgrade; research gates remain binding.');
+}
 console.log(HR);
 console.log(
   pad('career', 12)
