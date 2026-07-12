@@ -144,6 +144,7 @@ export const onboarding = {
     this._dockControlInRange = false;
     this._gateControlInRange = false;
     this._derelictId = null;
+    this._miningRockId = null;
     this._trainerId = null;
     this._firstRunSplashPending = false;
 
@@ -169,19 +170,21 @@ export const onboarding = {
     bus.on('economy:tradeCompleted', (p) => {
       if (p && p.side === 'sell') this._onBeatEvent('sold', p);
     });
-    bus.on('mining:start', () => this._onBeatEvent('mining:start'));
+    bus.on('mining:start', (p) => this._onBeatEvent('mining:start', p || {}));
+    bus.on('mining:yield', (p) => this._recordTrainingOreYield(p || {}));
     bus.on('pickup:collected', (p) => this._recordOreCollected(p || {}));
     bus.on('mission:accepted', () => this._onBeatEvent('mission:accepted'));
     bus.on('ship:purchased', () => this._onBeatEvent('mission:accepted'));
 
     // ── First-hour beat events (spec2/03) ─────────────────────────────────────────────────
-    bus.on('tether:latched', () => this._onBeatEvent('tether:latched'));
+    bus.on('tether:latched', (p) => this._onBeatEvent('tether:latched', p || {}));
     // Production winch path (attachments.reel) emits tether:reel {before,after}. Gate the B1 cut
     // follow-up on rest length <= TETHER_REEL_MAX_WU so loose pay-out/early ticks do not teach cut.
     bus.on('tether:reel', (p) => this._onTetherReel(p || {}));
-    bus.on('tether:released', () => this._onBeatEvent('tether:released'));
-    bus.on('tether:broke', () => this._onBeatEvent('tether:released'));
-    bus.on('scan:pulse', () => this._onBeatEvent('scan:hit'));
+    bus.on('tether:released', (p) => this._onBeatEvent('tether:released', p || {}));
+    bus.on('tether:broke', (p) => this._onTetherBroken(p || {}));
+    bus.on('tether:nearBreak', (p) => this._onBeatEvent('tether:nearBreak', p || {}));
+    bus.on('scan:completed', (p) => this._onTrainingScanComplete(p || {}));
     bus.on('flybyFocus:start', (p) => {
       if (p && p.targetId === this._trainerId) this._onBeatEvent('flybyFocus:start', p);
     });
@@ -338,6 +341,10 @@ export const onboarding = {
       beatDoneAt: {},             // { beatKey: simTimeS }
       firedFollowups: {},         // { beatKey:eventName: true } — followup barks fire once
       oreCollected: 0,            // B2 progress
+      trainingOre: 0,
+      tetherReeled: false,
+      tetherBreaks: 0,
+      beatAction: '',
       burstShots: 0,
       burstPeakHeat: 0,
       burstCooling: false,
@@ -440,6 +447,7 @@ export const onboarding = {
     }
     ob.currentBeat = nextIndex;
     const beat = BEATS[nextIndex];
+    ob.beatAction = beat.line;
     this._sayTutorial(beat.line);
     this._enterBeat(beat);
     this._refreshBeatPanel();
@@ -469,6 +477,10 @@ export const onboarding = {
       this._setObjectiveWaypoint(true);
     }
     else if (beat.key === 'disengage') this._setObjectiveWaypoint(true);
+    else if (beat.key === 'seam') {
+      this._spawnMiningRock();
+      this._setObjectiveWaypoint(true);
+    }
     else if (beat.key === 'dock') this._setObjectiveWaypoint(true);
     else if (beat.key === 'choice') this._openChoice();
   },
@@ -477,9 +489,50 @@ export const onboarding = {
   // attachments.reel emits { before, after } rest lengths (wu). TETHER_REEL_MAX_WU is the
   // winched-enough teach-cut threshold (spec2/03 B1: reel <= 60 wu).
   _onTetherReel(payload) {
+    if (!payload || payload.targetId !== this._derelictId) return;
     const after = Number(payload && payload.after);
     if (!Number.isFinite(after) || after > TETHER_REEL_MAX_WU) return;
+    if (this.state.onboarding) this.state.onboarding.tetherReeled = true;
     this._onBeatEvent('tether:reel', payload);
+  },
+
+  _onTetherBroken(payload) {
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!ob || !beat || beat.key !== 'tether' || payload.targetId !== this._derelictId) return;
+    ob.tetherBreaks = (ob.tetherBreaks || 0) + 1;
+    ob.tetherReeled = false;
+    delete ob.firedFollowups['tether:tether:latched'];
+    delete ob.firedFollowups['tether:tether:nearBreak'];
+    delete ob.firedFollowups['tether:tether:reel'];
+    ob.beatAction = 'Close distance. Latch the derelict again.';
+    this._sayTutorial(ob.beatAction);
+    this._setObjectiveWaypoint(true);
+    this._refreshBeatPanel();
+  },
+
+  _onTrainingScanComplete(payload) {
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!ob || !beat || beat.key !== 'seam' || this._miningRockId == null) return;
+    const rock = this.state.entities && this.state.entities.get(this._miningRockId);
+    if (!rock || !rock.data || !(rock.data.scanHighlightUntil >= (this.state.simTime || 0))) return;
+    if (!payload.found || !(payload.found.asteroids > 0)) return;
+    this._onBeatEvent('scan:hit', { ...payload, targetId: rock.id });
+  },
+
+  _recordTrainingOreYield(payload) {
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!ob || !beat || beat.key !== 'seam' || payload.minerId !== this.state.playerId) return;
+    const rock = this._miningRockId != null && this.state.entities && this.state.entities.get(this._miningRockId);
+    if (!rock || !rock.pos || !payload.pos) return;
+    if (Math.hypot(payload.pos.x - rock.pos.x, payload.pos.z - rock.pos.z) > Math.max(6, rock.radius || 0)) return;
+    const qty = Math.max(1, Number(payload.qty) || 1);
+    ob.trainingOre = (ob.trainingOre || 0) + qty;
+    ob.oreCollected = Math.max(ob.oreCollected || 0, ob.trainingOre);
+    if (ob.trainingOre >= SEAM_ORE_TARGET) this._beatDone(beat);
+    this._refreshBeatPanel();
   },
 
   // Route a gameplay event to the current beat's followups + DONE resolution.
@@ -488,12 +541,16 @@ export const onboarding = {
     if (!ob || !ob.active || ob.finished) return;
     const beat = BEATS[ob.currentBeat];
     if (!beat) return;
+    if (beat.key === 'tether' && eventName !== 'target:acquired') {
+      if (!payload || payload.targetId !== this._derelictId) return;
+    }
     // Followup barks (fire once per beat).
     for (const fu of (beat.followups || [])) {
       if (fu.on !== eventName) continue;
       const fkey = beat.key + ':' + fu.on;
       if (ob.firedFollowups[fkey]) continue;
       ob.firedFollowups[fkey] = true;
+      ob.beatAction = fu.line;
       this._sayTutorial(fu.line);
     }
     this._resolveBeatDone(beat, eventName, payload);
@@ -506,7 +563,7 @@ export const onboarding = {
     if (!ob || ob.beatDoneAt[beat.key] != null) return; // already DONE
     const done = beat.done;
     let resolved = false;
-    if (done === 'tether:released' && (eventName === 'tether:released')) {
+    if (done === 'tether:released' && eventName === 'tether:released' && ob.tetherReeled === true) {
       resolved = true;
       this._dropDerelictSalvage();
     } else if (done === 'flybyFocus:start' && eventName === 'flybyFocus:start') {
@@ -535,12 +592,15 @@ export const onboarding = {
   _recordOreCollected(p) {
     const ob = this.state.onboarding;
     if (!ob || !ob.active || ob.finished) return;
+    const beat = BEATS[ob.currentBeat];
+    // The authored seam lesson advances only from ore physically cut from its marked rock. Generic
+    // pickup counting remains as a fallback for old saves that entered B2 without the training rock.
+    if (beat && beat.key === 'seam' && this._miningRockId != null) return;
     // Count any ore the player collects while on/after the seam beat (B2). The pickup may also fire
     // for the B1 salvage — that's fine, only the seam beat's DONE cares about the count.
     if (p.collectorId != null && p.collectorId !== this.state.playerId) return;
     if (!this._isOre(p.commodityId)) return;
     ob.oreCollected = (ob.oreCollected || 0) + Math.max(1, p.qty || p.amount || 1);
-    const beat = BEATS[ob.currentBeat];
     if (beat && beat.done === 'oreCollected' && ob.oreCollected >= SEAM_ORE_TARGET) {
       this._beatDone(beat);
     }
@@ -722,6 +782,11 @@ export const onboarding = {
     const trainerDistance = trainer && trainer.pos
       ? Math.hypot(trainer.pos.x - player.pos.x, trainer.pos.z - player.pos.z)
       : Infinity;
+    if (beat.key === 'tether' && this._derelictId != null
+      && this.state.player.targetId === this._derelictId
+      && !ob.firedFollowups['tether:target:acquired']) {
+      this._onBeatEvent('target:acquired', { targetId: this._derelictId });
+    }
     if (beat.done === 'speedUp' && speed >= FLIGHT_DRILL_SPEED_WU) this._beatDone(beat);
     else if (beat.done === 'speedDown' && speed <= FLIGHT_DRILL_BRAKE_WU) this._beatDone(beat);
     else if (beat.done === 'trainerRange' && trainerDistance <= FLIGHT_DRILL_MARKER_RANGE_WU) this._beatDone(beat);
@@ -830,6 +895,33 @@ export const onboarding = {
     return null;
   },
 
+  _spawnMiningRock() {
+    const st = this.state;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos || !this.helpers || !this.helpers.spawnEntity) return null;
+    const existing = this._miningRockId != null && st.entities.get(this._miningRockId);
+    if (existing && existing.alive !== false) return existing;
+    const angle = onboardingRandom(st) * TAU;
+    const rock = this.helpers.spawnEntity({
+      type: 'asteroid',
+      pos: { x: player.pos.x + Math.cos(angle) * 118, z: player.pos.z + Math.sin(angle) * 118 },
+      vel: { x: 0, z: 0 },
+      radius: 18,
+      mass: 180,
+      hull: 60,
+      hullMax: 60,
+      data: {
+        typeId: 'ast_common_rock', oreHP: 60, oreHPMax: 60, yieldU: SEAM_ORE_TARGET,
+        onboarding: true, onboardingTraining: true, trainingMining: true,
+      },
+    });
+    if (rock) {
+      this._miningRockId = rock.id;
+      if (st.onboarding) st.onboarding._miningRockId = rock.id;
+    }
+    return rock;
+  },
+
   _beginTrainerFlyby() {
     const trainer = this._trainingActor() || this._spawnTrainer('marker');
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
@@ -857,7 +949,15 @@ export const onboarding = {
     const player = this.state && this.state.player;
     if (player && player.targetId === this._trainerId) player.targetId = null;
     this._trainerId = null;
-    if (this.state && this.state.onboarding) this.state.onboarding._trainerId = null;
+    for (const id of [this._derelictId, this._miningRockId]) {
+      if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') this.helpers.removeEntity(id);
+    }
+    this._derelictId = null;
+    this._miningRockId = null;
+    if (this.state && this.state.onboarding) {
+      this.state.onboarding._trainerId = null;
+      this.state.onboarding._miningRockId = null;
+    }
   },
 
   // B5: surface three side-by-side offers (HAUL/BOUNTY/SURVEY). The mission board generates them;
@@ -895,6 +995,10 @@ export const onboarding = {
       const derelict = this._derelictId != null && st.entities && st.entities.get(this._derelictId);
       if (derelict && derelict.alive !== false) target = { pos: derelict.pos, label: 'Training Derelict' };
     }
+    else if (beat && beat.key === 'seam') {
+      const rock = this._miningRockId != null && st.entities && st.entities.get(this._miningRockId);
+      if (rock && rock.alive !== false) target = { pos: rock.pos, label: 'Training Seam' };
+    }
     else if (beat && beat.key === 'dock') target = this._findHelios();
     if (!target || !target.pos) {
       if (existing && existing.onboarding) st.nav.waypoint = null;
@@ -902,7 +1006,10 @@ export const onboarding = {
     }
     // HUD mission tracker reads wp.reason || wp.label as the sole persistent actionable line
     // (hud.js Tutorial Objective branch). Prefer the beat verb in reason; keep short nav label.
-    st.nav.waypoint = buildOnboardingObjectiveWaypoint(beat, target);
+    st.nav.waypoint = buildOnboardingObjectiveWaypoint({
+      ...beat,
+      line: ob.beatAction || beat.line,
+    }, target);
   },
 
   _clearObjectiveWaypoint() {

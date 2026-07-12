@@ -105,9 +105,25 @@ test('nonlethal trainer and real event receipts complete the hands-on drill', ()
   assert.ok(state.onboarding.beatDoneAt.focus != null);
 
   state.onboarding.currentBeat = 4;
-  bus.emit('tether:latched', { targetId: 'wreck' });
-  bus.emit('tether:reel', { before: 80, after: 58 });
-  bus.emit('tether:released', { targetId: 'wreck' });
+  const derelict = sys._spawnDerelict() || state.entities.get(sys._derelictId);
+  assert.ok(derelict);
+  player.data.targetId = 'wrong-target';
+  bus.emit('tether:latched', { targetId: 'wrong-target' });
+  bus.emit('tether:released', { targetId: 'wrong-target' });
+  assert.equal(state.onboarding.beatDoneAt.tether, undefined, 'unrelated tether cannot skip training');
+  state.player.targetId = derelict.id;
+  sys._resolveProximityDone();
+  assert.equal(state.onboarding.firedFollowups['tether:target:acquired'], true);
+  bus.emit('tether:latched', { targetId: derelict.id });
+  bus.emit('tether:broke', { targetId: derelict.id, reason: 'overload' });
+  assert.equal(state.onboarding.beatDoneAt.tether, undefined, 'broken line is recovery, not success');
+  assert.equal(state.onboarding.tetherBreaks, 1);
+  assert.match(state.onboarding.beatAction, /Latch the derelict again/);
+  bus.emit('tether:latched', { targetId: derelict.id });
+  bus.emit('tether:nearBreak', { targetId: derelict.id, tensionRatio: 0.8 });
+  assert.equal(state.onboarding.beatAction, 'Ease off. Let the line settle.');
+  bus.emit('tether:reel', { targetId: derelict.id, before: 80, after: 58 });
+  bus.emit('tether:released', { targetId: derelict.id });
   assert.ok(state.onboarding.beatDoneAt.tether != null);
 
   state.onboarding.currentBeat = 5;
@@ -129,6 +145,21 @@ test('nonlethal trainer and real event receipts complete the hands-on drill', ()
   assert.equal(trainer.alive, false, 'trainer exits cleanly after disengagement');
   assert.equal(spawned.some((entity) => entity.data?.weapons?.length), false,
     'no training actor can shoot the player');
+
+  state.onboarding.currentBeat = 7;
+  state.onboarding.beatAction = 'Pulse the scanner.';
+  const rock = sys._spawnMiningRock();
+  assert.ok(rock && rock.data.trainingMining, 'seam lesson owns a marked mineable rock');
+  rock.data.scanHighlightUntil = state.simTime + 5;
+  bus.emit('scan:completed', { found: { asteroids: 1, wrecks: 0, anomalies: 0 } });
+  assert.equal(state.onboarding.beatAction, 'Beam the bright seams.');
+  bus.emit('mining:yield', {
+    minerId: player.id,
+    qty: 3,
+    commodityId: 'cmdty_ore_iron',
+    pos: { x: rock.pos.x, z: rock.pos.z },
+  });
+  assert.ok(state.onboarding.beatDoneAt.seam != null, 'three units from the marked rock complete mining');
 });
 
 test('weapon heat helper ignores invalid/no-heat mounts', () => {
@@ -148,6 +179,10 @@ function freshOnboarding() {
     burstShots: 0,
     burstPeakHeat: 0,
     burstCooling: false,
+    trainingOre: 0,
+    tetherReeled: false,
+    tetherBreaks: 0,
+    beatAction: '',
   };
 }
 

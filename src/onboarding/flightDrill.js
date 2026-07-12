@@ -31,9 +31,11 @@ export const FLIGHT_DRILL_BEATS = Object.freeze([
   }),
   Object.freeze({
     key: 'tether',
-    line: 'Latch it. Massline.',
+    line: 'Target the marked derelict.',
     followups: Object.freeze([
+      Object.freeze({ on: 'target:acquired', line: 'Latch it. Massline.' }),
       Object.freeze({ on: 'tether:latched', line: 'Winch in. Hold tether to reel.' }),
+      Object.freeze({ on: 'tether:nearBreak', line: 'Ease off. Let the line settle.' }),
       Object.freeze({ on: 'tether:reel', line: 'Cut and coast. Tap tether to cut.' }),
     ]),
     done: 'tether:released',
