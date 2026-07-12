@@ -62,7 +62,7 @@ export const SHIPS = [
     hull: 180, shield: 60, baseShieldRegen: 8, cargo: 60, mass: 32, handling: 0.8,
     bankFactor: 0.45,
     driveId: 'drive_reaction_m',  // medium reaction drive — steady miner thrust + RCS
-    energyCap: 110, energyRegen: 16, collisionRadius: 16, price: 22000,
+    energyCap: 110, energyRegen: 16, collisionRadius: 16, price: 15000,
     boost: { max: 70, drainRate: 44, regenRate: 16, dashImpulse: 80, dashCooldown: 3.0 },  // miners barely boost — sturdy, not nimble
     slots: { weapon: ['S'], shield: ['S'], engine: ['M'], cargo: ['M'], mining: ['M','M'], utility: ['S'] },
     visuals: {

@@ -47,8 +47,8 @@ assert.equal(h.state.player.moduleInventory.length, 0, 'failed module purchases 
 
 h = makeSystem(500);
 assert.equal(h.sys.buyShip({ defId: 'ship_pelican' }), false);
-assert.equal(h.bus.events.at(-1).payload.text, 'Need 21,500 more cr for Pelican');
-assert.doesNotMatch(h.bus.events.at(-1).payload.text, /Insufficient credits|22000/);
+assert.equal(h.bus.events.at(-1).payload.text, 'Need 14,500 more cr for Pelican');
+assert.doesNotMatch(h.bus.events.at(-1).payload.text, /Insufficient credits|15000/);
 assert.equal(h.state.player.ownedShips.length, 1, 'failed ship purchases must not grant a hull');
 
 console.log('Ship purchase guidance OK - direct purchase blockers show missing credits and target names.');

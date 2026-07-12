@@ -907,13 +907,23 @@ function runProspector() {
   const ast = ASTEROIDS.find((a) => a.id === 'ast_common_rock');
 
   const receipt = emptyReceiptBase('prospector', seed, starter, {
-    phase: 'starter→mid if capital allows',
+    phase: 'starter Hitch → physical Pelican → researched Beam M',
     starterShip: starter.id,
     starterBeam: starterBeam && (starterBeam.id || 'beam_mk1'),
     midShip: midShip && midShip.id,
     midBeam: midBeam && (midBeam.id || 'beam_mk2'),
     fieldIds: fieldIds.slice(),
     asteroidType: ast && ast.id,
+    currentShipId: starter.id,
+    ownedMiningModules: starterBeam ? [starterBeam.id] : [],
+    purchases: [],
+    beamM: {
+      id: midBeam && midBeam.id,
+      price: midBeam && midBeam.price || 0,
+      researchGates: unresolvedTech([midBeam], ctx.state),
+      acquired: false,
+      granted: false,
+    },
   });
   receipt.adapters = adapters;
   receipt.ownedInventoryStart = { ...ctx.state.player.cargo.items };
@@ -932,6 +942,7 @@ function runProspector() {
   let t = 0;
   let loops = 0;
   let upgraded = false;
+  let beamAcquired = false;
   let marketExhaustion = false;
   let cargoCreated = 0;
   let cargoDestroyed = 0;
@@ -951,9 +962,12 @@ function runProspector() {
     const openingReadout = fieldMemoryReadout(ctx.state, fieldId);
     if (openingReadout.band === 'depleted') {
       marketExhaustion = true;
-      const nextFieldId = fieldIds[fieldIndex + 1];
+      const nextFieldIndex = (fieldIndex + 1) % fieldIds.length;
+      const nextFieldId = fieldIds[nextFieldIndex];
       const rotationS = MINING_TRANSIT_S * 2;
-      if (!nextFieldId || t + rotationS > HORIZON_S) {
+      const nextReadout = nextFieldId && fieldMemoryReadout(ctx.state, nextFieldId);
+      if (!nextFieldId || nextFieldId === fieldId || nextReadout.band === 'depleted'
+        || t + rotationS > HORIZON_S) {
         receipt.loops.push({
           loop: loops, fail: 'all_local_fields_depleted', fieldId, t: r1(t),
         });
@@ -962,12 +976,12 @@ function runProspector() {
       advanceEconomy(ctx, rotationS);
       t += rotationS;
       receipt.travelTimeS += rotationS;
-      fieldIndex += 1;
+      fieldIndex = nextFieldIndex;
       fieldId = nextFieldId;
       receipt.fieldRotations = receipt.fieldRotations || [];
       receipt.fieldRotations.push({ from: openingReadout.fieldId, to: fieldId, atS: r1(t) });
     }
-    const beam = upgraded && midBeam ? midBeam : starterBeam;
+    const beam = beamAcquired && midBeam ? midBeam : starterBeam;
     const ship = upgraded && midShip ? midShip : starter;
     ctx.state.player.cargo.capVolume = ship.cargo;
     const dps = beam.dps || 18;
@@ -1108,27 +1122,61 @@ function runProspector() {
     receipt.travelTimeS += legField;
     currentSectorId = fieldSectorId;
 
-    // Mid upgrade: Pelican + mining beam M when affordable.
-    if (!upgraded && midShip && midBeam) {
-      const beamPrice = midBeam.price || 22000;
-      const need = midShip.price + beamPrice;
-      if ((ctx.state.player.credits | 0) >= need) {
-        const techGates = unresolvedTech([midShip, midBeam], ctx.state);
-        if (techGates.length) {
-          receipt.equipment.upgradeBlockedBy = {
-            kind: 'research',
-            gates: techGates,
-            availableCredits: ctx.state.player.credits | 0,
-            availableResearchPoints: ctx.state.player.researchPoints || 0,
-          };
-        } else {
-          ctx.econ.chargeCredits(midShip.price, 'shipyard:ship_pelican');
-          ctx.econ.chargeCredits(beamPrice, 'outfitting:mod_mining_beam_m');
-          receipt.purchaseSpend += midShip.price + beamPrice;
+    // First upgrade is the physical Pelican hull. The owned starter laser transfers with it;
+    // Beam M remains an independent, later research-gated outfitting purchase.
+    if (!upgraded && midShip && (ctx.state.player.credits | 0) >= midShip.price) {
+      const techGates = unresolvedTech([midShip], ctx.state);
+      if (techGates.length) {
+        receipt.equipment.upgradeBlockedBy = {
+          kind: 'research',
+          gates: techGates,
+          availableCredits: ctx.state.player.credits | 0,
+          availableResearchPoints: ctx.state.player.researchPoints || 0,
+        };
+      } else {
+        const reason = 'shipyard:ship_pelican';
+        const creditsBefore = ctx.state.player.credits | 0;
+        const creditsAfter = ctx.econ.chargeCredits(midShip.price, reason);
+        if (creditsBefore - creditsAfter === midShip.price) {
+          receipt.purchaseSpend += midShip.price;
           setHull(ctx.state, midShip.id);
           upgraded = true;
           receipt.equipment.upgradedAtLoop = loops;
-          receipt.equipment.upgradeCost = need;
+          receipt.equipment.upgradeCost = midShip.price;
+          receipt.equipment.currentShipId = midShip.id;
+          receipt.equipment.purchases.push({
+            kind: 'ship', id: midShip.id, price: midShip.price, reason,
+            atS: r1(t), creditsBefore, creditsAfter,
+          });
+        }
+      }
+    }
+
+    if (upgraded && !beamAcquired && midBeam) {
+      const beamPrice = midBeam.price || 0;
+      const techGates = unresolvedTech([midBeam], ctx.state);
+      receipt.equipment.beamM.researchGates = techGates;
+      if (techGates.length) {
+        receipt.equipment.beamM.blockedBy = {
+          kind: 'research',
+          gates: techGates,
+          availableCredits: ctx.state.player.credits | 0,
+          availableResearchPoints: ctx.state.player.researchPoints || 0,
+        };
+      } else if ((ctx.state.player.credits | 0) >= beamPrice) {
+        const reason = 'outfitting:mod_mining_beam_m';
+        const creditsBefore = ctx.state.player.credits | 0;
+        const creditsAfter = ctx.econ.chargeCredits(beamPrice, reason);
+        if (creditsBefore - creditsAfter === beamPrice) {
+          receipt.purchaseSpend += beamPrice;
+          receipt.equipment.upgradeCost = (receipt.equipment.upgradeCost || 0) + beamPrice;
+          receipt.equipment.ownedMiningModules.push(midBeam.id);
+          receipt.equipment.purchases.push({
+            kind: 'module', id: midBeam.id, price: beamPrice, reason,
+            atS: r1(t), creditsBefore, creditsAfter,
+          });
+          receipt.equipment.beamM.acquired = true;
+          beamAcquired = true;
         }
       }
     }
@@ -1153,9 +1201,12 @@ function runProspector() {
   receipt.fieldFinals = fieldIds.map((id) => fieldMemoryReadout(ctx.state, id));
   receipt.elapsedS = r1(t);
   receipt.fieldRecoveryPerS = FIELD_DEPLETION_RECOVERY_PER_S;
-  receipt.equipment.activePhase = upgraded ? 'mid' : 'starter';
+  receipt.equipment.activePhase = beamAcquired ? 'beam_m' : upgraded ? 'pelican' : 'starter';
+  receipt.shipId = upgraded && midShip ? midShip.id : starter.id;
+  receipt.shipName = upgraded && midShip ? midShip.name : starter.name;
+  receipt.cargoCapacity = upgraded && midShip ? midShip.cargo : starter.cargo;
   receipt.equipment.plannedMidLoadout = assessLoadoutViability('prospector', 'mid');
-  receipt.loadoutViability = assessLoadoutViability('prospector', receipt.equipment.activePhase);
+  receipt.loadoutViability = assessLoadoutViability('prospector', upgraded ? 'mid' : 'starter');
   finalizeReceipt(receipt, ctx);
   return receipt;
 }
@@ -1186,7 +1237,9 @@ function assertCareer(receipt, bands) {
   if (receipt.startingCapital !== NEW_GAME.credits) {
     fails.push(`starting_capital_mismatch ${receipt.startingCapital}!=${NEW_GAME.credits}`);
   }
-  if (receipt.netCredits < 0) {
+  const paidProspectorUpgrade = receipt.career === 'prospector'
+    && receipt.assetPurchases > 0 && receipt.earnedValue >= 0;
+  if (receipt.netCredits < 0 && !paidProspectorUpgrade) {
     fails.push(`negative_route net=${receipt.netCredits}`);
   }
   if (receipt.completedLoops <= 0) {
@@ -1217,6 +1270,9 @@ function assertCareer(receipt, bands) {
     if (endU > expectedMax + 0) {
       fails.push(`inventory_creation end=${endU} > expectedMax=${expectedMax}`);
     }
+    if (receipt.career === 'prospector' && endU !== expectedMax) {
+      fails.push(`prospector_inventory_not_conserved end=${endU} expected=${expectedMax}`);
+    }
   }
   // No free starting cargo.
   if (startU !== 0) fails.push(`free_start_inventory units=${startU}`);
@@ -1228,6 +1284,14 @@ function assertCareer(receipt, bands) {
     fails.push(`unviable_planned_mid_loadout ${JSON.stringify(receipt.equipment && receipt.equipment.plannedMidLoadout || null)}`);
   }
 
+  if (receipt.career === 'prospector' && HORIZON_S <= 30 * 60) {
+    if (receipt.equipment.activePhase !== 'starter'
+      || receipt.equipment.currentShipId !== 'ship_kestrel'
+      || (receipt.equipment.purchases || []).length !== 0) {
+      fails.push('prospector_skipped_starter_hitch_checkpoint');
+    }
+  }
+
   if (HORIZON_S >= 90 * 60) {
     if ((receipt.elapsedS || 0) < HORIZON_S * 0.95) {
       fails.push(`window_not_sustained elapsed=${receipt.elapsedS} horizon=${HORIZON_S}`);
@@ -1237,6 +1301,33 @@ function assertCareer(receipt, bands) {
     }
     if (receipt.career === 'prospector' && (!receipt.fieldRotations || receipt.fieldRotations.length < 1)) {
       fails.push('prospector_never_rotated_depleted_field');
+    }
+    if (receipt.career === 'prospector') {
+      const purchases = receipt.equipment.purchases || [];
+      const hullPurchases = purchases.filter((purchase) => purchase.kind === 'ship'
+        && purchase.id === 'ship_pelican');
+      const hullPurchase = hullPurchases[0];
+      if (hullPurchases.length !== 1
+        || !hullPurchase
+        || hullPurchase.price !== 15000
+        || hullPurchase.reason !== 'shipyard:ship_pelican'
+        || hullPurchase.creditsBefore - hullPurchase.creditsAfter !== hullPurchase.price
+        || hullPurchase.atS <= 30 * 60
+        || hullPurchase.atS > 85 * 60) {
+        fails.push('prospector_missing_single_capital_pelican_purchase_between_30m_and_85m');
+      }
+      const ownedMining = receipt.equipment.ownedMiningModules || [];
+      const beamM = receipt.equipment.beamM || {};
+      const beamPurchases = purchases.filter((purchase) => purchase.id === 'mod_mining_beam_m');
+      if (receipt.equipment.activePhase !== 'pelican'
+        || receipt.equipment.currentShipId !== 'ship_pelican'
+        || !ownedMining.includes('mod_mining_laser_s')) {
+        fails.push('prospector_pelican_failed_to_retain_owned_starter_laser');
+      }
+      if (beamM.granted !== false || beamM.acquired !== false || beamPurchases.length !== 0
+        || !(beamM.researchGates || []).some((gate) => gate.techId === 'tech_focused_extraction')) {
+        fails.push('prospector_received_free_or_ungated_mining_beam_m');
+      }
     }
     if (receipt.career === 'hunter') {
       const blocked = receipt.equipment && receipt.equipment.upgradeBlockedBy;
