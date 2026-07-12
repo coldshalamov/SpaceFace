@@ -3,6 +3,7 @@
 // Fixed geography (stations/gates/fields/POIs) merged from sectorAnchors.js — see design/world-identity/PIPELINE.md.
 import { applySectorAnchors } from './sectorAnchors.js';
 import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegions/index.js';
+import { applyClaimableBodySites } from './claimableBodies.js';
 // Per ARCHITECTURE §0.8:
 //   dangerTier(s) = clamp(round((1 - s.security) * 5), 0, 5)
 //   wealthIndex(s) = clamp(0.3 + 0.16*tier + 0.10*(1-security), 0.3, 1.6)
@@ -257,7 +258,7 @@ export const SECTORS = [
       : sector;
   }),
   ...FRONTIER_SECTORS,
-].map(applySectorAnchors);
+].map(applySectorAnchors).map(applyClaimableBodySites);
 
 // Security helper functions per ARCHITECTURE §0.8.
 const clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;

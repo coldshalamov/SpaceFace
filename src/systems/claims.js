@@ -251,10 +251,33 @@ export const claims = {
     body.spec = this._freshSpec(def);
     this._ensureMeta();
     this._receipt(body, 'commissioned', 'Commissioned as ' + def.name);
+    this._emitDeploymentOnce(body, def);
     this.bus.emit('claim:specialized', { bodyId: body.id, specId: def.id });
     this.bus.emit('toast', { text: '✓ Commissioned: ' + def.name + ' — ' + body.name, kind: 'good', ttl: 4 });
     this.bus.emit('audio:cue', { id: 'confirm' });
     this._applyPoiLabel(body);
+    return true;
+  },
+
+  // Campaign B6 observes the canonical `asset:deployed` event. A commissioned claim is a real
+  // player outpost, but the old claims path only emitted `claim:specialized`, leaving the story
+  // step disconnected. Persist the receipt on the body (not the replaceable specialization) so
+  // re-commissioning and save/reload cannot grant the deployment twice.
+  _emitDeploymentOnce(body, def) {
+    if (!body || body.deploymentReceipt) return false;
+    const simTime = this.state.simTime || 0;
+    const receipt = {
+      receiptId: 'claim-deploy:' + body.id,
+      kind: 'outpost',
+      id: body.id,
+      claimId: body.id,
+      claimSpecId: def.id,
+      sectorId: body.sectorId || null,
+      simTime,
+      source: 'claims',
+    };
+    body.deploymentReceipt = receipt;
+    this.bus.emit('asset:deployed', { ...receipt });
     return true;
   },
 

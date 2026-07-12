@@ -93,6 +93,70 @@ export const BODY_SPECIALIZATIONS = [
 
 export const BODY_SPECIALIZATION_BY_ID = new Map(BODY_SPECIALIZATIONS.map((s) => [s.id, s]));
 
+// Authored claim sites across the canonical 24-region galaxy (SPEC3-F6-26).
+//
+// These are deliberately scarce rather than one-per-sector: Helios never sells land, quiet trade
+// corridors keep their established ownership, and the deepest regions carry the three L-class
+// stakes. Every site reuses an existing place landmark and the existing claim interaction; this is
+// world content, not a second base system or a renderer special case. The two original sites retain
+// their stable ids/positions for save compatibility. `applyClaimableBodySites()` overlays those
+// records and appends the rest after sector anchors have been applied.
+export const CLAIMABLE_BODY_SITES = Object.freeze([
+  claimSite('sector_ceres_belt', 'poi_claim_rookery', 'Rookery Prospect', 'S', -1900, 1100, 'place_asteroid_rock_a'),
+  claimSite('sector_vesta_forge', 'poi_claim_kilnside', 'Kilnside Lease', 'S', 1650, 1350, 'place_asteroid_rock_a'),
+  claimSite('sector_pallas_drift', 'poi_claim_drift_nine', 'Drift Claim Nine', 'M', -2050, 1250, 'place_asteroid_seamed'),
+  claimSite('sector_io_reach', 'poi_claim_pallas', 'Pallas Industrial Moon', 'M', 320, 1280, 'place_asteroid_seamed'),
+  claimSite('sector_charon_expanse', 'poi_colony', 'Abandoned Mining Colony', 'S', -620, 1420, 'place_conveyor_barge'),
+  claimSite('sector_sker_haven', 'poi_claim_morrow', 'Morrow Freehold', 'M', 2100, -1450, 'place_asteroid_rock_b'),
+  claimSite('sector_veil_nebula', 'poi_claim_lacuna', 'Lacuna Survey Moon', 'L', -2300, 1700, 'place_asteroid_rock_c'),
+  claimSite('sector_ashfall_reach', 'poi_claim_cinder_crown', 'Cinder Crown', 'L', 2500, -1900, 'place_asteroid_rock_c'),
+  claimSite('sector_nyx_march', 'poi_claim_blackglass', 'Blackglass Lease', 'S', -1700, -1500, 'place_asteroid_rock_a'),
+  claimSite('sector_hyperion_cut', 'poi_claim_cutwater', 'Cutwater Anchorage', 'M', 1800, -1200, 'place_asteroid_seamed'),
+  claimSite('sector_kepler_scar', 'poi_claim_scarline', 'Scarline Hold', 'M', -2200, 900, 'place_asteroid_rock_b'),
+  claimSite('sector_rhea_cinder', 'poi_claim_emberwake', 'Emberwake Plot', 'S', 1900, 1600, 'place_asteroid_rock_a'),
+  claimSite('sector_nereid_shoal', 'poi_claim_shoal_exchange', 'Shoal Exchange Rock', 'M', -1800, 1250, 'place_asteroid_seamed'),
+  claimSite('sector_dione_lane', 'poi_claim_wayline', 'Wayline Charter', 'S', 1500, -950, 'place_asteroid_rock_a'),
+  claimSite('sector_sedna_dark', 'poi_claim_far_ledger', 'Far Ledger', 'L', -2600, -1700, 'place_asteroid_rock_c'),
+]);
+
+const CLAIM_SITES_BY_SECTOR = new Map();
+for (const site of CLAIMABLE_BODY_SITES) {
+  const bucket = CLAIM_SITES_BY_SECTOR.get(site.sectorId) || [];
+  bucket.push(site);
+  CLAIM_SITES_BY_SECTOR.set(site.sectorId, bucket);
+}
+
+/** Add/overlay authored claim POIs without mutating frozen frontier records. */
+export function applyClaimableBodySites(sector) {
+  if (!sector) return sector;
+  const sites = CLAIM_SITES_BY_SECTOR.get(sector.id);
+  if (!sites || !sites.length) return sector;
+  const byId = new Map(sites.map((site) => [site.id, site]));
+  const pois = (sector.pois || []).map((poi) => {
+    const site = byId.get(poi.id);
+    if (!site) return poi;
+    byId.delete(poi.id);
+    return { ...poi, ...site, pos: { ...site.pos } };
+  });
+  for (const site of byId.values()) pois.push({ ...site, pos: { ...site.pos } });
+  return { ...sector, pois };
+}
+
+function claimSite(sectorId, id, name, size, x, z, landmarkGlb) {
+  return Object.freeze({
+    sectorId,
+    id,
+    type: 'colony',
+    name,
+    claimable: true,
+    size,
+    pos: Object.freeze({ x, z }),
+    landmark: true,
+    landmarkGlb,
+    visualRadius: size === 'L' ? 32 : size === 'M' ? 26 : 20,
+  });
+}
+
 // A claimable body's total module slots (so you choose which 3-4 modules to fit). Small bodies = 2
 // slots (a frontier mining claim), large = 4 (an industrial moon). Forces build-order decisions.
 export const BODY_SLOTS_BY_SIZE = { S: 2, M: 3, L: 4 };

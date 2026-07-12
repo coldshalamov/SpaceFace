@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 import {
   claims as claimsBase,
@@ -26,6 +26,7 @@ import {
   BODY_SPECIALIZATION_BY_ID,
   BODY_MODULES,
   BODY_MODULE_BY_ID,
+  CLAIMABLE_BODY_SITES,
 } from '../src/data/claimableBodies.js';
 import { describeSpecializationAction } from '../src/ui/screens/base.js';
 import { automation } from '../src/systems/automation.js';
@@ -34,6 +35,7 @@ import { SECTORS, dangerIndex } from '../src/data/sectors.js';
 import { TECH_NODES } from '../src/data/tech.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { addCargo } from '../src/systems/cargo.js';
+import { isBeatStepsComplete, recordBeatStep } from '../src/story/campaign47a/index.js';
 import { fileURLToPath } from 'node:url';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -297,6 +299,96 @@ test('specialize validates prerequisites, charges the exact cost once, and is id
   const relayCharges = charges(h, 'claim_specialize');
   assert.equal(relayCharges.length, 2);
   assert.equal(relayCharges[1].payload.amount, BODY_SPECIALIZATION_BY_ID.get('spec_relay').cost);
+});
+
+test('first commissioning emits one canonical B6 deployment receipt across save/reload and re-commission', () => {
+  const h = boot({ seed: 9 });
+  h.state.story = { beatIndex: 6, branch: 'traders', flags: {} };
+  const observed = [];
+  h.bus.on('asset:deployed', (payload) => {
+    observed.push(recordBeatStep(h.state, 'asset:deployed', payload, h.state.simTime));
+  });
+
+  const body = claimBody(h);
+  buildModules(h, body, ['mod_refinery', 'mod_depot']);
+  assert.equal(h.sys.specialize(body.id, 'spec_refinery'), true);
+
+  const deployed = events(h, 'asset:deployed');
+  assert.equal(deployed.length, 1, 'one successful first commission produces one deploy event');
+  assert.deepEqual(deployed[0].payload, {
+    receiptId: 'claim-deploy:' + body.id,
+    kind: 'outpost',
+    id: body.id,
+    claimId: body.id,
+    claimSpecId: 'spec_refinery',
+    sectorId: FRONTIER,
+    simTime: 1000,
+    source: 'claims',
+  });
+  assert.equal(observed.length, 1);
+  assert.equal(observed[0].ok, true, 'campaign sidecar accepts the canonical B6 payload');
+  assert.equal(isBeatStepsComplete(h.state, 6), true, 'B6 deployment step is satisfied');
+  assert.deepEqual(body.deploymentReceipt, deployed[0].payload, 'durable body receipt matches the event');
+
+  // Same-spec idempotency cannot emit or reward twice.
+  assert.equal(h.sys.specialize(body.id, 'spec_refinery'), false);
+  assert.equal(events(h, 'asset:deployed').length, 1);
+
+  // The body-level receipt survives save/load. Re-commissioning to a different valid identity is
+  // allowed, but it is an operating change to the same outpost, not a second deployment reward.
+  const snap = JSON.parse(JSON.stringify(h.sys.serialize()));
+  const h2 = boot({ seed: 9 });
+  h2.sys.deserialize(snap);
+  const restored = h2.state.claims.bodies[0];
+  assert.deepEqual(restored.deploymentReceipt, body.deploymentReceipt);
+  assert.equal(h2.sys.specialize(restored.id, 'spec_relay'), true);
+  assert.equal(events(h2, 'asset:deployed').length, 0, 'reload and re-commission emit no duplicate deploy');
+  assert.equal(charges(h2, 'claim_specialize').length, 1, 'operating change still pays its honest cost once');
+});
+
+test('fifteen authored claim sites are distributed and reachable across the 24-region graph', () => {
+  assert.equal(SECTORS.length, 24, 'canonical galaxy still has 24 regions');
+  assert.equal(CLAIMABLE_BODY_SITES.length, 15, 'authored scarcity stays within the 12–16 target');
+
+  const ids = new Set();
+  const occupiedSectors = new Set();
+  const sizes = { S: 0, M: 0, L: 0 };
+  const sectorById = new Map(SECTORS.map((sector) => [sector.id, sector]));
+  for (const site of CLAIMABLE_BODY_SITES) {
+    assert.ok(!ids.has(site.id), 'claim POI ids are unique: ' + site.id);
+    ids.add(site.id);
+    occupiedSectors.add(site.sectorId);
+    assert.notEqual(site.sectorId, LAWFUL, 'Helios core does not sell land');
+    assert.ok(sectorById.has(site.sectorId), 'claim sector exists: ' + site.sectorId);
+    assert.ok(['S', 'M', 'L'].includes(site.size), 'site has a supported body size');
+    sizes[site.size] += 1;
+    const sector = sectorById.get(site.sectorId);
+    const live = (sector.pois || []).find((poi) => poi.id === site.id);
+    assert.ok(live && live.claimable, 'site is present on the live sector POI route: ' + site.id);
+    assert.equal(live.size, site.size);
+    assert.deepEqual(live.pos, site.pos, 'authored position survives sector composition');
+    assert.ok(Math.hypot(live.pos.x, live.pos.z) < sector.worldRadius * 0.75,
+      'site stays inside a navigable sector radius: ' + site.id);
+    const glb = new URL('../assets/ships/release/parts/places/' + site.landmarkGlb + '.glb', import.meta.url);
+    assert.ok(existsSync(glb), 'site reuses a shipped place asset: ' + site.landmarkGlb);
+  }
+  assert.equal(occupiedSectors.size, 15, 'sites are distributed rather than stacked');
+  assert.equal(sizes.L, 3, 'exactly three dangerous L-class stakes');
+  assert.ok(sizes.S >= 5 && sizes.M >= 5, 'small and medium claims both support progression');
+
+  // Every claim sector is reachable through the actual reciprocal galaxy graph from Helios.
+  const reached = new Set([LAWFUL]);
+  const queue = [LAWFUL];
+  while (queue.length) {
+    const id = queue.shift();
+    const sector = sectorById.get(id);
+    for (const neighbor of (sector && sector.neighbors) || []) {
+      if (!reached.has(neighbor)) { reached.add(neighbor); queue.push(neighbor); }
+    }
+  }
+  for (const sectorId of occupiedSectors) {
+    assert.ok(reached.has(sectorId), 'claim sector reachable from Helios: ' + sectorId);
+  }
 });
 
 // ── 3. refinery truth through canonical owners ───────────────────────────────────────────────
