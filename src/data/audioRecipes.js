@@ -110,6 +110,56 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.012, sustain: 0.0, release: 0.18 },
     filterType: 'bandpass', filterFreq: 760, filterQ: 1.8,
   },
+  // Shared fallbacks keep static SG-08 resolution total; runtime presentation selects the
+  // doctrine-specific family below from deterministic cue tags.
+  {
+    id: 'sfx_doctrine_break', category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 165, freqSweep: [165, 110], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.22 },
+    filterType: 'lowpass', filterFreq: 520, filterQ: 1.0,
+  },
+  {
+    id: 'sfx_doctrine_withdraw', category: 'weapon', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.008, sustain: 0.015, release: 0.32 },
+    filterType: 'bandpass', filterFreq: 280, filterQ: 0.8,
+  },
+  // Interceptor: air and Doppler — rise on the pass, hard vector break, receding wash.
+  {
+    id: 'sfx_doctrine_flyby_break', category: 'weapon', type: 'oscillator', wave: 'sawtooth',
+    baseFreq: 980, freqSweep: [980, 330], sweepTimeS: 0.24,
+    gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.26 },
+    filterType: 'highpass', filterFreq: 260, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_doctrine_flyby_withdraw', category: 'weapon', type: 'noise_filtered', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.01, sustain: 0.02, release: 0.42 },
+    filterType: 'highpass', filterFreq: 560, filterQ: 0.55,
+  },
+  // Tether raider: mechanical spool/clamp language, distinct from the massline's player rewards.
+  {
+    id: 'sfx_doctrine_tether_break', category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 180, freqSweep: [180, 72], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.003, sustain: 0.025, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 260, filterQ: 2.4,
+  },
+  {
+    id: 'sfx_doctrine_tether_withdraw', category: 'weapon', type: 'noise_filtered', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.012, sustain: 0.02, release: 0.38 },
+    filterType: 'lowpass', filterFreq: 300, filterQ: 1.6,
+  },
+  // Ranged disengager: capacitor pitch language — charge, clipped discharge, reset, cool standoff.
+  {
+    id: 'sfx_doctrine_ranged_break', category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 620, freqSweep: [620, 240], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.004, sustain: 0.018, release: 0.24 },
+    filterType: 'bandpass', filterFreq: 500, filterQ: 1.5,
+  },
+  {
+    id: 'sfx_doctrine_ranged_withdraw', category: 'weapon', type: 'oscillator', wave: 'sine',
+    baseFreq: 260, freqSweep: [260, 190], sweepTimeS: 0.26,
+    gainEnvelope: { attack: 0.008, sustain: 0.02, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 420, filterQ: 0.8,
+  },
   {
     id: 'sfx_encounter_escalation',
     category: 'weapon',

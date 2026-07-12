@@ -1,6 +1,6 @@
 import { getPresentationRecipe } from '../presentation/cueRecipes.js';
 import { normalizePresentationEvent } from '../presentation/cueSchema.js';
-import { damageLayerHierarchy, grammarForDoctrine, isLiveDoctrineId } from '../presentation/combatChoreography.js';
+import { damageLayerHierarchy, doctrinePhaseStage, grammarForDoctrine, isLiveDoctrineId } from '../presentation/combatChoreography.js';
 import { classifyDrillWarning, drillHardnessBand, fieldDepletionBand, seamQualityTag } from '../presentation/miningChoreography.js';
 import {
   arrivalHeading,
@@ -93,6 +93,8 @@ export const presentationOrchestrator = {
       this.bus.on('tether:releaseRated', (payload) => this._onReleaseRated(payload || {})),
       this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {})),
       this.bus.on('ai:telegraph', (payload) => this._onDoctrineTelegraph(payload || {})),
+      this.bus.on('ai:doctrinePhase', (payload) => this._onDoctrinePhase(payload || {})),
+      this.bus.on('ai:flee', (payload) => this._onDoctrineWithdraw(payload || {})),
       this.bus.on('combat:fire', (payload) => this._onCombatFire(payload || {})),
       this.bus.on('combat:actionStarted', (payload) => this._onCombatActionStarted(payload || {})),
       this.bus.on('projectile:nearMiss', (payload) => this._onProjectileNearMiss(payload || {})),
@@ -244,7 +246,17 @@ export const presentationOrchestrator = {
     const doctrineId = payload.doctrineId || null;
     if (sourceId == null || targetId == null || !isLiveDoctrineId(doctrineId)) return;
     const grammar = grammarForDoctrine(doctrineId);
-    const cycle = { sourceId, targetId, doctrineId, grammar, actionEmitted: false, startedTick: currentTick(this.state) };
+    const source = this.state && this.state.entities && this.state.entities.get(sourceId);
+    const enriched = { ...payload, position: source && source.pos || payload.position || null };
+    const cycle = {
+      sourceId, targetId, doctrineId, grammar,
+      actionEmitted: false,
+      outcomeEmitted: false,
+      breakEmitted: false,
+      withdrawEmitted: false,
+      lastPhase: payload.phase || null,
+      startedTick: currentTick(this.state),
+    };
     this._doctrineCycles.set(sourceId, cycle);
     const common = {
       sourceEvent: 'ai:telegraph',
@@ -253,15 +265,62 @@ export const presentationOrchestrator = {
       material: 'doctrine',
       sequence: cycle.startedTick,
     };
-    this._emitCue('combat.doctrine.setup', payload, {
+    this._emitCue('combat.doctrine.setup', enriched, {
       ...common,
       tags: [doctrineId, grammar.shape, 'setup'],
     });
-    this._emitCue('combat.doctrine.telegraph', payload, {
+    this._emitCue('combat.doctrine.telegraph', enriched, {
       ...common,
       magnitude: Math.max(1, Number(payload.durationTicks) || grammar.telegraphTicks),
       tags: [doctrineId, grammar.shape, grammar.telegraphKind, 'telegraph'],
     });
+  },
+
+  _onDoctrinePhase(payload) {
+    const sourceId = payload.entityId ?? payload.sourceId ?? null;
+    const cycle = sourceId == null ? null : this._doctrineCycles.get(sourceId);
+    if (!cycle || cycle.doctrineId !== payload.doctrineId || cycle.targetId !== payload.targetId) return;
+    const stage = doctrinePhaseStage(cycle.doctrineId, payload.phase);
+    cycle.lastPhase = payload.phase || cycle.lastPhase;
+    if (stage === 'break' && !cycle.breakEmitted) {
+      cycle.breakEmitted = true;
+      const source = this.state && this.state.entities && this.state.entities.get(sourceId);
+      this._emitCue('combat.doctrine.break', { ...payload, position: source && source.pos || payload.position || null }, {
+        sourceEvent: 'ai:doctrinePhase',
+        sourceId,
+        targetId: cycle.targetId,
+        material: 'doctrine',
+        sequence: cycle.startedTick,
+        tags: [cycle.doctrineId, cycle.grammar.shape, payload.phase, payload.maneuverKind, 'break'].filter(Boolean),
+      });
+      return;
+    }
+    if (stage === 'withdraw' && cycle.breakEmitted && !cycle.withdrawEmitted) {
+      this._emitDoctrineWithdraw(cycle, payload, 'ai:doctrinePhase');
+    }
+  },
+
+  _onDoctrineWithdraw(payload) {
+    const sourceId = payload.entityId ?? payload.sourceId ?? null;
+    const cycle = sourceId == null ? null : this._doctrineCycles.get(sourceId);
+    if (!cycle) return;
+    this._emitDoctrineWithdraw(cycle, payload, 'ai:flee');
+  },
+
+  _emitDoctrineWithdraw(cycle, payload, sourceEvent) {
+    if (!cycle || cycle.withdrawEmitted) return false;
+    cycle.withdrawEmitted = true;
+    const source = this.state && this.state.entities && this.state.entities.get(cycle.sourceId);
+    this._emitCue('combat.doctrine.withdraw', { ...payload, position: source && source.pos || payload.position || null }, {
+      sourceEvent,
+      sourceId: cycle.sourceId,
+      targetId: cycle.targetId,
+      material: 'doctrine',
+      sequence: cycle.startedTick,
+      tags: [cycle.doctrineId, cycle.grammar.shape, payload.phase, payload.reason, 'withdraw'].filter(Boolean),
+    });
+    this._doctrineCycles.delete(cycle.sourceId);
+    return true;
   },
 
   _onCombatFire(payload) {
@@ -350,6 +409,8 @@ export const presentationOrchestrator = {
     if (sourceId == null) return false;
     const cycle = this._doctrineCycles.get(sourceId);
     if (!cycle || (targetId != null && cycle.targetId !== targetId)) return false;
+    if (cycle.outcomeEmitted) return false;
+    cycle.outcomeEmitted = true;
     this._emitCue('combat.doctrine.aftermath', payload, {
       sourceEvent: sourceEvent || (outcome === 'near_miss' ? 'projectile:nearMiss' : outcome === 'kill' ? 'entity:killed' : 'combat:damage'),
       sourceId,
@@ -358,7 +419,6 @@ export const presentationOrchestrator = {
       sequence: cycle.startedTick,
       tags: [cycle.doctrineId, cycle.grammar.shape, cycle.grammar.aftermathKind, outcome, 'aftermath'],
     });
-    this._doctrineCycles.delete(sourceId);
     return true;
   },
 

@@ -52,6 +52,12 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'mining.drill.gas_hazard': 'presentation.mining.gas_hazard',
   'mining.drill.aborted': 'presentation.mining.drill_abort',
   'mining.drill.retry': 'presentation.mining.drill_retry',
+  'combat.doctrine.setup': 'presentation.combat.doctrine_setup',
+  'combat.doctrine.telegraph': 'presentation.combat.doctrine_telegraph',
+  'combat.doctrine.action': 'presentation.combat.doctrine_commit',
+  'combat.doctrine.aftermath': 'presentation.combat.doctrine_aftermath',
+  'combat.doctrine.break': 'presentation.combat.doctrine_break',
+  'combat.doctrine.withdraw': 'presentation.combat.doctrine_withdraw',
   'tether.attach': 'presentation.tether.attach',
   'tether.near_break': 'presentation.tether.near_break',
   'tether.break': 'presentation.tether.break',
@@ -148,6 +154,8 @@ export const presentationAdapters = {
     this._travelAudioSources = new Set();
     this._miningAudioTick = null;
     this._miningAudioSources = new Set();
+    this._doctrineAudioTick = null;
+    this._doctrineAudioSources = new Set();
   },
 
   _applyCue(cue) {
@@ -229,10 +237,13 @@ export const presentationAdapters = {
   },
 
   _applyAudio(cue) {
-    const audioId = PRESENTATION_AUDIO_CUE_BY_ID[cue && cue.id];
-    if (!audioId) return null;
+    const mappedAudioId = PRESENTATION_AUDIO_CUE_BY_ID[cue && cue.id];
+    if (!mappedAudioId) return null;
+    const audioId = doctrineAudioId(cue, mappedAudioId);
     if (cue.id.startsWith('travel.') && !this._claimTravelAudioFloor(cue)) return null;
     if (cue.id.startsWith('mining.') && !this._claimMiningAudioFloor(cue)) return null;
+    if (cue.id.startsWith('combat.doctrine.') && !doctrineCueOwnsAudio(cue)) return null;
+    if (cue.id.startsWith('combat.doctrine.') && !this._claimDoctrineAudioFloor(cue)) return null;
     const payload = {
       id: audioId,
       cueId: cue.id,
@@ -271,6 +282,19 @@ export const presentationAdapters = {
     const sourceEvent = cue.sourceEvent || cue.id;
     if (this._miningAudioSources.has(sourceEvent)) return false;
     this._miningAudioSources.add(sourceEvent);
+    return true;
+  },
+
+  _claimDoctrineAudioFloor(cue) {
+    const tick = currentTick(this.state);
+    if (this._doctrineAudioTick !== tick) {
+      this._doctrineAudioTick = tick;
+      this._doctrineAudioSources = new Set();
+    }
+    // Doctrine telegraphs are squad information: several actors changing together still speak once.
+    const key = cue.sourceEvent || cue.id;
+    if (this._doctrineAudioSources.has(key)) return false;
+    this._doctrineAudioSources.add(key);
     return true;
   },
 
@@ -332,6 +356,26 @@ function miningAudioRate(cue) {
     if (tags.includes('soft')) return 1.12;
   }
   return 1;
+}
+
+function doctrineAudioId(cue, fallback) {
+  if (!cue || !String(cue.id || '').startsWith('combat.doctrine.')) return fallback;
+  const doctrineId = ['interceptor_flyby', 'tether_control_raider', 'ranged_disengager']
+    .find((id) => Array.isArray(cue.tags) && cue.tags.includes(id));
+  if (!doctrineId) return fallback;
+  const stage = cue.id.endsWith('.setup') ? 'setup'
+    : cue.id.endsWith('.break') ? 'break'
+      : cue.id.endsWith('.withdraw') ? 'withdraw'
+        : null;
+  if (!stage) return fallback;
+  return `presentation.combat.${doctrineId}.${stage}`;
+}
+
+function doctrineCueOwnsAudio(cue) {
+  if (finite(cue && cue.budgets && cue.budgets.voices, 0) <= 0) return false;
+  // Full flee already owns a faction bark/combat-outcome voice. Phase recovery has no such owner.
+  if (cue.id === 'combat.doctrine.withdraw' && cue.sourceEvent === 'ai:flee') return false;
+  return true;
 }
 
 function copyObject(value) {

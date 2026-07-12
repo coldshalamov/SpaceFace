@@ -306,6 +306,21 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.mining.gas_hazard': 'sfx_mining_gas_hazard',
   'presentation.mining.drill_abort': 'sfx_mining_drill_abort',
   'presentation.mining.drill_retry': 'sfx_mining_drill_retry',
+  'presentation.combat.doctrine_setup': 'sfx_encounter_escalation',
+  'presentation.combat.doctrine_telegraph': 'sfx_encounter_escalation',
+  'presentation.combat.doctrine_commit': 'sfx_encounter_escalation',
+  'presentation.combat.doctrine_aftermath': 'sfx_encounter_escalation',
+  'presentation.combat.doctrine_break': 'sfx_doctrine_break',
+  'presentation.combat.doctrine_withdraw': 'sfx_doctrine_withdraw',
+  'presentation.combat.interceptor_flyby.setup': 'sfx_doctrine_flyby',
+  'presentation.combat.interceptor_flyby.break': 'sfx_doctrine_flyby_break',
+  'presentation.combat.interceptor_flyby.withdraw': 'sfx_doctrine_flyby_withdraw',
+  'presentation.combat.tether_control_raider.setup': 'sfx_doctrine_tether_spool',
+  'presentation.combat.tether_control_raider.break': 'sfx_doctrine_tether_break',
+  'presentation.combat.tether_control_raider.withdraw': 'sfx_doctrine_tether_withdraw',
+  'presentation.combat.ranged_disengager.setup': 'sfx_doctrine_ranged_charge',
+  'presentation.combat.ranged_disengager.break': 'sfx_doctrine_ranged_break',
+  'presentation.combat.ranged_disengager.withdraw': 'sfx_doctrine_ranged_withdraw',
   'presentation.shield.collapse': 'sfx.shieldBreak',
   'presentation.subsystem.disabled': 'sfx_ui_alert',
   'presentation.scenario.signal': 'sfx_ui_alert',
@@ -960,12 +975,8 @@ export const audio = {
     const now = Number(this.state.simTime) || 0;
     this.rt._doctrineThreatUntil = Math.max(this.rt._doctrineThreatUntil || -1e9, now + 6);
     this._markMusicDirty();
-    // Several squad members can enter the same phase on one tick. One signal speaks for the group.
-    if (now - (this.rt._lastDoctrineCueAt || -1e9) < 0.35) return;
-    this.rt._lastDoctrineCueAt = now;
-    const owner = p.entityId != null && this.state.entities && this.state.entities.get(p.entityId);
-    const signature = DOCTRINE_AUDIO_SIGNATURES[p.doctrineId];
-    this.play(signature.recipeId, { position: owner && owner.pos, gain: 0.72 });
+    // Presentation owns the audible setup/phase family. This raw seam only keeps adaptive music
+    // pressure truthful; playing here would stack a second doctrine voice under the semantic cue.
   },
 
   _onEncounterTelegraphAudio(p) {

@@ -24,12 +24,31 @@ const DOCTRINE_GRAMMARS = Object.freeze({
   ranged_disengager: grammar('ranged_disengager', 'bracket', '#ff5c5c', 'weapon_charge', 'fire_window', 'reset'),
 });
 
+const BREAK_PHASES = Object.freeze({
+  interceptor_flyby: new Set(['extend', 'breakaway']),
+  tether_control_raider: new Set(['escape']),
+  ranged_disengager: new Set(['reset', 'retreat']),
+});
+
+const WITHDRAW_PHASES = Object.freeze({
+  interceptor_flyby: new Set(['reform']),
+  tether_control_raider: new Set(['reform']),
+  ranged_disengager: new Set(['outer_standoff']),
+});
+
 export function isLiveDoctrineId(id) {
   return typeof id === 'string' && Object.hasOwn(DOCTRINE_GRAMMARS, id);
 }
 
 export function grammarForDoctrine(id) {
   return DOCTRINE_GRAMMARS[id] || null;
+}
+
+export function doctrinePhaseStage(doctrineId, phase) {
+  if (!isLiveDoctrineId(doctrineId) || typeof phase !== 'string') return null;
+  if (BREAK_PHASES[doctrineId].has(phase)) return 'break';
+  if (WITHDRAW_PHASES[doctrineId].has(phase)) return 'withdraw';
+  return null;
 }
 
 export function damageLayerHierarchy(payload = {}) {
