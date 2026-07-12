@@ -1,0 +1,19 @@
+{
+  "schema": "spaceface.m4HeliosHub.failureReference.v1",
+  "packet": "M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001",
+  "rejected": [
+    "Primitive blockouts / beveled boxes as final forms",
+    "Accessory-only / floating module assemblies without continuous mass",
+    "Generic single gray materials without ORM/normal maps",
+    "File-size proxies (large GLB without hull/body substance)",
+    "Missing SOCKET_Structure_Core or COLLISION_HULL",
+    "Missing Meshopt/KTX2 on release candidates"
+  ],
+  "acceptance": [
+    "Continuous boolean-union primary shells",
+    "Multi-material Helios identity (hull/mech/accent/warm/glass or rock)",
+    "1024 baseColor + ORM + normal families",
+    "LOD0/1/2 material-merged; emissive hooks keep-separate",
+    "Beauty multi-angle + readability scales under .devshots/m4-helios-hub"
+  ]
+}

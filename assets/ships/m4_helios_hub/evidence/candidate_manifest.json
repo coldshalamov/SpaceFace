@@ -1,0 +1,22 @@
+{
+  "packet": "M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001",
+  "assets": [
+    {
+      "id": "helios_hub_station",
+      "liveId": "place_station_trade_hub",
+      "candidate": "assets/ships/m4_helios_hub/release_candidates/places/helios_hub_station.glb",
+      "candidateSha256": "1068932AD6AC28B381B250A028E9677D3418320091F26C0F6BF1EF2FECE248B5",
+      "candidateBytes": 58135288,
+      "materials": [
+        "SF_AmberEmission",
+        "SF_Armor_K0PBR",
+        "SF_CyanEmission",
+        "SF_HullDark_K0PBR",
+        "SF_Machinery_K0PBR",
+        "SF_QuaterniusTrim_CC0",
+        "SF_Window",
+        "SF_Radiator"
+      ]
+    }
+  ]
+}

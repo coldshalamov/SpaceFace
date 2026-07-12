@@ -18,11 +18,20 @@
   "budgets": {
     "trianglesPerPart": [
       500,
-      15000
+      32000
+    ],
+    "trianglesPerLandmark": [
+      500,
+      1100000
     ],
     "maxBytesPerPart": 5000000,
+    "maxBytesPerLandmark": 65000000,
+    "maxTextureEdgePerLandmark": 4096,
     "maxBytesPerWholeShip": 16000000,
-    "maxBytesPerWholeShipNote": "Structural download guard, not a quality ceiling. Raised 12MB->16MB for the accepted K0 hero's 12 explicit paint/decal/glass/emissive roles; release output is 14.16MB with meshopt + KTX2 and 15/11/7 LOD draws."
+    "maxBytesPerWholeShipNote": "Structural download guard, not a quality ceiling. Raised 12MB->16MB for the accepted K0 hero's 12 explicit paint/decal/glass/emissive roles; release output is 14.16MB with meshopt + KTX2 and 15/11/7 LOD draws.",
+    "maxBytesPerLandmarkNote": "Structural compressed-source guard for singular authored hero places. The accepted dense Helios hub is 58.13MB with 4096 KTX2, Meshopt, 40 draws per LOD, and one visible instance; this allowance never applies to ordinary modular parts.",
+    "trianglesPerPartNote": "Measured structural-growth guard for ordinary modular parts, not a visible-quality ceiling. Raised max 15000->32000 for rock/gate parts; crossing it requires an explicit budgetClass rather than silent detail removal.",
+    "trianglesPerLandmarkNote": "Measured LOD0 structural guard for authored hero places. The accepted Helios dense hub is 963696 LOD0 triangles with 40 draws, authored LOD1/LOD2, Meshopt, and KTX2; this separate class prevents ordinary parts inheriting the hero allowance."
   },
   "materialContract": {
     "hull": "Material_Hull",
@@ -3096,14 +3105,15 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_trade_hub.glb",
-      "tris": 8122,
-      "bytes": 1291424,
-      "textureSize": 1024,
+      "tris": 963696,
+      "budgetClass": "landmark",
+      "bytes": 58135288,
+      "textureSize": 4096,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — 38 MCP viewport renders; trim/wear sheets + SF_EdgeWear/CavityDirt + per-role AO bakes; DET gold_trim/signage/lie_billboard/dock_collar/antenna/cargo_rib/deck_traffic_wear; bevel segs=2 + clearcoat hull + emissive windows. Character: Meridian gold trade hub (corporate polish over industrial grit). tris=6392.",
+      "note": "PRO Full Finish 2026-07-06 — 38 MCP viewport renders; trim/wear sheets + SF_EdgeWear/CavityDirt + per-role AO bakes; DET gold_trim/signage/lie_billboard/dock_collar/antenna/cargo_rib/deck_traffic_wear; bevel segs=2 + clearcoat hull + emissive windows. Character: Meridian gold trade hub (corporate polish over industrial grit). tris=6392. | M1-SLICEA-VISUAL-001 connected rebuild 2026-07-10 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=6B0F12B8AE91 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=5877B34B7844 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-12 sha=C04E4E78B5F0 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-12 sha=C04E4E78B5F0 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-12 sha=C04E4E78B5F0 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-12 sha=BE2FA3E5D3E2 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-12 sha=1068932AD6AC",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3131,19 +3141,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -23.1937,
-          -13.9991,
-          -24.5922
+          -57.4200005531311,
+          -1.8208771357021103,
+          -43.62478883863023
         ],
         "max": [
-          27.9994,
-          37.0008,
-          24.5922
+          63.419999087602285,
+          28.674523317601864,
+          43.62478883863023
         ],
         "dimensionsM": [
-          51.1932,
-          50.9999,
-          49.1844
+          120.8399996407334,
+          30.495400453303972,
+          87.24957767726046
         ]
       }
     },

@@ -25,8 +25,9 @@ const CHUNK_JSON = 0x4e4f534a;
 // Documented thresholds — quality-preserving, not "make it tiny".
 const MAX_TEXTURE_EDGE = 2048;
 const TEXTURE_ALLOWLIST = new Set([
-  // Add explicit release-relative paths when a hero asset needs documented >2K textures.
-  // Example: 'places/place_station_trade_hub.glb',
+  // Singular hero landmark: full 4096 source is preserved as 4096 UASTC KTX2 with mipmaps;
+  // one visible instance, 40 draws per LOD, explicit distance LODs. This is not a general 4K pass.
+  'places/place_station_trade_hub.glb',
 ]);
 const SMALL_PART_MAX_MATERIALS = 16;
 const STATION_SCALE_MAX_MATERIALS = 28;
@@ -228,6 +229,8 @@ function countLodMarkers(nodes, meshes, gltfJson) {
 function countMissingNormals(meshes) {
   let missing = 0;
   for (const mesh of meshes) {
+    // Collision helpers are explicitly non-rendered contract geometry, not lit surface meshes.
+    if (/collision/i.test(mesh.getName() || '')) continue;
     for (const primitive of mesh.listPrimitives()) {
       const position = primitive.getAttribute('POSITION');
       if (!position || position.getCount() <= 0) continue;

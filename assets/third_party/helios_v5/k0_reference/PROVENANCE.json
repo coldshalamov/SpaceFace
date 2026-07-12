@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "assetFamily": "SpaceFace SF-K0 Borrowed Time Revamp",
+  "sourceType": "user-supplied original project asset package",
+  "sourceArchives": [
+    {
+      "path": "C:/Users/93rob/Downloads/SpaceFace_SF-K0_Borrowed-Time_Revamp.zip",
+      "sha256": "5457dacd44b63cf170ecf65db253bb607d7615b8ddbd3cf97666d155ba355000"
+    },
+    {
+      "path": "C:/Users/93rob/Downloads/SpaceFace_SF-K0_Borrowed-Time_Runtime.zip",
+      "sha256": "d4abd62179f9dfede39f4df8275b2c4dbc1064e0ec3fdc936af7bc448e0759e8"
+    }
+  ],
+  "packageEvidence": [
+    {
+      "path": "README.md",
+      "sha256": "5af973ae629baa79f1facfc13693058bd89c18c0d8e7011d8e1306bb65cd15d8",
+      "claim": "The package describes itself as an original production-oriented rebuild made specifically for SpaceFace and says no third-party models, texture libraries, or downloaded kitbash assets are included."
+    },
+    {
+      "path": "docs/THIRD_PARTY.md",
+      "sha256": "be1708990f541041190d4fedbb9e236b7aa0ffbaa770d3dd94b118b9b91c31e9",
+      "claim": "No third-party meshes, texture packs, kitbash libraries, or downloaded commercial/free model assets are included; geometry, decals, and source textures were generated for the SpaceFace SF-K0 rebuild."
+    },
+    {
+      "path": "BUILD_INFO.json",
+      "sha256": "72bb630e342d0fd44ecb266bc68b6d04ec048fe2252a8f4f39b45c9b1d9504ca",
+      "claim": "Identifies coldshalamov/SpaceFace as the source repository and records thirdPartyAssetsIncluded=false."
+    },
+    {
+      "path": "MANIFEST.json",
+      "sha256": "ae162f5d2c49966e408fe04bc4ebf69e0d2279bbb5d4c964fb5972c3ba047a1e",
+      "claim": "Provides file-level sizes and SHA-256 hashes for 82 payload files; direct archive-to-extracted verification also covered MANIFEST.json and SHA256SUMS.txt."
+    }
+  ],
+  "authorization": {
+    "internalSpaceFaceUse": "authorized by the user who supplied these archives and explicitly directed that the assets may be used as reference or directly in SpaceFace",
+    "heliosV5Scope": "only the geometry and texture allowlists recorded in INVENTORY.json",
+    "thirdPartyAttributionRequiredByPackage": false
+  },
+  "licenseStatus": {
+    "formalLicenseFilePresent": false,
+    "namedCopyrightHolderPresent": false,
+    "packageAuthorshipClaim": "original SpaceFace-specific generated work with no third-party content",
+    "projectInternalUse": "permitted by direct user instruction",
+    "externalRedistribution": "not independently documented by a LICENSE/COPYING file or named rights-holder declaration in the package; preserve this provenance and obtain/record an explicit project rights statement before treating the files as generally redistributable outside SpaceFace",
+    "issue": "The evidence supports internal reuse, but the package itself does not contain a formal license grant."
+  },
+  "integrity": {
+    "revampArchiveToExtractedTree": {
+      "entriesCompared": 84,
+      "matches": 84,
+      "mismatches": 0,
+      "missing": 0,
+      "extras": 0
+    },
+    "runtimeArchiveToRevampPayload": {
+      "sharedEntries": 16,
+      "identicalPayloadEntries": 14,
+      "expectedIndexDifferences": [
+        "MANIFEST.json",
+        "SHA256SUMS.txt"
+      ]
+    }
+  },
+  "restrictions": [
+    "Reference inventory only; no live asset, render registry, or release path is authorized by this record.",
+    "Do not use Borrowed Time or K0-specific decals on Helios station assets.",
+    "Do not infer an open-source or Creative Commons license from the absence of third-party content."
+  ]
+}

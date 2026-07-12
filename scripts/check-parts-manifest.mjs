@@ -57,7 +57,11 @@ check('manifest declares texture contract',
 check('manifest declares part budgets',
   Array.isArray(manifest.budgets?.trianglesPerPart)
   && manifest.budgets.trianglesPerPart.length === 2
+  && Array.isArray(manifest.budgets.trianglesPerLandmark)
+  && manifest.budgets.trianglesPerLandmark.length === 2
   && Number.isFinite(manifest.budgets.maxBytesPerPart)
+  && Number.isFinite(manifest.budgets.maxBytesPerLandmark)
+  && Number.isFinite(manifest.budgets.maxTextureEdgePerLandmark)
   && Number.isFinite(manifest.budgets.maxBytesPerWholeShip));
 check('manifest has parts', Array.isArray(manifest.parts) && manifest.parts.length >= 20, `count=${manifest.parts && manifest.parts.length}`);
 
@@ -68,6 +72,8 @@ const filesByCategory = new Map();
 const extrasByFile = new Map();
 const triMin = manifest.budgets.trianglesPerPart[0];
 const triMax = manifest.budgets.trianglesPerPart[1];
+const landmarkTriMin = manifest.budgets.trianglesPerLandmark[0];
+const landmarkTriMax = manifest.budgets.trianglesPerLandmark[1];
 const maxBytes = manifest.budgets.maxBytesPerPart;
 const runtimeSlots = manifest.runtimeSlots || {};
 const requiredSlots = ['hull', 'cockpit', 'engine', 'fin', 'weapon', 'greeble', 'gear', 'pod', 'place'];
@@ -101,11 +107,23 @@ for (const part of manifest.parts || []) {
   check(`${label}: file path matches category`, typeof part.file === 'string' && part.file.startsWith(`${part.category}/`), `category=${part.category} file=${part.file}`);
   check(`${label}: priority is authored`, ['P0', 'P1', 'P2'].includes(part.priority), `priority=${part.priority}`);
   check(`${label}: mount origin`, part.mount === 'origin', `mount=${part.mount}`);
-  check(`${label}: texture size matches manifest contract`, part.textureSize === manifest.textureContract.resolution, `textureSize=${part.textureSize}`);
-  check(`${label}: triangle budget`, part.tris >= triMin && part.tris <= triMax, `tris=${part.tris}`);
+  const landmark = part.budgetClass === 'landmark';
+  const expectedTextureSize = landmark
+    ? manifest.budgets.maxTextureEdgePerLandmark
+    : manifest.textureContract.resolution;
+  const [partTriMin, partTriMax] = landmark
+    ? [landmarkTriMin, landmarkTriMax]
+    : [triMin, triMax];
+  check(`${label}: known budget class`, part.budgetClass == null || landmark, `budgetClass=${part.budgetClass}`);
+  check(`${label}: texture size matches budget class`, part.textureSize === expectedTextureSize,
+    `textureSize=${part.textureSize} expected=${expectedTextureSize}`);
+  check(`${label}: triangle budget`, part.tris >= partTriMin && part.tris <= partTriMax,
+    `tris=${part.tris} class=${part.budgetClass || 'part'} max=${partTriMax}`);
   const productionWholeShip = part.category === 'wholeships'
     && placeAuthoringEntries[part.id]?.production_whole_ship === true;
-  const byteBudget = productionWholeShip ? manifest.budgets.maxBytesPerWholeShip : maxBytes;
+  const byteBudget = productionWholeShip
+    ? manifest.budgets.maxBytesPerWholeShip
+    : landmark ? manifest.budgets.maxBytesPerLandmark : maxBytes;
   check(`${label}: byte budget`, part.bytes > 0 && part.bytes <= byteBudget, `bytes=${part.bytes} max=${byteBudget}`);
   check(`${label}: bounds vectors declared`, vector3(part.bounds?.min) && vector3(part.bounds?.max) && vector3(part.bounds?.dimensionsM));
 

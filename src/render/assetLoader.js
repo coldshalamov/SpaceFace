@@ -65,7 +65,6 @@ export const ASSET_RUNTIME_DECODER_CONTRACT = Object.freeze({
   ]),
 });
 
-const runtimeByRenderer = new WeakMap();
 const warned = new Set();
 const WHOLE_SHIP_BODY_MIN_TRIS = 800;
 const WHOLE_SHIP_ACCESSORY_TOKENS = Object.freeze(['antenna', 'decal', 'canopy', 'lens', 'clamp', 'brace', 'identity', 'cockpit']);
@@ -90,6 +89,93 @@ export class AssetContractError extends Error {
     this.url = url;
     this.errors = errors;
     this.warnings = warnings;
+  }
+}
+
+/**
+ * Admit one task while the runtime is active. The task is cached before its factory runs so a
+ * synchronous retirement owns (and awaits) every task whose admission already succeeded.
+ */
+export function admitAuthoredAssetTask(runtime, cacheKey, createTask) {
+  if (!runtime || runtime.retiring) return null;
+  if (!runtime.assets.has(cacheKey)) {
+    const task = Promise.resolve().then(createTask);
+    runtime.assets.set(cacheKey, task);
+    const pendingTasks = runtime.pendingAssetTasks || (runtime.pendingAssetTasks = new Set());
+    pendingTasks.add(task);
+    task.then(
+      () => pendingTasks.delete(task),
+      () => pendingTasks.delete(task),
+    );
+  }
+  return runtime.assets.get(cacheKey);
+}
+
+/**
+ * Retire one decoder runtime without revoking worker object URLs that in-flight asset tasks own.
+ * Cache visibility closes synchronously; decoder disposal happens once after the task snapshot has
+ * settled, including rejection paths.
+ */
+export function retireAuthoredAssetRuntime(runtime) {
+  if (!runtime) return Promise.resolve();
+  if (runtime.retirementPromise) return runtime.retirementPromise;
+
+  runtime.retiring = true;
+  const ownedTasks = runtime.pendingAssetTasks
+    ? [...runtime.pendingAssetTasks]
+    : [...runtime.assets.values()];
+  runtime.assets.clear();
+  runtime.failures.clear();
+  if (runtime.pendingAssetTasks) runtime.pendingAssetTasks.clear();
+
+  runtime.retirementPromise = Promise.allSettled(ownedTasks)
+    .then(() => disposeRuntimeDecoders(runtime), () => disposeRuntimeDecoders(runtime))
+    .then(() => undefined, () => undefined);
+  return runtime.retirementPromise;
+}
+
+/**
+ * Renderer-to-runtime ownership. Disposal detaches the renderer synchronously so later callers can
+ * acquire a fresh runtime, while repeated disposal keeps the original guarded retirement Promise.
+ */
+export function createAuthoredAssetRuntimeRegistry(runtimeFactory) {
+  const activeByRenderer = new WeakMap();
+  const retirementByRenderer = new WeakMap();
+
+  function get(renderer) {
+    let runtimePromise = activeByRenderer.get(renderer);
+    if (!runtimePromise) {
+      retirementByRenderer.delete(renderer);
+      runtimePromise = Promise.resolve().then(() => runtimeFactory(renderer));
+      activeByRenderer.set(renderer, runtimePromise);
+    }
+    return runtimePromise;
+  }
+
+  function peek(renderer) {
+    return activeByRenderer.get(renderer) || null;
+  }
+
+  function dispose(renderer) {
+    const runtimePromise = activeByRenderer.get(renderer);
+    if (!runtimePromise) return retirementByRenderer.get(renderer) || Promise.resolve();
+
+    activeByRenderer.delete(renderer);
+    const retirementPromise = runtimePromise
+      .then((runtime) => retireAuthoredAssetRuntime(runtime))
+      .catch(() => undefined);
+    retirementByRenderer.set(renderer, retirementPromise);
+    return retirementPromise;
+  }
+
+  return Object.freeze({ get, peek, dispose });
+}
+
+function disposeRuntimeDecoders(runtime) {
+  const decoders = runtime.disposableDecoders || [];
+  runtime.disposableDecoders = [];
+  for (const decoder of decoders) {
+    try { if (decoder && typeof decoder.dispose === 'function') decoder.dispose(); } catch (_) {}
   }
 }
 
@@ -191,6 +277,8 @@ async function createDefaultKtx2Loader() {
 /** Module-lifetime shared KTX2 owner used by every authored-asset runtime in this process. */
 const sharedKtx2LoaderOwner = createSharedKtx2LoaderOwner();
 
+const authoredAssetRuntimeRegistry = createAuthoredAssetRuntimeRegistry(createRuntime);
+
 /**
  * Load and validate one authored GLB part. Failures resolve to null by contract: the caller's
  * procedural part remains authoritative and no entity may disappear because an asset is absent.
@@ -207,23 +295,25 @@ export async function loadAuthoredPart(url, options = {}) {
     return null;
   }
 
+  if (runtime.retiring) return null;
+
   const cacheKey = `${url}::${slot || '*'}`;
-  if (!runtime.assets.has(cacheKey)) {
-    const task = validateWholeShipGlbJson(url)
+  return admitAuthoredAssetTask(runtime, cacheKey, () => (
+    validateWholeShipGlbJson(url)
       .then(() => runtime.gltf.loadAsync(url))
       .then((gltf) => compileBlueprint(url, gltf, slot))
       .catch((error) => {
-        runtime.failures.set(cacheKey, error);
-        if (error instanceof AssetContractError) {
-          if (!optional) warnOnce(cacheKey, error.message);
-        } else if (!optional) {
-          warnOnce(cacheKey, `[assetLoader] failed to load ${url}; procedural fallback retained`, error);
+        if (!runtime.retiring) {
+          runtime.failures.set(cacheKey, error);
+          if (error instanceof AssetContractError) {
+            if (!optional) warnOnce(cacheKey, error.message);
+          } else if (!optional) {
+            warnOnce(cacheKey, `[assetLoader] failed to load ${url}; procedural fallback retained`, error);
+          }
         }
         return null;
-      });
-    runtime.assets.set(cacheKey, task);
-  }
-  return runtime.assets.get(cacheKey);
+      })
+  ));
 }
 
 export async function preloadAuthoredParts(requests, renderer) {
@@ -267,7 +357,7 @@ export async function getAuthoredAssetRuntimeInfo(renderer) {
 }
 
 export function invalidateAuthoredAsset(renderer, url = null) {
-  const runtimePromise = runtimeByRenderer.get(renderer);
+  const runtimePromise = authoredAssetRuntimeRegistry.peek(renderer);
   if (!runtimePromise) return;
   runtimePromise.then((runtime) => {
     if (!url) {
@@ -281,26 +371,11 @@ export function invalidateAuthoredAsset(renderer, url = null) {
 }
 
 export function disposeAuthoredAssetRuntime(renderer) {
-  const runtimePromise = runtimeByRenderer.get(renderer);
-  if (!runtimePromise) return;
-  runtimeByRenderer.delete(renderer);
-  runtimePromise.then((runtime) => {
-    runtime.assets.clear();
-    runtime.failures.clear();
-    for (const decoder of runtime.disposableDecoders || []) {
-      try { if (decoder && typeof decoder.dispose === 'function') decoder.dispose(); } catch (_) {}
-    }
-    runtime.disposableDecoders = [];
-  }).catch(() => {});
+  return authoredAssetRuntimeRegistry.dispose(renderer);
 }
 
 function runtimeFor(renderer) {
-  let promise = runtimeByRenderer.get(renderer);
-  if (!promise) {
-    promise = createRuntime(renderer);
-    runtimeByRenderer.set(renderer, promise);
-  }
-  return promise;
+  return authoredAssetRuntimeRegistry.get(renderer);
 }
 
 async function createRuntime(renderer) {
@@ -325,7 +400,18 @@ async function createRuntime(renderer) {
     await attachRuntimeDecoders(gltf, renderer, decoders, disposableDecoders);
   }
 
-  return { gltf, assets: new Map(), failures: new Map(), source, decoders, paths, disposableDecoders };
+  return {
+    gltf,
+    assets: new Map(),
+    pendingAssetTasks: new Set(),
+    failures: new Map(),
+    source,
+    decoders,
+    paths,
+    disposableDecoders,
+    retiring: false,
+    retirementPromise: null,
+  };
 }
 
 async function attachRuntimeDecoders(gltf, renderer, decoders, disposableDecoders) {
@@ -419,6 +505,13 @@ function compileBlueprint(url, gltf, expectedSlot) {
     }
     if (node.isLine || node.isPoints) {
       errors.push(`${label(node)} is a ${node.isLine ? 'line' : 'points'} primitive; ship parts must use triangle meshes`);
+      return;
+    }
+    const nonRenderHelper = normalizedName === 'COLLISION_HULL'
+      || node.userData?.nonRender === true
+      || node.userData?.spaceface?.nonRender === true;
+    if (node.isMesh && nonRenderHelper) {
+      node.visible = false;
       return;
     }
     if (node.isMesh) {
@@ -621,9 +714,11 @@ function validatePrimitive(node, material, canopy, gltf, metadata, errors, warni
   const prefix = label(node);
   const geometry = node.geometry;
   const legacyPart = metadata && metadata.legacyPart === true;
+  const factorOnly = Array.isArray(metadata && metadata.factorOnlyMaterials)
+    && metadata.factorOnlyMaterials.includes(material.name);
   if (!geometry.getAttribute('position')) errors.push(`${prefix} has no positions`);
   if (!geometry.getAttribute('normal')) errors.push(`${prefix} has no vertex normals`);
-  if (!geometry.getAttribute('uv')) errors.push(`${prefix} has no UV0 for baseColor/normal maps`);
+  if (!factorOnly && !geometry.getAttribute('uv')) errors.push(`${prefix} has no UV0 for baseColor/normal maps`);
   if (material.normalMap && !geometry.getAttribute('tangent')) {
     if (legacyPart) warnings.push(`${prefix} has a normal map but no authored tangent attribute`);
     else errors.push(`${prefix} has a normal map but no authored tangent attribute`);
@@ -639,9 +734,9 @@ function validatePrimitive(node, material, canopy, gltf, metadata, errors, warni
   const ao = material.aoMap;
   const rough = material.roughnessMap;
   const metal = material.metalnessMap;
-  if (!map && !legacyPart) errors.push(`${prefix} is missing baseColor map`);
-  if (!normal && !legacyPart) errors.push(`${prefix} is missing tangent-space normal map`);
-  if ((!ao || !rough || !metal) && !legacyPart) errors.push(`${prefix} is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)`);
+  if (!map && !legacyPart && !factorOnly) errors.push(`${prefix} is missing baseColor map`);
+  if (!normal && !legacyPart && !factorOnly) errors.push(`${prefix} is missing tangent-space normal map`);
+  if ((!ao || !rough || !metal) && !legacyPart && !factorOnly) errors.push(`${prefix} is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)`);
 
   if (map && map.colorSpace !== THREE.SRGBColorSpace) errors.push(`${prefix} baseColor map is not tagged sRGB`);
   if (normal) {
@@ -734,7 +829,10 @@ function isWholeShipUrl(url) {
 
 async function validateWholeShipGlbJson(url) {
   if (!isWholeShipUrl(url) || typeof fetch !== 'function') return;
-  const response = await fetch(url, { cache: 'force-cache' });
+  // Electron intentionally keeps a stable localhost origin so saves persist. Revalidate whole-ship
+  // bodies on that origin: force-cache can otherwise retain a pre-revamp GLB across app launches and
+  // reject the current on-disk asset before GLTFLoader ever sees it.
+  const response = await fetch(url, { cache: 'no-cache' });
   if (!response.ok) throw new AssetContractError(url, [`whole-ship GLB fetch failed: HTTP ${response.status}`]);
   const bytes = new Uint8Array(await response.arrayBuffer());
   const gltf = parseGlbJson(bytes);

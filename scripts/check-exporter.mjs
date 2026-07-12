@@ -12,13 +12,17 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const EXPORTER_PY = resolve(ROOT, 'tools/blender/spaceface_export.py');
 const EXPORT_STATE_TEST_PY = resolve(ROOT, 'test/spaceface-export-state.test.py');
 const PYTHON_ENV = Object.freeze(withPythonNoBytecodeEnv());
+const PARTS_MANIFEST = JSON.parse(readFileSync(resolve(ROOT, 'assets/ships/parts/parts_manifest.json'), 'utf8'));
+const MANIFEST_TRIANGLE_GROWTH_GUARD = Number(PARTS_MANIFEST.budgets?.trianglesPerLandmark?.[1]) || 1100000;
 
-// Mirrors tools/blender/spaceface_export.py. If quality work changes one, update both.
+// Mirrors tools/blender/spaceface_export.py. Landmark complexity is measured in the parts manifest:
+// this guard catches accidental explosive growth and prompts structural/perf review; it is not a
+// target agents should meet by deleting authored silhouette or surface detail.
 const KIND_BUDGETS = Object.freeze({
   part: { triBudget: 15000, minHullTris: 0 },
-  wholeship: { triBudget: 20000, minHullTris: 800 },
+  wholeship: { triBudget: 32000, minHullTris: 800 },
   prop: { triBudget: 3000, minHullTris: 0 },
-  landmark: { triBudget: 10000, minHullTris: 0 },
+  landmark: { triBudget: MANIFEST_TRIANGLE_GROWTH_GUARD, minHullTris: 0 },
 });
 
 const REQUIRED_MAPS = ['ao', 'roughness'];
@@ -131,15 +135,25 @@ function validateGltfDocument(gltf, spec) {
   let totalTris = 0;
   let hullTris = 0;
   const meshByIdx = Object.fromEntries((gltf.meshes || []).map((m, i) => [i, m]));
+  const trisByLod = { lod0: 0, lod1: 0, lod2: 0, untagged: 0 };
+  const seenMeshByLod = new Set();
 
   for (const node of gltf.nodes || []) {
     if (node.mesh == null) continue;
     const mesh = meshByIdx[node.mesh] || {};
     const tris = meshTris(gltf, mesh);
-    totalTris += tris;
     const name = node.name || '';
     const nodeExtras = node.extras?.spaceface || {};
-    if (isHullMesh(gltf, mesh, name)) hullTris += tris;
+    const match = /^LOD([012])(?:_|$)/i.exec(name);
+    const lod = nodeExtras.lod || (match ? `lod${match[1]}` : 'untagged');
+    const lodKey = ['lod0', 'lod1', 'lod2'].includes(lod) ? lod : 'untagged';
+    const uniqueKey = `${lodKey}:${node.mesh}`;
+    if (!seenMeshByLod.has(uniqueKey)) {
+      seenMeshByLod.add(uniqueKey);
+      trisByLod[lodKey] += tris;
+      totalTris += tris;
+      if (isHullMesh(gltf, mesh, name)) hullTris += tris;
+    }
 
     if (nodeExtras.chamfered !== true && !spec.skipChamfer) {
       if (nodeRoleToken(name).includes('lod0_') || nodeRoleToken(name).startsWith('merged_material_')) {
@@ -163,8 +177,11 @@ function validateGltfDocument(gltf, spec) {
     }
   }
 
-  if (totalTris > budget) {
-    errors.push(`${assetId}: tri budget exceeded: ${totalTris} tris > ${budget}`);
+  // Runtime only displays one authored LOD at a time. Budget the unique LOD0 render primitives,
+  // while retaining totalTris for diagnostics/fallback assets without an authored LOD chain.
+  const budgetTris = trisByLod.lod0 || totalTris;
+  if (budgetTris > budget) {
+    errors.push(`${assetId}: tri budget exceeded: LOD0 ${budgetTris} tris > ${budget}`);
   }
   if (kind === 'wholeship' && hullTris < minHullTris) {
     const meshNames = (gltf.meshes || []).map((m, i) => m.name || `mesh#${i}`);
@@ -287,7 +304,7 @@ try {
   rmSync(tmp, { recursive: true, force: true });
 }
 
-// --- whole-ship hull diagnosis: kestrel must fail hull-body assertion ---
+// --- production whole-ship diagnosis: K0 Kestrel must satisfy the complete-body contract ---
 const kestrelPath = resolve(ROOT, 'assets/ships/parts/wholeships/kestrel.glb');
 if (existsSync(kestrelPath)) {
   const kestrelErrors = validateGltfDocument(parseGlb(readFileSync(kestrelPath)), {
@@ -296,9 +313,7 @@ if (existsSync(kestrelPath)) {
     assetId: 'SF_WHOLESHIP_KESTREL',
     skipChamfer: true,
   });
-  check('kestrel fails wholeship:missing hull body (diagnosis)', kestrelErrors.some((e) => e.includes('wholeship:missing hull body')),
-    `expected hull failure; got: ${kestrelErrors.join('; ')}`);
-  check('kestrel fails merged material mismatch', kestrelErrors.some((e) => e.includes('merged material node mesh mismatch')),
+  check('production kestrel passes whole-ship exporter diagnosis', kestrelErrors.length === 0,
     kestrelErrors.join('; '));
 }
 

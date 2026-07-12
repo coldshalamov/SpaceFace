@@ -13,6 +13,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import re
 import sys
 from typing import Any
 
@@ -29,11 +30,28 @@ except ImportError:
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
+
+def _manifest_triangle_growth_guard() -> int:
+    """Read the measured library guard; this is a structural-review trigger, not a quality target."""
+    path = os.path.join(ROOT, 'assets', 'ships', 'parts', 'parts_manifest.json')
+    try:
+        with open(path, 'r', encoding='utf-8') as handle:
+            manifest = json.load(handle)
+        value = manifest.get('budgets', {}).get('trianglesPerLandmark', [None, None])[1]
+        return int(value) if isinstance(value, (int, float)) and value > 0 else 1100000
+    except (OSError, ValueError, TypeError, IndexError):
+        return 1100000
+
+
+MANIFEST_TRIANGLE_GROWTH_GUARD = _manifest_triangle_growth_guard()
+
 KIND_BUDGETS = {
     'part': {'tri_budget': 15000, 'min_hull_tris': 0},
     'wholeship': {'tri_budget': 20000, 'min_hull_tris': 800},
     'prop': {'tri_budget': 3000, 'min_hull_tris': 0},
-    'landmark': {'tri_budget': 10000, 'min_hull_tris': 0},
+    # Place heroes retain authored silhouette/detail up to the measured manifest guard. Crossing it
+    # requests batching/LOD/perf review; it must not be "fixed" by silently lowering visible quality.
+    'landmark': {'tri_budget': MANIFEST_TRIANGLE_GROWTH_GUARD, 'min_hull_tris': 0},
 }
 
 REQUIRED_MAPS = ('ao', 'roughness')
@@ -233,6 +251,8 @@ def validate_gltf_document(gltf: dict[str, Any], spec: dict[str, Any]) -> list[s
 
     total_tris = 0
     hull_tris = 0
+    tris_by_lod = {'lod0': 0, 'lod1': 0, 'lod2': 0, 'untagged': 0}
+    seen_mesh_by_lod: set[tuple[str, int]] = set()
     mesh_by_idx = {i: m for i, m in enumerate(gltf.get('meshes') or [])}
 
     def mesh_tris(mesh: dict) -> int:
@@ -264,11 +284,19 @@ def validate_gltf_document(gltf: dict[str, Any], spec: dict[str, Any]) -> list[s
         name = node.get('name') or ''
         extras_node = (node.get('extras') or {}).get('spaceface') or {}
         if node.get('mesh') is not None:
-            mesh = mesh_by_idx.get(node['mesh'], {})
+            mesh_index = node['mesh']
+            mesh = mesh_by_idx.get(mesh_index, {})
             tris = mesh_tris(mesh)
-            total_tris += tris
-            if is_hull_mesh(mesh, name):
-                hull_tris += tris
+            lod_match = re.match(r'^LOD([012])(?:_|$)', name, re.IGNORECASE)
+            lod = extras_node.get('lod') or (f'lod{lod_match.group(1)}' if lod_match else 'untagged')
+            lod_key = lod if lod in tris_by_lod else 'untagged'
+            unique_key = (lod_key, mesh_index)
+            if unique_key not in seen_mesh_by_lod:
+                seen_mesh_by_lod.add(unique_key)
+                tris_by_lod[lod_key] += tris
+                total_tris += tris
+                if is_hull_mesh(mesh, name):
+                    hull_tris += tris
             if extras_node.get('chamfered') is not True and kind != 'fixture':
                 if 'lod0_' in name.lower() or name.lower().startswith('merged_material_'):
                     errors.append(f'{asset_id}: unchamfered hard edge at {name}')
@@ -289,8 +317,11 @@ def validate_gltf_document(gltf: dict[str, Any], spec: dict[str, Any]) -> list[s
                 ):
                     errors.append(f'wholeship:merged material node mesh mismatch: {name}')
 
-    if total_tris > budget:
-        errors.append(f'{asset_id}: tri budget exceeded: {total_tris} tris > {budget}')
+    # Runtime displays one authored LOD at a time. Use unique LOD0 render primitives for the
+    # structural guard; fall back to total unique primitives when no LOD chain is authored.
+    budget_tris = tris_by_lod['lod0'] or total_tris
+    if budget_tris > budget:
+        errors.append(f'{asset_id}: tri budget exceeded: LOD0 {budget_tris} tris > {budget}')
 
     if kind == 'wholeship' and hull_tris < min_hull_tris:
         mesh_names = [(m.get('name') or f'mesh#{i}') for i, m in enumerate(gltf.get('meshes') or [])]

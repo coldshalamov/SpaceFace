@@ -810,14 +810,14 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_station_trade_hub.glb",
       "release": "assets/ships/release/parts/places/place_station_trade_hub.glb",
-      "sourceSha256": "500e743c772bbbda64df6d112c442a089860e96a44701750e608cf35e5f52ca3",
-      "releaseSha256": "5614fc0c8aad282c5fadaf243497beef3e25942f83788a04c6bc6d850fadaf9e",
-      "sourceBytes": 1291424,
-      "releaseBytes": 423720,
-      "textures": 3,
-      "ktx2Textures": 3,
-      "meshoptBufferViews": 303,
-      "contractNodeCount": 2
+      "sourceSha256": "442667ff31c699e1f416ada680e438d0dacc354950085723597939063caf946d",
+      "releaseSha256": "3bb43c27742ef4cf92b643ad93f0aec8087c6981d50adf729c43652e7583e415",
+      "sourceBytes": 58134260,
+      "releaseBytes": 55960596,
+      "textures": 16,
+      "ktx2Textures": 16,
+      "meshoptBufferViews": 399,
+      "contractNodeCount": 124
     },
     {
       "id": "place_station_refinery",
