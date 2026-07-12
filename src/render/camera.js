@@ -24,6 +24,7 @@ const THREAT_ZOOM_BASE = 0.04;
 const THREAT_ZOOM_RANGE = 0.08;
 const TETHER_ZOOM_BASE = 0.03;
 const TETHER_ZOOM_RANGE = 0.06;
+const ACTIVE_ATTACKER_SAFE_NDC = 0.6;
 const COMPOSITION_BIAS_LERP = 1.6;
 const COMPOSITION_BIAS_SLEW = 90;
 const CONTEXT_ZOOM_LERP = 1.2;
@@ -155,16 +156,18 @@ export function resolveSpeedZoomFactor(speed, maxSpeed) {
   return SPEED_ZOOM_MIN + (SPEED_ZOOM_MAX - SPEED_ZOOM_MIN) * speedRatio;
 }
 
-export function resolveChaseComposition(state, player, focus) {
+export function resolveChaseComposition(state, player, focus, view = {}) {
   let fx = focus && Number.isFinite(focus.x) ? focus.x : (player && player.pos ? player.pos.x : 0);
   let fz = focus && Number.isFinite(focus.z) ? focus.z : (player && player.pos ? player.pos.z : 0);
   let nearbyEnemies = 0;
   let nearestThreat = null;
   let nearestThreatD2 = Infinity;
+  let activeAttacker = null;
+  let activeAttackerD2 = Infinity;
   let zoomBias = 0;
 
   if (!state || !player || !player.pos || !state.entities || typeof state.entities.values !== 'function') {
-    return { x: fx, z: fz, nearbyEnemies, hasThreatFocus: false, hasTetherFocus: false, zoomBias };
+    return { x: fx, z: fz, nearbyEnemies, hasThreatFocus: false, hasTetherFocus: false, zoomBias, minZoom: 0 };
   }
 
   // Combat composes player + nearest threat instead of only following the player.
@@ -175,6 +178,12 @@ export function resolveChaseComposition(state, player, focus) {
     const dx = e.pos.x - player.pos.x;
     const dz = e.pos.z - player.pos.z;
     const d2 = dx * dx + dz * dz;
+    const combat = e.data && e.data.combat;
+    const attacksPlayer = !!(combat && (combat.targetId === player.id || combat.lockTarget === player.id));
+    if (attacksPlayer && d2 < activeAttackerD2) {
+      activeAttacker = e;
+      activeAttackerD2 = d2;
+    }
     if (d2 < THREAT_COMPOSE_RANGE * THREAT_COMPOSE_RANGE) {
       nearbyEnemies++;
       if (d2 < nearestThreatD2) {
@@ -184,11 +193,17 @@ export function resolveChaseComposition(state, player, focus) {
     }
   }
 
-  if (nearestThreat && nearestThreatD2 > 1) {
-    const d = Math.sqrt(nearestThreatD2);
-    const bias = Math.min(THREAT_COMPOSE_MAX_BIAS, d * THREAT_COMPOSE_FRACTION);
-    fx += ((nearestThreat.pos.x - player.pos.x) / d) * bias;
-    fz += ((nearestThreat.pos.z - player.pos.z) / d) * bias;
+  const composedThreat = activeAttacker || nearestThreat;
+  const composedThreatD2 = activeAttacker ? activeAttackerD2 : nearestThreatD2;
+  if (composedThreat && composedThreatD2 > 1) {
+    const d = Math.sqrt(composedThreatD2);
+    // A contact actively attacking the player is functional context, not ambient composition.
+    // Bias near the pair midpoint; passive hostiles keep the restrained ordinary chase nudge.
+    const bias = activeAttacker
+      ? d * 0.5
+      : Math.min(THREAT_COMPOSE_MAX_BIAS, d * THREAT_COMPOSE_FRACTION);
+    fx += ((composedThreat.pos.x - player.pos.x) / d) * bias;
+    fz += ((composedThreat.pos.z - player.pos.z) / d) * bias;
     zoomBias = Math.max(zoomBias, THREAT_ZOOM_BASE + clamp01(d / THREAT_COMPOSE_RANGE) * THREAT_ZOOM_RANGE);
   }
 
@@ -205,13 +220,34 @@ export function resolveChaseComposition(state, player, focus) {
     }
   }
 
+  let minZoom = 0;
+  if (activeAttacker) {
+    const fov = Math.max(10, Math.min(140, finiteOr(view.fov, 50)));
+    const tanHalf = Math.tan(fov * Math.PI / 360);
+    const aspect = Math.max(0.45, finiteOr(view.aspect, 16 / 9));
+    const tilt = Math.max(1, Math.min(89, finiteOr(view.tiltDeg, 60))) * Math.PI / 180;
+    for (const item of [player, activeAttacker]) {
+      const radius = Math.max(0, finiteOr(item.radius, 4));
+      const dx = Math.abs(item.pos.x - fx);
+      const dz = Math.abs(item.pos.z - fz);
+      minZoom = Math.max(
+        minZoom,
+        Math.cos(tilt) * dz + radius + (dx + radius) / (tanHalf * aspect * ACTIVE_ATTACKER_SAFE_NDC),
+        Math.cos(tilt) * dz + radius + (Math.sin(tilt) * dz + radius) / (tanHalf * ACTIVE_ATTACKER_SAFE_NDC),
+      );
+    }
+    minZoom = Math.min(CAMERA_ZOOM_MAX, minZoom);
+  }
+
   return {
     x: fx,
     z: fz,
     nearbyEnemies,
     hasThreatFocus: !!nearestThreat,
+    hasActiveAttacker: !!activeAttacker,
     hasTetherFocus: !!tetherAnchor,
     zoomBias: Math.min(CONTEXT_ZOOM_MAX, zoomBias),
+    minZoom,
   };
 }
 
@@ -316,6 +352,7 @@ export function createChaseCamera(state) {
   let _compositionBiasX = 0;
   let _compositionBiasZ = 0;
   let _contextZoomBias = 0;
+  let _contextMinZoom = 0;
   let _dynamicNear = cam.near;
   const cameraDirector = createCameraDirector();
   let _directorFrame = cameraDirector.output;
@@ -466,15 +503,21 @@ export function createChaseCamera(state) {
           _compositionBiasX = 0;
           _compositionBiasZ = 0;
           _contextZoomBias = 0;
+          _contextMinZoom = 0;
         } else {
           // Seed focus is frame-local; threat/tether biases are pure relative offsets (origin-invariant).
-          const composition = resolveChaseComposition(state, p, { x: baseFx, z: baseFz });
+          const composition = resolveChaseComposition(state, p, { x: baseFx, z: baseFz }, _directorView);
           const motionScale = isMotionReduced(state) ? 0.35 : 1;
-          const desiredBiasX = (composition.x - baseFx) * motionScale;
-          const desiredBiasZ = (composition.z - baseFz) * motionScale;
+          // Keeping an active attacker visible is functional combat framing, not decorative motion.
+          // Reduced-motion may soften ambient/tether bias but must not move the actual threat out of
+          // the zoom geometry that was computed to contain it.
+          const compositionScale = composition.hasActiveAttacker ? 1 : motionScale;
+          const desiredBiasX = (composition.x - baseFx) * compositionScale;
+          const desiredBiasZ = (composition.z - baseFz) * compositionScale;
           _compositionBiasX = dampSlewed(_compositionBiasX, desiredBiasX, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
           _compositionBiasZ = dampSlewed(_compositionBiasZ, desiredBiasZ, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
-          _contextZoomBias = damp(_contextZoomBias, (composition.zoomBias || 0) * motionScale, CONTEXT_ZOOM_LERP, frameDt);
+          _contextZoomBias = damp(_contextZoomBias, (composition.zoomBias || 0) * compositionScale, CONTEXT_ZOOM_LERP, frameDt);
+          _contextMinZoom = Math.max(0, finiteOr(composition.minZoom, 0));
           fx = baseFx + _compositionBiasX;
           fz = baseFz + _compositionBiasZ;
           const desiredSafe = clampFocusToPlayerSafeRect({ x: fx, z: fz }, _playerLocalProxy, {
@@ -519,6 +562,7 @@ export function createChaseCamera(state) {
         }
         targetZoom = baseZoom * _speedZoomFactor;
         targetZoom *= (1 + _contextZoomBias);
+        targetZoom = Math.max(targetZoom, _contextMinZoom);
         const tether = state.player && state.player.tether;
         if (!directorOwnsComposition && tether && tether.active) {
           // Mining/neutral massline keeps the ordinary chase camera. Slowing to work a tether must

@@ -231,7 +231,10 @@ export const ATTACHMENT_DEFS = Object.freeze([
     // violence — boost-into-line, hard ramming, dash impulse. The masslineController harden term
     // raises this budget further under sustained load (pull-behind-fleeing-target protection).
     break: { maxTension: 840000, maxImpulse: 15200, maxYank: 12000, graceTicks: 4, stiffness: 90, damping: 6 },
-    spring: { K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 0.72, reelSafeStretchRatio: 0.66 },
+    // The force budget was doubled previously, but the independent geometric edge stayed at 0.72x
+    // rest length and remained the real snap authority for short latches. Double that usable stretch
+    // envelope as well; the massline overload controller still cuts violent/extreme-mass loads.
+    spring: { K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 1.44, reelSafeStretchRatio: 1.32 },
     // overloadGraceS: mild overload hold window for capture rhythm; catastrophic ratio still snaps immediately.
     massline: { enabled: true, overloadGraceS: 1.1 },
     limits: { maxPerOwner: 1 },

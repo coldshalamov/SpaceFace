@@ -395,8 +395,8 @@ function assertFlybyFocusNearMissAndTetherWindow() {
 
   const duration = state.player.flybyFocus.until - state.player.flybyFocus.startedAt;
   assert.ok(
-    duration >= 1.5 && duration <= 2.5,
-    `Focus window must be 1.5–2.5 sim seconds; got ${duration}`,
+    duration >= 2.75 && duration <= 3.25,
+    `Focus window must provide about three sim seconds of capture opportunity; got ${duration}`,
   );
 
   // Preserve useful tether window across the lease (latch scale stays elevated).

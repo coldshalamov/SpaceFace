@@ -219,13 +219,16 @@ test('live mining camera never tightens inside tactical view while nearby threat
   };
   const nearbyAttacker = entity(55, -190, 25, 8, {
     team: 1,
-    data: { encounter: { id: 'camera-regression-hostile-live' } },
+    data: {
+      encounter: { id: 'camera-regression-hostile-live' },
+      combat: { targetId: player.id, lockTarget: player.id },
+    },
   });
   const state = stateFor(player, [rock, nearbyAttacker], {
     tetherActive: true,
     tetherTargetId: rock.id,
   });
-  state.settings = { video: { fov: FOV, motionReduce: false } };
+  state.settings = { video: { fov: FOV, motionReduce: true } };
   state.camera = { zoom: TACTICAL_ZOOM, tilt: TILT, lookAhead: 18, lerp: 6, trauma: 0 };
   state.input = { aimWorld: null };
 
@@ -245,6 +248,36 @@ test('live mining camera never tightens inside tactical view while nearby threat
     `live mining zoom ${effectiveZoom} must not tighten inside tactical ${TACTICAL_ZOOM}`);
   assert.ok(Math.abs(state.camera.focus.x - rock.pos.x * 0.5) > 5,
     'mining camera does not midpoint-lock player and asteroid');
+  assertInFocusMargin(nearbyAttacker, frame, 0.88,
+    'active attacker remains visible under reduced motion while the player works a utility tether');
+});
+
+test('every azimuth admitted by the early Focus envelope fits the camera margin', () => {
+  for (let step = 0; step < 16; step++) {
+    const angle = step * Math.PI * 2 / 16;
+    const player = entity(1, 0, 0, 7, { team: 0, vel: { x: 0, z: 0 } });
+    let target = null;
+    let pick = null;
+    let distance = 280;
+    for (; distance >= 120 && !pick; distance -= 5) {
+      target = entity(100 + step, Math.cos(angle) * distance, Math.sin(angle) * distance, 10, {
+        team: 1,
+        vel: { x: -Math.cos(angle) * 180, z: -Math.sin(angle) * 180 },
+        data: { combat: { targetId: player.id }, weapons: [{ id: 'focus-fit-test' }] },
+      });
+      const candidateState = stateFor(player, [target]);
+      pick = pickFlybyTarget(candidateState, player, [target]);
+    }
+    assert.ok(pick, `azimuth ${step} acquires by 120 units`);
+    const state = stateFor(player, [target], { focusActive: true, focusTargetId: target.id });
+    const director = createCameraDirector();
+    director.syncFollow(0, 0, TACTICAL_ZOOM);
+    const frame = settle(director, 0.6, state, player);
+    assert.equal(frame.mode, CameraDirectorMode.FOCUS_PAIR, `azimuth ${step} enters Focus pair`);
+    assert.equal(frame.overflow, false, `azimuth ${step} does not overflow at admitted range ${distance + 5}`);
+    assertInFocusMargin(player, frame, CAMERA_DIRECTOR_FOCUS_SAFE_NDC, `azimuth ${step} player`);
+    assertInFocusMargin(target, frame, CAMERA_DIRECTOR_FOCUS_SAFE_NDC, `azimuth ${step} target`);
+  }
 });
 
 test('friendly non-hostile ship tether does not enter combat pair mode', () => {

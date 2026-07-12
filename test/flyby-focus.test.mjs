@@ -90,14 +90,21 @@ function runtimeFor(contacts, options = {}) {
   return { ...fixture, bus, timeEffects, system };
 }
 
-// RED: the old implementation accepts the obsolete 240-unit acquisition envelope.
+// A fast threat needs to be acquired early enough for the player to read the pass and press F.
+// The camera director can compose this pair within its legal engine zoom ceiling.
 {
   const p = player();
-  const atLimit = hostile(2, { pos: { x: 150, z: 0 } });
-  const outside = hostile(3, { pos: { x: 151, z: 0 } });
+  const atLimit = hostile(2, { pos: { x: 280, z: 0 }, vel: { x: -80, z: 0 } });
+  const outside = hostile(3, { pos: { x: 281, z: 0 }, vel: { x: -80, z: 0 } });
   const state = stateWith([], { player: p }).state;
-  assert.equal(pickFlybyTarget(state, p, [atLimit])?.id, 2, '150-unit camera-safe boundary is eligible');
-  assert.equal(pickFlybyTarget(state, p, [outside]), null, '151 units is outside the camera-safe Focus envelope');
+  assert.equal(pickFlybyTarget(state, p, [atLimit])?.id, 2, '280-unit early-warning boundary is eligible');
+  assert.equal(pickFlybyTarget(state, p, [outside]), null, '281 units is outside the Focus envelope');
+  const verticalTooFar = hostile(4, { pos: { x: 0, z: 280 }, vel: { x: 0, z: -200 } });
+  const verticalFrameable = hostile(5, { pos: { x: 0, z: 160 }, vel: { x: 0, z: -200 } });
+  assert.equal(pickFlybyTarget(state, p, [verticalTooFar]), null,
+    'tilted-screen vertical pass waits until the pair fits the Focus camera');
+  assert.equal(pickFlybyTarget(state, p, [verticalFrameable])?.id, 5,
+    'vertical pass arms as soon as its pair is camera-frameable');
 }
 
 // Kinematic filters: a Focus candidate must be a real, imminent pass rather than ordinary orbit.
@@ -151,7 +158,7 @@ function runtimeFor(contacts, options = {}) {
   assert.equal(f.state.player.flybyFocus.active, true);
   assert.equal(f.state.player.flybyFocus.targetId, target.id);
   assert.equal(f.state.player.targetId, target.id, 'Focus owns the authoritative player target');
-  assert.equal(f.state.player.flybyFocus.until, 2, 'window lasts exactly two simulation seconds');
+  assert.equal(f.state.player.flybyFocus.until, 3, 'window provides a full three-second latch opportunity');
   assert.equal(f.state.timeScale, 0.5, 'Focus requests 50% slow-time through the shared authority');
   assert.equal(starts.length, 1);
   assert.deepEqual(
@@ -178,10 +185,10 @@ function runtimeFor(contacts, options = {}) {
   f.timeEffects.clear('test:pause');
   assert.equal(f.state.timeScale, 0.5, 'clearing pause reveals the still-active Focus request');
 
-  f.state.simTime = 1.999;
+  f.state.simTime = 2.999;
   f.system.update(DT, f.state);
   assert.equal(f.state.player.flybyFocus.active, true);
-  f.state.simTime = 2;
+  f.state.simTime = 3;
   f.system.update(DT, f.state);
   assert.equal(f.state.player.flybyFocus.active, false);
   assert.equal(f.state.player.targetId, target.id, 'normal expiry leaves the exact target selected');
@@ -203,8 +210,8 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
   f.system.destroy();
 }
 
-// Acquisition is capped at 150 wu for camera composition, but an acquired lease is temporal: a
-// genuine 240 wu/s head-on pass must keep 50% time for the full two simulation seconds as it exits.
+// A genuine 240 wu/s head-on pass must keep 50% time through closest approach and a usable
+// post-pass latch window instead of expiring while the player is still turning to face it.
 {
   const movingPlayer = player({ vel: { x: 0, z: 0 } });
   const target = hostile(2, { pos: { x: 120, z: 0 }, vel: { x: -240, z: 0 } });
@@ -212,9 +219,9 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
   const ends = [];
   f.bus.on('flybyFocus:end', (payload) => ends.push(payload));
   f.system.update(DT, f.state);
-  assert.equal(f.state.player.flybyFocus.active, true, 'head-on pass activates inside 150 wu');
+  assert.equal(f.state.player.flybyFocus.active, true, 'head-on pass activates inside the early-warning envelope');
 
-  for (let tick = 1; tick < 120; tick++) {
+  for (let tick = 1; tick < 180; tick++) {
     target.pos.x += target.vel.x * DT;
     f.state.simTime = tick * DT;
     f.system.update(DT, f.state);
@@ -225,13 +232,13 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
   assert.equal(ends.length, 0, 'range exit cannot emit an early Focus end');
 
   target.pos.x += target.vel.x * DT;
-  f.state.simTime = 2;
+  f.state.simTime = 3;
   f.system.update(DT, f.state);
   assert.equal(f.state.player.flybyFocus.active, false);
   assert.equal(f.state.timeScale, 1);
   assert.equal(ends.length, 1);
   assert.equal(ends[0].reason, 'expired');
-  assert.equal(ends[0].endedAt, 2);
+  assert.equal(ends[0].endedAt, 3);
   f.system.destroy();
 }
 

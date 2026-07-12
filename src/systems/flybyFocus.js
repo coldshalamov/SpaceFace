@@ -1,23 +1,28 @@
 // Flyby Focus — exact high-speed threat lease for the First Flyby milestone.
 //
-// Focus owns one target for a deterministic two-sim-second window, requests 50% slow-time through
+// Focus owns one target for a deterministic three-sim-second window, requests 50% slow-time through
 // the shared time-effects authority, and reasserts state.player.targetId before tether gameplay runs.
-// The 150 wu acquisition envelope is intentionally shared with the M1.3 camera composition packet:
-// a wider starting pair cannot reliably fit inside its locked zoom-180 / 10%-margin geometry. Once
-// acquired, however, the lease is temporal and survives the target flying beyond that start range.
+// The 280 wu acquisition envelope gives a fast threat enough lead time to be read and latched. The
+// camera director may use its existing legal zoom-330 ceiling to keep that early pair in frame. Once
+// acquired, the lease is temporal and survives the target flying beyond that start range.
 // Deterministic: only state.simTime, entity kinematics, and stable ids; no RNG or wall clock.
 import { createTimeEffects } from '../core/timeEffects.js';
 import { isHostileToPlayer } from './scanner.js';
 
-const FOCUS_DURATION_S = 2.0;
+const FOCUS_DURATION_S = 3.0;
 const FOCUS_SCALE = 0.5;
-const COOLDOWN_S = 5.5;
+const COOLDOWN_S = 4.0;
 const MIN_REL_SPEED = 96;
 const MIN_CLOSING_SPEED = 25;
-const MAX_ACQUIRE_RANGE = 150;
+const MAX_ACQUIRE_RANGE = 280;
 const MAX_TIME_TO_CLOSEST_S = 2.5;
 const MAX_SURFACE_MISS = 96;
 const LATCH_SCALE = 2.6;
+const CAMERA_ENGINE_MAX_ZOOM = 330;
+const CAMERA_FOCUS_SAFE_NDC = 0.65;
+const CAMERA_FOV_DEG = 50;
+const CAMERA_ASPECT = 16 / 9;
+const CAMERA_TILT_DEG = 60;
 const TIME_EFFECT_SOURCE = 'flyby-focus';
 const FOCUS_REQUEST = Object.freeze({ scale: FOCUS_SCALE });
 
@@ -92,6 +97,30 @@ function compareStableId(a, b) {
   return ak < bk ? -1 : 1;
 }
 
+// Conservative copy of the director's fixed default pair-fit geometry. Keeping this pure and in
+// the sim avoids a forbidden render import while ensuring Focus never leases a pair the camera
+// cannot show. The 280-unit maximum remains available along screen-friendly azimuths; steep vertical
+// approaches arm closer, where the tilted camera can preserve the authored 17.5% context margin.
+function focusPairFitsCamera(player, target) {
+  const focusX = (player.pos.x + target.pos.x) * 0.5;
+  const focusZ = (player.pos.z + target.pos.z) * 0.5;
+  const tanHalf = Math.tan(CAMERA_FOV_DEG * Math.PI / 360);
+  const tilt = CAMERA_TILT_DEG * Math.PI / 180;
+  let requiredZoom = 0;
+  for (const item of [player, target]) {
+    const radius = Math.max(0, finite(item.radius, 4));
+    const dx = Math.abs(item.pos.x - focusX);
+    const dz = Math.abs(item.pos.z - focusZ);
+    const depthInset = Math.cos(tilt) * dz + radius;
+    requiredZoom = Math.max(
+      requiredZoom,
+      depthInset + (dx + radius) / (tanHalf * CAMERA_ASPECT * CAMERA_FOCUS_SAFE_NDC),
+      depthInset + (Math.sin(tilt) * dz + radius) / (tanHalf * CAMERA_FOCUS_SAFE_NDC),
+    );
+  }
+  return requiredZoom <= CAMERA_ENGINE_MAX_ZOOM;
+}
+
 function beatsBest(
   direct, timeToClosestS, closestSurfaceMiss, armed, mass, relativeSpeed, distance, id,
   bestDirect, bestTimeToClosestS, bestClosestSurfaceMiss, bestArmed, bestMass,
@@ -131,6 +160,7 @@ export function pickFlybyTarget(state, player, list) {
     const dz = ent.pos.z - pz;
     const distance = Math.hypot(dx, dz);
     if (distance > MAX_ACQUIRE_RANGE || distance < 12) continue;
+    if (!focusPairFitsCamera(player, ent)) continue;
     const evx = finite(ent.vel && ent.vel.x);
     const evz = finite(ent.vel && ent.vel.z);
     const rvx = evx - pvx;

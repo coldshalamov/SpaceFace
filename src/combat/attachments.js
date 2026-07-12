@@ -257,6 +257,7 @@ export function createAttachmentService(context) {
     if (telemetry) {
       attachment.lastTension = finiteOrZero(telemetry.tension);
       attachment.lastImpulse = finiteOrZero(telemetry.impulse);
+      attachment.lastYank = Math.abs(finiteOrZero(telemetry.yank));
     }
     const def = catalog.attachments.get(attachment.defId);
     appendCombatTrace(state.combat, state.tick, 'attachment.broken', {
@@ -383,10 +384,41 @@ export function createAttachmentService(context) {
       if (!telemetry) continue;
       attachment.lastTension = finiteOrZero(telemetry.tension);
       attachment.lastImpulse = finiteOrZero(telemetry.impulse);
+      attachment.lastYank = Math.abs(finiteOrZero(telemetry.yank));
       attachment.physicsSpringState = telemetry.springState && typeof telemetry.springState === 'object'
         ? { ...telemetry.springState }
         : null;
       const grace = Math.max(0, Number(breakPolicy && breakPolicy.graceTicks) || 0);
+
+      // Warning is an ordered, player-visible receipt, not post-break decoration. Detect it before
+      // stepping the cut authority; the bounded warning lease below then keeps the line recoverable
+      // for presentation and pilot counterplay before `tether:broken` may be emitted.
+      if (state.tick - attachment.createdTick >= grace && breakPolicy) {
+        const tensionRatio = breakPolicy.maxTension > 0 ? attachment.lastTension / breakPolicy.maxTension : 0;
+        const impulseRatio = breakPolicy.maxImpulse > 0 ? attachment.lastImpulse / breakPolicy.maxImpulse : 0;
+        // The controller's effective yank budget can only be wider than maxYank due to battle
+        // hardening. Therefore raw yank/maxYank > .75 safely catches every yank-dominant cut while
+        // allowing an intentionally conservative early warning.
+        const yankRatio = breakPolicy.maxYank > 0 ? attachment.lastYank / breakPolicy.maxYank : 0;
+        const nearBreakRatio = Math.max(tensionRatio, impulseRatio, yankRatio);
+        if (nearBreakRatio > 0.75 && !attachment.nearBreakWarned) {
+          attachment.nearBreakWarned = true;
+          // Fifteen fixed ticks is a visible 250 ms counterplay window at 60 Hz. Catastrophic loads
+          // still fail promptly, but never before presentation has rendered at least one warning.
+          attachment.breakWarningUntilTick = state.tick + 15;
+          if (bus) bus.emit('tether:nearBreak', {
+            actorId: attachment.ownerId,
+            targetId: attachment.targetId,
+            attachmentId: attachment.id,
+            attachmentDefId: attachment.defId,
+            tension: attachment.lastTension,
+            impulse: attachment.lastImpulse,
+            yank: attachment.lastYank,
+            ratio: nearBreakRatio,
+            warningUntilTick: attachment.breakWarningUntilTick,
+          });
+        }
+      }
 
       // Massline controller: run the winch/heat/overload policy (spec §8) one step per fixed tick
       // and apply its rest-length command to the Rapier joint. Rapier still owns momentum exchange
@@ -457,6 +489,16 @@ export function createAttachmentService(context) {
         // boundary: checks and AI consume the public 'threshold' reason while the controller keeps
         // its internal cut reason for telemetry/debugging.
         if (ml.action.cut) {
+          if (Number.isFinite(attachment.breakWarningUntilTick)
+            && state.tick < attachment.breakWarningUntilTick) {
+            attachment.masslineRuntime = {
+              ...ml.runtime,
+              state: 'holding',
+              cutReason: null,
+            };
+            attachment.masslineTelemetry = { ...ml.telemetry, state: 'holding' };
+            continue;
+          }
           if (masslineAutoBreakSuppressed(attachment)) {
             const graceWindow = Math.max(0, Number(masslineDef.overloadGraceS) || 0);
             attachment.masslineRuntime = {
@@ -481,23 +523,6 @@ export function createAttachmentService(context) {
       }
 
       if (state.tick - attachment.createdTick < grace) continue;
-      let nearBreak = false;
-      if (breakPolicy) {
-        const tensionRatio = breakPolicy.maxTension > 0 ? attachment.lastTension / breakPolicy.maxTension : 0;
-        const impulseRatio = breakPolicy.maxImpulse > 0 ? attachment.lastImpulse / breakPolicy.maxImpulse : 0;
-        nearBreak = Math.max(tensionRatio, impulseRatio) > 0.75;
-      }
-      if (nearBreak && !attachment.nearBreakWarned) {
-        attachment.nearBreakWarned = true;
-        if (bus) bus.emit('tether:nearBreak', {
-          actorId: attachment.ownerId,
-          targetId: attachment.targetId,
-          attachmentId: attachment.id,
-          attachmentDefId: attachment.defId,
-          tension: attachment.lastTension,
-          impulse: attachment.lastImpulse,
-        });
-      }
       if (!masslinePolicy && ((breakPolicy && attachment.lastTension > breakPolicy.maxTension) || (breakPolicy && attachment.lastImpulse > breakPolicy.maxImpulse))) {
         breakAttachment(attachment, 'threshold', attachment.ownerId, telemetry);
       }

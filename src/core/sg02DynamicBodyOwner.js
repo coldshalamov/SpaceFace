@@ -45,7 +45,7 @@ const TETHER_NOSE_SPEED_RATE = 4.8;
 const TETHER_NOSE_RATE_GAIN = 2.5;
 const TETHER_NOSE_SPEED_FOR_AUTHORITY = 120;
 const SPRING_TUNES = Object.freeze({
-  tether_standard: Object.freeze({ K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 0.72, reelSafeStretchRatio: 0.66 }),
+  tether_standard: Object.freeze({ K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 1.44, reelSafeStretchRatio: 1.32 }),
   attachment_massline: Object.freeze({ K: 170, zeta: 0.90, captureS: 0.30 }),
 });
 
@@ -876,20 +876,15 @@ export class Sg02DynamicBodyOwner {
       force += haul;
     }
 
-    const breakStretch = restLength * maxStretchRatio;
-    if (stretch > breakStretch) {
-      state.breakRequested = true;
-      state.phase = 'overload';
-      force = 0;
-      state.lastTension = Math.max(
-        spring.K * stretch + damping * Math.max(0, relativeSpeed),
-        finite(attachment.break.maxTension) + 1,
-      );
-      state.lastImpulse = Math.max(state.lastTension * this.fixedDt, finite(attachment.break.maxImpulse) + 1);
-      state.lastRelativeSpeed = relativeSpeed;
-      state.lastYank = yank;
-      return;
-    }
+    // Crossing the authored stretch edge enters a recoverable overload regime. The previous path
+    // zeroed corrective force and fabricated an immediate threshold breach, making recovery nearly
+    // impossible once the line crossed its edge. Keep applying the bounded physical spring while
+    // publishing normalized overload telemetry; the semantic massline authority then owns the
+    // deterministic grace/catastrophic cut policy. Pulling back inside the edge clears this signal.
+    const geometricOverloadRatio = restLength > 0
+      ? stretch / Math.max(restLength * maxStretchRatio, STRETCH_EPSILON)
+      : 0;
+    state.breakRequested = geometricOverloadRatio > 1;
 
     const forceImpulse = force * this.fixedDt;
     const impulse = forceImpulse * clamp(finite(attachment.forceScale, 1), 0, 4);
@@ -905,11 +900,16 @@ export class Sg02DynamicBodyOwner {
       accumulateForce(attachment.target, scratch.impulseB, this.fixedDt);
     }
 
-    state.lastTension = force;
-    state.lastImpulse = forceImpulse;
+    state.lastTension = geometricOverloadRatio > 1
+      ? Math.max(force, finite(attachment.break.maxTension) * geometricOverloadRatio)
+      : force;
+    state.lastImpulse = geometricOverloadRatio > 1
+      ? Math.max(forceImpulse, finite(attachment.break.maxImpulse) * geometricOverloadRatio)
+      : forceImpulse;
     state.lastRelativeSpeed = relativeSpeed;
     state.lastYank = yank;
-    state.phase = inCapture ? 'capture'
+    state.phase = geometricOverloadRatio > 1 ? 'overload'
+      : inCapture ? 'capture'
       : force >= finite(attachment.break.maxTension, Infinity) * 0.75 ? 'overload'
       : 'loaded';
     if (inCapture) {

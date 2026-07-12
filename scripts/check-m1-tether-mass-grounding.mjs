@@ -47,6 +47,10 @@ assert.deepEqual(
   { maxTension: 840000, maxImpulse: 15200, maxYank: 12000 },
   'standard immutable base strength is ~2× legacy base',
 );
+assert.equal(standard.spring.maxStretchRatio, 1.44,
+  'standard tether doubles the real geometric stretch envelope, not only unreachable force numbers');
+assert.equal(standard.spring.reelSafeStretchRatio, 1.32,
+  'active reel remains inside the doubled geometric break edge');
 const immutableBaseSnapshot = JSON.stringify(standard.break);
 const attachmentModule = await import('../src/combat/attachments.js');
 assert.equal(typeof attachmentModule.effectiveTetherBreak, 'function',
@@ -369,8 +373,10 @@ for (const seed of [47, 109]) {
   const target = make(402, 50);
   const runtime = await createSg02DynamicBodyOwner({ fixedDt: 1 / 60, quantum: 1e-5, mode: 'rapier-dynamic' });
   const breakReceipts = [];
+  const breakOrder = [];
   const bus = createBus();
-  bus.on('tether:broken', (payload) => breakReceipts.push(payload));
+  bus.on('tether:nearBreak', () => breakOrder.push({ type: 'warning', tick: state.tick }));
+  bus.on('tether:broken', (payload) => { breakOrder.push({ type: 'broken', tick: state.tick }); breakReceipts.push(payload); });
   const state = createGameState(0x4d3154);
   state.entities.clear();
   state.entityList.length = 0;
@@ -413,6 +419,10 @@ for (const seed of [47, 109]) {
     assert.equal(runtime.attachments.has(attachment.id), false, 'canonical overload removes the physical attachment');
     assert.equal(breakReceipts.length, 1, 'canonical overload emits exactly one tether:broken receipt');
     assert.equal(breakReceipts[0].attachmentId, attachment.id);
+    assert.deepEqual(breakOrder.map((event) => event.type), ['warning', 'broken'],
+      'an overload warning is emitted before the canonical break receipt');
+    assert.ok(breakOrder[1].tick - breakOrder[0].tick >= 15,
+      'the warning remains player-visible for at least 250 ms before catastrophic failure');
     assert.equal(traces.length, 1, 'canonical overload appends exactly one deterministic break trace');
   } finally {
     if (kernel) kernel.dispose();
