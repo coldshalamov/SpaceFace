@@ -8,7 +8,12 @@ import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import { createBloom } from './bloom.js';
 import { SpaceRenderGraph } from './post/spaceRenderGraph.js';
-import { getAuthoredInstancePoolDiagnostics, preloadAuthoredPartLibrary, syncAuthoredInstancePools } from './partsLibrary.js';
+import {
+  getAuthoredInstancePoolDiagnostics,
+  preloadAuthoredPartLibrary,
+  retryAuthoredPartLibrary,
+  syncAuthoredInstancePools,
+} from './partsLibrary.js';
 import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { createCollisionDebug } from './collisionDebug.js';
@@ -593,11 +598,19 @@ export const render = {
     { const i = new Image(); i.src = 'assets/cinematics/C-INTRO-01.jpg'; }
 
     this.renderer = renderer; this.scene = scene; this.cam = cam; this.spaceBg = spaceBg; this.vf = vf;
-    this.authoredPartLibraryReady = preloadAuthoredPartLibrary(renderer).catch((error) => {
-      console.warn('[render] authored part library preload failed', error);
-      return null;
-    });
-    state.render.authoredPartLibraryReady = this.authoredPartLibraryReady;
+    const beginAuthoredPartLibraryPreload = (retry = false) => {
+      const request = retry
+        ? retryAuthoredPartLibrary(renderer)
+        : preloadAuthoredPartLibrary(renderer);
+      this.authoredPartLibraryReady = request.catch((error) => {
+        console.warn('[render] authored part library preload failed', error);
+        return null;
+      });
+      state.render.authoredPartLibraryReady = this.authoredPartLibraryReady;
+      return this.authoredPartLibraryReady;
+    };
+    beginAuthoredPartLibraryPreload();
+    state.render.retryAuthoredPartLibrary = () => beginAuthoredPartLibraryPreload(true);
     this._sectorPaletteRig = createSectorPaletteRig(scene, ambient, key, rim, fill);
     this._sectorPaletteTarget = corePalette;
     state.render.sectorPalette = corePalette;

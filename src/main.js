@@ -16,7 +16,7 @@ import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { createTimeEffects } from './core/timeEffects.js';
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
 import { applyAccessibility } from './ui/accessibility.js';
-import { getAuthoredUpgradeQueueStats } from './render/partsLibrary.js';
+import { getAuthoredUpgradeQueueStats, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
 import {
   SCENARIO_47A_CONTRACT_PATH,
   mark47aPlayerActor,
@@ -28,7 +28,7 @@ import {
 const SF_DEBUG = typeof __SPACEFACE_PRODUCTION__ !== 'undefined'
   ? !__SPACEFACE_PRODUCTION__
   : debugRuntimeEnabled();
-const INITIAL_AUTHORED_VISUAL_TIMEOUT_MS = 45000;
+const INITIAL_AUTHORED_VISUAL_TIMEOUT_MS = 90000;
 
 function debugRuntimeEnabled() {
   const env = typeof process !== 'undefined' && process.env ? process.env : null;
@@ -348,12 +348,31 @@ function failGameStart(state, bus, error, text, runTransitionGuard = null, trans
 async function waitForAuthoredPartLibrary(state, timeoutMs = 20000) {
   const ready = state && state.render && state.render.authoredPartLibraryReady;
   if (!ready || typeof ready.then !== 'function') return false;
-  const result = await Promise.race([
-    ready.then(() => true, () => false),
+  const settlement = await Promise.race([
+    ready.then(
+      (value) => ({ settled: true, usable: isAuthoredPartLibraryUsable(value) }),
+      () => ({ settled: true, usable: false }),
+    ),
+    delay(timeoutMs).then(() => ({ settled: false, usable: false })),
+  ]);
+  if (settlement.usable) return true;
+  if (!settlement.settled) {
+    console.warn('[SpaceFace] authored part library was not preloaded before world spawn');
+    return false;
+  }
+
+  const retry = state && state.render && state.render.retryAuthoredPartLibrary;
+  if (typeof retry !== 'function') return false;
+  const retried = retry();
+  const retryResult = await Promise.race([
+    Promise.resolve(retried).then(
+      (value) => isAuthoredPartLibraryUsable(value),
+      () => false,
+    ),
     delay(timeoutMs).then(() => false),
   ]);
-  if (!result) console.warn('[SpaceFace] authored part library was not preloaded before world spawn');
-  return result;
+  if (!retryResult) console.warn('[SpaceFace] authored part library retry did not produce a usable library');
+  return retryResult;
 }
 
 async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000, isCurrent = null) {
@@ -394,12 +413,14 @@ function authoredVisualReadiness(state) {
     else fallback++;
   }
   const allLiveShipsAuthored = ships.length > 0 && authored === ships.length && loading === 0 && fallback === 0;
+  const queueIdle = queue.pending === 0 && !queue.running;
   return {
-    ready: allLiveShipsAuthored,
+    ready: allLiveShipsAuthored && queueIdle,
     shipCount: ships.length,
     authored,
     loading,
     fallback,
+    queueIdle,
     queue,
   };
 }

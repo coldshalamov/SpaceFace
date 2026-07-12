@@ -9,7 +9,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FACTION_PALETTES } from '../data/palettes.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
-import { loadAuthoredPart } from './assetLoader.js';
+import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 import { attachStationHlod } from './hlod.js';
@@ -213,6 +213,26 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
     missingPart: 'procedural slot fallback; never blank an entity',
   }),
 });
+
+const REQUIRED_AUTHORED_HULLS = PART_LIBRARY_CONTRACT.slots.hull;
+
+export function isAuthoredPartLibraryUsable(library) {
+  if (!(library instanceof Map)) return false;
+  const hulls = library.get('hull');
+  if (!Array.isArray(hulls) || hulls.length === 0) return false;
+  return REQUIRED_AUTHORED_HULLS.every((file) => hulls.some((record) => {
+    if (!record || typeof record.url !== 'string' || record.url.length === 0) return false;
+    const url = record.url.replace(/\\/g, '/').split(/[?#]/, 1)[0];
+    return url.endsWith(file);
+  }));
+}
+
+function assertCanonicalLibraryUsable(library) {
+  if (!isAuthoredPartLibraryUsable(library)) {
+    throw new Error('Authored part library is incomplete: every contracted whole-ship hull must load before flight.');
+  }
+  return library;
+}
 
 // Deterministic ship-definition → hull-class selection. The hull is the silhouette-defining slot,
 // so it must match the ship's authored role rather than being chosen by the generic seed-based hash.
@@ -890,11 +910,29 @@ function processUpgradeQueue(state) {
       state.running = false;
       return;
     }
-    upgradeBoundary(job.boundary, job.fallbackRoot, job.entity, job.renderer, job.scene, job.options, job.setActive)
-      .catch((error) => {
-        job.boundary.userData.authoredAssetState = 'fallback-after-error';
+    const libraryReady = resolvedCanonicalLibrary(job.renderer, job.options);
+    const batch = [job];
+    if (libraryReady) {
+      for (let index = state.jobs.length - 1; index >= 0; index--) {
+        const candidate = state.jobs[index];
+        if (resolvedCanonicalLibrary(candidate.renderer, candidate.options) !== libraryReady) continue;
+        batch.push(...state.jobs.splice(index, 1));
+      }
+    }
+    Promise.all(batch.map((queuedJob) => (
+      upgradeBoundary(
+        queuedJob.boundary,
+        queuedJob.fallbackRoot,
+        queuedJob.entity,
+        queuedJob.renderer,
+        queuedJob.scene,
+        queuedJob.options,
+        queuedJob.setActive,
+      ).catch((error) => {
+        queuedJob.boundary.userData.authoredAssetState = 'fallback-after-error';
         console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
       })
+    )))
       .finally(() => scheduleUpgradeFrame(step));
   };
   scheduleUpgradeFrame(step);
@@ -909,6 +947,16 @@ export function getAuthoredUpgradeQueueStats(scene) {
 }
 
 export function preloadAuthoredPartLibrary(renderer, options = {}) {
+  return loadCanonicalLibrary(renderer, options);
+}
+
+export async function retryAuthoredPartLibrary(renderer, options = {}) {
+  const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
+  const promises = renderer && libraryByRenderer.get(renderer);
+  const resolved = renderer && resolvedLibraryByRenderer.get(renderer);
+  if (promises) promises.delete(partRoot);
+  if (resolved) resolved.delete(partRoot);
+  await invalidateFailedAuthoredAssets(renderer);
   return loadCanonicalLibrary(renderer, options);
 }
 
@@ -1077,7 +1125,7 @@ function loadCanonicalLibrary(renderer, options = {}) {
   let promise = promises.get(partRoot);
   if (!promise) {
     const entries = Object.entries(PART_LIBRARY_CONTRACT.slots);
-    promise = Promise.all(entries.map(async ([slot, files]) => {
+    const pending = Promise.all(entries.map(async ([slot, files]) => {
       const records = await Promise.all(files.map((file) => loadAuthoredPart(`${partRoot}${file}`, {
         renderer,
         slot,
@@ -1085,7 +1133,7 @@ function loadCanonicalLibrary(renderer, options = {}) {
       })));
       return [slot, records.filter(Boolean)];
     })).then((pairs) => {
-      const library = new Map(pairs);
+      const library = assertCanonicalLibraryUsable(new Map(pairs));
       let resolved = resolvedLibraryByRenderer.get(renderer);
       if (!resolved) {
         resolved = new Map();
@@ -1093,6 +1141,10 @@ function loadCanonicalLibrary(renderer, options = {}) {
       }
       resolved.set(partRoot, library);
       return library;
+    });
+    promise = pending.catch((error) => {
+      if (promises.get(partRoot) === promise) promises.delete(partRoot);
+      throw error;
     });
     promises.set(partRoot, promise);
   }

@@ -356,18 +356,36 @@ export async function getAuthoredAssetRuntimeInfo(renderer) {
   }
 }
 
-export function invalidateAuthoredAsset(renderer, url = null) {
+export async function invalidateAuthoredAsset(renderer, url = null) {
   const runtimePromise = authoredAssetRuntimeRegistry.peek(renderer);
-  if (!runtimePromise) return;
-  runtimePromise.then((runtime) => {
+  if (!runtimePromise) return false;
+  try {
+    const runtime = await runtimePromise;
     if (!url) {
       runtime.assets.clear();
       runtime.failures.clear();
-      return;
+      return true;
     }
     for (const key of [...runtime.assets.keys()]) if (key.startsWith(`${url}::`)) runtime.assets.delete(key);
     for (const key of [...runtime.failures.keys()]) if (key.startsWith(`${url}::`)) runtime.failures.delete(key);
-  }).catch(() => {});
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function invalidateFailedAuthoredAssets(renderer) {
+  const runtimePromise = authoredAssetRuntimeRegistry.peek(renderer);
+  if (!runtimePromise) return 0;
+  try {
+    const runtime = await runtimePromise;
+    const failedKeys = [...runtime.failures.keys()];
+    for (const key of failedKeys) runtime.assets.delete(key);
+    runtime.failures.clear();
+    return failedKeys.length;
+  } catch {
+    return 0;
+  }
 }
 
 export function disposeAuthoredAssetRuntime(renderer) {
