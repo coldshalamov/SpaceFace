@@ -111,32 +111,35 @@ export const PRESENTATION_RECIPES = Object.freeze({
     importance: 0.66,
     dedupeWindowTicks: 0,
     material: 'damage',
-    lanes: laneSet('vfx.direct_combat_damage'),
-    budgets: {},
+    lanes: { ...laneSet('vfx.direct_combat_damage'), audio: 'audio.combat_aftermath' },
+    // combat:damage already owns the physical shield/armor/hull voice.
+    budgets: { voices: 0 },
     tags: ['combat', 'damage'],
   }),
   'combat.near_miss': recipe({
     importance: 0.7,
     dedupeWindowTicks: 12,
     material: 'projectile',
-    lanes: laneSet('vfx.combat_near_miss'),
-    budgets: { particles: 12 },
+    lanes: { ...laneSet('vfx.combat_near_miss'), audio: 'audio.combat_aftermath' },
+    budgets: { particles: 12, voices: 1 },
     tags: ['combat', 'near_miss'],
   }),
   'combat.player.hit': recipe({
     importance: 0.78,
     dedupeWindowTicks: 4,
     material: 'damage',
-    lanes: laneSet('vfx.direct_player_damage'),
-    budgets: {},
+    lanes: { ...laneSet('vfx.direct_player_damage'), audio: 'audio.combat_aftermath' },
+    // The raw damage owner also supplies the ship-local directional urgency voice.
+    budgets: { voices: 0 },
     tags: ['combat', 'player', 'damage'],
   }),
   'combat.player.kill': recipe({
     importance: 0.86,
     dedupeWindowTicks: 4,
     material: 'kill',
-    lanes: laneSet('vfx.direct_entity_killed', 'ui.combat_kill', 'accessibility.combat_kill'),
-    budgets: { uiPulses: 1 },
+    lanes: { ...laneSet('vfx.direct_entity_killed', 'ui.combat_kill', 'accessibility.combat_kill'), audio: 'audio.combat_aftermath' },
+    // entity:killed owns the explosion; this receipt owns UI/accessibility confirmation only.
+    budgets: { voices: 0, uiPulses: 1 },
     tags: ['combat', 'player', 'kill'],
   }),
   'tether.attach': recipe({

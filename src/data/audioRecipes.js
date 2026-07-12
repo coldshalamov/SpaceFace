@@ -685,6 +685,18 @@ export const RECIPES = [
     filterType: 'lowpass', filterFreq: 180,
   },
   {
+    // A short lateral air-cut for a projectile that genuinely crossed the player's near-miss tube.
+    // World positioning supplies direction/distance; the high-pass keeps it clear of impact weight.
+    id: 'sfx_combat_near_miss',
+    category: 'weapon',
+    type: 'noise_filtered',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.14 },
+    filterType: 'highpass', filterFreq: 1450, filterQ: 0.7,
+    pitchRange: [0.96, 1.08],
+    dopplerEnabled: true,
+  },
+  {
     id: 'sfx_kill_sine',
     category: 'explosion',
     type: 'oscillator',

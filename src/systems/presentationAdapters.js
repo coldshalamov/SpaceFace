@@ -58,6 +58,10 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'combat.doctrine.aftermath': 'presentation.combat.doctrine_aftermath',
   'combat.doctrine.break': 'presentation.combat.doctrine_break',
   'combat.doctrine.withdraw': 'presentation.combat.doctrine_withdraw',
+  'combat.damage.applied': 'presentation.combat.damage_applied',
+  'combat.near_miss': 'presentation.combat.near_miss',
+  'combat.player.hit': 'presentation.combat.player_hit',
+  'combat.player.kill': 'presentation.combat.player_kill',
   'tether.attach': 'presentation.tether.attach',
   'tether.near_break': 'presentation.tether.near_break',
   'tether.break': 'presentation.tether.break',
@@ -156,6 +160,8 @@ export const presentationAdapters = {
     this._miningAudioSources = new Set();
     this._doctrineAudioTick = null;
     this._doctrineAudioSources = new Set();
+    this._combatAftermathAudioTick = null;
+    this._combatAftermathAudioClaimed = false;
   },
 
   _applyCue(cue) {
@@ -244,14 +250,19 @@ export const presentationAdapters = {
     if (cue.id.startsWith('mining.') && !this._claimMiningAudioFloor(cue)) return null;
     if (cue.id.startsWith('combat.doctrine.') && !doctrineCueOwnsAudio(cue)) return null;
     if (cue.id.startsWith('combat.doctrine.') && !this._claimDoctrineAudioFloor(cue)) return null;
+    if (isCombatAftermathCue(cue) && !combatAftermathCueOwnsAudio(cue, this.state)) return null;
+    if (cue.id === 'combat.near_miss' && !this._claimCombatAftermathAudioFloor(cue)) return null;
     const payload = {
       id: audioId,
       cueId: cue.id,
       lane: cue.lanes && cue.lanes.audio || null,
       position: cue.position || null,
-      gain: round4(0.45 + clamp01(finite(cue.importance, 0.5)) * 0.35),
-      rate: miningAudioRate(cue),
-      duck: (cue.tags || []).includes('comms') || finite(cue.importance, 0) >= 0.85,
+      gain: combatAftermathGain(cue),
+      rate: combatAftermathRate(cue),
+      duck: shouldDuckAudio(cue),
+      // Preserve the semantic audio route for observability while the earlier raw shieldDown event
+      // remains the sole physical shield-break voice.
+      playbackOwnedByRaw: cue.id === 'shield.collapse',
     };
     this.bus.emit('presentation:audioCue', payload);
     this.bus.emit('audio:cue', payload);
@@ -295,6 +306,19 @@ export const presentationAdapters = {
     const key = cue.sourceEvent || cue.id;
     if (this._doctrineAudioSources.has(key)) return false;
     this._doctrineAudioSources.add(key);
+    return true;
+  },
+
+  _claimCombatAftermathAudioFloor(cue) {
+    const tick = currentTick(this.state);
+    if (this._combatAftermathAudioTick !== tick) {
+      this._combatAftermathAudioTick = tick;
+      this._combatAftermathAudioClaimed = false;
+    }
+    // Several projectiles can cross the player in one sim tick. Preserve every semantic/VFX receipt,
+    // but permit only one restrained flyby voice so crossfire never becomes a noise storm.
+    if (this._combatAftermathAudioClaimed) return false;
+    this._combatAftermathAudioClaimed = true;
     return true;
   },
 
@@ -376,6 +400,39 @@ function doctrineCueOwnsAudio(cue) {
   // Full flee already owns a faction bark/combat-outcome voice. Phase recovery has no such owner.
   if (cue.id === 'combat.doctrine.withdraw' && cue.sourceEvent === 'ai:flee') return false;
   return true;
+}
+
+function isCombatAftermathCue(cue) {
+  const id = String(cue && cue.id || '');
+  return id === 'combat.damage.applied'
+    || id === 'combat.near_miss'
+    || id === 'combat.player.hit'
+    || id === 'combat.player.kill'
+    || id === 'shield.collapse';
+}
+
+function combatAftermathCueOwnsAudio(cue, state) {
+  if (cue && cue.id === 'shield.collapse') return true;
+  if (finite(cue && cue.budgets && cue.budgets.voices, 0) <= 0) return false;
+  // shieldDown, combat:damage and entity:killed are the canonical physical voices. The only gap in
+  // that raw chain is a projectile passing close to the player without impact.
+  if (cue.id !== 'combat.near_miss') return false;
+  return cue.targetId != null && cue.targetId === (state && state.playerId);
+}
+
+function combatAftermathGain(cue) {
+  if (cue && cue.id === 'combat.near_miss') return 0.58;
+  return round4(0.45 + clamp01(finite(cue && cue.importance, 0.5)) * 0.35);
+}
+
+function combatAftermathRate(cue) {
+  if (cue && cue.id === 'combat.near_miss') return 1.06;
+  return miningAudioRate(cue);
+}
+
+function shouldDuckAudio(cue) {
+  if (isCombatAftermathCue(cue)) return false;
+  return (cue.tags || []).includes('comms') || finite(cue.importance, 0) >= 0.85;
 }
 
 function copyObject(value) {

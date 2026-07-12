@@ -321,6 +321,10 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.combat.ranged_disengager.setup': 'sfx_doctrine_ranged_charge',
   'presentation.combat.ranged_disengager.break': 'sfx_doctrine_ranged_break',
   'presentation.combat.ranged_disengager.withdraw': 'sfx_doctrine_ranged_withdraw',
+  'presentation.combat.damage_applied': 'sfx.hullHit',
+  'presentation.combat.near_miss': 'sfx_combat_near_miss',
+  'presentation.combat.player_hit': 'sfx.playerDamage',
+  'presentation.combat.player_kill': 'sfx.killSmall',
   'presentation.shield.collapse': 'sfx.shieldBreak',
   'presentation.subsystem.disabled': 'sfx_ui_alert',
   'presentation.scenario.signal': 'sfx_ui_alert',
@@ -1231,6 +1235,9 @@ export const audio = {
     if (!id) { this.play('sfx_ui_click', { gain: 0.7 }); return; }
     const rid = resolveAudioCueRecipeId(id);
     const opts = (cue && typeof cue === 'object') ? cue : {};
+    // Some presentation receipts must remain visible on the semantic bus even though an earlier
+    // raw event owns their physical sound. Do not turn that observability contract into a double hit.
+    if (opts.playbackOwnedByRaw) return;
     const importance = Number.isFinite(opts.importance)
       ? opts.importance
       : (opts.duck ? Math.max(PRIORITY_DUCK_THRESHOLD, 0.85) : 0);

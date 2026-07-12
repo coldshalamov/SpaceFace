@@ -113,6 +113,8 @@ assert(cues.some((cue) => cue.id === 'combat.doctrine.aftermath' && cue.tags.inc
 assert.equal(vfx.length, 0, 'direct damage receipts must leave existing combat VFX as owner');
 assert.equal(audioCues.filter((cue) => cue.cueId === 'combat.doctrine.aftermath').length, 0,
   'damage/kill own their impacts; doctrine aftermath remains a silent semantic receipt');
+assert.equal(audioCues.filter((cue) => cue.cueId === 'combat.damage.applied' || cue.cueId === 'combat.player.hit').length, 0,
+  'normalized damage receipts must not double the raw shield/armor/hull and player-damage voices');
 
 state.tick++;
 bus.emit('ai:doctrinePhase', {
@@ -242,14 +244,18 @@ const duplicateDoctrineFloors = [...doctrineAudioFloors.values()].reduce((sum, c
 assert.equal(duplicateDoctrineFloors, 0, 'one source event must never spawn two normalized doctrine voices');
 
 state.tick++;
+const normalizedKillVoicesBefore = audioCues.filter((cue) => cue.cueId === 'combat.player.kill').length;
 bus.emit('entity:killed', { id: 2, killerId: 1, type: 'ship', pos: { x: 80, z: 0 } });
 bus.flush();
 assert.equal(cues.at(-1).id, 'combat.player.kill');
 assert.equal(cues.at(-1).sourceId, 1);
 assert.equal(cues.at(-1).targetId, 2);
 assert.equal(alerts.at(-1).text, 'TARGET DESTROYED');
+assert.equal(audioCues.filter((cue) => cue.cueId === 'combat.player.kill').length, normalizedKillVoicesBefore,
+  'player kill receipt must not stack over the canonical entity:killed explosion');
 
 state.tick++;
+const nearMissAudioBefore = audioCues.length;
 bus.emit('projectile:nearMiss', {
   projectileId: 77,
   ownerId: 2,
@@ -263,6 +269,34 @@ bus.flush();
 assert.equal(cues.at(-1).id, 'combat.near_miss');
 assert.equal(vfx.at(-1).particles, 12);
 assert.equal(vfx.at(-1).lights, 0);
+assert.equal(audioCues.length, nearMissAudioBefore + 1, 'a player near miss should own exactly one audible flyby');
+assert.equal(audioCues.at(-1).id, 'presentation.combat.near_miss');
+assert.deepEqual(audioCues.at(-1).position, { x: 0, y: 0, z: 14 }, 'near-miss flyby must remain spatially truthful');
+assert.equal(audioCues.at(-1).duck, false, 'routine near misses must not duck music');
+assertFiniteRecipe(resolveAudioCueRecipeId(audioCues.at(-1).id));
+
+// NPC-only crossfire keeps its semantic/VFX receipt but cannot steal the player's audible floor.
+state.tick++;
+const npcNearMissAudioBefore = audioCues.length;
+bus.emit('projectile:nearMiss', {
+  projectileId: 78,
+  ownerId: 3,
+  targetId: 2,
+  distance: 12,
+  damageType: 'kinetic',
+  pos: { x: 76, z: 12 },
+  direction: { x: -1, z: 0 },
+});
+bus.flush();
+assert.equal(cues.at(-1).id, 'combat.near_miss');
+assert.equal(audioCues.length, npcNearMissAudioBefore, 'NPC-only near misses must remain silent to the player');
+
+for (const cueId of ['combat.damage.applied', 'combat.near_miss', 'combat.player.hit', 'combat.player.kill']) {
+  const semanticId = PRESENTATION_AUDIO_CUE_BY_ID[cueId];
+  assert(semanticId, `${cueId} needs a total SG-08 semantic mapping`);
+  assert(AUDIO_RECIPE_BY_ID[resolveAudioCueRecipeId(semanticId)], `${cueId} static semantic must resolve`);
+  assert(Number.isFinite(getPresentationRecipe(cueId).budgets.voices), `${cueId} needs a finite SG-08 voice budget`);
+}
 
 const nearMisses = [];
 const hits = [];
