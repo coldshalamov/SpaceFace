@@ -2,7 +2,12 @@
 // slots, lets the player build modules (depot/refinery/teleporter/defense), and fire the
 // teleporter. Reuses the screen-modal pattern (like station hub). Entry: pushed from the claim/base
 // binding near an already-claimed body (input.js sets state.ui.pendingClaimBodyId first).
-import { BODY_MODULES, BODY_MODULE_BY_ID, BODY_SLOTS_BY_SIZE } from '../../data/claimableBodies.js';
+import {
+  BODY_MODULES,
+  BODY_MODULE_BY_ID,
+  BODY_SLOTS_BY_SIZE,
+  BODY_SPECIALIZATIONS,
+} from '../../data/claimableBodies.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { escapeHtml } from '../comms.js';
 import { BINDINGS } from '../bindings.js';
@@ -40,6 +45,21 @@ function injectStyle() {
 #sf-base .base-slot .nm { font-weight:600; color:var(--ink); font-size:13px; margin-bottom:4px; }
 #sf-base .base-slot .eff { color:var(--accent); font-size:11px; font-family:var(--mono); }
 #sf-base .base-shop { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+#sf-base .base-specializations { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+#sf-base .base-spec { border:1px solid var(--panel-edge); border-radius:8px; padding:12px;
+  background:var(--panel); display:grid; gap:7px; align-content:start; }
+#sf-base .base-spec.active { border-color:rgba(57,208,255,.55); background:rgba(10,34,48,.72); }
+#sf-base .base-spec .nm { color:var(--ink); font-size:13px; font-weight:700; }
+#sf-base .base-spec .desc { color:var(--ink-mute); font-size:11px; line-height:1.35; }
+#sf-base .base-ledger { border:1px solid rgba(57,208,255,.25); border-radius:8px; padding:12px;
+  background:rgba(5,9,18,.88); display:grid; gap:8px; }
+#sf-base .base-ledger-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+#sf-base .base-ledger-cell { border-left:2px solid rgba(57,208,255,.32); padding-left:8px; }
+#sf-base .base-ledger-k { color:var(--ink-mute); font-family:var(--mono); font-size:9px;
+  letter-spacing:.12em; text-transform:uppercase; }
+#sf-base .base-ledger-v { color:var(--ink); font-size:12px; margin-top:2px; }
+#sf-base .base-freight { display:flex; gap:8px; flex-wrap:wrap; }
+#sf-base .base-receipt { color:var(--ink-dim); font-size:11px; }
 #sf-base .base-mod { border:1px solid var(--panel-edge); border-radius:8px; padding:12px; background:var(--panel); }
 #sf-base .base-mod .nm { font-weight:600; color:var(--ink); font-size:13px; }
 #sf-base .base-mod .desc { color:var(--ink-mute); font-size:11px; margin:4px 0 8px; min-height:28px; }
@@ -49,6 +69,10 @@ function injectStyle() {
 #sf-base button.sf-btn { width:auto; padding:8px 18px; }
 #sf-base button.sf-btn--primary { background:var(--accent); color:#04121a; }
 #sf-base .base-warn { color:var(--danger); font-size:11px; }
+@media (max-width:760px) {
+  #sf-base .base-specializations { grid-template-columns:1fr; }
+  #sf-base .base-ledger-grid { grid-template-columns:1fr 1fr; }
+}
   `;
   document.head.appendChild(s);
 }
@@ -120,6 +144,71 @@ export function describeBaseBuildAction(mod, player = {}, body = {}) {
     label: 'Build',
     title: 'Build ' + mod.name + ' on ' + (body.name || 'this base') + ' for ' + fmtCr(cost) + ' cr.',
   };
+}
+
+function storedSpecUnits(spec) {
+  if (!spec || !spec.store) return 0;
+  const sum = (bucket) => Object.values(bucket || {}).reduce((total, qty) => total + (Number(qty) || 0), 0);
+  return sum(spec.store.input) + sum(spec.store.output);
+}
+
+export function describeSpecializationAction(spec, player = {}, body = {}) {
+  if (!spec) {
+    return { state: 'missing', disabled: true, label: 'Unavailable', title: 'Select an operating identity.' };
+  }
+  const modules = Array.isArray(body.modules) ? body.modules : [];
+  const current = body.spec || null;
+  if (current && current.id === spec.id) {
+    return {
+      state: 'active', disabled: true, label: 'Active',
+      title: spec.name + ' is the current operating identity for ' + (body.name || 'this claim') + '.',
+    };
+  }
+  if (current && (storedSpecUnits(current) > 0 || current.convoy)) {
+    return {
+      state: 'occupied', disabled: true, label: 'Clear site storage',
+      title: 'Empty stored goods and finish the active convoy before re-commissioning this claim.',
+    };
+  }
+  if (!modules.includes(spec.requiresModule)) {
+    const required = BODY_MODULE_BY_ID.get(spec.requiresModule);
+    return {
+      state: 'requires', disabled: true, label: 'Build ' + ((required && required.name) || pretty(spec.requiresModule)),
+      title: spec.name + ' requires ' + ((required && required.name) || pretty(spec.requiresModule)) + ' on this claim.',
+    };
+  }
+  const credits = Math.max(0, Number(player.credits) || 0);
+  const cost = Math.max(0, Number(spec.cost) || 0);
+  if (credits < cost) {
+    const missing = cost - credits;
+    return {
+      state: 'funding', disabled: true, label: 'Need ' + fmtCr(missing) + ' cr',
+      title: spec.name + ' costs ' + fmtCr(cost) + ' cr. You need ' + fmtCr(missing) + ' more credits.',
+    };
+  }
+  return {
+    state: 'available', disabled: false,
+    label: current ? 'Re-commission · ' + fmtCr(cost) + ' cr' : 'Commission · ' + fmtCr(cost) + ' cr',
+    title: 'Commission ' + (body.name || 'this claim') + ' as ' + spec.name + ' for ' + fmtCr(cost) + ' cr.',
+  };
+}
+
+function ledgerValue(value, suffix = '') {
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: 1 }) + suffix : '—';
+}
+
+function appendLedgerCell(parent, label, value) {
+  const cell = document.createElement('div');
+  cell.className = 'base-ledger-cell';
+  const key = document.createElement('div');
+  key.className = 'base-ledger-k';
+  key.textContent = label;
+  const val = document.createElement('div');
+  val.className = 'base-ledger-v';
+  val.textContent = value;
+  cell.append(key, val);
+  parent.appendChild(cell);
 }
 
 function orderedBaseModules() {
@@ -278,6 +367,110 @@ export const baseScreen = {
       slotsWrap.appendChild(slot);
     }
     wrap.appendChild(slotsWrap);
+
+    // ---- operating identity (M5 / SPEC3-F6): one claim, one visible job ----
+    const specHead = document.createElement('div');
+    specHead.style.cssText = 'font-family:var(--mono);letter-spacing:.1em;font-size:12px;color:var(--ink-dim);text-transform:uppercase;margin-top:6px;';
+    specHead.textContent = 'Operating identity';
+    wrap.appendChild(specHead);
+
+    const specGrid = document.createElement('div');
+    specGrid.className = 'base-specializations';
+    for (const spec of BODY_SPECIALIZATIONS) {
+      const specAction = describeSpecializationAction(spec, player, body);
+      const card = document.createElement('section');
+      card.className = 'base-spec' + (body.spec && body.spec.id === spec.id ? ' active' : '');
+      card.setAttribute('aria-label', spec.name + ': ' + spec.desc);
+
+      const name = document.createElement('div');
+      name.className = 'nm';
+      name.textContent = spec.name + (specAction.state === 'active' ? ' · ACTIVE' : '');
+      const desc = document.createElement('div');
+      desc.className = 'desc';
+      desc.textContent = spec.desc;
+      const btn = document.createElement('button');
+      btn.className = 'sf-btn sf-btn--primary';
+      btn.textContent = specAction.label;
+      btn.disabled = specAction.disabled;
+      btn.title = specAction.title;
+      btn.setAttribute('aria-label', specAction.title);
+      btn.addEventListener('click', () => {
+        if (claims.specialize(body.id, spec.id)) this._render();
+      });
+      card.append(name, desc, btn);
+      specGrid.appendChild(card);
+    }
+    wrap.appendChild(specGrid);
+
+    const ledger = claims.ledger(body.id);
+    if (ledger && ledger.specId) {
+      const ledgerEl = document.createElement('section');
+      ledgerEl.className = 'base-ledger';
+      ledgerEl.setAttribute('aria-label', ledger.specName + ' operations ledger');
+      const ledgerTitle = document.createElement('div');
+      ledgerTitle.className = 'base-plan-k';
+      ledgerTitle.textContent = ledger.specName + ' · ' + String(ledger.status || 'offline').toUpperCase();
+      ledgerEl.appendChild(ledgerTitle);
+
+      const grid = document.createElement('div');
+      grid.className = 'base-ledger-grid';
+      appendLedgerCell(grid, 'Upkeep', ledgerValue(ledger.upkeepPerMin, ' cr/min'));
+      appendLedgerCell(grid, 'Input', ledgerValue(ledger.stores && ledger.stores.inputU, 'u') + ' / ' + ledgerValue(ledger.stores && ledger.stores.inputCapU, 'u'));
+      appendLedgerCell(grid, 'Output', ledgerValue(ledger.stores && ledger.stores.outputU, 'u') + ' / ' + ledgerValue(ledger.stores && ledger.stores.outputCapU, 'u'));
+      appendLedgerCell(grid, 'Defense', ledgerValue(ledger.defense && ledger.defense.rating));
+      if (ledger.throughput && ledger.specId === 'spec_refinery') {
+        appendLedgerCell(grid, 'Throughput', ledgerValue(ledger.throughput.refineRatePerS, ' ore/s'));
+      } else if (ledger.throughput && ledger.specId === 'spec_relay') {
+        appendLedgerCell(grid, 'Convoy load', ledgerValue(ledger.throughput.convoyLoadU, 'u'));
+      } else if (ledger.readiness) {
+        appendLedgerCell(grid, 'Claims covered', ledgerValue(ledger.readiness.coveredBodies));
+      }
+      appendLedgerCell(grid, 'Raid chance', ledger.risk && ledger.risk.raidEligible
+        ? ledgerValue((ledger.risk.tripChance || 0) * 100, '%') : 'Lawful volume');
+      appendLedgerCell(grid, 'Lifetime output', ledgerValue(ledger.flows && ledger.flows.refinedTotalU, 'u'));
+      appendLedgerCell(grid, 'Relay revenue', ledgerValue(ledger.flows && ledger.flows.soldTotalCr, ' cr'));
+      ledgerEl.appendChild(grid);
+
+      const freight = document.createElement('div');
+      freight.className = 'base-freight';
+      const cargoItems = (player.cargo && player.cargo.items) || {};
+      if (ledger.specId !== 'spec_bastion') {
+        for (const [goodId, qty] of Object.entries(cargoItems)) {
+          const available = Math.max(0, Math.floor(Number(qty) || 0));
+          if (!available) continue;
+          const deliver = document.createElement('button');
+          const amount = Math.min(10, available);
+          deliver.className = 'sf-btn';
+          deliver.textContent = 'Deliver ' + amount + 'u · ' + pretty(goodId.replace(/^cmdty_/, ''));
+          deliver.setAttribute('aria-label', 'Deliver ' + amount + ' units of ' + pretty(goodId.replace(/^cmdty_/, '')) + ' to ' + body.name);
+          deliver.addEventListener('click', () => {
+            claims.deliverToClaim(body.id, goodId, amount);
+            this._render();
+          });
+          freight.appendChild(deliver);
+        }
+      }
+      if (ledger.stores && ledger.stores.outputU > 0) {
+        const collect = document.createElement('button');
+        collect.className = 'sf-btn sf-btn--primary';
+        collect.textContent = 'Collect output · ' + ledgerValue(ledger.stores.outputU, 'u');
+        collect.setAttribute('aria-label', 'Collect stored output from ' + body.name);
+        collect.addEventListener('click', () => {
+          claims.collectFromClaim(body.id);
+          this._render();
+        });
+        freight.appendChild(collect);
+      }
+      if (freight.childNodes.length) ledgerEl.appendChild(freight);
+
+      if (ledger.lastEvent) {
+        const receipt = document.createElement('div');
+        receipt.className = 'base-receipt';
+        receipt.textContent = 'LAST · ' + (ledger.lastEvent.text || pretty(ledger.lastEvent.kind));
+        ledgerEl.appendChild(receipt);
+      }
+      wrap.appendChild(ledgerEl);
+    }
 
     // teleport button if a teleporter is built
     if (body.modules.includes('mod_teleporter')) {

@@ -50,6 +50,49 @@ export const BODY_MODULES = [
   },
 ];
 
+// Specializations (M5 / SPEC3-F6-26): the claim's OPERATING IDENTITY. Where a module is a fitting,
+// a specialization is what the base is FOR — exactly one per body, chosen deliberately, switchable
+// only when site storage is empty. Each one changes real simulation behavior (claims.js ticks it),
+// has a distinct input, output, and risk, and reads out honestly on the Base screen ledger.
+// Prerequisite: the matching module must already be fitted (its techReq gates the identity too).
+export const BODY_SPECIALIZATIONS = [
+  {
+    id: 'spec_refinery', name: 'Industrial Refinery', short: 'REFINERY',
+    desc: 'Runs the fitted refinery as a working site. Deliver raw ore here; crews process it into refined goods you haul out. Stocked sites draw raiders in low-security space.',
+    requiresModule: 'mod_refinery',
+    cost: 9000,
+    upkeepPerMin: 20,       // credits, charged through the economy writer
+    inputCapU: 240,         // raw ore the site can hold
+    outputCapU: 120,        // refined goods awaiting pickup
+    refineRatePerS: 0.5,    // ore-units processed per second (same truth as mod_refinery)
+  },
+  {
+    id: 'spec_relay', name: 'Trade Relay', short: 'RELAY',
+    desc: 'Runs the fitted depot as a freight relay. Deposit goods; scheduled convoys haul them to the linked station and sell at the local market price less the relay fee. Convoys risk piracy in low-security space.',
+    requiresModule: 'mod_depot',
+    cost: 7000,
+    upkeepPerMin: 15,
+    storeCapU: 300,         // freight the relay can hold
+    dispatchEveryS: 240,    // convoy schedule
+    transitS: 90,           // convoy travel time to the linked station
+    convoyLoadU: 60,        // max units per convoy
+    minLoadU: 20,           // don't send half-empty haulers
+    saleFee: 0.2,           // the proven outpost autosell penalty (-20%)
+  },
+  {
+    id: 'spec_bastion', name: 'Defense Bastion', short: 'BASTION',
+    desc: 'Runs the fitted battery as a garrison. Warns of raids on your claims in this sector and contests them with stationed guns. Highest upkeep; produces nothing.',
+    requiresModule: 'mod_defense',
+    cost: 8000,
+    upkeepPerMin: 25,
+    defenseBonus: 60,       // added to this body's battery rating while the garrison is active
+    coverageBonus: 40,      // lent to every other claim in the same sector
+    coveredLossFrac: 0.35,  // a raid that lands under coverage takes half the usual 70%
+  },
+];
+
+export const BODY_SPECIALIZATION_BY_ID = new Map(BODY_SPECIALIZATIONS.map((s) => [s.id, s]));
+
 // A claimable body's total module slots (so you choose which 3-4 modules to fit). Small bodies = 2
 // slots (a frontier mining claim), large = 4 (an industrial moon). Forces build-order decisions.
 export const BODY_SLOTS_BY_SIZE = { S: 2, M: 3, L: 4 };
