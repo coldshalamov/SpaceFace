@@ -15,6 +15,7 @@
 //   Asteroids use a small pool of seeded displacement variants per type (deterministic, bounded)
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
+import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture, makeStarTexture,
   makeHullNormalMap, makeGreebleDetailTexture, makeDecalSheet,
@@ -1951,10 +1952,12 @@ function buildGate(e, pal) {
         ? [[0, '#f0c0ff'], [0.35, '#9030ff'], [0.7, '#3a0a4a'], [1, '#08000f']]
         : [[0, '#bff4ff'], [0.4, '#39d0ff'], [1, '#0a1830']],
     }));
-    return new THREE.MeshBasicMaterial({
+    const material = new THREE.MeshBasicMaterial({
       map: tex, transparent: true, opacity: isWormhole ? 0.7 : 0.55,
       blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
     });
+    configurePlanarAdditiveMaterial(material);
+    return material;
   });
   const portal = new THREE.Mesh(
     getGeometry('gate:disc', () => new THREE.CircleGeometry(0.78, 48)),

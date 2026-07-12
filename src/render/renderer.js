@@ -30,6 +30,7 @@ import { precompilePipelines } from './precompile.js';
 import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
+import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
@@ -1405,6 +1406,7 @@ export const render = {
         depthWrite: false,
         side: THREE.DoubleSide,
       });
+      configurePlanarAdditiveMaterial(discMat);
       const disc = new THREE.Mesh(discGeo, discMat);
       disc.rotation.x = -Math.PI / 2;
       disc.position.set(local.x, -0.5, local.z);
@@ -1426,6 +1428,7 @@ export const render = {
           depthWrite: false,
           side: THREE.DoubleSide,
         });
+        configurePlanarAdditiveMaterial(ringMat);
         const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.rotation.x = -Math.PI / 2;
         ring.position.set(local.x, -0.4, local.z);
