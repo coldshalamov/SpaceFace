@@ -17,6 +17,7 @@
 
 import { BINDINGS } from './bindings.js';
 import { createPirateParleyPrompt } from './pirateParleyPrompt.js';
+import { createSectorLawPresenter } from './sectorLawPresenter.js';
 
 const COMMS_STYLE_ID = 'sf-comms-style';
 
@@ -66,6 +67,7 @@ export function createComms(ctx) {
   // Actionable pirate hails live in their own compact, non-modal strip. Keeping the renderer in a
   // dedicated module prevents the general comms feed from becoming an interaction/state owner.
   const pirateParleyPrompt = createPirateParleyPrompt(ctx);
+  const sectorLawPresenter = createSectorLawPresenter(ctx);
 
   // ── 1. Comms feed (left edge) ────────────────────────────────────────────────────────────
   const feed = document.createElement('div');
@@ -428,6 +430,7 @@ export function createComms(ctx) {
   // ── tick: fade sweep (called by uiRoot.frame via the returned api) ────────────────────────
   function tick() {
     if (pirateParleyPrompt && pirateParleyPrompt.tick) pirateParleyPrompt.tick();
+    if (sectorLawPresenter && sectorLawPresenter.tick) sectorLawPresenter.tick();
     tickHeldComms();
     sweep();
   }
@@ -452,7 +455,7 @@ export function createComms(ctx) {
     return choiceModalOpen;
   }
 
-  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, pirateParleyPrompt };
+  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, pirateParleyPrompt, sectorLawPresenter };
 }
 
 function normalizeTtlMs(ttl) {

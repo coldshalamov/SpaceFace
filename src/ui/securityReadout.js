@@ -21,8 +21,68 @@
 
 import { sectorSignalFor } from '../systems/sectorSim.js';
 import { SECTORS } from '../data/sectors.js';
+import { FACTION_META } from '../data/factions.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
+const RECOGNIZED_LAW = new Set(['faction_scn', 'faction_mts', 'faction_dmc', 'faction_free']);
+
+/** Four player-facing jurisdiction bands, shared by sector entry and the unified map inspector. */
+export function securityTierFor(value) {
+  const security = Math.max(0, Math.min(1, Number(value) || 0));
+  if (security >= 0.75) return Object.freeze({ key: 'high', label: 'HIGH SECURITY', security });
+  if (security >= 0.45) return Object.freeze({ key: 'medium', label: 'MEDIUM SECURITY', security });
+  if (security >= 0.15) return Object.freeze({ key: 'low', label: 'LOW SECURITY', security });
+  return Object.freeze({ key: 'lawless', label: 'LAWLESS', security });
+}
+
+/**
+ * Pure sector-law contract used by every presentation seam. Security measures response strength;
+ * faction ownership does not by itself invent police authority.
+ */
+export function sectorLawProfile(state, sectorId, securityOverride = null) {
+  const base = SECTOR_BY_ID.get(sectorId) || null;
+  const live = state && state.world && state.world.sectors && state.world.sectors[sectorId] || null;
+  const security = Number.isFinite(securityOverride)
+    ? Number(securityOverride)
+    : Number.isFinite(live && live.security) ? live.security
+      : Number.isFinite(base && base.security) ? base.security : 0;
+  const tier = securityTierFor(security);
+  const factionId = live && live.factionId || live && live.owner || base && base.factionId || null;
+  const faction = FACTION_BY_ID.get(factionId) || null;
+  const recognized = tier.key !== 'lawless' && RECOGNIZED_LAW.has(factionId);
+  const authority = recognized
+    ? String(faction && faction.name || factionId).replace(/^faction_/, '')
+    : 'No recognized authority';
+  let illegal;
+  let response;
+  if (!recognized) {
+    illegal = 'No statutory protection; crews may retaliate in self-defense.';
+    response = 'No patrol dispatch.';
+  } else if (tier.key === 'high') {
+    illegal = 'Attacking civilians, patrols, or stations triggers dispatch.';
+    response = 'Rapid patrol response; reserve units available.';
+  } else if (tier.key === 'medium') {
+    illegal = 'Attacking civilians, patrols, or stations triggers dispatch.';
+    response = 'Patrol response inside protected station rings.';
+  } else {
+    illegal = 'Station-ring aggression triggers dispatch; open space is self-defense only.';
+    response = 'Limited station-ring response; no open-space guarantee.';
+  }
+  return Object.freeze({
+    sectorId,
+    sectorName: String(base && base.name || live && live.name || sectorId || 'Unknown sector'),
+    security: tier.security,
+    level: tier.label,
+    levelKey: tier.key,
+    factionId,
+    controller: String(faction && (faction.short || faction.name) || factionId || 'Unaffiliated'),
+    authority,
+    recognized,
+    illegal,
+    response,
+  });
+}
 
 // The enumerated danger tags this readout interprets. Anything else → no readout (no invented text).
 // (concord_patrols: dangerModel.js:444 — trend.danger<-0.0015 + scn>0.20; interdiction_wave: :466.)

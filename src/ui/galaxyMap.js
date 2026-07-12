@@ -23,6 +23,7 @@ import { SECTORS } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
+import { sectorLawProfile } from './securityReadout.js';
 
 // ---------------------------------------------------------------------------------------------
 // Static catalogs (pure — safe at import time).
@@ -1703,7 +1704,6 @@ function missionSummary(mission) {
   return mission.objectiveProgress ? `${progress}/${target}` : 'Proceed to the objective';
 }
 
-function securityLabel(sec) { return sec >= 0.7 ? 'High' : sec >= 0.4 ? 'Mid' : sec >= 0.15 ? 'Low' : 'Null'; }
 function securityPips(sec) {
   if (sec >= 0.7) return '<span style="color:#62e08a; letter-spacing: 2px;">●●●</span>';
   if (sec >= 0.4) return '<span style="color:#ffd84a; letter-spacing: 2px;">●●○</span>';
@@ -2339,8 +2339,8 @@ export const galaxyMapScreen = {
       const faction = factionNameOf(t.factionId);
       const color = factionColorOf(t.factionId);
       const sec = t.security != null ? t.security : 0.5;
-      const secLbl = securityLabel(sec);
       const secPips = securityPips(sec);
+      const law = sectorLawProfile(state, t.id, sec);
       const activeMissions = state.missions && state.missions.active || [];
       const relevantMission = activeMissions.find(m => m.status === 'active' && (m.destSectorId === t.id || (m.params && m.params.sectorId === t.id)));
 
@@ -2375,11 +2375,17 @@ export const galaxyMapScreen = {
         </div>
 
         <div class="gm-ins-section">
-          <div class="gm-ins-title">Security & Risk</div>
+          <div class="gm-ins-title">Security & Jurisdiction</div>
           <div class="gm-ins-row">
-            <span>Status</span>
-            <span class="gm-ins-row-val">${secLbl} (${secPips})</span>
+            <span>Level</span>
+            <span class="gm-ins-row-val">${law.level} · ${secPips}</span>
           </div>
+          <div class="gm-ins-row">
+            <span>Jurisdiction</span>
+            <span class="gm-ins-row-val">${law.authority}</span>
+          </div>
+          <div style="margin-top:6px; color:var(--ink-dim); font-size:.65rem; line-height:1.35;"><b style="color:var(--ink);">ILLEGAL:</b> ${law.illegal}</div>
+          <div style="margin-top:4px; color:var(--ink-dim); font-size:.65rem; line-height:1.35;"><b style="color:var(--ink);">RESPONSE:</b> ${law.response}</div>
         </div>
 
         <div class="gm-ins-section">

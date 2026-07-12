@@ -407,12 +407,10 @@ export const lawSecurity = {
   },
 
   _say(channel, text, id, factionId) {
-    const voice = this.helpers && this.helpers.voice;
-    if (voice && typeof voice.say === 'function') {
-      voice.say({ channel, text, kind: 'lawSecurity', ttl: channel === 'alert' ? 3 : 2, id, factionId });
-    } else {
-      this._emit('toast', { text, kind: channel === 'alert' ? 'danger' : 'info', ttl: channel === 'alert' ? 3 : 2 });
-    }
+    // The sector-law presenter owns the single visible authority surface from the public lifecycle
+    // and receipt events emitted immediately after these calls. Keep the authored line available to
+    // telemetry/audio without duplicating it on the global voice floor.
+    this._emit('law:voice', { channel, text, id, factionId, kind: 'lawSecurity' });
   },
 
   _emit(event, payload) {

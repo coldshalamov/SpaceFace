@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SpaceFace Sector Law Fixture</title>
+  <style>
+    :root { --mono:Consolas,monospace; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; width:100%; height:100%; overflow:hidden; background:#07121a; }
+    body { color:#d7e6ff; font-family:var(--mono); }
+    #scene { position:fixed; inset:0; background:
+      radial-gradient(circle at 17% 22%, rgba(215,230,255,.8) 0 1px, transparent 2px),
+      radial-gradient(circle at 70% 37%, rgba(215,230,255,.6) 0 1px, transparent 2px),
+      radial-gradient(circle at 43% 72%, rgba(215,230,255,.7) 0 1px, transparent 2px),
+      radial-gradient(ellipse at 45% 50%, rgba(31,92,110,.34), transparent 54%), #07121a;
+      background-size:137px 151px,197px 173px,223px 211px,100% 100%; }
+    .ship { position:absolute; left:46%; top:48%; width:52px; height:82px; transform:rotate(-16deg);
+      clip-path:polygon(50% 0,86% 80%,52% 63%,13% 90%,27% 28%); background:#8bb6c7; }
+    .contact { position:absolute; right:21%; top:39%; color:#ff5c5c; font:10px var(--mono); letter-spacing:.1em; }
+    .contact::before { content:''; display:block; width:24px; height:24px; margin:auto; transform:rotate(45deg); border:1px solid #ff5c5c; }
+    #objective { position:absolute; left:18px; bottom:18px; width:290px; padding:10px 12px;
+      background:rgba(5,9,18,.88); border-left:3px solid #ffb35c; font:11px/1.45 var(--mono); }
+    #objective b { display:block; color:#ffb35c; font-size:9px; letter-spacing:.14em; }
+    #ui-root { position:fixed; inset:0; pointer-events:none; }
+  </style>
+</head>
+<body>
+  <div id="scene"><div class="ship"></div><div class="contact">CUTLASS-7</div></div>
+  <div id="objective"><b>CURRENT OBJECTIVE</b>Reach the customs relay · 1.8 km</div>
+  <div id="ui-root"></div>
+  <script type="module">
+    import { createSectorLawPresenter } from '../src/ui/sectorLawPresenter.js';
+    const handlers = new Map();
+    const emitted = [];
+    const bus = {
+      on(name, fn) { if (!handlers.has(name)) handlers.set(name, []); handlers.get(name).push(fn); },
+      emit(name, payload) { emitted.push({ name, payload }); for (const fn of handlers.get(name) || []) fn(payload); },
+    };
+    const raider = { id:'raider-7', type:'ship', factionId:'faction_reach', data:{ callsign:'CUTLASS-7' } };
+    const player = { id:'player', type:'ship', data:{ callsign:'HITCH' } };
+    const state = {
+      mode:'flight', simTime:100, playerId:'player', player:{ cargo:{ items:{} } }, ui:{ docked:false },
+      world:{ currentSectorId:'sector_helios_prime', sectors:{
+        sector_helios_prime:{ security:.98, factionId:'faction_scn' },
+        sector_sker_haven:{ security:.08, factionId:'faction_reach' },
+      } },
+      entities:new Map([[player.id,player],[raider.id,raider]]), entityList:[player,raider],
+    };
+    const presenter = createSectorLawPresenter({ state, bus });
+    const incident = {
+      id:'law:fixture', stationId:'station_helios', factionId:'faction_scn',
+      attackerId:'raider-7', victimId:'player', cause:'hostile_fire', status:'distress',
+      startedAt:100, dispatchAt:104, dispatchDelayS:4, responderIds:[],
+    };
+    bus.emit('sector:enter', { sectorId:'sector_helios_prime' });
+    presenter.tick();
+    window.sfSectorLawFixture = {
+      state,bus,presenter,emitted,incident,
+      advance(seconds) { state.simTime += seconds; presenter.tick(); },
+      enter(sectorId) { state.world.currentSectorId = sectorId; bus.emit('sector:enter',{ sectorId }); presenter.tick(); },
+      distress(extra={}) { bus.emit('law:distressRaised',{ ...incident,...extra }); presenter.tick(); },
+      dispatch(status='responding', responderIds=['patrol-1','patrol-2']) { bus.emit('law:dispatchStarted',{ ...incident,status,responderIds,dispatchedAt:state.simTime }); presenter.tick(); },
+      resolve(outcome='disengaged') { bus.emit('law:incidentResolved',{ ...incident,status:'resolved',outcome,resolvedAt:state.simTime }); presenter.tick(); },
+    };
+  </script>
+</body>
+</html>
