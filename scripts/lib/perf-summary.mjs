@@ -177,8 +177,9 @@ function appendScenarioSection(lines, condensed, full, qualityPreserving) {
     lines.push(`| requested | ${autosave.requested ? 'yes' : 'no'} |`);
     lines.push(`| completed autosaves | ${fmt(autosave.completedCount)} |`);
     lines.push(`| request call ms | ${fmt(autosave.requestCallMs)} |`);
-    lines.push(`| duration max ms | ${fmt(autosave.durationMs?.max)} |`);
-    lines.push(`| duration p95 ms | ${fmt(autosave.durationMs?.p95)} |`);
+    lines.push(`| max blocking slice ms | ${fmt(autosave.maxBlockingSliceMs?.max)} |`);
+    lines.push(`| total CPU ms | ${fmt(autosave.totalCpuMs?.max)} |`);
+    lines.push(`| request-to-completion elapsed ms | ${fmt(autosave.elapsedMs?.max)} |`);
     lines.push(`| write p95 ms | ${fmt(autosave.perf?.write?.p95)} |`);
     lines.push(`| bytes p95 | ${fmt(autosave.perf?.bytes?.p95)} |`);
     lines.push('');

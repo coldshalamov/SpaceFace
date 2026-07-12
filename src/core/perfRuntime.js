@@ -156,6 +156,9 @@ export function ensurePerfRuntime(state) {
   const saveStats = {
     all: createStat(),
     autosave: createStat(),
+    elapsed: createStat(),
+    totalCpu: createStat(),
+    maxBlockingSlice: createStat(),
     serialize: createStat(),
     write: createStat(),
     stringify: createStat(),
@@ -280,6 +283,9 @@ export function ensurePerfRuntime(state) {
         if (autosave) sample(saveStats.autosave, totalMs);
       }
       for (const [field, stat] of [
+        ['elapsedMs', saveStats.elapsed],
+        ['totalCpuMs', saveStats.totalCpu],
+        ['maxBlockingSliceMs', saveStats.maxBlockingSlice],
         ['serializeMs', saveStats.serialize],
         ['writeMs', saveStats.write],
         ['stringifyMs', saveStats.stringify],
@@ -330,6 +336,9 @@ export function ensurePerfRuntime(state) {
       for (const stat of [
         saveStats.all,
         saveStats.autosave,
+        saveStats.elapsed,
+        saveStats.totalCpu,
+        saveStats.maxBlockingSlice,
         saveStats.serialize,
         saveStats.write,
         saveStats.stringify,
@@ -370,6 +379,9 @@ export function ensurePerfRuntime(state) {
           errorCount: saveStats.errorCount,
           all: reportStat(saveStats.all),
           autosave: reportStat(saveStats.autosave),
+          elapsed: reportStat(saveStats.elapsed),
+          totalCpu: reportStat(saveStats.totalCpu),
+          maxBlockingSlice: reportStat(saveStats.maxBlockingSlice),
           serialize: reportStat(saveStats.serialize),
           write: reportStat(saveStats.write),
           stringify: reportStat(saveStats.stringify),

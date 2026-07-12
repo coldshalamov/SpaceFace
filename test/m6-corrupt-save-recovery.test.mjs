@@ -60,15 +60,17 @@ function makeEnvelope({ slot = 'quick', savedAt, playtimeS = 60, version = CURRE
 
 function makeStorage() {
   const values = new Map();
+  const operations = [];
   let corruptNextPrimary = false;
   let failNextRecovery = false;
   return {
     get length() { return values.size; },
     key(index) { return Array.from(values.keys())[index] ?? null; },
-    getItem(key) { key = String(key); return values.has(key) ? values.get(key) : null; },
+    getItem(key) { key = String(key); operations.push(['get', key]); return values.has(key) ? values.get(key) : null; },
     setItem(key, value) {
       key = String(key);
       value = String(value);
+      operations.push(['set', key]);
       if (failNextRecovery && key.startsWith('sf.recovery.')) {
         failNextRecovery = false;
         const error = new Error('quota');
@@ -82,10 +84,12 @@ function makeStorage() {
       }
       values.set(key, value);
     },
-    removeItem(key) { values.delete(String(key)); },
+    removeItem(key) { key = String(key); operations.push(['remove', key]); values.delete(key); },
     clear() { values.clear(); },
     corruptNextPrimaryWrite() { corruptNextPrimary = true; },
     failNextRecoveryWrite() { failNextRecovery = true; },
+    operations() { return operations.slice(); },
+    clearOperations() { operations.length = 0; },
   };
 }
 
@@ -97,6 +101,13 @@ function installHarness(storage) {
     restore: save._restore,
     serialize: save.serialize,
     hasPlayer: save._hasPlayerEntity,
+    scheduleAutosaveWork: save._scheduleAutosaveWork,
+    autosavePending: save._autosavePending,
+    autosaveInFlight: save._autosaveInFlight,
+    lastAutosaveAt: save._lastAutosaveAt,
+    lastAutosavePlaytime: save._lastAutosavePlaytime,
+    playerDead: save._playerDead,
+    restoring: save._restoring,
   };
   const events = [];
   globalThis.localStorage = storage;
@@ -112,6 +123,8 @@ function installHarness(storage) {
     missions: { active: [] },
     story: { beatIndex: 0 },
     ui: {},
+    mode: 'flight',
+    jump: { state: 'IDLE' },
   };
   save.bus = { emit(name, payload) { events.push({ name, payload }); } };
   return {
@@ -122,11 +135,99 @@ function installHarness(storage) {
       save._restore = original.restore;
       save.serialize = original.serialize;
       save._hasPlayerEntity = original.hasPlayer;
+      save._scheduleAutosaveWork = original.scheduleAutosaveWork;
+      save._autosavePending = original.autosavePending;
+      save._autosaveInFlight = original.autosaveInFlight;
+      save._lastAutosaveAt = original.lastAutosaveAt;
+      save._lastAutosavePlaytime = original.lastAutosavePlaytime;
+      save._playerDead = original.playerDead;
+      save._restoring = original.restoring;
       if (previousStorage === undefined) delete globalThis.localStorage;
       else globalThis.localStorage = previousStorage;
     },
   };
 }
+
+test('autosave request returns before serialization, coalesces duplicates, then completes with recovery', () => {
+  const storage = makeStorage();
+  const h = installHarness(storage);
+  const scheduled = [];
+  try {
+    const oldEnvelope = makeEnvelope({ slot: 'auto', savedAt: '2026-07-12T00:00:00.000Z', playtimeS: 100 });
+    const nextEnvelope = makeEnvelope({ slot: 'auto', savedAt: '2026-07-12T00:10:00.000Z', playtimeS: 700 });
+    const oldRaw = JSON.stringify(oldEnvelope);
+    storage.setItem('sf.save.auto', oldRaw);
+    let serializeCalls = 0;
+    save.serialize = () => { serializeCalls++; return nextEnvelope; };
+    save._hasPlayerEntity = () => true;
+    save._restoring = false;
+    save._playerDead = false;
+    save._autosavePending = null;
+    save._autosaveInFlight = false;
+    save._lastAutosaveAt = -Infinity;
+    save._lastAutosavePlaytime = 0;
+    save._scheduleAutosaveWork = (callback) => { scheduled.push(callback); return scheduled.length; };
+
+    const started = performance.now();
+    assert.equal(save.requestAutosave('test', { force: true }), true);
+    const requestMs = performance.now() - started;
+    assert(requestMs < 8, `autosave admission should be sub-frame, got ${requestMs.toFixed(2)}ms`);
+    assert.equal(serializeCalls, 0, 'request must return before serialization starts');
+    assert.equal(scheduled.length, 1, 'one deferred job should be queued');
+    assert.equal(save.requestAutosave('duplicate', { force: true }), false, 'forced duplicate must coalesce');
+    assert.equal(scheduled.length, 1, 'duplicate request must not queue another job');
+
+    scheduled.shift()();
+    assert.equal(serializeCalls, 1);
+    assert.equal(scheduled.length, 1, 'snapshot and transactional write must run in separate tasks');
+    nextEnvelope.data.player.credits = 999999;
+    storage.clearOperations();
+    scheduled.shift()();
+    assert.equal(storage.getItem('sf.recovery.auto'), oldRaw, 'autosave overwrite must preserve prior generation');
+    assert.equal(JSON.parse(storage.getItem('sf.save.auto')).data.player.credits, 1200,
+      'task B must write the frozen task-A snapshot, not later state/object mutation');
+    const writes = storage.operations().filter(([kind]) => kind === 'set').map(([, key]) => key);
+    assert.deepEqual(writes.slice(0, 3), ['sf.recovery.auto', 'sf.save.auto', 'sf.save.index'],
+      'transaction must preserve recovery then primary then index ordering');
+    assert.equal(h.events.filter((event) => event.name === 'save:completed').length, 1);
+    assert.equal(h.events.filter((event) => event.name === 'save:error').length, 0);
+    assert.equal(save._autosavePending, null);
+    assert.equal(save._autosaveInFlight, false);
+    const completion = h.events.find((event) => event.name === 'save:completed').payload;
+    assert(Number.isFinite(completion.elapsedMs));
+    assert(Number.isFinite(completion.totalCpuMs));
+    assert(Number.isFinite(completion.maxBlockingSliceMs));
+  } finally { h.restore(); }
+});
+
+test('failed deferred autosave reports once and remains immediately retryable', () => {
+  const storage = makeStorage();
+  const h = installHarness(storage);
+  const scheduled = [];
+  try {
+    save._hasPlayerEntity = () => true;
+    save._restoring = false;
+    save._playerDead = false;
+    save._autosavePending = null;
+    save._autosaveInFlight = false;
+    save._lastAutosaveAt = -Infinity;
+    save._scheduleAutosaveWork = (callback) => { scheduled.push(callback); return scheduled.length; };
+    save.serialize = () => { throw new Error('synthetic serialize failure'); };
+
+    assert.equal(save.requestAutosave('failure'), true);
+    scheduled.shift()();
+    assert.equal(h.events.filter((event) => event.name === 'save:error').length, 1);
+    assert.equal(h.events.filter((event) => event.name === 'save:completed').length, 0);
+    assert.equal(save._autosavePending, null);
+    assert.equal(save._autosaveInFlight, false);
+
+    save.serialize = () => makeEnvelope({ slot: 'auto', savedAt: '2026-07-12T00:20:00.000Z' });
+    assert.equal(save.requestAutosave('retry'), true, 'failed autosave must not consume debounce state');
+    scheduled.shift()();
+    scheduled.shift()();
+    assert.equal(h.events.filter((event) => event.name === 'save:completed').length, 1);
+  } finally { h.restore(); }
+});
 
 test('successful overwrite rotates the valid previous generation and emits a backup receipt', () => {
   const storage = makeStorage();

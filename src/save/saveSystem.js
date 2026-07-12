@@ -64,9 +64,11 @@ export const save = {
     this.registry = ctx.registry;
     this._restoring = false;           // guards autosave re-entrancy during load / boot enterSector
     this._pendingRunTransition = null; // latest load/new-game request queued by restore event re-entry
-    this._lastAutosaveAt = 0;          // wall-clock ms of last autosave write (debounce)
+    this._lastAutosaveAt = -Infinity;  // wall-clock ms of last successful autosave (first is eligible)
     this._lastAutosavePlaytime = 0;    // meta.playtimeS at last interval autosave
     this._playerDead = false;          // set by player:death, cleared by player:respawn (autosave gate)
+    this._autosavePending = null;      // accepted/coalesced job waiting beyond the current event stack
+    this._autosaveInFlight = false;    // prevents forced triggers from starting concurrent writes
     this._restoreSequence = 0;         // unique transient freeze owner for overlapping visual gates
 
     const bus = this.bus;
@@ -105,7 +107,6 @@ export const save = {
     if (this._restoring || state.mode !== 'flight') return;
     const intervalS = (state.settings.gameplay && state.settings.gameplay.autosaveIntervalS) || 0;
     if (intervalS > 0 && (state.meta.playtimeS - this._lastAutosavePlaytime) >= intervalS) {
-      this._lastAutosavePlaytime = state.meta.playtimeS;
       this.requestAutosave('interval');
     }
   },
@@ -313,6 +314,9 @@ export const save = {
     slot = slot || 'quick';
     const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
     const autosave = !!options.autosave || slot === AUTOSAVE_SLOT;
+    // An explicit manual save supersedes a queued autosave. Its already-scheduled callback carries
+    // the old token and becomes a no-op, so the player never pays two back-to-back full writes.
+    if (!autosave && this._autosavePending) this._autosavePending = null;
     const started = nowMs();
     if (!this._hasPlayerEntity()) {
       const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'no_player' });
@@ -351,38 +355,25 @@ export const save = {
       ok: !!write.ok,
       failure: write.reason || null,
     });
-    this._recordSaveTiming(timing);
-    if (write.ok) {
-      this.state.save.currentSlot = slot;
-      this.state.meta.lastSavedAt = envelope.savedAt;
-      if (write.backupCreated) {
-        this.bus.emit('save:backup', {
-          slot,
-          source: 'previous_generation',
-          savedAt: write.backupSavedAt,
-        });
-      }
-      this.bus.emit('save:completed', timing);
-    } else {
-      this.bus.emit('save:error', timing);
-    }
-    return !!write.ok;
+    return this._publishSaveResult(slot, envelope, write, timing);
   },
 
-  _writeSlot(slot, envelope) {
+  _writeSlot(slot, envelope, options = {}) {
     if (typeof localStorage === 'undefined') {
       return { ok: false, reason: 'no_storage', bytes: 0, stringifyMs: 0, storageMs: 0, indexMs: 0 };
     }
-    let json;
-    let stringifyMs = 0;
+    let json = typeof options.json === 'string' ? options.json : null;
+    let stringifyMs = Number(options.stringifyMs) || 0;
     let storageMs = 0;
     let indexMs = 0;
-    try {
-      const t = nowMs();
-      json = JSON.stringify(envelope);
-      stringifyMs = nowMs() - t;
+    if (json == null) {
+      try {
+        const t = nowMs();
+        json = JSON.stringify(envelope);
+        stringifyMs = nowMs() - t;
+      }
+      catch (err) { return { ok: false, reason: 'stringify_failed', bytes: 0, stringifyMs, storageMs, indexMs }; }
     }
-    catch (err) { return { ok: false, reason: 'stringify_failed', bytes: 0, stringifyMs, storageMs, indexMs }; }
     const primaryKey = LS_PREFIX + slot;
     const recoveryKey = RECOVERY_PREFIX + slot;
     let previousRaw = null;
@@ -445,8 +436,13 @@ export const save = {
     };
   },
 
-  _saveTiming({ slot, reason, autosave, started, serializeMs = 0, writeMs = 0, stringifyMs = 0, storageMs = 0, indexMs = 0, bytes = 0, ok = true, failure = null }) {
-    const totalMs = roundSaveMs(nowMs() - started);
+  _saveTiming({ slot, reason, autosave, started, serializeMs = 0, writeMs = 0, stringifyMs = 0, storageMs = 0, indexMs = 0, bytes = 0, ok = true, failure = null, blockingSlicesMs = null }) {
+    const elapsedMs = roundSaveMs(nowMs() - started);
+    const slices = Array.isArray(blockingSlicesMs)
+      ? blockingSlicesMs.map(Number).filter((value) => Number.isFinite(value) && value >= 0)
+      : [elapsedMs];
+    const totalCpuMs = roundSaveMs(slices.reduce((sum, value) => sum + value, 0));
+    const maxBlockingSliceMs = roundSaveMs(slices.length ? Math.max(...slices) : 0);
     return {
       slot,
       reason: ok ? reason : (failure || reason),
@@ -454,8 +450,12 @@ export const save = {
       autosave: !!autosave,
       ok: !!ok,
       failure,
-      durationMs: totalMs,
-      totalMs,
+      // Elapsed includes safe idle/task gaps; CPU and max slice expose actual main-thread cost.
+      durationMs: elapsedMs,
+      totalMs: elapsedMs,
+      elapsedMs,
+      totalCpuMs,
+      maxBlockingSliceMs,
       serializeMs: roundSaveMs(serializeMs),
       writeMs: roundSaveMs(writeMs),
       stringifyMs: roundSaveMs(stringifyMs),
@@ -463,6 +463,25 @@ export const save = {
       indexMs: roundSaveMs(indexMs),
       bytes: Math.max(0, bytes | 0),
     };
+  },
+
+  _publishSaveResult(slot, envelope, write, timing) {
+    this._recordSaveTiming(timing);
+    if (write && write.ok) {
+      this.state.save.currentSlot = slot;
+      this.state.meta.lastSavedAt = envelope.savedAt;
+      if (write.backupCreated) {
+        this.bus.emit('save:backup', {
+          slot,
+          source: 'previous_generation',
+          savedAt: write.backupSavedAt,
+        });
+      }
+      this.bus.emit('save:completed', timing);
+      return true;
+    }
+    this.bus.emit('save:error', timing);
+    return false;
   },
 
   _recordSaveTiming(timing) {
@@ -473,7 +492,10 @@ export const save = {
   // Lightweight slot index (§ design/specs/11) so the menu lists slots without parsing big blobs.
   _updateIndex(slot, envelope) {
     try {
-      const idx = this._slotIndexWithFallback();
+      // The fallback scanner is for Continue/list repair, not the write hot path. Re-validating every
+      // primary and recovery envelope here made one autosave pay an O(all save bytes) index tax.
+      // A corrupt/missing index safely rebuilds when listSlots/_latestSlot next requests fallback.
+      const idx = normalizeSlotIndex(this._readIndex());
       const state = this.state;
       const sectorId = state.world.currentSectorId;
       const sector = sectorId && state.world.sectors[sectorId];
@@ -601,13 +623,154 @@ export const save = {
     if (this._restoring) return false;
     if (state.mode !== 'flight') return false;
     if (this._playerDead) return false; // death/respawn pending (combat signals via events)
-    if (state.jump && (state.jump.state === 'CHARGING' || state.jump.state === 'JUMPING')) return false;
+    if (this._autosavePending || this._autosaveInFlight) return false;
     const now = nowMs();
     if (!options.force && now - this._lastAutosaveAt < AUTOSAVE_DEBOUNCE_MS) return false;
-    this._lastAutosaveAt = now;
-    this._lastAutosavePlaytime = state.meta.playtimeS;
-    state.save.lastAutosaveAt = now;
-    return this.save(AUTOSAVE_SLOT, { reason: _reason || 'autosave', autosave: true });
+    const job = {
+      reason: _reason || 'autosave',
+      force: !!options.force,
+      requestedAt: now,
+    };
+    this._autosavePending = job;
+    try {
+      this._scheduleAutosaveWork(() => this._flushAutosave(job));
+      return true;
+    } catch (err) {
+      this._autosavePending = null;
+      const timing = this._saveTiming({
+        slot: AUTOSAVE_SLOT,
+        reason: job.reason,
+        autosave: true,
+        started: job.requestedAt,
+        ok: false,
+        failure: 'schedule_failed',
+      });
+      this._recordSaveTiming(timing);
+      this.bus.emit('save:error', timing);
+      return false;
+    }
+  },
+
+  /** Browser task/idle boundary. Tests replace this method with a deterministic queue. */
+  _scheduleAutosaveWork(callback, retry = false) {
+    if (retry || typeof requestIdleCallback !== 'function') {
+      return setTimeout(callback, retry ? 120 : 0);
+    }
+    return requestIdleCallback(callback, { timeout: 250 });
+  },
+
+  _flushAutosave(job) {
+    if (!job || this._autosavePending !== job || this._autosaveInFlight) return false;
+    const state = this.state;
+    const jumpBusy = state.jump && (state.jump.state === 'CHARGING' || state.jump.state === 'JUMPING');
+    if (this._restoring || this._playerDead || jumpBusy || state.mode === 'paused') {
+      this._scheduleAutosaveWork(() => this._flushAutosave(job), true);
+      return false;
+    }
+    if (state.mode !== 'flight') {
+      this._autosavePending = null;
+      return false;
+    }
+
+    this._autosavePending = null;
+    this._autosaveInFlight = true;
+    job.restoreSequence = this._restoreSequence;
+    this.bus.emit('save:started', { slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true });
+    if (!this._hasPlayerEntity()) {
+      const timing = this._saveTiming({
+        slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true, started: job.requestedAt,
+        ok: false, failure: 'no_player', blockingSlicesMs: [0],
+      });
+      this._autosaveInFlight = false;
+      return this._publishSaveResult(AUTOSAVE_SLOT, null, { ok: false }, timing);
+    }
+
+    const sliceStarted = nowMs();
+    let envelope;
+    let json;
+    let serializeMs = 0;
+    let stringifyMs = 0;
+    try {
+      const serializeStarted = nowMs();
+      envelope = this.serialize(AUTOSAVE_SLOT);
+      serializeMs = nowMs() - serializeStarted;
+      const stringifyStarted = nowMs();
+      json = JSON.stringify(envelope);
+      stringifyMs = nowMs() - stringifyStarted;
+    } catch (err) {
+      console.error('[save] autosave snapshot failed', err);
+      const snapshotSliceMs = nowMs() - sliceStarted;
+      const timing = this._saveTiming({
+        slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true, started: job.requestedAt,
+        serializeMs, stringifyMs, ok: false, failure: 'serialize_failed',
+        blockingSlicesMs: [snapshotSliceMs],
+      });
+      this._autosaveInFlight = false;
+      return this._publishSaveResult(AUTOSAVE_SLOT, null, { ok: false }, timing);
+    }
+    const snapshot = {
+      envelope,
+      json,
+      serializeMs,
+      stringifyMs,
+      blockingSliceMs: nowMs() - sliceStarted,
+    };
+    try {
+      this._scheduleAutosaveWork(() => this._commitAutosaveSnapshot(job, snapshot));
+      return true;
+    } catch (err) {
+      const timing = this._saveTiming({
+        slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true, started: job.requestedAt,
+        serializeMs, stringifyMs, ok: false, failure: 'schedule_failed',
+        blockingSlicesMs: [snapshot.blockingSliceMs],
+      });
+      this._autosaveInFlight = false;
+      return this._publishSaveResult(AUTOSAVE_SLOT, null, { ok: false }, timing);
+    }
+  },
+
+  _commitAutosaveSnapshot(job, snapshot) {
+    if (!job || !snapshot || !this._autosaveInFlight) return false;
+    if (this._restoring || job.restoreSequence !== this._restoreSequence) {
+      const timing = this._saveTiming({
+        slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true, started: job.requestedAt,
+        serializeMs: snapshot.serializeMs, stringifyMs: snapshot.stringifyMs,
+        ok: false, failure: 'superseded', blockingSlicesMs: [snapshot.blockingSliceMs, 0],
+      });
+      this._autosaveInFlight = false;
+      return this._publishSaveResult(AUTOSAVE_SLOT, null, { ok: false }, timing);
+    }
+
+    const writeStarted = nowMs();
+    const write = this._writeSlot(AUTOSAVE_SLOT, snapshot.envelope, {
+      json: snapshot.json,
+      stringifyMs: snapshot.stringifyMs,
+    });
+    const writeSliceMs = nowMs() - writeStarted;
+    const timing = this._saveTiming({
+      slot: AUTOSAVE_SLOT,
+      reason: job.reason,
+      autosave: true,
+      started: job.requestedAt,
+      serializeMs: snapshot.serializeMs,
+      writeMs: writeSliceMs,
+      stringifyMs: snapshot.stringifyMs,
+      storageMs: write.storageMs,
+      indexMs: write.indexMs,
+      bytes: write.bytes,
+      ok: !!write.ok,
+      failure: write.reason || null,
+      blockingSlicesMs: [snapshot.blockingSliceMs, writeSliceMs],
+    });
+    const ok = this._publishSaveResult(AUTOSAVE_SLOT, snapshot.envelope, write, timing);
+    if (ok) {
+      const completedAt = nowMs();
+      this._lastAutosaveAt = completedAt;
+      this._lastAutosavePlaytime = this.state.meta.playtimeS;
+      this.state.save.lastAutosaveAt = completedAt;
+    }
+    this._autosaveInFlight = false;
+    return ok;
   },
 
   // ── load (read a slot) ──────────────────────────────────────────────────────────────────────

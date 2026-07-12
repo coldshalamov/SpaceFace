@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 // SpaceFace Chrome/CDP performance profiler.
 //
-// This is evidence, not a quality-reduction path: it never changes video settings, render scale,
-// bloom, shadows, particle quality, or physics. It starts a deterministic live flight, waits for
-// authored assets to settle, samples the real browser frame loop and app diagnostics, then writes a
-// JSON report that future optimization work can compare.
+// This is evidence, not an implicit quality-reduction path: defaults never change video settings,
+// bloom, shadows, particle quality, or physics. An explicit --render-scale request is validated,
+// applied as a non-persistent runtime override, restored after capture, and fully reported.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -17,9 +16,15 @@ import {
   formatPerformanceProfileMarkdown,
   performanceProfileMarkdownPath,
 } from './lib/perf-summary.mjs';
+import {
+  buildRenderScaleApplyExpression,
+  buildRenderScaleRestoreExpression,
+  parseRenderScaleRequest,
+} from './lib/perf-render-scale.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const argv = parseArgs(process.argv.slice(2));
+const RENDER_SCALE_REQUESTED = parseRenderScaleRequest(argv.renderScale ?? argv['render-scale']);
 
 const WIDTH = Number(argv.width || 1280);
 const HEIGHT = Number(argv.height || 800);
@@ -96,9 +101,16 @@ const report = {
     headless: !HEADED,
     angle: ANGLE || null,
     extraBrowserArgs: EXTRA_BROWSER_ARGS,
+    renderScale: {
+      requested: RENDER_SCALE_REQUESTED,
+      applied: null,
+      restored: null,
+      profileRestored: null,
+    },
   },
   qualityPreserving: {
-    settingsOverridesApplied: false,
+    settingsOverridesApplied: RENDER_SCALE_REQUESTED != null,
+    explicitOverrides: RENDER_SCALE_REQUESTED == null ? {} : { renderScale: RENDER_SCALE_REQUESTED },
     forbiddenShortcuts: [
       'renderScale',
       'pixelRatioCap',
@@ -141,11 +153,23 @@ try {
     window.SF.bus.emit('ui:closeAll', {});
   })()`);
   const playable = await waitFor(cdp, isPlayable, PLAYABLE_TIMEOUT_MS, 'seeded flight session');
-  await dismissOnboardingIntro(cdp);
-  const scenario = await runCrowdedFlightScenario(cdp, {
-    pageIssues,
-    startTick: playable.tick,
-  });
+  const renderScaleApplication = await applyRequestedRenderScale(cdp);
+  report.runner.renderScale.applied = renderScaleApplication.applied;
+  report.qualityPreserving.appliedOverrides = renderScaleApplication.applied == null
+    ? {}
+    : { renderScale: renderScaleApplication.applied };
+  let scenario;
+  try {
+    await dismissOnboardingIntro(cdp);
+    scenario = await runCrowdedFlightScenario(cdp, {
+      pageIssues,
+      startTick: playable.tick,
+    });
+  } finally {
+    const restoration = await restoreRequestedRenderScale(cdp, renderScaleApplication);
+    report.runner.renderScale.restored = restoration.restored;
+    report.runner.renderScale.profileRestored = restoration.profileRestored;
+  }
   report.scenarios.push(scenario);
 
   report.summary = summarizeReport(report.scenarios);
@@ -1139,16 +1163,16 @@ async function runDiagnosticVariants(cdp) {
       apply: `(() => {
         const sf = window.SF || null;
         const state = sf && sf.state;
-        if (!state) return { applied: false };
-        window.__SF_PERF_VARIANT_RESTORE__ = window.__SF_PERF_VARIANT_RESTORE__ || {};
-        window.__SF_PERF_VARIANT_RESTORE__.timeScale = state.timeScale;
-        state.timeScale = 0;
+        const timeEffects = sf && (sf.timeEffects || (sf.ctx && sf.ctx.timeEffects));
+        if (!state || !timeEffects) return { applied: false };
+        timeEffects.set('probe:performance-profile', { scale: 0 });
         return { applied: true, timeScale: state.timeScale };
       })()`,
       restore: `(() => {
-        const state = window.SF && window.SF.state;
-        const saved = window.__SF_PERF_VARIANT_RESTORE__ || {};
-        if (state && saved.timeScale !== undefined) state.timeScale = saved.timeScale;
+        const sf = window.SF || null;
+        const state = sf && sf.state;
+        const timeEffects = sf && (sf.timeEffects || (sf.ctx && sf.ctx.timeEffects));
+        if (timeEffects) timeEffects.clear('probe:performance-profile');
         return { restored: true, timeScale: state && state.timeScale };
       })()`,
     },
@@ -1237,20 +1261,22 @@ async function runDiagnosticVariants(cdp) {
       apply: `(() => {
         const sf = window.SF || null;
         const state = sf && sf.state;
+        const timeEffects = sf && (sf.timeEffects || (sf.ctx && sf.ctx.timeEffects));
         const video = state && state.settings && state.settings.video;
-        if (!state || !video) return { applied: false };
+        if (!state || !video || !timeEffects) return { applied: false };
         window.__SF_PERF_VARIANT_RESTORE__ = window.__SF_PERF_VARIANT_RESTORE__ || {};
-        window.__SF_PERF_VARIANT_RESTORE__.timeScale = state.timeScale;
         window.__SF_PERF_VARIANT_RESTORE__.bloom = video.bloom;
-        state.timeScale = 0;
+        timeEffects.set('probe:performance-profile', { scale: 0 });
         video.bloom = false;
         return { applied: true, timeScale: state.timeScale, bloom: video.bloom };
       })()`,
       restore: `(() => {
-        const state = window.SF && window.SF.state;
+        const sf = window.SF || null;
+        const state = sf && sf.state;
+        const timeEffects = sf && (sf.timeEffects || (sf.ctx && sf.ctx.timeEffects));
         const video = state && state.settings && state.settings.video;
         const saved = window.__SF_PERF_VARIANT_RESTORE__ || {};
-        if (state && saved.timeScale !== undefined) state.timeScale = saved.timeScale;
+        if (timeEffects) timeEffects.clear('probe:performance-profile');
         if (video && saved.bloom !== undefined) video.bloom = saved.bloom;
         return { restored: true, timeScale: state && state.timeScale, bloom: video && video.bloom };
       })()`,
@@ -1462,6 +1488,28 @@ async function readQualityState(cdp) {
   })()`);
 }
 
+async function applyRequestedRenderScale(cdp) {
+  if (RENDER_SCALE_REQUESTED == null) {
+    return { requested: null, applied: null, changed: false };
+  }
+  const applied = await evalJson(cdp, buildRenderScaleApplyExpression(RENDER_SCALE_REQUESTED));
+  assert.equal(applied && applied.applied, RENDER_SCALE_REQUESTED,
+    `requested render scale ${RENDER_SCALE_REQUESTED} must be applied before profiling`);
+  return applied;
+}
+
+async function restoreRequestedRenderScale(cdp, application) {
+  if (RENDER_SCALE_REQUESTED == null) {
+    return { restored: null, profileRestored: null };
+  }
+  const restored = await evalJson(cdp, buildRenderScaleRestoreExpression(application));
+  assert.equal(restored && restored.restored, application.previous,
+    `runtime render scale must restore to ${application.previous} after profiling`);
+  assert.equal(restored && restored.profileRestored, true,
+    'settings profile must remain byte-identical after runtime profiling override');
+  return restored;
+}
+
 async function readChromeMetrics(cdp) {
   const result = await cdp.send('Performance.getMetrics');
   const metrics = {};
@@ -1554,8 +1602,8 @@ function evaluateBudgets({ rafFrameP95, rafHitchCount, diagnosticFrameP95, rende
     budgets.push(
       budget('autosave.completed.min', autosave && autosave.completedCount, '>=', 1,
         'crowded-flight sample should include a forced live autosave measurement'),
-      budget('autosave.duration.max', autosave && autosave.durationMs && autosave.durationMs.max, '<=', AUTOSAVE_DURATION_BUDGET_MS,
-        'forced autosave should not block the main thread past the hitch threshold'),
+      budget('autosave.maxBlockingSlice.max', autosave && autosave.maxBlockingSliceMs && autosave.maxBlockingSliceMs.max, '<=', AUTOSAVE_DURATION_BUDGET_MS,
+        'no autosave browser task should block the main thread past the hitch threshold'),
       budget('autosave.requestCall.max', autosave && autosave.requestCallMs, '<=', AUTOSAVE_DURATION_BUDGET_MS,
         'autosave request call should return inside the hitch threshold'),
     );
@@ -2054,6 +2102,9 @@ function autosaveSummary(probe, perf) {
   const errors = Array.isArray(probe && probe.errors) ? probe.errors : [];
   const completed = events.filter((event) => event && event.event === 'save:completed' && (event.autosave || event.slot === 'auto'));
   const durations = completed.map((event) => Number(event.durationMs ?? event.totalMs)).filter(Number.isFinite);
+  const elapsed = completed.map((event) => Number(event.elapsedMs ?? event.durationMs)).filter(Number.isFinite);
+  const totalCpu = completed.map((event) => Number(event.totalCpuMs)).filter(Number.isFinite);
+  const maxBlockingSlices = completed.map((event) => Number(event.maxBlockingSliceMs)).filter(Number.isFinite);
   const perfSaves = perf && perf.saves || null;
   return {
     enabled: !!(probe && probe.enabled),
@@ -2064,6 +2115,9 @@ function autosaveSummary(probe, perf) {
     completedCount: completed.length,
     errorCount: errors.length,
     durationMs: seriesStats(durations),
+    elapsedMs: seriesStats(elapsed),
+    totalCpuMs: seriesStats(totalCpu),
+    maxBlockingSliceMs: seriesStats(maxBlockingSlices),
     events: completed.slice(-4),
     errors: errors.slice(-4),
     perf: perfSaves ? {
@@ -2071,6 +2125,9 @@ function autosaveSummary(probe, perf) {
       autosaveCount: perfSaves.autosaveCount,
       errorCount: perfSaves.errorCount,
       autosave: perfSaves.autosave,
+      elapsed: perfSaves.elapsed,
+      totalCpu: perfSaves.totalCpu,
+      maxBlockingSlice: perfSaves.maxBlockingSlice,
       serialize: perfSaves.serialize,
       write: perfSaves.write,
       stringify: perfSaves.stringify,
