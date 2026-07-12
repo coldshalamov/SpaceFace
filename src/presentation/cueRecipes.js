@@ -292,7 +292,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.subsystem_brackets',
       accessibility: 'accessibility.subsystem_caption',
     },
-    budgets: { cameraTrauma: 0.1, particles: 56, voices: 2, uiPulses: 1 },
+    budgets: { cameraTrauma: 0.1, particles: 56, voices: 1, uiPulses: 1 },
     tags: ['critical', 'combat', 'subsystem'],
   }),
   'scenario.signal.pulse': recipe({

@@ -11,6 +11,7 @@ import {
 import {
   AUDIO_RECIPE_BY_ID,
   MAX_AUDIO_VOICES,
+  alertCueOwnsAudio,
   audioRecipeBasePeak,
   resolveAudioCueRecipeId,
 } from '../src/audio/audioSystem.js';
@@ -82,7 +83,7 @@ for (const entry of WORST_COMBAT_TIMELINE) {
     eventVoices.length <= recipe.budgets.voices,
     `${entry.cueId} emits ${eventVoices.length} audible voices but budgets ${recipe.budgets.voices}`,
   );
-  if (recipe.importance >= 0.85) {
+  if (recipe.importance >= 0.85 && entry.cueId !== 'subsystem.disabled') {
     assert(
       eventVoices.some((voice) => voice.duck),
       `${entry.cueId} is high-importance and must duck music`,
@@ -160,6 +161,7 @@ function collectPresentationVoices() {
     }));
   });
   bus.on('alert', (payload) => {
+    if (!alertCueOwnsAudio(payload)) return;
     output.push(makeVoice({
       source: 'presentation-alert',
       cueId: payload.cueId,

@@ -676,6 +676,43 @@ export const RECIPES = [
     filterType: 'bandpass', filterFreq: 800, filterQ: 2.0,
   },
   {
+    id: 'sfx_subsystem_disabled',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, sustain: 0.015, release: 0.24 },
+    filterType: 'bandpass', filterFreq: 420, filterQ: 2.2,
+  },
+  {
+    // Propulsion authority winding down: low, mechanical, and clearly unlike a hull impact.
+    id: 'sfx_subsystem_drive_disabled',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 210, freqSweep: [210, 58], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 520, filterQ: 1.4,
+  },
+  {
+    // Sensor/comms collapse: a clipped data tone dropping out, not another generic warning beep.
+    id: 'sfx_subsystem_sensor_disabled',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 1180, freqSweep: [1180, 310], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.002, sustain: 0.01, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 760, filterQ: 2.8,
+  },
+  {
+    // Weapon bus trip: a short capacitor snap with no sustained alarm tail.
+    id: 'sfx_subsystem_weapon_disabled',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.16 },
+    filterType: 'highpass', filterFreq: 980, filterQ: 1.1,
+  },
+  {
     id: 'sfx.hullHit',
     category: 'weapon',
     type: 'oscillator',

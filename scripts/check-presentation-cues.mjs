@@ -18,6 +18,7 @@ import {
 } from '../src/presentation/cueRecipes.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
 import { presentationAdapters } from '../src/systems/presentationAdapters.js';
+import { AUDIO_RECIPE_BY_ID, alertCueOwnsAudio, resolveAudioCueRecipeId } from '../src/audio/audioSystem.js';
 import { createBus } from '../src/core/eventBus.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -199,6 +200,19 @@ bus.flush();
 assert.equal(cueRecords.at(-1).id, 'subsystem.disabled', 'subsystem disable event should route to SG-08');
 assert.equal(cueRecords.at(-1).subsystemId, 'subsystem_drive', 'subsystem cue should preserve subsystem id');
 assert.equal(vfxRecords.at(-1).lane, 'vfx.subsystem_sparks', 'subsystem disable should route VFX lane evidence');
+assert.equal(audioRecords.at(-1).id, 'presentation.subsystem.drive_disabled', 'drive disable needs its mechanical rundown identity');
+assert.deepEqual(audioRecords.at(-1).position, { x: -40, y: 0, z: 20 }, 'subsystem failure must stay spatially attached to the disabled ship');
+assert.equal(audioRecords.at(-1).duck, false, 'a routine subsystem failure must not duck music');
+assert.equal(alertRecords.at(-1).audioOwnedByPresentation, true, 'subsystem UI must declare the semantic sound owner');
+assert.equal(alertCueOwnsAudio(alertRecords.at(-1)), false, 'the UI alert must not spawn a duplicate generic warning voice');
+assert.equal(getPresentationRecipe('subsystem.disabled').budgets.voices, 1, 'subsystem failure owns one voice');
+const subsystemRecipeIds = [
+  'presentation.subsystem.drive_disabled',
+  'presentation.subsystem.sensor_disabled',
+  'presentation.subsystem.weapon_disabled',
+].map(resolveAudioCueRecipeId);
+assert.equal(new Set(subsystemRecipeIds).size, 3, 'drive, sensor, and weapon failures need distinct signatures');
+for (const recipeId of subsystemRecipeIds) assert(AUDIO_RECIPE_BY_ID[recipeId], `${recipeId} must be authored`);
 
 runtimeState.tick += 20;
 runtimeState.simTime += 0.333333;

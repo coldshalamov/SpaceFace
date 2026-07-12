@@ -94,7 +94,7 @@ const UI_CUES = Object.freeze({
   'tether.release.clean': uiCue('presentation:tether:release-clean', 'info', 'CLEAN CUT', 1.5),
   'tether.release.razor': uiCue('presentation:tether:release-razor', 'warn', 'RAZOR CUT', 2.0),
   'shield.collapse': uiCue('presentation:shield:collapse', 'danger', 'SHIELDS COLLAPSED', 1.8),
-  'subsystem.disabled': uiCue('presentation:subsystem:disabled', 'warn', 'SUBSYSTEM DISABLED', 1.8),
+  'subsystem.disabled': uiCue('presentation:subsystem:disabled', 'warn', 'SUBSYSTEM DISABLED', 1.8, true),
   'scenario.signal.pulse': uiCue('presentation:scenario:signal', 'info', 'UNREGISTERED SIGNAL', 2.2),
   'scenario.comms.kessler': uiCue('presentation:scenario:kessler', 'info', 'PRIORITY COMMS', 2.2),
   'scenario.comms.denial': uiCue('presentation:scenario:denial', 'warn', 'OFFICIAL DENIAL', 2.2),
@@ -245,7 +245,7 @@ export const presentationAdapters = {
   _applyAudio(cue) {
     const mappedAudioId = PRESENTATION_AUDIO_CUE_BY_ID[cue && cue.id];
     if (!mappedAudioId) return null;
-    const audioId = doctrineAudioId(cue, mappedAudioId);
+    const audioId = subsystemAudioId(cue, doctrineAudioId(cue, mappedAudioId));
     if (cue.id.startsWith('travel.') && !this._claimTravelAudioFloor(cue)) return null;
     if (cue.id.startsWith('mining.') && !this._claimMiningAudioFloor(cue)) return null;
     if (cue.id.startsWith('combat.doctrine.') && !doctrineCueOwnsAudio(cue)) return null;
@@ -333,6 +333,7 @@ export const presentationAdapters = {
       cueId: cue.id,
       lane: cue.lanes && cue.lanes.ui || null,
       shape: shapeForCue(cue.id),
+      audioOwnedByPresentation: !!def.audioOwnedByPresentation,
     };
     this.bus.emit('presentation:uiCue', payload);
     this.bus.emit('alert', payload);
@@ -357,8 +358,8 @@ export const presentationAdapters = {
   },
 };
 
-function uiCue(key, sev, text, ttl) {
-  return Object.freeze({ key, sev, text, ttl });
+function uiCue(key, sev, text, ttl, audioOwnedByPresentation = false) {
+  return Object.freeze({ key, sev, text, ttl, audioOwnedByPresentation });
 }
 
 function shapeForCue(id) {
@@ -393,6 +394,15 @@ function doctrineAudioId(cue, fallback) {
         : null;
   if (!stage) return fallback;
   return `presentation.combat.${doctrineId}.${stage}`;
+}
+
+function subsystemAudioId(cue, fallback) {
+  if (!cue || cue.id !== 'subsystem.disabled') return fallback;
+  const subsystemId = String(cue.subsystemId || '').toLowerCase();
+  if (subsystemId.includes('drive') || subsystemId.includes('engine')) return 'presentation.subsystem.drive_disabled';
+  if (subsystemId.includes('sensor') || subsystemId.includes('comms')) return 'presentation.subsystem.sensor_disabled';
+  if (subsystemId.includes('weapon') || subsystemId.includes('hardpoint')) return 'presentation.subsystem.weapon_disabled';
+  return fallback;
 }
 
 function doctrineCueOwnsAudio(cue) {
@@ -431,7 +441,7 @@ function combatAftermathRate(cue) {
 }
 
 function shouldDuckAudio(cue) {
-  if (isCombatAftermathCue(cue)) return false;
+  if (isCombatAftermathCue(cue) || (cue && cue.id === 'subsystem.disabled')) return false;
   return (cue.tags || []).includes('comms') || finite(cue.importance, 0) >= 0.85;
 }
 

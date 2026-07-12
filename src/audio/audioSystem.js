@@ -326,7 +326,10 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.combat.player_hit': 'sfx.playerDamage',
   'presentation.combat.player_kill': 'sfx.killSmall',
   'presentation.shield.collapse': 'sfx.shieldBreak',
-  'presentation.subsystem.disabled': 'sfx_ui_alert',
+  'presentation.subsystem.disabled': 'sfx_subsystem_disabled',
+  'presentation.subsystem.drive_disabled': 'sfx_subsystem_drive_disabled',
+  'presentation.subsystem.sensor_disabled': 'sfx_subsystem_sensor_disabled',
+  'presentation.subsystem.weapon_disabled': 'sfx_subsystem_weapon_disabled',
   'presentation.scenario.signal': 'sfx_ui_alert',
   'presentation.comms.priority': 'sfx_ui_alert',
   'presentation.objective.split': 'sfx_ui_alert',
@@ -335,6 +338,10 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
 
 export function resolveAudioCueRecipeId(cueId) {
   return AUDIO_CUE_TO_RECIPE[cueId] || (AUDIO_RECIPE_BY_ID[cueId] ? cueId : 'sfx_ui_click');
+}
+
+export function alertCueOwnsAudio(payload) {
+  return !(payload && payload.audioOwnedByPresentation);
 }
 
 export function getBusForRecipe(recipe, recipeId) {
@@ -558,11 +565,14 @@ export const audio = {
       if (p && isPriorityCue(p)) this._applyPriorityCue(p);
     });
     bus.on('toast', (p) => this._onCue((p && (p.kind === 'error' ? 'error' : 'click'))));
-    bus.on('alert', (p) => this._onCue({
-      id: 'alert',
-      importance: (p && (p.sev === 'danger' || p.sev === 'warn')) ? 0.9 : 0.75,
-      duck: !!(p && (p.sev === 'danger' || p.sev === 'warn')),
-    }));
+    bus.on('alert', (p) => {
+      if (!alertCueOwnsAudio(p)) return;
+      this._onCue({
+        id: 'alert',
+        importance: (p && (p.sev === 'danger' || p.sev === 'warn')) ? 0.9 : 0.75,
+        duck: !!(p && (p.sev === 'danger' || p.sev === 'warn')),
+      });
+    });
     bus.on('audio:cue', (p) => this._onCue(p));
     bus.on('settings:changed', (p) => { if (!p || p.section === 'audio' || p.section == null) this._applySettings(); });
 
