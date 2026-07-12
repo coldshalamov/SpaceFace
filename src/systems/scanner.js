@@ -274,7 +274,11 @@ export function isHostileToPlayer(e, playerTeam, state) {
   const targetsPlayer = !!(combat && playerId != null && (combat.targetId === playerId || combat.lockTarget === playerId));
   if (ai && ai.passive) return false;
   if (e.team === 2) return false;
-  if (ai && ai.lawful) return isPlayerWanted(state);
+  // A live incident response is narrower than global WANTED heat: a patrol may identify the
+  // specific ship that just attacked inside its jurisdiction, including before one hit crosses
+  // the WANTED threshold. No securityTargetId means the canonical heat gate remains authoritative.
+  if (ai && ai.lawful) return ai.securityTargetId === playerId || isPlayerWanted(state);
+  if (ai && ai.retaliationTargetId === playerId) return true;
   if (ai && Array.isArray(ai.hostileTeams) && ai.hostileTeams.includes(playerTeam)) return true;
   if (targetsPlayer) return true;
   if (intent && intent.fire && targetsPlayer) return true;

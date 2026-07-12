@@ -7,6 +7,7 @@ import { barkFor } from '../data/barks.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { pirateParleyPlanForEntity } from '../data/pirateDoctrines.js';
 import { hash32 } from '../core/rng.js';
+import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 
 const SCAN_TO_DEMAND_S = 2.0;
 const DEMAND_WINDOW_S = 5.0;
@@ -14,8 +15,11 @@ const BREAK_OFF_S = 18.0;
 const VOICE_TTL_S = 1.0;
 const TITHE_MIN_PERCENT = 20;
 const TITHE_SPAN_PERCENT = 10;
+const BRAKE_TO_COMPLY_HOLD_S = 1.25;
+const ESCAPE_RADIUS = 1200;
 
 const VALUE_BY_COMMODITY = new Map(COMMODITIES.map((c) => [c.id, Number(c.basePrice) || 1]));
+const LABEL_BY_COMMODITY = new Map(COMMODITIES.map((c) => [c.id, String(c.name || c.id).replace(/^Refined /i, '')]));
 
 export const pirateParley = {
   name: 'pirateParley',
@@ -69,8 +73,23 @@ export const pirateParley = {
         holdFire(state, rec, members);
         this._speak(rec, 'demand-cargo');
         this._emit('pirateParley:demand', { ...publicRecord(rec), tithe: { ...rec.tithe } });
-      } else if (rec.phase === 'demand' && now >= rec.deadlineAt) {
-        this._escalate(rec, 'timeout');
+      } else if (rec.phase === 'demand') {
+        const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+        // Raw brake is the held control; actions.brake preserves scripted/edge-trigger fixtures.
+        const braking = !!(state.input && (state.input.brake
+          || state.input.actions && state.input.actions.brake));
+        if (braking) {
+          if (rec.brakeSince == null) rec.brakeSince = now;
+          if (now - rec.brakeSince >= BRAKE_TO_COMPLY_HOLD_S) {
+            this._comply(rec);
+            continue;
+          }
+        } else rec.brakeSince = null;
+        if (player && outsideSquadRange(player, members, ESCAPE_RADIUS)) {
+          this._escape(rec);
+          continue;
+        }
+        if (now >= rec.deadlineAt) this._escalate(rec, 'timeout');
       }
     }
   },
@@ -133,8 +152,28 @@ export const pirateParley = {
     return true;
   },
 
+  _escape(rec) {
+    const state = this.state;
+    const now = state.simTime || 0;
+    const members = membersFor(state, rec);
+    rec.phase = 'break-off';
+    rec.resolved = true;
+    rec.outcome = 'evaded';
+    rec.breakOffUntil = now + BREAK_OFF_S;
+    for (const entity of members) breakOff(entity, rec, state);
+    this._emit('pirateParley:resolved', {
+      ...publicRecord(rec),
+      outcome: 'evaded',
+      next: 'break-off',
+      tithe: null,
+    });
+    return true;
+  },
+
   _speak(rec, situation) {
-    const text = barkFor(rec.factionId, situation, rec.voiceIndex[situation] || 0);
+    const text = situation === 'demand-cargo'
+      ? demandInstruction(rec)
+      : barkFor(rec.factionId, situation, rec.voiceIndex[situation] || 0);
     const voice = this.helpers && this.helpers.voice;
     if (voice && typeof voice.say === 'function') {
       voice.say({
@@ -245,6 +284,22 @@ function holdFire(state, rec, members) {
     const ai = data.ai || (data.ai = {});
     ai.passive = true;
     ai.parleySquadId = rec.squadId;
+    ai.motive = 'cargo_extortion';
+    ai.engagementTrigger = 'demand_pending';
+    ai.zoneId = String(ai.zoneId || `parley:${rec.squadId}`);
+    ai.approachTelegraph = 'hail_and_scan';
+    ai.noFireResponseWindowS = Math.max(0.75, Number(ai.noFireResponseWindowS) || 0);
+    ai.roe = RulesOfEngagement.HOLD_FIRE;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.HAIL_HOLD,
+      reason: `pirate_parley:${rec.phase}`,
+      anchor: e.pos,
+      leashRadius: ESCAPE_RADIUS + 600,
+      startedTick: state.tick | 0,
+      deadlineTick: rec.deadlineAt ? Math.round(rec.deadlineAt * 60) : null,
+      targetId: state.playerId,
+      encounterId: rec.squadId,
+    });
     if (ai.hostileTeams && Array.isArray(ai.hostileTeams)) {
       ai.hostileTeams = ai.hostileTeams.filter((team) => team !== 0 && team !== state.player?.team);
     }
@@ -272,6 +327,16 @@ function breakOff(entity, rec, state) {
   ai.huntPlayer = false;
   ai.fsm = 'flee';
   ai.parleyBreakOffUntil = rec.breakOffUntil;
+  ai.engagementTrigger = 'parley_resolved';
+  ai.roe = RulesOfEngagement.HOLD_FIRE;
+  ai.activity = normalizeActivity({
+    kind: ActivityKind.DISENGAGE,
+    reason: `pirate_parley:${rec.outcome || 'break_off'}`,
+    anchor: entity.pos,
+    leashRadius: ESCAPE_RADIUS + 600,
+    startedTick: state.tick | 0,
+    encounterId: rec.squadId,
+  });
   data.pirateParley = {
     squadId: rec.squadId,
     phase: 'break-off',
@@ -292,6 +357,21 @@ function makeHostile(entity, state, rec) {
   ai.huntPlayer = true;
   ai.fsm = 'attack';
   ai.parleySquadId = rec.squadId;
+  ai.motive = 'cargo_extortion';
+  ai.engagementTrigger = rec.outcome === 'refused' ? 'explicit_refusal' : 'ignored_demand';
+  ai.zoneId = String(ai.zoneId || `parley:${rec.squadId}`);
+  ai.approachTelegraph = 'attack_bark';
+  ai.noFireResponseWindowS = 0.75;
+  ai.roe = RulesOfEngagement.WEAPONS_FREE;
+  ai.activity = normalizeActivity({
+    kind: ActivityKind.ATTACK_RUN,
+    reason: `pirate_parley:${rec.outcome || 'refused'}`,
+    anchor: entity.pos,
+    leashRadius: ESCAPE_RADIUS + 1000,
+    startedTick: state.tick | 0,
+    targetId: state.playerId,
+    encounterId: rec.squadId,
+  });
   const playerTeam = state.player && Number.isFinite(state.player.team) ? state.player.team : 0;
   const teams = new Set(Array.isArray(ai.hostileTeams) ? ai.hostileTeams : []);
   teams.add(playerTeam);
@@ -338,6 +418,24 @@ function publicRecord(rec) {
     demandAt: rec.demandAt,
     deadlineAt: rec.deadlineAt || null,
   };
+}
+
+function outsideSquadRange(player, members, radius) {
+  if (!player || !player.pos || !members.length) return false;
+  const limit2 = radius * radius;
+  for (const member of members) {
+    const dx = player.pos.x - member.pos.x;
+    const dz = player.pos.z - member.pos.z;
+    if (dx * dx + dz * dz <= limit2) return false;
+  }
+  return true;
+}
+
+function demandInstruction(rec) {
+  const tithe = rec.tithe || {};
+  const qty = Math.max(0, Math.floor(Number(tithe.qty) || 0));
+  const label = LABEL_BY_COMMODITY.get(tithe.commodityId) || 'cargo';
+  return `REACH: Brake to yield ${qty} ${label}. Clear 1200 to run.`;
 }
 
 export default pirateParley;

@@ -63,9 +63,15 @@ export function authorizeAIEngagement({
 
   const protection = protectedStationAt(state, target);
   if (protection) {
-    const lawfulEnforcement = !!ai.lawful && (wanted || recentlyDamaged)
-      && (ai.engagementTrigger === 'wanted_status' || ai.engagementTrigger === 'player_attack'
-        || ai.engagementTrigger === 'security_response');
+    // Security dispatch is target-specific. It must work against a pirate even though the legacy
+    // team model puts patrols and hostiles on team 1, and it must work against the clean player who
+    // just fired on a patrol before WANTED heat crosses the global threshold.
+    const dispatchedTarget = ai.securityTargetId != null && ai.securityTargetId === target.id;
+    const lawfulEnforcement = !!ai.lawful && (
+      (dispatchedTarget && ai.engagementTrigger === 'security_response')
+      || ((wanted || recentlyDamaged)
+        && (ai.engagementTrigger === 'wanted_status' || ai.engagementTrigger === 'player_attack'))
+    );
     if (!lawfulEnforcement) return denied('station_protection');
   }
 
@@ -75,15 +81,24 @@ export function authorizeAIEngagement({
 /** Fresh hostility oracle for tactical perception and final execution authority. */
 export function isHostileForAI(state, self, other) {
   if (!self || !other || self.team == null || other.team == null) return false;
-  if (self.id === other.id || self.team === other.team) return false;
+  if (self.id === other.id) return false;
+
+  const selfAi = self.data && self.data.ai || {};
+  const otherAi = other.data && other.data.ai || {};
+  // A named incident target outranks the coarse team number. This is the only sanctioned
+  // same-team hostility path: lawful patrol response or direct self-defense, both explicit and
+  // inspectable. It prevents team 1 from making patrols blind to team-1 raiders.
+  if (selfAi.lawful && selfAi.securityTargetId === other.id) return true;
+  if (otherAi.lawful && otherAi.securityTargetId === self.id) return true;
+  if (selfAi.retaliationTargetId === other.id) return true;
+  if (otherAi.retaliationTargetId === self.id) return true;
+  if (self.team === other.team) return false;
 
   const selfIsPlayer = !!(state && self.id === state.playerId);
   const otherIsPlayer = !!(state && other.id === state.playerId);
   if (selfIsPlayer) return isHostileToPlayer(other, self.team, state);
   if (otherIsPlayer) return isHostileToPlayer(self, other.team, state);
 
-  const selfAi = self.data && self.data.ai || {};
-  const otherAi = other.data && other.data.ai || {};
   if (selfAi.passive || otherAi.passive || self.team === 2 || other.team === 2) return false;
   if (selfAi.lawful && otherIsPlayer) return isPlayerWanted(state);
   if (otherAi.lawful && selfIsPlayer) return isPlayerWanted(state);
@@ -117,7 +132,12 @@ export function protectedStationAt(state, entity) {
     const dx = entity.pos.x - station.pos.x;
     const dz = entity.pos.z - station.pos.z;
     if (dx * dx + dz * dz > radius * radius) continue;
-    return Object.freeze({ stationId: String(stationId), factionId, radius });
+    return Object.freeze({
+      stationId: String(stationId),
+      entityId: station.id == null ? null : station.id,
+      factionId,
+      radius,
+    });
   }
   return null;
 }
