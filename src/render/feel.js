@@ -3,13 +3,8 @@
 // and a red damage vignette. None of this adds gameplay — it makes every impact *land*.
 //
 // DESIGN (cooperates with the rest of the engine, never fights it):
-//   - Hit-stop is implemented as a render-phase driver that pulses `state.timeScale` DOWN from 1
-//     for a few tens of ms, then eases it back. The sim loop (loop.js) already gates stepping on
-//     timeScale, so a dip to ~0.1 freezes the world ~briefly = the "weight" of a hit.
-//   - We MUST NOT clobber a deliberate freeze: pause.js, saveSystem.js, and mainMenu.js all set
-//     timeScale=0 on purpose. So we only ever drive timeScale when state.mode === 'flight' AND no
-//     modal screen is open. We snapshot the pre-hit timeScale and only restore *to 1*, and only if
-//     nothing else has since frozen it. A modal opening mid-hit-stop simply wins (we bail).
+//   - Hit-stop is a render-phase request to the core time-effects owner. The lowest active request
+//     wins, so expiry reveals any remaining pause/Focus request instead of restoring over it.
 //   - The FOV punch is a transient additive offset on the chase camera's fov, eased back. We reach
 //     the camera via state.render.camera (a PerspectiveCamera) and restore its projection matrix.
 //   - The damage vignette is a pooled DOM radial gradient that flashes on heavy player hits and
@@ -21,6 +16,7 @@
 // This is a render-phase system (no sim update). Driven from registry.renderUpdate -> feel.frame().
 // All event subscriptions are registered in init; frame() integrates the timers.
 import { damp } from '../core/math.js';
+import { createTimeEffects } from '../core/timeEffects.js';
 import { WEAPONS } from '../data/weapons.js';
 
 // Weapon recoil weight lookup (built once). The player's own gun firing produces zero camera
@@ -80,11 +76,12 @@ export const feel = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this.timeEffects = ctx.timeEffects || createTimeEffects(this.state);
     // live state
     this._hsTimer = 0;        // remaining hit-stop seconds (0 = no active dip)
-    this._hsReturn = 1;       // timeScale we ease back toward when the dip ends
     this._hsRampIn = 0;       // >0 = cinematic ease-in window (death); timeScale ramps 1 -> floor
     this._hsFreezeTimer = 0;  // kill-cam hard-freeze window (timeScale = 0)
+    this._hsRequest = { scale: HS_DEPTH }; // reused: frame() performs no request allocation
     this._fovPunch = 0;       // current additive fov offset (deg)
     this._vig = 0;            // current vignette opacity (0..1)
     // (FOV base is derived live from settings.video.fov each frame — no cached field, so the FOV
@@ -327,6 +324,12 @@ export const feel = {
   _subscribe() {
     const bus = this.bus, state = this.state;
 
+    const clearHitStop = () => this._resetHitStop();
+    bus.on('sim:pause', clearHitStop);
+    bus.on('game:new', clearHitStop);
+    bus.on('save:restoring', clearHitStop);
+    bus.on('save:loaded', clearHitStop);
+
     // Spec2/02 §3 exact feel rules: shield-break 40 ms hit-stop + 0.3 trauma if player involved;
     // armor/hull hits get NO hit-stop (only trauma for player-as-target); big damage gets a micro dip.
     bus.on('combat:damage', (p) => {
@@ -516,6 +519,8 @@ export const feel = {
       // snappy snap-to-floor normal hits use. Reads as slow-motion rather than a stutter. Only set
       // when this is the death beat (vigCls === 'death').
       this._hsRampIn = (vigCls === 'death') ? HS_RAMP_TIME : 0;
+      this._hsRequest.scale = this._hsRampIn > 0 ? 1 : HS_DEPTH;
+      this.timeEffects.set('feel:hit-stop', this._hsRequest);
     }
     // FOV punch: add on top of any in-flight punch (they decay together), then clamp.
     this._fovPunch = Math.min(this._fovPunch + fovAdd, FOV_PUNCH_DEATH + 1);
@@ -546,40 +551,39 @@ export const feel = {
     return !ui.docked && (!stack || stack.length === 0);
   },
 
+  _resetHitStop() {
+    this._hsTimer = 0;
+    this._hsRampIn = 0;
+    this._hsFreezeTimer = 0;
+    this.timeEffects.clear('feel:hit-stop');
+  },
+
   frame(frameDt, state) {
     // We keep using the ctx-cached state reference; the registry passes the live state too.
     void state;
 
-    // ---- hit-stop timer drives state.timeScale ----
+    // ---- hit-stop timer updates only its time-effects request ----
     if (this._hsTimer > 0) {
       this._hsTimer -= frameDt;
       if (this._hsFreezeTimer > 0) this._hsFreezeTimer -= frameDt;
       if (this._hsTimer <= 0) {
-        this._hsTimer = 0;
-        this._hsRampIn = 0;
-        this._hsFreezeTimer = 0;
-        // Only restore to normal if we're still in flight with no modal. If a modal opened during
-        // the dip, leave timeScale alone — the modal owns it now.
-        if (this.state.mode === 'flight' && this._modalClear()) {
-          this.state.timeScale = 1;
-        }
+        this._resetHitStop();
       } else if (this.state.mode === 'flight' && this._modalClear()) {
         if (this._hsFreezeTimer > 0) {
           // Kill-cam hard freeze: the world stops completely.
-          this.state.timeScale = this._hsReturn = 0;
+          this._hsRequest.scale = 0;
         } else if (this._hsRampIn > 0) {
           // Cinematic death ease-in: ramp timeScale 1 -> HS_DEPTH over the ramp window. The ramp
-          // amount is how far into the window we are (0 = just died, 1 = ramp done). Eased so the
-          // slowdown accelerates — reads as the world bleeding off speed rather than a hard cut.
-          this._hsRampIn -= frameDt;
-          const r = Math.max(0, this._hsRampIn) / HS_RAMP_TIME;   // 1 -> 0
-          const eased = 1 - (1 - r) * (1 - r);                     // ease-in quad (slow start, fast finish)
-          this.state.timeScale = this._hsReturn = 1 - (1 - HS_DEPTH) * eased;
-          if (this._hsRampIn <= 0) this._hsRampIn = 0;
+          // progresses monotonically from 0 -> 1. Once complete, the floor holds until expiry.
+          this._hsRampIn = Math.max(0, this._hsRampIn - frameDt);
+          const progress = 1 - (this._hsRampIn / HS_RAMP_TIME);
+          const eased = progress * progress;
+          this._hsRequest.scale = 1 - (1 - HS_DEPTH) * eased;
         } else {
           // Normal hit: snap to the floor (reads as "weight", not "lag").
-          this.state.timeScale = this._hsReturn = HS_DEPTH;
+          this._hsRequest.scale = HS_DEPTH;
         }
+        this.timeEffects.set('feel:hit-stop', this._hsRequest);
       }
     }
 

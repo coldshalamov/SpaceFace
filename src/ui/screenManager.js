@@ -7,13 +7,18 @@
 // Pushing any screen adds `.ui-modal-open` to <body> (CSS hides #hud + shows the backdrop).
 // Popping back to an empty stack removes it → the flight HUD returns.
 //
-// Screens that "pause the sim" (pause / menus) emit sim:pause while at least one such screen
-// is open and sim:resume once none remain. Screen modules implement {id,mount,onShow,onHide,refresh}.
+// Screens that "pause the sim" (pause / menus) request a freeze while at least one such screen is
+// open and emit sim:pause/sim:resume exactly once at the aggregate boundary. Screen modules do not
+// own timeScale.
+
+import { createTimeEffects } from '../core/timeEffects.js';
 
 const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'gameOver', 'settings', 'saveLoad', 'help', 'codex', 'drill', 'base', 'station']);
+const PAUSE_REQUEST = Object.freeze({ scale: 0 });
 
 export function createScreenManager(ctx) {
   const { state, bus } = ctx;
+  const timeEffects = ctx.timeEffects || createTimeEffects(state);
   const screensRoot = document.getElementById('screens');
   const backdrop = document.getElementById('modal-backdrop');
 
@@ -181,22 +186,20 @@ export function createScreenManager(ctx) {
     if (screensRoot && screensRoot.contains(active) && typeof active.blur === 'function') active.blur();
   }
 
-  // Pause the sim while any pausing screen sits anywhere in the stack. The pause/menu screens
-  // also set state.timeScale in their own onShow/onHide (documented §5.4 exception); driving it
-  // here from the stack as well guarantees ANY pausing screen freezes the sim regardless of the
-  // entry path. Both write the same derived value (0 then 1), so the duplicate is harmless. We
-  // never freeze while mode==='menu' boot (timeScale already 0/handled by the menu screen).
+  // Reconcile the request unconditionally. A new game/load resets transient effects, so a visible
+  // pausing stack must repair its request even while pauseEmitted still reflects the same boundary.
+  // pauseEmitted gates only the aggregate event pair.
   function syncPause() {
     const wantPause = state.ui.docked === true || stack.some((id) => PAUSING_SCREENS.has(id));
+    if (wantPause) timeEffects.set('ui:pausing-screen', PAUSE_REQUEST);
+    else timeEffects.clear('ui:pausing-screen');
     if (wantPause && !pauseEmitted) {
       pauseEmitted = true;
-      if (state.mode === 'flight') state.timeScale = 0;
       bus.emit('sim:pause', {});
     } else if (!wantPause && pauseEmitted) {
       pauseEmitted = false;
       // only resume if the sim is in flight (not at the main menu)
       if (state.mode === 'flight' || state.mode === 'paused') {
-        state.timeScale = 1;
         if (state.mode === 'paused') state.mode = 'flight';
       }
       bus.emit('sim:resume', {});
@@ -328,6 +331,11 @@ export function createScreenManager(ctx) {
     });
     backdrop.addEventListener('click', dismissTopFromBackdrop);
   }
+
+  // Runtime reset/load paths can clear transient requests without changing the visible stack.
+  // Reconcile on their mode/error signals so UI state and the request cannot drift apart.
+  bus.on('mode:changed', syncPause);
+  bus.on('save:error', syncPause);
 
   return {
     register, pushScreen, popScreen, replaceScreen, closeAll,
