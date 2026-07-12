@@ -48,7 +48,7 @@ function isCandidate(entity, state, payload = null) {
   const data = entity.data || {};
   const ai = data.ai || {};
   if (isHostileToPlayer(entity, team, state)) return true;
-  if (ai.forceFlee || ai.fsm === 'flee') return true;
+  if (ai.forceFlee || ai.fsm === 'flee' || ai.fsm === 'surrender') return true;
   if (Array.isArray(ai.hostileTeams) && ai.hostileTeams.includes(team)) return true;
   if (data.encounter) return true;
   return false;
