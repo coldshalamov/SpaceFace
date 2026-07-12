@@ -1062,10 +1062,29 @@ function injectHudCss() {
     box-shadow:none; flex:0 0 auto; }
   .sf-obj__t { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-  /* off-screen objective arrow */
-  .sf-objarrow { position:absolute; left:0; top:0; width:0; height:0; border-style:solid; border-width:8px 0 8px 14px;
-    border-color:transparent transparent transparent var(--visor-amber); filter:drop-shadow(0 0 5px rgba(255,179,92,.5)); z-index:11;
-    will-change:transform; }
+  /* One spatial goal marker: an amber diamond on the world target, a directional chevron when it
+     leaves the camera. The attached plate repeats the same GOAL identity as the tracker/radar and
+     goes compact when the projected target passes behind a persistent HUD anchor. */
+  .sf-objarrow { position:absolute; left:0; top:0; width:16px; height:16px; z-index:11;
+    pointer-events:none; will-change:transform; filter:drop-shadow(0 0 5px rgba(255,179,92,.5)); }
+  .sf-objarrow__glyph { position:absolute; left:50%; top:50%; display:block; }
+  .sf-objarrow--onscreen .sf-objarrow__glyph { width:14px; height:14px;
+    transform:translate(-50%,-50%) rotate(45deg); border:2px solid #fff;
+    background:rgba(255,179,92,.26); box-shadow:0 0 0 2px var(--visor-amber); }
+  .sf-objarrow--edge .sf-objarrow__glyph { width:0; height:0;
+    transform:translate(-50%,-50%) rotate(var(--sf-arrow-angle, 0rad));
+    border-style:solid; border-width:7px 0 7px 12px;
+    border-color:transparent transparent transparent var(--visor-amber); }
+  .sf-objarrow__label { position:absolute; max-width:280px; padding:4px 7px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    background:rgba(5,9,18,.94); border-left:2px solid var(--visor-amber);
+    color:var(--text-primary); font-size:9px; font-weight:700; letter-spacing:.08em;
+    line-height:1.35; text-shadow:none; }
+  .sf-objarrow[data-edge="left"] .sf-objarrow__label { left:20px; top:50%; transform:translateY(-50%); }
+  .sf-objarrow[data-edge="right"] .sf-objarrow__label { right:20px; top:50%; transform:translateY(-50%); }
+  .sf-objarrow[data-edge="top"] .sf-objarrow__label { left:50%; top:20px; transform:translateX(-50%); }
+  .sf-objarrow[data-edge="bottom"] .sf-objarrow__label { left:50%; bottom:20px; transform:translateX(-50%); }
+  .sf-objarrow--compact .sf-objarrow__label { display:none; }
 
   /* ===== toasts ===== */
   .sf-toast { display:flex; align-items:center; gap:9px; width:280px; padding:9px 12px;

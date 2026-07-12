@@ -7,6 +7,7 @@ import {
   contactDisplayLimit,
   contactOverflowSummary,
   objectiveBearingGlyph,
+  objectiveTravelReadout,
   resolveObjectiveHudLayout,
 } from '../src/ui/hud.js';
 import {
@@ -40,6 +41,23 @@ test('goal bearing is an explicit eight-way direction, not an unlabeled color', 
     const { playerId, entities, waypoint } = bearingState(x, z);
     assert.equal(objectiveBearingGlyph({ playerId, entities }, waypoint), glyph);
   }
+});
+
+test('goal readout reports honest distance and ETA only while closing', () => {
+  const player = { id: 1, pos: { x: 0, z: 0 }, vel: { x: 30, z: 40 } };
+  const state = { playerId: 1, entities: new Map([[1, player]]) };
+  const waypoint = { pos: { x: 300, z: 400 } };
+  const closing = objectiveTravelReadout(state, waypoint);
+  assert.equal(closing.distanceWu, 500);
+  assert.equal(closing.closingSpeed, 50);
+  assert.equal(closing.etaS, 10);
+  assert.equal(closing.distanceText, '500 WU');
+  assert.equal(closing.etaText, 'ETA 10s');
+
+  player.vel = { x: -30, z: -40 };
+  const opening = objectiveTravelReadout(state, waypoint);
+  assert.equal(opening.etaS, null);
+  assert.equal(opening.etaText, 'ETA —');
 });
 
 test('800x600 floor, 1280x720 standard and 1920x1080 target keep HUD anchors disjoint', () => {
@@ -80,8 +98,14 @@ test('flight HUD and Mission Log paint one command instead of repeated story/mis
     'goal line must name the marker instead of relying on color alone');
   assert.match(hud, /mtWaypointDistance\(state, wp\)/,
     'goal line must include live distance');
+  assert.match(hud, /travel\.etaText/,
+    'goal line must include an honest arrival estimate');
   assert.match(hud, /objectiveBearingGlyph\(state, wp\)/,
     'goal line must include direction');
+  assert.match(hud, /sf-objarrow--onscreen/,
+    'an in-camera objective must retain a world-space diamond instead of disappearing');
+  assert.match(hud, /sf-objarrow--edge/,
+    'an off-camera objective must retain a labelled edge cue');
   assert.match(log, /CURRENT ACTION/);
   assert.match(log, /recommendedActions\([^)]*\)\.slice\(0, 1\)/,
     'Mission Log may paint only the highest-priority action');

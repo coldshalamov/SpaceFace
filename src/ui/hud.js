@@ -210,12 +210,27 @@ function mtFmtTime(s) {
   return `${m}m ${sec < 10 ? '0' : ''}${sec}s`;
 }
 
-function mtWaypointDistance(state, wp) {
+export function objectiveTravelReadout(state, wp) {
   const pos = wp && wp.pos;
   const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
-  if (!pos || !player || !player.pos) return 'ROUTE PENDING';
+  if (!pos || !player || !player.pos) {
+    return { distanceWu: null, closingSpeed: 0, etaS: null, distanceText: 'ROUTE PENDING', etaText: 'ETA —' };
+  }
   const dist = Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z);
-  return dist >= 1000 ? `${(dist / 1000).toFixed(1)}k WU` : `${Math.round(dist)} WU`;
+  const vel = player.vel || { x: 0, z: 0 };
+  const closingSpeed = dist > 0
+    ? ((Number(vel.x) || 0) * (pos.x - player.pos.x) + (Number(vel.z) || 0) * (pos.z - player.pos.z)) / dist
+    : 0;
+  const etaS = closingSpeed > 5 ? dist / closingSpeed : null;
+  const distanceText = dist >= 1000 ? `${(dist / 1000).toFixed(1)}k WU` : `${Math.round(dist)} WU`;
+  const etaText = etaS == null
+    ? 'ETA —'
+    : `ETA ${etaS < 60 ? `${Math.max(1, Math.round(etaS))}s` : `${Math.round(etaS / 60)}m`}`;
+  return { distanceWu: dist, closingSpeed, etaS, distanceText, etaText };
+}
+
+function mtWaypointDistance(state, wp) {
+  return objectiveTravelReadout(state, wp).distanceText;
 }
 
 /**
@@ -245,8 +260,9 @@ function mtObjectiveAction(action, wp) {
 
 function mtMarkerLine(state, wp, suffix = '') {
   const bearing = objectiveBearingGlyph(state, wp);
+  const travel = objectiveTravelReadout(state, wp);
   const route = wp && wp.pos
-    ? `◆ AMBER DIAMOND / GOAL · ${mtWaypointDistance(state, wp)}${bearing ? ` · ${bearing}` : ''}`
+    ? `◆ AMBER DIAMOND / GOAL · ${travel.distanceText} · ${travel.etaText}${bearing ? ` · ${bearing}` : ''}`
     : `NO GOAL MARKER · ${BINDINGS.missionLog.label} MISSION LOG`;
   return suffix ? `${route} · ${suffix}` : route;
 }
@@ -908,7 +924,11 @@ export function createHud(ctx, alerts) {
   const arrow = document.createElement('div');
   arrow.className = 'sf-objarrow';
   arrow.style.display = 'none';
+  arrow.setAttribute('role', 'img');
+  arrow.setAttribute('aria-label', 'Current objective marker');
+  arrow.innerHTML = '<span class="sf-objarrow__glyph" aria-hidden="true"></span><span class="sf-objarrow__label mono"></span>';
   root.appendChild(arrow);
+  const arrowLabel = arrow.querySelector('.sf-objarrow__label');
 
   // ---- combat HUD: lock-on ring, weapon heat bars, target lock diamond ----
 
@@ -2600,6 +2620,7 @@ export function createHud(ctx, alerts) {
   let lastNavLabel = '';
   let lastNavDist = '';
   let lastNavEta = '';
+  let lastObjectiveMarkerText = '';
   const numericClock = createHudClock(10);
   const targetClock = createHudClock(20);
   const overlayClock = createHudClock(30);
@@ -3350,6 +3371,7 @@ export function createHud(ctx, alerts) {
       setDisplay(arrow, false);
       setDisplay(elNavReadout, false);
       lastNavLabel = '';
+      lastObjectiveMarkerText = '';
       return;
     }
     const proj = helpers.worldToScreen({ x: wp.x, y: 0, z: wp.z });
@@ -3364,15 +3386,36 @@ export function createHud(ctx, alerts) {
     const label = wpLabel || '—';
     arrow.title = label;
     if (label !== lastNavLabel) { setText(elNavLabel, label); lastNavLabel = label; }
+    const travel = objectiveTravelReadout(state, { pos: wp });
+    const conciseLabel = String(label).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 28) || 'OBJECTIVE';
+    const markerText = `GOAL · ${conciseLabel} · ${travel.distanceText} · ${travel.etaText}`;
+    if (markerText !== lastObjectiveMarkerText) {
+      setText(arrowLabel, markerText);
+      arrow.setAttribute('aria-label', `Current objective: ${conciseLabel}, ${travel.distanceText}, ${travel.etaText}`);
+      lastObjectiveMarkerText = markerText;
+    }
     if (slow || !lastNavDist) {
       const distText = Math.round(dist) + ' u';
       const etaText = isFinite(etaS) ? (etaS < 60 ? Math.round(etaS) + 's' : Math.round(etaS / 60) + 'm') : '—';
       if (distText !== lastNavDist) { setText(elNavDist, distText); lastNavDist = distText; }
       if (etaText !== lastNavEta) { setText(elNavEta, etaText); lastNavEta = etaText; }
     }
-    if (proj.onScreen) { setDisplay(arrow, false); return; }
-    // clamp to a screen-edge ellipse around center, pointing toward target
     const w = window.innerWidth, h = window.innerHeight;
+    if (proj.onScreen) {
+      const x = Math.max(18, Math.min(w - 18, proj.x));
+      const y = Math.max(18, Math.min(h - 18, proj.y));
+      const overlapsLeftAnchor = x < 370 && y > h - 340;
+      const overlapsRightAnchor = x > w - 270 && y > h - 470;
+      const overlapsActionAnchor = y > h - 125 && x > w * 0.28 && x < w * 0.72;
+      arrow.classList.add('sf-objarrow--onscreen');
+      arrow.classList.remove('sf-objarrow--edge');
+      arrow.classList.toggle('sf-objarrow--compact', overlapsLeftAnchor || overlapsRightAnchor || overlapsActionAnchor);
+      arrow.dataset.edge = x > w * 0.62 ? 'right' : (y < 62 ? 'top' : 'left');
+      arrow.style.transform = `translate3d(${x}px,${y}px,0)`;
+      setDisplay(arrow, true);
+      return;
+    }
+    // clamp to a screen-edge ellipse around center, pointing toward target
     let dx = proj.x - w / 2, dy = proj.y - h / 2;
     // worldToScreen returns mirrored coords for behind-camera points; normalize direction
     const len = Math.hypot(dx, dy) || 1;
@@ -3384,8 +3427,17 @@ export function createHud(ctx, alerts) {
     const ty = Math.abs(dy) > 0.001 ? my / Math.abs(dy) : Infinity;
     const edgeT = Math.min(tx, ty);
     const ex = w / 2 + dx * edgeT, ey = h / 2 + dy * edgeT;
+    // Corners borrow the side-facing plate so the label grows inward instead of clipping past the
+    // viewport. The chevron itself still points at the exact projected bearing.
+    const edge = ex > w * 0.72
+      ? 'right'
+      : (ex < w * 0.28 ? 'left' : (dy < 0 ? 'top' : 'bottom'));
+    arrow.classList.add('sf-objarrow--edge');
+    arrow.classList.remove('sf-objarrow--onscreen', 'sf-objarrow--compact');
+    arrow.dataset.edge = edge;
+    arrow.style.setProperty('--sf-arrow-angle', `${Math.atan2(dy, dx)}rad`);
     setDisplay(arrow, true);
-    arrow.style.transform = `translate3d(${ex}px,${ey}px,0) translate(-50%,-50%) rotate(${Math.atan2(dy, dx)}rad)`;
+    arrow.style.transform = `translate3d(${ex}px,${ey}px,0)`;
   }
 
   function setVisible(v) {

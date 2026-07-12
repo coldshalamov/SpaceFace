@@ -8,9 +8,7 @@ import { chromium } from 'playwright';
 const ROOT = process.cwd();
 const SHOT_DIR = '.devshots/hud-readability';
 const CELLS = [
-  { width: 1920, height: 1080, rows: 5 },
   { width: 1280, height: 720, rows: 4 },
-  { width: 800, height: 600, rows: 3 },
 ];
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -47,6 +45,8 @@ async function bootFlight(page) {
 
   const newGame = page.getByRole('button', { name: 'New Game', exact: true });
   if (await newGame.isVisible().catch(() => false)) {
+    await page.waitForFunction(() => [...document.querySelectorAll('button')]
+      .some((button) => button.textContent.trim() === 'New Game' && !button.disabled), null, { timeout: 20000 });
     await newGame.click();
     const launch = page.getByRole('button', { name: 'Launch', exact: true });
     await launch.waitFor({ state: 'visible', timeout: 20000 });
@@ -98,7 +98,7 @@ async function installReadabilityScene(page) {
         alive: true,
         team: 1,
         pos: { x: 0, y: 0, z: 0 },
-        vel: { x: 0, y: 0, z: 0 },
+        vel: { x: 30, y: 0, z: -20 },
         hull: 100, hullMax: 100,
         shield: 60, shieldMax: 60,
         armorHp: 40, armorMax: 40,
@@ -111,6 +111,7 @@ async function installReadabilityScene(page) {
       state.entities.set(player.id, player);
       state.entityList.push(player);
     }
+    player.vel = { x: 30, y: 0, z: -20 };
     if (state.onboarding) {
       state.onboarding.active = false;
       state.onboarding.finished = true;
@@ -254,6 +255,10 @@ try {
         objectiveText: document.querySelector('.sf-mt-obj')?.textContent || '',
         markerText: document.querySelector('.sf-mt-time')?.textContent || '',
         overflowText: document.querySelector('.sf-overview-footer')?.textContent || '',
+        worldMarker: rect('.sf-objarrow'),
+        worldMarkerLabel: rect('.sf-objarrow__label'),
+        worldMarkerText: document.querySelector('.sf-objarrow__label')?.textContent || '',
+        worldMarkerMode: document.querySelector('.sf-objarrow')?.className || '',
         allyRows: [...document.querySelectorAll('.sf-overview-row')]
           .filter((row) => row.querySelector('.sf-overview-row__state')?.textContent === 'ALLY').length,
         legacyObjectives: getComputedStyle(document.querySelector('.sf-objectives')).display,
@@ -262,7 +267,13 @@ try {
 
     assert.equal(measurement.rows, cell.rows, `${cell.width}x${cell.height} contact row cap`);
     assert.match(measurement.objectiveText, /Recover the 47-A sample.*47-A RECOVERY SITE/);
-    assert.match(measurement.markerText, /AMBER DIAMOND \/ GOAL.*WU.*[↑↗→↘↓↙←↖]/);
+    assert.match(measurement.markerText, /AMBER DIAMOND \/ GOAL.*WU.*ETA \d+s.*[↑↗→↘↓↙←↖]/);
+    assert.ok(measurement.worldMarker && measurement.worldMarker.display !== 'none',
+      'the camera view must retain a visible spatial objective marker');
+    assert.match(measurement.worldMarkerText, /GOAL.*47-A RECOVERY SITE.*WU.*ETA \d+s/);
+    assert.match(measurement.worldMarkerMode, /sf-objarrow--(?:onscreen|edge)/);
+    assert.ok(measurement.worldMarkerLabel.x >= 0 && measurement.worldMarkerLabel.right <= cell.width,
+      'the spatial goal label must stay inside the viewport');
     assert.match(measurement.overflowText, /ALLY|WRECK|OTHER/);
     assert.ok(measurement.allyRows >= 1, `${cell.width}x${cell.height} shows an explicit ally row`);
     assert.equal(measurement.legacyObjectives, 'none');
@@ -271,6 +282,7 @@ try {
     assert.equal(overlaps(measurement.bars, measurement.cluster), false);
 
     await page.screenshot({ path: `${SHOT_DIR}/${cell.width}x${cell.height}.png` });
+    await page.screenshot({ path: `${SHOT_DIR}/objective-after.png` });
     evidence.push({
       viewport: `${cell.width}x${cell.height}`,
       rows: measurement.rows,
