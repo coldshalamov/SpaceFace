@@ -111,11 +111,15 @@ const SECTIONS = [
     ['Fire weapons', 'fire', 'LMB / Space'],
     ['Auto-target toggle', 'autoFire', 'G'],
     ['Countermeasure', 'countermeasure', 'X'],
+    // Rebindable tether verbs (live labels from settings; defaults KeyF / unbound / unbound).
+    ['Tether latch / cut', 'tether', 'F'],
+    ['Tether winch in', 'reelIn', '—'],
+    ['Tether winch out', 'reelOut', '—'],
   ]],
   ['Interface (fixed keys)', [
     ['Aim weapons', null, 'Mouse'],
     ['Mine beam', null, 'RMB on rock'],
-    ['Deep-drill (ant-farm)', null, `${BINDINGS.drill.label} (target an asteroid)`],
+    ['Deep-core extraction', null, `${BINDINGS.drill.label} (target an asteroid)`],
     ['Claim body / open base', null, `${BINDINGS.claimBase.label} (near a colony/moon)`],
     ['Cycle target', null, 'Tab'],
     ['Dock', null, `${BINDINGS.dock.label} (when prompted)`],
@@ -180,8 +184,14 @@ function codeLabel(code) {
 function keyLabel(binds, action, def) {
   if (!action) return def; // fixed / non-rebindable key
   // binds is settings.controls.bindings; prefer it, then the input defaults, then the doc text.
-  let codes = binds && binds[action];
-  if (codes == null) codes = DEFAULTS.BINDINGS[action];
+  // Explicit empty override (present key, empty list) is unbound — do not fall back to def/default.
+  if (binds && Object.prototype.hasOwnProperty.call(binds, action)) {
+    const codes = binds[action];
+    const arr = Array.isArray(codes) ? codes : (codes ? [codes] : []);
+    if (!arr.length) return '—';
+    return arr.map(codeLabel).join(' / ');
+  }
+  let codes = DEFAULTS.BINDINGS[action];
   if (codes == null) return def;
   const arr = Array.isArray(codes) ? codes : [codes];
   if (!arr.length) return def;
