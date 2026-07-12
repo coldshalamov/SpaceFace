@@ -12,8 +12,12 @@
     "profileSelectionEvidence",
     "family",
     "playerRole",
+    "identityConstraints",
+    "admiredReferences",
+    "failureReferences",
     "canonical",
     "minMeaningfulCycles",
+    "cycleLedger",
     "techniques",
     "runtimeRequirements",
     "requiredEvidence",
@@ -23,7 +27,7 @@
     "compiledAt"
   ],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "assetId": { "type": "string", "minLength": 1 },
     "assetKind": {
       "enum": [
@@ -47,6 +51,24 @@
     },
     "family": { "type": "string", "minLength": 1 },
     "playerRole": { "type": "string", "minLength": 20 },
+    "identityConstraints": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 10 },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "admiredReferences": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/reference" },
+      "minItems": 2,
+      "uniqueItems": true
+    },
+    "failureReferences": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/reference" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
     "canonical": {
       "type": "object",
       "additionalProperties": false,
@@ -58,19 +80,32 @@
       }
     },
     "minMeaningfulCycles": { "type": "integer", "minimum": 3 },
+    "cycleLedger": { "$ref": "#/definitions/controllerArtifact" },
     "techniques": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["techniqueId", "applicability", "triggerOrReason", "proofRequirements"],
+        "required": [
+          "techniqueId",
+          "applicability",
+          "triggerOrReason",
+          "proofRequirements",
+          "controllerDecisionHash",
+          "approvedBeforeAuthoring"
+        ],
         "properties": {
           "techniqueId": { "type": "string", "minLength": 1 },
           "applicability": {
             "enum": ["required", "conditional", "not_applicable", "forbidden"]
           },
           "triggerOrReason": { "type": "string", "minLength": 10 },
+          "controllerDecisionHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "approvedBeforeAuthoring": { "const": true },
           "proofRequirements": {
             "type": "array",
             "items": { "type": "string", "minLength": 1 }
@@ -113,6 +148,31 @@
     "compiledByRole": { "const": "controller" },
     "compiledBy": { "type": "string", "minLength": 1 },
     "compiledAt": { "type": "string", "format": "date-time" }
+  },
+  "definitions": {
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaPath", "sha256", "bytes", "quality", "provenance"],
+      "properties": {
+        "mediaPath": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "quality": { "type": "string", "minLength": 10 },
+        "provenance": { "type": "string", "minLength": 1 }
+      }
+    },
+    "controllerArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relativePath", "sha256", "bytes", "producerReceiptHash"],
+      "properties": {
+        "relativePath": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "producerReceiptHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
   },
   "allOf": [
     {

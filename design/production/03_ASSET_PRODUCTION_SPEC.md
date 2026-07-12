@@ -29,7 +29,9 @@ The present pipeline cannot be scaled safely until these are closed:
 - Existing ledgers can claim export bars while their own render analysis remains false.
 - Much of `revamp-evidence/` lacks its required ledger and render set; some deficiency logs contain
   repeated template prose rather than observed revisions.
-- Blender validation stamps chamfer claims before validation instead of proving geometry.
+- The exporter validates before stamping, but its chamfer proof inspects only marked sharp/creased
+  edges and treats any qualifying bevel modifier as global coverage; finalizers can still fabricate
+  chamfer claims that downstream validation trusts.
 - Map checks can accept procedural nodes/factors as baked maps; finalization can synthesize neutral
   base/normal/ORM textures that satisfy transport without adding professional surface information.
 - Runtime contract checks currently treat missing station-scale LOD chains as advisory.
@@ -54,6 +56,10 @@ Every candidate receives a compiled build card that validates against
 Asset kind and exposure tier are separate. The kind selects technical obligations; the controller
 derives exposure from the Alpha route, projected screen occupancy/duration, recurrence, player
 ownership, narrative importance, and interaction criticality. The author cannot downgrade it.
+Every technique applicability/N/A decision is controller-approved and hash-bound before authoring;
+the semantic validator resolves that decision artifact rather than trusting a hash typed into the
+card. An all-N/A card is legal only when those independent decisions and the profile genuinely prove
+it, never as an escape from difficult craft work.
 
 Exposure floors are: hero and recurring cast assets ≥20 meaningful macro-cycles, standard assets
 ≥8, and background assets ≥3. These are review budgets, never pass conditions. The asset kinds are:
@@ -88,6 +94,9 @@ Each cycle treats the candidate as a full asset rather than reserving tiny work 
 8. Submit to independent review when the author believes it is ready; continue beyond twenty if rejected.
 
 Camera-only, lighting-only, filename-only, metadata-only, or neutral-texture-only changes do not count.
+The controller derives the count from the cycle ledger by recomputing each measured defect,
+substantive before/after source/candidate hash, repair technique, and new evidence; the author never
+earns cycle credit by reporting an integer.
 
 ## 4. Professional outcome gates
 

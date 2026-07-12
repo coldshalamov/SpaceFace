@@ -20,13 +20,18 @@ validates against `design/production/schemas/quality-acceptance-card.schema.json
 
 1. Player promise and intended emotion or decision.
 2. Canonical public route and representative/held-out seeds.
-3. Two or more admired references for specific qualities, plus known failure examples.
+3. Two or more actual admired screenshots/clips for specific qualities, plus an actual failure
+   example; all are hash-bound, provenance-recorded, and attached to every worker/reviewer context.
 4. SpaceFace-specific identity constraints; reference use never means imitation.
 5. Critical moments and observable setup → action → consequence chain.
 6. Objective hard gates and subjective review dimensions.
 7. Required video, incident, runtime, asset, performance, and accessibility evidence.
 8. Critical/major/minor defect definitions and the rejection owner.
 9. Accepted benchmark hash once the first exemplar passes.
+
+Pure control-plane packets use the same schema in `control_plane` mode: at least two hash-bound good
+controls and one hostile/failure fixture replace visual media. This is a packet-appropriate external
+standard, not a reference-free exemption.
 
 The accepted benchmark is the family floor. Later variants are compared to it and may not lower
 craft, readability, runtime behavior, or evidence completeness merely to increase output volume.

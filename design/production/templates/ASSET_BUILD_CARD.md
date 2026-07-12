@@ -37,8 +37,9 @@
 | Technique card | Applicability | Trigger/reason | Required proof |
 |---|---|---|---|
 
-Applicability is exactly one of `required`, `conditional`, `not_applicable`, or `forbidden`; the
-author cannot select multiple columns or approve an N/A after authoring begins.
+Applicability is exactly one of `required`, `conditional`, `not_applicable`, or `forbidden`; every
+row carries a controller decision hash approved before authoring. The author cannot select multiple
+columns, self-approve N/A, or retroactively mark a difficult technique unnecessary.
 
 ## Runtime contract
 
@@ -64,5 +65,7 @@ author cannot select multiple columns or approve an N/A after authoring begins.
 
 - Candidate-specific P0/P1 defects:
 - Minimum meaningful macro-cycles (computed floor, not author-selected):
+- Controller-owned cycle-ledger path/hash; each cycle binds measured defect, substantive source/
+  candidate before/after hashes, repair technique, and new evidence:
 - Blind comparison benchmark:
 - Independent reviewer quorum:

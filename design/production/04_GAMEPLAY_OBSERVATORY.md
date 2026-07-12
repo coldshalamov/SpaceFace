@@ -29,27 +29,30 @@ Findings classify plan, execution, presentation, calibration, or content-coverag
   20 Hz, asset exposure at 10 Hz plus lifecycle changes, and performance on every render frame.
 - Commit the candidate hash, route/policy matrix, and held-out seed list before sessions begin;
   retain every scheduled run, not only favorable examples.
-- Replay the identical input tape without capture. Periodic/final deterministic sim hashes and
-  ordered sim-event receipts must match the capture run exactly; otherwise the pair is invalid.
-- No-capture replay owns performance truth. Capture overhead must be reported and remain ≤5% p95;
-  above that, the capture cannot adjudicate choppiness and must use a less intrusive/external path.
+- Replay the identical tape twice: observer on/media off, then observer off/media off. Periodic/final
+  deterministic sim hashes and ordered sim-event receipts match across all three executions.
+- Observer-off/media-off owns authoritative performance. Capture overhead compares media-on with
+  observer-on/media-off and must remain ≤5% p95; observer overhead is reported separately against
+  observer-off. Above the capture limit, media cannot adjudicate choppiness and must use a less
+  intrusive/external path.
 
 ## 4. First detector families
 
-The first threshold set is versioned `observatory-detectors.v1`. These thresholds create review
-incidents; they do not automatically declare a design bad.
+This document owns the signals, capture shape, and calibration process. The sole normative numeric
+threshold source is `10_OBSERVATORY_HARD_GATES.md`; copying numbers here creates drift and is
+forbidden. `observatory-detectors.v1` converts the following synchronized signals into incidents:
 
-| Concern | v1 incident threshold |
+| Concern | Required signals |
 |---|---|
-| Enemy confusion | engaged target changes >3/5 s; tactic changes >4/3 s; heading reversals >4/2 s; blocked loop >2 s; plan/trajectory mismatch |
-| Unfair lethality | damage before an identifiable warning; warning→hit <0.75 s; warning→death <2.5 s; >40% EHP lost/0.5 s; pre-first-dock multi-attacker pile-on |
-| Missing feedback | critical action has no identifying HUD/radar/VFX/mixed-audio/camera/target cue in the declared −0.5 s/+0.15 s window |
-| Mining choppiness | no-capture p95 exceeds the 16.7 ms target/33.3 ms floor, hitch count >32 ms increases, event-window p95 regresses >5%, backlog sheds, or input→beam→yield latency spikes |
-| Mining simplicity | one interaction state persists >45 s without a new choice/escalation; seam/core/tether states or cadences collapse to one repeated fingerprint |
-| Monotony | identical activity/encounter fingerprint ≥3 times/10 min; no meaningful decision/progression change >90 s |
-| Sparse world | >45 s without an actionable contact, affordance, discovery, or intentional tension beat; excessive travel-to-action ratio versus route contract |
-| Asset repetition/jank | any fallback/loader error; LOD oscillates >2 times/s; bounds/pop/disappearance; one non-hero variant exceeds 50% of same-family exposure |
-| UI friction | ≥3 failed attempts for one intent, screen loop, planned action without transition, or route milestone delay beyond its acceptance card |
+| Enemy confusion | selected target/tactic/action, blocked-action reason, heading/trajectory, contact visibility, and doctrine phase |
+| Unfair lethality | first observable threat cue, attacker fire intent, projectile hit/damage/death receipts, EHP samples, and concurrent attackers |
+| Missing feedback | gameplay action plus applied HUD/radar/VFX/audio/camera/target presentation receipts |
+| Mining choppiness | raw render-frame duration, sim backlog, applied input, beam/seam/fracture/yield receipts, and paired no-media replay |
+| Mining simplicity | mining state/choice/cadence changes, seam/core/tether progression, reward, escalation, and state dwell |
+| Monotony | activity and encounter fingerprints, meaningful decisions, progression changes, consequences, and travel/activity time |
+| Sparse world | visible contacts, affordances, discoveries, destinations, intentional tension beats, and travel/activity time |
+| Asset repetition/jank | authored/fallback state, readable-fallback retention, asset identity, LOD lifecycle, bounds/pop/disappearance, and screen-time exposure |
+| UI friction | public-input attempts, intended action, focus/route transitions, failed transitions, and milestone latency |
 
 Each detector is a release gate only after a held-out benchmark of at least 20 seeded positives and
 20 negatives reaches ≥90% sensitivity for P0/P1 examples and ≤10% false positives. Otherwise it is
@@ -61,9 +64,10 @@ observer finds and reconstructs moments; it does not manufacture objective taste
 
 ### Advisory vs hard gates
 
-The thresholds above are advisory when first implemented. Once a detector passes its calibration
-benchmark (≥90% sensitivity, ≤10% false positives across 20+20 seeded examples), its threshold is
-**promoted to a hard gate** in `10_OBSERVATORY_HARD_GATES.md` and wired as a `check:*` script that
+The signal detectors above are advisory when first implemented. Once a detector passes its
+calibration benchmark (≥90% sensitivity, ≤10% false positives across 20+20 held-out seeded
+examples), its threshold is **promoted to a hard gate** only in
+`10_OBSERVATORY_HARD_GATES.md` and wired as a `check:*` script that
 exits nonzero on failure. A hard gate fails mechanically — the orchestrator cannot round it up,
 and the campaign state records `fail` preventing `ACCEPTED`. An advisory detector raises incidents
 for review; a hard gate blocks acceptance. The escalation path is one-way: once promoted, a gate
@@ -101,15 +105,21 @@ combat, mining, economy, navigation, presentation, perf, assets, full video, and
 ```text
 .devshots/session-observatory/<session-id>/
   session.json
-  applied-inputs.json
+  input-tape.json
+  applied-inputs.ndjson
   intents.ndjson
   timeline.ndjson
+  deterministic-event-receipts.ndjson
   state-samples.ndjson
   perf-samples.ndjson
   asset-exposure.ndjson
-  full-session.webm
-  mixed-audio.wav
-  audio-analysis.json
+  hash-checkpoints.ndjson
+  recording-health.json
+  observer-control-replay/{session.json,perf-samples.ndjson,hash-checkpoints.ndjson}
+  performance-replay/{session.json,perf-samples.ndjson,hash-checkpoints.ndjson}
+  full-session.webm                  # OBS-002 media_complete only
+  mixed-audio.wav                    # OBS-002 media_complete only
+  audio-analysis.json                # OBS-002 media_complete only
   detector-manifest.json
   review-sampling.json
   sim-hash-comparison.json
@@ -121,4 +131,7 @@ combat, mining, economy, navigation, presentation, perf, assets, full video, and
 `session.json` and every finding validate against the versioned schemas in
 `design/production/schemas/observatory-*.schema.json`. Audio analysis includes clipping, silence,
 event alignment, loudness/range, and repetition; subjective mix quality is reviewed from the actual
-track. The existing Alpha evidence record remains the outer acceptance wrapper.
+track. OBS-001 records lifecycle `observer_contract`, media `pending`, and
+`validForAcceptance:false`; it never fabricates the three media paths. OBS-002 promotes the
+lifecycle only after real files pass containment, hash/size/signature, decode, duration, FPS, and
+audio validation. The existing Alpha evidence record remains the outer acceptance wrapper.

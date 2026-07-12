@@ -10,6 +10,9 @@
     "packetId",
     "briefHash",
     "coverageIds",
+    "dependencies",
+    "externalPrerequisites",
+    "dependencySnapshotHash",
     "state",
     "controllerId",
     "attemptCount",
@@ -29,7 +32,7 @@
     "nextAction"
   ],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "campaignId": { "type": "string", "minLength": 1 },
     "packetId": { "type": "string", "minLength": 1 },
     "briefHash": { "$ref": "#/definitions/digest" },
@@ -39,12 +42,44 @@
       "minItems": 1,
       "uniqueItems": true
     },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["packetId", "requiredState", "observedState", "candidateHash", "acceptanceRecordHash"],
+        "properties": {
+          "packetId": { "type": "string", "minLength": 1 },
+          "requiredState": { "const": "ACCEPTED" },
+          "observedState": {
+            "oneOf": [
+              { "$ref": "#/definitions/state" },
+              { "const": "MISSING" }
+            ]
+          },
+          "candidateHash": { "$ref": "#/definitions/digestOrNull" },
+          "acceptanceRecordHash": { "$ref": "#/definitions/digestOrNull" }
+        }
+      },
+      "uniqueItems": true
+    },
+    "externalPrerequisites": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/controllerArtifact" },
+      "uniqueItems": true
+    },
+    "dependencySnapshotHash": { "$ref": "#/definitions/digest" },
     "state": { "$ref": "#/definitions/state" },
     "controllerId": { "type": "string", "minLength": 1 },
     "attemptCount": { "type": "integer", "minimum": 0 },
     "relaunchCount": { "type": "integer", "minimum": 0 },
     "failureSignature": { "type": ["string", "null"] },
-    "heartbeatAt": { "type": "string", "format": "date-time" },
+    "heartbeatAt": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "format": "date-time" }
+      ]
+    },
     "continuationDeadlineAt": {
       "oneOf": [
         { "type": "null" },
@@ -66,20 +101,35 @@
         "expiresAt"
       ],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
+        "id": { "type": ["string", "null"] },
         "kind": { "enum": ["code_mutation", "blender_mutation", "read_only"] },
-        "status": { "enum": ["pending", "active", "released", "violated"] },
-        "candidateWorkspace": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["planned", "pending", "active", "released", "violated"] },
+        "candidateWorkspace": { "type": ["string", "null"] },
         "writablePaths": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
-          "minItems": 1,
+          "minItems": 0,
           "uniqueItems": true
         },
-        "baselineHash": { "$ref": "#/definitions/digest" },
-        "acquiredAt": { "type": "string", "format": "date-time" },
-        "heartbeatAt": { "type": "string", "format": "date-time" },
-        "expiresAt": { "type": "string", "format": "date-time" }
+        "baselineHash": { "$ref": "#/definitions/digestOrNull" },
+        "acquiredAt": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "heartbeatAt": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "expiresAt": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "format": "date-time" }
+          ]
+        }
       }
     },
     "author": {
@@ -87,10 +137,10 @@
       "additionalProperties": false,
       "required": ["agent", "model", "modelFamily", "sessionId"],
       "properties": {
-        "agent": { "type": "string", "minLength": 1 },
-        "model": { "type": "string", "minLength": 1 },
-        "modelFamily": { "type": "string", "minLength": 1 },
-        "sessionId": { "type": "string", "minLength": 1 }
+        "agent": { "type": ["string", "null"] },
+        "model": { "type": ["string", "null"] },
+        "modelFamily": { "type": ["string", "null"] },
+        "sessionId": { "type": ["string", "null"] }
       }
     },
     "reviewers": {
@@ -106,7 +156,7 @@
           "sessionId",
           "candidateHash",
           "verdict",
-          "verdictPath"
+          "verdictArtifact"
         ],
         "properties": {
           "agent": { "type": "string", "minLength": 1 },
@@ -115,7 +165,7 @@
           "sessionId": { "type": "string", "minLength": 1 },
           "candidateHash": { "$ref": "#/definitions/digest" },
           "verdict": { "enum": ["PASS", "REVISE", "REJECT"] },
-          "verdictPath": { "type": "string", "minLength": 1 }
+          "verdictArtifact": { "$ref": "#/definitions/controllerArtifact" }
         }
       }
     },
@@ -127,18 +177,44 @@
         "sourceHash",
         "candidateHash",
         "workspaceSnapshotHash",
-        "submissionPath",
-        "evidencePaths"
+        "inputManifest",
+        "deltaManifest",
+        "integrationReceipt",
+        "submissionArtifact",
+        "evidenceArtifacts"
       ],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "sourceHash": { "$ref": "#/definitions/digestOrNull" },
         "candidateHash": { "$ref": "#/definitions/digestOrNull" },
         "workspaceSnapshotHash": { "$ref": "#/definitions/digestOrNull" },
-        "submissionPath": { "type": ["string", "null"] },
-        "evidencePaths": {
+        "inputManifest": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/definitions/controllerArtifact" }
+          ]
+        },
+        "deltaManifest": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/definitions/controllerArtifact" }
+          ]
+        },
+        "integrationReceipt": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/definitions/controllerArtifact" }
+          ]
+        },
+        "submissionArtifact": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/definitions/controllerArtifact" }
+          ]
+        },
+        "evidenceArtifacts": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": { "$ref": "#/definitions/controllerArtifact" },
           "uniqueItems": true
         }
       }
@@ -153,22 +229,22 @@
           "severity",
           "status",
           "openedCandidateHash",
-          "evidencePaths",
-          "resolutionEvidence"
+          "evidenceArtifacts",
+          "resolutionEvidenceArtifacts"
         ],
         "properties": {
           "id": { "type": "string", "minLength": 1 },
           "severity": { "enum": ["critical", "major", "minor"] },
           "status": { "enum": ["open", "resolved", "superseded"] },
           "openedCandidateHash": { "$ref": "#/definitions/digest" },
-          "evidencePaths": {
+          "evidenceArtifacts": {
             "type": "array",
-            "items": { "type": "string", "minLength": 1 },
+            "items": { "$ref": "#/definitions/controllerArtifact" },
             "minItems": 1
           },
-          "resolutionEvidence": {
+          "resolutionEvidenceArtifacts": {
             "type": "array",
-            "items": { "type": "string", "minLength": 1 }
+            "items": { "$ref": "#/definitions/controllerArtifact" }
           }
         }
       }
@@ -198,13 +274,13 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["adjudicatorId", "verdict", "attemptEvidence", "recordHash"],
+          "required": ["adjudicatorId", "verdict", "attemptEvidenceArtifacts", "recordHash"],
           "properties": {
             "adjudicatorId": { "type": "string", "minLength": 1 },
             "verdict": { "enum": ["confirmed", "rejected"] },
-            "attemptEvidence": {
+            "attemptEvidenceArtifacts": {
               "type": "array",
-              "items": { "type": "string", "minLength": 1 },
+              "items": { "$ref": "#/definitions/controllerArtifact" },
               "minItems": 3
             },
             "recordHash": { "$ref": "#/definitions/digest" }
@@ -225,7 +301,7 @@
           "from",
           "to",
           "candidateHash",
-          "evidence",
+          "evidenceArtifacts",
           "previousRecordHash",
           "recordHash"
         ],
@@ -241,9 +317,9 @@
           },
           "to": { "$ref": "#/definitions/state" },
           "candidateHash": { "$ref": "#/definitions/digestOrNull" },
-          "evidence": {
+          "evidenceArtifacts": {
             "type": "array",
-            "items": { "type": "string", "minLength": 1 }
+            "items": { "$ref": "#/definitions/controllerArtifact" }
           },
           "previousRecordHash": { "$ref": "#/definitions/digestOrNull" },
           "recordHash": { "$ref": "#/definitions/digest" }
@@ -257,14 +333,34 @@
       "if": { "properties": { "state": { "const": "ACCEPTED" } } },
       "then": {
         "properties": {
-          "lease": { "properties": { "status": { "const": "released" } } },
+          "lease": {
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "status": { "const": "released" },
+              "candidateWorkspace": { "type": "string", "minLength": 1 },
+              "writablePaths": { "minItems": 1 },
+              "baselineHash": { "$ref": "#/definitions/digest" },
+              "acquiredAt": { "type": "string", "format": "date-time" }
+            }
+          },
+          "author": {
+            "properties": {
+              "agent": { "type": "string", "minLength": 1 },
+              "model": { "type": "string", "minLength": 1 },
+              "modelFamily": { "type": "string", "minLength": 1 },
+              "sessionId": { "type": "string", "minLength": 1 }
+            }
+          },
           "candidate": {
             "properties": {
               "sourceHash": { "$ref": "#/definitions/digest" },
               "candidateHash": { "$ref": "#/definitions/digest" },
               "workspaceSnapshotHash": { "$ref": "#/definitions/digest" },
-              "submissionPath": { "type": "string", "minLength": 1 },
-              "evidencePaths": { "minItems": 1 }
+              "inputManifest": { "$ref": "#/definitions/controllerArtifact" },
+              "deltaManifest": { "$ref": "#/definitions/controllerArtifact" },
+              "integrationReceipt": { "$ref": "#/definitions/controllerArtifact" },
+              "submissionArtifact": { "$ref": "#/definitions/controllerArtifact" },
+              "evidenceArtifacts": { "minItems": 1 }
             }
           },
           "reviewers": {
@@ -289,12 +385,12 @@
           },
           "gateVerdicts": {
             "properties": {
-              "scope": { "$ref": "#/definitions/passedGate" },
-              "technical": { "$ref": "#/definitions/passedGate" },
-              "runtime": { "$ref": "#/definitions/passedGate" },
-              "temporal": { "$ref": "#/definitions/passedGate" },
-              "quality": { "$ref": "#/definitions/passedGate" },
-              "operational": { "$ref": "#/definitions/passedGate" }
+              "scope": { "$ref": "#/definitions/satisfiedGate" },
+              "technical": { "$ref": "#/definitions/satisfiedGate" },
+              "runtime": { "$ref": "#/definitions/satisfiedGate" },
+              "temporal": { "$ref": "#/definitions/satisfiedGate" },
+              "quality": { "$ref": "#/definitions/satisfiedGate" },
+              "operational": { "$ref": "#/definitions/satisfiedGate" }
             }
           },
           "acceptanceDecision": { "$ref": "#/definitions/acceptanceDecision" }
@@ -317,7 +413,44 @@
       "if": { "properties": { "state": { "enum": ["LEASED", "AUTHORING"] } } },
       "then": {
         "properties": {
-          "lease": { "properties": { "status": { "const": "active" } } }
+          "heartbeatAt": { "type": "string", "format": "date-time" },
+          "lease": {
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "status": { "const": "active" },
+              "candidateWorkspace": { "type": "string", "minLength": 1 },
+              "writablePaths": { "minItems": 1 },
+              "baselineHash": { "$ref": "#/definitions/digest" },
+              "acquiredAt": { "type": "string", "format": "date-time" },
+              "heartbeatAt": { "type": "string", "format": "date-time" },
+              "expiresAt": { "type": "string", "format": "date-time" }
+            }
+          },
+          "author": {
+            "properties": {
+              "agent": { "type": "string", "minLength": 1 },
+              "model": { "type": "string", "minLength": 1 },
+              "modelFamily": { "type": "string", "minLength": 1 },
+              "sessionId": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "state": { "enum": ["UNASSESSED", "SPECIFIED"] } } },
+      "then": {
+        "properties": {
+          "heartbeatAt": { "type": "null" },
+          "lease": {
+            "properties": {
+              "status": { "enum": ["planned", "pending"] },
+              "acquiredAt": { "type": "null" },
+              "heartbeatAt": { "type": "null" },
+              "expiresAt": { "type": "null" }
+            }
+          },
+          "author": { "properties": { "sessionId": { "type": "null" } } }
         }
       }
     },
@@ -341,6 +474,28 @@
         { "$ref": "#/definitions/digest" }
       ]
     },
+    "controllerArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactId",
+        "relativePath",
+        "sha256",
+        "bytes",
+        "kind",
+        "candidateHash",
+        "producerReceiptHash"
+      ],
+      "properties": {
+        "artifactId": { "type": "string", "minLength": 1 },
+        "relativePath": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/definitions/digest" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "candidateHash": { "$ref": "#/definitions/digestOrNull" },
+        "producerReceiptHash": { "$ref": "#/definitions/digest" }
+      }
+    },
     "state": {
       "enum": [
         "UNASSESSED",
@@ -355,6 +510,8 @@
         "OPERATIONAL_VALIDATION",
         "BLIND_QUALITY_REVIEW",
         "ACCEPTANCE_REVIEW",
+        "APPROVED_CANDIDATE",
+        "INTEGRATION_VALIDATION",
         "REJECTED",
         "CONTINUATION_DUE",
         "BLOCKER_AUDIT",
@@ -365,27 +522,46 @@
     "gate": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "candidateHash", "verifierId", "evidencePaths"],
+      "required": ["status", "candidateHash", "verifierId", "evidenceArtifacts", "waiverArtifact"],
       "properties": {
-        "status": { "enum": ["pending", "pass", "fail"] },
+        "status": { "enum": ["pending", "pass", "fail", "not_applicable"] },
         "candidateHash": { "$ref": "#/definitions/digestOrNull" },
         "verifierId": { "type": ["string", "null"] },
-        "evidencePaths": {
+        "evidenceArtifacts": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": { "$ref": "#/definitions/controllerArtifact" }
+        },
+        "waiverArtifact": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/definitions/controllerArtifact" }
+          ]
         }
       }
     },
-    "passedGate": {
+    "satisfiedGate": {
       "allOf": [
         { "$ref": "#/definitions/gate" },
         {
-          "properties": {
-            "status": { "const": "pass" },
-            "candidateHash": { "$ref": "#/definitions/digest" },
-            "verifierId": { "type": "string", "minLength": 1 },
-            "evidencePaths": { "minItems": 1 }
-          }
+          "oneOf": [
+            {
+              "properties": {
+                "status": { "const": "pass" },
+                "candidateHash": { "$ref": "#/definitions/digest" },
+                "verifierId": { "type": "string", "minLength": 1 },
+                "evidenceArtifacts": { "minItems": 1 },
+                "waiverArtifact": { "type": "null" }
+              }
+            },
+            {
+              "properties": {
+                "status": { "const": "not_applicable" },
+                "candidateHash": { "$ref": "#/definitions/digest" },
+                "verifierId": { "type": "string", "minLength": 1 },
+                "waiverArtifact": { "$ref": "#/definitions/controllerArtifact" }
+              }
+            }
+          ]
         }
       ]
     },
@@ -396,7 +572,8 @@
         "authorityRole",
         "authorityId",
         "candidateHash",
-        "reviewerVerdictPaths",
+        "reviewerVerdictArtifacts",
+        "integrationReceiptHash",
         "acceptedAt",
         "decisionRecordHash"
       ],
@@ -404,12 +581,13 @@
         "authorityRole": { "const": "orchestrator" },
         "authorityId": { "type": "string", "minLength": 1 },
         "candidateHash": { "$ref": "#/definitions/digest" },
-        "reviewerVerdictPaths": {
+        "reviewerVerdictArtifacts": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": { "$ref": "#/definitions/controllerArtifact" },
           "minItems": 2,
           "uniqueItems": true
         },
+        "integrationReceiptHash": { "$ref": "#/definitions/digest" },
         "acceptedAt": { "type": "string", "format": "date-time" },
         "decisionRecordHash": { "$ref": "#/definitions/digest" }
       }

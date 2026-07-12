@@ -8,6 +8,15 @@
 - Required maturity:
 - Milestone:
 
+## Dependencies
+
+- Required accepted packet IDs with candidate/acceptance-record hashes:
+- External prerequisite artifact descriptors:
+- Ready-state rule and required free lane:
+
+Dependency prose is not authority. The controller resolves these receipts into campaign state;
+unaccepted, stale, missing, or hash-mismatched prerequisites keep the packet out of `listReady()`.
+
 ## Player outcome
 
 ## Existing canonical foundation
@@ -17,7 +26,9 @@
 - Lease kind and ID:
 - Isolated candidate workspace:
 - Exact writable paths:
-- Baseline/control hashes:
+- Controller input-manifest path/hash (brief, schemas, checks, gates, references, every declared
+  read dependency):
+- Canonical add/modify/delete delta-manifest contract:
 - Heartbeat/expiry and stale-input policy:
 
 ## Full scope
@@ -43,6 +54,13 @@
 
 - Compiled card path/hash:
 - Held-out selection policy:
+- Attached reference bundle: at least two admired screenshots/clips and one failure example, with
+  hashes, provenance, and the exact quality each demonstrates:
+- Packet-specific P0/P1 definitions:
+- Hard observatory thresholds and detector-manifest version:
+
+Reference media is copied/attached into every initial and resumed worker context. A prose URL or
+description of “professional quality” does not satisfy this section.
 
 ## Reference captures (REQUIRED — re-grounds the quality bar after every compaction)
 
@@ -70,11 +88,17 @@
 
 ## Evidence bundle
 
+- Immutable controller run receipts (command, served model/tool version, exit, stdout/stderr hash,
+  candidate hash, input-manifest hash):
+- Contained regular artifact descriptors (path, bytes, SHA-256, candidate/producer receipt hashes):
+- Post-integration live-output receipt (required only for terminal acceptance):
+
 ## Rejection and continuation rules
 
 ## Worker output
 
 Allowed statuses: `submitted`, `needs_continuation`, `external_blocker_claimed`.
 The worker cannot emit `accepted`, `done`, or `complete`.
-The final output must validate against
-`design/production/schemas/worker-submission.schema.json`.
+The worker payload validates against `worker-submission.schema.json` and contains no authoritative
+identity/hash/cycle fields. The controller derives those from the run, manifests, and ledger and
+wraps the payload as `worker-candidate-record.schema.json`.

@@ -6,6 +6,7 @@
   "additionalProperties": false,
   "required": [
     "schemaVersion",
+    "lifecycle",
     "sessionId",
     "candidateHash",
     "selectionCommitHash",
@@ -16,14 +17,17 @@
     "scheduledRunIndex",
     "retained",
     "validForAcceptance",
-    "inputTapePath",
-    "capture",
-    "noCaptureReplay",
+    "inputTape",
+    "captureRun",
+    "observerControlReplay",
+    "performanceReplay",
     "simHashComparison",
-    "artifactPaths"
+    "recordingHealth",
+    "artifacts"
   ],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
+    "lifecycle": { "enum": ["observer_contract", "media_complete"] },
     "sessionId": { "type": "string", "minLength": 1 },
     "candidateHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "selectionCommitHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
@@ -34,78 +38,137 @@
     "scheduledRunIndex": { "type": "integer", "minimum": 0 },
     "retained": { "const": true },
     "validForAcceptance": { "type": "boolean" },
-    "inputTapePath": { "type": "string", "minLength": 1 },
-    "capture": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "videoPath",
-        "mixedAudioPath",
-        "sourceFps",
-        "inputHz",
-        "stateHz",
-        "assetExposureHz",
-        "captureP95Ms",
-        "noCaptureP95Ms",
-        "overheadPercent"
-      ],
-      "properties": {
-        "videoPath": { "type": "string", "minLength": 1 },
-        "mixedAudioPath": { "type": "string", "minLength": 1 },
-        "sourceFps": { "type": "number", "exclusiveMinimum": 0 },
-        "inputHz": { "type": "number", "exclusiveMinimum": 0 },
-        "stateHz": { "type": "number", "exclusiveMinimum": 0 },
-        "assetExposureHz": { "type": "number", "exclusiveMinimum": 0 },
-        "captureP95Ms": { "type": "number", "minimum": 0 },
-        "noCaptureP95Ms": { "type": "number", "minimum": 0 },
-        "overheadPercent": { "type": "number", "minimum": 0 }
-      }
+    "inputTape": { "$ref": "#/definitions/hashedArtifact" },
+    "captureRun": {
+      "allOf": [
+        { "$ref": "#/definitions/runRecord" },
+        {
+          "type": "object",
+          "required": ["observerEnabled", "mediaStatus"],
+          "properties": {
+            "observerEnabled": { "const": true },
+            "mediaStatus": { "enum": ["pending", "complete"] },
+            "inputHz": { "const": 60 },
+            "stateHz": { "minimum": 20 },
+            "assetExposureHz": { "minimum": 10 },
+            "videoPath": { "type": "string", "minLength": 1 },
+            "videoSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "mixedAudioPath": { "type": "string", "minLength": 1 },
+            "mixedAudioSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "sourceFps": { "type": "number", "exclusiveMinimum": 0 },
+            "captureOverheadPercent": { "type": "number", "minimum": 0 }
+          }
+        }
+      ]
     },
-    "noCaptureReplay": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["sessionPath", "performanceReportPath"],
-      "properties": {
-        "sessionPath": { "type": "string", "minLength": 1 },
-        "performanceReportPath": { "type": "string", "minLength": 1 }
-      }
+    "observerControlReplay": {
+      "allOf": [
+        { "$ref": "#/definitions/runRecord" },
+        {
+          "type": "object",
+          "required": ["observerEnabled", "mediaStatus"],
+          "properties": {
+            "observerEnabled": { "const": true },
+            "mediaStatus": { "const": "off" },
+            "inputHz": { "const": 60 },
+            "stateHz": { "minimum": 20 },
+            "assetExposureHz": { "minimum": 10 }
+          }
+        }
+      ]
+    },
+    "performanceReplay": {
+      "allOf": [
+        { "$ref": "#/definitions/runRecord" },
+        {
+          "type": "object",
+          "required": ["observerEnabled", "mediaStatus"],
+          "properties": {
+            "observerEnabled": { "const": false },
+            "mediaStatus": { "const": "off" },
+            "inputHz": { "const": 0 },
+            "stateHz": { "const": 0 },
+            "assetExposureHz": { "const": 0 }
+          }
+        }
+      ]
     },
     "simHashComparison": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "captureFinalHash",
-        "noCaptureFinalHash",
+        "observerControlFinalHash",
+        "performanceFinalHash",
         "periodicMismatchCount",
         "orderedEventReceiptsMatch",
         "match"
       ],
       "properties": {
         "captureFinalHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-        "noCaptureFinalHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "observerControlFinalHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "performanceFinalHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "periodicMismatchCount": { "type": "integer", "minimum": 0 },
         "orderedEventReceiptsMatch": { "type": "boolean" },
         "match": { "type": "boolean" }
       }
     },
-    "artifactPaths": {
+    "recordingHealth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "appliedInputCount",
+        "stateSampleCount",
+        "assetSampleCount",
+        "droppedRecordCount",
+        "observerFaultCount"
+      ],
+      "properties": {
+        "appliedInputCount": { "type": "integer", "minimum": 0 },
+        "stateSampleCount": { "type": "integer", "minimum": 0 },
+        "assetSampleCount": { "type": "integer", "minimum": 0 },
+        "droppedRecordCount": { "type": "integer", "minimum": 0 },
+        "observerFaultCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "artifacts": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 },
-      "minItems": 1
+      "items": { "$ref": "#/definitions/hashedArtifact" },
+      "minItems": 1,
+      "uniqueItems": true
     }
   },
   "allOf": [
     {
+      "if": { "properties": { "lifecycle": { "const": "observer_contract" } } },
+      "then": {
+        "properties": {
+          "validForAcceptance": { "const": false },
+          "captureRun": { "properties": { "mediaStatus": { "const": "pending" } } }
+        }
+      }
+    },
+    {
       "if": { "properties": { "validForAcceptance": { "const": true } } },
       "then": {
         "properties": {
-          "capture": {
+          "lifecycle": { "const": "media_complete" },
+          "captureRun": {
+            "required": [
+              "videoPath",
+              "videoSha256",
+              "mixedAudioPath",
+              "mixedAudioSha256",
+              "sourceFps",
+              "captureOverheadPercent"
+            ],
             "properties": {
+              "mediaStatus": { "const": "complete" },
               "sourceFps": { "minimum": 30 },
               "inputHz": { "const": 60 },
               "stateHz": { "minimum": 20 },
               "assetExposureHz": { "minimum": 10 },
-              "overheadPercent": { "maximum": 5 }
+              "captureOverheadPercent": { "maximum": 5 }
             }
           },
           "simHashComparison": {
@@ -114,9 +177,58 @@
               "orderedEventReceiptsMatch": { "const": true },
               "match": { "const": true }
             }
+          },
+          "recordingHealth": {
+            "properties": {
+              "droppedRecordCount": { "const": 0 },
+              "observerFaultCount": { "const": 0 }
+            }
           }
         }
       }
     }
-  ]
+  ],
+  "definitions": {
+    "hashedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "decodeValidated": { "type": "boolean" }
+      }
+    },
+    "runRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observerEnabled",
+        "mediaStatus",
+        "sessionArtifact",
+        "performanceReport",
+        "inputHz",
+        "stateHz",
+        "assetExposureHz",
+        "p95Ms"
+      ],
+      "properties": {
+        "observerEnabled": { "type": "boolean" },
+        "mediaStatus": { "enum": ["pending", "complete", "off"] },
+        "sessionArtifact": { "$ref": "#/definitions/hashedArtifact" },
+        "performanceReport": { "$ref": "#/definitions/hashedArtifact" },
+        "inputHz": { "type": "number", "minimum": 0 },
+        "stateHz": { "type": "number", "minimum": 0 },
+        "assetExposureHz": { "type": "number", "minimum": 0 },
+        "p95Ms": { "type": "number", "minimum": 0 },
+        "videoPath": { "type": "string", "minLength": 1 },
+        "videoSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "mixedAudioPath": { "type": "string", "minLength": 1 },
+        "mixedAudioSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "sourceFps": { "type": "number", "exclusiveMinimum": 0 },
+        "captureOverheadPercent": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
 }

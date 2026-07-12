@@ -8,7 +8,9 @@
 
 ## References
 
-Candidate/baseline ordering is randomized. Author scores, iteration counts, and completion claims are withheld.
+Attach the hash-bound admired/failure media from the quality card plus reviewer-captured held-out
+candidate views. Candidate/baseline ordering is randomized. Author identity, scores, iteration
+counts, and completion claims are withheld.
 
 ## Required review
 
@@ -22,11 +24,8 @@ Candidate/baseline ordering is randomized. Author scores, iteration counts, and 
 
 ```json
 {
+  "schemaVersion": 1,
   "packetId": "",
-  "reviewerId": "",
-  "reviewerModel": "",
-  "reviewerModelFamily": "",
-  "reviewerSessionId": "",
   "candidateHash": "",
   "verdict": "PASS | REVISE | REJECT",
   "defects": [
@@ -34,7 +33,7 @@ Candidate/baseline ordering is randomized. Author scores, iteration counts, and 
       "id": "",
       "severity": "critical | major | minor",
       "class": "scope | technical | runtime | temporal | quality | operational",
-      "evidence": [],
+      "evidenceRefs": [],
       "requiredRepair": ""
     }
   ],
@@ -43,6 +42,8 @@ Candidate/baseline ordering is randomized. Author scores, iteration counts, and 
 }
 ```
 
-The final output must validate against
-`design/production/schemas/blind-review-verdict.schema.json`. A `PASS` with any critical/major
-defect or missing required evidence is invalid even if the JSON structure validates.
+The reviewer output validates against
+`design/production/schemas/blind-review-payload.schema.json`. Do not assert reviewer/model/session
+identity; the controller derives those from the actual run and wraps the payload as
+`blind-review-verdict.schema.json` v2. A `PASS` with any critical/major defect or missing required
+evidence is invalid even if the JSON structure validates.

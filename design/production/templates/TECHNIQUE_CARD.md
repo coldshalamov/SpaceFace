@@ -29,8 +29,8 @@ The compiler emits JSON validated by
 
 ## Evidence
 
-- Source/tutorial/manual provenance:
-- Transcript or notes path:
+- Source/tutorial/manual provenance (research input only):
+- Transcript or notes path (research provenance only; never implementation or quality proof):
 - Proof asset and source/GLB hashes:
 - Blender before/after views:
 - Actual in-game before/after clip:

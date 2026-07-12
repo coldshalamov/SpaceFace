@@ -6,12 +6,16 @@
   "additionalProperties": false,
   "required": [
     "schemaVersion",
+    "cardMode",
     "cardId",
     "compiledByRole",
     "playerPromise",
     "canonicalRoutes",
     "heldOutPolicy",
-    "references",
+    "admiredReferences",
+    "failureReferences",
+    "technicalGoodControls",
+    "technicalFailureControls",
     "identityConstraints",
     "criticalMoments",
     "hardGates",
@@ -21,70 +25,180 @@
     "reviewQuorum"
   ],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 3 },
+    "cardMode": { "enum": ["player_facing", "control_plane"] },
     "cardId": { "type": "string", "minLength": 1 },
     "compiledByRole": { "const": "controller" },
     "playerPromise": { "type": "string", "minLength": 30 },
     "canonicalRoutes": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
-      "minItems": 1
+      "minItems": 1,
+      "uniqueItems": true
     },
     "heldOutPolicy": { "type": "string", "minLength": 20 },
-    "references": {
+    "admiredReferences": {
       "type": "array",
       "items": {
-        "type": "object",
-        "required": ["source", "quality", "provenance"],
-        "properties": {
-          "source": { "type": "string", "minLength": 1 },
-          "quality": { "type": "string", "minLength": 10 },
-          "provenance": { "type": "string", "minLength": 1 }
-        }
+        "allOf": [
+          { "$ref": "#/definitions/reference" },
+          { "properties": { "kind": { "const": "admired" } } }
+        ]
       },
-      "minItems": 3
+      "uniqueItems": true
+    },
+    "failureReferences": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "#/definitions/reference" },
+          { "properties": { "kind": { "const": "failure" } } }
+        ]
+      },
+      "uniqueItems": true
+    },
+    "technicalGoodControls": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/technicalReference" },
+      "uniqueItems": true
+    },
+    "technicalFailureControls": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/technicalReference" },
+      "uniqueItems": true
     },
     "identityConstraints": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
-      "minItems": 1
+      "minItems": 1,
+      "uniqueItems": true
     },
     "criticalMoments": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
-      "minItems": 1
+      "minItems": 1,
+      "uniqueItems": true
     },
     "hardGates": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
-      "minItems": 1
+      "minItems": 1,
+      "uniqueItems": true
     },
     "subjectiveDimensions": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
-      "minItems": 1
+      "minItems": 1,
+      "uniqueItems": true
     },
     "requiredEvidence": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
-      "minItems": 1
+      "minItems": 1,
+      "uniqueItems": true
     },
     "defectDefinitions": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["critical", "major", "minor"],
       "properties": {
-        "critical": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-        "major": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-        "minor": { "type": "array", "items": { "type": "string" } }
+        "critical": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "major": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "minor": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
       }
     },
     "reviewQuorum": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["minimumCritics", "crossModelRequired", "adjudicatorOnConflict"],
       "properties": {
         "minimumCritics": { "type": "integer", "minimum": 2 },
         "crossModelRequired": { "const": true },
         "adjudicatorOnConflict": { "const": true }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "cardMode": { "const": "player_facing" } } },
+      "then": {
+        "properties": {
+          "admiredReferences": { "minItems": 2 },
+          "failureReferences": { "minItems": 1 },
+          "technicalGoodControls": { "maxItems": 0 },
+          "technicalFailureControls": { "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "cardMode": { "const": "control_plane" } } },
+      "then": {
+        "properties": {
+          "admiredReferences": { "maxItems": 0 },
+          "failureReferences": { "maxItems": 0 },
+          "technicalGoodControls": { "minItems": 2 },
+          "technicalFailureControls": { "minItems": 1 }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "source",
+        "mediaPath",
+        "sha256",
+        "bytes",
+        "quality",
+        "provenance",
+        "attachedToWorkerContext"
+      ],
+      "properties": {
+        "kind": { "enum": ["admired", "failure"] },
+        "source": { "type": "string", "minLength": 1 },
+        "mediaPath": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "quality": { "type": "string", "minLength": 10 },
+        "provenance": { "type": "string", "minLength": 1 },
+        "attachedToWorkerContext": { "const": true }
+      }
+    },
+    "technicalReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactPath",
+        "sha256",
+        "bytes",
+        "claim",
+        "producerReceiptHash",
+        "attachedToWorkerContext"
+      ],
+      "properties": {
+        "artifactPath": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "claim": { "type": "string", "minLength": 10 },
+        "producerReceiptHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "attachedToWorkerContext": { "const": true }
       }
     }
   }

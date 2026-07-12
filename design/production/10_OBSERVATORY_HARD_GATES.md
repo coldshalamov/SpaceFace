@@ -1,4 +1,4 @@
-# 09 — Observatory Hard-Gate Thresholds
+# 10 — Observatory Hard-Gate Thresholds
 
 **Status:** DRAFT — operational definitions for mechanically enforced acceptance
 **Authority:** These thresholds become hard gates (check fails, not warns) once OBS-003 lands them.
@@ -31,7 +31,7 @@ Hard gates cover **objective** defects. Subjective quality ("looks cheap", "feel
 
 | Gate | Threshold | Class | Evidence required |
 |---|---|---|---|
-| `mining_hitch_p99` | Frame p99 during mining events (beam start, seam hit, fracture, pickup) must not exceed 33.3ms on the browser floor profile. If a paired no-capture replay shows the same hitch, → hard fail (it's the game, not the capture). If only in capture, → warning. | P0 | perf-samples.ndjson mining-event-aligned p99; paired replay comparison |
+| `mining_hitch_p99` | Frame p99 during mining events (beam start, seam hit, fracture, pickup) must not exceed 33.3ms on the browser floor profile. If the observer-off/media-off replay shows the same hitch, → hard fail (it's the game, not capture/observer overhead). If only in media capture, → warning. | P0 | mining-event-aligned raw frame samples across all three matched executions |
 | `mining_backlog_shedding` | If the sim reports any backlog-shedding (skipped ticks) during a primary-route mining session, → hard fail. | P0 | sim timing log |
 | `mining_single_state_dwell` | If the player spends more than 30s in a single mining state without any seam/core/tether/state change during a primary mining route, → warning. >60s → hard fail (simplicity). | P1 (warn) / P0 (fail) | mining state timeline from state-samples.ndjson |
 | `mining_missing_heat_vents` | If the design calls for mining heat rhythm and the runtime emits zero heat or vent events during mining (per the GDD), → hard fail. This catches the known drift where mining.js deletes heat state. | P0 | event trace: mining heat/vent events; cross-checked against GDD spec |
@@ -66,9 +66,14 @@ Hard gates cover **objective** defects. Subjective quality ("looks cheap", "feel
 ## 7. Promoting gates
 
 A gate threshold is promoted from this document to an actual `check:*` script only when:
-1. OBS-003 has implemented the detector with a working fixture (seeded positive and negative case).
-2. The fixture has been run against at least 3 real sessions to confirm false-positive rate < 10%.
-3. The check is wired into `package.json` as `check:observatory:<gate-name>`.
+1. OBS-003 has implemented the detector with a versioned, held-out benchmark containing at least
+   20 seeded positive and 20 seeded negative cases for that detector family.
+2. The held-out benchmark demonstrates at least 90% sensitivity for P0/P1 examples and no more
+   than 10% false positives. A detector that misses either bar remains advisory.
+3. At least three natural sessions have been reviewed for integration/pathology failures that the
+   seeded benchmark does not model; those sessions supplement rather than replace the 20+20 set.
+4. The check is wired into `package.json` as `check:observatory:<gate-name>` and its detector
+   manifest, threshold version, and benchmark hash are recorded in the session artifact.
 
 Until then, the threshold is a specification the detector must implement. The orchestrator may
 not treat an unimplemented gate as passed — an unimplemented gate is `pending`, not `pass`.

@@ -40,7 +40,8 @@ that can multiply them honestly.
 - Preserve incident windows from full video and extract at least four evidence frames per second.
 - Add first detectors: unfair lethality, AI oscillation/telegraph gaps, mining cadence/hitches,
   dead air, asset fallback/LOD/repetition, and missing feedback.
-- Run paired media and no-capture performance passes.
+- Run three matched passes: observer+media, observer/no-media, and observer-off/no-media, separating
+  capture overhead from observer overhead while requiring identical deterministic hashes/receipts.
 
 ### M0.4 Agent and generated-media calibration
 
