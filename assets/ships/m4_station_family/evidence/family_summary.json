@@ -1,0 +1,254 @@
+{
+  "schema": "spaceface.stationFamilySummary.v1",
+  "packet": "M4-STATION-VISUAL-FAMILY-001",
+  "family": "helios_industrial_station_family",
+  "assets": [
+    {
+      "id": "place_gate_jump_ring",
+      "bytes": 9137296,
+      "lod": {
+        "lod0": {
+          "triangles": 40808,
+          "drawGroups": 5
+        },
+        "lod1": {
+          "triangles": 13240,
+          "drawGroups": 5
+        },
+        "lod2": {
+          "triangles": 2268,
+          "drawGroups": 5
+        }
+      },
+      "aabb": {
+        "min": [
+          -10.0,
+          -54.1075,
+          -50.7472
+        ],
+        "max": [
+          10.0,
+          50.0921,
+          55.9523
+        ],
+        "size": [
+          20.0,
+          104.1995,
+          106.6995
+        ]
+      }
+    },
+    {
+      "id": "place_station_refinery",
+      "bytes": 17789740,
+      "lod": {
+        "lod0": {
+          "triangles": 141740,
+          "drawGroups": 5
+        },
+        "lod1": {
+          "triangles": 35056,
+          "drawGroups": 5
+        },
+        "lod2": {
+          "triangles": 5440,
+          "drawGroups": 5
+        }
+      },
+      "aabb": {
+        "min": [
+          -39.0,
+          -5.75,
+          -25.0
+        ],
+        "max": [
+          59.0,
+          58.1,
+          30.5
+        ],
+        "size": [
+          98.0,
+          63.85,
+          55.5
+        ]
+      }
+    },
+    {
+      "id": "place_station_military",
+      "bytes": 6952004,
+      "lod": {
+        "lod0": {
+          "triangles": 25724,
+          "drawGroups": 5
+        },
+        "lod1": {
+          "triangles": 8364,
+          "drawGroups": 5
+        },
+        "lod2": {
+          "triangles": 1860,
+          "drawGroups": 5
+        }
+      },
+      "aabb": {
+        "min": [
+          -43.6887,
+          -10.0,
+          -38.3397
+        ],
+        "max": [
+          33.3182,
+          23.6,
+          38.3397
+        ],
+        "size": [
+          77.0069,
+          33.6,
+          76.6795
+        ]
+      }
+    },
+    {
+      "id": "place_station_blackmarket",
+      "bytes": 9635292,
+      "lod": {
+        "lod0": {
+          "triangles": 36996,
+          "drawGroups": 5
+        },
+        "lod1": {
+          "triangles": 9224,
+          "drawGroups": 5
+        },
+        "lod2": {
+          "triangles": 1796,
+          "drawGroups": 5
+        }
+      },
+      "aabb": {
+        "min": [
+          -68.9566,
+          -16.0672,
+          -76.3968
+        ],
+        "max": [
+          55.7808,
+          18.8173,
+          53.0592
+        ],
+        "size": [
+          124.7374,
+          34.8845,
+          129.456
+        ]
+      }
+    },
+    {
+      "id": "place_station_fab",
+      "bytes": 7378132,
+      "lod": {
+        "lod0": {
+          "triangles": 20732,
+          "drawGroups": 5
+        },
+        "lod1": {
+          "triangles": 8028,
+          "drawGroups": 5
+        },
+        "lod2": {
+          "triangles": 2036,
+          "drawGroups": 5
+        }
+      },
+      "aabb": {
+        "min": [
+          -57.4,
+          -10.3,
+          -29.0
+        ],
+        "max": [
+          43.0,
+          22.5,
+          29.0
+        ],
+        "size": [
+          100.4,
+          32.8,
+          58.0
+        ]
+      }
+    },
+    {
+      "id": "place_station_mining",
+      "bytes": 7401348,
+      "lod": {
+        "lod0": {
+          "triangles": 26660,
+          "drawGroups": 5
+        },
+        "lod1": {
+          "triangles": 9944,
+          "drawGroups": 5
+        },
+        "lod2": {
+          "triangles": 3116,
+          "drawGroups": 5
+        }
+      },
+      "aabb": {
+        "min": [
+          -55.2107,
+          -19.773,
+          -54.1708
+        ],
+        "max": [
+          55.2107,
+          27.0,
+          54.1708
+        ],
+        "size": [
+          110.4214,
+          46.773,
+          108.3416
+        ]
+      }
+    },
+    {
+      "id": "place_station_research",
+      "bytes": 12745552,
+      "lod": {
+        "lod0": {
+          "triangles": 64876,
+          "drawGroups": 4
+        },
+        "lod1": {
+          "triangles": 19444,
+          "drawGroups": 4
+        },
+        "lod2": {
+          "triangles": 4632,
+          "drawGroups": 4
+        }
+      },
+      "aabb": {
+        "min": [
+          -51.5735,
+          -4.3,
+          -53.5992
+        ],
+        "max": [
+          54.0,
+          43.5371,
+          53.5992
+        ],
+        "size": [
+          105.5735,
+          47.8371,
+          107.1983
+        ]
+      }
+    }
+  ],
+  "elapsedSeconds": 22.03,
+  "builtAt": "2026-07-12T08:21:06Z"
+}

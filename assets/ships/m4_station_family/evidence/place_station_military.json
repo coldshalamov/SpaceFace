@@ -1,0 +1,98 @@
+{
+  "schema": "spaceface.stationFamilyBuild.v1",
+  "packet": "M4-STATION-VISUAL-FAMILY-001",
+  "family": "helios_industrial_station_family",
+  "assetId": "place_station_military",
+  "role": "armored_bastion",
+  "title": "Coalition Bastion",
+  "source": "assets/ships/parts/places/place_station_military.glb",
+  "blend": "assets/ships/parts/blender/place_station_military_authored.blend",
+  "bytes": 7954940,
+  "lod": {
+    "lod0": {
+      "triangles": 25724,
+      "drawGroups": 5
+    },
+    "lod1": {
+      "triangles": 8364,
+      "drawGroups": 5
+    },
+    "lod2": {
+      "triangles": 1860,
+      "drawGroups": 5
+    }
+  },
+  "aabb": {
+    "min": [
+      -43.6887,
+      -10,
+      -38.3397
+    ],
+    "max": [
+      33.3182,
+      23.6,
+      38.3397
+    ],
+    "size": [
+      77.0069,
+      33.6,
+      76.6795
+    ]
+  },
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "metadata": {
+    "contractVersion": 1,
+    "assetId": "SF_PLACE_STATION_MILITARY",
+    "partId": "place_station_military",
+    "liveId": "place_station_military",
+    "slot": "place",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "textureSize": 1024,
+    "chamfered": true,
+    "bevelRadiusM": 0.05,
+    "family": "helios_industrial_station_family",
+    "packet": "M4-STATION-VISUAL-FAMILY-001",
+    "role": "armored_bastion",
+    "title": "Coalition Bastion",
+    "kind": "station_landmark",
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "triangleCount": 25724,
+    "lodTriangles": {
+      "lod0": 25724,
+      "lod1": 8364,
+      "lod2": 1860
+    },
+    "drawGroupsPerLod": {
+      "lod0": 5,
+      "lod1": 5,
+      "lod2": 5
+    },
+    "lod0AabbSize": [
+      77.0069,
+      33.6,
+      76.6795
+    ],
+    "wiringStatus": "production_source",
+    "sourceGenerator": "tools/blender/build_station_visual_family.py",
+    "sourceBlenderVersion": "5.1"
+  },
+  "builtAt": "2026-07-12T08:20:55Z",
+  "sha256": "488a25527423b31d82be604ca75d94bf29d63e8b3c885eeb7e9f124e66450093"
+}

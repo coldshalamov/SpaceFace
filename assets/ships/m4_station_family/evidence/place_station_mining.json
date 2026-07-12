@@ -1,0 +1,98 @@
+{
+  "schema": "spaceface.stationFamilyBuild.v1",
+  "packet": "M4-STATION-VISUAL-FAMILY-001",
+  "family": "helios_industrial_station_family",
+  "assetId": "place_station_mining",
+  "role": "ore_processing_rig",
+  "title": "Belt Mining Rig",
+  "source": "assets/ships/parts/places/place_station_mining.glb",
+  "blend": "assets/ships/parts/blender/place_station_mining_authored.blend",
+  "bytes": 8450956,
+  "lod": {
+    "lod0": {
+      "triangles": 26660,
+      "drawGroups": 5
+    },
+    "lod1": {
+      "triangles": 9944,
+      "drawGroups": 5
+    },
+    "lod2": {
+      "triangles": 3116,
+      "drawGroups": 5
+    }
+  },
+  "aabb": {
+    "min": [
+      -55.2107,
+      -19.773,
+      -54.1708
+    ],
+    "max": [
+      55.2107,
+      27,
+      54.1708
+    ],
+    "size": [
+      110.4214,
+      46.773,
+      108.3416
+    ]
+  },
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "metadata": {
+    "contractVersion": 1,
+    "assetId": "SF_PLACE_STATION_MINING",
+    "partId": "place_station_mining",
+    "liveId": "place_station_mining",
+    "slot": "place",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "textureSize": 1024,
+    "chamfered": true,
+    "bevelRadiusM": 0.05,
+    "family": "helios_industrial_station_family",
+    "packet": "M4-STATION-VISUAL-FAMILY-001",
+    "role": "ore_processing_rig",
+    "title": "Belt Mining Rig",
+    "kind": "station_landmark",
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "triangleCount": 26660,
+    "lodTriangles": {
+      "lod0": 26660,
+      "lod1": 9944,
+      "lod2": 3116
+    },
+    "drawGroupsPerLod": {
+      "lod0": 5,
+      "lod1": 5,
+      "lod2": 5
+    },
+    "lod0AabbSize": [
+      110.4214,
+      46.773,
+      108.3416
+    ],
+    "wiringStatus": "production_source",
+    "sourceGenerator": "tools/blender/build_station_visual_family.py",
+    "sourceBlenderVersion": "5.1"
+  },
+  "builtAt": "2026-07-12T08:21:03Z",
+  "sha256": "82be5e687143b333adb2ea11659bebf2eb2112edcdd575c06c225d3318a95bfe"
+}

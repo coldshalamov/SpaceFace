@@ -3162,14 +3162,14 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_refinery.glb",
-      "tris": 3008,
-      "bytes": 210032,
+      "tris": 141740,
+      "bytes": 23431088,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN on meshes (modeling pass). 3008 tris.",
+      "note": "Refinery Crown — industrial_refinery; authored station family, PBR, explicit LOD0/1/2. LOD0 141740 tris / 5 draw groups.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3188,28 +3188,28 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core"
+        "SOCKET_Structure_Core",
+        "SOCKET_Emissive",
+        "SOCKET_Dock_Approach"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -6,
-          -11,
-          -24
+          -39,
+          -5.75,
+          -25
         ],
         "max": [
-          34,
-          11,
-          0
+          59,
+          58.1,
+          30.5
         ],
         "dimensionsM": [
-          40,
-          22,
-          24
+          98,
+          63.85,
+          55.5
         ]
       }
     },
@@ -3218,14 +3218,14 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_military.glb",
-      "tris": 3300,
-      "bytes": 231104,
+      "tris": 25724,
+      "bytes": 7954940,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 3300 tris.",
+      "note": "Coalition Bastion — armored_bastion; authored station family, PBR, explicit LOD0/1/2. LOD0 25724 tris / 5 draw groups.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3244,28 +3244,28 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core"
+        "SOCKET_Structure_Core",
+        "SOCKET_Emissive",
+        "SOCKET_Dock_Approach"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -1,
+          -43.6887,
           -10,
-          -14.88
+          -38.3397
         ],
         "max": [
-          17,
-          10,
-          0
+          33.3182,
+          23.6,
+          38.3397
         ],
         "dimensionsM": [
-          18,
-          20,
-          14.88
+          77.0069,
+          33.6,
+          76.6795
         ]
       }
     },
@@ -3274,14 +3274,14 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_blackmarket.glb",
-      "tris": 3948,
-      "bytes": 277124,
+      "tris": 36996,
+      "bytes": 9637268,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 3948 tris.",
+      "note": "Black-Market Warren — contraband_warren; authored station family, PBR, explicit LOD0/1/2. LOD0 36996 tris / 5 draw groups.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3300,28 +3300,28 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core"
+        "SOCKET_Structure_Core",
+        "SOCKET_Emissive",
+        "SOCKET_Dock_Approach"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -3,
-          -8.8,
-          -7.3
+          -68.9566,
+          -16.0672,
+          -76.3968
         ],
         "max": [
-          22.5,
-          8.75,
-          0
+          55.7808,
+          18.8173,
+          53.0592
         ],
         "dimensionsM": [
-          25.5,
-          17.55,
-          7.3
+          124.7374,
+          34.8845,
+          129.456
         ]
       }
     },
@@ -3330,14 +3330,14 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_gate_jump_ring.glb",
-      "tris": 8796,
-      "bytes": 907572,
+      "tris": 40808,
+      "bytes": 10024660,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 4784 tris.",
+      "note": "Helios Massline Gate — jump_gate_landmark; authored station family, PBR, explicit LOD0/1/2. LOD0 40808 tris / 5 draw groups.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3356,28 +3356,28 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core"
+        "SOCKET_Structure_Core",
+        "SOCKET_Emissive",
+        "SOCKET_Gate_Aperture"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.6,
-          -20.45,
-          -25.6
+          -10,
+          -54.1075,
+          -50.7472
         ],
         "max": [
-          8.2,
-          20.45,
-          25.6
+          10,
+          50.0921,
+          55.9523
         ],
         "dimensionsM": [
-          9.8,
-          40.9,
-          51.2
+          20,
+          104.1995,
+          106.6995
         ]
       }
     },
@@ -3386,14 +3386,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_mining.glb",
-      "tris": 588,
-      "bytes": 188628,
+      "tris": 26660,
+      "bytes": 8450956,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris.",
+      "note": "Belt Mining Rig — ore_processing_rig; authored station family, PBR, explicit LOD0/1/2. LOD0 26660 tris / 5 draw groups.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3412,28 +3412,28 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core"
+        "SOCKET_Structure_Core",
+        "SOCKET_Emissive",
+        "SOCKET_Dock_Approach"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          0,
-          0,
-          -5
+          -55.2107,
+          -19.773,
+          -54.1708
         ],
         "max": [
-          12,
-          9.5525,
-          5
+          55.2107,
+          27,
+          54.1708
         ],
         "dimensionsM": [
-          12,
-          9.5525,
-          10
+          110.4214,
+          46.773,
+          108.3416
         ]
       }
     },
@@ -3442,14 +3442,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_fab.glb",
-      "tris": 588,
-      "bytes": 188660,
+      "tris": 20732,
+      "bytes": 7540724,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris.",
+      "note": "Orbital Fabrication Yard — fabrication_drydock; authored station family, PBR, explicit LOD0/1/2. LOD0 20732 tris / 5 draw groups.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3468,28 +3468,28 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core"
+        "SOCKET_Structure_Core",
+        "SOCKET_Emissive",
+        "SOCKET_Dock_Approach"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          0,
-          0,
-          -7
+          -57.4,
+          -10.3,
+          -29
         ],
         "max": [
-          22,
-          11.19213,
-          7
+          43,
+          22.5,
+          29
         ],
         "dimensionsM": [
-          22,
-          11.19213,
-          14
+          100.4,
+          32.8,
+          58
         ]
       }
     },
@@ -3498,14 +3498,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_research.glb",
-      "tris": 720,
-      "bytes": 190620,
+      "tris": 64876,
+      "bytes": 12897992,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 720 tris.",
+      "note": "Deep-Space Research Array — research_observatory; authored station family, PBR, explicit LOD0/1/2. LOD0 64876 tris / 4 draw groups.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3524,28 +3524,28 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
-        "SOCKET_Structure_Core"
+        "SOCKET_Structure_Core",
+        "SOCKET_Emissive",
+        "SOCKET_Dock_Approach"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          0,
-          -1,
-          -7
+          -51.5735,
+          -4.3,
+          -53.5992
         ],
         "max": [
-          14,
-          11,
-          7
+          54,
+          43.5371,
+          53.5992
         ],
         "dimensionsM": [
-          14,
-          12,
-          14
+          105.5735,
+          47.8371,
+          107.1983
         ]
       }
     },

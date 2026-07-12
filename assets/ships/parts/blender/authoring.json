@@ -5,7 +5,10 @@
     "place_station_refinery",
     "place_station_military",
     "place_station_blackmarket",
-    "place_gate_jump_ring"
+    "place_gate_jump_ring",
+    "place_station_fab",
+    "place_station_mining",
+    "place_station_research"
   ],
   "min_tris_blender_mcp": 1500,
   "procedural_tri_band_max": 1000,
@@ -28,50 +31,72 @@
       "method": "blender_mcp",
       "concept_id": "concept_station_refinery",
       "concept_path": "assets/concept/archetypes/concept_station_refinery.jpg",
-      "blend_path": "assets/ships/parts/blender/place_station_refinery.blend",
-      "min_tris": 1500
+      "blend_path": "assets/ships/parts/blender/place_station_refinery_authored.blend",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
     },
     "place_station_military": {
       "method": "blender_mcp",
       "concept_id": "concept_station_military",
       "concept_path": "assets/concept/archetypes/concept_station_military.jpg",
-      "blend_path": "assets/ships/parts/blender/place_station_military.blend",
-      "min_tris": 1500
+      "blend_path": "assets/ships/parts/blender/place_station_military_authored.blend",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
     },
     "place_station_blackmarket": {
       "method": "blender_mcp",
       "concept_id": "concept_station_blackmarket",
       "concept_path": "assets/concept/archetypes/concept_station_blackmarket.jpg",
-      "blend_path": "assets/ships/parts/blender/place_station_blackmarket.blend",
-      "min_tris": 1500
+      "blend_path": "assets/ships/parts/blender/place_station_blackmarket_authored.blend",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
     },
     "place_gate_jump_ring": {
       "method": "blender_mcp",
-      "concept_id": "concept_gate_jump_ring",
-      "concept_path": "assets/concept/archetypes/concept_gate_jump_ring.jpg",
-      "blend_path": "assets/ships/parts/blender/place_gate_jump_ring.blend",
-      "min_tris": 1500
+      "concept_id": "concept_station_trade_hub",
+      "concept_path": "assets/concept/archetypes/concept_station_trade_hub.jpg",
+      "blend_path": "assets/ships/parts/blender/place_gate_jump_ring_authored.blend",
+      "semantic_note": "concept_gate_jump_ring.jpg is station tower (swapped); portal-ring visual is concept_station_trade_hub.jpg + ring landmark specs",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
     },
     "place_station_mining": {
-      "method": "procedural_fallback",
+      "method": "blender_mcp",
       "concept_id": "concept_station_mining",
       "concept_path": "assets/concept/archetypes/concept_station_mining.jpg",
-      "blend_path": null,
-      "min_tris": 400
+      "blend_path": "assets/ships/parts/blender/place_station_mining_authored.blend",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
     },
     "place_station_fab": {
-      "method": "procedural_fallback",
+      "method": "blender_mcp",
       "concept_id": "concept_station_fab",
       "concept_path": "assets/concept/archetypes/concept_station_fab.jpg",
-      "blend_path": null,
-      "min_tris": 500
+      "blend_path": "assets/ships/parts/blender/place_station_fab_authored.blend",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
     },
     "place_station_research": {
-      "method": "procedural_fallback",
+      "method": "blender_mcp",
       "concept_id": "concept_station_research",
       "concept_path": "assets/concept/archetypes/concept_station_research.jpg",
-      "blend_path": null,
-      "min_tris": 500
+      "blend_path": "assets/ships/parts/blender/place_station_research_authored.blend",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
     },
     "place_dock_interior": {
       "method": "procedural_fallback",

@@ -1,0 +1,98 @@
+{
+  "schema": "spaceface.stationFamilyBuild.v1",
+  "packet": "M4-STATION-VISUAL-FAMILY-001",
+  "family": "helios_industrial_station_family",
+  "assetId": "place_station_blackmarket",
+  "role": "contraband_warren",
+  "title": "Black-Market Warren",
+  "source": "assets/ships/parts/places/place_station_blackmarket.glb",
+  "blend": "assets/ships/parts/blender/place_station_blackmarket_authored.blend",
+  "bytes": 9637268,
+  "lod": {
+    "lod0": {
+      "triangles": 36996,
+      "drawGroups": 5
+    },
+    "lod1": {
+      "triangles": 9224,
+      "drawGroups": 5
+    },
+    "lod2": {
+      "triangles": 1796,
+      "drawGroups": 5
+    }
+  },
+  "aabb": {
+    "min": [
+      -68.9566,
+      -16.0672,
+      -76.3968
+    ],
+    "max": [
+      55.7808,
+      18.8173,
+      53.0592
+    ],
+    "size": [
+      124.7374,
+      34.8845,
+      129.456
+    ]
+  },
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "metadata": {
+    "contractVersion": 1,
+    "assetId": "SF_PLACE_STATION_BLACKMARKET",
+    "partId": "place_station_blackmarket",
+    "liveId": "place_station_blackmarket",
+    "slot": "place",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "textureSize": 1024,
+    "chamfered": true,
+    "bevelRadiusM": 0.05,
+    "family": "helios_industrial_station_family",
+    "packet": "M4-STATION-VISUAL-FAMILY-001",
+    "role": "contraband_warren",
+    "title": "Black-Market Warren",
+    "kind": "station_landmark",
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "triangleCount": 36996,
+    "lodTriangles": {
+      "lod0": 36996,
+      "lod1": 9224,
+      "lod2": 1796
+    },
+    "drawGroupsPerLod": {
+      "lod0": 5,
+      "lod1": 5,
+      "lod2": 5
+    },
+    "lod0AabbSize": [
+      124.7374,
+      34.8845,
+      129.456
+    ],
+    "wiringStatus": "production_source",
+    "sourceGenerator": "tools/blender/build_station_visual_family.py",
+    "sourceBlenderVersion": "5.1"
+  },
+  "builtAt": "2026-07-12T08:20:58Z",
+  "sha256": "fd98a944889c396cc52242d769f86a5f833a7c890d386fe2ebd9f38fb9ac7481"
+}

@@ -1,0 +1,98 @@
+{
+  "schema": "spaceface.stationFamilyBuild.v1",
+  "packet": "M4-STATION-VISUAL-FAMILY-001",
+  "family": "helios_industrial_station_family",
+  "assetId": "place_station_fab",
+  "role": "fabrication_drydock",
+  "title": "Orbital Fabrication Yard",
+  "source": "assets/ships/parts/places/place_station_fab.glb",
+  "blend": "assets/ships/parts/blender/place_station_fab_authored.blend",
+  "bytes": 7540724,
+  "lod": {
+    "lod0": {
+      "triangles": 20732,
+      "drawGroups": 5
+    },
+    "lod1": {
+      "triangles": 8028,
+      "drawGroups": 5
+    },
+    "lod2": {
+      "triangles": 2036,
+      "drawGroups": 5
+    }
+  },
+  "aabb": {
+    "min": [
+      -57.4,
+      -10.3,
+      -29
+    ],
+    "max": [
+      43,
+      22.5,
+      29
+    ],
+    "size": [
+      100.4,
+      32.8,
+      58
+    ]
+  },
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "metadata": {
+    "contractVersion": 1,
+    "assetId": "SF_PLACE_STATION_FAB",
+    "partId": "place_station_fab",
+    "liveId": "place_station_fab",
+    "slot": "place",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "textureSize": 1024,
+    "chamfered": true,
+    "bevelRadiusM": 0.05,
+    "family": "helios_industrial_station_family",
+    "packet": "M4-STATION-VISUAL-FAMILY-001",
+    "role": "fabrication_drydock",
+    "title": "Orbital Fabrication Yard",
+    "kind": "station_landmark",
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "triangleCount": 20732,
+    "lodTriangles": {
+      "lod0": 20732,
+      "lod1": 8028,
+      "lod2": 2036
+    },
+    "drawGroupsPerLod": {
+      "lod0": 5,
+      "lod1": 5,
+      "lod2": 5
+    },
+    "lod0AabbSize": [
+      100.4,
+      32.8,
+      58
+    ],
+    "wiringStatus": "production_source",
+    "sourceGenerator": "tools/blender/build_station_visual_family.py",
+    "sourceBlenderVersion": "5.1"
+  },
+  "builtAt": "2026-07-12T08:21:00Z",
+  "sha256": "31157f680f048bda26316dd3ef507ae4f730d432cfffeb25f47f1b439d7a3ff3"
+}

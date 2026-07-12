@@ -1,0 +1,98 @@
+{
+  "schema": "spaceface.stationFamilyBuild.v1",
+  "packet": "M4-STATION-VISUAL-FAMILY-001",
+  "family": "helios_industrial_station_family",
+  "assetId": "place_gate_jump_ring",
+  "role": "jump_gate_landmark",
+  "title": "Helios Massline Gate",
+  "source": "assets/ships/parts/places/place_gate_jump_ring.glb",
+  "blend": "assets/ships/parts/blender/place_gate_jump_ring_authored.blend",
+  "bytes": 10024660,
+  "lod": {
+    "lod0": {
+      "triangles": 40808,
+      "drawGroups": 5
+    },
+    "lod1": {
+      "triangles": 13240,
+      "drawGroups": 5
+    },
+    "lod2": {
+      "triangles": 2268,
+      "drawGroups": 5
+    }
+  },
+  "aabb": {
+    "min": [
+      -10,
+      -54.1075,
+      -50.7472
+    ],
+    "max": [
+      10,
+      50.0921,
+      55.9523
+    ],
+    "size": [
+      20,
+      104.1995,
+      106.6995
+    ]
+  },
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "metadata": {
+    "contractVersion": 1,
+    "assetId": "SF_PLACE_GATE_JUMP_RING",
+    "partId": "place_gate_jump_ring",
+    "liveId": "place_gate_jump_ring",
+    "slot": "place",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "textureSize": 1024,
+    "chamfered": true,
+    "bevelRadiusM": 0.05,
+    "family": "helios_industrial_station_family",
+    "packet": "M4-STATION-VISUAL-FAMILY-001",
+    "role": "jump_gate_landmark",
+    "title": "Helios Massline Gate",
+    "kind": "station_landmark",
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "triangleCount": 40808,
+    "lodTriangles": {
+      "lod0": 40808,
+      "lod1": 13240,
+      "lod2": 2268
+    },
+    "drawGroupsPerLod": {
+      "lod0": 5,
+      "lod1": 5,
+      "lod2": 5
+    },
+    "lod0AabbSize": [
+      20,
+      104.1995,
+      106.6995
+    ],
+    "wiringStatus": "production_source",
+    "sourceGenerator": "tools/blender/build_station_visual_family.py",
+    "sourceBlenderVersion": "5.1"
+  },
+  "builtAt": "2026-07-12T08:20:48Z",
+  "sha256": "fcf7b6b6693a081a7ddb2d0b36479263cc7f2f01b77df4ee1569f037944668ec"
+}

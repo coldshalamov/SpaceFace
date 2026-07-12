@@ -1,0 +1,98 @@
+{
+  "schema": "spaceface.stationFamilyBuild.v1",
+  "packet": "M4-STATION-VISUAL-FAMILY-001",
+  "family": "helios_industrial_station_family",
+  "assetId": "place_station_refinery",
+  "role": "industrial_refinery",
+  "title": "Refinery Crown",
+  "source": "assets/ships/parts/places/place_station_refinery.glb",
+  "blend": "assets/ships/parts/blender/place_station_refinery_authored.blend",
+  "bytes": 23431088,
+  "lod": {
+    "lod0": {
+      "triangles": 141740,
+      "drawGroups": 5
+    },
+    "lod1": {
+      "triangles": 35056,
+      "drawGroups": 5
+    },
+    "lod2": {
+      "triangles": 5440,
+      "drawGroups": 5
+    }
+  },
+  "aabb": {
+    "min": [
+      -39,
+      -5.75,
+      -25
+    ],
+    "max": [
+      59,
+      58.1,
+      30.5
+    ],
+    "size": [
+      98,
+      63.85,
+      55.5
+    ]
+  },
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "metadata": {
+    "contractVersion": 1,
+    "assetId": "SF_PLACE_STATION_REFINERY",
+    "partId": "place_station_refinery",
+    "liveId": "place_station_refinery",
+    "slot": "place",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "textureSize": 1024,
+    "chamfered": true,
+    "bevelRadiusM": 0.05,
+    "family": "helios_industrial_station_family",
+    "packet": "M4-STATION-VISUAL-FAMILY-001",
+    "role": "industrial_refinery",
+    "title": "Refinery Crown",
+    "kind": "station_landmark",
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "triangleCount": 141740,
+    "lodTriangles": {
+      "lod0": 141740,
+      "lod1": 35056,
+      "lod2": 5440
+    },
+    "drawGroupsPerLod": {
+      "lod0": 5,
+      "lod1": 5,
+      "lod2": 5
+    },
+    "lod0AabbSize": [
+      98,
+      63.85,
+      55.5
+    ],
+    "wiringStatus": "production_source",
+    "sourceGenerator": "tools/blender/build_station_visual_family.py",
+    "sourceBlenderVersion": "5.1"
+  },
+  "builtAt": "2026-07-12T08:20:53Z",
+  "sha256": "93fce6a0401a3375cad4269cc59dbf1ad5ba3eafb822a4a6f6d464410d9093a9"
+}

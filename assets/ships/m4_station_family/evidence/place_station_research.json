@@ -1,0 +1,98 @@
+{
+  "schema": "spaceface.stationFamilyBuild.v1",
+  "packet": "M4-STATION-VISUAL-FAMILY-001",
+  "family": "helios_industrial_station_family",
+  "assetId": "place_station_research",
+  "role": "research_observatory",
+  "title": "Deep-Space Research Array",
+  "source": "assets/ships/parts/places/place_station_research.glb",
+  "blend": "assets/ships/parts/blender/place_station_research_authored.blend",
+  "bytes": 12897992,
+  "lod": {
+    "lod0": {
+      "triangles": 64876,
+      "drawGroups": 4
+    },
+    "lod1": {
+      "triangles": 19444,
+      "drawGroups": 4
+    },
+    "lod2": {
+      "triangles": 4632,
+      "drawGroups": 4
+    }
+  },
+  "aabb": {
+    "min": [
+      -51.5735,
+      -4.3,
+      -53.5992
+    ],
+    "max": [
+      54,
+      43.5371,
+      53.5992
+    ],
+    "size": [
+      105.5735,
+      47.8371,
+      107.1983
+    ]
+  },
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "metadata": {
+    "contractVersion": 1,
+    "assetId": "SF_PLACE_STATION_RESEARCH",
+    "partId": "place_station_research",
+    "liveId": "place_station_research",
+    "slot": "place",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "textureSize": 1024,
+    "chamfered": true,
+    "bevelRadiusM": 0.05,
+    "family": "helios_industrial_station_family",
+    "packet": "M4-STATION-VISUAL-FAMILY-001",
+    "role": "research_observatory",
+    "title": "Deep-Space Research Array",
+    "kind": "station_landmark",
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "triangleCount": 64876,
+    "lodTriangles": {
+      "lod0": 64876,
+      "lod1": 19444,
+      "lod2": 4632
+    },
+    "drawGroupsPerLod": {
+      "lod0": 4,
+      "lod1": 4,
+      "lod2": 4
+    },
+    "lod0AabbSize": [
+      105.5735,
+      47.8371,
+      107.1983
+    ],
+    "wiringStatus": "production_source",
+    "sourceGenerator": "tools/blender/build_station_visual_family.py",
+    "sourceBlenderVersion": "5.1"
+  },
+  "builtAt": "2026-07-12T08:21:06Z",
+  "sha256": "8fadb32e91d6dc83050c8e8e0f3db1a09803d6c5a4a4535f158dc5e59a895424"
+}
