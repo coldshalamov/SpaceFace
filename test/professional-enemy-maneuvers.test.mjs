@@ -58,6 +58,28 @@ const FIRE_PHASES = new Set(['strike', 'commit', 'fire_window']);
   assert.equal(doctrine.phase, 'extend', 'minimum egress commitment prevents instant turn-back');
   const headingAfter = Math.atan2(doctrine.flightPoint.z - 16, doctrine.flightPoint.x - 820);
   assert(Math.abs(wrap(headingAfter - headingBefore)) < 0.2, 'egress heading remains stable instead of flip-flopping');
+
+  doctrine = step(runtime, 145, 2, CombatDoctrineId.INTERCEPTOR_FLYBY, {
+    self: { x: 1160, z: 22, vx: 64, operationalMassBand: 'light' },
+    target: { x: 610, z: 0 },
+    formationSlot: { x: 930, z: -36 },
+  });
+  assert.equal(doctrine.phase, 'reform', 'completed overshoot enters the authored regroup beat');
+  assert.equal(doctrine.formationLocked, true);
+  assert.equal(doctrine.flightPoint, null,
+    'reform must release the committed egress point so the physical planner can reacquire its wing slot');
+  const regroupDirective = makeDirective({ x: 930, z: -36 });
+  const regroupManeuver = applyCombatDoctrineToSelection(baseSelection(), doctrine).maneuver;
+  const regroupRequest = new ManeuverPlanner({ seed: 47 }).plan({
+    tick: 145,
+    entityId: 2,
+    perception: makePerception({ id: 2, x: 1160, z: 22, vx: 64, operationalMassBand: 'light' }, makeTarget({ x: 610, z: 0 })),
+    behavior: { maneuver: regroupManeuver },
+    directive: regroupDirective,
+  });
+  const slotHeading = Math.atan2(-36 - 22, 930 - 1160);
+  assert(Math.abs(wrap(regroupRequest.targetHeading - slotHeading)) < 0.3,
+    `regroup heading must point to the wing slot, got ${regroupRequest.targetHeading.toFixed(3)} vs ${slotHeading.toFixed(3)}`);
 }
 
 // Heavy brawlers have their own commit/break rhythm instead of inheriting a light fighter flyby.

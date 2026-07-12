@@ -186,7 +186,7 @@ function updateInterceptor(record, tick, self, target, distance) {
       beginEgress(record, 'extend', tick, self, target, 'attack_run_complete');
     }
   } else if (record.phase === 'extend' && age >= INTERCEPTOR_EXTEND_TICKS && distance >= 520) {
-    enter(record, 'reform', tick, null);
+    beginReform(record, tick);
   } else if (record.phase === 'reform' && age >= INTERCEPTOR_REFORM_TICKS) {
     advanceCycle(record, tick, 'ingress');
   }
@@ -205,7 +205,7 @@ function updateBrawler(record, tick, self, target, distance) {
       beginEgress(record, 'breakaway', tick, self, target, 'brawler_commit_complete');
     }
   } else if (record.phase === 'breakaway' && age >= BRAWLER_BREAKAWAY_TICKS && distance >= 600) {
-    enter(record, 'reform', tick, null);
+    beginReform(record, tick);
   } else if (record.phase === 'reform' && age >= BRAWLER_REFORM_TICKS) {
     advanceCycle(record, tick, 'ingress');
   }
@@ -223,7 +223,7 @@ function updateTetherRaider(record, tick, entityId, perception, self, target, di
   else if (record.phase === 'control' && hasTag(tether, 'slack')) beginEgress(record, 'escape', tick, self, target, 'slack_line');
   else if (record.phase === 'control' && vectorReversed(perception, target)) beginEgress(record, 'escape', tick, self, target, 'vector_reversal');
   else if (record.phase === 'control' && age >= TETHER_CONTROL_TICKS) beginEgress(record, 'escape', tick, self, target, 'control_complete');
-  else if (record.phase === 'escape' && age >= TETHER_ESCAPE_TICKS && distance >= 700) enter(record, 'reform', tick, null);
+  else if (record.phase === 'escape' && age >= TETHER_ESCAPE_TICKS && distance >= 700) beginReform(record, tick);
   else if (record.phase === 'reform' && age >= TETHER_REFORM_TICKS) advanceCycle(record, tick, 'flank');
   record.actionTargetId = tether ? (tether.attachmentId || tether.id) : target.id;
 }
@@ -298,6 +298,14 @@ function beginEgress(record, phase, tick, self, target, outcome) {
   record.outcome = outcome;
   record.flightPoint = egressPoint(self, target, record.side);
   enter(record, phase, tick, null);
+}
+
+function beginReform(record, tick) {
+  // The committed egress point owns only the overshoot/escape beat. Leaving it attached during
+  // reform makes ManeuverPlanner prefer that stale world point over the live formation slot, so a
+  // wing that says "regroup" continues flying away. Release it at the phase boundary.
+  record.flightPoint = null;
+  enter(record, 'reform', tick, null);
 }
 
 function snapshot(record, target, directive) {

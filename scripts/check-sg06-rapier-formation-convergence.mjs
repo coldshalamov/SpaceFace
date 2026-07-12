@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 
-import { AI_CONTRACT_VERSION } from '../src/ai/contracts.js';
+import { AI_CONTRACT_VERSION, wrapAngle } from '../src/ai/contracts.js';
 import { readPhysicsTelemetry } from '../src/core/physicsAuthority.js';
 import { core } from '../src/core/coreSystem.js';
 import { createGameState } from '../src/core/gameState.js';
 import { physics } from '../src/core/physics.js';
-import { flight } from '../src/systems/flight.js';
+import { flightV3 } from '../src/systems/flightV3.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
 
@@ -16,6 +16,8 @@ const SEED = 0x4706f0;
 
 const first = await runScenario();
 const second = await runScenario();
+const flybyFirst = await runHostileFlybyScenario();
+const flybySecond = await runHostileFlybyScenario();
 
 assert.deepEqual(second.summary, first.summary, 'SG-06 formation convergence harness should replay deterministically');
 assert.equal(first.summary.allDynamic, true, 'all tactical ships should run as SG-02 dynamic bodies');
@@ -28,8 +30,17 @@ for (const follower of first.summary.followers) {
   assert(follower.finalError < follower.startError * 0.55,
     `follower ${follower.id} should materially converge toward its slot: start=${follower.startError} final=${follower.finalError} best=${follower.bestError}`);
 }
+assert.deepEqual(flybySecond, flybyFirst, 'hostile flyby trajectory should replay deterministically through live ports');
+assert(flybyFirst.phases.includes('extend'), `flyby must visibly overshoot: ${flybyFirst.phases.join(' -> ')}`);
+assert(flybyFirst.phases.includes('reform'), `flyby must reacquire formation after overshoot: ${flybyFirst.phases.join(' -> ')}`);
+assert(flybyFirst.bestReformHeadingError < 0.45,
+  `reform thruster heading must reacquire the live wing slot, error=${flybyFirst.bestReformHeadingError}`);
+assert(flybyFirst.minTargetSeparation >= 26,
+  `flyby must clear both hulls instead of colliding, separation=${flybyFirst.minTargetSeparation}`);
+assert(flybyFirst.acceptedManeuvers > 0 && flybyFirst.flushedManeuvers > 0,
+  'hostile trajectory must pass through actual aiPorts maneuver authority');
 
-console.log('SG-06 Rapier formation convergence checks OK');
+console.log('SG-06 Rapier formation + hostile flyby trajectory checks OK', JSON.stringify(flybyFirst));
 
 async function runScenario() {
   const harness = makeHarness();
@@ -117,6 +128,91 @@ async function runScenario() {
   return { summary };
 }
 
+async function runHostileFlybyScenario() {
+  const harness = makeHarness();
+  const { state, helpers } = harness;
+  state.world.currentSectorId = 'sector_ceres_belt';
+  state.world.sectors.sector_ceres_belt = { id: 'sector_ceres_belt', tier: 2, security: 0.35 };
+  const player = helpers.spawnEntity(makeTargetSpec({ x: 420, z: 0 }));
+  const interceptor = helpers.spawnEntity(makeShipSpec({
+    x: -80,
+    z: -42,
+    ai: {
+      squadId: 'sg06_hostile_flyby',
+      doctrine: 'scavenger',
+      preferredRole: 'striker',
+      formation: 'wedge',
+      combatDoctrineId: 'interceptor_flyby',
+      spawnContext: 'encounter',
+      motive: 'assigned_interdiction',
+      engagementTrigger: 'authorized_hostile_spawn',
+      zoneId: 'zone_ceres_ambush',
+      approachTelegraph: 'engine_flare',
+      noFireResponseWindowS: 0.75,
+      forcePlayerTarget: true,
+      roe: 'weapons_free',
+      activity: {
+        kind: 'attack_run',
+        reason: 'live_port_flyby',
+        anchor: { x: -80, z: -42 },
+        leashRadius: 3600,
+        preferredRange: 150,
+        startedTick: 0,
+        targetId: player.id,
+      },
+    },
+  }));
+  interceptor.data.combat = { targetId: player.id };
+  state.playerId = player.id;
+  harness.rebuildSpatialHash();
+  await ensureSg02Ready(harness);
+
+  const tacticalAI = createTacticalAISystem({
+    seed: state.meta.seed,
+    config: {
+      squad: { formationBound: FORMATION_BOUND, formationSpacing: 72, minTacticTicks: 60 },
+      maneuver: { stationaryLimitTicks: 180, formationRejoinFraction: 0.8, arrivalRadius: 18 },
+    },
+    actionPortFactory: () => noopActions(),
+  });
+  tacticalAI.init(harness.ctx);
+
+  const phases = [];
+  let minTargetSeparation = Infinity;
+  let bestReformHeadingError = Infinity;
+  for (let tick = 0; tick < 1500; tick++) {
+    harness.core.preStep(DT, state);
+    harness.rebuildSpatialHash();
+    tacticalAI.update(DT, state);
+    const result = tacticalAI.inspect().lastResult;
+    const decision = result && result.decisions && result.decisions.find((entry) => entry.entityId === interceptor.id);
+    const doctrine = decision && decision.combatDoctrine;
+    if (doctrine && phases[phases.length - 1] !== doctrine.phase) phases.push(doctrine.phase);
+    if (doctrine && doctrine.phase === 'reform' && decision.maneuver && decision.directive && decision.directive.formation) {
+      const slot = decision.directive.formation.slot;
+      const expected = Math.atan2(slot.z - interceptor.pos.z, slot.x - interceptor.pos.x);
+      bestReformHeadingError = Math.min(bestReformHeadingError,
+        Math.abs(wrapAngle(decision.maneuver.targetHeading - expected)));
+    }
+    harness.flight.update(DT, state);
+    harness.aiPorts.update(DT, state);
+    harness.physics.update(DT, state);
+    minTargetSeparation = Math.min(minTargetSeparation, distance(interceptor.pos, player.pos));
+    harness.core.lifetimeSweep(DT, state);
+  }
+
+  const inspect = harness.aiPorts.inspect();
+  const summary = {
+    phases,
+    minTargetSeparation: round3(minTargetSeparation),
+    bestReformHeadingError: round3(bestReformHeadingError),
+    acceptedManeuvers: inspect.acceptedManeuvers,
+    flushedManeuvers: inspect.flushedManeuvers,
+  };
+  disposeHarness(harness);
+  return summary;
+}
+
 function recordFormationStats(state, result, tacticalAI, stats) {
   const directives = new Map();
   for (const squad of result.squads) for (const directive of squad.directives) directives.set(directive.memberId, directive);
@@ -153,7 +249,7 @@ function makeHarness() {
     ctx,
     core: Object.create(core),
     physics: Object.create(physics),
-    flight: Object.create(flight),
+    flight: Object.create(flightV3),
     aiPorts: Object.create(aiPorts),
     rebuildSpatialHash() {
       state.spatialHash.rebuild(state.entityList);
@@ -205,6 +301,37 @@ function makeShipSpec({ x, z, ai }) {
       ai,
       combatProfileId: 'combat_profile_standard_ship',
     },
+  };
+}
+
+function makeTargetSpec({ x, z }) {
+  return {
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 14,
+    mass: 34,
+    thrust: 90,
+    turnRate: 3,
+    drag: 1.2,
+    maxSpeed: 140,
+    pos: { x, z },
+    vel: { x: 0, z: 0 },
+    rot: Math.PI,
+    team: 0,
+    factionId: 'faction_free',
+    hull: 180,
+    hullMax: 180,
+    armorHp: 40,
+    armorMax: 40,
+    armorFlat: 2,
+    shield: 70,
+    shieldMax: 70,
+    cap: 100,
+    capMax: 100,
+    capRegen: 8,
+    flightModel: { inertia: 88 },
+    data: { combatProfileId: 'combat_profile_standard_ship' },
   };
 }
 
