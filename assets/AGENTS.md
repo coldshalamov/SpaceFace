@@ -56,8 +56,9 @@ Everything else under `assets/` is **dev/authoring/reference only** unless you d
 |---|---|---|---|---|
 | `assets/ships/release/parts/**` | **LIVE** | ✅ flight + UI previews | `src/render/partsLibrary.js`, `assetLoader.js` | **Default runtime path.** Release mode ON (`releaseMode.js`). |
 | `assets/ships/parts/**` | **AUTHORING** | ❌ direct | Same maps, dev fallback URL | Source GLBs + `parts_manifest.json`. Run release build before expecting flight to load them. |
-| `assets/ships/parts/wholeships/*.glb` | **BLOCKED** | ❌ | `parts_manifest.json` `status:"blocked"` | Accessory-only exports (no hull body). **Do NOT** add to `WHOLE_SHIP_FILE_BY_DEF_ID`. |
-| `assets/ships/kestrel/` | **REFERENCE** | ❌ runtime GLB | `tools/art/generate_kestrel_reference.py` | Player Kestrel renders from **`src/render/ships/kestrelHero.js`**, not this GLB. Package is interchange/validation (`npm run check:art`). See `assets/ships/kestrel/README.md`. |
+| `assets/ships/parts/wholeships/kestrel.glb` | **AUTHORING** | ✅ after release build | `parts_manifest.json` + player-only `WHOLE_SHIP_FILE_BY_DEF_ID` | K0 production Borrowed Time body. Editable Blender source + reproducible builder required. |
+| `assets/ships/parts/wholeships/{pelican,wasp}.glb` | **BLOCKED** | ❌ | `parts_manifest.json` `status:"blocked"` | Accessory-only exports (no hull body). **Do NOT** wire them. |
+| `assets/ships/kestrel/` | **REFERENCE** | ❌ direct | `tools/art/generate_kestrel_reference.py` | Reference package only. Player runtime body is **`assets/ships/release/parts/wholeships/kestrel.glb`**; code-native hero is the preflight shell. |
 | `assets/ships/parts/places/place_dock_interior*.glb` | **UI-ONLY** | ✅ shipyard preview only | `src/ui/shipPreviewMount.js` | In manifest + release, **not** in `partsLibrary.js` `PLACE_FILES` — no flight-world dock backdrop yet. |
 | `assets/portraits/*.jpg` | **LIVE** | ✅ station bar | `src/data/portraits.js` → `src/ui/portraitArt.js` → `bar.js` | 8 canonical + 7 role archetypes. Canvas stick-figure fallback on load error. **Not HUD** (bar/comms only). |
 | `assets/cinematics/C-INTRO-*.jpg` | **LIVE** | ✅ | `src/ui/uiRoot.js`, `src/ui/screens/codex.js`, `styles/ui.css` | Menu backdrop uses `C-INTRO-01.jpg` (clean, no baked labels). |
@@ -93,9 +94,9 @@ Agents confuse this constantly. Default play uses **three different ship render 
 
 ```
 Player ship_kestrel
-  → kestrelHero.js (CODE-NATIVE bespoke mesh)
-  → optional modular slot overlay via wrapShipWithAuthoredParts
-  → NEVER wholeships/kestrel.glb
+  → kestrelHero.js (CODE-NATIVE preflight/readiness shell)
+  → required production wholeships/kestrel.glb replaces the shell before flight
+  → explicit entity.isPlayer seam; NPC Kestrels remain modular
 
 Named faction NPCs (by lootTableId)
   → concordPatrol.js, reaverPirate.js, meridianTrader.js, driftBarge.js,
@@ -113,14 +114,14 @@ All other ships (player + NPC)
 | Map | Current state | Rule |
 |---|---|---|
 | `HULL_FILE_BY_DEF_ID` (line ~206) | **LIVE** — 13 `ship_*` → `hulls/hull_*.glb` | This is how catalog ships get silhouettes |
-| `WHOLE_SHIP_FILE_BY_DEF_ID` (line ~224) | **`Object.freeze({})` — EMPTY** | Do not populate until SPEC3-37 re-exports real hull bodies |
-| `PART_LIBRARY_CONTRACT.slots.hull` | Lists modular hulls only | Wholeships deliberately omitted from live slots |
+| `WHOLE_SHIP_FILE_BY_DEF_ID` (line ~253) | **Player Kestrel only** → `wholeships/kestrel.glb` | Activate only with the explicit `entity.isPlayer` seam; NPC Kestrels stay modular |
+| `PART_LIBRARY_CONTRACT.slots.hull` | Modular hulls + production Kestrel | Blocked accessory-only whole ships remain omitted |
 
 **`shipId → hull` live table** (`HULL_FILE_BY_DEF_ID`):
 
 | defId | hull GLB |
 |---|---|
-| `ship_kestrel` | `hulls/hull_starter.glb` *(overridden for player by kestrelHero.js)* |
+| `ship_kestrel` | `hulls/hull_starter.glb` for NPCs; production `wholeships/kestrel.glb` for the explicit player entity |
 | `ship_drifter`, `ship_ranger` | `hulls/hull_multirole.glb` |
 | `ship_wasp` | `hulls/hull_fighter.glb` |
 | `ship_pelican`, `ship_ironback` | `hulls/hull_miner.glb` |
@@ -132,15 +133,15 @@ All other ships (player + NPC)
 
 Gameplay stats live in `src/data/ships.js` only — **no GLB paths there**.
 
-### 2.1 Blocked wholeships — do not wire
+### 2.1 Whole-ship status
 
 | File | status | Why |
 |---|---|---|
-| `wholeships/kestrel.glb` | blocked | Accessory-only: Antenna_Mast, Antenna_Loop, Decal, Recessed_Canopy — **0 hull tris** |
+| `wholeships/kestrel.glb` | **live, player-only** | K0 production Borrowed Time: substantive hull, LOD0/1/2, semantic materials, nine stable sockets, no baked plume |
 | `wholeships/pelican.glb` | blocked | Accessory-only: Cargo_Clamp, Industrial_Cockpit, Mining_Lens_Port |
 | `wholeships/wasp.glb` | blocked | Accessory-only: Aft_Brace_Port, Canopy, Dorsal_Identity |
 
-They remain in `runtimeSlots.hull` for tracking but carry `status:"blocked"`. `npm run check:asset-status` fails if they appear in `WHOLE_SHIP_FILE_BY_DEF_ID` or `HULL_FILE_BY_DEF_ID`.
+Pelican and Wasp remain tracked with `status:"blocked"`; `npm run check:asset-status` rejects wiring them. Kestrel is a production exception admitted by the manifest and focused whole-ship gate.
 
 **File size ≠ quality.** 10–14 MB wholeships look “detailed” but render as floating accessories.
 

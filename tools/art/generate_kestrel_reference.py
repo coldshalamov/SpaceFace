@@ -424,7 +424,7 @@ def write_glb(path: Path, meshes: Sequence[Mesh]) -> dict[str, Any]:
                 'triangleCount': triangle_count,
                 'nominalDimensionsM': [28.0, 6.0, 14.0],
                 'actualBoundsDimensionsM': actual_dimensions,
-                'runtimeSource': 'src/render/ships/kestrelHero.js',
+                'runtimeSource': 'assets/ships/release/parts/wholeships/kestrel.glb',
             },
         },
         'scene': 0,
@@ -634,7 +634,7 @@ def main() -> int:
         'coordinateSystem': {'handedness': 'right', 'forward': '+X', 'up': '+Y', 'starboard': '+Z', 'unit': 'metre'},
         'nominalDimensionsM': {'length': 28, 'height': 6, 'beam': 14},
         'actualBoundsDimensionsM': {'length': checks['dimensionsM'][0], 'height': checks['dimensionsM'][1], 'beam': checks['dimensionsM'][2]},
-        'runtimeSource': 'src/render/ships/kestrelHero.js',
+        'runtimeSource': 'assets/ships/release/parts/wholeships/kestrel.glb',
         'files': {
             'referenceModel': 'kestrel_reference.glb',
             'heroSheet': 'kestrel_hero.svg',
