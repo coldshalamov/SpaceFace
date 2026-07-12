@@ -9,7 +9,7 @@ import {
   stableId,
   wrapAngle,
 } from '../ai/contracts.js';
-import { normalizeActivity, normalizeRoe } from '../ai/doctrine.js';
+import { activityAllowsOffense, effectiveActivityForAI, normalizeRoe } from '../ai/doctrine.js';
 import { normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
@@ -407,7 +407,8 @@ export function clearIneligibleAIFiringIntents(state) {
     if (!intent || (!intent.fire && intent.fireGroup == null)) continue;
     const ai = data && data.ai;
     const ineligible = !ai || ai.passive || entity.team === 2
-      || normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free') === 'hold_fire';
+      || normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free') === 'hold_fire'
+      || !activityAllowsOffense(effectiveActivityForAI(ai));
     if (!ineligible) continue;
     intent.fire = false;
     intent.fireGroup = null;
@@ -511,7 +512,7 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
   const subsystemFractionView = cacheOwner && typeof cacheOwner._subsystemFractionsFor === 'function'
     ? cacheOwner._subsystemFractionsFor(entity, runtime)
     : freeze(subsystemFractions(runtime));
-  const activity = normalizeActivity(ai.activity);
+  const activity = effectiveActivityForAI(ai);
   const bands = operationalBandsFor(state, entity, runtime, attachmentIndex);
   return freeze({
     id: entity.id,

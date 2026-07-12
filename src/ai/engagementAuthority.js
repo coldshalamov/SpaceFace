@@ -1,5 +1,10 @@
 import { normalizeCombatDoctrineId } from './combatDoctrine.js';
-import { RulesOfEngagement, normalizeActivity, normalizeRoe } from './doctrine.js';
+import {
+  RulesOfEngagement,
+  activityAllowsOffense,
+  effectiveActivityForAI,
+  normalizeRoe,
+} from './doctrine.js';
 import { bubblesFor } from '../data/stationBubbles.js';
 import {
   HELIOS_STARTER_PROTECTION_RADIUS_WU,
@@ -49,8 +54,9 @@ export function authorizeAIEngagement({
   }
   const doctrineId = normalizeCombatDoctrineId(ai.combatDoctrineId);
   if (!doctrineId) return denied('combat_doctrine');
-  const activity = normalizeActivity(ai.activity);
+  const activity = effectiveActivityForAI(ai);
   if (!activity) return denied('activity');
+  if (!activityAllowsOffense(activity)) return denied('activity_non_offensive');
 
   const liveHostile = hostile == null ? isHostileForAI(state, self, target) : hostile === true;
   if (!liveHostile) return denied('target_not_hostile');

@@ -83,8 +83,9 @@ export class SquadCommander {
     let selected = candidates[0];
     const current = candidates.find((candidate) => candidate.id === squad.currentTactic);
     const dwell = tick - squad.tacticSinceTick;
-    if (current && dwell < this.config.minTacticTicks && selected.id !== current.id) selected = current;
-    else if (current && selected.id !== current.id && selected.utility < current.utility + this.config.switchMargin) selected = current;
+    const urgentRetreat = director && director.command && director.command.type === 'order_retreat';
+    if (!urgentRetreat && current && dwell < this.config.minTacticTicks && selected.id !== current.id) selected = current;
+    else if (!urgentRetreat && current && selected.id !== current.id && selected.utility < current.utility + this.config.switchMargin) selected = current;
     if (selected.id !== squad.currentTactic) {
       squad.currentTactic = selected.id;
       squad.tacticSinceTick = tick;

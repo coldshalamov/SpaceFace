@@ -29,6 +29,13 @@ export const RulesOfEngagement = Object.freeze({
 
 const ACTIVITY_VALUES = new Set(Object.values(ActivityKind));
 const ROE_VALUES = new Set(Object.values(RulesOfEngagement));
+const OFFENSIVE_ACTIVITY_VALUES = new Set([
+  ActivityKind.ATTACK_RUN,
+  ActivityKind.REPOSITION,
+  ActivityKind.SCREEN,
+  ActivityKind.SCAN_APPROACH,
+  ActivityKind.PATROL_ROUTE,
+]);
 const DEFAULT_LEASH_RADIUS = 2600;
 
 export function normalizeActivity(value, fallback = null) {
@@ -48,6 +55,23 @@ export function normalizeActivity(value, fallback = null) {
     encounterId: src.encounterId == null ? null : String(src.encounterId),
   };
   return Object.freeze(activity);
+}
+
+/**
+ * Resolve the activity the live tactical stack must obey. Morale and outcome systems can order an
+ * immediate flight before the authored encounter activity record is rewritten; that transient
+ * survival order must win over a stale attack-run record at every decision and execution gate.
+ */
+export function effectiveActivityForAI(ai) {
+  const activity = normalizeActivity(ai && ai.activity);
+  const forcedFlee = !!(ai && (ai.forceFlee === true || ai.fsm === 'flee'));
+  if (!forcedFlee) return activity;
+  return normalizeActivity({
+    ...(activity || {}),
+    kind: ActivityKind.FLEE,
+    reason: ai.forceFlee === true ? 'morale_force_flee' : 'fsm_flee',
+    targetId: null,
+  });
 }
 
 export function normalizeRoe(value, fallback = RulesOfEngagement.WEAPONS_FREE) {
@@ -159,6 +183,19 @@ export function movementForActivity(maneuver, activityValue, directive, freeze =
   };
   if (anchor) base.formationSlot = freeze({ x: finite(anchor.x), z: finite(anchor.z) });
 
+  // Encounter and squad survival orders outrank a member's previous doctrine phase. Without this
+  // guard an ATTACK_RUN activity rewrites an explicit retreat back into an intercept on the same
+  // tick, making damaged wings appear suicidally aggressive.
+  if (directive && directive.objective && directive.objective.kind === ObjectiveKind.RETREAT) {
+    return freeze({
+      ...base,
+      kind: ManeuverKind.RETREAT,
+      targetId: null,
+      breakFormation: true,
+      reason: directive.objective.reason || 'ordered_retreat',
+    });
+  }
+
   switch (activity.kind) {
     case ActivityKind.HAIL_HOLD:
     case ActivityKind.LOITER:
@@ -199,20 +236,18 @@ export function canFireByDoctrine({
   if (roe === RulesOfEngagement.LAWFUL_WANTED_ONLY && !wanted) return false;
   if (roe === RulesOfEngagement.DEFENSIVE && !recentlyDamaged && !(activity && activity.kind === ActivityKind.SCREEN)) return false;
   if (!activity) return true;
+  if (!activityAllowsOffense(activity)) return false;
   if (activity.targetId != null && activity.targetId !== target.id) return false;
   if (activity.anchor && Number.isFinite(activity.leashRadius) && self && self.pos) {
     const distance = distance2(self.pos, activity.anchor);
     if (distance > activity.leashRadius * 1.25) return false;
   }
-  return [
-    ActivityKind.ATTACK_RUN,
-    ActivityKind.REPOSITION,
-    ActivityKind.SCREEN,
-    ActivityKind.SCAN_APPROACH,
-    ActivityKind.PATROL_ROUTE,
-    ActivityKind.DISENGAGE,
-    ActivityKind.FLEE,
-  ].includes(activity.kind);
+  return true;
+}
+
+export function activityAllowsOffense(activityValue) {
+  const activity = normalizeActivity(activityValue);
+  return activity == null || OFFENSIVE_ACTIVITY_VALUES.has(activity.kind);
 }
 
 export function outsideActivityLeash(self, activityValue) {
@@ -224,6 +259,7 @@ export function outsideActivityLeash(self, activityValue) {
 function actionLegalByDoctrine({ def, selected, activity, roe, objective, self, tick }) {
   if (!selected || !def) return true;
   if (!isAttackAction(def)) return true;
+  if (!activityAllowsOffense(activity)) return false;
   if (roe === RulesOfEngagement.HOLD_FIRE) return false;
   if (activity && activity.deadlineTick != null && tick < activity.deadlineTick && activity.kind === ActivityKind.HAIL_HOLD) return false;
   if (activity && outsideActivityLeash(self, activity)) return false;

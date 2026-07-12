@@ -405,8 +405,8 @@ function applyShipCollisionAvoidance(desired, self, contacts, seed, entityId, ti
       pass = {
         forwardX: dir.x,
         forwardZ: dir.z,
-        pointX: contact.pos.x + dir.x * clearance * 3 + rightX * side * clearance * 1.7,
-        pointZ: contact.pos.z + dir.z * clearance * 3 + rightZ * side * clearance * 1.7,
+        pointX: contact.pos.x + dir.x * clearance * 3 + rightX * side * clearance * 1.85,
+        pointZ: contact.pos.z + dir.z * clearance * 3 + rightZ * side * clearance * 1.85,
         untilTick: tick + 240,
       };
       passes.set(contact.id, pass);

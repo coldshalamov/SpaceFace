@@ -1,6 +1,7 @@
 import {
   AI_CONTRACT_VERSION,
   NORMALIZED_THRUSTER_REQUEST_FLAG,
+  ObjectiveKind,
   TraceLayer,
   assertAIPorts,
   stableId,
@@ -119,13 +120,15 @@ export class TacticalAIStack {
         const directive = squadResult.directives.get(member.id);
         if (!perception || !directive) continue;
         const doctrineId = normalizeCombatDoctrineId(directive.combatDoctrineId, perception.self && perception.self.combatDoctrineId);
-        if (this.memberBatchEnabled && !doctrineId && !activeMembers.has(member.id) && this.lastDecisionByEntity.has(member.id)) {
+        const retreatOrdered = directive.objective && directive.objective.kind === ObjectiveKind.RETREAT;
+        if (this.memberBatchEnabled && !doctrineId && !retreatOrdered && !activeMembers.has(member.id) && this.lastDecisionByEntity.has(member.id)) {
           const cached = retickDecision(this.lastDecisionByEntity.get(member.id), tick);
           this.ports.maneuver.request(cached.maneuver);
           decisions.push(cached);
           continue;
         }
-        const combatDoctrine = doctrineId ? this.combatDoctrine.update({
+        if (retreatOrdered && doctrineId) this.combatDoctrine.forget(member.id);
+        const combatDoctrine = doctrineId && !retreatOrdered ? this.combatDoctrine.update({
           tick, entityId: member.id, doctrineId, perception, directive,
         }) : null;
         const effectiveDirective = combatDoctrine ? overrideDirectiveForCombatDoctrine(directive, combatDoctrine) : directive;
