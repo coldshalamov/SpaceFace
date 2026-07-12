@@ -25,8 +25,9 @@ assert(system._particleMat.fragmentShader.includes('trailSampleProcedural'));
 assert(system._particleMat.uniforms.uTrailTime);
 assert(!system._particleMat.uniforms.uTrailMap);
 
-const streak = system._trailStreakPool.find((m) => m.visible);
+const streak = system._trailStreakPool.mesh.count > 0 ? system._trailStreakPool.mesh : null;
 assert(streak, 'streak mesh should be visible under throttle');
+assert(streak.isInstancedMesh, 'streak pool should submit one instanced draw');
 assert.equal(streak.material.type, 'ShaderMaterial');
 assert(streak.material.fragmentShader.includes('trailSampleProcedural'));
 assert(streak.material.uniforms.uTrailTime);

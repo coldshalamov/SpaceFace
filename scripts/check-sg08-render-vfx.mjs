@@ -221,9 +221,10 @@ function makeHarness(overrides = {}) {
   assert(system._particleMat.fragmentShader.includes('trailSampleProcedural'),
     'particle fragment must procedurally sample trail streaks');
   assert(system._particleMat.uniforms.uTrailTime, 'particle shader must animate warp via uTrailTime');
-  assert(system._trailStreakPool && system._trailStreakPool.length > 0, 'trail streak pool must be initialized');
-  const streak = system._trailStreakPool.find((m) => m.visible);
+  assert(system._trailStreakPool && system._trailStreakPool.capacity > 0, 'trail streak pool must be initialized');
+  const streak = system._trailStreakPool.mesh.count > 0 ? system._trailStreakPool.mesh : null;
   assert(streak, 'thrusting ship should show procedural streak mesh');
+  assert(streak.isInstancedMesh, 'streak pool should submit one instanced draw');
   assert.equal(streak.material.type, 'ShaderMaterial', 'streak must be ShaderMaterial not SpriteMaterial');
   assert(streak.material.fragmentShader.includes('trailSampleProcedural'),
     'streak fragment must use live procedural sampler');
@@ -244,7 +245,7 @@ function makeHarness(overrides = {}) {
     particleShader: system._particleMat.type,
     particleProcedural: system._particleMat.fragmentShader.includes('trailSampleProcedural'),
     particleTrailTime: !!system._particleMat.uniforms.uTrailTime,
-    streakPoolCap: system._trailStreakPool.length,
+    streakPoolCap: system._trailStreakPool.capacity,
     liveTrailStreakMeshes: system._liveTrailStreakCount,
     streakShader: streak.material.type,
     streakProcedural: streak.material.fragmentShader.includes('trailSampleProcedural'),
