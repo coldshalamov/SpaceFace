@@ -330,10 +330,12 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.subsystem.drive_disabled': 'sfx_subsystem_drive_disabled',
   'presentation.subsystem.sensor_disabled': 'sfx_subsystem_sensor_disabled',
   'presentation.subsystem.weapon_disabled': 'sfx_subsystem_weapon_disabled',
-  'presentation.scenario.signal': 'sfx_ui_alert',
+  'presentation.scenario.signal': 'sfx_scenario_signal',
+  'presentation.comms.kessler': 'sfx_comms_kessler',
+  'presentation.comms.denial': 'sfx_comms_denial',
   'presentation.comms.priority': 'sfx_ui_alert',
-  'presentation.objective.split': 'sfx_ui_alert',
-  'presentation.branch.resolved': 'sfx_ui_confirm',
+  'presentation.objective.split': 'sfx_objective_priority_split',
+  'presentation.branch.resolved': 'sfx_branch_resolved',
 });
 
 export function resolveAudioCueRecipeId(cueId) {

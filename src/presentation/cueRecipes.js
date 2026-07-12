@@ -306,7 +306,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.spatial_objective',
       accessibility: 'accessibility.shape_coded_signal',
     },
-    budgets: { particles: 40, voices: 2, uiPulses: 1 },
+    budgets: { particles: 40, voices: 1, uiPulses: 1 },
     tags: ['scenario', 'objective', 'slice'],
   }),
   'scenario.comms.kessler': recipe({
@@ -320,7 +320,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.comms_priority',
       accessibility: 'accessibility.caption_priority',
     },
-    budgets: { voices: 2, uiPulses: 1 },
+    budgets: { voices: 1, uiPulses: 1 },
     tags: ['scenario', 'comms', 'kessler'],
   }),
   'scenario.comms.denial': recipe({
@@ -334,7 +334,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.comms_priority',
       accessibility: 'accessibility.caption_priority',
     },
-    budgets: { voices: 2, uiPulses: 1 },
+    budgets: { voices: 1, uiPulses: 1 },
     tags: ['scenario', 'comms', 'denial'],
   }),
   'scenario.objective.priority_split': recipe({
@@ -348,7 +348,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.dual_objective',
       accessibility: 'accessibility.objective_shapes',
     },
-    budgets: { particles: 36, voices: 2, uiPulses: 2 },
+    budgets: { particles: 36, voices: 1, uiPulses: 2 },
     tags: ['scenario', 'objective', 'civilian'],
   }),
   'scenario.branch.resolved': recipe({
@@ -362,7 +362,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.aftermath_summary',
       accessibility: 'accessibility.branch_caption',
     },
-    budgets: { particles: 52, voices: 2, uiPulses: 2 },
+    budgets: { particles: 52, voices: 1, uiPulses: 2 },
     tags: ['scenario', 'branch', 'aftermath'],
   }),
 });

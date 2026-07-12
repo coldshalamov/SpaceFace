@@ -65,6 +65,8 @@ assert.equal(
 );
 
 const voices = collectPresentationVoices();
+assert.equal(voices.filter((voice) => voice.cueId === 'scenario.objective.priority_split').length, 1,
+  'objective priority split must not stack a generic alert over its authored distress identity');
 for (const bed of COMBAT_BED) voices.push(makeVoice({
   source: 'combat-bed',
   cueId: bed.label,

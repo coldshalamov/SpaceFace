@@ -73,8 +73,8 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'shield.collapse': 'presentation.shield.collapse',
   'subsystem.disabled': 'presentation.subsystem.disabled',
   'scenario.signal.pulse': 'presentation.scenario.signal',
-  'scenario.comms.kessler': 'presentation.comms.priority',
-  'scenario.comms.denial': 'presentation.comms.priority',
+  'scenario.comms.kessler': 'presentation.comms.kessler',
+  'scenario.comms.denial': 'presentation.comms.denial',
   'scenario.objective.priority_split': 'presentation.objective.split',
   'scenario.branch.resolved': 'presentation.branch.resolved',
 });
@@ -95,11 +95,11 @@ const UI_CUES = Object.freeze({
   'tether.release.razor': uiCue('presentation:tether:release-razor', 'warn', 'RAZOR CUT', 2.0),
   'shield.collapse': uiCue('presentation:shield:collapse', 'danger', 'SHIELDS COLLAPSED', 1.8),
   'subsystem.disabled': uiCue('presentation:subsystem:disabled', 'warn', 'SUBSYSTEM DISABLED', 1.8, true),
-  'scenario.signal.pulse': uiCue('presentation:scenario:signal', 'info', 'UNREGISTERED SIGNAL', 2.2),
-  'scenario.comms.kessler': uiCue('presentation:scenario:kessler', 'info', 'PRIORITY COMMS', 2.2),
-  'scenario.comms.denial': uiCue('presentation:scenario:denial', 'warn', 'OFFICIAL DENIAL', 2.2),
-  'scenario.objective.priority_split': uiCue('presentation:scenario:priority-split', 'warn', 'OBJECTIVES SPLIT', 2.4),
-  'scenario.branch.resolved': uiCue('presentation:scenario:resolved', 'info', 'EVIDENCE ROUTE LOCKED', 2.4),
+  'scenario.signal.pulse': uiCue('presentation:scenario:signal', 'info', 'UNREGISTERED SIGNAL', 2.2, true),
+  'scenario.comms.kessler': uiCue('presentation:scenario:kessler', 'info', 'PRIORITY COMMS', 2.2, true),
+  'scenario.comms.denial': uiCue('presentation:scenario:denial', 'warn', 'OFFICIAL DENIAL', 2.2, true),
+  'scenario.objective.priority_split': uiCue('presentation:scenario:priority-split', 'warn', 'OBJECTIVES SPLIT', 2.4, true),
+  'scenario.branch.resolved': uiCue('presentation:scenario:resolved', 'info', 'EVIDENCE ROUTE LOCKED', 2.4, true),
 });
 
 const CAPTIONS = Object.freeze({
@@ -256,7 +256,7 @@ export const presentationAdapters = {
       id: audioId,
       cueId: cue.id,
       lane: cue.lanes && cue.lanes.audio || null,
-      position: cue.position || null,
+      position: scenarioAudioPosition(cue),
       gain: combatAftermathGain(cue),
       rate: combatAftermathRate(cue),
       duck: shouldDuckAudio(cue),
@@ -442,7 +442,13 @@ function combatAftermathRate(cue) {
 
 function shouldDuckAudio(cue) {
   if (isCombatAftermathCue(cue) || (cue && cue.id === 'subsystem.disabled')) return false;
+  if (cue && String(cue.id || '').startsWith('scenario.')) return String(cue.id).startsWith('scenario.comms.');
   return (cue.tags || []).includes('comms') || finite(cue.importance, 0) >= 0.85;
+}
+
+function scenarioAudioPosition(cue) {
+  if (cue && String(cue.id || '').startsWith('scenario.comms.')) return null;
+  return cue && cue.position || null;
 }
 
 function copyObject(value) {

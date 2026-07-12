@@ -162,6 +162,8 @@ assert.equal(appliedRecords.length, 1, 'presentation adapter should consume the 
 assert.equal(audioRecords.at(-1).id, 'presentation.scenario.signal', 'scenario cue should route to semantic audio');
 assert.equal(alertRecords.at(-1).text, 'UNREGISTERED SIGNAL', 'scenario cue should route to UI alert copy');
 assert.equal(captionRecords.at(-1).shape, 'pulse', 'scenario cue should carry a non-color accessibility shape');
+assert.equal(alertRecords.at(-1).audioOwnedByPresentation, true, 'scenario UI mirror must not add a generic alert voice');
+assert.equal(alertCueOwnsAudio(alertRecords.at(-1)), false, 'scenario signal must own one audible floor');
 
 bus.emit('tether:attached', { actorId: 1, targetId: 2, attachmentId: 'att_1', restLength: 90 });
 bus.flush();
@@ -237,5 +239,66 @@ assert.deepEqual(adapterInspect.lastApplied.outputLanes,
   'adapter inspect should summarize all output lanes');
 presentationAdapters.dispose();
 presentationOrchestrator.dispose();
+
+// The 47-A information chain must teach five meanings with five finite identities, one voice each.
+const narrativeBus = createBus();
+const narrativeAudio = [];
+const narrativeAlerts = [];
+const narrativeState = {
+  playerId: 1,
+  tick: 90,
+  simTime: 1.5,
+  settings: runtimeState.settings,
+  entities: runtimeState.entities,
+};
+narrativeBus.on('presentation:audioCue', (payload) => narrativeAudio.push(payload));
+narrativeBus.on('alert', (payload) => narrativeAlerts.push(payload));
+presentationAdapters.init({ state: narrativeState, bus: narrativeBus });
+const narrativeCueIds = [
+  'scenario.signal.pulse',
+  'scenario.comms.kessler',
+  'scenario.comms.denial',
+  'scenario.objective.priority_split',
+  'scenario.branch.resolved',
+];
+for (const [index, cueId] of narrativeCueIds.entries()) {
+  const recipe = getPresentationRecipe(cueId);
+  narrativeState.tick++;
+  narrativeBus.emit('presentation:cue', {
+    id: cueId,
+    sourceEvent: `test:${cueId}`,
+    sourceId: 'scenario.47a',
+    targetId: 2,
+    position: { x: 90, y: 0, z: 0 },
+    importance: recipe.importance,
+    playerRelevance: 1,
+    material: recipe.material,
+    lanes: { ...recipe.lanes },
+    budgets: { ...recipe.budgets },
+    tags: [...recipe.tags],
+    simTimeMs: 1500 + index * 20,
+    presentationTimeMs: 1500 + index * 20,
+  });
+  narrativeBus.flush();
+}
+assert.deepEqual(narrativeAudio.map((cue) => cue.id), [
+  'presentation.scenario.signal',
+  'presentation.comms.kessler',
+  'presentation.comms.denial',
+  'presentation.objective.split',
+  'presentation.branch.resolved',
+], '47-A information beats need distinct semantic audio identities');
+assert.deepEqual(narrativeAudio.map((cue) => cue.duck), [false, true, true, false, false],
+  'only actual comms should briefly own the music bed');
+assert.equal(new Set(narrativeAudio.map((cue) => resolveAudioCueRecipeId(cue.id))).size, 5,
+  '47-A information meanings must resolve to five distinct recipes');
+assert(narrativeAudio.filter((cue) => cue.cueId.startsWith('scenario.comms.')).every((cue) => cue.position === null),
+  'radio signatures must be non-spatial');
+assert(narrativeAudio.filter((cue) => !cue.cueId.startsWith('scenario.comms.')).every((cue) => cue.position && cue.position.x === 90),
+  'signal, objective, and branch cues must stay spatially truthful');
+assert(narrativeAlerts.every((alert) => !alertCueOwnsAudio(alert)), 'scenario UI mirrors must remain silent');
+assert(narrativeCueIds.every((cueId) => getPresentationRecipe(cueId).budgets.voices === 1),
+  'each 47-A information beat owns exactly one voice');
+presentationAdapters.dispose();
 
 console.log('Presentation cue schema checks OK');

@@ -713,6 +713,57 @@ export const RECIPES = [
     filterType: 'highpass', filterFreq: 980, filterQ: 1.1,
   },
   {
+    // The 47-A mass discrepancy: a clean rising return tied to the evidence spindle in world space.
+    id: 'sfx_scenario_signal',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 380, freqSweep: [380, 1380], sweepTimeS: 0.24,
+    gainEnvelope: { attack: 0.004, sustain: 0.015, release: 0.28 },
+    filterType: 'bandpass', filterFreq: 880, filterQ: 1.8,
+    repeatCount: 1, repeatIntervalS: 0.18,
+  },
+  {
+    // Kessler's channel: warm, narrow-band analog squelch before the readable comms text.
+    id: 'sfx_comms_kessler',
+    category: 'ui',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 1180, filterQ: 2.0,
+  },
+  {
+    // Official denial: colder, clipped carrier signature, distinct from Kessler without extra volume.
+    id: 'sfx_comms_denial',
+    category: 'ui',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.002, sustain: 0.01, release: 0.13 },
+    filterType: 'highpass', filterFreq: 1750, filterQ: 1.0,
+    repeatCount: 1, repeatIntervalS: 0.11,
+  },
+  {
+    // A two-beat descending distress pattern for the civilian/evidence priority conflict.
+    id: 'sfx_objective_priority_split',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 760, freqSweep: [760, 420], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.004, sustain: 0.015, release: 0.22 },
+    filterType: 'bandpass', filterFreq: 620, filterQ: 1.5,
+    repeatCount: 1, repeatIntervalS: 0.2,
+  },
+  {
+    // Branch closure is acknowledgement, not celebration: a restrained rising interval at evidence.
+    id: 'sfx_branch_resolved',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 250, freqSweep: [250, 500], sweepTimeS: 0.3,
+    gainEnvelope: { attack: 0.008, sustain: 0.025, release: 0.36 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 0.8,
+  },
+  {
     id: 'sfx.hullHit',
     category: 'weapon',
     type: 'oscillator',
