@@ -24,9 +24,14 @@ const RELEASE_MANIFEST = resolve(RELEASE_ROOT, 'release_manifest.json');
 const STAGED_RELEASE_ROOT = resolve(ROOT, 'assets/ships/release.__building');
 const PREVIOUS_RELEASE_ROOT = resolve(ROOT, 'assets/ships/release.__previous');
 const RELEASE_BUILD_LOCK = resolve(ROOT, 'assets/ships/release.__lock');
-const argv = new Set(process.argv.slice(2));
+const argvList = process.argv.slice(2);
+const argv = new Set(argvList);
 const DIRECT_LIVE_BUILD = argv.has('--no-clean');
 const RESUME_VALID = argv.has('--resume-valid');
+const ONLY_IDS = readOnlyIds(argvList);
+if (ONLY_IDS.size && !DIRECT_LIVE_BUILD) {
+  throw new Error('--only requires --no-clean so an incremental build preserves the existing release manifest');
+}
 const BUILD_RELEASE_ROOT = DIRECT_LIVE_BUILD ? RELEASE_ROOT : STAGED_RELEASE_ROOT;
 const BUILD_RELEASE_MANIFEST = resolve(BUILD_RELEASE_ROOT, 'release_manifest.json');
 
@@ -53,7 +58,7 @@ const packageJson = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8
 // a release_manifest.json entry — same release standard as the kestrel reference and every part.
 const WHOLE_SHIP_FILES = ['kestrel.glb', 'pelican.glb', 'wasp.glb'];
 const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
-const assets = [
+const allAssets = [
   {
     id: 'ship_kestrel_reference',
     kind: 'ship-reference',
@@ -75,6 +80,12 @@ const assets = [
     release: `assets/ships/release/parts/wholeships/${file}`,
   })),
 ];
+const assets = ONLY_IDS.size ? allAssets.filter((asset) => ONLY_IDS.has(asset.id)) : allAssets;
+if (ONLY_IDS.size && assets.length !== ONLY_IDS.size) {
+  const found = new Set(assets.map((asset) => asset.id));
+  const missing = [...ONLY_IDS].filter((id) => !found.has(id));
+  throw new Error(`unknown --only release asset id(s): ${missing.join(', ')}`);
+}
 
 if (!DIRECT_LIVE_BUILD && !RESUME_VALID) {
   await rm(STAGED_RELEASE_ROOT, { recursive: true, force: true });
@@ -91,7 +102,15 @@ const io = new NodeIO()
     'meshopt.decoder': MeshoptDecoder,
   });
 
-const manifestAssets = [];
+const existingReleaseManifest = ONLY_IDS.size && existsSync(RELEASE_MANIFEST)
+  ? JSON.parse(readFileSync(RELEASE_MANIFEST, 'utf8'))
+  : null;
+const blockedReleaseSources = new Set((partManifest.parts || [])
+  .filter((part) => part.status === 'blocked')
+  .map((part) => `assets/ships/parts/${part.file}`));
+const manifestAssets = existingReleaseManifest && Array.isArray(existingReleaseManifest.assets)
+  ? existingReleaseManifest.assets.filter((asset) => !ONLY_IDS.has(asset.id) && !blockedReleaseSources.has(asset.source))
+  : [];
 for (let index = 0; index < assets.length; index++) {
   const asset = assets[index];
   const sourceAbs = resolve(ROOT, asset.source);
@@ -242,6 +261,19 @@ if (!DIRECT_LIVE_BUILD) {
 
 console.log(`[sg04] release manifest wrote ${relativeToRoot(RELEASE_MANIFEST)} (${manifestAssets.length} assets)`);
 process.exit(0);
+
+function readOnlyIds(args) {
+  const ids = new Set();
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index];
+    if (arg === '--only' && args[index + 1]) {
+      for (const id of args[++index].split(',')) if (id.trim()) ids.add(id.trim());
+    } else if (arg.startsWith('--only=')) {
+      for (const id of arg.slice('--only='.length).split(',')) if (id.trim()) ids.add(id.trim());
+    }
+  }
+  return ids;
+}
 
 function appendManifestAsset(manifest, asset, pair, sourceBytes, releaseBytes) {
   manifest.push({

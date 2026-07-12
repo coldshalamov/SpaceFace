@@ -138,12 +138,14 @@ export function inspectReleaseAssetPair(sourcePath, releasePath, options = {}) {
     });
   }
 
-  if (source.metrics.textureCount !== release.metrics.textureCount) {
+  // glTF-Transform intentionally deduplicates texture objects that point at the same image/sampler.
+  // Semantic parity is the set of bound material texture roles, not raw texture-object identity.
+  if (source.metrics.materialTextureSlotCount !== release.metrics.materialTextureSlotCount) {
     issues.push({
       rule: 'release.textureTopology',
       path: normalizeRel(releasePath),
-      message: 'release compression must preserve texture slot count',
-      detail: `${source.metrics.textureCount} -> ${release.metrics.textureCount}`,
+      message: 'release compression must preserve bound material texture-slot topology',
+      detail: `${source.metrics.materialTextureSlotCount} -> ${release.metrics.materialTextureSlotCount} bound slots`,
     });
   }
 
@@ -258,6 +260,7 @@ function releaseMetrics(gltf, bytes) {
   const ktx2TextureCount = textures.filter((texture) =>
     !!(texture.extensions && texture.extensions.KHR_texture_basisu)).length;
   const imageMimeTypes = new Set((gltf.images || []).map((image) => image && image.mimeType).filter(Boolean));
+  const materialTextureSlotCount = countMaterialTextureSlots(gltf.materials || []);
   let primitiveCount = 0;
   let dracoPrimitiveCount = 0;
   for (const mesh of gltf.meshes || []) {
@@ -278,6 +281,7 @@ function releaseMetrics(gltf, bytes) {
   return {
     bytes,
     textureCount,
+    materialTextureSlotCount,
     ktx2TextureCount,
     imageMimeTypes: [...imageMimeTypes].sort(),
     primitiveCount,
@@ -295,6 +299,20 @@ function releaseMetrics(gltf, bytes) {
       dracoPrimitiveCount > 0 || meshoptBufferViewCount > 0 || declaredMeshCompression
     ),
   };
+}
+
+function countMaterialTextureSlots(materials) {
+  let count = 0;
+  const visit = (value, key = '') => {
+    if (!value || typeof value !== 'object') return;
+    if (/Texture$/.test(key) && Number.isInteger(value.index)) {
+      count++;
+      return;
+    }
+    for (const [childKey, childValue] of Object.entries(value)) visit(childValue, childKey);
+  };
+  for (const material of materials) visit(material);
+  return count;
 }
 
 function releaseCompressionIssues(metrics) {
@@ -320,6 +338,7 @@ function emptyMetrics(bytes) {
   return {
     bytes,
     textureCount: 0,
+    materialTextureSlotCount: 0,
     ktx2TextureCount: 0,
     imageMimeTypes: [],
     primitiveCount: 0,
