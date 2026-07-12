@@ -171,6 +171,26 @@ function stripNextPrefix(text) {
   return String(text || '').replace(/^Next:\s*/i, '');
 }
 
+function missionPurposeText(m) {
+  if (!m) return 'Complete the contract and secure its payout.';
+  const authored = m.why || m.motive || m.brief || m.description || m.instruction
+    || (m.params && (m.params.why || m.params.reason));
+  if (authored) return String(authored).trim();
+  switch (m.type) {
+    case 'cargo_delivery': return 'Protect chain of custody and complete the contracted handoff.';
+    case 'bulk_trade': return 'Fill destination demand before the route or price window closes.';
+    case 'mining_quota': return 'Supply the requested ore quota and convert extraction time into a guaranteed payout.';
+    case 'salvage_retrieval': return 'Recover marked property before another crew claims or strips it.';
+    case 'bounty_hunt': return 'Remove the named threat and collect the posted bounty.';
+    case 'patrol_clear': return 'Restore local transit safety by clearing the marked hostile presence.';
+    case 'escort': return 'Keep the client alive and preserve the route through arrival.';
+    case 'recon_scan': return 'Resolve the requested sensor evidence for the issuing contact.';
+    case 'smuggling_run': return 'Move restricted cargo without surrendering it to customs.';
+    case 'passenger_transport': return 'Deliver the passenger safely and on schedule.';
+    default: return 'Complete the stated objective and close the contract cleanly.';
+  }
+}
+
 function missionWaypoint(state, mission) {
   const wp = state && state.nav && state.nav.waypoint;
   if (!wp || !mission || wp.missionId !== mission.id) return null;
@@ -442,6 +462,42 @@ export function activeMissionContractTerms(m, state) {
   }
 
   return terms.slice(0, 6);
+}
+
+export function missionCommandBrief(m, state) {
+  if (!m) return null;
+  const terms = activeMissionContractTerms(m, state);
+  const term = (label, fallback) => terms.find((item) => item.label === label)?.text || fallback;
+  const stake = terms.find((item) => item.label === 'Stake');
+  return Object.freeze({
+    what: objectiveText(m),
+    where: destLabel(m),
+    how: stripNextPrefix(nextStepText(m)),
+    why: missionPurposeText(m),
+    reward: term('Pays', 'close cleanly'),
+    risk: [term('Risk', 'R0 / route pending'), stake ? stake.text : 'no collateral'].join(' · '),
+    completion: missionProgressLabel(m),
+  });
+}
+
+function commandBriefHtml(brief) {
+  if (!brief) return '';
+  const facts = [
+    ['What', brief.what],
+    ['Where', brief.where],
+    ['How', brief.how],
+    ['Why', brief.why],
+    ['Reward', brief.reward],
+    ['Risk', brief.risk],
+  ];
+  return '<div class="sf-mlog-command-brief" role="list" aria-label="Tracked mission command brief">' +
+    facts.map(([label, value]) => (
+      '<div class="sf-mlog-command-fact" role="listitem">' +
+        '<b>' + escapeHtml(label) + '</b>' +
+        '<span>' + escapeHtml(value || '—') + '</span>' +
+      '</div>'
+    )).join('') +
+  '</div>';
 }
 
 function contractTermsHtml(m, state) {
@@ -751,27 +807,18 @@ function isMissionLogKey(ev) {
   return key === BINDINGS.missionLog.key || key === BINDINGS.missionLog.label;
 }
 
-/** True while first-hour tutorial B0–B5 still owns the flight floor. */
-function isFirstHourTutorialActive(state) {
-  const ob = state && state.onboarding;
-  return !!(ob && ob.active && !ob.finished);
-}
-
 function storyActionForBeat(beat, state) {
   const story = state && state.story || {};
   const branch = story.branch || null;
   const chainProgress = story.chainProgress || 0;
-  // During B0 flight, the HUD tracker owns the sole persistent verb. Mission Log remains
-  // on-demand context — do not reframe the longform spine as a second primary command.
-  const tutorialActive = isFirstHourTutorialActive(state);
   switch (beat && beat.beat) {
     case 0:
       return {
-        tone: tutorialActive ? 'info' : 'primary',
-        label: tutorialActive ? 'BRIEF' : 'STORY',
+        tone: 'primary',
+        label: 'STORY',
         title: 'Follow the anomaly',
         body: 'Mine the 47-A signal, then dock at Helios before the manifest rolls over.',
-        meta: tutorialActive ? 'Context' : 'Mining',
+        meta: 'Mining',
       };
     case 1:
       return {
@@ -853,12 +900,14 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
 
   if (tracked) {
     const mapAction = missionMapAction(state, tracked, true);
+    const brief = missionCommandBrief(tracked, state);
     actions.push({
       tone: 'primary',
       label: 'TRACKED',
       title: missionTitle(tracked),
       body: stripNextPrefix(nextStepText(tracked)),
       meta: missionProgressLabel(tracked),
+      brief,
       missionId: tracked.id,
       mapAction,
     });
@@ -1328,6 +1377,8 @@ export const missionLogScreen = {
       const urgent = remaining > 0 && remaining < 120;
 
       const card = el('div', 'sf-mlog-card' + (isTracked ? ' tracked' : '') + (urgent ? ' urgent' : ''));
+      card.setAttribute('role', 'group');
+      card.setAttribute('aria-label', (isTracked ? 'Tracked mission: ' : 'Mission: ') + missionTitle(m));
 
       // Top row: title + type badge
       const top = el('div', 'sf-mlog-card-top');
@@ -1350,6 +1401,11 @@ export const missionLogScreen = {
 
       // Progress bar
       const barWrap = el('div', 'sf-mlog-pbar');
+      barWrap.setAttribute('role', 'progressbar');
+      barWrap.setAttribute('aria-label', missionTitle(m) + ' completion');
+      barWrap.setAttribute('aria-valuemin', '0');
+      barWrap.setAttribute('aria-valuemax', '100');
+      barWrap.setAttribute('aria-valuenow', String(pct));
       const barFill = el('div', 'sf-mlog-pbar-fill');
       barFill.style.width = pct + '%';
       barWrap.appendChild(barFill);
@@ -1411,7 +1467,7 @@ export const missionLogScreen = {
       '<div class="sf-mlog-rec-item sf-mlog-rec-item--' + escapeHtml(a.tone || 'info') + '" data-current-action="true">' +
         '<div class="sf-mlog-rec-label">' + escapeHtml(a.label || 'NEXT') + '</div>' +
         '<div class="sf-mlog-rec-title">' + escapeHtml(a.title || 'Next action') + '</div>' +
-        '<div class="sf-mlog-rec-body">' + escapeHtml(a.body || '') + '</div>' +
+        (a.brief ? commandBriefHtml(a.brief) : '<div class="sf-mlog-rec-body">' + escapeHtml(a.body || '') + '</div>') +
         (a.meta ? '<div class="sf-mlog-rec-meta mono">' + escapeHtml(a.meta) + '</div>' : '') +
         '<div class="sf-mlog-rec-marker mono">' + (a.mapAction
           ? '◆ BRIGHT AMBER DIAMOND = CURRENT GOAL'
@@ -1585,6 +1641,15 @@ const CSS = `
 .sf-mlog-rec-title { font-size: .86rem; line-height: 1.25; color: var(--ink); font-weight: 700; margin-bottom: 4px;
   overflow-wrap: anywhere; }
 .sf-mlog-rec-body { font-size: .74rem; line-height: 1.35; color: var(--ink-dim); overflow-wrap: anywhere; }
+.sf-mlog-command-brief { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px;
+  margin-top: 7px; }
+.sf-mlog-command-fact { min-width: 0; display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 6px;
+  align-items: start; padding-top: 5px; border-top: 1px solid rgba(88,112,145,.24); font-size: .7rem;
+  line-height: 1.3; color: var(--ink-dim); overflow-wrap: anywhere; }
+.sf-mlog-command-fact b { font-family: var(--mono); font-size: .55rem; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-mute); }
+.sf-mlog-command-fact:nth-child(5) span { color: var(--energy); }
+.sf-mlog-command-fact:nth-child(6) span { color: var(--warn); }
 .sf-mlog-rec-meta { margin-top: 6px; color: var(--energy); font-size: .68rem; overflow-wrap: anywhere; }
 .sf-mlog-rec-marker { margin-top: 7px; color: #ffb35c; font-size: .65rem; font-weight: 700;
   letter-spacing: .08em; line-height: 1.3; }
@@ -1736,4 +1801,10 @@ const CSS = `
 .sf-mlog-comp-type { flex: 1; }
 .sf-mlog-comp-count { color: var(--ink-dim); }
 .sf-mlog-comp-cr { color: var(--energy); opacity: .7; }
+@media (max-width: 700px), (max-height: 620px) {
+  .sf-mlog-command-brief { grid-template-columns: minmax(0, 1fr); }
+  .sf-mlog-command-fact { grid-template-columns: 44px minmax(0, 1fr); }
+  .sf-mlog-list { gap: 7px; }
+  .sf-mlog-card { padding: 9px 10px; }
+}
 `;

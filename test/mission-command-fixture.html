@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpaceFace Mission Command Fixture</title>
+  <link rel="stylesheet" href="/styles/ui.css">
+  <link rel="stylesheet" href="/styles/accessibility.css">
+  <style>
+    html, body { width:100%; height:100%; margin:0; overflow:hidden; background:#06101b; }
+    body::before { content:''; position:fixed; inset:0; background:
+      radial-gradient(circle at 68% 22%, rgba(57,208,255,.12), transparent 34%),
+      radial-gradient(circle at 20% 72%, rgba(141,102,255,.09), transparent 30%),
+      linear-gradient(145deg,#06101b,#0a1626 52%,#040911); }
+    #fixture { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box; }
+    #mission-log-fixture { position:relative; }
+    #target-intel-fixture { position:fixed; right:22px; bottom:22px; width:240px; padding:10px 12px;
+      background:rgba(5,9,18,.94); border:1px solid rgba(57,208,255,.28); text-align:right; }
+    #target-intel-fixture .sf-target { width:100%; display:flex; flex-direction:column; gap:5px; }
+    #target-intel-fixture .sf-target__head, #target-intel-fixture .sf-target__meta {
+      display:flex; justify-content:flex-end; align-items:center; gap:10px; }
+    #target-intel-fixture .sf-target__name { font-family:var(--mono); font-size:12px; color:var(--ink); }
+    #target-intel-fixture .sf-target__faction, #target-intel-fixture .sf-target__meta {
+      font-family:var(--mono); font-size:10px; color:var(--ink-dim); }
+    #target-intel-fixture .sf-target__identity { font-family:var(--mono); font-size:10px; color:var(--ink-dim); }
+    #target-intel-fixture .sf-target__triangle { justify-content:flex-end; }
+    @media (max-width:900px), (max-height:650px) {
+      #fixture { justify-content:flex-start; padding:8px; }
+      #mission-log-fixture { width:min(72vw,560px); max-height:calc(100vh - 16px); }
+      #target-intel-fixture { right:8px; bottom:8px; width:190px; padding:7px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main id="fixture">
+    <section id="mission-log-fixture" aria-label="Mission command fixture"></section>
+    <aside id="target-intel-fixture" aria-label="Target intelligence fixture"></aside>
+  </main>
+  <script type="module">
+    import { createGameState } from '/src/core/gameState.js';
+    import { createBus } from '/src/core/eventBus.js';
+    import { missionLogScreen } from '/src/ui/screens/missionLog.js';
+    import { createTargetPanel } from '/src/ui/targetPanel.js';
+
+    const state = createGameState(47);
+    const bus = createBus();
+    state.simTime = 120;
+    state.world.currentSectorId = 'sector_helios_prime';
+    state.ui.screenStack = ['missionLog'];
+    state.ui.trackedMissionId = 'fixture_contract';
+    state.playerId = 'fixture_player';
+    state.player.cargo = { items: { cmdty_food: 3 }, usedVolume: 3, capVolume: 40 };
+    state.player.targetId = 'fixture_raider';
+    state.fuel = { current: 82, max: 100 };
+    const player = {
+      id: state.playerId, type: 'ship', alive: true, team: 1,
+      pos: { x:0, z:0 }, vel: { x:0, z:0 },
+      hull:92, hullMax:100, armorHp:80, armorMax:100, shield:64, shieldMax:80,
+      data: { weapons: [{ id:'pulse_laser', range:1000 }] },
+    };
+    const raider = {
+      id:'fixture_raider', type:'ship', alive:true, team:3, factionId:'faction_pir', mass:420,
+      pos:{ x:760, z:-120 }, vel:{ x:-24, z:4 },
+      hull:72, hullMax:100, armorHp:46, armorMax:80, shield:24, shieldMax:60,
+      data: {
+        callsign:'CUTLASS', role:'pirate', level:3, bountyGimmick:'tether-cutter',
+        ai:{ forcePlayerTarget:true, motive:'cargo_extortion' },
+      },
+    };
+    state.entities.set(player.id, player);
+    state.entities.set(raider.id, raider);
+    state.entityList.push(player, raider);
+    state.missions.active = [{
+      id:'fixture_contract', status:'active', type:'cargo_delivery', title:'Tethys Priority Run',
+      factionId:'faction_scn', reward_cr:1200, collateral_cr:300, riskTier:2,
+      deadline_s:520, distance:480, destStationId:'station_tethys',
+      destSectorId:'sector_tethys_junction', objectiveProgress:1, objectiveTarget:4,
+      description:'Tethys clinics need the sealed shipment before their reserve window closes.',
+      params:{ cmdtyId:'cmdty_food', qty:4, taskTime:180 },
+    }];
+    state.missions.receipts = [{
+      outcome:'completed', title:'Helios Relief Run', type:'cargo_delivery', rewardCr:650,
+      collateralRefundCr:100, repDelta:2, destStationId:'station_helios', reason:'delivered',
+    }];
+    state.nav.waypoint = {
+      kind:'mission', missionId:'fixture_contract', sectorId:'sector_tethys_junction',
+      sectorName:'Tethys Junction', stationId:'station_tethys', reason:'Deliver sealed provisions',
+    };
+
+    const ctx = {
+      state, bus,
+      screenManager: { popScreen() {}, pushScreen() {}, top() { return 'missionLog'; } },
+      registry: { get() { return null; } },
+    };
+    missionLogScreen.mount(document.getElementById('mission-log-fixture'), ctx);
+    missionLogScreen.onShow(ctx);
+    const targetPanel = createTargetPanel(ctx);
+    document.getElementById('target-intel-fixture').appendChild(targetPanel.el);
+    targetPanel.update({ slow:true });
+    window.__MISSION_COMMAND_FIXTURE__ = { state, bus, missionLogScreen, targetPanel };
+  </script>
+</body>
+</html>

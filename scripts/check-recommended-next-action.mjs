@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { STORY_BEATS } from '../src/data/missions.js';
-import { recommendedActions } from '../src/ui/screens/missionLog.js';
+import { missionCommandBrief, recommendedActions } from '../src/ui/screens/missionLog.js';
 
 const missionLogSrc = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
 
@@ -56,6 +56,19 @@ assert.equal(actions[0].label, 'TRACKED', 'tracked contract should be first');
 assert.equal(actions[0].meta, '50% complete', 'tracked contract should show progress');
 assert.equal(actions[0].missionId, 'mission_cargo_1', 'tracked recommendation should carry the active mission id');
 assert(!/^Next:/i.test(actions[0].body), 'tracked body should read as an action, not repeat the card prefix');
+assert.deepEqual(Object.keys(actions[0].brief), ['what', 'where', 'how', 'why', 'reward', 'risk', 'completion'],
+  'tracked recommendation should answer the six command questions plus completion');
+const brief = missionCommandBrief({ ...activeMission, reward_cr: 700, riskTier: 1 }, {
+  ...baseState,
+  world: { currentSectorId: 'sector_helios_prime' },
+});
+assert.match(brief.what, /Deliver to/i, 'command brief answers what');
+assert.match(brief.where, /Helios/i, 'command brief answers where');
+assert.match(brief.how, /follow tracked nav/i, 'command brief answers how');
+assert.match(brief.why, /chain of custody/i, 'command brief answers why');
+assert.match(brief.reward, /700 cr/i, 'command brief answers reward');
+assert.match(brief.risk, /R1.*local route/i, 'command brief answers risk and route scope');
+assert.equal(brief.completion, '50% complete', 'command brief answers completion state');
 
 const tradeRouteState = {
   ...baseState,
@@ -79,7 +92,8 @@ assert.equal(actions[0].title, 'Tethys Trade Hub', 'trade route recommendation s
 assert.match(actions[0].body, /Sell 12u Provisions at Tethys Trade Hub/, 'trade route recommendation should name cargo, quantity, and destination');
 assert.match(actions[0].meta, /12u aboard/, 'trade route recommendation should expose aboard cargo');
 assert.match(actions[0].meta, /Tethys Junction/, 'trade route recommendation should expose destination sector');
-assert.equal(actions[0].mapAction.screenId, 'starmap', 'off-sector trade route should hand off to the Star Map');
+assert.equal(actions[0].mapAction.screenId, 'galaxyMap', 'off-sector trade route should use the unified command map');
+assert.equal(actions[0].mapAction.focus, 'galaxy', 'off-sector trade route should request galaxy focus');
 
 actions = recommendedActions({
   ...tradeRouteState,
@@ -92,7 +106,8 @@ actions = recommendedActions({
     },
   },
 }, [], null);
-assert.equal(actions[0].mapAction.screenId, 'localmap', 'same-sector trade route should hand off to the Local Map');
+assert.equal(actions[0].mapAction.screenId, 'galaxyMap', 'same-sector trade route should use the unified command map');
+assert.equal(actions[0].mapAction.focus, 'local', 'same-sector trade route should request local focus');
 
 const lowFuelState = {
   ...baseState,

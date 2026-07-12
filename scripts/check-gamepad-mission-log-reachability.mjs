@@ -96,8 +96,13 @@ assert.match(
 );
 assert.match(
   promptsSrc,
-  /Start opens Pause, then choose Mission Log/,
-  'gamepad first-flight prompt must teach the two-step Mission Log route'
+  /flight: 'Left stick fly.*Start → Pause → Mission Log'/,
+  'full gamepad flight prompt must teach the two-step Mission Log route'
+);
+assert.match(
+  promptsSrc,
+  /firstFlight: 'Left stick flies\. Right stick aims\.'/,
+  'one-shot first-flight prompt should stay focused on the immediate flight verb instead of duplicating log navigation'
 );
 assert.doesNotMatch(
   promptsSrc,
