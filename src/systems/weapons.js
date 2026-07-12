@@ -29,8 +29,9 @@ const MISSILE_COAST_DRAG = 16;           // wu/s^2 gentle speed bleed after burn
 
 // Forced heat vent (Micro-Loops — "a red-bar gauge that forces a 2-second vent when it pegs").
 // When the player's guns peg heatMax they lock out for WEAPON_VENT_S seconds while heat is dumped,
-// turning sustained fire into a vent-and-resume rhythm. Player-only, so NPC combat and the
-// deterministic 47a sim telemetry are unaffected — the vent only reads/writes player weapon state.
+// turning sustained fire into a vent-and-resume rhythm. In a live browser, NPC mounts obey the same
+// lockout for combat fairness; only the local player emits HUD/audio receipts. The headless 47-A
+// replay remains unchanged behind the established browser-session guard.
 // Player-facing weapon recharge pacing — cap/heat recover ~15% faster than the baseline authored
 // rates so burst-and-recharge stays tactical without long dead-air waits.
 const WEAPON_RECHARGE_MULT = 1.15;
@@ -40,8 +41,7 @@ const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
 // headless deterministic 47a replay — which records a specific combat encounter and would be
 // invalidated by the vent's firing lockout — stays byte-for-byte stable. This mirrors the existing
 // `typeof document` DOM-guards in input.js / flightV3.js: sim-authoritative math is identical in both
-// contexts, and only the player-facing lockout (read/write of the local player's weapon heat) is
-// browser-only. NPC weapons are never vented, so nothing but the local player's guns is affected.
+// contexts. Player-facing presentation is browser-only, while live NPCs share the thermal lockout.
 const WEAPON_VENT_ENABLED = typeof window !== 'undefined';
 
 const DEG2 = WEAPONS; // keep import referenced even if tree-shaken oddly (no-op)
@@ -169,27 +169,25 @@ export const weapons = {
     }
   },
 
-  // Forced heat vent for the PLAYER: the instant any weapon pegs heatMax, lock every weapon out for
+  // Forced heat vent: the instant any weapon pegs heatMax, lock every weapon out for
   // WEAPON_VENT_S seconds and dump heat fast so the guns visibly cool, then come back online. This
-  // is the "2-second vent" rhythm beat. NPC ships keep their existing per-weapon lockout untouched
-  // (and so does the deterministic sim), so this only ever mutates the local player's weapon heat.
+  // is the "2-second vent" rhythm beat. Live NPCs obey the same timer; player-only receipts drive HUD.
   _tickVent(e, dt, state) {
-    if (!WEAPON_VENT_ENABLED || e.id !== this.state.playerId) return;
+    if (!WEAPON_VENT_ENABLED) return;
     const ws = e.data && e.data.weapons;
     if (!ws || !ws.length) return;
     const data = e.data;
     const now = state.simTime || 0;
     const wasVenting = now < (data.weaponVentUntil || 0);
     if (!wasVenting) {
-      let pegged = false;
+      let pegged = null;
       for (const w of ws) {
         const def = this._byId.get(w.defId) || {};
         const heatMax = w.heatMax != null ? w.heatMax : def.heatMax;
-        if (Number.isFinite(heatMax) && heatMax > 0 && (w._heat || 0) >= heatMax) { pegged = true; break; }
+        if (Number.isFinite(heatMax) && heatMax > 0 && (w._heat || 0) >= heatMax) { pegged = w; break; }
       }
       if (pegged) {
-        data.weaponVentUntil = now + WEAPON_VENT_S;
-        this.bus.emit('weapons:vent', { ownerId: e.id, phase: 'start', until: data.weaponVentUntil });
+        this._beginVent(e, state, pegged);
       }
     }
     const venting = now < (data.weaponVentUntil || 0);
@@ -201,10 +199,38 @@ export const weapons = {
           w._heat = Math.max(0, w._heat - (heatMax / WEAPON_VENT_S) * WEAPON_VENT_DUMP * dt);
         }
       }
-    } else if (data._weaponVenting) {
-      this.bus.emit('weapons:vent', { ownerId: e.id, phase: 'end' });
+    } else if (data._weaponVenting && e.id === this.state.playerId) {
+      this.bus.emit('weapons:vent', {
+        ownerId: e.id,
+        phase: 'end',
+        endedAt: now,
+      });
     }
     data._weaponVenting = venting;
+  },
+
+  _beginVent(e, state, weapon = null) {
+    if (!WEAPON_VENT_ENABLED || !e) return false;
+    const now = state.simTime || 0;
+    if (now < (e.data.weaponVentUntil || 0)) return false;
+    const def = weapon && this._byId.get(weapon.defId) || {};
+    const heatMax = weapon
+      ? (weapon.heatMax != null ? weapon.heatMax : def.heatMax)
+      : null;
+    e.data.weaponVentUntil = now + WEAPON_VENT_S;
+    e.data._weaponVenting = true;
+    if (e.id === this.state.playerId) {
+      this.bus.emit('weapons:vent', {
+        ownerId: e.id,
+        weaponId: weapon && weapon.defId || null,
+        phase: 'start',
+        startedAt: now,
+        until: e.data.weaponVentUntil,
+        heat: weapon && Number(weapon._heat) || 0,
+        heatMax: Number.isFinite(heatMax) ? heatMax : null,
+      });
+    }
+    return true;
   },
 
   _tickLock(e, dt) {
@@ -384,7 +410,6 @@ export const weapons = {
     const heatMaxRaw = w.heatMax != null ? w.heatMax : (def.heatMax != null ? def.heatMax : Infinity);
     const heatMax = heatPerShot > 0 && Number.isFinite(heatMaxRaw) && heatMaxRaw > 0 ? heatMaxRaw : Infinity;
     if ((w._heat || 0) >= heatMax) return capLeft;            // overheated
-    if ((w._heat || 0) + heatPerShot > heatMax) return capLeft; // this shot would overheat → lock out
 
     const tracking = w.tracking || def.tracking || 'fixed';
     const isMissile = tracking === 'homing';
@@ -428,7 +453,13 @@ export const weapons = {
 
     // --- commit: spend cap + heat, set cooldown ---
     capLeft -= energyCost;
-    if (heatPerShot) w._heat = (w._heat || 0) + heatPerShot;
+    if (heatPerShot) {
+      // The final accepted shot visibly pegs the gauge and explicitly starts the vent. The old
+      // pre-fire `nextHeat > max` rejection silently ate trigger pulls just below the threshold,
+      // while pre-service cooling could keep the separate vent detector from ever seeing 100%.
+      w._heat = Math.min(heatMax, (w._heat || 0) + heatPerShot);
+      if (w._heat >= heatMax) this._beginVent(e, state, w);
+    }
     const rof = w.rof != null ? w.rof : def.rof || 0;
     w._cooldown = rof > 0 ? 1 / rof : 0.1;
 

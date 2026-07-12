@@ -47,22 +47,27 @@ assertFlybyFocusNearMissAndTetherWindow();
 
 console.log('CORE-COMBAT-LOOP: pulse sustain, tether budget, flyby focus PASS');
 
-// ── Pulse: ≥20 discrete shots or ≥4s sustained from cold; recovers for combat rhythm ──────────
+// ── Pulse: long starter burst with bounded heat rhythm on every difficulty ─────────────────────
 
 function assertPulseWeaponSustainOnEveryDifficulty() {
   const pulseDef = WEAPONS.find((w) => w.id === 'wpn_pulse_laser_s');
   assert.ok(pulseDef, 'starter pulse weapon def exists');
-  assert.equal(Number(pulseDef.heatPerShot) || 0, 0,
-    'starter pulse is deliberately heat-free; advanced weapons teach vent rhythm later');
+  assert.deepEqual(
+    [pulseDef.heatPerShot, pulseDef.heatMax, pulseDef.heatDissip],
+    [5, 100, 12],
+    'starter pulse carries the professional long-burst thermal tune',
+  );
 
   for (const difficulty of DIFFICULTIES) {
     const result = simulateStarterPulseSustain(difficulty);
     assert.ok(result.shots >= 32,
       `difficulty=${difficulty}: pulse must sustain at least 32 shots over 8s; got ${result.shots}`);
-    assert.ok(result.maxGap <= 0.35,
-      `difficulty=${difficulty}: pulse firing gap must stay <=350ms; got ${result.maxGap.toFixed(3)}s`);
-    assert.equal(result.maxHeat, 0, `difficulty=${difficulty}: starter pulse must not build heat`);
-    assert.equal(result.ventEvents, 0, `difficulty=${difficulty}: starter pulse must never force-vent`);
+    assert.ok(result.maxGap <= 0.5,
+      `difficulty=${difficulty}: headless thermal gate must not create dead trigger gaps >500ms; got ${result.maxGap.toFixed(3)}s`);
+    assert.ok(result.maxHeat >= 95 && result.maxHeat <= 100,
+      `difficulty=${difficulty}: starter pulse must build predictable bounded heat; got ${result.maxHeat}`);
+    assert.equal(result.ventEvents, 0,
+      `difficulty=${difficulty}: browser-only player vent must remain out of deterministic headless replay`);
     assert.ok(result.minCap >= pulseDef.energyCost,
       `difficulty=${difficulty}: capacitor must not starve starter pulse; min=${result.minCap.toFixed(2)}`);
   }
@@ -114,7 +119,7 @@ function simulateStarterPulseSustain(difficulty) {
 
   const mount = player.data.weapons[0];
   assert.equal(mount.defId, 'wpn_pulse_laser_s', 'starter ship carries pulse laser S');
-  assert.equal(Number(mount.heat) || 0, 0, 'starter runtime mount carries no heat cost');
+  assert.equal(Number(mount.heat) || 0, 5, 'starter runtime mount carries the authored long-burst heat cost');
 
   let minCap = player.cap;
   let maxHeat = 0;

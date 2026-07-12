@@ -9,6 +9,7 @@
 import assert from 'node:assert/strict';
 
 import { hash32, mulberry32 } from '../src/core/rng.js';
+import { WEAPONS } from '../src/data/weapons.js';
 import { cruise, isCruising, isCharging, cruiseChargeProgress, cruiseMultipliers } from '../src/systems/cruise.js';
 import { weapons } from '../src/systems/weapons.js';
 
@@ -217,7 +218,9 @@ console.log('--- CRUISE ACCEPTANCE ---');
   assert.equal(off.spawned.length, 1, 'control: player weapon must fire while cruise is off');
   assert.equal(off.bus.events.filter((e) => e.name === 'combat:fire').length, 1,
     'control: firing while cruise is off must emit combat:fire');
-  assert.equal(off.player.cap, 97, 'control: firing while cruise is off must spend capacitor');
+  const starter = WEAPONS.find((def) => def.id === 'wpn_pulse_laser_s');
+  assert.equal(off.player.cap, 100 - starter.energyCost,
+    'control: firing while cruise is off must spend the live starter capacitor cost');
 
   for (const phase of ['charging', 'cruising']) {
     const h = makeWeaponsHarness(phase);
