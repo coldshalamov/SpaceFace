@@ -117,6 +117,32 @@ button:disabled { opacity: .4; cursor: default; }
   pointer-events: none;
 }
 
+/* --- Pause (flight): preserve + dim the live rendered frame ---
+   Title/menu screens keep the cinematic #screens plate. Pause clears that opaque
+   art and the full-opacity menu vignette so #gl-canvas stays visible under the
+   shared #modal-backdrop dim (no GPU blur filter — taste constitution).
+   Triggered by screenManager's .sf-screen--visible / --entering on data-screen=pause. */
+#screens:has(> .screen[data-screen="pause"].sf-screen--visible),
+#screens:has(> .screen[data-screen="pause"].sf-screen--entering) {
+  background-image: none;
+  background-color: transparent;
+}
+#screens:has(> .screen[data-screen="pause"].sf-screen--visible)::before,
+#screens:has(> .screen[data-screen="pause"].sf-screen--entering)::before {
+  /* Soft dim only — do not replace the world with an opaque plate. */
+  background: radial-gradient(circle at 50% 42%, rgba(2, 5, 12, 0.22) 0%, rgba(2, 5, 12, 0.42) 100%);
+  opacity: 1;
+}
+/* The centered pause .screen.panel keeps the shared opaque .panel ground. */
+/* Reduced motion / flash: no extra dim animation; instant state (a11y layer still
+   zeros transitions under prefers-reduced-motion / html.sf-reduce-motion). */
+@media (prefers-reduced-motion: reduce) {
+  #screens:has(> .screen[data-screen="pause"].sf-screen--visible)::before,
+  #screens:has(> .screen[data-screen="pause"].sf-screen--entering)::before {
+    transition: none;
+  }
+}
+
 .panel {
   background: rgba(8,13,24,.92);
   border: 1px solid var(--panel-edge);
