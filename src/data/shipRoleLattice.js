@@ -359,7 +359,7 @@ const LATTICE_ROWS = Object.freeze([
     opMassBias: 1.08,
     handlingBias: 0.92,
     thrustBias: 0.93,
-    turnBias: 0.90,
+    turnBias: 0.80,
     strengths: Object.freeze(['EHP depth', 'five-mount battery', 'capital cargo']),
     weaknesses: Object.freeze(['slow recovery', 'price wall', 'hard to disengage']),
     upgradeAdjacency: Object.freeze(['ship_leviathan']),
