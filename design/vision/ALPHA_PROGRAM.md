@@ -64,53 +64,74 @@ runtime captures.
   traversal, URI/absolute paths, ADS syntax, control characters, and misleading media labels fail.
 - Synthetic checks protect regressions. They do not prove playability, readability, visual quality,
   fun, or task completion.
+- `VISIBLE_IN_PLAY` is lifecycle/reachability status, not visual acceptance. Only an orchestrator
+  record at `design/production/asset-classifications/<assetId>.json` can mark an asset accepted;
+  wired assets may remain candidate, missing-evidence, or rejected while still visible in play.
+- `npm run check:asset-classifications` is the reproducible clean-clone corpus gate and permits
+  absent ignored artifacts only for non-accepted records. The evidence-bearing acceptance gate is
+  `npm run check:asset-classifications:evidence`, which requires every citation to be a contained
+  regular file. Accepted records require real evidence and campaign state in both modes.
 - Transcripts, self-scores, iteration counts, and file existence are not evidence.
+
+**Pending evidence migration:** the current live Alpha corpus contains eight path-only v1 records.
+They pass today's validator but are not yet per-artifact hash/producer-receipt bound. EVID-001 makes
+that contract strict and emits the migration report; EVID-002 revalidates/recaptures or downgrades
+each affected Complete claim. Milestone 0 cannot exit with a legacy record grandfathered.
 
 ## Current Milestone 0 status
 
 - Task 0.1 established this ledger and strict evidence validator. Independent spec and quality
   reviews approved it. Supporting contract evidence is
   `.devshots/alpha/m0-alpha-evidence/evidence.json`.
-- The authored-runtime recovery now passes source/release/runtime contract review, but independent
-  code-quality review found non-transactional finalization, incomplete exporter restoration, and
-  provenance/texture false-positive paths. Its valid live LOD/socket work remains candidate
-  material while those authoring-pipeline defects are repaired and re-reviewed.
-- A clean post-publisher browser/Electron baseline and independent Top-50 reacceptance are still due.
+- The authored-runtime recovery's technical pipeline is independently approved: transactional
+  publication, exporter rollback, provenance, per-material texture roles, strict embedded-GLB
+  storage, path containment, and no-bytecode checks pass. The source manifest still has 15
+  classified unrelated residuals, and no asset receives default-route or taste acceptance from
+  this technical evidence alone.
+- The current-revision browser and Electron baselines are accepted at
+  `.devshots/alpha/m0-live-baseline-browser/evidence.json` and
+  `.devshots/alpha/m0-live-baseline-electron/evidence.json`. Both uninjected public routes used
+  `master@6e27aa2b+dirty#04857c82b998`, visibly armed the Helios pointer action, reached the physical
+  dock prompt in 26.384 seconds (browser) / 23.691 seconds (Electron), held 30 stable station frames
+  on Intel D3D11, and completed owned teardown cleanly.
+- Current graphics are classified in 19 durable orchestrator records: 3 candidate, 8 rejected,
+  8 missing-evidence, and 0 accepted. Lifecycle wiring and authoring telemetry do not override
+  those records.
 
 | ID | Task | Status | Acceptance |
 |---|---|---|---|
 | 0.1 | Authoritative ledger + alpha evidence contract | Complete | `npm run check:alpha:evidence:contract` and `npm run check:alpha:evidence`; supporting record present; independent spec and quality reviews approved. |
-| 0.2 | Post-publisher live baseline | In progress | Collision-proof browser visual-stability floor is accepted; reproducible browser/Electron route evidence with viewport, runtime, GPU, and worktree is still due. |
+| 0.2 | Post-publisher live baseline | Complete | Current-revision browser and Electron public routes both visibly armed the Helios waypoint, physically docked in 26.384s / 23.691s, held 30 stable station frames on Intel D3D11, and tore down cleanly at `master@6e27aa2b+dirty#04857c82b998`; `.devshots/alpha/m0-live-baseline-browser/evidence.json` and `.devshots/alpha/m0-live-baseline-electron/evidence.json`. |
 | 0.2a | Isolate visual-stability server ownership | Complete | Canonical in-process server on OS-assigned loopback port; lifecycle gate plus two independent 360-frame runs pass with 315 inspected frames, nine ships, zero failures/page errors, and clean teardown while unrelated 8123 listeners remain; `.devshots/alpha/m0-visual-probe-isolation/evidence.json`; independent spec and quality reviews approved. |
-| 0.3 | Reclassify current graphics | Queued | Every output receives the stable `unassessed/missing_evidence/candidate/rejected/blocked_external/accepted/superseded` record; accepted requires live game evidence and campaign state; Blender shots labeled honestly. |
+| 0.3 | Reclassify current graphics | Complete | `design/production/asset-classifications/*.json` contains 19 schema-validated orchestrator records: 3 candidate, 8 rejected, 8 missing-evidence, 0 accepted. Both the clean-clone `npm run check:asset-classifications` gate and evidence-bearing `npm run check:asset-classifications:evidence` gate pass. No Blender/structural artifact is mislabeled as player-facing acceptance. |
 | 0.4 | P0/P1 truth register | In progress | Focus, station frames, Launch, map state, previews, geography, balance, assets, and performance have owners and reproduction evidence. |
-| 0.5 | Safe external candidate control plane | Queued | Auto-approved mutation is contained outside the live dirty tree; destructive boundary fixtures pass; compiled packets reject placeholders/role conflicts; strict worker/reviewer schemas, legal hash-chained state, continuation, and integration checks pass. |
-| 0.6 | Gameplay Observatory v1 | Queued | Natural twenty-minute Helios novice-miner route produces synchronized intent/execution/presentation records, full video, 4–8 fps incident evidence, first detector families, and paired no-capture performance. |
+| 0.5 | Safe external candidate control plane | Controller-waived / frozen | SAFE repair-2 passes 88/88 current destructive fixtures and is frozen under the 2026-07-12 controller waiver. Remaining review findings are known P2 control-plane debt; SAFE is not `ACCEPTED`, but no further SAFE cycle runs and it no longer gates supervised game, evidence, or Blender production. Future fully automated acceptance still requires the automatic supervisor and hash-bound integration/review contracts. |
+| 0.6 | Gameplay Observatory v1 | Queued; grounded OBS-001 packet exists | Natural twenty-minute Helios novice-miner route produces synchronized intent/execution/presentation records, full video/audio, 4–8 fps incident evidence, calibrated detector families, and three matched executions: observer+media, observer/no-media, observer-off/no-media. Hashes/receipts match; capture and observer overhead are separated. |
 
 ## Ordered milestones
 
 | Milestone | Player outcome | Status |
 |---|---|---|
-| 1 — First Flyby | Deterministic slow-time Focus, authoritative target latch, two-ship camera composition, stronger/mass-aware tether, three readable doctrines, and an unbroken new-game-to-first-dock route. | Queued after M0 |
+| 1 — First Flyby | Deterministic slow-time Focus, authoritative target latch, two-ship camera composition, stronger/mass-aware tether, three readable doctrines, and an unbroken new-game-to-first-dock route. | In implementation — time effects complete; targeting/tether/massline actively owned; camera/doctrine candidates landed; held-out public-route acceptance pending. |
 | 2 — Seamless world | Global coordinates, floating origin, streamed live bubble, 24 persistent regions, continuous free-flight/lane/gate travel, one map, and save migration. | Complete — commits `eed065ae`, `f4ba6a91`, `a4cc2e8c`, and `228ce7b0`; 154/154 focused contracts plus continuous-handoff, sector-embodiment, map-cutover, 24-region graph, and deterministic save/reload floors pass. Browser/Electron parity receipt: `.devshots/m2-floating-origin/m2-seamless-world.json`. |
-| 3 — First ninety minutes | Three origin chains, physical cargo/build identity, balanced careers/loadouts, truthful previews, focused HUD, readable damage/death. | Queued |
-| 4 — Living-galaxy diversity | Distinct regional ecology, six POI behavior families, deterministic encounter fingerprints, solvable causal contracts, persistent aftermath. | Queued |
-| 5 — Story/progression/ownership | Embodied B0–B7, five endings plus sandbox, thirteen-ship role lattice, and three visible outpost specializations. | Queued |
-| 6 — Presentation/release | Independently accepted art/audio, browser/Electron parity, accessibility, save/packaging soak, and quality-preserving performance floors. | Queued |
+| 3 — First ninety minutes | Three origin chains, physical cargo/build identity, balanced careers/loadouts, truthful previews, focused HUD, readable damage/death. | In implementation — origin choice, first contracts, and career ladders landed; ninety-minute cohorts, balance, previews, and full-route acceptance remain. |
+| 4 — Living-galaxy diversity | Distinct regional ecology, six POI behavior families, deterministic encounter fingerprints, solvable causal contracts, persistent aftermath. | In implementation — station/outpost, Helios civilian, Ashline, and encounter-family slices landed or are actively authored; full family coverage and visual acceptance remain. |
+| 5 — Story/progression/ownership | Embodied B0–B7, five endings plus sandbox, thirteen-ship role lattice, and three visible outpost specializations. | In implementation — physical 47-A progression, consequences, endings, replay, and sandbox slices landed; full held-out continuity, role-lattice, and ownership acceptance remain. |
+| 6 — Presentation/release | Independently accepted art/audio, browser/Electron parity, accessibility, save/packaging soak, and quality-preserving performance floors. | In implementation — release soak, corrupt-save, packaging, audio, and performance slices landed; five-wave platform, accepted art/audio, localization, and store-capture acceptance remain. |
 
 Do not advance a milestone while its route has an unresolved player-visible P0/P1. Update a status
 only alongside its named evidence path and fresh check results.
 
-## Accepted and queued Milestone 1 packets
+## Milestone 1 packet status
 
 | ID | Task | Status | Acceptance |
 |---|---|---|---|
 | 1.0 | New Game action visibility and keyboard route | Complete | Headed and headless browser geometry pass at 1024×768, 1280×720, and 1440×900; `check:new-game-first-run`, `check:new-game-layout:ci`, UI/a11y and UI-perf floors pass; `.devshots/alpha/m1-new-game-layout/evidence.json`; independent spec and quality reviews approved. |
-| 1.1 | Sole time-effects owner | Queued after M0 | Minimum active request wins; pause, modal, save/load, death, hit-stop, and Focus cannot restore over one another; transient requests reset on new/load. |
-| 1.2 | Exact Flyby Focus targeting and timing | Queued | Deterministic threat selection, locked target, 50% scale, 1.5–2.5 simulation-second window, exact-target `F`, five cluttered live flybys. |
-| 1.3 | Two-ship Focus/tether camera | Queued | Both ships remain within 10% margins, zoom 58–180, 0.35-second composition ease, reduced-motion parity, post-attach composition. |
-| 1.4 | Tether strength, operational mass, and spools | Queued | Standard base limits +30%; cargo-aware operational mass and non-stacking 1.0/1.5/3.0/6.0 spools; starter survives normal benchmark seeds. |
-| 1.5 | Three readable combat doctrines | Queued | Interceptor/flyby, tether-control raider, and ranged disengager differ in approach, position, target priority, disengagement, and counterplay. |
+| 1.1 | Sole time-effects owner | Complete | `check:time-effects` passes; pause, modal, save/load, death, hit-stop, and Focus requests share one authority with guarded transition restoration. |
+| 1.2 | Exact Flyby Focus targeting and timing | In progress — active targeting owner | Deterministic threat selection, locked target, 50% scale, 1.5–2.5 simulation-second window, exact-target `F`, five cluttered live flybys. Do not overwrite the active lane. |
+| 1.3 | Two-ship Focus/tether camera | Candidate implemented; held-out acceptance pending | Both ships remain within 10% margins, zoom 58–180, 0.35-second composition ease, reduced-motion parity, post-attach composition. |
+| 1.4 | Tether strength, operational mass, and spools | In progress — active tether/massline owner | Standard base limits +30%; cargo-aware operational mass and non-stacking 1.0/1.5/3.0/6.0 spools; starter survives normal benchmark seeds. Do not overwrite the active lane. |
+| 1.5 | Three readable combat doctrines | Candidate implemented; acceptance pending | `check:m1:combat-doctrines` covers interceptor/flyby, tether-control raider, and ranged disengager distinctions; held-out public-route counterplay evidence remains. |
 
 ## P0/P1 truth register
 
@@ -121,15 +142,20 @@ work until a live capture distinguishes product failure from harness failure.
 | Surface | Severity/status | Current truth and proof |
 |---|---|---|
 | New Game Launch | Closed | Footer/action rail is visible and keyboard reachable at all three target viewports. Accepted evidence: `.devshots/alpha/m1-new-game-layout/evidence.json`. |
-| Flyby Focus | P0 open | Live system still uses the old 72-unit threshold and 1.15-second window, does not own time scale or player target, and allows ordinary latch selection to compete with the Focus target. Task 1.1–1.3 owns it. |
-| Station black frames | Unreproduced P0 report | Synthetic station checks have not reproduced a product blackout. Requires the clean post-asset headed route before any station/render edit. |
+| Flyby Focus | P0 acceptance open; implementation active | The implementation has moved beyond the old 72-unit/1.15-second snapshot. Targeting and tether work are actively owned; do not restate old constants without a fresh live audit. Public-route exact-target, timing, composition, and cluttered-flyby acceptance remains open. |
+| Station black frames | Closed as baseline P0; regression retained | The clean browser and Electron public routes physically docked and rendered the same Helios station content for the final 30 consecutive `requestAnimationFrame` observations with a hidden transition overlay and visible enabled Undock action. Both `06-station-hub.png` captures are populated, not black. This closes the transition blackout only; it does **not** accept the station's world-space geometry or materials. Accepted proof: `.devshots/alpha/m0-live-baseline-browser/evidence.json` and `.devshots/alpha/m0-live-baseline-electron/evidence.json`. |
+| Autopilot obstacle avoidance | Closed route blocker; regression retained | The earlier Electron route deadlocked at near-zero speed in centered obstacle avoidance (`.devshots/alpha/m0-live-baseline-electron-failure-2026-07-10T12-13-18-536Z/failure-report.json`). Deterministic persistent-side and dense/symmetric Rapier progress checks now pass in `npm run check:autopilot`; the current browser and Electron public routes both reach Helios and dock. |
+| Flight information hierarchy | P1 open | Real captures repeat the beacon instruction across the objective, contract banner, tutorial block, target lock, and Kessler message; the dock capture also retains obsolete `Latch it. G.` guidance. Milestone 1 must remove duplication on the golden route; Milestone 3 owns the general one-objective/one-action/one-threat HUD rule. |
 | Map authority | Closed | `mapAuthority.openGalaxyMap` now routes keyboard, gamepad, touch, pause, mission-log, station, and generic UI map intents into one `galaxyMap` canvas with local/system/galaxy focus. Legacy local/starmap registrations remain tool fixtures only. `check:m2:map-cutover`, map confidence, inspector stability, mission-log handoff, and sector-geography checks pass. |
+| Galaxy-map pointer action | Closed route blocker; broader map P1 remains | The prior visible `Set Waypoint` control detached during inspector refresh and the public pointer click could not arm autopilot (`.devshots/alpha/m0-live-baseline-electron-failure-2026-07-10T13-02-57-794Z/failure-report.json`). `npm run check:galaxy-map-inspector` now proves persistent focus/listener/lifecycle behavior, and both accepted public routes visibly arm the pointer action. This does not close the map hierarchy/cutover defects above. |
+| Station information hierarchy | Protected regression surface | The station UI was restored to its last-known-good state by explicit user direction. Do not refactor or “repair” it in the current campaign; retain regression checks and reopen only on a new explicit user request. |
 | Engineering previews | P1 open | Several preview paths fabricate simplified fittings/geometry rather than using the runtime asset and loadout. Milestone 3 owns truthful previews after the asset lane is accepted. |
 | Sector geography | Closed | The global-coordinate corridor now covers 24 unique authored region origins with reciprocal connected gates, bounded three-region residency, continuous no-teleport membership, and durable dematerialize/rematerialize records. `check:m2b:region-data`, `check:m2b:sector-graph`, `check:m2:continuous-handoff`, and the sector-geography gate pass. |
-| Career/economy balance | P1 open | `check:balance` is warning-only: plasma/siege dominate, railgun/torpedo are dead choices, and sustained activity income is not comparable. Milestone 3 owns hard career-parity benchmarks. |
-| Authored asset source contract | P1 open | Recovery-caused source failures are cleared and live release checks pass, but `check-parts-manifest` retains 17 classified residuals and code-quality review rejected non-transactional finalization, generic-Blender provenance, exporter restoration, and texture/static-mesh false positives. The same author owns repair/re-review. |
+| Career/economy balance | P1 open; detailed claims unreproduced | The warning-only estimator reports raw DPS outliers and implausible peak income, but it does not prove dominant/dead weapons or sustained thirty-minute career earnings because it omits capital, inventory, travel, costs, market exhaustion, and scenario counterplay. Milestone 3 first owns truthful hard benchmarks, then tuning. |
+| Authored asset source contract | Technical recovery closed; visual taste P1 open | Recovery-caused quality defects are repaired and independently approved: the 14-job pipeline contract, strict GLB/finalizer rollback, SG-04, 66/66 runtime parsing, status, and reachability checks pass. `check-parts-manifest` retains 15 classified unrelated residuals. The durable review corpus at `design/production/asset-classifications/*.json` is 3 candidate / 8 rejected / 8 missing-evidence / 0 accepted. The public route proves a detailed runtime Hitch is reachable, but independent taste rejects player-facing graphics acceptance: `03-flight-after-input.png` loses the rear silhouette under white engine glare, while `05-dock-prompt.png` contains unexplained opaque black and bright unshaded geometry. Presentation owns the glare/material repair; wiring is not acceptance. |
+| Authored decoder retirement | Fatal abort closed; P1 follow-up | Preview teardown no longer revokes KTX2/DRACO worker URLs while owned loads are pending. Independent spec/quality review approved the task-ownership lifecycle and the accepted browser route contains zero `blob:`, `ERR_ABORTED`, `pageerror`, or `requestfailed` records. One nonfatal multiple-active-KTX2-loader warning remains and must be considered with Electron and memory/performance work. |
 | Visual-stability harness | Closed | Default probe owns the canonical in-process server on `127.0.0.1:0`, gates its lifecycle before the full browser probe, reports cleanup failures, and passes while unrelated IPv4/IPv6 port-8123 listeners remain untouched. Accepted supporting evidence: `.devshots/alpha/m0-visual-probe-isolation/evidence.json`. |
-| Performance | Baseline pending | No post-publisher browser/Electron p95 baseline is accepted yet. Quality may not be reduced to obtain one. |
+| Performance | Descriptive browser/Electron baselines accepted; release floor open | The uninjected browser route recorded 236 samples at 100.1 ms p95 with 20 frames over 32 ms and heap growth from 22.7 MB to 640.2 MB (710.8 MB max). Electron recorded 241 samples at 116.7 ms p95 with 24 frames over 32 ms and heap growth from 36.6 MB to 636.0 MB (645.5 MB max). Capture/automation overhead is included, so no Milestone-6 threshold is claimed. The high heap trajectories and KTX2 warning remain explicit investigation inputs, not waived noise. |
 
 ## File leases and repository safety
 
@@ -140,6 +166,6 @@ work until a live capture distinguishes product failure from harness failure.
 - `src/systems/input.js` and the lead-owned flight/HUD paths remain lead-only. Do not edit
   `test/*.expected.json` to obtain a pass.
 - Every new file receives `git add -N` immediately so it remains visible without staging contents.
-- Subagents do not commit. No one commits, pushes, branches, or opens a PR without explicit user
-  authorization. If later authorized, curate one accepted-task commit and exclude locks, temporary
-  exports, caches, terminals, build directories, and iteration-frame floods.
+- Subagents do not commit. The user has authorized the controller to curate and push logical,
+  ownership-safe chunks on `master`; exclude active lanes, locks, temporary exports, caches,
+  terminals, build directories, and iteration-frame floods.

@@ -8,17 +8,18 @@
 |---|---|---|---|
 | Codex | repo grounding, architecture, synthesis, verification, subagents, available image generation | strong local orchestration; generated asset usefulness still needs bake-off | product director, scheduler, integrator, final acceptance owner, bounded concept/2D candidates |
 | Claude Code / `claude-fable-5`, max effort | exceptional frontend, 3D/game design, planning, general implementation | verified CLI support; usage more limited than Grok | default high-leverage co-director, architecture, creative direction, any difficult implementation, independent critic |
-| Grok CLI / grok-4.5 | high capability and effectively large usage; local Blender MCP and imagegen skill; user reports video generation | one Blender session; prone to self-satisfying broad goals | persistent asset author, research/ideation variants, large bounded implementation campaigns |
-| OpenCode / `opencode-go/kimi-k2.7-code` | strong visual reasoning and code, useful frontend | exact model verified; quality still requires bake-off | visual implementation, screenshot critic, bounded code lane |
-| agy 1.1.0 | decent one-shot frontend; user reports image generation | small usage allowance; models verified, image path still unverified | small isolated overflow tasks and targeted alternatives |
+| Grok CLI / grok-4.5 | high capability and effectively large usage; local Blender MCP verified; user reports image/video generation | image/video generation is not exposed by the currently verified CLI/plugin surface; one Blender session; prone to self-satisfying broad goals | persistent asset author after gates, research/ideation variants, large bounded implementation campaigns |
+| OpenCode npm 1.17.13 / `opencode-go/kimi-k2.7-code` | strong visual reasoning and code, useful frontend | pin npm executable because PATH is stale 1.14.33; quality/balance still require bake-off | visual implementation, screenshot critic, bounded code lane |
+| agy 1.1.1 | decent one-shot frontend; user reports image generation | small usage allowance; image path unverified; explicit conversation IDs required for resume | small isolated overflow tasks and targeted alternatives |
 | Codex subagents | strong analysis/code/review | same workspace/concurrency constraints | repo audits, bounded implementation, independent verification |
 
 No role is permanent merely because the table says so. The bake-off decides.
 
 ## 2. Required phased bake-off
 
-Agents never see each other's output before verdict. CAP-000 is read-only and can run now; every
-mutating phase waits for SAFE-001 and uses the sole relevant lease.
+Agents never see each other's output before verdict. CAP-000 is read-only and can run now. Mutating
+bake-offs use the sole relevant lease and controller-supervised integration under the current SAFE
+waiver; no worker self-integrates.
 
 1. **CAP-000 — capability smoke:** exact versions, model/variant availability, session-ID capture,
    resume/continue, cancellation, structured output, vision attachments, Blender MCP, and image/video tools.
@@ -56,7 +57,8 @@ and cost/usage. Do not rank on self-reported success or first-pass speed.
 ## 5. Invocation law
 
 The locally verified CLI surfaces are recorded in `02_ORCHESTRATOR_SPEC.md`. Its persistent recipes
-are target commands behind SAFE-001's transactional runner; this matrix does not authorize direct
-mutation of the live repo. `$validatedVariant` and model routes are populated only by CAP-000.
+are target commands for the future transactional runner; this matrix never authorizes worker self-
+integration. The current controller waiver permits only exclusive-lane authoring plus targeted,
+supervised integration. `$validatedVariant` and model routes are populated only by CAP-000.
 Read-only critics receive write-deny/plan-mode restrictions. Auto-approval or permission bypass is
 allowed only inside a proven write boundary, never as a convenience flag in the dirty live tree.

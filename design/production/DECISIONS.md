@@ -121,9 +121,86 @@ accepts the same architecture across all 24 persistent regions required by the A
 downstream ingestion gate. F9 wins until amended; generated 3D PBR data is production input, never a
 direct final-map shortcut.
 
+## 2026-07-10 — SAFE-001 v1 built, destructively fixture-proven, then REJECTED by first blind review
+
+**Decision:** SAFE-001 (tools/production/run-agent.mjs + lib/, scripts/check-safe-agent-runner.mjs,
+44/44 destructive fixtures green including ACL prevention and watch detection+kill on mock roots)
+was submitted and independently reviewed by a Gemini-family session, which returned REJECT with 3 critical /
+3 major / 3 minor defects (recorded at `.campaign/SAFE-001/review-agy.out.md`): control-plane guard
+exemption, heartbeat-loss continuation, non-atomic lease reclaim, post-exit daemon escape, staging
+TOCTOU, hardlink planting, ADS bypass, two validator gaps. The same implementer repairs all of them
+plus new fixtures (reclaim race, daemon write, hardlink, heartbeat-loss kill) and then TWO fresh
+cross-model reviews run on the repaired candidate hash. No daemon/process-tree residual is accepted:
+the repaired boundary must prove descendant containment through an OS-enforced job/process group or
+an equivalently destructive fixture-proven mechanism before guards are lifted.
+
+**Evidence:** the candidate did journal, allowlist-reject, and kill several worker attempts (see
+`.campaign/runs/`), but those observations are supporting evidence only. The hostile review defeats
+acceptance despite the 44/44 fixture result; the missing hostile fixtures must be added and passed.
+
+## 2026-07-10 — Second SAFE review expands rejection; advisory reviews do not become quorum
+
+**Decision:** a max-effort Claude review independently returned REJECT and added same-user ACL
+revocation, Git-ignored watch blindness, watch-only irreversibility, path containment, and
+crash-partial integration findings. The run initialized as Fable 5 but its final served message
+reported Opus 4.8 and the command exited on its budget immediately after delivering. Both this and
+the earlier Gemini result are preserved in
+`reviews/2026-07-10-safe-001-advisory-rejections.md` as rejection evidence, not acceptance quorum:
+neither is bound to an immutable candidate/controller envelope. The union of defects is mandatory
+input to `packets/SAFE-001-REPAIR.md`; autonomous mutation remains disabled.
+
+## 2026-07-10 — Reject PROD-001 and revise PROD-004; authority comes from one semantic controller
+
+**Decision:** do not integrate the submitted PROD-001 isolated candidate and do not accept the
+21/21 PROD-004 counter candidate. The concrete defects are preserved in
+`reviews/2026-07-10-prod-control-candidates-red-team.md`. JSON Schema remains serialization shape;
+the controller derives served identity, author/reviewer separation, complete input/delta manifests,
+artifact truth, legal transitions, cross-record candidate equality, and post-integration acceptance.
+Dispatch discipline moves from self-reported counter calls to an automatic hash-chained controller
+action journal with process/lease/campaign reconciliation and audited blockers.
+
+## 2026-07-10 — Dependencies and evidence migration are state, not prose
+
+**Decision:** every packet dependency is resolved to an accepted candidate/record receipt plus a
+dependency-snapshot hash; `listReady()` excludes unmet, rejected, stale, self, or cyclic dependency
+graphs. External prerequisites are controller artifact descriptors. The current eight Alpha
+evidence records remain honest legacy-v1 inputs: EVID-001 tightens the contract and reports them;
+EVID-002 revalidates/recaptures or downgrades each claim. A stricter checker may not make old path
+records silently accepted or leave completed rows impossible to audit.
+
+## 2026-07-10 — Fleet reality corrections from CAP-000 (live-verified)
+
+**Decision:** route work per the live matrix at `.campaign/reports/CAP-000-matrix.md`, overriding
+02_ORCHESTRATOR_SPEC §4 where they conflict, until the spec is amended by AUTH-001:
+- codex: user config at ~/.codex/config.toml was hard-broken (model_reasoning_effort="ultra",
+  service_tier="default"); repaired 2026-07-10 07:47Z with backup config.toml.bak-20260710. PATH
+  binary 0.130.0-alpha.5 cannot run the account's gpt-5.6-sol; pin the app-bundled
+  0.144.0-alpha.4 binary. Account usage-limited until its window resets — codex lane blocked, work
+  rerouted to grok.
+- grok: ~/.grok/config.toml sets permission_mode=always-approve machine-wide; every read-only grok
+  lane MUST pass --permission-mode plan explicitly. Its --json-schema flag exists but failed to
+  constrain in live test — validate grok submissions runner-side (SAFE-001 does).
+- opencode: the correct billed model route is opencode-go/kimi-k2.7-code (the opencode/kimi route
+  hits an unfunded provider); stdin must be closed on every run; bare `opencode` on PATH is 1.14.33
+  while the npm shim is 1.17.13 — pin absolute paths.
+- claude CLI: only worker with live-proven schema-constrained output (--json-schema →
+  structured_output); also proven: model drift (requested haiku, served sonnet-5) — always verify
+  the served model from output JSON.
+- agy: session id is log-scrape only (~/.gemini/antigravity-cli/cli.log); --continue resumes the
+  global last conversation and is a race under concurrency — always resume via --conversation <id>.
+
 ## Open questions
 
 - Which exact foundation-release coverage counts are enough before story/content expansion?
 - How should accepted visual references be licensed and versioned?
 - Which Claude/OpenCode/agy tasks win the first controlled capability bake-off?
 - Which SAFE-001 containment implementation proves the best Blender throughput without weakening isolation?
+
+## 2026-07-12 — Freeze SAFE-001 under controller waiver
+
+**Decision:** SAFE-001 repair-2 is frozen at its current 88/88 destructive-fixture result. The
+remaining independent-review findings are known P2 control-plane debt. No further SAFE repair or
+review cycle runs in this campaign. This waiver does not mark SAFE-001 `ACCEPTED` and does not
+weaken player-facing acceptance; it permits read-only work, the exclusive Blender lane, and
+controller-supervised targeted integration/commits to proceed. Active writer ownership still
+governs.

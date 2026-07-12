@@ -235,7 +235,9 @@ When multiple agents run in parallel, do not cross these lanes. Full map in `des
   pressure model, phases/choices/receipts, named captains) + `src/systems/encounterScripts.js` +
   expanded `src/data/encounters.js`. Checks: `check:encounter-director`, `check:living-universe`,
   `check:encounter-voice` (SPEC2/04 + SPEC3-21/29 core).
-- `scripts/check-release-soak.mjs` — **genuinely MISSING** (SPEC2/08 not built).
+- `scripts/check-release-soak.mjs` — **EXISTS**: `npm run check:release-soak` passes the deterministic
+  quick campaign and `test/release-soak-contract.test.mjs` passes 13/13. The broader M6 platform,
+  performance, capture, and clean-wave acceptance matrix remains open.
 
 **Always trust the actual `check:*` output and `git status`/`git diff` over the status docs.** If a doc and a live check disagree, fix the doc in the same pass.
 
