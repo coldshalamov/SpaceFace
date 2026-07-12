@@ -394,6 +394,7 @@ export const missions = {
       rawOffer.source === 'economyContract'
       || rawOffer.source === 'encounterAftermath'
       || rawOffer.source === 'careerContract'
+      || rawOffer.source === 'postEndingReplay'
     );
     if (!allowedSource) return false;
     if (!rawOffer.id || !rawOffer.type || !rawOffer.stationId || !rawOffer.params) return false;
@@ -2234,6 +2235,9 @@ export const missions = {
     if (m.careerContracts) {
       serialized.careerContracts = JSON.parse(JSON.stringify(m.careerContracts));
     }
+    if (m.postEndingReplay) {
+      serialized.postEndingReplay = JSON.parse(JSON.stringify(m.postEndingReplay));
+    }
     return serialized;
   },
 
@@ -2250,6 +2254,12 @@ export const missions = {
         ? JSON.parse(JSON.stringify(data.careerContracts)) : null;
     } else {
       delete state.missions.careerContracts;
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'postEndingReplay')) {
+      state.missions.postEndingReplay = data.postEndingReplay
+        ? JSON.parse(JSON.stringify(data.postEndingReplay)) : null;
+    } else {
+      delete state.missions.postEndingReplay;
     }
     // Stale-target GC: clear live entity ids; targets re-spawn when the player (re-)enters the sector.
     state.missions.active = (data.active || []).map((a) => ({

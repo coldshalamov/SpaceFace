@@ -45,6 +45,7 @@ import { factions } from '../systems/factions.js';
 import { sectorSim } from '../systems/sectorSim.js';   // ADR-0002 / V2 §33 — offscreen stat sim
 import { missions } from '../systems/missions.js';
 import { careerContracts } from '../systems/careerContracts.js';
+import { postEndingReplay } from '../systems/postEndingReplay.js';
 import { economyContracts } from '../systems/economyContracts.js';
 import { careerOrigins } from '../careers/origins/careerOrigins.js';
 import { careerLadders } from '../careers/ladders/careerLadders.js';
@@ -115,7 +116,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, voiceArbiter, input, autoTargetAssist, flybyFocus, scanner, scanReveal, buildIdentity, lawSecurity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, fieldDepletion, cargo, fragileCargo, economy,
-    automation, wingmen, intervention, lossLedger, spawnBudget, world, regionalEcology, encounterDirector, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, stationContacts, stationContactLoadBoundary, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, careerOrigins, careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
+    automation, wingmen, intervention, lossLedger, spawnBudget, world, regionalEcology, encounterDirector, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, stationContacts, stationContactLoadBoundary, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, careerOrigins, careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts, postEndingReplay, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // scanReveal, buildIdentity, and pirateDisguise subscribe to scanner's scan:pulse seam. scanReveal

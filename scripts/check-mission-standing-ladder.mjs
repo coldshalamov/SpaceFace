@@ -222,6 +222,7 @@ const branchAcceptState = state({ rep: 0 });
 branchAcceptState.story.beatIndex = 4;
 const branchOffer = offer({
   id: 'offer_branch_intro',
+  type: 'bulk_trade',
   factionId: 'faction_mts',
   riskTier: 4,
   storyTag: STORY_BRANCH_INTRO_TAG,
