@@ -80,6 +80,46 @@ export const RECIPES = [
     dopplerEnabled: true,
   },
 
+  // --- Combat doctrine signatures ---------------------------------------------------------
+  // These are short telegraphs, never loops. One squad cue is enough to teach the ear whether the
+  // incoming actor will fly through, seize with a line, or hold range and charge a shot.
+  {
+    id: 'sfx_doctrine_flyby',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 740, freqSweep: [520, 1480], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.006, sustain: 0.0, release: 0.12 },
+    filterType: 'highpass', filterFreq: 680, filterQ: 0.8,
+  },
+  {
+    id: 'sfx_doctrine_tether_spool',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.14 },
+    filterType: 'bandpass', filterFreq: 310, filterQ: 2.8,
+    repeatCount: 1, repeatIntervalS: 0.09,
+  },
+  {
+    id: 'sfx_doctrine_ranged_charge',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 260, freqSweep: [260, 1120], sweepTimeS: 0.24,
+    gainEnvelope: { attack: 0.012, sustain: 0.0, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 760, filterQ: 1.8,
+  },
+  {
+    id: 'sfx_encounter_escalation',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 82, freqSweep: [82, 61], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.025, sustain: 0.0, release: 0.32 },
+    filterType: 'lowpass', filterFreq: 220, filterQ: 0.7,
+  },
+
   // --- Explosion SFX ---
   {
     id: 'sfx_explosion_small',
@@ -463,6 +503,14 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.03 },
     repeatCount: 1,
     repeatIntervalS: 0.04,
+  },
+  {
+    id: 'sfx_tether_strain_creak',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 520, filterQ: 4.2,
   },
   {
     id: 'sfx_tether_crack',

@@ -18,6 +18,8 @@ import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
+import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import {
   createCuePriorityBus,
   isPriorityCue,
@@ -46,8 +48,155 @@ const STEM_WEIGHTS = {
 
 export const MAX_AUDIO_VOICES = 12;
 
+// Propulsion is a gameplay contract, but its *voice* is presentation-only. Each family keeps the
+// spec's tier fundamentals (55/78/110/65 Hz) while changing harmonic weight, air and sub response.
+// That makes a gravimetric interceptor, a pulse-plate barge and a torch capital identifiable even
+// before their silhouette is read. The values stay inside the existing engine-bus budget.
+export const ENGINE_FAMILY_AUDIO = Object.freeze({
+  [DRIVE_FAMILIES.REACTION]: Object.freeze({
+    family: DRIVE_FAMILIES.REACTION, osc1: 'sawtooth', osc2: 'sine', harmonic: 1,
+    detune: 6, noiseMult: 1, noiseHzMult: 1, subMult: 1, humMult: 1,
+  }),
+  [DRIVE_FAMILIES.GRAVIMETRIC]: Object.freeze({
+    family: DRIVE_FAMILIES.GRAVIMETRIC, osc1: 'triangle', osc2: 'sine', harmonic: 2,
+    detune: -7, noiseMult: 0.18, noiseHzMult: 1.9, subMult: 0.55, humMult: 0.82,
+  }),
+  [DRIVE_FAMILIES.PULSE_PLATE]: Object.freeze({
+    family: DRIVE_FAMILIES.PULSE_PLATE, osc1: 'square', osc2: 'triangle', harmonic: 0.5,
+    detune: 3, noiseMult: 0.65, noiseHzMult: 0.72, subMult: 1.65, humMult: 0.74,
+  }),
+  [DRIVE_FAMILIES.TORCH]: Object.freeze({
+    family: DRIVE_FAMILIES.TORCH, osc1: 'sawtooth', osc2: 'sawtooth', harmonic: 0.5,
+    detune: 11, noiseMult: 1.8, noiseHzMult: 0.78, subMult: 1.9, humMult: 0.88,
+  }),
+  [DRIVE_FAMILIES.SAIL]: Object.freeze({
+    family: DRIVE_FAMILIES.SAIL, osc1: 'triangle', osc2: 'sine', harmonic: 1.5,
+    detune: 0, noiseMult: 0.1, noiseHzMult: 2.2, subMult: 0.35, humMult: 0.62,
+  }),
+});
+
+export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
+  [CombatDoctrineId.INTERCEPTOR_FLYBY]: Object.freeze({
+    recipeId: 'sfx_doctrine_flyby', fireRate: 1.16, fireGain: 0.78, fireDetune: 7,
+  }),
+  [CombatDoctrineId.TETHER_CONTROL_RAIDER]: Object.freeze({
+    recipeId: 'sfx_doctrine_tether_spool', fireRate: 0.86, fireGain: 0.92, fireDetune: -9,
+  }),
+  [CombatDoctrineId.RANGED_DISENGAGER]: Object.freeze({
+    recipeId: 'sfx_doctrine_ranged_charge', fireRate: 0.94, fireGain: 0.84, fireDetune: -2,
+  }),
+});
+
 function linearGain(v) { const c = v < 0 ? 0 : v > 1 ? 1 : v; return c * c; }
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+export function resolveEngineAudioIdentity(entity) {
+  let profile = null;
+  try { profile = resolvePropulsionProfile(entity); } catch (_) { profile = null; }
+  const family = profile && ENGINE_FAMILY_AUDIO[profile.family]
+    ? profile.family
+    : DRIVE_FAMILIES.REACTION;
+  const voice = ENGINE_FAMILY_AUDIO[family];
+  const derived = entity && entity.data && entity.data.derived;
+  const mass = Math.max(1, Number(entity && entity.mass) || Number(derived && derived.mass) || 1);
+  const massClass = mass >= 110 ? 'heavy' : mass <= 32 ? 'light' : 'medium';
+  const massNorm = clamp(mass / 120, 0.55, 1.8);
+  return { family, driveId: profile && profile.id || null, mass, massClass, massNorm, voice };
+}
+
+function doctrineIdForOwner(state, payload) {
+  if (payload && DOCTRINE_AUDIO_SIGNATURES[payload.doctrineId]) return payload.doctrineId;
+  const owner = state && state.entities && payload && payload.ownerId != null
+    ? state.entities.get(payload.ownerId)
+    : null;
+  const ai = owner && owner.data && owner.data.ai;
+  return ai && DOCTRINE_AUDIO_SIGNATURES[ai.combatDoctrineId] ? ai.combatDoctrineId : null;
+}
+
+export function resolveWeaponAudioSignature(payload, state) {
+  const recipeId = recipeForWeapon(payload && payload.weaponId);
+  const doctrineId = doctrineIdForOwner(state, payload);
+  const doctrine = doctrineId && DOCTRINE_AUDIO_SIGNATURES[doctrineId];
+  return {
+    recipeId,
+    doctrineId,
+    rate: doctrine ? doctrine.fireRate : 1,
+    gain: 0.85 * (doctrine ? doctrine.fireGain : 1),
+    detune: doctrine ? doctrine.fireDetune : 0,
+  };
+}
+
+/**
+ * Resolve a player-hit receipt in ship-local coordinates. World-X panning made direction change as
+ * the ship turned; this keeps left/right stable relative to the player's nose. Front/rear also get
+ * a restrained pitch distinction, while urgency scales only the one-shot receipt (never an alarm).
+ */
+export function resolvePlayerDamageAudioSignature(payload, state) {
+  const player = state && state.entities && state.entities.get(state.playerId);
+  const attacker = state && state.entities && payload && payload.attackerId != null
+    ? state.entities.get(payload.attackerId)
+    : null;
+  const origin = attacker && attacker.pos || payload && (payload.hitPoint || payload.pos) || null;
+  let pan = 0, forward = 0;
+  if (player && player.pos && origin) {
+    const dx = origin.x - player.pos.x;
+    const dz = origin.z - player.pos.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const rot = Number(player.rot) || 0;
+    forward = (dx * Math.cos(rot) + dz * Math.sin(rot)) / len;
+    pan = clamp((dx * -Math.sin(rot) + dz * Math.cos(rot)) / len, -0.85, 0.85);
+  }
+  const after = payload && payload.after || {};
+  const hullMax = Math.max(1, Number(player && player.hullMax) || Number(after.hullMax) || 1);
+  const hullPct = clamp(Number(after.hull != null ? after.hull : player && player.hull) / hullMax, 0, 1);
+  const layer = (payload && payload.dominantLayer)
+    || (Number(payload && payload.shieldDamage) > 0 ? 'shield'
+      : Number(payload && payload.armorDamage) > 0 ? 'armor' : 'hull');
+  const urgency = hullPct < 0.2 ? 1 : hullPct < 0.45 ? 0.62 : 0.3;
+  return {
+    layer,
+    pan,
+    bearing: forward < -0.45 ? 'rear' : forward > 0.45 ? 'front' : pan < -0.2 ? 'left' : pan > 0.2 ? 'right' : 'center',
+    rate: forward < -0.45 ? 0.88 : forward > 0.45 ? 1.08 : 0.98,
+    detune: Math.round(pan * 9),
+    gain: 0.56 + urgency * 0.24,
+    position: origin,
+    urgency,
+  };
+}
+
+export function isPlayerInAudioCalmZone(state, player) {
+  if (!state || !player) return false;
+  if ((player.flags && player.flags.docked) || (state.ui && state.ui.docked)) return true;
+  const sectorId = state.world && state.world.currentSectorId;
+  const sector = sectorId && state.world && state.world.sectors && state.world.sectors[sectorId];
+  if (sector && (sector.tier === 0 || (sector.security >= 0.9 && sector.enemyDensity === 0))) return true;
+  const stations = state.world && state.world.activeSector && state.world.activeSector.stations || [];
+  for (const station of stations) {
+    if (!station || !station.pos) continue;
+    const dx = station.pos.x - player.pos.x;
+    const dz = station.pos.z - player.pos.z;
+    if (dx * dx + dz * dz <= 1100 * 1100) return true;
+  }
+  return false;
+}
+
+export function resolveAudioThreatContext(state, player, rt) {
+  const simTime = Number(state && state.simTime) || 0;
+  const lastDamageT = rt && Number.isFinite(rt._lastDamageT) ? rt._lastDamageT : -1e9;
+  const recentDamage = simTime - lastDamageT < IN_COMBAT_WINDOW;
+  const activeEncounter = !!(rt && rt._activeCombatEncounters && rt._activeCombatEncounters.size);
+  const doctrineThreat = simTime < Number(rt && rt._doctrineThreatUntil || -1e9);
+  const engaged = recentDamage || activeEncounter || doctrineThreat;
+  const calmZone = isPlayerInAudioCalmZone(state, player);
+  const nearbyHostiles = calmZone && !engaged
+    ? 0
+    : audioNearbyHostileCount(state, player, 1200, rt && rt._musicThreatScratch || [], 3);
+  const shieldPct = player && player.shieldMax > 0 ? clamp(player.shield / player.shieldMax, 0, 1) : 1;
+  let threat = clamp(0.5 * Math.min(nearbyHostiles, 3) / 3 + 0.5 * (1 - shieldPct) * (recentDamage ? 1 : 0), 0, 1);
+  if (engaged) threat = Math.max(threat, activeEncounter || doctrineThreat ? 0.45 : 0.3);
+  return { threat, nearbyHostiles, shieldPct, calmZone, engaged };
+}
 
 // Build a fast id->recipe lookup over the data array.
 const recipeById = {};
@@ -109,7 +258,7 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   loot_collect: 'sfx_loot_collect', mining_core_fizzle: 'sfx_mining_core_fizzle',
   shield_break: 'sfx.shieldBreak', cm_chaff: 'sfx_cm_chaff', cm_ecm: 'sfx_cm_ecm',
   'presentation.tether.attach': 'sfx.tetherLatch',
-  'presentation.tether.near_break': 'sfx_ui_alert',
+  'presentation.tether.near_break': 'sfx_tether_strain_creak',
   'presentation.tether.break': 'sfx.tetherSnap',
   'presentation.tether.whip_impact': 'sfx.tetherSnap',
   'presentation.shield.collapse': 'sfx.shieldBreak',
@@ -218,6 +367,11 @@ export const audio = {
     rt._criticalSquelchUntilMs = 0;
     rt._engineTier = 'idle';
     rt._engineTierSince = 0;
+    rt._engineIdentityEntity = null;
+    rt._engineIdentityDriveId = null;
+    rt._engineIdentityMass = NaN;
+    rt._engineIdentityFlightClass = null;
+    rt._engineIdentity = null;
     rt._engineTelemetry = {
       tier: 'idle',
       f1: 55,
@@ -225,8 +379,13 @@ export const audio = {
       noiseG: 0.0001,
       humG: 0.48,
       massNorm: 1,
+      family: DRIVE_FAMILIES.REACTION,
+      massClass: 'medium',
       duck: 1,
     };
+    rt._activeCombatEncounters = new Set();
+    rt._doctrineThreatUntil = -1e9;
+    rt._lastDoctrineCueAt = -1e9;
     rt._lastAccelTransitionMs = 0;
     rt._lastTrafficBlipAt = 0;
     rt._lastMachineryAt = 0;
@@ -281,6 +440,10 @@ export const audio = {
     bus.on('mission:expired', () => this._onCue('deny'));
     bus.on('dock:docked', (p) => this._onDocked(p));
     bus.on('dock:undocked', () => this._onUndocked());
+    // Existing encounter/doctrine seams drive presentation pressure only; audio never writes AI.
+    bus.on('ai:telegraph', (p) => this._onDoctrineTelegraphAudio(p));
+    bus.on('encounter:telegraph', (p) => this._onEncounterTelegraphAudio(p));
+    bus.on('encounter:resolved', (p) => this._onEncounterResolvedAudio(p));
     bus.on('jump:chargeStart', () => {
       this._duckMusic();
       this.play('sfx_jump_charge', { gain: 0.5, rate: 0.6 }); // early charge buildup
@@ -316,7 +479,11 @@ export const audio = {
     // makes the payoff of a major purchase/upgrade land.
     bus.on('tech:researched', () => this.play('sfx_mission_complete', { gain: 0.6 }));
     bus.on('ship:purchased', () => this.play('sfx_mission_complete', { gain: 0.7 }));
-    bus.on('sector:enter', () => { this._markMusicDirty(); });
+    bus.on('sector:enter', () => {
+      rt._activeCombatEncounters.clear();
+      rt._doctrineThreatUntil = -1e9;
+      this._markMusicDirty();
+    });
     bus.on('ship:boostStart', (p) => {
       // Boost activation: a dedicated breathy whoosh, distinct from explosions.
       // Player-only (NPCs spam this).
@@ -373,7 +540,12 @@ export const audio = {
     bus.on('ui:deny', () => this._onCue('deny'));
 
     // Rebuild graph on load (transient runtime is wiped on load).
-    bus.on('save:loaded', () => { this._applySettings(); this._markMusicDirty(); });
+    bus.on('save:loaded', () => {
+      rt._activeCombatEncounters.clear();
+      rt._doctrineThreatUntil = -1e9;
+      this._applySettings();
+      this._markMusicDirty();
+    });
     bus.on('game:started', () => { /* context already (or soon) created on gesture */ });
 
     // If a context already exists (hot reload), wire immediately.
@@ -594,6 +766,9 @@ export const audio = {
       att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
       pan = clamp((opts.position.x - p.x) / PAN_SPAN, -1, 1);
     }
+    // Player damage supplies ship-local panning. Explicit pan intentionally overrides the
+    // world-X positional fallback; all other positional sounds keep the established behavior.
+    if (Number.isFinite(opts.pan)) pan = clamp(opts.pan, -1, 1);
     let callGain = (opts.gain == null ? 1 : opts.gain);
     if (this._motionReduced() && (busName === 'ambient' || recipeId.includes('traffic') || recipeId.includes('machinery'))) {
       callGain *= 0.35;
@@ -669,13 +844,18 @@ export const audio = {
   // ---- event handlers ----
   _onFire(p) {
     if (!p) return;
-    const rid = recipeForWeapon(p.weaponId);
-    if (rid === 'sfx_wpn_beam_laser') {
+    const signature = resolveWeaponAudioSignature(p, this.state);
+    if (signature.recipeId === 'sfx_wpn_beam_laser') {
       // sustained beam: start a loop keyed by owner; stopped on combat:beamStop
       this._startBeam(p.ownerId, p.origin);
       return;
     }
-    this.play(rid, { position: p.origin, gain: 0.85 });
+    this.play(signature.recipeId, {
+      position: p.origin,
+      gain: signature.gain,
+      rate: signature.rate,
+      detune: signature.detune,
+    });
   },
 
   _startBeam(ownerId, pos) {
@@ -718,7 +898,9 @@ export const audio = {
     const rt = this.rt, ctx = rt.ctx;
     if (p.isPlayer) { rt._lastDamageT = this.state.simTime; this._markMusicDirty(); }
 
-    const onShield = !!p.shieldAbsorbed;
+    const onShield = !!p.shieldAbsorbed || Number(p.shieldDamage) > 0 || p.dominantLayer === 'shield';
+    const playerSignature = p.isPlayer ? resolvePlayerDamageAudioSignature(p, this.state) : null;
+    const hitPosition = playerSignature && playerSignature.position || p.pos || p.hitPoint;
     if (onShield) {
       const now = ctx ? ctx.currentTime : 0;
       if (now - (rt._lastShieldHitTime || 0) < 2.0) {
@@ -729,18 +911,54 @@ export const audio = {
       rt._lastShieldHitTime = now;
       const pitchOffset = rt._shieldHitStack;
       const rate = Math.pow(2, pitchOffset / 12.0);
-      this.play('sfx.shieldHit', { position: p.pos || p.hitPoint, gain: 0.7, rate });
+      this.play('sfx.shieldHit', { position: hitPosition, gain: 0.7, rate });
     } else {
-      if (p.kind === 'armor') {
-        this.play('sfx.armorHit', { position: p.pos || p.hitPoint, gain: 0.8 });
+      // combat:damage names this field dominantLayer (not kind). Preserve legacy kind payloads,
+      // but route real armor damage to its hard metallic receipt instead of the hull thump.
+      if (p.dominantLayer === 'armor' || Number(p.armorDamage) > 0 || p.kind === 'armor') {
+        this.play('sfx.armorHit', { position: hitPosition, gain: 0.8 });
       } else {
-        this.play('sfx.hullHit', { position: p.pos || p.hitPoint, gain: 0.9 });
+        this.play('sfx.hullHit', { position: hitPosition, gain: 0.9 });
       }
     }
 
-    if (p.isPlayer) {
-      this.play('sfx.playerDamage', { gain: 0.8 });
+    if (playerSignature) {
+      this.play('sfx.playerDamage', {
+        gain: playerSignature.gain,
+        rate: playerSignature.rate,
+        detune: playerSignature.detune,
+        pan: playerSignature.pan,
+      });
     }
+  },
+
+  _onDoctrineTelegraphAudio(p) {
+    if (!p || !DOCTRINE_AUDIO_SIGNATURES[p.doctrineId]) return;
+    if (p.targetId != null && p.targetId !== this.state.playerId) return;
+    const now = Number(this.state.simTime) || 0;
+    this.rt._doctrineThreatUntil = Math.max(this.rt._doctrineThreatUntil || -1e9, now + 6);
+    this._markMusicDirty();
+    // Several squad members can enter the same phase on one tick. One signal speaks for the group.
+    if (now - (this.rt._lastDoctrineCueAt || -1e9) < 0.35) return;
+    this.rt._lastDoctrineCueAt = now;
+    const owner = p.entityId != null && this.state.entities && this.state.entities.get(p.entityId);
+    const signature = DOCTRINE_AUDIO_SIGNATURES[p.doctrineId];
+    this.play(signature.recipeId, { position: owner && owner.pos, gain: 0.72 });
+  },
+
+  _onEncounterTelegraphAudio(p) {
+    if (!p || !p.encounterId || p.deck !== 'combat') return;
+    this.rt._activeCombatEncounters.add(p.encounterId);
+    this._markMusicDirty();
+    // A single restrained escalation cue marks an authored encounter. Routine nearby contacts do
+    // not trigger it, which keeps safe stations calm and makes intentional danger legible.
+    this.play('sfx_encounter_escalation', { position: p.pos, gain: 0.5 });
+  },
+
+  _onEncounterResolvedAudio(p) {
+    if (!p || !p.encounterId) return;
+    this.rt._activeCombatEncounters.delete(p.encounterId);
+    this._markMusicDirty();
   },
 
   _onCollision(p) {
@@ -1481,15 +1699,11 @@ export const audio = {
   _recomputeMusic(nowWall) {
     const rt = this.rt, state = this.state;
     const player = state.entities.get(state.playerId);
-    let shieldPct = 1, nearbyHostiles = 0;
     let docked = !!(rt._docked || (player && player.flags && player.flags.docked) || state.ui.docked);
-    if (player) {
-      shieldPct = player.shieldMax > 0 ? clamp(player.shield / player.shieldMax, 0, 1) : 1;
-      nearbyHostiles = audioNearbyHostileCount(state, player, 1200, rt._musicThreatScratch, 3);
-    }
-    const inCombatRecent = (state.simTime - rt._lastDamageT) < IN_COMBAT_WINDOW ? 1 : 0;
-    const threat = clamp(0.5 * Math.min(nearbyHostiles, 3) / 3 + 0.5 * (1 - shieldPct) * inCombatRecent, 0, 1);
+    const context = resolveAudioThreatContext(state, player, rt);
+    const threat = context.threat;
     rt.threat = threat;
+    rt.threatContext = context;
 
     let desired = docked ? 'docked' : (threat >= 0.6 ? 'combat' : threat >= 0.2 ? 'tense' : 'calm');
 
@@ -1838,6 +2052,26 @@ export const audio = {
     return 0;
   },
 
+  _cachedEngineAudioIdentity(player) {
+    const rt = this.rt;
+    const data = player && player.data;
+    const derived = data && data.derived;
+    const driveId = player && player.driveId || derived && derived.driveId || data && data.driveId || null;
+    const mass = Math.max(1, Number(player && player.mass) || Number(derived && derived.mass) || 1);
+    const flightClass = player && player.flightClass || derived && derived.flightClass || null;
+    if (rt._engineIdentity && rt._engineIdentityEntity === player
+      && rt._engineIdentityDriveId === driveId && rt._engineIdentityMass === mass
+      && rt._engineIdentityFlightClass === flightClass) {
+      return rt._engineIdentity;
+    }
+    rt._engineIdentityEntity = player;
+    rt._engineIdentityDriveId = driveId;
+    rt._engineIdentityMass = mass;
+    rt._engineIdentityFlightClass = flightClass;
+    rt._engineIdentity = resolveEngineAudioIdentity(player);
+    return rt._engineIdentity;
+  },
+
   _updateEngineHum() {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx || !rt.engineOsc1 || rt._paused) return;
@@ -1864,10 +2098,11 @@ export const audio = {
       rt._engineTierSince = nowMs;
     }
 
-    // Mass-aware sub (read entity.derived only — ships owns writes).
-    const derived = player && player.derived;
-    const mass = Number(derived && (derived.mass || derived.hullMass)) || 1;
-    const massNorm = clamp(mass / 120, 0.55, 1.8);
+    // Read-only identity: ships/flight still own mass and propulsion. Audio maps those authored
+    // facts to a stable family timbre and never feeds values back into the simulation.
+    const identity = this._cachedEngineAudioIdentity(player);
+    const massNorm = identity.massNorm;
+    const familyVoice = identity.voice;
 
     // Spec frequencies are exact; place identity lives in the station/palette layers.
     let f1 = 55, f2 = 55, d2 = 6, noiseG = 0.0001, noiseHz = 300, subG = 0.08 * massNorm, humG = 0.55;
@@ -1900,6 +2135,15 @@ export const audio = {
       humG = 0.48;
     }
 
+    // Preserve the tier fundamental while giving each drive a different overtone/noise/sub shape.
+    // Cruise keeps its universal clean fifth: travel grammar should remain recognizable across hulls.
+    if (tier !== 'cruise') f2 = f1 * familyVoice.harmonic;
+    d2 = tier === 'cruise' ? 0 : familyVoice.detune;
+    noiseG *= familyVoice.noiseMult;
+    noiseHz *= familyVoice.noiseHzMult;
+    subG *= familyVoice.subMult;
+    humG *= familyVoice.humMult;
+
     // Priority duck mult on continuous engine loop (weapon loops handled separately).
     const duck = rt._priorityDuckEngine == null ? 1 : rt._priorityDuckEngine;
     humG *= duck;
@@ -1908,6 +2152,8 @@ export const audio = {
     const tc = 0.1;
     const t = ctx.currentTime;
     try {
+      rt.engineOsc1.type = familyVoice.osc1;
+      rt.engineOsc2.type = familyVoice.osc2;
       rt.engineOsc1.frequency.setTargetAtTime(f1, t, tc);
       rt.engineOsc2.frequency.setTargetAtTime(f2, t, tc);
       rt.engineOsc2.detune.setTargetAtTime(d2, t, tc);
@@ -1926,6 +2172,9 @@ export const audio = {
     telemetry.noiseG = noiseG;
     telemetry.humG = humG;
     telemetry.massNorm = massNorm;
+    telemetry.family = identity.family;
+    telemetry.massClass = identity.massClass;
+    telemetry.driveId = identity.driveId;
     telemetry.duck = duck;
   },
 
@@ -1992,13 +2241,25 @@ export const audio = {
     gain.gain.value = 0.0001;
     gain.gainValue = 0.0001;
 
-    osc.connect(gain);
-    gain.connect(rt.ambientBus);
+    // A second, initially silent strand introduces a slow beat only above overload. This is a
+    // continuous physical read of the line, not another repeating alarm.
+    const overloadOsc = ctx.createOscillator();
+    overloadOsc.type = 'triangle';
+    overloadOsc.frequency.value = 97;
+    const overloadGain = ctx.createGain();
+    overloadGain.gain.value = 0.0001;
 
-    try { osc.start(ctx.currentTime); } catch (_) {}
+    osc.connect(gain);
+    overloadOsc.connect(overloadGain);
+    gain.connect(rt.combatBus);
+    overloadGain.connect(rt.combatBus);
+
+    try { osc.start(ctx.currentTime); overloadOsc.start(ctx.currentTime); } catch (_) {}
 
     rt.tetherOsc = osc;
     rt.tetherHum = gain;
+    rt.tetherOverloadOsc = overloadOsc;
+    rt.tetherOverloadGain = overloadGain;
   },
 
   _updateTetherHum() {
@@ -2008,20 +2269,26 @@ export const audio = {
     if (!rt.tetherOsc) return;
 
     const tether = this.state.player && this.state.player.tether;
-    const active = !!(tether && tether.active);
-    const strain = active ? (tether.strain || 0) : 0;
+    const active = !!(tether && (tether.active || tether.phase === 'loaded' || tether.phase === 'overload'));
+    const strain = active ? clamp(Number(tether.strain) || 0, 0, 1.25) : 0;
 
     let targetFreq = 90;
     let targetGain = 0.0001;
 
     if (active) {
       targetFreq = 90 + strain * 220;
-      targetGain = strain * 0.15;
+      targetGain = 0.006 + Math.pow(strain, 1.25) * 0.13;
     }
 
     rt.tetherOsc.frequency.setTargetAtTime(targetFreq, ctx.currentTime, 0.05);
     rt.tetherHum.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.05);
     rt.tetherHum.gainValue = targetGain;
+    if (rt.tetherOverloadOsc && rt.tetherOverloadGain) {
+      const overload = clamp((strain - 0.72) / 0.28, 0, 1);
+      rt.tetherOverloadOsc.frequency.setTargetAtTime(targetFreq + 7 + overload * 9, ctx.currentTime, 0.05);
+      rt.tetherOverloadGain.gain.setTargetAtTime(Math.max(0.0001, overload * 0.055), ctx.currentTime, 0.05);
+      rt.tetherOverloadGain.gainValue = Math.max(0.0001, overload * 0.055);
+    }
   },
 
   /** Apply cue-priority envelope gains to continuous engine + weapon loops each frame. */
