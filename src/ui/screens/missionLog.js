@@ -1,6 +1,6 @@
 // src/ui/screens/missionLog.js — In-flight mission log.
 // Shows all active + recently completed missions with progress, timer, reward, and a TRACK button.
-// READ-ONLY on state; emits ui:trackMission + ui:abandonMission (+ career:ladder choose/recover/abandon)
+// READ-ONLY on state; emits ui:trackMission + ui:abandonMission (+ career origin/ladder intents)
 // intents only (§5, §0.6). No career progression or owner writes from this surface.
 //
 // Export: missionLogScreen  (id 'missionLog').
@@ -17,7 +17,10 @@ import {
   missionTimePacing,
 } from '../missionPreflight.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
-import { buildMissionLogCareerChip } from '../careerLadderView.js';
+import {
+  buildMissionLogCareerChip,
+  buildMissionLogOriginChoiceModel,
+} from '../careerLadderView.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -677,7 +680,7 @@ function careerStatusMod(status) {
   return 'idle';
 }
 
-/** HTML for mission-log career ladder chips (pure presenter → DOM). No accept; no owner writes. */
+/** HTML for mission-log career chips (pure presenter → DOM). Emits intents; no owner writes. */
 function careerChipHtml(chip, state) {
   if (!chip) return '';
   const careerId = chip.careerId || '';
@@ -703,6 +706,21 @@ function careerChipHtml(chip, state) {
   const placeLine = [place.contact, place.location].filter(Boolean).join(' · ');
 
   let actions = '';
+  if (chip.canOriginAccept) {
+    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-choice" type="button"'
+      + ' data-career-act="originAccept" data-career-id="' + escapeHtml(careerId) + '"'
+      + ' aria-label="' + escapeHtml('Start as ' + title) + '">START ' + escapeHtml(title.toUpperCase()) + '</button>';
+  }
+  if (chip.canOriginDecline) {
+    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-abandon" type="button"'
+      + ' data-career-act="originDecline" data-career-id="' + escapeHtml(careerId) + '"'
+      + ' aria-label="' + escapeHtml('Decline ' + title + ' for now') + '">NOT NOW</button>';
+  }
+  if (chip.canOriginRecover) {
+    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-recover" type="button"'
+      + ' data-career-act="originRecover" data-career-id="' + escapeHtml(careerId) + '"'
+      + ' aria-label="' + escapeHtml('Reissue ' + title + ' origin contract') + '">REISSUE</button>';
+  }
   if (mapAction) {
     actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-map" type="button"'
       + ' data-career-act="openMap" data-career-id="' + escapeHtml(careerId) + '"'
@@ -1173,6 +1191,28 @@ export const missionLogScreen = {
       const careerId = btn.getAttribute('data-career-id');
       if (!act) return;
 
+      if (act === 'originAccept') {
+        if (!careerId) return;
+        ctx.bus.emit('career:origin:accept', { careerId, source: 'missionLog' });
+        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+        this._render();
+        return;
+      }
+      if (act === 'originDecline') {
+        if (!careerId) return;
+        ctx.bus.emit('career:origin:decline', { careerId, source: 'missionLog' });
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        this._render();
+        return;
+      }
+      if (act === 'originRecover') {
+        if (!careerId) return;
+        ctx.bus.emit('career:origin:reoffer', { careerId, source: 'missionLog' });
+        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+        this._render();
+        return;
+      }
+
       if (act === 'openMap') {
         openMapScreen(ctx, mapOpenIntentFromButton(btn));
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
@@ -1340,6 +1380,10 @@ export const missionLogScreen = {
     bus.on('career:ladder:stepRecovered', refresh);
     bus.on('career:ladder:choiceResolved', refresh);
     bus.on('career:ladder:completed', refresh);
+    bus.on('career:origins:offered', refresh);
+    bus.on('career:origins:accepted', refresh);
+    bus.on('career:origins:declined', refresh);
+    bus.on('career:origins:progress', refresh);
   },
 
   _visible() {
@@ -1529,28 +1573,36 @@ export const missionLogScreen = {
   },
 
   /**
-   * Career ladder strip for the flight log (CL-UI-03).
-   * Presenter-only model; emits career:ladder choose/recover/abandon + map/track intents.
-   * Never accept/decline from this surface; never write ladder/owner state.
+   * Career strip for the flight log (origin selection followed by CL-UI-03 ladder state).
+   * Presenter-only model; every button emits an owner intent and never writes career state.
    */
   _renderCareerChip(state) {
     if (!this._careerEl) return;
     const focusToken = this._captureCareerFocusToken();
     const registry = this._ctx && this._ctx.registry;
     let model = null;
+    let originModel = null;
     try {
       model = buildMissionLogCareerChip(state, registry);
+      originModel = buildMissionLogOriginChoiceModel(state, registry);
     } catch (_) {
       model = null;
+      originModel = null;
     }
-    const chips = (model && model.visible && Array.isArray(model.chips)) ? model.chips : [];
+    const originCards = (originModel && originModel.visible && Array.isArray(originModel.cards))
+      ? originModel.cards : [];
+    const ladderChips = (model && model.visible && Array.isArray(model.chips)) ? model.chips : [];
+    const chips = originCards.length ? originCards : ladderChips;
     if (!chips.length) {
       this._careerEl.innerHTML = '';
       this._careerEl.hidden = true;
       if (this._careerHeader) this._careerHeader.hidden = true;
       return;
     }
-    if (this._careerHeader) this._careerHeader.hidden = false;
+    if (this._careerHeader) {
+      this._careerHeader.hidden = false;
+      this._careerHeader.textContent = originCards.length ? 'CHOOSE A FIRST CONTRACT' : 'CAREER LADDER';
+    }
     this._careerEl.hidden = false;
     this._careerEl.innerHTML = chips.map((chip) => careerChipHtml(chip, state)).join('');
     this._restoreCareerFocusToken(focusToken);

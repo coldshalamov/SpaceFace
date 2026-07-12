@@ -19,6 +19,20 @@ import { MAP_FOCUS, mapHandoffAction } from './mapAuthority.js';
 const RAIL_NOTE = 'Optional. Paths never lock each other.';
 const FALLBACK_OBJECTIVE = 'Continue the path.';
 
+function resolveOriginSystem(api) {
+  if (!api || typeof api !== 'object') return null;
+  if (typeof api.getOfferView === 'function' && api.name === 'careerOrigins') return api;
+  if (typeof api.get === 'function') {
+    try {
+      const system = api.get('careerOrigins');
+      if (system && typeof system.getOfferView === 'function') return system;
+    } catch {
+      // A registry miss means the flight choice is simply unavailable.
+    }
+  }
+  return null;
+}
+
 const NEXT_ACTION = Object.freeze({
   latent_locked: 'Finish the matching origin or keep flying.',
   latent_ready_or_offered: 'Start this professional path when ready.',
@@ -782,5 +796,66 @@ export function buildMissionLogCareerChip(state, api = null) {
     visible: chips.length > 0,
     chips,
     primary: chips[0] || null,
+  };
+}
+
+/**
+ * In-flight origin choice model. This is deliberately separate from the post-origin ladder rail:
+ * it presents the three authored starts in Mission Log without giving the UI progression writes.
+ */
+export function buildMissionLogOriginChoiceModel(state, api = null) {
+  const system = resolveOriginSystem(api);
+  if (!system) return { nonBinding: true, visible: false, primaryCareerId: null, cards: [] };
+  let view;
+  try {
+    view = system.getOfferView();
+  } catch {
+    view = null;
+  }
+  if (!view || !Array.isArray(view.offers)) {
+    return { nonBinding: true, visible: false, primaryCareerId: null, cards: [] };
+  }
+
+  const recoveringStatuses = new Set(['declined', 'recovering', 'step_failed']);
+  // Once a contract owns focus, its ordinary mission card is the clearest surface. Only a failed
+  // focused contract remains here so the player can explicitly reissue it without docking.
+  const focused = view.focusedCareerId || null;
+  const cards = view.offers
+    .filter((offer) => {
+      if (!offer) return false;
+      if (focused) return offer.careerId === focused && recoveringStatuses.has(offer.status);
+      return !!offer.canAccept || !!offer.canDecline || recoveringStatuses.has(offer.status);
+    })
+    .map((offer) => {
+      const recovering = recoveringStatuses.has(offer.status);
+      const kit = offer.upgradeKit || null;
+      return {
+        originChoice: true,
+        careerId: offer.careerId,
+        title: offer.title,
+        status: offer.status,
+        statusLabel: offer.canAccept ? 'AVAILABLE' : (recovering ? 'REISSUE' : String(offer.status || '')),
+        stepTitle: `${String(offer.lane || 'career').toUpperCase()} ORIGIN`,
+        objective: offer.line,
+        nextAction: recovering
+          ? 'Reissue the same first contract. Progress is not skipped.'
+          : `Choose this start to ${offer.verb || 'begin'} through a real contract now.`,
+        receiptLine: kit
+          ? `Primary start issues ${kit.label} immediately; other paths remain open.`
+          : 'Other paths remain open.',
+        verb: offer.verb || null,
+        upgradeKit: kit,
+        nonBinding: true,
+        canOriginAccept: !!offer.canAccept,
+        canOriginDecline: !!offer.canDecline,
+        canOriginRecover: recovering,
+      };
+    });
+
+  return {
+    nonBinding: true,
+    visible: cards.length > 0,
+    primaryCareerId: view.primaryCareerId || null,
+    cards,
   };
 }

@@ -86,6 +86,7 @@ export const CAREER_ORIGINS_EVENTS = Object.freeze({
   OFFERED: 'career:origins:offered',
   ACCEPT: 'career:origin:accept',
   DECLINE: 'career:origin:decline',
+  REOFFER: 'career:origin:reoffer',
   ABANDON: 'career:origin:abandon',
   ACCEPTED: 'career:origins:accepted',
   DECLINED: 'career:origins:declined',
@@ -127,6 +128,10 @@ function createMeta() {
     // Non-binding means no permanent class lock. It does not mean three competing tutorial
     // contracts may own the mission marker at once. This focus releases on completion/abandon.
     focusCareerId: null,
+    // The first accepted path is the pilot's durable starting identity. It never locks peers;
+    // it only records the choice that issued the one immediate starter kit.
+    primaryCareerId: null,
+    primaryChosenAtS: null,
     identityReceipts: {},
     routes: {
       hunter: createOriginRouteState('hunter'),
@@ -151,6 +156,8 @@ function ensureRouteMeta(meta) {
   if (!meta.upgradeReceipts || typeof meta.upgradeReceipts !== 'object') meta.upgradeReceipts = {};
   if (!meta.identityReceipts || typeof meta.identityReceipts !== 'object') meta.identityReceipts = {};
   if (!CAREER_IDS.includes(meta.focusCareerId)) meta.focusCareerId = null;
+  if (!CAREER_IDS.includes(meta.primaryCareerId)) meta.primaryCareerId = null;
+  if (!Number.isFinite(meta.primaryChosenAtS)) meta.primaryChosenAtS = null;
   return meta.routes;
 }
 
@@ -262,6 +269,8 @@ export function getCareerOfferView(state, careerId = null) {
         nonBinding: true,
         rewardCredits: HAULER_COMPLETION_REWARD.credits,
         upgradeKit: ORIGIN_ROLE_KITS.hauler,
+        lane: ORIGIN_PHYSICAL_IDENTITIES.hauler.lane,
+        verb: ORIGIN_PHYSICAL_IDENTITIES.hauler.verb,
       };
     })(),
     hunter: (() => {
@@ -282,6 +291,8 @@ export function getCareerOfferView(state, careerId = null) {
         rewardCredits: own.reward.credits,
         contractCount: CAREER_ORIGIN_CONTRACTS.hunter.length,
         upgradeKit: ORIGIN_ROLE_KITS.hunter,
+        lane: ORIGIN_PHYSICAL_IDENTITIES.hunter.lane,
+        verb: ORIGIN_PHYSICAL_IDENTITIES.hunter.verb,
       };
     })(),
     prospector: (() => {
@@ -300,6 +311,8 @@ export function getCareerOfferView(state, careerId = null) {
         rewardCredits: view.rewardPreview && view.rewardPreview.credits,
         contractCount: CAREER_ORIGIN_CONTRACTS.prospector.length,
         upgradeKit: ORIGIN_ROLE_KITS.prospector,
+        lane: ORIGIN_PHYSICAL_IDENTITIES.prospector.lane,
+        verb: ORIGIN_PHYSICAL_IDENTITIES.prospector.verb,
       };
     })(),
   };
@@ -319,6 +332,7 @@ export function getCareerOfferView(state, careerId = null) {
   return {
     nonBinding: true,
     focusedCareerId,
+    primaryCareerId: origins[META_KEY].primaryCareerId,
     offers: CAREER_IDS.map((id) => views[id]),
   };
 }
@@ -359,6 +373,39 @@ export function offerCareerOriginsAtDock(state, payload = {}, bus = null) {
     meta.offerNonce += 1;
     emit(bus, CAREER_ORIGINS_EVENTS.OFFERED, {
       stationId: payload.stationId || meta.firstDockStationId,
+      nonce: meta.offerNonce,
+      nonBinding: true,
+      offers: view.offers,
+    });
+  }
+  return view;
+}
+
+/**
+ * Normal-flight entry for the same authored origin bundle. The career FSMs retain their old
+ * firstDock field names for save compatibility, but choosing a path no longer requires opening
+ * any docked surface. Mission Log is the player-facing flight seam.
+ */
+export function offerCareerOriginsInFlight(state, payload = {}, bus = null) {
+  if (!state) return null;
+  if (state.mode !== 'flight' || (state.ui && state.ui.docked)) return getCareerOfferView(state);
+  const origins = ensureCareerOriginsState(state);
+  const meta = origins[META_KEY];
+  const stationId = payload.stationId || meta.firstDockStationId || 'station_helios';
+  const t = simTimeOf(state);
+
+  offerHaulerAtDock(state, stationId, t);
+  onHunterFirstDock(state, { stationId, simTime: t }, null);
+  offerProspectorOrigin(state, { stationId }, null);
+
+  const view = getCareerOfferView(state);
+  const key = view.offers.map((offer) => `${offer.careerId}:${offer.status}`).join('|');
+  if (view.offers.some((offer) => offer.canAccept) && meta.lastBundleKey !== key) {
+    meta.lastBundleKey = key;
+    meta.offerNonce += 1;
+    emit(bus, CAREER_ORIGINS_EVENTS.OFFERED, {
+      stationId,
+      source: payload.source || 'flight',
       nonce: meta.offerNonce,
       nonBinding: true,
       offers: view.offers,
@@ -409,6 +456,7 @@ export function createCareerOriginsSystem() {
     _hunterLostTicks: 0,
     _hunterTelegraphTargetId: null,
     _hunterTelegraphUntilTick: -1,
+    _offerAfterLoad: false,
 
     init(ctx) {
       this.destroy();
@@ -417,6 +465,27 @@ export function createCareerOriginsSystem() {
       this.registry = ctx.registry || null;
       this._subs = [];
       ensureCareerOriginsState(this.state);
+      this._listen('game:started', () => {
+        // main.js does not call careerOrigins.newGame() in its manual bootstrap list. Reset here so
+        // starting another run cannot inherit a prior pilot's identity, then seed the flight log.
+        this.newGame();
+        offerCareerOriginsInFlight(this.state, { source: 'new_game' }, this.bus);
+      });
+      this._listen('save:loaded', () => {
+        this._restoreRouteMarkers();
+        if (this.state.mode === 'flight') {
+          offerCareerOriginsInFlight(this.state, { source: 'save_loaded' }, this.bus);
+        } else {
+          // Desktop Continue holds mode='loading' until authored visuals are ready. Seed only after
+          // main.js commits that same run into flight, never while a load can still fail.
+          this._offerAfterLoad = true;
+        }
+      });
+      this._listen('mode:changed', (payload) => {
+        if (!this._offerAfterLoad || !payload || payload.mode !== 'flight') return;
+        this._offerAfterLoad = false;
+        offerCareerOriginsInFlight(this.state, { source: 'save_loaded' }, this.bus);
+      });
       this._listen('dock:docked', (payload) => {
         offerCareerOriginsAtDock(this.state, payload || {}, this.bus);
         this._resumeRoutesAtDock(payload || {});
@@ -426,6 +495,9 @@ export function createCareerOriginsSystem() {
       });
       this._listen(CAREER_ORIGINS_EVENTS.DECLINE, (payload) => {
         if (payload && payload.careerId) this.decline(payload.careerId);
+      });
+      this._listen(CAREER_ORIGINS_EVENTS.REOFFER, (payload) => {
+        if (payload && payload.careerId) this.reoffer(payload.careerId);
       });
       this._listen(CAREER_ORIGINS_EVENTS.ABANDON, (payload) => {
         if (payload && payload.careerId) this.abandon(payload.careerId);
@@ -481,6 +553,7 @@ export function createCareerOriginsSystem() {
     getOfferView(careerId) { return getCareerOfferView(this.state, careerId); },
     getProgress(careerId) { return getCareerProgress(this.state, careerId); },
     offerAtDock(payload) { return offerCareerOriginsAtDock(this.state, payload || {}, this.bus); },
+    offerInFlight(payload) { return offerCareerOriginsInFlight(this.state, payload || {}, this.bus); },
 
     accept(careerId) {
       const id = String(careerId || '');
@@ -547,9 +620,47 @@ export function createCareerOriginsSystem() {
         const offer = result.missionOffer || result.offer
           || (id !== 'hauler' ? buildOriginContractOffer(this.state, id, 0, 0) : null);
         recordIdentityReceipt(this.state, id, { missionId, offer });
+        if (!origins[META_KEY].primaryCareerId) {
+          origins[META_KEY].primaryCareerId = id;
+          origins[META_KEY].primaryChosenAtS = t;
+          this._grantOriginStarterKit(id);
+        }
         emit(this.bus, CAREER_ORIGINS_EVENTS.ACCEPTED, { careerId: id, nonBinding: true, simTime: t });
       }
       return result;
+    },
+
+    reoffer(careerId) {
+      const id = String(careerId || '');
+      if (!CAREER_IDS.includes(id)) return { ok: false, reason: 'unknown_career' };
+      const route = this._route(id);
+      if (route && route.status === ORIGIN_ROUTE_STATUS.RECOVERING && !route.activeMissionId) {
+        const posted = this._postRouteContract(id);
+        if (posted.ok) return posted;
+        emit(this.bus, 'toast', { text: 'Contract reissue unavailable. Try again shortly.', kind: 'info', ttl: 3 });
+        return posted;
+      }
+
+      const stationId = ensureCareerOriginsState(this.state)[META_KEY].firstDockStationId
+        || 'station_helios';
+      const t = simTimeOf(this.state);
+      let result;
+      if (id === 'hauler') result = offerHaulerAtDock(this.state, stationId, t);
+      else if (id === 'hunter') result = onHunterFirstDock(
+        this.state, { stationId, simTime: t }, this.bus,
+      );
+      else result = offerProspectorOrigin(this.state, { stationId }, this.bus);
+
+      const view = getCareerOfferView(this.state, id);
+      if (view && view.canAccept) {
+        const meta = ensureCareerOriginsState(this.state)[META_KEY];
+        meta.lastBundleKey = null;
+        offerCareerOriginsInFlight(this.state, { stationId, source: 'reoffer' }, this.bus);
+        return { ok: true, offer: view };
+      }
+      const reason = result && result.reason || 'reoffer_cooldown';
+      emit(this.bus, 'toast', { text: 'That path is cooling down. Keep flying, then retry.', kind: 'info', ttl: 3 });
+      return { ok: false, reason };
     },
 
     decline(careerId) {
@@ -617,6 +728,7 @@ export function createCareerOriginsSystem() {
       this._hunterLostTicks = 0;
       this._hunterTelegraphTargetId = null;
       this._hunterTelegraphUntilTick = -1;
+      this._offerAfterLoad = false;
     },
 
     _onMissionCompleted(payload) {
@@ -908,6 +1020,39 @@ export function createCareerOriginsSystem() {
       if (meta.routes[careerId]) meta.routes[careerId].upgradeGranted = true;
       emit(this.bus, 'toast', {
         text: `${kit.label} issued. Fit it at Outfitting.`, kind: 'success', ttl: 5,
+      });
+      return true;
+    },
+
+    _grantOriginStarterKit(careerId) {
+      const origins = ensureCareerOriginsState(this.state);
+      const meta = origins && origins[META_KEY];
+      const kit = ORIGIN_ROLE_KITS[careerId];
+      if (!meta || meta.primaryCareerId !== careerId || !kit || meta.upgradeReceipts[careerId]) {
+        return false;
+      }
+      const ships = this.registry && typeof this.registry.get === 'function'
+        ? this.registry.get('ships') : null;
+      if (!ships || typeof ships.grantModule !== 'function') return false;
+      const granted = ships.grantModule({
+        defId: kit.defId,
+        reason: `career_origin:${careerId}:starter`,
+      });
+      if (!granted) return false;
+      meta.upgradeReceipts[careerId] = {
+        defId: kit.defId,
+        label: kit.label,
+        grantedAtS: simTimeOf(this.state),
+        source: 'primary_origin_start',
+      };
+      if (meta.routes[careerId]) meta.routes[careerId].upgradeGranted = true;
+      const identityReceipt = meta.identityReceipts[careerId];
+      if (identityReceipt && identityReceipt.loadout) {
+        identityReceipt.loadout.status = 'inventory';
+        identityReceipt.loadout.issuedAtS = simTimeOf(this.state);
+      }
+      emit(this.bus, 'toast', {
+        text: `${kit.label} starter kit issued. Fit it when ready.`, kind: 'success', ttl: 5,
       });
       return true;
     },
