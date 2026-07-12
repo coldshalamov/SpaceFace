@@ -28,12 +28,12 @@ export const TECH_NODES = [
   {
     id: 'tech_plasma_dynamics', name: 'Plasma Dynamics', branch: 'combat', prereqs: ['tech_kinetic_drivers', 'tech_beam_focusing'],
     cost: { credits: 90000, rp: 150 },
-    unlocks: { modules: ['wpn_plasma_cannon_m'] },
+    unlocks: { modules: ['wpn_plasma_cannon_m', 'wpn_emp_disruptor_m'] },
   },
   {
     id: 'tech_deflector_theory', name: 'Deflector Theory', branch: 'combat', prereqs: [],
     cost: { credits: 12000, rp: 20 },
-    unlocks: { modules: ['mod_shield_capacitor_m', 'mod_shield_hardener_m'] },
+    unlocks: { modules: ['mod_shield_capacitor_m', 'mod_shield_hardener_m', 'mod_chaff_dispenser_m'] },
   },
   {
     id: 'tech_hardened_deflectors', name: 'Hardened Deflectors', branch: 'combat', prereqs: ['tech_deflector_theory'],
@@ -48,7 +48,7 @@ export const TECH_NODES = [
   {
     id: 'tech_fire_control', name: 'Fire Control', branch: 'combat', prereqs: ['tech_strike_craft'],
     cost: { credits: 80000, rp: 110 },
-    unlocks: { modules: ['mod_targeting_computer_m'] },
+    unlocks: { modules: ['mod_targeting_computer_m', 'mod_ecm_jammer_l'] },
   },
   {
     id: 'tech_warship_license', name: 'Warship License', branch: 'combat', prereqs: ['tech_strike_craft'],
@@ -68,14 +68,14 @@ export const TECH_NODES = [
   {
     id: 'tech_flagship_command', name: 'Flagship Command', branch: 'combat', prereqs: ['tech_capital_hulls', 'tech_graviton_drives'],
     cost: { credits: 2500000, rp: 1200 },
-    unlocks: { ships: ['ship_leviathan'], modules: ['wpn_siege_lance_l'] },
+    unlocks: { ships: ['ship_leviathan'], modules: ['wpn_siege_lance_l', 'mod_massline_spool_l'] },
   },
 
   // ---------------- INDUSTRY branch (5 nodes) ----------------
   {
     id: 'tech_industrial_mining', name: 'Industrial Mining', branch: 'industry', prereqs: [],
     cost: { credits: 25000, rp: 30 },
-    unlocks: { ships: ['ship_ironback'], modules: ['mod_mining_beam_m'] },
+    unlocks: { ships: ['ship_ironback'] },
   },
   {
     id: 'tech_focused_extraction', name: 'Focused Extraction', branch: 'industry', prereqs: ['tech_industrial_mining'],
@@ -90,7 +90,7 @@ export const TECH_NODES = [
   {
     id: 'tech_bulk_logistics', name: 'Bulk Logistics', branch: 'industry', prereqs: [],
     cost: { credits: 20000, rp: 25 },
-    unlocks: { ships: ['ship_atlas'], modules: ['mod_cargo_expander_l'] },
+    unlocks: { ships: ['ship_atlas'], modules: ['mod_cargo_expander_l', 'mod_massline_spool_m'] },
   },
   {
     id: 'tech_matter_compression', name: 'Matter Compression', branch: 'industry', prereqs: ['tech_bulk_logistics'],

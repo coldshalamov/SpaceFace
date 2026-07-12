@@ -12,6 +12,9 @@
 //   catalog numbers (slots/mass/handling/tank/cargo) so declared identity cannot lie.
 
 import { SHIPS } from './ships.js';
+import { MODULES } from './modules.js';
+import { WEAPONS } from './weapons.js';
+import { TECH_NODES } from './tech.js';
 
 export const LATTICE_SCHEMA_ID = 'spaceface.shipRoleLattice.v1';
 export const LATTICE_SCHEMA_VERSION = 1;
@@ -22,6 +25,77 @@ export const LATTICE_DIMENSIONS = Object.freeze([
 ]);
 
 export const CAREER_IDS = Object.freeze(['hauler', 'hunter', 'prospector']);
+
+// A role path is the smallest authored, costed fit that makes the hull's promise concrete.
+// These are recommendations, never free grants: purchase price remains the bare hull price and
+// planHullRolePath() reports the exact additional module + research cost. Quantities matter.
+export const SHIP_ROLE_PATHS = Object.freeze({
+  ship_kestrel: Object.freeze({
+    id: 'path_field_skiff', signatureVerb: 'Mine, tow, or fight without changing hulls.',
+    counterplay: 'Cut the tether and boost away before a specialist can pin the light frame.',
+    kit: Object.freeze([{ defId: 'wpn_pulse_laser_s', count: 1 }, { defId: 'mod_mining_laser_s', count: 1 }, { defId: 'mod_winch_hd', count: 1 }]),
+  }),
+  ship_pelican: Object.freeze({
+    id: 'path_belt_prospector', signatureVerb: 'Run twin extraction heads and stay in the belt longer.',
+    counterplay: 'Use the winch to manage mass, then retreat instead of accepting a dogfight.',
+    kit: Object.freeze([{ defId: 'mod_mining_laser_s', count: 2 }, { defId: 'mod_cargo_pod_m', count: 1 }, { defId: 'mod_drill_amp', count: 1 }]),
+  }),
+  ship_wasp: Object.freeze({
+    id: 'path_light_interdictor', signatureVerb: 'Commit twin light guns and an impulse charge on one fast pass.',
+    counterplay: 'Disengage before heavier arcs settle; the hull wins initiative, not attrition.',
+    kit: Object.freeze([{ defId: 'wpn_pulse_laser_s', count: 1 }, { defId: 'wpn_autocannon_s', count: 1 }, { defId: 'mod_charge_rack', count: 1 }]),
+  }),
+  ship_mule: Object.freeze({
+    id: 'path_low_profile_runner', signatureVerb: 'Move valuable cargo behind a rear deterrent and market read.',
+    counterplay: 'Point the rear mount at pursuit and leave; never turn a freight run into a duel.',
+    kit: Object.freeze([{ defId: 'wpn_flak_turret_s', count: 1 }, { defId: 'mod_smuggler_hold', count: 1 }, { defId: 'mod_market_data_s', count: 1 }]),
+  }),
+  ship_drifter: Object.freeze({
+    id: 'path_control_multirole', signatureVerb: 'Survey, extract, haul, and reposition targets in one field fit.',
+    counterplay: 'Scout the contact first, then use the mixed fit to choose engagement or escape.',
+    kit: Object.freeze([{ defId: 'mod_mining_beam_m', count: 1 }, { defId: 'mod_cargo_pod_m', count: 1 }, { defId: 'mod_survey_suite', count: 1 }, { defId: 'mod_winch_hd', count: 1 }]),
+  }),
+  ship_hornet: Object.freeze({
+    id: 'path_pursuit_striker', signatureVerb: 'Stack three attack arcs with charge-and-ram tools for decisive flybys.',
+    counterplay: 'Break contact after the pass; planted capitals punish a second orbit.',
+    kit: Object.freeze([{ defId: 'wpn_pulse_laser_m', count: 2 }, { defId: 'wpn_autocannon_m', count: 1 }, { defId: 'mod_charge_rack', count: 1 }, { defId: 'mod_ram_plate', count: 1 }]),
+  }),
+  ship_ironback: Object.freeze({
+    id: 'path_industrial_stripmine', signatureVerb: 'Work four seams at capital scale while the winch controls fragments.',
+    counterplay: 'Anchor the worksite and reel mass inward; do not chase raiders in a barge.',
+    kit: Object.freeze([{ defId: 'mod_mining_beam_m', count: 4 }, { defId: 'mod_drill_amp', count: 1 }, { defId: 'mod_winch_hd', count: 1 }]),
+  }),
+  ship_bastion: Object.freeze({
+    id: 'path_broadside_anchor', signatureVerb: 'Plant a four-gun broadside and hold the contract lane.',
+    counterplay: 'Chaff the opening salvo and deny pursuit instead of chasing agile targets.',
+    kit: Object.freeze([{ defId: 'wpn_heavy_beam_l', count: 2 }, { defId: 'wpn_torpedo_l', count: 2 }, { defId: 'mod_targeting_computer_m', count: 1 }, { defId: 'mod_chaff_dispenser_m', count: 1 }]),
+  }),
+  ship_atlas: Object.freeze({
+    id: 'path_bulk_logistics', signatureVerb: 'Move six capital cargo loads and recover freight with a massline.',
+    counterplay: 'Trade turn rate for route planning, tether control, and an early escape decision.',
+    kit: Object.freeze([{ defId: 'mod_cargo_expander_l', count: 6 }, { defId: 'mod_massline_spool_m', count: 1 }, { defId: 'mod_market_data_s', count: 1 }]),
+  }),
+  ship_ranger: Object.freeze({
+    id: 'path_deep_recon', signatureVerb: 'Detect first, jump around danger, and jam the contact that closes.',
+    counterplay: 'Win with information and range; a pinned explorer loses its main advantage.',
+    kit: Object.freeze([{ defId: 'mod_sensor_array_l', count: 1 }, { defId: 'mod_jump_drive_m', count: 1 }, { defId: 'mod_survey_suite', count: 1 }, { defId: 'mod_ecm_jammer_l', count: 1 }]),
+  }),
+  ship_warden: Object.freeze({
+    id: 'path_lane_gunship', signatureVerb: 'Alternate heavy beams and torpedoes while fire control owns the lane.',
+    counterplay: 'Jam priority threats and keep the firing face forward; flanks defeat the gun wall.',
+    kit: Object.freeze([{ defId: 'wpn_heavy_beam_l', count: 2 }, { defId: 'wpn_torpedo_l', count: 2 }, { defId: 'mod_targeting_computer_m', count: 1 }, { defId: 'mod_ecm_jammer_l', count: 1 }]),
+  }),
+  ship_colossus: Object.freeze({
+    id: 'path_capital_center', signatureVerb: 'Plant five capital mounts and absorb the fight around a protected center.',
+    counterplay: 'Use chaff before the focus volley; mass makes late disengagement expensive.',
+    kit: Object.freeze([{ defId: 'wpn_heavy_beam_l', count: 3 }, { defId: 'wpn_torpedo_l', count: 2 }, { defId: 'mod_targeting_computer_m', count: 1 }, { defId: 'mod_chaff_dispenser_m', count: 1 }]),
+  }),
+  ship_leviathan: Object.freeze({
+    id: 'path_command_flagship', signatureVerb: 'Coordinate seven capital arcs and use the massline to shape the battlefield.',
+    counterplay: 'Protect the slow core with escorts, ECM, and deliberate target order.',
+    kit: Object.freeze([{ defId: 'wpn_siege_lance_l', count: 1 }, { defId: 'wpn_heavy_beam_l', count: 4 }, { defId: 'wpn_torpedo_l', count: 2 }, { defId: 'mod_massline_spool_l', count: 1 }, { defId: 'mod_targeting_computer_m', count: 1 }, { defId: 'mod_ecm_jammer_l', count: 1 }]),
+  }),
+});
 
 const SIZE_RANK = Object.freeze({ S: 1, M: 2, L: 3 });
 
@@ -319,6 +393,67 @@ export const SHIP_ROLE_LATTICE = Object.freeze(Object.fromEntries(
 export const LATTICE_SHIP_IDS = Object.freeze(LATTICE_ROWS.map((row) => row.shipId));
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+const FITTABLE_BY_ID = new Map([...MODULES, ...WEAPONS].map((entry) => [entry.id, entry]));
+const TECH_BY_ID = new Map(TECH_NODES.map((entry) => [entry.id, entry]));
+
+function techClosure(ids) {
+  const ordered = [];
+  const seen = new Set();
+  function visit(id) {
+    if (!id || seen.has(id)) return;
+    const node = TECH_BY_ID.get(id);
+    if (!node) return;
+    for (const prereq of node.prereqs || []) visit(prereq);
+    seen.add(id);
+    ordered.push(id);
+  }
+  for (const id of ids) visit(id);
+  return ordered;
+}
+
+/** Exact bare-hull + recommended-role-kit + missing-research cost, with no free-item fiction. */
+export function planHullRolePath(shipId, researchedNodes = []) {
+  const def = SHIP_BY_ID.get(shipId);
+  const path = SHIP_ROLE_PATHS[shipId];
+  if (!def || !path) return null;
+  const researched = researchedNodes instanceof Set ? researchedNodes : new Set(researchedNodes || []);
+  const items = path.kit.map((entry) => {
+    const fitDef = FITTABLE_BY_ID.get(entry.defId);
+    const count = Math.max(1, Math.floor(Number(entry.count) || 1));
+    return Object.freeze({
+      defId: entry.defId,
+      count,
+      name: fitDef ? fitDef.name : entry.defId,
+      slotType: fitDef ? fitDef.slotType : null,
+      size: fitDef ? fitDef.size : null,
+      unitCredits: fitDef ? fitDef.price : 0,
+      credits: fitDef ? fitDef.price * count : 0,
+      requiresTech: fitDef ? fitDef.requiresTech || null : null,
+    });
+  });
+  const directTech = [def.requiresTech, ...items.map((item) => item.requiresTech)].filter(Boolean);
+  const techPathIds = techClosure(directTech);
+  const missingTechIds = techPathIds.filter((id) => !researched.has(id));
+  const hullCredits = Math.max(0, Number(def.price) || 0);
+  const kitCredits = items.reduce((sum, item) => sum + item.credits, 0);
+  const researchCredits = missingTechIds.reduce((sum, id) => sum + (TECH_BY_ID.get(id)?.cost?.credits || 0), 0);
+  const researchPoints = missingTechIds.reduce((sum, id) => sum + (TECH_BY_ID.get(id)?.cost?.rp || 0), 0);
+  return Object.freeze({
+    id: path.id,
+    shipId,
+    signatureVerb: path.signatureVerb,
+    counterplay: path.counterplay,
+    hullCredits,
+    kitCredits,
+    roleReadyCredits: hullCredits + kitCredits,
+    researchCredits,
+    researchPoints,
+    allInCredits: hullCredits + kitCredits + researchCredits,
+    techPathIds: Object.freeze(techPathIds),
+    missingTechIds: Object.freeze(missingTechIds),
+    items: Object.freeze(items),
+  });
+}
 
 export function getLatticeRow(shipId) {
   if (shipId == null) return null;
@@ -386,6 +521,7 @@ export function describeHullRole(shipId) {
     topCareers: Object.freeze(careers),
     upgradeAdjacency: row.upgradeAdjacency,
     counterRoles: row.counterRoles,
+    rolePath: planHullRolePath(shipId),
     dimensions: dims,
     requiresTech: def.requiresTech || null,
   });
@@ -502,6 +638,7 @@ export function validateRoleLattice(ships = SHIPS) {
   }
   for (const id of LATTICE_SHIP_IDS) {
     if (!SHIP_BY_ID.has(id)) errors.push('lattice orphan shipId ' + id);
+    if (!SHIP_ROLE_PATHS[id]) errors.push('missing role path for ' + id);
   }
 
   const roles = new Set();
@@ -529,6 +666,30 @@ export function validateRoleLattice(ships = SHIPS) {
     for (const biasKey of ['opMassBias', 'handlingBias', 'thrustBias', 'turnBias']) {
       const v = row[biasKey];
       if (!(v >= 0.8 && v <= 1.2)) errors.push(def.id + ' ' + biasKey + ' outside safe band');
+    }
+
+    const path = planHullRolePath(def.id);
+    if (!path || !path.signatureVerb || !path.counterplay || path.items.length < 2) {
+      errors.push(def.id + ' role path must name a verb, counterplay, and at least two fittings');
+    }
+    const freeSlots = [];
+    for (const [type, entries] of Object.entries(def.slots || {})) {
+      for (const entry of entries) {
+        freeSlots.push({ type, size: typeof entry === 'string' ? entry : (entry && entry.size) || 'S' });
+      }
+    }
+    for (const item of (path && path.items) || []) {
+      const fitDef = FITTABLE_BY_ID.get(item.defId);
+      if (!fitDef) {
+        errors.push(def.id + ' role path references unknown fitting ' + item.defId);
+        continue;
+      }
+      for (let n = 0; n < item.count; n++) {
+        const slotIndex = freeSlots.findIndex((slot) => slot.type === fitDef.slotType
+          && (SIZE_RANK[slot.size] || 0) >= (SIZE_RANK[fitDef.size] || 0));
+        if (slotIndex < 0) errors.push(def.id + ' role path cannot fit ' + item.defId + ' x' + item.count);
+        else freeSlots.splice(slotIndex, 1);
+      }
     }
   }
 

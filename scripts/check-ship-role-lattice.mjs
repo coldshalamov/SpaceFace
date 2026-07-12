@@ -17,12 +17,14 @@ import {
   LATTICE_SCHEMA_ID,
   LATTICE_SHIP_IDS,
   SHIP_ROLE_LATTICE,
+  SHIP_ROLE_PATHS,
   compareHulls,
   computeHullDimensions,
   describeHullRole,
   findDominatedSameTierHulls,
   flightClassForHull,
   getLatticeRow,
+  planHullRolePath,
   roleOperationalBiases,
   validateRoleLattice,
 } from '../src/data/shipRoleLattice.js';
@@ -39,6 +41,7 @@ import {
 
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+const FITTABLE_BY_ID = new Map([...MODULES, ...WEAPONS].map((d) => [d.id, d]));
 const FAIL = [];
 function check(cond, msg) {
   if (!cond) FAIL.push(msg);
@@ -52,6 +55,63 @@ check(validation.ok, 'validateRoleLattice: ' + validation.errors.join('; '));
 for (const def of SHIPS) {
   check(!!SHIP_ROLE_LATTICE[def.id], 'missing lattice for ' + def.id);
   check(getLatticeRow(def.id).role === def.role, 'role mismatch ' + def.id);
+}
+
+// ---- 2b. Every acquisition opens a costed, compatible role/counterplay path ----
+const pathIds = new Set();
+const signatureVerbs = new Set();
+for (const def of SHIPS) {
+  const path = planHullRolePath(def.id);
+  check(!!SHIP_ROLE_PATHS[def.id], def.id + ' missing authored role path');
+  check(!!path, def.id + ' role path planner result');
+  if (!path) continue;
+  check(!pathIds.has(path.id), def.id + ' duplicate role path id ' + path.id);
+  pathIds.add(path.id);
+  check(!signatureVerbs.has(path.signatureVerb), def.id + ' duplicate signature verb');
+  signatureVerbs.add(path.signatureVerb);
+  check(path.signatureVerb.length >= 20, def.id + ' signature verb too vague');
+  check(path.counterplay.length >= 20, def.id + ' counterplay too vague');
+  check(path.items.length >= 2, def.id + ' role kit too shallow');
+  check(path.kitCredits === path.items.reduce((sum, item) => sum + item.unitCredits * item.count, 0),
+    def.id + ' kit cost must equal catalog items');
+  check(path.roleReadyCredits === def.price + path.kitCredits,
+    def.id + ' role-ready cost must be hull + kit');
+  check(path.allInCredits === path.roleReadyCredits + path.researchCredits,
+    def.id + ' all-in cost must include missing research');
+  check(path.techPathIds.every((id) => TECH_BY_ID.has(id)), def.id + ' role path has unknown tech');
+  for (const item of path.items) {
+    const fitDef = FITTABLE_BY_ID.get(item.defId);
+    check(!!fitDef, def.id + ' role path unknown fitting ' + item.defId);
+    check(item.credits === item.unitCredits * item.count, def.id + ' item extended price ' + item.defId);
+  }
+  const fullyResearched = planHullRolePath(def.id, path.techPathIds);
+  check(fullyResearched.missingTechIds.length === 0, def.id + ' full tech path must clear prerequisites');
+  check(fullyResearched.researchCredits === 0 && fullyResearched.researchPoints === 0,
+    def.id + ' researched path must not charge research twice');
+  const saved = JSON.parse(JSON.stringify({ defId: def.id }));
+  assert.deepEqual(planHullRolePath(saved.defId), path,
+    def.id + ' role path must rehydrate from canonical saved defId');
+}
+check(pathIds.size === 13, 'expected 13 unique role paths');
+check(signatureVerbs.size === 13, 'expected 13 distinct acquisition verbs');
+
+// requiresTech must be bidirectional truth: the named node must visibly unlock the fitting/hull.
+for (const def of [...SHIPS, ...MODULES, ...WEAPONS]) {
+  if (!def.requiresTech) continue;
+  const tech = TECH_BY_ID.get(def.requiresTech);
+  check(!!tech, def.id + ' requires unknown tech ' + def.requiresTech);
+  if (!tech) continue;
+  const list = def.id.startsWith('ship_') ? tech.unlocks?.ships : tech.unlocks?.modules;
+  check(Array.isArray(list) && list.includes(def.id),
+    def.id + ' requires ' + def.requiresTech + ' but that node does not unlock it');
+}
+for (const tech of TECH_NODES) {
+  for (const defId of [...(tech.unlocks?.ships || []), ...(tech.unlocks?.modules || [])]) {
+    const def = SHIP_BY_ID.get(defId) || FITTABLE_BY_ID.get(defId);
+    check(!!def, tech.id + ' unlocks unknown catalog id ' + defId);
+    check(!def?.requiresTech || def.requiresTech === tech.id,
+      tech.id + ' claims ' + defId + ' but its requiresTech is ' + (def?.requiresTech || 'none'));
+  }
 }
 
 // ---- 2. Tier / role coverage ---------------------------------------------------
@@ -314,6 +374,7 @@ console.log(JSON.stringify({
   tiers: [...tiers].sort((a, b) => a - b),
   dominated: 0,
   loadouts: LOADOUTS.length,
+  rolePaths: pathIds.size,
   uniqueDigests: digests.length,
   starterThrustBias: starter.roleBiases.thrustBias,
   sample: {
