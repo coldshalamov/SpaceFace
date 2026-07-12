@@ -806,13 +806,14 @@ export const claims = {
       if (!e || !e.alive || !e.data || e.data.poiId !== body.poiId) continue;
       if (!e.data.claimBaseName) e.data.claimBaseName = e.data.name || body.name;
       e.data.name = def ? e.data.claimBaseName + ' — ' + def.name : e.data.claimBaseName;
+      e.data.claimOwned = body.owned === true;
       e.data.claimSpecId = def ? def.id : null;
     }
   },
 
   _applyAllPoiLabels() {
     for (const body of (this.state.claims && this.state.claims.bodies) || []) {
-      if (body.spec) this._applyPoiLabel(body);
+      this._applyPoiLabel(body);
     }
   },
 

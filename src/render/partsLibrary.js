@@ -51,6 +51,11 @@ const STATION_ARCHETYPE_FILES = Object.freeze([
   'places/place_station_research.glb',
   'places/place_gate_jump_ring.glb',
 ]);
+const CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID = Object.freeze({
+  spec_refinery: 'places/place_claim_outpost_refinery.glb',
+  spec_relay: 'places/place_claim_outpost_relay.glb',
+  spec_bastion: 'places/place_claim_outpost_bastion.glb',
+});
 const PLACE_FILES = Object.freeze([
   'places/place_lane_beacon.glb',
   'places/place_nav_buoy.glb',
@@ -64,6 +69,8 @@ const PLACE_FILES = Object.freeze([
   'places/place_asteroid_rock_b.glb',
   'places/place_asteroid_rock_c.glb',
   'places/place_asteroid_graffiti.glb',
+  'places/place_claim_outpost_base.glb',
+  ...Object.values(CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID),
   ...STATION_ARCHETYPE_FILES,
 ]);
 const PLACE_FILE_BY_ID = Object.freeze(Object.fromEntries(PLACE_FILES.map((file) => [
@@ -523,6 +530,8 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
   boundary.userData.authoredSlots = {};
+  boundary.userData.authoredReadableFallbackRetained = true;
+  boundary.userData.authoredVisualRoot = 'readable-fallback';
   boundary.userData.renderContract = {
     ...((fallbackRoot.userData && fallbackRoot.userData.renderContract) || {}),
     assetBoundary: 'GLTFKit v1 — authored world-place prop',
@@ -560,7 +569,10 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
 
 async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, options, setActive) {
   const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
-  const record = await loadAuthoredPart(`${partRoot}${placeFile}`, {
+  const loadPart = options && typeof options.loadAuthoredPart === 'function'
+    ? options.loadAuthoredPart
+    : loadAuthoredPart;
+  const record = await loadPart(`${partRoot}${placeFile}`, {
     renderer,
     slot: 'place',
     optional: true,
@@ -573,35 +585,23 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   const authored = buildPlacePropRoot(entity, record, scene, boundary);
   if (!authored || !boundary.parent) return false;
 
-  const retainFallback = shouldRetainReadableWorldFallback(fallbackRoot, entity, authored);
-  if (retainFallback) {
-    markReadableFallbackLayer(fallbackRoot);
-    boundary.add(authored.root);
-  } else {
-    boundary.remove(fallbackRoot);
-    boundary.add(authored.root);
-  }
-  const activeRoot = retainFallback ? fallbackRoot : authored.root;
-  setActive(activeRoot);
+  // A validated place record is the readability authority. Keep the procedural shell only while
+  // loading or after failure; successful world-place upgrades must not double-render both bodies.
+  boundary.remove(fallbackRoot);
+  boundary.add(authored.root);
+  setActive(authored.root);
   boundary.userData.authoredAssetState = 'authored';
-  boundary.userData.authoredReadableFallbackRetained = retainFallback;
-  boundary.userData.authoredVisualRoot = retainFallback ? 'readable-fallback' : 'authored-root';
+  boundary.userData.authoredReadableFallbackRetained = false;
+  boundary.userData.authoredVisualRoot = 'authored-root';
   boundary.userData.authoredParts = authored.authoredParts;
   boundary.userData.authoredSlots = authored.authoredSlots;
   boundary.userData.authoredCompositionId = authored.root.userData.assetId;
   boundary.userData.authoredRenderContract = authored.root.userData.renderContract;
   boundary.userData.__socketCache = new Map();
 
-  if (!retainFallback) {
-    try { disposeDetachedObject(fallbackRoot); }
-    catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
-  }
+  try { disposeDetachedPlaceFallback(fallbackRoot); }
+  catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
   return true;
-}
-
-function shouldRetainReadableWorldFallback(fallbackRoot, entity, authored) {
-  if (!fallbackRoot || !fallbackRoot.isObject3D || !entity || !authored || !authored.root) return false;
-  return entity.type === 'station' || entity.type === 'fx';
 }
 
 function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
@@ -713,23 +713,28 @@ function buildFallbackPlaceProp(entity, placeFile) {
 }
 
 function getFallbackPlaceGeometry() {
-  if (!fallbackPlaceGeometry) fallbackPlaceGeometry = new THREE.BoxGeometry(1, 1, 1);
+  if (!fallbackPlaceGeometry) fallbackPlaceGeometry = markSharedFallbackGeometry(new THREE.BoxGeometry(1, 1, 1));
   return fallbackPlaceGeometry;
 }
 
 function getFallbackStationCoreGeometry() {
-  if (!fallbackStationCoreGeometry) fallbackStationCoreGeometry = new THREE.CylinderGeometry(0.42, 0.5, 0.72, 10);
+  if (!fallbackStationCoreGeometry) fallbackStationCoreGeometry = markSharedFallbackGeometry(new THREE.CylinderGeometry(0.42, 0.5, 0.72, 10));
   return fallbackStationCoreGeometry;
 }
 
 function getFallbackStationRingGeometry() {
-  if (!fallbackStationRingGeometry) fallbackStationRingGeometry = new THREE.TorusGeometry(0.82, 0.055, 10, 36);
+  if (!fallbackStationRingGeometry) fallbackStationRingGeometry = markSharedFallbackGeometry(new THREE.TorusGeometry(0.82, 0.055, 10, 36));
   return fallbackStationRingGeometry;
 }
 
 function getFallbackStationSparGeometry() {
-  if (!fallbackStationSparGeometry) fallbackStationSparGeometry = new THREE.BoxGeometry(0.16, 0.12, 0.72);
+  if (!fallbackStationSparGeometry) fallbackStationSparGeometry = markSharedFallbackGeometry(new THREE.BoxGeometry(0.16, 0.12, 0.72));
   return fallbackStationSparGeometry;
+}
+
+function markSharedFallbackGeometry(geometry) {
+  geometry.userData = { ...(geometry.userData || {}), spacefaceSharedFallback: true };
+  return geometry;
 }
 
 function fallbackPlaceColor(placeId, paletteClass) {
@@ -743,6 +748,9 @@ function fallbackPlaceColor(placeId, paletteClass) {
 
 function placeFileForEntity(entity) {
   const data = entity && entity.data || {};
+  const claimSpecializationFile = CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID[String(data.claimSpecId || '')];
+  if (claimSpecializationFile) return claimSpecializationFile;
+  if (data.claimOwned === true) return 'places/place_claim_outpost_base.glb';
   const id = String(
     data.archetypeGlb || data.landmarkGlb || data.placeId || data.assetId || '',
   ).replace(/^places\//, '').replace(/\.glb$/, '');
@@ -1511,6 +1519,7 @@ function compositionPrimitives(record) {
     }
     const geometries = bucket.primitives.map((primitive) => {
       const geometry = primitive.geometry.clone();
+      promoteStaticPositionToFloat(geometry);
       if (bucket.anchorMatrix) {
         BATCH_INVERSE.copy(bucket.anchorMatrix).invert();
         BATCH_LOCAL.multiplyMatrices(BATCH_INVERSE, primitive.matrix);
@@ -1744,6 +1753,7 @@ function flushStaticBatch(parent, bindings, bucket) {
   if (!merged) {
     for (const entry of bucket.entries) {
       const geometry = entry.primitive.geometry.clone();
+      promoteStaticPositionToFloat(geometry);
       geometry.applyMatrix4(entry.primitive.matrix);
       geometry.applyMatrix4(entry.partMatrix);
       addStaticBatchMesh(parent, bindings, geometry, material, bucket.tags, [entry.record && entry.record.url], entry.primitive.name);
@@ -1794,6 +1804,7 @@ function flushStaticBatchGroup(parent, bindings, buckets) {
 function buildStaticBatchGeometry(bucket) {
   const geometries = normalizeStaticBatchGeometries(bucket.entries.map((entry) => {
     const geometry = entry.primitive.geometry.clone();
+    promoteStaticPositionToFloat(geometry);
     geometry.applyMatrix4(entry.primitive.matrix);
     geometry.applyMatrix4(entry.partMatrix);
     return geometry;
@@ -1803,6 +1814,26 @@ function buildStaticBatchGeometry(bucket) {
     if (geometry && typeof geometry.dispose === 'function') geometry.dispose();
   }
   return merged || null;
+}
+
+// KHR_mesh_quantization commonly stores POSITION as normalized Int16. BufferGeometry.applyMatrix4()
+// writes transformed coordinates back through BufferAttribute.setXYZ(); retaining the integer
+// attribute there clamps/overflows metre-scale transforms into an approximately two-unit cube.
+// Promote only the cloned, transform-bound position buffer so source/release bytes stay quantized.
+function promoteStaticPositionToFloat(geometry) {
+  if (!geometry || typeof geometry.getAttribute !== 'function') return geometry;
+  const position = geometry.getAttribute('position');
+  if (!position || position.array instanceof Float32Array) return geometry;
+  const values = new Float32Array(position.count * position.itemSize);
+  for (let i = 0; i < position.count; i++) {
+    const offset = i * position.itemSize;
+    values[offset] = position.getX(i);
+    if (position.itemSize > 1) values[offset + 1] = position.getY(i);
+    if (position.itemSize > 2) values[offset + 2] = position.getZ(i);
+    if (position.itemSize > 3) values[offset + 3] = position.getW(i);
+  }
+  geometry.setAttribute('position', new THREE.BufferAttribute(values, position.itemSize, false));
+  return geometry;
 }
 
 function normalizeStaticBatchGeometries(geometries) {
@@ -3003,6 +3034,24 @@ function disposeDetachedObject(root) {
     const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
     for (const material of materials) if (material && typeof material.dispose === 'function') material.dispose();
   });
+}
+
+function disposeDetachedPlaceFallback(root) {
+  const geometries = new Set();
+  const materials = new Set();
+  root.traverse((object) => {
+    if (object.geometry) geometries.add(object.geometry);
+    const list = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
+    for (const material of list) if (material) materials.add(material);
+  });
+  for (const geometry of geometries) {
+    if (geometry.userData && geometry.userData.spacefaceSharedFallback) continue;
+    if (typeof geometry.dispose === 'function') geometry.dispose();
+  }
+  for (const material of materials) {
+    if (material.userData && material.userData.spacefaceSharedAsset) continue;
+    if (typeof material.dispose === 'function') material.dispose();
+  }
 }
 
 function hashString(value) {

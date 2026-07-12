@@ -1000,6 +1000,62 @@
       "ktx2Textures": 9,
       "meshoptBufferViews": 13,
       "contractNodeCount": 8
+    },
+    {
+      "id": "place_claim_outpost_base",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_claim_outpost_base.glb",
+      "release": "assets/ships/release/parts/places/place_claim_outpost_base.glb",
+      "sourceSha256": "f3a2ac6441c9eddf75a7b6def338d7203394aaa178bac0de2385f7765e8f6f30",
+      "releaseSha256": "6dab7e40086ddd6c0041977fac879069875d99a1aed52f2cb37962352658b4f0",
+      "sourceBytes": 6835992,
+      "releaseBytes": 7113496,
+      "textures": 15,
+      "ktx2Textures": 15,
+      "meshoptBufferViews": 65,
+      "contractNodeCount": 22
+    },
+    {
+      "id": "place_claim_outpost_refinery",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_claim_outpost_refinery.glb",
+      "release": "assets/ships/release/parts/places/place_claim_outpost_refinery.glb",
+      "sourceSha256": "00ea8e50883d3121298f53f7fcab0092b4d170e8c6e1e19696aef1c32b7e12ef",
+      "releaseSha256": "63802aa4f426a9031139e939e16f47d0e1e9fc37ea4c1f6c86bb914ec9cf82c7",
+      "sourceBytes": 12409820,
+      "releaseBytes": 8180092,
+      "textures": 15,
+      "ktx2Textures": 15,
+      "meshoptBufferViews": 65,
+      "contractNodeCount": 22
+    },
+    {
+      "id": "place_claim_outpost_relay",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_claim_outpost_relay.glb",
+      "release": "assets/ships/release/parts/places/place_claim_outpost_relay.glb",
+      "sourceSha256": "a93c7b4d8fd23fa925fb99c025a544dacf13716e374261b8c487399c2196fda8",
+      "releaseSha256": "dc07ebef0ea61a45e778ecbb8a9ac4dfda4e71e4970433337e0ead084fffdcc2",
+      "sourceBytes": 13230948,
+      "releaseBytes": 8303864,
+      "textures": 15,
+      "ktx2Textures": 15,
+      "meshoptBufferViews": 65,
+      "contractNodeCount": 22
+    },
+    {
+      "id": "place_claim_outpost_bastion",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_claim_outpost_bastion.glb",
+      "release": "assets/ships/release/parts/places/place_claim_outpost_bastion.glb",
+      "sourceSha256": "3362d2e412c81e6798b03ee048536d8520e8acf0351821ca7e04c2463daa74f5",
+      "releaseSha256": "bfb256d3eb1a78564011d60abd50480c1af97ab4d2358d5db5d89e08c3097eff",
+      "sourceBytes": 9472792,
+      "releaseBytes": 7686812,
+      "textures": 15,
+      "ktx2Textures": 15,
+      "meshoptBufferViews": 65,
+      "contractNodeCount": 22
     }
   ]
 }

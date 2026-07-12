@@ -164,8 +164,13 @@ function ensureTangents(gltf, binary) {
   return bin;
 }
 
+const sourceRootArg = process.argv.find((arg) => arg.startsWith('--source-root='));
+const SOURCE_ROOT = sourceRootArg
+  ? resolve(ROOT, sourceRootArg.slice('--source-root='.length))
+  : resolve(ROOT, 'assets/ships/parts/places');
+
 function fixPart(partId) {
-  const path = resolve(ROOT, 'assets/ships/parts/places', `${partId}.glb`);
+  const path = resolve(SOURCE_ROOT, `${partId}.glb`);
   const { gltf, binary } = parseGlb(readFileSync(path));
 
   for (const node of gltf.nodes || []) {

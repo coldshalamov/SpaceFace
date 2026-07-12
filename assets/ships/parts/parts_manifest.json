@@ -3780,6 +3780,246 @@
         ]
       },
       "note": "Black-market grit dock — scuffed plates, dim heat lamps."
+    },
+    {
+      "id": "place_claim_outpost_base",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_claim_outpost_base.glb",
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "mount": "origin",
+      "tris": 15384,
+      "bytes": 6835992,
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Structure_Core",
+        "SOCKET_Dock_Approach",
+        "SOCKET_Emissive",
+        "SOCKET_Module_Depot",
+        "SOCKET_Module_Refinery",
+        "SOCKET_Module_Defense",
+        "SOCKET_Module_Teleporter"
+      ],
+      "bounds": {
+        "min": [
+          -47.0226,
+          -17.6696,
+          -47.0226
+        ],
+        "max": [
+          55.5,
+          12.5,
+          47.0226
+        ],
+        "dimensionsM": [
+          102.5226,
+          30.1696,
+          94.0452
+        ]
+      },
+      "note": "Claim Anchor; player claim growth family, PBR, explicit LOD0/1/2. LOD0 15384 tris / 5 draw groups."
+    },
+    {
+      "id": "place_claim_outpost_refinery",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_claim_outpost_refinery.glb",
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "mount": "origin",
+      "tris": 56760,
+      "bytes": 12409820,
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Structure_Core",
+        "SOCKET_Dock_Approach",
+        "SOCKET_Emissive",
+        "SOCKET_Module_Depot",
+        "SOCKET_Module_Refinery",
+        "SOCKET_Module_Defense",
+        "SOCKET_Module_Teleporter"
+      ],
+      "bounds": {
+        "min": [
+          -50.8652,
+          -17.6696,
+          -50.8652
+        ],
+        "max": [
+          55.5,
+          30.93,
+          47.0226
+        ],
+        "dimensionsM": [
+          106.3652,
+          48.5996,
+          97.8878
+        ]
+      },
+      "note": "Industrial Refinery Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 56760 tris / 5 draw groups."
+    },
+    {
+      "id": "place_claim_outpost_relay",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_claim_outpost_relay.glb",
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "mount": "origin",
+      "tris": 59052,
+      "bytes": 13230948,
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Structure_Core",
+        "SOCKET_Dock_Approach",
+        "SOCKET_Emissive",
+        "SOCKET_Module_Depot",
+        "SOCKET_Module_Refinery",
+        "SOCKET_Module_Defense",
+        "SOCKET_Module_Teleporter"
+      ],
+      "bounds": {
+        "min": [
+          -48.8364,
+          -17.6696,
+          -47.9295
+        ],
+        "max": [
+          55.5,
+          37.65,
+          47.9295
+        ],
+        "dimensionsM": [
+          104.3364,
+          55.3196,
+          95.859
+        ]
+      },
+      "note": "Trade Relay Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 59052 tris / 5 draw groups."
+    },
+    {
+      "id": "place_claim_outpost_bastion",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_claim_outpost_bastion.glb",
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "mount": "origin",
+      "tris": 33212,
+      "bytes": 9472792,
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Structure_Core",
+        "SOCKET_Dock_Approach",
+        "SOCKET_Emissive",
+        "SOCKET_Module_Depot",
+        "SOCKET_Module_Refinery",
+        "SOCKET_Module_Defense",
+        "SOCKET_Module_Teleporter"
+      ],
+      "bounds": {
+        "min": [
+          -47.0226,
+          -17.6696,
+          -47.0226
+        ],
+        "max": [
+          55.5,
+          39.55,
+          47.0226
+        ],
+        "dimensionsM": [
+          102.5226,
+          57.2196,
+          94.0452
+        ]
+      },
+      "note": "Defense Bastion Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 33212 tris / 5 draw groups."
     }
   ],
   "runtimeSlots": {
