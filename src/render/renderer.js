@@ -29,6 +29,7 @@ import { getPostRenderTargetTelemetry, resetPostRenderTargetSampleCounter } from
 import { precompilePipelines } from './precompile.js';
 import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
+import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
@@ -436,6 +437,7 @@ function requestAuthoredUpgrade(mesh, renderer, scene) {
 }
 
 function configureShadowCasters(root) {
+  configureRealtimeCanopyMaterials(root);
   root.traverse((o) => {
     if (!o.isMesh) return;
     if (!o.visible) { o.castShadow = false; o.receiveShadow = false; return; }
@@ -498,7 +500,10 @@ export const render = {
     // intercepted before the procedural visualFactory. Narrow + failure-isolated — any throw falls
     // back to the original procedural builder, so non-Kestrel entities are completely unaffected.
     installVisualOverrides(vf, {
-      onAuthoredAssetSwap: () => { this._shadowReceiversDirty = true; },
+      onAuthoredAssetSwap: ({ boundary, root } = {}) => {
+        configureRealtimeCanopyMaterials(boundary || root);
+        this._shadowReceiversDirty = true;
+      },
     });
 
     // Bake a PMREM environment map from the nebula backdrop (scene.background) so chrome/authority

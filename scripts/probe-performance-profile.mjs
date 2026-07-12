@@ -1200,6 +1200,93 @@ async function runDiagnosticVariants(cdp) {
       })()`,
     },
     {
+      name: 'shadows-off-diagnostic',
+      note: 'Diagnostic only: disables the live shadow map and shadow sampling to isolate their aggregate GPU cost; never persists or changes defaults.',
+      apply: `(() => {
+        const sf = window.SF || null;
+        const state = sf && sf.state;
+        const video = state && state.settings && state.settings.video;
+        const bus = sf && sf.bus;
+        if (!state || !video || !bus || typeof bus.emit !== 'function') return { applied: false };
+        window.__SF_PERF_VARIANT_RESTORE__ = window.__SF_PERF_VARIANT_RESTORE__ || {};
+        window.__SF_PERF_VARIANT_RESTORE__.shadows = video.shadows;
+        video.shadows = false;
+        bus.emit('settings:changed', { section: 'video', key: 'shadows', value: false, diagnostic: true });
+        return { applied: true, shadows: video.shadows };
+      })()`,
+      restore: `(() => {
+        const sf = window.SF || null;
+        const state = sf && sf.state;
+        const video = state && state.settings && state.settings.video;
+        const bus = sf && sf.bus;
+        const saved = window.__SF_PERF_VARIANT_RESTORE__ || {};
+        if (video && saved.shadows !== undefined) video.shadows = saved.shadows;
+        if (bus && typeof bus.emit === 'function') {
+          bus.emit('settings:changed', { section: 'video', key: 'shadows', value: video && video.shadows, diagnostic: true });
+        }
+        return { restored: true, shadows: video && video.shadows };
+      })()`,
+    },
+    {
+      name: 'transparent-surfaces-hidden-diagnostic',
+      note: 'Diagnostic only: hides transparent WebGL surfaces to isolate canopy/plume/decal/VFX overdraw; restores exact visibility after sampling.',
+      apply: `(() => {
+        const scene = window.SF && window.SF.state && window.SF.state.render && window.SF.state.render.scene;
+        if (!scene || typeof scene.traverse !== 'function') return { applied: false };
+        const saved = [];
+        scene.traverse((object) => {
+          if (!object || !object.isMesh || object.visible === false) return;
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          if (!materials.some((material) => material && material.transparent === true)) return;
+          saved.push({ object, visible: object.visible });
+          object.visible = false;
+        });
+        window.__SF_PERF_VARIANT_RESTORE__ = window.__SF_PERF_VARIANT_RESTORE__ || {};
+        window.__SF_PERF_VARIANT_RESTORE__.transparentSurfaces = saved;
+        return { applied: true, hiddenSurfaces: saved.length };
+      })()`,
+      restore: `(() => {
+        const saved = window.__SF_PERF_VARIANT_RESTORE__ && window.__SF_PERF_VARIANT_RESTORE__.transparentSurfaces || [];
+        for (const entry of saved) {
+          if (entry && entry.object) entry.object.visible = entry.visible;
+        }
+        return { restored: true, restoredSurfaces: saved.length };
+      })()`,
+    },
+    {
+      name: 'canopy-transmission-off-diagnostic',
+      note: 'Diagnostic only: keeps canopy geometry visible but disables physical transmission to isolate Three.js transmission prepass cost.',
+      apply: `(() => {
+        const scene = window.SF && window.SF.state && window.SF.state.render && window.SF.state.render.scene;
+        if (!scene || typeof scene.traverse !== 'function') return { applied: false };
+        const saved = [];
+        const seen = new Set();
+        scene.traverse((object) => {
+          if (!object || !object.isMesh) return;
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          for (const material of materials) {
+            if (!material || seen.has(material) || !(Number(material.transmission) > 0)) continue;
+            seen.add(material);
+            saved.push({ material, transmission: material.transmission });
+            material.transmission = 0;
+            material.needsUpdate = true;
+          }
+        });
+        window.__SF_PERF_VARIANT_RESTORE__ = window.__SF_PERF_VARIANT_RESTORE__ || {};
+        window.__SF_PERF_VARIANT_RESTORE__.canopyTransmission = saved;
+        return { applied: true, changedMaterials: saved.length };
+      })()`,
+      restore: `(() => {
+        const saved = window.__SF_PERF_VARIANT_RESTORE__ && window.__SF_PERF_VARIANT_RESTORE__.canopyTransmission || [];
+        for (const entry of saved) {
+          if (!entry || !entry.material) continue;
+          entry.material.transmission = entry.transmission;
+          entry.material.needsUpdate = true;
+        }
+        return { restored: true, restoredMaterials: saved.length };
+      })()`,
+    },
+    {
       name: 'bloom-off-straight-render',
       note: 'Diagnostic only: disables the post bloom path to measure post-processing cost; not a quality-preserving fix.',
       apply: `(() => {
