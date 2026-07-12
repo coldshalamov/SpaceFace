@@ -28,13 +28,14 @@ import { PERSISTENT_CARGO } from '../data/narrative.js';
 import { estimateBrakingSolution } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { BINDINGS } from './bindings.js';
-import { SEMANTIC_PALETTE } from './accessibility.js';
+import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
 import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './screens/market.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
+import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -295,6 +296,168 @@ export function resolveObjectiveHudLayout(width, height) {
 }
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+// Live flight-binding labels (matches settings rebind + help): settings overrides → scheme → classic.
+// Used so tether reel/cut prompts never hard-code a key that can drift from input.js.
+function codeToBindingLabel(code) {
+  if (!code) return '';
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+  if (/^Digit\d$/.test(code)) return code.slice(5);
+  if (code.startsWith('Arrow')) return { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' }[code] || code;
+  if (code === 'Space') return 'Space';
+  if (code === 'ShiftLeft') return 'L-Shift';
+  if (code === 'ShiftRight') return 'R-Shift';
+  if (code === 'ControlLeft') return 'L-Ctrl';
+  if (code === 'ControlRight') return 'R-Ctrl';
+  if (code === 'AltLeft') return 'L-Alt';
+  if (code === 'AltRight') return 'R-Alt';
+  return code;
+}
+
+function resolveActionCodes(state, action) {
+  const cfg = state && state.settings && state.settings.controls && state.settings.controls.bindings;
+  const schemeName = state && state.settings && state.settings.gameplay && state.settings.gameplay.controlScheme;
+  const schemes = (INPUT_DEFAULTS && INPUT_DEFAULTS.SCHEMES) || {};
+  const scheme = schemes[schemeName] || schemes.pilot || (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || {};
+  // Explicit empty settings override (e.g. tether: []) must not fall through to scheme/defaults.
+  // Absent key → scheme → classic DEFAULTS. Present key (even []) is the player's override.
+  let list;
+  if (cfg && Object.prototype.hasOwnProperty.call(cfg, action)) {
+    list = cfg[action];
+  } else {
+    list = scheme[action] || (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS && INPUT_DEFAULTS.BINDINGS[action]);
+  }
+  if (Array.isArray(list)) return list.filter(Boolean);
+  return list ? [list] : [];
+}
+
+function resolveActionLabel(state, action) {
+  const codes = resolveActionCodes(state, action);
+  if (!codes.length) return '';
+  return codes.map(codeToBindingLabel).filter(Boolean).join('/');
+}
+
+// M1 doctrine player-tells: map live ai:telegraph kinds (+ doctrineId fallback) to HUD tell ids.
+const DOCTRINE_TELL_BY_KIND = Object.freeze({
+  engine_flare: 'FLYBY',
+  attach_spool: 'TETHER',
+  weapon_charge: 'CHARGE',
+});
+const DOCTRINE_TELL_BY_ID = Object.freeze({
+  interceptor_flyby: 'FLYBY',
+  tether_control_raider: 'TETHER',
+  ranged_disengager: 'CHARGE',
+});
+const DOCTRINE_TELL_HINT = Object.freeze({
+  FLYBY: 'Break the beam',
+  TETHER: 'Deny the latch',
+  CHARGE: 'Close or break LOS',
+});
+const DOCTRINE_TELL_ICON = Object.freeze({
+  FLYBY: SEMANTIC_PALETTE.danger?.icon || '⛔',
+  TETHER: SEMANTIC_PALETTE.warning?.icon || '⚠',
+  CHARGE: SEMANTIC_PALETTE.danger?.icon || '⛔',
+});
+const TELL_POOL_SIZE = 3;
+const DEFAULT_TELEGRAPH_TICKS = 30;
+const TELL_VISUAL_WIDTH = 240;
+const TELL_VISUAL_HEIGHT = 30;
+const TELL_LAYOUT_GAP = 8;
+
+export function doctrineTellKind(payload) {
+  if (!payload) return null;
+  const byKind = DOCTRINE_TELL_BY_KIND[String(payload.kind || '')];
+  if (byKind) return byKind;
+  return DOCTRINE_TELL_BY_ID[String(payload.doctrineId || '')] || null;
+}
+
+function rectsOverlap(a, b) {
+  return a.x < b.x + b.width
+    && a.x + a.width > b.x
+    && a.y < b.y + b.height
+    && a.y + a.height > b.y;
+}
+
+/**
+ * Place one transient doctrine tell without covering the persistent objective/vitals/action/radar
+ * anchors. `projected` is the authoritative worldToScreen result; the returned direction always
+ * follows that original projection even when the chip yields to a reserved HUD rectangle.
+ */
+export function resolveDoctrineTellPlacement(width, height, projected, slotIndex = 0) {
+  const w = Math.max(320, Number(width) || 1280);
+  const h = Math.max(240, Number(height) || 720);
+  const px = Number(projected && projected.x);
+  const py = Number(projected && projected.y);
+  if (!Number.isFinite(px) || !Number.isFinite(py)) return null;
+
+  const chipWidth = Math.min(TELL_VISUAL_WIDTH, w - 16);
+  const chipHeight = TELL_VISUAL_HEIGHT;
+  const halfW = chipWidth / 2;
+  const halfH = chipHeight / 2;
+  const centerX = w / 2;
+  const centerY = h / 2;
+  let dx = px - centerX;
+  let dy = py - centerY;
+  const length = Math.hypot(dx, dy);
+  if (length < 0.001) {
+    dx = 0;
+    dy = -1;
+  } else {
+    dx /= length;
+    dy /= length;
+  }
+  const directionDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+  const onScreen = !!(projected && projected.onScreen);
+  const stackOffset = Math.max(0, Math.min(TELL_POOL_SIZE - 1, Math.floor(Number(slotIndex) || 0)))
+    * (chipHeight + 6);
+  let x;
+  let y;
+  if (onScreen) {
+    x = Math.max(halfW + TELL_LAYOUT_GAP, Math.min(w - halfW - TELL_LAYOUT_GAP, px));
+    y = Math.max(halfH + TELL_LAYOUT_GAP,
+      Math.min(h - halfH - TELL_LAYOUT_GAP, py - 38 - stackOffset));
+  } else {
+    const extentX = Math.max(1, centerX - halfW - TELL_LAYOUT_GAP);
+    const extentY = Math.max(1, centerY - halfH - TELL_LAYOUT_GAP);
+    const tx = Math.abs(dx) > 0.001 ? extentX / Math.abs(dx) : Infinity;
+    const ty = Math.abs(dy) > 0.001 ? extentY / Math.abs(dy) : Infinity;
+    const edgeDistance = Math.min(tx, ty);
+    x = centerX + dx * edgeDistance;
+    y = centerY + dy * edgeDistance - stackOffset;
+    y = Math.max(halfH + TELL_LAYOUT_GAP, Math.min(h - halfH - TELL_LAYOUT_GAP, y));
+  }
+
+  const layout = resolveObjectiveHudLayout(w, h);
+  const reserved = [layout.objective, layout.vitals, layout.action, layout.rightDock];
+  const asRect = (cx, cy) => ({
+    x: cx - halfW,
+    y: cy - halfH,
+    width: chipWidth,
+    height: chipHeight,
+  });
+  for (let pass = 0; pass < reserved.length; pass++) {
+    const collision = reserved.find((anchor) => rectsOverlap(asRect(x, y), anchor));
+    if (!collision) break;
+    // A corner chip can touch two stacked anchors (objective + vitals, or right dock + action).
+    // Consider the outer edge of every reserved rectangle so one adjustment can clear the stack.
+    const candidates = reserved.flatMap((anchor) => [
+      { x, y: anchor.y - halfH - TELL_LAYOUT_GAP },
+      { x, y: anchor.y + anchor.height + halfH + TELL_LAYOUT_GAP },
+      { x: anchor.x - halfW - TELL_LAYOUT_GAP, y },
+      { x: anchor.x + anchor.width + halfW + TELL_LAYOUT_GAP, y },
+    ]).map((candidate) => ({
+      x: Math.max(halfW + TELL_LAYOUT_GAP, Math.min(w - halfW - TELL_LAYOUT_GAP, candidate.x)),
+      y: Math.max(halfH + TELL_LAYOUT_GAP, Math.min(h - halfH - TELL_LAYOUT_GAP, candidate.y)),
+    })).filter((candidate) => reserved.every((anchor) => !rectsOverlap(asRect(candidate.x, candidate.y), anchor)));
+    if (!candidates.length) return null;
+    candidates.sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y));
+    x = candidates[0].x;
+    y = candidates[0].y;
+  }
+
+  return { x, y, width: chipWidth, height: chipHeight, onScreen, directionDeg };
+}
+
 function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
 function setScaleX(el, value) {
   if (!el) return;
@@ -881,6 +1044,216 @@ export function createHud(ctx, alerts) {
       }, 220); // let the fade-out finish before hiding
     }, ttl);
   });
+
+  // ---- M1 doctrine player-tells (FLYBY / TETHER / CHARGE) + truthful tether prompt ownership ----
+  // Max three pooled tell chips. Enemy-linked when on-screen; truthful off-screen edge chip with
+  // direction (text chip — not a visor/screen-edge arc). Listens to live ai:telegraph from
+  // tacticalAI combatDoctrine (engine_flare / attach_spool / weapon_charge).
+  if (!document.getElementById('sf-tell-style')) {
+    const ts = document.createElement('style');
+    ts.id = 'sf-tell-style';
+    ts.textContent = `
+    .sf-tells { position:absolute; inset:0; z-index:36; pointer-events:none; overflow:hidden; }
+    .sf-tell {
+      position:absolute; left:0; top:0; display:none; align-items:center; gap:6px;
+      max-width:min(42vw, 280px); padding:5px 10px 5px 8px; border-radius:4px;
+      background:rgba(5,9,18,.88); border:1px solid rgba(255,92,92,.55);
+      color:var(--ink, #d7e6ff); font-family:var(--mono, Consolas, monospace);
+      font-size:12px; letter-spacing:.04em; line-height:1.2; white-space:nowrap;
+      will-change:transform, opacity; opacity:0;
+      box-shadow:0 2px 10px rgba(0,0,0,.35);
+    }
+    .sf-tell.is-on { display:inline-flex; opacity:1; }
+    .sf-tell--FLYBY { border-color:rgba(255,92,92,.7); }
+    .sf-tell--TETHER { border-color:rgba(255,179,92,.7); }
+    .sf-tell--CHARGE { border-color:rgba(255,92,92,.7); }
+    .sf-tell__icon { font-size:11px; opacity:.95; flex:0 0 auto; }
+    .sf-tell__kind { font-weight:700; letter-spacing:.14em; font-size:11px; color:#ff5c5c; }
+    .sf-tell--TETHER .sf-tell__kind { color:#ffb35c; }
+    .sf-tell__hint { color:rgba(215,230,255,.82); letter-spacing:.02em; font-size:11px;
+      text-transform:none; overflow:hidden; text-overflow:ellipsis; }
+    .sf-tell__dir { color:rgba(215,230,255,.9); font-size:12px; margin-left:2px; flex:0 0 auto; }
+    .sf-tell.is-offscreen .sf-tell__dir { display:inline; }
+    .sf-tell:not(.is-offscreen) .sf-tell__dir { display:none; }
+    .sf-tell.is-pulse { animation:sf-tell-pulse .45s ease-out 1; }
+    @keyframes sf-tell-pulse {
+      0% { filter:brightness(1.35); }
+      100% { filter:brightness(1); }
+    }
+    html.sf-reduce-motion .sf-tell.is-pulse,
+    html.sf-reduce-flash .sf-tell.is-pulse { animation:none !important; }
+    @media (prefers-reduced-motion: reduce) {
+      .sf-tell.is-pulse { animation:none !important; }
+    }
+    `;
+    document.head.appendChild(ts);
+  }
+  const tellRoot = document.createElement('div');
+  tellRoot.className = 'sf-tells';
+  // Visual chips are decorative for AT; a single shared assertive region announces once.
+  tellRoot.setAttribute('aria-hidden', 'true');
+  root.appendChild(tellRoot);
+  // Reuse the existing assertive live region when present; otherwise a dedicated tell announcer.
+  const tellLiveAssertive = liveAssertive || (() => {
+    const el = document.createElement('div');
+    el.className = 'sr-only';
+    el.setAttribute('aria-live', 'assertive');
+    el.setAttribute('role', 'alert');
+    el.setAttribute('aria-atomic', 'true');
+    root.appendChild(el);
+    return el;
+  })();
+  const tellSlots = [];
+  for (let i = 0; i < TELL_POOL_SIZE; i++) {
+    const el = document.createElement('div');
+    el.className = 'sf-tell';
+    // Non-live visual chip — no per-chip assertive region (avoids triple SR double-announce).
+    el.setAttribute('aria-hidden', 'true');
+    el.hidden = true;
+    el.innerHTML =
+      '<span class="sf-tell__icon" aria-hidden="true"></span>' +
+      '<span class="sf-tell__kind"></span>' +
+      '<span class="sf-tell__hint"></span>' +
+      '<span class="sf-tell__dir" aria-hidden="true">▸</span>';
+    tellRoot.appendChild(el);
+    tellSlots.push({
+      el,
+      iconEl: el.querySelector('.sf-tell__icon'),
+      kindEl: el.querySelector('.sf-tell__kind'),
+      hintEl: el.querySelector('.sf-tell__hint'),
+      dirEl: el.querySelector('.sf-tell__dir'),
+      entityId: null,
+      tellId: null,
+      startedTick: -1,
+      expiresAtTick: -1,
+      age: Infinity,
+      announced: '',
+    });
+  }
+
+  function retireTell(slot) {
+    if (!slot || slot.age >= Infinity) return;
+    slot.entityId = null;
+    slot.tellId = null;
+    slot.startedTick = -1;
+    slot.expiresAtTick = -1;
+    slot.age = Infinity;
+    slot.announced = '';
+    slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse', 'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE');
+    slot.el.hidden = true;
+    setText(slot.iconEl, '');
+    setText(slot.kindEl, '');
+    setText(slot.hintEl, '');
+  }
+
+  function acquireTellSlot(entityId) {
+    let free = null;
+    let oldest = tellSlots[0];
+    for (const slot of tellSlots) {
+      if (slot.entityId === entityId && slot.age < Infinity) return slot;
+      if (slot.age >= Infinity && !free) free = slot;
+      if (slot.age > oldest.age) oldest = slot;
+    }
+    return free || oldest;
+  }
+
+  function pushDoctrineTell(payload) {
+    const tellId = doctrineTellKind(payload);
+    if (!tellId) return;
+    const entityId = payload.entityId;
+    if (entityId == null) return;
+    // Only surface tells aimed at the player (or legacy emissions with no target field).
+    if (payload.targetId != null && payload.targetId !== state.playerId) return;
+    const tick = Number.isInteger(payload.tick) ? payload.tick
+      : (Number.isInteger(state.tick) ? state.tick : 0);
+    // Floor to ≥30 sim ticks so HUD never under-telegraphs the sim hold-fire window.
+    const durationTicks = Math.max(30, Math.floor(Number(payload.durationTicks) || DEFAULT_TELEGRAPH_TICKS));
+    const slot = acquireTellSlot(entityId);
+    const wasSame = slot.entityId === entityId && slot.tellId === tellId && slot.age < Infinity;
+    slot.entityId = entityId;
+    slot.tellId = tellId;
+    slot.startedTick = tick;
+    slot.expiresAtTick = tick + durationTicks;
+    slot.age = 0;
+    const kindLabel = tellId;
+    const hint = DOCTRINE_TELL_HINT[tellId] || '';
+    const icon = DOCTRINE_TELL_ICON[tellId] || '⚠';
+    slot.el.classList.remove('sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE');
+    slot.el.classList.add(`sf-tell--${tellId}`);
+    setText(slot.iconEl, icon);
+    setText(slot.kindEl, kindLabel);
+    setText(slot.hintEl, hint);
+    slot.el.hidden = false;
+    slot.el.classList.add('is-on');
+    // Visual chips are non-live (aria-hidden); one shared assertive region announces once.
+    const announce = `${kindLabel}. ${hint}`.trim();
+    if (announce !== slot.announced) {
+      slot.announced = announce;
+      tellLiveAssertive.textContent = '';
+      tellLiveAssertive.textContent = announce;
+    }
+    // Pulse only on fresh tell; honor reduce-motion / reduce-flash (class + runtime flags).
+    const allowPulse = !getMotionReduced() && !getFlashReduced()
+      && !(typeof document !== 'undefined' && document.documentElement
+        && (document.documentElement.classList.contains('sf-reduce-motion')
+          || document.documentElement.classList.contains('sf-reduce-flash')));
+    if (!wasSame && allowPulse) {
+      slot.el.classList.remove('is-pulse');
+      void slot.el.offsetWidth;
+      slot.el.classList.add('is-pulse');
+    } else {
+      slot.el.classList.remove('is-pulse');
+    }
+  }
+
+  ctx.bus.on('ai:telegraph', (p) => pushDoctrineTell(p || {}));
+
+  function updateDoctrineTells(frameDt) {
+    const w2s = helpers && helpers.worldToScreen;
+    const tick = Number.isInteger(state.tick) ? state.tick : 0;
+    const w = (typeof window !== 'undefined' && window.innerWidth) || 1280;
+    const h = (typeof window !== 'undefined' && window.innerHeight) || 720;
+    for (let slotIndex = 0; slotIndex < tellSlots.length; slotIndex++) {
+      const slot = tellSlots[slotIndex];
+      if (slot.age >= Infinity) continue;
+      slot.age += frameDt;
+      if (tick > slot.expiresAtTick) { retireTell(slot); continue; }
+      const ent = state.entities && state.entities.get && state.entities.get(slot.entityId);
+      if (!ent || ent.alive === false || !ent.pos) { retireTell(slot); continue; }
+      if (!w2s) {
+        // The shared live-region announcement remains available, but a visual chip without an
+        // authoritative projection would lie about direction and therefore stays hidden.
+        setDisplay(slot.el, false);
+        continue;
+      }
+      const proj = w2s({ x: ent.pos.x, y: 0, z: ent.pos.z });
+      const placement = resolveDoctrineTellPlacement(w, h, proj, slotIndex);
+      if (!placement) { setDisplay(slot.el, false); continue; }
+      setDisplay(slot.el, true, 'inline-flex');
+      setClass(slot.el, 'is-offscreen', !placement.onScreen);
+      setHudScreenTransform(slot.el, placement.x, placement.y, { center: true });
+      if (slot.dirEl) slot.dirEl.style.transform = `rotate(${placement.directionDeg.toFixed(1)}deg)`;
+      slot.el.hidden = false;
+      slot.el.classList.add('is-on');
+    }
+  }
+
+  function buildTetherControlPrompt(tether) {
+    if (!tether || !tether.active) return '';
+    // No hard-coded F: explicit empty rebind must not lie about the key.
+    const cutLabel = resolveActionLabel(state, 'tether');
+    const reelInLabel = resolveActionLabel(state, 'reelIn');
+    const reelOutLabel = resolveActionLabel(state, 'reelOut');
+    const parts = [];
+    // Hold tether still reels in (input contract); dedicated reel keys only when rebound.
+    if (reelInLabel) parts.push(`[${reelInLabel}] REEL IN`);
+    else if (cutLabel) parts.push(`HOLD [${cutLabel}] REEL`);
+    if (reelOutLabel) parts.push(`[${reelOutLabel}] PAY OUT`);
+    if (cutLabel) parts.push(`TAP [${cutLabel}] CUT`);
+    // Intentionally unbound tether: omit HOLD/TAP key copy; say UNBOUND truthfully when nothing else.
+    if (!parts.length) return 'TETHER UNBOUND';
+    return parts.join(' · ');
+  }
 
   // ---- HUD meta-arc: the three phases of complicity (STABLE LOAD, tag flicker, manifest ghost) ----
   // Mounted as a HUD sub-component (like the death banner). Driven by hud:phase / hud:tagFlicker
@@ -2594,6 +2967,7 @@ export function createHud(ctx, alerts) {
 
     const p = state.entities.get(state.playerId);
     resolveReticle();
+    updateDoctrineTells(frameDt);
 
     // --- schematic + arcs + micro-bars (every frame, transform/stroke only) ---
     if (p) {
@@ -2717,17 +3091,21 @@ export function createHud(ctx, alerts) {
     if (slow && p) {
       const sp = Math.hypot(p.vel.x, p.vel.z);
       setText(elSpeed, Math.round(sp) + '');
-      // Tether readout: persistent while latched (GDD §4.3 discoverability — the line has a
-      // dedicated indicator naming its release key, so "how do I turn this off" never recurs).
+      // Tether readout: persistent while latched (GDD §4.3 discoverability). Control labels come
+      // from the live binding map (rebinds honored); reel/cut only while attachment is active.
       const tether = state.player && state.player.tether;
       if (elTetherStat) {
+        // Only show reel/cut while the gameplay mirror reports an active attachment.
         const active = !!(tether && tether.active);
         elTetherStat.style.display = active ? '' : 'none';
         if (active) {
           const strain = tether.strain || 0;
           const targetEnt = state.entities.get(tether.targetId);
           const targetName = (targetEnt && (targetEnt.name || (targetEnt.data && targetEnt.data.name))) || (targetEnt ? targetEnt.type : '');
-          setText(elTether, `${strain > 0.85 ? 'CRITICAL' : strain > 0.6 ? 'STRAINED' : 'LOCKED'}${targetName ? ' · ' + String(targetName).toUpperCase() : ''} · [F] RELEASE`);
+          const status = strain > 0.85 ? 'CRITICAL' : strain > 0.6 ? 'STRAINED' : (tether.reeling ? 'REELING' : 'LOCKED');
+          const controls = buildTetherControlPrompt(tether);
+          const nameBit = targetName ? ' · ' + String(targetName).toUpperCase() : '';
+          setText(elTether, `${status}${nameBit}${controls ? ' · ' + controls : ''}`);
           setClass(elTether, 'sf-warn', strain > 0.6);
         }
       }
