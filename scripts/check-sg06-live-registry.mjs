@@ -54,7 +54,11 @@ try {
   const legacyIntent = Object.freeze({ fire: false, sentinel: 'live-registry-must-not-touch-legacy-intent' });
   actor.data.intent = legacyIntent;
 
-  for (let i = 0; i < 38; i++) registry.step(DT);
+  const armedIntentTicks = [];
+  for (let i = 0; i < 38; i++) {
+    registry.step(DT);
+    if (actor.data.intent.fire === true) armedIntentTicks.push(state.tick);
+  }
 
   const events = state.combat.trace.events;
   const aiRequest = events.find((event) =>
@@ -89,7 +93,12 @@ try {
   assert.equal(legacyIntent.fire, false, 'frozen legacy intent fixture must remain untouched');
   assert.equal(actor.data.intent.sentinel, 'live-registry-must-not-touch-legacy-intent',
     'fire adapter should preserve non-firing intent fields');
-  assert.equal(actor.data.intent.fire, true, 'visible weapon intent should be armed through the doctrine-gated adapter');
+  assert.deepEqual(armedIntentTicks, [aiRequest.tick],
+    'visible weapon intent should arm only on the canonical SG-03 request tick');
+  assert.equal(aiEffect.tick, aiRequest.tick + 1,
+    'canonical SG-03 burst effect should follow the doctrine-authorized request on the next tick');
+  assert.equal(actor.data.intent.fire, false,
+    'visible weapon intent should close after the canonical effect instead of remaining sticky');
   assert(portDiagnostics.acceptedManeuvers > 0, 'live registry tacticalAI should bind the production maneuver port');
   assert(portDiagnostics.flushedManeuvers > 0, 'production registry aiPorts should flush SG-06 maneuvers into SG-02');
   assert.equal(portDiagnostics.lastDropReason, null, 'live registry SG-06 maneuvers should not be dropped after SG-02 is ready');
