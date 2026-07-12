@@ -2006,6 +2006,7 @@ export const missions = {
     // We size repMult so factions' applied rep ≈ the spec's risk-scaled BASE_REP value.
     const specRep = missionSpecRep(m);
     const repMult = specRep / 15;
+    const storyOutcome = m.params && m.params.investigationOutcome;
     const completedPayload = {
       missionId: m.id,
       type: m.type,
@@ -2013,8 +2014,8 @@ export const missions = {
       repMult,
       source: m.source || undefined,
       causeFingerprint: m.cause && m.cause.fingerprint || undefined,
-      storyOutcome: m.params && m.params.investigationOutcome || undefined,
     };
+    if (storyOutcome !== undefined) completedPayload.storyOutcome = storyOutcome;
 
     // ── research points for cerebral mission types (recon/salvage) — missions is a legit RP writer.
     let researchPoints = 0;
