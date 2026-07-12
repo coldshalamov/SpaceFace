@@ -643,6 +643,7 @@ export class SpaceBackground {
     scene.add(this.group);
 
     this.layers = [];
+    this.layerGeometry = null;
     this.stars = null;
     this.flares = null;
     this.planets = [];
@@ -1003,16 +1004,17 @@ export class SpaceBackground {
 
   _buildLayers() {
     for (const L of this.layers) {
-      if (L.mesh) { this.group.remove(L.mesh); L.mesh.geometry.dispose(); L.mesh.material.dispose(); }
+      if (L.mesh) { this.group.remove(L.mesh); L.mesh.material.dispose(); }
     }
+    if (this.layerGeometry) this.layerGeometry.dispose();
     this.layers = [];
     const targets = { L0_void: this.l0Target, L1_nebula: this.l1Target, L2_wisps: this.l2Target };
 
+    this.layerGeometry = new THREE.PlaneGeometry(this.quadSize, this.quadSize);
     let order = -95;
     for (const def of LAYER_DEFS) {
       const tile = def.tileH * this.H;
       const size = this.quadSize;
-      const geo = new THREE.PlaneGeometry(size, size);
       const tex = targets[def.name].texture;
       tex.repeat.set(size / tile, size / tile);
       const mat = new THREE.MeshBasicMaterial({
@@ -1023,7 +1025,7 @@ export class SpaceBackground {
         depthTest: true,
         fog: false,
       });
-      const mesh = new THREE.Mesh(geo, mat);
+      const mesh = new THREE.Mesh(this.layerGeometry, mat);
       mesh.name = def.name;
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.y = def.depth;
@@ -1703,6 +1705,7 @@ export class SpaceBackground {
       bakeMs: this.bakeTimer,
       drawCalls: 3 + 1 + 1 + this.planets.length + (this.wormhole ? 1 : 0) +
         (this.comet && this.comet.sprite.visible ? 1 : 0),
+      layerGeometries: this.layerGeometry ? 1 : 0,
       stars: this.stars ? this.stars.count : 0,
       flares: this.flares ? this.flares.mesh.count : 0,
       planets: this.planets.length,
@@ -1730,13 +1733,16 @@ export class SpaceBackground {
     if (this.flareAtlas) this.flareAtlas.dispose();
     for (const [, rt] of this.planetCache) rt.dispose();
     this.planetCache.clear();
+    const layerGeometry = this.layerGeometry;
     this.group.traverse((o) => {
-      if (o.geometry) o.geometry.dispose();
+      if (o.geometry && o.geometry !== layerGeometry) o.geometry.dispose();
       if (o.material) {
         const mats = Array.isArray(o.material) ? o.material : [o.material];
         for (const m of mats) m.dispose();
       }
     });
+    if (layerGeometry) layerGeometry.dispose();
+    this.layerGeometry = null;
     this.scene.remove(this.group);
     if (this.bakePlane) this.bakePlane.geometry.dispose();
   }
