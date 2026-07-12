@@ -1,6 +1,5 @@
 /* SpaceFace — Accessibility layer (V2 §9/§12). Pairs with src/ui/accessibility.js.
-   NOT LINKED YET: the lead adds <link rel="stylesheet" href="./styles/accessibility.css"/> in
-   index.html AFTER styles/ui.css (this file overrides theme tokens, so load order matters).
+   Linked from index.html after styles/ui.css so this layer can override the base theme tokens.
 
    What this file CAN and CANNOT do (honesty note — mirrored in design/ACCESSIBILITY.md):
    - CAN recolor everything that reads a CSS var or whose gradient we re-declare here at higher
@@ -118,6 +117,16 @@ html.sf-high-contrast .sf-stat__v { text-shadow: 0 1px 2px #000, 0 0 1px #000; }
 
 /* Always give keyboard users a visible focus ring, even outside high-contrast (motor/keyboard a11y). */
 :focus-visible { outline: 2px solid var(--accent, #39d0ff); outline-offset: 2px; }
+/* Gamepad navigation moves focus programmatically, which can retain the browser's pointer heuristic
+   and suppress :focus-visible. The UI input router marks pad-owned focus until the next pointerdown. */
+html.sf-gamepad-focus :is(button, a, input, select, textarea, [tabindex]):focus {
+  outline: 3px solid var(--accent, #39d0ff);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px rgba(3, 8, 16, .92), 0 0 0 5px color-mix(in srgb, var(--accent, #39d0ff) 35%, transparent);
+}
+html.sf-high-contrast.sf-gamepad-focus :is(button, a, input, select, textarea, [tabindex]):focus {
+  outline-color: #ffe14d;
+}
 
 /* ============================================================================================
    REDUCED MOTION — both the OS preference AND an explicit in-game class (sf-reduce-motion). These are
@@ -143,6 +152,27 @@ html.sf-reduce-motion *::after {
 }
 /* Kill the parallax/drift transforms that read as motion. */
 html.sf-reduce-motion .sf-fadein { animation: none !important; }
+
+/* ============================================================================================
+   GAMEPLAY CAPTIONS — the HUD owns caption content; the accessibility profile owns whether and how
+   it is presented. Live regions remain available to assistive technology even when visual captions
+   are disabled, so a visual preference never silences urgent semantic cues.
+   ============================================================================================ */
+html.sf-captions-off .sf-caption { display: none !important; }
+html.sf-caption-size-small .sf-caption { font-size: 13px !important; max-width: min(76vw, 560px) !important; }
+html.sf-caption-size-medium .sf-caption { font-size: 15px !important; }
+html.sf-caption-size-large .sf-caption { font-size: 19px !important; max-width: min(88vw, 760px) !important; line-height: 1.45 !important; }
+html.sf-caption-backing .sf-caption {
+  background: #02060c !important;
+  border-color: color-mix(in srgb, var(--accent, #39d0ff) 55%, #fff) !important;
+  text-shadow: 0 1px 2px #000 !important;
+}
+html.sf-high-contrast .sf-caption {
+  color: #fff !important;
+  background: #000 !important;
+  border: 2px solid #ffe14d !important;
+  box-shadow: none !important;
+}
 
 /* ============================================================================================
    REDUCED FLASH — separate axis (sf-reduce-flash, photosensitivity). Distinct from reduce-motion: a

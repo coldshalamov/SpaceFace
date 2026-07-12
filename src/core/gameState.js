@@ -21,7 +21,10 @@ function defaultSettings() {
     },
     // Accessibility (V2 §9/§12). motionReduce lives under video (feel/vfx read it there); uiScale is the
     // root field above. These are the net-new a11y fields driven by src/ui/accessibility.js.
-    accessibility: { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false },
+    accessibility: {
+      colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
+      motionPreference: 'system', captions: true, captionSize: 'medium', captionBackground: true,
+    },
   };
 }
 

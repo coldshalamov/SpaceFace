@@ -25,6 +25,10 @@
 // ---------------------------------------------------------------------------------------------------
 let _motionReduced = false;   // mirrors settings.video.motionReduce (existing field)
 let _flashReduced = false;    // settings.accessibility.flashReduce (new field)
+let _motionMediaQuery = null;
+let _motionMediaListener = null;
+let _motionSettings = null;
+let _motionRoot = null;
 
 /** True when vestibular motion (shake / FOV punch / hit-stop / parallax) should be suppressed.
  *  Mirrors settings.video.motionReduce — the same field feel.js & vfx.js already consult. */
@@ -45,6 +49,8 @@ export function getFlashReduced() { return _flashReduced; }
 // so color is never the sole channel.
 // ---------------------------------------------------------------------------------------------------
 export const COLORBLIND_MODES = ['none', 'protanopia', 'deuteranopia', 'tritanopia'];
+export const MOTION_PREFERENCES = ['system', 'reduce', 'full'];
+export const CAPTION_SIZES = ['small', 'medium', 'large'];
 
 const PALETTES = {
   none: {
@@ -140,6 +146,25 @@ export const ACCESSIBILITY_SETTINGS_SCHEMA = [
     label: 'Colorblind palette', help: 'Recolors radar blips, bars and alerts for dichromacy.',
   },
   {
+    key: 'motionPreference', path: 'accessibility.motionPreference', type: 'select',
+    options: MOTION_PREFERENCES, default: 'system', status: 'EXISTS',
+    label: 'Motion effects', help: 'Follows the operating system or explicitly reduces motion.',
+  },
+  {
+    key: 'captions', path: 'accessibility.captions', type: 'toggle', default: true, status: 'EXISTS',
+    label: 'Gameplay captions', help: 'Shows readable text for important audio and gameplay cues.',
+  },
+  {
+    key: 'captionSize', path: 'accessibility.captionSize', type: 'select',
+    options: CAPTION_SIZES, default: 'medium', status: 'EXISTS',
+    label: 'Caption size', help: 'Changes caption text size without scaling the flight view.',
+  },
+  {
+    key: 'captionBackground', path: 'accessibility.captionBackground', type: 'toggle',
+    default: true, status: 'EXISTS', label: 'Solid caption backing',
+    help: 'Places captions on an opaque dark panel for consistent contrast.',
+  },
+  {
     key: 'highContrast', path: 'accessibility.highContrast', type: 'toggle', default: false, status: 'EXISTS',
     label: 'High contrast', help: 'Stronger panel borders, opaque backdrops, brighter text.',
   },
@@ -168,7 +193,47 @@ export const ACCESSIBILITY_SETTINGS_SCHEMA = [
 // Document-root tokens / classes the CSS reacts to (kept here so the class contract is one source).
 // ---------------------------------------------------------------------------------------------------
 const PALETTE_CLASSES = COLORBLIND_MODES.filter((m) => m !== 'none').map((m) => 'sf-cb-' + m);
-const ALL_TOGGLE_CLASSES = ['sf-high-contrast', 'sf-reduce-motion', 'sf-reduce-flash', 'sf-dyslexia'];
+const CAPTION_SIZE_CLASSES = CAPTION_SIZES.map((size) => `sf-caption-size-${size}`);
+
+function normalizedMotionPreference(settings) {
+  const explicit = pick(settings, 'accessibility.motionPreference', null);
+  if (MOTION_PREFERENCES.includes(explicit)) return explicit;
+  // Old profiles had only the effective boolean. Preserve an explicit reduced choice; otherwise
+  // migrate to the professional default that follows the operating-system preference.
+  return pick(settings, 'video.motionReduce', false) ? 'reduce' : 'system';
+}
+
+function systemMotionReduced() {
+  if (_motionMediaQuery) return !!_motionMediaQuery.matches;
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  try { return !!window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  catch (_) { return false; }
+}
+
+function applyMotionPreference(settings, root) {
+  const preference = normalizedMotionPreference(settings);
+  const reduced = preference === 'reduce' || (preference === 'system' && systemMotionReduced());
+  _motionReduced = reduced;
+  // video.motionReduce is the existing runtime contract polled by feel/vfx/camera. Keep it as the
+  // effective value while accessibility.motionPreference remains the persisted user choice.
+  if (settings && settings.video && typeof settings.video === 'object') settings.video.motionReduce = reduced;
+  if (root && root.classList) root.classList.toggle('sf-reduce-motion', reduced);
+  return { preference, reduced };
+}
+
+function bindSystemMotionPreference(settings, root) {
+  _motionSettings = settings || null;
+  _motionRoot = root || null;
+  if (_motionMediaQuery || typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+  try { _motionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)'); }
+  catch (_) { return; }
+  _motionMediaListener = () => applyMotionPreference(_motionSettings, _motionRoot);
+  if (typeof _motionMediaQuery.addEventListener === 'function') {
+    _motionMediaQuery.addEventListener('change', _motionMediaListener);
+  } else if (typeof _motionMediaQuery.addListener === 'function') {
+    _motionMediaQuery.addListener(_motionMediaListener);
+  }
+}
 
 // Pull a value from the settings tree by dotted path, tolerating missing intermediates.
 function pick(settings, path, fallback) {
@@ -198,19 +263,22 @@ export function applyAccessibility(settings, target) {
   // are correct even on a headless path (no document) or if the early-return below fires. vfx/feel poll
   // these regardless of the DOM.
   _flashReduced = !!a.flashReduce;
-  // motion-reduce SOURCE OF TRUTH is settings.video.motionReduce (feel.js:131 / vfx.js:674). Mirror it
-  // so getMotionReduced() agrees with those systems; never fork a second motion flag.
-  _motionReduced = !!pick(settings, 'video.motionReduce', false);
 
   let mode = a.colorblindMode || 'none';
   if (COLORBLIND_MODES.indexOf(mode) < 0) mode = 'none';
   const highContrast = !!a.highContrast;
   const dyslexia = !!a.dyslexiaFont;
+  const captions = a.captions !== false;
+  const captionSize = CAPTION_SIZES.includes(a.captionSize) ? a.captionSize : 'medium';
+  const captionBackground = a.captionBackground !== false;
 
   const root = target || (typeof document !== 'undefined' ? document.documentElement : null);
+  bindSystemMotionPreference(settings, root);
+  const motion = applyMotionPreference(settings, root);
   if (!root || !root.classList) {
     // headless / node — booleans above are set; nothing to toggle on the DOM.
-    return { motionReduced: _motionReduced, flashReduced: _flashReduced, colorblindMode: mode, highContrast, dyslexia };
+    return { motionReduced: motion.reduced, motionPreference: motion.preference, flashReduced: _flashReduced,
+      colorblindMode: mode, highContrast, dyslexia, captions, captionSize, captionBackground };
   }
 
   // --- colorblind palette: one active sf-cb-* class + the var set for that mode ---
@@ -222,14 +290,18 @@ export function applyAccessibility(settings, target) {
   // --- toggles → root classes (CSS does the visual work) ---
   root.classList.toggle('sf-high-contrast', highContrast);
   root.classList.toggle('sf-reduce-flash', _flashReduced);
-  root.classList.toggle('sf-reduce-motion', _motionReduced);
   root.classList.toggle('sf-dyslexia', dyslexia);
+  root.classList.toggle('sf-captions-off', !captions);
+  root.classList.toggle('sf-caption-backing', captionBackground);
+  for (const c of CAPTION_SIZE_CLASSES) root.classList.remove(c);
+  root.classList.add(`sf-caption-size-${captionSize}`);
 
   // UI scale is intentionally NOT managed here — it is owned by the shipped `--ui-scale` path
   // (ui.css #ui-root + uiRoot.js #hud), driven by the Video > UI scale slider. Managing a second
   // scale var here would double-scale the HUD. See styles/accessibility.css UI SCALE note.
 
-  return { motionReduced: _motionReduced, flashReduced: _flashReduced, colorblindMode: mode, highContrast, dyslexia };
+  return { motionReduced: motion.reduced, motionPreference: motion.preference, flashReduced: _flashReduced,
+    colorblindMode: mode, highContrast, dyslexia, captions, captionSize, captionBackground };
 }
 
 /** Resolve a semantic state ('hostile'|'shield'|'danger'|…) to its active color, honoring the current

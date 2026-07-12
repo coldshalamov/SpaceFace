@@ -92,6 +92,9 @@ function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.
 const TABS = ['Audio', 'Video', 'Gameplay', 'Access', 'Controls'];
 
 let refs = null;
+let controlId = 0;
+
+function nextControlId() { controlId += 1; return `sf-settings-control-${controlId}`; }
 
 // --- Key rebinding (V2 §12) ---
 // input.js owns the binding tables; the settings UI mirrors the active control scheme and overlays
@@ -183,6 +186,10 @@ export const settingsScreen = {
 
     const bar = el('div', 'sf-tabbar');
     const pane = el('div', 'sf-col');
+    bar.setAttribute('role', 'tablist');
+    bar.setAttribute('aria-label', 'Settings categories');
+    pane.id = 'sf-settings-pane';
+    pane.setAttribute('role', 'tabpanel');
     rootEl.appendChild(bar);
     rootEl.appendChild(pane);
 
@@ -195,7 +202,23 @@ export const settingsScreen = {
     const tabBtns = {};
     TABS.forEach((t) => {
       const b = el('button', 'sf-tab', t);
+      b.type = 'button';
+      b.id = `sf-settings-tab-${t.toLowerCase()}`;
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-controls', pane.id);
       b.addEventListener('click', () => this._select(ctx, t));
+      b.addEventListener('keydown', (ev) => {
+        const i = TABS.indexOf(t);
+        let next = -1;
+        if (ev.key === 'ArrowLeft') next = (i - 1 + TABS.length) % TABS.length;
+        else if (ev.key === 'ArrowRight') next = (i + 1) % TABS.length;
+        else if (ev.key === 'Home') next = 0;
+        else if (ev.key === 'End') next = TABS.length - 1;
+        if (next < 0) return;
+        ev.preventDefault();
+        this._select(ctx, TABS[next]);
+        refs.tabBtns[TABS[next]].focus();
+      });
       bar.appendChild(b);
       tabBtns[t] = b;
     });
@@ -207,7 +230,13 @@ export const settingsScreen = {
   _select(ctx, tab) {
     if (!refs) return;
     refs.active = tab;
-    Object.entries(refs.tabBtns).forEach(([t, b]) => b.classList.toggle('active', t === tab));
+    Object.entries(refs.tabBtns).forEach(([t, b]) => {
+      const active = t === tab;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-selected', String(active));
+      b.tabIndex = active ? 0 : -1;
+    });
+    refs.pane.setAttribute('aria-labelledby', refs.tabBtns[tab].id);
     this._render(ctx);
   },
 
@@ -226,19 +255,26 @@ export const settingsScreen = {
 
     const rowSlider = (label, get, min, max, step, fmt, onInput) => {
       const row = el('div', 'sf-row');
-      row.appendChild(el('label', null, label));
+      const labelEl = el('label', null, label);
+      const id = nextControlId();
+      labelEl.htmlFor = id;
+      row.appendChild(labelEl);
       const ctl = el('div', 'sf-ctl');
-      const r = el('input'); r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = get();
+      const r = el('input'); r.id = id; r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = get();
       const v = el('span', 'sf-val', fmt(get()));
       r.addEventListener('input', () => { onInput(parseFloat(r.value)); v.textContent = fmt(parseFloat(r.value)); });
       ctl.appendChild(r); ctl.appendChild(v); row.appendChild(ctl); pane.appendChild(row);
     };
     const rowToggle = (label, get, onChange) => {
       const row = el('div', 'sf-row');
-      row.appendChild(el('label', null, label));
+      const labelEl = el('label', null, label);
+      const id = nextControlId();
+      labelEl.htmlFor = id;
+      row.appendChild(labelEl);
       const ctl = el('div', 'sf-ctl');
       const b = el('button', 'sf-tab', get() ? 'On' : 'Off');
       b.type = 'button';
+      b.id = id;
       b.setAttribute('aria-pressed', String(get()));
       if (get()) b.classList.add('active');
       b.style.minWidth = '64px';
@@ -247,9 +283,12 @@ export const settingsScreen = {
     };
     const rowSelect = (label, get, options, onChange) => {
       const row = el('div', 'sf-row');
-      row.appendChild(el('label', null, label));
+      const labelEl = el('label', null, label);
+      const id = nextControlId();
+      labelEl.htmlFor = id;
+      row.appendChild(labelEl);
       const ctl = el('div', 'sf-ctl');
-      const sel = el('select');
+      const sel = el('select'); sel.id = id;
       options.forEach(([val, txt]) => { const o = el('option', null, txt); o.value = val; if (val === get()) o.selected = true; sel.appendChild(o); });
       sel.addEventListener('change', () => onChange(sel.value));
       ctl.appendChild(sel); row.appendChild(ctl); pane.appendChild(row);
@@ -295,8 +334,10 @@ export const settingsScreen = {
       rowToggle('VSync', () => vd.vsync, (v) => this._set(ctx, 'video', 'vsync', v));
       // Accessibility (V2 §9/§12): vestibular-sensitive players get hit feedback (numbers, audio,
       // smoke) with the camera shake / FOV punch / hit-stop freeze suppressed. Live-applied: the
-      // feel module reads settings.video.motionReduce every trigger, so toggling takes effect now.
-      rowToggle('Reduce motion', () => !!vd.motionReduce, (v) => this._set(ctx, 'video', 'motionReduce', v));
+      // feel module reads settings.video.motionReduce every trigger, so the preference takes effect now.
+      rowSelect('Motion effects', () => (s.accessibility && s.accessibility.motionPreference) || (vd.motionReduce ? 'reduce' : 'system'),
+        [['system', 'Follow system'], ['reduce', 'Reduced'], ['full', 'Full']],
+        (v) => this._set(ctx, 'accessibility', 'motionPreference', v));
       rowSlider('Screen Shake', () => vd.screenShake != null ? vd.screenShake : 100, 0, 100, 1, (x) => Math.round(x) + '%', (v) => this._set(ctx, 'video', 'screenShake', v));
       rowSlider('UI scale', () => s.uiScale, 0.75, 2, 0.05, (x) => x.toFixed(2) + 'x', (v) => {
         this._set(ctx, null, 'uiScale', v);
@@ -315,16 +356,27 @@ export const settingsScreen = {
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
       rowToggle('Damage numbers', () => !!g.damageNumbers, (v) => this._set(ctx, 'gameplay', 'damageNumbers', v));
     } else if (refs.active === 'Access') {
-      const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false });
+      const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
+        motionPreference: 'system', captions: true, captionSize: 'medium', captionBackground: true });
       rowSelect('Colorblind palette', () => ac.colorblindMode || 'none',
         [['none', 'Off'], ['protanopia', 'Protanopia (red-weak)'], ['deuteranopia', 'Deuteranopia (green-weak)'], ['tritanopia', 'Tritanopia (blue-weak)']],
         (v) => this._set(ctx, 'accessibility', 'colorblindMode', v));
       rowToggle('High contrast', () => !!ac.highContrast, (v) => this._set(ctx, 'accessibility', 'highContrast', v));
       rowToggle('Reduce flashing', () => !!ac.flashReduce, (v) => this._set(ctx, 'accessibility', 'flashReduce', v));
       rowToggle('Readable font', () => !!ac.dyslexiaFont, (v) => this._set(ctx, 'accessibility', 'dyslexiaFont', v));
-      // Reduce-motion mirror — the field lives under video (feel/vfx read it there); surfaced here too.
-      rowToggle('Reduce motion', () => !!s.video.motionReduce, (v) => this._set(ctx, 'video', 'motionReduce', v));
-      pane.appendChild(el('p', 'sf-muted', 'UI scale is on the Video tab. Colorblind mode also recolors radar blips and adds redundant shapes.'));
+      rowSelect('Motion effects', () => ac.motionPreference || (s.video.motionReduce ? 'reduce' : 'system'),
+        [['system', 'Follow system'], ['reduce', 'Reduced'], ['full', 'Full']],
+        (v) => this._set(ctx, 'accessibility', 'motionPreference', v));
+      rowToggle('Gameplay captions', () => ac.captions !== false, (v) => this._set(ctx, 'accessibility', 'captions', v));
+      rowSelect('Caption size', () => ac.captionSize || 'medium',
+        [['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']],
+        (v) => this._set(ctx, 'accessibility', 'captionSize', v));
+      rowToggle('Solid caption backing', () => ac.captionBackground !== false, (v) => this._set(ctx, 'accessibility', 'captionBackground', v));
+      rowSlider('UI scale', () => s.uiScale, 0.75, 2, 0.05, (x) => x.toFixed(2) + 'x', (v) => {
+        this._set(ctx, null, 'uiScale', v);
+        const root = document.getElementById('ui-root'); if (root) root.style.setProperty('--ui-scale', v);
+      });
+      pane.appendChild(el('p', 'sf-muted', 'Colorblind mode also recolors radar blips and adds redundant shapes.'));
     } else if (refs.active === 'Controls') {
       rowSelect('Control Scheme', () => s.gameplay.controlScheme || 'pilot',
         [['pilot', 'Pilot (keyboard steers, mouse aims)'], ['helm-assist', 'Helm Assist (mouse steering)'], ['classic', 'Classic Throttle']],

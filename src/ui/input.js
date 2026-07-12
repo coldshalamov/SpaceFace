@@ -368,6 +368,8 @@ export function createUiInput(ctx, screenManager) {
 
   document.addEventListener('keydown', onKeyDown);
   window.addEventListener('wheel', onWheel, { passive: true });
+  const clearGamepadFocus = () => document.documentElement.classList.remove('sf-gamepad-focus');
+  document.addEventListener('pointerdown', clearGamepadFocus, true);
 
   // let other modules (uiRoot Undock button) trigger an undock
   bus.on('ui:undock', undock);
@@ -444,6 +446,22 @@ export function createUiInput(ctx, screenManager) {
     const items = focusableInside(root);
     if (!items.length) return;
     const active = document.activeElement;
+    document.documentElement.classList.add('sf-gamepad-focus');
+    // Tabs use roving tabindex, so inactive siblings are intentionally absent from `items`.
+    // When a pad moves horizontally from a tab, traverse its tablist directly and activate the
+    // destination; this matches keyboard ArrowLeft/ArrowRight behavior and keeps focus visible.
+    if ((dir === 'left' || dir === 'right') && active && active.getAttribute('role') === 'tab') {
+      const tablist = active.closest('[role="tablist"]');
+      const tabs = tablist ? Array.from(tablist.querySelectorAll('[role="tab"]')).filter((el) => !el.disabled) : [];
+      const tabIndex = tabs.indexOf(active);
+      if (tabIndex >= 0 && tabs.length) {
+        const delta = dir === 'left' ? -1 : 1;
+        const nextTab = tabs[(tabIndex + delta + tabs.length) % tabs.length];
+        try { nextTab.focus(); } catch (e) {}
+        if (typeof nextTab.click === 'function') nextTab.click();
+        return;
+      }
+    }
     let idx = items.indexOf(active);
     if (idx < 0) idx = 0;
     const delta = dir === 'up' || dir === 'left' ? -1 : 1;
@@ -455,6 +473,7 @@ export function createUiInput(ctx, screenManager) {
     const root = activeScreenEl();
     const active = document.activeElement;
     if (!active || !root || !root.contains(active)) return;
+    document.documentElement.classList.add('sf-gamepad-focus');
     if (typeof active.click === 'function') active.click();
     else {
       active.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
@@ -646,6 +665,10 @@ export function createUiInput(ctx, screenManager) {
 
   return {
     doDock, undock, tick,
-    dispose() { document.removeEventListener('keydown', onKeyDown); window.removeEventListener('wheel', onWheel); },
+    dispose() {
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('wheel', onWheel);
+      document.removeEventListener('pointerdown', clearGamepadFocus, true);
+    },
   };
 }
