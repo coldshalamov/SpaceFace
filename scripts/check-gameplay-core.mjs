@@ -14,7 +14,7 @@ import { audioNearbyHostileCount } from '../src/audio/audioSystem.js';
 import { save } from '../src/save/saveSystem.js';
 import { cargo, addCargo } from '../src/systems/cargo.js';
 import { mining } from '../src/systems/mining.js';
-import { combat } from '../src/systems/combat.js';
+import { combat, UNDOCK_INVULN_S } from '../src/systems/combat.js';
 import { weapons } from '../src/systems/weapons.js';
 import { countermeasures } from '../src/systems/countermeasures.js';
 import { wingmen } from '../src/systems/wingmen.js';
@@ -6301,7 +6301,8 @@ function checkCleanSpawnAndDockedSafety() {
   combatBus.emit('dock:undocked', {});
   assert.equal(player.flags.docked, false, 'dock:undocked should clear docked protection');
   assert.equal(player.flags.invuln, true, 'undocking should grant a short launch grace window');
-  assert.equal(player._invulnUntil, state.simTime + 4, 'undock grace should expire after four seconds');
+  assert.equal(player._invulnUntil, state.simTime + UNDOCK_INVULN_S,
+    'undock grace should use the canonical eight-second safety window');
 }
 checkCleanSpawnAndDockedSafety();
 checkPlayerGimbalBears360Degrees();

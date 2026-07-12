@@ -9,7 +9,7 @@ import {
   formatDefeatCause,
 } from '../src/combat/playerDefeat.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
-import { combat } from '../src/systems/combat.js';
+import { combat, UNDOCK_INVULN_S } from '../src/systems/combat.js';
 import { gameOverScreen } from '../src/ui/screens/gameOver.js';
 
 function vec(x, z) {
@@ -158,6 +158,31 @@ test('direct combat routing rejects damage while the player is dock-protected', 
   assert.equal(result.reason, 'target_docked');
   assert.equal(player.hull, beforeHull);
   assert.equal(events.some((entry) => entry.event === 'combat:damage'), false);
+});
+
+test('undocking grants the intentional eight-second grace and expires on simulation time', () => {
+  const state = makeState();
+  const bus = {
+    on() { return () => {}; },
+    emit() {},
+  };
+  combat.init({ state, bus, helpers: {}, registry: { get() { return null; } } });
+  const player = state.entities.get(1);
+
+  combat.setPlayerDocked(true);
+  combat.setPlayerDocked(false);
+  const expiresAt = state.simTime + UNDOCK_INVULN_S;
+  state.entityIndex = { ships: [player] };
+  assert.equal(UNDOCK_INVULN_S, 8);
+  assert.equal(player.flags.invuln, true);
+  assert.equal(player._invulnUntil, expiresAt);
+
+  state.simTime = expiresAt - 1 / 60;
+  combat.update(1 / 60, state);
+  assert.equal(player.flags.invuln, true, 'grace remains active until its full duration elapses');
+  state.simTime = expiresAt;
+  combat.update(1 / 60, state);
+  assert.equal(player.flags.invuln, false, 'grace expires exactly on deterministic simulation time');
 });
 
 test('recovery plan returns to last lawful dock with a starter-safe deductible and persistent cargo protection', () => {
