@@ -1,7 +1,7 @@
 import { getPresentationRecipe } from '../presentation/cueRecipes.js';
 import { normalizePresentationEvent } from '../presentation/cueSchema.js';
 import { damageLayerHierarchy, grammarForDoctrine, isLiveDoctrineId } from '../presentation/combatChoreography.js';
-import { classifyDrillWarning, fieldDepletionBand, seamQualityTag } from '../presentation/miningChoreography.js';
+import { classifyDrillWarning, drillHardnessBand, fieldDepletionBand, seamQualityTag } from '../presentation/miningChoreography.js';
 import {
   arrivalHeading,
   cruiseDropCueId,
@@ -43,6 +43,7 @@ export const presentationOrchestrator = {
     this._doctrineCycles = new Map();
     this._miningCycle = null;
     this._lastMiningCargoTick = -Infinity;
+    this._drillContactBand = null;
     this._travelCycle = null;
     this._travelRecoveryPending = null;
     this._lastCorridorSequence = null;
@@ -111,10 +112,14 @@ export const presentationOrchestrator = {
       this.bus.on('interdiction:triggered', (payload) => this._onTravelInterdiction(payload || {})),
       this.bus.on('scan:pulse', (payload) => this._onMiningSurveyPulse(payload || {})),
       this.bus.on('scan:completed', (payload) => this._onMiningSurveyResolved(payload || {})),
+      this.bus.on('signal:scanResults', (payload) => this._onMiningSignalResults(payload || {})),
+      this.bus.on('signal:tracked', (payload) => this._onMiningSignalTracked(payload || {})),
+      this.bus.on('signal:investigated', (payload) => this._onMiningSignalInvestigated(payload || {})),
       this.bus.on('mining:start', (payload) => this._onMiningStart(payload || {})),
       this.bus.on('mining:stop', (payload) => this._onMiningStop(payload || {})),
       this.bus.on('mining:tick', (payload) => this._onMiningTick(payload || {})),
-      this.bus.on('mining:yield', () => { this._lastMiningCargoTick = currentTick(this.state); }),
+      this.bus.on('mining:seamHit', (payload) => this._onMiningSeamReward(payload || {})),
+      this.bus.on('mining:yield', (payload) => this._onMiningYield(payload || {})),
       this.bus.on('asteroid:chunked', (payload) => this._onMiningFracture(payload || {})),
       this.bus.on('mining:richCoreExposed', (payload) => this._onMiningRichCore('mining.rich_core.exposed', 'mining:richCoreExposed', payload || {})),
       this.bus.on('mining:richCoreChargeStart', (payload) => this._onMiningRichCore('mining.rich_core.charge', 'mining:richCoreChargeStart', payload || {})),
@@ -126,6 +131,14 @@ export const presentationOrchestrator = {
       this.bus.on('cargo:full', (payload) => this._onMiningCargoFull(payload || {})),
       this.bus.on('fieldDepletion:changed', (payload) => this._onMiningFieldAftermath(payload || {})),
       this.bus.on('drill:warn', (payload) => this._onMiningDrillWarning(payload || {})),
+      this.bus.on('drill:start', () => { this._drillContactBand = null; }),
+      this.bus.on('drill:scanPulse', (payload) => this._onMiningDrillScan(payload || {})),
+      this.bus.on('drill:spark', (payload) => this._onMiningDrillContact(payload || {})),
+      this.bus.on('drill:break', (payload) => this._onMiningDrillBreak(payload || {})),
+      this.bus.on('drill:yield', (payload) => this._onMiningDrillYield(payload || {})),
+      this.bus.on('drill:gasHit', (payload) => this._onMiningDrillGas(payload || {})),
+      this.bus.on('drill:end', (payload) => this._onMiningDrillEnd(payload || {})),
+      this.bus.on('drill:retry', (payload) => this._onMiningDrillRetry(payload || {})),
       this.bus.on('sector:enter', (payload) => {
         this._resetMiningRuntime();
         this._onTravelSectorEnter(payload || {});
@@ -649,6 +662,9 @@ export const presentationOrchestrator = {
 
   _onMiningSurveyResolved(payload) {
     const found = payload.found || {};
+    // A classified signal result owns this scan cycle's return accent. The generic completion
+    // remains audible for empty/resource-only sweeps without stacking underneath classification.
+    if (Math.max(0, Number(payload.signalCount) || 0) > 0) return;
     this._emitCue('mining.survey.resolved', payload, {
       sourceEvent: 'scan:completed',
       sourceId: this.state.playerId,
@@ -656,6 +672,47 @@ export const presentationOrchestrator = {
       magnitude: Math.max(1, Number(found.asteroids) || 0),
       sequence: payload.sectorId || currentTick(this.state),
       tags: [`asteroids_${Math.max(0, Number(found.asteroids) || 0)}`],
+    });
+  },
+
+  _onMiningSignalResults(payload) {
+    const primary = payload.primary || {};
+    const position = payload.pos || primary.pos || null;
+    const classification = payload.classification || primary.classification || 'unclassified_signal';
+    const signalId = payload.signalId || payload.id || primary.id || null;
+    this._emitCue('mining.survey.classified', { ...payload, position }, {
+      sourceEvent: 'signal:scanResults',
+      sourceId: this.state.playerId,
+      targetId: primary.entityId ?? signalId,
+      material: 'survey',
+      magnitude: Math.max(1, Number(payload.total) || 1),
+      sequence: signalId || payload.scannedAt || currentTick(this.state),
+      tags: [classification, primary.sourceKind, primary.status, `signals_${Math.max(0, Number(payload.total) || 0)}`].filter(Boolean),
+    });
+  },
+
+  _onMiningSignalTracked(payload) {
+    const position = payload.pos || payload.course && payload.course.pos || null;
+    const signalId = payload.signalId || payload.id || null;
+    this._emitCue('mining.survey.tracked', { ...payload, position }, {
+      sourceEvent: 'signal:tracked',
+      sourceId: this.state.playerId,
+      targetId: payload.entityId ?? (payload.course && payload.course.targetEntityId) ?? signalId,
+      material: 'survey',
+      sequence: signalId || currentTick(this.state),
+      tags: [payload.classification, payload.sourceKind, 'tracked'].filter(Boolean),
+    });
+  },
+
+  _onMiningSignalInvestigated(payload) {
+    const signalId = payload.signalId || payload.id || null;
+    this._emitCue('mining.survey.investigated', payload, {
+      sourceEvent: 'signal:investigated',
+      sourceId: this.state.playerId,
+      targetId: payload.entityId ?? signalId,
+      material: 'survey',
+      sequence: signalId || currentTick(this.state),
+      tags: [payload.classification, payload.sourceKind, payload.outcome || 'investigated'].filter(Boolean),
     });
   },
 
@@ -689,6 +746,24 @@ export const presentationOrchestrator = {
   _onMiningTick(payload) {
     const cycle = this._miningCycle;
     if (!cycle) return;
+    if (!cycle.fractureAnticipated) {
+      const target = this.state && this.state.entities && this.state.entities.get(cycle.targetId);
+      const data = target && target.data;
+      const hp = Number(data && data.oreHP);
+      const hpMax = Number(data && data.oreHPMax);
+      if (hpMax > 0 && hp / hpMax <= 0.2) {
+        cycle.fractureAnticipated = true;
+        this._emitCue('mining.fracture.anticipation', payload, {
+          sourceEvent: 'mining:tick',
+          sourceId: cycle.sourceId,
+          targetId: cycle.targetId,
+          material: 'asteroid',
+          magnitude: Math.max(0, 1 - hp / hpMax),
+          sequence: cycle.startedTick,
+          tags: ['fracture', 'imminent'],
+        });
+      }
+    }
     const quality = seamQualityTag(payload);
     if (quality !== cycle.lastSeamQuality) {
       cycle.lastSeamQuality = quality;
@@ -702,21 +777,33 @@ export const presentationOrchestrator = {
         tags: [quality],
       });
     }
-    if (cycle.fractureAnticipated) return;
-    const target = this.state && this.state.entities && this.state.entities.get(cycle.targetId);
-    const data = target && target.data;
-    const hp = Number(data && data.oreHP);
-    const hpMax = Number(data && data.oreHPMax);
-    if (!(hpMax > 0) || hp / hpMax > 0.2) return;
-    cycle.fractureAnticipated = true;
-    this._emitCue('mining.fracture.anticipation', payload, {
-      sourceEvent: 'mining:tick',
-      sourceId: cycle.sourceId,
-      targetId: cycle.targetId,
-      material: 'asteroid',
-      magnitude: Math.max(0, 1 - hp / hpMax),
-      sequence: cycle.startedTick,
-      tags: ['fracture', 'imminent'],
+  },
+
+  _onMiningSeamReward(payload) {
+    const cycle = this._miningCycle;
+    const targetId = payload.asteroidId ?? (cycle && cycle.targetId) ?? null;
+    if (targetId == null) return;
+    this._emitCue('mining.seam.reward', payload, {
+      sourceEvent: 'mining:seamHit',
+      sourceId: (cycle && cycle.sourceId) ?? this.state.playerId,
+      targetId,
+      material: 'seam',
+      sequence: targetId,
+      tags: ['on_seam', 'reward'],
+    });
+  },
+
+  _onMiningYield(payload) {
+    this._lastMiningCargoTick = currentTick(this.state);
+    if (payload.richCore) return;
+    this._emitCue('mining.yield.collected', payload, {
+      sourceEvent: 'mining:yield',
+      sourceId: payload.minerId ?? this.state.playerId,
+      targetId: this._miningCycle && this._miningCycle.targetId,
+      material: 'ore',
+      magnitude: Math.max(1, Number(payload.qty) || 1),
+      sequence: payload.commodityId || currentTick(this.state),
+      tags: [payload.commodityId, 'yield'].filter(Boolean),
     });
   },
 
@@ -830,9 +917,105 @@ export const presentationOrchestrator = {
     });
   },
 
+  _onMiningDrillScan(payload) {
+    this._emitCue('mining.drill.seismic_pulse', payload, {
+      sourceEvent: 'drill:scanPulse',
+      sourceId: this.state.playerId,
+      targetId: this.state.drill && this.state.drill.asteroidId,
+      material: 'drill_scan',
+      magnitude: Math.max(1, Number(payload.contacts) || 0),
+      sequence: this.state.drill && this.state.drill.scan && this.state.drill.scan.serial || currentTick(this.state),
+      tags: ['seismic', `contacts_${Math.max(0, Number(payload.contacts) || 0)}`],
+    });
+  },
+
+  _onMiningDrillContact(payload) {
+    if (Number(payload.hpFrac) <= 0.02) return;
+    const band = drillHardnessBand(payload.hardness);
+    if (band === this._drillContactBand) return;
+    this._drillContactBand = band;
+    this._emitCue('mining.drill.contact', payload, {
+      sourceEvent: 'drill:spark',
+      sourceId: this.state.playerId,
+      targetId: this.state.drill && this.state.drill.asteroidId,
+      material: 'drill_contact',
+      magnitude: Math.max(0.01, Number(payload.hardness) || 0),
+      sequence: band,
+      tags: [band, payload.type, payload.ore].filter(Boolean),
+    });
+  },
+
+  _onMiningDrillBreak(payload) {
+    this._drillContactBand = null;
+    if (payload.wasGas || payload.wasVein) return;
+    this._emitCue('mining.drill.break', payload, {
+      sourceEvent: 'drill:break',
+      sourceId: this.state.playerId,
+      targetId: this.state.drill && this.state.drill.asteroidId,
+      material: 'drill_break',
+      sequence: `${payload.col ?? 'x'}:${payload.row ?? 'x'}`,
+      tags: [payload.type, 'break'].filter(Boolean),
+    });
+  },
+
+  _onMiningDrillYield(payload) {
+    const targetId = this.state.drill && this.state.drill.asteroidId;
+    const target = this.state.entities && targetId != null ? this.state.entities.get(targetId) : null;
+    this._emitCue('mining.drill.yield', { ...payload, position: target && target.pos || null }, {
+      sourceEvent: 'drill:yield',
+      sourceId: this.state.playerId,
+      targetId,
+      material: 'drill_yield',
+      magnitude: Math.max(1, Number(payload.qty) || 1),
+      sequence: payload.commodityId || currentTick(this.state),
+      tags: [payload.commodityId, 'yield'].filter(Boolean),
+    });
+  },
+
+  _onMiningDrillGas(payload) {
+    this._drillContactBand = null;
+    const targetId = this.state.drill && this.state.drill.asteroidId;
+    const target = this.state.entities && targetId != null ? this.state.entities.get(targetId) : null;
+    this._emitCue('mining.drill.gas_hazard', { ...payload, position: target && target.pos || null }, {
+      sourceEvent: 'drill:gasHit',
+      sourceId: this.state.playerId,
+      targetId,
+      material: 'drill_hazard',
+      magnitude: Math.max(1, Number(payload.dmg) || 1),
+      sequence: `${(payload.pos && payload.pos.col) ?? 'x'}:${(payload.pos && payload.pos.row) ?? 'x'}`,
+      tags: ['gas', 'hazard'],
+    });
+  },
+
+  _onMiningDrillEnd(payload) {
+    this._drillContactBand = null;
+    if (payload.reason !== 'aborted') return;
+    this._emitCue('mining.drill.aborted', payload, {
+      sourceEvent: 'drill:end',
+      sourceId: this.state.playerId,
+      targetId: payload.asteroidId ?? null,
+      material: 'drill_abort',
+      sequence: payload.asteroidId || currentTick(this.state),
+      tags: ['aborted'],
+    });
+  },
+
+  _onMiningDrillRetry(payload) {
+    this._drillContactBand = null;
+    this._emitCue('mining.drill.retry', payload, {
+      sourceEvent: 'drill:retry',
+      sourceId: this.state.playerId,
+      targetId: payload.asteroidId ?? null,
+      material: 'drill_retry',
+      sequence: payload.asteroidId || currentTick(this.state),
+      tags: ['retry'],
+    });
+  },
+
   _resetMiningRuntime() {
     this._miningCycle = null;
     this._lastMiningCargoTick = -Infinity;
+    this._drillContactBand = null;
   },
 
   _onReleaseRated(payload) {

@@ -12,13 +12,18 @@ export const MINING_CHOREOGRAPHY_PHASES = Object.freeze([
   'haul',
   'cargo',
   'aftermath',
+  'deep_drill',
 ]);
 
 export const MINING_PRESENTATION_CUE_IDS = Object.freeze([
   'mining.survey.pulse',
   'mining.survey.resolved',
+  'mining.survey.classified',
+  'mining.survey.tracked',
+  'mining.survey.investigated',
   'mining.extraction.locked',
   'mining.seam.quality',
+  'mining.seam.reward',
   'mining.fracture.anticipation',
   'mining.fracture.released',
   'mining.rich_core.exposed',
@@ -32,11 +37,19 @@ export const MINING_PRESENTATION_CUE_IDS = Object.freeze([
   'mining.field.aftermath',
   'mining.heat.overheated',
   'mining.vent.ready',
+  'mining.yield.collected',
+  'mining.drill.seismic_pulse',
+  'mining.drill.contact',
+  'mining.drill.break',
+  'mining.drill.yield',
+  'mining.drill.gas_hazard',
+  'mining.drill.aborted',
+  'mining.drill.retry',
 ]);
 
 export function classifyDrillWarning(text) {
   const value = String(text || '');
-  if (value.startsWith('DRILL OVERHEATED!')) return 'overheated';
+  if (value.startsWith('DRILL OVERHEATED!') || value.startsWith('Drill cooling down')) return 'overheated';
   if (value.startsWith('Drill system cooled.')) return 'vent_ready';
   if (value.startsWith('Cargo holds are full!')) return 'cargo_full';
   return null;
@@ -52,6 +65,13 @@ export function fieldDepletionBand(value) {
 
 export function seamQualityTag(payload = {}) {
   return payload.seamHit || Number(payload.yieldMult) >= 0.99 ? 'on_seam' : 'off_seam';
+}
+
+export function drillHardnessBand(value) {
+  const hardness = Math.max(0, Number(value) || 0);
+  if (hardness >= 1.45) return 'hard';
+  if (hardness >= 0.9) return 'firm';
+  return 'soft';
 }
 
 export function validateMiningChoreography() {

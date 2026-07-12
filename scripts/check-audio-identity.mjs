@@ -435,7 +435,12 @@ assert.match(audioSrc, /this\._ensureBrakeHiss\s*\(\)/, 'ensure path must call _
 assert.match(audioSrc, /this\._ensureTetherHum\s*\(\)/, 'ensure path must call _ensureTetherHum');
 assert.match(audioSrc, /createCuePriorityBus/, 'live graph must import createCuePriorityBus');
 assert.match(audioSrc, /comms:popup/, 'comms squelch must subscribe to comms:popup');
-assert.match(audioSrc, /scan:pulse/, 'Focus motif must bind existing scan:pulse seam');
+assert.equal(PRESENTATION_AUDIO_CUE_BY_ID['mining.survey.pulse'], 'presentation.mining.scan_pulse',
+  'scanner pulse must route through normalized mining presentation audio');
+assert.equal(resolveAudioCueRecipeId(PRESENTATION_AUDIO_CUE_BY_ID['mining.survey.pulse']), 'sfx_mining_scan_pulse',
+  'scanner pulse semantic cue must resolve to its authored survey family');
+assert.doesNotMatch(audioSrc, /bus\.on\('scan:pulse'/,
+  'raw scanner pulse must not stack a duplicate voice beneath presentation audio');
 assert.equal(PRESENTATION_AUDIO_CUE_BY_ID['travel.cruise.charging'], 'presentation.travel.cruise_charge',
   'cruise charging must route through the normalized presentation audio lane');
 assert.equal(resolveAudioCueRecipeId(PRESENTATION_AUDIO_CUE_BY_ID['travel.cruise.charging']), 'sfx.cruiseCharging',
@@ -448,7 +453,8 @@ assert.match(audioSrc, /sfx_accel_transition/, 'acceleration transition motif mu
 assert.match(audioSrc, /sfx_undock_release/, 'undock mood must use undock release recipe');
 assert.match(audioSrc, /_isCriticalSquelchActive/, 'critical squelch gate must exist');
 assert.match(audioSrc, /_updatePriorityDuckGains/, 'priority duck must apply to continuous loops each frame');
-assert.match(audioSrc, /bus\.on\('mining:seamHit'/, 'seam reward recipe must be reachable');
+assert.equal(resolveAudioCueRecipeId(PRESENTATION_AUDIO_CUE_BY_ID['mining.seam.reward']), 'sfx_mining_seam_reward',
+  'seam reward recipe must be reachable through normalized presentation audio');
 assert.match(audioSrc, /bus\.on\('weapons:vent'/, 'vent reward recipe must be reachable');
 assert.match(audioSrc, /bus\.on\('charge:detonated'/, 'impulse detonation recipe must be reachable');
 assert.equal(AUDIO_RECIPE_BY_ID['sfx.shieldHit'].category, 'weapon',

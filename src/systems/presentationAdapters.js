@@ -23,6 +23,35 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'travel.recovery.resumed': 'presentation.travel.recovery',
   'travel.aftermath.clear': 'presentation.travel.settle',
   'travel.aftermath.contested': 'presentation.travel.contested',
+  'mining.survey.pulse': 'presentation.mining.scan_pulse',
+  'mining.survey.resolved': 'presentation.mining.scan_return',
+  'mining.survey.classified': 'presentation.mining.scan_classified',
+  'mining.survey.tracked': 'presentation.mining.scan_tracked',
+  'mining.survey.investigated': 'presentation.mining.scan_investigated',
+  'mining.extraction.locked': 'presentation.mining.cutter_lock',
+  'mining.seam.quality': 'presentation.mining.hardness',
+  'mining.seam.reward': 'presentation.mining.seam_reward',
+  'mining.fracture.anticipation': 'presentation.mining.fracture_warning',
+  'mining.fracture.released': 'presentation.mining.fracture_break',
+  'mining.rich_core.exposed': 'presentation.mining.core_exposed',
+  'mining.rich_core.charge': 'presentation.mining.core_charge',
+  'mining.rich_core.completed': 'presentation.mining.core_reward',
+  'mining.rich_core.fizzle': 'presentation.mining.core_fizzle',
+  'mining.chunk.tether_required': 'presentation.mining.mass_required',
+  'mining.chunk.mass_engaged': 'presentation.mining.mass_engaged',
+  'mining.cargo.mass_settled': 'presentation.mining.cargo_settle',
+  'mining.cargo.full': 'presentation.mining.cargo_full',
+  'mining.field.aftermath': 'presentation.mining.field_settle',
+  'mining.heat.overheated': 'presentation.mining.heat_warning',
+  'mining.vent.ready': 'presentation.mining.vent_ready',
+  'mining.yield.collected': 'presentation.mining.yield',
+  'mining.drill.seismic_pulse': 'presentation.mining.seismic_pulse',
+  'mining.drill.contact': 'presentation.mining.drill_contact',
+  'mining.drill.break': 'presentation.mining.drill_break',
+  'mining.drill.yield': 'presentation.mining.drill_yield',
+  'mining.drill.gas_hazard': 'presentation.mining.gas_hazard',
+  'mining.drill.aborted': 'presentation.mining.drill_abort',
+  'mining.drill.retry': 'presentation.mining.drill_retry',
   'tether.attach': 'presentation.tether.attach',
   'tether.near_break': 'presentation.tether.near_break',
   'tether.break': 'presentation.tether.break',
@@ -117,6 +146,8 @@ export const presentationAdapters = {
     this._lastApplied = null;
     this._travelAudioTick = null;
     this._travelAudioSources = new Set();
+    this._miningAudioTick = null;
+    this._miningAudioSources = new Set();
   },
 
   _applyCue(cue) {
@@ -201,12 +232,14 @@ export const presentationAdapters = {
     const audioId = PRESENTATION_AUDIO_CUE_BY_ID[cue && cue.id];
     if (!audioId) return null;
     if (cue.id.startsWith('travel.') && !this._claimTravelAudioFloor(cue)) return null;
+    if (cue.id.startsWith('mining.') && !this._claimMiningAudioFloor(cue)) return null;
     const payload = {
       id: audioId,
       cueId: cue.id,
       lane: cue.lanes && cue.lanes.audio || null,
       position: cue.position || null,
       gain: round4(0.45 + clamp01(finite(cue.importance, 0.5)) * 0.35),
+      rate: miningAudioRate(cue),
       duck: (cue.tags || []).includes('comms') || finite(cue.importance, 0) >= 0.85,
     };
     this.bus.emit('presentation:audioCue', payload);
@@ -226,6 +259,18 @@ export const presentationAdapters = {
     const sourceEvent = cue.sourceEvent || cue.id;
     if (this._travelAudioSources.has(sourceEvent)) return false;
     this._travelAudioSources.add(sourceEvent);
+    return true;
+  },
+
+  _claimMiningAudioFloor(cue) {
+    const tick = currentTick(this.state);
+    if (this._miningAudioTick !== tick) {
+      this._miningAudioTick = tick;
+      this._miningAudioSources = new Set();
+    }
+    const sourceEvent = cue.sourceEvent || cue.id;
+    if (this._miningAudioSources.has(sourceEvent)) return false;
+    this._miningAudioSources.add(sourceEvent);
     return true;
   },
 
@@ -276,6 +321,17 @@ function shapeForCue(id) {
   if (id && id.startsWith('scenario.comms.')) return 'diamond';
   if (id && id.startsWith('scenario.objective.')) return 'split';
   return 'pulse';
+}
+
+function miningAudioRate(cue) {
+  if (!cue || !String(cue.id || '').startsWith('mining.')) return 1;
+  const tags = Array.isArray(cue.tags) ? cue.tags : [];
+  if (cue.id === 'mining.seam.quality') return tags.includes('on_seam') ? 1.16 : 0.84;
+  if (cue.id === 'mining.drill.contact') {
+    if (tags.includes('hard')) return 0.78;
+    if (tags.includes('soft')) return 1.12;
+  }
+  return 1;
 }
 
 function copyObject(value) {

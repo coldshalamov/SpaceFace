@@ -15,6 +15,8 @@ import {
   resolveMiningVentBonusSignature,
   shouldThrottleMiningSeam,
 } from '../src/systems/signatureAdapters.js';
+import { PRESENTATION_AUDIO_CUE_BY_ID } from '../src/systems/presentationAdapters.js';
+import { resolveAudioCueRecipeId } from '../src/audio/audioSystem.js';
 
 const report = validateSignatureRecipes();
 assert(report.ok, report.issues.join('\n'));
@@ -60,8 +62,12 @@ assert.match(miningSource, /bus\.emit\('mining:seamHit'/,
   'mining must still expose the seam-hit event reused by AUD-06');
 
 const audioSource = readFileSync(new URL('../src/audio/audioSystem.js', import.meta.url), 'utf8');
-assert.match(audioSource, /_onSeamHit\(p\)/, 'audioSystem still has the shipped seam hit hook');
-assert.match(audioSource, /sfx_mining_impact/, 'audioSystem seam hook still reuses mining impact');
+assert.equal(PRESENTATION_AUDIO_CUE_BY_ID['mining.seam.reward'], 'presentation.mining.seam_reward',
+  'runtime seam reward must route through normalized presentation audio');
+assert.equal(resolveAudioCueRecipeId(PRESENTATION_AUDIO_CUE_BY_ID['mining.seam.reward']), 'sfx_mining_seam_reward',
+  'runtime seam reward must resolve to the authored impact+bell family');
+assert.doesNotMatch(audioSource, /bus\.on\('mining:seamHit'/,
+  'raw seam hook must not double the normalized seam reward');
 assert.match(audioSource, /_onVentBonus\(p\)/, 'audioSystem still has the shipped vent bonus hook');
 assert.match(audioSource, /sfx_vent_chime/, 'audioSystem vent hook still reuses vent chime');
 

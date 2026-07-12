@@ -12,6 +12,8 @@ import { fileURLToPath } from 'node:url';
 import { AUDIO_RECIPE_BY_ID, audio, resolveAudioCueRecipeId } from '../src/audio/audioSystem.js';
 import { createCuePriorityBus, PRIORITY_DUCK_THRESHOLD, dbToGain, PRIORITY_DUCK_DB } from '../src/audio/cuePriorityBus.js';
 import { SECTOR_PALETTE_CLASSES } from '../src/data/sectors.js';
+import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
+import { presentationAdapters } from '../src/systems/presentationAdapters.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.join(__dirname, '../.devshots/audio');
@@ -189,8 +191,12 @@ const bus = {
     events.push({ evt, payload: payload || null });
     for (const fn of busHandlers.get(evt) || []) fn(payload);
   },
+  queue(evt, payload) { this.emit(evt, payload); },
 };
 
+// Match registry order: normalized presentation owns semantic one-shots before audio consumes them.
+presentationOrchestrator.init({ state, bus });
+presentationAdapters.init({ state, bus });
 audio.init({ state, bus, helpers: {} });
 // Force context (gesture path)
 const ctx = new MockAudioContext();
@@ -285,8 +291,8 @@ step('scan_pulse', () => {
   bus.emit('scan:pulse', { pos: { x: 0, z: 0 } });
 });
 assert(
-  trace.steps[2].played.includes('sfx_scan_pulse'),
-  'scan:pulse must audibly schedule sfx_scan_pulse Focus motif',
+  trace.steps[2].played.includes('sfx_mining_scan_pulse'),
+  'scan:pulse must audibly schedule the normalized mining scanner motif',
 );
 
 // 3b) Story comms use the real popup seam and must own the mix.
@@ -391,3 +397,5 @@ for (const s of trace.steps) {
 }
 console.log(`Evidence written: ${path.relative(process.cwd(), outFile)}`);
 console.log('ALL FIRST-HOUR AUDIO CHECKS PASSED');
+presentationAdapters.dispose();
+presentationOrchestrator.dispose();

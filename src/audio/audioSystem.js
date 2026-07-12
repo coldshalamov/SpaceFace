@@ -277,6 +277,35 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.travel.recovery': 'sfx_travel_recovery',
   'presentation.travel.settle': 'sfx_travel_settle',
   'presentation.travel.contested': 'sfx_travel_interdiction',
+  'presentation.mining.scan_pulse': 'sfx_mining_scan_pulse',
+  'presentation.mining.scan_return': 'sfx_mining_scan_return',
+  'presentation.mining.scan_classified': 'sfx_mining_scan_classified',
+  'presentation.mining.scan_tracked': 'sfx_mining_scan_tracked',
+  'presentation.mining.scan_investigated': 'sfx_mining_scan_investigated',
+  'presentation.mining.cutter_lock': 'sfx_mining_cutter_lock',
+  'presentation.mining.hardness': 'sfx_mining_hardness',
+  'presentation.mining.seam_reward': 'sfx_mining_seam_reward',
+  'presentation.mining.fracture_warning': 'sfx_mining_fracture_warning',
+  'presentation.mining.fracture_break': 'sfx_mining_fracture_break',
+  'presentation.mining.core_exposed': 'sfx_mining_core_exposed',
+  'presentation.mining.core_charge': 'sfx_mining_core_charge',
+  'presentation.mining.core_reward': 'sfx_mining_core_reward',
+  'presentation.mining.core_fizzle': 'sfx_mining_core_fizzle',
+  'presentation.mining.mass_required': 'sfx_mining_mass_required',
+  'presentation.mining.mass_engaged': 'sfx_mining_mass_engaged',
+  'presentation.mining.cargo_settle': 'sfx_mining_cargo_settle',
+  'presentation.mining.cargo_full': 'sfx_ui_error',
+  'presentation.mining.field_settle': 'sfx_mining_field_settle',
+  'presentation.mining.heat_warning': 'sfx_mining_heat_warning',
+  'presentation.mining.vent_ready': 'sfx_vent_chime',
+  'presentation.mining.yield': 'sfx_mining_yield',
+  'presentation.mining.seismic_pulse': 'sfx_mining_seismic_pulse',
+  'presentation.mining.drill_contact': 'sfx_mining_drill_contact',
+  'presentation.mining.drill_break': 'sfx_mining_drill_break',
+  'presentation.mining.drill_yield': 'sfx_mining_drill_yield',
+  'presentation.mining.gas_hazard': 'sfx_mining_gas_hazard',
+  'presentation.mining.drill_abort': 'sfx_mining_drill_abort',
+  'presentation.mining.drill_retry': 'sfx_mining_drill_retry',
   'presentation.shield.collapse': 'sfx.shieldBreak',
   'presentation.subsystem.disabled': 'sfx_ui_alert',
   'presentation.scenario.signal': 'sfx_ui_alert',
@@ -462,10 +491,8 @@ export const audio = {
     bus.on('encounter:resolved', (p) => this._onEncounterResolvedAudio(p));
     // Jump/cruise one-shots are owned by the normalized presentation lane below. Do not subscribe
     // to their raw events here: doing so stacks a direct voice with the semantic journey voice.
-    // Mining yield: each ore chunk gained was silent (only the per-tick beam impact had sound).
-    // A soft impact ping makes the reward loop read — throttled so a burst of yields isn't noise.
-    bus.on('mining:yield', (p) => this._onMiningYield(p));
-    bus.on('mining:seamHit', (p) => this._onSeamHit(p));
+    // Mining rewards and seam reads are normalized by presentation. The beam loop remains here,
+    // but raw one-shot subscriptions would double the semantic reward floor.
     bus.on('weapons:vent', (p) => {
       if (p && p.ownerId === this.state.playerId && p.phase === 'end') this._onVentBonus(p);
     });
@@ -504,11 +531,7 @@ export const audio = {
       this._applyPriorityCue({ id: 'cruise.snared', importance: 0.88, playerRelevance: 1 });
       this.play('sfx.cruiseSnared', { gain: 0.75, critical: true });
     });
-    // Focus / scan pulse — one clear transition motif on an existing scanner seam.
-    bus.on('scan:pulse', () => {
-      if (this._motionReduced()) return;
-      this.play('sfx_scan_pulse', { gain: 0.45 });
-    });
+    // Scanner one-shots are presentation-owned so pulse, return and classification form one family.
     // One-voice comms squelch (never overlaps; queue by gate).
     bus.on('comms:popup', (p) => this._onCommsPopup(p));
     // Live priority duck from presentation importance (Destiny hierarchy).
@@ -1037,12 +1060,15 @@ export const audio = {
   },
 
   _onMiningTick(p) {
-    // small impact tick on the contact point (gated by retrigger to avoid storms)
+    // Keep hardness/contact inside the existing continuous cutter voice. Spawning a one-shot every
+    // 80 ms masked seam rewards and inflated the voice floor; the semantic lane owns transitions.
     const rt = this.rt;
-    const now = rt.ctx ? rt.ctx.currentTime : 0;
-    if (now - (rt._lastMiningTick || 0) < 0.08) return;
-    rt._lastMiningTick = now;
-    this.play('sfx_mining_impact', { position: p && p.contactPos, gain: 0.4, rate: 0.9 + Math.random() * 0.4 });
+    const voice = rt.loops.mining;
+    const filter = voice && voice.filter;
+    const ctx = rt.ctx;
+    if (!filter || !ctx) return;
+    const targetHz = p && p.seamHit ? 1520 : 940;
+    try { filter.frequency.setTargetAtTime(targetHz, ctx.currentTime, 0.045); } catch (_) {}
   },
 
   _startLoopVoice(recipeId, position, gain) {
@@ -1187,17 +1213,6 @@ export const audio = {
       }, 2000);
     }
     delete rt.loops.stationHum;
-  },
-
-  // Mining yield: a burst of ore chunks (e.g. a big asteroid breaking up) would spam the impact
-  // sound. Throttle to at most one yield ping per ~120ms so a rich strike reads as a pleasant
-  // trickle, not machine-gun noise. Position follows the player's mining target when available.
-  _onMiningYield(p) {
-    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    if (now - (this._lastMiningYieldAt || 0) < 120) return;
-    this._lastMiningYieldAt = now;
-    const pos = p && p.pos;
-    this.play('sfx_mining_impact', { position: pos, gain: 0.5, rate: 1.1 });
   },
 
   _onCue(cue) {
@@ -1904,13 +1919,6 @@ export const audio = {
     setTimeout(() => {
       this.play('sfx_vent_chime', { gain: 0.65, rate: 1.25 });
     }, 90);
-  },
-
-  _onSeamHit(p) {
-    const now = this.rt.ctx ? this.rt.ctx.currentTime : 0;
-    if (now - (this.rt._lastSeamHitAt || 0) < 0.5) return;
-    this.rt._lastSeamHitAt = now;
-    this.play('sfx_mining_impact', { position: p && p.pos, gain: 0.6, rate: 1.8 });
   },
 
   _onCommsPopup(p) {
