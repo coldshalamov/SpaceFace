@@ -35,7 +35,7 @@ const FACTION_COLOR = {
 const COL = {
   player: '#00F0FF', hostile: '#ff5470', neutral: '#9aa8bc',
   asteroid: '#6e7b8c', pickup: '#ffe36b', station: '#7af7d0', gate: '#b99cff',
-  objective: '#ffe36b', ring: '#1d3350',
+  objective: '#ffb35c', ring: '#1d3350',
 };
 
 // ── blip helpers ────────────────────────────────────────────────────────────────────────────
@@ -175,20 +175,75 @@ function waypointLabel(wp) {
   return (text || 'Goal').toUpperCase().slice(0, 18);
 }
 
+export function placeRadarObjectiveLabel(textWidth, markerX, markerY, size, center, radius) {
+  const viewport = Math.max(24, Number(size) || 0);
+  const c = Number.isFinite(center) ? center : viewport / 2;
+  const r = Math.max(12, Number(radius) || viewport / 2 - 4);
+  const width = Math.min(viewport - 8, Math.max(28, Math.ceil(Number(textWidth) || 0) + 8));
+  const height = 13;
+  const x = Number(markerX) || c;
+  const y = Number(markerY) || c;
+  const horizontalGap = 12;
+  const verticalGap = 11;
+  const preferLeft = x >= c;
+  const preferAbove = y >= c;
+  const candidates = [
+    { x: preferLeft ? x - horizontalGap - width : x + horizontalGap, y: y - height / 2 },
+    { x: x - width / 2, y: preferAbove ? y - verticalGap - height : y + verticalGap },
+    { x: preferLeft ? x + horizontalGap : x - horizontalGap - width, y: y - height / 2 },
+    { x: x - width / 2, y: preferAbove ? y + verticalGap : y - verticalGap - height },
+  ];
+  const playerSafe = { x: c - 12, y: c - 12, width: 24, height: 24 };
+  const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
+  for (const candidate of candidates) {
+    const rect = {
+      x: clamp(candidate.x, 4, viewport - 4 - width),
+      y: clamp(candidate.y, 4, viewport - 4 - height),
+      width,
+      height,
+    };
+    const overlapsPlayer = rect.x < playerSafe.x + playerSafe.width
+      && rect.x + rect.width > playerSafe.x
+      && rect.y < playerSafe.y + playerSafe.height
+      && rect.y + rect.height > playerSafe.y;
+    if (!overlapsPlayer || Math.hypot(x - c, y - c) < 18) return rect;
+  }
+  const angle = Math.atan2(y - c, x - c);
+  return {
+    x: clamp(c + Math.cos(angle) * Math.min(r * 0.55, 32) - width / 2, 4, viewport - 4 - width),
+    y: clamp(c + Math.sin(angle) * Math.min(r * 0.55, 32) - height / 2, 4, viewport - 4 - height),
+    width,
+    height,
+  };
+}
+
 function drawWaypointLabel(g, label, x, y, opts = {}) {
   g.save();
   g.font = 'bold 7px monospace';
-  g.textAlign = opts.align || 'center';
-  g.textBaseline = opts.baseline || 'top';
-  g.fillStyle = 'rgba(255,227,107,0.95)';
-  g.strokeStyle = 'rgba(4,8,16,0.9)';
-  g.lineWidth = 3;
-  g.strokeText(label, x, y);
-  g.fillText(label, x, y);
+  const width = g.measureText ? g.measureText(label).width : label.length * 5;
+  const placement = placeRadarObjectiveLabel(
+    width,
+    x,
+    y,
+    opts.size,
+    opts.center,
+    opts.radius,
+  );
+  g.fillStyle = 'rgba(4,8,16,0.94)';
+  g.strokeStyle = 'rgba(255,179,92,0.9)';
+  g.lineWidth = 1;
+  g.beginPath();
+  g.rect(placement.x, placement.y, placement.width, placement.height);
+  g.fill();
+  g.stroke();
+  g.textAlign = 'left';
+  g.textBaseline = 'top';
+  g.fillStyle = '#ffb35c';
+  g.fillText(label, placement.x + 4, placement.y + 3);
   g.restore();
 }
 
-function drawWaypointDiamond(g, x, y, label) {
+function drawWaypointDiamond(g, x, y, label, C, R, SIZE) {
   g.save();
   glow(g, COL.objective, 12);
   g.strokeStyle = COL.objective;
@@ -211,10 +266,10 @@ function drawWaypointDiamond(g, x, y, label) {
   g.arc(x, y, 14, 0, Math.PI * 2);
   g.stroke();
   g.restore();
-  drawWaypointLabel(g, label, x, y + 9);
+  drawWaypointLabel(g, label, x, y, { size: SIZE, center: C, radius: R });
 }
 
-function drawWaypointEdgeArrow(g, x, y, angle, label) {
+function drawWaypointEdgeArrow(g, x, y, angle, label, C, R, SIZE) {
   g.save();
   g.translate(x, y);
   g.rotate(angle);
@@ -231,7 +286,7 @@ function drawWaypointEdgeArrow(g, x, y, angle, label) {
   g.stroke();
   noGlow(g);
   g.restore();
-  drawWaypointLabel(g, label, x - Math.cos(angle) * 18, y - Math.sin(angle) * 18);
+  drawWaypointLabel(g, label, x, y, { size: SIZE, center: C, radius: R });
 }
 
 function drawHeatZone(g, zone, px, pz, scale, C, R) {
@@ -733,19 +788,15 @@ export function createRadar(ctx) {
     if (wp && !pos) {
       g.save();
       const x = C, y = C - R + 18;
-      g.strokeStyle = '#ffd24a';
-      g.fillStyle = '#ffd24a';
-      glow(g, '#ffd24a', 8);
+      g.strokeStyle = COL.objective;
+      g.fillStyle = COL.objective;
+      glow(g, COL.objective, 8);
       g.beginPath();
       g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y); g.closePath();
       g.stroke();
       noGlow(g);
-      g.font = '7px monospace';
-      g.textAlign = 'center';
-      g.textBaseline = 'top';
-      g.globalAlpha = 0.82;
-      g.fillText(wpLabel, x, y + 8);
       g.restore();
+      drawWaypointLabel(g, wpLabel, x, y, { size: SIZE, center: C, radius: R });
     } else if (pos) {
       const dx = pos.x - px, dz = pos.z - pz;
       const distSq = dx * dx + dz * dz;
@@ -754,10 +805,10 @@ export function createRadar(ctx) {
       if (off) {
         const a = Math.atan2(-dz, -dx);
         bx = C + Math.cos(a) * R; by = C + Math.sin(a) * R;
-        drawWaypointEdgeArrow(g, bx, by, a, wpLabel);
+        drawWaypointEdgeArrow(g, bx, by, a, wpLabel, C, R, SIZE);
       } else {
         bx = C - dx * radarScale; by = C - dz * radarScale;
-        drawWaypointDiamond(g, bx, by, wpLabel);
+        drawWaypointDiamond(g, bx, by, wpLabel, C, R, SIZE);
       }
     }
 

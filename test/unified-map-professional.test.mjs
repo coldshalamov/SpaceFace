@@ -10,10 +10,13 @@ import {
 import {
   galaxyMapScreen,
   clampMapLabelX,
+  layoutMapLabels,
   mapFocusButtonSelector,
+  mapLabelPriority,
   pickMapTargetAt,
   resolveGalaxyMapLayout,
 } from '../src/ui/galaxyMap.js';
+import { placeRadarObjectiveLabel } from '../src/ui/radar.js';
 import { save } from '../src/save/saveSystem.js';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -88,6 +91,72 @@ test('gate and station labels clamp inside the canvas instead of clipping into i
   assert.equal(clampMapLabelX(132, 470, 480, 8), 340);
   assert.equal(clampMapLabelX(80, 40, 480, 8), 40);
   assert.equal(clampMapLabelX(80, -20, 480, 8), 8);
+});
+
+test('crowded Helios labels resolve by semantic priority without overlap or input-order drift', () => {
+  const crowded = [
+    { id: 'rock-a', kind: 'asteroid', text: 'Basalt rock', x: 244, y: 162, width: 72, height: 15, anchorRadius: 3 },
+    { id: 'ship-courier', kind: 'ship', text: 'Courier', x: 247, y: 158, width: 54, height: 15, anchorRadius: 5 },
+    { id: 'ship-hostile', kind: 'ship', hostile: true, text: 'Raider', x: 252, y: 166, width: 48, height: 15, anchorRadius: 5 },
+    { id: 'zone-dock', kind: 'zone', text: 'Helios approach', x: 236, y: 152, width: 104, height: 15, anchorRadius: 4 },
+    { id: 'station-helios', kind: 'station', text: 'Helios Exchange', x: 242, y: 160, width: 112, height: 26, anchorRadius: 7 },
+    { id: 'gate-ceres', kind: 'gate', text: 'Ceres Gate', x: 250, y: 160, width: 80, height: 15, anchorRadius: 8 },
+    { id: 'objective', kind: 'objective', objective: true, text: 'GOAL · RECOVER SAMPLE', x: 246, y: 161, width: 142, height: 17, anchorRadius: 16 },
+  ];
+  for (const viewport of [{ width: 720, height: 520 }, { width: 480, height: 320 }]) {
+    const placements = layoutMapLabels(crowded, viewport, {
+      reserved: [{ x: 8, y: 8, width: 130, height: 24 }],
+    });
+    const reversed = layoutMapLabels(crowded.slice().reverse(), viewport, {
+      reserved: [{ x: 8, y: 8, width: 130, height: 24 }],
+    });
+    assert.deepEqual(placements, reversed, `${viewport.width}px layout ignores source order`);
+    assert.equal(placements.find((entry) => entry.id === 'objective')?.visible, true,
+      'the active objective label is never suppressed');
+    assert.equal(placements.find((entry) => entry.id === 'rock-a')?.visible, false,
+      'ordinary rocks stay compact under crowding');
+    assert.equal(placements.find((entry) => entry.id === 'ship-courier')?.visible, false,
+      'ordinary contacts stay as glyphs under crowding');
+    assert.equal(placements.find((entry) => entry.id === 'station-helios')?.visible, true,
+      'the primary station remains named');
+    assert.equal(placements.find((entry) => entry.id === 'gate-ceres')?.visible, true,
+      'the gate remains named and secondary to the objective');
+    const visible = placements.filter((entry) => entry.visible);
+    for (let i = 0; i < visible.length; i += 1) {
+      assert.ok(visible[i].x >= 0 && visible[i].y >= 0);
+      assert.ok(visible[i].x + visible[i].width <= viewport.width);
+      assert.ok(visible[i].y + visible[i].height <= viewport.height);
+      for (let j = i + 1; j < visible.length; j += 1) {
+        assert.equal(overlaps(visible[i], visible[j]), false,
+          `${viewport.width}px labels ${visible[i].id}/${visible[j].id} do not overlap`);
+      }
+    }
+  }
+  assert.ok(mapLabelPriority({ kind: 'objective', objective: true }) > mapLabelPriority({ kind: 'gate' }));
+  assert.ok(mapLabelPriority({ kind: 'gate' }) > mapLabelPriority({ kind: 'station' }));
+  assert.ok(mapLabelPriority({ kind: 'station' }) > mapLabelPriority({ kind: 'asteroid' }));
+});
+
+test('label anchors quantize tiny movement and radar goal plates stay inside supported canvases', () => {
+  const base = [
+    { id: 'objective', kind: 'objective', objective: true, text: 'GOAL · SAMPLE', x: 240.1, y: 160.1, width: 96, height: 17, anchorRadius: 16 },
+    { id: 'station', kind: 'station', text: 'Helios', x: 260.1, y: 160.1, width: 54, height: 15, anchorRadius: 7 },
+  ];
+  const shifted = base.map((candidate) => ({ ...candidate, x: candidate.x + 0.4, y: candidate.y + 0.4 }));
+  assert.deepEqual(
+    layoutMapLabels(base, { width: 480, height: 320 }),
+    layoutMapLabels(shifted, { width: 480, height: 320 }),
+    'sub-pixel camera drift cannot flip label sides frame-to-frame',
+  );
+
+  for (const size of [180, 260]) {
+    for (const [x, y] of [[6, size / 2], [size - 6, size / 2], [size / 2, 6], [size / 2, size - 6]]) {
+      const plate = placeRadarObjectiveLabel(92, x, y, size, size / 2, size / 2 - 8);
+      assert.ok(plate.x >= 0 && plate.y >= 0);
+      assert.ok(plate.x + plate.width <= size && plate.y + plate.height <= size,
+        `${size}px radar keeps objective label inside its canvas`);
+    }
+  }
 });
 
 test('inspector target persists across scale changes and refreshes', () => {

@@ -117,6 +117,171 @@ export function clampMapLabelX(textWidth, desiredX, viewportWidth, padding = 8) 
   return Math.max(pad, Math.min(Number(desiredX) || 0, maxX));
 }
 
+const MAP_LABEL_OFFSETS = Object.freeze([
+  Object.freeze({ side: 'right', dx: 1, dy: 0 }),
+  Object.freeze({ side: 'left', dx: -1, dy: 0 }),
+  Object.freeze({ side: 'above', dx: 0, dy: -1 }),
+  Object.freeze({ side: 'below', dx: 0, dy: 1 }),
+  Object.freeze({ side: 'upper-right', dx: 1, dy: -1 }),
+  Object.freeze({ side: 'lower-right', dx: 1, dy: 1 }),
+  Object.freeze({ side: 'upper-left', dx: -1, dy: -1 }),
+  Object.freeze({ side: 'lower-left', dx: -1, dy: 1 }),
+  Object.freeze({ side: 'far-right', dx: 2, dy: 0 }),
+  Object.freeze({ side: 'far-left', dx: -2, dy: 0 }),
+  Object.freeze({ side: 'far-above', dx: 0, dy: -2 }),
+  Object.freeze({ side: 'far-below', dx: 0, dy: 2 }),
+]);
+
+/** Stable label priority: objective > selection > navigation infrastructure > context > contacts. */
+export function mapLabelPriority(candidate) {
+  if (!candidate) return -1;
+  if (candidate.objective === true || candidate.kind === 'objective') return 1000;
+  if (candidate.selected === true) return 900;
+  if (candidate.kind === 'gate') return 760;
+  if (candidate.kind === 'station') return 720;
+  if (candidate.kind === 'hazard') return 600;
+  if (candidate.kind === 'zone') return 480;
+  if (candidate.kind === 'poi') return 420;
+  if (candidate.hostile === true) return 340;
+  if (candidate.named === true) return 280;
+  if (candidate.kind === 'ship') return 220;
+  if (candidate.kind === 'asteroid') return 80;
+  return 160;
+}
+
+function mapLabelEligible(candidate) {
+  if (!candidate || candidate.showLabel === false || !String(candidate.text || '').trim()) return false;
+  if (candidate.objective || candidate.selected) return true;
+  if (candidate.kind === 'gate' || candidate.kind === 'station' || candidate.kind === 'hazard'
+    || candidate.kind === 'zone' || candidate.kind === 'poi') return true;
+  if (candidate.kind === 'asteroid') return false;
+  if (candidate.kind === 'ship') return candidate.hostile === true || candidate.named === true;
+  return candidate.named === true;
+}
+
+function rectsOverlap(a, b, gap = 0) {
+  return a.x < b.x + b.width + gap
+    && a.x + a.width + gap > b.x
+    && a.y < b.y + b.height + gap
+    && a.y + a.height + gap > b.y;
+}
+
+function quantizedLabelAnchor(value) {
+  return Math.round((Number(value) || 0) / 2) * 2;
+}
+
+function candidateLabelRects(candidate, width, height, gap) {
+  const x = quantizedLabelAnchor(candidate.x);
+  const y = quantizedLabelAnchor(candidate.y);
+  const radius = Math.max(0, Number(candidate.anchorRadius) || 0);
+  const edge = radius + gap;
+  return MAP_LABEL_OFFSETS.map((offset) => {
+    let left = x - width / 2;
+    let top = y - height / 2;
+    if (offset.dx > 0) left = x + edge + (offset.dx - 1) * (width + gap);
+    else if (offset.dx < 0) left = x - edge - width - (Math.abs(offset.dx) - 1) * (width + gap);
+    if (offset.dy > 0) top = y + edge + (offset.dy - 1) * (height + gap);
+    else if (offset.dy < 0) top = y - edge - height - (Math.abs(offset.dy) - 1) * (height + gap);
+    return { x: left, y: top, width, height, side: offset.side };
+  });
+}
+
+/**
+ * Deterministic collision layout for canvas labels. Input order never changes the result: semantic
+ * priority, stable id, then text own the order. Anchors are quantized to two CSS pixels so tiny
+ * camera/entity drift cannot make a label oscillate between sides frame-to-frame.
+ */
+export function layoutMapLabels(candidates, viewport, options = {}) {
+  const viewportWidth = Math.max(1, Number(viewport && viewport.width) || 1);
+  const viewportHeight = Math.max(1, Number(viewport && viewport.height) || 1);
+  const padding = Math.max(0, Number(options.padding) || 8);
+  const collisionGap = Math.max(0, Number(options.collisionGap) || 3);
+  const areaBudget = Math.max(4, Math.min(18, Math.floor((viewportWidth * viewportHeight) / 32000)));
+  const maxLabels = Math.max(1, Number(options.maxLabels) || areaBudget);
+  const reserved = (options.reserved || []).map((rect) => ({
+    x: Number(rect.x) || 0,
+    y: Number(rect.y) || 0,
+    width: Math.max(0, Number(rect.width) || 0),
+    height: Math.max(0, Number(rect.height) || 0),
+  }));
+  const normalized = (candidates || []).map((candidate, sourceIndex) => ({
+    ...candidate,
+    sourceIndex,
+    id: String(candidate && candidate.id != null ? candidate.id : `label-${sourceIndex}`),
+    text: String(candidate && candidate.text || '').replace(/\s+/g, ' ').trim(),
+    priority: Number.isFinite(candidate && candidate.priority)
+      ? candidate.priority
+      : mapLabelPriority(candidate),
+  })).sort((a, b) => b.priority - a.priority
+    || a.id.localeCompare(b.id)
+    || a.text.localeCompare(b.text)
+    || a.sourceIndex - b.sourceIndex);
+  const markerBoxes = normalized.map((candidate) => {
+    const radius = Math.max(2, Number(candidate.anchorRadius) || 2);
+    const x = quantizedLabelAnchor(candidate.x);
+    const y = quantizedLabelAnchor(candidate.y);
+    return {
+      id: candidate.id,
+      priority: candidate.priority,
+      x: x - radius,
+      y: y - radius,
+      width: radius * 2,
+      height: radius * 2,
+    };
+  });
+  const occupied = reserved.slice();
+  const placements = [];
+  let visibleCount = 0;
+
+  for (const candidate of normalized) {
+    const { sourceIndex: _sourceIndex, ...publicCandidate } = candidate;
+    publicCandidate.x = quantizedLabelAnchor(candidate.x);
+    publicCandidate.y = quantizedLabelAnchor(candidate.y);
+    if (!mapLabelEligible(candidate) || (!candidate.objective && visibleCount >= maxLabels)) {
+      placements.push({ ...publicCandidate, visible: false, reason: 'suppressed' });
+      continue;
+    }
+    const width = Math.min(
+      Math.max(12, viewportWidth - padding * 2),
+      Math.max(12, Math.ceil(Number(candidate.width) || 0)),
+    );
+    const height = Math.min(
+      Math.max(10, viewportHeight - padding * 2),
+      Math.max(10, Math.ceil(Number(candidate.height) || 12)),
+    );
+    const blockers = markerBoxes.filter((box) => box.id !== candidate.id && box.priority >= candidate.priority);
+    let placed = null;
+    for (const proposed of candidateLabelRects(candidate, width, height, collisionGap)) {
+      const rect = {
+        ...proposed,
+        x: Math.max(padding, Math.min(proposed.x, viewportWidth - padding - width)),
+        y: Math.max(padding, Math.min(proposed.y, viewportHeight - padding - height)),
+      };
+      if (occupied.some((box) => rectsOverlap(rect, box, collisionGap))) continue;
+      if (blockers.some((box) => rectsOverlap(rect, box, 1))) continue;
+      placed = rect;
+      break;
+    }
+    if (!placed && candidate.objective === true) {
+      const fallback = candidateLabelRects(candidate, width, height, collisionGap)[0];
+      placed = {
+        ...fallback,
+        x: Math.max(padding, Math.min(fallback.x, viewportWidth - padding - width)),
+        y: Math.max(padding, Math.min(fallback.y, viewportHeight - padding - height)),
+      };
+    }
+    if (!placed) {
+      placements.push({ ...publicCandidate, visible: false, reason: 'collision' });
+      continue;
+    }
+    const placement = { ...publicCandidate, ...placed, visible: true };
+    placements.push(placement);
+    occupied.push(placed);
+    visibleCount += 1;
+  }
+  return placements;
+}
+
 /** Only gamepad entry claims DOM focus; keyboard/pointer entry keeps canvas control uninterrupted. */
 export function mapFocusButtonSelector(intent) {
   if (!intent || intent.source !== 'gamepad') return null;
@@ -739,9 +904,12 @@ export function buildLocalModel(state, isHostile) {
     if (kind === 'ship' || kind === 'drone') {
       hostile = hostileFn ? !!hostileFn(e, playerTeam, state) : !!(e.data && e.data.hostile);
     }
+    const mapKind = e.type === 'station' && e.data && e.data.isGate
+      ? 'gate'
+      : (kind === 'drone' ? 'ship' : kind);
     contacts.push({
       id: e.id,
-      kind: kind === 'drone' ? 'ship' : kind,
+      kind: mapKind,
       name: (e.data && e.data.name) || e.name || e.role || kind,
       x: e.pos.x, z: e.pos.z,
       vx: e.vel ? e.vel.x : 0, vz: e.vel ? e.vel.z : 0,
@@ -750,6 +918,7 @@ export function buildLocalModel(state, isHostile) {
       factionId: e.factionId || null,
       entityId: e.id,
       stationId: (e.type === 'station' && e.data && e.data.stationId) || null,
+      named: !!(e.data && (e.data.namedLaneContactId || e.data.callsign || e.data.name)),
     });
   }
   return {
@@ -1689,6 +1858,7 @@ export const galaxyMapScreen = {
   _lastTime: 0,
   _view: null,
   _clickTargets: [],
+  _lastLabelLayout: [],
   _isHostile: null,
   _inspectorDetails: null,
   _setCourseButton: null,
@@ -2868,6 +3038,7 @@ export const galaxyMapScreen = {
     this._view = { level: 'system', baseScale };
     const sx = (x) => w / 2 + (x - cam.cx) * baseScale * cam.zoom;
     const sz = (z) => h / 2 + (z - cam.cy) * baseScale * cam.zoom;
+    const labelCandidates = [];
 
     // Header sector label
     g.fillStyle = 'rgba(207,227,255,0.75)'; g.font = 'bold 13px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
@@ -2897,8 +3068,16 @@ export const galaxyMapScreen = {
         g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2);
         g.strokeStyle = '#ff5c5c'; g.lineWidth = 2.0; g.setLineDash([8, 6]); g.stroke(); g.setLineDash([]);
         g.fillStyle = 'rgba(255,92,92,0.06)'; g.fill();
-        g.fillStyle = '#ff5c5c'; g.font = '9px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillText(`⚠ HAZARD BOUNDARY: ${z.name.toUpperCase()}`, x, y + rr - 12);
+        labelCandidates.push(makeMapLabelCandidate(g, {
+          id: `zone:${z.id}`,
+          kind: 'hazard',
+          text: `HAZARD · ${z.name.toUpperCase()}`,
+          lines: [`HAZARD · ${z.name.toUpperCase()}`],
+          x,
+          y,
+          anchorRadius: 5,
+          color: '#ff5c5c',
+        }));
       } else {
         g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2);
         if (this._layers.faction) {
@@ -2908,8 +3087,16 @@ export const galaxyMapScreen = {
           g.strokeStyle = 'rgba(120,140,170,0.18)';
         }
         g.lineWidth = 1.2; g.stroke();
-        g.fillStyle = z.color; g.font = '10px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillText(z.name + (z.threat ? '  ⚠' + z.threat : ''), x, y);
+        labelCandidates.push(makeMapLabelCandidate(g, {
+          id: `zone:${z.id}`,
+          kind: 'zone',
+          text: z.name + (z.threat ? ` · THREAT ${z.threat}` : ''),
+          lines: [z.name + (z.threat ? ` · THREAT ${z.threat}` : '')],
+          x,
+          y,
+          anchorRadius: 4,
+          color: z.color,
+        }));
       }
     }
 
@@ -2946,39 +3133,35 @@ export const galaxyMapScreen = {
       }
       g.shadowBlur = 0;
 
-      g.fillStyle = 'rgba(207,227,255,0.85)'; g.font = '10px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle';
-      const pointLabelX = clampMapLabelX(g.measureText(p.name).width, x + 10, w, 8);
-      g.fillText(p.name, pointLabelX, y);
-
-      // Services Overlay
+      const pointLines = [p.name];
+      let marketTint = null;
       if (this._layers.services && (isStation || isGate)) {
         const record = findStationRecord(state, p.stationId || p.id);
         const services = record && record.services ? record.services : [];
         if (services.length > 0) {
-          g.fillStyle = 'rgba(57,208,255,0.45)'; g.font = '8px monospace';
-          const serviceText = services.map(s => s[0].toUpperCase()).join('|');
-          const serviceX = clampMapLabelX(g.measureText(serviceText).width, x + 10, w, 8);
-          g.fillText(serviceText, serviceX, y + 10);
+          pointLines.push(services.map((service) => service[0].toUpperCase()).join(' · '));
         }
       }
 
-      // Prices Overlay
       if (this._layers.market && isStation) {
         const marketData = getMarketMemoryForStation(state, p.stationId || p.id, this._selectedCommodity);
         if (marketData) {
-          const tint = memoryTint(marketData.ageS);
-          g.save();
-          g.fillStyle = 'rgba(8,14,26,0.85)';
-          g.strokeStyle = tint.color; g.lineWidth = 1;
-          const text = `${marketData.buy}/${marketData.sell}`;
-          g.font = '9px monospace';
-          const tw = g.measureText(text).width;
-          g.beginPath(); g.rect(x + 10, y - 18, tw + 6, 12); g.fill(); g.stroke();
-          g.fillStyle = tint.color; g.textAlign = 'left'; g.textBaseline = 'middle';
-          g.fillText(text, x + 13, y - 12);
-          g.restore();
+          marketTint = memoryTint(marketData.ageS).color;
+          pointLines.push(`MARKET ${marketData.buy}/${marketData.sell}`);
         }
       }
+      labelCandidates.push(makeMapLabelCandidate(g, {
+        id: `point:${p.id}`,
+        kind: p.kind,
+        text: p.name,
+        lines: pointLines,
+        x,
+        y,
+        anchorRadius: isGate ? 8 : isStation ? 7 : 5,
+        color: isGate ? '#8d66ff' : isStation ? '#39d0ff' : '#ffb35c',
+        secondaryColor: marketTint,
+        selected: !!(this._selectedTarget && this._selectedTarget.id === p.id),
+      }));
 
       // Mission relevance overlay
       if (this._layers.mission) {
@@ -2993,14 +3176,39 @@ export const galaxyMapScreen = {
       g.restore();
     }
 
-    // Objective marker renders after ambient geography so it cannot disappear under a station,
-    // gate label, zone, or market chip. It also has explicit hit-test priority.
+    let objectivePlacement = null;
     if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
       const wx = sx(wp.pos.x);
       const wy = sz(wp.pos.z);
-      drawWaypointPin(g, wx, wy, waypointMapLabel(wp), w);
+      const objectiveLabel = waypointMapLabel(wp);
+      labelCandidates.push(makeMapLabelCandidate(g, {
+        id: 'objective:active-waypoint',
+        kind: 'objective',
+        objective: true,
+        text: `GOAL · ${objectiveLabel.toUpperCase()}`,
+        lines: [`GOAL · ${objectiveLabel.toUpperCase()}`],
+        x: wx,
+        y: wy,
+        anchorRadius: 16,
+        color: '#ffb35c',
+      }));
       const target = waypointClickTarget(wp, wx, wy);
       if (target) this._clickTargets.push(target);
+    }
+    const headerWidth = Math.min(w - 24, Math.max(80, model.sectorName.length * 8 + 16));
+    const labelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
+      reserved: [{ x: 8, y: 8, width: headerWidth, height: 24 }],
+    });
+    this._lastLabelLayout = labelLayout;
+    for (const placement of labelLayout) {
+      if (!placement.visible) continue;
+      if (placement.objective) objectivePlacement = placement;
+      else drawMapLabelBlock(g, placement);
+    }
+
+    // Objective marker renders last, with the first label reservation and strongest contrast.
+    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
+      drawWaypointPin(g, sx(wp.pos.x), sz(wp.pos.z), waypointMapLabel(wp), w, objectivePlacement);
     }
   },
 
@@ -3026,6 +3234,7 @@ export const galaxyMapScreen = {
     this._view = { level: 'local', baseScale };
     const sx = (x) => w / 2 - (x - cam.cx) * baseScale * cam.zoom;
     const sz = (z) => h / 2 - (z - cam.cy) * baseScale * cam.zoom;
+    const labelCandidates = [];
 
     // Range rings
     g.strokeStyle = 'rgba(57,208,255,0.08)'; g.setLineDash([3, 5]);
@@ -3060,6 +3269,9 @@ export const galaxyMapScreen = {
       g.save();
       if (c.kind === 'asteroid') {
         g.fillStyle = '#6e7b8c'; g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill();
+      } else if (c.kind === 'gate') {
+        g.strokeStyle = '#8d66ff'; g.shadowColor = '#8d66ff'; g.shadowBlur = 6; g.lineWidth = 1.6;
+        g.beginPath(); g.moveTo(x, y - 6); g.lineTo(x + 6, y); g.lineTo(x, y + 6); g.lineTo(x - 6, y); g.closePath(); g.stroke();
       } else if (c.kind === 'station') {
         g.fillStyle = '#39d0ff'; g.shadowColor = '#39d0ff'; g.shadowBlur = 6;
         g.beginPath(); g.arc(x, y, 6, 0, Math.PI * 2); g.fill();
@@ -3084,9 +3296,24 @@ export const galaxyMapScreen = {
       }
       g.restore();
 
-      g.fillStyle = 'rgba(207,227,255,0.8)'; g.font = '9px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle';
-      const contactLabelX = clampMapLabelX(g.measureText(c.name).width, x + 8, w, 8);
-      g.fillText(c.name, contactLabelX, y);
+      const selected = !!(this._selectedTarget && this._selectedTarget.id === c.id);
+      if (c.kind === 'station' || c.kind === 'gate' || selected || c.hostile || c.named) {
+        labelCandidates.push(makeMapLabelCandidate(g, {
+          id: `contact:${c.id}`,
+          kind: c.kind,
+          text: c.name,
+          lines: [c.name],
+          x,
+          y,
+          anchorRadius: c.kind === 'station' || c.kind === 'gate' ? 8 : 6,
+          color: c.kind === 'gate' ? '#8d66ff'
+            : c.kind === 'station' ? '#39d0ff'
+              : c.hostile ? '#ff5c5c' : '#d7e6ff',
+          hostile: c.hostile,
+          named: c.named,
+          selected,
+        }));
+      }
     }
 
     // Player position
@@ -3096,13 +3323,38 @@ export const galaxyMapScreen = {
     g.beginPath(); g.moveTo(8, 0); g.lineTo(-6, -5.5); g.lineTo(-6, 5.5); g.closePath(); g.fill();
     g.restore();
 
-    // The tracked objective is the final local-map paint and the highest-priority hit target.
+    let objectivePlacement = null;
     if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
       const wx = sx(wp.pos.x);
       const wy = sz(wp.pos.z);
-      drawWaypointPin(g, wx, wy, waypointMapLabel(wp), w);
+      const objectiveLabel = waypointMapLabel(wp);
+      labelCandidates.push(makeMapLabelCandidate(g, {
+        id: 'objective:active-waypoint',
+        kind: 'objective',
+        objective: true,
+        text: `GOAL · ${objectiveLabel.toUpperCase()}`,
+        lines: [`GOAL · ${objectiveLabel.toUpperCase()}`],
+        x: wx,
+        y: wy,
+        anchorRadius: 16,
+        color: '#ffb35c',
+      }));
       const target = waypointClickTarget(wp, wx, wy);
       if (target) this._clickTargets.push(target);
+    }
+    const labelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
+      reserved: [{ x: w / 2 - 13, y: h / 2 - 13, width: 26, height: 26 }],
+    });
+    this._lastLabelLayout = labelLayout;
+    for (const placement of labelLayout) {
+      if (!placement.visible) continue;
+      if (placement.objective) objectivePlacement = placement;
+      else drawMapLabelBlock(g, placement);
+    }
+
+    // The tracked objective owns the final paint and the strongest label reservation.
+    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
+      drawWaypointPin(g, sx(wp.pos.x), sz(wp.pos.z), waypointMapLabel(wp), w, objectivePlacement);
     }
   },
 };
@@ -3114,6 +3366,57 @@ function hexToRgba(hex, alpha) {
   const r = parseInt(s.slice(0, 2), 16), gg = parseInt(s.slice(2, 4), 16), b = parseInt(s.slice(4, 6), 16);
   if (![r, gg, b].every(Number.isFinite)) return 'rgba(136,153,170,' + alpha + ')';
   return 'rgba(' + r + ',' + gg + ',' + b + ',' + alpha + ')';
+}
+
+function makeMapLabelCandidate(g, candidate) {
+  const lines = (Array.isArray(candidate.lines) ? candidate.lines : [candidate.text])
+    .map((line) => String(line || '').replace(/\s+/g, ' ').trim().slice(0, 36))
+    .filter(Boolean)
+    .slice(0, 3);
+  let width = 0;
+  if (g && g.measureText) {
+    g.save();
+    g.font = 'bold 9px monospace';
+    for (const line of lines) width = Math.max(width, g.measureText(line).width);
+    g.restore();
+  } else {
+    for (const line of lines) width = Math.max(width, line.length * 6);
+  }
+  return {
+    ...candidate,
+    text: lines[0] || String(candidate.text || ''),
+    lines,
+    width: Math.ceil(width) + 10,
+    height: lines.length * 11 + 6,
+  };
+}
+
+function drawMapLabelBlock(g, placement) {
+  if (!placement || !placement.visible) return;
+  const lines = Array.isArray(placement.lines) && placement.lines.length
+    ? placement.lines
+    : [placement.text];
+  const color = placement.color || '#d7e6ff';
+  g.save();
+  g.fillStyle = placement.objective ? 'rgba(4,8,16,0.96)' : 'rgba(4,8,16,0.88)';
+  g.strokeStyle = placement.objective ? '#ffffff' : hexToRgba(color, 0.52);
+  g.lineWidth = placement.objective ? 1.4 : 1;
+  g.beginPath();
+  g.rect(placement.x, placement.y, placement.width, placement.height);
+  g.fill();
+  g.stroke();
+  g.textAlign = 'left';
+  g.textBaseline = 'top';
+  for (let index = 0; index < lines.length; index += 1) {
+    g.font = index === 0 ? 'bold 9px monospace' : '8px monospace';
+    g.fillStyle = index === 0
+      ? color
+      : (index === lines.length - 1 && placement.secondaryColor
+        ? placement.secondaryColor
+        : 'rgba(155,177,208,0.82)');
+    g.fillText(lines[index], placement.x + 5, placement.y + 3 + index * 11);
+  }
+  g.restore();
 }
 
 function waypointMapLabel(wp) {
@@ -3159,12 +3462,12 @@ function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity) {
   g.restore();
 }
 
-function drawWaypointPin(g, x, y, label, viewportWidth = Infinity) {
+function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacement = null) {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return;
   g.save();
-  g.strokeStyle = '#ffd24a';
-  g.fillStyle = 'rgba(255,210,74,0.18)';
-  g.shadowColor = '#ffd24a';
+  g.strokeStyle = '#ffb35c';
+  g.fillStyle = 'rgba(255,179,92,0.22)';
+  g.shadowColor = '#ffb35c';
   g.shadowBlur = 8;
   g.lineWidth = 2;
   g.beginPath();
@@ -3178,25 +3481,28 @@ function drawWaypointPin(g, x, y, label, viewportWidth = Infinity) {
   g.shadowBlur = 0;
   g.beginPath();
   g.arc(x, y, 13, 0, Math.PI * 2);
-  g.strokeStyle = 'rgba(255,210,74,0.82)';
+  g.strokeStyle = 'rgba(255,179,92,0.88)';
   g.lineWidth = 1;
   g.stroke();
   g.strokeStyle = '#ffffff';
   g.lineWidth = 1;
   g.stroke();
-  g.fillStyle = '#ffd24a';
+  g.fillStyle = '#ffb35c';
   g.font = 'bold 10px monospace';
   g.textAlign = 'left';
   g.textBaseline = 'middle';
-  const textWidth = g.measureText ? g.measureText(label).width : 0;
-  const labelX = Number.isFinite(viewportWidth)
-    ? clampMapLabelX(textWidth, x + 12, viewportWidth, 8)
-    : x + 12;
-  g.strokeStyle = 'rgba(4,8,16,0.9)';
-  g.lineWidth = 3;
-  g.strokeText(label, labelX, y);
-  g.fillText(label, labelX, y);
+  if (!labelPlacement) {
+    const textWidth = g.measureText ? g.measureText(label).width : 0;
+    const labelX = Number.isFinite(viewportWidth)
+      ? clampMapLabelX(textWidth, x + 12, viewportWidth, 8)
+      : x + 12;
+    g.strokeStyle = 'rgba(4,8,16,0.9)';
+    g.lineWidth = 3;
+    g.strokeText(label, labelX, y);
+    g.fillText(label, labelX, y);
+  }
   g.restore();
+  if (labelPlacement) drawMapLabelBlock(g, labelPlacement);
 }
 
 function waypointClickTarget(wp, sx, sy) {
