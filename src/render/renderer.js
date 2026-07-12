@@ -251,11 +251,13 @@ const SHIELD_POOL_FRAG = /* glsl */`
   }
 `;
 
-function createShipAuxPool(scene) {
+export function createShipAuxPool(scene) {
   const pool = {
     scene,
     shield: { capacity: 0, mesh: null, material: createShieldAuxMaterial() },
     nav: { capacity: 0, mesh: null, material: createNavLightAuxMaterial() },
+    entityPasses: 0,
+    entitiesVisited: 0,
   };
   ensureShieldAuxCapacity(pool.shield, SHIP_AUX_SHIELD_INITIAL_CAPACITY, scene);
   ensureNavLightAuxCapacity(pool.nav, SHIP_AUX_NAV_INITIAL_CAPACITY, scene);
@@ -282,7 +284,7 @@ function createNavLightAuxMaterial() {
   });
 }
 
-function ensureShieldAuxCapacity(pool, desired, scene) {
+function ensureShieldAuxCapacity(pool, desired, scene, preserveCount = 0) {
   if (!pool || desired <= pool.capacity) return;
   const nextCapacity = Math.max(desired, pool.capacity ? pool.capacity * 2 : SHIP_AUX_SHIELD_INITIAL_CAPACITY);
   const previous = pool.mesh;
@@ -301,16 +303,27 @@ function ensureShieldAuxCapacity(pool, desired, scene) {
   mesh.userData.shipAuxPool = 'shieldBubble';
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(nextCapacity * 3), 3).setUsage(THREE.DynamicDrawUsage);
+  if (previous && preserveCount > 0) {
+    mesh.instanceMatrix.array.set(previous.instanceMatrix.array.subarray(0, preserveCount * 16));
+    if (previous.instanceColor) {
+      mesh.instanceColor.array.set(previous.instanceColor.array.subarray(0, preserveCount * 3));
+    }
+    const previousFlash = previous.geometry.getAttribute('instanceFlash');
+    const previousBase = previous.geometry.getAttribute('instanceBase');
+    if (previousFlash) geometry.getAttribute('instanceFlash').array.set(previousFlash.array.subarray(0, preserveCount));
+    if (previousBase) geometry.getAttribute('instanceBase').array.set(previousBase.array.subarray(0, preserveCount));
+  }
   pool.mesh = mesh;
   pool.capacity = nextCapacity;
   if (previous && scene) {
     scene.remove(previous);
     if (previous.geometry && typeof previous.geometry.dispose === 'function') previous.geometry.dispose();
+    if (typeof previous.dispose === 'function') previous.dispose();
   }
   if (scene) scene.add(mesh);
 }
 
-function ensureNavLightAuxCapacity(pool, desired, scene) {
+function ensureNavLightAuxCapacity(pool, desired, scene, preserveCount = 0) {
   if (!pool || desired <= pool.capacity) return;
   const nextCapacity = Math.max(desired, pool.capacity ? pool.capacity * 2 : SHIP_AUX_NAV_INITIAL_CAPACITY);
   const previous = pool.mesh;
@@ -326,76 +339,59 @@ function ensureNavLightAuxCapacity(pool, desired, scene) {
   mesh.userData.shipAuxPool = 'navLight';
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(nextCapacity * 3), 3).setUsage(THREE.DynamicDrawUsage);
+  if (previous && preserveCount > 0) {
+    mesh.instanceMatrix.array.set(previous.instanceMatrix.array.subarray(0, preserveCount * 16));
+    if (previous.instanceColor) {
+      mesh.instanceColor.array.set(previous.instanceColor.array.subarray(0, preserveCount * 3));
+    }
+  }
   pool.mesh = mesh;
   pool.capacity = nextCapacity;
   if (previous && scene) {
     scene.remove(previous);
     if (previous.geometry && previous.geometry !== SHIP_AUX_NAV_GEOMETRY && typeof previous.geometry.dispose === 'function') previous.geometry.dispose();
+    if (typeof previous.dispose === 'function') previous.dispose();
   }
   if (scene) scene.add(mesh);
 }
 
-function syncShipAuxPools(pool, entities, meshes) {
+export function syncShipAuxPools(pool, entities, meshes) {
   if (!pool || !Array.isArray(entities)) return;
-  let desiredShield = 0;
-  let desiredNav = 0;
+  let shieldCount = 0;
+  let navCount = 0;
+  let entitiesVisited = 0;
   for (const entity of entities) {
+    entitiesVisited++;
     if (!entity || entity.alive === false || entity.type !== 'ship') continue;
     const root = meshes && meshes.get(entity.id);
     if (!root || root.visible === false || !root.userData) continue;
-    if (root.userData.shieldBubble && entity.shield > 0) desiredShield++;
-    const navSources = getPooledNavLightSources(root);
-    for (const source of navSources) desiredNav += Math.max(0, source.count || 0);
-  }
-  ensureShieldAuxCapacity(pool.shield, desiredShield, pool.scene);
-  ensureNavLightAuxCapacity(pool.nav, desiredNav, pool.scene);
-  syncShieldAuxPool(pool.shield, entities, meshes);
-  syncNavLightAuxPool(pool.nav, entities, meshes);
-}
+    const bubble = root.userData.shieldBubble;
+    if (bubble) {
+      bubble.visible = false;
+      if (entity.shield > 0) {
+        ensureShieldAuxCapacity(pool.shield, shieldCount + 1, pool.scene, shieldCount);
+        const shieldMesh = pool.shield.mesh;
+        const flashAttr = shieldMesh.geometry.getAttribute('instanceFlash');
+        const baseAttr = shieldMesh.geometry.getAttribute('instanceBase');
+        bubble.updateWorldMatrix(true, false);
+        shieldMesh.setMatrixAt(shieldCount, bubble.matrixWorld);
+        const uniforms = bubble.material && bubble.material.uniforms;
+        const color = uniforms && uniforms.uColor && uniforms.uColor.value;
+        shieldMesh.setColorAt(shieldCount, color && color.isColor ? color : SHIP_AUX_COLOR.set(0x5fd0ff));
+        flashAttr.setX(shieldCount, uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0);
+        baseAttr.setX(shieldCount, uniforms && uniforms.uBase ? uniforms.uBase.value || 0.22 : 0.22);
+        shieldCount++;
+      }
+    }
 
-function syncShieldAuxPool(pool, entities, meshes) {
-  if (!pool || !pool.mesh) return;
-  const mesh = pool.mesh;
-  const flashAttr = mesh.geometry.getAttribute('instanceFlash');
-  const baseAttr = mesh.geometry.getAttribute('instanceBase');
-  let count = 0;
-  for (const entity of entities) {
-    if (!entity || entity.alive === false || entity.type !== 'ship') continue;
-    const root = meshes && meshes.get(entity.id);
-    const bubble = root && root.visible !== false && root.userData && root.userData.shieldBubble;
-    if (!bubble) continue;
-    bubble.visible = false;
-    if (!(entity.shield > 0)) continue;
-    bubble.updateWorldMatrix(true, false);
-    mesh.setMatrixAt(count, bubble.matrixWorld);
-    const uniforms = bubble.material && bubble.material.uniforms;
-    const color = uniforms && uniforms.uColor && uniforms.uColor.value;
-    mesh.setColorAt(count, color && color.isColor ? color : SHIP_AUX_COLOR.set(0x5fd0ff));
-    flashAttr.setX(count, uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0);
-    baseAttr.setX(count, uniforms && uniforms.uBase ? uniforms.uBase.value || 0.22 : 0.22);
-    count++;
-  }
-  if (mesh.count !== count) mesh.count = count;
-  mesh.visible = count > 0;
-  mesh.instanceMatrix.needsUpdate = true;
-  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  flashAttr.needsUpdate = true;
-  baseAttr.needsUpdate = true;
-}
-
-function syncNavLightAuxPool(pool, entities, meshes) {
-  if (!pool || !pool.mesh) return;
-  const mesh = pool.mesh;
-  let count = 0;
-  for (const entity of entities) {
-    if (!entity || entity.alive === false || entity.type !== 'ship') continue;
-    const root = meshes && meshes.get(entity.id);
-    if (!root || root.visible === false) continue;
     const sources = getPooledNavLightSources(root);
     for (const source of sources) {
       source.visible = false;
       source.updateWorldMatrix(true, false);
       const sourceCount = Math.max(0, source.count || 0);
+      if (!sourceCount) continue;
+      ensureNavLightAuxCapacity(pool.nav, navCount + sourceCount, pool.scene, navCount);
+      const navMesh = pool.nav.mesh;
       const mat = Array.isArray(source.material) ? source.material[0] : source.material;
       const base = mat && mat.emissive && mat.emissive.isColor ? mat.emissive : (mat && mat.color && mat.color.isColor ? mat.color : SHIP_AUX_COLOR.set(0x88eeff));
       const intensity = mat && Number.isFinite(mat.emissiveIntensity) ? mat.emissiveIntensity : 1;
@@ -404,16 +400,31 @@ function syncNavLightAuxPool(pool, entities, meshes) {
       for (let i = 0; i < sourceCount; i++) {
         source.getMatrixAt(i, SHIP_AUX_LOCAL_MATRIX);
         SHIP_AUX_WORLD_MATRIX.multiplyMatrices(source.matrixWorld, SHIP_AUX_LOCAL_MATRIX);
-        mesh.setMatrixAt(count, SHIP_AUX_WORLD_MATRIX);
-        mesh.setColorAt(count, SHIP_AUX_COLOR);
-        count++;
+        navMesh.setMatrixAt(navCount, SHIP_AUX_WORLD_MATRIX);
+        navMesh.setColorAt(navCount, SHIP_AUX_COLOR);
+        navCount++;
       }
     }
   }
-  if (mesh.count !== count) mesh.count = count;
-  mesh.visible = count > 0;
-  mesh.instanceMatrix.needsUpdate = true;
-  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+
+  const shieldMesh = pool.shield.mesh;
+  const flashAttr = shieldMesh.geometry.getAttribute('instanceFlash');
+  const baseAttr = shieldMesh.geometry.getAttribute('instanceBase');
+  if (shieldMesh.count !== shieldCount) shieldMesh.count = shieldCount;
+  shieldMesh.visible = shieldCount > 0;
+  shieldMesh.instanceMatrix.needsUpdate = true;
+  if (shieldMesh.instanceColor) shieldMesh.instanceColor.needsUpdate = true;
+  flashAttr.needsUpdate = true;
+  baseAttr.needsUpdate = true;
+
+  const navMesh = pool.nav.mesh;
+  if (navMesh.count !== navCount) navMesh.count = navCount;
+  navMesh.visible = navCount > 0;
+  navMesh.instanceMatrix.needsUpdate = true;
+  if (navMesh.instanceColor) navMesh.instanceColor.needsUpdate = true;
+
+  pool.entityPasses = 1;
+  pool.entitiesVisited = entitiesVisited;
 }
 
 function getPooledNavLightSources(root) {
