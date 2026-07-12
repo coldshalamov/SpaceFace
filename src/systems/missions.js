@@ -390,7 +390,11 @@ export const missions = {
    * Idempotent by stable offer id and capped at one economyContract row per station epoch.
    */
   _onExternalBoardOffer(rawOffer) {
-    const allowedSource = rawOffer && (rawOffer.source === 'economyContract' || rawOffer.source === 'encounterAftermath');
+    const allowedSource = rawOffer && (
+      rawOffer.source === 'economyContract'
+      || rawOffer.source === 'encounterAftermath'
+      || rawOffer.source === 'careerContract'
+    );
     if (!allowedSource) return false;
     if (!rawOffer.id || !rawOffer.type || !rawOffer.stationId || !rawOffer.params) return false;
     const info = STATION_INFO.get(rawOffer.stationId);
@@ -2220,11 +2224,17 @@ export const missions = {
       const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, ...rest } = a;
       return { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
     });
-    return {
+    const serialized = {
       boards: m.boards, active, completedLog: m.completedLog, receipts: normalizeMissionReceipts(m.receipts),
       nextId: m.nextId, config: m.config || MISSION_TUNING,
       story: this.state.story,
     };
+    // Optional extension state must preserve absence for reduced headless registries that do not
+    // register careerContracts; materializing a null key only after reload changes sim hashes.
+    if (m.careerContracts) {
+      serialized.careerContracts = JSON.parse(JSON.stringify(m.careerContracts));
+    }
+    return serialized;
   },
 
   deserialize(data) {
@@ -2235,6 +2245,12 @@ export const missions = {
     state.missions.receipts = normalizeMissionReceipts(data.receipts);
     state.missions.nextId = data.nextId || 1;
     state.missions.config = data.config || MISSION_TUNING;
+    if (Object.prototype.hasOwnProperty.call(data, 'careerContracts')) {
+      state.missions.careerContracts = data.careerContracts
+        ? JSON.parse(JSON.stringify(data.careerContracts)) : null;
+    } else {
+      delete state.missions.careerContracts;
+    }
     // Stale-target GC: clear live entity ids; targets re-spawn when the player (re-)enters the sector.
     state.missions.active = (data.active || []).map((a) => ({
       ...a, targetEntityIds: [], _escorteeId: null, _escorteeArrived: false, status: a.status || 'active',
