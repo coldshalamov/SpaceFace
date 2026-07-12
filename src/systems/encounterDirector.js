@@ -47,6 +47,11 @@ import { ENCOUNTER_SCRIPTS } from './encounterScripts.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { removeCargo } from './cargo.js';
+import {
+  effectiveRegionalSecurity,
+  regionalEcologyReadout,
+  regionalEncounterWeight,
+} from './regionalEcology.js';
 import { activityForEncounterSpawn, roeForActivity, setEntityDoctrine } from '../ai/doctrine.js';
 import {
   buildEncounterCausality,
@@ -209,7 +214,7 @@ export const encounterDirector = {
     const zones = zonesForSector(sectorId);
     if (!zones.length) return;                         // no zones → schedule nothing (additive)
 
-    const schedule = planEncounters(state.meta && state.meta.seed, sectorId, dayIndex, zones);
+    const schedule = planEncounters(state.meta && state.meta.seed, sectorId, dayIndex, zones, state);
     const now = state.simTime || 0;
     for (const s of schedule) {
       dir.pending.push({ ...s, sectorId, dueAt: now + s.delay, defers: 0 });
@@ -232,12 +237,14 @@ export const encounterDirector = {
     const zone = zoneAt(sectorId, local.x, local.z);
     const zt = zoneThreat(zone);
     const sec = sectorSecurityOf(state);
+    const ecology = regionalEcologyReadout(state, sectorId);
+    const ecologyDanger = ecology ? ecology.danger.effective - ecology.danger.baseline : 0;
     const cargoBand = Math.min(1, this.cargoValue() / 2000);
     const wanted = isWanted(state);
     const combatRate =
       0.25 + 0.22 * zt + (1 - sec) * 0.5 + cargoBand * 0.35 +
       (wanted ? 0.6 : 0) + Math.min(1, dir.noise.mining) * 0.5 +
-      (((state.player && state.player.bounty) | 0) > 0 ? 0.25 : 0);
+      (((state.player && state.player.bounty) | 0) > 0 ? 0.25 : 0) + ecologyDanger * 0.45;
     const civilRate =
       0.35 + sec * 0.45 + (zone && CIVIL_ZONE_TYPES.has(zone.type) ? 0.35 : 0);
     dir.pressure.combat = Math.min(POOL_MAX, dir.pressure.combat + combatRate * step);
@@ -884,7 +891,7 @@ export const encounterDirector = {
  *                  zoneCenter, zoneRadius, factionId, bark, delay, ships:[...], variantKind?,
  *                  levelBand }>
  */
-export function planEncounters(seed, sectorId, dayIndex, zones) {
+export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = null) {
   const out = [];
 
   if (!Array.isArray(zones) || !zones.length) return out;
@@ -901,7 +908,10 @@ export function planEncounters(seed, sectorId, dayIndex, zones) {
 
   // Sector security for planner gates (e.g. pirate_toll.maxSecurity — no Reach tolls in Helios).
   const secDef = SECTORS.find((s) => s.id === sectorId);
-  const sectorSecurity = secDef && Number.isFinite(secDef.security) ? secDef.security : 0.5;
+  const baselineSecurity = secDef && Number.isFinite(secDef.security) ? secDef.security : 0.5;
+  const sectorSecurity = ecologyState
+    ? effectiveRegionalSecurity(ecologyState, sectorId, baselineSecurity)
+    : baselineSecurity;
 
   let seq = 0;
   const scheduleTier = (tier, maxCount, delayLo, delaySpan) => {
@@ -921,13 +931,16 @@ export function planEncounters(seed, sectorId, dayIndex, zones) {
     else count = Math.floor(roll * (maxCount + 1));
     count = Math.min(count, maxCount);
     for (let i = 0; i < count; i++) {
-      const enc = pickWeighted(candidates, rng);
+      const enc = pickWeighted(candidates, rng, (candidate) => (
+        ecologyState ? regionalEncounterWeight(ecologyState, sectorId, candidate) : candidate.weight
+      ));
       if (!enc) continue;
       if (enc.rare && rng() < RARE_GATE) continue;     // rare shapes need the extra gate
       const zone = pickZoneFor(enc, zonesByType, rng);
       if (!zone) continue;
       const item = resolveEncounter(enc, zone, sectorId, dayIndex, seq++, rng);
       if (!item) continue;
+      item.regionalWeight = ecologyState ? regionalEncounterWeight(ecologyState, sectorId, enc) : (enc.weight || 1);
       item.delay = delayLo + rng() * delaySpan;
       out.push(item);
     }
@@ -1055,13 +1068,13 @@ function pickZoneFor(enc, zonesByType, rng) {
 }
 
 // Weighted pick over encounter shapes using their `weight`.
-function pickWeighted(list, rng) {
+function pickWeighted(list, rng, weightOf = (entry) => entry.weight) {
   let total = 0;
-  for (const e of list) total += Math.max(0, e.weight || 1);
+  for (const e of list) total += Math.max(0, Number(weightOf(e)) || 1);
   if (total <= 0) return list[0] || null;
   let r = rng() * total;
   for (const e of list) {
-    r -= Math.max(0, e.weight || 1);
+    r -= Math.max(0, Number(weightOf(e)) || 1);
     if (r <= 0) return e;
   }
   return list[list.length - 1];
@@ -1161,5 +1174,6 @@ function sectorSecurityOf(state) {
   const sid = state.world && state.world.currentSectorId;
   if (!sid) return 0.5;
   const def = SECTORS.find((s) => s.id === sid);
-  return def && Number.isFinite(def.security) ? def.security : 0.5;
+  const baseline = def && Number.isFinite(def.security) ? def.security : 0.5;
+  return effectiveRegionalSecurity(state, sid, baseline);
 }

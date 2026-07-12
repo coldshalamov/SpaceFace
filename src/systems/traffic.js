@@ -39,6 +39,10 @@ import {
   liveVolumeForSector,
 } from '../economy/freightCausality.js';
 import { pickNamedLaneContact } from '../data/laneContacts.js';
+import {
+  regionalTrafficDensityMultiplier,
+  regionalTrafficRoleWeights,
+} from './regionalEcology.js';
 
 const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -77,7 +81,7 @@ const TRAFFIC_ROLES = {
 
 // Causal role mix for a sector (spec §12.2). Hostile/pirate sectors tilt toward raiders; industrial
 // sectors toward miners/haulers; secure faction sectors toward patrols/escorts.
-function roleMixForSector(sector) {
+export function trafficRoleMixForSector(sector, state = null) {
   const sec = sector || {};
   const out = {};
   for (const [id, role] of Object.entries(TRAFFIC_ROLES)) out[id] = role.weight;
@@ -103,7 +107,7 @@ function roleMixForSector(sector) {
     out.courier *= 1.2;
     out.patrol *= 1.6;
   }
-  return out;
+  return state ? regionalTrafficRoleWeights(state, sec.id, out) : out;
 }
 function pickRole(roleWeights, rng) {
   let total = 0; for (const w of Object.values(roleWeights)) total += Math.max(0, w);
@@ -114,7 +118,7 @@ function pickRole(roleWeights, rng) {
 }
 
 /** Ambient count from trafficPerMin — core pockets floor at CORE_MIN_TRAFFIC. */
-function ambientCountForSector(sector) {
+function ambientCountForSector(sector, state = null) {
   const tpm = sector && sector.trafficPerMin;
   let count;
   if (typeof tpm === 'number') {
@@ -126,6 +130,13 @@ function ambientCountForSector(sector) {
   const sec = Number.isFinite(sector && sector.security) ? sector.security : null;
   if (sec != null && sec >= 0.85 && count > 0) {
     count = Math.min(MAX_PER_SECTOR, Math.max(CORE_MIN_TRAFFIC, count));
+  }
+  // Explicit zero remains authored silence. Otherwise ecology changes embodied freight density
+  // within the existing cap; the corresponding role mix also changes actual market manifests.
+  if (count > 0 && state) {
+    count = Math.min(MAX_PER_SECTOR, Math.max(1, Math.round(
+      count * regionalTrafficDensityMultiplier(state, sector && sector.id),
+    )));
   }
   return count;
 }
@@ -189,7 +200,7 @@ export const traffic = {
     this._resetRngForSector(sectorId);
     // Density from trafficPerMin; high-sec cores floor at CORE_MIN_TRAFFIC (spec2/04 core pocket).
     // Explicit trafficPerMin:0 still means "hollow" (frontier silence).
-    const count = ambientCountForSector(sector);
+    const count = ambientCountForSector(sector, this.state);
     if (count <= 0) return;
 
     const stations = this._sectorStations();
@@ -207,7 +218,7 @@ export const traffic = {
       return;
     }
 
-    const roleWeights = roleMixForSector(sector);
+    const roleWeights = trafficRoleMixForSector(sector, this.state);
     const roles = [];
     for (let i = 0; i < need; i++) roles.push(pickRole(roleWeights, () => this._rng()));
     const pocketRoles = ensurePocketRoleMix(roles, sector);

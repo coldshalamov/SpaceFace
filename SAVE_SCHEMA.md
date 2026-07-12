@@ -27,6 +27,7 @@ Current save version: `11`
 - `lossLedger`
 - `aftermathWrecks`
 - `fieldDepletion`
+- `regionalEcology`
 - `encounterDirector`
 - `flight`
 - `nav`
@@ -250,6 +251,7 @@ Current save version: `11`
 | `$.player.stats.totalPassiveEarnedLifetime` | number | 0 |
 | `$.player.stats.tradesCount` | number | 0 |
 | `$.player.targetId` | null | null |
+| `$.regionalEcology` | object | {} |
 | `$.scenario` | object | {} |
 | `$.scenario.active` | null | null |
 | `$.scenario.actorBindings` | object | {} |

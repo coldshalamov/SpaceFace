@@ -13,6 +13,7 @@ import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctri
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { isPlayerWanted } from './heat.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { effectiveRegionalSecurity } from './regionalEcology.js';
 
 export const LAW_SECURITY_VERSION = 1;
 export const AMBIENT_TOLL_VALUE_FLOOR = 120;
@@ -459,9 +460,14 @@ function currentSectorId(state) {
 }
 
 function sectorSecurity(state) {
+  return effectiveLawSecurity(state);
+}
+
+export function effectiveLawSecurity(state) {
   const id = currentSectorId(state);
   const sec = state && state.world && state.world.sectors && state.world.sectors[id];
-  return Number.isFinite(sec && sec.security) ? sec.security : 0.5;
+  const baseline = Number.isFinite(sec && sec.security) ? sec.security : 0.5;
+  return effectiveRegionalSecurity(state, id, baseline);
 }
 
 function distance2(a, b) {

@@ -23,6 +23,7 @@
 //   environmental effect applied to the entity hull, which has no separate combat owner.)
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
+import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { planZoneSpawns, zoneAt, zoneThreat } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
@@ -1021,7 +1022,13 @@ export const world = {
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
     const baseParams = FIELDS[sector.tier] || FIELDS[3] || FIELDS[1];
     // Shallow copy so we can attach homeSectorId without mutating the shared FIELDS catalog.
-    const params = { ...baseParams, _homeSectorId: sector.id };
+    const ecology = regionalEcologyReadout(this.state, sector.id);
+    const params = {
+      ...baseParams,
+      _homeSectorId: sector.id,
+      _ecologyYieldMultiplier: regionalResourceYieldMultiplier(this.state, sector.id),
+      _ecologyFingerprint: ecology && ecology.fingerprint || null,
+    };
     const fieldDefs = sector.fields || [];
     if (!fieldDefs.length) return;
 
@@ -1070,7 +1077,11 @@ export const world = {
     const [yLo, yHi] = def.yieldU || [8, 22];
     // interpolate yield in lockstep with hp (matches mining's _defaultYield)
     const t = hpHi === hpLo ? 1 : (oreHP - hpLo) / (hpHi - hpLo);
-    const yieldU = Math.max(1, Math.round(yLo + (yHi - yLo) * t));
+    const baseYieldU = Math.max(1, Math.round(yLo + (yHi - yLo) * t));
+    const ecologyYield = Number(params && params._ecologyYieldMultiplier)
+      || regionalResourceYieldMultiplier(this.state, params && params._homeSectorId)
+      || 1;
+    const yieldU = Math.max(1, Math.round(baseYieldU * ecologyYield));
     const tierCap = Math.min(def.tierCap, params.tierCap != null ? params.tierCap : def.tierCap);
 
     const ent = this.helpers.spawnEntity({
@@ -1080,6 +1091,9 @@ export const world = {
       data: {
         typeId: def.id, tier: def.tierCap, tierCap,
         oreHP, oreHPMax: oreHP, yieldU,
+        ecologyFingerprint: params && params._ecologyFingerprint
+          || regionalEcologyReadout(this.state, params && params._homeSectorId)?.fingerprint
+          || null,
         size, pctEjected: 0, respawnSec: params.respawnSec || 120,
         fieldId: fdef.id,
       },

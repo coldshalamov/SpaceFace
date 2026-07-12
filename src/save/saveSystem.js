@@ -152,6 +152,7 @@ export const save = {
     data.aftermathWrecks = this._callSerialize('aftermathWrecks') || clonePlain(state.aftermathWrecks || {});
     data.fieldDepletion = this._callSerialize('fieldDepletion') || clonePlain(state.fieldDepletion || {});
     data.livingPoiBehaviors = this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {});
+    data.regionalEcology = this._callSerialize('regionalEcology') || clonePlain(state.regionalEcology || {});
     // Campaign-director DURABLE subset only (named captains / receipts / cooldowns / stats).
     // Live encounters, squads, and pressure are transient by contract — never persisted.
     data.encounterDirector = this._serializeEncounterDirector();
@@ -782,7 +783,8 @@ export const save = {
       this._callDeserialize('economyContracts', data.economyContracts);
       this._callDeserialize('factions', data.factions);
       this._callDeserialize('world', data.world); // sets currentSectorId; does NOT spawn entities
-      // POI aftermath must restore before enterSector publishes its zone behavior plan.
+      // Regional/POI aftermath must restore before enterSector publishes its gameplay inputs.
+      this._callDeserialize('regionalEcology', data.regionalEcology);
       this._callDeserialize('livingPoiBehaviors', data.livingPoiBehaviors);
 
       // 5. spawn the saved player entity (fresh id) and adopt it.
