@@ -14,9 +14,10 @@
 // canvas/DOM access is guarded behind `typeof document`/`typeof window` so importing this module in
 // Node never throws.
 //
-// Read-only over sim state. The only outward mutation is emitting the EXISTING "ui:setCourse" event
-// (same payload shapes the legacy maps use): a station/zone/contact click -> local waypoint {pos},
-// a sector-node click -> route {sectorId}. Flight/nav ownership is untouched.
+// Read-only over sim state. The only outward mutations are the EXISTING public bus intents:
+//   - "ui:setCourse" / "world:requestRoute" for course/waypoint arming
+//   - "world:requestJump" for one-hop intentional gate jumps (same payload as legacy starmap)
+// Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
@@ -664,7 +665,9 @@ export function buildSystemModel(state, sectorId) {
           entityId: e.id,
           stationId: data.stationId || null,
           factionId: e.factionId || data.factionId || null,
-          targetSectorId: isGate ? (data.targetSectorId || data.linkSectorId || null) : null,
+          targetSectorId: isGate
+            ? (data.gateTo || data.targetSectorId || data.linkSectorId || null)
+            : null,
         });
         seenIds.add(data.stationId || e.id);
       }
@@ -812,6 +815,8 @@ export function resolveCourseTarget(target) {
     if (target.entityId != null) payload.targetEntityId = target.entityId;
     if (target.targetEntityId != null) payload.targetEntityId = target.targetEntityId;
     if (target.stationId) payload.stationId = target.stationId;
+    const gateDest = target.targetSectorId || target.gateTo || null;
+    if (kind === 'gate' && gateDest) payload.sectorId = gateDest;
     return payload;
   }
 
@@ -819,6 +824,139 @@ export function resolveCourseTarget(target) {
   const sectorId = target.sectorId || target.targetSectorId || null;
   if (sectorId) return { type: 'sector', sectorId, path: null, label: target.name || sectorId };
   return null;
+}
+
+/**
+ * True when `targetSectorId` is a direct graph neighbor of the player's current sector.
+ * Pure: used by the inspector primary action and headless contract tests.
+ */
+export function isOneHopNeighbor(state, targetSectorId) {
+  if (!state || !targetSectorId) return false;
+  const cur = currentSectorId(state);
+  if (!cur || cur === targetSectorId) return false;
+  const rec = sectorRecordById(state, cur);
+  const neighbors = rec && Array.isArray(rec.neighbors) ? rec.neighbors : [];
+  return neighbors.includes(targetSectorId);
+}
+
+/**
+ * Resolve the player-facing primary inspector action for a selected map target.
+ * Returns { kind, label, targetSectorId?, coursePayload? } or null.
+ *
+ * kind:
+ *   'jump'     — one-hop intentional gate jump (emits world:requestJump + course)
+ *   'route'    — multi-hop / non-neighbor sector course plot
+ *   'waypoint' — local autopilot fix (station/gate/zone/contact)
+ */
+export function resolveGalaxyMapPrimaryAction(state, target) {
+  if (!target) return null;
+  const coursePayload = resolveCourseTarget(target);
+
+  if (target.kind === 'sector') {
+    const sectorId = target.sectorId || target.id;
+    if (!sectorId) return null;
+    if (isOneHopNeighbor(state, sectorId)) {
+      return {
+        kind: 'jump',
+        label: 'Set Course & Jump',
+        targetSectorId: sectorId,
+        coursePayload: coursePayload || { type: 'sector', sectorId, path: null, label: target.name || sectorId },
+      };
+    }
+    return {
+      kind: 'route',
+      label: 'Plot Course',
+      targetSectorId: sectorId,
+      coursePayload: coursePayload || { type: 'sector', sectorId, path: null, label: target.name || sectorId },
+    };
+  }
+
+  if (target.kind === 'gate') {
+    const dest = target.targetSectorId || target.gateTo || null;
+    // In-range jump from a selected physical gate (player already approached).
+    if (dest && isOneHopNeighbor(state, dest) && isPlayerInGateRange(state, target)) {
+      return {
+        kind: 'jump',
+        label: 'Jump',
+        targetSectorId: dest,
+        coursePayload: coursePayload || { type: 'sector', sectorId: dest, path: null, label: target.name || dest },
+      };
+    }
+    return {
+      kind: 'waypoint',
+      label: 'Set Waypoint',
+      targetSectorId: dest,
+      coursePayload,
+    };
+  }
+
+  if (!coursePayload) return null;
+  if (coursePayload.type === 'sector' && coursePayload.sectorId) {
+    if (isOneHopNeighbor(state, coursePayload.sectorId)) {
+      return {
+        kind: 'jump',
+        label: 'Set Course & Jump',
+        targetSectorId: coursePayload.sectorId,
+        coursePayload,
+      };
+    }
+    return {
+      kind: 'route',
+      label: 'Plot Course',
+      targetSectorId: coursePayload.sectorId,
+      coursePayload,
+    };
+  }
+
+  let label = 'Track Target';
+  if (target.kind === 'station') label = 'Set Waypoint';
+  else if (target.kind === 'zone') label = 'Align Autopilot';
+  else if (target.kind === 'waypoint') label = 'Track Waypoint';
+  return { kind: 'waypoint', label, coursePayload };
+}
+
+/** Live proximity check: player is inside the physical gate's interact range. */
+export function isPlayerInGateRange(state, gateTarget) {
+  if (!state || !gateTarget) return false;
+  const player = playerEntity(state);
+  if (!player || !player.pos) return false;
+  if (gateTarget.entityId == null || !state.entities || typeof state.entities.get !== 'function') return false;
+  const gateEnt = state.entities.get(gateTarget.entityId);
+  if (!gateEnt || gateEnt.alive === false || !gateEnt.pos || !gateEnt.data || !gateEnt.data.isGate) return false;
+  const data = gateEnt.data || {};
+  const range = ((data.dockRadius || gateEnt.radius || 70) + (player.radius || 0)) * 1.5 + 28;
+  const d = Math.hypot(player.pos.x - gateEnt.pos.x, player.pos.z - gateEnt.pos.z);
+  return d <= range;
+}
+
+/**
+ * Emit the primary action intents for a resolved map action (pure emitter side-effects only).
+ * Returns true when an intent was emitted.
+ */
+export function emitGalaxyMapPrimaryAction(bus, action) {
+  if (!bus || !action) return false;
+  if (action.kind === 'jump' && action.targetSectorId) {
+    bus.emit('world:requestJump', { targetSectorId: action.targetSectorId, via: 'gate' });
+    const course = action.coursePayload || { type: 'sector', sectorId: action.targetSectorId, path: null };
+    bus.emit('ui:setCourse', course);
+    bus.emit('toast', {
+      text: `Course set: jump to ${action.targetSectorId}`,
+      kind: 'info',
+      ttl: 3,
+    });
+    return true;
+  }
+  if (!action.coursePayload) return false;
+  if (action.coursePayload.type === 'sector' && action.coursePayload.sectorId) {
+    bus.emit('world:requestRoute', { targetSectorId: action.coursePayload.sectorId, mode: 'fuel' });
+  }
+  bus.emit('ui:setCourse', action.coursePayload);
+  bus.emit('toast', {
+    text: 'Course set: ' + (action.coursePayload.label || 'target'),
+    kind: 'info',
+    ttl: 3,
+  });
+  return true;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1501,6 +1639,8 @@ function getSearchTargets(state, level, curSecId) {
         x: p.x,
         z: p.z,
         stationId: p.stationId,
+        entityId: p.entityId || null,
+        targetSectorId: p.targetSectorId || null,
         factionId: p.factionId,
         detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}`,
       });
@@ -2113,7 +2253,10 @@ export const galaxyMapScreen = {
         }
       }
 
-      buttonLabel = 'Plot Course';
+      {
+        const primary = resolveGalaxyMapPrimaryAction(state, t);
+        buttonLabel = primary && primary.label ? primary.label : 'Plot Course';
+      }
 
     } else if (t.kind === 'station' || t.kind === 'gate') {
       const faction = factionNameOf(t.factionId);
@@ -2184,7 +2327,10 @@ export const galaxyMapScreen = {
         `;
       }
 
-      buttonLabel = 'Set Waypoint';
+      {
+        const primary = resolveGalaxyMapPrimaryAction(state, t);
+        buttonLabel = primary && primary.label ? primary.label : 'Set Waypoint';
+      }
 
     } else if (t.kind === 'zone') {
       html += `
@@ -2262,13 +2408,10 @@ export const galaxyMapScreen = {
   },
 
   _activateSelectedCourse() {
-    const payload = resolveCourseTarget(this._selectedTarget);
-    if (!payload || !this._ctx || !this._ctx.bus) return;
-    if (payload.type === 'sector' && payload.sectorId) {
-      this._ctx.bus.emit('world:requestRoute', { targetSectorId: payload.sectorId, mode: 'fuel' });
-    }
-    this._ctx.bus.emit('ui:setCourse', payload);
-    this._ctx.bus.emit('toast', { text: 'Course set: ' + (payload.label || 'target'), kind: 'info', ttl: 3 });
+    if (!this._ctx || !this._ctx.bus) return;
+    const action = resolveGalaxyMapPrimaryAction(this._ctx.state, this._selectedTarget);
+    if (!action) return;
+    if (!emitGalaxyMapPrimaryAction(this._ctx.bus, action)) return;
     popCurrentScreen(this._ctx);
   },
 
@@ -2779,7 +2922,8 @@ export const galaxyMapScreen = {
 
       this._clickTargets.push({
         sx: x, sy: y, radiusPx: 18, kind: p.kind, id: p.id, x: p.x, z: p.z,
-        entityId: p.entityId, stationId: p.stationId, name: p.name, factionId: p.factionId,
+        entityId: p.entityId, stationId: p.stationId, targetSectorId: p.targetSectorId,
+        name: p.name, factionId: p.factionId,
         detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}`
       });
 
