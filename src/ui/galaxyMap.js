@@ -131,6 +131,40 @@ export function mapTargetPriority(target) {
   return 10;
 }
 
+/**
+ * Resolve the one player-owned navigation goal independently of ambient mission destinations.
+ * The result is presentation-only and deterministic; map drawing never mutates nav/mission state.
+ */
+export function activeMapGoal(state) {
+  if (!state) return null;
+  const wp = state.nav && state.nav.waypoint;
+  const trackedId = state.ui && state.ui.trackedMissionId;
+  const active = (state.missions && state.missions.active) || [];
+  const tracked = trackedId ? active.find((m) => m && m.status === 'active' && m.id === trackedId) : null;
+  const routeLegs = state.nav && state.nav.route && Array.isArray(state.nav.route.legs)
+    ? state.nav.route.legs
+    : [];
+  const routeDest = routeLegs.length ? routeLegs[routeLegs.length - 1].to : null;
+  const sectorId = (wp && wp.sectorId)
+    || (tracked && (tracked.destSectorId || (tracked.params && tracked.params.sectorId)))
+    || routeDest
+    || ((wp && wp.pos) ? currentSectorId(state) : null);
+  if (!wp && !tracked && !routeDest) return null;
+  return {
+    id: 'active-map-goal',
+    objective: true,
+    markerKind: (wp && wp.markerKind) || ((wp && (wp.missionId || wp.onboarding)) || tracked ? 'mission-objective' : 'navigation'),
+    missionId: (wp && wp.missionId) || (tracked && tracked.id) || null,
+    sectorId,
+    pos: wp && wp.pos ? { x: wp.pos.x, z: wp.pos.z } : null,
+    label: String(
+      (wp && (wp.label || wp.sectorName || wp.reason))
+      || (tracked && (tracked.title || tracked.name))
+      || 'Route destination',
+    ).replace(/\s+/g, ' ').trim(),
+  };
+}
+
 /** Pick a hit by semantic priority first, distance second, then source order for determinism. */
 export function pickMapTargetAt(targets, x, y) {
   let best = null;
@@ -2620,16 +2654,15 @@ export const galaxyMapScreen = {
         }
       }
 
-      // Mission Overlay
+      // Mission context: untracked contract destinations stay compact and quiet. The single
+      // player-owned goal is repainted after every node with the strong white-outlined marker.
       if (this._layers.mission) {
         const activeMissions = state.missions && state.missions.active || [];
         const isMissionDest = activeMissions.some(m => m.status === 'active' && (m.destSectorId === n.id || (m.params && m.params.sectorId === n.id)));
         if (isMissionDest) {
           g.save();
-          g.strokeStyle = '#ffd24a'; g.lineWidth = 2;
-          g.beginPath();
-          g.moveTo(x, y - r - 10); g.lineTo(x + 5, y - r - 5); g.lineTo(x, y - r); g.lineTo(x - 5, y - r - 5); g.closePath();
-          g.stroke();
+          g.fillStyle = 'rgba(255,179,92,0.72)';
+          g.beginPath(); g.arc(x, y - r - 6, 2.5, 0, Math.PI * 2); g.fill();
           g.restore();
         }
       }
@@ -2641,6 +2674,32 @@ export const galaxyMapScreen = {
           g.fillStyle = '#ff5c5c'; g.font = 'bold 11px sans-serif';
           g.fillText('⚠', x + r + 4, y - r - 4);
         }
+      }
+    }
+
+    // The current goal is the final galaxy paint and strongest hit target. It is intentionally
+    // larger/brighter than station, sector, route, and untracked-mission context.
+    const goal = activeMapGoal(state);
+    if (goal && goal.sectorId && (this._layers.route || this._layers.mission)) {
+      const node = model.nodes.find((n) => n.id === goal.sectorId && n.charted);
+      if (node) {
+        const gx = sx(node.x), gy = sy(node.y);
+        drawMapGoalMarker(g, gx, gy, goal.label, w);
+        this._clickTargets.push({
+          sx: gx,
+          sy: gy,
+          radiusPx: 27,
+          kind: 'sector',
+          id: goal.id,
+          objective: true,
+          markerKind: goal.markerKind,
+          missionId: goal.missionId,
+          sectorId: goal.sectorId,
+          name: goal.label,
+          x: node.x,
+          y: node.y,
+          detail: 'Current goal · ' + goal.label,
+        });
       }
     }
   },
@@ -2917,6 +2976,43 @@ function waypointMapLabel(wp) {
   const raw = wp && (wp.mapLabel || wp.label || wp.reason || wp.sectorName || 'Waypoint');
   const label = String(raw || 'Waypoint').replace(/\s+/g, ' ').trim();
   return (label || 'Waypoint').slice(0, 28);
+}
+
+function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity) {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+  const text = `GOAL · ${String(label || 'OBJECTIVE').toUpperCase().slice(0, 22)}`;
+  g.save();
+  // Dark acquisition plate + filled amber diamond + white keyline: high salience without a rest
+  // pulse or permanent bloom. Context nodes remain smaller and never get the white keyline.
+  g.fillStyle = 'rgba(4,8,16,0.9)';
+  g.beginPath(); g.arc(x, y, 18, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#ffb35c';
+  g.strokeStyle = '#ffffff';
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(x, y - 11);
+  g.lineTo(x + 11, y);
+  g.lineTo(x, y + 11);
+  g.lineTo(x - 11, y);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  g.strokeStyle = '#ffb35c';
+  g.lineWidth = 2;
+  g.beginPath(); g.arc(x, y, 16, 0, Math.PI * 2); g.stroke();
+  g.font = 'bold 10px monospace';
+  g.textAlign = 'left';
+  g.textBaseline = 'middle';
+  const width = g.measureText ? g.measureText(text).width : 0;
+  const labelX = Number.isFinite(viewportWidth)
+    ? clampMapLabelX(width, x + 21, viewportWidth, 8)
+    : x + 21;
+  g.strokeStyle = 'rgba(4,8,16,0.95)';
+  g.lineWidth = 4;
+  g.strokeText(text, labelX, y);
+  g.fillStyle = '#ffb35c';
+  g.fillText(text, labelX, y);
+  g.restore();
 }
 
 function drawWaypointPin(g, x, y, label, viewportWidth = Infinity) {

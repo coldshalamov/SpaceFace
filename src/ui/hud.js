@@ -217,6 +217,23 @@ function mtWaypointDistance(state, wp) {
   return dist >= 1000 ? `${(dist / 1000).toFixed(1)}k WU` : `${Math.round(dist)} WU`;
 }
 
+/**
+ * Eight-way world bearing for the active goal. This is deliberately a stable direction glyph,
+ * not a continuously announced live-region value. The camera keeps a fixed world orientation,
+ * so the arrow matches the radar/map direction without requiring compass prose.
+ */
+export function objectiveBearingGlyph(state, wp) {
+  const pos = wp && wp.pos;
+  const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (!pos || !player || !player.pos) return '';
+  const dx = Number(pos.x) - Number(player.pos.x);
+  const dz = Number(pos.z) - Number(player.pos.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 1) return '•';
+  // North/up is -Z in the map/radar presentation; advance clockwise in 45-degree sectors.
+  const octant = Math.round((Math.atan2(dx, -dz) / (Math.PI * 2)) * 8);
+  return ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(octant + 8) % 8];
+}
+
 function mtObjectiveAction(action, wp) {
   const verb = String(action || 'Open the Mission Log').trim();
   const destination = String(wp && (wp.sectorName || wp.label || wp.mapLabel) || '').trim();
@@ -225,8 +242,56 @@ function mtObjectiveAction(action, wp) {
 }
 
 function mtMarkerLine(state, wp, suffix = '') {
-  const route = wp && wp.pos ? `◆ AMBER DIAMOND · ${mtWaypointDistance(state, wp)}` : 'NO RADAR ROUTE';
+  const bearing = objectiveBearingGlyph(state, wp);
+  const route = wp && wp.pos
+    ? `◆ AMBER DIAMOND / GOAL · ${mtWaypointDistance(state, wp)}${bearing ? ` · ${bearing}` : ''}`
+    : `NO GOAL MARKER · ${BINDINGS.missionLog.label} MISSION LOG`;
   return suffix ? `${route} · ${suffix}` : route;
+}
+
+/**
+ * Geometry contract for the persistent flight anchors. Values mirror the authored desktop CSS and
+ * intentionally reserve a clear center/lower-middle playfield. Used by the objective hierarchy
+ * regression to cover both the 1280x720 floor and 1920x1080 target without launching the game.
+ */
+export function resolveObjectiveHudLayout(width, height) {
+  const w = Math.max(320, Number(width) || 1280);
+  const h = Math.max(240, Number(height) || 720);
+  const compact = w <= 760 || h <= 620;
+  const edge = compact ? 8 : 22;
+  const bottom = compact ? 96 : 22;
+  const objectiveWidth = Math.min(compact ? 300 : 320, w - edge * 2);
+  const objectiveHeight = compact ? 68 : 82;
+  const vitalsWidth = compact ? 152 : 244;
+  const vitalsHeight = compact ? 124 : 184;
+  const stackGap = compact ? 8 : 12;
+  const rightWidth = compact ? 150 : 220;
+  const rightHeight = compact ? 320 : 430;
+  const actionWidth = Math.min(compact ? w - 16 : 420, w - edge * 2);
+  const actionHeight = compact ? 64 : 78;
+  return {
+    viewport: { x: 0, y: 0, width: w, height: h },
+    objective: {
+      x: edge,
+      y: Math.max(edge, h - bottom - vitalsHeight - stackGap - objectiveHeight),
+      width: objectiveWidth,
+      height: objectiveHeight,
+    },
+    vitals: { x: edge, y: h - bottom - vitalsHeight, width: vitalsWidth, height: vitalsHeight },
+    action: { x: (w - actionWidth) / 2, y: h - (compact ? 72 : 100), width: actionWidth, height: actionHeight },
+    rightDock: {
+      x: w - edge - rightWidth,
+      y: Math.max(edge, h - bottom - rightHeight),
+      width: rightWidth,
+      height: rightHeight,
+    },
+    centerSafe: {
+      x: Math.max(objectiveWidth + edge + 32, w * 0.28),
+      y: Math.max(72, h * 0.14),
+      width: Math.max(0, w - Math.max(objectiveWidth + edge + 32, w * 0.28) - Math.max(rightWidth + edge + 32, w * 0.2)),
+      height: Math.max(0, h * 0.56),
+    },
+  };
 }
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
@@ -303,6 +368,7 @@ export function createHud(ctx, alerts) {
   const { state, helpers } = ctx;
   const root = document.getElementById('hud');
   root.innerHTML = '';
+  root.dataset.objectiveHierarchy = 'one-objective-one-action-one-threat';
 
   // ---- bottom-left: ship schematic (hull + shield) + thin micro-bars (energy/heat/boost) ----
   // Bottom-left anchor (SPEC3-36 three-anchor law, design/revamp/HUD_THREE_ANCHOR.md): one flex
@@ -2000,55 +2066,13 @@ export function createHud(ctx, alerts) {
   let lastObjectivesSig = '';
   function refreshObjectives() {
     objDirty = false;
-    // The mission tracker is the one persistent command surface. Once a route or tracked mission
-    // owns attention, the old multi-mission list becomes optional Mission Log context instead of a
-    // second stack the player must interpret.
-    const routeOwnsAttention = !!(state.nav && state.nav.waypoint)
-      || !!(state.ui && state.ui.trackedMissionId);
-    if (routeOwnsAttention) {
-      lastObjectivesSig = '__active-objective-owns-attention__';
-      setDisplay(objWrap, false);
-      return;
-    }
-    const active = (state.missions && state.missions.active) || [];
-    const items = [];
-    for (const m of active.slice(0, 4)) {
-      const title = (m.title || m.name || m.type || 'Mission');
-      let prog = '';
-      let label = '';
-      const objs = m.objectives || [];
-      if (objs.length) {
-        const o = objs.find((x) => !x.done) || objs[0];
-        const cur = o.progress != null ? o.progress : (o.current != null ? o.current : 0);
-        const need = o.target != null ? o.target : (o.required != null ? o.required : (o.count != null ? o.count : 0));
-        prog = need ? ` ${cur}/${need}` : '';
-        label = o.label || o.text || '';
-      }
-      items.push({ title, prog, label });
-    }
-    const sig = items.map((item) => `${item.title}\u0001${item.prog}\u0001${item.label}`).join('\u0002');
-    if (sig === lastObjectivesSig) return;
-    lastObjectivesSig = sig;
-    objWrap.innerHTML = '';
-    if (!items.length) {
-      setDisplay(objWrap, false);
-      return;
-    }
-    setDisplay(objWrap, true, 'flex');
-    const frag = document.createDocumentFragment();
-    for (const item of items) {
-      const line = document.createElement('div');
-      line.className = 'sf-obj';
-      line.dataset.label = item.label;
-      const dot = document.createElement('span');
-      dot.className = 'sf-obj__dot';
-      const text = document.createElement('span');
-      text.className = 'sf-obj__t';
-      text.textContent = `${item.title}${item.prog}`;
-      line.append(dot, text);
-      frag.appendChild(line);
-    }
-    objWrap.appendChild(frag);
+    // One-objective law: contract lists belong in the on-demand Mission Log. The flight HUD has
+    // exactly one command surface (missionTracker), including when nothing has been tracked yet.
+    // Keep the legacy node mounted for compatibility with probes, but never paint its old 1–4 row
+    // stack; that stack was the source of repeated, overlapping mission copy in the live capture.
+    lastObjectivesSig = '__active-objective-owns-attention__';
+    if (objWrap.textContent) objWrap.textContent = '';
+    setDisplay(objWrap, false);
   }
 
   // ---------------------------------------------------------------------------
@@ -2749,7 +2773,7 @@ export function createHud(ctx, alerts) {
       const tracked = trackedId ? active.find((m) => m.id === trackedId && m.status === 'active') : null;
       const navWaypoint = state.nav && state.nav.waypoint;
       if (tracked) {
-        setText(mtTitle, 'ACTIVE OBJECTIVE');
+        setText(mtTitle, navWaypoint && navWaypoint.onboarding ? 'TUTORIAL OBJECTIVE' : 'CURRENT OBJECTIVE');
         setText(mtObj, mtObjectiveAction(navWaypoint && navWaypoint.reason || mtObjectiveText(tracked), navWaypoint));
         if (tracked.deadline_s != null && Number.isFinite(tracked.deadline_s)) {
           const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
@@ -2764,17 +2788,25 @@ export function createHud(ctx, alerts) {
         setDisplay(missionTracker, true);
       } else if (navWaypoint) {
         const wp = navWaypoint;
-        setText(mtTitle, 'ACTIVE OBJECTIVE');
+        const routeGuide = mtRouteGuidance(state, wp);
+        setText(mtTitle, wp.onboarding ? 'TUTORIAL OBJECTIVE' : 'CURRENT OBJECTIVE');
         setText(mtObj, mtObjectiveAction(wp.reason || wp.label || 'Follow the marked route', wp));
-        setText(mtTime, mtMarkerLine(state, wp));
+        setText(mtTime, mtMarkerLine(state, wp, routeGuide && routeGuide.summary || ''));
+        mtTime.classList.remove('sf-mt-urgent');
+        setDisplay(mtTime, true);
+        setDisplay(missionTracker, true);
+      } else if (active.some((m) => m && m.status === 'active')) {
+        const candidate = active.find((m) => m && m.status === 'active');
+        setText(mtTitle, 'NEXT ACTION');
+        setText(mtObj, `${BINDINGS.missionLog.label} Mission Log · track ${candidate.title || candidate.name || 'one contract'}`);
+        setText(mtTime, 'NO GOAL MARKER · TRACK ONE CONTRACT');
         mtTime.classList.remove('sf-mt-urgent');
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
       } else if (state.story && STORY_BEATS[state.story.beatIndex]) {
-        const beat = STORY_BEATS[state.story.beatIndex];
-        setText(mtTitle, 'ACTIVE OBJECTIVE');
-        setText(mtObj, beat.objective || 'Open the mission log for your next objective');
-        setText(mtTime, `NO RADAR ROUTE · ${BINDINGS.missionLog.label} MISSION LOG`);
+        setText(mtTitle, 'NEXT ACTION');
+        setText(mtObj, `${BINDINGS.missionLog.label} Mission Log · choose the next story action`);
+        setText(mtTime, 'NO GOAL MARKER · SET ONE IN MISSION LOG');
         mtTime.classList.remove('sf-mt-urgent');
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);

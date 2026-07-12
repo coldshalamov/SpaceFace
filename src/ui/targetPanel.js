@@ -116,7 +116,9 @@ export function createTargetPanel(ctx) {
   const el = document.createElement('div');
   el.className = 'sf-target sf-hudpanel';
   el.style.display = 'none';
+  el.dataset.hudSlot = 'current-threat';
   el.setAttribute('role', 'status');
+  el.setAttribute('aria-label', 'Current target');
   el.setAttribute('aria-live', 'off');
   el.setAttribute('aria-atomic', 'false');
   el.innerHTML = `
@@ -202,6 +204,7 @@ export function createTargetPanel(ctx) {
       lastFactionId = t.factionId || null;
       const classText = nextClass ? ` · ${nextClass}`.toUpperCase() : '';
       setText(elName, `${nextName}${classText}`);
+      el.setAttribute('aria-label', `Current target: ${nextName}${nextClass ? `, ${nextClass}` : ''}`);
       const fac = t.factionId ? FACTION_BY_ID.get(t.factionId) : null;
       if (fac) {
         setText(elFac, fac.short || fac.name);

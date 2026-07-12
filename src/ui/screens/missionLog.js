@@ -1045,19 +1045,26 @@ export const missionLogScreen = {
     rootEl.appendChild(list);
     this._listEl = list;
 
-    // Story objective section (P2-14): the current beat's objective + direction hint, above the
-    // active missions so the log is the canonical "what should I do now" home. Built in _render so
-    // it tracks beatIndex live; _storyEl is the container.
+    // Story context is retained in the data model but not painted as a parallel command card.
+    // CURRENT ACTION below owns "what now"; the active list owns contract detail.
     const storyH = el('div', 'sf-mlog-section-h sf-mlog-section-story', 'STORY OBJECTIVE');
+    storyH.hidden = true;
     rootEl.insertBefore(storyH, activeH);
     const storyEl = el('div', 'sf-mlog-story');
+    storyEl.hidden = true;
     rootEl.insertBefore(storyEl, activeH);
+    this._storyHeader = storyH;
     this._storyEl = storyEl;
 
-    const recH = el('div', 'sf-mlog-section-h sf-mlog-section-rec', 'RECOMMENDED NEXT');
+    // Replaces the equal-weight RECOMMENDED NEXT grid with one explicit command rail.
+    const recH = el('div', 'sf-mlog-section-h sf-mlog-section-rec', 'CURRENT ACTION');
+    recH.id = 'sf-mlog-current-action-heading';
     rootEl.insertBefore(recH, activeH);
     const recEl = el('div', 'sf-mlog-recommend');
+    recEl.setAttribute('role', 'region');
+    recEl.setAttribute('aria-labelledby', recH.id);
     rootEl.insertBefore(recEl, activeH);
+    this._recommendHeader = recH;
     this._recommendEl = recEl;
 
     // Career ladder chip (CL-UI-03): after story/recommended, before active missions.
@@ -1245,12 +1252,14 @@ export const missionLogScreen = {
     return false;
   },
 
-  /** Focus first actionable career CTA (map/recover/choice), else CLOSE. */
+  /** Focus the current action first, then a career CTA, else CLOSE. */
   _focusPrimaryControl() {
     const career = this._careerEl;
-    let target = null;
+    let target = this._recommendEl && this._recommendEl.querySelector(
+      'button[data-rec-act="track"]:not([disabled]),button[data-rec-act="openMap"]:not([disabled])',
+    );
     if (career && !career.hidden) {
-      target = career.querySelector(
+      target = target || career.querySelector(
         'button[data-career-act="openMap"]:not([disabled]),'
         + 'button[data-career-act="recover"]:not([disabled]),'
         + 'button[data-career-act="choose"]:not([disabled]),'
@@ -1299,8 +1308,7 @@ export const missionLogScreen = {
     const tracked = state.ui && state.ui.trackedMissionId;
     const simTime = state.simTime || 0;
 
-    // Story objective (P2-14): render the current beat first, before active missions, so the log is
-    // always a valid "what should I do now" even with zero active contracts.
+    // Story is folded into CURRENT ACTION when no tracked/active contract owns the next verb.
     this._renderStory(state);
     this._renderRecommendations(state, activeMissions, tracked);
     this._renderCareerChip(state);
@@ -1347,7 +1355,9 @@ export const missionLogScreen = {
       barWrap.appendChild(barFill);
       card.appendChild(barWrap);
 
-      card.appendChild(el('div', 'sf-mlog-next', nextStepText(m)));
+      // CURRENT ACTION already owns the tracked mission verb. Repeat next-step prose only for
+      // untracked contracts, where it explains why TRACK NAV is the next interaction.
+      if (!isTracked) card.appendChild(el('div', 'sf-mlog-next', nextStepText(m)));
 
       // Meta row: destination, time, rewards
       const meta = el('div', 'sf-mlog-meta mono');
@@ -1379,41 +1389,33 @@ export const missionLogScreen = {
     if (this._compVisible) this._renderCompleted();
   },
 
-  // Story objective tracker (P2-14): the current beat's concrete objective + reward, so the mission
-  // log answers "what should I do now" even with no active contracts. Reads state.story.beatIndex
-  // (owned by missions.js) + the STORY_BEATS table (objective/reward/introduces per beat).
-  // During first-hour tutorial B0, this is on-demand context only — the HUD owns the flight verb.
+  // Long-form story context no longer paints beside the current action. It remains available to
+  // recommendedActions() as the fallback when no contract or trade route owns navigation.
   _renderStory(state) {
     if (!this._storyEl) return;
-    const beat = (state.story && state.story.beatIndex) || 0;
-    const sb = STORY_BEATS[beat];
-    if (!sb) { this._storyEl.innerHTML = ''; return; }
-    const tutorialActive = isFirstHourTutorialActive(state);
-    const introduces = sb.introduces ? '<div class="sf-mlog-story-introduces">Introduces: ' + escapeHtml(storyIntroducesDisplayName(sb.introduces)) + '</div>' : '';
-    const beatLabel = tutorialActive
-      ? ('Context · Beat ' + beat + ' / 7 · ' + storyBeatDisplayName(sb.id))
-      : ('Beat ' + beat + ' / 7 · ' + storyBeatDisplayName(sb.id));
-    this._storyEl.innerHTML =
-      '<div class="sf-mlog-story-card' + (tutorialActive ? ' sf-mlog-story-card--context' : '') + '">' +
-        '<div class="sf-mlog-story-beat">' + escapeHtml(beatLabel) + '</div>' +
-        '<div class="sf-mlog-story-objective">' + escapeHtml(sb.objective) + '</div>' +
-        introduces +
-      '</div>';
+    this._storyEl.innerHTML = '';
+    this._storyEl.hidden = true;
+    if (this._storyHeader) this._storyHeader.hidden = true;
   },
 
   _renderRecommendations(state, activeMissions, trackedMissionId) {
     if (!this._recommendEl) return;
-    const actions = recommendedActions(state, activeMissions, trackedMissionId);
+    // The policy may produce secondary readiness advice for other consumers, but this screen paints
+    // exactly one command. Readiness and terms remain in the detailed mission cards below.
+    const actions = recommendedActions(state, activeMissions, trackedMissionId).slice(0, 1);
     if (!actions.length) {
       this._recommendEl.innerHTML = '';
       return;
     }
     this._recommendEl.innerHTML = actions.map((a) => (
-      '<div class="sf-mlog-rec-item sf-mlog-rec-item--' + escapeHtml(a.tone || 'info') + '">' +
+      '<div class="sf-mlog-rec-item sf-mlog-rec-item--' + escapeHtml(a.tone || 'info') + '" data-current-action="true">' +
         '<div class="sf-mlog-rec-label">' + escapeHtml(a.label || 'NEXT') + '</div>' +
         '<div class="sf-mlog-rec-title">' + escapeHtml(a.title || 'Next action') + '</div>' +
         '<div class="sf-mlog-rec-body">' + escapeHtml(a.body || '') + '</div>' +
         (a.meta ? '<div class="sf-mlog-rec-meta mono">' + escapeHtml(a.meta) + '</div>' : '') +
+        '<div class="sf-mlog-rec-marker mono">' + (a.mapAction
+          ? '◆ BRIGHT AMBER DIAMOND = CURRENT GOAL'
+          : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET')) + '</div>' +
         ((a.action === 'track' && a.missionId) || a.mapAction ? '<div class="sf-mlog-rec-actions">' +
           (a.action === 'track' && a.missionId ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="track" data-mid="' + escapeHtml(a.missionId) + '">' + escapeHtml(a.actionLabel || 'TRACK NAV') + '</button>' : '') +
           (a.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap"' + mapActionButtonAttrs(a.mapAction, a.missionId || a.mapAction.missionId || '') + ' title="' + escapeHtml(a.mapAction.body || a.mapAction.title || '') + '">' + escapeHtml(a.mapAction.label) + '</button>' : '') +
@@ -1569,7 +1571,7 @@ const CSS = `
 .sf-mlog-story-objective { font-size: .92rem; color: var(--ink); line-height: 1.4; font-weight: 600; }
 .sf-mlog-story-introduces { font-size: .72rem; color: var(--ink-mute); margin-top: 6px; font-style: italic; }
 
-.sf-mlog-recommend { padding: 4px 16px 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+.sf-mlog-recommend { padding: 4px 16px 8px; display: grid; grid-template-columns: minmax(0, 1fr);
   gap: 8px; }
 .sf-mlog-rec-item { min-width: 0; border: 1px solid var(--panel-edge); border-radius: 8px; padding: 10px 12px;
   background: rgba(8,16,28,.58); }
@@ -1584,6 +1586,8 @@ const CSS = `
   overflow-wrap: anywhere; }
 .sf-mlog-rec-body { font-size: .74rem; line-height: 1.35; color: var(--ink-dim); overflow-wrap: anywhere; }
 .sf-mlog-rec-meta { margin-top: 6px; color: var(--energy); font-size: .68rem; overflow-wrap: anywhere; }
+.sf-mlog-rec-marker { margin-top: 7px; color: #ffb35c; font-size: .65rem; font-weight: 700;
+  letter-spacing: .08em; line-height: 1.3; }
 .sf-mlog-rec-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
 .sf-mlog-rec-action { font-size: .66rem; padding: 4px 10px; border-color: var(--warn);
   color: var(--warn); background: rgba(255,205,76,.08); }
