@@ -102,7 +102,7 @@ export const TECH_NODES = [
   {
     id: 'tech_drive_tuning', name: 'Drive Tuning', branch: 'drives', prereqs: [],
     cost: { credits: 15000, rp: 20 },
-    unlocks: { modules: ['mod_engine_fusion_m', 'mod_afterburner_m', 'mod_jump_drive_m'] },
+    unlocks: { modules: ['mod_engine_fusion_m', 'mod_afterburner_m', 'mod_jump_drive_m', 'mod_cloak_mk2'] },
   },
   {
     id: 'tech_graviton_drives', name: 'Graviton Drives', branch: 'drives', prereqs: ['tech_drive_tuning'],

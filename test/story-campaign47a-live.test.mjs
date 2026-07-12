@@ -2,8 +2,8 @@
 // Run: node test/story-campaign47a-live.test.mjs
 // Does NOT claim default wiring complete or full M5 acceptance (ship lattice out of band).
 // Asserts: one continuous route without direct beatIndex surgery between beats,
-// one story reward grant per advance, live B4 payload/rep, B5 chain count, B6 outpost
-// receipt, B7 offer, five ending consequences (fresh state each), heat via authority,
+// one story reward grant per advance, live B4 payload/rep, B5 chain count, B6 automation
+// seed, physical B7 operation, five ending consequences (fresh state each), heat via authority,
 // post-ending sandbox playable, serialize/deserialize sidecar, fail/recover no advance,
 // no second director/system.
 
@@ -163,7 +163,7 @@ function acceptEmbodiedOffer(h, stationId, expectedTag) {
   return mission;
 }
 
-function advanceEmbodiedB1B2(h) {
+function advanceEmbodiedB1B2(h, outcome = 'force') {
   const { state, bus, missions } = h;
   assert.equal(state.story.beatIndex, 1);
   // Unrelated trade cannot advance the campaign.
@@ -183,15 +183,120 @@ function advanceEmbodiedB1B2(h) {
   const targetId = bounty.targetEntityIds[0];
   const target = state.entities.get(targetId);
   assert.ok(target && target.data.storyTargetId === 'npc_elroy', 'Elroy must be a physical mission target');
-  bus.emit('entity:killed', {
-    id: targetId, killerId: state.playerId, factionId: target.factionId,
-    type: target.type, pos: { x: target.pos.x, z: target.pos.z }, sectorId: bounty.destSectorId,
-  });
+  state.player.targetId = targetId;
+  const player = state.entities.get(state.playerId);
+  player.pos.x = target.pos.x + 100;
+  player.pos.z = target.pos.z;
+  bus.emit('scan:completed', { targetId });
+  assert.equal(bounty.params.investigationStage, 'identified');
+  if (outcome === 'custody') {
+    bus.emit('tether:reel', { actorId: state.playerId, targetId, before: 72, after: 60 });
+  } else {
+    bus.emit('entity:killed', {
+      id: targetId, killerId: state.playerId, factionId: target.factionId,
+      type: target.type, pos: { x: target.pos.x, z: target.pos.z }, sectorId: bounty.destSectorId,
+    });
+  }
   assert.equal(state.story.beatIndex, 3);
+  assert.equal(state.story.flags.elroy_outcome, outcome);
 }
 
-function advanceToB7(h, branch = 'traders') {
-  const { state, bus, missions } = h;
+const PHYSICAL_ROUTE = Object.freeze({
+  custody: Object.freeze({
+    branch: 'patrol', b3StationId: 'station_helios', b4StationId: 'station_coalition',
+    program: 'patrol_guard', shipId: 'ship_drifter', factionId: 'faction_scn',
+  }),
+  force: Object.freeze({
+    branch: 'traders', b3StationId: 'station_tethys', b4StationId: 'station_tethys',
+    program: 'mine_to_depot', shipId: 'ship_drifter', factionId: 'faction_mts',
+  }),
+});
+
+function completePhysicalMission(h, mission) {
+  assert.ok(mission && mission.status === 'active', 'physical mission must be active');
+  if (mission.type === 'bulk_trade') {
+    h.bus.emit('economy:tradeCompleted', {
+      side: 'sell', stationId: mission.destStationId,
+      commodityId: mission.params.cmdtyId, qty: mission.objectiveTarget,
+    });
+    return;
+  }
+  h.state.world.currentSectorId = mission.destSectorId;
+  h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
+  h.missions.spawnTargetsForSector(mission.destSectorId);
+  assert.ok(mission.targetEntityIds.length > 0, `${mission.storyTag} must materialize physical targets`);
+  for (const targetId of [...mission.targetEntityIds]) {
+    h.bus.emit('entity:killed', { id: targetId, killerId: h.state.playerId });
+  }
+}
+
+function completeB3(h, outcome) {
+  const route = PHYSICAL_ROUTE[outcome];
+  h.bus.emit('dock:docked', { stationId: route.b3StationId });
+  h.bus.emit('ship:purchased', {
+    defId: route.shipId, hullId: route.shipId, stationId: route.b3StationId, price: 9000,
+  });
+  assert.equal(h.state.story.beatIndex, 4, 'B3 requires the outcome-specific yard and tier-two hull');
+}
+
+function acceptCurrentStoryOffer(h, stationId, tagPrefix) {
+  const board = h.missions.ensureBoard(stationId);
+  const offer = board.slots.find((row) => String(row.storyTag || '').startsWith(tagPrefix));
+  assert.ok(offer, `missing physical story offer ${tagPrefix} at ${stationId}`);
+  assert.equal(h.missions.acceptMission(offer.id), true, `failed to accept ${offer.storyTag}`);
+  const mission = h.state.missions.active.find((row) => row.storyTag === offer.storyTag);
+  assert.ok(mission, `missing active mission ${offer.storyTag}`);
+  return mission;
+}
+
+function completeB4(h, outcome) {
+  const route = PHYSICAL_ROUTE[outcome];
+  const mission = acceptCurrentStoryOffer(h, route.b4StationId, STORY_BRANCH_INTRO_TAG);
+  assert.equal(h.state.story.beatIndex, 4, 'accepting B4 cannot settle the stake');
+  completePhysicalMission(h, mission);
+  assert.equal(h.state.story.beatIndex, 5);
+  assert.equal(h.state.story.branch, route.branch);
+}
+
+function completeB5(h, outcome) {
+  const route = PHYSICAL_ROUTE[outcome];
+  const count = BRANCH_CHAIN[route.branch].count;
+  for (let completed = 0; completed < count; completed++) {
+    const mission = acceptCurrentStoryOffer(
+      h, route.b4StationId, `campaign47a:b5:${route.branch}:${completed + 1}`,
+    );
+    completePhysicalMission(h, mission);
+    if (completed < count - 1) assert.equal(h.state.story.beatIndex, 5);
+  }
+  assert.equal(h.state.story.beatIndex, 6);
+}
+
+function completeB6(h, outcome, assetId = 'seed-2') {
+  const route = PHYSICAL_ROUTE[outcome];
+  h.bus.emit('asset:deployed', {
+    kind: 'drone', id: assetId, defId: 'drone_mk1', sectorId: 'sector_tethys_junction',
+  });
+  assert.equal(h.state.story.beatIndex, 6, 'deployment alone cannot settle B6');
+  h.bus.emit('automation:programAssigned', { kind: 'drone', id: assetId, templateId: route.program });
+  assert.equal(h.state.story.beatIndex, 7);
+  assert.equal(h.state.story.flags.empire_seed_asset_id, assetId);
+}
+
+function completeB7(h, outcome) {
+  const route = PHYSICAL_ROUTE[outcome];
+  // The adapter gate accelerates the late-game economy/reputation prerequisite, never the story spine.
+  h.state.player.credits = Math.max(100_000, h.state.player.credits || 0);
+  h.state.factions[route.factionId].rep = Math.max(50, h.state.factions[route.factionId].rep || 0);
+  const mission = acceptCurrentStoryOffer(h, route.b4StationId, 'campaign47a:b7:');
+  completePhysicalMission(h, mission);
+  assert.equal(h.state.story.beatIndex, 7);
+  assert.equal(h.state.story.flags.deep_reach_operation_complete, true);
+  assert.equal(h.state.story.flags.endgame, true);
+}
+
+function advanceToB5(h, branch = 'traders') {
+  const { state, bus } = h;
+  const outcome = branch === 'patrol' ? 'custody' : 'force';
   assert.equal(state.story.beatIndex, 0);
 
   // B0: mine then dock (ordered). Dock alone must not advance.
@@ -202,81 +307,17 @@ function advanceToB7(h, branch = 'traders') {
   bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(state.story.beatIndex, 1, 'B0 completes on mine then dock');
 
-  advanceEmbodiedB1B2(h);
+  advanceEmbodiedB1B2(h, outcome);
+  completeB3(h, outcome);
+  completeB4(h, outcome);
+  return outcome;
+}
 
-  // B3 ship purchase
-  bus.emit('ship:purchased', { defId: 'ship_kestrel', hullId: 'ship_kestrel' });
-  assert.equal(state.story.beatIndex, 4);
-
-  // B4 live branch intro only
-  const introType = branch === 'patrol' ? 'patrol_clear' : (branch === 'free' ? 'smuggling_run' : 'bulk_trade');
-  const introFaction = branch === 'patrol' ? 'faction_scn' : (branch === 'free' ? 'faction_free' : 'faction_mts');
-  const offer = {
-    id: `test_intro_${branch}`,
-    type: introType,
-    stationId: 'station_helios',
-    factionId: introFaction,
-    storyTag: STORY_BRANCH_INTRO_TAG,
-    storyBranch: branch,
-    title: `Intro ${branch}`,
-    reward_cr: 500,
-    collateral_cr: 0,
-    riskTier: 0,
-    destStationId: 'station_helios',
-    destSectorId: 'sector_helios',
-    distance: 600,
-    params: introType === 'bulk_trade'
-      ? { cmdtyId: 'cmdty_food', qty: 5, cargoValue: 100, fValue: 1, taskTime: 10 }
-      : introType === 'patrol_clear'
-        ? { clearCount: 2, fValue: 1, taskTime: 10 }
-        : { cmdtyId: 'cmdty_stimulants', qty: 2, cargoValue: 80, fValue: 1, taskTime: 10 },
-  };
-  const posted = missions.postAndAcceptAuthoredOffer(offer);
-  assert.equal(posted.ok, true, `B4 accept failed: ${posted.reason}`);
-  assert.equal(state.story.branch, branch);
-  assert.equal(state.story.beatIndex, 5);
-
-  // B5 chain completions
-  const chain = BRANCH_CHAIN[branch];
-  assert.ok(chain);
-  for (let i = 0; i < chain.count; i++) {
-    const m = {
-      id: `chain_${i}`,
-      type: chain.missionType,
-      storyTag: `campaign47a:b5:${branch}:${i + 1}`,
-      status: 'active',
-      factionId: introFaction,
-      title: `Chain ${i}`,
-      reward_cr: 100,
-      collateral_cr: 0,
-      riskTier: 0,
-      params: {},
-      objectiveProgress: 0,
-      objectiveTarget: 1,
-      targetEntityIds: [],
-      destStationId: 'station_helios',
-      destSectorId: 'sector_helios',
-      stationId: 'station_helios',
-    };
-    state.missions.active.push(m);
-    missions._completeMission(m, state.missions.active.indexOf(m));
-  }
-  assert.equal(state.story.beatIndex, 6, `B5 should complete after ${chain.count} chain missions`);
-
-  // B6 outpost deploy with defId
-  bus.emit('asset:deployed', {
-    kind: 'outpost',
-    id: 'outpost_inst_1',
-    defId: 'outpost_refinery',
-  });
-  assert.equal(state.story.beatIndex, 7);
-
-  // B7 gate: credits + rep
-  state.player.credits = 100000;
-  if (state.factions[introFaction]) state.factions[introFaction].rep = 50;
-  missions._checkStoryGates();
-  assert.equal(state.story.flags.endgame, true);
-  assert.equal(state.story.beatIndex, 7);
+function advanceToB7(h, branch = 'traders') {
+  const outcome = advanceToB5(h, branch);
+  completeB5(h, outcome);
+  completeB6(h, outcome);
+  completeB7(h, outcome);
 }
 
 console.log('story-campaign47a-live (missions/story adapter)');
@@ -335,31 +376,16 @@ check('B0 rejects dock-before-mine; ordered mine→dock only', () => {
 
 check('B4 live story.branch_intro + single opposing rep map', () => {
   const h = makeLiveHarness();
-  // Fast-forward to B4 via real triggers
+  // Reach and settle B4 through the force-specific physical Tethys contract.
   h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1 });
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
-  advanceEmbodiedB1B2(h);
-  h.bus.emit('ship:purchased', { defId: 'ship_kestrel' });
+  advanceEmbodiedB1B2(h, 'force');
+  completeB3(h, 'force');
   assert.equal(h.state.story.beatIndex, 4);
 
-  const beforeRep = { ...Object.fromEntries(Object.entries(h.state.factions).map(([k, v]) => [k, v.rep])) };
-  const offer = {
-    id: 'intro_traders',
-    type: 'bulk_trade',
-    stationId: 'station_helios',
-    factionId: 'faction_mts',
-    storyTag: STORY_BRANCH_INTRO_TAG,
-    storyBranch: 'traders',
-    title: 'MTS Intro',
-    reward_cr: 200,
-    collateral_cr: 0,
-    riskTier: 0,
-    destStationId: 'station_helios',
-    destSectorId: 'sector_helios',
-    distance: 600,
-    params: { cmdtyId: 'cmdty_food', qty: 4, cargoValue: 80, fValue: 1, taskTime: 8 },
-  };
-  assert.equal(h.missions.postAndAcceptAuthoredOffer(offer).ok, true);
+  const mission = acceptCurrentStoryOffer(h, 'station_tethys', STORY_BRANCH_INTRO_TAG);
+  assert.equal(h.state.story.branch, null, 'acceptance alone does not settle the branch');
+  completePhysicalMission(h, mission);
   assert.equal(h.state.story.branch, 'traders');
   assert.equal(h.state.story.beatIndex, 5);
 
@@ -373,100 +399,44 @@ check('B4 live story.branch_intro + single opposing rep map', () => {
   // Non-live storyTag must not set branch if somehow accepted without isStoryBranchIntro
   // (we already advanced past B4; branch stays traders)
   assert.equal(h.state.story.branch, 'traders');
-  void beforeRep;
 });
 
 check('B5 advances only after live chain completion count', () => {
   const h = makeLiveHarness();
   advanceToB7(h, 'patrol'); // patrol chain count = 2
-  // Re-run chain logic on a fresh path stop at B5
+  // Re-run the physical custody path on a fresh route and stop at B5.
   const h2 = makeLiveHarness();
-  h2.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1 });
-  h2.bus.emit('dock:docked', { stationId: 'station_helios' });
-  advanceEmbodiedB1B2(h2);
-  h2.bus.emit('ship:purchased', { defId: 'ship_kestrel' });
-  const offer = {
-    id: 'intro_patrol',
-    type: 'patrol_clear',
-    stationId: 'station_helios',
-    factionId: 'faction_scn',
-    storyTag: STORY_BRANCH_INTRO_TAG,
-    storyBranch: 'patrol',
-    title: 'SCN Intro',
-    reward_cr: 200,
-    collateral_cr: 0,
-    riskTier: 0,
-    destStationId: 'station_helios',
-    destSectorId: 'sector_helios',
-    distance: 600,
-    params: { clearCount: 2, fValue: 1, taskTime: 8 },
-  };
-  h2.missions.postAndAcceptAuthoredOffer(offer);
+  advanceToB5(h2, 'patrol');
   assert.equal(h2.state.story.beatIndex, 5);
   assert.equal(h2.state.story.branch, 'patrol');
 
   const chain = BRANCH_CHAIN.patrol;
-  // One completion: still B5
-  const m0 = {
-    id: 'c0', type: chain.missionType, status: 'active', factionId: 'faction_scn',
-    storyTag: 'campaign47a:b5:patrol:1',
-    title: 'c0', reward_cr: 50, collateral_cr: 0, riskTier: 0, params: {},
-    objectiveProgress: 0, objectiveTarget: 1, targetEntityIds: [],
-    destStationId: 'station_helios', destSectorId: 'sector_helios', stationId: 'station_helios',
-  };
-  h2.state.missions.active.push(m0);
-  h2.missions._completeMission(m0, h2.state.missions.active.indexOf(m0));
+  const m0 = acceptCurrentStoryOffer(h2, 'station_coalition', 'campaign47a:b5:patrol:1');
+  completePhysicalMission(h2, m0);
   assert.equal(h2.state.story.beatIndex, 5);
   assert.equal(h2.state.story.chainProgress, 1);
 
-  const m1 = { ...m0, id: 'c1', storyTag: 'campaign47a:b5:patrol:2', status: 'active' };
-  h2.state.missions.active.push(m1);
-  h2.missions._completeMission(m1, h2.state.missions.active.indexOf(m1));
+  const m1 = acceptCurrentStoryOffer(h2, 'station_coalition', 'campaign47a:b5:patrol:2');
+  completePhysicalMission(h2, m1);
   assert.equal(h2.state.story.beatIndex, 6);
   assert.equal(h2.state.story.chainProgress, 0);
+  assert.equal(chain.count, 2);
 });
 
-check('B6 outpost asset:deployed retains defId/specialization in sidecar', () => {
+check('B6 requires a deployed drone with the outcome-specific automation program', () => {
   const h = makeLiveHarness();
-  // reach B6
-  h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1 });
-  h.bus.emit('dock:docked', { stationId: 'station_helios' });
-  advanceEmbodiedB1B2(h);
-  h.bus.emit('ship:purchased', { defId: 'ship_kestrel' });
-  h.missions.postAndAcceptAuthoredOffer({
-    id: 'intro_t',
-    type: 'bulk_trade',
-    stationId: 'station_helios',
-    factionId: 'faction_mts',
-    storyTag: STORY_BRANCH_INTRO_TAG,
-    storyBranch: 'traders',
-    title: 'intro',
-    reward_cr: 100,
-    collateral_cr: 0,
-    riskTier: 0,
-    destStationId: 'station_helios',
-    destSectorId: 'sector_helios',
-    distance: 600,
-    params: { cmdtyId: 'cmdty_food', qty: 3, cargoValue: 40, fValue: 1, taskTime: 5 },
-  });
-  for (let i = 0; i < 3; i++) {
-    const m = {
-      id: `ch${i}`, type: 'bulk_trade', status: 'active', factionId: 'faction_mts',
-      storyTag: `campaign47a:b5:traders:${i + 1}`,
-      title: `ch${i}`, reward_cr: 40, collateral_cr: 0, riskTier: 0, params: {},
-      objectiveProgress: 0, objectiveTarget: 1, targetEntityIds: [],
-      destStationId: 'station_helios', destSectorId: 'sector_helios', stationId: 'station_helios',
-    };
-    h.state.missions.active.push(m);
-    h.missions._completeMission(m, h.state.missions.active.indexOf(m));
-  }
+  advanceToB5(h, 'traders');
+  completeB5(h, 'force');
   assert.equal(h.state.story.beatIndex, 6);
-  h.bus.emit('asset:deployed', { kind: 'outpost', id: 'o1', defId: 'outpost_refinery' });
+  h.bus.emit('asset:deployed', { kind: 'drone', id: 'seed-proof', defId: 'drone_mk1' });
+  assert.equal(h.state.story.beatIndex, 6);
+  assert.equal(h.state.story.flags.empire_seed_pending_id, 'seed-proof');
+  h.bus.emit('automation:programAssigned', {
+    kind: 'drone', id: 'seed-proof', templateId: PHYSICAL_ROUTE.force.program,
+  });
   assert.equal(h.state.story.beatIndex, 7);
-  const side = h.state.story.campaign47a;
-  assert.ok(side);
-  assert.equal(side.outpostSpecializationId, 'refinery');
-  assert.ok(side.outpostsOwned.includes('refinery'));
+  assert.equal(h.state.story.flags.empire_seed_asset_id, 'seed-proof');
+  assert.equal(h.state.story.flags.empire_seed_variant, 'force_logistics');
 });
 
 check('B7 offers endgame; five endings with distinct consequences (fresh state each)', () => {
@@ -653,27 +623,11 @@ check('unrelated mission failure does not fail or gate the story spine', () => {
 check('failed story chain cannot advance before deterministic recovery', () => {
   const h = makeLiveHarness();
   advanceToB7(h, 'traders');
-  // Start a fresh run at B5 without mutating between the route beats under test.
+  // Start a fresh physical route and stop at B5 without direct spine mutation.
   h.missions.newGame();
-  h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1 });
-  h.bus.emit('dock:docked', { stationId: 'station_helios' });
-  advanceEmbodiedB1B2(h);
-  h.bus.emit('ship:purchased', { defId: 'ship_kestrel' });
-  h.missions.postAndAcceptAuthoredOffer({
-    id: 'intro_traders_recovery', type: 'bulk_trade', stationId: 'station_helios',
-    factionId: 'faction_mts', storyTag: STORY_BRANCH_INTRO_TAG, storyBranch: 'traders',
-    title: 'MTS Recovery Intro', reward_cr: 100, collateral_cr: 0, riskTier: 0,
-    destStationId: 'station_helios', destSectorId: 'sector_helios',
-    params: { cmdtyId: 'cmdty_food', qty: 1 }, objectiveTarget: 1,
-    objectiveProgress: 0, targetEntityIds: [],
-  });
+  advanceToB5(h, 'traders');
   assert.equal(h.state.story.beatIndex, 5);
-  const failed = {
-    id: 'failed_chain', type: 'bulk_trade', status: 'active', factionId: 'faction_mts',
-    storyBranch: 'traders', storyTag: 'campaign47a:b5:traders:1', title: 'Failed Chain', reward_cr: 50, collateral_cr: 0,
-    riskTier: 0, params: {}, objectiveProgress: 0, objectiveTarget: 1, targetEntityIds: [],
-  };
-  h.state.missions.active.push(failed);
+  const failed = acceptCurrentStoryOffer(h, 'station_tethys', 'campaign47a:b5:traders:1');
   h.missions._failMission(failed, h.state.missions.active.indexOf(failed), 'chain_failure');
   assert.equal(h.state.story.campaign47a.beatStatus, 'failed');
   const progressBefore = h.state.story.chainProgress;
