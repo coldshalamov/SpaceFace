@@ -16,6 +16,7 @@ const DAY_SECONDS = 600;
 const PLAN_BUDGET = 12;
 const RECEIPT_CAP = 48;
 const HIGH_SECURITY = 0.85;
+const SAVE_SCHEMA_VERSION = 2;
 
 export function poiBehaviorFingerprint(row) {
   if (!row || typeof row !== 'object') return 'pb_0';
@@ -32,7 +33,14 @@ export function poiBehaviorFingerprint(row) {
 }
 
 /** Pure planner: one bounded representative per family, never two families on one zone. */
-export function planPoiBehaviors({ seed = 1, sectorId, dayIndex = 0, zones = [], sector = null } = {}) {
+export function planPoiBehaviors({
+  seed = 1,
+  sectorId,
+  dayIndex = 0,
+  zones = [],
+  sector = null,
+  pinnedByFamily = {},
+} = {}) {
   if (!sectorId || !Array.isArray(zones) || zones.length === 0) return [];
   const definition = sector || SECTOR_BY_ID.get(sectorId) || { id: sectorId, security: 0.5, stations: [] };
   const security = Number.isFinite(definition.security) ? definition.security : 0.5;
@@ -48,12 +56,14 @@ export function planPoiBehaviors({ seed = 1, sectorId, dayIndex = 0, zones = [],
       .slice()
       .sort((a, b) => String(a.id).localeCompare(String(b.id)));
     if (!candidates.length || spent + family.budgetCost > PLAN_BUDGET) continue;
+    const pinnedZoneId = pinnedByFamily && pinnedByFamily[familyId] && pinnedByFamily[familyId].zoneId;
+    const pinned = pinnedZoneId ? candidates.find((candidate) => candidate.id === pinnedZoneId) : null;
     const index = hash32(seed, sectorId, dayIndex, familyId, 'poi-family') % candidates.length;
-    const zone = candidates[index];
+    const zone = pinned || candidates[index];
     usedZones.add(zone.id);
     spent += family.budgetCost;
     const station = selectStationForFamily(stations, zone, familyId);
-    const behaviorId = `poib:${sectorId}:${dayIndex}:${familyId}`;
+    const behaviorId = stableBehaviorId(sectorId, familyId, zone.id);
     const dangerMode = familyId === 'pirate_contested_nest' && security >= HIGH_SECURITY
       ? 'jurisdiction_suppressed'
       : family.dangerMode;
@@ -147,12 +157,15 @@ export const livingPoiBehaviors = {
       : Math.floor((this.state.simTime || 0) / DAY_SECONDS);
     const sector = options.sector || sectorOf(this.state, sectorId);
     const zones = options.zones || zonesForSector(sectorId);
+    pruneExpiredAftermath(own, dayIndex);
+    const pinnedByFamily = activeAftermathPins(own, sectorId, dayIndex);
     const rows = planPoiBehaviors({
       seed: this.state.meta && this.state.meta.seed || 1,
       sectorId,
       dayIndex,
       zones,
       sector,
+      pinnedByFamily,
     });
     const priorZoneId = own.activeSectorId === sectorId ? own.currentZoneId : null;
     own.activeSectorId = sectorId;
@@ -161,11 +174,10 @@ export const livingPoiBehaviors = {
     own.activeByZone = {};
     for (const row of rows) {
       const aftermath = own.aftermath[row.behaviorId];
-      if (aftermath && aftermath.expiresDay >= dayIndex) {
+      if (aftermath && aftermath.expiresDay > dayIndex) {
         row.status = 'aftermath';
+        row.fingerprint = aftermath.fingerprint;
         row.mapLabel = `${row.mapLabel} · ${aftermath.kind.replaceAll('_', ' ').toUpperCase()}`;
-      } else if (aftermath) {
-        delete own.aftermath[row.behaviorId];
       }
       own.activeByZone[row.zoneId] = row;
       this._annotateNearestAnchor(row);
@@ -442,7 +454,7 @@ export const livingPoiBehaviors = {
   serialize() {
     const own = ensureState(this.state);
     return clonePlain({
-      schemaVersion: 1,
+      schemaVersion: SAVE_SCHEMA_VERSION,
       aftermath: own.aftermath,
       receipts: own.receipts.slice(-RECEIPT_CAP),
       entered: own.entered,
@@ -451,11 +463,12 @@ export const livingPoiBehaviors = {
 
   deserialize(data) {
     const source = data && typeof data === 'object' ? data : {};
+    const migrated = migrateSavedState(source);
     this.state.livingPoiBehaviors = {
       ...freshState(),
-      aftermath: plainObject(source.aftermath),
-      receipts: Array.isArray(source.receipts) ? clonePlain(source.receipts.slice(-RECEIPT_CAP)) : [],
-      entered: plainObject(source.entered),
+      aftermath: migrated.aftermath,
+      receipts: migrated.receipts,
+      entered: migrated.entered,
     };
   },
 
@@ -508,7 +521,7 @@ function selectStationForFamily(stations, zone, familyId) {
 
 function freshState() {
   return {
-    schemaVersion: 1,
+    schemaVersion: SAVE_SCHEMA_VERSION,
     activeSectorId: null,
     plannedDayIndex: 0,
     currentZoneId: null,
@@ -524,11 +537,80 @@ function ensureState(state) {
     state.livingPoiBehaviors = freshState();
   }
   const own = state.livingPoiBehaviors;
+  own.schemaVersion = SAVE_SCHEMA_VERSION;
   if (!own.activeByZone || typeof own.activeByZone !== 'object' || Array.isArray(own.activeByZone)) own.activeByZone = {};
   if (!own.aftermath || typeof own.aftermath !== 'object' || Array.isArray(own.aftermath)) own.aftermath = {};
   if (!Array.isArray(own.receipts)) own.receipts = [];
   if (!own.entered || typeof own.entered !== 'object' || Array.isArray(own.entered)) own.entered = {};
   return own;
+}
+
+function stableBehaviorId(sectorId, familyId, zoneId) {
+  return `poib:${String(sectorId)}:${String(familyId)}:${String(zoneId)}`;
+}
+
+function pruneExpiredAftermath(own, dayIndex) {
+  for (const [behaviorId, aftermath] of Object.entries(own.aftermath || {})) {
+    if (!aftermath || !Number.isFinite(aftermath.expiresDay) || aftermath.expiresDay <= dayIndex) {
+      delete own.aftermath[behaviorId];
+    }
+  }
+}
+
+function activeAftermathPins(own, sectorId, dayIndex) {
+  const pins = {};
+  for (const aftermath of Object.values(own.aftermath || {})) {
+    if (!aftermath || aftermath.sectorId !== sectorId || aftermath.expiresDay <= dayIndex) continue;
+    const prior = pins[aftermath.familyId];
+    if (!prior || compareAftermathAge(aftermath, prior) >= 0) pins[aftermath.familyId] = aftermath;
+  }
+  return pins;
+}
+
+function migrateSavedState(source) {
+  const aftermath = {};
+  const identityByLegacyId = new Map();
+  let ordinal = 0;
+  for (const [legacyId, raw] of Object.entries(plainObject(source.aftermath))) {
+    ordinal += 1;
+    if (!raw || !raw.sectorId || !raw.familyId || !raw.zoneId) continue;
+    const behaviorId = stableBehaviorId(raw.sectorId, raw.familyId, raw.zoneId);
+    const candidate = { ...clonePlain(raw), behaviorId, _migrationOrdinal: ordinal };
+    const prior = aftermath[behaviorId];
+    if (!prior || compareAftermathAge(candidate, prior) >= 0) aftermath[behaviorId] = candidate;
+    identityByLegacyId.set(legacyId, behaviorId);
+  }
+  for (const record of Object.values(aftermath)) delete record._migrationOrdinal;
+
+  const receipts = (Array.isArray(source.receipts) ? source.receipts : []).slice(-RECEIPT_CAP).map((raw) => {
+    const receipt = clonePlain(raw);
+    const stableId = receipt && receipt.sectorId && receipt.familyId && receipt.zoneId
+      ? stableBehaviorId(receipt.sectorId, receipt.familyId, receipt.zoneId)
+      : identityByLegacyId.get(receipt && receipt.behaviorId);
+    if (stableId) receipt.behaviorId = stableId;
+    return receipt;
+  });
+
+  const entered = {};
+  for (const [legacyId, value] of Object.entries(plainObject(source.entered))) {
+    if (!value) continue;
+    const stableId = identityByLegacyId.get(legacyId)
+      || (Number(source.schemaVersion) >= SAVE_SCHEMA_VERSION ? legacyId : null);
+    if (stableId) entered[stableId] = true;
+  }
+  return { aftermath, receipts, entered };
+}
+
+function compareAftermathAge(a, b) {
+  const dayDelta = finiteNumber(a && a.resolvedDay) - finiteNumber(b && b.resolvedDay);
+  if (dayDelta) return dayDelta;
+  const timeDelta = finiteNumber(a && a.resolvedAt) - finiteNumber(b && b.resolvedAt);
+  if (timeDelta) return timeDelta;
+  return finiteNumber(a && a._migrationOrdinal) - finiteNumber(b && b._migrationOrdinal);
+}
+
+function finiteNumber(value) {
+  return Number.isFinite(value) ? value : 0;
 }
 
 function plainObject(value) {

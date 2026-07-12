@@ -104,6 +104,8 @@ test('20 seeds per family are deterministic, varied, bounded, and overlap-free',
     assert.equal(new Set(a.map((row) => row.zoneId)).size, a.length, `seed ${seed} overlapped zone ownership`);
     for (const row of a) {
       assert.equal(row.fingerprint, poiBehaviorFingerprint(row));
+      assert.equal(row.behaviorId, `poib:${row.sectorId}:${row.familyId}:${row.zoneId}`,
+        'behavior identity is stable across days and names its physical zone');
       seenByFamily.get(row.familyId).add(row.zoneId);
     }
   }
@@ -157,7 +159,11 @@ test('each family resolves only through its own physical verb and records distin
     assert.ok(aftermath, row.familyId);
     assert.equal(aftermath.kind, family.aftermath.kind);
     assert.equal(aftermath.outcome, family.contract.successOutcome);
-    assert.ok(aftermath.expiresDay >= 5);
+    assert.equal(aftermath.expiresDay, 4 + family.aftermath.persistsDays,
+      `${row.familyId} keeps its exact authored aftermath duration`);
+    assert.equal(system._interact(row.zoneId, family.contract.verb, {
+      commodityId: 'cmdty_ore_iron', pos: { x: 0, z: 0 },
+    }), false, `${row.familyId} cannot resolve twice while aftermath is active`);
   }
   assert.equal(Object.keys(state.livingPoiBehaviors.aftermath).length, 6);
   assert.equal(emitted.filter((row) => row.event === 'poi:behaviorOutcome').length, 6);
@@ -171,6 +177,74 @@ test('each family resolves only through its own physical verb and records distin
   const loaded = makeSystem(73);
   loaded.system.deserialize(saved);
   assert.deepEqual(loaded.system.serialize(), saved);
+});
+
+test('active aftermath pins each family to its physical zone, then expiry reopens daily selection', () => {
+  const { system, state } = makeSystem(73);
+  const dayFourRows = Object.values(state.livingPoiBehaviors.activeByZone);
+  const zonesByFamily = Object.fromEntries(dayFourRows.map((row) => [row.familyId, row.zoneId]));
+  for (const row of dayFourRows) {
+    const family = POI_BEHAVIOR_FAMILIES[row.familyId];
+    for (let index = 0; index < family.contract.required; index++) {
+      system._interact(row.zoneId, family.contract.verb, {
+        commodityId: 'cmdty_ore_iron',
+        pos: { x: index * 220, z: index * 40 },
+      });
+    }
+  }
+
+  const dayFive = system.planSector(SYNTHETIC_SECTOR.id, {
+    zones: SYNTHETIC_ZONES, sector: SYNTHETIC_SECTOR, dayIndex: 5,
+  });
+  for (const row of dayFive.filter((candidate) => candidate.familyId !== 'convoy_industrial_route')) {
+    assert.equal(row.zoneId, zonesByFamily[row.familyId], `${row.familyId} moved before expiresDay`);
+    assert.equal(row.status, 'aftermath');
+  }
+  const convoy = dayFive.find((row) => row.familyId === 'convoy_industrial_route');
+  assert.equal(convoy.status, 'available', 'one-day freight wake expires before day-five replanning');
+  assert.equal(state.livingPoiBehaviors.aftermath[`poib:${SYNTHETIC_SECTOR.id}:convoy_industrial_route:${zonesByFamily.convoy_industrial_route}`], undefined);
+  const deterministicDayFive = planPoiBehaviors({
+    seed: state.meta.seed,
+    sectorId: SYNTHETIC_SECTOR.id,
+    dayIndex: 5,
+    zones: SYNTHETIC_ZONES,
+    sector: SYNTHETIC_SECTOR,
+  }).find((row) => row.familyId === 'convoy_industrial_route');
+  assert.equal(convoy.zoneId, deterministicDayFive.zoneId, 'expired family re-enters deterministic daily selection');
+});
+
+test('schema-1 day-indexed aftermath migrates to stable identity and keeps newest collision', () => {
+  const { system } = makeSystem(41);
+  const olderId = 'poib:sector_test:4:mining_field';
+  const newerId = 'poib:sector_test:5:mining_field';
+  const base = {
+    familyId: 'mining_field', sectorId: 'sector_test', zoneId: 'mine-a',
+    kind: 'worked_seam', outcome: 'worked', expiresDay: 9, cause: 'test', fingerprint: 'pb_test',
+  };
+  system.deserialize({
+    schemaVersion: 1,
+    aftermath: {
+      [olderId]: { ...base, behaviorId: olderId, resolvedDay: 4, resolvedAt: 2400 },
+      [newerId]: { ...base, behaviorId: newerId, resolvedDay: 5, resolvedAt: 3000, outcome: 'newest_truth' },
+    },
+    receipts: [
+      { behaviorId: olderId, familyId: base.familyId, sectorId: base.sectorId, zoneId: base.zoneId, t: 2400 },
+      { behaviorId: newerId, familyId: base.familyId, sectorId: base.sectorId, zoneId: base.zoneId, t: 3000 },
+    ],
+    entered: { [olderId]: true, [newerId]: true },
+  });
+  const saved = system.serialize();
+  const stableId = 'poib:sector_test:mining_field:mine-a';
+  assert.equal(saved.schemaVersion, 2);
+  assert.deepEqual(Object.keys(saved.aftermath), [stableId]);
+  assert.equal(saved.aftermath[stableId].behaviorId, stableId);
+  assert.equal(saved.aftermath[stableId].outcome, 'newest_truth');
+  assert.deepEqual(saved.receipts.map((receipt) => receipt.behaviorId), [stableId, stableId]);
+  assert.deepEqual(saved.entered, { [stableId]: true });
+
+  const loaded = makeSystem(41);
+  loaded.system.deserialize(saved);
+  assert.deepEqual(loaded.system.serialize(), saved, 'schema-2 save/load preserves stable identity exactly');
 });
 
 test('wrong verbs and passive time cannot turn a POI into random combat', () => {
