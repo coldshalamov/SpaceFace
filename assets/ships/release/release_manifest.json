@@ -964,14 +964,14 @@
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/kestrel.glb",
       "release": "assets/ships/release/parts/wholeships/kestrel.glb",
-      "sourceSha256": "6813f05de572a8961eb3558a507c5f6d02a23139958f7736a3bf984617c53e77",
-      "releaseSha256": "b764cfbffa6736d3c0b32a7e8d50681e4bde7f179e078a99722e179a38b31d41",
-      "sourceBytes": 14226032,
-      "releaseBytes": 6860920,
-      "textures": 12,
-      "ktx2Textures": 12,
-      "meshoptBufferViews": 17,
-      "contractNodeCount": 8
+      "sourceSha256": "f07acf0f4d573a026cb6778960809cd0ebdc3b3e01cbed44dd0202a1c22e6266",
+      "releaseSha256": "633c6a26c384832d2d870198c5a39d4f209ec6b9e4096f9a8dac0ebb3940ab3f",
+      "sourceBytes": 14793388,
+      "releaseBytes": 14266340,
+      "textures": 18,
+      "ktx2Textures": 18,
+      "meshoptBufferViews": 133,
+      "contractNodeCount": 42
     },
     {
       "id": "wholeship_pelican",

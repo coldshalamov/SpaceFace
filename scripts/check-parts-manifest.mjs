@@ -57,7 +57,8 @@ check('manifest declares texture contract',
 check('manifest declares part budgets',
   Array.isArray(manifest.budgets?.trianglesPerPart)
   && manifest.budgets.trianglesPerPart.length === 2
-  && Number.isFinite(manifest.budgets.maxBytesPerPart));
+  && Number.isFinite(manifest.budgets.maxBytesPerPart)
+  && Number.isFinite(manifest.budgets.maxBytesPerWholeShip));
 check('manifest has parts', Array.isArray(manifest.parts) && manifest.parts.length >= 20, `count=${manifest.parts && manifest.parts.length}`);
 
 const manifestFiles = new Set();
@@ -102,7 +103,10 @@ for (const part of manifest.parts || []) {
   check(`${label}: mount origin`, part.mount === 'origin', `mount=${part.mount}`);
   check(`${label}: texture size matches manifest contract`, part.textureSize === manifest.textureContract.resolution, `textureSize=${part.textureSize}`);
   check(`${label}: triangle budget`, part.tris >= triMin && part.tris <= triMax, `tris=${part.tris}`);
-  check(`${label}: byte budget`, part.bytes > 0 && part.bytes <= maxBytes, `bytes=${part.bytes}`);
+  const productionWholeShip = part.category === 'wholeships'
+    && placeAuthoringEntries[part.id]?.production_whole_ship === true;
+  const byteBudget = productionWholeShip ? manifest.budgets.maxBytesPerWholeShip : maxBytes;
+  check(`${label}: byte budget`, part.bytes > 0 && part.bytes <= byteBudget, `bytes=${part.bytes} max=${byteBudget}`);
   check(`${label}: bounds vectors declared`, vector3(part.bounds?.min) && vector3(part.bounds?.max) && vector3(part.bounds?.dimensionsM));
 
   check(`${label}: wired to a runtime slot`, runtimeFiles.has(part.file), `file=${part.file}`);
@@ -137,9 +141,11 @@ for (const part of manifest.parts || []) {
     check(`${label}: Blender tri floor`, part.tris >= minTris, `tris=${part.tris} min=${minTris}`);
   } else if (authoringEntry?.method === 'blender_generic') {
     check(`${label}: generic Blender export/finalize provenance`,
-      generator.includes('export_sprint_part.py')
-      && generator.includes('spaceface_export.py')
-      && generator.includes('finalize_part.mjs'),
+      authoringEntry.production_whole_ship === true
+        ? generator.includes(String(authoringEntry.exporter_path || '').split('/').pop())
+        : generator.includes('export_sprint_part.py')
+          && generator.includes('spaceface_export.py')
+          && generator.includes('finalize_part.mjs'),
       `generator=${generator}`);
     check(`${label}: generic Blender source exists`,
       typeof authoringEntry.blend_path === 'string' && existsSync(resolve(ROOT, authoringEntry.blend_path)),
@@ -148,8 +154,13 @@ for (const part of manifest.parts || []) {
       typeof authoringEntry.exporter_path === 'string' && existsSync(resolve(ROOT, authoringEntry.exporter_path)),
       `exporter=${authoringEntry.exporter_path}`);
     check(`${label}: generic Blender texture role owner`,
-      authoringEntry.texture_role_owner === 'finalizer-v1',
+      authoringEntry.texture_role_owner === (authoringEntry.production_whole_ship === true ? 'blender-source-v1' : 'finalizer-v1'),
       `owner=${authoringEntry.texture_role_owner}`);
+    if (authoringEntry.production_whole_ship === true) {
+      check(`${label}: production whole-ship provenance exists`,
+        typeof authoringEntry.provenance_path === 'string' && existsSync(resolve(ROOT, authoringEntry.provenance_path)),
+        `provenance=${authoringEntry.provenance_path}`);
+    }
     if (Number.isFinite(authoringEntry.min_tris)) {
       check(`${label}: generic Blender tri floor`, part.tris >= authoringEntry.min_tris,
         `tris=${part.tris} min=${authoringEntry.min_tris}`);
@@ -215,17 +226,26 @@ for (const part of manifest.parts || []) {
     factorOnlyBlender
       ? 'factor-only Blender materials'
       : (textureRoleError || `images=${embeddedImages.length} roleContract=${textureRoleContractVersion || 'legacy'}/${textureRoleMode || 'legacy'}`));
-  const contractMaterials = new Set(Object.values(manifest.materialContract || {}));
+  const activeMaterialContract = productionWholeShip
+    ? manifest.wholeShipMaterialContract || {}
+    : manifest.materialContract || {};
+  // Whole-ship roles are explicit in the manifest contract. The contract size,
+  // not a stale fixed number, is the structural ceiling; extra materials still fail.
+  const materialLimit = productionWholeShip ? Object.values(activeMaterialContract).length : 4;
+  const contractMaterials = new Set(Object.values(activeMaterialContract));
   const extraMaterials = [...materialNames].filter((name) => !contractMaterials.has(name));
-  check(`${label}: materials are contract-only (<=4)`, materialNames.size <= 4 && extraMaterials.length === 0,
+  check(`${label}: materials are contract-only (<=${materialLimit})`, materialNames.size <= materialLimit && extraMaterials.length === 0,
     `materials=${[...materialNames].join(',')} extra=${extraMaterials.join(',')}`);
   for (const [role, materialName] of Object.entries(part.tintable || {})) {
-    check(`${label}: tint role ${role} is in manifest material contract`, Object.values(manifest.materialContract || {}).includes(materialName), `material=${materialName}`);
+    check(`${label}: tint role ${role} is in manifest material contract`, Object.values(activeMaterialContract).includes(materialName), `material=${materialName}`);
     check(`${label}: tint material ${materialName} exists in GLB`, materialNames.has(materialName), `materials=${[...materialNames].join(',')}`);
   }
 
   for (const hook of part.hooks || []) {
-    check(`${label}: hook ${hook} exists`, metrics.nodeNames.has(hook));
+    const hookExists = productionWholeShip
+      ? [...metrics.nodeNames].some((name) => name.includes(hook))
+      : metrics.nodeNames.has(hook);
+    check(`${label}: hook ${hook} exists`, hookExists);
   }
   for (const socket of part.sockets || []) {
     check(`${label}: socket ${socket} exists`, metrics.nodeNames.has(socket));

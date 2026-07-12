@@ -1,0 +1,18 @@
+{
+  "schema": "spaceface.assetPromotionReceipt.v1",
+  "assetId": "wholeship_kestrel",
+  "packet": "M5-KESTREL-VISUAL-UPGRADE-001",
+  "sourceSha256": "F07ACF0F4D573A026CB6778960809CD0EBDC3B3E01CBED44DD0202A1C22E6266",
+  "releaseSha256": "633C6A26C384832D2D870198C5A39D4F209EC6B9E4096F9A8DAC0EBB3940AB3F",
+  "lodTriangles": [19050, 8362, 1452],
+  "lodDrawCalls": [15, 11, 7],
+  "materialRoles": 12,
+  "contractNodes": 9,
+  "releaseTextures": 18,
+  "releaseKtx2Textures": 18,
+  "meshoptBufferViews": 133,
+  "staticDrivePlume": false,
+  "fakeTangents": false,
+  "exposureReceipt": "assets/ships/parts/revamp-evidence/kestrel_borrowed_time/exposure/live.json",
+  "acceptedAt": "2026-07-11T16:35:00Z"
+}

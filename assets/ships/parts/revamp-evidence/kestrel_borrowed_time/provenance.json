@@ -1,7 +1,7 @@
 {
   "schema": "spaceface.assetProvenance.v1",
   "assetId": "wholeship_kestrel",
-  "title": "SF-K0 Kestrel / Borrowed Time production revamp",
+  "title": "M5 Kestrel / Borrowed Time hero visual upgrade",
   "origin": "User-supplied SpaceFace archive; geometry, decals, and source textures declared original to the SpaceFace SF-K0 rebuild.",
   "receivedFrom": "local user-supplied files under C:/Users/93rob/Downloads",
   "sourceArchives": [
@@ -21,6 +21,20 @@
   "thirdPartyDeclaration": "Package docs/THIRD_PARTY.md declares no third-party meshes, texture packs, kitbash libraries, downloaded commercial/free models, or YouTube assets.",
   "licenseDecision": "Accepted as user-provided, project-original source material for this SpaceFace workspace. No separately licensed third-party content is shipped.",
   "productionPolicy": "Archives are a quality and art-direction floor, not a blind drop-in. Shipping output is rebuilt, consolidated, validated, and evidenced in-repo.",
-  "recordedAt": "2026-07-11T04:20:00Z",
-  "packet": "K0-KESTREL-VISUAL-REVAMP-001"
+  "productionSource": {
+    "path": "assets/ships/parts/wholeships/kestrel.glb",
+    "sha256": "F07ACF0F4D573A026CB6778960809CD0EBDC3B3E01CBED44DD0202A1C22E6266",
+    "bytes": 14793388
+  },
+  "releaseOutput": {
+    "path": "assets/ships/release/parts/wholeships/kestrel.glb",
+    "sha256": "633C6A26C384832D2D870198C5A39D4F209EC6B9E4096F9A8DAC0EBB3940AB3F",
+    "bytes": 14266340,
+    "textures": 18,
+    "ktx2Textures": 18,
+    "meshoptBufferViews": 133
+  },
+  "exposureReceipt": "assets/ships/parts/revamp-evidence/kestrel_borrowed_time/exposure/live.json",
+  "recordedAt": "2026-07-11T16:35:00Z",
+  "packet": "M5-KESTREL-VISUAL-UPGRADE-001"
 }

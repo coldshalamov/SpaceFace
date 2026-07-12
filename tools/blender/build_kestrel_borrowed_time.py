@@ -39,8 +39,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SOURCE = Path(
     os.environ.get(
         'SF_KESTREL_SOURCE_BLEND',
-        r'C:\Users\93rob\AppData\Local\Temp\sf-k0-kestrel-revamp-001\revamp'
-        r'\SpaceFace_SF-K0_Borrowed-Time_Revamp\SF_K0_Borrowed_Time_Revamp.blend',
+        str(ROOT / 'assets' / 'ships' / 'm5_kestrel_upgrade' / 'source' / 'SF_K0_Borrowed_Time_Revamp.blend'),
     )
 )
 DEFAULT_OUT_BLEND = ROOT / 'assets' / 'ships' / 'parts' / 'blender' / 'kestrel_borrowed_time_production.blend'
@@ -49,7 +48,7 @@ DEFAULT_EVIDENCE = ROOT / 'assets' / 'ships' / 'parts' / 'revamp-evidence' / 'ke
 
 ASSET_ID = 'SF_WHOLESHIP_KESTREL'
 PART_ID = 'wholeship_kestrel'
-PACKET = 'K0-KESTREL-VISUAL-REVAMP-001'
+PACKET = 'M5-KESTREL-VISUAL-UPGRADE-001'
 
 REQUIRED_SOCKETS = [
     ('SOCKET_Weapon_Front', (12.62, 0.0, 1.43), 'weapon', [1.0, 0.0, 0.0]),
@@ -63,31 +62,29 @@ REQUIRED_SOCKETS = [
     ('SOCKET_RCS_Starboard', (1.6, -6.6, 0.45), 'vfx', [0.0, 0.0, 1.0]),
 ]
 
-# Source material name → canonical SpaceFace audit name.
-# Explicit semantics required: Hull, Mechanical, Cyan, Warm.
-# Planar decal cards fold into Cyan/Warm so they never export as a lone
-# axis-aligned prim with constant [1,0,0,1] tangents.
+# Source material name → a production semantic role. Paint, decals, and live
+# emissives remain distinct so ordinary panels never inherit lamp emission.
 MATERIAL_MAP = {
     'Material_Hull': 'Material_Hull',
     'Material_ArmorDark': 'Material_Hull',
-    'Material_Accent_FrontierCyan': 'Material_Cyan',
-    'Material_RepairGreen': 'Material_Cyan',
-    'Material_Accent': 'Material_Cyan',
+    'Material_Accent_FrontierCyan': 'Material_Cyan_Paint',
+    'Material_RepairGreen': 'Material_Repair_Paint',
+    'Material_Accent': 'Material_Cyan_Paint',
     'Material_Mechanical': 'Material_Mechanical',
     'Material_BrushedMetal': 'Material_Mechanical',
     'Material_Rubber': 'Material_Mechanical',
     'Material_Glass_Canopy': 'Material_Glass',
     'Material_Glass': 'Material_Glass',
-    'Material_Emissive_Cyan': 'Material_Cyan',
-    'Material_Emissive_DriveCore': 'Material_Cyan',
-    'Material_Emissive_Orange': 'Material_Warm',
-    'Material_Emissive': 'Material_Warm',
-    'Material_Accent_WarningOrange': 'Material_Warm',
-    'Material_Warning': 'Material_Warm',
-    'Material_Decal_BorrowedTime': 'Material_Cyan',
-    'Material_Decal_Hazard': 'Material_Warm',
-    'Material_Decal_Stencils': 'Material_Cyan',
-    'Material_Decal': 'Material_Cyan',
+    'Material_Emissive_Cyan': 'Material_Cyan_Emissive',
+    'Material_Emissive_DriveCore': 'Material_Drive_Core',
+    'Material_Emissive_Orange': 'Material_Warm_Emissive',
+    'Material_Emissive': 'Material_Warm_Emissive',
+    'Material_Accent_WarningOrange': 'Material_Warm_Paint',
+    'Material_Warning': 'Material_Warm_Paint',
+    'Material_Decal_BorrowedTime': 'Material_Decal_BorrowedTime',
+    'Material_Decal_Hazard': 'Material_Decal_Hazard',
+    'Material_Decal_Stencils': 'Material_Decal_Stencils',
+    'Material_Decal': 'Material_Decal_Stencils',
 }
 
 # Close-only detail roles dropped from LOD1/2
@@ -369,8 +366,10 @@ def classify_keep_separate(obj: bpy.types.Object) -> str | None:
 
 
 CANONICAL_MATERIAL_NAMES = (
-    'Material_Hull', 'Material_Mechanical', 'Material_Cyan', 'Material_Warm',
-    'Material_Glass',
+    'Material_Hull', 'Material_Mechanical', 'Material_Glass',
+    'Material_Cyan_Paint', 'Material_Repair_Paint', 'Material_Warm_Paint',
+    'Material_Cyan_Emissive', 'Material_Warm_Emissive', 'Material_Drive_Core',
+    'Material_Decal_BorrowedTime', 'Material_Decal_Hazard', 'Material_Decal_Stencils',
 )
 
 
@@ -392,10 +391,24 @@ def material_canonical_name(mat: bpy.types.Material | None) -> str:
         return 'Material_Mechanical'
     if 'glass' in low or 'canopy' in low:
         return 'Material_Glass'
-    if 'orange' in low or 'warn' in low or 'warm' in low or 'hazard' in low:
-        return 'Material_Warm'
-    if 'cyan' in low or 'accent' in low or 'repair' in low or 'emissive' in low or 'decal' in low:
-        return 'Material_Cyan'
+    if 'drive' in low and ('core' in low or 'emissive' in low):
+        return 'Material_Drive_Core'
+    if 'emissive' in low and ('orange' in low or 'warm' in low or 'warning' in low):
+        return 'Material_Warm_Emissive'
+    if 'emissive' in low:
+        return 'Material_Cyan_Emissive'
+    if 'borrowed' in low:
+        return 'Material_Decal_BorrowedTime'
+    if 'hazard' in low:
+        return 'Material_Decal_Hazard'
+    if 'decal' in low or 'stencil' in low:
+        return 'Material_Decal_Stencils'
+    if 'orange' in low or 'warn' in low or 'warm' in low:
+        return 'Material_Warm_Paint'
+    if 'repair' in low:
+        return 'Material_Repair_Paint'
+    if 'cyan' in low or 'accent' in low:
+        return 'Material_Cyan_Paint'
     return 'Material_Mechanical'
 
 
@@ -473,6 +486,26 @@ def _make_solid_image(name: str, rgba: tuple[int, int, int, int], size: int = 16
     if non_color:
         img.colorspace_settings.name = 'Non-Color'
     return img
+
+
+def normalize_decal_texture_dimensions() -> list[dict[str, Any]]:
+    """Resample authored decal plates to the runtime 1K-square texture contract.
+
+    UVs remain unchanged, so the visible mapping is preserved while the loader
+    receives a consistent mip chain and no longer rejects 1024x256/512 plates.
+    """
+    changes: list[dict[str, Any]] = []
+    for image in bpy.data.images:
+        name = (image.name or '').lower()
+        if not name.startswith('decal_'):
+            continue
+        width, height = int(image.size[0]), int(image.size[1])
+        if width == 1024 and height == 1024:
+            continue
+        changes.append({'name': image.name, 'from': [width, height], 'to': [1024, 1024]})
+        image.scale(1024, 1024)
+        image.pack()
+    return changes
 
 
 def _embed_fallback_maps(mat, bsdf, nodes, links, need_base, need_orm, need_normal) -> None:
@@ -566,16 +599,31 @@ def get_or_create_canonical_materials() -> dict[str, bpy.types.Material]:
         bsdf = next((n for n in mat.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)
         if not bsdf:
             continue
-        # Restrained rest-state emissives for Cyan / Warm identity.
-        if name in ('Material_Cyan', 'Material_Warm'):
+        # Paint and decals remain physically lit. Only explicit lamp/core roles emit.
+        if name in (
+            'Material_Cyan_Paint', 'Material_Repair_Paint', 'Material_Warm_Paint',
+            'Material_Decal_BorrowedTime', 'Material_Decal_Hazard', 'Material_Decal_Stencils',
+        ):
             if 'Emission Strength' in bsdf.inputs:
-                bsdf.inputs['Emission Strength'].default_value = min(
-                    float(bsdf.inputs['Emission Strength'].default_value or 1.0), 1.4
-                )
+                bsdf.inputs['Emission Strength'].default_value = 0.0
+            if 'Emission Color' in bsdf.inputs:
+                bsdf.inputs['Emission Color'].default_value = (0.0, 0.0, 0.0, 1.0)
+        elif name == 'Material_Glass':
+            if 'Emission Strength' in bsdf.inputs:
+                bsdf.inputs['Emission Strength'].default_value = 0.0
+            if 'Emission Color' in bsdf.inputs:
+                bsdf.inputs['Emission Color'].default_value = (0.0, 0.0, 0.0, 1.0)
+        elif name in ('Material_Cyan_Emissive', 'Material_Warm_Emissive', 'Material_Drive_Core'):
+            limit = 1.2 if name == 'Material_Drive_Core' else 2.2
+            if 'Emission Strength' in bsdf.inputs:
+                current = float(bsdf.inputs['Emission Strength'].default_value or 1.0)
+                bsdf.inputs['Emission Strength'].default_value = min(max(current, 0.8), limit)
             if 'Emission Color' in bsdf.inputs:
                 col = list(bsdf.inputs['Emission Color'].default_value)
-                if col[0] + col[1] + col[2] < 0.05:
-                    if name == 'Material_Warm':
+                if name == 'Material_Drive_Core':
+                    bsdf.inputs['Emission Color'].default_value = (0.03, 0.30, 0.55, 1.0)
+                elif col[0] + col[1] + col[2] < 0.05:
+                    if name == 'Material_Warm_Emissive':
                         bsdf.inputs['Emission Color'].default_value = (1.0, 0.42, 0.12, 1.0)
                     else:
                         bsdf.inputs['Emission Color'].default_value = (0.12, 0.62, 0.82, 1.0)
@@ -603,6 +651,24 @@ def evaluated_duplicate(obj: bpy.types.Object, coll: bpy.types.Collection,
         except Exception:
             pass
     return dup
+
+
+def give_decal_physical_edge(obj: bpy.types.Object) -> None:
+    """Turn a zero-thickness decal card into a chamfered service plate."""
+    ensure_object_mode()
+    deselect_all()
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    solid = obj.modifiers.new('ServicePlate_Solidify', 'SOLIDIFY')
+    solid.thickness = 0.004
+    solid.offset = 0.0
+    bpy.ops.object.modifier_apply(modifier=solid.name)
+    bevel = obj.modifiers.new('ServicePlate_Chamfer', 'BEVEL')
+    bevel.width = 0.002
+    bevel.segments = 2
+    bevel.limit_method = 'ANGLE'
+    bpy.ops.object.modifier_apply(modifier=bevel.name)
+    obj.select_set(False)
 
 
 def join_group(objs: list[bpy.types.Object], name: str) -> bpy.types.Object | None:
@@ -684,6 +750,11 @@ def build_lod_collection(
                 cname = material_canonical_name(slot.material)
                 if cname in materials:
                     slot.material = materials[cname]
+        if lod_name == 'lod0' and any(
+            material_canonical_name(slot.material).startswith('Material_Decal_')
+            for slot in dup.material_slots if slot.material
+        ):
+            give_decal_physical_edge(dup)
         if not dup.material_slots:
             dup.data.materials.append(materials['Material_Hull'])
 
@@ -719,7 +790,7 @@ def build_lod_collection(
     }
     role_mat = {
         'drive_fan': 'Material_Mechanical',
-        'drive_core': 'Material_Cyan',
+        'drive_core': 'Material_Drive_Core',
         'gun': 'Material_Mechanical',
         'mining': 'Material_Mechanical',
     }
@@ -1248,12 +1319,35 @@ def ensure_packed_orm_assignments(doc: dict) -> None:
     occlusion = donor.get('occlusionTexture')
     if not metallic_roughness or not occlusion:
         raise RuntimeError('Material_Hull must export packed ORM as metallicRoughnessTexture + occlusionTexture')
+    shared_orm_roles = {
+        'Material_Glass', 'Material_Cyan_Emissive', 'Material_Warm_Emissive',
+        'Material_Drive_Core', 'Material_Decal_BorrowedTime',
+        'Material_Decal_Hazard', 'Material_Decal_Stencils',
+    }
     for material in materials:
-        if material.get('name') not in ('Material_Warm', 'Material_Glass'):
+        if material.get('name') not in shared_orm_roles:
             continue
         pbr = material.setdefault('pbrMetallicRoughness', {})
         pbr['metallicRoughnessTexture'] = json.loads(json.dumps(metallic_roughness))
         material['occlusionTexture'] = json.loads(json.dumps(occlusion))
+
+    glass = next((m for m in materials if m.get('name') == 'Material_Glass'), None)
+    if glass:
+        glass.pop('emissiveFactor', None)
+        extensions = glass.get('extensions') or {}
+        extensions.pop('KHR_materials_emissive_strength', None)
+        if extensions:
+            glass['extensions'] = extensions
+        else:
+            glass.pop('extensions', None)
+    drive = next((m for m in materials if m.get('name') == 'Material_Drive_Core'), None)
+    if drive:
+        pbr = drive.setdefault('pbrMetallicRoughness', {})
+        pbr['baseColorFactor'] = [0.12, 0.42, 0.62, 1.0]
+        drive['emissiveFactor'] = [0.02, 0.22, 0.45]
+        drive.setdefault('extensions', {}).setdefault(
+            'KHR_materials_emissive_strength', {}
+        )['emissiveStrength'] = 1.2
 
 
 def _read_accessor_f32(doc: dict, chunks: list, accessor_index: int) -> list[float] | None:
@@ -1547,6 +1641,9 @@ def main() -> int:
     removed_plumes = strip_plumes_and_studio()
     log(f'Removed plume/studio: {removed_plumes}')
 
+    decal_resamples = normalize_decal_texture_dimensions()
+    log(f'Normalized decal textures: {decal_resamples}')
+
     materials = get_or_create_canonical_materials()
     log(f'Canonical materials: {list(materials.keys())}')
 
@@ -1633,6 +1730,7 @@ def main() -> int:
     report['productionBlend'] = str(out_blend)
     report['productionBlendSha256'] = sha256_file(out_blend) if out_blend.exists() else None
     report['removedPlumes'] = removed_plumes
+    report['decalTextureResamples'] = decal_resamples
     report['packet'] = PACKET
     report['buildSeconds'] = round(time.time() - t0, 2)
 

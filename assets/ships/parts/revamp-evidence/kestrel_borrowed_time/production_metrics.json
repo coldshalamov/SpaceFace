@@ -1,13 +1,13 @@
 {
   "file": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\wholeships\\kestrel.glb",
-  "bytes": 8637820,
-  "totalTriangles": 28692,
+  "bytes": 14793388,
+  "totalTriangles": 28864,
   "hullTriangles": 4868,
   "lodBreakdown": {
     "lod0": {
-      "triangles": 18876,
-      "primitives": 9,
-      "drawEstimate": 9,
+      "triangles": 19050,
+      "primitives": 15,
+      "drawEstimate": 15,
       "nodes": [
         {
           "name": "LOD0_Gun_Assembly",
@@ -22,8 +22,24 @@
           "tris": 860
         },
         {
-          "name": "LOD0_Merged_Material_Cyan",
-          "tris": 1166
+          "name": "LOD0_Merged_Material_Cyan_Emissive",
+          "tris": 528
+        },
+        {
+          "name": "LOD0_Merged_Material_Cyan_Paint",
+          "tris": 422
+        },
+        {
+          "name": "LOD0_Merged_Material_Decal_BorrowedTime",
+          "tris": 60
+        },
+        {
+          "name": "LOD0_Merged_Material_Decal_Hazard",
+          "tris": 60
+        },
+        {
+          "name": "LOD0_Merged_Material_Decal_Stencils",
+          "tris": 60
         },
         {
           "name": "LOD0_Merged_Material_Glass",
@@ -38,8 +54,16 @@
           "tris": 7656
         },
         {
-          "name": "LOD0_Merged_Material_Warm",
-          "tris": 1620
+          "name": "LOD0_Merged_Material_Repair_Paint",
+          "tris": 212
+        },
+        {
+          "name": "LOD0_Merged_Material_Warm_Emissive",
+          "tris": 94
+        },
+        {
+          "name": "LOD0_Merged_Material_Warm_Paint",
+          "tris": 1524
         },
         {
           "name": "LOD0_Mining_Emitter",
@@ -48,9 +72,9 @@
       ]
     },
     "lod1": {
-      "triangles": 8364,
-      "primitives": 9,
-      "drawEstimate": 9,
+      "triangles": 8362,
+      "primitives": 11,
+      "drawEstimate": 11,
       "nodes": [
         {
           "name": "LOD1_Gun_Assembly",
@@ -65,8 +89,12 @@
           "tris": 468
         },
         {
-          "name": "LOD1_Merged_Material_Cyan",
-          "tris": 404
+          "name": "LOD1_Merged_Material_Cyan_Emissive",
+          "tris": 102
+        },
+        {
+          "name": "LOD1_Merged_Material_Cyan_Paint",
+          "tris": 230
         },
         {
           "name": "LOD1_Merged_Material_Glass",
@@ -81,7 +109,11 @@
           "tris": 3294
         },
         {
-          "name": "LOD1_Merged_Material_Warm",
+          "name": "LOD1_Merged_Material_Repair_Paint",
+          "tris": 70
+        },
+        {
+          "name": "LOD1_Merged_Material_Warm_Paint",
           "tris": 432
         },
         {
@@ -104,7 +136,7 @@
           "tris": 80
         },
         {
-          "name": "LOD2_Merged_Material_Cyan",
+          "name": "LOD2_Merged_Material_Cyan_Paint",
           "tris": 152
         },
         {
@@ -139,14 +171,21 @@
   ],
   "materials": [
     "Material_Mechanical",
-    "Material_Cyan",
+    "Material_Drive_Core",
+    "Material_Cyan_Emissive",
+    "Material_Cyan_Paint",
+    "Material_Decal_BorrowedTime",
+    "Material_Decal_Hazard",
+    "Material_Decal_Stencils",
     "Material_Glass",
     "Material_Hull",
-    "Material_Warm"
+    "Material_Repair_Paint",
+    "Material_Warm_Emissive",
+    "Material_Warm_Paint"
   ],
-  "primitiveCount": 25,
-  "tangentPrimitiveCount": 25,
-  "uvPrimitiveCount": 25,
+  "primitiveCount": 33,
+  "tangentPrimitiveCount": 33,
+  "uvPrimitiveCount": 33,
   "constantTangentPrimitives": [],
   "dimensionsAccessorSpace": [
     27.83693790435791,
@@ -169,8 +208,8 @@
     "partId": "wholeship_kestrel",
     "category": "wholeships",
     "sourceRole": "whole-ship hull",
-    "packet": "K0-KESTREL-VISUAL-REVAMP-001",
-    "triangleCount": 28692,
+    "packet": "M5-KESTREL-VISUAL-UPGRADE-001",
+    "triangleCount": 28864,
     "hullTriangleCount": 4868,
     "deliverableRole": "production_multi_lod",
     "lods": [
@@ -192,8 +231,8 @@
       "lod": "lod0",
       "max_detail": 2,
       "decimate_ratio": 0.44,
-      "mesh_count": 9,
-      "triangles": 18876,
+      "mesh_count": 15,
+      "triangles": 19050,
       "meshes": [
         {
           "name": "LOD0_Merged_Material_Hull",
@@ -210,10 +249,10 @@
           ]
         },
         {
-          "name": "LOD0_Merged_Material_Warm",
-          "tris": 1620,
+          "name": "LOD0_Merged_Material_Warm_Paint",
+          "tris": 1524,
           "materials": [
-            "Material_Warm"
+            "Material_Warm_Paint"
           ]
         },
         {
@@ -224,10 +263,52 @@
           ]
         },
         {
-          "name": "LOD0_Merged_Material_Cyan",
-          "tris": 1166,
+          "name": "LOD0_Merged_Material_Cyan_Emissive",
+          "tris": 528,
           "materials": [
-            "Material_Cyan"
+            "Material_Cyan_Emissive"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Cyan_Paint",
+          "tris": 422,
+          "materials": [
+            "Material_Cyan_Paint"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Repair_Paint",
+          "tris": 212,
+          "materials": [
+            "Material_Repair_Paint"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Decal_BorrowedTime",
+          "tris": 60,
+          "materials": [
+            "Material_Decal_BorrowedTime"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Decal_Stencils",
+          "tris": 60,
+          "materials": [
+            "Material_Decal_Stencils"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Decal_Hazard",
+          "tris": 60,
+          "materials": [
+            "Material_Decal_Hazard"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Warm_Emissive",
+          "tris": 94,
+          "materials": [
+            "Material_Warm_Emissive"
           ]
         },
         {
@@ -241,7 +322,7 @@
           "name": "LOD0_HOOK_DRIVE_CORE",
           "tris": 778,
           "materials": [
-            "Material_Cyan"
+            "Material_Drive_Core"
           ]
         },
         {
@@ -261,14 +342,14 @@
       ],
       "removed_close_only": [],
       "removed_detail_count": 0,
-      "draw_estimate": 9
+      "draw_estimate": 15
     },
     {
       "lod": "lod1",
       "max_detail": 1,
       "decimate_ratio": 0.24,
-      "mesh_count": 9,
-      "triangles": 8364,
+      "mesh_count": 11,
+      "triangles": 8362,
       "meshes": [
         {
           "name": "LOD1_Merged_Material_Hull",
@@ -285,10 +366,10 @@
           ]
         },
         {
-          "name": "LOD1_Merged_Material_Warm",
+          "name": "LOD1_Merged_Material_Warm_Paint",
           "tris": 432,
           "materials": [
-            "Material_Warm"
+            "Material_Warm_Paint"
           ]
         },
         {
@@ -299,10 +380,24 @@
           ]
         },
         {
-          "name": "LOD1_Merged_Material_Cyan",
-          "tris": 404,
+          "name": "LOD1_Merged_Material_Cyan_Emissive",
+          "tris": 102,
           "materials": [
-            "Material_Cyan"
+            "Material_Cyan_Emissive"
+          ]
+        },
+        {
+          "name": "LOD1_Merged_Material_Cyan_Paint",
+          "tris": 230,
+          "materials": [
+            "Material_Cyan_Paint"
+          ]
+        },
+        {
+          "name": "LOD1_Merged_Material_Repair_Paint",
+          "tris": 70,
+          "materials": [
+            "Material_Repair_Paint"
           ]
         },
         {
@@ -316,7 +411,7 @@
           "name": "LOD1_HOOK_DRIVE_CORE",
           "tris": 424,
           "materials": [
-            "Material_Cyan"
+            "Material_Drive_Core"
           ]
         },
         {
@@ -339,7 +434,7 @@
         "Antenna_Loop"
       ],
       "removed_detail_count": 87,
-      "draw_estimate": 9
+      "draw_estimate": 11
     },
     {
       "lod": "lod2",
@@ -370,17 +465,17 @@
           ]
         },
         {
-          "name": "LOD2_Merged_Material_Cyan",
+          "name": "LOD2_Merged_Material_Cyan_Paint",
           "tris": 152,
           "materials": [
-            "Material_Cyan"
+            "Material_Cyan_Paint"
           ]
         },
         {
           "name": "LOD2_HOOK_DRIVE_CORE",
           "tris": 80,
           "materials": [
-            "Material_Cyan"
+            "Material_Drive_Core"
           ]
         },
         {
@@ -403,11 +498,11 @@
       "draw_estimate": 7
     }
   ],
-  "sourceBlend": "C:\\Users\\93rob\\AppData\\Local\\Temp\\sf-k0-kestrel-revamp-001\\revamp\\SpaceFace_SF-K0_Borrowed-Time_Revamp\\SF_K0_Borrowed_Time_Revamp.blend",
+  "sourceBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m5_kestrel_upgrade\\source\\SF_K0_Borrowed_Time_Revamp.blend",
   "sourceSha256": "C48BCD2CD7AA9B8DAF4AC253221ED259DB781A1BF0602EDB7286D916191D6502",
-  "targetSha256": "D5D930BAD5B0A08975D78AF1DA3ED3049285A74FD9E812EDF1EEDB4A6D38D13B",
+  "targetSha256": "F07ACF0F4D573A026CB6778960809CD0EBDC3B3E01CBED44DD0202A1C22E6266",
   "productionBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\blender\\kestrel_borrowed_time_production.blend",
-  "productionBlendSha256": "954FDDC14348405EB9443BAF8FB4FDD95C3EAFBDD5E843EB22CF2EE153BBA717",
+  "productionBlendSha256": "67604FFA8BDE0CA2D0C3F32A7474FD871D759339CDF90581CD192773AA15868E",
   "removedPlumes": [
     "Engine_Plume_HotCore",
     "Engine_Plume_Inner",
@@ -419,8 +514,43 @@
     "material:Material_Plume_Inner",
     "material:Material_Plume_Outer"
   ],
-  "packet": "K0-KESTREL-VISUAL-REVAMP-001",
-  "buildSeconds": 23.49,
+  "decalTextureResamples": [
+    {
+      "name": "decal_borrowed_time.png",
+      "from": [
+        1024,
+        512
+      ],
+      "to": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "name": "decal_hazard_stripes.png",
+      "from": [
+        1024,
+        256
+      ],
+      "to": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "name": "decal_stencils.png",
+      "from": [
+        1024,
+        512
+      ],
+      "to": [
+        1024,
+        1024
+      ]
+    }
+  ],
+  "packet": "M5-KESTREL-VISUAL-UPGRADE-001",
+  "buildSeconds": 162.45,
   "renders": [
     "renders\\forward_34.png",
     "renders\\rear_34.png",

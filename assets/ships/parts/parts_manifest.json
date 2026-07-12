@@ -20,7 +20,9 @@
       500,
       15000
     ],
-    "maxBytesPerPart": 5000000
+    "maxBytesPerPart": 5000000,
+    "maxBytesPerWholeShip": 16000000,
+    "maxBytesPerWholeShipNote": "Structural download guard, not a quality ceiling. Raised 12MB->16MB for the accepted K0 hero's 12 explicit paint/decal/glass/emissive roles; release output is 14.16MB with meshopt + KTX2 and 15/11/7 LOD draws."
   },
   "materialContract": {
     "hull": "Material_Hull",
@@ -3542,8 +3544,48 @@
       "category": "wholeships",
       "priority": "P0",
       "file": "wholeships/kestrel.glb",
-      "status": "blocked",
-      "statusNote": "Accessory-only export missing a Material_Hull body (0 hull tris). Do not wire into runtime until re-exported with a real hull body per SPEC3-37."
+      "tris": 28864,
+      "bytes": 14793388,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan_Paint",
+        "warm": "Material_Warm_Paint"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN"
+      ],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -13.9351,
+          -2.7664,
+          -7.02
+        ],
+        "max": [
+          13.9018,
+          4.172,
+          7.02
+        ],
+        "dimensionsM": [
+          27.8369,
+          6.9384,
+          14.04
+        ]
+      },
+      "note": "M5 K0 Borrowed Time upgrade 2026-07-11 — accepted user-source silhouette with structural LOD0/1/2 (19050/8362/1452 tris), 15/11/7 draws, separate physically-lit paint/decal/glass and bounded cyan/warm/core emissive roles, chamfered service-plate decals with real tangents, stable bare sockets, animated fan/core roles, and no embedded plume. Project-original provenance: assets/ships/m5_kestrel_upgrade/PROVENANCE.json."
     },
     {
       "id": "wholeship_pelican",
@@ -3818,5 +3860,19 @@
       "places/place_dock_interior_military.glb",
       "places/place_dock_interior_grit.glb"
     ]
+  },
+  "wholeShipMaterialContract": {
+    "hull": "Material_Hull",
+    "mechanical": "Material_Mechanical",
+    "glass": "Material_Glass",
+    "cyanPaint": "Material_Cyan_Paint",
+    "repairPaint": "Material_Repair_Paint",
+    "warmPaint": "Material_Warm_Paint",
+    "cyanEmissive": "Material_Cyan_Emissive",
+    "warmEmissive": "Material_Warm_Emissive",
+    "driveCore": "Material_Drive_Core",
+    "decalBorrowedTime": "Material_Decal_BorrowedTime",
+    "decalHazard": "Material_Decal_Hazard",
+    "decalStencils": "Material_Decal_Stencils"
   }
 }

@@ -38,6 +38,20 @@ const LOD_BUDGETS = Object.freeze({
   lod1: [5_500, 10_000],
   lod2: [1_200, 4_500],
 });
+const REQUIRED_MATERIALS = Object.freeze([
+  'Material_Cyan_Emissive',
+  'Material_Cyan_Paint',
+  'Material_Decal_BorrowedTime',
+  'Material_Decal_Hazard',
+  'Material_Decal_Stencils',
+  'Material_Drive_Core',
+  'Material_Glass',
+  'Material_Hull',
+  'Material_Mechanical',
+  'Material_Repair_Paint',
+  'Material_Warm_Emissive',
+  'Material_Warm_Paint',
+].sort());
 
 await MeshoptDecoder.ready;
 const io = new NodeIO()
@@ -56,12 +70,8 @@ for (const [name, expected] of Object.entries(SOCKET_CONTRACT)) {
 }
 assert.deepEqual(source.plumeNodes, [], 'runtime VFX owns the drive plume; the GLB must not embed one');
 assert.ok(source.totalTriangles <= 32_000, `stored LOD triangles must be <=32k, got ${source.totalTriangles}`);
-assert.ok(source.materials.length >= 4 && source.materials.length <= 8,
-  `Kestrel should use 4-8 consolidated semantic materials, got ${source.materials.join(', ')}`);
-for (const token of ['hull', 'mechanical', 'cyan', 'warm']) {
-  assert.ok(source.materials.some((name) => name.toLowerCase().includes(token)),
-    `Kestrel materials must preserve the ${token} semantic role`);
-}
+assert.deepEqual(source.materials, REQUIRED_MATERIALS,
+  'Kestrel must preserve the accepted paint/decal/glass/emissive semantic material set exactly');
 for (const [lod, [min, max]] of Object.entries(LOD_BUDGETS)) {
   const triangles = source.lodTriangles[lod] || 0;
   assert.ok(triangles >= min && triangles <= max,

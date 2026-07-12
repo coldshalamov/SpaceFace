@@ -1,0 +1,44 @@
+{
+  "input": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\wholeships\\kestrel.glb",
+  "render": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\kestrel_borrowed_time\\exposure\\live.png",
+  "mask": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\kestrel_borrowed_time\\exposure\\live-mask.png",
+  "exposure": 0.65,
+  "bloom": {
+    "type": "FOG_GLOW",
+    "threshold": 1.0,
+    "size": 6
+  },
+  "metrics": {
+    "subjectPixels": 284846,
+    "lumaP10": 0.0,
+    "lumaMedian": 0.04026,
+    "lumaP95": 0.13839,
+    "highlightFraction": 0.00093,
+    "darkFraction": 0.553783
+  },
+  "glassEmission": {
+    "present": true,
+    "color": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "strength": 0.0
+  },
+  "driveEmission": {
+    "present": true,
+    "color": [
+      0.02,
+      0.22,
+      0.45
+    ],
+    "strength": 1.2
+  },
+  "assertions": {
+    "armorNotBlack": true,
+    "canopyNonEmissive": true,
+    "bloomRetainsRearSilhouette": true,
+    "driveHasBloomHeadroom": true
+  },
+  "ok": true
+}

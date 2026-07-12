@@ -1,17 +1,17 @@
 {
-  "packet": "K0-KESTREL-VISUAL-REVAMP-001",
+  "packet": "M5-KESTREL-VISUAL-UPGRADE-001",
   "gateOk": true,
   "gateErrors": [],
-  "totalTriangles": 28692,
+  "totalTriangles": 28864,
   "hullTriangles": 4868,
   "lodTriangles": {
-    "lod0": 18876,
-    "lod1": 8364,
+    "lod0": 19050,
+    "lod1": 8362,
     "lod2": 1452
   },
   "drawEstimates": {
-    "lod0": 9,
-    "lod1": 9,
+    "lod0": 15,
+    "lod1": 11,
     "lod2": 7
   },
   "sockets": [
@@ -27,13 +27,20 @@
   ],
   "materials": [
     "Material_Mechanical",
-    "Material_Cyan",
+    "Material_Drive_Core",
+    "Material_Cyan_Emissive",
+    "Material_Cyan_Paint",
+    "Material_Decal_BorrowedTime",
+    "Material_Decal_Hazard",
+    "Material_Decal_Stencils",
     "Material_Glass",
     "Material_Hull",
-    "Material_Warm"
+    "Material_Repair_Paint",
+    "Material_Warm_Emissive",
+    "Material_Warm_Paint"
   ],
-  "tangentPrimitiveCount": 25,
-  "uvPrimitiveCount": 25,
+  "tangentPrimitiveCount": 33,
+  "uvPrimitiveCount": 33,
   "removedPlumes": [
     "Engine_Plume_HotCore",
     "Engine_Plume_Inner",
@@ -46,7 +53,7 @@
     "material:Material_Plume_Outer"
   ],
   "sourceSha256": "C48BCD2CD7AA9B8DAF4AC253221ED259DB781A1BF0602EDB7286D916191D6502",
-  "targetSha256": "D5D930BAD5B0A08975D78AF1DA3ED3049285A74FD9E812EDF1EEDB4A6D38D13B",
+  "targetSha256": "F07ACF0F4D573A026CB6778960809CD0EBDC3B3E01CBED44DD0202A1C22E6266",
   "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\wholeships\\kestrel.glb",
   "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\blender\\kestrel_borrowed_time_production.blend"
 }

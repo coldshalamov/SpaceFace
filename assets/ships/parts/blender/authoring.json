@@ -90,6 +90,16 @@
       "concept_path": "assets/concept/archetypes/concept_station_blackmarket.jpg",
       "blend_path": null,
       "min_tris": 500
+    },
+    "wholeship_kestrel": {
+      "method": "blender_generic",
+      "production_whole_ship": true,
+      "blend_path": "assets/ships/parts/blender/kestrel_borrowed_time_production.blend",
+      "exporter_path": "tools/blender/build_kestrel_borrowed_time.py",
+      "texture_role_owner": "blender-source-v1",
+      "provenance_path": "assets/ships/parts/revamp-evidence/kestrel_borrowed_time/provenance.json",
+      "semantic_note": "K0 Borrowed Time production whole ship; complete body, three structural LODs, stable sockets, semantic materials, no embedded plume",
+      "min_tris": 1500
     }
   }
 }
