@@ -6187,13 +6187,19 @@ function checkIronmanDeathEndsTheRun() {
   assert.equal(iron.player.alive, false, 'ironman death must leave the player entity dead');
   assert.equal(iron.player.hull, 0, 'ironman death must NOT heal the player');
 
-  // Non-ironman difficulties respawn as before (the default loop is unchanged).
+  // Non-Ironman difficulties freeze on the recoverable after-action screen. Consequences and
+  // respawn happen only after the player chooses recovery; death itself never auto-accepts them.
   for (const diff of ['casual', 'standard', 'veteran']) {
     const run = bootCombat(diff);
     combat.kill(run.player, 99);
-    assert(run.events.some((e) => e.event === 'player:respawn'), `${diff} death must still respawn (only ironman permadeaths)`);
-    assert(!run.events.some((e) => e.event === 'game:over'), `${diff} death must NOT emit game:over`);
-    assert.equal(run.player.alive, true, `${diff} respawn must leave the player alive`);
+    const defeat = run.events.find((e) => e.event === 'game:over');
+    assert.equal(defeat && defeat.payload.recoverable, true, `${diff} death must offer recoverable after-action choice`);
+    assert(!run.events.some((e) => e.event === 'player:respawn'), `${diff} death must not auto-accept recovery consequences`);
+    assert.equal(run.player.alive, false, `${diff} player stays defeated until recovery is chosen`);
+    const recovered = combat.recoverPendingPlayer({ source: 'gameplay_core_fixture' });
+    assert.equal(recovered.ok, true, `${diff} recovery choice must resolve the pending defeat`);
+    assert(run.events.some((e) => e.event === 'player:respawn'), `${diff} recovery choice must respawn at the lawful dock`);
+    assert.equal(run.player.alive, true, `${diff} chosen recovery must leave the player alive`);
   }
 }
 checkIronmanDeathEndsTheRun();

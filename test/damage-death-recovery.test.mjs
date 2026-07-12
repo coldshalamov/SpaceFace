@@ -239,6 +239,39 @@ test('standard death freezes once, emits one recoverable defeat, and applies con
   assert.equal(state.combat.lastPlayerDefeat, null);
 });
 
+test('every recoverable difficulty waits for explicit recovery before respawning', () => {
+  for (const difficulty of ['casual', 'standard', 'veteran']) {
+    const state = makeState();
+    state.settings.gameplay.difficulty = difficulty;
+    const events = [];
+    const listeners = new Map();
+    const bus = {
+      on(event, fn) {
+        if (!listeners.has(event)) listeners.set(event, []);
+        listeners.get(event).push(fn);
+        return () => {};
+      },
+      emit(event, payload) {
+        events.push({ event, payload });
+        for (const fn of listeners.get(event) || []) fn(payload);
+      },
+    };
+    combat.init({ state, bus, helpers: {}, registry: { get() { return null; } } });
+    const player = state.entities.get(1);
+
+    combat.kill(player, 9, { origin: { kind: 'weapon', id: 'wpn_autocannon_s' } });
+    assert.equal(events.filter((entry) => entry.event === 'player:respawn').length, 0,
+      `${difficulty} defeat waits for player choice`);
+    assert.equal(events.find((entry) => entry.event === 'game:over').payload.recoverable, true);
+    assert.equal(player.alive, false);
+
+    bus.emit('player:recoveryRequested', { source: 'after_action' });
+    assert.equal(events.filter((entry) => entry.event === 'player:respawn').length, 1,
+      `${difficulty} recovery choice respawns exactly once`);
+    assert.equal(player.alive, true);
+  }
+});
+
 test('Ironman remains final and idempotent', () => {
   const state = makeState();
   state.settings.gameplay.difficulty = 'ironman';
