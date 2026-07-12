@@ -100,26 +100,33 @@ test('one first-dock bundle exposes three independent, non-binding offers', () =
   assert.equal(state.careers.origins.__meta.offerNonce, 1);
 });
 
-test('all origins can be accepted together and each binds a missions-owned active id', () => {
+test('one origin owns the first-hour mission focus while peers remain available later', () => {
   const { state, bus, system, posted } = makeHarness();
   bus.emit('dock:docked', { stationId: 'station_helios' });
 
-  const hauler = system.accept('hauler');
   const hunter = system.accept('hunter');
-  const prospector = system.accept('prospector');
-
-  assert.equal(hauler.ok, true);
   assert.equal(hunter.ok, true);
-  assert.equal(prospector.ok, true);
-  assert.equal(posted.length, 3);
-  assert.equal(posted[0].storyTag, 'origin.hauler.v1:manifest_truth');
-  assert.equal(posted[1].storyTag, 'origin.hunter.v1:yard_writ');
-  assert.equal(posted[2].storyTag, 'origin.prospector.v1:ceres_survey');
-  assert.equal(state.careers.origins.hauler.activeContract.offerId, posted[0].id);
-  assert.equal(state.careers.origins.hauler.activeContract.missionId, `active_${posted[0].id}`);
+  assert.deepEqual(system.accept('hauler'), {
+    ok: false, reason: 'origin_in_progress', activeCareerId: 'hunter',
+  });
+  assert.deepEqual(system.accept('prospector'), {
+    ok: false, reason: 'origin_in_progress', activeCareerId: 'hunter',
+  });
+  assert.equal(posted.length, 1);
+  assert.equal(posted[0].storyTag, 'origin.hunter.v1:yard_writ');
   assert.equal(state.careers.origins.hunter.offer.status, 'accepted');
-  assert.equal(state.careers.origins.prospector.status, 'active');
-  assert.ok(getCareerOfferView(state).offers.every((offer) => offer.nonBinding));
+  const focused = getCareerOfferView(state);
+  assert.equal(focused.focusedCareerId, 'hunter');
+  assert.equal(focused.offers.find((offer) => offer.careerId === 'hauler').waitingForCareerId, 'hunter');
+  assert.equal(focused.offers.find((offer) => offer.careerId === 'prospector').canAccept, false);
+  assert.ok(focused.offers.every((offer) => offer.nonBinding));
+
+  while (state.careers.origins.__meta.routes.hunter.status === 'active') {
+    const route = state.careers.origins.__meta.routes.hunter;
+    bus.emit('mission:completed', { missionId: route.activeMissionId });
+  }
+  assert.equal(getCareerOfferView(state).focusedCareerId, null);
+  assert.equal(system.accept('prospector').ok, true, 'peer career becomes available after completion');
 });
 
 test('failed missions authority rolls Hauler acceptance back atomically', () => {

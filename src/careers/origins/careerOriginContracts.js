@@ -30,6 +30,30 @@ export const ORIGIN_ROLE_KITS = Object.freeze({
   }),
 });
 
+// The three first-dock paths must read differently through physical game authorities, not just
+// through copy.  This compact contract is also persisted into the acceptance receipt so save/load,
+// telemetry, and later UI work can report what the player actually signed up to do.
+export const ORIGIN_PHYSICAL_IDENTITIES = Object.freeze({
+  hauler: Object.freeze({
+    lane: 'freight',
+    verb: 'carry',
+    cargo: Object.freeze({ mode: 'manifest', commodityId: 'cmdty_food', qty: 8 }),
+    loadout: ORIGIN_ROLE_KITS.hauler,
+  }),
+  hunter: Object.freeze({
+    lane: 'warrant',
+    verb: 'intercept',
+    cargo: null,
+    loadout: ORIGIN_ROLE_KITS.hunter,
+  }),
+  prospector: Object.freeze({
+    lane: 'extraction',
+    verb: 'survey',
+    cargo: Object.freeze({ mode: 'mine_then_sell', commodityId: 'cmdty_ore_iron', qty: 6 }),
+    loadout: ORIGIN_ROLE_KITS.prospector,
+  }),
+});
+
 const HUNTER_CONTRACTS = Object.freeze([
   Object.freeze({
     id: 'yard_writ', title: 'Yard Perimeter Writ', type: 'bounty_hunt',

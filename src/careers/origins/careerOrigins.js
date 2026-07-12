@@ -10,6 +10,7 @@ import {
   CAREER_ORIGIN_CONTRACTS,
   createOriginRouteState,
   normalizeOriginRouteState,
+  ORIGIN_PHYSICAL_IDENTITIES,
   ORIGIN_ROLE_KITS,
   ORIGIN_ROUTE_STATUS,
 } from './careerOriginContracts.js';
@@ -123,6 +124,10 @@ function createMeta() {
     firstDockStationId: null,
     offerNonce: 0,
     lastBundleKey: null,
+    // Non-binding means no permanent class lock. It does not mean three competing tutorial
+    // contracts may own the mission marker at once. This focus releases on completion/abandon.
+    focusCareerId: null,
+    identityReceipts: {},
     routes: {
       hunter: createOriginRouteState('hunter'),
       prospector: createOriginRouteState('prospector'),
@@ -144,7 +149,84 @@ function ensureRouteMeta(meta) {
     }
   }
   if (!meta.upgradeReceipts || typeof meta.upgradeReceipts !== 'object') meta.upgradeReceipts = {};
+  if (!meta.identityReceipts || typeof meta.identityReceipts !== 'object') meta.identityReceipts = {};
+  if (!CAREER_IDS.includes(meta.focusCareerId)) meta.focusCareerId = null;
   return meta.routes;
+}
+
+function careerIsInProgress(origins, careerId) {
+  if (!origins || !careerId) return false;
+  if (careerId === 'hauler') {
+    const own = origins.hauler;
+    return !!own && (own.status === 'active' || own.status === 'step_failed'
+      || (own.status === 'offered' && (own.stepIndex | 0) > 0));
+  }
+  const route = origins[META_KEY] && origins[META_KEY].routes
+    && origins[META_KEY].routes[careerId];
+  return !!route && (route.status === ORIGIN_ROUTE_STATUS.ACTIVE
+    || route.status === ORIGIN_ROUTE_STATUS.RECOVERING);
+}
+
+function activeCareerId(origins) {
+  const meta = origins && origins[META_KEY];
+  if (meta && CAREER_IDS.includes(meta.focusCareerId)
+    && careerIsInProgress(origins, meta.focusCareerId)) return meta.focusCareerId;
+  for (const careerId of CAREER_IDS) {
+    if (careerIsInProgress(origins, careerId)) return careerId;
+  }
+  return null;
+}
+
+function syncCareerFocus(origins) {
+  if (!origins || !origins[META_KEY]) return null;
+  const meta = origins[META_KEY];
+  const focused = activeCareerId(origins);
+  meta.focusCareerId = focused;
+  return focused;
+}
+
+function recordIdentityReceipt(state, careerId, mission = null) {
+  const origins = ensureCareerOriginsState(state);
+  const meta = origins && origins[META_KEY];
+  const identity = ORIGIN_PHYSICAL_IDENTITIES[careerId];
+  if (!meta || !identity) return null;
+  const prior = meta.identityReceipts[careerId] || null;
+  const missionId = mission && mission.missionId || null;
+  const offer = mission && mission.offer || null;
+  const receipt = {
+    careerId,
+    lane: identity.lane,
+    verb: identity.verb,
+    status: 'active',
+    acceptedAtS: prior && Number.isFinite(prior.acceptedAtS)
+      ? prior.acceptedAtS : simTimeOf(state),
+    lastAcceptedAtS: simTimeOf(state),
+    activeMissionId: missionId,
+    lastMissionId: missionId || prior && prior.lastMissionId || null,
+    missionType: offer && offer.type || null,
+    markerId: offer && offer.markerId || null,
+    cargo: identity.cargo ? { ...identity.cargo } : null,
+    loadout: {
+      defId: identity.loadout.defId,
+      label: identity.loadout.label,
+      slotType: 'utility',
+      status: prior && prior.loadout && prior.loadout.status || 'earned_on_completion',
+    },
+  };
+  meta.identityReceipts[careerId] = receipt;
+  return receipt;
+}
+
+function settleIdentityReceipt(state, careerId, status) {
+  const origins = ensureCareerOriginsState(state);
+  const receipt = origins && origins[META_KEY]
+    && origins[META_KEY].identityReceipts[careerId];
+  if (!receipt) return null;
+  if (receipt.activeMissionId) receipt.lastMissionId = receipt.activeMissionId;
+  receipt.activeMissionId = null;
+  receipt.status = status;
+  receipt.settledAtS = simTimeOf(state);
+  return receipt;
 }
 
 export function ensureCareerOriginsState(state) {
@@ -157,12 +239,14 @@ export function ensureCareerOriginsState(state) {
   ensureHaulerOriginState(state);
   ensureHunterOriginState(state, seedOf(state));
   ensureProspectorOriginState(state, simTimeOf(state));
+  syncCareerFocus(origins);
   return origins;
 }
 
 export function getCareerOfferView(state, careerId = null) {
   const origins = ensureCareerOriginsState(state);
   const routes = origins[META_KEY].routes;
+  const focusedCareerId = syncCareerFocus(origins);
   const views = {
     hauler: (() => {
       const own = ensureHaulerOriginState(state);
@@ -219,9 +303,22 @@ export function getCareerOfferView(state, careerId = null) {
       };
     })(),
   };
+  for (const id of CAREER_IDS) {
+    const view = views[id];
+    const waitingFor = focusedCareerId && focusedCareerId !== id ? focusedCareerId : null;
+    if (waitingFor) {
+      view.canAccept = false;
+      view.waitingForCareerId = waitingFor;
+      view.availability = 'available_after_active_origin';
+    } else {
+      view.waitingForCareerId = null;
+      view.availability = view.canAccept ? 'available_now' : 'unavailable';
+    }
+  }
   if (careerId) return views[careerId] || null;
   return {
     nonBinding: true,
+    focusedCareerId,
     offers: CAREER_IDS.map((id) => views[id]),
   };
 }
@@ -346,7 +443,11 @@ export function createCareerOriginsSystem() {
       this._listen('ai:telegraph', (payload) => this._onAiTelegraph(payload || {}));
       this._listen('entity:killed', (payload) => this._onEntityKilled(payload || {}));
       this._listen('career:origin:completed', (payload) => {
-        if (payload && payload.careerId) this._grantOriginUpgrade(payload.careerId);
+        if (payload && payload.careerId) {
+          settleIdentityReceipt(this.state, payload.careerId, 'completed');
+          this._releaseCareerFocus(payload.careerId);
+          this._grantOriginUpgrade(payload.careerId);
+        }
       });
     },
 
@@ -384,6 +485,12 @@ export function createCareerOriginsSystem() {
     accept(careerId) {
       const id = String(careerId || '');
       const t = simTimeOf(this.state);
+      if (!CAREER_IDS.includes(id)) return { ok: false, reason: 'unknown_career' };
+      const origins = ensureCareerOriginsState(this.state);
+      const focusedCareerId = syncCareerFocus(origins);
+      if (focusedCareerId && focusedCareerId !== id) {
+        return { ok: false, reason: 'origin_in_progress', activeCareerId: focusedCareerId };
+      }
       let result;
       if (id === 'hauler') {
         const before = serializeHaulerOriginState(this.state);
@@ -415,7 +522,7 @@ export function createCareerOriginsSystem() {
             ensureCareerOriginsState(this.state)[META_KEY].routes[id] = beforeRoute;
             return posted;
           }
-          result = { ...result, missionId: posted.missionId, offerId: posted.offerId };
+          result = { ...result, missionId: posted.missionId, offerId: posted.offerId, offer: posted.offer };
         }
       } else if (id === 'prospector') {
         const before = serializeProspectorOrigin(this.state);
@@ -429,12 +536,17 @@ export function createCareerOriginsSystem() {
             ensureCareerOriginsState(this.state)[META_KEY].routes[id] = beforeRoute;
             return posted;
           }
-          result = { ...result, missionId: posted.missionId, offerId: posted.offerId };
+          result = { ...result, missionId: posted.missionId, offerId: posted.offerId, offer: posted.offer };
         }
-      } else {
-        return { ok: false, reason: 'unknown_career' };
       }
       if (result && result.ok) {
+        origins[META_KEY].focusCareerId = id;
+        const haulerContract = id === 'hauler'
+          ? ensureHaulerOriginState(this.state).activeContract : null;
+        const missionId = result.missionId || (haulerContract && haulerContract.missionId) || null;
+        const offer = result.missionOffer || result.offer
+          || (id !== 'hauler' ? buildOriginContractOffer(this.state, id, 0, 0) : null);
+        recordIdentityReceipt(this.state, id, { missionId, offer });
         emit(this.bus, CAREER_ORIGINS_EVENTS.ACCEPTED, { careerId: id, nonBinding: true, simTime: t });
       }
       return result;
@@ -449,6 +561,10 @@ export function createCareerOriginsSystem() {
       else if (id === 'prospector') result = declineProspectorOrigin(this.state, this.bus);
       else return { ok: false, reason: 'unknown_career' };
       if (result && result.ok) emit(this.bus, CAREER_ORIGINS_EVENTS.DECLINED, { careerId: id, nonBinding: true });
+      if (result && result.ok) {
+        settleIdentityReceipt(this.state, id, 'declined');
+        this._releaseCareerFocus(id);
+      }
       return result;
     },
 
@@ -477,6 +593,8 @@ export function createCareerOriginsSystem() {
           route.activeOfferId = null;
         }
         emit(this.bus, CAREER_ORIGINS_EVENTS.ABANDONED, { careerId: id, nonBinding: true });
+        settleIdentityReceipt(this.state, id, 'abandoned');
+        this._releaseCareerFocus(id);
       }
       return result;
     },
@@ -586,6 +704,7 @@ export function createCareerOriginsSystem() {
       route.activeOfferId = posted.offerId || offer.id;
       route.lastFailure = null;
       this._stampMissionMarker(careerId, posted.missionId, offer);
+      recordIdentityReceipt(this.state, careerId, { missionId: posted.missionId, offer });
       emit(this.bus, CAREER_ORIGINS_EVENTS.PROGRESS, {
         careerId,
         contractId: offer.originContractId,
@@ -781,10 +900,23 @@ export function createCareerOriginsSystem() {
         label: kit.label,
         grantedAtS: simTimeOf(this.state),
       };
+      const identityReceipt = meta.identityReceipts[careerId];
+      if (identityReceipt && identityReceipt.loadout) {
+        identityReceipt.loadout.status = 'inventory';
+        identityReceipt.loadout.issuedAtS = simTimeOf(this.state);
+      }
       if (meta.routes[careerId]) meta.routes[careerId].upgradeGranted = true;
       emit(this.bus, 'toast', {
         text: `${kit.label} issued. Fit it at Outfitting.`, kind: 'success', ttl: 5,
       });
+      return true;
+    },
+
+    _releaseCareerFocus(careerId) {
+      const origins = ensureCareerOriginsState(this.state);
+      const meta = origins && origins[META_KEY];
+      if (!meta || meta.focusCareerId !== careerId) return false;
+      meta.focusCareerId = null;
       return true;
     },
 

@@ -348,7 +348,7 @@
     "check:kestrel:electron-route": "node scripts/check-kestrel-electron-route.mjs",
     "test:commodity-flavor": "node test/commodity-flavor.test.mjs",
     "check:m1:tether-mass": "node scripts/check-m1-tether-mass-grounding.mjs",
-    "check:m3:career-origins": "node --test test/career-origins-contract.test.mjs test/hauler-origin-chain.test.mjs test/hunter-origin.test.mjs test/prospector-origin.test.mjs && node scripts/check-hunter-origin.mjs",
+    "check:m3:career-origins": "node --test test/career-origins-contract.test.mjs test/career-origins-playable.test.mjs test/career-origin-focus.test.mjs test/hauler-origin-chain.test.mjs test/hunter-origin.test.mjs test/prospector-origin.test.mjs && node scripts/check-hunter-origin.mjs",
     "check:m3:career-origins:browser": "node scripts/check-career-origins-browser.mjs",
     "check:m3:career-ladders": "node --test test/career-ladders-contract.test.mjs test/hauler-ladder.test.mjs test/hunter-ladder.test.mjs test/prospector-ladder.test.mjs test/career-ladders-live-integration.test.mjs test/career-ladder-ui-view.test.mjs && node scripts/check-career-ladders-live-integration.mjs",
     "check:m3:career-ladders:browser": "node scripts/check-career-ladders-browser.mjs",
