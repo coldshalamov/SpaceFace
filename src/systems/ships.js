@@ -13,6 +13,12 @@ import { MODULES } from '../data/modules.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { BEAMS } from '../data/mining.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
+import {
+  describeHullRole,
+  flightClassForHull,
+  getLatticeRow,
+  roleOperationalBiases,
+} from '../data/shipRoleLattice.js';
 import { syncDerivedPhysicsMass } from '../core/physicsAuthority.js';
 
 // ---- catalog lookup tables (built once at module load) ------------------------------------
@@ -155,13 +161,9 @@ function engineMods(def) {
   };
 }
 
+/** Role lattice owns flight-class identity; fallback keeps legacy string matching. */
 function flightClassForShip(shipDef) {
-  const role = String((shipDef && shipDef.role) || '').toLowerCase();
-  if (role.includes('fighter') || role.includes('interceptor')) return 'fighter';
-  if (role.includes('hauler') || role.includes('freighter')) return 'hauler';
-  if (role.includes('mining')) return 'miner';
-  if (role.includes('corvette') || role.includes('gunship') || role.includes('battlecruiser') || role.includes('flagship')) return 'capital';
-  return 'scout';
+  return flightClassForHull(shipDef);
 }
 
 function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling, thrust, turnRate, maxSpeed, drag, bankFactor }) {
@@ -241,19 +243,23 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     if (mods.damageReductionPct) damageReductionMult *= (1 - mods.damageReductionPct);
   }
 
-  // (2) mass + handling baseline
+  // (2) mass + handling baseline — role lattice biases operating-mass feel + handling identity.
+  // Catalog dry/cargo mass stay truthful; opMassBias only scales the flight massRatio so haulers
+  // wallow and scouts stay light without inventing new HP currencies.
+  const lattice = getLatticeRow(shipDef.id);
+  const biases = roleOperationalBiases(shipDef.id);
   const baseMass = shipDef.mass;
   const dryMass = baseMass + moduleMass;
   const cargoMass = Math.max(0, Number(player && player.cargo && player.cargo.usedMass) || 0);
   const totalMass = dryMass + cargoMass;
-  const massRatio = totalMass / baseMass;
-  const handling = shipDef.handling || 1;
+  const feelMass = totalMass * biases.opMassBias;
+  const massRatio = feelMass / Math.max(0.001, baseMass);
+  const handling = (shipDef.handling || 1) * biases.handlingBias;
   // Banking: per-hull roll-into-turn aggressiveness. Heavier loads bank less (mass dampens it),
   // so a fully-loaded freighter feels even more ponderous in a turn.
   const bankFactor = (shipDef.bankFactor != null ? shipDef.bankFactor : 0.6) / Math.sqrt(massRatio);
 
   const speedMass = 2 / (1 + massRatio);     // 1.0 at hull baseline, falls as mass grows
-  const thrustMass = 1.5 / (0.5 + massRatio);
   const turnMass = 1.4 / (0.4 + massRatio);
 
   // (3) engine-derived movement.
@@ -266,10 +272,10 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const drag = 1.7 + 0.6 * massRatio;                                   // ~0.4–0.6s time constant
   const cruiseFrac = Math.min(0.85, 0.60 + 0.14 * eng.accelMult);       // 0.72 baseline; better engines cruise faster
   const cruise = maxSpeed * cruiseFrac;
-  const thrust = cruise * drag * THRUST_SCALE;                          // terminal velocity ≈ cruise
-  const turnRate = BASE_TURN * eng.turnMult * handling * turnMass;
+  const thrust = cruise * drag * THRUST_SCALE * biases.thrustBias;      // terminal velocity ≈ cruise
+  const turnRate = BASE_TURN * eng.turnMult * handling * turnMass * biases.turnBias;
 
-  // (4) health / energy / cargo
+  // (4) health / energy / cargo — hull/shield stay catalog-truthful (no fake tank currency).
   const hullMax = shipDef.hull + hullFlat;
   const shieldMax = shipDef.shield + shieldFlat;
   const shieldRegenRate = (shipDef.baseShieldRegen + shieldRegenFlat) * shieldRegenMult;
@@ -295,6 +301,19 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     bankFactor,
   });
 
+  const roleIdentity = lattice
+    ? {
+      shipId: lattice.shipId,
+      role: lattice.role,
+      roleLabel: lattice.roleLabel,
+      flightClass: lattice.flightClass,
+      shortWhy: lattice.shortWhy,
+      primaryCareers: lattice.primaryCareers,
+      upgradeAdjacency: lattice.upgradeAdjacency,
+      counterRoles: lattice.counterRoles,
+    }
+    : null;
+
   return {
     hull: hullMax, hullMax,
     armorHp: 0, armorMax: 0, armorFlat: 0,
@@ -306,6 +325,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     flightClass,
     flightModel,
     dryMass, cargoMass, operationalMass: totalMass,
+    operationalFeelMass: feelMass,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
     tetherSpoolMult, tetherReelRateMult,
     cargoCap,
@@ -318,7 +338,15 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     },
     // informational extras (read by combat/ui; not part of the flat copy)
     continuousDrain, damageReductionMult, hiddenCargoPct, scannerCloak,
+    // M5 role lattice identity (recomputed; not serialized)
+    roleIdentity,
+    roleBiases: biases,
   };
+}
+
+/** Public lattice read for UI/tests — ships remains derived-stat authority. */
+export function getShipRoleIdentity(defId) {
+  return describeHullRole(defId);
 }
 
 /** Resolve equipped weapon modules into the data.weapons[] runtime list (§ shared shape). */

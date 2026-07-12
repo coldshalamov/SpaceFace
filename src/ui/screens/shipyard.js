@@ -14,6 +14,11 @@ import { escapeHtml } from '../comms.js';
 import { createShipEngineeringStage } from '../shipEngineeringStage.js';
 import { createMorphLabel } from '../effects/index.js';
 import { buildSlotList, getDerivedStats } from '../../systems/ships.js';
+import {
+  compareHulls,
+  describeHullRole,
+  getLatticeRow,
+} from '../../data/shipRoleLattice.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
@@ -117,7 +122,10 @@ const ROLE_DESC = {
 };
 
 function hullPurpose(def) {
-  const role = def && def.role;
+  if (!def) return 'Select a hull to inspect its role.';
+  const lattice = describeHullRole(def.id);
+  if (lattice && lattice.shortWhy) return lattice.shortWhy;
+  const role = def.role;
   switch (role) {
     case 'mining':
     case 'mining_barge':
@@ -138,8 +146,47 @@ function hullPurpose(def) {
     case 'multirole':
       return 'Enables flexible play: haul, fight, mine, or scan after outfitting the right modules.';
     default:
-      return 'Changes what the ship can do through cargo capacity, survivability, handling, and module slots.';
+      return ROLE_DESC[role] || 'Changes what the ship can do through cargo capacity, survivability, handling, and module slots.';
   }
+}
+
+function activeOwnedDefId(player) {
+  const p = player || {};
+  const owned = (p.ownedShips || [])[p.activeShipIndex || 0];
+  return owned && owned.defId ? owned.defId : null;
+}
+
+/** Real derived-stat compare of selected hull vs owned active hull (no fake stats). */
+export function describeShipyardHullCompare(candidateDef, player = {}) {
+  if (!candidateDef) return null;
+  const currentId = activeOwnedDefId(player) || 'ship_kestrel';
+  if (candidateDef.id === currentId) {
+    const self = describeHullRole(candidateDef.id);
+    return {
+      kind: 'current',
+      title: candidateDef.name + ' is your active hull',
+      body: self ? self.identityLine : hullPurpose(candidateDef),
+      compare: null,
+    };
+  }
+  // Stock-hull compare: empty fittings on both, zero cargo mass so rows are hull-vs-hull
+  // (not fitted-current vs bare-candidate). Numbers still come only from getDerivedStats.
+  const stockPlayer = { ...(player || {}), cargo: { usedMass: 0 }, efficiencyMods: (player && player.efficiencyMods) || {} };
+  const candDerived = getDerivedStats(candidateDef.id, [], stockPlayer);
+  const curDerived = getDerivedStats(currentId, [], stockPlayer);
+  const compare = compareHulls(candidateDef.id, currentId, candDerived, curDerived);
+  if (!compare) return null;
+  const better = compare.rows.filter((r) => r.tone === 'better').map((r) => r.label);
+  const worse = compare.rows.filter((r) => r.tone === 'worse').map((r) => r.label);
+  const adj = compare.adjacencyFromCurrent ? ' On your upgrade path.' : '';
+  const betterText = better.length ? 'Gains ' + better.slice(0, 3).join(', ') : 'No clear gains';
+  const worseText = worse.length ? '; trades away ' + worse.slice(0, 3).join(', ') : '';
+  return {
+    kind: 'compare',
+    title: candidateDef.name + ' vs ' + (compare.currentName || 'current hull'),
+    body: (compare.candidateWhy || hullPurpose(candidateDef)) + ' ' + betterText + worseText + '.' + adj,
+    compare,
+  };
 }
 
 function hullNextStep(def) {
@@ -308,12 +355,97 @@ function injectCmpStyle() {
 function roleIdentityChips(def) {
   if (!def) return [];
   const chips = [];
-  chips.push({ key: 'role', label: (def.role || 'ship').replace(/_/g, ' '), title: ROLE_DESC[def.role] || '' });
+  const lattice = getLatticeRow(def.id);
+  const roleTitle = (lattice && lattice.shortWhy) || ROLE_DESC[def.role] || '';
+  chips.push({
+    key: 'role',
+    label: (lattice && lattice.roleLabel) || (def.role || 'ship').replace(/_/g, ' '),
+    title: roleTitle,
+  });
   chips.push({ key: 'mass', label: def.mass + 't hull', title: 'Base hull mass before modules or cargo.' });
   chips.push({ key: 'cargo', label: def.cargo + 'u cargo', title: 'Base cargo capacity before modules.' });
   const weapons = slotCount(def, 'weapon');
   if (weapons) chips.push({ key: 'combat', label: weapons + ' weapon' + (weapons > 1 ? 's' : ''), title: 'Weapon hardpoints determine combat potential.' });
+  if (lattice && lattice.primaryCareers && lattice.primaryCareers.length) {
+    chips.push({
+      key: 'career',
+      label: lattice.primaryCareers[0],
+      title: 'Primary career fit: ' + lattice.primaryCareers.join(', '),
+    });
+  }
+  if (lattice && lattice.counterRoles && lattice.counterRoles.length) {
+    chips.push({
+      key: 'counter',
+      label: 'vs ' + String(lattice.counterRoles[0]).replace(/_/g, ' '),
+      title: 'Counter-roles: ' + lattice.counterRoles.join(', '),
+    });
+  }
   return chips;
+}
+
+function fmtStat(n) {
+  if (!Number.isFinite(n)) return '—';
+  if (Math.abs(n) >= 100) return String(Math.round(n));
+  return String(Math.round(n * 10) / 10);
+}
+
+function renderComparePanel(cmpPanel, player, selectedDefId) {
+  const def = SHIP_BY_ID.get(selectedDefId);
+  if (!def) {
+    cmpPanel.style.display = 'none';
+    cmpPanel.innerHTML = '';
+    return;
+  }
+  const packet = describeShipyardHullCompare(def, player);
+  if (!packet) {
+    cmpPanel.style.display = 'none';
+    return;
+  }
+  cmpPanel.style.display = '';
+  if (packet.kind === 'current' || !packet.compare) {
+    cmpPanel.innerHTML =
+      '<div class="st-sy-cmp-h">' +
+        '<span class="st-sy-cmp-name">' + escapeHtml(def.name) + '</span>' +
+        '<span class="st-sy-cmp-role">ACTIVE</span>' +
+      '</div>' +
+      '<div class="st-sy-cmp-desc">' + escapeHtml(packet.body) + '</div>';
+    return;
+  }
+  const c = packet.compare;
+  const rowsHtml = c.rows.map((row) => {
+    const tone = row.tone === 'better' ? 'st-sy-cmp-better'
+      : row.tone === 'worse' ? 'st-sy-cmp-worse' : 'st-sy-cmp-same';
+    const sign = row.delta > 0 ? '+' : '';
+    return (
+      '<span class="st-sy-cmp-lbl">' + escapeHtml(row.label) + '</span>' +
+      '<span class="st-sy-cmp-cur">' + escapeHtml(fmtStat(row.current)) + '</span>' +
+      '<span class="st-sy-cmp-arr">→</span>' +
+      '<span class="st-sy-cmp-new ' + tone + '">' + escapeHtml(fmtStat(row.candidate)) +
+        '<span class="st-sy-cmp-delta">' + escapeHtml(sign + fmtStat(row.delta)) + '</span></span>'
+    );
+  }).join('');
+  const lattice = describeHullRole(def.id);
+  const adj = lattice && lattice.upgradeAdjacency && lattice.upgradeAdjacency.length
+    ? 'Next: ' + lattice.upgradeAdjacency.map((id) => {
+      const n = SHIP_BY_ID.get(id);
+      return n ? n.name : id;
+    }).join(', ')
+    : '';
+  cmpPanel.innerHTML =
+    '<div class="st-sy-cmp-h">' +
+      '<span class="st-sy-cmp-name">' + escapeHtml(c.candidateName) + '</span>' +
+      '<span class="st-sy-cmp-role">' + escapeHtml(c.candidateRole || '') + '</span>' +
+    '</div>' +
+    '<div class="st-sy-cmp-desc">' + escapeHtml(packet.body) + '</div>' +
+    '<div class="st-sy-cmp-grid">' +
+      '<span class="st-sy-cmp-lbl"></span>' +
+      '<span class="st-sy-cmp-cur mono">Yours</span>' +
+      '<span class="st-sy-cmp-arr"></span>' +
+      '<span class="st-sy-cmp-new mono">This</span>' +
+      '<div class="st-sy-cmp-sep"></div>' +
+      rowsHtml +
+    '</div>' +
+    (adj ? '<div class="st-sy-cmp-slots"><b>Upgrade path</b> · ' + escapeHtml(adj) + '</div>' : '');
 }
 
 export function createShipyardPanel(ctx) {
@@ -487,6 +619,7 @@ export function createShipyardPanel(ctx) {
     stage.setShip(defId);
     renderIdentity();
     renderRequirements();
+    renderComparePanel(cmpPanel, ctx.state.player, selectedDefId);
     // Power flow beams: reactor -> weapon/engine/shield systems.
     const shipDef = SHIP_BY_ID.get(defId);
     const slots = shipDef ? buildSlotList(shipDef) : [];
@@ -506,13 +639,17 @@ export function createShipyardPanel(ctx) {
     if (!def) { identity.innerHTML = ''; return; }
     const chips = roleIdentityChips(def);
     const drive = driveLabelFor(def);
+    const lattice = describeHullRole(def.id);
+    const roleText = (lattice && lattice.roleLabel) || def.role || '—';
     // Role identity morphs on selection change (the morphLabel drives roleMount); the rest is static.
-    roleLabel.set(escapeHtml(def.role || '').toUpperCase() || '—');
+    roleLabel.set(escapeHtml(String(roleText).toUpperCase()) || '—');
+    const identityLine = lattice && lattice.identityLine ? lattice.identityLine : '';
     identity.innerHTML =
       '<div class="st-sy-identity-role"></div>' +
       '<div class="st-sy-identity-name">' + escapeHtml(def.name) + '</div>' +
       '<div class="st-sy-identity-slots mono">' + escapeHtml(slotSummary(def)) + '</div>' +
       '<div class="st-sy-identity-purpose">' + escapeHtml(hullPurpose(def)) + '</div>' +
+      (identityLine ? '<div class="st-sy-identity-line">' + escapeHtml(identityLine) + '</div>' : '') +
       '<div class="st-sy-identity-chips">' +
         chips.map((c) => '<span class="st-sy-id-chip st-sy-id-chip--' + c.key + '" title="' + escapeHtml(c.title) + '">' + escapeHtml(c.label) + '</span>').join('') +
         (drive ? '<span class="st-sy-id-chip st-sy-id-chip--drive" title="Propulsion family">' + escapeHtml(drive) + '</span>' : '') +
@@ -782,7 +919,7 @@ export function createShipyardPanel(ctx) {
     updateStageStats();
     const p = ctx.state.player;
     creditsLabel.set(fmtCr(p.credits || 0));
-    cmpPanel.style.display = 'none';
+    renderComparePanel(cmpPanel, p, selectedDefId);
   }
 
   return {
