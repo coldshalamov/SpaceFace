@@ -11,6 +11,7 @@ import { buildDriftBarge } from './ships/driftBarge.js';
 import { buildQuietRaider } from './ships/quietRaider.js';
 import { buildVaelSniper } from './ships/vaelSniper.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
+import { batchScenarioPropOpaqueMeshes } from './scenarioPropBatching.js';
 import { buildAuthoredPlaceProp, buildAuthoredStationArchetype, wrapShipWithAuthoredParts } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
@@ -94,7 +95,7 @@ export function installVisualOverrides(factory, options = {}) {
       try { visual = buildAuthoredStationArchetype(entity, { releaseMode }); }
       catch (error) { reportVisualWarning(options, '[visualOverrides] authored station archetype failed; using procedural fallback', error); }
     } else if (scenarioProp) {
-      visual = scenarioProp;
+      visual = batchScenarioPropOpaqueMeshes(scenarioProp);
     } else if (isPlayerKestrel(entity)) {
       try { visual = kestrelBuilder(entity); }
       catch (error) {
