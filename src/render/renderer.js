@@ -4,12 +4,11 @@
 import * as THREE from 'three';
 import { createChaseCamera } from './camera.js';
 import { createSpaceBackground } from './spaceBackground.js';
-import { createVisualFactory, setEnvMapForShips, invalidateVisualFactoryCaches } from './visualFactory.js';
+import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import { createBloom } from './bloom.js';
 import { SpaceRenderGraph } from './post/spaceRenderGraph.js';
-import { invalidateAuthoredAsset } from './assetLoader.js';
-import { getAuthoredInstancePoolDiagnostics, invalidatePartsLibraryCaches, preloadAuthoredPartLibrary, syncAuthoredInstancePools } from './partsLibrary.js';
+import { getAuthoredInstancePoolDiagnostics, preloadAuthoredPartLibrary, syncAuthoredInstancePools } from './partsLibrary.js';
 import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { createCollisionDebug } from './collisionDebug.js';
@@ -505,24 +504,43 @@ export const render = {
     } catch (_) { /* PMREM unavailable */ }
 
     // WebGL context-loss recovery. The browser fires webglcontextlost when the GPU driver resets
-    // (driver crash, sleep/wake, VRAM exhaustion). THREE's WebGLRenderer only stops rendering on
-    // loss — it does NOT restore the env map, re-upload procedural textures, or rebuild GPU state,
-    // so without handling this the game silently freezes / goes black with no recovery path.
-    // On lost: preventDefault (tells the browser we'll recover), set a flag so renderFrame skips
-    // work while the context is gone. On restored: re-bake the PMREM env, force a full mesh
-    // reconciliation (re-builds every entity mesh → re-uploads geometries/materials), re-apply
-    // renderer config, and re-apply the video settings that drive tone mapping / shadow state.
+    // (driver crash, sleep/wake, VRAM exhaustion). THREE's renderer recreates its own GL internals,
+    // but context-derived PMREM output and timer queries are ours to rebuild. Entity roots, authored
+    // geometries/materials, and post targets retain complete CPU descriptors; THREE re-uploads them
+    // through its fresh property/cache set. Disposing or rebuilding those objects during the context
+    // transition is both unnecessary and unsafe: stale handles can be deleted through the new GL
+    // context, producing INVALID_OPERATION warnings and avoidable asset churn.
     this._contextLost = false;
+    this._contextRecovery = {
+      losses: 0,
+      restores: 0,
+      generation: 0,
+      pending: false,
+      lastError: null,
+    };
+    state.render.contextRecovery = this._contextRecovery;
     if (canvas) {
       canvas.addEventListener('webglcontextlost', (ev) => {
         ev.preventDefault();        // allow restoration
+        if (this._contextLost) return;
         this._contextLost = true;
+        this._contextRecovery.losses++;
+        this._contextRecovery.pending = true;
+        this._contextRecovery.lastError = null;
         // Abandon GPU timer query refs without end/delete — the GL context is dead.
         if (this._gpuTimers && typeof this._gpuTimers.abandon === 'function') {
           try { this._gpuTimers.abandon(); } catch (_) { /* ignore */ }
         }
         this._gpuTimers = null;
         if (state.render) state.render.gpuTimers = null;
+        // PMREM output is render-target content and must be regenerated. Retain the old Texture only
+        // as an identity token so _bakeEnv can redirect every material that referenced it; never call
+        // dispose() on that old-context texture after restoration.
+        this._lostEnvMap = this._envMap;
+        if (scene.environment === this._lostEnvMap) scene.environment = null;
+        this._envMap = null;
+        state.render.envMap = null;
+        setEnvMapForShips(null);
         if (typeof console !== 'undefined') console.warn('[render] WebGL context lost — awaiting restore');
         bus.emit('toast', { text: 'Graphics context lost — recovering…', kind: 'warn', ttl: 4 });
       }, false);
@@ -533,15 +551,16 @@ export const render = {
           // Re-apply renderer config that the new context defaults lose.
           this.renderer.setClearColor(0x060912, 1);
           if (this._shadowSettingOn && this._keyLight) this.renderer.shadowMap.enabled = false; // re-gated by _syncShadowMapEnabled on next frame
-          // Re-bake the PMREM env (the old GPU texture is gone).
-          this._bakeEnv();
-          // Invalidate authored-asset and factory caches so the next rebuild reloads GLBs and
-          // recreates materials against the restored context rather than reusing stale GPU handles.
-          invalidateAuthoredAsset(renderer);
-          invalidateVisualFactoryCaches();
-          invalidatePartsLibraryCaches(renderer);
-          // Rebuild the bloom post-process pipeline (its render targets are tied to the lost context).
-          if (this.bloom && typeof this.bloom.rebuild === 'function') this.bloom.rebuild();
+          // Refill context-derived background/planet render targets in place. Their visible mesh and
+          // texture identities stay stable; no old-context object is disposed through the new GL.
+          if (this.spaceBg && typeof this.spaceBg.onContextRestore === 'function') this.spaceBg.onContextRestore();
+          // Re-bake the PMREM env (the old render-target content is gone) and redirect explicit
+          // chrome material envMap references without disposing any old-context handle.
+          this._bakeEnv({
+            previousEnvMap: this._lostEnvMap,
+            disposePrevious: false,
+          });
+          this._lostEnvMap = null;
           // Fresh GPU timer set bound to the restored context (default OFF).
           try {
             const glRestored = this.renderer.getContext && this.renderer.getContext();
@@ -552,16 +571,18 @@ export const render = {
             this._gpuTimers = null;
             state.render.gpuTimers = null;
           }
-          // Force every entity mesh to rebuild so geometries/materials re-upload. The cleanest way
-          // is to clear + reconcile: dispose the CPU mesh objects, then reconcileMeshes() rebuilds
-          // them from the live entityList via the visual factory.
-          this.clearAllMeshes(false);
-          this._meshReconcileDirty = true;
-          // Re-apply bloom + video settings (tone mapping / exposure live on settings:changed).
+          // Re-apply post uniforms directly. Emitting a generic settings:changed event here used to
+          // call onResize(), whose space-background rebuild disposed the complete old-context graph
+          // after the NEW context was active. Canvas dimensions/settings did not change, so retain
+          // the full-quality background graph and let THREE re-upload it like every other root.
           this._invalidatePostOptionsCache();
-          bus.emit('settings:changed', { section: 'video' });
+          this._syncPostOptions(true);
+          this._contextRecovery.restores++;
+          this._contextRecovery.generation++;
+          this._contextRecovery.pending = false;
           bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
         } catch (err) {
+          this._contextRecovery.lastError = String(err && err.message ? err.message : err);
           if (typeof console !== 'undefined') console.error('[render] context-restore rebuild failed', err);
         }
       }, false);
@@ -982,22 +1003,27 @@ export const render = {
   // Bake (or re-bake) the PMREM environment map from the current nebula backdrop. Called once at
   // init after the starfield background decodes, AND on WebGL context restore (a lost GL context
   // invalidates the envMap GPU texture — without re-baking, chrome hulls go matte after recovery).
-  _bakeEnv() {
+  _bakeEnv(options = {}) {
     try {
       const renderer = this.renderer, scene = this.scene, state = this.state;
+      const previousEnvMap = Object.prototype.hasOwnProperty.call(options, 'previousEnvMap')
+        ? options.previousEnvMap
+        : this._envMap;
+      const disposePrevious = options.disposePrevious !== false;
       const pmrem = new THREE.PMREMGenerator(renderer);
       const envMap = scene.background && scene.background.isTexture
         ? pmrem.fromEquirectangular(scene.background).texture
         : pmrem.fromScene(scene, 0, 0.1, 1000).texture;
       pmrem.dispose();
       // Dispose the previous env GPU texture if we're re-baking (context restore path).
-      if (this._envMap && this._envMap !== envMap) {
-        try { this._envMap.dispose(); } catch (_) {}
+      if (disposePrevious && previousEnvMap && previousEnvMap !== envMap) {
+        try { previousEnvMap.dispose(); } catch (_) {}
       }
       this._envMap = envMap;
       state.render.envMap = envMap;
       setEnvMapForShips(envMap);   // hand it to the visual factory for chrome/authority hulls
-      if (scene.environment === null || scene.environment === this._envMap) scene.environment = envMap;
+      if (scene.environment === null || scene.environment === previousEnvMap) scene.environment = envMap;
+      if (previousEnvMap && previousEnvMap !== envMap) replaceSceneEnvMap(scene, previousEnvMap, envMap);
     } catch (_) { /* env-map optional — chrome falls back to high-metalness matte */ }
   },
 
@@ -1887,6 +1913,18 @@ function lerpSectorPaletteFrame(rig, start, target, t) {
 
 function lerp(a, b, t) {
   return a + (b - a) * t;
+}
+
+function replaceSceneEnvMap(scene, previousEnvMap, nextEnvMap) {
+  if (!scene || !previousEnvMap || !nextEnvMap) return;
+  scene.traverse((node) => {
+    const materials = Array.isArray(node && node.material) ? node.material : [node && node.material];
+    for (const material of materials) {
+      if (!material || material.envMap !== previousEnvMap) continue;
+      material.envMap = nextEnvMap;
+      material.needsUpdate = true;
+    }
+  });
 }
 
 function disposeObject(obj) {

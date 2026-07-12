@@ -925,6 +925,77 @@ export class SpaceBackground {
     }
   }
 
+  // WebGL context restoration: render-target textures retain their CPU wrapper identity but lose
+  // their GPU pixels. Refill those targets IN PLACE so every layer/planet material keeps the exact
+  // authored texture reference. Never dispose or rebuild the visible graph here: its dispose
+  // listeners were registered by the previous GL generation and deleting through the restored
+  // context produces wrong-context errors.
+  onContextRestore() {
+    const p = this._paletteColors(this.currentPaletteName);
+    const sizes = this.bakeSizes;
+    const bakeSeed = (this.skySeed % 100000) * 0.001;
+    const entries = [
+      [this.l0Target, new THREE.ShaderMaterial({
+        vertexShader: QUAD_VERT,
+        fragmentShader: L0_FRAG,
+        uniforms: {
+          uVoid: { value: p.void }, uHaze: { value: p.haze }, uCore: { value: p.core },
+          uSeed: { value: bakeSeed + 17.0 },
+          uResolution: { value: sizes.L0_void },
+        },
+      })],
+      [this.l1Target, new THREE.ShaderMaterial({
+        vertexShader: QUAD_VERT,
+        fragmentShader: NEBULA_FRAG,
+        uniforms: {
+          uHaze: { value: p.haze }, uGas: { value: p.gas }, uEmission: { value: p.emission },
+          uCore: { value: p.core }, uDust: { value: p.dust }, uAccent: { value: p.accent },
+          uSeed: { value: bakeSeed + 29.0 },
+          uAlpha: { value: this.lowTier ? 0.52 : 0.58 },
+          uWarp: { value: 0.34 },
+          uDustAmt: { value: 0.72 },
+          uRegion: { value: new THREE.Vector2(0.50, 0.68) },
+        },
+        transparent: true,
+      })],
+      [this.l2Target, new THREE.ShaderMaterial({
+        vertexShader: QUAD_VERT,
+        fragmentShader: NEBULA_FRAG,
+        uniforms: {
+          uHaze: { value: p.haze }, uGas: { value: p.gas }, uEmission: { value: p.emission },
+          uCore: { value: p.core }, uDust: { value: p.dust }, uAccent: { value: p.accent },
+          uSeed: { value: bakeSeed + 61.0 },
+          uAlpha: { value: this.lowTier ? 0.10 : 0.13 },
+          uWarp: { value: 0.55 },
+          uDustAmt: { value: 0.12 },
+          uRegion: { value: new THREE.Vector2(0.56, 0.74) },
+        },
+        transparent: true,
+      })],
+    ];
+    for (const [target, material] of entries) {
+      if (target) this._bakeLayer(material, target);
+      material.dispose(); // fresh restored-context material; safe to retire immediately
+    }
+
+    const activePlanetKeys = new Set();
+    for (const planet of this.planets) {
+      const spec = planet && planet.spec;
+      if (!spec) continue;
+      const key = `${spec.type}_${spec.seed}_${spec.ring ? 1 : 0}`;
+      const target = this.planetCache.get(key);
+      if (!target) continue;
+      activePlanetKeys.add(key);
+      this._renderPlanetTarget(target, spec);
+    }
+    // Inactive cached render-target pixels are gone and have no visible consumers. Drop only their
+    // JS cache references (no dispose); a later hero spawn creates a fresh target in this context.
+    for (const key of [...this.planetCache.keys()]) {
+      if (!activePlanetKeys.has(key)) this.planetCache.delete(key);
+    }
+    this.planetCacheOrder = this.planetCacheOrder.filter((key) => activePlanetKeys.has(key));
+  }
+
   _disposeBakeTargets() {
     for (const t of [this.l0Target, this.l1Target, this.l2Target]) { if (t) t.dispose(); }
     this.l0Target = this.l1Target = this.l2Target = null;
@@ -1306,6 +1377,13 @@ export class SpaceBackground {
     });
     rt.texture.colorSpace = THREE.SRGBColorSpace;
 
+    this._renderPlanetTarget(rt, spec);
+    return rt;
+  }
+
+  _renderPlanetTarget(rt, spec) {
+    if (!rt || !spec) return;
+
     // per-type surface ramps, tinted slightly by the active palette's emission hue
     const pal = PALETTES[this.currentPaletteName];
     const emission = new THREE.Color(pal.emission);
@@ -1339,7 +1417,6 @@ export class SpaceBackground {
     });
     this._bakeLayer(mat, rt);
     mat.dispose();
-    return rt;
   }
 
   _spawnWormhole(spec) {
