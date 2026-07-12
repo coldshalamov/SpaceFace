@@ -15,6 +15,10 @@ import { readFile, writeFile, mkdir, copyFile, readdir, stat, rm } from 'node:fs
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  RELEASE_COPY_MAPPINGS,
+  writeReleaseBuildReceipt,
+} from './lib/releasePackaging.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
@@ -85,6 +89,7 @@ async function build() {
     outdir: OUT,
     minify: true,             // minify JS
     treeShaking: true,
+    dropLabels: ['SF_DEBUG_ONLY'], // raw source keeps dev tools; production removes the statements
     sourcemap: false,         // ship without sourcemaps (smaller; dev uses raw modules)
     target: ['chrome110'],    // Electron 31 = Chromium 126; chrome110 is a safe floor
     platform: 'browser',
@@ -96,39 +101,32 @@ async function build() {
     // Treat dynamic imports of literal strings as code-splittable chunks (default).
     legalComments: 'none',
     define: {
-      // Production bundles strip debug surfaces while keeping the same player-facing launch URL.
-      'process.env.NODE_ENV': '"production"',
+      // Define the browser-facing process object too: guards test `typeof process` first.
+      process: JSON.stringify({ env: { NODE_ENV: 'production' }, versions: {}, argv: [] }),
+      __SPACEFACE_PRODUCTION__: 'true',
     },
   });
 
-  // Copy the non-JS assets the bundle references by URL (CSS, cinematics, UI art, ships, decoder libs).
+  // Copy every URL-fetched runtime root from one canonical map. Ship authoring sources, Blender
+  // files, evidence, rejected candidates, and previous exports are intentionally excluded: normal
+  // play is release-authored and reads only assets/ships/release/. This preserves visual quality
+  // byte-for-byte while preventing gigabytes of non-runtime production files from entering retail.
   await mkdir(OUT, { recursive: true });
-  await copyDir(join(ROOT, 'styles'), join(OUT, 'styles'));
-  // Cinematics + UI art + ship assets (electron-builder files list mirrors this).
-  if (existsSync(join(ROOT, 'assets'))) {
-    await mkdir(join(OUT, 'assets'), { recursive: true });
-    if (existsSync(join(ROOT, 'assets', 'cinematics'))) await copyDir(join(ROOT, 'assets', 'cinematics'), join(OUT, 'assets', 'cinematics'));
-    if (existsSync(join(ROOT, 'assets', 'ui'))) await copyDir(join(ROOT, 'assets', 'ui'), join(OUT, 'assets', 'ui'));
-    if (existsSync(join(ROOT, 'assets', 'ships'))) await copyDir(join(ROOT, 'assets', 'ships'), join(OUT, 'assets', 'ships'));
-    if (existsSync(join(ROOT, 'assets', 'portraits'))) await copyDir(join(ROOT, 'assets', 'portraits'), join(OUT, 'assets', 'portraits'));
-    if (existsSync(join(ROOT, 'assets', 'portraits'))) await copyDir(join(ROOT, 'assets', 'portraits'), join(OUT, 'assets', 'portraits'));
-  }
-  // Scenario contracts are fetched by URL at runtime so designers can inspect the exact authored
-  // JSON that powered a run. They are not part of the JS graph, so esbuild will not copy them.
-  if (existsSync(join(ROOT, 'src', 'data', 'scenarios'))) {
-    await copyDir(join(ROOT, 'src', 'data', 'scenarios'), join(OUT, 'data', 'scenarios'));
-  }
-  // Runtime decoder libs (basis/draco/meshopt) are loaded dynamically by the bundled loaders at
-  // URLs matching ASSET_RUNTIME_DECODER_CONTRACT paths. Keep them at the same relative location
-  // inside the bundle so the runtime URLs resolve identically.
-  if (existsSync(join(ROOT, 'vendor', 'addons', 'libs'))) {
-    await mkdir(join(OUT, 'vendor', 'addons', 'libs'), { recursive: true });
-    await copyDir(join(ROOT, 'vendor', 'addons', 'libs'), join(OUT, 'vendor', 'addons', 'libs'));
+  for (const mapping of RELEASE_COPY_MAPPINGS) {
+    const source = join(ROOT, ...mapping.source.split('/'));
+    const destination = join(OUT, ...mapping.destination.split('/'));
+    if (!existsSync(source)) throw new Error(`[bundle] required runtime root missing: ${mapping.source}`);
+    await copyDir(source, destination);
   }
 
   // Write a bundled index.html (no importmap — the bundle resolves everything).
   const bundledHtml = await buildBundledHtml();
   await writeFile(join(OUT, 'index.html'), bundledHtml, 'utf8');
+
+  // Deterministic, hash-bound receipt: no timestamps, sorted file records, byte parity for every
+  // copied runtime root. Rebuilding identical inputs produces the same output digest.
+  const releaseReceipt = await writeReleaseBuildReceipt({ root: ROOT, webRoot: OUT });
+  console.log(`[bundle] receipt ${releaseReceipt.output.digest} (${releaseReceipt.output.fileCount} files)`);
 
   // Report size savings. The binding comparison is JS-to-JS: binary assets (GLBs, KTX2, MP4s) ship
   // identically whether bundled or not, so only the JS footprint is affected by minification +

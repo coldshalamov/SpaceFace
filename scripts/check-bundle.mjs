@@ -18,6 +18,10 @@ import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 
 import { SIGNAL_ARCHIVE } from '../src/ui/screens/codex.js';
+import {
+  RELEASE_RECEIPT_FILE,
+  validateReleaseBuildReceipt,
+} from './lib/releasePackaging.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const BUILD_WEB = join(ROOT, 'build', 'web');
@@ -86,7 +90,22 @@ for (const clip of SIGNAL_ARCHIVE) {
 assert.ok(existsSync(UI_ICON_ATLAS_BUNDLE_PATH),
   'build/web/assets/ui/icons_atlas.jpg must exist for bundled CSS icon atlas references');
 
-// 5. The bundle is meaningfully smaller than raw JS. Compare JS-to-JS only (binary assets ship
+// 5. The release receipt is deterministic and proves every copied player-facing runtime tree is
+// byte-identical to its source. It also rejects source art/evidence/sourcemaps in the retail tree.
+const releaseReceipt = JSON.parse(await readFile(join(BUILD_WEB, RELEASE_RECEIPT_FILE), 'utf8'));
+const releaseValidation = await validateReleaseBuildReceipt({ root: ROOT, webRoot: BUILD_WEB, receipt: releaseReceipt });
+assert.equal(releaseValidation.pass, true, releaseValidation.failures.join('; '));
+assert.ok(releaseReceipt.copies.every((copy) => copy.exact === true),
+  'every release runtime root must copy byte-for-byte');
+
+// Production-only debug entry routes must be tree-shaken from the shipped player entrypoint. This
+// does not ban internal diagnostics used by systems; it rejects public query routes and boot handles.
+const bundledMain = await readFile(join(BUILD_WEB, 'main.js'), 'utf8');
+for (const debugToken of ['dev=shippreview', 'dev=shipshot', '[SpaceFace] booted -> main menu']) {
+  assert.ok(!bundledMain.includes(debugToken), `production main.js must strip debug route token ${debugToken}`);
+}
+
+// 6. The bundle is meaningfully smaller than raw JS. Compare JS-to-JS only (binary assets ship
 // identically either way).
 const rawJs = await jsSize(join(ROOT, 'src')) + await jsSize(join(ROOT, 'vendor'));
 const bundledJs = await jsSize(BUILD_WEB);

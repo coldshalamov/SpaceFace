@@ -25,7 +25,9 @@ import {
 
 // Debug surfaces (the mutable window.SF handle + boot logs) are exposed outside production bundles.
 // Launcher URLs stay identical for browser/Electron; release/debug behavior must not fork gameplay.
-const SF_DEBUG = debugRuntimeEnabled();
+const SF_DEBUG = typeof __SPACEFACE_PRODUCTION__ !== 'undefined'
+  ? !__SPACEFACE_PRODUCTION__
+  : debugRuntimeEnabled();
 const INITIAL_AUTHORED_VISUAL_TIMEOUT_MS = 45000;
 
 function debugRuntimeEnabled() {
@@ -140,7 +142,7 @@ async function boot() {
     });
 
     startLoop(state, registry);
-    if (SF_DEBUG) window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace });
+    SF_DEBUG_ONLY: if (SF_DEBUG) window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace });
     // The title route must become usable promptly. Heavy shader/asset warmup is sector-scoped in
     // renderer.js once a run exists; running the all-archetype precompile here competes with the
     // New Game authored-visual queue and can strand Launch in loading on software WebGL.
@@ -148,21 +150,21 @@ async function boot() {
     hideBootOverlay();
 
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
-    if (SF_DEBUG) {
+    SF_DEBUG_ONLY: if (SF_DEBUG) {
       window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace });
       console.log('[SpaceFace] booted -> main menu. seed=%d', seed);
     }
 
     // Dev-only ship turntable preview: ?dev=shippreview renders every hull × tier into .devshots/
     // for visual verification. Requires the render system to be initialized, so we wait a frame.
-    if (SF_DEBUG && typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'shippreview') {
+    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'shippreview') {
       const { runShipPreview } = await import('./render/shipPreview.js');
       // ensure the render system has registered its scene/renderer handles on state.render
       setTimeout(() => { runShipPreview({ state, registry, THREE }).catch((e) => console.error('[shipPreview]', e)); }, 500);
     }
     // Dev-only single-frame Kestrel hero capture: ?dev=shipshot renders the player Kestrel once (no
     // rAF loop, so it's robust under headless Chrome) and POSTs kestrel_hero_live.jpg to /__shot.
-    if (SF_DEBUG && typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'shipshot') {
+    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'shipshot') {
       const { runShipShot } = await import('./render/shipShot.js');
       setTimeout(() => { runShipShot({ state, registry, THREE }).catch((e) => console.error('[shipShot]', e)); }, 500);
     }
@@ -256,7 +258,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     enterFlightMode(state, bus);
     if (!runTransitionGuard.isCurrent(transitionToken)) return;
     bus.emit('game:started', {});
-    if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
+    SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
   });
   return { stale: false };
 }
@@ -288,7 +290,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       enterFlightMode(state, bus);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       bus.emit('ui:closeAll', {});
-      if (SF_DEBUG) console.log('[SpaceFace] loaded game entered flight. slot=%s', payload.slot || 'unknown');
+      SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] loaded game entered flight. slot=%s', payload.slot || 'unknown');
     });
     return { stale: false };
   } catch (error) {

@@ -1,4 +1,19 @@
 const fs = require('fs');
+const path = require('path');
+
+function resolveWebRoot({ packaged, projectRoot, bundleRoot, exists = fs.existsSync } = {}) {
+  const project = path.resolve(String(projectRoot || '.'));
+  const bundle = path.resolve(String(bundleRoot || path.join(project, 'build', 'web')));
+  if (!packaged) return project;
+  const entry = path.join(bundle, 'index.html');
+  if (!exists(entry)) {
+    const error = new Error(`Packaged web bundle is incomplete: missing ${entry}`);
+    error.code = 'SPACEFACE_PACKAGED_BUNDLE_MISSING';
+    error.entry = entry;
+    throw error;
+  }
+  return bundle;
+}
 
 function appendLaunchReceipt(filePath, status, details = {}) {
   if (!filePath) return false;
@@ -47,6 +62,7 @@ function evaluateLaunchOutcome({
     if (last.status === 'window-ready') return outcome(true, 'launched', last);
     if (last.status === 'existing-instance') return outcome(true, 'existing-instance', last);
     if (last.status === 'asset-preload-failed') return outcome(false, 'asset-preload-failed', last);
+    if (last.status === 'package-invalid') return outcome(false, 'package-invalid', last);
     if (last.status === 'navigation-failed') return outcome(false, 'navigation-failed', last);
     if (last.status === 'port-conflict') {
       return outcome(false, last.owner === 'spaceface' ? 'spaceface-port-conflict' : 'port-conflict', last);
@@ -96,6 +112,8 @@ function formatLaunchOutcome(result, { logPath = '' } = {}) {
       return `Port ${result.port || 41788} is owned by another program. No process was closed or terminated. Close that program normally or change its port, then retry.${log}`;
     case 'asset-preload-failed':
       return `SpaceFace opened, but authored game assets failed to preload${detail}. The asset failure is preserved in the diagnostic log.${log}`;
+    case 'package-invalid':
+      return `The packaged SpaceFace build is incomplete${detail}. Rebuild the desktop package; the app did not fall back to source files.${log}`;
     case 'navigation-failed':
       return `Electron could not load the SpaceFace game route${detail}. Retry once; if it repeats, inspect the diagnostic log.${log}`;
     case 'electron-missing':
@@ -119,6 +137,7 @@ function outcome(pass, code, details = {}) {
 
 const TERMINAL_PRIORITY = Object.freeze([
   'asset-preload-failed',
+  'package-invalid',
   'port-conflict',
   'navigation-failed',
   'existing-instance',
@@ -132,5 +151,6 @@ module.exports = {
   formatLaunchOutcome,
   isAssetPreloadFailureMessage,
   parseLaunchReceipts,
+  resolveWebRoot,
   tailDiagnosticText,
 };

@@ -8,18 +8,16 @@
 // window creation, fixed-port-for-saves, packaged→bundle root selection.
 // `npm run check:launch-policy` enforces that both launchers share that module.
 const { app, BrowserWindow } = require('electron');
-const fs = require('fs');
 const http = require('http');
 const path = require('path');
 const { createGameServer } = require('../scripts/lib/gameServer.cjs');
-const { appendLaunchReceipt, isAssetPreloadFailureMessage } = require('../scripts/lib/electronLaunchProtocol.cjs');
+const { appendLaunchReceipt, isAssetPreloadFailureMessage, resolveWebRoot } = require('../scripts/lib/electronLaunchProtocol.cjs');
 
 // WEB ROOT: packaged desktop serves the bundled release output in build/web/. Electron dev serves
 // the project root so `npm run electron` and `node server.js 8123` run the same source route even
 // when a stale build/web directory exists from an earlier package build.
 const PROJECT_ROOT = path.join(__dirname, '..');
 const BUNDLE_ROOT = path.join(PROJECT_ROOT, 'build', 'web');
-const ROOT = app.isPackaged && fs.existsSync(path.join(BUNDLE_ROOT, 'index.html')) ? BUNDLE_ROOT : PROJECT_ROOT;
 
 // SAVE PERSISTENCE: the port MUST be fixed. localStorage (where saveSystem.js persists) is keyed by
 // origin = scheme://host:port. A random port (listen(0)) changes the origin every launch, so every
@@ -35,7 +33,15 @@ app.commandLine.appendSwitch('enable-zero-copy');
 
 function startServer() {
   return new Promise((resolve, reject) => {
-    const server = createGameServer({ root: ROOT, async: false });
+    let root;
+    try {
+      root = resolveWebRoot({ packaged: app.isPackaged, projectRoot: PROJECT_ROOT, bundleRoot: BUNDLE_ROOT });
+    } catch (error) {
+      receipt('package-invalid', { code: error.code, message: error.message, entry: error.entry });
+      reject(error);
+      return;
+    }
+    const server = createGameServer({ root, async: false, devDiagnostics: !app.isPackaged });
     // Keep the fixed origin authoritative. An ephemeral fallback hides the actual port owner and
     // makes existing localStorage saves disappear for the run, so classify contention instead.
     server.once('error', async (err) => {
@@ -54,12 +60,15 @@ function startServer() {
 
 function probeSpaceFacePort(port) {
   return new Promise((resolve) => {
-    const request = http.get({ host: '127.0.0.1', port, path: '/__dev_freshness', timeout: 1000 }, (response) => {
+    const request = http.get({ host: '127.0.0.1', port, path: '/__spaceface_health', timeout: 1000 }, (response) => {
       let body = '';
       response.setEncoding('utf8');
       response.on('data', (chunk) => { body += chunk; });
       response.on('end', () => {
-        try { resolve(response.statusCode === 200 && JSON.parse(body).dev === true); }
+        try {
+          const health = JSON.parse(body);
+          resolve(response.statusCode === 200 && health.app === 'SpaceFace' && health.route === '/');
+        }
         catch { resolve(false); }
       });
     });

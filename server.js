@@ -42,6 +42,7 @@ async function handleShot(req, res, { root }) {
 const server = createGameServer({
   root: ROOT,
   async: true,
+  devDiagnostics: true,
   extraRoutes: [
     { test: (method, url) => method === 'POST' && url.startsWith('/__shot'), handle: handleShot },
   ],

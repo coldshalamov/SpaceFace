@@ -250,6 +250,7 @@
     "check:station-hlod": "node scripts/check-station-hlod-contract.mjs",
     "check:runtime-assets": "node scripts/check-runtime-asset-contract.mjs",
     "check:bundle": "npm run check:render-hotpath && npm run check:ship-material-sharing && node scripts/check-bundle.mjs && node scripts/check-asset-reachability.mjs",
+    "check:m6:packaging": "node --test test/m6-packaging-parity.test.mjs && node scripts/check-bundle.mjs",
     "check:assets": "node scripts/check-runtime-asset-contract.mjs",
     "check:asset-reachability": "node scripts/check-asset-reachability.mjs",
     "check:launch-policy": "node scripts/check-launch-policy.mjs",
@@ -391,12 +392,7 @@
       "electron/**",
       "scripts/lib/gameServer.cjs",
       "scripts/lib/electronLaunchProtocol.cjs",
-      "package.json",
-      "assets/cinematics/**",
-      "assets/ui/**",
-      "assets/ships/**",
-      "assets/portraits/**",
-      "assets/portraits/**"
+      "package.json"
     ],
     "win": {
       "target": "nsis",

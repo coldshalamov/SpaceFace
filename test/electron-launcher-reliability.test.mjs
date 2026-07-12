@@ -11,8 +11,21 @@ const {
   formatLaunchOutcome,
   isAssetPreloadFailureMessage,
   parseLaunchReceipts,
+  resolveWebRoot,
   tailDiagnosticText,
 } = require('../scripts/lib/electronLaunchProtocol.cjs');
+
+const fakeProject = join(ROOT, 'project-source');
+const fakeBundle = join(fakeProject, 'build', 'web');
+assert.equal(resolveWebRoot({ packaged: false, projectRoot: fakeProject, bundleRoot: fakeBundle, exists: () => false }), fakeProject,
+  'Electron dev must ignore stale/missing build output and serve the source route');
+assert.equal(resolveWebRoot({ packaged: true, projectRoot: fakeProject, bundleRoot: fakeBundle, exists: () => true }), fakeBundle,
+  'packaged Electron must serve the canonical bundled route');
+assert.throws(
+  () => resolveWebRoot({ packaged: true, projectRoot: fakeProject, bundleRoot: fakeBundle, exists: () => false }),
+  (error) => error.code === 'SPACEFACE_PACKAGED_BUNDLE_MISSING' && /index\.html/.test(error.message),
+  'an incomplete package must fail closed instead of serving source files',
+);
 
 const ready = evaluateLaunchOutcome({
   electronExists: true,
@@ -56,6 +69,15 @@ const assets = evaluateLaunchOutcome({
 });
 assert.equal(assets.code, 'asset-preload-failed');
 assert.match(formatLaunchOutcome(assets), /asset/i);
+
+const invalidPackage = evaluateLaunchOutcome({
+  electronExists: true,
+  receipts: [{ status: 'package-invalid', code: 'SPACEFACE_PACKAGED_BUNDLE_MISSING', message: 'missing index.html' }],
+  exitCode: 1,
+});
+assert.equal(invalidPackage.code, 'package-invalid');
+assert.match(formatLaunchOutcome(invalidPackage), /incomplete/i);
+assert.match(formatLaunchOutcome(invalidPackage), /did not fall back/i);
 
 const navigation = evaluateLaunchOutcome({
   electronExists: true,

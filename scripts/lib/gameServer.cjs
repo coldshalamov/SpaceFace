@@ -109,6 +109,7 @@ function createGameServer(opts) {
   const root = path.resolve(opts.root);
   const useAsync = opts.async !== false;
   const extraRoutes = opts.extraRoutes || [];
+  const devDiagnostics = opts.devDiagnostics !== false;
   const devFreshnessPayload = makeFreshnessTracker(root, { async: useAsync });
 
   const server = http.createServer(async (req, res) => {
@@ -123,8 +124,18 @@ function createGameServer(opts) {
         }
       }
 
-      // Dev freshness diagnostics.
-      if (method === 'GET' && url.startsWith('/__dev_freshness')) {
+      // Minimal shell liveness probe. This deliberately carries no build, source, or gameplay
+      // state: Electron uses it only to distinguish another SpaceFace instance from an unrelated
+      // process that owns the stable save-origin port.
+      if (method === 'GET' && url.startsWith('/__spaceface_health')) {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ app: 'SpaceFace', route: '/' }));
+        return;
+      }
+
+      // Dev freshness diagnostics are available to the source server only. A packaged build must
+      // not disclose source-tree timestamps or carry a dev reload surface.
+      if (devDiagnostics && method === 'GET' && url.startsWith('/__dev_freshness')) {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
         res.end(JSON.stringify(await devFreshnessPayload()));
         return;
