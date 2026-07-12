@@ -2,12 +2,12 @@
 // check-first-hour.mjs — spec2/03 THE FIRST HOUR acceptance assertions (spec §5).
 //
 // The first 15 minutes must be PACED: one beat → one verb → ≥4s silence → next beat. This check
-// audits the authored 6-beat pacing engine in src/systems/onboarding.js against the five spec §5
+// audits the authored 10-beat pacing engine in src/systems/onboarding.js against the first-hour
 // assertions:
 //   1. Beats fire in order; no beat text before predecessor DONE + 4s silence.
 //   2. Text overlap count == 0 across the full scripted first-15 (one-voice audit).
 //   3. Every tutorial line ≤12 words + passes check:player-facing-labels.
-//   4. B3 pirate flees ≤30% hull, drops ≥1 pickup; player death during B3 respawns ≤3s.
+//   4. Training actors are inert, invulnerable, non-colliding with ships, and physically reachable.
 //   5. §4 difficulty ramp: telemetry funnel milestones exist (first kill/1000cr/module/jump).
 //
 // The beat FSM is too entangled with the full sim to drive headlessly for every assertion, so we
@@ -18,11 +18,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { FLIGHT_DRILL_BEATS } from '../src/onboarding/flightDrill.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 
 const onboardingSrc = read('src/systems/onboarding.js');
+const flightDrillSrc = read('src/onboarding/flightDrill.js');
+const authoredOnboardingSrc = `${onboardingSrc}\n${flightDrillSrc}`;
 const storySrc = read('src/systems/story.js');
 const missionsSrc = read('src/systems/missions.js');
 const telemetrySrc = read('src/systems/telemetry.js');
@@ -59,22 +62,29 @@ function extractBeats(src) {
   return beats;
 }
 
-const BEATS = extractBeats(onboardingSrc);
+const BEATS = [
+  ...FLIGHT_DRILL_BEATS.map((beat) => ({
+    key: beat.key,
+    line: beat.line,
+    followups: [...(beat.followups || [])],
+  })),
+  ...extractBeats(onboardingSrc),
+];
 // ── B1 control truth: massline verb + production tether:reel ─────────────────────────────────
-assert.doesNotMatch(onboardingSrc, /Latch it\. G\./, 'B1 must not teach Latch it. G. (G is combat computer)');
-assert.doesNotMatch(onboardingSrc, /tether:reelMax/, 'B1 must not listen for dead tether:reelMax');
-assert.match(onboardingSrc, /Latch it\. Massline\./, 'B1 entry must teach massline (control prompt authority)');
-assert.match(onboardingSrc, /on:\s*'tether:reel'/, 'B1 cut follow-up must use production tether:reel');
+assert.doesNotMatch(authoredOnboardingSrc, /Latch it\. G\./, 'B1 must not teach Latch it. G. (G is combat computer)');
+assert.doesNotMatch(authoredOnboardingSrc, /tether:reelMax/, 'B1 must not listen for dead tether:reelMax');
+assert.match(flightDrillSrc, /Latch it\. Massline\./, 'B1 entry must teach massline (control prompt authority)');
+assert.match(flightDrillSrc, /on:\s*'tether:reel'/, 'B1 cut follow-up must use production tether:reel');
 assert.match(onboardingSrc, /_onTetherReel/, 'B1 must gate reel follow-up on tether:reel payload');
 
-assert.equal(BEATS.length, 6, 'there must be exactly 6 first-hour beats (spec2/03 §2)');
+assert.equal(BEATS.length, 10, 'flight drill plus seam/dock/choice must have exactly 10 paced beats');
 
 // Spec §2 beat keys in order.
-const EXPECTED_KEYS = ['wake', 'derelict', 'seam', 'snare', 'dock', 'choice'];
+const EXPECTED_KEYS = ['thrust', 'brake', 'marker', 'focus', 'tether', 'burst', 'disengage', 'seam', 'dock', 'choice'];
 assert.deepEqual(
   BEATS.map((b) => b.key),
   EXPECTED_KEYS,
-  'beats must fire in the spec order: wake→derelict→seam→snare→dock→choice',
+  'beats must teach flight controls in order before seam→dock→choice',
 );
 
 // ── Assertion 3: every tutorial line ≤12 words (spec2/00 §5 voice rule) ───────────────────────
@@ -91,10 +101,7 @@ for (const { beat, line } of allLines) {
     words <= MAX_WORDS,
     `tutorial line ≤${MAX_WORDS} words FAILED — beat "${beat}": "${line}" (${words} words)`,
   );
-  // No exclamations outside genuine emergencies (spec2/00 §5). B3 "snare" is the emergency beat.
-  if (beat !== 'snare' && beat.split(':')[0] !== 'snare') {
-    assert.ok(!/!/.test(line), `tutorial line must not use exclamations — "${line}"`);
-  }
+  assert.ok(!/!/.test(line), `tutorial line must not use exclamations — "${line}"`);
 }
 
 // ── Assertion 1 + 2: simulate the beat FSM to prove order + silence gate + zero overlap ───────
@@ -141,32 +148,20 @@ function simulateFirstHour(beats) {
     beatDoneAt[beat.key] = simTime;
   }
 
-  // Scripted timeline: advance simTime, drive each beat's DONE + followups in spec order with
-  // ≥SILENCE_S gaps. Approximate the spec timings (0:00, ~1:30, ~3:00, ~5:00, ~7:00, ~12:00).
-  const timeline = [
-    // B0: advance + entry at t=0, DONE at beacon ~90s.
-    { t: 0, advance: true },
-    { t: 90, done: 'wake' },
-    // B1: advance at ~94s (DONE+4), followups on latch/reel/cut, DONE on release ~150s.
-    { t: 94, advance: true },
-    { t: 110, followup: { beat: 'derelict', event: 'tether:latched' } },
-    { t: 130, followup: { beat: 'derelict', event: 'tether:reel' } },
-    { t: 150, done: 'derelict' },
-    // B2: advance ~154, followup on scan, DONE at 3 ore ~210s.
-    { t: 154, advance: true },
-    { t: 170, followup: { beat: 'seam', event: 'scan:hit' } },
-    { t: 210, done: 'seam' },
-    // B3: advance ~214, DONE on pirate gone ~300s.
-    { t: 214, advance: true },
-    { t: 300, done: 'snare' },
-    // B4: advance ~304, followup on sold, DONE on recommend surfaced (dock) ~420s.
-    { t: 304, advance: true },
-    { t: 380, followup: { beat: 'dock', event: 'sold' } },
-    { t: 420, done: 'dock' },
-    // B5: advance ~424, DONE on mission accepted ~720s.
-    { t: 424, advance: true },
-    { t: 720, done: 'choice' },
-  ];
+  // Drive every authored beat and followup in order. Five seconds between voice lines is enough to
+  // prove the four-second one-voice gate without coupling the check to a particular play speed.
+  const timeline = [];
+  let t = 0;
+  for (const beat of beats) {
+    timeline.push({ t, advance: true });
+    for (const followup of beat.followups || []) {
+      t += 5;
+      timeline.push({ t, followup: { beat: beat.key, event: followup.on } });
+    }
+    t += 5;
+    timeline.push({ t, done: beat.key });
+    t += SILENCE_S;
+  }
 
   for (const step of timeline) {
     if (step.advance) {
@@ -240,38 +235,27 @@ assert.match(missionsSrc, /tutorial:finished.*_releaseStoryNavigationAfterTutori
   'missions.js must release the story waypoint only after the tutorial finishes');
 assert.match(missionsSrc, /_tutorialOwnsOpening\(\)/,
   'missions.js must not force story waypoint/toast over the tutorial opening');
-assert.match(onboardingSrc, /beat\.key === 'wake'[\s\S]*_setObjectiveWaypoint\(true\)/,
-  'B0 must force its onboarding waypoint on beat entry');
+assert.match(onboardingSrc, /beat\.key === 'marker'[\s\S]*_setObjectiveWaypoint\(true\)/,
+  'marker lesson must force its distinctive onboarding waypoint on beat entry');
 
-// ── Assertion 4: B3 pirate flees ≤30% hull, drops ≥1 pickup; death respawns ≤3s ───────────────
-assert.match(onboardingSrc, /PIRATE_HULL_FLEE_FRAC = 0\.30/, 'B3 pirate must flee at ≤30% hull (spec2/03 §2/B3)');
-const b3MinMatch = onboardingSrc.match(/B3_SPAWN_MIN_WU = (\d+)/);
-const b3MaxMatch = onboardingSrc.match(/B3_SPAWN_MAX_WU = (\d+)/);
-assert.ok(b3MinMatch && b3MaxMatch, 'B3 spawn distance constants must be authored');
-const b3SpawnMin = Number(b3MinMatch[1]);
-const b3SpawnMax = Number(b3MaxMatch[1]);
-assert.ok(b3SpawnMax <= 800, `B3 pirate spawn max must be within weapon range (got ${b3SpawnMax}, spec ~700 wu)`);
-assert.ok(b3SpawnMin >= 400 && b3SpawnMin <= b3SpawnMax, `B3 spawn min must be sensible (got ${b3SpawnMin})`);
-assert.match(onboardingSrc, /shieldRegenRate = 0/, 'B3 tutorial pirate must not regen shields (no infinite brick)');
-assert.match(onboardingSrc, /'reaver_pirate'/, 'B3 must spawn a pirate-archetype foe (reaver_pirate)');
-assert.match(onboardingSrc, /makeEnemySpawnSpec/, 'B3 must use the canonical enemy spawn builder');
-assert.match(onboardingSrc, /pirateFled/, 'B3 must track the pirate-fled state (flee counts as DONE)');
-assert.match(onboardingSrc, /loot:drop/, 'B3 must drop cargo when the pirate flees (≥1 pickup)');
-// Respawn ≤3s (spec2/03 §5.4): combat.respawnPlayer must full-heal immediately (no death spiral).
-// Invuln window may use UNDOCK_INVULN_S (shared soft-respawn grace) — assert the constant exists
-// and respawn assigns _invulnUntil from it (duration is grace, not the respawn delay).
-const combatSrc = read('src/systems/combat.js');
-assert.match(combatSrc, /UNDOCK_INVULN_S\s*=\s*\d+/, 'respawn invuln constant (UNDOCK_INVULN_S) must be authored');
-assert.match(
-  combatSrc,
-  /_invulnUntil\s*=\s*state\.simTime\s*\+\s*UNDOCK_INVULN_S/,
-  'respawn must grant a finite invuln window via UNDOCK_INVULN_S (full-heal, no spiral)',
-);
-assert.match(combatSrc, /t\.hull = t\.hullMax; t\.shield = t\.shieldMax; t\.cap = t\.capMax/, 'respawn must full-heal (no punishment spiral)');
+// ── First-flight safety: training actors can teach Focus/fire without harming or ramming ─────
+assert.match(onboardingSrc, /onboardingTraining = true/, 'trainer must carry an explicit onboarding identity');
+assert.match(onboardingSrc, /trainingFocusEligible = true/, 'only the trainer opts into friendly Focus');
+assert.match(onboardingSrc, /passive:\s*true/, 'trainer must be excluded from tactical AI');
+assert.match(onboardingSrc, /roe:\s*'hold_fire'/, 'trainer rules of engagement must forbid fire');
+assert.match(onboardingSrc, /spec\.data\.weapons = \[\]/, 'trainer must be physically unarmed');
+assert.match(onboardingSrc, /invuln:\s*true/, 'trainer must survive the gunnery lesson');
+assert.match(onboardingSrc, /spec\.type = 'drone'/, 'trainer uses a non-ship collision identity');
+assert.match(onboardingSrc, /collisionMask = Masks\.PROJECTILE/, 'trainer collides with projectiles only');
+assert.match(onboardingSrc, /material: 'projectile'/, 'trainer uses zero-contact Rapier material');
+assert.doesNotMatch(onboardingSrc, /_spawnPirate|tutorial_pirate|PIRATE_HULL_FLEE_FRAC/,
+  'the first-session drill must not spawn an armed tutorial pirate');
+assert.match(onboardingSrc, /maxWeaponHeatFraction/, 'burst lesson must read live per-weapon heat');
+assert.match(onboardingSrc, /FLIGHT_DRILL_DISENGAGE_RANGE_WU/, 'disengagement must require physical separation');
 
 // ── B1 derelict + B5 choice must be wired ─────────────────────────────────────────────────────
 assert.match(onboardingSrc, /_spawnDerelict/, 'B1 must spawn a derelict wreck for the tether trio');
-assert.match(onboardingSrc, /_spawnPirate/, 'B3 must spawn the scripted pirate');
+assert.match(onboardingSrc, /_spawnTrainer/, 'flight drill must spawn an inert trainer');
 assert.match(onboardingSrc, /_openChoice/, 'B5 must surface three side-by-side offers');
 assert.match(onboardingSrc, /choiceOfferTypes/, 'B5 must tag the three loop types (HAUL/BOUNTY/SURVEY)');
 assert.match(onboardingSrc, /bulk_trade.*bounty_hunt.*recon_scan/s, 'B5 must offer haul (trade) / bounty / survey');
@@ -375,7 +359,8 @@ for (const desc of diffDescs) {
       )
     )
     // Title only when not wake
-    || /key\s*!==\s*['"]wake['"]/.test(refreshBody);
+    || /key\s*!==\s*['"]wake['"]/.test(refreshBody)
+    || /demoteObjectiveCopy\s*=\s*!![\s\S]{0,180}waypoint\.onboarding/.test(refreshBody);
   assert.ok(demotesWakePanel,
     'B0 one-verb: onboarding-panel objective title must be demoted/suppressed during active wake '
     + 'so it does not duplicate the HUD tracker command (preserve progress/status only)');
@@ -389,5 +374,5 @@ for (const desc of diffDescs) {
     'Mission Log may still expose optional RECOMMENDED NEXT context when opened on demand');
 }
 
-console.log(`First-hour OK — 6 beats in order, ${allLines.length} tutorial lines ≤${MAX_WORDS} words, ` +
-  `one-voice overlap=0, B0 one-verb exclusivity gated, B3 flee/loot/respawn wired, §4 funnel milestones present.`);
+console.log(`First-hour OK — 10 beats in order, ${allLines.length} tutorial lines ≤${MAX_WORDS} words, ` +
+  `one-voice overlap=0, first-flight trainers nonlethal, §4 funnel milestones present.`);

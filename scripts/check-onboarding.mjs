@@ -61,14 +61,14 @@ assert.doesNotMatch(src, /_ensureStoryPanel/,
 
 // ── spec2/03 supersedes the intro modal: the first hour is PACED, not a modal ────────────────
 // The old fresh-game intro card (.sf-ob-intro, Begin/Skip, Pulse-Laser legend) is GONE by design
-// (spec2/03 B0: "no modal"). The 6-beat pacing engine replaces it. These assertions pin the new
+// (spec2/03 B0: "no modal"). The 10-beat flight-drill pacing engine replaces it. These assertions pin the new
 // contract; the deeper pacing audit lives in check-first-hour.mjs.
 assert.doesNotMatch(src, /className = 'sf-ob-intro'/, 'the fresh-game intro modal must be removed (spec2/03 B0: no modal)');
 assert.doesNotMatch(src, /setAttribute\('role', 'dialog'\)/, 'no intro dialog (the modal is gone)');
 assert.doesNotMatch(src, /_closeIntro/, 'the intro teardown (_closeIntro) must be removed with the modal');
 assert.doesNotMatch(src, /beginBtn/, 'the Begin button (intro modal) must be removed');
 assert.doesNotMatch(src, /Pulse Laser S and a mining beam/, 'the intro legend copy must be removed (taught one verb at a time now)');
-assert.match(src, /const BEATS = \[/, 'the 6-beat pacing table must replace the old STEPS chain (spec2/03 §2)');
+assert.match(src, /const BEATS = \[/, 'the 10-beat pacing table must replace the old STEPS chain');
 assert.match(src, /_sayTutorial\(text\)/, 'a single tutorial-voice chokepoint must exist (one-voice audit)');
 assert.match(src, /_tryAdvanceBeat/, 'the silence-gated beat-advance engine must exist');
 assert.doesNotMatch(src, /const STEPS = \[/, 'the old 5-step STEPS chain must be removed (replaced by BEATS)');
@@ -132,4 +132,4 @@ assert.match(promptSrc, /Mine button/, 'controlPrompts.js must include touch min
 assert.match(readme, /\|\s*Dock\s*\|\s*\*\*E\*\*/, 'README controls must document E as the primary dock key');
 assert.match(readme, /\|\s*Codex\s*\|\s*\*\*K\*\*/, 'README controls must document K as the Codex key');
 
-console.log(`Onboarding OK — ${REQUIRED_HINTS.length} mid/late-game system hints wired (hub, drill, outfit, tech, automation, claims, craft), with station hub control prompts guarded. First-hour pacing pinned (6-beat engine, no intro modal).`);
+console.log(`Onboarding OK — ${REQUIRED_HINTS.length} mid/late-game system hints wired (hub, drill, outfit, tech, automation, claims, craft), with station hub control prompts guarded. First-hour pacing pinned (10-beat engine, nonlethal flight drill, no intro modal).`);

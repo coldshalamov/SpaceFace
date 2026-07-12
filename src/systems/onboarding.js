@@ -14,15 +14,27 @@
 //
 // System contract: { name, init(ctx), update(dt, state) }. Wired into registry SYSTEMS + UPDATE_ORDER.
 //
-// STORY OBJECTIVE TRACKER (P2-14): once the 5-step tutorial finishes (or for a returning player on
+// STORY OBJECTIVE TRACKER (P2-14): once the paced tutorial finishes (or for a returning player on
 // load), the same panel slot switches to "story mode" and persistently shows the CURRENT story beat's
 // objective + direction hint, read from state.story.beatIndex + STORY_BEATS (data) + BEAT_CONTENT
 // (narrative). A player who missed the ephemeral comms toast can always see "what should I do now"
 // without opening a menu.
 
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { Masks } from '../core/entity.js';
 import { controlPrompt, currentPromptModality } from '../ui/controlPrompts.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import {
+  FLIGHT_DRILL_BEATS,
+  FLIGHT_DRILL_BRAKE_WU,
+  FLIGHT_DRILL_BURST_SHOTS,
+  FLIGHT_DRILL_DISENGAGE_RANGE_WU,
+  FLIGHT_DRILL_HEAT_RECOVER_FRAC,
+  FLIGHT_DRILL_MARKER_RANGE_WU,
+  FLIGHT_DRILL_SPEED_WU,
+  isTrainingActor,
+  maxWeaponHeatFraction,
+} from '../onboarding/flightDrill.js';
 
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
@@ -39,43 +51,23 @@ const TAU = Math.PI * 2;
 // `done`  : the kind of DONE condition this beat resolves on (handled in _resolveBeatDone).
 // Handoff: completing B5 (accepting any of three offers) calls _finish() → story-mode panel.
 const SILENCE_S = 4;          // ≥4 s of text silence between a beat's DONE and the next beat's text
-const BEACON_RANGE_WU = 420;  // B0 DONE: within this of the beacon
 const TETHER_REEL_MAX_WU = 60;// B1: reel target distance
 const SEAM_ORE_TARGET = 3;    // B2 DONE: ore collected
-const PIRATE_HULL_FLEE_FRAC = 0.30; // B3: pirate flees at ≤30% hull
-// spec2/03 §2: spawn ~700 wu — must sit inside starter gun range (Pulse Laser S = 600 wu) once the
-// pirate closes, or the player can lock from scanner range and fire for minutes with zero damage.
-const B3_SPAWN_MIN_WU = 520;
-const B3_SPAWN_MAX_WU = 720;
-const B3_TUTORIAL_SHIELD = 40;
-const B3_TUTORIAL_ARMOR = 22;
-const B3_TUTORIAL_HULL_MULT = 0.42;
-const B1_DERELICT_OFFSET_WU = 80;   // B1 derelict spawn distance from beacon
-const PORT_SAFE_SPAWN_RADIUS_WU = 1200;
+const B1_DERELICT_OFFSET_WU = 80;   // tether lesson starts inside the stronger live latch envelope
+const TRAINER_MARKER_OFFSET_WU = 620;
+const TRAINER_BURST_OFFSET_WU = 260;
+const TRAINER_FLYBY_SPEED_WU = 118;
+const TRAINER_FLYBY_OFFSET_WU = 52;
 
 // B0 one-verb hierarchy (UIUX-B0-ONE-VERB):
 //   1. HUD mission tracker (.sf-mission-tracker) is the sole persistent actionable objective
 //      (fed by nav.waypoint.reason while onboarding waypoint is active).
 //   2. #sf-onboarding panel is demoted during B0: progress/status only (no competing verb copy).
 //   3. Transient tutorial voice (_sayTutorial) speaks the beat line once.
-//   4. firstFlight control-hint wall is deferred until the staged B0-B5 rail is finished.
+//   4. firstFlight control-hint wall is deferred until the staged rail is finished.
 //   5. Mission Log / story longform stay on-demand context (not a second primary command).
 const BEATS = [
-  { // B0 WAKE (0:00) — one verb; HUD owns the persistent line
-    key: 'wake',
-    line: 'Contract 47-A: thrust to the beacon.',
-    done: 'beaconRange',
-  },
-  { // B1 THE DERELICT (~1:30) — tether/massline trio
-    key: 'derelict',
-    line: 'Latch it. Massline.',
-    followups: [
-      // Neutral verbs only — default reelIn is unbound (hold tether reels); cut is tether edge, not G.
-      { on: 'tether:latched', line: 'Winch in. Hold tether to reel.' },
-      { on: 'tether:reel', line: 'Cut and coast. Tap tether to cut.' },
-    ],
-    done: 'tether:released',
-  },
+  ...FLIGHT_DRILL_BEATS,
   { // B2 FIRST SEAM (~3:00) — scan + mine; modality-neutral verbs
     key: 'seam',
     line: 'Pulse the scanner.',
@@ -83,11 +75,6 @@ const BEATS = [
       { on: 'scan:hit', line: 'Beam the bright seams.' },
     ],
     done: 'oreCollected',
-  },
-  { // B3 THE SNARE (~5:00) — weak pirate interdicts, flees at 30%, dumps cargo
-    key: 'snare',
-    line: 'Trouble. Fire on the raider.',
-    done: 'pirateGone',
   },
   { // B4 DOCK (~7:00) — sell flow + ONE recommended contract
     key: 'dock',
@@ -157,7 +144,7 @@ export const onboarding = {
     this._dockControlInRange = false;
     this._gateControlInRange = false;
     this._derelictId = null;
-    this._pirateId = null;
+    this._trainerId = null;
     this._firstRunSplashPending = false;
 
     const bus = this.bus;
@@ -195,7 +182,10 @@ export const onboarding = {
     bus.on('tether:released', () => this._onBeatEvent('tether:released'));
     bus.on('tether:broke', () => this._onBeatEvent('tether:released'));
     bus.on('scan:pulse', () => this._onBeatEvent('scan:hit'));
-    bus.on('entity:killed', (p) => this._onBeatKill(p || {}));
+    bus.on('flybyFocus:start', (p) => {
+      if (p && p.targetId === this._trainerId) this._onBeatEvent('flybyFocus:start', p);
+    });
+    bus.on('combat:fire', (p) => this._onTrainingFire(p || {}));
 
     // ── Contextual first-time hints (fire once per hint, persist across saves) ───────────────
     // These are independent of the tutorial chain: they fire for all players whose
@@ -239,7 +229,7 @@ export const onboarding = {
     });
 
     // ── Mid/late-game system onboarding (P1-10) ─────────────────────────────────────────────
-    // The 5-step tutorial covers flight + first dock/sell, but drill-mining, outfitting, the tech
+    // The first-session rail covers flight + first dock/sell, but drill-mining, outfitting, the tech
     // tree, automation, claims/bases, and crafting are all un-onboarded — the player hits a steep
     // self-serve cliff the moment they dock. Each of these fires a ONE-TIME contextual hint on the
     // player's first interaction with that system, via the same player.hints mechanism as the
@@ -311,7 +301,7 @@ export const onboarding = {
   _showHint(key, text) {
     const st = this.state;
     if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return;
-    // The staged B0-B5 rail is already the tutorial. Contextual walls wait until it finishes so a
+    // The staged rail is already the tutorial. Contextual walls wait until it finishes so a
     // combat hit, dock range, or cargo edge cannot queue a second lesson behind the current verb.
     if (this._tutorialRailOwnsVoice()) return;
     if (!st.player.hints) st.player.hints = {};
@@ -348,7 +338,9 @@ export const onboarding = {
       beatDoneAt: {},             // { beatKey: simTimeS }
       firedFollowups: {},         // { beatKey:eventName: true } — followup barks fire once
       oreCollected: 0,            // B2 progress
-      pirateFled: false,          // B3: pirate fled (vs dead) — still counts as DONE
+      burstShots: 0,
+      burstPeakHeat: 0,
+      burstCooling: false,
     };
     // A fresh new game starts in tutorial mode (not story mode).
     this._storyMode = false;
@@ -391,6 +383,7 @@ export const onboarding = {
 
   _teardown() {
     const ob = this.state.onboarding; if (ob) ob.active = false;
+    this._removeTrainingActors();
     if (this._panel) { this._panel.remove(); this._panel = null; }
     this._bodyEl = null;
     this._titleEl = null;
@@ -452,15 +445,30 @@ export const onboarding = {
     this._refreshBeatPanel();
   },
 
-  // Spawn the world content for a beat on entry (derelict for B1, pirate for B3, etc).
+  // Spawn only inert, invulnerable training content during the flight drill.
   _enterBeat(beat) {
     if (!beat) return;
-    if (beat.key === 'wake') this._setObjectiveWaypoint(true);
-    else if (beat.key === 'derelict') {
+    if (beat.key === 'thrust' || beat.key === 'brake') this._setObjectiveWaypoint(true);
+    else if (beat.key === 'marker') {
+      this._spawnTrainer('marker');
+      this._setObjectiveWaypoint(true);
+    }
+    else if (beat.key === 'focus') this._beginTrainerFlyby();
+    else if (beat.key === 'tether') {
       this._spawnDerelict();
       this._setObjectiveWaypoint(true);
     }
-    else if (beat.key === 'snare') this._spawnPirate();
+    else if (beat.key === 'burst') {
+      this._spawnTrainer('burst');
+      const ob = this.state.onboarding;
+      if (ob) {
+        ob.burstShots = 0;
+        ob.burstPeakHeat = 0;
+        ob.burstCooling = false;
+      }
+      this._setObjectiveWaypoint(true);
+    }
+    else if (beat.key === 'disengage') this._setObjectiveWaypoint(true);
     else if (beat.key === 'dock') this._setObjectiveWaypoint(true);
     else if (beat.key === 'choice') this._openChoice();
   },
@@ -501,17 +509,16 @@ export const onboarding = {
     if (done === 'tether:released' && (eventName === 'tether:released')) {
       resolved = true;
       this._dropDerelictSalvage();
+    } else if (done === 'flybyFocus:start' && eventName === 'flybyFocus:start') {
+      resolved = true;
     } else if (done === 'mission:accepted' && eventName === 'mission:accepted') {
       resolved = true; // B5: accepting any offer ends the tutorial
     } else if (done === 'recommendSurfaced' && eventName === 'sold') {
       // B4 DONE = the player sold the haul, which surfaces the board's one recommended contract.
       // The "Board's got one job for you." followup bark fires on this same event (just above).
       resolved = true;
-    } else if (done === 'pirateGone') {
-      // handled in _onBeatKill (pirate dead) + _checkPirateFlee (pirate fled at ≤30%)
-      if (ob.pirateFled) resolved = true;
     }
-    // beaconRange / oreCollected are resolved in update() (proximity) / _recordOreCollected.
+    // Movement, heat recovery, distance, and ore collection resolve from deterministic state reads.
     if (resolved) this._beatDone(beat);
   },
 
@@ -540,21 +547,23 @@ export const onboarding = {
     this._refreshBeatPanel();
   },
 
-  // B3: handle the pirate's death (player killed it) or the player's death (respawn — no spiral).
-  _onBeatKill(p) {
+  _onTrainingFire(p) {
     const ob = this.state.onboarding;
     if (!ob || !ob.active || ob.finished) return;
     const beat = BEATS[ob.currentBeat];
-    if (!beat || beat.key !== 'snare') return;
-    // Pirate dead → B3 DONE.
-    if (ob._pirateId != null && p.id === ob._pirateId) {
-      this._beatDone(beat);
-      return;
+    if (!beat || beat.key !== 'burst' || p.ownerId !== this.state.playerId) return;
+    ob.burstShots = (ob.burstShots || 0) + 1;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    ob.burstPeakHeat = Math.max(ob.burstPeakHeat || 0, maxWeaponHeatFraction(player));
+    if (ob.burstShots >= FLIGHT_DRILL_BURST_SHOTS && !ob.burstCooling) {
+      ob.burstCooling = true;
+      this._onBeatEvent('burst:ready', { shots: ob.burstShots, peakHeat: ob.burstPeakHeat });
     }
   },
 
   _finish() {
     const ob = this.state.onboarding; if (!ob) return;
+    this._removeTrainingActors();
     ob.finished = true;
     ob.active = false; // tutorial mode ends permanently (spec2/03 B5)
     this._clearObjectiveWaypoint();
@@ -626,12 +635,11 @@ export const onboarding = {
       // Advance through the beat gate (silence-gated) + resolve proximity DONE conditions.
       this._tryAdvanceBeat();
       this._resolveProximityDone();
-      this._checkPirateFlee();
       this._setObjectiveWaypoint(false);
     } catch (_) { /* never let onboarding break the loop */ }
   },
 
-  // True when firstFlight may fire without stacking on any B0-B5 teaching beat.
+  // True when firstFlight may fire without stacking on any staged teaching beat.
   _firstFlightB0Released(state) {
     const ob = state && state.onboarding;
     return !ob || !ob.active || !!ob.finished;
@@ -649,7 +657,7 @@ export const onboarding = {
     }
     if (!el) return;
 
-    // During B0-B5 the HUD objective + one attention line own instruction. Hide the multi-verb
+    // During the staged rail the HUD objective + one attention line own instruction. Hide the multi-verb
     // control laundry; it returns automatically after the rail finishes.
     const onboardingState = state.onboarding;
     if (onboardingState && onboardingState.active && !onboardingState.finished) {
@@ -695,32 +703,51 @@ export const onboarding = {
     return currentPromptModality({ gamepad: this.gamepad, touch: this.touch });
   },
 
-  // Resolve DONE conditions that depend on proximity (B0 beacon range), polled each update tick.
+  // Resolve drill conditions from canonical sim state. No key assumptions and no wall clock.
   _resolveProximityDone() {
     const ob = this.state.onboarding;
     if (!ob || !ob.active || ob.finished) return;
     const beat = BEATS[ob.currentBeat];
     if (!beat || ob.beatDoneAt[beat.key] != null) return;
-    if (beat.done === 'beaconRange') {
-      const t = this._findBeacon();
-      const p = this.state.entities.get(this.state.playerId);
-      if (t && p && t.pos) {
-        const dx = t.pos.x - p.pos.x, dz = t.pos.z - p.pos.z;
-        if (dx * dx + dz * dz <= BEACON_RANGE_WU * BEACON_RANGE_WU) this._beatDone(beat);
+    const player = this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return;
+    const speed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
+    let trainer = this._trainingActor();
+    if (!trainer && ['marker', 'focus', 'burst', 'disengage'].includes(beat.key)) {
+      trainer = this._spawnTrainer(beat.key === 'burst' || beat.key === 'disengage' ? 'burst' : 'marker');
+      if (beat.key === 'focus') this._beginTrainerFlyby();
+      this._setObjectiveWaypoint(true);
+      return; // automatic retry starts from a clean, readable placement next tick
+    }
+    const trainerDistance = trainer && trainer.pos
+      ? Math.hypot(trainer.pos.x - player.pos.x, trainer.pos.z - player.pos.z)
+      : Infinity;
+    if (beat.done === 'speedUp' && speed >= FLIGHT_DRILL_SPEED_WU) this._beatDone(beat);
+    else if (beat.done === 'speedDown' && speed <= FLIGHT_DRILL_BRAKE_WU) this._beatDone(beat);
+    else if (beat.done === 'trainerRange' && trainerDistance <= FLIGHT_DRILL_MARKER_RANGE_WU) this._beatDone(beat);
+    else if (beat.done === 'burstCooled') {
+      const heat = maxWeaponHeatFraction(player);
+      ob.burstPeakHeat = Math.max(ob.burstPeakHeat || 0, heat);
+      if (ob.burstCooling && ob.burstShots >= FLIGHT_DRILL_BURST_SHOTS
+        && heat <= Math.max(0.02, (ob.burstPeakHeat || 0) * FLIGHT_DRILL_HEAT_RECOVER_FRAC)) {
+        this._beatDone(beat);
       }
+    } else if (beat.done === 'disengaged' && trainerDistance >= FLIGHT_DRILL_DISENGAGE_RANGE_WU) {
+      this._removeTrainingActors();
+      this._beatDone(beat);
     }
   },
 
   // B1: spawn a derelict wreck near the beacon for the tether trio (latch/winch/cut).
   _spawnDerelict() {
     const st = this.state;
-    const beacon = this._findBeacon();
-    if (!beacon || !beacon.pos || !this.helpers || !this.helpers.spawnEntity) return;
-    // Offset from the beacon so the player learns to fly+latch, not spawn-dock.
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos || !this.helpers || !this.helpers.spawnEntity) return;
+    // Offset from the current ship so the stronger live massline can be learned without a chase.
     const ang = onboardingRandom(st) * TAU;
     const pos = {
-      x: beacon.pos.x + Math.cos(ang) * B1_DERELICT_OFFSET_WU,
-      z: beacon.pos.z + Math.sin(ang) * B1_DERELICT_OFFSET_WU,
+      x: player.pos.x + Math.cos(ang) * B1_DERELICT_OFFSET_WU,
+      z: player.pos.z + Math.sin(ang) * B1_DERELICT_OFFSET_WU,
     };
     const wreck = this.helpers.spawnEntity({
       type: 'wreck', pos, vel: { x: 0, z: 0 }, radius: 14, mass: 900,
@@ -749,86 +776,88 @@ export const onboarding = {
     }
   },
 
-  // B3: spawn a weak pirate at standoff range; it must telegraph before it can threaten the player.
-  _spawnPirate() {
+  _spawnTrainer(mode) {
     const st = this.state;
     const player = st.entities && st.entities.get(st.playerId);
-    if (!player || !player.pos) return;
-    if (typeof makeEnemySpawnSpec !== 'function' || !this.helpers || !this.helpers.spawnEntity) return;
-    const pos = this._tutorialHostileSpawnPos(player);
-    if (!pos) return;
-    // Weak: level 1 reaver_pirate silhouette, tutorial stats — killable in ~15s at point-blank, not a
-    // regenning brick. Flee at 30% hull still completes the beat without requiring a kill.
+    if (!player || !player.pos || !this.helpers || !this.helpers.spawnEntity) return null;
+    this._removeTrainingActors();
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    const range = mode === 'burst' ? TRAINER_BURST_OFFSET_WU : TRAINER_MARKER_OFFSET_WU;
+    const pos = {
+      x: player.pos.x + Math.cos(heading) * range,
+      z: player.pos.z + Math.sin(heading) * range,
+    };
     const spec = makeEnemySpawnSpec('reaver_pirate', 1, pos);
     if (spec) {
+      spec.name = mode === 'burst' ? 'SCN Gunnery Buoy' : 'SCN Flight Trainer';
+      spec.type = 'drone';
+      spec.team = 0;
+      spec.factionId = 'faction_scn';
+      // Projectile-only custom mask gives the gunnery burst a real hit receipt; the ghost Rapier
+      // material guarantees the trainer can never ram the player.
+      spec.collides = true;
+      spec.collisionMask = Masks.PROJECTILE;
+      spec.physicsBody = { ...(spec.physicsBody || {}), material: 'projectile' };
+      spec.mass = 90;
+      spec.vel = { x: 0, z: 0 };
+      spec.flags = { ...(spec.flags || {}), invuln: true };
+      spec._invulnUntil = Infinity;
       spec.data = spec.data || {};
-      spec.data.ai = spec.data.ai || {};
-      spec.data.ai.spawnContext = 'tutorial_pirate';
-      spec.shield = spec.shieldMax = B3_TUTORIAL_SHIELD;
-      spec.armorHp = spec.armorMax = B3_TUTORIAL_ARMOR;
-      spec.armorFlat = 2;
-      spec.shieldRegenRate = 0;
-      spec.hull = spec.hullMax = Math.round((spec.hullMax || 80) * B3_TUTORIAL_HULL_MULT);
-      const pirate = this.helpers.spawnEntity(spec);
-      if (pirate) {
-        this._pirateId = pirate.id;
-        const ob = st.onboarding;
-        if (ob) ob._pirateId = pirate.id;
-      }
-    }
-  },
-
-  _tutorialHostileSpawnPos(player) {
-    for (let attempt = 0; attempt < 24; attempt++) {
-      const ang = onboardingRandom(this.state) * TAU;
-      const r = B3_SPAWN_MIN_WU + onboardingRandom(this.state) * (B3_SPAWN_MAX_WU - B3_SPAWN_MIN_WU);
-      const pos = {
-        x: player.pos.x + Math.cos(ang) * r,
-        z: player.pos.z + Math.sin(ang) * r,
+      spec.data.weapons = [];
+      spec.data.ai = {
+        ...(spec.data.ai || {}),
+        passive: true,
+        roe: 'hold_fire',
+        spawnContext: 'tutorial_training',
+        motive: 'training',
       };
-      if (this._outsidePortSafety(pos)) return pos;
+      spec.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: heading };
+      spec.data.onboarding = true;
+      spec.data.onboardingTraining = true;
+      spec.data.trainingFocusEligible = true;
+      spec.data.trainingMode = mode;
+      spec.shieldRegenRate = 0;
+      spec.hull = spec.hullMax = Math.max(100, spec.hullMax || 100);
+      const trainer = this.helpers.spawnEntity(spec);
+      if (trainer) {
+        trainer._invulnUntil = Infinity;
+        this._trainerId = trainer.id;
+        if (st.onboarding) st.onboarding._trainerId = trainer.id;
+        st.player.targetId = trainer.id;
+        return trainer;
+      }
     }
     return null;
   },
 
-  _outsidePortSafety(pos) {
-    const active = this.state.world && this.state.world.activeSector || {};
-    const tooClose = (anchor, radius = PORT_SAFE_SPAWN_RADIUS_WU) => {
-      if (!anchor || !anchor.pos) return false;
-      const dx = pos.x - anchor.pos.x;
-      const dz = pos.z - anchor.pos.z;
-      return dx * dx + dz * dz < radius * radius;
-    };
-    for (const station of active.stations || []) {
-      const dataRadius = station && station.data && Number(station.data.dockRadius);
-      const radius = Math.max(PORT_SAFE_SPAWN_RADIUS_WU, Number.isFinite(dataRadius) ? dataRadius + 900 : 0);
-      if (tooClose(station, radius)) return false;
-    }
-    for (const gate of active.gates || []) {
-      if (tooClose(gate, 1000)) return false;
-    }
-    return true;
+  _beginTrainerFlyby() {
+    const trainer = this._trainingActor() || this._spawnTrainer('marker');
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!trainer || !player || !player.pos) return;
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    const rightX = -Math.sin(heading);
+    const rightZ = Math.cos(heading);
+    trainer.pos.x = player.pos.x + Math.cos(heading) * 138 + rightX * TRAINER_FLYBY_OFFSET_WU;
+    trainer.pos.z = player.pos.z + Math.sin(heading) * 138 + rightZ * TRAINER_FLYBY_OFFSET_WU;
+    trainer.vel.x = -Math.cos(heading) * TRAINER_FLYBY_SPEED_WU;
+    trainer.vel.z = -Math.sin(heading) * TRAINER_FLYBY_SPEED_WU;
+    trainer.prevPos.copy(trainer.pos);
   },
 
-  // B3: check if the pirate should flee at ≤30% hull (dumping cargo). Once flagged, it's DONE.
-  _checkPirateFlee() {
-    const ob = this.state.onboarding;
-    if (!ob || !ob.active || ob.finished || ob.pirateFled) return;
-    if (this._pirateId == null) return;
-    const beat = BEATS[ob.currentBeat];
-    if (!beat || beat.key !== 'snare') return;
-    const pirate = this.state.entities && this.state.entities.get(this._pirateId);
-    if (!pirate || !pirate.alive) return;
-    if ((pirate.hull / (pirate.hullMax || 1)) <= PIRATE_HULL_FLEE_FRAC) {
-      ob.pirateFled = true;
-      // Force the AI to flee + dump cargo (the interdiction ends; no death required).
-      if (pirate.data && pirate.data.ai) {
-        pirate.data.ai.forceFlee = true;
-      }
-      this.bus.emit('loot:drop', { pos: { x: pirate.pos.x, z: pirate.pos.z }, credits: 0, items: [{ id: 'cmdty_stolen_goods', qty: 2 }] });
-      const fresh = BEATS[ob.currentBeat];
-      if (fresh && fresh.done === 'pirateGone') this._beatDone(fresh);
+  _trainingActor() {
+    if (this._trainerId == null || !this.state.entities) return null;
+    const actor = this.state.entities.get(this._trainerId);
+    return actor && actor.alive !== false && isTrainingActor(actor) ? actor : null;
+  },
+
+  _removeTrainingActors() {
+    if (this._trainerId != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
+      this.helpers.removeEntity(this._trainerId);
     }
+    const player = this.state && this.state.player;
+    if (player && player.targetId === this._trainerId) player.targetId = null;
+    this._trainerId = null;
+    if (this.state && this.state.onboarding) this.state.onboarding._trainerId = null;
   },
 
   // B5: surface three side-by-side offers (HAUL/BOUNTY/SURVEY). The mission board generates them;
@@ -854,9 +883,18 @@ export const onboarding = {
     const beat = BEATS[ob.currentBeat];
     const existing = st.nav.waypoint;
     if (existing && !existing.onboarding && !force) return;
-    // B0/B1 point at the beacon; B4 points at Helios station; others clear the onboarding waypoint.
+    // Only the current physical lesson owns a waypoint; the marker identity stays beat-stable.
     let target = null;
-    if (beat && (beat.key === 'wake' || beat.key === 'derelict')) target = this._findBeacon();
+    if (beat && (beat.key === 'thrust' || beat.key === 'brake')) target = this._findBeacon();
+    else if (beat && (beat.key === 'marker' || beat.key === 'focus'
+      || beat.key === 'burst' || beat.key === 'disengage')) {
+      const trainer = this._trainingActor();
+      if (trainer) target = { pos: trainer.pos, label: trainer.name || 'SCN Flight Trainer' };
+    }
+    else if (beat && beat.key === 'tether') {
+      const derelict = this._derelictId != null && st.entities && st.entities.get(this._derelictId);
+      if (derelict && derelict.alive !== false) target = { pos: derelict.pos, label: 'Training Derelict' };
+    }
     else if (beat && beat.key === 'dock') target = this._findHelios();
     if (!target || !target.pos) {
       if (existing && existing.onboarding) st.nav.waypoint = null;
@@ -991,15 +1029,17 @@ export const onboarding = {
 
   // Render the current beat into the objective panel.
   // The HUD mission tracker owns the sole persistent actionable verb (via nav.waypoint.reason).
-  // This panel is progress/status only for every B0-B5 beat; tutorial verbs speak once through the
+  // This panel yields whenever the HUD owns a spatial lesson; tutorial verbs speak once through the
   // voice arbiter and never become a second persistent command or assistive live region.
   _refreshBeatPanel() {
     if (!this._panel || this._storyMode) return;
     const ob = this.state.onboarding; if (!ob) return;
     const beat = BEATS[ob.currentBeat];
     const idx = ob.currentBeat < 0 ? -1 : ob.currentBeat;
-    // Every beat, including 'wake', is demoted here; HUD owns the persistent verb for B0-B5.
-    const demoteObjectiveCopy = true;
+    // Exactly one persistent command surface: spatial lessons use the HUD waypoint; non-spatial
+    // lessons (thrust/brake/heat) use this compact panel title.
+    const demoteObjectiveCopy = !!(this.state.nav && this.state.nav.waypoint
+      && this.state.nav.waypoint.onboarding);
 
     if (this._kickerLabelEl) {
       const kicker = 'Status';

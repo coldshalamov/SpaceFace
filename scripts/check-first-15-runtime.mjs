@@ -189,14 +189,11 @@ try {
   assert.equal(b0Report.storyBeat, 0, 'first run should start on story beat 0');
   assert.equal(b0Report.onboardingActive, true, 'B0 sample requires active onboarding');
   assert.equal(b0Report.onboardingFinished, false, 'B0 sample requires unfinished onboarding');
-  assert.equal(b0Report.currentBeat, 0, 'B0 sample should still be on wake (currentBeat 0)');
-  assert(b0Report.waypoint && (b0Report.waypoint.kind === 'story' || b0Report.waypoint.onboarding === true),
-    'first run should seed a story or onboarding waypoint');
-  assert.match(
-    `${b0Report.waypoint.reason || ''} ${b0Report.waypoint.label || ''}`,
-    /47-A|mass signal|manifest|beacon/i,
-    'first waypoint should point at the opening beacon/anomaly',
-  );
+  assert.equal(b0Report.currentBeat, 0, 'B0 sample should still be on thrust (currentBeat 0)');
+  if (b0Report.waypoint) {
+    assert(b0Report.waypoint.kind === 'story' || b0Report.waypoint.onboarding === true,
+      'any opening waypoint must remain story/onboarding-owned');
+  }
 
   const panelCmd = !!(b0Report.panelVisible && b0Report.panelTitle);
   const trackerCmd = !!(b0Report.trackerVisible && b0Report.trackerObj);
@@ -213,7 +210,7 @@ try {
   if (trackerCmd) {
     assert.match(
       b0Report.trackerText,
-      /Story|Tutorial|47-A|signal|anomaly|Mission Log|Objective|beacon|thrust/i,
+      /Story|Tutorial|47-A|signal|anomaly|Mission Log|Objective|beacon|thrust|speed/i,
       'HUD tracker should expose first objective context when it owns the command',
     );
   }
@@ -263,7 +260,8 @@ try {
   });
 
   assert.equal(flightReport.topAfter, 'missionLog', 'mission log should open on demand after launch');
-  assert.match(flightReport.missionLogText, /RECOMMENDED NEXT/i, 'mission log should show recommended next rail (optional context)');
+  assert.match(flightReport.missionLogText, /CURRENT ACTION|RECOMMENDED NEXT/i,
+    'mission log should show the current/recommended rail as optional context');
   assert.match(flightReport.missionLogText, /Follow the anomaly/i, 'mission log should carry the first route action as optional context');
   assert.deepEqual(issues.errorIssues(), [], 'first-15 runtime probe should not record page errors');
 

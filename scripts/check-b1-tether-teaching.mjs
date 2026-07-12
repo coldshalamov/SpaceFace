@@ -19,6 +19,8 @@ import { onboarding } from "../src/systems/onboarding.js";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const src = readFileSync(join(ROOT, "src/systems/onboarding.js"), "utf8");
+const drillSrc = readFileSync(join(ROOT, "src/onboarding/flightDrill.js"), "utf8");
+const authoredSrc = `${src}\n${drillSrc}`;
 const attachmentSrc = readFileSync(join(ROOT, "src/combat/attachments.js"), "utf8");
 
 let sections = 0;
@@ -27,10 +29,10 @@ function ok(label) {
   console.log("  PASS " + label);
 }
 
-assert.doesNotMatch(src, /Latch it\. G\./, "B1 must not teach Latch it. G. (G is combat computer)");
-assert.doesNotMatch(src, /tether:reelMax/, "B1 must not listen for dead tether:reelMax");
-assert.match(src, /line:\s*'Latch it\. Massline\.'/, "B1 entry uses neutral massline verb (control prompt authority)");
-assert.match(src, /on:\s*'tether:reel'/, "B1 cut follow-up is gated on production tether:reel");
+assert.doesNotMatch(authoredSrc, /Latch it\. G\./, "B1 must not teach Latch it. G. (G is combat computer)");
+assert.doesNotMatch(authoredSrc, /tether:reelMax/, "B1 must not listen for dead tether:reelMax");
+assert.match(drillSrc, /line:\s*'Latch it\. Massline\.'/, "B1 entry uses neutral massline verb (control prompt authority)");
+assert.match(drillSrc, /on:\s*'tether:reel'/, "B1 cut follow-up is gated on production tether:reel");
 assert.match(src, /bus\.on\('tether:reel'/, "onboarding must subscribe to tether:reel");
 assert.match(src, /_onTetherReel/, "onboarding must gate reel follow-up via _onTetherReel");
 assert.match(src, /TETHER_REEL_MAX_WU\s*=\s*60/, "tight-reel threshold stays at 60 wu");
@@ -55,7 +57,7 @@ function makeHarness() {
     onboarding: {
       active: true,
       finished: false,
-      currentBeat: 1,
+      currentBeat: 4,
       beatDoneAt: {},
       firedFollowups: {},
       oreCollected: 0,
@@ -83,7 +85,7 @@ h.bus.emit("tether:reel", {
   before: 120,
   after: 90,
 });
-assert.equal(h.state.onboarding.firedFollowups["derelict:tether:reel"], undefined, "after=90 > 60 must not fire the cut follow-up");
+assert.equal(h.state.onboarding.firedFollowups["tether:tether:reel"], undefined, "after=90 > 60 must not fire the cut follow-up");
 assert.ok(!tutorialTexts(h).some((t) => /Cut and coast/i.test(t)), "loose reel must not emit Cut and coast");
 
 h.state.simTime = 120;
@@ -94,7 +96,7 @@ h.bus.emit("tether:reel", {
   before: 72,
   after: 58,
 });
-assert.equal(h.state.onboarding.firedFollowups["derelict:tether:reel"], true, "after=58 <= 60 must fire the cut follow-up once");
+assert.equal(h.state.onboarding.firedFollowups["tether:tether:reel"], true, "after=58 <= 60 must fire the cut follow-up once");
 assert.ok(tutorialTexts(h).some((t) => t === "Cut and coast. Tap tether to cut."), "tight reel must say the cut follow-up line");
 assert.equal(tutorialTexts(h).filter((t) => /Cut and coast/i.test(t)).length, 1, "cut follow-up must fire exactly once");
 
@@ -112,11 +114,11 @@ ok("tether:reel tight/loose gate + once-only");
 const h2 = makeHarness();
 h2.state.simTime = 105;
 h2.bus.emit("tether:latched", { targetId: "wreck" });
-assert.equal(h2.state.onboarding.firedFollowups["derelict:tether:latched"], true, "tether:latched must fire the winch follow-up");
+assert.equal(h2.state.onboarding.firedFollowups["tether:tether:latched"], true, "tether:latched must fire the winch follow-up");
 assert.ok(tutorialTexts(h2).some((t) => t === "Winch in. Hold tether to reel."), "latch follow-up line must match authored BEATS table");
 h2.state.simTime = 140;
 h2.bus.emit("tether:released", { targetId: "wreck" });
-assert.ok(h2.state.onboarding.beatDoneAt.derelict != null, "B1 DONE must still resolve on tether:released");
+assert.ok(h2.state.onboarding.beatDoneAt.tether != null, "B1 DONE must still resolve on tether:released");
 ok("latch follow-up + release DONE preserved");
 
 const h3 = makeHarness();
@@ -125,13 +127,13 @@ h3.bus.emit("tether:reel", {
   actorId: "player", targetId: "wreck", attachmentId: "att1",
   before: 80, after: 60,
 });
-assert.equal(h3.state.onboarding.firedFollowups["derelict:tether:reel"], true, "after=60 must count as tight (<= TETHER_REEL_MAX_WU)");
+assert.equal(h3.state.onboarding.firedFollowups["tether:tether:reel"], true, "after=60 must count as tight (<= TETHER_REEL_MAX_WU)");
 ok("boundary after=60 is tight");
 
 const h4 = makeHarness();
 h4.bus.emit("tether:reel", { before: 100 });
 h4.bus.emit("tether:reel", { after: NaN });
-assert.equal(h4.state.onboarding.firedFollowups["derelict:tether:reel"], undefined, "missing/NaN after must not fire cut follow-up");
+assert.equal(h4.state.onboarding.firedFollowups["tether:tether:reel"], undefined, "missing/NaN after must not fire cut follow-up");
 ok("invalid reel payload is a no-op");
 
 console.log("[check-b1-tether-teaching] PASS — " + sections + " sections green");

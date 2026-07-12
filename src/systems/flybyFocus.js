@@ -65,6 +65,16 @@ function isHostileShip(state, ent, player) {
   return isHostileToPlayer(ent, player.team, state);
 }
 
+function isTrainingFocusTarget(ent, player) {
+  if (!ent || !ent.alive || !ent.pos || ent.id === player.id) return false;
+  if (ent.type !== 'ship' && ent.type !== 'drone') return false;
+  return ent.data?.onboardingTraining === true && ent.data?.trainingFocusEligible === true;
+}
+
+function isFocusEligibleShip(state, ent, player) {
+  return isTrainingFocusTarget(ent, player) || isHostileShip(state, ent, player);
+}
+
 function targetsPlayer(ent, playerId) {
   const combat = ent && ent.data && ent.data.combat;
   return !!(combat && (combat.targetId === playerId || combat.lockTarget === playerId));
@@ -116,7 +126,7 @@ export function pickFlybyTarget(state, player, list) {
   let bestArmed = false;
   let bestMass = -Infinity;
   for (const ent of list || []) {
-    if (!isHostileShip(state, ent, player)) continue;
+    if (!isFocusEligibleShip(state, ent, player)) continue;
     const dx = ent.pos.x - px;
     const dz = ent.pos.z - pz;
     const distance = Math.hypot(dx, dz);
@@ -173,7 +183,7 @@ function activeTargetInvalidReason(state, player, targetId) {
     ? null
     : state.entities.get(targetId);
   if (!target || target.alive === false || !target.pos) return 'target-lost';
-  if (!isHostileShip(state, target, player)) return 'not-hostile';
+  if (!isFocusEligibleShip(state, target, player)) return 'not-hostile';
   return null;
 }
 

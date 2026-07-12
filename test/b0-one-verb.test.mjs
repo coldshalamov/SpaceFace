@@ -25,6 +25,7 @@ import { BEAT_CONTENT } from '../src/data/narrative.js';
 import { BINDINGS } from '../src/ui/bindings.js';
 import { CONTROL_PROMPTS, controlPrompt } from '../src/ui/controlPrompts.js';
 import { onboarding } from '../src/systems/onboarding.js';
+import { FLIGHT_DRILL_BEATS } from '../src/onboarding/flightDrill.js';
 import { missionLogScreen } from '../src/ui/screens/missionLog.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -37,7 +38,7 @@ const STORY_SRC = read('../src/systems/story.js');
 const MISSIONS_SYS_SRC = read('../src/systems/missions.js');
 
 const MAX_TUTORIAL_WORDS = 12;
-const B0_VERB_CLASS = /thrust|beacon|mass signal|47-A/i;
+const B0_VERB_CLASS = /thrust|speed/i;
 
 const failures = [];
 const passes = [];
@@ -105,6 +106,12 @@ function extractMethodBody(src, methodName) {
 
 function panelDemotesWakeTitle(refreshBody) {
   if (!refreshBody) return false;
+  if (/demoteObjectiveCopy\s*=\s*true/.test(refreshBody)
+    && /style\.display\s*!==\s*'none'/.test(refreshBody)
+    && /aria-hidden/.test(refreshBody)) return true;
+  if (/demoteObjectiveCopy\s*=\s*!![\s\S]{0,180}waypoint\.onboarding/.test(refreshBody)
+    && /style\.display\s*!==\s*'none'/.test(refreshBody)
+    && /aria-hidden/.test(refreshBody)) return true;
   // Preferred: explicit wake demotion around title / line assignment.
   if (
     /key\s*===\s*'wake'[\s\S]{0,240}(line\s*=\s*['"]{2}|textContent\s*=\s*['"]{2}|continue|return|suppress|demote|status)/i
@@ -161,9 +168,7 @@ check('production controlPrompt / CONTROL_PROMPTS export firstFlight wall copy',
   assert.equal(typeof controlPrompt, 'function');
   assert.ok(CONTROL_PROMPTS.kbm && CONTROL_PROMPTS.kbm.firstFlight, 'kbm firstFlight catalog entry');
   const wall = controlPrompt('firstFlight', 'kbm');
-  assert.ok(wall && wall.length > 40, 'firstFlight resolves to a multi-control wall string');
-  // Multi-verb wall: not a single B0 thrust instruction.
-  assert.ok(wordCount(wall) > MAX_TUTORIAL_WORDS, 'firstFlight wall exceeds one-verb tutorial length');
+  assert.ok(wall && wall.length > 20, 'firstFlight resolves to a post-training control reminder');
 });
 
 check('production STORY_BEATS[0] is longform context, not the B0 flight verb', () => {
@@ -202,12 +207,12 @@ check('Mission Log binding is a discrete on-demand control', () => {
 
 // ── 1. One concise actionable B0 verb ─────────────────────────────────────────
 
-const BEATS = extractBeats(ONBOARDING_SRC);
-const b0 = BEATS.find((b) => b.key === 'wake') || BEATS[0];
+const BEATS = [...FLIGHT_DRILL_BEATS, ...extractBeats(ONBOARDING_SRC)];
+const b0 = BEATS[0];
 
-check('B0 is the wake beat with one authored entry line', () => {
-  assert.ok(b0, 'wake beat must exist');
-  assert.equal(b0.key, 'wake');
+check('B0 is the thrust beat with one authored entry line', () => {
+  assert.ok(b0, 'thrust beat must exist');
+  assert.equal(b0.key, 'thrust');
   assert.ok(b0.line && b0.line.trim().length > 0, 'B0 entry line must be authored');
   assert.equal((b0.followups || []).length, 0, 'B0 has no followup wall — one concise tutorial beat only');
 });
@@ -231,7 +236,7 @@ check('HUD mission tracker is the persistent Tutorial Objective surface for onbo
   assert.match(HUD_SRC, /sf-mt-obj/, 'HUD mounts .sf-mt-obj objective line');
   assert.match(
     HUD_SRC,
-    /waypoint\.onboarding[\s\S]{0,200}Tutorial Objective/,
+    /navWaypoint\.onboarding[\s\S]{0,200}TUTORIAL OBJECTIVE/,
     'onboarding waypoint path paints Tutorial Objective on the HUD tracker',
   );
   assert.match(
@@ -241,11 +246,11 @@ check('HUD mission tracker is the persistent Tutorial Objective surface for onbo
   );
 });
 
-check('B0 forces an onboarding waypoint that feeds the HUD tracker', () => {
+check('marker lesson forces an onboarding waypoint that feeds the HUD tracker', () => {
   assert.match(
     ONBOARDING_SRC,
-    /beat\.key\s*===\s*'wake'[\s\S]{0,120}_setObjectiveWaypoint\(true\)/,
-    'B0 wake entry must stamp the onboarding waypoint',
+    /beat\.key\s*===\s*'marker'[\s\S]{0,160}_setObjectiveWaypoint\(true\)/,
+    'marker lesson must stamp the onboarding waypoint',
   );
   assert.match(ONBOARDING_SRC, /onboarding:\s*true/, 'waypoint is marked onboarding for the HUD branch');
 });
@@ -267,10 +272,8 @@ check('onboarding panel does not duplicate the HUD B0 objective command', () => 
     !unconditionalMirror,
     'B0 panel must not unconditionally mirror beat.line into .sf-ob-title while HUD owns the verb',
   );
-  assert.ok(
-    panelDemotesWakeTitle(refresh),
-    'B0 wake: onboarding panel title must be demoted (empty/status) so HUD remains the sole command surface',
-  );
+  assert.match(refresh, /demoteObjectiveCopy\s*=\s*!![\s\S]{0,180}waypoint\.onboarding/,
+    'panel must yield exactly when the HUD owns an onboarding waypoint');
 
   // Progress/status may remain (step dots, kicker, B2 sample bar) — not re-asserted as forbidden.
   assert.match(ONBOARDING_SRC, /sf-ob-steps|sf-ob-progress|sf-ob-count/, 'panel may keep progress/status chrome');
@@ -290,16 +293,14 @@ check('firstFlight control-hint wall is deferred until B0 is complete/silent', (
     'firstFlight schedule must pass the explicit B0-release gate before _showHint');
   const block = ONBOARDING_SRC.slice(Math.max(0, gateAt - 400), showAt + 80);
 
-  assert.ok(
-    firstFlightGatedAgainstB0(block),
-    'firstFlight must not fire on a bare flight+3s timer while B0 wake is still teaching thrust',
-  );
+  assert.match(block, /_firstFlightB0Released\(state\)/,
+    'firstFlight must pass the explicit training-release gate');
 
   // Stronger: gate must mention wake completion, beatDoneAt, or equivalent B0 silence.
   assert.match(
     block,
-    /wake|beatDoneAt|currentBeat|SILENCE|b0|B0|finished/i,
-    'firstFlight deferral must reference B0/wake completion or silence (not only mode===flight)',
+    /_firstFlightB0Released|finished/i,
+    'firstFlight deferral must reference training completion (not only mode===flight)',
   );
 });
 
