@@ -8,6 +8,7 @@ import { resolvePropulsionProfile } from '../src/core/flight/propulsionCatalog.j
 import { resolveFlightProfile } from '../src/core/flightDynamics.js';
 import { COMBAT_CUE_IDS, WEAPON_CUE_TABLES, resolveWeaponCueTable } from '../src/data/combatDefs.js';
 import { createGameState } from '../src/core/gameState.js';
+import { createTimeEffects } from '../src/core/timeEffects.js';
 
 // Stub a minimal DOM so feel.js can load headlessly.
 if (typeof globalThis.document === 'undefined') {
@@ -68,7 +69,7 @@ function makeState(extra = {}) {
   });
   state.entityList.push(state.entities.get(1));
   state.input = { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, fire: false, fireGroup: null, autoFire: false, aimWorld: { x: 0, z: 0 }, aimAngle: 0, mouseNdc: { x: 0, y: 0 }, actions: {} };
-  state.timeScale = 1;
+  createTimeEffects(state).reset();
   state.ui = { screenStack: [], docked: false };
   return Object.assign(state, extra);
 }
@@ -190,7 +191,7 @@ function makeFeel() {
 
 await check('§5.2: Hit-stop concurrency is one at a time (newest wins)', () => {
   const { f, state, bus } = makeFeel();
-  state.timeScale = 1;
+  createTimeEffects(state).reset();
   bus.emit('combat:damage', { brokeShield: true, isPlayer: true, amount: 10, pos: { x: 0, z: 0 } });
   f.frame(0, state);
   const floor1 = state.timeScale;
@@ -241,7 +242,7 @@ await check('§5.3: motionReduce suppresses trauma above 0.125', () => {
 await check('§5.3: motionReduce suppresses hit-stop', () => {
   const { f, state, bus } = makeFeel();
   state.settings.video.motionReduce = true;
-  state.timeScale = 1;
+  createTimeEffects(state).reset();
   bus.emit('combat:damage', { brokeShield: true, isPlayer: true, amount: 10, pos: { x: 0, z: 0 } });
   f.frame(0, state);
   assert(state.timeScale === 1, 'timeScale must stay 1 with motionReduce');
@@ -332,9 +333,9 @@ await check('§5.5: No unbounded loops or per-frame allocations in vfx hot paths
 // ------------------------------------------------------------------------------
 // Camera / constants contract (§2)
 // ------------------------------------------------------------------------------
-await check('camera: default zoom fallback is 88 wu', () => {
+await check('camera: default zoom fallback is 72 wu', () => {
   const s = createGameState(1);
-  assert(s.camera.zoom === 88, `gameState zoom ${s.camera.zoom} !== 88`);
+  assert(s.camera.zoom === 72, `gameState zoom ${s.camera.zoom} !== 72`);
 });
 
 await check('camera: look-ahead constants present', () => {
