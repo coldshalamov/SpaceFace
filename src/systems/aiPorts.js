@@ -90,11 +90,14 @@ export const aiPorts = {
       acceptedEncounterCommands: 0,
       rejectedEncounterCommands: 0,
       lastEncounterDropReason: null,
+      sensorFrames: 0,
+      sensorBatches: 0,
     };
 
     this.helpers.aiSensors = Object.freeze({
       frameFor: (entityId, tick) => this._sensorFrameFor(entityId, tick),
       liveFrameFor: (entityId, tick) => this._sensorFrameFor(entityId, tick, { freezeResults: false }),
+      liveFramesFor: (entityIds, tick) => this._sensorFramesFor(entityIds, tick),
     });
     this.helpers.aiRoster = Object.freeze({
       listSquads: (tick) => this._listSquads(tick),
@@ -207,8 +210,9 @@ export const aiPorts = {
       attachmentIndex,
       freeze,
       this._sensorCandidateScratch,
-      live ? this._sensorContactsScratch : null,
+      options.contactsScratch || (live ? this._sensorContactsScratch : null),
       this,
+      options.candidates || null,
     );
     const tetherContacts = attachmentContacts(
       state,
@@ -216,12 +220,15 @@ export const aiPorts = {
       range,
       attachmentIndex.all,
       freeze,
-      live ? this._sensorTetherContactsScratch : null,
+      options.tetherContactsScratch || (live ? this._sensorTetherContactsScratch : null),
     );
     for (const contact of tetherContacts) contacts.push(contact);
     if (freeze !== identity) contacts.sort(contactSort);
     if (live) {
-      const frame = this._liveSensorFrameScratch;
+      const frame = options.frameScratch || this._liveSensorFrameScratch;
+      if (frame[NORMALIZED_SENSOR_FRAME_FLAG] !== true) {
+        Object.defineProperty(frame, NORMALIZED_SENSOR_FRAME_FLAG, { value: true });
+      }
       frame.tick = tick;
       frame.self = sensorSelf(state, entity, this._capabilitiesFor(entity, tick), attachmentIndex, freeze, this);
       frame.contacts = contacts;
@@ -237,6 +244,41 @@ export const aiPorts = {
     return options.freezeResults === false
       ? makeTrustedSensorFrame(frame, entityId, tick, options)
       : normalizeSensorFrame(frame, entityId, tick);
+  },
+
+  _sensorFramesFor(entityIds, tick) {
+    const ids = Array.isArray(entityIds) ? entityIds : [];
+    const frames = new Map();
+    if (!ids.length) return frames;
+    const state = this.state;
+    const index = state && state.entityIndex;
+    const dense = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables) &&
+      index.collidables.length >= AI_SPATIAL_MIN_COLLIDABLES;
+    const hash = state && state.spatialHash;
+    const canBatch = dense && hash && typeof hash.queryRadiusBatch === 'function';
+    const requests = [];
+    if (canBatch) {
+      for (const id of ids) {
+        const entity = getEntity(state, id);
+        if (!entity || !entity.alive) continue;
+        requests.push({ id, x: entity.pos.x, z: entity.pos.z, r: sensorRangeFor(state, entity), out: [] });
+      }
+      hash.queryRadiusBatch(requests);
+      this._diag.sensorBatches++;
+    }
+    const candidatesById = new Map(requests.map((request) => [request.id, request.out]));
+    for (const id of ids) {
+      const frame = this._sensorFrameFor(id, tick, {
+        freezeResults: false,
+        candidates: candidatesById.get(id) || null,
+        contactsScratch: [],
+        tetherContactsScratch: [],
+        frameScratch: {},
+      });
+      frames.set(id, frame);
+      this._diag.sensorFrames++;
+    }
+    return frames;
   },
 
   _listSquads(tick, options = {}) {
@@ -535,10 +577,10 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
   });
 }
 
-function entityContacts(state, self, range, helpers = null, attachmentIndex = null, freeze = Object.freeze, candidateScratch = null, outScratch = null, cacheOwner = null) {
+function entityContacts(state, self, range, helpers = null, attachmentIndex = null, freeze = Object.freeze, candidateScratch = null, outScratch = null, cacheOwner = null, candidateOverride = null) {
   const out = outScratch || [];
   out.length = 0;
-  const candidates = nearbyEntities(state, self.pos, range, helpers, candidateScratch);
+  const candidates = candidateOverride || nearbyEntities(state, self.pos, range, helpers, candidateScratch);
   const rangeSq = range * range;
   for (const other of candidates) {
     if (!other || other === self || !other.alive) continue;

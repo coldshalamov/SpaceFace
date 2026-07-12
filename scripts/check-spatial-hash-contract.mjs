@@ -105,4 +105,29 @@ hash.queryRadius(0, 0, 8, outReuse, { countDiagnostics: false });
 assert.equal(hash.diagnostics.queries, queriesBefore,
   'countDiagnostics:false should skip query diagnostics increment');
 
+function assertBatchMatchesScalar(requests, message) {
+  const scalar = requests.map((request) => {
+    const result = [];
+    hash.queryRadius(request.x, request.z, request.r, result, { countDiagnostics: false });
+    return result.map((entity) => entity.id);
+  });
+  const before = hash.diagnostics.queries;
+  const batch = requests.map((request) => ({ ...request, out: [] }));
+  hash.queryRadiusBatch(batch);
+  assert.equal(hash.diagnostics.queries, before + 1, `${message}: batch should count one physical query`);
+  assert.deepEqual(batch.map((request) => request.out.map((entity) => entity.id)), scalar,
+    `${message}: batch candidate ordering must exactly match independent scalar queries`);
+}
+
+assertBatchMatchesScalar([
+  { x: 0, z: 0, r: 1400 },
+  { x: 96, z: 96, r: 1400 },
+  { x: -128, z: 64, r: 1400 },
+], 'active-bucket scan');
+assertBatchMatchesScalar([
+  { x: 0, z: 0, r: 8 },
+  { x: 96, z: 96, r: 16 },
+  { x: 128, z: 128, r: 4 },
+], 'rectangular scan');
+
 console.log('Spatial hash contract OK');

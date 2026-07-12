@@ -14,6 +14,7 @@ export class SpatialHash {
     this._staticActiveCellZ = [];
     this._staticVersion = null;
     this._seenIds = new Map();
+    this._batchSeenIds = [];
     this._queryStamp = 1;
     this._pending = { rebuilds: 0, dynamicRebuilds: 0, queries: 0, candidates: 0 };
     this.diagnostics = {
@@ -127,6 +128,60 @@ export class SpatialHash {
       this.diagnostics.candidates += candidates;
     }
     return out;
+  }
+
+  /** Batch radius queries. Dense/large queries share one active-bucket traversal per layer. */
+  queryRadiusBatch(requests = [], opts = null) {
+    if (!Array.isArray(requests) || requests.length === 0) return requests;
+    const c = this.cell;
+    const activeCount = this._activeBuckets.length + this._staticActiveBuckets.length;
+    const metas = requests.map((request, index) => {
+      const out = request.out || (request.out = []);
+      out.length = 0;
+      const r = Number(request.r) || 0;
+      const x0 = Math.floor((request.x - r) / c), x1 = Math.floor((request.x + r) / c);
+      const z0 = Math.floor((request.z - r) / c), z1 = Math.floor((request.z + r) / c);
+      let stamp = this._queryStamp + 1;
+      if (stamp > 0x7fffffff) { stamp = 1; this._seenIds.clear(); }
+      this._queryStamp = stamp;
+      const batchSeen = this._batchSeenIds[index] || (this._batchSeenIds[index] = new Set());
+      batchSeen.clear();
+      return { out, x0, x1, z0, z1, stamp, batchSeen, candidates: 0,
+        scanActive: activeCount > 0 && ((x1 - x0 + 1) * (z1 - z0 + 1)) > activeCount * 3 };
+    });
+    this._queryLayerBatch(this.buckets, this._activeBuckets, this._activeCellX, this._activeCellZ, metas);
+    this._queryLayerBatch(this._staticBuckets, this._staticActiveBuckets, this._staticActiveCellX, this._staticActiveCellZ, metas);
+    if (!(opts && opts.countDiagnostics === false)) {
+      const candidates = metas.reduce((sum, meta) => sum + meta.candidates, 0);
+      this._pending.queries++;
+      this._pending.candidates += candidates;
+      this.diagnostics.queries++;
+      this.diagnostics.candidates += candidates;
+    }
+    return requests;
+  }
+
+  _queryLayerBatch(buckets, activeBuckets, activeCellX, activeCellZ, metas) {
+    const scanned = metas.filter((meta) => meta.scanActive);
+    if (scanned.length) {
+      for (let i = 0; i < activeBuckets.length; i++) {
+        const cx = activeCellX[i], cz = activeCellZ[i], bucket = activeBuckets[i];
+        for (const meta of scanned) {
+          if (cx < meta.x0 || cx > meta.x1 || cz < meta.z0 || cz > meta.z1) continue;
+          meta.candidates += bucket.length;
+          for (const entity of bucket) {
+            if (meta.batchSeen.has(entity.id)) continue;
+            meta.batchSeen.add(entity.id);
+            meta.out.push(entity);
+          }
+        }
+      }
+    }
+    for (const meta of metas) {
+      if (meta.scanActive) continue;
+      meta.candidates += this._queryLayer(buckets, activeBuckets, activeCellX, activeCellZ,
+        false, meta.x0, meta.x1, meta.z0, meta.z1, meta.stamp, meta.out);
+    }
   }
 
   _queryLayer(buckets, activeBuckets, activeCellX, activeCellZ, scanActive, x0, x1, z0, z1, stamp, out) {

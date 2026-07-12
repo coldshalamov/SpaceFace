@@ -85,12 +85,24 @@ export class TacticalAIStack {
     perceptionsByEntity.clear();
     const orderedMembers = uniqueMembers(roster, roster[NORMALIZED_ROSTER_FLAG] === true, this.orderedMemberScratch, this.seenMemberScratch);
     const activeMembers = this.memberBatchEnabled ? this._activeDecisionMembers(orderedMembers) : null;
+    let liveFrames = null;
+    if (!this.freezeResults && typeof this.ports.sensors.liveFramesFor === 'function') {
+      const refreshIds = [];
+      for (const member of orderedMembers) {
+        const cached = this.memberBatchEnabled ? this.perceptionCache.get(member.id) : null;
+        const doctrineMember = normalizeCombatDoctrineId(member.combatDoctrineId) != null;
+        if (!this.memberBatchEnabled || !cached || activeMembers.has(member.id) || doctrineMember) refreshIds.push(member.id);
+      }
+      liveFrames = this.ports.sensors.liveFramesFor(refreshIds, tick);
+    }
     for (const member of orderedMembers) {
       let perception = this.memberBatchEnabled ? this.perceptionCache.get(member.id) : null;
       const doctrineMember = normalizeCombatDoctrineId(member.combatDoctrineId) != null;
       if (!this.memberBatchEnabled || !perception || activeMembers.has(member.id) || doctrineMember) {
-        const frame = !this.freezeResults && typeof this.ports.sensors.liveFrameFor === 'function'
-          ? this.ports.sensors.liveFrameFor(member.id, tick)
+        const frame = liveFrames && liveFrames.has(member.id)
+          ? liveFrames.get(member.id)
+          : !this.freezeResults && typeof this.ports.sensors.liveFrameFor === 'function'
+            ? this.ports.sensors.liveFrameFor(member.id, tick)
           : this.ports.sensors.frameFor(member.id, tick);
         perception = this.memory.observe(member.id, frame, tick);
         if (this.memberBatchEnabled) this.perceptionCache.set(member.id, perception);

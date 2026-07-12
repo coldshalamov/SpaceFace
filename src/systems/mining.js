@@ -333,9 +333,12 @@ export const mining = {
     const magnet = Math.max(MAGNET_RANGE, state.player.magnetRange || 0);
     const collectRadius = (player.radius || 6) + 4;
     const queryRadius = Math.max(magnet, collectRadius) + PICKUP_RADIUS;
-    const pickups = pickupsNearPlayer(state, player, queryRadius, this._pickupScratch);
+    const emptyPickupDomain = hasAuthoritativeEmptyPickupIndex(state);
+    const pickups = emptyPickupDomain
+      ? clearScratch(this._pickupScratch)
+      : pickupsNearPlayer(state, player, queryRadius, this._pickupScratch);
     this._diag.pickupScans = 1;
-    this._diag.pickupSpatialQueries = pickups === this._pickupScratch ? 1 : 0;
+    this._diag.pickupSpatialQueries = !emptyPickupDomain && pickups === this._pickupScratch ? 1 : 0;
     this._diag.pickupCandidates = pickups.length;
     this._diag.pickupsMagnetized = 0;
     this._diag.pickupsCollected = 0;
@@ -755,6 +758,17 @@ export const mining = {
 function pickupsNearPlayer(state, player, radius, out) {
   return queryNearbyEntities(state, player.pos, radius, out,
     (state.entityIndex && state.entityIndex.pickups) || state.entityList);
+}
+
+function hasAuthoritativeEmptyPickupIndex(state) {
+  const index = state && state.entityIndex;
+  return !!(index && index.__spacefaceEntityIndexV1 && index.ready &&
+    Array.isArray(index.pickups) && index.pickups.length === 0);
+}
+
+function clearScratch(out) {
+  out.length = 0;
+  return out;
 }
 
 function mineablesNearShip(state, ship, radius, out) {
