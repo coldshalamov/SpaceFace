@@ -1208,7 +1208,11 @@ export const render = {
       if (m.userData.lod && m.userData.updateLod) {
         lodChecked++;
         // Camera and mesh share frame-local space; pass mesh local XZ (not galactic-global).
-        const px = projectedWidthPx(m.position, e.radius, this.cam.obj, this.viewport);
+        const hlodVisualRadius = m.userData.hlod && Number(m.userData.hlod.visualRadius);
+        const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
+          ? hlodVisualRadius
+          : e.radius;
+        const px = projectedWidthPx(m.position, lodRadius, this.cam.obj, this.viewport);
         // The player ship is a focal, readable object at normal flight scale. Authored LOD1 can hide
         // too much silhouette detail, so keep player control on LOD0 and reserve reduction for NPCs.
         const level = e.id === this.state.playerId ? 'lod0' : m.userData.lod.resolve(px);

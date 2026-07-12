@@ -22,6 +22,8 @@ assert.match(hlodSource, /export function attachStationHlod\(/, 'hlod.js should 
 assert.match(hlodSource, /spacefaceHlodProxy/, 'hlod.js should tag proxy meshes');
 assert.match(rendererSource, /_publishHlodDiagnostics/, 'renderer should publish hlod diagnostics');
 assert.match(rendererSource, /hlodDetailedVisible/, 'renderer diagnostics should track detailed visibility');
+assert.match(rendererSource, /m\.userData\.hlod && Number\(m\.userData\.hlod\.visualRadius\)/,
+  'renderer should select station HLOD from the visible authored envelope, not collision radius');
 assert.match(factorySource, /attachStationHlod/, 'visualFactory should wrap stations with HLOD');
 
 const probe = runStationHlodContractProbe(THREE);
@@ -29,7 +31,9 @@ assert.equal(probe.hasLodState, true, 'station HLOD wrapper should attach lod st
 assert.equal(probe.proxyShownAtLod2, true, 'lod2 should show the proxy group');
 assert.equal(probe.detailedHiddenAtLod2, true, 'lod2 should hide the detailed group');
 assert.equal(probe.detailedMeshCount, 1, 'detailed subtree mesh count should remain unchanged after swap');
-assert.ok(probe.proxyMeshCount >= 3, `proxy should use a small mesh count, got ${probe.proxyMeshCount}`);
+assert.equal(probe.proxyMeshCount, 1, 'far proxy should be one merged draw object');
+assert.equal(probe.proxyUsesBoxGeometry, false, 'far proxy must preserve a station silhouette, not a fallback box');
+assert.equal(probe.diagnostics.visualRadius, 72, 'HLOD should publish the station visual radius for projected sizing');
 assert.equal(probe.diagnostics.swapped, true, 'hlod diagnostics should record proxy swap');
 
 console.log('PASS  check:station-hlod');

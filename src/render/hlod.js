@@ -1,12 +1,24 @@
 // Hierarchical LOD / impostor prototype for far non-player world scenery (stations first).
 // Render-only: collision, physics, and gameplay entity radius stay unchanged.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FACTION_PALETTES } from '../data/palettes.js';
 import { attachLodState } from './lod.js';
 
 const _proxyGeo = new Map();
 const _proxyMat = new Map();
-const _markerMat = new Map();
+const STATION_AUTHORED_LIFECYCLE_KEYS = Object.freeze([
+  'authoredAssetState',
+  'authoredAssetMode',
+  'authoredAssetContractVersion',
+  'authoredParts',
+  'authoredSlots',
+  'authoredCompositionId',
+  'authoredRenderContract',
+  'authoredReadableFallbackRetained',
+  'authoredVisualRoot',
+  'hull',
+]);
 
 function proxyGeometry(key, factory) {
   let geo = _proxyGeo.get(key);
@@ -28,45 +40,6 @@ function proxyMaterial(key, factory) {
     _proxyMat.set(key, mat);
   }
   return mat;
-}
-
-function markerMaterial(color) {
-  const key = String(color || '#ffffff').toLowerCase();
-  let mat = _markerMat.get(key);
-  if (!mat) {
-    const tex = makeMarkerTexture(color);
-    mat = new THREE.SpriteMaterial({
-      map: tex,
-      color: new THREE.Color(color),
-      blending: THREE.AdditiveBlending,
-      transparent: true,
-      depthWrite: false,
-      toneMapped: false,
-    });
-    mat.name = `SF_HLOD_Marker_${key.replace('#', '')}`;
-    mat.userData.spacefaceSharedProxy = true;
-    mat.dispose = () => {};
-    _markerMat.set(key, mat);
-  }
-  return mat;
-}
-
-function makeMarkerTexture(color) {
-  const size = 64;
-  const canvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
-  if (!canvas) return null;
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  const half = size / 2;
-  const g = ctx.createRadialGradient(half, half, 0, half, half, half);
-  g.addColorStop(0, color);
-  g.addColorStop(0.35, color);
-  g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, size, size);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.needsUpdate = true;
-  return tex;
 }
 
 function stationPalette(entity) {
@@ -94,10 +67,12 @@ function createStationHlodProxy(radius, palette) {
   group.userData.spacefaceHlodProxy = true;
 
   const hullKey = String(palette.hull || '#6b7280').toLowerCase();
+  const accentKey = String(palette.accent || '#39d0ff').toLowerCase();
   const hullMat = proxyMaterial(`hlod:hull:${hullKey}`, () => {
     const color = new THREE.Color(palette.hull || '#6b7280');
     return new THREE.MeshStandardMaterial({
-      color,
+      color: 0xffffff,
+      vertexColors: true,
       roughness: 0.72,
       metalness: 0.38,
       emissive: color.clone().multiplyScalar(0.12),
@@ -105,42 +80,46 @@ function createStationHlodProxy(radius, palette) {
     });
   });
 
-  const core = new THREE.Mesh(
-    proxyGeometry('hlod:station:core', () => new THREE.CylinderGeometry(0.42, 0.48, 0.58, 8)),
+  // One merged silhouette mesh: the former core + ring + three sprites cost five submissions and
+  // could be more expensive than an authored static batch. Vertex colors retain hull/accent identity
+  // while the cached merged geometry keeps every far station/gate to one draw object.
+  const proxy = new THREE.Mesh(
+    proxyGeometry(`hlod:station:merged:${hullKey}:${accentKey}`, () => {
+      const core = new THREE.CylinderGeometry(0.42, 0.48, 0.58, 8);
+      core.scale(0.72, 0.52, 0.72);
+      tintGeometry(core, palette.hull || '#6b7280');
+      const ring = new THREE.TorusGeometry(0.78, 0.05, 6, 20);
+      ring.rotateX(Math.PI / 2);
+      ring.scale(0.88, 0.88, 0.88);
+      tintGeometry(ring, palette.accent || '#39d0ff');
+      const merged = mergeGeometries([core, ring], false);
+      core.dispose();
+      ring.dispose();
+      if (!merged) throw new Error('station HLOD proxy geometry merge failed');
+      merged.computeBoundingSphere();
+      return merged;
+    }),
     hullMat,
   );
-  core.name = 'HLOD_StationProxy_Core';
-  core.scale.set(radius * 0.72, radius * 0.52, radius * 0.72);
-  core.castShadow = false;
-  core.receiveShadow = false;
-  group.add(core);
-
-  const ring = new THREE.Mesh(
-    proxyGeometry('hlod:station:ring', () => new THREE.TorusGeometry(0.78, 0.05, 6, 20)),
-    hullMat,
-  );
-  ring.name = 'HLOD_StationProxy_Ring';
-  ring.rotation.x = Math.PI / 2;
-  ring.scale.setScalar(radius * 0.88);
-  ring.castShadow = false;
-  ring.receiveShadow = false;
-  group.add(ring);
-
-  const markerLayout = [
-    { color: palette.accent || '#39d0ff', pos: [radius * 0.72, radius * 0.12, radius * 0.08] },
-    { color: '#5fffa0', pos: [-radius * 0.64, -radius * 0.08, radius * 0.38] },
-    { color: palette.emissive || palette.accent || '#39d0ff', pos: [0, radius * 0.18, -radius * 0.68] },
-  ];
-  for (let i = 0; i < markerLayout.length; i++) {
-    const entry = markerLayout[i];
-    const marker = new THREE.Sprite(markerMaterial(entry.color));
-    marker.name = `HLOD_StationProxy_Marker_${i}`;
-    marker.position.set(entry.pos[0], entry.pos[1], entry.pos[2]);
-    marker.scale.setScalar(radius * 0.24);
-    group.add(marker);
-  }
+  proxy.name = 'HLOD_StationProxy_Silhouette';
+  proxy.scale.setScalar(radius);
+  proxy.castShadow = false;
+  proxy.receiveShadow = false;
+  group.add(proxy);
 
   return group;
+}
+
+function tintGeometry(geometry, colorValue) {
+  const position = geometry.getAttribute('position');
+  const color = new THREE.Color(colorValue);
+  const values = new Float32Array(position.count * 3);
+  for (let i = 0; i < position.count; i++) {
+    values[i * 3] = color.r;
+    values[i * 3 + 1] = color.g;
+    values[i * 3 + 2] = color.b;
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(values, 3));
 }
 
 /**
@@ -168,10 +147,15 @@ export function attachStationHlod(root, entity) {
   wrapper.add(proxy);
 
   Object.assign(wrapper.userData, preserved);
+  forwardStationAuthoredLifecycle(wrapper, root);
   wrapper.userData.kind = 'station';
   wrapper.userData.hlodAttached = true;
   wrapper.userData.hlod = {
     target: 'station',
+    // Renderer LOD selection must use the visible station/gate envelope, not the much smaller
+    // gameplay collision radius. This preserves authored detail until the full silhouette is truly
+    // distant while retaining the same shared proxy and hysteresis thresholds.
+    visualRadius: radius,
     detailedVisible: 1,
     proxyVisible: 0,
     swapped: false,
@@ -204,6 +188,21 @@ export function attachStationHlod(root, entity) {
   return wrapper;
 }
 
+function forwardStationAuthoredLifecycle(wrapper, root) {
+  for (const key of STATION_AUTHORED_LIFECYCLE_KEYS) {
+    delete wrapper.userData[key];
+    Object.defineProperty(wrapper.userData, key, {
+      configurable: true,
+      enumerable: true,
+      get() { return root.userData && root.userData[key]; },
+      set(value) {
+        root.userData = root.userData || {};
+        root.userData[key] = value;
+      },
+    });
+  }
+}
+
 /** Headless contract probe: proxy swap toggles visibility without mutating the detailed subtree. */
 export function runStationHlodContractProbe(THREE_NS = THREE) {
   const detailed = new THREE_NS.Group();
@@ -228,6 +227,7 @@ export function runStationHlodContractProbe(THREE_NS = THREE) {
     detailedHiddenAtLod2: detailedGroup && detailedGroup.visible === false,
     detailedMeshCount: detailed.children.length,
     proxyMeshCount: proxy ? proxy.children.length : 0,
+    proxyUsesBoxGeometry: !!(proxy && proxy.children.some((child) => child.geometry && child.geometry.type === 'BoxGeometry')),
     diagnostics: { ...(wrapped.userData.hlod || {}) },
   };
 }

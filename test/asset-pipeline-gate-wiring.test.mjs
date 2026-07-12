@@ -9,10 +9,18 @@ const exporterSource = await readFile(new URL('../scripts/check-exporter.mjs', i
 
 const gateCommand = 'node scripts/check-asset-pipeline-contract.mjs';
 const aggregateCommand = 'npm run check:asset-pipeline-contract';
+const authoredPlaceRunner = 'node scripts/check-authored-place-runtime-upgrade.mjs';
+const authoredPlaceCommand = 'npm run check:authored-place-runtime';
 assert.equal(pkg.scripts['check:asset-pipeline-contract'], gateCommand,
   'named asset-pipeline gate runs its Node orchestrator');
+assert.equal(pkg.scripts['check:authored-place-runtime'], authoredPlaceRunner,
+  'named authored-place runtime gate runs its focused Node check without aggregate recursion');
 assert.equal(countCommand(pkg.scripts['check:art'], aggregateCommand), 1,
   'check:art reaches the asset-pipeline contract exactly once');
+assert.equal(countCommand(pkg.scripts['check:art'], authoredPlaceCommand), 1,
+  'check:art reaches the authored-place runtime gate exactly once');
+assert.equal(countCommand(pkg.scripts['check:art'], authoredPlaceRunner), 0,
+  'check:art invokes the named authored-place gate rather than duplicating its runner');
 assert.equal(countCommand(pkg.scripts['check:art'], 'node scripts/check-exporter.mjs'), 0,
   'check:art does not duplicate check-exporter outside the asset-pipeline gate');
 for (const aggregate of ['check', 'check:ci']) {
@@ -22,11 +30,20 @@ for (const aggregate of ['check', 'check:ci']) {
     `${aggregate} must not duplicate the asset-pipeline gate outside check:art`);
   assert.equal(countCommand(pkg.scripts[aggregate], gateCommand), 0,
     `${aggregate} must not invoke the asset-pipeline runner directly`);
+  assert.equal(countCommand(pkg.scripts[aggregate], authoredPlaceCommand), 0,
+    `${aggregate} must reach authored-place runtime coverage only through check:art`);
+  assert.equal(countCommand(pkg.scripts[aggregate], authoredPlaceRunner), 0,
+    `${aggregate} must not invoke the authored-place runtime runner directly`);
 }
 for (const [scriptName, command] of Object.entries(pkg.scripts)) {
   if (scriptName === 'check:asset-pipeline-contract') continue;
   assert.equal(countCommand(command, gateCommand), 0,
     `${scriptName} must not duplicate the asset-pipeline runner command`);
+}
+for (const [scriptName, command] of Object.entries(pkg.scripts)) {
+  if (scriptName === 'check:authored-place-runtime') continue;
+  assert.equal(countCommand(command, authoredPlaceRunner), 0,
+    `${scriptName} must not duplicate the authored-place runtime runner command`);
 }
 
 const requiredJobs = [
