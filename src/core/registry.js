@@ -201,6 +201,20 @@ export function createRegistry(ctx) {
       const state = ctx.state;
       const perf = ensurePerfRuntime(state);
       const stepStart = perfNow();
+      const measureSystems = perf.isSystemTimingEnabled();
+      if (!measureSystems) {
+        try {
+          core.preStep(dt, state);
+          for (const s of UPDATE_ORDER) {
+            if (s.update) s.update(dt, state);
+          }
+          core.lifetimeSweep(dt, state);
+        } finally {
+          perf.recordStepTotal(perfNow() - stepStart);
+        }
+        return;
+      }
+
       let t = perfNow();
       try { core.preStep(dt, state); }
       finally { perf.recordSystem('core.preStep', perfNow() - t); }

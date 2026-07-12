@@ -27,7 +27,10 @@ export function advanceFixedTimestep(accumulator, frameDt, timeScale, step, out 
   }
 
   if (result.accumulator >= fixedDt) {
-    result.accumulator = 0;
+    // Drop overdue whole ticks but retain the sub-tick phase. Resetting all the way to zero creates
+    // an avoidable long interval before the next sim step after a hitch.
+    const remainder = result.accumulator % fixedDt;
+    result.accumulator = remainder < 1e-12 || fixedDt - remainder < 1e-12 ? 0 : remainder;
     result.shedBacklog = true;
   }
   return result;
@@ -36,6 +39,8 @@ export function advanceFixedTimestep(accumulator, frameDt, timeScale, step, out 
 export function startLoop(state, registry) {
   let last = performance.now();
   const stepResult = { steps: 0, shedBacklog: false, accumulator: 0 };
+  // Reuse one callback rather than closing over registry on every requestAnimationFrame.
+  const stepSimulation = (dt) => registry.step(dt);
 
   function frame(now) {
     const callbackStart = perfNow();
@@ -48,7 +53,7 @@ export function startLoop(state, registry) {
       perf = ensurePerfRuntime(state);
       perf.beginFrame(frameDt);
       const simFrameStart = perfNow();
-      advanceFixedTimestep(state.accumulator, frameDt, state.timeScale, (dt) => registry.step(dt), stepResult);
+      advanceFixedTimestep(state.accumulator, frameDt, state.timeScale, stepSimulation, stepResult);
       state.accumulator = stepResult.accumulator;
       perf.recordSimFrame(perfNow() - simFrameStart);
       perf.recordLoop(stepResult.steps, stepResult.shedBacklog, state.accumulator);

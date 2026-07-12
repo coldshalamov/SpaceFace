@@ -169,6 +169,9 @@ export function ensurePerfRuntime(state) {
     autosaveLast: null,
   };
   const renderWorkStats = Object.create(null);
+  // Per-system attribution costs two clocks plus one ring sample for every registered system on
+  // every 60 Hz sim tick. Keep that diagnostic tax explicit and default-off in normal play.
+  let systemTimingEnabled = false;
   // Opt-in CPU render-work attribution. Default OFF so production frames never pay
   // performance.now() + ring sample cost. Measurement probes enable for a window only.
   let renderWorkEnabled = false;
@@ -186,6 +189,12 @@ export function ensurePerfRuntime(state) {
   const api = {
     __spacefacePerfV1: true,
     RING_N,
+    get systemTimingEnabled() { return systemTimingEnabled; },
+    isSystemTimingEnabled() { return systemTimingEnabled === true; },
+    setSystemTimingEnabled(on) {
+      systemTimingEnabled = !!on;
+      return systemTimingEnabled;
+    },
     get renderWorkEnabled() { return renderWorkEnabled; },
     isRenderWorkEnabled() { return renderWorkEnabled === true; },
     setRenderWorkEnabled(on) {
@@ -212,6 +221,9 @@ export function ensurePerfRuntime(state) {
       sample(phaseStats.simFrame, ms);
     },
     recordSystem(name, ms) {
+      // Defense-in-depth: registry avoids the clocks too, while direct callers cannot accidentally
+      // refill detailed rings after a diagnostic window has closed.
+      if (!systemTimingEnabled) return;
       sample(statForSystem(name), ms);
     },
     recordRenderWork(name, ms) {
@@ -337,6 +349,7 @@ export function ensurePerfRuntime(state) {
       const renderWork = {};
       for (const name of Object.keys(renderWorkStats)) renderWork[name] = reportStat(renderWorkStats[name]);
       return {
+        systemTimingEnabled,
         frame: reportStat(frameStats),
         frameCallback: reportStat(frameCallbackStats),
         frameUntracked: reportStat(frameUntrackedStats),

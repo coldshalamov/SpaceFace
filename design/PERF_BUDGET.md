@@ -20,8 +20,8 @@ The loop (`src/core/loop.js`) is a fixed-60Hz sim accumulator with a per-frame i
 
 - `LOOP_FIXED_DT = 1 / 60` (loop.js:6)
 - `MAX_CATCHUP_STEPS = 4` (loop.js:7) — at most four 1/60 s sim steps per rendered frame
-- `advanceFixedTimestep()` sheds backlog when the accumulator still holds ≥ one step after the cap
-  (`shedBacklog: true`, loop.js:29-31)
+- `advanceFixedTimestep()` sheds overdue whole-step backlog when the accumulator still holds ≥ one
+  step after the cap while preserving the sub-step interpolation remainder (`shedBacklog: true`)
 
 Sim cost is **quantized in whole 1/60 s steps** (usually 1; up to **4** under load). Render cost is
 whatever the frame draw takes. A frame that overruns 16.7 ms pushes leftover time into the accumulator
