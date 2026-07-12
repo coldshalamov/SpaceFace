@@ -1912,6 +1912,7 @@ export const vfx = {
       color: new THREE.Color('#60d0ff'),
       transparent: true, opacity: 0.7,
       depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      forceSinglePass: true,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.frustumCulled = false;
@@ -1925,6 +1926,7 @@ export const vfx = {
       color: new THREE.Color('#60d0ff'),
       transparent: true, opacity: 0.25,
       depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      forceSinglePass: true,
     });
     const glow = new THREE.Mesh(geo2, mat2);
     glow.frustumCulled = false;
@@ -2107,6 +2109,7 @@ export const vfx = {
       color: new THREE.Color('#d7e6ff'),
       transparent: true, opacity: 0.16,
       depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      forceSinglePass: true,
     });
     const band = new THREE.Mesh(bandGeo, bandMat);
     band.frustumCulled = false;
@@ -2120,6 +2123,7 @@ export const vfx = {
       color: new THREE.Color('#39d0ff'),
       transparent: true, opacity: 0.52,
       depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      forceSinglePass: true,
     });
     const anchor = new THREE.Mesh(anchorGeo, anchorMat);
     anchor.frustumCulled = false;
@@ -2133,6 +2137,7 @@ export const vfx = {
       color: new THREE.Color('#a6f0ff'),
       transparent: true, opacity: 0.74,
       depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      forceSinglePass: true,
     });
     const anchorCore = new THREE.Mesh(anchorCoreGeo, anchorCoreMat);
     anchorCore.frustumCulled = false;
@@ -2146,6 +2151,7 @@ export const vfx = {
       color: new THREE.Color('#39d0ff'),
       transparent: true, opacity: 0.18,
       depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      forceSinglePass: true,
     });
     const targetHalo = new THREE.Mesh(targetHaloGeo, targetHaloMat);
     targetHalo.frustumCulled = false;
@@ -2197,6 +2203,7 @@ export const vfx = {
       color: new THREE.Color('#7ce4ff'),
       transparent: true, opacity: 0.22,
       depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      forceSinglePass: true,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.frustumCulled = false;
@@ -2463,6 +2470,7 @@ export const vfx = {
     const mat = new THREE.MeshBasicMaterial({
       color: 0xffffff, transparent: true, opacity: 0.9,
       depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      forceSinglePass: true,
     });
     const mesh = new THREE.InstancedMesh(geo, mat, CAP);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);

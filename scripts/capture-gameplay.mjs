@@ -26,7 +26,7 @@ const OUT = argv.out || `.devshots/perf/${SCENARIO}.json`;
 const SHOT = argv.shot || `${SCENARIO}.jpg`;
 const SHOT_PATH = argv.shotPath || `.devshots/perf/${SHOT}`;
 const VIDEO_OVERRIDES = collectVideoOverrides(argv);
-const HARD_KILL_MS = Number(argv.hardKillMs || Math.max(45000, WARMUP_MS + DURATION_MS + 25000));
+const HARD_KILL_MS = Number(argv.hardKillMs || Math.max(90000, WARMUP_MS + DURATION_MS + 60000));
 
 const CANDIDATES = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -290,7 +290,7 @@ async function waitForFlight(send) {
         setTimeout(() => { close(); resolve(true); }, 150);
         return;
       }
-      if (performance.now() - start > 5000) {
+      if (performance.now() - start > 45000) {
         resolve(false);
         return;
       }
@@ -345,6 +345,39 @@ function scenarioExpression(name) {
         state.input.autoFire = true;
         sf.bus.emit('combat:damage', { targetId: state.playerId, amount: 1, pos: { x: p.pos.x + 40, z: p.pos.z } });
       }, 120);
+    } else if (${JSON.stringify(name)} === 'massline-vfx') {
+      const target = spawnRock(p.pos.x + 82, p.pos.z + 12, 18);
+      target.data.seams = [
+        { angle: 0.2, richness: 1 },
+        { angle: 2.4, richness: 0.75 },
+      ];
+      const present = () => {
+        state.player.tether = {
+          active: true,
+          targetId: target.id,
+          strain: 0.62,
+          load: 0.78,
+          restLength: 92,
+          phase: 'loaded',
+          reeling: true,
+          reelStrength: 0.65,
+        };
+        state.player.masslineTelemetry = {
+          active: true,
+          tangentialSpeed: 68,
+          arcPreview: {
+            peakSpeed: 112,
+            exitAngle: 0.18,
+            exitSpeed: 78,
+            timeToWhip: 0.2,
+            viable: true,
+          },
+        };
+      };
+      present();
+      sf.bus.emit('mining:start', { minerId: p.id, targetId: target.id, position: { ...target.pos } });
+      sf.bus.emit('tether:attached', { targetId: target.id, position: { ...target.pos } });
+      window.__SF_CAPTURE_SCENARIO__.tick = setInterval(present, 16);
     } else if (${JSON.stringify(name)} === 'spawn-churn') {
       let n = 0;
       window.__SF_CAPTURE_SCENARIO__.tick = setInterval(() => {
