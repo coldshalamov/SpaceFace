@@ -255,7 +255,7 @@ function buildBranchChainOffer(def, seed, epoch, options) {
     ][step] || null
     : null;
   const params = chain.missionType === 'bulk_trade'
-    ? { cmdtyId: 'cmdty_food', qty: 4, fValue: 1, taskTime: 30 }
+    ? { cmdtyId: 'cmdty_food', qty: 4 + step * 2, fValue: 1 + step * 0.15, taskTime: 30 + step * 8 }
     : chain.missionType === 'patrol_clear'
       ? { clearCount: 1, targetStrength: 1.8 + step * 0.3, fValue: 1.5, taskTime: 60 }
       : { cmdtyId: 'cmdty_classified_salvage', qty: 1, manifestName: 'ADMINISTRATIVE RECORDS — 3 YEARS / SEALED', fValue: 1.3, taskTime: 30 };

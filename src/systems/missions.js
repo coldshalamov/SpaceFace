@@ -1339,6 +1339,23 @@ export const missions = {
         pos: station && station.pos ? { x: station.pos.x, z: station.pos.z } : null,
       };
     }
+    if (beat.beat === 5 && state.story && state.story.branch) {
+      const branch = state.story.branch;
+      const route = getEmbodiedLocation(5, branch);
+      const count = BRANCH_CHAIN_COUNT[branch] || 1;
+      const step = Math.min(count, Math.max(1, (state.story.chainProgress | 0) + 1));
+      const info = route && STATION_INFO.get(route.stationId);
+      const station = route && currentSectorId === route.sectorId ? this._liveStation(route.stationId) : null;
+      return {
+        ...base,
+        label: `Proving Ground ${step}/${count}`,
+        reason: `Accept and complete ${branch} leg ${step}/${count}`,
+        stationId: route && route.stationId || null,
+        sectorId: route && route.sectorId || currentSectorId,
+        sectorName: info && SECTOR_BY_ID.get(info.sectorId)?.name || null,
+        pos: station && station.pos ? { x: station.pos.x, z: station.pos.z } : null,
+      };
+    }
     const station = this._nearestStation();
     if (station) {
       const stationId = station.data && station.data.stationId || null;
@@ -2345,9 +2362,20 @@ export const missions = {
     }, this.state.simTime || 0);
     if (!observed || !observed.ok) return;
     story.chainProgress = nextProgress;
-    if (story.chainProgress >= wantCount) { story.chainProgress = 0; this._advanceStory(beat); }
+    if (story.chainProgress >= wantCount) {
+      story.flags = story.flags || {};
+      story.flags.proving_ground_complete = true;
+      story.flags.proving_ground_variant = story.flags.elroy_outcome === 'custody' && story.branch === 'patrol'
+        ? 'custody_patrol'
+        : story.flags.elroy_outcome === 'force' && story.branch === 'traders'
+          ? 'force_manifest'
+          : `legacy_${story.branch}`;
+      story.chainProgress = 0;
+      this._advanceStory(beat);
+    }
     else {
       this._refreshEmbodiedStoryBoards();
+      this._refreshNavigation({ forceStory: true, silent: true });
       this.bus.emit('toast', { text: `Proving Ground: ${story.chainProgress}/${wantCount}`, kind: 'info', ttl: 3 });
     }
   },
