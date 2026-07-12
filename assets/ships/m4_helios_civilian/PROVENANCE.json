@@ -1,0 +1,39 @@
+{
+  "schema": "spaceface.assetProvenance.v1",
+  "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
+  "familyId": "helios_civilian",
+  "title": "M4 Helios civilian fleet candidates (Lark / Cradle / Span)",
+  "origin": "Procedurally authored in-repo via deterministic Blender builder tools/blender/build_m4_helios_civilian_family.py. No third-party meshes, kitbash libraries, or downloaded commercial models.",
+  "receivedFrom": "SpaceFace Grok+Blender production agent (in-repo generation)",
+  "sourceArchives": [],
+  "thirdPartyDeclaration": "No third-party meshes, texture packs, kitbash libraries, downloaded commercial/free models, or YouTube assets. Deterministic 1024px semantic base-color, tangent-space normal, and packed ORM maps are generated in-repo; neutral fallback maps are not used.",
+  "licenseDecision": "Project-original SpaceFace authoring for this workspace. Candidate-only; not default-play wired.",
+  "productionPolicy": "Candidates live under assets/ships/m4_helios_civilian only. Do not overwrite K0 Kestrel or Ashline assets. Integration requires controller review + manifest lease.",
+  "roles": [
+    {
+      "id": "helios_lark",
+      "role": "civilian_courier_scout",
+      "runtimeTrafficRole": "courier",
+      "assetId": "SF_WHOLESHIP_HELIOS_LARK",
+      "partId": "wholeship_helios_lark"
+    },
+    {
+      "id": "helios_cradle",
+      "role": "civilian_miner_tug",
+      "runtimeTrafficRole": "miner",
+      "assetId": "SF_WHOLESHIP_HELIOS_CRADLE",
+      "partId": "wholeship_helios_cradle"
+    },
+    {
+      "id": "helios_span",
+      "role": "civilian_heavy_hauler",
+      "runtimeTrafficRole": "hauler",
+      "assetId": "SF_WHOLESHIP_HELIOS_SPAN",
+      "partId": "wholeship_helios_span"
+    }
+  ],
+  "recordedAt": "2026-07-11T00:00:00Z",
+  "builder": "tools/blender/build_m4_helios_civilian_family.py",
+  "finalizer": "tools/art/finalize_m4_helios_civilian_candidate.mjs",
+  "qualityBar": "SF-K0 Borrowed Time minimum; Ashline is failure-comparison only"
+}

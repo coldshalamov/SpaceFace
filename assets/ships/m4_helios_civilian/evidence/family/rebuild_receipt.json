@@ -1,0 +1,92 @@
+{
+  "schema": "spaceface.m4HeliosCivilianRebuildReceipt.v1",
+  "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
+  "repair": "M4-HELIOS-CIVILIAN-REPAIR-001",
+  "recordedAt": "2026-07-11T11:28:00Z",
+  "verdict": "candidate_rebuilt_for_controller_review",
+  "wiringStatus": "candidate_not_default_play",
+  "neverClaimAccepted": true,
+  "rootCause": {
+    "H4-D01_D03": "primitive_cube_add(size=1.0) scaled by edge*0.5 produced half-size hull boxes (~0.46 collision AABB) while cylinders used full radius — floating engines/islands",
+    "H4-D04": "dark mono shells from undersized dark-looking kitbash + low light + higher hull metal; fixed scale + ivory baseColorFactor + brighter studio lights",
+    "H4-D06": "no Three.js ladder previously; added isolated Playwright+Three capture without default-play wiring"
+  },
+  "defectsAddressed": {
+    "H4-D01": "critical continuous masslines — overlapping primary volumes, rooted engines/tool heads",
+    "H4-D02": "primary/secondary/tertiary hierarchy, thicker primaries, sparse tertiary panel lines",
+    "H4-D03": "collision coverage 0.92 all axes (gate >=0.85)",
+    "H4-D04": "Material_Hull baseColorFactor ≈ RGB(196,184,164); Mechanical graphite; rough/metal hierarchy stamped",
+    "H4-D05": "role-thick silhouettes at under45px Blender + Three ladders",
+    "H4-D06": "9 Three.js isolated captures (3 ships × close/120/under45)",
+    "H4-D07": "new continuous topology vs Ashline kitbash (failure comparison recaptured)",
+    "H4-D08": "hooks decimated across LODs; LOD0/1/2 continuity stills + sheet",
+    "H4-D09": "candidate_manifest regenerated last with hashes/bytes"
+  },
+  "commands": [
+    "\"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\" --background --python tools/blender/build_m4_helios_civilian_family.py --",
+    "node tools/art/finalize_m4_helios_civilian_candidate.mjs",
+    "node .campaign/M4-HELIOS-CIVILIAN-REPAIR-001/capture_three_preview.mjs",
+    "python .campaign/M4-HELIOS-CIVILIAN-REPAIR-001/compose_evidence.py"
+  ],
+  "measurements": {
+    "lark": {
+      "tris": { "total": 12370, "hull": 7032, "lod0": 7964, "lod1": 3078, "lod2": 1316 },
+      "lod0AabbSize": [18.575, 2.685, 7.4],
+      "collisionAxisRatios": [0.92, 0.92, 0.92],
+      "hullBaseColorFactor": [0.7686274509803922, 0.7215686274509804, 0.6431372549019608, 1.0]
+    },
+    "cradle": {
+      "tris": { "total": 11790, "hull": 6258, "lod0": 7508, "lod1": 2964, "lod2": 1306 },
+      "lod0AabbSize": [22.15, 8.36, 9.08],
+      "collisionAxisRatios": [0.92, 0.92, 0.92],
+      "hullBaseColorFactor": [0.7686274509803922, 0.7215686274509804, 0.6431372549019608, 1.0]
+    },
+    "span": {
+      "tris": { "total": 9890, "hull": 5078, "lod0": 6360, "lod1": 2446, "lod2": 1072 },
+      "lod0AabbSize": [28.325, 4.55, 8.7],
+      "collisionAxisRatios": [0.92, 0.92, 0.92],
+      "hullBaseColorFactor": [0.7686274509803922, 0.7215686274509804, 0.6431372549019608, 1.0]
+    }
+  },
+  "evidence": {
+    "blenderPerShip": [
+      "forward_34", "rear_34", "top_ortho", "readability_close",
+      "readability_120px", "readability_under45px", "gamesky_forward_34",
+      "lod_continuity_lod0", "lod_continuity_lod1", "lod_continuity_lod2"
+    ],
+    "threePerShip": [
+      "three_readability_close", "three_readability_120px", "three_readability_under45px"
+    ],
+    "family": [
+      "assets/ships/m4_helios_civilian/evidence/family/contact_sheet.png",
+      "assets/ships/m4_helios_civilian/evidence/family/three_contact_sheet.png",
+      "assets/ships/m4_helios_civilian/evidence/family/lod_continuity_sheet.png",
+      "assets/ships/m4_helios_civilian/evidence/family/failure_comparison_vs_ashline.png",
+      "assets/ships/m4_helios_civilian/evidence/family/family_metrics.json",
+      "assets/ships/m4_helios_civilian/evidence/family/finalize_report.json",
+      "assets/ships/m4_helios_civilian/evidence/family/three_preview_report.json",
+      "assets/ships/m4_helios_civilian/evidence/family/candidate_manifest.json"
+    ],
+    "devshots": ".devshots/m4-helios-civilian/"
+  },
+  "selfChecks": {
+    "passed": 56,
+    "failed": 0,
+    "note": "Internal measurement gates only — not controller acceptance"
+  },
+  "isolation": {
+    "root": "assets/ships/m4_helios_civilian",
+    "touchesDefaultManifests": false,
+    "overwritesK0OrAshline": false,
+    "wiredDefaultPlay": false,
+    "touchesSrcRender": false,
+    "touchesPackageRelease": false
+  },
+  "knownDefects": [
+    "Still procedural hard-surface (bevelled primitives) — not high-frequency baked Destiny-tier surfacing; K0 floor comparison remains a controller judgment.",
+    "EEVEE shadow buffer warnings during studio render (cosmetic; does not affect GLB geometry).",
+    "Three under45px ladders are real WebGL captures but very low resolution by design (48px); role ID remains subjective.",
+    "Finalize report write hit a Windows file-lock once; atomic rewrite path added to finalizer.",
+    "Candidate is NOT wired to default play — intentional."
+  ]
+}

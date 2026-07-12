@@ -1,0 +1,470 @@
+{
+  "schema": "spaceface.m4HeliosCivilianShipMetrics.v1",
+  "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
+  "shipKey": "lark",
+  "repair": "M4-HELIOS-CIVILIAN-REPAIR-001",
+  "spec": {
+    "id": "helios_lark",
+    "assetId": "SF_WHOLESHIP_HELIOS_LARK",
+    "partId": "wholeship_helios_lark",
+    "role": "civilian_courier_scout",
+    "title": "Helios Lark"
+  },
+  "sourceGlb": "assets/ships/m4_helios_civilian/source/wholeships/helios_lark.glb",
+  "releaseCandidateGlb": "assets/ships/m4_helios_civilian/release_candidates/wholeships/helios_lark.glb",
+  "blend": "assets/ships/m4_helios_civilian/blender/helios_lark_production.blend",
+  "sha256_source": "36638660245C73DEF1516F133BFE1FEE1F201D62F6E4FA83457DDE521B6BC7BC",
+  "report": {
+    "file": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_lark.glb",
+    "bytes": 771012,
+    "totalTriangles": 14366,
+    "hullTriangles": 7332,
+    "lodBreakdown": {
+      "lod0": {
+        "triangles": 9456,
+        "primitives": 8,
+        "drawEstimate": 8,
+        "nodes": [
+          {
+            "name": "LOD0_Gun_Assembly",
+            "tris": 164
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_CORE",
+            "tris": 424
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_FAN",
+            "tris": 152
+          },
+          {
+            "name": "LOD0_Merged_Material_Cyan",
+            "tris": 308
+          },
+          {
+            "name": "LOD0_Merged_Material_Glass",
+            "tris": 188
+          },
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 4584
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 2880
+          },
+          {
+            "name": "LOD0_Merged_Material_Warm",
+            "tris": 756
+          }
+        ]
+      },
+      "lod1": {
+        "triangles": 3430,
+        "primitives": 7,
+        "drawEstimate": 7,
+        "nodes": [
+          {
+            "name": "LOD1_Gun_Assembly",
+            "tris": 50
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_CORE",
+            "tris": 132
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_FAN",
+            "tris": 46
+          },
+          {
+            "name": "LOD1_Merged_Material_Cyan",
+            "tris": 128
+          },
+          {
+            "name": "LOD1_Merged_Material_Glass",
+            "tris": 78
+          },
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 1924
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 1072
+          }
+        ]
+      },
+      "lod2": {
+        "triangles": 1468,
+        "primitives": 7,
+        "drawEstimate": 7,
+        "nodes": [
+          {
+            "name": "LOD2_Gun_Assembly",
+            "tris": 22
+          },
+          {
+            "name": "LOD2_HOOK_DRIVE_CORE",
+            "tris": 56
+          },
+          {
+            "name": "LOD2_HOOK_DRIVE_FAN",
+            "tris": 20
+          },
+          {
+            "name": "LOD2_Merged_Material_Cyan",
+            "tris": 54
+          },
+          {
+            "name": "LOD2_Merged_Material_Glass",
+            "tris": 32
+          },
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 824
+          },
+          {
+            "name": "LOD2_Merged_Material_Mechanical",
+            "tris": 460
+          }
+        ]
+      }
+    },
+    "sockets": [
+      "SOCKET_Camera_Focus",
+      "SOCKET_Cargo_Ventral",
+      "SOCKET_Engine_Main",
+      "SOCKET_Mining_Front",
+      "SOCKET_RCS_Port",
+      "SOCKET_RCS_Starboard",
+      "SOCKET_Trail_Main",
+      "SOCKET_Utility_Dorsal",
+      "SOCKET_Weapon_Front"
+    ],
+    "materials": [
+      "Material_Mechanical",
+      "Material_Cyan",
+      "Material_Glass",
+      "Material_Hull",
+      "Material_Warm"
+    ],
+    "primitiveCount": 23,
+    "tangentPrimitiveCount": 23,
+    "uvPrimitiveCount": 23,
+    "spacefaceAsset": {
+      "contractVersion": 1,
+      "assetId": "SF_WHOLESHIP_HELIOS_LARK",
+      "slot": "hull",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "textureCompression": "PNG-source",
+      "chamfered": true,
+      "bevelRadiusM": 0.025,
+      "partId": "wholeship_helios_lark",
+      "category": "wholeships",
+      "sourceRole": "whole-ship hull",
+      "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
+      "family": "helios_civilian",
+      "role": "civilian_courier_scout",
+      "triangleCount": 14366,
+      "hullTriangleCount": 7332,
+      "deliverableRole": "candidate_multi_lod",
+      "lods": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "wiringStatus": "candidate_not_default_play",
+      "blenderBasis": "Z-up",
+      "exportBasis": "Y-up glTF",
+      "lod0AabbSize": [
+        18.57499885559082,
+        3.34499990940094,
+        7.399999618530273
+      ],
+      "collisionBounds": {
+        "min": [
+          -8.544499397277832,
+          -1.538699984550476,
+          -3.4039998054504395
+        ],
+        "max": [
+          8.544499397277832,
+          1.538699984550476,
+          3.4039998054504395
+        ],
+        "size": [
+          17.088998794555664,
+          3.077399969100952,
+          6.807999610900879
+        ]
+      }
+    },
+    "lodBuildStats": [
+      {
+        "lod": "lod0",
+        "decimate_ratio": 1.0,
+        "mesh_count": 8,
+        "triangles": 9456,
+        "meshes": [
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 4584,
+            "materials": [
+              "Material_Hull"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 2880,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Glass",
+            "tris": 188,
+            "materials": [
+              "Material_Glass"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Cyan",
+            "tris": 308,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Warm",
+            "tris": 756,
+            "materials": [
+              "Material_Warm"
+            ]
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_FAN",
+            "tris": 152,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_CORE",
+            "tris": 424,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD0_Gun_Assembly",
+            "tris": 164,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          }
+        ],
+        "removed_close_only": [],
+        "draw_estimate": 8
+      },
+      {
+        "lod": "lod1",
+        "decimate_ratio": 0.42,
+        "mesh_count": 7,
+        "triangles": 3430,
+        "meshes": [
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 1924,
+            "materials": [
+              "Material_Hull"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 1072,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Glass",
+            "tris": 78,
+            "materials": [
+              "Material_Glass"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Cyan",
+            "tris": 128,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_FAN",
+            "tris": 46,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_CORE",
+            "tris": 132,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD1_Gun_Assembly",
+            "tris": 50,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          }
+        ],
+        "removed_close_only": [
+          "Courier_Access_Plate_P",
+          "Courier_Access_Plate_S",
+          "Hazard_Chevron_00",
+          "Hazard_Chevron_01",
+          "Hazard_Chevron_02",
+          "Hazard_Chevron_03",
+          "Status_Marker_00",
+          "Panel_Line_00",
+          "Panel_Line_01",
+          "Panel_Line_02"
+        ],
+        "draw_estimate": 7
+      },
+      {
+        "lod": "lod2",
+        "decimate_ratio": 0.18,
+        "mesh_count": 7,
+        "triangles": 1468,
+        "meshes": [
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 824,
+            "materials": [
+              "Material_Hull"
+            ]
+          },
+          {
+            "name": "LOD2_Merged_Material_Mechanical",
+            "tris": 460,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD2_Merged_Material_Glass",
+            "tris": 32,
+            "materials": [
+              "Material_Glass"
+            ]
+          },
+          {
+            "name": "LOD2_Merged_Material_Cyan",
+            "tris": 54,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD2_HOOK_DRIVE_FAN",
+            "tris": 20,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD2_HOOK_DRIVE_CORE",
+            "tris": 56,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD2_Gun_Assembly",
+            "tris": 22,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          }
+        ],
+        "removed_close_only": [
+          "Courier_Access_Plate_P",
+          "Courier_Access_Plate_S",
+          "Hazard_Chevron_00",
+          "Hazard_Chevron_01",
+          "Hazard_Chevron_02",
+          "Hazard_Chevron_03",
+          "Status_Marker_00",
+          "Panel_Line_00",
+          "Panel_Line_01",
+          "Panel_Line_02"
+        ],
+        "draw_estimate": 7
+      }
+    ],
+    "lod0AabbSize": [
+      18.57499885559082,
+      3.34499990940094,
+      7.399999618530273
+    ],
+    "collisionBounds": {
+      "min": [
+        -8.544499397277832,
+        -1.538699984550476,
+        -3.4039998054504395
+      ],
+      "max": [
+        8.544499397277832,
+        1.538699984550476,
+        3.4039998054504395
+      ],
+      "size": [
+        17.088998794555664,
+        3.077399969100952,
+        6.807999610900879
+      ]
+    },
+    "sha256": "36638660245C73DEF1516F133BFE1FEE1F201D62F6E4FA83457DDE521B6BC7BC",
+    "collisionCoverage": {
+      "axisRatios": [
+        0.9199999917853082,
+        0.9200000156807441,
+        0.9199999948450034
+      ],
+      "minRatio": 0.9199999917853082,
+      "pass": true
+    }
+  },
+  "renders": [
+    "assets/ships/m4_helios_civilian/evidence/lark/renders/forward_34.png",
+    "assets/ships/m4_helios_civilian/evidence/lark/renders/rear_34.png",
+    "assets/ships/m4_helios_civilian/evidence/lark/renders/top_ortho.png",
+    "assets/ships/m4_helios_civilian/evidence/lark/renders/readability_close.png",
+    "assets/ships/m4_helios_civilian/evidence/lark/renders/readability_under45px.png",
+    "assets/ships/m4_helios_civilian/evidence/lark/renders/readability_120px.png",
+    "assets/ships/m4_helios_civilian/evidence/lark/renders/gamesky_forward_34.png",
+    "assets/ships/m4_helios_civilian/evidence/lark/renders/lod_continuity_lod0.png",
+    "assets/ships/m4_helios_civilian/evidence/lark/renders/lod_continuity_lod1.png",
+    "assets/ships/m4_helios_civilian/evidence/lark/renders/lod_continuity_lod2.png"
+  ],
+  "collisionCoverage": {
+    "axisRatios": [
+      0.9199999917853082,
+      0.9200000156807441,
+      0.9199999948450034
+    ],
+    "minRatio": 0.9199999917853082,
+    "pass": true
+  },
+  "builtAt": "2026-07-12T10:36:23Z"
+}

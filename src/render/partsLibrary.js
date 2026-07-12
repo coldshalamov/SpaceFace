@@ -144,11 +144,16 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'hulls/hull_gunship.glb',
       // K0 promotes the production Borrowed Time Kestrel: a complete body with structural LODs,
       // semantic materials, stable sockets, and no baked plume. Ashline adds three production Reach
-      // hostile bodies selected by combat archetype below; blocked accessory exports remain omitted.
+      // hostile bodies selected by combat archetype below. Helios civilian bodies are selected by
+      // trafficRole so the courier can share ship_kestrel gameplay stats without replacing the
+      // player's Borrowed Time body; blocked accessory exports remain omitted.
       'wholeships/kestrel.glb',
       'wholeships/ashline_dart.glb',
       'wholeships/ashline_lode.glb',
       'wholeships/ashline_rig.glb',
+      'wholeships/helios_lark.glb',
+      'wholeships/helios_cradle.glb',
+      'wholeships/helios_span.glb',
     ]),
     cockpit: Object.freeze([
       'cockpits/cockpit_dome.glb',
@@ -282,9 +287,23 @@ const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
   reaver_pirate: 'SF_WHOLESHIP_ASHLINE_RIG',
   corsair_raider: 'SF_WHOLESHIP_ASHLINE_RIG',
 });
+// Ambient civilian traffic owns a durable presentation role independent of ship-def gameplay
+// stats. This keeps role silhouettes stable across rematerialization and prevents courier traffic
+// (`ship_kestrel`) from ever replacing the player's K0 whole-ship body.
+const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
+  courier: 'wholeships/helios_lark.glb',
+  miner: 'wholeships/helios_cradle.glb',
+  hauler: 'wholeships/helios_span.glb',
+});
+const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
+  courier: 'SF_WHOLESHIP_HELIOS_LARK',
+  miner: 'SF_WHOLESHIP_HELIOS_CRADLE',
+  hauler: 'SF_WHOLESHIP_HELIOS_SPAN',
+});
 const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WHOLE_SHIP_FILE_BY_DEF_ID),
   ...Object.values(WHOLE_SHIP_FILE_BY_HOSTILE_ID),
+  ...Object.values(WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE),
 ]);
 const isWholeShipUrl = (url) => WHOLE_SHIP_URLS.some((w) => String(url || '').endsWith(w));
 const PRECOMPILE_SHIP_ARCHETYPES = Object.freeze(Object.keys(HULL_FILE_BY_DEF_ID).map((defId) => Object.freeze({
@@ -314,6 +333,16 @@ export function wholeShipVisualForEntity(entity, options = {}) {
       file: hostileFile,
       assetId: WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID[hostileId],
       roleId: hostileId,
+      required: true,
+    });
+  }
+  const trafficRole = String(data.trafficRole || '');
+  const trafficFile = WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE[trafficRole];
+  if (trafficFile) {
+    return Object.freeze({
+      file: trafficFile,
+      assetId: WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE[trafficRole],
+      roleId: trafficRole,
       required: true,
     });
   }

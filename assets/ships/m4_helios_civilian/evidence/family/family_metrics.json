@@ -1,0 +1,224 @@
+{
+  "schema": "spaceface.m4HeliosCivilianFamilyMetrics.v1",
+  "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
+  "familyId": "helios_civilian",
+  "builtAt": "2026-07-12T10:41:51Z",
+  "elapsedSec": 454.41,
+  "ships": [
+    {
+      "key": "lark",
+      "id": "helios_lark",
+      "role": "civilian_courier_scout",
+      "totalTriangles": 14366,
+      "hullTriangles": 7332,
+      "lodTriangles": {
+        "lod0": 9456,
+        "lod1": 3430,
+        "lod2": 1468
+      },
+      "lod0AabbSize": [
+        18.57499885559082,
+        3.34499990940094,
+        7.399999618530273
+      ],
+      "collisionBounds": {
+        "min": [
+          -8.544499397277832,
+          -1.538699984550476,
+          -3.4039998054504395
+        ],
+        "max": [
+          8.544499397277832,
+          1.538699984550476,
+          3.4039998054504395
+        ],
+        "size": [
+          17.088998794555664,
+          3.077399969100952,
+          6.807999610900879
+        ]
+      },
+      "collisionCoverage": {
+        "axisRatios": [
+          0.9199999917853082,
+          0.9200000156807441,
+          0.9199999948450034
+        ],
+        "minRatio": 0.9199999917853082,
+        "pass": true
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "materials": [
+        "Material_Mechanical",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Warm"
+      ],
+      "sha256": "36638660245C73DEF1516F133BFE1FEE1F201D62F6E4FA83457DDE521B6BC7BC",
+      "sourceGlb": "assets/ships/m4_helios_civilian/source/wholeships/helios_lark.glb",
+      "blend": "assets/ships/m4_helios_civilian/blender/helios_lark_production.blend"
+    },
+    {
+      "key": "cradle",
+      "id": "helios_cradle",
+      "role": "civilian_miner_tug",
+      "totalTriangles": 15536,
+      "hullTriangles": 6858,
+      "lodTriangles": {
+        "lod0": 9848,
+        "lod1": 3948,
+        "lod2": 1728
+      },
+      "lod0AabbSize": [
+        22.149999618530273,
+        8.53999948501587,
+        9.300000190734863
+      ],
+      "collisionBounds": {
+        "min": [
+          -10.189000129699707,
+          -3.9283995628356934,
+          -4.278000354766846
+        ],
+        "max": [
+          10.189000129699707,
+          3.9283995628356934,
+          4.278000354766846
+        ],
+        "size": [
+          20.378000259399414,
+          7.856799125671387,
+          8.556000709533691
+        ]
+      },
+      "collisionCoverage": {
+        "axisRatios": [
+          0.9200000275553758,
+          0.9199999530979817,
+          0.920000057425549
+        ],
+        "minRatio": 0.9199999530979817,
+        "pass": true
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "materials": [
+        "Material_Mechanical",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Warm"
+      ],
+      "sha256": "DE0179F1D9005FBCADCAD47FB8698B59795E3A13AB4C5C7D53CDB2FD88A44FFA",
+      "sourceGlb": "assets/ships/m4_helios_civilian/source/wholeships/helios_cradle.glb",
+      "blend": "assets/ships/m4_helios_civilian/blender/helios_cradle_production.blend"
+    },
+    {
+      "key": "span",
+      "id": "helios_span",
+      "role": "civilian_heavy_hauler",
+      "totalTriangles": 16366,
+      "hullTriangles": 7018,
+      "lodTriangles": {
+        "lod0": 10676,
+        "lod1": 3960,
+        "lod2": 1718
+      },
+      "lod0AabbSize": [
+        28.324999809265137,
+        5.110000371932983,
+        8.699999809265137
+      ],
+      "collisionBounds": {
+        "min": [
+          -13.029500961303711,
+          -2.350600242614746,
+          -4.001999855041504
+        ],
+        "max": [
+          13.029500961303711,
+          2.350600242614746,
+          4.001999855041504
+        ],
+        "size": [
+          26.059001922607422,
+          4.701200485229492,
+          8.003999710083008
+        ]
+      },
+      "collisionCoverage": {
+        "axisRatios": [
+          0.9200000740717921,
+          0.9200000279943517,
+          0.9199999868458713
+        ],
+        "minRatio": 0.9199999868458713,
+        "pass": true
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "materials": [
+        "Material_Mechanical",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Warm"
+      ],
+      "sha256": "D0AF83E036FB7C153F63DE05673C720799309DFBA787E4AD5D1552E1E9AE2A8A",
+      "sourceGlb": "assets/ships/m4_helios_civilian/source/wholeships/helios_span.glb",
+      "blend": "assets/ships/m4_helios_civilian/blender/helios_span_production.blend"
+    }
+  ],
+  "repair": "M4-HELIOS-CIVILIAN-REPAIR-001",
+  "promotion": {
+    "canonicalSource": true,
+    "partsManifestUpdated": true,
+    "overwritesK0AshlineOrStationAssets": false,
+    "civilianRoles": [
+      {
+        "id": "helios_lark",
+        "trafficRole": "courier",
+        "role": "civilian_courier_scout"
+      },
+      {
+        "id": "helios_cradle",
+        "trafficRole": "miner",
+        "role": "civilian_miner_tug"
+      },
+      {
+        "id": "helios_span",
+        "trafficRole": "hauler",
+        "role": "civilian_heavy_hauler"
+      }
+    ]
+  }
+}

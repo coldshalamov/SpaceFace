@@ -4139,6 +4139,124 @@
         ]
       },
       "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Hook, live tether_control_raider Reach hostile body; explicit LOD0/1/2, 9/8/8 draws, damageable drive/gun/tether roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
+    },
+    {
+      "id": "wholeship_helios_lark",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/helios_lark.glb",
+      "tris": 14366,
+      "bytes": 15689524,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "Gun_Assembly"
+      ],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "dimensionsM": [
+          18.575,
+          3.345,
+          7.4
+        ]
+      },
+      "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Lark, live Helios traffic role courier; explicit LOD0/1/2, 8/7/7 draws, semantic 1K PBR maps, damageable drive/gun roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
+    },
+    {
+      "id": "wholeship_helios_cradle",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/helios_cradle.glb",
+      "tris": 15536,
+      "bytes": 15786608,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "Gun_Assembly",
+        "Mining_Emitter"
+      ],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "dimensionsM": [
+          22.15,
+          8.54,
+          9.3
+        ]
+      },
+      "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Cradle, live Helios traffic role miner; explicit LOD0/1/2, 9/9/9 draws, semantic 1K PBR maps, damageable drive/gun/mining roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
+    },
+    {
+      "id": "wholeship_helios_span",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/helios_span.glb",
+      "tris": 16366,
+      "bytes": 15820244,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "Gun_Assembly"
+      ],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "dimensionsM": [
+          28.325,
+          5.11,
+          8.7
+        ]
+      },
+      "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Span, live Helios traffic role hauler; explicit LOD0/1/2, 8/8/8 draws, semantic 1K PBR maps, damageable drive/gun roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
     }
   ],
   "runtimeSlots": {
@@ -4158,7 +4276,10 @@
       "wholeships/wasp.glb",
       "wholeships/ashline_dart.glb",
       "wholeships/ashline_lode.glb",
-      "wholeships/ashline_rig.glb"
+      "wholeships/ashline_rig.glb",
+      "wholeships/helios_lark.glb",
+      "wholeships/helios_cradle.glb",
+      "wholeships/helios_span.glb"
     ],
     "cockpit": [
       "cockpits/cockpit_dome.glb",

@@ -1,0 +1,511 @@
+{
+  "schema": "spaceface.m4HeliosCivilianShipMetrics.v1",
+  "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
+  "shipKey": "cradle",
+  "repair": "M4-HELIOS-CIVILIAN-REPAIR-001",
+  "spec": {
+    "id": "helios_cradle",
+    "assetId": "SF_WHOLESHIP_HELIOS_CRADLE",
+    "partId": "wholeship_helios_cradle",
+    "role": "civilian_miner_tug",
+    "title": "Helios Cradle"
+  },
+  "sourceGlb": "assets/ships/m4_helios_civilian/source/wholeships/helios_cradle.glb",
+  "releaseCandidateGlb": "assets/ships/m4_helios_civilian/release_candidates/wholeships/helios_cradle.glb",
+  "blend": "assets/ships/m4_helios_civilian/blender/helios_cradle_production.blend",
+  "sha256_source": "DE0179F1D9005FBCADCAD47FB8698B59795E3A13AB4C5C7D53CDB2FD88A44FFA",
+  "report": {
+    "file": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_cradle.glb",
+    "bytes": 854908,
+    "totalTriangles": 15536,
+    "hullTriangles": 6858,
+    "lodBreakdown": {
+      "lod0": {
+        "triangles": 9848,
+        "primitives": 9,
+        "drawEstimate": 9,
+        "nodes": [
+          {
+            "name": "LOD0_Gun_Assembly",
+            "tris": 44
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_CORE",
+            "tris": 120
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_FAN",
+            "tris": 152
+          },
+          {
+            "name": "LOD0_Merged_Material_Cyan",
+            "tris": 308
+          },
+          {
+            "name": "LOD0_Merged_Material_Glass",
+            "tris": 240
+          },
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 4288
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 4304
+          },
+          {
+            "name": "LOD0_Merged_Material_Warm",
+            "tris": 324
+          },
+          {
+            "name": "LOD0_Mining_Emitter",
+            "tris": 68
+          }
+        ]
+      },
+      "lod1": {
+        "triangles": 3948,
+        "primitives": 9,
+        "drawEstimate": 9,
+        "nodes": [
+          {
+            "name": "LOD1_Gun_Assembly",
+            "tris": 12
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_CORE",
+            "tris": 36
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_FAN",
+            "tris": 46
+          },
+          {
+            "name": "LOD1_Merged_Material_Cyan",
+            "tris": 128
+          },
+          {
+            "name": "LOD1_Merged_Material_Glass",
+            "tris": 100
+          },
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 1800
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 1670
+          },
+          {
+            "name": "LOD1_Merged_Material_Warm",
+            "tris": 136
+          },
+          {
+            "name": "LOD1_Mining_Emitter",
+            "tris": 20
+          }
+        ]
+      },
+      "lod2": {
+        "triangles": 1728,
+        "primitives": 9,
+        "drawEstimate": 9,
+        "nodes": [
+          {
+            "name": "LOD2_Gun_Assembly",
+            "tris": 20
+          },
+          {
+            "name": "LOD2_HOOK_DRIVE_CORE",
+            "tris": 16
+          },
+          {
+            "name": "LOD2_HOOK_DRIVE_FAN",
+            "tris": 20
+          },
+          {
+            "name": "LOD2_Merged_Material_Cyan",
+            "tris": 54
+          },
+          {
+            "name": "LOD2_Merged_Material_Glass",
+            "tris": 42
+          },
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 770
+          },
+          {
+            "name": "LOD2_Merged_Material_Mechanical",
+            "tris": 716
+          },
+          {
+            "name": "LOD2_Merged_Material_Warm",
+            "tris": 58
+          },
+          {
+            "name": "LOD2_Mining_Emitter",
+            "tris": 32
+          }
+        ]
+      }
+    },
+    "sockets": [
+      "SOCKET_Camera_Focus",
+      "SOCKET_Cargo_Ventral",
+      "SOCKET_Engine_Main",
+      "SOCKET_Mining_Front",
+      "SOCKET_RCS_Port",
+      "SOCKET_RCS_Starboard",
+      "SOCKET_Trail_Main",
+      "SOCKET_Utility_Dorsal",
+      "SOCKET_Weapon_Front"
+    ],
+    "materials": [
+      "Material_Mechanical",
+      "Material_Cyan",
+      "Material_Glass",
+      "Material_Hull",
+      "Material_Warm"
+    ],
+    "primitiveCount": 28,
+    "tangentPrimitiveCount": 28,
+    "uvPrimitiveCount": 28,
+    "spacefaceAsset": {
+      "contractVersion": 1,
+      "assetId": "SF_WHOLESHIP_HELIOS_CRADLE",
+      "slot": "hull",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "textureCompression": "PNG-source",
+      "chamfered": true,
+      "bevelRadiusM": 0.025,
+      "partId": "wholeship_helios_cradle",
+      "category": "wholeships",
+      "sourceRole": "whole-ship hull",
+      "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
+      "family": "helios_civilian",
+      "role": "civilian_miner_tug",
+      "triangleCount": 15536,
+      "hullTriangleCount": 6858,
+      "deliverableRole": "candidate_multi_lod",
+      "lods": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "wiringStatus": "candidate_not_default_play",
+      "blenderBasis": "Z-up",
+      "exportBasis": "Y-up glTF",
+      "lod0AabbSize": [
+        22.149999618530273,
+        8.53999948501587,
+        9.300000190734863
+      ],
+      "collisionBounds": {
+        "min": [
+          -10.189000129699707,
+          -3.9283995628356934,
+          -4.278000354766846
+        ],
+        "max": [
+          10.189000129699707,
+          3.9283995628356934,
+          4.278000354766846
+        ],
+        "size": [
+          20.378000259399414,
+          7.856799125671387,
+          8.556000709533691
+        ]
+      }
+    },
+    "lodBuildStats": [
+      {
+        "lod": "lod0",
+        "decimate_ratio": 1.0,
+        "mesh_count": 9,
+        "triangles": 9848,
+        "meshes": [
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 4288,
+            "materials": [
+              "Material_Hull"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 4304,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Warm",
+            "tris": 324,
+            "materials": [
+              "Material_Warm"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Glass",
+            "tris": 240,
+            "materials": [
+              "Material_Glass"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Cyan",
+            "tris": 308,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_FAN",
+            "tris": 152,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_CORE",
+            "tris": 120,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD0_Gun_Assembly",
+            "tris": 44,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD0_Mining_Emitter",
+            "tris": 68,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          }
+        ],
+        "removed_close_only": [],
+        "draw_estimate": 9
+      },
+      {
+        "lod": "lod1",
+        "decimate_ratio": 0.42,
+        "mesh_count": 9,
+        "triangles": 3948,
+        "meshes": [
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 1800,
+            "materials": [
+              "Material_Hull"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 1670,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Warm",
+            "tris": 136,
+            "materials": [
+              "Material_Warm"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Glass",
+            "tris": 100,
+            "materials": [
+              "Material_Glass"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Cyan",
+            "tris": 128,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_FAN",
+            "tris": 46,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_CORE",
+            "tris": 36,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD1_Gun_Assembly",
+            "tris": 12,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD1_Mining_Emitter",
+            "tris": 20,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          }
+        ],
+        "removed_close_only": [
+          "Panel_Line_00",
+          "Panel_Line_01",
+          "Panel_Line_02"
+        ],
+        "draw_estimate": 9
+      },
+      {
+        "lod": "lod2",
+        "decimate_ratio": 0.18,
+        "mesh_count": 9,
+        "triangles": 1728,
+        "meshes": [
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 770,
+            "materials": [
+              "Material_Hull"
+            ]
+          },
+          {
+            "name": "LOD2_Merged_Material_Mechanical",
+            "tris": 716,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD2_Merged_Material_Warm",
+            "tris": 58,
+            "materials": [
+              "Material_Warm"
+            ]
+          },
+          {
+            "name": "LOD2_Merged_Material_Glass",
+            "tris": 42,
+            "materials": [
+              "Material_Glass"
+            ]
+          },
+          {
+            "name": "LOD2_Merged_Material_Cyan",
+            "tris": 54,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD2_HOOK_DRIVE_FAN",
+            "tris": 20,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD2_HOOK_DRIVE_CORE",
+            "tris": 16,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD2_Gun_Assembly",
+            "tris": 20,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD2_Mining_Emitter",
+            "tris": 32,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          }
+        ],
+        "removed_close_only": [
+          "Panel_Line_00",
+          "Panel_Line_01",
+          "Panel_Line_02"
+        ],
+        "draw_estimate": 9
+      }
+    ],
+    "lod0AabbSize": [
+      22.149999618530273,
+      8.53999948501587,
+      9.300000190734863
+    ],
+    "collisionBounds": {
+      "min": [
+        -10.189000129699707,
+        -3.9283995628356934,
+        -4.278000354766846
+      ],
+      "max": [
+        10.189000129699707,
+        3.9283995628356934,
+        4.278000354766846
+      ],
+      "size": [
+        20.378000259399414,
+        7.856799125671387,
+        8.556000709533691
+      ]
+    },
+    "sha256": "DE0179F1D9005FBCADCAD47FB8698B59795E3A13AB4C5C7D53CDB2FD88A44FFA",
+    "collisionCoverage": {
+      "axisRatios": [
+        0.9200000275553758,
+        0.9199999530979817,
+        0.920000057425549
+      ],
+      "minRatio": 0.9199999530979817,
+      "pass": true
+    }
+  },
+  "renders": [
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/forward_34.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/rear_34.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/top_ortho.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/readability_close.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/readability_under45px.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/readability_120px.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/gamesky_forward_34.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/lod_continuity_lod0.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/lod_continuity_lod1.png",
+    "assets/ships/m4_helios_civilian/evidence/cradle/renders/lod_continuity_lod2.png"
+  ],
+  "collisionCoverage": {
+    "axisRatios": [
+      0.9200000275553758,
+      0.9199999530979817,
+      0.920000057425549
+    ],
+    "minRatio": 0.9199999530979817,
+    "pass": true
+  },
+  "builtAt": "2026-07-12T10:39:33Z"
+}

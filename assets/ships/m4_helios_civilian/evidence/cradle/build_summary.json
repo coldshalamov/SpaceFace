@@ -1,0 +1,70 @@
+{
+  "gateOk": true,
+  "gateErrors": [],
+  "totalTriangles": 15536,
+  "hullTriangles": 6858,
+  "lodTriangles": {
+    "lod0": 9848,
+    "lod1": 3948,
+    "lod2": 1728
+  },
+  "drawEstimates": {
+    "lod0": 9,
+    "lod1": 9,
+    "lod2": 9
+  },
+  "sockets": [
+    "SOCKET_Camera_Focus",
+    "SOCKET_Cargo_Ventral",
+    "SOCKET_Engine_Main",
+    "SOCKET_Mining_Front",
+    "SOCKET_RCS_Port",
+    "SOCKET_RCS_Starboard",
+    "SOCKET_Trail_Main",
+    "SOCKET_Utility_Dorsal",
+    "SOCKET_Weapon_Front"
+  ],
+  "materials": [
+    "Material_Mechanical",
+    "Material_Cyan",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Warm"
+  ],
+  "tangentPrimitiveCount": 28,
+  "uvPrimitiveCount": 28,
+  "lod0AabbSize": [
+    22.149999618530273,
+    8.53999948501587,
+    9.300000190734863
+  ],
+  "collisionBounds": {
+    "min": [
+      -10.189000129699707,
+      -3.9283995628356934,
+      -4.278000354766846
+    ],
+    "max": [
+      10.189000129699707,
+      3.9283995628356934,
+      4.278000354766846
+    ],
+    "size": [
+      20.378000259399414,
+      7.856799125671387,
+      8.556000709533691
+    ]
+  },
+  "collisionCoverage": {
+    "axisRatios": [
+      0.9200000275553758,
+      0.9199999530979817,
+      0.920000057425549
+    ],
+    "minRatio": 0.9199999530979817,
+    "pass": true
+  },
+  "sourceSha256": "DE0179F1D9005FBCADCAD47FB8698B59795E3A13AB4C5C7D53CDB2FD88A44FFA",
+  "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_civilian\\source\\wholeships\\helios_cradle.glb",
+  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_civilian\\blender\\helios_cradle_production.blend"
+}

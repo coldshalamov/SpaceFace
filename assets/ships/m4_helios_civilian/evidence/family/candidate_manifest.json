@@ -1,0 +1,440 @@
+{
+  "schema": "spaceface.m4HeliosCivilianCandidateManifest.v1",
+  "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
+  "repair": "M4-HELIOS-CIVILIAN-REPAIR-001",
+  "familyId": "helios_civilian",
+  "wiringStatus": "candidate_not_default_play",
+  "recordedAt": "2026-07-11T11:28:44Z",
+  "ships": [
+    {
+      "key": "lark",
+      "id": "helios_lark",
+      "assetId": "SF_WHOLESHIP_HELIOS_LARK",
+      "partId": "wholeship_helios_lark",
+      "role": "civilian_courier_scout"
+    },
+    {
+      "key": "cradle",
+      "id": "helios_cradle",
+      "assetId": "SF_WHOLESHIP_HELIOS_CRADLE",
+      "partId": "wholeship_helios_cradle",
+      "role": "civilian_miner_tug"
+    },
+    {
+      "key": "span",
+      "id": "helios_span",
+      "assetId": "SF_WHOLESHIP_HELIOS_SPAN",
+      "partId": "wholeship_helios_span",
+      "role": "civilian_heavy_hauler"
+    }
+  ],
+  "builder": "tools/blender/build_m4_helios_civilian_family.py",
+  "finalizer": "tools/art/finalize_m4_helios_civilian_candidate.mjs",
+  "threePreview": ".campaign/M4-HELIOS-CIVILIAN-REPAIR-001/capture_three_preview.mjs",
+  "blenderCommand": "\"C:\\\\Program Files\\\\Blender Foundation\\\\Blender 5.1\\\\blender.exe\" --background --python tools/blender/build_m4_helios_civilian_family.py --",
+  "files": [
+    {
+      "path": "assets/ships/m4_helios_civilian/blender/helios_civilian_family_kit.blend",
+      "bytes": 110353,
+      "sha256": "12FA0C7F3EF2EC121FA56F59D40E5784FEE64CBE47C034B9D7AF3BF38C4B75F8"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/blender/helios_civilian_family_kit.blend1",
+      "bytes": 109526,
+      "sha256": "64028F6173C04BD0477878FD3CDDD09019F4EE3E5202E3AF9F1AF93E7FA00009"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/blender/helios_cradle_production.blend",
+      "bytes": 518425,
+      "sha256": "C4AE01B69C59FFFD6BA6219F7001D1817D57B5D89951BB8F17DE48F6F8722B49"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/blender/helios_cradle_production.blend1",
+      "bytes": 462984,
+      "sha256": "BCAD4A8F13A96F3592469FA8E4355F21954510E9FF2A16428C10BA5053F6B2FC"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/blender/helios_lark_production.blend",
+      "bytes": 526904,
+      "sha256": "8ABCBF2DD52664DD300AF8A3E2EFA088E1152D56CA3A016CD80162A64F7946E5"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/blender/helios_lark_production.blend1",
+      "bytes": 546358,
+      "sha256": "F848A288D0F35B7E27896D7DAA6F63B6C6DF3D67334117D2078A917AF7EC2659"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/blender/helios_span_production.blend",
+      "bytes": 450558,
+      "sha256": "31DBE8C1EB2CE076D96224A57E78CA5941FB16B61F0E823941E510105DACE95C"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/blender/helios_span_production.blend1",
+      "bytes": 428021,
+      "sha256": "D5924412E7AE202B31D2A03984C0C8FCE90B91A46ADBF1EAC3600D070A52A0C5"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/DESIGN.md",
+      "bytes": 2506,
+      "sha256": "B2A4184F1BA5CAE676CE456F7915670A24FBD91C61BC082CECEA8DA0846975D9"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/build_summary.json",
+      "bytes": 1712,
+      "sha256": "DC9110F182010768A9CD224EA270B921EF7FCE32BF4109F93D26987BE45204CD"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/production_metrics.json",
+      "bytes": 13697,
+      "sha256": "DFBEC945C276E6F5FB97B13633D7C51AA6164561377FC5FB69F1DC553F121512"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/renders/forward_34.png",
+      "bytes": 555877,
+      "sha256": "D01403472986A6DACC21C117A83450E63BEF8BCC974B548D48647580125DDF69"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/renders/gamesky_forward_34.png",
+      "bytes": 512368,
+      "sha256": "7E1844E9595F2A5E8F7967F4974EFC8EFCDDDAD8FB1CDA0660388C8662591872"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/renders/lod_continuity_lod0.png",
+      "bytes": 259635,
+      "sha256": "98FEC7E8F3A62F5D2A6DED053A6ADB7EBE78D898BF7B5C06C2C491E1461ADEF1"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/renders/lod_continuity_lod1.png",
+      "bytes": 260056,
+      "sha256": "8F12630A9A96AF8BE7D29A3ADA4CC5E1069134335D2EB7B17317C2472A3E3C44"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/renders/lod_continuity_lod2.png",
+      "bytes": 259661,
+      "sha256": "399047810C37C17C26DCBC29BAF2A9BEB7CFE9F6723CA0C23AB3C3F1080DCE8A"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/renders/readability_120px.png",
+      "bytes": 21196,
+      "sha256": "2F15DF468A90B34B417C7CCCA5530F622755DF7ABB3A64512FADD65858433B85"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/renders/readability_close.png",
+      "bytes": 547209,
+      "sha256": "F0AF444CB67FA017DB90F5055EB5FDCB1AB6A9B67339923F3FFE5E3F063A1BA6"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/renders/readability_under45px.png",
+      "bytes": 4048,
+      "sha256": "28E0C629478DDFD6B95BF68F0D285A9470811EA8DA49ADE5F0BCF39CA2E0E8A4"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/renders/rear_34.png",
+      "bytes": 553940,
+      "sha256": "9F3615109065504AC4FDBEC43C82A78B176B4FEFB4677D9890DE69ACE11A31C2"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/renders/three_readability_120px.png",
+      "bytes": 2791,
+      "sha256": "F641787EB99944B5FF73613025F2087ADC7FE49EB6E65D2B2826DAB9A815BCBC"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/renders/three_readability_close.png",
+      "bytes": 52779,
+      "sha256": "418182FECC08895BBDD41F13F672EC4254BB5622728B42F1CD4B1EF08101BE6F"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/renders/three_readability_under45px.png",
+      "bytes": 443,
+      "sha256": "1C4BA73E4F641AAB740FBEB6D541E014B7B276FC12A7CE04B6D581683761DD29"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/cradle/renders/top_ortho.png",
+      "bytes": 508903,
+      "sha256": "653B6B6D03385E813934DFCD62A124147096E54F6DBD49843D2A459F6A83DF7A"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/family/contact_sheet.png",
+      "bytes": 436541,
+      "sha256": "AA98E2992503DB2749EFFCAD21773AE453BD4804077B3FD1CB2DAA0C8A58FBC8"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/family/failure_comparison_vs_ashline.png",
+      "bytes": 317081,
+      "sha256": "3E14396D7E217F3DF59E2956341CC8A734272CE32267D6223FDC155C3D243B8E"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/family/family_metrics.json",
+      "bytes": 5756,
+      "sha256": "2C48214BE05D33CBA93E9F281093EF6526C9959BF65E9801F26D701F3171F4FE"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/family/finalize_report.json",
+      "bytes": 3831,
+      "sha256": "B65F2D02B2B9970CD120407934333D8258335A57710E82E11B065FC1DB6CE877"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/family/lod_continuity_sheet.png",
+      "bytes": 357183,
+      "sha256": "BD5EFAB24697C22691104422C9BA198A394CCD4A73940D17F4E582C4314F8254"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/family/manifest_receipt.json",
+      "bytes": 268,
+      "sha256": "34658230EF86DB5F2ADE6DA0862F111F5DAE05A385314D4DBB1B8D5DE14C392B"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/family/rebuild_receipt.json",
+      "bytes": 4991,
+      "sha256": "3C4AA3F0073101CFD90121F13742CE25BFDEC46DF0BBA32E9F6B2F09CB4F1696"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/family/three_contact_sheet.png",
+      "bytes": 63869,
+      "sha256": "0E637D75B5304C4528A272439CEF46DAEE5189908B54F51D2DA9A61A1E7F1CD7"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/family/three_preview_report.json",
+      "bytes": 9465,
+      "sha256": "88869A1743BFA1FBCF8A9F4C74161A5523102EAF0C384C876075893F3601F162"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/build_summary.json",
+      "bytes": 1716,
+      "sha256": "18F8FC82A63CACE50E8BC41E6847E08B33C5BA9019F782D86920D717B8F01597"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/production_metrics.json",
+      "bytes": 12374,
+      "sha256": "70447BE7D2C76D4E37205F95079A028778DDAB165D523140EF91CEF84FEAE8F4"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/renders/forward_34.png",
+      "bytes": 555235,
+      "sha256": "458F2048CC5113F6417CD749CCC59F183D7CAA75A6F00A69117A2105D4A4C3A8"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/renders/gamesky_forward_34.png",
+      "bytes": 480826,
+      "sha256": "C4BBB4753767A62A767CED824C380EF57E72116A69E45C4D6CC9DE69B295ECA4"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/renders/lod_continuity_lod0.png",
+      "bytes": 257019,
+      "sha256": "73A928B359105CA25FFDCC0F64784FF2EFE2286943F9F684CFB323A7A99F5BA6"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/renders/lod_continuity_lod1.png",
+      "bytes": 256839,
+      "sha256": "DD44BE4881FDA861A9ACA9B9A2C573E7954BC8AC5382F376B1C04919B1ADD1F3"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/renders/lod_continuity_lod2.png",
+      "bytes": 256914,
+      "sha256": "69F2C6DBBD8E3C9619A57849C91438C43966BAB3BA866E376665C5931E3D11E3"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/renders/readability_120px.png",
+      "bytes": 20554,
+      "sha256": "8313C89DCC874E30222819BA2A7C1E29D6C11DD9BCDE6CFEF3079B2E815287C9"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/renders/readability_close.png",
+      "bytes": 546375,
+      "sha256": "1572FB34C580A6397BEB88C66339D41DA70AF53BD16B0AF53DDDC9960FA55784"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/renders/readability_under45px.png",
+      "bytes": 3830,
+      "sha256": "0008664207FF7E2DD7E23C3E4187079D25F6DD324F8F0C31800CE4E7DD1D3DED"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/renders/rear_34.png",
+      "bytes": 551341,
+      "sha256": "5B823F42D6434F2F43BAF9A1B74CEDCBB4350BB03CBEB6F89F35206F0CE2859E"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/renders/three_readability_120px.png",
+      "bytes": 2223,
+      "sha256": "BAD7954DC4555F6B9252AD63908AE68184E426A1E8CBF16AA194ABAE9248C1B9"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/renders/three_readability_close.png",
+      "bytes": 43287,
+      "sha256": "C817DC652411AA78C3B903191BF2F2F1865B87D05BB1546F6F1BDEFA1D0D0FE9"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/renders/three_readability_under45px.png",
+      "bytes": 402,
+      "sha256": "4FAA58529950F07AB1A4215430CCF69599F77B0EF858A5DC7D8E95618B67EB6A"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/lark/renders/top_ortho.png",
+      "bytes": 509376,
+      "sha256": "2B0BD03F74A4E7C02268871FC44731B61AD2ED090B7B07641F770D953616C044"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/build_summary.json",
+      "bytes": 1714,
+      "sha256": "E625BD88C0CBCFE0DDB02BD5E4A7C5DEEE56EB0CF5A70E6F50BDCC739C022B22"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/production_metrics.json",
+      "bytes": 12912,
+      "sha256": "7D9A5B3911160BF80B55ADA9E8B74C727BA17982AE1F06DA8E8E4DDE8A4DF6CB"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/renders/forward_34.png",
+      "bytes": 567792,
+      "sha256": "A0499FCA27100F336EBE8D4CC79CDE346004D9222A586E9C179FAF700B33F57C"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/renders/gamesky_forward_34.png",
+      "bytes": 509750,
+      "sha256": "7B2377B24F3BA3A940ACEA44E59E05C1E976F163B3363BA3F74CD21320EAEE75"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/renders/lod_continuity_lod0.png",
+      "bytes": 264720,
+      "sha256": "6BD54AD4B5F5A464F771F42B70171A5840D38469FF422D7FB9F0CD82A662BEC8"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/renders/lod_continuity_lod1.png",
+      "bytes": 262757,
+      "sha256": "8667E3A144246148BEA34A6F69E1CB58BBA1268F5EE9715BE72871CE0FE9AFFF"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/renders/lod_continuity_lod2.png",
+      "bytes": 262011,
+      "sha256": "C4AE17DEDCDD7F4DACC982C53970E1B50DF556219673E5976C70A3E3F92B2067"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/renders/readability_120px.png",
+      "bytes": 22347,
+      "sha256": "3A276FBA66BC8F372348831F0CDCBA497FC871A8D10FBC45A748386F26CF4A7B"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/renders/readability_close.png",
+      "bytes": 573790,
+      "sha256": "97158B5B36E80895D7DFEDB639FA1F114421985C471B34F424ABB583625F0E7E"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/renders/readability_under45px.png",
+      "bytes": 4210,
+      "sha256": "FD20BCB9E0B5667BDD1B06C050D85BDC87A7397FAB5B784E29E265A7AE359C31"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/renders/rear_34.png",
+      "bytes": 568883,
+      "sha256": "EF9302E6C96074E1224870EF3F510C0063FEFB8AB299A07D1882775C38C0C243"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/renders/three_readability_120px.png",
+      "bytes": 2590,
+      "sha256": "A56397A5A102EF6DAB3C897A1CD87A988556123BC7D26053434F18C6147E5622"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/renders/three_readability_close.png",
+      "bytes": 52138,
+      "sha256": "5A0EF77FAE9351211B85E7A3A9FD6450DBFEF64F04954AE84ED6997F81522D55"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/renders/three_readability_under45px.png",
+      "bytes": 425,
+      "sha256": "406E0A6C9FA6BFF5FDB82E8124F02D53EB224C559A4DCD2BAE8015521AB4E32B"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/span/renders/top_ortho.png",
+      "bytes": 509244,
+      "sha256": "CA95BF9EAC5A1E30B6331F3E21A9316E5281866E46E163D0F704A8C50FFE85ED"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/PROVENANCE.json",
+      "bytes": 1827,
+      "sha256": "898C1F4EF73E3A4A151610939C8F34773930825514DB878DD40F60586E2C3E82"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/release_candidates/wholeships/helios_cradle.glb",
+      "bytes": 242176,
+      "sha256": "704681867E911176793E3A7E1232D2547E7E1291F8E065D0F0596EA21DF7EB78"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/release_candidates/wholeships/helios_lark.glb",
+      "bytes": 237180,
+      "sha256": "61257EE80C000DEDBFDAA4A95F1977711B033AB0F377AFC79B62827EB873CFFA"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/release_candidates/wholeships/helios_span.glb",
+      "bytes": 211456,
+      "sha256": "30342BA64AB59CC50B26A4445B99368FD6CF1E35E875F5A83EF2E25867857B2D"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/source/wholeships/helios_cradle.glb",
+      "bytes": 649600,
+      "sha256": "3C0CDD6DB2BCF85F81FE47A41D21958F7749395EE2F5F6F5EEE6999FFEDA7FDE"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/source/wholeships/helios_lark.glb",
+      "bytes": 663788,
+      "sha256": "A2693985549F06BD441396C19EFDABE35B958CE4E474D5A5C381860CD34898F5"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/source/wholeships/helios_span.glb",
+      "bytes": 557800,
+      "sha256": "56D34CE910F20A91B27C18E54E1E1B5F826C902CA12BF3AEF8AD78B08D8729A1"
+    },
+    {
+      "path": "assets/ships/m4_helios_civilian/evidence/family/candidate_manifest.json",
+      "bytes": 17368,
+      "sha256": "6696BB0B43385B4BB11AEF513B8323A7DDD9C0EE304855EEC9A4E51FD8763A32"
+    }
+  ],
+  "isolation": {
+    "root": "assets/ships/m4_helios_civilian",
+    "touchesDefaultManifests": false,
+    "overwritesK0OrAshline": false,
+    "wiredDefaultPlay": false,
+    "touchesSrcRender": false
+  },
+  "verdict": "candidate_submitted_for_controller_review",
+  "defectsAddressed": [
+    "H4-D01",
+    "H4-D02",
+    "H4-D03",
+    "H4-D04",
+    "H4-D05",
+    "H4-D06",
+    "H4-D07",
+    "H4-D08",
+    "H4-D09"
+  ],
+  "familyMetricsCollisionCoverage": {
+    "lark": {
+      "axisRatios": [
+        0.9199999917853082,
+        0.9200000017759298,
+        0.9199999948450034
+      ],
+      "minRatio": 0.9199999917853082,
+      "pass": true
+    },
+    "cradle": {
+      "axisRatios": [
+        0.9200000275553758,
+        0.920000011407588,
+        0.9200000630181272
+      ],
+      "minRatio": 0.920000011407588,
+      "pass": true
+    },
+    "span": {
+      "axisRatios": [
+        0.9200000740717921,
+        0.9200000377277736,
+        0.9199999868458713
+      ],
+      "minRatio": 0.9199999868458713,
+      "pass": true
+    }
+  }
+}
