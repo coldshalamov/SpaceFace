@@ -51,7 +51,7 @@ A critical component of world depth is the immediate visual recognition of facti
 
 ## 3. Adapting Depth Mechanics to SpaceFace
 
-SpaceFace's architecture operates under three constraints: a **60 Hz fixed-timestep physics simulation**, a **2D flight plane (XZ)**, and a **modular asset rendering library** ([partsLibrary.js](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/src/render/partsLibrary.js)). 
+SpaceFace's architecture operates under three constraints: a **60 Hz fixed-timestep physics simulation**, a **2D flight plane (XZ)**, and a **modular asset rendering library** ([partsLibrary.js](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/src/render/partsLibrary.js)).
 
 ```
 SpaceFace 2D XZ Plane Flight

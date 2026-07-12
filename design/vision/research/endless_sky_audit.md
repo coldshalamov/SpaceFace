@@ -11,7 +11,7 @@ This report compiles a detailed catalog of the factions, ships, planets, and won
 
 ## 1. Directory Tree & Data Loading Mechanics
 
-Endless Sky parses text-based config files from the `data/` directory using a tokenized indentation parser in C++ (`src/GameData.cpp`). 
+Endless Sky parses text-based config files from the `data/` directory using a tokenized indentation parser in C++ (`src/GameData.cpp`).
 
 ```
 [endless-sky root]
@@ -33,7 +33,7 @@ Endless Sky parses text-based config files from the `data/` directory using a to
 ```
 
 ### Automatic Collision Polygons
-When loading sprites from `images/ship/`, the engine (`src/Outline.cpp`) automatically scans the alpha channel. Any pixel that is not 100% transparent is counted as the hull. The engine generates a boundary polygon outline from these opaque pixels, mapping a 1-pixel border pad to avoid targeting UI errors. 
+When loading sprites from `images/ship/`, the engine (`src/Outline.cpp`) automatically scans the alpha channel. Any pixel that is not 100% transparent is counted as the hull. The engine generates a boundary polygon outline from these opaque pixels, mapping a 1-pixel border pad to avoid targeting UI errors.
 
 ---
 
