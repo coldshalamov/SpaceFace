@@ -216,7 +216,7 @@ export const STORY_BEATS = [
     reward: { credits: 600, unlock: 'trade_tutorial' }, introduces: 'trade', next: 2 },
   { beat: 2, id: 'first_blood',    objective: 'Arm the Kestrel, track a low-risk bounty, and destroy the marked hostile.',
     reward: { credits: 800, unlock: 'wpn_pulse_laser_s' }, introduces: 'combat', next: 3 },
-  { beat: 3, id: 'bigger_boat',    objective: 'Earn enough credits to buy any tier-2 hull from a shipyard.',
+  { beat: 3, id: 'bigger_boat',    objective: 'Follow the Elroy outcome to the marked shipyard; buy a tier-two hull.',
     reward: { credits: 1000, milestone: 'cargo+20u' }, introduces: 'shipyard', next: 4 },
   { beat: 4, id: 'pick_a_side',    objective: 'Choose a faction path by accepting an intro contract from MTS, SCN, or the Free Captains.',
     reward: { credits: 1200, rep: { chosen: 15, opposing: -10 } }, introduces: 'factions', next: 5 },

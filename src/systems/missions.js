@@ -42,6 +42,7 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
+import { SHIPS } from '../data/ships.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import {
   RECORD_KIND,
@@ -59,6 +60,7 @@ import {
   failEncounter,
   initCampaignSidecar,
   isBeatStepsComplete,
+  getBiggerBoatRoute,
   getEmbodiedLocation,
   recordBeatStep,
   syncObservedBeat,
@@ -71,6 +73,7 @@ const TYPE_BY_ID = new Map(MISSION_TYPES.map((t) => [t.type, t]));
 const TYPE_ORDER = MISSION_TYPES.map((t) => t.type);
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
+const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 
 // station id → { type, size, factionId, sectorId, sectorTier, security } resolved from the SECTORS
 // graph (dock:docked only hands us a stationId, same pattern economy uses).
@@ -257,6 +260,7 @@ export const missions = {
       this._lastDockedStation = stationId;
       this.ensureBoard(stationId);
       this._onDockedObjectives(stationId);
+      this._onContract47aB3Docked(stationId);
       this._storyTrigger('dock', { stationId });
     });
     bus.on('dock:undocked', () => {
@@ -287,7 +291,7 @@ export const missions = {
     bus.on('sector:exit', (p) => this._onSectorExit(p));
 
     // ── Story-beat triggers from other systems ───────────────────────────────────────────────
-    bus.on('ship:purchased', (p) => this._storyTrigger('ship_purchased', p || {}));
+    bus.on('ship:purchased', (p) => this._onContract47aB3ShipPurchased(p || {}));
     bus.on('asset:deployed', (p) => this._storyTrigger('asset_deployed', p || {}));
   },
 
@@ -1288,6 +1292,20 @@ export const missions = {
       if (asteroid) return { ...base, label: 'Cold Start: Mine Asteroid', pos: { x: asteroid.pos.x, z: asteroid.pos.z } };
       return base;
     }
+    if (beat.beat === 3) {
+      const route = getBiggerBoatRoute(state.story && state.story.flags && state.story.flags.elroy_outcome);
+      const info = STATION_INFO.get(route.stationId);
+      const station = currentSectorId === route.sectorId ? this._liveStation(route.stationId) : null;
+      return {
+        ...base,
+        label: route.label,
+        reason: route.instruction,
+        stationId: route.stationId,
+        sectorId: route.sectorId,
+        sectorName: info && SECTOR_BY_ID.get(info.sectorId)?.name || null,
+        pos: station && station.pos ? { x: station.pos.x, z: station.pos.z } : null,
+      };
+    }
     const station = this._nearestStation();
     if (station) {
       const stationId = station.data && station.data.stationId || null;
@@ -1528,6 +1546,48 @@ export const missions = {
       if (m.status !== 'active' || m.type !== 'smuggling_run') continue;
       this._failMission(m, i, 'busted');
     }
+  },
+
+  _onContract47aB3ShipPurchased(p) {
+    const story = this.state && this.state.story;
+    if (!story || story.beatIndex !== 3) {
+      this._storyTrigger('ship_purchased', p || {});
+      return false;
+    }
+    story.flags = story.flags || {};
+    const legacy = !!story.flags.elroy_outcome_legacy || !story.flags.elroy_outcome;
+    const route = getBiggerBoatRoute(story.flags.elroy_outcome);
+    const stationId = p && p.stationId || this._lastDockedStation;
+    const ship = SHIP_BY_ID.get(p && p.defId);
+    if (!legacy && stationId !== route.stationId) {
+      if (ship && ship.tier >= 2) story.flags.bigger_boat_pending_hull = ship.id;
+      this._refreshNavigation({ forceStory: true, silent: true });
+      this._sayStoryLine('Wrong yard. Follow the marked 47-A shipyard.', 5);
+      return false;
+    }
+    if (!legacy && (!ship || ship.tier < 2)) {
+      this._refreshNavigation({ forceStory: true, silent: true });
+      this._sayStoryLine('Bigger Boat requires a tier-two hull.', 5);
+      return false;
+    }
+    story.flags.bigger_boat_route = route.id;
+    this._storyTrigger('ship_purchased', { ...p, stationId, elroyOutcome: route.outcome, routeId: route.id });
+    return story.beatIndex !== 3;
+  },
+
+  _onContract47aB3Docked(stationId) {
+    const story = this.state && this.state.story;
+    if (!story || story.beatIndex !== 3 || !story.flags) return false;
+    const defId = story.flags.bigger_boat_pending_hull;
+    const ship = SHIP_BY_ID.get(defId);
+    const route = getBiggerBoatRoute(story.flags.elroy_outcome);
+    if (!ship || ship.tier < 2 || stationId !== route.stationId) return false;
+    delete story.flags.bigger_boat_pending_hull;
+    story.flags.bigger_boat_route = route.id;
+    this._storyTrigger('ship_purchased', {
+      defId, stationId, elroyOutcome: route.outcome, routeId: route.id, recoveredAtRoute: true,
+    });
+    return story.beatIndex !== 3;
   },
 
   /** Dock-at-destination objectives: delivery / passenger / salvage / smuggling / escort. These are
@@ -2204,6 +2264,7 @@ export const missions = {
       m.params.investigationOutcome = 'force';
       story.flags = story.flags || {};
       story.flags.elroy_outcome = 'force';
+      story.flags.elroy_outcome_legacy = true;
       recordBeatStep(this.state, 'entity:killed', {
         missionId: m.id,
         storyTag: m.storyTag,

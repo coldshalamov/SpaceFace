@@ -153,7 +153,7 @@ export const CAMPAIGN_BEATS = Object.freeze([
     beat: 3,
     id: 'bigger_boat',
     title: 'Bigger Boat',
-    objective: 'Purchase any tier-2 hull at a shipyard.',
+    objective: 'Follow the Elroy outcome to the marked shipyard; buy a tier-two hull.',
     steps: Object.freeze([
       Object.freeze({
         id: 'ship_purchased',

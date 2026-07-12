@@ -39,6 +39,18 @@ export const ENCOUNTER_SHAPE_IDS = Object.freeze(['named_hunter']);
 export const CAREER_IDS = Object.freeze(['hauler', 'hunter', 'prospector']);
 
 const B = (value) => Object.freeze(value);
+const BIGGER_BOAT_ROUTES = B({
+  custody: B({
+    id: 'evidence_warrant', stationId: 'station_helios', sectorId: 'sector_helios_prime',
+    label: 'Helios Evidence Yard',
+    instruction: 'Dock at Helios; buy a tier-two hull under the evidence warrant',
+  }),
+  force: B({
+    id: 'combat_refit', stationId: 'station_tethys', sectorId: 'sector_tethys_junction',
+    label: 'Tethys Refit Yard',
+    instruction: "Dock at Tethys; buy a tier-two hull from Slate's yard",
+  }),
+});
 
 export const EMBODIED_MISSIONS = Object.freeze([
   B({
@@ -96,6 +108,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
   B({
     beat: 3, id: 'bigger_boat', contactId: 'contact_slate', contactName: 'Slate',
     location: B({ sectorId: 'sector_tethys_junction', stationId: 'station_tethys' }),
+    consequenceRoutes: BIGGER_BOAT_ROUTES,
     physicalContact: B({ mode: 'any', steps: B([B({ id: 'ship', signal: 'ship:purchased', accept: B(['ship:purchased']) })]) }),
     missionBoardContract: null, recovery: 'Shipyard remains open. Earn the hull; no soft-lock.',
     careerIds: B(['hauler', 'hunter', 'prospector']),
@@ -137,6 +150,11 @@ export function embodiedMissionAt(beatIndex) {
   return Number.isFinite(i) && i >= 0 && i < EMBODIED_MISSIONS.length ? EMBODIED_MISSIONS[i] : null;
 }
 
+export function getBiggerBoatRoute(elroyOutcome) {
+  const key = elroyOutcome === 'custody' ? 'custody' : 'force';
+  return { outcome: key, ...BIGGER_BOAT_ROUTES[key] };
+}
+
 export function listEmbodiedMissions() { return EMBODIED_MISSIONS.slice(); }
 export function isCanonicalContactSignal(signal) { return CANONICAL_CONTACT_SIGNALS.includes(String(signal || '')); }
 export function isCanonicalIntentEvent(eventName) { return CANONICAL_INTENT_EVENTS.includes(String(eventName || '')); }
@@ -162,10 +180,11 @@ export function isNextPhysicalContact(beatIndex, signal, completedStepIds = []) 
   return contact.steps.some((step) => !done.has(step.id) && (step.signal === signal || step.accept.includes(signal)));
 }
 
-export function getEmbodiedLocation(beatIndex, branch = null) {
+export function getEmbodiedLocation(beatIndex, branch = null, elroyOutcome = null) {
   const def = embodiedMissionAt(beatIndex);
   if (!def) return null;
   const location = { beat: def.beat, ...def.location };
+  if (def.beat === 3) Object.assign(location, getBiggerBoatRoute(elroyOutcome));
   if (def.beat === 5 && branch) {
     const branchLocation = {
       traders: { stationId: 'station_tethys', sectorId: 'sector_tethys_junction', destStationId: 'station_ceres', destSectorId: 'sector_ceres_belt' },
@@ -309,7 +328,7 @@ export function describeEmbodiedMission(beatIndex, options = {}) {
   if (!def) return null;
   return {
     beat: def.beat, id: def.id, contactId: def.contactId, contactName: def.contactName,
-    location: getEmbodiedLocation(beatIndex, options.branch),
+    location: getEmbodiedLocation(beatIndex, options.branch, options.elroyOutcome),
     physicalContact: getPhysicalContact(beatIndex),
     boardContract: buildMissionBoardContract(beatIndex, options),
     recovery: getFailureRecovery(beatIndex),
@@ -332,5 +351,7 @@ export function validateEmbodiedMissions() {
   }
   const b2 = embodiedMissionAt(2);
   if (!b2.missionBoardContract.storyTarget || b2.missionBoardContract.storyTarget.id !== 'npc_elroy') errors.push('B2: Elroy target missing');
+  const b3 = embodiedMissionAt(3);
+  if (!b3.consequenceRoutes || !b3.consequenceRoutes.custody || !b3.consequenceRoutes.force) errors.push('B3: consequence routes missing');
   return { ok: errors.length === 0, errors };
 }
