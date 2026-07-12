@@ -1,4 +1,4 @@
-// Drill lens system (V2 §7 / cut-list #27). The ant-farm mining verb. When active, this owns a 2D
+// Drill lens system (V2 §7 / cut-list #27). The deep-core extraction verb. When active, this owns a 2D
 // vein cross-section the player drills into with WASD / Arrow keys. Yields real ore into cargo
 // via the canonical addCargo writer. Hazards (gas pockets) have tells so they can be learned and
 // avoided — the foundation of the hazard-taxonomy that automation will later program around.
@@ -8,6 +8,7 @@
 // so the same asteroid drills the same way every visit.
 import { addCargo } from './cargo.js';
 import { ORES } from '../data/mining.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
 
 const ORE_TIER_BY_ID = new Map(ORES.map((o) => [o.id, o.tier]));
 
@@ -38,6 +39,13 @@ const TILE = 40;        // px per tile (render hint; the screen may scale)
 const DRILL_DPS = 8;    // ore-units/sec the player's drill clears (tier 0 baseline)
 const GAS_DAMAGE = 18;  // hull % lost if you drill into a gas pocket (the lesson)
 const GAS_TELL_RADIUS = 2; // tiles — gas is hinted (discolored) within this radius of a cleared tile
+export const DRILL_ENERGY_MAX = 100;
+export const DRILL_ENERGY_RECOVERY = 28;
+export const DRILL_ENERGY_RESUME = 24;
+export const DRILL_HEAT_COOLING = 36;
+export const SCAN_RADIUS = 5;
+export const SCAN_COOLDOWN_S = 6;
+export const SCAN_ACTIVE_S = 0.9;
 
 // Empty-tile move cadence. Base 0.06s (~2× the prior 0.12s) so held travel samples twice as often;
 // cargo load still slows movement proportionally (up to +0.05s when holds are full).
@@ -73,6 +81,35 @@ export function avatarDrawPos(avatar, tileSize = TILE) {
   };
 }
 
+/** Explicit material resistance. Higher values mine slower and consume more rig power. */
+export function materialHardness(tile) {
+  if (!tile || tile.type === 'empty') return 0;
+  if (Number.isFinite(tile.hardness)) return Math.max(0.35, tile.hardness);
+  if (tile.type === 'gas') return 0.5;
+  if (tile.type === 'dirt') return 0.75;
+  if (tile.type === 'vein') return 1.15;
+  return 1.45;
+}
+
+/** Read-only extraction receipt used by the HUD and deterministic checks. */
+export function extractionTelemetry(tile, baseDps = DRILL_DPS) {
+  const hardness = materialHardness(tile);
+  if (!tile || tile.type === 'empty' || hardness <= 0) {
+    return { hardness: 0, progress: 1, effectiveDps: 0, remainingS: 0, energyPerS: 0, heatPerS: 0 };
+  }
+  const effectiveDps = Math.max(0, Number(baseDps) || 0) / hardness;
+  const maxHp = Math.max(0.001, Number(tile.maxHp) || Number(tile.hp) || 1);
+  const hp = Math.max(0, Number(tile.hp) || 0);
+  return {
+    hardness,
+    progress: Math.max(0, Math.min(1, 1 - hp / maxHp)),
+    effectiveDps,
+    remainingS: effectiveDps > 0 ? hp / effectiveDps : Infinity,
+    energyPerS: 12 + hardness * 12,
+    heatPerS: 17 + hardness * 7,
+  };
+}
+
 function commitAvatarMove(d, nc, nr, cooldownVal) {
   const prevCol = d.avatar.col;
   const prevRow = d.avatar.row;
@@ -92,13 +129,13 @@ function tileFor(col, row, rng) {
 
   // Surface rows (0 to 2) are always soft dirt, no gas, no rare veins
   if (row <= 2) {
-    return { type: 'dirt', hp: 3, maxHp: 3, ore: null, hazard: false, tierReq: 1 };
+    return { type: 'dirt', hp: 3, maxHp: 3, ore: null, hazard: false, tierReq: 1, hardness: 0.65, risk: 'low' };
   }
 
   // Gas pocket probability scales with depth
   // Disguised as dirt, warns player if adjacent
   if (rng() < 0.03 + depth * 0.08) {
-    return { type: 'gas', hp: 1, maxHp: 1, ore: null, hazard: true, tierReq: 1 };
+    return { type: 'gas', hp: 1, maxHp: 1, ore: null, hazard: true, tierReq: 1, hardness: 0.5, risk: 'critical' };
   }
 
   // Vein chance
@@ -134,7 +171,11 @@ function tileFor(col, row, rng) {
     const tierReq = drillTierReqForOre(ore);
     const yieldU = 1 + Math.floor(rng() * (2 + depth * 5));
     const hp = 5 + Math.floor(depth * 15);
-    return { type: 'vein', hp, maxHp: hp, ore, yieldU, hazard: false, tierReq };
+    return {
+      type: 'vein', hp, maxHp: hp, ore, yieldU, hazard: false, tierReq,
+      hardness: Number((0.9 + depth * 0.65 + Math.max(0, tierReq - 1) * 0.12).toFixed(2)),
+      risk: depth >= 0.7 ? 'high' : (depth >= 0.35 ? 'elevated' : 'low'),
+    };
   }
 
   // Rock vs Dirt
@@ -142,12 +183,41 @@ function tileFor(col, row, rng) {
   if (depth > 0.25 && rng() < 0.2 + depth * 0.5) {
     const hp = 8 + Math.floor(depth * 25);
     // Harder rocks require better drills to clear in reasonable time, but still drillable at Tier 1
-    return { type: 'rock', hp, maxHp: hp, ore: null, hazard: false, tierReq: 1 };
+    return {
+      type: 'rock', hp, maxHp: hp, ore: null, hazard: false, tierReq: 1,
+      hardness: Number((1.15 + depth * 0.85).toFixed(2)),
+      risk: depth >= 0.7 ? 'elevated' : 'low',
+    };
   }
 
   // Dirt
   const hp = 3 + Math.floor(depth * 10);
-  return { type: 'dirt', hp, maxHp: hp, ore: null, hazard: false, tierReq: 1 };
+  return {
+    type: 'dirt', hp, maxHp: hp, ore: null, hazard: false, tierReq: 1,
+    hardness: Number((0.65 + depth * 0.35).toFixed(2)), risk: 'low',
+  };
+}
+
+function recoverRig(d, dt) {
+  d.drillTemp = Math.max(0, d.drillTemp - DRILL_HEAT_COOLING * dt);
+  d.drillEnergy = Math.min(DRILL_ENERGY_MAX, d.drillEnergy + DRILL_ENERGY_RECOVERY * dt);
+  if (d.overheated && d.drillTemp <= 10) d.overheated = false;
+  if (d.energyDepleted && d.drillEnergy >= DRILL_ENERGY_RESUME) d.energyDepleted = false;
+}
+
+function sessionResult(d, reason) {
+  const yieldLog = { ...d.yieldLog };
+  return Object.freeze({
+    asteroidId: d.asteroidId,
+    reason,
+    aborted: reason === 'aborted',
+    yieldLog,
+    yieldUnits: Object.values(yieldLog).reduce((sum, qty) => sum + (Number(qty) || 0), 0),
+    gasHits: Number(d.gasHits) || 0,
+    tilesCleared: Number(d.tilesCleared) || 0,
+    maxDepth: Number(d.maxDepth) || 0,
+    elapsedS: Number((Number(d.sessionElapsed) || 0).toFixed(3)),
+  });
 }
 
 export const drill = {
@@ -173,7 +243,7 @@ export const drill = {
     }
     // Carve an entry shaft at the surface center so the avatar starts in a cleared tile.
     const startCol = Math.floor(COLS / 2);
-    field[startCol][0] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1 };
+    field[startCol][0] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 };
     this.state.drill = {
       asteroidId,
       field,
@@ -192,10 +262,21 @@ export const drill = {
       moveCooldown: 0,
       drillTemp: 0,           // drill head temperature (0 to 100)
       overheated: false,      // is drill overheated?
+      drillEnergy: DRILL_ENERGY_MAX,
+      energyDepleted: false,
       cableTrail: [{ col: startCol, row: 0 }], // active massline cable path trail
       accumulator: 0,         // fractional ore carry + drill damage carry
       gasHits: 0,             // how many gas pockets the player has triggered
       yieldLog: {},           // commodityId -> total units extracted this session (for the HUD + log)
+      tilesCleared: 0,
+      maxDepth: 0,
+      sessionElapsed: 0,
+      scan: {
+        cooldown: 0,
+        active: 0,
+        serial: 0,
+        contacts: 0,
+      },
       active: true,
     };
     this.bus.emit('drill:start', { asteroidId });
@@ -203,16 +284,41 @@ export const drill = {
   },
 
   // End the session (player exits the screen). Keeps the yieldLog so a summary can show on exit.
-  end() {
+  end({ reason = 'retracted' } = {}) {
     const d = this.state.drill;
-    if (!d) return;
+    if (!d) return null;
     d.active = false;
-    const yieldLog = d.yieldLog;
+    const result = sessionResult(d, reason);
     this.state.drill = null;
-    this.bus.emit('drill:end', { asteroidId: d.asteroidId, yieldLog });
+    this.bus.emit('drill:end', result);
+    return result;
+  },
+
+  abort() {
+    return this.end({ reason: 'aborted' });
+  },
+
+  retry() {
+    const d = this.state.drill;
+    if (!d) return false;
+    const asteroidId = d.asteroidId;
+    const previous = this.end({ reason: 'retry' });
+    const started = this.begin(asteroidId);
+    if (started) this.bus.emit('drill:retry', { asteroidId, previous });
+    return started;
   },
 
   newGame() {
+    this.state.drill = null;
+  },
+
+  // Drill sessions are intentionally transient. Cargo already lives under the canonical cargo
+  // writer; resuming a half-cleared procedural bore after load would duplicate authority.
+  serialize() {
+    return null;
+  },
+
+  deserialize() {
     this.state.drill = null;
   },
 
@@ -243,6 +349,45 @@ export const drill = {
     this.tickInput({ left: false, right: false, up: dir === -1, down: dir === 1 }, dt);
   },
 
+  // Survey the nearby strata. A pulse permanently marks nearby tiles for this drill session, so
+  // route planning has a real verb without adding another screen or any random outcome.
+  pulseScan() {
+    const d = this.state.drill;
+    if (!d || !d.active) return false;
+    if (!d.scan) d.scan = { cooldown: 0, active: 0, serial: 0, contacts: 0 };
+    if (d.scan.cooldown > 0) return false;
+
+    const ac = d.avatar.col;
+    const ar = d.avatar.row;
+    let contacts = 0;
+    for (let dc = -SCAN_RADIUS; dc <= SCAN_RADIUS; dc++) {
+      for (let dr = -SCAN_RADIUS; dr <= SCAN_RADIUS; dr++) {
+        if ((dc * dc) + (dr * dr) > SCAN_RADIUS * SCAN_RADIUS) continue;
+        const col = ac + dc;
+        const row = ar + dr;
+        if (col < 0 || col >= COLS || row < 0 || row >= ROWS) continue;
+        const tile = d.field[col][row];
+        if (!tile) continue;
+        tile.surveyed = true;
+        if (tile.type === 'vein' || tile.type === 'gas') contacts++;
+      }
+    }
+
+    d.scan.cooldown = SCAN_COOLDOWN_S;
+    d.scan.active = SCAN_ACTIVE_S;
+    d.scan.serial++;
+    d.scan.contacts = contacts;
+    this.bus.emit('drill:scanPulse', {
+      col: ac,
+      row: ar,
+      radius: SCAN_RADIUS,
+      cooldown: SCAN_COOLDOWN_S,
+      contacts,
+      serial: d.scan.serial,
+    });
+    return true;
+  },
+
   getDrillTier() {
     const player = this.state.entities.get(this.state.playerId);
     const beam = player ? (player.data?.miningBeam || this.state.player.miningBeam) : null;
@@ -271,6 +416,17 @@ export const drill = {
     if (!Number.isFinite(d.avatar.moveDuration)) d.avatar.moveDuration = 0;
     if (!Number.isFinite(d.avatar.fromCol)) d.avatar.fromCol = d.avatar.col;
     if (!Number.isFinite(d.avatar.fromRow)) d.avatar.fromRow = d.avatar.row;
+    if (!d.scan) d.scan = { cooldown: 0, active: 0, serial: 0, contacts: 0 };
+    if (!Number.isFinite(d.drillTemp)) d.drillTemp = 0;
+    if (!Number.isFinite(d.drillEnergy)) d.drillEnergy = DRILL_ENERGY_MAX;
+    if (typeof d.energyDepleted !== 'boolean') d.energyDepleted = false;
+    if (!Number.isFinite(d.tilesCleared)) d.tilesCleared = 0;
+    if (!Number.isFinite(d.maxDepth)) d.maxDepth = d.avatar.row || 0;
+    if (!Number.isFinite(d.sessionElapsed)) d.sessionElapsed = 0;
+    d.sessionElapsed += dt;
+
+    d.scan.cooldown = Math.max(0, (Number(d.scan.cooldown) || 0) - dt);
+    d.scan.active = Math.max(0, (Number(d.scan.active) || 0) - dt);
 
     if (d.moveCooldown > 0) {
       d.moveCooldown -= dt;
@@ -279,25 +435,6 @@ export const drill = {
     // Advance visual move window so presentation can lerp for the full step duration.
     if (d.avatar.moveDuration > 0 && d.avatar.moveElapsed < d.avatar.moveDuration) {
       d.avatar.moveElapsed = Math.min(d.avatar.moveDuration, d.avatar.moveElapsed + dt);
-    }
-
-    // --- 1. Drill heat tracking ---
-    if (d.avatar.isDrilling && d.avatar.drillTarget) {
-      // If currently drilling, heat up!
-      d.drillTemp = Math.min(100, d.drillTemp + 26 * dt); // heats up in ~3.8 seconds
-      if (d.drillTemp >= 100 && !d.overheated) {
-        d.overheated = true;
-        d.avatar.isDrilling = false;
-        d.avatar.drillTarget = null;
-        this.bus.emit('drill:warn', { text: 'DRILL OVERHEATED! Cool down active.' });
-      }
-    } else {
-      // If idle/cooling, reduce heat!
-      d.drillTemp = Math.max(0, d.drillTemp - 36 * dt); // cools down in ~2.8 seconds
-      if (d.overheated && d.drillTemp <= 10) {
-        d.overheated = false;
-        this.bus.emit('drill:warn', { text: 'Drill system cooled. Ready to dig.' });
-      }
     }
 
     let dx = 0;
@@ -311,6 +448,7 @@ export const drill = {
       d.avatar.isDrilling = false;
       d.avatar.drillTarget = null;
       d.avatar.drillBlocked = false;
+      recoverRig(d, dt);
       return;
     }
 
@@ -320,6 +458,7 @@ export const drill = {
     if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) {
       d.avatar.isDrilling = false;
       d.avatar.drillTarget = null;
+      recoverRig(d, dt);
       return;
     }
 
@@ -334,6 +473,7 @@ export const drill = {
       d.avatar.isDrilling = false;
       d.avatar.drillTarget = null;
       d.avatar.drillBlocked = false;
+      recoverRig(d, dt);
       if (d.moveCooldown <= 0) {
         commitAvatarMove(d, nc, nr, cooldownVal);
       }
@@ -342,14 +482,19 @@ export const drill = {
       if (dy === -1) {
         d.avatar.isDrilling = false;
         d.avatar.drillTarget = null;
+        recoverRig(d, dt);
         return;
       }
 
-      if (d.overheated) {
+      if (d.overheated || d.energyDepleted) {
         d.avatar.isDrilling = false;
         d.avatar.drillTarget = null;
+        const wasOverheated = d.overheated;
+        recoverRig(d, dt);
         if (d.moveCooldown <= 0) {
-          this.bus.emit('drill:warn', { text: 'Drill cooling down... Wait for system ready.' });
+          this.bus.emit('drill:warn', {
+            text: wasOverheated ? 'Drill cooling down — release the bore.' : 'Rig capacitor recharging — release the bore.',
+          });
           d.moveCooldown = 1.0;
         }
         return;
@@ -362,6 +507,7 @@ export const drill = {
         d.avatar.isDrilling = false;
         d.avatar.drillTarget = { col: nc, row: nr };
         d.avatar.drillBlocked = true;
+        recoverRig(d, dt);
         if (d.moveCooldown <= 0) {
           const names = { 2: 'Drill MK2', 3: 'Drill MK3', 4: 'Industrial Drill' };
           this.bus.emit('drill:warn', { text: `Upgrade required! Need ${names[req] || 'a better drill'}.` });
@@ -375,8 +521,15 @@ export const drill = {
       d.avatar.drillTarget = { col: nc, row: nr };
       d.avatar.drillBlocked = false;
 
-      const dps = this.getDrillDPS();
-      target.hp -= dps * dt;
+      const telemetry = extractionTelemetry(target, this.getDrillDPS());
+      const energyWindow = telemetry.energyPerS > 0 ? d.drillEnergy / telemetry.energyPerS : dt;
+      const heatWindow = telemetry.heatPerS > 0 ? (100 - d.drillTemp) / telemetry.heatPerS : dt;
+      const workDt = Math.max(0, Math.min(dt, energyWindow, heatWindow));
+      target.hp -= telemetry.effectiveDps * workDt;
+      d.drillEnergy = Math.max(0, d.drillEnergy - telemetry.energyPerS * workDt);
+      d.drillTemp = Math.min(100, d.drillTemp + telemetry.heatPerS * workDt);
+      if (d.drillEnergy <= 0) d.energyDepleted = true;
+      if (d.drillTemp >= 100) d.overheated = true;
 
       // Emit spark particles request
       this.bus.emit('drill:spark', {
@@ -385,6 +538,8 @@ export const drill = {
         type: target.type,
         ore: target.ore,
         hpFrac: target.maxHp > 0 ? Math.max(0, target.hp / target.maxHp) : 0,
+        hardness: telemetry.hardness,
+        energy: d.drillEnergy,
       });
 
       if (target.hp <= 0) {
@@ -399,6 +554,8 @@ export const drill = {
         d.avatar.isDrilling = false;
         d.avatar.drillTarget = null;
         commitAvatarMove(d, nc, nr, cooldownVal);
+        d.tilesCleared++;
+        d.maxDepth = Math.max(d.maxDepth, nr);
 
         this.bus.emit('drill:break', {
           col: nc,
@@ -424,13 +581,42 @@ export const drill = {
           const player = this.state.entities.get(this.state.playerId);
           if (player && player.hullMax > 0) {
             const dmg = Math.ceil(player.hullMax * (GAS_DAMAGE / 100));
-            player.hull = Math.max(1, player.hull - dmg);
+            const packet = scalarHitToDamagePacket({
+              damage: dmg,
+              damageType: 'explosive',
+              penetration: 1,
+              shieldBypass: 0,
+              source: { kind: 'deep_core_gas', asteroidId: d.asteroidId },
+            });
+            packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+            this._routeDamage({
+              attackerId: null,
+              targetId: this.state.playerId,
+              packet,
+              origin: { kind: 'deep_core_gas', asteroidId: d.asteroidId, col: nc, row: nr },
+            });
             this.bus.emit('drill:gasHit', { dmg, pos: { col: nc, row: nr } });
             this.bus.emit('camera:shake', { amount: 0.5 });
           }
         }
       }
     }
+  },
+
+  _routeDamage(request) {
+    const helpers = this.ctx && this.ctx.helpers;
+    if (helpers && typeof helpers.routeCombatDamage === 'function') return helpers.routeCombatDamage(request);
+    const combatSys = this.ctx?.registry?.get && this.ctx.registry.get('combat');
+    if (combatSys && typeof combatSys.ensureKernel === 'function') return combatSys.ensureKernel().routeDamage(request);
+    this.bus.emit('combat:routeDamage', request);
+    return null;
+  },
+
+  getTargetTelemetry(col, row) {
+    const d = this.state.drill;
+    if (!d || col < 0 || col >= COLS || row < 0 || row >= ROWS) return null;
+    const tile = d.field[col][row];
+    return { tile, ...extractionTelemetry(tile, this.getDrillDPS()) };
   },
 
   update(dt, state) {
@@ -453,6 +639,18 @@ export const drill = {
     return false;
   },
 
+  // Surveyed tiles stay legible for the remainder of the session. The two-tile local reveal keeps
+  // basic movement usable even while the scan is cooling down.
+  isTileSurveyed(col, row) {
+    const d = this.state.drill;
+    if (!d || col < 0 || col >= COLS || row < 0 || row >= ROWS) return false;
+    const tile = d.field[col][row];
+    if (!tile || tile.type === 'empty' || tile.surveyed) return true;
+    const dc = col - d.avatar.col;
+    const dr = row - d.avatar.row;
+    return (dc * dc) + (dr * dr) <= GAS_TELL_RADIUS * GAS_TELL_RADIUS;
+  },
+
   // Deterministic mulberry32 RNG seeded by the asteroid id — same id, same field, every visit.
   _seededRng(seed) {
     let a = (seed | 0) || 1;
@@ -471,4 +669,11 @@ export const DRILL_CONST = {
   TILE,
   MOVE_COOLDOWN_BASE,
   MOVE_COOLDOWN_CARGO,
+  SCAN_RADIUS,
+  SCAN_COOLDOWN_S,
+  SCAN_ACTIVE_S,
+  DRILL_ENERGY_MAX,
+  DRILL_ENERGY_RECOVERY,
+  DRILL_ENERGY_RESUME,
+  DRILL_HEAT_COOLING,
 };

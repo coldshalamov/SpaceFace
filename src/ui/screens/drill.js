@@ -1,22 +1,57 @@
-// Drill lens screen (V2 §7 / cut-list #27). The 2D ant-farm mining view. Renders the vein cross-
+// Drill lens screen (V2 §7 / cut-list #27). The remote deep-core extraction view. Renders the vein cross-
 // section to a canvas, handles WASD / Arrow key movement and directional drilling input locally,
 // and shows yield, drill warnings, and elegant item acquisition toasts.
 import { DRILL_CONST, drillTierReqForOre, avatarDrawPos } from '../../systems/drill.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
+import { DEFAULTS as INPUT_DEFAULTS } from '../../systems/input.js';
 
-const { COLS, ROWS, TILE } = DRILL_CONST;
+const { COLS, ROWS, TILE, SCAN_RADIUS, SCAN_COOLDOWN_S, SCAN_ACTIVE_S } = DRILL_CONST;
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+
+function bindingCodes(state, action) {
+  const configured = state.settings?.controls?.bindings;
+  if (configured && Object.prototype.hasOwnProperty.call(configured, action)) {
+    const value = configured[action];
+    return Array.isArray(value) ? value : (value ? [value] : []);
+  }
+  const schemeId = state.settings?.gameplay?.controlScheme || 'pilot';
+  const scheme = INPUT_DEFAULTS.SCHEMES[schemeId] || INPUT_DEFAULTS.SCHEMES.pilot;
+  const value = scheme[action] || INPUT_DEFAULTS.BINDINGS[action] || [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function codeLabel(code) {
+  if (!code) return 'UNBOUND';
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Digit')) return code.slice(5);
+  return ({ Space: 'SPACE', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓' })[code]
+    || code.replace(/([a-z])([A-Z])/g, '$1 $2').toUpperCase();
+}
+
+export function resolveDrillControlMap(state) {
+  const unique = (...lists) => [...new Set(lists.flat().filter(Boolean))];
+  const left = unique(bindingCodes(state, 'yawLeft'), bindingCodes(state, 'strafeLeft'));
+  const right = unique(bindingCodes(state, 'yawRight'), bindingCodes(state, 'strafeRight'));
+  const up = bindingCodes(state, 'forward');
+  const down = bindingCodes(state, 'reverse');
+  const scan = bindingCodes(state, 'scanPulse');
+  return {
+    left, right, up, down, scan,
+    movementLabel: unique(up, left, down, right).map(codeLabel).join(' / ') || 'UNBOUND',
+    scanLabel: scan.map(codeLabel).join(' / ') || 'UNBOUND',
+  };
+}
 
 // Presentation palette — locked SpaceFace tokens (hex fallbacks match styles/ui.css defaults).
 const COL = {
   accent: '#39d0ff',
-  accent2: '#7af7d0',
-  accent3: '#c08bff',
-  warn: '#ffb347',
-  danger: '#ff5470',
+  accent2: '#39d0ff',
+  accent3: '#8d66ff',
+  warn: '#ffb35c',
+  danger: '#ff5c5c',
   good: '#62e08a',
-  ink: '#d3e6ff',
+  ink: '#d7e6ff',
   inkDim: '#84a0c8',
   inkMute: '#5a7aa0',
   panel: '#0b1220',
@@ -54,20 +89,78 @@ export function spawnParticleBurst(into, opts) {
   return out;
 }
 
-/** Advance particle simulation one frame. */
+/** Advance particle simulation one frame. Returns the same array, compacted in place. */
 export function stepParticles(particles, dt) {
-  for (const p of particles) {
+  let w = 0; // write index
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     if (p.gravity) p.vy += p.gravity * dt;
     if (p.kind === 'ring') p.size += 80 * dt;
     if (p.isFloater) p.vy -= 12 * dt;
     p.life -= dt;
+    if (p.life > 0) {
+      if (w !== i) particles[w] = p;
+      w++;
+    }
   }
-  return particles.filter((p) => p.life > 0);
+  particles.length = w; // drop dead particles without allocating a new array
+  return particles;
 }
 
 const STYLE_ID = 'sf-drill-style';
+
+/**
+ * Build the static depth-band + vignette overlay once per session into an offscreen canvas.
+ * Previously this was redrawn every frame: 180 fillRect calls plus a radial gradient
+ * allocation. It's identical every frame, so we rasterize it once and blit.
+ */
+export function buildOverlay(width, height) {
+  if (typeof document === 'undefined') return null;
+  const oc = document.createElement('canvas');
+  oc.width = width;
+  oc.height = height;
+  const octx = oc.getContext('2d');
+  if (!octx) return null;
+  // Subtle depth bands. These read as instrumentation, not a CRT filter.
+  octx.fillStyle = 'rgba(0, 0, 0, 0.035)';
+  for (let y = 0; y < height; y += 8) {
+    octx.fillRect(0, y, width, 1);
+  }
+  // Vignette glow.
+  const grad = octx.createRadialGradient(width / 2, height / 2, height / 2, width / 2, height / 2, width);
+  grad.addColorStop(0, 'rgba(57, 208, 255, 0.01)');
+  grad.addColorStop(1, 'rgba(5, 10, 20, 0.35)');
+  octx.fillStyle = grad;
+  octx.fillRect(0, 0, width, height);
+  return oc;
+}
+
+/** Pre-rasterize the headlight cone so render() does not allocate a radial gradient each frame. */
+export function buildHeadlightSprite(width = 210, height = 150) {
+  if (typeof document === 'undefined') return null;
+  const oc = document.createElement('canvas');
+  oc.width = width;
+  oc.height = height;
+  const octx = oc.getContext('2d');
+  if (!octx) return null;
+  octx.save();
+  octx.beginPath();
+  octx.moveTo(0, height / 2);
+  octx.lineTo(width, 0);
+  octx.lineTo(width, height);
+  octx.closePath();
+  octx.clip();
+  const grad = octx.createRadialGradient(0, height / 2, 8, width * 0.72, height / 2, width * 0.62);
+  grad.addColorStop(0, 'rgba(255, 229, 164, 0.28)');
+  grad.addColorStop(0.4, 'rgba(255, 229, 164, 0.11)');
+  grad.addColorStop(1, 'rgba(255, 229, 164, 0)');
+  octx.fillStyle = grad;
+  octx.fillRect(0, 0, width, height);
+  octx.restore();
+  return oc;
+}
 
 function titleCaseWords(value) {
   return String(value || '').replace(/^cmdty_/, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -132,6 +225,7 @@ function collectFieldLegendData(field) {
     for (let r = 0; r < field[c].length; r++) {
       const tile = field[c][r];
       if (!tile) continue;
+      if (!tile.surveyed) continue;
       if (tile.type === 'vein' && tile.ore) ores.add(tile.ore);
       if (tile.type === 'gas') hasGas = true;
     }
@@ -152,6 +246,7 @@ function renderDrillLegend(gridEl, field, drillTier = 1) {
 
   gridEl.appendChild(makeLegendItem('Regolith', 'dirt'));
   gridEl.appendChild(makeLegendItem('Basalt', 'rock'));
+  gridEl.appendChild(makeLegendItem('Unsurveyed', 'rock', { badge: 'PULSE' }));
 
   const { ores, hasGas } = collectFieldLegendData(field);
 
@@ -175,7 +270,7 @@ function renderDrillLegend(gridEl, field, drillTier = 1) {
   if (ores.length === 0) {
     const note = document.createElement('span');
     note.className = 'drill-legend-note';
-    note.textContent = 'No ore veins on initial scan — dig deeper to expose deposits.';
+    note.textContent = 'Pulse the survey to resolve nearby deposits.';
     gridEl.appendChild(note);
   }
 }
@@ -543,81 +638,226 @@ function injectStyle() {
   s.id = STYLE_ID;
   s.textContent = `
 .drill-screen {
-  display: flex; flex-direction: row; gap: 20px; width: 98vw; max-width: 1440px; height: 86vh;
-  margin: 0 auto; padding: 15px; box-sizing: border-box; pointer-events: auto; justify-content: center;
+  --drill-shell: rgba(5, 9, 18, 0.96);
+  --drill-line: rgba(57, 208, 255, 0.24);
+  display: grid;
+  grid-template-columns: minmax(190px, 260px) minmax(420px, 1fr) minmax(190px, 260px);
+  gap: 10px;
+  width: min(98vw, 1480px);
+  height: min(88vh, 900px);
+  margin: 0 auto;
+  padding: 0;
+  box-sizing: border-box;
+  pointer-events: auto;
   align-items: stretch;
+  font-family: var(--mono);
+  color: var(--ink-dim);
 }
-.drill-title { font-family:var(--mono); letter-spacing:.24em; font-size:16px; color:var(--accent);
-  text-shadow:0 0 16px rgba(57,208,255,.4); text-transform:uppercase; margin-bottom: 4px; }
+.drill-title {
+  margin: 0;
+  font: 700 17px/1.2 var(--mono);
+  letter-spacing: .18em;
+  color: var(--ink);
+  text-transform: uppercase;
+}
+.drill-kicker {
+  font-size: 10px;
+  letter-spacing: .16em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
 .drill-side-panel {
-  width: 280px; flex-shrink: 0; background: rgba(8, 12, 20, 0.95);
-  border: 1px solid var(--panel-edge); border-radius: 8px; padding: 16px;
-  display: flex; flex-direction: column; gap: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-  font-family: var(--mono); color: var(--ink-dim); overflow-y: auto; box-sizing: border-box;
+  min-width: 0;
+  background: var(--drill-shell);
+  border: 1px solid var(--drill-line);
+  border-radius: 3px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.42);
+  color: var(--ink-dim);
+  overflow: auto;
+  box-sizing: border-box;
 }
 .drill-side-panel .panel-section {
-  display: flex; flex-direction: column; gap: 8px;
-  border-bottom: 1px solid rgba(57, 208, 255, 0.1); padding-bottom: 14px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  border-bottom: 1px solid rgba(57, 208, 255, 0.12);
+  padding-bottom: 14px;
 }
 .drill-side-panel .panel-section:last-child {
   border-bottom: none;
 }
 .drill-side-panel .sec-title {
-  font-size: 10px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase;
-  text-shadow: 0 0 8px rgba(57,208,255,0.25); display: flex; align-items: center; gap: 6px;
-  margin-bottom: 4px; border-bottom: 1px dashed rgba(57, 208, 255, 0.15); padding-bottom: 4px;
+  position: relative;
+  padding-left: 9px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--accent);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.drill-side-panel .sec-title::before {
+  content: '';
+  position: absolute;
+  inset: 1px auto 1px 0;
+  width: 2px;
+  background: var(--accent);
 }
 .drill-side-panel .readout-row {
-  display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 12px;
+  line-height: 1.35;
 }
-.drill-side-panel .readout-row .lbl { color: var(--ink-mute); }
-.drill-side-panel .readout-row .val { color: var(--accent); }
+.drill-side-panel .readout-row .lbl { color: var(--ink-mute); overflow-wrap: anywhere; }
+.drill-side-panel .readout-row .val { color: var(--accent); text-align: right; }
 .drill-side-panel .readout-row .val.good { color: var(--good); }
 .drill-side-panel .readout-row .val.warn { color: var(--warn); }
 .drill-side-panel .readout-row .val.bad { color: var(--danger); }
+.drill-control-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-dim);
+}
+.drill-control-list li { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 9px; }
+.drill-screen kbd {
+  min-width: 48px;
+  box-sizing: border-box;
+  padding: 2px 5px;
+  border: 1px solid rgba(57,208,255,.28);
+  border-radius: 2px;
+  background: rgba(57,208,255,.06);
+  color: var(--accent);
+  font: 700 10px/1.4 var(--mono);
+  letter-spacing: .05em;
+  text-align: center;
+}
+.drill-scan-button {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 2px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.drill-scan-button [data-scan-state] { color: var(--ink-dim); }
 
 .drill-center-panel {
-  flex-grow: 1; display: flex; flex-direction: column; gap: 12px; align-items: center;
-  justify-content: center; min-width: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
 }
 .drill-canvas-wrap {
-  position: relative; border: 1px solid var(--panel-edge); border-radius: 8px;
-  background: linear-gradient(180deg,#0a0d14 0%,#050709 100%); overflow: hidden;
-  box-shadow: 0 0 45px rgba(0,0,0,0.8) inset; width: 100%; max-width: 900px;
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  border: 1px solid var(--drill-line);
+  border-radius: 3px;
+  background: #050912;
+  overflow: hidden;
+  box-shadow: 0 16px 42px rgba(0,0,0,.46);
 }
 .drill-canvas {
-  display: block; width: 100%; height: auto; image-rendering: pixelated;
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: auto;
+  outline: none;
+}
+.drill-canvas:focus-visible {
+  box-shadow: inset 0 0 0 3px var(--accent);
 }
 .sonar-canvas {
-  background: rgba(4, 6, 12, 0.95); border: 1px solid rgba(57, 208, 255, 0.15);
-  border-radius: 6px; display: block; margin: 4px auto 0; width: 100%; height: auto; max-width: 246px;
+  width: 100%;
+  max-width: 246px;
+  height: auto;
+  margin: 2px auto 0;
+  display: block;
+  background: #030812;
+  border: 1px solid rgba(57,208,255,.18);
+  border-radius: 2px;
 }
-.drill-hud { display:flex; gap:18px; font-family:var(--mono); font-size:12px; color:var(--ink-dim);
-  letter-spacing:.06em; align-items:center; flex-wrap:wrap; justify-content:center; }
+.drill-hud {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0,1fr));
+  gap: 1px;
+  max-width: 900px;
+  border: 1px solid rgba(57,208,255,.14);
+  background: rgba(5,9,18,.88);
+  font-size: 11px;
+  color: var(--ink-mute);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.drill-hud > span { min-width: 0; padding: 7px 8px; text-align: center; overflow-wrap: anywhere; }
+.drill-hud > span + span { border-left: 1px solid rgba(57,208,255,.1); }
 .drill-hud .v { color:var(--accent); }
 .drill-hud .warn { color:var(--warn); }
 .drill-legend {
-  display:flex; flex-direction:column; gap:8px; width:100%; max-width:900px;
-  font-family:var(--mono); color:var(--ink-mute);
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  width:100%;
+  max-width:900px;
+  color:var(--ink-mute);
 }
 .drill-legend-title {
-  font-size:10px; color:var(--accent); letter-spacing:0.14em; text-transform:uppercase;
-  text-align:center; text-shadow:0 0 8px rgba(57,208,255,0.2);
+  font-size:10px;
+  color:var(--accent);
+  letter-spacing:.15em;
+  text-transform:uppercase;
+  text-align:center;
 }
 .drill-legend-grid {
-  display:flex; flex-wrap:wrap; gap:10px 14px; justify-content:center; align-items:center;
-  padding:10px 12px; border:1px solid rgba(57,208,255,0.12); border-radius:6px;
-  background:rgba(6,10,18,0.55);
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  justify-content:center;
+  align-items:center;
+  min-width:0;
+  padding:8px;
+  border:1px solid rgba(57,208,255,.12);
+  border-radius:2px;
+  background:rgba(5,9,18,.78);
 }
 .drill-legend-item {
-  display:inline-flex; align-items:center; gap:6px; font-size:10px; color:var(--ink-dim);
-  padding:3px 6px; border-radius:4px; background:rgba(255,255,255,0.02);
+  min-width:0;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:10px;
+  color:var(--ink-dim);
+  padding:3px 6px;
+  border-radius:2px;
+  background:rgba(255,255,255,.025);
 }
 .drill-legend-item.warn { color:var(--warn); }
 .drill-legend-item.locked { color:var(--warn); }
 .drill-legend-icon {
-  width:22px; height:22px; border-radius:2px; border:1px solid rgba(57,208,255,0.18);
-  image-rendering:pixelated; flex-shrink:0; background:#0a0d14;
+  width:22px;
+  height:22px;
+  border-radius:2px;
+  border:1px solid rgba(57,208,255,.18);
+  image-rendering:auto;
+  flex-shrink:0;
+  background:#0a0d14;
 }
 .drill-legend-arrow { font-size:9px; color:var(--ink-mute); opacity:0.7; }
 .drill-legend-label { letter-spacing:0.04em; white-space:nowrap; }
@@ -628,25 +868,34 @@ function injectStyle() {
 .drill-legend-badge.bad {
   background:rgba(255,84,112,0.14); color:var(--danger); border-color:rgba(255,84,112,0.35);
 }
-@media (prefers-reduced-motion: reduce) {
-  .drill-item-toast, .drill-summary-box { transition: none; }
-  .drill-item-toast { transform: none; opacity: 1; }
-}
-html.sf-reduce-motion .drill-item-toast,
-html.sf-reduce-motion .drill-summary-box { transition: none; }
 .drill-legend-note {
-  font-size:10px; color:var(--ink-mute); font-style:italic; letter-spacing:0.03em;
+  font-size:11px; color:var(--ink-mute); letter-spacing:0.02em; text-align:center;
 }
 .drill-foot { display:flex; gap:10px; justify-content:center; margin-top:4px; }
-.drill-foot button.sf-btn { width:auto; padding:9px 22px; }
+.drill-foot button.sf-btn { width:auto; min-height:40px; padding:9px 22px; }
+.drill-screen button:focus-visible {
+  outline:2px solid var(--accent);
+  outline-offset:3px;
+}
+.drill-sr-status {
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
+}
 
 /* Custom Toasts and Overlay alerts */
-.drill-toast-container { position:absolute; right:12px; top:12px; display:flex; flex-direction:column; gap:8px; pointer-events:none; z-index:100; max-width:280px; }
-.drill-item-toast { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:6px; background:rgba(10,15,26,0.94); border:1px solid rgba(57,208,255,0.25); box-shadow:0 6px 20px rgba(0,0,0,0.6); font-family:var(--mono); font-size:12px; color:var(--ink); transform:translateX(130%); transition:transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s; opacity:0; }
+.drill-toast-container { position:absolute; right:12px; top:12px; display:flex; flex-direction:column; gap:8px; pointer-events:none; z-index:100; width:min(320px,calc(100% - 24px)); }
+.drill-item-toast { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:2px; background:rgba(5,9,18,.97); border:1px solid rgba(57,208,255,.3); box-shadow:0 8px 24px rgba(0,0,0,.5); font-family:var(--mono); font-size:12px; line-height:1.35; color:var(--ink); transform:translateX(110%); transition:transform .18s var(--ease),opacity .18s var(--ease); opacity:0; overflow-wrap:anywhere; }
 .drill-item-toast.show { transform:translateX(0); opacity:1; }
 .drill-item-toast.warn { border-color:var(--warn); color:var(--warn); }
 .drill-item-toast.bad { border-color:var(--danger); color:var(--danger); }
-.drill-item-toast .icon { width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.drill-item-toast .icon { width:24px; height:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid currentColor; border-radius:50%; font-weight:700; }
 .drill-item-toast .icon img { width:100%; height:100%; object-fit:contain; }
 .drill-item-toast .details { display:flex; flex-direction:column; gap:2px; }
 .drill-item-toast .value { font-size:10px; color:var(--accent); font-weight:bold; letter-spacing:0.06em; text-transform:uppercase; }
@@ -667,9 +916,10 @@ html.sf-reduce-motion .drill-summary-box { transition: none; }
 .drill-summary-box {
   background: rgba(10, 14, 23, 0.96);
   border: 1px solid var(--panel-edge);
-  border-radius: 8px;
+  border-radius: 3px;
   padding: 24px;
-  min-width: 380px; max-width: 480px;
+  width: min(480px, calc(100vw - 32px));
+  box-sizing: border-box;
   box-shadow: 0 16px 40px rgba(0,0,0,0.85);
   display: flex; flex-direction: column; gap: 16px;
   transform: scale(0.92); transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -706,7 +956,7 @@ html.sf-reduce-motion .drill-summary-box { transition: none; }
   width: 100%; height: 100%; object-fit: contain;
 }
 .drill-summary-box .item-row .name {
-  font-family: var(--mono); font-size: 12px; color: var(--ink-dim);
+  min-width:0; overflow-wrap:anywhere; font-family: var(--mono); font-size: 12px; color: var(--ink-dim);
 }
 .drill-summary-box .item-row .value {
   font-family: var(--mono); font-size: 12px; color: var(--accent);
@@ -722,6 +972,56 @@ html.sf-reduce-motion .drill-summary-box { transition: none; }
 .drill-summary-box button.sf-btn {
   margin-top: 8px; align-self: center; width: 140px;
 }
+@media (prefers-reduced-motion: reduce) {
+  .drill-item-toast, .drill-summary-modal, .drill-summary-box { transition: none; }
+  .drill-item-toast { transform: none; opacity: 1; }
+}
+html.sf-reduce-motion .drill-item-toast,
+html.sf-reduce-motion .drill-summary-modal,
+html.sf-reduce-motion .drill-summary-box { transition: none; }
+html.sf-reduce-motion .drill-item-toast { transform:none; opacity:1; }
+.drill-screen.reduce-motion .drill-item-toast,
+.drill-screen.reduce-motion .drill-summary-modal,
+.drill-screen.reduce-motion .drill-summary-box { transition:none; }
+.drill-screen.reduce-motion .drill-item-toast { transform:none; opacity:1; }
+@media (max-width: 900px) {
+  .drill-screen {
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+    width: min(96vw, 940px);
+    height: calc(100vh - 20px);
+    padding: 10px 0;
+    overflow-y: auto;
+  }
+  .drill-center-panel { grid-column: 1 / -1; grid-row: 1; }
+  .drill-side-panel { min-height: 320px; }
+  .drill-side-panel.left-panel { grid-column: 1; grid-row: 2; }
+  .drill-side-panel.right-panel { grid-column: 2; grid-row: 2; }
+}
+@media (max-width: 620px) {
+  .drill-screen { grid-template-columns: minmax(0,1fr); width: calc(100vw - 16px); }
+  .drill-center-panel,
+  .drill-side-panel.left-panel,
+  .drill-side-panel.right-panel { grid-column: 1; }
+  .drill-side-panel.left-panel { grid-row: 2; }
+  .drill-side-panel.right-panel { grid-row: 3; }
+  .drill-hud { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .drill-hud > span:nth-child(3) { border-left:0; border-top:1px solid rgba(57,208,255,.1); }
+  .drill-hud > span:nth-child(4) { border-top:1px solid rgba(57,208,255,.1); }
+  .drill-title { font-size:14px; letter-spacing:.12em; }
+}
+@media (max-height: 760px) and (min-width: 901px) {
+  .drill-screen { height: 94vh; gap:10px; }
+  .drill-side-panel { padding:11px; gap:11px; }
+  .drill-side-panel .panel-section { gap:6px; padding-bottom:10px; }
+  .drill-legend-grid { padding:5px; gap:4px; }
+  .drill-legend-icon { width:18px; height:18px; }
+}
+@media (forced-colors: active) {
+  .drill-screen, .drill-side-panel, .drill-canvas-wrap, .drill-hud, .drill-legend-grid {
+    border-color:CanvasText;
+  }
+  .drill-side-panel, .drill-hud, .drill-legend-grid { background:Canvas; color:CanvasText; }
+}
 `;
   document.head.appendChild(s);
 }
@@ -732,23 +1032,28 @@ export const drillScreen = {
   mount(rootEl, ctx) {
     injectStyle();
     rootEl.innerHTML = '';
+    const state = ctx.state;
+    const controlMap = resolveDrillControlMap(state);
     const wrap = document.createElement('div');
     wrap.className = 'drill-screen';
+    wrap.setAttribute('role', 'region');
+    wrap.setAttribute('aria-labelledby', 'drill-screen-title');
 
     // ==========================================
     // 1. LEFT TELEMETRY PANEL
     // ==========================================
-    const leftPanel = document.createElement('div');
+    const leftPanel = document.createElement('aside');
     leftPanel.className = 'drill-side-panel left-panel';
+    leftPanel.setAttribute('aria-label', 'Bore link and survey controls');
     
     // Header
     const leftHeader = document.createElement('div');
     leftHeader.className = 'panel-section';
     leftHeader.innerHTML = `
-      <div class="sec-title">◆ DOCK LINK DIAGNOSTICS ◆</div>
-      <div class="readout-row"><span class="lbl">STATUS</span><span class="val good">CONNECTED</span></div>
-      <div class="readout-row"><span class="lbl">TENSION</span><span class="val" data-tension>OK (18 N)</span></div>
-      <div class="readout-row"><span class="lbl">POWER LINK</span><span class="val good" data-power>100%</span></div>
+      <div class="sec-title">Bore link</div>
+      <div class="readout-row"><span class="lbl">Status</span><span class="val good">Nominal</span></div>
+      <div class="readout-row"><span class="lbl">Cable load</span><span class="val" data-tension>18 N</span></div>
+      <div class="readout-row"><span class="lbl">Power reserve</span><span class="val good" data-power>100%</span></div>
     `;
     leftPanel.appendChild(leftHeader);
     
@@ -756,12 +1061,14 @@ export const drillScreen = {
     const sonarSec = document.createElement('div');
     sonarSec.className = 'panel-section';
     sonarSec.innerHTML = `
-      <div class="sec-title">◆ SEISMIC RADAR SWEEP ◆</div>
+      <div class="sec-title">Seismic survey</div>
     `;
     const sonarCanvas = document.createElement('canvas');
     sonarCanvas.className = 'sonar-canvas';
     sonarCanvas.width = 240;
     sonarCanvas.height = 130;
+    sonarCanvas.setAttribute('role', 'img');
+    sonarCanvas.setAttribute('aria-label', 'Local seismic plot. Use Pulse survey to mark nearby ore and gas contacts.');
     sonarSec.appendChild(sonarCanvas);
     leftPanel.appendChild(sonarSec);
     const sonarCtx = sonarCanvas.getContext('2d');
@@ -770,14 +1077,17 @@ export const drillScreen = {
     const controlSec = document.createElement('div');
     controlSec.className = 'panel-section';
     controlSec.innerHTML = `
-      <div class="sec-title">◆ FLIGHT CONTROL ASSIST ◆</div>
-      <div style="font-size:10px; color:var(--ink-mute); line-height:1.4;">
-        [WASD / ARROWS] Pilot crawler<br>
-        [W / UP] Fly up shaft to exit<br>
-        [ESC] Manual eject crawler<br>
-        <span style="color:var(--accent); display:block; margin-top:5px;">Note: Rare crystals require upgraded drill tier head modules.</span>
-      </div>
+      <div class="sec-title">Rig controls</div>
+      <ul class="drill-control-list">
+        <li><kbd>${controlMap.movementLabel}</kbd><span>Move or bore into adjacent strata</span></li>
+        <li><kbd>${controlMap.scanLabel}</kbd><span>Pulse the local seismic survey</span></li>
+        <li><kbd>ESC</kbd><span>Retract the rig</span></li>
+      </ul>
+      <button type="button" class="sf-btn drill-scan-button" data-drill-scan>
+        <span>Pulse survey</span><span data-scan-state>Ready</span>
+      </button>
     `;
+    const scanBtn = controlSec.querySelector('[data-drill-scan]');
     leftPanel.appendChild(controlSec);
     wrap.appendChild(leftPanel);
 
@@ -787,9 +1097,15 @@ export const drillScreen = {
     const centerPanel = document.createElement('div');
     centerPanel.className = 'drill-center-panel';
     
-    const title = document.createElement('div');
+    const kicker = document.createElement('div');
+    kicker.className = 'drill-kicker';
+    kicker.textContent = 'REMOTE EXTRACTION / LIVE FEED';
+    centerPanel.appendChild(kicker);
+
+    const title = document.createElement('h1');
     title.className = 'drill-title';
-    title.textContent = '◆ DRILL FEED MONITOR ◆';
+    title.id = 'drill-screen-title';
+    title.textContent = 'Deep-core extraction';
     centerPanel.appendChild(title);
 
     const canvasWrap = document.createElement('div');
@@ -798,21 +1114,27 @@ export const drillScreen = {
     canvas.className = 'drill-canvas';
     canvas.width = COLS * TILE;
     canvas.height = 18 * TILE;
+    canvas.tabIndex = 0;
+    canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', `Asteroid cross-section. Use ${controlMap.movementLabel} to move and drill. Press ${controlMap.scanLabel} to survey nearby strata.`);
     canvasWrap.appendChild(canvas);
     
     const toastContainer = document.createElement('div');
     toastContainer.className = 'drill-toast-container';
+    toastContainer.setAttribute('aria-hidden', 'true');
     canvasWrap.appendChild(toastContainer);
     centerPanel.appendChild(canvasWrap);
     
     // HUD row
     const hud = document.createElement('div');
     hud.className = 'drill-hud';
+    hud.setAttribute('aria-label', 'Extraction telemetry');
     hud.innerHTML =
       '<span>YIELD: <span class="v" data-yield>0</span></span>' +
       '<span>GAS HITS: <span class="warn" data-gas>0</span></span>' +
       '<span>CARGO: <span class="v" data-cargo>0%</span></span>' +
-      '<span>TEMP: <span class="v" data-temp>0%</span></span>';
+      '<span>TEMP: <span class="v" data-temp>0%</span></span>' +
+      '<span>ENERGY: <span class="v" data-energy>100%</span></span>';
     centerPanel.appendChild(hud);
 
     // Legend — uses the same SVG tile icons as the field, scoped to this deposit.
@@ -820,7 +1142,7 @@ export const drillScreen = {
     legend.className = 'drill-legend';
     const legendTitle = document.createElement('div');
     legendTitle.className = 'drill-legend-title';
-    legendTitle.textContent = '◆ DEPOSIT TILE KEY ◆';
+    legendTitle.textContent = 'Surveyed strata';
     legend.appendChild(legendTitle);
     const legendGrid = document.createElement('div');
     legendGrid.className = 'drill-legend-grid';
@@ -833,8 +1155,16 @@ export const drillScreen = {
     foot.className = 'drill-foot';
     const exitBtn = document.createElement('button');
     exitBtn.className = 'sf-btn';
-    exitBtn.textContent = 'Eject (ESC)';
+    exitBtn.textContent = 'Retract rig  Esc';
     foot.appendChild(exitBtn);
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'sf-btn';
+    retryBtn.textContent = 'Restart bore';
+    foot.appendChild(retryBtn);
+    const abortBtn = document.createElement('button');
+    abortBtn.className = 'sf-btn';
+    abortBtn.textContent = 'Abort & return';
+    foot.appendChild(abortBtn);
     centerPanel.appendChild(foot);
     
     wrap.appendChild(centerPanel);
@@ -842,15 +1172,16 @@ export const drillScreen = {
     // ==========================================
     // 3. RIGHT PANEL (ANALYSIS & MANIFEST)
     // ==========================================
-    const rightPanel = document.createElement('div');
+    const rightPanel = document.createElement('aside');
     rightPanel.className = 'drill-side-panel right-panel';
+    rightPanel.setAttribute('aria-label', 'Target analysis and extraction manifest');
     
     const scanSec = document.createElement('div');
     scanSec.className = 'panel-section';
     scanSec.innerHTML = `
-      <div class="sec-title">◆ SPECTRAL TILE SCAN ◆</div>
+      <div class="sec-title">Target analysis</div>
       <div id="drill-scan-target" style="font-size:11px; line-height:1.4; color:var(--ink-dim);">
-        TARGETING: SCANNING STRATA...
+        Resolving adjacent strata…
       </div>
     `;
     rightPanel.appendChild(scanSec);
@@ -858,7 +1189,7 @@ export const drillScreen = {
     const manifestSec = document.createElement('div');
     manifestSec.className = 'panel-section';
     manifestSec.innerHTML = `
-      <div class="sec-title">◆ RUN EXTRACTION LOG ◆</div>
+      <div class="sec-title">Extraction manifest</div>
       <div id="drill-cargo-manifest-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-right:4px;">
         <div style="font-size:10px; color:var(--ink-mute);">No minerals extracted.</div>
       </div>
@@ -868,24 +1199,36 @@ export const drillScreen = {
     const engineSec = document.createElement('div');
     engineSec.className = 'panel-section';
     engineSec.innerHTML = `
-      <div class="sec-title">◆ RIG ENGINE MODULE ◆</div>
+      <div class="sec-title">Drill assembly</div>
       <div class="readout-row"><span class="lbl">DRILL HEAD</span><span class="val" data-drill-tier>BASIC MK1</span></div>
       <div class="readout-row"><span class="lbl">DRILL RATE</span><span class="val" data-drill-dps>8 HP/s</span></div>
     `;
     rightPanel.appendChild(engineSec);
     
     wrap.appendChild(rightPanel);
+
+    const srStatus = document.createElement('div');
+    srStatus.className = 'drill-sr-status';
+    srStatus.setAttribute('role', 'status');
+    srStatus.setAttribute('aria-live', 'polite');
+    srStatus.setAttribute('aria-atomic', 'true');
+    wrap.appendChild(srStatus);
     rootEl.appendChild(wrap);
 
-    const state = ctx.state;
     const drillSys = ctx.drill || (ctx.registry && ctx.registry.get('drill'));
     drillScreen._drillTier = drillSys ? drillSys.getDrillTier() : 1;
     drillScreen._drillDps = drillSys ? drillSys.getDrillDPS() : 8;
+
+    function announce(text) {
+      srStatus.textContent = '';
+      requestAnimationFrame(() => { srStatus.textContent = text; });
+    }
 
     // Toast triggers helper
     function triggerToast(text, kind = 'info', commodityId = null, qty = 0) {
       const t = document.createElement('div');
       t.className = `drill-item-toast ${kind}`;
+      t.setAttribute('aria-hidden', 'true');
       
       const iconWrap = document.createElement('div');
       iconWrap.className = 'icon';
@@ -894,7 +1237,7 @@ export const drillScreen = {
         img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(SVG_TEMPLATES[commodityId]);
         iconWrap.appendChild(img);
       } else {
-        iconWrap.textContent = kind === 'bad' ? '⚠' : (kind === 'warn' ? '⚙' : '💎');
+        iconWrap.textContent = kind === 'bad' ? '!' : (kind === 'warn' ? 'i' : '+');
       }
       t.appendChild(iconWrap);
       
@@ -925,6 +1268,13 @@ export const drillScreen = {
 
     // ---- input (local; sim is paused so we own keys) ----
     const held = { left: false, right: false, up: false, down: false };
+
+    const pulseSurvey = () => {
+      if (!drillSys || !state.drill) return;
+      if (drillSys.pulseScan()) return;
+      const remain = Math.max(0, state.drill.scan?.cooldown || 0);
+      announce(`Seismic survey recharging. ${Math.ceil(remain)} seconds remaining.`);
+    };
     
     let hoveredTile = null;
     const onMouseMove = (ev) => {
@@ -944,24 +1294,42 @@ export const drillScreen = {
     };
     const onKeyDown = (ev) => {
       const c = ev.code;
-      if (c === 'ArrowLeft' || c === 'KeyA') { held.left = true; ev.preventDefault(); }
-      else if (c === 'ArrowRight' || c === 'KeyD') { held.right = true; ev.preventDefault(); }
-      else if (c === 'ArrowUp' || c === 'KeyW') { held.up = true; ev.preventDefault(); }
-      else if (c === 'ArrowDown' || c === 'KeyS') { held.down = true; ev.preventDefault(); }
+      if (controlMap.left.includes(c)) { held.left = true; ev.preventDefault(); }
+      else if (controlMap.right.includes(c)) { held.right = true; ev.preventDefault(); }
+      else if (controlMap.up.includes(c)) { held.up = true; ev.preventDefault(); }
+      else if (controlMap.down.includes(c)) { held.down = true; ev.preventDefault(); }
+      else if (controlMap.scan.includes(c)) { if (!ev.repeat) pulseSurvey(); ev.preventDefault(); }
       else if (c === 'Escape') { exit(); }
     };
     const onKeyUp = (ev) => {
       const c = ev.code;
-      if (c === 'ArrowLeft' || c === 'KeyA') held.left = false;
-      else if (c === 'ArrowRight' || c === 'KeyD') held.right = false;
-      else if (c === 'ArrowUp' || c === 'KeyW') held.up = false;
-      else if (c === 'ArrowDown' || c === 'KeyS') held.down = false;
+      if (controlMap.left.includes(c)) held.left = false;
+      if (controlMap.right.includes(c)) held.right = false;
+      if (controlMap.up.includes(c)) held.up = false;
+      if (controlMap.down.includes(c)) held.down = false;
     };
     exitBtn.addEventListener('click', exit);
+    scanBtn.addEventListener('click', pulseSurvey);
 
-    function exit() {
+    const retryBore = () => {
+      if (!drillSys?.retry()) return;
+      held.left = held.right = held.up = held.down = false;
+      viewY = undefined;
+      particles = [];
+      sonarDirty = true;
+      for (const key of Object.keys(hudCache)) delete hudCache[key];
+      renderDrillLegend(legendGrid, state.drill?.field, drillSys.getDrillTier());
+      updateHud();
+      updateManifest();
+      announce('Bore restarted. Extracted cargo remains secured in the ship hold.');
+    };
+    retryBtn.addEventListener('click', retryBore);
+    abortBtn.addEventListener('click', () => exit('aborted'));
+
+    function exit(reason = 'retracted') {
       const d = state.drill;
       const total = d ? Object.values(d.yieldLog).reduce((a, b) => a + b, 0) : 0;
+      if (d && drillSys) drillSys.end({ reason });
       
       // Phase 1: show overlay fade to black
       triggerDockFade(true);
@@ -994,6 +1362,18 @@ export const drillScreen = {
     let drillTheta = 0;
     let viewY = undefined;
     let particles = [];
+    let hudElapsed = 0;
+    let sonarElapsed = 0;
+    let sonarDirty = true;
+    // Cached HUD element handles + last-written values (avoids per-frame querySelector + DOM writes).
+    const hudEls = {};
+    const hudCache = {};
+    // Cached --mono font family — resolved once per session. Was 10× getComputedStyle/frame below,
+    // each forcing a synchronous layout recalculation (the main source of visible chop).
+    let monoFamily = 'monospace';
+    // Pre-rendered static depth overlay — drawn once, blitted per frame.
+    let overlayCanvas = null;
+    let headlightSprite = null;
 
     const gasHitFlash = { t: 0 };
     const yieldFlash = { t: 0, text: '' };
@@ -1036,6 +1416,8 @@ export const drillScreen = {
         speed: 8, kind: 'floater', text: '+' + p.qty, vy0: -18,
       });
       triggerToast(`+${p.qty} ${name} extracted`, 'info', p.commodityId, p.qty);
+      announce(`${p.qty} units of ${name} extracted.`);
+      updateManifest();
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'loot_collect' });
     }));
 
@@ -1053,13 +1435,25 @@ export const drillScreen = {
           life: 0.4, size: 6, speed: 0, kind: 'ring',
         });
       }
-      triggerToast('⚠ GAS POCKET! Hull damaged', 'bad');
+      triggerToast('Gas pocket — hull damaged', 'bad');
+      announce(`Gas pocket breached. Hull damage ${p.dmg}.`);
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'shield_break' });
     }));
 
     unsubs.push(ctx.bus.on('drill:warn', (p) => {
       triggerToast(p.text, 'warn');
+      announce(p.text);
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'mining_core_fizzle' });
+    }));
+
+    unsubs.push(ctx.bus.on('drill:scanPulse', (p) => {
+      sonarDirty = true;
+      renderDrillLegend(legendGrid, state.drill?.field, drillSys.getDrillTier());
+      const result = p.contacts === 1 ? '1 contact' : `${p.contacts} contacts`;
+      triggerToast(`Survey resolved — ${result}`, 'info');
+      announce(`Seismic survey resolved ${result} within ${p.radius} tiles.`);
+      sonarCanvas.setAttribute('aria-label', `Local seismic plot. Last survey resolved ${result}.`);
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'scan_resolve' });
     }));
 
     unsubs.push(ctx.bus.on('drill:break', (p) => {
@@ -1131,12 +1525,10 @@ export const drillScreen = {
       sonarCtx.moveTo(cx, cy - 60); sonarCtx.lineTo(cx, cy + 60);
       sonarCtx.stroke();
       
-      // Sweep only while crawler is active (taste: no idle animation)
-      const active = !!(d && (d.avatar?.isDrilling || held.left || held.right || held.up || held.down));
-      const sweepAngle = active
-        ? (performance.now() * 0.004) % (Math.PI * 2)
-        : (drillScreen._sonarRestAngle || 0);
-      if (active) drillScreen._sonarRestAngle = sweepAngle;
+      // The sweep is the feature acknowledgment. It never animates at rest.
+      const active = !!(d && d.scan && d.scan.active > 0);
+      const progress = active ? (motionReduce ? 1 : 1 - Math.min(1, d.scan.active / SCAN_ACTIVE_S)) : 1;
+      const sweepAngle = progress * Math.PI * 2;
 
       if (active) {
         sonarCtx.fillStyle = 'rgba(57, 208, 255, 0.04)';
@@ -1153,52 +1545,48 @@ export const drillScreen = {
         sonarCtx.stroke();
       }
 
-      // Draw detected ore deposits nearby (within 5-tile radius)
+      // Draw surveyed contacts. Ore uses a diamond; gas uses a cross, so color is never the only cue.
       if (d && d.field) {
         const ar = d.avatar.row;
         const ac = d.avatar.col;
 
-        for (let dc = -4; dc <= 4; dc++) {
-          for (let dr = -4; dr <= 4; dr++) {
+        for (let dc = -SCAN_RADIUS; dc <= SCAN_RADIUS; dc++) {
+          for (let dr = -SCAN_RADIUS; dr <= SCAN_RADIUS; dr++) {
+            if ((dc * dc) + (dr * dr) > SCAN_RADIUS * SCAN_RADIUS) continue;
             const tc = ac + dc;
             const tr = ar + dr;
             if (tc >= 0 && tc < COLS && tr >= 0 && tr < ROWS) {
               const tile = d.field[tc][tr];
-              if (tile && tile.type === 'vein' && tile.ore) {
-                const px = cx + dc * 14;
-                const py = cy + dr * 14;
-                const dist = Math.hypot(dc * 14, dr * 14);
-                if (dist <= 65) {
-                  const color = ORE_SPARK_COLOR[tile.ore] || COL.warn;
-                  // While sweeping: reveal on pass. At rest: dim persistent blips (state, not idle FX).
-                  let show = !active;
-                  let bright = 1;
-                  if (active) {
-                    const angleToBlip = Math.atan2(dr * 14, dc * 14);
-                    let angleDiff = sweepAngle - angleToBlip;
-                    if (angleDiff < 0) angleDiff += Math.PI * 2;
-                    show = angleDiff < 1.35;
-                    bright = show ? Math.max(0.25, 1 - angleDiff / 1.35) : 0;
-                  } else {
-                    bright = 0.55;
-                  }
-                  if (show && bright > 0) {
-                    sonarCtx.globalAlpha = bright;
-                    sonarCtx.fillStyle = color;
-                    sonarCtx.shadowColor = color;
-                    sonarCtx.shadowBlur = active ? 5 : 2;
-                    sonarCtx.beginPath();
-                    sonarCtx.arc(px, py, active ? 2.6 : 2.0, 0, Math.PI * 2);
-                    sonarCtx.fill();
-                    sonarCtx.shadowBlur = 0;
-                    sonarCtx.globalAlpha = 1;
-                  }
-                }
+              if (!tile || !tile.surveyed || (tile.type !== 'vein' && tile.type !== 'gas')) continue;
+              const px = cx + dc * 12;
+              const py = cy + dr * 12;
+              const color = tile.type === 'gas' ? COL.danger : (ORE_SPARK_COLOR[tile.ore] || COL.warn);
+              sonarCtx.globalAlpha = active ? 0.95 : 0.68;
+              sonarCtx.strokeStyle = color;
+              sonarCtx.fillStyle = color;
+              sonarCtx.lineWidth = 1.5;
+              if (tile.type === 'gas') {
+                sonarCtx.beginPath();
+                sonarCtx.moveTo(px - 3, py - 3); sonarCtx.lineTo(px + 3, py + 3);
+                sonarCtx.moveTo(px + 3, py - 3); sonarCtx.lineTo(px - 3, py + 3);
+                sonarCtx.stroke();
+              } else {
+                sonarCtx.beginPath();
+                sonarCtx.moveTo(px, py - 3.5);
+                sonarCtx.lineTo(px + 3.5, py);
+                sonarCtx.lineTo(px, py + 3.5);
+                sonarCtx.lineTo(px - 3.5, py);
+                sonarCtx.closePath();
+                sonarCtx.fill();
               }
+              sonarCtx.globalAlpha = 1;
             }
           }
         }
       }
+
+      sonarCtx.fillStyle = COL.ink;
+      sonarCtx.fillRect(cx - 2, cy - 2, 4, 4);
     }
 
     function frame(now) {
@@ -1208,10 +1596,6 @@ export const drillScreen = {
 
       const d = state.drill;
       if (!d) return;
-
-      motionReduce = prefersReducedMotion({
-        motionReduce: !!(state.settings && state.settings.video && state.settings.video.motionReduce),
-      });
 
       // advance drilling from held keys
       drillSys.tickInput(held, dt);
@@ -1260,9 +1644,19 @@ export const drillScreen = {
       if (yieldFlash.t > 0) yieldFlash.t -= dt;
       if (breakFlash.t > 0) breakFlash.t -= dt;
 
-      drawSonar(d);
+      sonarElapsed += dt;
+      const scanActive = !!(d.scan && d.scan.active > 0);
+      if (sonarDirty || ((moving || scanActive) && sonarElapsed >= 0.05)) {
+        drawSonar(d);
+        sonarElapsed = 0;
+        sonarDirty = scanActive;
+      }
       render(dt);
-      updateHud();
+      hudElapsed += dt;
+      if (hudElapsed >= 0.1) {
+        updateHud();
+        hudElapsed = 0;
+      }
     }
 
     function render(dt) {
@@ -1315,20 +1709,23 @@ export const drillScreen = {
             continue;
           }
 
+          const surveyed = drillSys.isTileSurveyed(c, r);
           let img = null;
-          if (t.type === 'dirt') {
+          if (!surveyed) {
+            img = (t.type === 'rock' || t.type === 'vein') ? IMAGES.rock : IMAGES.dirt;
+          } else if (t.type === 'dirt') {
             img = IMAGES.dirt;
           } else if (t.type === 'rock') {
             img = IMAGES.rock;
           } else if (t.type === 'gas') {
-            img = drillSys.isHazardRevealed(c, r) ? IMAGES.gasRevealed : IMAGES.dirt;
+            img = (t.surveyed || drillSys.isHazardRevealed(c, r)) ? IMAGES.gasRevealed : IMAGES.dirt;
           } else if (t.type === 'vein' && t.ore) {
             img = IMAGES[t.ore];
           }
 
           if (img) {
             ctx2d.drawImage(img, x, y, TILE, TILE);
-          } else if (t.type === 'vein' && t.ore) {
+          } else if (surveyed && t.type === 'vein' && t.ore) {
             // Missing tile art — draw a loud placeholder so ores never silently share another icon.
             ctx2d.fillStyle = 'rgba(255, 92, 92, 0.25)';
             ctx2d.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
@@ -1336,13 +1733,13 @@ export const drillScreen = {
             ctx2d.lineWidth = 1.5;
             ctx2d.strokeRect(x + 4, y + 4, TILE - 8, TILE - 8);
             ctx2d.fillStyle = '#ffb35c';
-            ctx2d.font = 'bold 8px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
+            ctx2d.font = 'bold 8px ' + monoFamily;
             ctx2d.textAlign = 'center';
             ctx2d.fillText('?', x + TILE / 2, y + TILE / 2 + 3);
           }
 
           // Locked vein overlay — tier gate is per ore, not depth.
-          if (t.type === 'vein' && t.ore) {
+          if (surveyed && t.type === 'vein' && t.ore) {
             const req = t.tierReq || drillTierReqForOre(t.ore);
             const tier = drillScreen._drillTier || 1;
             if (tier < req) {
@@ -1353,7 +1750,7 @@ export const drillScreen = {
               ctx2d.lineWidth = 1.5;
               ctx2d.strokeRect(x + 3, y + 3, TILE - 6, TILE - 6);
               ctx2d.fillStyle = '#ff8a4a';
-              ctx2d.font = 'bold 9px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
+              ctx2d.font = 'bold 9px ' + monoFamily;
               ctx2d.textAlign = 'center';
               ctx2d.fillText(`MK${req}`, x + TILE / 2, y + TILE / 2 + 3);
               ctx2d.restore();
@@ -1375,6 +1772,20 @@ export const drillScreen = {
         }
       }
 
+      // Seismic pulse: one state-driven ring, clipped naturally by the canvas.
+      if (d.scan && d.scan.active > 0) {
+        const progress = motionReduce ? 1 : 1 - Math.min(1, d.scan.active / SCAN_ACTIVE_S);
+        const radius = progress * SCAN_RADIUS * TILE;
+        const alpha = motionReduce ? 0.28 : Math.max(0.08, 0.48 * (1 - progress));
+        ctx2d.save();
+        ctx2d.strokeStyle = `rgba(57,208,255,${alpha})`;
+        ctx2d.lineWidth = 2;
+        ctx2d.beginPath();
+        ctx2d.arc(drillScreen._rx + TILE / 2, drillScreen._ry + TILE / 2 - viewY, radius, 0, Math.PI * 2);
+        ctx2d.stroke();
+        ctx2d.restore();
+      }
+
       // Draw particles (sparks, steam, dust, rings, floaters)
       particles.forEach((p) => {
         const alpha = Math.max(0, p.life / (p.maxLife || 0.001));
@@ -1388,7 +1799,7 @@ export const drillScreen = {
           ctx2d.stroke();
         } else if (p.isFloater && p.text) {
           ctx2d.fillStyle = p.color;
-          ctx2d.font = 'bold 11px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
+          ctx2d.font = 'bold 11px ' + monoFamily;
           ctx2d.textAlign = 'center';
           ctx2d.fillText(p.text, p.x, py);
         } else if (p.isSteam) {
@@ -1451,12 +1862,13 @@ export const drillScreen = {
         ctx2d.lineWidth = 2.2;
         ctx2d.stroke();
 
-        // Pulsing energy stream flowing down cable
+        // Power trace only moves while the rig is moving or drilling.
         ctx2d.strokeStyle = '#e0f2fe';
         ctx2d.shadowBlur = 0;
         ctx2d.lineWidth = 1.2;
         ctx2d.setLineDash([5, 12]);
-        ctx2d.lineDashOffset = -performance.now() * 0.04;
+        const cableActive = d.avatar.isDrilling || held.left || held.right || held.up || held.down;
+        ctx2d.lineDashOffset = (!motionReduce && cableActive) ? -performance.now() * 0.04 : 0;
         ctx2d.stroke();
         ctx2d.restore();
       }
@@ -1471,20 +1883,13 @@ export const drillScreen = {
       else if (dir === 'up') theta = -Math.PI / 2;
       else if (dir === 'right') theta = 0;
 
-      ctx2d.save();
-      // Draw volumetric radial gradient cone
-      const beamGrad = ctx2d.createRadialGradient(cx, cy, 10, cx + Math.cos(theta) * 160, cy + Math.sin(theta) * 160, 90);
-      beamGrad.addColorStop(0, 'rgba(255, 225, 140, 0.32)');
-      beamGrad.addColorStop(0.3, 'rgba(255, 225, 140, 0.12)');
-      beamGrad.addColorStop(1, 'rgba(255, 225, 140, 0)');
-      
-      ctx2d.fillStyle = beamGrad;
-      ctx2d.beginPath();
-      ctx2d.moveTo(cx, cy);
-      ctx2d.arc(cx, cy, 180, theta - 0.28, theta + 0.28);
-      ctx2d.closePath();
-      ctx2d.fill();
-      ctx2d.restore();
+      if (headlightSprite) {
+        ctx2d.save();
+        ctx2d.translate(cx, cy);
+        ctx2d.rotate(theta);
+        ctx2d.drawImage(headlightSprite, 0, -headlightSprite.height / 2);
+        ctx2d.restore();
+      }
       
       ctx2d.save();
       
@@ -1512,8 +1917,7 @@ export const drillScreen = {
       ctx2d.drawImage(IMAGES.rover, -roverSize / 2, -roverSize / 2, roverSize, roverSize);
 
       // Draw 3D auger drill bit procedurally (spin driven by session theta for smoothness)
-      const spinTime = (d.avatar.isDrilling ? drillTheta : performance.now() / 1000);
-      drawAugerDrillBit(ctx2d, roverSize / 2, 4, TILE * 1.25, 0, spinTime);
+      drawAugerDrillBit(ctx2d, roverSize / 2, 4, TILE * 1.25, 0, drillTheta);
 
       ctx2d.restore();
 
@@ -1529,7 +1933,7 @@ export const drillScreen = {
         ctx2d.save();
         ctx2d.globalAlpha = Math.min(1, yieldFlash.t * 1.4);
         ctx2d.fillStyle = COL.accent2;
-        ctx2d.font = 'bold 13px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
+        ctx2d.font = 'bold 13px ' + monoFamily;
         ctx2d.textAlign = 'center';
         ctx2d.shadowColor = '#000000';
         ctx2d.shadowBlur = 4;
@@ -1571,7 +1975,7 @@ export const drillScreen = {
         
         // Label
         ctx2d.fillStyle = 'rgba(211, 230, 255, 0.6)';
-        ctx2d.font = 'bold 9px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
+        ctx2d.font = 'bold 9px ' + monoFamily;
         ctx2d.textAlign = 'left';
         ctx2d.fillText('TEMP', gx, gy + gh + 12);
         
@@ -1585,7 +1989,7 @@ export const drillScreen = {
       // --- 3.5 Depth telemetry markings ---
       ctx2d.save();
       ctx2d.fillStyle = 'rgba(57, 208, 255, 0.38)';
-      ctx2d.font = 'bold 8.5px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
+      ctx2d.font = 'bold 8.5px ' + monoFamily;
       ctx2d.textAlign = 'right';
       
       const stepY = TILE * 2;
@@ -1631,7 +2035,7 @@ export const drillScreen = {
         ctx2d.strokeRect(tx - 30, ty - 18, TILE + 60, 14);
         
         ctx2d.fillStyle = COL.danger;
-        ctx2d.font = 'bold 8.5px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
+        ctx2d.font = 'bold 8.5px ' + monoFamily;
         ctx2d.textAlign = 'center';
         
         const names = { 2: 'MK2 DRILL REQ', 3: 'MK3 DRILL REQ', 4: 'MK4 DRILL REQ' };
@@ -1669,8 +2073,8 @@ export const drillScreen = {
           let my = hoveredTile.mouseY + 12;
           
           // Keep tooltip on screen
-          const tw = 145;
-          const th = 64;
+          const tw = 168;
+          const th = 72;
           if (mx + tw > canvas.width) mx = hoveredTile.mouseX - tw - 12;
           if (my + th > canvas.height) my = hoveredTile.mouseY - th - 12;
           
@@ -1686,7 +2090,7 @@ export const drillScreen = {
           
           // Text fields
           ctx2d.fillStyle = '#ffffff';
-          ctx2d.font = 'bold 9px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
+          ctx2d.font = 'bold 10px ' + monoFamily;
           ctx2d.textAlign = 'left';
           
           let name = 'UNKNOWN STRATA';
@@ -1694,8 +2098,13 @@ export const drillScreen = {
           let reqText = 'Drill Head: Basic MK1';
           let valueText = '';
           let isBlocked = false;
-          
-          if (t.type === 'dirt') {
+          const surveyed = drillSys.isTileSurveyed(col, row);
+
+          if (!surveyed) {
+            name = 'UNSURVEYED STRATA';
+            subtitle = 'Composition unresolved';
+            reqText = 'SPACE: Pulse survey';
+          } else if (t.type === 'dirt') {
             name = 'SOFT REGOLITH';
             subtitle = 'HP: ' + Math.ceil(t.hp) + '/' + t.maxHp;
           } else if (t.type === 'rock') {
@@ -1722,93 +2131,157 @@ export const drillScreen = {
           ctx2d.fillText(name, mx + 8, my + 14);
           
           ctx2d.fillStyle = 'rgba(215, 230, 255, 0.6)';
-          ctx2d.font = '8px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
-          ctx2d.fillText(subtitle, mx + 8, my + 26);
+          ctx2d.font = '10px ' + monoFamily;
+          ctx2d.fillText(subtitle, mx + 8, my + 30);
           if (valueText) {
-            ctx2d.fillText(valueText, mx + 8, my + 36);
+            ctx2d.fillText(valueText, mx + 8, my + 44);
           }
           
           if (isBlocked) {
             ctx2d.fillStyle = '#ff5c5c';
-            ctx2d.font = 'bold 8px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
-            ctx2d.fillText('⚠ UPGRADE DRILL TIER', mx + 8, my + 48);
+            ctx2d.font = 'bold 9px ' + monoFamily;
+            ctx2d.fillText('LOCKED — UPGRADE DRILL', mx + 8, my + 60);
           } else {
             ctx2d.fillStyle = 'rgba(57, 208, 255, 0.8)';
-            ctx2d.fillText(reqText, mx + 8, my + 48);
+            ctx2d.fillText(reqText, mx + 8, my + 60);
           }
           
           ctx2d.restore();
         }
       }
 
-      // --- 4. CRT Scanlines & Sonar Vignette Glow ---
-      ctx2d.save();
-      ctx2d.fillStyle = 'rgba(0, 0, 0, 0.05)';
-      for (let y = 0; y < canvas.height; y += 4) {
-        ctx2d.fillRect(0, y, canvas.width, 2);
+      // --- 4. Static depth bands + vignette (cached overlay; see buildOverlay) ---
+      if (overlayCanvas) {
+        ctx2d.drawImage(overlayCanvas, 0, 0);
       }
-      
-      const grad = ctx2d.createRadialGradient(canvas.width / 2, canvas.height / 2, canvas.height / 2, canvas.width / 2, canvas.height / 2, canvas.width);
-      grad.addColorStop(0, 'rgba(57, 208, 255, 0.01)');
-      grad.addColorStop(1, 'rgba(5, 10, 20, 0.35)');
-      ctx2d.fillStyle = grad;
-      ctx2d.fillRect(0, 0, canvas.width, canvas.height);
-      ctx2d.restore();
+    }
+
+    function setText(el, key, text) {
+      // Only touch the DOM when the value actually changed — skips querySelector + reflow per frame.
+      if (!el || hudCache[key] === text) return;
+      hudCache[key] = text;
+      el.textContent = text;
+    }
+
+    function setClassName(el, key, cn) {
+      if (!el || hudCache[key] === cn) return;
+      hudCache[key] = cn;
+      el.className = cn;
+    }
+
+    function setHtml(el, key, html) {
+      if (!el || hudCache[key] === html) return;
+      hudCache[key] = html;
+      el.innerHTML = html;
+    }
+
+    function updateManifest() {
+      const d = state.drill;
+      if (!d || !hudEls.manifest) return;
+      const entries = [];
+      for (const commodityId in d.yieldLog) {
+        const qty = d.yieldLog[commodityId];
+        if (qty > 0) entries.push([commodityId, qty]);
+      }
+      if (entries.length === 0) {
+        const empty = document.createElement('div');
+        empty.style.fontSize = '11px';
+        empty.style.color = 'var(--ink-mute)';
+        empty.textContent = 'No minerals extracted.';
+        hudEls.manifest.replaceChildren(empty);
+        return;
+      }
+      const fragment = document.createDocumentFragment();
+      for (const [commodityId, qty] of entries) {
+        const name = commodityName(commodityId);
+        const basePrice = COMMODITY_BY_ID.get(commodityId)?.basePrice || 0;
+        const row = document.createElement('div');
+        row.className = 'readout-row';
+        row.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+        row.style.padding = '3px 0';
+        const label = document.createElement('span');
+        label.className = 'lbl';
+        label.textContent = `${name} × ${qty}`;
+        const value = document.createElement('span');
+        value.className = 'val';
+        value.textContent = `${qty * basePrice} Cr`;
+        row.append(label, value);
+        fragment.appendChild(row);
+      }
+      hudEls.manifest.replaceChildren(fragment);
     }
 
     function updateHud() {
       const d = state.drill;
       if (!d) return;
-      const total = Object.values(d.yieldLog).reduce((a, b) => a + b, 0);
-      hud.querySelector('[data-yield]').textContent = total;
-      hud.querySelector('[data-gas]').textContent = d.gasHits;
+      let total = 0;
+      for (const commodityId in d.yieldLog) total += d.yieldLog[commodityId] || 0;
+      setText(hudEls.yield, 'yield', total);
+      setText(hudEls.gas, 'gas', d.gasHits);
       const cargo = state.player.cargo;
       const cargoUsed = cargo ? Math.round((cargo.usedVolume / cargo.capVolume) * 100) : 0;
-      hud.querySelector('[data-cargo]').textContent = cargoUsed + '%';
-      if (hud.querySelector('[data-temp]') && d.drillTemp !== undefined) {
-        hud.querySelector('[data-temp]').textContent = Math.round(d.drillTemp) + '%';
-        hud.querySelector('[data-temp]').className = d.overheated ? 'warn' : 'v';
+      setText(hudEls.cargo, 'cargo', cargoUsed + '%');
+      if (hudEls.temp && d.drillTemp !== undefined) {
+        setText(hudEls.temp, 'temp', Math.round(d.drillTemp) + '%');
+        setClassName(hudEls.temp, 'tempCn', d.overheated ? 'warn' : 'v');
+      }
+      if (hudEls.energy) {
+        setText(hudEls.energy, 'energy', Math.round(d.drillEnergy ?? 100) + '%');
+        setClassName(hudEls.energy, 'energyCn', d.energyDepleted || d.drillEnergy < 25 ? 'warn' : 'v');
       }
 
-      // --- Update Cockpit Left Panel Readouts ---
-      const tensionEl = leftPanel.querySelector('[data-tension]');
-      if (tensionEl) {
+      // --- Update bore-link readouts ---
+      if (hudEls.tension) {
         // State-driven tension only — no idle wobble (taste: nothing animates at rest)
         const baseTension = d.avatar.isDrilling ? 45 : (held.left || held.right || held.down || held.up ? 28 : 18);
         const variation = (d.avatar.isDrilling && !motionReduce)
           ? Math.sin(performance.now() * 0.012) * 5
           : 0;
-        tensionEl.textContent = `${Math.round(baseTension + variation)} N`;
-        tensionEl.className = d.avatar.isDrilling ? 'val warn' : 'val';
+        setText(hudEls.tension, 'tension', `${Math.round(baseTension + variation)} N`);
+        setClassName(hudEls.tension, 'tensionCn', d.avatar.isDrilling ? 'val warn' : 'val');
       }
-      const powerEl = leftPanel.querySelector('[data-power]');
-      if (powerEl) {
-        const powerPct = Math.max(0, 100 - (d.drillTemp * 0.15));
-        powerEl.textContent = `${Math.round(powerPct)}%`;
-        powerEl.className = d.drillTemp > 75 ? 'val warn' : 'val good';
+      if (hudEls.power) {
+        const powerPct = Math.max(0, d.drillEnergy ?? 100);
+        setText(hudEls.power, 'power', `${Math.round(powerPct)}%`);
+        setClassName(hudEls.power, 'powerCn', powerPct < 25 ? 'val warn' : 'val good');
       }
 
-      // --- Update Cockpit Right Panel Readouts ---
+      if (hudEls.scanState) {
+        const remaining = Math.max(0, d.scan?.cooldown || 0);
+        const stateText = remaining > 0 ? `${Math.ceil(remaining)} s` : 'Ready';
+        setText(hudEls.scanState, 'scanState', stateText);
+        const disabled = remaining > 0;
+        const scanAria = disabled
+          ? `Pulse survey recharging, ${Math.ceil(remaining)} seconds remaining`
+          : `Pulse seismic survey, ${controlMap.scanLabel}`;
+        if (hudCache.scanAria !== scanAria) {
+          hudCache.scanAria = scanAria;
+          scanBtn.setAttribute('aria-label', scanAria);
+        }
+        if (hudCache.scanDisabled !== disabled) {
+          hudCache.scanDisabled = disabled;
+          scanBtn.disabled = disabled;
+        }
+      }
+
+      // --- Update target and drill readouts ---
       // 1. Drill Head & DPS engine specs (refresh live — outfitting can change mid-session)
       if (drillSys) {
         drillScreen._drillTier = drillSys.getDrillTier();
         drillScreen._drillDps = drillSys.getDrillDPS();
       }
-      const tierEl = rightPanel.querySelector('[data-drill-tier]');
-      if (tierEl) {
+      if (hudEls.tier) {
         const names = { 1: 'BASIC MK1', 2: 'CARBON MK2', 3: 'DIAMOND MK3', 4: 'IND. HEAVY MK4' };
         const tier = drillScreen._drillTier || 1;
-        tierEl.textContent = names[tier] || `TIER MK${tier}`;
+        setText(hudEls.tier, 'tier', names[tier] || `TIER MK${tier}`);
       }
-      const dpsEl = rightPanel.querySelector('[data-drill-dps]');
-      if (dpsEl) {
+      if (hudEls.dps) {
         const dps = drillScreen._drillDps || 8;
-        dpsEl.textContent = `${dps} HP/s`;
+        setText(hudEls.dps, 'dps', `${dps} HP/s`);
       }
 
-      // 2. Target scanner
-      const scanEl = document.getElementById('drill-scan-target');
-      if (scanEl) {
+      // 2. Target scanner — only re-render HTML when the targeted tile/type changes.
+      if (hudEls.scan) {
         let nc = d.avatar.col;
         let nr = d.avatar.row;
         const dir = d.avatar.faceDir || 'down';
@@ -1817,16 +2290,26 @@ export const drillScreen = {
         else if (dir === 'down') nr++;
         else if (dir === 'up') nr--;
 
+        let html = null;
         if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
           const t = d.field[nc][nr];
-          if (t.type === 'empty') {
-            scanEl.innerHTML = '<span style="color:var(--ink-mute);">TARGETING:</span> VACUUM STRATA';
+          const telemetry = drillSys.getTargetTelemetry(nc, nr);
+          const hardness = telemetry ? telemetry.hardness.toFixed(2) : '0.00';
+          const progress = telemetry ? Math.round(telemetry.progress * 100) : 0;
+          const remaining = telemetry && Number.isFinite(telemetry.remainingS)
+            ? `${telemetry.remainingS.toFixed(1)} s`
+            : '—';
+          const workLine = `<br>Hardness ${hardness} · ${progress}% cut · ${remaining}`;
+          if (!drillSys.isTileSurveyed(nc, nr)) {
+            html = '<strong>UNSURVEYED STRATA</strong><br>Pulse survey to resolve';
+          } else if (t.type === 'empty') {
+            html = '<span style="color:var(--ink-mute);">Target</span><br>Open bore';
           } else if (t.type === 'dirt') {
-            scanEl.innerHTML = '<span style="color:#a78262; font-weight:bold;">SOFT REGOLITH</span><br>HP: ' + Math.ceil(t.hp) + '/' + t.maxHp + '<br>MIN TIER: MK1';
+            html = '<strong>SOFT REGOLITH</strong><br>Integrity ' + Math.ceil(t.hp) + '/' + t.maxHp + workLine + '<br>Risk low';
           } else if (t.type === 'rock') {
-            scanEl.innerHTML = '<span style="color:#64748b; font-weight:bold;">SOLID BASALT STRATA</span><br>HP: ' + Math.ceil(t.hp) + '/' + t.maxHp + '<br>MIN TIER: MK1';
+            html = '<strong>SOLID BASALT</strong><br>Integrity ' + Math.ceil(t.hp) + '/' + t.maxHp + workLine + `<br>Risk ${t.risk || 'low'}`;
           } else if (t.type === 'gas') {
-            scanEl.innerHTML = '<span style="color:#ff5c5c; font-weight:bold;">⚠ COMPRESSED VAPOR</span><br>COMPOSITION: GAS FIELD';
+            html = '<strong style="color:#ff5c5c;">HAZARD — COMPRESSED GAS</strong><br>Risk critical · route around this cell';
           } else if (t.type === 'vein' && t.ore) {
             const name = commodityName(t.ore);
             const basePrice = COMMODITY_BY_ID.get(t.ore)?.basePrice || 0;
@@ -1834,40 +2317,14 @@ export const drillScreen = {
             const tier = drillScreen._drillTier || 1;
             const blocked = tier < req;
             const tierLine = blocked
-              ? `<span style="color:#ff5c5c; font-weight:bold;">⚠ NEEDS MK${req} DRILL</span>`
-              : `MIN TIER: MK${req}`;
-            scanEl.innerHTML = `<span style="color:${ORE_SPARK_COLOR[t.ore] || '#ffd700'}; font-weight:bold;">${name.toUpperCase()} VEIN</span><br>EST VALUE: ${basePrice} Cr/u<br>${tierLine}`;
+              ? `<strong style="color:#ff5c5c;">LOCKED — DRILL MK${req}</strong>`
+              : `Drill MK${req}`;
+            html = `<strong>${name.toUpperCase()} VEIN</strong><br>Estimate ${basePrice} Cr/u · yield ${t.yieldU || 0}u${workLine}<br>Risk ${t.risk || 'low'} · ${tierLine}`;
           }
         } else {
-          scanEl.innerHTML = '<span style="color:var(--ink-mute);">TARGETING:</span> ASTEROID BOUNDARY';
+          html = '<span style="color:var(--ink-mute);">Target</span><br>Asteroid boundary';
         }
-      }
-
-      // 3. Cargo Manifest List
-      const listEl = document.getElementById('drill-cargo-manifest-list');
-      if (listEl) {
-        const items = Object.entries(d.yieldLog).filter(([_, qty]) => qty > 0);
-        if (items.length === 0) {
-          listEl.innerHTML = '<div style="font-size:10px; color:var(--ink-mute);">No minerals extracted.</div>';
-        } else {
-          listEl.innerHTML = '';
-          items.forEach(([commodityId, qty]) => {
-            const name = commodityName(commodityId);
-            const basePrice = COMMODITY_BY_ID.get(commodityId)?.basePrice || 0;
-            const totalValue = qty * basePrice;
-
-            const row = document.createElement('div');
-            row.className = 'readout-row';
-            row.style.borderBottom = '1px dashed rgba(255,255,255,0.05)';
-            row.style.padding = '2px 0';
-
-            row.innerHTML = `
-              <span class="lbl">${name} (x${qty})</span>
-              <span class="val">+${totalValue} Cr</span>
-            `;
-            listEl.appendChild(row);
-          });
-        }
+        setHtml(hudEls.scan, 'scan', html);
       }
     }
 
@@ -1875,17 +2332,53 @@ export const drillScreen = {
       const asteroidId = (state.ui && state.ui.pendingDrillAsteroidId) || null;
       if (state.ui) state.ui.pendingDrillAsteroidId = null;
       if (!asteroidId || !drillSys) return;
-      
+
       drillSys.begin(asteroidId);
       renderDrillLegend(legendGrid, state.drill?.field, drillSys.getDrillTier());
       held.left = held.right = held.up = held.down = false;
       drillTheta = 0;
       viewY = undefined;
       particles = [];
-      
+      hudElapsed = 0;
+      sonarElapsed = 0;
+      sonarDirty = true;
+      motionReduce = prefersReducedMotion({
+        motionReduce: !!(state.settings && state.settings.video && state.settings.video.motionReduce),
+      });
+      wrap.classList.toggle('reduce-motion', motionReduce);
+      // Reset HUD write-cache so values re-sync on the first frame of the new session.
+      for (const k of Object.keys(hudCache)) delete hudCache[k];
+
+      // Cache HUD handles once per session (was ~10 querySelector/getElementById per frame).
+      hudEls.yield = hud.querySelector('[data-yield]');
+      hudEls.gas = hud.querySelector('[data-gas]');
+      hudEls.cargo = hud.querySelector('[data-cargo]');
+      hudEls.temp = hud.querySelector('[data-temp]');
+      hudEls.energy = hud.querySelector('[data-energy]');
+      hudEls.tension = leftPanel.querySelector('[data-tension]');
+      hudEls.power = leftPanel.querySelector('[data-power]');
+      hudEls.tier = rightPanel.querySelector('[data-drill-tier]');
+      hudEls.dps = rightPanel.querySelector('[data-drill-dps]');
+      hudEls.scan = document.getElementById('drill-scan-target');
+      hudEls.manifest = document.getElementById('drill-cargo-manifest-list');
+      hudEls.scanState = scanBtn.querySelector('[data-scan-state]');
+
+      // Resolve --mono once. It never changes mid-session; reading it per-frame forced a layout.
+      const monoVar = (typeof window !== 'undefined' && window.getComputedStyle)
+        ? window.getComputedStyle(document.body).getPropertyValue('--mono')
+        : '';
+      monoFamily = (monoVar && monoVar.trim()) || 'monospace';
+
+      // Pre-render static overlays once. Rebuild only if the canvas backing store changes.
+      overlayCanvas = buildOverlay(canvas.width, canvas.height);
+      headlightSprite = buildHeadlightSprite();
+
       gasHitFlash.t = 0;
       yieldFlash.t = 0;
       toastContainer.innerHTML = '';
+      updateHud();
+      updateManifest();
+      drawSonar(state.drill);
       
       window.addEventListener('keydown', onKeyDown);
       window.addEventListener('keyup', onKeyUp);
@@ -1895,6 +2388,7 @@ export const drillScreen = {
       last = performance.now();
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(frame);
+      requestAnimationFrame(() => canvas.focus({ preventScroll: true }));
       this._active = true;
     };
 
@@ -1907,20 +2401,24 @@ export const drillScreen = {
       canvas.removeEventListener('mousemove', onMouseMove);
       canvas.removeEventListener('mouseleave', onMouseLeave);
       
-      // Cleanup all bus listeners
-      unsubs.forEach((unsub) => unsub());
-      unsubs.length = 0;
-      
       if (state.drill && drillSys) drillSys.end();
     };
 
     this._startSession = startSession;
     this._cleanup = stopSession;
+    this._refresh = () => {
+      updateHud();
+      updateManifest();
+      if (state.drill) {
+        renderDrillLegend(legendGrid, state.drill.field, drillSys.getDrillTier());
+        sonarDirty = true;
+      }
+    };
   },
 
   onShow() { if (this._startSession) this._startSession(); },
   onHide() { if (this._cleanup) this._cleanup(); },
-  refresh() {},
+  refresh() { if (this._refresh) this._refresh(); },
 };
 
 function triggerDockFade(show) {
@@ -1952,13 +2450,17 @@ function showDrillSummaryModal(yieldLog) {
 
   const modal = document.createElement('div');
   modal.className = 'drill-summary-modal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'drill-summary-title');
   
   const box = document.createElement('div');
   box.className = 'drill-summary-box';
   
-  const title = document.createElement('div');
+  const title = document.createElement('h2');
   title.className = 'title';
-  title.textContent = '◆ DRILL EXTRACTION REPORT ◆';
+  title.id = 'drill-summary-title';
+  title.textContent = 'Extraction report';
   box.appendChild(title);
   
   const list = document.createElement('div');
@@ -1984,7 +2486,7 @@ function showDrillSummaryModal(yieldLog) {
       img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(SVG_TEMPLATES[commodityId]);
       icon.appendChild(img);
     } else {
-      icon.textContent = '💎';
+      icon.textContent = '+';
     }
     left.appendChild(icon);
     
@@ -2012,23 +2514,42 @@ function showDrillSummaryModal(yieldLog) {
   const closeBtn = document.createElement('button');
   closeBtn.className = 'sf-btn';
   closeBtn.textContent = 'Acknowledge';
-  closeBtn.onclick = () => {
+  const previousFocus = document.activeElement;
+  let closing = false;
+  const close = () => {
+    if (closing) return;
+    closing = true;
     modal.classList.remove('active');
-    setTimeout(() => modal.remove(), 250);
+    modal.removeEventListener('keydown', onModalKeyDown);
+    setTimeout(() => {
+      modal.remove();
+      if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
+    }, 250);
   };
+  const onModalKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+    } else if (event.key === 'Tab') {
+      event.preventDefault();
+      closeBtn.focus();
+    }
+  };
+  closeBtn.onclick = close;
   box.appendChild(closeBtn);
   
   modal.appendChild(box);
   modal.style.pointerEvents = 'auto';
   modal.addEventListener('click', (e) => {
     if (e.target === modal) {
-      modal.classList.remove('active');
-      setTimeout(() => modal.remove(), 250);
+      close();
     }
   });
+  modal.addEventListener('keydown', onModalKeyDown);
 
   root.appendChild(modal);
   setTimeout(() => modal.classList.add('active'), 20);
+  requestAnimationFrame(() => closeBtn.focus());
 }
 
 function drawAugerDrillBit(ctx2d, x, y, size, angle, time) {

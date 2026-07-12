@@ -12,9 +12,17 @@ import {
   moveCooldownForLoad,
   avatarDrawPos,
   avatarMoveProgress,
+  SCAN_RADIUS,
+  SCAN_COOLDOWN_S,
+  SCAN_ACTIVE_S,
+  DRILL_ENERGY_MAX,
+  DRILL_ENERGY_RESUME,
+  materialHardness,
+  extractionTelemetry,
 } from '../src/systems/drill.js';
 import { cargo } from '../src/systems/cargo.js';
 import { addCargo } from '../src/systems/cargo.js';
+import { resolveDrillControlMap } from '../src/ui/screens/drill.js';
 
 function createBus() {
   const handlers = new Map();
@@ -35,7 +43,13 @@ function createBus() {
 function setup() {
   const state = createGameState(9001);
   const bus = createBus();
-  const ctx = { state, bus, helpers: {}, registry: { get() { return null; } } };
+  const damageRequests = [];
+  const ctx = {
+    state,
+    bus,
+    helpers: { routeCombatDamage(request) { damageRequests.push(request); return { ok: true }; } },
+    registry: { get() { return null; } },
+  };
   cargo.init(ctx);
   drill.init(ctx);
   if (!state.player.cargo) {
@@ -58,7 +72,7 @@ function setup() {
     p.hull = 100;
     p.hullMax = 100;
   }
-  return { state, bus, ctx };
+  return { state, bus, ctx, damageRequests };
 }
 
 function carveTunnel(state, col, rows) {
@@ -231,9 +245,9 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   console.log(JSON.stringify({ ok: true, section: 'yield', events: events.map((e) => e.kind) }));
 }
 
-// --- 5. Gas path damages hull + gasHits ---
+// --- 5. Gas path routes a canonical damage packet + gasHits (no direct hull write) ---
 {
-  const { state, bus } = setup();
+  const { state, bus, damageRequests } = setup();
   const events = [];
   bus.on('drill:gasHit', (p) => events.push(p));
   bus.on('drill:break', (p) => events.push({ type: 'break', ...p }));
@@ -264,19 +278,137 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
 
   drill.tickInput({ left: false, right: false, up: false, down: true }, 1.0);
   assert.equal(state.drill.gasHits, 1, 'gasHits increments');
-  assert.ok(player.hull < hullBefore, 'hull reduced on gas');
-  assert.ok(player.hull >= 1, 'hull floor preserved');
+  assert.equal(player.hull, hullBefore, 'drill must not directly mutate hull');
+  assert.equal(damageRequests.length, 1, 'gas routes exactly one canonical damage request');
+  assert.equal(damageRequests[0].targetId, state.playerId, 'damage request targets player entity');
+  assert.equal(damageRequests[0].origin.kind, 'deep_core_gas', 'damage request carries extraction origin');
+  const routedDamage = Object.values(damageRequests[0].packet.channels).reduce((sum, value) => sum + value, 0);
+  assert.ok(routedDamage > 0, 'damage packet carries normalized combat channels');
   assert.ok(events.some((e) => e.dmg > 0), 'drill:gasHit carries damage');
   console.log(JSON.stringify({
     ok: true,
     section: 'gas',
     hullBefore,
-    hullAfter: player.hull,
+    routedDamage,
     gasHits: state.drill.gasHits,
   }));
 }
 
-// --- 6. Structural: UI uses avatarDrawPos + denser particle paths ---
+// --- 6. Seismic survey: radius, cooldown, persistence, and event contract ---
+{
+  const { state, bus } = setup();
+  const pulses = [];
+  bus.on('drill:scanPulse', (payload) => pulses.push(payload));
+  drill.begin(7788);
+  const d = state.drill;
+  d.avatar.col = 10;
+  d.avatar.row = 10;
+  d.field[12][10] = { type: 'vein', hp: 4, maxHp: 4, ore: 'cmdty_silicate', yieldU: 1, tierReq: 1 };
+  d.field[10][13] = { type: 'gas', hp: 1, maxHp: 1, ore: null, hazard: true, tierReq: 1 };
+  d.field[10 + SCAN_RADIUS + 1][10] = { type: 'vein', hp: 4, maxHp: 4, ore: 'cmdty_silicate', yieldU: 1, tierReq: 1 };
+
+  assert.equal(drill.pulseScan(), true, 'ready survey pulse should fire');
+  assert.equal(pulses.length, 1, 'survey pulse emits once');
+  assert.equal(pulses[0].radius, SCAN_RADIUS, 'pulse publishes authored radius');
+  assert.equal(d.scan.cooldown, SCAN_COOLDOWN_S, 'pulse starts cooldown');
+  assert.equal(d.scan.active, SCAN_ACTIVE_S, 'pulse starts visible acknowledgment window');
+  assert.equal(d.field[12][10].surveyed, true, 'ore contact inside radius is surveyed');
+  assert.equal(d.field[10][13].surveyed, true, 'gas contact inside radius is surveyed');
+  assert.notEqual(d.field[10 + SCAN_RADIUS + 1][10].surveyed, true, 'outside contact stays unresolved');
+  assert.equal(drill.isTileSurveyed(12, 10), true, 'survey query reads persisted mark');
+  assert.equal(drill.pulseScan(), false, 'cooldown prevents pulse spam');
+
+  drill.tickInput({ left: false, right: false, up: false, down: false }, SCAN_COOLDOWN_S);
+  assert.equal(d.scan.cooldown, 0, 'cooldown advances on the drill-owned clock');
+  assert.equal(drill.pulseScan(), true, 'survey becomes available after cooldown');
+  console.log(JSON.stringify({ ok: true, section: 'seismic-survey', contacts: pulses[0].contacts, radius: SCAN_RADIUS }));
+}
+
+// --- 7. Material choice: hardness visibly changes time, energy, and heat receipts ---
+{
+  const soft = { type: 'dirt', hp: 12, maxHp: 12, hardness: 0.65 };
+  const hard = { type: 'rock', hp: 12, maxHp: 12, hardness: 1.9 };
+  const softReadout = extractionTelemetry(soft, 18);
+  const hardReadout = extractionTelemetry(hard, 18);
+  assert.equal(materialHardness(soft), 0.65, 'authored hardness is stable');
+  assert.ok(hardReadout.effectiveDps < softReadout.effectiveDps, 'hard strata takes longer to cut');
+  assert.ok(hardReadout.energyPerS > softReadout.energyPerS, 'hard strata draws more energy');
+  assert.ok(hardReadout.heatPerS > softReadout.heatPerS, 'hard strata produces more heat');
+  assert.ok(hardReadout.remainingS > softReadout.remainingS, 'HUD time estimate reflects hardness');
+  console.log(JSON.stringify({ ok: true, section: 'material-hardness', softReadout, hardReadout }));
+}
+
+// --- 8. Rig resources: hard material can exhaust energy, then release-to-recover resumes work ---
+{
+  const { state, bus } = setup();
+  const warnings = [];
+  bus.on('drill:warn', (payload) => warnings.push(payload.text));
+  drill.begin(9191);
+  const d = state.drill;
+  const col = d.avatar.col;
+  d.field[col][1] = {
+    type: 'rock', hp: 1000, maxHp: 1000, hardness: 2.2, ore: null,
+    hazard: false, tierReq: 1, risk: 'elevated',
+  };
+  for (let i = 0; i < 360 && !d.energyDepleted; i++) {
+    drill.tickInput({ left: false, right: false, up: false, down: true }, 1 / 60);
+  }
+  assert.equal(d.energyDepleted, true, 'hard cut exhausts the capacitor before endless held drilling');
+  assert.equal(d.drillEnergy, 0, 'energy clamps at zero');
+  assert.ok(d.drillTemp < 100, 'hard-material energy constraint is distinct from overheat');
+  drill.tickInput({ left: false, right: false, up: false, down: true }, 1 / 60);
+  assert.ok(warnings.some((text) => /capacitor recharging/.test(text)), 'held input explains why work paused');
+  for (let i = 0; i < 120 && d.energyDepleted; i++) {
+    drill.tickInput({ left: false, right: false, up: false, down: false }, 1 / 60);
+  }
+  assert.equal(d.energyDepleted, false, 'release-to-recover restores the rig at the authored threshold');
+  assert.ok(d.drillEnergy >= DRILL_ENERGY_RESUME, 'resume threshold is satisfied');
+  assert.ok(d.drillEnergy <= DRILL_ENERGY_MAX, 'energy never exceeds authored maximum');
+  console.log(JSON.stringify({ ok: true, section: 'rig-resources', energy: d.drillEnergy, heat: d.drillTemp }));
+}
+
+// --- 9. Deterministic retry, abort receipt, transient save contract, and live bindings ---
+{
+  const { state, bus } = setup();
+  const endings = [];
+  bus.on('drill:end', (payload) => endings.push(payload));
+  drill.begin(771122);
+  const fieldSignature = (d) => JSON.stringify(d.field.map((column) => column.map((tile) => [
+    tile.type, tile.hp, tile.ore, tile.yieldU || 0, tile.tierReq, tile.hardness, tile.risk,
+  ])));
+  const first = fieldSignature(state.drill);
+  assert.equal(drill.retry(), true, 'active deterministic bore can restart');
+  assert.equal(fieldSignature(state.drill), first, 'same asteroid retry regenerates the exact authored field');
+  state.drill.yieldLog.cmdty_silicate = 2;
+  state.drill.gasHits = 1;
+  state.drill.tilesCleared = 4;
+  state.drill.maxDepth = 7;
+  const result = drill.abort();
+  assert.equal(result.reason, 'aborted');
+  assert.equal(result.aborted, true);
+  assert.equal(result.yieldUnits, 2);
+  assert.equal(result.tilesCleared, 4);
+  assert.equal(result.maxDepth, 7);
+  assert.equal(endings.at(-1).reason, 'aborted', 'drill:end publishes auditable result receipt');
+  assert.equal(state.drill, null, 'abort clears only transient drill state');
+  assert.equal(drill.serialize(), null, 'half-cleared bore is not duplicated into saves');
+  drill.begin(771122);
+  drill.deserialize({ field: 'must-not-restore' });
+  assert.equal(state.drill, null, 'load explicitly clears transient drill session');
+
+  const controls = resolveDrillControlMap({
+    settings: {
+      gameplay: { controlScheme: 'pilot' },
+      controls: { bindings: { forward: ['KeyI'], scanPulse: ['KeyP'] } },
+    },
+  });
+  assert.deepEqual(controls.up, ['KeyI'], 'drill movement consumes live player binding');
+  assert.deepEqual(controls.scan, ['KeyP'], 'drill survey consumes live player binding');
+  assert.equal(controls.scanLabel, 'P', 'visible prompt comes from live binding');
+  console.log(JSON.stringify({ ok: true, section: 'retry-save-bindings', result, controls }));
+}
+
+// --- 10. Structural: UI uses avatarDrawPos + dense, accessible, cached presentation paths ---
 {
   const uiSrc = readFileSync(new URL('../src/ui/screens/drill.js', import.meta.url), 'utf8');
   assert.match(uiSrc, /avatarDrawPos/, 'UI must import/use avatarDrawPos for time-interp draw');
@@ -284,6 +416,15 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   assert.match(uiSrc, /drill:break/, 'UI must handle drill:break for break pop');
   assert.match(uiSrc, /prefersReducedMotion|motionReduce/, 'UI must respect motionReduce');
   assert.match(uiSrc, /stepParticles/, 'UI must step particles via shared helper');
+  assert.match(uiSrc, /data-drill-scan/, 'UI must expose the survey as a real button');
+  assert.match(uiSrc, /resolveDrillControlMap/, 'UI must resolve movement and survey from live bindings');
+  assert.match(uiSrc, /data-energy/, 'UI must expose actual rig energy');
+  assert.match(uiSrc, /Restart bore/, 'UI must expose deterministic retry');
+  assert.match(uiSrc, /Abort & return/, 'UI must expose an explicit abort action');
+  assert.match(uiSrc, /aria-live/, 'UI must announce drill receipts to assistive tech');
+  assert.match(uiSrc, /buildHeadlightSprite/, 'headlight gradient must be pre-rasterized');
+  assert.doesNotMatch(uiSrc, /const beamGrad = ctx2d\.createRadialGradient/, 'render loop must not allocate headlight gradients');
+  assert.doesNotMatch(uiSrc, /Object\.entries\(d\.yieldLog\)\.filter/, 'manifest must rebuild from events, not every frame');
   // Must not rely solely on discrete col*TILE without interp helper
   assert.ok(
     !/drillScreen\._rx \+= \(targetX - drillScreen\._rx\) \* 16 \* dt/.test(uiSrc),
@@ -292,13 +433,19 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   console.log(JSON.stringify({ ok: true, section: 'struct-ui' }));
 }
 
-// --- 7. Structural: system exports presentation fields ---
+// --- 11. Structural: system exports presentation fields ---
 {
   const sysSrc = readFileSync(new URL('../src/systems/drill.js', import.meta.url), 'utf8');
   assert.match(sysSrc, /MOVE_COOLDOWN_BASE\s*=\s*0\.06/, 'system base cooldown 0.06');
   assert.match(sysSrc, /fromCol/, 'system tracks fromCol for interp');
   assert.match(sysSrc, /moveElapsed/, 'system tracks moveElapsed');
   assert.match(sysSrc, /commitAvatarMove|avatarDrawPos/, 'move commit or draw helper present');
+  assert.match(sysSrc, /pulseScan\(\)/, 'system owns the seismic survey verb');
+  assert.match(sysSrc, /tile\.surveyed = true/, 'survey discoveries persist for the drill session');
+  assert.match(sysSrc, /scalarHitToDamagePacket/, 'gas uses canonical combat damage packet');
+  assert.doesNotMatch(sysSrc, /player\.hull\s*=/, 'drill must never directly write player hull');
+  assert.match(sysSrc, /extractionTelemetry/, 'system owns hardness and resource telemetry');
+  assert.match(sysSrc, /serialize\(\)[\s\S]*?return null/, 'drill session is explicitly transient across saves');
   console.log(JSON.stringify({ ok: true, section: 'struct-sys' }));
 }
 
