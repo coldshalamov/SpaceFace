@@ -223,6 +223,20 @@ function makeEnvelope({ slot, savedAt, playtimeS, credits, shipName, objective }
     data: {
       meta: { playtimeS, lastSavedAt: savedAt },
       player: { credits, activeShipIndex: 0, ownedShips: [{ defId: shipName }] },
+      entities: {
+        player: {
+          id: 'saved-player',
+          type: 'ship',
+          defId: shipName,
+          pos: { x: 0, z: 0 },
+          vel: { x: 0, z: 0 },
+          rot: 0,
+          angVel: 0,
+          flags: {},
+          data: {},
+        },
+        persistent: [],
+      },
       world: {
         currentSectorId: 'sector_helios_prime',
         sectors: { sector_helios_prime: { id: 'sector_helios_prime', name: 'Helios Prime' } },

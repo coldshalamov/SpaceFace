@@ -199,6 +199,7 @@
     "check:save-resume-confidence": "node scripts/check-save-resume-confidence.mjs",
     "check:title-continue-runtime": "node scripts/check-title-continue-runtime.mjs",
     "check:save-load-slot-trust": "node scripts/check-save-load-slot-trust.mjs",
+    "check:m6:corrupt-save-recovery": "node --test test/m6-corrupt-save-recovery.test.mjs",
     "check:settings-profile": "node scripts/check-settings-profile-persistence.mjs",
     "check:controls-discoverability": "node scripts/check-controls-discoverability.mjs",
     "check:cargo-jettison-copy": "node scripts/check-cargo-jettison-copy.mjs",

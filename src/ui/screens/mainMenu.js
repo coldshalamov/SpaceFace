@@ -204,6 +204,7 @@ function shipLabel(id) {
 
 function saveSummaryText(slot, meta) {
   const parts = [slotLabel(slot)];
+  if (meta && meta.recoveryAvailable) parts.push('Recovery copy');
   if (meta && meta.sectorName) parts.push(meta.sectorName);
   if (meta && meta.shipName) parts.push(shipLabel(meta.shipName));
   const objective = objectiveSummaryText(meta);
@@ -303,8 +304,6 @@ export const mainMenuScreen = {
   },
 
   onShow(ctx) {
-    // Ensure sim is frozen while at the title.
-    ctx.state.timeScale = 0;
     this._render(ctx);
     if (refs && refs.bContinue && !refs.bContinue.disabled) try { refs.bContinue.focus(); } catch (e) {}
     this._startIdleAttract(ctx);

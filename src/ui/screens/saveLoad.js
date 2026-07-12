@@ -185,6 +185,7 @@ export function slotObjectiveSummary(meta) {
 export function slotBadges(id, meta, currentSlot, latestSlot) {
   if (!isOccupied(meta)) return [];
   const badges = [];
+  if (meta && meta.recoveryAvailable) badges.push('Recovery');
   if (currentSlot && id === currentSlot) badges.push('Current');
   if (latestSlot && id === latestSlot && id !== currentSlot) badges.push('Latest');
   if (meta && meta.version != null) badges.push('v' + meta.version);

@@ -23,6 +23,9 @@ import { PROFILE_SETTINGS_KEY, readProfileSettings } from '../core/graphicsProfi
 
 const LS_PREFIX = 'sf.save.';
 const INDEX_KEY = LS_PREFIX + 'index';
+// Previous-generation saves live outside LS_PREFIX so legacy/index recovery scans never mistake
+// them for player-visible slots. A valid primary is copied here before it is overwritten.
+const RECOVERY_PREFIX = 'sf.recovery.';
 const FMT = 'spaceface-save';
 const AUTOSAVE_SLOT = 'auto';
 const AUTOSAVE_DEBOUNCE_MS = 10000; // ≤1 autosave write per 10s (§4.5)
@@ -349,6 +352,13 @@ export const save = {
     if (write.ok) {
       this.state.save.currentSlot = slot;
       this.state.meta.lastSavedAt = envelope.savedAt;
+      if (write.backupCreated) {
+        this.bus.emit('save:backup', {
+          slot,
+          source: 'previous_generation',
+          savedAt: write.backupSavedAt,
+        });
+      }
       this.bus.emit('save:completed', timing);
     } else {
       this.bus.emit('save:error', timing);
@@ -370,9 +380,27 @@ export const save = {
       stringifyMs = nowMs() - t;
     }
     catch (err) { return { ok: false, reason: 'stringify_failed', bytes: 0, stringifyMs, storageMs, indexMs }; }
+    const primaryKey = LS_PREFIX + slot;
+    const recoveryKey = RECOVERY_PREFIX + slot;
+    let previousRaw = null;
+    let previousPrepared = null;
+    try { previousRaw = localStorage.getItem(primaryKey); }
+    catch (err) { return { ok: false, reason: 'read_failed', bytes: json.length, stringifyMs, storageMs, indexMs }; }
+
+    // Refuse to destroy the last known-good generation when storage cannot preserve it. A corrupt
+    // primary is never rotated over an existing good recovery copy.
+    if (previousRaw) previousPrepared = this._prepareEnvelopeString(previousRaw);
+    if (previousPrepared && previousPrepared.ok) {
+      try { localStorage.setItem(recoveryKey, previousRaw); }
+      catch (err) {
+        const reason = (err && err.name === 'QuotaExceededError') ? 'backup_quota' : 'backup_write_failed';
+        return { ok: false, reason, bytes: json.length, stringifyMs, storageMs, indexMs };
+      }
+    }
+
     try {
       const t = nowMs();
-      localStorage.setItem(LS_PREFIX + slot, json);
+      localStorage.setItem(primaryKey, json);
       storageMs = nowMs() - t;
     } catch (err) {
       // QuotaExceeded or storage disabled — suggest export-to-file fallback.
@@ -380,10 +408,38 @@ export const save = {
       console.error('[save] write failed', err);
       return { ok: false, reason, bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
     }
+
+    // localStorage.setItem is normally atomic, but read-back validation catches storage shims,
+    // truncated values, and checksum drift. Roll back to the previous bytes before reporting red.
+    let storedRaw = null;
+    try { storedRaw = localStorage.getItem(primaryKey); } catch (err) {}
+    const storedPrepared = this._prepareEnvelopeString(storedRaw);
+    if (storedRaw !== json || !storedPrepared.ok) {
+      try {
+        if (previousRaw == null) localStorage.removeItem(primaryKey);
+        else localStorage.setItem(primaryKey, previousRaw);
+      } catch (err) { /* preserve the recovery copy; caller receives a failed receipt */ }
+      return {
+        ok: false,
+        reason: storedPrepared.reason === 'parse_failed' ? 'write_verify_parse' : 'write_verify_failed',
+        bytes: json.length,
+        stringifyMs,
+        storageMs,
+        indexMs,
+      };
+    }
     const t = nowMs();
     this._updateIndex(slot, envelope);
     indexMs = nowMs() - t;
-    return { ok: true, bytes: json.length, stringifyMs, storageMs, indexMs };
+    return {
+      ok: true,
+      bytes: json.length,
+      stringifyMs,
+      storageMs,
+      indexMs,
+      backupCreated: !!(previousPrepared && previousPrepared.ok),
+      backupSavedAt: previousPrepared && previousPrepared.ok ? previousPrepared.env.savedAt || null : null,
+    };
   },
 
   _saveTiming({ slot, reason, autosave, started, serializeMs = 0, writeMs = 0, stringifyMs = 0, storageMs = 0, indexMs = 0, bytes = 0, ok = true, failure = null }) {
@@ -451,7 +507,20 @@ export const save = {
   _slotIndexWithFallback() {
     const indexed = normalizeSlotIndex(this._readIndex());
     const scanned = this._scanStoredSlots();
-    return mergeSlotIndexes(indexed, scanned);
+    const recovered = this._scanRecoverySlots(scanned);
+    const merged = mergeSlotIndexes(indexed, scanned);
+    for (const slot in recovered) {
+      merged[slot] = Object.assign({}, merged[slot] || {}, recovered[slot], {
+        slot,
+        recoveryAvailable: true,
+        integrity: 'recovery',
+      });
+    }
+    // Stale index entries must not make Continue advertise a dead slot.
+    for (const slot in merged) {
+      if (!scanned[slot] && !recovered[slot]) delete merged[slot];
+    }
+    return merged;
   },
 
   _scanStoredSlots() {
@@ -463,14 +532,33 @@ export const save = {
         if (!key || !key.startsWith(LS_PREFIX) || key === INDEX_KEY) continue;
         const slot = key.slice(LS_PREFIX.length);
         if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
-        let env = null;
-        try { env = JSON.parse(localStorage.getItem(key)); }
-        catch (err) { continue; }
-        const meta = slotMetaFromEnvelope(slot, env);
+        const prepared = this._prepareEnvelopeString(localStorage.getItem(key));
+        if (!prepared.ok) continue;
+        const meta = slotMetaFromEnvelope(slot, prepared.env);
         if (meta) out[slot] = meta;
       }
     } catch (err) {
       // localStorage scans are a recovery path; never break title/load screens.
+    }
+    return out;
+  },
+
+  _scanRecoverySlots(primarySlots = {}) {
+    const out = {};
+    if (typeof localStorage === 'undefined') return out;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(RECOVERY_PREFIX)) continue;
+        const slot = key.slice(RECOVERY_PREFIX.length);
+        if (!slot || isUnsafePlainKey(slot) || primarySlots[slot]) continue;
+        const prepared = this._prepareEnvelopeString(localStorage.getItem(key));
+        if (!prepared.ok) continue;
+        const meta = slotMetaFromEnvelope(slot, prepared.env);
+        if (meta) out[slot] = meta;
+      }
+    } catch (err) {
+      // Backup discovery is best-effort; explicit load still attempts the named recovery key.
     }
     return out;
   },
@@ -492,7 +580,10 @@ export const save = {
 
   deleteSlot(slot) {
     try {
-      if (typeof localStorage !== 'undefined') localStorage.removeItem(LS_PREFIX + slot);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(LS_PREFIX + slot);
+        localStorage.removeItem(RECOVERY_PREFIX + slot);
+      }
       const idx = this._slotIndexWithFallback();
       delete idx[slot];
       if (typeof localStorage !== 'undefined') localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
@@ -530,49 +621,100 @@ export const save = {
     let raw = null;
     try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
     catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
-    if (!raw) { this.bus.emit('save:error', { slot, reason: 'no_save' }); return false; }
-    return this.loadEnvelopeFromString(raw, slot);
+    const primary = this._prepareEnvelopeString(raw);
+    if (primary.ok) return this._restorePreparedEnvelope(primary, slot);
+
+    // A named load and title Continue both recover from the previous valid generation. Validation
+    // happens before any destructive restore, and the corrupt bytes are never rotated over backup.
+    let backupRaw = null;
+    try { backupRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(RECOVERY_PREFIX + slot) : null; }
+    catch (err) { /* primary failure below remains the player-facing reason */ }
+    const backup = this._prepareEnvelopeString(backupRaw);
+    if (backup.ok) {
+      const restored = this._restorePreparedEnvelope(backup, slot, { emitError: false, recovered: true });
+      if (restored) {
+        let promoted = false;
+        try {
+          localStorage.setItem(LS_PREFIX + slot, backupRaw);
+          promoted = localStorage.getItem(LS_PREFIX + slot) === backupRaw;
+          if (promoted) this._updateIndex(slot, backup.env);
+        } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
+        this.bus.emit('save:recovered', {
+          slot,
+          source: 'previous_generation',
+          failedReason: primary.reason,
+          recoveredSavedAt: backup.env.savedAt || null,
+          recoveredVersion: backup.env.version | 0,
+          promoted,
+        });
+        return true;
+      }
+    }
+    this.bus.emit('save:error', { slot, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' });
+    return false;
   },
 
   /** Parse + validate + migrate a raw JSON string, then restore. Shared by load() and import. */
   loadEnvelopeFromString(raw, slot) {
-    let env;
-    try { env = JSON.parse(raw); }
-    catch (err) { this.bus.emit('save:error', { slot, reason: 'parse_failed' }); return false; }
-    return this.loadEnvelope(env, slot);
+    const prepared = this._prepareEnvelopeString(raw);
+    if (!prepared.ok) {
+      this.bus.emit('save:error', { slot, reason: prepared.reason });
+      return false;
+    }
+    return this._restorePreparedEnvelope(prepared, slot);
   },
 
   /** Validate an already-parsed envelope and restore it (atomic: validate before destructive work). */
   loadEnvelope(env, slot) {
     slot = slot || (env && env.slot) || 'quick';
+    const prepared = this._prepareEnvelope(env);
+    if (!prepared.ok) {
+      this.bus.emit('save:error', { slot, reason: prepared.reason });
+      return false;
+    }
+    return this._restorePreparedEnvelope(prepared, slot);
+  },
+
+  /** Pure validation/migration preparation shared by normal load, recovery, and write verification. */
+  _prepareEnvelopeString(raw) {
+    if (!raw) return { ok: false, reason: 'no_save' };
+    let env;
+    try { env = JSON.parse(raw); }
+    catch (err) { return { ok: false, reason: 'parse_failed' }; }
+    return this._prepareEnvelope(env);
+  },
+
+  _prepareEnvelope(env) {
     try {
-      if (!env || env.fmt !== FMT) { this.bus.emit('save:error', { slot, reason: 'bad_format' }); return false; }
+      if (!env || env.fmt !== FMT) return { ok: false, reason: 'bad_format' };
       const ver = env.version | 0;
-      if (ver > CURRENT_VERSION) { this.bus.emit('save:error', { slot, reason: 'newer_version' }); return false; }
-      if (!env.data || typeof env.data !== 'object') { this.bus.emit('save:error', { slot, reason: 'no_data' }); return false; }
+      if (ver > CURRENT_VERSION) return { ok: false, reason: 'newer_version' };
+      if (!env.data || typeof env.data !== 'object') return { ok: false, reason: 'no_data' };
 
       // Checksum is over the stored (pre-migration) data shape; verify before migrating.
       if (env.checksum) {
         const computed = fnv1a(safeStringify(env.data));
-        if (computed !== env.checksum) {
-          // Corrupt: do NOT overwrite or load. Warn but allow a forced load only via import path?
-          this.bus.emit('save:error', { slot, reason: 'checksum' });
-          return false;
-        }
+        if (computed !== env.checksum) return { ok: false, reason: 'checksum' };
       }
 
       // Migrate a COPY so a throwing migration never half-mutates anything we keep.
       let data = clonePlain(env.data);
-      if (!runMigrations(data, ver)) { this.bus.emit('save:error', { slot, reason: 'migration_failed' }); return false; }
+      if (!runMigrations(data, ver)) return { ok: false, reason: 'migration_failed' };
       const normalized = normalizeRestorableData(data);
-      if (!normalized.ok) { this.bus.emit('save:error', { slot, reason: normalized.reason }); return false; }
+      if (!normalized.ok) return { ok: false, reason: normalized.reason };
+      return { ok: true, env, data, version: ver };
+    } catch (err) {
+      return { ok: false, reason: 'load_failed', error: err };
+    }
+  },
 
-      // Everything validated → perform the (destructive) restore.
-      this._restore(data, slot);
+  _restorePreparedEnvelope(prepared, slot, options = {}) {
+    try {
+      this._restore(prepared.data, slot, options);
       return true;
     } catch (err) {
       console.error('[save] load failed', err);
-      this.bus.emit('save:error', { slot, reason: 'load_failed' });
+      if (options.emitError !== false) this.bus.emit('save:error', { slot, reason: 'load_failed' });
       return false;
     }
   },
@@ -582,7 +724,7 @@ export const save = {
   // → spawn the saved player → re-enter the sector (regenerates NPCs/stations/asteroids) →
   // re-apply player pose → restore persistent entities → remap semantic combat state →
   // restore missions/automation/settings → rebuild rng → save:loaded → unpause.
-  _restore(data, slot) {
+  _restore(data, slot, options = {}) {
     if (this._restoring) {
       const marker = { queued: true, stale: true, slot };
       this.deferRunTransition(() => {
@@ -745,7 +887,11 @@ export const save = {
         this.bus.emit('mode:changed', { mode: state.mode, previousMode });
       }
 
-      this.bus.emit('save:loaded', { slot, visualGatePending: !!finalizeLoadedGame });
+      this.bus.emit('save:loaded', {
+        slot,
+        visualGatePending: !!finalizeLoadedGame,
+        recovered: options.recovered === true,
+      });
       if (finalizeLoadedGame) {
         let finalizerResult;
         try {
@@ -1085,6 +1231,23 @@ export const save = {
     slot = slot || this.state.save.currentSlot || 'quick';
     let json = null;
     try { json = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; } catch (e) {}
+    const primary = this._prepareEnvelopeString(json);
+    if (!primary.ok) {
+      let recovery = null;
+      try { recovery = (typeof localStorage !== 'undefined') ? localStorage.getItem(RECOVERY_PREFIX + slot) : null; } catch (e) {}
+      const preparedRecovery = this._prepareEnvelopeString(recovery);
+      if (preparedRecovery.ok) {
+        json = recovery;
+        this.bus.emit('save:exportRecovery', {
+          slot,
+          source: 'previous_generation',
+          failedReason: primary.reason,
+          recoveredSavedAt: preparedRecovery.env.savedAt || null,
+        });
+      } else {
+        json = null;
+      }
+    }
     if (!json) { try { json = JSON.stringify(this.serialize(slot)); } catch (e) { json = null; } }
     if (!json) { this.bus.emit('save:error', { slot, reason: 'export_failed' }); return null; }
     const date = new Date().toISOString().slice(0, 10);

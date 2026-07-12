@@ -18,6 +18,7 @@ import { controlPrompt } from './controlPrompts.js';
 import { setPromptScheme } from './controlPrompts.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { projectLockedReticle } from '../combat/autoTargetMode.js';
+import { createCinematicInputFence } from './cinematicInputFence.js';
 import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
@@ -94,7 +95,11 @@ function saveErrorText(payload = {}) {
       return 'Could not prepare ' + slot + ' for saving';
     case 'no_storage': return 'Browser storage is unavailable';
     case 'quota':
+    case 'backup_quota':
     case 'write_failed':
+    case 'backup_write_failed':
+    case 'write_verify_parse':
+    case 'write_verify_failed':
       return 'Save storage is full; export a backup';
     case 'export_failed': return 'Export failed for ' + slot;
     case 'visual_gate_failed': return 'Loaded ' + slot + ', but visuals did not finish';
@@ -117,11 +122,19 @@ function wireSaveFeedback(bus) {
       ttl: (slot === 'auto' || slot === 'autosave') ? 1400 : 2200,
     });
   });
-  bus.on('save:loaded', ({ slot, visualGatePending } = {}) => {
+  bus.on('save:loaded', ({ slot, visualGatePending, recovered } = {}) => {
+    if (recovered) return;
     bus.emit('toast', {
       text: (visualGatePending ? 'Restoring ' : 'Loaded ') + saveSlotLabel(slot),
       kind: visualGatePending ? 'info' : 'good',
       ttl: visualGatePending ? 2200 : 2400,
+    });
+  });
+  bus.on('save:recovered', ({ slot } = {}) => {
+    bus.emit('toast', {
+      text: 'Recovered previous save for ' + saveSlotLabel(slot),
+      kind: 'warn',
+      ttl: 3600,
     });
   });
   bus.on('save:error', (payload = {}) => {
@@ -133,6 +146,10 @@ export const ui = {
   name: 'ui',
 
   init(ctx) {
+    if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
+    this._cinematicTeardown = null;
+    this._cinematicInputFence = null;
+    this._titleFlowDisposed = false;
     this.ctx = ctx;
     this.state = ctx.state;
     this.bus = ctx.bus;
@@ -283,9 +300,20 @@ export const ui = {
     // Professional first impression + teaches controls immediately. Click/any key to proceed to menu.
     // Only shows on first load per session (pro polish — doesn't annoy returning players).
     const CINEMATIC_SEEN_KEY = 'sf.cinematicSeen';
+    this._cinematicActive = false;
     this._pendingMainMenu = false;
     this._registeredScreens = new Set();
     const showMainMenuWhenReady = () => {
+      if (this._titleFlowDisposed) {
+        this._pendingMainMenu = false;
+        return;
+      }
+      // Do not build/focus the menu underneath the cinematic. Besides being inaccessible, that lets
+      // the dismissal key's native activation land on the newly focused New Game button.
+      if (this._cinematicActive) {
+        this._pendingMainMenu = true;
+        return;
+      }
       if (!this.state || this.state.mode !== 'menu') {
         this._pendingMainMenu = false;
         return;
@@ -305,20 +333,26 @@ export const ui = {
     let shouldShowCinematic = false;
     try { shouldShowCinematic = !sessionStorage.getItem(CINEMATIC_SEEN_KEY); } catch (e) { shouldShowCinematic = true; }
     if (shouldShowCinematic) {
+      this._cinematicActive = true;
       const cinematic = document.createElement('div');
       cinematic.id = 'cinematic-splash';
+      cinematic.tabIndex = -1;
+      cinematic.setAttribute('role', 'dialog');
+      cinematic.setAttribute('aria-modal', 'true');
+      cinematic.setAttribute('aria-labelledby', 'cinematic-title');
+      cinematic.setAttribute('aria-describedby', 'cinematic-summary');
       cinematic.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:#05070d;overflow:hidden;pointer-events:auto;';
       cinematic.innerHTML = `
         <div style="position:absolute;inset:0;background-image:url('assets/cinematics/C-INTRO-01.jpg');background-size:cover;background-position:center 34%;opacity:0.72;filter:contrast(1.08);"></div>
         <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,13,.5),rgba(5,7,13,0) 30%,rgba(5,7,13,0) 72%,rgba(5,7,13,1));"></div>
         <div style="position:relative;text-align:center;color:#d3e6ff;font-family:var(--mono,monospace);z-index:1;text-shadow:0 0 30px #39d0ff;">
           <div style="font-size:13px;letter-spacing:8px;opacity:0.7;margin-bottom:10px;">A HARD SCI-FI SPACE ODYSSEY</div>
-          <div style="font-size:clamp(48px,9vw,92px);line-height:1;letter-spacing:.12em;margin-bottom:14px;color:#39d0ff;font-weight:700;">SPACEFACE</div>
-          <div style="margin:14px auto 26px;max-width:640px;opacity:0.85;font-size:15px;line-height:1.45;font-family:var(--font,sans-serif);letter-spacing:.02em;">
+          <div id="cinematic-title" style="font-size:clamp(48px,9vw,92px);line-height:1;letter-spacing:.12em;margin-bottom:14px;color:#39d0ff;font-weight:700;">SPACEFACE</div>
+          <div id="cinematic-summary" style="margin:14px auto 26px;max-width:640px;opacity:0.85;font-size:15px;line-height:1.45;font-family:var(--font,sans-serif);letter-spacing:.02em;">
             Follow the mass discrepancy. Outrun the auditors. Decide who owns the evidence.<br>
             Contract 47-A is open.
           </div>
-          <div style="font-size:12px;opacity:0.6;margin-bottom:20px;letter-spacing:.08em;">↑↓ THROTTLE &nbsp;•&nbsp; ←→ STEER (BANKS) &nbsp;•&nbsp; MOUSE AIM &nbsp;•&nbsp; LMB FIRE &nbsp;•&nbsp; G AUTO-TARGET &nbsp;•&nbsp; F TETHER &nbsp;•&nbsp; SHIFT BOOST/DASH</div>
+          <div style="font-size:12px;opacity:0.6;margin-bottom:20px;letter-spacing:.08em;">↑↓ THROTTLE &nbsp;•&nbsp; ←→ STEER (BANKS) &nbsp;•&nbsp; MOUSE AIM &nbsp;•&nbsp; LMB FIRE &nbsp;•&nbsp; G AUTO-TARGET &nbsp;•&nbsp; TETHER &nbsp;•&nbsp; SHIFT BOOST/DASH</div>
           <div style="font-size:11px;letter-spacing:4px;opacity:0.5;">CLICK OR PRESS ANY KEY TO BEGIN</div>
         </div>
         <div id="cinematic-signal" style="position:absolute;bottom:26px;right:26px;padding:11px 16px;border:1px solid rgba(57,208,255,.45);border-left:3px solid #39d0ff;border-radius:6px;background:rgba(5,9,18,.72);box-shadow:0 0 22px rgba(57,208,255,.20);font-family:var(--mono,monospace);text-align:left;">
@@ -331,23 +365,57 @@ export const ui = {
 
       let dismissed = false;
       let autoDismissTimer = null;
-      const dismissCinematic = () => {
+      let fadeRemovalTimer = null;
+      let inputFence = null;
+      const finalizeCinematic = () => {
         if (dismissed) return;
         dismissed = true;
-        cinematic.removeEventListener('click', dismissCinematic);
-        removeEventListener('keydown', dismissCinematic);
+        this._cinematicActive = false;
+        this._cinematicInputFence = null;
+        cinematic.removeEventListener('click', requestPointerDismissal);
         if (autoDismissTimer) clearTimeout(autoDismissTimer);
         cinematic.style.transition = 'opacity .45s ease';
         cinematic.style.opacity = '0';
-        setTimeout(() => cinematic.parentNode && cinematic.parentNode.removeChild(cinematic), 500);
+        fadeRemovalTimer = setTimeout(() => {
+          if (cinematic.parentNode) cinematic.parentNode.removeChild(cinematic);
+          if (this._cinematicTeardown === teardownCinematic) this._cinematicTeardown = null;
+        }, 500);
         try { sessionStorage.setItem(CINEMATIC_SEEN_KEY, '1'); } catch (e) {}
-        // ensure menu shows
         showMainMenuWhenReady();
       };
-      cinematic.addEventListener('click', dismissCinematic);
-      addEventListener('keydown', dismissCinematic);
-      // Auto-dismiss safety after long time
-      autoDismissTimer = setTimeout(() => { if (cinematic.parentNode) dismissCinematic(); }, 18000);
+      const requestPointerDismissal = () => inputFence && inputFence.requestDismiss('pointer');
+      const teardownCinematic = () => {
+        const wasActive = !dismissed;
+        dismissed = true;
+        this._cinematicActive = false;
+        if (inputFence) inputFence.teardown();
+        cinematic.removeEventListener('click', requestPointerDismissal);
+        if (autoDismissTimer) clearTimeout(autoDismissTimer);
+        if (fadeRemovalTimer) clearTimeout(fadeRemovalTimer);
+        if (cinematic.parentNode) cinematic.parentNode.removeChild(cinematic);
+        if (wasActive) this._pendingMainMenu = false;
+        this._cinematicInputFence = null;
+        if (this._cinematicTeardown === teardownCinematic) this._cinematicTeardown = null;
+        return wasActive;
+      };
+      inputFence = createCinematicInputFence({
+        keyboardTarget: window,
+        visibilityTarget: document,
+        focusOwner: () => {
+          if (!dismissed && cinematic.isConnected && document.activeElement !== cinematic) {
+            try { cinematic.focus({ preventScroll: true }); } catch (_) { cinematic.focus(); }
+          }
+        },
+        onFinalize: finalizeCinematic,
+      });
+      this._cinematicInputFence = inputFence;
+      this._cinematicTeardown = teardownCinematic;
+      cinematic.addEventListener('click', requestPointerDismissal);
+      // Auto-dismiss safety after long time. A held keyboard chord defers this request until the
+      // release fence is complete; blur/visibility loss cancels that incomplete gesture safely.
+      autoDismissTimer = setTimeout(() => {
+        if (cinematic.parentNode && inputFence) inputFence.requestDismiss('timer');
+      }, 18000);
     } else {
       // If already seen this session, ensure we land on the menu
       setTimeout(() => {
@@ -683,6 +751,18 @@ export const ui = {
       this._fe = (this._fe || 0) + 1;
       if (this._fe <= 10) console.error('[ui] frame error:', err);
     }
+  },
+
+  destroy() {
+    // The rest of the UI is process-lifetime today, but the first-session cinematic has temporary
+    // global capture listeners and timers. Re-init/destroy must remove them without marking the
+    // cinematic seen or opening a menu behind the caller.
+    this._titleFlowDisposed = true;
+    if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
+    this._cinematicTeardown = null;
+    this._cinematicInputFence = null;
+    this._cinematicActive = false;
+    this._pendingMainMenu = false;
   },
 };
 
