@@ -112,7 +112,8 @@ function triggerRealScan(t) {
 function assertCivilianRead(t) {
   assert.equal(t.pirate.data.trafficRole, 'hauler', 'disguised pirate carries civilian traffic role');
   assert.equal(t.pirate.data.disguiseBlown, undefined, 'disguise starts unblown');
-  assert.equal(contactStateWord(t.pirate, 0, t.state), 'TRADER', 'disguised pirate reads as civilian before scan');
+  assert.equal(contactStateWord(t.pirate, 0, t.state), 'HAULER',
+    'disguised pirate exposes its specific civilian cover role before scan');
   assert.equal(isHostileToPlayer(t.pirate, 0, t.state), false, 'disguised pirate is non-hostile before scan');
 }
 
@@ -145,7 +146,8 @@ function testOutOfRangeScanDoesNotReveal() {
   triggerRealScan(t);
   assert.equal(t.pirate.data.disguiseBlown, undefined, 'out-of-range scan does not reveal');
   assert.equal(t.log.revealed.length, 0, 'out-of-range scan emits no reveal');
-  assert.equal(contactStateWord(t.pirate, 0, t.state), 'TRADER', 'out-of-range target remains civilian');
+  assert.equal(contactStateWord(t.pirate, 0, t.state), 'HAULER',
+    'out-of-range target retains its specific civilian cover role');
   ok('scan reveal is range-gated, not global');
 }
 
