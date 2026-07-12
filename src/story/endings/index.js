@@ -28,8 +28,12 @@ export {
 } from './eligibility.js';
 
 export {
+  POST_ENDING_SCHEMA,
+  advancePostEndingContinuity,
   assertEndingUniqueness,
+  createPostEndingContinuity,
   endingReceiptId,
+  normalizePostEndingContinuity,
   planEndingResolution,
   planPendingConfirmation,
 } from './resolve.js';

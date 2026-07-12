@@ -67,6 +67,9 @@ export const ENDING_DEFS = Object.freeze([
       flags: Object.freeze(['record_expunged', 'surcharges_cleared', 'aux_missions']),
       loopBack: false,
     }),
+    continuity: continuity('auxiliary_watch', 'AUXILIARY WATCH', 'mission:completed', 3,
+      'post47a_auxiliary_patrols', 'Complete three patrol, bounty, or escort contracts.',
+      { missionTypes: ['patrol_clear', 'bounty_hunt', 'escort'] }),
   }),
   Object.freeze({
     id: 'B',
@@ -97,6 +100,9 @@ export const ENDING_DEFS = Object.freeze([
       identityErased: true,
       loopBack: false,
     }),
+    continuity: continuity('quiet_manifest', 'QUIET MANIFEST', 'economy:tradeCompleted', 3,
+      'post47a_quiet_routes', 'Close three distinct sale routes without a public title.',
+      { side: 'sell' }),
   }),
   Object.freeze({
     id: 'C',
@@ -125,6 +131,8 @@ export const ENDING_DEFS = Object.freeze([
       flags: Object.freeze(['wormhole_return', 'pers_47a_pending', 'cargo_stable']),
       loopBack: true,
     }),
+    continuity: continuity('return_circuit', 'RETURN CIRCUIT', 'sector:enter', 4,
+      'post47a_loop_cartography', 'Re-enter four distinct regions after the loop return.'),
   }),
   Object.freeze({
     id: 'D',
@@ -154,6 +162,8 @@ export const ENDING_DEFS = Object.freeze([
       stayedAtAshfall: true,
       loopBack: false,
     }),
+    continuity: continuity('witness_archive', 'WITNESS ARCHIVE', 'scan:completed', 3,
+      'post47a_witness_archive', 'File three distinct sector or contact scans.'),
   }),
   Object.freeze({
     id: 'E',
@@ -183,6 +193,8 @@ export const ENDING_DEFS = Object.freeze([
       contract47bPending: true,
       loopBack: false,
     }),
+    continuity: continuity('contract_47b', 'CONTRACT 47-B', 'mission:completed', 2,
+      'post47a_next_manifest', 'Complete two contracts under the next manifest.'),
   }),
 ]);
 
@@ -212,7 +224,22 @@ export const SANDBOX_DEF = Object.freeze({
     flags: Object.freeze(['sandbox_continued', 'no_final_disposition']),
     loopBack: false,
   }),
+  continuity: continuity('open_frontier', 'OPEN FRONTIER', 'sector:enter', 5,
+    'post47a_open_frontier', 'Chart five distinct regions without filing a disposition.'),
 });
+
+function continuity(id, title, signal, target, replayHookId, objective, opts = {}) {
+  return Object.freeze({
+    id,
+    title,
+    signal,
+    target,
+    replayHookId,
+    objective,
+    missionTypes: Object.freeze((opts.missionTypes || []).slice()),
+    side: opts.side || null,
+  });
+}
 
 export function endingDef(id) {
   if (id === SANDBOX_ID || id === 'sandbox' || id === SANDBOX_DEF.key) return SANDBOX_DEF;

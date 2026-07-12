@@ -9,6 +9,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { story as storyProto } from '../src/systems/story.js';
 import { heat as heatProto } from '../src/systems/heat.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
+import { SECTORS } from '../src/data/sectors.js';
 import {
   ENDGAME_NET_WORTH_CR,
   ENDGAME_REP_MIN,
@@ -91,6 +92,10 @@ function makeLiveHarness(seed = 47) {
     promptSandbox: [],
     chosen: [],
     sandboxContinued: [],
+    continuity: [],
+    continuityProgress: [],
+    replayHooks: [],
+    comms: [],
     ineligible: [],
   };
   bus.on('economy:grantCredits', (p) => {
@@ -112,6 +117,10 @@ function makeLiveHarness(seed = 47) {
   bus.on('endgame:promptSandbox', (p) => events.promptSandbox.push(p));
   bus.on('endgame:chosen', (p) => events.chosen.push(p));
   bus.on('endgame:sandboxContinued', (p) => events.sandboxContinued.push(p));
+  bus.on('story:postEndingContinuity', (p) => events.continuity.push(p));
+  bus.on('story:postEndingProgress', (p) => events.continuityProgress.push(p));
+  bus.on('story:replayHookUnlocked', (p) => events.replayHooks.push(p));
+  bus.on('comms:popup', (p) => events.comms.push(p));
   bus.on('endgame:ineligible', (p) => events.ineligible.push(p));
 
   const story = cloneSystem(storyProto);
@@ -188,6 +197,12 @@ check('five unique ending ids/keys/modes/titles', () => {
   assert.equal(new Set(modes).size, 5);
   assert.ok(!modes.includes(SANDBOX_MODE_OPEN_FRONTIER));
   assert.equal(endingDef(SANDBOX_ID).isEnding, false);
+  const continuities = [...ENDING_IDS, SANDBOX_ID].map((id) => endingDef(id).continuity);
+  assert.equal(new Set(continuities.map((c) => c.id)).size, 6, 'six distinct continuity directives');
+  assert.equal(new Set(continuities.map((c) => c.replayHookId)).size, 6, 'six distinct replay hooks');
+  for (const c of continuities) {
+    assert.ok(c.signal && c.target > 0 && c.objective, c.id + ' is actionable');
+  }
 });
 
 // ── Eligibility truth + disabled reasons ───────────────────────────────────
@@ -411,6 +426,108 @@ check('live: sandbox continuation preserves world without faking an ending', () 
   // Cannot re-file after sandbox
   h.bus.emit('ui:endgameChoose', { choice: 'A', confirm: true });
   assert.equal(h.state.story.endgameChoice, null);
+});
+
+check('live: endings and sandbox advance distinct replay hooks while preserving all 24 regions', () => {
+  const cases = {
+    A: [
+      ['mission:completed', { missionId: 'aux_1', type: 'patrol_clear' }],
+      ['mission:completed', { missionId: 'aux_2', type: 'bounty_hunt' }],
+      ['mission:completed', { missionId: 'aux_3', type: 'escort' }],
+    ],
+    B: [
+      ['economy:tradeCompleted', { stationId: 'station_helios', commodityId: 'cmdty_ore_iron', side: 'sell', qty: 10 }],
+      ['economy:tradeCompleted', { stationId: 'station_ceres', commodityId: 'cmdty_alloys', side: 'sell', qty: 8 }],
+      ['economy:tradeCompleted', { stationId: 'station_tethys', commodityId: 'cmdty_fuel_cells', side: 'sell', qty: 6 }],
+    ],
+    C: ['sector_ceres_belt', 'sector_io_reach', 'sector_veil_nebula', 'sector_ashfall_reach']
+      .map((sectorId) => ['sector:enter', { sectorId }]),
+    D: ['sector_ashfall_reach', 'sector_veil_nebula', 'sector_sedna_dark']
+      .map((sectorId) => ['scan:completed', { targetId: null, sectorId, found: 1 }]),
+    E: [
+      ['mission:completed', { missionId: '47b_1', type: 'cargo_delivery' }],
+      ['mission:completed', { missionId: '47b_2', type: 'recon_scan' }],
+    ],
+    [SANDBOX_ID]: ['sector_ceres_belt', 'sector_pallas_drift', 'sector_io_reach', 'sector_veil_nebula', 'sector_sedna_dark']
+      .map((sectorId) => ['sector:enter', { sectorId }]),
+  };
+  const seenHooks = new Set();
+
+  for (const choice of [...ENDING_IDS, SANDBOX_ID]) {
+    const h = makeLiveHarness(200 + String(choice).charCodeAt(0));
+    qualifyFor(h.state, choice);
+    h.state.world.sectors = Object.fromEntries(SECTORS.map((sector) => [sector.id, { ...sector }]));
+    const worldBefore = JSON.stringify(h.state.world);
+    if (choice === SANDBOX_ID) h.bus.emit('ui:endgameSandbox', { confirm: true });
+    else h.bus.emit('ui:endgameChoose', { choice, confirm: true });
+
+    const rec = h.state.story.postEnding;
+    assert.ok(rec && rec.status === 'active', choice + ' creates active continuity');
+    assert.equal(rec.choiceId, choice);
+    assert.equal(h.events.continuity.length, 1, choice + ' publishes continuity on the public route');
+    assert.ok(h.state.story.scheduled.some((event) => event.id === 'post_ending_' + rec.directiveId
+      && event.text === rec.objective), choice + ' schedules one concise public objective');
+    seenHooks.add(rec.replayHookId);
+
+    // An irrelevant event and a duplicate accepted event are stable no-ops.
+    h.bus.emit('economy:tradeCompleted', { stationId: 'station_none', commodityId: 'cmdty_ore_iron', side: 'buy', qty: 1 });
+    for (const [event, payload] of cases[choice]) h.bus.emit(event, payload);
+    const [duplicateEvent, duplicatePayload] = cases[choice][0];
+    h.bus.emit(duplicateEvent, duplicatePayload);
+
+    assert.equal(rec.target, cases[choice].length);
+    assert.equal(h.state.story.postEnding.progress, rec.target, choice + ' reaches its authored target');
+    assert.equal(h.state.story.postEnding.status, 'complete');
+    assert.equal(h.events.replayHooks.length, 1, choice + ' unlocks once');
+    assert.equal(h.events.replayHooks[0].replayHookId, rec.replayHookId);
+    assert.ok(h.events.comms.some((event) => event.id === 'replay_hook_' + rec.replayHookId),
+      choice + ' surfaces completion through the one-voice comms path');
+    assert.ok(h.state.story.postEnding.receiptId.startsWith('replay_hook:' + rec.replayHookId));
+    assert.ok(h.state.story.campaign47a.receipts.some((receipt) => receipt.id === h.state.story.postEnding.receiptId),
+      choice + ' stores replay receipt in campaign history');
+    assert.equal(JSON.stringify(h.state.world), worldBefore, choice + ' continuity never rewrites the world');
+    assert.equal(Object.keys(h.state.world.sectors).length, 24, choice + ' preserves the full sandbox');
+  }
+  assert.equal(seenHooks.size, 6, 'each resolution opens a different replay hook');
+});
+
+check('save/load resumes partial continuity and cannot replay ending rewards or hook receipts', () => {
+  const h = makeLiveHarness(310);
+  qualifyFor(h.state, 'E');
+  h.bus.emit('ui:endgameChoose', { choice: 'E', confirm: true });
+  assert.equal(h.events.grantCredits.filter((g) => g.amount === 1200).length, 1, 'ending reward applied once');
+  h.bus.emit('mission:completed', { missionId: '47b_save_1', type: 'cargo_delivery' });
+  assert.equal(h.state.story.postEnding.progress, 1);
+  const blob = JSON.parse(JSON.stringify(h.story.serialize()));
+
+  const h2 = makeLiveHarness(310);
+  h2.story.deserialize(blob);
+  h2.bus.emit('save:loaded', {});
+  assert.equal(h2.state.story.postEnding.progress, 1, 'partial progress survives Continue');
+  assert.equal(h2.events.continuity.length, 1, 'Continue republishes the active directive');
+  assert.equal(h2.events.grantCredits.length, 0, 'Continue does not replay the ending reward');
+  h2.bus.emit('mission:completed', { missionId: '47b_save_1', type: 'cargo_delivery' });
+  assert.equal(h2.state.story.postEnding.progress, 1, 'seen mission stays deduplicated after load');
+  h2.bus.emit('mission:completed', { missionId: '47b_save_2', type: 'recon_scan' });
+  assert.equal(h2.state.story.postEnding.status, 'complete');
+  assert.equal(h2.events.replayHooks.length, 1);
+  const completed = JSON.parse(JSON.stringify(h2.story.serialize()));
+
+  const h3 = makeLiveHarness(310);
+  h3.story.deserialize(completed);
+  h3.bus.emit('save:loaded', {});
+  h3.bus.emit('mission:completed', { missionId: '47b_save_3', type: 'escort' });
+  assert.equal(h3.state.story.postEnding.status, 'complete');
+  assert.equal(h3.events.replayHooks.length, 0, 'completed hook is never re-awarded after Continue');
+  assert.equal(h3.events.grantCredits.length, 0);
+
+  // Older resolved saves without the new record receive the correct active directive once.
+  const legacy = JSON.parse(JSON.stringify(blob));
+  delete legacy.story.postEnding;
+  const h4 = makeLiveHarness(310);
+  h4.story.deserialize(legacy);
+  assert.equal(h4.state.story.postEnding.choiceId, 'E');
+  assert.equal(h4.state.story.postEnding.status, 'active');
 });
 
 check('live: ineligible choose reports unmet conditions', () => {

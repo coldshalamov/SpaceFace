@@ -23,6 +23,108 @@ export function endingReceiptId(endingId, simTime, seed) {
   return `ending_receipt:${endingId}:${t}:${s}`;
 }
 
+export const POST_ENDING_SCHEMA = 'spaceface.postEnding.v1';
+const MAX_CONTINUITY_KEYS = 32;
+
+/** Create the durable, event-driven continuation for an ending or explicit sandbox choice. */
+export function createPostEndingContinuity(choiceId, simTime, seed) {
+  const def = endingDef(choiceId);
+  if (!def || !def.continuity) return null;
+  const t = Math.floor(Number(simTime) || 0);
+  const s = (Number(seed) >>> 0) || 0;
+  return {
+    schema: POST_ENDING_SCHEMA,
+    choiceId: def.id,
+    endingId: isSandboxId(def.id) ? null : def.id,
+    sandboxMode: def.sandboxMode,
+    directiveId: def.continuity.id,
+    title: def.continuity.title,
+    objective: def.continuity.objective,
+    signal: def.continuity.signal,
+    target: def.continuity.target,
+    replayHookId: def.continuity.replayHookId,
+    status: 'active',
+    progress: 0,
+    seenKeys: [],
+    startedAtS: t,
+    completedAtS: null,
+    seed: s,
+    receiptId: null,
+  };
+}
+
+/** Heal save payloads and reject continuity records that no longer match authored definitions. */
+export function normalizePostEndingContinuity(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const def = endingDef(raw.choiceId || raw.endingId || raw.sandboxMode);
+  if (!def || !def.continuity || raw.directiveId !== def.continuity.id) return null;
+  const seenKeys = Array.isArray(raw.seenKeys)
+    ? [...new Set(raw.seenKeys.filter((key) => typeof key === 'string' && key).slice(-MAX_CONTINUITY_KEYS))]
+    : [];
+  const out = createPostEndingContinuity(def.id, raw.startedAtS, raw.seed);
+  out.seenKeys = seenKeys;
+  // Progress is derived from durable distinct evidence keys, never trusted as a free-standing
+  // counter from a partial/older save.
+  out.progress = Math.min(out.target, seenKeys.length);
+  out.status = raw.status === 'complete' || out.progress >= out.target ? 'complete' : 'active';
+  out.completedAtS = out.status === 'complete' ? Math.floor(Number(raw.completedAtS) || raw.startedAtS || 0) : null;
+  out.receiptId = out.status === 'complete'
+    ? String(raw.receiptId || continuityReceiptId(out))
+    : null;
+  return out;
+}
+
+/** Advance a continuation from normal public gameplay events; duplicates are stable no-ops. */
+export function advancePostEndingContinuity(raw, signal, payload = {}, simTime = 0) {
+  const current = normalizePostEndingContinuity(raw);
+  if (!current) return { changed: false, completed: false, state: null, reason: 'no_continuity' };
+  if (current.status === 'complete') return { changed: false, completed: false, state: current, reason: 'complete' };
+  const def = endingDef(current.choiceId);
+  const key = continuitySignalKey(def && def.continuity, signal, payload);
+  if (!key) return { changed: false, completed: false, state: current, reason: 'signal_mismatch' };
+  if (current.seenKeys.includes(key)) return { changed: false, completed: false, state: current, reason: 'duplicate' };
+
+  const next = { ...current, seenKeys: current.seenKeys.concat(key).slice(-MAX_CONTINUITY_KEYS) };
+  next.progress = Math.min(next.target, current.progress + 1);
+  const completed = next.progress >= next.target;
+  if (completed) {
+    next.status = 'complete';
+    next.completedAtS = Math.floor(Number(simTime) || 0);
+    next.receiptId = continuityReceiptId(next);
+  }
+  return { changed: true, completed, state: next, key };
+}
+
+function continuitySignalKey(def, signal, payload) {
+  if (!def || signal !== def.signal) return null;
+  const p = payload || {};
+  if (signal === 'mission:completed') {
+    if (!p.missionId) return null;
+    if (def.missionTypes.length && !def.missionTypes.includes(p.type)) return null;
+    return 'mission:' + p.missionId;
+  }
+  if (signal === 'economy:tradeCompleted') {
+    if (def.side && p.side !== def.side) return null;
+    if (!p.stationId || !p.commodityId || !(Number(p.qty) > 0)) return null;
+    return 'trade:' + p.stationId + ':' + p.commodityId;
+  }
+  if (signal === 'sector:enter') {
+    if (!p.sectorId) return null;
+    return 'sector:' + p.sectorId;
+  }
+  if (signal === 'scan:completed') {
+    const id = p.targetId != null
+      ? 'target:' + (p.sectorId || 'current') + ':' + p.targetId
+      : p.sectorId ? 'sector:' + p.sectorId : null;
+    return id ? 'scan:' + id : null;
+  }
+  return null;
+}
+
+function continuityReceiptId(state) {
+  return `replay_hook:${state.replayHookId}:${state.startedAtS}:${state.seed}`;
+}
+
 /**
  * Build a resolution plan if eligible and not already resolved.
  * @returns {{ ok, reason?, plan? }}
@@ -96,6 +198,7 @@ export function planEndingResolution(state, endingId, opts = {}) {
       contract47bPending: !!(def.consequenceIntents && def.consequenceIntents.contract47bPending),
       loopBack: !!(def.consequenceIntents && def.consequenceIntents.loopBack),
     }),
+    continuity: def.continuity || null,
   });
 
   return { ok: true, plan, facts, def };

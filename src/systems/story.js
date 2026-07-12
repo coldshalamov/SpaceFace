@@ -50,10 +50,13 @@ import {
 import {
   SANDBOX_ID,
   SANDBOX_MODE_OPEN_FRONTIER,
+  advancePostEndingContinuity,
+  createPostEndingContinuity,
   evaluateEndingEligibility,
   isSandboxId,
   listBoardEligibleEndingIds,
   listEndingEligibility,
+  normalizePostEndingContinuity,
   planEndingResolution,
   planPendingConfirmation,
 } from '../story/endings/index.js';
@@ -107,6 +110,13 @@ export const story = {
     bus.on('ui:endgameSandbox', (p) => this._onEndgameChoose({ ...(p || {}), choice: SANDBOX_ID, confirm: !!(p && p.confirm) }));
     // Ending C: loop-return receipt/sandbox only — never resets beatIndex or closes flight.
     bus.on('endgame:loopBack', (p) => this._onEndgameLoopBack(p || {}));
+    // Endings continue into normal public gameplay. These are existing player-driven events, not
+    // fixture inputs or a second mission system; the durable continuity record advances once per
+    // distinct mission/route/region/scan and unlocks one authored replay hook.
+    bus.on('mission:completed', (p) => this._onPostEndingSignal('mission:completed', p || {}));
+    bus.on('economy:tradeCompleted', (p) => this._onPostEndingSignal('economy:tradeCompleted', p || {}));
+    bus.on('sector:enter', (p) => this._onPostEndingSignal('sector:enter', p || {}));
+    bus.on('scan:completed', (p) => this._onPostEndingSignal('scan:completed', p || {}));
     // UI intent: player opened/took/dropped the ledger with the Kurtz figure.
     bus.on('ui:kurtzInteract', (p) => this._onKurtzInteract(p || {}));
 
@@ -609,6 +619,7 @@ export const story = {
     } else {
       s.endgameChoice = plan.id;
     }
+    s.postEnding = createPostEndingContinuity(plan.id, state.simTime || 0, state.meta && state.meta.seed);
     if (plan.storyWrites.identityErased) s.flags.identityErased = true;
     if (plan.storyWrites.stayedAtAshfall) s.flags.stayedAtAshfall = true;
     if (plan.storyWrites.contract47bPending) s.flags.contract47bPending = true;
@@ -641,6 +652,7 @@ export const story = {
     }
 
     this._attachEndingPlanReceipt(plan);
+    this._publishPostEndingContinuity('resolved');
     if (plan.isSandbox) {
       this.bus.emit('endgame:sandboxContinued', {
         sandboxMode: plan.sandboxMode || SANDBOX_MODE_OPEN_FRONTIER,
@@ -657,6 +669,7 @@ export const story = {
       });
       this._sayStoryLine(plan.resolution || plan.title, 8);
     }
+    this._schedulePostEndingObjective();
   },
 
   /**
@@ -704,6 +717,83 @@ export const story = {
       endingId: plan.isSandbox ? null : plan.id,
       sandboxMode: mode || null,
     }, simTime);
+  },
+
+  _onPostEndingSignal(signal, payload) {
+    const s = this.state && this.state.story;
+    if (!s || !s.postEnding || !s.endgameResolved) return false;
+    const advanced = advancePostEndingContinuity(s.postEnding, signal, payload, this.state.simTime || 0);
+    if (!advanced.changed || !advanced.state) return false;
+    s.postEnding = advanced.state;
+    this.bus.emit('story:postEndingProgress', this._postEndingPublicPayload('progress'));
+    if (advanced.completed) {
+      ensureCampaign47aState(this.state);
+      const own = s.campaign47a;
+      if (own) {
+        pushCampaignReceipt(own, {
+          id: s.postEnding.receiptId,
+          kind: 'replay_hook',
+          endingId: s.postEnding.endingId,
+          sandboxMode: s.postEnding.sandboxMode,
+          replayHookId: s.postEnding.replayHookId,
+          simTime: s.postEnding.completedAtS,
+          intents: [],
+        });
+      }
+      this.bus.emit('story:replayHookUnlocked', this._postEndingPublicPayload('unlocked'));
+      this._fireComms({
+        id: 'replay_hook_' + s.postEnding.replayHookId,
+        sender: s.postEnding.title,
+        text: 'Route logged. Further work available.',
+        category: 'story',
+        ttl: 7,
+        persist: false,
+      });
+    }
+    return true;
+  },
+
+  _publishPostEndingContinuity(reason) {
+    const payload = this._postEndingPublicPayload(reason);
+    if (payload) this.bus.emit('story:postEndingContinuity', payload);
+    return payload;
+  },
+
+  _schedulePostEndingObjective() {
+    const rec = this.state && this.state.story && this.state.story.postEnding;
+    if (!rec || !rec.objective) return false;
+    // Let the ending resolution line finish first. The normal deterministic story queue then
+    // surfaces one concise next objective through the existing one-voice path.
+    this._scheduleNarrative(6, {
+      kind: 'comms',
+      id: 'post_ending_' + rec.directiveId,
+      sender: rec.title,
+      text: rec.objective,
+      category: 'story',
+      ttl: 7,
+      persist: false,
+    });
+    return true;
+  },
+
+  _postEndingPublicPayload(reason) {
+    const rec = this.state && this.state.story && this.state.story.postEnding;
+    if (!rec) return null;
+    return {
+      reason,
+      choiceId: rec.choiceId,
+      endingId: rec.endingId,
+      sandboxMode: rec.sandboxMode,
+      directiveId: rec.directiveId,
+      title: rec.title,
+      objective: rec.objective,
+      signal: rec.signal,
+      progress: rec.progress,
+      target: rec.target,
+      status: rec.status,
+      replayHookId: rec.replayHookId,
+      receiptId: rec.receiptId,
+    };
   },
 
   /**
@@ -899,6 +989,7 @@ export const story = {
   _onLoaded() {
     this._ensureState();
     if (!(this.state.story.ambientTimerS > 0)) this._rescheduleAmbient();
+    this._publishPostEndingContinuity('loaded');
   },
 
   _ensureState(reset) {
@@ -918,6 +1009,7 @@ export const story = {
       s.endgameDeclined = [];
       s.endgameResolved = false;
       s.endgamePending = null;
+      s.postEnding = null;
       s.persistentCargo = [];
     } else {
       if (s.phase == null) s.phase = 1;
@@ -932,6 +1024,11 @@ export const story = {
       if (!Array.isArray(s.endgameDeclined)) s.endgameDeclined = [];
       if (s.endgameResolved == null) s.endgameResolved = !!(s.endgameChoice || (s.flags && s.flags.sandboxContinued));
       if (s.endgamePending === undefined) s.endgamePending = null;
+      s.postEnding = normalizePostEndingContinuity(s.postEnding);
+      if (!s.postEnding && (s.endgameChoice || (s.flags && s.flags.sandboxContinued))) {
+        const choice = s.endgameChoice || SANDBOX_ID;
+        s.postEnding = createPostEndingContinuity(choice, state.simTime || 0, state.meta && state.meta.seed);
+      }
       if (!Array.isArray(s.persistentCargo)) s.persistentCargo = [];
     }
   },
@@ -963,9 +1060,14 @@ export const story = {
       if (carried.endgameResolved != null) s.endgameResolved = !!carried.endgameResolved;
       else if (carried.endgameChoice || (carried.flags && carried.flags.sandboxContinued)) s.endgameResolved = true;
       if (carried.endgamePending) s.endgamePending = carried.endgamePending;
+      if (carried.postEnding) s.postEnding = normalizePostEndingContinuity(carried.postEnding);
       if (Array.isArray(carried.persistentCargo)) s.persistentCargo = carried.persistentCargo.slice();
       if (carried.flags && typeof carried.flags === 'object') {
         s.flags = Object.assign({}, s.flags || {}, carried.flags);
+      }
+      if (!s.postEnding && (s.endgameChoice || (s.flags && s.flags.sandboxContinued))) {
+        const choice = s.endgameChoice || SANDBOX_ID;
+        s.postEnding = createPostEndingContinuity(choice, this.state.simTime || 0, this.state.meta && this.state.meta.seed);
       }
     }
   },
