@@ -109,6 +109,7 @@ import { RECIPES } from '../src/data/audioRecipes.js';
 import { audio, AUDIO_RECIPE_BY_ID, resolveAudioCueRecipeId } from '../src/audio/audioSystem.js';
 import { createCuePriorityBus } from '../src/audio/cuePriorityBus.js';
 import { SECTOR_PALETTE_CLASSES } from '../src/data/sectors.js';
+import { PRESENTATION_AUDIO_CUE_BY_ID } from '../src/systems/presentationAdapters.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -435,8 +436,14 @@ assert.match(audioSrc, /this\._ensureTetherHum\s*\(\)/, 'ensure path must call _
 assert.match(audioSrc, /createCuePriorityBus/, 'live graph must import createCuePriorityBus');
 assert.match(audioSrc, /comms:popup/, 'comms squelch must subscribe to comms:popup');
 assert.match(audioSrc, /scan:pulse/, 'Focus motif must bind existing scan:pulse seam');
-assert.match(audioSrc, /cruise:charging/, 'cruise travel grammar must bind cruise:charging');
-assert.match(audioSrc, /sfx_travel_motif/, 'travel motif recipe must be used');
+assert.equal(PRESENTATION_AUDIO_CUE_BY_ID['travel.cruise.charging'], 'presentation.travel.cruise_charge',
+  'cruise charging must route through the normalized presentation audio lane');
+assert.equal(resolveAudioCueRecipeId(PRESENTATION_AUDIO_CUE_BY_ID['travel.cruise.charging']), 'sfx.cruiseCharging',
+  'cruise charging semantic cue must resolve to its authored rise');
+assert.doesNotMatch(audioSrc, /bus\.on\('cruise:charging'/,
+  'raw cruise charging must not stack a duplicate voice beneath presentation audio');
+assert.doesNotMatch(audioSrc, /bus\.on\('jump:(?:chargeStart|start|arrive)'/,
+  'raw jump events must not stack duplicate voices beneath presentation audio');
 assert.match(audioSrc, /sfx_accel_transition/, 'acceleration transition motif must be used');
 assert.match(audioSrc, /sfx_undock_release/, 'undock mood must use undock release recipe');
 assert.match(audioSrc, /_isCriticalSquelchActive/, 'critical squelch gate must exist');

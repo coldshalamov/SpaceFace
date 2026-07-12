@@ -409,8 +409,10 @@ function travelRecipe(importance, dedupeWindowTicks, material, vfx, tags) {
     importance,
     dedupeWindowTicks,
     material,
-    lanes: laneSet(vfx),
-    budgets: {},
+    lanes: { ...laneSet(vfx), audio: 'audio.travel' },
+    // One semantic journey cue owns the audible floor for each source event. Layered synth
+    // recipes still count as one scheduled voice and remain beneath the global SG-08 cap.
+    budgets: { voices: 1 },
     tags,
   });
 }

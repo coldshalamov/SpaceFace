@@ -261,6 +261,22 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.tether.near_break': 'sfx_tether_strain_creak',
   'presentation.tether.break': 'sfx.tetherSnap',
   'presentation.tether.whip_impact': 'sfx.tetherSnap',
+  'presentation.travel.cruise_charge': 'sfx.cruiseCharging',
+  'presentation.travel.lane_lock': 'sfx_travel_lane_lock',
+  'presentation.travel.cancel': 'sfx_travel_cancel',
+  'presentation.travel.fail': 'sfx_travel_fail',
+  'presentation.travel.gate_approach': 'sfx_travel_gate_approach',
+  'presentation.travel.gate_align': 'sfx_travel_gate_align',
+  'presentation.travel.commit_window': 'sfx_travel_commit_window',
+  'presentation.travel.commit': 'sfx_travel_commit',
+  'presentation.travel.transit': 'sfx_travel_transit',
+  'presentation.travel.arrival': 'sfx_travel_arrival',
+  'presentation.travel.sector_identity': 'sfx_travel_sector_identity',
+  'presentation.travel.discovery': 'sfx_scan_pulse',
+  'presentation.travel.interdiction': 'sfx_travel_interdiction',
+  'presentation.travel.recovery': 'sfx_travel_recovery',
+  'presentation.travel.settle': 'sfx_travel_settle',
+  'presentation.travel.contested': 'sfx_travel_interdiction',
   'presentation.shield.collapse': 'sfx.shieldBreak',
   'presentation.subsystem.disabled': 'sfx_ui_alert',
   'presentation.scenario.signal': 'sfx_ui_alert',
@@ -444,20 +460,8 @@ export const audio = {
     bus.on('ai:telegraph', (p) => this._onDoctrineTelegraphAudio(p));
     bus.on('encounter:telegraph', (p) => this._onEncounterTelegraphAudio(p));
     bus.on('encounter:resolved', (p) => this._onEncounterResolvedAudio(p));
-    bus.on('jump:chargeStart', () => {
-      this._duckMusic();
-      this.play('sfx_jump_charge', { gain: 0.5, rate: 0.6 }); // early charge buildup
-      this.play('sfx_travel_motif', { gain: 0.35, rate: 0.85 });
-    });
-    bus.on('jump:start', (p) => this._onJump(p));
-    // Jump arrival: play the decompression whoosh when the player ACTUALLY materializes at the
-    // destination (the jump:arrive event from world.js after the 1.2s tunnel). Previously arrival
-    // was silent — _onJump used a fixed 400ms setTimeout that raced the real arrival time and never
-    // fired on aborted jumps. Subscribing to the real event syncs the sound to the visual exactly.
-    bus.on('jump:arrive', () => {
-      this.play('sfx_jump_arrive', { gain: 0.7 });
-      this.play('sfx_travel_motif', { gain: 0.28, rate: 1.25 });
-    });
+    // Jump/cruise one-shots are owned by the normalized presentation lane below. Do not subscribe
+    // to their raw events here: doing so stacks a direct voice with the semantic journey voice.
     // Mining yield: each ore chunk gained was silent (only the per-tick beam impact had sound).
     // A soft impact ping makes the reward loop read — throttled so a burst of yields isn't noise.
     bus.on('mining:yield', (p) => this._onMiningYield(p));
@@ -494,13 +498,8 @@ export const audio = {
       // Dash: layered whoosh+thump (juice recipe), player-only.
       if (p && p.shipId === this.state.playerId) this.play('sfx.shipDash', { gain: 0.7 });
     });
-    // Cruise travel grammar (existing sim events; recipes already in juice table).
-    // Sustained cruise drone is the engine-hum 'cruise' tier (65 Hz fifth) — do NOT
-    // start a second continuous_oscillator via play() (would leak a loop voice).
-    bus.on('cruise:charging', () => this.play('sfx.cruiseCharging', { gain: 0.45 }));
-    bus.on('cruise:engaged', () => {
-      this.play('sfx_travel_motif', { gain: 0.35, rate: 1.05 });
-    });
+    // Sustained cruise is still the engine-hum 'cruise' tier (65 Hz fifth). Presentation owns
+    // finite charge/lock accents so a second continuous oscillator can never leak into the pool.
     bus.on('cruise:snared', () => {
       this._applyPriorityCue({ id: 'cruise.snared', importance: 0.88, playerRelevance: 1 });
       this.play('sfx.cruiseSnared', { gain: 0.75, critical: true });
@@ -1188,14 +1187,6 @@ export const audio = {
       }, 2000);
     }
     delete rt.loops.stationHum;
-  },
-
-  _onJump(p) {
-    // Warp charge sound (rising energy) + duck music. The arrival decompression whoosh is now
-    // triggered by the jump:arrive event (synced to the actual materialization after the 1.2s
-    // tunnel), not a fixed timer — see the jump:arrive subscriber in init().
-    this._duckMusic(1.8);
-    this.play('sfx_jump_charge', { gain: 0.8 });
   },
 
   // Mining yield: a burst of ore chunks (e.g. a big asteroid breaking up) would spam the impact

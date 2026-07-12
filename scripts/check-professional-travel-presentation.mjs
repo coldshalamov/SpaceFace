@@ -16,7 +16,14 @@ import {
   validateTravelChoreography,
 } from '../src/presentation/travelChoreography.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
-import { presentationAdapters } from '../src/systems/presentationAdapters.js';
+import {
+  PRESENTATION_AUDIO_CUE_BY_ID,
+  presentationAdapters,
+} from '../src/systems/presentationAdapters.js';
+import {
+  AUDIO_RECIPE_BY_ID,
+  resolveAudioCueRecipeId,
+} from '../src/audio/audioSystem.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const choreography = validateTravelChoreography();
@@ -57,12 +64,14 @@ const cues = [];
 const applied = [];
 const vfx = [];
 const alerts = [];
+const audioCues = [];
 const suppressed = [];
 bus.on('presentation:cue', (payload) => cues.push(payload));
 bus.on('presentation:cueApplied', (payload) => applied.push(payload));
 bus.on('presentation:vfxCue', (payload) => vfx.push(payload));
 bus.on('presentation:cueSuppressed', (payload) => suppressed.push(payload));
 bus.on('alert', (payload) => alerts.push(payload));
+bus.on('audio:cue', (payload) => audioCues.push(payload));
 presentationOrchestrator.init({ state, bus });
 presentationAdapters.init({ state, bus });
 
@@ -123,6 +132,11 @@ emit('jump:arrive', { sectorId: 'sector_a', interdicted: false, ambushCount: 0, 
 
 for (const id of TRAVEL_PRESENTATION_CUE_IDS) {
   assert(cues.some((cue) => cue.id === id), `missing travel presentation cue: ${id}`);
+  const semanticId = PRESENTATION_AUDIO_CUE_BY_ID[id];
+  assert(semanticId, `missing semantic travel audio mapping: ${id}`);
+  const recipeId = resolveAudioCueRecipeId(semanticId);
+  assert(AUDIO_RECIPE_BY_ID[recipeId], `missing concrete travel audio recipe: ${id} -> ${semanticId}`);
+  assertFiniteRecipe(recipeId);
 }
 const approach = cues.find((cue) => cue.id === 'travel.gate.approach');
 assert.equal(approach.sourceId, 1);
@@ -155,6 +169,26 @@ assert.equal(duplicateTravelVfx.length, 0, 'direct travel VFX ownership must not
 const duplicateTravelAlerts = alerts.filter((event) => event.cueId && event.cueId.startsWith('travel.'));
 assert.equal(duplicateTravelAlerts.length, 0, 'travel receipts must not duplicate existing alerts/postcards');
 assert(applied.some((record) => record.id === 'travel.jump.committed' && record.outputs.vfx.reconciled === true));
+const travelAudioFloors = new Map();
+for (const record of applied.filter((entry) => entry.id.startsWith('travel.') && entry.outputs.audio)) {
+  const key = `${record.tick}:${record.sourceEvent || record.id}`;
+  travelAudioFloors.set(key, (travelAudioFloors.get(key) || 0) + 1);
+}
+const duplicateAudioFloors = [...travelAudioFloors.values()].reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+assert.equal(duplicateAudioFloors, 0,
+  'each source event must own at most one travel voice even when it emits multiple structural receipts');
+assert.equal(audioCues.find((cue) => cue.cueId === 'travel.cruise.charging').duck, false,
+  'routine cruise charge must not duck music');
+assert.equal(audioCues.find((cue) => cue.cueId === 'travel.interdiction.triggered').duck, true,
+  'interdiction must claim the restrained critical duck');
+assert.equal(audioCues.find((cue) => cue.cueId === 'travel.gate.approach').position.x, 180,
+  'gate approach audio must retain the gate world position');
+assert.equal(audioCues.find((cue) => cue.cueId === 'travel.jump.committed').position.x, 0,
+  'jump commit audio must retain the departure world position');
+assert.equal(audioCues.find((cue) => cue.cueId === 'travel.interdiction.triggered').position.x, 1050,
+  'interdiction audio must retain the ambush world position');
+assert.equal(audioCues.find((cue) => cue.cueId === 'travel.arrival.oriented').position.x, 1000,
+  'arrival audio must retain the authored entry world position');
 
 state.tick = 10000;
 state.simTime = state.tick / 60;
@@ -181,6 +215,7 @@ assert.equal(cues.filter((cue) => cue.id === 'travel.arrival.oriented').length, 
 
 const worldSource = readFileSync(resolve(ROOT, 'src/systems/world.js'), 'utf8');
 const vfxSource = readFileSync(resolve(ROOT, 'src/render/vfx.js'), 'utf8');
+const audioSource = readFileSync(resolve(ROOT, 'src/audio/audioSystem.js'), 'utf8');
 assert(worldSource.includes("this.bus.emit('world:membership'") && worldSource.includes('continuous, noTeleport'),
   'travel presentation must consume the committed M2 continuous-world receipt');
 assert(worldSource.includes("this.bus.emit('jump:chargeTick'") && worldSource.includes("this.bus.emit('jump:start'")
@@ -209,6 +244,10 @@ for (const driftHue of ['#ffd080', '#ff8840', '#ffb040', '#a6e8ff', '#d8f8ff']) 
 }
 assert(vfxSource.includes('new THREE.Points(geo, mat)') && vfxSource.includes('_spawnParticle('),
   'travel effects must reuse the existing pooled particle/sprite infrastructure');
+assert(!/bus\.on\('cruise:(?:charging|engaged)'/.test(audioSource),
+  'raw cruise events must not stack a second voice under the presentation lane');
+assert(!/bus\.on\('jump:(?:chargeStart|start|arrive)'/.test(audioSource),
+  'raw jump events must not stack a second voice under the presentation lane');
 
 for (const rel of ['src/presentation/travelChoreography.js', 'src/systems/presentationOrchestrator.js']) {
   const source = readFileSync(resolve(ROOT, rel), 'utf8');
@@ -228,5 +267,25 @@ console.log(JSON.stringify({
   commitReceipts: cues.filter((cue) => cue.id === 'travel.jump.committed').length,
   duplicateVfxEvents: duplicateTravelVfx.length,
   duplicateAlerts: duplicateTravelAlerts.length,
+  audioVoices: audioCues.filter((cue) => cue.cueId && cue.cueId.startsWith('travel.')).length,
+  duplicateAudioFloors,
+  headlessErrors: 0,
   suppressed: suppressed.filter((entry) => entry.id && entry.id.startsWith('travel.')).length,
 }, null, 2));
+
+function assertFiniteRecipe(recipeId, seen = new Set()) {
+  if (seen.has(recipeId)) return;
+  seen.add(recipeId);
+  const recipe = AUDIO_RECIPE_BY_ID[recipeId];
+  assert(recipe, `missing recipe ${recipeId}`);
+  assert(!String(recipe.type || '').startsWith('continuous'),
+    `${recipeId} must remain a finite journey one-shot`);
+  if (recipe.type === 'layered') {
+    assert(Array.isArray(recipe.layers) && recipe.layers.length > 0, `${recipeId} must own authored layers`);
+    for (const layerId of recipe.layers) assertFiniteRecipe(layerId, seen);
+    return;
+  }
+  const envelope = recipe.gainEnvelope || {};
+  assert(Number.isFinite(envelope.attack) && Number.isFinite(envelope.sustain) && Number.isFinite(envelope.release),
+    `${recipeId} must declare a finite one-shot envelope`);
+}

@@ -5,6 +5,24 @@
 export const PRESENTATION_ADAPTERS_SCHEMA_VERSION = 1;
 
 export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
+  'travel.cruise.charging': 'presentation.travel.cruise_charge',
+  'travel.cruise.engaged': 'presentation.travel.lane_lock',
+  'travel.cruise.cancelled': 'presentation.travel.cancel',
+  'travel.cruise.interrupted': 'presentation.travel.fail',
+  'travel.gate.approach': 'presentation.travel.gate_approach',
+  'travel.corridor.continuity': 'presentation.travel.lane_lock',
+  'travel.jump.aligning': 'presentation.travel.gate_align',
+  'travel.jump.commit_window': 'presentation.travel.commit_window',
+  'travel.jump.committed': 'presentation.travel.commit',
+  'travel.transition.continuity': 'presentation.travel.transit',
+  'travel.arrival.oriented': 'presentation.travel.arrival',
+  'travel.arrival.sector_identity': 'presentation.travel.sector_identity',
+  'travel.discovery.mapped': 'presentation.travel.discovery',
+  'travel.interdiction.triggered': 'presentation.travel.interdiction',
+  'travel.jump.failed': 'presentation.travel.fail',
+  'travel.recovery.resumed': 'presentation.travel.recovery',
+  'travel.aftermath.clear': 'presentation.travel.settle',
+  'travel.aftermath.contested': 'presentation.travel.contested',
   'tether.attach': 'presentation.tether.attach',
   'tether.near_break': 'presentation.tether.near_break',
   'tether.break': 'presentation.tether.break',
@@ -97,6 +115,8 @@ export const presentationAdapters = {
   _resetRuntime() {
     this._applied = 0;
     this._lastApplied = null;
+    this._travelAudioTick = null;
+    this._travelAudioSources = new Set();
   },
 
   _applyCue(cue) {
@@ -180,6 +200,7 @@ export const presentationAdapters = {
   _applyAudio(cue) {
     const audioId = PRESENTATION_AUDIO_CUE_BY_ID[cue && cue.id];
     if (!audioId) return null;
+    if (cue.id.startsWith('travel.') && !this._claimTravelAudioFloor(cue)) return null;
     const payload = {
       id: audioId,
       cueId: cue.id,
@@ -191,6 +212,21 @@ export const presentationAdapters = {
     this.bus.emit('presentation:audioCue', payload);
     this.bus.emit('audio:cue', payload);
     return { event: 'audio:cue', id: audioId, duck: payload.duck };
+  },
+
+  _claimTravelAudioFloor(cue) {
+    const tick = currentTick(this.state);
+    if (this._travelAudioTick !== tick) {
+      this._travelAudioTick = tick;
+      this._travelAudioSources = new Set();
+    }
+    // A single gameplay event can produce multiple structural presentation receipts (for example,
+    // jump committed + transition continuity). Keep those receipts for VFX/telemetry while only
+    // the first owns the audible floor. Distinct urgent events in the same tick still read.
+    const sourceEvent = cue.sourceEvent || cue.id;
+    if (this._travelAudioSources.has(sourceEvent)) return false;
+    this._travelAudioSources.add(sourceEvent);
+    return true;
   },
 
   _applyUi(cue) {
