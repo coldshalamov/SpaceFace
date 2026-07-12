@@ -32,16 +32,16 @@ const checks = [
   // ---- §2: Overview Strip -------------------------------------------------
   {
     path: 'src/ui/hud.js',
-    label: 'Overview strip — 5 Hz cadence (every 12 frames at 60 Hz), hostiles-first sort, 8-row cap, click-to-target, memoised signature',
+    label: 'Overview strip — 5 Hz cadence, selected/threat/ally priority, responsive row cap, truthful overflow, click-to-target, memoised signature',
     needs: [
       // 5 Hz cadence at 60 Hz = fire every 12 frames
       'overviewTick % 12',
-      // Hostiles-first sort detected by hostile team comparison in sort callback
-      'aHostile && !bHostile',
-      // 8-row cap
-      'Math.min(8, contacts.length)',
-      // "+N CONTACTS" footer
-      'CONTACTS',
+      // Selected → threat → ally → wreck → ambient priority band.
+      'contactDisplayBand(a, targetId)',
+      // 5/4/3 row cap by viewport.
+      'contactDisplayLimit(',
+      // Truthful category overflow rather than a generic count.
+      'contactOverflowSummary(contacts, visibleCount)',
       // Click sets targetId
       'state.player.targetId = e.id',
       // Left IFF rule per row

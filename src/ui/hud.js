@@ -237,7 +237,8 @@ export function objectiveBearingGlyph(state, wp) {
 
 function mtObjectiveAction(action, wp) {
   const verb = String(action || 'Open the Mission Log').trim();
-  const destination = String(wp && (wp.sectorName || wp.label || wp.mapLabel) || '').trim();
+  // Prefer the physical target label; sector name is the fallback for cross-sector guidance.
+  const destination = String(wp && (wp.label || wp.mapLabel || wp.sectorName) || '').trim();
   if (!destination || /\b(to|at|near)\b/i.test(verb) || verb.toLowerCase().includes(destination.toLowerCase())) return verb;
   return `${verb} · ${destination}`;
 }
@@ -268,7 +269,7 @@ export function resolveObjectiveHudLayout(width, height) {
   const stackGap = compact ? 8 : 12;
   const rightWidth = compact ? 150 : 220;
   const rightHeight = compact ? 320 : 430;
-  const actionWidth = Math.min(compact ? w - 16 : 420, w - edge * 2);
+  const actionWidth = Math.min(420, w - edge * 2);
   const actionHeight = compact ? 64 : 78;
   return {
     viewport: { x: 0, y: 0, width: w, height: h },
@@ -293,6 +294,43 @@ export function resolveObjectiveHudLayout(width, height) {
       height: Math.max(0, h * 0.56),
     },
   };
+}
+
+/** Maximum persistent contact rows before truthful category overflow takes over. */
+export function contactDisplayLimit(width, height) {
+  const w = Math.max(320, Number(width) || 1280);
+  const h = Math.max(240, Number(height) || 720);
+  if (w <= 900 || h <= 650) return 3;
+  if (w <= 1400 || h <= 820) return 4;
+  return 5;
+}
+
+/** Selected contact, active threats and allies must never be buried under ambient traffic. */
+export function contactDisplayBand(contact, targetId) {
+  if (!contact) return 5;
+  if (contact.e && contact.e.id === targetId) return 0;
+  if (contact.hostile) return 1;
+  if (contact.ally) return 2;
+  if (contact.isWreck) return 3;
+  return 4;
+}
+
+/** Compact, truthful receipt for contacts omitted by the responsive row cap. */
+export function contactOverflowSummary(contacts, visibleCount) {
+  const omitted = (contacts || []).slice(Math.max(0, visibleCount | 0));
+  if (!omitted.length) return '';
+  const counts = { threat: 0, ally: 0, wreck: 0, other: 0 };
+  for (const contact of omitted) {
+    if (contact.hostile) counts.threat++;
+    else if (contact.ally) counts.ally++;
+    else if (contact.isWreck) counts.wreck++;
+    else counts.other++;
+  }
+  const parts = [];
+  for (const [key, count] of Object.entries(counts)) {
+    if (count) parts.push(`${count} ${key.toUpperCase()}${count === 1 ? '' : 'S'}`);
+  }
+  return `+${omitted.length} · ${parts.join(' · ')}`;
 }
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
@@ -2725,7 +2763,12 @@ export function createHud(ctx, alerts) {
       const dist = Math.hypot(dx, dz);
       if (dist > 5200) continue;
 
-      contacts.push({ e, dist, dx, dz, isWreck });
+      const hostile = isHostileToPlayer(e, playerTeam, state);
+      const ally = !hostile && !isWreck && playerTeam !== 0 && e.team === playerTeam;
+      contacts.push({
+        e, dist, dx, dz, isWreck, hostile, ally,
+        threatTier: contactThreatTier(e, hostile),
+      });
     }
 
     // On-demand reveal bookkeeping: a fresh hostile/derelict arriving, or a hostile closing inside
@@ -2735,9 +2778,8 @@ export function createHud(ctx, alerts) {
     let nearbyHostile = false;
     for (const c of contacts) {
       curIds.add(c.e.id);
-      const hostile = isHostileToPlayer(c.e, playerTeam, state);
-      if (hostile && c.dist < OVERVIEW_HOSTILE_REVEAL_R) nearbyHostile = true;
-      if (!_knownContactIds.has(c.e.id) && (hostile || c.isWreck)) revealOverview(OVERVIEW_CONTACT_REVEAL_MS);
+      if (c.hostile && c.dist < OVERVIEW_HOSTILE_REVEAL_R) nearbyHostile = true;
+      if (!_knownContactIds.has(c.e.id) && (c.hostile || c.isWreck)) revealOverview(OVERVIEW_CONTACT_REVEAL_MS);
     }
     _knownContactIds = curIds;
 
@@ -2751,26 +2793,17 @@ export function createHud(ctx, alerts) {
 
     const targetId = state.player.targetId;
     contacts.sort((a, b) => {
-      // The selected target always surfaces — it's how the player focuses a contact to scan/salvage
-      // it, so a targeted derelict can't get buried under ambient traffic beyond the 8-row cap.
-      const aTgt = a.e.id === targetId, bTgt = b.e.id === targetId;
-      if (aTgt && !bTgt) return -1;
-      if (!aTgt && bTgt) return 1;
-
-      const aHostile = isHostileToPlayer(a.e, playerTeam, state);
-      const bHostile = isHostileToPlayer(b.e, playerTeam, state);
-      if (aHostile && !bHostile) return -1;
-      if (!aHostile && bHostile) return 1;
-
-      const aNeutral = a.e.team === 0;
-      const bNeutral = b.e.team === 0;
-      if (aNeutral && !bNeutral) return -1;
-      if (!aNeutral && bNeutral) return 1;
-
+      const bandDelta = contactDisplayBand(a, targetId) - contactDisplayBand(b, targetId);
+      if (bandDelta) return bandDelta;
+      if (a.hostile && b.hostile && a.threatTier !== b.threatTier) return b.threatTier - a.threatTier;
       return a.dist - b.dist;
     });
 
-    const signature = contacts.map(c => {
+    const displayLimit = contactDisplayLimit(
+      typeof window !== 'undefined' ? window.innerWidth : 1280,
+      typeof window !== 'undefined' ? window.innerHeight : 720,
+    );
+    const signature = `${displayLimit}|` + contacts.map(c => {
       const isGhost = c.e.data && (c.e.data.isGhost || c.e.data.ghost || c.e.data.kind === 'unknown');
       const rvx = c.e.vel.x - player.vel.x;
       const rvz = c.e.vel.z - player.vel.z;
@@ -2789,18 +2822,20 @@ export function createHud(ctx, alerts) {
     elOverview.innerHTML = '';
     if (elOverview.style.display === 'none') elOverview.style.display = 'flex';
 
-    const visibleCount = Math.min(8, contacts.length);
+    const visibleCount = Math.min(displayLimit, contacts.length);
     for (let i = 0; i < visibleCount; i++) {
       const c = contacts[i];
       const e = c.e;
       const iff = getIffData(e, playerTeam);
       const glyph = getClassGlyph(e);
-      const hostile = isHostileToPlayer(e, playerTeam, state);
-      const sword = contactStateWord(e, playerTeam, state);
+      const hostile = c.hostile;
+      const sword = c.ally ? 'ALLY' : contactStateWord(e, playerTeam, state);
       const stateCls = OVERVIEW_STATE_CLASS[sword] || 'neutral';
-      const tier = contactThreatTier(e, hostile);
+      const tier = c.threatTier;
       const scannedWreck = c.isWreck && wreckScanned(e);
-      const name = e.data && e.data.name || e.role || (c.isWreck ? 'Derelict' : 'Ship');
+      const data = e.data || {};
+      const name = data.callsign || data.name || data.trafficRole || data.role || e.role
+        || (c.isWreck ? 'Derelict' : 'Ship');
 
       // Derelict manifest line: unscanned shows only a ghost outline; a scan resolves the manifest
       // + weak-point callout (GDD 2.0 §7.4).
@@ -2847,10 +2882,11 @@ export function createHud(ctx, alerts) {
       elOverview.appendChild(row);
     }
 
-    if (contacts.length > 8) {
+    const overflow = contactOverflowSummary(contacts, visibleCount);
+    if (overflow) {
       const footer = document.createElement('div');
       footer.className = 'sf-overview-footer';
-      footer.textContent = `+${contacts.length - 8} CONTACTS`;
+      footer.textContent = overflow;
       elOverview.appendChild(footer);
     }
   }

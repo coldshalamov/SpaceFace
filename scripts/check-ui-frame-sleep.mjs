@@ -241,8 +241,10 @@ function checkFullscreenCompositorShellsSleep() {
   assert.match(lockDiamond, /display:\s*none/, 'idle target diamond should not keep its pulsing glow mounted');
   assert.match(lockDiamondVisible, /display:\s*block/, 'visible target diamond should still mount for selected targets');
   assert.match(hud, /objWrap\.style\.display\s*=\s*'none'/, 'empty objective tracker should start out of the compositor tree');
-  assert.match(hud, /setDisplay\(objWrap,\s*false\)/, 'empty objective tracker should sleep after objectives clear');
-  assert.match(hud, /setDisplay\(objWrap,\s*true,\s*'flex'\)/, 'objective tracker should remount with its authored flex layout when populated');
+  assert.match(hud, /setDisplay\(objWrap,\s*false\)/, 'legacy multi-objective list should remain out of the compositor tree');
+  assert.match(hud, /missionTracker\.style\.display\s*=\s*'none'/, 'active-objective command surface starts asleep');
+  assert.match(hud, /setDisplay\(missionTracker,\s*true\)/, 'single active-objective command surface remounts when populated');
+  assert.match(hud, /setDisplay\(missionTracker,\s*false\)/, 'single active-objective command surface sleeps when no goal exists');
 }
 
 function blockFor(source, selector) {

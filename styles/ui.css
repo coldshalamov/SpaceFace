@@ -665,6 +665,7 @@ button:active { transform: translateY(1px); }
   color: var(--ink-mute);
   text-align: center;
   font-size: 10px;
+  line-height: 1.25;
   letter-spacing: 0.05em;
 }
 /* Contacts strip v2: one-word state chip, threat-tier pips, derelict manifest line. */
@@ -704,6 +705,15 @@ button:active { transform: translateY(1px); }
 .sf-cs--miner { color: var(--visor-amber, var(--warn)); }
 .sf-cs--ally { color: var(--good); }
 .sf-cs--neutral { color: var(--ink-dim); }
+
+@media (max-width: 900px), (max-height: 650px) {
+  .sf-overview { width: 150px; gap: 2px; font-size: 9px; }
+  .sf-overview-row { padding: 3px 5px; }
+  .sf-overview-row__name { max-width: 54px; }
+  .sf-overview-row__right { gap: 3px; }
+  .sf-overview-row__detail { display: none; }
+  .sf-overview-footer { padding: 3px 5px; font-size: 8px; }
+}
 
 /* ==============================================================================================
    UI PRIMITIVE LAYER  ·  frontend-reboot reusable building blocks (design/revamp/FRONTEND_REBOOT_AUDIT.md)

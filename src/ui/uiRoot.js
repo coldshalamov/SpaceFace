@@ -1231,7 +1231,8 @@ function injectHudCss() {
     .sf-radar canvas { width:132px !important; height:132px !important; }
     .sf-radar-objective-key { width:150px; font-size:8px; letter-spacing:.06em; line-height:1.25; }
 
-    .sf-cluster { left:8px; right:8px; bottom:8px; transform:none; display:flex; flex-wrap:wrap;
+    .sf-cluster { left:50%; right:auto; width:min(420px, calc(100vw - 16px)); bottom:8px;
+      transform:translateX(-50%); display:flex; flex-wrap:wrap;
       justify-content:center; gap:4px 14px; }
     .sf-stat__k { font-size:8px; }
     .sf-stat__v { font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:46vw; }

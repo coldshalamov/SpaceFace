@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
+  contactDisplayBand,
+  contactDisplayLimit,
+  contactOverflowSummary,
   objectiveBearingGlyph,
   resolveObjectiveHudLayout,
 } from '../src/ui/hud.js';
@@ -39,8 +42,8 @@ test('goal bearing is an explicit eight-way direction, not an unlabeled color', 
   }
 });
 
-test('1280x720 floor and 1920x1080 target keep objective, vitals, action, and radar disjoint', () => {
-  for (const [width, height] of [[1280, 720], [1920, 1080]]) {
+test('800x600 floor, 1280x720 standard and 1920x1080 target keep HUD anchors disjoint', () => {
+  for (const [width, height] of [[800, 600], [1280, 720], [1920, 1080]]) {
     const layout = resolveObjectiveHudLayout(width, height);
     const anchors = [layout.objective, layout.vitals, layout.action, layout.rightDock];
     for (let i = 0; i < anchors.length; i += 1) {
@@ -67,6 +70,7 @@ test('flight HUD and Mission Log paint one command instead of repeated story/mis
   const hud = read('../src/ui/hud.js');
   const log = read('../src/ui/screens/missionLog.js');
   const target = read('../src/ui/targetPanel.js');
+  const onboarding = read('../src/systems/onboarding.js');
   assert.match(hud, /one-objective-one-action-one-threat/);
   assert.match(hud, /setDisplay\(objWrap, false\)/,
     'legacy multi-mission HUD list must remain hidden');
@@ -91,6 +95,32 @@ test('flight HUD and Mission Log paint one command instead of repeated story/mis
     'the selected target must own the single current-threat detail slot');
   assert.equal((hud.match(/createTargetPanel\(ctx\)/g) || []).length, 1,
     'flight HUD must mount only one detailed target/threat card');
+  assert.match(onboarding, /const demoteObjectiveCopy = !!\(this\.state\.nav/,
+    'tutorial/story context must yield when the spatial objective command is already visible');
+  assert.match(onboarding, /this\._titleEl\.style\.display = 'none'/,
+    'duplicate story flavor collapses instead of covering live controls and status');
+});
+
+test('contact density prioritizes useful rows and truthfully summarizes responsive overflow', () => {
+  assert.equal(contactDisplayLimit(1920, 1080), 5);
+  assert.equal(contactDisplayLimit(1280, 720), 4);
+  assert.equal(contactDisplayLimit(800, 600), 3);
+
+  const selected = { e: { id: 'selected' }, hostile: false, ally: false, isWreck: true };
+  const threat = { e: { id: 'threat' }, hostile: true, ally: false, isWreck: false };
+  const ally = { e: { id: 'ally' }, hostile: false, ally: true, isWreck: false };
+  const wreck = { e: { id: 'wreck' }, hostile: false, ally: false, isWreck: true };
+  const ambient = { e: { id: 'ambient' }, hostile: false, ally: false, isWreck: false };
+  assert.deepEqual(
+    [ambient, wreck, ally, threat, selected]
+      .sort((a, b) => contactDisplayBand(a, 'selected') - contactDisplayBand(b, 'selected'))
+      .map((contact) => contact.e.id),
+    ['selected', 'threat', 'ally', 'wreck', 'ambient'],
+  );
+  assert.equal(
+    contactOverflowSummary([selected, threat, ally, wreck, ambient], 2),
+    '+3 · 1 ALLY · 1 WRECK · 1 OTHER',
+  );
 });
 
 test('tracked goal is brighter and wins map selection over ambient context', () => {
