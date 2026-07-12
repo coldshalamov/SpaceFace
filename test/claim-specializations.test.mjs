@@ -35,7 +35,11 @@ import { SECTORS, dangerIndex } from '../src/data/sectors.js';
 import { TECH_NODES } from '../src/data/tech.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { addCargo } from '../src/systems/cargo.js';
-import { isBeatStepsComplete, recordBeatStep } from '../src/story/campaign47a/index.js';
+import {
+  ensureCampaign47aState,
+  isBeatStepsComplete,
+  recordBeatStep,
+} from '../src/story/campaign47a/index.js';
 import { fileURLToPath } from 'node:url';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -328,6 +332,8 @@ test('first commissioning emits one canonical B6 deployment receipt across save/
   assert.equal(observed.length, 1);
   assert.equal(observed[0].ok, true, 'campaign sidecar accepts the canonical B6 payload');
   assert.equal(isBeatStepsComplete(h.state, 6), true, 'B6 deployment step is satisfied');
+  assert.equal(ensureCampaign47aState(h.state).outpostSpecializationId, 'spec_refinery',
+    'physical claimSpecId becomes campaign ownership truth');
   assert.deepEqual(body.deploymentReceipt, deployed[0].payload, 'durable body receipt matches the event');
 
   // Same-spec idempotency cannot emit or reward twice.
@@ -344,6 +350,32 @@ test('first commissioning emits one canonical B6 deployment receipt across save/
   assert.equal(h2.sys.specialize(restored.id, 'spec_relay'), true);
   assert.equal(events(h2, 'asset:deployed').length, 0, 'reload and re-commission emit no duplicate deploy');
   assert.equal(charges(h2, 'claim_specialize').length, 1, 'operating change still pays its honest cost once');
+});
+
+test('physical Bastion commissioning owns B6 identity and Bastion consequences', () => {
+  const h = boot({ seed: 91 });
+  h.state.story = { beatIndex: 6, branch: 'patrol', flags: {} };
+  const observed = [];
+  h.bus.on('asset:deployed', (payload) => {
+    observed.push(recordBeatStep(h.state, 'asset:deployed', payload, h.state.simTime));
+  });
+
+  const body = claimBody(h, { poiId: 'poi_colony', name: 'Watch Rock', size: 'S' });
+  commission(h, body, 'spec_bastion');
+  assert.equal(observed.length, 1);
+  assert.equal(observed[0].ok, true, observed[0].reason);
+
+  const own = ensureCampaign47aState(h.state);
+  assert.equal(own.outpostSpecializationId, 'spec_bastion');
+  assert.deepEqual(own.outpostsOwned, ['spec_bastion']);
+  const receipt = own.receipts.findLast((entry) => entry.kind === 'outpost_spec');
+  assert.equal(receipt.specializationId, 'spec_bastion');
+  assert.equal(receipt.claimSpecId, 'spec_bastion');
+  assert.ok(receipt.consequenceFlags.length >= 1);
+  assert.ok(receipt.consequenceFlags.every((flag) => flag.includes('bastion')));
+  for (const flag of receipt.consequenceFlags) {
+    assert.equal(own.flags[flag], true, `commissioned Bastion applies ${flag}`);
+  }
 });
 
 test('fifteen authored claim sites are distributed and reachable across the 24-region graph', () => {

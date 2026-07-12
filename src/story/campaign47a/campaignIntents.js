@@ -120,14 +120,14 @@ export function describeEndingConsequences(endingId) {
   };
 }
 
-/** Outpost deploy observation shape (automation remains sole deployer). */
+/** Physical claim commissioning observation shape (legacy automation remains recognized). */
 export function describeOutpostDeployObserve(specializationId) {
   const def = outpostSpecDef(specializationId);
   if (!def) return null;
   return {
     ...def.deployObserve,
     source: 'campaign47a:descriptor',
-    note: 'automation emits asset:deployed; sidecar only tags specialization',
+    note: 'claims emits physical asset:deployed; sidecar only tags commissioned specialization',
   };
 }
 

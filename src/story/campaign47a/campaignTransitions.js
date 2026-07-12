@@ -427,13 +427,16 @@ function recordAssetDeployStep(state, own, signal, payload, simTime, canon) {
     return { ok: false, reason: `signal_mismatch:${signal}`, own, needStep: 'asset_deploy' };
   }
   // Require a real deploy payload (kind or id).
-  if (!payload.kind && !payload.id && !payload.defId && !payload.specializationId) {
+  if (!payload.kind && !payload.id && !payload.defId && !payload.specializationId && !payload.claimSpecId) {
     return { ok: false, reason: 'asset_deploy_payload_required', own };
   }
 
   // Optional outpost specialization tagging.
-  if (payload.specializationId || payload.defId) {
-    const specId = payload.specializationId || mapOutpostDefToSpec(payload.defId);
+  if (payload.claimSpecId || payload.specializationId || payload.defId) {
+    const specId = payload.claimSpecId || payload.specializationId || mapOutpostDefToSpec(payload.defId);
+    if ((payload.claimSpecId || payload.specializationId) && !outpostSpecDef(specId)) {
+      return { ok: false, reason: `bad_spec:${specId}`, own };
+    }
     if (specId) {
       selectOutpostSpecialization(state, specId, simTime);
     }
@@ -650,20 +653,21 @@ export function selectOutpostSpecialization(state, specializationId, simTime = 0
   }
 
   const t = Number(simTime) || 0;
-  own.outpostSpecializationId = specializationId;
-  if (!own.outpostsOwned.includes(specializationId)) {
-    own.outpostsOwned.push(specializationId);
+  const canonicalSpecId = def.id;
+  own.outpostSpecializationId = canonicalSpecId;
+  if (!own.outpostsOwned.includes(canonicalSpecId)) {
+    own.outpostsOwned.push(canonicalSpecId);
   }
   for (const f of def.consequenceFlags) own.flags[f] = true;
 
   const receipt = buildOutpostSpecReceipt({
-    specializationId,
+    specializationId: canonicalSpecId,
     simTime: t,
     observedBeatIndex: canon.beatIndex,
   });
   pushCampaignReceipt(own, receipt);
-  pushChoiceLog(own, { kind: 'outpost_spec', specializationId }, t);
-  pushCampaignHistory(own, { kind: 'outpost_spec', specializationId }, t);
+  pushChoiceLog(own, { kind: 'outpost_spec', specializationId: canonicalSpecId }, t);
+  pushCampaignHistory(own, { kind: 'outpost_spec', specializationId: canonicalSpecId }, t);
 
   return {
     ok: true,

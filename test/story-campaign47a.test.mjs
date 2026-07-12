@@ -125,7 +125,8 @@ check('migrate discards v1 dual-spine cursor/ending while preserving receipts/ou
   for (const key of DISCARDED_OWNERSHIP_FIELDS) {
     assert.equal(migrated[key], undefined, `should discard ${key}`);
   }
-  assert.equal(migrated.outpostSpecializationId, 'refinery');
+  assert.equal(migrated.outpostSpecializationId, 'spec_refinery');
+  assert.deepEqual(migrated.outpostsOwned, ['spec_refinery']);
   assert.equal(migrated.receipts.length, 1);
   assert.equal(migrated.sandboxMode, 'concord_auxiliary');
   assert.equal(migrated.flags.outpost_processing, true);
@@ -138,8 +139,8 @@ check('migrate discards v1 dual-spine cursor/ending while preserving receipts/ou
 check('serialize/applySave round-trip preserves meta without inventing cursor', () => {
   const state = makeCampaignState();
   const own = ensureCampaign47aState(state);
-  own.outpostSpecializationId = 'fuel_relay';
-  own.outpostsOwned = ['fuel_relay'];
+  own.outpostSpecializationId = 'spec_refinery';
+  own.outpostsOwned = ['spec_refinery'];
   own.receipts.push({ id: 'r1', kind: 'outpost_spec' });
   own.stepProgress['0'] = { completed: ['mine'], updatedAtS: 10 };
   own.sandboxMode = 'working_pilot';
@@ -148,7 +149,7 @@ check('serialize/applySave round-trip preserves meta without inventing cursor', 
   assert.equal(blob.endingId, undefined);
   const state2 = makeCampaignState();
   const applied = applyCampaign47aSaveBlob(state2, blob);
-  assert.equal(applied.outpostSpecializationId, 'fuel_relay');
+  assert.equal(applied.outpostSpecializationId, 'spec_refinery');
   assert.equal(applied.receipts.length, 1);
   assert.deepEqual(applied.stepProgress['0'].completed, ['mine']);
   assert.equal(applied.sandboxMode, 'working_pilot');
@@ -239,21 +240,41 @@ check('five ending descriptors with sandbox modes; A has mts+scn+heat clear; C l
   }
 });
 
-check('three outpost specializations map to automation defs', () => {
+check('three campaign outpost identities use the physical claims specialization ids', () => {
   const specs = listOutpostSpecializations();
   assert.equal(specs.length, 3);
   const roles = new Set(specs.map((s) => s.role));
   assert.equal(roles.size, 3);
   for (const s of specs) {
-    assert.ok(s.outpostDefId.startsWith('outpost_'));
     assert.ok(s.deployObserve);
+    assert.equal(s.deployObserve.claimSpecId, s.id);
     assert.ok(s.consequenceFlags.length >= 1);
   }
   assert.deepEqual(
     specs.map((s) => s.id).sort(),
-    ['fuel_relay', 'hab_fortress', 'refinery'],
+    ['spec_bastion', 'spec_refinery', 'spec_relay'],
   );
   assert.equal(OUTPOST_SPECIALIZATIONS.length, 3);
+});
+
+check('legacy outpost identity collisions migrate to newest canonical ownership without inventing Bastion', () => {
+  const migrated = migrateCampaign47aState({
+    schemaVersion: 2,
+    outpostSpecializationId: 'hab_fortress',
+    outpostsOwned: ['refinery', 'hab_fortress', 'fuel_relay'],
+    choiceLog: [
+      { kind: 'outpost_spec', specializationId: 'refinery', atS: 2 },
+      { kind: 'outpost_spec', specializationId: 'fuel_relay', atS: 4 },
+      { kind: 'outpost_spec', specializationId: 'hab_fortress', atS: 6 },
+    ],
+  });
+  assert.equal(migrated.outpostSpecializationId, 'spec_relay');
+  assert.deepEqual(migrated.outpostsOwned, ['spec_relay', 'spec_refinery'],
+    'colliding refinery aliases keep the newest occurrence');
+  assert.equal(migrated.outpostsOwned.includes('spec_bastion'), false,
+    'legacy habitation/logistics vocabulary never becomes a Bastion');
+  assert.deepEqual(migrated.choiceLog.map((entry) => entry.specializationId),
+    ['spec_refinery', 'spec_refinery', 'spec_relay']);
 });
 
 // ── Ordered B0 steps (embodied recipe, no teleport claim) ──────────────────
@@ -353,7 +374,7 @@ check('B5 uses chain counts; incomplete chain does not mark steps complete', () 
 });
 
 // ── B6 asset deploy ────────────────────────────────────────────────────────
-check('B6 requires asset:deployed payload; tags outpost when defId present', () => {
+check('B6 accepts physical claimSpecId and preserves legacy automation mapping', () => {
   const state = makeCampaignState();
   state.story.beatIndex = 6;
   state.story.branch = 'free';
@@ -370,7 +391,24 @@ check('B6 requires asset:deployed payload; tags outpost when defId present', () 
   }, 31);
   assert.equal(dep.ok, true, dep.reason);
   assert.equal(dep.stepsComplete, true);
-  assert.equal(ensureCampaign47aState(state).outpostSpecializationId, 'fuel_relay');
+  assert.equal(ensureCampaign47aState(state).outpostSpecializationId, 'spec_refinery');
+
+  const physical = recordBeatStep(state, 'asset:deployed', {
+    receiptId: 'claim-deploy:claim-bastion',
+    kind: 'outpost',
+    id: 'claim-bastion',
+    claimId: 'claim-bastion',
+    claimSpecId: 'spec_bastion',
+    source: 'claims',
+  }, 32);
+  assert.equal(physical.ok, true, physical.reason);
+  const own = ensureCampaign47aState(state);
+  assert.equal(own.outpostSpecializationId, 'spec_bastion');
+  const commissioned = own.receipts.findLast((receipt) => receipt.kind === 'outpost_spec');
+  assert.equal(commissioned.specializationId, 'spec_bastion');
+  assert.equal(commissioned.claimSpecId, 'spec_bastion');
+  assert.ok(commissioned.consequenceFlags.every((flag) => flag.includes('bastion')),
+    'Bastion receipt consequence vocabulary names the physical identity');
   assertSpineUnchanged(before, state, 'B6 deploy');
 });
 
@@ -450,9 +488,9 @@ check('selectOutpostSpecialization tags meta only', () => {
   const state = makeCampaignState();
   state.story.beatIndex = 6;
   const before = snapshotCanonicalSpine(state);
-  const spec = selectOutpostSpecialization(state, 'hab_fortress', 60);
+  const spec = selectOutpostSpecialization(state, 'spec_bastion', 60);
   assert.equal(spec.ok, true, spec.reason);
-  assert.equal(spec.own.outpostSpecializationId, 'hab_fortress');
+  assert.equal(spec.own.outpostSpecializationId, 'spec_bastion');
   assert.ok(hasIntent(spec.intents, CAMPAIGN_EVENTS.outpostTagged));
   assert.ok(!hasIntent(spec.intents, 'asset:deployed'), 'does not emit deploy authority');
   assertSpineUnchanged(before, state, 'outpost select');

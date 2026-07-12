@@ -304,8 +304,9 @@ export function buildOutpostSpecReceipt({
   observedBeatIndex = 6,
 }) {
   const def = outpostSpecDef(specializationId);
+  const canonicalSpecId = def ? def.id : specializationId;
   const id = receiptId('outpost_spec', {
-    spec: specializationId,
+    spec: canonicalSpecId,
     t: Math.floor(Number(simTime) || 0),
   });
   return {
@@ -313,7 +314,8 @@ export function buildOutpostSpecReceipt({
     kind: 'outpost_spec',
     atSimTime: Number(simTime) || 0,
     observedBeatIndex,
-    specializationId,
+    specializationId: canonicalSpecId,
+    claimSpecId: canonicalSpecId,
     outpostDefId: def ? def.outpostDefId : null,
     role: def ? def.role : null,
     consequenceFlags: def ? def.consequenceFlags.slice() : [],
@@ -321,14 +323,16 @@ export function buildOutpostSpecReceipt({
       {
         event: CAMPAIGN_EVENTS.outpostTagged,
         payload: {
-          specializationId,
+          specializationId: canonicalSpecId,
+          claimSpecId: canonicalSpecId,
           outpostDefId: def ? def.outpostDefId : null,
           observedBeatIndex,
           atSimTime: Number(simTime) || 0,
         },
       },
       campaignReceiptIntent('outpost_spec', {
-        specializationId,
+        specializationId: canonicalSpecId,
+        claimSpecId: canonicalSpecId,
         outpostDefId: def ? def.outpostDefId : null,
         atSimTime: Number(simTime) || 0,
       }),

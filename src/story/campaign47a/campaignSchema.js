@@ -11,6 +11,7 @@ import {
   DISCARDED_OWNERSHIP_FIELDS,
   ENDINGS,
   OUTPOST_SPECIALIZATIONS,
+  canonicalOutpostSpecId,
 } from './campaignData.js';
 
 export { CAMPAIGN_STATE_KEY };
@@ -128,9 +129,9 @@ export function migrateCampaign47aState(raw) {
   out.recoveredAtS = Number.isFinite(raw.recoveredAtS) ? raw.recoveredAtS : null;
   out.lastEventAtS = Number.isFinite(raw.lastEventAtS) ? raw.lastEventAtS : null;
   out.activeContract = normalizeContract(raw.activeContract);
-  out.receipts = Array.isArray(raw.receipts) ? raw.receipts.slice(-64) : [];
+  out.receipts = Array.isArray(raw.receipts) ? normalizeOutpostRecords(raw.receipts.slice(-64), true) : [];
   out.choiceLog = Array.isArray(raw.choiceLog) ? filterSafeChoiceLog(raw.choiceLog) : [];
-  out.history = Array.isArray(raw.history) ? raw.history.slice(-48) : [];
+  out.history = Array.isArray(raw.history) ? normalizeOutpostRecords(raw.history.slice(-48)) : [];
   out.rngSeed = (Number(raw.rngSeed) >>> 0) || 0;
 
   stripOwnershipFields(out);
@@ -247,14 +248,21 @@ function normalizeBeatStatus(v) {
 }
 
 function normalizeOutpost(v) {
-  return VALID_OUTPOST.has(v) ? v : null;
+  const canonical = canonicalOutpostSpecId(v);
+  return VALID_OUTPOST.has(canonical) ? canonical : null;
 }
 
 function normalizeOutpostList(list) {
   if (!Array.isArray(list)) return [];
+  // Keep the most recent truthful occurrence when legacy aliases collapse to one physical id.
   const out = [];
-  for (const id of list) {
-    if (VALID_OUTPOST.has(id) && !out.includes(id)) out.push(id);
+  const seen = new Set();
+  for (let index = list.length - 1; index >= 0; index -= 1) {
+    const id = normalizeOutpost(list[index]);
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      out.unshift(id);
+    }
   }
   return out;
 }
@@ -337,7 +345,7 @@ function normalizeContract(raw) {
 
 function filterSafeChoiceLog(list) {
   // Keep outpost / meta choices; drop v1 ending ownership log entries as ownership (keep as history noise capped).
-  return list.slice(-32).map((c) => {
+  return normalizeOutpostRecords(list.slice(-32)).map((c) => {
     if (!c || typeof c !== 'object') return c;
     const copy = { ...c };
     // Strip any nested ending-application claims.
@@ -345,6 +353,32 @@ function filterSafeChoiceLog(list) {
     delete copy.appliedRep;
     return copy;
   });
+}
+
+function normalizeOutpostRecords(records, receiptLike = false) {
+  return records.map((entry) => normalizeOutpostRecord(entry, receiptLike));
+}
+
+function normalizeOutpostRecord(entry, receiptLike = false) {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
+  const copy = { ...entry };
+  const canonical = normalizeOutpost(copy.claimSpecId || copy.specializationId);
+  if (canonical) {
+    copy.specializationId = canonical;
+    if (copy.claimSpecId != null || copy.kind === 'outpost_spec') copy.claimSpecId = canonical;
+    if (receiptLike && copy.kind === 'outpost_spec') {
+      const def = OUTPOST_SPECIALIZATIONS.find((candidate) => candidate.id === canonical);
+      copy.consequenceFlags = def ? def.consequenceFlags.slice() : [];
+    }
+  }
+  if (Array.isArray(copy.intents)) {
+    copy.intents = copy.intents.map((intent) => {
+      if (!intent || typeof intent !== 'object') return intent;
+      const payload = normalizeOutpostRecord(intent.payload, false);
+      return { ...intent, payload };
+    });
+  }
+  return copy;
 }
 
 function clampInt(v, min, max, fallback) {

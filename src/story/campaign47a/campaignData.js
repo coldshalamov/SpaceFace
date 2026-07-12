@@ -5,7 +5,7 @@
 
 /** @typedef {'traders'|'patrol'|'free'} CampaignBranch */
 /** @typedef {'A'|'B'|'C'|'D'|'E'} EndingId */
-/** @typedef {'refinery'|'fuel_relay'|'hab_fortress'} OutpostSpecializationId */
+/** @typedef {'spec_refinery'|'spec_relay'|'spec_bastion'} OutpostSpecializationId */
 
 export const CAMPAIGN_ID = 'campaign.47a.v1';
 /** Schema v2: metadata sidecar only (no cursor/ending ownership fields). */
@@ -445,8 +445,9 @@ export const ENDINGS = Object.freeze([
  */
 export const OUTPOST_SPECIALIZATIONS = Object.freeze([
   {
-    id: 'refinery',
+    id: 'spec_refinery',
     outpostDefId: 'outpost_refinery',
+    legacyOutpostDefIds: Object.freeze(['outpost_refinery', 'outpost_fuelsynth']),
     title: 'Industrial Refinery',
     role: 'processing',
     visibleTag: 'REFINERY',
@@ -455,50 +456,64 @@ export const OUTPOST_SPECIALIZATIONS = Object.freeze([
     buildCostHint: 60000,
     defenseHint: 20,
     passiveHint: 'recipe:ore_iron→alloys',
-    consequenceFlags: Object.freeze(['outpost_processing', 'local_alloy_supply']),
+    consequenceFlags: Object.freeze(['outpost_spec_refinery', 'outpost_spec_refinery_processing']),
     deployObserve: Object.freeze({
       kind: 'outpost',
-      specializationId: 'refinery',
-      defId: 'outpost_refinery',
+      claimSpecId: 'spec_refinery',
+      source: 'claims',
     }),
   },
   {
-    id: 'fuel_relay',
-    outpostDefId: 'outpost_fuelsynth',
-    title: 'Fuel Relay',
+    id: 'spec_relay',
+    outpostDefId: 'outpost_habhub',
+    legacyOutpostDefIds: Object.freeze(['outpost_habhub']),
+    title: 'Trade Relay',
     role: 'logistics',
-    visibleTag: 'FUEL RELAY',
-    description: 'Volatiles to fuel cells. Lane-facing logistics ownership.',
+    visibleTag: 'RELAY',
+    description: 'Freight in, scheduled market convoys out. Lane-facing logistics ownership.',
     unlockBeat: 6,
     buildCostHint: 45000,
     defenseHint: 15,
-    passiveHint: 'recipe:volatiles→fuel_cells',
-    consequenceFlags: Object.freeze(['outpost_logistics', 'fuel_lane_support']),
+    passiveHint: 'convoy:freight→market',
+    consequenceFlags: Object.freeze(['outpost_spec_relay', 'outpost_spec_relay_logistics']),
     deployObserve: Object.freeze({
       kind: 'outpost',
-      specializationId: 'fuel_relay',
-      defId: 'outpost_fuelsynth',
+      claimSpecId: 'spec_relay',
+      source: 'claims',
     }),
   },
   {
-    id: 'hab_fortress',
-    outpostDefId: 'outpost_habhub',
-    title: 'Hab Fortress',
-    role: 'habitation',
-    visibleTag: 'HAB HUB',
-    description: 'Crew buffer and credit drip. Highest defense, highest upkeep.',
+    id: 'spec_bastion',
+    outpostDefId: null,
+    legacyOutpostDefIds: Object.freeze([]),
+    title: 'Defense Bastion',
+    role: 'defense',
+    visibleTag: 'BASTION',
+    description: 'A sector garrison that warns of raids and contests them. Produces nothing.',
     unlockBeat: 6,
     buildCostHint: 110000,
     defenseHint: 30,
-    passiveHint: 'creditGen + capBuffer',
-    consequenceFlags: Object.freeze(['outpost_habitation', 'crew_buffer', 'defendable_plot']),
+    passiveHint: 'garrison + raid coverage',
+    consequenceFlags: Object.freeze(['outpost_spec_bastion', 'outpost_spec_bastion_defense']),
     deployObserve: Object.freeze({
       kind: 'outpost',
-      specializationId: 'hab_fortress',
-      defId: 'outpost_habhub',
+      claimSpecId: 'spec_bastion',
+      source: 'claims',
     }),
   },
 ]);
+
+const LEGACY_OUTPOST_SPECIALIZATION_IDS = Object.freeze({
+  refinery: 'spec_refinery',
+  fuel_relay: 'spec_refinery',
+  hab_fortress: 'spec_relay',
+});
+
+const LEGACY_AUTOMATION_OUTPOST_TO_SPEC = Object.freeze({
+  outpost_refinery: 'spec_refinery',
+  outpost_fuelsynth: 'spec_refinery',
+  outpost_habhub: 'spec_relay',
+});
 
 /** Sidecar meta status for fail/recover on the observed current beat only. */
 export const BEAT_STATUS = Object.freeze({
@@ -550,7 +565,13 @@ export function endingDef(id) {
 }
 
 export function outpostSpecDef(id) {
-  return OUTPOST_SPECIALIZATIONS.find((o) => o.id === id) || null;
+  const canonicalId = canonicalOutpostSpecId(id);
+  return OUTPOST_SPECIALIZATIONS.find((o) => o.id === canonicalId) || null;
+}
+
+export function canonicalOutpostSpecId(id) {
+  if (OUTPOST_SPECIALIZATIONS.some((entry) => entry.id === id)) return id;
+  return LEGACY_OUTPOST_SPECIALIZATION_IDS[id] || null;
 }
 
 export function branchFactionId(branch) {
@@ -566,6 +587,5 @@ export function branchIntroDef(branch) {
 }
 
 export function mapOutpostDefToSpec(defId) {
-  const hit = OUTPOST_SPECIALIZATIONS.find((o) => o.outpostDefId === defId);
-  return hit ? hit.id : null;
+  return LEGACY_AUTOMATION_OUTPOST_TO_SPEC[defId] || null;
 }
