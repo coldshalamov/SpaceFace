@@ -102,6 +102,9 @@ const MISSION_HOSTILE_SPAWN_MIN_WU = 1700;
 const MISSION_HOSTILE_SPAWN_MAX_WU = 2600;
 const MISSION_HOSTILE_SPAWN_ATTEMPTS = 24;
 const MISSION_PORT_SAFE_RADIUS_WU = 1200;
+export const CONTRACT_47A_B0_TAG = 'campaign47a:b0:recovery';
+export const CONTRACT_47A_SAMPLE_ID = 'cmdty_47a_assay_sample';
+const CONTRACT_47A_REWARD_CR = 400;
 
 // Station size → tier number used for slot count (S=0,M=1,L=2).
 const SIZE_TIER = { S: 0, M: 1, L: 2 };
@@ -178,6 +181,11 @@ function missionNavReason(m, station, sector) {
   const stationName = station && station.name || 'destination';
   const sectorName = sector && sector.name || 'target sector';
   const remaining = Math.max(0, (m.objectiveTarget || p.qty || 1) - (m.objectiveProgress || 0));
+  if (m.storyTag === CONTRACT_47A_B0_TAG) {
+    return p.sampleRecovered
+      ? 'Deliver the 47-A sample to Helios Station'
+      : 'Recover the 47-A sample from the marked rock';
+  }
   switch (m.type) {
     case 'cargo_delivery': return `Deliver ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
     case 'bulk_trade': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
@@ -1070,6 +1078,20 @@ export const missions = {
       sectorName: sector && sector.name || null,
     };
 
+    if (m.storyTag === CONTRACT_47A_B0_TAG && !(m.params && m.params.sampleRecovered)) {
+      const source = this._resolveContract47aSampleSource(m);
+      if (source) {
+        return {
+          ...base,
+          label: '47-A Recovery Site',
+          stationId: null,
+          sectorId: this.state.world && this.state.world.currentSectorId || m.destSectorId,
+          pos: { x: source.pos.x, z: source.pos.z },
+        };
+      }
+      return { ...base, label: '47-A Recovery Site', stationId: null };
+    }
+
     if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
       const target = this._firstLiveMissionTarget(m);
       if (target) return { ...base, targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason: 'Intercept the marked hostile' };
@@ -1144,6 +1166,29 @@ export const missions = {
       if (d2 < bestD2) { best = e; bestD2 = d2; }
     }
     return best;
+  },
+
+  _resolveContract47aSampleSource(m) {
+    if (!m || m.storyTag !== CONTRACT_47A_B0_TAG) return null;
+    const p = m.params || (m.params = {});
+    const saved = p.samplePos;
+    let nearest = null;
+    let nearestD2 = Infinity;
+    for (const entity of missionIndexedEntities(this.state, 'mineables', 'asteroids')) {
+      if (!entity || entity.alive === false || entity.type !== 'asteroid' || !entity.pos) continue;
+      if (saved) {
+        const dx = entity.pos.x - saved.x;
+        const dz = entity.pos.z - saved.z;
+        if (dx * dx + dz * dz <= 80 * 80) return entity;
+      }
+      const player = this.state.entities.get(this.state.playerId);
+      const dx = entity.pos.x - (player && player.pos ? player.pos.x : 0);
+      const dz = entity.pos.z - (player && player.pos ? player.pos.z : 0);
+      const d2 = dx * dx + dz * dz;
+      if (d2 < nearestD2) { nearestD2 = d2; nearest = entity; }
+    }
+    if (nearest) p.samplePos = { x: nearest.pos.x, z: nearest.pos.z };
+    return nearest;
   },
 
   _nearestBulkChunk() {
@@ -1263,6 +1308,23 @@ export const missions = {
 
   _onMiningYield(p) {
     if (!p || !p.commodityId) return;
+    const b0 = (this.state.missions.active || []).find((m) => m && m.status === 'active' && m.storyTag === CONTRACT_47A_B0_TAG);
+    let b0SampleRecovered = false;
+    if (b0 && !(b0.params && b0.params.sampleRecovered) && p.minerId !== null
+      && (p.minerId == null || p.minerId === this.state.playerId)) {
+      const source = this._resolveContract47aSampleSource(b0);
+      const sourceMatches = !p.pos || !source || distSq(p.pos, source.pos) <= 80 * 80;
+      if (sourceMatches && addCargo(this.state, CONTRACT_47A_SAMPLE_ID, 1) === 1) {
+        b0.params.sampleRecovered = true;
+        b0.objectiveProgress = 1;
+        const locked = this.state.story.persistentCargo || (this.state.story.persistentCargo = []);
+        if (!locked.includes(CONTRACT_47A_SAMPLE_ID)) locked.push(CONTRACT_47A_SAMPLE_ID);
+        b0SampleRecovered = true;
+        this._refreshTrackedMissionNav(b0);
+        this.bus.emit('mission:updated', { missionId: b0.id, objectiveProgress: 1 });
+        this._sayStoryLine('Sample secured. Dock at Helios.', 4);
+      }
+    }
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active' || m.type !== 'mining_quota') continue;
@@ -1271,7 +1333,9 @@ export const missions = {
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
-    this._storyTrigger('mine', p);
+    // New runs require the marked 47-A sample. Pos-less legacy/headless receipts remain compatible
+    // through sourceMatches above; saves without the authored B0 contract keep the old trigger.
+    if (!b0 || b0SampleRecovered || (b0.params && b0.params.sampleRecovered)) this._storyTrigger('mine', p);
   },
 
   _onBulkHaulDelivered(p) {
@@ -1367,6 +1431,15 @@ export const missions = {
       if (t === 'cargo_delivery' || t === 'passenger_transport'
           || t === 'salvage_retrieval' || t === 'smuggling_run') {
         if (!this._deliverCargo(m)) {
+          if (m.storyTag === CONTRACT_47A_B0_TAG) {
+            m.params.sampleRecovered = false;
+            m.objectiveProgress = 0;
+            this._resolveContract47aSampleSource(m);
+            this._refreshTrackedMissionNav(m);
+            this.bus.emit('mission:updated', { missionId: m.id, objectiveProgress: 0 });
+            this.bus.emit('toast', { text: '47-A sample missing. Recovery site re-marked.', kind: 'warn', ttl: 4 });
+            continue;
+          }
           const need = m.params && m.params.cmdtyId ? this._cmdtyName(m.params.cmdtyId) : 'the cargo';
           this.bus.emit('toast', { text: `Delivery: you are not carrying ${need}`, kind: 'warn', ttl: 3 });
           continue;
@@ -1396,8 +1469,15 @@ export const missions = {
     const cargo = this.state.player && this.state.player.cargo;
     const have = (cargo && cargo.items && cargo.items[p.cmdtyId]) || 0;
     if (have < need) return false;
+    if (m.storyTag === CONTRACT_47A_B0_TAG && Array.isArray(this.state.story && this.state.story.persistentCargo)) {
+      this.state.story.persistentCargo = this.state.story.persistentCargo.filter((id) => id !== CONTRACT_47A_SAMPLE_ID);
+    }
     // Consume the delivered cargo through the cargo single-writer helper (keeps volume/mass caches sane).
     const removed = removeCargo(this.state, p.cmdtyId, need);
+    if (removed <= 0 && m.storyTag === CONTRACT_47A_B0_TAG) {
+      const locked = this.state.story.persistentCargo || (this.state.story.persistentCargo = []);
+      if (!locked.includes(CONTRACT_47A_SAMPLE_ID)) locked.push(CONTRACT_47A_SAMPLE_ID);
+    }
     this.bus.emit('cargo:delivered', { commodityId: p.cmdtyId, qty: removed, missionId: m.id, stationId: m.destStationId });
     return removed > 0;
   },
@@ -1482,9 +1562,14 @@ export const missions = {
     if (m.status !== 'active') return;
     m.status = 'completed';
     this._clearMissionNav(m.id);
+    const displayRewardCr = m.storyTag === CONTRACT_47A_B0_TAG ? CONTRACT_47A_REWARD_CR : (m.reward_cr || 0);
+    if (m.storyTag === CONTRACT_47A_B0_TAG) {
+      state.story.flags = state.story.flags || {};
+      state.story.flags.contract_47a_b0_delivered = true;
+    }
 
     // ── reward credits + collateral refund ──
-    this.bus.emit('economy:grantCredits', { amount: m.reward_cr, reason: `mission:${m.id}` });
+    if (m.reward_cr > 0) this.bus.emit('economy:grantCredits', { amount: m.reward_cr, reason: `mission:${m.id}` });
     if (m.collateral_cr > 0) {
       this.bus.emit('economy:grantCredits', { amount: m.collateral_cr, reason: `collateral_refund:${m.id}` });
     }
@@ -1513,16 +1598,16 @@ export const missions = {
 
     // ── stats / ledger ──
     if (state.player.stats) state.player.stats.missionsDone = (state.player.stats.missionsDone || 0) + 1;
-    this._logCompletion(m.type, m.reward_cr, true);
+    this._logCompletion(m.type, displayRewardCr, true);
     this._recordMissionReceipt(m, 'completed', null, {
-      rewardCr: m.reward_cr || 0,
+      rewardCr: displayRewardCr,
       collateralRefundCr: m.collateral_cr || 0,
       repDelta: m.factionId ? specRep : 0,
       researchPoints,
     });
 
     this._emitMissionDebrief(m, 'completed');
-    this.bus.emit('toast', { text: `Mission complete: ${m.title} +${m.reward_cr}cr`, kind: 'success', ttl: 4 });
+    this.bus.emit('toast', { text: `Mission complete: ${m.title} +${displayRewardCr}cr`, kind: 'success', ttl: 4 });
     this._cleanupTargets(m);
     this._removeActive(m.id, index);
     this.bus.emit('mission:updated', { missionId: m.id });
@@ -2188,6 +2273,34 @@ export const missions = {
   // =========================================================================================
   // newGame / save-load (§4.5 — missions + story serialize; live target ids do NOT)
   // =========================================================================================
+  _installContract47aColdStart() {
+    if ((this.state.missions.active || []).some((m) => m && m.storyTag === CONTRACT_47A_B0_TAG)) return;
+    const offer = {
+      id: 'contract_47a_b0_recovery',
+      type: 'salvage_retrieval',
+      stationId: 'station_helios',
+      factionId: null,
+      params: { cmdtyId: CONTRACT_47A_SAMPLE_ID, qty: 1, sampleRecovered: false, samplePos: null },
+      reward_cr: 0,
+      collateral_cr: 0,
+      riskTier: 0,
+      destStationId: 'station_helios',
+      destSectorId: 'sector_helios_prime',
+      distance: 600,
+      storyTag: CONTRACT_47A_B0_TAG,
+      campaign47aBeat: 0,
+      title: 'Contract 47-A: Recover the Sample',
+      summary: 'Recover the marked assay sample. Deliver it to Helios Station.',
+    };
+    const mission = this._instanceFromOffer(offer);
+    mission.chainNextSeed = null;
+    this.state.missions.active.push(mission);
+    this.state.ui = this.state.ui || {};
+    this.state.ui.trackedMissionId = mission.id;
+    this._refreshTrackedMissionNav(mission);
+    this.bus.emit('mission:updated', { missionId: mission.id, tracked: true, source: CONTRACT_47A_B0_TAG });
+  },
+
   newGame() {
     const state = this.state;
     state.missions.boards = {};
@@ -2199,6 +2312,7 @@ export const missions = {
     // Clear story spine + any prior campaign47a sidecar (nested under state.story).
     state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 };
     initCampaignSidecar(state, state.simTime || 0);
+    this._installContract47aColdStart();
     this._spawnSeq = 0;
     this._navRefreshT = 0;
     this._lastWaypointRouteKey = null;

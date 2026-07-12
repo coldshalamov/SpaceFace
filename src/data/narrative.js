@@ -400,6 +400,7 @@ export const KURTZ = {
 // ── Persistent cargo (Thread B + Choice D) ───────────────────────────────────────────────────
 // These items cannot be sold or jettisoned; the game treats them as PERSONAL EFFECTS.
 export const PERSISTENT_CARGO = [
+  { id: 'cmdty_47a_assay_sample', name: '47-A ASSAY SAMPLE', mass: 0.0031, note: 'SEALED EVIDENCE — CONTRACT 47-A. Deliver to Helios Station.' },
   { id: 'cmdty_unclassified_composite', name: 'UNCLASSIFIED COMPOSITE', mass: 0.0031, note: 'PERSONAL EFFECTS — 3.1 kg. The second fragment. In the manifest since first launch.' },
   KURTZ.ledgerCargoId && { id: KURTZ.ledgerCargoId, name: KURTZ.ledgerName, mass: KURTZ.ledgerMass, note: 'The Kurtz figure\u2019s ledger. 0.4t. The mass never changes, even if jettisoned.' },
   KURTZ.coordsCargoId && { id: KURTZ.coordsCargoId, name: KURTZ.coordsName, mass: KURTZ.coordsMass, note: 'Coordinates in a format no database recognizes. 0.01t. Might weigh everything.' },
