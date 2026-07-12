@@ -22,6 +22,7 @@
     "check:cinematic-input-fence": "node test/cinematic-input-fence.test.mjs",
     "check:asset-runtime-disposal": "node test/asset-runtime-disposal.test.mjs",
     "check:asset-startup-readiness": "node scripts/check-asset-startup-readiness.mjs",
+    "check:asteroid-instance-structure": "node test/asteroid-instance-structure.test.mjs",
     "check:galaxy-map-inspector": "node test/galaxy-map-inspector-stability.test.mjs",
     "check:replay": "node scripts/sf.mjs replay verify test/47a.inputs.json --seed 47 --ticks 720 --expect test/47a.telemetry.expected.json --hash --repeat 20 --reload-at 600",
     "check:sim": "node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 --reload-at 600",

@@ -14,6 +14,13 @@ import {
   retryAuthoredPartLibrary,
   syncAuthoredInstancePools,
 } from './partsLibrary.js';
+import {
+  createAsteroidInstancePool,
+  registerAsteroidBaseLeaf,
+  releaseAsteroidInstancesForEntity,
+  resolveAsteroidInstanceEntityId,
+  syncAsteroidInstancePool,
+} from './asteroidInstancePool.js';
 import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { createCollisionDebug } from './collisionDebug.js';
@@ -621,6 +628,7 @@ export const render = {
     this._ensureKeyLightShadows();
     this._contactShadowPool = createContactShadowPool(scene);
     this._shipAuxPool = createShipAuxPool(scene);
+    this._asteroidInstancePool = createAsteroidInstancePool(scene);
     // LOD projector viewport (CSS px); onResize refreshes it. Initialize from drawSize so the first
     // frame before onResize has sane values.
     { const dpr = renderer.getPixelRatio() || 1; this.viewport = { width: drawSize.x / dpr, height: drawSize.y / dpr }; }
@@ -857,11 +865,17 @@ export const render = {
     ctx.helpers.socketWorldPose = (id, name) => this.socketWorldPose(id, name);
     ctx.helpers.socketWorldPos = (id, name) => this.socketWorldPos(id, name);
     ctx.helpers.entityMeshMeta = (id) => this.entityMeshMeta(id);
+    ctx.helpers.resolveAsteroidInstanceEntityId = (object, instanceId) => (
+      resolveAsteroidInstanceEntityId(this._asteroidInstancePool, object, instanceId)
+    );
 
     bus.on('entity:spawned', () => { this._meshReconcileDirty = true; });
     bus.on('entity:destroyed', ({ id }) => {
       const m = this._meshes.get(id);
-      if (m) { scene.remove(m); disposeObject(m); this._meshes.delete(id); }
+      if (m) {
+        releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
+        scene.remove(m); disposeObject(m); this._meshes.delete(id);
+      }
     });
     // Ship hull swap or loadout change (fit/upgrade) — rebuild the mesh so visible hardpoints,
     // engines and tier reflect the current ship. Without this the mesh is frozen at spawn and a
@@ -1003,6 +1017,7 @@ export const render = {
   clearAllMeshes(keepPlayer) {
     for (const [id, m] of [...this._meshes]) {
       if (keepPlayer && id === this.state.playerId) continue;
+      releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
       this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
     }
     this._meshBuildQueue.length = 0;
@@ -1050,7 +1065,10 @@ export const render = {
     // remove meshes whose entity no longer exists or has died
     for (const [id, m] of this._meshes) {
       const e = state.entities.get(id);
-      if (!e || e.alive === false) { this.scene.remove(m); disposeObject(m); this._meshes.delete(id); this._shadowReceiversDirty = true; }
+      if (!e || e.alive === false) {
+        releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
+        this.scene.remove(m); disposeObject(m); this._meshes.delete(id); this._shadowReceiversDirty = true;
+      }
     }
     // Queue authored-readiness-critical ships first, then every remaining world entity. The drain
     // budget stays bounded; this changes admission order only and does not drop or downgrade visuals.
@@ -1082,6 +1100,7 @@ export const render = {
       e.mesh = m; e.view = { root: m };
       this._meshes.set(e.id, m);
       this.scene.add(m);
+      registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
       requestAuthoredUpgrade(m, this.renderer, this.scene);
       this._shadowReceiversDirty = true;
       built++;
@@ -1213,6 +1232,9 @@ export const render = {
       if (!e || e.alive === false || !m) continue;
       if (this.collisionDebug && this.collisionDebug.on) m.userData.__lastEntity = e; // read-only debug overlay
       const viewCulled = this._isEntityViewCulled(e, bounds);
+      if (m.userData && m.userData.asteroidInstanceBody) {
+        m.userData.asteroidInstanceViewCulled = viewCulled;
+      }
       if (viewCulled) culled++;
       const hull = m.userData && m.userData.hull;   // bankable inner group (ships only)
       if (e.flags.noInterp) {
@@ -1476,6 +1498,17 @@ export const render = {
     // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
     // an offset from its target; we move both together. No-op if shadows are disabled.
     this._updateShadowFollow();
+    if (this._shadowSettingOn && this._keyLight && this._keyLight.shadow) {
+      this._keyLight.updateMatrixWorld(true);
+      if (this._keyLight.target) this._keyLight.target.updateMatrixWorld(true);
+      this._keyLight.shadow.updateMatrices(this._keyLight);
+    }
+    this.state.render.asteroidInstancePool = syncAsteroidInstancePool(this._asteroidInstancePool, {
+      camera: this.cam.obj,
+      shadowCamera: this._shadowSettingOn && this._keyLight && this._keyLight.shadow
+        ? this._keyLight.shadow.camera
+        : null,
+    });
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
       if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();

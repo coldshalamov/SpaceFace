@@ -1779,6 +1779,11 @@ function buildAsteroid(e) {
 
   const g = new THREE.Group();
   g.add(mesh);
+  if (typeId === 'ast_common_rock' && tint == null) {
+    mesh.userData.asteroidInstanceTypeId = 'ast_common_rock';
+    mesh.userData.asteroidInstanceVariant = variantIdx;
+    g.userData.asteroidInstanceBody = mesh;
+  }
   const lod2Details = [];
 
   // crystal / exotic / ice get an inner-glow halo for value cue
