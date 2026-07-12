@@ -1,0 +1,36 @@
+{
+  "schema": "spaceface.assetProvenance.v1",
+  "packet": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001",
+  "familyId": "ashline",
+  "title": "M4 Ashline hostile ship family (Dart / Maul / Hook)",
+  "origin": "Procedurally authored in-repo via deterministic Blender builder tools/blender/build_m4_ashline_family.py. No third-party meshes, kitbash libraries, or downloaded commercial models.",
+  "receivedFrom": "SpaceFace Grok+Blender production agent (in-repo generation)",
+  "sourceArchives": [],
+  "thirdPartyDeclaration": "No third-party meshes, texture packs, kitbash libraries, downloaded commercial/free models, or YouTube assets. Solid fallback textures generated in Blender for ORM/baseColor/normal contract coverage.",
+  "licenseDecision": "Project-original SpaceFace authoring for this workspace. Approved for the live Reach hostile visual family.",
+  "productionPolicy": "Reproducible sources and evidence live under assets/ships/m4_ashline; canonical source/release copies publish through the normal manifests without overwriting K0 Kestrel or Helios assets.",
+  "roles": [
+    {
+      "id": "ashline_dart",
+      "role": "flyby_interceptor",
+      "assetId": "SF_WHOLESHIP_ASHLINE_DART",
+      "partId": "wholeship_ashline_dart"
+    },
+    {
+      "id": "ashline_lode",
+      "role": "heavy_brawler",
+      "assetId": "SF_WHOLESHIP_ASHLINE_LODE",
+      "partId": "wholeship_ashline_lode"
+    },
+    {
+      "id": "ashline_rig",
+      "role": "tether_control_raider",
+      "assetId": "SF_WHOLESHIP_ASHLINE_RIG",
+      "partId": "wholeship_ashline_rig"
+    }
+  ],
+  "recordedAt": "2026-07-11T12:00:00Z",
+  "builder": "tools/blender/build_m4_ashline_family.py",
+  "finalizer": "tools/art/finalize_m4_ashline_candidate.mjs",
+  "check": "scripts/check-m4-ashline-family.mjs"
+}

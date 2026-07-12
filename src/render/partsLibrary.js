@@ -143,8 +143,12 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'hulls/hull_multirole.glb',
       'hulls/hull_gunship.glb',
       // K0 promotes the production Borrowed Time Kestrel: a complete body with structural LODs,
-      // semantic materials, stable sockets, and no baked plume. Other whole-ship exports remain blocked.
+      // semantic materials, stable sockets, and no baked plume. Ashline adds three production Reach
+      // hostile bodies selected by combat archetype below; blocked accessory exports remain omitted.
       'wholeships/kestrel.glb',
+      'wholeships/ashline_dart.glb',
+      'wholeships/ashline_lode.glb',
+      'wholeships/ashline_rig.glb',
     ]),
     cockpit: Object.freeze([
       'cockpits/cockpit_dome.glb',
@@ -263,7 +267,25 @@ const WHOLE_SHIP_FILE_BY_DEF_ID = Object.freeze({
 const WHOLE_SHIP_ASSET_ID_BY_DEF_ID = Object.freeze({
   'ship_kestrel': 'SF_WHOLESHIP_KESTREL',
 });
-const WHOLE_SHIP_URLS = Object.freeze(Object.values(WHOLE_SHIP_FILE_BY_DEF_ID));
+// Reach hostiles are selected by their authoritative combat archetype, not by ship def: several
+// enemy roles intentionally share player-facing chassis stats while requiring different combat
+// silhouettes. This presentation map changes no doctrine, hostility, movement, or damage data.
+const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
+  wasp_swarmer: 'wholeships/ashline_dart.glb',
+  bruiser_brawler: 'wholeships/ashline_lode.glb',
+  reaver_pirate: 'wholeships/ashline_rig.glb',
+  corsair_raider: 'wholeships/ashline_rig.glb',
+});
+const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
+  wasp_swarmer: 'SF_WHOLESHIP_ASHLINE_DART',
+  bruiser_brawler: 'SF_WHOLESHIP_ASHLINE_LODE',
+  reaver_pirate: 'SF_WHOLESHIP_ASHLINE_RIG',
+  corsair_raider: 'SF_WHOLESHIP_ASHLINE_RIG',
+});
+const WHOLE_SHIP_URLS = Object.freeze([
+  ...Object.values(WHOLE_SHIP_FILE_BY_DEF_ID),
+  ...Object.values(WHOLE_SHIP_FILE_BY_HOSTILE_ID),
+]);
 const isWholeShipUrl = (url) => WHOLE_SHIP_URLS.some((w) => String(url || '').endsWith(w));
 const PRECOMPILE_SHIP_ARCHETYPES = Object.freeze(Object.keys(HULL_FILE_BY_DEF_ID).map((defId) => Object.freeze({
   defId,
@@ -282,16 +304,37 @@ export function shipArchetypesForPrecompile() {
   return PRECOMPILE_SHIP_ARCHETYPES;
 }
 
+/** Pure presentation selection hook used by composition and focused asset checks. */
+export function wholeShipVisualForEntity(entity, options = {}) {
+  const data = entity && entity.data || {};
+  const hostileId = String(data.lootTableId || '');
+  const hostileFile = WHOLE_SHIP_FILE_BY_HOSTILE_ID[hostileId];
+  if (hostileFile) {
+    return Object.freeze({
+      file: hostileFile,
+      assetId: WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID[hostileId],
+      roleId: hostileId,
+      required: true,
+    });
+  }
+  if (options.requiredWholeShip !== true) return null;
+  const defId = data.defId;
+  const file = WHOLE_SHIP_FILE_BY_DEF_ID[defId];
+  return file ? Object.freeze({
+    file,
+    assetId: WHOLE_SHIP_ASSET_ID_BY_DEF_ID[defId],
+    roleId: defId,
+    required: true,
+  }) : null;
+}
+
 /** Pure contract hook used by runtime composition and missing/corrupt fixture checks. */
 export function resolveRequiredWholeShipRecord(entity, records, options = {}) {
-  if (options.requiredWholeShip !== true) return null;
-  const defId = entity && entity.data && entity.data.defId;
-  const wholeShipFile = WHOLE_SHIP_FILE_BY_DEF_ID[defId];
+  const selection = wholeShipVisualForEntity(entity, options);
+  if (!selection) return null;
+  const wholeShipFile = selection.file;
   const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
-  if (!wholeShipFile) {
-    throw new Error(`[partsLibrary] required whole-ship mapping is missing for ${defId || 'unknown_ship'}`);
-  }
-  const expectedAssetId = WHOLE_SHIP_ASSET_ID_BY_DEF_ID[defId];
+  const expectedAssetId = selection.assetId;
   const record = (records || []).find((candidate) => (
     String(candidate && candidate.url || '').endsWith(wholeShipFile)
       && (!expectedAssetId || candidate.assetId === expectedAssetId)

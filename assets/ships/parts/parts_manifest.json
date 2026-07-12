@@ -4020,6 +4020,125 @@
         ]
       },
       "note": "Defense Bastion Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 33212 tris / 5 draw groups."
+    },
+    {
+      "id": "wholeship_ashline_dart",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/ashline_dart.glb",
+      "tris": 12500,
+      "bytes": 18570144,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "Gun_Assembly"
+      ],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "dimensionsM": [
+          15.775,
+          2.2976,
+          6.05
+        ]
+      },
+      "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Dart, live flyby_interceptor Reach hostile body; explicit LOD0/1/2, 8/7/7 draws, damageable drive/gun roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
+    },
+    {
+      "id": "wholeship_ashline_lode",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/ashline_lode.glb",
+      "tris": 15670,
+      "bytes": 18776280,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "Gun_Assembly"
+      ],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "dimensionsM": [
+          23.625,
+          4.33,
+          9.975
+        ]
+      },
+      "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Maul, live heavy_brawler Reach hostile body; explicit LOD0/1/2, 8/7/7 draws, damageable drive/gun roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
+    },
+    {
+      "id": "wholeship_ashline_rig",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/ashline_rig.glb",
+      "tris": 10302,
+      "bytes": 18495872,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "Gun_Assembly",
+        "HOOK_TETHER_SPOOL"
+      ],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "dimensionsM": [
+          17.715,
+          5.97,
+          4.975
+        ]
+      },
+      "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Hook, live tether_control_raider Reach hostile body; explicit LOD0/1/2, 9/8/8 draws, damageable drive/gun/tether roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
     }
   ],
   "runtimeSlots": {
@@ -4036,7 +4155,10 @@
       "hulls/hull_multirole.glb",
       "wholeships/kestrel.glb",
       "wholeships/pelican.glb",
-      "wholeships/wasp.glb"
+      "wholeships/wasp.glb",
+      "wholeships/ashline_dart.glb",
+      "wholeships/ashline_lode.glb",
+      "wholeships/ashline_rig.glb"
     ],
     "cockpit": [
       "cockpits/cockpit_dome.glb",
