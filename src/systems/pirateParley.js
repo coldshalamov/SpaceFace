@@ -6,8 +6,11 @@
 import { barkFor } from '../data/barks.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { pirateParleyPlanForEntity } from '../data/pirateDoctrines.js';
+import { tollAmountFor } from '../data/encounters.js';
 import { hash32 } from '../core/rng.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
+import { protectedStationAt } from '../ai/engagementAuthority.js';
+import { effectiveLawSecurity } from './lawSecurity.js';
 
 const SCAN_TO_DEMAND_S = 2.0;
 const DEMAND_WINDOW_S = 5.0;
@@ -17,6 +20,8 @@ const TITHE_MIN_PERCENT = 20;
 const TITHE_SPAN_PERCENT = 10;
 const BRAKE_TO_COMPLY_HOLD_S = 1.25;
 const ESCAPE_RADIUS = 1200;
+const MAX_ROBBERY_SECURITY = 0.75;
+const PROFIT_MOTIVES = new Set(['assigned_interdiction', 'cargo_extortion', 'toll_collection']);
 
 const VALUE_BY_COMMODITY = new Map(COMMODITIES.map((c) => [c.id, Number(c.basePrice) || 1]));
 const LABEL_BY_COMMODITY = new Map(COMMODITIES.map((c) => [c.id, String(c.name || c.id).replace(/^Refined /i, '')]));
@@ -70,9 +75,14 @@ export const pirateParley = {
         rec.phase = 'demand';
         rec.deadlineAt = now + DEMAND_WINDOW_S;
         rec.tithe = chooseTithe(state, rec.squadId);
+        rec.demand = chooseDemand(state, rec.squadId, rec.tithe);
         holdFire(state, rec, members);
         this._speak(rec, 'demand-cargo');
-        this._emit('pirateParley:demand', { ...publicRecord(rec), tithe: { ...rec.tithe } });
+        this._emit('pirateParley:demand', {
+          ...publicRecord(rec),
+          demand: { ...rec.demand },
+          tithe: { ...rec.tithe },
+        });
       } else if (rec.phase === 'demand') {
         const player = state.entities && state.entities.get && state.entities.get(state.playerId);
         // Raw brake is the held control; actions.brake preserves scripted/edge-trigger fixtures.
@@ -113,16 +123,20 @@ export const pirateParley = {
     const now = state.simTime || 0;
     const members = membersFor(state, rec);
     const tithe = rec.tithe || chooseTithe(state, rec.squadId);
-    const cargoSys = this.registry && this.registry.get && this.registry.get('cargo');
-    const dropped = tithe.commodityId && tithe.qty > 0 && cargoSys && typeof cargoSys.jettison === 'function'
-      ? cargoSys.jettison(tithe.commodityId, tithe.qty)
-      : 0;
-    const actual = { commodityId: tithe.commodityId || null, qty: dropped | 0 };
+    const demand = rec.demand || chooseDemand(state, rec.squadId, tithe);
+    const payment = settleDemand(this, state, rec, demand, tithe);
+
+    // A broke or already-emptied target is no longer a rational prize. A profit crew leaves rather
+    // than converting failed collection into an unexplained execution.
+    if (!payment || payment.amount <= 0) return this._unprofitable(rec, members, now);
 
     rec.phase = 'break-off';
     rec.resolved = true;
     rec.outcome = 'complied';
-    rec.tithe = actual;
+    rec.payment = payment;
+    rec.tithe = payment.kind === 'cargo'
+      ? { commodityId: payment.commodityId, qty: payment.amount }
+      : tithe;
     rec.breakOffUntil = now + BREAK_OFF_S;
 
     for (const e of members) breakOff(e, rec, state);
@@ -130,7 +144,25 @@ export const pirateParley = {
       ...publicRecord(rec),
       outcome: 'complied',
       next: 'break-off',
-      tithe: actual,
+      payment: { ...payment },
+      tithe: rec.tithe ? { ...rec.tithe } : null,
+    });
+    return true;
+  },
+
+  _unprofitable(rec, members, now) {
+    rec.phase = 'break-off';
+    rec.resolved = true;
+    rec.outcome = 'unprofitable';
+    rec.payment = null;
+    rec.breakOffUntil = now + BREAK_OFF_S;
+    for (const entity of members) breakOff(entity, rec, this.state);
+    this._emit('pirateParley:resolved', {
+      ...publicRecord(rec),
+      outcome: rec.outcome,
+      next: 'break-off',
+      payment: null,
+      tithe: null,
     });
     return true;
   },
@@ -159,12 +191,14 @@ export const pirateParley = {
     rec.phase = 'break-off';
     rec.resolved = true;
     rec.outcome = 'evaded';
+    rec.payment = null;
     rec.breakOffUntil = now + BREAK_OFF_S;
     for (const entity of members) breakOff(entity, rec, state);
     this._emit('pirateParley:resolved', {
       ...publicRecord(rec),
       outcome: 'evaded',
       next: 'break-off',
+      payment: null,
       tithe: null,
     });
     return true;
@@ -223,6 +257,8 @@ function eligiblePlan(entity) {
   const plan = pirateParleyPlanForEntity(entity);
   if (!plan || !plan.startsParley) return null;
   if (plan.parleyMode !== 'toll' || plan.demandType !== 'tithe') return null;
+  const ai = entity && entity.data && entity.data.ai || {};
+  if (ai.motive && !PROFIT_MOTIVES.has(String(ai.motive))) return null;
   return plan;
 }
 
@@ -235,6 +271,11 @@ function collectParleySquads(state) {
     if (!plan) continue;
     const ai = e.data && e.data.ai || {};
     if (ai.parleySuppressed) continue;
+    const eligibility = robberyEligibility(state, e);
+    if (!eligibility.ok) {
+      suppressRobbery(e, state, eligibility.reason);
+      continue;
+    }
     const squadId = String(ai.squadId || ai.encounterId || `entity:${e.id}`);
     if (!out.has(squadId)) out.set(squadId, []);
     out.get(squadId).push(e);
@@ -246,6 +287,7 @@ function startRecord(state, squadId, entity, now) {
   const plan = eligiblePlan(entity);
   const seed = state.meta && state.meta.seed;
   const base = hash32(seed == null ? 0 : seed, squadId, 'pirateParley');
+  const tithe = chooseTithe(state, squadId);
   return {
     squadId,
     doctrineId: plan.doctrineId,
@@ -256,7 +298,8 @@ function startRecord(state, squadId, entity, now) {
     deadlineAt: 0,
     breakOffUntil: 0,
     memberIds: [],
-    tithe: chooseTithe(state, squadId),
+    tithe,
+    demand: chooseDemand(state, squadId, tithe),
     voiceIndex: {
       scan: hash32(base, 'scan'),
       'demand-cargo': hash32(base, 'demand-cargo'),
@@ -327,6 +370,7 @@ function breakOff(entity, rec, state) {
   ai.huntPlayer = false;
   ai.fsm = 'flee';
   ai.parleyBreakOffUntil = rec.breakOffUntil;
+  ai.motiveSatisfied = true;
   ai.engagementTrigger = 'parley_resolved';
   ai.roe = RulesOfEngagement.HOLD_FIRE;
   ai.activity = normalizeActivity({
@@ -357,6 +401,7 @@ function makeHostile(entity, state, rec) {
   ai.huntPlayer = true;
   ai.fsm = 'attack';
   ai.parleySquadId = rec.squadId;
+  ai.motiveSatisfied = false;
   ai.motive = 'cargo_extortion';
   ai.engagementTrigger = rec.outcome === 'refused' ? 'explicit_refusal' : 'ignored_demand';
   ai.zoneId = String(ai.zoneId || `parley:${rec.squadId}`);
@@ -409,6 +454,92 @@ function chooseTithe(state, squadId) {
   return { commodityId: bestId, qty, percent };
 }
 
+function chooseDemand(state, squadId, tithe = chooseTithe(state, squadId)) {
+  const cargoValue = playerCargoValue(state);
+  const credits = Math.max(0, Math.floor(Number(state.player && state.player.credits) || 0));
+  const creditAmount = Math.min(credits, tollAmountFor(cargoValue));
+  const seed = state.meta && state.meta.seed;
+  const creditTurn = (hash32(seed == null ? 0 : seed, squadId, 'demand_kind') & 1) === 0;
+  if (creditTurn && creditAmount > 0) {
+    return { kind: 'credits', amount: creditAmount, commodityId: null, qty: 0, percent: 0 };
+  }
+  return {
+    kind: 'cargo',
+    amount: Math.max(0, Math.floor(Number(tithe.qty) || 0)),
+    commodityId: tithe.commodityId || null,
+    qty: Math.max(0, Math.floor(Number(tithe.qty) || 0)),
+    percent: Math.max(0, Math.floor(Number(tithe.percent) || 0)),
+  };
+}
+
+function settleDemand(system, state, rec, demand, tithe) {
+  if (demand.kind === 'credits') {
+    const amount = Math.max(0, Math.floor(Number(demand.amount) || 0));
+    const before = Math.max(0, Math.floor(Number(state.player && state.player.credits) || 0));
+    if (amount > 0 && before >= amount && system.bus && typeof system.bus.emit === 'function') {
+      system.bus.emit('economy:chargeCredits', { amount, reason: `pirate_toll:${rec.squadId}` });
+      const after = Math.max(0, Math.floor(Number(state.player && state.player.credits) || 0));
+      if (before - after === amount) return { kind: 'credits', amount, commodityId: null };
+    }
+  }
+  const cargoSys = system.registry && system.registry.get && system.registry.get('cargo');
+  const dropped = tithe.commodityId && tithe.qty > 0 && cargoSys && typeof cargoSys.jettison === 'function'
+    ? cargoSys.jettison(tithe.commodityId, tithe.qty)
+    : 0;
+  return dropped > 0
+    ? { kind: 'cargo', amount: dropped | 0, commodityId: tithe.commodityId }
+    : null;
+}
+
+function robberyEligibility(state, entity) {
+  const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (!player) return { ok: false, reason: 'no_profitable_target' };
+  if (protectedStationAt(state, player) || protectedStationAt(state, entity)) {
+    return { ok: false, reason: 'jurisdiction_avoidance' };
+  }
+  if (effectiveLawSecurity(state) > MAX_ROBBERY_SECURITY) {
+    return { ok: false, reason: 'jurisdiction_avoidance' };
+  }
+  if (playerCargoValue(state) <= 0) return { ok: false, reason: 'no_profitable_target' };
+  return { ok: true, reason: 'profitable_deep_space_target' };
+}
+
+function suppressRobbery(entity, state, reason) {
+  const data = entity.data || (entity.data = {});
+  const ai = data.ai || (data.ai = {});
+  ai.parleySuppressed = true;
+  ai.passive = true;
+  ai.forcePlayerTarget = false;
+  ai.huntPlayer = false;
+  ai.motive = reason;
+  ai.motiveSatisfied = true;
+  ai.engagementTrigger = 'player_attack';
+  ai.roe = RulesOfEngagement.HOLD_FIRE;
+  ai.fsm = reason === 'jurisdiction_avoidance' ? 'flee' : 'hold';
+  ai.activity = normalizeActivity({
+    kind: reason === 'jurisdiction_avoidance' ? ActivityKind.DISENGAGE : ActivityKind.LOITER,
+    reason: `pirate_parley:suppressed:${reason}`,
+    anchor: entity.pos,
+    leashRadius: ESCAPE_RADIUS + 600,
+    startedTick: state.tick | 0,
+  });
+  const intent = data.intent || (data.intent = {});
+  intent.fire = false;
+  intent.fireGroup = null;
+  const combat = data.combat || (data.combat = {});
+  if (combat.targetId === state.playerId) combat.targetId = null;
+  if (combat.lockTarget === state.playerId) combat.lockTarget = null;
+}
+
+function playerCargoValue(state) {
+  const items = state.player && state.player.cargo && state.player.cargo.items || {};
+  let total = 0;
+  for (const id of Object.keys(items).sort()) {
+    total += Math.max(0, Math.floor(Number(items[id]) || 0)) * (VALUE_BY_COMMODITY.get(id) || 1);
+  }
+  return total;
+}
+
 function publicRecord(rec) {
   return {
     squadId: rec.squadId,
@@ -417,6 +548,7 @@ function publicRecord(rec) {
     startedAt: rec.startedAt,
     demandAt: rec.demandAt,
     deadlineAt: rec.deadlineAt || null,
+    demand: rec.demand ? { ...rec.demand } : null,
   };
 }
 
@@ -432,6 +564,9 @@ function outsideSquadRange(player, members, radius) {
 }
 
 function demandInstruction(rec) {
+  if (rec.demand && rec.demand.kind === 'credits') {
+    return `REACH: Brake to transfer ${rec.demand.amount | 0} credits. Clear 1200 to run.`;
+  }
   const tithe = rec.tithe || {};
   const qty = Math.max(0, Math.floor(Number(tithe.qty) || 0));
   const label = LABEL_BY_COMMODITY.get(tithe.commodityId) || 'cargo';

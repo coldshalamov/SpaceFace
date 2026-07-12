@@ -33,11 +33,20 @@ guarded(testPatrolTriggersFleeAfterNerveDelay);
 guarded(testNoPatrolNoFalseDisengage);
 guarded(testNonLawfulShipDoesNotTrigger);
 guarded(testOneVoicePerSquad);
+guarded(testProfitCrewSurrendersWhenRiskTurnsBad);
+guarded(testVendettaCrewDoesNotBecomeRobberyCowardice);
 guarded(testDeterminism);
 
 console.log(`[check-pirate-disengage] PASS - ${sections} sections green`);
 
-function boot({ withPatrol = true, lawful = true, patrolPos = { x: 220, z: 0 }, seed = 808 } = {}) {
+function boot({
+  withPatrol = true,
+  lawful = true,
+  patrolPos = { x: 220, z: 0 },
+  seed = 808,
+  motive = null,
+  pirateHull = 90,
+} = {}) {
   const sim = createSimulation({ seed, systems: [pirateDisengage, voiceArbiter] });
   const { state, bus } = sim;
   state.mode = 'flight';
@@ -57,7 +66,7 @@ function boot({ withPatrol = true, lawful = true, patrolPos = { x: 220, z: 0 }, 
       team: 1,
       factionId: 'faction_reach',
       pos: { x: 90 + i * 20, z: 10 + i * 5 },
-      hull: 90,
+      hull: pirateHull,
       hullMax: 90,
       data: {
         ai: {
@@ -67,6 +76,7 @@ function boot({ withPatrol = true, lawful = true, patrolPos = { x: 220, z: 0 }, 
           spawnContext: 'encounter',
           forcePlayerTarget: true,
           hostileTeams: [0],
+          motive,
         },
         intent: { moveX: 0, moveZ: 0, fire: true },
         combat: { targetId: player.id },
@@ -164,6 +174,32 @@ function testOneVoicePerSquad() {
   assert.equal(t.log.triggered.length, 1, 'continued patrol proximity does not retrigger');
   assert.equal(t.log.voices.length, 1, 'continued patrol proximity does not repeat flee bark');
   ok('disengage trigger is sticky and voice-capped per squad');
+}
+
+function testProfitCrewSurrendersWhenRiskTurnsBad() {
+  const t = boot({ withPatrol: false, motive: 'cargo_extortion', pirateHull: 22 });
+  stepFor(t.sim, 1.5);
+  assert.equal(t.log.triggered.length, 1);
+  assert.equal(t.log.voices.length, 1);
+  assert.equal(t.log.triggered[0].reason, 'profit-risk-bad');
+  for (const e of livePirates(t)) {
+    assert.equal(e.data.ai.fsm, 'flee');
+    assert.equal(e.data.intent.fire, false);
+    assert.equal(e.data.combat.targetId, null);
+    assert.ok(Math.hypot(e.data.intent.moveX, e.data.intent.moveZ) > 0.9,
+      'surrendering pirate receives a concrete escape vector');
+    assert.equal(e.data.ai.motiveSatisfied, true, 'profit crew closes the robbery motive');
+    assert.equal(e.data.pirateDisengage.reason, 'profit-risk-bad');
+  }
+  ok('bad risk/reward makes a profit crew surrender and disengage');
+}
+
+function testVendettaCrewDoesNotBecomeRobberyCowardice() {
+  const t = boot({ withPatrol: false, motive: 'personal_vendetta', pirateHull: 22 });
+  stepFor(t.sim, 2.2);
+  assertStillFighting(t);
+  for (const e of livePirates(t)) assert.equal(e.data.ai.motive, 'personal_vendetta');
+  ok('authored vendetta remains distinct from profit-motive risk logic');
 }
 
 function testDeterminism() {

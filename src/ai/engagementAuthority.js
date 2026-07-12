@@ -27,6 +27,7 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   ranged_disengager: new Set(['fire_window']),
   tether_control_raider: new Set(),
 });
+const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
 
 /**
  * The final fail-closed gate shared by ordinary weapon intent and SG-03 damage actions.
@@ -51,6 +52,10 @@ export function authorizeAIEngagement({
 
   for (const key of ['motive', 'engagementTrigger', 'zoneId', 'approachTelegraph']) {
     if (!nonEmpty(ai[key])) return denied(key);
+  }
+  if (ai.motiveSatisfied === true || ai.pirateDisengaged === true) return denied('motive_satisfied');
+  if (ai.motive === 'cargo_extortion' && !ROBBERY_ESCALATION_TRIGGERS.has(ai.engagementTrigger)) {
+    return denied('robbery_not_escalated');
   }
   const doctrineId = normalizeCombatDoctrineId(ai.combatDoctrineId);
   if (!doctrineId) return denied('combat_doctrine');

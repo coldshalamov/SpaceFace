@@ -517,6 +517,9 @@ export const encounterDirector = {
       ai.zoneName = live.zoneName;
       ai.encounterId = live.id;
       ai.encounterKind = live.shapeId;
+      ai.motive = String(live.plan.motive || live.shape.motive || ai.motive || 'assigned_interdiction');
+      ai.engagementTrigger = String(live.plan.engagementTrigger || live.shape.engagementTrigger
+        || ai.engagementTrigger || 'authorized_hostile_spawn');
       spec.data.encounterFingerprint = live.causality && live.causality.fingerprint || null;
       spec.data.encounterCausality = live.causality ? { ...live.causality } : null;
       if (sh.role) ai.encounterRole = sh.role;
@@ -1019,6 +1022,8 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
     zoneRadius: zone.radius || 400,
     factionId,
     bark: enc.bark,
+    motive: enc.motive || null,
+    engagementTrigger: enc.engagementTrigger || null,
     variantKind,
     levelBand,
     delay: 0,

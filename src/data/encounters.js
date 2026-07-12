@@ -55,6 +55,8 @@ export const ENCOUNTERS = Object.freeze({
     proximity: true,
     // maxSecurity: never fire in Concord-safe cores (Helios freight spine is trade_lane but not Reach turf).
     gates: Object.freeze({ minCargoValue: 240, maxSecurity: 0.75 }),
+    motive: 'cargo_extortion',
+    engagementTrigger: 'demand_pending',
     factionId: 'faction_reach',
     context: 'encounter',                              // hostile-capable; held passive during the demand
     squad: Object.freeze({ archetypes: Object.freeze(['reaver_pirate', 'corsair_raider']), size: Object.freeze([2, 3]), doctrine: 'scavenger', formation: 'wedge' }),
@@ -124,6 +126,8 @@ export const ENCOUNTERS = Object.freeze({
     cooldownS: 600,
     proximity: false,
     gates: Object.freeze({ bountyOnly: true }),
+    motive: 'bounty_collection',
+    engagementTrigger: 'active_bounty_contract',
     factionId: 'faction_quiet',
     context: 'bounty_hunter',
     squad: Object.freeze({ archetypes: Object.freeze(['corsair_raider']), size: Object.freeze([1, 2]), doctrine: 'balanced', formation: 'loose' }),
@@ -161,6 +165,8 @@ export const ENCOUNTERS = Object.freeze({
     cooldownS: 900,
     proximity: false,
     gates: Object.freeze({ namedPool: true }),         // needs a living captain in NAMED_CAPTAINS
+    motive: 'personal_vendetta',
+    engagementTrigger: 'named_hunter_grudge',
     factionId: 'faction_reach',
     context: 'encounter',
     entranceS: 8,                                      // staged entrance: callsign + silhouette, never a teleport-ambush
@@ -310,18 +316,21 @@ export const ENCOUNTERS = Object.freeze({
 export const NAMED_CAPTAINS = Object.freeze([
   Object.freeze({
     id: 'cap_sable_iask', name: 'Sable Iask', gimmick: 'sniper',
+    combatDoctrineId: 'ranged_disengager',
     archetype: 'lancer_sniper', levelBonus: 2, bountyCr: 450,
     escort: Object.freeze({ archetypes: Object.freeze(['corsair_raider']), size: Object.freeze([1, 1]), doctrine: 'scavenger', formation: 'wedge' }),
     bark: 'hunter_iask',
   }),
   Object.freeze({
     id: 'cap_redcut_sorrel', name: 'Redcut Sorrel', gimmick: 'rammer',
+    combatDoctrineId: 'interceptor_flyby',
     archetype: 'bruiser_brawler', levelBonus: 2, bountyCr: 500,
     escort: Object.freeze({ archetypes: Object.freeze(['reaver_pirate']), size: Object.freeze([1, 1]), doctrine: 'scavenger', formation: 'loose' }),
     bark: 'hunter_sorrel',
   }),
   Object.freeze({
     id: 'cap_vane_ash', name: 'Vane the Ash', gimmick: 'screen',
+    combatDoctrineId: 'tether_control_raider',
     archetype: 'corsair_raider', levelBonus: 3, bountyCr: 550,
     escort: Object.freeze({ archetypes: Object.freeze(['wasp_swarmer']), size: Object.freeze([2, 2]), doctrine: 'scavenger', formation: 'ring' }),
     bark: 'hunter_vane',

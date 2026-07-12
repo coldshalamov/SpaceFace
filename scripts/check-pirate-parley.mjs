@@ -9,6 +9,7 @@ import { existsSync } from 'node:fs';
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { cargo } from '../src/systems/cargo.js';
+import { economy } from '../src/systems/economy.js';
 import { isHostileToPlayer } from '../src/systems/scanner.js';
 import { voiceArbiter } from '../src/ui/voiceArbiter.js';
 
@@ -37,6 +38,10 @@ guarded(testComplyDropsTitheAndBreaksOff);
 guarded(testRefuseFlipsScannerHostility);
 guarded(testTimeoutHardEscalates);
 guarded(testDoctrineGateIsNotAllPirates);
+guarded(testEmptyHoldIsNotProfitablePrey);
+guarded(testHeliosProtectionSuppressesRobbery);
+guarded(testCreditDemandUsesEconomyOwner);
+guarded(testExplicitVendettaIsNotRewrittenAsRobbery);
 guarded(testDeterminism);
 
 console.log(`[check-pirate-parley] PASS - ${sections} sections green`);
@@ -46,16 +51,21 @@ function boot({
   doctrine = 'toll',
   squadId = 'sq_toll_1',
   cargoItems = { cmdty_refined_metals: 12, cmdty_food: 5 },
+  credits = 5000,
+  sectorId = 'sector_tethys_junction',
+  security = 0.35,
+  motive = null,
 } = {}) {
-  const sim = createSimulation({ seed, systems: [cargo, pirateParley, voiceArbiter] });
+  const sim = createSimulation({ seed, systems: [economy, cargo, pirateParley, voiceArbiter] });
   const { state, bus } = sim;
   state.mode = 'flight';
-  state.world.currentSectorId = 'sector_tethys_junction';
-  state.world.sectors.sector_tethys_junction = {
-    id: 'sector_tethys_junction',
+  state.world.currentSectorId = sectorId;
+  state.world.sectors[sectorId] = {
+    id: sectorId,
     factionId: 'faction_reach',
-    security: 0.35,
+    security,
   };
+  state.player.credits = credits;
 
   const player = sim.spawn({
     type: 'ship',
@@ -85,7 +95,8 @@ function boot({
           squadId,
           archetype: 'pirate_raider',
           spawnContext: 'ambient',
-          sectorId: 'sector_tethys_junction',
+          sectorId,
+          motive,
         },
         intent: { moveX: 0, moveZ: 0, fire: true },
         combat: { targetId: player.id },
@@ -209,6 +220,64 @@ function testDoctrineGateIsNotAllPirates() {
     assert.equal(e.data.intent.fire, true, 'non-parley pirate fire intent is not silently cleared');
   }
   ok('B6 gates by doctrine instead of converting every pirate');
+}
+
+function testEmptyHoldIsNotProfitablePrey() {
+  const t = boot({ cargoItems: {}, credits: 5000, squadId: 'sq_empty_hold' });
+  stepFor(t.sim, 2.5);
+  assert.equal(t.log.events.length, 0, 'empty new-game hold never starts a robbery parley');
+  for (const e of allPirates(t)) {
+    assert.equal(e.data.ai.passive, true, 'unprofitable toll crew holds fire');
+    assert.equal(e.data.ai.motive, 'no_profitable_target');
+    assert.equal(isHostileToPlayer(e, 0, t.state), false);
+  }
+  ok('empty new-game hold is not treated as profitable prey');
+}
+
+function testHeliosProtectionSuppressesRobbery() {
+  const t = boot({
+    sectorId: 'sector_helios_prime',
+    security: 0.95,
+    cargoItems: { cmdty_refined_metals: 12 },
+    squadId: 'sq_illegal_helios_toll',
+  });
+  stepFor(t.sim, 2.5);
+  assert.equal(t.log.events.length, 0, 'lawful Helios protection never starts a robbery parley');
+  for (const e of allPirates(t)) {
+    assert.equal(e.data.ai.passive, true);
+    assert.equal(e.data.ai.motive, 'jurisdiction_avoidance');
+    assert.equal(e.data.ai.fsm, 'flee');
+    assert.equal(isHostileToPlayer(e, 0, t.state), false);
+  }
+  ok('Helios sanctuary suppresses even a mis-staged authored toll crew');
+}
+
+function testCreditDemandUsesEconomyOwner() {
+  const t = boot({ seed: 1, squadId: 'sq_credit', credits: 5000 });
+  runToDemand(t);
+  const demand = t.log.events.find((e) => e.evt === 'demand');
+  assert.equal(demand.p.demand.kind, 'credits');
+  assert.ok(demand.p.demand.amount > 0);
+  const before = t.state.player.credits;
+  t.bus.emit('pirateParley:choose', { squadId: t.squadId, choice: 'pay' });
+  const resolved = t.log.events.find((e) => e.evt === 'resolved');
+  assert.equal(resolved.p.outcome, 'complied');
+  assert.equal(resolved.p.payment.kind, 'credits');
+  assert.equal(t.state.player.credits, before - resolved.p.payment.amount,
+    'credit compliance routes through economy:chargeCredits');
+  ok('deterministic credit demand pays through the canonical economy owner');
+}
+
+function testExplicitVendettaIsNotRewrittenAsRobbery() {
+  const t = boot({ squadId: 'sq_vendetta', motive: 'personal_vendetta' });
+  stepFor(t.sim, 2.5);
+  assert.equal(t.log.events.length, 0);
+  for (const e of allPirates(t)) {
+    assert.equal(e.data.ai.motive, 'personal_vendetta');
+    assert.notEqual(e.data.ai.passive, true);
+    assert.equal(e.data.intent.fire, true);
+  }
+  ok('explicit vendetta actor is never rewritten as a profit-motive robber');
 }
 
 function testDeterminism() {

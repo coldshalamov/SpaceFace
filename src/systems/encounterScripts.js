@@ -103,7 +103,7 @@ const toll = {
       } else live.data.payHold = 0;
       // Physical RUN: put real distance on them before the deadline.
       if (dd2 >= TOLL_ESCAPE_R * TOLL_ESCAPE_R) return toll.choose(d, live, state, 'run');
-      if (now >= live.deadlineAt) return toll.choose(d, live, state, live.shape.timeoutChoice || 'refuse');
+      if (now >= live.deadlineAt) return toll.choose(d, live, state, 'timeout');
       return;
     }
     if (live.phase === 'conflict') {
@@ -131,25 +131,51 @@ const toll = {
       d.rep('faction_reach', 1, 'toll_paid');           // pirates respect a payer, slightly
       d.dangerImpulse(live, 'toll_paid', -0.01);        // paid lanes run a touch cooler
       d.say(live, 'bark', 'toll_paid_ack');
+      settleTollMotive(d, live, 'parley_resolved', true);
       d.despawnAll(live, 22);                            // they peel off with the take
       return d.resolve(live, 'paid', { vars: live.vars });
     }
     if (choiceId === 'run') {
       d.say(live, 'bark', 'toll_flee_ack');
-      d.setPassive(live, false);                         // pursuit is live
-      live.phase = 'conflict';
-      return;
+      settleTollMotive(d, live, 'target_departed', true);
+      d.despawnAll(live, 18);
+      return d.resolve(live, 'escaped', { vars: live.vars });
     }
     // refuse (also the deterministic timeout default, and the response to opening fire)
     d.say(live, 'bark', 'toll_refused_ack');
-    d.setPassive(live, false);
     live.phase = 'conflict';
+    const trigger = choiceId === 'timeout' ? 'ignored_demand'
+      : choiceId === 'attack' ? 'player_attack'
+        : 'explicit_refusal';
+    settleTollMotive(d, live, trigger, false);
+    d.setPassive(live, false);
   },
 
   event(d, live, state, name, p) {
-    if (name === 'playerHitSquad' && live.phase === 'offer') toll.choose(d, live, state, 'refuse');
+    if (name === 'playerHitSquad' && live.phase === 'offer') toll.choose(d, live, state, 'attack');
   },
 };
+
+function settleTollMotive(d, live, trigger, satisfied) {
+  for (const entity of d.entsOf(live)) {
+    const data = entity.data || (entity.data = {});
+    const ai = data.ai || (data.ai = {});
+    ai.motive = 'cargo_extortion';
+    ai.engagementTrigger = trigger;
+    ai.motiveSatisfied = satisfied === true;
+    if (satisfied) {
+      ai.passive = true;
+      ai.forcePlayerTarget = false;
+      ai.huntPlayer = false;
+      const intent = data.intent || (data.intent = {});
+      intent.fire = false;
+      intent.fireGroup = null;
+      const combat = data.combat || (data.combat = {});
+      combat.targetId = null;
+      combat.lockTarget = null;
+    }
+  }
+}
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // B. PATROL SCAN — lawful friction. Submit / Bribe / Dump / Run. Clean players are never attacked.
@@ -605,6 +631,7 @@ const namedHunter = {
     const band = live.plan.levelBand || [3, 6];
     const ships = [{
       archetype: cap.archetype,
+      combatDoctrineId: cap.combatDoctrineId,
       level: band[1] + (cap.levelBonus || 2),
       pos: base,
       factionId: live.factionId,

@@ -110,6 +110,8 @@ const SKER_DEEP = { x: -540, z: 680 };        // Skerris Deep center
   assert.equal(offer.timeoutChoice, 'refuse', 'toll timeout default is deterministic (refuse)');
   for (const e of squadEnts(state, live)) {
     assert.equal(e.data.ai.passive, true, 'toll squad holds fire during the demand');
+    assert.equal(e.data.ai.motive, 'cargo_extortion');
+    assert.equal(e.data.ai.engagementTrigger, 'demand_pending');
     assert.equal(isHostileToPlayer(e, 0, state), false, 'toll squad reads non-hostile during the demand');
     assert.equal(e.data.ai.encounterId, id, 'squad tagged with shared encounterId');
   }
@@ -135,6 +137,8 @@ const SKER_DEEP = { x: -540, z: 680 };        // Skerris Deep center
     assert.equal(!!e.data.ai.passive, false, 'refused toll squad goes weapons-free');
     assert.equal(isHostileToPlayer(e, 0, state), true, 'refused toll squad reads hostile');
     assert.equal(e.data.ai.encounterId, id, 'hostiles share the encounter id');
+    assert.equal(e.data.ai.motive, 'cargo_extortion');
+    assert.equal(e.data.ai.engagementTrigger, 'explicit_refusal');
   }
   assert.equal(state.player.credits, 1000, 'refusing charges nothing');
   killAs(sim, live.ids, state.playerId);
@@ -144,18 +148,19 @@ const SKER_DEEP = { x: -540, z: 680 };        // Skerris Deep center
   ok('pirate toll REFUSE: hostile squad, shared encounterId, cleared receipt');
 }
 {
-  // RUN — pursuit goes live; real distance ends it as escaped.
+  // RUN — leaving the interdiction is accepted; profit crews do not murder fleeing empty space.
   const { sim, state, player, log } = boot(13, 'sector_tethys_junction', TETHYS_LANE, { cargo: { cmdty_refined_metals: 12 }, credits: 500 });
   const { live, id } = forceFire(sim, 'pirate_toll', 'sector_tethys_junction');
   sim.bus.emit('encounter:choose', { encounterId: id, choiceId: 'run' });
   tickS(sim, 1);
-  for (const e of squadEnts(state, live)) assert.equal(!!e.data.ai.passive, false, 'runners get pursued');
-  player.pos.x += 6000;
-  tickS(sim, 3);
+  for (const e of squadEnts(state, live)) {
+    assert.equal(e.data.ai.passive, true, 'flight satisfies a profit crew without a murder pursuit');
+    assert.equal(e.data.ai.motiveSatisfied, true);
+  }
   assert(log.resolved.some((r) => r.encounterId === id && r.outcome === 'escaped'), 'outrunning the toll resolves as escaped');
   assert(log.receipts.some((r) => r.encounterId === id && /TOLL EVADED/.test(r.text)), 'escape receipt');
   assert.equal(state.player.credits, 500, 'running charges nothing');
-  ok('pirate toll RUN: pursuit then clean escape, receipt, no charge');
+  ok('pirate toll RUN: flight accepted, clean escape receipt, no charge or pursuit');
 }
 
 // ── D–H. patrol scan: clean / fine / run / dump / bribe ─────────────────────────────────────────

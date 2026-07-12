@@ -6,6 +6,7 @@
 import { barkFor } from '../data/barks.js';
 import { pirateDoctrineForEntity } from '../data/pirateDoctrines.js';
 import { hash32 } from '../core/rng.js';
+import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 
 const PATROL_RADIUS = 900;
 const NERVE_DELAY_S = 1.0;
@@ -30,18 +31,20 @@ export const pirateDisengage = {
     const own = ensureState(state);
     const now = state.simTime || 0;
     const patrols = lawfulPatrols(state);
-    if (!patrols.length) return;
-
     const squads = pirateSquads(state);
     for (const [squadId, members] of squads) {
       let rec = own.squads[squadId];
       if (rec && rec.disengaged) continue;
       const patrol = nearestPatrol(members, patrols);
-      if (!patrol) continue;
+      const riskThreat = badProfitRisk(members, state) ? entityFor(state, state.playerId) : null;
+      if (!patrol && !riskThreat) continue;
+      const reason = patrol ? 'lawful-patrol-nearby' : 'profit-risk-bad';
+      const threat = patrol || riskThreat;
       if (!rec) {
         rec = {
           squadId,
-          patrolId: patrol.id,
+          patrolId: patrol ? patrol.id : null,
+          reason,
           firstSeenAt: now,
           triggerAt: now + NERVE_DELAY_S,
           disengaged: false,
@@ -50,23 +53,24 @@ export const pirateDisengage = {
         own.squads[squadId] = rec;
       }
       rec.memberIds = members.map((e) => e.id);
-      rec.patrolId = patrol.id;
+      rec.patrolId = patrol ? patrol.id : null;
+      rec.reason = reason;
       if (now < rec.triggerAt) continue;
-      this._disengage(rec, members, patrol, now, state);
+      this._disengage(rec, members, threat, now, state);
     }
   },
 
-  _disengage(rec, members, patrol, now, state) {
+  _disengage(rec, members, threat, now, state) {
     rec.disengaged = true;
     rec.disengagedAt = now;
     rec.until = now + FLEE_DURATION_S;
-    for (const entity of members) markFleeing(entity, patrol, rec, state);
+    for (const entity of members) markFleeing(entity, threat, rec, state);
     this._speak(rec, members[0] || null);
     this._emit('pirateDisengage:triggered', {
       squadId: rec.squadId,
       patrolId: rec.patrolId,
       memberIds: rec.memberIds.slice(),
-      reason: 'lawful-patrol-nearby',
+      reason: rec.reason,
       t: now,
     });
   },
@@ -94,6 +98,7 @@ export const pirateDisengage = {
       squadId: rec.squadId,
       patrolId: rec.patrolId,
       situation: 'flee',
+      reason: rec.reason,
       text,
       factionId,
     });
@@ -178,16 +183,29 @@ function markFleeing(entity, patrol, rec, state) {
   const data = entity.data || (entity.data = {});
   const ai = data.ai || (data.ai = {});
   ai.fsm = 'flee';
+  ai.passive = true;
   ai.forcePlayerTarget = false;
   ai.huntPlayer = false;
   ai.pirateDisengaged = true;
   ai.disengageUntil = rec.until;
+  ai.engagementTrigger = 'risk_disengage';
+  ai.roe = RulesOfEngagement.HOLD_FIRE;
+  ai.activity = normalizeActivity({
+    kind: ActivityKind.FLEE,
+    reason: `pirate_disengage:${rec.reason}`,
+    anchor: entity.pos,
+    leashRadius: PATROL_RADIUS * 2,
+    startedTick: state.tick | 0,
+    targetId: null,
+  });
+  if (rec.reason === 'profit-risk-bad') ai.motiveSatisfied = true;
   if (Array.isArray(ai.hostileTeams)) ai.hostileTeams = ai.hostileTeams.filter((team) => team !== PLAYER_TEAM);
   const combat = data.combat || (data.combat = {});
   if (combat.targetId === state.playerId) combat.targetId = null;
   if (combat.lockTarget === state.playerId) combat.lockTarget = null;
   const intent = data.intent || (data.intent = {});
   intent.fire = false;
+  intent.fireGroup = null;
   const away = fleeVector(entity, patrol);
   intent.moveX = away.x;
   intent.moveZ = away.z;
@@ -195,9 +213,33 @@ function markFleeing(entity, patrol, rec, state) {
     squadId: rec.squadId,
     patrolId: rec.patrolId,
     phase: 'flee',
-    reason: 'lawful-patrol-nearby',
+    reason: rec.reason,
     until: rec.until,
   };
+}
+
+function badProfitRisk(members, state) {
+  if (!members.length || !members.every(isProfitMotivated)) return false;
+  const player = entityFor(state, state.playerId);
+  if (!player || player.alive === false || hullFraction(player) < 0.35) return false;
+  const average = members.reduce((sum, entity) => sum + hullFraction(entity), 0) / members.length;
+  return average <= 0.38;
+}
+
+function isProfitMotivated(entity) {
+  const ai = entity && entity.data && entity.data.ai || {};
+  return ai.motive === 'cargo_extortion' || ai.motive === 'toll_collection';
+}
+
+function hullFraction(entity) {
+  const max = Math.max(1, Number(entity && entity.hullMax) || 1);
+  return Math.max(0, Math.min(1, (Number(entity && entity.hull) || 0) / max));
+}
+
+function entityFor(state, id) {
+  return id == null || !state.entities || typeof state.entities.get !== 'function'
+    ? null
+    : state.entities.get(id) || null;
 }
 
 function fleeVector(entity, patrol) {

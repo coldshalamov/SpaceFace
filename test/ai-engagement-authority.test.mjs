@@ -120,6 +120,19 @@ test('fresh hostility is mandatory even if a stale decision names the player', (
   assert.deepEqual(authorize(stateWith(), { hostile: false }), { ok: false, reason: 'target_not_hostile' });
 });
 
+test('profit-motive fire requires a resolved escalation while vendettas remain distinct', () => {
+  const pending = stateWith(authorizedAI({ engagementTrigger: 'demand_pending' }), {
+    playerPos: { x: 1600, z: 0 },
+  });
+  assert.deepEqual(authorize(pending), { ok: false, reason: 'robbery_not_escalated' });
+
+  const vendetta = stateWith(authorizedAI({
+    motive: 'personal_vendetta',
+    engagementTrigger: 'named_hunter_grudge',
+  }), { playerPos: { x: 1600, z: 0 } });
+  assert.deepEqual(authorize(vendetta), { ok: true, reason: 'authorized' });
+});
+
 test('Helios station protection blocks criminal fire but permits lawful wanted enforcement', () => {
   const criminal = stateWith(authorizedAI(), { playerPos: { x: 900, z: 0 } });
   assert.equal(protectedStationAt(criminal, criminal.entities.get(1))?.stationId, 'station_helios');
