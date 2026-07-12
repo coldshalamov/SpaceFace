@@ -323,7 +323,7 @@ export function createComms(ctx) {
 
   // ── 4. Contextual ending confirmations. Contract endings A/B remain board rows. ──────────
   let choiceModalOpen = false;
-  function presentPhysicalChoice(choice, promptText, hint, declineEffect = null) {
+  function presentPhysicalChoice(choice, promptText, hint, declineEffect = null, intentEvent = 'ui:endgameChoose') {
     if (choiceModalOpen) return;
     const wrap = document.createElement('div');
     choiceModalOpen = true;
@@ -343,7 +343,11 @@ export function createComms(ctx) {
       wrap.classList.remove('open');
       setTimeout(() => wrap.remove(), 220);
     };
-    wrap.querySelector('.sf-endgame__c-yes').addEventListener('click', () => { bus.emit('ui:endgameChoose', { choice }); cleanup(); });
+    // YES is the irreversible confirmation (confirm:true one-shot).
+    wrap.querySelector('.sf-endgame__c-yes').addEventListener('click', () => {
+      bus.emit(intentEvent, { choice, confirm: true });
+      cleanup();
+    });
     wrap.querySelector('.sf-endgame__c-no').addEventListener('click', () => {
       bus.emit('ui:endgameDecline', { choice });
       if (typeof declineEffect === 'function') declineEffect();
@@ -362,6 +366,31 @@ export function createComms(ctx) {
   bus.on('endgame:promptChoiceE', ({ promptText }) => presentPhysicalChoice(
     'E', promptText || 'ACCEPT THE NEXT RUN?', '47-A closes. Another manifest opens.',
   ));
+  bus.on('endgame:promptSandbox', ({ promptText, confirmHint }) => presentPhysicalChoice(
+    'SANDBOX',
+    promptText || 'CONTINUE WITHOUT FINAL DISPOSITION?',
+    confirmHint || 'Not an ending. The world remains open and no disposition rewards apply.',
+    null,
+    'ui:endgameSandbox',
+  ));
+  // Irreversible confirmation for staged A/B (board) and any pending disposition.
+  bus.on('endgame:confirmRequired', ({ choice, confirmPrompt, confirmHint, isSandbox }) => {
+    if (!choice) return;
+    presentPhysicalChoice(
+      choice,
+      confirmPrompt || (isSandbox ? 'CONTINUE WITHOUT FINAL DISPOSITION?' : 'CONFIRM FINAL DISPOSITION?'),
+      confirmHint || 'Irreversible.',
+    );
+  });
+  bus.on('endgame:ineligible', ({ unmet }) => {
+    // Eligibility already voiced by story; stash for station/codex surfaces.
+    if (!state.ui) state.ui = {};
+    state.ui.endgameUnmet = Array.isArray(unmet) ? unmet.slice() : [];
+  });
+  bus.on('endgame:eligibility', ({ rows }) => {
+    if (!state.ui) state.ui = {};
+    state.ui.endgameEligibility = Array.isArray(rows) ? rows.slice() : [];
+  });
   bus.on('scenario:safeOpeningDemand', () => {
     if (choiceModalOpen) return;
     const wrap = document.createElement('div');

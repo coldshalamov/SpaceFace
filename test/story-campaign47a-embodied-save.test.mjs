@@ -208,15 +208,25 @@ test('B7 pending ending survives Continue without applying a choice', () => {
   assert.equal(next.state.story.endgameChoice, null);
 });
 
-test('Ending A owner intents apply once after Continue', () => {
+test('Ending A confirmation and owner intents apply once after Continue', () => {
   const h = harness();
   toB7(h);
   h.state.story.flags.endgame = true;
   h.state.story.endgameOffered = true;
   h.state.player.heat = 0.4;
   const next = roundTrip(h);
+  // This subsystem round-trip intentionally serializes only story + missions;
+  // restore the live owner facts that the full save system carries separately.
+  next.state.player.credits = 100_000;
+  next.state.player.ownedShips = [{ defId: 'ship_bastion' }];
+  next.state.player.heat = 0.4;
+  next.state.factions.faction_mts.rep = 60;
+  next.state.factions.faction_scn.rep = 60;
   next.bus.emit('ui:endgameChoose', { choice: 'A' });
-  next.bus.emit('ui:endgameChoose', { choice: 'A' });
+  assert.equal(next.state.story.endgameChoice, null);
+  assert.equal(next.state.story.endgamePending.choice, 'A');
+  next.bus.emit('ui:endgameConfirm', { choice: 'A' });
+  next.bus.emit('ui:endgameConfirm', { choice: 'A' });
   assert.equal(next.state.story.endgameChoice, 'A');
   assert.equal(next.heatClears.length, 1);
   assert.equal(next.reps.filter((row) => row.reason === 'endgame_clean_uniform').length, 2);

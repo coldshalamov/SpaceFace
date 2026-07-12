@@ -765,7 +765,7 @@ export function describeEnding(endingId, simTime = 0, declined = []) {
 export function noteSandboxMode(state, mode, simTime = 0) {
   const own = ensureCampaign47aState(state);
   if (!own) return { ok: false, reason: 'no_state' };
-  const valid = ENDINGS.some((e) => e.sandbox.mode === mode);
+  const valid = ENDINGS.some((e) => e.sandbox.mode === mode) || mode === 'open_frontier';
   if (!valid) return { ok: false, reason: `bad_sandboxMode:${mode}`, own };
   const t = Number(simTime) || 0;
   own.sandboxMode = mode;

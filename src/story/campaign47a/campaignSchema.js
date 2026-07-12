@@ -18,7 +18,11 @@ export { CAMPAIGN_STATE_KEY };
 const VALID_BEAT_STATUS = new Set(Object.values(BEAT_STATUS));
 const VALID_ENDING = new Set(ENDINGS.map((e) => e.id));
 const VALID_OUTPOST = new Set(OUTPOST_SPECIALIZATIONS.map((o) => o.id));
-const VALID_SANDBOX_MODE = new Set(ENDINGS.map((e) => e.sandbox.mode));
+// open_frontier = explicit non-ending sandbox continuation (M5 endings module).
+const VALID_SANDBOX_MODE = new Set([
+  ...ENDINGS.map((e) => e.sandbox.mode),
+  'open_frontier',
+]);
 
 /**
  * Sidecar metadata only.

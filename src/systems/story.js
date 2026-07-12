@@ -33,13 +33,12 @@
 // SERIALIZATION: serialize()/deserialize() round-trip state.story (missions.js already serializes
 // the base fields; we add the narrative fields defensively in deserialize).
 import {
-  COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, KURTZ, REFS, COND,
+  COMMS, GRAFFITI, BEAT_CONTENT, KURTZ, COND,
   COLD_START,
 } from '../data/narrative.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 // Campaign 47-A sidecar: ending sandbox/receipt meta only — endgameChoice stays canonical on state.story.
 import {
-  describeEnding,
   ensureCampaign47aState,
   noteSandboxMode,
   pushCampaignHistory,
@@ -47,6 +46,17 @@ import {
   pushChoiceLog,
   primaryCommsForBeat,
 } from '../story/campaign47a/index.js';
+// M5 pure endings eligibility + resolution plans (five endings + sandbox continuation).
+import {
+  SANDBOX_ID,
+  SANDBOX_MODE_OPEN_FRONTIER,
+  evaluateEndingEligibility,
+  isSandboxId,
+  listBoardEligibleEndingIds,
+  listEndingEligibility,
+  planEndingResolution,
+  planPendingConfirmation,
+} from '../story/endings/index.js';
 
 const ASHFALL = 'sector_ashfall_reach';
 
@@ -90,8 +100,11 @@ export const story = {
     bus.on('sector:enter', (p) => this._onSectorEnter(p || {}));
     bus.on('jump:chargeStart', (p) => this._onJumpChargeStart(p || {}));
     // UI intent: player accepted an endgame choice from the overlay.
+    // Without confirm: stages pending + endgame:confirmRequired. With confirm:true or ui:endgameConfirm: resolves once.
     bus.on('ui:endgameChoose', (p) => this._onEndgameChoose(p || {}));
+    bus.on('ui:endgameConfirm', (p) => this._onEndgameConfirm(p || {}));
     bus.on('ui:endgameDecline', (p) => this._onEndgameDecline(p || {}));
+    bus.on('ui:endgameSandbox', (p) => this._onEndgameChoose({ ...(p || {}), choice: SANDBOX_ID, confirm: !!(p && p.confirm) }));
     // Ending C: loop-return receipt/sandbox only — never resets beatIndex or closes flight.
     bus.on('endgame:loopBack', (p) => this._onEndgameLoopBack(p || {}));
     // UI intent: player opened/took/dropped the ledger with the Kurtz figure.
@@ -374,8 +387,10 @@ export const story = {
       if (g.where === 'bulkhead') continue; // bulkhead shows in flight, not at the airlock
       this.bus.emit('graffiti:show', { line: g.line, where: g.where, beat: s.beatIndex, author: g.author || null, dockedStationId: stationId });
     }
-    if (stationId === 'station_ashcache' && s.endgameOffered && !s.endgameChoice
-        && Array.isArray(s.endgameDeclined) && s.endgameDeclined.length >= 3) {
+    if (stationId === 'station_ashcache' && s.endgameOffered && !s.endgameChoice && !s.endgameResolved
+        && !(s.flags && s.flags.sandboxContinued)
+        && Array.isArray(s.endgameDeclined)
+        && ['A', 'B', 'C', 'D'].every((id) => s.endgameDeclined.includes(id))) {
       this.bus.emit('endgame:promptChoiceE', { promptText: 'ACCEPT THE NEXT RUN?' });
     }
   },
@@ -403,7 +418,7 @@ export const story = {
   _maybeOfferEndgame() {
     const state = this.state;
     const s = state.story;
-    if (!s || s.endgameChoice) return;            // already chose
+    if (!s || s.endgameChoice || s.endgameResolved || (s.flags && s.flags.sandboxContinued)) return;
     if (s.endgameOffered) return;                 // already presented
     // The B7 gate (from missions.js _checkStoryGates): net worth >= 100k AND chosen-faction rep >= 50.
     if (!(s.flags && s.flags.endgame)) return;    // missions sets flags.endgame when beatIndex reaches 7
@@ -415,7 +430,25 @@ export const story = {
       id: 'endgame_offer', sender: 'CONCORD ADMIN', text: 'CONTRACT 47-A: FINAL DISPOSITION AVAILABLE. REVIEW AT YOUR DISCRETION.',
       category: 'story', ttl: 0, persist: true,
     });
-    // A/B are physical contracts on the Ashfall mission board. C/D/E are world actions.
+    // Emit eligibility snapshot for UI (player-visible unmet conditions). Not a five-button modal.
+    const rows = listEndingEligibility(state);
+    this.bus.emit('endgame:eligibility', {
+      rows: rows.map((r) => ({
+        id: r.id,
+        eligible: r.eligible,
+        unmet: (r.unmet || []).map((u) => ({ code: u.code, text: u.text })),
+        title: r.def && r.def.title,
+      })),
+    });
+    const sandbox = rows.find((row) => row.id === SANDBOX_ID);
+    const hasEligibleEnding = rows.some((row) => row.id !== SANDBOX_ID && row.eligible);
+    if (sandbox && sandbox.eligible && !hasEligibleEnding) {
+      this.bus.emit('endgame:promptSandbox', {
+        promptText: sandbox.def && sandbox.def.confirmPrompt,
+        confirmHint: sandbox.def && sandbox.def.confirmHint,
+      });
+    }
+    // A/B are physical contracts on the Ashfall mission board (only when eligible). C/D/E/sandbox are world actions.
     const missions = this.registry && this.registry.get && this.registry.get('missions');
     if (missions && typeof missions.postEndgameDispositionOffers === 'function') {
       missions.postEndgameDispositionOffers();
@@ -423,18 +456,18 @@ export const story = {
   },
 
   _endgameGateMet() {
+    // Shared B7 gate via pure endings module (net worth + branch rep; empire stake softens offer window).
+    // Offer still opens on classic credits+rep so early B7 board can appear; full eligibility is per-ending.
     const state = this.state;
     const credits = (state.player && state.player.credits) | 0;
     if (credits < 100000) return false;
-    // rep >= 50 with the chosen branch faction (or any faction if no branch — defensive).
-    const branch = state.story.branch;
+    const branch = state.story && state.story.branch;
     const BRANCH_FACTION = { traders: 'faction_mts', patrol: 'faction_scn', free: 'faction_free' };
     const facId = branch ? BRANCH_FACTION[branch] : null;
     if (facId) {
       const rec = state.factions && state.factions[facId];
       if (!rec || (rec.rep || 0) < 50) return false;
     } else {
-      // no branch on record: accept max-rep >= 50 (defensive for saves that skipped B4)
       let max = 0; const f = state.factions || {};
       for (const k in f) max = Math.max(max, (f[k] && f[k].rep) || 0);
       if (max < 50) return false;
@@ -443,14 +476,26 @@ export const story = {
   },
 
   _availableChoices() {
-    const state = this.state;
-    return ENDGAME_CHOICES.filter((c) => { try { return !c.requires || c.requires(state); } catch (e) { return false; } });
+    // Eligible endings only (plus sandbox if open). Not five always-on buttons.
+    return listEndingEligibility(this.state)
+      .filter((r) => r.eligible)
+      .map((r) => r.def)
+      .filter(Boolean);
+  },
+
+  /** Public read for UI: eligibility rows with unmet reasons. */
+  getEndingEligibility() {
+    return listEndingEligibility(this.state);
+  },
+
+  getBoardEligibleEndingIds() {
+    return listBoardEligibleEndingIds(this.state);
   },
 
   _onJumpChargeStart({ targetSectorId, via }) {
     const state = this.state;
     const s = state.story;
-    if (!s || s.endgameChoice) return;
+    if (!s || s.endgameChoice || s.endgameResolved || (s.flags && s.flags.sandboxContinued)) return;
     // Choice C (per ENDGAME-B7-REDESIGN): "initiate a jump drive charge toward the wormhole
     // without a destination registered." Ashfall Reach is the documented end-of-the-line sector
     // (the wormhole threshold). The sector graph has no outbound wormhole edge FROM Ashfall (the
@@ -473,94 +518,192 @@ export const story = {
     this.bus.emit('endgame:promptChoiceC', { promptText: 'JUMP WITHOUT DESTINATION?', targetSectorId });
   },
 
-  _onEndgameChoose({ choice }) {
+  _onEndgameChoose({ choice, confirm }) {
     const state = this.state;
     const s = state.story;
-    if (!s || s.endgameChoice) return;
-    const def = ENDGAME_CHOICES.find((c) => c.id === choice || c.key === choice);
-    if (!def) return;
-    if (typeof def.requires === 'function' && !def.requires(state)) return;
-    s.endgameChoice = def.id;
-    const missions = this.registry && this.registry.get && this.registry.get('missions');
-    if (missions && typeof missions.clearEndgameDispositionOffers === 'function') missions.clearEndgameDispositionOffers();
-    // HUD-on-accept line + bulkhead graffiti.
-    if (def.hudOnAccept) {
-      this._fireComms({ id: `endgame_accept_${def.id}`, sender: 'CONCORD ADMIN', text: def.hudOnAccept, category: 'story', ttl: 0, persist: true });
+    if (!s || s.endgameResolved || s.endgameChoice || (s.flags && s.flags.sandboxContinued)) return;
+    if (!choice) return;
+    this._ensureState();
+    const elig = evaluateEndingEligibility(state, choice);
+    if (!elig.eligible) {
+      this.bus.emit('endgame:ineligible', {
+        choice: elig.id || choice,
+        unmet: (elig.unmet || []).map((u) => ({ code: u.code, text: u.text })),
+      });
+      // One-voice: surface first unmet reason only.
+      const first = elig.unmet && elig.unmet[0];
+      if (first && first.text) this._sayStoryLine(first.text, 5);
+      return;
     }
-    if (def.graffitiBulkhead) this._showGraffiti(def.graffitiBulkhead, 'bulkhead', 7);
-    if (def.graffitiHome) this._showGraffiti(def.graffitiHome, 'airlock', 7);
-    // Apply the mechanical consequences (rep/credits/identity) via the canonical single-writers.
-    this._applyEndgameConsequences(def);
-    this.bus.emit('endgame:chosen', { choice: def.id, key: def.key, title: def.title });
-    this._sayStoryLine(`Ending: ${def.title}`, 8);
+    // Irreversible confirmation gate (except when caller already confirmed).
+    if (!confirm) {
+      const pend = planPendingConfirmation(state, choice);
+      if (!pend.ok) return;
+      s.endgamePending = {
+        choice: pend.pending.choice,
+        at: pend.pending.at,
+        title: pend.pending.title,
+        confirmPrompt: pend.pending.confirmPrompt,
+        confirmHint: pend.pending.confirmHint,
+      };
+      this.bus.emit('endgame:confirmRequired', {
+        choice: pend.pending.choice,
+        title: pend.pending.title,
+        confirmPrompt: pend.pending.confirmPrompt,
+        confirmHint: pend.pending.confirmHint,
+        resolution: pend.def && pend.def.resolution,
+        isSandbox: isSandboxId(pend.pending.choice),
+      });
+      return;
+    }
+    this._resolveEndgameDisposition(choice);
+  },
+
+  _onEndgameConfirm({ choice }) {
+    const s = this.state && this.state.story;
+    if (!s || s.endgameResolved || s.endgameChoice) return;
+    const pending = s.endgamePending && s.endgamePending.choice;
+    const id = choice || pending;
+    if (!id) return;
+    if (pending && choice && pending !== choice) return; // must match staged choice
+    this._resolveEndgameDisposition(id);
   },
 
   _onEndgameDecline({ choice }) {
     const s = this.state && this.state.story;
-    if (!s || s.endgameChoice || !choice) return;
+    if (!s || s.endgameChoice || s.endgameResolved || !choice) return;
+    // Cancel pending confirmation for this choice without filing a disposition.
+    if (s.endgamePending && s.endgamePending.choice === choice) {
+      s.endgamePending = null;
+    }
+    if (isSandboxId(choice)) return;
+    if (!Array.isArray(s.endgameDeclined)) s.endgameDeclined = [];
     if (!s.endgameDeclined.includes(choice)) s.endgameDeclined.push(choice);
   },
 
-  _applyEndgameConsequences(def) {
-    const bus = this.bus;
+  /**
+   * One-shot resolution: apply pure plan via owner events only. Idempotent.
+   */
+  _resolveEndgameDisposition(choice) {
     const state = this.state;
-    if (def.id === 'A') {
-      // Concord rep → +700; clear heat via heat sole writer; MTS +100.
-      bus.emit('faction:repDelta', { factionId: 'faction_scn', delta: 700, reason: 'endgame_clean_uniform' });
-      bus.emit('heat:clear', { reason: 'endgame_clean_uniform' });
-      bus.emit('faction:repDelta', { factionId: 'faction_mts', delta: 100, reason: 'endgame_clean_uniform' });
-    } else if (def.id === 'B') {
-      // Identity disappears from public records. Modelled as a flag; HUD phase stays 3 and the UI
-      // stops showing the player's own rep delta (handled in the HUD phase listener).
-      state.story.flags.identityErased = true;
-    } else if (def.id === 'C') {
-      // Loop-return: emit endgame:loopBack for sidecar/sandbox receipt. Does NOT reset beatIndex
-      // or close flight — post-ending play continues in sandbox (listener records only).
-      bus.emit('endgame:loopBack', {});
-    } else if (def.id === 'D') {
-      // Stay at Ashfall. The ledger stays in cargo (already there). Flag the stay.
-      state.story.flags.stayedAtAshfall = true;
-    } else if (def.id === 'E') {
-      // Next Run: accept the 47-A payout (+1,200cr), close 47-A, open 47-B.
-      bus.emit('economy:grantCredits', { amount: 1200, reason: 'contract_47a_settlement' });
-      state.story.flags.contract47bPending = true;
+    const s = state.story;
+    if (!s || s.endgameResolved || s.endgameChoice || (s.flags && s.flags.sandboxContinued)) return;
+    const planned = planEndingResolution(state, choice);
+    if (!planned.ok || !planned.plan) {
+      if (planned.reason === 'ineligible') {
+        this.bus.emit('endgame:ineligible', {
+          choice,
+          unmet: (planned.unmet || []).map((u) => ({ code: u.code, text: u.text })),
+        });
+      }
+      return;
     }
-    // Attach campaign sandbox mode + ending descriptor receipt; endgameChoice remains canonical.
-    this._attachEndingCampaignReceipt(def);
+    const plan = planned.plan;
+    // Mark resolved BEFORE emitting intents so re-entrant handlers cannot double-apply.
+    s.endgameResolved = true;
+    s.endgamePending = null;
+    s.flags = s.flags || {};
+    if (plan.isSandbox) {
+      s.endgameChoice = null;
+      s.flags.sandboxContinued = true;
+    } else {
+      s.endgameChoice = plan.id;
+    }
+    if (plan.storyWrites.identityErased) s.flags.identityErased = true;
+    if (plan.storyWrites.stayedAtAshfall) s.flags.stayedAtAshfall = true;
+    if (plan.storyWrites.contract47bPending) s.flags.contract47bPending = true;
+    for (const f of (plan.flagsToSet || [])) s.flags[f] = true;
+
+    const missions = this.registry && this.registry.get && this.registry.get('missions');
+    if (missions && typeof missions.clearEndgameDispositionOffers === 'function') {
+      missions.clearEndgameDispositionOffers();
+    }
+
+    // HUD-on-accept + graffiti (one voice: resolution line only).
+    if (plan.hudOnAccept) {
+      this._fireComms({
+        id: `endgame_accept_${plan.id}`,
+        sender: 'CONCORD ADMIN',
+        text: plan.hudOnAccept,
+        category: 'story',
+        ttl: 0,
+        persist: true,
+      });
+    }
+    if (plan.graffitiBulkhead) this._showGraffiti(plan.graffitiBulkhead, 'bulkhead', 7);
+    if (plan.graffitiHome) this._showGraffiti(plan.graffitiHome, 'airlock', 7);
+
+    // Canonical owner events only. Ending A plans include heat:clear (heat sole writer).
+    // Also: faction:repDelta, economy:grantCredits, endgame:loopBack.
+    for (const intent of (plan.intents || [])) {
+      if (!intent || !intent.event) continue;
+      this.bus.emit(intent.event, intent.payload || {});
+    }
+
+    this._attachEndingPlanReceipt(plan);
+    if (plan.isSandbox) {
+      this.bus.emit('endgame:sandboxContinued', {
+        sandboxMode: plan.sandboxMode || SANDBOX_MODE_OPEN_FRONTIER,
+        resolution: plan.resolution,
+      });
+      this._sayStoryLine(plan.resolution || 'Operations continue.', 6);
+    } else {
+      this.bus.emit('endgame:chosen', {
+        choice: plan.id,
+        key: plan.key,
+        title: plan.title,
+        resolution: plan.resolution,
+        sandboxMode: plan.sandboxMode,
+      });
+      this._sayStoryLine(plan.resolution || plan.title, 8);
+    }
   },
 
   /**
-   * Record ending descriptor + sandbox mode on campaign47a sidecar.
-   * Never writes endgameChoice (already set by _onEndgameChoose). No extra toasts.
+   * Record resolution receipt + sandbox mode on campaign47a sidecar.
+   * Never rewrites endgameChoice (already set). No extra toasts.
    */
-  _attachEndingCampaignReceipt(def) {
-    if (!def || !def.id) return;
+  _attachEndingPlanReceipt(plan) {
+    if (!plan) return;
     const state = this.state;
     const simTime = state.simTime || 0;
-    const declined = (state.story && Array.isArray(state.story.endgameDeclined))
-      ? state.story.endgameDeclined
-      : [];
     ensureCampaign47aState(state);
-    const described = describeEnding(def.id, simTime, declined);
-    if (described && described.ok) {
-      const own = state.story && state.story.campaign47a;
-      if (own && described.receipt) pushCampaignReceipt(own, described.receipt);
-      if (described.def && described.def.sandbox && described.def.sandbox.mode) {
-        noteSandboxMode(state, described.def.sandbox.mode, simTime);
-      }
-      if (own) {
-        pushChoiceLog(own, {
-          kind: 'ending_chosen',
-          endingId: def.id,
-          endgameChoice: state.story.endgameChoice,
-        }, simTime);
-        pushCampaignHistory(own, {
-          kind: 'ending_chosen',
-          endingId: def.id,
-          sandboxMode: described.def && described.def.sandbox ? described.def.sandbox.mode : null,
-        }, simTime);
+    const own = state.story && state.story.campaign47a;
+    if (!own) return;
+    if (plan.receipt) {
+      pushCampaignReceipt(own, {
+        id: plan.receipt.id,
+        kind: plan.receipt.kind,
+        endingId: plan.receipt.endingId,
+        sandboxId: plan.receipt.sandboxId,
+        sandboxMode: plan.receipt.sandboxMode,
+        simTime: plan.receipt.simTime,
+        intents: (plan.receipt.intents || []).map((i) => ({
+          event: i.event,
+          reason: i.payload && (i.payload.reason || i.payload.amount),
+        })),
+      });
+    }
+    const mode = plan.sandboxMode;
+    if (mode) {
+      const noted = noteSandboxMode(state, mode, simTime);
+      if (!noted || !noted.ok) {
+        // open_frontier may not be in legacy ENDINGS list — set vocabulary directly.
+        own.sandboxMode = mode;
+        pushCampaignHistory(own, { kind: 'sandbox_mode_noted', mode }, simTime);
       }
     }
+    pushChoiceLog(own, {
+      kind: plan.isSandbox ? 'sandbox_continued' : 'ending_chosen',
+      endingId: plan.isSandbox ? null : plan.id,
+      sandboxId: plan.isSandbox ? SANDBOX_ID : null,
+      endgameChoice: state.story.endgameChoice,
+    }, simTime);
+    pushCampaignHistory(own, {
+      kind: plan.isSandbox ? 'sandbox_continued' : 'ending_chosen',
+      endingId: plan.isSandbox ? null : plan.id,
+      sandboxMode: mode || null,
+    }, simTime);
   },
 
   /**
@@ -773,6 +916,8 @@ export const story = {
       s.endgameChoice = null;
       s.endgameOffered = false;
       s.endgameDeclined = [];
+      s.endgameResolved = false;
+      s.endgamePending = null;
       s.persistentCargo = [];
     } else {
       if (s.phase == null) s.phase = 1;
@@ -785,6 +930,8 @@ export const story = {
       if (s.endgameChoice == null) s.endgameChoice = null;
       if (!s.endgameOffered) s.endgameOffered = false;
       if (!Array.isArray(s.endgameDeclined)) s.endgameDeclined = [];
+      if (s.endgameResolved == null) s.endgameResolved = !!(s.endgameChoice || (s.flags && s.flags.sandboxContinued));
+      if (s.endgamePending === undefined) s.endgamePending = null;
       if (!Array.isArray(s.persistentCargo)) s.persistentCargo = [];
     }
   },
@@ -813,7 +960,13 @@ export const story = {
       if (carried.endgameChoice) s.endgameChoice = carried.endgameChoice;
       if (carried.endgameOffered) s.endgameOffered = true;
       if (Array.isArray(carried.endgameDeclined)) s.endgameDeclined = carried.endgameDeclined.slice();
+      if (carried.endgameResolved != null) s.endgameResolved = !!carried.endgameResolved;
+      else if (carried.endgameChoice || (carried.flags && carried.flags.sandboxContinued)) s.endgameResolved = true;
+      if (carried.endgamePending) s.endgamePending = carried.endgamePending;
       if (Array.isArray(carried.persistentCargo)) s.persistentCargo = carried.persistentCargo.slice();
+      if (carried.flags && typeof carried.flags === 'object') {
+        s.flags = Object.assign({}, s.flags || {}, carried.flags);
+      }
     }
   },
 };
