@@ -23,6 +23,7 @@ function run(label, args) {
 
 run('isolated campaign47a library', [join(ROOT, 'test/story-campaign47a.test.mjs')]);
 run('live missions/story adapter', [join(ROOT, 'test/story-campaign47a-live.test.mjs')]);
+run('embodied endings + sandbox', [join(ROOT, 'test/story-endings.test.mjs')]);
 run('story beats (B8/voice)', [join(ROOT, 'scripts/check-story-beats.mjs')]);
 
 console.log('\ncheck-m5-story-progression: pass (no acceptance claim)');

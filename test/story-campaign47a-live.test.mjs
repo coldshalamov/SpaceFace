@@ -474,22 +474,34 @@ check('B7 offers endgame; five endings with distinct consequences (fresh state e
   for (const endingId of endings) {
     const h = makeLiveHarness();
     advanceToB7(h, 'traders');
-    // Force endgame offered path
+    // Force endgame offered path + empire stake (capital/claim)
     h.state.story.flags.endgame = true;
     h.state.player.credits = 100000;
     h.state.factions.faction_mts.rep = 50;
+    h.state.player.ownedShips = [{ defId: 'ship_bastion', fittings: [] }];
+    h.state.claims = { bodies: [{ id: 'claim_test' }] };
     h.state.mode = 'flight';
-    // Prep per-ending requirements
+    // Prep per-ending causal requirements
     if (endingId === 'A') {
       h.state.player.heat = 0.5;
+      h.state.factions.faction_scn.rep = 50; // lawful alignment for Clean Uniform
+      h.state.careers = { origins: { hunter: { status: 'completed' } } };
+    }
+    if (endingId === 'B') {
+      h.state.factions.faction_free.rep = 50; // quiet alignment
+      h.state.careers = { origins: { hauler: { status: 'completed' } } };
     }
     if (endingId === 'D') {
       h.state.player.cargo.items.cmdty_personal_ledger = 1;
       h.state.story.flags.hasLedger = true;
+      h.state.world = h.state.world || {};
+      h.state.world.currentSectorId = 'sector_ashfall_reach';
     }
     if (endingId === 'E') {
       h.state.story.endgameDeclined = ['A', 'B', 'C', 'D'];
       assert.equal(COND.declinedAll(h.state, ['A', 'B', 'C', 'D']), true);
+      h.state.world = h.state.world || {};
+      h.state.world.currentSectorId = 'sector_ashfall_reach';
     }
     if (endingId === 'C') {
       h.state.world = h.state.world || {};
@@ -503,22 +515,26 @@ check('B7 offers endgame; five endings with distinct consequences (fresh state e
     assert.equal(h.endgameOffers.length, 0, 'B7 must not reopen the legacy five-card modal');
     const ashfall = h.state.missions.boards.station_ashcache;
     assert.ok(ashfall, 'Ashfall board should exist');
-    assert.deepEqual(
-      ashfall.slots.filter((offer) => offer.storyDisposition).map((offer) => offer.storyDisposition).sort(),
-      ['A', 'B'],
-      'contract endings should be physical Ashfall board rows',
-    );
+    // Board posts only currently eligible A/B contracts (causal, not always both).
+    const boardIds = ashfall.slots
+      .filter((offer) => offer.storyDisposition)
+      .map((offer) => offer.storyDisposition)
+      .sort();
+    for (const id of boardIds) assert.ok(id === 'A' || id === 'B', `board only A/B, got ${id}`);
 
     const heatBefore = h.state.player.heat;
-    h.bus.emit('ui:endgameChoose', { choice: endingId });
+    // confirm:true is the irreversible one-shot (board would stage then confirm via UI).
+    h.bus.emit('ui:endgameChoose', { choice: endingId, confirm: true });
     assert.equal(h.state.story.endgameChoice, endingId);
+    assert.equal(h.state.story.endgameResolved, true);
 
     const side = h.state.story.campaign47a;
     assert.ok(side, 'sidecar present after ending');
     assert.ok(side.sandboxMode, `sandbox mode for ${endingId}`);
     assert.ok(
-      (side.receipts || []).some((r) => r.kind === 'ending_descriptor' || (r.endingId === endingId)),
-      `ending descriptor receipt for ${endingId}`,
+      (side.receipts || []).some((r) =>
+        r.kind === 'ending_resolution' || r.kind === 'ending_descriptor' || (r.endingId === endingId)),
+      `ending receipt for ${endingId}`,
     );
 
     if (endingId === 'A') {
@@ -715,8 +731,12 @@ check('post-ending sandbox remains playable after Ending A', () => {
   h.state.story.flags.endgame = true;
   h.state.player.credits = 100000;
   h.state.factions.faction_mts.rep = 50;
+  h.state.factions.faction_scn.rep = 50;
+  h.state.player.ownedShips = [{ defId: 'ship_bastion', fittings: [] }];
+  h.state.claims = { bodies: [{ id: 'claim_test' }] };
+  h.state.careers = { origins: { hunter: { status: 'completed' } } };
   h.story._maybeOfferEndgame();
-  h.bus.emit('ui:endgameChoose', { choice: 'A' });
+  h.bus.emit('ui:endgameChoose', { choice: 'A', confirm: true });
   assert.equal(h.state.story.endgameChoice, 'A');
   assert.equal(h.state.mode, 'flight');
   // Still can process mission ticks and trade without closing

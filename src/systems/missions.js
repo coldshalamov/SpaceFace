@@ -360,13 +360,19 @@ export const missions = {
     return changed;
   },
 
-  /** Publish the two contract endings as physical Ashfall board rows. */
+  /** Publish eligible contract endings (A/B) as physical Ashfall board rows. */
   postEndgameDispositionOffers() {
     const stationId = 'station_ashcache';
     const board = this.ensureBoard(stationId);
     if (!board || !Array.isArray(board.slots)) return false;
     const seed = this.state.meta && this.state.meta.seed || 1;
-    const offers = buildEndgameBoardOffers({ seed, epoch: this._epoch() });
+    let offers = buildEndgameBoardOffers({ seed, epoch: this._epoch() });
+    // Causal eligibility: only post A/B rows the player currently qualifies for.
+    const storySys = this.registry && this.registry.get && this.registry.get('story');
+    if (storySys && typeof storySys.getBoardEligibleEndingIds === 'function') {
+      const ok = new Set(storySys.getBoardEligibleEndingIds() || []);
+      offers = offers.filter((offer) => offer && ok.has(offer.storyDisposition));
+    }
     const active = new Set(board.slots.map((offer) => offer && offer.storyDisposition).filter(Boolean));
     for (const offer of offers) if (!active.has(offer.storyDisposition)) board.slots.unshift(offer);
     this.bus.emit('mission:updated', { missionId: null, stationId });
@@ -732,7 +738,7 @@ export const missions = {
     if (!offer) return false;
     if (offer.storyDisposition) {
       const choice = offer.storyDisposition;
-      this.clearEndgameDispositionOffers();
+      // Stage irreversible confirmation (story resolves only on ui:endgameConfirm / confirm:true).
       this.bus.emit('ui:endgameChoose', { choice, source: 'ashfall_mission_board', offerId: offer.id });
       return true;
     }
