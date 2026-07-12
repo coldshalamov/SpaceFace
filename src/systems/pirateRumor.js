@@ -19,6 +19,7 @@ export const PIRATE_BASE_CANDIDATE_EVENTS = 6;
 const PIRATE_RUMOR_COOLDOWN_S = 300;
 const ROUTE_FEEDBACK_DURATION_S = 900;
 const ROUTE_FEEDBACK_NEWS_COOLDOWN_S = 300;
+const COUNTER_INTEL_RECEIPT_CAP = 64;
 const SCHEMA_VERSION = 1;
 
 const PIRATE_ENCOUNTER_KINDS = new Set([
@@ -30,6 +31,7 @@ const PIRATE_ENCOUNTER_KINDS = new Set([
 
 const CIVILIAN_TRAFFIC_ROLES = new Set(['hauler', 'courier', 'miner', 'rescue', 'trader']);
 const PIRATE_BASE_VECTOR_KINDS = new Set(['ambush_snare', 'pirate_toll', 'named_hunter']);
+const PIRATE_CAPABLE_ZONE_TYPES = new Set(['ambush_lane', 'outlaw_zone', 'derelict_field']);
 
 const HEADLINES = Object.freeze([
   'Station boards warn: {count} ships vanished near {zone}.',
@@ -59,6 +61,7 @@ export const pirateRumor = {
     this._listen('encounter:spawned', (p) => this._onEncounterSpawned(p));
     this._listen('encounter:resolved', (p) => this._onEncounterResolved(p));
     this._listen('entity:killed', (p) => this._onEntityKilled(p));
+    this._listen('pirateRumor:counterIntel', (p) => this._onCounterIntel(p));
   },
 
   newGame() {
@@ -141,6 +144,58 @@ export const pirateRumor = {
       dangerDelta: ROUTE_DANGER_CLEAR_DELTA,
       convoyDelta: ROUTE_CONVOY_CLEAR_DELTA,
       reason: 'leaderCleared',
+    });
+  },
+
+  _onCounterIntel(payload) {
+    if (!payload || !this.state) return;
+    const sectorId = payload.sectorId || currentSectorId(this.state);
+    const profileId = String(payload.profileId || '').trim();
+    const milestone = Math.max(0, payload.milestone | 0);
+    if (!sectorId || !profileId || milestone <= 0) return;
+
+    const own = ensureRumorState(this.state);
+    const receipt = `${profileId}:${milestone}`;
+    if (own.counterIntelReceipts.includes(receipt)) return;
+    const zone = counterIntelZoneFor(this.state, sectorId, profileId, milestone);
+    if (!zone) return;
+
+    const now = this.state.simTime || 0;
+    const rec = zoneRecordFor(this.state, sectorId, zone);
+    const dangerDelta = -Math.min(0.32, 0.14 + milestone * 0.03);
+    const convoyDelta = Math.min(0.35, 0.12 + milestone * 0.03);
+    rec.routeDanger = clamp((rec.routeDanger || 0) + dangerDelta, ROUTE_DANGER_MIN, ROUTE_DANGER_MAX);
+    rec.routeConvoy = clamp((rec.routeConvoy || 0) + convoyDelta, -ROUTE_DANGER_MAX, ROUTE_DANGER_MAX);
+    rec.routeFeedbackUntil = now + ROUTE_FEEDBACK_DURATION_S;
+    rec.lastRouteFeedbackReason = 'counter_intelligence';
+    rec.lastCounterIntel = {
+      profileId,
+      networkName: payload.networkName || null,
+      milestone,
+      appliedAt: now,
+    };
+
+    own.counterIntelProfileZones[profileId] = { sectorId, zoneId: zone.id };
+    own.counterIntelReceipts.push(receipt);
+    if (own.counterIntelReceipts.length > COUNTER_INTEL_RECEIPT_CAP) {
+      own.counterIntelReceipts.splice(0, own.counterIntelReceipts.length - COUNTER_INTEL_RECEIPT_CAP);
+    }
+    pruneCounterIntelProfileZones(own);
+    own.lastRouteFeedbackPlanKey = null;
+    this._applyPendingFeedback(this.state);
+
+    emit(this.bus, 'pirateRumor:counterIntelApplied', {
+      profileId,
+      networkName: payload.networkName || null,
+      factionId: payload.factionId || null,
+      authorityFactionId: payload.authorityFactionId || null,
+      sectorId,
+      zoneId: zone.id,
+      zoneName: zone.name || zone.id,
+      milestone,
+      dangerDelta: round(dangerDelta),
+      convoyDelta: round(convoyDelta),
+      feedback: routeDangerFeedbackFromRecord(rec, now),
     });
   },
 
@@ -343,12 +398,22 @@ export function pirateBaseCandidates(state, sectorId = null) {
 }
 
 function freshState() {
-  return { schemaVersion: SCHEMA_VERSION, zones: {}, lastRouteFeedbackPlanKey: null };
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    zones: {},
+    lastRouteFeedbackPlanKey: null,
+    counterIntelReceipts: [],
+    counterIntelProfileZones: {},
+  };
 }
 
 function ensureRumorState(state) {
   if (!state.pirateRumor || typeof state.pirateRumor !== 'object') state.pirateRumor = freshState();
   if (!state.pirateRumor.zones || typeof state.pirateRumor.zones !== 'object') state.pirateRumor.zones = {};
+  if (!Array.isArray(state.pirateRumor.counterIntelReceipts)) state.pirateRumor.counterIntelReceipts = [];
+  if (!state.pirateRumor.counterIntelProfileZones || typeof state.pirateRumor.counterIntelProfileZones !== 'object') {
+    state.pirateRumor.counterIntelProfileZones = {};
+  }
   state.pirateRumor.schemaVersion = SCHEMA_VERSION;
   return state.pirateRumor;
 }
@@ -488,6 +553,40 @@ function samePlanShape(a, b) {
 function zoneById(sectorId, zoneId) {
   if (!sectorId || !zoneId) return null;
   return zonesForSector(sectorId).find((zone) => zone.id === zoneId) || null;
+}
+
+function counterIntelZoneFor(state, sectorId, profileId, milestone) {
+  const candidates = zonesForSector(sectorId)
+    .filter((zone) => PIRATE_CAPABLE_ZONE_TYPES.has(zone.type))
+    .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  if (!candidates.length) return null;
+
+  const own = ensureRumorState(state);
+  const prior = own.counterIntelProfileZones[profileId];
+  if (prior && prior.sectorId === sectorId) {
+    const remembered = candidates.find((zone) => zone.id === prior.zoneId);
+    if (remembered) return remembered;
+  }
+
+  const hottest = candidates
+    .map((zone) => ({ zone, rec: own.zones[rumorKey(sectorId, zone.id)] }))
+    .filter(({ rec }) => Number(rec && rec.heat) > 0)
+    .sort((a, b) => (b.rec.heat - a.rec.heat) || String(a.zone.id).localeCompare(String(b.zone.id)))[0];
+  if (hottest) return hottest.zone;
+
+  const seed = state && state.meta && state.meta.seed || 0;
+  const idx = hash32(seed, profileId, milestone, 'counterIntelZone') % candidates.length;
+  return candidates[idx];
+}
+
+function pruneCounterIntelProfileZones(own) {
+  const retained = new Set((own.counterIntelReceipts || []).map((receipt) => {
+    const split = String(receipt).lastIndexOf(':');
+    return split > 0 ? String(receipt).slice(0, split) : String(receipt);
+  }));
+  for (const profileId of Object.keys(own.counterIntelProfileZones || {})) {
+    if (!retained.has(profileId)) delete own.counterIntelProfileZones[profileId];
+  }
 }
 
 function currentSectorId(state) {
