@@ -1,734 +1,184 @@
 #!/usr/bin/env node
-// Milestone 6 release soak harness.
+// Milestone 6 — headless release-soak harness (SPEC2/08 §6.1 / ALPHA M6).
+//
+// Drives real fixed-step systems through a representative long session:
+//   new game → flight → tether/mining/combat → economy → dock/undock →
+//   map/jump → save/reload → death/recovery → continued play
 //
 // Modes:
-//   --mode contract   Fast synthetic CI contract validation (default, no browser).
-//   --mode headless   Deterministic 30-minute sim replay + spawn budget checks.
-//   --mode browser    Headed browser soak over repeated game loops.
-//   --mode electron   Electron shell soak over repeated game loops.
-//   --mode local      Long local evidence mode (browser + electron).
+//   --quick   Deterministic CI path (default). Short sim, full phase coverage.
+//   --full    Accelerated 30–60 sim-minute soak (multi-seed when default seeds used).
 //
-// Writes evidence under .devshots/spec2/ and a submission manifest under
-// .campaign/M6-RELEASE-SOAK-OPENCODE/submission.json.
+// Optional:
+//   --seed N          Override seed (single-seed campaign).
+//   --json            Print full receipt JSON to stdout.
+//   --receipt <path>  Write primary receipt JSON (default under .devshots/spec2/).
+//
+// Never launches Browser/Electron/Chrome/Edge. Never claims browser GPU FPS.
+// Owns only processes it starts (headless path starts none).
 
-import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { createSimulation, SIM_DT } from '../src/core/sim.js';
-import { spawnBudget } from '../src/systems/spawnBudget.js';
-import { economy } from '../src/systems/economy.js';
-import { factions } from '../src/systems/factions.js';
-import { sectorSim } from '../src/systems/sectorSim.js';
-import { world } from '../src/systems/world.js';
-import { encounterDirector } from '../src/systems/encounterDirector.js';
-import { stationSideEventDirector } from '../src/systems/stationSideEventDirector.js';
-import { gateControlDirector } from '../src/systems/gateControlDirector.js';
-import { zonesForSector } from '../src/data/sectorZones.js';
 import {
-  RELEASE_SOAK_SCHEMA,
-  strictWorktreeFingerprint,
-  validateArtifactFiles,
-  validateReleaseSoakEvidence,
-} from './lib/releaseSoakContracts.mjs';
-import { runReleaseSoakProbe } from './lib/releaseSoakProbe.mjs';
+  formatReceiptSummary,
+  RELEASE_SOAK_RECEIPT_SCHEMA,
+} from './lib/releaseSoakReceipts.mjs';
+import {
+  runReleaseSoakCampaign,
+  createProcessRegistry,
+  modeConfig,
+} from './lib/releaseSoakSession.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const CAMPAIGN_DIR = path.join(ROOT, '.campaign', 'M6-RELEASE-SOAK-OPENCODE');
-const OUTPUT_ROOT = path.join(ROOT, '.devshots', 'spec2');
+const DEFAULT_RECEIPT_DIR = path.join(ROOT, '.devshots', 'spec2');
 
-const MODE = parseMode(process.argv);
-const CYCLES = parseCycles(process.argv);
-const SOAK_SECONDS = 30 * 60;
-const SECTOR_ID = 'sector_sker_haven';
-const SEEDS = [47, 109];
-
-await mkdir(CAMPAIGN_DIR, { recursive: true });
-await mkdir(OUTPUT_ROOT, { recursive: true });
-
-let startFingerprint = null;
-let fingerprintError = null;
-try {
-  startFingerprint = await strictWorktreeFingerprint(ROOT);
-} catch (error) {
-  fingerprintError = error;
-  console.error(`[check-release-soak] worktree fingerprint failed closed: ${error.message || error}`);
-}
-let pass = fingerprintError == null;
-let sections = [];
-let outputs = [];
-let primaryError = null;
-
-try {
-  if (fingerprintError) throw fingerprintError;
-  if (MODE === 'contract') {
-    const result = await runContractMode();
-    pass = result.pass;
-    sections = result.sections;
-    outputs = result.outputs;
-  } else if (MODE === 'headless') {
-    const result = runHeadlessSoak();
-    pass = result.pass;
-    sections = result.sections;
-    outputs = result.outputs;
-  } else if (MODE === 'browser') {
-    const result = await runReleaseSoakProbe({
-      root: ROOT,
-      runtime: 'browser',
-      mode: 'browser',
-      cycles: cycleCountFor(CYCLES, 'browser', 2),
-      outputRoot: OUTPUT_ROOT,
-      taskId: 'release-soak-browser',
-      log: (line) => console.log(`[release-soak-browser] ${line}`),
-    });
-    assert.equal(result.startFingerprint.digest, startFingerprint.digest, 'browser probe fingerprint must match submission fingerprint');
-    pass = result.pass;
-    outputs.push({ kind: 'browser', dir: result.outputDir, evidence: result.evidence });
-  } else if (MODE === 'electron') {
-    const result = await runReleaseSoakProbe({
-      root: ROOT,
-      runtime: 'electron',
-      mode: 'electron',
-      cycles: cycleCountFor(CYCLES, 'electron', 2),
-      outputRoot: OUTPUT_ROOT,
-      taskId: 'release-soak-electron',
-      log: (line) => console.log(`[release-soak-electron] ${line}`),
-    });
-    assert.equal(result.startFingerprint.digest, startFingerprint.digest, 'Electron probe fingerprint must match submission fingerprint');
-    pass = result.pass;
-    outputs.push({ kind: 'electron', dir: result.outputDir, evidence: result.evidence });
-  } else if (MODE === 'local') {
-    const browser = await runReleaseSoakProbe({
-      root: ROOT,
-      runtime: 'browser',
-      mode: 'local',
-      cycles: cycleCountFor(CYCLES, 'browser', 6),
-      outputRoot: OUTPUT_ROOT,
-      taskId: 'release-soak-browser-local',
-      log: (line) => console.log(`[release-soak-browser-local] ${line}`),
-    });
-    const electron = await runReleaseSoakProbe({
-      root: ROOT,
-      runtime: 'electron',
-      mode: 'local',
-      cycles: cycleCountFor(CYCLES, 'electron', 6),
-      outputRoot: OUTPUT_ROOT,
-      taskId: 'release-soak-electron-local',
-      log: (line) => console.log(`[release-soak-electron-local] ${line}`),
-    });
-    assert.equal(browser.startFingerprint.digest, startFingerprint.digest, 'local browser fingerprint must match submission fingerprint');
-    assert.equal(electron.startFingerprint.digest, startFingerprint.digest, 'local Electron fingerprint must match submission fingerprint');
-    pass = browser.pass && electron.pass;
-    outputs.push({ kind: 'browser', dir: browser.outputDir, evidence: browser.evidence });
-    outputs.push({ kind: 'electron', dir: electron.outputDir, evidence: electron.evidence });
-  } else {
-    throw new Error(`Unknown mode: ${MODE}`);
-  }
-} catch (error) {
-  primaryError = error;
-  pass = false;
+const args = process.argv.slice(2);
+if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
+  printHelp();
+  process.exit(0);
 }
 
-// Independently reload and revalidate runtime evidence. Submission acceptance
-// never trusts the probe's in-memory `validation.pass` claim.
-const revalidatedOutputs = [];
-if (outputs.length > 0) {
-  const finalFingerprint = await strictWorktreeFingerprint(ROOT).catch((error) => ({ error }));
-  for (const output of outputs) {
-    const evidencePath = path.join(output.dir, 'evidence.json');
-    const failures = [];
-    let evidence = null;
-    try {
-      evidence = JSON.parse(await readFile(evidencePath, 'utf8'));
-      failures.push(...validateReleaseSoakEvidence(evidence).failures);
-      failures.push(...(await validateArtifactFiles(ROOT, evidence.artifacts, { requireClaims: true })).failures);
-      if (evidence.runtimeKind !== output.kind) failures.push('output kind does not match evidence runtimeKind');
-      if (evidence.primaryAcceptance !== true) failures.push('runtime evidence did not claim primary acceptance');
-      if (finalFingerprint.error) failures.push(`final worktree fingerprint failed: ${finalFingerprint.error.message || finalFingerprint.error}`);
-      else if (finalFingerprint.digest !== evidence.worktreeDigest) failures.push('final worktree fingerprint does not match evidence');
-    } catch (error) {
-      failures.push(`evidence revalidation failed: ${error.message || error}`);
-    }
-    revalidatedOutputs.push({ output, evidencePath, evidence, pass: failures.length === 0, failures: [...new Set(failures)] });
-  }
-  if (revalidatedOutputs.some((result) => !result.pass)) {
-    pass = false;
-    primaryError ||= new Error(`runtime evidence failed independent revalidation: ${JSON.stringify(revalidatedOutputs.flatMap((result) => result.failures))}`);
-  }
-}
+const mode = parseMode(args);
+const seed = parseSeed(args);
+const wantJson = hasFlag(args, '--json');
+const receiptPath = parseReceiptPath(args, mode);
 
+const startedAt = Date.now();
+const processRegistry = createProcessRegistry();
+
+const campaign = runReleaseSoakCampaign({
+  mode,
+  root: ROOT,
+  processRegistry,
+  seeds: seed != null ? [seed] : undefined,
+});
+
+const durationMs = Date.now() - startedAt;
+const primary = campaign.primary;
 const submission = {
-  schema: 'spaceface.campaignSubmission.v1',
-  campaign: 'M6-RELEASE-SOAK-OPENCODE',
+  schema: 'spaceface.releaseSoakSubmission.v1',
+  campaign: 'M6-RELEASE-SOAK',
   generatedAt: new Date().toISOString(),
-  mode: MODE,
-  worktreeId: startFingerprint?.id || null,
-  worktreeDigest: startFingerprint?.digest || null,
-  acceptanceEligible: MODE === 'browser' || MODE === 'electron' || MODE === 'local',
-  primaryAcceptance: pass && revalidatedOutputs.length > 0 && revalidatedOutputs.every((result) => result.pass),
-  pass,
-  outputs: revalidatedOutputs.map((result) => ({
-    kind: result.output.kind,
-    evidencePath: path.relative(ROOT, result.evidencePath).replace(/\\/g, '/'),
-    pass: result.pass,
-    primaryAcceptance: result.pass && result.evidence?.primaryAcceptance === true,
-    failures: result.failures,
+  mode: campaign.mode,
+  seeds: campaign.seeds,
+  durationMs,
+  pass: campaign.pass,
+  failures: campaign.failures,
+  processOwnership: {
+    spawned: processRegistry.spawned.slice(),
+    ownedKills: processRegistry.ownedKills,
+    foreignKills: processRegistry.foreignKills,
+    note: 'headless soak starts no child processes and must not kill ambient PIDs',
+  },
+  runs: campaign.runs.map((run) => ({
+    seed: run.seed,
+    deterministic: run.deterministic,
+    firstPass: run.first.pass,
+    secondPass: run.second.pass,
+    hash: run.first.hash,
+    ticks: run.first.ticks,
+    saveReload: run.first.saveReload,
+    failures: [...new Set([...(run.first.failures || []), ...(run.second.failures || [])])],
   })),
-  sections,
-  primaryError: primaryError ? { message: primaryError.message, stack: primaryError.stack } : null,
+  primaryReceipt: primary,
 };
 
-await writeFile(
-  path.join(CAMPAIGN_DIR, 'submission.json'),
-  `${JSON.stringify(submission, null, 2)}\n`,
-  'utf8',
-);
+await mkdir(path.dirname(receiptPath), { recursive: true });
+await writeFile(receiptPath, `${JSON.stringify(primary, null, 2)}\n`, 'utf8');
 
-if (!pass || primaryError) {
-  console.error(`[check-release-soak] FAIL in ${MODE} mode: ${primaryError?.message || 'see submission.json'}`);
-  console.error(`[check-release-soak] submission: ${path.relative(ROOT, path.join(CAMPAIGN_DIR, 'submission.json'))}`);
+const submissionPath = path.join(DEFAULT_RECEIPT_DIR, `release-soak-submission-${mode}.json`);
+await mkdir(path.dirname(submissionPath), { recursive: true });
+await writeFile(submissionPath, `${JSON.stringify(submission, null, 2)}\n`, 'utf8');
+
+if (wantJson) {
+  process.stdout.write(`${JSON.stringify(submission, null, 2)}\n`);
+} else {
+  console.log(`[check-release-soak] mode=${mode} seeds=${campaign.seeds.join(',')}`);
+  console.log(`[check-release-soak] durationMs=${durationMs}`);
+  if (primary) console.log(`[check-release-soak] ${formatReceiptSummary(primary)}`);
+  for (const run of campaign.runs) {
+    console.log(
+      `[check-release-soak] seed=${run.seed} deterministic=${run.deterministic} `
+      + `pass=${run.first.pass && run.second.pass} hash=${String(run.first.hash || '').slice(0, 12)}…`,
+    );
+  }
+  console.log(`[check-release-soak] receipt: ${path.relative(ROOT, receiptPath)}`);
+  console.log(`[check-release-soak] submission: ${path.relative(ROOT, submissionPath)}`);
+  if (campaign.failures.length) {
+    for (const f of campaign.failures.slice(0, 12)) console.error(`  ✗ ${f}`);
+  }
+}
+
+if (!campaign.pass) {
+  console.error(`[check-release-soak] FAIL in ${mode} mode`);
   process.exit(1);
 }
 
-console.log(`[check-release-soak] PASS in ${MODE} mode`);
-console.log(`[check-release-soak] submission: ${path.relative(ROOT, path.join(CAMPAIGN_DIR, 'submission.json'))}`);
+console.log(`[check-release-soak] PASS in ${mode} mode (${RELEASE_SOAK_RECEIPT_SCHEMA})`);
+process.exit(0);
 
-// ---------------------------------------------------------------------------
-// Mode implementations
-// ---------------------------------------------------------------------------
+// ── CLI helpers ──────────────────────────────────────────────────────────────
 
-async function runContractMode() {
-  const sections = [];
-  const outputs = [];
+function printHelp() {
+  const quick = modeConfig('quick');
+  const full = modeConfig('full');
+  console.log(`Usage: node scripts/check-release-soak.mjs [--quick|--full] [--seed N] [--json] [--receipt path]
 
-  // 1. Synthetic evidence envelope must validate.
-  const syntheticEnvelope = buildSyntheticEnvelope();
-  const validation = validateReleaseSoakEvidence(syntheticEnvelope, { requireArtifacts: false });
-  assert.equal(validation.pass, true, `synthetic evidence envelope invalid: ${JSON.stringify(validation.failures)}`);
-  sections.push('synthetic evidence schema validates');
+Milestone 6 headless release soak. Fixed-step systems only — no browser/Electron.
 
-  // 2. Reject a forged/missing evidence envelope.
-  const forged = { ...syntheticEnvelope, schema: 'forged' };
-  const forgedValidation = validateReleaseSoakEvidence(forged, { requireArtifacts: false });
-  assert.equal(forgedValidation.pass, false, 'forged schema must be rejected');
-  sections.push('forged evidence schema rejected');
+  --quick     CI mode (default). ~${quick.totalSimSeconds}s sim, seed ${quick.seeds.join(',')}.
+  --full      Accelerated long soak. ~${Math.round(full.totalSimSeconds / 60)} sim-minutes, seeds ${full.seeds.join(',')}.
+  --seed N    Single-seed override.
+  --json      Emit full submission JSON on stdout.
+  --receipt p Write primary receipt JSON to path.
 
-  const missingMemory = { ...syntheticEnvelope };
-  delete missingMemory.memory;
-  const missingValidation = validateReleaseSoakEvidence(missingMemory, { requireArtifacts: false });
-  assert.equal(missingValidation.pass, false, 'missing memory section must be rejected');
-  sections.push('missing memory section rejected');
-
-  // 3. Quality shortcut detection.
-  const shortcutEnvelope = buildSyntheticEnvelope({
-    quality: { settingsOverridesApplied: true },
-  });
-  const shortcutValidation = validateReleaseSoakEvidence(shortcutEnvelope, { requireArtifacts: false });
-  assert.equal(shortcutValidation.pass, false, 'quality shortcuts must be rejected');
-  sections.push('quality shortcuts rejected');
-
-  // 4. Headless sim determinism contract runs inline (fast path).
-  const headless = runHeadlessSoak();
-  assert.equal(headless.pass, true, `headless determinism contract failed: ${headless.sections.join('; ')}`);
-  sections.push('headless determinism contract green');
-
-  return { pass: true, sections, outputs };
+Receipts never claim browser GPU FPS from headless data.
+`);
 }
 
-function runHeadlessSoak() {
-  const sections = [];
-
-  assertStaticContracts();
-  sections.push('static contracts: release soak is 30 minutes and spawn clients use spawnBudget');
-
-  for (const seed of SEEDS) {
-    const first = runDeterministicSoak(seed);
-    const second = runDeterministicSoak(seed);
-    assert.deepEqual(second.digest, first.digest, `seed ${seed}: release soak must replay deterministically`);
-    assertRunHealth(first, `seed ${seed}`);
-    sections.push(`seed ${seed} deterministic and healthy`);
+function parseMode(argv) {
+  if (hasFlag(argv, '--full')) return 'full';
+  if (hasFlag(argv, '--quick')) return 'quick';
+  const eq = argv.find((a) => a.startsWith('--mode='));
+  if (eq) {
+    const v = eq.slice('--mode='.length);
+    if (v === 'full' || v === 'quick') return v;
   }
-
-  return { pass: true, sections, outputs: [] };
+  const idx = argv.indexOf('--mode');
+  if (idx >= 0 && argv[idx + 1]) {
+    const v = argv[idx + 1];
+    if (v === 'full' || v === 'quick') return v;
+  }
+  // Legacy aliases map onto the headless contract (never open a browser here).
+  if (hasFlag(argv, '--mode=headless') || argv.includes('headless')) return 'full';
+  if (hasFlag(argv, '--mode=contract') || argv.includes('contract')) return 'quick';
+  return 'quick';
 }
 
-// ---------------------------------------------------------------------------
-// Headless deterministic soak helpers (preserved from the prior release soak)
-// ---------------------------------------------------------------------------
-
-function assertStaticContracts() {
-  assert.equal(SOAK_SECONDS, 1800, 'release soak must cover exactly 30 sim-minutes');
-  assert.match(readFileSync(path.join(ROOT, 'src/systems/spawnBudget.js'), 'utf8'), /const DEFAULT_MAX = 12/,
-    'shared spawn budget target must stay at the release cap of 12');
-  assert.match(readFileSync(path.join(ROOT, 'src/systems/world.js'), 'utf8'), /budget\.request\(grant,\s*'world_ambient'\)/,
-    'world ambient must reserve through spawnBudget');
-  assert.match(readFileSync(path.join(ROOT, 'src/systems/encounterDirector.js'), 'utf8'), /budget\.request\(ships\.length,\s*live\.squadId\)/,
-    'encounterDirector must reserve squads through spawnBudget');
-  assert.match(readFileSync(path.join(ROOT, 'src/systems/stationSideEventDirector.js'), 'utf8'), /budget\.request\(1,\s*item\.eventId\)/,
-    'station side events must reserve through spawnBudget');
-  assert.match(readFileSync(path.join(ROOT, 'src/systems/gateControlDirector.js'), 'utf8'), /budget\.request\(n,\s*wingId\)/,
-    'gate control wings must reserve through spawnBudget');
-}
-
-function runDeterministicSoak(seed) {
-  const sim = createSimulation({
-    seed,
-    systems: [
-      spawnBudget,
-      economy,
-      factions,
-      sectorSim,
-      world,
-      encounterDirector,
-      stationSideEventDirector,
-      gateControlDirector,
-    ],
-  });
-  const { state, bus, registry } = sim;
-  state.mode = 'flight';
-
-  for (const system of registry.systems) {
-    if (system && typeof system.newGame === 'function') system.newGame();
+function parseSeed(argv) {
+  const eq = argv.find((a) => a.startsWith('--seed='));
+  if (eq) {
+    const n = Number(eq.slice('--seed='.length));
+    return Number.isInteger(n) ? n : null;
   }
-
-  const player = sim.spawn({
-    type: 'ship',
-    team: 0,
-    factionId: 'faction_free',
-    pos: { x: 0, z: 0 },
-    vel: { x: 0, z: 0 },
-    hull: 220,
-    hullMax: 220,
-    shield: 90,
-    shieldMax: 90,
-    radius: 8,
-    data: { defId: 'ship_kestrel', shipClass: 'fighter', weapons: [] },
-  });
-  state.playerId = player.id;
-  state.player.team = 0;
-  state.player.credits = 12000;
-  state.player.cargo.items = { cmdty_refined_metals: 16, cmdty_ore_iron: 10 };
-
-  const events = [];
-  const telegraphed = new Set();
-  const referee = [];
-  const sideEvents = [];
-  const gateEvents = [];
-  const spawns = [];
-  const destroyed = [];
-  const samples = [];
-
-  bus.on('encounter:telegraph', (p) => {
-    telegraphed.add(p.encounterId);
-    events.push({ type: 'encounter', t: round(state.simTime), id: p.encounterId, kind: p.kind, tier: p.tier, deck: p.deck });
-    const live = state.encounterDirector.live[p.encounterId];
-    if (live) referee.push({ at: state.simTime + 45, ids: live.ids, encounterId: p.encounterId });
-  });
-  bus.on('encounter:resolved', (p) => {
-    events.push({ type: 'resolved', t: round(state.simTime), id: p.encounterId, outcome: p.outcome });
-  });
-  bus.on('station:sideEvent', (p) => {
-    sideEvents.push({ t: round(state.simTime), eventId: p.eventId, kind: p.kind, ids: (p.entityIds || []).slice() });
-  });
-  bus.on('jump:chargeStart', (p) => {
-    gateEvents.push({ type: 'charge', t: round(state.simTime), to: p.targetSectorId, via: p.via });
-  });
-  bus.on('jump:chargeAbort', (p) => {
-    gateEvents.push({ type: 'abort', t: round(state.simTime), reason: p && p.reason || null });
-  });
-  bus.on('entity:spawned', (p) => {
-    const e = p.entity;
-    if (!e || e.id === state.playerId) return;
-    spawns.push(classifySpawn(state, e, telegraphed));
-  });
-  bus.on('entity:destroyed', (p) => {
-    destroyed.push({ t: round(state.simTime), id: p.id, type: p.type });
-  });
-
-  registry.get('world').enterSector(SECTOR_ID);
-  const baselineEntities = state.entityList.length;
-  const zones = zonesForSector(SECTOR_ID).filter((z) => z && z.center);
-  assert(zones.length >= 3, `${SECTOR_ID}: release soak needs authored zones`);
-
-  for (let sec = 0; sec < SOAK_SECONDS; sec++) {
-    guidePlayer(state, zones, sec);
-    maybeExerciseGate(bus, state, sec);
-    runReferee(bus, state, referee);
-    sim.runTicks(60, SIM_DT);
-    samples.push(sampleState(state, sec, baselineEntities));
-  }
-
-  // Quiescent drain: stop all flight-only planners before waiting out existing lifetimes.
-  // Continuing guidePlayer across the 1800s day boundary can legitimately schedule a brand-new
-  // station-side event during the alleged cleanup window, making a fresh event look like a leak.
-  state.mode = 'menu';
-  for (let sec = 0; sec < 90; sec++) {
-    runReferee(bus, state, referee);
-    sim.runTicks(60, SIM_DT);
-  }
-  const finalSample = sampleState(state, SOAK_SECONDS, baselineEntities);
-
-  const digest = {
-    seed,
-    simTime: round(state.simTime),
-    events,
-    sideEvents,
-    gateEvents,
-    spawnSummary: summarizeSpawns(spawns),
-    destroyedCount: destroyed.length,
-    sampleDigest: samples.map((s) => ({
-      t: s.t,
-      liveShips: s.liveShips,
-      budgetUsed: s.budgetUsed,
-      reservations: s.reservations,
-      activeEncounters: s.activeEncounters,
-      pendingEncounters: s.pendingEncounters,
-      sideActive: s.sideActive,
-      gateActive: s.gateActive,
-      entitiesOverBaseline: s.entitiesOverBaseline,
-      pressure: s.pressure,
-    })),
-    final: finalSample,
-  };
-
-  sim.dispose();
-  return { seed, digest, events, sideEvents, gateEvents, spawns, samples, finalSample, baselineEntities };
-}
-
-function guidePlayer(state, zones, sec) {
-  const player = state.entities.get(state.playerId);
-  if (!player) return;
-
-  const pending = ((state.encounterDirector && state.encounterDirector.pending) || [])
-    .filter((item) => item && item.zoneCenter && item.dueAt <= state.simTime + 8)
-    .sort((a, b) => a.dueAt - b.dueAt)[0];
-
-  let target = pending && pending.zoneCenter;
-  if (!target && sec % 240 >= 30 && sec % 240 < 70) {
-    const station = nearestStation(state);
-    if (station) target = station.pos;
-  }
-  if (!target && sec % 300 >= 88 && sec % 300 < 118) {
-    const gate = firstGate(state);
-    if (gate) target = gate.pos;
-  }
-  if (!target) {
-    const zone = zones[Math.floor(sec / 20) % zones.length];
-    target = zone.center;
-  }
-
-  player.pos.x = target.x;
-  player.pos.z = target.z;
-  player.prevPos.copy(player.pos);
-  player.vel.x = 0;
-  player.vel.z = 0;
-}
-
-function maybeExerciseGate(bus, state, sec) {
-  if (sec > 0 && sec % 300 === 90) {
-    const gate = firstGate(state);
-    if (gate && gate.data && gate.data.gateTo) {
-      bus.emit('jump:chargeStart', { targetSectorId: gate.data.gateTo, via: 'gate', chargeNeeded: 12 });
-    }
-  }
-  if (sec > 0 && sec % 300 === 112) {
-    bus.emit('jump:chargeAbort', { reason: 'release_soak_probe' });
-  }
-}
-
-function runReferee(bus, state, referee) {
-  for (const job of referee) {
-    if (job.done || state.simTime < job.at) continue;
-    job.done = true;
-    for (const id of job.ids.slice()) {
-      const e = state.entities.get(id);
-      if (!e || e.alive === false) continue;
-      bus.emit('entity:killed', { id, killerId: state.playerId, pos: { x: e.pos.x, z: e.pos.z } });
-      e.alive = false;
-    }
-  }
-}
-
-function sampleState(state, sec, baselineEntities) {
-  const budget = state.spawnBudget || {};
-  const reservations = budget.reservations instanceof Map
-    ? [...budget.reservations.entries()].map(([key, rec]) => [key, rec.count | 0]).sort()
-    : [];
-  const budgetUsed = Number.isFinite(budget.used) ? budget.used : 0;
-  const reservationSum = reservations.reduce((sum, [, count]) => sum + count, 0);
-  const liveShips = state.entityList.filter((e) => e && e.alive !== false && (e.type === 'ship' || e.type === 'drone') && e.id !== state.playerId).length;
-  const nonFinite = findNonFiniteEntity(state);
-  assert.equal(nonFinite, null, `non-finite entity field at t=${sec}: ${nonFinite}`);
-  assert.equal(budgetUsed, reservationSum, `spawnBudget.used drift at t=${sec}`);
-  assert(budgetUsed <= budget.max, `spawnBudget exceeded at t=${sec}: ${budgetUsed}/${budget.max}`);
-  assert(liveShips <= budget.max, `live non-player ship cap exceeded at t=${sec}: ${liveShips}/${budget.max}`);
-
-  const dir = state.encounterDirector || {};
-  const side = state.stationSideEvents || {};
-  const gate = state.gateControl || {};
-  return {
-    t: sec,
-    liveShips,
-    budgetUsed,
-    budgetMax: budget.max,
-    reservations,
-    activeEncounters: Object.keys(dir.live || {}).length,
-    pendingEncounters: (dir.pending || []).length,
-    sideActive: Object.keys(side.active || {}).length,
-    gateActive: gate.scene ? 1 : 0,
-    entitiesOverBaseline: state.entityList.length - baselineEntities,
-    pressure: {
-      combat: round(dir.pressure && dir.pressure.combat || 0),
-      civilian: round(dir.pressure && dir.pressure.civilian || 0),
-    },
-  };
-}
-
-function assertRunHealth(run, label) {
-  const telegraphs = run.events.filter((e) => e.type === 'encounter');
-  const meaningful = telegraphs.filter((e) => e.tier !== 'ambient');
-  const resolved = run.events.filter((e) => e.type === 'resolved');
-  const maxBudget = maxOf(run.samples, 'budgetUsed');
-  const maxShips = maxOf(run.samples, 'liveShips');
-  const maxEntityDrift = maxOf(run.samples, 'entitiesOverBaseline');
-  const final = run.finalSample;
-  const badSpawns = run.spawns.filter((s) => !s.allowed);
-
-  assert(telegraphs.length >= 4, `${label}: 30-min soak must exercise encounters (got ${telegraphs.length})`);
-  assert(meaningful.length >= 2, `${label}: must exercise meaningful encounters (got ${meaningful.length})`);
-  assert(resolved.length >= 2, `${label}: encounters must resolve, not leak (got ${resolved.length})`);
-  assert(run.sideEvents.length >= 1, `${label}: station side-event director must fire at least once`);
-  assert(run.gateEvents.some((e) => e.type === 'charge'), `${label}: gate-control charge seam must be exercised`);
-  assert(maxBudget >= 6, `${label}: release soak must exercise shared budget pressure (peak ${maxBudget})`);
-  assert(maxBudget <= 12, `${label}: budget peak exceeds release cap (${maxBudget})`);
-  assert(maxShips <= 12, `${label}: live ship peak exceeds release cap (${maxShips})`);
-  assert(maxEntityDrift <= 24, `${label}: entity count drift too high over baseline (${maxEntityDrift})`);
-  assert(final.activeEncounters <= 1, `${label}: encounterDirector leaked active encounters after cleanup`);
-  assert(final.sideActive === 0, `${label}: station side events leaked active budget after cleanup`);
-  assert(final.gateActive === 0, `${label}: gate control leaked active scene after cleanup`);
-  assert.equal(badSpawns.length, 0, `${label}: untelegraphed or unattributed spawns: ${JSON.stringify(badSpawns.slice(0, 5))}`);
-
-  for (let i = 1; i < meaningful.length; i++) {
-    assert(meaningful[i].t - meaningful[i - 1].t >= 28,
-      `${label}: meaningful encounters spawned too tightly (${meaningful[i - 1].t}->${meaningful[i].t})`);
-  }
-}
-
-function classifySpawn(state, entity, telegraphed) {
-  const data = entity.data || {};
-  const ai = data.ai || {};
-  const encounterId = ai.encounterId || data.encounterId || null;
-  const context = ai.spawnContext || ai.context || data.context || '';
-  const sideEventId = data.sideEventId || null;
-  const gateWingId = data.gateWingId || null;
-  const t = round(state.simTime);
-  const record = {
-    t,
-    id: entity.id,
-    type: entity.type,
-    team: entity.team,
-    context,
-    encounterId,
-    sideEventId,
-    gateWingId,
-    allowed: true,
-    reason: 'non-combat-or-initial',
-  };
-
-  if (entity.type !== 'ship' && entity.type !== 'drone') return record;
-  if (encounterId) {
-    record.allowed = telegraphed.has(encounterId);
-    record.reason = record.allowed ? 'encounter-telegraphed' : 'encounter-missing-telegraph';
-    return record;
-  }
-  if (sideEventId) {
-    record.reason = 'station-side-event';
-    return record;
-  }
-  if (gateWingId) {
-    record.reason = 'gate-control-wing';
-    return record;
-  }
-  if (context === 'ambient' || context === 'zone_hostile' || context === 'zone_patrol' || context === 'patrol' || context === 'bounty_hunter') {
-    record.allowed = t <= 0.1;
-    record.reason = record.allowed ? 'sector-entry-ambient' : 'late-world-spawn';
-    return record;
-  }
-  if (entity.team === 2) {
-    record.reason = 'neutral-civilian';
-    return record;
-  }
-  record.allowed = false;
-  record.reason = 'unattributed-combat-spawn';
-  return record;
-}
-
-function summarizeSpawns(spawns) {
-  const out = {};
-  for (const s of spawns) {
-    out[s.reason] = (out[s.reason] || 0) + 1;
-  }
-  return out;
-}
-
-function nearestStation(state) {
-  const player = state.entities.get(state.playerId);
-  const stations = state.entityList.filter((e) => e && e.alive !== false && e.type === 'station' && !(e.data && e.data.isGate));
-  if (!stations.length) return null;
-  if (!player) return stations[0];
-  return stations.slice().sort((a, b) => dist2(a.pos, player.pos) - dist2(b.pos, player.pos))[0];
-}
-
-function firstGate(state) {
-  return state.entityList.find((e) => e && e.alive !== false && e.type === 'station' && e.data && e.data.isGate && e.data.gateTo) || null;
-}
-
-function dist2(a, b) {
-  const dx = (a && a.x || 0) - (b && b.x || 0);
-  const dz = (a && a.z || 0) - (b && b.z || 0);
-  return dx * dx + dz * dz;
-}
-
-function maxOf(samples, key) {
-  return samples.reduce((max, sample) => Math.max(max, sample[key] || 0), 0);
-}
-
-function findNonFiniteEntity(state) {
-  for (const e of state.entityList) {
-    if (!e) continue;
-    for (const [bagName, bag] of [['pos', e.pos], ['vel', e.vel]]) {
-      if (!bag) continue;
-      for (const axis of ['x', 'y', 'z']) {
-        if (axis in bag && !Number.isFinite(bag[axis])) return `${e.id}.${bagName}.${axis}`;
-      }
-    }
-    for (const key of ['hull', 'shield', 'rot']) {
-      if (key in e && !Number.isFinite(e[key])) return `${e.id}.${key}`;
-    }
+  const idx = argv.indexOf('--seed');
+  if (idx >= 0 && argv[idx + 1]) {
+    const n = Number(argv[idx + 1]);
+    return Number.isInteger(n) ? n : null;
   }
   return null;
 }
 
-function round(value) {
-  return Number.isFinite(value) ? Math.round(value * 1000) / 1000 : value;
+function parseReceiptPath(argv, mode) {
+  const eq = argv.find((a) => a.startsWith('--receipt='));
+  if (eq) return path.resolve(eq.slice('--receipt='.length));
+  const idx = argv.indexOf('--receipt');
+  if (idx >= 0 && argv[idx + 1]) return path.resolve(argv[idx + 1]);
+  return path.join(DEFAULT_RECEIPT_DIR, `release-soak-receipt-${mode}.json`);
 }
 
-// ---------------------------------------------------------------------------
-// Synthetic envelope builder for contract-mode tests
-// ---------------------------------------------------------------------------
-
-function buildSyntheticEnvelope(overrides = {}) {
-  const base = {
-    schema: RELEASE_SOAK_SCHEMA,
-    taskId: 'release-soak-contract',
-    generatedAt: new Date().toISOString(),
-    worktreeId: 'contract-test',
-    worktreeDigest: 'a'.repeat(64),
-    runtimeKind: 'synthetic',
-    mode: 'contract',
-    cycles: { count: 1, results: [{ index: 0, docked: true, sampleCount: 60 }] },
-    primaryAcceptance: false,
-    inputSource: 'keyboard-mouse',
-    injectedState: false,
-    checks: [
-      { name: 'schema', status: 'pass' },
-      { name: 'determinism', status: 'pass' },
-      { name: 'quality', status: 'pass' },
-    ],
-    artifacts: [],
-    quality: {
-      settingsOverridesApplied: false,
-      physicsSimplification: false,
-      authoredAssetFallback: false,
-      authoredReady: true,
-      startSettings: { video: { renderScale: 0.85, pixelRatioCap: 1.5, shadows: false, bloom: true, particleQuality: 'high' } },
-      endSettings: { video: { renderScale: 0.85, pixelRatioCap: 1.5, shadows: false, bloom: true, particleQuality: 'high' } },
-      settingsPass: true,
-    },
-    performance: {
-      frameMs: { sampleCount: 360, p50: 16, p95: 16, p99: 16, max: 16, hitchesOver32Ms: 0 },
-      samples: [
-        ...Array.from({ length: 180 }, () => ({ frameMs: 16, phaseTag: 'flight_steady' })),
-        ...Array.from({ length: 180 }, () => ({ frameMs: 16, phaseTag: 'context_recover_steady' })),
-      ],
-      phases: {
-        flight_steady: { sampleCount: 180, p50: 16, p95: 16, p99: 16, max: 16, hitchesOver32Ms: 0 },
-        context_recover_steady: { sampleCount: 180, p50: 16, p95: 16, p99: 16, max: 16, hitchesOver32Ms: 0 },
-      },
-      thresholdsClaimed: false,
-      notes: ['synthetic'],
-    },
-    memory: {
-      heapBytesStart: 100 * 1024 * 1024,
-      heapBytesEnd: 115 * 1024 * 1024,
-      heapGrowthBytes: 15 * 1024 * 1024,
-      geometries: { start: 40, end: 42, delta: 2 },
-      textures: { start: 80, end: 81, delta: 1 },
-      programs: { start: 24, end: 24, delta: 0 },
-      withinBudget: true,
-      retainedAfterGc: true,
-      comparableState: 'docked-market',
-      startSnapshot: { phaseTag: 'docked-market-start', docked: true },
-      endSnapshot: { phaseTag: 'docked-market-end', docked: true },
-    },
-    errors: {
-      pageErrors: [],
-      requestFailures: [],
-      glErrors: [],
-      consoleErrors: [],
-      httpErrors: [],
-      warnings: [],
-      all: [],
-    },
-    contextLoss: { available: true, before: false, lost: true, after: false, recovered: true },
-    cleanup: { pageClosed: true, browserDisconnected: true, serverReleased: true, processExited: true, portsReleased: true },
-  };
-  return mergeDeep(base, overrides);
-}
-
-function mergeDeep(target, source) {
-  const out = { ...target };
-  for (const key of Object.keys(source)) {
-    const val = source[key];
-    if (val && typeof val === 'object' && !Array.isArray(val)) {
-      out[key] = mergeDeep(out[key] || {}, val);
-    } else {
-      out[key] = val;
-    }
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// CLI helpers
-// ---------------------------------------------------------------------------
-
-function parseMode(argv) {
-  const flag = argv.find((arg) => arg.startsWith('--mode='));
-  if (flag) return flag.slice('--mode='.length);
-  const idx = argv.indexOf('--mode');
-  if (idx >= 0 && argv[idx + 1]) return argv[idx + 1];
-  return 'contract';
-}
-
-function parseCycles(argv) {
-  const flag = argv.find((arg) => arg.startsWith('--cycles='));
-  const raw = flag ? flag.slice('--cycles='.length) : '';
-  if (!raw) return {};
-  const parsed = Number(raw);
-  if (Number.isInteger(parsed) && parsed > 0) return { browser: parsed, electron: parsed };
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return {};
-  }
-}
-
-function cycleCountFor(parsed, runtime, fallback) {
-  const value = parsed?.[runtime];
-  if (value == null) return fallback;
-  if (!Number.isInteger(value) || value < 1) throw new Error(`--cycles for ${runtime} must be a positive integer`);
-  return value;
+function hasFlag(argv, flag) {
+  return argv.includes(flag);
 }
