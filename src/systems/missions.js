@@ -104,6 +104,7 @@ const MISSION_HOSTILE_SPAWN_ATTEMPTS = 24;
 const MISSION_PORT_SAFE_RADIUS_WU = 1200;
 export const CONTRACT_47A_B0_TAG = 'campaign47a:b0:recovery';
 export const CONTRACT_47A_SAMPLE_ID = 'cmdty_47a_assay_sample';
+export const CONTRACT_47A_B1_TAG = 'campaign47a:b1:honest_work';
 const CONTRACT_47A_REWARD_CR = 400;
 
 // Station size → tier number used for slot count (S=0,M=1,L=2).
@@ -186,6 +187,11 @@ function missionNavReason(m, station, sector) {
       ? 'Deliver the 47-A sample to Helios Station'
       : 'Recover the 47-A sample from the marked rock';
   }
+  if (m.storyTag === CONTRACT_47A_B1_TAG) {
+    return p.cargoRecoveryNeeded
+      ? 'Return to Helios for replacement cargo'
+      : 'Deliver sealed alloys to Tycho; compare the manifest';
+  }
   switch (m.type) {
     case 'cargo_delivery': return `Deliver ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
     case 'bulk_trade': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
@@ -245,7 +251,10 @@ export const missions = {
       this._onDockedObjectives(stationId);
       this._storyTrigger('dock', { stationId });
     });
-    bus.on('dock:undocked', () => { this._lastDockedStation = null; });
+    bus.on('dock:undocked', () => {
+      this._lastDockedStation = null;
+      this._activateContract47aB1OnDeparture();
+    });
 
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
     // bulk_trade quota: sell qty of the target commodity (trade.sold alias → economy:tradeCompleted).
@@ -1092,6 +1101,19 @@ export const missions = {
       return { ...base, label: '47-A Recovery Site', stationId: null };
     }
 
+    if (m.storyTag === CONTRACT_47A_B1_TAG && m.params && m.params.cargoRecoveryNeeded) {
+      const origin = this._liveStation(m.stationId);
+      const originInfo = STATION_INFO.get(m.stationId);
+      return {
+        ...base,
+        label: originInfo && originInfo.name || 'Helios Station',
+        stationId: m.stationId,
+        sectorId: originInfo && originInfo.sectorId || 'sector_helios_prime',
+        sectorName: originInfo && SECTOR_BY_ID.get(originInfo.sectorId)?.name || 'Helios Prime',
+        pos: origin && origin.pos ? { x: origin.pos.x, z: origin.pos.z } : null,
+      };
+    }
+
     if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
       const target = this._firstLiveMissionTarget(m);
       if (target) return { ...base, targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason: 'Intercept the marked hostile' };
@@ -1417,6 +1439,21 @@ export const missions = {
       const m = this.state.missions.active[i];
       if (m.status !== 'active') continue;
       const t = m.type;
+      if (m.storyTag === CONTRACT_47A_B1_TAG && m.params && m.params.cargoRecoveryNeeded
+        && stationId === m.stationId) {
+        const need = Math.max(1, m.params.qty || 1);
+        const have = Number(this.state.player.cargo.items[m.params.cmdtyId]) || 0;
+        const loaded = addCargo(this.state, m.params.cmdtyId, Math.max(0, need - have));
+        if (have + loaded >= need) {
+          m.params.cargoRecoveryNeeded = false;
+          this._refreshTrackedMissionNav(m);
+          this.bus.emit('mission:updated', { missionId: m.id, recovery: false });
+          this._sayStoryLine('Replacement sealed. Deliver it to Tycho.', 4);
+        } else {
+          this.bus.emit('toast', { text: `Free ${need - have - loaded}u cargo for Kessler's replacement`, kind: 'warn', ttl: 4 });
+        }
+        continue;
+      }
       if (m.destStationId !== stationId) continue;
 
       if (t === 'escort') {
@@ -1438,6 +1475,13 @@ export const missions = {
             this._refreshTrackedMissionNav(m);
             this.bus.emit('mission:updated', { missionId: m.id, objectiveProgress: 0 });
             this.bus.emit('toast', { text: '47-A sample missing. Recovery site re-marked.', kind: 'warn', ttl: 4 });
+            continue;
+          }
+          if (m.storyTag === CONTRACT_47A_B1_TAG) {
+            m.params.cargoRecoveryNeeded = true;
+            this._refreshTrackedMissionNav(m);
+            this.bus.emit('mission:updated', { missionId: m.id, recovery: true });
+            this.bus.emit('toast', { text: 'Sealed cargo missing. Return to Helios.', kind: 'warn', ttl: 4 });
             continue;
           }
           const need = m.params && m.params.cmdtyId ? this._cmdtyName(m.params.cmdtyId) : 'the cargo';
@@ -2299,6 +2343,20 @@ export const missions = {
     this.state.ui.trackedMissionId = mission.id;
     this._refreshTrackedMissionNav(mission);
     this.bus.emit('mission:updated', { missionId: mission.id, tracked: true, source: CONTRACT_47A_B0_TAG });
+  },
+
+  _activateContract47aB1OnDeparture() {
+    const story = this.state && this.state.story;
+    if (!story || story.beatIndex !== 1) return false;
+    const active = (this.state.missions.active || []).find((m) => m && m.status === 'active' && m.storyTag === CONTRACT_47A_B1_TAG);
+    if (active) {
+      this.trackMission(active.id, { silent: true });
+      return true;
+    }
+    const board = this.ensureBoard('station_helios');
+    const offer = board && board.slots && board.slots.find((row) => row && row.storyTag === CONTRACT_47A_B1_TAG);
+    if (!offer) return false;
+    return this.acceptMission(offer.id);
   },
 
   newGame() {

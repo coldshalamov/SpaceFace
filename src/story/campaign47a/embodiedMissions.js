@@ -59,7 +59,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
     ]) }),
     missionBoardContract: B({
       type: 'cargo_delivery', storyTag: 'campaign47a:b1:honest_work',
-      title: 'ROUTINE ALLOY RUN — TYCHO', factionId: 'faction_mts',
+      title: '47-A FOLLOW-UP — TYCHO VARIANCE', factionId: 'faction_mts',
       stationId: 'station_helios', destStationId: 'station_tethys', destSectorId: 'sector_tethys_junction',
       reward_cr: 600, collateral_cr: 0, riskTier: 0, time_limit_s: 0,
       preloadedCargo: true,
