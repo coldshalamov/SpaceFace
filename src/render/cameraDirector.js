@@ -12,6 +12,11 @@ export const CAMERA_DIRECTOR_SAFE_NDC = 0.8;
 // Flyby Focus primary pair: 15–20% context margin each side (NDC 0.60–0.70). 0.65 ≈ 17.5%.
 export const CAMERA_DIRECTOR_FOCUS_SAFE_NDC = 0.65;
 export const CAMERA_DIRECTOR_EASE_S = 0.35;
+// Gate approach is a presentation-only cinematic envelope. Authored gates can be much larger than
+// combat contacts, so this ceiling intentionally exceeds the player's manual 330 wu zoom limit.
+// It is never reachable outside an active entity-targeted gate autopilot lease.
+export const CAMERA_DIRECTOR_GATE_MAX_ZOOM = 720;
+export const CAMERA_DIRECTOR_GATE_SAFE_NDC = 0.78;
 
 // Nearby active hostiles expand Focus/combat-tether zoom so attackers are not cropped off-frame.
 export const CAMERA_DIRECTOR_THREAT_CONTEXT_RANGE = 280;
@@ -28,6 +33,7 @@ export const CameraDirectorMode = Object.freeze({
   FOLLOW: 'FOLLOW',
   FOCUS_PAIR: 'FOCUS_PAIR',
   TETHER_PAIR: 'TETHER_PAIR',
+  GATE_APPROACH: 'GATE_APPROACH',
   RECOVER: 'RECOVER',
 });
 
@@ -43,6 +49,7 @@ const _frameOriginScratch = { x: 0, z: 0 };
 const _entityLocalA = { x: 0, z: 0 };
 const _entityLocalB = { x: 0, z: 0 };
 const _entityLocalThreat = { x: 0, z: 0 };
+const _gateMetricsByVisualRoot = new WeakMap();
 
 function finiteOr(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
@@ -67,6 +74,100 @@ function entityFor(state, id) {
 
 function entityRadius(entity) {
   return Math.max(0, finiteOr(entity && entity.radius, DEFAULT_RADIUS));
+}
+
+function visualBoundsFromRoot(root) {
+  if (!root || typeof root !== 'object') return null;
+  const queue = [root];
+  const seen = new Set();
+  // Authored-place boundaries normally expose the active root through userData.hull. The bounded
+  // walk also tolerates HLOD wrappers and loading/fallback roots without importing Three.js here.
+  for (let i = 0; i < queue.length && i < 32; i++) {
+    const node = queue[i];
+    if (!node || seen.has(node)) continue;
+    seen.add(node);
+    const data = node.userData || {};
+    const bounds = data.visualBounds;
+    const size = bounds && bounds.size;
+    if (Array.isArray(size) && size.length >= 3 && size.every((value) => Number.isFinite(Number(value)) && Number(value) > 0)) {
+      return {
+        center: Array.isArray(bounds.center) ? bounds.center.map((value) => finiteOr(Number(value), 0)) : [0, 0, 0],
+        size: size.map((value) => Number(value)),
+      };
+    }
+    if (data.hull && data.hull !== node) queue.push(data.hull);
+    if (Array.isArray(node.children)) queue.push(...node.children);
+  }
+  return null;
+}
+
+/**
+ * Read the mounted authored gate's actual runtime bounds. During async asset upgrade the procedural
+ * fallback has no recorded AABB, so dockRadius supplies a conservative aperture-sized fallback.
+ * This is render metadata only; it never mutates the deterministic entity/sim state.
+ */
+export function resolveGateVisualMetrics(gate) {
+  if (!gate || !gate.data || (!gate.data.isGate && !gate.data.isWormhole)) return null;
+  const root = gate.view && gate.view.root || gate.mesh || null;
+  // Runtime upgrades replace userData.hull, so the cache naturally invalidates when the authored
+  // GLB takes over without polling mutable asset state or allocating AABB helpers every frame.
+  const visualRoot = root && root.userData && root.userData.hull || root;
+  const cached = visualRoot && _gateMetricsByVisualRoot.get(visualRoot);
+  if (cached) return cached;
+  const bounds = visualBoundsFromRoot(root);
+  if (bounds) {
+    const sx = bounds.size[0];
+    const sy = bounds.size[1];
+    const sz = bounds.size[2];
+    // Gate assets are authored with one shallow depth axis and two aperture-plane axes. Sorting
+    // makes the metric independent of the gate's yaw and of whether the source uses X or Z forward.
+    const axes = [sx, sy, sz].sort((a, b) => a - b);
+    const depthHalf = axes[0] * 0.5;
+    const apertureRadius = Math.max(16, Math.min(axes[1], axes[2]) * 0.38);
+    const metrics = {
+      source: 'authored',
+      center: bounds.center,
+      size: bounds.size,
+      boundsRadius: Math.hypot(sx, sy, sz) * 0.5,
+      apertureRadius,
+      depthHalf,
+    };
+    if (visualRoot) _gateMetricsByVisualRoot.set(visualRoot, metrics);
+    return metrics;
+  }
+
+  const dockRadius = Math.max(16, finiteOr(Number(gate.data.dockRadius), entityRadius(gate) * 2));
+  const metrics = {
+    source: 'fallback',
+    center: [0, 0, 0],
+    size: [dockRadius * 0.42, dockRadius * 2.1, dockRadius * 2.1],
+    boundsRadius: dockRadius * 1.52,
+    apertureRadius: dockRadius * 0.72,
+    depthHalf: dockRadius * 0.21,
+  };
+  if (visualRoot) _gateMetricsByVisualRoot.set(visualRoot, metrics);
+  return metrics;
+}
+
+export function resolveGateApproachTarget(state, player, activeGateId = null) {
+  const autopilot = state && state.nav && state.nav.autopilot;
+  if (!autopilot || autopilot.active !== true || autopilot.targetEntityId == null || !player || !player.pos) return null;
+  const gate = entityFor(state, autopilot.targetEntityId);
+  if (!gate || !gate.data || (!gate.data.isGate && !gate.data.isWormhole)) return null;
+  const metrics = resolveGateVisualMetrics(gate);
+  if (!metrics) return null;
+  const distance = Math.hypot(gate.pos.x - player.pos.x, gate.pos.z - player.pos.z);
+  // Acquire early enough to reveal the aperture before the oversized shell reaches the camera.
+  // A modest hysteresis band prevents steering/avoidance corrections from chattering at the edge.
+  const acquireRange = clamp(metrics.apertureRadius * 2, 280, 520);
+  const releaseRange = acquireRange * 1.18;
+  const sameLease = activeGateId != null && String(activeGateId) === String(gate.id);
+  if (distance > (sameLease ? releaseRange : acquireRange)) return null;
+  const zoomMax = clamp(metrics.apertureRadius * 3.4, CAMERA_DIRECTOR_ENGINE_MAX_ZOOM, CAMERA_DIRECTOR_GATE_MAX_ZOOM);
+  const rangeT = clamp(distance / acquireRange, 0, 1);
+  const visualFloor = clamp(metrics.apertureRadius * (1.15 + rangeT * 0.48), 120, zoomMax);
+  const nearPlane = clamp(metrics.depthHalf * 0.9, 1, Math.min(160, visualFloor * 0.34));
+  return { gate, targetId: gate.id, metrics, distance, acquireRange, releaseRange, zoomMax, visualFloor, nearPlane };
 }
 
 /** Hostile ship/drone massline may request combat pair framing; asteroids, civilians, and clean-law
@@ -153,11 +254,15 @@ export function createCameraDirector() {
     overflow: false,
     preferredBandExceeded: false,
     requiredZoom: 72,
+    nearPlane: 1,
+    gateBoundsRadius: 0,
+    gateApertureRadius: 0,
   };
   let initialized = false;
   let transitionStartX = 0;
   let transitionStartZ = 0;
   let transitionStartZoom = DEFAULT_ZOOM;
+  let transitionStartNear = 1;
   let transitionElapsed = CAMERA_DIRECTOR_EASE_S;
 
   function syncFollow(focusX = 0, focusZ = 0, zoom = DEFAULT_ZOOM) {
@@ -169,9 +274,13 @@ export function createCameraDirector() {
     output.overflow = false;
     output.preferredBandExceeded = false;
     output.requiredZoom = output.zoom;
+    output.nearPlane = 1;
+    output.gateBoundsRadius = 0;
+    output.gateApertureRadius = 0;
     transitionStartX = output.focusX;
     transitionStartZ = output.focusZ;
     transitionStartZoom = output.zoom;
+    transitionStartNear = output.nearPlane;
     transitionElapsed = CAMERA_DIRECTOR_EASE_S;
     initialized = true;
     return output;
@@ -185,6 +294,7 @@ export function createCameraDirector() {
     transitionStartX = output.focusX;
     transitionStartZ = output.focusZ;
     transitionStartZoom = output.zoom;
+    transitionStartNear = finiteOr(output.nearPlane, 1);
     transitionElapsed = 0;
   }
 
@@ -245,6 +355,7 @@ export function createCameraDirector() {
       let targetId = null;
       let target = null;
       let pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
+      let gateApproach = null;
 
       // Combat Focus is authoritative when active. Ordinary (asteroid/non-hostile) tether never
       // steals combat pair ownership — leave FOLLOW so chase composition stays modest + threat-aware.
@@ -285,7 +396,96 @@ export function createCameraDirector() {
         pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
       }
 
+      // Gate approach is lower authority than Flyby Focus and combat tether. It is available only
+      // while the flight computer owns a concrete gate entity; manual flight remains pure FOLLOW.
+      if (requestedMode === CameraDirectorMode.FOLLOW) {
+        const activeGateId = output.mode === CameraDirectorMode.GATE_APPROACH ? output.targetId : null;
+        gateApproach = resolveGateApproachTarget(state, player, activeGateId);
+        if (gateApproach) {
+          requestedMode = CameraDirectorMode.GATE_APPROACH;
+          targetId = gateApproach.targetId;
+          target = gateApproach.gate;
+        }
+      }
+
       const playerValid = !!(player && player.pos && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z));
+      if (requestedMode === CameraDirectorMode.GATE_APPROACH && playerValid && gateApproach) {
+        const wasSameGate = output.mode === CameraDirectorMode.GATE_APPROACH && output.targetId === targetId;
+        if (!wasSameGate) beginTransition();
+
+        const fov = clamp(finiteOr(view.fov, DEFAULT_FOV), 10, 140);
+        const aspect = Math.max(0.25, finiteOr(view.aspect, DEFAULT_ASPECT));
+        const tilt = clamp(finiteOr(view.tiltDeg, DEFAULT_TILT_DEG), 1, 89) * Math.PI / 180;
+        const tanHalfFov = Math.tan(fov * Math.PI / 360);
+        const sinTilt = Math.sin(tilt);
+        const cosTilt = Math.cos(tilt);
+        globalToFrame(player.pos, frameOrigin, _entityLocalA);
+        globalToFrame(target.pos, frameOrigin, _entityLocalB);
+        const pLx = _entityLocalA.x;
+        const pLz = _entityLocalA.z;
+        const tLx = _entityLocalB.x;
+        const tLz = _entityLocalB.z;
+        // Keep the player slightly dominant while still showing the aperture and approach vector.
+        // At close range this naturally settles back toward the player rather than midpoint-locking.
+        const focusWeight = 0.45;
+        const desiredX = pLx + (tLx - pLx) * focusWeight;
+        const desiredZ = pLz + (tLz - pLz) * focusWeight;
+        const apertureMarkerRadius = Math.ceil(clamp(gateApproach.metrics.apertureRadius * 0.08, 8, 24));
+        const pointRequired = Math.max(
+          requiredZoomForLocal(
+            pLx, pLz, entityRadius(player), desiredX, desiredZ,
+            tanHalfFov, aspect, sinTilt, cosTilt, CAMERA_DIRECTOR_GATE_SAFE_NDC,
+          ),
+          requiredZoomForLocal(
+            tLx, tLz, apertureMarkerRadius, desiredX, desiredZ,
+            tanHalfFov, aspect, sinTilt, cosTilt, CAMERA_DIRECTOR_GATE_SAFE_NDC,
+          ),
+        );
+        const threatRequired = requiredThreatContextZoom(
+          state, player, target, desiredX, desiredZ,
+          tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
+        );
+        const desiredRequired = Math.max(pointRequired, threatRequired, gateApproach.visualFloor);
+        const desiredZoom = clamp(desiredRequired, CAMERA_DIRECTOR_MIN_ZOOM, gateApproach.zoomMax);
+        const desiredNear = Math.min(gateApproach.nearPlane, desiredZoom * 0.34);
+        const impossible = desiredRequired > gateApproach.zoomMax + 1e-9;
+
+        let candidateX;
+        let candidateZ;
+        let candidateZoom;
+        let candidateNear;
+        if (transitionElapsed < CAMERA_DIRECTOR_EASE_S) {
+          transitionElapsed = Math.min(CAMERA_DIRECTOR_EASE_S, transitionElapsed + frameDt);
+          const ease = smoothstep01(transitionElapsed / CAMERA_DIRECTOR_EASE_S);
+          candidateX = transitionStartX + (desiredX - transitionStartX) * ease;
+          candidateZ = transitionStartZ + (desiredZ - transitionStartZ) * ease;
+          candidateZoom = transitionStartZoom + (desiredZoom - transitionStartZoom) * ease;
+          candidateNear = transitionStartNear + (desiredNear - transitionStartNear) * ease;
+        } else {
+          const followAlpha = 1 - Math.exp(-frameDt / CAMERA_DIRECTOR_EASE_S);
+          candidateX = output.focusX + (desiredX - output.focusX) * followAlpha;
+          candidateZ = output.focusZ + (desiredZ - output.focusZ) * followAlpha;
+          candidateZoom = output.zoom + (desiredZoom - output.zoom) * followAlpha;
+          candidateNear = output.nearPlane + (desiredNear - output.nearPlane) * followAlpha;
+        }
+
+        output.mode = CameraDirectorMode.GATE_APPROACH;
+        output.focusX = candidateX;
+        output.focusZ = candidateZ;
+        // Unlike combat framing, approach acquisition may reveal context over the authored 0.35 s
+        // ease instead of snapping immediately to the final fit. The gate is acquired early enough
+        // that this transition completes before the shell reaches the camera.
+        output.zoom = clamp(candidateZoom, CAMERA_DIRECTOR_MIN_ZOOM, gateApproach.zoomMax);
+        output.targetId = targetId;
+        output.overflow = impossible;
+        output.preferredBandExceeded = output.zoom > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9;
+        output.requiredZoom = desiredRequired;
+        output.nearPlane = clamp(candidateNear, 1, 160);
+        output.gateBoundsRadius = gateApproach.metrics.boundsRadius;
+        output.gateApertureRadius = gateApproach.metrics.apertureRadius;
+        return output;
+      }
+
       if (requestedMode !== CameraDirectorMode.FOLLOW && playerValid) {
         const wasSamePair = (output.mode === CameraDirectorMode.FOCUS_PAIR || output.mode === CameraDirectorMode.TETHER_PAIR)
           && output.targetId === targetId;
@@ -372,10 +572,17 @@ export function createCameraDirector() {
         output.overflow = impossible;
         output.preferredBandExceeded = output.zoom > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9;
         output.requiredZoom = required;
+        output.nearPlane = transitionElapsed < CAMERA_DIRECTOR_EASE_S
+          ? transitionStartNear + (1 - transitionStartNear) * smoothstep01(transitionElapsed / CAMERA_DIRECTOR_EASE_S)
+          : 1;
+        output.gateBoundsRadius = 0;
+        output.gateApertureRadius = 0;
         return output;
       }
 
-      const leavingPair = output.mode === CameraDirectorMode.FOCUS_PAIR || output.mode === CameraDirectorMode.TETHER_PAIR;
+      const leavingPair = output.mode === CameraDirectorMode.FOCUS_PAIR
+        || output.mode === CameraDirectorMode.TETHER_PAIR
+        || output.mode === CameraDirectorMode.GATE_APPROACH;
       if (leavingPair) beginTransition();
       if (leavingPair || output.mode === CameraDirectorMode.RECOVER) {
         transitionElapsed = Math.min(CAMERA_DIRECTOR_EASE_S, transitionElapsed + frameDt);
@@ -388,13 +595,16 @@ export function createCameraDirector() {
         output.zoom = clamp(
           transitionStartZoom + (followZoom - transitionStartZoom) * ease,
           FOLLOW_MIN_ZOOM,
-          CAMERA_DIRECTOR_ENGINE_MAX_ZOOM,
+          CAMERA_DIRECTOR_GATE_MAX_ZOOM,
         );
         output.targetId = null;
         output.overflow = false;
         output.preferredBandExceeded = output.mode === CameraDirectorMode.RECOVER
           && output.zoom > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9;
         output.requiredZoom = output.zoom;
+        output.nearPlane = transitionStartNear + (1 - transitionStartNear) * ease;
+        output.gateBoundsRadius = 0;
+        output.gateApertureRadius = 0;
         return output;
       }
 
@@ -406,6 +616,9 @@ export function createCameraDirector() {
       output.overflow = false;
       output.preferredBandExceeded = false;
       output.requiredZoom = output.zoom;
+      output.nearPlane = 1;
+      output.gateBoundsRadius = 0;
+      output.gateApertureRadius = 0;
       return output;
     },
   };

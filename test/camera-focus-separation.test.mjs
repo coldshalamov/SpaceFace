@@ -8,10 +8,14 @@ import {
   CAMERA_DIRECTOR_EASE_S,
   CAMERA_DIRECTOR_ENGINE_MAX_ZOOM,
   CAMERA_DIRECTOR_FOCUS_SAFE_NDC,
+  CAMERA_DIRECTOR_GATE_MAX_ZOOM,
+  CAMERA_DIRECTOR_GATE_SAFE_NDC,
   CAMERA_DIRECTOR_MIN_ZOOM,
   CAMERA_DIRECTOR_SAFE_NDC,
   CameraDirectorMode,
   createCameraDirector,
+  resolveGateApproachTarget,
+  resolveGateVisualMetrics,
 } from '../src/render/cameraDirector.js';
 import { createChaseCamera, resolveChaseComposition } from '../src/render/camera.js';
 import { createBus } from '../src/core/eventBus.js';
@@ -553,6 +557,127 @@ test('Flyby Focus only acquires valid high-speed hostile near-miss and owns time
   system.update(DT, state);
   assert.equal(state.player.flybyFocus.active, false,
     'active tether prevents Focus re-acquire; asteroid never becomes Focus');
+});
+
+// ---------------------------------------------------------------------------
+// Gate approach: authored-bounds composition without stealing manual/Focus camera authority
+// ---------------------------------------------------------------------------
+
+function authoredGate(id, x, z) {
+  const gate = {
+    id,
+    type: 'station',
+    alive: true,
+    hull: 1e6,
+    team: 0,
+    pos: { x, z },
+    radius: 32,
+    data: { isGate: true, dockRadius: 70, gateTo: 'sector_test' },
+  };
+  const authoredRoot = {
+    userData: {
+      visualBounds: {
+        center: [0, -10, 12],
+        // Mirrors the oversized release gate after its 5x runtime placeScale.
+        size: [100, 521, 533],
+      },
+    },
+    children: [],
+  };
+  gate.mesh = { userData: { hull: authoredRoot }, children: [authoredRoot] };
+  gate.view = { root: gate.mesh };
+  return gate;
+}
+
+function armGateAutopilot(state, gate) {
+  state.nav = {
+    autopilot: {
+      active: true,
+      targetEntityId: gate.id,
+      target: { x: gate.pos.x, z: gate.pos.z },
+      arrivalRadius: 82,
+      status: 'cruising',
+    },
+  };
+}
+
+test('gate metrics use mounted authored bounds rather than the tiny collision radius', () => {
+  const gate = authoredGate(80, 0, 360);
+  const metrics = resolveGateVisualMetrics(gate);
+  assert.equal(metrics.source, 'authored');
+  assert.ok(metrics.boundsRadius > 370, `actual gate radius ${metrics.boundsRadius} reflects mounted GLB bounds`);
+  assert.ok(metrics.apertureRadius > 195 && metrics.apertureRadius < 205,
+    `aperture ${metrics.apertureRadius} derives from the two broad gate-plane axes`);
+  assert.ok(metrics.depthHalf >= 50, 'near clipping derives from the shallow authored depth axis');
+  assert.notEqual(metrics.boundsRadius, gate.radius, 'camera never mistakes collision radius for visual size');
+});
+
+test('manual flight near an authored gate remains ordinary FOLLOW', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  const gate = authoredGate(80, 0, 240);
+  const state = stateFor(player, [gate]);
+  assert.equal(resolveGateApproachTarget(state, player), null, 'no autopilot lease means no gate camera takeover');
+  const director = createCameraDirector();
+  director.syncFollow(0, 0, TACTICAL_ZOOM);
+  const frame = settle(director, 0.5, state, player);
+  assert.equal(frame.mode, CameraDirectorMode.FOLLOW);
+  assert.equal(frame.nearPlane, 1);
+});
+
+test('autopilot gate approach eases to player + aperture framing from actual bounds', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  const gate = authoredGate(80, 0, 360);
+  const state = stateFor(player, [gate]);
+  armGateAutopilot(state, gate);
+  const director = createCameraDirector();
+  director.syncFollow(0, 0, TACTICAL_ZOOM);
+
+  const first = director.step(DT, state, player, view());
+  assert.equal(first.mode, CameraDirectorMode.GATE_APPROACH);
+  assert.ok(first.zoom - TACTICAL_ZOOM < 8,
+    `first gate frame eases instead of snapping (${TACTICAL_ZOOM} -> ${first.zoom})`);
+  assert.ok(first.nearPlane < 3, `near plane also eases on acquire (${first.nearPlane})`);
+
+  const frame = settle(director, 1.5, state, player);
+  assert.equal(frame.mode, CameraDirectorMode.GATE_APPROACH);
+  assert.equal(frame.targetId, gate.id);
+  assert.ok(frame.zoom > CAMERA_DIRECTOR_ENGINE_MAX_ZOOM,
+    'oversized gate may exceed the combat/manual ceiling only under gate autopilot');
+  assert.ok(frame.zoom <= CAMERA_DIRECTOR_GATE_MAX_ZOOM);
+  assert.ok(frame.nearPlane > 30, 'foreground slabs are clipped using the authored shallow-depth bound');
+  assert.ok(frame.gateBoundsRadius > 370 && frame.gateApertureRadius > 195,
+    'director publishes the actual visual envelope used for composition');
+  assertInFocusMargin(player, frame, CAMERA_DIRECTOR_GATE_SAFE_NDC, 'player on gate approach');
+  assertInFocusMargin({ pos: gate.pos, radius: 16 }, frame, CAMERA_DIRECTOR_GATE_SAFE_NDC, 'gate aperture');
+
+  const gateZoom = frame.zoom;
+  state.nav.autopilot.active = false;
+  const release = director.step(DT, state, player, view());
+  assert.equal(release.mode, CameraDirectorMode.RECOVER);
+  assert.ok(release.zoom < gateZoom && gateZoom - release.zoom < 8,
+    'gate release begins with a small continuous zoom step');
+  const recovered = settle(director, CAMERA_DIRECTOR_EASE_S + 0.05, state, player);
+  assert.equal(recovered.mode, CameraDirectorMode.FOLLOW);
+  assert.equal(recovered.nearPlane, 1);
+});
+
+test('Flyby Focus remains authoritative over simultaneous gate autopilot', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  const gate = authoredGate(80, 0, 260);
+  const hostile = entity(81, 90, 0, 8, { team: 1 });
+  const state = stateFor(player, [gate, hostile], {
+    focusActive: true,
+    focusTargetId: hostile.id,
+    targetId: hostile.id,
+  });
+  armGateAutopilot(state, gate);
+  const director = createCameraDirector();
+  director.syncFollow(0, 0, TACTICAL_ZOOM);
+  const frame = settle(director, 0.5, state, player);
+  assert.equal(frame.mode, CameraDirectorMode.FOCUS_PAIR);
+  assert.equal(frame.targetId, hostile.id);
+  assert.equal(frame.nearPlane, 1, 'combat pair never inherits gate near clipping');
+  assert.ok(frame.zoom <= CAMERA_DIRECTOR_ENGINE_MAX_ZOOM, 'Focus retains its authored combat zoom envelope');
 });
 
 console.log('camera-focus-separation tests loaded');

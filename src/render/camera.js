@@ -316,6 +316,7 @@ export function createChaseCamera(state) {
   let _compositionBiasX = 0;
   let _compositionBiasZ = 0;
   let _contextZoomBias = 0;
+  let _dynamicNear = cam.near;
   const cameraDirector = createCameraDirector();
   let _directorFrame = cameraDirector.output;
   const _directorView = {
@@ -335,6 +336,11 @@ export function createChaseCamera(state) {
     const pz = _playerLocalScratch.z;
     c.focus.set(px, 0, pz);
     _dynamicZoom = finiteOr(c.zoom, DEFAULT_ZOOM);
+    _dynamicNear = 1;
+    if (cam.near !== 1) {
+      cam.near = 1;
+      cam.updateProjectionMatrix();
+    }
     _speedZoomFactor = SPEED_ZOOM_MIN;
     _speedZoomSampleT = 0;
     computeOffset(_dynamicZoom);
@@ -532,6 +538,16 @@ export function createChaseCamera(state) {
       _dynamicZoom = directorOwnsComposition
         ? _directorFrame.zoom
         : damp(_dynamicZoom, targetZoom, ZOOM_LERP, frameDt);
+      // Oversized authored gates can physically surround the chase camera even while the aperture
+      // is correctly composed. The director derives a conservative near plane from the mounted
+      // gate's real depth bounds; easing is owned by the same 0.35 s transition as focus/zoom.
+      // Ordinary chase, manual flight, and Flyby Focus all remain at the canonical 1 wu near plane.
+      const nextNear = directorOwnsComposition ? finiteOr(_directorFrame.nearPlane, 1) : 1;
+      _dynamicNear = Math.max(1, Math.min(160, nextNear));
+      if (Math.abs(cam.near - _dynamicNear) > 0.01) {
+        cam.near = _dynamicNear;
+        cam.updateProjectionMatrix();
+      }
       if (p && p.pos && !directorOwnsComposition) {
         // Safe-rect is frame-local (player proxy holds projected XZ for this frame).
         const safeFocus = clampFocusToPlayerSafeRect(c.focus, _playerLocalProxy, { zoom: _dynamicZoom, fov: cam.fov, aspect: cam.aspect });
