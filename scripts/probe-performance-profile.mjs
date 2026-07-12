@@ -21,6 +21,11 @@ import {
   buildRenderScaleRestoreExpression,
   parseRenderScaleRequest,
 } from './lib/perf-render-scale.mjs';
+import {
+  analyzeRafCadence,
+  classifyPresentEvidence,
+  summarizeGpuTimerReport,
+} from './lib/perf-present-evidence.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const argv = parseArgs(process.argv.slice(2));
@@ -233,6 +238,16 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
   const autosave = autosaveSummary(sampled.autosaveProbe, finalSample.perf);
   const settingsChanged = JSON.stringify(baselineState.settingsVideo) !== JSON.stringify(finalState.settingsVideo);
   const callbackP95 = callbackP95s(finalSample.perf);
+  const cadence = analyzeRafCadence(sampled.raf.frames);
+  const gpuTimers = summarizeGpuTimerReport(sampled.gpuTimers);
+  const noopVariant = diagnosticVariants.find((variant) => variant.name === 'webgl-submit-noop-diagnostic');
+  const presentEvidence = classifyPresentEvidence({
+    rafP95: raf.p95,
+    callbackP95: callbackP95.callback,
+    noopRafP95: noopVariant && noopVariant.rafFrameMs && noopVariant.rafFrameMs.p95,
+    cadence,
+    gpu: gpuTimers,
+  });
   const diagnosticSamples = Math.max(
     samples.length,
     Number(finalSample.perf && finalSample.perf.frame && finalSample.perf.frame.samples) || 0,
@@ -284,6 +299,9 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
     },
     budgets,
     rafFrameMs: raf,
+    cadence,
+    gpuTimers,
+    presentEvidence,
     diagnosticFrameMs: finalSample.frameMs,
     render: {
       calls: renderCalls,
@@ -679,12 +697,17 @@ async function sampleRuntime(cdp, durationMs) {
       if (typeof unsubSaveCompleted === 'function') unsubSaveCompleted();
       if (typeof unsubSaveError === 'function') unsubSaveError();
       pushDiag(true);
+      const state = window.SF && window.SF.state || null;
       resolve({
         raf: { frames: rafFrames },
         samples,
         heap: heapSamples,
         sceneStats: sceneBreakdown(),
         autosaveProbe,
+        gpuTimers: state && state.render && state.render.gpuTimers &&
+          typeof state.render.gpuTimers.getReport === 'function'
+          ? state.render.gpuTimers.getReport()
+          : null,
       });
     };
 
@@ -1296,6 +1319,8 @@ async function runDiagnosticVariants(cdp) {
       applied,
       sampleWindowMs: DIAGNOSTIC_VARIANT_MS,
       rafFrameMs: frameStats(sampled.raf.frames),
+      cadence: analyzeRafCadence(sampled.raf.frames),
+      gpuTimers: summarizeGpuTimerReport(sampled.gpuTimers),
       diagnosticFrameMs: finalSample.frameMs || {},
       phases: phaseP95s(finalSample.perf),
       callback: callbackP95s(finalSample.perf),
@@ -1326,10 +1351,14 @@ async function resetRuntimeDiagnostics(cdp) {
     if (diag && typeof diag.reset === 'function') diag.reset();
     if (perf && typeof perf.reset === 'function') perf.reset();
     if (render && typeof render.resetPostTelemetrySample === 'function') render.resetPostTelemetrySample();
+    const gpuTimers = render && render.gpuTimers || null;
+    const gpuTimersEnabled = !!(gpuTimers && typeof gpuTimers.setEnabled === 'function' && gpuTimers.setEnabled(true));
+    if (gpuTimers && typeof gpuTimers.reset === 'function') gpuTimers.reset();
     resolve({
       diagnostics: !!(diag && typeof diag.reset === 'function'),
       perfRuntime: !!(perf && typeof perf.reset === 'function'),
       postTelemetry: !!(render && typeof render.resetPostTelemetrySample === 'function'),
+      gpuTimers: gpuTimersEnabled,
     });
   }))`);
   assert.ok(reset.diagnostics, 'renderer diagnostics reset must be available');
@@ -1754,6 +1783,9 @@ function summarizeReport(scenarios) {
       trianglesPeak: scenario.render.triangles.max,
       heapGrowthMB: scenario.memory.heapGrowthMB,
       callback: scenario.callback || null,
+      cadence: scenario.cadence || null,
+      gpuTimers: scenario.gpuTimers || null,
+      presentEvidence: scenario.presentEvidence || null,
       autosave: scenario.autosave || null,
       entityScaleSweeps: summarizeEntityScaleSweeps(scenario.entityScaleSweeps),
       loop: scenario.perf && scenario.perf.loop,

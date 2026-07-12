@@ -168,6 +168,24 @@ function appendScenarioSection(lines, condensed, full, qualityPreserving) {
     lines.push('');
   }
 
+  const presentEvidence = full?.presentEvidence || condensed?.presentEvidence || null;
+  const cadence = full?.cadence || condensed?.cadence || null;
+  const gpuTimers = full?.gpuTimers || condensed?.gpuTimers || null;
+  if (presentEvidence || cadence || gpuTimers) {
+    lines.push('### Present and GPU evidence');
+    lines.push('');
+    if (presentEvidence) {
+      lines.push(`- Classification: **\`${presentEvidence.classification}\`** (${presentEvidence.confidence || 'unknown'} confidence)`);
+    }
+    if (cadence) {
+      lines.push(`- Two-vsync frames: ${fmt(cadence.ratios?.twoVsync)} ratio; estimated missed vsyncs: ${fmt(cadence.estimatedMissedVsyncs)}`);
+    }
+    if (gpuTimers) {
+      lines.push(`- GPU timer: ${gpuTimers.status || 'unknown'}; frame pass average: ${fmt(gpuTimers.frameGpuAvgMs)} ms; sampled labels: ${(gpuTimers.frameLabels || []).join(', ') || 'none'}`);
+    }
+    lines.push('');
+  }
+
   const autosave = full?.autosave || condensed?.autosave || null;
   if (autosave) {
     lines.push('### Autosave probe');
