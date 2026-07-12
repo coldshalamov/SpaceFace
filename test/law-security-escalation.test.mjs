@@ -635,20 +635,20 @@ test('6. leaving station jurisdiction without more damage resolves incident and 
   });
 });
 
-// ── 7. Authored zone_hostile / encounter danger stays aggressive ───────────────
+// ── 7. Authored off-sanctuary zone_hostile / encounter danger stays aggressive ─
 
-test('7. authored zone_hostile and encounter danger remain aggressive; not converted to ambient neutrality', () => {
+test('7. authored off-sanctuary danger remains aggressive; not converted to ambient neutrality', () => {
   withForbiddenNondeterminism(() => {
     const t = boot({
-      sectorId: HELIOS_SECTOR,
-      security: 0.95,
+      sectorId: LOW_SEC_SECTOR,
+      security: 0.35,
       cargoItems: {}, // would force ambient empty-hold neutrality if stamp ran
-      playerPos: { x: 80, z: 0 },
-      station: { stationId: 'station_helios' },
+      playerPos: { x: 1400, z: 0 },
+      station: false,
     });
 
     const zoneHostile = spawnPirate(t.sim, {
-      pos: { x: 400, z: 0 },
+      pos: { x: 1650, z: 0 },
       spawnContext: 'zone_hostile',
       archetype: 'pirate_raider',
       extras: {
@@ -667,7 +667,7 @@ test('7. authored zone_hostile and encounter danger remain aggressive; not conve
     entity(t.state, zoneHostile).data.combat.targetId = t.player.id;
 
     const encounterPirate = spawnPirate(t.sim, {
-      pos: { x: 450, z: 30 },
+      pos: { x: 1700, z: 30 },
       spawnContext: 'encounter',
       archetype: 'pirate_raider',
       extras: {
@@ -848,5 +848,67 @@ test('11. deep lawless violence receives no implausible instant police response'
     assert.equal(t.log.dispatchStarted.length, 0);
     assert.equal(Object.keys(lawOwn(t.state).incidents).length, 0);
     t.sim.dispose();
+  });
+});
+
+test('12. an armed raider crossing into Helios sanctuary disarms and withdraws instead of chasing', () => {
+  withForbiddenNondeterminism(() => {
+    const t = boot({
+      sectorId: HELIOS_SECTOR,
+      security: 0.98,
+      playerPos: { x: 160, z: 0 },
+    });
+    const raider = spawnPirate(t.sim, {
+      pos: { x: 420, z: 0 },
+      spawnContext: 'zone_hostile',
+      doctrine: 'scavenger',
+      squadId: 'sanctuary_intruder',
+      extras: {
+        motive: 'lane_predation',
+        engagementTrigger: 'ambush_sprung',
+        zoneId: 'zone_ceres_ambush',
+        approachTelegraph: 'engine_flare',
+        noFireResponseWindowS: 1,
+        combatDoctrineId: 'interceptor_flyby',
+        roe: RulesOfEngagement.WEAPONS_FREE,
+        forcePlayerTarget: true,
+        huntPlayer: true,
+        activity: {
+          kind: ActivityKind.ATTACK_RUN,
+          reason: 'combat_doctrine:interceptor_flyby:strike',
+          anchor: { x: 1800, z: 0 },
+          leashRadius: 2200,
+          startedTick: 0,
+          targetId: t.player.id,
+        },
+      },
+    });
+    raider.data.combat.targetId = t.player.id;
+    raider.data.combat.lockTarget = t.player.id;
+    raider.data.intent.fire = true;
+    raider.data.intent.fireGroup = 'primary';
+    const withdrawals = [];
+    const voices = [];
+    t.bus.on('law:sanctuaryWithdrawal', (payload) => withdrawals.push(clone(payload)));
+    t.bus.on('law:voice', (payload) => voices.push(clone(payload)));
+    t.state.lawSecurity.nextAmbientScanTick = (t.state.tick | 0) + 60;
+
+    t.sim.step(SIM_DT);
+
+    assert.equal(raider.data.ai.passive, true, 'station jurisdiction removes the raider from attack rostering');
+    assert.equal(raider.data.ai.roe, RulesOfEngagement.HOLD_FIRE, 'withdrawal is weapons-safe');
+    assert.equal(raider.data.ai.activity.kind, ActivityKind.DISENGAGE, 'movement becomes an intentional withdrawal');
+    assert.equal(raider.data.ai.sanctuaryWithdrawn, true, 'withdrawal is sticky and inspectable');
+    assert.equal(raider.data.combat.targetId, null, 'player target is cleared');
+    assert.equal(raider.data.combat.lockTarget, null, 'player lock is cleared');
+    assert.equal(raider.data.intent.fire, false, 'stale fire bit is cleared before weapons update');
+    assert.equal(raider.data.intent.fireGroup, null, 'stale weapon group is cleared');
+    assert.ok(raider.data.intent.moveX > 0.9, 'withdrawal vector points away from the station/player core');
+    assert.ok(Math.abs(raider.data.intent.moveZ) < 0.1, 'withdrawal does not random-spin');
+    assert.equal(isHostileForAI(t.state, raider, t.player), false, 'withdrawn raider is no longer a hostile contact');
+    assert.equal(withdrawals.length, 1, 'jurisdiction transition emits one inspectable withdrawal receipt');
+    assert.equal(withdrawals[0].stationId, 'station_helios');
+    assert.equal(voices.length, 1, 'withdrawal has one readable warning, not repeated text spam');
+    assert.match(voices[0].text, /Station guns own this lane/);
   });
 });

@@ -9,6 +9,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { isPlayerWanted } from './heat.js';
@@ -57,6 +58,7 @@ export const lawSecurity = {
   update(_dt, state) {
     if (state.mode && state.mode !== 'flight') return;
     const own = ensureState(state);
+    this._enforceSanctuaryWithdrawals(state);
     if ((state.tick | 0) >= (own.nextAmbientScanTick | 0)) {
       own.nextAmbientScanTick = (state.tick | 0) + AMBIENT_SCAN_INTERVAL_TICKS;
       for (const entity of state.entityList || []) this._stampAmbient(entity);
@@ -108,6 +110,84 @@ export const lawSecurity = {
     });
     clearTarget(entity, state.playerId);
     return true;
+  },
+
+  /**
+   * Station protection is a behavior contract, not only a projectile veto. If a raider crosses
+   * the jurisdiction boundary while chasing a protected target, it must visibly break contact:
+   * disarm, clear the lock, and fly away from the protected core. This catches stale attack state
+   * from encounters and sector promotion before the weapon system can consume it.
+  */
+  _enforceSanctuaryWithdrawals(state) {
+    for (const entity of state.entityList || []) {
+      if (!isArmedNpc(entity, state) || isLawful(entity)) continue;
+      const data = entity.data || (entity.data = {});
+      const ai = data.ai || (data.ai = {});
+      const combat = data.combat || (data.combat = {});
+      const intent = data.intent || (data.intent = {});
+      const activity = ai.activity;
+      let targetId = combat.targetId != null ? combat.targetId : combat.lockTarget;
+      if (targetId == null && activity && activity.targetId != null) targetId = activity.targetId;
+      if (targetId == null && (ai.forcePlayerTarget || ai.huntPlayer || intent.fire)) {
+        targetId = state.playerId;
+      }
+      const target = entityById(state, targetId);
+      if (!target) continue;
+      const jurisdiction = protectedStationAt(state, target) || protectedStationAt(state, entity);
+      if (!jurisdiction) continue;
+      this._withdrawFromSanctuary(entity, target, jurisdiction);
+    }
+  },
+
+  _withdrawFromSanctuary(entity, target, jurisdiction) {
+    const state = this.state;
+    const data = entity.data || (entity.data = {});
+    const ai = data.ai || (data.ai = {});
+    const firstWithdrawal = ai.sanctuaryWithdrawn !== true;
+    const away = sanctuaryWithdrawalVector(state, entity, target, jurisdiction);
+    const cause = aggressionCauseFor(state, entity, target);
+
+    ai.passive = true;
+    ai.forcePlayerTarget = false;
+    ai.huntPlayer = false;
+    ai.pirateDisengaged = true;
+    ai.sanctuaryWithdrawn = true;
+    ai.motiveSatisfied = true;
+    ai.engagementTrigger = 'jurisdiction_withdrawal';
+    ai.roe = RulesOfEngagement.HOLD_FIRE;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.DISENGAGE,
+      reason: `station_jurisdiction:${jurisdiction.stationId}:withdraw`,
+      anchor: protectionCenter(state, jurisdiction, target),
+      leashRadius: Math.max(1600, Number(jurisdiction.radius) || 0),
+      startedTick: state.tick | 0,
+      targetId: null,
+    });
+
+    clearTarget(entity, target.id);
+    const intent = data.intent || (data.intent = {});
+    intent.moveX = away.x;
+    intent.moveZ = away.z;
+    intent.boost = true;
+    intent.brake = false;
+
+    if (!firstWithdrawal) return;
+    this._say('bark', 'Station guns own this lane. Breaking contact.',
+      `law:sanctuary-withdrawal:${entity.id}`, entity.factionId);
+    this._recordReceipt({
+      cause,
+      outcome: 'sanctuary_withdrawal',
+      attackerId: entity.id,
+      targetId: target.id,
+      stationId: jurisdiction.stationId,
+      text: 'CONTACT BROKEN — raider withdrew from station jurisdiction.',
+    });
+    this._emit('law:sanctuaryWithdrawal', {
+      attackerId: entity.id,
+      targetId: target.id,
+      stationId: jurisdiction.stationId,
+      tick: state.tick | 0,
+    });
   },
 
   _handleDamage(payload) {
@@ -514,6 +594,35 @@ function clearTarget(entity, targetId) {
   const intent = data.intent || (data.intent = {});
   intent.fire = false;
   intent.fireGroup = null;
+}
+
+function sanctuaryWithdrawalVector(state, entity, target, jurisdiction) {
+  const center = protectionCenter(state, jurisdiction, target);
+  let dx = Number(entity && entity.pos && entity.pos.x) - Number(center && center.x);
+  let dz = Number(entity && entity.pos && entity.pos.z) - Number(center && center.z);
+  let length = Math.hypot(dx, dz);
+  if (length < 1e-6) {
+    dx = Number(entity && entity.pos && entity.pos.x) - Number(target && target.pos && target.pos.x);
+    dz = Number(entity && entity.pos && entity.pos.z) - Number(target && target.pos && target.pos.z);
+    length = Math.hypot(dx, dz);
+  }
+  if (length < 1e-6) {
+    dx = (entity.id & 1) === 0 ? 1 : -1;
+    dz = 0;
+    length = 1;
+  }
+  return { x: dx / length, z: dz / length };
+}
+
+function protectionCenter(state, jurisdiction, fallback) {
+  const station = entityById(state, jurisdiction && jurisdiction.entityId)
+    || stationByPublicId(state, jurisdiction && jurisdiction.stationId);
+  if (station && station.pos) return { x: station.pos.x, z: station.pos.z };
+  if (jurisdiction && jurisdiction.stationId === 'station_helios') {
+    return sectorGlobalOrigin('sector_helios_prime');
+  }
+  if (fallback && fallback.pos) return { x: fallback.pos.x, z: fallback.pos.z };
+  return { x: 0, z: 0 };
 }
 
 function currentSectorId(state) {
