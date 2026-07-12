@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "assetId": "hull_starter",
+  "classification": "rejected",
+  "reasonCode": "critical_or_major_defect",
+  "candidateHash": null,
+  "evidencePaths": [
+    ".devshots/slice-A/hull_starter_clay_34.png"
+  ],
+  "campaignStatePath": null,
+  "openCriticalMajorCount": 1,
+  "authorityRole": "orchestrator",
+  "classifiedBy": "lead-integrator",
+  "classifiedAt": "2026-07-10T13:43:36.667Z"
+}

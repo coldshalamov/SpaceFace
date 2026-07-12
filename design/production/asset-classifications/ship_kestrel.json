@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "assetId": "ship_kestrel",
+  "classification": "candidate",
+  "reasonCode": "evidence_incomplete",
+  "candidateHash": null,
+  "evidencePaths": [
+    ".devshots/alpha/m0-live-baseline-browser/evidence.json",
+    ".devshots/alpha/m0-live-baseline-browser/03-flight-after-input.png",
+    ".devshots/alpha/m0-live-baseline-electron/evidence.json",
+    ".devshots/alpha/m0-live-baseline-electron/03-flight-after-input.png"
+  ],
+  "campaignStatePath": null,
+  "openCriticalMajorCount": 0,
+  "authorityRole": "orchestrator",
+  "classifiedBy": "lead-integrator",
+  "classifiedAt": "2026-07-10T13:43:36.667Z"
+}

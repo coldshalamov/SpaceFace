@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "assetId": "engine_vector",
+  "classification": "candidate",
+  "reasonCode": "evidence_incomplete",
+  "candidateHash": null,
+  "evidencePaths": [
+    ".devshots/slice-A/engine-vector.png",
+    ".devshots/slice-A/engine-vector-nozzle.png",
+    ".devshots/slice-A/engine-vector-clay.png"
+  ],
+  "campaignStatePath": null,
+  "openCriticalMajorCount": 0,
+  "authorityRole": "orchestrator",
+  "classifiedBy": "lead-integrator",
+  "classifiedAt": "2026-07-10T13:43:36.667Z"
+}

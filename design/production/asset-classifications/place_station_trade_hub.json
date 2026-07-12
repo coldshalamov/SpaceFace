@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "assetId": "place_station_trade_hub",
+  "classification": "rejected",
+  "reasonCode": "critical_or_major_defect",
+  "candidateHash": null,
+  "evidencePaths": [
+    ".devshots/slice-A/station-approach.png",
+    ".devshots/slice-A/station-approach-close.png",
+    ".devshots/alpha/m0-live-baseline-browser/05-dock-prompt.png",
+    ".devshots/alpha/m0-live-baseline-electron/05-dock-prompt.png"
+  ],
+  "campaignStatePath": null,
+  "openCriticalMajorCount": 2,
+  "authorityRole": "orchestrator",
+  "classifiedBy": "lead-integrator",
+  "classifiedAt": "2026-07-10T13:43:36.667Z"
+}

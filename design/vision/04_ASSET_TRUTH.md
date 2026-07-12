@@ -1,7 +1,10 @@
 # 04 — Asset Truth (wired vs not)
 
-**Snapshot:** 2026-07-09  
-**Masters:** `assets/AGENTS.md`, `assets/QUEUE.md`, `assets/ASSET_STATUS.json`, `npm run check:asset-status`, `check:assets:live`, `check:asset-reachability`.
+**Snapshot:** 2026-07-10
+**Masters:** `assets/AGENTS.md`, `assets/QUEUE.md`, `assets/ASSET_STATUS.json`,
+`design/production/asset-classifications/*.json`, `npm run check:asset-status`,
+`check:assets:live`, `check:asset-reachability`, `check:asset-classifications`, and
+`check:asset-classifications:evidence`.
 
 ---
 
@@ -21,11 +24,46 @@ CONCEPT → SOURCE_GLB → RELEASE_BUILT → MANIFEST_SLOT → RUNTIME_MAP → V
 | VISIBLE | Player sees it in default flight/UI |
 | BLOCKED | Must not wire (e.g. accessory-only wholeships) |
 
-`assets/ASSET_STATUS.json` exists but **`assets: {}` is empty** — lifecycle tracking not populated. **Wave 4-E** should fill it.
+`assets/ASSET_STATUS.json` currently records **23 place assets** at `VISIBLE_IN_PLAY`. That is
+lifecycle/reachability truth only: it proves those release paths are mapped into normal play, not
+that their geometry, materials, composition, or taste are accepted.
 
 ---
 
-## 2. Inventory counts (approx.)
+## 2. Player-facing classification (quality/acceptance)
+
+The durable authority for an assessed output is one closed-schema record at
+`design/production/asset-classifications/<assetId>.json`. There is no index.
+
+- `npm run check:asset-classifications` is the reproducible clean-clone gate used by `check:art`.
+  It validates the closed schema, record identity/uniqueness, safe contained path syntax, and every
+  cited file that is present. Because `.devshots` is intentionally ignored, a missing citation is
+  allowed only on a non-accepted record.
+- `npm run check:asset-classifications:evidence` is the evidence-bearing workspace gate. It requires
+  every nonempty evidence and campaign-state citation to resolve to a real contained regular file.
+- An `accepted` record always requires its real evidence and campaign-state files in either mode;
+  the clean gate never relaxes acceptance.
+
+| Classification | Count | Meaning at this snapshot |
+|---|---:|---|
+| `accepted` | 0 | No current output has all live-evidence and campaign-state gates. |
+| `candidate` | 3 | Worth continuing, but evidence is incomplete. |
+| `rejected` | 8 | Independent review found one or more critical/major defects. |
+| `missing_evidence` | 8 | Structural/authoring proof or no proof; player-facing pixels are not certified. |
+| **Total** | **19** | Current Milestone-0 review corpus. |
+
+`VISIBLE_IN_PLAY` and `accepted` answer different questions. A wired asset may be rejected and may
+remain visible while its repair is queued; wiring never promotes quality status. An accepted record
+requires a byte-bound candidate hash, live game evidence, a campaign-state record, zero open
+critical/major defects, and orchestrator classification. No current record invents a hash without
+that exact binding.
+
+Blender renders, source-string checks, self-scores, weighted scores, and iteration counts are
+authoring telemetry. They can support review but cannot certify what a player sees.
+
+---
+
+## 3. Inventory counts (approx.)
 
 | Location | Count | Role |
 |---|---:|---|
@@ -40,11 +78,11 @@ CONCEPT → SOURCE_GLB → RELEASE_BUILT → MANIFEST_SLOT → RUNTIME_MAP → V
 
 ---
 
-## 3. Ship rendering paths (agents get this wrong)
+## 4. Ship rendering paths (agents get this wrong)
 
 | Path | Used for | Notes |
 |---|---|---|
-| Code-native (`kestrelHero.js`, etc.) | Player Kestrel & some heroes | Not the wholeship GLB |
+| Code-native (`src/render/ships/kestrelHero.js`, etc.) | New-game **Hitch** (display name; internal definition `ship_kestrel`) and some heroes | Current normal player path; not the wholeship GLB |
 | Modular hull parts (`HULL_FILE_BY_DEF_ID`) | Many ships | Release parts |
 | Whole-ship GLB map | **EMPTY** (`WHOLE_SHIP_FILE_BY_DEF_ID = {}`) | Do not wire blocked wholeships |
 | Procedural fallback | Missing GLB | **Silent** — looks like boxes; forbidden for default ship if avoidable |
@@ -57,7 +95,7 @@ CONCEPT → SOURCE_GLB → RELEASE_BUILT → MANIFEST_SLOT → RUNTIME_MAP → V
 
 ---
 
-## 4. Place / world assets (wired names)
+## 5. Place / world assets (wired names)
 
 Release place set includes (wired via `partsLibrary` PLACE list):
 
@@ -71,7 +109,7 @@ Release place set includes (wired via `partsLibrary` PLACE list):
 
 ---
 
-## 5. Queue (not built) — priority for Wave 4
+## 6. Queue (not built) — priority for Wave 4
 
 From `assets/QUEUE.md`:
 
@@ -83,7 +121,7 @@ From `assets/QUEUE.md`:
 
 ---
 
-## 6. Graphics sprint threads (ops)
+## 7. Graphics sprint threads (ops)
 
 | Thread | Domain | Blender? |
 |---|---|---|
@@ -97,7 +135,7 @@ See `design/graphics-sprints/00_ORCHESTRATION.md`.
 
 ---
 
-## 7. “Do we need better graphics?” — honest answer
+## 8. “Do we need better graphics?” — honest answer
 
 **Yes** — for wonder, marketing, and place identity.  
 **But** graphics alone will not fix unplayable combat or empty-feeling sectors.
@@ -111,7 +149,7 @@ After M0 PLAY-DONE, flip toward heavier asset flood (W4).
 
 ---
 
-## 8. Authoring tools (full stack)
+## 9. Authoring tools (full stack)
 
 | Tool | Role |
 |---|---|
@@ -131,10 +169,12 @@ Blender rules:
 
 ---
 
-## 9. Quick verification commands
+## 10. Quick verification commands
 
 ```bash
 npm run check:asset-status
+npm run check:asset-classifications
+npm run check:asset-classifications:evidence
 npm run check:assets:live
 npm run check:asset-reachability
 npm run check:visual-stability
