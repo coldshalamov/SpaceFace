@@ -176,7 +176,7 @@ export const CAMPAIGN_BEATS = Object.freeze([
     beat: 4,
     id: 'pick_a_side',
     title: 'Pick a Side',
-    objective: 'Accept a faction intro: Traders, Patrol, or Free Captains.',
+    objective: 'Complete the faction intro selected by the Elroy outcome.',
     steps: Object.freeze([
       Object.freeze({
         id: 'branch_intro_accept',
@@ -184,7 +184,7 @@ export const CAMPAIGN_BEATS = Object.freeze([
         accept: Object.freeze(['mission:accepted']),
         requireStoryTag: STORY_BRANCH_INTRO_TAG,
         requireLiveIntroTypes: Object.freeze(['bulk_trade', 'patrol_clear', 'smuggling_run']),
-        label: 'Accept live branch intro',
+        label: 'Commit to a live branch intro; missions settles on completion',
       }),
     ]),
     observeOnly: false,

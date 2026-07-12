@@ -218,7 +218,7 @@ export const STORY_BEATS = [
     reward: { credits: 800, unlock: 'wpn_pulse_laser_s' }, introduces: 'combat', next: 3 },
   { beat: 3, id: 'bigger_boat',    objective: 'Follow the Elroy outcome to the marked shipyard; buy a tier-two hull.',
     reward: { credits: 1000, milestone: 'cargo+20u' }, introduces: 'shipyard', next: 4 },
-  { beat: 4, id: 'pick_a_side',    objective: 'Choose a faction path by accepting an intro contract from MTS, SCN, or the Free Captains.',
+  { beat: 4, id: 'pick_a_side',    objective: 'Complete the faction intro selected by the Elroy outcome.',
     reward: { credits: 1200, rep: { chosen: 15, opposing: -10 } }, introduces: 'factions', next: 5 },
   { beat: 5, id: 'proving_ground', objective: 'Complete your faction chain: MTS trade runs, SCN patrol clears, or Free Captain smuggling jobs.',
     reward: { credits: 2500, unlock: 'module_unlock' }, introduces: 'chaining+passive_preview', next: 6 },

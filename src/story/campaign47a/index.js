@@ -112,6 +112,7 @@ export {
   embodiedMissionAt,
   getCareerCrossover,
   getBiggerBoatRoute,
+  getPickSideStake,
   getEmbodiedLocation,
   getFailureRecovery,
   getNamedCaptainBinding,

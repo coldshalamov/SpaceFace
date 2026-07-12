@@ -61,6 +61,7 @@ import {
   initCampaignSidecar,
   isBeatStepsComplete,
   getBiggerBoatRoute,
+  getPickSideStake,
   getEmbodiedLocation,
   recordBeatStep,
   syncObservedBeat,
@@ -466,6 +467,9 @@ export const missions = {
     const story = this.state && this.state.story;
     const intro = info && BRANCH_INTRO_BY_FACTION.get(info.factionId);
     if (!story || story.beatIndex !== 4 || story.branch || !intro) return false;
+    const legacy = !!(story.flags && story.flags.elroy_outcome_legacy) || !(story.flags && story.flags.elroy_outcome);
+    const stake = getPickSideStake(story.flags && story.flags.elroy_outcome);
+    if (!legacy && (info.id !== stake.stationId || intro.branch !== stake.branch)) return false;
     const slots = board && Array.isArray(board.slots) ? board.slots : [];
     return !slots.some((offer) => (
       offer &&
@@ -637,12 +641,26 @@ export const missions = {
     if (!story || story.beatIndex !== 4 || story.branch) return null;
     const intro = BRANCH_INTRO_BY_FACTION.get(info.factionId);
     if (!intro) return null;
+    const legacy = !!(story.flags && story.flags.elroy_outcome_legacy) || !(story.flags && story.flags.elroy_outcome);
+    const stake = getPickSideStake(story.flags && story.flags.elroy_outcome);
+    if (!legacy && (info.id !== stake.stationId || intro.branch !== stake.branch)) return null;
     const offer = this._rollOffer(intro.type, info, rng, epoch, `${intro.branch}_intro`);
     if (!offer) return null;
     offer.id = `mo_${info.id}_${epoch}_${intro.branch}_intro`;
     offer.storyTag = STORY_BRANCH_INTRO_TAG;
     offer.storyBranch = intro.branch;
     offer.title = intro.title;
+    if (!legacy) {
+      offer.storyStake = stake.id;
+      offer.title = stake.label;
+      offer.riskTier = Math.max(2, offer.riskTier || 0);
+      if (offer.type === 'patrol_clear') {
+        offer.params.clearCount = Math.max(2, offer.params.clearCount || 1);
+        offer.params.targetStrength = Math.max(1.35, offer.params.targetStrength || 1);
+      } else if (offer.type === 'bulk_trade') {
+        offer.params.qty = Math.max(8, offer.params.qty || 1);
+      }
+    }
     return offer;
   },
 
@@ -947,6 +965,7 @@ export const missions = {
       storyTarget: offer.storyTarget ? JSON.parse(JSON.stringify(offer.storyTarget)) : null,
       preloadedCargo: !!offer.preloadedCargo,
       storyBranch: offer.storyBranch || null,
+      storyStake: offer.storyStake || null,
       title: offer.title,
       summary: offer.summary || null,
       source: offer.source || null,
@@ -1302,6 +1321,20 @@ export const missions = {
         reason: route.instruction,
         stationId: route.stationId,
         sectorId: route.sectorId,
+        sectorName: info && SECTOR_BY_ID.get(info.sectorId)?.name || null,
+        pos: station && station.pos ? { x: station.pos.x, z: station.pos.z } : null,
+      };
+    }
+    if (beat.beat === 4) {
+      const stake = getPickSideStake(state.story && state.story.flags && state.story.flags.elroy_outcome);
+      const info = STATION_INFO.get(stake.stationId);
+      const station = currentSectorId === stake.sectorId ? this._liveStation(stake.stationId) : null;
+      return {
+        ...base,
+        label: stake.label,
+        reason: stake.instruction,
+        stationId: stake.stationId,
+        sectorId: stake.sectorId,
         sectorName: info && SECTOR_BY_ID.get(info.sectorId)?.name || null,
         pos: station && station.pos ? { x: station.pos.x, z: station.pos.z } : null,
       };
@@ -1820,6 +1853,7 @@ export const missions = {
 
     // ── story chain progress (B5 branch chains) ──
     this._advanceEmbodiedStoryMission(m);
+    this._completeContract47aB4Intro(m);
     this._advanceStoryChain(m);
 
     this.bus.emit('mission:completed', completedPayload);
@@ -2318,7 +2352,7 @@ export const missions = {
     }
   },
 
-  /** B4: accepting a faction intro contract sets the branch. */
+  /** B4: accepting a live intro commits the stake; live player routes settle on completion. */
   _maybeSetBranch(inst) {
     const story = this.state.story;
     const beat = STORY_BEATS[story.beatIndex];
@@ -2326,6 +2360,9 @@ export const missions = {
     if (!isStoryBranchIntroOffer(inst, this.state)) return;
     const branch = inst.storyBranch || Object.keys(BRANCH_FACTION).find((b) => BRANCH_FACTION[b] === inst.factionId);
     if (!branch || BRANCH_FACTION[branch] !== inst.factionId || !BRANCH_INTRO_BY_BRANCH.has(branch)) return;
+    const legacy = !!(story.flags && story.flags.elroy_outcome_legacy) || !(story.flags && story.flags.elroy_outcome);
+    const stake = getPickSideStake(story.flags && story.flags.elroy_outcome);
+    if (!legacy && (branch !== stake.branch || inst.factionId !== stake.factionId || inst.type !== stake.type)) return;
     // Sidecar observes/gates the live intro accept before canonical branch/reward mutation.
     this._ensureCampaignSidecar();
     const observed = recordBeatStep(this.state, 'mission:accepted', {
@@ -2336,15 +2373,42 @@ export const missions = {
       storyBranch: branch,
     }, this.state.simTime || 0);
     if (!observed || !observed.ok || !isBeatStepsComplete(this.state, 4)) return;
-    story.branch = branch;
     inst.storyTag = STORY_BRANCH_INTRO_TAG;
     inst.storyBranch = branch;
-    // B4 reward: chosen faction +15, opposing -10 (these have no other channel → emit directly).
-    // Single opposing map only (patrol→free, free→scn, traders→dmc).
-    this.bus.emit('faction:repDelta', { factionId: inst.factionId, delta: 15, reason: 'story_branch' });
+    if (legacy) {
+      this._settleContract47aB4Branch(inst, branch, true);
+      return;
+    }
+    story.flags.pick_a_side_pending = branch;
+    story.flags.pick_a_side_stake = stake.id;
+    inst.storyStake = stake.id;
+    this._sayStoryLine('Contract accepted. Complete it before the branch settles.', 6);
+  },
+
+  _completeContract47aB4Intro(m) {
+    const story = this.state && this.state.story;
+    if (!story || story.beatIndex !== 4 || story.branch || !m) return false;
+    if (m.storyTag !== STORY_BRANCH_INTRO_TAG || !m.storyBranch) return false;
+    if (!story.flags || story.flags.pick_a_side_pending !== m.storyBranch) return false;
+    return this._settleContract47aB4Branch(m, m.storyBranch, false);
+  },
+
+  _settleContract47aB4Branch(m, branch, legacy) {
+    const story = this.state && this.state.story;
+    const beat = story && STORY_BEATS[story.beatIndex];
+    if (!beat || beat.beat !== 4 || story.branch) return false;
+    if (!branch || BRANCH_FACTION[branch] !== m.factionId || !BRANCH_INTRO_BY_BRANCH.has(branch)) return false;
+    if (!legacy && (!story.flags || story.flags.pick_a_side_pending !== branch)) return false;
+    story.branch = branch;
+    story.flags = story.flags || {};
+    delete story.flags.pick_a_side_pending;
+    if (!story.flags.pick_a_side_stake) story.flags.pick_a_side_stake = getPickSideStake(story.flags.elroy_outcome).id;
+    // B4 reward: chosen faction +15, opposing -10 through canonical faction intents.
+    this.bus.emit('faction:repDelta', { factionId: m.factionId, delta: 15, reason: 'story_branch' });
     const opposing = branch === 'patrol' ? 'faction_free' : (branch === 'free' ? 'faction_scn' : 'faction_dmc');
     this.bus.emit('faction:repDelta', { factionId: opposing, delta: -10, reason: 'story_branch_opposing' });
     this._advanceStory(beat);
+    return true;
   },
 
   /** Credit / net-worth gated beats: show a hint while unmet, advance once met (never hard-block). */

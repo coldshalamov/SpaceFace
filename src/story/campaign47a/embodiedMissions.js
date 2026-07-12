@@ -51,6 +51,18 @@ const BIGGER_BOAT_ROUTES = B({
     instruction: "Dock at Tethys; buy a tier-two hull from Slate's yard",
   }),
 });
+const PICK_SIDE_STAKES = B({
+  custody: B({
+    id: 'evidence_patrol', branch: 'patrol', factionId: 'faction_scn', type: 'patrol_clear',
+    stationId: 'station_coalition', sectorId: 'sector_helios_prime', label: 'Coalition Evidence Patrol',
+    instruction: 'Accept and complete the Coalition evidence patrol',
+  }),
+  force: B({
+    id: 'manifest_charter', branch: 'traders', factionId: 'faction_mts', type: 'bulk_trade',
+    stationId: 'station_tethys', sectorId: 'sector_tethys_junction', label: 'Meridian Liability Charter',
+    instruction: 'Accept and complete the Meridian liability charter',
+  }),
+});
 
 export const EMBODIED_MISSIONS = Object.freeze([
   B({
@@ -116,7 +128,8 @@ export const EMBODIED_MISSIONS = Object.freeze([
   B({
     beat: 4, id: 'pick_a_side', contactId: 'contact_vale', contactName: 'V. Director, Acting',
     location: B({ sectorId: 'sector_helios_prime', stationId: 'station_helios' }),
-    physicalContact: B({ mode: 'existing_branch_intro', steps: B([B({ id: 'branch', signal: 'mission:accepted', accept: B(['mission:accepted']), requireStoryTag: STORY_BRANCH_INTRO_TAG })]) }),
+    consequenceStakes: PICK_SIDE_STAKES,
+    physicalContact: B({ mode: 'existing_branch_intro', steps: B([B({ id: 'branch', signal: 'mission:completed', accept: B(['mission:completed']), requireStoryTag: STORY_BRANCH_INTRO_TAG })]) }),
     missionBoardContract: B({ kind: 'existing_branch_intro', storyTag: STORY_BRANCH_INTRO_TAG }),
     recovery: 'Three introductions remain. Choose how you participate.',
     careerIds: B(['hauler', 'hunter', 'prospector']),
@@ -155,6 +168,11 @@ export function getBiggerBoatRoute(elroyOutcome) {
   return { outcome: key, ...BIGGER_BOAT_ROUTES[key] };
 }
 
+export function getPickSideStake(elroyOutcome) {
+  const key = elroyOutcome === 'custody' ? 'custody' : 'force';
+  return { outcome: key, ...PICK_SIDE_STAKES[key] };
+}
+
 export function listEmbodiedMissions() { return EMBODIED_MISSIONS.slice(); }
 export function isCanonicalContactSignal(signal) { return CANONICAL_CONTACT_SIGNALS.includes(String(signal || '')); }
 export function isCanonicalIntentEvent(eventName) { return CANONICAL_INTENT_EVENTS.includes(String(eventName || '')); }
@@ -185,6 +203,7 @@ export function getEmbodiedLocation(beatIndex, branch = null, elroyOutcome = nul
   if (!def) return null;
   const location = { beat: def.beat, ...def.location };
   if (def.beat === 3) Object.assign(location, getBiggerBoatRoute(elroyOutcome));
+  if (def.beat === 4) Object.assign(location, getPickSideStake(elroyOutcome));
   if (def.beat === 5 && branch) {
     const branchLocation = {
       traders: { stationId: 'station_tethys', sectorId: 'sector_tethys_junction', destStationId: 'station_ceres', destSectorId: 'sector_ceres_belt' },
@@ -353,5 +372,7 @@ export function validateEmbodiedMissions() {
   if (!b2.missionBoardContract.storyTarget || b2.missionBoardContract.storyTarget.id !== 'npc_elroy') errors.push('B2: Elroy target missing');
   const b3 = embodiedMissionAt(3);
   if (!b3.consequenceRoutes || !b3.consequenceRoutes.custody || !b3.consequenceRoutes.force) errors.push('B3: consequence routes missing');
+  const b4 = embodiedMissionAt(4);
+  if (!b4.consequenceStakes || !b4.consequenceStakes.custody || !b4.consequenceStakes.force) errors.push('B4: consequence stakes missing');
   return { ok: errors.length === 0, errors };
 }
