@@ -29,19 +29,21 @@ const releaseManifest = existsSync(RELEASE_MANIFEST)
 // must be release-verified like every other ship asset: compressed, source/release paired, and
 // enumerated in release_manifest.json.
 const WHOLE_SHIP_FILES = ['wholeships/kestrel.glb', 'wholeships/pelican.glb', 'wholeships/wasp.glb'];
+const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
+const unmanagedWholeShipFiles = WHOLE_SHIP_FILES.filter((file) => !manifestPartFiles.has(file));
 const devAssetPaths = [
   'assets/ships/kestrel/kestrel_reference.glb',
   ...(partManifest.parts || [])
     .filter((part) => part.status !== 'blocked')
     .map((part) => `assets/ships/parts/${part.file}`),
-  ...WHOLE_SHIP_FILES.map((file) => `assets/ships/parts/${file}`),
+  ...unmanagedWholeShipFiles.map((file) => `assets/ships/parts/${file}`),
 ];
 const releaseAssetPaths = [
   'assets/ships/release/kestrel/kestrel_reference.glb',
   ...(partManifest.parts || [])
     .filter((part) => part.status !== 'blocked')
     .map((part) => `assets/ships/release/parts/${part.file}`),
-  ...WHOLE_SHIP_FILES.map((file) => `assets/ships/release/parts/${file}`),
+  ...unmanagedWholeShipFiles.map((file) => `assets/ships/release/parts/${file}`),
 ];
 const assetPairs = devAssetPaths.map((source, index) => ({
   source,

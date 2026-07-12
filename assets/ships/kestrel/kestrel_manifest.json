@@ -28,7 +28,7 @@
     "height": 6.4851,
     "beam": 13.6
   },
-  "runtimeSource": "src/render/ships/kestrelHero.js",
+  "runtimeSource": "assets/ships/release/parts/wholeships/kestrel.glb",
   "files": {
     "referenceModel": "kestrel_reference.glb",
     "heroSheet": "kestrel_hero.svg",

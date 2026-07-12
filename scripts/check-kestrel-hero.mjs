@@ -54,7 +54,7 @@ function check(label, cond, detail = '') {
 
 function mkKestrelEntity(over = {}) {
   return Object.assign({
-    id: 'player', type: 'ship', team: 0, radius: DESIGN_RADIUS, rot: 0,
+    id: 'player', type: 'ship', team: 0, isPlayer: true, radius: DESIGN_RADIUS, rot: 0,
     pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
     data: { defId: 'ship_kestrel', fittings: [] },
   }, over);
@@ -113,7 +113,7 @@ try {
 }
 
 // A non-Kestrel (and non-player) ship must still come from the procedural factory — not the hero.
-const npcMesh = vf.build(mkKestrelEntity({ team: 1, data: { defId: 'ship_bastion', fittings: [] } }));
+const npcMesh = vf.build(mkKestrelEntity({ id: 'npc', team: 1, isPlayer: false, data: { defId: 'ship_bastion', fittings: [] } }));
 check('non-Kestrel entity uses procedural path', !!npcMesh && !(npcMesh.userData && npcMesh.userData.assetId === 'SF_K0_KESTREL_BORROWED_TIME'));
 
 // Failure isolation: if the hero builder throws in development, the seam must fall back to the

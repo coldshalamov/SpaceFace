@@ -142,9 +142,9 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'hulls/hull_capital.glb',
       'hulls/hull_multirole.glb',
       'hulls/hull_gunship.glb',
-      // Whole-ship GLBs stay out of the live runtime declaration until SPEC3-37 re-exports real hull
-      // bodies. The release copies currently contain accessory meshes only; modular authored hulls are
-      // the valid default-play path meanwhile, and check-exporter keeps the broken files visible.
+      // K0 promotes the production Borrowed Time Kestrel: a complete body with structural LODs,
+      // semantic materials, stable sockets, and no baked plume. Other whole-ship exports remain blocked.
+      'wholeships/kestrel.glb',
     ]),
     cockpit: Object.freeze([
       'cockpits/cockpit_dome.glb',
@@ -255,9 +255,14 @@ const HULL_FILE_BY_DEF_ID = Object.freeze({
   ship_leviathan: 'hulls/hull_capital.glb',
 });
 
-// Whole-ship files remain exporter/test artifacts until SPEC3-37 re-exports complete bodies.
-// Default play must use modular hulls so missing accessory-only GLBs cannot blank live ships.
-const WHOLE_SHIP_FILE_BY_DEF_ID = Object.freeze({});
+// Only production-validated complete bodies belong here. Accessory-only exports remain unwired so a
+// bad whole-ship file can never blank the live ship or silently replace a readable modular hull.
+const WHOLE_SHIP_FILE_BY_DEF_ID = Object.freeze({
+  'ship_kestrel': 'wholeships/kestrel.glb',
+});
+const WHOLE_SHIP_ASSET_ID_BY_DEF_ID = Object.freeze({
+  'ship_kestrel': 'SF_WHOLESHIP_KESTREL',
+});
 const WHOLE_SHIP_URLS = Object.freeze(Object.values(WHOLE_SHIP_FILE_BY_DEF_ID));
 const isWholeShipUrl = (url) => WHOLE_SHIP_URLS.some((w) => String(url || '').endsWith(w));
 const PRECOMPILE_SHIP_ARCHETYPES = Object.freeze(Object.keys(HULL_FILE_BY_DEF_ID).map((defId) => Object.freeze({
@@ -275,6 +280,24 @@ export function shipArchetypeKeyForDefId(defId, silhouette = '') {
 
 export function shipArchetypesForPrecompile() {
   return PRECOMPILE_SHIP_ARCHETYPES;
+}
+
+/** Pure contract hook used by runtime composition and missing/corrupt fixture checks. */
+export function resolveRequiredWholeShipRecord(entity, records, options = {}) {
+  if (options.requiredWholeShip !== true) return null;
+  const defId = entity && entity.data && entity.data.defId;
+  const wholeShipFile = WHOLE_SHIP_FILE_BY_DEF_ID[defId];
+  const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
+  if (!wholeShipFile) {
+    throw new Error(`[partsLibrary] required whole-ship mapping is missing for ${defId || 'unknown_ship'}`);
+  }
+  const expectedAssetId = WHOLE_SHIP_ASSET_ID_BY_DEF_ID[defId];
+  const record = (records || []).find((candidate) => (
+    String(candidate && candidate.url || '').endsWith(wholeShipFile)
+      && (!expectedAssetId || candidate.assetId === expectedAssetId)
+  ));
+  if (!record) throw new Error(requiredWholeShipMessage(entity, wholeShipFile, records, partRoot));
+  return record;
 }
 
 /**
@@ -329,7 +352,12 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
     if (!renderer || !scene) return;
     armed = false;
     trigger.onBeforeRender = previousBeforeRender;
-    if (installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene, { releaseMode, onSwap: options.onSwap }, (next) => {
+    const upgradeOptions = {
+      releaseMode,
+      requiredWholeShip: options.requiredWholeShip === true,
+      onSwap: options.onSwap,
+    };
+    if (installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene, upgradeOptions, (next) => {
       active = next;
       syncActiveSurface(boundary, active);
     })) return;
@@ -340,7 +368,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       entity,
       renderer,
       scene,
-      options: { releaseMode, onSwap: options.onSwap },
+      options: upgradeOptions,
       setActive: (next) => {
         active = next;
         syncActiveSurface(boundary, active);
@@ -903,6 +931,7 @@ function shouldRetainReadableFallback(fallbackRoot, entity, authored) {
   // modular GLB layer may add hardware detail, but it must not replace that body with the older
   // rounded modular silhouette during live play.
   const assetId = fallbackRoot && fallbackRoot.userData && fallbackRoot.userData.assetId;
+  if (assetId === KESTREL_HERO_ASSET_ID && authored && authored.wholeShip === true) return false;
   return assetId === KESTREL_HERO_ASSET_ID;
 }
 
@@ -1011,14 +1040,13 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   const selected = new Map();
   // Whole-ship bodies (cockpit/fins/engine baked in) bypass the parts-assembly: use the body as the
   // hull and skip the structural slots so they don't stack on the baked geometry.
-  const wholeShipWanted = WHOLE_SHIP_FILE_BY_DEF_ID[entity.data && entity.data.defId];
   let wholeShip = false;
   for (const slot of SHIP_ASSEMBLY_SLOTS) {
     const records = library.get(slot) || [];
     if (slot === 'hull') {
       // Whole-ship override takes priority. Otherwise prefer the defId-mapped class, falling back to a
       // seed pick over the regular hull pool (whole-ship bodies excluded so they're never picked at random).
-      const wholeRec = wholeShipWanted && records.find((record) => String(record.url || '').endsWith(wholeShipWanted));
+      const wholeRec = resolveRequiredWholeShipRecord(entity, records, options);
       if (wholeRec) {
         selected.set(slot, wholeRec);
         wholeShip = true;
@@ -1026,9 +1054,6 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
         const pool = records.filter((record) => !isWholeShipUrl(record.url));
         const wanted = HULL_FILE_BY_DEF_ID[entity.data && entity.data.defId];
         const exact = wanted && pool.find((record) => String(record.url || '').endsWith(wanted));
-        if (releaseMode && wholeShipWanted && !exact && !pool.length) {
-          throw new Error(requiredWholeShipMessage(entity, wholeShipWanted, records, partRoot));
-        }
         selected.set(slot, exact || (pool.length ? pool[((seed ^ hashString(slot)) >>> 0) % pool.length] : null));
       }
     } else if (slot === 'engine') {
@@ -1079,7 +1104,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     fallbackParts.push('hull');
   }
   const authoredHullLevels = hullRecord ? authoredLevels(hullRecord) : new Set();
-  safetyCore.visible = true;
+  safetyCore.visible = wholeShip ? false : true;
   // Snapshot only mounts supplied by the hull. Parts may themselves contain internal markers, but
   // assembly topology belongs to the hull grammar and must not change as later slots are mounted.
   const hullMounts = snapshotMounts(bindings.mounts);
@@ -1149,6 +1174,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   } // end !wholeShip — skip cockpit/engine/fin for authored whole-ship bodies (baked in)
   const shipDef = SHIP_BY_ID.get(entity.data && entity.data.defId) || null;
 
+  if (!wholeShip) {
   const weaponMounts = authoredWeaponMounts(entity, shipDef, library.get('weapon') || [], seed);
   if (weaponMounts.length) {
     let mounted = 0;
@@ -1199,6 +1225,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     }
     if (!mounted) fallbackParts.push('greeble');
   }
+  } // end !wholeShip — complete production bodies own their visible weapon/pod/gear/greeble roles
 
   if (!bindings.navLights.length) buildFallbackNavLights(hull, materials, bindings);
   ensureStandardSockets(hull);
@@ -1231,7 +1258,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     },
   });
   synchronizeSecondaryDrives(primaryDrive, bindings);
-  installAuthoredLod(root, bindings, safetyCore, authoredHullLevels);
+  installAuthoredLod(root, bindings, safetyCore, authoredHullLevels, wholeShip);
   root.userData.updateLod('lod0');
 
   // GR-5: authored compositions need the same persistent shield bubble as procedural ships so
@@ -1259,6 +1286,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     proceduralFallbackParts: fallbackParts,
     instancing: 'opaque immutable primitives merged into ship-local static batches',
     hookBinding: 'HOOK_* / SOCKET_* / MOUNT_* / LOD* names bound to shipKit.finalizeShip + shipDamage',
+    wholeShip,
     physicalCanopy: { transmission: 0.6, ior: 1.4, clearcoat: 1.0 },
   };
 
@@ -1267,6 +1295,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     authoredParts: [...new Set(usedParts)],
     authoredSlots: uniqueSlotMap(authoredSlots),
     fallbackParts,
+    wholeShip,
   };
 }
 
@@ -2149,7 +2178,7 @@ function completeDriveBinding(bindings) {
   const fan = bindings.driveFans[0] || null;
   const driveCore = bindings.driveCores[0] || null;
   const plume = bindings.drivePlumes[0] || null;
-  if (!fan || !driveCore || !plume) return null;
+  if (!fan || !driveCore) return null;
   for (const driveFan of bindings.driveFans) kit.captureDrivePose(driveFan);
   for (const core of bindings.driveCores) kit.captureDrivePose(core);
   for (const drivePlume of bindings.drivePlumes) {
@@ -2167,8 +2196,8 @@ function completeDriveBinding(bindings) {
     fan,
     driveCore,
     plume,
-    plumeMat: plume.material || null,
-    basePlumeOpacity: plume.material && Number.isFinite(plume.material.opacity) ? plume.material.opacity : 0.55,
+    plumeMat: plume && plume.material || null,
+    basePlumeOpacity: plume && plume.material && Number.isFinite(plume.material.opacity) ? plume.material.opacity : 0.55,
     flicker: false,
   };
 }
@@ -2224,7 +2253,7 @@ function authoredLevels(record) {
   return levels;
 }
 
-function installAuthoredLod(root, bindings, safetyCore, authoredHullLevels) {
+function installAuthoredLod(root, bindings, safetyCore, authoredHullLevels, wholeShip = false) {
   const baseUpdate = root.userData.updateLod;
   const levelsByPart = new Map();
   let appliedLevel = null;
@@ -2251,7 +2280,7 @@ function installAuthoredLod(root, bindings, safetyCore, authoredHullLevels) {
       object.visible = baseVisible && requested !== 'lod2';
     }
     const visibleAuthoredHullLevel = closestAvailableLod(requested, authoredHullLevels);
-    safetyCore.visible = requested === 'lod0' || !authoredHullLevels.has(visibleAuthoredHullLevel);
+    safetyCore.visible = wholeShip ? false : requested === 'lod0' || !authoredHullLevels.has(visibleAuthoredHullLevel);
     if (root.userData.damageState === 'critical') {
       for (const secondary of bindings.secondary) secondary.visible = false;
     }

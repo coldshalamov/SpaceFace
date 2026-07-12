@@ -16,8 +16,9 @@ import { isReleaseAssetMode } from './releaseMode.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 
-function isPlayerKestrel(entity) {
-  return !!entity && entity.type === 'ship' && entity.team === 0 && entity.data && entity.data.defId === 'ship_kestrel';
+export function isPlayerKestrel(entity) {
+  return !!entity && entity.type === 'ship' && entity.isPlayer === true
+    && entity.data && entity.data.defId === 'ship_kestrel';
 }
 
 function isWorldPlaceProp(entity) {
@@ -119,7 +120,13 @@ export function installVisualOverrides(factory, options = {}) {
 
     // The wrapper is synchronous. Any later transport, validation, or composition failure leaves
     // the selected procedural/bespoke visual mounted and alive.
-    try { return wrapShipWithAuthoredParts(entity, visual, { releaseMode, onSwap: options.onAuthoredAssetSwap }); }
+    try {
+      return wrapShipWithAuthoredParts(entity, visual, {
+        releaseMode,
+        requiredWholeShip: isPlayerKestrel(entity),
+        onSwap: options.onAuthoredAssetSwap,
+      });
+    }
     catch (error) {
       reportVisualWarning(options, '[visualOverrides] authored-asset boundary failed; using selected ship visual', error);
       return visual;

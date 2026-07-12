@@ -174,7 +174,8 @@ function main() {
     `glb sockets=${[...gltfSockets].join(',')}`);
 
   // ---- runtime source + files present (spec §17.4 manifest contract) ----
-  check('manifest runtimeSource points at kestrelHero.js', manifest.runtimeSource === 'src/render/ships/kestrelHero.js', `got ${manifest.runtimeSource}`);
+  check('manifest runtimeSource points at production whole ship',
+    manifest.runtimeSource === 'assets/ships/release/parts/wholeships/kestrel.glb', `got ${manifest.runtimeSource}`);
   check('manifest coordinate contract (+X/+Y/+Z metres)', manifest.coordinateSystem?.forward === '+X' && manifest.coordinateSystem?.up === '+Y' && manifest.coordinateSystem?.unit === 'metre');
 
   console.log(`\n${ok} ok, ${fail} fail`);

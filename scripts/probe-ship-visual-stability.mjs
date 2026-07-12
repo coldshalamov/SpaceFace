@@ -13,6 +13,10 @@ const DEFAULT_MIN_INSPECTED_FRAMES = 300;
 const PLAYER_LOD_SETTLE_FRAMES = 30;
 const PLAYER_READABLE_SCREEN_RADIUS_PX = 80;
 const PLAYER_MIN_VISIBLE_AUTHORED_SURFACES = 8;
+// A validated whole body intentionally consolidates its semantic materials into fewer live
+// surfaces than a modular assembly. Keep the modular floor at eight while requiring all six
+// production Kestrel LOD0 surfaces to remain visible.
+const PLAYER_WHOLE_SHIP_MIN_VISIBLE_AUTHORED_SURFACES = 6;
 const AUTHORED_BODY_PROOF = Object.freeze({
   minSurfaceCount: 1,
   minRadiusRatio: 0.20,
@@ -60,6 +64,7 @@ try {
     playerLodSettleFrames: PLAYER_LOD_SETTLE_FRAMES,
     playerReadableScreenRadiusPx: PLAYER_READABLE_SCREEN_RADIUS_PX,
     playerMinVisibleAuthoredSurfaces: PLAYER_MIN_VISIBLE_AUTHORED_SURFACES,
+    playerWholeShipMinVisibleAuthoredSurfaces: PLAYER_WHOLE_SHIP_MIN_VISIBLE_AUTHORED_SURFACES,
     authoredBodyProof: AUTHORED_BODY_PROOF,
   });
   const errorIssues = pageIssues.errorIssues();
@@ -88,6 +93,7 @@ async function sampleVisualStability(page, options) {
     playerLodSettleFrames,
     playerReadableScreenRadiusPx,
     playerMinVisibleAuthoredSurfaces,
+    playerWholeShipMinVisibleAuthoredSurfaces,
     authoredBodyProof,
   }) => {
     const failures = [];
@@ -229,12 +235,16 @@ async function sampleVisualStability(page, options) {
             minScreenRadiusPx: playerReadableScreenRadiusPx,
           });
         }
+        const playerSurfaceMinimum = ship.wholeShip
+          ? playerWholeShipMinVisibleAuthoredSurfaces
+          : playerMinVisibleAuthoredSurfaces;
         if (ship.isPlayer && ship.inView && frame >= warmupFrames + playerLodSettleFrames
           && ship.screenRadiusPx >= playerReadableScreenRadiusPx
-          && ship.visibleAuthoredSurfaceCount < playerMinVisibleAuthoredSurfaces) {
+          && ship.visibleAuthoredSurfaceCount < playerSurfaceMinimum) {
           fail(frame, ship, 'player-readable-ship-too-few-visible-authored-surfaces', {
             visibleAuthoredSurfaceCount: ship.visibleAuthoredSurfaceCount,
-            minimum: playerMinVisibleAuthoredSurfaces,
+            minimum: playerSurfaceMinimum,
+            wholeShip: ship.wholeShip,
           });
         }
         if (ship.isPlayer && ship.inView && frame >= warmupFrames + playerLodSettleFrames
@@ -275,10 +285,14 @@ async function sampleVisualStability(page, options) {
           minScreenRadiusPx: playerReadableScreenRadiusPx,
         });
       }
-      if (player.visibleAuthoredSurfaceCount < playerMinVisibleAuthoredSurfaces) {
+      const playerSurfaceMinimum = player.wholeShip
+        ? playerWholeShipMinVisibleAuthoredSurfaces
+        : playerMinVisibleAuthoredSurfaces;
+      if (player.visibleAuthoredSurfaceCount < playerSurfaceMinimum) {
         fail(frame, player, 'final-player-readable-ship-too-few-visible-authored-surfaces', {
           visibleAuthoredSurfaceCount: player.visibleAuthoredSurfaceCount,
-          minimum: playerMinVisibleAuthoredSurfaces,
+          minimum: playerSurfaceMinimum,
+          wholeShip: player.wholeShip,
         });
       }
       if (player.authoredBodyScreenRadiusPx < authoredBodyProof.minPlayerScreenRadiusPx) {
@@ -535,6 +549,8 @@ async function sampleVisualStability(page, options) {
         rootVisible: visibleThroughRoot(root, root),
         authoredState: data.authoredAssetState || 'unknown',
         authoredMode: data.authoredAssetMode || null,
+        wholeShip: Object.values(data.authoredSlots || {}).flat()
+          .some((url) => String(url || '').includes('/wholeships/')),
         compositionId: data.authoredCompositionId || null,
         slotsKey: stableSlotKey(data.authoredSlots),
         lodLevel: data.lod && data.lod.level || null,
@@ -656,6 +672,7 @@ async function sampleVisualStability(page, options) {
         meshExists: ship.meshExists,
         authoredState: ship.authoredState,
         authoredMode: ship.authoredMode,
+        wholeShip: ship.wholeShip,
         compositionId: ship.compositionId,
         lodLevel: ship.lodLevel,
         inView: ship.inView,

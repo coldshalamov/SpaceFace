@@ -13,7 +13,9 @@ const SHOT = process.env.SF_ASSETS_LIVE_SHOT || '.devshots/authored-assets-live.
 const REPORT = process.env.SF_ASSETS_LIVE_REPORT || '';
 const LOG = process.env.SF_ASSETS_LIVE_LOG || '';
 const REQUIRED_PLAYER_MODULAR_SLOTS = ['hull', 'cockpit', 'engine', 'weapon', 'pod', 'gear', 'greeble'];
-const REQUIRED_PLAYER_WHOLE_SHIP_SLOTS = ['hull', 'weapon', 'pod', 'gear', 'greeble'];
+// A complete whole-ship body owns its visible hardpoints, pods, gear, and greebles inside the hull
+// record. Requiring modular duplicates here would stack old hardware on the production body.
+const REQUIRED_PLAYER_WHOLE_SHIP_SLOTS = ['hull'];
 const MIN_AUTHORED_SHIPS = 3;
 const RELEASE_PART_ROOT = 'assets/ships/release/parts/';
 const AUTHORED_BODY_PROOF = Object.freeze({

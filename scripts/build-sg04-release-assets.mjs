@@ -52,6 +52,7 @@ const packageJson = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8
 // compression (their SOCKET_*/LOD* nodes are preserved by inspectReleaseAssetPair's parity check) and
 // a release_manifest.json entry — same release standard as the kestrel reference and every part.
 const WHOLE_SHIP_FILES = ['kestrel.glb', 'pelican.glb', 'wasp.glb'];
+const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
 const assets = [
   {
     id: 'ship_kestrel_reference',
@@ -67,7 +68,7 @@ const assets = [
       source: `assets/ships/parts/${part.file}`,
       release: `assets/ships/release/parts/${part.file}`,
     })),
-  ...WHOLE_SHIP_FILES.map((file) => ({
+  ...WHOLE_SHIP_FILES.filter((file) => !manifestPartFiles.has(`wholeships/${file}`)).map((file) => ({
     id: `wholeship_${file.replace(/\.glb$/, '')}`,
     kind: 'part:wholeships',
     source: `assets/ships/parts/wholeships/${file}`,
