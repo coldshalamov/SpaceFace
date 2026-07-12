@@ -1,8 +1,7 @@
 // src/ui/screens/stationHub.js — the docked STATION hub screen (id 'station').
 // A 7-tab left rail (Market / Shipyard / Outfitting / Missions / Services / Factions / Bar) + a
-// right content pane; switching tabs swaps the active panel (state.ui.activeStationTab). Undock /
-// Back exit is owned by requestStationExit (implicit clean→confirm, explicit hold/RISK confirm);
-// only committed undocks emit dock:undocked. onShow(ctx) resolves the docked station and refreshes.
+// right content pane; switching tabs swaps the active panel (state.ui.activeStationTab). An Undock
+// button emits dock:undocked. onShow(ctx) resolves the docked station and refreshes panels.
 //
 // Screen-module interface (ARCHITECTURE §5, uiRoot imports + registers this):
 //   { id:'station', mount(rootEl, ctx), onShow(ctx), onHide(), refresh(ctx) }
@@ -16,7 +15,6 @@ import { createMarketPanel } from './market.js';
 import { createShipyardPanel } from './shipyard.js';
 import { createOutfittingPanel } from './outfitting.js';
 import { createServicesPanel } from './services.js';
-import { buildDockArrival } from '../dockArrival.js';
 import { createManufacturePanel } from './manufacture.js';
 import { createFactionsPanel, tierFor, factionStandingGuidance } from './factions.js';
 import { createBarPanel } from './bar.js';
@@ -31,10 +29,8 @@ import { missionStandingRequirement } from '../missionPreflight.js';
 import { missionRouteIntel, missionCargoFootprint, fmtHoldUnits } from '../missionPreflight.js';
 import { BINDINGS } from '../bindings.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
-import { buildLadderRailModel } from '../careerLadderView.js';
 import { glyphSvg } from '../uiPrimitives.js';
 import { STATION_BROADCASTS } from '../../systems/stationBroadcast.js';
-import { confirm, isConfirmOpen } from '../confirm.js';
 // Command-deck effect layer (vanilla DOM/canvas factories; view-only, no sim import).
 // See design/revamp/COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md §1 and src/ui/effects/README.md.
 import {
@@ -45,7 +41,9 @@ import {
   createCircularGauge,
   createDockRail,
 } from '../effects/index.js';
+import { confirm, isConfirmOpen } from '../confirm.js';
 
+// === Functional parity (post-gold) — keep game working; no career UI chrome ===
 // ── Station exit owner (UIUX-STATION-EXIT-CONFIRMATION) ─────────────────────────
 // Centralizes implicit Back (Esc/B/E/backdrop) vs explicit Undock. Input.js may still
 // emit bare dock:undocked; the bus gate rewrites those into station:exitRequest so
@@ -114,10 +112,6 @@ export function commitStationUndock(bus, payload = {}) {
   if (!raw) return;
   raw('dock:undocked', Object.assign({}, payload, { committed: true }));
 }
-
-const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
-const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
-
 /** Station pays this unit price when the player sells cmdtyId (live market → memory → base). */
 export function holdUnitSellPrice(state, stationId, cmdtyId) {
   if (!state || !stationId || !cmdtyId) return null;
@@ -137,6 +131,71 @@ export function holdUnitSellPrice(state, stationId, cmdtyId) {
   if (def && Number.isFinite(Number(def.basePrice))) return Math.round(Number(def.basePrice));
   return null;
 }
+
+/** Gold hub root classes (f6f6a90c framed panel). */
+export const STATION_HUB_ROOT_BASE_CLASSES = Object.freeze([
+  'st-hub',
+  'panel',
+]);
+export const STATION_HUB_TYPE_CLASSES = Object.freeze([
+  'st-hub--trade_hub', 'st-hub--refinery', 'st-hub--mining', 'st-hub--fab',
+  'st-hub--military', 'st-hub--blackmarket', 'st-hub--research',
+]);
+export function applyStationHubRootClasses(el, stationType) {
+  if (!el || !el.classList) return el || null;
+  el.classList.add('st-hub', 'panel');
+  el.classList.remove('st-hub--desk', 'st-hub--os');
+  for (const c of STATION_HUB_TYPE_CLASSES) el.classList.remove(c);
+  const typeClass = stationType ? `st-hub--${stationType}` : null;
+  if (typeClass && STATION_HUB_TYPE_CLASSES.includes(typeClass)) el.classList.add(typeClass);
+  return el;
+}
+
+export function departureReadinessSummary(chips) {
+  const list = Array.isArray(chips) ? chips.filter(Boolean) : [];
+  const issues = list.filter((chip) => chip.kind === 'bad' || chip.kind === 'warn');
+  const hasBad = issues.some((chip) => chip.kind === 'bad');
+  const hasWarn = issues.some((chip) => chip.kind === 'warn');
+  const state = hasBad ? 'risk' : (hasWarn ? 'check' : 'ready');
+  const status = hasBad ? 'RISK' : (hasWarn ? 'CHECK' : 'READY');
+  const issueText = issues
+    .map((chip) => (String(chip.label || 'Check') + ': ' + String(chip.text || '')).trim())
+    .filter((text) => text.length > 2)
+    .join('; ');
+  const title = issueText
+    ? 'Departure Check: ' + status + '. ' + issueText + '. Undock remains available.'
+    : 'Departure Check: READY. Tracked work, cargo, fuel, and hull look serviceable.';
+  return {
+    state,
+    status,
+    label: '⏏ UNDOCK · ' + status,
+    title,
+    accessibleLabel: 'Undock. ' + title,
+  };
+}
+
+/**
+ * Keyboard activation for focusable mission cards (role=button).
+ * Enter/Space on the card itself select it — same path as a body click.
+ * Nested native action controls (Accept etc.) must not re-trigger card selection.
+ * Returns { missionId } when the key should activate selection; null otherwise.
+ */
+export function resolveMissionCardKeyboardSelection(ev) {
+  if (!ev || (ev.key !== 'Enter' && ev.key !== ' ')) return null;
+  const target = ev.target;
+  if (!target || typeof target.closest !== 'function') return null;
+  const card = target.closest('.st-mission-card');
+  // Nested buttons/inputs own their own activation; do not also select the card.
+  if (!card || target !== card) return null;
+  const mid = card.getAttribute('data-mid');
+  if (mid == null || mid === '') return null;
+  return { missionId: String(mid) };
+}
+
+
+
+const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const STATION_BY_ID = new Map();
 for (const sec of SECTORS) {
@@ -236,39 +295,6 @@ const STATION_TYPE_PURPOSE = {
   blackmarket: 'Black markets pay for risky cargo and covert work, but their goods and contracts can attract trouble.',
   research: 'Research stations value scans, exotic materials, and tech-linked opportunities.',
 };
-
-
-/** Invariant Station OS root classes — must survive every onShow / _resolveStation. */
-export const STATION_HUB_ROOT_BASE_CLASSES = Object.freeze([
-  'st-hub',
-  'st-hub--desk',
-  'st-hub--os',
-  'panel',
-]);
-
-/** Closed set of exclusive station-type root modifiers (`st-hub--{type}`). */
-export const STATION_HUB_TYPE_CLASSES = Object.freeze(
-  Object.keys(STATION_TYPE_PURPOSE).map((t) => `st-hub--${t}`),
-);
-
-/**
- * Apply hub root class invariants + exclusive station-type modifier.
- * Uses classList only — never wholesale className assignment — so concurrent
- * modifiers (`st-hub--engineering`, `trace-active`) survive repeated resolve/show.
- *
- * @param {Element|{classList: DOMTokenList}} el hub root element
- * @param {string|null|undefined} stationType e.g. 'trade_hub', 'military'
- * @returns {Element|{classList: DOMTokenList}|null}
- */
-export function applyStationHubRootClasses(el, stationType) {
-  if (!el || !el.classList) return el || null;
-  for (const c of STATION_HUB_ROOT_BASE_CLASSES) el.classList.add(c);
-  // Exclusive type swap from a closed allowlist — never strip desk/os/engineering.
-  for (const c of STATION_HUB_TYPE_CLASSES) el.classList.remove(c);
-  const typeClass = stationType ? `st-hub--${stationType}` : null;
-  if (typeClass && STATION_HUB_TYPE_CLASSES.includes(typeClass)) el.classList.add(typeClass);
-  return el;
-}
 
 function stationTypeLabel(type) {
   if (!type) return 'Station';
@@ -601,29 +627,6 @@ function departureReadinessChips(state) {
   ];
 }
 
-export function departureReadinessSummary(chips) {
-  const list = Array.isArray(chips) ? chips.filter(Boolean) : [];
-  const issues = list.filter((chip) => chip.kind === 'bad' || chip.kind === 'warn');
-  const hasBad = issues.some((chip) => chip.kind === 'bad');
-  const hasWarn = issues.some((chip) => chip.kind === 'warn');
-  const state = hasBad ? 'risk' : (hasWarn ? 'check' : 'ready');
-  const status = hasBad ? 'RISK' : (hasWarn ? 'CHECK' : 'READY');
-  const issueText = issues
-    .map((chip) => (String(chip.label || 'Check') + ': ' + String(chip.text || '')).trim())
-    .filter((text) => text.length > 2)
-    .join('; ');
-  const title = issueText
-    ? 'Departure Check: ' + status + '. ' + issueText + '. Undock remains available.'
-    : 'Departure Check: READY. Tracked work, cargo, fuel, and hull look serviceable.';
-  return {
-    state,
-    status,
-    label: '⏏ UNDOCK · ' + status,
-    title,
-    accessibleLabel: 'Undock. ' + title,
-  };
-}
-
 function activeMissionCount(state) {
   const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
   return active.filter((m) => m && (m.status == null || m.status === 'active')).length;
@@ -648,13 +651,12 @@ function firstDockStoryIndex(state) {
 export function firstDockHandoffVisible(state, stationId) {
   if (!state || !stationId) return false;
   const ob = state.onboarding || null;
-  const beatDoneAt = ob && ob.beatDoneAt || {};
+  const done = ob && ob.done || {};
   const storyIndex = firstDockStoryIndex(state);
-  const firstLoopOpen = !!ob && ob.active === true && ob.finished !== true;
+  const firstLoopOpen = !!ob && ob.finished !== true && done.next !== true;
   const earlyStory = storyIndex != null && storyIndex <= 1;
-  if (ob && (ob.finished === true || beatDoneAt.choice != null)) return false;
   if (!firstLoopOpen && !earlyStory) return false;
-  if (activeMissionCount(state) > 0 && beatDoneAt.dock != null) return false;
+  if (activeMissionCount(state) > 0 && (done.sell === true || done.next === true || (ob && ob.finished === true))) return false;
   return true;
 }
 
@@ -666,51 +668,45 @@ function firstDockDepartureTarget(chips) {
 
 export function firstDockHandoffSteps(state = {}) {
   const ob = state.onboarding || {};
-  const beatDoneAt = ob.beatDoneAt || {};
+  const done = ob.done || {};
   const activeJobs = activeMissionCount(state);
-  const missionDone = activeJobs > 0 || beatDoneAt.choice != null || ob.finished === true;
+  const missionDone = activeJobs > 0 || done.next === true;
   const departureChips = departureReadinessChips(state);
   const departure = departureReadinessSummary(departureChips);
-  const marketDone = beatDoneAt.dock != null;
+  const marketDone = done.sell === true;
   const hasCargo = cargoUsedUnits(state) > 0;
-  // Verbs that match what the button does (open Hold to sell / Missions to accept / Services to fix).
   return [
     {
-      key: 'hold',
-      label: 'Cargo',
-      title: marketDone
-        ? 'Cargo sold — hold is ready'
-        : (hasCargo ? 'Sell what you hauled' : 'Open your hold'),
+      key: 'market',
+      label: 'Market',
+      title: hasCargo || marketDone ? 'Audit hold / sell cargo' : 'Audit empty hold',
       text: marketDone
-        ? 'Credits banked and space free for the next run.'
+        ? 'Market checked; credits and hold space are ready.'
         : (hasCargo
-            ? 'Opens Hold. Sell 1 or Sell all at the station price, then free capacity for new cargo.'
-            : 'Opens Hold / Market. Nothing to sell yet — check prices or undock to mine.'),
+            ? 'Sell cargo, free hold space, and confirm the manifest.'
+            : 'Hold is empty; open Market to confirm prices and route options.'),
       kind: marketDone ? 'ok' : 'warn',
       done: marketDone,
-      targetTab: hasCargo || marketDone ? 'hold' : 'market',
+      targetTab: 'market',
     },
     {
       key: 'missions',
-      label: 'Jobs',
-      title: missionDone ? 'Job on the board' : 'Take one easy job',
+      label: 'Missions',
+      title: 'Accept one low-risk job',
       text: missionDone
-        ? (activeJobs === 1
-            ? 'Opens Missions. One active job — Accept+Track already feeds nav.'
-            : 'Opens Missions. ' + activeJobs + ' jobs active; track the one you want next.')
-        : 'Opens Missions. Accept a nearby low-risk contract; Track puts the route on your nav.',
+        ? (activeJobs === 1 ? 'One job is active; Mission Log carries the route.' : activeJobs + ' jobs active; track the one you want next.')
+        : 'Pick a nearby R0-R1 contract; Accept + Track feeds nav.',
       kind: missionDone ? 'ok' : 'warn',
       done: missionDone,
       targetTab: 'missions',
     },
     {
       key: 'departure',
-      label: 'Launch',
-      title: departure.state === 'ready' ? 'Safe to undock' : 'Fix launch risks',
+      label: 'Departure Check',
+      title: 'Launch when safe',
       text: departure.state === 'ready'
-        ? 'Opens Services / Departure. Fuel, hull, and tracked work look good — undock when ready.'
-        : 'Opens ' + tabLabel(firstDockDepartureTarget(departureChips))
-          + '. ' + departure.status + ' — repair, refuel, or resolve the red departure chip before undock.',
+        ? 'Fuel, hull, cargo, and tracked work look serviceable.'
+        : departure.status + ': fix the highlighted launch concern.',
       kind: departure.state === 'risk' ? 'bad' : (departure.state === 'check' ? 'warn' : 'ok'),
       done: departure.state === 'ready' && missionDone,
       targetTab: firstDockDepartureTarget(departureChips),
@@ -768,13 +764,6 @@ function missionRiskTier(m) {
   return Number.isFinite(risk) ? Math.max(0, Math.round(risk)) : 0;
 }
 
-function firstLoopNeedsSafeWork(state) {
-  const ob = state && state.onboarding;
-  if (!ob || ob.finished === true) return false;
-  const beatDoneAt = ob.beatDoneAt || {};
-  return beatDoneAt.choice == null && activeMissionCount(state) === 0;
-}
-
 function missionRiskCopy(riskValue) {
   const risk = Math.max(0, Math.round(Number(riskValue) || 0));
   const band = risk >= 4 ? 'severe'
@@ -809,27 +798,8 @@ function missionRecommendationReason(m, preflight, readiness, consequences) {
   return 'Best board pick: ready now, ' + reward + ', Risk ' + risk + ', ' + route + '.';
 }
 
-/**
- * Keyboard activation for focusable mission cards (role=button).
- * Enter/Space on the card itself select it — same path as a body click.
- * Nested native action controls (Accept etc.) must not re-trigger card selection.
- * Returns { missionId } when the key should activate selection; null otherwise.
- */
-export function resolveMissionCardKeyboardSelection(ev) {
-  if (!ev || (ev.key !== 'Enter' && ev.key !== ' ')) return null;
-  const target = ev.target;
-  if (!target || typeof target.closest !== 'function') return null;
-  const card = target.closest('.st-mission-card');
-  // Nested buttons/inputs own their own activation; do not also select the card.
-  if (!card || target !== card) return null;
-  const mid = card.getAttribute('data-mid');
-  if (mid == null || mid === '') return null;
-  return { missionId: String(mid) };
-}
-
 export function recommendMissionBoardOffer(slots = [], state = {}) {
-  const firstLoopSafeWork = firstLoopNeedsSafeWork(state);
-  let candidates = (Array.isArray(slots) ? slots : [])
+  const candidates = (Array.isArray(slots) ? slots : [])
     .map((mission, index) => {
       if (!mission) return null;
       const id = missionOfferId(mission);
@@ -848,43 +818,33 @@ export function recommendMissionBoardOffer(slots = [], state = {}) {
         (preflight.warning ? 250 : 0);
       return { mission, missionId: id, index, preflight, readiness, consequences, risk, score };
     })
-    .filter(Boolean);
-  if (firstLoopSafeWork) {
-    const safeReady = candidates.filter((c) => c.risk <= 1 && c.readiness.state !== 'blocked');
-    if (safeReady.length) candidates = safeReady;
-  }
-  candidates.sort((a, b) => (b.score - a.score) || (a.risk - b.risk) || (a.index - b.index));
+    .filter(Boolean)
+    .sort((a, b) => (b.score - a.score) || (a.risk - b.risk) || (a.index - b.index));
 
   const best = candidates[0];
   if (!best) return null;
-  const firstLoopRiskBlocked = firstLoopSafeWork && best.risk >= 2;
-  const blocked = best.readiness.state === 'blocked' || firstLoopRiskBlocked;
-  const reason = firstLoopRiskBlocked
-    ? 'Prep first: take a Risk 0-1 contract before elevated work. Risk ' + best.risk + ' stays on the board.'
-    : missionRecommendationReason(best.mission, best.preflight, best.readiness, best.consequences);
+  const blocked = best.readiness.state === 'blocked';
   return {
     mission: best.mission,
     missionId: best.missionId,
-    kind: firstLoopRiskBlocked ? 'warn' : best.readiness.kind,
-    state: firstLoopRiskBlocked ? 'blocked' : best.readiness.state,
+    kind: best.readiness.kind,
+    state: best.readiness.state,
     label: blocked ? 'PREP FIRST' : (best.readiness.state === 'caution' ? 'RECOMMENDED - CHECK' : 'RECOMMENDED'),
     title: best.mission.title || prettyType(best.mission.type),
-    reason,
+    reason: missionRecommendationReason(best.mission, best.preflight, best.readiness, best.consequences),
     actionLabel: blocked ? 'Resolve Prep' : 'Accept Recommended',
     disabled: blocked,
   };
 }
 
-/** Always refresh station CSS so layout reboots land without a full module cache mystery. */
+let cssInjected = false;
 function injectCss() {
-  if (typeof document === 'undefined') return;
-  let style = document.getElementById('ui-station-styles');
-  if (!style) {
-    style = document.createElement('style');
-    style.id = 'ui-station-styles';
-    document.head.appendChild(style);
-  }
+  if (cssInjected || typeof document === 'undefined') return;
+  cssInjected = true;
+  const style = document.createElement('style');
+  style.id = 'ui-station-styles';
   style.textContent = STATION_CSS;
+  document.head.appendChild(style);
 }
 
 const STATION_RISKS = {
@@ -1045,25 +1005,38 @@ function stationSchematicSvg(type) {
 
 export const stationHub = {
   id: 'station',
-  data: { autoFocus: false },
   _ctx: null,
   _panels: null,        // { market, shipyard, outfit, services, factions, bar } panel objects
   _missionEls: null,
   _stationId: null,
   _subbed: false,
-  _busyEl: null,
-  _originRailEl: null,
-  _originSelectedId: null,
-  _ladderRailEl: null,
-  _ladderSelectedId: null,
-  _ladderModel: null,
-  _activeRefreshJob: null,
-  _activeRefreshRaf: 0,
-  _activeRefreshTimer: 0,
-  _undockChargeTimer: null,
-  _exitInFlight: false,
-  _setInspectorOpen: null,
-  _stationLifeEl: null,
+
+  /**
+   * Exit-gate owner: confirm when needed, then commit undock (functional parity with post-gold exit system).
+   * No career rails — pure undock.
+   */
+  async requestStationExit(req = {}) {
+    const bus = this._ctx && this._ctx.bus;
+    if (!bus) return;
+    const intent = req.intent === 'explicit' ? 'explicit' : 'implicit';
+    const held = !!req.held;
+    const readiness = (this._undockBtn && this._undockBtn.getAttribute('data-readiness')) || 'ready';
+    if (stationExitNeedsConfirm(intent, readiness, held)) {
+      const ok = await confirm({
+        title: 'Leave station?',
+        body: 'Undock and return to flight?',
+        confirmLabel: 'Undock',
+        cancelLabel: 'Stay',
+        opener: req.opener || null,
+      });
+      if (!ok) return;
+    }
+    commitStationUndock(bus, {
+      intent,
+      held,
+      source: req.source || 'station-exit',
+    });
+  },
 
   /** Build the screen DOM once and cache it. Called by uiRoot/screenManager. */
   mount(rootEl, ctx) {
@@ -1073,40 +1046,26 @@ export const stationHub = {
     injectCss();
 
     const screen = document.createElement('div');
-    // Station OS: full-viewport tool shell (see design/STATION_SHELL_CONTRACT.md).
-    screen.className = 'st-hub st-hub--desk st-hub--os panel';
-    screen.setAttribute('data-station-os', '1');
+    // Gold framed hub (f6f6a90c) — not desk/os fullscreen.
+    screen.className = 'st-hub panel';
 
-    // Top strip only: name · credits · cargo · Briefing (Meta) · Undock (Meta)
+    // top bar: station name / faction / services
     const topbar = document.createElement('div');
     topbar.className = 'st-topbar';
     topbar.innerHTML =
-      '<div class="st-topbar-l">' +
-        '<span class="st-station-name">Station</span>' +
-        '<span class="st-station-fac mono"></span>' +
-      '</div>' +
-      '<div class="st-topbar-m">' +
-        '<span class="st-top-stat"><span class="st-top-stat-l mono">Credits</span><span class="mono st-top-credits">0</span></span>' +
-        '<span class="st-top-stat"><span class="st-top-stat-l mono">Cargo</span><span class="mono st-top-cargo">0 / 0</span></span>' +
-        '<span class="st-top-stat st-top-departure"><span class="st-top-stat-l mono">Launch</span><span class="mono st-readiness-summary">—</span></span>' +
-      '</div>' +
-      '<div class="st-topbar-r">' +
-        '<button type="button" class="st-inspector-toggle st-meta-btn" aria-expanded="false" title="Open station briefing">Briefing</button>' +
-        '<button type="button" class="st-undock st-meta-btn">Undock</button>' +
-      '</div>';
+      '<div class="st-topbar-l"><span class="st-station-name">Station</span>' +
+      '<span class="st-station-fac mono"></span></div>' +
+      '<button class="st-undock">⏏ UNDOCK</button>';
     screen.appendChild(topbar);
-    this._topCreditsEl = topbar.querySelector('.st-top-credits');
-    this._topCargoEl = topbar.querySelector('.st-top-cargo');
-    this._readinessSummary = topbar.querySelector('.st-readiness-summary');
 
-    // Airlock graffiti kept for flavor but out of the layout budget (visually one line under top).
+    // airlock graffiti strip
     const airlock = document.createElement('div');
     airlock.className = 'st-airlock';
-    airlock.innerHTML = '<div class="st-airlock__label mono">Airlock</div><div class="st-airlock__graffiti"></div>';
+    airlock.innerHTML = '<div class="st-airlock__label mono">AIRLOCK</div><div class="st-airlock__graffiti"></div>';
     screen.appendChild(airlock);
     this._airlockEl = airlock.querySelector('.st-airlock__graffiti');
 
-    // Body: Nav rail + full-height workspace (+ opt-in briefing drawer)
+    // main body: rail + workspace + inspector
     const body = document.createElement('div');
     body.className = 'st-body';
 
@@ -1118,49 +1077,28 @@ export const stationHub = {
     const workspaceWrapper = document.createElement('div');
     workspaceWrapper.className = 'st-workspace-wrapper';
 
+    // Center Stage
     const centerStage = document.createElement('div');
     centerStage.className = 'st-center-stage';
 
+    // Faction stripe
     const factionStripe = document.createElement('div');
     factionStripe.className = 'st-faction-stripe';
     centerStage.appendChild(factionStripe);
 
-    // Returning-dock causality strip. First dock keeps the authored handoff as the sole instructor,
-    // so this stays hidden until that one-voice surface is gone.
-    const stationLife = document.createElement('section');
-    stationLife.className = 'st-life-strip';
-    stationLife.hidden = true;
-    stationLife.setAttribute('aria-label', 'Local station activity');
-    stationLife.innerHTML =
-      '<button type="button" class="st-life-primary st-meta-btn"></button>' +
-      '<span class="st-life-news"></span>' +
-      '<span class="st-life-traffic mono"></span>' +
-      '<span class="st-life-paperwork mono"></span>';
-    centerStage.appendChild(stationLife);
-    this._stationLifeEl = stationLife;
-    stationLife.querySelector('.st-life-primary').addEventListener('click', () => {
-      const target = stationLife.getAttribute('data-primary-target');
-      if (target === 'undock') {
-        if (this._undockBtn) this._undockBtn.focus({ preventScroll: true });
-        return;
-      }
-      if (TABS.some((tab) => tab.id === target) || target === 'hold') {
-        this.setTab(target, { focusRail: true });
-        ctx.bus.emit('audio:cue', { id: 'ui_tab' });
-      }
-    });
-
-    // Hidden effect mounts only (no layout). Keeps command-deck effect factories parkable.
-    // NOT a permanent service dock / bullseye — Services tool owns verbs.
+    // Console Center Stage: schematic (with scanner-grid backdrop) + Service Dock + effect overlay.
+    // The scan layer hosts flickerGrid (console acquisition on dock); the fx overlay hosts the ripple
+    // field (service-select ping). The route beam lives on the workspace wrapper so it can reach the
+    // inspector column. Effects are view-only and parked when the screen hides.
     const consoleConsole = document.createElement('div');
-    consoleConsole.className = 'st-console-deck st-console-deck--effects-only';
-    consoleConsole.setAttribute('aria-hidden', 'true');
+    consoleConsole.className = 'st-console-deck';
+    consoleConsole.setAttribute('data-centerpiece', 'station-service-console');
     consoleConsole.innerHTML = `
-      <div class="st-schematic-pane" hidden>
+      <div class="st-schematic-pane">
         <div class="st-fx-scan" aria-hidden="true"></div>
         <div class="st-schematic-art"></div>
       </div>
-      <div class="st-service-nodes-pane" hidden></div>
+      <div class="st-service-nodes-pane" role="group" aria-label="Berth services"></div>
       <div class="st-fx-overlay" aria-hidden="true"></div>
     `;
     centerStage.appendChild(consoleConsole);
@@ -1169,149 +1107,42 @@ export const stationHub = {
     this._scanLayer = consoleConsole.querySelector('.st-fx-scan');
     this._fxOverlay = consoleConsole.querySelector('.st-fx-overlay');
 
-    // Morph mount for status (parked; one-line only when needed via top strip readiness).
+    // Badges / status row. The econ badge carries a morphLabel mount so station state/event changes
+    // animate the readout (morphLabel fires on value change only).
     const statusRow = document.createElement('div');
-    statusRow.className = 'st-status-row st-status-row--sr';
-    statusRow.innerHTML = '<div class="st-econ-badge mono"><span class="st-econ-mount"></span></div>';
-    statusRow.setAttribute('aria-hidden', 'true');
+    statusRow.className = 'st-status-row';
+    statusRow.innerHTML = `
+      <div class="st-econ-badge mono"><span class="st-econ-mount"></span></div>
+      <div class="st-readiness-summary mono"></div>
+    `;
     centerStage.appendChild(statusRow);
     this._econBadge = statusRow.querySelector('.st-econ-badge');
     this._econMorphMount = statusRow.querySelector('.st-econ-mount');
+    this._readinessSummary = statusRow.querySelector('.st-readiness-summary');
 
-    // First-dock career origins: one compact, non-binding action rail. It is intentionally
-    // independent of the disposable station checklist below and delegates every mutation to the
-    // registered careerOrigins authority.
-    const originRail = document.createElement('section');
-    originRail.className = 'st-origin-rail';
-    originRail.hidden = true;
-    originRail.setAttribute('aria-labelledby', 'st-origin-rail-title');
-    originRail.setAttribute('data-testid', 'career-origin-rail');
-    originRail.innerHTML =
-      '<div class="st-origin-head">' +
-        '<span id="st-origin-rail-title" class="st-origin-kicker mono">Choose a first run</span>' +
-        '<span class="st-origin-note">Optional. Paths never lock each other.</span>' +
-      '</div>' +
-      '<div class="st-origin-choices" role="group" aria-label="Career origin paths"></div>' +
-      '<div class="st-origin-action">' +
-        '<span class="st-origin-detail" aria-live="polite"></span>' +
-        '<button type="button" class="st-origin-accept st-meta-btn" data-origin-action="accept" data-testid="career-origin-accept">Start path</button>' +
-        '<button type="button" class="st-origin-decline st-meta-btn" data-origin-action="decline" data-testid="career-origin-decline">Not now</button>' +
-      '</div>';
-    centerStage.appendChild(originRail);
-    this._originRailEl = originRail;
-    this._originSelectedId = null;
-    originRail.addEventListener('click', (ev) => {
-      const choice = ev.target.closest('[data-origin-career]');
-      if (choice && originRail.contains(choice)) {
-        this._originSelectedId = choice.getAttribute('data-origin-career');
-        this._refreshOriginRail();
-        ctx.bus.emit('audio:cue', { id: 'ui_tab' });
-        return;
-      }
-      const action = ev.target.closest('[data-origin-action]');
-      if (!action || !originRail.contains(action) || !this._originSelectedId) return;
-      const verb = action.getAttribute('data-origin-action');
-      if (verb !== 'accept' && verb !== 'decline') return;
-      ctx.bus.emit(`career:origin:${verb}`, { careerId: this._originSelectedId });
-      ctx.bus.emit('audio:cue', { id: verb === 'accept' ? 'ui_accept' : 'ui_tab' });
-      this._refreshOriginRail();
-    });
-
-    // Professional career ladders: compact non-binding strip adjacent to the origin rail.
-    // Pure presenter model only; mutations are career:ladder:* intents (no state writes).
-    // No visor/portrait chrome; no idle motion (respects html.sf-reduce-motion).
-    const ladderRail = document.createElement('section');
-    ladderRail.className = 'st-ladder-rail';
-    ladderRail.hidden = true;
-    ladderRail.setAttribute('role', 'region');
-    ladderRail.setAttribute('aria-labelledby', 'st-ladder-rail-title');
-    ladderRail.setAttribute('data-testid', 'career-ladder-rail');
-    try {
-      if (typeof document !== 'undefined'
-        && document.documentElement
-        && document.documentElement.classList.contains('sf-reduce-motion')) {
-        ladderRail.setAttribute('data-reduce-motion', '1');
-      }
-    } catch (_) { /* ignore */ }
-    ladderRail.innerHTML =
-      '<div class="st-ladder-head">' +
-        '<span id="st-ladder-rail-title" class="st-ladder-kicker mono">Professional path</span>' +
-        '<span class="st-ladder-note">Optional. Paths never lock each other.</span>' +
-      '</div>' +
-      '<div class="st-ladder-careers" role="group" aria-label="Professional career ladders"></div>' +
-      '<div class="st-ladder-panel">' +
-        '<div class="st-ladder-meta">' +
-          '<span class="st-ladder-detail" aria-live="polite" aria-atomic="true"></span>' +
-          '<span class="st-ladder-progress mono"></span>' +
-        '</div>' +
-        '<p class="st-ladder-objective"></p>' +
-        '<p class="st-ladder-where mono" hidden></p>' +
-        '<p class="st-ladder-prereq" hidden></p>' +
-        '<p class="st-ladder-fail" aria-live="polite" hidden></p>' +
-        '<p class="st-ladder-receipt" aria-live="polite" hidden></p>' +
-        '<div class="st-ladder-choices" role="group" aria-label="Path decisions" hidden></div>' +
-        '<div class="st-ladder-actions">' +
-          '<button type="button" class="st-ladder-accept st-meta-btn" data-ladder-action="accept" data-testid="career-ladder-accept">Start path</button>' +
-          '<button type="button" class="st-ladder-decline st-meta-btn" data-ladder-action="decline" data-testid="career-ladder-decline">Not now</button>' +
-          '<button type="button" class="st-ladder-recover st-meta-btn" data-ladder-action="recover" data-testid="career-ladder-recover">Retry</button>' +
-          '<button type="button" class="st-ladder-abandon st-meta-btn" data-ladder-action="abandon" data-testid="career-ladder-abandon">Abandon</button>' +
-          '<button type="button" class="st-ladder-map st-meta-btn" data-ladder-action="openMap" data-testid="career-ladder-map">Map</button>' +
-          '<button type="button" class="st-ladder-log st-meta-btn" data-ladder-action="missionLog" data-testid="career-ladder-mission-log">Missions</button>' +
-        '</div>' +
-      '</div>';
-    centerStage.appendChild(ladderRail);
-    this._ladderRailEl = ladderRail;
-    this._ladderSelectedId = null;
-    this._ladderModel = null;
-    ladderRail.addEventListener('click', (ev) => {
-      this._onLadderRailClick(ev);
-    });
-    ladderRail.addEventListener('keydown', (ev) => {
-      this._onLadderRailKeydown(ev);
-    });
-
-    // Disposable first-dock checklist (single strip, dismissible — never permanent multi-card chrome).
+    // Handoff panel
     const handoff = document.createElement('div');
     handoff.className = 'st-handoff';
-    handoff.classList.add('st-handoff--strip');
     handoff.hidden = true;
     handoff.innerHTML =
       '<div class="st-handoff-head">' +
-        '<span class="st-handoff-label mono">First dock — do these three</span>' +
-        '<span class="st-handoff-copy">Sell cargo · take a job · fix fuel/hull · undock.</span>' +
-        '<button type="button" class="st-handoff-dismiss st-meta-btn" data-handoff-dismiss="1" title="Dismiss checklist">Dismiss</button>' +
+        '<span class="st-handoff-label mono">First Dock Handoff</span>' +
+        '<span class="st-handoff-copy">Audit the hold, take one safe job, then launch only when Departure Check reads clean.</span>' +
       '</div>' +
       '<div class="st-handoff-steps"></div>';
     centerStage.appendChild(handoff);
     this._handoffEl = handoff;
-    this._handoffDismissed = false;
     handoff.addEventListener('click', (ev) => {
-      if (ev.target.closest('[data-handoff-dismiss]')) {
-        this._handoffDismissed = true;
-        handoff.hidden = true;
-        this._refreshStationLife();
-        try {
-          if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('sf-station-handoff-dismissed', '1');
-        } catch (_) { /* ignore */ }
-        ctx.bus.emit('audio:cue', { id: 'ui_tab' });
-        return;
-      }
       const target = ev.target.closest('[data-handoff-tab]');
       if (!target || !this._handoffEl || !this._handoffEl.contains(target)) return;
       const tabId = target.getAttribute('data-handoff-tab');
-      if (!TABS.some((t) => t.id === tabId) && tabId !== 'hold') return;
+      if (!TABS.some((t) => t.id === tabId)) return;
       this.setTab(tabId, { focusRail: true });
       ctx.bus.emit('audio:cue', { id: 'ui_tab' });
     });
-    try {
-      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sf-station-handoff-dismissed') === '1') {
-        this._handoffDismissed = true;
-      }
-    } catch (_) { /* ignore */ }
 
-    // Departure chips: compact one-line under handoff (not a second sidebar).
     const departure = document.createElement('div');
-    departure.className = 'st-departure st-departure--compact';
+    departure.className = 'st-departure';
     departure.innerHTML =
       '<div class="st-departure-label mono">Departure Check</div>' +
       '<div class="st-departure-chips"></div>';
@@ -1332,39 +1163,26 @@ export const stationHub = {
       ctx.bus.emit('audio:cue', { id: 'ui_tab' });
     });
 
-    // Workspace = the active tool (centerpiece of Station OS).
     const content = document.createElement('div');
     content.className = 'st-content';
-    // Centerpiece lives on the tool workspace (Station OS), not a decorative console deck.
-    content.setAttribute('data-centerpiece', "station-service-console");
-    const busy = document.createElement('div');
-    busy.className = 'st-content-busy';
-    busy.hidden = true;
-    busy.setAttribute('role', 'status');
-    busy.setAttribute('aria-live', 'polite');
-    busy.innerHTML =
-      '<span class="st-content-spinner" aria-hidden="true"></span>' +
-      '<span class="st-content-busy-text mono">Loading tool</span>';
-    content.appendChild(busy);
-    this._busyEl = busy;
     centerStage.appendChild(content);
 
     workspaceWrapper.appendChild(centerStage);
 
-    // Briefing drawer — Meta only, collapsed by default (no permanent essay column).
-    const inspector = document.createElement('aside');
-    inspector.className = 'st-inspector is-collapsed';
-    inspector.setAttribute('aria-hidden', 'true');
+    // Right Inspector Column
+    const inspector = document.createElement('div');
+    inspector.className = 'st-inspector';
 
     const inspectorHead = document.createElement('div');
     inspectorHead.className = 'st-inspector-header mono';
-    inspectorHead.innerHTML = '<span>Station briefing</span><button type="button" class="st-inspector-close" aria-label="Close briefing">×</button>';
+    inspectorHead.textContent = 'System Diagnostics';
     inspector.appendChild(inspectorHead);
 
     const inspectorContent = document.createElement('div');
     inspectorContent.className = 'st-inspector-content';
     inspector.appendChild(inspectorContent);
 
+    // Keep the .st-purpose elements inside the inspector so they are read by checks
     const purpose = document.createElement('div');
     purpose.className = 'st-purpose';
     purpose.innerHTML =
@@ -1372,30 +1190,11 @@ export const stationHub = {
       '<div class="st-purpose-sub"><span class="st-purpose-tab"></span><span class="st-purpose-services"></span></div>';
     inspector.appendChild(purpose);
     this._purposeEl = purpose;
-    this._inspectorEl = inspector;
-
-    const setInspectorOpen = (open) => {
-      inspector.classList.toggle('is-collapsed', !open);
-      inspector.setAttribute('aria-hidden', open ? 'false' : 'true');
-      const toggle = topbar.querySelector('.st-inspector-toggle');
-      if (toggle) {
-        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-        toggle.classList.toggle('is-active', open);
-      }
-    };
-    this._setInspectorOpen = setInspectorOpen;
-    topbar.querySelector('.st-inspector-toggle').addEventListener('click', () => {
-      setInspectorOpen(inspector.classList.contains('is-collapsed'));
-      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
-    });
-    inspectorHead.querySelector('.st-inspector-close').addEventListener('click', () => {
-      setInspectorOpen(false);
-      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
-    });
 
     workspaceWrapper.appendChild(inspector);
 
-    // Beam layer kept for mission effects only; never layout-visible across the desk.
+    // Route-beam overlay spans the whole workspace (center stage → inspector) so a selected service
+    // can draw a routing beam toward the diagnostics column. pointer-events:none; parked when hidden.
     const fxBeamLayer = document.createElement('div');
     fxBeamLayer.className = 'st-fx-beamlayer';
     fxBeamLayer.setAttribute('aria-hidden', 'true');
@@ -1412,38 +1211,26 @@ export const stationHub = {
     commsPanel.innerHTML = `
       <div class="st-comms-panel-head">
         <span>Comms Log</span>
-        <button type="button" class="st-comms-panel-close" aria-label="Close comms log">CLOSE [X]</button>
+        <span class="st-comms-panel-close">CLOSE [X]</span>
       </div>
       <div class="st-comms-panel-body">
-        <div class="st-comms-panel-row">No queued station traffic.</div>
+        <div class="st-comms-panel-row"><span class="sender">ATCX</span> CLEARED FOR DEPARTURE.</div>
+        <div class="st-comms-panel-row"><span class="sender">TRADER</span> ANYONE SELLING ORE?</div>
+        <div class="st-comms-panel-row"><span class="sender">STATION</span> REMINDER: CONTRABAND SCANS ARE ACTIVE.</div>
       </div>
     `;
-    commsPanel.id = 'st-comms-panel';
-    commsPanel.setAttribute('aria-hidden', 'true');
-    commsPanel.inert = true;
     screen.appendChild(commsPanel);
 
-    const setCommsPanelOpen = (open) => {
-      commsPanel.classList.toggle('open', !!open);
-      commsPanel.setAttribute('aria-hidden', open ? 'false' : 'true');
-      commsPanel.inert = !open;
-      commsTicker.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) commsPanel.querySelector('.st-comms-panel-close').focus({ preventScroll: true });
-      else commsTicker.focus({ preventScroll: true });
-    };
-
-    // Quiet, explicit control. Ambient placeholder chatter must not compete with first-dock copy.
-    const commsTicker = document.createElement('button');
-    commsTicker.type = 'button';
-    commsTicker.className = 'st-comms-ticker';
-    commsTicker.textContent = 'COMMS LOG';
-    commsTicker.setAttribute('aria-controls', 'st-comms-panel');
-    commsTicker.setAttribute('aria-expanded', 'false');
     commsPanel.querySelector('.st-comms-panel-close').addEventListener('click', () => {
-      setCommsPanelOpen(false);
+      commsPanel.classList.remove('open');
     });
+
+    // Comms Ticker
+    const commsTicker = document.createElement('div');
+    commsTicker.className = 'st-comms-ticker';
+    commsTicker.innerHTML = '<span class="sender">ATCX</span> CLEARED FOR DEPARTURE. &nbsp;&nbsp;&nbsp; <span class="sender">TRADER</span> ANYONE SELLING ORE?';
     commsTicker.addEventListener('click', () => {
-      setCommsPanelOpen(!commsPanel.classList.contains('open'));
+      commsPanel.classList.toggle('open');
     });
     screen.appendChild(commsTicker);
 
@@ -1461,10 +1248,10 @@ export const stationHub = {
       b.setAttribute('tabindex', '-1');
       b.title = t.help;
       b.setAttribute('aria-label', t.label + ': ' + t.help);
-      // Nav only — full tool names, no status essays on the rail (Station Shell Contract §2–3).
       b.innerHTML =
         '<span class="st-tab-icon sf-glyph" aria-hidden="true">' + (glyphSvg(t.id) || t.icon) + '</span>' +
-        '<span class="st-tab-label">' + t.label + '</span>';
+        '<span class="st-tab-label">' + t.label + '</span>' +
+        '<span class="st-tab-service mono" aria-hidden="true"></span>';
       railFrag.appendChild(b);
 
       if (t.id === 'market') {
@@ -1477,11 +1264,12 @@ export const stationHub = {
         holdBtn.setAttribute('aria-controls', 'st-panel-hold');
         holdBtn.setAttribute('aria-selected', 'false');
         holdBtn.setAttribute('tabindex', '-1');
-        holdBtn.title = 'Cargo hold: sell cargo at station prices.';
-        holdBtn.setAttribute('aria-label', 'Hold: sell cargo at station prices.');
+        holdBtn.title = 'View cargo hold manifest, capacity, and item values.';
+        holdBtn.setAttribute('aria-label', 'Hold: View cargo hold manifest, capacity, and item values.');
         holdBtn.innerHTML =
           '<span class="st-tab-icon sf-glyph" aria-hidden="true">' + (glyphSvg('hold') || '■') + '</span>' +
-          '<span class="st-tab-label">Hold</span>';
+          '<span class="st-tab-label">Hold</span>' +
+          '<span class="st-tab-service mono" aria-hidden="true"></span>';
         railFrag.appendChild(holdBtn);
       }
     }
@@ -1496,56 +1284,47 @@ export const stationHub = {
 
     const undockBtn = topbar.querySelector('.st-undock');
     this._undockBtn = undockBtn;
-    this._undockChargeTimer = null;
 
-    // Explicit Undock — mouse/touch hold is the deliberate commitment; keyboard/gamepad
-    // activation uses the same owner (RISK confirm when not held).
+    let chargeTimer = null;
     undockBtn.addEventListener('mousedown', (e) => {
-      if (e.button !== 0 || undockBtn.disabled || this._exitInFlight) return;
+      if (e.button !== 0 || undockBtn.disabled) return;
       undockBtn.classList.remove('abort');
       undockBtn.classList.add('charging');
       ctx.bus.emit('audio:cue', { id: 'ui_charge_start' });
 
-      this._undockChargeTimer = setTimeout(() => {
+      chargeTimer = setTimeout(() => {
         undockBtn.classList.remove('charging');
-        this._undockChargeTimer = null;
         ctx.bus.emit('audio:cue', { id: 'ui_undock' });
-        this.requestStationExit({
-          intent: 'explicit',
-          source: 'undock-hold',
-          held: true,
-          opener: undockBtn,
-        });
+        commitStationUndock(ctx.bus, { intent: 'explicit', held: true, source: 'undock-hold' });
+        chargeTimer = null;
       }, 600);
     });
 
     undockBtn.addEventListener('mouseup', () => {
-      if (this._abortUndockCharge({ abortCue: true })) {
+      if (chargeTimer) {
+        clearTimeout(chargeTimer);
+        chargeTimer = null;
+        undockBtn.classList.remove('charging');
         undockBtn.classList.add('abort');
+        ctx.bus.emit('audio:cue', { id: 'ui_charge_abort' });
       }
     });
 
     undockBtn.addEventListener('mouseleave', () => {
-      if (this._abortUndockCharge({ abortCue: false })) {
+      if (chargeTimer) {
+        clearTimeout(chargeTimer);
+        chargeTimer = null;
+        undockBtn.classList.remove('charging');
         undockBtn.classList.add('abort');
       }
     });
 
-    // Keyboard / gamepad / synthetic activate (HTMLElement.click detail === 0)
+    // Keep click for keyboard accessibility
     undockBtn.addEventListener('click', (e) => {
-      if (e.detail !== 0 || undockBtn.disabled || this._exitInFlight) return;
-      // If a hold is in progress, treat activate as abort rather than double-request.
-      if (this._abortUndockCharge({ abortCue: true })) {
-        undockBtn.classList.add('abort');
-        return;
+      if (e.detail === 0) { // synthetic click (e.g. keyboard Enter/Space)
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        commitStationUndock(ctx.bus, { intent: 'explicit', held: false, source: 'undock-key' });
       }
-      ctx.bus.emit('audio:cue', { id: 'ui_click' });
-      this.requestStationExit({
-        intent: 'explicit',
-        source: 'undock-activate',
-        held: false,
-        opener: undockBtn,
-      });
     });
 
     // instantiate tab panels (factories from this file-set)
@@ -1625,23 +1404,18 @@ export const stationHub = {
 
     content.appendChild(el);
 
-    const qtyDraft = Object.create(null);
-
     const refresh = () => {
       const state = ctx.state;
       const cargo = state && state.player && state.player.cargo || {};
       const cap = Number(cargo.capVolume) || 40;
       const used = Number(cargo.usedVolume) || 0;
-      const percent = cap > 0 ? Math.round((used / cap) * 100) : 0;
-      const stationId = this._stationId || (state.ui && state.ui.dockedStationId) || null;
+      const free = Math.max(0, cap - used);
+      const percent = Math.round((used / cap) * 100);
 
       let html = `
-        <div class="st-tool-head">
-          <div class="st-sub-h">Hold</div>
-          <p class="st-hold-hint">Sell cargo at this station's pay price. Use Market to buy.</p>
-        </div>
+        <div class="st-sub-h">Cargo Hold Manifest</div>
         <div class="st-hold-header">
-          <div class="st-hold-meter-label mono">Storage ${used}/${cap} u (${percent}%)</div>
+          <div class="st-hold-meter-label mono">HOLD STORAGE: ${used}/${cap} units (${percent}%)</div>
           <div class="st-hold-meter">
             <div class="st-hold-meter-fill" style="width: ${percent}%"></div>
           </div>
@@ -1649,50 +1423,44 @@ export const stationHub = {
       `;
 
       const items = cargo.items || {};
-      const list = Object.entries(items)
-        .filter(([, qty]) => Number(qty) > 0)
-        .map(([id, rawQty]) => {
-          const qty = Math.max(0, Math.floor(Number(rawQty) || 0));
-          const unit = stationId ? holdUnitSellPrice(state, stationId, id) : null;
-          return { id, qty, unit, value: unit != null ? unit * qty : 0 };
-        })
-        .sort((a, b) => b.value - a.value || a.id.localeCompare(b.id));
+      const list = Object.entries(items).filter(([id, qty]) => Number(qty) > 0);
 
       if (list.length === 0) {
-        html += `<div class="st-empty">Hold is empty. Mine, salvage, or buy goods, then sell here.</div>`;
+        html += `<div class="st-empty">Cargo hold is currently empty.</div>`;
       } else {
         html += `
           <div class="st-hold-grid">
-            <div class="st-row st-row-head st-hold-row">
+            <div class="st-row st-row-head">
               <span>Commodity</span>
               <span class="c-num">Qty</span>
-              <span class="c-num">Pays</span>
-              <span class="c-num">Total</span>
-              <span class="c-act">Sell</span>
+              <span class="c-num">Vol</span>
+              <span class="c-num">Local Price</span>
+              <span></span>
             </div>
         `;
 
-        for (const row of list) {
-          const com = COMMODITY_BY_ID.get(row.id) || { name: prettyId(row.id) };
-          const priceText = row.unit != null ? (row.unit.toLocaleString() + ' cr') : '—';
-          const totalText = row.unit != null ? (row.value.toLocaleString() + ' cr') : '—';
-          const draft = Math.min(row.qty, Math.max(1, Number(qtyDraft[row.id]) || row.qty));
-          qtyDraft[row.id] = draft;
+        const getMarketMemoryForStation = (s, stationId, cmdtyId) => {
+          const markets = s.economy && s.economy.markets;
+          const m = markets && markets[stationId];
+          return (m && m[cmdtyId]) || null;
+        };
+
+        for (const [id, qty] of list) {
+          const com = COMMODITY_BY_ID.get(id) || { name: prettyId(id), volume: 1 };
+          const vol = (com.volume || 1) * qty;
+
+          const stn = this._stationDef();
+          const marketData = stn ? getMarketMemoryForStation(state, stn.id, id) : null;
+          const priceText = marketData ? `${marketData.sell} cr` : 'no memory';
 
           html += `
-            <div class="st-row st-hold-row" data-hold-row="${row.id}">
-              <span class="st-hold-name">${escapeHtml(com.name || prettyId(row.id))}</span>
-              <span class="c-num mono">${row.qty}</span>
-              <span class="c-num mono">${priceText}</span>
-              <span class="c-num mono">${totalText}</span>
-              <span class="c-act st-hold-actions">
-                <span class="st-qty-param" data-cmdty="${row.id}">
-                  <button type="button" class="st-qty-btn" data-qty-delta="-1" aria-label="Decrease quantity">−</button>
-                  <input class="st-qty-input mono" type="number" min="1" max="${row.qty}" value="${draft}" data-qty-input="1" aria-label="Sell quantity" />
-                  <button type="button" class="st-qty-btn" data-qty-delta="1" aria-label="Increase quantity">+</button>
-                </span>
-                <button type="button" class="st-sell-btn st-verb-btn" data-sell-cmdty="${row.id}" data-sell-mode="draft">Sell</button>
-                <button type="button" class="st-sell-btn st-sell-btn--all st-verb-btn" data-sell-cmdty="${row.id}" data-sell-qty="${row.qty}">Sell all</button>
+            <div class="st-row">
+              <span style="font-weight:700; color:#fff;">${com.name}</span>
+              <span class="c-num">${qty}</span>
+              <span class="c-num">${vol}</span>
+              <span class="c-num">${priceText}</span>
+              <span class="c-act">
+                <button type="button" class="st-sell-btn" data-sell-cmdty="${id}" style="padding: 2px 8px; font-size:0.7rem;">Sell One</button>
               </span>
             </div>
           `;
@@ -1703,45 +1471,15 @@ export const stationHub = {
 
       el.innerHTML = html;
 
-      el.querySelectorAll('[data-qty-delta]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const wrap = btn.closest('[data-cmdty]');
-          const id = wrap && wrap.getAttribute('data-cmdty');
-          const input = wrap && wrap.querySelector('[data-qty-input]');
-          if (!id || !input) return;
-          const max = Math.max(1, Math.floor(Number(input.getAttribute('max')) || 1));
-          let v = Math.floor(Number(input.value) || 1) + Number(btn.getAttribute('data-qty-delta') || 0);
-          v = Math.max(1, Math.min(max, v));
-          input.value = String(v);
-          qtyDraft[id] = v;
-        });
-      });
-      el.querySelectorAll('[data-qty-input]').forEach((input) => {
-        input.addEventListener('change', () => {
-          const wrap = input.closest('[data-cmdty]');
-          const id = wrap && wrap.getAttribute('data-cmdty');
-          if (!id) return;
-          const max = Math.max(1, Math.floor(Number(input.getAttribute('max')) || 1));
-          let v = Math.floor(Number(input.value) || 1);
-          v = Math.max(1, Math.min(max, v));
-          input.value = String(v);
-          qtyDraft[id] = v;
-        });
-      });
-
-      el.querySelectorAll('[data-sell-cmdty]').forEach((btn) => {
+      el.querySelectorAll('[data-sell-cmdty]').forEach(btn => {
         btn.addEventListener('click', () => {
           const cmdtyId = btn.getAttribute('data-sell-cmdty');
-          let qty;
-          if (btn.getAttribute('data-sell-mode') === 'draft') {
-            qty = Math.max(1, Math.floor(Number(qtyDraft[cmdtyId]) || 1));
-          } else {
-            qty = Math.max(1, Math.floor(Number(btn.getAttribute('data-sell-qty')) || 1));
-          }
-          ctx.bus.emit('ui:sell', { commodityId: cmdtyId, qty });
+          ctx.bus.emit('ui:trade', {
+            stationId: this._stationId,
+            commodityId: cmdtyId,
+            qty: -1,
+          });
           ctx.bus.emit('audio:cue', { id: 'ui_click' });
-          if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => { refresh(); if (this._refreshTopbar) this._refreshTopbar(); });
-          else setTimeout(() => { refresh(); if (this._refreshTopbar) this._refreshTopbar(); }, 0);
         });
       });
     };
@@ -1821,65 +1559,19 @@ export const stationHub = {
     return !!(stn && Array.isArray(stn.services) && stn.services.includes(svc));
   },
 
-  /**
-   * Quick-service bar: click must DO something useful for the economy desk.
-   * - refuel / repair → execute immediately (ui:service) when offered
-   * - trade / shipyard / missions / etc → open the real section tab
-   * - offline services → toast + short reason (no decorative beam across content)
-   */
+  /** A Service Dock node was chosen: focus the inspector on it, ping it, and beam it to diagnostics.
+   *  Select ≠ open — the bottom command strip's "Open" action switches the section panel. */
   _selectService(svc) {
     if (!svc) return;
-    const bus = this._ctx && this._ctx.bus;
-    const offered = this._serviceOffered(svc);
     this._selectedService = svc;
     if (this._fx && this._fx.dock) this._fx.dock.setFocus(svc);
-    // Kill the old "draw a line to trivia" default — content stays readable.
-    if (this._fx && this._fx.beam) this._fx.beam.setPath([], { active: false });
-
-    if (!offered) {
-      const stn = this._stationDef();
-      const near = nearestStationOffering(svc, stn && stn.id);
-      const label = stationServiceLabel(svc);
-      const hint = near
-        ? label + ' offline here. Nearest: ' + near.name + ' (' + near.sector + ').'
-        : label + ' is not offered at this berth.';
-      if (bus) bus.emit('toast', { text: hint, kind: 'warn', ttl: 3.5 });
-      this._updateInspector();
-      if (bus) bus.emit('audio:cue', { id: 'ui_deny' });
-      return;
+    if (this._visible()) {
+      this._pingServiceNode(svc);
+      this._plotServiceBeam(svc);
     }
-
-    // Instant berth actions (the thing players expect from a "Refuel" chip).
-    if (svc === 'refuel' || svc === 'repair') {
-      if (bus) {
-        bus.emit('ui:service', { type: svc });
-        bus.emit('audio:cue', { id: 'ui_confirm' });
-      }
-      // Refresh readiness badges after economy applies the service.
-      const self = this;
-      const kick = () => {
-        const stn = self._stationDef();
-        if (stn && self._fx && self._fx.dock) self._fx.dock.setItems(self._berthServiceItems(stn));
-        if (typeof self._refreshEconAndReadiness === 'function') self._refreshEconAndReadiness();
-        self._updateInspector();
-      };
-      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(kick);
-      else setTimeout(kick, 0);
-      return;
-    }
-
-    // Navigation services → the real economy screen (not a diagnostics essay).
-    const tab = tabForService(svc);
-    // ore_buy is trade-desk sell pressure; land on Hold if the player has cargo, else Market.
-    if (svc === 'ore_buy') {
-      const hasCargo = cargoUsedUnits(this._ctx && this._ctx.state) > 0;
-      this.setTab(hasCargo ? 'hold' : 'market', { focusRail: true });
-    } else {
-      this.setTab(tab, { focusRail: true });
-    }
-    if (bus) bus.emit('audio:cue', { id: 'ui_tab' });
     this._updateInspector();
     if (typeof this._updateCommandStrip === 'function') this._updateCommandStrip();
+    if (this._ctx && this._ctx.bus) this._ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   },
 
   /** One ripple from the selected node (one event = one ripple; never on hover or a timer). */
@@ -1977,10 +1669,8 @@ export const stationHub = {
 
     const chips = departureReadinessChips(state);
     const summary = departureReadinessSummary(chips);
-    if (this._readinessSummary) {
-      this._readinessSummary.className = `st-readiness-summary st-readiness--${summary.state} mono`;
-      this._readinessSummary.textContent = summary.status || '—';
-    }
+    this._readinessSummary.className = `st-readiness-summary st-readiness--${summary.state} mono`;
+    this._readinessSummary.innerHTML = `DEPARTURE SYSTEM: ${summary.status}`;
   },
 
   _updateInspector() {
@@ -2106,7 +1796,7 @@ export const stationHub = {
       '</div>';
     panel.innerHTML =
       '<div class="st-sub-h">Operations Board</div>' +
-      // STRICT: no multi-sentence mission guide essay on default board (preflight is the detail).
+      '<div class="st-mission-guide">Pick a contract to preflight its route, risk, cargo, fuel, and consequences before accepting. Accepting adds it to the Mission Log (' + BINDINGS.missionLog.label + '), auto-tracks it, and sets nav guidance. Rewards fund hulls, modules, repairs, and fuel.</div>' +
       '<div class="st-mission-recommend" hidden></div>' +
       '<div class="st-mission-accepted" hidden></div>' +
       '<div class="st-ops">' +
@@ -2147,19 +1837,14 @@ export const stationHub = {
     const recommend = panel.querySelector('.st-mission-recommend');
     const list = panel.querySelector('.st-mission-list');
     const center = panel.querySelector('.st-ops-center');
-    // Shared card-selection path for pointer click and keyboard Enter/Space (role=button parity).
-    const selectMissionCard = (missionId) => {
-      if (missionId == null || missionId === '') return;
-      this._selectContract(missionId);
-      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
-    };
     const handleMissionAction = (ev) => {
       const actionEl = ev.target.closest('[data-act]');
       // A click on the card body (not a control) selects the contract → drives the center preflight.
       if (!actionEl) {
         const card = ev.target.closest('.st-mission-card');
         if (card && card.getAttribute('data-mid')) {
-          selectMissionCard(card.getAttribute('data-mid'));
+          this._selectContract(card.getAttribute('data-mid'));
+          ctx.bus.emit('audio:cue', { id: 'ui_tab' });
         }
         return;
       }
@@ -2173,15 +1858,7 @@ export const stationHub = {
       }
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
     };
-    const handleMissionCardKeydown = (ev) => {
-      const resolved = resolveMissionCardKeyboardSelection(ev);
-      if (!resolved) return;
-      // Space must not scroll the station workspace; Enter is prevented for consistent activation.
-      ev.preventDefault();
-      selectMissionCard(resolved.missionId);
-    };
     list.addEventListener('click', handleMissionAction);
-    list.addEventListener('keydown', handleMissionCardKeydown);
     recommend.addEventListener('click', handleMissionAction);
     center.addEventListener('click', handleMissionAction);
     status.addEventListener('click', handleMissionAction);
@@ -2348,8 +2025,8 @@ export const stationHub = {
         '<div class="st-mission-cslot">' + cslot + '</div>' +
         '<div class="st-mission-next">' + escapeHtml(missionNextStepText(m)) + '</div>' +
         '<div class="st-mission-btns">' +
-          '<button type="button" class="st-verb-btn st-mission-accept" data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled' : '') +
-            ' title="' + escapeHtml(acceptTitle) + '" aria-label="' + escapeHtml(acceptTitle) + '">Accept</button>' +
+          '<button data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled' : '') +
+            ' title="' + escapeHtml(acceptTitle) + '" aria-label="' + escapeHtml(acceptTitle) + '">Accept + Track</button>' +
           (unmet ? '<span class="st-mission-unmet">' + escapeHtml(unmet) + '</span>' : '') +
         '</div>';
       frag.appendChild(card);
@@ -2523,7 +2200,7 @@ export const stationHub = {
   },
 
   /** Plot Route: select + ping the destination, and — once the contract is accepted/tracked — open the
-   *  unified galaxyMap at LOCAL or GALAXY focus (same local-vs-jump split the Mission Log uses). */
+   *  Local or Star Map for its waypoint (same local-vs-jump split the Mission Log uses). */
   _plotContractRoute(missionId) {
     if (missionId != null) this._selectContract(missionId);
     const ctx = this._ctx;
@@ -2537,11 +2214,10 @@ export const stationHub = {
       const local = !!(wp && (wp.pos || (wp.sectorId && cur && wp.sectorId === cur)));
       openGalaxyMap(ctx, {
         focus: local ? MAP_FOCUS.LOCAL : MAP_FOCUS.GALAXY,
-        missionId: mission.id,
-        sectorId: (wp && wp.sectorId) || mission.destSectorId || null,
-        stationId: mission.destStationId || (wp && wp.stationId) || null,
-        pos: wp && wp.pos ? wp.pos : null,
-        source: 'stationHub',
+        source: 'station:mission-route',
+        missionId,
+        sectorId: wp && wp.sectorId,
+        pos: wp && wp.pos,
       });
       return;
     }
@@ -2610,7 +2286,7 @@ export const stationHub = {
       activeButton.focus({ preventScroll: true });
     }
     // refresh the now-visible panel
-    this._scheduleActiveRefresh(true);
+    this._refreshActive(true);
   },
 
   _onRailKeydown(ev) {
@@ -2639,92 +2315,6 @@ export const stationHub = {
   },
 
   _activePanelId() { return (this._ctx.state.ui && this._ctx.state.ui.activeStationTab) || 'market'; },
-
-  _activePanelIsHeavy(tabId = this._activePanelId()) {
-    return tabId === 'shipyard' || tabId === 'outfit';
-  },
-
-  _setContentBusy(on, tabId = this._activePanelId()) {
-    const el = this._busyEl;
-    if (!el) return;
-    if (!on) {
-      el.classList.remove('is-visible');
-      el.hidden = true;
-      return;
-    }
-    const label = tabId === 'shipyard'
-      ? 'Loading shipyard'
-      : tabId === 'outfit'
-        ? 'Loading outfitting'
-        : 'Loading station deck';
-    const text = el.querySelector('.st-content-busy-text');
-    if (text) text.textContent = label;
-    el.hidden = false;
-    el.classList.add('is-visible');
-  },
-
-  _clearScheduledActiveRefresh() {
-    const win = typeof window !== 'undefined' ? window : globalThis;
-    if (this._activeRefreshRaf && win && typeof win.cancelAnimationFrame === 'function') {
-      win.cancelAnimationFrame(this._activeRefreshRaf);
-    }
-    if (this._activeRefreshTimer && win && typeof win.clearTimeout === 'function') {
-      win.clearTimeout(this._activeRefreshTimer);
-    }
-    this._activeRefreshRaf = 0;
-    this._activeRefreshTimer = 0;
-    this._activeRefreshJob = null;
-  },
-
-  _afterNextPaint(fn) {
-    const win = typeof window !== 'undefined' ? window : globalThis;
-    const raf = win && typeof win.requestAnimationFrame === 'function'
-      ? win.requestAnimationFrame.bind(win)
-      : null;
-    const setTimer = win && typeof win.setTimeout === 'function'
-      ? win.setTimeout.bind(win)
-      : setTimeout;
-    if (!raf) {
-      this._activeRefreshTimer = setTimer(() => {
-        this._activeRefreshTimer = 0;
-        fn();
-      }, 0);
-      return;
-    }
-    this._activeRefreshRaf = raf(() => {
-      this._activeRefreshRaf = 0;
-      this._activeRefreshTimer = setTimer(() => {
-        this._activeRefreshTimer = 0;
-        fn();
-      }, 0);
-    });
-  },
-
-  _scheduleActiveRefresh(isShow) {
-    const tabId = this._activePanelId();
-    const shouldDefer = !!isShow || this._activePanelIsHeavy(tabId);
-    if (!shouldDefer) {
-      this._refreshActive(!!isShow);
-      return;
-    }
-    if (this._activeRefreshJob && this._activeRefreshJob.tabId === tabId) {
-      this._activeRefreshJob.isShow = this._activeRefreshJob.isShow || !!isShow;
-      return;
-    }
-    this._clearScheduledActiveRefresh();
-    const job = { tabId, isShow: !!isShow };
-    this._activeRefreshJob = job;
-    this._setContentBusy(true, tabId);
-    this._afterNextPaint(() => {
-      if (this._activeRefreshJob !== job || this._activePanelId() !== job.tabId) return;
-      this._activeRefreshJob = null;
-      try {
-        this._refreshActive(job.isShow);
-      } finally {
-        this._setContentBusy(false);
-      }
-    });
-  },
 
   _refreshActive(isShow) {
     const id = this._activePanelId();
@@ -2762,8 +2352,10 @@ export const stationHub = {
     this._stationId = sid || null;
     if (this._el) {
       const stn = this._stationDef();
-      // classList only: preserve desk/os bases + engineering/trace modifiers.
       applyStationHubRootClasses(this._el, stn && stn.type);
+      if (stn && stn.type) {
+        this._el.classList.add(`st-hub--${stn.type}`);
+      }
     }
     return this._stationId;
   },
@@ -2790,32 +2382,21 @@ export const stationHub = {
   },
 
   _refreshTopbar() {
-    if (!this._topbar) return;
     const stn = this._stationDef();
     const nameEl = this._topbar.querySelector('.st-station-name');
     const facEl = this._topbar.querySelector('.st-station-fac');
     if (stn) {
       const targetName = stn.name || stn.id;
-      if (nameEl && nameEl.textContent !== targetName && nameEl.dataset.acquireTarget !== targetName) {
+      if (nameEl.textContent !== targetName && nameEl.dataset.acquireTarget !== targetName) {
         this._signalAcquire(nameEl, targetName, { duration: 400 });
       }
-      if (facEl) {
-        const fac = stn.factionId ? FACTION_BY_ID.get(stn.factionId) : null;
-        facEl.textContent = (fac ? (fac.short || fac.name) : '') + '  ·  ' + (stn.type || '').replace('_', ' ');
-        if (fac) facEl.style.color = fac.color || '';
-      }
+      const fac = stn.factionId ? FACTION_BY_ID.get(stn.factionId) : null;
+      facEl.textContent = (fac ? (fac.short || fac.name) : '') + '  ·  ' + (stn.type || '').replace('_', ' ');
+      if (fac) facEl.style.color = fac.color || '';
     } else {
-      if (nameEl) nameEl.textContent = 'Station';
-      if (facEl) facEl.textContent = '';
+      nameEl.textContent = 'Station';
+      facEl.textContent = '';
     }
-    // Live money + cargo on the top strip (Station OS contract).
-    const state = this._ctx && this._ctx.state;
-    const credits = state && state.player ? (state.player.credits | 0) : 0;
-    const cargo = state && state.player && state.player.cargo || {};
-    const used = Number(cargo.usedVolume) || 0;
-    const cap = Number(cargo.capVolume) || 0;
-    if (this._topCreditsEl) this._topCreditsEl.textContent = credits.toLocaleString('en-US');
-    if (this._topCargoEl) this._topCargoEl.textContent = used + ' / ' + cap;
   },
 
   _signalAcquire(element, finalText, opts = {}) {
@@ -2839,7 +2420,6 @@ export const stationHub = {
   _refreshRailServiceStatus() {
     if (!this._rail) return;
     const stn = this._stationDef();
-    // Nav rows stay names-only. Status lives in aria/title for a11y, not visual essay chips.
     this._rail.querySelectorAll('[data-tab]').forEach((b) => {
       const tabId = b.getAttribute('data-tab');
       const status = stationTabServiceStatus(tabId, stn);
@@ -2847,6 +2427,12 @@ export const stationHub = {
       b.classList.toggle('st-tab--service-unavailable', status.state === 'unavailable');
       b.title = status.title;
       b.setAttribute('aria-label', tabLabel(tabId) + ': ' + status.label + '. ' + tabPurpose(tabId));
+      const badge = b.querySelector('.st-tab-service');
+      if (badge) {
+        const showBadge = status.state === 'available' || status.state === 'unavailable';
+        badge.hidden = !showBadge;
+        badge.textContent = showBadge ? status.label : '';
+      }
     });
   },
 
@@ -2876,674 +2462,36 @@ export const stationHub = {
       const summary = departureReadinessSummary(chips);
       this._undockBtn.textContent = summary.label;
       this._undockBtn.title = summary.title;
-      this._undockBtn.setAttribute('aria-label', summary.accessibleLabel);
+      this._undockBtn.setAttribute('aria-label', summary.title);
       this._undockBtn.setAttribute('data-readiness', summary.state);
-    }
-  },
-
-  _refreshOriginRail() {
-    if (!this._originRailEl) return;
-    const registry = this._ctx && this._ctx.registry;
-    const origins = registry && typeof registry.get === 'function' && registry.get('careerOrigins');
-    const view = origins && typeof origins.getOfferView === 'function'
-      ? origins.getOfferView()
-      : null;
-    const offers = view && Array.isArray(view.offers) ? view.offers : [];
-    const available = offers.filter((offer) => offer && (offer.canAccept || offer.canDecline));
-    this._originRailEl.hidden = available.length === 0;
-    if (!available.length) {
-      this._originSelectedId = null;
-      return;
-    }
-    if (!available.some((offer) => offer.careerId === this._originSelectedId)) {
-      this._originSelectedId = available[0].careerId;
-    }
-
-    const choices = this._originRailEl.querySelector('.st-origin-choices');
-    if (choices) {
-      choices.innerHTML = offers.map((offer) => {
-        const id = String(offer.careerId || '');
-        const selected = id === this._originSelectedId;
-        const inactive = !(offer.canAccept || offer.canDecline);
-        const status = inactive ? String(offer.status || 'closed') : 'available';
-        return '<button type="button" class="st-origin-choice' + (selected ? ' is-selected' : '')
-          + (inactive ? ' is-resolved' : '') + '" data-origin-career="' + escapeHtml(id)
-          + '" data-testid="career-origin-choice-' + escapeHtml(id) + '" aria-pressed="'
-          + (selected ? 'true' : 'false') + '"><span class="st-origin-choice-name">'
-          + escapeHtml(offer.title || id) + '</span><span class="st-origin-choice-status mono">'
-          + escapeHtml(status) + '</span></button>';
-      }).join('');
-    }
-
-    const selected = offers.find((offer) => offer.careerId === this._originSelectedId) || available[0];
-    const detail = this._originRailEl.querySelector('.st-origin-detail');
-    const accept = this._originRailEl.querySelector('[data-origin-action="accept"]');
-    const decline = this._originRailEl.querySelector('[data-origin-action="decline"]');
-    if (detail) detail.textContent = selected.line || 'Optional starter work.';
-    if (accept) {
-      accept.textContent = selected.acceptLabel || 'Start path';
-      accept.disabled = !selected.canAccept;
-      accept.setAttribute('aria-label', `${selected.acceptLabel || 'Start path'}: ${selected.title}`);
-    }
-    if (decline) {
-      decline.textContent = selected.declineLabel || 'Not now';
-      decline.disabled = !selected.canDecline;
-      decline.setAttribute('aria-label', `${selected.declineLabel || 'Not now'}: ${selected.title}`);
-    }
-  },
-
-  /**
-   * Capture a stable focus token while focus is inside the ladder rail.
-   * Returns null when focus is outside so repaint never steals it.
-   * Token kinds: career | action | choice.
-   */
-  _captureLadderFocusToken() {
-    if (typeof document === 'undefined' || !this._ladderRailEl) return null;
-    const active = document.activeElement;
-    if (!active || typeof this._ladderRailEl.contains !== 'function') return null;
-    if (!this._ladderRailEl.contains(active)) return null;
-    const career = active.closest && active.closest('[data-ladder-career]');
-    if (career && this._ladderRailEl.contains(career)) {
-      return { kind: 'career', id: career.getAttribute('data-ladder-career') || '' };
-    }
-    const choice = active.closest && active.closest('[data-ladder-choice]');
-    if (choice && this._ladderRailEl.contains(choice)) {
-      return { kind: 'choice', id: choice.getAttribute('data-ladder-choice') || '' };
-    }
-    const action = active.closest && active.closest('[data-ladder-action]');
-    if (action && this._ladderRailEl.contains(action)) {
-      return { kind: 'action', action: action.getAttribute('data-ladder-action') || '' };
-    }
-    return null;
-  },
-
-  /**
-   * Restore focus to the enabled visible control matching a pre-repaint token.
-   * No-op when token is null (focus was outside the rail) or control is gone/disabled.
-   */
-  _restoreLadderFocusToken(token) {
-    if (!token || !this._ladderRailEl || this._ladderRailEl.hidden) return;
-    if (typeof document === 'undefined') return;
-    // If focus landed on a live control outside the rail during repaint, never steal it.
-    const active = document.activeElement;
-    if (active
-      && active !== document.body
-      && active !== document.documentElement
-      && typeof this._ladderRailEl.contains === 'function'
-      && !this._ladderRailEl.contains(active)
-      && this._el
-      && typeof this._el.contains === 'function'
-      && this._el.contains(active)) {
-      return;
-    }
-    let target = null;
-    if (token.kind === 'career' && token.id) {
-      // Prefer the post-repaint selected career when the prior focus was a branch control
-      // (covers Arrow/Home/End selection that updates _ladderSelectedId before refresh).
-      const preferId = this._ladderSelectedId || token.id;
-      target = this._ladderRailEl.querySelector('[data-ladder-career="' + preferId + '"]')
-        || this._ladderRailEl.querySelector('[data-ladder-career="' + token.id + '"]');
-    } else if (token.kind === 'choice' && token.id) {
-      target = this._ladderRailEl.querySelector(
-        '[data-ladder-choice="' + token.id + '"]:not([disabled])',
-      );
-    } else if (token.kind === 'action' && token.action) {
-      target = this._ladderRailEl.querySelector(
-        '[data-ladder-action="' + token.action + '"]:not([disabled])',
-      );
-    }
-    if (!target || target.disabled || target.hidden) return;
-    if (typeof target.focus !== 'function') return;
-    try { target.focus({ preventScroll: true }); } catch (_) {
-      try { target.focus(); } catch (__) { /* ignore */ }
-    }
-  },
-
-  /**
-   * Professional ladder rail — pure presenter paint only.
-   * Emits career:ladder:* intents; never writes state.careers.ladders or owner fields.
-   */
-  _refreshLadderRail() {
-    if (!this._ladderRailEl) return;
-    // Preserve focus across career/action/choice rebuilds when focus is inside the rail.
-    const focusToken = this._captureLadderFocusToken();
-    const ctx = this._ctx;
-    const state = ctx && ctx.state;
-    const registry = ctx && ctx.registry;
-    let model;
-    try {
-      model = buildLadderRailModel(state, registry);
-    } catch (err) {
-      console.error('[stationHub] buildLadderRailModel failed', err);
-      model = { nonBinding: true, visible: false, note: '', cards: [] };
-    }
-    this._ladderModel = model;
-    const cards = model && Array.isArray(model.cards) ? model.cards : [];
-    const visible = !!(model && model.visible && cards.length);
-    this._ladderRailEl.hidden = !visible;
-    // Keep reduced-motion flag in sync with accessibility root class.
-    try {
-      if (typeof document !== 'undefined' && document.documentElement) {
-        if (document.documentElement.classList.contains('sf-reduce-motion')) {
-          this._ladderRailEl.setAttribute('data-reduce-motion', '1');
-        } else {
-          this._ladderRailEl.removeAttribute('data-reduce-motion');
-        }
-      }
-    } catch (_) { /* ignore */ }
-    if (!visible) {
-      this._ladderSelectedId = null;
-      return;
-    }
-
-    const priority = { active: 0, recovering: 1, step_failed: 2, offered: 3, latent: 4, declined: 5, completed: 6 };
-    if (!cards.some((c) => c && c.careerId === this._ladderSelectedId)) {
-      const ranked = cards.slice().sort((a, b) =>
-        (priority[a && a.status] ?? 9) - (priority[b && b.status] ?? 9));
-      this._ladderSelectedId = ranked[0] && ranked[0].careerId;
-    }
-
-    const careersEl = this._ladderRailEl.querySelector('.st-ladder-careers');
-    if (careersEl) {
-      // All branch controls stay tabbable (tabindex=0) so gamepad D-pad focus traversal
-      // can reach non-selected careers. Selected state is aria-pressed + is-selected only;
-      // keyboard Arrow/Home/End still drive selection via _onLadderRailKeydown.
-      careersEl.innerHTML = cards.map((card) => {
-        const id = String(card.careerId || '');
-        const selected = id === this._ladderSelectedId;
-        const statusLabel = String(card.statusLabel || card.status || '');
-        const a11y = (card.title || id) + ', ' + statusLabel
-          + (card.progressLabel ? ', ' + card.progressLabel : '');
-        return '<button type="button" class="st-ladder-choice' + (selected ? ' is-selected' : '')
-          + (card.collapsed ? ' is-resolved' : '') + '" data-ladder-career="' + escapeHtml(id)
-          + '" data-testid="career-ladder-choice-' + escapeHtml(id)
-          + '" aria-pressed="' + (selected ? 'true' : 'false')
-          + '" aria-label="' + escapeHtml(a11y)
-          + '" tabindex="0">'
-          + '<span class="st-ladder-choice-name">' + escapeHtml(card.title || id)
-          + '</span><span class="st-ladder-choice-status mono">'
-          + escapeHtml(statusLabel) + '</span></button>';
-      }).join('');
-    }
-
-    const selected = cards.find((c) => c && c.careerId === this._ladderSelectedId) || cards[0];
-    if (!selected) return;
-
-    const detail = this._ladderRailEl.querySelector('.st-ladder-detail');
-    const progress = this._ladderRailEl.querySelector('.st-ladder-progress');
-    const objective = this._ladderRailEl.querySelector('.st-ladder-objective');
-    const whereEl = this._ladderRailEl.querySelector('.st-ladder-where');
-    const prereq = this._ladderRailEl.querySelector('.st-ladder-prereq');
-    const fail = this._ladderRailEl.querySelector('.st-ladder-fail');
-    const receipt = this._ladderRailEl.querySelector('.st-ladder-receipt');
-    const choicesEl = this._ladderRailEl.querySelector('.st-ladder-choices');
-    const accept = this._ladderRailEl.querySelector('[data-ladder-action="accept"]');
-    const decline = this._ladderRailEl.querySelector('[data-ladder-action="decline"]');
-    const recover = this._ladderRailEl.querySelector('[data-ladder-action="recover"]');
-    const abandon = this._ladderRailEl.querySelector('[data-ladder-action="abandon"]');
-    const mapBtn = this._ladderRailEl.querySelector('[data-ladder-action="openMap"]');
-    const logBtn = this._ladderRailEl.querySelector('[data-ladder-action="missionLog"]');
-
-    const place = ladderContactAndLocation(state, registry, selected);
-
-    if (detail) {
-      const lines = [];
-      if (selected.nextAction) lines.push(selected.nextAction);
-      if (selected.teach) lines.push(selected.teach);
-      if (selected.attemptMultLabel) lines.push(selected.attemptMultLabel);
-      detail.textContent = lines.join(' · ') || 'Optional professional path.';
-    }
-    if (progress) {
-      const label = selected.progressLabel || '';
-      progress.textContent = label;
-      progress.hidden = !label;
-      // Prefer truthful step index for a11y (step N of M), not only completed count.
-      const stepOf = Number.isFinite(selected.stepIndex) && Number.isFinite(selected.stepsTotal)
-        && selected.stepsTotal > 0
-        ? Math.min(selected.stepsTotal, Math.max(1, (Number(selected.stepIndex) || 0) + 1))
-        : null;
-      if (label && stepOf != null) {
-        progress.setAttribute('aria-label',
-          'Progress: step ' + stepOf + ' of ' + selected.stepsTotal);
-      } else if (label && Number.isFinite(selected.stepsDone) && Number.isFinite(selected.stepsTotal)) {
-        progress.setAttribute('aria-label',
-          'Progress: step ' + selected.stepsDone + ' of ' + selected.stepsTotal);
-      } else if (label) {
-        progress.setAttribute('aria-label', 'Progress: ' + label);
-      } else {
-        progress.removeAttribute('aria-label');
-      }
-    }
-    if (objective) {
-      objective.textContent = selected.objective || '';
-      objective.hidden = !selected.objective;
-    }
-    if (whereEl) {
-      const bits = [];
-      if (place.contact) bits.push(place.contact);
-      if (place.location) bits.push(place.location);
-      const whereText = bits.join(' · ');
-      whereEl.textContent = whereText;
-      whereEl.hidden = !whereText;
-      if (whereText) {
-        whereEl.setAttribute('aria-label',
-          (place.contact ? 'Contact ' + place.contact : '')
-          + (place.contact && place.location ? ', ' : '')
-          + (place.location ? 'Location ' + place.location : ''));
-      } else {
-        whereEl.removeAttribute('aria-label');
-      }
-    }
-    if (prereq) {
-      const show = !!(selected.prereqLabel && !selected.prereqMet);
-      prereq.textContent = selected.prereqLabel || '';
-      prereq.hidden = !show;
-    }
-    if (fail) {
-      const failText = selected.failureLine
-        || (selected.recovery && !selected.recovery.ready && selected.recovery.secondsLeft > 0
-          ? ('Wait ' + selected.recovery.secondsLeft + 's, then retry.')
-          : '');
-      fail.textContent = failText || '';
-      fail.hidden = !failText;
-    }
-    if (receipt) {
-      receipt.textContent = selected.receiptLine || '';
-      receipt.hidden = !selected.receiptLine;
-    }
-    if (choicesEl) {
-      const showChoices = !!(selected.canChoose && Array.isArray(selected.choices) && selected.choices.length);
-      choicesEl.hidden = !showChoices;
-      if (showChoices) {
-        const stepDef = ladderStepDefForCard(registry, selected);
-        choicesEl.innerHTML = selected.choices.map((ch) => {
-          const cid = String(ch.id || '');
-          const enabled = ch.enabled !== false;
-          const blocked = ch.blockedReason ? String(ch.blockedReason) : '';
-          const preview = ladderChoiceConsequencePreview(stepDef, cid);
-          const label = String(ch.label || cid);
-          const buttonText = preview ? (label + ' · ' + preview) : label;
-          const aria = label + ' for ' + (selected.stepTitle || selected.title || 'path')
-            + (preview ? '. ' + preview : '')
-            + (blocked ? '. ' + blocked : '');
-          return '<button type="button" class="st-ladder-path-choice st-meta-btn" data-ladder-choice="'
-            + escapeHtml(cid) + '" data-testid="career-ladder-path-choice-' + escapeHtml(cid)
-            + '"' + (enabled ? '' : ' disabled')
-            + ' aria-label="' + escapeHtml(aria) + '"'
-            + (preview || blocked
-              ? ' title="' + escapeHtml(preview || blocked) + '"'
-              : '')
-            + '>' + escapeHtml(buttonText) + '</button>';
-        }).join('');
-      } else {
-        choicesEl.innerHTML = '';
-      }
-    }
-
-    const title = selected.title || selected.careerId || 'path';
-    const stepTitle = selected.stepTitle || title;
-    if (accept) {
-      accept.disabled = !selected.canAccept;
-      accept.hidden = !(selected.canAccept || selected.status === 'latent' || selected.status === 'offered' || selected.status === 'declined');
-      accept.setAttribute('aria-label', 'Start ' + title);
-    }
-    if (decline) {
-      decline.disabled = !selected.canDecline;
-      decline.hidden = !selected.canDecline && !selected.canAccept;
-      decline.setAttribute('aria-label', 'Not now: ' + title);
-    }
-    if (recover) {
-      recover.disabled = !selected.canRecover;
-      recover.hidden = !(selected.status === 'recovering' || selected.status === 'step_failed' || selected.canRecover);
-      recover.setAttribute('aria-label', 'Retry ' + stepTitle);
-    }
-    if (abandon) {
-      abandon.disabled = !selected.canAbandon;
-      abandon.hidden = !selected.canAbandon;
-      abandon.setAttribute('aria-label', 'Abandon ' + title);
-    }
-    if (mapBtn) {
-      const hasMap = !!(selected.mapAction);
-      mapBtn.disabled = !hasMap;
-      mapBtn.hidden = !hasMap;
-      mapBtn.textContent = (selected.mapAction && selected.mapAction.label) || 'Map';
-      mapBtn.setAttribute('aria-label', 'Open map for ' + stepTitle);
-      if (hasMap && selected.mapAction.source) {
-        mapBtn.setAttribute('data-map-source', selected.mapAction.source);
-      } else {
-        mapBtn.removeAttribute('data-map-source');
-      }
-    }
-    if (logBtn) {
-      logBtn.hidden = false;
-      logBtn.setAttribute('aria-label', 'Open mission log for ' + title);
-    }
-
-    // Restore focus to the pre-repaint career/action/choice when it still exists.
-    this._restoreLadderFocusToken(focusToken);
-  },
-
-  _ladderSelectedCard() {
-    const cards = this._ladderModel && this._ladderModel.cards;
-    if (!Array.isArray(cards) || !this._ladderSelectedId) return null;
-    return cards.find((c) => c && c.careerId === this._ladderSelectedId) || null;
-  },
-
-  async _onLadderRailClick(ev) {
-    const rail = this._ladderRailEl;
-    const ctx = this._ctx;
-    if (!rail || !ctx || !ctx.bus) return;
-
-    const careerBtn = ev.target.closest('[data-ladder-career]');
-    if (careerBtn && rail.contains(careerBtn)) {
-      this._ladderSelectedId = careerBtn.getAttribute('data-ladder-career');
-      this._refreshLadderRail();
-      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
-      return;
-    }
-
-    const pathChoice = ev.target.closest('[data-ladder-choice]');
-    if (pathChoice && rail.contains(pathChoice) && this._ladderSelectedId) {
-      if (pathChoice.disabled) return;
-      const choiceId = pathChoice.getAttribute('data-ladder-choice');
-      if (!choiceId) return;
-      ctx.bus.emit('career:ladder:choose', {
-        careerId: this._ladderSelectedId,
-        choiceId,
-      });
-      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
-      this._refreshLadderRail();
-      return;
-    }
-
-    const action = ev.target.closest('[data-ladder-action]');
-    if (!action || !rail.contains(action)) return;
-    if (action.disabled) return;
-    const verb = action.getAttribute('data-ladder-action');
-    if (!verb) return;
-
-    if (verb === 'openMap') {
-      const card = this._ladderSelectedCard();
-      if (card && card.mapAction) {
-        openGalaxyMap(ctx, card.mapAction);
-        ctx.bus.emit('audio:cue', { id: 'ui_click' });
-      }
-      return;
-    }
-    if (verb === 'missionLog') {
-      const mgr = getManager(ctx);
-      let opened = false;
-      if (mgr && typeof mgr.pushScreen === 'function') {
-        mgr.pushScreen('missionLog');
-        opened = true;
-      } else if (ctx.bus) {
-        ctx.bus.emit('ui:pushScreen', { id: 'missionLog' });
-        opened = true;
-      }
-      if (opened) ctx.bus.emit('audio:cue', { id: 'ui_click' });
-      return;
-    }
-
-    if (!this._ladderSelectedId) return;
-
-    if (verb === 'abandon') {
-      if (isConfirmOpen()) return;
-      const card = this._ladderSelectedCard();
-      const title = (card && card.title) || this._ladderSelectedId;
-      const ok = await confirm({
-        title: 'Abandon path?',
-        body: 'Close ' + title + '? Other professional paths stay open.',
-        confirmLabel: 'Abandon',
-        cancelLabel: 'Keep path',
-        danger: true,
-      });
-      if (!ok) return;
-      ctx.bus.emit('career:ladder:abandon', { careerId: this._ladderSelectedId });
-      ctx.bus.emit('audio:cue', { id: 'ui_click' });
-      this._refreshLadderRail();
-      return;
-    }
-
-    if (verb === 'accept') {
-      ctx.bus.emit('career:ladder:accept', { careerId: this._ladderSelectedId });
-      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
-      this._refreshLadderRail();
-      return;
-    }
-    if (verb === 'decline') {
-      ctx.bus.emit('career:ladder:decline', { careerId: this._ladderSelectedId });
-      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
-      this._refreshLadderRail();
-      return;
-    }
-    if (verb === 'recover') {
-      ctx.bus.emit('career:ladder:recover', { careerId: this._ladderSelectedId });
-      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
-      this._refreshLadderRail();
-    }
-  },
-
-  _onLadderRailKeydown(ev) {
-    const rail = this._ladderRailEl;
-    if (!rail || rail.hidden || !rail.contains(ev.target)) return;
-
-    const key = ev.key;
-    // Escape must reach station exit owner — never trap.
-    if (key === 'Escape') return;
-
-    const careerButtons = Array.from(rail.querySelectorAll('[data-ladder-career]'));
-    if (!careerButtons.length) return;
-
-    // D-pad / arrows: roving career selection when focus is inside the rail.
-    if (key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown'
-      || key === 'Home' || key === 'End') {
-      const onCareer = ev.target.closest('[data-ladder-career]');
-      const onAction = ev.target.closest('[data-ladder-action], [data-ladder-choice]');
-      if (onAction && !onCareer) return;
-
-      const currentId = this._ladderSelectedId
-        || (onCareer && onCareer.getAttribute('data-ladder-career'));
-      let idx = Math.max(0, careerButtons.findIndex(
-        (b) => b.getAttribute('data-ladder-career') === currentId));
-      if (key === 'ArrowRight' || key === 'ArrowDown') idx = (idx + 1) % careerButtons.length;
-      else if (key === 'ArrowLeft' || key === 'ArrowUp') idx = (idx - 1 + careerButtons.length) % careerButtons.length;
-      else if (key === 'Home') idx = 0;
-      else if (key === 'End') idx = careerButtons.length - 1;
-      else return;
-
-      ev.preventDefault();
-      ev.stopPropagation();
-      const next = careerButtons[idx];
-      this._ladderSelectedId = next.getAttribute('data-ladder-career');
-      this._refreshLadderRail();
-      const focusBtn = rail.querySelector('[data-ladder-career="' + this._ladderSelectedId + '"]');
-      if (focusBtn && typeof focusBtn.focus === 'function') {
-        try { focusBtn.focus({ preventScroll: true }); } catch (_) {
-          try { focusBtn.focus(); } catch (__) { /* ignore */ }
-        }
-      }
-      if (this._ctx && this._ctx.bus) this._ctx.bus.emit('audio:cue', { id: 'ui_tab' });
-      return;
-    }
-
-    // Enter/Space on a career button: primary enabled action (accept|recover|first choose).
-    if (key === 'Enter' || key === ' ') {
-      if (ev.target.closest('[data-ladder-action], [data-ladder-choice]')) return;
-      if (!ev.target.closest('[data-ladder-career]') && ev.target !== rail) return;
-      const card = this._ladderSelectedCard();
-      if (!card) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      let primary = null;
-      if (card.canAccept) {
-        primary = rail.querySelector('[data-ladder-action="accept"]');
-      } else if (card.canRecover) {
-        primary = rail.querySelector('[data-ladder-action="recover"]');
-      } else if (card.canChoose) {
-        primary = rail.querySelector('[data-ladder-choice]:not([disabled])');
-      }
-      if (primary && !primary.disabled) {
-        primary.click();
-      }
     }
   },
 
   _refreshHandoff() {
     if (!this._handoffEl) return;
     const state = this._ctx && this._ctx.state;
-    const visible = !this._handoffDismissed && firstDockHandoffVisible(state, this._stationId);
+    const visible = firstDockHandoffVisible(state, this._stationId);
     this._handoffEl.hidden = !visible;
     if (!visible) return;
     const stepsEl = this._handoffEl.querySelector('.st-handoff-steps');
-    if (stepsEl) {
-      const active = document.activeElement;
-      const focusedTab = active && stepsEl.contains(active) && active.getAttribute('data-handoff-tab');
-      stepsEl.innerHTML = firstDockHandoffSteps(state).map((step) => handoffStepHtml(step)).join('');
-      if (focusedTab) {
-        const replacement = stepsEl.querySelector('[data-handoff-tab="' + focusedTab + '"]');
-        if (replacement) replacement.focus({ preventScroll: true });
-      }
-    }
-  },
-
-  /** Abort an in-progress Undock hold charge. @returns {boolean} true if a charge was aborted */
-  _abortUndockCharge(opts = {}) {
-    if (!this._undockChargeTimer) {
-      if (this._undockBtn) this._undockBtn.classList.remove('charging');
-      return false;
-    }
-    clearTimeout(this._undockChargeTimer);
-    this._undockChargeTimer = null;
-    if (this._undockBtn) this._undockBtn.classList.remove('charging');
-    if (opts.abortCue !== false && this._ctx && this._ctx.bus) {
-      this._ctx.bus.emit('audio:cue', { id: 'ui_charge_abort' });
-    }
-    return true;
-  },
-
-  /**
-   * Clear station-local transient UI without undocking.
-   * @returns {boolean} true if something was cleaned (caller should stay docked)
-   */
-  _clearStationTransient() {
-    let cleared = false;
-    if (this._abortUndockCharge({ abortCue: true })) cleared = true;
-    if (this._inspectorEl && !this._inspectorEl.classList.contains('is-collapsed')) {
-      if (typeof this._setInspectorOpen === 'function') this._setInspectorOpen(false);
-      else {
-        this._inspectorEl.classList.add('is-collapsed');
-        this._inspectorEl.setAttribute('aria-hidden', 'true');
-      }
-      cleared = true;
-    }
-    if (typeof document !== 'undefined') {
-      const active = document.activeElement;
-      const root = this._el;
-      if (active && root && typeof root.contains === 'function' && root.contains(active)) {
-        const tag = active.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || active.isContentEditable) {
-          try { active.blur(); } catch (_) { /* ignore */ }
-          cleared = true;
-        }
-      }
-    }
-    return cleared;
-  },
-
-  /**
-   * Centralized station-exit request owner.
-   * - implicit (Esc/B/E/backdrop): clean transient first; if already clean, confirm then undock
-   * - explicit (Undock control): hold completion is deliberate; RISK without hold confirms
-   * @param {{ intent?: string, source?: string, opener?: Element|null, held?: boolean }} opts
-   * @returns {Promise<{ action: string }>}
-   */
-  async requestStationExit(opts = {}) {
-    if (this._exitInFlight || isConfirmOpen()) return { action: 'busy' };
-    const ctx = this._ctx;
-    if (!ctx || !ctx.state) return { action: 'noop' };
-    if (!ctx.state.ui || ctx.state.ui.docked !== true) return { action: 'not-docked' };
-
-    const intent = opts.intent === 'explicit' ? 'explicit' : 'implicit';
-    const source = opts.source || intent;
-    const held = !!opts.held;
-    const opener = opts.opener
-      || (typeof document !== 'undefined' ? document.activeElement : null)
-      || this._undockBtn;
-
-    if (intent === 'implicit') {
-      if (this._clearStationTransient()) {
-        // Esc/B/E already cue ui_back in input; backdrop has no cue of its own.
-        if (ctx.bus && source === 'backdrop') ctx.bus.emit('audio:cue', { id: 'ui_back' });
-        return { action: 'cleared' };
-      }
-    }
-
-    const chips = departureReadinessChips(ctx.state);
-    const summary = departureReadinessSummary(chips);
-    const needsConfirm = stationExitNeedsConfirm(intent, summary.state, held);
-
-    if (needsConfirm) {
-      this._exitInFlight = true;
-      try {
-        if (opener && typeof opener.focus === 'function') {
-          try { opener.focus({ preventScroll: true }); } catch (_) {
-            try { opener.focus(); } catch (__) { /* ignore */ }
-          }
-        }
-        const risk = summary.state === 'risk';
-        const ok = await confirm({
-          title: intent === 'implicit'
-            ? 'Leave station?'
-            : (risk ? 'Launch risk' : 'Leave station?'),
-          body: intent === 'implicit'
-            ? 'Undock and return to flight. Stay docked to keep trading and services.'
-            : (summary.title || 'Departure Check reports risk. Undock anyway?'),
-          confirmLabel: 'Undock',
-          cancelLabel: 'Stay',
-          danger: intent === 'explicit' && risk,
-        });
-        if (!ok) return { action: 'cancelled' };
-      } finally {
-        this._exitInFlight = false;
-      }
-    }
-
-    this._abortUndockCharge({ abortCue: false });
-    if (ctx.bus && intent === 'explicit' && !held) {
-      ctx.bus.emit('audio:cue', { id: 'ui_undock' });
-    }
-    this._commitUndock(source);
-    return { action: 'undocked' };
-  },
-
-  _commitUndock(source) {
-    const bus = this._ctx && this._ctx.bus;
-    if (!bus) return;
-    commitStationUndock(bus, { source: source || 'station' });
+    if (stepsEl) stepsEl.innerHTML = firstDockHandoffSteps(state).map((step) => handoffStepHtml(step)).join('');
   },
 
   /** Called by screenManager when this screen becomes the top of the stack. */
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
-    installStationExitGate(ctx);
-    setStationExitOwner(this);
     const oldId = this._stationId;
     this._resolveStation();
     if (this._stationId && this._stationId !== oldId) {
       this._triggerArrivalEdgeTrace();
-      const handoffOwnsVoice = !this._handoffDismissed
-        && firstDockHandoffVisible(this._ctx && this._ctx.state, this._stationId);
-      if (!handoffOwnsVoice) this._playArrivalBroadcast();
+      this._playArrivalBroadcast();
     }
     this._refreshTopbar();
     this._refreshGraffiti();
     this._refreshRailServiceStatus();
     this._refreshPurpose();
     this._refreshDeparture();
-    this._refreshOriginRail();
-    this._refreshLadderRail();
     this._refreshHandoff();
-    this._refreshStationLife();
     this._refreshSchematicAndNodes();
     this._refreshEconAndReadiness();
     // Command-deck effects resume on show; the scanner-grid "console acquisition" sweep fires ONLY on
@@ -3555,15 +2503,12 @@ export const stationHub = {
     }
     // restore the last active tab (or default 'market')
     const tab = this._activePanelId();
-    this.setTab(tab, { focusRail: true }); // also refreshes the active panel via onShow
+    this.setTab(tab); // also refreshes the active panel via onShow
   },
 
   onHide() {
     // Park every effect's rAF while the screen is hidden (frame-sleep contract).
-    this._abortUndockCharge({ abortCue: false });
     this._setEffectsActive(false);
-    this._clearScheduledActiveRefresh();
-    this._setContentBusy(false);
     const p = this._panels && this._panels[this._activePanelId()];
     if (p && typeof p.onHide === 'function') {
       try { p.onHide(); } catch (e) { console.error(e); }
@@ -3574,24 +2519,16 @@ export const stationHub = {
   refresh(ctx, options = {}) {
     if (ctx) this._ctx = ctx;
     if (!this._el) return;
-    if (options.periodic) {
-      this._refreshDeparture();
-      this._refreshEconAndReadiness();
-      return;
-    }
     this._refreshTopbar();
     this._refreshGraffiti();
     this._refreshRailServiceStatus();
     this._refreshPurpose();
     this._refreshDeparture();
-    this._refreshOriginRail();
-    this._refreshLadderRail();
     this._refreshHandoff();
-    this._refreshStationLife();
     this._refreshSchematicAndNodes();
     this._refreshEconAndReadiness();
     this._updateInspector();
-    this._scheduleActiveRefresh(false);
+    if (!(options.periodic && this._activePanelId() === 'bar')) this._refreshActive(false);
   },
 
   /** Render the airlock graffiti from state.ui.graffiti (stashed by the narrative overlay).
@@ -3617,33 +2554,6 @@ export const stationHub = {
     this._airlockEl.appendChild(frag);
   },
 
-  _refreshStationLife() {
-    const el = this._stationLifeEl;
-    if (!el) return;
-    const state = this._ctx && this._ctx.state;
-    const stn = this._stationDef();
-    const handoffOwnsVoice = !this._handoffDismissed && firstDockHandoffVisible(state, this._stationId);
-    if (!state || !stn || handoffOwnsVoice) {
-      el.hidden = true;
-      return;
-    }
-    const model = buildDockArrival(state, stn);
-    const primary = el.querySelector('.st-life-primary');
-    const news = el.querySelector('.st-life-news');
-    const traffic = el.querySelector('.st-life-traffic');
-    const paperwork = el.querySelector('.st-life-paperwork');
-    primary.textContent = model.primaryAction;
-    primary.setAttribute('aria-label', `${model.primaryAction}. ${model.serviceState}.`);
-    el.setAttribute('data-primary-target', model.primaryTarget);
-    news.textContent = model.news || '';
-    news.hidden = !model.news;
-    traffic.textContent = model.traffic || '';
-    traffic.hidden = !model.traffic;
-    paperwork.textContent = model.paperwork || '';
-    paperwork.hidden = !model.paperwork;
-    el.hidden = false;
-  },
-
   /** Subscribe to the data-change events that should rebuild the relevant panel (§5.5). Only the
    *  active panel is refreshed to stay cheap; switching tabs refreshes on demand. */
   _subscribe() {
@@ -3657,13 +2567,9 @@ export const stationHub = {
     };
     const refreshDeparture = () => { if (this._visible()) this._refreshDeparture(); };
     const refreshHandoff = () => { if (this._visible()) this._refreshHandoff(); };
-    const refreshStationLife = () => { if (this._visible()) this._refreshStationLife(); };
-    const refreshOrigins = () => { if (this._visible()) this._refreshOriginRail(); };
-    const refreshLadders = () => { if (this._visible()) this._refreshLadderRail(); };
     // market-affecting
     bus.on('economy:tradeCompleted', onActive(['market', 'services', 'hold']));
     bus.on('economy:tradeCompleted', refreshHandoff);
-    bus.on('economy:tradeCompleted', refreshOrigins);
     bus.on('economy:tick', onActive(['market', 'hold']));
     bus.on('cargo:changed', onActive(['market', 'outfit', 'services', 'hold']));
     bus.on('cargo:changed', refreshDeparture);
@@ -3694,8 +2600,6 @@ export const stationHub = {
       if (this._activePanelId() === 'missions') this._refreshMissions();
       this._refreshDeparture();
       this._refreshHandoff();
-      this._refreshOriginRail();
-      this._refreshLadderRail();
     });
     bus.on('mission:accepted', (payload) => {
       if (!this._visible()) return;
@@ -3703,39 +2607,12 @@ export const stationHub = {
       if (this._activePanelId() === 'missions') this._refreshMissions();
       this._refreshDeparture();
       this._refreshHandoff();
-      this._refreshOriginRail();
-      this._refreshLadderRail();
     });
-    bus.on('mission:completed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); refreshOrigins(); refreshLadders(); });
-    bus.on('mission:failed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); refreshOrigins(); refreshLadders(); });
-    bus.on('mission:expired', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); refreshLadders(); });
-    bus.on('career:origins:offered', refreshOrigins);
-    bus.on('career:origins:accepted', refreshOrigins);
-    bus.on('career:origins:declined', refreshOrigins);
-    bus.on('career:origins:abandoned', refreshOrigins);
-    bus.on('career:origin:completed', () => { refreshOrigins(); refreshLadders(); });
-    bus.on('hunterOrigin:completed', refreshOrigins);
-    bus.on('origin:prospector:completed', refreshOrigins);
-    // Ladder system → rail refresh (CL-UI-02 contract subscribe_refresh)
-    bus.on('career:ladder:offered', refreshLadders);
-    bus.on('career:ladder:stepActive', refreshLadders);
-    bus.on('career:ladder:stepDone', refreshLadders);
-    bus.on('career:ladder:stepFailed', refreshLadders);
-    bus.on('career:ladder:stepRecovered', refreshLadders);
-    bus.on('career:ladder:completed', refreshLadders);
-    bus.on('career:ladder:progress', refreshLadders);
-    bus.on('career:ladder:choiceResolved', refreshLadders);
-    bus.on('dock:docked', refreshLadders);
+    bus.on('mission:completed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); });
+    bus.on('mission:failed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); });
+    bus.on('mission:expired', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); });
     bus.on('economy:eventStarted', onActive(['market']));
     bus.on('economy:eventEnded', onActive(['market']));
-    bus.on('news:headline', refreshStationLife);
-    bus.on('news:dockCards', refreshStationLife);
-    bus.on('stationLife:trafficChanged', refreshStationLife);
-    // Implicit Back (Esc/B/E via input gate, backdrop via screenManager) and any external
-    // station:exitRequest land here — one owner for clean→confirm→committed undock.
-    bus.on('station:exitRequest', (payload) => {
-      this.requestStationExit(payload || {});
-    });
   },
 
   _visible() {
@@ -3787,137 +2664,6 @@ function missionDestName(m) {
   if (sector) return sector.name;
   if (rawDest) return prettyId(rawDest);
   return 'the target area';
-}
-
-/** Read-only ladder definition for a presenter card (never mutates state). */
-function ladderDefinitionFor(registry, careerId) {
-  if (!careerId || !registry || typeof registry.get !== 'function') return null;
-  try {
-    const sys = registry.get('careerLadders');
-    if (sys && typeof sys.getDefinition === 'function') {
-      return sys.getDefinition(careerId) || null;
-    }
-  } catch (_) { /* ignore */ }
-  return null;
-}
-
-function ladderStepDefForCard(registry, card) {
-  if (!card) return null;
-  const def = ladderDefinitionFor(registry, card.careerId);
-  if (!def || !Array.isArray(def.steps)) return null;
-  if (card.stepId) {
-    const byId = def.steps.find((s) => s && s.id === card.stepId);
-    if (byId) return byId;
-  }
-  if (Number.isFinite(card.stepIndex) && def.steps[card.stepIndex]) {
-    return def.steps[card.stepIndex];
-  }
-  return def.steps[0] || null;
-}
-
-/**
- * Named contact + location for the ladder rail (truthful reads only).
- * Contact: linked mission contact/client, else desk/step title, else faction short name.
- * Location: mapAction station/sector or linked mission destination names.
- */
-function ladderContactAndLocation(state, registry, card) {
-  const out = { contact: null, location: null };
-  if (!card) return out;
-
-  const linkedId = card.linkedMissionId || null;
-  let linked = null;
-  if (linkedId && state && state.missions && Array.isArray(state.missions.active)) {
-    linked = state.missions.active.find((m) => m && String(m.id) === String(linkedId)) || null;
-  }
-
-  // Contact — never invent lore; only names already present on mission/def/faction meta.
-  if (linked) {
-    const named = linked.contactName || linked.giverName || linked.clientName || null;
-    if (named && String(named).trim()) out.contact = String(named).trim();
-    else {
-      const fac = linked.factionId ? FACTION_BY_ID.get(linked.factionId) : null;
-      if (fac) out.contact = fac.short || fac.name || null;
-    }
-  }
-  if (!out.contact) {
-    const stepDef = ladderStepDefForCard(registry, card);
-    const params = stepDef && stepDef.params;
-    const factionId = (params && params.factionId)
-      || (stepDef && stepDef.factionId)
-      || null;
-    if (factionId) {
-      const fac = FACTION_BY_ID.get(factionId);
-      if (fac) out.contact = fac.short || fac.name || null;
-    }
-    // Desk-style step titles double as the contact desk when no person is named.
-    if (!out.contact && card.stepTitle) {
-      out.contact = String(card.stepTitle);
-    } else if (!out.contact && card.title) {
-      out.contact = String(card.title);
-    }
-  }
-
-  // Location — map handoff first, then linked mission dest, then step params.
-  const map = card.mapAction || null;
-  const stationId = (map && map.stationId)
-    || (linked && linked.destStationId)
-    || null;
-  const sectorId = (map && map.sectorId)
-    || (linked && (linked.destSectorId || linked.sectorId))
-    || null;
-  const station = stationId ? STATION_BY_ID.get(stationId) : null;
-  const sector = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
-  const stationName = (station && station.name)
-    || (linked && (linked.destName || linked.destStationName))
-    || (stationId ? prettyId(stationId) : null);
-  const sectorName = (sector && sector.name)
-    || (linked && linked.destSectorName)
-    || (sectorId ? prettyId(sectorId) : null);
-  if (stationName && sectorName && stationName !== sectorName) {
-    out.location = stationName + ' · ' + sectorName;
-  } else {
-    out.location = stationName || sectorName || null;
-  }
-  return out;
-}
-
-/**
- * Copy-safe consequence preview from registered choice intents (credits/rep only).
- * Never dumps debug payloads or heat/cargo writes.
- */
-function ladderChoiceConsequencePreview(stepDef, choiceId) {
-  if (!stepDef || !Array.isArray(stepDef.choices) || !choiceId) return '';
-  const ch = stepDef.choices.find((c) => c && c.id === choiceId);
-  if (!ch) return '';
-  // Prefer an authored short preview string if present.
-  if (typeof ch.preview === 'string' && ch.preview.trim()) return ch.preview.trim();
-  if (typeof ch.consequencePreview === 'string' && ch.consequencePreview.trim()) {
-    return ch.consequencePreview.trim();
-  }
-  const cons = Array.isArray(ch.consequences) ? ch.consequences : [];
-  if (!cons.length) return '';
-  const bits = [];
-  let cr = 0;
-  let crCharge = 0;
-  for (const intent of cons) {
-    if (!intent || typeof intent !== 'object') continue;
-    const ev = String(intent.event || '');
-    const p = intent.payload || {};
-    if (ev === 'economy:grantCredits' && Number.isFinite(p.amount) && p.amount > 0) {
-      cr += Math.round(p.amount);
-    } else if (ev === 'economy:chargeCredits' && Number.isFinite(p.amount) && p.amount > 0) {
-      crCharge += Math.round(p.amount);
-    } else if (ev === 'faction:repDelta' && Number.isFinite(p.delta) && p.factionId) {
-      const fac = FACTION_BY_ID.get(p.factionId);
-      const name = (fac && (fac.short || fac.name)) || prettyId(p.factionId);
-      const sign = p.delta > 0 ? '+' : '';
-      bits.push(name + ' ' + sign + Math.round(p.delta));
-    }
-  }
-  if (cr > 0) bits.unshift('+' + cr.toLocaleString('en-US') + ' cr');
-  if (crCharge > 0) bits.unshift('−' + crCharge.toLocaleString('en-US') + ' cr');
-  // Cap at two chips so the strip stays a strip, not a prose wall.
-  return bits.slice(0, 2).join(' · ');
 }
 
 function missionClientName(m) {
@@ -4084,7 +2830,6 @@ const STATION_CSS = `
   --st-glow: rgba(141, 102, 255, 0.15);
 }
 
-/* Default framed panel (legacy). Desk mode below takes the full play surface. */
 .st-hub { width: min(1560px, 96vw); height: min(920px, 95vh); display: flex; flex-direction: column;
   pointer-events: auto; overflow: hidden; animation: sf-fadein .3s var(--ease) both;
   background:
@@ -4093,30 +2838,15 @@ const STATION_CSS = `
   border: 1px solid var(--st-line);
   border-radius: 18px;
   box-shadow: 0 44px 130px -36px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.02) inset; }
-/* Economy desk: own the viewport. Content is the game; chrome is secondary. */
-.st-hub.st-hub--desk {
-  width: 100%; height: 100%; max-width: none; max-height: none;
-  border-radius: 0; border: none;
-  box-shadow: none;
-}
-.st-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 10px 16px; border-bottom: 1px solid var(--panel-edge); flex: none;
+.st-topbar { display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid var(--panel-edge);
   background: linear-gradient(180deg, rgba(14,24,42,.7), rgba(8,14,26,.5)); }
-.st-topbar-l { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
-.st-topbar-r { display: flex; align-items: center; gap: 8px; flex: none; }
-.st-station-name { font-size: var(--t-xl); letter-spacing: .02em; color: #fff; font-weight: 600;
+.st-station-name { font-size: var(--t-xl); letter-spacing: .04em; color: #fff; font-weight: 600;
   text-shadow: 0 0 16px var(--st-glow); }
-.st-station-fac { color: var(--st-accent); font-size: var(--t-xs);
-  letter-spacing: .1em; text-transform: uppercase; padding: 2px 10px; border-radius: var(--r-pill);
-  border: 1px solid rgba(57,208,255,.3); background: rgba(57,208,255,.08); white-space: nowrap; }
-.st-inspector-toggle { font: inherit; font-size: .72rem; font-weight: 600; letter-spacing: .04em;
-  padding: 7px 12px; border-radius: 8px; cursor: pointer; color: var(--ink-dim);
-  border: 1px solid var(--st-line); background: rgba(255,255,255,.03); }
-.st-inspector-toggle:hover, .st-inspector-toggle.is-active {
-  color: var(--ink); border-color: color-mix(in srgb, var(--st-accent) 45%, transparent);
-  background: color-mix(in srgb, var(--st-accent) 12%, transparent); }
-.st-undock { border-color: var(--st-accent); color: var(--st-accent); letter-spacing: .04em; font-weight: 600;
-  text-transform: none; }
+.st-station-fac { margin-left: 14px; color: var(--st-accent); font-size: var(--t-xs);
+  letter-spacing: .14em; text-transform: uppercase; padding: 2px 10px; border-radius: var(--r-pill);
+  border: 1px solid rgba(57,208,255,.3); background: rgba(57,208,255,.08); }
+.st-undock { border-color: var(--st-accent); color: var(--st-accent); letter-spacing: .08em; font-weight: 600; }
 .st-undock[data-readiness="ready"] { border-color: var(--good); color: var(--good); }
 .st-undock[data-readiness="check"] { border-color: var(--warn); color: var(--warn); }
 .st-undock[data-readiness="risk"] { border-color: var(--danger); color: var(--danger); }
@@ -4143,69 +2873,6 @@ const STATION_CSS = `
 .st-purpose-sub { display: flex; flex-direction: column; gap: 4px; color: var(--ink-mute); font-size: .72rem; line-height: 1.35; margin-top: 4px; }
 .st-purpose-tab { color: var(--ink-dim); }
 
-.st-origin-rail { display: grid; grid-template-columns: minmax(150px, .7fr) minmax(300px, 1.4fr) minmax(290px, 1fr);
-  align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid rgba(57,208,255,.22);
-  background: linear-gradient(90deg, rgba(57,208,255,.07), rgba(8,15,25,.2)); flex: none; }
-.st-origin-rail[hidden] { display: none; }
-.st-origin-head { display: grid; gap: 2px; min-width: 0; }
-.st-origin-kicker { color: var(--st-accent); font-size: .62rem; letter-spacing: .15em; text-transform: uppercase; }
-.st-origin-note { color: var(--ink-dim); font-size: .69rem; line-height: 1.3; }
-.st-origin-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.st-origin-choice { display: flex; justify-content: space-between; align-items: center; gap: 5px; min-width: 0;
-  padding: 7px 9px; border: 1px solid rgba(140,174,202,.24); border-radius: 4px;
-  color: var(--ink-dim); background: rgba(6,13,22,.52); text-align: left; cursor: pointer; }
-.st-origin-choice:hover { color: var(--ink); border-color: rgba(57,208,255,.48); }
-.st-origin-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.st-origin-choice.is-selected { color: var(--ink); border-color: var(--st-accent); background: rgba(57,208,255,.1); }
-.st-origin-choice.is-resolved { opacity: .56; }
-.st-origin-choice-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .76rem; font-weight: 700; }
-.st-origin-choice-status { flex: none; color: var(--ink-mute); font-size: .53rem; letter-spacing: .08em; text-transform: uppercase; }
-.st-origin-action { display: grid; grid-template-columns: minmax(120px, 1fr) auto auto; align-items: center; gap: 6px; min-width: 0; }
-.st-origin-detail { color: var(--ink-dim); font-size: .69rem; line-height: 1.25; overflow: hidden;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; }
-.st-origin-action .st-meta-btn { padding: 6px 9px; white-space: nowrap; }
-.st-origin-action .st-meta-btn:disabled { opacity: .4; cursor: default; }
-/* Professional ladder rail (CL-UI-02): compact strip; no visor/portrait/idle animation */
-.st-ladder-rail { display: grid; grid-template-columns: minmax(150px, .7fr) minmax(260px, 1.2fr) minmax(320px, 1.2fr);
-  align-items: start; gap: 10px; padding: 8px 16px; border-bottom: 1px solid rgba(57,208,255,.18);
-  background: linear-gradient(90deg, rgba(57,208,255,.05), rgba(8,15,25,.18)); flex: none; }
-.st-ladder-rail[hidden] { display: none; }
-.st-ladder-head { display: grid; gap: 2px; min-width: 0; }
-.st-ladder-kicker { color: var(--st-accent); font-size: .62rem; letter-spacing: .15em; text-transform: uppercase; }
-.st-ladder-note { color: var(--ink-dim); font-size: .69rem; line-height: 1.3; }
-.st-ladder-careers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.st-ladder-choice { display: flex; justify-content: space-between; align-items: center; gap: 5px; min-width: 0;
-  min-height: 44px; padding: 10px 9px; border: 1px solid rgba(140,174,202,.24); border-radius: 4px;
-  color: var(--ink-dim); background: rgba(6,13,22,.52); text-align: left; cursor: pointer; }
-.st-ladder-choice:hover { color: var(--ink); border-color: rgba(57,208,255,.48); }
-.st-ladder-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.st-ladder-choice.is-selected { color: var(--ink); border-color: var(--st-accent); background: rgba(57,208,255,.1); }
-.st-ladder-choice.is-resolved { opacity: .56; }
-.st-ladder-choice-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .76rem; font-weight: 700; }
-.st-ladder-choice-status { flex: none; color: var(--ink-mute); font-size: .53rem; letter-spacing: .08em; text-transform: uppercase; }
-.st-ladder-panel { display: grid; gap: 4px; min-width: 0; }
-.st-ladder-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; min-width: 0; }
-.st-ladder-detail { color: var(--ink-dim); font-size: .69rem; line-height: 1.25; flex: 1 1 120px; min-width: 0;
-  overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.st-ladder-progress { color: var(--ink-mute); font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; flex: none; }
-.st-ladder-objective, .st-ladder-where, .st-ladder-prereq, .st-ladder-fail, .st-ladder-receipt {
-  margin: 0; font-size: .69rem; line-height: 1.3; color: var(--ink-dim); }
-.st-ladder-objective { color: var(--ink); }
-.st-ladder-where { color: var(--ink-mute); letter-spacing: .04em; }
-.st-ladder-prereq { color: var(--ink-mute); }
-.st-ladder-fail { color: var(--warn, #ffc64d); }
-.st-ladder-receipt { color: var(--ink-mute); }
-.st-ladder-choices { display: flex; flex-wrap: wrap; gap: 6px; }
-.st-ladder-choices[hidden], .st-ladder-where[hidden], .st-ladder-prereq[hidden], .st-ladder-fail[hidden],
-.st-ladder-receipt[hidden], .st-ladder-objective[hidden], .st-ladder-progress[hidden] { display: none; }
-.st-ladder-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.st-ladder-actions .st-meta-btn, .st-ladder-path-choice {
-  min-height: 44px; min-width: 44px; padding: 8px 12px; white-space: nowrap; }
-.st-ladder-actions .st-meta-btn:disabled, .st-ladder-path-choice:disabled { opacity: .4; cursor: default; }
-.st-ladder-actions .st-meta-btn:focus-visible, .st-ladder-path-choice:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 2px; }
-.st-ladder-recover:not(:disabled) { color: var(--warn, #ffc64d); border-color: rgba(255,198,77,.4); }
-.st-ladder-abandon:not(:disabled) { color: var(--danger, #ff5470); border-color: rgba(255,84,112,.35); }
 .st-handoff { display: grid; gap: 6px; padding: 8px 16px; border-bottom: 1px solid rgba(57,208,255,.18); flex: none; }
 .st-handoff-head { display: flex; flex-direction: column; gap: 1px; }
 .st-handoff-label { color: var(--st-accent); font-size: .58rem; letter-spacing: .16em; text-transform: uppercase; }
@@ -4247,59 +2914,30 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-departure-chip--bad { color: var(--danger); border-color: rgba(255,84,112,.34); }
 .st-departure-chip--info { color: var(--accent); border-color: rgba(57,208,255,.28); }
 .st-body { display: flex; flex: 1; min-height: 0; }
-/* Left rail: full tab names + full service status always readable (this is a permanent nav, not a
-   tooltip-dependent chrome strip). Two-line stack; no ellipsis on label or service copy. */
-.st-rail { width: 220px; flex: none; display: flex; flex-direction: column; gap: 3px; padding: var(--sp-3) var(--sp-2);
-  border-right: 1px solid var(--panel-edge); background: rgba(6,10,20,.55); overflow-x: hidden; overflow-y: auto; }
-.st-tab { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: start; column-gap: 10px; row-gap: 0;
-  text-align: left; background: transparent; border: 1px solid transparent; border-radius: var(--r-md);
-  padding: 9px 12px; color: var(--ink-dim); transition: all var(--dur) var(--ease); width: 100%; box-sizing: border-box; }
+.st-rail { width: 176px; flex: none; display: flex; flex-direction: column; gap: 3px; padding: var(--sp-3) var(--sp-2);
+  border-right: 1px solid var(--panel-edge); background: rgba(6,10,20,.55); }
+.st-tab { display: flex; align-items: center; gap: 10px; text-align: left; background: transparent;
+  border: 1px solid transparent; border-radius: var(--r-md); padding: 9px 12px; color: var(--ink-dim);
+  transition: all var(--dur) var(--ease); }
 .st-tab:hover { color: var(--ink); background: rgba(57,208,255,.06); }
 .st-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; color: var(--ink);
   background: rgba(57,208,255,.08); }
 .st-tab.active { color: #fff; background: linear-gradient(90deg, rgba(57,208,255,.18), rgba(57,208,255,.04));
   border-color: rgba(57,208,255,.35); box-shadow: inset 3px 0 0 var(--accent), 0 0 12px rgba(57,208,255,.12); }
-.st-tab-icon { width: 18px; height: 18px; margin-top: 2px; opacity: .85; flex: none; }
-.st-tab-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
-.st-tab-label { letter-spacing: .04em; font-size: .92rem; text-transform: uppercase;
-  white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.2; }
-.st-tab-service { margin-left: 0; max-width: none; width: 100%;
-  overflow: visible; text-overflow: clip; white-space: normal;
-  font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-mute);
-  opacity: .9; line-height: 1.3; }
+.st-tab-icon { width: 18px; height: 18px; opacity: .85; }
+.st-tab-label { letter-spacing: .04em; font-size: .92rem; text-transform: uppercase; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-tab-service { margin-left: auto; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: .5rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); opacity: .78; }
 .st-tab-service[hidden] { display: none; }
 .st-tab[data-service-status="available"] .st-tab-service { color: var(--accent-2); }
-.st-tab[data-service-status="unavailable"] { opacity: .88; }
+.st-tab[data-service-status="unavailable"] { opacity: .72; }
 .st-tab[data-service-status="unavailable"] .st-tab-service { color: var(--warn); }
 .st-tab[data-service-status="unavailable"].active { opacity: 1; border-color: rgba(255,198,77,.35);
   box-shadow: inset 3px 0 0 var(--warn), 0 0 12px rgba(255,198,77,.10); }
 /* ===== Docked service console: center stage · Service Dock · inspector · effect layers ========== */
 .st-workspace-wrapper { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; }
 .st-center-stage { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden; position: relative; }
-/* Content is the economy desk surface — must claim remaining height and scroll its panels. */
-.st-content { position: relative; flex: 1 1 auto; min-height: 0; min-width: 0; overflow: hidden; }
-.st-hub--desk .st-content { flex: 1 1 0; }
-.st-hub--desk .st-tabpanel { padding: 16px 18px 24px; }
-.st-content-busy {
-  position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; align-content: center; gap: 9px;
-  pointer-events: none; color: var(--accent);
-  background: linear-gradient(180deg, rgba(5,9,18,.84), rgba(5,9,18,.68));
-  opacity: 0; transition: opacity 120ms var(--ease, ease-out);
-}
-.st-content-busy[hidden] { display: none; }
-.st-content-busy.is-visible { opacity: 1; }
-.st-content-spinner {
-  width: 26px; height: 26px; border-radius: 50%;
-  border: 2px solid rgba(57,208,255,.18); border-top-color: var(--accent);
-  box-shadow: 0 0 14px rgba(57,208,255,.18);
-}
-.st-content-busy.is-visible .st-content-spinner {
-  animation: st-spinner-rotate 760ms linear infinite;
-}
-.st-content-busy-text {
-  font-size: .62rem; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-dim);
-}
-@keyframes st-spinner-rotate { to { transform: rotate(360deg); } }
+.st-content { position: relative; flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
 .st-faction-stripe { height: 3px; flex: none; opacity: .85; }
 .st-hub--engineering .st-console-deck,
 .st-hub--engineering .st-status-row,
@@ -4308,81 +2946,28 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
   display: none;
 }
 
-/* Station OS: console deck is effects-only — zero layout budget (no bullseye, no service dock). */
-.st-console-deck { position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none; }
-.st-console-deck--effects-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
-.st-hub--desk .st-schematic-pane,
-.st-schematic-pane[hidden] { display: none !important; }
-.st-status-row--sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
-.st-hub--os .st-center-stage { display: flex; flex-direction: column; min-height: 0; flex: 1; }
-.st-hub--os .st-content { flex: 1 1 0; min-height: 0; }
-.st-hub--os .st-handoff--strip { flex: none; padding: 6px 12px; gap: 6px; }
-.st-hub--os .st-origin-rail { padding: 6px 12px; gap: 8px; }
-.st-hub--os .st-ladder-rail { padding: 6px 12px; gap: 8px; }
-.st-hub--os .st-handoff-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.st-hub--os .st-handoff-dismiss { margin-left: auto; font-size: .72rem; padding: 4px 10px; }
-.st-hub--os .st-handoff-steps { display: flex; flex-wrap: wrap; gap: 6px; }
-.st-hub--os .st-handoff-step { flex: 1 1 140px; max-width: 280px; min-height: 0; padding: 8px 10px; }
-.st-hub--os .st-departure--compact { flex: none; padding: 4px 12px; min-height: 0; gap: 8px; }
-.st-hub--os .st-topbar-m { display: flex; align-items: center; gap: 14px; flex: 1; justify-content: center; min-width: 0; }
-.st-hub--os .st-top-stat { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.st-hub--os .st-top-stat-l { font-size: .55rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); }
-.st-hub--os .st-top-credits, .st-hub--os .st-top-cargo { font-size: .95rem; color: var(--ink); font-weight: 600; }
-.st-hub--os .st-meta-btn { text-transform: none; letter-spacing: .02em; }
-.st-hub--os .st-tab-service { display: none !important; }
-.st-hub--os .st-tab { display: flex; align-items: center; gap: 10px; }
-.st-hub--os .st-tab-label { overflow: visible; text-overflow: clip; white-space: normal; text-transform: none;
-  font-size: .92rem; font-weight: 600; letter-spacing: .01em; }
-.st-qty-param { display: inline-flex; align-items: center; gap: 2px; }
-.st-qty-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--st-line);
-  background: rgba(255,255,255,.04); color: var(--ink); cursor: pointer; font: inherit; }
-.st-qty-input { width: 3.2rem; text-align: center; border-radius: 6px; border: 1px solid var(--st-line);
-  background: rgba(0,0,0,.25); color: var(--ink); font: inherit; padding: 4px; }
-.st-verb-btn { font-weight: 650; }
-.st-market-mode { display: inline-flex; gap: 4px; margin-left: auto; }
-.st-mode-btn { font: inherit; font-size: .78rem; font-weight: 650; padding: 6px 14px; border-radius: 8px;
-  border: 1px solid var(--st-line); background: transparent; color: var(--ink-dim); cursor: pointer; }
-.st-mode-btn.is-on { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent); }
-.st-market--board .st-card-spark-wrap--compact[hidden] { display: none !important; }
-.st-mission-accept.st-verb-btn {
-  font-size: .88rem; font-weight: 700; padding: 8px 16px; border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
-  background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--ink); cursor: pointer;
-}
-.st-mission-accept.st-verb-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 32%, transparent);
-}
-.st-mission-accept.st-verb-btn:disabled { opacity: .45; cursor: not-allowed; }
-.st-schematic-pane { position: relative; width: 100%; height: 100px; display: flex; align-items: center; justify-content: center; z-index: 0; }
+/* Console deck: station schematic (with scanner-grid backdrop) above the Service Dock berth strip.
+   Column layout so the dock is always a horizontal berth strip that uses the full stage width. */
+.st-console-deck { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 10px 16px; flex: none; border-bottom: 1px solid var(--panel-edge);
+  background: radial-gradient(120% 100% at 50% 0%, rgba(57,208,255,.07), transparent 60%); }
+.st-schematic-pane { position: relative; width: 100%; height: 100px; display: flex; align-items: center; justify-content: center; }
 .st-fx-scan { position: absolute; inset: 0; overflow: hidden; opacity: .45; pointer-events: none; z-index: 0; }
 .st-fx-scan canvas { width: 100%; height: 100%; display: block; }
 .st-schematic-art { position: relative; z-index: 1; filter: drop-shadow(0 0 9px var(--st-glow)); }
 .st-schematic-art svg { display: block; width: 92px; height: 92px; }
-.st-service-bar-label { font-size: .58rem; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--ink-mute); padding: 0 2px; }
-.st-service-nodes-pane { position: relative; z-index: 5; width: 100%; overflow: visible; }
+.st-service-nodes-pane { position: relative; z-index: 1; width: 100%; }
 .st-fx-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 
-/* Service Dock — dockRail owns magnify curve + glass plate; hub adds accent + scroll headroom.
-   overflow-x:auto would force overflow-y to clip (CSS overflow pairing) — headroom is padding-top
-   inside .sf-fx-dock so the scale/lift stays inside the scrollport. */
-.st-hub .sf-fx-dock { flex-wrap: nowrap; gap: 7px; align-items: flex-end; justify-content: center;
-  max-width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
-  --sf-fx-dock-pad-top: 48px; }
-.st-hub .sf-fx-dock__item { min-width: 62px; padding: 8px 9px;
-  background:
-    linear-gradient(165deg, color-mix(in srgb, var(--st-accent) 10%, transparent), transparent 55%),
-    linear-gradient(180deg, rgba(18,28,48,.72), rgba(8,14,26,.78));
+/* Service Dock — the dockRail effect provides base styling; these are hub-scoped accents. */
+.st-hub .sf-fx-dock { flex-wrap: nowrap; gap: 6px; align-items: stretch; justify-content: center;
+  max-width: 100%; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.st-hub .sf-fx-dock__item { min-width: 58px; padding: 6px 7px; background: rgba(10,18,32,.55);
   border-color: color-mix(in srgb, var(--st-accent) 34%, transparent); }
 .st-hub .sf-fx-dock__item:focus-visible { outline-color: var(--st-accent); }
-.st-hub .sf-fx-dock__item.is-focus { border-color: color-mix(in srgb, var(--st-accent) 70%, transparent);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.12),
-    0 0 0 1px color-mix(in srgb, var(--st-accent) 28%, transparent),
-    0 12px 28px -12px color-mix(in srgb, var(--st-accent) 48%, transparent); }
-.st-hub .sf-fx-dock__item.is-adjacent { border-color: color-mix(in srgb, var(--st-accent) 42%, transparent); }
-.st-hub .sf-fx-dock__icon { color: var(--st-accent); font-size: 1.12em; }
+.st-hub .sf-fx-dock__item.is-focus { border-color: var(--st-accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--st-accent) 26%, transparent); }
+.st-hub .sf-fx-dock__icon { color: var(--st-accent); font-size: 1.05em; }
 .st-hub .sf-fx-dock__label { font-size: .62rem; letter-spacing: .04em; }
 .st-hub .sf-fx-dock__badge { font-size: .58rem; }
 
@@ -4401,17 +2986,11 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 /* .st-content occupies the remaining center-stage flex space below the station console/status strips;
    the absolute tabpanels inside it fill that scoped area instead of covering the station chrome. */
 
-/* Briefing drawer — collapsed by default in desk mode so Market/Hold own the width. */
-.st-inspector { position: relative; z-index: 6; flex: none; width: 280px; display: flex; flex-direction: column;
-  min-height: 0; border-left: 1px solid var(--panel-edge); background: rgba(6,11,22,.92);
-  transition: width .18s var(--ease, ease-out), opacity .18s var(--ease, ease-out), border-color .18s ease; }
-.st-inspector.is-collapsed { width: 0; opacity: 0; border-left-color: transparent; overflow: hidden; pointer-events: none; }
-.st-inspector-header { flex: none; padding: 10px 14px; border-bottom: 1px solid var(--panel-edge);
-  color: var(--st-accent); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase;
-  display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.st-inspector-close { font: inherit; font-size: 1.1rem; line-height: 1; width: 28px; height: 28px;
-  border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--ink-dim); cursor: pointer; }
-.st-inspector-close:hover { color: var(--ink); background: rgba(255,255,255,.06); }
+/* Right inspector column (diagnostics for the selected service / section). */
+.st-inspector { position: relative; z-index: 1; flex: none; width: 244px; display: flex; flex-direction: column;
+  min-height: 0; border-left: 1px solid var(--panel-edge); background: rgba(6,11,22,.5); }
+.st-inspector-header { flex: none; padding: 9px 14px; border-bottom: 1px solid var(--panel-edge);
+  color: var(--st-accent); font-size: .6rem; letter-spacing: .18em; text-transform: uppercase; }
 .st-inspector-content { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px;
   display: flex; flex-direction: column; gap: 14px; }
 .st-inspector-empty { color: var(--ink-mute); font-style: italic; padding: 10px 2px; }
@@ -4445,22 +3024,6 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-tag-restricted { color: var(--warn); border: 1px solid var(--warn); }
 .st-tag-contraband { color: var(--danger); border: 1px solid var(--danger); }
 .st-tag-owned, .st-tag-active { color: var(--accent-2); border: 1px solid var(--accent-2); }
-
-/* Hold manifest — real sell actions, readable prices (not a 1-button dead stub). */
-.st-hold-header { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-.st-hold-meter-label { font-size: .78rem; color: var(--ink-dim); letter-spacing: .04em; }
-.st-hold-meter { height: 8px; border-radius: 999px; background: rgba(255,255,255,.06); overflow: hidden; }
-.st-hold-meter-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--good)); border-radius: inherit; }
-.st-hold-hint { margin: 0; font-size: .78rem; line-height: 1.4; color: var(--ink-mute); max-width: 52ch; }
-.st-hold-row { grid-template-columns: minmax(8rem, 1.6fr) 4.5rem 4.5rem minmax(5.5rem, 0.9fr) minmax(11rem, 1.3fr) !important; }
-.st-hold-name { font-weight: 650; color: var(--ink); }
-.st-hold-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
-.st-sell-btn { font: inherit; font-size: .72rem; font-weight: 600; padding: 6px 10px; border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); color: var(--ink);
-  background: color-mix(in srgb, var(--accent) 12%, transparent); cursor: pointer; }
-.st-sell-btn:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
-.st-sell-btn--all { border-color: color-mix(in srgb, var(--good) 42%, transparent);
-  background: color-mix(in srgb, var(--good) 12%, transparent); }
 
 /* generic rows */
 .st-row { display: grid; grid-template-columns: 2.4fr .8fr 1fr 1fr 2.2fr 1.6fr; align-items: center;
@@ -4656,12 +3219,6 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 
 @media (max-width: 900px) {
   .st-stage-grid { grid-template-columns: 1fr; grid-template-rows: none; }
-  .st-origin-rail { grid-template-columns: 1fr; }
-  .st-origin-head { grid-template-columns: auto 1fr; align-items: baseline; gap: 8px; }
-  .st-origin-action { grid-template-columns: minmax(0, 1fr) auto auto; }
-  .st-ladder-rail { grid-template-columns: 1fr; }
-  .st-ladder-head { grid-template-columns: auto 1fr; align-items: baseline; gap: 8px; }
-  .st-ladder-careers { grid-template-columns: 1fr; }
 }
 
 /* shipyard */
@@ -4786,19 +3343,6 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
   display: flex; flex-wrap: wrap; gap: 8px; max-width: 180px;
   pointer-events: none;
 }
-.st-eng-stage__loading {
-  position: absolute; inset: 0; z-index: 4; display: grid; place-items: center;
-  opacity: 1; pointer-events: none; transition: opacity .16s var(--ease, ease-out);
-}
-.st-eng-stage.is-ready .st-eng-stage__loading { opacity: 0; }
-.st-eng-stage__spinner {
-  width: 24px; height: 24px; border-radius: 50%;
-  border: 2px solid rgba(57,208,255,.18); border-top-color: var(--accent);
-  box-shadow: 0 0 14px rgba(57,208,255,.18);
-}
-.st-eng-stage:not(.is-ready) .st-eng-stage__spinner {
-  animation: st-spinner-rotate 760ms linear infinite;
-}
 .st-eng-gauge { background: rgba(5,7,13,.55); border-radius: 50%; padding: 2px; }
 .st-eng-stage__label {
   margin-top: 8px; text-align: center; font-size: .78rem; color: var(--ink-dim);
@@ -4890,33 +3434,10 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-sy-buy-btn { width: 100%; }
 
 /* ===== Outfitting premium layout ===== */
-.st-outfit-engineering { display: grid; grid-template-columns: minmax(200px, 260px) minmax(280px, 1fr) minmax(220px, 300px); gap: 16px; min-height: 480px; height: 100%; }
+.st-outfit-engineering { display: grid; grid-template-columns: 260px 1fr 280px; gap: 16px; min-height: 480px; }
 .st-outfit-tree-wrap { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
-.st-outfit-stage-wrap {
-  min-height: 320px; height: 100%;
-  background: radial-gradient(ellipse at 50% 70%, #0a1426, #05070d 80%);
-  border-radius: 8px;
-}
+.st-outfit-stage-wrap { min-height: 260px; }
 .st-outfit-right { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; }
-.st-hub--desk .st-outfit { display: flex; flex-direction: column; min-height: 100%; height: 100%; }
-.st-hub--desk .st-outfit-engineering { flex: 1; min-height: min(560px, calc(100vh - 240px)); }
-.st-hub--desk .st-eng-stage__frame { min-height: 360px; }
-.st-hub--desk .st-hold,
-.st-hub--desk .st-market,
-.st-hub--desk .st-missions { min-height: 100%; }
-/* Market: fill the desk instead of living in a half-inch strip under dead chrome. */
-.st-hub--desk .st-market { display: flex; flex-direction: column; gap: 10px; height: 100%; box-sizing: border-box; }
-.st-hub--desk .st-market-layout { display: grid; grid-template-columns: minmax(120px, 148px) minmax(0, 1fr) minmax(200px, 260px);
-  gap: 12px; flex: 1; min-height: 0; align-items: stretch; }
-.st-hub--desk .st-market-category-rail { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; min-height: 0; }
-.st-hub--desk .st-market-center { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.st-hub--desk .st-market-center .st-list { flex: 1; min-height: 0; overflow-y: auto; }
-.st-hub--desk .st-market-sidebar { min-height: 0; overflow-y: auto; }
-.st-hub--desk .st-market-cat-tab { text-align: left; white-space: normal; }
-.st-hub--desk .st-airlock { min-height: 0; padding: 2px 12px; font-size: .68rem; }
-.st-hub--desk .st-airlock__label { font-size: .55rem; letter-spacing: .1em; text-transform: none; opacity: .7; }
-/* Hide the decorative route beam layer in desk mode — it crossed readable content. */
-.st-hub--desk .st-fx-beamlayer { display: none; }
 
 /* services */
 .st-svc-list { display: flex; flex-direction: column; gap: 8px; }
@@ -5223,9 +3744,6 @@ html.sf-reduce-motion .st-mission-accepted.trace-run::after { animation: none; }
   font-weight: 600;
   letter-spacing: 0.01em;
   text-transform: none;
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
 }
 .c-name, .st-sy-name, .st-svc-name, .st-inv-name, .st-mission-title, .st-bar-name {
   font-family: var(--font-body);
@@ -5365,10 +3883,10 @@ html.sf-reduce-motion .st-mission-accepted.trace-run::after { animation: none; }
   letter-spacing: .07em; padding: 3px 11px; }
 .st-airlock { border-bottom: 1px solid var(--st-line); background: rgba(255,255,255,0.012); }
 
-/* Left rail — full words always (no Mark… / TRADE DESK H…) */
-.st-rail { width: 228px; padding: 12px 10px; gap: 2px; border-right: 1px solid var(--st-line);
+/* Left rail */
+.st-rail { width: 202px; padding: 12px 10px; gap: 2px; border-right: 1px solid var(--st-line);
   background: linear-gradient(180deg, rgba(255,255,255,0.014), transparent); }
-.st-tab { padding: 10px 12px; column-gap: 11px; color: var(--ink-dim); border: 1px solid transparent;
+.st-tab { padding: 10px 12px; gap: 11px; color: var(--ink-dim); border: 1px solid transparent;
   transition: background .16s ease, color .16s ease, border-color .16s ease; }
 .st-tab:hover { background: rgba(255,255,255,0.05); color: var(--ink); }
 .st-tab:focus-visible { outline: 2px solid var(--st-accent); outline-offset: 2px; }
@@ -5379,48 +3897,22 @@ html.sf-reduce-motion .st-mission-accepted.trace-run::after { animation: none; }
   box-shadow: inset 2px 0 0 var(--warn); }
 .st-tab-icon { color: var(--ink-mute); }
 .st-tab.active .st-tab-icon { color: var(--st-accent); }
-.st-tab-service { font-size: .6rem; letter-spacing: .06em; line-height: 1.3; }
+.st-tab-service { font-size: .56rem; letter-spacing: .05em; }
 
-/* Console deck + status row — compact under desk mode */
-.st-console-deck { padding: 8px 16px 6px; gap: 4px; border-bottom: 1px solid var(--st-line);
-  overflow: visible;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--st-accent) 6%, transparent), transparent 80%); }
-.st-hub--desk .st-console-deck { padding: 6px 14px 4px; }
-.st-status-row { padding: 6px 16px; border-bottom: 1px solid var(--st-line); font-size: .72rem; }
-.st-econ-badge, .st-readiness-summary { letter-spacing: .04em; text-transform: none; }
-.st-hub--desk .st-handoff { padding: 8px 14px; }
-.st-hub--desk .st-handoff-step-title { white-space: normal; overflow: visible; text-overflow: clip; }
-.st-hub--desk .st-departure { padding: 6px 14px; min-height: 0; }
+/* Console deck + status row */
+.st-console-deck { padding: 18px 24px 14px; gap: 12px; border-bottom: 1px solid var(--st-line);
+  background: radial-gradient(130% 130% at 50% -30%, var(--st-accent-soft), transparent 58%); }
+.st-status-row { padding: 10px 24px; border-bottom: 1px solid var(--st-line); font-size: .72rem; }
+.st-econ-badge, .st-readiness-summary { letter-spacing: .06em; }
 
-/* Service Dock nodes → glass berth chips (scale/lift owned by dockRail; keep transform free). */
-.st-hub .sf-fx-dock { gap: 10px; --sf-fx-dock-pad-top: 48px; }
-.st-hub .sf-fx-dock__item { min-width: 78px; padding: 10px 12px; border-radius: var(--st-r-sm);
-  background:
-    linear-gradient(160deg, color-mix(in srgb, var(--st-accent) 12%, transparent), transparent 50%),
-    linear-gradient(180deg, rgba(255,255,255,.06), transparent 40%),
-    var(--st-raised);
-  border: 1px solid color-mix(in srgb, var(--st-accent) 28%, var(--st-line));
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.10),
-    inset 0 -1px 0 rgba(0,0,0,.25),
-    0 8px 20px -12px rgba(0,0,0,0.75);
-  transition: border-color .14s var(--ease, ease-out), box-shadow .14s var(--ease, ease-out), background .14s var(--ease, ease-out); }
-.st-hub .sf-fx-dock__item:hover {
-  background:
-    linear-gradient(160deg, color-mix(in srgb, var(--st-accent) 16%, transparent), transparent 52%),
-    linear-gradient(180deg, rgba(255,255,255,.08), transparent 42%),
-    color-mix(in srgb, var(--st-accent) 7%, var(--st-raised)); }
-.st-hub .sf-fx-dock__item.is-focus {
-  border-color: color-mix(in srgb, var(--st-accent) 62%, transparent);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.14),
-    0 0 0 1px color-mix(in srgb, var(--st-accent) 26%, transparent),
-    0 12px 28px -10px color-mix(in srgb, var(--st-accent) 46%, transparent); }
-.st-hub .sf-fx-dock__item.is-adjacent {
-  border-color: color-mix(in srgb, var(--st-accent) 40%, transparent);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.10),
-    0 8px 20px -12px color-mix(in srgb, var(--st-accent) 28%, transparent); }
+/* Service Dock nodes → soft raised chips */
+.st-hub .sf-fx-dock { gap: 9px; }
+.st-hub .sf-fx-dock__item { min-width: 80px; padding: 10px 12px; border-radius: var(--st-r-sm);
+  background: var(--st-raised); border: 1px solid var(--st-line); box-shadow: 0 6px 16px -12px rgba(0,0,0,0.8);
+  transition: transform .14s ease, border-color .14s ease, background .14s ease; }
+.st-hub .sf-fx-dock__item:hover { background: color-mix(in srgb, var(--st-accent) 9%, var(--st-raised)); }
+.st-hub .sf-fx-dock__item.is-focus { border-color: color-mix(in srgb, var(--st-accent) 55%, transparent);
+  box-shadow: 0 8px 22px -10px color-mix(in srgb, var(--st-accent) 42%, transparent); }
 .st-hub .sf-fx-dock__label { font-size: .68rem; letter-spacing: .01em; color: var(--ink-dim); }
 .st-hub .sf-fx-dock__icon { color: var(--st-accent); font-size: 1.22em; }
 .st-hub .sf-fx-dock__badge { font-size: .62rem; letter-spacing: .04em; }
@@ -5440,27 +3932,15 @@ button.st-departure-chip:hover { background: rgba(255,255,255,0.055); }
 .st-handoff-step-title { font-size: .84rem; }
 .st-handoff-step-copy { font-size: .76rem; line-height: 1.5; color: var(--ink-dim); }
 
-/* Returning-dock life strip: one compact action + real local receipts, never a second essay. */
-.st-life-strip { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 4px 14px;
-  border-bottom: 1px solid var(--st-line); color: var(--ink-dim); font-size: .72rem; overflow: hidden; }
-.st-life-strip[hidden] { display: none; }
-.st-life-strip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.st-life-strip > span + span { padding-left: 10px; border-left: 1px solid var(--st-line); }
-.st-life-primary { flex: none; color: var(--accent); }
-.st-life-news { flex: 1 1 45%; color: var(--ink); }
-.st-life-traffic { flex: 1 1 34%; }
-.st-life-paperwork { flex: none; color: var(--warn); }
-
 /* Tab panels + content */
 .st-tabpanel { padding: 22px 26px; }
 .st-empty { font-size: .9rem; }
 
-/* Inspector / briefing drawer */
-.st-inspector { width: 300px; border-left: 1px solid var(--st-line);
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), rgba(12,17,28,0.94); }
-.st-inspector.is-collapsed { width: 0; }
-.st-inspector-header { padding: 12px 16px; font-size: .62rem; letter-spacing: .12em; border-bottom: 1px solid var(--st-line); }
-.st-inspector-content { padding: 14px 16px; gap: 16px; }
+/* Inspector */
+.st-inspector { width: 292px; border-left: 1px solid var(--st-line);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), rgba(12,17,28,0.45); }
+.st-inspector-header { padding: 13px 20px; font-size: .62rem; letter-spacing: .16em; border-bottom: 1px solid var(--st-line); }
+.st-inspector-content { padding: 18px 20px; gap: 20px; }
 .st-ins-section { gap: 6px; padding-bottom: 18px; border-bottom: 1px solid var(--st-line); }
 .st-ins-section:last-child { border-bottom: none; padding-bottom: 0; }
 .st-ins-title { font-size: .6rem; letter-spacing: .14em; color: var(--ink-mute); }
@@ -5500,6 +3980,5 @@ button.st-departure-chip:hover { background: rgba(255,255,255,0.055); }
   .st-station-name.acquiring::after { animation: none; }
   .st-undock::before { transition: none; }
   .st-content::after { animation: none; }
-  .st-content-spinner, .st-eng-stage__spinner { animation: none; }
 }
 `;
