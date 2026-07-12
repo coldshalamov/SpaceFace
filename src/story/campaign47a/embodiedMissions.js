@@ -25,6 +25,7 @@ export const CANONICAL_CONTACT_SIGNALS = Object.freeze([
   'tether:reel', 'entity:killed',
   'ship:purchased', 'mission:accepted', 'mission:completed', 'mission:failed',
   'mission:offered', 'asset:deployed', 'encounter:spawned', 'encounter:resolved',
+  'automation:programAssigned',
 ]);
 
 export const CANONICAL_INTENT_EVENTS = Object.freeze([
@@ -62,6 +63,10 @@ const PICK_SIDE_STAKES = B({
     stationId: 'station_tethys', sectorId: 'sector_tethys_junction', label: 'Meridian Liability Charter',
     instruction: 'Accept and complete the Meridian liability charter',
   }),
+});
+const EMPIRE_SEED_PROGRAMS = B({
+  custody: B({ id: 'custody_watch', templateId: 'patrol_guard', label: 'Custody Watch Drone' }),
+  force: B({ id: 'force_logistics', templateId: 'mine_to_depot', label: 'Manifest Logistics Drone' }),
 });
 
 export const EMBODIED_MISSIONS = Object.freeze([
@@ -145,7 +150,11 @@ export const EMBODIED_MISSIONS = Object.freeze([
   B({
     beat: 6, id: 'empire_seed', contactId: 'contact_vale', contactName: 'Director Vale',
     location: B({ sectorId: 'sector_ceres_belt', stationId: 'station_beltout' }),
-    physicalContact: B({ mode: 'any', steps: B([B({ id: 'asset', signal: 'asset:deployed', accept: B(['asset:deployed']) })]) }),
+    empireSeedPrograms: EMPIRE_SEED_PROGRAMS,
+    physicalContact: B({ mode: 'ordered_and', steps: B([
+      B({ id: 'asset', signal: 'asset:deployed', accept: B(['asset:deployed']) }),
+      B({ id: 'program', signal: 'automation:programAssigned', accept: B(['automation:programAssigned']), requiresPrior: B(['asset']) }),
+    ]) }),
     missionBoardContract: null, recovery: 'The plot remains free. Deploy any passive asset.',
     careerIds: B(['hauler', 'hunter', 'prospector']),
   }),
@@ -171,6 +180,11 @@ export function getBiggerBoatRoute(elroyOutcome) {
 export function getPickSideStake(elroyOutcome) {
   const key = elroyOutcome === 'custody' ? 'custody' : 'force';
   return { outcome: key, ...PICK_SIDE_STAKES[key] };
+}
+
+export function getEmpireSeedProgram(elroyOutcome) {
+  const key = elroyOutcome === 'custody' ? 'custody' : 'force';
+  return { outcome: key, ...EMPIRE_SEED_PROGRAMS[key] };
 }
 
 export function listEmbodiedMissions() { return EMBODIED_MISSIONS.slice(); }
@@ -374,5 +388,7 @@ export function validateEmbodiedMissions() {
   if (!b3.consequenceRoutes || !b3.consequenceRoutes.custody || !b3.consequenceRoutes.force) errors.push('B3: consequence routes missing');
   const b4 = embodiedMissionAt(4);
   if (!b4.consequenceStakes || !b4.consequenceStakes.custody || !b4.consequenceStakes.force) errors.push('B4: consequence stakes missing');
+  const b6 = embodiedMissionAt(6);
+  if (!b6.empireSeedPrograms || !b6.empireSeedPrograms.custody || !b6.empireSeedPrograms.force) errors.push('B6: empire seed programs missing');
   return { ok: errors.length === 0, errors };
 }

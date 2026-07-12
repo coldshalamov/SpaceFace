@@ -1010,6 +1010,10 @@ export const automation = {
     if (!templateId) { clearTemplate(g); this.toast('Drone program cleared (legacy mode)', 'info'); return true; }
     if (!TEMPLATES[templateId]) { this.toast('Unknown program: ' + templateId, 'error'); return false; }
     assignTemplate(g, templateId);
+    this.bus.emit('automation:programAssigned', {
+      kind: 'drone', id: g.id, defId: g.defId, templateId,
+      sectorId: g.sectorId || null,
+    });
     this.toast('Drone program: ' + TEMPLATES[templateId].name, 'success');
     return true;
   },
@@ -1032,7 +1036,7 @@ export const automation = {
     };
     this.state.automation.drones.push(g);
     this._spawnDroneEntities(g, def); // materialize the real flying drones near the nearest field
-    this.bus.emit('asset:deployed', { kind: 'drone', id: g.id });
+    this.bus.emit('asset:deployed', { kind: 'drone', id: g.id, defId: g.defId, sectorId: g.sectorId });
     this.toast(`Drone deployed (${prettySector(g.sectorId)})`, 'success');
     return true;
   },

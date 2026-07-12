@@ -113,6 +113,7 @@ export {
   getCareerCrossover,
   getBiggerBoatRoute,
   getPickSideStake,
+  getEmpireSeedProgram,
   getEmbodiedLocation,
   getFailureRecovery,
   getNamedCaptainBinding,

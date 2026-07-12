@@ -62,6 +62,7 @@ import {
   isBeatStepsComplete,
   getBiggerBoatRoute,
   getPickSideStake,
+  getEmpireSeedProgram,
   getEmbodiedLocation,
   recordBeatStep,
   syncObservedBeat,
@@ -293,7 +294,9 @@ export const missions = {
 
     // ── Story-beat triggers from other systems ───────────────────────────────────────────────
     bus.on('ship:purchased', (p) => this._onContract47aB3ShipPurchased(p || {}));
-    bus.on('asset:deployed', (p) => this._storyTrigger('asset_deployed', p || {}));
+    bus.on('asset:deployed', (p) => this._onContract47aB6AssetDeployed(p || {}));
+    bus.on('automation:programAssigned', (p) => this._onContract47aB6ProgramAssigned(p || {}));
+    bus.on('automation:assetLost', (p) => this._onContract47aB6AssetLost(p || {}));
   },
 
   // =========================================================================================
@@ -1356,6 +1359,19 @@ export const missions = {
         pos: station && station.pos ? { x: station.pos.x, z: station.pos.z } : null,
       };
     }
+    if (beat.beat === 6) {
+      const program = getEmpireSeedProgram(state.story && state.story.flags && state.story.flags.elroy_outcome);
+      const pending = state.story && state.story.flags && state.story.flags.empire_seed_pending_id;
+      const asteroid = this._nearestAsteroid();
+      return {
+        ...base,
+        label: program.label,
+        reason: pending
+          ? `Assign ${program.templateId.replace(/_/g, ' ')} to the deployed drone`
+          : `Deploy a drone, then assign ${program.templateId.replace(/_/g, ' ')}`,
+        pos: asteroid && asteroid.pos ? { x: asteroid.pos.x, z: asteroid.pos.z } : null,
+      };
+    }
     const station = this._nearestStation();
     if (station) {
       const stationId = station.data && station.data.stationId || null;
@@ -1638,6 +1654,65 @@ export const missions = {
       defId, stationId, elroyOutcome: route.outcome, routeId: route.id, recoveredAtRoute: true,
     });
     return story.beatIndex !== 3;
+  },
+
+  _onContract47aB6AssetDeployed(p) {
+    const story = this.state && this.state.story;
+    if (!story || story.beatIndex !== 6) {
+      this._storyTrigger('asset_deployed', p || {});
+      return false;
+    }
+    story.flags = story.flags || {};
+    const legacy = !!story.flags.elroy_outcome_legacy || !story.flags.elroy_outcome;
+    if (legacy) {
+      this._storyTrigger('asset_deployed', p || {});
+      return story.beatIndex !== 6;
+    }
+    if (!p || p.kind !== 'drone' || p.id == null) return false;
+    story.flags.empire_seed_pending_id = p.id;
+    story.flags.empire_seed_pending_def = p.defId || null;
+    this._refreshNavigation({ forceStory: true, silent: true });
+    this._sayStoryLine('Drone deployed. Assign the marked program.', 5);
+    return true;
+  },
+
+  _onContract47aB6ProgramAssigned(p) {
+    const story = this.state && this.state.story;
+    if (!story || story.beatIndex !== 6 || !story.flags) return false;
+    const program = getEmpireSeedProgram(story.flags.elroy_outcome);
+    if (!p || p.kind !== 'drone' || p.id !== story.flags.empire_seed_pending_id) return false;
+    if (p.templateId !== program.templateId) {
+      this._sayStoryLine(`Assign ${program.templateId.replace(/_/g, ' ')} to this drone.`, 5);
+      return false;
+    }
+    const assetId = p.id;
+    story.flags.empire_seed_complete = true;
+    story.flags.empire_seed_variant = program.id;
+    story.flags.empire_seed_asset_id = assetId;
+    delete story.flags.empire_seed_pending_id;
+    delete story.flags.empire_seed_pending_def;
+    this._storyTrigger('asset_deployed', {
+      kind: 'drone', id: assetId, defId: p.defId || null,
+      sectorId: p.sectorId || null, templateId: p.templateId, programmed: true,
+    });
+    if (story.beatIndex === 6) {
+      delete story.flags.empire_seed_complete;
+      delete story.flags.empire_seed_variant;
+      delete story.flags.empire_seed_asset_id;
+      return false;
+    }
+    return true;
+  },
+
+  _onContract47aB6AssetLost(p) {
+    const story = this.state && this.state.story;
+    if (!story || story.beatIndex !== 6 || !story.flags) return false;
+    if (!p || p.kind !== 'drone' || p.id !== story.flags.empire_seed_pending_id) return false;
+    delete story.flags.empire_seed_pending_id;
+    delete story.flags.empire_seed_pending_def;
+    this._refreshNavigation({ forceStory: true, silent: true });
+    this._sayStoryLine('Seed lost. Deploy a replacement drone.', 5);
+    return true;
   },
 
   /** Dock-at-destination objectives: delivery / passenger / salvage / smuggling / escort. These are

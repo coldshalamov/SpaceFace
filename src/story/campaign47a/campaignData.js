@@ -231,14 +231,14 @@ export const CAMPAIGN_BEATS = Object.freeze([
     beat: 6,
     id: 'empire_seed',
     title: 'Empire Seed',
-    objective: 'Deploy a drone, hire a trader, or claim an outpost specialization.',
+    objective: 'Deploy a drone, then assign the program selected by the Elroy outcome.',
     steps: Object.freeze([
       Object.freeze({
         id: 'asset_deploy',
         order: 0,
         accept: Object.freeze(['asset:deployed']),
         requireAssetDeploy: true,
-        label: 'Deploy drone / trader / outpost',
+        label: 'Deploy and program the branch drone',
       }),
     ]),
     observeOnly: false,
