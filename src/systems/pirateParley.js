@@ -13,7 +13,9 @@ import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { effectiveLawSecurity } from './lawSecurity.js';
 
 const SCAN_TO_DEMAND_S = 2.0;
-const DEMAND_WINDOW_S = 5.0;
+// Eight seconds is long enough to read a concrete demand and make one deliberate flight decision,
+// while remaining short enough to feel like an armed interception rather than a modal negotiation.
+const DEMAND_WINDOW_S = 8.0;
 const BREAK_OFF_S = 18.0;
 const VOICE_TTL_S = 1.0;
 const TITHE_MIN_PERCENT = 20;
@@ -114,7 +116,17 @@ export const pirateParley = {
     if (!rec || rec.resolved || rec.phase !== 'demand') return false;
     const choice = String(payload.choice || payload.choiceId || payload.optionId || '').toLowerCase();
     if (choice === 'comply' || choice === 'pay' || choice === 'drop') return this._comply(rec);
-    if (choice === 'refuse' || choice === 'attack' || choice === 'fight') return this._escalate(rec, 'refused');
+    if (choice === 'refuse' || choice === 'attack' || choice === 'fight') {
+      const cause = payload.reason === 'player_attack' ? 'player_attack' : 'refused';
+      return this._escalate(rec, cause);
+    }
+    // RUN is an acknowledged intent, not an instant teleport or ceasefire. The deterministic
+    // spatial rule below still owns success: clear every squad member by ESCAPE_RADIUS before the
+    // deadline. Until then the pirates continue holding fire and the player keeps full flight control.
+    if (choice === 'run' || choice === 'flee' || choice === 'escape') {
+      rec.choice = 'run';
+      return true;
+    }
     return false;
   },
 
@@ -132,6 +144,7 @@ export const pirateParley = {
 
     rec.phase = 'break-off';
     rec.resolved = true;
+    rec.choice = rec.choice || 'comply';
     rec.outcome = 'complied';
     rec.payment = payment;
     rec.tithe = payment.kind === 'cargo'
@@ -153,6 +166,7 @@ export const pirateParley = {
   _unprofitable(rec, members, now) {
     rec.phase = 'break-off';
     rec.resolved = true;
+    rec.choice = rec.choice || 'comply';
     rec.outcome = 'unprofitable';
     rec.payment = null;
     rec.breakOffUntil = now + BREAK_OFF_S;
@@ -173,6 +187,7 @@ export const pirateParley = {
     rec.phase = 'violence';
     rec.resolved = true;
     rec.outcome = outcome || 'refused';
+    rec.choice = rec.outcome === 'timeout' ? null : 'refuse';
     for (const e of members) makeHostile(e, state, rec);
     this._speak(rec, 'attack');
     this._emit('pirateParley:resolved', {
@@ -190,6 +205,7 @@ export const pirateParley = {
     const members = membersFor(state, rec);
     rec.phase = 'break-off';
     rec.resolved = true;
+    rec.choice = 'run';
     rec.outcome = 'evaded';
     rec.payment = null;
     rec.breakOffUntil = now + BREAK_OFF_S;
@@ -208,18 +224,25 @@ export const pirateParley = {
     const text = situation === 'demand-cargo'
       ? demandInstruction(rec)
       : barkFor(rec.factionId, situation, rec.voiceIndex[situation] || 0);
-    const voice = this.helpers && this.helpers.voice;
-    if (voice && typeof voice.say === 'function') {
-      voice.say({
-        channel: 'bark',
-        text,
-        kind: 'pirateParley',
-        ttl: VOICE_TTL_S,
-        id: `pirateParley:${rec.squadId}:${situation}`,
-        factionId: rec.factionId,
-      });
-    } else {
-      this._emit('toast', { text, kind: 'pirateParley', ttl: VOICE_TTL_S });
+    // The scan is a transient hail and may own the arbiter floor. Demand and attack are already
+    // represented by the actionable parley strip / outcome receipt; surfacing the same sentence on
+    // the global floor would violate one-voice. Their pirateParley:voice events still feed telemetry
+    // and any future audio-only presenter without creating a second text surface.
+    const ownsActionSurface = situation === 'demand-cargo' || situation === 'attack';
+    if (!ownsActionSurface) {
+      const voice = this.helpers && this.helpers.voice;
+      if (voice && typeof voice.say === 'function') {
+        voice.say({
+          channel: 'bark',
+          text,
+          kind: 'pirateParley',
+          ttl: VOICE_TTL_S,
+          id: `pirateParley:${rec.squadId}:${situation}`,
+          factionId: rec.factionId,
+        });
+      } else {
+        this._emit('toast', { text, kind: 'pirateParley', ttl: VOICE_TTL_S });
+      }
     }
     rec.said.push({ situation, text });
     this._emit('pirateParley:voice', {
@@ -290,6 +313,7 @@ function startRecord(state, squadId, entity, now) {
   const tithe = chooseTithe(state, squadId);
   return {
     squadId,
+    hailerId: entity && entity.id || null,
     doctrineId: plan.doctrineId,
     factionId: entity.factionId || entity.data && entity.data.factionId || 'faction_reach',
     phase: 'scan',
@@ -308,6 +332,7 @@ function startRecord(state, squadId, entity, now) {
     said: [],
     resolved: false,
     outcome: null,
+    choice: null,
   };
 }
 
@@ -403,7 +428,9 @@ function makeHostile(entity, state, rec) {
   ai.parleySquadId = rec.squadId;
   ai.motiveSatisfied = false;
   ai.motive = 'cargo_extortion';
-  ai.engagementTrigger = rec.outcome === 'refused' ? 'explicit_refusal' : 'ignored_demand';
+  ai.engagementTrigger = rec.outcome === 'player_attack'
+    ? 'player_attack'
+    : rec.outcome === 'refused' ? 'explicit_refusal' : 'ignored_demand';
   ai.zoneId = String(ai.zoneId || `parley:${rec.squadId}`);
   ai.approachTelegraph = 'attack_bark';
   ai.noFireResponseWindowS = 0.75;
@@ -543,12 +570,17 @@ function playerCargoValue(state) {
 function publicRecord(rec) {
   return {
     squadId: rec.squadId,
+    hailerId: rec.hailerId || null,
+    memberIds: Array.isArray(rec.memberIds) ? rec.memberIds.slice() : [],
     doctrineId: rec.doctrineId,
+    factionId: rec.factionId,
     phase: rec.phase,
     startedAt: rec.startedAt,
     demandAt: rec.demandAt,
     deadlineAt: rec.deadlineAt || null,
     demand: rec.demand ? { ...rec.demand } : null,
+    choice: rec.choice || null,
+    escapeRadius: ESCAPE_RADIUS,
   };
 }
 

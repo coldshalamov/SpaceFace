@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpaceFace Pirate Parley Fixture</title>
+  <style>
+    :root { --mono:Consolas,monospace; }
+    * { box-sizing:border-box; }
+    html, body { margin:0; width:100%; height:100%; overflow:hidden; background:#07121a; }
+    body { color:#d7e6ff; font-family:var(--mono); }
+    #scene { position:fixed; inset:0; overflow:hidden;
+      background:
+        radial-gradient(circle at 17% 22%, rgba(215,230,255,.8) 0 1px, transparent 2px),
+        radial-gradient(circle at 70% 37%, rgba(215,230,255,.6) 0 1px, transparent 2px),
+        radial-gradient(circle at 43% 72%, rgba(215,230,255,.7) 0 1px, transparent 2px),
+        radial-gradient(ellipse at 45% 50%, rgba(31,92,110,.34), transparent 54%), #07121a;
+      background-size:137px 151px, 197px 173px, 223px 211px, 100% 100%; }
+    .ship { position:absolute; left:46%; top:48%; width:52px; height:82px; transform:rotate(-16deg);
+      clip-path:polygon(50% 0, 86% 80%, 52% 63%, 13% 90%, 27% 28%); background:#8bb6c7;
+      box-shadow:0 0 20px #39d0ff; }
+    .raider { position:absolute; right:20%; top:38%; color:#ff5c5c; font:10px var(--mono); letter-spacing:.1em; }
+    .raider::before { content:''; display:block; width:24px; height:24px; margin:auto; transform:rotate(45deg);
+      border:1px solid #ff5c5c; }
+    #objective { position:absolute; left:18px; bottom:18px; width:285px; padding:10px 12px;
+      border-left:3px solid #ffb35c; background:rgba(5,9,18,.88); font:11px/1.45 var(--mono); }
+    #objective b { display:block; color:#ffb35c; font-size:9px; letter-spacing:.14em; }
+    #ui-root { position:fixed; inset:0; pointer-events:none; }
+  </style>
+</head>
+<body>
+  <div id="scene"><div class="ship"></div><div class="raider">CUTLASS-7</div></div>
+  <div id="objective"><b>CURRENT OBJECTIVE</b>Reach the Tethys relay · 2.4 km</div>
+  <div id="ui-root"></div>
+  <script type="module">
+    import { createPirateParleyPrompt } from '../src/ui/pirateParleyPrompt.js';
+
+    const handlers = new Map();
+    const emitted = [];
+    const bus = {
+      on(name, fn) { if (!handlers.has(name)) handlers.set(name, []); handlers.get(name).push(fn); },
+      emit(name, payload) { emitted.push({ name, payload }); for (const fn of handlers.get(name) || []) fn(payload); },
+    };
+    const hailer = { id:'raider-1', factionId:'faction_reach', data:{ callsign:'CUTLASS-7' } };
+    const state = {
+      mode:'flight', simTime:100, ui:{ docked:false }, world:{ currentSectorId:'sector_tethys_junction' },
+      player:{ cargo:{ items:{ cmdty_refined_metals:12 } } },
+      entities:new Map([[hailer.id,hailer]]), entityList:[hailer],
+    };
+    const gamepad = { actions:{} };
+    const prompt = createPirateParleyPrompt({ state, bus, gamepad });
+    const demand = {
+      squadId:'sq-toll', hailerId:hailer.id, memberIds:[hailer.id], factionId:'faction_reach',
+      phase:'demand', deadlineAt:108, escapeRadius:1200,
+      demand:{ kind:'cargo', commodityId:'cmdty_refined_metals', amount:3, qty:3 },
+    };
+    bus.emit('pirateParley:demand', demand);
+    prompt.tick();
+    window.sfParleyFixture = {
+      state, bus, prompt, emitted, gamepad,
+      advance(seconds) { state.simTime += seconds; prompt.tick(); },
+      resolve(outcome, extra = {}) { bus.emit('pirateParley:resolved', { ...demand, outcome, next: outcome === 'refused' ? 'violence' : 'break-off', ...extra }); prompt.tick(); },
+    };
+  </script>
+</body>
+</html>

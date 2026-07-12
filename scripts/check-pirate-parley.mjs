@@ -3,7 +3,8 @@
 //
 // A doctrine-tagged pirate squad gets a deterministic parley state machine layered over the
 // already-spawned ships: scan bark -> demand bark -> comply/refuse/timeout. Compliance uses the
-// cargo owner's jettison API and breaks the squad off; refusal/timeout flips scanner hostility.
+// cargo owner's jettison API and breaks the squad off; run is resolved by physical separation;
+// refusal/timeout/player fire flips scanner hostility with a precise cause.
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 
@@ -36,6 +37,8 @@ function guarded(fn) {
 guarded(testScanDemandBeforeFire);
 guarded(testComplyDropsTitheAndBreaksOff);
 guarded(testRefuseFlipsScannerHostility);
+guarded(testRunRequiresPhysicalEscape);
+guarded(testPlayerAttackCauseSurvivesResolution);
 guarded(testTimeoutHardEscalates);
 guarded(testDoctrineGateIsNotAllPirates);
 guarded(testEmptyHoldIsNotProfitablePrey);
@@ -125,6 +128,8 @@ function runToDemand(t) {
   assert.deepEqual(t.log.voices.map((v) => v.situation), ['scan', 'demand-cargo'],
     'scan then demand barks are emitted in order');
   assert.equal(t.log.fires.length, 0, 'no combat fire emitted before demand resolves');
+  assert.equal(t.log.toasts.length, 1,
+    'actionable demand is owned by its response strip instead of duplicating on the voice floor');
 }
 
 function allPirates(t) {
@@ -152,6 +157,11 @@ function testScanDemandBeforeFire() {
   assert.equal(t.log.fires.length, 0, 'no weapon fire before comply/refuse/timeout');
   assert.ok(t.log.events.some((e) => e.evt === 'demand' && e.p.tithe && e.p.tithe.qty > 0),
     'demand exposes a concrete tithe');
+  const demand = t.log.events.find((e) => e.evt === 'demand').p;
+  assert.equal(demand.hailerId, t.pirates[0].id, 'demand identifies the hailing ship');
+  assert.equal(demand.factionId, 'faction_reach', 'demand identifies the hailing faction');
+  assert.equal(demand.escapeRadius, 1200, 'demand publishes the physical run condition');
+  assert.ok(demand.deadlineAt - t.state.simTime > 7.7, 'response window leaves time for a deliberate choice');
   for (const e of allPirates(t)) {
     assert.equal(e.data.ai.passive, true, 'parley squad remains passive during demand');
     assert.equal(isHostileToPlayer(e, 0, t.state), false, 'demand-phase parley is still non-hostile');
@@ -197,10 +207,38 @@ function testRefuseFlipsScannerHostility() {
   ok('refuse flips the squad hostile through scanner-readable AI state');
 }
 
+function testRunRequiresPhysicalEscape() {
+  const t = boot();
+  runToDemand(t);
+  t.bus.emit('pirateParley:choose', { squadId: t.squadId, choice: 'run' });
+  assert.equal(t.log.events.some((e) => e.evt === 'resolved'), false,
+    'choosing run acknowledges intent but does not teleport or resolve the encounter');
+  assert.equal(t.state.pirateParley.squads[t.squadId].choice, 'run');
+  t.player.pos.x = 2000;
+  t.player.pos.z = 0;
+  stepFor(t.sim, 0.1);
+  const resolved = t.log.events.find((e) => e.evt === 'resolved');
+  assert.equal(resolved.p.outcome, 'evaded');
+  assert.equal(resolved.p.choice, 'run');
+  assert.equal(resolved.p.next, 'break-off');
+  for (const e of allPirates(t)) assert.equal(isHostileToPlayer(e, 0, t.state), false);
+  ok('run remains live flight and resolves only after clearing the intercept radius');
+}
+
+function testPlayerAttackCauseSurvivesResolution() {
+  const t = boot();
+  runToDemand(t);
+  t.bus.emit('pirateParley:choose', { squadId: t.squadId, choice: 'refuse', reason: 'player_attack' });
+  const resolved = t.log.events.find((e) => e.evt === 'resolved');
+  assert.equal(resolved.p.outcome, 'player_attack');
+  for (const e of allPirates(t)) assert.equal(e.data.ai.engagementTrigger, 'player_attack');
+  ok('firing during parley survives as the explicit escalation cause');
+}
+
 function testTimeoutHardEscalates() {
   const t = boot();
   runToDemand(t);
-  stepFor(t.sim, 5.25);
+  stepFor(t.sim, 8.25);
   const resolved = t.log.events.find((e) => e.evt === 'resolved');
   assert.equal(resolved.p.outcome, 'timeout', 'unanswered demand hard-times out');
   assert.equal(t.log.voices.at(-1).situation, 'attack', 'timeout emits attack bark');

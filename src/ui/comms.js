@@ -16,6 +16,7 @@
 // CSS is injected once (injectCommsCss) so this module is self-contained.
 
 import { BINDINGS } from './bindings.js';
+import { createPirateParleyPrompt } from './pirateParleyPrompt.js';
 
 const COMMS_STYLE_ID = 'sf-comms-style';
 
@@ -62,6 +63,9 @@ export function scenarioDialogueCommsPayload(payload) {
 export function createComms(ctx) {
   const { bus, state } = ctx;
   injectCommsCss();
+  // Actionable pirate hails live in their own compact, non-modal strip. Keeping the renderer in a
+  // dedicated module prevents the general comms feed from becoming an interaction/state owner.
+  const pirateParleyPrompt = createPirateParleyPrompt(ctx);
 
   // ── 1. Comms feed (left edge) ────────────────────────────────────────────────────────────
   const feed = document.createElement('div');
@@ -423,6 +427,7 @@ export function createComms(ctx) {
 
   // ── tick: fade sweep (called by uiRoot.frame via the returned api) ────────────────────────
   function tick() {
+    if (pirateParleyPrompt && pirateParleyPrompt.tick) pirateParleyPrompt.tick();
     tickHeldComms();
     sweep();
   }
@@ -447,7 +452,7 @@ export function createComms(ctx) {
     return choiceModalOpen;
   }
 
-  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen };
+  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, pirateParleyPrompt };
 }
 
 function normalizeTtlMs(ttl) {
