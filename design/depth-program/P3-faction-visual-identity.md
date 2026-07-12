@@ -1,0 +1,181 @@
+# P3 — Faction Visual Identity Kit
+
+**Thread:** depth-P3 · **Reads:** `00_DEPTH_PROGRAM.md`, `design/spec2/00_MASTER_TASTE.md`, `src/data/factions.js`, `src/data/palettes.js`, `src/render/partsLibrary.js`, `src/systems/world.js` (station spawn), `src/data/sectorAnchors.js` · **Status:** PLAN
+**Thread pitch:** 8 factions have distinct identity (Concord lawful-blue, Meridian corporate-gold, Drift blue-collar-orange, Reach pirate-red, Quiet smuggler-violet, Vael alien-green, Frontier independent-cyan, Choir zealot-magenta) — but **a station's GLB is chosen by station type, with faction never consulted.** A Concord trade_hub and a Meridian trade_hub look identical. Faction identity surfaces today only as ship hull/accent material tint, galaxy-map node color, and a colored dot on the factions screen. Stations — where players spend their docked time — have zero faction visual identity. This pipeline fixes that, in two tiers: a cheap **runtime livery** wiring (most factions) and a small **hero silhouette** set (the 2–3 factions that earn bespoke station GLBs).
+
+---
+
+## Ground truth (verified against the working tree 2026-07-12)
+
+- **8 factions** in `FACTION_META` (`src/data/factions.js:6-81`). Canonical `color` hex per faction. Plus `faction_helix` (paper-only — no ships, no territory; contracts/news/dock-deny only).
+- **Richer per-faction palette** at `src/data/palettes.js:7-72` — `FACTION_PALETTES` gives each faction 6 fields: `primary, secondary, accent, hull, emissive, thruster`. **This is what the render track actually consumes.** Also `PAINT_PROFILES` (palettes.js:88-98) keyed by *personality* (lawful/corporate/independent/blue_collar/pirate/smuggler/xenophobic) with `grime, chrome, noseArt, killMarks, patches` — the documented "dirty outlaw vs clean authority" look.
+- **Station GLB selection is type-driven, not faction-driven.** Each station anchor carries `archetypeGlb` verbatim (`src/data/sectorAnchors.js` line 22, 23, 41, 42, 61, 62, 79, 80, 98, 99, 118, 138, 156, 172, 189; same pattern in `src/data/frontierRegions/*.js`). `world.js:1010` copies `archetypeGlb: st.archetypeGlb || null` into the spawned station entity. `partsLibrary.js:545, 599, 739, 877` read `data.archetypeGlb` to pick the GLB from `PLACE_FILES`. The 8 archetypes are `STATION_ARCHETYPE_FILES` (partsLibrary.js:44-53). **Faction is not consulted at any point.**
+- **BUT — material tint IS already faction-aware.** `paletteFor(entity)` (`partsLibrary.js:3110-3128`) keys off `entity.factionId`. Station entities carry `factionId` (`world.js` stamps it), and the authored station GLB tints via `buildPlacePropRoot` → `paletteFor` (line 730) on its `Material_Hull`/`Material_Accent` slots. So today a station's *color* is faction-aware; its *silhouette* is not.
+- **The existing accent-variant mechanism is mis-named.** `factionAccentVariants` in `parts_manifest.json` (e.g. line 2469-2486) is keyed by **palette-class** (core/belt/fringe/anomaly), NOT faction. It's a build-time hint consumed by `scripts/build-world-station-archetypes.mjs:199` — **not read at runtime.** This is the seam to extend.
+- **No "livery" / "station_skin" mechanism exists** — a repo-wide search returns zero results. P3 creates it.
+
+KNOWN BUGS: none. The glyph layer (`stationGlyphs.js`) is type-driven too; a Concord trade_hub and Meridian trade_hub show the same `⬢ Market` on the map. P3-tier-runtime could optionally extend to glyphs but that's out of scope for the first pass.
+
+---
+
+## §1. Why
+
+Stations are where players spend docked time — the shipyard, the market, the missions board, the bar. Flying to a station and not knowing *whose* station it is until you read the faction label is a constant low-grade "same place" friction. Faction identity is the second-biggest spatial-repetition driver (after same-prop-per-zone, which is P1). And unlike P1, the **cheap path is dominant**: runtime livery (tint + emissive accent + decal slot) requires no new sculpture, just a wiring change and a per-faction data block. Only the 2–3 factions with the strongest silhouette identity earn bespoke GLBs.
+
+## §2. The design — two tiers
+
+### Tier A — Runtime Faction Livery (cheap, most factions)
+
+A per-faction **livery override** that goes beyond the existing `paletteFor` material tint. For each faction, define a `stationLivery` block (in `palettes.js` or a new `src/data/factionLivery.js`) keyed by factionId, containing: an `accentEmissive` color (glow strips / running lights), an optional `decalMaterial` slot ref, and a `silhouetteTag` (for future hero-station routing). Wire a new resolver — `stationLiveryFor(entity)` in `partsLibrary.js`, sibling to `paletteFor` — that the station build path consults when `entity.factionId` matches a livery entry.
+
+This means: a Concord station gets cool-blue emissive window strips + clean geometry; a Reach station gets red-orange jittery emissives + a grime profile from `PAINT_PROFILES.pirate`; a Vael station gets green-cyan resonance glow + the alien profile. **Same GLB, different read.** ~1 day per faction once the wiring lands.
+
+### Tier B — Hero Faction Station GLBs (expensive, 2–3 factions only)
+
+For the factions whose identity can't be carried by tint alone, author a **bespoke station archetype GLB** and route specific stations to it via a faction-keyed extension of `STATION_ARCHETYPE_FILES`. Candidates (by silhouette strength): **Vael** (alien — resonance rings, organic curves; green-cyan), **Reach** (pirate — cobbled, welded, asymmetric; red), **Choir** (zealot — cathedral geometry, tall spires; magenta). Each is a ~10k–15k-tri landmark-class asset.
+
+**The rule:** Tier A for every faction first. Tier B only for factions where playtesters still can't tell stations apart after livery. Do not sculpt before the livery proves insufficient.
+
+## §3. Architecture & wiring (touch files)
+
+| Touch | Purpose | Tier |
+|---|---|---|
+| `src/data/palettes.js` **or** new `src/data/factionLivery.js` | define `STATION_LIVERY[factionId] = { accentEmissive, decalMaterial?, silhouetteTag? }` | A |
+| `src/render/partsLibrary.js` (~line 3110, sibling to `paletteFor`) | add `stationLiveryFor(entity)`; consult it in `buildPlacePropRoot` (line 730) for the `Material_Emissive`/`Material_Accent` slot tints | A |
+| `src/render/partsLibrary.js:44-53` (`STATION_ARCHETYPE_FILES`) | append hero faction GLBs (Tier B only) | B |
+| `assets/ships/parts/places/place_station_<faction>_<archetype>.glb` | new hero GLBs (Tier B only) | B |
+| `assets/ships/parts/parts_manifest.json` | register hero GLBs (Tier B only) | B |
+| `src/data/sectorAnchors.js` + `src/data/frontierRegions/*.js` | point specific stations at hero `archetypeGlb` by faction (Tier B only) | B |
+
+**Do NOT touch:** `release_manifest.json` (auto-written). The legacy render files. `src/systems/input.js`.
+
+**Serialization:** `src/render/partsLibrary.js` is the C-thread single-writer point (`00_ORCHESTRATION.md` §6). If a graphics lane is active, do not edit it — coordinate.
+
+## §4. Key code — the seam to extend
+
+The runtime tint resolver that already keys off faction:
+
+```js
+// src/render/partsLibrary.js:3110 — EXISTING, faction-aware material tint
+function paletteFor(entity) {
+  const faction = entity.factionId && FACTION_PALETTES[entity.factionId];
+  if (faction) return { hull: faction.hull||faction.primary,
+                        accent: faction.accent||faction.primary,
+                        thruster: faction.thruster||...,
+                        dark: faction.secondary||'#111820' };
+  if (entity.team === 0) { /* faction_free palette */ }
+  if (entity.team === 1) { return { hull:'#7a3540', ... }; }
+  return { hull:'#6b7280', ... };
+}
+```
+
+P3-Tier-A adds a sibling:
+
+```js
+// PROPOSED — src/render/partsLibrary.js, sibling to paletteFor
+function stationLiveryFor(entity) {
+  if (!entity.factionId) return null;
+  const livery = STATION_LIVERY[entity.factionId];
+  if (!livery) return null;
+  return livery;  // { accentEmissive, decalMaterial?, silhouetteTag? }
+}
+// buildPlacePropRoot (~line 730) consults it AFTER paletteFor:
+//   emissive slot tint = livery?.accentEmissive ?? palette.emissive
+```
+
+The build-time accent-variant block to optionally rename/extend:
+
+```json
+// parts_manifest.json:2469 — currently keyed by palette-CLASS (mis-named "faction")
+"factionAccentVariants": {
+  "core":    { "accent": "#39d0ff", "thruster": "#88aaff" },
+  "belt":    { "accent": "#ffb35c", "thruster": "#ff8844" },
+  "fringe":  { "accent": "#ff5c5c", "thruster": "#ff4466" },
+  "anomaly": { "accent": "#8d66ff", "thruster": "#4ddc92" }
+}
+```
+
+## §5. The faction backlog
+
+Tier A (all 8 — runtime livery, cheap, one iteration each):
+
+| Faction | `factionId` | Palette anchor | Livery character | Paint profile (personality) |
+|---|---|---|---|---|
+| Solar Concord Navy | `faction_scn` | `#3A78FF` blue | clean, cool-blue emissive window strips, chrome | lawful |
+| Meridian Trade Syndicate | `faction_mts` | `#F2B233` gold | warm gold accents, corporate holographic decals | corporate |
+| Drift Miners Collective | `faction_dmc` | `#C9772E` orange | industrial orange, worn hazard stripes, exposed mechanisms | blue_collar |
+| Crimson Reach | `faction_reach` | `#D8334A` red | jittery red-orange emissives, welded/cobbled, grime | pirate |
+| The Quiet | `faction_quiet` | `#7A5FB0` violet | dim violet, masked/running-dark, minimal emission | smuggler |
+| The Vael | `faction_vael` | `#2FCFA0` green | green-cyan resonance glow, organic pulse | xenophobic |
+| Free Frontier | `faction_free` | `#4ECBE0` cyan | plain cyan, utilitarian, no strong identity (the "default") | independent |
+| Ascendant Choir | `faction_choir` | `#E85FD0` magenta | magenta cathedral-glow, tall emissive spires | (zealot — add to PAINT_PROFILES) |
+
+Tier B (hero silhouette — only after Tier A proves insufficient per faction):
+
+| Faction | Candidate archetype | Why bespoke |
+|---|---|---|
+| `faction_vael` | research / military | Alien geometry (resonance rings, curves) can't be carried by tint alone |
+| `faction_reach` | blackmarket | Cobbled/welded pirate haven silhouette is identity-defining |
+| `faction_choir` | research / military | Cathedral/spire zealot geometry |
+
+**First worked example (the template):** Tier A for **`faction_vael`** — the most visually distinct faction (alien, green-cyan). Proves the resolver + livery-block pattern. If playtest still can't read it, escalate to the Tier B Vael hero GLB. **Do all 8 Tier A before any Tier B.**
+
+## §6. Libraries / tooling
+
+- **No new runtime deps.** Pure data + a resolver function.
+- **New acceptance check recommended:** `scripts/check-faction-livery.mjs` — asserts (a) every `factionId` in `FACTION_META` that owns sectors has a `STATION_LIVERY` entry, (b) each livery's `accentEmissive` is a valid hex and visually distinct from its neighbors (minimum color-distance threshold — model on any existing contrast check), (c) Tier B hero GLBs (if any) are registered in all 3 registries. Wire as `check:faction-livery`, add to `check` aggregate. Build it as iteration 0.
+
+## §7. Build plan
+
+### Iteration 0 (the wiring)
+1. Decide home for the livery data: extend `src/data/palettes.js` or new `src/data/factionLivery.js`. Prefer `palettes.js` (keeps faction color data together).
+2. Add `stationLiveryFor(entity)` in `partsLibrary.js` (sibling to `paletteFor`); consult it in `buildPlacePropRoot` for the emissive/accent slot.
+3. Build `scripts/check-faction-livery.mjs` (iteration 0 check).
+4. Run `npm run check:visual-stability`, `npm run check:sim:compare`. Screenshot a Vael station vs a Concord station into `.devshots/`.
+
+### Per faction (Tier A)
+1. Define `STATION_LIVERY[factionId] = { accentEmissive, silhouetteTag }`.
+2. If the faction's personality isn't in `PAINT_PROFILES`, add it (e.g. `zealot` for Choir).
+3. Run `check:faction-livery`, `check:visual-stability`, screenshot the faction's stations in 2–3 owned sectors.
+4. Update `**Status:**`. Print 10-line summary.
+
+### Per faction (Tier B, only if Tier A insufficient)
+1. Acquire Blender lock. Author `place_station_<faction>_<archetype>.glb` (10k–15k tris, `Material_Hull`/`Material_Accent`/`Material_Emissive` slots).
+2. Register in all 3 registries (parts_manifest.json, auto-written release_manifest, `STATION_ARCHETYPE_FILES`).
+3. Point the faction's stations at the hero `archetypeGlb` in `sectorAnchors.js` / `frontierRegions/*.js`.
+4. Run full asset acceptance (`check:asset-reachability`, `check:assets:live`, `check:asset-status`, `check:visual-stability`).
+
+## §8. Anti-patterns
+
+- **DON'T** sculpt a Tier B hero GLB before Tier A livery is in for that faction. Tint is cheap and may suffice; sculpture is not.
+- **DON'T** edit `partsLibrary.js` while a graphics lane is active — it's the C-thread single-writer point. Coordinate or wait.
+- **DON'T** key livery by palette-class (the existing mis-named `factionAccentVariants` mistake) — key by `factionId`. The whole point is per-faction identity.
+- **DON'T** make livery colors that clash with the faction's canonical `FACTION_PALETTES` — livery *extends* the palette, it doesn't override it. The accent emissive should harmonize with `faction.accent`/`emissive`.
+- **DON'T** diverge browser and desktop (AGENTS.md §6) — livery is runtime data, must be identical in both.
+- **DON'T** solve perf by disabling station emissives (AGENTS.md §6 Performance policy) — if emissives are heavy, batch/instance, don't cut.
+
+## §9. Ambition ceiling
+
+A fully-liveried galaxy is the foundation for **faction territory read** — flying from Concord space into Reach space should *feel* like crossing a border, with the station livery shifting from clean-blue to jittery-red over 2–3 jumps. Beyond livery: per-faction **dock interior** variants (the `place_dock_interior*` family at `shipPreviewMount.js:31-39` currently keys by station archetype; it could key by faction), per-faction **billboard** content (`place_station_billboard`), and per-faction **nav buoy** glyphs. And the map glyph layer (`stationGlyphs.js`) could grow a faction ring/color around the type glyph. Each is a small follow-on; none belong in P3-first-pass.
+
+---
+
+## Dispatch block (copy into the agent thread)
+
+> **You are THREAD depth-P3 — Faction Visual Identity Kit only.**
+>
+> Read in order: `AGENTS.md` §1, §3, §5, §6, §10 · `design/spec2/00_MASTER_TASTE.md` · `design/depth-program/00_DEPTH_PROGRAM.md` · `design/depth-program/P3-faction-visual-identity.md` (this file) · `src/data/factions.js` · `src/data/palettes.js` · `src/render/partsLibrary.js` (especially `paletteFor` line 3110, `buildPlacePropRoot` line 730, `STATION_ARCHETYPE_FILES` line 44) · `src/data/sectorAnchors.js`. Then stop reading and do the work.
+>
+> **Target:** `<FACTION_ID>` (e.g. `faction_vael` — see §5 backlog) at Tier A (runtime livery). **Tier B (hero GLB) only if dispatched explicitly after Tier A proves insufficient.**
+>
+> **Iteration 0 (wiring, once):** add `stationLiveryFor(entity)` to `partsLibrary.js`, consult in `buildPlacePropRoot`; build `scripts/check-faction-livery.mjs`; screenshot a Vael vs Concord station.
+>
+> **Lock protocol (Tier B only):** acquire `assets/ships/blender.LOCK` as thread depth-P3. If held, **STOP and report.**
+>
+> **Do (Tier A):** define `STATION_LIVERY[factionId]`, add personality to `PAINT_PROFILES` if missing, run checks, screenshot the faction's stations across 2–3 owned sectors (default game path).
+>
+> **FORBIDDEN:** Tier B before Tier A. Editing `partsLibrary.js` during an active graphics lane (coordinate). Keying livery by palette-class. Clashing with `FACTION_PALETTES`. Browser/desktop divergence. Silent perf cuts. Editing `release_manifest.json` by hand. `git checkout .` / `git reset --hard` / etc. (AGENTS.md §3).
+>
+> **Acceptance:** `node scripts/check-faction-livery.mjs` green (after iter 0) · `npm run check:visual-stability` · `npm run check:asset-reachability` (Tier B) · `npm run check:assets:live` (Tier B, failureCount:0) · `npm run check:sim:compare` (hashEqual:true) · `node scripts/check-tether-gameplay.mjs` · screenshot pair in `.devshots/`.
+>
+> `git add -N` every new file immediately. Print a 10-line summary: which faction, tier A or B, livery fields / GLB tri budget, which sectors show it, which checks green, screenshot paths, deferred items.
