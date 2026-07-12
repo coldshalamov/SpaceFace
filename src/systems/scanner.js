@@ -15,6 +15,9 @@ const NEAR_SCAN_RADIUS = 1200;
 const HIDDEN_POI_RADIUS = 2000;
 const ASTEROID_HIGHLIGHT_S = 20;
 const PINGED_S = 45;
+const SIGNAL_RECORD_CAP = 64;
+const SIGNAL_RECEIPT_CAP = 32;
+const SIGNAL_INVESTIGATE_RADIUS = 150;
 const UNSAFE_PLAYER_SECURITY = 0.45;
 const LANE_CONTEXT_INNER_R = 900;
 const LANE_CONTEXT_OUTER_R = 2200;
@@ -147,6 +150,247 @@ function upsertUnknownPing(state, sectorId, ping) {
   return true;
 }
 
+export function signalStrengthFor(distance, range) {
+  const r = Math.max(1, Number(range) || 1);
+  return Math.max(0, Math.min(1, 1 - Math.max(0, Number(distance) || 0) / r));
+}
+
+export function signalClassificationStage(scanCount, distance) {
+  const scans = Math.max(1, Math.floor(Number(scanCount) || 1));
+  const d = Math.max(0, Number(distance) || 0);
+  if (scans >= 3 || d <= 300) return 3;
+  if (scans >= 2 || d <= 650) return 2;
+  return 1;
+}
+
+export function signalClassLabel(kind, stage = 1) {
+  const s = Math.max(1, Math.min(3, stage | 0));
+  if (kind === 'distress') return s >= 3 ? 'DISTRESS COMMUNICATOR' : s >= 2 ? 'DISTRESS SIGNAL' : 'MODULATED SIGNAL';
+  if (kind === 'salvage') return s >= 3 ? 'DERELICT SALVAGE' : s >= 2 ? 'SALVAGE SIGNATURE' : 'METALLIC RETURN';
+  if (kind === 'anomaly') return s >= 3 ? 'ANOMALOUS PHENOMENON' : s >= 2 ? 'ANOMALY SIGNATURE' : 'ENERGY RETURN';
+  if (kind === 'ore') return s >= 3 ? 'ORE CONCENTRATION' : s >= 2 ? 'ORE SIGNATURE' : 'MINERAL RETURN';
+  if (kind === 'ambush') return s >= 3 ? 'MULTIPLE DRIVE ECHOES' : s >= 2 ? 'UNCERTAIN TRAFFIC' : 'SHIP SIGNATURE';
+  return s >= 3 ? 'VESSEL SIGNATURE' : s >= 2 ? 'SHIP SIGNATURE' : 'DRIVE RETURN';
+}
+
+function signalDetail(kind, stage) {
+  if (kind === 'ambush') return stage >= 3
+    ? 'Several drives, intent unresolved. Track or hold clear.'
+    : 'Traffic pattern unresolved. Close range or pulse again.';
+  if (stage <= 1) return 'Source unresolved. Close range or pulse again.';
+  if (stage === 2) return 'Probable class. Track the return or pulse again.';
+  return 'Investigation fix stable. Track to inspect at close range.';
+}
+
+function freshSignalState() {
+  return { schemaVersion: 1, records: {}, completed: {}, receipts: [], trackedId: null };
+}
+
+function ensureSignalState(state) {
+  if (!state.signalInvestigation || typeof state.signalInvestigation !== 'object') state.signalInvestigation = freshSignalState();
+  const own = state.signalInvestigation;
+  own.schemaVersion = 1;
+  if (!own.records || typeof own.records !== 'object' || Array.isArray(own.records)) own.records = {};
+  if (!own.completed || typeof own.completed !== 'object' || Array.isArray(own.completed)) own.completed = {};
+  if (!Array.isArray(own.receipts)) own.receipts = [];
+  return own;
+}
+
+const SIGNAL_KIND_PRIORITY = Object.freeze({
+  distress: 100,
+  anomaly: 90,
+  salvage: 80,
+  ambush: 70,
+  ship: 60,
+  ore: 40,
+});
+
+function signalKindForEntity(entity) {
+  if (!entity) return null;
+  const data = entity.data || {};
+  const label = String(data.scanLabel || data.label || data.name || '').toLowerCase();
+  if (isAnomalyLike(entity)) return 'anomaly';
+  if (isWreckLike(entity)) {
+    if (data.isCommunicator || data.parentType === 'communicator' || label.includes('distress')) return 'distress';
+    return 'salvage';
+  }
+  if (entity.type === 'asteroid') return 'ore';
+  if (entity.type === 'ship' || entity.type === 'drone') return 'ship';
+  return null;
+}
+
+function signalKindForPoi(poi) {
+  const type = String(poi && (poi.type || poi.poiType || poi.kind) || '').toLowerCase();
+  const label = String(poi && (poi.name || poi.label || poi.poiId) || '').toLowerCase();
+  if (type.includes('anomal')) return 'anomaly';
+  if (type.includes('distress') || type.includes('beacon') || label.includes('distress')) return 'distress';
+  if (type.includes('wreck') || type.includes('derelict') || type.includes('cache') || type.includes('salvage')) return 'salvage';
+  return null;
+}
+
+function signalKindForLivingPoi(row) {
+  if (!row) return null;
+  if (row.familyId === 'anomaly_research') return 'anomaly';
+  if (row.familyId === 'derelict_salvage') return 'salvage';
+  if (row.familyId === 'mining_field') return 'ore';
+  if (row.familyId === 'pirate_contested_nest') return 'ambush';
+  if (row.familyId === 'convoy_industrial_route') return 'ship';
+  return null;
+}
+
+function collectSignalCandidates(state, sectorId, origin, nearby = []) {
+  const byId = new Map();
+  const add = (candidate) => {
+    if (!candidate || !candidate.id || !candidate.pos || !candidate.kind) return;
+    const distance = dist(origin, candidate.pos);
+    const range = Math.max(1, Number(candidate.range) || NEAR_SCAN_RADIUS);
+    if (distance > range) return;
+    const row = { ...candidate, distance, range, pos: pos2(candidate.pos) };
+    const previous = byId.get(row.id);
+    if (!previous || row.distance < previous.distance) byId.set(row.id, row);
+  };
+
+  for (const entity of nearby || []) {
+    if (!entity || !entity.alive || entity.id === state.playerId || !entity.pos) continue;
+    const kind = signalKindForEntity(entity);
+    if (!kind) continue;
+    add({
+      id: `signal:entity:${entity.id}`,
+      kind,
+      sourceId: entity.id,
+      entityId: entity.id,
+      pos: entity.pos,
+      range: NEAR_SCAN_RADIUS,
+    });
+  }
+
+  const active = state.world && state.world.activeSector;
+  for (const poi of active && active.pois || []) {
+    if (!poi || !(poi.hidden || String(poi.type || '').toLowerCase() === 'anomaly')) continue;
+    const kind = signalKindForPoi(poi);
+    if (!kind) continue;
+    const entity = state.entities && state.entities.get && state.entities.get(poi.id);
+    const pos = entity && entity.pos || poi.pos;
+    if (!pos) continue;
+    const sourceId = poi.poiId || poi.id;
+    add({
+      id: `signal:poi:${sourceId}`,
+      kind,
+      sourceId,
+      entityId: entity && entity.id || null,
+      pos,
+      range: HIDDEN_POI_RADIUS,
+    });
+  }
+
+  const living = state.livingPoiBehaviors && state.livingPoiBehaviors.activeByZone;
+  for (const row of Object.values(living || {})) {
+    if (!row || row.sectorId !== sectorId || row.status === 'resolved' || row.status === 'aftermath') continue;
+    const kind = signalKindForLivingPoi(row);
+    if (!kind || !row.zoneCenter) continue;
+    add({
+      id: `signal:living:${row.behaviorId}`,
+      kind,
+      sourceId: row.behaviorId,
+      entityId: null,
+      pos: row.zoneCenter,
+      range: HIDDEN_POI_RADIUS,
+    });
+  }
+
+  // Ambush tells deliberately remain an uncertain traffic class at every stage. The scanner does
+  // not consult hostility, encounter labels, or faction intent here: investigation earns warning,
+  // never omniscient red paint.
+  const tells = state.ambushSignatures && state.ambushSignatures.tells;
+  for (const tell of Object.values(tells || {})) {
+    if (!tell || tell.active === false || tell.sectorId !== sectorId || !tell.pos) continue;
+    add({
+      id: `signal:${tell.id}`,
+      kind: 'ambush',
+      sourceId: tell.id,
+      entityId: null,
+      pos: tell.pos,
+      range: HIDDEN_POI_RADIUS,
+    });
+  }
+
+  return [...byId.values()].sort(compareSignalRows);
+}
+
+function compareSignalRows(a, b) {
+  const priority = (SIGNAL_KIND_PRIORITY[b && (b.sourceKind || b.kind)] || 0)
+    - (SIGNAL_KIND_PRIORITY[a && (a.sourceKind || a.kind)] || 0);
+  if (priority) return priority;
+  const distance = (Number(a && a.distance) || 0) - (Number(b && b.distance) || 0);
+  if (distance) return distance;
+  return String(a && a.id || '').localeCompare(String(b && b.id || ''));
+}
+
+function pruneSignalRecords(own) {
+  const ids = Object.keys(own.records || {});
+  if (ids.length <= SIGNAL_RECORD_CAP) return;
+  ids.sort((a, b) => {
+    const aProtected = a === own.trackedId || !!own.completed[a];
+    const bProtected = b === own.trackedId || !!own.completed[b];
+    if (aProtected !== bProtected) return aProtected ? 1 : -1;
+    const time = (Number(own.records[a] && own.records[a].lastScanAt) || 0)
+      - (Number(own.records[b] && own.records[b].lastScanAt) || 0);
+    return time || a.localeCompare(b);
+  });
+  for (const id of ids.slice(0, Math.max(0, ids.length - SIGNAL_RECORD_CAP))) {
+    if (id !== own.trackedId && !own.completed[id]) delete own.records[id];
+  }
+}
+
+function cloneSignalRecord(record) {
+  if (!record || typeof record !== 'object') return null;
+  return { ...record, pos: pos2(record.pos) };
+}
+
+function cloneSignalReceipt(receipt) {
+  if (!receipt || typeof receipt !== 'object') return null;
+  return { ...receipt, pos: pos2(receipt.pos) };
+}
+
+function cloneSignalState(own) {
+  const records = {};
+  const completed = {};
+  for (const [id, row] of Object.entries(own.records || {})) {
+    const clone = cloneSignalRecord(row);
+    if (clone) records[id] = clone;
+  }
+  for (const [id, receipt] of Object.entries(own.completed || {})) {
+    const clone = cloneSignalReceipt(receipt);
+    if (clone) completed[id] = clone;
+  }
+  return {
+    schemaVersion: 1,
+    records,
+    completed,
+    receipts: (own.receipts || []).map(cloneSignalReceipt).filter(Boolean).slice(-SIGNAL_RECEIPT_CAP),
+    trackedId: own.trackedId && records[own.trackedId] && !completed[own.trackedId] ? own.trackedId : null,
+  };
+}
+
+function normalizeSignalState(data) {
+  const source = data && typeof data === 'object' ? data : freshSignalState();
+  const normalized = freshSignalState();
+  for (const [id, row] of Object.entries(source.records || {})) {
+    if (!id || !row || typeof row !== 'object') continue;
+    normalized.records[id] = cloneSignalRecord({ ...row, id });
+  }
+  for (const [id, receipt] of Object.entries(source.completed || {})) {
+    if (!id || !receipt || typeof receipt !== 'object') continue;
+    normalized.completed[id] = cloneSignalReceipt({ ...receipt, signalId: receipt.signalId || id });
+  }
+  normalized.receipts = (Array.isArray(source.receipts) ? source.receipts : [])
+    .map(cloneSignalReceipt).filter(Boolean).slice(-SIGNAL_RECEIPT_CAP);
+  normalized.trackedId = source.trackedId && normalized.records[source.trackedId]
+    && !normalized.completed[source.trackedId] ? source.trackedId : null;
+  pruneSignalRecords(normalized);
+  return normalized;
+}
+
 export const scanner = {
   name: 'scanner',
 
@@ -155,10 +399,18 @@ export const scanner = {
     this.bus = ctx.bus;
     this._scratch = [];
     this._cooldownUntil = 0;
+    ensureSignalState(this.state);
+    this._onSignalTrack = (payload) => this._trackSignal(payload || {});
+    if (this.bus && typeof this.bus.on === 'function') this.bus.on('signal:track', this._onSignalTrack);
+  },
+
+  newGame() {
+    if (this.state) this.state.signalInvestigation = freshSignalState();
   },
 
   update(_dt, state) {
     if (state.mode !== 'flight') return;
+    this._updateTrackedSignal(state);
     const actions = state.input && state.input.actions;
     if (!actions?.scanPulse) return;
     actions.scanPulse = false;
@@ -221,7 +473,15 @@ export const scanner = {
     }
 
     if (sectorId) this._pingHiddenPois(state, sectorId, origin);
-    this.bus.emit('scan:completed', { targetId: null, sectorId, found });
+    const signals = this._scanSignals(state, sectorId, origin, now, candidates);
+    this.bus.emit('scan:completed', { targetId: null, sectorId, found, signalCount: signals.length });
+    if (signals.length) this.bus.emit('signal:scanResults', {
+      sectorId,
+      scannedAt: now,
+      primary: { ...signals[0], pos: { ...signals[0].pos } },
+      signals: signals.map((row) => ({ ...row, pos: { ...row.pos } })),
+      total: signals.length,
+    });
   },
 
   _pingHiddenPois(state, sectorId, origin) {
@@ -237,6 +497,123 @@ export const scanner = {
         kind: 'unknown',
       });
     }
+  },
+
+  _scanSignals(state, sectorId, origin, now, candidates) {
+    const own = ensureSignalState(state);
+    const raw = collectSignalCandidates(state, sectorId, origin, candidates);
+    const rows = [];
+    for (const candidate of raw) {
+      if (own.completed[candidate.id]) continue;
+      const previous = own.records[candidate.id] || null;
+      const scanCount = (previous && previous.scanCount || 0) + 1;
+      const stage = signalClassificationStage(scanCount, candidate.distance);
+      const strength = signalStrengthFor(candidate.distance, candidate.range);
+      const confidence = Math.min(0.98, 0.24 + (stage - 1) * 0.27 + strength * 0.2);
+      const record = {
+        id: candidate.id,
+        sectorId,
+        sourceKind: candidate.kind,
+        sourceId: candidate.sourceId || null,
+        entityId: candidate.entityId || null,
+        pos: pos2(candidate.pos),
+        classification: signalClassLabel(candidate.kind, stage),
+        detail: signalDetail(candidate.kind, stage),
+        stage,
+        confidence: Number(confidence.toFixed(3)),
+        strength: Number(strength.toFixed(3)),
+        distance: Math.round(candidate.distance),
+        range: candidate.range,
+        scanCount,
+        firstSeenAt: previous ? previous.firstSeenAt : now,
+        lastScanAt: now,
+        bestDistance: Math.min(
+          previous && Number.isFinite(Number(previous.bestDistance)) ? Number(previous.bestDistance) : Infinity,
+          candidate.distance,
+        ),
+        status: previous && previous.status === 'tracked' ? 'tracked' : 'detected',
+      };
+      own.records[record.id] = record;
+      rows.push(record);
+    }
+    rows.sort(compareSignalRows);
+    pruneSignalRecords(own);
+    return rows.slice(0, 6);
+  },
+
+  _trackSignal(payload) {
+    const state = this.state;
+    const own = state && ensureSignalState(state);
+    const id = String(payload.signalId || payload.id || '');
+    const record = own && own.records[id];
+    if (!record || own.completed[id] || !record.pos) return false;
+    if (own.trackedId && own.records[own.trackedId]) own.records[own.trackedId].status = 'detected';
+    own.trackedId = id;
+    record.status = 'tracked';
+    const course = {
+      pos: { x: record.pos.x, z: record.pos.z },
+      targetEntityId: record.entityId,
+      label: record.classification,
+      reason: `Investigate ${record.classification.toLowerCase()}`,
+      waypointKind: 'signal',
+      arrivalRadius: SIGNAL_INVESTIGATE_RADIUS,
+      autopilot: true,
+    };
+    this.bus.emit('ui:setCourse', course);
+    this.bus.emit('signal:tracked', { ...record, pos: { ...record.pos }, course });
+    return true;
+  },
+
+  _updateTrackedSignal(state) {
+    const own = ensureSignalState(state);
+    const record = own.trackedId && own.records[own.trackedId];
+    if (!record || own.completed[record.id]) return;
+    const sectorId = state.world && state.world.currentSectorId;
+    if (record.sectorId && sectorId && record.sectorId !== sectorId) return;
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || !player.alive || !player.pos) return;
+    const target = record.entityId && state.entities && state.entities.get && state.entities.get(record.entityId);
+    const pos = target && target.pos || record.pos;
+    if (!pos) return;
+    record.pos = pos2(pos);
+    const distance = dist(player.pos, pos);
+    record.distance = Math.round(distance);
+    if (distance > SIGNAL_INVESTIGATE_RADIUS) return;
+    const receipt = {
+      id: `signal-receipt:${record.id}`,
+      signalId: record.id,
+      sectorId: record.sectorId,
+      classification: record.classification,
+      sourceKind: record.sourceKind,
+      sourceId: record.sourceId,
+      entityId: record.entityId,
+      pos: { ...record.pos },
+      outcome: 'investigated',
+      completedAt: Number(state.simTime) || 0,
+    };
+    own.completed[record.id] = receipt;
+    own.receipts.push(receipt);
+    while (own.receipts.length > SIGNAL_RECEIPT_CAP) own.receipts.shift();
+    record.status = 'investigated';
+    own.trackedId = null;
+    this.bus.emit('signal:investigated', { ...receipt, pos: { ...receipt.pos } });
+    this.bus.emit('signal:receipt', { ...receipt, pos: { ...receipt.pos } });
+  },
+
+  serialize() {
+    const own = ensureSignalState(this.state);
+    return cloneSignalState(own);
+  },
+
+  deserialize(data) {
+    this.state.signalInvestigation = normalizeSignalState(data);
+  },
+
+  destroy() {
+    if (this.bus && this._onSignalTrack && typeof this.bus.off === 'function') {
+      this.bus.off('signal:track', this._onSignalTrack);
+    }
+    this._onSignalTrack = null;
   },
 };
 

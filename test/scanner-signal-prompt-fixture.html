@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SpaceFace Scanner Signal Fixture</title>
+  <style>
+    :root { --mono:Consolas,monospace; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; width:100%; height:100%; overflow:hidden; background:#07121a; color:#d7e6ff; font-family:var(--mono); }
+    #scene { position:fixed; inset:0; background:
+      radial-gradient(circle at 14% 20%,rgba(215,230,255,.8) 0 1px,transparent 2px),
+      radial-gradient(circle at 72% 36%,rgba(215,230,255,.6) 0 1px,transparent 2px),
+      radial-gradient(circle at 40% 74%,rgba(215,230,255,.7) 0 1px,transparent 2px),
+      radial-gradient(ellipse at 44% 48%,rgba(28,92,110,.35),transparent 56%),#07121a;
+      background-size:137px 151px,197px 173px,223px 211px,100% 100%; }
+    .ship { position:absolute; left:47%; top:49%; width:48px; height:72px; transform:rotate(18deg);
+      clip-path:polygon(50% 0,88% 82%,52% 65%,12% 88%,27% 30%); background:#8bb6c7; box-shadow:0 0 18px #39d0ff; }
+    .return { position:absolute; right:24%; top:43%; width:24px; height:24px; border:1px solid #ffb35c; border-radius:50%; }
+    .return::after { content:''; position:absolute; inset:6px; border:1px solid #ffb35c; transform:rotate(45deg); }
+    #objective { position:absolute; left:18px; bottom:18px; width:300px; padding:10px 12px; border-left:3px solid #50d8ff;
+      background:rgba(5,9,18,.88); font:11px/1.45 var(--mono); }
+    #objective b { display:block; color:#50d8ff; font-size:9px; letter-spacing:.14em; }
+    #ui-root { position:fixed; inset:0; pointer-events:none; }
+  </style>
+</head>
+<body>
+  <div id="scene"><div class="ship"></div><div class="return"></div></div>
+  <div id="objective"><b>CURRENT OBJECTIVE</b>Survey the outer debris lane</div>
+  <div id="ui-root"></div>
+  <script type="module">
+    import { createSignalInvestigationPrompt } from '../src/ui/signalInvestigationPrompt.js';
+    const handlers=new Map(); const emitted=[];
+    const bus={
+      on(name,fn){ if(!handlers.has(name)) handlers.set(name,[]); handlers.get(name).push(fn); },
+      emit(name,payload){ emitted.push({name,payload}); for(const fn of handlers.get(name)||[]) fn(payload); },
+    };
+    const state={mode:'flight',simTime:100,ui:{docked:false}};
+    const gamepad={actions:{}};
+    const prompt=createSignalInvestigationPrompt({state,bus,gamepad});
+    const first={
+      id:'signal:quiet-hook',classification:'SHIP SIGNATURE',detail:'Traffic pattern unresolved. Close range or pulse again.',
+      confidence:.35,strength:.55,distance:900,range:2000,scanCount:1,pos:{x:900,z:0},
+    };
+    const second={...first,classification:'UNCERTAIN TRAFFIC',confidence:.62,scanCount:2};
+    bus.on('signal:track',(payload)=>bus.emit('signal:tracked',{...second,id:payload.signalId}));
+    function scan(record=first){ bus.emit('signal:scanResults',{primary:record,signals:[record,{...record,id:'signal:ore'}],total:2}); prompt.tick(); }
+    scan(first);
+    window.sfSignalFixture={
+      state,bus,prompt,gamepad,emitted,first,second,scan,
+      advance(seconds){ state.simTime+=seconds; prompt.tick(); },
+      complete(){ bus.emit('signal:investigated',{signalId:first.id,classification:'MULTIPLE DRIVE ECHOES',outcome:'investigated'}); prompt.tick(); },
+    };
+  </script>
+</body>
+</html>

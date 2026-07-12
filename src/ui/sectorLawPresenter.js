@@ -209,6 +209,7 @@ export function createSectorLawPresenter(ctx) {
   bus.on('law:incidentResolved', renderIncident);
   bus.on('law:incidentReceipt', showDirectReceipt);
   bus.on('pirateParley:demand', () => { if (active && active.mode === 'entry') hide(); });
+  bus.on('signal:scanResults', () => { if (active && active.mode === 'entry') hide(); });
   bus.on('game:new', hide);
   bus.on('game:load', hide);
 
