@@ -1,0 +1,319 @@
+{
+  "schema": "spaceface.m4AshlineShipMetrics.v1",
+  "packet": "M4-ASHLINE-SOURCE-FAMILY-V2-001",
+  "shipKey": "dart",
+  "spec": {
+    "id": "ashline_v2_dart",
+    "assetId": "SF_WHOLESHIP_ASHLINE_V2_DART",
+    "partId": "wholeship_ashline_v2_dart",
+    "role": "flyby_interceptor",
+    "title": "Ashline V2 Dart"
+  },
+  "sourceGlb": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_dart.glb",
+  "releaseCandidateGlb": "assets/ships/m4_ashline_v2/release_candidates/wholeships/ashline_v2_dart.glb",
+  "blend": "assets/ships/m4_ashline_v2/blender/ashline_v2_dart_production.blend",
+  "sha256_source": "91F364ED37ED839C34C5AE82F56153FA4F7CF1A2A11190646385DD00F7B442D4",
+  "report": {
+    "file": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\source\\wholeships\\ashline_v2_dart.glb",
+    "bytes": 1790720,
+    "totalTriangles": 26755,
+    "hullTriangles": 25503,
+    "lodBreakdown": {
+      "lod0": {
+        "triangles": 15636,
+        "primitives": 8,
+        "drawEstimate": 8,
+        "nodes": [
+          {
+            "name": "COLLISION_HULL_00",
+            "tris": 12
+          },
+          {
+            "name": "COLLISION_HULL_01",
+            "tris": 12
+          },
+          {
+            "name": "COLLISION_HULL_02",
+            "tris": 12
+          },
+          {
+            "name": "LOD0_Gun_Assembly",
+            "tris": 92
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_CORE",
+            "tris": 216
+          },
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 14828
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 248
+          },
+          {
+            "name": "LOD0_Merged_Material_Red_Paint",
+            "tris": 216
+          }
+        ]
+      },
+      "lod1": {
+        "triangles": 8154,
+        "primitives": 5,
+        "drawEstimate": 5,
+        "nodes": [
+          {
+            "name": "LOD1_Gun_Assembly",
+            "tris": 92
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_CORE",
+            "tris": 112
+          },
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 7710
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 128
+          },
+          {
+            "name": "LOD1_Merged_Material_Red_Paint",
+            "tris": 112
+          }
+        ]
+      },
+      "lod2": {
+        "triangles": 2965,
+        "primitives": 1,
+        "drawEstimate": 1,
+        "nodes": [
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 2965
+          }
+        ]
+      }
+    },
+    "sockets": [
+      "SOCKET_Camera_Focus",
+      "SOCKET_Cargo_Ventral",
+      "SOCKET_Engine_Main",
+      "SOCKET_Mining_Front",
+      "SOCKET_RCS_Port",
+      "SOCKET_RCS_Starboard",
+      "SOCKET_Trail_Main",
+      "SOCKET_Utility_Dorsal",
+      "SOCKET_Weapon_Front"
+    ],
+    "materials": [
+      "Material_Mechanical",
+      "Material_Cyan",
+      "Material_Hull",
+      "Material_Red_Paint"
+    ],
+    "primitiveCount": 14,
+    "tangentPrimitiveCount": 14,
+    "uvPrimitiveCount": 14,
+    "spacefaceAsset": {
+      "contractVersion": 1,
+      "assetId": "SF_WHOLESHIP_ASHLINE_V2_DART",
+      "slot": "hull",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "textureCompression": "PNG-source",
+      "chamfered": true,
+      "bevelRadiusM": 0.025,
+      "partId": "wholeship_ashline_v2_dart",
+      "category": "wholeships",
+      "sourceRole": "whole-ship hull",
+      "packet": "M4-ASHLINE-SOURCE-FAMILY-V2-001",
+      "family": "ashline_v2",
+      "role": "flyby_interceptor",
+      "triangleCount": 26755,
+      "hullTriangleCount": 25503,
+      "deliverableRole": "candidate_multi_lod",
+      "lods": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "wiringStatus": "candidate_not_default_play",
+      "blenderBasis": "Z-up",
+      "exportBasis": "Y-up glTF",
+      "lod0AabbSize": [
+        17.472002029418945,
+        2.9443142414093018,
+        6.501453399658203
+      ],
+      "collisionBounds": {
+        "min": [
+          -3.144960403442383,
+          -1.2366119623184204,
+          -2.7306103706359863
+        ],
+        "max": [
+          3.144960403442383,
+          1.2366119623184204,
+          2.7306103706359863
+        ],
+        "size": [
+          6.289920806884766,
+          2.473223924636841,
+          5.461220741271973
+        ]
+      }
+    },
+    "lodBuildStats": [
+      {
+        "lod": "lod0",
+        "decimate_ratio": 1.0,
+        "mesh_count": 5,
+        "triangles": 15600,
+        "meshes": [
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 14828,
+            "materials": [
+              "Material_Hull"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 248,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Red_Paint",
+            "tris": 216,
+            "materials": [
+              "Material_Red_Paint"
+            ]
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_CORE",
+            "tris": 216,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD0_Gun_Assembly",
+            "tris": 92,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          }
+        ],
+        "removed_close_only": [],
+        "draw_estimate": 5
+      },
+      {
+        "lod": "lod1",
+        "decimate_ratio": 0.52,
+        "mesh_count": 5,
+        "triangles": 8154,
+        "meshes": [
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 7710,
+            "materials": [
+              "Material_Hull"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 128,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Red_Paint",
+            "tris": 112,
+            "materials": [
+              "Material_Red_Paint"
+            ]
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_CORE",
+            "tris": 112,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD1_Gun_Assembly",
+            "tris": 92,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          }
+        ],
+        "removed_close_only": [],
+        "draw_estimate": 5
+      },
+      {
+        "lod": "lod2",
+        "decimate_ratio": 0.2,
+        "mesh_count": 1,
+        "triangles": 2965,
+        "meshes": [
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 2965,
+            "materials": [
+              "Material_Hull"
+            ]
+          }
+        ],
+        "removed_close_only": [],
+        "draw_estimate": 1
+      }
+    ],
+    "lod0AabbSize": [
+      17.472002029418945,
+      2.9443142414093018,
+      6.501453399658203
+    ],
+    "collisionBounds": {
+      "min": [
+        -3.144960403442383,
+        -1.2366119623184204,
+        -2.7306103706359863
+      ],
+      "max": [
+        3.144960403442383,
+        1.2366119623184204,
+        2.7306103706359863
+      ],
+      "size": [
+        6.289920806884766,
+        2.473223924636841,
+        5.461220741271973
+      ]
+    },
+    "sha256": "91F364ED37ED839C34C5AE82F56153FA4F7CF1A2A11190646385DD00F7B442D4"
+  },
+  "renders": [
+    "assets/ships/m4_ashline_v2/evidence/dart/renders/forward_34.png",
+    "assets/ships/m4_ashline_v2/evidence/dart/renders/rear_34.png",
+    "assets/ships/m4_ashline_v2/evidence/dart/renders/top_ortho.png",
+    "assets/ships/m4_ashline_v2/evidence/dart/renders/side_ortho.png",
+    "assets/ships/m4_ashline_v2/evidence/dart/renders/readability_close.png",
+    "assets/ships/m4_ashline_v2/evidence/dart/renders/readability_under45px.png",
+    "assets/ships/m4_ashline_v2/evidence/dart/renders/readability_120px.png",
+    "assets/ships/m4_ashline_v2/evidence/dart/renders/silhouette_gray_45px.png",
+    "assets/ships/m4_ashline_v2/evidence/dart/renders/silhouette_gray_120px.png",
+    "assets/ships/m4_ashline_v2/evidence/dart/renders/gamesky_forward_34.png"
+  ],
+  "builtAt": "2026-07-12T22:18:50Z"
+}

@@ -1,0 +1,60 @@
+{
+  "gateOk": true,
+  "gateErrors": [],
+  "totalTriangles": 7637,
+  "hullTriangles": 6665,
+  "lodTriangles": {
+    "lod0": 4528,
+    "lod1": 2401,
+    "lod2": 708
+  },
+  "drawEstimates": {
+    "lod0": 7,
+    "lod1": 4,
+    "lod2": 1
+  },
+  "sockets": [
+    "SOCKET_Camera_Focus",
+    "SOCKET_Cargo_Ventral",
+    "SOCKET_Engine_Main",
+    "SOCKET_Mining_Front",
+    "SOCKET_RCS_Port",
+    "SOCKET_RCS_Starboard",
+    "SOCKET_Trail_Main",
+    "SOCKET_Utility_Dorsal",
+    "SOCKET_Weapon_Front"
+  ],
+  "materials": [
+    "Material_Mechanical",
+    "Material_Cyan",
+    "Material_Hull",
+    "Material_Red_Paint"
+  ],
+  "tangentPrimitiveCount": 12,
+  "uvPrimitiveCount": 12,
+  "lod0AabbSize": [
+    24.0,
+    7.246389865875244,
+    21.82400131225586
+  ],
+  "collisionBounds": {
+    "min": [
+      -4.320000171661377,
+      -3.0434837341308594,
+      -9.166080474853516
+    ],
+    "max": [
+      4.320000171661377,
+      3.0434837341308594,
+      9.166080474853516
+    ],
+    "size": [
+      8.640000343322754,
+      6.086967468261719,
+      18.33216094970703
+    ]
+  },
+  "sourceSha256": "FCF5A1FA08D47706CFEFD0FB204BE60C42F9404F0C6AAEA508CE2F13F0774C96",
+  "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\source\\wholeships\\ashline_v2_lode.glb",
+  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline_v2\\blender\\ashline_v2_lode_production.blend"
+}
