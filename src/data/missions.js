@@ -4,7 +4,7 @@
 
 export const MISSION_TUNING = {
   BASE: {
-    cargo_delivery: 180, bulk_trade: 170, bounty_hunt: 200, mining_quota: 130,
+    cargo_delivery: 180, bulk_trade: 170, bounty_hunt: 80, mining_quota: 130,
     salvage_retrieval: 160, escort: 180, patrol_clear: 220, smuggling_run: 250,
     passenger_transport: 160, recon_scan: 140,
   },
@@ -130,7 +130,7 @@ export const MISSION_TYPES = [
   {
     type: 'bounty_hunt', riskTierRange: [2, 4], chainable: true,
     completionEvent: 'enemy.killed (entityId==targetId)',
-    rewardFormula: 'round(200 * (1 + distance/2000) * RISK_MULT[riskTier] * targetStrength * f_faction * f_time)',
+    rewardFormula: 'round(80 * (1 + distance/2000) * RISK_MULT[riskTier] * targetStrength * f_faction * f_time)',
     timeFormula: 'round((distance/140 + 60) * slack)', taskTime: 60,
     failureCondition: 'timer OR target despawns/flees sector',
     constraints: { fValueIsTargetStrength: true },

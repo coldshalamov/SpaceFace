@@ -8,7 +8,7 @@ Ground truth (from recon, all live code): price = `basePrice·clamp((stock/baseE
 (`economy.js:133-135`); producers drift stock to 2.0×baseEq, consumers to 0.35× — that gradient IS
 route profit (`economy.js:9-13,163-165`; the baseEq/equilibrium split is load-bearing, never
 "simplify"). Price-impact is a closed-form integral (`avgMid`, `economy.js:137-149`) so flooding a
-lane self-decays. Spread 8% base, +6% frontier penalty. Stock drifts with ~1.9 min half-life every
+lane self-decays. Spread 8% base, +6% frontier penalty. Stock drifts with ~11.6 min half-life every
 5 s tick. **Hidden regional price cycles** (`economyCycles.js`): seeded sine regimes
 (stable/volatile/rising/falling/turbulent, re-rolled 180–420 s) with `predictPriceCurve()` +
 `regimeLabel()` — full forecasting, zero UI. Events (shortage/boom/blockade/piracy) propagate one

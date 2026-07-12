@@ -46,7 +46,7 @@ const PRICE_MULT_LO = 0.40, PRICE_MULT_HI = 2.60;
 const SPREAD_BASE = 0.08;          // 8% house edge
 const SPREAD_LO = 0.04, SPREAD_HI = 0.40;
 const FRONTIER_SPREAD_BONUS = 0.06; // low-wealth stations widen the spread up to +6%
-const DRIFT_RATE = 0.006;          // per-second; half-life ~ln2/0.006 ~= 1.9 min over a 5s tick
+const DRIFT_RATE = 0.001;          // per-second; half-life ~11.6 min: a flooded lane must actually cool
 const ECON_TICK_S = 5;             // economy ticks every 5s of sim time
 const EVENT_INTERVAL_S = 90;       // average seconds between spontaneous economic events (game-wide)
 const EQ_MULT_CLAMP = [0.25, 4.0]; // clamp net event/propagation eq multiplier per (station,cmdty)
@@ -87,7 +87,7 @@ const round = Math.round;
 // ---- static lookups (built once) ----------------------------------------------------------
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
-// station id -> { type, size, factionId, sectorId, neighbors:[sectorId] } from the SECTORS graph.
+// station id -> { type, size, factionId, sectorId, tier, neighbors:[sectorId] } from the SECTORS graph.
 // (world is the runtime owner of sectors, but dock:docked only hands us a stationId, so we resolve
 //  the station's profile straight from the data catalog — same pattern ships/cargo use.)
 const STATION_INFO = new Map();
@@ -95,7 +95,7 @@ for (const sec of SECTORS) {
   for (const st of sec.stations || []) {
     STATION_INFO.set(st.id, {
       type: st.type, size: st.size || 'M', factionId: st.factionId,
-      sectorId: sec.id, neighbors: sec.neighbors || [], security: sec.security,
+      sectorId: sec.id, tier: sec.tier || 0, neighbors: sec.neighbors || [], security: sec.security,
     });
   }
 }
@@ -109,7 +109,7 @@ function stationInfo(state, stationId) {
       for (const st of sec.stations || []) {
         if (st.id === stationId) {
           return { type: st.type, size: st.size || 'M', factionId: st.factionId,
-                   sectorId: sec.id, neighbors: sec.neighbors || [], security: sec.security };
+                   sectorId: sec.id, tier: sec.tier || 0, neighbors: sec.neighbors || [], security: sec.security };
         }
       }
     }
@@ -518,11 +518,23 @@ export const economy = {
     const entry = market && market[commodityId];
     const def = commodityDef(state, commodityId);
     if (!entry || !def) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: entry ? entry.stock : 0 };
+    const info = stationInfo(state, stationId);
+    const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
+    const marketTier = Math.max(0, Number(def.marketTier) || 0);
+    // Low-tier ports buy valuable finds from the player but do not create an infinite local
+    // supply of resources that only occur deeper in the world. This preserves discovery value
+    // and stops starter markets from becoming risk-free rare-ore vending machines.
+    if (side === 'buy' && marketTier > stationTier) {
+      return {
+        ok: false, reason: 'tier_unavailable', unitAvg: entry.lastBuy, total: 0,
+        priceImpactPct: 0, stockAfter: entry.stock, marketTier, stationTier,
+        legalityWarning: def.legality !== 'legal' ? def.legality : null,
+      };
+    }
     if (qty <= 0) {
       const u = side === 'buy' ? entry.lastBuy : entry.lastSell;
       return { ok: false, reason: 'qty', unitAvg: u, total: 0, priceImpactPct: 0, stockAfter: entry.stock, legalityWarning: def.legality !== 'legal' ? def.legality : null };
     }
-    const info = stationInfo(state, stationId);
     const frontier = info ? this.frontierPenalty(info) : 0;
     const spread = spreadOf(entry, frontier);
     const el = def.elasticity;

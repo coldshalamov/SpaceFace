@@ -99,11 +99,12 @@ Economy ticks every `ECON_TICK_S = 5`s of sim time (`economy.js:42,300-303`). Ea
 (station,commodity) stock drifts toward its effective target (`economy.js:337-341`):
 
 ```
-stock' = clamp( stock + DRIFT_RATE(0.006) * driftMod * (effectiveEq - stock) * tickDt, 0, ∞ )
+stock' = clamp( stock + DRIFT_RATE(0.001) * driftMod * (effectiveEq - stock) * tickDt, 0, ∞ )
 effectiveEq = equilibrium * eventEqMods(clamped 0.25..4.0) * cycleFactor        economy.js:182-190
 ```
 
-Half-life ≈ ln2/0.006 ≈ 1.9 min. `driftMod` is normally 1 but a BLOCKADE event sets it to 0.1
+Half-life ≈ ln2/0.001 ≈ 11.6 min, so a flooded player lane remains meaningfully depleted instead
+of regenerating behind a short station loop. `driftMod` is normally 1 but a BLOCKADE event sets it to 0.1
 (freezes restock). After drift, `recomputePrices()` caches `lastMid/lastBuy/lastSell` per entry.
 
 ### 1.5 Hidden regional price cycles — the "learn the wave" skill layer (`economyCycles.js`)
@@ -402,7 +403,7 @@ One multiplicative reward family across all types:
 `reward = round(BASE[type] * (1+dist/2000) * RISK_MULT[riskTier] * fValue * fFaction * fTime)`.
 `RISK_MULT = [1.0,1.3,1.7,2.2,3.0]`; `fFaction = 1.15 if rep≥25 else 1.0`; `fTime` = rush opt-in.
 
-**Live BASE (retuned vs CONTENT_BIBLE):** cargo_delivery 180, bulk_trade 170, bounty_hunt 200,
+**Live BASE (retuned vs CONTENT_BIBLE):** cargo_delivery 180, bulk_trade 170, bounty_hunt 80,
 mining_quota 130, salvage_retrieval 160, escort 180, patrol_clear 220, smuggling_run 250,
 passenger_transport 160, recon_scan 140. Types carry `riskTierRange`, `chainable`, `collateral` flags.
 

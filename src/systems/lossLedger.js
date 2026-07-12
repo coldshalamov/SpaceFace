@@ -179,7 +179,7 @@ function buildGhostConvoyOffer(state, entry, sameLane, signal) {
     taskTime: 60,
     ghostConvoy: true,
   };
-  const base = (MISSION_TUNING.BASE && MISSION_TUNING.BASE.bounty_hunt) || 200;
+  const base = (MISSION_TUNING.BASE && MISSION_TUNING.BASE.bounty_hunt) || 80;
   const fRisk = (MISSION_TUNING.RISK_MULT && MISSION_TUNING.RISK_MULT[dangerTier]) || 1;
   const fDist = 1 + distance / (MISSION_TUNING.distDivisor || 2000);
   const reward_cr = Math.round(base * fDist * fRisk * params.fValue);

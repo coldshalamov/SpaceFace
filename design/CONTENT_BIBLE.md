@@ -937,9 +937,9 @@ export const TECH_BY_ID = Object.fromEntries(TECH_NODES.map(n => [n.id, n]));
 
 export const MISSION_TUNING = {
   BASE: {            // base reward (cr) per type
-    cargo_delivery: 120, bulk_trade: 150, bounty_hunt: 200, mining_quota: 90,
-    salvage_retrieval: 130, escort: 180, patrol_clear: 220, smuggling_run: 250,
-    passenger_transport: 110, recon_scan: 100,
+    cargo_delivery: 180, bulk_trade: 170, bounty_hunt: 80, mining_quota: 130,
+    salvage_retrieval: 160, escort: 180, patrol_clear: 220, smuggling_run: 250,
+    passenger_transport: 160, recon_scan: 140,
   },
   RISK_MULT: [1.0, 1.3, 1.7, 2.2, 3.0],   // by riskTier 0..4
   BASE_REP: {        // rep gain on success to offering faction
