@@ -335,8 +335,9 @@ function poisonHiddenState(state, entity) {
 function assertFrameWhitelist(frame) {
   assertExactKeys(frame, ['contacts', 'events', 'self', 'tick'], 'SensorFrame');
   assertExactKeys(frame.self, [
-    'activity', 'capabilities', 'disabled', 'energyFraction', 'heatFraction', 'hullFraction', 'id',
-    'pos', 'radius', 'roe', 'rot', 'subsystemFractions', 'team', 'tethered', 'vel',
+    'activity', 'capabilities', 'cargoBand', 'combatDoctrineId', 'disabled', 'energyFraction',
+    'heatFraction', 'hullFraction', 'id', 'mobilityBand', 'operationalMassBand', 'pos', 'radius',
+    'roe', 'rot', 'subsystemFractions', 'team', 'tetherabilityBand', 'tethered', 'vel',
   ], 'SensorFrame.self');
   assertExactKeys(frame.self.pos, ['x', 'z'], 'SensorFrame.self.pos');
   assertExactKeys(frame.self.vel, ['x', 'z'], 'SensorFrame.self.vel');
@@ -349,9 +350,10 @@ function assertFrameWhitelist(frame) {
   }
   for (const contact of frame.contacts) {
     assertExactKeys(contact, [
-      'attachmentId', 'classification', 'confidence', 'disabled', 'exposed', 'id', 'kind',
-      'hostile', 'massClass', 'objectiveValue', 'ownedBySelf', 'ownerId', 'pos', 'radius', 'sourceSocketId',
-      'tags', 'targetId', 'targetSocketId', 'team', 'tethered', 'threat', 'vel',
+      'alive', 'attachmentId', 'classification', 'confidence', 'disabled', 'exposed', 'id', 'kind',
+      'cargoBand', 'hostile', 'massClass', 'mobilityBand', 'objectiveValue', 'operationalMassBand',
+      'ownedBySelf', 'ownerId', 'pos', 'radius', 'sourceSocketId', 'tags', 'targetId',
+      'targetSocketId', 'team', 'tetherabilityBand', 'tethered', 'threat', 'valid', 'vel', 'visible',
     ], 'SensorFrame.contact');
     assertExactKeys(contact.pos, ['x', 'z'], 'SensorFrame.contact.pos');
     assertExactKeys(contact.vel, ['x', 'z'], 'SensorFrame.contact.vel');

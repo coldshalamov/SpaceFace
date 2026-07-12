@@ -285,6 +285,14 @@ export function createActionService(context, attachments, routeDamage) {
     if (bus) bus.emit('combat:actionCancelled', { ...publicAction(instance, def), reason });
   }
 
+  function cancelActive(actorId, reason = 'external_cancel') {
+    const key = entityKey(actorId);
+    const instance = state.combat.actions.activeByActor[key];
+    if (!instance) return true;
+    cancel(instance, key, String(reason || 'external_cancel'));
+    return true;
+  }
+
   function reject(request, reason) {
     const def = catalog.actions.get(request.actionId);
     appendCombatTrace(state.combat, state.tick, 'action.rejected', {
@@ -331,7 +339,13 @@ export function createActionService(context, attachments, routeDamage) {
     };
   }
 
-  return Object.freeze({ requestAction, advance, inspect, phaseAt: (actionId, tick) => phaseAt(catalog.actions.get(actionId), tick) });
+  return Object.freeze({
+    requestAction,
+    advance,
+    inspect,
+    cancelActive,
+    phaseAt: (actionId, tick) => phaseAt(catalog.actions.get(actionId), tick),
+  });
 
   function combatPhysics() {
     return helpers && helpers.combatPhysics;
