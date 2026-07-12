@@ -13,6 +13,7 @@ import { buildVaelSniper } from './ships/vaelSniper.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import { buildAuthoredPlaceProp, buildAuthoredStationArchetype, wrapShipWithAuthoredParts } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
+import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 
@@ -116,6 +117,7 @@ export function installVisualOverrides(factory, options = {}) {
     if (!visual) visual = fallbackBuild(entity);
     assertReleaseHeroVisual(entity, visual, releaseMode);
     if (!visual || !entity || entity.type !== 'ship') return visual;
+    configureTransparentSinglePassSurfaces(visual);
     if (!authoredShips) return visual;
 
     // The wrapper is synchronous. Any later transport, validation, or composition failure leaves
@@ -124,7 +126,10 @@ export function installVisualOverrides(factory, options = {}) {
       return wrapShipWithAuthoredParts(entity, visual, {
         releaseMode,
         requiredWholeShip: isPlayerKestrel(entity),
-        onSwap: options.onAuthoredAssetSwap,
+        onSwap: (payload) => {
+          configureTransparentSinglePassSurfaces(payload && (payload.authoredRoot || payload.boundary));
+          if (typeof options.onAuthoredAssetSwap === 'function') options.onAuthoredAssetSwap(payload);
+        },
       });
     }
     catch (error) {
