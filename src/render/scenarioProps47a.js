@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const SCENARIO_47A_PROP_ASSET_IDS = Object.freeze({
   'asset.slice.47a_spindle': 'SF_47A_EVIDENCE_SPINDLE',
@@ -99,6 +100,42 @@ function addSocket(parent, name, pos, role, forward = [1, 0, 0]) {
   return socket;
 }
 
+function mergeStaticMeshes(root, material, name, meshes) {
+  if (!root || !material || !Array.isArray(meshes) || meshes.length < 2) return meshes && meshes[0] || null;
+  const transformed = [];
+  const sourceNames = [];
+  let castShadow = false;
+  let receiveShadow = false;
+  for (const mesh of meshes) {
+    if (!mesh || !mesh.geometry) continue;
+    mesh.updateMatrix();
+    const geometry = mesh.geometry.clone();
+    geometry.applyMatrix4(mesh.matrix);
+    transformed.push(geometry);
+    sourceNames.push(mesh.name);
+    castShadow = castShadow || mesh.castShadow;
+    receiveShadow = receiveShadow || mesh.receiveShadow;
+  }
+  const geometry = mergeGeometries(transformed, false);
+  for (const transformedGeometry of transformed) transformedGeometry.dispose();
+  if (!geometry) throw new Error(`47-A static geometry merge failed for ${name}`);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+
+  for (const mesh of meshes) {
+    root.remove(mesh);
+    if (mesh.geometry) mesh.geometry.dispose();
+  }
+  const merged = new THREE.Mesh(geometry, material);
+  merged.name = name;
+  merged.castShadow = castShadow;
+  merged.receiveShadow = receiveShadow;
+  merged.userData.staticBatch = true;
+  merged.userData.sourcePartNames = sourceNames;
+  root.add(merged);
+  return merged;
+}
+
 function attachPulse(mesh, base = 1, amp = 0.35, hz = 1.4) {
   if (!mesh || !mesh.material) return;
   mesh.onBeforeRender = () => {
@@ -151,20 +188,27 @@ function buildBourseCarrierWreck(entity) {
   const ember = glow('Bourse_Fracture_Ember', '#ff7a35', 1.35, 0.8);
   const signal = glow('Bourse_Mass_Echo', '#62e6ff', 1.2, 0.7);
 
-  addBox(root, char, 'Bourse_Carrier_Spine', [R * 1.25, R * 0.14, R * 0.16], [-R * 0.05, 0, 0], [0.04, -0.12, 0.02]);
-  addBox(root, char, 'Bourse_Broken_FlightDeck', [R * 0.92, R * 0.08, R * 0.42], [R * 0.05, R * 0.08, R * 0.26], [0.08, -0.18, 0.18]);
-  addBox(root, char, 'Bourse_Cargo_Bay_Shell', [R * 0.76, R * 0.11, R * 0.34], [-R * 0.28, -R * 0.05, -R * 0.34], [-0.05, 0.1, -0.22]);
+  const charredMeshes = [
+    addBox(root, char, 'Bourse_Carrier_Spine', [R * 1.25, R * 0.14, R * 0.16], [-R * 0.05, 0, 0], [0.04, -0.12, 0.02]),
+    addBox(root, char, 'Bourse_Broken_FlightDeck', [R * 0.92, R * 0.08, R * 0.42], [R * 0.05, R * 0.08, R * 0.26], [0.08, -0.18, 0.18]),
+    addBox(root, char, 'Bourse_Cargo_Bay_Shell', [R * 0.76, R * 0.11, R * 0.34], [-R * 0.28, -R * 0.05, -R * 0.34], [-0.05, 0.1, -0.22]),
+  ];
+  const ribMeshes = [];
   for (let i = 0; i < 6; i++) {
     const x = -R * 0.55 + i * R * 0.19;
     const side = i % 2 === 0 ? -1 : 1;
-    addBox(root, rib, `Bourse_Rib_${i}`, [R * 0.035, R * 0.32, R * 0.82], [x, R * 0.04, side * R * 0.08], [0.25, 0.04 * side, 0.55 * side]);
+    ribMeshes.push(addBox(root, rib, `Bourse_Rib_${i}`, [R * 0.035, R * 0.32, R * 0.82], [x, R * 0.04, side * R * 0.08], [0.25, 0.04 * side, 0.55 * side]));
   }
   for (let i = 0; i < 4; i++) {
     const x = -R * 0.42 + i * R * 0.3;
     const z = (i % 2 === 0 ? 1 : -1) * R * 0.42;
     const chunk = addBox(root, char, `Bourse_Debris_Cover_${i}`, [R * 0.22, R * 0.1, R * 0.18], [x, -R * 0.04, z], [0.2 * i, 0.5 - i * 0.2, 0.34]);
     chunk.userData.coverDebris = true;
+    charredMeshes.push(chunk);
   }
+  const charredBatch = mergeStaticMeshes(root, char, 'Bourse_Carrier_Spine', charredMeshes);
+  charredBatch.userData.coverDebrisCount = 4;
+  mergeStaticMeshes(root, rib, 'Bourse_Exposed_Ribs', ribMeshes);
   addTorusX(root, ember, 'Bourse_Fracture_Arc', R * 0.36, R * 0.012, [-R * 0.08, R * 0.02, 0], 8, 32);
   const echo = addTorusX(root, signal, 'Bourse_Mass_Echo_Ring', R * 0.55, R * 0.01, [R * 0.18, R * 0.03, 0], 8, 40);
   attachPulse(echo, 0.9, 0.25, 0.7);
