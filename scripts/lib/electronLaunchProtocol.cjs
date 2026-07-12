@@ -1,5 +1,91 @@
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+
+const PLAYER_ELECTRON_PORT = 41788;
+const ELECTRON_ISOLATED_EVIDENCE_MODE = 'isolated-evidence';
+const ELECTRON_EVIDENCE_PROFILE_DIR = 'spaceface-electron-evidence';
+const EVIDENCE_PROFILE_NAME = /^probe-[a-z0-9][a-z0-9_-]{0,63}-[a-z0-9]{6}$/i;
+
+function electronEvidenceProfileRoot(tmpDir = os.tmpdir()) {
+  return path.resolve(tmpDir, ELECTRON_EVIDENCE_PROFILE_DIR);
+}
+
+function inspectElectronEvidenceProfilePath(candidate, { tmpDir = os.tmpdir() } = {}) {
+  const root = electronEvidenceProfileRoot(tmpDir);
+  const failures = [];
+  const raw = String(candidate || '').trim();
+  if (!raw) failures.push('profile path is missing');
+  if (raw && !path.isAbsolute(raw)) failures.push('profile path must be absolute');
+  const resolved = raw ? path.resolve(raw) : '';
+  const basename = resolved ? path.basename(resolved) : '';
+  if (resolved === root) failures.push('profile cannot be the evidence root itself');
+  if (resolved && path.dirname(resolved) !== root) failures.push('profile must be a direct child of the evidence root');
+  if (basename && !EVIDENCE_PROFILE_NAME.test(basename)) failures.push('profile name is not creator-issued');
+
+  if (resolved && failures.length === 0) {
+    try {
+      const rootStat = fs.lstatSync(root);
+      if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) {
+        failures.push('evidence profile root must be a real directory');
+      }
+      const stat = fs.lstatSync(resolved);
+      if (!stat.isDirectory()) failures.push('profile path must be a directory');
+      if (stat.isSymbolicLink()) failures.push('profile path cannot be a symlink or junction');
+      const realRoot = fs.realpathSync.native(root);
+      const realProfile = fs.realpathSync.native(resolved);
+      const normalize = (value) => process.platform === 'win32' ? value.toLowerCase() : value;
+      if (normalize(realRoot) !== normalize(root)) failures.push('evidence profile root cannot redirect elsewhere');
+      if (normalize(path.dirname(realProfile)) !== normalize(realRoot)) {
+        failures.push('resolved profile must remain a direct evidence-root child');
+      }
+    } catch (error) {
+      failures.push(`profile path must exist as a real directory: ${error.message}`);
+    }
+  }
+
+  return { pass: failures.length === 0, root, resolved, basename, failures };
+}
+
+function isAllowedElectronListenerPort({ isolatedEvidence = false, port } = {}) {
+  const value = Number(port);
+  if (!Number.isSafeInteger(value) || value <= 0 || value > 65_535) return false;
+  return isolatedEvidence ? value !== PLAYER_ELECTRON_PORT : value === PLAYER_ELECTRON_PORT;
+}
+
+function resolveElectronLaunchConfig(env = process.env) {
+  if (!env || env.SPACEFACE_ELECTRON_TEST_MODE !== ELECTRON_ISOLATED_EVIDENCE_MODE) {
+    return {
+      isolatedEvidence: false,
+      port: PLAYER_ELECTRON_PORT,
+      userDataDir: null,
+      lockNamespace: 'player-default',
+    };
+  }
+
+  const profile = inspectElectronEvidenceProfilePath(env.SPACEFACE_ELECTRON_TEST_USER_DATA);
+  if (!profile.pass) {
+    throw new Error(`invalid isolated Electron evidence user-data profile: ${profile.failures.join('; ')}`);
+  }
+
+  const rawPort = String(env.SPACEFACE_ELECTRON_TEST_PORT ?? '0').trim();
+  if (!/^\d+$/.test(rawPort)) throw new Error('isolated Electron evidence port must be an integer');
+  const port = Number(rawPort);
+  if (!Number.isSafeInteger(port) || port < 0 || port > 65_535) {
+    throw new Error('isolated Electron evidence port must be within 0..65535');
+  }
+  if (port === PLAYER_ELECTRON_PORT) {
+    throw new Error(`isolated Electron evidence cannot use player port ${PLAYER_ELECTRON_PORT}`);
+  }
+
+  const resolvedUserDataDir = profile.resolved;
+  return {
+    isolatedEvidence: true,
+    port,
+    userDataDir: resolvedUserDataDir,
+    lockNamespace: resolvedUserDataDir,
+  };
+}
 
 function resolveWebRoot({ packaged, projectRoot, bundleRoot, exists = fs.existsSync } = {}) {
   const project = path.resolve(String(projectRoot || '.'));
@@ -147,10 +233,14 @@ const TERMINAL_PRIORITY = Object.freeze([
 
 module.exports = {
   appendLaunchReceipt,
+  electronEvidenceProfileRoot,
   evaluateLaunchOutcome,
   formatLaunchOutcome,
+  inspectElectronEvidenceProfilePath,
+  isAllowedElectronListenerPort,
   isAssetPreloadFailureMessage,
   parseLaunchReceipts,
+  resolveElectronLaunchConfig,
   resolveWebRoot,
   tailDiagnosticText,
 };

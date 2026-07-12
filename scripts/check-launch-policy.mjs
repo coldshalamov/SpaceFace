@@ -53,10 +53,18 @@ assert.match(
 assert.match(electronMain, /const PORT = 41788;/, 'Electron must use the fixed packaged-app port so localStorage saves survive relaunches');
 assert.match(
   electronMain,
+  /const launchPort = launchConfig\.isolatedEvidence \? launchConfig\.port : PORT;/,
+  'Only explicit isolated evidence may replace the fixed player port',
+);
+assert.match(
+  electronMain,
   /resolveWebRoot\(\{\s*packaged:\s*app\.isPackaged,\s*projectRoot:\s*PROJECT_ROOT,\s*bundleRoot:\s*BUNDLE_ROOT\s*\}\)/,
   'Electron must resolve source in dev and fail closed if the packaged web root is incomplete'
 );
-assert.match(electronMain, /server\.listen\(PORT, '127\.0\.0\.1'/, 'Electron must try the fixed port before any fallback port');
+assert.match(electronMain, /listenGameServer\(root, launchPort\)/,
+  'Electron must pass the player port or explicit evidence port into its bounded listener');
+assert.match(electronMain, /server\.listen\(requestedPort, '127\.0\.0\.1'/,
+  'Electron listener must bind only the selected port on IPv4 loopback');
 assert.match(electronMain, /EADDRINUSE/, 'Electron must classify fixed-port contention without changing the save origin');
 assert.match(electronMain, /package-invalid/, 'Electron must publish an actionable receipt for an incomplete packaged bundle');
 assert.match(electronMain, /__spaceface_health/, 'Electron fixed-port ownership probe must work when dev diagnostics are stripped');

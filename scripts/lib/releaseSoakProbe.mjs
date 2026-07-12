@@ -12,6 +12,10 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { collectPageIssues } from './browser-issues.mjs';
+import {
+  assertIsolatedElectronRootUrl,
+  createIsolatedElectronLaunch,
+} from './electronTestIsolation.mjs';
 import { loadPlaywright } from './load-playwright.mjs';
 import {
   RELEASE_SOAK_SCHEMA,
@@ -80,6 +84,7 @@ export async function runReleaseSoakProbe({
   let canonicalUrlTracker = null;
   let rootUrl = null;
   let cleanupReport = null;
+  let isolatedLaunch = null;
 
   try {
     const startFingerprint = await strictWorktreeFingerprint(root);
@@ -100,10 +105,15 @@ export async function runReleaseSoakProbe({
         processMonitor = owned.processMonitor;
         pageIssueTracker = owned.pageIssueTracker;
       });
-      ({ page, electronApp, childProcess, processMonitor, pageIssueTracker } = launched);
-      canonicalUrlTracker = createElectronCanonicalUrlTracker(page, { bootstrapTimeoutMs: 10_000, pollIntervalMs: 75 });
+      ({ page, electronApp, childProcess, processMonitor, pageIssueTracker, isolatedLaunch } = launched);
+      canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
+        bootstrapTimeoutMs: 10_000,
+        pollIntervalMs: 75,
+        allowAnyLoopbackPort: true,
+      });
       await pageIssueTracker.bindAndBackfillPage(page);
       rootUrl = await canonicalUrlTracker.waitForCanonicalRoot(10_000);
+      rootUrl = assertIsolatedElectronRootUrl(rootUrl);
       assert.deepEqual(inspectCanonicalRootUrl(page.url(), rootUrl).failures, [], 'Electron must remain on its launcher-owned canonical root');
       await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
     }
@@ -189,6 +199,9 @@ export async function runReleaseSoakProbe({
     cleanupReport = runtime === 'electron'
       ? await closeOwnedElectronRuntime({ page, electronApp, childProcess, canonicalUrlTracker, processMonitor, rootUrl })
       : await closeOwnedResources({ page, context, browser, server: ownedServer, canonicalUrlTracker });
+    if (runtime === 'electron' && cleanupReport?.pass === true) {
+      isolatedLaunch?.cleanup({ runtimeClosed: true });
+    }
     const cleanup = normalizeCleanup(runtime, cleanupReport);
     const cleanupValidation = validateCleanupEvidence(cleanup, { runtimeKind: runtime });
     const errors = buildErrorEvidence(runtime, pageIssueTracker);
@@ -254,6 +267,9 @@ export async function runReleaseSoakProbe({
         cleanupReport = await closeOwnedResources({ page, context, browser, server: ownedServer, canonicalUrlTracker }).catch(() => null);
       }
     }
+    if (runtime === 'electron' && isolatedLaunch && cleanupReport?.pass === true) {
+      isolatedLaunch.cleanup({ runtimeClosed: true });
+    }
     pageIssueTracker?.stop?.();
     await writeFile(path.join(outputDir, 'run.log'), `${logLines.join('\n')}\n`, 'utf8').catch(() => {});
   }
@@ -275,14 +291,20 @@ async function launchBrowser(viewport) {
 
 async function launchElectron(root, onOwnership = () => {}) {
   const { _electron: electron } = await loadPlaywright();
-  const electronApp = await electron.launch({ args: ['.'], cwd: root, timeout: 90_000 });
+  const isolatedLaunch = createIsolatedElectronLaunch({ root, taskId: 'release-soak-electron' });
+  let electronApp;
+  try {
+    electronApp = await electron.launch(isolatedLaunch.options);
+  } catch (error) {
+    throw error;
+  }
   const processMonitor = createElectronProcessMonitor({ electronApp, childProcess: electronApp.process() });
   const childProcess = processMonitor.childProcess;
   const pageIssueTracker = createStrictElectronApplicationIssueTracker(electronApp);
   onOwnership({ electronApp, processMonitor, childProcess, pageIssueTracker });
   assert(childProcess, 'Electron launch must expose its owned child process');
   const page = await electronApp.firstWindow({ timeout: 90_000 });
-  return { electronApp, processMonitor, childProcess, pageIssueTracker, page };
+  return { electronApp, processMonitor, childProcess, pageIssueTracker, page, isolatedLaunch };
 }
 
 async function runSoakCycle(page, { index, outputDir, log }) {

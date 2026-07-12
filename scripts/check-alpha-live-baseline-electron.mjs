@@ -13,6 +13,11 @@ import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import {
+  assertIsolatedElectronRootUrl,
+  createIsolatedElectronLaunch,
+  PLAYER_ELECTRON_PORT,
+} from './lib/electronTestIsolation.mjs';
+import {
   inspectCanonicalRootUrl,
   publishAcceptedArtifacts,
   worktreeFingerprint,
@@ -64,6 +69,7 @@ let routeProcessHealth = null;
 let cleanupReport = null;
 let primaryError = null;
 let failureSnapshot = null;
+let isolatedLaunch = null;
 
 await mkdir(ALPHA_ROOT, { recursive: true });
 assertGuardedTaskPath(STAGING_ROOT, '.tmp-');
@@ -74,7 +80,8 @@ try {
   log(`worktree start ${startFingerprint.id}`);
 
   const { _electron: electron } = await loadPlaywright();
-  electronApp = await electron.launch({ args: ['.'], cwd: ROOT, timeout: 90_000 });
+  isolatedLaunch = createIsolatedElectronLaunch({ root: ROOT, taskId: TASK_ID });
+  electronApp = await electron.launch(isolatedLaunch.options);
   processMonitor = createElectronProcessMonitor({ electronApp, childProcess: electronApp.process() });
   childProcess = processMonitor.childProcess;
   assert(childProcess, 'Playwright Electron launch must expose the owned child process');
@@ -85,12 +92,14 @@ try {
   canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
     bootstrapTimeoutMs: 10_000,
     pollIntervalMs: 75,
+    allowAnyLoopbackPort: true,
   });
   await pageIssueTracker.bindAndBackfillPage(page);
   page.setDefaultTimeout(30_000);
   page.setDefaultNavigationTimeout(60_000);
 
   rootUrl = await canonicalUrlTracker.waitForCanonicalRoot(10_000);
+  rootUrl = assertIsolatedElectronRootUrl(rootUrl);
   rootUrl = assertElectronRootUrl(rootUrl);
   rootUrlCheck = { boundary: 'canonical-root-established', ...inspectCanonicalRootUrl(page.url(), rootUrl) };
   assert.deepEqual(rootUrlCheck.failures, [], `Electron launcher must establish the canonical slash root: ${JSON.stringify(rootUrlCheck)}`);
@@ -163,6 +172,13 @@ try {
     cleanupReport = error.cleanupReport || { pass: false, failures: [error.message || String(error)] };
     if (!primaryError) primaryError = error;
     else primaryError.cleanupError = serializeError(error);
+  }
+  if (isolatedLaunch && cleanupReport?.pass === true) {
+    try { isolatedLaunch.cleanup({ runtimeClosed: true }); }
+    catch (error) {
+      if (!primaryError) primaryError = error;
+      else primaryError.profileCleanupError = serializeError(error);
+    }
   }
   pageIssueTracker?.stop?.();
 
@@ -280,7 +296,7 @@ const publicationOutcome = await runGuardedElectronPublication({
       pass: true,
       rootUrl,
       rootPort: Number(new URL(rootUrl).port),
-      launch: { api: "_electron.launch({ args: ['.'], cwd: ROOT })", separateBrowserServer: false },
+      launch: { api: 'createIsolatedElectronLaunch({ root: ROOT, taskId: TASK_ID })', separateBrowserServer: false },
       runtime: runtimeMetadata,
       viewport: runtimeMetadata.viewport,
       gpu: routeResult.gpu,
@@ -455,8 +471,8 @@ function assertElectronRootUrl(actual) {
   assert.equal(url.password, '', 'Electron first window must not use URL credentials');
   const port = Number(url.port);
   assert(Number.isSafeInteger(port) && port > 0 && port <= 65_535, `Electron first window must expose a concrete listener port, got ${url.port}`);
-  assert.equal(port, 41_788,
-    `Electron primary evidence requires the stable save-origin port 41788; launcher fallback port ${port} is availability-only`);
+  assert.notEqual(port, PLAYER_ELECTRON_PORT,
+    `isolated Electron evidence must not use the player save-origin port ${PLAYER_ELECTRON_PORT}`);
   return url.href;
 }
 

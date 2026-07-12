@@ -61,8 +61,8 @@ assert.equal(
 );
 
 assert.match(checkSource,
-  /_electron\s*:\s*electron[\s\S]*electron\.launch\s*\(\s*\{\s*args:\s*\[\s*['"]\.['"]\s*\],\s*cwd:\s*ROOT/,
-  'production launches the real Electron app from the repository root');
+  /createIsolatedElectronLaunch\s*\(\s*\{\s*root:\s*ROOT[\s\S]*electron\.launch\s*\(\s*isolatedLaunch\.options\s*\)/,
+  'production launches the real Electron app with an isolated profile and listener');
 assert.match(checkSource, /runBrowserPublicRoute\s*\(\s*\{\s*page\b/,
   'production executes the exact shared accepted public route');
 assert.match(checkSource, /createElectronCanonicalUrlTracker\s*\(\s*page\s*,\s*\{/,

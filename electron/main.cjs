@@ -11,7 +11,13 @@ const { app, BrowserWindow } = require('electron');
 const http = require('http');
 const path = require('path');
 const { createGameServer } = require('../scripts/lib/gameServer.cjs');
-const { appendLaunchReceipt, isAssetPreloadFailureMessage, resolveWebRoot } = require('../scripts/lib/electronLaunchProtocol.cjs');
+const {
+  appendLaunchReceipt,
+  isAllowedElectronListenerPort,
+  isAssetPreloadFailureMessage,
+  resolveElectronLaunchConfig,
+  resolveWebRoot,
+} = require('../scripts/lib/electronLaunchProtocol.cjs');
 
 // WEB ROOT: packaged desktop serves the bundled release output in build/web/. Electron dev serves
 // the project root so `npm run electron` and `node server.js 8123` run the same source route even
@@ -23,38 +29,78 @@ const BUNDLE_ROOT = path.join(PROJECT_ROOT, 'build', 'web');
 // origin = scheme://host:port. A random port (listen(0)) changes the origin every launch, so every
 // prior save becomes invisible. A fixed port keeps the origin stable across relaunches → saves persist.
 const PORT = 41788;
+const ISOLATED_PORT_RETRY_LIMIT = 3;
+const launchConfig = resolveElectronLaunchConfig(process.env);
+const launchPort = launchConfig.isolatedEvidence ? launchConfig.port : PORT;
 const RECEIPT_PATH = process.env.SPACEFACE_LAUNCH_RECEIPT || '';
 const receipt = (status, details = {}) => appendLaunchReceipt(RECEIPT_PATH, status, details);
+
+// Explicit evidence probes use a temporary Chromium profile. Electron's single-instance lock is
+// scoped by userData, so applying this before requestSingleInstanceLock gives the probe its own
+// lock namespace and keeps player saves/preferences untouched. Normal launches never call setPath.
+if (launchConfig.isolatedEvidence) {
+  app.setPath('userData', launchConfig.userDataDir);
+}
 
 // GPU hints (shell-only — must not change gameplay/renderer features).
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 
-function startServer() {
-  return new Promise((resolve, reject) => {
-    let root;
-    try {
-      root = resolveWebRoot({ packaged: app.isPackaged, projectRoot: PROJECT_ROOT, bundleRoot: BUNDLE_ROOT });
-    } catch (error) {
-      receipt('package-invalid', { code: error.code, message: error.message, entry: error.entry });
-      reject(error);
-      return;
+async function startServer() {
+  let root;
+  try {
+    root = resolveWebRoot({ packaged: app.isPackaged, projectRoot: PROJECT_ROOT, bundleRoot: BUNDLE_ROOT });
+  } catch (error) {
+    receipt('package-invalid', { code: error.code, message: error.message, entry: error.entry });
+    throw error;
+  }
+
+  const attemptLimit = launchConfig.isolatedEvidence ? ISOLATED_PORT_RETRY_LIMIT : 1;
+  for (let attempt = 1; attempt <= attemptLimit; attempt += 1) {
+    const { server, actualPort } = await listenGameServer(root, launchPort);
+    if (isAllowedElectronListenerPort({ isolatedEvidence: launchConfig.isolatedEvidence, port: actualPort })) {
+      receipt('server-ready', {
+        port: actualPort,
+        requestedPort: launchPort,
+        isolatedEvidence: launchConfig.isolatedEvidence,
+        attempt,
+      });
+      return actualPort;
     }
+
+    await closeListeningServer(server);
+    receipt('isolated-port-retry', { port: actualPort, attempt, attemptLimit });
+  }
+
+  const error = new Error(`isolated Electron listener repeatedly resolved to forbidden player port ${PORT}`);
+  error.code = 'SPACEFACE_ISOLATED_PORT_COLLISION';
+  throw error;
+}
+
+function listenGameServer(root, requestedPort) {
+  return new Promise((resolve, reject) => {
     const server = createGameServer({ root, async: false, devDiagnostics: !app.isPackaged });
     // Keep the fixed origin authoritative. An ephemeral fallback hides the actual port owner and
     // makes existing localStorage saves disappear for the run, so classify contention instead.
     server.once('error', async (err) => {
       if (err && err.code === 'EADDRINUSE') {
-        const owner = await probeSpaceFacePort(PORT) ? 'spaceface' : 'other';
-        receipt('port-conflict', { owner, port: PORT, message: err.message });
+        const owner = await probeSpaceFacePort(requestedPort) ? 'spaceface' : 'other';
+        receipt('port-conflict', { owner, port: requestedPort, message: err.message });
       }
       reject(err);
     });
-    server.listen(PORT, '127.0.0.1', () => {
-      receipt('server-ready', { port: PORT });
-      resolve(PORT);
+    server.listen(requestedPort, '127.0.0.1', () => {
+      const address = server.address();
+      const actualPort = address && typeof address === 'object' ? address.port : requestedPort;
+      resolve({ server, actualPort });
     });
+  });
+}
+
+function closeListeningServer(server) {
+  return new Promise((resolve, reject) => {
+    server.close((error) => error ? reject(error) : resolve());
   });
 }
 
@@ -110,7 +156,11 @@ if (!app.requestSingleInstanceLock()) {
   receipt('existing-instance');
   app.quit();
 } else {
-  receipt('starting', { port: PORT });
+  receipt('starting', {
+    port: launchPort,
+    isolatedEvidence: launchConfig.isolatedEvidence,
+    lockNamespace: launchConfig.lockNamespace,
+  });
   app.on('second-instance', () => {
     const w = BrowserWindow.getAllWindows()[0];
     if (w) { if (w.isMinimized()) w.restore(); w.focus(); }

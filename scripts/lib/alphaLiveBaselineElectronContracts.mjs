@@ -226,6 +226,7 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
 export function createElectronCanonicalUrlTracker(targetPage, options = {}) {
   const pollIntervalMs = Math.min(1_000, Math.max(1, Number(options.pollIntervalMs || 75)));
   const bootstrapTimeoutMs = Math.min(30_000, Math.max(1, Number(options.bootstrapTimeoutMs || 10_000)));
+  const allowAnyLoopbackPort = options.allowAnyLoopbackPort === true;
   const observations = [];
   const trackerErrors = [];
   const startedAt = new Date().toISOString();
@@ -260,7 +261,7 @@ export function createElectronCanonicalUrlTracker(targetPage, options = {}) {
         return observation;
       }
 
-      const candidate = inspectElectronRootCandidate(actual);
+      const candidate = inspectElectronRootCandidate(actual, { allowAnyLoopbackPort });
       const failures = candidate.failures.slice();
       if (!withinBootstrapWindow) failures.push(`canonical root arrived after ${bootstrapTimeoutMs} ms bootstrap window`);
       if (terminalBootstrapFailure) failures.push('canonical root arrived after a terminal bootstrap violation');
@@ -940,9 +941,9 @@ export async function closeOwnedElectronRuntime(resources, {
     }
   }
 
-  report.listenerRootCheck = inspectElectronRootCandidate(resources.rootUrl);
+  report.listenerRootCheck = inspectElectronRootCandidate(resources.rootUrl, { allowAnyLoopbackPort: true });
   if (report.listenerRootCheck.pass !== true) {
-    report.failures.push(`Electron listener refusal requires the exact stable root: ${report.listenerRootCheck.failures.join('; ')}`);
+    report.failures.push(`Electron listener refusal requires the exact owned loopback root: ${report.listenerRootCheck.failures.join('; ')}`);
   } else if (typeof fetchImpl !== 'function') {
     report.failures.push('Electron root URL or listener probe is unavailable');
   } else {
@@ -1286,7 +1287,7 @@ function checkRequiredLiveUrl(observation, requiredSource, expectedRootUrl, fail
   return { ...observation, ...check };
 }
 
-function inspectElectronRootCandidate(actualUrl) {
+function inspectElectronRootCandidate(actualUrl, { allowAnyLoopbackPort = false } = {}) {
   const failures = [];
   let actual;
   try {
@@ -1311,7 +1312,7 @@ function inspectElectronRootCandidate(actualUrl) {
   const port = Number(actual.port);
   if (!Number.isSafeInteger(port) || port <= 0 || port > 65_535) {
     failures.push(`Electron root must expose a concrete listener port, got ${actual.port || 'missing'}`);
-  } else if (port !== 41_788) {
+  } else if (!allowAnyLoopbackPort && port !== 41_788) {
     failures.push(`Electron primary evidence requires stable save origin port 41788, got ${port}`);
   }
   return {

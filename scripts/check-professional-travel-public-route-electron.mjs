@@ -11,6 +11,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import {
+  assertIsolatedElectronRootUrl,
+  createIsolatedElectronLaunch,
+} from './lib/electronTestIsolation.mjs';
 import { inspectCanonicalRootUrl } from './lib/alphaLiveBaselineContracts.mjs';
 import { travelRouteFingerprint } from './lib/professionalTravelFingerprint.mjs';
 import {
@@ -56,6 +60,7 @@ let cleanupFp = null;
 let cleanupReport = null;
 let primaryError = null;
 let routeProcessHealth = null;
+let isolatedLaunch = null;
 
 await mkdir(OUT_ROOT, { recursive: true });
 await mkdir(STAGING, { recursive: true });
@@ -65,7 +70,8 @@ try {
   log(`fingerprint start ${startFp.id}`);
 
   const { _electron: electron } = await loadPlaywright();
-  electronApp = await electron.launch({ args: ['.'], cwd: ROOT, timeout: 90_000 });
+  isolatedLaunch = createIsolatedElectronLaunch({ root: ROOT, taskId: TASK_ID_ELECTRON });
+  electronApp = await electron.launch(isolatedLaunch.options);
   processMonitor = createElectronProcessMonitor({ electronApp, childProcess: electronApp.process() });
   childProcess = processMonitor.childProcess;
   assert(childProcess, 'Electron launch must expose child process');
@@ -76,12 +82,14 @@ try {
   canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
     bootstrapTimeoutMs: 10_000,
     pollIntervalMs: 75,
+    allowAnyLoopbackPort: true,
   });
   await pageIssueTracker.bindAndBackfillPage(page);
   page.setDefaultTimeout(30_000);
   page.setDefaultNavigationTimeout(60_000);
 
   rootUrl = await canonicalUrlTracker.waitForCanonicalRoot(10_000);
+  assertIsolatedElectronRootUrl(rootUrl);
   assert.deepEqual(
     inspectCanonicalRootUrl(page.url(), rootUrl).failures,
     [],
@@ -142,6 +150,10 @@ try {
   } catch (error) {
     cleanupReport = { pass: false, failures: [error.message || String(error)] };
     primaryError ||= error;
+  }
+  if (isolatedLaunch && cleanupReport?.pass === true) {
+    try { isolatedLaunch.cleanup({ runtimeClosed: true }); }
+    catch (error) { primaryError ||= error; }
   }
   pageIssueTracker?.stop?.();
   try {
