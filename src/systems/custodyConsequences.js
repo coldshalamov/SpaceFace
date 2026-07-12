@@ -3,9 +3,14 @@
 // surrenderRecovery owns the physical capture and payout. This listener records what was captured
 // beneath the already-saved player blob, then projects the arrest into the canonical sector field.
 // It never writes sector danger, credits, or reputation directly.
+import { hash32 } from '../core/rng.js';
 
 const CAPTURE_HISTORY_CAP = 24;
 const SETTLED_ID_CAP = 128;
+const INTEL_MILESTONES = Object.freeze([2, 4, 7]);
+const NETWORK_PREFIX = Object.freeze(['Red', 'Black', 'Ash', 'Cinder', 'Hollow', 'Broken']);
+const NETWORK_NOUN = Object.freeze(['Latch', 'Wake', 'Ledger', 'Spur', 'Beacon', 'Hook']);
+const NETWORK_KIND = Object.freeze(['Network', 'Crew', 'Ring', 'Syndicate']);
 
 export const custodyConsequences = {
   name: 'custodyConsequences',
@@ -14,9 +19,16 @@ export const custodyConsequences = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
-    ensureLedger(this.state);
+    const ledger = ensureLedger(this.state);
+    // Existing saves may already contain repeat capture profiles from the capture-ledger packet.
+    // Schedule their first unapplied milestone instead of requiring one more arrest to wake it up.
+    for (const profile of Object.values(ledger.profiles)) scheduleIntel(profile, currentDay(this.state));
     this._onCustody = (payload) => this._record(payload || {});
-    if (this.bus && typeof this.bus.on === 'function') this.bus.on('law:custodyTransfer', this._onCustody);
+    this._onDayTick = (payload) => this._matureIntel(payload || {});
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('law:custodyTransfer', this._onCustody);
+      this.bus.on('day:tick', this._onDayTick);
+    }
   },
 
   newGame() {
@@ -57,13 +69,21 @@ export const custodyConsequences = {
       lastCapturedAt: null,
       lastSectorId: null,
       lastStationId: null,
+      lastAuthorityFactionId: null,
+      pendingIntelMilestone: null,
+      pendingIntelDay: null,
+      appliedIntelMilestone: 0,
+      networkName: null,
     };
+    normalizeProfile(profile);
     const bountyCr = Math.max(0, Math.round(Number(data.bountyCr) || 0));
     profile.captureCount += 1;
     profile.totalBountyCr += bountyCr;
     profile.lastCapturedAt = Number(state.simTime) || 0;
     profile.lastSectorId = sectorId;
     profile.lastStationId = payload.stationId || null;
+    profile.lastAuthorityFactionId = payload.authorityFactionId || null;
+    scheduleIntel(profile, currentDay(state));
     ledger.profiles[profileId] = profile;
 
     const record = {
@@ -100,8 +120,44 @@ export const custodyConsequences = {
       t: record.capturedAt,
     });
     this._say(record);
-    if (profile.captureCount === 2) this._surfaceRepeatProfile(profile, record);
     return record;
+  },
+
+  _matureIntel(payload) {
+    const ledger = ensureLedger(this.state);
+    const day = Number.isFinite(Number(payload.days))
+      ? Math.max(0, Math.floor(Number(payload.days)))
+      : currentDay(this.state);
+    const matured = [];
+    for (const profileId of Object.keys(ledger.profiles).sort()) {
+      const profile = normalizeProfile(ledger.profiles[profileId]);
+      const milestone = profile.pendingIntelMilestone;
+      if (!milestone || day < profile.pendingIntelDay) continue;
+      profile.networkName = profile.networkName || networkNameFor(this.state, profile.profileId);
+      profile.appliedIntelMilestone = milestone;
+      profile.pendingIntelMilestone = null;
+      profile.pendingIntelDay = null;
+      const intel = {
+        profileId: profile.profileId,
+        networkName: profile.networkName,
+        factionId: profile.factionId,
+        authorityFactionId: profile.lastAuthorityFactionId || null,
+        sectorId: profile.lastSectorId,
+        stationId: profile.lastStationId,
+        offenderType: profile.offenderType,
+        archetype: profile.archetype,
+        captureCount: profile.captureCount,
+        milestone,
+        day,
+      };
+      const impulse = intelligenceImpulse(intel);
+      this._emit('pirateRumor:counterIntel', { ...intel, worldImpulse: { ...impulse } });
+      this._emit('sectorsim:impulse', impulse);
+      this._surfaceRepeatProfile(profile, intel);
+      matured.push(intel);
+      scheduleIntel(profile, day);
+    }
+    return matured;
   },
 
   _say(record) {
@@ -122,18 +178,19 @@ export const custodyConsequences = {
     return true;
   },
 
-  _surfaceRepeatProfile(profile, record) {
-    const label = profile.archetype.replace(/_/g, ' ');
-    const headline = `Authority linked repeat ${label} captures; patrol intelligence updated.`;
+  _surfaceRepeatProfile(profile, intel) {
+    const headline = `Custody interviews linked the ${profile.networkName} repeat-offender profile; patrol intelligence updated.`;
     this._emit('news:headline', {
       headline,
       text: headline,
       kind: 'custody-intelligence',
-      sectorId: record.sectorId,
-      stationId: record.stationId,
-      factionId: record.authorityFactionId,
+      sectorId: intel.sectorId,
+      stationId: intel.stationId,
+      factionId: intel.authorityFactionId,
       profileId: profile.profileId,
       captureCount: profile.captureCount,
+      networkName: profile.networkName,
+      milestone: intel.milestone,
     });
   },
 
@@ -142,8 +199,11 @@ export const custodyConsequences = {
   },
 
   destroy() {
-    if (this.bus && typeof this.bus.off === 'function' && this._onCustody) this.bus.off('law:custodyTransfer', this._onCustody);
-    this._onCustody = null;
+    if (this.bus && typeof this.bus.off === 'function') {
+      if (this._onCustody) this.bus.off('law:custodyTransfer', this._onCustody);
+      if (this._onDayTick) this.bus.off('day:tick', this._onDayTick);
+    }
+    this._onCustody = this._onDayTick = null;
   },
 };
 
@@ -158,8 +218,42 @@ function ensureLedger(state) {
   ledger.totalCaptured = Math.max(0, Math.floor(Number(ledger.totalCaptured) || 0));
   if (!Array.isArray(ledger.captures)) ledger.captures = [];
   if (!ledger.profiles || typeof ledger.profiles !== 'object' || Array.isArray(ledger.profiles)) ledger.profiles = {};
+  for (const profile of Object.values(ledger.profiles)) normalizeProfile(profile);
   if (!Array.isArray(ledger.settledIds)) ledger.settledIds = [];
   return ledger;
+}
+
+function normalizeProfile(profile) {
+  if (!profile || typeof profile !== 'object') return profile;
+  profile.captureCount = Math.max(0, Math.floor(Number(profile.captureCount) || 0));
+  profile.appliedIntelMilestone = Math.max(0, Math.floor(Number(profile.appliedIntelMilestone) || 0));
+  profile.pendingIntelMilestone = Number.isFinite(Number(profile.pendingIntelMilestone))
+    ? Math.max(0, Math.floor(Number(profile.pendingIntelMilestone))) || null : null;
+  profile.pendingIntelDay = Number.isFinite(Number(profile.pendingIntelDay))
+    ? Math.max(0, Math.floor(Number(profile.pendingIntelDay))) : null;
+  profile.networkName = profile.networkName || null;
+  return profile;
+}
+
+function currentDay(state) {
+  if (Number.isFinite(Number(state && state.days))) return Math.max(0, Math.floor(Number(state.days)));
+  return Math.max(0, Math.floor((Number(state && state.simTime) || 0) / 600));
+}
+
+function scheduleIntel(profile, day) {
+  if (!profile || profile.pendingIntelMilestone) return false;
+  const applied = Math.max(0, profile.appliedIntelMilestone | 0);
+  const milestone = INTEL_MILESTONES.find((value) => value > applied && profile.captureCount >= value) || null;
+  if (!milestone) return false;
+  profile.pendingIntelMilestone = milestone;
+  profile.pendingIntelDay = Math.max(0, Math.floor(Number(day) || 0)) + 1;
+  return true;
+}
+
+function networkNameFor(state, profileId) {
+  const seed = state && state.meta && state.meta.seed || 1;
+  const pick = (list, salt) => list[hash32(seed, profileId, salt) % list.length];
+  return `${pick(NETWORK_PREFIX, 'prefix')} ${pick(NETWORK_NOUN, 'noun')} ${pick(NETWORK_KIND, 'kind')}`;
 }
 
 function eligible(entity, state) {
@@ -187,6 +281,21 @@ function custodyImpulse(record) {
     influenceDelta: 0.012 + Math.min(0.012, record.repeatIndex * 0.003),
     profileId: record.profileId,
     receiptId: record.receiptId,
+  };
+}
+
+function intelligenceImpulse(intel) {
+  const magnitude = Math.min(0.032, 0.012 + intel.milestone * 0.0025);
+  return {
+    kind: 'custody_intelligence',
+    sectorId: intel.sectorId,
+    danger: -magnitude,
+    pricePressure: -0.004,
+    factionId: intel.authorityFactionId,
+    influenceDelta: Math.min(0.04, 0.014 + intel.milestone * 0.003),
+    profileId: intel.profileId,
+    milestone: intel.milestone,
+    networkName: intel.networkName,
   };
 }
 
