@@ -21,7 +21,8 @@ export const STORY_CONTRACT_PREFIX = 'campaign47a:';
 export const AFTERMATH_RECORD_KIND = 'battle_wreck';
 
 export const CANONICAL_CONTACT_SIGNALS = Object.freeze([
-  'mining:yield', 'dock:docked', 'economy:tradeCompleted', 'entity:killed',
+  'mining:yield', 'dock:docked', 'economy:tradeCompleted', 'scan:completed',
+  'tether:reel', 'entity:killed',
   'ship:purchased', 'mission:accepted', 'mission:completed', 'mission:failed',
   'mission:offered', 'asset:deployed', 'encounter:spawned', 'encounter:resolved',
 ]);
@@ -71,12 +72,13 @@ export const EMBODIED_MISSIONS = Object.freeze([
   B({
     beat: 2, id: 'first_blood', contactId: 'contact_rook', contactName: 'Rook',
     location: B({ sectorId: 'sector_tethys_junction', stationId: 'station_tethys', destSectorId: 'sector_charon_expanse', destStationId: 'station_expanse', zoneId: 'zone_charon_ambush' }),
-    physicalContact: B({ mode: 'mission', steps: B([
-      B({ id: 'elroy', signal: 'entity:killed', accept: B(['entity:killed']) }),
+    physicalContact: B({ mode: 'ordered_and', steps: B([
+      B({ id: 'identify', signal: 'scan:completed', accept: B(['scan:completed', 'entity:killed']) }),
+      B({ id: 'resolve', signal: 'tether:reel', accept: B(['tether:reel', 'entity:killed']), requiresPrior: B(['identify']) }),
     ]) }),
     missionBoardContract: B({
       type: 'bounty_hunt', storyTag: 'campaign47a:b2:elroy',
-      title: 'PIRATE INTERDICTION — SECTOR INTERFERENCE', factionId: 'faction_scn',
+      title: '47-A INVESTIGATION — SECTOR INTERFERENCE', factionId: 'faction_scn',
       stationId: 'station_tethys', destStationId: 'station_expanse', destSectorId: 'sector_charon_expanse',
       reward_cr: 800, collateral_cr: 0, riskTier: 1, time_limit_s: 0,
       params: B({ clearCount: 1, targetStrength: 1.4, fValue: 1.4, taskTime: 60 }),
@@ -87,7 +89,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
         role: 'Pit Engineering, Maintenance Division',
       }),
     }),
-    recovery: 'Contact lost. Re-arm the same tag; the board still pays.',
+    recovery: 'Contact lost. Re-arm the same investigation; the board still pays.',
     careerIds: B(['hunter']),
     aftermath: B({ owner: 'aftermathWrecks', source: 'entity:killed', sectorId: 'sector_charon_expanse', zoneId: 'zone_charon_ambush' }),
   }),

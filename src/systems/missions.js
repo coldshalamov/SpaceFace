@@ -105,7 +105,10 @@ const MISSION_PORT_SAFE_RADIUS_WU = 1200;
 export const CONTRACT_47A_B0_TAG = 'campaign47a:b0:recovery';
 export const CONTRACT_47A_SAMPLE_ID = 'cmdty_47a_assay_sample';
 export const CONTRACT_47A_B1_TAG = 'campaign47a:b1:honest_work';
+export const CONTRACT_47A_B2_TAG = 'campaign47a:b2:elroy';
 const CONTRACT_47A_REWARD_CR = 400;
+const CONTRACT_47A_B2_SCAN_RADIUS_WU = 1200;
+const CONTRACT_47A_B2_CUSTODY_REEL_WU = 60;
 
 // Station size → tier number used for slot count (S=0,M=1,L=2).
 const SIZE_TIER = { S: 0, M: 1, L: 2 };
@@ -192,6 +195,11 @@ function missionNavReason(m, station, sector) {
       ? 'Return to Helios for replacement cargo'
       : 'Deliver sealed alloys to Tycho; compare the manifest';
   }
+  if (m.storyTag === CONTRACT_47A_B2_TAG) {
+    return p.investigationStage === 'identified'
+      ? 'Choose: fire to close the tag, or reel Elroy inside sixty'
+      : 'Scan the marked vessel before acting';
+  }
   switch (m.type) {
     case 'cargo_delivery': return `Deliver ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
     case 'bulk_trade': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
@@ -254,6 +262,7 @@ export const missions = {
     bus.on('dock:undocked', () => {
       this._lastDockedStation = null;
       this._activateContract47aB1OnDeparture();
+      this._activateContract47aB2OnDeparture();
     });
 
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
@@ -269,6 +278,7 @@ export const missions = {
     bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
     // recon_scan: a scan target (or sector scan) completed.
     bus.on('scan:completed', (p) => this._onScan(p));
+    bus.on('tether:reel', (p) => this._onContract47aB2TetherReel(p));
     // smuggling bust: a patrol scan caught contraband.
     bus.on('player:scannedByPatrol', (p) => this._onScannedByPatrol(p));
 
@@ -1114,6 +1124,21 @@ export const missions = {
       };
     }
 
+    if (m.storyTag === CONTRACT_47A_B2_TAG) {
+      const target = this._firstLiveMissionTarget(m);
+      const identified = m.params && m.params.investigationStage === 'identified';
+      if (target) {
+        return {
+          ...base,
+          label: identified ? 'Elroy' : '47-A Signal',
+          targetEntityId: target.id,
+          pos: { x: target.pos.x, z: target.pos.z },
+          reason: missionNavReason(m, station, sector),
+        };
+      }
+      return base;
+    }
+
     if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
       const target = this._firstLiveMissionTarget(m);
       if (target) return { ...base, targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason: 'Intercept the marked hostile' };
@@ -1382,12 +1407,9 @@ export const missions = {
       if (m.status !== 'active') continue;
       if (m.type !== 'bounty_hunt' && m.type !== 'patrol_clear') continue;
       if (!m.targetEntityIds.includes(p.id)) continue;
-      if (m.storyTag === 'campaign47a:b2:elroy') {
-        this.bus.emit('story:elroyResolved', {
-          entityId: p.id,
-          missionId: m.id,
-          storyTargetId: m.storyTarget && m.storyTarget.id || 'npc_elroy',
-        });
+      if (m.storyTag === CONTRACT_47A_B2_TAG) {
+        this._resolveContract47aB2(m, i, 'force', p.id);
+        continue;
       }
       m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
       m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + 1);
@@ -1409,6 +1431,7 @@ export const missions = {
   },
 
   _onScan(p) {
+    this._identifyContract47aB2(p || {});
     // recon_scan: a scan completed. We accept either a targeted scan (targetId matches a spawned
     // beacon) or a generic sector scan (targetId null) as one unit of progress.
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
@@ -1420,6 +1443,81 @@ export const missions = {
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
+  },
+
+  _identifyContract47aB2(p) {
+    const m = (this.state.missions.active || []).find((mission) => (
+      mission && mission.status === 'active' && mission.storyTag === CONTRACT_47A_B2_TAG
+    ));
+    if (!m || m.params && m.params.investigationStage === 'identified') return false;
+    if (this.state.world.currentSectorId !== m.destSectorId) return false;
+    const selectedId = p && p.targetId != null ? p.targetId : this.state.player && this.state.player.targetId;
+    if (selectedId == null || !m.targetEntityIds.includes(selectedId)) return false;
+    const target = this.state.entities.get(selectedId);
+    const player = this.state.entities.get(this.state.playerId);
+    if (!target || target.alive === false || !target.pos || !player || !player.pos) return false;
+    if (distSq(target.pos, player.pos) > CONTRACT_47A_B2_SCAN_RADIUS_WU * CONTRACT_47A_B2_SCAN_RADIUS_WU) return false;
+
+    m.params = m.params || {};
+    m.params.investigationStage = 'identified';
+    m.params.identifiedBy = 'scanner';
+    this._ensureCampaignSidecar();
+    recordBeatStep(this.state, 'scan:completed', {
+      missionId: m.id,
+      targetId: selectedId,
+      storyTargetId: m.storyTarget && m.storyTarget.id || 'npc_elroy',
+    }, this.state.simTime || 0);
+    this._refreshTrackedMissionNav(m);
+    this.bus.emit('mission:updated', { missionId: m.id, investigationStage: 'identified' });
+    this._sayStoryLine('Registry match: civilian maintenance vessel. Choose your response.', 6);
+    return true;
+  },
+
+  _onContract47aB2TetherReel(p) {
+    if (!p || p.actorId !== this.state.playerId || p.targetId == null) return false;
+    const after = Number(p.after);
+    if (!Number.isFinite(after) || after > CONTRACT_47A_B2_CUSTODY_REEL_WU) return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!m || m.status !== 'active' || m.storyTag !== CONTRACT_47A_B2_TAG) continue;
+      if (!m.targetEntityIds.includes(p.targetId)) continue;
+      if (!m.params || m.params.investigationStage !== 'identified') return false;
+      this._resolveContract47aB2(m, i, 'custody', p.targetId);
+      return true;
+    }
+    return false;
+  },
+
+  _resolveContract47aB2(m, index, outcome, entityId) {
+    if (!m || m.status !== 'active' || m.storyTag !== CONTRACT_47A_B2_TAG) return false;
+    m.params = m.params || {};
+    if (m.params.investigationOutcome) return false;
+    if (m.params.investigationStage !== 'identified') {
+      m.params.investigationStage = 'identified';
+      m.params.identifiedBy = 'wreck_registry';
+      this._ensureCampaignSidecar();
+      recordBeatStep(this.state, 'entity:killed', {
+        missionId: m.id,
+        targetId: entityId,
+        storyTargetId: m.storyTarget && m.storyTarget.id || 'npc_elroy',
+      }, this.state.simTime || 0);
+    }
+    m.params.investigationOutcome = outcome;
+    this.state.story.flags = this.state.story.flags || {};
+    this.state.story.flags.elroy_outcome = outcome;
+    this.bus.emit('story:elroyResolved', {
+      entityId,
+      missionId: m.id,
+      storyTargetId: m.storyTarget && m.storyTarget.id || 'npc_elroy',
+      outcome,
+      identifiedBy: m.params.identifiedBy || null,
+    });
+    this._sayStoryLine(outcome === 'custody'
+      ? 'Elroy secured. Registry discrepancy preserved.'
+      : 'Elroy destroyed. Registry discrepancy recorded.', 6);
+    m.objectiveProgress = m.objectiveTarget;
+    this._completeMission(m, index);
+    return true;
   },
 
   _onScannedByPatrol(p) {
@@ -1629,6 +1727,7 @@ export const missions = {
       repMult,
       source: m.source || undefined,
       causeFingerprint: m.cause && m.cause.fingerprint || undefined,
+      storyOutcome: m.params && m.params.investigationOutcome || undefined,
     };
 
     // ── research points for cerebral mission types (recon/salvage) — missions is a legit RP writer.
@@ -2095,7 +2194,24 @@ export const missions = {
       : beat.beat === 2 ? 'campaign47a:b2:elroy' : null;
     if (!expected || m.storyTag !== expected) return false;
     this._ensureCampaignSidecar();
-    const signal = beat.beat === 1 ? 'mission:completed' : 'entity:killed';
+    // Continue/adapter compatibility: older B2 instances may settle through the missions owner
+    // without the new live scanner receipt. Their pre-existing meaning was a force resolution, so
+    // stamp that deterministic outcome and satisfy the ordered identity step from the wreck record.
+    if (beat.beat === 2 && !(m.params && m.params.investigationOutcome)) {
+      m.params = m.params || {};
+      m.params.investigationStage = 'identified';
+      m.params.identifiedBy = 'legacy_wreck_registry';
+      m.params.investigationOutcome = 'force';
+      story.flags = story.flags || {};
+      story.flags.elroy_outcome = 'force';
+      recordBeatStep(this.state, 'entity:killed', {
+        missionId: m.id,
+        storyTag: m.storyTag,
+        storyTargetId: m.storyTarget && m.storyTarget.id || null,
+      }, this.state.simTime || 0);
+    }
+    const signal = beat.beat === 1 ? 'mission:completed'
+      : m.params && m.params.investigationOutcome === 'custody' ? 'tether:reel' : 'entity:killed';
     const observed = recordBeatStep(this.state, signal, {
       missionId: m.id,
       storyTag: m.storyTag,
@@ -2359,6 +2475,20 @@ export const missions = {
     return this.acceptMission(offer.id);
   },
 
+  _activateContract47aB2OnDeparture() {
+    const story = this.state && this.state.story;
+    if (!story || story.beatIndex !== 2) return false;
+    const active = (this.state.missions.active || []).find((m) => m && m.status === 'active' && m.storyTag === CONTRACT_47A_B2_TAG);
+    if (active) {
+      this.trackMission(active.id, { silent: true });
+      return true;
+    }
+    const board = this.ensureBoard('station_tethys');
+    const offer = board && board.slots && board.slots.find((row) => row && row.storyTag === CONTRACT_47A_B2_TAG);
+    if (!offer) return false;
+    return this.acceptMission(offer.id);
+  },
+
   newGame() {
     const state = this.state;
     state.missions.boards = {};
@@ -2526,6 +2656,7 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
     collateralLostCr,
     repDelta,
     researchPoints,
+    storyOutcome: m && m.params && m.params.investigationOutcome || null,
   };
 }
 
