@@ -27,6 +27,7 @@ const SCATTER_MIN = 90;             // min offset from zone center (world units)
 const SCATTER_FRAC = 0.55;          // scatter radius as a fraction of the zone radius
 const COMMUNICATOR_FIND_RADIUS = 140; // player within this of a communicator triggers the offer
 const WRECK_RADIUS = 9;             // matches intervention wrecks (tether/collision friendly)
+const WRECK_MASS = 1800;            // heavy but towable; the old 1e6 placeholder defeated the verb
 const WRECK_SALVAGE_TIME = 8;       // seconds the salvage beam takes to drain (mining._drainWreck)
 
 // Debris salvage pools — cheap, deterministic-per-seed loot so a plain wreck is still worth tethering.
@@ -54,8 +55,12 @@ export const salvage = {
     this.bus.on('sector:enter', (p) => this._planForSector(p && p.sectorId));
     // Scanning a communicator is an alternate trigger to reaching it (scan:completed carries a target).
     this.bus.on('scan:completed', (p) => this._onScan(p));
-    // Salvage points are transient world content; a loaded save re-plans on its next sector:enter.
-    this.bus.on('save:loaded', () => { state.salvage.points = []; state.salvage.plannedSectorId = null; });
+    // Clear transient entity ids BEFORE Continue rebuilds the sector. The prior save:loaded clear ran
+    // after world.enterSector, erasing the newly planned points and leaving orphan wreck entities.
+    this.bus.on('save:restoring', () => {
+      state.salvage.points = [];
+      state.salvage.plannedSectorId = null;
+    });
   },
 
   newGame() {
@@ -98,6 +103,14 @@ export const salvage = {
         const pos = { x: zone.center.x + Math.cos(ang) * r, z: zone.center.z + Math.sin(ang) * r };
         const isCommunicator = wantComm && i === 0;   // at most one communicator per zone, first slot
         const rec = this._makeSalvagePoint(sectorId, zone, i, pos, isCommunicator, rng, spawnEntity);
+        // A durable recovery sidecar may already own this stable point across Continue. Reserve it
+        // before salvage:placed so survivor/loss promotion systems cannot claim the same wreck.
+        const recovery = Object.values(state.recoveryEncounters && state.recoveryEncounters.records || {})
+          .find((row) => row && row.salvagePointId === rec.id);
+        if (recovery) {
+          rec.offered = true;
+          rec.recoveryEncounterId = recovery.id;
+        }
         state.salvage.points.push(rec);
       }
     }
@@ -126,7 +139,7 @@ export const salvage = {
         type: 'wreck',
         pos: { x: pos.x, z: pos.z },
         radius: WRECK_RADIUS,
-        mass: 1e6,
+        mass: WRECK_MASS,
         hull: 1,
         hullMax: 1,
         data: {

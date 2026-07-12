@@ -52,7 +52,9 @@ export function actionById(id) {
 export function actionForWreck(entity) {
   const data = entity && entity.data || {};
   const parentType = data.parentType || data.kind || data.poiType || 'debris';
-  if (data.unstableReactor === true || parentType === 'reactor') return SALVAGE_ACTIONS.vent_reactor;
+  if (data.unstableReactor === true || (data.unstableReactor && typeof data.unstableReactor === 'object') || parentType === 'reactor') {
+    return SALVAGE_ACTIONS.vent_reactor;
+  }
   if (parentType === 'communicator' || data.isCommunicator || data.wreckMissionId) return SALVAGE_ACTIONS.decode_blackbox;
   if (parentType === 'ship' || parentType === 'module' || parentType === 'military') return SALVAGE_ACTIONS.pull_module;
   return SALVAGE_ACTIONS.cut_panel;

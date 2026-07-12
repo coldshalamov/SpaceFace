@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SpaceFace Recovery Encounter Fixture</title>
+  <style>
+    :root{--mono:Consolas,monospace}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07121a;color:#d7e6ff;font-family:var(--mono)}
+    #scene{position:fixed;inset:0;background:radial-gradient(circle at 16% 22%,#b8cadb 0 1px,transparent 2px),radial-gradient(circle at 72% 38%,#7893aa 0 1px,transparent 2px),radial-gradient(ellipse at 46% 52%,rgba(36,92,110,.34),transparent 55%),#07121a;background-size:137px 151px,211px 187px,100% 100%}
+    .ship{position:absolute;left:44%;top:52%;width:46px;height:70px;clip-path:polygon(50% 0,88% 84%,51% 66%,12% 90%,28% 30%);background:#8bb6c7;transform:rotate(20deg);box-shadow:0 0 18px #39d0ff}
+    .wreck{position:absolute;left:61%;top:43%;width:72px;height:34px;border:2px solid #8d9bad;transform:rotate(-14deg);clip-path:polygon(0 36%,22% 0,73% 13%,100% 61%,62% 100%,17% 86%);background:#263342}
+    .line{position:absolute;left:47%;top:49%;width:15%;height:1px;background:#39d0ff;transform:rotate(-16deg);transform-origin:left}
+    #objective{position:absolute;left:18px;bottom:18px;width:300px;padding:10px 12px;border-left:3px solid #39d0ff;background:rgba(5,9,18,.88);font:11px/1.45 var(--mono)}#objective b{display:block;color:#39d0ff;font-size:9px;letter-spacing:.14em}
+    #ui-root{position:fixed;inset:0;pointer-events:none}
+  </style>
+</head>
+<body>
+  <div id="scene"><div class="ship"></div><div class="line"></div><div class="wreck"></div></div>
+  <div id="objective"><b>CURRENT OBJECTIVE</b>Stabilize the derelict recovery</div><div id="ui-root"></div>
+  <script type="module">
+    import { createRecoveryEncounterPrompt } from '../src/ui/recoveryEncounterPrompt.js';
+    const handlers=new Map(),emitted=[];
+    const bus={on(name,fn){if(!handlers.has(name))handlers.set(name,[]);handlers.get(name).push(fn)},emit(name,payload){emitted.push({name,payload});for(const fn of handlers.get(name)||[])fn(payload)}};
+    const state={mode:'flight',simTime:100,ui:{docked:false}},gamepad={actions:{}};
+    const prompt=createRecoveryEncounterPrompt({state,bus,gamepad});
+    const base={recoveryId:'recovery:fixture',sectorId:'sector_ceres_belt',entityId:9,pos:{x:480,z:0},classification:'DERELICT SALVAGE',condition:'life_support',conditionLabel:'LIFE SIGNS · POD INTACT',ownership:'REGISTERED CLAIM',legalStatus:'claimed',hasSurvivor:true,hazard:null,stabilization:0,stabilizationMode:null,towClear_wu:260};
+    const show=(phase,extra={})=>{const value={...base,phase,...extra};bus.emit(phase==='decision'?'recovery:decisionReady':'recovery:readout',value);prompt.tick();return value};
+    bus.on('recovery:choose',(payload)=>bus.emit('recovery:completed',{recoveryId:payload.recoveryId,outcome:payload.choice,ownership:'REGISTERED CLAIM',legalStatus:'claimed',credits:payload.choice==='rescue'?620:360,repDelta:payload.choice==='rescue'?12:4,cargo:payload.choice==='blackbox'?{cmdty_salvage_electronics:1}:{},pos:{x:480,z:0}}));
+    bus.on('recovery:vent',()=>show('stabilizing',{condition:'unstable',conditionLabel:'REACTOR VENTED · HULK DRIFTING',ownership:'OPEN SALVAGE',legalStatus:'open',hasSurvivor:false,stabilization:.2,stabilizationMode:'massline'}));
+    show('awaiting_scan',{condition:null,conditionLabel:'UNIDENTIFIED DERELICT',ownership:null,legalStatus:null,hasSurvivor:null});
+    window.sfRecoveryFixture={state,bus,prompt,gamepad,emitted,show,base,advance(seconds){state.simTime+=seconds;prompt.tick()}};
+  </script>
+</body>
+</html>

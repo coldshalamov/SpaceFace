@@ -153,6 +153,7 @@ export const save = {
     data.fieldDepletion = this._callSerialize('fieldDepletion') || clonePlain(state.fieldDepletion || {});
     data.livingPoiBehaviors = this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {});
     data.signalInvestigation = this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {});
+    data.recoveryEncounters = this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {});
     data.regionalEcology = this._callSerialize('regionalEcology') || clonePlain(state.regionalEcology || {});
     // Campaign-director DURABLE subset only (named captains / receipts / cooldowns / stats).
     // Live encounters, squads, and pressure are transient by contract — never persisted.
@@ -788,6 +789,7 @@ export const save = {
       this._callDeserialize('regionalEcology', data.regionalEcology);
       this._callDeserialize('livingPoiBehaviors', data.livingPoiBehaviors);
       this._callDeserialize('scanner', data.signalInvestigation);
+      this._callDeserialize('recoveryEncounter', data.recoveryEncounters);
 
       // 5. spawn the saved player entity (fresh id) and adopt it.
       const savedPlayer = data.entities && data.entities.player;

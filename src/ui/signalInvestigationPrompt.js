@@ -157,6 +157,7 @@ export function createSignalInvestigationPrompt(ctx) {
   bus.on('signal:scanResults', showResults);
   bus.on('signal:tracked', showTracked);
   bus.on('signal:investigated', showInvestigated);
+  bus.on('recovery:started', hide);
   bus.on('pirateParley:demand', hide);
   bus.on('law:distressRaised', hide);
   bus.on('game:new', hide);
