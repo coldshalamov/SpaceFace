@@ -1,16 +1,38 @@
 // Production V3 autopilot acceptance: local-map nav autopilot must drive the live
 // rapier-dynamic flight adapter, not the legacy flight.js controller.
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { createGameState } from '../src/core/gameState.js';
+import { physics } from '../src/core/physics.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
-import { flightV3 } from '../src/systems/flightV3.js';
+import { save } from '../src/save/saveSystem.js';
+import { flightV3 as workspaceFlightV3 } from '../src/systems/flightV3.js';
 import { world } from '../src/systems/world.js';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const DT = 1 / 60;
+const FLIGHT_UNDER_TEST = process.argv.includes('--head-flight')
+  ? await loadHeadFlightV3()
+  : workspaceFlightV3;
+
+async function loadHeadFlightV3() {
+  const source = execFileSync('git', ['show', 'HEAD:src/systems/flightV3.js'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  const moduleSource = source.replace(/from\s+(['"])(\.\.\/[^'"]+)\1/g, (_match, _quote, specifier) => {
+    return `from '${pathToFileURL(resolve(ROOT, 'src/systems', specifier)).href}'`;
+  });
+  const moduleUrl = `data:text/javascript;base64,${Buffer.from(moduleSource).toString('base64')}`;
+  const loaded = await import(moduleUrl);
+  assert(loaded.flightV3, 'HEAD flightV3 probe must load the complete committed controller');
+  return loaded.flightV3;
+}
 
 function makeBus() {
   const handlers = {};
@@ -109,12 +131,139 @@ function makeState({ mode = 'assisted', pos = { x: 0, z: 0 }, vel = { x: 0, z: 0
 function runHarness(opts) {
   const bus = makeBus();
   const { state, player } = makeState(opts);
-  const system = Object.create(flightV3);
+  const system = Object.create(FLIGHT_UNDER_TEST);
   system.init({ state, bus });
   system.update(DT, state);
   const command = consumePhysicsCommand(player);
   assert(command && command.control, 'flightV3 must write an SG-02 physics control command');
   return { bus, state, player, command: command.control };
+}
+
+function neutralizeGeneratedAutopilotInput(state) {
+  state.input.moveX = 0;
+  state.input.moveZ = 0;
+  state.input.turnIntent = 0;
+  state.input.boost = false;
+  state.input.brake = false;
+  state.input.autopilot = false;
+  if (state.input.actions) state.input.actions.brake = false;
+}
+
+function makeCenteredAvoidanceHarness() {
+  const bus = makeBus();
+  const { state, player } = makeState({ target: { x: 1000, z: 0 }, vel: { x: 60, z: 0 }, initialDistance: 1000 });
+  const obstacle = { id: 'lifecycle-rock', type: 'asteroid', alive: true, pos: { x: 220, z: 0 }, vel: { x: 0, z: 0 }, radius: 90 };
+  state.entities.set(obstacle.id, obstacle);
+  state.entityList.push(obstacle);
+  const system = Object.create(FLIGHT_UNDER_TEST);
+  system.init({ state, bus });
+  neutralizeGeneratedAutopilotInput(state);
+  system.update(DT, state);
+  consumePhysicsCommand(player);
+  assert.equal(Math.abs(state.nav.autopilot._avoidanceSide), 1, 'fixture must establish a live avoidance commitment');
+  bus.events.length = 0;
+  return { bus, state, player, obstacle, system };
+}
+
+function stepAutopilotHarness(harness) {
+  neutralizeGeneratedAutopilotInput(harness.state);
+  harness.state.tick++;
+  harness.system.update(DT, harness.state);
+  return consumePhysicsCommand(harness.player);
+}
+
+async function runRapierAvoidanceScenario(order, options = {}) {
+  const state = createGameState(0x4a11);
+  const { player } = makeState({ target: { x: 700, z: 0 }, vel: { x: 60, z: 0 }, initialDistance: 700 });
+  player.id = 1;
+  player.collides = true;
+  player.prevPos = { ...player.pos };
+  player.prevRot = player.rot;
+  state.mode = 'flight';
+  state.playerId = player.id;
+  state.world.currentSector = {};
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.entities.set(player.id, player);
+  state.entityList.push(player);
+  state.nav.autopilot = {
+    active: true,
+    target: { x: 700, z: 0 },
+    targetEntityId: null,
+    label: 'Rapier avoidance target',
+    arrivalRadius: 38,
+    initialDistance: 700,
+    status: 'armed',
+  };
+  state.input.actions = { autopursuit: false, brake: false };
+
+  const denseObstacles = {
+    upper: { id: 10, type: 'asteroid', alive: true, collides: true, pos: { x: 250, z: 52 }, vel: { x: 0, z: 0 }, radius: 68 },
+    lower: { id: 11, type: 'asteroid', alive: true, collides: true, pos: { x: 250, z: -52 }, vel: { x: 0, z: 0 }, radius: 68 },
+    center: { id: 12, type: 'asteroid', alive: true, collides: true, pos: { x: 390, z: 0 }, vel: { x: 0, z: 0 }, radius: 62 },
+  };
+  const symmetricCorridor = {
+    upper: { id: 10, type: 'asteroid', alive: true, collides: true, pos: { x: 260, z: 80 }, vel: { x: 0, z: 0 }, radius: 60 },
+    lower: { id: 11, type: 'asteroid', alive: true, collides: true, pos: { x: 260, z: -80 }, vel: { x: 0, z: 0 }, radius: 60 },
+  };
+  const obstacles = options.symmetricCorridor ? symmetricCorridor : denseObstacles;
+  for (const key of order) {
+    const obstacle = obstacles[key];
+    state.entities.set(obstacle.id, obstacle);
+    state.entityList.push(obstacle);
+  }
+
+  const bus = makeBus();
+  const helpers = {};
+  const flightSystem = Object.create(FLIGHT_UNDER_TEST);
+  const physicsSystem = Object.create(physics);
+  flightSystem.init({ state, bus, helpers });
+  physicsSystem.init({ state, bus, helpers });
+  const ready = await physicsSystem.prepareBackend(state, { reset: true });
+  assert.equal(ready, true, 'Rapier avoidance fixture must use the ready production physics authority');
+
+  const initialDistance = Math.hypot(state.nav.autopilot.target.x - player.pos.x, state.nav.autopilot.target.z - player.pos.z);
+  let maxLateral = 0;
+  let avoidingSeen = false;
+  let fieldPassed = false;
+  let passCompleted = false;
+  let reaccelerated = false;
+  let completionTick = null;
+  try {
+    for (let tick = 0; tick < 1800; tick++) {
+      state.tick = tick;
+      state.simTime = tick * DT;
+      neutralizeGeneratedAutopilotInput(state);
+      flightSystem.update(DT, state);
+      physicsSystem.update(DT, state);
+      maxLateral = Math.max(maxLateral, Math.abs(player.pos.z));
+      const status = state.nav.autopilot.status;
+      if (status === 'avoiding') avoidingSeen = true;
+      if (player.pos.x > 480) fieldPassed = true;
+      if (avoidingSeen && fieldPassed && status !== 'avoiding') passCompleted = true;
+      if (passCompleted && Math.hypot(player.vel.x, player.vel.z) > 45) reaccelerated = true;
+      if (state.nav.autopilot.active === false && status === 'arrived') {
+        completionTick = tick;
+        break;
+      }
+    }
+  } finally {
+    physicsSystem._disableSg02DynamicAuthority();
+  }
+
+  const finalDistance = Math.hypot(state.nav.autopilot.target.x - player.pos.x, state.nav.autopilot.target.z - player.pos.z);
+  return {
+    initialDistance,
+    finalDistance,
+    maxLateral,
+    avoidingSeen,
+    fieldPassed,
+    passCompleted,
+    reaccelerated,
+    completionTick,
+    status: state.nav.autopilot.status,
+    pos: { ...player.pos },
+  };
 }
 
 console.log('--- V3 AUTOPILOT ACCEPTANCE ---');
@@ -156,7 +305,7 @@ console.log('--- V3 AUTOPILOT ACCEPTANCE ---');
   const obstacle = { id: 'rock', type: 'asteroid', alive: true, pos: { x: 220, z: 0 }, vel: { x: 0, z: 0 }, radius: 90 };
   state.entities.set(obstacle.id, obstacle);
   state.entityList.push(obstacle);
-  const system = Object.create(flightV3);
+  const system = Object.create(FLIGHT_UNDER_TEST);
   system.init({ state, bus });
   system.update(DT, state);
   const command = consumePhysicsCommand(player).control;
@@ -164,6 +313,200 @@ console.log('--- V3 AUTOPILOT ACCEPTANCE ---');
   assert(Math.abs(state.input.moveX) > 0.05 || Math.abs(command.force.z) > 1,
     'blocking obstacle must produce lateral avoidance input/force');
   console.log('Check 4 PASSED: obstacle avoidance steers around a blocking body.');
+}
+
+{
+  const corridorForward = await runRapierAvoidanceScenario(['upper', 'lower'], { symmetricCorridor: true });
+  const corridorReverse = await runRapierAvoidanceScenario(['lower', 'upper'], { symmetricCorridor: true });
+  const forwardOrder = await runRapierAvoidanceScenario(['upper', 'lower', 'center']);
+  const reverseOrder = await runRapierAvoidanceScenario(['center', 'lower', 'upper']);
+  for (const [label, result] of [
+    ['corridor-forward', corridorForward],
+    ['corridor-reverse', corridorReverse],
+    ['dense-forward', forwardOrder],
+    ['dense-reverse', reverseOrder],
+  ]) {
+    assert.equal(result.avoidingSeen, true, `${label} Rapier run must encounter the blocking field`);
+    assert(result.maxLateral > 125,
+      `${label} Rapier run must establish physical lateral clearance: ${JSON.stringify(result)}`);
+    assert.equal(result.fieldPassed, true, `${label} Rapier run must physically pass the dense field`);
+    assert.equal(result.passCompleted, true, `${label} Rapier run must leave avoidance after clearing the field`);
+    assert.equal(result.reaccelerated, true, `${label} Rapier run must reaccelerate after its avoidance pass`);
+    assert(result.finalDistance < result.initialDistance - 600,
+      `${label} Rapier run must make meaningful target progress, got ${result.finalDistance}`);
+    assert.equal(result.status, 'arrived',
+      `${label} Rapier run must arrive within the bounded simulation: ${JSON.stringify(result)}`);
+    assert.notEqual(result.completionTick, null, `${label} Rapier run must record a bounded arrival tick`);
+  }
+  assert(Math.abs(forwardOrder.finalDistance - reverseOrder.finalDistance) < 8,
+    'entity-list order must produce equivalent successful arrival distance');
+  assert(Math.abs(forwardOrder.completionTick - reverseOrder.completionTick) < 120,
+    'entity-list order must produce equivalent bounded completion time');
+  assert(Math.abs(corridorForward.finalDistance - corridorReverse.finalDistance) < 8,
+    'corridor entity-list order must produce equivalent successful arrival distance');
+  assert(Math.abs(corridorForward.completionTick - corridorReverse.completionTick) < 120,
+    'corridor entity-list order must produce equivalent bounded completion time');
+  console.log('Check 4a PASSED: live V3 + Rapier clears centered corridors/dense fields, reaccelerates, and arrives.', {
+    corridorForward: { completionTick: corridorForward.completionTick, maxLateral: corridorForward.maxLateral, finalDistance: corridorForward.finalDistance },
+    corridorReverse: { completionTick: corridorReverse.completionTick, maxLateral: corridorReverse.maxLateral, finalDistance: corridorReverse.finalDistance },
+    forward: { completionTick: forwardOrder.completionTick, maxLateral: forwardOrder.maxLateral, finalDistance: forwardOrder.finalDistance },
+    reverse: { completionTick: reverseOrder.completionTick, maxLateral: reverseOrder.maxLateral, finalDistance: reverseOrder.finalDistance },
+  });
+}
+
+{
+  const bus = makeBus();
+  const { state, player } = makeState({ target: { x: 1000, z: 0 }, vel: { x: 60, z: 0 }, initialDistance: 1000 });
+  const obstacle = { id: 'centered-rock', type: 'asteroid', alive: true, pos: { x: 220, z: 0 }, vel: { x: 0, z: 0 }, radius: 90 };
+  state.entities.set(obstacle.id, obstacle);
+  state.entityList.push(obstacle);
+  const system = Object.create(FLIGHT_UNDER_TEST);
+  system.init({ state, bus });
+  const lateralInputs = [];
+  const turnInputs = [];
+  const lateralForces = [];
+  const yawTorques = [];
+
+  for (let tick = 40; tick < 48; tick++) {
+    state.tick = tick;
+    neutralizeGeneratedAutopilotInput(state);
+    system.update(DT, state);
+    const command = consumePhysicsCommand(player).control;
+    assert.equal(state.nav.autopilot.status, 'avoiding', 'centered blocker must remain in avoidance while the pass is unresolved');
+    lateralInputs.push(state.input.moveX);
+    turnInputs.push(state.input.turnIntent);
+    lateralForces.push(command.force.z);
+    yawTorques.push(command.torque.y);
+  }
+
+  const committedSign = Math.sign(lateralInputs[0]);
+  assert.notEqual(committedSign, 0, 'centered blocker must select a non-zero avoidance side');
+  assert(lateralInputs.every((value) => Math.sign(value) === committedSign),
+    `centered-blocker lateral input must keep one escape side, got ${lateralInputs.join(', ')}`);
+  assert(turnInputs.every((value) => Math.sign(value) === committedSign),
+    `centered-blocker turn input must keep one escape side, got ${turnInputs.join(', ')}`);
+  assert(lateralForces.every((value) => Math.sign(value) === committedSign),
+    `centered-blocker lateral force must keep one escape side, got ${lateralForces.join(', ')}`);
+  assert(yawTorques.every((value) => Math.sign(value) === committedSign),
+    `centered-blocker yaw torque must keep one escape side, got ${yawTorques.join(', ')}`);
+  console.log('Check 4b PASSED: centered-obstacle avoidance commits to one side across consecutive ticks.');
+}
+
+{
+  function symmetricAvoidanceSign(order) {
+    const bus = makeBus();
+    const { state, player } = makeState({ target: { x: 1000, z: 0 }, vel: { x: 60, z: 0 }, initialDistance: 1000 });
+    const obstacles = {
+      upper: { id: 'upper-rock', type: 'asteroid', alive: true, pos: { x: 220, z: 24 }, vel: { x: 0, z: 0 }, radius: 90 },
+      lower: { id: 'lower-rock', type: 'asteroid', alive: true, pos: { x: 220, z: -24 }, vel: { x: 0, z: 0 }, radius: 90 },
+    };
+    for (const key of order) {
+      const obstacle = obstacles[key];
+      state.entities.set(obstacle.id, obstacle);
+      state.entityList.push(obstacle);
+    }
+    const system = Object.create(FLIGHT_UNDER_TEST);
+    system.init({ state, bus });
+    neutralizeGeneratedAutopilotInput(state);
+    system.update(DT, state);
+    const command = consumePhysicsCommand(player).control;
+    assert.equal(state.nav.autopilot.status, 'avoiding', 'symmetric blockers must engage avoidance');
+    assert(Math.abs(state.input.moveX) > 0.05, 'symmetric blockers must select an escape side instead of cancelling');
+    assert(Math.abs(command.force.z) > 1, 'symmetric blockers must produce a non-zero lateral escape force');
+    return Math.sign(state.input.moveX);
+  }
+
+  const forwardOrder = symmetricAvoidanceSign(['upper', 'lower']);
+  const reverseOrder = symmetricAvoidanceSign(['lower', 'upper']);
+  assert.equal(forwardOrder, reverseOrder, 'symmetric avoidance side must not depend on entity-list order');
+  console.log('Check 4c PASSED: dense symmetric blockers choose one order-independent escape side.');
+}
+
+{
+  const external = makeCenteredAvoidanceHarness();
+  external.state.nav.autopilot.active = false;
+  stepAutopilotHarness(external);
+  assert.equal(external.state.nav.autopilot._avoidanceSide, 0,
+    'externally inactive autopilot must clear its avoidance commitment on the next flight update');
+  assert.equal(external.state.nav.autopilot._avoidanceTargetEntityId, '',
+    'externally inactive autopilot must clear its avoidance entity context');
+  assert.equal(external.state.nav.autopilot._avoidanceTargetX, null,
+    'externally inactive autopilot must clear its avoidance point context');
+  assert(!external.bus.events.some((event) => event.name === 'nav:autopilot' || event.name === 'toast'),
+    'passive cleanup of an externally inactive course must not emit disengage events');
+
+  const modal = makeCenteredAvoidanceHarness();
+  const modalSide = modal.state.nav.autopilot._avoidanceSide;
+  modal.state.ui.screenStack.push({ id: 'temporary-modal' });
+  stepAutopilotHarness(modal);
+  assert.equal(modal.state.nav.autopilot.active, true, 'temporary modal must not cancel an active course');
+  assert.equal(modal.state.nav.autopilot._avoidanceSide, modalSide,
+    'temporary modal must preserve the active pass commitment until controls return');
+  assert(!modal.bus.events.some((event) => event.name === 'nav:autopilot' || event.name === 'toast'),
+    'temporary modal must not emit autopilot disengage events');
+
+  const retarget = makeCenteredAvoidanceHarness();
+  const firstSide = retarget.state.nav.autopilot._avoidanceSide;
+  retarget.state.nav.autopilot.target = { x: -1000, z: 0 };
+  retarget.obstacle.pos.x = -220;
+  stepAutopilotHarness(retarget);
+  assert.equal(retarget.state.nav.autopilot._avoidanceTargetX, -1000,
+    'course replacement must refresh the avoidance point context');
+  assert.equal(retarget.state.nav.autopilot._avoidanceSide, -firstSide,
+    'opposite replacement course must select a fresh deterministic pass side');
+
+  const clearPass = makeCenteredAvoidanceHarness();
+  clearPass.state.entities.delete(clearPass.obstacle.id);
+  clearPass.state.entityList = [clearPass.player];
+  stepAutopilotHarness(clearPass);
+  assert.equal(clearPass.state.nav.autopilot._avoidanceSide, 0,
+    'clear course must release the completed avoidance commitment');
+
+  const manual = makeCenteredAvoidanceHarness();
+  neutralizeGeneratedAutopilotInput(manual.state);
+  manual.state.input.moveX = 0.5;
+  manual.state.tick++;
+  manual.system.update(DT, manual.state);
+  consumePhysicsCommand(manual.player);
+  assert.equal(manual.state.nav.autopilot.active, false, 'manual input must stop autopilot');
+  assert.equal(manual.state.nav.autopilot.status, 'manual', 'manual stop must publish its reason');
+  assert.equal(manual.state.nav.autopilot._avoidanceSide, 0, 'manual stop must clear avoidance commitment');
+
+  const arrival = makeCenteredAvoidanceHarness();
+  arrival.player.pos.x = 975;
+  arrival.player.pos.z = 0;
+  arrival.player.vel.x = 0;
+  arrival.player.vel.z = 0;
+  stepAutopilotHarness(arrival);
+  assert.equal(arrival.state.nav.autopilot.active, false, 'arrival must stop autopilot');
+  assert.equal(arrival.state.nav.autopilot.status, 'arrived', 'arrival must publish arrived status');
+  assert.equal(arrival.state.nav.autopilot._avoidanceSide, 0, 'arrival must clear avoidance commitment');
+
+  const lost = makeCenteredAvoidanceHarness();
+  lost.state.nav.autopilot.target = null;
+  lost.state.nav.autopilot.targetEntityId = 'missing-target';
+  stepAutopilotHarness(lost);
+  assert.equal(lost.state.nav.autopilot.active, false, 'lost target must stop autopilot');
+  assert.equal(lost.state.nav.autopilot.status, 'lost-target', 'lost target must publish its reason');
+  assert.equal(lost.state.nav.autopilot._avoidanceSide, 0, 'lost target must clear avoidance commitment');
+
+  const persisted = makeCenteredAvoidanceHarness();
+  const saveSystem = Object.create(save);
+  saveSystem.state = persisted.state;
+  const serializedNav = saveSystem._serializeNav();
+  assert.equal(serializedNav.autopilot._avoidanceSide, undefined,
+    'save sanitizer must omit transient avoidance commitment');
+  assert.equal(serializedNav.autopilot._avoidanceTargetX, undefined,
+    'save sanitizer must omit transient avoidance context');
+  const restored = makeState({ autopilotActive: false }).state;
+  saveSystem.state = restored;
+  saveSystem.bus = makeBus();
+  saveSystem._restoreNav(serializedNav);
+  assert.equal(restored.nav.autopilot._avoidanceSide, undefined,
+    'loaded navigation state must not restore a stale avoidance commitment');
+  assert.equal(restored.nav.autopilot._avoidanceTargetEntityId, undefined,
+    'loaded navigation state must not restore stale avoidance context');
+  console.log('Check 4d PASSED: avoidance lifecycle clears, suspends, retargets, and sanitizes deliberately.');
 }
 
 for (const mode of ['assisted', 'drift', 'newtonian']) {

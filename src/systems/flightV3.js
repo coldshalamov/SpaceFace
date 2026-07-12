@@ -495,7 +495,11 @@ function approachScalar(current, target, maxDelta) {
 function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile) {
   const nav = state && state.nav;
   const autopilot = nav && nav.autopilot;
-  if (!autopilot || autopilot.active !== true) return null;
+  if (!autopilot) return null;
+  if (autopilot.active !== true) {
+    clearAutopilotAvoidance(autopilot, true);
+    return null;
+  }
   if (!playerFlightControlsActive(state, entity)) return null;
   if (hasManualFlightInput(rawInput)) {
     stopAutopilot(host, state, 'manual');
@@ -530,7 +534,8 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     autopilot.initialDistance = Math.max(dist, arrivalRadius);
   }
 
-  const guidance = computeAutopilotGuidance(state, entity, target, dist, arrivalRadius);
+  syncAutopilotAvoidanceContext(autopilot, target);
+  const guidance = computeAutopilotGuidance(state, entity, target, dist, arrivalRadius, autopilot);
   const desiredAngle = Math.atan2(guidance.z, guidance.x);
   const turnError = wrapAngle(desiredAngle - finite(entity.rot));
   const turn = clamp(turnError / AUTOPILOT_TURN_SOFT_ANGLE, -1, 1);
@@ -611,6 +616,7 @@ function stopAutopilot(host, state, reason) {
   const nav = state && state.nav;
   const autopilot = nav && nav.autopilot;
   if (!autopilot || autopilot.active !== true) return;
+  clearAutopilotAvoidance(autopilot, true);
   autopilot.active = false;
   autopilot.status = reason || 'idle';
   if (state && state.input) {
@@ -653,7 +659,7 @@ function resolveAutopilotTarget(state, autopilot) {
   return { x: target.x, z: target.z, radius: 0, entity: null, label: autopilot.label || 'Autopilot target' };
 }
 
-function computeAutopilotGuidance(state, player, target, distance, arrivalRadius) {
+function computeAutopilotGuidance(state, player, target, distance, arrivalRadius, autopilot) {
   const px = finite(player.pos && player.pos.x);
   const pz = finite(player.pos && player.pos.z);
   const baseX = distance > 0.0001 ? (target.x - px) / distance : Math.cos(finite(player.rot));
@@ -667,7 +673,10 @@ function computeAutopilotGuidance(state, player, target, distance, arrivalRadius
   let avoiding = false;
   const maxProjection = Math.max(0, Math.min(distance - arrivalRadius, lookAhead));
   if (maxProjection > 0) {
-    for (const obstacle of autopilotObstacles(state, player, target)) {
+    const obstacles = autopilotObstacles(state, player, target);
+    let weightedLateral = 0;
+    let totalStrength = 0;
+    for (const obstacle of obstacles) {
       const ox = finite(obstacle.pos && obstacle.pos.x) - px;
       const oz = finite(obstacle.pos && obstacle.pos.z) - pz;
       const projection = ox * baseX + oz * baseZ;
@@ -676,16 +685,75 @@ function computeAutopilotGuidance(state, player, target, distance, arrivalRadius
       const clearance = positive(player.radius, 0) + positive(obstacle.radius, 0) + 58 + Math.min(70, speed * 0.22);
       const absLateral = Math.abs(lateral);
       if (absLateral >= clearance) continue;
-      const side = absLateral > 0.01 ? -Math.sign(lateral) : ((finite(state && state.tick, 0) % 2) ? 1 : -1);
       const depth = 1 - projection / Math.max(1, maxProjection);
       const strength = (1 - absLateral / Math.max(1, clearance)) * (0.7 + depth * 0.8);
-      steerX += perpX * side * strength * 1.65;
-      steerZ += perpZ * side * strength * 1.65;
-      avoiding = true;
+      weightedLateral += lateral * strength;
+      totalStrength += strength;
     }
+
+    if (totalStrength > 0) {
+      let side = finite(autopilot && autopilot._avoidanceSide, 0);
+      if (side !== -1 && side !== 1) {
+        const lateralCenter = weightedLateral / totalStrength;
+        side = Math.abs(lateralCenter) > 0.01
+          ? -Math.sign(lateralCenter)
+          : deterministicAvoidanceSide(baseX, baseZ);
+        if (autopilot) autopilot._avoidanceSide = side;
+      }
+
+      for (const obstacle of obstacles) {
+        const ox = finite(obstacle.pos && obstacle.pos.x) - px;
+        const oz = finite(obstacle.pos && obstacle.pos.z) - pz;
+        const projection = ox * baseX + oz * baseZ;
+        if (projection <= 0 || projection > maxProjection) continue;
+        const lateral = ox * perpX + oz * perpZ;
+        const clearance = positive(player.radius, 0) + positive(obstacle.radius, 0) + 58 + Math.min(70, speed * 0.22);
+        const absLateral = Math.abs(lateral);
+        if (absLateral >= clearance) continue;
+        const depth = 1 - projection / Math.max(1, maxProjection);
+        const strength = (1 - absLateral / Math.max(1, clearance)) * (0.7 + depth * 0.8);
+        steerX += perpX * side * strength * 1.65;
+        steerZ += perpZ * side * strength * 1.65;
+      }
+      avoiding = true;
+    } else {
+      clearAutopilotAvoidance(autopilot, false);
+    }
+  } else {
+    clearAutopilotAvoidance(autopilot, false);
   }
   const len = Math.hypot(steerX, steerZ) || 1;
   return { x: steerX / len, z: steerZ / len, avoiding };
+}
+
+function syncAutopilotAvoidanceContext(autopilot, target) {
+  if (!autopilot || !target) return;
+  // Pass commitment lives only on the active nav object. Its JSON-safe private primitives are
+  // deliberately omitted by saveSystem's nav sanitizer, so a load always makes a fresh choice.
+  const entityId = target.entity && target.entity.id != null ? String(target.entity.id) : '';
+  const pointX = entityId ? null : finite(target.x);
+  const pointZ = entityId ? null : finite(target.z);
+  const changed = autopilot._avoidanceTargetEntityId !== entityId ||
+    (!entityId && (autopilot._avoidanceTargetX !== pointX || autopilot._avoidanceTargetZ !== pointZ));
+  if (changed) clearAutopilotAvoidance(autopilot, false);
+  autopilot._avoidanceTargetEntityId = entityId;
+  autopilot._avoidanceTargetX = pointX;
+  autopilot._avoidanceTargetZ = pointZ;
+}
+
+function clearAutopilotAvoidance(autopilot, resetContext) {
+  if (!autopilot) return;
+  autopilot._avoidanceSide = 0;
+  if (!resetContext) return;
+  autopilot._avoidanceTargetEntityId = '';
+  autopilot._avoidanceTargetX = null;
+  autopilot._avoidanceTargetZ = null;
+}
+
+function deterministicAvoidanceSide(baseX, baseZ) {
+  return Math.abs(baseX) >= Math.abs(baseZ)
+    ? (baseX >= 0 ? 1 : -1)
+    : (baseZ >= 0 ? 1 : -1);
 }
 
 function autopilotObstacles(state, player, target) {
