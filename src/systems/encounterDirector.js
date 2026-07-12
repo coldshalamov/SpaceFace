@@ -48,6 +48,10 @@ import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { removeCargo } from './cargo.js';
 import { activityForEncounterSpawn, roeForActivity, setEntityDoctrine } from '../ai/doctrine.js';
+import {
+  buildEncounterCausality,
+  resolvedEncounterFingerprint,
+} from '../world/encounterCausality.js';
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 
@@ -288,7 +292,6 @@ export const encounterDirector = {
 
     if (!this._gatesPass(shape, state)) return gateDefer();
     if (shape.proximity && !this._playerNearItemZone(item)) return gateDefer();
-
     dir.pending.splice(dueIdx, 1);
     this._fire(dir, state, item, shape, now);
   },
@@ -352,12 +355,26 @@ export const encounterDirector = {
       primarySaid: false,
       lastBarkAt: -1e9,
     };
+    live.causality = buildEncounterCausality({
+      seed: state.meta && state.meta.seed,
+      encounterId: live.id,
+      shapeId: live.shapeId,
+      variantKind: item.variantKind || live.shapeId,
+      sectorId: live.sectorId,
+      zoneId: live.zoneId,
+      zoneName: live.zoneName,
+      factionId: live.factionId,
+      doctrineId: item.ships && item.ships[0] && (item.ships[0].combatDoctrineId || item.ships[0].doctrine),
+      zoneType: item.zoneType,
+      script: live.script,
+    });
     dir.live[live.id] = live;
     dir.stats.fired++;
     this.emit('encounter:telegraph', {
       encounterId: live.id, kind: live.shapeId, tier: live.tier, deck: live.deck,
       sectorId: live.sectorId, zoneId: live.zoneId, zoneName: live.zoneName,
       pos: live.anchor ? { x: live.anchor.x, z: live.anchor.z } : null,
+      causality: { ...live.causality },
     });
     const script = ENCOUNTER_SCRIPTS[live.script];
     try {
@@ -371,6 +388,8 @@ export const encounterDirector = {
       this.emit('encounter:spawned', {
         encounterId: live.id, kind: live.shapeId, squadId: live.squadId,
         sectorId: live.sectorId, zoneId: live.zoneId, count: live.ids.length,
+        fingerprint: live.causality.fingerprint,
+        motiveId: live.causality.motiveId,
       });
     }
   },
@@ -491,6 +510,8 @@ export const encounterDirector = {
       ai.zoneName = live.zoneName;
       ai.encounterId = live.id;
       ai.encounterKind = live.shapeId;
+      spec.data.encounterFingerprint = live.causality && live.causality.fingerprint || null;
+      spec.data.encounterCausality = live.causality ? { ...live.causality } : null;
       if (sh.role) ai.encounterRole = sh.role;
       if (sh.passive) ai.passive = true;
       ai.activity = activityForEncounterSpawn(live, sh, { now: this.now() });
@@ -649,6 +670,19 @@ export const encounterDirector = {
     const now = this.now();
     live.phase = 'done';
     live.outcome = outcome;
+    const resolvedIdentity = resolvedEncounterFingerprint(live.causality, outcome);
+    const resolvedCausality = {
+      ...live.causality,
+      resolvedFingerprint: resolvedIdentity && resolvedIdentity.fingerprint || null,
+      resolvedTuple: resolvedIdentity && resolvedIdentity.tuple || null,
+    };
+    live.causality = resolvedCausality;
+    const recentFingerprints = dir.stats.recentFingerprints || (dir.stats.recentFingerprints = []);
+    const recentVarietyKeys = dir.stats.recentVarietyKeys || (dir.stats.recentVarietyKeys = []);
+    if (resolvedCausality.resolvedFingerprint) recentFingerprints.push(resolvedCausality.resolvedFingerprint);
+    if (resolvedCausality.varietyKey) recentVarietyKeys.push(resolvedCausality.varietyKey);
+    if (recentFingerprints.length > 12) recentFingerprints.splice(0, recentFingerprints.length - 12);
+    if (recentVarietyKeys.length > 12) recentVarietyKeys.splice(0, recentVarietyKeys.length - 12);
     dir.cooldowns[live.shapeId] = now + (live.shape.cooldownS || 300);
     dir.lastEndAt = now;
     dir.stats.resolved++;
@@ -659,14 +693,30 @@ export const encounterDirector = {
     this.emit('encounter:resolved', {
       encounterId: live.id, shape: live.shapeId, kind: (live.plan && live.plan.variantKind) || live.shapeId,
       outcome, sectorId: live.sectorId, zoneId: live.zoneId, tier: live.tier, deck: live.deck, t: now,
+      causality: live.causality ? { ...live.causality } : null,
+    });
+    this.emit('encounter:fingerprint', {
+      encounterId: live.id,
+      fingerprint: resolvedCausality.resolvedFingerprint,
+      tuple: resolvedCausality.resolvedTuple,
+      instanceFingerprint: resolvedCausality.fingerprint,
+      t: now,
     });
     const text = receiptText(live.shapeId, outcome, o.vars || live.vars);
     if (text && o.speak !== false) {
       const voice = this.helpers && this.helpers.voice;
       if (voice && typeof voice.say === 'function') voice.say({ channel: o.channel || 'info', text, kind: 'receipt' });
       else this.emit('toast', { text, kind: 'info', ttl: 5 });
-      this.emit('encounter:receipt', { encounterId: live.id, shape: live.shapeId, outcome, text, t: now });
-      dir.receipts.push({ t: now, shape: live.shapeId, outcome, text });
+      this.emit('encounter:receipt', {
+        encounterId: live.id, shape: live.shapeId, outcome, text, t: now,
+        fingerprint: live.causality && live.causality.fingerprint || null,
+        motiveId: live.causality && live.causality.motiveId || null,
+      });
+      dir.receipts.push({
+        t: now, shape: live.shapeId, outcome, text,
+        fingerprint: live.causality && live.causality.fingerprint || null,
+        motiveId: live.causality && live.causality.motiveId || null,
+      });
       if (dir.receipts.length > RECEIPT_CAP) dir.receipts.splice(0, dir.receipts.length - RECEIPT_CAP);
     }
     delete dir.live[live.id];
@@ -685,6 +735,7 @@ export const encounterDirector = {
     this.emit('encounter:resolved', {
       encounterId: live.id, shape: live.shapeId, kind: live.shapeId, outcome: live.outcome,
       sectorId: live.sectorId, zoneId: live.zoneId, tier: live.tier, deck: live.deck, t: now,
+      causality: live.causality ? { ...live.causality } : null,
     });
     delete dir.live[live.id];
   },
@@ -950,6 +1001,7 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
     squadId,
     zoneId: zone.id,
     zoneName: zone.name,
+    zoneType: zone.type || null,
     zoneCenter: { x: globalZone.center.x, z: globalZone.center.z },
     zoneRadius: zone.radius || 400,
     factionId,
@@ -1075,6 +1127,10 @@ function ensureDirectorState(state) {
   if (!d.externalNamed || typeof d.externalNamed !== 'object' || Array.isArray(d.externalNamed)) d.externalNamed = {};
   if (!Array.isArray(d.receipts)) d.receipts = [];
   if (!d.stats || typeof d.stats !== 'object') d.stats = { fired: 0, resolved: 0, fizzled: 0 };
+  if (!Array.isArray(d.stats.recentFingerprints)) d.stats.recentFingerprints = [];
+  if (!Array.isArray(d.stats.recentVarietyKeys)) d.stats.recentVarietyKeys = [];
+  if (d.stats.recentFingerprints.length > 12) d.stats.recentFingerprints = d.stats.recentFingerprints.slice(-12);
+  if (d.stats.recentVarietyKeys.length > 12) d.stats.recentVarietyKeys = d.stats.recentVarietyKeys.slice(-12);
   if (!('plannedKey' in d)) d.plannedKey = null;
   if (!Number.isFinite(d.lastMeaningfulAt)) d.lastMeaningfulAt = -1e9;
   if (!Number.isFinite(d.lastAmbientAt)) d.lastAmbientAt = -1e9;

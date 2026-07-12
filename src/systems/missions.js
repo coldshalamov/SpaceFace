@@ -390,7 +390,8 @@ export const missions = {
    * Idempotent by stable offer id and capped at one economyContract row per station epoch.
    */
   _onExternalBoardOffer(rawOffer) {
-    if (!rawOffer || rawOffer.source !== 'economyContract') return false;
+    const allowedSource = rawOffer && (rawOffer.source === 'economyContract' || rawOffer.source === 'encounterAftermath');
+    if (!allowedSource) return false;
     if (!rawOffer.id || !rawOffer.type || !rawOffer.stationId || !rawOffer.params) return false;
     const info = STATION_INFO.get(rawOffer.stationId);
     if (!info || !TYPE_BY_ID.has(rawOffer.type)) return false;
@@ -402,7 +403,7 @@ export const missions = {
     const board = this.ensureBoard(rawOffer.stationId);
     if (!board || !Array.isArray(board.slots)) return false;
     if (board.slots.some((offer) => offer && offer.id === rawOffer.id)) return false;
-    if (board.slots.some((offer) => offer && offer.source === 'economyContract')) return false;
+    if (board.slots.some((offer) => offer && offer.source === rawOffer.source)) return false;
 
     let offer;
     try { offer = JSON.parse(JSON.stringify(rawOffer)); } catch (_) { return false; }
@@ -413,6 +414,7 @@ export const missions = {
       stationId: offer.stationId,
       source: offer.source,
       causeTag: offer.cause && offer.cause.tag || null,
+      causeFingerprint: offer.cause && offer.cause.fingerprint || null,
       epoch: board.refreshEpoch,
     });
     return true;
@@ -765,7 +767,13 @@ export const missions = {
     // toast below is a separate lane (transaction confirmation), so the two do not contend.
     this.trackMission(inst.id);
 
-    this.bus.emit('mission:accepted', { missionId: inst.id, type: inst.type, storyTag: inst.storyTag || undefined });
+    this.bus.emit('mission:accepted', {
+      missionId: inst.id,
+      type: inst.type,
+      storyTag: inst.storyTag || undefined,
+      source: inst.source || undefined,
+      causeFingerprint: inst.cause && inst.cause.fingerprint || undefined,
+    });
     this.bus.emit('mission:updated', { missionId: inst.id });
     this.bus.emit('toast', { text: `Mission accepted: ${inst.title}`, kind: 'success', ttl: 3 });
     // GF-4: a gold echo-ring + light flash at the player so accepting a contract has a visible beat
@@ -898,6 +906,10 @@ export const missions = {
       preloadedCargo: !!offer.preloadedCargo,
       storyBranch: offer.storyBranch || null,
       title: offer.title,
+      summary: offer.summary || null,
+      source: offer.source || null,
+      sourceOfferId: offer.id || null,
+      cause: offer.cause ? JSON.parse(JSON.stringify(offer.cause)) : null,
       chainNextSeed: (def && def.chainable) ? this._chainSeed(offer) : null,
     };
   },
@@ -1470,7 +1482,14 @@ export const missions = {
     // We size repMult so factions' applied rep ≈ the spec's risk-scaled BASE_REP value.
     const specRep = missionSpecRep(m);
     const repMult = specRep / 15;
-    const completedPayload = { missionId: m.id, type: m.type, factionId: m.factionId, repMult };
+    const completedPayload = {
+      missionId: m.id,
+      type: m.type,
+      factionId: m.factionId,
+      repMult,
+      source: m.source || undefined,
+      causeFingerprint: m.cause && m.cause.fingerprint || undefined,
+    };
 
     // ── research points for cerebral mission types (recon/salvage) — missions is a legit RP writer.
     let researchPoints = 0;
@@ -1536,7 +1555,12 @@ export const missions = {
       repDelta: penalty,
     });
     this._emitMissionDebrief(m, 'failed', reason || 'failed');
-    this.bus.emit('mission:failed', { missionId: m.id, reason: reason || 'failed' });
+    this.bus.emit('mission:failed', {
+      missionId: m.id,
+      reason: reason || 'failed',
+      source: m.source || undefined,
+      causeFingerprint: m.cause && m.cause.fingerprint || undefined,
+    });
     this.bus.emit('toast', { text: `Mission FAILED: ${m.title}`, kind: 'error', ttl: 4 });
     this._recordStoryMissionFailure(m, reason || 'failed');
     this._cleanupTargets(m);
@@ -1559,7 +1583,12 @@ export const missions = {
       repDelta: penalty,
     });
     this._emitMissionDebrief(m, 'expired', 'deadline');
-    this.bus.emit('mission:expired', { missionId: m.id, reason: 'deadline' });
+    this.bus.emit('mission:expired', {
+      missionId: m.id,
+      reason: 'deadline',
+      source: m.source || undefined,
+      causeFingerprint: m.cause && m.cause.fingerprint || undefined,
+    });
     this.bus.emit('toast', { text: `Mission expired: ${m.title}`, kind: 'warn', ttl: 4 });
     this._cleanupTargets(m);
     this._removeActive(m.id, index);
