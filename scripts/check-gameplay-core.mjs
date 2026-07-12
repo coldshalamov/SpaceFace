@@ -2318,7 +2318,7 @@ function checkSaveScrubsTransientFlightState() {
   assert.equal(savedPlayer.physicsBody.mass, 42, 'save should keep authored dynamic body mass');
   assert.equal(savedPlayer.physicsBody.thrusters[0].health, 0.5, 'save should keep dynamic thruster damage state');
   assert.equal(savedPlayer.flags.persistent, true, 'save should keep persistent entity flags');
-  assert.equal(savedPlayer.flags.invuln, true, 'save should keep non-flight gameplay flags');
+  assert.equal(savedPlayer.flags.invuln, undefined, 'save should drop transient player dock/launch protection');
   assert.equal(savedPlayer.flags.boosting, undefined, 'save should drop transient sustained boost flag');
   assert.equal(savedPlayer.flags.noInterp, undefined, 'save should drop transient interpolation flag');
   assert.equal(savedPlayer.boost.energy, 63, 'save should keep public boost resource state');
