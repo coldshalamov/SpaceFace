@@ -1,0 +1,24 @@
+{
+  "schema": "spaceface.m4HeliosHubV6.failureReference.v1",
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+  "rejected": [
+    "Four-arm radial cylinder hub massline (V1 rejection)",
+    "Stacked torus/box gate pylons without continuous curved spars",
+    "Faceted ico rock blobs without geological hierarchy",
+    "Primitive blockouts / beveled boxes as final forms",
+    "Generic single gray materials without ORM/normal maps",
+    "Accessory-only / floating module assemblies without continuous mass",
+    "Missing SOCKET_Structure_Core or COLLISION_HULL",
+    "Missing Meshopt/KTX2 on release candidates"
+  ],
+  "reviewBar": [
+    "Continuous asymmetric orbital-port massline with hab/industrial/transit hierarchy",
+    "Gate continuous curved spars + mechanical emitter anatomy",
+    "Rocks: multi-pass geology + strata/ore map story",
+    "Ivory/graphite/cyan/amber zones readable without emissive",
+    "LOD0/1/2 material-merged; anchors + collision proxies",
+    "Blender full/top/rear/detail + gamesky + Three.js close/mid/far evidence"
+  ],
+  "acceptanceClaim": false,
+  "countsDoNotSelfPass": true
+}

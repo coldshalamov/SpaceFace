@@ -1,0 +1,1856 @@
+{
+  "schema": "spaceface.m4HeliosHubV6Finalize.v1",
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+  "family": "helios_hub_env_v6",
+  "finalizedAt": "2026-07-13T00:09:47.513Z",
+  "promote": false,
+  "acceptanceClaim": false,
+  "selfPassForbidden": true,
+  "okCount": 8,
+  "failCount": 0,
+  "results": [
+    {
+      "id": "helios_hub_station",
+      "liveId": "place_station_trade_hub",
+      "ok": true,
+      "source": "assets/ships/m4_helios_hub_v6/source/places/helios_hub_station.glb",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_hub_station.glb",
+      "sourceBytes": 9761352,
+      "candidateBytes": 8422620,
+      "sourceSha256": "A62F60BE4673FACB12430D4A3B56035DBE36B69CC6F3AFF4391422E7E4BEB5F7",
+      "candidateSha256": "328833794DABD57FCEF90F73BDCBD6E0C4B15FEA3CFD20C4A675AA2F0F1A9412",
+      "sourceTextureCount": 15,
+      "releaseTextureCount": 15,
+      "releaseImageCount": 15,
+      "ktx2ImageCount": 15,
+      "meshoptBufferViewCount": 61,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_materials_emissive_strength",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "nodes": [
+        "COLLISION_HULL",
+        "LOD0_HOOK_EMISSIVE",
+        "LOD0_Merged_Material_Accent",
+        "LOD0_Merged_Material_Glass",
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Mechanical",
+        "LOD0_Merged_Material_Warm",
+        "LOD1_HOOK_EMISSIVE",
+        "LOD1_Merged_Material_Accent",
+        "LOD1_Merged_Material_Glass",
+        "LOD1_Merged_Material_Hull",
+        "LOD1_Merged_Material_Mechanical",
+        "LOD1_Merged_Material_Warm",
+        "LOD2_HOOK_EMISSIVE",
+        "LOD2_Merged_Material_Accent",
+        "LOD2_Merged_Material_Glass",
+        "LOD2_Merged_Material_Hull",
+        "LOD2_Merged_Material_Mechanical",
+        "LOD2_Merged_Material_Warm",
+        "SOCKET_Dock_North",
+        "SOCKET_Dock_South",
+        "SOCKET_Emissive_Tower",
+        "SOCKET_Structure_Core",
+        "SF_M4_HELIOS_HUB_STATION_ROOT"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2",
+      "spacefaceAsset": {
+        "contractVersion": 1,
+        "assetId": "SF_PLACE_HELIOS_HUB_STATION",
+        "slot": "place",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "KTX2/BasisU",
+        "textureSize": 1024,
+        "chamfered": true,
+        "bevelRadiusM": 0.05,
+        "partId": "place_station_trade_hub",
+        "liveId": "place_station_trade_hub",
+        "category": "places",
+        "sourceRole": "place-environment",
+        "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+        "family": "helios_hub_env_v6",
+        "role": "hub_station_focal",
+        "title": "Helios Hub Station",
+        "kind": "landmark",
+        "triangleCount": 54480,
+        "hullTriangleCount": 33235,
+        "deliverableRole": "production_multi_lod",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ],
+        "wiringStatus": "isolated_candidate_no_promote",
+        "lod0AabbSize": [
+          42.25452423095703,
+          25.100000381469727,
+          38.33464431762695
+        ],
+        "collisionBounds": {
+          "min": [
+            -17.244343566894532,
+            -5.995999984741211,
+            -17.46828125
+          ],
+          "max": [
+            21.629818725585938,
+            17.096000366210937,
+            17.799591522216797
+          ],
+          "size": [
+            38.87416229248047,
+            23.092000350952148,
+            35.2678727722168
+          ],
+          "center": [
+            2.192737579345703,
+            5.550000190734863,
+            0.16565513610839844
+          ],
+          "coverage": 0.92
+        },
+        "collisionAabb": {
+          "min": [
+            -17.244343566894532,
+            -5.995999984741211,
+            -17.46828125
+          ],
+          "max": [
+            21.629818725585938,
+            17.096000366210937,
+            17.799591522216797
+          ],
+          "size": [
+            38.87416229248047,
+            23.092000350952148,
+            35.2678727722168
+          ],
+          "center": [
+            2.192737579345703,
+            5.550000190734863,
+            0.16565513610839844
+          ],
+          "coverage": 0.92
+        },
+        "collisionCoverageRatio": {
+          "perAxis": [
+            0.92,
+            0.92,
+            0.92
+          ],
+          "min": 0.92,
+          "mean": 0.92
+        },
+        "triBudget": 35000,
+        "triBudgetAlarm": 22000,
+        "acceptanceClaim": false,
+        "finalize": {
+          "meshopt": true,
+          "ktx2": true,
+          "meshoptBufferViews": 61,
+          "ktx2Images": 15,
+          "sourceTextureCount": 15,
+          "releaseTextureCount": 15,
+          "tool": "finalize_m4_helios_hub_v6_candidate.mjs",
+          "pattern": "SG04 MeshoptEncoder + ktx2-encoder"
+        }
+      }
+    },
+    {
+      "id": "helios_gate",
+      "liveId": "place_gate_jump_ring",
+      "ok": true,
+      "source": "assets/ships/m4_helios_hub_v6/source/places/helios_gate.glb",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_gate.glb",
+      "sourceBytes": 7122420,
+      "candidateBytes": 6794136,
+      "sourceSha256": "CD7601F0585EF26F539E8F04F5C959F9EF7A5BC3257DE8E405E346EB6AFEC7DB",
+      "candidateSha256": "EB14754C87B2096A6BAE78BBF188FF06AB603E2BC865FB60BCAC8F5021152720",
+      "sourceTextureCount": 12,
+      "releaseTextureCount": 12,
+      "releaseImageCount": 12,
+      "ktx2ImageCount": 12,
+      "meshoptBufferViewCount": 45,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_materials_emissive_strength",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "nodes": [
+        "COLLISION_HULL",
+        "LOD0_HOOK_EMISSIVE",
+        "LOD0_Merged_Material_Accent",
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Mechanical",
+        "LOD0_Merged_Material_Warm",
+        "LOD1_HOOK_EMISSIVE",
+        "LOD1_Merged_Material_Hull",
+        "LOD1_Merged_Material_Mechanical",
+        "LOD1_Merged_Material_Warm",
+        "LOD2_HOOK_EMISSIVE",
+        "LOD2_Merged_Material_Hull",
+        "SOCKET_Emissive_Ring",
+        "SOCKET_Gate_Aperture",
+        "SOCKET_Structure_Core",
+        "SF_M4_HELIOS_GATE_ROOT"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2",
+      "spacefaceAsset": {
+        "contractVersion": 1,
+        "assetId": "SF_PLACE_HELIOS_GATE",
+        "slot": "place",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "KTX2/BasisU",
+        "textureSize": 1024,
+        "chamfered": true,
+        "bevelRadiusM": 0.05,
+        "partId": "place_gate_jump_ring",
+        "liveId": "place_gate_jump_ring",
+        "category": "places",
+        "sourceRole": "place-environment",
+        "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+        "family": "helios_hub_env_v6",
+        "role": "gate_landmark",
+        "title": "Helios Gate Landmark",
+        "kind": "landmark",
+        "triangleCount": 43574,
+        "hullTriangleCount": 20178,
+        "deliverableRole": "production_multi_lod",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ],
+        "wiringStatus": "isolated_candidate_no_promote",
+        "lod0AabbSize": [
+          30.891005516052246,
+          31.968140602111816,
+          33
+        ],
+        "collisionBounds": {
+          "min": [
+            -14.209084815979004,
+            -15.221274375915527,
+            -15.180000000000001
+          ],
+          "max": [
+            14.210640258789063,
+            14.189414978027344,
+            15.180000000000001
+          ],
+          "size": [
+            28.419725074768067,
+            29.41068935394287,
+            30.360000000000003
+          ],
+          "center": [
+            0.0007777214050292969,
+            -0.5159296989440918,
+            0
+          ],
+          "coverage": 0.92
+        },
+        "collisionAabb": {
+          "min": [
+            -14.209084815979004,
+            -15.221274375915527,
+            -15.180000000000001
+          ],
+          "max": [
+            14.210640258789063,
+            14.189414978027344,
+            15.180000000000001
+          ],
+          "size": [
+            28.419725074768067,
+            29.41068935394287,
+            30.360000000000003
+          ],
+          "center": [
+            0.0007777214050292969,
+            -0.5159296989440918,
+            0
+          ],
+          "coverage": 0.92
+        },
+        "collisionCoverageRatio": {
+          "perAxis": [
+            0.92,
+            0.92,
+            0.92
+          ],
+          "min": 0.92,
+          "mean": 0.92
+        },
+        "triBudget": 30000,
+        "triBudgetAlarm": 16000,
+        "acceptanceClaim": false,
+        "finalize": {
+          "meshopt": true,
+          "ktx2": true,
+          "meshoptBufferViews": 45,
+          "ktx2Images": 12,
+          "sourceTextureCount": 12,
+          "releaseTextureCount": 12,
+          "tool": "finalize_m4_helios_hub_v6_candidate.mjs",
+          "pattern": "SG04 MeshoptEncoder + ktx2-encoder"
+        }
+      }
+    },
+    {
+      "id": "helios_rock_a",
+      "liveId": "place_asteroid_rock_a",
+      "ok": true,
+      "source": "assets/ships/m4_helios_hub_v6/source/places/helios_rock_a.glb",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_rock_a.glb",
+      "sourceBytes": 2854228,
+      "candidateBytes": 3860256,
+      "sourceSha256": "D90D64B84FC1B84FC96A0959DB769F5BE869DFA71F5ED5841C6889114C370E0E",
+      "candidateSha256": "8BD03E88AB61D72814914345391B5426580ED5129916B558F29C5267FE98DB38",
+      "sourceTextureCount": 6,
+      "releaseTextureCount": 6,
+      "releaseImageCount": 6,
+      "ktx2ImageCount": 6,
+      "meshoptBufferViewCount": 17,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_materials_emissive_strength",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Accent",
+        "Material_Rock"
+      ],
+      "nodes": [
+        "COLLISION_HULL",
+        "LOD0_HOOK_EMISSIVE",
+        "LOD0_Merged_Material_Rock",
+        "LOD1_HOOK_EMISSIVE",
+        "LOD1_Merged_Material_Rock",
+        "LOD2_Merged_Material_Rock",
+        "SOCKET_Structure_Core",
+        "SF_M4_HELIOS_ROCK_A_ROOT"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2",
+      "spacefaceAsset": {
+        "contractVersion": 1,
+        "assetId": "SF_PLACE_HELIOS_ROCK_A",
+        "slot": "place",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "KTX2/BasisU",
+        "textureSize": 1024,
+        "chamfered": true,
+        "bevelRadiusM": 0.05,
+        "partId": "place_asteroid_rock_a",
+        "liveId": "place_asteroid_rock_a",
+        "category": "places",
+        "sourceRole": "place-environment",
+        "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+        "family": "helios_hub_env_v6",
+        "role": "hero_rock",
+        "title": "Helios Rock A (slab)",
+        "kind": "prop",
+        "triangleCount": 4254,
+        "hullTriangleCount": 4206,
+        "deliverableRole": "production_multi_lod",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ],
+        "wiringStatus": "isolated_candidate_no_promote",
+        "lod0AabbSize": [
+          12.72730541229248,
+          7.126802057027817,
+          7.261794805526733
+        ],
+        "collisionBounds": {
+          "min": [
+            -7.0639449310302735,
+            -0.20463786125183114,
+            -3.4469268321990967
+          ],
+          "max": [
+            4.645176048278809,
+            6.35202003121376,
+            3.233924388885498
+          ],
+          "size": [
+            11.709120979309082,
+            6.556657892465592,
+            6.680851221084595
+          ],
+          "center": [
+            -1.2093844413757324,
+            3.0736910849809647,
+            -0.10650122165679932
+          ],
+          "coverage": 0.92
+        },
+        "collisionAabb": {
+          "min": [
+            -7.0639449310302735,
+            -0.20463786125183114,
+            -3.4469268321990967
+          ],
+          "max": [
+            4.645176048278809,
+            6.35202003121376,
+            3.233924388885498
+          ],
+          "size": [
+            11.709120979309082,
+            6.556657892465592,
+            6.680851221084595
+          ],
+          "center": [
+            -1.2093844413757324,
+            3.0736910849809647,
+            -0.10650122165679932
+          ],
+          "coverage": 0.92
+        },
+        "collisionCoverageRatio": {
+          "perAxis": [
+            0.92,
+            0.92,
+            0.92
+          ],
+          "min": 0.92,
+          "mean": 0.92
+        },
+        "triBudget": 3500,
+        "triBudgetAlarm": null,
+        "acceptanceClaim": false,
+        "finalize": {
+          "meshopt": true,
+          "ktx2": true,
+          "meshoptBufferViews": 17,
+          "ktx2Images": 6,
+          "sourceTextureCount": 6,
+          "releaseTextureCount": 6,
+          "tool": "finalize_m4_helios_hub_v6_candidate.mjs",
+          "pattern": "SG04 MeshoptEncoder + ktx2-encoder"
+        }
+      }
+    },
+    {
+      "id": "helios_rock_b",
+      "liveId": "place_asteroid_rock_b",
+      "ok": true,
+      "source": "assets/ships/m4_helios_hub_v6/source/places/helios_rock_b.glb",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_rock_b.glb",
+      "sourceBytes": 2687156,
+      "candidateBytes": 3809428,
+      "sourceSha256": "DA929499107D2EA16608FAC2C84477C33CC2FC0AA36FAAEFAE708A4CC535B01A",
+      "candidateSha256": "235D7752C6F27C3B7E5EDA1DC544E9B7897B5AD5EF64F2BBBE8887FB345D29C2",
+      "sourceTextureCount": 6,
+      "releaseTextureCount": 6,
+      "releaseImageCount": 6,
+      "ktx2ImageCount": 6,
+      "meshoptBufferViewCount": 17,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_materials_emissive_strength",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Accent",
+        "Material_Rock"
+      ],
+      "nodes": [
+        "COLLISION_HULL",
+        "LOD0_HOOK_EMISSIVE",
+        "LOD0_Merged_Material_Rock",
+        "LOD1_HOOK_EMISSIVE",
+        "LOD1_Merged_Material_Rock",
+        "LOD2_Merged_Material_Rock",
+        "SOCKET_Structure_Core",
+        "SF_M4_HELIOS_ROCK_B_ROOT"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2",
+      "spacefaceAsset": {
+        "contractVersion": 1,
+        "assetId": "SF_PLACE_HELIOS_ROCK_B",
+        "slot": "place",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "KTX2/BasisU",
+        "textureSize": 1024,
+        "chamfered": true,
+        "bevelRadiusM": 0.05,
+        "partId": "place_asteroid_rock_b",
+        "liveId": "place_asteroid_rock_b",
+        "category": "places",
+        "sourceRole": "place-environment",
+        "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+        "family": "helios_hub_env_v6",
+        "role": "hero_rock",
+        "title": "Helios Rock B (wedge)",
+        "kind": "prop",
+        "triangleCount": 1654,
+        "hullTriangleCount": 1606,
+        "deliverableRole": "production_multi_lod",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ],
+        "wiringStatus": "isolated_candidate_no_promote",
+        "lod0AabbSize": [
+          4.144532203674316,
+          4.800000190734863,
+          15.513050079345703
+        ],
+        "collisionBounds": {
+          "min": [
+            -1.8830375385284424,
+            -1.8079999923706054,
+            -5.903298873901368
+          ],
+          "max": [
+            1.9299320888519287,
+            2.6080001831054687,
+            8.36870719909668
+          ],
+          "size": [
+            3.812969627380371,
+            4.416000175476074,
+            14.272006072998048
+          ],
+          "center": [
+            0.023447275161743164,
+            0.40000009536743164,
+            1.2327041625976562
+          ],
+          "coverage": 0.92
+        },
+        "collisionAabb": {
+          "min": [
+            -1.8830375385284424,
+            -1.8079999923706054,
+            -5.903298873901368
+          ],
+          "max": [
+            1.9299320888519287,
+            2.6080001831054687,
+            8.36870719909668
+          ],
+          "size": [
+            3.812969627380371,
+            4.416000175476074,
+            14.272006072998048
+          ],
+          "center": [
+            0.023447275161743164,
+            0.40000009536743164,
+            1.2327041625976562
+          ],
+          "coverage": 0.92
+        },
+        "collisionCoverageRatio": {
+          "perAxis": [
+            0.92,
+            0.92,
+            0.92
+          ],
+          "min": 0.92,
+          "mean": 0.92
+        },
+        "triBudget": 3500,
+        "triBudgetAlarm": null,
+        "acceptanceClaim": false,
+        "finalize": {
+          "meshopt": true,
+          "ktx2": true,
+          "meshoptBufferViews": 17,
+          "ktx2Images": 6,
+          "sourceTextureCount": 6,
+          "releaseTextureCount": 6,
+          "tool": "finalize_m4_helios_hub_v6_candidate.mjs",
+          "pattern": "SG04 MeshoptEncoder + ktx2-encoder"
+        }
+      }
+    },
+    {
+      "id": "helios_rock_c",
+      "liveId": "place_asteroid_rock_c",
+      "ok": true,
+      "source": "assets/ships/m4_helios_hub_v6/source/places/helios_rock_c.glb",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_rock_c.glb",
+      "sourceBytes": 2857036,
+      "candidateBytes": 3861956,
+      "sourceSha256": "E537FE6AE7E942C3DFA154786F0AC96758FBF2A51AB04A7235C19781F58B493F",
+      "candidateSha256": "2AE7C8CAAD5CB37DA85C249826A58D5413BB955F5D23C87755E5F0187A84BCB7",
+      "sourceTextureCount": 6,
+      "releaseTextureCount": 6,
+      "releaseImageCount": 6,
+      "ktx2ImageCount": 6,
+      "meshoptBufferViewCount": 17,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_materials_emissive_strength",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Accent",
+        "Material_Rock"
+      ],
+      "nodes": [
+        "COLLISION_HULL",
+        "LOD0_HOOK_EMISSIVE",
+        "LOD0_Merged_Material_Rock",
+        "LOD1_HOOK_EMISSIVE",
+        "LOD1_Merged_Material_Rock",
+        "LOD2_Merged_Material_Rock",
+        "SOCKET_Structure_Core",
+        "SF_M4_HELIOS_ROCK_C_ROOT"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2",
+      "spacefaceAsset": {
+        "contractVersion": 1,
+        "assetId": "SF_PLACE_HELIOS_ROCK_C",
+        "slot": "place",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "KTX2/BasisU",
+        "textureSize": 1024,
+        "chamfered": true,
+        "bevelRadiusM": 0.05,
+        "partId": "place_asteroid_rock_c",
+        "liveId": "place_asteroid_rock_c",
+        "category": "places",
+        "sourceRole": "place-environment",
+        "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+        "family": "helios_hub_env_v6",
+        "role": "hero_rock",
+        "title": "Helios Rock C (cluster)",
+        "kind": "prop",
+        "triangleCount": 4254,
+        "hullTriangleCount": 4206,
+        "deliverableRole": "production_multi_lod",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ],
+        "wiringStatus": "isolated_candidate_no_promote",
+        "lod0AabbSize": [
+          8.309597969055176,
+          8.18628716468811,
+          10.304404735565186
+        ],
+        "collisionBounds": {
+          "min": [
+            -4.590201568603516,
+            -0.18406389236450194,
+            -4.912774028778077
+          ],
+          "max": [
+            3.0546285629272463,
+            7.34732029914856,
+            4.567278327941895
+          ],
+          "size": [
+            7.644830131530762,
+            7.5313841915130615,
+            9.480052356719971
+          ],
+          "center": [
+            -0.7677865028381348,
+            3.581628203392029,
+            -0.17274785041809082
+          ],
+          "coverage": 0.92
+        },
+        "collisionAabb": {
+          "min": [
+            -4.590201568603516,
+            -0.18406389236450194,
+            -4.912774028778077
+          ],
+          "max": [
+            3.0546285629272463,
+            7.34732029914856,
+            4.567278327941895
+          ],
+          "size": [
+            7.644830131530762,
+            7.5313841915130615,
+            9.480052356719971
+          ],
+          "center": [
+            -0.7677865028381348,
+            3.581628203392029,
+            -0.17274785041809082
+          ],
+          "coverage": 0.92
+        },
+        "collisionCoverageRatio": {
+          "perAxis": [
+            0.92,
+            0.92,
+            0.92
+          ],
+          "min": 0.92,
+          "mean": 0.92
+        },
+        "triBudget": 3500,
+        "triBudgetAlarm": null,
+        "acceptanceClaim": false,
+        "finalize": {
+          "meshopt": true,
+          "ktx2": true,
+          "meshoptBufferViews": 17,
+          "ktx2Images": 6,
+          "sourceTextureCount": 6,
+          "releaseTextureCount": 6,
+          "tool": "finalize_m4_helios_hub_v6_candidate.mjs",
+          "pattern": "SG04 MeshoptEncoder + ktx2-encoder"
+        }
+      }
+    },
+    {
+      "id": "helios_support_gantry",
+      "liveId": "place_lane_beacon",
+      "ok": true,
+      "source": "assets/ships/m4_helios_hub_v6/source/places/helios_support_gantry.glb",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_support_gantry.glb",
+      "sourceBytes": 4100736,
+      "candidateBytes": 6001952,
+      "sourceSha256": "A8FCE9D52635BBC74847FC00A355EB7C3736D6C460804C98ED1297EDE3BE0326",
+      "candidateSha256": "CBF276C8414BB333531802CD0A7C9BDD164F78C3BBEEA3BE05F643771A18BDE5",
+      "sourceTextureCount": 12,
+      "releaseTextureCount": 12,
+      "releaseImageCount": 12,
+      "ktx2ImageCount": 12,
+      "meshoptBufferViewCount": 33,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_materials_emissive_strength",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "nodes": [
+        "COLLISION_HULL",
+        "LOD0_HOOK_EMISSIVE",
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Mechanical",
+        "LOD0_Merged_Material_Warm",
+        "LOD1_HOOK_EMISSIVE",
+        "LOD1_Merged_Material_Hull",
+        "LOD1_Merged_Material_Mechanical",
+        "LOD1_Merged_Material_Warm",
+        "LOD2_HOOK_EMISSIVE",
+        "LOD2_Merged_Material_Hull",
+        "LOD2_Merged_Material_Mechanical",
+        "LOD2_Merged_Material_Warm",
+        "SOCKET_Structure_Core",
+        "SF_M4_HELIOS_GANTRY_ROOT"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2",
+      "spacefaceAsset": {
+        "contractVersion": 1,
+        "assetId": "SF_PLACE_HELIOS_SUPPORT_GANTRY",
+        "slot": "place",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "KTX2/BasisU",
+        "textureSize": 1024,
+        "chamfered": true,
+        "bevelRadiusM": 0.05,
+        "partId": "place_lane_beacon",
+        "liveId": "place_lane_beacon",
+        "category": "places",
+        "sourceRole": "place-environment",
+        "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+        "family": "helios_hub_env_v6",
+        "role": "modular_support",
+        "title": "Helios Support Gantry",
+        "kind": "prop",
+        "triangleCount": 2926,
+        "hullTriangleCount": 2064,
+        "deliverableRole": "production_multi_lod",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ],
+        "wiringStatus": "isolated_candidate_no_promote",
+        "lod0AabbSize": [
+          12.68166708946228,
+          15.399999618530273,
+          4
+        ],
+        "collisionBounds": {
+          "min": [
+            -2.053233222961426,
+            -5.094000053405762,
+            -1.84
+          ],
+          "max": [
+            9.613900499343872,
+            9.07399959564209,
+            1.84
+          ],
+          "size": [
+            11.667133722305298,
+            14.167999649047852,
+            3.68
+          ],
+          "center": [
+            3.780333638191223,
+            1.989999771118164,
+            0
+          ],
+          "coverage": 0.92
+        },
+        "collisionAabb": {
+          "min": [
+            -2.053233222961426,
+            -5.094000053405762,
+            -1.84
+          ],
+          "max": [
+            9.613900499343872,
+            9.07399959564209,
+            1.84
+          ],
+          "size": [
+            11.667133722305298,
+            14.167999649047852,
+            3.68
+          ],
+          "center": [
+            3.780333638191223,
+            1.989999771118164,
+            0
+          ],
+          "coverage": 0.92
+        },
+        "collisionCoverageRatio": {
+          "perAxis": [
+            0.92,
+            0.92,
+            0.92
+          ],
+          "min": 0.92,
+          "mean": 0.92
+        },
+        "triBudget": 3000,
+        "triBudgetAlarm": null,
+        "acceptanceClaim": false,
+        "finalize": {
+          "meshopt": true,
+          "ktx2": true,
+          "meshoptBufferViews": 33,
+          "ktx2Images": 12,
+          "sourceTextureCount": 12,
+          "releaseTextureCount": 12,
+          "tool": "finalize_m4_helios_hub_v6_candidate.mjs",
+          "pattern": "SG04 MeshoptEncoder + ktx2-encoder"
+        }
+      }
+    },
+    {
+      "id": "helios_support_dock_arm",
+      "liveId": "place_station_billboard",
+      "ok": true,
+      "source": "assets/ships/m4_helios_hub_v6/source/places/helios_support_dock_arm.glb",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_support_dock_arm.glb",
+      "sourceBytes": 4877344,
+      "candidateBytes": 7180892,
+      "sourceSha256": "1F37FA0E65DA6125F21F4D1EE5252937C472B486FD7BAA4C417A41F64E751595",
+      "candidateSha256": "234E023F204C4ED7094142F89E74F86D8CCA81B18D66F7CCA8ACDA45ACC2F85E",
+      "sourceTextureCount": 15,
+      "releaseTextureCount": 15,
+      "releaseImageCount": 15,
+      "ktx2ImageCount": 15,
+      "meshoptBufferViewCount": 45,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_materials_emissive_strength",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "nodes": [
+        "COLLISION_HULL",
+        "LOD0_Merged_Material_Accent",
+        "LOD0_Merged_Material_Glass",
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Mechanical",
+        "LOD0_Merged_Material_Warm",
+        "LOD1_Merged_Material_Accent",
+        "LOD1_Merged_Material_Glass",
+        "LOD1_Merged_Material_Hull",
+        "LOD1_Merged_Material_Mechanical",
+        "LOD1_Merged_Material_Warm",
+        "LOD2_Merged_Material_Accent",
+        "LOD2_Merged_Material_Glass",
+        "LOD2_Merged_Material_Hull",
+        "LOD2_Merged_Material_Mechanical",
+        "LOD2_Merged_Material_Warm",
+        "SOCKET_Structure_Core",
+        "SF_M4_HELIOS_DOCK_ARM_ROOT"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2",
+      "spacefaceAsset": {
+        "contractVersion": 1,
+        "assetId": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
+        "slot": "place",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "KTX2/BasisU",
+        "textureSize": 1024,
+        "chamfered": true,
+        "bevelRadiusM": 0.05,
+        "partId": "place_station_billboard",
+        "liveId": "place_station_billboard",
+        "category": "places",
+        "sourceRole": "place-environment",
+        "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+        "family": "helios_hub_env_v6",
+        "role": "modular_support",
+        "title": "Helios Dock Arm Module",
+        "kind": "prop",
+        "triangleCount": 2768,
+        "hullTriangleCount": 1894,
+        "deliverableRole": "production_multi_lod",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ],
+        "wiringStatus": "isolated_candidate_no_promote",
+        "lod0AabbSize": [
+          15.127212166786194,
+          3.3249999284744263,
+          3
+        ],
+        "collisionBounds": {
+          "min": [
+            -0.8721231079101566,
+            -1.266999979019165,
+            -1.3800000000000001
+          ],
+          "max": [
+            13.044912085533142,
+            1.7919999551773071,
+            1.3800000000000001
+          ],
+          "size": [
+            13.917035193443299,
+            3.058999934196472,
+            2.7600000000000002
+          ],
+          "center": [
+            6.086394488811493,
+            0.26249998807907104,
+            0
+          ],
+          "coverage": 0.92
+        },
+        "collisionAabb": {
+          "min": [
+            -0.8721231079101566,
+            -1.266999979019165,
+            -1.3800000000000001
+          ],
+          "max": [
+            13.044912085533142,
+            1.7919999551773071,
+            1.3800000000000001
+          ],
+          "size": [
+            13.917035193443299,
+            3.058999934196472,
+            2.7600000000000002
+          ],
+          "center": [
+            6.086394488811493,
+            0.26249998807907104,
+            0
+          ],
+          "coverage": 0.92
+        },
+        "collisionCoverageRatio": {
+          "perAxis": [
+            0.92,
+            0.92,
+            0.92
+          ],
+          "min": 0.92,
+          "mean": 0.92
+        },
+        "triBudget": 3000,
+        "triBudgetAlarm": null,
+        "acceptanceClaim": false,
+        "finalize": {
+          "meshopt": true,
+          "ktx2": true,
+          "meshoptBufferViews": 45,
+          "ktx2Images": 15,
+          "sourceTextureCount": 15,
+          "releaseTextureCount": 15,
+          "tool": "finalize_m4_helios_hub_v6_candidate.mjs",
+          "pattern": "SG04 MeshoptEncoder + ktx2-encoder"
+        }
+      }
+    },
+    {
+      "id": "helios_nav_spire",
+      "liveId": "place_nav_buoy",
+      "ok": true,
+      "source": "assets/ships/m4_helios_hub_v6/source/places/helios_nav_spire.glb",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_nav_spire.glb",
+      "sourceBytes": 4109928,
+      "candidateBytes": 6012100,
+      "sourceSha256": "C658705D533574E744166436E76D8FA6512D44F888DC6F9F6A29AC53AEF391F0",
+      "candidateSha256": "A4EC1A3BAB1CC16920A0EEC09BCBE59B81751D65720415AB3D60D2381E7A8C0B",
+      "sourceTextureCount": 12,
+      "releaseTextureCount": 12,
+      "releaseImageCount": 12,
+      "ktx2ImageCount": 12,
+      "meshoptBufferViewCount": 49,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_materials_emissive_strength",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "nodes": [
+        "COLLISION_HULL",
+        "LOD0_HOOK_EMISSIVE",
+        "LOD0_Merged_Material_Accent",
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Mechanical",
+        "LOD0_Merged_Material_Warm",
+        "LOD1_HOOK_EMISSIVE",
+        "LOD1_Merged_Material_Accent",
+        "LOD1_Merged_Material_Hull",
+        "LOD1_Merged_Material_Mechanical",
+        "LOD1_Merged_Material_Warm",
+        "LOD2_HOOK_EMISSIVE",
+        "LOD2_Merged_Material_Accent",
+        "LOD2_Merged_Material_Hull",
+        "LOD2_Merged_Material_Mechanical",
+        "LOD2_Merged_Material_Warm",
+        "SOCKET_Structure_Core",
+        "SF_M4_HELIOS_NAV_SPIRE_ROOT"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2",
+      "spacefaceAsset": {
+        "contractVersion": 1,
+        "assetId": "SF_PLACE_HELIOS_NAV_SPIRE",
+        "slot": "place",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "KTX2/BasisU",
+        "textureSize": 1024,
+        "chamfered": true,
+        "bevelRadiusM": 0.05,
+        "partId": "place_nav_buoy",
+        "liveId": "place_nav_buoy",
+        "category": "places",
+        "sourceRole": "place-environment",
+        "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+        "family": "helios_hub_env_v6",
+        "role": "nav_landmark",
+        "title": "Helios Nav Spire",
+        "kind": "prop",
+        "triangleCount": 3044,
+        "hullTriangleCount": 1578,
+        "deliverableRole": "production_multi_lod",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ],
+        "wiringStatus": "isolated_candidate_no_promote",
+        "lod0AabbSize": [
+          3.9392309188842773,
+          15.987500190734863,
+          3.200000047683716
+        ],
+        "collisionBounds": {
+          "min": [
+            -1.8120462226867677,
+            -4.648000373840333,
+            -1.4720000219345093
+          ],
+          "max": [
+            1.8120462226867677,
+            10.060499801635743,
+            1.4720000219345093
+          ],
+          "size": [
+            3.6240924453735355,
+            14.708500175476075,
+            2.9440000438690186
+          ],
+          "center": [
+            0,
+            2.706249713897705,
+            0
+          ],
+          "coverage": 0.92
+        },
+        "collisionAabb": {
+          "min": [
+            -1.8120462226867677,
+            -4.648000373840333,
+            -1.4720000219345093
+          ],
+          "max": [
+            1.8120462226867677,
+            10.060499801635743,
+            1.4720000219345093
+          ],
+          "size": [
+            3.6240924453735355,
+            14.708500175476075,
+            2.9440000438690186
+          ],
+          "center": [
+            0,
+            2.706249713897705,
+            0
+          ],
+          "coverage": 0.92
+        },
+        "collisionCoverageRatio": {
+          "perAxis": [
+            0.92,
+            0.92,
+            0.92
+          ],
+          "min": 0.92,
+          "mean": 0.92
+        },
+        "triBudget": 3000,
+        "triBudgetAlarm": null,
+        "acceptanceClaim": false,
+        "finalize": {
+          "meshopt": true,
+          "ktx2": true,
+          "meshoptBufferViews": 49,
+          "ktx2Images": 12,
+          "sourceTextureCount": 12,
+          "releaseTextureCount": 12,
+          "tool": "finalize_m4_helios_hub_v6_candidate.mjs",
+          "pattern": "SG04 MeshoptEncoder + ktx2-encoder"
+        }
+      }
+    }
+  ],
+  "promoteReport": null,
+  "releaseReport": null,
+  "threeReport": {
+    "ok": true,
+    "shotCount": 24,
+    "shots": [
+      {
+        "shot": "helios_rock_a_three_close",
+        "asset": "helios_rock_a",
+        "mode": "close",
+        "w": 960,
+        "h": 540,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_rock_a_three_close.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_rock_a_three_close.png",
+        "bytes": 81952,
+        "sha256": "6613D5E62FAC9E4207205886FFC9DD4C15AC0FAEFFD07BFC2392CC2123226A86",
+        "brightPixels": 36551,
+        "meshCount": 5,
+        "centerPixel": [
+          84,
+          76,
+          59,
+          255
+        ],
+        "framing": {
+          "ok": false,
+          "left": 0.3677,
+          "right": 0.3094,
+          "top": 0.3296,
+          "bottom": 0.2019,
+          "meanMargin": 0.3021,
+          "target": [
+            0.08,
+            0.15
+          ]
+        }
+      },
+      {
+        "shot": "helios_rock_a_three_mid",
+        "asset": "helios_rock_a",
+        "mode": "mid",
+        "w": 128,
+        "h": 128,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_rock_a_three_mid.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_rock_a_three_mid.png",
+        "bytes": 3021,
+        "sha256": "42E0F7A1A2DAD4BB04094205F2560FA1522EB56F9912E9A2813E11BCD51CEBF0",
+        "brightPixels": 719,
+        "meshCount": 5,
+        "centerPixel": [
+          67,
+          63,
+          50,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "mid"
+        }
+      },
+      {
+        "shot": "helios_rock_a_three_far",
+        "asset": "helios_rock_a",
+        "mode": "far",
+        "w": 40,
+        "h": 40,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_rock_a_three_far.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_rock_a_three_far.png",
+        "bytes": 302,
+        "sha256": "03F3E77B8D3E62C5794A3CB154A2BCDE29641839962118C8A49039164EB80F9A",
+        "brightPixels": 25,
+        "meshCount": 5,
+        "centerPixel": [
+          68,
+          56,
+          40,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "far"
+        }
+      },
+      {
+        "shot": "helios_rock_b_three_close",
+        "asset": "helios_rock_b",
+        "mode": "close",
+        "w": 960,
+        "h": 540,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_rock_b_three_close.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_rock_b_three_close.png",
+        "bytes": 30623,
+        "sha256": "BB5458FC29FA80DFEFA1DE2805005344E9D2EA477183780259D4D42FAC302BD4",
+        "brightPixels": 14433,
+        "meshCount": 5,
+        "centerPixel": [
+          68,
+          59,
+          43,
+          255
+        ],
+        "framing": {
+          "ok": false,
+          "left": 0.3187,
+          "right": 0.3698,
+          "top": 0.3778,
+          "bottom": 0.3759,
+          "meanMargin": 0.3606,
+          "target": [
+            0.08,
+            0.15
+          ]
+        }
+      },
+      {
+        "shot": "helios_rock_b_three_mid",
+        "asset": "helios_rock_b",
+        "mode": "mid",
+        "w": 128,
+        "h": 128,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_rock_b_three_mid.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_rock_b_three_mid.png",
+        "bytes": 1481,
+        "sha256": "62F5B6A316BB30564F2B9E5B38868F6341AA03326815B9EAE85847CFD11F606B",
+        "brightPixels": 290,
+        "meshCount": 5,
+        "centerPixel": [
+          68,
+          60,
+          45,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "mid"
+        }
+      },
+      {
+        "shot": "helios_rock_b_three_far",
+        "asset": "helios_rock_b",
+        "mode": "far",
+        "w": 40,
+        "h": 40,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_rock_b_three_far.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_rock_b_three_far.png",
+        "bytes": 235,
+        "sha256": "68F58BE0D442E928E8A6233FC34FFA17EB052CF077C7DB4E1DA6488ECDB20265",
+        "brightPixels": 13,
+        "meshCount": 5,
+        "centerPixel": [
+          102,
+          104,
+          93,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "far"
+        }
+      },
+      {
+        "shot": "helios_rock_c_three_close",
+        "asset": "helios_rock_c",
+        "mode": "close",
+        "w": 960,
+        "h": 540,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_rock_c_three_close.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_rock_c_three_close.png",
+        "bytes": 115843,
+        "sha256": "55A837F1BD2C839F3D33A2B688B9DCAF40AB263E6A880F5A95DB776F2F22DE21",
+        "brightPixels": 67933,
+        "meshCount": 5,
+        "centerPixel": [
+          47,
+          39,
+          28,
+          255
+        ],
+        "framing": {
+          "ok": false,
+          "left": 0.3365,
+          "right": 0.3187,
+          "top": 0.2537,
+          "bottom": 0.0833,
+          "meanMargin": 0.2481,
+          "target": [
+            0.08,
+            0.15
+          ]
+        }
+      },
+      {
+        "shot": "helios_rock_c_three_mid",
+        "asset": "helios_rock_c",
+        "mode": "mid",
+        "w": 128,
+        "h": 128,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_rock_c_three_mid.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_rock_c_three_mid.png",
+        "bytes": 4277,
+        "sha256": "01D89E692FA3F1611AF4B1704B775C77D26CFFA24B753993A0659882FF80A3DD",
+        "brightPixels": 1306,
+        "meshCount": 5,
+        "centerPixel": [
+          49,
+          41,
+          29,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "mid"
+        }
+      },
+      {
+        "shot": "helios_rock_c_three_far",
+        "asset": "helios_rock_c",
+        "mode": "far",
+        "w": 40,
+        "h": 40,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_rock_c_three_far.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_rock_c_three_far.png",
+        "bytes": 382,
+        "sha256": "28F149F9FBA70EBFA9AF7D2F59DA42BF75E6E63E4E207172111B19C64830BE9C",
+        "brightPixels": 45,
+        "meshCount": 5,
+        "centerPixel": [
+          59,
+          48,
+          33,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "far"
+        }
+      },
+      {
+        "shot": "helios_support_gantry_three_close",
+        "asset": "helios_support_gantry",
+        "mode": "close",
+        "w": 960,
+        "h": 540,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_gantry_three_close.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_support_gantry_three_close.png",
+        "bytes": 46938,
+        "sha256": "A5306784B3A7BDCF1D7A3A76372EC08BB1ABBA02B7CF6D939CE1589C3AE3665F",
+        "brightPixels": 26124,
+        "meshCount": 12,
+        "centerPixel": [
+          10,
+          12,
+          16,
+          255
+        ],
+        "framing": {
+          "ok": false,
+          "left": 0.3865,
+          "right": 0.3469,
+          "top": 0.1204,
+          "bottom": 0.2056,
+          "meanMargin": 0.2648,
+          "target": [
+            0.08,
+            0.15
+          ]
+        }
+      },
+      {
+        "shot": "helios_support_gantry_three_mid",
+        "asset": "helios_support_gantry",
+        "mode": "mid",
+        "w": 128,
+        "h": 128,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_gantry_three_mid.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_support_gantry_three_mid.png",
+        "bytes": 2412,
+        "sha256": "1E8566E08B7D58B0663829F22F950CA6725B32300CE14624C72DAD8278200796",
+        "brightPixels": 585,
+        "meshCount": 12,
+        "centerPixel": [
+          10,
+          12,
+          16,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "mid"
+        }
+      },
+      {
+        "shot": "helios_support_gantry_three_far",
+        "asset": "helios_support_gantry",
+        "mode": "far",
+        "w": 40,
+        "h": 40,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_gantry_three_far.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_support_gantry_three_far.png",
+        "bytes": 355,
+        "sha256": "A43CB7863766071DD68BA78DA3993A20D1694D25F2AE3FCBFCBCFF9457812F99",
+        "brightPixels": 26,
+        "meshCount": 12,
+        "centerPixel": [
+          10,
+          12,
+          16,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "far"
+        }
+      },
+      {
+        "shot": "helios_support_dock_arm_three_close",
+        "asset": "helios_support_dock_arm",
+        "mode": "close",
+        "w": 960,
+        "h": 540,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm_three_close.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_support_dock_arm_three_close.png",
+        "bytes": 36376,
+        "sha256": "E09CEF1169D34C00169BA696C2B75FF0211749A29EFE385F480F8AC4F4F6586C",
+        "brightPixels": 16454,
+        "meshCount": 15,
+        "centerPixel": [
+          125,
+          133,
+          119,
+          255
+        ],
+        "framing": {
+          "ok": false,
+          "left": 0.3583,
+          "right": 0.3083,
+          "top": 0.3685,
+          "bottom": 0.2926,
+          "meanMargin": 0.3319,
+          "target": [
+            0.08,
+            0.15
+          ]
+        }
+      },
+      {
+        "shot": "helios_support_dock_arm_three_mid",
+        "asset": "helios_support_dock_arm",
+        "mode": "mid",
+        "w": 128,
+        "h": 128,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm_three_mid.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_support_dock_arm_three_mid.png",
+        "bytes": 1805,
+        "sha256": "1A1F125AEBEC37C1D81992955A98A3D1CCCB71D731633831FDEBB10592789D9B",
+        "brightPixels": 351,
+        "meshCount": 15,
+        "centerPixel": [
+          127,
+          131,
+          119,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "mid"
+        }
+      },
+      {
+        "shot": "helios_support_dock_arm_three_far",
+        "asset": "helios_support_dock_arm",
+        "mode": "far",
+        "w": 40,
+        "h": 40,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm_three_far.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_support_dock_arm_three_far.png",
+        "bytes": 270,
+        "sha256": "44E72DD0AEE105E2F4724C417F3A9C7007D18794D730EC0C222A1BA90F0549FA",
+        "brightPixels": 17,
+        "meshCount": 15,
+        "centerPixel": [
+          46,
+          46,
+          44,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "far"
+        }
+      },
+      {
+        "shot": "helios_nav_spire_three_close",
+        "asset": "helios_nav_spire",
+        "mode": "close",
+        "w": 960,
+        "h": 540,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_nav_spire_three_close.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_nav_spire_three_close.png",
+        "bytes": 25486,
+        "sha256": "AE6414845B06A11169F392204C90F94836B5629F042AD97D2632293EFBDDE5AA",
+        "brightPixels": 13027,
+        "meshCount": 15,
+        "centerPixel": [
+          121,
+          112,
+          93,
+          255
+        ],
+        "framing": {
+          "ok": false,
+          "left": 0.4583,
+          "right": 0.4573,
+          "top": 0.2074,
+          "bottom": 0.1574,
+          "meanMargin": 0.3201,
+          "target": [
+            0.08,
+            0.15
+          ]
+        }
+      },
+      {
+        "shot": "helios_nav_spire_three_mid",
+        "asset": "helios_nav_spire",
+        "mode": "mid",
+        "w": 128,
+        "h": 128,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_nav_spire_three_mid.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_nav_spire_three_mid.png",
+        "bytes": 1396,
+        "sha256": "0EE15A1E2FDD2A3E6388A4D02445EDDBD6D65CBE0797AF1D71F7EB1A4EC8236E",
+        "brightPixels": 288,
+        "meshCount": 15,
+        "centerPixel": [
+          118,
+          105,
+          85,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "mid"
+        }
+      },
+      {
+        "shot": "helios_nav_spire_three_far",
+        "asset": "helios_nav_spire",
+        "mode": "far",
+        "w": 40,
+        "h": 40,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_nav_spire_three_far.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_nav_spire_three_far.png",
+        "bytes": 264,
+        "sha256": "6C3DBE9B58FE5331508DAEE828738F45DD183AA89063CFDD31BA428CE0F6209B",
+        "brightPixels": 14,
+        "meshCount": 15,
+        "centerPixel": [
+          22,
+          21,
+          22,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "far"
+        }
+      },
+      {
+        "shot": "helios_hub_station_three_close",
+        "asset": "helios_hub_station",
+        "mode": "close",
+        "w": 960,
+        "h": 540,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_hub_station_three_close.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_hub_station_three_close.png",
+        "bytes": 78212,
+        "sha256": "3EA22B1BA3B82BF91A69A33704D9809E12EC6513326F5412088809BE484D57D6",
+        "brightPixels": 42048,
+        "meshCount": 18,
+        "centerPixel": [
+          161,
+          149,
+          127,
+          255
+        ],
+        "framing": {
+          "ok": false,
+          "left": 0.3031,
+          "right": 0.3104,
+          "top": 0.2852,
+          "bottom": 0.2111,
+          "meanMargin": 0.2775,
+          "target": [
+            0.08,
+            0.15
+          ]
+        }
+      },
+      {
+        "shot": "helios_hub_station_three_mid",
+        "asset": "helios_hub_station",
+        "mode": "mid",
+        "w": 128,
+        "h": 128,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_hub_station_three_mid.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_hub_station_three_mid.png",
+        "bytes": 3703,
+        "sha256": "95B1E85A2FFF42FB33E411104223ACD412CD69BFBBFC4DFE81360F18524A573F",
+        "brightPixels": 867,
+        "meshCount": 18,
+        "centerPixel": [
+          153,
+          142,
+          121,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "mid"
+        }
+      },
+      {
+        "shot": "helios_hub_station_three_far",
+        "asset": "helios_hub_station",
+        "mode": "far",
+        "w": 40,
+        "h": 40,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_hub_station_three_far.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_hub_station_three_far.png",
+        "bytes": 353,
+        "sha256": "DA6248BF33CD9208821B76C4C800B6CAC71C02F93D25AFCF87E6539799307CFC",
+        "brightPixels": 35,
+        "meshCount": 18,
+        "centerPixel": [
+          141,
+          130,
+          109,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "far"
+        }
+      },
+      {
+        "shot": "helios_gate_three_close",
+        "asset": "helios_gate",
+        "mode": "close",
+        "w": 960,
+        "h": 540,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_gate_three_close.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_gate_three_close.png",
+        "bytes": 100414,
+        "sha256": "19F5480643541E271D6E39DBB4CA978DD432CD4FF8B87F2071BB3983DE72C240",
+        "brightPixels": 32219,
+        "meshCount": 11,
+        "centerPixel": [
+          0,
+          0,
+          0,
+          255
+        ],
+        "framing": {
+          "ok": false,
+          "left": 0.3094,
+          "right": 0.3344,
+          "top": 0.1463,
+          "bottom": 0,
+          "meanMargin": 0.1975,
+          "target": [
+            0.08,
+            0.15
+          ]
+        }
+      },
+      {
+        "shot": "helios_gate_three_mid",
+        "asset": "helios_gate",
+        "mode": "mid",
+        "w": 128,
+        "h": 128,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_gate_three_mid.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_gate_three_mid.png",
+        "bytes": 4940,
+        "sha256": "7ECE8C14139DA540EB1F410DF2A5CB868379D291D0E5DCFE6168D1A168FDE007",
+        "brightPixels": 760,
+        "meshCount": 11,
+        "centerPixel": [
+          0,
+          1,
+          2,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "mid"
+        }
+      },
+      {
+        "shot": "helios_gate_three_far",
+        "asset": "helios_gate",
+        "mode": "far",
+        "w": 40,
+        "h": 40,
+        "evidence": "assets/ships/m4_helios_hub_v6/evidence/renders/helios_gate_three_far.png",
+        "devshot": "assets/ships/m4_helios_hub_v6/evidence/devshots/helios_gate_three_far.png",
+        "bytes": 473,
+        "sha256": "EDED51F9B0651685D7634EBE34F46344A9601DCE1D1F7812A8B7FEBCFA85EFF4",
+        "brightPixels": 35,
+        "meshCount": 11,
+        "centerPixel": [
+          8,
+          10,
+          13,
+          255
+        ],
+        "framing": {
+          "skipped": true,
+          "mode": "far"
+        }
+      }
+    ]
+  },
+  "rebuild": {
+    "blender": "\"C:\\\\Program Files\\\\Blender Foundation\\\\Blender 5.1\\\\blender.exe\" --background --python tools/blender/build_m4_helios_hub_v6.py --",
+    "finalize": "node tools/art/finalize_m4_helios_hub_v6_candidate.mjs"
+  }
+}

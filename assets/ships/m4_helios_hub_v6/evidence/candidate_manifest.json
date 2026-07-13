@@ -1,0 +1,114 @@
+{
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+  "acceptanceClaim": false,
+  "assets": [
+    {
+      "id": "helios_hub_station",
+      "liveId": "place_station_trade_hub",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_hub_station.glb",
+      "candidateSha256": "328833794DABD57FCEF90F73BDCBD6E0C4B15FEA3CFD20C4A675AA2F0F1A9412",
+      "candidateBytes": 8422620,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "sourceSha256": "A62F60BE4673FACB12430D4A3B56035DBE36B69CC6F3AFF4391422E7E4BEB5F7"
+    },
+    {
+      "id": "helios_gate",
+      "liveId": "place_gate_jump_ring",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_gate.glb",
+      "candidateSha256": "EB14754C87B2096A6BAE78BBF188FF06AB603E2BC865FB60BCAC8F5021152720",
+      "candidateBytes": 6794136,
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "sourceSha256": "CD7601F0585EF26F539E8F04F5C959F9EF7A5BC3257DE8E405E346EB6AFEC7DB"
+    },
+    {
+      "id": "helios_rock_a",
+      "liveId": "place_asteroid_rock_a",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_rock_a.glb",
+      "candidateSha256": "8BD03E88AB61D72814914345391B5426580ED5129916B558F29C5267FE98DB38",
+      "candidateBytes": 3860256,
+      "materials": [
+        "Material_Accent",
+        "Material_Rock"
+      ],
+      "sourceSha256": "D90D64B84FC1B84FC96A0959DB769F5BE869DFA71F5ED5841C6889114C370E0E"
+    },
+    {
+      "id": "helios_rock_b",
+      "liveId": "place_asteroid_rock_b",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_rock_b.glb",
+      "candidateSha256": "235D7752C6F27C3B7E5EDA1DC544E9B7897B5AD5EF64F2BBBE8887FB345D29C2",
+      "candidateBytes": 3809428,
+      "materials": [
+        "Material_Accent",
+        "Material_Rock"
+      ],
+      "sourceSha256": "DA929499107D2EA16608FAC2C84477C33CC2FC0AA36FAAEFAE708A4CC535B01A"
+    },
+    {
+      "id": "helios_rock_c",
+      "liveId": "place_asteroid_rock_c",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_rock_c.glb",
+      "candidateSha256": "2AE7C8CAAD5CB37DA85C249826A58D5413BB955F5D23C87755E5F0187A84BCB7",
+      "candidateBytes": 3861956,
+      "materials": [
+        "Material_Accent",
+        "Material_Rock"
+      ],
+      "sourceSha256": "E537FE6AE7E942C3DFA154786F0AC96758FBF2A51AB04A7235C19781F58B493F"
+    },
+    {
+      "id": "helios_support_gantry",
+      "liveId": "place_lane_beacon",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_support_gantry.glb",
+      "candidateSha256": "CBF276C8414BB333531802CD0A7C9BDD164F78C3BBEEA3BE05F643771A18BDE5",
+      "candidateBytes": 6001952,
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "sourceSha256": "A8FCE9D52635BBC74847FC00A355EB7C3736D6C460804C98ED1297EDE3BE0326"
+    },
+    {
+      "id": "helios_support_dock_arm",
+      "liveId": "place_station_billboard",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_support_dock_arm.glb",
+      "candidateSha256": "234E023F204C4ED7094142F89E74F86D8CCA81B18D66F7CCA8ACDA45ACC2F85E",
+      "candidateBytes": 7180892,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "sourceSha256": "1F37FA0E65DA6125F21F4D1EE5252937C472B486FD7BAA4C417A41F64E751595"
+    },
+    {
+      "id": "helios_nav_spire",
+      "liveId": "place_nav_buoy",
+      "candidate": "assets/ships/m4_helios_hub_v6/release_candidates/places/helios_nav_spire.glb",
+      "candidateSha256": "A4EC1A3BAB1CC16920A0EEC09BCBE59B81751D65720415AB3D60D2381E7A8C0B",
+      "candidateBytes": 6012100,
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "sourceSha256": "C658705D533574E744166436E76D8FA6512D44F888DC6F9F6A29AC53AEF391F0"
+    }
+  ]
+}

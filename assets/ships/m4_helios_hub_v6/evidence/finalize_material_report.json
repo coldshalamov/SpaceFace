@@ -1,0 +1,106 @@
+{
+  "schema": "spaceface.finalizeMaterialReport.v1",
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+  "assets": [
+    {
+      "id": "helios_hub_station",
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "materialCount": 5,
+      "ktx2ImageCount": 15,
+      "meshoptBufferViewCount": 61,
+      "candidateBytes": 8422620
+    },
+    {
+      "id": "helios_gate",
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "materialCount": 4,
+      "ktx2ImageCount": 12,
+      "meshoptBufferViewCount": 45,
+      "candidateBytes": 6794136
+    },
+    {
+      "id": "helios_rock_a",
+      "materials": [
+        "Material_Accent",
+        "Material_Rock"
+      ],
+      "materialCount": 2,
+      "ktx2ImageCount": 6,
+      "meshoptBufferViewCount": 17,
+      "candidateBytes": 3860256
+    },
+    {
+      "id": "helios_rock_b",
+      "materials": [
+        "Material_Accent",
+        "Material_Rock"
+      ],
+      "materialCount": 2,
+      "ktx2ImageCount": 6,
+      "meshoptBufferViewCount": 17,
+      "candidateBytes": 3809428
+    },
+    {
+      "id": "helios_rock_c",
+      "materials": [
+        "Material_Accent",
+        "Material_Rock"
+      ],
+      "materialCount": 2,
+      "ktx2ImageCount": 6,
+      "meshoptBufferViewCount": 17,
+      "candidateBytes": 3861956
+    },
+    {
+      "id": "helios_support_gantry",
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "materialCount": 4,
+      "ktx2ImageCount": 12,
+      "meshoptBufferViewCount": 33,
+      "candidateBytes": 6001952
+    },
+    {
+      "id": "helios_support_dock_arm",
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "materialCount": 5,
+      "ktx2ImageCount": 15,
+      "meshoptBufferViewCount": 45,
+      "candidateBytes": 7180892
+    },
+    {
+      "id": "helios_nav_spire",
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "materialCount": 4,
+      "ktx2ImageCount": 12,
+      "meshoptBufferViewCount": 49,
+      "candidateBytes": 6012100
+    }
+  ]
+}

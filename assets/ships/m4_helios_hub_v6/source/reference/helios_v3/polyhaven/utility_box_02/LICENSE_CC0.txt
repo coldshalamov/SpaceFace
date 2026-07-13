@@ -1,0 +1,12 @@
+Poly Haven model: utility_box_02
+Canonical: https://polyhaven.com/a/utility_box_02
+License: CC0 1.0 — https://polyhaven.com/license
+Attribution: not required; appreciated
+Resolution: 2k glTF package
+Acquired: 2026-07-11T15:15:38.5550920-04:00
+Files SHA256:
+utility_box_02_2k.gltf:31abfd95a081532fcba40239cb9aa499c62394ae9b18e756ab49e8c4e1c5e4a7
+utility_box_02.bin:0f0a3f8ecc0358e36e97120aa752c2456a78bf922671e6f77e402b0aa58ecfce
+utility_box_02_nor_gl_2k.jpg:e8963358ce46a96cd63e78a5a950f06043231dfd2a7e31e4a9ed9d176ceac638
+utility_box_02_diff_2k.jpg:59554c019e3bf270cd59eae1ff4f105ba92383174d9b706120cc92de872751a6
+utility_box_02_arm_2k.jpg:e767bef42b431106db00cfb50374dd399f8acfe8a8d05045ab2590593920a177

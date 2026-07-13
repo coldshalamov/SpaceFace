@@ -1,0 +1,29 @@
+{
+  "schema": "spaceface.assetProvenance.v1",
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+  "family": "helios_hub_env_v6",
+  "generator": "tools/blender/build_m4_helios_hub_v3.py",
+  "builtAt": "2026-07-13T00:04:39Z",
+  "textureSize": 1024,
+  "qualityFloor": "SF-K0 Borrowed Time (reference craft; geometry not reused)",
+  "acceptanceClaim": false,
+  "referencePackages": [
+    "assets/ships/revamp-evidence/_k0_inspect/revamp/SpaceFace_SF-K0_Borrowed-Time_Revamp"
+  ],
+  "rejectedComparisons": [
+    "assets/ships/m4_helios_hub (rejected four-arm cylinder / stacked gate / ico rocks)",
+    "Primitive blockouts / beveled boxes as final forms",
+    "Accessory-only hulls",
+    "Generic gray materials / file-size proxies"
+  ],
+  "wiringStatus": "isolated_candidate_no_promote",
+  "allowlist": [
+    "assets/ships/m4_helios_hub_v3/**",
+    "assets/third_party/helios_v3/**",
+    "tools/blender/build_m4_helios_hub_v3.py",
+    "tools/art/finalize_m4_helios_hub_v3_candidate.mjs",
+    ".campaign/parallel-research-20260711/helios-v3-build/**"
+  ],
+  "vendorProvenance": "assets/third_party/helios_v3/PROVENANCE.json",
+  "assets": []
+}

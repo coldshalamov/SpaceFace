@@ -1,0 +1,464 @@
+{
+  "id": "helios_support_dock_arm",
+  "assetId": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
+  "partId": "place_station_billboard",
+  "liveId": "place_station_billboard",
+  "title": "Helios Dock Arm Module",
+  "role": "modular_support",
+  "kind": "prop",
+  "ok": true,
+  "elapsedSec": 20.11,
+  "sourceGlb": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/source/places/helios_support_dock_arm.glb",
+  "productionBlend": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/blender/helios_support_dock_arm_production.blend",
+  "sourceBytes": 4877344,
+  "sourceSha256": "1F37FA0E65DA6125F21F4D1EE5252937C472B486FD7BAA4C417A41F64E751595",
+  "totalTriangles": 2768,
+  "hullTriangles": 1894,
+  "lod0Triangles": 1708,
+  "sockets": [
+    "SOCKET_Structure_Core"
+  ],
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "collisionCoverageMin": 0.92,
+  "lod0WithinBudget": true,
+  "renderCount": 15,
+  "renders": [
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_full.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_readability_close.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_readability_120px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_readability_under45px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_top.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_rear.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_rear_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_detail.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_side_ortho.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_gamesky.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_gamesky_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_lod_continuity_lod0.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_lod_continuity_lod1.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/evidence/renders/helios_support_dock_arm/helios_support_dock_arm_lod_continuity_lod2.png"
+  ],
+  "export": {
+    "file": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/source/places/helios_support_dock_arm.glb",
+    "bytes": 4877344,
+    "sha256": "1F37FA0E65DA6125F21F4D1EE5252937C472B486FD7BAA4C417A41F64E751595",
+    "totalTriangles": 2768,
+    "hullTriangles": 1894,
+    "lodBreakdown": {
+      "lod0": {
+        "triangles": 1708,
+        "primitives": 5,
+        "drawEstimate": 5,
+        "nodes": [
+          {
+            "name": "LOD0_Merged_Material_Accent",
+            "tris": 24
+          },
+          {
+            "name": "LOD0_Merged_Material_Glass",
+            "tris": 108
+          },
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 1244
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 296
+          },
+          {
+            "name": "LOD0_Merged_Material_Warm",
+            "tris": 36
+          }
+        ]
+      },
+      "lod1": {
+        "triangles": 742,
+        "primitives": 5,
+        "drawEstimate": 5,
+        "nodes": [
+          {
+            "name": "LOD1_Merged_Material_Accent",
+            "tris": 24
+          },
+          {
+            "name": "LOD1_Merged_Material_Glass",
+            "tris": 88
+          },
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 480
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 114
+          },
+          {
+            "name": "LOD1_Merged_Material_Warm",
+            "tris": 36
+          }
+        ]
+      },
+      "lod2": {
+        "triangles": 318,
+        "primitives": 5,
+        "drawEstimate": 5,
+        "nodes": [
+          {
+            "name": "LOD2_Merged_Material_Accent",
+            "tris": 24
+          },
+          {
+            "name": "LOD2_Merged_Material_Glass",
+            "tris": 44
+          },
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 170
+          },
+          {
+            "name": "LOD2_Merged_Material_Mechanical",
+            "tris": 44
+          },
+          {
+            "name": "LOD2_Merged_Material_Warm",
+            "tris": 36
+          }
+        ]
+      }
+    },
+    "sockets": [
+      "SOCKET_Structure_Core"
+    ],
+    "materials": [
+      "Material_Accent",
+      "Material_Glass",
+      "Material_Hull",
+      "Material_Mechanical",
+      "Material_Warm"
+    ],
+    "primitiveCount": 15,
+    "tangentPrimitiveCount": 15,
+    "uvPrimitiveCount": 15,
+    "lod0Aabb": {
+      "min": [
+        -1.477211594581604,
+        -1.399999976158142,
+        -1.5
+      ],
+      "max": [
+        13.65000057220459,
+        1.9249999523162842,
+        1.5
+      ],
+      "size": [
+        15.127212166786194,
+        3.3249999284744263,
+        3.0
+      ],
+      "center": [
+        6.086394488811493,
+        0.26249998807907104,
+        0.0
+      ]
+    },
+    "collisionAabb": {
+      "min": [
+        -0.8721231079101566,
+        -1.266999979019165,
+        -1.3800000000000001
+      ],
+      "max": [
+        13.044912085533142,
+        1.7919999551773071,
+        1.3800000000000001
+      ],
+      "size": [
+        13.917035193443299,
+        3.058999934196472,
+        2.7600000000000002
+      ],
+      "center": [
+        6.086394488811493,
+        0.26249998807907104,
+        0.0
+      ],
+      "coverage": 0.92
+    },
+    "collisionCoverageRatio": {
+      "perAxis": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "min": 0.92,
+      "mean": 0.92
+    },
+    "images": [
+      {
+        "name": "accent_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "accent_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "accent_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "glass_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "glass_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "glass_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_basecolor",
+        "mimeType": "image/png"
+      }
+    ],
+    "spacefaceAsset": {
+      "contractVersion": 1,
+      "assetId": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
+      "slot": "place",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "textureCompression": "PNG-source",
+      "textureSize": 1024,
+      "chamfered": true,
+      "bevelRadiusM": 0.05,
+      "partId": "place_station_billboard",
+      "liveId": "place_station_billboard",
+      "category": "places",
+      "sourceRole": "place-environment",
+      "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+      "family": "helios_hub_env_v6",
+      "role": "modular_support",
+      "title": "Helios Dock Arm Module",
+      "kind": "prop",
+      "triangleCount": 2768,
+      "hullTriangleCount": 1894,
+      "deliverableRole": "production_multi_lod",
+      "lods": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "wiringStatus": "candidate_pending_promote",
+      "lod0AabbSize": [
+        15.127212166786194,
+        3.3249999284744263,
+        3.0
+      ],
+      "collisionBounds": {
+        "min": [
+          -0.8721231079101566,
+          -1.266999979019165,
+          -1.3800000000000001
+        ],
+        "max": [
+          13.044912085533142,
+          1.7919999551773071,
+          1.3800000000000001
+        ],
+        "size": [
+          13.917035193443299,
+          3.058999934196472,
+          2.7600000000000002
+        ],
+        "center": [
+          6.086394488811493,
+          0.26249998807907104,
+          0.0
+        ],
+        "coverage": 0.92
+      },
+      "collisionAabb": {
+        "min": [
+          -0.8721231079101566,
+          -1.266999979019165,
+          -1.3800000000000001
+        ],
+        "max": [
+          13.044912085533142,
+          1.7919999551773071,
+          1.3800000000000001
+        ],
+        "size": [
+          13.917035193443299,
+          3.058999934196472,
+          2.7600000000000002
+        ],
+        "center": [
+          6.086394488811493,
+          0.26249998807907104,
+          0.0
+        ],
+        "coverage": 0.92
+      },
+      "collisionCoverageRatio": {
+        "perAxis": [
+          0.92,
+          0.92,
+          0.92
+        ],
+        "min": 0.92,
+        "mean": 0.92
+      },
+      "triBudget": 3000,
+      "triBudgetAlarm": null
+    },
+    "lodBuildStats": [
+      {
+        "lod": "lod0",
+        "decimateRatio": 1.0,
+        "mergedMeshes": [
+          "LOD0_Merged_Material_Hull",
+          "LOD0_Merged_Material_Mechanical",
+          "LOD0_Merged_Material_Warm",
+          "LOD0_Merged_Material_Accent",
+          "LOD0_Merged_Material_Glass"
+        ],
+        "separateMeshes": [],
+        "removedCloseOnly": [],
+        "triangles": 1708,
+        "objectCount": 5,
+        "explicitGateSilhouette": false
+      },
+      {
+        "lod": "lod1",
+        "decimateRatio": 0.42,
+        "mergedMeshes": [
+          "LOD1_Merged_Material_Hull",
+          "LOD1_Merged_Material_Mechanical",
+          "LOD1_Merged_Material_Warm",
+          "LOD1_Merged_Material_Accent",
+          "LOD1_Merged_Material_Glass"
+        ],
+        "separateMeshes": [],
+        "removedCloseOnly": [],
+        "triangles": 742,
+        "objectCount": 5,
+        "explicitGateSilhouette": false
+      },
+      {
+        "lod": "lod2",
+        "decimateRatio": 0.15,
+        "mergedMeshes": [
+          "LOD2_Merged_Material_Hull",
+          "LOD2_Merged_Material_Mechanical",
+          "LOD2_Merged_Material_Warm",
+          "LOD2_Merged_Material_Accent",
+          "LOD2_Merged_Material_Glass"
+        ],
+        "separateMeshes": [],
+        "removedCloseOnly": [],
+        "triangles": 318,
+        "objectCount": 5,
+        "explicitGateSilhouette": false
+      }
+    ],
+    "withinBudget": true,
+    "lod0WithinBudget": true
+  },
+  "lodStats": [
+    {
+      "lod": "lod0",
+      "decimateRatio": 1.0,
+      "mergedMeshes": [
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Mechanical",
+        "LOD0_Merged_Material_Warm",
+        "LOD0_Merged_Material_Accent",
+        "LOD0_Merged_Material_Glass"
+      ],
+      "separateMeshes": [],
+      "removedCloseOnly": [],
+      "triangles": 1708,
+      "objectCount": 5,
+      "explicitGateSilhouette": false
+    },
+    {
+      "lod": "lod1",
+      "decimateRatio": 0.42,
+      "mergedMeshes": [
+        "LOD1_Merged_Material_Hull",
+        "LOD1_Merged_Material_Mechanical",
+        "LOD1_Merged_Material_Warm",
+        "LOD1_Merged_Material_Accent",
+        "LOD1_Merged_Material_Glass"
+      ],
+      "separateMeshes": [],
+      "removedCloseOnly": [],
+      "triangles": 742,
+      "objectCount": 5,
+      "explicitGateSilhouette": false
+    },
+    {
+      "lod": "lod2",
+      "decimateRatio": 0.15,
+      "mergedMeshes": [
+        "LOD2_Merged_Material_Hull",
+        "LOD2_Merged_Material_Mechanical",
+        "LOD2_Merged_Material_Warm",
+        "LOD2_Merged_Material_Accent",
+        "LOD2_Merged_Material_Glass"
+      ],
+      "separateMeshes": [],
+      "removedCloseOnly": [],
+      "triangles": 318,
+      "objectCount": 5,
+      "explicitGateSilhouette": false
+    }
+  ]
+}

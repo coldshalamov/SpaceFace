@@ -1,0 +1,73 @@
+{
+  "schema": "spaceface.m4HeliosHubEnvV3.productionMetrics.v1",
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+  "family": "helios_hub_env_v6",
+  "elapsedSec": 117.09,
+  "textureSize": 1024,
+  "textures": {
+    "hull": {
+      "basecolor": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/hull_basecolor.png",
+      "orm": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/hull_orm.png",
+      "normal": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/hull_normal.png"
+    },
+    "mechanical": {
+      "basecolor": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/mechanical_basecolor.png",
+      "orm": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/mechanical_orm.png",
+      "normal": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/mechanical_normal.png"
+    },
+    "accent": {
+      "basecolor": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/accent_basecolor.png",
+      "orm": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/accent_orm.png",
+      "normal": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/accent_normal.png"
+    },
+    "warm": {
+      "basecolor": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/warm_basecolor.png",
+      "orm": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/warm_orm.png",
+      "normal": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/warm_normal.png"
+    },
+    "glass": {
+      "basecolor": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/glass_basecolor.png",
+      "orm": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/glass_orm.png",
+      "normal": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/glass_normal.png"
+    },
+    "rock": {
+      "basecolor": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/rock_basecolor.png",
+      "orm": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/rock_orm.png",
+      "normal": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v6/textures/rock_normal.png"
+    }
+  },
+  "assets": [
+    {
+      "id": "helios_hub_station",
+      "ok": false,
+      "error": "FRAMING HARD FAIL helios_hub_station: hero shots outside 8-15% margin: full, full, full, forward_34, forward_34, forward_34"
+    },
+    {
+      "id": "helios_gate",
+      "ok": false,
+      "error": "FRAMING HARD FAIL helios_gate: hero shots outside 8-15% margin: full, full, full, forward_34, forward_34, forward_34"
+    }
+  ],
+  "okCount": 0,
+  "failCount": 2,
+  "acceptanceClaim": false,
+  "selfPassForbidden": true,
+  "macroCycleCountRecorded": 32,
+  "qualityNotes": [
+    "V3 continuous asymmetric orbital-port with BMesh plates, trenches, ladders, curve pipes, kitbash subordinates.",
+    "Distinct habitation / industrial / transit hierarchy with ivory/graphite/cyan/amber zones.",
+    "Gate uses continuous curved spars + mechanical emitter anatomy (not stacked torus/boxes alone).",
+    "Rocks: multi-pass displace/voronoi + fracture cuts + strata/ore map storytelling.",
+    "Materials authored to read without emissive dependence; emissives remain optional nav hooks.",
+    "LOD0/1/2 material-merged; sockets + COLLISION_HULL; isolated candidates only.",
+    "Macro cycle ledger records defects/hashes; counts never self-pass; no acceptance claim."
+  ],
+  "knownDefects": [
+    "Smart-project UVs (not hand-packed); full multi-cage normal bake deferred.",
+    "Three.js evidence captured in finalize stage.",
+    "Independent review required \u2014 this build does not claim acceptance."
+  ],
+  "rejectedPacketReference": "PROFESSIONAL-HELIOS-HUB-VISUAL-V5-GROK-001",
+  "livePromoteMap": {},
+  "wiringStatus": "isolated_candidate_no_promote"
+}

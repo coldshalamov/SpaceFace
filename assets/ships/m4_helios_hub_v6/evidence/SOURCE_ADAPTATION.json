@@ -1,0 +1,22 @@
+{
+  "schema": "spaceface.assetAdaptation.v1",
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6-CODEX-001",
+  "candidateOnly": true,
+  "livePromotion": false,
+  "sources": [
+    {
+      "role": "station_macro_donor",
+      "path": "assets/ships/m4_helios_hub_v6/source/reference/blenderkit_scifi_station/blenderkit_scifi_station_cc0.blend",
+      "license": "CC0-1.0",
+      "sha256": "F4818E9771E2E5BD5E990A40AFC24394615AB3E751062ED1B23C1D16D98487B6",
+      "adaptation": "needle-noise removal, scale normalization, material-role reassignment, bounded topology, functional mass integration"
+    },
+    {
+      "role": "hero_rocks_and_industrial_detail",
+      "path": "assets/ships/m4_helios_hub_v6/source/reference/helios_v3",
+      "license": "CC0-1.0 / Kenney permissive",
+      "adaptation": "source-based hero-rock variants and subordinate functional kitbash"
+    }
+  ],
+  "qualityIntent": "Kestrel Borrowed Time or better; no primitive downgrade; professional place-family readability"
+}
