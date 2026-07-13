@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { PROPULSION_PROFILES } from '../src/core/flight/propulsionCatalog.js';
 import { createPropulsionRuntime, stepPropulsion } from '../src/core/flight/propulsionKernel.js';
+import { applyMasslineFlightModifiers, MASSLINE_FLIGHT_TUNING } from '../src/systems/flightV3.js';
+import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 import { advanceFixedTimestep, LOOP_FIXED_DT } from '../src/core/loop.js';
 import { estimateBrakingSolution, solveIntercept } from '../src/core/flight/flightTelemetry.js';
 import { estimateMasslineResponse, createMasslineRuntime, stepMassline } from '../src/core/constraints/masslineController.js';
@@ -248,6 +250,138 @@ function simulate({ profile, b, input, ticks, runtime }) {
   simulate({ profile, b, input: { throttle: 1, assistMode: 'assisted' }, ticks: 60 }); // 1 s
   assert.ok(b.vel.x < 400, 'overspeed under held throttle should decay toward the cap');
   assert.ok(b.vel.x > 380, 'but gently — capped at overspeedBrakeFraction of reverse authority');
+}
+
+// 12d. A tagged physics-earned exit decays more slowly, but the tag cannot raise thrust's cap.
+{
+  const profile = PROPULSION_PROFILES.drive_reaction_s;
+  const ordinary = body({ vel: { x: 400, z: 0 } });
+  const earned = body({ vel: { x: 400, z: 0 } });
+  const ordinaryStep = stepPropulsion({
+    dt: DT, body: ordinary, input: { throttle: 1, assistMode: 'assisted' },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  const earnedStep = stepPropulsion({
+    dt: DT, body: earned,
+    input: {
+      throttle: 1,
+      assistMode: 'assisted',
+      physicsEarnedMomentum: true,
+      earnedMomentumDecayTauS: MASSLINE_FLIGHT_TUNING.MASSLINE_SLING_DECAY_TAU_S,
+    },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  advance(ordinary, ordinaryStep);
+  advance(earned, earnedStep);
+  assert.equal(earnedStep.telemetry.governor.physicsEarned, true, 'governor should identify the tagged exit');
+  assert.ok(earned.vel.x > ordinary.vel.x, 'physics-earned overspeed should decay more slowly than ordinary overspeed');
+  assert.ok(earned.vel.x < 400, 'the exemption should still spend speed rather than freezing it');
+
+  const fromRest = body();
+  simulate({
+    profile,
+    b: fromRest,
+    input: { throttle: 1, assistMode: 'assisted', physicsEarnedMomentum: true },
+    ticks: 1800,
+  });
+  assert.ok(fromRest.vel.x < profile.combatSpeed * 1.05,
+    'an earned tag must not let thrusters manufacture speed above the ordinary cap');
+
+  const ordinaryOblique = body({ vel: { x: 260, z: 300 } });
+  const earnedOblique = body({ vel: { x: 260, z: 300 } });
+  simulate({
+    profile,
+    b: ordinaryOblique,
+    input: { throttle: 1, assistMode: 'assisted' },
+    ticks: 60,
+  });
+  simulate({
+    profile,
+    b: earnedOblique,
+    input: {
+      throttle: 1,
+      assistMode: 'assisted',
+      physicsEarnedMomentum: true,
+      earnedMomentumDecayTauS: MASSLINE_FLIGHT_TUNING.MASSLINE_SLING_DECAY_TAU_S,
+      earnedMomentumAssistScale: MASSLINE_FLIGHT_TUNING.MASSLINE_EARNED_ASSIST_SCALE,
+    },
+    ticks: 60,
+  });
+  assert.ok(Math.abs(earnedOblique.vel.z) > Math.abs(ordinaryOblique.vel.z),
+    'an oblique sling should retain more of its physics-earned lateral component');
+  assert.ok(Math.hypot(earnedOblique.vel.x, earnedOblique.vel.z)
+    > Math.hypot(ordinaryOblique.vel.x, ordinaryOblique.vel.z),
+  'the earned-momentum grace must preserve scalar speed, not only nose-aligned velocity');
+}
+
+// 12e. Cloaked coasting eases neutral assist, never deliberate braking; adapter signals are live.
+{
+  const profile = PROPULSION_PROFILES.drive_reaction_s;
+  const normal = stepPropulsion({
+    dt: DT, body: body({ vel: { x: 100, z: 40 } }), input: { assistMode: 'assisted' },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  const eased = stepPropulsion({
+    dt: DT, body: body({ vel: { x: 100, z: 40 } }),
+    input: { assistMode: 'assisted', coastAssistScale: MASSLINE_FLIGHT_TUNING.CLOAK_COAST_ASSIST_SCALE },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  assert.ok(Math.hypot(eased.force.x, eased.force.z) < Math.hypot(normal.force.x, normal.force.z) * 0.4,
+    'cloak coast should move neutral counter-thrust substantially toward Newtonian');
+
+  const normalBrake = stepPropulsion({
+    dt: DT, body: body({ vel: { x: 100, z: 40 } }), input: { assistMode: 'assisted', brake: true },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  const easedBrake = stepPropulsion({
+    dt: DT, body: body({ vel: { x: 100, z: 40 } }),
+    input: {
+      assistMode: 'assisted',
+      brake: true,
+      coastAssistScale: 0,
+      physicsEarnedMomentum: true,
+      earnedMomentumAssistScale: 0,
+    },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  assert.ok(Math.abs(easedBrake.force.x - normalBrake.force.x) < 1e-9
+    && Math.abs(easedBrake.force.z - normalBrake.force.z) < 1e-9,
+  'explicit brake must retain full authority while cloaked');
+
+  const previous = {
+    enabled: MASSLINE2_FLAGS.enabled,
+    throw: MASSLINE2_FLAGS.throw,
+    cloak: MASSLINE2_FLAGS.cloak,
+  };
+  try {
+    MASSLINE2_FLAGS.enabled = true;
+    MASSLINE2_FLAGS.throw = true;
+    MASSLINE2_FLAGS.cloak = true;
+    const input = { throttle: 0, strafe: 0, boost: false, brake: false };
+    applyMasslineFlightModifiers(input, {
+      simTime: 10,
+      player: { tether: { slingshotT: 0.5 } },
+      massline2: { cloak: { active: true } },
+    }, 0);
+    assert.equal(input.physicsEarnedMomentum, true, 'live tether slingshot state should tag earned momentum');
+    assert.equal(input.earnedMomentumAssistScale, MASSLINE_FLIGHT_TUNING.MASSLINE_EARNED_ASSIST_SCALE,
+      'tagged sling state should ease vector-destroying assist during the grace window');
+    assert.equal(input.coastAssistScale, MASSLINE_FLIGHT_TUNING.CLOAK_COAST_ASSIST_SCALE,
+      'active cloak plus neutral translation should ease coast assist');
+
+    input.throttle = 1;
+    applyMasslineFlightModifiers(input, {
+      simTime: 10,
+      player: { tether: { slingshotT: 0 } },
+      massline2: { cloak: { active: true } },
+    }, 11);
+    assert.equal(input.physicsEarnedMomentum, true, 'massline:selfSling event window should tag earned momentum');
+    assert.equal(input.coastAssistScale, 1, 'thrust input should immediately restore normal assist authority');
+  } finally {
+    MASSLINE2_FLAGS.enabled = previous.enabled;
+    MASSLINE2_FLAGS.throw = previous.throw;
+    MASSLINE2_FLAGS.cloak = previous.cloak;
+  }
 }
 
 console.log('SpaceFace Flight V3 generated checks: PASS');

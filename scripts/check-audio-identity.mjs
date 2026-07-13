@@ -363,6 +363,13 @@ const EMITTED_CUES = {
   loot_collect: { distinct: true }, mining_core_fizzle: { distinct: true },
   shield_break: { distinct: true }, cm_chaff: { distinct: true }, cm_ecm: { distinct: true },
   sfx_explosion_small: { distinct: true },
+  // Massline Physics Identity (Wave M2): throw/sling/tumble/bullet-time/cloak/jettison semantics.
+  'massline.throw': { distinct: true }, 'massline.solutionLock': { distinct: true },
+  'massline.sling': { distinct: true }, 'massline.tumble': { distinct: true },
+  'massline.bulletTimeIn': { distinct: true }, 'massline.bulletTimeOut': { distinct: true },
+  'massline.cloakOn': { distinct: true }, 'massline.cloakOff': { distinct: true },
+  'massline.jettisonKick': { distinct: true },
+  'massline.bombDrop': { distinct: true },
 };
 
 for (const [cue, spec] of Object.entries(EMITTED_CUES)) {

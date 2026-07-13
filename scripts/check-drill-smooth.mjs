@@ -22,7 +22,10 @@ import {
 } from '../src/systems/drill.js';
 import { cargo } from '../src/systems/cargo.js';
 import { addCargo } from '../src/systems/cargo.js';
-import { resolveDrillControlMap } from '../src/ui/screens/drill.js';
+import {
+  createDrillInputController,
+  resolveDrillControlMap,
+} from '../src/ui/screens/drill.js';
 
 function createBus() {
   const handlers = new Map();
@@ -422,6 +425,10 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   assert.match(uiSrc, /Restart bore/, 'UI must expose deterministic retry');
   assert.match(uiSrc, /Abort & return/, 'UI must expose an explicit abort action');
   assert.match(uiSrc, /aria-live/, 'UI must announce drill receipts to assistive tech');
+  assert.match(uiSrc, /drill-activity-feed/, 'routine drill feedback must live in a sidebar activity feed');
+  assert.doesNotMatch(uiSrc, /canvasWrap\.appendChild\(toastContainer\)/,
+    'routine feedback must never be mounted over the drill playfield');
+  assert.match(uiSrc, /canvasDirty/, 'idle frames must be able to skip the expensive canvas repaint');
   assert.match(uiSrc, /buildHeadlightSprite/, 'headlight gradient must be pre-rasterized');
   assert.doesNotMatch(uiSrc, /const beamGrad = ctx2d\.createRadialGradient/, 'render loop must not allocate headlight gradients');
   assert.doesNotMatch(uiSrc, /Object\.entries\(d\.yieldLog\)\.filter/, 'manifest must rebuild from events, not every frame');
@@ -431,6 +438,68 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
     'legacy exponential snap lerp must be gone',
   );
   console.log(JSON.stringify({ ok: true, section: 'struct-ui' }));
+}
+
+// --- 10b. Screen input contract: one press owns one adjacent cell, even across a hitch ---
+{
+  const { state } = setup();
+  drill.begin(551122);
+  const col = state.drill.avatar.col;
+  carveTunnel(state, col, 8);
+  const controls = createDrillInputController({
+    drillSys: drill,
+    getState: () => state.drill,
+  });
+
+  assert.equal(controls.press('down'), true, 'a direction press is accepted immediately');
+  controls.tick(1.0);
+  assert.equal(state.drill.avatar.row, 1,
+    'one press stops at its adjacent cell instead of racing through a cleared tunnel');
+
+  controls.tick(0.2);
+  assert.equal(state.drill.avatar.row, 1, 'a completed press never auto-repeats');
+  controls.press('down');
+  for (let i = 0; i < 10; i++) controls.tick(1 / 60);
+  assert.equal(state.drill.avatar.row, 2, 'a second press advances exactly one more cell');
+
+  state.drill.field[col][3] = {
+    type: 'rock', hp: 20, maxHp: 20, hardness: 1, ore: null, hazard: false, tierReq: 1, risk: 'low',
+  };
+  const hpBefore = state.drill.field[col][3].hp;
+  controls.press('down');
+  controls.tick(1.0);
+  const hpAfterHitch = state.drill.field[col][3].hp;
+  assert.ok(hpBefore - hpAfterHitch <= drill.getDrillDPS() * (7 / 60) + 1e-9,
+    `one slow frame must cap catch-up at 100 ms plus immediate acknowledgment (cut ${hpBefore - hpAfterHitch} HP)`);
+  assert.equal(state.drill.avatar.row, 2, 'a hitch cannot punch through the selected tile');
+
+  for (let i = 0; i < 180 && state.drill.avatar.row === 2; i++) controls.tick(1 / 60);
+  assert.equal(state.drill.avatar.row, 3, 'the selected solid tile completes without requiring a held key');
+  controls.tick(1.0);
+  assert.equal(state.drill.avatar.row, 3, 'completion stops before the next, unselected tile');
+
+  state.drill.avatar.col = 0;
+  controls.press('left');
+  assert.equal(controls.hasActiveIntent(), false, 'an asteroid-boundary press retires immediately');
+  console.log(JSON.stringify({ ok: true, section: 'single-cell-input', hpBefore, hpAfterHitch }));
+}
+
+// --- 10c. Low-frame input work keeps real-time cadence without crossing the selected cell ---
+{
+  const { state } = setup();
+  drill.begin(667733);
+  const col = state.drill.avatar.col;
+  state.drill.field[col][1] = {
+    type: 'rock', hp: 100, maxHp: 100, hardness: 1, ore: null, hazard: false, tierReq: 1, risk: 'low',
+  };
+  const controls = createDrillInputController({ drillSys: drill, getState: () => state.drill });
+  controls.press('down');
+  for (let frame = 0; frame < 20; frame++) controls.tick(1 / 20);
+  const work = 100 - state.drill.field[col][1].hp;
+  assert.ok(work >= drill.getDrillDPS() * 0.9,
+    `20 FPS must preserve at least 90% of one second of drill work, got ${work} HP`);
+  assert.equal(state.drill.avatar.row, 0, 'low-frame catch-up remains confined to the selected cell');
+  console.log(JSON.stringify({ ok: true, section: 'low-frame-cadence', work }));
 }
 
 // --- 11. Structural: system exports presentation fields ---
