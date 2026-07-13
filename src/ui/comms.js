@@ -1,6 +1,6 @@
 // src/ui/comms.js — the narrative overlay layer.
 //
-// Three always-on surfaces driven by events the story system (src/systems/story.js) emits:
+// Four event-driven surfaces, three of them driven by the story system (src/systems/story.js):
 //
 //   1. COMMS LOG  — listens to `comms:popup`. A left-edge feed of channel noise. Most lines are
 //                   ambient (not for the player). The ones that ARE for the player don't name them.
@@ -11,6 +11,7 @@
 //                   station hub surfaces (rendered there via a DOM hook the hub queries).
 //   3. ENDGAME    — A/B live on the Ashfall board; C/D/E use short contextual confirmations.
 //                   five choices (A–E). Emits `ui:endgameChoose{ choice }`.
+//   4. EPILOGUE   — one restrained outcome card after a final disposition or sandbox continuation.
 //
 // Pure DOM + event listeners. Reads ctx.state only for the backlog; never mutates sim state (§0.6).
 // CSS is injected once (injectCommsCss) so this module is self-contained.
@@ -21,6 +22,7 @@ import { createSectorLawPresenter } from './sectorLawPresenter.js';
 import { createSignalInvestigationPrompt } from './signalInvestigationPrompt.js';
 import { createRecoveryEncounterPrompt } from './recoveryEncounterPrompt.js';
 import { createContactHailPrompt } from './contactHailPrompt.js';
+import { createEndingEpilogue } from './endingEpilogue.js';
 
 const COMMS_STYLE_ID = 'sf-comms-style';
 
@@ -66,6 +68,7 @@ export function scenarioDialogueCommsPayload(payload) {
 
 export function createComms(ctx) {
   const { bus, state } = ctx;
+  let choiceModalOpen = false;
   injectCommsCss();
   // Actionable pirate hails live in their own compact, non-modal strip. Keeping the renderer in a
   // dedicated module prevents the general comms feed from becoming an interaction/state owner.
@@ -74,6 +77,10 @@ export function createComms(ctx) {
   const signalInvestigationPrompt = createSignalInvestigationPrompt(ctx);
   const recoveryEncounterPrompt = createRecoveryEncounterPrompt(ctx);
   const contactHailPrompt = createContactHailPrompt(ctx);
+  const endingEpilogue = createEndingEpilogue({
+    ...ctx,
+    isBlocked: () => choiceModalOpen,
+  });
 
   // ── 1. Comms feed (left edge) ────────────────────────────────────────────────────────────
   const feed = document.createElement('div');
@@ -334,7 +341,6 @@ export function createComms(ctx) {
   // expose a reader for the station hub (it imports nothing from here; it reads state.ui.graffiti)
 
   // ── 4. Contextual ending confirmations. Contract endings A/B remain board rows. ──────────
-  let choiceModalOpen = false;
   function presentPhysicalChoice(choice, promptText, hint, declineEffect = null, intentEvent = 'ui:endgameChoose') {
     if (choiceModalOpen) return;
     const wrap = document.createElement('div');
@@ -461,10 +467,10 @@ export function createComms(ctx) {
   }, 60);
 
   function isModalOpen() {
-    return choiceModalOpen;
+    return choiceModalOpen || endingEpilogue.isOpen() || endingEpilogue.hasPending();
   }
 
-  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, pirateParleyPrompt, sectorLawPresenter, signalInvestigationPrompt, recoveryEncounterPrompt, contactHailPrompt };
+  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, endingEpilogue, pirateParleyPrompt, sectorLawPresenter, signalInvestigationPrompt, recoveryEncounterPrompt, contactHailPrompt };
 }
 
 function normalizeTtlMs(ttl) {
