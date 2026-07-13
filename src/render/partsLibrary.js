@@ -21,6 +21,7 @@ const INSTANCE_CHUNK_SIZE = 64;
 const INSTANCE_FAR_CULL_RADIUS = 9000;
 const INSTANCE_FRUSTUM_PAD = 420;
 const ZERO_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
+const EMPTY_ARRAY = Object.freeze([]);
 const sceneStates = new WeakMap();
 const libraryByRenderer = new WeakMap();
 const resolvedLibraryByRenderer = new WeakMap();
@@ -105,7 +106,7 @@ export function invalidatePartsLibraryCaches(renderer) {
 
 export function syncAuthoredInstancePools(scene, opts = {}) {
   const state = scene && sceneStates.get(scene);
-  if (state) syncSceneState(state, opts);
+  return state ? syncSceneState(state, opts) : null;
 }
 
 export function getAuthoredInstancePoolDiagnostics(scene) {
@@ -123,6 +124,9 @@ export function getAuthoredInstancePoolDiagnostics(scene) {
     tinyPools: 0,
     matrixUploads: 0,
     matrixReuses: 0,
+    frameBounded: false,
+    ownersVisited: 0,
+    slotsVisited: 0,
   };
   return { ...state.stats };
 }
@@ -3016,6 +3020,7 @@ function allocateInstance(scene, owner, proxy, geometry, material, label) {
   const slot = {
     proxy,
     owner,
+    chunk,
     index,
     released: false,
     lastSubmitted: false,
@@ -3023,6 +3028,13 @@ function allocateInstance(scene, owner, proxy, geometry, material, label) {
     matrixElements: new Float32Array(16),
   };
   chunk.slots.set(index, slot);
+  let ownerState = state.ownerSlots.get(owner);
+  if (!ownerState) {
+    ownerState = { slots: new Set(), submittedCount: 0, dirty: true };
+    state.ownerSlots.set(owner, ownerState);
+  }
+  ownerState.slots.add(slot);
+  slot.ownerState = ownerState;
   chunk.mesh.count = Math.max(chunk.mesh.count, index + 1);
   chunk.mesh.setMatrixAt(index, ZERO_MATRIX);
   chunk.mesh.instanceMatrix.needsUpdate = true;
@@ -3030,11 +3042,21 @@ function allocateInstance(scene, owner, proxy, geometry, material, label) {
   const release = () => {
     if (slot.released) return;
     slot.released = true;
+    if (slot.lastSubmitted) {
+      chunk.visibleIndices.delete(index);
+      ownerState.submittedCount = Math.max(0, ownerState.submittedCount - 1);
+    }
     slot.lastSubmitted = false;
     chunk.slots.delete(index);
+    ownerState.slots.delete(slot);
+    if (!ownerState.slots.size) {
+      state.ownerSlots.delete(owner);
+      state.activeFrameOwners.delete(owner);
+    }
     chunk.free.push(index);
     chunk.mesh.setMatrixAt(index, ZERO_MATRIX);
-    while (chunk.mesh.count > 0 && !chunk.slots.has(chunk.mesh.count - 1)) chunk.mesh.count--;
+    chunk.mesh.count = highestSubmittedIndex(chunk) + 1;
+    chunk.mesh.visible = chunk.mesh.count > 0;
     chunk.mesh.instanceMatrix.needsUpdate = true;
   };
   registerOwnerRelease(owner, release);
@@ -3052,55 +3074,116 @@ function createInstanceChunk(scene, pool, ordinal) {
   mesh.userData.spacefaceInstancePool = true;
   mesh.userData.spacefaceInstancePoolKey = pool.key;
   mesh.userData.spacefaceInstancePoolLabel = pool.label;
-  const chunk = { mesh, pool, slots: new Map(), free: [], next: 0 };
+  const chunk = { mesh, pool, slots: new Map(), visibleIndices: new Set(), free: [], next: 0 };
   scene.add(mesh);
   return chunk;
 }
 
 function syncSceneState(state, opts = {}) {
   const stats = resetPoolStats(state);
-  if (!state.pools.size) return;
+  if (!state.pools.size) return stats;
   const context = buildInstanceCullContext(state, opts);
-  for (const pool of state.pools.values()) {
-    const beforeSubmitted = stats.submittedInstanceSlots;
-    stats.pools++;
-    stats.chunks += pool.chunks.length;
-    const poolSlots = pool.chunks.reduce((sum, chunk) => sum + chunk.slots.size, 0);
-    stats.pooledInstanceSlots += poolSlots;
-    if (pool.chunks.length === 1 && poolSlots > 0 && poolSlots <= 3) stats.tinyPools++;
-    for (const chunk of pool.chunks) syncInstanceChunk(chunk, context, stats);
-    if (stats.submittedInstanceSlots > beforeSubmitted) stats.visibleInstancePools++;
-    else if (poolSlots > 0) stats.offscreenInstancePools++;
+  primePoolStats(state, stats);
+  if (context.frameBounded) syncSceneStateFromFrame(state, context, stats);
+  else syncSceneStateFallback(state, context, stats);
+  finalizePoolStats(state, stats);
+  return stats;
+}
+
+function syncSceneStateFromFrame(state, context, stats) {
+  const affectedChunks = state.affectedChunks;
+  affectedChunks.clear();
+  const nextOwners = state.nextFrameOwners;
+  nextOwners.clear();
+
+  for (const record of context.authoredRecords) {
+    const owner = record && record.mesh;
+    const ownerState = owner && state.ownerSlots.get(owner);
+    if (!owner || !ownerState) continue;
+    context.recordsByOwner.set(owner, record);
+    nextOwners.add(owner);
+    const needsSync = context.cameraDirty
+      || record.renderDirty === true
+      || ownerState.dirty
+      || !state.activeFrameOwners.has(owner);
+    if (!needsSync) {
+      stats.matrixReuses += ownerState.submittedCount;
+      continue;
+    }
+    syncOwnerSlots(ownerState, context, stats, affectedChunks, false);
   }
-  stats.avgPoolOccupancy = stats.pools > 0 ? stats.pooledInstanceSlots / stats.pools : 0;
+
+  // Owners omitted from this frame were hidden, culled, destroyed, or replaced. Clear only those
+  // previously-active owners instead of rescanning every pool/chunk/slot for ghosts.
+  for (const owner of state.activeFrameOwners) {
+    if (nextOwners.has(owner)) continue;
+    const ownerState = state.ownerSlots.get(owner);
+    if (ownerState) syncOwnerSlots(ownerState, context, stats, affectedChunks, true);
+  }
+
+  for (const chunk of affectedChunks) finalizeInstanceChunk(chunk, true, stats);
+  const previousOwners = state.activeFrameOwners;
+  state.activeFrameOwners = nextOwners;
+  state.nextFrameOwners = previousOwners;
+  state.nextFrameOwners.clear();
+}
+
+function syncSceneStateFallback(state, context, stats) {
+  for (const pool of state.pools.values()) {
+    for (const chunk of pool.chunks) syncInstanceChunk(chunk, context, stats);
+  }
+  state.activeFrameOwners.clear();
 }
 
 function syncInstanceChunk(chunk, context, stats) {
   let dirty = false;
-  let visibleMax = -1;
-  for (const [index, slot] of chunk.slots) {
+  for (const slot of chunk.slots.values()) {
     if (slot.released) continue;
-    stats.activeInstanceSlots++;
-    if (!isVisibleToOwner(slot.proxy, slot.owner, context, stats)) {
-      if (slot.lastSubmitted) {
-        chunk.mesh.setMatrixAt(index, ZERO_MATRIX);
-        slot.matrixInitialized = false;
-        dirty = true;
-      }
-      slot.lastSubmitted = false;
-    } else {
-      if (setInstanceMatrixIfChanged(chunk.mesh, index, slot, slot.proxy.matrixWorld)) {
-        stats.matrixUploads++;
-        dirty = true;
-      } else {
-        stats.matrixReuses++;
-      }
-      if (index > visibleMax) visibleMax = index;
-      stats.submittedInstanceSlots++;
-      slot.lastSubmitted = true;
-    }
+    stats.slotsVisited++;
+    if (syncInstanceSlot(slot, context, stats, false)) dirty = true;
   }
-  const nextCount = visibleMax + 1;
+  finalizeInstanceChunk(chunk, dirty, stats);
+}
+
+function syncOwnerSlots(ownerState, context, stats, affectedChunks, forceHidden) {
+  stats.ownersVisited++;
+  for (const slot of ownerState.slots) {
+    if (!slot || slot.released) continue;
+    stats.slotsVisited++;
+    if (syncInstanceSlot(slot, context, stats, forceHidden)) affectedChunks.add(slot.chunk);
+  }
+  ownerState.dirty = false;
+}
+
+function syncInstanceSlot(slot, context, stats, forceHidden) {
+  const chunk = slot.chunk;
+  const index = slot.index;
+  const record = context.recordsByOwner && context.recordsByOwner.get(slot.owner);
+  const visible = !forceHidden && isVisibleToOwner(slot.proxy, slot.owner, context, stats, record);
+  if (!visible) {
+    if (!slot.lastSubmitted) return false;
+    chunk.mesh.setMatrixAt(index, ZERO_MATRIX);
+    chunk.visibleIndices.delete(index);
+    slot.ownerState.submittedCount = Math.max(0, slot.ownerState.submittedCount - 1);
+    slot.matrixInitialized = false;
+    slot.lastSubmitted = false;
+    return true;
+  }
+
+  let dirty = setInstanceMatrixIfChanged(chunk.mesh, index, slot, slot.proxy.matrixWorld);
+  if (dirty) stats.matrixUploads++;
+  else stats.matrixReuses++;
+  if (!slot.lastSubmitted) {
+    chunk.visibleIndices.add(index);
+    slot.ownerState.submittedCount++;
+    dirty = true;
+  }
+  slot.lastSubmitted = true;
+  return dirty;
+}
+
+function finalizeInstanceChunk(chunk, dirty, stats) {
+  const nextCount = highestSubmittedIndex(chunk) + 1;
   if (chunk.mesh.count !== nextCount) {
     chunk.mesh.count = nextCount;
     dirty = true;
@@ -3112,8 +3195,14 @@ function syncInstanceChunk(chunk, context, stats) {
   }
 }
 
-function isVisibleToOwner(object, owner, context, stats) {
-  const ownerFrame = syncOwnerForInstanceFrame(owner, context);
+function highestSubmittedIndex(chunk) {
+  let highest = -1;
+  for (const index of chunk.visibleIndices) if (index > highest) highest = index;
+  return highest;
+}
+
+function isVisibleToOwner(object, owner, context, stats, record = null) {
+  const ownerFrame = syncOwnerForInstanceFrame(owner, context, record);
   if (!ownerFrame.visible) {
     if (stats) stats.culledInstanceSlots++;
     return false;
@@ -3129,9 +3218,12 @@ function isVisibleToOwner(object, owner, context, stats) {
   return false;
 }
 
-function syncOwnerForInstanceFrame(owner, context) {
+function syncOwnerForInstanceFrame(owner, context, record = null) {
   const empty = { frame: 0, visible: false };
   if (!owner || !owner.parent || !context || !context.state) return empty;
+  if (context.frameBounded) {
+    if (!record || record.visible === false || record.viewCulled === true) return empty;
+  }
   let cached = context.state.ownerVisibility.get(owner);
   if (cached && cached.frame === context.frame) return cached;
 
@@ -3165,7 +3257,18 @@ function setInstanceMatrixIfChanged(mesh, index, slot, matrix) {
 function sceneState(scene) {
   let state = sceneStates.get(scene);
   if (!state) {
-    state = { pools: new Map(), stats: createPoolStats(), ownerVisibility: new WeakMap(), syncFrame: 0 };
+    state = {
+      pools: new Map(),
+      stats: createPoolStats(),
+      ownerVisibility: new WeakMap(),
+      ownerSlots: new Map(),
+      activeFrameOwners: new Set(),
+      nextFrameOwners: new Set(),
+      affectedChunks: new Set(),
+      frameRecordsByOwner: new Map(),
+      cameraState: { initialized: false, present: false, values: new Float64Array(32) },
+      syncFrame: 0,
+    };
     sceneStates.set(scene, state);
   }
   return state;
@@ -3193,6 +3296,9 @@ function createPoolStats() {
     dirtyChunks: 0,
     matrixUploads: 0,
     matrixReuses: 0,
+    frameBounded: false,
+    ownersVisited: 0,
+    slotsVisited: 0,
   };
 }
 
@@ -3201,23 +3307,95 @@ function resetPoolStats(state) {
   return state.stats;
 }
 
+function primePoolStats(state, stats) {
+  for (const pool of state.pools.values()) {
+    stats.pools++;
+    stats.chunks += pool.chunks.length;
+    let poolSlots = 0;
+    for (const chunk of pool.chunks) poolSlots += chunk.slots.size;
+    stats.pooledInstanceSlots += poolSlots;
+    stats.activeInstanceSlots += poolSlots;
+    if (pool.chunks.length === 1 && poolSlots > 0 && poolSlots <= 3) stats.tinyPools++;
+  }
+}
+
+function finalizePoolStats(state, stats) {
+  for (const pool of state.pools.values()) {
+    let submitted = 0;
+    let poolSlots = 0;
+    for (const chunk of pool.chunks) {
+      submitted += chunk.visibleIndices.size;
+      poolSlots += chunk.slots.size;
+    }
+    stats.submittedInstanceSlots += submitted;
+    if (submitted > 0) stats.visibleInstancePools++;
+    else if (poolSlots > 0) stats.offscreenInstancePools++;
+  }
+  stats.avgPoolOccupancy = stats.pools > 0 ? stats.pooledInstanceSlots / stats.pools : 0;
+}
+
 function buildInstanceCullContext(state, opts) {
   state.syncFrame = (state.syncFrame || 0) + 1;
+  const entityFrame = opts && opts.entityFrame;
+  const authoredRecords = Array.isArray(opts && opts.authoredRecords)
+    ? opts.authoredRecords
+    : (entityFrame && Array.isArray(entityFrame.authored) ? entityFrame.authored : null);
+  const frameBounded = !!(entityFrame && Number.isFinite(entityFrame.frameId) && authoredRecords);
   const camera = opts && opts.camera;
+  const recordsByOwner = state.frameRecordsByOwner;
+  recordsByOwner.clear();
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) {
-    return { state, frame: state.syncFrame, camera: null, frustum: null, cameraPosition: null };
+    state.stats.frameBounded = frameBounded;
+    return {
+      state,
+      frame: state.syncFrame,
+      frameBounded,
+      authoredRecords: authoredRecords || EMPTY_ARRAY,
+      recordsByOwner,
+      cameraDirty: captureCullCameraState(null, state.cameraState),
+      camera: null,
+      frustum: null,
+      cameraPosition: null,
+    };
   }
   camera.updateMatrixWorld();
   if (typeof camera.updateProjectionMatrix === 'function') camera.updateProjectionMatrix();
+  const cameraDirty = captureCullCameraState(camera, state.cameraState);
   CULL_PROJECTION.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   CULL_FRUSTUM.setFromProjectionMatrix(CULL_PROJECTION);
+  state.stats.frameBounded = frameBounded;
   return {
     state,
     frame: state.syncFrame,
+    frameBounded,
+    authoredRecords: authoredRecords || EMPTY_ARRAY,
+    recordsByOwner,
+    cameraDirty,
     camera,
     frustum: CULL_FRUSTUM,
     cameraPosition: camera.getWorldPosition(CULL_CAMERA_POSITION),
   };
+}
+
+function captureCullCameraState(camera, snapshot) {
+  const present = !!camera;
+  let changed = !snapshot.initialized || snapshot.present !== present;
+  snapshot.initialized = true;
+  snapshot.present = present;
+  if (!camera) return changed;
+  const world = camera.matrixWorld && camera.matrixWorld.elements;
+  const projection = camera.projectionMatrix && camera.projectionMatrix.elements;
+  for (let index = 0; index < 16; index++) {
+    const value = world ? Number(world[index]) || 0 : 0;
+    if (snapshot.values[index] !== value) changed = true;
+    snapshot.values[index] = value;
+  }
+  for (let index = 0; index < 16; index++) {
+    const value = projection ? Number(projection[index]) || 0 : 0;
+    if (snapshot.values[index + 16] !== value) changed = true;
+    snapshot.values[index + 16] = value;
+  }
+  return changed;
 }
 
 function isOwnerInCullContext(owner, context, stats) {
@@ -3252,6 +3430,84 @@ function releaseOwnerInstances(owner) {
   if (!state) return;
   for (const fn of [...state.releases]) fn();
   state.releases.clear();
+}
+
+/**
+ * Real-object contract probe for the retained authored-instance frame path. It intentionally uses
+ * the same private allocator, release listeners, visibility logic, InstancedMesh attribute, and
+ * fallback sync as live authored ships; only the two tiny geometry proxies are synthetic.
+ */
+export function runAuthoredInstanceFrameContractProbe() {
+  const scene = new THREE.Scene();
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const material = new THREE.MeshStandardMaterial();
+  const ownerA = new THREE.Group();
+  const ownerB = new THREE.Group();
+  const proxyA = new THREE.Object3D();
+  const proxyB = new THREE.Object3D();
+  ownerA.position.set(-3, 0, 0);
+  ownerB.position.set(3, 0, 0);
+  ownerA.add(proxyA);
+  ownerB.add(proxyB);
+  scene.add(ownerA, ownerB);
+  allocateInstance(scene, ownerA, proxyA, geometry, material, 'FrameContractProbe');
+  allocateInstance(scene, ownerB, proxyB, geometry, material, 'FrameContractProbe');
+  const poolState = sceneStates.get(scene);
+  const chunk = [...poolState.pools.values()][0].chunks[0];
+
+  const frame = (frameId, authored) => ({ frameId, authored });
+  const record = (mesh, renderDirty) => ({
+    mesh,
+    visible: true,
+    viewCulled: false,
+    renderDirty,
+  });
+
+  const firstFrame = frame(1, [record(ownerA, true)]);
+  const first = { ...syncAuthoredInstancePools(scene, {
+    entityFrame: firstFrame,
+    authoredRecords: firstFrame.authored,
+  }) };
+  const firstVersion = chunk.mesh.instanceMatrix.version;
+
+  const stableFrame = frame(2, [record(ownerA, false)]);
+  const stable = { ...syncAuthoredInstancePools(scene, {
+    entityFrame: stableFrame,
+    authoredRecords: stableFrame.authored,
+  }) };
+  const stableVersion = chunk.mesh.instanceMatrix.version;
+
+  const replacedFrame = frame(3, [record(ownerB, true)]);
+  const replaced = { ...syncAuthoredInstancePools(scene, {
+    entityFrame: replacedFrame,
+    authoredRecords: replacedFrame.authored,
+  }) };
+  const replacedVersion = chunk.mesh.instanceMatrix.version;
+
+  const emptyFrame = frame(4, []);
+  const cleaned = { ...syncAuthoredInstancePools(scene, {
+    entityFrame: emptyFrame,
+    authoredRecords: emptyFrame.authored,
+  }) };
+  const fallback = { ...syncAuthoredInstancePools(scene) };
+
+  scene.remove(ownerA); // exercises the exact owner `removed` release listener
+  const afterRelease = { ...syncAuthoredInstancePools(scene) };
+  scene.remove(ownerB);
+  geometry.dispose();
+  material.dispose();
+
+  return {
+    first,
+    stable,
+    replaced,
+    cleaned,
+    fallback,
+    afterRelease,
+    firstVersion,
+    stableVersion,
+    replacedVersion,
+  };
 }
 
 // -------------------------------------------------------------------------------------------------

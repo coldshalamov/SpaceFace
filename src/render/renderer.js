@@ -16,11 +16,18 @@ import {
 } from './partsLibrary.js';
 import {
   createAsteroidInstancePool,
+  invalidateAsteroidInstancePool,
   registerAsteroidBaseLeaf,
   releaseAsteroidInstancesForEntity,
   resolveAsteroidInstanceEntityId,
   syncAsteroidInstancePool,
 } from './asteroidInstancePool.js';
+import {
+  beginRenderEntityFrame,
+  classifyRenderEntity,
+  createRenderEntityFrame,
+  endRenderEntityFrame,
+} from './renderEntityFrame.js';
 import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { createCollisionDebug } from './collisionDebug.js';
@@ -166,25 +173,22 @@ function ensureContactShadowCapacity(pool, desired) {
   if (pool.scene) pool.scene.add(mesh);
 }
 
-function syncContactShadowPool(pool, entities, meshes) {
-  if (!pool || !pool.mesh || !Array.isArray(entities)) return;
-  let desired = 0;
-  for (const entity of entities) {
-    if (!entity || entity.alive === false || entity._noShadow) continue;
-    if (entity.type !== 'ship' && entity.type !== 'station') continue;
-    const mesh = meshes && meshes.get(entity.id);
-    if (mesh && mesh.visible !== false && mesh.userData && mesh.userData.hasContactShadow) desired++;
-  }
-  ensureContactShadowCapacity(pool, desired);
+function syncContactShadowPool(pool, frameOrRecords, meshes) {
+  if (!pool || !pool.mesh) return;
+  const records = frameOrRecords && Array.isArray(frameOrRecords.contactShadows)
+    ? frameOrRecords.contactShadows
+    : (Array.isArray(frameOrRecords) ? frameOrRecords : []);
+  ensureContactShadowCapacity(pool, records.length);
   let count = 0;
   let dirty = false;
-  const records = pool.records || (pool.records = new Map());
+  const priorRecords = pool.records || (pool.records = new Map());
   const seen = pool.seen || (pool.seen = new Set());
   seen.clear();
-  for (const entity of entities) {
+  for (const item of records) {
+    const entity = item && item.entity || item;
     if (!entity || entity.alive === false || entity._noShadow) continue;
     if (entity.type !== 'ship' && entity.type !== 'station') continue;
-    const mesh = meshes && meshes.get(entity.id);
+    const mesh = item && item.mesh || (meshes && meshes.get(entity.id));
     if (!mesh || mesh.visible === false || !(mesh.userData && mesh.userData.hasContactShadow)) continue;
     ensureContactShadowCapacity(pool, count + 1);
     const radius = Number(mesh.userData.contactShadowRadius) || Math.max(16, (entity.radius || 28) * 1.4);
@@ -192,20 +196,25 @@ function syncContactShadowPool(pool, entities, meshes) {
     const x = Number.isFinite(mesh.position.x) ? mesh.position.x : 0;
     const z = Number.isFinite(mesh.position.z) ? mesh.position.z : 0;
     seen.add(entity.id);
-    const prev = records.get(entity.id);
+    let prev = priorRecords.get(entity.id);
     if (!prev || prev.index !== count ||
         Math.abs(prev.x - x) > 0.01 || Math.abs(prev.z - z) > 0.01 || Math.abs(prev.radius - radius) > 0.01) {
       CONTACT_SHADOW_POS.set(x, -0.5, z);
       CONTACT_SHADOW_SCALE.set(radius, radius, radius);
       CONTACT_SHADOW_MATRIX.compose(CONTACT_SHADOW_POS, CONTACT_SHADOW_QUAT, CONTACT_SHADOW_SCALE);
       pool.mesh.setMatrixAt(count, CONTACT_SHADOW_MATRIX);
-      records.set(entity.id, { index: count, x, z, radius });
+      if (!prev) {
+        prev = { index: count, x, z, radius };
+        priorRecords.set(entity.id, prev);
+      } else {
+        prev.index = count; prev.x = x; prev.z = z; prev.radius = radius;
+      }
       dirty = true;
     }
     count++;
   }
-  for (const id of records.keys()) {
-    if (!seen.has(id)) records.delete(id);
+  for (const id of priorRecords.keys()) {
+    if (!seen.has(id)) priorRecords.delete(id);
   }
   if (pool.mesh.count !== count) {
     pool.mesh.count = count;
@@ -355,15 +364,21 @@ function ensureNavLightAuxCapacity(pool, desired, scene, preserveCount = 0) {
   if (scene) scene.add(mesh);
 }
 
-export function syncShipAuxPools(pool, entities, meshes) {
-  if (!pool || !Array.isArray(entities)) return;
+export function syncShipAuxPools(pool, frameOrEntities, meshes) {
+  if (!pool) return;
+  const classifiedFrame = frameOrEntities && Array.isArray(frameOrEntities.shipAux)
+    ? frameOrEntities
+    : null;
+  const entities = classifiedFrame ? classifiedFrame.shipAux : frameOrEntities;
+  if (!Array.isArray(entities)) return;
   let shieldCount = 0;
   let navCount = 0;
-  let entitiesVisited = 0;
-  for (const entity of entities) {
-    entitiesVisited++;
+  let entitiesVisited = classifiedFrame ? classifiedFrame.entitiesVisited : 0;
+  for (const item of entities) {
+    if (!classifiedFrame) entitiesVisited++;
+    const entity = item && item.entity || item;
     if (!entity || entity.alive === false || entity.type !== 'ship') continue;
-    const root = meshes && meshes.get(entity.id);
+    const root = item && item.mesh || (meshes && meshes.get(entity.id));
     if (!root || root.visible === false || !root.userData) continue;
     const bubble = root.userData.shieldBubble;
     if (bubble) {
@@ -646,6 +661,9 @@ export const render = {
     this._contactShadowPool = createContactShadowPool(scene);
     this._shipAuxPool = createShipAuxPool(scene);
     this._asteroidInstancePool = createAsteroidInstancePool(scene);
+    this._entityFrame = createRenderEntityFrame();
+    this._authoredInstanceSyncOptions = { camera: null, entityFrame: null, authoredRecords: null };
+    this._asteroidInstanceSyncOptions = { camera: null, shadowCamera: null, records: null };
     // LOD projector viewport (CSS px); onResize refreshes it. Initialize from drawSize so the first
     // frame before onResize has sane values.
     { const dpr = renderer.getPixelRatio() || 1; this.viewport = { width: drawSize.x / dpr, height: drawSize.y / dpr }; }
@@ -1216,6 +1234,7 @@ export const render = {
     if (this._contactShadowPool && this._contactShadowPool.records) {
       this._contactShadowPool.records.clear();
     }
+    invalidateAsteroidInstancePool(this._asteroidInstancePool);
     if (this.cam && typeof this.cam.reprojectFrame === 'function') {
       this.cam.reprojectFrame(dx, dz);
     } else if (this.state && this.state.camera && this.state.camera.focus) {
@@ -1243,6 +1262,7 @@ export const render = {
     let culled = 0;
     let lodChecked = 0;
     const membrane = this._frameMembrane;
+    beginRenderEntityFrame(this._entityFrame);
     for (const [id, m] of this._meshes) {
       totalMeshes++;
       const e = this.state.entities.get(id);
@@ -1297,6 +1317,7 @@ export const render = {
         m.userData.updateLod(level);
         if (m.userData.hlod) configureShadowCasters(m);
       }
+      classifyRenderEntity(this._entityFrame, e, m, viewCulled);
       if (viewCulled) continue;
       fullSynced++;
       // Hero-asset damage states (spec §9.11): hero meshes carry an updateDamageState closure that
@@ -1324,6 +1345,7 @@ export const render = {
         }
       }
     }
+    endRenderEntityFrame(this._entityFrame);
     this.state.render.entityViewSync = {
       totalMeshes,
       transformed,
@@ -1333,6 +1355,15 @@ export const render = {
       cullHalfX: Math.round(bounds.halfX),
       cullHalfZ: Math.round(bounds.halfZ),
     };
+    const frameDiagnostics = this.state.render.entityFrame
+      || (this.state.render.entityFrame = {});
+    frameDiagnostics.frameId = this._entityFrame.frameId;
+    frameDiagnostics.traversals = this._entityFrame.traversals;
+    frameDiagnostics.entitiesVisited = this._entityFrame.entitiesVisited;
+    frameDiagnostics.contactShadows = this._entityFrame.contactShadows.length;
+    frameDiagnostics.shipAux = this._entityFrame.shipAux.length;
+    frameDiagnostics.authored = this._entityFrame.authored.length;
+    frameDiagnostics.asteroids = this._entityFrame.asteroids.length;
     if (useCpu && started) {
       this.state.perfRuntime.recordRenderWork('entityViewSync', performance.now() - started);
     }
@@ -1502,9 +1533,13 @@ export const render = {
     this._updateShipPitch(frameDt);
     this.syncEntityViews(alpha);
     this.cam.follow(frameDt);
-    syncContactShadowPool(this._contactShadowPool, this.state.entityList, this._meshes);
-    syncShipAuxPools(this._shipAuxPool, this.state.entityList, this._meshes);
-    syncAuthoredInstancePools(this.scene, { camera: this.cam.obj });
+    syncContactShadowPool(this._contactShadowPool, this._entityFrame);
+    syncShipAuxPools(this._shipAuxPool, this._entityFrame);
+    const authoredSyncOptions = this._authoredInstanceSyncOptions;
+    authoredSyncOptions.camera = this.cam.obj;
+    authoredSyncOptions.entityFrame = this._entityFrame;
+    authoredSyncOptions.authoredRecords = this._entityFrame.authored;
+    syncAuthoredInstancePools(this.scene, authoredSyncOptions);
     // Background-clock for distant animation (planet cloud drift, hero-star twinkle). Integrates real
     // frame dt scaled by state.timeScale so the cosmos respects hit-stop/pause — a death freeze
     // momentarily stills the clouds too, keeping the backdrop in the same time model as the action.
@@ -1522,12 +1557,13 @@ export const render = {
       if (this._keyLight.target) this._keyLight.target.updateMatrixWorld(true);
       this._keyLight.shadow.updateMatrices(this._keyLight);
     }
-    this.state.render.asteroidInstancePool = syncAsteroidInstancePool(this._asteroidInstancePool, {
-      camera: this.cam.obj,
-      shadowCamera: this._shadowSettingOn && this._keyLight && this._keyLight.shadow
-        ? this._keyLight.shadow.camera
-        : null,
-    });
+    const asteroidSyncOptions = this._asteroidInstanceSyncOptions;
+    asteroidSyncOptions.camera = this.cam.obj;
+    asteroidSyncOptions.shadowCamera = this._shadowSettingOn && this._keyLight && this._keyLight.shadow
+      ? this._keyLight.shadow.camera
+      : null;
+    asteroidSyncOptions.records = this._entityFrame.asteroids;
+    this.state.render.asteroidInstancePool = syncAsteroidInstancePool(this._asteroidInstancePool, asteroidSyncOptions);
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
       if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();

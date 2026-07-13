@@ -44,7 +44,13 @@ export function createAsteroidInstancePool(scene) {
       visibleBatches: 0,
       matrixUploads: 0,
       matrixReuses: 0,
+      matrixEvaluations: 0,
       variants: variantStats,
+    },
+    dirty: true,
+    cameraState: {
+      view: createCameraState(),
+      shadow: createCameraState(),
     },
   };
 }
@@ -69,6 +75,7 @@ export function registerAsteroidBaseLeaf(pool, entity, ownerRoot) {
   const record = { entityId: entity.id, ownerRoot, leaf };
   bucket.records.push(record);
   pool.byEntity.set(entity.id, { bucket, record });
+  pool.dirty = true;
   leaf.visible = false;
   leaf.userData.asteroidInstanceAdopted = true;
   return true;
@@ -85,19 +92,44 @@ export function releaseAsteroidInstancesForEntity(pool, entityId) {
     if (record.leaf.userData) record.leaf.userData.asteroidInstanceAdopted = false;
   }
   pool.byEntity.delete(entityId);
+  pool.dirty = true;
   return true;
+}
+
+export function invalidateAsteroidInstancePool(pool) {
+  if (pool) pool.dirty = true;
 }
 
 export function syncAsteroidInstancePool(pool, options = {}) {
   if (!pool) return null;
-  const viewFrustumReady = prepareFrustum(options.camera, _viewProjection, _viewFrustum);
-  const shadowFrustumReady = prepareFrustum(options.shadowCamera, _shadowProjection, _shadowFrustum);
+  const classifiedRecords = Array.isArray(options.records) ? options.records : null;
+  const viewCameraDirty = cameraStateChanged(options.camera, pool.cameraState.view);
+  const shadowCameraDirty = cameraStateChanged(options.shadowCamera, pool.cameraState.shadow);
+  const cameraDirty = viewCameraDirty || shadowCameraDirty;
+  const classifiedDirty = classifiedRecords
+    ? hasDirtyClassifiedRecord(classifiedRecords, pool)
+    : true;
+  const canReuseStaticSubmission = !pool.dirty && !classifiedDirty && !cameraDirty;
   const stats = pool.stats;
   stats.registered = pool.byEntity.size;
-  stats.submitted = 0;
-  stats.visibleBatches = 0;
   stats.matrixUploads = 0;
   stats.matrixReuses = 0;
+  stats.matrixEvaluations = 0;
+
+  if (canReuseStaticSubmission) {
+    stats.matrixReuses = stats.visibleBatches;
+    for (let variant = 0; variant < pool.variants.length; variant++) {
+      const variantStats = stats.variants[variant];
+      variantStats.uploads = 0;
+      variantStats.reuses = variantStats.submitted > 0 ? 1 : 0;
+    }
+    return stats;
+  }
+
+  const viewFrustumReady = prepareFrustum(options.camera, _viewProjection, _viewFrustum);
+  const shadowFrustumReady = prepareFrustum(options.shadowCamera, _shadowProjection, _shadowFrustum);
+  stats.submitted = 0;
+  stats.visibleBatches = 0;
 
   for (let variant = 0; variant < pool.variants.length; variant++) {
     const bucket = pool.variants[variant];
@@ -133,6 +165,7 @@ export function syncAsteroidInstancePool(pool, options = {}) {
         continue;
       }
       const elements = leaf.matrixWorld.elements;
+      stats.matrixEvaluations++;
       const offset = submitted * 16;
       for (let component = 0; component < 16; component++) {
         const value = Math.fround(elements[component]);
@@ -163,6 +196,7 @@ export function syncAsteroidInstancePool(pool, options = {}) {
     if (submitted > 0) stats.visibleBatches++;
     bucket.entityIds.length = submitted;
   }
+  pool.dirty = false;
   return stats;
 }
 
@@ -190,6 +224,7 @@ export function clearAsteroidInstancePool(pool) {
     }
   }
   pool.byEntity.clear();
+  pool.dirty = true;
 }
 
 export function disposeAsteroidInstancePool(pool) {
@@ -234,6 +269,7 @@ function ensureCapacity(pool, bucket, required) {
   }
   bucket.mesh = mesh;
   bucket.capacity = capacity;
+  pool.dirty = true;
   if (pool.scene) pool.scene.add(mesh);
 }
 
@@ -245,9 +281,75 @@ function nextPowerOfTwo(value) {
 
 function prepareFrustum(camera, projection, frustum) {
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) return false;
-  camera.updateMatrixWorld(true);
+  if (typeof camera.updateWorldMatrix === 'function') camera.updateWorldMatrix(true, false);
+  else camera.updateMatrixWorld(true);
   camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
   projection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   frustum.setFromProjectionMatrix(projection);
   return true;
+}
+
+function createCameraState() {
+  return { initialized: false, present: false, values: new Float64Array(45) };
+}
+
+function hasDirtyClassifiedRecord(records, pool) {
+  if (records.length !== pool.byEntity.size) return true;
+  for (let index = 0; index < records.length; index++) {
+    const record = records[index];
+    if (!record || record.renderDirty) return true;
+    const root = record.mesh;
+    const owned = pool.byEntity.get(record.id);
+    if (!root || !root.parent || !owned || owned.record.ownerRoot !== root) return true;
+  }
+  return false;
+}
+
+function cameraStateChanged(camera, state) {
+  const present = !!camera;
+  let changed = !state.initialized || state.present !== present;
+  state.initialized = true;
+  state.present = present;
+  if (!camera) return changed;
+  if (typeof camera.updateWorldMatrix === 'function') camera.updateWorldMatrix(true, false);
+  else if (typeof camera.updateMatrixWorld === 'function') camera.updateMatrixWorld(true);
+  const position = camera.position;
+  const quaternion = camera.quaternion;
+  const scale = camera.scale;
+  const world = camera.matrixWorld && camera.matrixWorld.elements;
+  const projection = camera.projectionMatrix && camera.projectionMatrix.elements;
+  const values = state.values;
+  for (let index = 0; index < 13; index++) {
+    let raw = 0;
+    switch (index) {
+      case 0: raw = position ? position.x : 0; break;
+      case 1: raw = position ? position.y : 0; break;
+      case 2: raw = position ? position.z : 0; break;
+      case 3: raw = quaternion ? quaternion.x : 0; break;
+      case 4: raw = quaternion ? quaternion.y : 0; break;
+      case 5: raw = quaternion ? quaternion.z : 0; break;
+      case 6: raw = quaternion ? quaternion.w : 1; break;
+      case 7: raw = scale ? scale.x : 1; break;
+      case 8: raw = scale ? scale.y : 1; break;
+      case 9: raw = scale ? scale.z : 1; break;
+      case 10: raw = camera.near; break;
+      case 11: raw = camera.far; break;
+      case 12: raw = camera.zoom; break;
+      default: break;
+    }
+    const value = Number(raw) || 0;
+    if (values[index] !== value) changed = true;
+    values[index] = value;
+  }
+  for (let index = 0; index < 16; index++) {
+    const value = world ? Number(world[index]) || 0 : 0;
+    if (values[index + 13] !== value) changed = true;
+    values[index + 13] = value;
+  }
+  for (let index = 0; index < 16; index++) {
+    const value = projection ? Number(projection[index]) || 0 : 0;
+    if (values[index + 29] !== value) changed = true;
+    values[index + 29] = value;
+  }
+  return changed;
 }
