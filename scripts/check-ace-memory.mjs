@@ -45,6 +45,7 @@ guarded(testDefeatEmitsExactlyOneNewsHeadline);
 guarded(testFleeSchedulesDeterministicReturn);
 guarded(testSaveRoundTripCarriesAceMemory);
 guarded(testNamedHunterReceiptSeam);
+guarded(testMasslineFlingMemory);
 
 console.log(`[check-ace-memory] PASS - ${sections} sections green`);
 
@@ -151,4 +152,29 @@ function testNamedHunterReceiptSeam() {
   assert.equal(t.log.news.length, 1, 'receipt transition emits one news headline');
   assert.match(t.log.news[0].headline, /Sable Iask/, 'receipt headline names the existing captain');
   ok('existing named-hunter receipts feed ace memory without touching encounterDirector');
+}
+
+function testMasslineFlingMemory() {
+  const t = boot(7373);
+  const aceShip = {
+    id: 77,
+    alive: true,
+    data: { aceMemory: { aceId: 'ace_yara_no_cut', aceName: 'Yara No-Cut' } },
+  };
+  t.state.entities.set(aceShip.id, aceShip);
+  t.state.simTime = 42;
+  t.bus.emit('massline:tumbled', {
+    victimId: aceShip.id,
+    cause: 'self-throw',
+    spin: 4.5,
+    time: t.state.simTime,
+  });
+  const rec = t.state.aceMemory.ace_yara_no_cut;
+  assert.equal(rec.flungCount, 1, 'named ace remembers being flung');
+  assert.equal(rec.lastFlungAt, 42, 'fling memory uses deterministic sim time');
+  assert.equal(rec.lastFlungCause, 'self-throw');
+  assert.equal(rec.lastFlungSpin, 4.5);
+  assert.equal(t.log.transitions.at(-1).transition, 'flung', 'fling emits the durable transition seam');
+  assert.equal(t.log.news.length, 0, 'a tumble does not fake a defeat/flee headline');
+  ok('named aces remember massline flings without changing hostility or forcing a flee');
 }

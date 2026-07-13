@@ -36,6 +36,7 @@ export const aceMemory = {
     this._listen('namedAce:defeated', (p) => this._transition('defeated', p));
     this._listen('encounter:receipt', (p) => this._receipt(p));
     this._listen('entity:destroyed', (p) => this._entityDestroyed(p));
+    this._listen('massline:tumbled', (p) => this._flung(p));
   },
 
   newGame() {
@@ -135,6 +136,24 @@ export const aceMemory = {
     const ace = resolveAce(payload) || aceFromText(payload.text);
     if (!ace) return;
     this._transition(outcome, { ...payload, aceId: ace.id });
+  },
+
+  _flung(payload) {
+    const victimId = payload && payload.victimId;
+    const entity = victimId != null && this.state && this.state.entities
+      ? this.state.entities.get(victimId)
+      : null;
+    const ace = resolveAceFromEntity(entity);
+    if (!ace) return;
+    const rec = recordFor(ensureMemory(this.state), ace);
+    rec.encountered = true;
+    rec.flungCount = (rec.flungCount | 0) + 1;
+    rec.lastFlungAt = nowOf(this.state, payload);
+    rec.lastFlungCause = String(payload.cause || 'massline');
+    rec.lastFlungSpin = Number.isFinite(payload.spin) ? payload.spin : 0;
+    rec.lastSeenAt = rec.lastFlungAt;
+    rec.lastSectorId = sectorOf(this.state, payload);
+    this._emitTransition('flung', ace, rec);
   },
 
   _processReturns(state) {
@@ -357,6 +376,16 @@ function resolveAce(payload) {
     || aceFromText(payload.text || payload.headline || '');
 }
 
+function resolveAceFromEntity(entity) {
+  if (!entity || !entity.data) return null;
+  const data = entity.data;
+  const memory = data.aceMemory || {};
+  const ai = data.ai || {};
+  return aceById(memory.aceId || data.aceId || ai.aceId)
+    || aceByName(memory.aceName || data.aceName || ai.name || data.name)
+    || aceFromText(data.callsign || data.name || ai.name || '');
+}
+
 function freshMemory() {
   return { schemaVersion: ACE_MEMORY_VERSION, news: {}, activeReturns: {} };
 }
@@ -404,6 +433,7 @@ function normalizeRecord(id, input, ace = null) {
   rec.returnsBigger = rec.returnsBigger === true;
   rec.encounterCount = rec.encounterCount | 0;
   rec.fleeCount = rec.fleeCount | 0;
+  rec.flungCount = rec.flungCount | 0;
   rec.returnTier = rec.returnTier | 0;
   return rec;
 }
