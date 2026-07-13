@@ -20,6 +20,12 @@ export const CAMERA_DIRECTOR_GATE_SAFE_NDC = 0.78;
 
 // Nearby active hostiles expand Focus/combat-tether zoom so attackers are not cropped off-frame.
 export const CAMERA_DIRECTOR_THREAT_CONTEXT_RANGE = 280;
+// Look into the immediate crossing corridor without abandoning the current pair. The horizon is
+// scaled by the effective sim rate (Focus/bullet time) and each entity's displacement is bounded,
+// so fast passes read ahead without the camera running away from ships already on screen.
+export const CAMERA_DIRECTOR_PREDICT_S = 0.42;
+export const CAMERA_DIRECTOR_PREDICT_MAX_WU = 64;
+export const CAMERA_DIRECTOR_PREDICT_MIN_REL_SPEED = 72;
 
 // Pair framing is functional geometry, so motion-reduction preferences do not alter its pose.
 // Decorative shake remains outside the director in the chase-camera presentation layer.
@@ -74,6 +80,42 @@ function entityFor(state, id) {
 
 function entityRadius(entity) {
   return Math.max(0, finiteOr(entity && entity.radius, DEFAULT_RADIUS));
+}
+
+function boundedPredictionOffset(entity, horizonS, out) {
+  const vx = finiteOr(entity && entity.vel && entity.vel.x, 0);
+  const vz = finiteOr(entity && entity.vel && entity.vel.z, 0);
+  let x = vx * horizonS;
+  let z = vz * horizonS;
+  const distance = Math.hypot(x, z);
+  if (distance > CAMERA_DIRECTOR_PREDICT_MAX_WU && distance > 1e-9) {
+    const scale = CAMERA_DIRECTOR_PREDICT_MAX_WU / distance;
+    x *= scale;
+    z *= scale;
+  }
+  out.x = x;
+  out.z = z;
+  return out;
+}
+
+function resolvePairPrediction(state, player, target, playerX, playerZ, targetX, targetZ, out) {
+  const pvx = finiteOr(player && player.vel && player.vel.x, 0);
+  const pvz = finiteOr(player && player.vel && player.vel.z, 0);
+  const tvx = finiteOr(target && target.vel && target.vel.x, 0);
+  const tvz = finiteOr(target && target.vel && target.vel.z, 0);
+  const relativeSpeed = Math.hypot(tvx - pvx, tvz - pvz);
+  const timeScale = clamp(finiteOr(state && state.timeScale, 1), 0, 1);
+  const horizonS = relativeSpeed >= CAMERA_DIRECTOR_PREDICT_MIN_REL_SPEED
+    ? CAMERA_DIRECTOR_PREDICT_S * timeScale
+    : 0;
+  boundedPredictionOffset(player, horizonS, out.playerOffset);
+  boundedPredictionOffset(target, horizonS, out.targetOffset);
+  out.horizonS = horizonS;
+  out.playerX = playerX + out.playerOffset.x;
+  out.playerZ = playerZ + out.playerOffset.z;
+  out.targetX = targetX + out.targetOffset.x;
+  out.targetZ = targetZ + out.targetOffset.z;
+  return out;
 }
 
 function visualBoundsFromRoot(root) {
@@ -257,6 +299,18 @@ export function createCameraDirector() {
     nearPlane: 1,
     gateBoundsRadius: 0,
     gateApertureRadius: 0,
+    predictiveHorizonS: 0,
+    predictiveLeadX: 0,
+    predictiveLeadZ: 0,
+  };
+  const pairPrediction = {
+    horizonS: 0,
+    playerX: 0,
+    playerZ: 0,
+    targetX: 0,
+    targetZ: 0,
+    playerOffset: { x: 0, z: 0 },
+    targetOffset: { x: 0, z: 0 },
   };
   let initialized = false;
   let transitionStartX = 0;
@@ -277,6 +331,9 @@ export function createCameraDirector() {
     output.nearPlane = 1;
     output.gateBoundsRadius = 0;
     output.gateApertureRadius = 0;
+    output.predictiveHorizonS = 0;
+    output.predictiveLeadX = 0;
+    output.predictiveLeadZ = 0;
     transitionStartX = output.focusX;
     transitionStartZ = output.focusZ;
     transitionStartZoom = output.zoom;
@@ -298,18 +355,37 @@ export function createCameraDirector() {
     transitionElapsed = 0;
   }
 
-  function requiredPairZoom(first, second, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, safeNdc) {
-    return Math.max(
+  function requiredPairZoom(
+    first, second, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, safeNdc,
+    prediction = null,
+  ) {
+    let required = Math.max(
       requiredZoomForEntity(first, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, _entityLocalA, safeNdc),
       requiredZoomForEntity(second, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, _entityLocalB, safeNdc),
     );
+    if (prediction && prediction.horizonS > 0) {
+      required = Math.max(
+        required,
+        requiredZoomForLocal(
+          prediction.playerX, prediction.playerZ, entityRadius(first), focusX, focusZ,
+          tanHalfFov, aspect, sinTilt, cosTilt, safeNdc,
+        ),
+        requiredZoomForLocal(
+          prediction.targetX, prediction.targetZ, entityRadius(second), focusX, focusZ,
+          tanHalfFov, aspect, sinTilt, cosTilt, safeNdc,
+        ),
+      );
+    }
+    return required;
   }
 
   function requiredCombatZoom(
     state, player, target, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+    prediction = null,
   ) {
     const pairRequired = requiredPairZoom(
       player, target, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+      prediction,
     );
     const threatRequired = requiredThreatContextZoom(
       state, player, target, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
@@ -483,6 +559,9 @@ export function createCameraDirector() {
         output.nearPlane = clamp(candidateNear, 1, 160);
         output.gateBoundsRadius = gateApproach.metrics.boundsRadius;
         output.gateApertureRadius = gateApproach.metrics.apertureRadius;
+        output.predictiveHorizonS = 0;
+        output.predictiveLeadX = 0;
+        output.predictiveLeadZ = 0;
         return output;
       }
 
@@ -505,17 +584,48 @@ export function createCameraDirector() {
         const pLz = _entityLocalA.z;
         const tLx = _entityLocalB.x;
         const tLz = _entityLocalB.z;
-        // Primary pair midpoint stays on player + authoritative Focus/tether target (not the crowd).
-        const desiredX = (
+        resolvePairPrediction(state, player, target, pLx, pLz, tLx, tLz, pairPrediction);
+        // Primary composition owns the current exact pair plus a bounded immediate motion corridor.
+        // Nearby hostiles can widen zoom, but never pull focus away from this authored pair.
+        const currentMidX = (
           Math.min(pLx - playerRadius, tLx - targetRadius)
           + Math.max(pLx + playerRadius, tLx + targetRadius)
         ) * 0.5;
-        const desiredZ = (
+        const currentMidZ = (
           Math.min(pLz - playerRadius, tLz - targetRadius)
           + Math.max(pLz + playerRadius, tLz + targetRadius)
         ) * 0.5;
+        const desiredX = (
+          Math.min(
+            pLx - playerRadius,
+            tLx - targetRadius,
+            pairPrediction.playerX - playerRadius,
+            pairPrediction.targetX - targetRadius,
+          )
+          + Math.max(
+            pLx + playerRadius,
+            tLx + targetRadius,
+            pairPrediction.playerX + playerRadius,
+            pairPrediction.targetX + targetRadius,
+          )
+        ) * 0.5;
+        const desiredZ = (
+          Math.min(
+            pLz - playerRadius,
+            tLz - targetRadius,
+            pairPrediction.playerZ - playerRadius,
+            pairPrediction.targetZ - targetRadius,
+          )
+          + Math.max(
+            pLz + playerRadius,
+            tLz + targetRadius,
+            pairPrediction.playerZ + playerRadius,
+            pairPrediction.targetZ + targetRadius,
+          )
+        ) * 0.5;
         const desiredRequired = requiredCombatZoom(
           state, player, target, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+          pairPrediction,
         );
         const impossible = desiredRequired > CAMERA_DIRECTOR_ENGINE_MAX_ZOOM + 1e-9;
         const fitLimit = desiredRequired <= CAMERA_DIRECTOR_MAX_ZOOM + 1e-9
@@ -541,6 +651,7 @@ export function createCameraDirector() {
 
         let required = requiredCombatZoom(
           state, player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+          pairPrediction,
         );
         if (!impossible && required > fitLimit) {
           const startX = candidateX;
@@ -553,6 +664,7 @@ export function createCameraDirector() {
             const probeZ = startZ + (desiredZ - startZ) * mid;
             const probeRequired = requiredCombatZoom(
               state, player, target, probeX, probeZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+              pairPrediction,
             );
             if (probeRequired <= fitLimit) hi = mid;
             else lo = mid;
@@ -561,6 +673,7 @@ export function createCameraDirector() {
           candidateZ = startZ + (desiredZ - startZ) * hi;
           required = requiredCombatZoom(
             state, player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+            pairPrediction,
           );
         }
 
@@ -577,6 +690,9 @@ export function createCameraDirector() {
           : 1;
         output.gateBoundsRadius = 0;
         output.gateApertureRadius = 0;
+        output.predictiveHorizonS = pairPrediction.horizonS;
+        output.predictiveLeadX = desiredX - currentMidX;
+        output.predictiveLeadZ = desiredZ - currentMidZ;
         return output;
       }
 
@@ -605,6 +721,9 @@ export function createCameraDirector() {
         output.nearPlane = transitionStartNear + (1 - transitionStartNear) * ease;
         output.gateBoundsRadius = 0;
         output.gateApertureRadius = 0;
+        output.predictiveHorizonS = 0;
+        output.predictiveLeadX = 0;
+        output.predictiveLeadZ = 0;
         return output;
       }
 
@@ -619,6 +738,9 @@ export function createCameraDirector() {
       output.nearPlane = 1;
       output.gateBoundsRadius = 0;
       output.gateApertureRadius = 0;
+      output.predictiveHorizonS = 0;
+      output.predictiveLeadX = 0;
+      output.predictiveLeadZ = 0;
       return output;
     },
   };

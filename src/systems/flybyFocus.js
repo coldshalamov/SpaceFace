@@ -15,6 +15,10 @@ const COOLDOWN_S = 4.0;
 const MIN_REL_SPEED = 96;
 const MIN_CLOSING_SPEED = 25;
 const MAX_ACQUIRE_RANGE = 280;
+// Acquisition is deliberately early and conservative; once leased, retain through the pass with
+// wide hysteresis so the player can turn and latch. Only a genuinely runaway/teleported contact
+// releases before the authored three-second window.
+const MAX_HOLD_RANGE = 720;
 const MAX_TIME_TO_CLOSEST_S = 2.5;
 const MAX_SURFACE_MISS = 96;
 const LATCH_SCALE = 2.6;
@@ -214,6 +218,8 @@ function activeTargetInvalidReason(state, player, targetId) {
     : state.entities.get(targetId);
   if (!target || target.alive === false || !target.pos) return 'target-lost';
   if (!isFocusEligibleShip(state, target, player)) return 'not-hostile';
+  const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
+  if (!Number.isFinite(distance) || distance > MAX_HOLD_RANGE) return 'out-of-range';
   return null;
 }
 
@@ -242,6 +248,14 @@ export const flybyFocus = {
     resetOn('game:started', 'new-game');
     resetOn('dock:docked', 'docked');
     resetOn('player:death', 'death');
+    if (this.bus && typeof this.bus.on === 'function') {
+      this._unsubs.push(this.bus.on('flybyFocus:cancel', (payload) => {
+        const reason = payload && typeof payload.reason === 'string' && payload.reason
+          ? payload.reason
+          : 'cancelled';
+        this._finish(reason, true, false, true);
+      }));
+    }
   },
 
   destroy() {

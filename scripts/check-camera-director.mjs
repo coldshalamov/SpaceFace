@@ -11,6 +11,7 @@ import {
   createCameraDirector,
 } from '../src/render/cameraDirector.js';
 import { createChaseCamera } from '../src/render/camera.js';
+import { createTimeEffects } from '../src/core/timeEffects.js';
 
 const FOV = 50;
 const ASPECT = 16 / 9;
@@ -180,6 +181,68 @@ assert.deepEqual(
   'reduced motion preserves identical functional geometry',
 );
 
+// A fast crossing pass needs composition lead, not merely a midpoint of stale/current positions.
+// The lead is a bounded corridor: current player + target remain framed while the immediate crossing
+// path is also visible. Bullet time scales the screen-space horizon down because sim motion is slower.
+const crossingPlayer = entity(601, 0, 0, 7, { team: 0, vel: { x: 100, z: 0 } });
+const crossingTarget = entity(602, 120, 0, 8, { team: 1, vel: { x: 0, z: 120 } });
+const crossingState = stateFor(crossingPlayer, [crossingTarget], {
+  targetId: crossingTarget.id,
+  focusActive: true,
+  focusTargetId: crossingTarget.id,
+});
+createTimeEffects(crossingState);
+const crossingFrame = runFor(createCameraDirector(), CAMERA_DIRECTOR_EASE_S, 1 / 60,
+  crossingState, crossingPlayer);
+assert.equal(crossingFrame.mode, CameraDirectorMode.FOCUS_PAIR);
+assert.ok(crossingFrame.predictiveHorizonS > 0, 'Focus exposes a positive predictive horizon');
+assert.ok(crossingFrame.predictiveLeadZ > 10,
+  `crossing target leads composition into its path (leadZ=${crossingFrame.predictiveLeadZ})`);
+for (const item of [crossingPlayer, crossingTarget]) {
+  const bounds = projectedBounds(item, crossingFrame);
+  assert.ok(bounds.x <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9, `${item.id} current X remains framed during lead`);
+  assert.ok(bounds.y <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9, `${item.id} current Y remains framed during lead`);
+}
+const predictedTarget = {
+  ...crossingTarget,
+  pos: {
+    x: crossingTarget.pos.x + crossingTarget.vel.x * crossingFrame.predictiveHorizonS,
+    z: crossingTarget.pos.z + crossingTarget.vel.z * crossingFrame.predictiveHorizonS,
+  },
+};
+const predictedBounds = projectedBounds(predictedTarget, crossingFrame);
+assert.ok(predictedBounds.x <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9,
+  'predicted crossing target X stays inside the Focus safe frame');
+assert.ok(predictedBounds.y <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9,
+  'predicted crossing target Y stays inside the Focus safe frame');
+
+const bulletCrossingState = stateFor(crossingPlayer, [crossingTarget], {
+  targetId: crossingTarget.id,
+  focusActive: true,
+  focusTargetId: crossingTarget.id,
+});
+createTimeEffects(bulletCrossingState).set('camera-director-check:bullet-time', { scale: 0.35 });
+const bulletCrossingFrame = runFor(createCameraDirector(), CAMERA_DIRECTOR_EASE_S, 1 / 60,
+  bulletCrossingState, crossingPlayer);
+assert.ok(bulletCrossingFrame.predictiveHorizonS < crossingFrame.predictiveHorizonS,
+  'bullet time shortens the real-screen predictive horizon');
+assert.ok(bulletCrossingFrame.predictiveLeadZ > 0
+  && bulletCrossingFrame.predictiveLeadZ < crossingFrame.predictiveLeadZ,
+  'bullet time retains useful lead without over-leading slowed motion');
+
+const refreshFrames = [60, 144, 240].map((hz) => runFor(
+  createCameraDirector(), CAMERA_DIRECTOR_EASE_S, 1 / hz,
+  crossingState, crossingPlayer,
+));
+for (const frame of refreshFrames.slice(1)) {
+  assert.ok(Math.abs(frame.focusX - refreshFrames[0].focusX) < 1e-9,
+    'predictive Focus X is invariant at 60/144/240 Hz');
+  assert.ok(Math.abs(frame.focusZ - refreshFrames[0].focusZ) < 1e-9,
+    'predictive Focus Z is invariant at 60/144/240 Hz');
+  assert.ok(Math.abs(frame.zoom - refreshFrames[0].zoom) < 1e-9,
+    'predictive Focus zoom is invariant at 60/144/240 Hz');
+}
+
 const tetherState = stateFor(player, [nearer, exact], {
   targetId: exact.id,
   focusActive: true,
@@ -331,7 +394,8 @@ const enteredPair = transitionCamera.composition();
 const firstEaseT = (1 / 60) / CAMERA_DIRECTOR_EASE_S;
 const firstEase = firstEaseT * firstEaseT * (3 - 2 * firstEaseT);
 const desiredPairX = 20.5;
-const expectedFirstX = beforePair.x + (desiredPairX - beforePair.x) * firstEase;
+const expectedFirstX = beforePair.x
+  + (desiredPairX + enteredPair.predictiveLeadX - beforePair.x) * firstEase;
 // Predict the first pair frame from the same pose the chase camera just applied.
 const predictedPair = createCameraDirector();
 predictedPair.syncFollow(beforePair.x, beforePair.z, beforePair.zoom);
@@ -362,5 +426,7 @@ assert.doesNotMatch(directorSource, /reducedMotion/,
   'pair framing API is motion-invariant and has no dead reduced-motion flag');
 assert.doesNotMatch(cameraSource, /_directorView\.reducedMotion/,
   'live camera does not pass a dead reduced-motion flag into pair framing');
+assert.doesNotMatch(directorSource, /requestAnimationFrame\s*\(/,
+  'camera director remains inside the existing render loop with no second rAF');
 
 console.log('Camera director checks OK');

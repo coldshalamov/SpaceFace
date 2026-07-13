@@ -210,6 +210,39 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
   f.system.destroy();
 }
 
+// Explicit cancel and a wide release hysteresis end the lease cleanly without target churn.
+// The release radius is deliberately much wider than the 280 wu acquire envelope so a normal pass
+// keeps its full turn-and-latch window, while teleports/runaway contacts cannot own the camera.
+{
+  const target = hostile(2);
+  const f = runtimeFor([target]);
+  const ends = [];
+  f.bus.on('flybyFocus:end', (payload) => ends.push(payload));
+  f.system.update(DT, f.state);
+  f.bus.emit('flybyFocus:cancel', { reason: 'player-cancel' });
+  assert.equal(f.state.player.flybyFocus.active, false, 'explicit cancel releases Focus');
+  assert.equal(f.state.player.targetId, null, 'explicit cancel clears the leased target');
+  assert.equal(f.state.timeScale, 1, 'explicit cancel clears slow-time');
+  assert.equal(ends.at(-1)?.reason, 'player-cancel');
+  f.system.destroy();
+}
+
+{
+  const target = hostile(2);
+  const f = runtimeFor([target]);
+  const ends = [];
+  f.bus.on('flybyFocus:end', (payload) => ends.push(payload));
+  f.system.update(DT, f.state);
+  target.pos.x = 721;
+  f.state.simTime = 0.25;
+  f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.active, false, 'extreme range exit releases Focus');
+  assert.equal(f.state.player.targetId, null, 'range release clears the leased target');
+  assert.equal(f.state.timeScale, 1, 'range release clears slow-time');
+  assert.equal(ends.at(-1)?.reason, 'out-of-range');
+  f.system.destroy();
+}
+
 // A genuine 240 wu/s head-on pass must keep 50% time through closest approach and a usable
 // post-pass latch window instead of expiring while the player is still turning to face it.
 {

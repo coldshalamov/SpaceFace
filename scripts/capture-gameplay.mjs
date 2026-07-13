@@ -27,6 +27,7 @@ const SHOT = argv.shot || `${SCENARIO}.jpg`;
 const SHOT_PATH = argv.shotPath || `.devshots/perf/${SHOT}`;
 const VIDEO_OVERRIDES = collectVideoOverrides(argv);
 const HARD_KILL_MS = Number(argv.hardKillMs || Math.max(90000, WARMUP_MS + DURATION_MS + 60000));
+const DEBUG_PORT = Number(argv.debugPort || 9333);
 
 const CANDIDATES = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -50,13 +51,12 @@ if (!chrome) { console.error('No Chrome/Edge found.'); process.exit(2); }
 // Pragmatic approach: launch Chrome with remote debugging, drive it over CDP with raw WebSocket from
 // Node. That's the clean way to (a) eval JS in the page and (b) capture a screenshot — without a
 // browser-test dependency.
-const dbgPort = 9333;
 const args = [
   '--headless=new', '--no-sandbox', '--no-first-run', '--no-default-browser-check',
   '--disable-extensions', '--window-size=1280,800', '--hide-scrollbars',
   // REAL GPU — deliberately NOT passing swiftshader flags so frame-times reflect hardware WebGL.
   '--ignore-gpu-blocklist', '--enable-webgl',
-  `--remote-debugging-port=${dbgPort}`,
+  `--remote-debugging-port=${DEBUG_PORT}`,
   `http://localhost:${PORT}/`,
 ];
 console.log(`[gameplay] launching ${chrome.split('/').pop()} (real GPU) -> http://localhost:${PORT}/ scenario=${SCENARIO} seed=${SEED}`);
@@ -77,7 +77,7 @@ async function cdpCapture() {
   let wsUrl = null;
   for (let i = 0; i < 30; i++) {
     try {
-      const r = await fetch(`http://localhost:${dbgPort}/json`);
+      const r = await fetch(`http://localhost:${DEBUG_PORT}/json`);
       const tabs = await r.json();
       const page = tabs.find((t) => t.type === 'page');
       if (page) { wsUrl = page.webSocketDebuggerUrl; break; }
@@ -262,7 +262,12 @@ async function readRuntimeReport(send) {
       tick: state.tick,
       entityListLength: state.entityList ? state.entityList.length : 0,
       screenStack: state.ui && state.ui.screenStack ? state.ui.screenStack.slice() : [],
-      settings: state.settings || null
+      settings: state.settings || null,
+      flybyFocus: state.player && state.player.flybyFocus ? { ...state.player.flybyFocus } : null,
+      cameraComposition: state.render && state.render.cameraCtrl
+        && typeof state.render.cameraCtrl.composition === "function"
+        ? { ...state.render.cameraCtrl.composition() }
+        : null
     };
     return diag;
   })())`;
@@ -378,6 +383,35 @@ function scenarioExpression(name) {
       sf.bus.emit('mining:start', { minerId: p.id, targetId: target.id, position: { ...target.pos } });
       sf.bus.emit('tether:attached', { targetId: target.id, position: { ...target.pos } });
       window.__SF_CAPTURE_SCENARIO__.tick = setInterval(present, 16);
+    } else if (${JSON.stringify(name)} === 'flyby-focus') {
+      const combatSpecs = ${combatSpecs};
+      const spec = combatSpecs[0].spec;
+      spec.pos = { x: p.pos.x + 100, z: p.pos.z - 70 };
+      const target = helpers.spawnEntity(spec);
+      const armCrossingPass = () => {
+        if (!target || target.alive === false) return;
+        const focus = state.player && state.player.flybyFocus;
+        if (focus && focus.active) return;
+        if (focus && Number.isFinite(focus.cooldownUntil) && state.simTime < focus.cooldownUntil) return;
+        target.pos.x = p.pos.x + 100;
+        target.pos.z = p.pos.z - 70;
+        target.vel.x = 0;
+        target.vel.z = 120;
+        target.team = target.team == null ? 1 : target.team;
+        target.data = target.data || {};
+        target.data.encounter = target.data.encounter || { id: 'capture.flyby-focus' };
+        target.data.combat = target.data.combat || {};
+        target.data.combat.targetId = p.id;
+        target.data.combat.lockTarget = p.id;
+        const ai = target.data.ai || (target.data.ai = {});
+        ai.passive = true;
+        if (target.physicsBody) {
+          target.physicsBody.revision = (Number(target.physicsBody.revision) || 0) + 1;
+        }
+      };
+      armCrossingPass();
+      window.__SF_CAPTURE_SCENARIO__.targetId = target.id;
+      window.__SF_CAPTURE_SCENARIO__.tick = setInterval(armCrossingPass, 100);
     } else if (${JSON.stringify(name)} === 'spawn-churn') {
       let n = 0;
       window.__SF_CAPTURE_SCENARIO__.tick = setInterval(() => {
