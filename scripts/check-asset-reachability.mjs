@@ -120,14 +120,16 @@ for (const [asset, reason] of Object.entries(REFERENCE_ONLY)) {
 // 4. Keep BUNDLED_ROOTS honest: if build-bundle.mjs or the electron package stops shipping a root,
 //    every asset referenced from it would silently start 404-ing.
 const bundleSrc = readFileSync(join(ROOT, 'scripts/build-bundle.mjs'), 'utf8');
+const releasePackSrc = readFileSync(join(ROOT, 'scripts/lib/releasePackaging.mjs'), 'utf8');
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 const pkgFiles = (((pkg.build || {}).files) || []).map((f) => String(f).replace(/\\/g, '/'));
 for (const root of BUNDLED_ROOTS) {
   const leaf = root.split('/').pop();
-  if (!bundleSrc.includes(`'${leaf}'`)) {
-    issues.push(`BUNDLE DRIFT: scripts/build-bundle.mjs no longer copies "${root}" — referenced assets there would 404 in the web release.`);
+  const copiedInReleasePack = releasePackSrc.includes(`'${root}'`) || (root === 'assets/ships' && releasePackSrc.includes('assets/ships/release'));
+  if (!bundleSrc.includes(`'${leaf}'`) && !copiedInReleasePack) {
+    issues.push(`BUNDLE DRIFT: scripts/build-bundle.mjs or releasePackaging.mjs no longer copies "${root}" — referenced assets there would 404 in the web release.`);
   }
-  const globbed = pkgFiles.some((f) => f === `${root}/**` || f === `${root}/**/*` || f === root || f === 'assets/**' || f === 'assets/**/*');
+  const globbed = pkgFiles.some((f) => f === `${root}/**` || f === `${root}/**/*` || f === root || f === 'assets/**' || f === 'assets/**/*' || f === 'build/web/**' || f === 'build/web/**/*');
   if (!globbed) {
     issues.push(`PACKAGE DRIFT: package.json build.files no longer globs "${root}" — referenced assets there would be absent from the electron package.`);
   }
