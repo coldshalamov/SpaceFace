@@ -240,6 +240,137 @@ assert.deepEqual(adapterInspect.lastApplied.outputLanes,
 presentationAdapters.dispose();
 presentationOrchestrator.dispose();
 
+// Long campaigns continually introduce new source/target/sequence ids. Exercise
+// the real suppression/record path at production scale and pin every boundary
+// that can otherwise turn pruning into a cue-timing or long-session regression.
+function makeRetentionOrchestrator(tick = 0) {
+  const orchestrator = Object.create(presentationOrchestrator);
+  Object.assign(orchestrator, {
+    state: { tick },
+    _lastByDedupeKey: new Map(),
+    _nextDedupeSweepTick: 0,
+    _lastDedupeTick: -Infinity,
+    _dedupeKeysPruned: 0,
+    _dedupeSweepCount: 0,
+    _dedupeSweepScanned: 0,
+    _dedupeSweepMaxEntries: 0,
+    _dedupePeakKeys: 0,
+    _laneCounts: {},
+    _laneTick: -1,
+    _emitted: 0,
+    _suppressed: 0,
+    _lastCue: null,
+  });
+  return orchestrator;
+}
+
+function attemptCue(orchestrator, event, recipe) {
+  const reason = orchestrator._suppressionReason(event, recipe);
+  if (reason == null) orchestrator._recordEmission(event, recipe);
+  return reason;
+}
+
+const zeroWindowRecipe = { dedupeWindowTicks: 0, lanes: {} };
+const authoredWindowRecipe = { dedupeWindowTicks: 30, lanes: {} };
+const edgeOrchestrator = makeRetentionOrchestrator(100);
+const zeroWindowEvent = {
+  id: 'combat.damage.applied',
+  dedupeKey: 'combat.damage.applied|pirate_1|player',
+  sourceEvent: 'combat:damage',
+};
+assert.equal(attemptCue(edgeOrchestrator, zeroWindowEvent, zeroWindowRecipe), null,
+  'zero-window cues must emit on first observation');
+assert.equal(attemptCue(edgeOrchestrator, zeroWindowEvent, zeroWindowRecipe), null,
+  'zero-window cues must remain unsuppressed on the same tick');
+
+const authoredWindowEvent = {
+  id: 'tether.attach',
+  dedupeKey: 'tether.attach|player|rock_1',
+  sourceEvent: 'tether:attached',
+};
+assert.equal(attemptCue(edgeOrchestrator, authoredWindowEvent, authoredWindowRecipe), null);
+assert.equal(attemptCue(edgeOrchestrator, authoredWindowEvent, authoredWindowRecipe), 'dedupe_window',
+  'positive authored windows must suppress repeats on the same tick');
+edgeOrchestrator.state.tick = 129;
+assert.equal(attemptCue(edgeOrchestrator, authoredWindowEvent, authoredWindowRecipe), 'dedupe_window',
+  'positive authored windows must suppress through the final inside-window tick');
+edgeOrchestrator.state.tick = 130;
+assert.equal(attemptCue(edgeOrchestrator, authoredWindowEvent, authoredWindowRecipe), null,
+  'a cue must become eligible at the exact authored expiry tick');
+
+const rewindOrchestrator = makeRetentionOrchestrator(1_000);
+assert.equal(attemptCue(rewindOrchestrator, authoredWindowEvent, authoredWindowRecipe), null);
+rewindOrchestrator.state.tick = 900;
+assert.equal(attemptCue(rewindOrchestrator, authoredWindowEvent, authoredWindowRecipe), null,
+  'a tick rewind must discard future dedupe records instead of suppressing indefinitely');
+assert(rewindOrchestrator.inspect().dedupeKeysPruned >= 1,
+  'tick rewind must reclaim future-timeline dedupe records');
+
+const boundaryOrchestrator = makeRetentionOrchestrator(2 ** 31 - 4);
+const boundaryEvent = {
+  id: 'travel.jump.committed',
+  dedupeKey: 'travel.jump.committed|helios|tethys',
+  sourceEvent: 'jump:start',
+};
+assert.equal(attemptCue(boundaryOrchestrator, boundaryEvent, authoredWindowRecipe), null);
+boundaryOrchestrator.state.tick = 2 ** 31 + 4;
+assert.equal(attemptCue(boundaryOrchestrator, boundaryEvent, authoredWindowRecipe), 'dedupe_window',
+  'dedupe windows must remain ordered across the signed 32-bit boundary');
+boundaryOrchestrator.state.tick = 2 ** 31 + 26;
+assert.equal(attemptCue(boundaryOrchestrator, boundaryEvent, authoredWindowRecipe), null,
+  'exact expiry must remain correct across the signed 32-bit boundary');
+boundaryOrchestrator.state.tick = 2 ** 31 + 100.75;
+assert.equal(attemptCue(boundaryOrchestrator, {
+  ...boundaryEvent,
+  dedupeKey: `${boundaryEvent.dedupeKey}|fractional`,
+}, authoredWindowRecipe), null);
+assert.equal(boundaryOrchestrator.inspect().lastCue.tick, 2 ** 31 + 100,
+  'presentation ticks must use Math.trunc semantics without signed 32-bit wrap');
+
+const resetBus = createBus();
+const resetOrchestrator = Object.create(presentationOrchestrator);
+const resetState = { tick: 50 };
+resetOrchestrator.init({ state: resetState, bus: resetBus });
+assert.equal(attemptCue(resetOrchestrator, authoredWindowEvent, authoredWindowRecipe), null);
+resetBus.emit('save:loaded');
+resetBus.flush();
+assert.equal(resetOrchestrator.inspect().activeDedupeKeys, 0,
+  'save load must reset dedupe state');
+assert.equal(attemptCue(resetOrchestrator, authoredWindowEvent, authoredWindowRecipe), null,
+  'a loaded timeline must not inherit prior suppression');
+resetBus.emit('game:new');
+resetBus.flush();
+assert.equal(resetOrchestrator.inspect().activeDedupeKeys, 0,
+  'new game must reset dedupe state');
+resetOrchestrator.dispose();
+
+const stressOrchestrator = makeRetentionOrchestrator();
+const uniqueEventCount = 200_000;
+const stressStartedAt = performance.now();
+for (let tick = 0; tick < uniqueEventCount; tick++) {
+  stressOrchestrator.state.tick = tick;
+  assert.equal(attemptCue(stressOrchestrator, {
+    id: 'combat.damage.applied',
+    dedupeKey: `combat.damage.applied|npc_${tick}|target_${tick}`,
+    sourceEvent: 'combat:damage',
+  }, authoredWindowRecipe), null);
+}
+const stressElapsedMs = performance.now() - stressStartedAt;
+const stressInspect = stressOrchestrator.inspect();
+const retentionBound = 60 + authoredWindowRecipe.dedupeWindowTicks;
+assert(stressInspect.activeDedupeKeys <= retentionBound,
+  '200k unique identities must retain only the sweep interval plus active authored window');
+assert(stressInspect.dedupePeakKeys <= retentionBound,
+  'peak retained key allocation must stay bounded by sweep cadence plus authored window');
+assert(stressInspect.dedupeSweepMaxEntries <= retentionBound,
+  'each sweep must inspect only a bounded sweep-cadence window');
+assert(stressInspect.dedupeSweepScanned <= uniqueEventCount * 2,
+  'aggregate sweep work must stay linear in emitted cues with a small constant factor');
+assert(stressInspect.dedupeSweepCount <= Math.ceil(uniqueEventCount / 60) + 1,
+  'sweeps must run at most once per simulated second');
+assert(stressInspect.dedupeKeysPruned >= uniqueEventCount - retentionBound,
+  'expired identities must be reclaimed across the full 200k stress');
+
 // The 47-A information chain must teach five meanings with five finite identities, one voice each.
 const narrativeBus = createBus();
 const narrativeAudio = [];
@@ -301,4 +432,7 @@ assert(narrativeCueIds.every((cueId) => getPresentationRecipe(cueId).budgets.voi
   'each 47-A information beat owns exactly one voice');
 presentationAdapters.dispose();
 
-console.log('Presentation cue schema checks OK');
+console.log(`Presentation cue schema checks OK; dedupeStress=${uniqueEventCount}`
+  + ` active=${stressInspect.activeDedupeKeys} peak=${stressInspect.dedupePeakKeys}`
+  + ` sweeps=${stressInspect.dedupeSweepCount} scanned=${stressInspect.dedupeSweepScanned}`
+  + ` pruned=${stressInspect.dedupeKeysPruned} elapsedMs=${stressElapsedMs.toFixed(1)}`);

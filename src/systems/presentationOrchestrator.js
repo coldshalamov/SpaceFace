@@ -28,6 +28,12 @@ const DEFAULT_LANE_BUDGETS_PER_TICK = Object.freeze({
   accessibility: 6,
 });
 
+// Dedupe identity includes source/target/sequence ids, so a long campaign can
+// produce an effectively unbounded key stream.  Keep only records that can
+// still suppress a cue.  Sweeping once per simulated second makes retention
+// bounded by the active dedupe windows without adding per-frame work.
+const DEDUPE_SWEEP_INTERVAL_TICKS = 60;
+
 export const presentationOrchestrator = {
   name: 'presentationOrchestrator',
 
@@ -35,6 +41,13 @@ export const presentationOrchestrator = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this._lastByDedupeKey = new Map();
+    this._nextDedupeSweepTick = 0;
+    this._lastDedupeTick = -Infinity;
+    this._dedupeKeysPruned = 0;
+    this._dedupeSweepCount = 0;
+    this._dedupeSweepScanned = 0;
+    this._dedupeSweepMaxEntries = 0;
+    this._dedupePeakKeys = 0;
     this._laneCounts = {};
     this._laneTick = -1;
     this._emitted = 0;
@@ -173,11 +186,18 @@ export const presentationOrchestrator = {
       suppressed: this._suppressed || 0,
       lastCue: this._lastCue,
       activeDedupeKeys: this._lastByDedupeKey ? this._lastByDedupeKey.size : 0,
+      dedupeKeysPruned: this._dedupeKeysPruned || 0,
+      dedupeSweepCount: this._dedupeSweepCount || 0,
+      dedupeSweepScanned: this._dedupeSweepScanned || 0,
+      dedupeSweepMaxEntries: this._dedupeSweepMaxEntries || 0,
+      dedupePeakKeys: this._dedupePeakKeys || 0,
     };
   },
 
   _resetRuntime() {
     if (this._lastByDedupeKey) this._lastByDedupeKey.clear();
+    this._nextDedupeSweepTick = 0;
+    this._lastDedupeTick = -Infinity;
     if (this._doctrineCycles) this._doctrineCycles.clear();
     this._resetMiningRuntime();
     this._resetTravelRuntime();
@@ -1137,8 +1157,9 @@ export const presentationOrchestrator = {
 
   _suppressionReason(event, recipe) {
     const tick = currentTick(this.state);
+    this._pruneExpiredDedupeKeys(tick);
     const last = this._lastByDedupeKey.get(event.dedupeKey);
-    if (last != null && tick - last < recipe.dedupeWindowTicks) return 'dedupe_window';
+    if (last != null && tick - last.tick < recipe.dedupeWindowTicks) return 'dedupe_window';
     this._resetLaneCountsForTick(tick);
     for (const lane of Object.keys(recipe.lanes || {}).sort()) {
       const limit = DEFAULT_LANE_BUDGETS_PER_TICK[lane] || 1;
@@ -1150,7 +1171,11 @@ export const presentationOrchestrator = {
   _recordEmission(event, recipe) {
     const tick = currentTick(this.state);
     this._resetLaneCountsForTick(tick);
-    this._lastByDedupeKey.set(event.dedupeKey, tick);
+    this._lastByDedupeKey.set(event.dedupeKey, {
+      tick,
+      expiresAt: tick + recipe.dedupeWindowTicks,
+    });
+    this._dedupePeakKeys = Math.max(this._dedupePeakKeys || 0, this._lastByDedupeKey.size);
     for (const lane of Object.keys(recipe.lanes || {}).sort()) {
       this._laneCounts[lane] = (this._laneCounts[lane] || 0) + 1;
     }
@@ -1180,6 +1205,30 @@ export const presentationOrchestrator = {
     if (this._laneTick === tick) return;
     this._laneTick = tick;
     this._laneCounts = {};
+  },
+
+  _pruneExpiredDedupeKeys(tick) {
+    if (!this._lastByDedupeKey) return;
+    if (tick < this._lastDedupeTick) {
+      this._dedupeKeysPruned += this._lastByDedupeKey.size;
+      this._lastByDedupeKey.clear();
+      this._nextDedupeSweepTick = tick;
+    }
+    this._lastDedupeTick = tick;
+    if (tick < this._nextDedupeSweepTick) return;
+    this._nextDedupeSweepTick = tick + DEDUPE_SWEEP_INTERVAL_TICKS;
+    this._dedupeSweepCount++;
+    this._dedupeSweepScanned += this._lastByDedupeKey.size;
+    this._dedupeSweepMaxEntries = Math.max(
+      this._dedupeSweepMaxEntries || 0,
+      this._lastByDedupeKey.size,
+    );
+    for (const [key, record] of this._lastByDedupeKey) {
+      if (!record || record.expiresAt <= tick) {
+        this._lastByDedupeKey.delete(key);
+        this._dedupeKeysPruned++;
+      }
+    }
   },
 };
 
@@ -1215,7 +1264,7 @@ function mergeTags(...groups) {
 }
 
 function currentTick(state) {
-  return state && Number.isFinite(state.tick) ? state.tick | 0 : 0;
+  return state && Number.isFinite(state.tick) ? Math.trunc(state.tick) : 0;
 }
 
 function emitDeferred(bus, type, payload) {
