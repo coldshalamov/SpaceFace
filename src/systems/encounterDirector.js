@@ -305,6 +305,7 @@ export const encounterDirector = {
 
   _gatesPass(shape, state) {
     const g = shape.gates || {};
+    if (g.externalOnly) return false;
     if (g.minCargoValue && this.cargoValue() < g.minCargoValue) return false;
     if (g.bountyOnly && (((state.player && state.player.bounty) | 0) <= 0)) return false;
     if (Number.isFinite(g.maxSecurity) && sectorSecurityOf(state) > g.maxSecurity) return false;
@@ -327,6 +328,73 @@ export const encounterDirector = {
     const r = (item.zoneRadius || 400) + PROX_SLACK;
     const dx = p.pos.x - item.zoneCenter.x, dz = p.pos.z - item.zoneCenter.z;
     return dx * dx + dz * dz <= r * r;
+  },
+
+  /** Materialize a claim-owned defense contract at its exact physical anchor. This bypasses the
+   * ambient planner but still uses the normal director spawn budget, causality, doctrine, ROE,
+   * telegraph, resolution, and receipt machinery. The durable id makes retries/save recovery
+   * idempotent. */
+  requestClaimDefense(payload) {
+    if (!payload || !payload.encounterId || !payload.claimId || !payload.anchor) {
+      return { ok: false, reason: 'invalid_request' };
+    }
+    const state = this.state;
+    const dir = ensureDirectorState(state);
+    if (dir.live[payload.encounterId]) {
+      return { ok: true, encounterId: payload.encounterId, reused: true };
+    }
+    if (this._currentSectorId() !== payload.sectorId) return { ok: false, reason: 'wrong_sector' };
+    const shape = ENCOUNTERS.claim_threat;
+    if (!shape) return { ok: false, reason: 'missing_shape' };
+    const body = ((state.claims && state.claims.bodies) || []).find((entry) => entry && entry.id === payload.claimId);
+    if (!body || body.sectorId !== payload.sectorId) return { ok: false, reason: 'missing_claim' };
+
+    const local = globalToSectorLocalForSector(payload.anchor, payload.sectorId);
+    const rng = mulberry32(hash32((state.meta && state.meta.seed) || 0, payload.encounterId, 'claim-defense'));
+    const zone = {
+      id: `claim-defense:${payload.claimId}`,
+      name: body.name || 'Player claim',
+      type: 'mining_belt',
+      center: { x: local.x, z: local.z },
+      radius: 760,
+      threat: 2,
+    };
+    const item = resolveEncounter(shape, zone, payload.sectorId, Math.floor((state.simTime || 0) / DAY_SECONDS), 0, rng);
+    if (!item || !item.ships.length) return { ok: false, reason: 'empty_plan' };
+    item.encounterId = payload.encounterId;
+    item.squadId = payload.encounterId;
+    item.sectorId = payload.sectorId;
+    item.zoneCenter = { x: payload.anchor.x, z: payload.anchor.z };
+    item.zoneRadius = zone.radius;
+    item.motive = payload.motive || 'Stored freight drew a stripping crew.';
+    item.engagementTrigger = 'claim_defense_arrival';
+    item.data = {
+      claimId: payload.claimId,
+      defenseId: payload.defenseId || null,
+      attackerName: payload.attackerName || 'Reach scavengers',
+      requestedCount: Math.max(1, Math.min(6, Math.round(payload.attackerCount || 2))),
+      resumed: !!payload.resume,
+    };
+    const base = item.ships.slice();
+    const count = item.data.requestedCount;
+    item.ships = [];
+    for (let i = 0; i < count; i++) {
+      const source = base[i % base.length];
+      const angle = (Math.PI * 2 * i / count) + rng() * 0.24;
+      const radius = 560 + rng() * 120;
+      item.ships.push({
+        ...source,
+        passive: true,
+        pos: {
+          x: payload.anchor.x + Math.cos(angle) * radius,
+          z: payload.anchor.z + Math.sin(angle) * radius,
+        },
+      });
+    }
+    this._fire(dir, state, item, shape, state.simTime || 0);
+    return dir.live[payload.encounterId]
+      ? { ok: true, encounterId: payload.encounterId }
+      : { ok: false, reason: 'spawn_failed' };
   },
 
   _fire(dir, state, item, shape, now) {
@@ -357,7 +425,7 @@ export const encounterDirector = {
       ids: [],
       roles: {},
       vars: {},
-      data: {},
+      data: item.data && typeof item.data === 'object' ? { ...item.data } : {},
       outcome: null,
       primarySaid: false,
       lastBarkAt: -1e9,
@@ -897,7 +965,7 @@ export const encounterDirector = {
  *                  zoneCenter, zoneRadius, factionId, bark, delay, ships:[...], variantKind?,
  *                  levelBand }>
  */
-export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = null) {
+export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = null, encounterCatalog = ENCOUNTERS) {
   const out = [];
 
   if (!Array.isArray(zones) || !zones.length) return out;
@@ -921,9 +989,10 @@ export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = n
 
   let seq = 0;
   const scheduleTier = (tier, maxCount, delayLo, delaySpan) => {
-    const candidates = Object.values(ENCOUNTERS).filter((e) => {
+    const candidates = Object.values(encounterCatalog || ENCOUNTERS).filter((e) => {
       if (e.tier !== tier || !e.zoneTypes || !e.zoneTypes.some((zt) => presentTypes.has(zt))) return false;
       const g = e.gates || {};
+      if (g.externalOnly) return false;
       if (Number.isFinite(g.maxSecurity) && sectorSecurity > g.maxSecurity) return false;
       if (Number.isFinite(g.minSecurity) && sectorSecurity < g.minSecurity) return false;
       return true;

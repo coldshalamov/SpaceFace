@@ -67,6 +67,8 @@ export const RAID_SECURITY_FLOOR = 0.5;    // sectors at/above this security nev
 export const SPEC_RAID_LOSS_FRAC = 0.7;    // uncovered raid takes 70% of stored goods (legacy)
 export const SPEC_RAID_COOLDOWN_S = 300;   // raided site freeze (legacy raidCooldown)
 export const SPEC_DETERRENCE_S = 1200;     // a repelled raid buys 20 min of halved pressure
+export const CLAIM_DEFENSE_WARNING_S = 150; // travel window before off-screen fallback
+export const CLAIM_DEFENSE_ARRIVAL_R = 720; // reach the physical claim, not merely its sector
 const RELAY_LOSS_BASE = 0.05;              // convoy loss floor in unlawful space…
 const RELAY_LOSS_DANGER = 0.25;            // …plus danger scaling, capped:
 const RELAY_LOSS_CAP = 0.35;
@@ -136,7 +138,13 @@ export const claims = {
     // World respawns POI entities on sector entry — re-stamp specialization identity on them.
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('sector:enter', () => this._applyAllPoiLabels());
+      this.bus.on('encounter:resolved', (payload) => this._onDefenseEncounterResolved(payload || {}));
+      this.bus.on('claim:defenseIgnore', (payload) => {
+        const body = this._body(payload && payload.bodyId);
+        if (body && body.spec && body.spec.defense) this._settleDefense(body, 'ignored');
+      });
     }
+    this._resumeDefenseIds = new Set();
   },
 
   // Is the POI at the given id already claimed by the player?
@@ -468,6 +476,7 @@ export const claims = {
         this._tickRefinery(body, rate);
       }
     }
+    this._tickRaidDefenses(bodies, state);
     if (!anySpec) return;
     const meta = this._ensureMeta();
     meta.upkeepAccum = (meta.upkeepAccum || 0) + dt;
@@ -620,7 +629,7 @@ export const claims = {
     const t = state.simTime || 0;
     for (const body of bodies) {
       const spec = body.spec;
-      if (!spec || spec.status === 'raided') continue;
+      if (!spec || spec.status === 'raided' || spec.defense) continue;
       const sector = SECTOR_BY_ID.get(body.sectorId);
       if (!sector || sector.security >= RAID_SECURITY_FLOOR) continue;
       const bastion = bodies.find((b) => b !== body && b.sectorId === body.sectorId
@@ -647,28 +656,243 @@ export const claims = {
         this.bus.emit('claim:raidRepelled', { bodyId: body.id, defense: rating });
         this.bus.emit('toast', { text: 'Raid repelled at ' + body.name, kind: 'good', ttl: 4 });
       } else {
-        const bastionDef = BODY_SPECIALIZATION_BY_ID.get('spec_bastion');
-        const lossFrac = bastion && bastionDef ? bastionDef.coveredLossFrac : SPEC_RAID_LOSS_FRAC;
-        let lostU = 0;
-        for (const bucket of [spec.store.input, spec.store.output]) {
-          for (const id in bucket) {
-            const lost = Math.floor((bucket[id] || 0) * lossFrac);
-            if (lost > 0) {
-              bucket[id] -= lost;
-              lostU += lost;
-              if (bucket[id] <= 0) delete bucket[id];
-            }
-          }
-        }
-        spec.totals.lostU += lostU;
-        spec.totals.raidsSuffered += 1;
-        spec.status = 'raided';
-        spec.statusUntil = t + SPEC_RAID_COOLDOWN_S;
-        this._receipt(body, 'raid_hit', 'Raided — lost ' + lostU + 'u of stored goods', { lostU });
-        this.bus.emit('claim:raided', { bodyId: body.id, lostU });
-        this.bus.emit('toast', { text: body.name + ' raided (-' + lostU + ' goods)', kind: 'warn', ttl: 4 });
+        this.beginRaidDefense(body.id, {
+          bastionId: bastion && bastion.id,
+          attackerCount: 2 + Math.floor(this._rng() * 2),
+        });
       }
     }
+  },
+
+  // Turn a tripped abstract raid into a durable response contract. Claims owns the warning and
+  // settlement; the encounter director owns only the flyable combat set piece.
+  beginRaidDefense(bodyId, options = {}) {
+    const body = this._body(bodyId);
+    const spec = body && body.spec;
+    if (!body || !spec || spec.defense || spec.status === 'raided') return false;
+    if (sumStore(spec.store.input) + sumStore(spec.store.output) <= 0) return false;
+    const onboarding = this.state.onboarding;
+    if (onboarding && onboarding.active && !onboarding.finished) return false;
+
+    const meta = this._ensureMeta();
+    const seq = Math.max(1, meta.nextRaidId | 0);
+    meta.nextRaidId = seq + 1;
+    const now = this.state.simTime || 0;
+    const defenseId = `${body.id}:${seq}`;
+    const attackerCount = Math.max(1, Math.min(6, Math.round(options.attackerCount || 2)));
+    const previousWaypoint = this.state.nav && this.state.nav.waypoint
+      ? JSON.parse(JSON.stringify(this.state.nav.waypoint)) : null;
+    const defense = {
+      id: defenseId,
+      encounterId: `claim-defense:${defenseId}`,
+      phase: 'warning',
+      warnedAt: now,
+      deadlineAt: now + CLAIM_DEFENSE_WARNING_S,
+      requestedAt: null,
+      attackerFactionId: 'faction_reach',
+      attackerName: 'Reach scavengers',
+      attackerCount,
+      motive: `Stored freight at ${body.name} drew a Reach stripping crew to the seam.`,
+      bastionId: options.bastionId || null,
+      previousWaypoint,
+    };
+    spec.defense = defense;
+    this._setDefenseWaypoint(body, defense);
+    this._receipt(body, 'defense_warning', `${defense.attackerName} inbound — ${attackerCount} ships, ${CLAIM_DEFENSE_WARNING_S}s to respond`, {
+      defenseId, attackerFactionId: defense.attackerFactionId, attackerCount,
+    });
+    this.bus.emit('claim:defenseWarning', {
+      bodyId: body.id,
+      defenseId,
+      encounterId: defense.encounterId,
+      sectorId: body.sectorId,
+      pos: { x: body.x, z: body.z },
+      attackerFactionId: defense.attackerFactionId,
+      attackerName: defense.attackerName,
+      attackerCount,
+      motive: defense.motive,
+      deadlineAt: defense.deadlineAt,
+      countdownS: CLAIM_DEFENSE_WARNING_S,
+    });
+    this.bus.emit('toast', {
+      text: `CLAIM ALERT — ${defense.attackerName}, ${attackerCount} ships. Reach ${body.name} in ${CLAIM_DEFENSE_WARNING_S}s.`,
+      kind: 'warn', ttl: 7,
+    });
+    this.bus.emit('audio:cue', { id: 'warning' });
+    return true;
+  },
+
+  _tickRaidDefenses(bodies, state) {
+    const now = state.simTime || 0;
+    for (const body of bodies) {
+      const defense = body && body.spec && body.spec.defense;
+      if (!defense) continue;
+      if (defense.phase === 'warning') {
+        if (now >= defense.deadlineAt) {
+          this._settleDefense(body, 'ignored');
+          continue;
+        }
+        this._setDefenseWaypoint(body, defense, { quiet: true });
+        if (this._playerAtClaim(body, state)) this._requestDefenseEncounter(body, defense);
+      } else if (defense.phase === 'engaged' && this._resumeDefenseIds && this._resumeDefenseIds.has(defense.id)) {
+        // Continue can restore the claim while the player is still materializing in another
+        // sector. Keep the durable retry token until the director actually accepts the encounter;
+        // otherwise one wrong-sector/no-budget response would strand this defense forever.
+        if (!state.world || state.world.currentSectorId !== body.sectorId) continue;
+        if (now < (defense.retryAt || 0)) continue;
+        if (this._requestDefenseEncounter(body, defense, { resume: true })) {
+          this._resumeDefenseIds.delete(defense.id);
+          delete defense.retryAt;
+        } else {
+          defense.retryAt = now + 2;
+        }
+      }
+    }
+  },
+
+  _playerAtClaim(body, state) {
+    if (!state.world || state.world.currentSectorId !== body.sectorId) return false;
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return false;
+    const dx = player.pos.x - body.x;
+    const dz = player.pos.z - body.z;
+    return dx * dx + dz * dz <= CLAIM_DEFENSE_ARRIVAL_R * CLAIM_DEFENSE_ARRIVAL_R;
+  },
+
+  _requestDefenseEncounter(body, defense, options = {}) {
+    const registry = this.ctx && this.ctx.registry;
+    const director = registry && typeof registry.get === 'function' ? registry.get('encounterDirector') : null;
+    const payload = {
+      encounterId: defense.encounterId,
+      claimId: body.id,
+      defenseId: defense.id,
+      sectorId: body.sectorId,
+      anchor: { x: body.x, z: body.z },
+      attackerFactionId: defense.attackerFactionId,
+      attackerName: defense.attackerName,
+      attackerCount: defense.attackerCount,
+      motive: defense.motive,
+      deadlineAt: defense.deadlineAt,
+      resume: !!options.resume,
+    };
+    let result = null;
+    if (director && typeof director.requestClaimDefense === 'function') result = director.requestClaimDefense(payload);
+    else this.bus.emit('claim:defenseEncounterRequested', payload);
+    if (!result || result.ok === false) return false;
+    defense.phase = 'engaged';
+    defense.encounterId = result.encounterId || defense.encounterId;
+    defense.requestedAt = this.state.simTime || 0;
+    this.bus.emit('claim:defenseStarted', { ...payload, encounterId: defense.encounterId });
+    return true;
+  },
+
+  _onDefenseEncounterResolved(payload) {
+    if (!payload || payload.shape !== 'claim_threat' || !payload.encounterId) return;
+    const bodies = (this.state.claims && this.state.claims.bodies) || [];
+    const body = bodies.find((candidate) => candidate && candidate.spec && candidate.spec.defense
+      && candidate.spec.defense.encounterId === payload.encounterId);
+    if (!body) return;
+    if (String(payload.outcome || '').startsWith('aborted:')) {
+      body.spec.defense.phase = 'warning';
+      body.spec.defense.requestedAt = null;
+      body.spec.defense.deadlineAt = Math.max(body.spec.defense.deadlineAt || 0, (this.state.simTime || 0) + 45);
+      this._setDefenseWaypoint(body, body.spec.defense);
+      return;
+    }
+    this._settleDefense(body, payload.outcome || 'timeout');
+  },
+
+  _settleDefense(body, rawOutcome) {
+    const spec = body && body.spec;
+    const defense = spec && spec.defense;
+    if (!defense) return false;
+    const outcome = ['defended', 'partial', 'retreated', 'timeout', 'destroyed', 'ignored'].includes(rawOutcome)
+      ? rawOutcome : 'timeout';
+    const settlement = {
+      defended:  { lossFrac: 0,    rep: 3,  danger: -0.05, repairMin: 0,   cooldown: 0 },
+      partial:   { lossFrac: 0.25, rep: 1,  danger: -0.01, repairMin: 0.5, cooldown: 120 },
+      retreated: { lossFrac: 0.50, rep: -2, danger: 0.03,  repairMin: 1,   cooldown: 240 },
+      timeout:   { lossFrac: 0.70, rep: -3, danger: 0.05,  repairMin: 1.5, cooldown: SPEC_RAID_COOLDOWN_S },
+      ignored:   { lossFrac: 0.70, rep: -1, danger: 0.05,  repairMin: 1.5, cooldown: SPEC_RAID_COOLDOWN_S },
+      destroyed: { lossFrac: 0.90, rep: -5, danger: 0.08,  repairMin: 3,   cooldown: SPEC_RAID_COOLDOWN_S * 2 },
+    }[outcome];
+    let lostU = 0;
+    for (const bucket of [spec.store.input, spec.store.output]) {
+      for (const id of Object.keys(bucket)) {
+        const lost = Math.floor((bucket[id] || 0) * settlement.lossFrac);
+        if (lost <= 0) continue;
+        bucket[id] -= lost;
+        lostU += lost;
+        if (bucket[id] <= 0) delete bucket[id];
+      }
+    }
+    const def = BODY_SPECIALIZATION_BY_ID.get(spec.id);
+    spec.upkeepDebt = (spec.upkeepDebt || 0) + ((def && def.upkeepPerMin) || 0) * settlement.repairMin;
+    spec.totals.lostU += lostU;
+    if (outcome === 'defended') {
+      spec.totals.raidsRepelled += 1;
+      spec.deterrenceUntil = (this.state.simTime || 0) + SPEC_DETERRENCE_S;
+    } else {
+      spec.totals.raidsSuffered += 1;
+      if (settlement.cooldown > 0) {
+        spec.status = 'raided';
+        spec.statusUntil = (this.state.simTime || 0) + settlement.cooldown;
+      }
+    }
+    const sector = SECTOR_BY_ID.get(body.sectorId);
+    if (sector && sector.factionId && settlement.rep) {
+      this.bus.emit('faction:repDelta', { factionId: sector.factionId, delta: settlement.rep, reason: `claim_defense:${outcome}` });
+    }
+    this.bus.emit('sectorsim:impulse', { kind: `claim_defense_${outcome}`, sectorId: body.sectorId, danger: settlement.danger });
+    const summary = outcome === 'defended'
+      ? `Claim held — ${defense.attackerName} driven off; stores intact.`
+      : `Claim defense ${outcome} — ${lostU}u lost; repair crews assigned.`;
+    this._receipt(body, `defense_${outcome}`, summary, {
+      defenseId: defense.id, encounterId: defense.encounterId, lostU,
+      repDelta: settlement.rep, dangerDelta: settlement.danger,
+    });
+    spec.defense = null;
+    this._restoreDefenseWaypoint(defense);
+    this.bus.emit('claim:defenseResolved', {
+      bodyId: body.id, defenseId: defense.id, encounterId: defense.encounterId,
+      sectorId: body.sectorId, outcome, lostU, repDelta: settlement.rep,
+      dangerDelta: settlement.danger,
+      repairDebtCr: Math.round(((def && def.upkeepPerMin) || 0) * settlement.repairMin),
+      text: summary,
+    });
+    this.bus.emit(outcome === 'defended' ? 'claim:raidRepelled' : 'claim:raided', {
+      bodyId: body.id, defenseId: defense.id, outcome, lostU,
+    });
+    this.bus.emit('toast', { text: summary, kind: outcome === 'defended' ? 'good' : 'warn', ttl: 6 });
+    return true;
+  },
+
+  _setDefenseWaypoint(body, defense, options = {}) {
+    if (!this.state.nav) this.state.nav = { waypoint: null };
+    const remaining = Math.max(0, Math.ceil((defense.deadlineAt || 0) - (this.state.simTime || 0)));
+    const waypoint = {
+      kind: 'claim_defense', markerKind: 'mission-objective', claimId: body.id, defenseId: defense.id,
+      sectorId: body.sectorId, pos: { x: body.x, z: body.z }, label: `DEFEND ${body.name}`,
+      reason: `${defense.attackerName} · ${defense.attackerCount} ships · respond at ${body.name} (${remaining}s)`,
+      arrivalRadius: CLAIM_DEFENSE_ARRIVAL_R, deadline_s: defense.deadlineAt,
+    };
+    const current = this.state.nav.waypoint;
+    if (!current || current.defenseId === defense.id || defense.phase === 'warning') {
+      const changed = !current || current.defenseId !== defense.id || current.reason !== waypoint.reason;
+      this.state.nav.waypoint = waypoint;
+      if (changed && !options.quiet) this.bus.emit('nav:waypoint', waypoint);
+    }
+  },
+
+  _restoreDefenseWaypoint(defense) {
+    const nav = this.state.nav;
+    if (!nav || !nav.waypoint || nav.waypoint.defenseId !== defense.id) return;
+    nav.waypoint = defense.previousWaypoint || null;
+    this.bus.emit('nav:waypoint', nav.waypoint);
+  },
+
+  _body(bodyId) {
+    return ((this.state.claims && this.state.claims.bodies) || []).find((body) => body && body.id === bodyId) || null;
   },
 
   // Convert raw ore in cargo into refined materials at the given rate. Picks the most plentiful ore.
@@ -755,6 +979,7 @@ export const claims = {
       deterrenceUntil: 0,
       outputFull: false,
       receipts: [],
+      defense: null,
       totals: { refinedTotalU: 0, soldTotalCr: 0, lostU: 0, upkeepPaidCr: 0, raidsRepelled: 0, raidsSuffered: 0 },
     };
   },
@@ -769,6 +994,7 @@ export const claims = {
       ? { input: { ...(spec.store.input || {}) }, output: { ...(spec.store.output || {}) } }
       : { input: {}, output: {} };
     out.receipts = Array.isArray(spec.receipts) ? spec.receipts.slice(-MAX_RECEIPTS) : [];
+    out.defense = spec.defense && typeof spec.defense === 'object' ? { ...spec.defense } : null;
     out.totals = Object.assign(fresh.totals, spec.totals || {});
     if (!['active', 'cold', 'raided'].includes(out.status)) out.status = 'active';
     return out;
@@ -787,7 +1013,8 @@ export const claims = {
   // saves and goldens without specializations keep their exact state shape.
   _ensureMeta() {
     const claims = this.state.claims;
-    if (!claims.meta) claims.meta = { rngSeed: 0, upkeepAccum: 0, raidAccum: 0 };
+    if (!claims.meta) claims.meta = { rngSeed: 0, upkeepAccum: 0, raidAccum: 0, nextRaidId: 1 };
+    if (!Number.isFinite(claims.meta.nextRaidId) || claims.meta.nextRaidId < 1) claims.meta.nextRaidId = 1;
     return claims.meta;
   },
 
@@ -916,6 +1143,9 @@ export const claims = {
     for (const b of bodies) {
       // versioned default: bodies from older saves have no spec — they stay unspecialized
       b.spec = 'spec' in b ? this._normalizeSpec(b.spec) : null;
+      if (b.spec && b.spec.defense && b.spec.defense.phase === 'engaged') {
+        this._resumeDefenseIds.add(b.spec.defense.id);
+      }
     }
     this.state.claims = { bodies, specVersion: 1 };
     if (data.meta && typeof data.meta === 'object') this.state.claims.meta = { ...data.meta };

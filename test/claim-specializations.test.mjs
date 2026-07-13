@@ -20,6 +20,7 @@ import {
   SPEC_RAID_LOSS_FRAC,
   SPEC_RAID_COOLDOWN_S,
   SPEC_DETERRENCE_S,
+  CLAIM_DEFENSE_WARNING_S,
 } from '../src/systems/claims.js';
 import {
   BODY_SPECIALIZATIONS,
@@ -548,19 +549,24 @@ test('bastion covers the sector: warnings, higher repel odds, softer losses, det
   const rawBody = commission(raw, claimBody(raw), 'spec_refinery');
   addCargo(raw.state, 'cmdty_ore_iron', 200);
   raw.sys.deliverToClaim(rawBody.id, 'cmdty_ore_iron', 200);
-  let suffered = 0;
-  for (let i = 0; i < 40 && !suffered; i++) {
+  let threatened = false;
+  for (let i = 0; i < 40 && !threatened; i++) {
     forceRaidWindow(raw);
-    suffered = rawBody.spec.totals.raidsSuffered;
+    threatened = !!rawBody.spec.defense;
   }
-  assert.ok(suffered >= 1, 'an undefended stocked claim eventually gets raided');
+  assert.equal(threatened, true, 'an undefended stocked claim eventually receives a playable warning');
+  assert.equal(rawBody.spec.totals.raidsSuffered, 0, 'the warning does not delete storage before counterplay');
+  runSim(raw, CLAIM_DEFENSE_WARNING_S + 1, 0.5);
+  assert.ok(rawBody.spec.totals.raidsSuffered >= 1, 'an unanswered warning resolves through the off-screen fallback');
   assert.ok(storedUnits(rawBody) < 200, 'a suffered raid takes goods');
   assert.equal(rawBody.spec.status, 'raided', 'raided site freezes');
-  assert.ok(rawBody.spec.receipts.some((r) => r.kind === 'raid_hit'), 'raid is explained in receipts');
-  const frozenAt = storedUnits(rawBody);
+  assert.ok(rawBody.spec.receipts.some((r) => r.kind === 'defense_ignored'), 'unanswered defense is explained in receipts');
+  const oreEquivalent = (body) => Object.values(body.spec.store.input || {}).reduce((a, b) => a + b, 0)
+    + Object.values(body.spec.store.output || {}).reduce((a, b) => a + b * 2, 0);
+  const frozenAt = oreEquivalent(rawBody);
   runSim(raw, SPEC_RAID_COOLDOWN_S + 1, 0.5);
   assert.equal(rawBody.spec.status, 'active', 'raided site recovers after cooldown');
-  assert.equal(storedUnits(rawBody), Math.max(0, frozenAt), 'no offline double-dipping');
+  assert.equal(oreEquivalent(rawBody), Math.max(0, frozenAt), 'no offline double-dipping');
 
   // Same seed, same deliveries, but with a bastion in-sector: coverage is visible and material.
   const cov = boot({ seed: 21 });
@@ -590,7 +596,8 @@ test('bastion covers the sector: warnings, higher repel odds, softer losses, det
   for (const h of [raw, cov]) {
     assert.equal(events(h, 'spawn:request').length, 0, 'claims never spawn combat entities');
     assert.equal(events(h, 'faction:aggro').length, 0, 'claims never aggro factions');
-    assert.equal(events(h, 'faction:repDelta').length, 0, 'claims never touch reputation');
+    assert.ok(events(h, 'faction:repDelta').every((event) => /^claim_defense:/.test(event.payload.reason)),
+      'claim-defense reputation consequences route only through the faction owner event');
     assert.equal(h.state.player.heat, 0.123, 'claims never write WANTED heat');
   }
 });
@@ -635,12 +642,16 @@ test('off-sector claims cannot suffer silent losses without warning coverage', (
 
   // Returning to the claim restores the normal local raid contract.
   h.state.world.currentSectorId = FRONTIER;
-  let resolved = 0;
-  for (let i = 0; i < 60 && !resolved; i++) {
+  let threatened = false;
+  for (let i = 0; i < 60 && !threatened; i++) {
     forceRaidWindow(h);
-    resolved = refinery.spec.totals.raidsSuffered + refinery.spec.totals.raidsRepelled;
+    threatened = !!refinery.spec.defense
+      || refinery.spec.totals.raidsSuffered + refinery.spec.totals.raidsRepelled > 0;
   }
-  assert.ok(resolved >= 1, 'local presence makes the authored raid risk active again');
+  assert.equal(threatened, true, 'local presence makes the authored warning/counterplay risk active again');
+  if (refinery.spec.defense) runSim(h, CLAIM_DEFENSE_WARNING_S + 1, 0.5);
+  assert.ok(refinery.spec.totals.raidsSuffered + refinery.spec.totals.raidsRepelled >= 1,
+    'an unanswered local warning eventually resolves exactly once');
 });
 
 // ── 6. save/load + legacy migration: exactly once, no duplication ────────────────────────────

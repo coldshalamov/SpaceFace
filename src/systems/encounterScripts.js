@@ -22,6 +22,7 @@
 
 import { NAMED_CAPTAINS, CONVOY_CARGO, WHISPER_LINES, FACTION_LABELS, tollAmountFor, barkText } from '../data/encounters.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { uniqueWreckHeldMass, uniqueWreckPingElite } from './uniqueWreckEncounterScripts.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
 const TOLL_PAY_DIST = 520;        // brake inside this of the toll leader to hand over the toll
@@ -36,7 +37,9 @@ const CONVOY_ARRIVE_R = 240;      // convoy centroid inside this of the endpoint
 const CONVOY_NOTICE_R = 1200;     // player inside this of a hauler marks the convoy "witnessed"
 const TRADE_PRESSURE_CAP = 12;    // hard cap on units of market pressure per arrival (bounded valve)
 const DIST_TELL_R = 1500;         // scan-pulse inside this of a distress site reads the signal
-const CLAIM_ENGAGE_R = 700;       // scavengers on your claim turn live inside this
+const CLAIM_TELEGRAPH_S = 3;      // arrival breath: read formation/motive before weapons open
+const CLAIM_RETREAT_R = 2400;     // leaving the defended site is a deliberate retreat
+const CLAIM_RETREAT_HOLD_S = 12;  // brief overshoots do not forfeit the defense
 
 // ── tiny vector helpers (no allocation in hot paths — these run at 1 Hz on a handful of ships) ───
 function dist2(ax, az, bx, bz) { const dx = ax - bx, dz = az - bz; return dx * dx + dz * dz; }
@@ -767,40 +770,61 @@ const bountyHunter = {
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 const claimThreat = {
   fire(d, live, state) {
-    const bodies = (state.claims && state.claims.bodies || []).filter((b) => b.sectorId === live.sectorId);
-    if (!bodies.length) return d.abort(live, 'no_claims');
+    const body = (state.claims && state.claims.bodies || []).find((entry) => (
+      entry && entry.id === (live.data && live.data.claimId) && entry.sectorId === live.sectorId
+    ));
+    if (!body) return d.abort(live, 'no_claim');
     const rng = d.stream(live, 'claim');
-    const body = bodies[Math.floor(rng() * bodies.length) % bodies.length];
     live.anchor = { x: body.x || 0, z: body.z || 0 };
     const ships = live.plan.ships.map((sh) => ({
       ...sh,
       passive: true,
-      pos: { x: live.anchor.x + (rng() - 0.5) * 320, z: live.anchor.z + (rng() - 0.5) * 320 },
+      pos: sh.pos || { x: live.anchor.x + (rng() - 0.5) * 900, z: live.anchor.z + (rng() - 0.5) * 900 },
     }));
     const ids = d.spawnShips(live, ships);
     if (!ids.length) return d.abort(live, 'no_budget');
-    live.phase = 'offer';
-    live.deadlineAt = d.now() + 120;
-    d.say(live, 'bark', 'claim_ping', null, { primary: true });
+    live.phase = 'staging';
+    live.data.initialCount = ids.length;
+    live.data.telegraphEndsAt = d.now() + CLAIM_TELEGRAPH_S;
+    live.data.awaySince = null;
+    live.deadlineAt = d.now() + 180;
+    d.say(live, 'alert', 'claim_defense_arrival', {
+      claim: body.name || 'your claim',
+      count: ids.length,
+    }, { primary: true });
   },
   tick(d, live, state, now) {
-    const p = d.player(); if (!p) return d.abort(live, 'no_player');
-    if (live.phase === 'offer') {
-      if (d.minDist2ToSquad(live, p) <= CLAIM_ENGAGE_R * CLAIM_ENGAGE_R) {
-        d.setPassive(live, false);
-        live.phase = 'conflict';
-        return;
-      }
-      if (now >= live.deadlineAt) { d.despawnAll(live, 10); return d.resolve(live, 'ignored', { speak: false }); }
+    const p = d.player();
+    if (!p) {
+      if (live.data.missingPlayerSince == null) live.data.missingPlayerSince = now;
+      if (now - live.data.missingPlayerSince >= 10) return d.abort(live, 'no_player');
       return;
     }
-    if (d.aliveCount(live) === 0) return d.resolve(live, 'defended');
-    if (now >= live.deadlineAt + 180) { d.despawnAll(live, 10); return d.resolve(live, 'ignored', { speak: false }); }
-  },
-  event(d, live, state, name) {
-    if (name === 'playerHitSquad' && live.phase === 'offer') {
+    live.data.missingPlayerSince = null;
+    if (p.alive === false) return d.resolve(live, 'destroyed');
+    if (live.phase === 'staging') {
+      if (now < live.data.telegraphEndsAt) return;
       d.setPassive(live, false);
       live.phase = 'conflict';
+      return;
+    }
+    const alive = d.aliveCount(live);
+    if (alive === 0) return d.resolve(live, 'defended');
+    const killed = Math.max(0, (live.data.initialCount || live.ids.length) - alive);
+    const dx = p.pos.x - live.anchor.x;
+    const dz = p.pos.z - live.anchor.z;
+    if (dx * dx + dz * dz > CLAIM_RETREAT_R * CLAIM_RETREAT_R) {
+      if (live.data.awaySince == null) live.data.awaySince = now;
+      if (now - live.data.awaySince >= CLAIM_RETREAT_HOLD_S) {
+        d.despawnAll(live, 12);
+        return d.resolve(live, 'retreated');
+      }
+    } else {
+      live.data.awaySince = null;
+    }
+    if (now >= live.deadlineAt) {
+      d.despawnAll(live, 12);
+      return d.resolve(live, killed > 0 ? 'partial' : 'timeout');
     }
   },
 };
@@ -819,4 +843,6 @@ export const ENCOUNTER_SCRIPTS = Object.freeze({
   namedHunter,
   bountyHunter,
   claimThreat,
+  uniqueWreckHeldMass,
+  uniqueWreckPingElite,
 });
