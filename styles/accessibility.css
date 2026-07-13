@@ -190,6 +190,80 @@ html.sf-reduce-flash [class*="blink"],
 html.sf-reduce-flash [class*="flash"] { animation: none !important; opacity: 1 !important; }
 
 /* ============================================================================================
+   WINDOWS HIGH-CONTRAST / FORCED COLORS — runtime class mirrors the media query so browser and
+   Electron use one explicit contract. The DOM UI follows system colors; the authored world canvas
+   alone retains its rendered scene. Text, labels, icons, and semantic glyphs remain present.
+   ============================================================================================ */
+@media (forced-colors: active) {
+  html.sf-forced-colors,
+  html.sf-forced-colors body {
+    color: CanvasText !important;
+    background-color: Canvas !important;
+  }
+
+  html.sf-forced-colors #ui-root :is(
+    [data-screen], .screen, .panel, [class*="panel"], [class*="modal"], [class*="card"],
+    [class*="menu"], [class*="toast"], [class*="banner"], [role="dialog"], [role="region"]
+  ) {
+    color: CanvasText !important;
+    background-color: Canvas !important;
+    background-image: none !important;
+    border-color: CanvasText !important;
+    border-style: solid !important;
+    border-width: 2px !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  html.sf-forced-colors #ui-root :is(button, .sf-btn, .btn, input, select, textarea, [role="button"]) {
+    color: ButtonText !important;
+    background-color: ButtonFace !important;
+    background-image: none !important;
+    border: 2px solid ButtonText !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  html.sf-forced-colors #ui-root :is(button, input, select, textarea, [role="button"], [tabindex]):disabled,
+  html.sf-forced-colors #ui-root :is([aria-disabled="true"], .disabled) {
+    color: GrayText !important;
+    border-color: GrayText !important;
+  }
+
+  html.sf-forced-colors #ui-root :is(.active, .selected, [aria-selected="true"], [aria-current="true"]) {
+    color: HighlightText !important;
+    background-color: Highlight !important;
+    border-color: Highlight !important;
+  }
+
+  html.sf-forced-colors #ui-root :is(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+    outline: 3px solid Highlight !important;
+    outline-offset: 3px !important;
+    color: HighlightText !important;
+    background-color: Highlight !important;
+    box-shadow: none !important;
+  }
+
+  html.sf-forced-colors #ui-root :is(a, label, p, span, strong, em, h1, h2, h3, h4, li, dt, dd) {
+    border-color: CanvasText !important;
+    text-shadow: none !important;
+  }
+
+  html.sf-forced-colors #ui-root :is(progress, meter, .sf-bar, [role="progressbar"]) {
+    color: Highlight !important;
+    background-color: Canvas !important;
+    border: 2px solid CanvasText !important;
+    box-shadow: none !important;
+  }
+
+  #gl-canvas { forced-color-adjust: none; }
+}
+
+/* ============================================================================================
    UI SCALE — owned by the shipped `--ui-scale` path (ui.css:21 #ui-root + uiRoot.js:290 #hud), driven
    by the Video > UI scale slider (range extended to 0.75–2.0 in settings.js for the 1–2x requirement).
    The accessibility layer deliberately does NOT introduce a second scale var, to avoid double-scaling.

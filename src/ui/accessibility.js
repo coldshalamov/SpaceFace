@@ -29,6 +29,10 @@ let _motionMediaQuery = null;
 let _motionMediaListener = null;
 let _motionSettings = null;
 let _motionRoot = null;
+let _forcedColorsActive = false;
+let _forcedColorsMediaQuery = null;
+let _forcedColorsMediaListener = null;
+let _forcedColorsRoot = null;
 
 /** True when vestibular motion (shake / FOV punch / hit-stop / parallax) should be suppressed.
  *  Mirrors settings.video.motionReduce — the same field feel.js & vfx.js already consult. */
@@ -37,6 +41,9 @@ export function getMotionReduced() { return _motionReduced; }
 /** True when flashing / strobing / rapid opacity pulses should be suppressed (photosensitivity).
  *  Distinct from motion-reduce: a player may want a steady camera yet still tolerate no strobe. */
 export function getFlashReduced() { return _flashReduced; }
+
+/** Runtime OS/browser forced-colors state. This is deliberately not a saved setting. */
+export function getForcedColorsActive() { return _forcedColorsActive; }
 
 // ---------------------------------------------------------------------------------------------------
 // Colorblind palettes. Keyed by mode; each maps the document-root to a set of CSS custom properties.
@@ -235,6 +242,32 @@ function bindSystemMotionPreference(settings, root) {
   }
 }
 
+function systemForcedColorsActive() {
+  if (_forcedColorsMediaQuery) return !!_forcedColorsMediaQuery.matches;
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  try { return !!window.matchMedia('(forced-colors: active)').matches; }
+  catch (_) { return false; }
+}
+
+function applyForcedColors(root) {
+  _forcedColorsActive = systemForcedColorsActive();
+  if (root && root.classList) root.classList.toggle('sf-forced-colors', _forcedColorsActive);
+  return _forcedColorsActive;
+}
+
+function bindSystemForcedColors(root) {
+  _forcedColorsRoot = root || null;
+  if (_forcedColorsMediaQuery || typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+  try { _forcedColorsMediaQuery = window.matchMedia('(forced-colors: active)'); }
+  catch (_) { return; }
+  _forcedColorsMediaListener = () => applyForcedColors(_forcedColorsRoot);
+  if (typeof _forcedColorsMediaQuery.addEventListener === 'function') {
+    _forcedColorsMediaQuery.addEventListener('change', _forcedColorsMediaListener);
+  } else if (typeof _forcedColorsMediaQuery.addListener === 'function') {
+    _forcedColorsMediaQuery.addListener(_forcedColorsMediaListener);
+  }
+}
+
 // Pull a value from the settings tree by dotted path, tolerating missing intermediates.
 function pick(settings, path, fallback) {
   if (!settings) return fallback;
@@ -273,12 +306,16 @@ export function applyAccessibility(settings, target) {
   const captionBackground = a.captionBackground !== false;
 
   const root = target || (typeof document !== 'undefined' ? document.documentElement : null);
+  // Bind the additive forced-colors observer first. A few minimal test/embedded matchMedia shims
+  // reuse one listener slot for every query; binding motion last preserves the older live contract.
+  bindSystemForcedColors(root);
+  const forcedColorsActive = applyForcedColors(root);
   bindSystemMotionPreference(settings, root);
   const motion = applyMotionPreference(settings, root);
   if (!root || !root.classList) {
     // headless / node — booleans above are set; nothing to toggle on the DOM.
     return { motionReduced: motion.reduced, motionPreference: motion.preference, flashReduced: _flashReduced,
-      colorblindMode: mode, highContrast, dyslexia, captions, captionSize, captionBackground };
+      forcedColorsActive, colorblindMode: mode, highContrast, dyslexia, captions, captionSize, captionBackground };
   }
 
   // --- colorblind palette: one active sf-cb-* class + the var set for that mode ---
@@ -301,7 +338,7 @@ export function applyAccessibility(settings, target) {
   // scale var here would double-scale the HUD. See styles/accessibility.css UI SCALE note.
 
   return { motionReduced: motion.reduced, motionPreference: motion.preference, flashReduced: _flashReduced,
-    colorblindMode: mode, highContrast, dyslexia, captions, captionSize, captionBackground };
+    forcedColorsActive, colorblindMode: mode, highContrast, dyslexia, captions, captionSize, captionBackground };
 }
 
 /** Resolve a semantic state ('hostile'|'shield'|'danger'|…) to its active color, honoring the current
