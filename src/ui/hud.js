@@ -349,6 +349,25 @@ export function contactOverflowSummary(contacts, visibleCount) {
   return `+${omitted.length} · ${parts.join(' · ')}`;
 }
 
+/** A known radar contact must never exist while its targeting roster is wholly absent. */
+export function contactRosterVisible({
+  eligibleContactCount = 0,
+  pinned = false,
+  nearbyHostile = false,
+  revealActive = false,
+} = {}) {
+  return eligibleContactCount > 0 || pinned || nearbyHostile || revealActive;
+}
+
+/** Frame-rate-independent 5 Hz presentation clock for contact-roster DOM work. */
+export function createContactRosterClock() {
+  return createHudClock(5, false);
+}
+
+export function consumeContactRosterClock(clock, dt) {
+  return consumeHudClock(clock, dt) > 0;
+}
+
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
 // Live flight-binding labels (matches settings rebind + help): settings overrides → scheme → classic.
@@ -2710,12 +2729,11 @@ export function createHud(ctx, alerts) {
     return '⌃';
   }
 
-  let overviewTick = 0;
+  const overviewClock = createContactRosterClock();
   let lastOverviewSignature = '';
-  // On-demand contacts strip (GDD 2.0 "Radar & Contacts"): at rest the strip stays quiet so it
-  // never fights the physics action for attention ("one voice at a time"). It reveals for a beat
-  // when a scan pulse lands or a fresh hostile/derelict enters range, and holds open while a hostile
-  // is close. state.settings.ui.overviewOpen is the manual PIN (O key) that keeps it always-on.
+  // Compact contacts roster (GDD 2.0 "Radar & Contacts"): known targeting contacts remain available
+  // whenever radar can identify them. Scan/threat reveals still surface the empty shell for a beat,
+  // and state.settings.ui.overviewOpen remains the manual PIN (O key).
   const OVERVIEW_HOSTILE_REVEAL_R = 2600;   // a hostile inside this radius keeps the strip open
   const OVERVIEW_SCAN_REVEAL_MS = 7000;     // how long a scan pulse holds the strip open
   const OVERVIEW_CONTACT_REVEAL_MS = 5000;  // how long a newly-arrived contact holds it open
@@ -2805,7 +2823,12 @@ export function createHud(ctx, alerts) {
     _knownContactIds = curIds;
 
     const pinned = !!state.settings.ui.overviewOpen;
-    const visible = pinned || nearbyHostile || nowMs < _overviewRevealUntil;
+    const visible = contactRosterVisible({
+      eligibleContactCount: contacts.length,
+      pinned,
+      nearbyHostile,
+      revealActive: nowMs < _overviewRevealUntil,
+    });
     if (!visible) {
       if (elOverview.style.display !== 'none') elOverview.style.display = 'none';
       lastOverviewSignature = '';   // force a fresh render when it next reveals
@@ -3017,6 +3040,7 @@ export function createHud(ctx, alerts) {
     const targetDt = consumeHudClock(targetClock, frameDt);
     const overlayDt = consumeHudClock(overlayClock, frameDt);
     const radarDt = consumeHudClock(radarClock, frameDt);
+    const overviewTick = consumeContactRosterClock(overviewClock, frameDt);
     const slow = numericDt > 0;
     const targetTick = targetDt > 0;
     const overlayTick = overlayDt > 0;
@@ -3302,11 +3326,8 @@ export function createHud(ctx, alerts) {
     // --- Target Arcs: update every frame for smooth 3D tracking ---
     updateTargetArcs();
 
-    // --- Overview Strip: update at 5Hz cadence ---
-    overviewTick++;
-    if (overviewTick % 12 === 0) {
-      updateOverview();
-    }
+    // --- Overview Strip: elapsed-time cadence stays at <=5 Hz at any render refresh rate. ---
+    if (overviewTick) updateOverview();
   }
 
   function tickHidden(dt) {

@@ -34,8 +34,9 @@ const checks = [
     path: 'src/ui/hud.js',
     label: 'Overview strip — 5 Hz cadence, selected/threat/ally priority, responsive row cap, truthful overflow, click-to-target, memoised signature',
     needs: [
-      // 5 Hz cadence at 60 Hz = fire every 12 frames
-      'overviewTick % 12',
+      // Elapsed-time cadence stays at 5 Hz independently of display refresh rate.
+      'createContactRosterClock()',
+      'consumeContactRosterClock(overviewClock, frameDt)',
       // Selected → threat → ally → wreck → ambient priority band.
       'contactDisplayBand(a, targetId)',
       // 5/4/3 row cap by viewport.
@@ -50,6 +51,9 @@ const checks = [
       'lastOverviewSignature',
       // IFF from accessibility.js
       'SEMANTIC_PALETTE',
+    ],
+    forbids: [
+      'overviewTick % 12',
     ],
   },
 
