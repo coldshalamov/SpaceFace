@@ -11,17 +11,18 @@ import {
 } from './assetResidency.js';
 
 export const ASSET_AUTHORING_CONTRACT = Object.freeze({
-  version: 1,
+  version: 2,
+  supportedVersions: Object.freeze([1, 2]),
   coordinates: Object.freeze({ handedness: 'right', forward: '+X', up: '+Y', starboard: '+Z', unit: 'metre' }),
   rootExtras: Object.freeze({
     key: 'spacefaceAsset',
     required: Object.freeze({
-      contractVersion: 1,
+      contractVersion: '1 | 2',
       slot: 'hull | cockpit | engine | fin | weapon | greeble | gear | pod | place',
       forward: '+X', up: '+Y', starboard: '+Z', unit: 'metre',
       normalConvention: 'OpenGL',
       ormChannels: 'R=AO,G=Roughness,B=Metallic',
-      textureCompression: 'KTX2/BasisU',
+      textureCompression: 'KTX2/BasisU | KTX2/BasisU+mips | PNG-source',
       chamfered: true,
     }),
   }),
@@ -31,7 +32,7 @@ export const ASSET_AUTHORING_CONTRACT = Object.freeze({
     orm: 'AO/Roughness/Metallic packed into R/G/B',
     minResolution: 1024,
     maxResolution: 2048,
-    requiredContainer: 'KTX2/BasisU via KHR_texture_basisu',
+    requiredContainer: 'KTX2/BasisU via KHR_texture_basisu; contract v2 release assets include mip chains',
   }),
   tintRoles: Object.freeze(['hull', 'dark', 'accent', 'thruster', 'none']),
   canopy: Object.freeze({ material: 'MeshPhysicalMaterial', transmission: 0.6, ior: 1.4, clearcoat: 1.0 }),
@@ -760,7 +761,7 @@ function readAssetMetadata(gltf, scene, expectedSlot) {
 
 function normalizeAssetMetadata(raw, gltf, expectedSlot) {
   const meta = { ...(raw || {}) };
-  if (meta.contractVersion === ASSET_AUTHORING_CONTRACT.version && meta.slot) return meta;
+  if (ASSET_AUTHORING_CONTRACT.supportedVersions.includes(meta.contractVersion) && meta.slot) return meta;
 
   const slot = expectedSlot || meta.slot || slotFromCategory(meta.category);
   if (!slot || !meta.assetId) return meta;
@@ -808,8 +809,8 @@ function inferTextureCompression(gltf) {
 }
 
 function validateAssetMetadata(meta, expectedSlot, errors) {
-  if (meta.contractVersion !== ASSET_AUTHORING_CONTRACT.version) {
-    errors.push(`spacefaceAsset.contractVersion must equal ${ASSET_AUTHORING_CONTRACT.version}`);
+  if (!ASSET_AUTHORING_CONTRACT.supportedVersions.includes(meta.contractVersion)) {
+    errors.push(`spacefaceAsset.contractVersion must be one of ${ASSET_AUTHORING_CONTRACT.supportedVersions.join(', ')}`);
   }
   if (!meta.assetId || typeof meta.assetId !== 'string') {
     errors.push('spacefaceAsset.assetId must be a stable non-empty string');
@@ -833,8 +834,8 @@ function validateAssetMetadata(meta, expectedSlot, errors) {
     errors.push('spacefaceAsset.ormChannels must be "R=AO,G=Roughness,B=Metallic"');
   }
   const compression = normalizeToken(meta.textureCompression);
-  if (compression !== 'ktx2/basisu' && compression !== 'png-source') {
-    errors.push('spacefaceAsset.textureCompression must be "KTX2/BasisU" or "PNG-source"');
+  if (compression !== 'ktx2/basisu' && compression !== 'ktx2/basisu+mips' && compression !== 'png-source') {
+    errors.push('spacefaceAsset.textureCompression must be "KTX2/BasisU", "KTX2/BasisU+mips", or "PNG-source"');
   }
 }
 
@@ -890,7 +891,7 @@ function validatePrimitive(node, material, canopy, gltf, metadata, errors, warni
     const size = textureSize(texture);
     if (!size) {
       errors.push(`${prefix} ${role} texture dimensions are not inspectable`);
-    } else if (size.width < 1024 || size.height < 1024 || size.width > 2048 || size.height > 2048) {
+    } else if (!isAuthoredTextureSizeValid(size, { factorOnly })) {
       errors.push(`${prefix} ${role} texture must be 1K–2K; got ${size.width}x${size.height}`);
     }
     if (!legacyPart && !isSupportedPartTexture(texture, gltf, metadata)) {
@@ -1211,6 +1212,19 @@ function blueprintGpuResources(blueprint) {
   return [...resources];
 }
 
+export function isAuthoredTextureSizeValid(size, { factorOnly = false } = {}) {
+  const width = Number(size?.width);
+  const height = Number(size?.height);
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return false;
+  if (!factorOnly) return width >= 1024 && height >= 1024 && width <= 2048 && height <= 2048;
+
+  // Explicit semantic decal/emissive/canopy sheets are not full-surface PBR sets. Preserve their
+  // authored strip aspect ratios while retaining the same 1K long-edge detail floor and 2K cap.
+  const longEdge = Math.max(width, height);
+  const shortEdge = Math.min(width, height);
+  return longEdge >= 1024 && longEdge <= 2048 && shortEdge >= 256;
+}
+
 function materialTextures(material) {
   const result = [];
   const seen = new Set();
@@ -1240,7 +1254,8 @@ function textureSize(texture) {
 
 
 function isKtx2Texture(texture, gltf, metadata) {
-  if (!texture || normalizeToken(metadata && metadata.textureCompression) !== 'ktx2/basisu') return false;
+  const compression = normalizeToken(metadata && metadata.textureCompression);
+  if (!texture || (compression !== 'ktx2/basisu' && compression !== 'ktx2/basisu+mips')) return false;
   const definition = textureDefinition(texture, gltf);
   return !!(definition && definition.extensions && definition.extensions.KHR_texture_basisu);
 }

@@ -1,17 +1,33 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { Matrix4, Vector3 } from 'three';
 import { MeshoptDecoder } from 'meshoptimizer';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SOURCE = resolve(ROOT, 'assets/ships/parts/wholeships/kestrel.glb');
-const RELEASE = resolve(ROOT, 'assets/ships/release/parts/wholeships/kestrel.glb');
-const REQUIRED_SOCKETS = [
+const LIVE_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME_V4';
+const MAX_GITHUB_BYTES = 100 * 1024 * 1024;
+const FAMILY = Object.freeze([
+  Object.freeze({
+    lod: 'lod0', file: 'kestrel.glb', triangles: [19_000, 21_000], maxDraws: 15,
+    acceptedCandidateSha256: '2EAC62E9796707D910938A474A73AD86F0DC51606797C0D0BBBB0A5814888B9D',
+  }),
+  Object.freeze({
+    lod: 'lod1', file: 'kestrel_lod1.glb', triangles: [13_000, 15_000], maxDraws: 12,
+    acceptedCandidateSha256: '33BE2EBB0D5274DF4D28CD324926C99F4E8EE6740C6D0F499266B6FCC7BCE3E0',
+  }),
+  Object.freeze({
+    lod: 'lod2', file: 'kestrel_lod2.glb', triangles: [12_000, 13_500], maxDraws: 8,
+    acceptedCandidateSha256: '1F19E69C16FB4FA15E1BC731A80C615D669337A10B0BD6ECD42A9F067BE48241',
+  }),
+]);
+const REQUIRED_SOCKETS = Object.freeze([
   'SOCKET_Weapon_Front',
   'SOCKET_Mining_Front',
   'SOCKET_Engine_Main',
@@ -21,36 +37,45 @@ const REQUIRED_SOCKETS = [
   'SOCKET_Camera_Focus',
   'SOCKET_RCS_Port',
   'SOCKET_RCS_Starboard',
-].sort();
-const SOCKET_CONTRACT = Object.freeze({
-  SOCKET_Weapon_Front: { position: [12.62, 1.43, 0], forward: [1, 0, 0] },
-  SOCKET_Mining_Front: { position: [12.26, -1.08, 0], forward: [1, 0, 0] },
-  SOCKET_Engine_Main: { position: [-13.85, 0, 0], forward: [-1, 0, 0] },
-  SOCKET_Trail_Main: { position: [-14.05, 0, 0], forward: [-1, 0, 0] },
-  SOCKET_Utility_Dorsal: { position: [-1.45, 1.95, 3.8], forward: [0, 1, 0] },
-  SOCKET_Cargo_Ventral: { position: [-0.8, -2.1, 0], forward: [0, -1, 0] },
-  SOCKET_Camera_Focus: { position: [0, 0.35, 0], forward: [1, 0, 0] },
-  SOCKET_RCS_Port: { position: [1.6, 0.45, -6.6], forward: [0, 0, -1] },
-  SOCKET_RCS_Starboard: { position: [1.6, 0.45, 6.6], forward: [0, 0, 1] },
+].sort());
+const SOCKET_POSITIONS = Object.freeze({
+  SOCKET_Weapon_Front: [12.62, 1.43, 0],
+  SOCKET_Mining_Front: [12.26, -1.08, 0],
+  SOCKET_Engine_Main: [-13.85, 0, 0],
+  SOCKET_Trail_Main: [-14.05, 0, 0],
+  SOCKET_Utility_Dorsal: [-1.45, 1.95, -3.8],
+  SOCKET_Cargo_Ventral: [-0.8, -2.1, 0],
+  SOCKET_Camera_Focus: [0, 0.35, 0],
+  SOCKET_RCS_Port: [1.6, 0.45, -6.6],
+  SOCKET_RCS_Starboard: [1.6, 0.45, 6.6],
 });
-const LOD_BUDGETS = Object.freeze({
-  lod0: [16_000, 22_000],
-  lod1: [5_500, 10_000],
-  lod2: [1_200, 4_500],
+const SOCKET_FORWARDS = Object.freeze({
+  SOCKET_Weapon_Front: [1, 0, 0],
+  SOCKET_Mining_Front: [1, 0, 0],
+  SOCKET_Engine_Main: [-1, 0, 0],
+  SOCKET_Trail_Main: [-1, 0, 0],
+  SOCKET_Utility_Dorsal: [0, 1, 0],
+  SOCKET_Cargo_Ventral: [0, -1, 0],
+  SOCKET_Camera_Focus: [1, 0, 0],
+  SOCKET_RCS_Port: [0, 0, -1],
+  SOCKET_RCS_Starboard: [0, 0, 1],
 });
-const REQUIRED_MATERIALS = Object.freeze([
-  'Material_Cyan_Emissive',
-  'Material_Cyan_Paint',
+const REQUIRED_LOD0_MATERIALS = Object.freeze([
+  'Material_Accent_FrontierCyan',
+  'Material_Accent_WarningOrange',
+  'Material_ArmorDark',
+  'Material_BrushedMetal',
   'Material_Decal_BorrowedTime',
   'Material_Decal_Hazard',
   'Material_Decal_Stencils',
-  'Material_Drive_Core',
-  'Material_Glass',
+  'Material_Emissive_Cyan',
+  'Material_Emissive_DriveCore',
+  'Material_Emissive_Orange',
+  'Material_Glass_Canopy',
   'Material_Hull',
   'Material_Mechanical',
-  'Material_Repair_Paint',
-  'Material_Warm_Emissive',
-  'Material_Warm_Paint',
+  'Material_RepairGreen',
+  'Material_Rubber',
 ].sort());
 
 await MeshoptDecoder.ready;
@@ -58,145 +83,210 @@ const io = new NodeIO()
   .registerExtensions(ALL_EXTENSIONS)
   .registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
 
-assert.ok(existsSync(SOURCE), 'production Kestrel source GLB must exist');
-const source = await inspect(SOURCE);
-assert.deepEqual(source.sockets, REQUIRED_SOCKETS, 'Kestrel must expose the nine stable bare socket names');
-assert.deepEqual(source.suffixedSockets, [], 'socket names must not contain Blender collision suffixes');
-for (const [name, expected] of Object.entries(SOCKET_CONTRACT)) {
-  const actual = source.socketContracts[name];
-  assert.ok(actual, `${name} metadata must be present`);
-  assertVectorNear(actual.position, expected.position, `${name} position`);
-  assertVectorNear(actual.forward, expected.forward, `${name} forward`);
-}
-assert.deepEqual(source.plumeNodes, [], 'runtime VFX owns the drive plume; the GLB must not embed one');
-assert.ok(source.totalTriangles <= 32_000, `stored LOD triangles must be <=32k, got ${source.totalTriangles}`);
-assert.deepEqual(source.materials, REQUIRED_MATERIALS,
-  'Kestrel must preserve the accepted paint/decal/glass/emissive semantic material set exactly');
-for (const [lod, [min, max]] of Object.entries(LOD_BUDGETS)) {
-  const triangles = source.lodTriangles[lod] || 0;
-  assert.ok(triangles >= min && triangles <= max,
-    `${lod} must remain in its structural budget ${min}-${max}; got ${triangles}`);
-  assert.ok((source.lodPrimitives[lod] || 0) <= 20,
-    `${lod} must stay at or below 20 live primitives/draws; got ${source.lodPrimitives[lod] || 0}`);
-}
-assert.ok(source.lod0HullTriangles >= 800,
-  `LOD0 must contain a substantive hull body, got ${source.lod0HullTriangles} hull triangles`);
-assert.equal(source.primitiveCount, source.uvPrimitiveCount, 'every primitive must carry TEXCOORD_0');
-assert.equal(source.primitiveCount, source.normalPrimitiveCount, 'every primitive must carry NORMAL');
-assert.equal(source.primitiveCount, source.tangentPrimitiveCount, 'every primitive must carry real exported TANGENT data');
-assert.ok(source.rootAsset && source.rootAsset.assetId === 'SF_WHOLESHIP_KESTREL',
-  'GLB asset metadata must identify the production Kestrel whole ship');
+const sourceFamily = [];
+const releaseFamily = [];
+for (const member of FAMILY) {
+  const sourcePath = resolve(ROOT, `assets/ships/parts/wholeships/${member.file}`);
+  const releasePath = resolve(ROOT, `assets/ships/release/parts/wholeships/${member.file}`);
+  assert.ok(existsSync(sourcePath), `${member.lod} canonical source must exist`);
+  assert.ok(existsSync(releasePath), `${member.lod} canonical release must exist`);
+  const source = await inspect(sourcePath, member, { inspectBounds: true });
+  const release = await inspect(releasePath, member, { inspectBounds: false });
+  verifyMember(source, member, 'source');
+  verifyMember(release, member, 'release');
+  assert.deepEqual(release.sockets, source.sockets, `${member.lod} release must preserve all sockets`);
+  assert.deepEqual(release.socketPositions, source.socketPositions,
+    `${member.lod} release must preserve socket transforms`);
+  assert.deepEqual(release.socketForwards, source.socketForwards,
+    `${member.lod} release must preserve socket directions`);
+  assert.ok(release.bytes < MAX_GITHUB_BYTES, `${member.lod} release must stay below GitHub's 100MiB limit`);
 
-assert.ok(existsSync(RELEASE), 'release Kestrel GLB must exist');
-const release = await inspect(RELEASE);
-assert.deepEqual(release.sockets, source.sockets, 'release must preserve the complete source socket set');
-assert.deepEqual(release.socketContracts, source.socketContracts,
-  'release compression must preserve every socket position and forward axis exactly');
-const releaseBytes = readFileSync(RELEASE);
-const releaseJson = readGlbJson(releaseBytes);
-assert.ok((releaseJson.extensionsUsed || []).includes('EXT_meshopt_compression'),
-  'release Kestrel geometry must use Meshopt compression');
-const releaseImages = releaseJson.images || [];
-if (releaseImages.length) {
-  assert.ok((releaseJson.extensionsUsed || []).includes('KHR_texture_basisu'),
-    'release Kestrel textures must use KTX2/BasisU');
-  assert.ok(releaseImages.every((image) => image.mimeType === 'image/ktx2'),
-    'every embedded release Kestrel image must be KTX2');
+  const releaseJson = readGlbJson(readFileSync(releasePath));
+  assert.ok((releaseJson.extensionsUsed || []).includes('EXT_meshopt_compression'),
+    `${member.lod} release geometry must use Meshopt`);
+  const images = releaseJson.images || [];
+  if (images.length) {
+    assert.ok((releaseJson.extensionsUsed || []).includes('KHR_texture_basisu'),
+      `${member.lod} release textures must use KTX2/BasisU`);
+    assert.ok(images.every((image) => image.mimeType === 'image/ktx2'),
+      `${member.lod} release images must all be KTX2`);
+    const mipLevelCounts = readKtx2MipLevelCounts(readFileSync(releasePath));
+    assert.equal(mipLevelCounts.length, images.length,
+      `${member.lod} must expose a readable KTX2 mip header for every release image`);
+    assert.ok(mipLevelCounts.every((count) => count >= 2),
+      `${member.lod} release KTX2 images must contain mip chains; got ${mipLevelCounts.join(',')}`);
+    release.mipLevelCounts = mipLevelCounts;
+  }
+  sourceFamily.push(source);
+  releaseFamily.push(release);
+}
+
+assert.deepEqual(sourceFamily[0].materials, REQUIRED_LOD0_MATERIALS,
+  'LOD0 must preserve the accepted V4 semantic material set exactly');
+for (const member of sourceFamily) {
+  const collisionRatios = member.collisionDimensions.map((value, index) => value / member.visibleDimensions[index]);
+  assert.ok(collisionRatios.every((ratio) => ratio >= 0.90 && ratio <= 0.94),
+    `${member.lod} collision hull must fit 90-94% of visible bounds; got ${collisionRatios.join(',')}`);
+}
+
+const manifest = JSON.parse(readFileSync(resolve(ROOT, 'assets/ships/release/release_manifest.json'), 'utf8'));
+for (const member of FAMILY) {
+  const id = member.lod === 'lod0' ? 'wholeship_kestrel' : `wholeship_kestrel_${member.lod}`;
+  const entry = manifest.assets.find((asset) => asset.id === id);
+  assert.ok(entry, `release manifest must catalog ${id}`);
+  const releasePath = resolve(ROOT, `assets/ships/release/parts/wholeships/${member.file}`);
+  assert.equal(entry.releaseSha256.toUpperCase(), sha256(readFileSync(releasePath)), `${id} release hash must match`);
 }
 
 const partsLibrary = readFileSync(resolve(ROOT, 'src/render/partsLibrary.js'), 'utf8');
 const assetLoader = readFileSync(resolve(ROOT, 'src/render/assetLoader.js'), 'utf8');
 assert.match(partsLibrary, /'ship_kestrel'\s*:\s*'wholeships\/kestrel\.glb'/,
-  'default starter ship must map to the production whole-ship GLB');
-assert.match(partsLibrary, /'wholeships\/kestrel\.glb'/,
-  'the Kestrel GLB must be declared in the live hull slot');
+  'default starter must map to V4 LOD0 through the canonical player whole-ship path');
+assert.match(partsLibrary, /'ship_kestrel'\s*:\s*'SF_K0_KESTREL_BORROWED_TIME_V4'/,
+  'the player route must require the V4 asset identity');
+for (const member of FAMILY) {
+  assert.ok(partsLibrary.includes(`'wholeships/${member.file}'`),
+    `${member.lod} must remain in the explicit V4 LOD family catalog`);
+}
+assert.match(partsLibrary, /AUTHORED_BOOTSTRAP_PLAN[\s\S]*hull:\s*Object\.freeze\(\['wholeships\/kestrel\.glb'\]\)/,
+  'bootstrap residency must decode only V4 LOD0');
 assert.match(partsLibrary, /wholeShip\s*\?\s*false\s*:/,
   'a validated whole ship must disable the readability safety shell');
 assert.match(partsLibrary, /authored\.wholeShip\s*===\s*true/,
-  'the production whole ship must replace, not retain, the code-native fallback');
+  'the production whole ship must replace, not retain, procedural/modular fallback');
 assert.doesNotMatch(assetLoader, /fetch\(url,\s*\{\s*cache:\s*['"]force-cache['"]\s*\}\)/,
-  'whole-ship validation must not pin stale GLBs on Electron\'s stable save origin');
+  'whole-ship validation must not pin stale GLBs on Electron stable origins');
 assert.match(assetLoader, /fetch\(url,\s*\{\s*cache:\s*['"]no-cache['"]\s*\}\)/,
-  'whole-ship validation must revalidate the current on-disk release GLB');
+  'whole-ship validation must revalidate current on-disk GLBs');
 
-console.log('Kestrel production whole-ship runtime contract: PASS');
+console.log('Kestrel Borrowed Time V4 live whole-ship family: PASS');
 console.log(JSON.stringify({
-  source: {
-    triangles: source.totalTriangles,
-    lodTriangles: source.lodTriangles,
-    lodPrimitives: source.lodPrimitives,
-    materials: source.materials,
-    sockets: source.sockets.length,
-  },
-  release: {
-    bytes: releaseBytes.byteLength,
-    meshopt: true,
-    ktx2Images: releaseImages.length,
-  },
+  assetId: LIVE_ASSET_ID,
+  runtimeLod: 'lod0',
+  decodedAtBoot: ['wholeships/kestrel.glb'],
+  source: sourceFamily.map(summary),
+  release: releaseFamily.map(summary),
 }, null, 2));
 
-async function inspect(path) {
+function verifyMember(result, member, label) {
+  assert.equal(result.lod, member.lod, `${label} ${member.lod} must contain only its named LOD`);
+  assert.ok(result.triangles >= member.triangles[0] && result.triangles <= member.triangles[1],
+    `${label} ${member.lod} triangles ${result.triangles} outside ${member.triangles.join('-')}`);
+  assert.ok(result.draws <= member.maxDraws, `${label} ${member.lod} draws ${result.draws} exceed ${member.maxDraws}`);
+  assert.deepEqual(result.sockets, REQUIRED_SOCKETS, `${label} ${member.lod} must expose nine stable sockets`);
+  assert.deepEqual(result.suffixedSockets, [], `${label} ${member.lod} socket names must be collision-free`);
+  for (const [name, expected] of Object.entries(SOCKET_POSITIONS)) {
+    assertVectorNear(result.socketPositions[name], expected, `${label} ${member.lod} ${name}`);
+  }
+  for (const [name, expected] of Object.entries(SOCKET_FORWARDS)) {
+    assertVectorNear(result.socketForwards[name], expected, `${label} ${member.lod} ${name} forward`);
+  }
+  assert.deepEqual(result.plumeNodes, [], `${label} ${member.lod} must not embed a plume`);
+  assert.equal(result.primitiveCount, result.uvPrimitiveCount, `${label} ${member.lod} requires TEXCOORD_0`);
+  assert.equal(result.primitiveCount, result.normalPrimitiveCount, `${label} ${member.lod} requires NORMAL`);
+  assert.equal(result.primitiveCount, result.tangentPrimitiveCount, `${label} ${member.lod} requires TANGENT`);
+  assert.equal(result.asset.assetId, LIVE_ASSET_ID, `${label} ${member.lod} asset identity`);
+  assert.equal(result.asset.contractVersion, 2, `${label} ${member.lod} must retain V4 contract v2`);
+  assert.equal(result.asset.textureCompression, label === 'source' ? 'PNG-source' : 'KTX2/BasisU+mips',
+    `${label} ${member.lod} texture metadata must describe the actual container and mip contract`);
+  assert.equal(result.asset.acceptedCandidateSha256, member.acceptedCandidateSha256,
+    `${label} ${member.lod} must retain accepted-candidate provenance`);
+  assert.equal(result.asset.wiringStatus, member.lod === 'lod0' ? 'live_player_only' : 'retained_lod_family_member',
+    `${label} ${member.lod} wiring status`);
+}
+
+async function inspect(path, member, { inspectBounds }) {
+  const bytes = readFileSync(path);
   const document = await io.read(path);
-  const gltfRoot = document.getRoot();
-  const nodes = gltfRoot.listNodes();
-  const materials = gltfRoot.listMaterials().map((material) => material.getName()).sort();
-  const sockets = nodes.map((node) => node.getName()).filter((name) => name.startsWith('SOCKET_')).sort();
-  const suffixedSockets = sockets.filter((name) => /\.\d{3}$/.test(name));
-  const plumeNodes = nodes.map((node) => node.getName()).filter((name) => /plume/i.test(name));
-  const lodTriangles = { lod0: 0, lod1: 0, lod2: 0 };
-  const lodPrimitives = { lod0: 0, lod1: 0, lod2: 0 };
-  let lod0HullTriangles = 0;
+  const root = document.getRoot();
+  const nodes = root.listNodes();
+  const lodBuckets = new Set();
+  let triangles = 0;
   let primitiveCount = 0;
   let uvPrimitiveCount = 0;
   let normalPrimitiveCount = 0;
   let tangentPrimitiveCount = 0;
-
   for (const node of nodes) {
     const mesh = node.getMesh();
     if (!mesh) continue;
-    const lod = /^LOD([012])_/i.exec(node.getName());
-    const bucket = lod ? `lod${lod[1]}` : null;
+    const match = /^LOD([012])_/i.exec(node.getName());
+    if (match) lodBuckets.add(`lod${match[1]}`);
     for (const primitive of mesh.listPrimitives()) {
-      const triangles = primitiveTriangles(primitive);
+      if (node.getName() === 'COLLISION_HULL') continue;
+      triangles += primitiveTriangles(primitive);
       primitiveCount++;
       if (primitive.getAttribute('TEXCOORD_0')) uvPrimitiveCount++;
       if (primitive.getAttribute('NORMAL')) normalPrimitiveCount++;
       if (primitive.getAttribute('TANGENT')) tangentPrimitiveCount++;
-      if (bucket) {
-        lodTriangles[bucket] += triangles;
-        lodPrimitives[bucket]++;
-      }
-      if (bucket === 'lod0' && /hull/i.test(node.getName())) lod0HullTriangles += triangles;
     }
   }
+  assert.deepEqual([...lodBuckets], [member.lod], `${member.file} must not bundle another LOD`);
+  const visibleBounds = inspectBounds
+    ? boundsForNodes(nodes.filter((node) => node.getMesh() && node.getName() !== 'COLLISION_HULL'))
+    : null;
+  const collisionBounds = inspectBounds
+    ? boundsForNodes(nodes.filter((node) => node.getName() === 'COLLISION_HULL'))
+    : null;
+  const sockets = nodes.map((node) => node.getName()).filter((name) => name.startsWith('SOCKET_')).sort();
+  const asset = root.getAsset().extras?.spacefaceAsset || null;
   return {
-    totalTriangles: Object.values(lodTriangles).reduce((sum, value) => sum + value, 0),
-    lodTriangles,
-    lodPrimitives,
-    lod0HullTriangles,
+    lod: member.lod,
+    bytes: bytes.length,
+    sha256: sha256(bytes),
+    triangles,
+    draws: primitiveCount,
     primitiveCount,
     uvPrimitiveCount,
     normalPrimitiveCount,
     tangentPrimitiveCount,
-    materials,
+    materials: root.listMaterials().map((material) => material.getName()).sort(),
     sockets,
-    socketContracts: Object.fromEntries(nodes
+    socketPositions: Object.fromEntries(nodes
       .filter((node) => node.getName().startsWith('SOCKET_'))
-      .map((node) => [node.getName(), {
-        position: node.getTranslation(),
-        forward: node.getExtras()?.spaceface?.forward,
-      }])),
-    suffixedSockets,
-    plumeNodes,
-    rootAsset: gltfRoot.getAsset().extras?.spacefaceAsset || gltfRoot.getAsset().spacefaceAsset || null,
+      .map((node) => [node.getName(), node.getTranslation()])),
+    socketForwards: Object.fromEntries(nodes
+      .filter((node) => node.getName().startsWith('SOCKET_'))
+      .map((node) => [node.getName(), node.getExtras()?.spaceface?.forward || null])),
+    suffixedSockets: sockets.filter((name) => /\.\d{3}$/.test(name)),
+    plumeNodes: nodes.map((node) => node.getName()).filter((name) => /plume/i.test(name)),
+    visibleDimensions: visibleBounds ? dimensions(visibleBounds) : null,
+    collisionDimensions: collisionBounds ? dimensions(collisionBounds) : null,
+    asset,
   };
+}
+
+function boundsForNodes(nodes) {
+  const min = new Vector3(Infinity, Infinity, Infinity);
+  const max = new Vector3(-Infinity, -Infinity, -Infinity);
+  const corner = new Vector3();
+  for (const node of nodes) {
+    const matrix = new Matrix4().fromArray(node.getWorldMatrix());
+    for (const primitive of node.getMesh().listPrimitives()) {
+      const accessor = primitive.getAttribute('POSITION');
+      if (!accessor) continue;
+      const localMin = accessor.getMin([]);
+      const localMax = accessor.getMax([]);
+      for (const x of [localMin[0], localMax[0]]) for (const y of [localMin[1], localMax[1]]) {
+        for (const z of [localMin[2], localMax[2]]) {
+          corner.set(x, y, z).applyMatrix4(matrix);
+          min.min(corner);
+          max.max(corner);
+        }
+      }
+    }
+  }
+  return { min, max };
+}
+
+function dimensions({ min, max }) {
+  return [max.x - min.x, max.y - min.y, max.z - min.z];
 }
 
 function assertVectorNear(actual, expected, label, epsilon = 1e-3) {
   assert.ok(Array.isArray(actual) && actual.length === expected.length, `${label} must have ${expected.length} axes`);
-  for (let i = 0; i < expected.length; i++) {
-    assert.ok(Number.isFinite(actual[i]) && Math.abs(actual[i] - expected[i]) <= epsilon,
-      `${label}[${i}] expected ${expected[i]}, got ${actual[i]}`);
+  for (let index = 0; index < expected.length; index++) {
+    assert.ok(Number.isFinite(actual[index]) && Math.abs(actual[index] - expected[index]) <= epsilon,
+      `${label}[${index}] expected ${expected[index]}, got ${actual[index]}`);
   }
 }
 
@@ -207,7 +297,49 @@ function primitiveTriangles(primitive) {
 
 function readGlbJson(buffer) {
   assert.equal(buffer.readUInt32LE(0), 0x46546c67, 'release asset must be a binary glTF');
-  assert.equal(buffer.readUInt32LE(12 + 4), 0x4e4f534a, 'first GLB chunk must be JSON');
+  assert.equal(buffer.readUInt32LE(16), 0x4e4f534a, 'first GLB chunk must be JSON');
   const jsonLength = buffer.readUInt32LE(12);
-  return JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8').replace(/\0+$/g, '').trim());
+  return JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8').trim());
+}
+
+function readKtx2MipLevelCounts(buffer) {
+  const json = readGlbJson(buffer);
+  let offset = 12;
+  let binOffset = -1;
+  while (offset < buffer.length) {
+    const length = buffer.readUInt32LE(offset);
+    const type = buffer.readUInt32LE(offset + 4);
+    if (type === 0x004e4942) {
+      binOffset = offset + 8;
+      break;
+    }
+    offset += 8 + length;
+  }
+  assert.ok(binOffset >= 0, 'release GLB must contain a BIN chunk');
+  return (json.images || []).filter((image) => image.mimeType === 'image/ktx2').map((image) => {
+    const view = json.bufferViews?.[image.bufferView];
+    assert.ok(view && (view.buffer ?? 0) === 0, 'KTX2 image must resolve to GLB buffer 0');
+    const imageOffset = binOffset + (view.byteOffset || 0);
+    assert.equal(buffer.subarray(imageOffset, imageOffset + 12).toString('hex'),
+      'ab4b5458203230bb0d0a1a0a', 'KTX2 image identifier');
+    return buffer.readUInt32LE(imageOffset + 40);
+  });
+}
+
+function sha256(bytes) {
+  return createHash('sha256').update(bytes).digest('hex').toUpperCase();
+}
+
+function summary(member) {
+  const result = {
+    lod: member.lod,
+    bytes: member.bytes,
+    sha256: member.sha256,
+    triangles: member.triangles,
+    draws: member.draws,
+    sockets: member.sockets.length,
+  };
+  if (member.visibleDimensions) result.visibleDimensions = member.visibleDimensions;
+  if (member.collisionDimensions) result.collisionDimensions = member.collisionDimensions;
+  return result;
 }

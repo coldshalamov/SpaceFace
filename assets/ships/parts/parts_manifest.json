@@ -27,8 +27,8 @@
     "maxBytesPerPart": 5000000,
     "maxBytesPerLandmark": 65000000,
     "maxTextureEdgePerLandmark": 4096,
-    "maxBytesPerWholeShip": 16000000,
-    "maxBytesPerWholeShipNote": "Structural download guard, not a quality ceiling. Raised 12MB->16MB for the accepted K0 hero's 12 explicit paint/decal/glass/emissive roles; release output is 14.16MB with meshopt + KTX2 and 15/11/7 LOD draws.",
+    "maxBytesPerWholeShip": 32000000,
+    "maxBytesPerWholeShipNote": "Structural source/package guard, not a quality ceiling. Raised for the accepted source-faithful Kestrel V4 LOD0 (22.90MB source, 19,906 tris, 15 semantic draws); every live family member remains below GitHub's 100MiB hard limit and release residency is measured independently.",
     "maxBytesPerLandmarkNote": "Structural compressed-source guard for singular authored hero places. The accepted dense Helios hub is 58.13MB with 4096 KTX2, Meshopt, 40 draws per LOD, and one visible instance; this allowance never applies to ordinary modular parts.",
     "trianglesPerPartNote": "Measured structural-growth guard for ordinary modular parts, not a visible-quality ceiling. Raised max 15000->32000 for rock/gate parts; crossing it requires an explicit budgetClass rather than silent detail removal.",
     "trianglesPerLandmarkNote": "Measured LOD0 structural guard for authored hero places. The accepted Helios dense hub is 963696 LOD0 triangles with 40 draws, authored LOD1/LOD2, Meshopt, and KTX2; this separate class prevents ordinary parts inheriting the hero allowance."
@@ -3554,18 +3554,16 @@
       "category": "wholeships",
       "priority": "P0",
       "file": "wholeships/kestrel.glb",
-      "tris": 28864,
-      "bytes": 14793388,
+      "tris": 19906,
+      "bytes": 22898172,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
-        "accent": "Material_Cyan_Paint",
-        "warm": "Material_Warm_Paint"
+        "accent": "Material_Accent_FrontierCyan",
+        "warning": "Material_Accent_WarningOrange",
+        "repair": "Material_RepairGreen"
       },
-      "hooks": [
-        "HOOK_DRIVE_CORE",
-        "HOOK_DRIVE_FAN"
-      ],
+      "hooks": [],
       "sockets": [
         "SOCKET_Weapon_Front",
         "SOCKET_Mining_Front",
@@ -3580,22 +3578,22 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -13.9351,
-          -2.7664,
-          -7.02
+          -13.937827110290527,
+          -2.7696021625919744,
+          -7.01944236829297
         ],
         "max": [
-          13.9018,
-          4.172,
-          7.02
+          13.901803970336914,
+          4.172541050847447,
+          7.01944236829297
         ],
         "dimensionsM": [
-          27.8369,
-          6.9384,
-          14.04
+          27.83963108062744,
+          6.942143213439421,
+          14.03888473658594
         ]
       },
-      "note": "M5 K0 Borrowed Time upgrade 2026-07-11 — accepted user-source silhouette with structural LOD0/1/2 (19050/8362/1452 tris), 15/11/7 draws, separate physically-lit paint/decal/glass and bounded cyan/warm/core emissive roles, chamfered service-plate decals with real tangents, stable bare sockets, animated fan/core roles, and no embedded plume. Project-original provenance: assets/ships/m5_kestrel_upgrade/PROVENANCE.json."
+      "note": "K0 Borrowed Time V4 live promotion 2026-07-13 — accepted source-faithful player-only LOD0 (19,906 tris / 15 semantic draws) with independently authored retained LOD1/LOD2 family (13,962 / 12,584 tris), 9 stable sockets, 92%-fit collision hull, KTX2/meshopt release path, no embedded plume, and exact project-original provenance at assets/ships/kestrel_borrowed_time_v4/PROVENANCE.json."
     },
     {
       "id": "wholeship_pelican",
@@ -4357,13 +4355,16 @@
   "wholeShipMaterialContract": {
     "hull": "Material_Hull",
     "mechanical": "Material_Mechanical",
-    "glass": "Material_Glass",
-    "cyanPaint": "Material_Cyan_Paint",
-    "repairPaint": "Material_Repair_Paint",
-    "warmPaint": "Material_Warm_Paint",
-    "cyanEmissive": "Material_Cyan_Emissive",
-    "warmEmissive": "Material_Warm_Emissive",
-    "driveCore": "Material_Drive_Core",
+    "glass": "Material_Glass_Canopy",
+    "cyanPaint": "Material_Accent_FrontierCyan",
+    "warningPaint": "Material_Accent_WarningOrange",
+    "repairPaint": "Material_RepairGreen",
+    "armor": "Material_ArmorDark",
+    "brushedMetal": "Material_BrushedMetal",
+    "rubber": "Material_Rubber",
+    "cyanEmissive": "Material_Emissive_Cyan",
+    "warmEmissive": "Material_Emissive_Orange",
+    "driveCore": "Material_Emissive_DriveCore",
     "decalBorrowedTime": "Material_Decal_BorrowedTime",
     "decalHazard": "Material_Decal_Hazard",
     "decalStencils": "Material_Decal_Stencils"

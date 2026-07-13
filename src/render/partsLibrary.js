@@ -365,7 +365,18 @@ const WHOLE_SHIP_FILE_BY_DEF_ID = Object.freeze({
   'ship_kestrel': 'wholeships/kestrel.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_DEF_ID = Object.freeze({
-  'ship_kestrel': 'SF_WHOLESHIP_KESTREL',
+  'ship_kestrel': 'SF_K0_KESTREL_BORROWED_TIME_V4',
+});
+// V4 is authored as three independent GLBs so the runtime can retain only the selected level.
+// The current whole-ship seam accepts one file, therefore LOD0 is canonical live truth while the
+// lower levels stay explicitly catalogued (and excluded from random modular-hull selection) until
+// the separate-file residency selector lands. Do not preload all three: that would triple GPU use.
+const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
+  ship_kestrel: Object.freeze({
+    lod0: 'wholeships/kestrel.glb',
+    lod1: 'wholeships/kestrel_lod1.glb',
+    lod2: 'wholeships/kestrel_lod2.glb',
+  }),
 });
 // Reach hostiles are selected by their authoritative combat archetype, not by ship def: several
 // enemy roles intentionally share player-facing chassis stats while requiring different combat
@@ -397,6 +408,7 @@ const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
 });
 const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WHOLE_SHIP_FILE_BY_DEF_ID),
+  ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID).flatMap((family) => Object.values(family)),
   ...Object.values(WHOLE_SHIP_FILE_BY_HOSTILE_ID),
   ...Object.values(WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE),
 ]);
@@ -447,6 +459,7 @@ export function wholeShipVisualForEntity(entity, options = {}) {
   return file ? Object.freeze({
     file,
     assetId: WHOLE_SHIP_ASSET_ID_BY_DEF_ID[defId],
+    lodFamily: WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID[defId] || null,
     roleId: defId,
     required: true,
   }) : null;

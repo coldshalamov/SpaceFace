@@ -28,7 +28,13 @@ const releaseManifest = existsSync(RELEASE_MANIFEST)
 // Authored whole-ship bodies (not in parts_manifest.json) are runtime-wired via partsLibrary.js and
 // must be release-verified like every other ship asset: compressed, source/release paired, and
 // enumerated in release_manifest.json.
-const WHOLE_SHIP_FILES = ['wholeships/kestrel.glb', 'wholeships/pelican.glb', 'wholeships/wasp.glb'];
+const WHOLE_SHIP_FILES = [
+  'wholeships/kestrel.glb',
+  'wholeships/kestrel_lod1.glb',
+  'wholeships/kestrel_lod2.glb',
+  'wholeships/pelican.glb',
+  'wholeships/wasp.glb',
+];
 const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
 const unmanagedWholeShipFiles = WHOLE_SHIP_FILES.filter((file) => !manifestPartFiles.has(file));
 const devAssetPaths = [
