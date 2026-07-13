@@ -1,0 +1,974 @@
+{
+  "schema": "spaceface.m3.careerCohorts.v2",
+  "ok": true,
+  "horizonsMin": [
+    30,
+    60,
+    90
+  ],
+  "bands": {
+    "hauler": {
+      "dead": 50,
+      "lo": 112.5,
+      "hi": 600,
+      "note": "Live market arbitrage; capacity + exhaustion bind"
+    },
+    "hunter": {
+      "dead": 30,
+      "lo": 62.5,
+      "hi": 400,
+      "note": "Bounty payouts are MISSION_TUNING adapters (warning); repair uses live economy services",
+      "bountyAdapter": true
+    },
+    "prospector": {
+      "dead": 30,
+      "lo": 70,
+      "hi": 375,
+      "note": "Live sell + field depletion; mine TTK from beam/asteroid data"
+    }
+  },
+  "table": [
+    {
+      "career": "hauler",
+      "minutes": 30,
+      "credits": 19622,
+      "netWorth": 31292,
+      "earnedValue": 14622,
+      "creditsPerMin": 487.4,
+      "completedLoops": 21,
+      "completedContracts": 21,
+      "failedContracts": 0,
+      "shipId": "ship_kestrel",
+      "phase": "starter",
+      "travelS": 1466.7,
+      "actionS": 312,
+      "bottlenecks": [],
+      "adaptersUsed": [
+        {
+          "code": "bonded_reward_adapter",
+          "detail": "Bonded reward amount from ladder defs, not missions board",
+          "authority": "adapter_warning"
+        }
+      ],
+      "ok": true,
+      "assertionFails": [],
+      "assertionWarns": []
+    },
+    {
+      "career": "hauler",
+      "minutes": 60,
+      "credits": 29085,
+      "netWorth": 37085,
+      "earnedValue": 24085,
+      "creditsPerMin": 401.42,
+      "completedLoops": 44,
+      "completedContracts": 44,
+      "failedContracts": 0,
+      "shipId": "ship_kestrel",
+      "phase": "starter",
+      "travelS": 2970.1,
+      "actionS": 624,
+      "bottlenecks": [],
+      "adaptersUsed": [
+        {
+          "code": "bonded_reward_adapter",
+          "detail": "Bonded reward amount from ladder defs, not missions board",
+          "authority": "adapter_warning"
+        }
+      ],
+      "ok": true,
+      "assertionFails": [],
+      "assertionWarns": []
+    },
+    {
+      "career": "hauler",
+      "minutes": 90,
+      "credits": 33492,
+      "netWorth": 41492,
+      "earnedValue": 28492,
+      "creditsPerMin": 316.58,
+      "completedLoops": 66,
+      "completedContracts": 66,
+      "failedContracts": 0,
+      "shipId": "ship_kestrel",
+      "phase": "starter",
+      "travelS": 4438,
+      "actionS": 928,
+      "bottlenecks": [
+        {
+          "code": "spread_collapse",
+          "detail": "Route cmdty_ore_bronzium collapsed"
+        }
+      ],
+      "adaptersUsed": [
+        {
+          "code": "bonded_reward_adapter",
+          "detail": "Bonded reward amount from ladder defs, not missions board",
+          "authority": "adapter_warning"
+        }
+      ],
+      "ok": true,
+      "assertionFails": [],
+      "assertionWarns": []
+    },
+    {
+      "career": "hunter",
+      "minutes": 30,
+      "credits": 8598,
+      "netWorth": 16598,
+      "earnedValue": 3598,
+      "creditsPerMin": 119.93,
+      "completedLoops": 15,
+      "completedContracts": 15,
+      "failedContracts": 3,
+      "shipId": "ship_kestrel",
+      "phase": "starter",
+      "travelS": 1452.9,
+      "actionS": 136,
+      "bottlenecks": [
+        {
+          "code": "rp_gate",
+          "detail": "Combat Basics needs research points; missions RP writer not registered (foreign dirty)"
+        },
+        {
+          "code": "death_recovery",
+          "detail": "Controlled death with insurance downtime; residual hull damage"
+        }
+      ],
+      "adaptersUsed": [
+        {
+          "code": "bounty_reward_adapter",
+          "detail": "Bounty credits use MISSION_TUNING.BASE formula; missions board accept/complete not invoked (missions.js foreign dirty)",
+          "authority": "adapter_warning"
+        },
+        {
+          "code": "combat_ttk_adapter",
+          "detail": "Fight duration from enemy EHP / owned weapon DPS; full combat system not stepped",
+          "authority": "adapter_warning"
+        }
+      ],
+      "ok": true,
+      "assertionFails": [],
+      "assertionWarns": []
+    },
+    {
+      "career": "hunter",
+      "minutes": 60,
+      "credits": 15516,
+      "netWorth": 23516,
+      "earnedValue": 10516,
+      "creditsPerMin": 175.27,
+      "completedLoops": 31,
+      "completedContracts": 31,
+      "failedContracts": 5,
+      "shipId": "ship_kestrel",
+      "phase": "starter",
+      "travelS": 2983.8,
+      "actionS": 280,
+      "bottlenecks": [
+        {
+          "code": "rp_gate",
+          "detail": "Combat Basics needs research points; missions RP writer not registered (foreign dirty)"
+        },
+        {
+          "code": "death_recovery",
+          "detail": "Controlled death with insurance downtime; residual hull damage"
+        }
+      ],
+      "adaptersUsed": [
+        {
+          "code": "bounty_reward_adapter",
+          "detail": "Bounty credits use MISSION_TUNING.BASE formula; missions board accept/complete not invoked (missions.js foreign dirty)",
+          "authority": "adapter_warning"
+        },
+        {
+          "code": "combat_ttk_adapter",
+          "detail": "Fight duration from enemy EHP / owned weapon DPS; full combat system not stepped",
+          "authority": "adapter_warning"
+        }
+      ],
+      "ok": true,
+      "assertionFails": [],
+      "assertionWarns": []
+    },
+    {
+      "career": "hunter",
+      "minutes": 90,
+      "credits": 20268,
+      "netWorth": 28268,
+      "earnedValue": 15268,
+      "creditsPerMin": 169.64,
+      "completedLoops": 45,
+      "completedContracts": 45,
+      "failedContracts": 9,
+      "shipId": "ship_kestrel",
+      "phase": "starter",
+      "travelS": 4553.8,
+      "actionS": 424,
+      "bottlenecks": [
+        {
+          "code": "rp_gate",
+          "detail": "Combat Basics needs research points; missions RP writer not registered (foreign dirty)"
+        },
+        {
+          "code": "death_recovery",
+          "detail": "Controlled death with insurance downtime; residual hull damage"
+        }
+      ],
+      "adaptersUsed": [
+        {
+          "code": "bounty_reward_adapter",
+          "detail": "Bounty credits use MISSION_TUNING.BASE formula; missions board accept/complete not invoked (missions.js foreign dirty)",
+          "authority": "adapter_warning"
+        },
+        {
+          "code": "combat_ttk_adapter",
+          "detail": "Fight duration from enemy EHP / owned weapon DPS; full combat system not stepped",
+          "authority": "adapter_warning"
+        }
+      ],
+      "ok": true,
+      "assertionFails": [],
+      "assertionWarns": []
+    },
+    {
+      "career": "prospector",
+      "minutes": 30,
+      "credits": 9223,
+      "netWorth": 17381,
+      "earnedValue": 4223,
+      "creditsPerMin": 140.77,
+      "completedLoops": 11,
+      "completedContracts": 11,
+      "failedContracts": 0,
+      "shipId": "ship_kestrel",
+      "phase": "starter",
+      "travelS": 974.8,
+      "actionS": 794.6,
+      "bottlenecks": [],
+      "adaptersUsed": [
+        {
+          "code": "mine_ttk_adapter",
+          "detail": "Mine duration from beam.dps / asteroid.hp tables; mining system update loop not stepped",
+          "authority": "adapter_warning"
+        }
+      ],
+      "ok": true,
+      "assertionFails": [],
+      "assertionWarns": []
+    },
+    {
+      "career": "prospector",
+      "minutes": 60,
+      "credits": 12722,
+      "netWorth": 21115,
+      "earnedValue": 7722,
+      "creditsPerMin": 128.7,
+      "completedLoops": 20,
+      "completedContracts": 20,
+      "failedContracts": 0,
+      "shipId": "ship_kestrel",
+      "phase": "starter",
+      "travelS": 1943.7,
+      "actionS": 1645.4,
+      "bottlenecks": [
+        {
+          "code": "field_depleted",
+          "detail": "Field f_helios_starter depleted"
+        }
+      ],
+      "adaptersUsed": [
+        {
+          "code": "mine_ttk_adapter",
+          "detail": "Mine duration from beam.dps / asteroid.hp tables; mining system update loop not stepped",
+          "authority": "adapter_warning"
+        }
+      ],
+      "ok": true,
+      "assertionFails": [],
+      "assertionWarns": []
+    },
+    {
+      "career": "prospector",
+      "minutes": 90,
+      "credits": 1922,
+      "netWorth": 17370,
+      "earnedValue": 11922,
+      "creditsPerMin": 132.47,
+      "completedLoops": 30,
+      "completedContracts": 30,
+      "failedContracts": 0,
+      "shipId": "ship_pelican",
+      "phase": "pelican",
+      "travelS": 2898.9,
+      "actionS": 2475.1,
+      "bottlenecks": [
+        {
+          "code": "field_depleted",
+          "detail": "Field f_helios_starter depleted"
+        },
+        {
+          "code": "beam_m_research",
+          "detail": "Beam M gated by research"
+        }
+      ],
+      "adaptersUsed": [
+        {
+          "code": "mine_ttk_adapter",
+          "detail": "Mine duration from beam.dps / asteroid.hp tables; mining system update loop not stepped",
+          "authority": "adapter_warning"
+        }
+      ],
+      "ok": true,
+      "assertionFails": [],
+      "assertionWarns": []
+    }
+  ],
+  "cells": {
+    "hauler": {
+      "30": {
+        "ok": true,
+        "endingCapital": 19622,
+        "earnedValue": 14622,
+        "creditsPerMin": 487.4,
+        "netWorth": 31292,
+        "completedLoops": 21,
+        "completedContracts": 21,
+        "failedContracts": 0,
+        "shipId": "ship_kestrel",
+        "phase": "starter",
+        "purchases": [],
+        "time": {
+          "simS": 1778.7,
+          "travelS": 1466.7,
+          "actionS": 312,
+          "dockS": 0,
+          "recoveryS": 0,
+          "idleS": 0
+        },
+        "bottlenecks": [],
+        "adaptersUsed": [
+          {
+            "code": "bonded_reward_adapter",
+            "detail": "Bonded reward amount from ladder defs, not missions board",
+            "authority": "adapter_warning"
+          }
+        ],
+        "assertionFails": [],
+        "assertionWarns": [],
+        "hullDamageHp": 0,
+        "readiness": 1,
+        "ownedWeapons": [
+          "wpn_pulse_laser_s"
+        ],
+        "researchedNodes": [],
+        "researchPoints": 0,
+        "deaths": 0,
+        "liveSeams": [
+          "economy.ensureMarket/quote/execute",
+          "cargo add/remove via execute",
+          "ships.buyShip",
+          "factions via economy:tradeCompleted",
+          "economy.update time authority"
+        ]
+      },
+      "60": {
+        "ok": true,
+        "endingCapital": 29085,
+        "earnedValue": 24085,
+        "creditsPerMin": 401.42,
+        "netWorth": 37085,
+        "completedLoops": 44,
+        "completedContracts": 44,
+        "failedContracts": 0,
+        "shipId": "ship_kestrel",
+        "phase": "starter",
+        "purchases": [],
+        "time": {
+          "simS": 3594.1,
+          "travelS": 2970.1,
+          "actionS": 624,
+          "dockS": 0,
+          "recoveryS": 0,
+          "idleS": 0
+        },
+        "bottlenecks": [],
+        "adaptersUsed": [
+          {
+            "code": "bonded_reward_adapter",
+            "detail": "Bonded reward amount from ladder defs, not missions board",
+            "authority": "adapter_warning"
+          }
+        ],
+        "assertionFails": [],
+        "assertionWarns": [],
+        "hullDamageHp": 0,
+        "readiness": 1,
+        "ownedWeapons": [
+          "wpn_pulse_laser_s"
+        ],
+        "researchedNodes": [],
+        "researchPoints": 0,
+        "deaths": 0,
+        "liveSeams": [
+          "economy.ensureMarket/quote/execute",
+          "cargo add/remove via execute",
+          "ships.buyShip",
+          "factions via economy:tradeCompleted",
+          "economy.update time authority"
+        ]
+      },
+      "90": {
+        "ok": true,
+        "endingCapital": 33492,
+        "earnedValue": 28492,
+        "creditsPerMin": 316.58,
+        "netWorth": 41492,
+        "completedLoops": 66,
+        "completedContracts": 66,
+        "failedContracts": 0,
+        "shipId": "ship_kestrel",
+        "phase": "starter",
+        "purchases": [],
+        "time": {
+          "simS": 5366,
+          "travelS": 4438,
+          "actionS": 928,
+          "dockS": 0,
+          "recoveryS": 0,
+          "idleS": 0
+        },
+        "bottlenecks": [
+          {
+            "code": "spread_collapse",
+            "detail": "Route cmdty_ore_bronzium collapsed"
+          }
+        ],
+        "adaptersUsed": [
+          {
+            "code": "bonded_reward_adapter",
+            "detail": "Bonded reward amount from ladder defs, not missions board",
+            "authority": "adapter_warning"
+          }
+        ],
+        "assertionFails": [],
+        "assertionWarns": [],
+        "hullDamageHp": 0,
+        "readiness": 1,
+        "ownedWeapons": [
+          "wpn_pulse_laser_s"
+        ],
+        "researchedNodes": [],
+        "researchPoints": 0,
+        "deaths": 0,
+        "liveSeams": [
+          "economy.ensureMarket/quote/execute",
+          "cargo add/remove via execute",
+          "ships.buyShip",
+          "factions via economy:tradeCompleted",
+          "economy.update time authority"
+        ]
+      }
+    },
+    "hunter": {
+      "30": {
+        "ok": true,
+        "endingCapital": 8598,
+        "earnedValue": 3598,
+        "creditsPerMin": 119.93,
+        "netWorth": 16598,
+        "completedLoops": 15,
+        "completedContracts": 15,
+        "failedContracts": 3,
+        "shipId": "ship_kestrel",
+        "phase": "starter",
+        "purchases": [],
+        "time": {
+          "simS": 1780.9,
+          "travelS": 1452.9,
+          "actionS": 136,
+          "dockS": 102,
+          "recoveryS": 90,
+          "idleS": 0
+        },
+        "bottlenecks": [
+          {
+            "code": "rp_gate",
+            "detail": "Combat Basics needs research points; missions RP writer not registered (foreign dirty)"
+          },
+          {
+            "code": "death_recovery",
+            "detail": "Controlled death with insurance downtime; residual hull damage"
+          }
+        ],
+        "adaptersUsed": [
+          {
+            "code": "bounty_reward_adapter",
+            "detail": "Bounty credits use MISSION_TUNING.BASE formula; missions board accept/complete not invoked (missions.js foreign dirty)",
+            "authority": "adapter_warning"
+          },
+          {
+            "code": "combat_ttk_adapter",
+            "detail": "Fight duration from enemy EHP / owned weapon DPS; full combat system not stepped",
+            "authority": "adapter_warning"
+          }
+        ],
+        "assertionFails": [],
+        "assertionWarns": [],
+        "hullDamageHp": 0,
+        "readiness": 1,
+        "ownedWeapons": [
+          "wpn_pulse_laser_s"
+        ],
+        "researchedNodes": [],
+        "researchPoints": 0,
+        "deaths": 1,
+        "liveSeams": [
+          "economy.grantCredits/chargeCredits",
+          "economy ui:service repair (proportional)",
+          "ships.unlockTech / buyShip when RP+capital allow",
+          "cargo munitions via addCargo/removeCargo"
+        ]
+      },
+      "60": {
+        "ok": true,
+        "endingCapital": 15516,
+        "earnedValue": 10516,
+        "creditsPerMin": 175.27,
+        "netWorth": 23516,
+        "completedLoops": 31,
+        "completedContracts": 31,
+        "failedContracts": 5,
+        "shipId": "ship_kestrel",
+        "phase": "starter",
+        "purchases": [],
+        "time": {
+          "simS": 3563.8,
+          "travelS": 2983.8,
+          "actionS": 280,
+          "dockS": 210,
+          "recoveryS": 90,
+          "idleS": 0
+        },
+        "bottlenecks": [
+          {
+            "code": "rp_gate",
+            "detail": "Combat Basics needs research points; missions RP writer not registered (foreign dirty)"
+          },
+          {
+            "code": "death_recovery",
+            "detail": "Controlled death with insurance downtime; residual hull damage"
+          }
+        ],
+        "adaptersUsed": [
+          {
+            "code": "bounty_reward_adapter",
+            "detail": "Bounty credits use MISSION_TUNING.BASE formula; missions board accept/complete not invoked (missions.js foreign dirty)",
+            "authority": "adapter_warning"
+          },
+          {
+            "code": "combat_ttk_adapter",
+            "detail": "Fight duration from enemy EHP / owned weapon DPS; full combat system not stepped",
+            "authority": "adapter_warning"
+          }
+        ],
+        "assertionFails": [],
+        "assertionWarns": [],
+        "hullDamageHp": 0,
+        "readiness": 1,
+        "ownedWeapons": [
+          "wpn_pulse_laser_s"
+        ],
+        "researchedNodes": [],
+        "researchPoints": 0,
+        "deaths": 1,
+        "liveSeams": [
+          "economy.grantCredits/chargeCredits",
+          "economy ui:service repair (proportional)",
+          "ships.unlockTech / buyShip when RP+capital allow",
+          "cargo munitions via addCargo/removeCargo"
+        ]
+      },
+      "90": {
+        "ok": true,
+        "endingCapital": 20268,
+        "earnedValue": 15268,
+        "creditsPerMin": 169.64,
+        "netWorth": 28268,
+        "completedLoops": 45,
+        "completedContracts": 45,
+        "failedContracts": 9,
+        "shipId": "ship_kestrel",
+        "phase": "starter",
+        "purchases": [],
+        "time": {
+          "simS": 5385.8,
+          "travelS": 4553.8,
+          "actionS": 424,
+          "dockS": 318,
+          "recoveryS": 90,
+          "idleS": 0
+        },
+        "bottlenecks": [
+          {
+            "code": "rp_gate",
+            "detail": "Combat Basics needs research points; missions RP writer not registered (foreign dirty)"
+          },
+          {
+            "code": "death_recovery",
+            "detail": "Controlled death with insurance downtime; residual hull damage"
+          }
+        ],
+        "adaptersUsed": [
+          {
+            "code": "bounty_reward_adapter",
+            "detail": "Bounty credits use MISSION_TUNING.BASE formula; missions board accept/complete not invoked (missions.js foreign dirty)",
+            "authority": "adapter_warning"
+          },
+          {
+            "code": "combat_ttk_adapter",
+            "detail": "Fight duration from enemy EHP / owned weapon DPS; full combat system not stepped",
+            "authority": "adapter_warning"
+          }
+        ],
+        "assertionFails": [],
+        "assertionWarns": [],
+        "hullDamageHp": 0,
+        "readiness": 1,
+        "ownedWeapons": [
+          "wpn_pulse_laser_s"
+        ],
+        "researchedNodes": [],
+        "researchPoints": 0,
+        "deaths": 1,
+        "liveSeams": [
+          "economy.grantCredits/chargeCredits",
+          "economy ui:service repair (proportional)",
+          "ships.unlockTech / buyShip when RP+capital allow",
+          "cargo munitions via addCargo/removeCargo"
+        ]
+      }
+    },
+    "prospector": {
+      "30": {
+        "ok": true,
+        "endingCapital": 9223,
+        "earnedValue": 4223,
+        "creditsPerMin": 140.77,
+        "netWorth": 17381,
+        "completedLoops": 11,
+        "completedContracts": 11,
+        "failedContracts": 0,
+        "shipId": "ship_kestrel",
+        "phase": "starter",
+        "purchases": [],
+        "time": {
+          "simS": 1769.4,
+          "travelS": 974.8,
+          "actionS": 794.6,
+          "dockS": 0,
+          "recoveryS": 0,
+          "idleS": 0
+        },
+        "bottlenecks": [],
+        "adaptersUsed": [
+          {
+            "code": "mine_ttk_adapter",
+            "detail": "Mine duration from beam.dps / asteroid.hp tables; mining system update loop not stepped",
+            "authority": "adapter_warning"
+          }
+        ],
+        "assertionFails": [],
+        "assertionWarns": [],
+        "hullDamageHp": 0,
+        "readiness": 1,
+        "ownedWeapons": [
+          "wpn_pulse_laser_s"
+        ],
+        "researchedNodes": [],
+        "researchPoints": 0,
+        "deaths": 0,
+        "liveSeams": [
+          "fieldDepletion.recordFieldExtraction/recover",
+          "cargo addCargo/removeCargo",
+          "economy.execute sell",
+          "ships.buyShip pelican",
+          "economy.update time authority"
+        ]
+      },
+      "60": {
+        "ok": true,
+        "endingCapital": 12722,
+        "earnedValue": 7722,
+        "creditsPerMin": 128.7,
+        "netWorth": 21115,
+        "completedLoops": 20,
+        "completedContracts": 20,
+        "failedContracts": 0,
+        "shipId": "ship_kestrel",
+        "phase": "starter",
+        "purchases": [],
+        "time": {
+          "simS": 3589,
+          "travelS": 1943.7,
+          "actionS": 1645.4,
+          "dockS": 0,
+          "recoveryS": 0,
+          "idleS": 0
+        },
+        "bottlenecks": [
+          {
+            "code": "field_depleted",
+            "detail": "Field f_helios_starter depleted"
+          }
+        ],
+        "adaptersUsed": [
+          {
+            "code": "mine_ttk_adapter",
+            "detail": "Mine duration from beam.dps / asteroid.hp tables; mining system update loop not stepped",
+            "authority": "adapter_warning"
+          }
+        ],
+        "assertionFails": [],
+        "assertionWarns": [],
+        "hullDamageHp": 0,
+        "readiness": 1,
+        "ownedWeapons": [
+          "wpn_pulse_laser_s"
+        ],
+        "researchedNodes": [],
+        "researchPoints": 0,
+        "deaths": 0,
+        "liveSeams": [
+          "fieldDepletion.recordFieldExtraction/recover",
+          "cargo addCargo/removeCargo",
+          "economy.execute sell",
+          "ships.buyShip pelican",
+          "economy.update time authority"
+        ]
+      },
+      "90": {
+        "ok": true,
+        "endingCapital": 1922,
+        "earnedValue": 11922,
+        "creditsPerMin": 132.47,
+        "netWorth": 17370,
+        "completedLoops": 30,
+        "completedContracts": 30,
+        "failedContracts": 0,
+        "shipId": "ship_pelican",
+        "phase": "pelican",
+        "purchases": [
+          {
+            "kind": "ship",
+            "id": "ship_pelican",
+            "price": 15000,
+            "reason": "buyShip:ship_pelican",
+            "atS": 4568,
+            "creditsBefore": 15327,
+            "creditsAfter": 327,
+            "authority": "ships.buyShip"
+          }
+        ],
+        "time": {
+          "simS": 5374,
+          "travelS": 2898.9,
+          "actionS": 2475.1,
+          "dockS": 0,
+          "recoveryS": 0,
+          "idleS": 0
+        },
+        "bottlenecks": [
+          {
+            "code": "field_depleted",
+            "detail": "Field f_helios_starter depleted"
+          },
+          {
+            "code": "beam_m_research",
+            "detail": "Beam M gated by research"
+          }
+        ],
+        "adaptersUsed": [
+          {
+            "code": "mine_ttk_adapter",
+            "detail": "Mine duration from beam.dps / asteroid.hp tables; mining system update loop not stepped",
+            "authority": "adapter_warning"
+          }
+        ],
+        "assertionFails": [],
+        "assertionWarns": [],
+        "hullDamageHp": 0,
+        "readiness": 1,
+        "ownedWeapons": [
+          "wpn_pulse_laser_s"
+        ],
+        "researchedNodes": [],
+        "researchPoints": 0,
+        "deaths": 0,
+        "liveSeams": [
+          "fieldDepletion.recordFieldExtraction/recover",
+          "cargo addCargo/removeCargo",
+          "economy.execute sell",
+          "ships.buyShip pelican",
+          "economy.update time authority"
+        ]
+      }
+    }
+  },
+  "cross": {
+    "ok": true,
+    "fails": [],
+    "warns": [],
+    "disparity": {
+      "30": {
+        "min": 119.93,
+        "max": 487.4,
+        "ratio": 4.06
+      },
+      "60": {
+        "min": 128.7,
+        "max": 401.42,
+        "ratio": 3.12
+      },
+      "90": {
+        "min": 132.47,
+        "max": 316.58,
+        "ratio": 2.39
+      }
+    }
+  },
+  "determinism": {
+    "hauler": {
+      "equal": true
+    },
+    "hunter": {
+      "equal": true
+    },
+    "prospector": {
+      "equal": true
+    }
+  },
+  "snapshotSeam": {
+    "seam": "src/core/simSnapshot.js#snapshotSimState",
+    "stable": true,
+    "note": "Audit snapshot stability only. Full saveSystem serialize/deserialize resume is not exercised (saveSystem.js excluded). No reload-equivalence claim is made.",
+    "reloadClaimed": false
+  },
+  "authorityMatrix": {
+    "live": [
+      "economy.quote/execute/grantCredits/chargeCredits/update",
+      "cargo via economy execute + addCargo/removeCargo",
+      "ships.newGame/buyShip/unlockTech/buyModule",
+      "factions.applyRep via faction:repDelta + tradeCompleted",
+      "fieldDepletion kernels",
+      "economy ui:service repair (proportional to credits)"
+    ],
+    "adapter_warning": [
+      "mission bounty rewards (MISSION_TUNING formula; board not used)",
+      "combat TTK (EHP/DPS; combat system not stepped)",
+      "mine TTK (beam/asteroid tables; mining update not stepped)",
+      "gate toll amount (planGateScene + high-sec formula mirror)",
+      "travel duration (MISSION_TUNING.cruiseSpeedRef + positions)"
+    ],
+    "excluded_foreign_dirty": [
+      "missions.js accept/complete/RP writer",
+      "modules.js / weapons.js data edits",
+      "saveSystem.js serialize/load resume"
+    ],
+    "balanceTuning": "none — production ship/tech prices left at pre-task values; adapters cannot justify retunes"
+  },
+  "residualSeams": [
+    {
+      "area": "adapter",
+      "status": "warning_only",
+      "detail": "mission bounty rewards (MISSION_TUNING formula; board not used)"
+    },
+    {
+      "area": "adapter",
+      "status": "warning_only",
+      "detail": "combat TTK (EHP/DPS; combat system not stepped)"
+    },
+    {
+      "area": "adapter",
+      "status": "warning_only",
+      "detail": "mine TTK (beam/asteroid tables; mining update not stepped)"
+    },
+    {
+      "area": "adapter",
+      "status": "warning_only",
+      "detail": "gate toll amount (planGateScene + high-sec formula mirror)"
+    },
+    {
+      "area": "adapter",
+      "status": "warning_only",
+      "detail": "travel duration (MISSION_TUNING.cruiseSpeedRef + positions)"
+    },
+    {
+      "area": "balance_tuning",
+      "status": "restored_pre_task",
+      "detail": "Mule 35000 / Wasp 28000 / Combat Basics 6000+10RP restored; no retune without live mission RP+combat authority"
+    },
+    {
+      "area": "bottleneck:hauler",
+      "status": "measured",
+      "detail": "spread_collapse"
+    },
+    {
+      "area": "bottleneck:hunter",
+      "status": "measured",
+      "detail": "rp_gate"
+    },
+    {
+      "area": "bottleneck:hunter",
+      "status": "measured",
+      "detail": "death_recovery"
+    },
+    {
+      "area": "bottleneck:prospector",
+      "status": "measured",
+      "detail": "field_depleted"
+    },
+    {
+      "area": "bottleneck:prospector",
+      "status": "measured",
+      "detail": "beam_m_research"
+    }
+  ],
+  "upgradePaths": {
+    "hauler": {
+      "roleHull": "ship_mule",
+      "phase": "starter",
+      "purchases": [],
+      "researchUnlocks": [],
+      "firstPurchaseAtS": null
+    },
+    "hunter": {
+      "roleHull": "ship_wasp",
+      "phase": "starter",
+      "purchases": [],
+      "researchUnlocks": [],
+      "firstPurchaseAtS": null
+    },
+    "prospector": {
+      "roleHull": "ship_pelican",
+      "phase": "pelican",
+      "purchases": [
+        {
+          "kind": "ship",
+          "id": "ship_pelican",
+          "price": 15000,
+          "reason": "buyShip:ship_pelican",
+          "atS": 4568,
+          "creditsBefore": 15327,
+          "creditsAfter": 327,
+          "authority": "ships.buyShip"
+        }
+      ],
+      "researchUnlocks": [],
+      "firstPurchaseAtS": 4568
+    }
+  },
+  "elapsedMs": 23378.4,
+  "gate": "check-m3-career-cohorts",
+  "generatedNote": "Nine independent sims (career×horizon). Rates are per-horizon earnedValue/min. No reload-equivalence claim. No production balance retune."
+}
