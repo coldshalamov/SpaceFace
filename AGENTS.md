@@ -6,7 +6,7 @@
 >
 > **Authority chain when documents disagree:**
 > `ARCHITECTURE.md` (technical contract) > `design/GDD_2_0.md` (design authority)
-> > `design/spec2/00_MASTER_TASTE.md` (taste constitution — its Forbidden list rejects diffs)
+> > `design/spec2/00_MASTER_TASTE.md` (historical taste reference; its visual tokens are not binding)
 > > `design/vision/ALPHA_PROGRAM.md` (current solo-alpha execution order and scope)
 > > the specific `design/spec2/` or `design/spec3/` spec activated for the task > supporting docs.
 > `design/CURRENT_BUILD_STATUS.md` is the live "what's built / what's red" map — but it drifts;
@@ -28,7 +28,7 @@
 | **Tracing an event ("who emits/handles `combat:fire`?")** | `docs/EVENT_ROUTING.md` — generated, 263 events × all emit/subscribe sites with file:line. Regenerate after structural changes: `npm run build:indexes`. |
 | **Finding what a system does / its update order / what it emits** | `docs/SYSTEM_REGISTRY.md` — generated, all 33 systems in init+update order with line counts + top events. |
 | **Doing perf/render/feel work** | §10 below + `design/PERF_BUDGET.md`; run `npm run check:flight:clean` → `check:assets:live` → `check:perf` before claiming a fix |
-| **Designing new systems or content** | `design/GDD_2_0.md` (vision/pillars) → `design/spec2/00_MASTER_TASTE.md` (taste) → the relevant `design/spec3/SPEC3-Fx-*.md` thread |
+| **Designing new systems or content** | `design/GDD_2_0.md` (vision/pillars) → the relevant `design/spec3/SPEC3-Fx-*.md` thread. Choose visual direction from current player-facing evidence, not inherited tokens. |
 | **Lost / "where is X"** | `docs/MODULE_MAP.md` first. If it's not there, `docs/COMMON_BUGS.md`. If still stuck, the file-ownership map in `design/BUILD_PLAN_2_0.md` §0. |
 
 `design/vision/00_CONSTITUTION.md` and `design/vision/03_MASTER_BUILD_PLAN.md` are supporting only when `ALPHA_PROGRAM.md` activates them; they are not default product-sprint routing.
@@ -74,14 +74,14 @@ The repo has three spec folders. **Both `spec2/` and `spec3/` are live** (per us
 
 | Folder | Status | Use it for |
 |---|---|---|
-| `design/spec2/` | **LIVE — polish & release bar.** `00_MASTER_TASTE.md` is the inherited taste constitution for ALL work, including spec3. Specs `01`-`08`: massline feel, flight/camera juice, first hour, world-alive, economy, UI identity, audio, release readiness. | Any work on feel, readability, onboarding, UI, audio, or release gates. **Always read `00_MASTER_TASTE.md` first whatever you're doing** — its Forbidden list (§6) rejects diffs. |
+| `design/spec2/` | **LIVE — polish references and release bar.** `00_MASTER_TASTE.md` is historical taste context, not a mandatory visual system. Specs `01`-`08`: massline feel, flight/camera juice, first hour, world-alive, economy, UI identity, audio, release readiness. | Use the relevant slice for behavior and release intent. Do not inherit its palette, panel, glow, radius, or surface recipes without fresh visual justification. |
 | `design/spec3/` | **LIVE — expansion/ambition layer** (currently being finished; assume current state). Thread files `SPEC3-F1..F10` (economy, mining, flight, combat, ships, bases, world, graphics, asset pipeline, UX/meta). Each is a self-contained build plan. | The work your brief names if it says "implement SPEC3-XX." Read `_context/06_PLANNING_CONSTITUTION.md` first, then your thread file, then the GDD sections it cites. spec3 *extends* the GDD; it never contradicts its pillars. |
 | `design/specs/` | **LEGACY reference only.** Original 12 subsystem specs (00-11). | Nothing actively. Do not implement from these unless a current spec2/spec3 doc explicitly revives a section. |
 
 **The dispatch brief template** (used by repo-root `brief.md` and `design/spec3/CODEX_ORCHESTRATION_PROMPT.md`):
-> "Read `design/spec2/00_MASTER_TASTE.md` fully, [then `design/spec3/_context/06_PLANNING_CONSTITUTION.md`,] then implement `<SPEC-XX §N>` from `<spec file>` exactly. Acceptance = the spec's named check script green. Touch only files your spec names unless the spec is missing a required file; then stop and name the missing file/spec fix. `git add -N` every new file immediately. Never edit `test/*.expected.json`. No silent runtime deps: build-time/tooling deps are allowed when documented; runtime deps require lead sign-off with license, bundle/perf, determinism/save, and maintenance notes. Print a 10-line summary."
+> "Read the task's relevant spec and implement the behavior and player-facing result it requires. Acceptance = the named check plus screenshot/evidence review. Touch the files needed for a coherent result, including integration files when required. `git add -N` every new file immediately. Never edit `test/*.expected.json`. Runtime and build-time dependencies are allowed when they materially improve quality and have documented license, bundle/perf, determinism/save, and maintenance impact. Print a 10-line summary."
 
-If your brief points at spec3, **spec3 is current for that task** — do not re-litigate it against spec2. The taste constitution (spec2/00) still applies on top.
+If your brief points at spec3, **spec3 is current for that task** — do not re-litigate it against spec2. Historical taste material may inform discussion, but it does not override a stronger player-facing result.
 
 **The earlier contradiction is resolved:** old policy said "spec2 only"; live briefs dispatched spec3. Both are now sanctioned (§4). `README.md` line 87 still mentions only spec2 — that's stale; this file supersedes it.
 
@@ -211,7 +211,7 @@ Read the rationale comments at `registry.js:60-76` before reordering. Key invari
 | Touch sim / anything affecting determinism | `npm run check:sim:compare` (hashEqual:true is the pass bar while the 47a golden re-record is pending) + `node scripts/check-tether-gameplay.mjs` |
 | Touch UI / a11y / contrast | `npm run check:ui-a11y`, `npm run check:wcag-contrast`, `npm run check:ui:perf` |
 
-**Acceptance ritual for any spec2/spec3 task** (from `00_MASTER_TASTE.md` §7): the spec's named acceptance check green + the no-regression floor + a screenshot pair into `.devshots/` for anything visual. **Transcripts are not proof — checks are. Never accept an agent's claim without file evidence.**
+**Acceptance ritual for any spec2/spec3 task**: the named acceptance check, no-regression floor, and a screenshot pair into `.devshots/` for anything visual. Screenshots must be judged for hierarchy, composition, originality, material/detail quality, and coherence; a green static check is never visual acceptance. **Transcripts are not proof — checks and player-facing evidence are.**
 
 ---
 
