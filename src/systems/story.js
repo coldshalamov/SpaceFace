@@ -62,6 +62,10 @@ import {
 } from '../story/endings/index.js';
 
 const ASHFALL = 'sector_ashfall_reach';
+const VALE_PROFIT_ID = 'story_vale_profit_100k';
+const VALE_CONFLICT_ID = 'story_vale_conflict_flip';
+const VALE_CLAIM_ID = 'story_vale_claim_charter';
+const VALE_PROFIT_THRESHOLD = 100000;
 
 // Ambient comms cadence: one every 45–90s of flight sim time (the "constant low-grade migraine").
 const AMBIENT_MIN_S = 45;
@@ -90,7 +94,10 @@ export const story = {
     bus.on('game:started', () => this._onNewGame());
     bus.on('save:loaded', () => this._onLoaded());
     // When the first-hour tutorial finishes (spec2/03), release the cold-start voice it deferred.
-    bus.on('tutorial:finished', () => this._releaseDeferredColdStart());
+    bus.on('tutorial:finished', () => {
+      this._releaseDeferredColdStart();
+      this._recoverValeMilestones();
+    });
     // While the tutorial owns the one-voice channel, suppress its tutorial-line windows so ambient
     // comms can't stomp a beat's verb. The tutorial system announces each line via tutorial:say.
     bus.on('tutorial:say', () => { this._lastTutorialSayS = (this.state.simTime || 0); });
@@ -114,7 +121,12 @@ export const story = {
     // fixture inputs or a second mission system; the durable continuity record advances once per
     // distinct mission/route/region/scan and unlocks one authored replay hook.
     bus.on('mission:completed', (p) => this._onPostEndingSignal('mission:completed', p || {}));
-    bus.on('economy:tradeCompleted', (p) => this._onPostEndingSignal('economy:tradeCompleted', p || {}));
+    bus.on('economy:tradeCompleted', (p) => {
+      this._onValeProfitMilestone();
+      this._onPostEndingSignal('economy:tradeCompleted', p || {});
+    });
+    bus.on('conflict:flip', (p) => this._onValeConflictMilestone(p || {}));
+    bus.on('claim:claimed', (p) => this._onValeClaimMilestone(p || {}));
     bus.on('sector:enter', (p) => this._onPostEndingSignal('sector:enter', p || {}));
     bus.on('scan:completed', (p) => this._onPostEndingSignal('scan:completed', p || {}));
     // UI intent: player opened/took/dropped the ledger with the Kurtz figure.
@@ -719,6 +731,86 @@ export const story = {
     }, simTime);
   },
 
+  // =========================================================================================
+  // VALE MILESTONES — system acknowledgements, never a parallel quest or reward authority.
+  // =========================================================================================
+  _onValeProfitMilestone() {
+    const profit = Number(this.state && this.state.player && this.state.player.stats
+      && this.state.player.stats.lifetimeProfit) || 0;
+    if (profit < VALE_PROFIT_THRESHOLD) return false;
+    return this._fireValeMilestone(VALE_PROFIT_ID);
+  },
+
+  _onValeConflictMilestone(payload) {
+    const pairKey = payload && payload.pairKey;
+    const conflict = pairKey && this.state && this.state.conflicts && this.state.conflicts[pairKey];
+    const playerLean = Number(conflict && conflict.playerLean) || 0;
+    if (!pairKey || Math.abs(playerLean) <= 1e-9) return false;
+    this._ensureState();
+    const s = this.state.story;
+    // conflict:flip is the authority. Retain only its first qualifying identity so a save made
+    // during onboarding can recover the missed line after Continue without crediting an NPC-only flip.
+    if (!s.valeMilestones.conflictFlip) {
+      s.valeMilestones.conflictFlip = {
+        pairKey,
+        sectorId: payload.sectorId || null,
+        newOwner: payload.newOwner || null,
+        playerLean,
+      };
+    }
+    return this._fireValeMilestone(VALE_CONFLICT_ID);
+  },
+
+  _onValeClaimMilestone(payload) {
+    const body = payload && payload.body;
+    if (!body || (!body.id && !body.poiId && !body.name)) return false;
+    return this._fireValeMilestone(VALE_CLAIM_ID, { claimName: this._claimIdentity(body) });
+  },
+
+  _claimIdentity(body) {
+    const raw = body && (body.name || body.id || body.poiId);
+    const clean = String(raw || 'UNNAMED CLAIM').replace(/\s+/g, ' ').trim();
+    return clean.slice(0, 80) || 'UNNAMED CLAIM';
+  },
+
+  _fireValeMilestone(commsId, context = {}) {
+    this._ensureState();
+    const s = this.state.story;
+    if (s.seenComms[commsId]) return false;
+    // Do not make a tutorial verb lose the floor. Durable economy/claim state and the retained
+    // qualifying conflict receipt let tutorial:finished or save:loaded deliver the line later.
+    if (this._onboardingActive()) return false;
+    const def = COMMS.story.find((entry) => entry.id === commsId);
+    if (!def) return false;
+    let text = def.text;
+    if (commsId === VALE_CLAIM_ID) text = text.replace('{CLAIM}', context.claimName || 'UNNAMED CLAIM');
+    s.seenComms[commsId] = true;
+    this._fireComms({
+      id: commsId,
+      sender: def.sender,
+      text,
+      category: 'story',
+      ttl: def.persist ? 0 : 9,
+      persist: !!def.persist,
+      note: def.note,
+    });
+    return true;
+  },
+
+  _recoverValeMilestones() {
+    if (this._onboardingActive()) return 0;
+    this._ensureState();
+    let fired = 0;
+    if (this._onValeProfitMilestone()) fired++;
+    const conflictFact = this.state.story.valeMilestones.conflictFlip;
+    if (conflictFact && this._fireValeMilestone(VALE_CONFLICT_ID)) fired++;
+    const firstClaim = this.state.claims && Array.isArray(this.state.claims.bodies)
+      ? this.state.claims.bodies[0]
+      : null;
+    if (firstClaim && this._fireValeMilestone(VALE_CLAIM_ID, { claimName: this._claimIdentity(firstClaim) })) fired++;
+    return fired;
+  },
+
   _onPostEndingSignal(signal, payload) {
     const s = this.state && this.state.story;
     if (!s || !s.postEnding || !s.endgameResolved) return false;
@@ -989,6 +1081,7 @@ export const story = {
   _onLoaded() {
     this._ensureState();
     if (!(this.state.story.ambientTimerS > 0)) this._rescheduleAmbient();
+    this._recoverValeMilestones();
     this._publishPostEndingContinuity('loaded');
   },
 
@@ -1011,6 +1104,7 @@ export const story = {
       s.endgamePending = null;
       s.postEnding = null;
       s.persistentCargo = [];
+      s.valeMilestones = { conflictFlip: null };
     } else {
       if (s.phase == null) s.phase = 1;
       if (!s.seenComms) s.seenComms = {};
@@ -1030,6 +1124,11 @@ export const story = {
         s.postEnding = createPostEndingContinuity(choice, state.simTime || 0, state.meta && state.meta.seed);
       }
       if (!Array.isArray(s.persistentCargo)) s.persistentCargo = [];
+      if (!s.valeMilestones || typeof s.valeMilestones !== 'object' || Array.isArray(s.valeMilestones)) {
+        s.valeMilestones = { conflictFlip: null };
+      } else if (s.valeMilestones.conflictFlip === undefined) {
+        s.valeMilestones.conflictFlip = null;
+      }
     }
   },
 
@@ -1062,6 +1161,10 @@ export const story = {
       if (carried.endgamePending) s.endgamePending = carried.endgamePending;
       if (carried.postEnding) s.postEnding = normalizePostEndingContinuity(carried.postEnding);
       if (Array.isArray(carried.persistentCargo)) s.persistentCargo = carried.persistentCargo.slice();
+      if (carried.valeMilestones && typeof carried.valeMilestones === 'object' && !Array.isArray(carried.valeMilestones)) {
+        const flip = carried.valeMilestones.conflictFlip;
+        s.valeMilestones = { conflictFlip: flip && typeof flip === 'object' ? Object.assign({}, flip) : null };
+      }
       if (carried.flags && typeof carried.flags === 'object') {
         s.flags = Object.assign({}, s.flags || {}, carried.flags);
       }

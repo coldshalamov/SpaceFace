@@ -178,10 +178,25 @@ export const COMMS = {
       beat: 7, once: true },
   ],
 
-  // The single direct Vale line — fires once at endgame jump-charge, regardless of choice (B7).
+  // Vale milestone filings — authored system acknowledgements keyed to what the player actually did.
+  // They remain single-line text so the comms backlog, captions, and one-voice floor carry identical
+  // readable copy without a modal or a second narrative surface.
   story: [
+    { id: 'story_vale_profit_100k', sender: 'D. VALE / ADMIN / PRIORITY',
+      text: 'LIFETIME MARGIN: 100,000 CR. REF 44-C NOW APPLIES. KEEP THE LEDGER CLEAN.',
+      note: 'First 100,000 lifetime profit. Vale notices the player as an economic actor, not on a scripted chapter boundary.',
+      once: true, persist: true },
+    { id: 'story_vale_conflict_flip', sender: 'D. VALE / ADMIN / PRIORITY',
+      text: 'SECTOR REVISION FILED. YOUR WEIGHT IS IN THE MARGIN. REF 44-C.',
+      note: 'First conflict flip with non-zero player influence. An NPC-only territorial change does not address the player.',
+      once: true, persist: true },
+    { id: 'story_vale_claim_charter', sender: 'D. VALE / ADMIN / PRIORITY',
+      text: 'CHARTER RECORDED: {CLAIM}. OWNERSHIP ENTERS THE LEDGER. REF 44-C.',
+      note: 'First player claim charter. The live body name replaces {CLAIM} so the filing identifies what the player owns.',
+      once: true, persist: true },
+    // Final direct line — fires once at endgame jump-charge, regardless of choice (B7).
     { id: 'story_vale_goodwork', sender: '[NO SENDER · NO CHANNEL ID]', text: 'Good work. Keep it clean.',
-      note: "Vale's only direct line. Fires the moment the jump drive begins charging from Ashfall Reach.",
+      note: "Vale's final unfiled line. Fires the moment the jump drive begins charging from Ashfall Reach.",
       beat: 7, once: true, persist: true },
     // B8 — Wren artifact thread opener (salvage:communicatorFound trigger in story.js).
     { id: 'story_b8_helix_audit', sender: 'HELIX DIRECTORATE', text: 'VESSEL VHL-4471-T — VARIANCE FILE OPEN. COORDINATES ON ATTACHED MANIFEST DO NOT RESOLVE. NO ACTION REQUIRED.',
