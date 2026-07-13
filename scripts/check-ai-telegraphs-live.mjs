@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { ContactKind } from '../src/ai/contracts.js';
+import { ContactKind, ObjectiveKind } from '../src/ai/contracts.js';
 import { CombatDoctrineId, DOCTRINE_TELEGRAPH_TICKS } from '../src/ai/combatDoctrine.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../src/ai/doctrine.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
@@ -35,9 +35,13 @@ const lawfulClean = runLiveCase({
   roe: RulesOfEngagement.LAWFUL_WANTED_ONLY,
   wanted: false,
   combatDoctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+  ticks: 90 * 60,
 });
 assert.equal(lawfulClean.fireIntent, false, 'lawful patrol must not fire on a clean player');
+assert.equal(lawfulClean.firstFireTick, null, 'lawful patrol never fires during a 90-second clean idle start');
 assert.equal(lawfulClean.actionStarts, 0, 'lawful patrol should not even start an attack action against a clean player');
+assert.equal(lawfulClean.hostileAcquisitions, 0, 'lawful patrol never acquires the clean player as a hostile focus over 90 seconds');
+assert.equal(lawfulClean.firstHostileAcquisitionTick, null);
 assert.deepEqual(lawfulClean.telegraphs, [], 'lawful patrol doctrine emits no attack warning without a legal hostile target');
 assert(lawfulClean.maneuverKinds.includes('formation'), 'lawful patrol doctrine preserves formation without a legal hostile target');
 
@@ -47,7 +51,7 @@ const lawfulWanted = runLiveCase({
   roe: RulesOfEngagement.LAWFUL_WANTED_ONLY,
   wanted: true,
   combatDoctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
-  ticks: 48,
+  ticks: 78,
   targetX: 190,
 });
 assert.equal(lawfulWanted.fireIntent, true, 'lawful patrol may fire once WANTED heat makes the target legal');
@@ -60,7 +64,7 @@ const interceptor = runLiveCase({
   roe: RulesOfEngagement.WEAPONS_FREE,
   wanted: false,
   combatDoctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
-  ticks: 48,
+  ticks: 78,
   targetX: 190,
 });
 assert.equal(interceptor.telegraphs.length, 1, 'interceptor emits one actual live telegraph event');
@@ -189,10 +193,19 @@ function runLiveCase({ name, activityKind, roe, wanted, combatDoctrineId = null,
   });
   tacticalAI.init({ state, bus, helpers: {} });
   let firstFireTick = null;
+  let firstHostileAcquisitionTick = null;
+  let hostileAcquisitions = 0;
   for (let tick = 0; tick < ticks; tick++) {
     state.tick = tick;
+    state.simTime = tick / 60;
     tacticalAI.update(1 / 60, state);
     if (state.entities.get(2).data.intent?.fire && firstFireTick == null) firstFireTick = tick;
+    const decision = tacticalAI.stack.lastResult?.decisions?.find((entry) => entry.entityId === 2);
+    const objective = decision?.directive?.objective;
+    if (objective?.kind === ObjectiveKind.FOCUS && objective.targetId === state.playerId) {
+      hostileAcquisitions++;
+      if (firstHostileAcquisitionTick == null) firstHostileAcquisitionTick = tick;
+    }
   }
   const npc = state.entities.get(2);
   return {
@@ -202,6 +215,8 @@ function runLiveCase({ name, activityKind, roe, wanted, combatDoctrineId = null,
     starts: actionStarts,
     telegraphs,
     firstFireTick,
+    hostileAcquisitions,
+    firstHostileAcquisitionTick,
     maneuverKinds: [...new Set(maneuverRequests.map((request) => request.kind))].sort(),
   };
 }
@@ -250,7 +265,7 @@ function makeState({ activityKind, roe, wanted, combatDoctrineId, targetX, tethe
         engagementTrigger: roe === RulesOfEngagement.LAWFUL_WANTED_ONLY ? 'wanted_status' : 'authorized_hostile_spawn',
         zoneId: 'zone_fixture_hostile',
         approachTelegraph: combatDoctrineId === CombatDoctrineId.RANGED_DISENGAGER ? 'weapon_charge' : 'engine_flare',
-        noFireResponseWindowS: 0.5,
+        noFireResponseWindowS: 1,
       },
       weapons: [{ defId: 'fixture_laser', projSpeed: 420 }],
       combat: {},

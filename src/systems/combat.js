@@ -20,6 +20,7 @@ import {
   DOCTRINE_TELEGRAPH_TICKS,
   normalizeCombatDoctrineId,
 } from '../ai/combatDoctrine.js';
+import { MIN_AI_RESPONSE_WINDOW_S } from '../ai/engagementAuthority.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
@@ -145,10 +146,10 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
     zoneId: opts.zoneId || 'sector_hostile_zone',
     approachTelegraph: opts.approachTelegraph || doctrineTelegraphFor(def.combatDoctrineId),
     noFireResponseWindowS: Number.isFinite(opts.noFireResponseWindowS)
-      ? Math.max(0.5, opts.noFireResponseWindowS)
-      : DOCTRINE_TELEGRAPH_TICKS / 60,
+      ? Math.max(MIN_AI_RESPONSE_WINDOW_S, opts.noFireResponseWindowS)
+      : Math.max(MIN_AI_RESPONSE_WINDOW_S, DOCTRINE_TELEGRAPH_TICKS / 60),
   };
-  const doctrine = defaultDoctrineFor(def, pos);
+  const doctrine = defaultDoctrineFor(def, pos, opts.startedTick);
   spec.data.ai.activity = doctrine.activity;
   spec.data.ai.roe = doctrine.roe;
   spec.data.bountyCr = def.bountyCr || 0;
@@ -185,7 +186,7 @@ function tacticalCapabilitiesFor(def) {
   return [...caps].sort();
 }
 
-function defaultDoctrineFor(def, pos) {
+function defaultDoctrineFor(def, pos, startedTick = 0) {
   const profile = def.aiDoctrine || {};
   const activity = normalizeActivity({
     kind: profile.defaultActivity || (def.factionLawful ? 'patrol_route' : 'attack_run'),
@@ -193,7 +194,7 @@ function defaultDoctrineFor(def, pos) {
     anchor: pos || { x: 0, z: 0 },
     leashRadius: profile.leashRadius || 2600,
     preferredRange: profile.preferredRange || 0,
-    startedTick: 0,
+    startedTick: Number.isFinite(startedTick) ? Math.max(0, Math.floor(startedTick)) : 0,
   });
   return {
     activity,

@@ -243,7 +243,10 @@ export const aceMemory = {
 
   _returnShipSpec(ace, rec, requestId, ship, index) {
     const pos = returnPosition(this.state, ace, rec, index);
-    const spec = makeEnemySpawnSpec(ship.archetype, ship.level, pos, { factionId: ace.factionId || 'faction_reach' });
+    const spec = makeEnemySpawnSpec(ship.archetype, ship.level, pos, {
+      factionId: ace.factionId || 'faction_reach',
+      startedTick: this.state.tick,
+    });
     spec.data = spec.data || {};
     spec.data.ai = spec.data.ai || {};
     const ai = spec.data.ai;

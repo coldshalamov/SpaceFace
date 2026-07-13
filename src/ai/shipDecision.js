@@ -16,6 +16,7 @@ const DEFAULTS = Object.freeze({
   emergencyHullFraction: 0.16,
   heatLockoutFraction: 0.92,
   lowEnergyFraction: 0.14,
+  maxIdenticalBlockedRetries: 3,
 });
 const EMPTY_REASONS = Object.freeze([]);
 
@@ -116,7 +117,18 @@ export class BehaviorExecutor {
   update({ tick, entityId, selected, directive, perception }) {
     let state = this.byEntity.get(entityId);
     if (!state) {
-      state = { actionId: null, targetId: null, startedTick: -Infinity, utility: 0, status: 'idle', handle: null, maneuver: null, lastReason: 'init' };
+      state = {
+        actionId: null,
+        targetId: null,
+        startedTick: -Infinity,
+        utility: 0,
+        status: 'idle',
+        handle: null,
+        maneuver: null,
+        lastReason: 'init',
+        blockedContext: null,
+        blockedRetries: 0,
+      };
       this.byEntity.set(entityId, state);
     }
 
@@ -163,7 +175,20 @@ export class BehaviorExecutor {
       }
     }
 
-    if (!state.actionId && selected.actionId != null) {
+    const blockedContext = selected.actionId == null ? null : blockedContextFor(selected, directive);
+    if (blockedContext !== state.blockedContext) {
+      state.blockedContext = blockedContext;
+      state.blockedRetries = 0;
+    }
+
+    if (!state.actionId && selected.actionId != null && state.blockedRetries >= this.config.maxIdenticalBlockedRetries) {
+      state.targetId = selected.targetId;
+      state.utility = selected.utility;
+      state.status = 'blocked';
+      state.maneuver = selected.maneuver;
+      decision = 'hold';
+      reason = 'blocked_retry_limit';
+    } else if (!state.actionId && selected.actionId != null) {
       const request = this.freeze({
         source: 'ai',
         tick,
@@ -186,6 +211,7 @@ export class BehaviorExecutor {
           state.maneuver = selected.maneuver;
           decision = 'blocked';
           reason = started.reason;
+          state.blockedRetries++;
         } else {
           state.actionId = selected.actionId;
           state.targetId = selected.targetId;
@@ -196,6 +222,8 @@ export class BehaviorExecutor {
           state.maneuver = selected.maneuver;
           decision = 'start';
           reason = 'action_port_started';
+          state.blockedContext = null;
+          state.blockedRetries = 0;
         }
       } else {
         state.targetId = selected.targetId;
@@ -204,6 +232,7 @@ export class BehaviorExecutor {
         state.maneuver = selected.maneuver;
         decision = 'blocked';
         reason = gate.reason;
+        state.blockedRetries++;
       }
     } else if (!state.actionId && selected.actionId == null) {
       state.targetId = null;
@@ -212,6 +241,8 @@ export class BehaviorExecutor {
       state.maneuver = selected.maneuver;
       decision = 'hold';
       reason = 'no_action_selected';
+      state.blockedContext = null;
+      state.blockedRetries = 0;
     } else if (state.actionId) {
       state.status = status === 'idle' ? 'running' : status;
     }
@@ -513,6 +544,17 @@ function normalizeGate(value) {
   if (value === true) return { ok: true, reason: 'ok' };
   if (value === false || value == null) return { ok: false, reason: 'action_port_rejected' };
   return { ok: !!value.ok, reason: String(value.reason || (value.ok ? 'ok' : 'action_port_rejected')) };
+}
+
+function blockedContextFor(selected, directive) {
+  const objective = directive && directive.objective || {};
+  return [
+    selected && selected.actionId,
+    selected && selected.targetId,
+    directive && directive.tactic,
+    objective.kind,
+    objective.reason,
+  ].map((value) => value == null ? '' : String(value)).join('|');
 }
 
 function freezeState(state) {

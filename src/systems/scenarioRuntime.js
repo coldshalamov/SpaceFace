@@ -237,7 +237,7 @@ function authorizeLiveColdStartActor(state, entity, safe) {
   ai.engagementTrigger = safe && safe.provoked ? 'player_attack' : 'explicit_refusal';
   ai.zoneId = 'zone_47a_wreck_field';
   ai.approachTelegraph = isTug ? 'attach_spool' : 'weapon_charge';
-  ai.noFireResponseWindowS = 0.5;
+  ai.noFireResponseWindowS = 1;
   ai.activity = normalizeActivity({
     kind: ActivityKind.ATTACK_RUN,
     reason: `47a:${ai.engagementTrigger}:${isTug ? 'tug' : 'screen'}`,

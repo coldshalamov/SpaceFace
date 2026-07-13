@@ -154,7 +154,7 @@ export const wingmen = {
         engagementTrigger: 'player_order',
         zoneId: this.state.world && this.state.world.currentSectorId || 'player_wing',
         approachTelegraph: 'wing_command_ack',
-        noFireResponseWindowS: 0.5,
+        noFireResponseWindowS: 1,
         combatDoctrineId: 'interceptor_flyby',
       },
     });

@@ -2420,7 +2420,10 @@ export const missions = {
           ? missionStoryTargetSpawnPos(m, storyTarget, rng)
           : missionHostileSpawnPos(this.state, { x: px, z: pz }, rng);
         if (!pos) continue;
-        const spec = makeEnemySpawnSpec(typeId, level, pos, { factionId: storyTarget && storyTarget.factionId });
+        const spec = makeEnemySpawnSpec(typeId, level, pos, {
+          factionId: storyTarget && storyTarget.factionId,
+          startedTick: this.state.tick,
+        });
         spec.data = spec.data || {};
         spec.data.missionTag = m.id; // attribution helper (kill resolver matches by entity id below)
         if (storyTarget) {
@@ -2452,7 +2455,7 @@ export const missions = {
       // survive (mission fails if it dies — _onEntityDestroyed) and arrive (gates completion).
       const ang = rng() * Math.PI * 2, r = 60 + rng() * 40;
       const pos = { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
-      const spec = makeEnemySpawnSpec('corsair_raider', Math.round((lvLo + lvHi) / 2), pos);
+      const spec = makeEnemySpawnSpec('corsair_raider', Math.round((lvLo + lvHi) / 2), pos, { startedTick: this.state.tick });
       spec.team = 0; spec.factionId = m.factionId; // player team (won't be auto-attacked by allies)
       spec.data = spec.data || {};
       spec.data.missionTag = m.id; spec.data.escortee = true;

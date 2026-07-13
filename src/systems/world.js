@@ -788,7 +788,10 @@ export const world = {
     if (rec.enemyTypeId && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss)) {
       const pos = { x: rec.pos.x, z: rec.pos.z };
       const level = Number.isFinite(rec.level) ? rec.level : 1;
-      const spec = makeEnemySpawnSpec(rec.enemyTypeId, level, pos, { factionId: rec.factionId || undefined });
+      const spec = makeEnemySpawnSpec(rec.enemyTypeId, level, pos, {
+        factionId: rec.factionId || undefined,
+        startedTick: state.tick,
+      });
       if (rec.ai && spec.data) {
         spec.data.ai = Object.assign({}, spec.data.ai || {}, rec.ai);
       }
@@ -1442,7 +1445,10 @@ export const world = {
           if (!this._ambientSpawnIsSafe(pos, sector, active)) continue;
           if (player && player.pos && dist2(pos, player.pos) < ZONE_HOSTILE_PLAYER_CLEARANCE * ZONE_HOSTILE_PLAYER_CLEARANCE) continue;
         }
-        const spec = makeEnemySpawnSpec(intent.archetypeId, clamp(intent.level, lvLo, lvHi + 2), pos, { factionId: intent.factionId });
+        const spec = makeEnemySpawnSpec(intent.archetypeId, clamp(intent.level, lvLo, lvHi + 2), pos, {
+          factionId: intent.factionId,
+          startedTick: this.state.tick,
+        });
         spec.data = spec.data || {};
         spec.data.ai = spec.data.ai || {};
         spec.data.ai.squadId = intent.squadId;   // one squad per zone → coherent formation on the zone
@@ -1463,7 +1469,7 @@ export const world = {
         const level = Math.round(lvLo + (lvHi - lvLo) * (rng() * 0.6 + 0.4 * (1 - sec.security)));
         const pos = this._ambientEnemySpawnPos(sector, active, rng, wr);
         if (!pos) continue;
-        const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos);
+        const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos, { startedTick: this.state.tick });
         tagAiSpawnContext(spec, sector, sec, 'ambient');
         const ent = this.helpers.spawnEntity(spec);
         this._stampHomeSector(ent, sector.id);
@@ -1491,7 +1497,7 @@ export const world = {
         const pos = this._directHostileSpawnPos(sector, active, rng, { x: px, z: pz }, HUNTER_SPAWN_MIN_RADIUS, HUNTER_SPAWN_MAX_RADIUS);
         if (!pos) continue;
         const level = Math.round(lvHi + (lvHi - lvLo) * 0.5 * rng()); // tough: top of band or above
-        const spec = makeEnemySpawnSpec('patrol_lawman', clamp(level, lvLo, lvHi + 2), pos);
+        const spec = makeEnemySpawnSpec('patrol_lawman', clamp(level, lvLo, lvHi + 2), pos, { startedTick: this.state.tick });
         tagAiSpawnContext(spec, sector, sec, 'bounty_hunter');
         const ent = this.helpers.spawnEntity(spec);
         this._stampHomeSector(ent, sector.id);
@@ -1542,7 +1548,7 @@ export const world = {
     const pos = this._toGlobal(local, sector.id);
     const [lvLo, lvHi] = sector.enemyLevel || [10, 15];
     const level = clamp(lvHi, lvLo, 15);
-    const spec = makeEnemySpawnSpec('dreadnought_boss', level, pos);
+    const spec = makeEnemySpawnSpec('dreadnought_boss', level, pos, { startedTick: this.state.tick });
     spec.data = spec.data || {};
     spec.data.isBoss = true;          // flag so the kill handler can find this entity cheaply
     spec.data.bossPoiId = bossPoi.id; // links back to the discovery record to mark defeated
@@ -1878,7 +1884,7 @@ export const world = {
       const level = Math.round(lvLo + (lvHi - lvLo) * 0.6);
       const pos = this._directHostileSpawnPos(sector, active, rng, { x: px, z: pz }, AMBUSH_SPAWN_MIN_RADIUS, AMBUSH_SPAWN_MAX_RADIUS);
       if (!pos) continue;
-      const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos);
+      const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos, { startedTick: this.state.tick });
       tagAiSpawnContext(spec, sector, sector, origin ? 'spawn_request' : 'interdiction');
       const ent = this.helpers.spawnEntity(spec);
       this._stampHomeSector(ent, sector.id);

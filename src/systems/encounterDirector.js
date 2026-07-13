@@ -501,7 +501,10 @@ export const encounterDirector = {
     const spawned = [];
     for (let i = 0; i < ships.length && spawned.length < grant; i++) {
       const sh = ships[i];
-      const spec = makeEnemySpawnSpec(sh.archetype, sh.level, sh.pos, { factionId: sh.factionId });
+      const spec = makeEnemySpawnSpec(sh.archetype, sh.level, sh.pos, {
+        factionId: sh.factionId,
+        startedTick: this.state.tick,
+      });
       if (sh.team != null) spec.team = sh.team;
       if (sh.hullFrac != null) spec.hull = Math.max(1, Math.round(spec.hullMax * sh.hullFrac));
       spec.data = spec.data || {};

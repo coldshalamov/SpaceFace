@@ -23,7 +23,7 @@ function makeState(overrides = {}) {
         engagementTrigger: 'explicit_refusal',
         zoneId: 'zone_ceres_ambush',
         approachTelegraph: 'engine_flare',
-        noFireResponseWindowS: 0.5,
+        noFireResponseWindowS: 1,
         combatDoctrineId: 'interceptor_flyby',
         activity: normalizeActivity({
           kind: ActivityKind.ATTACK_RUN,
@@ -44,7 +44,7 @@ function makeState(overrides = {}) {
   };
   const entities = new Map([[1, player], [2, enemy], [3, station]]);
   return {
-    tick: 130,
+    tick: 160,
     playerId: 1,
     player: { heat: 0 },
     world: { currentSectorId: 'sector_helios_prime' },

@@ -900,7 +900,7 @@ export const onboarding = {
       x: player.pos.x + Math.cos(heading) * range,
       z: player.pos.z + Math.sin(heading) * range,
     };
-    const spec = makeEnemySpawnSpec('reaver_pirate', 1, pos);
+    const spec = makeEnemySpawnSpec('reaver_pirate', 1, pos, { startedTick: st.tick });
     if (spec) {
       spec.name = mode === 'burst' ? 'SCN Gunnery Buoy' : 'SCN Flight Trainer';
       spec.type = 'drone';

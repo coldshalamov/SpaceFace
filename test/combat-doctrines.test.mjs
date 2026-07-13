@@ -544,13 +544,13 @@ for (const ship of ambush.ships) {
     engagementTrigger: 'authorized_hostile_spawn',
     zoneId: 'zone_real_port_fixture',
     approachTelegraph: 'engine_flare',
-    noFireResponseWindowS: 0.5,
+    noFireResponseWindowS: 1,
     combatDoctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
     activity: normalizeActivity({ kind: ActivityKind.ATTACK_RUN, reason: 'real_port_fixture', anchor: actor.pos, leashRadius: 1200, startedTick: 0 }),
     roe: RulesOfEngagement.WEAPONS_FREE,
   };
   const state = {
-    tick: 30, playerId: target.id, player: { heat: 0 },
+    tick: 60, playerId: target.id, player: { heat: 0 },
     world: { currentSectorId: 'sector_ceres_belt' },
     entities: new Map([[actor.id, actor], [target.id, target]]),
     entityList: [actor, target],
@@ -561,7 +561,7 @@ for (const ship of ambush.ships) {
     'real cancellation fixture uses an action with no authored cancel window');
   const port = createSG03ActionPort(ctx, { controllerId: 'doctrine_cancel_test' });
   const handle = port.start(actor.id, 'action_burst', {
-    tick: 30, targetId: target.id,
+    tick: 60, targetId: target.id,
     target: { id: target.id, kind: ContactKind.SHIP, pos: target.pos },
     squadId: 'real_port_fixture', objective: ObjectiveKind.FOCUS,
     objectiveReason: 'combat_doctrine:interceptor_flyby:strike',
@@ -570,7 +570,7 @@ for (const ship of ambush.ships) {
   kernel.actions.advance();
   assert.equal(state.combat.actions.activeByActor[String(actor.id)]?.actionId, 'action_burst');
   const interrupted = port.interrupt(actor.id, handle, {
-    tick: 30, reason: 'doctrine_target_invalid', source: 'ai', nextActionId: null, nextTargetId: null,
+    tick: 60, reason: 'doctrine_target_invalid', source: 'ai', nextActionId: null, nextTargetId: null,
   });
   assert.equal(interrupted, true, 'real SG-03 port directly cancels an invalid-target action into hold');
   assert.equal(state.combat.actions.activeByActor[String(actor.id)], undefined,

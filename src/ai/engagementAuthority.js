@@ -12,9 +12,12 @@ import {
 } from '../data/sectorCoordinates.js';
 import { isPlayerWanted } from '../systems/heat.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { stableId } from './contracts.js';
 
 const TICKS_PER_SECOND = 60;
-const MIN_RESPONSE_WINDOW_S = 0.5;
+export const MIN_AI_RESPONSE_WINDOW_S = 1;
+const FIRST_SESSION_DURATION_TICKS = 10 * 60 * TICKS_PER_SECOND;
+const MAX_FIRST_SESSION_ATTACKERS = 2;
 const LAWFUL_STATION_PROTECTION_MIN = 600;
 const LAWFUL_STATION_FACTIONS = new Set([
   'faction_scn',
@@ -28,6 +31,7 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   tether_control_raider: new Set(),
 });
 const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
+const FIRST_SESSION_OWNERSHIP = new WeakMap();
 
 /**
  * The final fail-closed gate shared by ordinary weapon intent and SG-03 damage actions.
@@ -67,7 +71,7 @@ export function authorizeAIEngagement({
   if (!liveHostile) return denied('target_not_hostile');
 
   const windowS = Number(ai.noFireResponseWindowS);
-  if (!Number.isFinite(windowS) || windowS < MIN_RESPONSE_WINDOW_S) return denied('noFireResponseWindowS');
+  if (!Number.isFinite(windowS) || windowS < MIN_AI_RESPONSE_WINDOW_S) return denied('noFireResponseWindowS');
   const nowTick = Number.isInteger(tick) ? tick : 0;
   const armedTick = activity.startedTick + Math.ceil(windowS * TICKS_PER_SECOND);
   if (nowTick < armedTick) return denied('response_window');
@@ -87,6 +91,10 @@ export function authorizeAIEngagement({
         && (ai.engagementTrigger === 'wanted_status' || ai.engagementTrigger === 'player_attack'))
     );
     if (!lawfulEnforcement) return denied('station_protection');
+  }
+
+  if (inFirstSession(state, nowTick) && !claimFirstSessionAttackerOwnership(state, self, target)) {
+    return denied('first_session_attacker_cap');
   }
 
   return allowed();
@@ -117,6 +125,50 @@ export function isHostileForAI(state, self, other) {
   if (selfAi.lawful && otherIsPlayer) return isPlayerWanted(state);
   if (otherAi.lawful && selfIsPlayer) return isPlayerWanted(state);
   return self.team !== other.team;
+}
+
+/**
+ * Reconcile deterministic two-slot attacker ownership from the complete tactical decision batch.
+ * Slots describe commitment to a hostile target, not a transient weapon bit: ingress, cooldown,
+ * reform, and non-burst offensive actions all retain ownership until the actor or target becomes
+ * ineligible. Existing owners are never pre-empted; stable-id overflow promotes on release.
+ */
+export function refreshFirstSessionAttackerOwnership(state, decisions = []) {
+  if (!state || typeof state !== 'object') return Object.freeze([]);
+  const tick = Number.isInteger(state.tick) ? state.tick : 0;
+  if (!inFirstSession(state, tick)) {
+    FIRST_SESSION_OWNERSHIP.delete(state);
+    return Object.freeze([]);
+  }
+  const runtime = ownershipRuntime(state);
+  const batch = Array.isArray(decisions) ? decisions : [];
+  const seenActors = new Set();
+  for (const decision of batch) {
+    if (!decision || decision.entityId == null) continue;
+    seenActors.add(decision.entityId);
+    const actor = entityById(state, decision.entityId);
+    const targetId = committedTargetId(decision);
+    const target = targetId == null ? null : entityById(state, targetId);
+    if (ownershipEligible(state, actor, target)) runtime.candidateTargetByActor.set(actor.id, target.id);
+    else runtime.candidateTargetByActor.delete(decision.entityId);
+  }
+  for (const actorId of runtime.candidateTargetByActor.keys()) {
+    if (!seenActors.has(actorId)) runtime.candidateTargetByActor.delete(actorId);
+  }
+  reconcileOwnership(state, runtime);
+  return ownershipSnapshot(runtime);
+}
+
+export function inspectFirstSessionAttackerOwnership(state, targetId = null) {
+  const runtime = state && FIRST_SESSION_OWNERSHIP.get(state);
+  if (!runtime) return targetId == null ? Object.freeze([]) : null;
+  reconcileOwnership(state, runtime);
+  if (targetId != null) return ownershipTargetSnapshot(targetId, runtime.byTarget.get(targetId));
+  return ownershipSnapshot(runtime);
+}
+
+export function resetFirstSessionAttackerOwnership(state) {
+  if (state && typeof state === 'object') FIRST_SESSION_OWNERSHIP.delete(state);
 }
 
 /** Damage-bearing actions are offensive regardless of their display/action id. */
@@ -186,6 +238,115 @@ function stationEntities(state) {
     return [...state.entities.values()].filter((entity) => entity && entity.type === 'station');
   }
   return [];
+}
+
+function inFirstSession(state, tick) {
+  if (Number.isFinite(state && state.simTime)) return state.simTime < 10 * 60;
+  return tick < FIRST_SESSION_DURATION_TICKS;
+}
+
+function ownershipRuntime(state) {
+  let runtime = FIRST_SESSION_OWNERSHIP.get(state);
+  if (!runtime) {
+    runtime = { candidateTargetByActor: new Map(), byTarget: new Map() };
+    FIRST_SESSION_OWNERSHIP.set(state, runtime);
+  }
+  return runtime;
+}
+
+function claimFirstSessionAttackerOwnership(state, actor, target) {
+  const runtime = ownershipRuntime(state);
+  if (!ownershipEligible(state, actor, target)) {
+    if (actor && actor.id != null) runtime.candidateTargetByActor.delete(actor.id);
+    reconcileOwnership(state, runtime);
+    return false;
+  }
+  runtime.candidateTargetByActor.set(actor.id, target.id);
+  reconcileOwnership(state, runtime);
+  const targetState = runtime.byTarget.get(target.id);
+  return !!targetState && targetState.owners.includes(actor.id);
+}
+
+function reconcileOwnership(state, runtime) {
+  for (const [actorId, targetId] of runtime.candidateTargetByActor) {
+    const actor = entityById(state, actorId);
+    const target = entityById(state, targetId);
+    if (!ownershipEligible(state, actor, target)) runtime.candidateTargetByActor.delete(actorId);
+  }
+
+  const candidatesByTarget = new Map();
+  for (const [actorId, targetId] of runtime.candidateTargetByActor) {
+    let ids = candidatesByTarget.get(targetId);
+    if (!ids) {
+      ids = [];
+      candidatesByTarget.set(targetId, ids);
+    }
+    ids.push(actorId);
+  }
+  for (const ids of candidatesByTarget.values()) ids.sort(compareStableIds);
+
+  for (const targetId of [...runtime.byTarget.keys()]) {
+    if (!candidatesByTarget.has(targetId)) runtime.byTarget.delete(targetId);
+  }
+  for (const [targetId, candidates] of candidatesByTarget) {
+    const previous = runtime.byTarget.get(targetId) || { owners: [], waiting: [] };
+    const candidateSet = new Set(candidates);
+    const owners = previous.owners.filter((id) => candidateSet.has(id));
+    const waiting = candidates.filter((id) => !owners.includes(id));
+    while (owners.length < MAX_FIRST_SESSION_ATTACKERS && waiting.length) owners.push(waiting.shift());
+    runtime.byTarget.set(targetId, { owners, waiting });
+  }
+}
+
+function ownershipEligible(state, actor, target) {
+  if (!actor || !target || actor.id == null || target.id == null || actor.id === target.id) return false;
+  if (actor.alive === false || target.alive === false || actor.type !== 'ship') return false;
+  const ai = actor.data && actor.data.ai;
+  if (!ai || ai.passive || ai.motiveSatisfied === true || ai.pirateDisengaged === true) return false;
+  if (!nonEmpty(ai.motive) || !nonEmpty(ai.engagementTrigger) || !nonEmpty(ai.zoneId) || !nonEmpty(ai.approachTelegraph)) return false;
+  if (!normalizeCombatDoctrineId(ai.combatDoctrineId)) return false;
+  if (!Number.isFinite(Number(ai.noFireResponseWindowS)) || Number(ai.noFireResponseWindowS) < MIN_AI_RESPONSE_WINDOW_S) return false;
+  if (normalizeRoe(ai.roe) === RulesOfEngagement.HOLD_FIRE) return false;
+  if (!activityAllowsOffense(effectiveActivityForAI(ai))) return false;
+  return isHostileForAI(state, actor, target);
+}
+
+function committedTargetId(decision) {
+  const doctrineTarget = decision && decision.combatDoctrine && decision.combatDoctrine.targetId;
+  if (doctrineTarget != null) return doctrineTarget;
+  const objective = decision && decision.directive && decision.directive.objective;
+  if (objective && objective.targetId != null) return objective.targetId;
+  const actionTarget = decision && decision.action && decision.action.targetId;
+  return actionTarget == null ? null : actionTarget;
+}
+
+function entityById(state, id) {
+  if (id == null || !state) return null;
+  if (state.entities && typeof state.entities.get === 'function') return state.entities.get(id) || null;
+  return Array.isArray(state.entityList) ? state.entityList.find((entity) => entity && entity.id === id) || null : null;
+}
+
+function ownershipSnapshot(runtime) {
+  const rows = [...runtime.byTarget.entries()]
+    .sort((a, b) => compareStableIds(a[0], b[0]))
+    .map(([targetId, value]) => ownershipTargetSnapshot(targetId, value));
+  return Object.freeze(rows);
+}
+
+function ownershipTargetSnapshot(targetId, value) {
+  if (!value) return null;
+  return Object.freeze({
+    targetId,
+    owners: Object.freeze(value.owners.slice()),
+    waiting: Object.freeze(value.waiting.slice()),
+  });
+}
+
+function compareStableIds(a, b) {
+  const an = Number(a);
+  const bn = Number(b);
+  if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn;
+  return stableId(a).localeCompare(stableId(b));
 }
 
 function nonEmpty(value) {

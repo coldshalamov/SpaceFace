@@ -163,7 +163,7 @@ export const aiEncounter = {
         keep.push(pending);
         continue;
       }
-      const spec = makeEnemySpawnSpec(pending.typeId, pending.level, pending.pos);
+      const spec = makeEnemySpawnSpec(pending.typeId, pending.level, pending.pos, { startedTick: state.tick });
       spec.factionId = pending.factionId || spec.factionId;
       spec.data = spec.data || {};
       const baseAI = spec.data.ai || {};

@@ -63,7 +63,7 @@ test('morale-forced flight overrides a stale attack-run at final execution autho
       engagementTrigger: 'explicit_refusal',
       zoneId: 'zone_ceres_ambush',
       approachTelegraph: 'engine_flare',
-      noFireResponseWindowS: 0.5,
+      noFireResponseWindowS: 1,
       combatDoctrineId: 'interceptor_flyby',
       activity: normalizeActivity({
         kind: ActivityKind.ATTACK_RUN,

@@ -175,7 +175,7 @@ async function runHostileFlybyScenario(options = {}) {
       engagementTrigger: 'authorized_hostile_spawn',
       zoneId: 'zone_ceres_ambush',
       approachTelegraph: 'engine_flare',
-      noFireResponseWindowS: 0.75,
+      noFireResponseWindowS: 1,
       forcePlayerTarget: true,
       roe: 'weapons_free',
       activity: {

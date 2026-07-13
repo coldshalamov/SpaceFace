@@ -71,6 +71,28 @@ export function applyAIFiringIntent(decision, state) {
   intent.fireBlockReason = null;
   intent.fireBlockerId = null;
   intent.aimAngle = aimAngle;
+  ai.lastAggressionTrace = aggressionTrace(decision, state, targetId, ai);
+}
+
+function aggressionTrace(decision, state, targetId, ai) {
+  const objective = decision && decision.directive && decision.directive.objective || {};
+  const combatDoctrine = decision && decision.combatDoctrine || {};
+  const doctrineId = String(combatDoctrine.doctrineId || ai.combatDoctrineId || '');
+  const reason = String(objective.reason || '');
+  const prefix = doctrineId ? `combat_doctrine:${doctrineId}:` : '';
+  const doctrinePhase = String(combatDoctrine.phase || (prefix && reason.startsWith(prefix) ? reason.slice(prefix.length) : ''));
+  return Object.freeze({
+    tick: Number.isInteger(state && state.tick) ? state.tick : 0,
+    targetId,
+    motive: String(ai.motive),
+    engagementTrigger: String(ai.engagementTrigger),
+    zoneId: String(ai.zoneId),
+    approachTelegraph: String(ai.approachTelegraph),
+    noFireResponseWindowS: Number(ai.noFireResponseWindowS),
+    tactic: String(decision && decision.directive && decision.directive.tactic || ''),
+    doctrineId,
+    doctrinePhase,
+  });
 }
 
 function clearFire(intent, reason = null, blockerId = null) {

@@ -237,7 +237,7 @@ export function configure47aTacticalAI(entity, { squadId, doctrine, preferredRol
     engagementTrigger: 'scenario_gate_pending',
     zoneId: 'zone_47a_wreck_field',
     approachTelegraph: combatDoctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER ? 'attach_spool' : 'weapon_charge',
-    noFireResponseWindowS: 0.5,
+    noFireResponseWindowS: 1,
   });
 }
 

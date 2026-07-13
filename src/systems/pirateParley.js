@@ -356,7 +356,7 @@ function holdFire(state, rec, members) {
     ai.engagementTrigger = 'demand_pending';
     ai.zoneId = String(ai.zoneId || `parley:${rec.squadId}`);
     ai.approachTelegraph = 'hail_and_scan';
-    ai.noFireResponseWindowS = Math.max(0.75, Number(ai.noFireResponseWindowS) || 0);
+    ai.noFireResponseWindowS = Math.max(1, Number(ai.noFireResponseWindowS) || 0);
     ai.roe = RulesOfEngagement.HOLD_FIRE;
     ai.activity = normalizeActivity({
       kind: ActivityKind.HAIL_HOLD,
@@ -433,7 +433,7 @@ function makeHostile(entity, state, rec) {
     : rec.outcome === 'refused' ? 'explicit_refusal' : 'ignored_demand';
   ai.zoneId = String(ai.zoneId || `parley:${rec.squadId}`);
   ai.approachTelegraph = 'attack_bark';
-  ai.noFireResponseWindowS = 0.75;
+  ai.noFireResponseWindowS = 1;
   ai.roe = RulesOfEngagement.WEAPONS_FREE;
   ai.activity = normalizeActivity({
     kind: ActivityKind.ATTACK_RUN,

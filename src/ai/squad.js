@@ -16,7 +16,9 @@ const DEFAULTS = Object.freeze({
   formation: 'wedge',
   formationSpacing: 72,
   formationBound: 170,
-  minTacticTicks: 120,
+  // Four top-level transitions is the absolute ten-second readability budget. A 150-tick dwell
+  // keeps normal tactic changes within that budget while urgent retreat remains immediate.
+  minTacticTicks: 150,
   switchMargin: 0.12,
   breakTicks: 90,
   formationTurnPerTick: 0.025,

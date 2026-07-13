@@ -3,6 +3,10 @@ import { createSG03ActionPort } from '../ai/sg03ActionPort.js';
 import { TacticalAIStack } from '../ai/stack.js';
 import { NORMALIZED_THRUSTER_REQUEST_FLAG } from '../ai/contracts.js';
 import { applyAIFiringIntent } from './aiFireIntent.js';
+import {
+  refreshFirstSessionAttackerOwnership,
+  resetFirstSessionAttackerOwnership,
+} from '../ai/engagementAuthority.js';
 
 /**
  * SG-06 simulation-system factory.
@@ -70,6 +74,7 @@ export function createTacticalAISystem({
     inspection = null;
     lastDecisionTick = -Infinity;
     lastManeuverRequests = [];
+    resetFirstSessionAttackerOwnership(ctxRef && ctxRef.state);
   }
 
   function replayLastManeuvers(liveStack, tick) {
@@ -99,6 +104,7 @@ export function createTacticalAISystem({
       const liveStack = ensureStack(state);
       const tick = Number.isInteger(state && state.tick) ? state.tick : liveStack.lastTick + 1;
       if (tick - lastDecisionTick < decisionIntervalTicks && lastManeuverRequests.length) {
+        refreshFirstSessionAttackerOwnership(state, liveStack.lastResult && liveStack.lastResult.decisions || []);
         replayLastManeuvers(liveStack, tick);
         return;
       }
@@ -106,6 +112,7 @@ export function createTacticalAISystem({
         ? authoredEncounter(tick, state, ctxRef)
         : (authoredEncounter || {});
       const result = liveStack.update(tick, authored);
+      refreshFirstSessionAttackerOwnership(state, result.decisions || []);
       lastDecisionTick = tick;
       lastManeuverRequests.length = 0;
       for (const decision of result.decisions || []) {

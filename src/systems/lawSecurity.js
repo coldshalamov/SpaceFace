@@ -90,7 +90,7 @@ export const lawSecurity = {
       ai.motive = 'cargo_extortion';
       ai.engagementTrigger = 'demand_pending';
       ai.approachTelegraph = String(ai.approachTelegraph || 'hail_and_scan');
-      ai.noFireResponseWindowS = Math.max(0.75, Number(ai.noFireResponseWindowS) || 0);
+      ai.noFireResponseWindowS = Math.max(1, Number(ai.noFireResponseWindowS) || 0);
       return true;
     }
 
@@ -236,7 +236,7 @@ export const lawSecurity = {
     ai.engagementTrigger = 'player_attack';
     ai.retaliationTargetId = attacker.id;
     ai.approachTelegraph = 'return_fire_warning';
-    ai.noFireResponseWindowS = 0.75;
+    ai.noFireResponseWindowS = 1;
     if (protection) {
       ai.passive = true;
       ai.roe = RulesOfEngagement.HOLD_FIRE;
@@ -350,6 +350,7 @@ export const lawSecurity = {
         zoneId: `jurisdiction:${incident.stationId}`,
         approachTelegraph: 'patrol_challenge',
         noFireResponseWindowS: incident.challengeWindowS,
+        startedTick: state.tick,
       });
       const spawned = this.helpers.spawnEntity(spec);
       if (spawned) {
