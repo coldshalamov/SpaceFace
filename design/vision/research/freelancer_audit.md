@@ -1,7 +1,5 @@
-> ⚠ **SUPERSEDED 2026-07-12 — UNVERIFIED, DO NOT TRUST OR BUILD ON THIS FILE.**
-> This report was produced by an Antigravity (Gemini 3.5 Flash) sprint that did not pass the verification gate in `design/depth-program/research/VERIFICATION_RUBRIC.md`. Specific failure modes: claimed-comprehensive enumerations that sampled ~20%% of the game's actual content (e.g. "Comprehensive Ship Directory (40 Hulls)" for a game with 200+); exact numeric stats presented without source citation and likely recalled from training memory; counts not derived from fetching the game's actual data files.
-> Any accurate content here is coincidental and will be re-derived from source during the verified sprints in `design/depth-program/research/`. Do not carry claims forward from this file by trust.
-> See: `design/depth-program/research/00_RESEARCH_SPRINTS.md` (why this happened) and `design/depth-program/research/SPRINT_TEMPLATES.md` (the replacement process).
+> **LEGACY RESEARCH NOTES — scope reviewed 2026-07-13.**
+> This uncited draft is retained as a hypothesis and seed catalogue. Its counts, statistics, completeness labels, and individual lore claims are not evidence. Use `design/depth-program/research/verified/freelancer.md` for sourced findings and `design/depth-program/research/SALVAGE_NOTES.md` for the salvage policy. This file is not implementation authority.
 
 # Freelancer — Technical Audit & Content Inventory
 
@@ -75,7 +73,7 @@ The political layout represents a humanity divided into four major houses.
 
 ---
 
-## 3. Comprehensive Ship Directory (35 Hulls)
+## 3. Sample ship directory (legacy seed list; statistics unverified)
 
 Ships in Freelancer are categorized by their class (Light Fighter, Heavy Fighter, or Freighter) and house origin.
 

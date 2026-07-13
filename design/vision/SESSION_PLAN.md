@@ -1,37 +1,28 @@
-# SESSION PLAN — STRICT run 2026-07-09 (round 2)
+# SESSION PLAN — depth-research checkpoint
 
-**Run id:** strict-full-pipeline  
-**Continues from:** WAKE_REPORT residual P0 (fun≥80, live play, density, UI prose, G4)  
-**Contract:** OVERNIGHT_GOAL_STRICT — no partial exit  
+**Checkpoint date:** 2026-07-13
+**Status:** Research handoff only; not the active product-sprint authority and not an implementation acceptance record.
+**Current authority:** `design/vision/ALPHA_PROGRAM.md` controls milestone order and acceptance. `design/depth-program/BUILD_PLAN.md` and `design/depth-program/PROGRESS_LEDGER.md` control execution of the research-backed depth expansion beneath that ledger.
 
-## Keep / implement this run
+## What this session produced
 
-| Item | Gate | Action |
-|---|---|---|
-| Fun matrix ≥80 | G1 | Intention, juice, pilot feel, discoverability |
-| 30s play harness (latch+survive) | G1 | New script; try flight:clean too |
-| Density find-3 destinations | G2 | Helios + check |
-| Station prose purge | G3 | market purpose banner kill + check |
-| ASSET_STATUS LIVE places | G4 | Populate from release/places |
-| Multi-agent review | G6 | gamer + skeptic (min 2) |
-| WAKE_REPORT full rewrite | G0/G7 | Scores ≥80 |
+- A legacy five-game concept pass in `design/vision/ASSET_DEPTH_AND_PIPELINE_PLAN.md` and `design/vision/research/`. These files remain useful hypothesis catalogues, but their uncited counts, statistics, licensing conclusions, and completeness claims are explicitly non-authoritative.
+- A separate committed evidence corpus in `design/depth-program/research/verified/`, including source-grounded game audits, a SpaceFace baseline, cross-game synthesis, content candidates, and an implementation pipeline.
+- A current depth execution plan and progress ledger. At this checkpoint, the ledger is the place to record implementation progress; research prose is not proof that a feature or asset shipped.
 
-## Skip
+## Reconciliation rules
 
-| Item | Why |
-|---|---|
-| Empire/building | After playable |
-| Wholeship unblock | Broken exports |
-| Full glass redesign | Min prose purge only this run |
-| Spool >0.50 | Breaks slingshot |
+1. Prefer `design/depth-program/research/verified/README.md` and its cited reports over the legacy vision audits.
+2. Recheck every external asset's file-level provenance, license compatibility, author, attribution, and derivative terms before download or integration.
+3. Do not inherit fixed polygon, texture, draw-call, or decimation caps from the legacy draft. Preserve the intended visual result and optimize from measured player-facing evidence using authored LODs, batching, compression, and residency controls.
+4. A concept enters production only through the active alpha/depth ledger, with the named checks and player-facing evidence. Documentation, tool-call counts, transcripts, and self-review do not establish completion.
+5. Update status with a date and concrete evidence; do not embed branch names, dirty-file totals, ephemeral scratch paths, or revision claims that immediately drift.
 
-## Order
+## Next execution handoff
 
-1. G0 SESSION_PLAN (this file)  
-2. G1 raise + harness  
-3. G2 density  
-4. G3 prose  
-5. G4 ASSET_STATUS  
-6. G5 checks  
-7. G6 reviewers  
-8. G7 WAKE_REPORT  
+- Continue the highest-priority compatible packet named by `design/vision/ALPHA_PROGRAM.md` and `design/depth-program/BUILD_PLAN.md`.
+- Record its current owner and evidence in `design/depth-program/PROGRESS_LEDGER.md` when work actually begins or lands.
+- Keep Blender work in the exclusive graphics lane and require independent in-game visual acceptance before promotion.
+- Keep browser and Electron on the same game path; preserve visible quality while fixing performance structurally.
+
+This file records the research-session handoff as of the checkpoint date. It does not declare the depth program, alpha milestone, visual family, or release gate complete.

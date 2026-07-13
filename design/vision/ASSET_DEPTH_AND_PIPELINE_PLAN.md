@@ -1,11 +1,9 @@
-> ⚠ **SUPERSEDED 2026-07-12 — UNVERIFIED, DO NOT TRUST OR BUILD ON THIS FILE.**
-> This report was produced by an Antigravity (Gemini 3.5 Flash) sprint that did not pass the verification gate in `design/depth-program/research/VERIFICATION_RUBRIC.md`. Specific failure modes: claimed-comprehensive enumerations that sampled ~20%% of the game's actual content (e.g. "Comprehensive Ship Directory (40 Hulls)" for a game with 200+); exact numeric stats presented without source citation and likely recalled from training memory; counts not derived from fetching the game's actual data files.
-> Any accurate content here is coincidental and will be re-derived from source during the verified sprints in `design/depth-program/research/`. Do not carry claims forward from this file by trust.
-> See: `design/depth-program/research/00_RESEARCH_SPRINTS.md` (why this happened) and `design/depth-program/research/SPRINT_TEMPLATES.md` (the replacement process).
+> **LEGACY RESEARCH DRAFT — scope reviewed 2026-07-13.**
+> This uncited 2026-07-12 draft is retained as a concept catalogue, not as current evidence, licensing advice, implementation authority, or build status. Its architectural observations are useful hypotheses; its exact counts, statistics, “comprehensive” labels, asset-license conclusions, and SpaceFace inventory claims require revalidation. Use `design/depth-program/research/verified/README.md` and `design/depth-program/BUILD_PLAN.md` for the committed evidence base and current execution plan, and `design/depth-program/research/SALVAGE_NOTES.md` for the salvage assessment.
 
 # SpaceFace Master Asset Depth & Production Pipeline Blueprint
 
-This document represents an exhaustive, technical, and asset-level research campaign comparing **SpaceFace** against five major space games. It establishes a licensing and reuse strategy for free assets, details a production pipeline for Blender hard-surface conversion, and registers a 5x5 lore catalog of 25 distinctive visual and interactive concepts.
+This document records an early technical research pass comparing **SpaceFace** against five space games. It proposes asset-reuse questions, a Blender hard-surface workflow, and a 5x5 catalogue of visual and interactive concepts. Treat those proposals as candidates to validate against the current code, provenance records, measured runtime evidence, and the verified depth corpus before implementation.
 
 ---
 
@@ -39,9 +37,9 @@ graph TD
   - `images/` (Visual assets): Contains sprites. Ships are stored under `images/ship/` (singular), and weapon animations are stored under `images/projectile/`.
   - `src/` (Core engine): `src/Ship.cpp` parses ship attributes, while `src/Planet.cpp` parses worlds and coordinates.
 * **Collision Detection:** The C++ engine (`src/Sprite.cpp` and `src/Outline.cpp`) automatically scans the alpha channel of image sprites in `images/ship/`. It traces non-transparent pixels to generate polygonal collision shapes at runtime, avoiding manual hitbox coordinate definitions. A 1-pixel transparent border is enforced to ensure accurate targeting UI brackets.
-* **Asset Licensing & Frankenstein Strategy:**
+* **Asset licensing and adaptation questions:**
   - **License:** The source code is GPLv3. The assets (found in the `images/` and `sounds/` trees) are licensed under CC-BY-SA 4.0, Public Domain (CC0), or CC-BY 3.0.
-  - **Asset Reuse:** We can legally adapt their ship models or sprite sheets. CC-BY-SA 4.0 requires that derivative works distribute modifications under the same license. For SpaceFace, we can copy and adapt CC-BY and CC0 models without copyleft restrictions, provided we credit the original authors in an `assets/CREDITS.md` file.
+  - **Asset reuse:** Do not infer reusable rights from a repository-wide summary. Verify the license, author, source file, derivative terms, attribution, and distribution compatibility for each candidate before ingestion; record that provenance alongside the asset.
 
 ### 1.2 Naev (Open Source)
 * **Code Repository:** `codeberg.org/naev/naev` (migrated from GitHub).
@@ -61,9 +59,9 @@ graph TD
   end
   ```
 * **Virtual Filesystem:** Employs `PHYSFS` to merge the core assets and custom player plugins into a single, unified virtual filesystem at runtime.
-* **Asset Licensing & Frankenstein Strategy:**
+* **Asset licensing and adaptation questions:**
   - **License:** Engine code is GPLv3. Visual assets (PNG sprites rendered from Blender meshes) are mostly CC-BY 3.0 or CC-BY-SA 3.0.
-  - **Asset Reuse:** Since Naev models are designed as 3D Blender models before being rendered to 2D sprites, we can search the `naev-artwork` repository on Codeberg for raw `.blend` files. We can extract these 3D meshes, decimate them, conform their materials to PBR standards, and wire them directly into SpaceFace as 3D `.glb` assets.
+  - **Asset reuse:** The artwork repository may contain useful source meshes, but each candidate still needs file-level provenance and compatibility review before adaptation. A compatible candidate can then be rebuilt for SpaceFace's materials, silhouettes, LODs, collision, and runtime pipeline without treating automatic decimation as the quality strategy.
 
 ---
 
@@ -137,7 +135,7 @@ To align SpaceFace with the depth seen in these games, we audited the existing c
 
 ## 4. Free Asset Sourcing & Ingestion Blueprint
 
-This blueprint details how to source, decimate, texture, and compile free assets to expand SpaceFace's library.
+This legacy blueprint outlines how candidate assets might be sourced, rebuilt, textured, and compiled. Current production work must preserve visual quality and derive performance envelopes from measured scenes rather than inherit the fixed caps below.
 
 ### 4.1 Online Asset Sourcing Guide
 * **Sketchfab:** Search for tags like `lowpoly space`, `sci-fi prop`, or `modular spaceship`. Filter under **CC-BY** (requires attribution) or **CC0** (public domain).
@@ -145,16 +143,14 @@ This blueprint details how to source, decimate, texture, and compile free assets
 * **BlenderKit:** Use the built-in Blender add-on to search for CC0/CC-BY hard-surface greebles, pipes, and panel meshes.
 * **BlendSwap:** Look for community-shared hard-surface spaceship packs.
 
-### 4.2 Ingestion & Decimation Workflow (Blender Pass)
+### 4.2 Ingestion and geometry workflow (Blender pass)
 1. **Import Mesh:** Import the `.gltf`, `.fbx`, or `.blend` asset into a clean Blender file.
 2. **Clean Topology:** Delete hidden geometry, double vertices (`Merge by Distance`), and internal faces.
-3. **Apply Decimation:**
-   - Add a **Decimate** modifier to the mesh.
-   - Use the **Collapse** ratio to reduce triangles to target budgets:
-     * **Hulls / Wholeships:** $\le$ 15,000 triangles.
-     * **Landmarks / Wonders:** $\le$ 10,000 triangles.
-     * **Interactive Props:** $\le$ 3,000 triangles.
-   - For complex geometry, use the **Planar** option in the decimate modifier to preserve flat surfaces.
+3. **Build measured LODs without a fixed quality ceiling:**
+   - Preserve the authored silhouette, material breakup, sockets, collision intent, and details that remain visible at the asset's real presentation sizes.
+   - Remove hidden/internal geometry and merge compatible static material roles first; use retopology or selective simplification where measurements show a real cost.
+   - Author and inspect each LOD at its in-game screen coverage. Triangle count, texture resolution, draw calls, and compression are evidence to tune, not universal maximums.
+   - Use a Decimate modifier only when visual comparison shows that it preserves silhouette and shading; do not apply a global collapse ratio as an acceptance rule.
 
 ### 4.3 PBR Material & ORM Baking Standard
 To ensure consistent lighting in Three.js, all assets must conform to standard PBR channels:

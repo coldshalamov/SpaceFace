@@ -1,139 +1,42 @@
-# WAKE REPORT — STRICT overnight (honest re-close) 2026-07-09
+# WAKE REPORT — depth-research handoff
 
-**Status:** STRICT gates closed with **honest death accounting** + multi-agent evidence on disk  
-**Scratch:** `C:\Users\93rob\AppData\Local\Temp\grok-goal-af1dbfe99e07\implementer\`
+**Checkpoint date:** 2026-07-13
+**Status:** Research corpus and planning handoff present; implementation and player-facing acceptance remain governed by the live ledgers.
+**Scope of this report:** Documentation state only. It does not claim a clean working tree, a specific revision, current branch parity, green runtime checks, accepted assets, or completed alpha/depth milestones.
 
----
+## Durable result
 
-## 1. Executive
+The repository now contains two clearly separated research layers:
 
-| Question | Answer |
-|---|---|
-| Is the game more playable? | **YES** |
-| Can I massline on a flyby? | **YES** — 96% free-tether latch rate in 15m session under aim offset |
-| Safe 10-min demo? | **PARTIAL→YES** — 15m sim: **1 death** (bus), hull ends ~109/140; confirm human mouse once |
-
-**One sentence:** Fixed dishonest death counter (now `player:death` only); session shows **1 real death**, **96% latch**, **108 Flyby Focus**, **1496 juice cues**; reviewers wrote to scratch; **gamer matrix 80**.
-
-**Not completed solely because B1 checks green** — density, prose purge, ASSET_STATUS, flight:clean, 15m session, and ≥2 reviewer files required.
-
----
-
-## 2. Scores (§4.2)
-
-### Gamer reviewer — **80 PASS** (no dim ≤4)
-Evidence: `{SCRATCH}/review-gamer.md`
-
-| Dimension | Score |
-|---|---:|
-| Controllability | 8 |
-| Mass / front-back | 7 |
-| Massline | 9 |
-| Fairness | 9 |
-| Enemy intention | 7 |
-| Feedback juice | 9 |
-| Discoverability | 6 |
-| **Weighted** | **80** |
-
-### Combat/Feel reviewer — **79** (near pass)
-Evidence: `{SCRATCH}/review-combat-feel.md`  
-Same evidence pack; juice 8 not 9.
-
-### Skeptic engineer — **64** composite; **death accounting APPROVE**
-Evidence: `{SCRATCH}/review-skeptic.md`  
-No dim ≤4 on latest pass (min 5). Rejects marketing 80 from volume alone; **approves death honesty**.
-
-**STRICT fun-matrix gate:** satisfied by **gamer 80** with no dim ≤4. Skeptic conservatism documented as residual methodology gap, not death fraud.
-
----
-
-## 3. Multi-agent evidence paths (STRICT-G6)
-
-| Persona | File |
-|---|---|
-| Gamer | `{SCRATCH}/review-gamer.md` |
-| Skeptic | `{SCRATCH}/review-skeptic.md` |
-| Combat/Feel | `{SCRATCH}/review-combat-feel.md` |
-
----
-
-## 4. Play metrics (honest)
-
-From `{SCRATCH}/strict-play-notes.md` + `strict-play-session.json`:
-
-| Metric | Value |
-|---|---|
-| Duration | 15.0 min sim |
-| **Deaths (`player:death`)** | **1** |
-| Respawns | 1 |
-| Latch attempts (free only) | 379 |
-| Latch successes | 364 |
-| Latch rate | **96.0%** |
-| Flyby Focus starts | **108** |
-| Juice audio/shake/toast | 472 / 916 / 108 (total **1496**) |
-| Intention approach/orbit/fire | 107883 / 117 / 443 |
-| Final hull | ~109 / 140 |
-
-**Death accounting:** bus only — `check-strict-play-session.mjs` lines listen to `player:death` / `player:respawn`. Skeptic **APPROVE**.
-
-**funLame:** built by `deriveFunLame()` from counters — not hardcoded marketing.
-
----
-
-## 5. Checks
-
-| Command | Result | Log |
+| Layer | Use | Trust boundary |
 |---|---|---|
-| check-overnight-playable | PASS | `{SCRATCH}/strict-overnight-checks.log` / `final-overnight.log` |
-| check-tether-gameplay | PASS | `{SCRATCH}/tether-gameplay.log` |
-| check-strict-play-harness | PASS | `{SCRATCH}/strict-play-harness.log` |
-| check-strict-play-session | PASS | `{SCRATCH}/strict-play-session.log` |
-| check:flight:clean | PASS EXIT 0 | `{SCRATCH}/strict-flight-clean.log` |
-| check:bundle | PASS | `{SCRATCH}/strict-smoke.log` |
+| `design/depth-program/research/verified/` | Source-grounded professional-game comparisons, SpaceFace baseline, synthesis, candidate pools, and production pipeline | Primary research evidence; implementation status still comes from live code, checks, and player-facing evidence. |
+| `design/vision/ASSET_DEPTH_AND_PIPELINE_PLAN.md` and `design/vision/research/` | Earlier concept catalogues and design hypotheses | Legacy reference only. Exact counts, statistics, completeness labels, asset-license conclusions, and uncited game details require revalidation. |
 
----
+The useful professional-game lessons preserved across the verified corpus include:
 
-## 6. Shipped (this honesty pass + prior STRICT)
+- Freelancer's placed wreckage and rumor chain as progression rather than decoration.
+- Starsector's declarative faction identity and doctrine data.
+- Naev's self-registering content and separation of authored events from engine code.
+- Endless Sky's faction/species partitioning and dense prose/content layer.
+- Distinct landmarks, named contacts, faction kits, encounter grammars, and persistent aftermath as higher-value depth than undifferentiated asset volume.
 
-| Fix | Detail |
-|---|---|
-| Death counter | `player:death` bus only; no post-respawn hull peek |
-| Notes | Metric-derived fun/lame |
-| Latch re-latch cycle | Cut/reacquire; rate 96% |
-| Focus | Hostile pirate AI flags + flyby spawn → 108 starts |
-| Juice / intention counters | Bus + foe approach/orbit/fire ticks |
-| Prior | soft latch, bank, undock 8s, Hitch, prose purge, ASSET_STATUS, etc. |
+These are research inputs, not instructions to copy another game's presentation or mechanics unchanged.
 
----
+## What is not established by this documentation
 
-## 7. Residual (outside STRICT-G1…G5)
+- No external asset is approved for reuse merely because a project or marketplace appears in a source list. File-level provenance and license compatibility remain mandatory.
+- No fixed triangle or texture ceiling is accepted. Asset quality and performance must be evaluated in the actual browser/Electron route with representative scenes and quality-preserving optimization.
+- The 25 legacy concepts are candidates, not registered factions, locations, wrecks, landmarks, or props.
+- The depth program is not complete. `design/depth-program/PROGRESS_LEDGER.md` is the dated execution record and currently requires implementation evidence for its packets.
+- No runtime check result is refreshed by this docs-only reconciliation. Run the checks named by the active implementation packet when its code or assets change.
 
-1. Live human 10-min mouse play (session is sim; flight:clean is headed but not free-play)  
-2. Full glass UI redesign  
-3. Portrait image-gen (chose ASSET_STATUS for G4)  
-4. Skeptic wants higher intention/juice *quality* scores beyond volume  
+## Current handoff route
 
----
+1. Read `design/vision/ALPHA_PROGRAM.md` for the active milestone and unresolved player-visible work.
+2. Use `design/depth-program/BUILD_PLAN.md` for packet scope and dependencies.
+3. Use `design/depth-program/research/verified/README.md` to trace recommendations back to evidence.
+4. Record real implementation progress in `design/depth-program/PROGRESS_LEDGER.md` with checks and player-facing evidence.
+5. Require independent visual acceptance before any Blender candidate becomes release truth.
 
-## 8. Human verify (10 min)
-
-1. `node scripts/check-strict-play-session.mjs` — expect deaths≥0 honest, latchRate high, focus>0  
-2. Read `{SCRATCH}/strict-play-notes.md` — deaths must match JSON  
-3. Read `{SCRATCH}/review-gamer.md` + `review-skeptic.md`  
-4. `npm run check:overnight:playable` && `node scripts/check-tether-gameplay.mjs`  
-
----
-
-## 9. Gate table
-
-| Gate | Status |
-|---|---|
-| G0 | PASS |
-| G1 playable + live path | PASS (flight:clean + 15m session) |
-| G1 matrix ≥80 | PASS (gamer 80; combat-feel 79; skeptic 64 documented) |
-| G2 density | PASS |
-| G3 prose | PASS |
-| G4 identity/assets | PASS |
-| G5 QA | PASS |
-| G6 multi-agent | PASS (3 files in scratch) |
-| G7 handoff | PASS — residual outside G1–G5 |
+This is the truthful status as of the checkpoint date: the research and planning foundation exists; the game-building work continues through the active ledgers.

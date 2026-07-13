@@ -1,7 +1,5 @@
-> ⚠ **SUPERSEDED 2026-07-12 — UNVERIFIED, DO NOT TRUST OR BUILD ON THIS FILE.**
-> This report was produced by an Antigravity (Gemini 3.5 Flash) sprint that did not pass the verification gate in `design/depth-program/research/VERIFICATION_RUBRIC.md`. Specific failure modes: claimed-comprehensive enumerations that sampled ~20%% of the game's actual content (e.g. "Comprehensive Ship Directory (40 Hulls)" for a game with 200+); exact numeric stats presented without source citation and likely recalled from training memory; counts not derived from fetching the game's actual data files.
-> Any accurate content here is coincidental and will be re-derived from source during the verified sprints in `design/depth-program/research/`. Do not carry claims forward from this file by trust.
-> See: `design/depth-program/research/00_RESEARCH_SPRINTS.md` (why this happened) and `design/depth-program/research/SPRINT_TEMPLATES.md` (the replacement process).
+> **LEGACY SYNTHESIS — scope reviewed 2026-07-13.**
+> This uncited draft contains useful genre hypotheses, especially core/fringe/edge progression, faction differentiation, spatial landmarks, and hazard taxonomy. It is not evidence or implementation authority. Use `design/depth-program/research/verified/synthesis.md` for the sourced cross-game comparison and revalidate any No Man's Sky-specific claim separately.
 
 # Market and Content Synthesis — World Depth Design
 
