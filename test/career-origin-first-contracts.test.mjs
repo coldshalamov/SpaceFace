@@ -11,6 +11,7 @@ import {
   serializeCareerOrigins,
 } from '../src/careers/origins/careerOrigins.js';
 import { buildMissionLogOriginChoiceModel } from '../src/ui/careerLadderView.js';
+import { objectiveText } from '../src/ui/screens/missionLog.js';
 import { missions as missionsPrototype } from '../src/systems/missions.js';
 
 function seedMarkets(state) {
@@ -105,14 +106,93 @@ test('Hauler starts with a sealed physical manifest, delivers it, and persists t
   assert.equal(h.state.player.cargo.items.cmdty_food, undefined);
   assert.equal(h.state.careers.origins.hauler.status, 'offered');
   assert.equal(h.state.careers.origins.hauler.stepIndex, 1);
-  const model = buildMissionLogOriginChoiceModel(h.state, h.registry);
-  assert.equal(model.cards.some((card) => card.careerId === 'hauler' && card.canOriginAccept), true);
+  let model = buildMissionLogOriginChoiceModel(h.state, h.registry);
+  let hauler = model.cards.find((card) => card.careerId === 'hauler');
+  assert.equal(hauler.canOriginAccept, false, 'service class must be chosen before the bonded run');
+  assert.equal(hauler.canChoose, true);
+  assert.deepEqual(hauler.choices.map((choice) => choice.id), ['bonded_express', 'open_manifest']);
+  assert.match(hauler.choiceSummary, /320 cr payout/);
+  assert.match(hauler.choiceSummary, /no bond/);
+
+  h.bus.emit(CAREER_ORIGINS_EVENTS.CHOOSE, {
+    careerId: 'hauler', choiceId: 'open_manifest', source: 'test',
+  });
+  model = buildMissionLogOriginChoiceModel(h.state, h.registry);
+  hauler = model.cards.find((card) => card.careerId === 'hauler');
+  assert.equal(hauler.canOriginAccept, true);
+  assert.equal(hauler.selectedChoiceId, 'open_manifest');
+  assert.match(hauler.receiptLine, /no bond/);
   assert.equal(h.credits.some((row) => row.amount === 180 && String(row.reason).startsWith('mission:')), true);
 
   const loaded = createGameState(12002);
   deserializeCareerOrigins(loaded, serializeCareerOrigins(h.state));
   assert.equal(loaded.careers.origins.hauler.stepIndex, 1);
   assert.equal(loaded.careers.origins.hauler.status, 'offered');
+  assert.equal(loaded.careers.origins.hauler.choicesByStep.route_risk, 'open_manifest');
+});
+
+test('Hauler service class changes real mission stakes, is immutable in flight, and survives retry', () => {
+  const h = harness(12006);
+  h.bus.emit(CAREER_ORIGINS_EVENTS.ACCEPT, { careerId: 'hauler' });
+  const first = h.state.missions.active.find((row) => row.storyTag === 'origin.hauler.v1:manifest_truth');
+  h.bus.emit('dock:docked', { stationId: first.destStationId });
+
+  const beforeBlockedAccept = h.state.missions.active.length;
+  assert.equal(h.originSystem.accept('hauler').reason, 'choice_required');
+  assert.equal(h.state.missions.active.length, beforeBlockedAccept,
+    'blocked accept cannot post an unchosen mission');
+  assert.equal(h.originSystem.choose('hauler', 'open_manifest').ok, true);
+  assert.equal(h.originSystem.accept('hauler').ok, true);
+
+  let own = h.state.careers.origins.hauler;
+  let mission = h.state.missions.active.find((row) => row.id === own.activeContract.missionId);
+  assert.equal(own.activeContract.choiceId, 'open_manifest');
+  assert.equal(own.activeContract.reward_cr, 220);
+  assert.equal(own.activeContract.collateral_cr, 0);
+  assert.equal(own.activeContract.deadlineS - own.acceptedAtS, 300);
+  assert.equal(mission.reward_cr, 220);
+  assert.equal(mission.collateral_cr, 0);
+  assert.match(mission.mapLabel, /no collateral/);
+  const openObjective = objectiveText(mission);
+  assert.match(openObjective, /OPEN.*longer window.*no collateral/i);
+
+  const bonded = harness(12007);
+  bonded.bus.emit(CAREER_ORIGINS_EVENTS.ACCEPT, { careerId: 'hauler' });
+  const bondedFirst = bonded.state.missions.active.find(
+    (row) => row.storyTag === 'origin.hauler.v1:manifest_truth',
+  );
+  bonded.bus.emit('dock:docked', { stationId: bondedFirst.destStationId });
+  bonded.state.player.credits = 80;
+  assert.equal(bonded.originSystem.choose('hauler', 'bonded_express').ok, true);
+  assert.equal(bonded.originSystem.accept('hauler').ok, true);
+  const bondedOwn = bonded.state.careers.origins.hauler;
+  const bondedMission = bonded.state.missions.active.find(
+    (row) => row.id === bondedOwn.activeContract.missionId,
+  );
+  const bondedObjective = objectiveText(bondedMission);
+  assert.match(bondedObjective, /EXPRESS.*short clock.*80 cr bond at risk/i);
+  assert.notEqual(bondedObjective, openObjective,
+    'accepted service classes must render distinct active objective text');
+  assert.equal(h.originSystem.choose('hauler', 'bonded_express').reason, 'bad_status:active');
+
+  h.missionSystem.abandonMission(mission.id);
+  own = h.state.careers.origins.hauler;
+  assert.equal(own.status, 'step_failed');
+  assert.equal(own.choicesByStep.route_risk, 'open_manifest');
+  h.state.simTime += 13;
+  assert.equal(h.originSystem.reoffer('hauler').ok, true);
+  assert.equal(h.originSystem.accept('hauler').ok, true);
+  own = h.state.careers.origins.hauler;
+  mission = h.state.missions.active.find((row) => row.id === own.activeContract.missionId);
+  assert.equal(own.activeContract.choiceId, 'open_manifest');
+  assert.equal(mission.reward_cr, 187, 'retry decay applies to the selected service class');
+  assert.equal(mission.collateral_cr, 0);
+
+  const saved = serializeCareerOrigins(h.state);
+  const restored = createGameState(12006);
+  deserializeCareerOrigins(restored, saved);
+  assert.equal(restored.careers.origins.hauler.activeContract.choiceId, 'open_manifest');
+  assert.equal(restored.careers.origins.hauler.activeContract.reward_cr, 187);
 });
 
 test('Hunter first writ materializes one named hostile and advances only on the player kill', () => {

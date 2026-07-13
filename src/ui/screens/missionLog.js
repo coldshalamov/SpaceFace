@@ -113,13 +113,23 @@ function fmtTime(s) {
 }
 
 /** Build a human-readable objective description from the mission instance. */
-function objectiveText(m) {
+export function objectiveText(m) {
   const p = m.params || {};
   const prog = m.objectiveProgress || 0;
   const tgt = m.objectiveTarget || 1;
   const dest = m.destStationId ? destStationName(m.destStationId) : 'destination';
   switch (m.type) {
-    case 'cargo_delivery':
+    case 'cargo_delivery': {
+      const serviceClass = `${m.originChoiceId || ''} ${m.title || ''} ${m.mapLabel || ''}`.toLowerCase();
+      const cargo = `${Math.max(1, Number(p.qty) || tgt)}u ${cmdtyName(p.cmdtyId)}`;
+      if (m.originCareer === 'hauler' && serviceClass.includes('bonded express')) {
+        return `EXPRESS · Deliver ${cargo} to ${dest} · short clock · ${m.collateral_cr || 0} cr bond at risk`;
+      }
+      if (m.originCareer === 'hauler' && serviceClass.includes('open manifest')) {
+        return `OPEN · Deliver ${cargo} to ${dest} · longer window · no collateral`;
+      }
+      return `Deliver to ${dest}`;
+    }
     case 'salvage_retrieval':
     case 'passenger_transport':
       return `Deliver to ${dest}`;
@@ -644,6 +654,9 @@ function careerContactLocation(chip, state) {
  */
 function careerConsequencePreview(chip, state) {
   if (!chip) return null;
+  if (typeof chip.choiceSummary === 'string' && chip.choiceSummary.trim()) {
+    return chip.choiceSummary.trim();
+  }
   if (chip.canChoose && Array.isArray(chip.choices) && chip.choices.length) {
     const labels = chip.choices
       .filter((c) => c && c.id && c.enabled !== false)
@@ -708,6 +721,7 @@ function careerChipHtml(chip, state) {
   const mapLabel = (mapAction && mapAction.label) || 'MAP';
   const mapTitle = (mapAction && (mapAction.title || mapAction.body)) || ('Open map for ' + (stepTitle || title));
   const choices = (chip.canChoose && Array.isArray(chip.choices)) ? chip.choices : [];
+  const choiceAction = chip.choiceAction || 'choose';
   const linkedId = chip.linkedMissionId || null;
   const collapsed = !!chip.collapsed;
   const place = careerContactLocation(chip, state);
@@ -716,9 +730,10 @@ function careerChipHtml(chip, state) {
 
   let actions = '';
   if (chip.canOriginAccept) {
+    const acceptText = chip.originAcceptLabel || ('START ' + title.toUpperCase());
     actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-choice" type="button"'
       + ' data-career-act="originAccept" data-career-id="' + escapeHtml(careerId) + '"'
-      + ' aria-label="' + escapeHtml('Start as ' + title) + '">START ' + escapeHtml(title.toUpperCase()) + '</button>';
+      + ' aria-label="' + escapeHtml(acceptText + ' — ' + title) + '">' + escapeHtml(acceptText) + '</button>';
   }
   if (chip.canOriginDecline) {
     actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-abandon" type="button"'
@@ -763,12 +778,15 @@ function careerChipHtml(chip, state) {
         if (!c || !c.id) return '';
         const label = c.label || c.id;
         const blocked = c.enabled === false;
+        const selected = c.selected === true;
         return '<button class="sf-mlog-career-btn sf-mlog-career-btn-choice" type="button"'
-          + ' data-career-act="choose" data-career-id="' + escapeHtml(careerId) + '"'
+          + ' data-career-act="' + escapeHtml(choiceAction) + '" data-career-id="' + escapeHtml(careerId) + '"'
           + ' data-choice-id="' + escapeHtml(c.id) + '"'
+          + ' data-choice-selected="' + (selected ? 'true' : 'false') + '"'
+          + ' aria-pressed="' + (selected ? 'true' : 'false') + '"'
           + (blocked ? ' disabled' : '')
           + ' aria-label="' + escapeHtml(label + ' for ' + (stepTitle || title)) + '">'
-          + escapeHtml(label) + '</button>';
+          + escapeHtml((selected ? 'SELECTED · ' : '') + label) + '</button>';
       }).join('')
       + '</div>';
   }
@@ -1217,6 +1235,14 @@ export const missionLogScreen = {
       if (act === 'originRecover') {
         if (!careerId) return;
         ctx.bus.emit('career:origin:reoffer', { careerId, source: 'missionLog' });
+        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+        this._render();
+        return;
+      }
+      if (act === 'originChoose') {
+        const choiceId = btn.getAttribute('data-choice-id');
+        if (!careerId || !choiceId) return;
+        ctx.bus.emit('career:origin:choose', { careerId, choiceId, source: 'missionLog' });
         ctx.bus.emit('audio:cue', { id: 'ui_accept' });
         this._render();
         return;

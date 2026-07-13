@@ -20,6 +20,7 @@ import {
 import {
   acceptOrigin,
   allowsOtherCareers,
+  chooseHaulerStep,
   declineOrigin,
   evaluateStepSignal,
   getHaulerOriginPublicView,
@@ -107,6 +108,27 @@ check('serialize/applySave round-trip preserves progress', () => {
   assert.equal(own2.stepId, 'route_risk');
   assert.equal(own2.attempt, 2);
   assert.equal(own2.history.length, 1);
+});
+
+check('v1 active bonded save migrates with an explicit immutable service class', () => {
+  const migrated = migrateHaulerOriginState({
+    schemaVersion: 1,
+    status: 'active',
+    stepIndex: 1,
+    stepId: 'route_risk',
+    activeContract: {
+      offerId: 'old_offer', missionId: 'old_mission', stepId: 'route_risk', stepIndex: 1,
+      missionType: 'cargo_delivery', commodityId: 'cmdty_fuel_cells', qty: 6,
+      originStationId: 'station_helios', originSectorId: 'sector_helios_prime',
+      destStationId: 'station_ceres', destSectorId: 'sector_ceres_belt',
+      reward_cr: 320, collateral_cr: 80, riskTier: 1, deadlineS: 200, attempt: 0,
+    },
+  });
+  assert.equal(migrated.schemaVersion, HAULER_SCHEMA_VERSION);
+  assert.equal(migrated.choicesByStep.route_risk, 'bonded_express');
+  assert.equal(migrated.activeContract.choiceId, 'bonded_express');
+  assert.equal(migrated.activeContract.reward_cr, 320);
+  assert.equal(migrated.activeContract.collateral_cr, 80);
 });
 
 // ── Three steps present ────────────────────────────────────────────────────
@@ -232,6 +254,11 @@ check('route risk charges collateral intent and fails on deadline with recovery'
   // complete step 0
   evaluateStepSignal(state, { kind: 'manual_delivery', stationId: 'station_coalition' }, 10);
   // accept route risk
+  const blocked = acceptOrigin(state, 20);
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.reason, 'choice_required');
+  const chosen = chooseHaulerStep(state, 'bonded_express', 20);
+  assert.equal(chosen.ok, true);
   const acc = acceptOrigin(state, 20);
   assert.equal(acc.ok, true);
   assert.equal(acc.own.stepId, 'route_risk');
@@ -278,6 +305,7 @@ check('full chain completes with visible non-exclusive reward', () => {
   fire(acceptOrigin(state, 1));
   fire(evaluateStepSignal(state, { kind: 'manual_delivery', stationId: 'station_coalition' }, 2));
 
+  fire(chooseHaulerStep(state, 'bonded_express', 3));
   fire(acceptOrigin(state, 3));
   fire(evaluateStepSignal(state, { kind: 'manual_delivery', stationId: 'station_ceres' }, 4));
 

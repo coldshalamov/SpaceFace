@@ -16,6 +16,7 @@ import {
 } from './careerOriginContracts.js';
 import {
   acceptOrigin as acceptHaulerOrigin,
+  chooseHaulerStep,
   declineOrigin as declineHaulerOrigin,
   evaluateStepSignal as evaluateHaulerStepSignal,
   onFirstDock as offerHaulerAtDock,
@@ -26,6 +27,8 @@ import {
   HAULER_CAREER_ID,
   HAULER_COMPLETION_REWARD,
   HAULER_ORIGIN_OFFER_COPY,
+  HAULER_STEPS,
+  haulerChoicesForStep,
 } from './haulerOriginData.js';
 import {
   applyHaulerOriginSaveBlob,
@@ -85,6 +88,7 @@ export const CAREER_IDS = Object.freeze(['hauler', 'hunter', 'prospector']);
 export const CAREER_ORIGINS_EVENTS = Object.freeze({
   OFFERED: 'career:origins:offered',
   ACCEPT: 'career:origin:accept',
+  CHOOSE: 'career:origin:choose',
   DECLINE: 'career:origin:decline',
   REOFFER: 'career:origin:reoffer',
   ABANDON: 'career:origin:abandon',
@@ -257,15 +261,33 @@ export function getCareerOfferView(state, careerId = null) {
   const views = {
     hauler: (() => {
       const own = ensureHaulerOriginState(state);
+      const step = HAULER_STEPS[own.stepIndex] || HAULER_STEPS[0];
+      const choices = haulerChoicesForStep(step && step.id);
+      const selectedChoiceId = own.choicesByStep && own.choicesByStep[step && step.id] || null;
+      const choiceRequired = own.status === 'offered' && choices.length > 0 && !selectedChoiceId;
       return {
         careerId: HAULER_CAREER_ID,
         title: 'Hauler',
-        line: 'Real bid and ask. The bond can burn.',
-        acceptLabel: HAULER_ORIGIN_OFFER_COPY.acceptLabel,
+        line: step && step.acceptLine || 'Real bid and ask. The bond can burn.',
+        acceptLabel: own.stepIndex > 0 ? 'START FREIGHT CONTRACT' : HAULER_ORIGIN_OFFER_COPY.acceptLabel,
         declineLabel: 'Decline',
         status: own.status,
-        canAccept: own.status === 'offered',
+        stepId: step && step.id || null,
+        stepTitle: step && step.title || 'Hauler Origin',
+        stepIndex: own.stepIndex,
+        stepCount: HAULER_STEPS.length,
+        canAccept: own.status === 'offered' && !choiceRequired,
         canDecline: own.status === 'offered',
+        canChoose: own.status === 'offered' && choices.length > 0,
+        choiceRequired,
+        selectedChoiceId,
+        choices: choices.map((choice) => ({
+          id: choice.id,
+          label: choice.label,
+          summary: choice.summary,
+          selected: choice.id === selectedChoiceId,
+          enabled: true,
+        })),
         nonBinding: true,
         rewardCredits: HAULER_COMPLETION_REWARD.credits,
         upgradeKit: ORIGIN_ROLE_KITS.hauler,
@@ -493,6 +515,11 @@ export function createCareerOriginsSystem() {
       this._listen(CAREER_ORIGINS_EVENTS.ACCEPT, (payload) => {
         if (payload && payload.careerId) this.accept(payload.careerId);
       });
+      this._listen(CAREER_ORIGINS_EVENTS.CHOOSE, (payload) => {
+        if (payload && payload.careerId && payload.choiceId) {
+          this.choose(payload.careerId, payload.choiceId);
+        }
+      });
       this._listen(CAREER_ORIGINS_EVENTS.DECLINE, (payload) => {
         if (payload && payload.careerId) this.decline(payload.careerId);
       });
@@ -626,6 +653,30 @@ export function createCareerOriginsSystem() {
           this._grantOriginStarterKit(id);
         }
         emit(this.bus, CAREER_ORIGINS_EVENTS.ACCEPTED, { careerId: id, nonBinding: true, simTime: t });
+      } else if (id === 'hauler' && result && result.reason === 'choice_required') {
+        emit(this.bus, 'toast', {
+          text: 'Choose Bonded Express or Open Manifest in the Mission Log.',
+          kind: 'info',
+          ttl: 5,
+        });
+      }
+      return result;
+    },
+
+    choose(careerId, choiceId) {
+      const id = String(careerId || '');
+      if (id !== 'hauler') return { ok: false, reason: 'career_has_no_origin_choice' };
+      const result = chooseHaulerStep(this.state, choiceId, simTimeOf(this.state));
+      if (result && result.ok) {
+        emitIntents(this.bus, result.intents);
+        emit(this.bus, CAREER_ORIGINS_EVENTS.PROGRESS, {
+          careerId: id,
+          stepId: result.stepId,
+          choiceId: result.choice.id,
+          choiceLabel: result.choice.label,
+          consequence: result.choice.summary,
+          readyToAccept: true,
+        });
       }
       return result;
     },

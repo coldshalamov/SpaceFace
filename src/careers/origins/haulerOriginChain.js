@@ -2,11 +2,14 @@
 // No bus, no Math.random, no wall clock — callers pass simTime and seed side effects separately.
 
 import {
+  applyHaulerStepChoice,
   HAULER_COMPLETION_REWARD,
   HAULER_FAIL_RETRY_COOLDOWN_S,
   HAULER_MAX_FAILURES_PER_STEP,
   HAULER_REOFFER_COOLDOWN_S,
   HAULER_STEPS,
+  haulerChoiceForStep,
+  haulerChoicesForStep,
 } from './haulerOriginData.js';
 import {
   buildFirstDockOriginOffer,
@@ -72,7 +75,13 @@ export function onFirstDock(state, stationId, simTime = 0) {
     if (step) {
       own.stepId = step.id;
       offer.firstStepId = step.id;
-      offer.previewMission = buildHaulerStepMissionOffer(state, step, own.attempt, own.offerNonce);
+      offer.previewMission = buildHaulerStepMissionOffer(
+        state,
+        step,
+        own.attempt,
+        own.offerNonce,
+        { choiceId: own.choicesByStep && own.choicesByStep[step.id] || null },
+      );
       offer.copy = {
         ...offer.copy,
         title: `Hauler — ${step.title}`,
@@ -98,6 +107,53 @@ export function declineOrigin(state, simTime = 0) {
 }
 
 /**
+ * Choose the service class for an offered freight step. The decision is durable, but remains
+ * editable until mission authority accepts the contract; active cargo can never be repriced.
+ */
+export function chooseHaulerStep(state, choiceId, simTime = 0) {
+  const own = ensureHaulerOriginState(state);
+  if (!own) return { ok: false, reason: 'no_state' };
+  if (own.status !== 'offered') return { ok: false, reason: `bad_status:${own.status}`, own };
+  const step = stepDefAt(own.stepIndex);
+  if (!step) return { ok: false, reason: 'no_step', own };
+  const choice = haulerChoiceForStep(step.id, choiceId);
+  if (!choice) return { ok: false, reason: 'invalid_choice', own };
+  own.choicesByStep = own.choicesByStep && typeof own.choicesByStep === 'object'
+    ? own.choicesByStep : { route_risk: null };
+  own.choicesByStep[step.id] = choice.id;
+  pushHaulerHistory(own, {
+    kind: 'step_choice',
+    stepId: step.id,
+    choiceId: choice.id,
+    choiceLabel: choice.label,
+    consequence: choice.summary,
+  }, Number(simTime) || 0);
+  return {
+    ok: true,
+    own,
+    stepId: step.id,
+    choice: { ...choice },
+    choices: haulerChoicesForStep(step.id).map((row) => ({ ...row })),
+    intents: [
+      {
+        event: 'career:origin:choiceResolved',
+        payload: {
+          careerId: 'hauler',
+          stepId: step.id,
+          choiceId: choice.id,
+          label: choice.label,
+          consequence: choice.summary,
+        },
+      },
+      {
+        event: 'toast',
+        payload: { text: `${choice.label}: ${choice.summary}.`, kind: 'info', ttl: 5 },
+      },
+    ],
+  };
+}
+
+/**
  * Accept current origin step. Returns intents for authorities (mission offer, collateral charge).
  * Does not mutate credits/cargo.
  */
@@ -114,38 +170,47 @@ export function acceptOrigin(state, simTime = 0, options = {}) {
 
   const step = stepDefAt(own.stepIndex);
   if (!step) return { ok: false, reason: 'no_step', own };
+  const choiceId = own.choicesByStep && own.choicesByStep[step.id] || null;
+  const choices = haulerChoicesForStep(step.id);
+  if (choices.length > 0 && !haulerChoiceForStep(step.id, choiceId)) {
+    return { ok: false, reason: 'choice_required', own, step, choices };
+  }
+  const authoredStep = applyHaulerStepChoice(step, choiceId);
 
   const t = Number(simTime) || 0;
-  const marketOptions = { allowSynthetic: !!options.allowSyntheticMarkets };
+  const marketOptions = { allowSynthetic: !!options.allowSyntheticMarkets, choiceId };
   const missionOffer = buildHaulerStepMissionOffer(
-    state, step, own.attempt, own.offerNonce, marketOptions,
+    state, authoredStep, own.attempt, own.offerNonce, marketOptions,
   );
-  const marketSnapshot = buildStepMarketSnapshot(state, step, marketOptions);
+  const marketSnapshot = buildStepMarketSnapshot(state, authoredStep, marketOptions);
   if (!marketSnapshot) return { ok: false, reason: 'market_unavailable', own };
 
   own.status = 'active';
-  own.stepId = step.id;
+  own.stepId = authoredStep.id;
   own.acceptedAtS = t;
   own.marketSnapshot = marketSnapshot;
   own.marketLegs = { buy: null, sell: null };
   own.activeContract = {
     offerId: missionOffer.id,
     missionId: null,
-    stepId: step.id,
-    stepIndex: step.index,
-    missionType: step.missionType,
-    commodityId: step.commodityId,
-    qty: step.qty,
-    originStationId: step.originStationId,
-    originSectorId: step.originSectorId,
-    destStationId: step.destStationId,
-    destSectorId: step.destSectorId,
+    stepId: authoredStep.id,
+    stepIndex: authoredStep.index,
+    missionType: authoredStep.missionType,
+    commodityId: authoredStep.commodityId,
+    qty: authoredStep.qty,
+    originStationId: authoredStep.originStationId,
+    originSectorId: authoredStep.originSectorId,
+    destStationId: authoredStep.destStationId,
+    destSectorId: authoredStep.destSectorId,
     reward_cr: missionOffer.reward_cr,
     collateral_cr: missionOffer.collateral_cr,
-    riskTier: step.riskTier,
+    riskTier: authoredStep.riskTier,
     deadlineS: missionOffer.deadlineS,
     attempt: own.attempt,
-    teach: step.teach,
+    choiceId: authoredStep.choiceId || null,
+    choiceLabel: authoredStep.choiceLabel || '',
+    choiceSummary: authoredStep.choiceSummary || '',
+    teach: authoredStep.teach,
     marketTruth: marketSnapshot,
   };
 
@@ -156,27 +221,30 @@ export function acceptOrigin(state, simTime = 0, options = {}) {
     event: 'career:origin:step',
     payload: {
       careerId: 'hauler',
-      stepId: step.id,
-      stepIndex: step.index,
+      stepId: authoredStep.id,
+      stepIndex: authoredStep.index,
       offerId: missionOffer.id,
-      teach: step.teach,
+      choiceId: authoredStep.choiceId || null,
+      choiceLabel: authoredStep.choiceLabel || null,
+      choiceSummary: authoredStep.choiceSummary || null,
+      teach: authoredStep.teach,
       marketTruth: marketSnapshot,
     },
   });
   intents.push({
     event: 'toast',
-    payload: { text: step.acceptLine, kind: 'info', ttl: 4 },
+    payload: { text: authoredStep.acceptLine, kind: 'info', ttl: 4 },
   });
 
   pushHaulerHistory(own, {
     kind: 'accepted',
-    stepId: step.id,
+    stepId: authoredStep.id,
     offerId: missionOffer.id,
     reward_cr: missionOffer.reward_cr,
     collateral_cr: missionOffer.collateral_cr,
   }, t);
 
-  return { ok: true, own, step, missionOffer, intents, marketSnapshot };
+  return { ok: true, own, step: authoredStep, missionOffer, intents, marketSnapshot };
 }
 
 /**
@@ -493,6 +561,9 @@ export function getHaulerOriginPublicView(state) {
     nonBinding: true,
     allowsOtherCareers: allowsOtherCareers(state),
     activeContract: own.activeContract,
+    choicesByStep: { ...(own.choicesByStep || {}) },
+    choices: haulerChoicesForStep(own.stepId || stepDefAt(own.stepIndex)?.id)
+      .map((choice) => ({ ...choice })),
     marketSnapshot: own.marketSnapshot,
     rewardsGranted: own.rewardsGranted,
     rewardReceipt: own.rewardReceipt,

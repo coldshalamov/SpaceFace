@@ -825,33 +825,55 @@ export function buildMissionLogOriginChoiceModel(state, api = null) {
       if (!offer) return false;
       if (focused) {
         return offer.careerId === focused
-          && (!!offer.canAccept || recoveringStatuses.has(offer.status));
+          && (!!offer.canAccept || !!offer.canChoose || recoveringStatuses.has(offer.status));
       }
-      return !!offer.canAccept || !!offer.canDecline || recoveringStatuses.has(offer.status);
+      return !!offer.canAccept || !!offer.canChoose || !!offer.canDecline
+        || recoveringStatuses.has(offer.status);
     })
     .map((offer) => {
       const recovering = recoveringStatuses.has(offer.status);
       const kit = offer.upgradeKit || null;
+      const choices = Array.isArray(offer.choices) ? offer.choices.map((choice) => ({ ...choice })) : [];
+      const selected = choices.find((choice) => choice.selected) || null;
+      const choiceSummary = choices.length
+        ? choices.map((choice) => `${choice.label}: ${choice.summary}`).join(' · ')
+        : null;
       return {
         originChoice: true,
         careerId: offer.careerId,
         title: offer.title,
         status: offer.status,
-        statusLabel: offer.canAccept ? 'AVAILABLE' : (recovering ? 'REISSUE' : String(offer.status || '')),
-        stepTitle: `${String(offer.lane || 'career').toUpperCase()} ORIGIN`,
+        statusLabel: offer.choiceRequired ? 'CHOOSE SERVICE'
+          : (offer.canAccept ? 'AVAILABLE' : (recovering ? 'REISSUE' : String(offer.status || ''))),
+        stepTitle: offer.stepTitle
+          || `${String(offer.lane || 'career').toUpperCase()} ORIGIN`,
         objective: offer.line,
-        nextAction: recovering
+        nextAction: offer.choiceRequired
+          ? 'Choose high-pay bonded express or the safer open manifest.'
+          : (recovering
           ? 'Reissue the same first contract. Progress is not skipped.'
-          : (focused
+          : (selected
+            ? `${selected.label} selected. Start the physical freight contract.`
+            : (focused
             ? `Continue the ${offer.title} path with its next physical contract.`
-            : `Choose this start to ${offer.verb || 'begin'} through a real contract now.`),
-        receiptLine: kit
+            : `Choose this start to ${offer.verb || 'begin'} through a real contract now.`))),
+        receiptLine: selected
+          ? `${selected.label} is saved. ${selected.summary}.`
+          : (kit
           ? `Primary start issues ${kit.label} immediately; other paths remain open.`
-          : 'Other paths remain open.',
+          : 'Other paths remain open.'),
+        progressLabel: Number.isFinite(offer.stepIndex) && Number.isFinite(offer.stepCount)
+          ? `Contract ${offer.stepIndex + 1}/${offer.stepCount}` : null,
+        choices,
+        canChoose: !!offer.canChoose,
+        choiceAction: 'originChoose',
+        choiceSummary,
+        selectedChoiceId: offer.selectedChoiceId || null,
         verb: offer.verb || null,
         upgradeKit: kit,
         nonBinding: true,
         canOriginAccept: !!offer.canAccept,
+        originAcceptLabel: offer.acceptLabel || null,
         canOriginDecline: !!offer.canDecline,
         canOriginRecover: recovering,
       };

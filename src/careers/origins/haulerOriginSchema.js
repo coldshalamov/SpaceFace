@@ -3,8 +3,10 @@
 
 import {
   HAULER_CAREER_ID,
+  HAULER_DEFAULT_ROUTE_RISK_CHOICE_ID,
   HAULER_EXCLUSIVITY,
   HAULER_ORIGIN_ID,
+  HAULER_ROUTE_RISK_CHOICES,
   HAULER_SCHEMA_VERSION,
   HAULER_STEPS,
 } from './haulerOriginData.js';
@@ -35,6 +37,7 @@ export function createHaulerOriginState() {
     attempt: 0,
     failureCount: 0,
     failuresByStep: Object.fromEntries(HAULER_STEPS.map((s) => [s.id, 0])),
+    choicesByStep: { route_risk: null },
     activeContract: null,
     marketLegs: { buy: null, sell: null },
     marketSnapshot: null,
@@ -112,7 +115,21 @@ export function migrateHaulerOriginState(raw) {
   out.attempt = clampInt(out.attempt, 0, 99, 0);
   out.failureCount = clampInt(out.failureCount, 0, 99, 0);
   out.failuresByStep = normalizeFailuresByStep(out.failuresByStep);
+  out.choicesByStep = normalizeChoicesByStep(out.choicesByStep);
   out.activeContract = normalizeContract(out.activeContract);
+  // V1 saves can already be mid-flight on the bonded contract. Preserve that exact contract
+  // instead of forcing a new decision after collateral was charged.
+  if (out.activeContract && out.activeContract.stepId === 'route_risk') {
+    const rawChoiceId = out.activeContract.choiceId
+      || out.choicesByStep.route_risk
+      || HAULER_DEFAULT_ROUTE_RISK_CHOICE_ID;
+    const choiceId = HAULER_ROUTE_RISK_CHOICES[rawChoiceId]
+      ? rawChoiceId : HAULER_DEFAULT_ROUTE_RISK_CHOICE_ID;
+    out.activeContract.choiceId = choiceId;
+    out.activeContract.choiceLabel = HAULER_ROUTE_RISK_CHOICES[choiceId]?.label || 'Bonded Express';
+    out.activeContract.choiceSummary = HAULER_ROUTE_RISK_CHOICES[choiceId]?.summary || '';
+    out.choicesByStep.route_risk = choiceId;
+  }
   out.marketLegs = normalizeMarketLegs(out.marketLegs);
   out.marketSnapshot = out.marketSnapshot && typeof out.marketSnapshot === 'object'
     ? out.marketSnapshot
@@ -177,6 +194,9 @@ export function validateHaulerOriginState(own) {
   if (own.activeContract) {
     const c = own.activeContract;
     if (!c.missionId || !c.stepId) errors.push('activeContract missing missionId/stepId');
+    if (c.stepId === 'route_risk' && !HAULER_ROUTE_RISK_CHOICES[c.choiceId]) {
+      errors.push('route_risk activeContract missing valid choiceId');
+    }
   }
   return { ok: errors.length === 0, errors };
 }
@@ -201,6 +221,13 @@ function normalizeFailuresByStep(raw) {
   return out;
 }
 
+function normalizeChoicesByStep(raw) {
+  const choiceId = raw && HAULER_ROUTE_RISK_CHOICES[raw.route_risk]
+    ? String(raw.route_risk)
+    : null;
+  return { route_risk: choiceId };
+}
+
 function normalizeContract(raw) {
   if (!raw || typeof raw !== 'object') return null;
   return {
@@ -220,6 +247,9 @@ function normalizeContract(raw) {
     riskTier: clampInt(raw.riskTier, 0, 4, 0),
     deadlineS: Number.isFinite(Number(raw.deadlineS)) ? Number(raw.deadlineS) : null,
     attempt: clampInt(raw.attempt, 0, 99, 0),
+    choiceId: raw.choiceId == null ? null : String(raw.choiceId),
+    choiceLabel: typeof raw.choiceLabel === 'string' ? raw.choiceLabel : '',
+    choiceSummary: typeof raw.choiceSummary === 'string' ? raw.choiceSummary : '',
     teach: typeof raw.teach === 'string' ? raw.teach : '',
     marketTruth: raw.marketTruth && typeof raw.marketTruth === 'object' ? raw.marketTruth : null,
   };

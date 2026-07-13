@@ -4,7 +4,79 @@
 
 export const HAULER_CAREER_ID = 'hauler';
 export const HAULER_ORIGIN_ID = 'origin.hauler.v1';
-export const HAULER_SCHEMA_VERSION = 1;
+export const HAULER_SCHEMA_VERSION = 2;
+
+/**
+ * The first freight decision with an actual operational consequence.
+ *
+ * Bonded Express pays more, but stakes collateral and runs on a short clock.
+ * Open Manifest pays less in exchange for no bond and a forgiving window.
+ * Both use the same physical cargo/destination so the choice cannot bypass play.
+ */
+export const HAULER_ROUTE_RISK_CHOICE_ORDER = Object.freeze([
+  'bonded_express',
+  'open_manifest',
+]);
+
+export const HAULER_ROUTE_RISK_CHOICES = Object.freeze({
+  bonded_express: Object.freeze({
+    id: 'bonded_express',
+    label: 'Bonded Express',
+    summary: '320 cr payout · 80 cr bond · 3 min',
+    title: 'Timed Spur Run — Bonded Express',
+    rewardCr: 320,
+    collateralCr: 80,
+    deadlineSlackS: 180,
+    riskTier: 1,
+    acceptLine: 'EXPRESS · Deliver 6u fuel cells to Ceres · 3 min · 80 cr bond.',
+    mapLabel: 'EXPRESS · 6u fuel cells → Ceres Refinery · bond at risk',
+    teach: 'A bond buys higher pay only when you can protect the clock and the hold.',
+  }),
+  open_manifest: Object.freeze({
+    id: 'open_manifest',
+    label: 'Open Manifest',
+    summary: '220 cr payout · no bond · 5 min',
+    title: 'Timed Spur Run — Open Manifest',
+    rewardCr: 220,
+    collateralCr: 0,
+    deadlineSlackS: 300,
+    riskTier: 0,
+    acceptLine: 'OPEN · Deliver 6u fuel cells to Ceres · 5 min · no bond.',
+    mapLabel: 'OPEN · 6u fuel cells → Ceres Refinery · no collateral',
+    teach: 'A longer window protects capital, but the yard pays less for the risk it keeps.',
+  }),
+});
+
+export const HAULER_DEFAULT_ROUTE_RISK_CHOICE_ID = 'bonded_express';
+
+export function haulerChoicesForStep(stepId) {
+  if (stepId !== 'route_risk') return [];
+  return HAULER_ROUTE_RISK_CHOICE_ORDER.map((id) => HAULER_ROUTE_RISK_CHOICES[id]);
+}
+
+export function haulerChoiceForStep(stepId, choiceId) {
+  if (stepId !== 'route_risk') return null;
+  return HAULER_ROUTE_RISK_CHOICES[String(choiceId || '')] || null;
+}
+
+export function applyHaulerStepChoice(step, choiceId) {
+  const choice = step && haulerChoiceForStep(step.id, choiceId);
+  if (!choice) return step;
+  return Object.freeze({
+    ...step,
+    title: choice.title,
+    baseRewardCr: choice.rewardCr,
+    collateralCr: choice.collateralCr,
+    deadlineSlackS: choice.deadlineSlackS,
+    riskTier: choice.riskTier,
+    acceptLine: choice.acceptLine,
+    mapLabel: choice.mapLabel,
+    teach: choice.teach,
+    choiceId: choice.id,
+    choiceLabel: choice.label,
+    choiceSummary: choice.summary,
+  });
+}
 
 /** Non-binding: completing or declining never locks other origin careers. */
 export const HAULER_EXCLUSIVITY = Object.freeze({

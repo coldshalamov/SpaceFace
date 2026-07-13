@@ -4,6 +4,7 @@
 import { hash32 } from '../../core/rng.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import {
+  applyHaulerStepChoice,
   HAULER_CAREER_ID,
   HAULER_ORIGIN_ID,
   HAULER_ORIGIN_OFFER_COPY,
@@ -104,12 +105,20 @@ export function buildStepMarketSnapshot(state, step, options = {}) {
  * missions.js board offers use these fields; integration can accept without reshaping.
  */
 export function buildHaulerStepMissionOffer(state, step, attempt, offerNonce, options = {}) {
+  const authoredStep = applyHaulerStepChoice(step, options.choiceId);
+  if (!authoredStep) return null;
+  step = authoredStep;
   const seed = (state && state.meta && state.meta.seed) || 1;
   const mult = haulerRewardMultiplier(attempt);
   const colMult = haulerCollateralMultiplier(attempt);
   const reward_cr = Math.max(1, Math.round(step.baseRewardCr * mult));
   const collateral_cr = Math.max(0, Math.round(step.collateralCr * colMult));
-  const missionId = haulerMissionId(seed, step.id, attempt, offerNonce);
+  const missionId = haulerMissionId(
+    seed,
+    step.choiceId ? `${step.id}:${step.choiceId}` : step.id,
+    attempt,
+    offerNonce,
+  );
   const simTime = (state && state.simTime) || 0;
   const marketTruth = buildStepMarketSnapshot(state, step, options);
   const commodity = COMMODITY_BY_ID.get(step.commodityId);
@@ -159,13 +168,16 @@ export function buildHaulerStepMissionOffer(state, step, attempt, offerNonce, op
     originStepId: step.id,
     markerId: `origin:${HAULER_CAREER_ID}:${step.id}`,
     markerKind: 'mission-objective',
-    mapLabel: step.acceptLine,
+    mapLabel: step.mapLabel || step.acceptLine,
     time_limit_s: step.deadlineSlackS,
     deadlineS: simTime + step.deadlineSlackS,
     expiresAtEpoch: 1,
     marketTruth,
     description: step.acceptLine,
     teach: step.teach,
+    originChoiceId: step.choiceId || null,
+    originChoiceLabel: step.choiceLabel || null,
+    originChoiceSummary: step.choiceSummary || null,
   };
 }
 
