@@ -15,6 +15,7 @@ import { createTelemetry } from './systems/telemetry.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { createTimeEffects } from './core/timeEffects.js';
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
+import { describeGameStartFailure, runNewGameStartTransition } from './core/newGameStartTransition.js';
 import { applyAccessibility } from './ui/accessibility.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
 import {
@@ -129,9 +130,10 @@ async function boot() {
         ).catch((error) => {
           if (!runTransitionGuard.isCurrent(transitionToken)) return;
           console.error('[SpaceFace] new game startup failed', error);
+          const failure = describeGameStartFailure(error);
           failGameStart(
-            state, bus, error, 'Game assets failed to load. See console.',
-            runTransitionGuard, transitionToken,
+            state, bus, error, failure.text,
+            runTransitionGuard, transitionToken, failure,
           );
         });
       };
@@ -204,63 +206,84 @@ function bootstrapScene(state, helpers, bus, registry) {
 
 // Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
 async function startNewGame(state, helpers, bus, registry, runTransitionGuard, transitionToken, opts) {
-  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-  for (const e of [...state.entityList]) {
-    bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId });
-    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-  }
-  state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
+  return runNewGameStartTransition({
+    guard: runTransitionGuard,
+    token: transitionToken,
+    prepareRun() {
+      for (const e of [...state.entityList]) {
+        bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId });
+        if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      }
+      state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
 
-  resetRunState(state, opts || {});
-  resetCombatInputMode(state, registry);
-  enterLoadingMode(state, bus);
-  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+      resetRunState(state, opts || {});
+      resetCombatInputMode(state, registry);
+      enterLoadingMode(state, bus);
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
-  for (const name of ['world', 'regionalEcology', 'factions', 'economy', 'automation', 'intervention', 'sectorSim', 'missions', 'aiEncounter', 'crafting', 'traffic', 'drill', 'claims', 'beacons']) {
-    const sys = registry.get(name);
-    if (sys && typeof sys.newGame === 'function') sys.newGame();
-    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-  }
+      for (const name of ['world', 'regionalEcology', 'factions', 'economy', 'automation', 'intervention', 'sectorSim', 'missions', 'aiEncounter', 'crafting', 'traffic', 'drill', 'claims', 'beacons']) {
+        const sys = registry.get(name);
+        if (sys && typeof sys.newGame === 'function') sys.newGame();
+        if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      }
 
-  const ships = registry.get('ships');
-  if (ships && typeof ships.newGame === 'function') {
-    ships.newGame();
-  } else {
-    state.player.ownedShips = [{ defId: NEW_GAME.shipId || 'ship_kestrel', fittings: [] }];
-    state.player.activeShipIndex = 0;
-    state.player.moduleInventory = [];
-    state.player.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
-    state.player.researchPoints = NEW_GAME.researchPoints || 0;
-  }
-  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+      const ships = registry.get('ships');
+      if (ships && typeof ships.newGame === 'function') {
+        ships.newGame();
+      } else {
+        state.player.ownedShips = [{ defId: NEW_GAME.shipId || 'ship_kestrel', fittings: [] }];
+        state.player.activeShipIndex = 0;
+        state.player.moduleInventory = [];
+        state.player.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
+        state.player.researchPoints = NEW_GAME.researchPoints || 0;
+      }
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
-  const libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
-  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-  if (!libraryReady) {
-    throw new Error('Authored ship asset library did not preload; refusing to start flight with procedural fallback ships.');
-  }
-  bootstrapScene(state, helpers, bus, registry);
-  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-  if (opts.name) state.player.name = opts.name;
-  if (opts.difficulty) state.settings.gameplay.difficulty = opts.difficulty;
-  const visualsReady = await waitForInitialAuthoredVisuals(
-    state,
-    INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
-    () => runTransitionGuard.isCurrent(transitionToken),
-  );
-  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-  if (!visualsReady) {
-    throw new Error('Initial authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
-  }
-  await waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
-  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-  runTransitionGuard.commit(transitionToken, () => {
-    enterFlightMode(state, bus);
-    if (!runTransitionGuard.isCurrent(transitionToken)) return;
-    bus.emit('game:started', {});
-    SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
+      // Create the canonical player and starting sector before readiness waits. This gives the
+      // renderer real entity boundaries to upgrade while the route remains frozen in loading.
+      bootstrapScene(state, helpers, bus, registry);
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      if (opts.name) state.player.name = opts.name;
+      if (opts.difficulty) state.settings.gameplay.difficulty = opts.difficulty;
+    },
+    discardRun: () => discardPreparedNewGameScene(
+      state, bus, runTransitionGuard, transitionToken,
+    ),
+    waitForLibrary: () => waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS),
+    waitForVisuals: () => waitForInitialAuthoredVisuals(
+      state,
+      INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+      () => runTransitionGuard.isCurrent(transitionToken),
+    ),
+    waitForWarmup: () => waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS),
+    enterFlight() {
+      enterFlightMode(state, bus);
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      bus.emit('game:started', {});
+      SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
+    },
   });
-  return { stale: false };
+}
+
+function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionToken) {
+  if (!runTransitionGuard.isCurrent(transitionToken)) return false;
+  for (const entity of [...state.entityList]) {
+    bus.emit('entity:destroyed', {
+      id: entity.id,
+      type: entity.type,
+      pos: { x: entity.pos.x, z: entity.pos.z },
+      radius: entity.radius,
+      factionId: entity.factionId,
+    });
+    if (!runTransitionGuard.isCurrent(transitionToken)) return false;
+  }
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.freeIds.length = 0;
+  state.nextEntityId = 1;
+  state.playerId = 0;
+  if (state.world) state.world.currentSectorId = null;
+  return true;
 }
 
 async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payload = {}) {
@@ -330,7 +353,7 @@ function enterFlightMode(state, bus) {
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
 }
 
-function failGameStart(state, bus, error, text, runTransitionGuard = null, transitionToken = null) {
+function failGameStart(state, bus, error, text, runTransitionGuard = null, transitionToken = null, failure = null) {
   if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
   const timeEffects = createTimeEffects(state);
   timeEffects.set('runtime:start-failed', { scale: 0 });
@@ -340,7 +363,10 @@ function failGameStart(state, bus, error, text, runTransitionGuard = null, trans
   state.mode = 'menu';
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
   if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
-  bus.emit('game:startFailed', { error: error && error.message ? error.message : String(error) });
+  bus.emit('game:startFailed', {
+    error: error && error.message ? error.message : String(error),
+    ...(failure || {}),
+  });
   bus.emit('toast', { text, kind: 'error', ttl: 8 });
   return true;
 }
