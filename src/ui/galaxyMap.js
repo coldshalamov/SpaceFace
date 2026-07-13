@@ -24,6 +24,7 @@ import { FACTION_META } from '../data/factions.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
 import { sectorLawProfile } from './securityReadout.js';
+import { causeFor } from './causeLedger.js';
 
 // ---------------------------------------------------------------------------------------------
 // Static catalogs (pure — safe at import time).
@@ -1717,6 +1718,71 @@ function dangerColor(v) {
   return '#ff5c5c';
 }
 
+function mapPercent(value, signed = false) {
+  const n = Math.max(signed ? -1 : 0, Math.min(1, Number(value) || 0));
+  const rounded = Math.round(n * 100);
+  return `${signed && rounded > 0 ? '+' : ''}${rounded}%`;
+}
+
+function mapTrendWord(axis, value) {
+  const n = Number(value) || 0;
+  const words = axis === 'danger'
+    ? { up: 'rising', down: 'easing', flat: 'steady' }
+    : axis === 'pricePressure'
+      ? { up: 'climbing', down: 'falling', flat: 'steady' }
+      : { up: 'consolidating', down: 'slipping', flat: 'holding' };
+  if (n > 1e-4) return words.up;
+  if (n < -1e-4) return words.down;
+  return words.flat;
+}
+
+function mapPressureLabel(value) {
+  const n = Number(value) || 0;
+  if (Math.abs(n) < 0.06) return 'Balanced';
+  return n > 0 ? 'Scarcity' : 'Surplus';
+}
+
+function escapeMapHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function sectorCauseIntelHtml(cause) {
+  if (!cause) return '';
+  const trend = cause.trend || {};
+  const controlName = factionNameOf(cause.dominantFactionId || cause.ownerId);
+  const receipts = (cause.receipts || []).slice(0, 3);
+  let html = `
+    <div class="gm-ins-section">
+      <div class="gm-ins-title">Current Conditions</div>
+      <div class="gm-ins-row">
+        <span>Danger</span>
+        <span class="gm-ins-row-val" style="color:${dangerColor(cause.danger)}">${mapPercent(cause.danger)} · ${mapTrendWord('danger', trend.danger)}</span>
+      </div>
+      <div class="gm-ins-row">
+        <span>Price pressure</span>
+        <span class="gm-ins-row-val">${mapPressureLabel(cause.pricePressure)} ${mapPercent(cause.pricePressure, true)} · ${mapTrendWord('pricePressure', trend.pricePressure)}</span>
+      </div>
+      <div class="gm-ins-row">
+        <span>Control</span>
+        <span class="gm-ins-row-val" style="color:${factionColorOf(cause.dominantFactionId || cause.ownerId)}">${escapeMapHtml(controlName)} · ${mapPercent(cause.dominantInfluence)} · ${mapTrendWord('influence', trend.influence)}</span>
+      </div>
+    </div>
+  `;
+  if (receipts.length) {
+    html += `
+      <div class="gm-ins-section">
+        <div class="gm-ins-title">Why it changed</div>
+        ${receipts.map((receipt) => `<div style="color:var(--ink-dim); font-size:.65rem; line-height:1.35; margin-top:4px;">${escapeMapHtml(receipt.line)}</div>`).join('')}
+      </div>
+    `;
+  }
+  return html;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Pure Dijkstra Hover preview path calculator
 // ---------------------------------------------------------------------------------------------
@@ -2335,7 +2401,9 @@ export const galaxyMapScreen = {
     let buttonLabel = 'Track Target';
 
     if (t.kind === 'sector') {
-      const record = sectorRecordById(state, t.id);
+      const sectorId = t.sectorId || t.id;
+      const record = sectorRecordById(state, sectorId);
+      const cause = record && isSectorCharted(state, record) ? causeFor(state, sectorId) : null;
       const faction = factionNameOf(t.factionId);
       const color = factionColorOf(t.factionId);
       const sec = t.security != null ? t.security : 0.5;
@@ -2396,6 +2464,8 @@ export const galaxyMapScreen = {
           </div>
         </div>
       `;
+
+      html += sectorCauseIntelHtml(cause);
 
       if (relevantMission) {
         html += `

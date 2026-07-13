@@ -145,9 +145,22 @@ function testCauseForFieldWinsAndDeterminism() {
   const sectorId = SECTORS[0].id;
   const a = causeFor(fixedFieldState(sectorId), sectorId);
   assert.ok(a, 'causeFor resolves a real sector');
+  assert.equal(a.danger, 0.55, 'exposes the current danger value from the sanctioned field read');
+  assert.equal(a.pricePressure, 0.3, 'exposes the current price-pressure value from the sanctioned field read');
+  assert.deepStrictEqual(a.influence, { faction_mts: 0.5, faction_scn: 0.3, faction_reach: 0.2 },
+    'exposes the current influence snapshot without consulting a second read model');
+  assert.equal(a.dominantInfluence, 0.5);
+  assert.equal(a.contestMargin, 0.2);
+  assert.equal(a.ownerId, SECTORS[0].factionId || null,
+    'keeps legal ownership distinct from modeled dominant influence');
   assert.equal(a.driver.pricePressure, 'meridian_transmission',
     'routes through sectorSignalFor — the live FIELD node wins over the legacy drift mirror');
   assert.ok(/Meridian/.test(a.lines.pricePressure), 'phrased from the field driver');
+  assert.deepStrictEqual(a.receipts.map((receipt) => receipt.axis), ['danger', 'pricePressure', 'influence'],
+    'cause receipts have a stable danger → price → influence order');
+  assert.deepStrictEqual(a.receipts.map((receipt) => receipt.line), [a.lines.danger, a.lines.pricePressure, a.lines.influence],
+    'each receipt is exactly sanctioned phrase-bank prose, never a separately invented explanation');
+  assert.ok(a.receipts.length >= 1 && a.receipts.length <= 3, 'causeFor exposes a compact 1–3 receipt budget');
   const b = causeFor(fixedFieldState(sectorId), sectorId);
   assert.deepStrictEqual(a, b, 'deterministic given a fixed field digest');
   assert.equal(causeFor(fixedFieldState(sectorId), 'sector_does_not_exist'), null, 'unknown sector → null');

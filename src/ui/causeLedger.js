@@ -81,7 +81,7 @@ export function driverPhrase(signal, sectorName) {
 }
 
 /**
- * causeFor(state, sectorId) -> { sectorId, sectorName, driver, trend, dominantFactionId, lines }
+ * causeFor(state, sectorId) -> stable current field snapshot + 1–3 sanctioned cause receipts
  * or null for an unknown sector.
  *
  * The ONE sanctioned read: routes through sectorSim.sectorSignalFor, which prefers the live field
@@ -93,13 +93,25 @@ export function causeFor(state, sectorId) {
   if (!signal) return null;
   const base = SECTOR_BY_ID.get(sectorId);
   const sectorName = (base && base.name) || String(sectorId).replace(/^sector_/, '').replace(/_/g, ' ');
+  const lines = driverPhrase(signal, sectorName);
   return {
     sectorId,
     sectorName,
+    // These values come from the same sanctioned read as the prose. Keeping them together prevents
+    // map/tooltip callers from sampling another mirror and presenting a contradictory snapshot.
+    danger: Number(signal.danger) || 0,
+    pricePressure: Number(signal.pricePressure) || 0,
+    influence: { ...(signal.influence || {}) },
+    ownerId: signal.ownerId || null,
     driver: { ...signal.driver },
     trend: { ...signal.trend },
     dominantFactionId: signal.dominantFactionId || null,
-    lines: driverPhrase(signal, sectorName),
+    dominantInfluence: Number(signal.dominantInfluence) || 0,
+    contestMargin: Number(signal.contestMargin) || 0,
+    lines,
+    receipts: CAUSE_AXES
+      .map((axis) => lines[axis] ? { axis, line: lines[axis] } : null)
+      .filter(Boolean),
   };
 }
 

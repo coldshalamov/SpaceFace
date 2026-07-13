@@ -21,6 +21,44 @@ const ctx = {
 const root = new FakeRoot(documentRef);
 galaxyMapScreen.mount(root, ctx);
 
+const knownSector = {
+  id: 'sector_helios_prime',
+  sectorId: 'sector_helios_prime',
+  kind: 'sector',
+  name: 'Helios Prime',
+  factionId: 'faction_scn',
+  security: 0.98,
+  x: 0,
+  y: 0,
+};
+galaxyMapScreen._selectedTarget = knownSector;
+galaxyMapScreen._updateInspector();
+const details = root.querySelector('.gm-inspector-details');
+assert(details, 'the inspector should mount a dedicated details container beside the persistent action');
+assert.match(details.innerHTML, /Current Conditions/, 'a known sector exposes its compact live condition readout');
+assert.match(details.innerHTML, /Danger[\s\S]*55%[\s\S]*rising/i,
+  'current danger is shown at honest whole-percent precision with its direction');
+assert.match(details.innerHTML, /Price pressure[\s\S]*\+30%[\s\S]*climbing/i,
+  'current price pressure is shown as a signed whole percent with its direction');
+assert.match(details.innerHTML, /Control[\s\S]*Concord[\s\S]*50%[\s\S]*holding/i,
+  'dominant influence/control and trend are legible without conflating them with legal ownership');
+assert.match(details.innerHTML, /Why it changed/, 'the condition snapshot includes its causal receipt heading');
+assert.match(details.innerHTML, /Crimson Reach raiders[\s\S]*Meridian trade routes[\s\S]*Concord holds Helios Prime uncontested/i,
+  'the inspector presents the sanctioned 1–3 cause receipts in stable danger/price/control order');
+const writesAfterFirstSectorRender = details.innerHTMLWrites;
+galaxyMapScreen._updateInspector();
+assert.equal(details.innerHTMLWrites, writesAfterFirstSectorRender,
+  'an unchanged causal snapshot reuses the existing inspector cache instead of churning the DOM');
+
+ctx.state.world.discovery = { sector_sker_haven: { discovered: false } };
+galaxyMapScreen._selectedTarget = {
+  id: 'sector_sker_haven', sectorId: 'sector_sker_haven', kind: 'sector', name: 'Sker Haven',
+  factionId: 'faction_reach', security: 0.08, x: 5, y: 5,
+};
+galaxyMapScreen._updateInspector();
+assert.doesNotMatch(details.innerHTML, /Current Conditions|Why it changed/,
+  'an undiscovered real sector cannot reveal field causes through a forged selection');
+
 const helios = {
   id: 'station_helios',
   stationId: 'station_helios',
@@ -50,8 +88,6 @@ assert.strictEqual(documentRef.activeElement, firstButton,
 assert.equal(firstButton.listenerCount('click'), 1,
   'the persistent action button must have exactly one activation handler');
 
-const details = root.querySelector('.gm-inspector-details');
-assert(details, 'the inspector should mount a dedicated details container beside the persistent action');
 const writesAfterFirstHeliosRender = details.innerHTMLWrites;
 galaxyMapScreen._updateInspector();
 assert.equal(details.innerHTMLWrites, writesAfterFirstHeliosRender,
@@ -310,7 +346,33 @@ function createStateFixture() {
     simTime: 120,
     playerId: 'player',
     player: { id: 'player', marketMemory: {} },
-    world: { currentSectorId: 'sector_helios_prime' },
+    world: {
+      currentSectorId: 'sector_helios_prime',
+      sectors: { sector_helios_prime: { owner: 'faction_scn' } },
+      discovery: { sector_helios_prime: { discovered: true, lastSeenEpochDays: 3 } },
+    },
+    sectorSim: {
+      field: {
+        version: 1,
+        epochDays: 3,
+        nodes: {
+          sector_helios_prime: {
+            danger: 0.55,
+            pricePressure: 0.3,
+            influence: { faction_scn: 0.5, faction_mts: 0.3, faction_reach: 0.2 },
+            dominantFactionId: 'faction_scn',
+            dominantInfluence: 0.5,
+            contestMargin: 0.2,
+            trend: { danger: 0.01, pricePressure: 0.02, influence: 0 },
+            driver: {
+              danger: 'reach_pressure',
+              pricePressure: 'meridian_transmission',
+              influence: 'territorial_anchor',
+            },
+          },
+        },
+      },
+    },
     entities: new Map([
       ['player', { id: 'player', type: 'ship', alive: true, pos: { x: 0, z: 0 } }],
       ['entity_helios', {
