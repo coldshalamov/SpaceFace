@@ -4,6 +4,33 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import * as partsLibrary from '../src/render/partsLibrary.js';
+import { getAssetResidency } from '../src/render/assetResidency.js';
+
+function residencyFixtureLoader(renderer, controls = {}) {
+  const registry = getAssetResidency(renderer);
+  const resources = new Map();
+  const load = async (url, options = {}) => {
+    if (typeof controls.beforeLoad === 'function') await controls.beforeLoad(url, options);
+    const key = `${url}::${options.slot || '*'}`;
+    let record = resources.get(key);
+    if (!record) {
+      const resource = { byteSize: 1024, userData: {}, dispose() {} };
+      const handle = registry.registerAsset(key, [resource]);
+      record = {
+        url,
+        assetId: url.endsWith('kestrel.glb') ? 'SF_K0_KESTREL_BORROWED_TIME' : 'fixture',
+        residency: { key, generation: handle.generation, state: 'resident' },
+      };
+      resources.set(key, record);
+    }
+    if (options.residencyOwner) registry.retain(key, options.residencyOwner, {
+      role: options.residencyRole,
+      sectorId: options.sectorId,
+    });
+    return record;
+  };
+  return { registry, load, resources };
+}
 
 test('boot preload is a bounded player and starting-sector plan, not the whole catalog', async () => {
   assert.equal(typeof partsLibrary.authoredBootstrapPreloadPlan, 'function');
@@ -138,4 +165,74 @@ test('a departed boundary is discarded before its asset can load', async () => {
   await new Promise((resolve) => setTimeout(resolve, 60));
   assert.deepEqual(requested, [], 'detached/dead sector entity must be cancelled before decode');
   assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
+});
+
+test('departure while waiting in the admission lane is a quiet cancellation, not an incomplete asset failure', async () => {
+  const renderer = {};
+  const loaded = [];
+  const loadAuthoredPart = async (url) => {
+    loaded.push(url);
+    return { url, assetId: url.endsWith('kestrel.glb') ? 'SF_K0_KESTREL_BORROWED_TIME' : 'fixture' };
+  };
+  await partsLibrary.preloadAuthoredPartLibrary(renderer, { releaseMode: true, loadAuthoredPart });
+
+  let active = false;
+  const library = await partsLibrary.preloadAuthoredAssetsForEntity(renderer, {
+    id: 'departed-in-admission',
+    type: 'ship',
+    data: { defId: 'ship_wasp', lootTableId: 'wasp_swarmer' },
+  }, {
+    releaseMode: true,
+    loadAuthoredPart,
+    residencyOwner: {},
+    isResidencyOwnerActive: () => active,
+  });
+
+  assert.ok(library instanceof Map, 'expected departure resolves as an ordinary cancelled demand');
+  assert.equal(loaded.some((url) => url.endsWith('ashline_dart.glb')), false,
+    'departed queued demand must not begin its decode');
+  partsLibrary.invalidatePartsLibraryCaches(renderer);
+});
+
+test('a boundary released while canonical bootstrap is pending cannot resurrect after the await', async () => {
+  const renderer = {};
+  let resolveHub;
+  const hubGate = new Promise((resolve) => { resolveHub = resolve; });
+  const fixture = residencyFixtureLoader(renderer, {
+    beforeLoad: async (url) => {
+      if (url.endsWith('place_station_trade_hub.glb')) await hubGate;
+    },
+  });
+  const boundary = {};
+  let active = true;
+  const pending = partsLibrary.preloadAuthoredAssetsForEntity(renderer, {
+    id: 'late-player-boundary',
+    type: 'ship',
+    isPlayer: true,
+    alive: true,
+    data: { defId: 'ship_kestrel' },
+  }, {
+    releaseMode: true,
+    loadAuthoredPart: fixture.load,
+    residencyOwner: boundary,
+    residencyRole: 'player',
+    sectorId: 'sector_helios_prime',
+    isResidencyOwnerActive: () => active,
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  active = false;
+  fixture.registry.releaseOwner(boundary, 'boundary-detached-during-bootstrap');
+  const before = fixture.registry.canonicalDiagnostics();
+  resolveHub();
+  await pending;
+  const after = fixture.registry.canonicalDiagnostics();
+
+  assert.equal(after.assets.some((asset) => asset.roles.includes('player')), false,
+    'the departed boundary is absent from every residency record');
+  assert.equal(after.ownerCount, 1, 'only the bootstrap owner remains');
+  assert.equal(after.residentResources, before.residentResources + 1,
+    'canonical completion adds only the pending bootstrap hub resource');
+  assert.ok(after.assets.every((asset) => asset.refCount === 1));
+  partsLibrary.invalidatePartsLibraryCaches(renderer);
 });

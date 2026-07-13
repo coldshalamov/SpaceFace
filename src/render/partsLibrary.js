@@ -10,6 +10,7 @@ import { FACTION_PALETTES } from '../data/palettes.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
+import { getAssetResidency } from './assetResidency.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 import { attachStationHlod } from './hlod.js';
@@ -32,6 +33,7 @@ const sharedReadabilityShellVariants = new Map();
 const ownerReleaseState = new WeakMap();
 const compositionPrimitiveCache = new WeakMap();
 const upgradeQueuesByScene = new WeakMap();
+const bootstrapResidencyOwnersByRenderer = new WeakMap();
 const contractRecordsBySlot = new Map();
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -95,6 +97,12 @@ export function invalidatePartsLibraryCaches(renderer) {
   sharedMaterialVariants.clear();
   sharedReadabilityShellVariants.clear();
   if (renderer) {
+    const bootstrapOwner = bootstrapResidencyOwnersByRenderer.get(renderer);
+    if (bootstrapOwner) {
+      const residency = getAssetResidency(renderer);
+      if (residency) residency.releaseOwner(bootstrapOwner, 'parts-library-invalidated');
+      bootstrapResidencyOwnersByRenderer.delete(renderer);
+    }
     const promises = libraryByRenderer.get(renderer);
     if (promises) promises.clear();
     const resolved = resolvedLibraryByRenderer.get(renderer);
@@ -519,6 +527,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       requiredWholeShip: options.requiredWholeShip === true,
       onSwap: options.onSwap,
       loadAuthoredPart: options.loadAuthoredPart,
+      ...residencyOptionsForBoundary(entity, boundary, renderer),
     };
     if (installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene, upgradeOptions, (next) => {
       active = next;
@@ -694,11 +703,12 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
       run: () => upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, {
         releaseMode,
         loadAuthoredPart: options.loadAuthoredPart,
+        ...residencyOptionsForBoundary(options.liveEntity || entity, boundary, renderer),
       }, (next) => {
         boundary.userData.hull = next;
       }),
       renderer,
-      options: { releaseMode },
+      options: { releaseMode, ...residencyOptionsForBoundary(options.liveEntity || entity, boundary, renderer) },
     });
   };
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
@@ -751,11 +761,12 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
       run: () => upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, {
         releaseMode,
         loadAuthoredPart: options.loadAuthoredPart,
+        ...residencyOptionsForBoundary(entity, boundary, renderer),
       }, (next) => {
         boundary.userData.hull = next;
       }),
       renderer,
-      options: { releaseMode },
+      options: { releaseMode, ...residencyOptionsForBoundary(entity, boundary, renderer) },
     });
   };
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
@@ -784,14 +795,23 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     renderer,
     slot: 'place',
     optional: true,
+    residencyOwner: options.residencyOwner,
+    residencyRole: options.residencyRole,
+    sectorId: options.sectorId,
+    isResidencyOwnerActive: options.isResidencyOwnerActive,
   });
+  handoffBootstrapIfCovered(renderer);
   if (!record || !boundary.parent) {
+    releaseBoundaryResidency(renderer, boundary, record ? 'place-orphaned-before-swap' : 'place-unavailable');
     boundary.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
     return false;
   }
 
   const authored = buildPlacePropRoot(entity, record, scene, boundary);
-  if (!authored || !boundary.parent) return false;
+  if (!authored || !boundary.parent) {
+    releaseBoundaryResidency(renderer, boundary, 'place-swap-not-committed');
+    return false;
+  }
 
   // A validated place record is the readability authority. Keep the procedural shell only while
   // loading or after failure; successful world-place upgrades must not double-render both bodies.
@@ -1047,6 +1067,25 @@ function authoredRuntimeState() {
     : null;
 }
 
+function residencyOptionsForBoundary(entity, boundary, renderer) {
+  const liveState = authoredRuntimeState();
+  const data = entity && entity.data || {};
+  const sectorId = data.sectorId || entity && entity.homeSectorId
+    || liveState && liveState.world && liveState.world.currentSectorId
+    || null;
+  if (boundary && boundary.userData && renderer) {
+    boundary.userData.releaseAuthoredAssetResidency = (reason = 'boundary-disposed') => (
+      releaseBoundaryResidency(renderer, boundary, reason)
+    );
+  }
+  return {
+    residencyOwner: boundary,
+    residencyRole: entity && entity.isPlayer === true ? 'player' : 'current-sector',
+    sectorId,
+    isResidencyOwnerActive: () => !!boundary && !!boundary.parent && entity && entity.alive !== false,
+  };
+}
+
 function entityIsOnscreen(entity, state) {
   const root = entity && entity.mesh;
   if (!root || root.visible === false) return false;
@@ -1114,6 +1153,8 @@ function cleanupQueuedJob(state, job) {
 
 function cancelQueuedJob(state, job) {
   cleanupQueuedJob(state, job);
+  const residency = job && job.renderer && getAssetResidency(job.renderer);
+  if (residency && job.boundary) residency.releaseOwner(job.boundary, 'upgrade-job-cancelled');
   if (job.boundary && job.boundary.userData) {
     job.boundary.userData.authoredAssetState = 'cancelled-before-load';
   }
@@ -1188,6 +1229,7 @@ function admitNextUpgradeJob(state) {
   }).catch((error) => {
     diagnostic.status = 'fallback-after-error';
     diagnostic.error = error && error.message ? error.message : String(error);
+    releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
     job.boundary.userData.authoredAssetState = 'fallback-after-error';
     console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
   })
@@ -1207,7 +1249,13 @@ function authoredUpgradeConcurrencyLimit() {
 function primeBackgroundAssetPlans(state) {
   const liveState = authoredRuntimeState();
   if (!state || !liveState || liveState.mode !== 'flight') return;
-  for (const job of state.jobs) {
+  for (const job of [...state.jobs]) {
+    if (!jobStillNeeded(state, job)) {
+      const index = state.jobs.indexOf(job);
+      if (index >= 0) state.jobs.splice(index, 1);
+      cancelQueuedJob(state, job);
+      continue;
+    }
     if (job.prefetchPromise || !job.entity || job.entity.type !== 'ship' || !job.renderer) continue;
     job.prefetchPromise = preloadAuthoredAssetsForEntity(job.renderer, job.entity, job.options || {});
     job.prefetchPromise.catch((error) => {
@@ -1406,8 +1454,10 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
   try {
     const library = await (prefetchedLibrary || preloadAuthoredAssetsForEntity(renderer, entity, options));
     swapped = commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive);
+    if (!swapped) releaseBoundaryResidency(renderer, boundary, 'authored-swap-not-committed');
   } catch (error) {
     if (!swapped) {
+      releaseBoundaryResidency(renderer, boundary, 'authored-swap-failed');
       releaseOwnerInstances(boundary);
       boundary.userData.authoredAssetState = 'fallback-after-error';
       console.warn('[partsLibrary] authored composition failed; retaining procedural ship', error);
@@ -1423,8 +1473,11 @@ function installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene
   if (!library || !libraryHasPreloadPlan(library, authoredPreloadPlanForEntity(entity, options))) return false;
   boundary.userData.authoredAssetState = 'loading';
   try {
-    commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive);
+    retainLibraryPlan(renderer, library, authoredPreloadPlanForEntity(entity, options), options);
+    const swapped = commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive);
+    if (!swapped) releaseBoundaryResidency(renderer, boundary, 'resolved-swap-not-committed');
   } catch (error) {
+    releaseBoundaryResidency(renderer, boundary, 'resolved-swap-failed');
     releaseOwnerInstances(boundary);
     boundary.userData.authoredAssetState = 'fallback-after-error';
     console.warn('[partsLibrary] authored composition failed; retaining procedural ship', error);
@@ -1565,7 +1618,14 @@ function loadCanonicalLibrary(renderer, options = {}) {
   }
   let promise = promises.get(partRoot);
   if (!promise) {
-    const pending = loadPlanIntoLibrary(renderer, options, new Map(), AUTHORED_BOOTSTRAP_PLAN)
+    const bootstrapOwner = bootstrapResidencyOwner(renderer);
+    const pending = loadPlanIntoLibrary(renderer, {
+      ...options,
+      residencyOwner: bootstrapOwner,
+      residencyRole: 'bootstrap',
+      sectorId: 'sector_helios_prime',
+      isResidencyOwnerActive: () => true,
+    }, new Map(), AUTHORED_BOOTSTRAP_PLAN)
       .then((loaded) => {
         const library = assertCanonicalLibraryUsable(loaded);
         let resolved = resolvedLibraryByRenderer.get(renderer);
@@ -1588,10 +1648,23 @@ function loadCanonicalLibrary(renderer, options = {}) {
 async function ensureEntityLibrary(renderer, entity, options = {}) {
   const library = await loadCanonicalLibrary(renderer, options);
   const plan = authoredPreloadPlanForEntity(entity, options);
+  if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
+    return library;
+  }
+  // Acquire any already-resident pieces before joining the serial decode lane. A live queued
+  // boundary is an owner too; without this hold an earlier boundary can release the shared
+  // generation while this request is waiting, forcing a needless re-decode or an incomplete plan.
+  retainLibraryPlan(renderer, library, plan, options);
   await admitEntityPlan(renderer, options, library, plan);
+  // Departure is a successful cancellation boundary, not an authored-asset failure. The caller
+  // will observe its detached boundary and keep/discard the procedural root without warning.
+  if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
+    return library;
+  }
   if (!libraryHasPreloadPlan(library, plan)) {
     throw new Error(`Authored entity assets are incomplete for ${entity && entity.id || 'unknown ship'}.`);
   }
+  retainLibraryPlan(renderer, library, plan, options);
   return library;
 }
 
@@ -1633,9 +1706,10 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
   // expensive resident operations. Serial admission prevents renderer + GPU memory from rising by
   // hundreds of megabytes in one task while preserving the exact source assets.
   for (const [slot, files] of Object.entries(plan || {})) {
-    const records = Array.isArray(library.get(slot)) ? [...library.get(slot)] : [];
+    const records = Array.isArray(library.get(slot)) ? library.get(slot).filter(recordIsResident) : [];
     for (const file of files || []) {
       if (records.some((record) => recordUrlEndsWith(record, file))) continue;
+      if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) break;
       const url = `${partRoot}${file}`;
       const diagnostic = beginDecodeAdmission(renderer, url, slot);
       let record;
@@ -1644,6 +1718,10 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
           renderer,
           slot,
           optional: true,
+          residencyOwner: options.residencyOwner,
+          residencyRole: options.residencyRole,
+          sectorId: options.sectorId,
+          isResidencyOwnerActive: options.isResidencyOwnerActive,
         });
       } finally {
         finishDecodeAdmission(renderer, diagnostic);
@@ -1706,9 +1784,57 @@ function libraryHasPreloadPlan(library, plan) {
 }
 
 function recordUrlEndsWith(record, file) {
-  if (!record || typeof record.url !== 'string' || !record.url) return false;
+  if (!recordIsResident(record) || typeof record.url !== 'string' || !record.url) return false;
   const url = record.url.replace(/\\/g, '/').split(/[?#]/, 1)[0];
   return url.endsWith(file);
+}
+
+function recordIsResident(record) {
+  return !!record && (!record.residency || record.residency.state === 'resident');
+}
+
+function bootstrapResidencyOwner(renderer) {
+  let owner = renderer && bootstrapResidencyOwnersByRenderer.get(renderer);
+  if (!owner && renderer) {
+    owner = Object.freeze({ type: 'authored-bootstrap-library' });
+    bootstrapResidencyOwnersByRenderer.set(renderer, owner);
+  }
+  return owner;
+}
+
+function retainLibraryPlan(renderer, library, plan, options = {}) {
+  const owner = options.residencyOwner;
+  const residency = owner && getAssetResidency(renderer);
+  if (!residency || !(library instanceof Map)) return 0;
+  if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return 0;
+  let retained = 0;
+  for (const [slot, files] of Object.entries(plan || {})) {
+    const records = library.get(slot) || [];
+    for (const file of files || []) {
+      const record = records.find((candidate) => recordUrlEndsWith(candidate, file));
+      const key = record && record.residency && record.residency.key;
+      if (key && residency.retain(key, owner, {
+        role: options.residencyRole || 'live-boundary',
+        sectorId: options.sectorId || null,
+      })) retained++;
+    }
+  }
+  handoffBootstrapIfCovered(renderer, residency);
+  return retained;
+}
+
+function handoffBootstrapIfCovered(renderer, residency = null) {
+  const bootstrapOwner = renderer && bootstrapResidencyOwnersByRenderer.get(renderer);
+  const registry = residency || renderer && getAssetResidency(renderer);
+  if (!bootstrapOwner || !registry) return false;
+  const handedOff = registry.handoffOwnerWhenCovered(bootstrapOwner, 'bootstrap-handed-off-to-live-boundaries');
+  if (handedOff) bootstrapResidencyOwnersByRenderer.delete(renderer);
+  return handedOff;
+}
+
+function releaseBoundaryResidency(renderer, boundary, reason) {
+  const residency = renderer && getAssetResidency(renderer);
+  return residency && boundary ? residency.releaseOwner(boundary, reason) : 0;
 }
 
 function clonePreloadPlan(plan) {

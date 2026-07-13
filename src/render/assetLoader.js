@@ -5,6 +5,10 @@
 // The game keeps a synchronous visual-factory contract, so loads are started only after a real
 // renderer is available; callers always retain their procedural fallback while this Promise resolves.
 import * as THREE from 'three';
+import {
+  disposeAssetResidency,
+  getAssetResidency,
+} from './assetResidency.js';
 
 export const ASSET_AUTHORING_CONTRACT = Object.freeze({
   version: 1,
@@ -280,6 +284,46 @@ const sharedKtx2LoaderOwner = createSharedKtx2LoaderOwner();
 const authoredAssetRuntimeRegistry = createAuthoredAssetRuntimeRegistry(createRuntime);
 
 /**
+ * Explicit authored-asset lifetime for preview roots and other non-entity render surfaces.
+ * The lease is intentionally independent from renderer lifetime: replacing a dock/preview root can
+ * release its GLB generation immediately while keeping the renderer and decoder runtime alive.
+ */
+export function createAuthoredAssetLease(renderer, options = {}) {
+  const residency = options.registry || getAssetResidency(renderer);
+  const owner = options.owner || Object.freeze({
+    type: 'authored-asset-lease',
+    id: options.ownerId == null ? null : String(options.ownerId),
+  });
+  const role = options.role || 'preview';
+  const sectorId = options.sectorId == null ? null : String(options.sectorId);
+  let active = true;
+  const isActive = () => active && !!residency && !residency.isOwnerReleased(owner);
+  const loadOptions = Object.freeze({
+    residencyOwner: owner,
+    residencyRole: role,
+    sectorId,
+    isResidencyOwnerActive: isActive,
+  });
+  return Object.freeze({
+    owner,
+    loadOptions,
+    isActive,
+    load(url, requestOptions = {}) {
+      if (!active) return Promise.resolve(null);
+      return loadAuthoredPart(url, { ...requestOptions, renderer, ...loadOptions });
+    },
+    retain(key) {
+      return active && !!residency && residency.retain(key, owner, { role, sectorId });
+    },
+    release(reason = 'authored-asset-lease-released') {
+      if (!active) return 0;
+      active = false;
+      return residency ? residency.releaseOwner(owner, reason) : 0;
+    },
+  });
+}
+
+/**
  * Load and validate one authored GLB part. Failures resolve to null by contract: the caller's
  * procedural part remains authoritative and no entity may disappear because an asset is absent.
  */
@@ -296,12 +340,33 @@ export async function loadAuthoredPart(url, options = {}) {
   }
 
   if (runtime.retiring) return null;
+  if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return null;
 
   const cacheKey = `${url}::${slot || '*'}`;
-  return admitAuthoredAssetTask(runtime, cacheKey, () => (
+  const residency = getAssetResidency(renderer);
+  const residencyOwner = options.residencyOwner || runtime.defaultResidencyOwner;
+  const request = residency && residencyOwner
+    ? residency.beginRequest(cacheKey, residencyOwner, {
+      role: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
+      sectorId: options.sectorId || null,
+    })
+    : null;
+  if (request && !request.shouldDecode()) {
+    request.cancel('owner-departed-before-decode');
+    return null;
+  }
+
+  const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
     validateWholeShipGlbJson(url)
       .then(() => runtime.gltf.loadAsync(url))
-      .then((gltf) => compileBlueprint(url, gltf, slot))
+      .then((gltf) => compileBlueprint(url, gltf, slot, {
+        cacheKey,
+        residency,
+        onEvict() {
+          runtime.assets.delete(cacheKey);
+          runtime.failures.delete(cacheKey);
+        },
+      }))
       .catch((error) => {
         if (!runtime.retiring) {
           runtime.failures.set(cacheKey, error);
@@ -314,6 +379,21 @@ export async function loadAuthoredPart(url, options = {}) {
         return null;
       })
   ));
+  if (!task) {
+    if (request) request.cancel('runtime-retired-before-decode');
+    return null;
+  }
+  const blueprint = await task;
+  if (!blueprint) {
+    if (request) request.cancel('decode-failed');
+    return null;
+  }
+  if (request && typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
+    request.cancel('owner-departed-during-decode');
+    return null;
+  }
+  if (request && !request.commit()) return null;
+  return blueprint;
 }
 
 export async function preloadAuthoredParts(requests, renderer) {
@@ -361,12 +441,23 @@ export async function invalidateAuthoredAsset(renderer, url = null) {
   if (!runtimePromise) return false;
   try {
     const runtime = await runtimePromise;
+    const residency = getAssetResidency(renderer);
+    const invalidateKey = (key) => {
+      if (residency) {
+        residency.release(key, runtime.defaultResidencyOwner, 'asset-cache-invalidated');
+        // A live boundary/preview still owns this exact generation. Keep its Promise canonical so
+        // invalidation cannot admit a second decode under the same cache key.
+        if (residency.has(key)) return false;
+      }
+      runtime.assets.delete(key);
+      return true;
+    };
     if (!url) {
-      runtime.assets.clear();
+      for (const key of [...runtime.assets.keys()]) invalidateKey(key);
       runtime.failures.clear();
       return true;
     }
-    for (const key of [...runtime.assets.keys()]) if (key.startsWith(`${url}::`)) runtime.assets.delete(key);
+    for (const key of [...runtime.assets.keys()]) if (key.startsWith(`${url}::`)) invalidateKey(key);
     for (const key of [...runtime.failures.keys()]) if (key.startsWith(`${url}::`)) runtime.failures.delete(key);
     return true;
   } catch {
@@ -389,7 +480,10 @@ export async function invalidateFailedAuthoredAssets(renderer) {
 }
 
 export function disposeAuthoredAssetRuntime(renderer) {
-  return authoredAssetRuntimeRegistry.dispose(renderer);
+  const retirement = authoredAssetRuntimeRegistry.dispose(renderer);
+  return Promise.resolve(retirement).finally(() => {
+    disposeAssetResidency(renderer, 'authored-runtime-disposed');
+  });
 }
 
 function runtimeFor(renderer) {
@@ -429,6 +523,7 @@ async function createRuntime(renderer) {
     disposableDecoders,
     retiring: false,
     retirementPromise: null,
+    defaultResidencyOwner: Object.freeze({ type: 'authored-runtime-cache' }),
   };
 }
 
@@ -477,7 +572,7 @@ async function attachRuntimeDecoders(gltf, renderer, decoders, disposableDecoder
   }
 }
 
-function compileBlueprint(url, gltf, expectedSlot) {
+function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null) {
   const scene = gltf && gltf.scene;
   if (!scene || !scene.isObject3D) throw new AssetContractError(url, ['GLB has no default scene']);
 
@@ -546,10 +641,6 @@ function compileBlueprint(url, gltf, expectedSlot) {
       const material = canopy ? makeCanopyMaterial(node.material) : node.material;
       if (canopy) node.material = material;
       validatePrimitive(node, material, canopy, gltf, metadata, errors, warnings);
-      preserveSharedGpuResource(node.geometry);
-      preserveSharedGpuResource(material);
-      preserveMaterialTextures(material);
-
       primitives.push(Object.freeze({
         key: `${url}#${node.uuid}`,
         name: node.name || `Primitive_${primitives.length}`,
@@ -599,7 +690,12 @@ function compileBlueprint(url, gltf, expectedSlot) {
     }
   }
 
-  return Object.freeze({
+  const residencyState = {
+    key: residencyRegistration && residencyRegistration.cacheKey || `${url}::${expectedSlot || '*'}`,
+    generation: null,
+    state: 'resident',
+  };
+  const blueprint = Object.freeze({
     url,
     assetId: metadata.assetId || fileStem(url),
     slot: expectedSlot || metadata.slot || null,
@@ -618,7 +714,21 @@ function compileBlueprint(url, gltf, expectedSlot) {
       markerCount: markers.length,
       ktx2TextureCount: ktx2Textures.size,
     }),
+    residency: residencyState,
   });
+  const resources = blueprintGpuResources(blueprint);
+  if (residencyRegistration && residencyRegistration.residency) {
+    const handle = residencyRegistration.residency.registerAsset(residencyState.key, resources, {
+      metadata: { url, slot: expectedSlot || metadata.slot || null },
+      onEvict(handle, reason) {
+        residencyState.state = 'evicted';
+        residencyState.reason = reason;
+        if (typeof residencyRegistration.onEvict === 'function') residencyRegistration.onEvict(handle, reason);
+      },
+    });
+    residencyState.generation = handle.generation;
+  }
+  return blueprint;
 }
 
 
@@ -1091,15 +1201,14 @@ function makeCanopyMaterial(source) {
   return physical;
 }
 
-function preserveSharedGpuResource(resource) {
-  if (!resource || resource.userData && resource.userData.spacefaceSharedAsset) return resource;
-  resource.userData = { ...(resource.userData || {}), spacefaceSharedAsset: true };
-  if (typeof resource.dispose === 'function') resource.dispose = () => {};
-  return resource;
-}
-
-function preserveMaterialTextures(material) {
-  for (const texture of materialTextures(material)) preserveSharedGpuResource(texture);
+function blueprintGpuResources(blueprint) {
+  const resources = new Set();
+  for (const primitive of blueprint && blueprint.primitives || []) {
+    if (primitive.geometry) resources.add(primitive.geometry);
+    if (primitive.material) resources.add(primitive.material);
+    for (const texture of materialTextures(primitive.material)) resources.add(texture);
+  }
+  return [...resources];
 }
 
 function materialTextures(material) {

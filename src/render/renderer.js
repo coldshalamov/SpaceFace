@@ -41,6 +41,7 @@ import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
+import { getAssetResidency } from './assetResidency.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -568,6 +569,8 @@ export const render = {
         ev.preventDefault();        // allow restoration
         if (this._contextLost) return;
         this._contextLost = true;
+        if (this._assetResidency) this._assetResidency.handleContextLost();
+        this._publishAssetResidencyDiagnostics();
         this._contextRecovery.losses++;
         this._contextRecovery.pending = true;
         this._contextRecovery.lastError = null;
@@ -624,6 +627,8 @@ export const render = {
           this._contextRecovery.restores++;
           this._contextRecovery.generation++;
           this._contextRecovery.pending = false;
+          if (this._assetResidency) this._assetResidency.handleContextRestored();
+          this._publishAssetResidencyDiagnostics();
           bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
         } catch (err) {
           this._contextRecovery.lastError = String(err && err.message ? err.message : err);
@@ -637,6 +642,12 @@ export const render = {
     { const i = new Image(); i.src = 'assets/cinematics/C-INTRO-01.jpg'; }
 
     this.renderer = renderer; this.scene = scene; this.cam = cam; this.spaceBg = spaceBg; this.vf = vf;
+    this._assetResidency = getAssetResidency(renderer);
+    if (this._assetResidency) {
+      const initialSectorId = state.world && state.world.currentSectorId;
+      if (initialSectorId) this._assetResidency.rotateSector(initialSectorId);
+      this._publishAssetResidencyDiagnostics();
+    }
     const beginAuthoredPartLibraryPreload = (retry = false) => {
       const request = retry
         ? retryAuthoredPartLibrary(renderer)
@@ -910,6 +921,7 @@ export const render = {
       if (m) {
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         scene.remove(m); disposeObject(m); this._meshes.delete(id);
+        this._publishAssetResidencyDiagnostics();
       }
     });
     // Ship hull swap or loadout change (fit/upgrade) — rebuild the mesh so visible hardpoints,
@@ -961,7 +973,13 @@ export const render = {
     // already spawned by the time this fires (enterSector spawns before its sector:enter resolves),
     // so a blind clearAllMeshes(keepPlayer) used to wipe the station/asteroids and leave the player
     // alone in empty space. reconcileMeshes() removes only meshes for entities that are gone.
-    bus.on('sector:enter', ({ sector } = {}) => {
+    bus.on('sector:exit', ({ sectorId } = {}) => {
+      if (this._assetResidency) this._assetResidency.prepareSectorExit(sectorId);
+      this._publishAssetResidencyDiagnostics();
+    });
+    bus.on('sector:enter', ({ sectorId, sector } = {}) => {
+      if (this._assetResidency) this._assetResidency.rotateSector(sectorId || sector && sector.id);
+      this._publishAssetResidencyDiagnostics();
       this._meshReconcileDirty = true;
       // Kick any station/place boundaries that spawned before the GLB cache was warm.
       for (const mesh of this._meshes.values()) requestAuthoredUpgrade(mesh, renderer, scene);
@@ -1049,6 +1067,16 @@ export const render = {
     }
   },
 
+  _publishAssetResidencyDiagnostics() {
+    if (!this.state || !this.state.render || !this._assetResidency) return null;
+    // The renderer publishes this snapshot at high-frequency lifecycle seams. Keep the bounded
+    // forensic ring inside the registry; the player-facing state needs only the canonical summary,
+    // avoiding a fresh copy of hundreds of event objects on every mesh reconciliation.
+    const diagnostics = this._assetResidency.canonicalDiagnostics();
+    this.state.render.assetResidency = diagnostics;
+    return diagnostics;
+  },
+
   clearAllMeshes(keepPlayer) {
     for (const [id, m] of [...this._meshes]) {
       if (keepPlayer && id === this.state.playerId) continue;
@@ -1061,6 +1089,7 @@ export const render = {
     // Also clear hazard zone visuals
     for (const obj of this._hazardVisuals) { this.scene.remove(obj); disposeObject(obj); }
     this._hazardVisuals = [];
+    this._publishAssetResidencyDiagnostics();
   },
 
   // Bake (or re-bake) the PMREM environment map from the current nebula backdrop. Called once at
@@ -1116,6 +1145,7 @@ export const render = {
     const built = this._drainMeshBuildQueue(buildBudget);
     this._meshReconcileDirty = this._meshBuildQueueHead < this._meshBuildQueue.length;
     if (!this._meshReconcileDirty) this._initialMeshReconcileComplete = true;
+    this._publishAssetResidencyDiagnostics();
     return built;
   },
 
@@ -2030,6 +2060,8 @@ function replaceSceneEnvMap(scene, previousEnvMap, nextEnvMap) {
 
 function disposeObject(obj) {
   obj.traverse((c) => {
+    const releaseResidency = c.userData && c.userData.releaseAuthoredAssetResidency;
+    if (typeof releaseResidency === 'function') releaseResidency('render-boundary-disposed');
     if (c.isBatchedMesh && typeof c.dispose === 'function') c.dispose();
     else if (c.geometry && !(c.userData && (c.userData.sharedContactShadow || c.userData.sharedShieldGeo))) c.geometry.dispose();
     if (c.material && !(c.userData && c.userData.sharedContactShadow)) { const mm = Array.isArray(c.material) ? c.material : [c.material]; mm.forEach((m) => m.dispose()); }
