@@ -6,7 +6,6 @@ import { createVisualFactory } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import {
   getAuthoredUpgradeQueueStats,
-  preloadAuthoredPartLibrary,
   shipArchetypeKeyForDefId,
   shipArchetypesForPrecompile,
 } from './partsLibrary.js';
@@ -58,7 +57,6 @@ async function precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPi
   scene.add(staging);
 
   try {
-    await preloadAuthoredPartLibrary(renderer).catch(() => null);
     const vf = installVisualOverrides(createVisualFactory(), { releaseMode: true });
     let index = 0;
     for (const spec of shipSpecs) {
@@ -66,8 +64,6 @@ async function precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPi
       if (!mesh) continue;
       mesh.position.set((index % 8) * COMPILE_GRID_SPACING, 0, Math.floor(index / 8) * COMPILE_GRID_SPACING);
       staging.add(mesh);
-      const request = mesh.userData && mesh.userData.requestAuthoredUpgrade;
-      if (typeof request === 'function') request(renderer, scene);
       index++;
     }
     if (includeGlobalPipelines && !globalPipelinesCompiled) {
@@ -90,7 +86,7 @@ async function precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPi
       standIn.position.set(i * 24, 10, 0);
       staging.add(standIn);
     }
-    const authoredQueue = await waitForAuthoredUpgradeQueue(scene);
+    const authoredQueue = getAuthoredUpgradeQueueStats(scene);
     staging.updateMatrixWorld(true);
     await renderer.compileAsync(staging, camera, scene);
     if (includeGlobalPipelines && typeof options.warmPostProcess === 'function') {
@@ -109,25 +105,6 @@ async function precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPi
     scene.remove(staging);
     disposeObject(staging);
   }
-}
-
-async function waitForAuthoredUpgradeQueue(scene, maxFrames = 300) {
-  let stats = getAuthoredUpgradeQueueStats(scene);
-  for (let i = 0; i < maxFrames && stats && (stats.pending > 0 || stats.running); i++) {
-    await nextFrame();
-    stats = getAuthoredUpgradeQueueStats(scene);
-  }
-  return stats || { pending: 0, running: false };
-}
-
-function nextFrame() {
-  return new Promise((resolve) => {
-    const raf = globalThis && typeof globalThis.requestAnimationFrame === 'function'
-      ? globalThis.requestAnimationFrame.bind(globalThis)
-      : null;
-    if (raf) raf(() => resolve());
-    else setTimeout(resolve, 16);
-  });
 }
 
 function allShipSpecsForPrecompile() {
@@ -203,6 +180,10 @@ function makeShipEntity(spec, index) {
     fittings: defaultFittings(def),
     visualTier: spec.visualTier,
     miningBeam: true,
+    // Shader probes are synthetic and must never become authored-asset residency demand. The
+    // procedural visual grammar covers the same material/light/program families without decoding
+    // every catalog GLB solely for a staging scene that is disposed immediately after compile.
+    precompileProbe: true,
   };
   if (spec.silhouette) data.silhouette = spec.silhouette;
   if (spec.lootTableId) data.lootTableId = spec.lootTableId;

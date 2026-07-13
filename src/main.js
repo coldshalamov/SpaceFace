@@ -16,7 +16,7 @@ import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { createTimeEffects } from './core/timeEffects.js';
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
 import { applyAccessibility } from './ui/accessibility.js';
-import { getAuthoredUpgradeQueueStats, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
+import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
 import {
   SCENARIO_47A_CONTRACT_PATH,
   mark47aPlayerActor,
@@ -400,29 +400,7 @@ async function waitForRenderPipelineWarmup(state, timeoutMs = 20000) {
 }
 
 function authoredVisualReadiness(state) {
-  const scene = state.render && state.render.scene;
-  const queue = getAuthoredUpgradeQueueStats(scene);
-  const ships = (state.entityList || []).filter((entity) => entity && entity.type === 'ship' && entity.alive !== false);
-  let authored = 0;
-  let loading = 0;
-  let fallback = 0;
-  for (const ship of ships) {
-    const status = ship.mesh && ship.mesh.userData && ship.mesh.userData.authoredAssetState;
-    if (status === 'authored') authored++;
-    else if (status === 'loading' || status === 'procedural-fallback') loading++;
-    else fallback++;
-  }
-  const allLiveShipsAuthored = ships.length > 0 && authored === ships.length && loading === 0 && fallback === 0;
-  const queueIdle = queue.pending === 0 && !queue.running;
-  return {
-    ready: allLiveShipsAuthored && queueIdle,
-    shipCount: ships.length,
-    authored,
-    loading,
-    fallback,
-    queueIdle,
-    queue,
-  };
+  return authoredCriticalVisualReadiness(state);
 }
 
 function nextFrame() {

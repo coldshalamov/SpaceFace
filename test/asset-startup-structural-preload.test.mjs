@@ -3,7 +3,7 @@
  *
  * Locks the boot gate contract without a browser:
  *   1. Soft-failed / empty preload payloads are not "ready"
- *   2. Contract whole-ship hulls must be present in a usable library
+ *   2. The player hull and current-sector landmark must be present in a usable boot library
  *   3. Rejected library promises must not stick in the per-renderer cache forever
  */
 import assert from 'node:assert/strict';
@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import {
+  authoredBootstrapPreloadPlan,
   isAuthoredPartLibraryUsable,
   PART_LIBRARY_CONTRACT,
 } from '../src/render/partsLibrary.js';
@@ -32,35 +33,30 @@ function testUsableLibraryRejectsNullAndEmpty() {
   );
 }
 
-function testUsableLibraryRequiresContractWholeShips() {
-  const requiredHulls = PART_LIBRARY_CONTRACT.slots.hull || [];
-  const requiredWhole = (PART_LIBRARY_CONTRACT.slots.hull || [])
-    .filter((file) => String(file).startsWith('wholeships/'));
-  assert.ok(requiredWhole.length > 0, 'contract must declare at least one production whole-ship hull');
-
-  const modularOnly = new Map([['hull', [
-    { url: `${PART_LIBRARY_CONTRACT.releaseRoot}hulls/hull_starter.glb`, assetId: 'SF_HULL_STARTER' },
-  ]]]);
+function testUsableLibraryRequiresBootCriticalAssets() {
+  const plan = authoredBootstrapPreloadPlan();
+  const modularOnly = new Map([['hull', [{
+    url: `${PART_LIBRARY_CONTRACT.releaseRoot}hulls/hull_starter.glb`,
+    assetId: 'SF_HULL_STARTER',
+  }]]]);
   assert.equal(
     isAuthoredPartLibraryUsable(modularOnly),
     false,
-    'modular hulls alone must not satisfy readiness while whole-ships are contracted',
+    'an unrelated modular hull must not satisfy player readiness',
   );
 
-  const wholeOnly = new Map([['hull', [
-    ...requiredWhole.map((file, index) => ({
-      url: `${PART_LIBRARY_CONTRACT.releaseRoot}${file}`,
-      assetId: `SF_WHOLE_${index}`,
-    })),
-  ]]]);
-  assert.equal(isAuthoredPartLibraryUsable(wholeOnly), false,
-    'whole ships alone must not hide missing authored modular silhouettes');
-
-  const complete = new Map([['hull', requiredHulls.map((file, index) => ({
+  const playerOnly = new Map([['hull', plan.hull.map((file) => ({
     url: `${PART_LIBRARY_CONTRACT.releaseRoot}${file}`,
-    assetId: `SF_HULL_${index}`,
+    assetId: 'SF_K0_KESTREL_BORROWED_TIME',
   }))]]);
-  assert.equal(isAuthoredPartLibraryUsable(complete), true, 'every contracted authored hull is usable');
+  assert.equal(isAuthoredPartLibraryUsable(playerOnly), false,
+    'the player body alone must not hide a missing current-sector landmark');
+
+  const complete = new Map(Object.entries(plan).map(([slot, files]) => [slot, files.map((file) => ({
+    url: `${PART_LIBRARY_CONTRACT.releaseRoot}${file}`,
+  }))]));
+  assert.equal(isAuthoredPartLibraryUsable(complete), true,
+    'player and current-sector authored assets satisfy the scoped boot gate');
 }
 
 /**
@@ -84,9 +80,10 @@ async function testWaitGateRequiresUsablePayload() {
   // Prevent unhandled rejection noise; gate must still observe the rejection path.
   rejected.catch(() => {});
   const empty = Promise.resolve(new Map([['hull', []]]));
-  const ok = Promise.resolve(new Map([['hull', PART_LIBRARY_CONTRACT.slots.hull.map((file) => ({
-    url: `${PART_LIBRARY_CONTRACT.releaseRoot}${file}`,
-  }))]]));
+  const ok = Promise.resolve(new Map(Object.entries(authoredBootstrapPreloadPlan())
+    .map(([slot, files]) => [slot, files.map((file) => ({
+      url: `${PART_LIBRARY_CONTRACT.releaseRoot}${file}`,
+    }))])));
 
   assert.equal(await waitForAuthoredPartLibraryContract(softFail, isAuthoredPartLibraryUsable), false,
     'soft-failed null preload must not pass the boot gate');
@@ -139,8 +136,6 @@ function testMainAndPartsLibraryWireTheUsabilityGate() {
     'main boot gate must import/use isAuthoredPartLibraryUsable');
   assert.match(mainSrc, /isAuthoredPartLibraryUsable\(value\)/,
     'waitForAuthoredPartLibrary must inspect the settled payload, not ignore it');
-  assert.match(mainSrc, /queueIdle/,
-    'visual readiness must require the authored upgrade queue to be idle');
   assert.match(partsSrc, /export function isAuthoredPartLibraryUsable/,
     'partsLibrary must export the usability predicate');
   assert.match(partsSrc, /promises\.delete\(partRoot\)/,
@@ -149,14 +144,20 @@ function testMainAndPartsLibraryWireTheUsabilityGate() {
     'retry must evict inner fulfilled-null loader tasks, not only the outer library promise');
   assert.match(partsSrc, /assertCanonicalLibraryUsable/,
     'preload must refuse to publish an unusable library into the resolved cache');
-  assert.match(partsSrc, /libraryReady/,
-    'upgrade queue must detect resolved-library mode for parallel drain');
-  assert.match(partsSrc, /Promise\.all\(batch\.map/,
-    'resolved-library upgrades must drain in parallel, not one-per-frame');
+  assert.match(partsSrc, /loadPlanIntoLibrary/,
+    'boot and entity admission must share the bounded preload planner');
+  assert.doesNotMatch(partsSrc, /Promise\.all\(batch\.map/,
+    'resolved-library upgrades must not decode every queued ship in one burst');
+  assert.match(partsSrc, /One entity admission per frame/,
+    'post-boot authored upgrades must stay frame-bounded');
+  assert.match(mainSrc, /authoredCriticalVisualReadiness/,
+    'flight readiness must be scoped to the player and current-sector critical landmark');
+  assert.doesNotMatch(mainSrc, /allLiveShipsAuthored\s*&&\s*queueIdle/,
+    'noncritical NPC residency and global queue drain must not hold the flight gate');
 }
 
 testUsableLibraryRejectsNullAndEmpty();
-testUsableLibraryRequiresContractWholeShips();
+testUsableLibraryRequiresBootCriticalAssets();
 await testWaitGateRequiresUsablePayload();
 await testRejectedLibraryPromiseIsNotSticky();
 testMainAndPartsLibraryWireTheUsabilityGate();

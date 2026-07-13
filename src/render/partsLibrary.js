@@ -214,22 +214,57 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
   }),
 });
 
-const REQUIRED_AUTHORED_HULLS = PART_LIBRARY_CONTRACT.slots.hull;
+// The player-facing boot gate used to decode every authored file in the catalog at once. Keep the
+// gate honest, but scope it to the assets that are guaranteed to be visible in the first frame:
+// the player's production Kestrel and the Helios starting hub. Every other ship is admitted through
+// the existing scene upgrade queue when its entity exists; world places already have a one-file
+// on-demand boundary. This preserves authored quality while bounding renderer/GPU residency.
+const AUTHORED_BOOTSTRAP_PLAN = Object.freeze({
+  hull: Object.freeze(['wholeships/kestrel.glb']),
+  place: Object.freeze(['places/place_station_trade_hub.glb']),
+});
+const MODULAR_SHIP_SLOTS = Object.freeze(
+  SHIP_ASSEMBLY_SLOTS.filter((slot) => slot !== 'hull'),
+);
+const REGULAR_HULL_FILES = Object.freeze(
+  PART_LIBRARY_CONTRACT.slots.hull.filter((file) => !String(file).startsWith('wholeships/')),
+);
+
+export function authoredBootstrapPreloadPlan() {
+  return clonePreloadPlan(AUTHORED_BOOTSTRAP_PLAN);
+}
+
+/** Pure per-entity residency plan. Complete authored bodies need one GLB. Modular ships load their
+ * exact hull plus the compact shared component family so deterministic assembly choices remain
+ * byte-for-byte identical to the full catalog path. Places are never pulled by a ship request. */
+export function authoredPreloadPlanForEntity(entity, options = {}) {
+  if (!entity || entity.type !== 'ship') return {};
+  const whole = wholeShipVisualForEntity(entity, options);
+  if (whole && whole.file) return { hull: [whole.file] };
+
+  const defId = entity.data && entity.data.defId;
+  const seed = hashString(`${entity.id}|${defId}|${entity.factionId || ''}`);
+  const mappedHull = HULL_FILE_BY_DEF_ID[defId];
+  const hullFile = mappedHull || (REGULAR_HULL_FILES.length
+    ? REGULAR_HULL_FILES[((seed ^ hashString('hull')) >>> 0) % REGULAR_HULL_FILES.length]
+    : null);
+  const plan = {};
+  if (hullFile) plan.hull = [hullFile];
+  for (const slot of MODULAR_SHIP_SLOTS) {
+    const files = PART_LIBRARY_CONTRACT.slots[slot];
+    if (files && files.length) plan[slot] = [...files];
+  }
+  return plan;
+}
 
 export function isAuthoredPartLibraryUsable(library) {
   if (!(library instanceof Map)) return false;
-  const hulls = library.get('hull');
-  if (!Array.isArray(hulls) || hulls.length === 0) return false;
-  return REQUIRED_AUTHORED_HULLS.every((file) => hulls.some((record) => {
-    if (!record || typeof record.url !== 'string' || record.url.length === 0) return false;
-    const url = record.url.replace(/\\/g, '/').split(/[?#]/, 1)[0];
-    return url.endsWith(file);
-  }));
+  return libraryHasPreloadPlan(library, AUTHORED_BOOTSTRAP_PLAN);
 }
 
 function assertCanonicalLibraryUsable(library) {
   if (!isAuthoredPartLibraryUsable(library)) {
-    throw new Error('Authored part library is incomplete: every contracted whole-ship hull must load before flight.');
+    throw new Error('Authored boot library is incomplete: the player hull and starting-sector landmark must load before flight.');
   }
   return library;
 }
@@ -399,6 +434,9 @@ export function resolveRequiredWholeShipRecord(entity, records, options = {}) {
  */
 export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   if (!fallbackRoot || !fallbackRoot.isObject3D || !entity || entity.type !== 'ship') return fallbackRoot;
+  // Pipeline precompile entities are deliberately disposable procedural probes. Wrapping them would
+  // turn shader warm-up into authored GLB residency demand for ships that may never enter the world.
+  if (entity.data && entity.data.precompileProbe === true) return fallbackRoot;
   const releaseMode = isReleaseAssetMode(options);
 
   const boundary = new THREE.Group();
@@ -448,6 +486,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       releaseMode,
       requiredWholeShip: options.requiredWholeShip === true,
       onSwap: options.onSwap,
+      loadAuthoredPart: options.loadAuthoredPart,
     };
     if (installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene, upgradeOptions, (next) => {
       active = next;
@@ -496,7 +535,10 @@ export function buildAuthoredStationArchetype(entity, options = {}) {
     },
   };
   const fallbackRoot = buildFallbackStationArchetype(loadEntity, placeFile);
-  return wrapStationArchetypeWithAuthoredPart(loadEntity, fallbackRoot, placeFile, options);
+  return wrapStationArchetypeWithAuthoredPart(loadEntity, fallbackRoot, placeFile, {
+    ...options,
+    liveEntity: entity,
+  });
 }
 
 export function resolvePlaceFileForEntity(entity) {
@@ -601,6 +643,8 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
   boundary.userData.authoredSlots = {};
+  boundary.userData.authoredReadableFallbackRetained = true;
+  boundary.userData.authoredVisualRoot = 'readable-fallback';
   boundary.userData.renderContract = {
     ...((fallbackRoot.userData && fallbackRoot.userData.renderContract) || {}),
     assetBoundary: 'GLTFKit v1 — authored station archetype',
@@ -612,11 +656,15 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   const startAuthoredUpgrade = (renderer, scene) => {
     if (!renderer || !scene || boundary.userData.authoredAssetState === 'loading' || boundary.userData.authoredAssetState === 'authored') return;
     boundary.userData.authoredAssetState = 'loading';
-    upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, { releaseMode }, (next) => {
-      boundary.userData.hull = next;
-    }).catch((error) => {
-      boundary.userData.authoredAssetState = 'fallback-after-error';
-      console.warn('[partsLibrary] authored station archetype failed; retaining fallback', error);
+    enqueueBoundaryUpgrade(scene, {
+      boundary,
+      entity: options.liveEntity || entity,
+      run: () => upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, {
+        releaseMode,
+        loadAuthoredPart: options.loadAuthoredPart,
+      }, (next) => {
+        boundary.userData.hull = next;
+      }),
     });
   };
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
@@ -663,11 +711,15 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   const startAuthoredUpgrade = (renderer, scene) => {
     if (!renderer || !scene || boundary.userData.authoredAssetState === 'loading' || boundary.userData.authoredAssetState === 'authored') return;
     boundary.userData.authoredAssetState = 'loading';
-    upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, { releaseMode }, (next) => {
-      boundary.userData.hull = next;
-    }).catch((error) => {
-      boundary.userData.authoredAssetState = 'fallback-after-error';
-      console.warn('[partsLibrary] authored place prop failed; retaining fallback', error);
+    enqueueBoundaryUpgrade(scene, {
+      boundary,
+      entity,
+      run: () => upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, {
+        releaseMode,
+        loadAuthoredPart: options.loadAuthoredPart,
+      }, (next) => {
+        boundary.userData.hull = next;
+      }),
     });
   };
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
@@ -880,14 +932,17 @@ function placeFileForEntity(entity) {
 
 function enqueueBoundaryUpgrade(scene, job) {
   const state = upgradeQueueState(scene);
+  if (!job || !job.boundary || state.byBoundary.has(job.boundary)) return;
+  if (!boundaryBelongsToScene(job.boundary, scene)) return;
   state.jobs.push(job);
+  state.byBoundary.set(job.boundary, job);
   if (!state.running) processUpgradeQueue(state);
 }
 
 function upgradeQueueState(scene) {
   let state = upgradeQueuesByScene.get(scene);
   if (!state) {
-    state = { scene, jobs: [], running: false };
+    state = { scene, jobs: [], running: false, byBoundary: new Map() };
     upgradeQueuesByScene.set(scene, state);
   }
   return state;
@@ -910,32 +965,56 @@ function processUpgradeQueue(state) {
       state.running = false;
       return;
     }
-    const libraryReady = resolvedCanonicalLibrary(job.renderer, job.options);
-    const batch = [job];
-    if (libraryReady) {
-      for (let index = state.jobs.length - 1; index >= 0; index--) {
-        const candidate = state.jobs[index];
-        if (resolvedCanonicalLibrary(candidate.renderer, candidate.options) !== libraryReady) continue;
-        batch.push(...state.jobs.splice(index, 1));
+    if (!jobStillNeeded(state, job)) {
+      state.byBoundary.delete(job.boundary);
+      if (job.boundary && job.boundary.userData) {
+        job.boundary.userData.authoredAssetState = 'cancelled-before-load';
       }
+      scheduleUpgradeFrame(step);
+      return;
     }
-    Promise.all(batch.map((queuedJob) => (
-      upgradeBoundary(
-        queuedJob.boundary,
-        queuedJob.fallbackRoot,
-        queuedJob.entity,
-        queuedJob.renderer,
-        queuedJob.scene,
-        queuedJob.options,
-        queuedJob.setActive,
-      ).catch((error) => {
-        queuedJob.boundary.userData.authoredAssetState = 'fallback-after-error';
-        console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
-      })
-    )))
-      .finally(() => scheduleUpgradeFrame(step));
+    // One entity admission per frame. The previous resolved-library fast path batched every queued
+    // ship into one Promise.all, which recreated the same decode/upload burst the scoped preloader
+    // is designed to prevent as soon as a populated sector materialized.
+    const run = typeof job.run === 'function'
+      ? job.run
+      : () => upgradeBoundary(
+        job.boundary,
+        job.fallbackRoot,
+        job.entity,
+        job.renderer,
+        job.scene,
+        job.options,
+        job.setActive,
+      );
+    Promise.resolve().then(run).catch((error) => {
+      job.boundary.userData.authoredAssetState = 'fallback-after-error';
+      console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
+    })
+      .finally(() => {
+        state.byBoundary.delete(job.boundary);
+        scheduleUpgradeFrame(step);
+      });
   };
   scheduleUpgradeFrame(step);
+}
+
+function jobStillNeeded(state, job) {
+  if (!state || !job || !job.boundary) return false;
+  if (!boundaryBelongsToScene(job.boundary, state.scene)) return false;
+  const entity = job.entity;
+  if (!entity || entity.alive === false) return false;
+  // Once render ownership has published a mesh, only that exact boundary may consume residency.
+  // This drops sector-transition jobs whose entity was reused or replaced before its queue turn.
+  if (entity.mesh && entity.mesh !== job.boundary) return false;
+  return true;
+}
+
+function boundaryBelongsToScene(boundary, scene) {
+  for (let node = boundary; node; node = node.parent) {
+    if (node === scene) return true;
+  }
+  return false;
 }
 
 export function getAuthoredUpgradeQueueStats(scene) {
@@ -948,6 +1027,49 @@ export function getAuthoredUpgradeQueueStats(scene) {
 
 export function preloadAuthoredPartLibrary(renderer, options = {}) {
   return loadCanonicalLibrary(renderer, options);
+}
+
+/** Flight may start when the visuals guaranteed to be in the opening composition are authored.
+ * Other traffic and hostile ships remain quality-preserving on-demand upgrades and cannot hold the
+ * player behind a global queue drain. */
+export function authoredCriticalVisualReadiness(state) {
+  const entities = state && state.entities;
+  const player = entities && typeof entities.get === 'function'
+    ? entities.get(state.playerId)
+    : (state && state.entityList || []).find((entity) => entity && entity.id === state.playerId);
+  const playerStatus = authoredAssetState(player);
+  const currentSectorId = state && state.world && state.world.currentSectorId;
+  const needsStartingHub = currentSectorId === 'sector_helios_prime';
+  const entityList = state && state.entityList || (entities && typeof entities.values === 'function'
+    ? [...entities.values()]
+    : []);
+  const hub = needsStartingHub ? entityList.find(isCriticalStartingHub) : null;
+  const hubStatus = needsStartingHub ? authoredAssetState(hub) : 'not-required';
+  return {
+    ready: playerStatus === 'authored' && (!needsStartingHub || hubStatus === 'authored'),
+    playerId: player && player.id,
+    playerStatus,
+    startingHubId: hub && hub.id,
+    startingHubStatus: hubStatus,
+  };
+}
+
+function authoredAssetState(entity) {
+  return entity && entity.mesh && entity.mesh.userData
+    ? entity.mesh.userData.authoredAssetState
+    : 'missing';
+}
+
+function isCriticalStartingHub(entity) {
+  if (!entity || entity.alive === false || entity.type !== 'station') return false;
+  if (entity.id === 'station_helios') return true;
+  const data = entity.data || {};
+  const token = String(data.archetypeGlb || data.placeId || '').replace(/^places\//, '').replace(/\.glb$/, '');
+  return token === 'place_station_trade_hub';
+}
+
+export function preloadAuthoredAssetsForEntity(renderer, entity, options = {}) {
+  return ensureEntityLibrary(renderer, entity, options);
 }
 
 export async function retryAuthoredPartLibrary(renderer, options = {}) {
@@ -963,7 +1085,7 @@ export async function retryAuthoredPartLibrary(renderer, options = {}) {
 async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, options, setActive) {
   let swapped = false;
   try {
-    const library = await loadCanonicalLibrary(renderer, options);
+    const library = await preloadAuthoredAssetsForEntity(renderer, entity, options);
     swapped = commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive);
   } catch (error) {
     if (!swapped) {
@@ -979,7 +1101,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
 
 function installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene, options, setActive) {
   const library = resolvedCanonicalLibrary(renderer, options);
-  if (!library) return false;
+  if (!library || !libraryHasPreloadPlan(library, authoredPreloadPlanForEntity(entity, options))) return false;
   boundary.userData.authoredAssetState = 'loading';
   try {
     commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive);
@@ -1124,24 +1246,17 @@ function loadCanonicalLibrary(renderer, options = {}) {
   }
   let promise = promises.get(partRoot);
   if (!promise) {
-    const entries = Object.entries(PART_LIBRARY_CONTRACT.slots);
-    const pending = Promise.all(entries.map(async ([slot, files]) => {
-      const records = await Promise.all(files.map((file) => loadAuthoredPart(`${partRoot}${file}`, {
-        renderer,
-        slot,
-        optional: true,
-      })));
-      return [slot, records.filter(Boolean)];
-    })).then((pairs) => {
-      const library = assertCanonicalLibraryUsable(new Map(pairs));
-      let resolved = resolvedLibraryByRenderer.get(renderer);
-      if (!resolved) {
-        resolved = new Map();
-        resolvedLibraryByRenderer.set(renderer, resolved);
-      }
-      resolved.set(partRoot, library);
-      return library;
-    });
+    const pending = loadPlanIntoLibrary(renderer, options, new Map(), AUTHORED_BOOTSTRAP_PLAN)
+      .then((loaded) => {
+        const library = assertCanonicalLibraryUsable(loaded);
+        let resolved = resolvedLibraryByRenderer.get(renderer);
+        if (!resolved) {
+          resolved = new Map();
+          resolvedLibraryByRenderer.set(renderer, resolved);
+        }
+        resolved.set(partRoot, library);
+        return library;
+      });
     promise = pending.catch((error) => {
       if (promises.get(partRoot) === promise) promises.delete(partRoot);
       throw error;
@@ -1149,6 +1264,64 @@ function loadCanonicalLibrary(renderer, options = {}) {
     promises.set(partRoot, promise);
   }
   return promise;
+}
+
+async function ensureEntityLibrary(renderer, entity, options = {}) {
+  const library = await loadCanonicalLibrary(renderer, options);
+  const plan = authoredPreloadPlanForEntity(entity, options);
+  if (!libraryHasPreloadPlan(library, plan)) {
+    await loadPlanIntoLibrary(renderer, options, library, plan);
+  }
+  if (!libraryHasPreloadPlan(library, plan)) {
+    throw new Error(`Authored entity assets are incomplete for ${entity && entity.id || 'unknown ship'}.`);
+  }
+  return library;
+}
+
+async function loadPlanIntoLibrary(renderer, options, library, plan) {
+  const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
+  const loadPart = options && typeof options.loadAuthoredPart === 'function'
+    ? options.loadAuthoredPart
+    : loadAuthoredPart;
+  // Deliberately serial. GLB fetch is local and cheap; meshopt/KTX2 decode and GPU upload are the
+  // expensive resident operations. Serial admission prevents renderer + GPU memory from rising by
+  // hundreds of megabytes in one task while preserving the exact source assets.
+  for (const [slot, files] of Object.entries(plan || {})) {
+    const records = Array.isArray(library.get(slot)) ? [...library.get(slot)] : [];
+    for (const file of files || []) {
+      if (records.some((record) => recordUrlEndsWith(record, file))) continue;
+      const record = await loadPart(`${partRoot}${file}`, {
+        renderer,
+        slot,
+        optional: true,
+      });
+      if (record) records.push(record);
+    }
+    library.set(slot, records);
+  }
+  return library;
+}
+
+function libraryHasPreloadPlan(library, plan) {
+  if (!(library instanceof Map)) return false;
+  for (const [slot, files] of Object.entries(plan || {})) {
+    const records = library.get(slot);
+    if (!Array.isArray(records)) return false;
+    for (const file of files || []) {
+      if (!records.some((record) => recordUrlEndsWith(record, file))) return false;
+    }
+  }
+  return true;
+}
+
+function recordUrlEndsWith(record, file) {
+  if (!record || typeof record.url !== 'string' || !record.url) return false;
+  const url = record.url.replace(/\\/g, '/').split(/[?#]/, 1)[0];
+  return url.endsWith(file);
+}
+
+function clonePreloadPlan(plan) {
+  return Object.fromEntries(Object.entries(plan || {}).map(([slot, files]) => [slot, [...files]]));
 }
 
 function resolvedCanonicalLibrary(renderer, options = {}) {
