@@ -21,6 +21,7 @@
 
 import { SECTORS } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
+import { BODY_SPECIALIZATION_BY_ID } from '../data/claimableBodies.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
@@ -287,7 +288,11 @@ export function layoutMapLabels(candidates, viewport, options = {}) {
   return placements;
 }
 
-/** Only gamepad entry claims DOM focus; keyboard/pointer entry keeps canvas control uninterrupted. */
+/**
+ * Gamepad entry focuses the scale chip for the open intent (d-pad starts on a real control).
+ * Keyboard/pointer return null — onShow parks focus on the dialog root instead so screenManager
+ * cannot fall through to the search <input> (which would swallow M/N as typing).
+ */
 export function mapFocusButtonSelector(intent) {
   if (!intent || intent.source !== 'gamepad') return null;
   const focus = normalizeMapFocus(intent.focus);
@@ -383,7 +388,7 @@ export function resolveMapOpenTarget(state, intent) {
     }
   }
 
-  // Plain focus-only opens (keyboard N/M, gamepad View, touch Local/Star) must not invent a target.
+  // Plain focus-only opens (keyboard M/N, gamepad View, touch Local/Star) must not invent a target.
   if (!stationId && !missionId) return null;
 
   if (stationId) {
@@ -719,6 +724,83 @@ function entityIterator(state) {
   return [];
 }
 
+function whole(value) {
+  return Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-US');
+}
+
+/**
+ * Pure player-facing identity for one owned claim on the authoritative unified map.
+ * The optional live entity supplies the current galactic-global position; the durable claim
+ * record remains the fallback for unloaded/off-screen bodies.
+ */
+export function describeClaimMapMarker(body = {}, ledger = null, liveEntity = null) {
+  const specId = body.spec && body.spec.id || ledger && ledger.specId || null;
+  const def = specId && BODY_SPECIALIZATION_BY_ID.get(specId);
+  const role = def ? def.short : 'CLAIM';
+  const status = String(ledger && ledger.status || body.spec && body.spec.status || 'uncommissioned').toUpperCase();
+  const pieces = [];
+  if (specId === 'spec_refinery') {
+    const stores = ledger && ledger.stores || {};
+    pieces.push(`${whole(stores.inputU)}/${whole(stores.inputCapU)}u ore`);
+    pieces.push(`${whole(stores.outputU)}/${whole(stores.outputCapU)}u ready`);
+    if (ledger && ledger.throughput) pieces.push(`${Number(ledger.throughput.refineRatePerS || 0).toFixed(1)} ore/s`);
+  } else if (specId === 'spec_relay') {
+    const stores = ledger && ledger.stores || {};
+    pieces.push(`${whole(stores.inputU)}/${whole(stores.inputCapU)}u freight`);
+    pieces.push(ledger && ledger.convoy ? `convoy ${whole(ledger.convoy.etaS)}s` : 'convoy standing by');
+    pieces.push(`${whole(ledger && ledger.flows && ledger.flows.soldTotalCr)} cr sold`);
+  } else if (specId === 'spec_bastion') {
+    pieces.push(`${whole(ledger && ledger.defense && ledger.defense.rating)} defense`);
+    pieces.push(`${whole(ledger && ledger.readiness && ledger.readiness.coveredBodies)} claims covered`);
+    pieces.push(`next sweep ${whole(ledger && ledger.risk && ledger.risk.nextRollInS)}s`);
+  } else {
+    pieces.push('uncommissioned');
+    pieces.push('approach and open Base to build');
+  }
+  const position = liveEntity && liveEntity.pos || { x: Number(body.x) || 0, z: Number(body.z) || 0 };
+  return {
+    id: `player-claim:${body.id || body.poiId || 'unknown'}`,
+    claimId: body.id || null,
+    targetEntityId: liveEntity && liveEntity.id || null,
+    kind: def ? `claim-${def.id.replace(/^spec_/, '')}` : 'claim',
+    role,
+    glyph: def ? def.mapGlyph : '◆',
+    color: def ? def.mapColor : '#ffd24a',
+    name: `${role} · ${body.name || 'Owned Claim'}`,
+    status,
+    statusLine: pieces.join(' · '),
+    playerVerb: def ? def.playerVerb : 'Open the Base interface to build this claim.',
+    consequence: def ? def.consequence : 'An owned site awaiting an operating identity.',
+    riskLine: def ? def.riskLine : 'Uncommissioned sites provide no operating benefit.',
+    x: Number(position.x) || 0,
+    z: Number(position.z) || 0,
+  };
+}
+
+/** Build owned-site markers once for both SYSTEM and LOCAL unified-map models. */
+export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null) {
+  const sid = sectorId || currentSectorId(state);
+  const bodies = claimsSystem && typeof claimsSystem.list === 'function'
+    ? claimsSystem.list()
+    : state && state.claims && Array.isArray(state.claims.bodies) ? state.claims.bodies : [];
+  const liveByPoi = new Map();
+  for (const entity of entityIterator(state)) {
+    const poiId = entity && entity.alive !== false && entity.data && entity.data.poiId;
+    if (poiId) liveByPoi.set(poiId, entity);
+  }
+  const markers = [];
+  for (const body of bodies) {
+    if (!body || body.owned !== true || body.sectorId !== sid) continue;
+    const ledger = claimsSystem && typeof claimsSystem.ledger === 'function'
+      ? claimsSystem.ledger(body.id)
+      : null;
+    const marker = describeClaimMapMarker(body, ledger, liveByPoi.get(body.poiId) || null);
+    marker.drawPos = globalToSectorLocalForSector(marker, sid);
+    markers.push(marker);
+  }
+  return markers;
+}
+
 // ---------------------------------------------------------------------------------------------
 // LEVEL 1 — GALAXY: the SECTORS graph (nodes + edges), faction color, fog for uncharted frontier.
 // ---------------------------------------------------------------------------------------------
@@ -793,11 +875,12 @@ export function buildGalaxyModel(state) {
  *
  * @returns {{ level:'system', sectorId, sectorName, zones:Array, points:Array }}
  */
-export function buildSystemModel(state, sectorId) {
+export function buildSystemModel(state, sectorId, options = {}) {
   const sid = sectorId || currentSectorId(state);
   const record = sectorRecordById(state, sid);
   const sectorName = (record && record.name) || sid || 'System';
   const confidence = mapConfidenceForSector(state, record || { id: sid });
+  const ownership = buildClaimOwnershipMarkers(state, sid, options.claimsSystem || null);
   const bearings = uniqueWreckMapReadouts(state, sid).map((readout) => ({
     ...readout,
     drawCenter: globalToSectorLocalForSector(readout.center, sid),
@@ -891,7 +974,7 @@ export function buildSystemModel(state, sectorId) {
     }
   }
 
-  return { level: 'system', sectorId: sid, sectorName, ...confidence, zones, points, bearings };
+  return { level: 'system', sectorId: sid, sectorName, ...confidence, zones, points, ownership, bearings };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -905,7 +988,7 @@ export function buildSystemModel(state, sectorId) {
  *
  * @returns {{ level:'local', sectorId, player, contacts:Array }}
  */
-export function buildLocalModel(state, isHostile) {
+export function buildLocalModel(state, isHostile, options = {}) {
   const player = playerEntity(state);
   const sectorId = currentSectorId(state);
   const contacts = [];
@@ -942,6 +1025,7 @@ export function buildLocalModel(state, isHostile) {
     sectorId,
     player: player ? { id: player.id, x: player.pos.x, z: player.pos.z, rot: player.rot || 0 } : null,
     contacts,
+    ownership: buildClaimOwnershipMarkers(state, sectorId, options.claimsSystem || null),
     bearings: uniqueWreckMapReadouts(state, sectorId),
   };
 }
@@ -953,8 +1037,8 @@ export function buildLocalModel(state, isHostile) {
 export function buildMapModel(state, zoom, opts) {
   const level = levelForZoom(zoom);
   const options = opts || {};
-  if (level === 'local') return buildLocalModel(state, options.isHostile);
-  if (level === 'system') return buildSystemModel(state, options.sectorId);
+  if (level === 'local') return buildLocalModel(state, options.isHostile, options);
+  if (level === 'system') return buildSystemModel(state, options.sectorId, options);
   return buildGalaxyModel(state);
 }
 
@@ -988,7 +1072,7 @@ export function resolveCourseTarget(target) {
   if (hasPos) {
     const kind = target.kind || 'local';
     const label = target.name || (kind === 'zone' ? 'Zone' : kind === 'gate' ? 'Gate' : kind === 'station' ? 'Station' : 'Map fix');
-    const arrivalRadius = kind === 'gate' ? 72 : kind === 'station' ? 90 : kind === 'zone' ? Math.max(60, (target.radius || 0) * 0.5) : 48;
+    const arrivalRadius = kind === 'gate' ? 72 : kind === 'station' ? 90 : kind === 'claim' ? 170 : kind === 'zone' ? Math.max(60, (target.radius || 0) * 0.5) : 48;
     const payload = {
       type: kind,
       pos: { x: target.x, z: target.z },
@@ -1096,6 +1180,7 @@ export function resolveGalaxyMapPrimaryAction(state, target) {
 
   let label = 'Track Target';
   if (target.kind === 'station') label = 'Set Waypoint';
+  else if (target.kind === 'claim') label = 'Set Base Waypoint';
   else if (target.kind === 'zone') label = 'Align Autopilot';
   else if (target.kind === 'waypoint') label = 'Track Waypoint';
   else if (target.kind === 'bearing') label = 'Set Bearing';
@@ -1859,7 +1944,7 @@ export function computePreviewRoute(state, startSectorId, targetSectorId) {
 // Search Target Gathering Helper
 // ---------------------------------------------------------------------------------------------
 
-function getSearchTargets(state, level, curSecId) {
+function getSearchTargets(state, level, curSecId, claimsSystem = null) {
   const targets = [];
   // 1. Sectors
   const galaxyModel = buildGalaxyModel(state);
@@ -1879,7 +1964,7 @@ function getSearchTargets(state, level, curSecId) {
     }
   }
   // 2. Stations / Gates / POIs
-  const systemModel = buildSystemModel(state, curSecId);
+  const systemModel = buildSystemModel(state, curSecId, { claimsSystem });
   for (const p of systemModel.points) {
     if (Number.isFinite(p.x) && Number.isFinite(p.z)) {
       targets.push({
@@ -1897,9 +1982,18 @@ function getSearchTargets(state, level, curSecId) {
       });
     }
   }
+  for (const marker of systemModel.ownership) {
+    targets.push({
+      ...marker,
+      kind: 'claim',
+      sectorId: curSecId,
+      entityId: marker.targetEntityId,
+      detail: `Owned base · ${marker.statusLine}`,
+    });
+  }
   // 3. Contacts
   if (level === 'local') {
-    const localModel = buildLocalModel(state);
+    const localModel = buildLocalModel(state, null, { claimsSystem });
     for (const c of localModel.contacts) {
       targets.push({
         id: c.id,
@@ -1948,6 +2042,11 @@ export const galaxyMapScreen = {
   _setCourseHandler: null,
   _scaleButtons: [],
 
+  _claimsSystem() {
+    const registry = this._ctx && this._ctx.registry;
+    return registry && typeof registry.get === 'function' ? registry.get('claims') : null;
+  },
+
   // Flagship strategic table UI states
   _layers: {
     route: true,
@@ -1988,7 +2087,7 @@ export const galaxyMapScreen = {
       <div class="gm-head">
         <div class="gm-title">Tactical Command Table</div>
         <div class="gm-search-container">
-          <input type="text" class="gm-search-input" placeholder="Search galaxy... (Press /)" aria-label="Search map" />
+          <input type="text" class="gm-search-input" placeholder="Search galaxy... (Press /)" aria-label="Search map" tabindex="-1" />
           <div class="gm-search-results" hidden></div>
         </div>
         <div class="gm-scale-buttons" role="group" aria-label="Map scale">
@@ -2032,7 +2131,7 @@ export const galaxyMapScreen = {
 
         <!-- Viewport -->
         <div class="gm-viewport" style="flex: 1; position: relative;">
-          <canvas></canvas>
+          <canvas aria-label="Galaxy navigation map"></canvas>
         </div>
 
         <!-- Right Inspector -->
@@ -2117,7 +2216,12 @@ export const galaxyMapScreen = {
       const state = this._ctx && this._ctx.state;
       if (!state) return;
 
-      const targets = getSearchTargets(state, levelForZoom(this._zoom), currentSectorId(this._ctx.state));
+      const targets = getSearchTargets(
+        state,
+        levelForZoom(this._zoom),
+        currentSectorId(this._ctx.state),
+        this._claimsSystem(),
+      );
       const filtered = targets.filter(t => t.name.toLowerCase().includes(q));
 
       if (filtered.length === 0) {
@@ -2227,12 +2331,20 @@ export const galaxyMapScreen = {
 
     if (!HAS_DOC) return;
     this._resize();
+    // Focus policy (do not land on the search field — that turns M/N into typing):
+    //   gamepad → scale chip for the open intent
+    //   keyboard/pointer → dialog root (tabindex=-1); `/` is the only path into search
     const focusSelector = mapFocusButtonSelector(intent);
+    let focused = false;
     if (focusSelector && this._root) {
       const initialControl = this._root.querySelector(focusSelector);
       if (initialControl && typeof initialControl.focus === 'function') {
         try { initialControl.focus({ preventScroll: true }); } catch (_) { initialControl.focus(); }
+        focused = true;
       }
+    }
+    if (!focused && this._root && typeof this._root.focus === 'function') {
+      try { this._root.focus({ preventScroll: true }); } catch (_) { this._root.focus(); }
     }
     this._lastTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     this._lastDrawTime = 0;
@@ -2321,6 +2433,20 @@ export const galaxyMapScreen = {
 
   onKey(event, ctx) {
     const key = event && typeof event.key === 'string' ? event.key.toLowerCase() : '';
+
+    // Keyboard primary action mirrors the inspector button for owned bases. Text-entry controls
+    // keep native Enter/Space behavior; the global UI input router normally filters them before
+    // this handler, and this local guard keeps direct/synthetic dispatch safe too.
+    if ((key === 'enter' || key === ' ' || key === 'spacebar')
+      && this._selectedTarget && this._selectedTarget.kind === 'claim') {
+      const target = event && event.target;
+      const textEntry = !!(target
+        && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
+      if (textEntry) return false;
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
+      this._activateSelectedCourse();
+      return true;
+    }
 
     // Focus search
     if (key === '/') {
@@ -2594,6 +2720,22 @@ export const galaxyMapScreen = {
         buttonLabel = primary && primary.label ? primary.label : 'Set Waypoint';
       }
 
+    } else if (t.kind === 'claim') {
+      html += `
+        <div class="gm-ins-section">
+          <div class="gm-title" style="color:${t.color || '#ffd24a'}; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${t.name}</div>
+          <div style="color:var(--ink-dim); font-size: 0.65rem;">PLAYER-OWNED ${t.role || 'BASE'} · ${t.status || 'ACTIVE'}</div>
+        </div>
+
+        <div class="gm-ins-section">
+          <div class="gm-ins-title">Operations</div>
+          <div style="color:#fff; font-size:.68rem; line-height:1.4;">${t.statusLine || 'No live operating telemetry.'}</div>
+          <div style="margin-top:7px; color:var(--ink); font-size:.68rem; line-height:1.4;">${t.playerVerb || 'Fly to the base.'}</div>
+          <div style="margin-top:5px; color:var(--ink-dim); font-size:.64rem; line-height:1.4;">${t.consequence || ''}</div>
+          <div style="margin-top:5px; color:${t.color || '#ffd24a'}; font-size:.64rem; line-height:1.4;">${t.riskLine || ''}</div>
+        </div>
+      `;
+      buttonLabel = 'Set Base Waypoint';
     } else if (t.kind === 'zone') {
       html += `
         <div class="gm-ins-section">
@@ -3132,12 +3274,15 @@ export const galaxyMapScreen = {
 
   // --- SYSTEM DRAW ---
   _drawSystem(g, state, w, h) {
-    const model = buildSystemModel(state);
+    const model = buildSystemModel(state, null, { claimsSystem: this._claimsSystem() });
     const wp = state.nav && state.nav.waypoint;
     let span = 3000;
     const pts = [];
     for (const z of model.zones) pts.push({ x: z.x, z: z.z, r: z.radius });
     for (const p of model.points) if (Number.isFinite(p.x) && Number.isFinite(p.z)) pts.push({ x: p.x, z: p.z, r: 0 });
+    for (const marker of model.ownership) {
+      if (marker.drawPos) pts.push({ x: marker.drawPos.x, z: marker.drawPos.z, r: 0 });
+    }
     for (const bearing of model.bearings) {
       const point = bearing.drawFixedPos || bearing.drawCenter;
       if (point) pts.push({ x: point.x, z: point.z, r: bearing.drawFixedPos ? 0 : bearing.radius });
@@ -3156,6 +3301,12 @@ export const galaxyMapScreen = {
     const sx = (x) => w / 2 + (x - cam.cx) * baseScale * cam.zoom;
     const sz = (z) => h / 2 + (z - cam.cy) * baseScale * cam.zoom;
     const labelCandidates = [];
+    if (this._canvas && typeof this._canvas.setAttribute === 'function') {
+      const ownership = model.ownership.length
+        ? model.ownership.map((marker) => `${marker.name}: ${marker.statusLine}`).join('; ')
+        : 'No owned bases in this sector.';
+      this._canvas.setAttribute('aria-label', `System navigation map. ${ownership}`);
+    }
 
     // Header sector label
     g.fillStyle = 'rgba(207,227,255,0.75)'; g.font = 'bold 13px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
@@ -3334,6 +3485,51 @@ export const galaxyMapScreen = {
       g.restore();
     }
 
+    // Player-owned bases: permanent operating landmarks, visually distinct from neutral POIs.
+    for (const marker of model.ownership) {
+      const draw = marker.drawPos;
+      if (!draw || !Number.isFinite(draw.x) || !Number.isFinite(draw.z)) continue;
+      const x = sx(draw.x), y = sz(draw.z);
+      const selected = !!(this._selectedTarget && this._selectedTarget.id === marker.id);
+      const target = {
+        ...marker,
+        sx: x,
+        sy: y,
+        radiusPx: 22,
+        kind: 'claim',
+        entityId: marker.targetEntityId,
+        sectorId: model.sectorId,
+        detail: `Owned base · ${marker.statusLine}`,
+      };
+      this._clickTargets.push(target);
+
+      g.save();
+      g.strokeStyle = marker.color;
+      g.fillStyle = marker.color;
+      g.lineWidth = selected ? 2.5 : 1.5;
+      g.beginPath();
+      g.arc(x, y, selected ? 13 : 11, 0, Math.PI * 2);
+      g.stroke();
+      g.font = '700 15px monospace';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(marker.glyph, x, y);
+      g.restore();
+
+      labelCandidates.push(makeMapLabelCandidate(g, {
+        id: `claim:${marker.claimId}`,
+        kind: 'claim',
+        text: marker.name,
+        lines: [marker.name, marker.statusLine],
+        x,
+        y,
+        anchorRadius: 14,
+        color: marker.color,
+        selected,
+        named: true,
+      }));
+    }
+
     let objectivePlacement = null;
     if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
       const wx = sx(wp.pos.x);
@@ -3372,7 +3568,7 @@ export const galaxyMapScreen = {
 
   // --- LOCAL DRAW ---
   _drawLocal(g, state, w, h) {
-    const model = buildLocalModel(state, this._isHostile);
+    const model = buildLocalModel(state, this._isHostile, { claimsSystem: this._claimsSystem() });
     const cam = this._cams.local;
     const wp = state.nav && state.nav.waypoint;
 
@@ -3383,6 +3579,7 @@ export const galaxyMapScreen = {
     let span = 1600;
     let m = 0;
     for (const c of model.contacts) m = Math.max(m, Math.hypot(c.x - px, c.z - pz));
+    for (const marker of model.ownership) m = Math.max(m, Math.hypot(marker.x - px, marker.z - pz));
     for (const bearing of model.bearings) {
       const point = bearing.fixedPos || bearing.center;
       if (!point) continue;
@@ -3399,6 +3596,12 @@ export const galaxyMapScreen = {
     const sx = (x) => w / 2 - (x - cam.cx) * baseScale * cam.zoom;
     const sz = (z) => h / 2 - (z - cam.cy) * baseScale * cam.zoom;
     const labelCandidates = [];
+    if (this._canvas && typeof this._canvas.setAttribute === 'function') {
+      const ownership = model.ownership.length
+        ? model.ownership.map((marker) => `${marker.name}: ${marker.statusLine}`).join('; ')
+        : 'No owned bases in this sector.';
+      this._canvas.setAttribute('aria-label', `Local navigation map. ${ownership}`);
+    }
 
     // Range rings
     g.strokeStyle = 'rgba(57,208,255,0.08)'; g.setLineDash([3, 5]);
@@ -3525,6 +3728,48 @@ export const galaxyMapScreen = {
     g.translate(w / 2, h / 2); g.rotate(Math.PI + (player ? player.rot : 0));
     g.beginPath(); g.moveTo(8, 0); g.lineTo(-6, -5.5); g.lineTo(-6, 5.5); g.closePath(); g.fill();
     g.restore();
+
+    // Player-owned bases remain labeled at local scale and can arm autopilot with a pointer action.
+    for (const marker of model.ownership) {
+      const x = sx(marker.x), y = sz(marker.z);
+      const selected = !!(this._selectedTarget && this._selectedTarget.id === marker.id);
+      this._clickTargets.push({
+        ...marker,
+        sx: x,
+        sy: y,
+        radiusPx: 22,
+        kind: 'claim',
+        entityId: marker.targetEntityId,
+        sectorId: model.sectorId,
+        detail: `Owned base · ${marker.statusLine}`,
+      });
+
+      g.save();
+      g.strokeStyle = marker.color;
+      g.fillStyle = marker.color;
+      g.lineWidth = selected ? 2.5 : 1.5;
+      g.beginPath();
+      g.arc(x, y, selected ? 13 : 11, 0, Math.PI * 2);
+      g.stroke();
+      g.font = '700 15px monospace';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(marker.glyph, x, y);
+      g.restore();
+
+      labelCandidates.push(makeMapLabelCandidate(g, {
+        id: `claim:${marker.claimId}`,
+        kind: 'claim',
+        text: marker.name,
+        lines: [marker.name, marker.statusLine],
+        x,
+        y,
+        anchorRadius: 14,
+        color: marker.color,
+        selected,
+        named: true,
+      }));
+    }
 
     let objectivePlacement = null;
     if (wp && wp.pos && (this._layers.route || this._layers.mission)) {

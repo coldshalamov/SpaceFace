@@ -51,6 +51,9 @@ function injectStyle() {
 #sf-base .base-spec.active { border-color:rgba(57,208,255,.55); background:rgba(10,34,48,.72); }
 #sf-base .base-spec .nm { color:var(--ink); font-size:13px; font-weight:700; }
 #sf-base .base-spec .desc { color:var(--ink-mute); font-size:11px; line-height:1.35; }
+#sf-base .base-spec .verb { color:var(--accent); font-size:11px; font-weight:700; line-height:1.35; }
+#sf-base .base-spec .effect { color:var(--good); font-size:10px; line-height:1.35; }
+#sf-base .base-spec .risk { color:var(--warn); font-size:10px; line-height:1.35; }
 #sf-base .base-ledger { border:1px solid rgba(57,208,255,.25); border-radius:8px; padding:12px;
   background:rgba(5,9,18,.88); display:grid; gap:8px; }
 #sf-base .base-ledger-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
@@ -385,9 +388,15 @@ export const baseScreen = {
       const name = document.createElement('div');
       name.className = 'nm';
       name.textContent = spec.name + (specAction.state === 'active' ? ' · ACTIVE' : '');
-      const desc = document.createElement('div');
-      desc.className = 'desc';
-      desc.textContent = spec.desc;
+      const verb = document.createElement('div');
+      verb.className = 'verb';
+      verb.textContent = '▶ YOUR VERB · ' + spec.playerVerb;
+      const effect = document.createElement('div');
+      effect.className = 'effect';
+      effect.textContent = '✓ CONSEQUENCE · ' + spec.consequence;
+      const risk = document.createElement('div');
+      risk.className = 'risk';
+      risk.textContent = '△ TRADEOFF · ' + spec.riskLine;
       const btn = document.createElement('button');
       btn.className = 'sf-btn sf-btn--primary';
       btn.textContent = specAction.label;
@@ -397,7 +406,7 @@ export const baseScreen = {
       btn.addEventListener('click', () => {
         if (claims.specialize(body.id, spec.id)) this._render();
       });
-      card.append(name, desc, btn);
+      card.append(name, verb, effect, risk, btn);
       specGrid.appendChild(card);
     }
     wrap.appendChild(specGrid);

@@ -30,6 +30,15 @@ import {
   CLAIMABLE_BODY_SITES,
 } from '../src/data/claimableBodies.js';
 import { describeSpecializationAction } from '../src/ui/screens/base.js';
+import {
+  buildLocalModel,
+  describeClaimMapMarker,
+  emitGalaxyMapPrimaryAction,
+  galaxyMapScreen,
+  resolveCourseTarget,
+  resolveGalaxyMapPrimaryAction,
+} from '../src/ui/galaxyMap.js';
+import { MAP_FOCUS, openGalaxyMap, peekMapOpenIntent } from '../src/ui/mapAuthority.js';
 import { automation } from '../src/systems/automation.js';
 import { OUTPOSTS } from '../src/data/automation.js';
 import { SECTORS, dangerIndex } from '../src/data/sectors.js';
@@ -864,6 +873,8 @@ test('claim map/navigation identity reflects the specialization', () => {
   };
   h.state.entityList.push(poiEntity);
   const body = commission(h, claimBody(h), 'spec_refinery');
+  assert.equal(body.owned, true, 'a canonical claim is explicitly player-owned');
+  assert.equal(poiEntity.data.claimOwned, true, 'the live POI selects the authored player-base family');
   assert.match(poiEntity.data.name, /Industrial Refinery/, 'live POI identity carries the specialization');
   // re-entering the sector (world respawns POIs) re-applies the label
   poiEntity.data.name = 'Pallas Industrial Moon';
@@ -874,13 +885,181 @@ test('claim map/navigation identity reflects the specialization', () => {
   void body;
 });
 
+test('local-map ownership markers make all three jobs distinct and actionable', () => {
+  const fixtures = [
+    {
+      specId: 'spec_refinery', kind: 'claim-refinery', glyph: '▣', role: 'REFINERY',
+      ledger: { status: 'active', stores: { inputU: 48, inputCapU: 240, outputU: 12, outputCapU: 120 }, throughput: { refineRatePerS: 0.5 } },
+      tells: [/48\/240u ore/i, /12\/120u ready/i, /0\.5 ore\/s/i],
+    },
+    {
+      specId: 'spec_relay', kind: 'claim-relay', glyph: '⬡', role: 'RELAY',
+      ledger: { status: 'active', stores: { inputU: 75, inputCapU: 300, outputU: 0, outputCapU: 0 }, convoy: { etaS: 37 }, flows: { soldTotalCr: 1820 } },
+      tells: [/75\/300u freight/i, /convoy 37s/i, /1,820 cr sold/i],
+    },
+    {
+      specId: 'spec_bastion', kind: 'claim-bastion', glyph: '⬟', role: 'BASTION',
+      ledger: { status: 'active', defense: { rating: 100 }, readiness: { coveredBodies: 2 }, risk: { nextRollInS: 90 } },
+      tells: [/100 defense/i, /2 claims covered/i, /next sweep 90s/i],
+    },
+  ];
+  for (const fixture of fixtures) {
+    const marker = describeClaimMapMarker({
+      id: 'claim_1', poiId: 'poi_claim_pallas', name: 'Pallas Industrial Moon', sectorId: FRONTIER,
+      x: 20, z: 30, owned: true, spec: { id: fixture.specId, status: 'active' },
+    }, fixture.ledger, { id: 'e_poi', pos: { x: 22, z: 32 } });
+    assert.equal(marker.kind, fixture.kind);
+    assert.equal(marker.glyph, fixture.glyph);
+    assert.equal(marker.role, fixture.role);
+    assert.equal(marker.targetEntityId, 'e_poi');
+    assert.deepEqual({ x: marker.x, z: marker.z }, { x: 22, z: 32 }, 'live global position wins over the save record');
+    for (const tell of fixture.tells) assert.match(marker.statusLine, tell);
+    assert.match(marker.name, new RegExp(fixture.role, 'i'));
+  }
+});
+
+test('normal LOCAL map route exposes owned bases and pointer course-setting emits autopilot intent', () => {
+  const h = boot({ seed: 72 });
+  const poiEntity = {
+    id: 'e_poi_map', alive: true, type: 'poi',
+    pos: { x: 122, z: -38 },
+    data: { poi: true, claimable: true, poiId: 'poi_claim_pallas', name: 'Pallas Industrial Moon' },
+  };
+  h.state.entityList.push(poiEntity);
+  h.state.entities.set(poiEntity.id, poiEntity);
+  const body = commission(h, claimBody(h, { pos: poiEntity.pos }), 'spec_refinery');
+
+  const pushed = [];
+  assert.equal(openGalaxyMap({
+    state: h.state,
+    bus: h.bus,
+    screenManager: { top: () => null, pushScreen: (id) => pushed.push(id) },
+  }, { focus: MAP_FOCUS.LOCAL, source: 'keyboard' }), true);
+  assert.deepEqual(pushed, ['galaxyMap'], 'normal LOCAL route opens the unified map only');
+  assert.equal(peekMapOpenIntent(h.state).focus, MAP_FOCUS.LOCAL);
+
+  const model = buildLocalModel(h.state, null, { claimsSystem: h.sys });
+  const marker = model.ownership.find((entry) => entry.claimId === body.id);
+  assert.ok(marker, 'commissioned base is present on the authoritative LOCAL model');
+  assert.equal(marker.role, 'REFINERY');
+  assert.match(marker.statusLine, /ore/i);
+
+  const pointerTarget = {
+    ...marker,
+    kind: 'claim',
+    entityId: marker.targetEntityId,
+    sx: 140,
+    sy: 90,
+    radiusPx: 22,
+  };
+  const course = resolveCourseTarget(pointerTarget);
+  assert.deepEqual(course.pos, poiEntity.pos);
+  assert.equal(course.targetEntityId, poiEntity.id);
+  assert.equal(course.arrivalRadius, 170);
+  assert.equal(course.autopilot, true);
+  const action = resolveGalaxyMapPrimaryAction(h.state, pointerTarget);
+  assert.equal(action.kind, 'waypoint');
+  assert.equal(action.label, 'Set Base Waypoint');
+
+  const directBus = makeBus();
+  assert.equal(emitGalaxyMapPrimaryAction(directBus, action), true);
+  assert.ok(events({ bus: directBus }, 'ui:setCourse').some((entry) => entry.payload.autopilot === true));
+
+  // Exercise the actual canvas pointer handler used by a public double-click, not just the resolver.
+  const old = {
+    canvas: galaxyMapScreen._canvas,
+    clickTargets: galaxyMapScreen._clickTargets,
+    ctx: galaxyMapScreen._ctx,
+  };
+  const pointerBus = makeBus();
+  let popped = 0;
+  try {
+    galaxyMapScreen._canvas = { getBoundingClientRect: () => ({ left: 0, top: 0 }) };
+    galaxyMapScreen._clickTargets = [pointerTarget];
+    galaxyMapScreen._ctx = {
+      state: h.state,
+      bus: pointerBus,
+      screenManager: { popScreen: () => { popped += 1; } },
+    };
+    galaxyMapScreen._onCanvasDblClick({ clientX: 140, clientY: 90 });
+  } finally {
+    galaxyMapScreen._canvas = old.canvas;
+    galaxyMapScreen._clickTargets = old.clickTargets;
+    galaxyMapScreen._ctx = old.ctx;
+  }
+  const emitted = pointerBus.emitLog.find((entry) => entry.evt === 'ui:setCourse');
+  assert.ok(emitted, 'public pointer path emits ui:setCourse');
+  assert.equal(emitted.payload.autopilot, true);
+  assert.equal(emitted.payload.targetEntityId, poiEntity.id);
+  assert.equal(popped, 1, 'successful pointer course closes the map');
+});
+
 // ── 10. hygiene ──────────────────────────────────────────────────────────────────────────────
+
+test('Enter and Space activate a selected claim without stealing text-entry keys', () => {
+  const h = boot({ seed: 73 });
+  const target = {
+    id: 'player-claim:claim_keyboard', claimId: 'claim_keyboard', kind: 'claim', role: 'REFINERY',
+    name: 'REFINERY · Keyboard Claim', x: 420, z: -180, targetEntityId: 'entity_keyboard_claim',
+  };
+  const old = { ctx: galaxyMapScreen._ctx, selectedTarget: galaxyMapScreen._selectedTarget };
+  try {
+    for (const key of ['Enter', ' ']) {
+      const bus = makeBus();
+      let popped = 0;
+      let prevented = 0;
+      galaxyMapScreen._ctx = {
+        state: h.state,
+        bus,
+        screenManager: { popScreen: () => { popped += 1; } },
+      };
+      galaxyMapScreen._selectedTarget = target;
+      const handled = galaxyMapScreen.onKey({
+        key,
+        target: { tagName: 'DIV', isContentEditable: false },
+        preventDefault: () => { prevented += 1; },
+      }, galaxyMapScreen._ctx);
+      assert.equal(handled, true, `${JSON.stringify(key)} handles the selected base`);
+      assert.equal(prevented, 1);
+      const course = bus.emitLog.find((entry) => entry.evt === 'ui:setCourse');
+      assert.ok(course, `${JSON.stringify(key)} emits ui:setCourse`);
+      assert.equal(course.payload.type, 'claim');
+      assert.equal(course.payload.autopilot, true);
+      assert.equal(course.payload.targetEntityId, target.targetEntityId);
+      assert.equal(course.payload.arrivalRadius, 170);
+      assert.equal(popped, 1, `${JSON.stringify(key)} closes the map`);
+    }
+
+    const textBus = makeBus();
+    let textPops = 0;
+    let textPrevented = 0;
+    galaxyMapScreen._ctx = {
+      state: h.state,
+      bus: textBus,
+      screenManager: { popScreen: () => { textPops += 1; } },
+    };
+    galaxyMapScreen._selectedTarget = target;
+    const handled = galaxyMapScreen.onKey({
+      key: 'Enter',
+      target: { tagName: 'INPUT', isContentEditable: false },
+      preventDefault: () => { textPrevented += 1; },
+    }, galaxyMapScreen._ctx);
+    assert.equal(handled, false, 'search input retains native Enter behavior');
+    assert.equal(textPrevented, 0);
+    assert.equal(textPops, 0);
+    assert.equal(textBus.emitLog.some((entry) => entry.evt === 'ui:setCourse'), false);
+  } finally {
+    galaxyMapScreen._ctx = old.ctx;
+    galaxyMapScreen._selectedTarget = old.selectedTarget;
+  }
+});
 
 test('git diff --check is clean for the feature paths', () => {
   const paths = [
     'src/systems/claims.js',
     'src/data/claimableBodies.js',
     'src/ui/screens/base.js',
+    'src/ui/galaxyMap.js',
     'src/systems/automation.js',
     'test/claim-specializations.test.mjs',
   ];

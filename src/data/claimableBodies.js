@@ -59,6 +59,10 @@ export const BODY_SPECIALIZATIONS = [
   {
     id: 'spec_refinery', name: 'Industrial Refinery', short: 'REFINERY',
     desc: 'Runs the fitted refinery as a working site. Deliver raw ore here; crews process it into refined goods you haul out. Stocked sites draw raiders in low-security space.',
+    playerVerb: 'Deliver raw ore. Collect refined output.',
+    consequence: 'Turns 2u raw ore into 1u refined freight at the site.',
+    riskLine: 'Stored ore attracts raids in low-security space.',
+    mapGlyph: '▣', mapColor: '#ffb35c',
     requiresModule: 'mod_refinery',
     cost: 9000,
     upkeepPerMin: 20,       // credits, charged through the economy writer
@@ -69,6 +73,10 @@ export const BODY_SPECIALIZATIONS = [
   {
     id: 'spec_relay', name: 'Trade Relay', short: 'RELAY',
     desc: 'Runs the fitted depot as a freight relay. Deposit goods; scheduled convoys haul them to the linked station and sell at the local market price less the relay fee. Convoys risk piracy in low-security space.',
+    playerVerb: 'Deliver freight. The relay sells it by scheduled convoy.',
+    consequence: 'Realizes linked-market prices minus a 20% handling fee.',
+    riskLine: 'Convoys can be lost to piracy outside lawful space.',
+    mapGlyph: '⬡', mapColor: '#39d0ff',
     requiresModule: 'mod_depot',
     cost: 7000,
     upkeepPerMin: 15,
@@ -82,6 +90,10 @@ export const BODY_SPECIALIZATIONS = [
   {
     id: 'spec_bastion', name: 'Defense Bastion', short: 'BASTION',
     desc: 'Runs the fitted battery as a garrison. Warns of raids on your claims in this sector and contests them with stationed guns. Highest upkeep; produces nothing.',
+    playerVerb: 'Answer raid warnings. Fight at the threatened claim.',
+    consequence: 'Lends defense coverage to every owned claim in-sector.',
+    riskLine: 'Produces no goods and carries the highest upkeep.',
+    mapGlyph: '⬟', mapColor: '#7af7d0',
     requiresModule: 'mod_defense',
     cost: 8000,
     upkeepPerMin: 25,

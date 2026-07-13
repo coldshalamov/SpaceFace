@@ -179,9 +179,11 @@ export const claims = {
       x: poi.pos ? poi.pos.x : 0,
       z: poi.pos ? poi.pos.z : 0,
       claimedAt: this.state.simTime || 0,
+      owned: true,          // canonical ownership truth used by map + authored place resolver
       spec: null,           // operating identity (see specialize())
     };
     this.state.claims.bodies.push(body);
+    this._applyPoiLabel(body);
     this.bus.emit('toast', { text: '✓ Claimed: ' + body.name + ' (' + body.slots + ' module slots)', kind: 'good', ttl: 4 });
     this.bus.emit('claim:claimed', { body });
     this.bus.emit('audio:cue', { id: 'confirm' });
@@ -222,6 +224,7 @@ export const claims = {
     }
     this.bus.emit('claim:moduleBuilt', { bodyId, modId });
     this.bus.emit('audio:cue', { id: 'confirm' });
+    this._applyPoiLabel(body);
     return true;
   },
 
@@ -261,7 +264,10 @@ export const claims = {
     this._receipt(body, 'commissioned', 'Commissioned as ' + def.name);
     this._emitDeploymentOnce(body, def);
     this.bus.emit('claim:specialized', { bodyId: body.id, specId: def.id });
-    this.bus.emit('toast', { text: '✓ Commissioned: ' + def.name + ' — ' + body.name, kind: 'good', ttl: 4 });
+    this.bus.emit('toast', {
+      text: '✓ ' + def.short + ' online — ' + def.playerVerb,
+      kind: 'good', ttl: 5,
+    });
     this.bus.emit('audio:cue', { id: 'confirm' });
     this._applyPoiLabel(body);
     return true;
@@ -1035,6 +1041,10 @@ export const claims = {
       e.data.name = def ? e.data.claimBaseName + ' — ' + def.name : e.data.claimBaseName;
       e.data.claimOwned = body.owned === true;
       e.data.claimSpecId = def ? def.id : null;
+      e.data.claimRole = def ? def.short : 'CLAIM';
+      e.data.claimMapGlyph = def ? def.mapGlyph : '◆';
+      e.data.claimMapColor = def ? def.mapColor : '#ffd24a';
+      e.data.claimPlayerVerb = def ? def.playerVerb : 'Open the Base interface to build this claim.';
     }
   },
 
@@ -1082,6 +1092,7 @@ export const claims = {
         x: 0,
         z: 0,
         claimedAt: state.simTime || 0,
+        owned: true,
         spec: null,
       };
       body.spec = this._freshSpec(specDef);
@@ -1142,6 +1153,8 @@ export const claims = {
     const bodies = Array.isArray(data.bodies) ? data.bodies : [];
     for (const b of bodies) {
       // versioned default: bodies from older saves have no spec — they stay unspecialized
+      // Presence in the claims store is the ownership proof. Older saves predate the explicit bit.
+      b.owned = true;
       b.spec = 'spec' in b ? this._normalizeSpec(b.spec) : null;
       if (b.spec && b.spec.defense && b.spec.defense.phase === 'engaged') {
         this._resumeDefenseIds.add(b.spec.defense.id);
