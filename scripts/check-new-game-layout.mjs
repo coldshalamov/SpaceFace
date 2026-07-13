@@ -67,6 +67,7 @@ try {
       screenshot: `${LABEL}-${viewport.width}x${viewport.height}.png`,
       metrics: null,
       tabOrder: [],
+      modalSemantics: null,
       launchPayload: null,
       backReturnedToMainMenu: false,
       gpu: null,
@@ -79,6 +80,9 @@ try {
       await openNewGameWithKeyboard(page, server.baseUrl);
       result.gpu = await readGpuIdentity(page);
       await page.screenshot({ path: join(OUT_DIR, result.screenshot), fullPage: false });
+
+      const newGameModal = await collectModalSemantics(page);
+      assertModalSemantics(viewport, newGameModal, 'newGame');
 
       result.metrics = await collectLayoutMetrics(page);
       assertLayout(viewport, result.metrics);
@@ -110,6 +114,14 @@ try {
         true,
         `${viewport.width}x${viewport.height}: Enter on Back must return to Main Menu`,
       );
+      const mainMenuModal = await collectModalSemantics(page);
+      assertModalSemantics(viewport, mainMenuModal, 'mainMenu');
+      assert.equal(
+        mainMenuModal.activeControlText,
+        'New Game',
+        `${viewport.width}x${viewport.height}: Back must restore focus to the New Game opener`,
+      );
+      result.modalSemantics = { newGame: newGameModal, mainMenu: mainMenuModal };
 
       result.pageIssues = summarizeIssues(relevantLayoutIssues(pageIssues.errorIssues()));
       result.ignoredPageIssues = summarizeIssues(ignoredLayoutIssues(pageIssues.errorIssues()));
@@ -326,6 +338,59 @@ async function collectLayoutMetrics(page) {
       },
     };
   });
+}
+
+async function collectModalSemantics(page) {
+  return page.evaluate(() => {
+    const rows = Array.from(document.querySelectorAll('[data-screen]')).map((element) => ({
+      id: element.getAttribute('data-screen'),
+      display: getComputedStyle(element).display,
+      role: element.getAttribute('role'),
+      ariaLabel: element.getAttribute('aria-label'),
+      ariaLabelledBy: element.getAttribute('aria-labelledby'),
+      ariaModal: element.getAttribute('aria-modal'),
+      ariaHidden: element.getAttribute('aria-hidden'),
+      inert: element.inert === true,
+      containsFocus: element.contains(document.activeElement),
+    }));
+    const active = rows.find((row) => row.display !== 'none') || null;
+    const screens = document.getElementById('screens');
+    const backdrop = document.getElementById('modal-backdrop');
+    return {
+      active,
+      rows,
+      modalOwners: rows.filter((row) => row.ariaModal === 'true').map((row) => row.id),
+      screens: {
+        ariaHidden: screens?.getAttribute('aria-hidden') ?? null,
+        inert: screens?.inert === true,
+      },
+      backdropAriaHidden: backdrop?.getAttribute('aria-hidden') ?? null,
+      activeControlText: String(document.activeElement?.textContent || '').trim(),
+    };
+  });
+}
+
+function assertModalSemantics(viewport, snapshot, expectedId) {
+  const label = `${viewport.width}x${viewport.height} ${expectedId}`;
+  assert.equal(snapshot.active?.id, expectedId, `${label}: expected screen must be the sole visible modal`);
+  assert.equal(snapshot.active?.role, 'dialog', `${label}: active screen must expose dialog semantics`);
+  assert.equal(snapshot.active?.ariaModal, 'true', `${label}: active screen must own aria-modal`);
+  assert.equal(snapshot.active?.ariaHidden, null, `${label}: active screen must remain in the accessibility tree`);
+  assert.equal(snapshot.active?.inert, false, `${label}: active screen must accept keyboard focus`);
+  assert.equal(snapshot.active?.containsFocus, true, `${label}: keyboard focus must remain inside the active screen`);
+  assert(snapshot.active?.ariaLabel || snapshot.active?.ariaLabelledBy,
+    `${label}: active dialog must have an accessible name`);
+  assert.deepEqual(snapshot.modalOwners, [expectedId], `${label}: exactly one screen may own modal semantics`);
+  assert.equal(snapshot.screens.ariaHidden, null, `${label}: open screen root must remain exposed`);
+  assert.equal(snapshot.screens.inert, false, `${label}: open screen root must remain keyboard reachable`);
+  assert.equal(snapshot.backdropAriaHidden, 'true', `${label}: visual backdrop must stay decorative`);
+  for (const row of snapshot.rows) {
+    if (row.id === expectedId) continue;
+    assert.equal(row.display, 'none', `${label}: cached ${row.id} screen must stay visually hidden`);
+    assert.equal(row.ariaHidden, 'true', `${label}: cached ${row.id} screen must leave the accessibility tree`);
+    assert.equal(row.ariaModal, null, `${label}: cached ${row.id} screen cannot own aria-modal`);
+    assert.equal(row.inert, true, `${label}: cached ${row.id} screen cannot receive keyboard focus`);
+  }
 }
 
 async function readGpuIdentity(page) {

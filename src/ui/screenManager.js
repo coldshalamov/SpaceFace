@@ -41,14 +41,18 @@ export function createScreenManager(ctx) {
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     )).filter((el) => {
       if (el.disabled) return false;
+      if (el.inert) return false;
       if (el.hidden) return false;
+      if (el.getAttribute('aria-disabled') === 'true') return false;
       if (el.getAttribute('aria-hidden') === 'true') return false;
       if (el.style && el.style.display === 'none') return false;
+      if (el.style && el.style.visibility === 'hidden') return false;
       const t = el.getAttribute('tabindex');
       if (t != null && Number(t) < 0) return false;
       // skip elements in a hidden subtree
       let p = el.parentNode;
       while (p && p !== root) {
+        if (p.inert) return false;
         if (p.hidden) return false;
         if (p.style && p.style.display === 'none') return false;
         if (p.getAttribute && p.getAttribute('aria-hidden') === 'true') return false;
@@ -78,12 +82,11 @@ export function createScreenManager(ctx) {
     const topId = stack[stack.length - 1];
     const rec = topId && registry.get(topId);
     if (!rec || !rec.el) return;
-    if (!_autoFocusEnabled(rec)) return;
     const items = _focusableInside(rec.el);
-    if (items.length) { try { items[0].focus(); } catch (e) {} }
-  }
-  function _autoFocusEnabled(rec) {
-    return !(rec && rec.def && rec.def.data && rec.def.data.autoFocus === false);
+    const target = items[0] || rec.el;
+    try { target.focus({ preventScroll: true }); } catch (e) {
+      try { target.focus(); } catch (_) { /* no focus target available */ }
+    }
   }
   // Opener is restorable only when still connected, visible, and not inert/disabled.
   // Hidden or detached openers fall through to the deterministic top-screen fallback.
@@ -115,8 +118,11 @@ export function createScreenManager(ctx) {
   }
   function _ensureFocusIn(rec) {
     if (!rec || !rec.el) return;
-    if (!_autoFocusEnabled(rec)) return;
     const active = document.activeElement;
+    // `autoFocus:false` lets a screen (the galaxy map, for example) choose its own initial
+    // control during onShow. It must never permit focus to remain in the covered dialog that is
+    // now aria-hidden/inert. Preserve an explicit in-screen choice; otherwise use the common
+    // first-operable/root fallback.
     if (!active || !rec.el.contains(active) || !_isRestorableOpener(active)) _focusFirst();
   }
   // one document-level trap listener (active whenever a modal is open)
@@ -135,6 +141,13 @@ export function createScreenManager(ctx) {
       el.className = 'screen';
       el.dataset.screen = id;
       el.style.display = 'none';
+      // Cached screens stay mounted for scroll/tab continuity. Keep every inactive screen out of
+      // both keyboard navigation and the accessibility tree until it becomes the stack owner.
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-label', _screenAccessibleName(rec.def, id));
+      el.setAttribute('aria-hidden', 'true');
+      el.setAttribute('tabindex', '-1');
+      el.inert = true;
       screensRoot.appendChild(el);
       rec.el = el;
       try { if (rec.def.mount) rec.def.mount(el, ctx); }
@@ -150,6 +163,9 @@ export function createScreenManager(ctx) {
       if (!rec.el) continue;
       if (id === top) {
         rec.el.style.display = 'flex';
+        rec.el.removeAttribute('aria-hidden');
+        rec.el.setAttribute('aria-modal', 'true');
+        rec.el.inert = false;
         // Trigger enter animation: start invisible, then fade in next frame
         rec.el.classList.remove('sf-screen--exiting');
         rec.el.classList.add('sf-screen--entering');
@@ -160,18 +176,28 @@ export function createScreenManager(ctx) {
       } else {
         rec.el.classList.remove('sf-screen--visible', 'sf-screen--entering');
         rec.el.style.display = 'none';
+        rec.el.setAttribute('aria-hidden', 'true');
+        rec.el.removeAttribute('aria-modal');
+        rec.el.inert = true;
       }
     }
     const open = stack.length > 0;
     // When no modal is open, hide the #screens container ENTIRELY — it carries a full-screen
     // background image (the menu art) at z-index 100, which would otherwise sit on top of the
     // flight canvas (z-index 10) and blank the screen after New Game even though the sim is live.
-    if (screensRoot) screensRoot.style.display = open ? 'flex' : 'none';
+    if (screensRoot) {
+      screensRoot.style.display = open ? 'flex' : 'none';
+      screensRoot.inert = !open;
+      if (open) screensRoot.removeAttribute('aria-hidden');
+      else screensRoot.setAttribute('aria-hidden', 'true');
+    }
     const modalOpen = open || state.ui.docked === true;
     document.body.classList.toggle('ui-modal-open', modalOpen);
     syncHudAccessibility(modalOpen || state.mode !== 'flight');
     if (backdrop) {
       backdrop.hidden = !open;
+      // The dimmer is visual chrome; the active screen owns the dialog semantics.
+      backdrop.setAttribute('aria-hidden', 'true');
       backdrop.style.pointerEvents = open ? 'auto' : 'none';
     }
     syncPause();
@@ -183,6 +209,15 @@ export function createScreenManager(ctx) {
     if (hidden) hud.setAttribute('aria-hidden', 'true');
     else hud.removeAttribute('aria-hidden');
     if ('inert' in hud) hud.inert = hidden;
+  }
+
+  function _screenAccessibleName(def, id) {
+    const declared = def && def.data && (def.data.ariaLabel || def.data.title);
+    if (declared) return String(declared);
+    return String(id || 'screen')
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/[-_]+/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
   }
 
   function clearModalFocus() {

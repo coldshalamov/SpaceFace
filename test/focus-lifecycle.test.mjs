@@ -457,4 +457,150 @@ function makeBus() {
   assert.equal(document.activeElement, hudBtn, 'pop to empty stack restores outside opener');
 }
 
+// ── M6 modal accessibility-tree ownership ─────────────────────────────────────
+
+{
+  const dom = installDom();
+  const bus = makeBus();
+  const state = createGameState(14);
+  state.mode = 'flight';
+  const mgr = createScreenManager({ state, bus });
+
+  let pauseRoot = null;
+  let settingsRoot = null;
+  mgr.register({
+    id: 'pause',
+    data: { ariaLabel: 'Pause menu' },
+    mount(el) {
+      pauseRoot = el;
+      const first = document.createElement('button');
+      first.id = 'a11y-pause-first';
+      el.appendChild(first);
+    },
+  });
+  mgr.register({
+    id: 'settings',
+    mount(el) {
+      settingsRoot = el;
+      const first = document.createElement('button');
+      first.id = 'a11y-settings-first';
+      el.appendChild(first);
+    },
+  });
+
+  mgr.pushScreen('pause');
+  assert.equal(pauseRoot.getAttribute('role'), 'dialog', 'active screen exposes dialog semantics');
+  assert.equal(pauseRoot.getAttribute('aria-label'), 'Pause menu', 'declared accessible name wins');
+  assert.equal(pauseRoot.getAttribute('aria-modal'), 'true', 'active screen owns modal semantics');
+  assert.equal(pauseRoot.getAttribute('aria-hidden'), null, 'active screen is exposed to assistive tech');
+  assert.equal(pauseRoot.inert, false, 'active screen is keyboard reachable');
+  assert.equal(dom.screens.getAttribute('aria-hidden'), null, 'open screen root is exposed');
+  assert.equal(dom.screens.inert, false, 'open screen root is interactive');
+  assert.equal(dom.elements.get('modal-backdrop').getAttribute('aria-hidden'), 'true',
+    'visual dimmer stays out of the accessibility tree');
+
+  mgr.pushScreen('settings');
+  assert.equal(settingsRoot.getAttribute('aria-label'), 'Settings', 'screen id produces a stable fallback name');
+  assert.equal(settingsRoot.getAttribute('aria-modal'), 'true');
+  assert.equal(settingsRoot.inert, false);
+  assert.equal(pauseRoot.getAttribute('aria-modal'), null, 'covered screen cannot retain modal ownership');
+  assert.equal(pauseRoot.getAttribute('aria-hidden'), 'true', 'covered screen leaves the accessibility tree');
+  assert.equal(pauseRoot.inert, true, 'covered screen cannot receive focus');
+
+  mgr.popScreen();
+  assert.equal(pauseRoot.getAttribute('aria-modal'), 'true', 'revealed screen regains modal ownership');
+  assert.equal(pauseRoot.inert, false);
+  assert.equal(settingsRoot.getAttribute('aria-hidden'), 'true');
+  assert.equal(settingsRoot.inert, true);
+
+  mgr.popScreen();
+  assert.equal(dom.screens.getAttribute('aria-hidden'), 'true', 'closed screen root leaves accessibility tree');
+  assert.equal(dom.screens.inert, true, 'closed screen root cannot retain focus');
+  assert.equal(dom.body.classList.contains('ui-modal-open'), false);
+}
+
+{
+  // Initial focus skips controls that assistive technology or a parent subtree marks unavailable.
+  installDom();
+  const bus = makeBus();
+  const state = createGameState(15);
+  state.mode = 'flight';
+  const mgr = createScreenManager({ state, bus });
+  let usable = null;
+  mgr.register({
+    id: 'help',
+    mount(el) {
+      const ariaDisabled = document.createElement('button');
+      ariaDisabled.id = 'aria-disabled-first';
+      ariaDisabled.setAttribute('aria-disabled', 'true');
+      el.appendChild(ariaDisabled);
+
+      const inertGroup = document.createElement('div');
+      inertGroup.inert = true;
+      const inertChild = document.createElement('button');
+      inertChild.id = 'inert-child';
+      inertGroup.appendChild(inertChild);
+      el.appendChild(inertGroup);
+
+      usable = document.createElement('button');
+      usable.id = 'usable-control';
+      el.appendChild(usable);
+    },
+  });
+  mgr.pushScreen('help');
+  assert.equal(document.activeElement, usable, 'initial focus lands on the first genuinely operable control');
+}
+
+{
+  // autoFocus:false may preserve a screen-owned choice, but cannot strand focus in the covered
+  // opener. The live galaxy map uses this mode for intent-specific focus in onShow.
+  installDom();
+  const bus = makeBus();
+  const state = createGameState(16);
+  state.mode = 'flight';
+  const mgr = createScreenManager({ state, bus });
+  let opener = null;
+  let mapControl = null;
+  mgr.register({
+    id: 'pause',
+    mount(el) {
+      opener = document.createElement('button');
+      opener.id = 'open-map';
+      el.appendChild(opener);
+    },
+  });
+  mgr.register({
+    id: 'galaxyMap',
+    data: { autoFocus: false },
+    mount(el) {
+      mapControl = document.createElement('button');
+      mapControl.id = 'map-control';
+      el.appendChild(mapControl);
+    },
+  });
+  mgr.pushScreen('pause');
+  assert.equal(document.activeElement, opener);
+  mgr.pushScreen('galaxyMap');
+  assert.equal(document.activeElement, mapControl,
+    'autoFocus:false falls back inside the active dialog when onShow did not choose a control');
+}
+
+{
+  // A modal with no operable descendants still owns a deterministic programmatic focus target.
+  installDom();
+  const bus = makeBus();
+  const state = createGameState(17);
+  state.mode = 'flight';
+  const mgr = createScreenManager({ state, bus });
+  let emptyRoot = null;
+  mgr.register({
+    id: 'emptyStatus',
+    data: { autoFocus: false },
+    mount(el) { emptyRoot = el; },
+  });
+  mgr.pushScreen('emptyStatus');
+  assert.equal(emptyRoot.getAttribute('tabindex'), '-1');
+  assert.equal(document.activeElement, emptyRoot, 'control-free dialog focuses its root fallback');
+}
+
 console.log('focus-lifecycle: toast dismiss/expire + modal pop restore OK');
