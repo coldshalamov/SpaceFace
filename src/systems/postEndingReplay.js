@@ -211,7 +211,7 @@ export const postEndingReplay = {
     this._listen('mission:completed', (payload) => this._settle(payload || {}, true));
     this._listen('mission:failed', (payload) => this._settle(payload || {}, false));
     this._listen('mission:expired', (payload) => this._settle(payload || {}, false));
-    this._listen('save:loaded', () => this._reconcile());
+    this._listen('save:loaded', () => this._resumeAfterLoad());
     this._listen('game:newGame', () => this.newGame());
   },
 
@@ -232,7 +232,57 @@ export const postEndingReplay = {
       openingStationId: chain.opening.boardStationId,
       cycle: run.cycle,
     });
+    this._publishRoute('unlocked', run, chain);
+    this._offerAtCurrentStation();
     return run;
+  },
+
+  _resumeAfterLoad() {
+    const run = this._reconcile();
+    if (!run) return null;
+    const chain = postEndingReplayChain(run.choiceId);
+    this._publishRoute('loaded', run, chain);
+    this._offerAtCurrentStation();
+    return run;
+  },
+
+  _offerAtCurrentStation() {
+    const stationId = this.state?.ui?.dockedStationId || null;
+    return stationId ? this._offerAtStation(stationId) : null;
+  },
+
+  _publishRoute(reason, run = ensurePostEndingReplayState(this.state), chain = null) {
+    if (!run || !this.bus?.emit) return null;
+    const def = chain || postEndingReplayChain(run.choiceId);
+    const descriptor = stageDescriptor(def, run, run.branchId);
+    const payload = {
+      reason,
+      choiceId: run.choiceId,
+      chainId: run.chainId,
+      replayHookId: run.replayHookId,
+      title: def?.title || null,
+      cycle: run.cycle,
+      stageIndex: run.stageIndex,
+      status: run.status,
+      branchId: run.branchId,
+      offerId: run.offerId,
+      missionId: run.missionId,
+      stationId: descriptor?.stage?.boardStationId || null,
+      sectorId: descriptor?.stage?.destSectorId || null,
+      stageTitle: descriptor?.stage?.title || null,
+      instruction: descriptor?.stage?.instruction || null,
+      choices: run.stageIndex === 1 && !run.branchId
+        ? def.branches.map((option) => ({
+          id: option.id,
+          label: option.label,
+          tradeoff: option.tradeoff,
+          stationId: option.mission.boardStationId,
+          sectorId: option.mission.destSectorId,
+        }))
+        : [],
+    };
+    this.bus.emit('postEndingReplay:route', clonePlain(payload));
+    return payload;
   },
 
   newGame() {
@@ -301,6 +351,7 @@ export const postEndingReplay = {
     run.offerId = payload.offerId;
     run.fingerprint = cause.fingerprint;
     this._pending.delete(payload.offerId);
+    this._publishRoute('offered', run);
     return true;
   },
 
@@ -321,6 +372,7 @@ export const postEndingReplay = {
     if (run.stageIndex === 1 && !run.branchId) return false;
     run.status = STATUS.ACTIVE;
     run.missionId = payload.missionId || null;
+    this._publishRoute('accepted', run);
     return true;
   },
 
@@ -359,6 +411,8 @@ export const postEndingReplay = {
     if (!completed) {
       run.status = STATUS.RECOVERING;
       run.attempt += 1;
+      this._publishRoute('recovering', run, chain);
+      this._offerAtCurrentStation();
       return true;
     }
     run.completedStageIds.push(stage.id);
@@ -377,10 +431,14 @@ export const postEndingReplay = {
           stationId: option.mission.boardStationId,
         })),
       });
+      this._publishRoute('choice', run, chain);
+      this._offerAtCurrentStation();
       return true;
     }
     if (run.stageIndex < 3) {
       run.status = STATUS.READY;
+      this._publishRoute('advanced', run, chain);
+      this._offerAtCurrentStation();
       return true;
     }
     const finalBranch = branchById(chain, run.branchId);
@@ -413,6 +471,7 @@ export const postEndingReplay = {
       consequence: clonePlain(finalBranch.consequence),
       oneTimeRewardGranted: false,
     });
+    this._publishRoute('cycle_completed', run, chain);
     return true;
   },
 

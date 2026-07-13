@@ -10,6 +10,12 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { confirm } from '../confirm.js';
 import { FACTION_META } from '../../data/factions.js';
 import { STORY_BEATS } from '../../data/missions.js';
+import { postEndingReplayChain } from '../../data/postEndingReplayChains.js';
+import {
+  listBoardEligibleEndingIds,
+  snapshotEndingFacts,
+} from '../../story/endings/eligibility.js';
+import { endingDef } from '../../story/endings/endingDefs.js';
 import { escapeHtml } from '../comms.js';
 import { BINDINGS } from '../bindings.js';
 import {
@@ -852,8 +858,144 @@ function isMissionLogKey(ev) {
   return key === BINDINGS.missionLog.key || key === BINDINGS.missionLog.label;
 }
 
-function storyActionForBeat(beat, state) {
+function stationRouteAction(stationId, title = 'Open Star Map') {
+  const station = STATION_INFO.get(stationId);
+  return mapHandoffAction({
+    focus: MAP_FOCUS.GALAXY,
+    label: 'STAR MAP',
+    title,
+    body: station
+      ? `Plot a route to ${station.name} in ${station.sectorName}.`
+      : 'Open the chart and review the next campaign destination.',
+    stationId,
+    sectorId: station && station.sectorId,
+    source: 'missionLog-story',
+  });
+}
+
+function replayStage(state, chain, run) {
+  if (!chain || !run) return null;
+  if (run.stageIndex === 0) return { stage: chain.opening, branch: null };
+  const branch = chain.branches.find((option) => option.id === run.branchId) || null;
+  if (run.stageIndex === 1) return branch ? { stage: branch.mission, branch } : null;
+  if (run.stageIndex === 2) return branch ? { stage: branch.finale, branch } : null;
+  return null;
+}
+
+function postEndingStoryAction(state) {
   const story = state && state.story || {};
+  if (!story.endgameResolved && !story.endgameChoice && !(story.flags && story.flags.sandboxContinued)) return null;
+  const continuity = story.postEnding || null;
+  if (continuity && continuity.status !== 'complete') {
+    const progress = Math.max(0, Number(continuity.progress) || 0);
+    const target = Math.max(1, Number(continuity.target) || 1);
+    return {
+      tone: 'primary',
+      label: story.endgameChoice ? `ENDING ${story.endgameChoice}` : 'OPEN FRONTIER',
+      title: continuity.title || 'The work continues',
+      body: continuity.objective || 'Continue career and world activity after the final disposition.',
+      meta: `${progress}/${target} · WORLD CONTINUES`,
+    };
+  }
+
+  const choiceId = continuity && continuity.choiceId;
+  const chain = choiceId && postEndingReplayChain(choiceId);
+  const run = state && state.missions && state.missions.postEndingReplay;
+  if (!chain) {
+    return {
+      tone: 'info',
+      label: 'SANDBOX',
+      title: 'The frontier remains open',
+      body: 'Career contracts, claims, trade, mining, combat, and exploration continue after 47-A.',
+      meta: 'NO CREDITS ROLL · KEEP FLYING',
+    };
+  }
+
+  if (run && run.status === 'completed') {
+    return {
+      tone: 'info',
+      label: 'SANDBOX',
+      title: `${chain.title} changed the world`,
+      body: 'Continue careers and regional work. This route returns after the next board refresh.',
+      meta: `CYCLE ${(Number(run.cycle) || 0) + 1} COMPLETE`,
+    };
+  }
+
+  if (run && run.stageIndex === 1 && !run.branchId) {
+    const options = chain.branches.map((option) => {
+      const station = STATION_INFO.get(option.mission.boardStationId);
+      return `${option.label} at ${station ? station.name : option.mission.boardStationId}`;
+    });
+    return {
+      tone: 'primary',
+      label: 'AFTER 47-A',
+      title: 'Choose the consequence you will carry',
+      body: `${chain.choicePrompt} ${options.join(' · ')}. Dock at either board to commit.`,
+      meta: 'TWO ROUTES · ONE PERSISTENT OUTCOME',
+      mapAction: mapHandoffAction({
+        focus: MAP_FOCUS.GALAXY,
+        label: 'STAR MAP',
+        title: 'Compare branch destinations',
+        body: 'Open the galaxy chart and compare the two authored continuation routes.',
+        source: 'missionLog-story-branch',
+      }),
+    };
+  }
+
+  const descriptor = replayStage(state, chain, run || { stageIndex: 0, branchId: null });
+  if (descriptor && descriptor.stage) {
+    const stationId = descriptor.stage.boardStationId;
+    const station = STATION_INFO.get(stationId);
+    const stateLabel = run && run.status === 'recovering'
+      ? 'Recovery copy ready'
+      : run && run.status === 'offered'
+        ? 'Offer posted'
+        : 'Next route';
+    return {
+      tone: run && run.status === 'recovering' ? 'warn' : 'primary',
+      label: 'AFTER 47-A',
+      title: descriptor.stage.title || chain.title,
+      body: `${descriptor.stage.instruction} ${stateLabel}: dock at ${station ? station.name : stationId} and open Missions.`,
+      meta: `${chain.title.toUpperCase()} · ${(Number(run && run.stageIndex) || 0) + 1}/3`,
+      mapAction: stationRouteAction(stationId, `Plot route to ${station ? station.name : 'the next board'}`),
+    };
+  }
+
+  return {
+    tone: 'info',
+    label: 'SANDBOX',
+    title: 'The frontier remains open',
+    body: 'Continue career contracts, claims, trade, mining, combat, and exploration while the next route settles.',
+    meta: 'WORLD CONTINUES',
+  };
+}
+
+function offeredEndingAction(state) {
+  const story = state && state.story || {};
+  if (!story.endgameOffered || story.endgameResolved || story.endgameChoice) return null;
+  const boardIds = listBoardEligibleEndingIds(state);
+  const boardTitles = boardIds.map((id) => endingDef(id)?.title).filter(Boolean);
+  const station = STATION_INFO.get('station_ashcache');
+  return {
+    tone: 'primary',
+    label: 'FINAL DISPOSITION',
+    title: boardTitles.length ? 'File 47-A at Ash Cache' : 'Choose how 47-A remains open',
+    body: boardTitles.length
+      ? `Ash Cache Missions holds ${boardTitles.join(' or ')}. You may instead continue without filing an ending.`
+      : 'No contract ending currently matches your path. Continue without a final disposition, or change the facts that qualify another ending.',
+    meta: 'CONFIRMATION REQUIRED · PLAY CONTINUES',
+    action: 'endgameSandbox',
+    actionLabel: 'CONTINUE OPEN',
+    mapAction: stationRouteAction('station_ashcache', `Plot route to ${station ? station.name : 'Ash Cache'}`),
+  };
+}
+
+export function storyActionForBeat(beat, state) {
+  const story = state && state.story || {};
+  const postEnding = postEndingStoryAction(state);
+  if (postEnding) return postEnding;
+  const offered = offeredEndingAction(state);
+  if (offered) return offered;
   const branch = story.branch || null;
   const chainProgress = story.chainProgress || 0;
   switch (beat && beat.beat) {
@@ -914,13 +1056,18 @@ function storyActionForBeat(beat, state) {
         meta: 'Passive',
       };
     case 7:
+      {
+        const facts = snapshotEndingFacts(state);
+        const worth = Math.min(facts.netWorthCr, 100000).toLocaleString();
+        const rep = Math.min(facts.branchRep, 50);
       return {
         tone: 'primary',
         label: 'ENDGAME',
         title: 'Build sector power',
-        body: 'Push toward 100,000cr net worth and 50 rep with your chosen faction.',
-        meta: 'Deep Reach',
+        body: `Reach 100,000cr net worth and 50 branch standing. Own a capital hull, claim, or outpost to qualify for a filed ending.`,
+        meta: `${worth}/100,000 CR · ${rep}/50 REP`,
       };
+      }
     default:
       return beat ? {
         tone: 'primary',
@@ -930,6 +1077,26 @@ function storyActionForBeat(beat, state) {
         meta: 'Beat ' + beat.beat,
       } : null;
   }
+}
+
+const PERSISTENT_CAMPAIGN_LABELS = new Set([
+  'FINAL DISPOSITION', 'OPEN FRONTIER', 'AFTER 47-A', 'SANDBOX',
+]);
+
+/**
+ * Keep the final disposition / post-ending thread visible beside ordinary work whenever that
+ * work owns CURRENT ACTION. Earlier story beats remain folded into the single-command policy.
+ */
+export function persistentCampaignAction(state, activeMissions = [], trackedMissionId = null) {
+  const beatIndex = state && state.story ? (state.story.beatIndex || 0) : 0;
+  const action = storyActionForBeat(STORY_BEATS[beatIndex], state);
+  const label = String(action && action.label || '');
+  const isEndingLabel = /^ENDING [A-E]$/.test(label);
+  if (!action || (!PERSISTENT_CAMPAIGN_LABELS.has(label) && !isEndingLabel)) return null;
+  const active = (activeMissions || []).filter((mission) => mission && mission.status === 'active');
+  const tracked = trackedMissionId ? active.find((mission) => mission.id === trackedMissionId) : null;
+  const ordinaryWorkOwnsCurrent = !!tracked || active.length > 0 || !!tradeRouteAction(state);
+  return ordinaryWorkOwnsCurrent ? action : null;
 }
 
 export function recommendedActions(state, activeMissions, trackedMissionId) {
@@ -1197,7 +1364,7 @@ export const missionLogScreen = {
       if (this._compVisible) this._renderCompleted();
     });
 
-    recEl.addEventListener('click', (ev) => {
+    const handleCampaignAction = (ev) => {
       const btn = ev.target.closest('[data-rec-act]');
       if (!btn) return;
       const act = btn.getAttribute('data-rec-act');
@@ -1205,11 +1372,17 @@ export const missionLogScreen = {
         ctx.bus.emit('ui:trackMission', { missionId: btn.getAttribute('data-mid') });
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
         this._render();
+      } else if (act === 'endgameSandbox') {
+        ctx.bus.emit('ui:endgameSandbox', { source: 'missionLog' });
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        this._render();
       } else if (act === 'openMap') {
         openMapScreen(ctx, mapOpenIntentFromButton(btn));
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
-    });
+    };
+    recEl.addEventListener('click', handleCampaignAction);
+    storyEl.addEventListener('click', handleCampaignAction);
 
     careerEl.addEventListener('click', async (ev) => {
       const btn = ev.target.closest('[data-career-act]');
@@ -1380,7 +1553,8 @@ export const missionLogScreen = {
   _focusPrimaryControl() {
     const career = this._careerEl;
     let target = this._recommendEl && this._recommendEl.querySelector(
-      'button[data-rec-act="track"]:not([disabled]),button[data-rec-act="openMap"]:not([disabled])',
+      'button[data-rec-act="endgameSandbox"]:not([disabled]),'
+      + 'button[data-rec-act="track"]:not([disabled]),button[data-rec-act="openMap"]:not([disabled])',
     );
     if (career && !career.hidden) {
       target = target || career.querySelector(
@@ -1419,6 +1593,14 @@ export const missionLogScreen = {
     bus.on('career:origins:accepted', refresh);
     bus.on('career:origins:declined', refresh);
     bus.on('career:origins:progress', refresh);
+    bus.on('endgame:eligibility', refresh);
+    bus.on('endgame:confirmRequired', refresh);
+    bus.on('endgame:chosen', refresh);
+    bus.on('endgame:sandboxContinued', refresh);
+    bus.on('story:postEndingProgress', refresh);
+    bus.on('story:replayHookUnlocked', refresh);
+    bus.on('postEndingReplay:route', refresh);
+    bus.on('postEndingReplay:cycleCompleted', refresh);
   },
 
   _visible() {
@@ -1524,13 +1706,35 @@ export const missionLogScreen = {
     if (this._compVisible) this._renderCompleted();
   },
 
-  // Long-form story context no longer paints beside the current action. It remains available to
-  // recommendedActions() as the fallback when no contract or trade route owns navigation.
+  // Only final disposition / post-ending continuity persists beside normal work. Earlier story
+  // beats remain folded into CURRENT ACTION so this screen never returns to competing commands.
   _renderStory(state) {
     if (!this._storyEl) return;
-    this._storyEl.innerHTML = '';
-    this._storyEl.hidden = true;
-    if (this._storyHeader) this._storyHeader.hidden = true;
+    const active = (state.missions && state.missions.active) || [];
+    const tracked = state.ui && state.ui.trackedMissionId;
+    const action = persistentCampaignAction(state, active, tracked);
+    if (!action) {
+      this._storyEl.innerHTML = '';
+      this._storyEl.hidden = true;
+      if (this._storyHeader) this._storyHeader.hidden = true;
+      return;
+    }
+    if (this._storyHeader) {
+      this._storyHeader.textContent = 'CAMPAIGN THREAD';
+      this._storyHeader.hidden = false;
+    }
+    this._storyEl.hidden = false;
+    this._storyEl.innerHTML =
+      '<div class="sf-mlog-story-card" data-campaign-thread="true">' +
+        '<div class="sf-mlog-story-beat">' + escapeHtml(action.label || 'STORY') + '</div>' +
+        '<div class="sf-mlog-story-objective">' + escapeHtml(action.title || 'Campaign continues') + '</div>' +
+        '<div class="sf-mlog-story-introduces">' + escapeHtml(action.body || '') + '</div>' +
+        (action.meta ? '<div class="sf-mlog-rec-meta mono">' + escapeHtml(action.meta) + '</div>' : '') +
+        (action.action === 'endgameSandbox' || action.mapAction ? '<div class="sf-mlog-rec-actions">' +
+          (action.action === 'endgameSandbox' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="endgameSandbox">' + escapeHtml(action.actionLabel || 'CONTINUE OPEN') + '</button>' : '') +
+          (action.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap"' + mapActionButtonAttrs(action.mapAction, action.mapAction.missionId || '') + ' title="' + escapeHtml(action.mapAction.body || action.mapAction.title || '') + '">' + escapeHtml(action.mapAction.label) + '</button>' : '') +
+        '</div>' : '') +
+      '</div>';
   },
 
   _renderRecommendations(state, activeMissions, trackedMissionId) {
@@ -1551,8 +1755,9 @@ export const missionLogScreen = {
         '<div class="sf-mlog-rec-marker mono">' + (a.mapAction
           ? '◆ BRIGHT AMBER DIAMOND = CURRENT GOAL'
           : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET')) + '</div>' +
-        ((a.action === 'track' && a.missionId) || a.mapAction ? '<div class="sf-mlog-rec-actions">' +
+        ((a.action === 'track' && a.missionId) || a.action === 'endgameSandbox' || a.mapAction ? '<div class="sf-mlog-rec-actions">' +
           (a.action === 'track' && a.missionId ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="track" data-mid="' + escapeHtml(a.missionId) + '">' + escapeHtml(a.actionLabel || 'TRACK NAV') + '</button>' : '') +
+          (a.action === 'endgameSandbox' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="endgameSandbox">' + escapeHtml(a.actionLabel || 'CONTINUE OPEN') + '</button>' : '') +
           (a.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap"' + mapActionButtonAttrs(a.mapAction, a.missionId || a.mapAction.missionId || '') + ' title="' + escapeHtml(a.mapAction.body || a.mapAction.title || '') + '">' + escapeHtml(a.mapAction.label) + '</button>' : '') +
         '</div>' : '') +
       '</div>'
