@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { lstat, readFile } from 'node:fs/promises';
+import { link, open, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -11,6 +11,12 @@ import {
   validateArtifactFiles,
   validateReleaseSoakEvidence,
 } from './releaseSoakContracts.mjs';
+import {
+  assertSafeContainedPath,
+  readContainedRegularFile,
+  validateApprovedProducerEntrypoint,
+  validateArtifactAncestry,
+} from './releaseSoakEvidenceChecker.mjs';
 
 const RUNTIMES = new Set(['browser', 'electron']);
 const TASK_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
@@ -120,8 +126,10 @@ export async function validateReleaseSoakPublication({ runtime, root, outputRoot
       : containedOutputRoot;
     evidencePath = path.join(outputDir, 'evidence.json');
 
-    const receiptFile = await readRegularFile(evidencePath, 'evidence receipt');
-    const evidence = parseJson(receiptFile.contents, evidencePath);
+    await assertSafeContainedPath({ root: repoRoot, target: containedOutputRoot, label: 'release-soak output root', expect: 'directory' });
+    await assertSafeContainedPath({ root: repoRoot, target: outputDir, label: 'release-soak output directory', expect: 'directory' });
+    const evidenceContents = await readContainedRegularFile({ root: repoRoot, filePath: evidencePath, label: 'evidence receipt' });
+    const evidence = parseJson(evidenceContents, evidencePath);
     if (evidence.runtimeKind !== runtime) {
       failures.push(`evidence runtime ${String(evidence.runtimeKind)} does not match locked runtime ${runtime}`);
     }
@@ -133,34 +141,114 @@ export async function validateReleaseSoakPublication({ runtime, root, outputRoot
 
     const evidenceValidation = validateReleaseSoakEvidence(evidence);
     failures.push(...evidenceValidation.failures);
+    await validateArtifactAncestry({ root: repoRoot, artifacts: evidence.artifacts });
     const artifactValidation = await validateArtifactFiles(repoRoot, evidence.artifacts, { requireClaims: true });
+    await validateArtifactAncestry({ root: repoRoot, artifacts: evidence.artifacts });
     failures.push(...artifactValidation.failures);
+    const producer = await validateApprovedProducerEntrypoint({ root: repoRoot, runtime });
+    failures.push(...producer.failures);
     const uniqueFailures = [...new Set(failures)];
     if (uniqueFailures.length > 0) {
       return { pass: false, failures: uniqueFailures, receipt: null, evidencePath };
     }
 
+    const receipt = {
+      runtime,
+      producerEntrypoint: producer.entrypoint,
+      producerEntrypointSha256: producer.sha256,
+      evidencePath,
+      evidenceSha256: sha256(evidenceContents),
+      evidenceBytes: evidenceContents.length,
+      outputDir,
+      artifacts: artifactValidation.verified.map(({ kind, path: artifactPath, bytes, sha256: artifactSha256 }) => ({
+        kind,
+        path: artifactPath,
+        bytes,
+        sha256: artifactSha256,
+      })),
+      worktreeId: evidence.worktreeId,
+      worktreeDigest: evidence.worktreeDigest,
+      producerValidation: { pass: true, failures: [] },
+    };
+    await publishProducerReceiptAtomically({ root: repoRoot, outputDir, receipt });
     return {
       pass: true,
       failures: [],
       evidencePath,
-      receipt: {
-        runtime,
-        evidencePath,
-        evidenceSha256: sha256(receiptFile.contents),
-        evidenceBytes: receiptFile.contents.length,
-        outputDir,
-        artifacts: artifactValidation.verified.map(({ kind, path: artifactPath, bytes, sha256: artifactSha256 }) => ({
-          kind,
-          path: artifactPath,
-          bytes,
-          sha256: artifactSha256,
-        })),
-      },
+      receipt,
     };
   } catch (error) {
     failures.push(error instanceof Error ? error.message : String(error));
     return { pass: false, failures: [...new Set(failures)], receipt: null, evidencePath };
+  }
+}
+
+export async function publishProducerReceiptAtomically({ root, outputDir, receipt } = {}) {
+  const repoRoot = path.resolve(requireText(root, 'root'));
+  const containedOutputDir = resolveContainedPath(repoRoot, outputDir, 'receipt output directory');
+  await assertSafeContainedPath({
+    root: repoRoot,
+    target: containedOutputDir,
+    label: 'receipt output directory',
+    expect: 'directory',
+  });
+  const finalPath = path.join(containedOutputDir, 'receipt.json');
+  const tempPath = path.join(containedOutputDir, 'receipt.json.tmp');
+  const desired = Buffer.from(`${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+
+  const existingFinal = await readOptionalContainedFile(repoRoot, finalPath, 'producer receipt');
+  if (existingFinal) {
+    await removeContainedTempIfPresent(repoRoot, tempPath);
+    if (existingFinal.equals(desired)) return { path: finalPath, recovered: true };
+    throw new Error(`producer receipt already exists with different content: ${finalPath}`);
+  }
+
+  let tempContents = await readOptionalContainedFile(
+    repoRoot,
+    tempPath,
+    'producer receipt temporary file',
+    { allowEmpty: true },
+  );
+  if (tempContents && !tempContents.equals(desired)) {
+    await removeContainedTempIfPresent(repoRoot, tempPath);
+    tempContents = null;
+  }
+  if (!tempContents) {
+    const handle = await open(tempPath, 'wx');
+    try {
+      await handle.writeFile(desired);
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  }
+
+  try {
+    await assertSafeContainedPath({
+      root: repoRoot,
+      target: tempPath,
+      label: 'producer receipt temporary file',
+      expect: 'file',
+    });
+    await link(tempPath, finalPath);
+    const published = await readContainedRegularFile({ root: repoRoot, filePath: finalPath, label: 'producer receipt' });
+    if (!published.equals(desired)) throw new Error(`published producer receipt differs from requested content: ${finalPath}`);
+    return { path: finalPath, recovered: Boolean(tempContents) };
+  } catch (error) {
+    if (error?.code !== 'EEXIST') throw error;
+    const published = await readContainedRegularFile({ root: repoRoot, filePath: finalPath, label: 'producer receipt' });
+    if (!published.equals(desired)) {
+      throw new Error(`producer receipt already exists with different content: ${finalPath}`);
+    }
+    return { path: finalPath, recovered: true };
+  } finally {
+    await removeContainedTempIfPresent(repoRoot, tempPath);
+    await assertSafeContainedPath({
+      root: repoRoot,
+      target: containedOutputDir,
+      label: 'receipt output directory',
+      expect: 'directory',
+    });
   }
 }
 
@@ -171,12 +259,27 @@ function reportFailure({ runtime, evidencePath, failures, log }) {
   return { exitCode: 1, pass: false, failures, receipt: null, evidencePath };
 }
 
-async function readRegularFile(filePath, label) {
-  const metadata = await lstat(filePath);
-  if (!metadata.isFile() || metadata.isSymbolicLink()) throw new Error(`${label} must be a regular non-symlink file: ${filePath}`);
-  const contents = await readFile(filePath);
-  if (contents.length < 1) throw new Error(`${label} is empty: ${filePath}`);
-  return { contents };
+async function readOptionalContainedFile(root, filePath, label, { allowEmpty = false } = {}) {
+  const checked = await assertSafeContainedPath({
+    root,
+    target: filePath,
+    label,
+    expect: 'file',
+    allowMissingLeaf: true,
+  });
+  if (!checked.exists) return null;
+  return readContainedRegularFile({ root, filePath, label, allowEmpty });
+}
+
+async function removeContainedTempIfPresent(root, tempPath) {
+  const checked = await assertSafeContainedPath({
+    root,
+    target: tempPath,
+    label: 'producer receipt temporary file',
+    expect: 'file',
+    allowMissingLeaf: true,
+  });
+  if (checked.exists) await unlink(tempPath);
 }
 
 function parseJson(contents, filePath) {

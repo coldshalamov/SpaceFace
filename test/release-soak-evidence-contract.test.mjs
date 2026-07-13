@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -15,6 +16,8 @@ import {
   REQUIRED_PRIMARY_CYCLE_MARKS,
   summarizeSamples,
 } from '../scripts/lib/releaseSoakContracts.mjs';
+
+const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 
 test('parser locks the wrapper runtime and rejects acceptance bypass flags', () => {
   assert.throws(
@@ -62,6 +65,13 @@ test('publication validator revalidates artifact hashes and returns a content-ha
   assert.equal(result.receipt.evidenceSha256, sha256(receiptBytes));
   assert.equal(result.receipt.artifacts.length, 1);
   assert.match(result.receipt.artifacts[0].sha256, /^[a-f0-9]{64}$/);
+  assert.equal(result.receipt.producerEntrypoint, 'scripts/check-release-soak-browser.mjs');
+  assert.match(result.receipt.producerEntrypointSha256, /^[a-f0-9]{64}$/);
+  assert.equal(result.receipt.worktreeId, probeResult.evidence.worktreeId);
+  assert.equal(result.receipt.worktreeDigest, probeResult.evidence.worktreeDigest);
+  assert.deepEqual(result.receipt.producerValidation, { pass: true, failures: [] });
+  const persisted = JSON.parse(await readFile(path.join(probeResult.outputDir, 'receipt.json'), 'utf8'));
+  assert.deepEqual(persisted, result.receipt);
 });
 
 test('publication validator fails closed when evidence runtime does not match the locked wrapper', async (t) => {
@@ -69,6 +79,7 @@ test('publication validator fails closed when evidence runtime does not match th
   t.after(() => rm(root, { recursive: true, force: true }));
   const options = parseReleaseSoakArgs(['--cycles=1'], { runtime: 'electron', root });
   const probeResult = await writeValidProbeResult({ root, ...options, runtime: 'browser' });
+  await writeApprovedEntrypoint(root, 'electron');
   const result = await validateReleaseSoakPublication({
     runtime: 'electron', root, outputRoot: options.outputRoot, result: probeResult,
   });
@@ -91,6 +102,23 @@ test('publication validator fails closed when a claimed artifact hash does not m
   assert.equal(result.pass, false);
   assert.equal(result.receipt, null);
   assert.ok(result.failures.some((failure) => /artifact hash mismatch/i.test(failure)), result.failures.join('; '));
+});
+
+test('publication validator rejects junction ancestry before reading or writing receipts', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'sf-release-soak-cli-junction-'));
+  const outside = await mkdtemp(path.join(os.tmpdir(), 'sf-release-soak-cli-outside-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  t.after(() => rm(outside, { recursive: true, force: true }));
+  await mkdir(path.join(root, '.devshots'), { recursive: true });
+  await symlink(outside, path.join(root, '.devshots', 'spec2'), process.platform === 'win32' ? 'junction' : 'dir');
+  const options = parseReleaseSoakArgs(['--cycles=1'], { runtime: 'browser', root });
+  const probeResult = await writeValidProbeResult({ root, ...options });
+  const result = await validateReleaseSoakPublication({
+    runtime: 'browser', root, outputRoot: options.outputRoot, result: probeResult,
+  });
+  assert.equal(result.pass, false);
+  assert.match(result.failures.join(' '), /symlink|junction|reparse|unsafe ancestry/i);
+  assert.equal(existsSync(path.join(outside, 'release-soak-browser', 'receipt.json')), false);
 });
 
 test('exported runner cannot be dependency-injected into producing acceptance', async () => {
@@ -128,6 +156,7 @@ test('browser and Electron entrypoints are runtime-locked thin wrappers with no 
 });
 
 async function writeValidProbeResult(options) {
+  await writeApprovedEntrypoint(options.root, options.runtime);
   const outputDir = path.join(options.outputRoot, options.taskId);
   const artifactPath = path.relative(options.root, path.join(outputDir, 'route.png')).replaceAll('\\', '/');
   await mkdir(outputDir, { recursive: true });
@@ -146,6 +175,13 @@ async function writeValidProbeResult(options) {
   const evidencePath = path.join(outputDir, 'evidence.json');
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
   return { pass: true, outputDir, evidence };
+}
+
+async function writeApprovedEntrypoint(root, runtime) {
+  const relative = path.join('scripts', `check-release-soak-${runtime}.mjs`);
+  const destination = path.join(root, relative);
+  await mkdir(path.dirname(destination), { recursive: true });
+  await writeFile(destination, await readFile(path.join(REPO_ROOT, relative)));
 }
 
 function makeValidEvidence({ runtime, taskId, artifact }) {

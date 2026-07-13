@@ -1,13 +1,12 @@
 #!/usr/bin/env node
-// Milestone 6 — headless release-soak harness (SPEC2/08 §6.1 / ALPHA M6).
+// Milestone 6 — release-soak acceptance gate (SPEC2/08 §6.1 / ALPHA M6).
 //
 // Drives real fixed-step systems through a representative long session:
 //   new game → flight → tether/mining/combat → economy → dock/undock →
 //   map/jump → save/reload → death/recovery → continued play
 //
-// Modes:
-//   --quick   Deterministic CI path (default). Short sim, full phase coverage.
-//   --full    Accelerated 30–60 sim-minute soak (multi-seed when default seeds used).
+// Default mode validates already-captured headed Browser/Electron receipts. It never launches or
+// terminates either runtime. Explicit --quick/--full retain the deterministic headless contract.
 //
 // Optional:
 //   --seed N          Override seed (single-seed campaign).
@@ -22,14 +21,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  formatReceiptSummary,
-  RELEASE_SOAK_RECEIPT_SCHEMA,
-} from './lib/releaseSoakReceipts.mjs';
-import {
-  runReleaseSoakCampaign,
-  createProcessRegistry,
-  modeConfig,
-} from './lib/releaseSoakSession.mjs';
+  checkHeadedReleaseSoakEvidence,
+  parseHeadedReleaseSoakArgs,
+  statusToExitCode,
+} from './lib/releaseSoakEvidenceChecker.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DEFAULT_RECEIPT_DIR = path.join(ROOT, '.devshots', 'spec2');
@@ -40,6 +35,28 @@ if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
   process.exit(0);
 }
 
+if (!isHeadlessContractRequest(args)) {
+  const options = parseHeadedReleaseSoakArgs(args);
+  const result = await checkHeadedReleaseSoakEvidence({ root: ROOT, runtimes: options.runtimes });
+  if (options.json) {
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else {
+    console.log(`[check-release-soak] ${result.status.toUpperCase()} headed evidence`);
+    for (const receipt of result.runtimes) {
+      console.log(`  ${receipt.runtime}: ${receipt.status}${receipt.evidencePath ? ` (${receipt.evidencePath})` : ''}`);
+    }
+    for (const failure of result.failures) console.error(`  - ${failure}`);
+  }
+  process.exitCode = statusToExitCode(result.status);
+} else {
+const {
+  runReleaseSoakCampaign,
+  createProcessRegistry,
+} = await import('./lib/releaseSoakSession.mjs');
+const {
+  formatReceiptSummary,
+  RELEASE_SOAK_RECEIPT_SCHEMA,
+} = await import('./lib/releaseSoakReceipts.mjs');
 const mode = parseMode(args);
 const seed = parseSeed(args);
 const wantJson = hasFlag(args, '--json');
@@ -118,24 +135,34 @@ if (!campaign.pass) {
 
 console.log(`[check-release-soak] PASS in ${mode} mode (${RELEASE_SOAK_RECEIPT_SCHEMA})`);
 process.exit(0);
+}
 
 // ── CLI helpers ──────────────────────────────────────────────────────────────
 
 function printHelp() {
-  const quick = modeConfig('quick');
-  const full = modeConfig('full');
-  console.log(`Usage: node scripts/check-release-soak.mjs [--quick|--full] [--seed N] [--json] [--receipt path]
+  console.log(`Usage: node scripts/check-release-soak.mjs [--runtime browser|electron|all] [--json]
+       node scripts/check-release-soak.mjs --quick|--full [--seed N] [--json] [--receipt path]
 
-Milestone 6 headless release soak. Fixed-step systems only — no browser/Electron.
+Default: validate existing real headed public-route evidence without launching or killing a runtime.
 
-  --quick     CI mode (default). ~${quick.totalSimSeconds}s sim, seed ${quick.seeds.join(',')}.
-  --full      Accelerated long soak. ~${Math.round(full.totalSimSeconds / 60)} sim-minutes, seeds ${full.seeds.join(',')}.
+  --runtime   Require browser, Electron, or both (default: all).
+  --quick     Explicit headless CI-short deterministic contract.
+  --full      Explicit accelerated long deterministic soak.
   --seed N    Single-seed override.
   --json      Emit full submission JSON on stdout.
   --receipt p Write primary receipt JSON to path.
 
 Receipts never claim browser GPU FPS from headless data.
 `);
+}
+
+function isHeadlessContractRequest(argv) {
+  return argv.includes('--quick')
+    || argv.includes('--full')
+    || argv.includes('headless')
+    || argv.includes('contract')
+    || argv.some((arg) => /^--mode=(quick|full|headless|contract)$/.test(arg))
+    || (argv.includes('--mode') && ['quick', 'full', 'headless', 'contract'].includes(argv[argv.indexOf('--mode') + 1]));
 }
 
 function parseMode(argv) {
