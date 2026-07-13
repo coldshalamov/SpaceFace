@@ -1,5 +1,6 @@
 // Uniform-grid spatial hash for broad-phase collision and radius queries (ARCHITECTURE §0.16).
-// Static colliders live in a cached layer; only dynamic bodies need per-step cell churn.
+// Static colliders live in a cached layer; dynamic bodies use incremental membership so only
+// entities that cross cells / change radius / spawn / die are removed and reinserted.
 
 export class SpatialHash {
   constructor(cell = 64) {
@@ -13,13 +14,28 @@ export class SpatialHash {
     this._staticActiveCellX = [];
     this._staticActiveCellZ = [];
     this._staticVersion = null;
+    // id -> { entity, x0, x1, z0, z1, r, stamp } — dynamic membership for incremental rehash
+    this._dynamicMembers = new Map();
+    this._dynamicSyncStamp = 1;
+    this._memberRemoveScratch = [];
     this._seenIds = new Map();
     this._batchSeenIds = [];
     this._queryStamp = 1;
-    this._pending = { rebuilds: 0, dynamicRebuilds: 0, queries: 0, candidates: 0 };
+    this._pending = {
+      rebuilds: 0,
+      dynamicRebuilds: 0,
+      dynamicFullRebuilds: 0,
+      dynamicReinserts: 0,
+      dynamicUnchanged: 0,
+      queries: 0,
+      candidates: 0,
+    };
     this.diagnostics = {
       rebuilds: 0,
       dynamicRebuilds: 0,
+      dynamicFullRebuilds: 0,
+      dynamicReinserts: 0,
+      dynamicUnchanged: 0,
       queries: 0,
       candidates: 0,
       activeBuckets: 0,
@@ -73,9 +89,15 @@ export class SpatialHash {
     this.clear();
     this._pending.rebuilds++;
     this.diagnostics.rebuilds++;
+    this._pending.dynamicFullRebuilds++;
+    this.diagnostics.dynamicFullRebuilds++;
     for (const e of entityList) {
-      if (e.alive && e.collides) this.insert(e);
+      if (e.alive && e.collides) {
+        this.insert(e);
+        this._recordDynamicMember(e);
+      }
     }
+    // Legacy full rebuild path counts as a static/full rebuild only (not a layered dynamic sync).
     this._updateActiveDiagnostics();
   }
 
@@ -90,13 +112,182 @@ export class SpatialHash {
       this.diagnostics.rebuilds++;
     }
 
-    this._clearDynamicLayer();
-    for (const e of dynamicEntities) {
-      if (e.alive && e.collides) this.insert(e);
-    }
+    this._syncDynamicLayer(dynamicEntities);
+    this._updateActiveDiagnostics();
+  }
+
+  /**
+   * Incremental dynamic-layer sync: only entities that cross cell boundaries, change
+   * radius/coverage, spawn, die, or fail membership identity checks are rehashed.
+   * Stamp-based queryRadius semantics are unchanged (queries always read live entity.pos).
+   */
+  _syncDynamicLayer(dynamicEntities) {
     this._pending.dynamicRebuilds++;
     this.diagnostics.dynamicRebuilds++;
-    this._updateActiveDiagnostics();
+
+    let stamp = this._dynamicSyncStamp + 1;
+    if (stamp > 0x7fffffff) stamp = 1;
+    this._dynamicSyncStamp = stamp;
+
+    let reinserts = 0;
+    let unchanged = 0;
+    let removed = 0;
+    const list = dynamicEntities || [];
+
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || !e.alive || !e.collides || !e.pos) {
+        if (e && e.id != null) {
+          const stale = this._dynamicMembers.get(e.id);
+          if (stale && (stale.entity === e || !stale.entity || !stale.entity.alive)) {
+            this._removeDynamicMemberRecord(stale);
+            this._dynamicMembers.delete(e.id);
+            removed++;
+          }
+        }
+        continue;
+      }
+
+      const id = e.id;
+      if (id == null) {
+        // Unidentified colliders are not production path (spawn always assigns ids). Skip
+        // membership tracking rather than re-inserting every sync (would multi-bucket).
+        continue;
+      }
+
+      const span = this._cellSpan(e);
+      const prev = this._dynamicMembers.get(id);
+
+      if (!prev || prev.entity !== e) {
+        // New entity, id reuse with a different object, or first insert after clear.
+        if (prev) {
+          this._removeDynamicMemberRecord(prev);
+        }
+        this._insertInto(this.buckets, this._activeBuckets, this._activeCellX, this._activeCellZ, e);
+        this._dynamicMembers.set(id, {
+          entity: e,
+          x0: span.x0, x1: span.x1, z0: span.z0, z1: span.z1, r: span.r,
+          stamp,
+        });
+        reinserts++;
+        continue;
+      }
+
+      if (
+        prev.x0 !== span.x0 || prev.x1 !== span.x1 ||
+        prev.z0 !== span.z0 || prev.z1 !== span.z1 ||
+        prev.r !== span.r
+      ) {
+        this._removeDynamicMemberRecord(prev);
+        this._insertInto(this.buckets, this._activeBuckets, this._activeCellX, this._activeCellZ, e);
+        prev.entity = e;
+        prev.x0 = span.x0; prev.x1 = span.x1; prev.z0 = span.z0; prev.z1 = span.z1; prev.r = span.r;
+        prev.stamp = stamp;
+        reinserts++;
+        continue;
+      }
+
+      // Same coverage: membership stays; live pos/radius queries remain correct.
+      prev.entity = e;
+      prev.stamp = stamp;
+      unchanged++;
+    }
+
+    // Drop memberships not visited this pass (despawned / left dynamic set / id retired).
+    const removeScratch = this._memberRemoveScratch;
+    removeScratch.length = 0;
+    for (const [id, rec] of this._dynamicMembers) {
+      if (rec.stamp !== stamp) removeScratch.push(id);
+    }
+    for (let i = 0; i < removeScratch.length; i++) {
+      const id = removeScratch[i];
+      const rec = this._dynamicMembers.get(id);
+      if (!rec) continue;
+      this._removeDynamicMemberRecord(rec);
+      this._dynamicMembers.delete(id);
+      removed++;
+    }
+    removeScratch.length = 0;
+
+    if (reinserts > 0 || removed > 0) {
+      this._compactActiveBuckets(
+        this._activeBuckets, this._activeCellX, this._activeCellZ,
+      );
+    }
+
+    // Reinsert metric = entity cells rewritten; removals counted separately via compact path.
+    const membershipUpdates = reinserts + removed;
+    this._pending.dynamicReinserts += membershipUpdates;
+    this._pending.dynamicUnchanged += unchanged;
+    this.diagnostics.dynamicReinserts += membershipUpdates;
+    this.diagnostics.dynamicUnchanged += unchanged;
+  }
+
+  _cellSpan(e) {
+    const c = this.cell;
+    const r = e.radius || 0;
+    return {
+      r,
+      x0: Math.floor((e.pos.x - r) / c),
+      x1: Math.floor((e.pos.x + r) / c),
+      z0: Math.floor((e.pos.z - r) / c),
+      z1: Math.floor((e.pos.z + r) / c),
+    };
+  }
+
+  _recordDynamicMember(e) {
+    if (!e || e.id == null || !e.pos) return;
+    const span = this._cellSpan(e);
+    this._dynamicMembers.set(e.id, {
+      entity: e,
+      x0: span.x0, x1: span.x1, z0: span.z0, z1: span.z1, r: span.r,
+      stamp: this._dynamicSyncStamp,
+    });
+  }
+
+  _removeDynamicMemberRecord(rec) {
+    if (!rec || !rec.entity) return;
+    this._removeEntityFromCells(
+      this.buckets, this._activeBuckets, this._activeCellX, this._activeCellZ,
+      rec.entity, rec.x0, rec.x1, rec.z0, rec.z1,
+    );
+  }
+
+  _removeEntityFromCells(buckets, activeBuckets, activeCellX, activeCellZ, e, x0, x1, z0, z1) {
+    for (let cx = x0; cx <= x1; cx++) {
+      const row = buckets.get(cx);
+      if (!row) continue;
+      for (let cz = z0; cz <= z1; cz++) {
+        const b = row.get(cz);
+        if (!b || b.length === 0) continue;
+        const idx = b.indexOf(e);
+        if (idx < 0) continue;
+        const last = b.length - 1;
+        if (idx !== last) b[idx] = b[last];
+        b.pop();
+        // Continuous-world travel must not leave an ever-growing map of empty cell arrays.
+        // Active-array references are compacted once per sync after all removals complete.
+        if (b.length === 0) row.delete(cz);
+      }
+      if (row.size === 0) buckets.delete(cx);
+    }
+  }
+
+  _compactActiveBuckets(activeBuckets, activeCellX, activeCellZ) {
+    let w = 0;
+    for (let i = 0; i < activeBuckets.length; i++) {
+      if (activeBuckets[i].length > 0) {
+        if (w !== i) {
+          activeBuckets[w] = activeBuckets[i];
+          activeCellX[w] = activeCellX[i];
+          activeCellZ[w] = activeCellZ[i];
+        }
+        w++;
+      }
+    }
+    activeBuckets.length = w;
+    activeCellX.length = w;
+    activeCellZ.length = w;
   }
 
   /** Collect entities whose cells overlap the circle (x,z,r). Dedupes by id. */
@@ -225,6 +416,7 @@ export class SpatialHash {
     this._activeBuckets.length = 0;
     this._activeCellX.length = 0;
     this._activeCellZ.length = 0;
+    this._dynamicMembers.clear();
   }
 
   _clearStaticLayer() {
@@ -243,13 +435,25 @@ export class SpatialHash {
   flushPerfCounters(perfRuntime) {
     const p = this._pending;
     if (!perfRuntime || typeof perfRuntime.recordSpatialHash !== 'function') {
-      p.rebuilds = 0; p.dynamicRebuilds = 0; p.queries = 0; p.candidates = 0;
+      p.rebuilds = 0;
+      p.dynamicRebuilds = 0;
+      p.dynamicFullRebuilds = 0;
+      p.dynamicReinserts = 0;
+      p.dynamicUnchanged = 0;
+      p.queries = 0;
+      p.candidates = 0;
       return;
     }
-    if (!p.rebuilds && !p.dynamicRebuilds && !p.queries && !p.candidates) return;
+    if (
+      !p.rebuilds && !p.dynamicRebuilds && !p.dynamicFullRebuilds &&
+      !p.dynamicReinserts && !p.dynamicUnchanged && !p.queries && !p.candidates
+    ) return;
     perfRuntime.recordSpatialHash(p);
     p.rebuilds = 0;
     p.dynamicRebuilds = 0;
+    p.dynamicFullRebuilds = 0;
+    p.dynamicReinserts = 0;
+    p.dynamicUnchanged = 0;
     p.queries = 0;
     p.candidates = 0;
   }

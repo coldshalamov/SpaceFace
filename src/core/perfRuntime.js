@@ -126,12 +126,22 @@ export function ensurePerfRuntime(state) {
   const loop = {
     stepsThisFrame: 0,
     maxStepsThisFrame: 0,
+    multiStepFrames: 0,
     shedBacklogFrames: 0,
+    shedStepsTotal: 0,
     accumulatorS: 0,
     lastFrameDtMs: 0,
   };
   const counters = {
-    spatialHash: { rebuilds: 0, dynamicRebuilds: 0, queries: 0, candidates: 0 },
+    spatialHash: {
+      rebuilds: 0,
+      dynamicRebuilds: 0,
+      dynamicFullRebuilds: 0,
+      dynamicReinserts: 0,
+      dynamicUnchanged: 0,
+      queries: 0,
+      candidates: 0,
+    },
     vfxTrails: {
       trailCandidates: 0,
       trailEmittersFull: 0,
@@ -220,10 +230,13 @@ export function ensurePerfRuntime(state) {
       frameAccountedMs = 0;
       sample(frameStats, ms);
     },
-    recordLoop(steps, shedBacklog, accumulatorS) {
+    recordLoop(steps, shedBacklog, accumulatorS, shedSteps = 0) {
       loop.stepsThisFrame = steps | 0;
       if (loop.stepsThisFrame > loop.maxStepsThisFrame) loop.maxStepsThisFrame = loop.stepsThisFrame;
+      if (loop.stepsThisFrame > 1) loop.multiStepFrames++;
       if (shedBacklog) loop.shedBacklogFrames++;
+      const shed = Number.isFinite(shedSteps) ? (shedSteps | 0) : 0;
+      if (shed > 0) loop.shedStepsTotal += shed;
       loop.accumulatorS = Number.isFinite(accumulatorS) ? accumulatorS : 0;
     },
     recordStepTotal(ms) {
@@ -253,9 +266,20 @@ export function ensurePerfRuntime(state) {
       sample(frameCallbackStats, ms);
       sample(frameUntrackedStats, Math.max(0, ms - frameAccountedMs));
     },
-    recordSpatialHash({ rebuilds = 0, dynamicRebuilds = 0, queries = 0, candidates = 0 } = {}) {
+    recordSpatialHash({
+      rebuilds = 0,
+      dynamicRebuilds = 0,
+      dynamicFullRebuilds = 0,
+      dynamicReinserts = 0,
+      dynamicUnchanged = 0,
+      queries = 0,
+      candidates = 0,
+    } = {}) {
       counters.spatialHash.rebuilds += rebuilds | 0;
       counters.spatialHash.dynamicRebuilds += dynamicRebuilds | 0;
+      counters.spatialHash.dynamicFullRebuilds += dynamicFullRebuilds | 0;
+      counters.spatialHash.dynamicReinserts += dynamicReinserts | 0;
+      counters.spatialHash.dynamicUnchanged += dynamicUnchanged | 0;
       counters.spatialHash.queries += queries | 0;
       counters.spatialHash.candidates += candidates | 0;
     },
@@ -330,11 +354,16 @@ export function ensurePerfRuntime(state) {
       frameAccountedMs = 0;
       loop.stepsThisFrame = 0;
       loop.maxStepsThisFrame = 0;
+      loop.multiStepFrames = 0;
       loop.shedBacklogFrames = 0;
+      loop.shedStepsTotal = 0;
       loop.accumulatorS = 0;
       loop.lastFrameDtMs = 0;
       counters.spatialHash.rebuilds = 0;
       counters.spatialHash.dynamicRebuilds = 0;
+      counters.spatialHash.dynamicFullRebuilds = 0;
+      counters.spatialHash.dynamicReinserts = 0;
+      counters.spatialHash.dynamicUnchanged = 0;
       counters.spatialHash.queries = 0;
       counters.spatialHash.candidates = 0;
       counters.vfxTrails.trailCandidates = 0;
