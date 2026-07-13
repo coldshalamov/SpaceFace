@@ -14,7 +14,7 @@
 import { createMarketPanel } from './market.js';
 import { createShipyardPanel } from './shipyard.js';
 import { createOutfittingPanel } from './outfitting.js';
-import { createServicesPanel } from './services.js';
+import { createServicesPanel, serviceQuote } from './services.js';
 import { createManufacturePanel } from './manufacture.js';
 import { createFactionsPanel, tierFor, factionStandingGuidance } from './factions.js';
 import { createBarPanel } from './bar.js';
@@ -34,13 +34,13 @@ import { STATION_BROADCASTS } from '../../systems/stationBroadcast.js';
 // Command-deck effect layer (vanilla DOM/canvas factories; view-only, no sim import).
 // See design/revamp/COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md §1 and src/ui/effects/README.md.
 import {
-  createFlickerGrid,
   createRippleField,
   createRouteBeam,
   createMorphLabel,
   createCircularGauge,
   createDockRail,
 } from '../effects/index.js';
+import { dataBar, setDataBar } from '../uiPrimitives.js';
 import { confirm, isConfirmOpen } from '../confirm.js';
 
 // === Functional parity (post-gold) — keep game working; no career UI chrome ===
@@ -132,10 +132,12 @@ export function holdUnitSellPrice(state, stationId, cmdtyId) {
   return null;
 }
 
-/** Gold hub root classes (f6f6a90c framed panel). */
+/** Station OS root classes: the gold framed bases (f6f6a90c) plus the fullscreen OS shell mode
+ *  (design/STATION_SHELL_CONTRACT.md — rail | workspace | top strip, tools own the screen). */
 export const STATION_HUB_ROOT_BASE_CLASSES = Object.freeze([
   'st-hub',
   'panel',
+  'st-hub--os',
 ]);
 export const STATION_HUB_TYPE_CLASSES = Object.freeze([
   'st-hub--trade_hub', 'st-hub--refinery', 'st-hub--mining', 'st-hub--fab',
@@ -143,8 +145,8 @@ export const STATION_HUB_TYPE_CLASSES = Object.freeze([
 ]);
 export function applyStationHubRootClasses(el, stationType) {
   if (!el || !el.classList) return el || null;
-  el.classList.add('st-hub', 'panel');
-  el.classList.remove('st-hub--desk', 'st-hub--os');
+  for (const c of STATION_HUB_ROOT_BASE_CLASSES) el.classList.add(c);
+  el.classList.remove('st-hub--desk');
   for (const c of STATION_HUB_TYPE_CLASSES) el.classList.remove(c);
   const typeClass = stationType ? `st-hub--${stationType}` : null;
   if (typeClass && STATION_HUB_TYPE_CLASSES.includes(typeClass)) el.classList.add(typeClass);
@@ -529,6 +531,13 @@ function departureMissionChip(state) {
   const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
   const activeJobs = active.filter((m) => m && (m.status == null || m.status === 'active'));
   const tracked = trackedId ? active.find((m) => missionId(m) === trackedId) : null;
+  // A deliberately loaded trade route is the player's current intent — it outranks the
+  // standing tracked-mission chip until the cargo is delivered.
+  const tradeWaypoint = state && state.nav && state.nav.waypoint;
+  if (tradeWaypoint && tradeWaypoint.kind === 'trade') {
+    const tradeChip = departureTradeWaypointChip(state, tradeWaypoint);
+    if (tradeChip) return tradeChip;
+  }
   if (tracked) {
     return {
       kind: 'ok',
@@ -679,12 +688,12 @@ export function firstDockHandoffSteps(state = {}) {
     {
       key: 'market',
       label: 'Market',
-      title: hasCargo || marketDone ? 'Audit hold / sell cargo' : 'Audit empty hold',
+      title: hasCargo || marketDone ? 'Sell cargo' : 'Check the market',
       text: marketDone
         ? 'Market checked; credits and hold space are ready.'
         : (hasCargo
-            ? 'Sell cargo, free hold space, and confirm the manifest.'
-            : 'Hold is empty; open Market to confirm prices and route options.'),
+            ? 'Sell cargo you are carrying and free up hold space.'
+            : 'Hold is empty — learn prices now, sell cargo after your first haul.'),
       kind: marketDone ? 'ok' : 'warn',
       done: marketDone,
       targetTab: 'market',
@@ -692,21 +701,21 @@ export function firstDockHandoffSteps(state = {}) {
     {
       key: 'missions',
       label: 'Missions',
-      title: 'Accept one low-risk job',
+      title: 'Take one easy job',
       text: missionDone
-        ? (activeJobs === 1 ? 'One job is active; Mission Log carries the route.' : activeJobs + ' jobs active; track the one you want next.')
-        : 'Pick a nearby R0-R1 contract; Accept + Track feeds nav.',
+        ? (activeJobs === 1 ? 'One job is active; the Mission Log carries the route.' : activeJobs + ' jobs active; track the one you want next.')
+        : 'Pick a low-risk contract; accepting sets your nav.',
       kind: missionDone ? 'ok' : 'warn',
       done: missionDone,
       targetTab: 'missions',
     },
     {
       key: 'departure',
-      label: 'Departure Check',
-      title: 'Launch when safe',
+      label: 'Departure',
+      title: 'Launch clean',
       text: departure.state === 'ready'
         ? 'Fuel, hull, cargo, and tracked work look serviceable.'
-        : departure.status + ': fix the highlighted launch concern.',
+        : 'Clear the flagged item on the departure rail below.',
       kind: departure.state === 'risk' ? 'bad' : (departure.state === 'check' ? 'warn' : 'ok'),
       done: departure.state === 'ready' && missionDone,
       targetTab: firstDockDepartureTarget(departureChips),
@@ -906,6 +915,17 @@ function berthServiceReadiness(svc, offered, state) {
   return { state: 'good', label: 'ONLINE' };
 }
 
+/**
+ * Stable structural identity for the Service Dock. Readiness is deliberately excluded: the hub
+ * refreshes a few times per second while docked, and rebuilding the buttons on each refresh resets
+ * their pointer/focus state halfway through the magnification curve.
+ * @param {Array<{id?: string, label?: string, icon?: string}>} items
+ */
+export function dockRailItemKey(items = []) {
+  return items.map((item) => [item && item.id, item && item.label, item && item.icon]
+    .map((value) => String(value == null ? '' : value)).join('\u001f')).join('\u001e');
+}
+
 /** The authored sector a station id belongs to (static catalog scan; deterministic). */
 function stationSectorId(stationId) {
   for (const sec of SECTORS) {
@@ -1038,7 +1058,15 @@ export const stationHub = {
     });
   },
 
-  /** Build the screen DOM once and cache it. Called by uiRoot/screenManager. */
+  /** Build the screen DOM once and cache it. Called by uiRoot/screenManager.
+   *
+   *  Station OS layout (design/STATION_SHELL_CONTRACT.md — the Berth Ledger):
+   *    top deck   — station identity · live vitals (credits/fuel/hull/hold) · Briefing (Meta) · Undock
+   *    berth      — Service Dock strip: live readiness badges, hover = quote, click = ACT
+   *    handoff    — one dismissible first-dock strip (early game only)
+   *    body       — nav rail | full-height tool workspace | Briefing drawer (collapsed by default)
+   *    footer     — Departure Check chips + station status readout
+   */
   mount(rootEl, ctx) {
     this._ctx = ctx;
     installStationExitGate(ctx);
@@ -1046,26 +1074,105 @@ export const stationHub = {
     injectCss();
 
     const screen = document.createElement('div');
-    // Gold framed hub (f6f6a90c) — not desk/os fullscreen.
+    // Gold framed bases seed first (pinned), then the OS shell + type modifiers layer on.
     screen.className = 'st-hub panel';
+    applyStationHubRootClasses(screen, null);
 
-    // top bar: station name / faction / services
+    // ── Top deck: identity · vitals · Briefing · Undock ────────────────────────
     const topbar = document.createElement('div');
-    topbar.className = 'st-topbar';
+    topbar.className = 'st-topbar st-topdeck';
     topbar.innerHTML =
-      '<div class="st-topbar-l"><span class="st-station-name">Station</span>' +
-      '<span class="st-station-fac mono"></span></div>' +
+      '<div class="st-topdeck-id">' +
+        '<span class="st-station-name">Station</span>' +
+        '<span class="st-station-fac mono"></span>' +
+      '</div>' +
+      '<div class="st-vitals" role="group" aria-label="Ship vitals">' +
+        '<div class="st-vital st-top-credits"><span class="st-vital-l mono">Credits</span><span class="st-vital-v mono st-credits-mount"></span></div>' +
+        '<div class="st-vital st-top-fuel"><span class="st-vital-l mono">Fuel</span><span class="st-vital-v mono" data-vital="fuel">—</span><span class="st-vital-bar" data-vbar="fuel"></span></div>' +
+        '<div class="st-vital st-top-hull"><span class="st-vital-l mono">Hull</span><span class="st-vital-v mono" data-vital="hull">—</span><span class="st-vital-bar" data-vbar="hull"></span></div>' +
+        '<div class="st-vital st-top-cargo"><span class="st-vital-l mono">Hold</span><span class="st-vital-v mono" data-vital="hold">—</span><span class="st-vital-bar" data-vbar="hold"></span></div>' +
+      '</div>' +
+      '<button type="button" class="st-inspector-toggle" aria-expanded="false" ' +
+        'title="Open the station briefing: purpose, standing, and local advisories.">Briefing</button>' +
       '<button class="st-undock">⏏ UNDOCK</button>';
     screen.appendChild(topbar);
+    // Vitals mounts: bars are sf-data-bar primitives updated in place (no reflow), the credits
+    // readout is a Readout Morph that rolls only when the value actually changes.
+    this._vitalEls = {
+      creditsMount: topbar.querySelector('.st-credits-mount'),
+      fuelV: topbar.querySelector('[data-vital="fuel"]'),
+      hullV: topbar.querySelector('[data-vital="hull"]'),
+      holdV: topbar.querySelector('[data-vital="hold"]'),
+      bars: {},
+    };
+    for (const key of ['fuel', 'hull', 'hold']) {
+      const mountEl = topbar.querySelector('[data-vbar="' + key + '"]');
+      if (mountEl) {
+        const bar = dataBar(0, { label: key + ' level' });
+        mountEl.appendChild(bar);
+        this._vitalEls.bars[key] = bar;
+      }
+    }
+    this._lastCreditsShown = null;
 
-    // airlock graffiti strip
-    const airlock = document.createElement('div');
-    airlock.className = 'st-airlock';
-    airlock.innerHTML = '<div class="st-airlock__label mono">AIRLOCK</div><div class="st-airlock__graffiti"></div>';
-    screen.appendChild(airlock);
-    this._airlockEl = airlock.querySelector('.st-airlock__graffiti');
+    // ── Berth strip: the Service Dock centerpiece. Nodes act (verbs / tool jumps),
+    //    hovering or focusing a node quotes it in the side readout before commit. ──
+    const berth = document.createElement('div');
+    berth.className = 'st-berth';
+    berth.setAttribute('data-centerpiece', 'station-service-console');
+    berth.innerHTML =
+      '<div class="st-service-nodes-pane" role="group" aria-label="Berth services"></div>' +
+      '<div class="st-berth-side">' +
+        '<div class="st-berth-caption mono">Berth services</div>' +
+        '<div class="st-berth-quote" aria-live="polite"></div>' +
+      '</div>';
+    screen.appendChild(berth);
+    this._nodesPane = berth.querySelector('.st-service-nodes-pane');
+    this._berthQuoteEl = berth.querySelector('.st-berth-quote');
+    this._berthCaptionEl = berth.querySelector('.st-berth-caption');
+    // Console Key grammar: hover/focus reveals the consequence (cost, delta) before commit.
+    // One shared quote surface — never more than one delta readout at a time.
+    berth.addEventListener('pointerover', (ev) => {
+      const node = ev.target.closest && ev.target.closest('[data-service]');
+      if (node) this._showBerthQuote(node.getAttribute('data-service'));
+    });
+    berth.addEventListener('pointerleave', () => this._showBerthQuote(null));
+    berth.addEventListener('focusin', (ev) => {
+      const node = ev.target.closest && ev.target.closest('[data-service]');
+      if (node) this._showBerthQuote(node.getAttribute('data-service'));
+    });
+    berth.addEventListener('focusout', (ev) => {
+      if (!berth.contains(ev.relatedTarget)) this._showBerthQuote(null);
+    });
 
-    // main body: rail + workspace + inspector
+    // ── First-dock handoff: ONE dismissible strip, not permanent layout chrome. ──
+    const handoff = document.createElement('div');
+    handoff.className = 'st-handoff';
+    handoff.hidden = true;
+    handoff.innerHTML =
+      '<span class="st-handoff-label mono">First dock</span>' +
+      '<div class="st-handoff-steps"></div>' +
+      '<button type="button" class="st-handoff-dismiss" data-handoff-dismiss ' +
+        'title="Hide this checklist" aria-label="Dismiss the first-dock checklist">Got it</button>';
+    screen.appendChild(handoff);
+    this._handoffEl = handoff;
+    handoff.addEventListener('click', (ev) => {
+      const dismiss = ev.target.closest('[data-handoff-dismiss]');
+      if (dismiss) {
+        ctx.state.ui.firstDockHandoffDismissed = true;
+        this._refreshHandoff();
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        return;
+      }
+      const target = ev.target.closest('[data-handoff-tab]');
+      if (!target || !this._handoffEl || !this._handoffEl.contains(target)) return;
+      const tabId = target.getAttribute('data-handoff-tab');
+      if (!TABS.some((t) => t.id === tabId) && tabId !== 'hold') return;
+      this.setTab(tabId, { focusRail: true });
+      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    });
+
+    // ── Body: nav rail | tool workspace | Briefing drawer ──────────────────────
     const body = document.createElement('div');
     body.className = 'st-body';
 
@@ -1074,79 +1181,76 @@ export const stationHub = {
     rail.setAttribute('role', 'tablist');
     rail.setAttribute('aria-label', 'Station sections');
 
-    const workspaceWrapper = document.createElement('div');
-    workspaceWrapper.className = 'st-workspace-wrapper';
+    const content = document.createElement('div');
+    content.className = 'st-content';
 
-    // Center Stage
-    const centerStage = document.createElement('div');
-    centerStage.className = 'st-center-stage';
+    // Briefing drawer (Meta, opt-in): all station lore/diagnostics live here, collapsed by
+    // default so the workspace keeps its ≥70% budget. .st-purpose stays inside for the checks.
+    const inspector = document.createElement('aside');
+    inspector.className = 'st-inspector is-collapsed';
+    inspector.setAttribute('aria-label', 'Station briefing');
+    const inspectorInner = document.createElement('div');
+    inspectorInner.className = 'st-inspector-inner';
+    inspector.appendChild(inspectorInner);
 
-    // Faction stripe
-    const factionStripe = document.createElement('div');
-    factionStripe.className = 'st-faction-stripe';
-    centerStage.appendChild(factionStripe);
+    const inspectorHead = document.createElement('div');
+    inspectorHead.className = 'st-inspector-header mono';
+    inspectorHead.textContent = 'Station Briefing';
+    inspectorInner.appendChild(inspectorHead);
 
-    // Console Center Stage: schematic (with scanner-grid backdrop) + Service Dock + effect overlay.
-    // The scan layer hosts flickerGrid (console acquisition on dock); the fx overlay hosts the ripple
-    // field (service-select ping). The route beam lives on the workspace wrapper so it can reach the
-    // inspector column. Effects are view-only and parked when the screen hides.
-    const consoleConsole = document.createElement('div');
-    consoleConsole.className = 'st-console-deck';
-    consoleConsole.setAttribute('data-centerpiece', 'station-service-console');
-    consoleConsole.innerHTML = `
-      <div class="st-schematic-pane">
-        <div class="st-fx-scan" aria-hidden="true"></div>
-        <div class="st-schematic-art"></div>
-      </div>
-      <div class="st-service-nodes-pane" role="group" aria-label="Berth services"></div>
-      <div class="st-fx-overlay" aria-hidden="true"></div>
-    `;
-    centerStage.appendChild(consoleConsole);
-    this._schematicPane = consoleConsole.querySelector('.st-schematic-art');
-    this._nodesPane = consoleConsole.querySelector('.st-service-nodes-pane');
-    this._scanLayer = consoleConsole.querySelector('.st-fx-scan');
-    this._fxOverlay = consoleConsole.querySelector('.st-fx-overlay');
+    const inspectorContent = document.createElement('div');
+    inspectorContent.className = 'st-inspector-content';
+    inspectorInner.appendChild(inspectorContent);
 
-    // Badges / status row. The econ badge carries a morphLabel mount so station state/event changes
-    // animate the readout (morphLabel fires on value change only).
-    const statusRow = document.createElement('div');
-    statusRow.className = 'st-status-row';
-    statusRow.innerHTML = `
-      <div class="st-econ-badge mono"><span class="st-econ-mount"></span></div>
-      <div class="st-readiness-summary mono"></div>
-    `;
-    centerStage.appendChild(statusRow);
-    this._econBadge = statusRow.querySelector('.st-econ-badge');
-    this._econMorphMount = statusRow.querySelector('.st-econ-mount');
-    this._readinessSummary = statusRow.querySelector('.st-readiness-summary');
+    // Airlock wall: story graffiti accumulates here (managed by _refreshGraffiti, never wiped
+    // by the briefing re-render above it).
+    const airlock = document.createElement('div');
+    airlock.className = 'st-airlock';
+    airlock.innerHTML = '<div class="st-airlock__label mono">Airlock wall</div><div class="st-airlock__graffiti"></div>';
+    inspectorInner.appendChild(airlock);
+    this._airlockEl = airlock.querySelector('.st-airlock__graffiti');
 
-    // Handoff panel
-    const handoff = document.createElement('div');
-    handoff.className = 'st-handoff';
-    handoff.hidden = true;
-    handoff.innerHTML =
-      '<div class="st-handoff-head">' +
-        '<span class="st-handoff-label mono">First Dock Handoff</span>' +
-        '<span class="st-handoff-copy">Audit the hold, take one safe job, then launch only when Departure Check reads clean.</span>' +
-      '</div>' +
-      '<div class="st-handoff-steps"></div>';
-    centerStage.appendChild(handoff);
-    this._handoffEl = handoff;
-    handoff.addEventListener('click', (ev) => {
-      const target = ev.target.closest('[data-handoff-tab]');
-      if (!target || !this._handoffEl || !this._handoffEl.contains(target)) return;
-      const tabId = target.getAttribute('data-handoff-tab');
-      if (!TABS.some((t) => t.id === tabId)) return;
-      this.setTab(tabId, { focusRail: true });
+    const purpose = document.createElement('div');
+    purpose.className = 'st-purpose';
+    purpose.innerHTML =
+      '<div class="st-purpose-main"><span class="st-purpose-type mono">Station</span><span class="st-purpose-copy"></span></div>' +
+      '<div class="st-purpose-sub"><span class="st-purpose-tab"></span><span class="st-purpose-services"></span></div>';
+    inspectorInner.appendChild(purpose);
+    this._purposeEl = purpose;
+
+    this._inspectorEl = inspector;
+    this._inspectorToggle = topbar.querySelector('.st-inspector-toggle');
+    this._inspectorToggle.addEventListener('click', () => {
+      const collapsed = inspector.classList.toggle('is-collapsed');
+      this._inspectorToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      this._inspectorToggle.classList.toggle('active', !collapsed);
+      if (!collapsed) this._updateInspector();
       ctx.bus.emit('audio:cue', { id: 'ui_tab' });
     });
 
+    body.appendChild(rail);
+    body.appendChild(content);
+    body.appendChild(inspector);
+    screen.appendChild(body);
+
+    // ── Footer: Departure Check rail + station status. The clearance hairline above it
+    //    fills as chips clear — launch readiness you can read from across the room. ──
+    const footer = document.createElement('div');
+    footer.className = 'st-footer';
     const departure = document.createElement('div');
     departure.className = 'st-departure';
     departure.innerHTML =
       '<div class="st-departure-label mono">Departure Check</div>' +
       '<div class="st-departure-chips"></div>';
-    centerStage.appendChild(departure);
+    footer.appendChild(departure);
+    const statusChip = document.createElement('div');
+    statusChip.className = 'st-econ-badge mono';
+    statusChip.innerHTML = '<span class="st-econ-mount"></span>';
+    footer.appendChild(statusChip);
+    screen.appendChild(footer);
+    this._footerEl = footer;
+    this._econBadge = statusChip;
+    this._econMorphMount = statusChip.querySelector('.st-econ-mount');
     this._departureEl = departure.querySelector('.st-departure-chips');
     departure.addEventListener('click', (ev) => {
       const chip = ev.target.closest('[data-departure-tab],[data-departure-screen]');
@@ -1162,77 +1266,6 @@ export const stationHub = {
       this.setTab(tabId, { focusRail: true });
       ctx.bus.emit('audio:cue', { id: 'ui_tab' });
     });
-
-    const content = document.createElement('div');
-    content.className = 'st-content';
-    centerStage.appendChild(content);
-
-    workspaceWrapper.appendChild(centerStage);
-
-    // Right Inspector Column
-    const inspector = document.createElement('div');
-    inspector.className = 'st-inspector';
-
-    const inspectorHead = document.createElement('div');
-    inspectorHead.className = 'st-inspector-header mono';
-    inspectorHead.textContent = 'System Diagnostics';
-    inspector.appendChild(inspectorHead);
-
-    const inspectorContent = document.createElement('div');
-    inspectorContent.className = 'st-inspector-content';
-    inspector.appendChild(inspectorContent);
-
-    // Keep the .st-purpose elements inside the inspector so they are read by checks
-    const purpose = document.createElement('div');
-    purpose.className = 'st-purpose';
-    purpose.innerHTML =
-      '<div class="st-purpose-main"><span class="st-purpose-type mono">Station</span><span class="st-purpose-copy"></span></div>' +
-      '<div class="st-purpose-sub"><span class="st-purpose-tab"></span><span class="st-purpose-services"></span></div>';
-    inspector.appendChild(purpose);
-    this._purposeEl = purpose;
-
-    workspaceWrapper.appendChild(inspector);
-
-    // Route-beam overlay spans the whole workspace (center stage → inspector) so a selected service
-    // can draw a routing beam toward the diagnostics column. pointer-events:none; parked when hidden.
-    const fxBeamLayer = document.createElement('div');
-    fxBeamLayer.className = 'st-fx-beamlayer';
-    fxBeamLayer.setAttribute('aria-hidden', 'true');
-    workspaceWrapper.appendChild(fxBeamLayer);
-    this._fxBeamLayer = fxBeamLayer;
-
-    body.appendChild(rail);
-    body.appendChild(workspaceWrapper);
-    screen.appendChild(body);
-
-    // Comms Side Panel
-    const commsPanel = document.createElement('div');
-    commsPanel.className = 'st-comms-panel';
-    commsPanel.innerHTML = `
-      <div class="st-comms-panel-head">
-        <span>Comms Log</span>
-        <span class="st-comms-panel-close">CLOSE [X]</span>
-      </div>
-      <div class="st-comms-panel-body">
-        <div class="st-comms-panel-row"><span class="sender">ATCX</span> CLEARED FOR DEPARTURE.</div>
-        <div class="st-comms-panel-row"><span class="sender">TRADER</span> ANYONE SELLING ORE?</div>
-        <div class="st-comms-panel-row"><span class="sender">STATION</span> REMINDER: CONTRABAND SCANS ARE ACTIVE.</div>
-      </div>
-    `;
-    screen.appendChild(commsPanel);
-
-    commsPanel.querySelector('.st-comms-panel-close').addEventListener('click', () => {
-      commsPanel.classList.remove('open');
-    });
-
-    // Comms Ticker
-    const commsTicker = document.createElement('div');
-    commsTicker.className = 'st-comms-ticker';
-    commsTicker.innerHTML = '<span class="sender">ATCX</span> CLEARED FOR DEPARTURE. &nbsp;&nbsp;&nbsp; <span class="sender">TRADER</span> ANYONE SELLING ORE?';
-    commsTicker.addEventListener('click', () => {
-      commsPanel.classList.toggle('open');
-    });
-    screen.appendChild(commsTicker);
 
     // build rail buttons (one delegated listener, dynamically inject HOLD tab button next to MARKET)
     const railFrag = document.createDocumentFragment();
@@ -1360,19 +1393,16 @@ export const stationHub = {
     this._topbar = topbar;
 
     // Command-deck effects: create ONCE here, update-many via refresh, park on hide (frame-sleep
-    // contract). Instances are inert until their verb fires (flicker until reveal(), ripple until
-    // ping(), beam until setPath(), morph until set()), so building them now costs nothing at rest.
+    // contract). Instances are inert until their verb fires (morph until set(), dock until items
+    // land), so building them now costs nothing at rest.
     this._selectedService = null;
     this._selectedMissionId = null;
-    this._lastRevealStationId = null;
     this._lastEconKey = null;
     this._lastOpsStateKey = null;
     this._fx = {};
     try {
-      this._fx.flicker = createFlickerGrid(this._scanLayer, { width: 300, height: 168, cell: 12, gap: 3, token: '--accent' });
-      this._fx.ripple = createRippleField(this._fxOverlay, { width: 300, height: 200 });
-      this._fx.beam = createRouteBeam(this._fxBeamLayer, { width: 760, height: 420 });
       this._fx.morph = createMorphLabel(this._econMorphMount, { numeric: false });
+      this._fx.credits = createMorphLabel(this._vitalEls.creditsMount, { numeric: true });
       this._fx.dock = createDockRail(this._nodesPane, { onSelect: (svc) => this._selectService(svc) });
       // Operations board (Missions tab) instrument effects — mounted into the create-once scaffold
       // from _buildMissionsPanel; all park with the rest of this._fx via _setEffectsActive.
@@ -1439,28 +1469,25 @@ export const stationHub = {
             </div>
         `;
 
-        const getMarketMemoryForStation = (s, stationId, cmdtyId) => {
-          const markets = s.economy && s.economy.markets;
-          const m = markets && markets[stationId];
-          return (m && m[cmdtyId]) || null;
-        };
-
         for (const [id, qty] of list) {
           const com = COMMODITY_BY_ID.get(id) || { name: prettyId(id), volume: 1 };
           const vol = (com.volume || 1) * qty;
 
           const stn = this._stationDef();
-          const marketData = stn ? getMarketMemoryForStation(state, stn.id, id) : null;
-          const priceText = marketData ? `${marketData.sell} cr` : 'no memory';
+          const unitPay = stn ? holdUnitSellPrice(state, stn.id, id) : null;
+          const priceText = unitPay != null ? unitPay.toLocaleString('en-US') + ' cr' : 'no quote';
 
           html += `
             <div class="st-row">
-              <span style="font-weight:700; color:#fff;">${com.name}</span>
+              <span class="c-name">${com.name}</span>
               <span class="c-num">${qty}</span>
               <span class="c-num">${vol}</span>
               <span class="c-num">${priceText}</span>
               <span class="c-act">
-                <button type="button" class="st-sell-btn" data-sell-cmdty="${id}" style="padding: 2px 8px; font-size:0.7rem;">Sell One</button>
+                <button type="button" class="st-sell-btn" data-sell-cmdty="${id}" data-sell-qty="1"
+                  title="Sell one unit at the station's live price">Sell 1</button>
+                <button type="button" class="st-sell-btn st-sell-btn--all" data-sell-cmdty="${id}" data-sell-qty="${qty}"
+                  title="Sell every unit${unitPay != null ? ' · about ' + (unitPay * qty).toLocaleString('en-US') + ' cr' : ''}">Sell all</button>
               </span>
             </div>
           `;
@@ -1471,14 +1498,13 @@ export const stationHub = {
 
       el.innerHTML = html;
 
+      // Live intent: ui:sell → economy.handleTrade mutates cargo + credits and answers with
+      // economy:tradeCompleted (which repaints this panel and the top-deck vitals).
       el.querySelectorAll('[data-sell-cmdty]').forEach(btn => {
         btn.addEventListener('click', () => {
           const cmdtyId = btn.getAttribute('data-sell-cmdty');
-          ctx.bus.emit('ui:trade', {
-            stationId: this._stationId,
-            commodityId: cmdtyId,
-            qty: -1,
-          });
+          const qty = Math.max(1, Math.floor(Number(btn.getAttribute('data-sell-qty')) || 1));
+          ctx.bus.emit('ui:sell', { commodityId: cmdtyId, qty });
           ctx.bus.emit('audio:cue', { id: 'ui_click' });
         });
       });
@@ -1527,18 +1553,33 @@ export const stationHub = {
   },
 
   _refreshSchematicAndNodes() {
-    if (typeof document === 'undefined' || !this._schematicPane || !this._nodesPane) return;
+    if (typeof document === 'undefined' || !this._nodesPane) return;
     const stn = this._stationDef();
     if (!stn) return;
 
-    this._schematicPane.innerHTML = stationSchematicSvg(stn.type);
-
     // Service Dock: the canonical berth services, each ONLINE (offered here) or OFFLINE. Built via the
     // dockRail effect (create-once, update-many) so hover/focus magnify + readiness badges are shared
-    // with the rest of the command deck. Selecting a node routes through the inspector, not the tab.
+    // with the rest of the command deck. Selecting a node ACTS: berth verbs quote→confirm, tool
+    // services open their tool, offline services route you to the nearest berth that has them.
     if (this._fx && this._fx.dock) {
-      this._fx.dock.setItems(this._berthServiceItems(stn));
-      if (this._selectedService) this._fx.dock.setFocus(this._selectedService);
+      const items = this._berthServiceItems(stn);
+      const itemKey = dockRailItemKey(items);
+      if (this._dockRailItemKey !== itemKey) {
+        // Structural changes (first mount or a future service-layout change) may rebuild safely.
+        // Do this once, not on the low-cadence periodic refresh path.
+        this._fx.dock.setItems(items);
+        this._dockRailItemKey = itemKey;
+        if (this._selectedService) this._fx.dock.setFocus(this._selectedService);
+      } else {
+        // Live fuel/hull/availability text can change while docked. Update badges in place so a
+        // pointer-driven dock curve keeps its transform, hover target, and keyboard focus.
+        for (const item of items) this._fx.dock.setReadiness(item.id, item.readiness);
+      }
+    }
+    if (this._berthCaptionEl) {
+      const online = (Array.isArray(stn.services) ? stn.services : [])
+        .filter((svc) => CANONICAL_BERTH_SERVICES.includes(svc)).length;
+      this._berthCaptionEl.textContent = 'Berth services · ' + online + ' online';
     }
   },
 
@@ -1559,65 +1600,98 @@ export const stationHub = {
     return !!(stn && Array.isArray(stn.services) && stn.services.includes(svc));
   },
 
-  /** A Service Dock node was chosen: focus the inspector on it, ping it, and beam it to diagnostics.
-   *  Select ≠ open — the bottom command strip's "Open" action switches the section panel. */
+  /** A Service Dock node was chosen: ACT on it. Berth verbs (refuel/repair) quote→confirm→mutate
+   *  via ui:service; tool services open their tool; offline services explain and point at the
+   *  nearest berth that has them. Click = do — never "select trivia". */
   _selectService(svc) {
     if (!svc) return;
     this._selectedService = svc;
     if (this._fx && this._fx.dock) this._fx.dock.setFocus(svc);
-    if (this._visible()) {
-      this._pingServiceNode(svc);
-      this._plotServiceBeam(svc);
+    this._showBerthQuote(svc);
+    const ctx = this._ctx;
+    if (!ctx) return;
+    const stn = this._stationDef();
+    if (!this._serviceOffered(svc)) {
+      const near = nearestStationOffering(svc, stn && stn.id);
+      const where = near ? ('Nearest: ' + near.name + ' · ' + near.sector + '.') : 'None charted yet.';
+      ctx.bus.emit('toast', {
+        text: stationServiceLabel(svc) + ' is offline at ' + ((stn && stn.name) || 'this berth') + '. ' + where,
+        kind: 'info', ttl: 3.5,
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      return;
     }
-    this._updateInspector();
-    if (typeof this._updateCommandStrip === 'function') this._updateCommandStrip();
-    if (this._ctx && this._ctx.bus) this._ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    if (svc === 'refuel' || svc === 'repair') {
+      this._actOnService(svc);
+      return;
+    }
+    // Tool services: the verb lives on that tool — go there directly.
+    this.setTab(tabForService(svc), { focusRail: false });
+    ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   },
 
-  /** One ripple from the selected node (one event = one ripple; never on hover or a timer). */
-  _pingServiceNode(svc) {
-    const fx = this._fx;
-    if (!fx || !fx.ripple || !this._fxOverlay || !this._nodesPane) return;
-    const btn = this._nodesPane.querySelector('[data-service="' + svc + '"]');
-    if (!btn) return;
-    const oRect = this._fxOverlay.getBoundingClientRect();
-    const bRect = btn.getBoundingClientRect();
-    if (!(oRect.width > 0) || !(bRect.width > 0)) return;
-    fx.ripple.resize(oRect.width, oRect.height);
-    fx.ripple.ping(bRect.left + bRect.width / 2 - oRect.left, bRect.top + bRect.height / 2 - oRect.top,
-      { kind: this._serviceOffered(svc) ? 'good' : 'danger' });
+  /** Quote→confirm→commit for a berth verb (same grammar and pricing as the Services tool). */
+  async _actOnService(svc) {
+    const ctx = this._ctx;
+    if (!ctx) return;
+    const state = ctx.state;
+    const entity = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const quote = serviceQuote(svc, state, entity);
+    if (!quote || quote.disabled || !(quote.amount > 0)) {
+      const why = quote && quote.disabledReason ? ' — ' + quote.disabledReason : '';
+      ctx.bus.emit('toast', {
+        text: (quote && quote.detail) ? quote.detail + why : ('Nothing to ' + svc + ' right now.'),
+        kind: 'info', ttl: 2.5,
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      return;
+    }
+    if (quote.cost > 0) {
+      const ok = await confirm({
+        title: quote.buttonLabel || stationServiceLabel(svc),
+        body: quote.detail + ' · ' + Math.round(quote.cost).toLocaleString('en-US') + ' cr',
+        confirmLabel: 'Confirm · ' + Math.round(quote.cost).toLocaleString('en-US') + ' cr',
+        cancelLabel: 'Cancel',
+      });
+      if (!ok) { ctx.bus.emit('audio:cue', { id: 'ui_deny' }); return; }
+    }
+    ctx.bus.emit('ui:service', { type: svc, amount: quote.amount });
+    ctx.bus.emit('audio:cue', { id: 'ui_click' });
+    // Optimistic refresh: repair mutates the hull without a dedicated bus event (economy emits
+    // only a toast), so the berth badges, vitals, and departure rail re-read state right away.
+    this._refreshSchematicAndNodes();
+    this._refreshVitals();
+    this._refreshDeparture();
+    this._showBerthQuote(svc);
   },
 
-  /** Plot the route beam from the selected node to the diagnostics inspector (flows only if offered). */
-  _plotServiceBeam(svc) {
-    const fx = this._fx;
-    if (!fx || !fx.beam || !this._fxBeamLayer || !this._nodesPane || !this._el) return;
-    const layer = this._fxBeamLayer.getBoundingClientRect();
-    const btn = this._nodesPane.querySelector('[data-service="' + svc + '"]');
-    const inspector = this._el.querySelector('.st-inspector');
-    if (!btn || !inspector || !(layer.width > 0)) return;
-    const b = btn.getBoundingClientRect();
-    const i = inspector.getBoundingClientRect();
-    if (!(b.width > 0) || !(i.width > 0)) return;
-    fx.beam.resize(layer.width, layer.height);
-    const from = { x: b.left + b.width / 2 - layer.left, y: b.top + b.height / 2 - layer.top };
-    const to = { x: i.left - layer.left + 8, y: i.top - layer.top + 26 };
-    const offered = this._serviceOffered(svc);
-    fx.beam.setPath([from, { x: (from.x + to.x) / 2, y: from.y }, to],
-      { active: offered, kind: offered ? 'route' : 'warn' });
-  },
-
-  /** Bounded scanner-grid "console acquisition" sweep — fires only on a genuine dock transition. */
-  _revealScan() {
-    const fx = this._fx && this._fx.flicker;
-    if (!fx || !this._scanLayer) return;
-    const r = this._scanLayer.getBoundingClientRect();
-    if (r.width > 4 && r.height > 4) fx.resize(r.width, r.height);
-    fx.reveal({ resolveTo: (c, row, cols, rows) => {
-      const dx = (c + 0.5) / cols - 0.5;
-      const dy = (row + 0.5) / rows - 0.5;
-      return clamp01(1 - Math.sqrt(dx * dx + dy * dy) * 1.7);
-    } });
+  /** The berth quote readout (Console Key reveal): one shared surface that previews a node's
+   *  consequence — cost + delta for verbs, destination for tools, nearest berth for offline. */
+  _showBerthQuote(svc) {
+    const el = this._berthQuoteEl;
+    if (!el) return;
+    if (!svc) {
+      el.textContent = 'Hover a service to quote it — click to act.';
+      el.setAttribute('data-kind', 'idle');
+      return;
+    }
+    const state = this._ctx && this._ctx.state;
+    const stn = this._stationDef();
+    if (!this._serviceOffered(svc)) {
+      const near = nearestStationOffering(svc, stn && stn.id);
+      el.textContent = 'Offline here' + (near ? ' — nearest: ' + near.name + ' · ' + near.sector : '');
+      el.setAttribute('data-kind', 'offline');
+      return;
+    }
+    if (svc === 'refuel' || svc === 'repair') {
+      const entity = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+      const quote = serviceQuote(svc, state, entity);
+      el.textContent = quote ? quote.detail : '';
+      el.setAttribute('data-kind', quote && !quote.disabled && quote.amount > 0 ? 'verb' : 'idle');
+      return;
+    }
+    el.textContent = berthServiceDesc(svc);
+    el.setAttribute('data-kind', 'tool');
   },
 
   /** Start/stop every command-deck effect. setActive(false) MUST park all rAF (frame-sleep contract);
@@ -1633,17 +1707,14 @@ export const stationHub = {
   },
 
   _refreshEconAndReadiness() {
-    if (typeof document === 'undefined' || !this._econBadge || !this._readinessSummary) return;
+    if (typeof document === 'undefined' || !this._econBadge) return;
     const stn = this._stationDef();
     if (!stn) return;
 
     const state = this._ctx.state;
 
-    const stripe = this._el.querySelector('.st-faction-stripe');
-    if (stripe) {
-      const color = factionColorOf(stn.factionId);
-      stripe.style.background = `linear-gradient(90deg, ${color}, transparent)`;
-    }
+    // Faction identity: one hairline under the station name, colored by the controlling faction.
+    if (this._el) this._el.style.setProperty('--st-fac-color', factionColorOf(stn.factionId));
 
     const activeEvents = state.economy && state.economy.econEvents || [];
     const affected = activeEvents.filter(e => e.stationId === stn.id);
@@ -1653,11 +1724,11 @@ export const stationHub = {
     let econKey;
     if (affected.length > 0) {
       const e = affected[0];
-      econText = '⚠ ' + String(e.type || 'event').replace(/_/g, ' ').toUpperCase() + ' ACTIVE';
+      econText = '⚠ ' + titleCaseWords(e.type || 'event') + ' active';
       econKey = 'alert:' + e.type;
       this._econBadge.className = 'st-econ-badge active mono';
     } else {
-      econText = 'STATUS NOMINAL · MARKET ACTIVE';
+      econText = 'Market nominal';
       econKey = 'nominal';
       this._econBadge.className = 'st-econ-badge nominal mono';
     }
@@ -1666,15 +1737,51 @@ export const stationHub = {
     } else if (this._econMorphMount) {
       this._econMorphMount.textContent = econText;
     }
-
-    const chips = departureReadinessChips(state);
-    const summary = departureReadinessSummary(chips);
-    this._readinessSummary.className = `st-readiness-summary st-readiness--${summary.state} mono`;
-    this._readinessSummary.innerHTML = `DEPARTURE SYSTEM: ${summary.status}`;
   },
 
+  /** Live ship vitals on the top deck: credits (Readout Morph on change only) + fuel / hull / hold
+   *  data-bars updated in place. Event-driven — the periodic heartbeat never repaints these. */
+  _refreshVitals() {
+    const els = this._vitalEls;
+    if (!els) return;
+    const state = this._ctx && this._ctx.state;
+    if (!state) return;
+    const credits = Math.max(0, Math.floor((state.player && state.player.credits) || 0));
+    if (credits !== this._lastCreditsShown) {
+      this._lastCreditsShown = credits;
+      if (this._fx && this._fx.credits) this._fx.credits.set(credits.toLocaleString('en-US'));
+      else if (els.creditsMount) els.creditsMount.textContent = credits.toLocaleString('en-US');
+    }
+    const fuel = state.fuel || {};
+    const fuelFrac = (Number(fuel.max) > 0) ? clamp01(Number(fuel.current) / Number(fuel.max), 0) : null;
+    if (els.fuelV) els.fuelV.textContent = fuelFrac == null ? '—' : fmtPercent(fuelFrac);
+    if (els.bars.fuel) {
+      setDataBar(els.bars.fuel, fuelFrac == null ? 0 : fuelFrac);
+      els.bars.fuel.setAttribute('data-tone', fuelFrac != null && fuelFrac < 0.25 ? 'bad' : (fuelFrac != null && fuelFrac < 0.45 ? 'warn' : 'ok'));
+    }
+    const ship = playerEntity(state);
+    const hullFrac = ship && ship.hullMax > 0 ? clamp01((ship.hull || 0) / ship.hullMax, 0) : null;
+    if (els.hullV) els.hullV.textContent = hullFrac == null ? '—' : fmtPercent(hullFrac);
+    if (els.bars.hull) {
+      setDataBar(els.bars.hull, hullFrac == null ? 0 : hullFrac);
+      els.bars.hull.setAttribute('data-tone', hullFrac != null && hullFrac < 0.35 ? 'bad' : (hullFrac != null && hullFrac < 0.7 ? 'warn' : 'ok'));
+    }
+    const cargo = (state.player && state.player.cargo) || {};
+    const cap = Number(cargo.capVolume) || 0;
+    const used = Math.max(0, Number(cargo.usedVolume) || 0);
+    const holdFrac = cap > 0 ? clamp01(used / cap, 0) : 0;
+    if (els.holdV) els.holdV.textContent = cap > 0 ? (fmtDepartUnits(used) + '/' + fmtDepartUnits(cap) + 'u') : '—';
+    if (els.bars.hold) {
+      setDataBar(els.bars.hold, holdFrac);
+      els.bars.hold.setAttribute('data-tone', holdFrac > 0.9 ? 'warn' : 'ok');
+    }
+  },
+
+  /** The Briefing drawer (Meta, opt-in): the station's dossier — identity schematic, controlling
+   *  faction + standing plan, and local advisories. Skipped entirely while collapsed. */
   _updateInspector() {
     if (typeof document === 'undefined' || !this._el) return;
+    if (this._inspectorEl && this._inspectorEl.classList.contains('is-collapsed')) return;
     const inspectorEl = this._el.querySelector('.st-inspector-content');
     if (!inspectorEl) return;
 
@@ -1685,21 +1792,6 @@ export const stationHub = {
     }
 
     const state = this._ctx.state;
-    // Dual focus: a chosen Service Dock node describes THAT service (offered/offline + route hint);
-    // otherwise the inspector follows the active section tab.
-    const sel = this._selectedService;
-    const usingService = !!(sel && SERVICE_LABELS[sel]);
-    const tabId = usingService ? tabForService(sel) : this._activePanelId();
-    const tab = TABS.find((t) => t.id === tabId) || { id: 'hold', label: 'HOLD', icon: '■', help: 'View cargo hold manifest, capacity, and item values.' };
-    const tabStatus = stationTabServiceStatus(tabId, stn);
-    const offered = usingService ? this._serviceOffered(sel) : tabStatus.offered;
-    const headKind = usingService ? 'Selected Service' : 'Selected Subsystem';
-    const headIcon = usingService ? escapeHtml(SERVICE_ICON[sel] || '●') : (glyphSvg(tabId) || tab.icon);
-    const headName = usingService ? escapeHtml(stationServiceLabel(sel).toUpperCase()) : tab.label;
-    const headDesc = usingService ? escapeHtml(berthServiceDesc(sel)) : tab.help;
-    const availLabel = usingService ? (offered ? 'ONLINE' : 'OFFLINE') : tabStatus.label.toUpperCase();
-    const availState = usingService ? (offered ? 'available' : 'unavailable') : tabStatus.state;
-
     const fid = stn.factionId;
     const factionMeta = fid ? FACTION_BY_ID.get(fid) : null;
     const factionName = factionNameOf(fid);
@@ -1715,63 +1807,40 @@ export const stationHub = {
     const guidance = factionStandingGuidance(rep, factionMeta || { id: fid }, state.factions && state.factions[fid] && state.factions[fid].lastDelta);
 
     const risks = STATION_RISKS[stn.type] || 'Standard industrial dock safety parameters apply.';
+    const services = (Array.isArray(stn.services) ? stn.services : []);
+    const offline = CANONICAL_BERTH_SERVICES.filter((svc) => !services.includes(svc));
 
-    let html = `
-      <div class="st-ins-section">
-        <div class="st-ins-title">${headKind}</div>
+    inspectorEl.innerHTML = `
+      <div class="st-ins-section st-ins-section--id">
+        <div class="st-ins-schematic" aria-hidden="true">${stationSchematicSvg(stn.type)}</div>
         <div class="st-ins-tab-header">
-          <span class="st-ins-tab-icon">${headIcon}</span>
-          <span class="st-ins-tab-name">${headName}</span>
+          <span class="st-ins-tab-name">${escapeHtml(stn.name || 'Station')}</span>
         </div>
-        <div class="st-ins-desc">${headDesc}</div>
+        <div class="st-ins-desc">${escapeHtml(stationTypeLabel(stn.type))} · class ${escapeHtml(stn.size || 'M')}</div>
       </div>
 
       <div class="st-ins-section">
-        <div class="st-ins-title">Service Status</div>
-        <div class="st-ins-row">
-          <span>Availability</span>
-          <span class="st-ins-row-val st-ins-status--${availState}">${availLabel}</span>
-        </div>
-    `;
-
-    if (!offered) {
-      if (usingService) {
-        const near = nearestStationOffering(sel, stn.id);
-        html += `<div class="st-ins-hint">⚠️ Not offered at ${escapeHtml(stn.name || 'this berth')}.</div>`;
-        html += near
-          ? `<div class="st-ins-row-detail">Route: nearest ${escapeHtml(stationServiceLabel(sel))} at ${escapeHtml(near.name)} · ${escapeHtml(near.sector)}.</div>`
-          : `<div class="st-ins-row-detail">No known ${escapeHtml(stationServiceLabel(sel))} on your charts yet.</div>`;
-      } else {
-        const rule = TAB_SERVICE_RULES[tabId];
-        const hint = rule ? rule.unavailableHint : 'Service unavailable at this facility.';
-        html += `<div class="st-ins-hint">⚠️ ${hint}</div>`;
-      }
-    }
-
-    html += `
-      </div>
-
-      <div class="st-ins-section">
-        <div class="st-ins-title">Faction Standing</div>
+        <div class="st-ins-title">Standing</div>
         <div class="st-ins-row">
           <span>Authority</span>
-          <span class="st-ins-row-val" style="color:${factionColor}">${factionName}</span>
+          <span class="st-ins-row-val" style="color:${factionColor}">${escapeHtml(factionName)}</span>
         </div>
         <div class="st-ins-row">
-          <span>Standing</span>
-          <span class="st-ins-row-val">${tier.name} (${rep > 0 ? '+' : ''}${rep})</span>
+          <span>Your standing</span>
+          <span class="st-ins-row-val">${escapeHtml(tier.name)} (${rep > 0 ? '+' : ''}${rep})</span>
         </div>
-        <div class="st-ins-row-detail">${guidance.next}</div>
-        <div class="st-ins-row-detail" style="margin-top: 4px; font-style: italic;">Plan: ${guidance.plan}</div>
+        <div class="st-ins-row-detail">${escapeHtml(guidance.next)}</div>
+        <div class="st-ins-row-detail st-ins-row-detail--plan">${escapeHtml(guidance.plan)}</div>
       </div>
 
       <div class="st-ins-section">
-        <div class="st-ins-title">Local Station Risks</div>
-        <div class="st-ins-risk-desc">${risks}</div>
+        <div class="st-ins-title">Advisories</div>
+        <div class="st-ins-risk-desc">${escapeHtml(risks)}</div>
+        ${offline.length
+          ? `<div class="st-ins-row-detail">Offline here: ${escapeHtml(offline.map(stationServiceLabel).join(', '))}.</div>`
+          : `<div class="st-ins-row-detail">Full berth coverage — every dock service is online.</div>`}
       </div>
     `;
-
-    inspectorEl.innerHTML = html;
   },
 
   /** Operations contract board (state.missions.boards[stationId]). The left rail is a set of compact
@@ -1795,8 +1864,8 @@ export const stationHub = {
         '</div>' +
       '</div>';
     panel.innerHTML =
-      '<div class="st-sub-h">Operations Board</div>' +
-      '<div class="st-mission-guide">Pick a contract to preflight its route, risk, cargo, fuel, and consequences before accepting. Accepting adds it to the Mission Log (' + BINDINGS.missionLog.label + '), auto-tracks it, and sets nav guidance. Rewards fund hulls, modules, repairs, and fuel.</div>' +
+      '<div class="st-sub-h">Contract Board</div>' +
+      '<div class="st-mission-guide">Pick a contract to preflight it — route, risk, fuel, and hold — then accept. Accepting sets your nav automatically.</div>' +
       '<div class="st-mission-recommend" hidden></div>' +
       '<div class="st-mission-accepted" hidden></div>' +
       '<div class="st-ops">' +
@@ -1837,14 +1906,19 @@ export const stationHub = {
     const recommend = panel.querySelector('.st-mission-recommend');
     const list = panel.querySelector('.st-mission-list');
     const center = panel.querySelector('.st-ops-center');
+    // Pointer + keyboard share ONE selection path (Enter/Space parity on focusable cards).
+    const selectMissionCard = (missionId) => {
+      if (missionId == null || missionId === '') return;
+      this._selectContract(missionId);
+      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    };
     const handleMissionAction = (ev) => {
       const actionEl = ev.target.closest('[data-act]');
       // A click on the card body (not a control) selects the contract → drives the center preflight.
       if (!actionEl) {
         const card = ev.target.closest('.st-mission-card');
         if (card && card.getAttribute('data-mid')) {
-          this._selectContract(card.getAttribute('data-mid'));
-          ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+          selectMissionCard(card.getAttribute('data-mid'));
         }
         return;
       }
@@ -1858,7 +1932,14 @@ export const stationHub = {
       }
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
     };
+    const handleMissionCardKeydown = (ev) => {
+      const resolved = resolveMissionCardKeyboardSelection(ev);
+      if (!resolved) return;
+      ev.preventDefault(); // Space must not scroll the board
+      selectMissionCard(resolved.missionId);
+    };
     list.addEventListener('click', handleMissionAction);
+    list.addEventListener('keydown', handleMissionCardKeydown);
     recommend.addEventListener('click', handleMissionAction);
     center.addEventListener('click', handleMissionAction);
     status.addEventListener('click', handleMissionAction);
@@ -1915,10 +1996,10 @@ export const stationHub = {
     // One clean contract receipt: the singular confirmation the accept produces. A one-shot border
     // trace marks it as freshly printed (the sanctioned state-change motion, not a rest animation).
     status.innerHTML =
-      '<div class="st-mission-accepted-label mono">ACCEPTED + TRACKED</div>' +
+      '<div class="st-mission-accepted-label mono">Contract signed · nav set</div>' +
       '<div class="st-mission-accepted-title">' + escapeHtml(mission.title || prettyType(mission.type)) + '</div>' +
       '<div class="st-mission-accepted-next">' + escapeHtml(routeLine) + '</div>' +
-      '<div class="st-mission-accepted-log mono">Mission Log (' + BINDINGS.missionLog.label + ') now carries the route, timer, and progress. Undock when Departure Check is green.</div>' +
+      '<div class="st-mission-accepted-log mono">Mission Log (' + BINDINGS.missionLog.label + ') carries the route and timer. Launch when the departure rail is green.</div>' +
       '<div class="st-mission-accepted-actions">' +
         '<button class="st-ops-btn st-ops-btn--plot" data-act="plotRoute" data-mid="' + escapeHtml(String(mission.id)) + '" ' +
           'title="Open the map and ping this contract\'s destination" aria-label="Plot route and ping destination for ' + escapeHtml(mission.title || prettyType(mission.type)) + '">Plot Route</button>' +
@@ -2025,8 +2106,8 @@ export const stationHub = {
         '<div class="st-mission-cslot">' + cslot + '</div>' +
         '<div class="st-mission-next">' + escapeHtml(missionNextStepText(m)) + '</div>' +
         '<div class="st-mission-btns">' +
-          '<button data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled' : '') +
-            ' title="' + escapeHtml(acceptTitle) + '" aria-label="' + escapeHtml(acceptTitle) + '">Accept + Track</button>' +
+          '<button class="st-mission-accept" data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled' : '') +
+            ' title="' + escapeHtml(acceptTitle) + '" aria-label="' + escapeHtml(acceptTitle) + '">Accept</button>' +
           (unmet ? '<span class="st-mission-unmet">' + escapeHtml(unmet) + '</span>' : '') +
         '</div>';
       frag.appendChild(card);
@@ -2118,8 +2199,8 @@ export const stationHub = {
     const acceptTitle = unmet ? 'Cannot accept: ' + unmet
       : 'Accept, auto-track, and add ' + (m.title || prettyType(m.type)) + ' to Mission Log.';
     els.actions.innerHTML =
-      '<button class="st-ops-btn st-ops-btn--accept" data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled' : '') +
-        ' title="' + escapeHtml(acceptTitle) + '" aria-label="' + escapeHtml(acceptTitle) + '">Accept + Track</button>' +
+      '<button class="st-ops-btn st-ops-btn--accept st-mission-accept" data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled' : '') +
+        ' title="' + escapeHtml(acceptTitle) + '" aria-label="' + escapeHtml(acceptTitle) + '">Accept</button>' +
       '<button class="st-ops-btn st-ops-btn--plot" data-act="plotRoute" data-mid="' + escapeHtml(mid) + '" ' +
         'title="Ping the destination and preview the route" aria-label="Preview route and ping destination for ' + escapeHtml(m.title || prettyType(m.type)) + '">Plot Route</button>' +
       (unmet ? '<span class="st-mission-unmet">' + escapeHtml(unmet) + '</span>' : '');
@@ -2229,10 +2310,9 @@ export const stationHub = {
   /** Activate a tab: toggle rail highlight + panel visibility, persist ui.activeStationTab. */
   setTab(tabId, options = {}) {
     if (!TABS.some((t) => t.id === tabId) && tabId !== 'hold') tabId = 'market';
-    // Navigating a section clears the Service Dock selection so the inspector follows the tab again,
-    // and retracts the route beam that pointed at the previously selected service.
+    // Navigating a section clears the Service Dock selection (its quote surface goes idle).
     this._selectedService = null;
-    if (this._fx && this._fx.beam) this._fx.beam.setPath([], { active: false });
+    this._showBerthQuote(null);
     const prevTab = this._activePanelId();
     if (prevTab !== tabId) {
       const prev = this._panels && this._panels[prevTab];
@@ -2458,19 +2538,26 @@ export const stationHub = {
     if (!this._departureEl) return;
     const chips = departureReadinessChips(this._ctx && this._ctx.state);
     this._departureEl.innerHTML = chips.map((chip) => departureChipHtml(chip)).join('');
+    const summary = departureReadinessSummary(chips);
     if (this._undockBtn) {
-      const summary = departureReadinessSummary(chips);
       this._undockBtn.textContent = summary.label;
       this._undockBtn.title = summary.title;
-      this._undockBtn.setAttribute('aria-label', summary.title);
+      this._undockBtn.setAttribute('aria-label', summary.accessibleLabel);
       this._undockBtn.setAttribute('data-readiness', summary.state);
+    }
+    // Launch clearance hairline: the footer's top edge fills as chips clear (state-driven only).
+    if (this._footerEl) {
+      const cleared = chips.filter((c) => c && c.kind === 'ok').length;
+      this._footerEl.style.setProperty('--st-clearance', String(chips.length ? cleared / chips.length : 0));
+      this._footerEl.setAttribute('data-readiness', summary.state);
     }
   },
 
   _refreshHandoff() {
     if (!this._handoffEl) return;
     const state = this._ctx && this._ctx.state;
-    const visible = firstDockHandoffVisible(state, this._stationId);
+    const dismissed = !!(state && state.ui && state.ui.firstDockHandoffDismissed);
+    const visible = !dismissed && firstDockHandoffVisible(state, this._stationId);
     this._handoffEl.hidden = !visible;
     if (!visible) return;
     const stepsEl = this._handoffEl.querySelector('.st-handoff-steps');
@@ -2487,6 +2574,7 @@ export const stationHub = {
       this._playArrivalBroadcast();
     }
     this._refreshTopbar();
+    this._refreshVitals();
     this._refreshGraffiti();
     this._refreshRailServiceStatus();
     this._refreshPurpose();
@@ -2494,13 +2582,8 @@ export const stationHub = {
     this._refreshHandoff();
     this._refreshSchematicAndNodes();
     this._refreshEconAndReadiness();
-    // Command-deck effects resume on show; the scanner-grid "console acquisition" sweep fires ONLY on
-    // a genuine dock transition (returning from the map while still docked must not replay it).
+    // Command-deck effects resume on show (frame-sleep contract).
     this._setEffectsActive(true);
-    if (this._stationId && this._stationId !== this._lastRevealStationId) {
-      this._lastRevealStationId = this._stationId;
-      this._revealScan();
-    }
     // restore the last active tab (or default 'market')
     const tab = this._activePanelId();
     this.setTab(tab); // also refreshes the active panel via onShow
@@ -2519,7 +2602,13 @@ export const stationHub = {
   refresh(ctx, options = {}) {
     if (ctx) this._ctx = ctx;
     if (!this._el) return;
+    // uiRoot asks every open modal to refresh every ~300 ms. Docked simulation is paused and this
+    // screen already subscribes to every state change that can affect it below, so repainting the
+    // hub (including market rows and inspector HTML) on that heartbeat just creates avoidable DOM
+    // churn. In particular it used to interrupt the pointer-driven Service Dock magnification.
+    if (options.periodic) return;
     this._refreshTopbar();
+    this._refreshVitals();
     this._refreshGraffiti();
     this._refreshRailServiceStatus();
     this._refreshPurpose();
@@ -2560,6 +2649,9 @@ export const stationHub = {
     if (this._subbed) return;
     this._subbed = true;
     const bus = this._ctx.bus;
+    // Implicit station Back (backdrop / Esc route): the screenManager emits station:exitRequest
+    // directly; the exit owner cleans up, confirms when needed, then commits the undock.
+    bus.on('station:exitRequest', (req) => { this.requestStationExit(req || {}); });
     const onActive = (wantTab) => () => {
       if (!this._visible()) return;
       const id = this._activePanelId();
@@ -2567,6 +2659,24 @@ export const stationHub = {
     };
     const refreshDeparture = () => { if (this._visible()) this._refreshDeparture(); };
     const refreshHandoff = () => { if (this._visible()) this._refreshHandoff(); };
+    // Top-deck vitals answer every economy/ship mutation directly (the credits morph is the
+    // "terminal is alive" read — it rolls exactly when the sim changes, and never at rest).
+    const refreshVitals = () => { if (this._visible()) this._refreshVitals(); };
+    bus.on('credits:changed', refreshVitals);
+    bus.on('fuel:changed', refreshVitals);
+    bus.on('cargo:changed', refreshVitals);
+    bus.on('ship:statsChanged', refreshVitals);
+    bus.on('economy:tradeCompleted', refreshVitals);
+    // These are the two mutable readiness values shown by the Service Dock. The low-cadence modal
+    // refresh deliberately does no work, so keep its badges and selected-service inspector truthful
+    // through the same event path that updates the active panel.
+    const refreshServiceDock = () => {
+      if (!this._visible()) return;
+      this._refreshRailServiceStatus();
+      this._refreshSchematicAndNodes();
+      this._refreshEconAndReadiness();
+      this._updateInspector();
+    };
     // market-affecting
     bus.on('economy:tradeCompleted', onActive(['market', 'services', 'hold']));
     bus.on('economy:tradeCompleted', refreshHandoff);
@@ -2578,6 +2688,7 @@ export const stationHub = {
     bus.on('credits:changed', refreshDeparture);
     // ship/outfitting-affecting
     bus.on('ship:statsChanged', onActive(['outfit', 'shipyard', 'services']));
+    bus.on('ship:statsChanged', refreshServiceDock);
     bus.on('ship:statsChanged', refreshDeparture);
     bus.on('ship:statsChanged', refreshHandoff);
     bus.on('ship:purchased', onActive(['shipyard', 'outfit']));
@@ -2588,6 +2699,7 @@ export const stationHub = {
     bus.on('tech:researched', onActive(['shipyard', 'outfit']));
     // services-affecting
     bus.on('fuel:changed', onActive(['services']));
+    bus.on('fuel:changed', refreshServiceDock);
     bus.on('fuel:changed', refreshDeparture);
     bus.on('fuel:changed', refreshHandoff);
     bus.on('nav:waypoint', refreshDeparture);
@@ -2795,371 +2907,437 @@ function factionColorOf(fid) {
   return (f && f.color) || '#d7e6ff';
 }
 
-// ---- scoped CSS (injected once; uses theme vars from styles/ui.css) --------------------------
+// ---- scoped CSS (injected once; palette tokens from styles/ui.css — no raw-hue drift) ---------
+// THE BERTH LEDGER — Station OS skin. One coherent skin, one voice:
+//   Nav = rail rows · Verb = filled tinted buttons (quote→confirm) · Param = chips/steppers ·
+//   Meta = ghost. Motion ONLY on state change (arrival trace, tab wipe, readout morphs, charge).
 const STATION_CSS = `
-/* Magic UI Animations */
+/* ── 0 · Motion vocabulary (every animation is a state change, nothing runs at rest) ─────────── */
 @keyframes sf-signal-acquire { 0% { opacity: 0; filter: blur(4px); } 100% { opacity: 1; filter: blur(0); } }
-.acquiring { animation: sf-signal-acquire .4s var(--ease) forwards; color: #ffca58; }
-.st-undock { transition: background-color 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; }
-.st-undock::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 0%; background: #ffca58; transition: none; }
+.acquiring { animation: sf-signal-acquire .4s var(--ease) forwards; }
+@keyframes st-name-sweep { from { width: 0; opacity: 1; } to { width: 100%; opacity: .55; } }
+@keyframes channel-wipe { 0% { clip-path: inset(0 100% 0 0); } 100% { clip-path: inset(0 0 0 0); } }
+.switching { animation: channel-wipe .13s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; }
+@keyframes market-tick { 0% { background-color: color-mix(in srgb, var(--energy) 14%, transparent); } 100% { background-color: transparent; } }
+.st-card-spark-wrap.tick { animation: market-tick .5s ease-out; }
+.trend-up { color: var(--warn); font-size: .8em; margin-left: 4px; }
+.trend-down { color: var(--ink-dim); font-size: .8em; margin-left: 4px; }
+
+/* ── 1 · Shell tokens + station-type accents (sector accents ≤10%, tokens only) ──────────────── */
+.st-hub {
+  --st-accent: var(--accent);
+  --st-fac-color: var(--ink-dim);
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-body: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --os-ink: #eef2f9; --os-ink-dim: #b9c5d9; --os-ink-mute: #7f8fa8;
+  --os-line: color-mix(in srgb, var(--ink-dim) 14%, transparent);
+  --os-line-strong: color-mix(in srgb, var(--ink-dim) 26%, transparent);
+  --os-bg: #060a12;
+  --os-deck: #0a101c;
+  --os-surface: rgba(17, 24, 39, 0.66);
+  --os-raised: rgba(24, 33, 52, 0.78);
+  --os-shadow: 0 12px 32px -18px rgba(0, 0, 0, 0.7);
+  --os-r: 10px; --os-r-sm: 7px; --os-r-xs: 5px;
+  --st-accent-soft: color-mix(in srgb, var(--st-accent) 16%, transparent);
+  --ink: var(--os-ink); --ink-dim: var(--os-ink-dim); --ink-mute: var(--os-ink-mute);
+  --panel-edge: var(--os-line);
+  color: var(--os-ink);
+  font-family: var(--font-body);
+  line-height: 1.5;
+}
+.st-hub--military { --st-accent: var(--danger); }
+.st-hub--mining, .st-hub--refinery { --st-accent: var(--warn); }
+.st-hub--blackmarket { --st-accent: var(--accent-3); }
+.st-hub--research { --st-accent: var(--accent-2); }
+
+/* ── 2 · The OS frame: edge-to-edge terminal, five fixed decks ────────────────────────────────── */
+.st-hub.st-hub--os {
+  width: 100vw; height: 100vh; max-width: none; max-height: none;
+  border: 0; border-radius: 0; box-shadow: none;
+  display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  overflow: hidden; pointer-events: auto;
+}
+/* Decks are PINNED to their rows so hiding one (e.g. the dismissed handoff) can never
+   re-flow the body into an auto row and strand the footer mid-screen. */
+.st-hub.st-hub--os > .st-topdeck { grid-row: 1; }
+.st-hub.st-hub--os > .st-berth { grid-row: 2; }
+.st-hub.st-hub--os > .st-handoff { grid-row: 3; }
+.st-hub.st-hub--os > .st-body { grid-row: 4; }
+.st-hub.st-hub--os > .st-footer { grid-row: 5; }
+.st-hub.st-hub--os {
+  background:
+    radial-gradient(120% 90% at 85% -20%, var(--st-accent-soft), transparent 55%),
+    linear-gradient(180deg, var(--os-deck), var(--os-bg) 30%);
+  animation: sf-fadein .25s var(--ease) both;
+}
+/* Arrival edge trace: one sweep of the deck seams when a new berth acquires (state change only). */
+.st-hub.trace-active::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 60;
+  border-top: 1px solid var(--st-accent);
+  animation: st-arrival-trace 480ms var(--ease) 1 both;
+}
+@keyframes st-arrival-trace { 0% { clip-path: inset(0 100% 0 0); opacity: .9; } 70% { clip-path: inset(0 0 0 0); opacity: .6; } 100% { opacity: 0; } }
+
+/* ── 3 · Top deck: identity · vitals · Briefing (Meta) · Undock ───────────────────────────────── */
+.st-topdeck {
+  display: flex; align-items: center; gap: 22px; height: 58px; padding: 0 22px;
+  border-bottom: 1px solid var(--os-line-strong);
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+}
+.st-topdeck-id { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+.st-station-name {
+  font-family: var(--font-display); font-size: 22px; font-weight: 650; letter-spacing: .005em;
+  color: #fff; white-space: nowrap; position: relative;
+}
+.st-station-name::after {
+  content: ''; position: absolute; left: 0; bottom: -3px; height: 2px; width: 100%;
+  background: var(--st-fac-color); opacity: .55; border-radius: 1px;
+}
+.st-station-name.acquiring::after { animation: st-name-sweep 400ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.st-station-fac {
+  flex: none; font-size: 10.5px; letter-spacing: .08em; color: var(--os-ink-dim);
+  padding: 3px 10px; border: 1px solid var(--os-line); border-radius: 999px;
+  background: rgba(255,255,255,0.025); white-space: nowrap;
+}
+/* Vitals: the ship talks back. Bars are sf-data-bar primitives; numbers morph on change only. */
+.st-vitals { display: flex; align-items: center; gap: 26px; margin-left: auto; }
+.st-vital { display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 8px; align-items: baseline; }
+.st-vital-l { grid-column: 1; font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--os-ink-mute); }
+.st-vital-v { grid-column: 2; font-size: 13.5px; font-weight: 600; color: var(--os-ink); font-variant-numeric: tabular-nums; }
+.st-top-credits .st-vital-v { color: var(--energy); font-size: 15px; }
+.st-vital-bar { grid-column: 1 / -1; margin-top: 3px; display: block; }
+.st-vital-bar .sf-data-bar { width: 86px; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--os-ink-mute) 22%, transparent); display: block; overflow: hidden; }
+.st-vital-bar .sf-data-bar__fill { height: 100%; border-radius: 2px; background: var(--good); transform-origin: left center; transform: scaleX(var(--sf-bar-v, 0)); transition: transform .2s var(--ease); }
+.st-vital-bar .sf-data-bar[data-tone="warn"] .sf-data-bar__fill { background: var(--warn); }
+.st-vital-bar .sf-data-bar[data-tone="bad"] .sf-data-bar__fill { background: var(--danger); }
+/* Briefing toggle: Meta ghost. */
+.st-inspector-toggle {
+  flex: none; padding: 7px 14px; border-radius: var(--os-r-sm);
+  background: transparent; border: 1px solid var(--os-line); color: var(--os-ink-dim);
+  font-family: var(--font-display); font-weight: 600; font-size: 13px;
+}
+.st-inspector-toggle:hover { color: var(--os-ink); border-color: var(--os-line-strong); background: rgba(255,255,255,0.04); }
+.st-inspector-toggle.active { color: var(--st-accent); border-color: color-mix(in srgb, var(--st-accent) 45%, transparent); background: var(--st-accent-soft); }
+/* Undock: the one hardware control. Hold to charge; readiness colors the metal. */
+.st-undock {
+  flex: none; position: relative; overflow: hidden; padding: 9px 18px;
+  border-radius: var(--os-r-sm); font-family: var(--font-display); font-weight: 650;
+  letter-spacing: .02em; font-size: 13.5px;
+  background: var(--os-surface); border: 1px solid var(--os-line-strong); color: var(--os-ink);
+  transition: background-color .2s, border-color .2s, color .2s;
+}
+.st-undock::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 0%; background: currentColor; transition: none; }
 .st-undock.charging::after { width: 100%; transition: width 0.6s linear; }
 .st-undock.abort::after { width: 0%; transition: width 0.2s ease-out; }
-@keyframes channel-wipe { 0% { clip-path: inset(0 100% 0 0); filter: brightness(2) contrast(1.5); } 100% { clip-path: inset(0 0 0 0); filter: brightness(1) contrast(1); } }
-.switching { animation: channel-wipe .13s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; }
-@keyframes market-tick { 0% { background-color: rgba(255, 202, 88, 0.15); border-color: rgba(255, 202, 88, 0.4); } 100% { background-color: transparent; border-color: transparent; } }
-.st-card-spark-wrap { border: 1px solid transparent; border-radius: 4px; transition: border-color 0.5s; }
-.st-card-spark-wrap.tick { animation: market-tick .5s ease-out; }
-.trend-up { color: #f2a83b; font-size: 0.8em; margin-left: 4px; }
-.trend-down { color: #8fb0c0; font-size: 0.8em; margin-left: 4px; }
+.st-undock[data-readiness="ready"] { color: var(--good); border-color: color-mix(in srgb, var(--good) 45%, transparent); background: color-mix(in srgb, var(--good) 10%, var(--os-surface)); }
+.st-undock[data-readiness="check"] { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: color-mix(in srgb, var(--warn) 9%, var(--os-surface)); }
+.st-undock[data-readiness="risk"]  { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: color-mix(in srgb, var(--danger) 9%, var(--os-surface)); }
+.st-undock[data-readiness="ready"]:hover { background: color-mix(in srgb, var(--good) 22%, var(--os-surface)); }
+.st-undock[data-readiness="check"]:hover { background: color-mix(in srgb, var(--warn) 20%, var(--os-surface)); }
+.st-undock[data-readiness="risk"]:hover  { background: color-mix(in srgb, var(--danger) 20%, var(--os-surface)); }
 
-/* Station type accents (without arbitrary hue drifts, strictly themed) */
-.st-hub {
-  --st-accent: #39d0ff; /* default cyan */
-  --st-glow: rgba(57, 208, 255, 0.15);
+/* ── 4 · Berth strip: the Service Dock. Live readiness, hover quotes, click acts. ─────────────── */
+.st-berth {
+  display: flex; align-items: stretch; gap: 18px; padding: 0 22px;
+  border-bottom: 1px solid var(--os-line);
+  background: linear-gradient(180deg, rgba(255,255,255,0.015), transparent);
 }
-.st-hub--military {
-  --st-accent: #ff5c5c; /* red */
-  --st-glow: rgba(255, 92, 92, 0.15);
+.st-service-nodes-pane { flex: 1 1 auto; min-width: 0; display: flex; align-items: flex-end; }
+.st-hub .sf-fx-dock { --sf-fx-dock-pad-top: 38px; flex-wrap: nowrap; gap: 8px; justify-content: flex-start; max-width: 100%; overflow-x: auto; overflow-y: visible; padding-bottom: 8px; scrollbar-width: thin; }
+.st-hub .sf-fx-dock__item {
+  min-width: 86px; padding: 8px 10px 7px; border-radius: var(--os-r-sm);
+  background: var(--os-raised); border: 1px solid var(--os-line); box-shadow: var(--os-shadow);
 }
-.st-hub--mining, .st-hub--refinery {
-  --st-accent: #ffb35c; /* amber/rust */
-  --st-glow: rgba(255, 179, 92, 0.15);
+.st-hub .sf-fx-dock__item:hover { border-color: color-mix(in srgb, var(--st-accent) 40%, transparent); background: color-mix(in srgb, var(--st-accent) 7%, var(--os-raised)); }
+.st-hub .sf-fx-dock__item.is-focus { border-color: color-mix(in srgb, var(--st-accent) 55%, transparent); }
+.st-hub .sf-fx-dock__item:focus-visible { outline: 2px solid var(--st-accent); outline-offset: 2px; }
+.st-hub .sf-fx-dock__icon { color: var(--st-accent); font-size: 1.18em; }
+.st-hub .sf-fx-dock__label { font-size: .7rem; letter-spacing: .01em; color: var(--os-ink-dim); font-family: var(--font-display); font-weight: 600; }
+.st-hub .sf-fx-dock__badge { font-family: var(--mono); font-size: .6rem; letter-spacing: .05em; }
+.st-berth-side {
+  flex: none; width: 252px; display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  padding: 8px 0 8px 18px; border-left: 1px solid var(--os-line);
 }
-.st-hub--blackmarket {
-  --st-accent: #8d66ff; /* violet */
-  --st-glow: rgba(141, 102, 255, 0.15);
-}
+.st-berth-caption { font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--os-ink-mute); }
+.st-berth-quote { min-height: 2.6em; font-family: var(--mono); font-size: 11.5px; line-height: 1.35; color: var(--os-ink-dim); transition: opacity .14s var(--ease); }
+.st-berth-quote[data-kind="idle"] { color: var(--os-ink-mute); font-style: italic; }
+.st-berth-quote[data-kind="verb"] { color: var(--os-ink); }
+.st-berth-quote[data-kind="offline"] { color: var(--warn); }
+.st-berth-quote[data-kind="tool"] { color: var(--os-ink-dim); }
 
-.st-hub { width: min(1560px, 96vw); height: min(920px, 95vh); display: flex; flex-direction: column;
-  pointer-events: auto; overflow: hidden; animation: sf-fadein .3s var(--ease) both;
-  background:
-    radial-gradient(120% 80% at 82% -10%, color-mix(in srgb, var(--st-accent) 7%, transparent), transparent 60%),
-    linear-gradient(180deg, rgba(15,20,33,0.95), rgba(10,14,24,0.97));
-  border: 1px solid var(--st-line);
-  border-radius: 18px;
-  box-shadow: 0 44px 130px -36px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.02) inset; }
-.st-topbar { display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 20px; border-bottom: 1px solid var(--panel-edge);
-  background: linear-gradient(180deg, rgba(14,24,42,.7), rgba(8,14,26,.5)); }
-.st-station-name { font-size: var(--t-xl); letter-spacing: .04em; color: #fff; font-weight: 600;
-  text-shadow: 0 0 16px var(--st-glow); }
-.st-station-fac { margin-left: 14px; color: var(--st-accent); font-size: var(--t-xs);
-  letter-spacing: .14em; text-transform: uppercase; padding: 2px 10px; border-radius: var(--r-pill);
-  border: 1px solid rgba(57,208,255,.3); background: rgba(57,208,255,.08); }
-.st-undock { border-color: var(--st-accent); color: var(--st-accent); letter-spacing: .08em; font-weight: 600; }
-.st-undock[data-readiness="ready"] { border-color: var(--good); color: var(--good); }
-.st-undock[data-readiness="check"] { border-color: var(--warn); color: var(--warn); }
-.st-undock[data-readiness="risk"] { border-color: var(--danger); color: var(--danger); }
-/* airlock graffiti strip */
-.st-airlock { display:flex; align-items:stretch; gap:0; border-bottom:1px solid var(--panel-edge);
-  background:linear-gradient(180deg, rgba(6,10,18,.6), rgba(4,7,14,.4)); min-height:0; }
-.st-airlock__label { writing-mode:vertical-rl; transform:rotate(180deg); padding:6px 4px; font-size:8px;
-  letter-spacing:.2em; color:var(--ink-mute); border-right:1px solid var(--panel-edge); align-self:stretch; }
-.st-airlock__graffiti { flex:1; padding:7px 12px; display:flex; flex-direction:column; gap:3px;
-  overflow:hidden; }
-.st-airlock__line { --graffiti-skew:0deg; font-family:var(--mono); font-size:11px; letter-spacing:.14em;
-  color:#9aa6b8; text-transform:uppercase; opacity:.82; transform:rotate(var(--graffiti-skew));
-  text-shadow:0 1px 2px #000; line-height:1.3; }
-.st-airlock__empty { font-size:10px; color:var(--ink-mute); font-style:italic; opacity:.5; }
-
-/* Keep .st-purpose styled cleanly inside the inspector, hiding native borders */
-.st-purpose {
-  display: flex; flex-direction: column; gap: 4px; padding: 12px;
-  background: rgba(8,14,26,.4); border-top: 1px solid var(--panel-edge);
+/* ── 5 · First-dock handoff: one dismissible line, not furniture ──────────────────────────────── */
+.st-handoff {
+  display: flex; align-items: center; gap: 14px; padding: 7px 22px;
+  border-bottom: 1px solid var(--os-line);
+  background: color-mix(in srgb, var(--st-accent) 4%, transparent);
 }
-.st-purpose-main { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-.st-purpose-type { color: var(--st-accent); font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; flex: none; }
-.st-purpose-copy { color: var(--ink); font-size: .78rem; line-height: 1.35; }
-.st-purpose-sub { display: flex; flex-direction: column; gap: 4px; color: var(--ink-mute); font-size: .72rem; line-height: 1.35; margin-top: 4px; }
-.st-purpose-tab { color: var(--ink-dim); }
+.st-handoff[hidden] { display: none; }
+.st-handoff-label { flex: none; color: var(--st-accent); font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; }
+.st-handoff-steps { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+.st-handoff-step {
+  display: inline-flex; align-items: baseline; gap: 8px; padding: 4px 12px;
+  border: 1px solid var(--os-line); border-radius: 999px; background: var(--os-surface);
+  color: var(--os-ink-dim); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+}
+button.st-handoff-step:hover { background: rgba(255,255,255,0.05); color: var(--os-ink); }
+button.st-handoff-step:focus-visible { outline: 2px solid var(--st-accent); outline-offset: 2px; }
+.st-handoff-step-label { display: none; }
+.st-handoff-step-title { font-weight: 600; color: inherit; font-size: 12.5px; }
+.st-handoff-step-copy { display: none; }
+.st-handoff-step--ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 32%, transparent); }
+.st-handoff-step--warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+.st-handoff-step--bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 32%, transparent); }
+.st-handoff-step.is-done { opacity: .68; }
+.st-handoff-step.is-done .st-handoff-step-title::before { content: '✓ '; }
+.st-handoff-dismiss {
+  flex: none; margin-left: auto; padding: 4px 12px; border-radius: 999px;
+  background: transparent; border: 1px solid var(--os-line); color: var(--os-ink-mute); font-size: 12px;
+}
+.st-handoff-dismiss:hover { color: var(--os-ink); border-color: var(--os-line-strong); }
 
-.st-handoff { display: grid; gap: 6px; padding: 8px 16px; border-bottom: 1px solid rgba(57,208,255,.18); flex: none; }
-.st-handoff-head { display: flex; flex-direction: column; gap: 1px; }
-.st-handoff-label { color: var(--st-accent); font-size: .58rem; letter-spacing: .16em; text-transform: uppercase; }
-.st-handoff-copy { color: var(--ink-dim); font-size: .7rem; line-height: 1.3; }
-.st-handoff-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 6px; }
-.st-handoff-step { display: grid; grid-template-areas: "label" "title" "copy"; gap: 1px; align-content: start;
-  text-align: left; padding: 6px 9px; border: 1px solid var(--panel-edge); border-radius: 4px;
-  background: rgba(10,18,32,.42); color: var(--ink-dim); font: inherit; cursor: pointer; }
-button.st-handoff-step:hover { background: rgba(57,208,255,.09); color: var(--ink); }
-button.st-handoff-step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.st-handoff-step-label { grid-area: label; align-self: center; color: var(--ink-mute); font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; }
-.st-handoff-step-title { grid-area: title; min-width: 0; color: var(--ink); font-size: .78rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.st-handoff-step-copy { grid-area: copy; color: var(--ink-dim); font-size: .7rem; line-height: 1.3; }
-.st-handoff-step--ok { border-color: rgba(98,224,138,.34); }
-.st-handoff-step--ok .st-handoff-step-label { color: var(--good); }
-.st-handoff-step--warn { border-color: rgba(255,198,77,.34); }
-.st-handoff-step--warn .st-handoff-step-label { color: var(--warn); }
-.st-handoff-step--bad { border-color: rgba(255,84,112,.38); }
-.st-handoff-step--bad .st-handoff-step-label { color: var(--danger); }
-.st-handoff-step.is-done { background: rgba(98,224,138,.06); }
-.st-undock:hover { background: var(--grad-accent); color: #04121a; box-shadow: 0 0 16px rgba(57,208,255,.4); }
-.st-undock[data-readiness="ready"]:hover { background: var(--good); color: #021008; box-shadow: 0 0 16px rgba(98,224,138,.34); }
-.st-undock[data-readiness="check"]:hover { background: var(--warn); color: #1a1000; box-shadow: 0 0 16px rgba(255,198,77,.28); }
-.st-undock[data-readiness="risk"]:hover { background: var(--danger); color: #21040a; box-shadow: 0 0 16px rgba(255,84,112,.3); }
-.st-departure { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 7px 20px;
-  border-bottom: 1px solid var(--panel-edge); background: rgba(4,9,18,.58); }
-.st-departure-label { flex: none; color: var(--ink-mute); font-size: .62rem; text-transform: uppercase; }
-.st-departure-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
-.st-departure-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; max-width: 230px;
-  padding: 2px 8px; border: 1px solid var(--panel-edge); border-radius: 4px; background: rgba(10,18,32,.46);
-  color: var(--ink-dim); font: inherit; font-size: .72rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-button.st-departure-chip { margin: 0; appearance: none; cursor: pointer; text-align: left; }
-button.st-departure-chip:hover { background: rgba(57,208,255,.08); color: var(--ink); }
-button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.st-departure-chip b { color: var(--ink-mute); font-weight: 600; text-transform: uppercase; }
-.st-departure-chip span { overflow: hidden; text-overflow: ellipsis; }
-.st-departure-chip--ok { color: var(--good); border-color: rgba(98,224,138,.34); }
-.st-departure-chip--warn { color: var(--warn); border-color: rgba(255,198,77,.34); }
-.st-departure-chip--bad { color: var(--danger); border-color: rgba(255,84,112,.34); }
-.st-departure-chip--info { color: var(--accent); border-color: rgba(57,208,255,.28); }
-.st-body { display: flex; flex: 1; min-height: 0; }
-.st-rail { width: 176px; flex: none; display: flex; flex-direction: column; gap: 3px; padding: var(--sp-3) var(--sp-2);
-  border-right: 1px solid var(--panel-edge); background: rgba(6,10,20,.55); }
-.st-tab { display: flex; align-items: center; gap: 10px; text-align: left; background: transparent;
-  border: 1px solid transparent; border-radius: var(--r-md); padding: 9px 12px; color: var(--ink-dim);
-  transition: all var(--dur) var(--ease); }
-.st-tab:hover { color: var(--ink); background: rgba(57,208,255,.06); }
-.st-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; color: var(--ink);
-  background: rgba(57,208,255,.08); }
-.st-tab.active { color: #fff; background: linear-gradient(90deg, rgba(57,208,255,.18), rgba(57,208,255,.04));
-  border-color: rgba(57,208,255,.35); box-shadow: inset 3px 0 0 var(--accent), 0 0 12px rgba(57,208,255,.12); }
-.st-tab-icon { width: 18px; height: 18px; opacity: .85; }
-.st-tab-label { letter-spacing: .04em; font-size: .92rem; text-transform: uppercase; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.st-tab-service { margin-left: auto; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: .5rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); opacity: .78; }
+/* ── 6 · Body: nav rail | workspace | briefing drawer ─────────────────────────────────────────── */
+.st-body { display: flex; min-height: 0; min-width: 0; }
+.st-rail {
+  width: 208px; flex: none; display: flex; flex-direction: column; gap: 2px;
+  padding: 12px 10px; border-right: 1px solid var(--os-line);
+  background: linear-gradient(180deg, rgba(255,255,255,0.014), transparent);
+  overflow-y: auto;
+}
+.st-tab {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr); grid-template-rows: auto auto;
+  column-gap: 11px; align-items: center; text-align: left;
+  background: transparent; border: 1px solid transparent; border-radius: var(--os-r-sm);
+  padding: 8px 11px; color: var(--os-ink-dim);
+  transition: background .15s var(--ease), color .15s var(--ease), border-color .15s var(--ease);
+}
+.st-tab:hover { color: var(--os-ink); background: rgba(255,255,255,0.045); }
+.st-tab:focus-visible { outline: 2px solid var(--st-accent); outline-offset: 2px; color: var(--os-ink); }
+.st-tab.active {
+  color: #fff; border-color: var(--os-line);
+  background: linear-gradient(90deg, var(--st-accent-soft), rgba(255,255,255,0.02));
+  box-shadow: inset 2px 0 0 var(--st-accent);
+}
+.st-tab-icon { grid-row: 1 / span 2; width: 20px; height: 20px; opacity: .85; color: var(--os-ink-mute); display: inline-flex; align-items: center; justify-content: center; }
+.st-tab-icon svg { width: 18px; height: 18px; }
+.st-tab.active .st-tab-icon { color: var(--st-accent); opacity: 1; }
+.st-tab-label {
+  grid-column: 2; font-family: var(--font-display); font-size: 13.5px; font-weight: 600;
+  letter-spacing: .01em; color: inherit; white-space: nowrap;
+}
+.st-tab-service {
+  grid-column: 2; font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--os-ink-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
 .st-tab-service[hidden] { display: none; }
-.st-tab[data-service-status="available"] .st-tab-service { color: var(--accent-2); }
-.st-tab[data-service-status="unavailable"] { opacity: .72; }
+.st-tab[data-service-status="available"] .st-tab-service { color: color-mix(in srgb, var(--accent-2) 80%, var(--os-ink-mute)); }
+.st-tab[data-service-status="unavailable"] { opacity: .62; }
 .st-tab[data-service-status="unavailable"] .st-tab-service { color: var(--warn); }
-.st-tab[data-service-status="unavailable"].active { opacity: 1; border-color: rgba(255,198,77,.35);
-  box-shadow: inset 3px 0 0 var(--warn), 0 0 12px rgba(255,198,77,.10); }
-/* ===== Docked service console: center stage · Service Dock · inspector · effect layers ========== */
-.st-workspace-wrapper { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; }
-.st-center-stage { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden; position: relative; }
-.st-content { position: relative; flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
-.st-faction-stripe { height: 3px; flex: none; opacity: .85; }
-.st-hub--engineering .st-console-deck,
-.st-hub--engineering .st-status-row,
-.st-hub--engineering .st-handoff,
-.st-hub--engineering .st-departure {
-  display: none;
+.st-tab[data-service-status="unavailable"].active { opacity: 1; box-shadow: inset 2px 0 0 var(--warn); }
+
+/* Workspace: the tools own this. Faint static chart-grid texture; zero motion at rest. */
+.st-content {
+  position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden;
+  background:
+    linear-gradient(color-mix(in srgb, var(--os-ink-mute) 4%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--os-ink-mute) 4%, transparent) 1px, transparent 1px);
+  background-size: 34px 34px;
 }
+.st-content::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 3px; top: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--st-accent) 55%, transparent), transparent);
+  opacity: 0; pointer-events: none; z-index: 10;
+}
+.st-content.switching::after { animation: channel-wipe-trace 130ms ease-out forwards; }
+@keyframes channel-wipe-trace { 0% { top: 0; opacity: .8; } 100% { top: 100%; opacity: 0; } }
+.st-tabpanel { position: absolute; inset: 0; overflow-y: auto; padding: 20px 26px 26px; animation: sf-fadein .18s var(--ease) both; }
 
-/* Console deck: station schematic (with scanner-grid backdrop) above the Service Dock berth strip.
-   Column layout so the dock is always a horizontal berth strip that uses the full stage width. */
-.st-console-deck { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 10px 16px; flex: none; border-bottom: 1px solid var(--panel-edge);
-  background: radial-gradient(120% 100% at 50% 0%, rgba(57,208,255,.07), transparent 60%); }
-.st-schematic-pane { position: relative; width: 100%; height: 100px; display: flex; align-items: center; justify-content: center; }
-.st-fx-scan { position: absolute; inset: 0; overflow: hidden; opacity: .45; pointer-events: none; z-index: 0; }
-.st-fx-scan canvas { width: 100%; height: 100%; display: block; }
-.st-schematic-art { position: relative; z-index: 1; filter: drop-shadow(0 0 9px var(--st-glow)); }
-.st-schematic-art svg { display: block; width: 92px; height: 92px; }
-.st-service-nodes-pane { position: relative; z-index: 1; width: 100%; }
-.st-fx-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-
-/* Service Dock — the dockRail effect provides base styling; these are hub-scoped accents. */
-.st-hub .sf-fx-dock { flex-wrap: nowrap; gap: 6px; align-items: stretch; justify-content: center;
-  max-width: 100%; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
-.st-hub .sf-fx-dock__item { min-width: 58px; padding: 6px 7px; background: rgba(10,18,32,.55);
-  border-color: color-mix(in srgb, var(--st-accent) 34%, transparent); }
-.st-hub .sf-fx-dock__item:focus-visible { outline-color: var(--st-accent); }
-.st-hub .sf-fx-dock__item.is-focus { border-color: var(--st-accent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--st-accent) 26%, transparent); }
-.st-hub .sf-fx-dock__icon { color: var(--st-accent); font-size: 1.05em; }
-.st-hub .sf-fx-dock__label { font-size: .62rem; letter-spacing: .04em; }
-.st-hub .sf-fx-dock__badge { font-size: .58rem; }
-
-/* Status row: economy/state readout (morphs on change) + departure system light. */
-.st-status-row { display: flex; align-items: center; gap: 12px; padding: 6px 18px; flex: none;
-  border-bottom: 1px solid var(--panel-edge); font-size: .66rem; }
-.st-econ-badge { flex: 1; min-width: 0; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-dim);
-  overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.st-econ-badge.active { color: var(--warn); }
-.st-econ-badge.nominal { color: var(--good); }
-.st-readiness-summary { flex: none; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); }
-.st-readiness--risk { color: var(--danger); }
-.st-readiness--check { color: var(--warn); }
-.st-readiness--ready { color: var(--good); }
-
-/* .st-content occupies the remaining center-stage flex space below the station console/status strips;
-   the absolute tabpanels inside it fill that scoped area instead of covering the station chrome. */
-
-/* Right inspector column (diagnostics for the selected service / section). */
-.st-inspector { position: relative; z-index: 1; flex: none; width: 244px; display: flex; flex-direction: column;
-  min-height: 0; border-left: 1px solid var(--panel-edge); background: rgba(6,11,22,.5); }
-.st-inspector-header { flex: none; padding: 9px 14px; border-bottom: 1px solid var(--panel-edge);
-  color: var(--st-accent); font-size: .6rem; letter-spacing: .18em; text-transform: uppercase; }
-.st-inspector-content { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px;
-  display: flex; flex-direction: column; gap: 14px; }
-.st-inspector-empty { color: var(--ink-mute); font-style: italic; padding: 10px 2px; }
-.st-ins-section { display: flex; flex-direction: column; gap: 5px; }
-.st-ins-title { font-size: .56rem; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-mute); }
+/* Briefing drawer: Meta, opt-in, collapsed by default. Fixed inner width so text never squishes. */
+.st-inspector {
+  flex: none; width: 324px; min-height: 0; overflow: hidden;
+  border-left: 1px solid var(--os-line); background: rgba(10, 15, 26, 0.55);
+  transition: width .22s var(--ease);
+}
+.st-inspector.is-collapsed { width: 0; border-left-color: transparent; }
+.st-inspector-inner { width: 324px; height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.st-inspector-header {
+  flex: none; padding: 13px 20px; border-bottom: 1px solid var(--os-line);
+  color: var(--st-accent); font-size: 10px; letter-spacing: .18em; text-transform: uppercase;
+}
+.st-inspector-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 18px; }
+.st-inspector-empty { color: var(--os-ink-mute); font-style: italic; padding: 10px 2px; }
+.st-ins-section { display: flex; flex-direction: column; gap: 6px; padding-bottom: 16px; border-bottom: 1px solid var(--os-line); }
+.st-ins-section:last-child { border-bottom: none; padding-bottom: 0; }
+.st-ins-section--id { align-items: flex-start; }
+.st-ins-schematic { align-self: center; opacity: .85; filter: drop-shadow(0 0 8px var(--st-accent-soft)); }
+.st-ins-schematic svg { width: 84px; height: 84px; display: block; }
+.st-ins-title { font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--os-ink-mute); }
 .st-ins-tab-header { display: flex; align-items: center; gap: 8px; }
-.st-ins-tab-icon { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; color: var(--st-accent); }
-.st-ins-tab-icon svg { width: 16px; height: 16px; }
-.st-ins-tab-name { font-family: var(--font-display, var(--mono)); font-size: .9rem; letter-spacing: .05em; color: var(--ink); }
-.st-ins-desc { font-size: .74rem; line-height: 1.42; color: var(--ink-dim); }
-.st-ins-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: .76rem; color: var(--ink-dim); }
-.st-ins-row-val { color: var(--ink); font-weight: 600; text-align: right; }
-.st-ins-status--available { color: var(--good); }
-.st-ins-status--unavailable { color: var(--danger); }
-.st-ins-status--unknown, .st-ins-status--neutral { color: var(--warn); }
-.st-ins-row-detail { font-size: .72rem; line-height: 1.4; color: var(--ink-mute); }
-.st-ins-hint { font-size: .72rem; line-height: 1.35; color: var(--warn); }
-.st-ins-risk-desc { font-size: .72rem; line-height: 1.4; color: var(--ink-dim); }
+.st-ins-tab-name { font-family: var(--font-display); font-size: 16px; font-weight: 650; color: var(--os-ink); }
+.st-ins-desc { font-size: 12.5px; line-height: 1.5; color: var(--os-ink-dim); }
+.st-ins-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--os-ink-dim); }
+.st-ins-row-val { color: var(--os-ink); font-weight: 600; text-align: right; }
+.st-ins-row-detail { font-size: 12.5px; line-height: 1.5; color: var(--os-ink-mute); }
+.st-ins-row-detail--plan { color: var(--os-ink-dim); font-style: italic; }
+.st-ins-risk-desc { font-size: 12.5px; line-height: 1.5; color: var(--os-ink-dim); }
+.st-ins-hint { font-size: 12.5px; line-height: 1.45; color: var(--warn); }
+/* Airlock wall — story graffiti archive inside the briefing. */
+.st-airlock { flex: none; border-top: 1px solid var(--os-line); padding: 12px 20px 6px; }
+.st-airlock__label { font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--os-ink-mute); margin-bottom: 6px; }
+.st-airlock__graffiti { display: flex; flex-direction: column; gap: 4px; max-height: 110px; overflow-y: auto; }
+.st-airlock__line { --graffiti-skew: 0deg; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: #9aa6b8; text-transform: uppercase; opacity: .82; transform: rotate(var(--graffiti-skew)); text-shadow: 0 1px 2px #000; line-height: 1.35; }
+.st-airlock__empty { font-size: 10.5px; color: var(--os-ink-mute); font-style: italic; opacity: .6; }
+.st-purpose { flex: none; display: flex; flex-direction: column; gap: 4px; padding: 12px 20px 16px; border-top: 1px solid var(--os-line); background: rgba(255,255,255,0.012); }
+.st-purpose-main { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.st-purpose-type { color: var(--st-accent); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; flex: none; }
+.st-purpose-copy { color: var(--os-ink-dim); font-size: 12.5px; line-height: 1.45; }
+.st-purpose-sub { display: flex; flex-direction: column; gap: 4px; color: var(--os-ink-mute); font-size: 12px; line-height: 1.45; margin-top: 2px; }
 
-/* Route-beam overlay spans the whole workspace so a node can beam toward the inspector. */
-.st-fx-beamlayer { position: absolute; inset: 0; pointer-events: none; z-index: 3; overflow: visible; }
-.st-fx-beamlayer > svg { position: absolute; left: 0; top: 0; overflow: visible; }
+/* ── 7 · Footer: Departure Check rail + clearance hairline + station status ───────────────────── */
+.st-footer {
+  position: relative; display: flex; align-items: center; gap: 18px; padding: 0 22px; height: 42px;
+  border-top: 1px solid var(--os-line-strong); background: rgba(8, 12, 20, 0.7);
+}
+.st-footer::before {
+  content: ''; position: absolute; left: 0; top: -1px; height: 2px;
+  width: calc(var(--st-clearance, 0) * 100%);
+  background: var(--good); opacity: .8; transition: width .25s var(--ease);
+}
+.st-footer[data-readiness="risk"]::before { background: var(--danger); }
+.st-footer[data-readiness="check"]::before { background: var(--warn); }
+.st-departure { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1 1 auto; }
+.st-departure-label { flex: none; color: var(--os-ink-mute); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; }
+.st-departure-chips { display: flex; flex-wrap: nowrap; gap: 6px; min-width: 0; overflow: hidden; }
+.st-departure-chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 24px; max-width: 320px;
+  padding: 2px 11px; border: 1px solid var(--os-line); border-radius: 999px;
+  background: var(--os-surface); color: var(--os-ink-dim); font: inherit; font-size: 12px;
+  line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+button.st-departure-chip { margin: 0; appearance: none; cursor: pointer; text-align: left; }
+button.st-departure-chip:hover { background: rgba(255,255,255,0.05); color: var(--os-ink); }
+button.st-departure-chip:focus-visible { outline: 2px solid var(--st-accent); outline-offset: 2px; }
+.st-departure-chip b { color: var(--os-ink-mute); font-weight: 600; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+.st-departure-chip span { overflow: hidden; text-overflow: ellipsis; }
+.st-departure-chip--ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 30%, transparent); }
+.st-departure-chip--warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+.st-departure-chip--bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 32%, transparent); }
+.st-departure-chip--info { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 26%, transparent); }
+.st-econ-badge { flex: none; font-size: 11px; letter-spacing: .07em; color: var(--os-ink-mute); }
+.st-econ-badge.active { color: var(--warn); }
+.st-econ-badge.nominal { color: var(--os-ink-mute); }
 
-.st-tabpanel { position: absolute; inset: 0; overflow-y: auto; padding: var(--sp-4) var(--sp-5);
-  animation: sf-fadein .22s var(--ease) both; }
-.st-sub-h { font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-mute);
-  margin: 2px 0 10px; }
-.st-empty { color: var(--ink-mute); font-size: .85rem; padding: 18px 4px; font-style: italic; }
-.st-tag { font-size: .6rem; letter-spacing: .08em; text-transform: uppercase; padding: 1px 5px; border-radius: 4px;
-  background: var(--panel-2); color: var(--ink-dim); vertical-align: middle; }
-.st-tag-restricted { color: var(--warn); border: 1px solid var(--warn); }
-.st-tag-contraband { color: var(--danger); border: 1px solid var(--danger); }
-.st-tag-owned, .st-tag-active { color: var(--accent-2); border: 1px solid var(--accent-2); }
-
-/* generic rows */
-.st-row { display: grid; grid-template-columns: 2.4fr .8fr 1fr 1fr 2.2fr 1.6fr; align-items: center;
-  gap: 8px; padding: 7px 8px; border-bottom: 1px solid rgba(29,51,80,.5); font-size: .85rem; }
-.st-row-head { color: var(--ink-mute); font-size: .68rem; letter-spacing: .12em; text-transform: uppercase;
-  border-bottom: 1px solid var(--panel-edge); position: sticky; top: -14px; background: var(--panel); z-index: 1; }
-.st-row .c-num { text-align: right; }
+/* ── 8 · Shared grammar: headers, rows, tags, buttons ─────────────────────────────────────────── */
+.st-sub-h { font-family: var(--mono); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--os-ink-mute); margin: 2px 0 10px; }
+.st-empty { color: var(--os-ink-mute); font-size: 13.5px; padding: 18px 4px; font-style: italic; }
+.st-tag { font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; background: var(--os-surface); color: var(--os-ink-dim); vertical-align: middle; border: 1px solid var(--os-line); }
+.st-tag-restricted { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.st-tag-contraband { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.st-tag-owned, .st-tag-active { color: var(--accent-2); border-color: color-mix(in srgb, var(--accent-2) 45%, transparent); }
+/* The global ui.css button rule shouts ALL-CAPS; the ledger speaks sentence case. The only
+   deliberate all-caps control left is UNDOCK — one piece of hardware gets to shout. */
+.st-hub button { border-radius: var(--os-r-xs); text-transform: none; letter-spacing: normal; }
+.st-hub button:active:not(:disabled) { transform: scale(0.97); transition: transform 50ms ease; }
+.c-name, .st-sy-name, .st-svc-name, .st-inv-name, .st-mission-title, .st-bar-name { font-family: var(--font-body); font-size: 14.5px; font-weight: 600; color: var(--os-ink); }
+.st-row { display: grid; grid-template-columns: 2.4fr .8fr 1fr 1fr 2.2fr 1.6fr; align-items: center; gap: 8px; padding: 7px 8px; border-bottom: 1px solid color-mix(in srgb, var(--os-ink-mute) 12%, transparent); font-size: 13px; }
+.st-row-head { color: var(--os-ink-mute); font-family: var(--mono); font-size: 10px; letter-spacing: .13em; text-transform: uppercase; border-bottom: 1px solid var(--os-line-strong); position: sticky; top: -20px; background: var(--os-bg); z-index: 1; }
+.st-row .c-num { text-align: right; font-variant-numeric: tabular-nums; }
 .st-row.locked { opacity: .55; }
 .st-list { display: block; }
-.st-slotline { color: var(--ink-mute); font-size: .68rem; letter-spacing: .04em; }
-
-/* market */
-.st-market-head { display: flex; gap: 24px; margin-bottom: 10px; }
-.st-stat { display: flex; flex-direction: column; }
-.st-stat-l { font-size: .62rem; letter-spacing: .14em; color: var(--ink-mute); text-transform: uppercase; }
-.st-credits { color: var(--energy); font-size: 1.05rem; }
-.st-cargo { color: var(--cargo); font-size: 1.05rem; }
-.st-market-purpose { margin: -2px 0 10px; border: 1px solid var(--panel-edge); border-radius: 6px;
-  padding: 9px 11px; background: rgba(10,18,32,.5); color: var(--ink-dim); font-size: .8rem; line-height: 1.4; }
-.st-market-purpose b { color: var(--ink); font-weight: 600; }
-.st-market-mission { margin: -2px 0 10px; border: 1px solid rgba(57,208,255,.46); border-radius: 6px;
-  padding: 9px 11px; background: rgba(15,37,54,.38); box-shadow: 0 0 12px rgba(57,208,255,.12); }
-.st-market-mission[hidden] { display: none; }
-.st-market-mission-label { color: var(--accent); font-size: .6rem; letter-spacing: .14em; margin-bottom: 4px; }
-.st-market-mission-title { color: var(--ink); font-weight: 700; font-size: .88rem; line-height: 1.3; }
-.st-market-mission-body { color: var(--ink-dim); font-size: .78rem; line-height: 1.35; margin-top: 4px; }
-.st-market-mission-meta { color: var(--energy); font-size: .66rem; margin-top: 5px; }
-.st-cmdty-purpose { display: block; margin-top: 3px; white-space: normal; line-height: 1.25; }
-.st-market-mission-line { display: block; margin-top: 3px; color: var(--accent); white-space: normal; line-height: 1.25; }
-.st-market-mission-line[hidden] { display: none; }
-.st-row.tracked-mission { border-color: rgba(57,208,255,.45); background: rgba(57,208,255,.045); }
-.st-market-route { margin: -2px 0 10px; border: 1px solid rgba(98,224,138,.42); border-radius: 6px;
-  padding: 9px 11px; background: rgba(18,48,34,.34); box-shadow: 0 0 12px rgba(98,224,138,.10); }
-.st-market-route[hidden] { display: none; }
-.st-market-route-label { color: var(--good); font-size: .6rem; letter-spacing: .14em; margin-bottom: 4px; }
-.st-market-route-title { color: var(--ink); font-weight: 700; font-size: .88rem; line-height: 1.3; }
-.st-market-route-body { color: var(--ink-dim); font-size: .78rem; line-height: 1.35; margin-top: 4px; }
-.st-market-route-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 7px; }
-.st-market-route-meta { color: var(--good); font-size: .66rem; }
-.st-market-route button { padding: 4px 9px; font-size: .72rem; border-radius: 5px; cursor: pointer;
-  border-color: var(--good); color: var(--good); background: rgba(98,224,138,.08); white-space: nowrap; }
-.st-market-route button:hover:not(:disabled) { background: rgba(98,224,138,.15); }
-.st-row .c-qty { display: flex; align-items: center; gap: 3px; justify-content: flex-end; }
-.st-row .c-qty button { padding: 2px 7px; font-size: .72rem; }
-.st-row .c-qty button.on { border-color: var(--accent); color: var(--accent); }
-.st-qty-val { min-width: 34px; text-align: right; color: var(--accent); }
-.st-row .c-act { display: flex; gap: 5px; justify-content: flex-end; }
-.st-buy-btn { border-color: var(--good); color: var(--good); }
+.st-slotline { color: var(--os-ink-mute); font-size: 11px; letter-spacing: .04em; }
+/* Verb buttons: filled tints — unmistakably buttons. */
+.st-buy-btn { border-color: color-mix(in srgb, var(--good) 50%, transparent); color: var(--good); background: color-mix(in srgb, var(--good) 10%, transparent); }
 .st-buy-btn:hover:not(:disabled) { background: var(--good); color: #021008; }
-.st-sell-btn { border-color: var(--warn); color: var(--warn); }
+.st-sell-btn { border-color: color-mix(in srgb, var(--warn) 50%, transparent); color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
 .st-sell-btn:hover:not(:disabled) { background: var(--warn); color: #1a1000; }
-.st-market-foot { margin-top: 10px; color: var(--ink-dim); font-size: .8rem; }
-/* market footer message (e.g. "Select a quantity, then Buy or Sell." / the live trade result) —
-   referenced in market.js but never defined, so it was inheriting unstyled. */
-.st-foot-msg { font-family: var(--mono); font-size: .76rem; letter-spacing: .04em; }
+.st-mission-accept { border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: var(--accent); background: color-mix(in srgb, var(--accent) 11%, transparent); font-weight: 600; }
+.st-mission-accept:hover:not(:disabled) { background: var(--accent); color: #04121a; }
+
+/* ── 9 · Market: trade floor (3-column) + analysis stage + chart modal ────────────────────────── */
+.st-market-head { display: flex; gap: 24px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
+.st-stat { display: flex; flex-direction: column; }
+.st-stat-l { font-size: 9.5px; letter-spacing: .14em; color: var(--os-ink-mute); text-transform: uppercase; }
+.st-credits { color: var(--energy); font-size: 15px; font-variant-numeric: tabular-nums; }
+.st-cargo { color: var(--cargo); font-size: 15px; font-variant-numeric: tabular-nums; }
+.st-market-purpose { flex: 1 1 260px; border: 1px solid var(--os-line); border-radius: var(--os-r-sm); padding: 7px 11px; background: var(--os-surface); color: var(--os-ink-dim); font-size: 12.5px; line-height: 1.45; }
+.st-market-purpose b { color: var(--os-ink); font-weight: 600; }
+.st-market-layout { display: grid; grid-template-columns: 148px minmax(0, 1fr) 268px; gap: 16px; align-items: start; }
+.st-market-category-rail { display: flex; flex-direction: column; gap: 3px; position: sticky; top: 0; }
+.st-market-cat-tab { display: flex; align-items: center; gap: 9px; padding: 6px 10px; border: 1px solid transparent; border-radius: var(--os-r-xs); background: transparent; color: var(--os-ink-dim); font-size: 12.5px; text-align: left; }
+.st-market-cat-tab:hover { background: rgba(255,255,255,0.045); color: var(--os-ink); }
+.st-market-cat-tab.active { border-color: var(--os-line); background: var(--st-accent-soft); color: var(--os-ink); box-shadow: inset 2px 0 0 var(--st-accent); }
+.st-cat-icon { flex: none; width: 18px; text-align: center; }
+.st-cat-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-market-center { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.st-market-search-sort-bar { display: flex; flex-direction: column-reverse; gap: 8px; }
+/* The sort header is a control strip, not a phantom table: compact inline sort keys. */
+.st-market-search-sort-bar .st-row-head { display: flex; align-items: center; gap: 4px; padding: 0 2px 2px;
+  border-bottom: none; position: static; background: transparent; }
+.st-market-search-sort-bar .st-row-head::before { content: 'Sort'; font-family: var(--mono); font-size: 9px;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--os-ink-mute); margin-right: 6px; }
+.st-market-search-sort-bar .st-row-head .c-qty, .st-market-search-sort-bar .st-row-head .c-act { display: none; }
+.st-market-search-sort-bar .st-row-head .sf-sort { font-size: 11px; padding: 2px 9px; border-radius: 999px;
+  border: 1px solid transparent; background: transparent; color: var(--os-ink-mute); }
+.st-market-search-sort-bar .st-row-head .sf-sort:hover { color: var(--os-ink); }
+.st-market-search-sort-bar .st-row-head .sf-sort.active { color: var(--os-ink); border-color: var(--os-line); background: rgba(255,255,255,0.04); }
+.st-trade-modes { display: inline-flex; gap: 0; border: 1px solid var(--os-line); border-radius: 999px; overflow: hidden; margin-left: auto; }
+.st-trade-modes button { border: 0; border-radius: 0; background: transparent; color: var(--os-ink-mute); font-size: 12px; padding: 4px 14px; }
+.st-trade-modes button + button { border-left: 1px solid var(--os-line); }
+.st-trade-modes button:hover { color: var(--os-ink); background: rgba(255,255,255,0.04); }
+.st-trade-modes button.active { color: var(--os-ink); background: var(--st-accent-soft); box-shadow: inset 0 -2px 0 var(--st-accent); }
+.st-market-sidebar { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 0; }
+.st-market-mission { margin: -2px 0 10px; border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: var(--os-r-sm); padding: 9px 11px; background: color-mix(in srgb, var(--accent) 7%, var(--os-surface)); }
+.st-market-mission[hidden] { display: none; }
+.st-market-mission-label { color: var(--accent); font-size: 9.5px; letter-spacing: .14em; margin-bottom: 4px; }
+.st-market-mission-title { color: var(--os-ink); font-weight: 700; font-size: 13.5px; line-height: 1.3; }
+.st-market-mission-body { color: var(--os-ink-dim); font-size: 12.5px; line-height: 1.4; margin-top: 4px; }
+.st-market-mission-meta { color: var(--energy); font-size: 11px; margin-top: 5px; }
+.st-cmdty-purpose { display: block; margin-top: 3px; white-space: normal; line-height: 1.3; color: var(--os-ink-mute); font-size: 12px; }
+.st-market-mission-line { display: block; margin-top: 3px; color: var(--accent); white-space: normal; line-height: 1.25; font-size: 12px; }
+.st-market-mission-line[hidden] { display: none; }
+.st-row.tracked-mission { border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.st-market-route { margin: -2px 0 10px; border: 1px solid color-mix(in srgb, var(--good) 38%, transparent); border-radius: var(--os-r-sm); padding: 9px 11px; background: color-mix(in srgb, var(--good) 6%, var(--os-surface)); }
+.st-market-route[hidden] { display: none; }
+.st-market-route-label { color: var(--good); font-size: 9.5px; letter-spacing: .14em; margin-bottom: 4px; }
+.st-market-route-title { color: var(--os-ink); font-weight: 700; font-size: 13.5px; line-height: 1.3; }
+.st-market-route-body { color: var(--os-ink-dim); font-size: 12.5px; line-height: 1.4; margin-top: 4px; }
+.st-market-route-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 7px; }
+.st-market-route-meta { color: var(--good); font-size: 11px; }
+.st-market-route button { padding: 4px 10px; font-size: 12px; border-color: color-mix(in srgb, var(--good) 50%, transparent); color: var(--good); background: color-mix(in srgb, var(--good) 9%, transparent); white-space: nowrap; }
+.st-market-route button:hover:not(:disabled) { background: color-mix(in srgb, var(--good) 20%, transparent); }
+.st-row .c-qty { display: flex; align-items: center; gap: 3px; justify-content: flex-end; }
+.st-row .c-qty button { padding: 2px 7px; font-size: 11.5px; }
+.st-row .c-qty button.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.st-qty-val { min-width: 34px; text-align: right; color: var(--accent); font-variant-numeric: tabular-nums; }
+.st-row .c-act { display: flex; gap: 5px; justify-content: flex-end; }
+.st-market-foot { margin-top: 10px; color: var(--os-ink-dim); font-size: 12.5px; }
+.st-foot-msg { font-family: var(--mono); font-size: 12px; letter-spacing: .03em; }
 .st-foot-msg.st-foot-msg--ok { color: var(--good); }
 .st-foot-msg.st-foot-msg--bad { color: var(--danger); }
-
-/* Phase 7: Manufacturing panel */
-.st-manufacture { display: flex; flex-direction: column; gap: 6px; }
-.st-manuf-intro { color: var(--ink-dim); font-size: .82rem; margin-bottom: 8px; line-height: 1.4; }
-.st-manuf-group-h { font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .16em;
-  text-transform: uppercase; color: var(--accent); margin: 14px 0 6px;
-  display: flex; align-items: center; gap: 10px; }
-.st-manuf-group-h::after { content:''; flex:1; height:1px; background:linear-gradient(90deg, var(--panel-edge), transparent); }
-.st-manuf-list { display: flex; flex-direction: column; gap: 8px; }
-.st-manuf-card { padding: 12px 14px; }
-.st-manuf-card.st-manuf-locked { opacity: .5; filter: saturate(.3); }
-.st-manuf-card-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.st-manuf-title { font-size: var(--t-md); font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px; }
-.st-manuf-desc { color: var(--ink-dim); font-size: .78rem; margin: 4px 0 2px; line-height: 1.35; }
-.st-manuf-augnote { color: var(--warn); font-size: .72rem; margin-top: 2px; }
-.st-manuf-out { color: var(--good); font-size: .8rem; margin: 4px 0; font-weight: 600; }
-.st-manuf-mats { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
-.st-mat-chip { font-size: .7rem; padding: 2px 7px; border-radius: var(--r-pill); font-family: var(--mono);
-  background: rgba(98,224,138,.12); color: var(--good); border: 1px solid rgba(98,224,138,.25); }
-.st-mat-chip.st-mat-missing { background: rgba(255,84,112,.12); color: var(--danger); border-color: rgba(255,84,112,.25); }
-
-/* Phase 4: trade route planner + price heat */
-.st-market-planner { margin-bottom: 12px; border: 1px solid var(--panel-edge); border-radius: 8px;
-  padding: 10px 12px; background: linear-gradient(180deg, rgba(57,208,255,.06), rgba(10,18,32,.4)); }
-.st-planner-hint { color: var(--ink-mute); font-weight: 400; font-size: .7rem; letter-spacing: .02em; text-transform: none; }
-.st-planner-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
-.st-planner-empty { color: var(--ink-dim); font-size: .82rem; font-style: italic; padding: 4px 0; }
-.st-planner-row { display: grid; grid-template-columns: 1.25fr 1.8fr 1.25fr 1.35fr 1.15fr auto auto; align-items: center; gap: 8px;
-  padding: 6px 9px; background: rgba(10,18,32,.5); border: 1px solid var(--panel-edge); border-radius: 6px; font-size: .82rem; }
-.st-pl-cmdty { color: var(--ink); font-weight: 600; }
-.st-pl-prices { color: var(--ink-dim); font-size: .78rem; }
-.st-pl-margin { font-weight: 600; }
-.st-pl-up { color: var(--good); }
-.st-pl-run { font-family: var(--mono); font-size: .76rem; }
-.st-pl-run--ok { color: var(--energy); }
-.st-pl-run--blocked { color: var(--ink-mute); font-style: italic; }
-.st-pl-dest { color: var(--ink-mute); font-size: .78rem; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.st-pl-intel { color: var(--accent-2); font-size: .62rem; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
-.st-pl-nav, .st-pl-load { padding: 4px 9px; font-size: .72rem; border-radius: 5px; cursor: pointer; white-space: nowrap; }
-.st-pl-load { border-color: var(--good); color: var(--good); background: rgba(98,224,138,.08); }
-.st-pl-load:hover { background: rgba(98,224,138,.15); }
-.st-pl-nav { border-color: var(--accent); color: var(--accent); }
-.st-pl-nav:hover { background: rgba(57,208,255,.14); }
-.st-heat-up { color: var(--danger); }     /* dear = sell opportunity (red = you can sell high) */
-.st-heat-down { color: var(--good); }     /* cheap = buy opportunity (green = buy low) */
-.st-heat-flat { color: var(--ink-dim); }
-/* UX-4: inline price-trend sparkline next to each commodity name. Small + muted so it reads as a
-   secondary cue (the ▲/▼ heat is the primary); trend-colored by sparkline.js (warm up / cool down). */
-.st-spark { display:inline-block; width:56px; height:14px; vertical-align:middle; margin-left:8px;
-  opacity:.85; }
-
-/* ── Market rebuild: trade-intelligence scope ── */
-/* Dense commodity row readouts: a stock-pressure mini-gauge + sparkline + supply/demand glyph read as
-   one scope strip. Palette tokens only; no glow/pulse at rest (motion = state change only). */
-.st-card-spark-wrap { display: flex; align-items: center; gap: 10px; padding: 2px 0; }
+/* commodity cards */
+.st-card-spark-wrap { display: flex; align-items: center; gap: 10px; padding: 2px 0; border: 1px solid transparent; border-radius: 4px; }
 .st-row-gauge { flex: 0 0 auto; }
-.st-row-gauge__track { stroke: color-mix(in srgb, var(--ink-mute) 30%, transparent); }
-.st-spark { margin-left: 0; flex: 1 1 auto; width: 120px; height: 26px; }
-.st-row-role { flex: 0 0 auto; display: inline-flex; flex-direction: column; align-items: center;
-  line-height: 1; gap: 2px; min-width: 46px; }
-.st-row-role-glyph { font-size: .92rem; }
-.st-row-role-lbl { font-family: var(--mono); font-size: .54rem; letter-spacing: .12em; color: var(--ink-mute); }
+.st-row-gauge__track { stroke: color-mix(in srgb, var(--os-ink-mute) 30%, transparent); }
+.st-spark { margin-left: 0; flex: 1 1 auto; width: 120px; height: 26px; opacity: .85; }
+.st-row-role { flex: 0 0 auto; display: inline-flex; flex-direction: column; align-items: center; line-height: 1; gap: 2px; min-width: 46px; }
+.st-row-role-glyph { font-size: 13px; }
+.st-row-role-lbl { font-family: var(--mono); font-size: 8.5px; letter-spacing: .12em; color: var(--os-ink-mute); }
 .st-role--produce .st-row-role-glyph { color: var(--good); }
 .st-role--consume .st-row-role-glyph { color: var(--warn); }
-.st-role--none .st-row-role-glyph { color: var(--ink-mute); }
+.st-role--none .st-row-role-glyph { color: var(--os-ink-mute); }
 .st-card-header { display: flex; align-items: center; gap: 8px; }
-.st-card-cat-badge { margin-left: auto; font-size: .56rem; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--ink-mute); }
-.st-expand-btn { margin-left: 2px; padding: 0 5px; font-size: .68rem; line-height: 1.3; border-radius: 4px;
-  color: var(--ink-mute); border-color: transparent; background: transparent; cursor: pointer; opacity: .5;
-  transition: opacity .12s var(--ease, ease-out), color .12s, border-color .12s; }
+.st-card-cat-badge { margin-left: auto; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--os-ink-mute); }
+.st-expand-btn { margin-left: 2px; padding: 0 5px; font-size: 11px; line-height: 1.3; color: var(--os-ink-mute); border-color: transparent; background: transparent; opacity: .5; }
 .st-cmdty-card:hover .st-expand-btn { opacity: 1; }
 .st-expand-btn:hover { color: var(--accent); border-color: var(--accent); opacity: 1; }
-.st-cmdty-card { cursor: pointer; transition: border-color .12s var(--ease, ease-out);
-  display: grid; grid-template-columns: 1fr auto; grid-template-areas:
-    "head head" "scope scope" "purpose purpose" "mission mission" "best best" "prices qty" "actions actions";
-  align-items: center; gap: 4px 10px; }
-.st-cmdty-card:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--panel-edge)); }
-.st-cmdty-card.is-selected { border-color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
+.st-cmdty-card {
+  cursor: pointer; border: 1px solid var(--os-line); border-radius: var(--os-r-sm); background: var(--os-surface);
+  padding: 9px 12px; margin-bottom: 8px; transition: border-color .12s var(--ease);
+  display: grid; grid-template-columns: 1fr auto;
+  grid-template-areas: "head head" "scope scope" "purpose purpose" "mission mission" "best best" "prices qty" "actions actions";
+  align-items: center; gap: 4px 10px;
+}
+.st-cmdty-card:hover { border-color: color-mix(in srgb, var(--st-accent) 45%, var(--os-line)); }
+.st-cmdty-card.is-selected { border-color: var(--st-accent); box-shadow: inset 2px 0 0 var(--st-accent); }
 .st-cmdty-card > .st-card-header { grid-area: head; }
 .st-cmdty-card > .st-card-spark-wrap { grid-area: scope; }
 .st-cmdty-card > .st-cmdty-purpose { grid-area: purpose; }
@@ -3170,197 +3348,224 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-cmdty-card > .c-act { grid-area: actions; }
 .st-card-prices { display: flex; gap: 18px; align-items: baseline; }
 .st-card-price-col { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
-.st-price-lbl { font-family: var(--mono); font-size: .52rem; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--ink-mute); }
+.st-price-lbl { font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--os-ink-mute); }
 .st-card-qty-row { display: flex; justify-content: flex-end; }
-
-/* Selected-commodity analysis stage — the centerpiece. Four cells in a 2x2 grid: price/regime + cone,
-   supply chain spindle, best-margin route beam, trade inspector. */
-.st-market-stage { position: relative; margin-top: 10px; border: 1px solid var(--panel-edge);
-  border-radius: var(--r-lg, 8px); background: color-mix(in srgb, var(--panel) 80%, transparent);
-  padding: 10px 12px 12px; }
+.st-best-known-line { font-size: 11.5px; color: var(--accent-2); }
+.st-intel-strip { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.st-intel-strip[hidden] { display: none; }
+.st-intel-chips { display: inline-flex; gap: 5px; flex-wrap: wrap; }
+.st-intel-strip > button { font-size: 11px; padding: 2px 9px; border-radius: 999px; border-color: color-mix(in srgb, var(--accent-2) 40%, transparent); color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 8%, transparent); }
+.st-intel-strip > button:hover { background: color-mix(in srgb, var(--accent-2) 20%, transparent); }
+.st-insp-intel { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; border-top: 1px solid var(--os-line); padding-top: 6px; }
+.st-insp-intel[hidden] { display: none; }
+.st-insp-intel-val { font-size: 12px; color: var(--os-ink); }
+.st-insp-intel-val[data-tone="warn"] { color: var(--warn); }
+.st-insp-intel-val[data-tone="bad"], .st-insp-intel-val[data-tone="danger"] { color: var(--danger); }
+.st-insp-intel-val[data-tone="good"], .st-insp-intel-val[data-tone="ok"] { color: var(--good); }
+.st-trend-arrow { display: inline-block; font-size: 1.3em; line-height: 1; transition: transform .3s var(--ease), color .3s var(--ease); }
+.st-trend-arrow.up { color: var(--warn); transform: rotate(-90deg); }
+.st-trend-arrow.down { color: var(--good); transform: rotate(90deg); }
+.st-trend-arrow.flat { color: var(--os-ink-mute); opacity: .4; }
+.st-trend-arrow.strong { font-size: 1.6em; }
+.st-heat-up { color: var(--danger); }
+.st-heat-down { color: var(--good); }
+.st-heat-flat { color: var(--os-ink-dim); }
+/* planner + ledger (sidebar) */
+.st-market-planner { border: 1px solid var(--os-line); border-radius: var(--os-r-sm); padding: 10px 12px; background: var(--os-surface); }
+.st-planner-hint { color: var(--os-ink-mute); font-weight: 400; font-size: 10px; letter-spacing: .02em; text-transform: none; }
+.st-planner-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.st-planner-empty { color: var(--os-ink-dim); font-size: 12.5px; font-style: italic; padding: 4px 0; }
+.st-planner-row { display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; background: rgba(10,16,28,.5); border: 1px solid var(--os-line); border-radius: var(--os-r-xs); font-size: 12.5px; }
+.st-pl-cmdty { color: var(--os-ink); font-weight: 600; }
+.st-pl-prices { color: var(--os-ink-dim); font-size: 12px; }
+.st-pl-margin { font-weight: 600; }
+.st-pl-up { color: var(--good); }
+.st-pl-run { font-family: var(--mono); font-size: 11px; }
+.st-pl-run--ok { color: var(--energy); }
+.st-pl-run--blocked { color: var(--os-ink-mute); font-style: italic; }
+.st-pl-dest { color: var(--os-ink-mute); font-size: 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.st-pl-intel { color: var(--accent-2); font-size: 9.5px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+.st-pl-nav, .st-pl-load { padding: 4px 9px; font-size: 11.5px; white-space: nowrap; align-self: flex-start; }
+.st-pl-load { border-color: color-mix(in srgb, var(--good) 48%, transparent); color: var(--good); background: color-mix(in srgb, var(--good) 9%, transparent); }
+.st-pl-load:hover { background: color-mix(in srgb, var(--good) 20%, transparent); }
+.st-pl-nav { border-color: color-mix(in srgb, var(--accent) 48%, transparent); color: var(--accent); }
+.st-pl-nav:hover { background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.st-market-ledger { border: 1px solid var(--os-line); border-radius: var(--os-r-sm); padding: 10px 12px; background: var(--os-surface); }
+.st-ledger-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.st-ledger-row { font-family: var(--mono); font-size: 11px; color: var(--os-ink-dim); display: flex; justify-content: space-between; gap: 8px; }
+/* analysis stage */
+.st-market-stage { position: relative; margin-top: 10px; border: 1px solid var(--os-line); border-radius: var(--os-r); background: var(--os-surface); padding: 10px 12px 12px; }
 .st-market-stage[hidden] { display: none; }
 .st-stage-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.st-stage-title { font-family: var(--mono); font-size: .62rem; letter-spacing: .18em; color: var(--accent);
-  text-transform: uppercase; }
-.st-stage-close { padding: 0 7px; font-size: 1rem; line-height: 1.4; border-radius: 4px; color: var(--ink-mute);
-  border-color: var(--panel-edge); background: transparent; cursor: pointer; }
-.st-stage-close:hover { color: var(--ink); border-color: var(--ink-mute); }
+.st-stage-title { font-family: var(--mono); font-size: 10px; letter-spacing: .18em; color: var(--st-accent); text-transform: uppercase; }
+.st-stage-close { padding: 0 7px; font-size: 15px; line-height: 1.4; color: var(--os-ink-mute); border-color: var(--os-line); background: transparent; }
+.st-stage-close:hover { color: var(--os-ink); border-color: var(--os-ink-mute); }
 .st-stage-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; }
-.st-stage-cell { border: 1px solid var(--panel-edge); border-radius: 6px; padding: 10px 12px;
-  background: color-mix(in srgb, var(--panel-2) 60%, transparent); min-height: 150px;
-  display: flex; flex-direction: column; }
-.st-stage-lbl { font-family: var(--mono); font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--ink-mute); margin-bottom: 8px; }
+.st-stage-cell { border: 1px solid var(--os-line); border-radius: var(--os-r-xs); padding: 10px 12px; background: rgba(10,16,28,.45); min-height: 150px; display: flex; flex-direction: column; }
+.st-stage-lbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--os-ink-mute); margin-bottom: 8px; }
 .st-stage-price-row { display: flex; align-items: center; gap: 10px; }
 .st-stage-spark-wrap { flex: 0 0 auto; }
 .st-stage-spark { width: 170px; height: 46px; display: block; }
-.st-stage-regime { font-family: var(--mono); font-size: .82rem; color: var(--ink); }
-.st-stage-forecast-lbl { font-family: var(--mono); font-size: .58rem; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--ink-mute); margin: 8px 0 2px; }
+.st-stage-regime { font-family: var(--mono); font-size: 13px; color: var(--os-ink); }
+.st-stage-forecast-lbl { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--os-ink-mute); margin: 8px 0 2px; }
 .st-stage-cone { width: 100%; height: 80px; display: block; }
-.st-stage-supply-mount, .st-stage-route-mount { flex: 1 1 auto; display: flex; align-items: center;
-  justify-content: center; min-height: 96px; }
-.st-stage-route-meta { font-family: var(--mono); font-size: .68rem; color: var(--accent-2); text-align: center;
-  margin-top: 6px; }
-.st-inspector-row { display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  font-size: .74rem; padding: 4px 0; }
-.st-insp-lbl { font-family: var(--mono); font-size: .58rem; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--ink-mute); }
-.st-insp-quote, .st-insp-profit { font-size: .78rem; color: var(--ink); }
+.st-stage-supply-mount, .st-stage-route-mount { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: 96px; }
+.st-stage-route-meta { font-family: var(--mono); font-size: 11px; color: var(--accent-2); text-align: center; margin-top: 6px; }
+.st-inspector-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; padding: 4px 0; }
+.st-insp-lbl { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--os-ink-mute); }
+.st-insp-quote, .st-insp-profit { font-size: 12.5px; color: var(--os-ink); font-variant-numeric: tabular-nums; }
 .st-insp-flood-mount { display: inline-flex; }
 .st-inspector-actions { margin-top: 8px; display: flex; justify-content: flex-end; }
-.st-insp-route { padding: 4px 12px; font-size: .72rem; border-radius: 5px; color: var(--accent);
-  border-color: var(--accent); background: transparent; cursor: pointer; }
-.st-insp-route:hover:not(:disabled) { background: rgba(57,208,255,.12); }
-.st-insp-route:disabled { color: var(--ink-mute); border-color: var(--panel-edge); cursor: not-allowed; opacity: .6; }
-/* ripple overlay sits above the stage cells to catch event-mode pings */
+.st-insp-route { padding: 4px 12px; font-size: 12px; color: var(--accent); border-color: color-mix(in srgb, var(--accent) 48%, transparent); background: transparent; }
+.st-insp-route:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.st-insp-route:disabled { color: var(--os-ink-mute); border-color: var(--os-line); opacity: .6; }
 .st-market-stage-overlay { position: absolute; inset: 0; pointer-events: none; }
+/* chart modal */
+.st-modal { position: fixed; inset: 0; z-index: 140; display: flex; align-items: center; justify-content: center; background: rgba(3, 6, 12, 0.78); }
+.st-modal-content { width: min(860px, 92vw); max-height: 88vh; overflow-y: auto; border: 1px solid var(--os-line-strong); border-radius: var(--os-r); background: var(--os-deck); box-shadow: 0 30px 90px -30px rgba(0,0,0,.9); }
+.st-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--os-line); }
+.st-modal-title { font-family: var(--font-display); font-weight: 650; font-size: 15px; }
+.st-modal-close { padding: 0 9px; font-size: 16px; background: transparent; border-color: var(--os-line); color: var(--os-ink-mute); }
+.st-modal-close:hover { color: var(--os-ink); }
+.st-modal-body { padding: 14px 18px 18px; }
+.st-modal-chart-info { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 10px; }
+.st-modal-stat { display: flex; flex-direction: column; gap: 1px; }
+.st-modal-stat .st-lbl { font-family: var(--mono); font-size: 9px; letter-spacing: .13em; text-transform: uppercase; color: var(--os-ink-mute); }
+.st-modal-stat .st-val { font-size: 14px; color: var(--os-ink); font-variant-numeric: tabular-nums; }
+.st-chart-container { position: relative; }
+.st-chart-tooltip { position: absolute; pointer-events: none; background: var(--os-deck); border: 1px solid var(--os-line-strong); border-radius: var(--os-r-xs); padding: 6px 9px; font-family: var(--mono); font-size: 11px; color: var(--os-ink); }
+.st-modal-event-log { margin-top: 12px; }
+.st-modal-event-log-title { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--os-ink-mute); margin-bottom: 6px; }
+.st-modal-event-item { font-size: 12.5px; color: var(--os-ink-dim); padding: 3px 0; border-bottom: 1px solid var(--os-line); }
+.st-modal-event-empty { font-size: 12.5px; color: var(--os-ink-mute); font-style: italic; }
+.st-ev-name { color: var(--warn); }
 
-@media (max-width: 900px) {
-  .st-stage-grid { grid-template-columns: 1fr; grid-template-rows: none; }
-}
+/* ── 10 · Hold ────────────────────────────────────────────────────────────────────────────────── */
+.st-hold-header { margin-bottom: 12px; max-width: 560px; }
+.st-hold-meter-label { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; color: var(--os-ink-dim); margin-bottom: 5px; }
+.st-hold-meter { height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--os-ink-mute) 20%, transparent); overflow: hidden; }
+.st-hold-meter-fill { height: 100%; background: var(--cargo); border-radius: 3px; transition: width .25s var(--ease); }
+.st-hold .st-row { grid-template-columns: 2.4fr .7fr .7fr 1.2fr 1.6fr; }
+.st-hold .c-act { display: flex; gap: 6px; justify-content: flex-end; }
+.st-hold .st-sell-btn { padding: 3px 10px; font-size: 12px; }
 
-/* shipyard */
-/* The hulls-for-sale table has 7 columns (Hull name, Tier, Hull, Shield, Cargo, Price, action) but
-   the shared .st-row grid only defines 6 tracks — so shipyard rows were misaligning / squishing the
-   last column. Scope a 7-track grid under .st-shipyard so the market table (6 cols) is unaffected. */
+/* ── 11 · Shipyard: hangar + engineering stage ────────────────────────────────────────────────── */
+.st-shipyard { display: flex; flex-direction: column; gap: 12px; }
 .st-shipyard .st-row { grid-template-columns: 2.6fr .6fr .8fr .9fr .9fr 1.3fr 1fr; }
-.st-sy-owned { margin-bottom: 16px; }
+.st-sy-owned { margin: 0; }
 .st-sy-owned-list { display: flex; gap: 10px; flex-wrap: wrap; }
-.st-sy-card { border: 1px solid var(--panel-edge); border-radius: 6px; padding: 10px 12px; min-width: 180px;
-  background: rgba(10,18,32,.6); }
-.st-sy-card.active { border-color: var(--accent); box-shadow: 0 0 12px rgba(57,208,255,.25); }
-.st-sy-name { font-size: .95rem; margin-bottom: 3px; }
-.st-sy-meta { color: var(--ink-dim); font-size: .72rem; margin-bottom: 8px; }
-.st-sy-guide, .st-sy-purpose, .st-sy-card-purpose { color: var(--ink-dim); font-size: .74rem; line-height: 1.35; }
-.st-sy-guide { margin: -2px 0 10px; border: 1px solid var(--panel-edge); border-radius: 6px;
-  padding: 9px 11px; background: rgba(10,18,32,.5); }
-.st-sy-job-guide { border-color: rgba(57,208,255,.34); background: linear-gradient(90deg, rgba(57,208,255,.10), rgba(10,18,32,.54)); }
-.st-sy-job-title { color: var(--ink); font-weight: 700; font-size: .84rem; margin-top: 6px; }
-.st-sy-job-body { color: var(--ink-dim); font-size: .76rem; line-height: 1.35; margin-top: 3px; }
+.st-sy-card { border: 1px solid var(--os-line); border-radius: var(--os-r-sm); padding: 10px 12px; min-width: 190px; background: var(--os-surface); box-shadow: var(--os-shadow); }
+.st-sy-card.active { border-color: color-mix(in srgb, var(--st-accent) 55%, transparent); }
+.st-sy-name { margin-bottom: 3px; }
+.st-sy-meta { color: var(--os-ink-dim); font-size: 11.5px; margin-bottom: 8px; }
+.st-sy-guide, .st-sy-purpose, .st-sy-card-purpose { color: var(--os-ink-dim); font-size: 12.5px; line-height: 1.45; }
+.st-sy-guide { margin: 0; border: 1px solid var(--os-line); border-radius: var(--os-r-sm); padding: 9px 11px; background: var(--os-surface); }
+.st-sy-job-guide { border-color: color-mix(in srgb, var(--accent) 34%, transparent); background: color-mix(in srgb, var(--accent) 6%, var(--os-surface)); }
+.st-sy-job-title { color: var(--os-ink); font-weight: 700; font-size: 13.5px; margin-top: 6px; }
+.st-sy-job-body { color: var(--os-ink-dim); font-size: 12.5px; line-height: 1.4; margin-top: 3px; }
 .st-sy-purpose { display: block; margin-top: 3px; white-space: normal; }
-.st-sy-fitline { display: block; margin-top: 3px; white-space: normal; font-size: .7rem; line-height: 1.3; }
+.st-sy-fitline { display: block; margin-top: 3px; white-space: normal; font-size: 11.5px; line-height: 1.35; }
 .st-sy-fitline--ok { color: var(--good); }
 .st-sy-fitline--warn { color: var(--warn); }
-.st-sy-fitline--bad { color: var(--ink-mute); }
-.st-shipyard .st-row.mission-fit-ok { border-color: rgba(98,224,138,.34); background: rgba(98,224,138,.045); }
-.st-shipyard .st-row.mission-fit-warn { border-color: rgba(255,198,77,.26); background: rgba(255,198,77,.035); }
-.st-shipyard { display: flex; flex-direction: column; gap: 12px; }
-.st-shipyard .st-sy-engineering { order: 0; }
-.st-shipyard .st-sy-job-guide { order: 1; margin: 0; }
-.st-shipyard .st-sy-owned { order: 2; margin: 0; }
-.st-sy-card-purpose { margin: -3px 0 8px; color: var(--ink-mute); }
+.st-sy-fitline--bad { color: var(--os-ink-mute); }
+.st-shipyard .st-row.mission-fit-ok { border-color: color-mix(in srgb, var(--good) 30%, transparent); background: color-mix(in srgb, var(--good) 4%, transparent); }
+.st-shipyard .st-row.mission-fit-warn { border-color: color-mix(in srgb, var(--warn) 26%, transparent); background: color-mix(in srgb, var(--warn) 3%, transparent); }
+.st-sy-card-purpose { margin: -3px 0 8px; color: var(--os-ink-mute); }
 .st-sy-btns { display: flex; gap: 6px; }
-.st-sy-btns button { font-size: .75rem; padding: 4px 8px; }
+.st-sy-btns button { font-size: 12px; padding: 4px 9px; }
+.st-sy-engineering { display: grid; grid-template-columns: 250px minmax(0, 1fr) 250px; gap: 16px; flex: 1 1 auto; min-height: 440px; }
+.st-sy-rail { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.st-sy-rail-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.st-sy-rail-credits { color: var(--energy); font-size: 13px; font-variant-numeric: tabular-nums; }
+.st-sy-rail-controls { display: flex; flex-direction: column; gap: 6px; }
+.st-sy-rail-header { display: grid; grid-template-columns: 1.4fr .6fr 1fr; align-items: center; gap: 6px; padding: 4px 8px; font-size: 10px; color: var(--os-ink-mute); border-bottom: 1px solid var(--os-line); }
+.st-sy-rail-list { flex: 1; overflow-y: auto; min-height: 0; max-height: none; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
+.st-sy-rail-card { border: 1px solid var(--os-line); border-radius: var(--os-r-xs); padding: 8px 10px; cursor: pointer; background: var(--os-surface); transition: border-color .12s, background .12s; }
+.st-sy-rail-card:hover { border-color: color-mix(in srgb, var(--st-accent) 45%, transparent); background: color-mix(in srgb, var(--st-accent) 5%, var(--os-surface)); }
+.st-sy-rail-card.selected { border-color: var(--st-accent); box-shadow: inset 2px 0 0 var(--st-accent); }
+.st-sy-rail-card.owned { opacity: .7; }
+.st-sy-rail-card.mission-fit-ok { border-color: color-mix(in srgb, var(--good) 40%, transparent); }
+.st-sy-rail-card.mission-fit-warn { border-color: color-mix(in srgb, var(--warn) 34%, transparent); }
+.st-sy-rail-name { font-weight: 600; font-size: 13.5px; margin-bottom: 2px; }
+.st-sy-rail-meta { color: var(--os-ink-dim); font-size: 10.5px; margin-bottom: 3px; }
+.st-sy-rail-slots { color: var(--os-ink-mute); font-size: 10px; margin-bottom: 4px; }
+.st-sy-rail-price { color: var(--energy); font-size: 12px; font-variant-numeric: tabular-nums; }
+.st-sy-stock-tag { font-size: 9.5px; color: var(--os-ink-mute); }
+.st-sy-center { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.st-sy-stage-wrap { flex: 1; min-height: 280px; }
+.st-sy-identity { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--os-line); border-radius: var(--os-r-sm); background: var(--os-surface); }
+.st-sy-identity-role { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--st-accent); margin-bottom: 3px; }
+.st-sy-identity-name { font-size: 16px; font-weight: 650; margin-bottom: 4px; font-family: var(--font-display); }
+.st-sy-identity-slots { color: var(--os-ink-mute); font-size: 11px; margin-bottom: 6px; }
+.st-sy-identity-purpose { color: var(--os-ink-dim); font-size: 12.5px; line-height: 1.4; margin-bottom: 8px; }
+.st-sy-identity-line { color: var(--os-ink-mute); font-size: 12px; font-style: italic; margin-bottom: 8px; }
+.st-sy-identity-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-sy-id-chip { font-size: 10.5px; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--os-line); color: var(--os-ink-dim); background: rgba(10,16,28,.5); }
+.st-sy-id-chip--role { color: var(--st-accent); border-color: color-mix(in srgb, var(--st-accent) 40%, transparent); }
+.st-sy-id-chip--combat { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 38%, transparent); }
+.st-sy-id-chip--cargo { color: var(--cargo); border-color: color-mix(in srgb, var(--cargo) 38%, transparent); }
+.st-sy-side { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; }
+.st-sy-requirements { border: 1px solid var(--os-line); border-radius: var(--os-r-sm); padding: 12px; background: var(--os-surface); }
+.st-sy-req-head { font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--os-ink-mute); margin-bottom: 8px; }
+.st-sy-req-price { font-size: 17px; color: var(--energy); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.st-sy-req-price--short { color: var(--danger); }
+.st-sy-req-credits { font-size: 11.5px; color: var(--os-ink-dim); margin-bottom: 10px; }
+.st-sy-req-state { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 4px 8px; border-radius: 4px; margin-bottom: 8px; display: inline-block; }
+.st-sy-req-state--available { color: var(--good); border: 1px solid color-mix(in srgb, var(--good) 38%, transparent); background: color-mix(in srgb, var(--good) 8%, transparent); }
+.st-sy-req-state--funding { color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 38%, transparent); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.st-sy-req-state--locked { color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 38%, transparent); background: color-mix(in srgb, var(--warn) 8%, transparent); }
+.st-sy-req-state--owned { color: var(--os-ink-mute); border: 1px solid var(--os-line); background: rgba(10,16,28,.5); }
+.st-sy-req-title { font-size: 12.5px; color: var(--os-ink-dim); line-height: 1.4; margin-bottom: 10px; }
+.st-sy-buy-btn { width: 100%; border-color: color-mix(in srgb, var(--good) 50%, transparent); color: var(--good); background: color-mix(in srgb, var(--good) 10%, transparent); font-weight: 600; }
+.st-sy-buy-btn:hover:not(:disabled) { background: var(--good); color: #021008; }
+/* compare panel — shipyard injects its own floating-tooltip CSS; in the OS shell it lives
+   statically in the side column (never floats over the berth strip). */
+.st-hub--os .st-sy-cmp { position: static; width: auto; pointer-events: auto; animation: none;
+  box-shadow: var(--os-shadow); z-index: auto; }
+.st-sy-cmp { border: 1px solid var(--os-line); border-radius: var(--os-r-sm); padding: 12px; background: var(--os-surface); }
+.st-sy-cmp-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.st-sy-cmp-name { font-weight: 650; font-size: 13.5px; }
+.st-sy-cmp-role { font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--st-accent); }
+.st-sy-cmp-desc { color: var(--os-ink-dim); font-size: 12px; line-height: 1.4; margin-bottom: 8px; }
+.st-sy-cmp-grid { display: grid; grid-template-columns: 1.2fr .9fr auto .9fr; gap: 3px 8px; align-items: baseline; font-size: 12px; }
+.st-sy-cmp-lbl { color: var(--os-ink-mute); }
+.st-sy-cmp-cur { text-align: right; color: var(--os-ink-dim); font-variant-numeric: tabular-nums; }
+.st-sy-cmp-arr { color: var(--os-ink-mute); }
+.st-sy-cmp-new { text-align: right; color: var(--os-ink); font-variant-numeric: tabular-nums; }
+.st-sy-cmp-delta { font-size: 10.5px; }
+.st-sy-cmp-sep { grid-column: 1 / -1; height: 1px; background: var(--os-line); margin: 3px 0; }
+.st-sy-cmp-slots { color: var(--os-ink-mute); font-size: 11px; margin-top: 6px; }
 
-/* outfitting */
-/* the two-column wrapper (slot grid + stat table) referenced in outfitting.js — was undefined. */
-.st-outfit-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; align-items: start; }
-.st-outfit-top { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; margin-bottom: 16px; }
-.st-slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-.st-slot { border: 1px solid var(--panel-edge); border-radius: 6px; padding: 8px 10px; cursor: pointer;
-  background: rgba(10,18,32,.5); position: relative; }
-.st-slot.empty { border-style: dashed; }
-.st-slot.filled { border-color: var(--panel-edge-2); }
-.st-slot.sel { border-color: var(--accent); box-shadow: 0 0 8px rgba(57,208,255,.3); }
-/* Type-coded left accent so slot kinds are scannable at a glance. The .st-slot-{type} modifier
-   is emitted by outfitting.js per cell; these cover every slotType in data/ships.js + modules.js. */
-.st-slot-weapon { border-left: 3px solid var(--danger); }
-.st-slot-shield { border-left: 3px solid var(--shield); }
-.st-slot-engine { border-left: 3px solid var(--warn); }
-.st-slot-cargo { border-left: 3px solid var(--cargo); }
-.st-slot-mining { border-left: 3px solid var(--accent-2); }
-.st-slot-utility { border-left: 3px solid var(--accent-3); }
-.st-slot-type { font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); }
-.st-slot-facing { display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 3px;
-  background: rgba(57,208,255,.14); color: var(--accent); font-size: .58rem; letter-spacing: .08em;
-  border: 1px solid rgba(57,208,255,.35); }
-.st-slot-mod { font-size: .85rem; margin-top: 3px; min-height: 1.1em; }
-.st-slot-unfit { position: absolute; top: 6px; right: 6px; font-size: .62rem; padding: 1px 6px;
-  border-color: var(--danger); color: var(--danger); }
-.st-stat-table { border: 1px solid var(--panel-edge); border-radius: 6px; padding: 6px 10px; background: rgba(10,18,32,.5); }
-.st-stat-row { display: grid; grid-template-columns: 1.4fr 1fr .9fr; align-items: baseline; gap: 6px;
-  padding: 3px 0; font-size: .82rem; }
-.st-stat-row .st-stat-l { color: var(--ink-dim); text-transform: none; letter-spacing: normal; font-size: .82rem; }
-.st-stat-row--drive { grid-template-columns: 1.4fr 1fr; border-bottom: 1px solid var(--panel-edge);
-  margin-bottom: 3px; padding-bottom: 4px; }
-.st-stat-row--drive .st-stat-v { color: var(--accent); letter-spacing: .04em; }
-.st-stat-v { text-align: right; }
-.st-delta { text-align: right; font-size: .75rem; font-family: var(--mono); }
-.st-delta.up { color: var(--good); } .st-delta.down { color: var(--danger); }
-.st-inv-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.st-inv-item { border: 1px solid var(--panel-edge); border-radius: 6px; padding: 6px 10px; cursor: pointer;
-  background: rgba(10,18,32,.6); display: flex; flex-direction: column; }
-.st-inv-item:hover { border-color: var(--accent); }
-.st-inv-item.incompat { opacity: .55; }
-.st-inv-name { font-size: .82rem; }
-.st-inv-meta { font-size: .64rem; color: var(--ink-mute); letter-spacing: .06em; text-transform: uppercase; }
-
-/* module shop (outfitting) */
-.st-outfit-shop { margin-top: 20px; border-top: 1px solid var(--panel-edge); padding-top: 12px; }
-.st-shop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.st-shop-credits { color: var(--energy); font-size: .92rem; }
-.st-shop-head-row.st-row { grid-template-columns: 2.2fr .8fr 2.4fr 1fr 1.2fr; }
-.st-shop-list { display: block; max-height: 340px; overflow-y: auto; }
-.st-shop-row { display: grid; grid-template-columns: 2.2fr .8fr 2.4fr 1fr 1.2fr; align-items: center;
-  gap: 8px; padding: 7px 8px; border-bottom: 1px solid rgba(29,51,80,.4); font-size: .82rem;
-  transition: background var(--dur) var(--ease); }
-.st-shop-row:hover { background: rgba(57,208,255,.05); }
-.st-shop-row.locked { opacity: .45; filter: saturate(.3); }
-.st-shop-row.noafford { opacity: .6; }
-.st-shop-row.nofit .c-name { color: var(--ink-mute); }
-.st-shop-slot { color: var(--ink-mute); text-transform: uppercase; letter-spacing: .06em; font-size: .72rem; }
-.st-shop-stats { color: var(--ink-dim); font-size: .74rem; line-height: 1.35; }
-.st-shop-price { text-align: right; color: var(--energy); }
-.st-shop-delta { margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px; }
-.st-shop-delta .st-delta { font-size: .68rem; }
-.st-shop-group { font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .16em;
-  text-transform: uppercase; color: var(--accent); margin: 12px 0 4px; padding: 4px 8px;
-  display: flex; align-items: center; gap: 10px; }
-.st-shop-group::after { content:''; flex:1; height:1px; background:linear-gradient(90deg, var(--panel-edge), transparent); }
-.st-shop-row .c-act button { font-size: .74rem; padding: 3px 10px; }
-.st-shop-row .c-act button:not(:disabled) { border-color: var(--good); color: var(--good); cursor: pointer; }
-.st-shop-row .c-act button:not(:disabled):hover { background: var(--good); color: #021008; }
-
-/* ===== Premium Engineering Stage (Shipyard + Outfitting) ===== */
+/* engineering stage (shared shipyard/outfitting) */
 .st-eng-stage { display: flex; flex-direction: column; height: 100%; }
 .st-eng-stage__frame {
-  position: relative; flex: 1; min-height: 220px;
-  border: 1px solid var(--panel-edge); border-radius: 8px; overflow: hidden;
-  background: radial-gradient(ellipse at 50% 70%, #0a1426, #05070d 80%);
+  position: relative; flex: 1; min-height: 240px;
+  border: 1px solid var(--os-line); border-radius: var(--os-r); overflow: hidden;
+  background: radial-gradient(ellipse at 50% 72%, #0a1426, #05070d 82%);
 }
 .st-eng-stage__frame::before {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgba(57,208,255,.03) 0, rgba(57,208,255,.03) 1px, transparent 1px, transparent 24px);
-  z-index: 1;
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--st-accent) 3%, transparent) 0, color-mix(in srgb, var(--st-accent) 3%, transparent) 1px, transparent 1px, transparent 26px);
 }
 .st-eng-stage__canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity .25s ease; }
 .st-eng-stage.is-ready .st-eng-stage__canvas { opacity: 1; }
 .st-eng-stage__overlay { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.st-eng-stage__gauges {
-  position: absolute; left: 10px; top: 10px; z-index: 3;
-  display: flex; flex-wrap: wrap; gap: 8px; max-width: 180px;
-  pointer-events: none;
-}
+.st-eng-stage__gauges { position: absolute; left: 10px; top: 10px; z-index: 3; display: flex; flex-wrap: wrap; gap: 8px; max-width: 180px; pointer-events: none; }
 .st-eng-gauge { background: rgba(5,7,13,.55); border-radius: 50%; padding: 2px; }
-.st-eng-stage__label {
-  margin-top: 8px; text-align: center; font-size: .78rem; color: var(--ink-dim);
-  min-height: 1.2em;
-}
-.st-eng-stage__label .mono { color: var(--accent); }
+.st-eng-stage__label { margin-top: 8px; text-align: center; font-size: 12.5px; color: var(--os-ink-dim); min-height: 1.2em; }
+.st-eng-stage__label .mono { color: var(--st-accent); }
 .st-outfit-ghost-label { color: var(--warn); font-style: italic; }
 
-/* ===== Fit Tree (file-tree-inspired) ===== */
-.st-fit-tree { font-size: .8rem; overflow-y: auto; max-height: 520px; padding-right: 4px; }
-.st-fit-empty { color: var(--ink-mute); font-style: italic; padding: 8px 0; }
-.st-fit-node { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 5px 8px; border-radius: 5px; cursor: pointer; }
-.st-fit-node--root { font-weight: 600; color: var(--ink); background: rgba(10,18,32,.5); border: 1px solid var(--panel-edge); margin-bottom: 6px; }
+/* fit tree */
+.st-fit-tree { font-size: 12.5px; overflow-y: auto; max-height: none; flex: 1 1 auto; min-height: 0; padding-right: 4px; }
+.st-fit-empty { color: var(--os-ink-mute); font-style: italic; padding: 8px 0; }
+.st-fit-node { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 5px 8px; border-radius: var(--os-r-xs); cursor: pointer; }
+.st-fit-node--root { font-weight: 600; color: var(--os-ink); background: var(--os-surface); border: 1px solid var(--os-line); margin-bottom: 6px; }
 .st-fit-node--slot { padding-left: 18px; border-left: 2px solid transparent; margin: 1px 0; }
-.st-fit-node--slot:hover { background: rgba(57,208,255,.08); }
-.st-fit-node--selected { background: rgba(57,208,255,.12); border-color: var(--accent); }
-.st-fit-node--filled { color: var(--ink); }
-.st-fit-node--empty { color: var(--ink-mute); font-style: italic; }
+.st-fit-node--slot:hover { background: color-mix(in srgb, var(--st-accent) 7%, transparent); }
+.st-fit-node--selected { background: color-mix(in srgb, var(--st-accent) 11%, transparent); }
+.st-fit-node--filled { color: var(--os-ink); }
+.st-fit-node--empty { color: var(--os-ink-mute); font-style: italic; }
 .st-fit-node--preview-ok { border-left-color: var(--good); }
 .st-fit-node--preview-bad { border-left-color: var(--danger); animation: st-fit-blink 1s ease-in-out 2; }
 .st-fit-node--invalid { border-color: var(--danger); }
@@ -3373,159 +3578,187 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-fit-icon--mining { color: var(--accent-2); }
 .st-fit-icon--utility { color: var(--accent-3); }
 .st-fit-branch { margin-bottom: 8px; }
-.st-fit-branch-head { display: flex; align-items: center; gap: 6px; padding: 4px 8px; color: var(--ink-mute); text-transform: uppercase; letter-spacing: .08em; font-size: .68rem; }
+.st-fit-branch-head { display: flex; align-items: center; gap: 6px; padding: 4px 8px; color: var(--os-ink-mute); text-transform: uppercase; letter-spacing: .08em; font-size: 10.5px; }
 .st-fit-branch-label { flex: 1; }
-.st-fit-branch-count { color: var(--ink-dim); }
+.st-fit-branch-count { color: var(--os-ink-dim); }
 .st-fit-label { flex: 1; }
-.st-fit-meta { color: var(--ink-mute); font-size: .68rem; }
-.st-fit-slot-size { color: var(--accent); min-width: 18px; }
+.st-fit-meta { color: var(--os-ink-mute); font-size: 10.5px; }
+.st-fit-slot-size { color: var(--st-accent); min-width: 18px; }
 .st-fit-slot-name { flex: 1; }
-.st-fit-slot-facing { color: var(--ink-mute); font-size: .64rem; text-transform: capitalize; }
-.st-fit-preview-arrow { color: var(--accent); }
+.st-fit-slot-facing { color: var(--os-ink-mute); font-size: 10px; text-transform: capitalize; }
+.st-fit-preview-arrow { color: var(--st-accent); }
 .st-fit-preview-name { color: var(--good); }
 .st-fit-preview-name--bad { color: var(--danger); }
 .st-fit-mods { width: 100%; padding-left: 24px; }
-.st-fit-mod { color: var(--ink-dim); font-size: .68rem; line-height: 1.35; }
+.st-fit-mod { color: var(--os-ink-dim); font-size: 10.5px; line-height: 1.35; }
 .st-fit-mod--preview { color: var(--good); }
-@keyframes st-fit-blink { 0%,100% { background: transparent; } 50% { background: rgba(255,84,112,.12); } }
+@keyframes st-fit-blink { 0%,100% { background: transparent; } 50% { background: color-mix(in srgb, var(--danger) 10%, transparent); } }
 
-/* ===== Shipyard premium layout ===== */
-.st-sy-engineering { display: grid; grid-template-columns: 240px 1fr 240px; gap: 16px; min-height: 420px; }
-.st-sy-rail { display: flex; flex-direction: column; gap: 10px; }
-.st-sy-rail-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.st-sy-rail-credits { color: var(--energy); font-size: .82rem; }
-.st-sy-rail-controls { display: flex; flex-direction: column; gap: 6px; }
-.st-sy-rail-header { display: grid; grid-template-columns: 1.4fr .6fr 1fr; align-items: center; gap: 6px; padding: 4px 8px; font-size: .66rem; color: var(--ink-mute); border-bottom: 1px solid var(--panel-edge); }
-.st-sy-rail-list { flex: 1; overflow-y: auto; max-height: 420px; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
-.st-sy-rail-card { border: 1px solid var(--panel-edge); border-radius: 6px; padding: 8px 10px; cursor: pointer; background: rgba(10,18,32,.5); transition: border-color .12s, background .12s; }
-.st-sy-rail-card:hover { border-color: var(--accent); background: rgba(57,208,255,.06); }
-.st-sy-rail-card.selected { border-color: var(--accent); box-shadow: 0 0 10px rgba(57,208,255,.18); }
-.st-sy-rail-card.owned { opacity: .7; }
-.st-sy-rail-card.mission-fit-ok { border-color: rgba(98,224,138,.42); background: rgba(98,224,138,.06); }
-.st-sy-rail-card.mission-fit-warn { border-color: rgba(255,198,77,.36); background: rgba(255,198,77,.05); }
-.st-sy-rail-name { font-weight: 600; font-size: .88rem; margin-bottom: 2px; }
-.st-sy-rail-meta { color: var(--ink-dim); font-size: .66rem; margin-bottom: 3px; }
-.st-sy-rail-slots { color: var(--ink-mute); font-size: .62rem; margin-bottom: 4px; }
-.st-sy-rail-price { color: var(--energy); font-size: .74rem; }
-.st-sy-center { display: flex; flex-direction: column; min-height: 0; }
-.st-sy-stage-wrap { flex: 1; min-height: 260px; }
-.st-sy-identity { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--panel-edge); border-radius: 6px; background: rgba(10,18,32,.5); }
-.st-sy-identity-role { font-family: var(--mono); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: 3px; }
-.st-sy-identity-name { font-size: 1.05rem; font-weight: 600; margin-bottom: 4px; }
-.st-sy-identity-slots { color: var(--ink-mute); font-size: .7rem; margin-bottom: 6px; }
-.st-sy-identity-purpose { color: var(--ink-dim); font-size: .76rem; line-height: 1.35; margin-bottom: 8px; }
-.st-sy-identity-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.st-sy-id-chip { font-size: .64rem; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--panel-edge); color: var(--ink-dim); background: rgba(10,18,32,.5); }
-.st-sy-id-chip--role { color: var(--accent); border-color: rgba(57,208,255,.35); }
-.st-sy-id-chip--combat { color: var(--danger); border-color: rgba(255,84,112,.35); }
-.st-sy-id-chip--cargo { color: var(--cargo); border-color: rgba(122,247,208,.35); }
-.st-sy-side { display: flex; flex-direction: column; gap: 12px; }
-.st-sy-requirements { border: 1px solid var(--panel-edge); border-radius: 6px; padding: 12px; background: rgba(10,18,32,.5); }
-.st-sy-req-head { font-family: var(--mono); font-size: .6rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-mute); margin-bottom: 8px; }
-.st-sy-req-price { font-size: 1.1rem; color: var(--energy); margin-bottom: 4px; }
-.st-sy-req-price--short { color: var(--danger); }
-.st-sy-req-credits { font-size: .72rem; color: var(--ink-dim); margin-bottom: 10px; }
-.st-sy-req-state { font-family: var(--mono); font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; padding: 4px 8px; border-radius: 4px; margin-bottom: 8px; }
-.st-sy-req-state--available { color: var(--good); border: 1px solid rgba(98,224,138,.35); background: rgba(98,224,138,.08); }
-.st-sy-req-state--funding { color: var(--danger); border: 1px solid rgba(255,84,112,.35); background: rgba(255,84,112,.08); }
-.st-sy-req-state--locked { color: var(--warn); border: 1px solid rgba(255,179,71,.35); background: rgba(255,179,71,.08); }
-.st-sy-req-state--owned { color: var(--ink-mute); border: 1px solid var(--panel-edge); background: rgba(10,18,32,.5); }
-.st-sy-req-title { font-size: .74rem; color: var(--ink-dim); line-height: 1.35; margin-bottom: 10px; }
-.st-sy-buy-btn { width: 100%; }
-
-/* ===== Outfitting premium layout ===== */
-.st-outfit-engineering { display: grid; grid-template-columns: 260px 1fr 280px; gap: 16px; min-height: 480px; }
+/* ── 12 · Outfitting ──────────────────────────────────────────────────────────────────────────── */
+.st-outfit-engineering { display: grid; grid-template-columns: 270px minmax(0, 1fr) 290px; gap: 16px; min-height: 480px; }
 .st-outfit-tree-wrap { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
-.st-outfit-stage-wrap { min-height: 260px; }
+.st-outfit-stage-wrap { min-height: 280px; }
 .st-outfit-right { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; }
+/* In the narrow right column the module shop stacks as compact cards, never a crushed table. */
+.st-outfit-right .st-shop-head-row.st-row { display: none; }
+.st-outfit-right .st-shop-row { grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name price" "slot slot" "stats stats" "act act"; gap: 2px 8px;
+  border: 1px solid var(--os-line); border-radius: var(--os-r-xs); background: var(--os-surface);
+  padding: 8px 10px; margin-bottom: 6px; }
+.st-outfit-right .st-shop-row > .c-name { grid-area: name; }
+.st-outfit-right .st-shop-row > .st-shop-slot { grid-area: slot; }
+.st-outfit-right .st-shop-row > .st-shop-stats { grid-area: stats; }
+.st-outfit-right .st-shop-row > .st-shop-price { grid-area: price; text-align: right; }
+.st-outfit-right .st-shop-row > .c-act { grid-area: act; justify-content: flex-end; display: flex; margin-top: 4px; }
+.st-outfit-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; align-items: start; }
+.st-outfit-top { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; margin-bottom: 16px; }
+.st-slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.st-slot { border: 1px solid var(--os-line); border-radius: var(--os-r-xs); padding: 8px 10px; cursor: pointer; background: var(--os-surface); position: relative; }
+.st-slot.empty { border-style: dashed; }
+.st-slot.filled { border-color: var(--os-line-strong); }
+.st-slot.sel { border-color: var(--st-accent); box-shadow: inset 2px 0 0 var(--st-accent); }
+.st-slot-weapon { border-left: 3px solid var(--danger); }
+.st-slot-shield { border-left: 3px solid var(--shield); }
+.st-slot-engine { border-left: 3px solid var(--warn); }
+.st-slot-cargo { border-left: 3px solid var(--cargo); }
+.st-slot-mining { border-left: 3px solid var(--accent-2); }
+.st-slot-utility { border-left: 3px solid var(--accent-3); }
+.st-slot-type { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--os-ink-mute); }
+.st-slot-facing { display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-size: 9px; letter-spacing: .08em; border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.st-slot-mod { font-size: 13px; margin-top: 3px; min-height: 1.1em; }
+.st-slot-unfit { position: absolute; top: 6px; right: 6px; font-size: 10px; padding: 1px 6px; border-color: var(--danger); color: var(--danger); }
+.st-stat-table { border: 1px solid var(--os-line); border-radius: var(--os-r-xs); padding: 6px 10px; background: var(--os-surface); }
+.st-stat-row { display: grid; grid-template-columns: 1.4fr 1fr .9fr; align-items: baseline; gap: 6px; padding: 3px 0; font-size: 13px; }
+.st-stat-row .st-stat-l { color: var(--os-ink-dim); text-transform: none; letter-spacing: normal; font-size: 13px; }
+.st-stat-row--drive { grid-template-columns: 1.4fr 1fr; border-bottom: 1px solid var(--os-line); margin-bottom: 3px; padding-bottom: 4px; }
+.st-stat-row--drive .st-stat-v { color: var(--st-accent); letter-spacing: .04em; }
+.st-stat-v { text-align: right; font-variant-numeric: tabular-nums; }
+.st-delta { text-align: right; font-size: 11.5px; font-family: var(--mono); }
+.st-delta.up { color: var(--good); } .st-delta.down { color: var(--danger); }
+.st-inv-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.st-inv-item { border: 1px solid var(--os-line); border-radius: var(--os-r-xs); padding: 6px 10px; cursor: pointer; background: var(--os-surface); display: flex; flex-direction: column; }
+.st-inv-item:hover { border-color: var(--st-accent); }
+.st-inv-item.incompat { opacity: .55; }
+.st-inv-name { font-size: 13px; }
+.st-inv-meta { font-size: 10px; color: var(--os-ink-mute); letter-spacing: .06em; text-transform: uppercase; }
+.st-outfit-shop { margin-top: 20px; border-top: 1px solid var(--os-line); padding-top: 12px; }
+.st-shop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.st-shop-credits { color: var(--energy); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.st-shop-head-row.st-row { grid-template-columns: 2.2fr .8fr 2.4fr 1fr 1.2fr; }
+.st-shop-list { display: block; max-height: 340px; overflow-y: auto; }
+.st-shop-row { display: grid; grid-template-columns: 2.2fr .8fr 2.4fr 1fr 1.2fr; align-items: center; gap: 8px; padding: 7px 8px; border-bottom: 1px solid color-mix(in srgb, var(--os-ink-mute) 10%, transparent); font-size: 13px; border-radius: var(--os-r-xs); transition: background var(--dur) var(--ease); }
+.st-shop-row:hover { background: rgba(255,255,255,0.035); }
+.st-shop-row.locked { opacity: .45; filter: saturate(.3); }
+.st-shop-row.noafford { opacity: .6; }
+.st-shop-row.nofit .c-name { color: var(--os-ink-mute); }
+.st-shop-slot { color: var(--os-ink-mute); text-transform: uppercase; letter-spacing: .06em; font-size: 11px; }
+.st-shop-stats { color: var(--os-ink-dim); font-size: 12px; line-height: 1.35; }
+.st-shop-price { text-align: right; color: var(--energy); font-variant-numeric: tabular-nums; }
+.st-shop-delta { margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px; }
+.st-shop-delta .st-delta { font-size: 10.5px; }
+.st-shop-group { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--st-accent); margin: 12px 0 4px; padding: 4px 8px; display: flex; align-items: center; gap: 10px; }
+.st-shop-group::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--os-line), transparent); }
+.st-shop-row .c-act button { font-size: 12px; padding: 3px 10px; }
+.st-shop-row .c-act button:not(:disabled) { border-color: color-mix(in srgb, var(--good) 48%, transparent); color: var(--good); background: color-mix(in srgb, var(--good) 8%, transparent); }
+.st-shop-row .c-act button:not(:disabled):hover { background: var(--good); color: #021008; }
 
-/* services */
+/* ── 13 · Manufacture ─────────────────────────────────────────────────────────────────────────── */
+.st-manufacture { display: flex; flex-direction: column; gap: 6px; }
+.st-manuf-intro { color: var(--os-ink-dim); font-size: 13px; margin-bottom: 8px; line-height: 1.45; }
+.st-manuf-group-h { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--st-accent); margin: 14px 0 6px; display: flex; align-items: center; gap: 10px; }
+.st-manuf-group-h::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--os-line), transparent); }
+.st-manuf-list { display: flex; flex-direction: column; gap: 8px; }
+.st-manuf-card { padding: 12px 14px; border: 1px solid var(--os-line); border-radius: var(--os-r-sm); background: var(--os-surface); box-shadow: var(--os-shadow); }
+.st-manuf-card.st-manuf-locked { opacity: .5; filter: saturate(.3); }
+.st-manuf-card-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.st-manuf-title { font-size: 14.5px; font-weight: 600; color: var(--os-ink); display: flex; align-items: center; gap: 8px; }
+.st-manuf-desc { color: var(--os-ink-dim); font-size: 12.5px; margin: 4px 0 2px; line-height: 1.4; }
+.st-manuf-augnote { color: var(--warn); font-size: 11.5px; margin-top: 2px; }
+.st-manuf-out { color: var(--good); font-size: 13px; margin: 4px 0; font-weight: 600; }
+.st-manuf-mats { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.st-mat-chip { font-size: 11px; padding: 2px 7px; border-radius: 999px; font-family: var(--mono); background: color-mix(in srgb, var(--good) 10%, transparent); color: var(--good); border: 1px solid color-mix(in srgb, var(--good) 25%, transparent); }
+.st-mat-chip.st-mat-missing { background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 25%, transparent); }
+
+/* ── 14 · Services: quote cards → confirm (a centered console column, not a left-locked list) ── */
+.st-services { display: flex; flex-direction: column; align-items: center; }
+.st-services > * { width: min(840px, 100%); }
 .st-svc-list { display: flex; flex-direction: column; gap: 8px; }
-.st-svc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  border: 1px solid var(--panel-edge); border-radius: 6px; padding: 10px 14px; background: rgba(10,18,32,.5); }
+.st-svc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--os-line); border-radius: var(--os-r-sm); padding: 12px 14px; background: var(--os-surface); box-shadow: var(--os-shadow); }
 .st-svc-row.disabled { opacity: .5; }
-.st-svc-row--blocked { border-color: rgba(255,84,112,.32); }
-.st-svc-row--recommend { border-color: rgba(57,208,255,.34); background: linear-gradient(90deg, rgba(57,208,255,.12), rgba(10,18,32,.58)); }
-.st-svc-row--recommend-ok { border-color: rgba(98,224,138,.3); background: linear-gradient(90deg, rgba(98,224,138,.1), rgba(10,18,32,.56)); }
-.st-svc-row--recommend-warn { border-color: rgba(255,198,77,.36); background: linear-gradient(90deg, rgba(255,198,77,.12), rgba(10,18,32,.58)); }
-.st-svc-row--recommend-bad { border-color: rgba(255,84,112,.42); background: linear-gradient(90deg, rgba(255,84,112,.14), rgba(10,18,32,.58)); }
-.st-svc-row--recommend .st-svc-name { color: var(--accent); font-family: var(--mono); font-size: .72rem;
-  letter-spacing: .11em; text-transform: uppercase; }
-.st-svc-name { font-size: .92rem; }
-.st-svc-detail { font-size: .72rem; color: var(--ink-dim); margin-top: 2px; }
+.st-svc-row--blocked { border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
+.st-svc-row--recommend { border-color: color-mix(in srgb, var(--accent) 34%, transparent); background: color-mix(in srgb, var(--accent) 7%, var(--os-surface)); }
+.st-svc-row--recommend-ok { border-color: color-mix(in srgb, var(--good) 30%, transparent); background: color-mix(in srgb, var(--good) 6%, var(--os-surface)); }
+.st-svc-row--recommend-warn { border-color: color-mix(in srgb, var(--warn) 34%, transparent); background: color-mix(in srgb, var(--warn) 7%, var(--os-surface)); }
+.st-svc-row--recommend-bad { border-color: color-mix(in srgb, var(--danger) 38%, transparent); background: color-mix(in srgb, var(--danger) 8%, var(--os-surface)); }
+.st-svc-row--recommend .st-svc-name { color: var(--accent); font-family: var(--mono); font-size: 11px; letter-spacing: .11em; text-transform: uppercase; }
+.st-svc-row button { flex: none; }
+.st-svc-row button:not(:disabled) { border-color: color-mix(in srgb, var(--accent) 50%, transparent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); font-weight: 600; }
+.st-svc-row button:not(:disabled):hover { background: var(--accent); color: #04121a; }
+.st-svc-detail { font-size: 11.5px; color: var(--os-ink-dim); margin-top: 2px; font-family: var(--mono); }
 .st-svc-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
-.st-svc-chip { font-family: var(--mono); font-size: .68rem; line-height: 1.2; padding: 2px 7px; border-radius: 999px;
-  border: 1px solid var(--panel-edge); color: var(--ink-dim); background: rgba(132,160,200,.08); }
-.st-svc-chip--ok { color: var(--good); border-color: rgba(98,224,138,.32); background: rgba(98,224,138,.1); }
-.st-svc-chip--warn { color: var(--warn); border-color: rgba(255,198,77,.34); background: rgba(255,198,77,.1); }
-.st-svc-chip--bad { color: var(--danger); border-color: rgba(255,84,112,.34); background: rgba(255,84,112,.1); }
-.st-svc-chip--cost { color: var(--energy); border-color: rgba(255,216,74,.28); background: rgba(255,216,74,.08); }
+.st-svc-chip { font-family: var(--mono); font-size: 10.5px; line-height: 1.2; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--os-line); color: var(--os-ink-dim); background: rgba(255,255,255,0.03); }
+.st-svc-chip--ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 30%, transparent); }
+.st-svc-chip--warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 32%, transparent); }
+.st-svc-chip--bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 32%, transparent); }
+.st-svc-chip--cost { color: var(--energy); border-color: color-mix(in srgb, var(--energy) 26%, transparent); }
 
-/* factions */
-.st-fac-note { font-size: .68rem; color: var(--ink-mute); margin-bottom: 12px; letter-spacing: .06em; }
-.st-fac-list { display: flex; flex-direction: column; gap: 12px; }
-.st-fac-row { border-bottom: 1px solid rgba(29,51,80,.4); padding-bottom: 10px; }
+/* ── 15 · Factions ────────────────────────────────────────────────────────────────────────────── */
+.st-fac-note { font-size: 11px; color: var(--os-ink-mute); margin-bottom: 12px; letter-spacing: .06em; }
+.st-fac-list { display: flex; flex-direction: column; gap: 12px; max-width: 820px; }
+.st-fac-row { border-bottom: 1px solid color-mix(in srgb, var(--os-ink-mute) 12%, transparent); padding-bottom: 10px; }
 .st-fac-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
 .st-fac-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-.st-fac-name { flex: 1; font-size: .92rem; }
-.st-fac-tier { font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; padding: 1px 7px; border-radius: 4px; }
-.st-fac-val { min-width: 56px; text-align: right; font-size: .85rem; }
-.st-fac-bar { position: relative; height: 8px; border-radius: 4px; background: var(--panel-2);
-  overflow: hidden; border: 1px solid var(--panel-edge); }
-.st-fac-bar-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--ink-mute); opacity: .6; }
-.st-fac-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform-origin: left;
-  background: var(--accent); opacity: .7; }
-.st-fac-ctrl, .st-fac-rel { font-size: .66rem; color: var(--ink-mute); margin-top: 5px; }
-.st-fac-rel { color: var(--ink-dim); }
-.st-fac-effect { font-size: .74rem; color: var(--ink); line-height: 1.35; margin-top: 5px; }
-.st-fac-guidance { display: grid; grid-template-columns: minmax(52px, auto) 1fr; gap: 4px 10px;
-  margin-top: 8px; padding: 8px 9px; border: 1px solid rgba(57,208,255,.12); border-radius: 6px;
-  background: rgba(4,12,24,.34); color: var(--ink-dim); font-size: .7rem; line-height: 1.35; }
-.st-fac-guidance-label { color: var(--accent); text-transform: uppercase; letter-spacing: .08em; font-size: .62rem; }
+.st-fac-name { flex: 1; font-size: 14px; }
+.st-fac-tier { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; padding: 1px 7px; border-radius: 4px; }
+.st-fac-val { min-width: 56px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+.st-fac-bar { position: relative; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.05); overflow: hidden; border: 1px solid var(--os-line); }
+.st-fac-bar-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--os-ink-mute); opacity: .6; }
+.st-fac-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform-origin: left; background: var(--accent); opacity: .7; }
+.st-fac-ctrl, .st-fac-rel { font-size: 10.5px; color: var(--os-ink-mute); margin-top: 5px; }
+.st-fac-rel { color: var(--os-ink-dim); }
+.st-fac-effect { font-size: 12.5px; color: var(--os-ink); line-height: 1.4; margin-top: 5px; }
+.st-fac-guidance { display: grid; grid-template-columns: minmax(52px, auto) 1fr; gap: 4px 10px; margin-top: 8px; padding: 8px 9px; border: 1px solid var(--os-line); border-radius: var(--os-r-xs); background: rgba(10,16,28,.4); color: var(--os-ink-dim); font-size: 11.5px; line-height: 1.4; }
+.st-fac-guidance-label { color: var(--st-accent); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
 .st-fac-contracts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
-.st-fac-contract { font-size: .62rem; line-height: 1.25; padding: 3px 6px; border-radius: 4px;
-  border: 1px solid rgba(148,163,184,.18); color: var(--ink-mute); background: rgba(255,255,255,.025); }
-.st-fac-contract b { font-family: var(--mono); font-size: .58rem; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--ink-dim); margin-right: 3px; }
-.st-fac-contract.unlocked { color: var(--good); border-color: rgba(98,224,138,.28); background: rgba(98,224,138,.08); }
+.st-fac-contract { font-size: 10px; line-height: 1.25; padding: 3px 6px; border-radius: 4px; border: 1px solid var(--os-line); color: var(--os-ink-mute); background: rgba(255,255,255,.02); }
+.st-fac-contract b { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--os-ink-dim); margin-right: 3px; }
+.st-fac-contract.unlocked { color: var(--good); border-color: color-mix(in srgb, var(--good) 26%, transparent); }
 .st-fac-contract.unlocked b { color: var(--good); }
-.st-fac-contract.locked:not(.aspirational) { color: var(--warn); border-color: rgba(255,198,77,.26); }
+.st-fac-contract.locked:not(.aspirational) { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 26%, transparent); }
 .st-fac-contract.aspirational { border-style: dashed; }
-.st-fac-hostile { color: var(--danger); background: rgba(255,84,112,.12); }
-.st-fac-cool { color: var(--warn); background: rgba(255,179,71,.12); }
-.st-fac-neutral { color: var(--ink-dim); background: rgba(132,160,200,.1); }
-.st-fac-warm, .st-fac-good { color: var(--good); background: rgba(98,224,138,.12); }
-.st-fac-allied { color: var(--accent-2); background: rgba(122,247,208,.14); }
+.st-fac-hostile { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.st-fac-cool { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.st-fac-neutral { color: var(--os-ink-dim); background: rgba(255,255,255,0.05); }
+.st-fac-warm, .st-fac-good { color: var(--good); background: color-mix(in srgb, var(--good) 10%, transparent); }
+.st-fac-allied { color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 12%, transparent); }
 .st-fac-bar-fill.st-fac-hostile { background: var(--danger); }
 .st-fac-bar-fill.st-fac-cool { background: var(--warn); }
 .st-fac-bar-fill.st-fac-good, .st-fac-bar-fill.st-fac-warm { background: var(--good); }
 .st-fac-bar-fill.st-fac-allied { background: var(--accent-2); }
+.st-faction-gauge { height: 6px; border-radius: 1px; position: relative; width: 140px; margin-top: 4px; background: linear-gradient(90deg, var(--danger) 0%, var(--danger) 20%, var(--warn) 20%, var(--warn) 40%, var(--ink-mute) 40%, var(--ink-mute) 60%, var(--accent-2) 60%, var(--accent-2) 80%, var(--good) 80%, var(--good) 100%); }
+.st-faction-gauge::after { content: ''; position: absolute; top: -3px; width: 2px; height: 12px; background: var(--os-ink); box-shadow: 0 0 4px rgba(0,0,0,0.8); left: var(--rep-pct, 50%); transition: left 0.5s var(--ease); }
 
-/* bar */
-.st-bar-list { display: flex; flex-direction: column; gap: 14px; }
-.st-bar-card { display: flex; gap: 14px; border: 1px solid var(--panel-edge); border-radius: 8px;
-  padding: 12px 14px; background: rgba(10,18,32,.5); }
-.st-bar-avatar { width: 64px; height: 64px; border-radius: 6px; flex: none; border: 1px solid var(--panel-edge); }
+/* ── 16 · Bar ─────────────────────────────────────────────────────────────────────────────────── */
+.st-bar-list { display: flex; flex-direction: column; gap: 14px; max-width: 820px; }
+.st-bar-card { display: flex; gap: 14px; border: 1px solid var(--os-line); border-radius: var(--os-r-sm); padding: 12px 14px; background: var(--os-surface); box-shadow: var(--os-shadow); }
+.st-bar-avatar { width: 64px; height: 64px; border-radius: var(--os-r-xs); flex: none; border: 1px solid var(--os-line); }
 .st-bar-body { flex: 1; }
-.st-bar-name { font-size: .98rem; }
-.st-bar-role { color: var(--ink-mute); font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; }
-.st-bar-line { color: var(--ink-dim); font-size: .85rem; margin: 6px 0 8px; font-style: italic; }
+.st-bar-role { color: var(--os-ink-mute); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; }
+.st-bar-line { color: var(--os-ink-dim); font-size: 13px; margin: 6px 0 8px; font-style: italic; }
 .st-bar-intel { display: flex; gap: 5px; flex-wrap: wrap; margin: -2px 0 8px; }
-.st-bar-intel-chip { font-size: .66rem; line-height: 1.25; border: 1px solid rgba(57,208,255,.22);
-  border-radius: 5px; padding: 2px 6px; color: var(--ink-dim); background: rgba(6,12,22,.48); }
+.st-bar-intel-chip { font-size: 10.5px; line-height: 1.25; border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); border-radius: 5px; padding: 2px 6px; color: var(--os-ink-dim); background: rgba(10,16,28,.48); }
 .st-bar-intel-chip b { font-family: var(--mono); color: var(--accent); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
-.st-bar-intel-chip--ok { border-color: rgba(98,224,138,.3); color: var(--good); }
+.st-bar-intel-chip--ok { border-color: color-mix(in srgb, var(--good) 30%, transparent); color: var(--good); }
 .st-bar-intel-chip--ok b { color: var(--good); }
-.st-bar-intel-chip--warn { border-color: rgba(255,198,77,.32); color: var(--warn); }
+.st-bar-intel-chip--warn { border-color: color-mix(in srgb, var(--warn) 32%, transparent); color: var(--warn); }
 .st-bar-intel-chip--warn b { color: var(--warn); }
-.st-bar-intel-chip--bad { border-color: rgba(255,84,112,.36); color: var(--danger); }
+.st-bar-intel-chip--bad { border-color: color-mix(in srgb, var(--danger) 36%, transparent); color: var(--danger); }
 .st-bar-intel-chip--bad b { color: var(--danger); }
-.st-bar-intel-chip--story { border-color: rgba(192,139,255,.36); color: var(--accent-2); }
-.st-bar-intel-chip--story b { color: var(--accent-2); }
+.st-bar-intel-chip--story { border-color: color-mix(in srgb, var(--accent-3) 36%, transparent); color: var(--accent-3); }
+.st-bar-intel-chip--story b { color: var(--accent-3); }
 .st-bar-choices { display: flex; gap: 6px; flex-wrap: wrap; }
-.st-bar-choices button { font-size: .78rem; }
-.st-bar-reply { margin-top: 8px; font-size: .82rem; color: var(--accent-2); max-height: 0; overflow: hidden;
-  transition: max-height .2s ease; }
+.st-bar-choices button { font-size: 12.5px; }
+.st-bar-reply { margin-top: 8px; font-size: 13px; color: var(--accent-2); max-height: 0; overflow: hidden; transition: max-height .2s ease; }
 .st-bar-reply.show { max-height: 120px; }
 .st-bar-offer { margin-top: 8px; display: grid; gap: 6px; justify-items: start; }
 .st-bar-offer .st-mission-preflight { margin: 0; }
@@ -3533,452 +3766,150 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-bar-offer.accepted { opacity: .82; }
 .st-bar-offer-warn { margin: -1px 0 0; }
 .st-bar-offer-blocker { margin: -1px 0 0; }
-.st-bar-accept-btn { font-size: .78rem; }
-.st-bar-log-btn { border-color: rgba(98,224,138,.42); color: var(--good); }
-.st-bar-log-btn:hover { background: rgba(98,224,138,.12); }
+.st-bar-accept-btn { font-size: 12.5px; }
+.st-bar-log-btn { border-color: color-mix(in srgb, var(--good) 42%, transparent); color: var(--good); }
+.st-bar-log-btn:hover { background: color-mix(in srgb, var(--good) 12%, transparent); }
 
-/* missions */
-.st-mission-guide { margin: -2px 0 12px; border: 1px solid var(--panel-edge); border-radius: 6px;
-  padding: 9px 11px; background: rgba(10,18,32,.5); color: var(--ink-dim); font-size: .8rem; line-height: 1.4; }
-.st-mission-recommend { margin: -2px 0 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-  gap: 12px; border: 1px solid rgba(57,208,255,.34); border-radius: 6px; padding: 10px 12px;
-  background: linear-gradient(90deg, rgba(57,208,255,.12), rgba(10,18,32,.58)); }
+/* ── 17 · Missions: contract board + preflight instrument ─────────────────────────────────────── */
+.st-mission-guide { margin: -2px 0 12px; color: var(--os-ink-dim); font-size: 12.5px; line-height: 1.45; }
+.st-mission-recommend { margin: -2px 0 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent); border-radius: var(--os-r-sm); padding: 10px 12px; background: color-mix(in srgb, var(--accent) 7%, var(--os-surface)); }
 .st-mission-recommend[hidden] { display: none; }
-.st-mission-recommend--ok { border-color: rgba(98,224,138,.36); background: linear-gradient(90deg, rgba(98,224,138,.11), rgba(10,18,32,.58)); }
-.st-mission-recommend--warn { border-color: rgba(255,198,77,.38); background: linear-gradient(90deg, rgba(255,198,77,.12), rgba(10,18,32,.58)); }
-.st-mission-recommend--bad { border-color: rgba(255,84,112,.42); background: linear-gradient(90deg, rgba(255,84,112,.13), rgba(10,18,32,.58)); }
+.st-mission-recommend--ok { border-color: color-mix(in srgb, var(--good) 32%, transparent); background: color-mix(in srgb, var(--good) 6%, var(--os-surface)); }
+.st-mission-recommend--warn { border-color: color-mix(in srgb, var(--warn) 34%, transparent); background: color-mix(in srgb, var(--warn) 7%, var(--os-surface)); }
+.st-mission-recommend--bad { border-color: color-mix(in srgb, var(--danger) 38%, transparent); background: color-mix(in srgb, var(--danger) 7%, var(--os-surface)); }
 .st-mission-recommend-copy { min-width: 0; display: grid; gap: 3px; }
-.st-mission-recommend-label { color: var(--accent); font-size: .62rem; letter-spacing: .14em; }
+.st-mission-recommend-label { color: var(--accent); font-size: 9.5px; letter-spacing: .14em; }
 .st-mission-recommend--ok .st-mission-recommend-label { color: var(--good); }
 .st-mission-recommend--warn .st-mission-recommend-label { color: var(--warn); }
 .st-mission-recommend--bad .st-mission-recommend-label { color: var(--danger); }
-.st-mission-recommend-title { color: var(--ink); font-weight: 700; font-size: .88rem; line-height: 1.3; }
-.st-mission-recommend-reason { color: var(--ink-dim); font-size: .74rem; line-height: 1.34; }
-.st-mission-recommend button { flex: none; max-width: 100%; font-size: .75rem; white-space: nowrap; }
-.st-mission-accepted { margin: -2px 0 12px; border: 1px solid rgba(98,224,138,.42); border-radius: 6px;
-  padding: 10px 12px; background: rgba(25,54,42,.36); box-shadow: 0 0 12px rgba(98,224,138,.12); }
+.st-mission-recommend-title { color: var(--os-ink); font-weight: 700; font-size: 13.5px; line-height: 1.3; }
+.st-mission-recommend-reason { color: var(--os-ink-dim); font-size: 12px; line-height: 1.35; }
+.st-mission-recommend button { flex: none; max-width: 100%; font-size: 12px; white-space: nowrap; border-color: color-mix(in srgb, var(--accent) 52%, transparent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); font-weight: 600; }
+.st-mission-recommend button:hover:not(:disabled) { background: var(--accent); color: #04121a; }
+.st-mission-accepted { margin: -2px 0 12px; border: 1px solid color-mix(in srgb, var(--good) 40%, transparent); border-radius: var(--os-r-sm); padding: 10px 12px; background: color-mix(in srgb, var(--good) 6%, var(--os-surface)); position: relative; }
 .st-mission-accepted[hidden] { display: none; }
-.st-mission-accepted-label { color: var(--good); font-size: .62rem; letter-spacing: .14em; margin-bottom: 4px; }
-.st-mission-accepted-title { color: var(--ink); font-weight: 700; font-size: .9rem; line-height: 1.3; }
-.st-mission-accepted-next { color: var(--ink-dim); font-size: .78rem; line-height: 1.35; margin-top: 4px; }
-.st-mission-accepted-log { color: var(--ink-mute); font-size: .68rem; line-height: 1.35; margin-top: 6px; }
+.st-mission-accepted-label { color: var(--good); font-size: 9.5px; letter-spacing: .16em; margin-bottom: 4px; text-transform: uppercase; }
+.st-mission-accepted-title { color: var(--os-ink); font-weight: 700; font-size: 14px; line-height: 1.3; }
+.st-mission-accepted-next { color: var(--os-ink-dim); font-size: 12.5px; line-height: 1.4; margin-top: 4px; }
+.st-mission-accepted-log { color: var(--os-ink-mute); font-size: 11px; line-height: 1.4; margin-top: 6px; }
+.st-mission-accepted-actions { margin-top: 9px; display: flex; gap: 10px; flex-wrap: wrap; }
+.st-mission-accepted.trace-run::after { content: ''; position: absolute; inset: -1px; border-radius: var(--os-r-sm); border: 1px solid var(--good); pointer-events: none; animation: st-receipt-trace 620ms ease-out 1 both; }
+@keyframes st-receipt-trace { 0% { clip-path: inset(0 100% 100% 0); opacity: 1; } 60% { clip-path: inset(0 0 0 0); opacity: 1; } 100% { opacity: 0; } }
 .st-mission-list { display: flex; flex-direction: column; gap: 10px; }
-.st-mission-card { border: 1px solid var(--panel-edge); border-radius: 8px; padding: 11px 14px;
-  background: rgba(10,18,32,.55); }
-.st-mission-card.tracked { border-color: var(--accent); box-shadow: 0 0 10px rgba(57,208,255,.2); }
-.st-mission-card.recommended--ok { border-color: rgba(98,224,138,.38); box-shadow: 0 0 12px rgba(98,224,138,.16); }
-.st-mission-card.recommended--warn { border-color: rgba(255,198,77,.4); box-shadow: 0 0 12px rgba(255,198,77,.14); }
-.st-mission-card.recommended--bad { border-color: rgba(255,84,112,.42); box-shadow: 0 0 12px rgba(255,84,112,.14); }
-.st-mission-card.tracked.recommended { border-color: var(--accent); box-shadow: 0 0 12px rgba(57,208,255,.22); }
+.st-mission-card { border: 1px solid var(--os-line); border-radius: var(--os-r-sm); padding: 11px 14px; background: var(--os-surface); box-shadow: var(--os-shadow); cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.st-mission-card:hover { border-color: color-mix(in srgb, var(--st-accent) 40%, transparent); }
+.st-mission-card.selected { border-color: var(--st-accent); background: color-mix(in srgb, var(--st-accent) 6%, var(--os-surface)); box-shadow: inset 3px 0 0 var(--st-accent); }
+.st-mission-card.tracked { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.st-mission-card.recommended--ok { border-color: color-mix(in srgb, var(--good) 36%, transparent); }
+.st-mission-card.recommended--warn { border-color: color-mix(in srgb, var(--warn) 38%, transparent); }
+.st-mission-card.recommended--bad { border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
 .st-mission-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; }
-.st-mission-title { font-size: .95rem; min-width: 0; }
+.st-mission-title { font-size: 14px; min-width: 0; }
 .st-mission-badges { display: inline-flex; align-items: center; gap: 6px; flex: none; }
-.st-mission-recommended { font-family: var(--mono); font-size: .62rem; letter-spacing: .08em; padding: 1px 7px;
-  border-radius: 4px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); }
-.st-mission-recommended--ok { color: var(--good); border-color: rgba(98,224,138,.34); }
-.st-mission-recommended--warn { color: var(--warn); border-color: rgba(255,198,77,.34); }
-.st-mission-recommended--bad { color: var(--danger); border-color: rgba(255,84,112,.36); }
-.st-mission-readiness { font-family: var(--mono); font-size: .62rem; letter-spacing: .08em; padding: 1px 7px;
-  border-radius: 4px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); }
-.st-mission-readiness--ok { color: var(--good); border-color: rgba(98,224,138,.32); }
-.st-mission-readiness--warn { color: var(--warn); border-color: rgba(255,198,77,.34); }
-.st-mission-readiness--bad { color: var(--danger); border-color: rgba(255,84,112,.36); }
-.st-mission-risk { font-size: .62rem; letter-spacing: .08em; padding: 1px 7px; border-radius: 4px;
-  background: var(--panel-2); color: var(--ink-dim); }
+.st-mission-recommended { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; padding: 1px 7px; border-radius: 4px; border: 1px solid var(--os-line); background: rgba(255,255,255,.03); }
+.st-mission-recommended--ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 32%, transparent); }
+.st-mission-recommended--warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 32%, transparent); }
+.st-mission-recommended--bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 34%, transparent); }
+.st-mission-readiness { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; padding: 1px 7px; border-radius: 4px; border: 1px solid var(--os-line); background: rgba(255,255,255,.03); }
+.st-mission-readiness--ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 30%, transparent); }
+.st-mission-readiness--warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 32%, transparent); }
+.st-mission-readiness--bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 34%, transparent); }
+.st-mission-risk { font-size: 9.5px; letter-spacing: .08em; padding: 1px 7px; border-radius: 4px; background: rgba(255,255,255,.04); color: var(--os-ink-dim); }
 .st-mission-risk.r0 { color: var(--good); } .st-mission-risk.r1 { color: var(--accent-2); }
 .st-mission-risk.r2 { color: var(--warn); } .st-mission-risk.r3, .st-mission-risk.r4 { color: var(--danger); }
-.st-mission-meta { font-size: .72rem; color: var(--ink-dim); margin: 4px 0; }
-.st-mission-brief { color: var(--ink); font-size: .82rem; line-height: 1.38; margin-top: 6px; }
-.st-mission-purpose { color: var(--ink); font-size: .78rem; line-height: 1.35; margin-top: 5px; }
-.st-mission-next { color: var(--ink-mute); font-size: .72rem; line-height: 1.35; margin: 3px 0 8px; }
+.st-mission-meta { font-size: 11.5px; color: var(--os-ink-dim); margin: 4px 0; }
+.st-mission-brief { color: var(--os-ink); font-size: 13px; line-height: 1.42; margin-top: 6px; }
+.st-mission-purpose { color: var(--os-ink); font-size: 12.5px; line-height: 1.4; margin-top: 5px; }
+.st-mission-next { color: var(--os-ink-mute); font-size: 11.5px; line-height: 1.4; margin: 3px 0 8px; }
 .st-mission-preflight { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 8px; }
-.st-mission-preflight-chip { font-family: var(--mono); font-size: .66rem; letter-spacing: .04em;
-  border: 1px solid var(--panel-edge); border-radius: 4px; padding: 2px 6px; color: var(--ink-dim);
-  background: rgba(10,18,32,.48); }
-.st-mission-preflight-chip--ok { color: var(--good); border-color: rgba(98,224,138,.34); }
-.st-mission-preflight-chip--warn { color: var(--warn); border-color: rgba(255,198,77,.34); }
-.st-mission-preflight-chip--bad { color: var(--danger); border-color: rgba(255,84,112,.34); }
-.st-mission-preflight-chip--info { color: var(--accent); border-color: rgba(57,208,255,.28); }
-.st-mission-standing { display: flex; gap: 8px; align-items: baseline; font-size: .68rem; line-height: 1.3;
-  margin: -3px 0 8px; color: var(--ink-mute); }
-.st-mission-standing .mono { font-size: .6rem; letter-spacing: .08em; text-transform: uppercase; }
+.st-mission-preflight-chip { font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; border: 1px solid var(--os-line); border-radius: 4px; padding: 2px 6px; color: var(--os-ink-dim); background: rgba(10,16,28,.45); }
+.st-mission-preflight-chip--ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 30%, transparent); }
+.st-mission-preflight-chip--warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 32%, transparent); }
+.st-mission-preflight-chip--bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 32%, transparent); }
+.st-mission-preflight-chip--info { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 26%, transparent); }
+.st-mission-standing { display: flex; gap: 8px; align-items: baseline; font-size: 11px; line-height: 1.3; margin: -3px 0 8px; color: var(--os-ink-mute); }
+.st-mission-standing .mono { font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; }
 .st-mission-standing--ok .mono { color: var(--good); }
 .st-mission-standing--locked .mono { color: var(--danger); }
-.st-mission-preflight-warn { color: var(--warn); font-size: .7rem; line-height: 1.3; margin: -3px 0 8px; }
-.st-mission-rewards { display: flex; gap: 14px; font-size: .8rem; margin-bottom: 8px; }
+.st-mission-preflight-warn { color: var(--warn); font-size: 11.5px; line-height: 1.35; margin: -3px 0 8px; }
+.st-mission-rewards { display: flex; gap: 14px; font-size: 13px; margin-bottom: 8px; }
 .st-mission-cr { color: var(--energy); }
 .st-mission-rep { color: var(--accent-2); }
-.st-mission-exp { color: var(--ink-mute); }
+.st-mission-exp { color: var(--os-ink-mute); }
 .st-mission-consequences { display: flex; flex-wrap: wrap; gap: 5px; margin: -2px 0 8px; }
-.st-mission-consequence { font-size: .64rem; letter-spacing: .02em; line-height: 1.25;
-  padding: 3px 6px; border: 1px solid rgba(148,163,184,.18); border-radius: 4px;
-  color: var(--ink-dim); background: rgba(255,255,255,.025); }
-.st-mission-consequence b { color: var(--ink); font-weight: 700; text-transform: uppercase; }
-.st-mission-consequence--ok { border-color: rgba(98,224,138,.3); color: var(--good); }
-.st-mission-consequence--warn { border-color: rgba(255,198,77,.3); color: var(--warn); }
-.st-mission-consequence--bad { border-color: rgba(255,84,112,.34); color: var(--danger); }
+.st-mission-consequence { font-size: 10.5px; letter-spacing: .02em; line-height: 1.25; padding: 3px 6px; border: 1px solid var(--os-line); border-radius: 4px; color: var(--os-ink-dim); background: rgba(255,255,255,.02); }
+.st-mission-consequence b { color: var(--os-ink); font-weight: 700; text-transform: uppercase; }
+.st-mission-consequence--ok { border-color: color-mix(in srgb, var(--good) 28%, transparent); color: var(--good); }
+.st-mission-consequence--warn { border-color: color-mix(in srgb, var(--warn) 28%, transparent); color: var(--warn); }
+.st-mission-consequence--bad { border-color: color-mix(in srgb, var(--danger) 32%, transparent); color: var(--danger); }
 .st-mission-btns { display: flex; gap: 8px; align-items: center; }
-.st-mission-btns button { font-size: .78rem; }
-.st-mission-unmet { font-size: .7rem; color: var(--danger); }
-
-/* operations board — two-column: compact contract selectors (rail) + preflight instrument (center) */
-.st-ops { display: flex; gap: 16px; align-items: flex-start; }
-.st-ops-rail { flex: 0 0 300px; min-width: 0; max-width: 340px; }
-.st-ops-rail-h { color: var(--ink-mute); font-size: .6rem; letter-spacing: .16em; margin: 0 0 8px; text-transform: uppercase; }
-.st-ops-center { flex: 1 1 auto; min-width: 0; align-self: stretch; border: 1px solid var(--panel-edge);
-  border-radius: 10px; background: linear-gradient(180deg, rgba(10,18,32,.6), rgba(6,12,22,.5)); padding: 14px 16px; }
+.st-mission-btns button { font-size: 12.5px; }
+.st-mission-unmet { font-size: 11.5px; color: var(--danger); }
+/* ops board */
+.st-ops { display: flex; gap: 16px; align-items: stretch; }
+.st-ops-rail { flex: 0 0 320px; min-width: 0; max-width: 360px; }
+.st-ops-rail-h { color: var(--os-ink-mute); font-size: 9.5px; letter-spacing: .16em; margin: 0 0 8px; text-transform: uppercase; }
+.st-ops-center { flex: 1 1 auto; min-width: 0; align-self: stretch; border: 1px solid var(--os-line); border-radius: var(--os-r); background: var(--os-surface); padding: 14px 16px; }
 @media (max-width: 900px) { .st-ops { flex-direction: column; } .st-ops-rail { flex: 1 1 auto; max-width: none; width: 100%; } }
-.st-ops-empty { color: var(--ink-mute); font-size: .82rem; line-height: 1.5; padding: 30px 10px; text-align: center; }
+.st-ops-empty { color: var(--os-ink-mute); font-size: 13px; line-height: 1.5; padding: 30px 10px; text-align: center; }
 .st-ops-empty[hidden], .st-ops-dossier[hidden] { display: none; }
 .st-ops-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
-.st-ops-eyebrow { color: var(--accent); font-size: .58rem; letter-spacing: .18em; }
-.st-ops-title { color: var(--ink); font-weight: 700; font-size: 1.02rem; line-height: 1.25; margin-top: 3px; }
-.st-ops-state { flex: none; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; font-weight: 700;
-  padding: 4px 10px; border: 1px solid var(--panel-edge); border-radius: 5px; background: rgba(255,255,255,.03);
-  white-space: nowrap; color: var(--ink-dim); }
-.st-ops-state[data-kind="ok"] { color: var(--good); border-color: rgba(98,224,138,.42); background: rgba(98,224,138,.08); }
-.st-ops-state[data-kind="warn"] { color: var(--warn); border-color: rgba(255,198,77,.42); background: rgba(255,198,77,.08); }
-.st-ops-state[data-kind="bad"] { color: var(--danger); border-color: rgba(255,84,112,.44); background: rgba(255,84,112,.08); }
-/* route lane */
-.st-ops-route { position: relative; height: 92px; margin: 0 0 14px; border: 1px solid var(--panel-edge);
-  border-radius: 8px; overflow: hidden;
-  background: radial-gradient(120% 140% at 50% 130%, rgba(57,208,255,.1), transparent 62%), rgba(6,12,22,.5); }
-.st-ops-route[data-kind="warn"] { border-color: rgba(255,198,77,.34); }
-.st-ops-route[data-kind="danger"] { border-color: rgba(255,84,112,.36); }
+.st-ops-eyebrow { color: var(--st-accent); font-size: 9px; letter-spacing: .18em; }
+.st-ops-title { color: var(--os-ink); font-weight: 700; font-size: 16px; line-height: 1.25; margin-top: 3px; font-family: var(--font-display); }
+.st-ops-state { flex: none; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; font-weight: 700; padding: 4px 10px; border: 1px solid var(--os-line); border-radius: 5px; background: rgba(255,255,255,.03); white-space: nowrap; color: var(--os-ink-dim); }
+.st-ops-state[data-kind="ok"] { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, transparent); }
+.st-ops-state[data-kind="warn"] { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.st-ops-state[data-kind="bad"] { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 42%, transparent); }
+.st-ops-route { position: relative; height: 92px; margin: 0 0 14px; border: 1px solid var(--os-line); border-radius: var(--os-r-sm); overflow: hidden; background: radial-gradient(120% 140% at 50% 130%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 62%), rgba(6,12,22,.5); }
+.st-ops-route[data-kind="warn"] { border-color: color-mix(in srgb, var(--warn) 32%, transparent); }
+.st-ops-route[data-kind="danger"] { border-color: color-mix(in srgb, var(--danger) 34%, transparent); }
 .st-ops-beam, .st-ops-ping { position: absolute; inset: 0; pointer-events: none; }
 .st-ops-node { position: absolute; top: 50%; transform: translateY(-50%); display: grid; gap: 3px; max-width: 42%; z-index: 1; }
 .st-ops-node--origin { left: 14px; text-align: left; }
 .st-ops-node--dest { right: 14px; text-align: right; }
-.st-ops-node-tag { font-size: .52rem; letter-spacing: .14em; color: var(--ink-mute); }
-.st-ops-node-name { font-size: .82rem; font-weight: 700; color: var(--ink); line-height: 1.2;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-ops-node-tag { font-size: 8.5px; letter-spacing: .14em; color: var(--os-ink-mute); }
+.st-ops-node-name { font-size: 13px; font-weight: 700; color: var(--os-ink); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .st-ops-node--dest .st-ops-node-name { color: var(--accent); }
-/* preflight ring gauges */
 .st-ops-gauges { display: flex; gap: 18px; margin: 0 0 14px; flex-wrap: wrap; }
 .st-ops-gauge { display: flex; align-items: center; gap: 9px; }
 .st-ops-gauge-mount { flex: none; display: flex; }
 .st-ops-gauge-meta { display: grid; gap: 1px; }
-.st-ops-gauge-val { font-family: var(--mono); font-size: .86rem; font-weight: 700; color: var(--ink); line-height: 1.05; }
-.st-ops-gauge-label { font-size: .56rem; letter-spacing: .12em; color: var(--ink-mute); text-transform: uppercase; }
-/* broker comms slate */
-.st-ops-comms { border: 1px solid rgba(57,208,255,.24); border-left: 3px solid rgba(57,208,255,.55);
-  border-radius: 7px; padding: 9px 12px; margin: 0 0 12px;
-  background: linear-gradient(90deg, rgba(57,208,255,.09), rgba(6,12,22,.4)); }
+.st-ops-gauge-val { font-family: var(--mono); font-size: 13.5px; font-weight: 700; color: var(--os-ink); line-height: 1.05; font-variant-numeric: tabular-nums; }
+.st-ops-gauge-label { font-size: 8.5px; letter-spacing: .12em; color: var(--os-ink-mute); text-transform: uppercase; }
+.st-ops-comms { border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent); border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); border-radius: var(--os-r-xs); padding: 9px 12px; margin: 0 0 12px; background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .st-ops-comms-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
-.st-ops-comms-from { color: var(--accent-2); font-weight: 700; font-size: .8rem; min-width: 0; }
-.st-ops-comms-tag { flex: none; color: var(--accent); font-size: .54rem; letter-spacing: .14em; }
-.st-ops-comms-msg { color: var(--ink-dim); font-size: .8rem; line-height: 1.45; font-style: italic; }
-/* dossier detail + actions */
+.st-ops-comms-from { color: var(--accent-2); font-weight: 700; font-size: 12.5px; min-width: 0; }
+.st-ops-comms-tag { flex: none; color: var(--accent); font-size: 8.5px; letter-spacing: .14em; }
+.st-ops-comms-msg { color: var(--os-ink-dim); font-size: 12.5px; line-height: 1.5; font-style: italic; }
 .st-ops-standing { margin: 0 0 8px; }
 .st-ops-warn[hidden] { display: none; }
 .st-ops-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
-.st-ops-btn { font-size: .82rem; }
-.st-ops-btn--plot { border-color: rgba(57,208,255,.44); color: var(--accent); }
-.st-ops-btn--plot:hover { background: rgba(57,208,255,.12); }
-/* compact selector card additions (board-only — .st-mission-card is not shared with the Bar) */
-.st-mission-card { cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
-.st-mission-card:hover { border-color: rgba(57,208,255,.4); }
-.st-mission-card.selected { border-color: var(--accent); background: rgba(57,208,255,.07);
-  box-shadow: inset 3px 0 0 var(--accent), 0 0 12px rgba(57,208,255,.14); }
+.st-ops-btn { font-size: 13px; }
+.st-ops-btn--plot { border-color: color-mix(in srgb, var(--accent) 44%, transparent); color: var(--accent); }
+.st-ops-btn--plot:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .st-mission-cslot { display: flex; flex-wrap: wrap; gap: 5px; margin: 7px 0 6px; }
-.st-mission-chip { font-family: var(--mono); font-size: .62rem; letter-spacing: .03em; padding: 2px 6px;
-  border: 1px solid var(--panel-edge); border-radius: 4px; color: var(--ink-dim); background: rgba(10,18,32,.42); }
+.st-mission-chip { font-family: var(--mono); font-size: 9.5px; letter-spacing: .03em; padding: 2px 6px; border: 1px solid var(--os-line); border-radius: 4px; color: var(--os-ink-dim); background: rgba(10,16,28,.42); }
 .st-mission-chip--cr { color: var(--energy); }
 .st-mission-chip--rep { color: var(--accent-2); }
 .st-mission-chip--r0 { color: var(--good); } .st-mission-chip--r1 { color: var(--accent-2); }
 .st-mission-chip--r2 { color: var(--warn); } .st-mission-chip--r3, .st-mission-chip--r4 { color: var(--danger); }
-.st-mission-chip--time { color: var(--ink-mute); }
-/* accepted receipt: singular confirmation + one-shot freshly-printed edge sweep + Plot Route */
-.st-mission-accepted { position: relative; }
-.st-mission-accepted-actions { margin-top: 9px; display: flex; gap: 10px; flex-wrap: wrap; }
-.st-mission-accepted.trace-run::after { content: ''; position: absolute; inset: -1px; border-radius: 7px;
-  border: 1px solid var(--good); pointer-events: none; animation: st-receipt-trace 620ms ease-out 1 both; }
-@keyframes st-receipt-trace { 0% { clip-path: inset(0 100% 100% 0); opacity: 1; } 60% { clip-path: inset(0 0 0 0); opacity: 1; } 100% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .st-mission-accepted.trace-run::after { animation: none; } }
-html.sf-reduce-motion .st-mission-accepted.trace-run::after { animation: none; }
+.st-mission-chip--time { color: var(--os-ink-mute); }
 
-/* --- SCORCHED BULKHEAD CONSOLE OVERRIDES --- */
-/* No remote @font import: the game must run offline/packaged (and a mid-stylesheet @import is invalid
-   anyway). --font-display / --font-body below fall back to the local --mono + system stacks. */
-
-.st-hub {
-  /* Refined mission-console theme: readable system type, soft slate surfaces, restrained accent,
-     generous corners + soft elevation (replaces the hard 1px cyan-wireframe "bulkhead" look). */
-  --font-display: 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --font-body: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --panel-edge: rgba(150,167,193,0.13);
-  --st-line: rgba(150,167,193,0.16);
-  --st-surface: rgba(21,28,44,0.72);
-  --st-surface-2: rgba(28,38,58,0.5);
-  --st-raised: rgba(33,45,68,0.82);
-  --st-r: 14px; --st-r-sm: 10px; --st-r-xs: 7px;
-  --st-shadow: 0 14px 36px -18px rgba(0,0,0,0.72);
-  --st-accent-soft: color-mix(in srgb, var(--st-accent) 20%, transparent);
-  --ink: #eef2f9; --ink-dim: #bcc7db; --ink-mute: #8695ad;
-  color: var(--ink);
-  font-family: var(--font-body);
-}
-.st-station-name {
-  font-family: var(--font-display);
-  font-size: 25px;
-  font-weight: 650;
-  letter-spacing: 0.005em;
-  text-transform: none;
-  color: #fff;
-  position: relative;
-}
-.st-station-name::after {
-  content: ''; position: absolute; bottom: -2px; left: 0; height: 1px;
-  background: var(--accent); width: 0; box-shadow: 0 0 6px var(--accent);
-}
-.st-station-name.acquiring::after {
-  animation: signal-sweep 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-@keyframes signal-sweep {
-  from { width: 0; opacity: 1; }
-  to { width: 100%; opacity: 0.3; }
-}
-.st-tab-label {
-  font-family: var(--font-display);
-  font-size: 13.5px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  text-transform: none;
-}
-.c-name, .st-sy-name, .st-svc-name, .st-inv-name, .st-mission-title, .st-bar-name {
-  font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0;
-  color: var(--ink);
-}
-.st-cmdty-purpose, .st-market-mission-body, .st-sy-guide, .st-sy-purpose, .st-mission-brief, .st-mission-purpose, .st-bar-line {
-  font-family: var(--font-body);
-  font-size: 13.5px;
-  font-weight: 400;
-  line-height: 1.55;
-  color: var(--ink-dim);
-}
-.st-row-head, .st-sub-h, .st-manuf-group-h {
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-}
-.st-topbar {
-  height: 52px;
-  padding: 0 20px;
-}
-/* Soft corners (was a hard 1px !important wireframe on every element). */
-.st-hub button, .st-hub .st-tab, .st-hub input, .st-hub select, .st-hub .st-chip { border-radius: var(--st-r-xs); }
-.st-undock {
-  font-family: var(--font-display); font-weight: 650; letter-spacing: 0.01em; text-transform: none;
-  border-radius: var(--st-r-sm); padding: 9px 18px;
-}
-.st-undock::before {
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(90deg, var(--accent), transparent 70%);
-  opacity: 0; transform: scaleX(0); transform-origin: left;
-  transition: none; pointer-events: none; z-index: 0;
-}
-.st-undock.charging::before {
-  opacity: 0.25; transform: scaleX(1);
-  transition: transform 600ms cubic-bezier(0.33, 1, 0.68, 1), opacity 80ms ease;
-}
-.st-undock.abort::before {
-  opacity: 0; transform: scaleX(0);
-  transition: all 150ms ease;
-}
-.st-undock > * { position: relative; z-index: 1; }
-.st-content::after {
-  content: ''; position: absolute; left: 0; right: 0; height: 4px;
-  background: repeating-linear-gradient(90deg, rgba(242,168,59,0.6) 0px, transparent 2px, rgba(242,168,59,0.3) 4px, transparent 6px);
-  opacity: 0; pointer-events: none; z-index: 10; top: 0;
-}
-.st-content.switching::after {
-  animation: channel-wipe-trace 120ms ease-out forwards;
-}
-@keyframes channel-wipe-trace {
-  0% { top: 0; opacity: 0.9; }
-  100% { top: 100%; opacity: 0; }
-}
-.st-trend-arrow {
-  display: inline-block; font-size: 1.4em; line-height: 1;
-  transition: transform 0.3s var(--ease), color 0.3s var(--ease);
-}
-.st-trend-arrow.up { color: var(--danger); transform: rotate(-90deg); }
-.st-trend-arrow.down { color: var(--good); transform: rotate(90deg); }
-.st-trend-arrow.flat { color: var(--ink-mute); opacity: 0.4; }
-.st-trend-arrow.strong { font-size: 1.8em; }
-
-.st-faction-gauge {
-  height: 6px; border-radius: 1px; position: relative; width: 140px; margin-top: 4px;
-  background: linear-gradient(90deg, var(--danger) 0%, var(--danger) 20%, var(--warn) 20%, var(--warn) 40%, var(--ink-mute) 40%, var(--ink-mute) 60%, var(--accent-2) 60%, var(--accent-2) 80%, var(--good) 80%, var(--good) 100%);
-}
-.st-faction-gauge::after {
-  content: ''; position: absolute; top: -3px; width: 2px; height: 12px;
-  background: var(--ink); box-shadow: 0 0 4px rgba(0,0,0,0.8);
-  left: var(--rep-pct, 50%); transition: left 0.5s var(--ease);
-}
-.st-comms-ticker {
-  font-family: var(--mono); font-size: 11px; color: var(--ink-mute);
-  letter-spacing: 0.04em; white-space: nowrap; overflow: hidden;
-  border-top: 1px solid var(--panel-edge); padding: 5px 16px; background: var(--sh-black);
-  cursor: pointer; transition: background-color 0.2s ease;
-}
-.st-comms-ticker:hover {
-  background: rgba(57,208,255,0.05);
-}
-.st-comms-ticker .sender {
-  color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em;
-  font-size: 9px; margin-right: 8px;
-}
-#sf-comms, #sf-comm-backlog, #sf-comm-backlog-btn {
-  display: none !important;
-}
-.st-comms-panel {
-  position: absolute; right: 0; top: 53px; bottom: 25px; width: 340px;
-  background: rgba(8,14,26,0.97); border-left: 1px solid var(--panel-edge);
-  transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  display: flex; flex-direction: column; z-index: 100;
-  /* no backdrop-filter: it composites over the live WebGL canvas every frame; the 0.97 fill reads
-     the same without the per-frame blur (perf-sensitive iGPUs + the ui:perf compositor-shell rule). */
-}
-.st-comms-panel.open {
-  transform: translateX(0);
-}
-.st-comms-panel-head {
-  padding: 10px 16px; border-bottom: 1px solid var(--panel-edge);
-  display: flex; justify-content: space-between; align-items: center;
-  font-family: var(--font-display); font-size: 13px; font-weight: 600;
-  letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent);
-}
-.st-comms-panel-close {
-  cursor: pointer; color: var(--ink-mute); font-family: var(--mono); font-size: 11px;
-}
-.st-comms-panel-close:hover { color: var(--ink); }
-.st-comms-panel-body {
-  flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;
-}
-.st-comms-panel-row {
-  font-family: var(--font-body); font-size: 13px; line-height: 1.45; color: var(--ink);
-}
-.st-hub button:active:not(:disabled) {
-  transform: scale(0.96); transition: transform 50ms ease;
-}
-[data-tip]::after {
-  border-left: 3px solid var(--tip-accent, var(--panel-edge-2));
-}
+/* ── 18 · Legacy comms overlays stay parked while docked chrome is active (pre-existing rule) ── */
+#sf-comms, #sf-comm-backlog, #sf-comm-backlog-btn { display: none !important; }
+[data-tip]::after { border-left: 3px solid var(--tip-accent, var(--os-line-strong)); }
 [data-tip-severity="ok"]   { --tip-accent: var(--good); }
 [data-tip-severity="warn"] { --tip-accent: var(--warn); }
 [data-tip-severity="bad"]  { --tip-accent: var(--danger); }
 
-/* ===== Refined surfaces: soft elevated cards, calm separators, restrained accent ================ */
-.st-hub { line-height: 1.5; }
-.st-topbar { height: 60px; padding: 0 24px; border-bottom: 1px solid var(--st-line);
-  background: linear-gradient(180deg, rgba(255,255,255,0.028), transparent); }
-.st-station-fac { border: 1px solid var(--st-line); background: rgba(255,255,255,0.03); color: var(--ink-dim);
-  letter-spacing: .07em; padding: 3px 11px; }
-.st-airlock { border-bottom: 1px solid var(--st-line); background: rgba(255,255,255,0.012); }
-
-/* Left rail */
-.st-rail { width: 202px; padding: 12px 10px; gap: 2px; border-right: 1px solid var(--st-line);
-  background: linear-gradient(180deg, rgba(255,255,255,0.014), transparent); }
-.st-tab { padding: 10px 12px; gap: 11px; color: var(--ink-dim); border: 1px solid transparent;
-  transition: background .16s ease, color .16s ease, border-color .16s ease; }
-.st-tab:hover { background: rgba(255,255,255,0.05); color: var(--ink); }
-.st-tab:focus-visible { outline: 2px solid var(--st-accent); outline-offset: 2px; }
-.st-tab.active { color: #fff; border-color: var(--st-line);
-  background: linear-gradient(90deg, var(--st-accent-soft), rgba(255,255,255,0.02));
-  box-shadow: inset 2px 0 0 var(--st-accent); }
-.st-tab[data-service-status="unavailable"].active { border-color: color-mix(in srgb, var(--warn) 32%, transparent);
-  box-shadow: inset 2px 0 0 var(--warn); }
-.st-tab-icon { color: var(--ink-mute); }
-.st-tab.active .st-tab-icon { color: var(--st-accent); }
-.st-tab-service { font-size: .56rem; letter-spacing: .05em; }
-
-/* Console deck + status row */
-.st-console-deck { padding: 18px 24px 14px; gap: 12px; border-bottom: 1px solid var(--st-line);
-  background: radial-gradient(130% 130% at 50% -30%, var(--st-accent-soft), transparent 58%); }
-.st-status-row { padding: 10px 24px; border-bottom: 1px solid var(--st-line); font-size: .72rem; }
-.st-econ-badge, .st-readiness-summary { letter-spacing: .06em; }
-
-/* Service Dock nodes → soft raised chips */
-.st-hub .sf-fx-dock { gap: 9px; }
-.st-hub .sf-fx-dock__item { min-width: 80px; padding: 10px 12px; border-radius: var(--st-r-sm);
-  background: var(--st-raised); border: 1px solid var(--st-line); box-shadow: 0 6px 16px -12px rgba(0,0,0,0.8);
-  transition: transform .14s ease, border-color .14s ease, background .14s ease; }
-.st-hub .sf-fx-dock__item:hover { background: color-mix(in srgb, var(--st-accent) 9%, var(--st-raised)); }
-.st-hub .sf-fx-dock__item.is-focus { border-color: color-mix(in srgb, var(--st-accent) 55%, transparent);
-  box-shadow: 0 8px 22px -10px color-mix(in srgb, var(--st-accent) 42%, transparent); }
-.st-hub .sf-fx-dock__label { font-size: .68rem; letter-spacing: .01em; color: var(--ink-dim); }
-.st-hub .sf-fx-dock__icon { color: var(--st-accent); font-size: 1.22em; }
-.st-hub .sf-fx-dock__badge { font-size: .62rem; letter-spacing: .04em; }
-
-/* Departure strip → soft pills */
-.st-departure { padding: 11px 24px; gap: 8px; border-bottom: 1px solid var(--st-line); min-height: 46px; }
-.st-departure-label { font-size: .62rem; }
-.st-departure-chip { border-radius: 999px; padding: 4px 12px; min-height: 27px; background: var(--st-surface);
-  border: 1px solid var(--st-line); font-size: .74rem; }
-button.st-departure-chip:hover { background: rgba(255,255,255,0.055); }
-
-/* First-dock handoff → soft cards */
-.st-handoff { padding: 13px 24px; gap: 8px; border-bottom: 1px solid var(--st-line); }
-.st-handoff-copy { color: var(--ink-dim); font-size: .78rem; }
-.st-handoff-step { padding: 11px 14px; border-radius: var(--st-r-sm); border: 1px solid var(--st-line);
-  background: var(--st-surface); box-shadow: var(--st-shadow); }
-.st-handoff-step-title { font-size: .84rem; }
-.st-handoff-step-copy { font-size: .76rem; line-height: 1.5; color: var(--ink-dim); }
-
-/* Tab panels + content */
-.st-tabpanel { padding: 22px 26px; }
-.st-empty { font-size: .9rem; }
-
-/* Inspector */
-.st-inspector { width: 292px; border-left: 1px solid var(--st-line);
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), rgba(12,17,28,0.45); }
-.st-inspector-header { padding: 13px 20px; font-size: .62rem; letter-spacing: .16em; border-bottom: 1px solid var(--st-line); }
-.st-inspector-content { padding: 18px 20px; gap: 20px; }
-.st-ins-section { gap: 6px; padding-bottom: 18px; border-bottom: 1px solid var(--st-line); }
-.st-ins-section:last-child { border-bottom: none; padding-bottom: 0; }
-.st-ins-title { font-size: .6rem; letter-spacing: .14em; color: var(--ink-mute); }
-.st-ins-tab-icon { color: var(--st-accent); }
-.st-ins-tab-name { font-size: 1.02rem; font-weight: 650; letter-spacing: 0; }
-.st-ins-desc { font-size: .82rem; line-height: 1.55; color: var(--ink-dim); }
-.st-ins-row { font-size: .84rem; }
-.st-ins-row-detail, .st-ins-risk-desc { font-size: .79rem; line-height: 1.55; }
-.st-ins-hint { font-size: .79rem; line-height: 1.5; }
-
-/* Cards across panels → soft elevated (replaces hard borders + cyan glows) */
-.st-mission-card, .st-svc-row, .st-bar-card, .st-sy-card, .st-slot, .st-manuf-card, .st-market-planner,
-.st-market-purpose, .st-sy-guide, .st-mission-guide, .st-svc-row {
-  border-radius: var(--st-r-sm); border: 1px solid var(--st-line); background: var(--st-surface);
-  box-shadow: var(--st-shadow); }
-.st-mission-card.tracked, .st-sy-card.active, .st-slot.sel {
-  border-color: color-mix(in srgb, var(--st-accent) 45%, transparent);
-  box-shadow: 0 10px 26px -12px color-mix(in srgb, var(--st-accent) 34%, transparent); }
-.st-shop-row { border-radius: var(--st-r-xs); }
-.st-shop-row:hover { background: rgba(255,255,255,0.04); }
-
-/* Undock refined (readiness colours preserved; pinned label/attrs untouched) */
-.st-undock { background: var(--st-surface); border: 1px solid var(--st-line); box-shadow: var(--st-shadow); }
-.st-undock[data-readiness="ready"] { color: var(--good); border-color: color-mix(in srgb, var(--good) 42%, transparent);
-  background: color-mix(in srgb, var(--good) 13%, var(--st-surface)); }
-.st-undock[data-readiness="ready"]:hover { background: color-mix(in srgb, var(--good) 26%, var(--st-surface)); box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--good) 40%, transparent); }
-.st-undock[data-readiness="check"] { border-color: color-mix(in srgb, var(--warn) 42%, transparent); background: color-mix(in srgb, var(--warn) 12%, var(--st-surface)); }
-.st-undock[data-readiness="risk"] { border-color: color-mix(in srgb, var(--danger) 42%, transparent); background: color-mix(in srgb, var(--danger) 12%, var(--st-surface)); }
-
-/* Comms rail */
-.st-comms-ticker { padding: 8px 24px; font-size: 11.5px; border-top: 1px solid var(--st-line); background: rgba(8,12,20,0.6); }
-
+/* ── 19 · Reduced motion: every state read stays legible, all sweeps become instant ───────────── */
 @media (prefers-reduced-motion: reduce) {
-  .st-hub *, .st-modal * {
-    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important;
-  }
+  .st-hub *, .st-modal * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   .st-station-name.acquiring::after { animation: none; }
-  .st-undock::before { transition: none; }
+  .st-hub.trace-active::after { animation: none; opacity: 0; }
   .st-content::after { animation: none; }
+  .st-mission-accepted.trace-run::after { animation: none; }
 }
+html.sf-reduce-motion .st-mission-accepted.trace-run::after { animation: none; }
+html.sf-reduce-motion .st-hub.trace-active::after { animation: none; opacity: 0; }
 `;

@@ -11,9 +11,33 @@
 
 import { isConfirmOpen } from './confirm.js';
 import { BINDINGS } from './bindings.js';
+import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
 import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
 
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
+
+/** Live flight-action label (settings override → scheme → defaults). Empty when unbound. */
+function flightActionLabel(state, action) {
+  const cfg = state && state.settings && state.settings.controls && state.settings.controls.bindings;
+  const schemeName = state && state.settings && state.settings.gameplay && state.settings.gameplay.controlScheme;
+  const schemes = (INPUT_DEFAULTS && INPUT_DEFAULTS.SCHEMES) || {};
+  const scheme = schemes[schemeName] || schemes.pilot || (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || {};
+  let list;
+  if (cfg && Object.prototype.hasOwnProperty.call(cfg, action)) list = cfg[action];
+  else list = scheme[action] || (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS && INPUT_DEFAULTS.BINDINGS[action]);
+  const codes = Array.isArray(list) ? list.filter(Boolean) : (list ? [list] : []);
+  if (!codes.length) return '';
+  return codes.map((code) => {
+    if (!code) return '';
+    if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+    if (/^Digit\d$/.test(code)) return code.slice(5);
+    if (code.startsWith('Arrow')) {
+      return { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' }[code] || code;
+    }
+    if (code === 'Space') return 'Space';
+    return code;
+  }).filter(Boolean).join('/');
+}
 
 export function createUiInput(ctx, screenManager) {
   const { state, bus } = ctx;
@@ -223,7 +247,7 @@ export function createUiInput(ctx, screenManager) {
         // Claim a body (V2 §6 / M3): claim the nearest claimable POI in range, or open the Base
         // screen for an already-claimed body to build modules / teleport. In OPEN SPACE (no claimable
         // body) the UI router does NOT own the key — it falls through so the flight-input verb
-        // `deployBeacon` (KeyU) drops a claim beacon. Keeps the claim key from firing an accidental
+        // `deployBeacon` (KeyU) drops a claim beacon. Keeps the claim shortcut from firing an accidental
         // action away from bodies (see check-claim-base-input) while preserving the beacon micro-loop.
         if (claimOrOpenBase()) {
           ev.preventDefault();
@@ -287,7 +311,12 @@ export function createUiInput(ctx, screenManager) {
       (att) => att.state === 'active' && att.ownerId === state.playerId && att.targetId === astId && DRILL_MASSLINE_DEF_IDS.has(att.defId)
     );
     if (!activeTether) {
-      bus.emit('toast', { text: `No massline link! Launch a tether (Key F) to lock onto the asteroid first.`, kind: 'warn', ttl: 3.5 });
+      // Live tether binding label — never hard-code a latch key (rebinds / empty must not lie).
+      const tetherKey = flightActionLabel(state, 'tether');
+      const latchHint = tetherKey
+        ? `Launch a tether (${tetherKey}) to lock onto the asteroid first.`
+        : 'Launch a tether to lock onto the asteroid first.';
+      bus.emit('toast', { text: `No massline link! ${latchHint}`, kind: 'warn', ttl: 3.5 });
       return;
     }
 

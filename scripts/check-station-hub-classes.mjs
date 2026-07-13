@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   applyStationHubRootClasses,
+  dockRailItemKey,
   STATION_HUB_ROOT_BASE_CLASSES,
   STATION_HUB_TYPE_CLASSES,
 } from '../src/ui/screens/stationHub.js';
@@ -69,14 +70,45 @@ assert.match(
 );
 assert.match(
   hubSrc,
-  /className\s*=\s*['"]st-hub st-hub--desk st-hub--os panel['"]/,
-  'mount still seeds Station OS desk+os bases',
+  /className\s*=\s*['"]st-hub panel['"]/,
+  'mount seeds gold framed hub bases (st-hub panel)',
+);
+assert.ok(
+  STATION_HUB_ROOT_BASE_CLASSES.includes('st-hub') && STATION_HUB_ROOT_BASE_CLASSES.includes('panel'),
+  'STATION_HUB_ROOT_BASE_CLASSES must include st-hub + panel',
 );
 console.log('ok   static: no className wipe; resolve uses helper; mount bases present');
 
+// ── Service Dock refresh identity: status changes must not rebuild hoverable buttons ────────────
+{
+  const stable = [
+    { id: 'refuel', label: 'Refuel', icon: '⛽', readiness: { state: 'good', label: '100%' } },
+    { id: 'repair', label: 'Repair', icon: '⚒', readiness: { state: 'warn', label: '7%' } },
+  ];
+  const changedStatus = [
+    { id: 'refuel', label: 'Refuel', icon: '⛽', readiness: { state: 'good', label: '99%' } },
+    { id: 'repair', label: 'Repair', icon: '⚒', readiness: { state: 'good', label: '100%' } },
+  ];
+  const changedStructure = [
+    { id: 'refuel', label: 'Refuel', icon: '⛽', readiness: { state: 'good', label: '99%' } },
+    { id: 'repair', label: 'Hull Repair', icon: '⚒', readiness: { state: 'good', label: '100%' } },
+  ];
+  assert.equal(dockRailItemKey(stable), dockRailItemKey(changedStatus),
+    'readiness-only updates must preserve the dock item identity and therefore hover/focus state');
+  assert.notEqual(dockRailItemKey(stable), dockRailItemKey(changedStructure),
+    'a real service-layout change must still rebuild the dock controls');
+  assert.match(hubSrc, /if\s*\(this\._dockRailItemKey\s*!==\s*itemKey\)[\s\S]*?setItems\(items\)[\s\S]*?else\s*\{[\s\S]*?setReadiness\(item\.id, item\.readiness\)/,
+    'station refresh must update dock readiness in place instead of rebuilding pointer targets');
+  assert.match(hubSrc, /if\s*\(options\.periodic\)\s*return;/,
+    'the periodic modal heartbeat must not rebuild the docked station DOM while simulation is paused');
+  assert.match(hubSrc, /const refreshServiceDock[\s\S]*?_refreshSchematicAndNodes\(\)[\s\S]*?bus\.on\(['"]ship:statsChanged['"],\s*refreshServiceDock\)[\s\S]*?bus\.on\(['"]fuel:changed['"],\s*refreshServiceDock\)/,
+    'event-driven ship and fuel changes must update Service Dock readiness after the periodic refresh sleeps');
+  console.log('ok   service dock refresh keeps hover/focus targets stable across live status updates');
+}
+
 // ── 1) Mount-equivalent bases + N× resolve same station (trade_hub) ──────────
 {
-  const el = makeEl(['st-hub', 'st-hub--desk', 'st-hub--os', 'panel']);
+  const el = makeEl(['st-hub', 'panel']);
   for (let i = 0; i < 3; i++) {
     applyStationHubRootClasses(el, 'trade_hub');
   }
@@ -91,7 +123,7 @@ console.log('ok   static: no className wipe; resolve uses helper; mount bases pr
 
 // ── 2) Station-type change: trade_hub → military (no stale type) ─────────────
 {
-  const el = makeEl(['st-hub', 'st-hub--desk', 'st-hub--os', 'panel']);
+  const el = makeEl(['st-hub', 'panel']);
   applyStationHubRootClasses(el, 'trade_hub');
   applyStationHubRootClasses(el, 'military');
   assertBases(el, 'type change');
@@ -102,7 +134,7 @@ console.log('ok   static: no className wipe; resolve uses helper; mount bases pr
 
 // ── 3) engineering + trace-active survive resolve ────────────────────────────
 {
-  const el = makeEl(['st-hub', 'st-hub--desk', 'st-hub--os', 'panel', 'st-hub--engineering', 'trace-active']);
+  const el = makeEl(['st-hub', 'panel', 'st-hub--engineering', 'trace-active']);
   applyStationHubRootClasses(el, 'refinery');
   assertBases(el, 'preserve engineering/trace');
   assert.ok(el.classList.contains('st-hub--engineering'), 'st-hub--engineering survives resolve');
@@ -114,7 +146,7 @@ console.log('ok   static: no className wipe; resolve uses helper; mount bases pr
 // ── 4) null/missing type: drop type classes, keep bases + concurrent mods ────
 {
   const el = makeEl([
-    'st-hub', 'st-hub--desk', 'st-hub--os', 'panel',
+    'st-hub', 'panel',
     'st-hub--mining', 'st-hub--engineering', 'trace-active',
   ]);
   applyStationHubRootClasses(el, null);
@@ -141,12 +173,12 @@ console.log('ok   static: no className wipe; resolve uses helper; mount bases pr
   assert.ok(el.classList.contains('st-hub--trade_hub'), 'type still trade_hub');
   assert.ok(el.classList.contains('st-hub--engineering'), 'engineering after map re-show');
   assert.ok(el.classList.contains('trace-active'), 'trace-active after map re-show');
-  console.log('ok   map-return re-show path preserves desk/os + engineering + trace');
+  console.log('ok   map-return re-show path preserves bases + engineering + trace');
 }
 
 // ── 6) unknown type: closed allowlist rejects unowned modifier ───────────────
 {
-  const el = makeEl(['st-hub', 'st-hub--desk', 'st-hub--os', 'panel']);
+  const el = makeEl(['st-hub', 'panel']);
   applyStationHubRootClasses(el, 'unknown_station_type');
   assertBases(el, 'unknown type');
   assert.ok(!el.classList.contains('st-hub--unknown_station_type'), 'unknown type class rejected');

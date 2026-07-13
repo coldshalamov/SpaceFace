@@ -294,7 +294,7 @@ function stationTier(stationId) {
   return 0;
 }
 
-function statSnippet(def) {
+export function statSnippet(def) {
   const parts = [];
   if (def.dps != null) parts.push(Math.round(def.dps) + ' dps');
   if (def.range != null) parts.push(def.range + ' rng');
@@ -310,6 +310,11 @@ function statSnippet(def) {
     if (m.damageReductionPct) parts.push('-' + Math.round(m.damageReductionPct * 100) + '% dmg');
     if (m.boostTopSpeedPct) parts.push('+' + Math.round(m.boostTopSpeedPct * 100) + '% boost');
     if (m.magnetRange) parts.push(m.magnetRange + ' magnet');
+    if (m.cloakBaseRadius) parts.push(m.cloakBaseRadius + ' detection ring');
+    if (m.cloakDrainPerS) parts.push(Math.round(m.cloakDrainPerS * 100) + '% cloak drain/s');
+    if (m.cloakRechargePerS) parts.push(Math.round(m.cloakRechargePerS * 100) + '% cloak recharge/s');
+    if (m.impulseChargeCapacity) parts.push(m.impulseChargeCapacity + ' charges');
+    if (m.bombPropulsion) parts.push('aft-drop enabled');
     if (m.weaponRangePct) parts.push('+' + Math.round(m.weaponRangePct * 100) + '% wpn rng');
     if (m.weaponDmgPct) parts.push('+' + Math.round(m.weaponDmgPct * 100) + '% wpn dmg');
     if (m.radarRangePct) parts.push('+' + Math.round(m.radarRangePct * 100) + '% radar');

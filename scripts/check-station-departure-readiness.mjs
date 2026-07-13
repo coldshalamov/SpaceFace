@@ -5,6 +5,43 @@ import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
 const servicesSource = readFileSync(new URL('../src/ui/screens/services.js', import.meta.url), 'utf8');
+const stationHubModule = await import('../src/ui/screens/stationHub.js');
+
+assert.equal(typeof stationHubModule.departureReadinessSummary, 'function',
+  'station hub must export its pure departure summary contract for behavioral verification');
+
+const summarizeDeparture = stationHubModule.departureReadinessSummary;
+const readySummary = summarizeDeparture([
+  { kind: 'ok', label: 'Track', text: 'Contract plotted' },
+  { kind: 'ok', label: 'Hold', text: '12u free' },
+  { kind: 'ok', label: 'Fuel', text: '100%' },
+  { kind: 'ok', label: 'Hull', text: '100%' },
+]);
+assert.deepEqual(readySummary, {
+  state: 'ready',
+  status: 'READY',
+  label: '⏏ UNDOCK · READY',
+  title: 'Departure Check: READY. Tracked work, cargo, fuel, and hull look serviceable.',
+  accessibleLabel: 'Undock. Departure Check: READY. Tracked work, cargo, fuel, and hull look serviceable.',
+}, 'READY departure summary must preserve the visual label and expose a semantic Undock name with readiness detail');
+
+const checkSummary = summarizeDeparture([
+  { kind: 'warn', label: 'Fuel', text: '32%' },
+]);
+assert.equal(checkSummary.label, '⏏ UNDOCK · CHECK', 'CHECK must retain the exact visual Undock label');
+assert.equal(checkSummary.accessibleLabel, `Undock. ${checkSummary.title}`,
+  'CHECK accessible name must begin with Undock and include the live warning explanation');
+assert.match(checkSummary.accessibleLabel, /^Undock\. Departure Check: CHECK\. Fuel: 32%\./,
+  'CHECK accessible name must expose its current readiness detail');
+
+const riskSummary = summarizeDeparture([
+  { kind: 'bad', label: 'Hull', text: '12%' },
+]);
+assert.equal(riskSummary.label, '⏏ UNDOCK · RISK', 'RISK must retain the exact visual Undock label');
+assert.equal(riskSummary.accessibleLabel, `Undock. ${riskSummary.title}`,
+  'RISK accessible name must begin with Undock and include the live risk explanation');
+assert.match(riskSummary.accessibleLabel, /^Undock\. Departure Check: RISK\. Hull: 12%\./,
+  'RISK accessible name must expose its current readiness detail');
 
 assert.match(source, /function departureReadinessChips\(state\)/,
   'station hub must compute departure readiness chips from live state');
@@ -44,6 +81,8 @@ assert.match(source, /<div class="st-departure-label mono">Departure Check<\/div
   'station hub must render a visible Departure Check strip');
 assert.match(source, /this\._undockBtn\.setAttribute\('data-readiness', summary\.state\)/,
   'Undock command must expose its readiness state for styling and inspection');
+assert.match(source, /this\._undockBtn\.setAttribute\('aria-label', summary\.accessibleLabel\)/,
+  'Undock command must consume the behaviorally verified accessible departure label');
 assert.match(source, /\.st-undock\[data-readiness="risk"\]/,
   'Undock command must visually distinguish risky departure state');
 assert.match(source, /data-departure-tab/, 'station hub must render actionable departure readiness chips');

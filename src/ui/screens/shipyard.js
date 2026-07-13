@@ -505,38 +505,10 @@ export function createShipyardPanel(ctx) {
   cmpPanel.style.display = 'none';
   sideWrap.appendChild(cmpPanel);
 
-  // State
+  // State. The 3D stage is SELECTION-driven only: hovering a catalog row never swaps the hull
+  // on stage (predictable cause/effect — click a hull to put it on the pad).
   let activeStationId = null;
   let selectedDefId = null;
-  let previewDefId = null;
-  let previewTimer = 0;
-  let pendingPreviewDefId = null;
-
-  function clearPreviewTimer() {
-    if (previewTimer) {
-      clearTimeout(previewTimer);
-      previewTimer = 0;
-    }
-    pendingPreviewDefId = null;
-  }
-
-  function schedulePreview(defId) {
-    if (!defId || defId === selectedDefId) return;
-    pendingPreviewDefId = defId;
-    if (previewTimer) return;
-    previewTimer = setTimeout(() => {
-      previewTimer = 0;
-      const next = pendingPreviewDefId;
-      pendingPreviewDefId = null;
-      if (!next || next === selectedDefId) return;
-      previewDefId = next;
-      if (stage) {
-        stage.setShip(next);
-        const def = SHIP_BY_ID.get(next);
-        stage.setLabel('Preview: ' + escapeHtml(def ? def.name : next));
-      }
-    }, 220);
-  }
 
   // Morph label for credits
   const creditsMount = document.createElement('span');
@@ -589,8 +561,6 @@ export function createShipyardPanel(ctx) {
   }
 
   function selectHull(defId, options = {}) {
-    clearPreviewTimer();
-    previewDefId = null;
     selectedDefId = defId;
     ensureStage();
     stage.setShip(defId);
@@ -801,8 +771,13 @@ export function createShipyardPanel(ctx) {
         continuousDrain: gauges.continuousDrain,
       });
     }
+    // Ownership-honest label: your active hull reads as YOURS; catalog hulls read as stock previews.
+    const activeOwned = (p.ownedShips || [])[p.activeShipIndex || 0];
+    const isYourActiveHull = !!(activeOwned && activeOwned.defId === selectedDefId);
     stage.setLabel('<span class="mono">T' + def.tier + '</span> · ' + escapeHtml(def.name) +
-      ' <span class="st-sy-stock-tag">stock</span>');
+      (isYourActiveHull
+        ? ' <span class="st-sy-stock-tag">your active hull</span>'
+        : ' <span class="st-sy-stock-tag">stock preview</span>'));
   }
 
   // ---- event listeners ----
@@ -877,20 +852,6 @@ export function createShipyardPanel(ctx) {
     refresh();
   });
 
-  railList.addEventListener('mouseover', (ev) => {
-    const card = ev.target.closest('[data-ship]');
-    if (!card) return;
-    schedulePreview(card.getAttribute('data-ship'));
-  });
-
-  railList.addEventListener('mouseleave', () => {
-    clearPreviewTimer();
-    if (previewDefId && previewDefId !== selectedDefId) {
-      if (stage) stage.setShip(selectedDefId);
-      previewDefId = null;
-    }
-  });
-
   function refresh() {
     renderJobGuide();
     rebuildOwned();
@@ -917,7 +878,6 @@ export function createShipyardPanel(ctx) {
       requestAnimationFrame(() => { try { stg.resize(); } catch (_) {} });
     },
     onHide() {
-      clearPreviewTimer();
       if (stage) stage.setActive(false);
       cmpPanel.style.display = 'none';
     },

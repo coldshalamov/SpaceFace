@@ -404,41 +404,25 @@ const CATEGORIES = [
 
 export function createMarketPanel(ctx) {
   const root = document.createElement('div');
-  root.className = 'st-panel st-market st-market--board';
+  root.className = 'st-panel st-market';
 
   const qtyState = Object.create(null);
   let pendingLoadNav = null;
   let activeCategory = 'all';
-  /** Param: Buy | Sell mode (Station OS — one verb column at a time). Default Buy so a full station board is visible on first dock. */
-  let tradeMode = 'buy';
 
   // --- header: credits + cargo summary ---
   const header = document.createElement('div');
   header.className = 'st-market-head';
   header.innerHTML =
-    '<div class="st-stat"><span class="st-stat-l">Credits</span><span class="mono st-credits">0</span></div>' +
-    '<div class="st-stat"><span class="st-stat-l">Cargo</span><span class="mono st-cargo">0 / 0 u</span></div>' +
-    '<div class="st-market-mode" role="group" aria-label="Trade mode">' +
-      '<button type="button" class="st-mode-btn is-on" data-trade-mode="buy">Buy</button>' +
-      '<button type="button" class="st-mode-btn" data-trade-mode="sell">Sell</button>' +
-    '</div>';
+    '<div class="st-stat"><span class="st-stat-l">CREDITS</span><span class="mono st-credits">0</span></div>' +
+    '<div class="st-stat"><span class="st-stat-l">CARGO</span><span class="mono st-cargo">0 / 0 u</span></div>';
   root.appendChild(header);
-  header.querySelectorAll('[data-trade-mode]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      tradeMode = btn.getAttribute('data-trade-mode') === 'buy' ? 'buy' : 'sell';
-      header.querySelectorAll('[data-trade-mode]').forEach((b) => {
-        b.classList.toggle('is-on', b.getAttribute('data-trade-mode') === tradeMode);
-      });
-      root.dataset.tradeMode = tradeMode;
-      // Reset qty drafts so Sell mode defaults to owned stacks.
-      for (const k of Object.keys(qtyState)) delete qtyState[k];
-      rebuild();
-      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
-    });
-  });
-  root.dataset.tradeMode = tradeMode;
 
-  // STRICT overnight: no purpose-essay banner on default market surface (data first).
+  // purpose copy rides inside the ledger strip — one compact row, not another stacked banner
+  const purpose = document.createElement('div');
+  purpose.className = 'st-market-purpose';
+  purpose.innerHTML = '<b>Market loop:</b> <span class="st-market-purpose-text"></span>';
+  header.appendChild(purpose);
 
   const missionCallout = document.createElement('div');
   missionCallout.className = 'st-market-mission';
@@ -507,6 +491,28 @@ export function createMarketPanel(ctx) {
   });
   searchSortBar.appendChild(ctrls.el);
 
+  // Buy|Sell mode param (Station OS control grammar): a segmented filter, not a hidden state.
+  // "Selling" shows only what is in your hold; "Buying" shows only what this market has in stock.
+  let tradeMode = 'all';
+  const modeSeg = document.createElement('div');
+  modeSeg.className = 'st-trade-modes';
+  modeSeg.setAttribute('role', 'group');
+  modeSeg.setAttribute('aria-label', 'Trade mode filter');
+  modeSeg.innerHTML =
+    '<button type="button" data-trade-mode="all" class="active" title="Every commodity traded at this station">All</button>' +
+    '<button type="button" data-trade-mode="buy" title="Only what this market has in stock to sell you">Buying</button>' +
+    '<button type="button" data-trade-mode="sell" title="Only what is in your hold right now">Selling</button>';
+  modeSeg.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-trade-mode]');
+    if (!btn) return;
+    tradeMode = btn.getAttribute('data-trade-mode') || 'all';
+    modeSeg.querySelectorAll('[data-trade-mode]').forEach((b) => b.classList.toggle('active', b === btn));
+    root.setAttribute('data-trade-mode', tradeMode);
+    rebuild();
+    ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+  });
+  ctrls.el.appendChild(modeSeg);
+
   // Scrollable cards list
   const list = document.createElement('div');
   list.className = 'st-list';
@@ -546,10 +552,10 @@ export function createMarketPanel(ctx) {
       '</div>' +
       '<div class="st-stage-cell st-stage-cell--inspector">' +
         '<div class="st-stage-lbl">TRADE INSPECTOR</div>' +
-        '<div class="st-intel-inspector" data-intel-inspector role="group" aria-label="Market intelligence"></div>' +
         '<div class="st-inspector-row"><span class="st-insp-lbl">QUOTE (max load)</span><span class="st-insp-quote mono">—</span></div>' +
         '<div class="st-inspector-row"><span class="st-insp-lbl">FLOODING IMPACT</span><span class="st-insp-flood-mount"></span></div>' +
         '<div class="st-inspector-row"><span class="st-insp-lbl">PROJECTED PROFIT</span><span class="st-insp-profit mono">—</span></div>' +
+        '<div class="st-insp-intel" data-intel-inspector hidden></div>' +
         '<div class="st-inspector-actions"><button class="st-insp-route" disabled>Plot Route</button></div>' +
       '</div>' +
     '</div>';
@@ -566,7 +572,6 @@ export function createMarketPanel(ctx) {
   stage.appendChild(stageOverlay);
 
   // Trade inspector elements
-  const inspIntel = stage.querySelector('[data-intel-inspector]');
   const inspQuote = stage.querySelector('.st-insp-quote');
   const inspFloodMount = stage.querySelector('.st-insp-flood-mount');
   const inspProfit = stage.querySelector('.st-insp-profit');
@@ -805,10 +810,12 @@ export function createMarketPanel(ctx) {
       if (!stationTrades(state, stationId, c.id)) continue;
       // Category filter
       if (activeCategory !== 'all' && c.category !== activeCategory) continue;
-      // Sell mode: only stacks you can actually sell (owned > 0)
-      if (tradeMode === 'sell') {
-        const owned = Math.max(0, Math.floor(Number(state.player.cargo.items[c.id]) || 0));
-        if (owned <= 0) continue;
+      // Trade-mode param: Selling = in your hold; Buying = the market has stock to sell.
+      if (tradeMode === 'sell' && !((state.player.cargo.items || {})[c.id] > 0)) continue;
+      if (tradeMode === 'buy') {
+        const mkts = state.economy && state.economy.markets;
+        const entry = mkts && mkts[stationId] && mkts[stationId][c.id];
+        if (entry && !(Number(entry.stock) > 1)) continue;
       }
       if (q) {
         const hay = (c.name + ' ' + (c.category || '') + ' ' + (c.id || '')).toLowerCase();
@@ -1130,59 +1137,51 @@ export function createMarketPanel(ctx) {
       const legalTag = c.legality !== 'legal'
         ? ' <span class="st-tag st-tag-' + escapeHtml(c.legality) + '">' + escapeHtml(c.legality) + '</span>' : '';
 
-      const ownedNow = Math.max(0, Math.floor(Number(state.player.cargo.items[c.id]) || 0));
-      if (qtyState[c.id] == null) {
-        qtyState[c.id] = tradeMode === 'sell' ? Math.max(1, ownedNow) : 1;
-      }
-      // Board row: prices + qty param + single primary Verb for active mode.
-      // Forecast/spark stays collapsed unless expanded (expand opens chart).
+      // We maintain the required class structure inside our custom card format
       card.innerHTML = `
         <div class="st-card-header">
           <span class="c-name">${escapeHtml(c.name)}${legalTag}</span>
           <span class="st-card-cat-badge mono">${escapeHtml(c.category)}</span>
-          <button class="st-expand-btn" data-act="expand" title="Open price history" aria-label="Open price history">↗</button>
+          <button class="st-expand-btn" data-act="expand" title="Open fullscreen chart" aria-label="Open fullscreen chart">↗</button>
         </div>
-        <div class="st-card-spark-wrap st-card-spark-wrap--compact" hidden>
+        <div class="st-card-spark-wrap">
           <svg class="st-row-gauge" width="28" height="28" role="img" aria-label="stock pressure"></svg>
           <canvas class="st-spark" width="160" height="40" title="Recent price trend"></canvas>
           <span class="st-row-role st-role--none" title="role"><span class="st-row-role-glyph">—</span><span class="st-row-role-lbl">NEUTRAL</span></span>
         </div>
         <span class="st-slotline st-cmdty-purpose" hidden>${escapeHtml(commodityPurpose(c))}</span>
         <span class="st-slotline st-market-mission-line"></span>
-        <div class="st-slotline st-best-known-line st-intel-strip" data-intel-strip role="group" aria-label="Market intel"></div>
+        <span class="st-slotline st-best-known-line st-intel-strip" data-intel-strip role="group" aria-label="Market intel"></span>
         <div class="st-card-prices">
           <div class="st-card-price-col">
-            <span class="st-price-lbl">Station sells</span>
+            <span class="st-price-lbl">BUY</span>
             <span class="st-buy mono">—</span>
           </div>
           <div class="st-card-price-col">
-            <span class="st-price-lbl">Station pays</span>
+            <span class="st-price-lbl">SELL</span>
             <span class="st-sell mono">—</span>
           </div>
           <div class="st-card-price-col">
-            <span class="st-price-lbl">Owned</span>
+            <span class="st-price-lbl">OWNED</span>
             <span class="st-owned mono">0</span>
-          </div>
-          <div class="st-card-price-col">
-            <span class="st-price-lbl">Total</span>
-            <span class="st-row-total mono">—</span>
           </div>
         </div>
         <div class="st-card-qty-row">
           <span class="c-qty">
-            ${STEP_PRESETS.map((v) => '<button type="button" data-act="step" data-v="' + v + '">' + v + '</button>').join('')}
-            <button type="button" data-act="step" data-v="max">Max</button>
+            ${STEP_PRESETS.map((v) => '<button data-act="step" data-v="' + v + '">' + v + '</button>').join('')}
+            <button data-act="step" data-v="max">Max</button>
             <span class="st-qty-val mono">1</span>
           </span>
         </div>
         <div class="c-act">
-          <button type="button" class="st-buy-btn st-verb-btn" data-act="buy"${tradeMode === 'sell' ? ' hidden' : ''}>Buy</button>
-          <button type="button" class="st-sell-btn st-verb-btn" data-act="sell"${tradeMode === 'buy' ? ' hidden' : ''}>Sell</button>
+          <button class="st-buy-btn" data-act="buy">Buy</button>
+          <button class="st-sell-btn" data-act="sell">Sell</button>
         </div>
       `;
 
       frag.appendChild(card);
       panel._rowEls[c.id] = card;
+      if (qtyState[c.id] == null) qtyState[c.id] = 1;
       updateRowQty(card, qtyState[c.id]);
     });
 
@@ -1192,8 +1191,6 @@ export function createMarketPanel(ctx) {
       empty.className = 'st-empty';
       if (_filter.q) {
         empty.textContent = 'No commodities match "' + _filter.q + '".';
-      } else if (tradeMode === 'sell') {
-        empty.textContent = 'Nothing to sell. Switch to Buy, or fill the hold and return.';
       } else {
         const type = stationTypeFor(ctx.state, stationId).replace('_', ' ');
         empty.textContent = type
@@ -1214,7 +1211,8 @@ export function createMarketPanel(ctx) {
     header.querySelector('.st-credits').textContent = fmtCr(p.credits);
     const cap = p.cargo.capVolume || 0;
     header.querySelector('.st-cargo').textContent = formatCargoUnits(p.cargo.usedVolume || 0) + ' / ' + formatCargoUnits(cap) + ' u';
-    // purpose essay banner removed (STRICT-G3); numbers stay in header + cards
+    const purposeText = purpose.querySelector('.st-market-purpose-text');
+    if (purposeText) purposeText.textContent = stationMarketPurpose(state, stationId);
     const missionInfo = trackedMarketMission(state, stationId);
     renderMissionCallout(missionInfo);
     renderRouteCallout(activeTradeRoute(state, stationId));
@@ -1234,16 +1232,16 @@ export function createMarketPanel(ctx) {
       const owned = (p.cargo.items[cmdtyId]) || 0;
       const buyP = unitPrice(ctx, stationId, cmdtyId, 'buy');
       const sellP = unitPrice(ctx, stationId, cmdtyId, 'sell');
-      const maxBuy = maxBuyable(ctx, stationId, cmdtyId);
-      const qtySel = selectedQtyFor(qtyState[cmdtyId] || 1, tradeMode === 'sell' ? owned : maxBuy);
+      // Market intel strip: presenter-driven chips + best-known route (the "knowledge layer").
       const strip = card.querySelector('[data-intel-strip]');
       if (strip) {
         const knownRoute = lastBestTrades.find((t) => t && t.cmdtyId === cmdtyId) || null;
+        const stripQty = selectedQtyFor(qtyState[cmdtyId] || 1, tradeMode === 'sell' ? owned : maxBuyable(ctx, stationId, cmdtyId));
         renderIntelStrip(strip, state, stationId, cmdtyId, {
           liveBuy: buyP,
           liveSell: sellP,
-          qty: qtySel,
-          side: tradeMode,
+          qty: stripQty,
+          side: tradeMode === 'sell' ? 'sell' : 'buy',
           route: knownRoute,
         });
       }
@@ -1258,31 +1256,30 @@ export function createMarketPanel(ctx) {
       applyPriceHeat(card.querySelector('.st-sell'), sellHeat);
       const spark = card.querySelector('.st-spark');
       const wrap = card.querySelector('.st-card-spark-wrap');
-      // Forecast/spark only when expanded (not default chrome).
-      if (spark && wrap && !wrap.hidden) {
+      if (spark) {
         const history = getPriceHistory(stationId, cmdtyId);
+        // No scope without data: an empty sparkline is hidden, not a blank stare.
+        spark.hidden = !(history && history.length > 1);
         drawSparkline(spark, history, { upColor: '#f2a83b', downColor: '#8fb0c0' });
-        wrap.classList.remove('tick');
-        void wrap.offsetWidth;
-        wrap.classList.add('tick');
+        // The tick flash marks a price CHANGE, not a repaint (motion = state change only).
+        const priceKey = buyP + ':' + sellP;
+        if (wrap && card.dataset.lastPrices && card.dataset.lastPrices !== priceKey) {
+          wrap.classList.remove('tick');
+          void wrap.offsetWidth;
+          wrap.classList.add('tick');
+        }
+        card.dataset.lastPrices = priceKey;
       }
       const buyBtn = card.querySelector('.st-buy-btn');
       const sellBtn = card.querySelector('.st-sell-btn');
       const vol = def && def.volPerU > 0 ? def.volPerU : 1;
       const freeVolume = Math.max(0, (p.cargo.capVolume || 0) - (p.cargo.usedVolume || 0));
       const room = freeVolume >= vol;
+      const maxBuy = maxBuyable(ctx, stationId, cmdtyId);
       const buyQty = selectedQtyFor(qtyState[cmdtyId] || 1, maxBuy);
       const sellQty = selectedQtyFor(qtyState[cmdtyId] || 1, owned);
       const buyTotal = buyP * buyQty;
       const sellTotal = sellP * sellQty;
-      const totalEl = card.querySelector('.st-row-total');
-      if (totalEl) {
-        totalEl.textContent = tradeMode === 'sell'
-          ? (sellQty > 0 ? fmtCr(sellTotal) : '—')
-          : (buyQty > 0 ? fmtCr(buyTotal) : '—');
-      }
-      if (buyBtn) buyBtn.hidden = tradeMode !== 'buy';
-      if (sellBtn) sellBtn.hidden = tradeMode !== 'sell';
       const selectedFits = (buyQty * vol) <= freeVolume + 1e-6;
       const canBuySelected = buyQty > 0 && buyQty <= maxBuy && buyTotal <= (p.credits || 0) && selectedFits;
       const canSellSelected = sellQty > 0 && sellQty <= owned;
@@ -1470,10 +1467,8 @@ export function createMarketPanel(ctx) {
     ledgerList.appendChild(frag);
   }
 
-  /**
-   * Scannable intel strip: age / conf / known-vs-live / margin / flood / cargo / risk chips
-   * plus the SPEC2/05 best-known sell button when memory exists. No essay wall.
-   */
+  /** Presenter-driven intel strip on a commodity card: stale-aware chips + the best-known sell
+   *  route as a plottable button. View comes from marketIntelPresenter (pure, no live formulas). */
   function renderIntelStrip(el, state, stationId, cmdtyId, opts = {}) {
     if (!el) return;
     const def = COMMODITY_BY_ID.get(cmdtyId);
@@ -1503,6 +1498,7 @@ export function createMarketPanel(ctx) {
       def,
       route: opts.route || null,
     });
+    el._intelView = view;
     const frag = document.createDocumentFragment();
     const chipRow = document.createElement('div');
     chipRow.className = 'st-intel-chips';
@@ -1522,7 +1518,7 @@ export function createMarketPanel(ctx) {
     if (best) {
       const age = ageLabel(state, best.seenAt).replace(' ago', '');
       const jumps = best.jumps == null ? '?' : best.jumps;
-      const label = 'BEST ' + fmtCr(best.sell) + ' · ' + best.stationName + ' · ' + age + ' · ' + jumps + 'J';
+      const label = 'Best ' + fmtCr(best.sell) + ' · ' + best.stationName + ' · ' + age + ' · ' + jumps + 'J';
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.setAttribute('data-act', 'best-known');
@@ -1539,6 +1535,7 @@ export function createMarketPanel(ctx) {
     el.setAttribute('aria-label', view.ariaSummary || 'Market intel');
   }
 
+  /** Presenter inspector rows inside the analysis stage (memory age, spread, caveats). */
   function renderIntelInspector(mount, view) {
     if (!mount) return;
     mount.textContent = '';
@@ -1594,9 +1591,15 @@ export function createMarketPanel(ctx) {
   function selectCommodity(cmdtyId) {
     selectedCmdtyId = cmdtyId;
     stage.hidden = false;
-    // mark the selected row
+    // mark the selected row; the purpose line is detail-on-demand (hidden until selected)
     if (panel._rowEls) {
-      for (const id in panel._rowEls) panel._rowEls[id].classList.toggle('is-selected', id === cmdtyId);
+      for (const id in panel._rowEls) {
+        const rowCard = panel._rowEls[id];
+        const sel = id === cmdtyId;
+        rowCard.classList.toggle('is-selected', sel);
+        const purposeLine = rowCard.querySelector('.st-cmdty-purpose');
+        if (purposeLine) purposeLine.hidden = !sel;
+      }
     }
     refreshStage();
     ctx.bus.emit('audio:cue', { id: 'ui_click' });
@@ -1616,9 +1619,6 @@ export function createMarketPanel(ctx) {
       margin: t.margin,
       loadUnits: t.loadUnits,
       loadProfit: t.loadProfit,
-      intelLabel: t.intelLabel,
-      intelSource: t.intelSource,
-      seenAtT: t.seenAtT,
     };
   }
 
@@ -1670,64 +1670,40 @@ export function createMarketPanel(ctx) {
   function refreshInspector(state, stationId, cmdtyId, def, route) {
     const econ = ctx.registry && ctx.registry.get && ctx.registry.get('economy');
     const maxBuy = maxBuyable(ctx, stationId, cmdtyId);
-    const liveBuy = unitPrice(ctx, stationId, cmdtyId, 'buy');
-    const liveSell = unitPrice(ctx, stationId, cmdtyId, 'sell');
     // Cargo-aware quote: what would the max affordable load cost, and how would it move the price?
     let quoteText = '—';
     let flood01 = 0;
-    let impactPct = null;
-    let quoteUnit = null;
     if (econ && typeof econ.quote === 'function' && maxBuy > 0) {
       try {
         const q = econ.quote(stationId, cmdtyId, 'buy', maxBuy);
         if (q && q.ok !== false) {
           const unit = usableQuoteUnit(q) || 0;
-          quoteUnit = unit || null;
           const total = (q.total != null ? q.total : unit * maxBuy) || 0;
           const impact = (typeof q.priceImpactPct === 'number') ? q.priceImpactPct : 0;
-          impactPct = impact;
           quoteText = formatCargoUnits(maxBuy) + 'u @ ' + fmtCr(Math.round(unit)) + ' = ' + fmtCr(Math.round(total)) + ' CR';
-          // priceImpactPct is percent points (12 = +12%). Map 25% impact → full gauge.
-          flood01 = Math.max(0, Math.min(1, Math.abs(impact) / 25));
+          // flooding gauge: how much would buying maxBuy push the local price UP (0=none, 1=severe).
+          // priceImpactPct is fractional; map |impact|>0.25 to full.
+          flood01 = Math.max(0, Math.min(1, Math.abs(impact) / 0.25));
         }
       } catch (_) {}
     }
     inspQuote.textContent = quoteText;
-    if (stageFx && stageFx.flood) {
-      try {
-        stageFx.flood.setValue(flood01, {
-          kind: flood01 > 0.66 ? 'danger' : flood01 > 0.33 ? 'warn' : 'good',
-          label: impactPct == null
-            ? 'No price impact'
-            : (Math.round(Math.abs(impactPct) * 10) / 10) + '% price impact',
-        });
-      } catch (_) {}
-    }
+    if (stageFx && stageFx.flood) { try { stageFx.flood.setValue(flood01, { kind: flood01 > 0.66 ? 'danger' : flood01 > 0.33 ? 'warn' : 'good', label: Math.round(flood01 * 100) + '% price impact' }); } catch (_) {} }
 
-    const view = presentCommodityIntel({
-      state,
-      commodityId: cmdtyId,
-      stationId,
-      liveBuy,
-      liveSell,
-      qty: maxBuy,
-      quoteUnit,
-      priceImpactPct: impactPct,
-      side: 'buy',
-      def,
-      route,
-    });
-    renderIntelInspector(inspIntel, view);
-
-    // Projected profit: prefer presenter expected margin, else route load profit.
-    const profit = (view.margin && view.margin.expected != null)
-      ? view.margin.expected
-      : (route && route.loadProfit ? route.loadProfit : 0);
-    const profitText = profit > 0
-      ? '+' + fmtCr(profit) + ' CR' + (view.margin && view.margin.caveat ? ' · known' : '')
-      : '—';
+    // Projected profit: only meaningful after a transaction (a cost basis exists in tradeLots).
+    // Show the route's potential profit as a forecast; the morph fires (up/down colour) on change.
+    const profit = route && route.loadProfit ? route.loadProfit : 0;
+    const profitText = profit > 0 ? '+' + fmtCr(profit) + ' CR' : '—';
     if (stageFx && stageFx.profit) { try { stageFx.profit.set(profitText, { dir: profit > 0 ? 'up' : undefined }); } catch (_) {} }
     else inspProfit.textContent = profitText;
+
+    // Presenter intel rows (memory age, spread, caveats) — reuse the selected card's view.
+    const intelMount = stage.querySelector('[data-intel-inspector]');
+    if (intelMount) {
+      const card = panel._rowEls && panel._rowEls[cmdtyId];
+      const strip = card && card.querySelector('[data-intel-strip]');
+      renderIntelInspector(intelMount, strip && strip._intelView);
+    }
   }
 
   /** Draw a compact forecast cone (history line + dashed forecast + ±uncertainty band) into a canvas. */

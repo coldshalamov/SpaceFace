@@ -312,7 +312,9 @@ try {
       baseEq: sourceEntry.baseEq || 100,
       eventMods: [],
     };
-    sf.bus.emit('dock:undocked', {});
+    // Scripted probe undock: bare dock:undocked is bus-gated into the implicit-exit confirm
+    // (UIUX-STATION-EXIT-CONFIRMATION); a programmatic hop must use the committed form.
+    sf.bus.emit('dock:undocked', { committed: true, intent: 'explicit', source: 'first-loop-probe' });
     return {
       ok: true,
       sourceStationId,

@@ -106,7 +106,12 @@ export function createScreenManager(ctx) {
   function _restoreFocus(el, visibleRoot) {
     if (!_isRestorableOpener(el)) return false;
     if (visibleRoot && !visibleRoot.contains(el)) return false;
-    try { el.focus(); return document.activeElement === el; } catch (e) { return false; }
+    try {
+      el.focus({ preventScroll: true });
+    } catch (e) {
+      try { el.focus(); } catch (_) { return false; }
+    }
+    return document.activeElement === el;
   }
   function _ensureFocusIn(rec) {
     if (!rec || !rec.el) return;
