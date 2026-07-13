@@ -1696,6 +1696,14 @@ export const vfx = {
     if (id.startsWith('tether.') || lane.includes('tether')) {
       return presentationStyle('#dffcff', '#2bb7ff', SPR_RING, { lightPeak: 3.0, lightDistance: 140, speed0: 28, speedJitter: 30, size0: 1.8 });
     }
+    // Massline Wave M2: throw release = hot amber whip-crack streaking along the exit direction;
+    // tumble = ragged white/red spill (RCS puffs losing the argument).
+    if (id === 'massline.throw' || lane.includes('massline_throw')) {
+      return presentationStyle('#fff2d0', '#ffb347', SPR_FLASH, { spread: 0.35, lightPeak: 4.2, lightDistance: 170, speed0: 58, speedJitter: 44, size0: 2.0, size1: 0.15 });
+    }
+    if (id === 'ship.tumble' || lane.includes('massline_tumble')) {
+      return presentationStyle('#ffe2d6', '#ff5a48', SPR_PUFF, { radial: true, lightPeak: 2.6, lightDistance: 120, speed0: 22, speedJitter: 40, life0: 0.5, size0: 1.6, size1: 0.25, drag: 1.4 });
+    }
     if (lane.includes('pod_beacon') || id.includes('objective')) {
       return presentationStyle('#fff0a8', '#ffcc44', SPR_RING, { radial: true, echoRing: true, lightPeak: 3.4, lightDistance: 160, speed0: 18, speedJitter: 22, life0: 0.45 });
     }

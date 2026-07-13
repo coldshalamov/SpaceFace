@@ -124,9 +124,25 @@ export const MODULES = [
     mass: 20, price: 220000, requiresTech: 'tech_flagship_command',
     energyDraw: 8, mods: { tetherSpoolMult: 6 },
   },
+  // Massline Physics Identity (Wave M2 §4.2): activated stealth. cloakBaseRadius is the DETECTION
+  // ring while dark (smaller = better cloak); drain/recharge are the energy-bar rates per second.
+  // Consumed by systems/cloak.js via the fittings record — deliberately NOT folded into derived.
+  {
+    id: 'mod_cloak_mk1', name: 'Shroud Cloak Mk1', slotType: 'utility', size: 'M', tier: 2, mass: 6, price: 34000,
+    energyDraw: 3, mods: { cloakBaseRadius: 320, cloakDrainPerS: 0.09, cloakRechargePerS: 0.06 },
+  },
+  {
+    id: 'mod_cloak_mk2', name: 'Shroud Cloak Mk2', slotType: 'utility', size: 'M', tier: 4, mass: 8, price: 120000, requiresTech: 'tech_drive_tuning',
+    energyDraw: 5, mods: { cloakBaseRadius: 210, cloakDrainPerS: 0.07, cloakRechargePerS: 0.08 },
+  },
   {
     id: 'mod_charge_rack', name: 'Impulse Charge Rack', slotType: 'utility', size: 'S', tier: 1, mass: 2, price: 18000,
     energyDraw: 1, mods: { impulseChargeCapacity: 8 },
+  },
+  {
+    id: 'mod_charge_vector_rack', name: 'Vector Charge Rack', slotType: 'utility', size: 'S', tier: 3, mass: 3, price: 52000,
+    requiresTech: 'tech_impulse_ballistics', energyDraw: 2,
+    mods: { impulseChargeCapacity: 8, bombPropulsion: true },
   },
   {
     id: 'mod_drill_amp', name: 'Drill Amp', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 24000,

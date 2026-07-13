@@ -14,6 +14,7 @@ import { queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthori
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import { computeFlightTelemetry, solveIntercept } from '../core/flight/flightTelemetry.js';
+import { massline2Flag } from '../data/featureFlags.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
 // stick. A ship carving at speed rolls into the turn like an aircraft; the same ship pivoting
@@ -61,6 +62,22 @@ const TETHER_HELM_PHASE_MULT = Object.freeze({
   overload: 7.4,
 });
 
+// MASSLINE flight-lane handoff. A sling tag does not grant speed: it only tells the assisted
+// governor that the current overspeed came from an external physics verb, so the governor may
+// spend it slowly instead of treating it as ordinary thruster overspeed. Cloaking similarly
+// weakens neutral counter-thrust only while the pilot is genuinely coasting; explicit brake and
+// any translation input keep full authority.
+const MASSLINE_SLING_TAG_S = 1.0;
+const MASSLINE_SLING_DECAY_TAU_S = 6.0;
+const MASSLINE_EARNED_ASSIST_SCALE = 0.24;
+const CLOAK_COAST_ASSIST_SCALE = 0.28;
+export const MASSLINE_FLIGHT_TUNING = Object.freeze({
+  MASSLINE_SLING_TAG_S,
+  MASSLINE_SLING_DECAY_TAU_S,
+  MASSLINE_EARNED_ASSIST_SCALE,
+  CLOAK_COAST_ASSIST_SCALE,
+});
+
 // Boost/dash tuning — mirrors src/systems/flight.js so player feel is identical under V3.
 const DASH_TAP_WINDOW = 0.32;  // Shift taps up to this duration become dash; longer holds boost.
 const DEFAULT_BOOST_RESOURCE = Object.freeze({
@@ -87,6 +104,7 @@ export const flightV3 = {
     // src/systems/flight.js so a held key does not re-boost immediately after a menu dismiss.
     this._prevBoost = false;
     this._suppressBoostUntilRelease = false;
+    this._masslineSlingUntil = 0;
     this._diag = {
       version: 3,
       shipId: null,
@@ -106,9 +124,14 @@ export const flightV3 = {
     };
 
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('save:loaded', () => { this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'load'); });
-      this.bus.on('game:started', () => { this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
+      this.bus.on('save:loaded', () => { this._masslineSlingUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'load'); });
+      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
       this.bus.on('tether:latched', () => this._setFlightMode('manual', 'tether'));
+      this.bus.on('massline:selfSling', () => {
+        if (!massline2Flag('throw')) return;
+        const now = finite(this.state && this.state.simTime, 0);
+        this._masslineSlingUntil = Math.max(this._masslineSlingUntil, now + MASSLINE_SLING_TAG_S);
+      });
     }
     if (typeof window !== 'undefined') {
       window.__SF_FLIGHT_V3__ = {
@@ -199,6 +222,7 @@ export const flightV3 = {
       const autoBoost = !!((pursuit && pursuit.active) || (autopilot && autopilot.active));
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state, { suppressDash: autoBoost });
       input.boost = boosting;
+      applyMasslineFlightModifiers(input, state, this._masslineSlingUntil);
     }
 
     const body = bodySnapshot(entity, profile);
@@ -422,6 +446,30 @@ export const flightV3 = {
 
 // Alias permits existing `import { flight } ...` call sites after the file switch.
 export const flight = flightV3;
+
+/** Annotate the already-allocated player input packet with optional MASSLINE flight modifiers.
+ * The kernel stays state-agnostic; feature flags and player-only reachability stay at this adapter.
+ * Mutating the packet avoids adding a new allocation to the 60 Hz craft update. */
+export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0) {
+  if (!input || typeof input !== 'object') return input;
+  const now = finite(state && state.simTime, 0);
+  const tether = state && state.player && state.player.tether;
+  const tetherTagged = !!(tether && (tether.slingshot || finite(tether.slingshotT, 0) > 0));
+  input.physicsEarnedMomentum = massline2Flag('throw')
+    && (tetherTagged || finite(eventSlingUntil, 0) > now);
+  input.earnedMomentumDecayTauS = MASSLINE_SLING_DECAY_TAU_S;
+  input.earnedMomentumAssistScale = input.physicsEarnedMomentum ? MASSLINE_EARNED_ASSIST_SCALE : 1;
+
+  const cloak = state && state.massline2 && state.massline2.cloak;
+  const coasting = Math.abs(finite(input.throttle, 0)) <= 0.025
+    && Math.abs(finite(input.strafe, 0)) <= 0.025
+    && !input.boost
+    && !input.brake;
+  input.coastAssistScale = massline2Flag('cloak') && cloak && cloak.active && coasting
+    ? CLOAK_COAST_ASSIST_SCALE
+    : 1;
+  return input;
+}
 
 // Idempotent boost-resource normalizer (port of src/systems/flight.js:306-329). Guarantees the
 // player's `e.boost` block is well-formed every tick and after save load. Saves are validated

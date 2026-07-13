@@ -12,7 +12,10 @@ import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from './scanner.js';
-import { combatFlag } from '../data/featureFlags.js';
+import { combatFlag, massline2Flag } from '../data/featureFlags.js';
+import {
+  aimTrueProjectileVelocity, solveTetherLeadSolution, solutionToleranceRad,
+} from '../combat/tetherFireControl.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
@@ -125,10 +128,25 @@ export const weapons = {
         this._autoLeadVel.set(id, sv);
         aimTgt = { pos: autoTgt.pos, vel: sv, radius: autoTgt.radius };
       }
-      const aimAngle = aimTgt
-        ? this._leadAngle(player, aimTgt, this._playerProjSpeed(player))
-        : (state.input.aimAngle || player.rot);
-      this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, autoTgt);
+      // Massline tether-lock fire control (§3.1, flag massline2.fireControl — OFF in the node
+      // golden): a line on a hostile IS the firing solution. The constrained-motion solver owns
+      // the aim (no G toggle needed, selection stays free for throw aims), and held fire only
+      // releases rounds on solution frames (gate applied per-mount in _serviceProjectileWeapon),
+      // so sustained LMB reads as the guns tracking rather than spraying.
+      let tetherGate = null;
+      if (massline2Flag('fireControl')) {
+        tetherGate = this._tetherFireSolution(player, state);
+        if (tetherGate) {
+          autoTgt = tetherGate.target;
+          aimTgt = null;
+        }
+      }
+      const aimAngle = tetherGate
+        ? tetherGate.angle
+        : (aimTgt
+          ? this._leadAngle(player, aimTgt, this._playerProjSpeed(player))
+          : (state.input.aimAngle || player.rot));
+      this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, autoTgt, tetherGate);
     }
     const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
     for (const e of ships) {
@@ -322,10 +340,39 @@ export const weapons = {
     }
   },
 
+  // Massline fire control solution for the local player (flag-gated by the caller). Returns
+  // { target, targetId, angle, tolRad, constrained } when the player's tether is on a live
+  // hostile ship/drone, else null. Pure read — never writes state.player.targetId, so Tab
+  // selection stays free for throw aiming while the guns own the tethered hostile.
+  _tetherFireSolution(player, state, projSpeed = null) {
+    const tether = state.player && state.player.tether;
+    if (!tether || !tether.active || tether.targetId == null) return null;
+    const target = this.helpers.getEntity(tether.targetId);
+    if (!target || !target.alive || !target.pos) return null;
+    if (target.type !== 'ship' && target.type !== 'drone') return null;
+    if (!isHostileToPlayer(target, player.team, state)) return null;
+    const taut = tether.phase === 'capture' || tether.phase === 'loaded' || tether.phase === 'overload';
+    if (!taut) return null;
+    const speed = Number.isFinite(projSpeed) && projSpeed > 0
+      ? projSpeed : this._playerProjSpeed(player);
+    const sol = solveTetherLeadSolution(player, target, speed, { taut: true });
+    const dist = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
+    return {
+      target,
+      targetId: target.id,
+      angle: sol.angle,
+      tolRad: solutionToleranceRad(target.radius, dist),
+      constrained: sol.constrained,
+      taut: true,
+    };
+  },
+
   // --- fire all weapons on a ship if it is firing this tick ---
   // aimAngle: the world angle to gimbal/turret toward (player mouse aim, NPC lead, or auto-fire lead).
   // forceTarget: an explicit target entity (auto-fire / missile-lock); null = use ship's selected target.
-  _serviceShip(e, firing, isPlayer, dt, state, aimAngle, forceTarget) {
+  // fireGate: massline tether-lock solution (player only, flag-gated) — fixed mounts withhold
+  // off-solution rounds; turrets aim the constrained solution instead of the linear lead.
+  _serviceShip(e, firing, isPlayer, dt, state, aimAngle, forceTarget, fireGate = null) {
     const ws = e.data && e.data.weapons;
     if (!ws || !ws.length) return;
     if (firing && !isPlayer && !npcFireTargetVisibleOnPlayerRadar(e, state)) firing = false;
@@ -339,9 +386,9 @@ export const weapons = {
       const def = this._byId.get(w.defId) || {};
       const continuous = w.continuous != null ? w.continuous : def.continuous;
       if (continuous) {
-        capLeft = this._serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle);
+        capLeft = this._serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle, fireGate);
       } else if (firing) {
-        capLeft = this._serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget);
+        capLeft = this._serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate);
       }
     }
     // write the drained capacitor back (cap pool is ours to spend; regen is combat's, §0.6 note)
@@ -350,13 +397,20 @@ export const weapons = {
 
   // Continuous beam: drain cap/heat while firing, push a transient ray, emit combat:fire/beamStop.
   // Damage application is combat's responsibility (we only mark the ray + spend resources).
-  _serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle) {
+  _serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle, fireGate = null) {
     const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0; // cap/s
     const heatPerSec = w.heatPerSec != null ? w.heatPerSec : def.heatPerSec || 0;
     const heatMax = w.heatMax != null ? w.heatMax : def.heatMax || Infinity;
     const range = w.range != null ? w.range : def.range || 0;
     const overheated = (w._heat || 0) >= heatMax;
-    const canFire = firing && !overheated && capLeft >= energyCost * dt;
+    let beamAim = aimAngle;
+    let solutionBlocked = false;
+    if (fireGate && fireGate.target && fireGate.target.pos) {
+      beamAim = Math.atan2(fireGate.target.pos.z - e.pos.z, fireGate.target.pos.x - e.pos.x);
+      const bareDir = this._hardpointDir(e, w, beamAim, 0);
+      solutionBlocked = Math.abs(wrapAngle(bareDir - beamAim)) > fireGate.tolRad;
+    }
+    const canFire = firing && !solutionBlocked && !overheated && capLeft >= energyCost * dt;
     if (!canFire) {
       // cool while not firing
       if (!firing) {
@@ -370,7 +424,7 @@ export const weapons = {
     if (w._heat >= heatMax) w._heat = heatMax;
 
     // A continuous beam still originates from its hardpoint facing and gimbal-assists toward aim.
-    const dir = this._hardpointDir(e, w, aimAngle || e.rot, 0);
+    const dir = this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);
     const origin = this._muzzle(e, w, dir);
     const to = { x: origin.x + Math.cos(dir) * range, z: origin.z + Math.sin(dir) * range };
     const damage = (w.dmg != null ? w.dmg : def.dmg || 0) * dt;
@@ -393,7 +447,7 @@ export const weapons = {
   },
 
   // Projectile weapon: gate on cooldown/cap/heat (+lock/+arc), spawn a projectile, emit combat:fire.
-  _serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget) {
+  _serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate = null) {
     if ((w._cooldown || 0) > 0) return capLeft;
 
     const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0;
@@ -414,6 +468,16 @@ export const weapons = {
     const tracking = w.tracking || def.tracking || 'fixed';
     const isMissile = tracking === 'homing';
     const isTurret = (w.facing === 'turret') || (tracking === 'auto_turret');
+    const mountProjSpeed = w.projSpeed != null ? w.projSpeed : def.projSpeed || 1;
+    // A mixed battery may carry shells, bolts, and plasma at different speeds. Re-solve for this
+    // mount instead of reusing the representative primary-gun angle; otherwise every non-primary
+    // round is knowingly released on the wrong intercept.
+    let mountGate = null;
+    if (fireGate && fireGate.target) {
+      mountGate = solveTetherLeadSolution(e, fireGate.target, mountProjSpeed, { taut: true });
+      mountGate.targetId = fireGate.targetId;
+      mountGate.tolRad = fireGate.tolRad;
+    }
 
     // Targeting: missiles/turrets need a target (the forced auto-fire target, else the ship's selected).
     let tgt = (isMissile || isTurret) ? (forceTarget || this._resolveTarget(e)) : null;
@@ -439,16 +503,33 @@ export const weapons = {
         const sv = this._autoLeadVel.get(String(tgt.id));
         if (sv) tForLead = { pos: tgt.pos, vel: sv, radius: tgt.radius };
       }
-      const aim = this._leadAngle(e, tForLead, w.projSpeed != null ? w.projSpeed : def.projSpeed || 1);
+      // Tether-lock (massline2.fireControl): the constrained solution replaces the linear lead
+      // when the turret is engaging the tethered hostile — one solver everywhere it matters.
+      const aim = (mountGate && tgt && tgt.id != null && String(tgt.id) === String(mountGate.targetId))
+        ? mountGate.angle
+        : this._leadAngle(e, tForLead, w.projSpeed != null ? w.projSpeed : def.projSpeed || 1);
       const arc = w.gimbalArc != null ? w.gimbalArc : (def.turretArcDeg ? def.turretArcDeg * RAD : Math.PI);
       // turret arc is measured about the hull centre; outside it the mount can't bear.
       if (Math.abs(wrapAngle(aim - e.rot)) > arc / 2) return capLeft;
       dir = aim;
     } else {
+      // Tether-lock solution gate (massline2.fireControl, player only): withhold the round unless
+      // the barrel — after gimbal clamp, before spread — can actually lie on the solution this
+      // frame. Cooldown/cap are NOT spent on withheld frames, so held fire "tracks" and every
+      // released round is a hit candidate. Tolerance is the target-size-honest solution window
+      // widened to at least the mount's own spread (a gate tighter than the spread would starve
+      // fire without improving hits).
+      if (mountGate) {
+        const spreadRad = (def.spreadDeg != null ? def.spreadDeg : 0) * RAD;
+        const gateTol = Math.max(mountGate.tolRad, spreadRad + 0.5 * RAD);
+        const bareDir = this._hardpointDir(e, w, mountGate.angle, 0);
+        if (Math.abs(wrapAngle(bareDir - mountGate.angle)) > gateTol) return capLeft;
+      }
       // FIXED mount: base direction = nose + hardpoint facing offset, then gimbal-assist toward the
       // aim direction within the mount's gimbal arc. Spread is layered on last. This is the
       // Freelancer feel — front guns track the cursor up to a cone, then fire straight.
-      dir = this._hardpointDir(e, w, aimAngle != null ? aimAngle : e.rot, def.spreadDeg != null ? def.spreadDeg : 0);
+      const fixedAim = mountGate ? mountGate.angle : (aimAngle != null ? aimAngle : e.rot);
+      dir = this._hardpointDir(e, w, fixedAim, def.spreadDeg != null ? def.spreadDeg : 0);
     }
 
     // --- commit: spend cap + heat, set cooldown ---
@@ -493,7 +574,7 @@ export const weapons = {
     // are unchanged; enable it only for playtesting.
     const vel = (isMissile || combatFlag('momentumInherit'))
       ? { x: cf * launchSpeed + e.vel.x, z: sf * launchSpeed + e.vel.z }
-      : projectileVelocityForAimedBullet(cf, sf, launchSpeed, e.vel);
+      : aimTrueProjectileVelocity(dir, launchSpeed, e.vel);
 
     // time-to-live is a backup cleanup only; physics enforces maxDistance spatially before hit
     // resolution, so inherited ship speed cannot turn a stray shot into a far-off friendly-fire hit.
@@ -726,23 +807,6 @@ function npcFireTargetVisibleOnPlayerRadar(e, state) {
   const dx = e.pos.x - player.pos.x;
   const dz = e.pos.z - player.pos.z;
   return dx * dx + dz * dz <= (range + pad) * (range + pad);
-}
-
-function projectileVelocityForAimedBullet(cf, sf, launchSpeed, shooterVel) {
-  const sx = Number.isFinite(shooterVel && shooterVel.x) ? shooterVel.x : 0;
-  const sz = Number.isFinite(shooterVel && shooterVel.z) ? shooterVel.z : 0;
-  const along = sx * cf + sz * sf;
-  const shooterSpeed2 = sx * sx + sz * sz;
-  const lateral2 = Math.max(0, shooterSpeed2 - along * along);
-  const launch2 = launchSpeed * launchSpeed;
-  if (!(launch2 > lateral2)) {
-    return { x: cf * launchSpeed, z: sf * launchSpeed };
-  }
-  const worldSpeed = along + Math.sqrt(launch2 - lateral2);
-  if (!(worldSpeed > 0)) {
-    return { x: cf * launchSpeed, z: sf * launchSpeed };
-  }
-  return { x: cf * worldSpeed, z: sf * worldSpeed };
 }
 
 function ensureWeaponRuntime(host) {

@@ -1,4 +1,4 @@
-// src/data/tech.js – 28 canonical tech nodes across 4 branches.
+// src/data/tech.js – canonical tech nodes across 4 branches.
 // IDs use tech_ prefix per ARCHITECTURE §0.4.
 // unlock ship IDs use ship_ prefix; module IDs use mod_ (weapons: wpn_).
 // prereqs[] reference other tech_ IDs. Pure data, no imports.
@@ -98,11 +98,16 @@ export const TECH_NODES = [
     unlocks: { modules: ['mod_cargo_compactor_l'] },
   },
 
-  // ---------------- DRIVES branch (4 nodes) ----------------
+  // ---------------- DRIVES branch (5 nodes) ----------------
   {
     id: 'tech_drive_tuning', name: 'Drive Tuning', branch: 'drives', prereqs: [],
     cost: { credits: 15000, rp: 20 },
     unlocks: { modules: ['mod_engine_fusion_m', 'mod_afterburner_m', 'mod_jump_drive_m', 'mod_cloak_mk2'] },
+  },
+  {
+    id: 'tech_impulse_ballistics', name: 'Impulse Ballistics', branch: 'drives', prereqs: ['tech_drive_tuning'],
+    cost: { credits: 85000, rp: 120 },
+    unlocks: { modules: ['mod_charge_vector_rack'] },
   },
   {
     id: 'tech_graviton_drives', name: 'Graviton Drives', branch: 'drives', prereqs: ['tech_drive_tuning'],

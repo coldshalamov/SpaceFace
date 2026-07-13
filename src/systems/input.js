@@ -46,6 +46,7 @@
 import { createGamepad } from './gamepad.js';
 import { createTouch } from './touch.js';
 import { wrapAngle } from '../core/rng.js';
+import { massline2Flag } from '../data/featureFlags.js';
 
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
 // so the ship's own yaw controller (rate caps, banking, class tuning) shapes the actual turn.
@@ -66,6 +67,10 @@ const VERB_BINDINGS = {
   deployBeacon:   ['KeyU'],   // edge: drop a claim beacon in open space (beacons system owns cost/cap).
                               //   The UI router owns U only when a claimable body is in range; in open
                               //   space it falls through to this flight verb (see check-claim-base-input).
+  // Massline Physics Identity (Wave M2). Every letter key is spoken for, so the two new verbs sit
+  // on the free left-pinky cluster next to WASD; both are rebindable like every other action.
+  bulletTime:     ['CapsLock'],   // level: hold for time dilation (bulletTime system owns meter)
+  cloak:          ['Backquote'],  // edge: toggle the cloak module (cloak system owns energy/gating)
 };
 
 const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
@@ -322,6 +327,7 @@ export const input = {
     const acts = inp.actions || (inp.actions = {
       brake: false, cruise: false, tetherFire: false, tetherCut: false, reelDelta: 0,
       chargeThrow: false, chargeDetonate: false, scanPulse: false, autopursuit: false, deployBeacon: false,
+      bulletTime: false, cloakToggle: false, throwArm: false,
     });
     if (state.mode !== 'flight' || state.ui.screenStack.length > 0 || modalInputActive()) {
       // No flight input while docked/modal: zero thrust/turn/fire but keep aim so the reticle rests.
@@ -330,6 +336,7 @@ export const input = {
       acts.brake = false; acts.cruise = false; acts.tetherFire = false; acts.tetherCut = false;
       acts.reelDelta = 0; acts.chargeThrow = false; acts.chargeDetonate = false; acts.scanPulse = false; acts.autopursuit = false;
       acts.deployBeacon = false;
+      acts.bulletTime = false; acts.cloakToggle = false; acts.throwArm = false;
       inp.tetherMode = null;
       this._m0 = false; this._m1 = false; this._m2 = false;
       this._prevM1 = false;
@@ -435,7 +442,13 @@ export const input = {
       ? (down || this._held(state, 'brake') || gpBrake)
       : (down || gpBrake || gpMoveZ < -0.55 || tpMoveZ < -0.55);
     inp.fire = kbdFire || gpFire || tpFire;
-    inp.fireGroup = (this._m2 || gpMine || tpMine) ? 2 : (inp.fire ? 1 : null);
+    // Massline throw-arm (§3.3, flag massline2.throw): while the line is LATCHED, RMB is the
+    // throw verb — the mining beam yields (fireGroup never reads 2) and actions.throwArm carries
+    // the held state for masslineThrow's solution/auto-cut. Unlatched play is unchanged.
+    const mineHeld = !!(this._m2 || gpMine || tpMine);
+    const tetherLatched = !!(state.player && state.player.tether && state.player.tether.active);
+    const throwArmHeld = massline2Flag('throw') && tetherLatched && mineHeld;
+    inp.fireGroup = (mineHeld && !throwArmHeld) ? 2 : (inp.fire ? 1 : null);
 
     // Countermeasure deploy (P1-7): edge-triggered flag consumed by systems/countermeasures.js.
     // We set a flag (not deploy directly) so the countermeasures system owns the cooldown/equip
@@ -548,6 +561,12 @@ export const input = {
     acts.cruise = edge('cruise');
     acts.autopursuit = !!this._pursuitToggle;
     acts.deployBeacon = edge('deployBeacon');
+    // Massline Wave M2 verbs. bulletTime is a LEVEL (hold-to-dilate; the system owns the meter and
+    // may refuse when empty); cloakToggle is an edge; throwArm was resolved above where the mining
+    // beam routing is decided (single owner for the RMB arbitration).
+    acts.bulletTime = this._held(state, 'bulletTime');
+    acts.cloakToggle = edge('cloak');
+    acts.throwArm = throwArmHeld;
     // Holding F after latch SHORTENS the line. Positive reelDelta = longer rest length in the tether
     // system. Arrow keys stay reserved for flight in Helm Assist.
     const arrowReelDelta = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);

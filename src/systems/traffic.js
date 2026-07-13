@@ -39,6 +39,7 @@ import {
   liveVolumeForSector,
 } from '../economy/freightCausality.js';
 import { pickNamedLaneContact } from '../data/laneContacts.js';
+import { massline2Flag } from '../data/featureFlags.js';
 import {
   regionalTrafficDensityMultiplier,
   regionalTrafficRoleWeights,
@@ -77,6 +78,10 @@ const TRAFFIC_ROLES = {
               label: 'Raider', docks: false, flees: true },
   rescue:   { ship: 'ship_drifter',  team: 2, speed: 48, archetype: 'passive', weight: 3,
               label: 'Rescue Craft', docks: true, trades: false },
+  // A heavy neutral liner on a real station route. `speed` is descriptive only; the live motion
+  // path is the V3 NPC boost intent in update(), which keeps momentum honest and tether-shareable.
+  express:  { ship: 'ship_mule',     team: 2, speed: 247, archetype: 'fleeing_trader', weight: 3,
+              label: 'Express Liner', docks: true, trades: true, express: true },
 };
 
 // Causal role mix for a sector (spec §12.2). Hostile/pirate sectors tilt toward raiders; industrial
@@ -107,6 +112,8 @@ export function trafficRoleMixForSector(sector, state = null) {
     out.courier *= 1.2;
     out.patrol *= 1.6;
   }
+  // Call-time gate: headless/golden and explicit flag-off sessions retain the exact prior role mix.
+  if (!massline2Flag('hitchhiking')) out.express = 0;
   return state ? regionalTrafficRoleWeights(state, sec.id, out) : out;
 }
 function pickRole(roleWeights, rng) {
@@ -154,6 +161,20 @@ function ensurePocketRoleMix(roles, sector) {
   // Prefer traders for remaining civilian slots (readable ambient economy).
   for (let i = 0; i < out.length; i++) {
     if (out[i] === 'smuggler' || out[i] === 'pirate') out[i] = (i % 2 === 0) ? 'hauler' : 'courier';
+  }
+  // A dense high-security hub gets exactly one scheduled express service: rare within the six-to-
+  // eight ship pocket, but reliably learnable in default play. Other sectors retain the weighted
+  // seeded role draw. The replacement is deterministic and never removes the guaranteed patrol.
+  if (massline2Flag('hitchhiking') && out.length >= CORE_MIN_TRAFFIC) {
+    let first = out.indexOf('express');
+    if (first < 0) {
+      first = out.length - 1;
+      if (out[first] === 'patrol') first = Math.max(1, first - 1);
+      out[first] = 'express';
+    }
+    for (let i = first + 1; i < out.length; i++) {
+      if (out[i] === 'express') out[i] = (i % 2 === 0) ? 'hauler' : 'courier';
+    }
   }
   return out;
 }
@@ -259,10 +280,12 @@ export const traffic = {
       const ent = this.helpers.spawnEntity(spec);
       if (!ent) continue;
       this._stampTrafficDurableIdentity(ent, sectorId, role, def, already + i);
-      const target = this._pickStation(stations);
+      const target = def.express
+        ? this._pickExpressDestination(stations, station)
+        : this._pickStation(stations);
       const manifest = this._assignManifest(ent, role, target, sectorId);
       this._active.push(ent.id);
-      this.state.traffic.freighters.push({
+      const rec = {
         id: ent.id,
         role,
         targetId: target.id,
@@ -271,7 +294,9 @@ export const traffic = {
         orbitPhase: this._rng() * Math.PI * 2, // patrols orbit on a per-ship phase
         dockSeq: 0,
         manifest,
-      });
+      };
+      if (def.express) this._stampExpressRoute(ent, rec, station, target, sectorId, already + i);
+      this.state.traffic.freighters.push(rec);
     }
     this._ensureNamedLaneContact(sectorId, sector, stations);
   },
@@ -396,6 +421,11 @@ export const traffic = {
     } else if (!ent.data.ai.spawnContext) {
       ent.data.ai.spawnContext = 'convoy_civilian';
     }
+    if (role === 'express') {
+      ent.data.hitchable = true;
+      ent.data.scanLabel = 'EXPRESS LINER · HITCHABLE';
+      if (!ent.data.trafficLabel) ent.data.trafficLabel = 'Express Liner';
+    }
     if (ent.data.worldRecordId) return;
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const qx = ent.pos ? Math.round(ent.pos.x / 4) * 4 : 0;
@@ -439,7 +469,11 @@ export const traffic = {
       tracked.add(e.id);
       this._active.push(e.id);
       const role = d.trafficRole || 'hauler';
-      const target = (stations && stations.length) ? this._pickStation(stations) : null;
+      const target = (stations && stations.length)
+        ? (role === 'express'
+            ? (this._expressDestinationFromItinerary(stations, d.itinerary) || this._pickStation(stations))
+            : this._pickStation(stations))
+        : null;
       // Preserve durable cargo manifest across rematerialize / continuous handoff (M2).
       let manifest = d.cargoManifest || null;
       if (!manifest || !Array.isArray(manifest.lines)) {
@@ -447,7 +481,7 @@ export const traffic = {
       } else {
         e.data.cargoManifest = manifest;
       }
-      this.state.traffic.freighters.push({
+      const rec = {
         id: e.id,
         role,
         targetId: target ? target.id : null,
@@ -456,7 +490,12 @@ export const traffic = {
         orbitPhase: this._rng() * Math.PI * 2,
         dockSeq: d.freightDockSeq | 0,
         manifest,
-      });
+      };
+      if (role === 'express') {
+        this._stampTrafficDurableIdentity(e, sectorId, role, TRAFFIC_ROLES.express, adoptIdx);
+        this._stampExpressRoute(e, rec, null, target, sectorId, adoptIdx, true);
+      }
+      this.state.traffic.freighters.push(rec);
       adoptIdx++;
     }
   },
@@ -477,6 +516,50 @@ export const traffic = {
 
   _pickStation(stations) {
     return stations[Math.floor(this._rng() * stations.length)] || stations[0];
+  },
+
+  _pickExpressDestination(stations, origin) {
+    if (!stations || !stations.length) return null;
+    const choices = stations.filter((station) => station && station !== origin);
+    if (!choices.length) return origin || stations[0];
+    return choices[Math.floor(this._rng() * choices.length)] || choices[0];
+  },
+
+  _expressDestinationFromItinerary(stations, itinerary) {
+    const id = itinerary && itinerary.destinationStationId;
+    if (!id) return null;
+    return stations.find((station) => stationIdentity(station) === id) || null;
+  },
+
+  _stampExpressRoute(entity, rec, origin, destination, sectorId, seq, preserve = false) {
+    if (!entity || !rec || rec.role !== 'express') return;
+    const data = entity.data || (entity.data = {});
+    let itinerary = preserve && data.itinerary && data.itinerary.kind === 'express_hitch_route'
+      ? data.itinerary
+      : null;
+    if (!itinerary) {
+      const originId = stationIdentity(origin) || 'local_departure';
+      const destinationId = stationIdentity(destination) || originId;
+      const seed = (this.state.meta && this.state.meta.seed) || 1;
+      const slot = hash32(seed, sectorId, 'express-hitch-slot', seq | 0) % 6;
+      itinerary = {
+        kind: 'express_hitch_route',
+        routeId: `express:${sectorId}:${originId}>${destinationId}`,
+        sectorId,
+        originStationId: originId,
+        destinationStationId: destinationId,
+        serviceLabel: 'Express Hitch Line',
+        departureSlotS: slot * 30,
+        hitchable: true,
+        transitIntent: 'v3_boost',
+      };
+      data.itinerary = itinerary;
+    }
+    const routeLabel = `${stationName(origin, itinerary.originStationId)} → ${stationName(destination, itinerary.destinationStationId)}`;
+    data.hitchable = true;
+    data.trafficLabel = `EXPRESS LINER · ${routeLabel}`;
+    data.scanLabel = `${data.trafficLabel} · HITCHABLE`;
+    rec.itinerary = itinerary;
   },
 
   _cleanup() {
@@ -535,9 +618,15 @@ export const traffic = {
       // resolve current target (it may have despawned)
       let target = state.entities.get(rec.targetId);
       if (!target || !target.alive) {
-        target = this._pickStation(stations);
+        target = role.express
+          ? this._pickExpressDestination(stations, null)
+          : this._pickStation(stations);
         rec.targetId = target ? target.id : null;
         if (!target) continue;
+        if (role.express) {
+          this._stampExpressRoute(e, rec, null, target,
+            (state.world && state.world.currentSectorId) || 'unknown', i);
+        }
       }
 
       // waiting at station?
@@ -560,13 +649,24 @@ export const traffic = {
           rec.nextTradeT = TRADE_INTERVAL_S + this._rng() * 6;
         }
         rec.waitT = 2.5 + this._rng() * 2;
-        rec.targetId = this._pickStation(stations).id;
+        const nextTarget = role.express
+          ? this._pickExpressDestination(stations, target)
+          : this._pickStation(stations);
+        rec.targetId = nextTarget.id;
+        if (role.express) {
+          // Each completed leg advances the durable itinerary while retaining stable ship identity.
+          e.data.itinerary = null;
+          this._stampExpressRoute(e, rec, target, nextTarget,
+            (state.world && state.world.currentSectorId) || 'unknown', rec.dockSeq | 0);
+        }
         setIntent(e, 0, 0, false, false, null, aimAngle);
         continue;
       }
       // drive: face the target, thrust forward. moveZ=1 means forward along the nose.
-      setIntent(e, 0, 1, false, false, null, aimAngle);
-      // clamp speed (intent is read by flight; we keep it simple — full forward, slow ship hull)
+      const expressBoost = !!(role.express && massline2Flag('hitchhiking'));
+      setIntent(e, 0, 1, expressBoost, false, null, aimAngle);
+      // V3 reads this intent and applies real thrust. Traffic never writes velocity, so a latched
+      // player receives only the Rapier constraint pull and whatever momentum the liner earns.
     }
   },
 
@@ -917,4 +1017,16 @@ function setIntent(e, moveX, moveZ, boost, fire, fireGroup, aimAngle) {
   intent.fire = fire;
   intent.fireGroup = fireGroup;
   intent.aimAngle = aimAngle;
+}
+
+function stationIdentity(station) {
+  if (!station) return null;
+  const data = station.data || {};
+  const id = data.stationId || data.id || station.id;
+  return id == null ? null : String(id);
+}
+
+function stationName(station, fallback) {
+  const data = station && station.data || {};
+  return String(data.name || data.label || fallback || 'Local');
 }

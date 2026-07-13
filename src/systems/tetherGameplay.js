@@ -5,6 +5,7 @@
 import { lockedHostileEntity } from '../combat/autoTargetMode.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer } from './scanner.js';
+import { massline2Flag } from '../data/featureFlags.js';
 
 const TETHER_DEF_ID = 'tether_standard';
 const STRAIN_EVENT_INTERVAL_S = 0.2;
@@ -30,6 +31,7 @@ const LOAD_BASE_BY_PHASE = Object.freeze({ slack: 0, capture: 0.35, loaded: 0.55
 // Pickups are valid massline targets now; attachment liveness sweeps cut the line if a pickup is
 // collected/despawned, so the old invisible-anchor failure mode stays closed.
 const ATTACHABLE_TYPES = new Set(['asteroid', 'wreck', 'ship', 'drone', 'station', 'payload', 'pickup']);
+const TOW_TARGET_COM_TYPES = new Set(['wreck', 'ship', 'drone', 'payload', 'pickup']);
 
 export const tetherGameplay = {
   id: 'tetherGameplay',
@@ -149,11 +151,18 @@ export const tetherGameplay = {
     const target = latch && latch.entity;
     if (!target) return;
 
+    // Context-aware attachment (Wave M2 §3.2, flag massline2.contextAttach — OFF headless): one
+    // tether key, intent read from the target. A HOSTILE ship keeps the authored nose anchor —
+    // facing him is the point (flee-chases keep your guns on him; orbits hold him at your focal
+    // point). Everything else is a TOW: the player-side anchor moves to the hull center so
+    // hauling a rock/wreck/neutral (hitchhiking, §5.1) pulls through the center of mass instead
+    // of torquing the nose around.
+    const attachWorlds = contextualAttachmentWorlds(player, target, latch.targetWorld, state);
     const result = attachments.create({
       defId: TETHER_DEF_ID,
       ownerId: player.id,
       targetId: target.id,
-      targetWorld: latch.targetWorld,
+      ...attachWorlds,
     });
     if (!result || !result.ok || !result.attachment) return;
 
@@ -421,6 +430,23 @@ export const tetherGameplay = {
     t.slingshot = t.slingshotT > 0;
   },
 };
+
+/** Resolve context-aware world anchors once at latch time. Hostile ships retain the authored
+ * nose-to-surface combat line. Towable dynamic bodies use COM-to-COM so neither endpoint gains
+ * accidental steering torque; immovable asteroids/stations retain a readable surface endpoint. */
+export function contextualAttachmentWorlds(player, target, acquiredTargetWorld, state) {
+  const hostileCraft = (target && (target.type === 'ship' || target.type === 'drone'))
+    && isHostileToPlayer(target, player && player.team, state);
+  const towAttach = massline2Flag('contextAttach') && !hostileCraft;
+  if (!towAttach) return { targetWorld: acquiredTargetWorld };
+  const targetWorld = target && TOW_TARGET_COM_TYPES.has(target.type)
+    ? { x: target.pos.x, y: 0, z: target.pos.z }
+    : acquiredTargetWorld;
+  return {
+    sourceWorld: { x: player.pos.x, y: 0, z: player.pos.z },
+    targetWorld,
+  };
+}
 
 function combatKernel(host) {
   const actions = host.registry && host.registry.get && host.registry.get('actions');

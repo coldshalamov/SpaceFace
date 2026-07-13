@@ -20,6 +20,7 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
+import { massline2Flag } from '../data/featureFlags.js';
 import {
   createCuePriorityBus,
   isPriorityCue,
@@ -38,6 +39,14 @@ const STATE_HOLD_S = 1.5;       // hysteresis
 const IN_COMBAT_WINDOW = 6;     // s since last damage counts as "in combat"
 const MUSIC_RECOMPUTE_S = 0.1;  // analysis cadence; state changes still have 1.5s hysteresis
 const LOOP_POSITION_UPDATE_S = 0.05; // AudioParam smoothing already runs over this window
+export const BULLET_TIME_AUDIO = Object.freeze({
+  cutoffHz: 1100,
+  openHz: 20000,
+  enterS: 0.12,
+  exitS: 0.15,
+  loopRate: 0.85,
+  musicMult: 0.630957, // -4 dB
+});
 // target stem weights per music state (A=calm drone, B=tense pad, C=combat, D=docked warm)
 const STEM_WEIGHTS = {
   calm:   { A: 1.0, B: 0.0, C: 0.0, D: 0.0 },
@@ -89,6 +98,51 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
 
 function linearGain(v) { const c = v < 0 ? 0 : v > 1 ? 1 : v; return c * c; }
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+function isPhysicalAudioBus(name) { return name === 'engine' || name === 'ambient' || name === 'combat'; }
+
+/** Event-driven slow-time mix over pooled graph nodes. UI/comms never enter `filters`. */
+export function applyBulletTimeAudioTreatment(rt, requestedActive, muted = false) {
+  if (!rt) return;
+  rt._bulletTimeAudioActive = !!requestedActive;
+  const active = !!requestedActive && !muted;
+  rt._bulletTimePitch = active ? BULLET_TIME_AUDIO.loopRate : 1;
+  rt._bulletTimeMusicMult = active ? BULLET_TIME_AUDIO.musicMult : 1;
+  const ctx = rt.ctx;
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const duration = active ? BULLET_TIME_AUDIO.enterS : BULLET_TIME_AUDIO.exitS;
+  const cutoff = active ? BULLET_TIME_AUDIO.cutoffHz : BULLET_TIME_AUDIO.openHz;
+  for (const filter of rt._bulletTimeFilters || []) {
+    const param = filter && filter.frequency;
+    if (!param) continue;
+    try {
+      param.cancelScheduledValues(now);
+      param.setValueAtTime(Math.max(20, Number(param.value) || BULLET_TIME_AUDIO.openHz), now);
+      param.linearRampToValueAtTime(cutoff, now + duration);
+    } catch (_) { try { param.value = cutoff; } catch (__) {} }
+  }
+  const setRate = (source) => {
+    const param = source && source.playbackRate;
+    if (!param) return;
+    try { param.setTargetAtTime(rt._bulletTimePitch, now, duration / 3); }
+    catch (_) { try { param.value = rt._bulletTimePitch; } catch (__) {} }
+  };
+  setRate(rt.engineNoise);
+  setRate(rt.brakeNoise);
+  for (const key in rt.loops || {}) {
+    const voice = rt.loops[key];
+    if (!voice || !isPhysicalAudioBus(voice.busName)) continue;
+    for (const source of voice && voice.sources || []) setRate(source);
+  }
+  if (rt.musicBus && rt.musicBus.gain) {
+    const target = Math.max(0.0001, (rt._musicBase || 0.0001) * rt._bulletTimeMusicMult);
+    try {
+      rt.musicBus.gain.cancelScheduledValues(now);
+      rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), now);
+      rt.musicBus.gain.linearRampToValueAtTime(target, now + duration);
+    } catch (_) { try { rt.musicBus.gain.value = target; } catch (__) {} }
+  }
+}
 
 export function resolveEngineAudioIdentity(entity) {
   let profile = null;
@@ -261,6 +315,17 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.tether.near_break': 'sfx_tether_strain_creak',
   'presentation.tether.break': 'sfx.tetherSnap',
   'presentation.tether.whip_impact': 'sfx.tetherSnap',
+  // Massline Physics Identity (Wave M2): throw/sling/tumble/bullet-time/cloak semantic cues.
+  'massline.throw': 'sfx_massline_throw',
+  'massline.solutionLock': 'sfx_massline_solution',
+  'massline.sling': 'sfx_massline_sling',
+  'massline.tumble': 'sfx_massline_tumble',
+  'massline.bulletTimeIn': 'sfx_massline_bt_in',
+  'massline.bulletTimeOut': 'sfx_massline_bt_out',
+  'massline.cloakOn': 'sfx_massline_cloak_on',
+  'massline.cloakOff': 'sfx_massline_cloak_off',
+  'massline.jettisonKick': 'sfx_massline_jettison',
+  'massline.bombDrop': 'sfx_massline_bomb_drop',
   'presentation.travel.cruise_charge': 'sfx.cruiseCharging',
   'presentation.travel.lane_lock': 'sfx_travel_lane_lock',
   'presentation.travel.cancel': 'sfx_travel_cancel',
@@ -394,6 +459,25 @@ export function audioRecipeBasePeak(recipe) {
   }
 }
 
+export const DRILL_GRIND_LOOP_ID = 'sfx_mining_drill_grind';
+
+// Pure mix target for the drill bed. Heat raises RPM/brightness while a depleted capacitor sags;
+// hardness adds load without spawning another voice. This remains presentation-only.
+export function drillGrindMix(drillState, out = {}) {
+  const active = !!(drillState && drillState.active && drillState.avatar && drillState.avatar.isDrilling);
+  const heat = clamp((Number(drillState && drillState.drillTemp) || 0) / 100, 0, 1);
+  const energy = clamp((Number(drillState && drillState.drillEnergy) || 0) / 100, 0, 1);
+  const target = drillState && drillState.avatar && drillState.avatar.drillTarget;
+  const tile = target && drillState.field && drillState.field[target.col] && drillState.field[target.col][target.row];
+  const hardness = clamp((Number(tile && tile.hardness) || 1) / 2.4, 0, 1);
+  const energyStrain = 1 - energy;
+  out.active = active;
+  out.gain = 0.58 + hardness * 0.18 + heat * 0.08;
+  out.rate = clamp(0.92 + heat * 0.28 + hardness * 0.06 - energyStrain * 0.12, 0.78, 1.26);
+  out.filterHz = clamp(480 + heat * 420 + hardness * 220 - energyStrain * 100, 360, 1120);
+  return out;
+}
+
 export const audio = {
   name: 'audio',
 
@@ -426,6 +510,8 @@ export const audio = {
     rt._rafId = 0;
     rt._wantBeam = {};            // owners desiring a beam loop (started on resume)
     rt._wantMining = null;        // { minerId, targetId } desired mining loop
+    rt._wantDrillGrind = false;   // state-derived deep-drill bed (survives AudioContext resume)
+    rt._drillGrindMix = { active: false, gain: 0, rate: 1, filterHz: 560 };
     rt._musicDirty = true;
     rt._nextMusicScan = 0;
     rt._loopPositionDirty = true;
@@ -464,6 +550,10 @@ export const audio = {
     rt._lastMachineryAt = 0;
     rt._lastSquelchEndTime = 0;
     rt.sidechainDuck = 1;
+    rt._bulletTimeAudioActive = false;
+    rt._bulletTimePitch = 1;
+    rt._bulletTimeMusicMult = 1;
+    rt._bulletTimeFilters = [];
     this.rt = rt;
 
     const bus = this.bus;
@@ -576,7 +666,16 @@ export const audio = {
       });
     });
     bus.on('audio:cue', (p) => this._onCue(p));
-    bus.on('settings:changed', (p) => { if (!p || p.section === 'audio' || p.section == null) this._applySettings(); });
+    bus.on('bulletTime:start', () => {
+      if (massline2Flag('bulletTime')) this._setBulletTimeAudio(true);
+    });
+    bus.on('bulletTime:end', () => this._setBulletTimeAudio(false));
+    bus.on('settings:changed', (p) => {
+      if (!p || p.section === 'audio' || p.section == null) {
+        this._applySettings();
+        this._setBulletTimeAudio(!!rt._bulletTimeAudioActive);
+      }
+    });
 
     // Pause respect (V2 §17 anti-pattern: "audio playing behind the pause menu"). When the sim
     // freezes (pause menu, save-load swap, main menu), we duck music to silence, stop scheduling
@@ -619,6 +718,11 @@ export const audio = {
     if (this.rt) this.rt._loopPositionDirty = true;
   },
 
+  _setBulletTimeAudio(active) {
+    const settings = this.state && this.state.settings && this.state.settings.audio;
+    applyBulletTimeAudioTreatment(this.rt, active, !!(settings && settings.muted));
+  },
+
   // ---- context lifecycle ----
   _ensureContext() {
     const rt = this.rt;
@@ -646,9 +750,19 @@ export const audio = {
     const combatBus = ctx.createGain();
     const uiBus = ctx.createGain();
     const commsBus = ctx.createGain();
-    engineBus.connect(sfxBus);
-    ambientBus.connect(sfxBus);
-    combatBus.connect(sfxBus);
+    // Slow-time treatment lives on pooled filters for physical buses only. UI/comms remain crisp.
+    const engineSlowFilter = ctx.createBiquadFilter();
+    const ambientSlowFilter = ctx.createBiquadFilter();
+    const combatSlowFilter = ctx.createBiquadFilter();
+    for (const filter of [engineSlowFilter, ambientSlowFilter, combatSlowFilter]) {
+      filter.type = 'lowpass';
+      filter.frequency.value = BULLET_TIME_AUDIO.openHz;
+      filter.Q.value = 0.55;
+      filter.connect(sfxBus);
+    }
+    engineBus.connect(engineSlowFilter);
+    ambientBus.connect(ambientSlowFilter);
+    combatBus.connect(combatSlowFilter);
     uiBus.connect(sfxBus);
     commsBus.connect(sfxBus);
     sfxBus.connect(master);
@@ -658,10 +772,12 @@ export const audio = {
     rt.masterGain = master; rt.limiter = limiter; rt.sfxBus = sfxBus; rt.musicBus = musicBus;
     rt.engineBus = engineBus; rt.ambientBus = ambientBus; rt.combatBus = combatBus;
     rt.uiBus = uiBus; rt.commsBus = commsBus;
+    rt._bulletTimeFilters = [engineSlowFilter, ambientSlowFilter, combatSlowFilter];
 
     getNoiseBuffer(ctx, rt._caches); // pre-build the shared noise buffer
 
     this._applySettings();
+    this._setBulletTimeAudio(!!rt._bulletTimeAudioActive);
     try { if (ctx.state === 'suspended') ctx.resume(); } catch (_) {}
 
     // Continuous layers must start once the graph exists (P0.1 — ensure paths were dead).
@@ -740,7 +856,8 @@ export const audio = {
         const t = ctx.currentTime;
         rt.musicBus.gain.cancelScheduledValues(t);
         rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), t);
-        rt.musicBus.gain.linearRampToValueAtTime(Math.max(0.0001, rt._musicBase || 0.5), t + 0.4);
+        rt.musicBus.gain.linearRampToValueAtTime(
+          Math.max(0.0001, (rt._musicBase || 0.5) * (rt._bulletTimeMusicMult || 1)), t + 0.4);
       } catch (_) {}
       // re-seed alarm timers so they don't dump a backlog burst on resume
       rt._alarmNext.lowShield = ctx.currentTime;
@@ -792,7 +909,7 @@ export const audio = {
 
     const musicVal = a.music == null ? 0.32 : a.music;
     rt._musicBase = linearGain(musicVal) * 0.05012 * sidechain;
-    ramp(rt.musicBus.gain, rt._musicBase);
+    ramp(rt.musicBus.gain, rt._musicBase * (rt._bulletTimeMusicMult || 1));
   },
 
   // ---- one-shot SFX API ----
@@ -1098,6 +1215,42 @@ export const audio = {
     try { filter.frequency.setTargetAtTime(targetHz, ctx.currentTime, 0.045); } catch (_) {}
   },
 
+  _updateDrillGrind() {
+    const rt = this.rt;
+    const mix = drillGrindMix(this.state && this.state.drill, rt._drillGrindMix);
+    rt._wantDrillGrind = mix.active;
+
+    if (!mix.active) {
+      const current = rt.loops.drillGrind;
+      if (current) {
+        this._endLoopVoice(current);
+        delete rt.loops.drillGrind;
+      }
+      return;
+    }
+
+    const ctx = rt.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    let voice = rt.loops.drillGrind;
+    if (!voice) {
+      voice = this._startLoopVoice(DRILL_GRIND_LOOP_ID, null, 0.4);
+      if (!voice) return;
+      voice.role = 'ambient';
+      voice.busName = 'ambient';
+      rt.loops.drillGrind = voice;
+    }
+
+    const now = ctx.currentTime;
+    try { voice.gain.gain.setTargetAtTime(mix.gain, now, 0.045); } catch (_) {}
+    if (voice.filter) {
+      try { voice.filter.frequency.setTargetAtTime(mix.filterHz, now, 0.04); } catch (_) {}
+    }
+    for (const source of voice.sources || []) {
+      if (!source.playbackRate) continue;
+      try { source.playbackRate.setTargetAtTime(mix.rate, now, 0.05); } catch (_) {}
+    }
+  },
+
   _startLoopVoice(recipeId, position, gain) {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx || ctx.state !== 'running') return null;
@@ -1129,7 +1282,11 @@ export const audio = {
       dest = panner;
     }
     const peak = Math.min(1, this._ampFor(recipe) * (gain == null ? 1 : gain) * att);
-    const v = playRecipe(ctx, recipe, dest, { peakGain: Math.max(0.02, peak), id: rt._nextVoiceId++ }, rt._caches);
+    const v = playRecipe(ctx, recipe, dest, {
+      peakGain: Math.max(0.02, peak),
+      rate: isPhysicalAudioBus(busName) ? (rt._bulletTimePitch || 1) : 1,
+      id: rt._nextVoiceId++,
+    }, rt._caches);
     v._panner = panner;
     v._baseGain = this._ampFor(recipe) * (gain == null ? 1 : gain);
     v.busName = busName;
@@ -1279,7 +1436,8 @@ export const audio = {
     try {
       rt.musicBus.gain.cancelScheduledValues(t);
       rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), t);
-      rt.musicBus.gain.linearRampToValueAtTime(Math.max(0.0001, (rt._musicBase || 0.5) * 0.5), t + 0.08);
+      rt.musicBus.gain.linearRampToValueAtTime(
+        Math.max(0.0001, (rt._musicBase || 0.5) * (rt._bulletTimeMusicMult || 1) * 0.5), t + 0.08);
     } catch (_) {}
   },
 
@@ -1868,6 +2026,7 @@ export const audio = {
     this._updateEngineHum();
     this._updateBrakeHiss(dt);
     this._updateTetherHum();
+    this._updateDrillGrind();
     this._updatePads(now);
     this._updateStationMurmur(now);
     this._updatePlaceContext(now);
@@ -1878,7 +2037,8 @@ export const audio = {
       try {
         rt.musicBus.gain.cancelScheduledValues(now);
         rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), now);
-        rt.musicBus.gain.linearRampToValueAtTime(Math.max(0.0001, rt._musicBase || 0.5), now + 0.8);
+        rt.musicBus.gain.linearRampToValueAtTime(
+          Math.max(0.0001, (rt._musicBase || 0.5) * (rt._bulletTimeMusicMult || 1)), now + 0.8);
       } catch (_) {}
     }
 
@@ -2180,13 +2340,14 @@ export const audio = {
     // Portamento ~300 ms (setTarget timeConstant ≈ 0.1).
     const tc = 0.1;
     const t = ctx.currentTime;
+    const slowPitch = rt._bulletTimePitch || 1;
     try {
       rt.engineOsc1.type = familyVoice.osc1;
       rt.engineOsc2.type = familyVoice.osc2;
-      rt.engineOsc1.frequency.setTargetAtTime(f1, t, tc);
-      rt.engineOsc2.frequency.setTargetAtTime(f2, t, tc);
+      rt.engineOsc1.frequency.setTargetAtTime(f1 * slowPitch, t, tc);
+      rt.engineOsc2.frequency.setTargetAtTime(f2 * slowPitch, t, tc);
       rt.engineOsc2.detune.setTargetAtTime(d2, t, tc);
-      if (rt.engineSub) rt.engineSub.frequency.setTargetAtTime(f1 * 0.5, t, tc);
+      if (rt.engineSub) rt.engineSub.frequency.setTargetAtTime(f1 * 0.5 * slowPitch, t, tc);
       if (rt.engineSubGain) rt.engineSubGain.gain.setTargetAtTime(subG, t, 0.12);
       rt.engineNoiseGain.gain.setTargetAtTime(noiseG * duck, t, 0.15);
       if (rt.engineNoiseFilter) rt.engineNoiseFilter.frequency.setTargetAtTime(noiseHz, t, 0.12);
@@ -2255,6 +2416,9 @@ export const audio = {
       targetGain = Math.min(0.25, Math.max(0.04, decel * 0.04));
     }
 
+    if (rt.brakeNoise && rt.brakeNoise.playbackRate) {
+      rt.brakeNoise.playbackRate.setTargetAtTime(rt._bulletTimePitch || 1, ctx.currentTime, 0.05);
+    }
     rt.brakeGain.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.05);
   },
 
@@ -2309,12 +2473,13 @@ export const audio = {
       targetGain = 0.006 + Math.pow(strain, 1.25) * 0.13;
     }
 
-    rt.tetherOsc.frequency.setTargetAtTime(targetFreq, ctx.currentTime, 0.05);
+    const slowPitch = rt._bulletTimePitch || 1;
+    rt.tetherOsc.frequency.setTargetAtTime(targetFreq * slowPitch, ctx.currentTime, 0.05);
     rt.tetherHum.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.05);
     rt.tetherHum.gainValue = targetGain;
     if (rt.tetherOverloadOsc && rt.tetherOverloadGain) {
       const overload = clamp((strain - 0.72) / 0.28, 0, 1);
-      rt.tetherOverloadOsc.frequency.setTargetAtTime(targetFreq + 7 + overload * 9, ctx.currentTime, 0.05);
+      rt.tetherOverloadOsc.frequency.setTargetAtTime((targetFreq + 7 + overload * 9) * slowPitch, ctx.currentTime, 0.05);
       rt.tetherOverloadGain.gain.setTargetAtTime(Math.max(0.0001, overload * 0.055), ctx.currentTime, 0.05);
       rt.tetherOverloadGain.gainValue = Math.max(0.0001, overload * 0.055);
     }

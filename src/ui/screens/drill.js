@@ -1,7 +1,12 @@
 // Drill lens screen (V2 §7 / cut-list #27). The remote deep-core extraction view. Renders the vein cross-
 // section to a canvas, handles WASD / Arrow key movement and directional drilling input locally,
 // and shows yield, drill warnings, and elegant item acquisition toasts.
-import { DRILL_CONST, drillTierReqForOre, avatarDrawPos } from '../../systems/drill.js';
+import {
+  DRILL_CONST,
+  drillTierReqForOre,
+  avatarDrawPos,
+  avatarMoveProgress,
+} from '../../systems/drill.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { DEFAULTS as INPUT_DEFAULTS } from '../../systems/input.js';
@@ -40,6 +45,100 @@ export function resolveDrillControlMap(state) {
     left, right, up, down, scan,
     movementLabel: unique(up, left, down, right).map(codeLabel).join(' / ') || 'UNBOUND',
     scanLabel: scan.map(codeLabel).join(' / ') || 'UNBOUND',
+  };
+}
+
+const DRILL_INPUT_STEP_S = 1 / 60;
+// Catch up through ordinary 10–20 FPS dips, but never more than 100 ms in one render frame.
+// The single-cell intent boundary below prevents that catch-up from reaching another cell.
+const DRILL_INPUT_MAX_FRAME_S = 0.1;
+const DIRECTION_VECTORS = Object.freeze({
+  left: Object.freeze({ dc: -1, dr: 0 }),
+  right: Object.freeze({ dc: 1, dr: 0 }),
+  up: Object.freeze({ dc: 0, dr: -1 }),
+  down: Object.freeze({ dc: 0, dr: 1 }),
+});
+
+export const DRILL_GAS_SHAKE_DURATION_S = 0.42;
+export const DRILL_GAS_SHAKE_MAX_PX = 8;
+
+// Deterministic trauma curve for the covered 2D playfield. The 3D chase-camera shake emitted by
+// drill.js is still useful after the screen closes, but cannot be seen while this overlay is open.
+export function drillGasShakeOffset(remainingS, elapsedS, reducedMotion = false) {
+  const trauma = Math.max(0, Math.min(1, (Number(remainingS) || 0) / DRILL_GAS_SHAKE_DURATION_S));
+  const amplitude = DRILL_GAS_SHAKE_MAX_PX * trauma * trauma * (reducedMotion ? 0.25 : 1);
+  const phase = Math.max(0, Number(elapsedS) || 0);
+  return {
+    x: Math.sin(phase * 71 + 0.8) * amplitude,
+    y: Math.cos(phase * 89 + 0.35) * amplitude * 0.72,
+  };
+}
+
+/**
+ * Convert direction presses into bounded, single-cell drill commands.
+ *
+ * A press keeps working on its selected adjacent cell after the key is released, but it is
+ * retired as soon as that cell is entered or rejected. Fixed microsteps prevent a slow render
+ * frame from becoming a larger, more dangerous drilling command.
+ */
+export function createDrillInputController({ drillSys, getState }) {
+  const held = { left: false, right: false, up: false, down: false };
+  let intent = null;
+  let accumulator = 0;
+
+  function clearIntent() {
+    held.left = held.right = held.up = held.down = false;
+    intent = null;
+  }
+
+  function settleIntent() {
+    const d = getState();
+    if (!intent || !d?.avatar) return;
+    const reached = d.avatar.col === intent.col && d.avatar.row === intent.row;
+    const targetTile = d.field?.[intent.col]?.[intent.row];
+    const rejectedSolid = targetTile?.type !== 'empty'
+      && !d.avatar.isDrilling
+      && !d.avatar.drillTarget;
+    if (reached || !targetTile || rejectedSolid || d.avatar.drillBlocked || !d.active) clearIntent();
+  }
+
+  function step(dt) {
+    drillSys.tickInput(held, dt);
+    settleIntent();
+  }
+
+  return {
+    held,
+    press(direction) {
+      const vector = DIRECTION_VECTORS[direction];
+      const d = getState();
+      if (!vector || !d?.active || !d.avatar) return false;
+      clearIntent();
+      intent = {
+        direction,
+        col: d.avatar.col + vector.dc,
+        row: d.avatar.row + vector.dr,
+      };
+      held[direction] = true;
+      // Immediate fixed-step acknowledgment: a tap cannot disappear between animation frames.
+      step(DRILL_INPUT_STEP_S);
+      return true;
+    },
+    tick(frameDt) {
+      const bounded = Math.max(0, Math.min(DRILL_INPUT_MAX_FRAME_S, Number(frameDt) || 0));
+      accumulator += bounded;
+      while (accumulator >= DRILL_INPUT_STEP_S) {
+        step(DRILL_INPUT_STEP_S);
+        accumulator -= DRILL_INPUT_STEP_S;
+      }
+      return !!intent;
+    },
+    cancel() {
+      accumulator = 0;
+      clearIntent();
+    },
+    hasActiveIntent() { return !!intent; },
+    target() { return intent ? { ...intent } : null; },
   };
 }
 
@@ -732,9 +831,10 @@ function injectStyle() {
   line-height: 1.4;
   color: var(--ink-dim);
 }
-.drill-control-list li { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 9px; }
+.drill-control-list li { display:grid; grid-template-columns:minmax(0,1fr); gap:4px; }
 .drill-screen kbd {
-  min-width: 48px;
+  width:100%;
+  min-width:0;
   box-sizing: border-box;
   padding: 2px 5px;
   border: 1px solid rgba(57,208,255,.28);
@@ -889,16 +989,16 @@ function injectStyle() {
   border:0;
 }
 
-/* Custom Toasts and Overlay alerts */
-.drill-toast-container { position:absolute; right:12px; top:12px; display:flex; flex-direction:column; gap:8px; pointer-events:none; z-index:100; width:min(320px,calc(100% - 24px)); }
-.drill-item-toast { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:2px; background:rgba(5,9,18,.97); border:1px solid rgba(57,208,255,.3); box-shadow:0 8px 24px rgba(0,0,0,.5); font-family:var(--mono); font-size:12px; line-height:1.35; color:var(--ink); transform:translateX(110%); transition:transform .18s var(--ease),opacity .18s var(--ease); opacity:0; overflow-wrap:anywhere; }
-.drill-item-toast.show { transform:translateX(0); opacity:1; }
-.drill-item-toast.warn { border-color:var(--warn); color:var(--warn); }
-.drill-item-toast.bad { border-color:var(--danger); color:var(--danger); }
-.drill-item-toast .icon { width:24px; height:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid currentColor; border-radius:50%; font-weight:700; }
-.drill-item-toast .icon img { width:100%; height:100%; object-fit:contain; }
-.drill-item-toast .details { display:flex; flex-direction:column; gap:2px; }
-.drill-item-toast .value { font-size:10px; color:var(--accent); font-weight:bold; letter-spacing:0.06em; text-transform:uppercase; }
+/* Persistent, compact activity feed. Routine receipts never cover the playfield. */
+.drill-activity-feed { display:flex; flex-direction:column; gap:5px; min-height:72px; max-height:156px; overflow:hidden; }
+.drill-activity-empty { color:var(--ink-mute); font-size:10px; line-height:1.4; }
+.drill-activity-item { display:grid; grid-template-columns:18px minmax(0,1fr) auto; gap:7px; align-items:start; padding:6px 7px; border-left:2px solid var(--accent); background:rgba(57,208,255,.045); color:var(--ink-dim); font-size:10px; line-height:1.35; overflow-wrap:anywhere; animation:drill-feed-in .12s ease-out; }
+.drill-activity-item.warn { border-left-color:var(--warn); color:var(--warn); background:rgba(255,179,92,.055); }
+.drill-activity-item.bad { border-left-color:var(--danger); color:var(--danger); background:rgba(255,92,92,.06); }
+.drill-activity-item .icon { font-weight:700; color:currentColor; }
+.drill-activity-item .value { color:var(--accent); font-size:9px; }
+.drill-activity-item .count { color:var(--ink-mute); font-size:9px; }
+@keyframes drill-feed-in { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }
 
 /* Drill Extraction Summary Modal */
 .drill-summary-modal {
@@ -973,17 +1073,14 @@ function injectStyle() {
   margin-top: 8px; align-self: center; width: 140px;
 }
 @media (prefers-reduced-motion: reduce) {
-  .drill-item-toast, .drill-summary-modal, .drill-summary-box { transition: none; }
-  .drill-item-toast { transform: none; opacity: 1; }
+  .drill-activity-item, .drill-summary-modal, .drill-summary-box { transition: none; animation:none; }
 }
-html.sf-reduce-motion .drill-item-toast,
+html.sf-reduce-motion .drill-activity-item,
 html.sf-reduce-motion .drill-summary-modal,
 html.sf-reduce-motion .drill-summary-box { transition: none; }
-html.sf-reduce-motion .drill-item-toast { transform:none; opacity:1; }
-.drill-screen.reduce-motion .drill-item-toast,
+.drill-screen.reduce-motion .drill-activity-item,
 .drill-screen.reduce-motion .drill-summary-modal,
 .drill-screen.reduce-motion .drill-summary-box { transition:none; }
-.drill-screen.reduce-motion .drill-item-toast { transform:none; opacity:1; }
 @media (max-width: 900px) {
   .drill-screen {
     grid-template-columns: minmax(0,1fr) minmax(0,1fr);
@@ -1079,7 +1176,7 @@ export const drillScreen = {
     controlSec.innerHTML = `
       <div class="sec-title">Rig controls</div>
       <ul class="drill-control-list">
-        <li><kbd>${controlMap.movementLabel}</kbd><span>Move or bore into adjacent strata</span></li>
+        <li><kbd>${controlMap.movementLabel}</kbd><span>Tap once to move or bore one cell</span></li>
         <li><kbd>${controlMap.scanLabel}</kbd><span>Pulse the local seismic survey</span></li>
         <li><kbd>ESC</kbd><span>Retract the rig</span></li>
       </ul>
@@ -1116,13 +1213,8 @@ export const drillScreen = {
     canvas.height = 18 * TILE;
     canvas.tabIndex = 0;
     canvas.setAttribute('role', 'img');
-    canvas.setAttribute('aria-label', `Asteroid cross-section. Use ${controlMap.movementLabel} to move and drill. Press ${controlMap.scanLabel} to survey nearby strata.`);
+    canvas.setAttribute('aria-label', `Asteroid cross-section. Tap ${controlMap.movementLabel} to move or drill one adjacent cell. Press ${controlMap.scanLabel} to survey nearby strata.`);
     canvasWrap.appendChild(canvas);
-    
-    const toastContainer = document.createElement('div');
-    toastContainer.className = 'drill-toast-container';
-    toastContainer.setAttribute('aria-hidden', 'true');
-    canvasWrap.appendChild(toastContainer);
     centerPanel.appendChild(canvasWrap);
     
     // HUD row
@@ -1185,6 +1277,17 @@ export const drillScreen = {
       </div>
     `;
     rightPanel.appendChild(scanSec);
+
+    const activitySec = document.createElement('div');
+    activitySec.className = 'panel-section';
+    activitySec.innerHTML = `
+      <div class="sec-title">Rig activity</div>
+      <div class="drill-activity-feed" data-drill-activity-feed>
+        <div class="drill-activity-empty">Bore events will appear here.</div>
+      </div>
+    `;
+    const activityFeed = activitySec.querySelector('[data-drill-activity-feed]');
+    rightPanel.appendChild(activitySec);
     
     const manifestSec = document.createElement('div');
     manifestSec.className = 'panel-section';
@@ -1224,21 +1327,20 @@ export const drillScreen = {
       requestAnimationFrame(() => { srStatus.textContent = text; });
     }
 
-    // Toast triggers helper
-    function triggerToast(text, kind = 'info', commodityId = null, qty = 0) {
-      const t = document.createElement('div');
-      t.className = `drill-item-toast ${kind}`;
-      t.setAttribute('aria-hidden', 'true');
-      
-      const iconWrap = document.createElement('div');
-      iconWrap.className = 'icon';
-      if (commodityId && IMAGES[commodityId]) {
-        const img = document.createElement('img');
-        img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(SVG_TEMPLATES[commodityId]);
-        iconWrap.appendChild(img);
-      } else {
-        iconWrap.textContent = kind === 'bad' ? '!' : (kind === 'warn' ? 'i' : '+');
+    // Sidebar receipt feed. Consecutive duplicates collapse instead of stacking over the board.
+    let lastActivity = null;
+    function pushActivity(text, kind = 'info', commodityId = null, qty = 0) {
+      if (lastActivity && lastActivity.text === text && lastActivity.kind === kind) {
+        lastActivity.count++;
+        lastActivity.countEl.textContent = `×${lastActivity.count}`;
+        return;
       }
+      const t = document.createElement('div');
+      t.className = `drill-activity-item ${kind}`;
+      
+      const iconWrap = document.createElement('span');
+      iconWrap.className = 'icon';
+      iconWrap.textContent = kind === 'bad' ? '!' : (kind === 'warn' ? 'i' : '+');
       t.appendChild(iconWrap);
       
       const details = document.createElement('div');
@@ -1256,18 +1358,22 @@ export const drillScreen = {
         details.appendChild(valueText);
       }
       t.appendChild(details);
-      
-      toastContainer.appendChild(t);
-      setTimeout(() => t.classList.add('show'), 10);
-      
-      setTimeout(() => {
-        t.classList.remove('show');
-        setTimeout(() => t.remove(), 250);
-      }, 3000);
+
+      const countEl = document.createElement('span');
+      countEl.className = 'count';
+      t.appendChild(countEl);
+      activityFeed.querySelector('.drill-activity-empty')?.remove();
+      activityFeed.prepend(t);
+      while (activityFeed.children.length > 5) activityFeed.lastElementChild.remove();
+      lastActivity = { text, kind, count: 1, countEl };
     }
 
     // ---- input (local; sim is paused so we own keys) ----
-    const held = { left: false, right: false, up: false, down: false };
+    const inputController = createDrillInputController({
+      drillSys,
+      getState: () => state.drill,
+    });
+    const held = inputController.held;
 
     const pulseSurvey = () => {
       if (!drillSys || !state.drill) return;
@@ -1284,38 +1390,45 @@ export const drillScreen = {
       const col = Math.floor(mx / TILE);
       const row = Math.floor((my + viewY) / TILE);
       if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        const changed = !hoveredTile || hoveredTile.col !== col || hoveredTile.row !== row;
         hoveredTile = { col, row, mouseX: mx, mouseY: my };
+        if (changed) canvasDirty = true;
       } else {
+        if (hoveredTile) canvasDirty = true;
         hoveredTile = null;
       }
     };
     const onMouseLeave = () => {
+      if (hoveredTile) canvasDirty = true;
       hoveredTile = null;
     };
     const onKeyDown = (ev) => {
       const c = ev.code;
-      if (controlMap.left.includes(c)) { held.left = true; ev.preventDefault(); }
-      else if (controlMap.right.includes(c)) { held.right = true; ev.preventDefault(); }
-      else if (controlMap.up.includes(c)) { held.up = true; ev.preventDefault(); }
-      else if (controlMap.down.includes(c)) { held.down = true; ev.preventDefault(); }
+      let direction = null;
+      if (controlMap.left.includes(c)) direction = 'left';
+      else if (controlMap.right.includes(c)) direction = 'right';
+      else if (controlMap.up.includes(c)) direction = 'up';
+      else if (controlMap.down.includes(c)) direction = 'down';
+      if (direction) {
+        if (!ev.repeat && inputController.press(direction)) {
+          canvasDirty = true;
+          updateHud();
+          render(0);
+        }
+        ev.preventDefault();
+      }
       else if (controlMap.scan.includes(c)) { if (!ev.repeat) pulseSurvey(); ev.preventDefault(); }
       else if (c === 'Escape') { exit(); }
-    };
-    const onKeyUp = (ev) => {
-      const c = ev.code;
-      if (controlMap.left.includes(c)) held.left = false;
-      if (controlMap.right.includes(c)) held.right = false;
-      if (controlMap.up.includes(c)) held.up = false;
-      if (controlMap.down.includes(c)) held.down = false;
     };
     exitBtn.addEventListener('click', exit);
     scanBtn.addEventListener('click', pulseSurvey);
 
     const retryBore = () => {
       if (!drillSys?.retry()) return;
-      held.left = held.right = held.up = held.down = false;
+      inputController.cancel();
       viewY = undefined;
       particles = [];
+      canvasDirty = true;
       sonarDirty = true;
       for (const key of Object.keys(hudCache)) delete hudCache[key];
       renderDrillLegend(legendGrid, state.drill?.field, drillSys.getDrillTier());
@@ -1365,6 +1478,9 @@ export const drillScreen = {
     let hudElapsed = 0;
     let sonarElapsed = 0;
     let sonarDirty = true;
+    let canvasDirty = true;
+    let cameraSettling = true;
+    let sparkVisualPhase = 0;
     // Cached HUD element handles + last-written values (avoids per-frame querySelector + DOM writes).
     const hudEls = {};
     const hudCache = {};
@@ -1376,6 +1492,7 @@ export const drillScreen = {
     let headlightSprite = null;
 
     const gasHitFlash = { t: 0 };
+    const gasHitShake = { t: 0, elapsed: 0 };
     const yieldFlash = { t: 0, text: '' };
     const breakFlash = { t: 0, x: 0, y: 0 };
     let motionReduce = prefersReducedMotion({
@@ -1415,14 +1532,16 @@ export const drillScreen = {
         x: px, y: py - 6, count: 3, color: COL.accent2, life: 0.9, size: 1.5,
         speed: 8, kind: 'floater', text: '+' + p.qty, vy0: -18,
       });
-      triggerToast(`+${p.qty} ${name} extracted`, 'info', p.commodityId, p.qty);
+      pushActivity(`+${p.qty} ${name} extracted`, 'info', p.commodityId, p.qty);
+      canvasDirty = true;
       announce(`${p.qty} units of ${name} extracted.`);
       updateManifest();
-      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'loot_collect' });
     }));
 
     unsubs.push(ctx.bus.on('drill:gasHit', (p) => {
       gasHitFlash.t = motionReduce ? 0.25 : 0.75;
+      gasHitShake.t = DRILL_GAS_SHAKE_DURATION_S;
+      gasHitShake.elapsed = 0;
       const px = (p.pos?.col ?? 0) * TILE + TILE / 2;
       const py = (p.pos?.row ?? 0) * TILE + TILE / 2;
       spawnParticleBurst(particles, {
@@ -1435,25 +1554,25 @@ export const drillScreen = {
           life: 0.4, size: 6, speed: 0, kind: 'ring',
         });
       }
-      triggerToast('Gas pocket — hull damaged', 'bad');
+      pushActivity('Gas pocket — hull damaged', 'bad');
+      canvasDirty = true;
       announce(`Gas pocket breached. Hull damage ${p.dmg}.`);
-      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'shield_break' });
     }));
 
     unsubs.push(ctx.bus.on('drill:warn', (p) => {
-      triggerToast(p.text, 'warn');
+      pushActivity(p.text, 'warn');
+      canvasDirty = true;
       announce(p.text);
-      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'mining_core_fizzle' });
     }));
 
     unsubs.push(ctx.bus.on('drill:scanPulse', (p) => {
       sonarDirty = true;
       renderDrillLegend(legendGrid, state.drill?.field, drillSys.getDrillTier());
       const result = p.contacts === 1 ? '1 contact' : `${p.contacts} contacts`;
-      triggerToast(`Survey resolved — ${result}`, 'info');
+      pushActivity(`Survey resolved — ${result}`, 'info');
+      canvasDirty = true;
       announce(`Seismic survey resolved ${result} within ${p.radius} tiles.`);
       sonarCanvas.setAttribute('aria-label', `Local seismic plot. Last survey resolved ${result}.`);
-      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'scan_resolve' });
     }));
 
     unsubs.push(ctx.bus.on('drill:break', (p) => {
@@ -1472,10 +1591,13 @@ export const drillScreen = {
         x: cx, y: cy, count: 4, color: 'rgba(167,130,98,0.4)',
         life: 0.5, size: 3.5, speed: 18, kind: 'dust',
       });
+      canvasDirty = true;
     }));
 
     unsubs.push(ctx.bus.on('drill:spark', (p) => {
       if (!state.drill) return;
+      sparkVisualPhase = (sparkVisualPhase + 1) % 2;
+      if (sparkVisualPhase === 0) return;
       const d = state.drill;
       const dir = d.avatar.faceDir || 'down';
       const ang = faceAngle(dir);
@@ -1500,6 +1622,7 @@ export const drillScreen = {
           life: 0.4, size: 2.5, speed: 12, kind: 'dust', angle: ang + Math.PI, cone: 0.8,
         });
       }
+      canvasDirty = true;
     }));
 
     function drawSonar(d) {
@@ -1597,8 +1720,8 @@ export const drillScreen = {
       const d = state.drill;
       if (!d) return;
 
-      // advance drilling from held keys
-      drillSys.tickInput(held, dt);
+      // Advance a bounded single-cell command. Render hitches never become oversized drill work.
+      inputController.tick(dt);
 
       // spin drill bit if drilling (faster under heat for readable load)
       if (d.avatar.isDrilling) {
@@ -1607,7 +1730,7 @@ export const drillScreen = {
       }
 
       // Exhaust steam only while moving or drilling (state-driven — no idle fog)
-      const moving = held.left || held.right || held.down || held.up;
+      const moving = inputController.hasActiveIntent() || avatarMoveProgress(d.avatar) < 1;
       if (!motionReduce && Math.random() < (d.avatar.isDrilling ? 0.55 : 0.32) && moving) {
         const draw = avatarDrawPos(d.avatar, TILE);
         const dir = d.avatar.faceDir || 'down';
@@ -1638,9 +1761,17 @@ export const drillScreen = {
       }
 
       particles = stepParticles(particles, dt);
+      if (particles.length > 180) {
+        particles.copyWithin(0, particles.length - 180);
+        particles.length = 180;
+      }
 
       // flash timers
       if (gasHitFlash.t > 0) gasHitFlash.t -= dt;
+      if (gasHitShake.t > 0) {
+        gasHitShake.t = Math.max(0, gasHitShake.t - dt);
+        gasHitShake.elapsed += dt;
+      }
       if (yieldFlash.t > 0) yieldFlash.t -= dt;
       if (breakFlash.t > 0) breakFlash.t -= dt;
 
@@ -1651,7 +1782,18 @@ export const drillScreen = {
         sonarElapsed = 0;
         sonarDirty = scanActive;
       }
-      render(dt);
+      const animated = inputController.hasActiveIntent()
+        || avatarMoveProgress(d.avatar) < 1
+        || particles.length > 0
+        || gasHitFlash.t > 0
+        || gasHitShake.t > 0
+        || yieldFlash.t > 0
+        || breakFlash.t > 0
+        || scanActive;
+      if (canvasDirty || cameraSettling || animated) {
+        cameraSettling = render(dt);
+        canvasDirty = false;
+      }
       hudElapsed += dt;
       if (hudElapsed >= 0.1) {
         updateHud();
@@ -1661,8 +1803,14 @@ export const drillScreen = {
 
     function render(dt) {
       const d = state.drill;
-      if (!d) return;
+      if (!d) return false;
+      ctx2d.setTransform(1, 0, 0, 1, 0, 0);
       ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+      ctx2d.fillStyle = '#060913';
+      ctx2d.fillRect(0, 0, canvas.width, canvas.height);
+      const shake = drillGasShakeOffset(gasHitShake.t, gasHitShake.elapsed, motionReduce);
+      ctx2d.save();
+      ctx2d.translate(shake.x, shake.y);
 
       // Time-interpolated draw position across the full move window (sim owns from/to + elapsed).
       const drawPos = avatarDrawPos(d.avatar, TILE);
@@ -1681,6 +1829,7 @@ export const drillScreen = {
         viewY = viewY + (targetViewY - viewY) * Math.min(1, camRate * dt);
         viewY = Math.max(0, Math.min(ROWS * TILE - viewHeight, viewY));
       }
+      const stillSettling = Math.abs(targetViewY - viewY) > 0.25;
 
       const startRow = Math.max(0, Math.floor(viewY / TILE) - 1);
       const endRow = Math.min(ROWS, Math.ceil((viewY + viewHeight) / TILE) + 1);
@@ -1986,6 +2135,36 @@ export const drillScreen = {
         ctx2d.restore();
       }
 
+      // Mirrored capacitor gauge: energy is as run-ending as heat and needs equal spatial weight.
+      if (d.drillEnergy !== undefined) {
+        ctx2d.save();
+        const gx = canvas.width - 20;
+        const gy = 12;
+        const gw = 8;
+        const gh = 100;
+        const energy = Math.max(0, Math.min(100, Number(d.drillEnergy) || 0));
+        const fillHeight = (energy / 100) * gh;
+        const fy = gy + gh - fillHeight;
+
+        ctx2d.fillStyle = 'rgba(15, 23, 42, 0.75)';
+        ctx2d.strokeStyle = 'rgba(57, 208, 255, 0.25)';
+        ctx2d.lineWidth = 1;
+        ctx2d.fillRect(gx, gy, gw, gh);
+        ctx2d.strokeRect(gx, gy, gw, gh);
+        ctx2d.fillStyle = d.energyDepleted ? COL.danger : (energy < 25 ? COL.warn : COL.good);
+        ctx2d.fillRect(gx + 1, fy + 1, gw - 2, Math.max(0, fillHeight - 2));
+
+        ctx2d.fillStyle = 'rgba(211, 230, 255, 0.6)';
+        ctx2d.font = 'bold 9px ' + monoFamily;
+        ctx2d.textAlign = 'right';
+        ctx2d.fillText('ENERGY', gx + gw, gy + gh + 12);
+        if (d.energyDepleted) {
+          ctx2d.fillStyle = COL.danger;
+          ctx2d.fillText('EMPTY', gx - 6, gy + 12);
+        }
+        ctx2d.restore();
+      }
+
       // --- 3.5 Depth telemetry markings ---
       ctx2d.save();
       ctx2d.fillStyle = 'rgba(57, 208, 255, 0.38)';
@@ -2154,6 +2333,8 @@ export const drillScreen = {
       if (overlayCanvas) {
         ctx2d.drawImage(overlayCanvas, 0, 0);
       }
+      ctx2d.restore();
+      return stillSettling;
     }
 
     function setText(el, key, text) {
@@ -2335,7 +2516,7 @@ export const drillScreen = {
 
       drillSys.begin(asteroidId);
       renderDrillLegend(legendGrid, state.drill?.field, drillSys.getDrillTier());
-      held.left = held.right = held.up = held.down = false;
+      inputController.cancel();
       drillTheta = 0;
       viewY = undefined;
       particles = [];
@@ -2374,14 +2555,19 @@ export const drillScreen = {
       headlightSprite = buildHeadlightSprite();
 
       gasHitFlash.t = 0;
+      gasHitShake.t = 0;
+      gasHitShake.elapsed = 0;
       yieldFlash.t = 0;
-      toastContainer.innerHTML = '';
+      activityFeed.innerHTML = '<div class="drill-activity-empty">Bore events will appear here.</div>';
+      lastActivity = null;
+      inputController.cancel();
+      canvasDirty = true;
+      cameraSettling = true;
       updateHud();
       updateManifest();
       drawSonar(state.drill);
       
       window.addEventListener('keydown', onKeyDown);
-      window.addEventListener('keyup', onKeyUp);
       canvas.addEventListener('mousemove', onMouseMove);
       canvas.addEventListener('mouseleave', onMouseLeave);
       
@@ -2396,8 +2582,8 @@ export const drillScreen = {
       if (!this._active) return;
       this._active = false;
       cancelAnimationFrame(rafId);
+      inputController.cancel();
       window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
       canvas.removeEventListener('mousemove', onMouseMove);
       canvas.removeEventListener('mouseleave', onMouseLeave);
       

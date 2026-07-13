@@ -10,6 +10,10 @@ const VOL = Object.create(null);
 const MASS = Object.create(null);
 for (const c of COMMODITIES) { VOL[c.id] = c.volPerU; MASS[c.id] = c.massPerU; }
 const PERSISTENT_FOOTPRINT = new Map(PERSISTENT_CARGO.map((c) => [c.id, { vol: 0, mass: c.mass, persistent: true }]));
+const JETTISON_PICKUP_RADIUS = 1.5;
+const JETTISON_EJECT_SPEED = 60;
+const JETTISON_CLEARANCE = 4;
+const JETTISON_PICKUP_EMBARGO_S = 2;
 
 function volumePerUnit(def) {
   return def.persistent ? 0 : (def.vol > 0 ? def.vol : 1);
@@ -173,14 +177,33 @@ export const cargo = {
     const player = state.entities.get(state.playerId);
     if (player && this.helpers && this.helpers.spawnEntity) {
       const px = player.pos.x, pz = player.pos.z;
-      const ang = (state.rng ? state.rng() : 0) * Math.PI * 2; // deterministic scatter (no Math.random in sim)
-      const r = 6 + (state.rng ? state.rng() : 0) * 4;
+      const rot = Number.isFinite(player.rot) ? player.rot : 0;
+      const fx = Math.cos(rot), fz = Math.sin(rot);
+      const r = Math.max(0, Number(player.radius) || 0) + JETTISON_PICKUP_RADIUS + JETTISON_CLEARANCE;
+      const vx = Number.isFinite(player.vel && player.vel.x) ? player.vel.x : 0;
+      const vz = Number.isFinite(player.vel && player.vel.z) ? player.vel.z : 0;
       this.helpers.spawnEntity({
         type: 'pickup',
-        pos: { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
-        radius: 1.5,
-        data: { kind: 'cargo', commodityId, amount: dumped, despawnAt: state.simTime + 180 },
+        // Reaction mass leaves directly aft, already outside both hull contact and the mining
+        // collector. A short sim-time embargo lets it establish separation before magnetism can
+        // reclaim it; after that it is ordinary recoverable cargo again.
+        pos: { x: px - fx * r, z: pz - fz * r },
+        vel: { x: vx - fx * JETTISON_EJECT_SPEED, z: vz - fz * JETTISON_EJECT_SPEED },
+        radius: JETTISON_PICKUP_RADIUS,
+        collides: false,
+        data: {
+          kind: 'cargo', commodityId, amount: dumped,
+          jettisonedCargo: true,
+          pickupEmbargoUntil: state.simTime + JETTISON_PICKUP_EMBARGO_S,
+          despawnAt: state.simTime + 180,
+        },
       });
+    }
+    // Receipt seam (Wave M2 §5.3): the dump is announced so reaction-impulse/heat/AI layers can
+    // observe it without owning cargo. Emitting is not a state write — the 47-A harness has no
+    // subscriber for it, and the massline2 impulse consumer is flag-gated OFF headless.
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('cargo:jettisoned', { commodityId, amount: dumped });
     }
     return dumped;
   },

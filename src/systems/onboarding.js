@@ -24,6 +24,7 @@ import { drawSeeded, hash32 } from '../core/rng.js';
 import { Masks } from '../core/entity.js';
 import { controlPrompt, currentPromptModality } from '../ui/controlPrompts.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { massline2Flag } from '../data/featureFlags.js';
 import {
   FLIGHT_DRILL_BEATS,
   FLIGHT_DRILL_BRAKE_WU,
@@ -287,6 +288,53 @@ export const onboarding = {
     bus.on('craft:queueChanged', () => {
       this._showHint('firstCraft',
         'Craft job queued! The Manufacture tab refines raw ore into materials, assembles components, and augments modules. Some recipes need research first.');
+    });
+
+    // Massline Physics Identity (Wave M2, massline2Flag-gated so headless contract runs and
+    // flag-off sessions never see them). One-shot contextual hints for the three new verbs; the
+    // authored first-hour BEATS rail is untouched.
+    bus.on('tether:latched', (payload) => {
+      if (!massline2Flag('throw')) return;
+      const target = payload && payload.targetId != null && this.state.entities
+        ? this.state.entities.get(payload.targetId)
+        : null;
+      // The express-specific lesson owns this first latch. Leave the general throw lesson unspent
+      // for the next ordinary target so one event never queues two tutorial voices.
+      if (massline2Flag('hitchhiking') && isExpressHitchTarget(target)) return;
+      this._showHint('masslineThrow',
+        masslineThrowHint(this.state));
+    });
+    bus.on('tether:latched', (payload) => {
+      if (!massline2Flag('hitchhiking') || !payload || payload.targetId == null) return;
+      const target = this.state.entities && this.state.entities.get(payload.targetId);
+      if (!isExpressHitchTarget(target)) return;
+      this._showHint('masslineHitchhiking',
+        'Express liners stay on boost. Latch, ride, then cut to keep speed.');
+    });
+    bus.on('massline:selfSling', () => {
+      if (!massline2Flag('throw')) return;
+      this._showHint('masslineSelfSling',
+        'Cut from a heavy anchor to bank its momentum as a slingshot.');
+    });
+    bus.on('cargo:jettisoned', () => {
+      if (!massline2Flag('jettisonImpulse')) return;
+      this._showHint('masslineJettisonImpulse',
+        'Jettisoned cargo is reaction mass: dump aft for an emergency push.');
+    });
+    bus.on('bulletTime:start', () => {
+      if (!massline2Flag('bulletTime')) return;
+      this._showHint('masslineBulletTime',
+        'Hold CAPS LOCK to stretch time. Release it to recharge.');
+    });
+    bus.on('cloak:engaged', () => {
+      if (!massline2Flag('cloak')) return;
+      this._showHint('masslineCloak',
+        'Coast inside the ring to stay hidden. Firing drops cloak.');
+    });
+    bus.on('charge:aftDropped', () => {
+      if (!massline2Flag('bombPropulsion')) return;
+      this._showHint('bombPropulsion',
+        'Brake and throw to drop aft. Press R to detonate.');
     });
 
     // First flight: triggered a few seconds after the game starts (handled in update via a timer).
@@ -1210,4 +1258,22 @@ function onboardingRandom(state) {
     ? state.onboarding
     : {};
   return drawSeeded(onboardingState, '_rngSeed', hash32(state && state.meta && state.meta.seed, 'onboarding'));
+}
+
+function masslineThrowHint(state) {
+  const mode = state && state.settings && state.settings.gameplay
+    && state.settings.gameplay.masslineReleaseAssist;
+  if (mode === 'snap') return 'Tap RIGHT MOUSE near the white diamond to snap the release.';
+  if (mode === 'off') return 'Tap RIGHT MOUSE to release on the current vector.';
+  return 'Hold RIGHT MOUSE; release waits for the white diamond.';
+}
+
+function isExpressHitchTarget(entity) {
+  const data = entity && entity.data;
+  const ai = data && data.ai;
+  return !!(entity && entity.alive !== false
+    && entity.team === 2
+    && data && data.trafficRole === 'express'
+    && data.itinerary && data.itinerary.hitchable === true
+    && ai && ai.passive === true);
 }

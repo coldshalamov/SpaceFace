@@ -14,6 +14,7 @@ import { normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
+import { massline2Flag } from '../data/featureFlags.js';
 
 const DEFAULT_SENSOR_RANGE = 1600;
 const DEFAULT_FORMATION_SPACING = 72;
@@ -595,6 +596,20 @@ function explicitRamAuthorization(entity, ai, activity, bands) {
     && telegraph.length > 0;
 }
 
+// Massline cloak perception gate (Wave M2 §4.2). True when the cloak runtime is active and the
+// observing entity sits OUTSIDE the player's live detection radius. Pure read of the cloak
+// system's own subtree; flag-gated so headless contract runs never take the branch. Exported for
+// check:massline2 (the perception promise is contract-tested directly).
+export function cloakHidesPlayerFrom(state, self, player) {
+  if (!massline2Flag('cloak')) return false;
+  const cloak = state.massline2 && state.massline2.cloak;
+  if (!cloak || !cloak.active || !(cloak.radius > 0)) return false;
+  if (!self || !self.pos || !player || !player.pos) return false;
+  const dx = finite(self.pos.x) - finite(player.pos.x);
+  const dz = finite(self.pos.z) - finite(player.pos.z);
+  return (dx * dx + dz * dz) > cloak.radius * cloak.radius;
+}
+
 function entityContacts(state, self, range, helpers = null, attachmentIndex = null, freeze = Object.freeze, candidateScratch = null, outScratch = null, cacheOwner = null, candidateOverride = null) {
   const out = outScratch || [];
   out.length = 0;
@@ -602,6 +617,11 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
   const rangeSq = range * range;
   for (const other of candidates) {
     if (!other || other === self || !other.alive) continue;
+    // Massline cloak (Wave M2 §4.2, flag massline2.cloak — OFF headless): a cloaked player
+    // OUTSIDE his live detection radius is never made a contact, so the tactical stack genuinely
+    // cannot select or fire on him — honest gating at the single perception seam, no downstream
+    // special cases. Inside the ring he is an ordinary contact again.
+    if (other.id === state.playerId && cloakHidesPlayerFrom(state, self, other)) continue;
     const kind = contactKindFor(other);
     if (!kind) continue;
     const dx = finite(self.pos && self.pos.x) - finite(other.pos && other.pos.x);

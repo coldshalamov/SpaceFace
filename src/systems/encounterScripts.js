@@ -21,6 +21,7 @@
 //     (the claim-beacon pattern, beacons.js:147) — used for convoy/trader route life.
 
 import { NAMED_CAPTAINS, CONVOY_CARGO, WHISPER_LINES, FACTION_LABELS, tollAmountFor, barkText } from '../data/encounters.js';
+import { massline2Flag } from '../data/featureFlags.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
 const TOLL_PAY_DIST = 520;        // brake inside this of the toll leader to hand over the toll
@@ -59,6 +60,19 @@ function steerToward(e, tx, tz, slow) {
   intent.fire = false;
 }
 function clamp1(v) { return v < -1 ? -1 : v > 1 ? 1 : v; }
+
+// Physical cloak and smuggling utilities compose at the scan-initiation seam. A patrol outside
+// the live detection ring cannot see the ship well enough to hail/scan it; once inside the ring,
+// economy.runScan retains full authority over scannerCloak/hidden-hold dice. Fixed jump-gate
+// sensors do not use this encounter seam and therefore remain unavoidable.
+export function patrolCanInitiateScan(state, observer, player) {
+  if (!massline2Flag('cloak')) return true;
+  const runtime = state && state.massline2 && state.massline2.cloak;
+  if (!runtime || !runtime.active || !(runtime.radius > 0)) return true;
+  if (!observer || !observer.pos || !player || !player.pos) return true;
+  return dist2(observer.pos.x, observer.pos.z, player.pos.x, player.pos.z)
+    <= runtime.radius * runtime.radius;
+}
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // A. PIRATE TOLL — scan, price, choice. Pay / Refuse / Run, physical verbs included.
@@ -195,6 +209,14 @@ const patrolScan = {
     }));
     const ids = d.spawnShips(live, ships);
     if (!ids.length) return d.abort(live, 'no_budget');
+    // Resolve before the hail/choice surface: an outside-ring patrol cannot see the cloaked ship
+    // well enough to initiate the encounter, not merely fail the final cargo scan ten seconds
+    // later. The submit-time guard below remains necessary if the player cloaks during a hail.
+    const leader = d.entsOf(live)[0];
+    if (!patrolCanInitiateScan(state, leader, p)) {
+      d.despawnAll(live, 16);
+      return d.resolve(live, 'cloak_evaded', { speak: false });
+    }
     live.phase = 'offer';
     live.deadlineAt = d.now() + (live.shape.scanS || 10);
     live.data.breakTicks = 0;
@@ -245,6 +267,11 @@ const patrolScan = {
     }
     // submit — run the real customs machinery (economy owns fines/confiscation/rep/heat)
     const leader = d.entsOf(live)[0];
+    const player = d.player();
+    if (!patrolCanInitiateScan(state, leader, player)) {
+      d.despawnAll(live, 16);
+      return d.resolve(live, 'cloak_evaded', { speak: false });
+    }
     d.emit('patrol:proximity', {
       patrolId: leader ? leader.id : null,
       factionId: live.factionId || 'faction_scn',

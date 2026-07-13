@@ -113,6 +113,15 @@ export const ACTION_DEFS = Object.freeze([
 
 export const STATUS_DEFS = Object.freeze([
   {
+    id: 'status_tumbling', version: 1, tags: ['massline', 'control_loss'], durationTicks: 360,
+    stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: [],
+    // The tumble system owns physical zero-control and recovery. This status owns the canonical
+    // combat-action gate so SG-03 cannot spend capacitor on dash/tether/weapon verbs while the
+    // hull is uncontrolled.
+    effects: { blockedActionTags: ['dash', 'tether', 'weapon'] },
+    interactions: [], periodic: null, cueId: 'ai.formation_broken',
+  },
+  {
     id: 'status_ionized', version: 1, tags: ['ion'], durationTicks: 90,
     stacking: { mode: 'refresh', maxStacks: 3 }, immunityTags: ['ion_immune'],
     effects: { multipliers: { capRegen: 0.70 } },

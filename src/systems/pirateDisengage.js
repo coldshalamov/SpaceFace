@@ -7,6 +7,7 @@ import { barkFor } from '../data/barks.js';
 import { pirateDoctrineForEntity } from '../data/pirateDoctrines.js';
 import { hash32 } from '../core/rng.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
+import { massline2Flag } from '../data/featureFlags.js';
 
 const PATROL_RADIUS = 900;
 const NERVE_DELAY_S = 1.0;
@@ -16,6 +17,10 @@ const SURRENDER_HULL_FRACTION = 0.16;
 const DAMAGE_RETREAT_HULL_FRACTION = 0.28;
 const WING_LOSS_HULL_FRACTION = 0.62;
 const WING_LOSS_LIVE_RATIO = 0.5;
+// Massline tumble morale (Wave M2 §3.4): the fling-shock window and the "already worn" bar a crew
+// must be under for a squadmate's tumble to break them (healthy crews shrug one tumble off).
+const TUMBLE_MORALE_WINDOW_S = 8;
+const TUMBLE_RETREAT_HULL_FRACTION = 0.8;
 
 export const pirateDisengage = {
   name: 'pirateDisengage',
@@ -251,6 +256,16 @@ function moraleDecision(members, state, baseline, patrol) {
   if (badProfitRisk(members, state)) return { reason: 'profit-risk-bad', outcome: 'fled', threat: player };
 
   const average = averageHullFraction(members);
+  // Massline tumble morale (Wave M2 §3.4, flag massline2.tumble — OFF headless so this file's
+  // deterministic contract check is untouched): a squadmate physically flung into a helpless spin
+  // inside the last few seconds is a morale shock. Healthy crews shrug ONE tumble off; a crew
+  // already worn below the retreat-adjacent bar breaks and leaves — routing an enemy by yeeting
+  // his wingman is a story, not a kill. Deterministic (no RNG); relentless narrative combatants
+  // keep their authored contract.
+  if (massline2Flag('tumble') && !members.some(isRelentlessNarrativeCombatant)
+    && average <= TUMBLE_RETREAT_HULL_FRACTION && squadTumbledRecently(members, state)) {
+    return { reason: 'massline-tumbled', outcome: 'fled', threat: player };
+  }
   // Authored vendettas retain their distinct dramatic contract. Explicit boss/ace/fanatic cases
   // are already filtered by moraleExempt; this narrower exception preserves the existing hunter
   // behavior without making every ordinary hostile suicidal.
@@ -274,6 +289,17 @@ function dist2(a, b) {
   const dx = (a.pos && a.pos.x || 0) - (b.pos && b.pos.x || 0);
   const dz = (a.pos && a.pos.z || 0) - (b.pos && b.pos.z || 0);
   return dx * dx + dz * dz;
+}
+
+// True when any squadmate carries a fresh tumble stamp (written by systems/tumbleStates.js at
+// tumble entry; durable past recovery so the shock window outlives the spin itself).
+function squadTumbledRecently(members, state) {
+  const now = state.simTime || 0;
+  for (const m of members) {
+    const at = m && m.data && m.data.tumbledAt;
+    if (Number.isFinite(at) && now - at <= TUMBLE_MORALE_WINDOW_S) return true;
+  }
+  return false;
 }
 
 function markFleeing(entity, patrol, rec, state) {

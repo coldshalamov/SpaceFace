@@ -371,6 +371,14 @@ export const RECIPES = [
     filterType: 'bandpass', filterFreq: 680, filterQ: 2.3,
   },
   {
+    id: 'sfx_mining_drill_grind',
+    category: 'mining', type: 'continuous_noise', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.045, sustain: 0.46, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 560, filterQ: 1.45,
+    lfoRate: 7.5, lfoDepth: 0.08,
+    gainMult: 0.48,
+  },
+  {
     id: 'sfx_mining_drill_break',
     category: 'mining', type: 'noise_burst', noiseColor: 'pink',
     gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.24 },
@@ -1113,6 +1121,105 @@ export const RECIPES = [
     baseFreq: 196, freqSweep: [196, 294], sweepTimeS: 0.22,
     gainEnvelope: { attack: 0.008, sustain: 0.03, release: 0.22 },
     filterType: 'bandpass', filterFreq: 520, filterQ: 1.6,
+  },
+  // --- Massline Physics Identity (Wave M2): throw/sling/tumble/bullet-time/cloak semantics. ---
+  // Throw release: a taut snap that whip-cracks upward — the "let fly" moment.
+  {
+    id: 'sfx_massline_throw',
+    category: 'weapon',
+    type: 'oscillator',
+    baseFreq: 240, freqSweep: [240, 860], sweepTimeS: 0.1,
+    gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.16 },
+    filterType: 'highpass', filterFreq: 220,
+    pitchRange: [0.95, 1.05],
+  },
+  // Solution lock: one clean rising blip when the release window first opens (indicator goes hot).
+  {
+    id: 'sfx_massline_solution',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 660, freqSweep: [660, 990], sweepTimeS: 0.06,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.08 },
+    gainMult: 0.65,
+  },
+  // Self-sling: a deep swelling whoosh as the anchor flings the ship out.
+  {
+    id: 'sfx_massline_sling',
+    category: 'engine',
+    type: 'noise',
+    baseFreq: 140,
+    gainEnvelope: { attack: 0.03, sustain: 0.1, release: 0.34 },
+    filterType: 'bandpass', filterFreq: 320, filterQ: 1.1,
+  },
+  // Tumble: an unstable descending wobble — attitude control losing the argument.
+  {
+    id: 'sfx_massline_tumble',
+    category: 'combat',
+    type: 'oscillator',
+    baseFreq: 320, freqSweep: [320, 120], sweepTimeS: 0.4,
+    gainEnvelope: { attack: 0.01, sustain: 0.08, release: 0.3 },
+    repeatCount: 3, repeatIntervalS: 0.11,
+    filterType: 'lowpass', filterFreq: 900,
+    gainMult: 0.8,
+  },
+  // Bullet time in/out: sub dive on entry, mirrored rise on exit.
+  {
+    id: 'sfx_massline_bt_in',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 420, freqSweep: [420, 130], sweepTimeS: 0.18,
+    gainEnvelope: { attack: 0.005, sustain: 0.04, release: 0.2 },
+    gainMult: 0.7,
+  },
+  {
+    id: 'sfx_massline_bt_out',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 130, freqSweep: [130, 420], sweepTimeS: 0.14,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.14 },
+    gainMult: 0.6,
+  },
+  // Cloak on/off: airy shimmer down into silence; the off cue is shorter and duller.
+  {
+    id: 'sfx_massline_cloak_on',
+    category: 'ui',
+    type: 'noise',
+    baseFreq: 900,
+    gainEnvelope: { attack: 0.02, sustain: 0.05, release: 0.4 },
+    filterType: 'highpass', filterFreq: 1400,
+    gainMult: 0.55,
+  },
+  {
+    id: 'sfx_massline_cloak_off',
+    category: 'ui',
+    type: 'noise',
+    baseFreq: 500,
+    gainEnvelope: { attack: 0.005, sustain: 0.02, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 700, filterQ: 1.4,
+    gainMult: 0.55,
+  },
+  // Jettison kick: a blunt rear-quarter thud (reaction mass leaving the hold).
+  {
+    id: 'sfx_massline_jettison',
+    category: 'engine',
+    type: 'noise',
+    baseFreq: 90,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.18 },
+    filterType: 'lowpass', filterFreq: 420,
+    gainMult: 0.75,
+  },
+  // Aft charge ejector: short mechanical clack + filtered breath, distinct from detonation.
+  {
+    id: 'sfx_massline_bomb_drop',
+    category: 'engine',
+    type: 'noise',
+    baseFreq: 150,
+    gainEnvelope: { attack: 0.002, sustain: 0.015, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 520, filterQ: 1.8,
+    gainMult: 0.58,
   },
   {
     id: 'sfx_travel_commit_sub',

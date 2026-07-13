@@ -5,6 +5,7 @@
 // module's own owned subtree (§3.3 owner: ui/settings), so writing it here is in-scope.
 
 import { DEFAULTS as INPUT_DEFAULTS } from '../../systems/input.js';
+import { massline2Flag } from '../../data/featureFlags.js';
 import { BINDINGS } from '../bindings.js';
 
 const STYLE_ID = 'sf-settings-menu-style';
@@ -103,7 +104,8 @@ const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // Flight actions the player may rebind. (Mouse buttons + Space-as-fire-alt are ergonomic constants
 // and stay out of the rebind grid to keep the model simple.)
 const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
-  'brake', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut'];
+  'brake', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
+  'bulletTime', 'cloak'];
 const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
@@ -121,6 +123,8 @@ const REBIND_LABELS = {
   cruise: 'Cruise drive (charge/drop)',
   reelIn: 'Tether winch in',
   reelOut: 'Tether winch out',
+  bulletTime: 'Bullet time (hold)',
+  cloak: 'Cloak toggle',
 };
 
 function controlSchemeFor(settings) {
@@ -352,6 +356,14 @@ export const settingsScreen = {
       g.flightBackend = 'v3';
       rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => this._set(ctx, 'gameplay', 'difficulty', v));
       rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
+      if (massline2Flag('enabled')) {
+        rowSelect('Massline release assist', () => g.masslineReleaseAssist || 'arm', [
+          ['arm', 'Auto-release on solution (default)'],
+          ['snap', 'Snap window on manual release'],
+          ['off', 'Off — raw physics'],
+        ], (v) => this._set(ctx, 'gameplay', 'masslineReleaseAssist', v));
+        pane.appendChild(el('p', 'sf-muted', 'The diamond pulses white when the release window opens.'));
+      }
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
       rowToggle('Damage numbers', () => !!g.damageNumbers, (v) => this._set(ctx, 'gameplay', 'damageNumbers', v));

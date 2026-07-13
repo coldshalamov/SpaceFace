@@ -1,6 +1,6 @@
 // Impulse charges system (GDD §4.4 "blast plates", BUILD_PLAN WS-D2 / GROK-1).
 //
-// Sticky radial impulse bombs: lob from the player nose, adhere to hulls/asteroids, detonate on F.
+// Sticky radial impulse bombs: lob from the player nose, adhere to hulls/asteroids, detonate on R.
 // armTimeS is the throw cooldown — charges arm instantly on stick. Friendly-fire on.
 //
 // Input contract (read-only): state.input.actions.chargeThrow / chargeDetonate (edge bools).
@@ -13,11 +13,27 @@ import { IMPULSE_CHARGES, MASSLINE_COMBOS } from '../data/impulseCharges.js';
 import { removeCargo } from './cargo.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { massline2Flag } from '../data/featureFlags.js';
+import { MODULES } from '../data/modules.js';
 
 const CHARGE_COMMODITY = 'cmdty_impulse_charge';
 const STICK_TYPES = new Set(['ship', 'drone', 'asteroid']);
 const BLAST_DAMAGE_TYPES = new Set(['ship', 'station', 'drone']);
 const CHARGE_BY_ID = new Map(Object.entries(IMPULSE_CHARGES));
+const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
+
+// M3 bomb-propulsion dials. Brake/reverse + the existing throw verb drops an already-armed plate
+// aft at a safe but still damaging standoff; R remains the deliberate detonation verb.
+export const BOMB_PROPULSION_DIALS = Object.freeze({
+  standoffRadii: 2.25,
+  minStandoff: 13,
+  // A fixed-radius blast cannot reach the center of capital hulls. Preserve the authored 2.25R
+  // placement on small ships, but cap the clear gap behind the hull to half the blast radius.
+  maxSurfaceGapRadiusFrac: 0.5,
+  relativeDropSpeed: 0,
+  selfImpulseMult: 4.5,
+  referenceSelfImpulseMin: 2200,
+});
 
 function chargeDef(id) {
   return CHARGE_BY_ID.get(id) || CHARGE_BY_ID.get('charge_standard');
@@ -69,6 +85,20 @@ function activeCharges(state, ownerId) {
   }
   out.sort((a, b) => (a.data.spawnedAt || 0) - (b.data.spawnedAt || 0));
   return out;
+}
+
+/** True only for a researched, fitted vector rack. The original charge rack/system stays live. */
+export function bombPropulsionAvailable(state) {
+  if (!massline2Flag('bombPropulsion')) return false;
+  const p = state && state.player;
+  const ship = p && Array.isArray(p.ownedShips) ? p.ownedShips[p.activeShipIndex] : null;
+  const fittings = ship && Array.isArray(ship.fittings) ? ship.fittings : [];
+  const researched = new Set(p && p.researchedNodes || []);
+  return fittings.some((id) => {
+    const def = MODULE_BY_ID.get(id);
+    return !!(def && def.mods && def.mods.bombPropulsion
+      && (!def.requiresTech || researched.has(def.requiresTech)));
+  });
 }
 
 function stickCandidatesNear(state, pos, radius, out) {
@@ -173,10 +203,21 @@ export const impulseCharges = {
       return;
     }
 
-    const dir = aimDir(player, state);
+    const aftDrop = bombPropulsionAvailable(state)
+      && !!(actions.brake || state.input.brake || Number(state.input.moveZ) < -0.5);
+    const dir = aftDrop ? (player.rot || 0) + Math.PI : aimDir(player, state);
     const cf = Math.cos(dir), sf = Math.sin(dir);
     const noseR = player.radius || 6;
-    const throwSpeed = def.throwSpeed;
+    const spawnDistance = aftDrop
+      ? Math.max(
+        BOMB_PROPULSION_DIALS.minStandoff,
+        noseR + Math.min(
+          noseR * (BOMB_PROPULSION_DIALS.standoffRadii - 1),
+          def.radius * BOMB_PROPULSION_DIALS.maxSurfaceGapRadiusFrac,
+        ),
+      )
+      : noseR;
+    const throwSpeed = aftDrop ? BOMB_PROPULSION_DIALS.relativeDropSpeed : def.throwSpeed;
 
     const active = activeCharges(state, player.id);
     while (active.length >= def.maxActive) {
@@ -186,7 +227,7 @@ export const impulseCharges = {
 
     const charge = this.helpers.spawnEntity({
       type: 'charge',
-      pos: { x: player.pos.x + cf * noseR, z: player.pos.z + sf * noseR },
+      pos: { x: player.pos.x + cf * spawnDistance, z: player.pos.z + sf * spawnDistance },
       vel: {
         x: cf * throwSpeed + player.vel.x,
         z: sf * throwSpeed + player.vel.z,
@@ -203,14 +244,25 @@ export const impulseCharges = {
         ownerId: player.id,
         hostId: null,
         localOffset: null,
-        armed: false,
+        armed: aftDrop,
+        aftDrop,
+        propulsionImpulseMult: aftDrop ? BOMB_PROPULSION_DIALS.selfImpulseMult : 1,
         spawnedAt: state.simTime,
-        spawnPos: { x: player.pos.x + cf * noseR, z: player.pos.z + sf * noseR },
+        spawnPos: { x: player.pos.x + cf * spawnDistance, z: player.pos.z + sf * spawnDistance },
       },
     });
 
     rt.throwCdT = def.armTimeS;
     this.bus.emit('charge:thrown', { chargeId: charge.id, ownerId: player.id, pos: { x: charge.pos.x, z: charge.pos.z } });
+    if (aftDrop) {
+      const root = state.massline2 || (state.massline2 = {});
+      root.bombPropulsion = { lastDropTick: state.tick, chargeId: charge.id, standoff: spawnDistance };
+      this.bus.emit('charge:aftDropped', {
+        chargeId: charge.id, ownerId: player.id, pos: { x: charge.pos.x, z: charge.pos.z },
+        standoff: spawnDistance,
+      });
+      this.bus.emit('audio:cue', { id: 'massline.bombDrop', position: { x: charge.pos.x, z: charge.pos.z } });
+    }
   },
 
   _handleDetonate(player, state) {
@@ -288,14 +340,20 @@ export const impulseCharges = {
     const damageMult = combo && combo.combo === 'slingBomb' ? combo.def.damageMult : 1;
     const player = state.entities.get(state.playerId);
 
-    const candidates = stickCandidatesNear(state, pos, def.radius, this._blastScratch);
+    // Aft plates are outside the owner's hull. Spatial hashes index centers, so enlarge this one
+    // query by the owner radius and use surface distance for the owner below. Other blast victims
+    // retain the established center-distance falloff and therefore cannot gain accidental range.
+    const blastQueryRadius = def.radius + (d.aftDrop && player ? (player.radius || 0) : 0);
+    const candidates = stickCandidatesNear(state, pos, blastQueryRadius, this._blastScratch);
     for (const ent of candidates) {
       if (!ent.alive || ent.id === charge.id) continue;
       const dx = ent.pos.x - pos.x, dz = ent.pos.z - pos.z;
       const dist = Math.hypot(dx, dz);
-      if (dist > def.radius) continue;
+      const propulsionOwner = !!(d.aftDrop && ent.id === ownerId);
+      const falloffDist = propulsionOwner ? Math.max(0, dist - (ent.radius || 0)) : dist;
+      if (falloffDist > def.radius) continue;
 
-      const falloff = linearFalloff(dist, def.radius);
+      const falloff = linearFalloff(falloffDist, def.radius);
       if (falloff <= 0) continue;
 
       let dirX = 0, dirZ = 1;
@@ -304,6 +362,9 @@ export const impulseCharges = {
         dirZ = dz / dist;
       }
       let magnitude = def.impulse * falloff * impulseMult;
+      if (propulsionOwner) {
+        magnitude *= Math.max(1, Number(d.propulsionImpulseMult) || 1);
+      }
       // anchorKick: the line channels the anchor's blast share — direction becomes the tether
       // line (player → anchor), amplified. Everything else in the radius still gets the radial.
       if (combo && combo.combo === 'anchorKick' && ent.id === combo.anchorId && player && player.pos) {

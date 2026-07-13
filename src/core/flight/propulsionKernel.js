@@ -85,7 +85,7 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
   const localVelocity = worldToLocal(body.vel, axes);
 
   const manualLocal = manualThrustLocal(input, limits, localVelocity, profile);
-  const governor = applySpeedGovernor(manualLocal, input, limits, localVelocity, profile);
+  const governor = applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, dt);
 
   const assist = reactionAssistAcceleration(body, axes, input, profile, false);
   const combined = clampLocalAcceleration({
@@ -133,7 +133,7 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
 // authority) so momentum earned through play is spent, not confiscated. Drift/newtonian:
 // untouched — those modes ARE the ungoverned toy. Mutates manualLocal.forward in place and
 // returns telemetry (null when the governor has no opinion this tick).
-function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile) {
+function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, dt) {
   if (normalizeAssistMode(input.assistMode) !== 'assisted') return null;
   const settings = profile.assist || {};
   const deadInput = positive(settings.deadInput, 0.025);
@@ -142,7 +142,16 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile) 
   if (!(governedSpeed > 0)) return null;
 
   const boostMult = input.boost ? positive(profile.boostSpeedMult, 1.55) : 1;
-  const cap = input.throttle * governedSpeed * boostMult;
+  const baseCap = input.throttle * governedSpeed * boostMult;
+  // The tag is supplied only for a real tether/self-sling exit. It cannot create overspeed:
+  // from below the ordinary cap, baseCap remains the target. From above it, the moving target
+  // decays exponentially, preserving the spectacle while still spending the earned velocity.
+  const physicsEarned = !!input.physicsEarnedMomentum && localVelocity.forward > baseCap;
+  const decayTauS = positive(input.earnedMomentumDecayTauS, 6);
+  const earnedCap = physicsEarned
+    ? localVelocity.forward * Math.exp(-Math.max(0, finite(dt, 0)) / decayTauS)
+    : baseCap;
+  const cap = Math.max(baseCap, earnedCap);
   const err = cap - localVelocity.forward;
   const responseS = positive(settings.governorResponseS, 0.9);
   const overspeedBrake = limits.reverse * clamp(finite(settings.overspeedBrakeFraction, 0.25), 0, 1);
@@ -151,8 +160,10 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile) 
   manualLocal.forward = governed;
   return {
     cap,
+    baseCap,
     engaged,
     overspeed: err < 0,
+    physicsEarned,
   };
 }
 
@@ -366,7 +377,7 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
   const localVelocity = worldToLocal(body.vel, axes);
   const assist = reactionAssistAcceleration(body, axes, input, effective, false);
   const manualLocal = manualThrustLocal(input, limits, localVelocity, effective);
-  const governor = applySpeedGovernor(manualLocal, input, limits, localVelocity, effective);
+  const governor = applySpeedGovernor(manualLocal, input, limits, localVelocity, effective, dt);
   const local = clampLocalAcceleration({
     forward: manualLocal.forward + assist.local.forward,
     lateral: manualLocal.lateral + assist.local.lateral,
@@ -452,6 +463,9 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
   const hasManual = Math.abs(input.throttle) > deadInput || Math.abs(input.strafe) > deadInput;
   const localVelocity = worldToLocal(body.vel, axes);
   const limits = (forceBrake || input.brake) ? reactionBrakeLimits(profile) : reactionLimits(profile, 1);
+  const earnedAssistScale = input.physicsEarnedMomentum && !input.brake && !forceBrake
+    ? clamp(finite(input.earnedMomentumAssistScale, 1), 0, 1)
+    : 1;
   let forward = 0;
   let lateral = 0;
   let reason = 'none';
@@ -470,19 +484,20 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
         ? Math.min(positive(settings.neutralBrakeFraction, 0.4), 0.18)
         : positive(settings.neutralBrakeFraction, 0.4);
     if (input.brake || forceBrake) fraction = 1;
+    else fraction *= Math.min(clamp(finite(input.coastAssistScale, 1), 0, 1), earnedAssistScale);
 
     forward = -localVelocity.forward / horizon * fraction;
     lateral = -localVelocity.lateral / horizon * fraction;
     reason = input.brake || forceBrake ? 'pilot-brake' : 'neutral-counterthrust';
   } else if (mode !== 'newtonian') {
-    const lateralFraction = mode === 'drift'
+    const lateralFraction = (mode === 'drift'
       ? positive(settings.lateralKillFraction, 0.3) * 0.35
-      : positive(settings.lateralKillFraction, 0.3);
+      : positive(settings.lateralKillFraction, 0.3)) * earnedAssistScale;
     lateral = -localVelocity.lateral / Math.max(0.25, positive(settings.stopHorizonS, 2.8)) * lateralFraction;
 
     // A tiny commanded-axis damper suppresses numerical chatter while preserving
     // the core maneuver: rotate the nose while momentum keeps carrying the ship.
-    const axisDamping = positive(settings.commandedAxisDamping, 0.06);
+    const axisDamping = positive(settings.commandedAxisDamping, 0.06) * earnedAssistScale;
     if (Math.abs(input.throttle) <= deadInput) forward = -localVelocity.forward * axisDamping;
     reason = 'slip-assist';
   }
@@ -716,6 +731,10 @@ function normalizeInput(input = {}) {
     brake: !!input.brake,
     boostPressed: !!input.boostPressed,
     boostReleased: !!input.boostReleased,
+    physicsEarnedMomentum: !!input.physicsEarnedMomentum,
+    earnedMomentumDecayTauS: positive(input.earnedMomentumDecayTauS, 6),
+    earnedMomentumAssistScale: clamp(finite(input.earnedMomentumAssistScale, 1), 0, 1),
+    coastAssistScale: clamp(finite(input.coastAssistScale, 1), 0, 1),
     assistMode: normalizeAssistMode(input.assistMode || input.flightMode),
   };
 }

@@ -344,6 +344,15 @@ export const mining = {
     this._diag.pickupsCollected = 0;
     for (const e of pickups) {
       if (!e.alive || e.type !== 'pickup') continue;
+      const pickupData = e.data || {};
+      const embargoUntil = Number(pickupData.pickupEmbargoUntil);
+      if (Number.isFinite(embargoUntil) && state.simTime < embargoUntil) {
+        // Jettison reaction mass must establish real separation before the generic magnet/direct
+        // collector can reclaim it. `collides:false` on the authored spawn closes the parallel
+        // physics-contact path during the same deterministic sim-time window.
+        continue;
+      }
+      if (pickupData.jettisonedCargo && e.collides === false) e.collides = true;
       if (this._collectPickupOnBeamLine(e, player)) {
         this._diag.pickupsCollected++;
         continue;

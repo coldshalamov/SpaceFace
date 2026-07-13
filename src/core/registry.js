@@ -35,6 +35,18 @@ import { masslineTelemetry } from '../systems/masslineTelemetry.js';
 import { masslineThreats } from '../systems/masslineThreats.js';
 import { masslineImpacts } from '../systems/masslineImpacts.js';
 import { impulseCharges } from '../systems/impulseCharges.js';
+// Massline Physics Identity — Wave M2 (design/revamp/MASSLINE_PHYSICS_IDENTITY.md). All eight are
+// massline2Flag-gated (OFF headless) and are deliberately NOT in the sf-sim curated harness list,
+// so the 47-A golden never executes them. New runtime state lives under state.massline2.
+import { masslineThrow } from '../systems/masslineThrow.js';          // §3.3 throw/release assist + §4.1 self-sling
+import { bulletTime } from '../systems/bulletTime.js';                // §3.6 held time dilation via core/timeEffects
+import { tumbleStates } from '../systems/tumbleStates.js';            // §3.4 uncontrolled-spin states on whipped NPCs
+import { masslineImpactDamage } from '../systems/masslineImpactDamage.js'; // §3.5 whip-recoil + tumble contact damage
+import { cloak } from '../systems/cloak.js';                          // §4.2 cloak module runtime + detection ring
+import { lootShards } from '../systems/lootShards.js';                // §4.3 kill shards over the shipped loot:drop seam
+import { terrainAnchors } from '../systems/terrainAnchors.js';        // §4.4 big-and-few rocks per encounter bubble
+import { jettisonImpulse } from '../systems/jettisonImpulse.js';      // §5.3 cargo dump reaction impulse
+import { masslineHud } from '../ui/masslineHud.js';                   // M2 surfacing: release indicator + cloak ring + meters (DOM-guarded)
 import { mining } from '../systems/mining.js';
 import { fieldDepletion } from '../systems/fieldDepletion.js';
 import { cargo } from '../systems/cargo.js';
@@ -118,8 +130,8 @@ export function createRegistry(ctx) {
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, voiceArbiter, input, autoTargetAssist, flybyFocus, scanner, scanReveal, buildIdentity, lawSecurity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, mining, fieldDepletion, cargo, fragileCargo, economy,
-    automation, wingmen, intervention, lossLedger, spawnBudget, world, regionalEcology, encounterDirector, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, stationContacts, stationContactLoadBoundary, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, careerOrigins, careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts, postEndingReplay, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
+    core, voiceArbiter, input, autoTargetAssist, flybyFocus, bulletTime, cloak, scanner, scanReveal, buildIdentity, lawSecurity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, physics, aiPorts, tumbleStates, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, economy,
+    automation, wingmen, intervention, lossLedger, spawnBudget, world, regionalEcology, encounterDirector, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, stationContacts, stationContactLoadBoundary, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, careerOrigins, careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts, postEndingReplay, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, masslineHud, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // scanReveal, buildIdentity, and pirateDisguise subscribe to scanner's scan:pulse seam. scanReveal
@@ -171,8 +183,8 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, autoTargetAssist, flybyFocus, lawSecurity, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, aiSlot, barkDirector, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, mining, fieldDepletion, cargo, fragileCargo, automation, wingmen, crafting,
-    economy, intervention, world, regionalEcology, encounterDirector, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, missions, careerOrigins, careerLadders, liveCareerLadderBranches, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, voiceArbiter,
+    input, autoTargetAssist, flybyFocus, bulletTime, cloak, lawSecurity, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, aiSlot, barkDirector, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, tumbleStates, weapons, countermeasures, impulseCharges, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, automation, wingmen, crafting,
+    economy, intervention, world, regionalEcology, encounterDirector, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, missions, careerOrigins, careerLadders, liveCareerLadderBranches, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, masslineHud, voiceArbiter,
   ];
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
   // after combat/physics have settled. It is read-only telemetry — it writes only its own
@@ -185,6 +197,17 @@ export function createRegistry(ctx) {
   // mirror + entities to detect the whipped mass (latched or just-slung) hitting a solid body,
   // writes only its own state.player.masslineImpacts subtree, and emits exactly one documented
   // event (tether:whipImpact).
+  // Massline Wave M2 ordering rationale:
+  // • bulletTime + cloak run right after flybyFocus: bulletTime shares the time-effects authority
+  //   with Focus (min-wins), and cloak must settle its detection radius BEFORE the AI slot builds
+  //   sensor frames (aiPorts.entityContacts reads it).
+  // • tumbleStates runs after aiPorts and before weapons: its zero-control overwrite must be the
+  //   LAST writer on the physics command membrane, and its cleared fire intent must land before
+  //   weapons reads intents this tick.
+  // • masslineThrow runs after masslineImpacts: it consumes the settled tether mirror + telemetry
+  //   and may cut the attachment; tetherGameplay reconciles the cut next tick through the same
+  //   path as any external cut. masslineImpactDamage / lootShards / terrainAnchors /
+  //   jettisonImpulse are event-driven (no per-tick work) and sit with the family for readability.
   // beacons runs after AI/actions and before flight so its lure can override a hostile's intent for
   // this tick (drift toward the beacon) without touching AI internals; it is a no-op when none exist.
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
