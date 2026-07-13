@@ -1574,3 +1574,170 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Added `scripts/check-fragile-cargo.mjs` and `npm run check:fragile-cargo` to assert the shipped impact seam,
   deterministic loss curve, crystal/gem/exotic tagging, non-fragile cargo safety, low-impact/non-player guards,
   cooldown, registry/package wiring, and no RNG/wall-clock use.
+
+### M2 MASSLINE PHYSICS IDENTITY — DONE (2026-07-12)
+- Shipped the massline-as-combat-language wave per the design decisions recorded in
+  `design/revamp/MASSLINE_PHYSICS_IDENTITY.md` (the §3.7 disambiguation model is one sentence:
+  **F frees YOU, RMB throws THEM, LMB shoots**). Eight new flag-gated systems registered in
+  `src/core/registry.js` (NOT added to the sf-sim curated harness): `masslineThrow` (throw-arm +
+  release-solution auto-cut/snap + self-sling correction + anchor-mass sling bonus), `bulletTime`
+  (held CapsLock dilation through the core/timeEffects min-wins authority, source
+  `player:bullet-time`, meter with a depletion latch), `tumbleStates` (real torque-impulse spin via
+  the physics-authority command membrane, zero-control overwrite after aiPorts, RCS-decay
+  recovery), `masslineImpactDamage` (whip-recoil to thrown ships + tumble contact damage, kernel-
+  routed, player-exempt by construction), `cloak` (module-driven energy/dynamic detection ring),
+  `lootShards` (player-kill shards over the shipped `loot:drop` seam — magnetism already shipped
+  in mining), `terrainAnchors` (2–3 big rocks per bare encounter bubble off `encounter:telegraph`),
+  `jettisonImpulse` (reaction kick off the new additive `cargo:jettisoned` receipt). Plus
+  `masslineHud` (BP-11-style DOM-guarded surfacing: release-timing diamond with cool→hot ramp +
+  self-sling chevron + cloak ring + FOCUS/CLOAK meter pills).
+- New pure solver module `src/combat/tetherFireControl.js`: constrained-motion lead solve (rotating
+  COM frame; degrades exactly to `solveLeadAngle` when slack), throw/self-sling intercept solutions
+  with size-honest tolerances (`atan(radius×1.6/dist)` clamped 0.5°–12°). `weapons.js` player path
+  (flag `masslineFireControl`... read `massline2Flag('fireControl')`): a taut line on a hostile is
+  the firing solution — auto-aim without the G toggle, per-mount solution gating so held LMB only
+  releases hit-candidate rounds (cooldown/cap not spent on withheld frames), turret aim swaps to
+  the constrained solver against the tethered target.
+- Flags: new `MASSLINE2_FLAGS` block + `massline2Flag(name)` in `src/data/featureFlags.js` (master
+  `enabled` AND per-feature; every flag defaults `IS_BROWSER` — OFF in the node golden, ON live).
+  Seam edits in files the golden DOES run are all flag-gated: `weapons.js` (fire control),
+  `cargo.js` (event emit only). Other seam edits (also flag-gated, not in the harness):
+  `tetherGameplay.js` (context-aware attach §3.2 — hostile keeps the authored nose anchor, tow
+  masses anchor `sourceWorld` at the hull center via the existing attachments.create spec),
+  `aiPorts.js` (single perception seam: a cloaked player outside his ring is never made a sensor
+  contact; helper exported for the check), `pirateDisengage.js` (`massline-tumbled` morale branch:
+  fresh squadmate tumble + avg hull ≤ 0.8 → fled; relentless/exempt preserved), `input.js` (verbs
+  `bulletTime` CapsLock / `cloak` Backquote / `throwArm` = RMB-while-latched with mining-beam
+  yield), `onboarding.js` (3 one-shot `_showHint` beats), `modules.js` (`mod_cloak_mk1/mk2`),
+  `audioRecipes.js` + `audioSystem.js` (9 `massline.*` cues), `vfx.js` (2 presentation styles).
+- New state lives at `state.massline2.*` (outside the sim-snapshot whitelist and outside
+  `serializeData` — no save-schema change, no migration; cloak/bullet-time meters are transient by
+  design, reload = decloaked+full). Hint keys materialize lazily in `player.hints` (schema fixture
+  untouched).
+- Added `scripts/check-massline2.mjs` + `npm run check:massline2` (12 sections): flag discipline,
+  flags-off inertness, registry ordering invariants (cloak<aiSlot, aiPorts<tumbleStates<weapons,
+  masslineImpacts<masslineThrow), constrained-solver-beats-linear on a rotating target, throw
+  solutions open exactly once per revolution, armed auto-cut announces `massline:throw` through the
+  canonical cut path, tumble entry/recovery + player-never-tumbles + player-never-damaged
+  invariants, kernel routing for NPC recoil/contact damage, honest cloak perception in/out of
+  radius + fire-breaks-cloak, loot/terrain/jettison behaviors with caps, bullet-time meter with
+  depletion latch (a real bug the check caught: post-depletion recharge re-engaged while held;
+  fixed with a require-release latch).
+- Non-vacuous control: temporarily inverted the `cloakHidesPlayerFrom` radius comparison; the
+  cloak section failed; restored; check green (`[check-massline2] PASS`).
+- No-regression floor: `npm run check:sim:compare` output BYTE-IDENTICAL to the pre-change capture
+  (still failing only the documented 47-A projectile-collision precondition). Green after the
+  wave: combat, core-combat-loop, controls-discoverability, settings-profile, sg06 registry-init/
+  live-registry/intake/formation/maneuver-stability/tether-break, pirate-disengage, pirate-ecology,
+  onboarding, cargo-jettison-copy, fragile-cargo, module-risk, mass-delta, handling-profile,
+  build-identity, synergy-tells, balance, audio-identity (massline cues added to the Check-6
+  EMITTED_CUES contract), cue-priority-bus, first-hour-audio, critical-signature-captions,
+  presentation, vfx:trail-instancing, sg02:tether(+break), massline:* children, time-effects
+  (after removing a direct `state.timeScale` assign from the NEW check script — the writer audit
+  scans `scripts/check-*.mjs`), flyby-focus, massline2.
+- Pre-existing reds, proven not ours: `check:proof-ritual` (B1 derelict offset 71≠80 — fails
+  identically with our onboarding edit stashed), `check:overnight:playable` (asserts
+  `src/ui/screens/market.js` banner content we never touched), `check:save-schema` (stale
+  SAVE_SCHEMA.md `scenario` drift; the diff contains zero massline fields), `check:massline`
+  aggregate red only via its `check:47a:scavenger-threat` child (all 22 other children green).
+- Flight-lane coordination notes (BP-07 agent): (1) slingshot exits are physics-earned velocity —
+  `state.player.tether.slingshot`/`slingshotT` (existing) plus `massline:selfSling` events mark
+  them; consider exempting/soft-capping tagged velocity from the assisted speed governor so
+  physics tricks can exceed thruster max. (2) A cloak-state drift ease (lower linear damping while
+  `state.massline2.cloak.active` and coasting) would reward the stealth-drift playstyle — massline
+  side deliberately did not touch flight files. (3) `masslineThrow` never writes velocities
+  directly; all corrections go through `helpers.combatPhysics.applyImpulse`.
+- Deferred (recorded in the design doc): pin bolts, enemy tether use, recoil-as-thrust,
+  centrifugal mining (all rejected in the brief); orbit-assist beyond the shipped input trailing;
+  bomb-propulsion ergonomics/tech-gating (impulse charges already provide the physics; needs a
+  drop-behind pattern + tech row); customs-scan cloak interaction (`patrol:proximity` is an
+  encounter beat, not vision — left honest but unguarded); audio time-warp under bullet time
+  (enter/exit cues only); settings-UI row for `masslineReleaseAssist` ('arm'|'snap'|'off' —
+  read with fallback, default 'arm'); throw-indicator slow-mo refresh (sim-rate updates read
+  slightly steppy at 0.35× — acceptable, noted).
+
+### M3 MASSLINE DEFERRED SET — DONE (2026-07-12)
+- **A — bomb propulsion:** the researched `tech_impulse_ballistics` → fitted
+  `mod_charge_vector_rack` upgrade makes brake/reverse + the existing charge-throw verb drop an
+  already-armed charge directly aft; R remains the deliberate detonation. The original
+  `mod_charge_rack`, nose lob, cargo cost, friendly fire, radial falloff, damage, and starting kit
+  are unchanged. Dials: standoff `2.25` ship radii with `13 wu` floor, relative drop speed `0`,
+  self-impulse multiplier `4.5`, reference self-impulse floor `2200`. New flag:
+  `MASSLINE2_FLAGS.bombPropulsion` (browser-on/headless-off, call-time read). Added the
+  `massline.bombDrop` procedural cue and the one-shot `bombPropulsion` hint.
+- **B — cloak/customs:** `patrolScan` now refuses to emit `patrol:proximity` when its actual leader
+  is outside an active cloak's live detection ring; inside the ring it emits the unchanged economy
+  seam, so `scannerCloak` and hidden-hold dice retain sole authority. Design ruling: jump-gate scans
+  are fixed infrastructure sensors and remain unavoidable; they do not use the patrol encounter
+  seam.
+- **C — bullet-time audio:** pooled low-pass nodes on engine/ambient/combat (never UI/comms) sweep
+  to `1100 Hz` over `120 ms`, physical loops pitch to `0.85×`, music ducks `-4 dB`, and all restore
+  over `150 ms`; muted master keeps the treatment inert. Event-driven from `bulletTime:start/end`,
+  flag-gated at call time, with no sixth setting slider and no `state.timeScale` write.
+- **D — settings/controls:** Gameplay exposes `masslineReleaseAssist` as `arm | snap | off` with
+  fallback-only persistence (no `defaultSettings()`/save-schema edit). Bullet time and cloak have
+  readable rebind rows; contextual RMB `throwArm` remains absent.
+- **E — indicator smoothness:** throw/self marks use a `60 ms` transform tween plus `1/120 s`
+  moving-target lead. Both the in-game reduced-motion setting and `prefers-reduced-motion` disable
+  tween/pulse; no new rAF loop or lead-owned HUD file was added.
+- Contract: `check:massline2` now covers D/E reachability + motion safety, cloak-customs in/out +
+  flag-off behavior, bullet-time filter/rate/music/mute restore, and bomb tech/drop/self-impulse/
+  self-damage/pursuer damage. Non-vacuous controls all failed as intended and were restored:
+  `60→61 ms` broke D/E, inverted cloak radius broke B, filtering only two physical buses broke C,
+  and `4.5→1` self-impulse broke A.
+- Validation green: `check:massline2`, impulse authority + massline combos, combat,
+  core-combat-loop, SG-06 registry-init/live-registry, pirate-disengage, SG-02 tether,
+  presentation, mass-delta, handling-profile, controls-discoverability, settings-profile,
+  onboarding, cargo-jettison-copy, module-risk, balance, UI a11y/WCAG panel contrast,
+  audio-identity, cue-priority-bus, first-hour-audio, critical-signature-captions, time-effects,
+  flyby-focus, customs-prompt/signature, smuggling authority, pirate-parley, encounter-director,
+  data refs, ship-role lattice, and tech-tree guidance.
+- Golden/schema proof: final `check:sim:compare` is green (`hashEqual:true`) and its complete output
+  is SHA-256 byte-identical before/after (`418ABAB...B567`). The already-red `check:save-schema`
+  output is also byte-identical (`FF120621...3C31`), with zero M3/default-settings additions.
+- Live browser proof (`http://localhost:8123/`): computed mark transition is `transform 0.06s` with
+  motion enabled and `none 0s` after `settings.video.motionReduce=true`; screenshot pair:
+  `.devshots/spec2/massline-m3-e-{before,after}.png`.
+- **F / flight-lane addendum (completed under explicit 2026-07-12 user authorization):** the live
+  V3 adapter consumes both the existing tether slingshot tag and `massline:selfSling` events. The
+  kernel now gives tagged overspeed a six-second exponential governor target during its bounded
+  grace window and scales neutral/lateral assist to `0.24`, so oblique physics-earned velocity is
+  preserved rather than only nose-aligned speed. Ordinary thruster speed remains capped, cloak-only
+  neutral coast uses assist scale `0.28`, and explicit braking stays full-strength. The stale handoff
+  suggestion to edit legacy `flightDynamics.js` was rejected; only `flightV3.js` and the live
+  `src/core/flight/propulsionKernel.js` path changed. `check:flight:v3`, full `check:flight` browser
+  probe, `check:cruise`, `check:autopilot`, and `check:juice` are green. Non-vacuous control:
+  changing cloak coast scale `0.28→1` failed the new neutral-assist assertion, then restoration
+  returned it green. This addendum does not claim the broader BP-07 backlog is complete.
+
+### MASSLINE FULL-HANDOFF AUDIT + TIER 3 CLOSEOUT — IMPLEMENTED (2026-07-12)
+- Reviewed the complete MASSLINE Physics Identity handoff, including conditional Prompt F, against
+  the live V3/Rapier path. Tier 1, Tier 2, and the requested Tier 3 set are implemented: contextual
+  attach, throw/self-sling/fire-control, tumble/morale/collision asymmetry, bullet time, cloak,
+  hostile loot, encounter terrain, Express Liner hitchhiking, bomb propulsion, and safe jettison
+  reaction mass. The excluded pin-bolt, recoil-thrust, centrifugal-mining, true-gravity, and major
+  orbit-assist ideas remain excluded. No new enemy tether verb was added; the older SG-06
+  counter-tether/cut doctrine remains an independent 47-A contract.
+- Audit fixes: per-mount aim-true ballistic fire solutions; distinct release-assist modes; nav-aware
+  self-sling; pre-spend tumble action rejection; hostile-only shards; target-side COM tow; shared
+  terrain ownership/45 s cleanup; customs cloak gate; large-hull bomb falloff; physical-only
+  bullet-time loop pitch; cloak/bomb outfitting stats; named-ace fling memory; real Express freight;
+  and a two-second sim-time embargo on jettison pickup/magnetism. The broad sweep also fixed SG-02
+  attachment telemetry leaking undefined Y from the XZ coordinate membrane.
+- Fresh green proof: `check:massline2` (20/20), `check:massline:hitchhiking`, tether gameplay,
+  `check:flight:v3`, `check:flight:clean` (5 desktop/mobile runs), `check:assets:live` (75/75 release
+  parts, 12/12 authored ships), `check:sg02:dynamic-lab`, and `check:sim:compare`
+  (`deterministic:true`, `hashEqual:true`, hash `5f52da80...b1865f`). The V3 comparison also remained
+  green earlier in the pass at hash `34ad19b8...adff7`.
+- Live MASSLINE probe status is partial, not overclaimed: the first normal-route run proved authored
+  flight, Rapier/V3, real KeyF latch, a physical attachment handle, and held-F rest-length reduction.
+  It then lost the moving fixture after release; diagnostic reruns timed out in the probe's one-shot
+  120 s launch wait before the boundary. `check:flight:clean` passed the same canonical route with
+  retries, but the probe's later LMB/RMB/loot/cloak/jettison stages remain unreached and no new
+  `.devshots/spec2/massline2-live.png` was produced.
+- Known out-of-scope reds are recorded rather than hidden: `check:perf` fails six timing thresholds
+  while an active Blender/export lane is present (rAF p95 49.9 ms; 136 hitches >32 ms; autosave
+  max blocking slice 33.9 ms vs 32 ms), broad `npm run check` next stops at the unrelated title
+  occupied-save styling assertion, `check:massline` stops at the pre-existing final 47-A hostile-
+  damage assertion, and save-schema/one-voice/player-facing-label checks retain their documented
+  unrelated drift. Generated event/system indexes were refreshed after the new event wiring.
