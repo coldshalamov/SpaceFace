@@ -1,15 +1,19 @@
-# SPEC2/00 — MASTER TASTE CONSTITUTION
+# SPEC2/00 — MASTER TASTE REFERENCE
 
 > **Current authority banner:** root `ARCHITECTURE.md` (technical) > `design/GDD_2_0.md`
-> (design) > `design/spec2/00_MASTER_TASTE.md` (taste/rejection).
+> (design) > root `AGENTS.md` (current repo policy) > the activated task spec. This file is a
+> historical taste and release-intent reference, not a visual constitution or rejection gate.
 > `design/vision/ALPHA_PROGRAM.md` owns current execution order and solo-alpha scope beneath that
 > chain.
 
-**Every spec2 document inherits this file. Read it before implementing anything.**
-Where a spec leaves room for interpretation: choose the QUIETER option. Any deviation from a number
-in any spec2 file requires editing that spec in the same change, with a one-line justification.
-Authority chain: root `ARCHITECTURE.md` > `design/GDD_2_0.md` >
-`design/spec2/00_MASTER_TASTE.md` > the specific task spec > supporting docs.
+Read this before implementing a spec2 task for its behavioral principles, release bar, and historical
+context. Where a spec leaves room for interpretation, choose the strongest coherent option supported
+by current player-facing evidence. Behavioral acceptance values remain targets when an activated spec
+or check relies on them. Historical visual values are starting points, not mandatory tokens or ceilings,
+and may change without amending this file when screenshots, accessibility, and measured performance
+support the result.
+Authority chain: root `ARCHITECTURE.md` > `design/GDD_2_0.md` > root `AGENTS.md` >
+the specific task spec > supporting references, including this file.
 `design/vision/ALPHA_PROGRAM.md` selects current execution order/scope and activates task specs or
 supporting references beneath that chain; it does not reverse design or taste authority.
 
@@ -25,27 +29,35 @@ store-page GIF.
    danger > tutorial > objective > comms > flavor).
 4. **The universe was here before you** — charted space is charted; traffic flies its own routes.
 
-## 3. Visual language — hard tokens
-- **Space is dark.** Background luminance between structures must average < 18% sRGB. Depth comes
-  from contrast + parallax motion, never from filling the frame with glow.
-- **Palette:** UI semantic colors are LOCKED: cyan `#39d0ff` (interactive/friendly/info), amber
+## 3. Historical visual language — reference, not tokens
+- **Space readability:** the original target kept background luminance between structures below
+  roughly 18% sRGB and used contrast plus parallax for depth. Treat that as a tested baseline, not a
+  brightness or glow cap; judge the current scene at its real camera and display exposure.
+- **Palette reference:** the shipped semantic examples were cyan `#39d0ff` (navigation/action), amber
   `#ffb35c` (warning/strain/attention), red `#ff5c5c` (danger/hostile), violet `#8d66ff`
-  (story/anomaly), white `#d7e6ff` (primary text). Sector world-palettes live in
-  `src/data/sectors.js` palette blocks (core=cyan/steel, belt=rust/amber, fringe=sodium-red,
-  anomaly=violet/green). Never introduce a new hue without adding it here first.
-- **Translucent shells:** any sphere/shell overlay on a structure caps at **0.12 opacity**. The
+  (story/anomaly), and white `#d7e6ff` (primary text). Sector palette blocks live in
+  `src/data/sectors.js`. They are references, not a closed hue list; new or revised colors must remain
+  legible, accessible, coherent, and supported by player-facing evidence.
+- **Translucent shells:** any sphere/shell overlay on a structure must earn its opacity through
+  readability and performance evidence; **0.12 is not a universal cap**. The
   0.655-opacity station bubbles were a bug, not a look. (See git history: "sheen, not shell".)
-- **Emissives carry the night:** engines, weapon cores, seams, tether, station windows. Bloom is
-  selective — raise per-material `emissiveIntensity`, never the global bloom strength above 0.9.
-- **Type:** one mono family (existing `--mono`), three sizes only per surface (9/12-14/17 px pattern
-  in hud.js). UPPERCASE for labels, sentence case for content. Letterspacing on labels ≥ .12em.
-- **Nothing pulses, glows, or animates at rest.** Motion means state change. (Exception: the 4.2 Hz
-  seam ember pulse, amplitude ≤ 18%, and engine idle flicker ≤ 8%.)
+- **Emissives and bloom:** engines, weapon cores, seams, tether, and station windows historically
+  carried the night. The former 0.9 global-bloom value is a baseline, not a ceiling; tune local and
+  global effects by hierarchy, screenshot evidence, stability, and measured performance.
+- **Type:** the existing mono family, 9/12–14/17 px pattern, uppercase labels, and spaced labels are
+  implementation references. The requirement is readable hierarchy and accessible scaling, not a
+  fixed family, size count, case, radius, or spacing recipe.
+- **Motion and rest state:** quiet-at-rest was a useful default, not a ban on pulse, glow, or ambient
+  animation. Motion must communicate state or atmosphere, respect reduced-motion preferences, and
+  survive screenshot/play evidence plus performance measurement.
 - **No first-person/visor/cockpit motifs. Ever.** No screen-edge arcs, no helmet frames, no pilot
   avatars on the HUD. This is a standing user decision.
-- **No `backdrop-filter`.** Use opaque `rgba(5,9,18,.88)`-class panels (GPU cost, prior perf pass).
+- **Effects are measured, not banned by taste.** Use blur, opacity, panels, or other effects only when
+  the player-facing benefit justifies their measured compositor/GPU cost.
 
-## 4. Motion & feel — hard numbers
+## 4. Behavioral feel targets
+The values below remain useful acceptance targets when an activated task or check depends on them;
+they do not create a universal visual-style law.
 - UI transitions: 120–250 ms, ease-out (`--ease` token). Screen pushes ≤ 250 ms. Nothing slower.
 - Input answer: any player input produces visible/audible acknowledgment within **50 ms** (one sim
   tick + one frame). If the action itself is delayed (cruise charge), the ACKNOWLEDGMENT is not.
@@ -65,7 +77,7 @@ Terse, dry, working-space professionalism. Crews talk like riggers, not like mar
   ("Thrust to the beacon." not "Try using W to fly toward the beacon!").
 - All player-facing strings pass `check:player-facing-labels`.
 
-## 6. The forbidden list (drift-guard — reject any diff that does these)
+## 6. Functional and release drift guard
 - ??? markers on charted space (only frontier/anomaly may be undiscovered).
 - Text walls: >1 simultaneous new text surface (arbiter/one-voice violation).
 - New modal screens for things a HUD chip can say.
@@ -87,7 +99,7 @@ Terse, dry, working-space professionalism. Crews talk like riggers, not like mar
    while the 47a golden re-record is pending) plus any checks named by your spec.
 5. **Screenshot pair** into `.devshots/spec2/<spec>-<item>-{before,after}.png` for anything visual.
 
-## 8. Reference map (steal exactly this, nothing else)
+## 8. Reference map (lessons to evaluate, not copy)
 - **Freelancer:** travel grammar (thrust<boost<cruise<lanes), station services flow, faction
   consequence, system color identity. NOT its mouse-flight (we are top-down).
 - **EVE:** overview list, fitting constraints, market data as knowledge. NOT its pace.

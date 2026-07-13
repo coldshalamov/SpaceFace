@@ -28,25 +28,27 @@ commands (the INDEX gives these generically; this file makes them spec-specific 
 ## Shared preamble (paste into EVERY brief)
 
 ```
-You are working in the SpaceFace repo. Three documents outrank everything else — read them before
-touching code, in this order:
-  1. design/spec2/00_MASTER_TASTE.md  — the taste constitution. Its §6 Forbidden list is grounds for
-     rejecting your diff. Where a spec leaves room, choose the QUIETER option.
-  2. ARCHITECTURE.md — the technical contract (fixed 60 Hz sim, XZ plane, sim never imports Three.js,
+You are working in the SpaceFace repo. Read these before touching code, in this order:
+  1. ARCHITECTURE.md — the technical contract (fixed 60 Hz sim, XZ plane, sim never imports Three.js,
      UI emits intents only, determinism via state.rng, no per-frame allocations in hot paths).
+  2. design/GDD_2_0.md and root AGENTS.md — design authority and current repo policy.
   3. The specific spec file named below.
+  4. design/spec2/00_MASTER_TASTE.md — historical context and behavioral intent only. Its old visual
+     prescriptions are not rejection grounds. Where a spec leaves room, choose the strongest
+     coherent option supported by current player-facing evidence.
 
 Non-negotiables:
-- Any deviation from a NUMBER in a spec2 file requires editing that spec in the same change with a
-  one-line justification. Transcripts are not evidence — CHECKS are.
+- Explain deliberate changes to behavioral acceptance values in the same change. Historical visual
+  values are not mandatory palette, glow, radius, shell, texture, or triangle ceilings. Transcripts
+  are not evidence — checks and player-facing captures are.
 - Never edit test/*.expected.json goldens to make a check pass (fix the code, or flag the golden for
   a deliberate re-record batch). Never add dependencies silently: build-time tools need
   documentation, and runtime deps require lead sign-off with license, bundle/perf, determinism/save,
   and maintenance notes.
 - Acceptance assertions in the spec are the definition of done. If the named check script does not
   exist yet, WRITE IT (it is part of the task).
-- Touch ONLY the files the spec names. If the spec missed a required file, stop and name the missing
-  file/spec fix instead of freelancing. Do not edit assets/** or src/render/** (active graphics lane).
+- Use the spec's named files as the ownership starting point, then touch the integration files needed
+  for a coherent result. Respect active asset/render ownership signals before entering those lanes.
 - Determinism: no Math.random() in sim (use state.rng); no wall-clock time in sim (use state.simTime).
 - Print a 10-line summary when finished: files changed, check results, any spec number you adjusted
   and why.
@@ -176,8 +178,9 @@ Regression floor:
 
 ### 4. `02_FLIGHT_CAMERA_JUICE` — Frontend / graphics + feel agent
 ```
-Implement design/spec2/02_FLIGHT_CAMERA_JUICE.md exactly. Needs taste discipline — every number is
-exact; do not freelance. If a value feels wrong in play, change the spec FIRST then the code.
+Implement the behavior and player-facing feel required by design/spec2/02_FLIGHT_CAMERA_JUICE.md.
+Preserve deterministic acceptance contracts; tune visual values when play evidence shows a stronger
+result and document the reason alongside the change.
 
 You own: src/render/camera.js (constants only), src/render/vfx.js, src/render/feel.js,
 src/systems/cruise.js (NEW — fold in the staged brief at .tmp/multi-loop/20260703/brief-codex-6-cruise.md),
@@ -329,18 +332,17 @@ Regression floor:
 
 ### 7. `06_UI_IDENTITY` — Frontend agent
 ```
-Implement design/spec2/06_UI_IDENTITY.md exactly. You have taste discipline — every number here is
-exact; do not freelance. No visor motifs. No backdrop-filter. §3-4 tokens are LAW.
+Implement the behavioral intent of design/spec2/06_UI_IDENTITY.md. Do not treat its old numbers, palette, panel, glow, radius, or surface recipes as mandatory. No visor motifs remains a product preference; visual direction must be chosen and shown in screenshots.
 
 You own: src/ui/{hud,radar,targetPanel}.js, src/ui/uiRoot.js (injectHudCss), styles/ui.css,
 src/ui/screens/{localmap,starmap}.js (POLISH only), and a NEW scripts/check-ui-identity.mjs.
 Verify check:ui-a11y, check:wcag-contrast, check:ui:perf after EVERY step.
 Binds to encounter ghosts + named-bounty tags from 04 — do not start until 04 lands.
 
-Three-anchor HUD (spec §1): (a) bottom-left ship cluster, (b) bottom-center status line+chips,
-(c) bottom-right radar + NEW overview strip. Top-center = one-voice channel ONLY. NOTHING
-permanently outside these. Relocate stragglers: fuel top-left -> fourth micro-bar in the schematic
-cluster; 'SYS NOMINAL' top-center text DIES (silence means nominal).
+HUD hierarchy (spec §1): the proven reference is (a) bottom-left ship cluster, (b) bottom-center
+status line+chips, (c) bottom-right radar+overview, with a top-center one-voice channel. Preserve
+priority and eliminate unexplained clutter; a different composition is valid when supported by
+current screenshots, viewport checks, and accessibility evidence.
 
 Overview strip (spec §2, EVE's one great idea miniaturized) — right edge above radar: collapsible
 (default open, O toggles, persists in settings.ui.overviewOpen). Row = [IFF chip][class glyph] NAME
@@ -363,14 +365,14 @@ Maps (spec §5): local map legend footer, 150ms mouse-wheel zoom ease, hostile m
 (velocity/3, max 24px). Nav chart sector cards = palette-class swatch stripe + security pips, price-
 memory overlay (spec2/05), route line 3px marching dash.
 
-Dialog chrome (spec §6, ui.css tokens only): modals 1px --panel-edge border, --r-lg radius,
-rgba(8,13,24,.92) ground, drop inset cyan glow on non-interactive containers; open/close 150ms
-translate-y 6px + fade; focus ring 2px #39d0ff offset 1px; destructive actions = #ff5c5c text never
-red fills.
+Dialog chrome (spec §6 reference implementation): preserve coherent hierarchy, legible focus,
+destructive-action clarity, measured transitions, and one arbiter instead of a separate toast stack.
+The historical border, radius, color, and timing values are starting points; prove the current result
+with screenshots plus accessibility and UI-performance checks.
 
 Definition of done — scripts/check-ui-identity.mjs (spec §7):
-  1. DOM audit in flight: zero fixed-position elements outside the three anchors + top-center
-     channel (walk #hud/#ui-root children, assert bounding zones).
+  1. DOM audit in flight: no overlapping, orphaned, or unprioritized fixed-position surfaces at
+     supported viewport sizes.
   2. Overview: 9+ contacts -> 8 rows + "+N"; clicks target; cadence <= 5Hz; IFF matches palette.
   3. Target arcs: fractions match entity hp +-1%; arcs vanish 250ms after target death.
   4. check:wcag-contrast green incl new elements; check:ui:perf green; check:ui-a11y green.
@@ -455,7 +457,7 @@ Regression floor: npm run check:ci  (the whole suite — this spec IS the final 
 2. Run the spec's acceptance script + the regression floor yourself. Don't trust the agent's transcript.
 3. For anything visual: demand the .devshots screenshot pairs, apply the five-second test (pause,
    screenshot, ask "can a stranger name every element?").
-4. Reject on ANY 00_MASTER_TASTE §6 Forbidden-list item. Small fixes = patch; structural = re-brief.
+4. Reject functional regressions and weak player-facing quality. Do not reject a coherent visual direction merely because it differs from historical 00_MASTER_TASTE tokens.
 5. If the agent changed a spec NUMBER, confirm the one-line justification is in the diff.
 ```
 
@@ -473,24 +475,25 @@ You are the asset production agent for SpaceFace, with the Blender MCP. This is 
 longform production run: audit, fill gaps, add variety, LODs, faction skins, and world set
 dressing. You produce SOURCE .glb files; the build pipeline ships them.
 
-READ FIRST (in order), every one of these is a hard contract:
+READ FIRST (in order):
   - AGENTS.md  — "Concurrent Graphics Work" + "Performance Policy" sections are law.
-  - design/spec2/00_MASTER_TASTE.md  §3 visual language (palette tokens, emissives carry the night,
-    translucent shells <= 0.12 opacity, NO first-person/visor/cockpit motifs, no backdrop-filter).
-  - assets/ships/parts/parts_manifest.json  — the EXACT contract your exports must satisfy.
+  - design/spec2/00_MASTER_TASTE.md §3 for historical context. It imposes no palette, shell, glow,
+    blur, texture, or geometry ceiling. NO first-person/visor/cockpit motifs remains a user decision.
+  - assets/ships/parts/parts_manifest.json — the current runtime interoperability contract; update it
+    coherently when a higher-quality asset needs a justified profile change.
   - ARCHITECTURE.md  — renderer features and the one-game-path rule.
 
-THE EXPORT CONTRACT (from parts_manifest.json — non-negotiable):
+THE EXPORT CONTRACT (from the live manifest and loader):
   - Coordinate system: right-handed, forward +X, up +Y, starboard +Z, UNIT = metre, origin = mount
     point. Get this wrong and parts assemble sideways; the manifest checker rejects it.
-  - Four named materials ONLY, used consistently: Material_Hull (tintable base), Material_Accent,
-    Material_Glass, Material_Mechanical. Hull parts declare tintable.Material_Hull for faction hue.
-  - Texture contract: baseColor sRGB, normal = tangent OpenGL green-up, ORM = R=AO G=roughness
-    B=metallic, resolution 1024.
-  - Budgets: use the live manifest/exporter numbers, currently 500-15,000 triangles per part and
-    max 5,000,000 bytes per part, with higher kind-specific exporter caps for whole-ships and
-    landmarks. Author THREE LODs per hull. Budgets are alarms, not taste ceilings; raise a row only
-    with manifest/spec rationale plus perf proof.
+  - Current material names and tint metadata must match the live loader/manifest where referenced.
+    Richer material strategies are allowed when the loader, manifest, and checks are updated coherently.
+  - The current baseColor/normal/ORM channels and 1024 resolution are compatibility defaults, not a
+    texture-technique or resolution ceiling. Profile memory, upload cost, readability, and runtime use.
+  - Budgets: use the live manifest/exporter profiles, currently 500-15,000 triangles per part and
+    max 5,000,000 bytes per part, with higher kind-specific profiles for whole-ships and landmarks.
+    Ship screen-space-validated LOD coverage (currently three hull levels). These are profiling alarms
+    and compatibility defaults, not taste ceilings; revise them with manifest rationale and perf proof.
   - Sockets/hooks naming: SOCKET_Trail_Main, SOCKET_Weapon_Front, MOUNT_COCKPIT, MOUNT_ENGINE_L/R,
     MOUNT_FIN_L/R — match the existing hull entries exactly so assembly + tether/weapon anchors fit.
   - Merge static bolts/ribs/panels/repeated detail into a SMALL number of submeshes per material/
@@ -523,8 +526,8 @@ THE LIBRARY (current state — audit then extend):
 PRODUCTION PHASES (do them in order, commit/verify each before the next):
 
   PHASE 0 — AUDIT. Open every existing release .glb. For each: report tri count, byte size,
-    material names, socket/hook names, bounds, LOD presence. Flag anything violating the contract
-    (wrong material name, missing socket, >8000 tris, >3.5MB, no LODs, un-merged detail). Output a
+    material names, socket/hook names, bounds, LOD presence. Flag broken interoperability plus any
+    geometry, byte-size, draw-call, or LOD profile that lacks current performance evidence. Output a
     table. Fix violations before adding anything new. Run npm run check:art and make it green.
 
   PHASE 1 — FILL GAPS. Every hull that has DATA in ships.js but no matching GLB silhouette gets one.
@@ -534,12 +537,13 @@ PRODUCTION PHASES (do them in order, commit/verify each before the next):
 
   PHASE 2 — VARIETY + LODs. Add 2-3 alternates per high-traffic category (engines, fins, weapons,
     greebles) so ships don't all look identical — but each must pass the readability test (a stranger
-    can tell a freighter from a fighter at a glance). Ensure every hull ships 3 LODs.
+    can tell a freighter from a fighter at a glance). Validate LOD coverage at gameplay screen sizes;
+    use as many levels as the asset and measured transition quality need.
 
-  PHASE 3 — FACTION SKINS. Material_Hull is tintable; produce faction-appropriate accent palettes
-    aligned to src/data/sectors.js palette blocks (core=cyan/steel, belt=rust/amber,
-    fringe=sodium-red, anomaly=violet/green) and the 8 factions. Skins = material/texture variants,
-    NOT new geometry (respect the draw-call budget).
+  PHASE 3 — FACTION SKINS. Material_Hull is tintable; produce faction-readable materials informed by
+    world history, current sector evidence, and the 8 factions. Existing sector palette blocks are
+    references, not closed hue lists. Choose material, texture, decal, or geometry changes by the
+    strongest readable result and measured draw-call/memory impact.
 
   PHASE 4 — WORLD SET DRESSING (spec2/04 calls for these as PLACES): lane beacons (emissive cyan,
     every 400wu), station billboards (unlit backs), conveyor barges + mining drones (visual-loop
@@ -553,9 +557,9 @@ PRODUCTION PHASES (do them in order, commit/verify each before the next):
 
 RULES THAT WILL GET YOUR WORK REJECTED IF BROKEN:
   - Any visor/helmet/cockpit-frame motif on a ship (00 §3 — standing user decision).
-  - Translucent shell > 0.12 opacity (the 0.655 station bubbles were a bug, not a look).
-  - Global bloom strength raised above 0.9 (raise per-material emissiveIntensity instead).
-  - A new hue introduced without being added to 00 §3 palette tokens first.
+  - A translucent shell or bloom treatment that harms readability, hierarchy, stability, or measured
+    performance and is not supported by current player-facing evidence.
+  - A new hue introduced without a player-facing reason and screenshot evidence.
   - Dozens of un-merged one-off primitives (Performance Policy).
   - Shipping under assets/ships/release/ by hand instead of via build:sg04:release-assets.
   - Running while another graphics/asset lane is active (check release.__lock/owner.json first;

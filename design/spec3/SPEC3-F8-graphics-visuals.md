@@ -30,7 +30,7 @@ the blocking cluster.
   child mesh/static-batch counts, LOD level, bounds, on-screenness. Any transition not caused by a
   legit swap event = failure. Fix what it finds (likely culling bounds on batched parts, hot-swap
   ownership churn, or LOD hysteresis) BEFORE further perf cuts.
-- **Parallax depth stack (GDD §9.1, locked):** skydome (exists) → 2–3 far dust sheets (additive
+- **Parallax depth stack (GDD §9.1 reference):** skydome (exists) → 2–3 far dust sheets (additive
   planes, factor 0.15–0.3) → instanced mid debris (0.5–0.7, slow tumble) → near motes (1.2–1.5)
   that stretch into streaks on boost/cruise (the speed-sell layer, F3-18 drives stretch). All
   pooled, all camera-relative, motionReduce halves densities.
@@ -38,13 +38,15 @@ the blocking cluster.
   material×light combos behind the loading veil + one hidden VFX salvo to warm particle pipelines;
   (2) spawn amortization ≤2 mesh-builds/frame + prebuilt pooled mesh per enemy archetype at sector
   load; (3) GC audit of 10-min play — kill per-frame allocations in event emission + HUD string
-  building (memoize 10 Hz strings); (4) keep `backdrop-filter` removals.
+  building (memoize 10 Hz strings); (4) measure compositor-heavy CSS effects and retain them only
+  where their player-facing benefit justifies the recorded cost.
 - **GPU-detect + dynamic resolution:** boot probe (WEBGL_debug_renderer_info; SwiftShader/llvmpipe
   match → warn banner + auto-low preset). Dynamic resolution: render-target scale steps
   1.0/0.85/0.7/0.55 driven by 120-frame p95 frame-time; UI/DOM never scales. The 2–3 fps machine
   gets an honest 30+ at 0.55 with the DOM HUD still crisp.
-- **Tone-mapping decision:** stay non-ACES this cycle (grade is tuned to it). Revisit ONLY as a
-  one-shot "regrade week" post-SPEC3, never mid-stream.
+- **Tone-mapping baseline:** the current grade is non-ACES. Change it only as a deliberate full
+  regrade with representative captures, material review, and performance evidence—not as a casual
+  toggle or inherited prohibition.
 
 ### 3. Architecture & wiring
 Probe: `scripts/check-ship-stability.mjs` driving the headless preview (SF global + manual frame
@@ -159,8 +161,8 @@ per sector are unowned. F7-30's verbs need matching looks.
 ### 2. The design
 - **Palette block per sector (extend `sectors.js` palette):** key/rim/fill light colors, nebula
   tint, fog color+density, dust hue, emissive accent (used by stations/props), war-wash overlay hue
-  (F6-28 flips shift accents over a game-day). Core = clean cyan/steel; belts = rust/amber haze;
-  fringe = sodium-red murk; anomaly = violet/green wrongness (GDD baseline, kept).
+  (F6-28 flips shift accents over a game-day). The listed core/belt/fringe/anomaly palettes are
+  examples, not a universal visual requirement; each sector may earn a distinct art direction.
 - **Signature sky per sector:** the skydome + far-dust sheets (F8-33 stack) get per-sector
   composition params: nebula mass position (Veil: enveloping; Ashfall: a wound on one horizon),
   star density, one *landmark silhouette* (Helios' sun lens, Charon's cinder giant) — the "you are
@@ -199,9 +201,9 @@ Landmark silhouettes: 4 authored low-poly meshes (SPEC3-37); prop textures via S
 5. War-wash hook.
 
 ### 8. Anti-patterns
-Identity via post filters (light + composition, not Instagram); murk that eats readability (hostiles
-must pop in Sker's red — test it); prop noise on the play plane (density caps; silhouettes stay
-clean); palette drift (new colors enter via the block or not at all).
+Identity via post filters (light + composition, not Instagram); murk that eats readability; prop noise
+on the play plane; palette choices without a player-facing reason or evidence. Colors may diverge
+when the asset or location needs it.
 
 ### 9. Ambition ceiling
 Time-of-war lighting: a sector at `war` shifts its key light 10° and cools 300 K — players sense
@@ -210,43 +212,44 @@ something's wrong before reading anything. Data lerp, zero new tech.
 ---
 
 ## SPEC3-36 — HUD 2.0 & the UI visual system
-**One-line pitch:** three anchors, one voice, zero rest-state glow — the HUD that GDD §9.4 specified,
-extended to carry every SPEC3 system without growing a fourth anchor.
+**One-line pitch:** a clear hierarchy, one voice, and purposeful motion — a HUD that carries every
+SPEC3 system without accreting competing surfaces.
 
 ### 1. Why
-GDD §9.4 locked the philosophy (three anchors: status cluster bottom-left, radar+overview
-bottom-right, single priority line top-center; no visor motifs — user-rejected, permanent). SPEC3
+GDD §9.4 established a proven reference hierarchy (three anchors: status cluster bottom-left,
+radar+overview bottom-right, single priority line top-center; no visor motifs remains a standing user
+decision). The anchor count and rest-state treatment are not universal visual ceilings. SPEC3
 adds many surfaces (ticker, siege, war, tether tension, charts) — without one gatekeeper spec they
 will re-clutter the screen the 1.x way.
 
 ### 2. The design
-- **Anchor budget law:** every new element must join an existing anchor or be contextual
+- **Composition guidance:** new elements should join a coherent hierarchy or be contextual
   (appears on state, fades ≤4 s). The ticker = the priority line's *idle occupant* (chatter tier —
   it yields to everything). Tether tension = an arc on the status cluster. Siege wave/intermission =
   contextual top-center cards. War gauge/charts live in screens (map/market), never flight HUD.
-- **Type & color discipline (locked):** one mono family, three sizes (11/13/16 px @1080), uppercase
-  labels only; semantic palette cyan/amber/red + per-sector accent (from SPEC3-35 palette,
-  ≤10% usage). Nothing pulses at rest; glow = state change, decays ≤600 ms.
+- **Type and color discipline:** preserve legibility, hierarchy, and meaningful state change, but do
+  not require one font family, fixed pixel sizes, cyan/amber/red, a per-sector accent quota, or a
+  universal glow/animation recipe. Choose what best serves the surface and verify it in screenshots.
 - **The overview strip (GDD §7.5, built here):** right-edge 8-row contact list: IFF chip, class
   glyph, name, distance, closing arrow; hostiles first; click = target; collapsible. This is the
   "wtf is around me" killer and F4's targeting UX in one.
 - **Contextual chips:** credits/cargo deltas appear as chips on change then fade (retiring the
   bottom text-strip per GDD); profit toast (F1-10) is the same chip family.
-- **Screen system polish:** station hub/market/map screens adopt the same tokens (styles/ui.css
-  vars) + a shared header pattern (location · credits · time) so screen-hopping stops feeling like
-  app-switching.
+- **Screen system polish:** station hub/market/map screens share legible interaction grammar and
+  location/credits/time context where useful, without forcing identical tokens or layout onto every
+  surface. Screen-hopping should feel like one game, not app-switching.
 
 ### 3. Architecture & wiring
 All DOM/CSS in hud.js + injectHudCss (uiRoot.js) — the proven seam. Chips/cards/strip are hud
 components fed by bus events through the attention arbiter (SPEC3-40 owns priority policy; this
 spec owns pixels). Headless verification: SF global + manual `hud.frame` ticks (rAF throttles in
-headless — known trap). `check:ui-identity` extends to lint: anchor count ≤3, rest-state animation
-= none, token usage only.
+headless — known trap). `check:ui-identity` extends to catch overlap, inaccessible state cues,
+unbounded animation/compositor cost, and unreadable priority—not historical token conformance.
 
 ### 4. Key code
 ```css
-/* The entire rest-state law in one rule — audited by check, not by vigilance. */
-.hud [data-state="rest"] { animation: none; box-shadow: none; filter: none; }
+/* State remains explicit; treatment is selected and measured per surface. */
+.hud [data-state="rest"] { --hud-state: rest; }
 .hud .chip { transition: opacity .3s; } .hud .chip[data-stale="true"] { opacity: 0; }
 ```
 
@@ -262,9 +265,9 @@ Class/IFF glyphs from the SPEC3-38 atlas. No new deps (no font added — mono fa
 5. Five-second test captures in CI (with SPEC3-35).
 
 ### 8. Anti-patterns
-A fourth anchor (the law exists because everyone wants one); rest-state pulse "so it looks alive"
-(the WORLD is alive — the HUD is furniture); numbers where arcs suffice; visor/cockpit motifs
-(permanently rejected); per-screen bespoke styling.
+A fourth anchor without a hierarchy reason; rest-state motion with no purpose; unreadable density;
+visor/cockpit motifs remain a product preference. Per-screen bespoke styling is allowed when it is
+intentional and coherent rather than accidental.
 
 ### 9. Ambition ceiling
 HUD "quiet mode" (H hold): everything but the priority line fades 90% for screenshots and flow

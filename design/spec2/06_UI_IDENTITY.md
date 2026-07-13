@@ -1,13 +1,15 @@
 # SPEC2/06 — UI IDENTITY (HUD completion, overview strip, target panel, maps polish)
 
-**Owner lane:** frontend agent with taste discipline — every number here is exact; do not freelance.
-Read `spec2/00_MASTER_TASTE.md` §3–4 (tokens are law). No visor motifs. No backdrop-filter.
+**Owner lane:** frontend agent responsible for behavior, readability, accessibility, and measured performance. Functional acceptance values remain targets; the visual numbers below document the 2026-07-04 reference implementation rather than mandatory tokens or ceilings.
+Read `spec2/00_MASTER_TASTE.md` for historical context only. No visor motifs remains a product preference; palette, panel, radius, glow, blur, and surface tokens are not law. Choose the visual language per screen and prove it with player-facing screenshots.
 **Files:** `src/ui/{hud,radar,targetPanel}.js`, `src/ui/uiRoot.js` (injectHudCss), `styles/ui.css`,
 `src/ui/screens/{localmap,starmap}.js` (polish only), new `scripts/check-ui-identity.mjs`.
 Verify with `check:ui-a11y`, `check:wcag-contrast`, `check:ui:perf` after every step.
 
-## 1. Three-anchor HUD (finish what's started)
-Anchors, and NOTHING permanently outside them: (a) bottom-left ship cluster (schematic + micro-bars
+## 1. Reference HUD hierarchy (finish what's started)
+The three-anchor layout is the proven starting hierarchy, not the only valid composition. Preserve
+one-voice priority and at-a-glance readability; a coherent departure is allowed when current
+screenshots and checks prove it. Reference anchors: (a) bottom-left ship cluster (schematic + micro-bars
 — exists), (b) bottom-center status line (SPD, WPN, TETHER — exists) + chips (exist), (c) bottom-
 right radar + NEW overview strip. Top-center is the one-voice channel ONLY (alerts/priority text).
 Remove/relocate any straggler panels into contextual surfaces (fuel top-left moves into the
@@ -40,17 +42,18 @@ for their TTL; bezel edge-arrows for off-screen objective + nearest hostile (max
 - Nav chart: sector cards show palette-class swatch stripe + security tier pips; price-memory
   overlay per spec2/05; route line animates a 3-px marching dash (state change = allowed motion).
 
-## 6. Dialog & screen chrome unification (`ui.css` — tokens only)
+## 6. Dialog & screen chrome coherence (`ui.css` reference values)
 All modals: 1 px `--panel-edge` border, `--r-lg` radius, `rgba(8,13,24,.92)` ground, drop the inset
 cyan glow on non-interactive containers. Screen open/close: 150 ms translate-y 6 px + fade. Focus
 ring: 2 px `#39d0ff` outline offset 1 px (a11y). Buttons: existing style; destructive actions get
 `#ff5c5c` text, never red fills.
 
 ## 7. Acceptance assertions (`scripts/check-ui-identity.mjs`)
-1. DOM audit in flight mode: zero fixed-position elements outside the three anchors + top-center
-   channel (walk #hud/#ui-root children, assert their bounding zones).
+1. DOM audit in flight mode: no overlapping, orphaned, or unprioritized fixed-position surfaces;
+   hierarchy remains legible at supported viewport sizes (walk `#hud`/`#ui-root` children).
 2. Overview: 9+ contacts renders 8 rows + "+N"; click targets; update cadence ≤ 5 Hz (spy on
-   mutation counts); IFF colors match SEMANTIC_PALETTE exactly.
+   mutation counts); IFF roles remain accessible and coherent with `SEMANTIC_PALETTE`, whose values
+   may evolve alongside accessibility checks.
 3. Target arcs: fractions match entity hp fields ± 1%; arcs vanish 250 ms after target death.
 4. `check:wcag-contrast` green including new elements; `check:ui:perf` green (no frame-sleep
    regressions); `check:ui-a11y` green.

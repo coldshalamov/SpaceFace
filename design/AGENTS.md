@@ -12,7 +12,7 @@
 
 1. `ARCHITECTURE.md` (at repo root) — the technical contract. (The old `design/ARCHITECTURE.md` handoff blurb that collided with it has been archived to `design/_ARCHIVE/handoff_architecture.md`.)
 2. `design/GDD_2_0.md` — the design authority (vision, pillars, all system designs).
-3. `design/spec2/00_MASTER_TASTE.md` — the inherited taste constitution for ALL work, including vision/spec3/revamp work. Its Forbidden list rejects diffs; the clean non-diegetic HUD rule remains standing policy.
+3. `design/spec2/00_MASTER_TASTE.md` — historical taste context. Its palette, panel, glow, radius, and surface recipes are not binding; the clean non-diegetic HUD rule remains standing policy.
 4. **`design/vision/00_CONSTITUTION.md`** — product sprint law for what to build next, interpreted within the technical + taste contracts above.
 5. **`design/vision/03_MASTER_BUILD_PLAN.md`** — wave order / goal prompts.
 6. **`design/vision/01_CURRENT_STATE.md`** — done/partial/missing with **PLAY** column (checks alone != done).
@@ -27,16 +27,16 @@ Per user direction 2026-07-05: **spec3 is being finished and is effectively the 
 
 | Folder | Status | Use for |
 |---|---|---|
-| `design/spec2/` | **LIVE — polish & release bar.** `00_MASTER_TASTE.md` is the taste constitution for ALL work. Specs `01`-`08`: feel, flight/camera juice, first hour, world-alive, economy, UI identity, audio, release readiness. | Feel, readability, onboarding, UI, audio, release gates. **Always read `00_MASTER_TASTE.md` first whatever you're doing.** |
+| `design/spec2/` | **LIVE — polish references and release bar.** `00_MASTER_TASTE.md` is historical taste context, not a mandatory visual system. Specs `01`-`08`: feel, flight/camera juice, first hour, world-alive, economy, UI identity, audio, release readiness. | Use the relevant slice for behavior and release intent; choose visual treatment from current evidence. |
 | `design/spec3/` | **LIVE — expansion/ambition layer** (currently being finished; assume current state). Thread files `SPEC3-F1..F10`. Each is a self-contained build plan. | The work your brief names if it says "implement SPEC3-XX". Read `_context/06_PLANNING_CONSTITUTION.md` first. spec3 *extends* the GDD; never contradicts its pillars. |
 | `design/specs/` | **LEGACY reference only.** Original 12 subsystem specs (00-11). | Nothing actively. |
 
 The earlier policy contradiction (old AGENTS.md said "spec2 only"; live briefs dispatched spec3) is resolved — both are sanctioned. `README.md:87` mentions only spec2 and is stale on this point.
 
 **The dispatch brief template** (used by repo-root `brief.md` and `design/spec3/CODEX_ORCHESTRATION_PROMPT.md`):
-> "Read `design/spec2/00_MASTER_TASTE.md` fully, [then `design/spec3/_context/06_PLANNING_CONSTITUTION.md`,] then implement `<SPEC-XX §N>` from `<spec file>` exactly. Acceptance = the spec's named check script green. Touch only files your spec names unless the spec is missing a required file; then stop and name the missing file/spec fix. `git add -N` every new file immediately. Never edit `test/*.expected.json`. No silent runtime deps: build-time/tooling deps are allowed when documented; runtime deps require lead sign-off with license, bundle/perf, determinism/save, and maintenance notes."
+> "Read the task's relevant spec and implement the behavior and player-facing result it requires. Acceptance = the named check plus screenshot/evidence review. Touch the files needed for a coherent result, including integration files when required. `git add -N` every new file immediately. Never edit `test/*.expected.json`. Runtime and build-time dependencies are allowed when they materially improve quality and have documented license, bundle/perf, determinism/save, and maintenance impact."
 
-If your brief points at spec3, **spec3 is current for that task** — do not re-litigate it against spec2. The taste constitution (spec2/00) still applies on top.
+If your brief points at spec3, **spec3 is current for that task** — do not re-litigate it against spec2. `spec2/00` may inform behavior and release intent, but it does not impose a palette, glow, radius, shell, texture, triangle, or other visual ceiling on top of current work.
 
 ## Key files
 

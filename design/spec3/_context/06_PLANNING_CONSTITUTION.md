@@ -1,16 +1,21 @@
-# SPEC3 PLANNING CONSTITUTION — read this first, every Fable planning thread inherits it
+# SPEC3 PLANNING REFERENCE — read this first for every planning thread
 
-**What SPEC3 is.** The ambitious expansion layer for SpaceFace. SPEC2 (`design/spec2/`) is a
-taste-locked *experience overhaul on the proven engine*: make the existing game feel, read, and teach
-well. SPEC3 goes further — it takes the same proven engine and design taste and plans the game up to a
+**What SPEC3 is.** The ambitious expansion layer for SpaceFace. SPEC2 (`design/spec2/`) provides
+historical polish references and a release bar: make the existing game feel, read, and teach well.
+SPEC3 goes further — it takes the same proven engine and plans the game up to a
 **professional, genre-leading bar**: bigger, more alive, more strategic, more beautiful. Where SPEC2
 asks "make what exists land," SPEC3 asks "what should this game *become*, and exactly how do we build it."
 
 **Design authority stack (in priority order):**
 1. `ARCHITECTURE.md` — the technical contract. Nothing SPEC3 proposes may violate it silently.
 2. `design/GDD_2_0.md` — the design authority. SPEC3 *extends* it; it never contradicts its pillars.
-3. This constitution — format, taste, and guardrails for all SPEC3 planning threads.
-4. The `_context/` briefs (01–05) — the recon that lets you plan without re-scanning the codebase.
+3. Root `AGENTS.md` — current implementation and evidence policy.
+4. This reference — planning format and behavioral guardrails, not visual tokens or technique ceilings.
+5. The `_context/` briefs (01–05) — the recon that lets you plan without re-scanning the codebase.
+
+Historical taste documents may inform intent, but current player-facing evidence and professional
+quality decide palette, glow, radius, shell, texture, geometry, and rendering technique. Visual work
+still requires the named checks and screenshot review.
 
 ---
 
@@ -53,15 +58,16 @@ Concretely, aim the game at these north stars:
 
 ## 3. What every planning thread must do (token discipline)
 
-- **Read only your assigned `_context/` brief(s)** (named in your dispatch) + this constitution +
-  `design/GDD_2_0.md`. Do NOT re-scan the codebase — the Opus recon already did it. If you need a file
-  detail the brief didn't capture, cite what you'd verify and where, but keep planning; don't burn tokens
-  spelunking. You are the project manager and taste-master, not the code archaeologist.
+- **Start with your assigned `_context/` brief(s)** (named in your dispatch) + this constitution +
+  `design/GDD_2_0.md`, then inspect the relevant live code, assets, and runtime path before deciding.
+  The brief is not a substitute for repo evidence. Planning must leave the implementer enough context to
+  make a good result, and implementers may widen the file set when integration requires it.
 - **Advise the builder how to search/generate** when a later implementer will need code they must find,
   an asset they must author, or a library they must fetch — give the exact grep/glob, the exact Blender
   step, the exact image-gen prompt, or the exact `npm i -D` line. You decide *what* to make and *how*.
-- **Own your slice's taste.** You are the decision-maker for your domain. Make the call, justify it in
-  one line, and move on. When interpolating between options, choose the one that serves the pillars.
+- **Own your slice's quality.** You are responsible for making a clear decision for your domain, but no
+  inherited palette, restraint level, typography, material, or interaction style is mandatory. Make the
+  call, justify it, and show the player-facing result.
 
 ## 4. Required spec format (every SPEC3-XX file)
 
@@ -132,10 +138,10 @@ Threads are independent (distinct files, no write conflicts). Each thread writes
 anti-pattern catalogue, and the "how it all coheres" statement. The lead session writes `INDEX.md` +
 `00_ROADMAP.md` from the completed set.
 
-## 6. Cross-cutting taste rules (the quiet-luxury bar)
+## 6. Cross-cutting player-facing quality rules
 
-- **When interpolating, choose the quieter option.** Restraint reads as premium. Glow means state
-  change, not decoration. Nothing pulses at rest.
+- **When interpolating, choose the option that best serves the player-facing result.** Restraint,
+  spectacle, glow, motion, and stillness are all valid when they communicate something and are tested.
 - **Every system must answer "what does the player DO, second to second?"** before "what does the sim
   compute." Depth that never surfaces as a decision or a feel is not depth — it's cost.
 - **No spreadsheet without a story.** The economy/production/territory systems must always have a
@@ -147,4 +153,4 @@ anti-pattern catalogue, and the "how it all coheres" statement. The lead session
 - **Coherence over quantity.** 33 specs must feel like one game, not 33 features bolted on. Reference
   sibling specs by number when your feature depends on or feeds another (`see SPEC3-17`).
 
-*Written by the lead SPEC3 session, 2026-07-04. Inherits `design/GDD_2_0.md` and `design/spec2/00_MASTER_TASTE.md`.*
+*Written by the lead SPEC3 session, 2026-07-04. Governed by `design/GDD_2_0.md` and current root policy; `design/spec2/00_MASTER_TASTE.md` is historical context.*

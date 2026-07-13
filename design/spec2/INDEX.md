@@ -1,8 +1,8 @@
 # SPEC2 INDEX — dispatch map for implementing agents
 
-**What this is:** the taste-locked implementation spec suite for taking SpaceFace to a premium
+**What this is:** the polish and release-bar implementation suite for taking SpaceFace to a premium
 PC/browser release bar. Written 2026-07-04 by the lead-design session. Every file is self-contained for one agent
-lane; `00_MASTER_TASTE.md` is the constitution they all inherit.
+lane; `00_MASTER_TASTE.md` is historical context, not a visual constitution that every task must inherit.
 
 **Current status:** before dispatching, read `design/CURRENT_BUILD_STATUS.md`. As of 2026-07-04,
 SPEC2/01, /06, and /07 are built on targeted checks. SPEC2/02, /03, and /05 have passing targeted
@@ -27,17 +27,18 @@ phases). Wave 3 waits for 02 (encounters use cruise; UI uses juice events). BEFO
 
 ## How to dispatch (proven invocations, from .tmp/multi-loop history)
 ```
-codex exec -c approval_policy=never "Read design/spec2/00_MASTER_TASTE.md fully, then implement
-design/spec2/01_MASSLINE_FEEL.md exactly. The acceptance assertions section is your definition of
-done — write the named check script and make it pass. Touch only the files the spec names. Print a
+codex exec -c approval_policy=never "Read the relevant spec and implement its behavior and player-facing
+result. Acceptance is the named check plus screenshot/evidence review. Touch the files needed for a
+coherent result, including integration files. Never edit test/*.expected.json. Print a
 10-line summary." > out.md 2>&1
 ```
 Same pattern per spec. `agy -p "..." --dangerously-skip-permissions` works for the UI spec;
 `grok --prompt-file brief.md --always-approve --check` for contained new modules.
 
 ## Non-negotiables for every dispatch (paste into every brief)
-- Read 00_MASTER_TASTE first. Where interpolating, choose the QUIETER option.
-- Deviating from any number requires editing the spec in the same change with a one-line reason.
+- Use 00_MASTER_TASTE only for historical context. Do not inherit a default palette, panel, glow, radius, or surface treatment; choose from current player-facing evidence.
+- Explain deliberate changes to behavioral acceptance values in the same change. Historical visual
+  values are references, not mandatory palette, glow, radius, shell, texture, or triangle ceilings.
 - Acceptance assertions are the definition of done; transcripts are not evidence — checks are.
 - Never edit test/*.expected.json to make something pass. Never add dependencies silently: build-time
   tools need documentation, and runtime deps require lead sign-off with license, bundle/perf,
