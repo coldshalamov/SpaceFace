@@ -116,11 +116,8 @@ export const livingPoiBehaviors = {
     this.helpers = ctx.helpers || (ctx.helpers = {});
     this._unsubs = [];
     ensureState(this.state);
-    this._listen('sector:enter', (payload) => {
-      if (payload && (payload.continuous || payload.noTeleport)) return;
-      const sectorId = payload && payload.sectorId || this.state.world && this.state.world.currentSectorId;
-      if (sectorId) this.planSector(sectorId);
-    });
+    this._listen('sector:enter', (payload) => this._activateSector(payload || {}));
+    this._listen('sector:exit', (payload) => this._departSector(payload || {}));
     this._listen('world:zoneEntered', (payload) => this._onZoneEntered(payload || {}));
     this._listen('poi:interact', (payload) => this._interact(payload && payload.zoneId, payload && payload.verb, payload || {}));
     this._listen('dock:docked', (payload) => this._interactFamily('lawful_station_yard', 'dock', payload || {}));
@@ -149,6 +146,30 @@ export const livingPoiBehaviors = {
 
   // Event-driven by design: no timers can silently turn ambience into combat.
   update() {},
+
+  _activateSector(payload = {}) {
+    const sectorId = payload.sectorId || this.state.world && this.state.world.currentSectorId;
+    if (!sectorId) return [];
+    const own = ensureState(this.state);
+    const dayIndex = Math.floor((this.state.simTime || 0) / DAY_SECONDS);
+    const sameActivation = own.activeSectorId === sectorId
+      && own.plannedDayIndex === dayIndex
+      && hasActivePlan(own.activeByZone);
+    // Continuous membership handoffs may repeat their destination receipt. Preserve the exact live
+    // plan (including progress/status) when identity+day already match, but rebuild after Continue
+    // because deserialize intentionally restores durable consequences without stale live rows.
+    if (sameActivation) return [];
+    return this.planSector(sectorId, { dayIndex, sector: payload.sector || sectorOf(this.state, sectorId) });
+  },
+
+  _departSector(payload = {}) {
+    const own = ensureState(this.state);
+    if (payload.sectorId && own.activeSectorId && payload.sectorId !== own.activeSectorId) return false;
+    // Departure clears presence only. Aftermath, receipts, entered identities, and the plan remain
+    // available until the destination identity activates; no consequence is rolled back here.
+    own.currentZoneId = null;
+    return true;
+  },
 
   planSector(sectorId, options = {}) {
     const own = ensureState(this.state);
@@ -543,6 +564,12 @@ function ensureState(state) {
   if (!Array.isArray(own.receipts)) own.receipts = [];
   if (!own.entered || typeof own.entered !== 'object' || Array.isArray(own.entered)) own.entered = {};
   return own;
+}
+
+function hasActivePlan(activeByZone) {
+  if (!activeByZone || typeof activeByZone !== 'object') return false;
+  for (const zoneId in activeByZone) if (activeByZone[zoneId]) return true;
+  return false;
 }
 
 function stableBehaviorId(sectorId, familyId, zoneId) {

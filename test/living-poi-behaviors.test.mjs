@@ -12,6 +12,7 @@ import {
   planPoiBehaviors,
   poiBehaviorFingerprint,
 } from '../src/systems/livingPoiBehaviors.js';
+import { SECTORS } from '../src/data/sectors.js';
 
 const SYNTHETIC_ZONES = Object.freeze([
   { id: 'yard-a', name: 'Licensed Yard', type: 'civilian_core', factionId: 'faction_scn', center: { x: 0, z: 0 }, radius: 400, threat: 0 },
@@ -90,6 +91,136 @@ test('catalog exposes exactly six distinct, solvable behavior grammars', () => {
     verbs.add(family.contract.verb);
     aftermath.add(family.aftermath.kind);
   }
+  assert.deepEqual([...verbs].sort(), ['clear', 'dock', 'escort', 'mine', 'salvage', 'triangulate'],
+    'the six families expose six physical player verbs');
+});
+
+function makeRouteSystem(seed = 137) {
+  const state = makeState(seed);
+  state.world.sectors = Object.fromEntries(SECTORS.map((sector) => [sector.id, sector]));
+  state.world.currentSectorId = 'sector_ceres_belt';
+  const bus = createBus();
+  const emitted = [];
+  const rawEmit = bus.emit;
+  bus.emit = (event, payload) => { emitted.push({ event, payload }); return rawEmit(event, payload); };
+  const system = Object.create(livingPoiBehaviors);
+  system.init({ state, bus, helpers: { voice: { say: () => true } } });
+  system.newGame();
+  return { state, bus, emitted, system };
+}
+
+function planSnapshot(state) {
+  return Object.values(state.livingPoiBehaviors.activeByZone).map((row) => ({
+    behaviorId: row.behaviorId,
+    familyId: row.familyId,
+    zoneId: row.zoneId,
+    fingerprint: row.fingerprint,
+    status: row.status,
+    progress: row.progress,
+  }));
+}
+
+test('continuous destination identity activates a nonempty deterministic physical plan', () => {
+  const first = makeRouteSystem(137);
+  const second = makeRouteSystem(137);
+  const sector = first.state.world.sectors.sector_ceres_belt;
+  for (const harness of [first, second]) {
+    harness.state.world.currentSectorId = sector.id;
+    harness.bus.emit('sector:enter', {
+      sectorId: sector.id,
+      sector,
+      continuous: true,
+      noTeleport: true,
+    });
+    assert.equal(harness.state.livingPoiBehaviors.activeSectorId, sector.id);
+    assert.ok(Object.keys(harness.state.livingPoiBehaviors.activeByZone).length > 0,
+      'continuous destination must activate its authored living-place plan');
+    assert.equal(harness.emitted.some((row) => row.event === 'spawn:request' || row.event === 'combat:fire'), false);
+  }
+  assert.deepEqual(planSnapshot(first.state), planSnapshot(second.state),
+    'same seed/sector/day produces stable IDs and fingerprints through continuous handoff');
+});
+
+test('duplicate same-sector same-day handoff keeps the live plan and emits nothing twice', () => {
+  const { state, bus, emitted } = makeRouteSystem(211);
+  const sector = state.world.sectors.sector_ceres_belt;
+  const payload = { sectorId: sector.id, sector, continuous: true, noTeleport: true };
+  bus.emit('sector:enter', payload);
+  const own = state.livingPoiBehaviors;
+  const planIdentity = own.activeByZone;
+  const row = Object.values(own.activeByZone)[0];
+  bus.emit('world:zoneEntered', { zoneId: row.zoneId });
+  row.progress = 1;
+  const before = planSnapshot(state);
+  const beforePlannedEvents = emitted.filter((entry) => entry.event === 'poi:behaviorPlanned').length;
+  const beforeEntered = structuredClone(own.entered);
+
+  bus.emit('sector:enter', payload);
+  assert.equal(own.activeByZone, planIdentity, 'duplicate handoff preserves the same live plan object');
+  assert.deepEqual(planSnapshot(state), before, 'duplicate handoff does not reset progress/status/fingerprint');
+  assert.deepEqual(own.entered, beforeEntered);
+  assert.equal(emitted.filter((entry) => entry.event === 'poi:behaviorPlanned').length, beforePlannedEvents,
+    'duplicate handoff does not re-emit plan receipts');
+});
+
+test('away/return and Continue rebuild preserve same-day aftermath, receipts, entered, IDs, and fingerprints', () => {
+  const original = makeRouteSystem(307);
+  const { state, bus, system, emitted } = original;
+  const ceres = state.world.sectors.sector_ceres_belt;
+  const io = state.world.sectors.sector_io_reach;
+  bus.emit('sector:enter', { sectorId: ceres.id, sector: ceres, continuous: true, noTeleport: true });
+  const row = Object.values(state.livingPoiBehaviors.activeByZone)[0];
+  bus.emit('world:zoneEntered', { zoneId: row.zoneId });
+  const family = POI_BEHAVIOR_FAMILIES[row.familyId];
+  for (let index = 0; index < family.contract.required; index++) {
+    system._interact(row.zoneId, family.contract.verb, {
+      commodityId: 'cmdty_ore_iron',
+      pos: { x: index * 220, z: index * 40 },
+    });
+  }
+  const stable = {
+    behaviorId: row.behaviorId,
+    fingerprint: row.fingerprint,
+    aftermath: structuredClone(state.livingPoiBehaviors.aftermath[row.behaviorId]),
+    receipts: structuredClone(state.livingPoiBehaviors.receipts),
+    entered: structuredClone(state.livingPoiBehaviors.entered),
+  };
+
+  bus.emit('sector:exit', { sectorId: ceres.id, continuous: true, noTeleport: true });
+  assert.equal(state.livingPoiBehaviors.currentZoneId, null, 'departing clears only current zone identity');
+  assert.deepEqual(state.livingPoiBehaviors.aftermath[row.behaviorId], stable.aftermath);
+  assert.deepEqual(state.livingPoiBehaviors.receipts, stable.receipts);
+  assert.deepEqual(state.livingPoiBehaviors.entered, stable.entered);
+
+  state.world.currentSectorId = io.id;
+  bus.emit('sector:enter', { sectorId: io.id, sector: io, continuous: true, noTeleport: true });
+  assert.ok(Object.keys(state.livingPoiBehaviors.activeByZone).length > 0);
+  state.world.currentSectorId = ceres.id;
+  bus.emit('sector:enter', { sectorId: ceres.id, sector: ceres, continuous: true, noTeleport: true });
+  const returned = Object.values(state.livingPoiBehaviors.activeByZone)
+    .find((candidate) => candidate.behaviorId === stable.behaviorId);
+  assert.ok(returned, 'same-day return restores the stable physical behavior identity');
+  assert.equal(returned.fingerprint, stable.fingerprint);
+  assert.equal(returned.status, 'aftermath');
+  assert.deepEqual(state.livingPoiBehaviors.receipts, stable.receipts);
+  assert.deepEqual(state.livingPoiBehaviors.entered, stable.entered);
+
+  const saved = system.serialize();
+  const continued = makeRouteSystem(307);
+  continued.state.world.currentSectorId = ceres.id;
+  continued.system.deserialize(saved);
+  assert.deepEqual(continued.state.livingPoiBehaviors.activeByZone, {}, 'Continue restores consequences, not a stale live plan');
+  continued.bus.emit('sector:enter', {
+    sectorId: ceres.id, sector: ceres, continuous: true, noTeleport: true,
+  });
+  const rebuilt = Object.values(continued.state.livingPoiBehaviors.activeByZone)
+    .find((candidate) => candidate.behaviorId === stable.behaviorId);
+  assert.ok(rebuilt, 'empty post-Continue live plan is rebuilt on destination activation');
+  assert.equal(rebuilt.fingerprint, stable.fingerprint);
+  assert.equal(rebuilt.status, 'aftermath');
+  assert.deepEqual(continued.state.livingPoiBehaviors.receipts, stable.receipts);
+  assert.deepEqual(continued.state.livingPoiBehaviors.entered, stable.entered);
+  assert.equal(emitted.some((entry) => entry.event === 'spawn:request' || entry.event === 'combat:fire'), false);
 });
 
 test('20 seeds per family are deterministic, varied, bounded, and overlap-free', () => {

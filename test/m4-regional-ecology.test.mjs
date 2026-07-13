@@ -263,7 +263,8 @@ test('registry and save pipeline wire ecology before sector materialization', ()
   assert.ok(registrySource.indexOf('world, regionalEcology, encounterDirector') >= 0);
   assert.match(saveSource, /data\.regionalEcology = this\._callSerialize\('regionalEcology'\)/);
   const restoreEcology = saveSource.indexOf("this._callDeserialize('regionalEcology'");
-  const enterSector = saveSource.indexOf('worldSys.enterSector(sectorId)');
+  const enterSectorCall = /worldSys\.enterSector\(sectorId\s*,\s*(?:options|\{[\s\S]*?\})\s*\)/.exec(saveSource);
+  const enterSector = enterSectorCall ? enterSectorCall.index : -1;
   assert.ok(restoreEcology >= 0 && enterSector > restoreEcology);
   assert.match(mainSource, /\['world', 'regionalEcology', 'factions'/);
 });
