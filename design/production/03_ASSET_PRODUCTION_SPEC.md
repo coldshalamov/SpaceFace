@@ -1,7 +1,8 @@
 # 03 — Professional Asset Production Specification
 
 **Status:** DRAFT proposed acceptance amendment; `design/spec3/SPEC3-F9-asset-pipeline.md` remains
-the active asset authority until AUTH-001 reconciles and activates these additions
+the active asset authority until AUTH-001 reconciles and activates these additions. This draft must
+not create new visual style, generation, texture, or triangle ceilings before activation.
 **3D pipeline:** Blender source → observed validation → GLB → release optimization → runtime → play evidence
 
 ## 0. Authority and amendment boundary
