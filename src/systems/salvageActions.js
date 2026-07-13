@@ -27,6 +27,34 @@ function distance(a, b) {
   return Math.hypot((a.x || 0) - (b.x || 0), (a.z || 0) - (b.z || 0));
 }
 
+function applyAuthoredWreckConfiguration(entity, options, simTime) {
+  if (!isWreck(entity)) return null;
+  const data = entity.data || (entity.data = {});
+  const salvagePool = options && options.salvagePool;
+  const scanLabel = options && options.scanLabel;
+  const reactorTimerS = options && options.reactorTimerS;
+
+  if (salvagePool && typeof salvagePool === 'object') {
+    data.authoredSalvagePool = { ...salvagePool };
+    data.salvagePool = salvagePoolForWreck(entity, data.authoredSalvagePool);
+  }
+  if (typeof scanLabel === 'string' && scanLabel.trim()) {
+    data.authoredScanLabel = scanLabel;
+    data.scanLabel = scanLabel;
+  }
+  if (Number.isFinite(reactorTimerS) && reactorTimerS > 0) {
+    data.authoredReactorTimerS = reactorTimerS;
+    const existing = data.unstableReactor && typeof data.unstableReactor === 'object'
+      ? data.unstableReactor
+      : {};
+    data.unstableReactor = {
+      ...existing,
+      dueAt: simTime + reactorTimerS,
+    };
+  }
+  return data;
+}
+
 export const salvageActions = {
   name: 'salvageActions',
 
@@ -44,14 +72,28 @@ export const salvageActions = {
     }
   },
 
+  configureAuthoredWreck(entity, options = {}) {
+    const now = (this._state && this._state.simTime) || 0;
+    const data = applyAuthoredWreckConfiguration(entity, options, now);
+    if (!data) return null;
+    this._annotate(entity);
+    return data;
+  },
+
   _annotate(entity) {
     if (!isWreck(entity)) return null;
     const data = entity.data || (entity.data = {});
     const action = actionForWreck(entity);
     data.salvageAction = actionReadoutForWreck(entity);
-    data.salvagePool = salvagePoolForWreck(entity, poolForAction(action));
+    if (data.authoredSalvagePool) {
+      if (!data.salvagePool || typeof data.salvagePool !== 'object') {
+        data.salvagePool = salvagePoolForWreck(entity, data.authoredSalvagePool);
+      }
+    } else {
+      data.salvagePool = salvagePoolForWreck(entity, poolForAction(action));
+    }
     data.scanGlyph = action.glyph;
-    data.scanLabel = action.label;
+    data.scanLabel = data.authoredScanLabel || action.label;
     if (action.unstable) this._armReactor(entity, action);
     return data.salvageAction;
   },
@@ -62,8 +104,11 @@ export const salvageActions = {
     const existing = data.unstableReactor && typeof data.unstableReactor === 'object'
       ? data.unstableReactor
       : {};
+    const timerS = Number.isFinite(data.authoredReactorTimerS) && data.authoredReactorTimerS > 0
+      ? data.authoredReactorTimerS
+      : (action.timerS || 8);
     data.unstableReactor = {
-      dueAt: existing.dueAt != null ? existing.dueAt : now + (action.timerS || 8),
+      dueAt: existing.dueAt != null ? existing.dueAt : now + timerS,
       damage: action.burstDamage || 18,
       vented: !!existing.vented,
       burst: !!existing.burst,

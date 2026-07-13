@@ -29,6 +29,7 @@ import { countermeasures } from '../systems/countermeasures.js';
 import { combat } from '../systems/combat.js';
 import { combatOutcome } from '../systems/combatOutcome.js';
 import { aftermathWrecks } from '../systems/aftermathWrecks.js';
+import { uniqueWrecks } from '../systems/uniqueWrecks.js';
 import { wingMorale } from '../systems/wingMorale.js';
 import { tetherGameplay } from '../systems/tetherGameplay.js';
 import { masslineTelemetry } from '../systems/masslineTelemetry.js';
@@ -130,7 +131,7 @@ export function createRegistry(ctx) {
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, voiceArbiter, input, autoTargetAssist, flybyFocus, bulletTime, cloak, scanner, scanReveal, buildIdentity, lawSecurity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, physics, aiPorts, tumbleStates, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, economy,
+    core, voiceArbiter, input, autoTargetAssist, flybyFocus, bulletTime, cloak, scanner, scanReveal, buildIdentity, lawSecurity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, physics, aiPorts, tumbleStates, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, combatOutcome, aftermathWrecks, uniqueWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, economy,
     automation, wingmen, intervention, lossLedger, spawnBudget, world, regionalEcology, encounterDirector, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, stationContacts, stationContactLoadBoundary, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, careerOrigins, careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts, postEndingReplay, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, masslineHud, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.

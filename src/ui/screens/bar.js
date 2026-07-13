@@ -11,6 +11,7 @@ import { COMMODITIES }  from '../../data/commodities.js';
 import { missionPreflight } from '../missionPreflight.js';
 import { missionConsequenceSummary } from '../missionPreflight.js';
 import { mountContactPortrait } from '../portraitArt.js';
+import { uniqueWreckBarRumor } from '../uniqueWreckRumorSurface.js';
 import {
   stationContactMemoryFor,
   stationContactMemoryLine,
@@ -622,6 +623,10 @@ function buildReply(role, choiceId, ctx, stationId, contact = null) {
   if (canonical) return canonical;
 
   const state = ctx.state || {};
+  const wreckRumor = role === 'barkeep'
+    ? uniqueWreckBarRumor(state, stationId, choiceId)
+    : null;
+  if (wreckRumor) return { text: wreckRumor.text, uniqueWreckRumor: wreckRumor };
 
   switch (role) {
     /* ── BARKEEP ───────────────────────────────────────── */
@@ -1042,6 +1047,9 @@ export function createBarPanel(ctx) {
     // Find the contact and build a real reply
 
     const result = buildReply(contact.role, choiceId, ctx, currentStationId, contact);
+    if (result.uniqueWreckRumor) {
+      ctx.bus.emit('uniqueWreck:rumorHeard', result.uniqueWreckRumor);
+    }
 
     // The contact system consumes synchronously, so reflect continuity immediately rather than
     // making the player leave/re-enter the Bar to see that this conversation happened.

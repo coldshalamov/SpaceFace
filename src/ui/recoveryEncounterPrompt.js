@@ -77,6 +77,13 @@ export function createRecoveryEncounterPrompt(ctx) {
 
   function renderActions(readout) {
     el.actions.replaceChildren();
+    if (readout.mode === 'unique-wreck') {
+      for (const [index, choice] of (readout.choices || []).entries()) {
+        el.actions.appendChild(actionButton(choice.id, index === 0 ? 'A' : 'B', choice.label, false, choice.consequence));
+      }
+      el.actions.hidden = !(readout.choices || []).length;
+      return;
+    }
     if (readout.phase === 'hazard') {
       el.actions.appendChild(actionButton('vent', 'A', 'VENT CORE', false, 'Vent the reactor before its timer closes.'));
       el.actions.hidden = false;
@@ -134,6 +141,22 @@ export function createRecoveryEncounterPrompt(ctx) {
     return true;
   }
 
+  function renderUniqueWreck(readout) {
+    if (!canSurface() || !readout || !readout.wreckId || !Array.isArray(readout.choices)) return false;
+    active = { ...readout, mode: 'unique-wreck', hideAt: Infinity };
+    root.className = 'sf-recovery--unique';
+    text(el.flag, 'NAMED WRECK CLAIM');
+    text(el.status, 'RECOVERED · CHOOSE');
+    text(el.headline, readout.headline || 'UNIQUE RECOVERY');
+    text(el.meta, 'ONE SETTLEMENT · SAVES IMMEDIATELY · NO DUPLICATE CLAIM');
+    text(el.detail, readout.prompt || 'Choose who receives the recovered systems.');
+    el.meter.hidden = true;
+    renderActions(active);
+    root.setAttribute('aria-label', `Named wreck claim. ${el.headline.textContent}. ${el.detail.textContent}`);
+    root.hidden = false;
+    return true;
+  }
+
   function showReceipt(receipt) {
     if (!canSurface() || !receipt) return false;
     active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
@@ -150,8 +173,31 @@ export function createRecoveryEncounterPrompt(ctx) {
     return true;
   }
 
+  function showUniqueReceipt(payload) {
+    const receipt = payload && payload.receipt;
+    if (!canSurface() || !receipt) return false;
+    active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
+    root.className = Number(receipt.repDelta) < 0 ? 'sf-recovery--failed' : 'sf-recovery--receipt';
+    text(el.flag, 'NAMED RECOVERY RECEIPT');
+    text(el.status, 'SAVED');
+    text(el.headline, receipt.title || 'RECOVERY CLOSED');
+    text(el.meta, `${String(receipt.outcome || 'resolved').replace(/_/g, ' ').toUpperCase()} · EXACT-ONCE CLAIM`);
+    text(el.detail, receipt.detail || 'Outcome recorded. No duplicate settlement.');
+    el.meter.hidden = true;
+    el.actions.hidden = true;
+    root.setAttribute('aria-label', `${el.headline.textContent}. ${el.detail.textContent}. Outcome saved.`);
+    root.hidden = false;
+    return true;
+  }
+
   function choose(choice, source) {
-    if (!active || active.mode !== 'encounter') return false;
+    if (!active) return false;
+    if (active.mode === 'unique-wreck') {
+      if (!(active.choices || []).some((entry) => entry.id === choice)) return false;
+      bus.emit('uniqueWreck:choose', { wreckId: active.wreckId, choiceId: choice, source });
+      return true;
+    }
+    if (active.mode !== 'encounter') return false;
     if (choice === 'vent') bus.emit('recovery:vent', { recoveryId: active.recoveryId, source });
     else bus.emit('recovery:choose', { recoveryId: active.recoveryId, choice, source });
     return true;
@@ -172,6 +218,11 @@ export function createRecoveryEncounterPrompt(ctx) {
     }
     const actions = ctx.gamepad && ctx.gamepad.actions || {};
     if (active.phase === 'hazard' && actions.accept && actions.accept.pressed) choose('vent', 'gamepad');
+    else if (active.mode === 'unique-wreck') {
+      const choices = active.choices || [];
+      if (actions.accept && actions.accept.pressed && choices[0]) choose(choices[0].id, 'gamepad');
+      else if (actions.cancel && actions.cancel.pressed && choices[1]) choose(choices[1].id, 'gamepad');
+    }
     else if (active.phase === 'decision') {
       if (actions.accept && actions.accept.pressed && active.hasSurvivor) choose('rescue', 'gamepad');
       else if (actions.cancel && actions.cancel.pressed) choose('blackbox', 'gamepad');
@@ -190,11 +241,15 @@ export function createRecoveryEncounterPrompt(ctx) {
     bus.on(event, render);
   }
   bus.on('recovery:completed', showReceipt);
+  bus.on('uniqueWreck:decisionReady', renderUniqueWreck);
+  bus.on('uniqueWreck:resolved', showUniqueReceipt);
   bus.on('pirateParley:demand', hide);
+  bus.on('pirateParley:resolved', () => bus.emit('uniqueWreck:decisionRequest', { source: 'pirate-parley-cleared' }));
   bus.on('law:distressRaised', hide);
+  bus.on('law:incidentResolved', () => bus.emit('uniqueWreck:decisionRequest', { source: 'law-alert-cleared' }));
   bus.on('game:new', hide);
   bus.on('game:load', hide);
-  return { el: root, tick, hide, destroy, render, showReceipt, choose };
+  return { el: root, tick, hide, destroy, render, renderUniqueWreck, showReceipt, showUniqueReceipt, choose };
 }
 
 function injectStyle() {
@@ -223,6 +278,8 @@ function injectStyle() {
   #sf-recovery-encounter.sf-recovery--hazard .sf-recovery__head { color:#ffb35c; }
   #sf-recovery-encounter.sf-recovery--receipt { border-color:rgba(98,224,138,.5); border-left-color:#62e08a; }
   #sf-recovery-encounter.sf-recovery--receipt .sf-recovery__head { color:#62e08a; }
+  #sf-recovery-encounter.sf-recovery--unique { border-color:rgba(255,179,92,.58); border-left-color:#ffb35c; }
+  #sf-recovery-encounter.sf-recovery--unique .sf-recovery__head { color:#ffb35c; }
   #sf-recovery-encounter.sf-recovery--failed { border-color:rgba(255,92,92,.52); border-left-color:#ff5c5c; }
   #sf-recovery-encounter.sf-recovery--failed .sf-recovery__head { color:#ff5c5c; }
   @media (max-width:900px),(max-height:620px) {

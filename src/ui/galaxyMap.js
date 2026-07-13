@@ -21,10 +21,12 @@
 
 import { SECTORS } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
+import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
+import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
 
 // ---------------------------------------------------------------------------------------------
 // Static catalogs (pure — safe at import time).
@@ -142,6 +144,7 @@ export function mapLabelPriority(candidate) {
   if (candidate.kind === 'gate') return 760;
   if (candidate.kind === 'station') return 720;
   if (candidate.kind === 'hazard') return 600;
+  if (candidate.kind === 'bearing') return 560;
   if (candidate.kind === 'zone') return 480;
   if (candidate.kind === 'poi') return 420;
   if (candidate.hostile === true) return 340;
@@ -155,7 +158,7 @@ function mapLabelEligible(candidate) {
   if (!candidate || candidate.showLabel === false || !String(candidate.text || '').trim()) return false;
   if (candidate.objective || candidate.selected) return true;
   if (candidate.kind === 'gate' || candidate.kind === 'station' || candidate.kind === 'hazard'
-    || candidate.kind === 'zone' || candidate.kind === 'poi') return true;
+    || candidate.kind === 'bearing' || candidate.kind === 'zone' || candidate.kind === 'poi') return true;
   if (candidate.kind === 'asteroid') return false;
   if (candidate.kind === 'ship') return candidate.hostile === true || candidate.named === true;
   return candidate.named === true;
@@ -296,6 +299,7 @@ export function mapTargetPriority(target) {
   if (!target) return -1;
   if (target.objective === true || target.kind === 'waypoint' || target.markerKind === 'mission-objective') return 100;
   if (target.missionId) return 90;
+  if (target.kind === 'bearing') return 60;
   return 10;
 }
 
@@ -736,6 +740,7 @@ export function buildGalaxyModel(state) {
     const pos = s.position || { x: 0, y: 0 };
     const charted = isSectorCharted(state, s);
     const confidence = mapConfidenceForSector(state, s);
+    const bearingCount = uniqueWreckMapReadouts(state, s.id).length;
     const node = {
       id: s.id,
       name: s.name || s.id,
@@ -748,6 +753,7 @@ export function buildGalaxyModel(state) {
       current: s.id === curId,
       tier: Number(s.tier) || 0,
       security: Number.isFinite(s.security) ? s.security : null,
+      bearingCount,
       neighbors: Array.isArray(s.neighbors) ? s.neighbors.slice() : [],
     };
     nodes.push(node);
@@ -792,6 +798,13 @@ export function buildSystemModel(state, sectorId) {
   const record = sectorRecordById(state, sid);
   const sectorName = (record && record.name) || sid || 'System';
   const confidence = mapConfidenceForSector(state, record || { id: sid });
+  const bearings = uniqueWreckMapReadouts(state, sid).map((readout) => ({
+    ...readout,
+    drawCenter: globalToSectorLocalForSector(readout.center, sid),
+    drawFixedPos: readout.fixedPos
+      ? globalToSectorLocalForSector(readout.fixedPos, sid)
+      : null,
+  }));
 
   // Zones (labeled, tinted, threat-ranked regions).
   const zones = zonesForSector(sid).map((z) => {
@@ -878,7 +891,7 @@ export function buildSystemModel(state, sectorId) {
     }
   }
 
-  return { level: 'system', sectorId: sid, sectorName, ...confidence, zones, points };
+  return { level: 'system', sectorId: sid, sectorName, ...confidence, zones, points, bearings };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -894,6 +907,7 @@ export function buildSystemModel(state, sectorId) {
  */
 export function buildLocalModel(state, isHostile) {
   const player = playerEntity(state);
+  const sectorId = currentSectorId(state);
   const contacts = [];
   const hostileFn = typeof isHostile === 'function' ? isHostile : null;
   const playerTeam = player && player.team;
@@ -925,9 +939,10 @@ export function buildLocalModel(state, isHostile) {
   }
   return {
     level: 'local',
-    sectorId: currentSectorId(state),
+    sectorId,
     player: player ? { id: player.id, x: player.pos.x, z: player.pos.z, rot: player.rot || 0 } : null,
     contacts,
+    bearings: uniqueWreckMapReadouts(state, sectorId),
   };
 }
 
@@ -1083,6 +1098,7 @@ export function resolveGalaxyMapPrimaryAction(state, target) {
   if (target.kind === 'station') label = 'Set Waypoint';
   else if (target.kind === 'zone') label = 'Align Autopilot';
   else if (target.kind === 'waypoint') label = 'Track Waypoint';
+  else if (target.kind === 'bearing') label = 'Set Bearing';
   return { kind: 'waypoint', label, coursePayload };
 }
 
@@ -2970,6 +2986,27 @@ export const galaxyMapScreen = {
       const x = sx(n.x), y = sy(n.y);
       const r = 13;
 
+      // R1 read knowledge: a rumor marks the sector without disclosing a world-space point.
+      // This rides the existing DISCOVERY layer instead of inventing another map toggle.
+      if (this._layers.discovery && n.bearingCount > 0) {
+        g.save();
+        g.strokeStyle = 'rgba(230,191,106,0.82)';
+        g.fillStyle = 'rgba(230,191,106,0.11)';
+        g.lineWidth = 1.4;
+        g.setLineDash([5, 4]);
+        g.beginPath(); g.arc(x, y, r + 9, 0, Math.PI * 2); g.fill(); g.stroke();
+        g.setLineDash([]);
+        const count = String(n.bearingCount);
+        g.font = 'bold 8px monospace';
+        const countWidth = Math.max(12, g.measureText(count).width + 7);
+        g.fillStyle = 'rgba(4,8,16,0.94)';
+        g.strokeStyle = 'rgba(230,191,106,0.82)';
+        g.beginPath(); g.rect(x + r + 5, y - r - 11, countWidth, 13); g.fill(); g.stroke();
+        g.fillStyle = '#e6bf6a'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(count, x + r + 5 + countWidth / 2, y - r - 4.5);
+        g.restore();
+      }
+
       // Check charted status
       if (!n.charted) {
         if (this._layers.discovery) {
@@ -2977,7 +3014,7 @@ export const galaxyMapScreen = {
           g.fillStyle = 'rgba(30,45,65,0.55)'; g.fill();
           g.strokeStyle = 'rgba(100,120,150,0.3)'; g.lineWidth = 1; g.stroke();
           g.fillStyle = 'rgba(150,170,200,0.4)'; g.font = '10px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
-          g.fillText('???', x, y + r + 3);
+          g.fillText(n.bearingCount > 0 ? 'READ BEARING' : '???', x, y + r + 3);
         }
         continue;
       }
@@ -3101,6 +3138,10 @@ export const galaxyMapScreen = {
     const pts = [];
     for (const z of model.zones) pts.push({ x: z.x, z: z.z, r: z.radius });
     for (const p of model.points) if (Number.isFinite(p.x) && Number.isFinite(p.z)) pts.push({ x: p.x, z: p.z, r: 0 });
+    for (const bearing of model.bearings) {
+      const point = bearing.drawFixedPos || bearing.drawCenter;
+      if (point) pts.push({ x: point.x, z: point.z, r: bearing.drawFixedPos ? 0 : bearing.radius });
+    }
     if (wp && wp.pos && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z)) pts.push({ x: wp.pos.x, z: wp.pos.z, r: 180 });
     if (pts.length) {
       let m = 0;
@@ -3172,6 +3213,47 @@ export const galaxyMapScreen = {
           y,
           anchorRadius: 4,
           color: z.color,
+        }));
+      }
+    }
+
+    // Unique-wreck read layer. Rumors are non-interactive uncertainty regions; only a scan-fixed
+    // point carries the global course target even though this system view paints sector-local XZ.
+    if (this._layers.discovery) {
+      for (const bearing of model.bearings) {
+        const fixed = !!bearing.drawFixedPos;
+        const point = bearing.drawFixedPos || bearing.drawCenter;
+        if (!point) continue;
+        const x = sx(point.x), y = sz(point.z);
+        const radiusPx = fixed ? 0 : bearing.radius * baseScale * cam.zoom;
+        const selected = !!(this._selectedTarget && this._selectedTarget.id === bearing.wreckId);
+        drawUniqueWreckBearingMarker(g, x, y, radiusPx, { fixed, selected, phase: bearing.phase });
+
+        if (fixed && bearing.courseTarget) {
+          this._clickTargets.push({
+            ...bearing.courseTarget,
+            sx: x,
+            sy: y,
+            radiusPx: 18,
+            sectorId: bearing.sectorId,
+            phase: bearing.phase,
+            detail: bearing.phase === 'salvaged' ? 'Read bearing · salvaged wreck' : 'Read bearing · scan-fixed wreck',
+          });
+        }
+
+        const labelX = fixed ? x : x + Math.min(Math.max(12, radiusPx), 64);
+        const phaseLabel = bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING';
+        labelCandidates.push(makeMapLabelCandidate(g, {
+          id: `bearing:${bearing.wreckId}`,
+          kind: 'bearing',
+          text: `${phaseLabel} · ${bearing.name}`,
+          lines: [`${phaseLabel} · ${bearing.name}`],
+          x: labelX,
+          y,
+          anchorRadius: fixed ? 10 : 5,
+          color: '#e6bf6a',
+          selected,
+          named: true,
         }));
       }
     }
@@ -3301,6 +3383,12 @@ export const galaxyMapScreen = {
     let span = 1600;
     let m = 0;
     for (const c of model.contacts) m = Math.max(m, Math.hypot(c.x - px, c.z - pz));
+    for (const bearing of model.bearings) {
+      const point = bearing.fixedPos || bearing.center;
+      if (!point) continue;
+      const uncertainty = bearing.fixedPos ? 0 : bearing.radius;
+      m = Math.max(m, Math.hypot(point.x - px, point.z - pz) + uncertainty);
+    }
     if (wp && wp.pos && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z)) {
       m = Math.max(m, Math.hypot(wp.pos.x - px, wp.pos.z - pz));
     }
@@ -3318,6 +3406,45 @@ export const galaxyMapScreen = {
       g.beginPath(); g.arc(w / 2, h / 2, Math.min(w, h) * 0.42 * rr, 0, Math.PI * 2); g.stroke();
     }
     g.setLineDash([]);
+
+    if (this._layers.discovery) {
+      for (const bearing of model.bearings) {
+        const fixed = !!bearing.fixedPos;
+        const point = bearing.fixedPos || bearing.center;
+        if (!point) continue;
+        const x = sx(point.x), y = sz(point.z);
+        const radiusPx = fixed ? 0 : bearing.radius * baseScale * cam.zoom;
+        const selected = !!(this._selectedTarget && this._selectedTarget.id === bearing.wreckId);
+        drawUniqueWreckBearingMarker(g, x, y, radiusPx, { fixed, selected, phase: bearing.phase });
+
+        if (fixed && bearing.courseTarget) {
+          this._clickTargets.push({
+            ...bearing.courseTarget,
+            sx: x,
+            sy: y,
+            radiusPx: 18,
+            sectorId: bearing.sectorId,
+            phase: bearing.phase,
+            detail: bearing.phase === 'salvaged' ? 'Read bearing · salvaged wreck' : 'Read bearing · scan-fixed wreck',
+          });
+        }
+
+        const labelX = fixed ? x : x + Math.min(Math.max(12, radiusPx), 64);
+        const phaseLabel = bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING';
+        labelCandidates.push(makeMapLabelCandidate(g, {
+          id: `bearing:${bearing.wreckId}`,
+          kind: 'bearing',
+          text: `${phaseLabel} · ${bearing.name}`,
+          lines: [`${phaseLabel} · ${bearing.name}`],
+          x: labelX,
+          y,
+          anchorRadius: fixed ? 10 : 5,
+          color: '#e6bf6a',
+          selected,
+          named: true,
+        }));
+      }
+    }
 
     // Draw active waypoint line
     if (wp && wp.pos && this._layers.route) {
@@ -3434,6 +3561,47 @@ export const galaxyMapScreen = {
     }
   },
 };
+
+function drawUniqueWreckBearingMarker(g, x, y, radiusPx, options = {}) {
+  if (!g || !Number.isFinite(x) || !Number.isFinite(y)) return;
+  const fixed = options.fixed === true;
+  const salvaged = options.phase === 'salvaged';
+  const selected = options.selected === true;
+  const color = salvaged ? 'rgba(230,191,106,0.58)' : '#e6bf6a';
+  g.save();
+  g.strokeStyle = color;
+  g.fillStyle = salvaged ? 'rgba(230,191,106,0.08)' : 'rgba(230,191,106,0.11)';
+
+  if (!fixed) {
+    const rr = Math.max(12, Math.min(Math.abs(Number(radiusPx) || 0), 4096));
+    g.lineWidth = selected ? 2 : 1.4;
+    g.setLineDash([7, 6]);
+    g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.setLineDash([]);
+    // Sparse survey ticks make this read as an uncertainty region, not a normal hazard circle.
+    for (const angle of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+      const ax = Math.cos(angle), ay = Math.sin(angle);
+      g.beginPath();
+      g.moveTo(x + ax * (rr - 4), y + ay * (rr - 4));
+      g.lineTo(x + ax * (rr + 4), y + ay * (rr + 4));
+      g.stroke();
+    }
+  } else {
+    const size = 7;
+    g.lineWidth = selected ? 2.2 : 1.6;
+    g.beginPath();
+    g.moveTo(x, y - size);
+    g.lineTo(x + size, y);
+    g.lineTo(x, y + size);
+    g.lineTo(x - size, y);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.beginPath(); g.arc(x, y, selected ? 15 : 11, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.moveTo(x - 4, y); g.lineTo(x + 4, y); g.moveTo(x, y - 4); g.lineTo(x, y + 4); g.stroke();
+  }
+  g.restore();
+}
 
 // hexToRgba utility
 function hexToRgba(hex, alpha) {
