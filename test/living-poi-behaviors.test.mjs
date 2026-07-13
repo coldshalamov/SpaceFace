@@ -300,7 +300,8 @@ test('each family resolves only through its own physical verb and records distin
   assert.equal(emitted.filter((row) => row.event === 'poi:behaviorOutcome').length, 6);
   assert.ok(emitted.some((row) => row.event === 'economy:applyTradePressure'));
   assert.ok(emitted.some((row) => row.event === 'faction:repDelta'));
-  assert.ok(emitted.some((row) => row.event === 'mission:offered'));
+  assert.equal(emitted.some((row) => row.event === 'mission:offered'), false,
+    'synthetic sectors with no connected graph destination cannot emit malformed board rows');
   assert.ok(emitted.some((row) => row.event === 'poi:cargoObserved'));
   assert.equal(state.livingPoiBehaviors.receipts.length, 6);
 

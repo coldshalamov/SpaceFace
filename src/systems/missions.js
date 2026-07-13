@@ -44,6 +44,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { POI_CAUSAL_BOARD_CAP, validatePoiCausalOffer } from '../missions/poiCausalOffers.js';
 import {
   RECORD_KIND,
   missionIdentityOf,
@@ -235,6 +236,7 @@ export const missions = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this.registry = ctx.registry || null;
     const state = this.state, bus = this.bus;
 
     // Ensure the state tree exists (gameState seeds it, but be defensive for headless tests).
@@ -291,6 +293,9 @@ export const missions = {
     bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
     // recon_scan: a scan target (or sector scan) completed.
     bus.on('scan:completed', (p) => this._onScan(p));
+    // Causal POI follow-ups settle only when scanner physically investigates their exact live
+    // entity. Generic scan pulses remain valid for ordinary recon_scan contracts.
+    bus.on('signal:investigated', (p) => this._onSignalInvestigated(p));
     bus.on('tether:reel', (p) => this._onContract47aB2TetherReel(p));
     // smuggling bust: a patrol scan caught contraband.
     bus.on('player:scannedByPatrol', (p) => this._onScannedByPatrol(p));
@@ -354,7 +359,13 @@ export const missions = {
       }
       return board;
     }
-    board = { refreshEpoch: epoch, slots: this._generateOffers(info, epoch) };
+    // External causal POI leads are durable player-earned rows, not epoch rerolls. Carry their
+    // still-valid identities through an ordinary board refresh while keeping the source bounded.
+    const retainedPoiOffers = (board && Array.isArray(board.slots) ? board.slots : [])
+      .filter((offer) => offer && offer.source === 'poiBehavior'
+        && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch))
+      .slice(0, POI_CAUSAL_BOARD_CAP);
+    board = { refreshEpoch: epoch, slots: [...retainedPoiOffers, ...this._generateOffers(info, epoch)] };
     this._syncEmbodiedStoryOffer(info, board, epoch);
     state.missions.boards[stationId] = board;
     this.bus.emit('mission:updated', { missionId: null });
@@ -451,24 +462,46 @@ export const missions = {
       || rawOffer.source === 'encounterAftermath'
       || rawOffer.source === 'careerContract'
       || rawOffer.source === 'postEndingReplay'
+      || rawOffer.source === 'poiBehavior'
     );
     if (!allowedSource) return false;
+    if (rawOffer.source === 'poiBehavior' && !validatePoiCausalOffer(rawOffer).ok) return false;
     if (!rawOffer.id || !rawOffer.type || !rawOffer.stationId || !rawOffer.params) return false;
     const info = STATION_INFO.get(rawOffer.stationId);
     if (!info || !TYPE_BY_ID.has(rawOffer.type)) return false;
     const epoch = this._epoch();
     if (Number.isFinite(rawOffer.expiresAtEpoch) && rawOffer.expiresAtEpoch <= epoch) return false;
-    if ((this.state.missions.active || []).some((m) => m && m.id === rawOffer.id)) return false;
-    if ((this.state.missions.completedLog || []).some((m) => m && m.id === rawOffer.id)) return false;
+    if ((this.state.missions.active || []).some((m) => m && (
+      m.id === rawOffer.id || m.sourceOfferId === rawOffer.id
+      || (rawOffer.source === 'poiBehavior' && m.cause && rawOffer.cause
+        && m.cause.fingerprint === rawOffer.cause.fingerprint)
+    ))) return false;
+    if (rawOffer.source === 'poiBehavior' && (this.state.missions.receipts || []).some((receipt) => (
+      receipt && (receipt.sourceOfferId === rawOffer.id
+        || receipt.causeFingerprint === rawOffer.cause.fingerprint)
+    ))) return false;
 
     const board = this.ensureBoard(rawOffer.stationId);
     if (!board || !Array.isArray(board.slots)) return false;
     if (board.slots.some((offer) => offer && offer.id === rawOffer.id)) return false;
-    if (board.slots.some((offer) => offer && offer.source === rawOffer.source)) return false;
+    if (rawOffer.source !== 'poiBehavior'
+      && board.slots.some((offer) => offer && offer.source === rawOffer.source)) return false;
+    if (rawOffer.source === 'poiBehavior' && board.slots.some((offer) => (
+      offer && offer.source === 'poiBehavior' && offer.cause && rawOffer.cause
+      && offer.cause.fingerprint === rawOffer.cause.fingerprint
+    ))) return false;
 
     let offer;
     try { offer = JSON.parse(JSON.stringify(rawOffer)); } catch (_) { return false; }
     board.slots.unshift(offer);
+    if (offer.source === 'poiBehavior') {
+      let kept = 0;
+      board.slots = board.slots.filter((candidate) => {
+        if (!candidate || candidate.source !== 'poiBehavior') return true;
+        kept++;
+        return kept <= POI_CAUSAL_BOARD_CAP;
+      });
+    }
     this.bus.emit('mission:updated', { missionId: null, offerId: offer.id, stationId: offer.stationId });
     this.bus.emit('mission:offerBoarded', {
       offerId: offer.id,
@@ -803,6 +836,7 @@ export const missions = {
     }
     const { offer, board } = this._findOffer(missionId);
     if (!offer) return false;
+    if (offer.source === 'poiBehavior' && !validatePoiCausalOffer(offer).ok) return false;
     if (offer.storyDisposition) {
       const choice = offer.storyDisposition;
       // Stage irreversible confirmation (story resolves only on ui:endgameConfirm / confirm:true).
@@ -975,7 +1009,7 @@ export const missions = {
       destStationId: offer.destStationId, destSectorId: offer.destSectorId,
       distance: offer.distance,
       targetEntityIds: [],          // runtime entity ids (NOT serialized — re-spawned on load)
-      needsTargets: !!(def && this._typeSpawnsTargets(offer.type)),
+      needsTargets: !!(def && this._typeSpawnsTargets(offer.type, offer.params)),
       status: 'active',
       storyTag: offer.storyTag || null,
       storyContractId: offer.storyContractId || null,
@@ -1008,8 +1042,9 @@ export const missions = {
     }
   },
 
-  _typeSpawnsTargets(typeId) {
-    return typeId === 'bounty_hunt' || typeId === 'patrol_clear' || typeId === 'escort';
+  _typeSpawnsTargets(typeId, params = null) {
+    return typeId === 'bounty_hunt' || typeId === 'patrol_clear' || typeId === 'escort'
+      || !!(params && params.poiSignalFollowup);
   },
 
   _chainSeed(offer) {
@@ -1058,6 +1093,8 @@ export const missions = {
   },
 
   _restoreNavigationAfterLoad() {
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (sectorId) this.spawnTargetsForSector(sectorId);
     if (this._trackedOrFirstActiveMission()) {
       this._refreshNavigation({ silent: true });
       return;
@@ -1568,6 +1605,9 @@ export const missions = {
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active' || m.type !== 'recon_scan') continue;
+      // POI causal recon is not a pulse counter. Scanner must first classify, then track, then
+      // physically investigate the exact durable mission entity via signal:investigated.
+      if (m.params && m.params.poiSignalFollowup) continue;
       // only count if the player is in the mission's target sector
       if (this.state.world.currentSectorId !== m.destSectorId) continue;
       if (m.params && m.params.originSurveySample) {
@@ -1591,6 +1631,29 @@ export const missions = {
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
+  },
+
+  _onSignalInvestigated(p) {
+    if (!p || p.entityId == null || !p.signalId) return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      const follow = m && m.params && m.params.poiSignalFollowup;
+      if (!m || m.status !== 'active' || !follow) continue;
+      if (this.state.world.currentSectorId !== m.destSectorId) continue;
+      if (follow.destSectorId !== m.destSectorId) continue;
+      if (follow.entityId == null || p.entityId !== follow.entityId) continue;
+      if (!m.targetEntityIds.includes(p.entityId)) continue;
+      if (p.signalId !== `signal:entity:${p.entityId}`) continue;
+      const target = this.state.entities && this.state.entities.get(p.entityId);
+      if (!target || target.alive === false || !target.data
+        || target.data.worldRecordId !== follow.targetRecordId) continue;
+      m.params.investigatedSignalId = p.signalId;
+      m.params.investigatedTargetRecordId = follow.targetRecordId;
+      m.objectiveProgress = m.objectiveTarget;
+      this._completeMission(m, i);
+      return true;
+    }
+    return false;
   },
 
   _identifyContract47aB2(p) {
@@ -1933,6 +1996,10 @@ export const missions = {
     const p = (m && m.params) || {};
     const cargo = this._cmdtyName(p.cmdtyId);
     const dest = this._destName(m);
+    if (m && m.source === 'poiBehavior' && p.poiSignalFollowup) {
+      const cause = m.cause && m.cause.line ? ` The original ${m.cause.line.toLowerCase()}` : '';
+      return `Linked signal confirmed in ${dest}. The registry now connects both sites.${cause}`;
+    }
     switch (m && m.type) {
       case 'cargo_delivery':
         return 'Manifest sealed at ' + dest + '. ' + cargo + ' cleared the dock and the client released payment.';
@@ -2188,16 +2255,43 @@ export const missions = {
   _adoptLiveMissionTargets(m) {
     if (!m || !m.id) return 0;
     const existing = new Set(m.targetEntityIds || []);
+    const follow = m.params && m.params.poiSignalFollowup;
     const list = this.state.entityList || [];
+    if (follow) {
+      const exact = list.filter((e) => e && e.alive && !e.isPlayer && e.data
+        && e.data.worldRecordId === follow.targetRecordId);
+      exact.sort((a, b) => {
+        const an = Number(a.id), bn = Number(b.id);
+        if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn;
+        const as = String(a.id), bs = String(b.id);
+        return as < bs ? -1 : (as > bs ? 1 : 0);
+      });
+      const retained = exact.find((e) => e.id === follow.entityId)
+        || exact.find((e) => existing.has(e.id))
+        || exact[0]
+        || null;
+      m.targetEntityIds = [];
+      if (!retained) {
+        follow.entityId = null;
+        return 0;
+      }
+      for (const e of exact) {
+        if (e !== retained) e.alive = false;
+      }
+      this._stampMissionTargetIdentity(retained, m, 0);
+      this._configurePoiSignalTarget(retained, m);
+      m.targetEntityIds.push(retained.id);
+      return existing.has(retained.id) ? 0 : 1;
+    }
     let adopted = 0;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !e.alive || e.isPlayer) continue;
       const mid = missionIdentityOf(e);
       if (mid == null || String(mid) !== String(m.id)) continue;
-      if (existing.has(e.id)) continue;
       // Re-stamp durable mission identity if rematerialize omitted a field.
       this._stampMissionTargetIdentity(e, m, adopted);
+      if (existing.has(e.id)) continue;
       existing.add(e.id);
       m.targetEntityIds.push(e.id);
       if (e.data && e.data.escortee) {
@@ -2207,6 +2301,23 @@ export const missions = {
       adopted++;
     }
     return adopted;
+  },
+
+  _configurePoiSignalTarget(ent, m) {
+    const follow = m && m.params && m.params.poiSignalFollowup;
+    if (!ent || !follow) return false;
+    ent.team = 2;
+    ent.factionId = null;
+    ent.type = follow.targetType;
+    ent.collides = false;
+    ent.data = ent.data || {};
+    ent.data.poiType = follow.targetType;
+    ent.data.kind = follow.targetType;
+    ent.data.scanLabel = follow.targetLabel;
+    ent.data.durable = true;
+    delete ent.data.ai;
+    follow.entityId = ent.id;
+    return true;
   },
 
   /**
@@ -2250,6 +2361,46 @@ export const missions = {
     const rng = helpers.mulberry32 ? helpers.mulberry32(seed) : mulberryLocal(seed);
     const sector = SECTOR_BY_ID.get(m.destSectorId);
     const [lvLo, lvHi] = sector ? (sector.enemyLevel || [2, 4]) : [2, 4];
+
+    const follow = m.params && m.params.poiSignalFollowup;
+    if (follow) {
+      if (m.targetEntityIds.length > 0) return;
+      const spec = {
+        type: follow.targetType,
+        factionId: null,
+        team: 2,
+        pos: { x: follow.targetPos.x, z: follow.targetPos.z },
+        vel: { x: 0, z: 0 },
+        rot: rng() * Math.PI * 2,
+        radius: follow.targetType === 'anomaly' ? 24 : 18,
+        mass: follow.targetType === 'anomaly' ? 1 : 50,
+        hull: 1,
+        hullMax: 1,
+        collides: false,
+        flags: { noInterp: true, missionPinned: true, durable: true },
+        data: {
+          worldRecordId: follow.targetRecordId,
+          identityKey: `mission:${m.id}:poi-signal`,
+          homeSectorId: m.destSectorId,
+          sectorId: m.destSectorId,
+          durable: true,
+          missionId: m.id,
+          missionTag: m.id,
+          missionPinned: true,
+          poiType: follow.targetType,
+          kind: follow.targetType,
+          scanLabel: follow.targetLabel,
+        },
+      };
+      const ent = helpers.spawnEntity(spec);
+      if (ent) {
+        this._stampMissionTargetIdentity(ent, m, 0);
+        this._configurePoiSignalTarget(ent, m);
+        m.targetEntityIds.push(ent.id);
+        this.bus.emit('mission:updated', { missionId: m.id, targetEntityId: ent.id });
+      }
+      return;
+    }
 
     if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
       // Spawn only the targets still owed (objectiveTarget - progress) so a mid-mission save/load or
@@ -2370,8 +2521,21 @@ export const missions = {
 
   /** Mark mission target entities dead when the mission settles (avoid orphans). */
   _cleanupTargets(m) {
-    if (!m.targetEntityIds || !m.targetEntityIds.length) return;
-    for (const id of m.targetEntityIds) {
+    const follow = m.params && m.params.poiSignalFollowup;
+    const world = this.registry && this.registry.get && this.registry.get('world');
+    if (follow && world && typeof world.markWorldRecordDestroyed === 'function') {
+      world.markWorldRecordDestroyed(follow.targetRecordId, {
+        outcome: m.status === 'completed' ? 'investigated' : 'destroyed',
+        reason: 'mission_settled',
+      });
+    }
+    const targetIds = new Set(m.targetEntityIds || []);
+    if (follow) {
+      for (const e of this.state.entityList || []) {
+        if (e && e.data && e.data.worldRecordId === follow.targetRecordId) targetIds.add(e.id);
+      }
+    }
+    for (const id of targetIds) {
       const e = this.state.entities.get(id);
       if (e && e.alive && e.id !== this.state.playerId) e.alive = false; // swept end-of-step
     }
@@ -3018,6 +3182,11 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
     repDelta,
     researchPoints,
     storyOutcome: m && m.params && m.params.investigationOutcome || null,
+    source: m && m.source || null,
+    sourceOfferId: m && m.sourceOfferId || null,
+    causeFingerprint: m && m.cause && m.cause.fingerprint || null,
+    targetRecordId: m && m.params && m.params.poiSignalFollowup
+      && m.params.poiSignalFollowup.targetRecordId || null,
   };
 }
 

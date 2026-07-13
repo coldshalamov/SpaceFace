@@ -10,6 +10,7 @@ import { zonesForSector, zoneAt } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
 import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS } from '../data/poiBehaviorFamilies.js';
+import { buildPoiCausalOffer } from '../missions/poiCausalOffers.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
 const DAY_SECONDS = 600;
@@ -321,10 +322,10 @@ export const livingPoiBehaviors = {
         });
         break;
       case 'derelict_salvage':
-        this._emitMissionLead(row, 'salvage_retrieval', 'Recovered records point to another registered loss.');
+        this._emitMissionLead(row, 'Recovered records point to another registered loss.');
         break;
       case 'anomaly_research':
-        this._emitMissionLead(row, 'recon_scan', 'Stable bearings expose a second research signal.');
+        this._emitMissionLead(row, 'Stable bearings expose a second research signal.');
         break;
       case 'convoy_industrial_route':
         if (row.stationId) this._emit('economy:applyTradePressure', {
@@ -345,18 +346,24 @@ export const livingPoiBehaviors = {
     }
   },
 
-  _emitMissionLead(row, type, summary) {
-    this._emit('mission:offered', {
-      id: `poi_offer:${row.behaviorId}`,
-      source: 'poiBehavior',
-      type,
+  _emitMissionLead(row, summary) {
+    // A resolved derelict/anomaly creates a normal, complete board contract. The pure builder
+    // binds the offer to the durable aftermath fingerprint; missions still validates, boards,
+    // accepts, spawns, settles, and receipts the work through its ordinary authority path.
+    const aftermath = ensureState(this.state).aftermath[row.behaviorId];
+    const offer = buildPoiCausalOffer({
+      seed: this.state.meta && this.state.meta.seed || 1,
+      aftermath,
       stationId: row.stationId,
       factionId: row.beneficiaryFactionId,
-      title: `${row.zoneName}: ${type === 'recon_scan' ? 'follow the bearing' : 'recover the record'}`,
-      summary,
-      cause: { tag: `poi:${row.familyId}`, line: row.contract.cause },
-      params: { poiBehaviorId: row.behaviorId, zoneId: row.zoneId, required: 1 },
+      zoneName: row.zoneName,
     });
+    if (!offer) return false;
+    // Retain the family-authored terse lead when it adds useful context without replacing the
+    // causal destination/investigation instruction.
+    if (summary) offer.summary = `${summary} ${offer.summary}`;
+    this._emit('mission:offered', offer);
+    return true;
   },
 
   _onSalvageCompleted(payload) {
