@@ -20,6 +20,7 @@ import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships
 import { createTimeEffects } from '../core/timeEffects.js';
 import { COORDINATE_SCHEMA, applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import { PROFILE_SETTINGS_KEY, readProfileSettings } from '../core/graphicsProfileBootstrap.js';
+import { encodeSavePayload, SAVE_WORKER_SOURCE } from './saveWorker.js';
 
 const LS_PREFIX = 'sf.save.';
 const INDEX_KEY = LS_PREFIX + 'index';
@@ -29,6 +30,10 @@ const RECOVERY_PREFIX = 'sf.recovery.';
 const FMT = 'spaceface-save';
 const AUTOSAVE_SLOT = 'auto';
 const AUTOSAVE_DEBOUNCE_MS = 10000; // ≤1 autosave write per 10s (§4.5)
+const AUTOSAVE_TARGET_SLICE_MS = 8;
+const AUTOSAVE_HARD_SLICE_MS = 12;
+const SAVE_VALIDATION_CHUNK_CHARS = 8_192;
+const SAVE_WORKER_TIMEOUT_MS = 4000;
 const DEFAULT_FLIGHT_MODE = 'assisted';
 const DEFAULT_PHYSICS_BACKEND = 'rapier-dynamic';
 const DEFAULT_AI_BACKEND = 'sg06-tactical';
@@ -70,6 +75,12 @@ export const save = {
     this._playerDead = false;          // set by player:death, cleared by player:respawn (autosave gate)
     this._autosavePending = null;      // accepted/coalesced job waiting beyond the current event stack
     this._autosaveInFlight = false;    // prevents forced triggers from starting concurrent writes
+    this._autosaveGeneration = 0;      // invalidates stale worker/task completions
+    this._runEpoch = 0;                // invalidates every stage when a new run starts
+    this._activeAutosaveJob = null;    // terminal receipt owner before the transaction starts
+    this._activeAutosaveTransaction = null; // cleanup owner; survives run/generation invalidation
+    this._activeSaveWorkers = new Set();
+    this._saveWorkerRequestId = 0;
     this._restoreSequence = 0;         // unique transient freeze owner for overlapping visual gates
 
     const bus = this.bus;
@@ -87,6 +98,10 @@ export const save = {
     const clearPlayerDeathGate = () => { this._playerDead = false; };
     bus.on('save:loaded', clearPlayerDeathGate);
     bus.on('game:started', clearPlayerDeathGate);
+    // Registered during system init, before main installs its new-game bootstrap listener, so old
+    // run work is invalidated synchronously at the route boundary.
+    bus.on('game:new', () => this._beginRunEpoch('game:new'));
+    bus.on('game:newGame', () => this._beginRunEpoch('game:newGame'));
 
     // Autosave triggers (§4.5): major progression milestones. Debounced ≤1/10s unless forced.
     bus.on('dock:docked', () => this.requestAutosave('dock'));
@@ -128,6 +143,41 @@ export const save = {
 
   // ── serialization ─────────────────────────────────────────────────────────────────────────
 
+  _saveCapturePlan() {
+    const state = this.state;
+    return [
+      ['meta', () => this._serializeMeta()],
+      ['player', () => this._serializePlayer()],
+      ['cargo', () => this._serializeCargo()],
+      ['economy', () => this._callSerialize('economy') || {}],
+      ['economyContracts', () => this._callSerialize('economyContracts') || {}],
+      ['factions', () => this._callSerialize('factions') || {}],
+      ['world', () => this._callSerialize('world') || {}],
+      ['entities', () => this._serializeEntities()],
+      ['combat', () => serializeCombatState(state)],
+      ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
+      ['careerOrigins', () => this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {})],
+      ['careerLadders', () => this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {})],
+      ['scenario', () => this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {})],
+      ['automation', () => this._callSerialize('automation') || this._serializeAutomation()],
+      ['crafting', () => this._callSerialize('crafting') || this._serializeCrafting()],
+      ['sectorSim', () => this._callSerialize('sectorSim') || {}],
+      ['claims', () => this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] })],
+      ['aceMemory', () => this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {})],
+      ['lossLedger', () => this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {})],
+      ['aftermathWrecks', () => this._callSerialize('aftermathWrecks') || clonePlain(state.aftermathWrecks || {})],
+      ['fieldDepletion', () => this._callSerialize('fieldDepletion') || clonePlain(state.fieldDepletion || {})],
+      ['livingPoiBehaviors', () => this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {})],
+      ['signalInvestigation', () => this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {})],
+      ['recoveryEncounters', () => this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {})],
+      ['regionalEcology', () => this._callSerialize('regionalEcology') || clonePlain(state.regionalEcology || {})],
+      ['encounterDirector', () => this._serializeEncounterDirector()],
+      ['flight', () => this._serializeFlight()],
+      ['nav', () => this._serializeNav()],
+      ['settings', () => this._serializeSettings()],
+    ];
+  },
+
   /** Build the `data` payload (plain JSON, deps-first key order). No mesh/THREE/Map/fn/Infinity. */
   serializeData() {
     const state = this.state;
@@ -147,7 +197,7 @@ export const save = {
     data.scenario = this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {});
     data.automation = this._callSerialize('automation') || this._serializeAutomation();
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
-    data.sectorSim = this._callSerialize('sectorSim') || {};   // ADR-0002 / V2 §33 — offscreen sim state
+    data.sectorSim = this._callSerialize('sectorSim') || {};
     data.claims = this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] });
     data.aceMemory = this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {});
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
@@ -157,8 +207,6 @@ export const save = {
     data.signalInvestigation = this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {});
     data.recoveryEncounters = this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {});
     data.regionalEcology = this._callSerialize('regionalEcology') || clonePlain(state.regionalEcology || {});
-    // Campaign-director DURABLE subset only (named captains / receipts / cooldowns / stats).
-    // Live encounters, squads, and pressure are transient by contract — never persisted.
     data.encounterDirector = this._serializeEncounterDirector();
     data.flight = this._serializeFlight();
     data.nav = this._serializeNav();
@@ -437,13 +485,29 @@ export const save = {
     };
   },
 
-  _saveTiming({ slot, reason, autosave, started, serializeMs = 0, writeMs = 0, stringifyMs = 0, storageMs = 0, indexMs = 0, bytes = 0, ok = true, failure = null, blockingSlicesMs = null }) {
+  _saveTiming({ slot, reason, autosave, started, serializeMs = 0, writeMs = 0, stringifyMs = 0, storageMs = 0, indexMs = 0, backupMs = 0, readbackMs = 0, verifyMs = 0, workerSetupMs = 0, workerDispatchMs = 0, workerRoundtripMs = 0, bytes = 0, ok = true, failure = null, blockingSlicesMs = null, blockingSamples = null, serializerTimings = null, slowSerializer = null }) {
     const elapsedMs = roundSaveMs(nowMs() - started);
-    const slices = Array.isArray(blockingSlicesMs)
-      ? blockingSlicesMs.map(Number).filter((value) => Number.isFinite(value) && value >= 0)
-      : [elapsedMs];
-    const totalCpuMs = roundSaveMs(slices.reduce((sum, value) => sum + value, 0));
-    const maxBlockingSliceMs = roundSaveMs(slices.length ? Math.max(...slices) : 0);
+    const samples = Array.isArray(blockingSamples)
+      ? blockingSamples.map((entry) => ({
+        phase: String(entry && entry.phase || 'unattributed'),
+        ms: Number(entry && entry.ms),
+      })).filter((entry) => Number.isFinite(entry.ms) && entry.ms >= 0)
+      : (Array.isArray(blockingSlicesMs)
+        ? blockingSlicesMs.map((ms) => ({ phase: 'unattributed', ms: Number(ms) }))
+        : [{ phase: 'elapsed', ms: elapsedMs }]);
+    const slices = samples.map(({ ms }) => ms);
+    const totalBlockingMs = slices.reduce((sum, value) => sum + value, 0);
+    const maxBlockingSliceMs = slices.length ? Math.max(...slices) : 0;
+    const maxBlockingSample = samples.reduce((best, entry) => (
+      !best || entry.ms > best.ms ? entry : best
+    ), null);
+    const measuredSerializers = Array.isArray(serializerTimings)
+      ? serializerTimings.filter((entry) => entry && Number.isFinite(Number(entry.ms))) : [];
+    const maxSerializer = measuredSerializers.reduce((best, entry) => (
+      !best || Number(entry.ms) > Number(best.ms) ? entry : best
+    ), null);
+    const observedTargetMet = maxBlockingSliceMs <= AUTOSAVE_TARGET_SLICE_MS;
+    const observedHardLimitMet = maxBlockingSliceMs <= AUTOSAVE_HARD_SLICE_MS;
     return {
       slot,
       reason: ok ? reason : (failure || reason),
@@ -455,15 +519,47 @@ export const save = {
       durationMs: elapsedMs,
       totalMs: elapsedMs,
       elapsedMs,
-      totalCpuMs,
+      // Backward-compatible field name. This is the sum of synchronous wall/block observations,
+      // not OS CPU accounting; see blockingClock below. Worker round-trip gaps are never included.
+      totalCpuMs: totalBlockingMs,
+      totalBlockingMs,
       maxBlockingSliceMs,
+      maxBlockingPhase: maxBlockingSample ? maxBlockingSample.phase : 'none',
+      blockingClock: 'high_resolution_sync_wall',
+      targetSliceMs: AUTOSAVE_TARGET_SLICE_MS,
+      hardSliceMs: AUTOSAVE_HARD_SLICE_MS,
+      observedTargetMet,
+      observedHardLimitMet,
+      blockingSamples: samples.map(({ phase, ms }) => ({ phase, ms })),
+      maxSerializerMs: maxSerializer ? Number(maxSerializer.ms) : 0,
+      slowSerializer: slowSerializer
+        || (maxSerializer && Number(maxSerializer.ms) > AUTOSAVE_HARD_SLICE_MS
+          ? maxSerializer.key : null),
+      serializerTimings: measuredSerializers.map((entry) => ({
+        key: String(entry.key), ms: Number(entry.ms),
+      })),
       serializeMs: roundSaveMs(serializeMs),
       writeMs: roundSaveMs(writeMs),
       stringifyMs: roundSaveMs(stringifyMs),
       storageMs: roundSaveMs(storageMs),
       indexMs: roundSaveMs(indexMs),
+      backupMs: roundSaveMs(backupMs),
+      readbackMs: roundSaveMs(readbackMs),
+      verifyMs: roundSaveMs(verifyMs),
+      workerSetupMs: roundSaveMs(workerSetupMs),
+      workerDispatchMs: roundSaveMs(workerDispatchMs),
+      workerRoundtripMs: roundSaveMs(workerRoundtripMs),
       bytes: Math.max(0, bytes | 0),
     };
+  },
+
+  _pushAutosaveSlice(owner, phase, ms) {
+    const value = Number(ms);
+    if (!owner || !Number.isFinite(value) || value < 0) return;
+    const slices = Array.isArray(owner.blockingSlices) ? owner.blockingSlices : owner.slices;
+    if (Array.isArray(slices)) slices.push(value);
+    if (!Array.isArray(owner.blockingSamples)) owner.blockingSamples = [];
+    owner.blockingSamples.push({ phase, ms: value });
   },
 
   _publishSaveResult(slot, envelope, write, timing) {
@@ -631,6 +727,7 @@ export const save = {
       reason: _reason || 'autosave',
       force: !!options.force,
       requestedAt: now,
+      runEpoch: this._runEpoch,
     };
     this._autosavePending = job;
     try {
@@ -661,7 +758,8 @@ export const save = {
   },
 
   _flushAutosave(job) {
-    if (!job || this._autosavePending !== job || this._autosaveInFlight) return false;
+    if (!job || this._autosavePending !== job || this._autosaveInFlight
+      || job.runEpoch !== this._runEpoch) return false;
     const state = this.state;
     const jumpBusy = state.jump && (state.jump.state === 'CHARGING' || state.jump.state === 'JUMPING');
     if (this._restoring || this._playerDead || jumpBusy || state.mode === 'paused') {
@@ -675,6 +773,8 @@ export const save = {
 
     this._autosavePending = null;
     this._autosaveInFlight = true;
+    this._activeAutosaveJob = job;
+    job.generation = ++this._autosaveGeneration;
     job.restoreSequence = this._restoreSequence;
     this.bus.emit('save:started', { slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true });
     if (!this._hasPlayerEntity()) {
@@ -683,30 +783,296 @@ export const save = {
         ok: false, failure: 'no_player', blockingSlicesMs: [0],
       });
       this._autosaveInFlight = false;
+      this._activeAutosaveJob = null;
       return this._publishSaveResult(AUTOSAVE_SLOT, null, { ok: false }, timing);
     }
 
-    const sliceStarted = nowMs();
+    // Test/tool callers may replace serialize() with a fully-authored envelope. Preserve that public
+    // seam and the synchronous safe fallback; normal play uses keyed incremental capture below.
+    if (this.serialize !== CANONICAL_SAVE_SERIALIZE) return this._captureLegacyAutosave(job);
+
+    const descriptor = this._autosaveDescriptor();
+    const capture = {
+      plan: this._saveCapturePlan(),
+      data: {},
+      index: 0,
+      tick: this.state.tick,
+      restarts: 0,
+      runEpoch: job.runEpoch,
+      blockingSlices: [],
+      blockingSamples: [],
+      serializerTimings: [],
+      serializeMs: 0,
+      workerSetupMs: 0,
+      workerDispatchMs: 0,
+      workerRoundtripMs: 0,
+      workerAttempts: 0,
+      descriptor,
+    };
+    job.capture = capture;
+    return this._captureAutosaveSlice(job, capture);
+  },
+
+  _autosaveDescriptor() {
+    return {
+      fmt: FMT,
+      version: CURRENT_VERSION,
+      savedAt: new Date().toISOString(),
+      playtimeS: Math.floor(this.state.meta.playtimeS || 0),
+      slot: AUTOSAVE_SLOT,
+    };
+  },
+
+  _captureAutosaveSlice(job, capture) {
+    if (!this._autosaveJobCurrent(job) || capture.runEpoch !== this._runEpoch) return false;
+    const started = workNowMs();
+    try {
+      // Capture every subsystem exactly once in one coherent JS task. Splitting live-state readers
+      // across future ticks cannot produce an authoritative snapshot, and restarting on every tick
+      // starves forever during normal 60 Hz play. Encoding, validation, and storage remain chunked.
+      while (capture.index < capture.plan.length) {
+        const [key, read] = capture.plan[capture.index++];
+        const serializerStarted = workNowMs();
+        capture.data[key] = read();
+        const serializerMs = workNowMs() - serializerStarted;
+        capture.serializerTimings.push({ key, ms: serializerMs });
+        if (serializerMs > AUTOSAVE_HARD_SLICE_MS && !capture.slowSerializer) {
+          capture.slowSerializer = key;
+        }
+      }
+    } catch (error) {
+      console.error('[save] autosave capture failed', error);
+      return this._failAutosave(job, 'serialize_failed', capture, workNowMs() - started);
+    }
+    const sliceMs = workNowMs() - started;
+    capture.serializeMs += sliceMs;
+    this._pushAutosaveSlice(capture, 'capture', sliceMs);
+    return this._startAutosaveEncoding(job, capture);
+  },
+
+  _startAutosaveEncoding(job, capture) {
+    const setupStarted = workNowMs();
+    const worker = this._trackSaveWorker(this._createSaveWorker());
+    const setupMs = workNowMs() - setupStarted;
+    capture.workerSetupMs += setupMs;
+    this._pushAutosaveSlice(capture, 'encode_worker_setup', setupMs);
+    // Timing is evidence, not a transaction precondition. A wall observation can include OS
+    // preemption, and aborting after the block already happened only destroys save reliability.
+    // The receipt carries the unchanged 8/12 ms targets and an explicit observed budget result.
+    if (!worker) {
+      this._scheduleAutosaveWork(() => this._encodeAutosaveFallback(job, capture));
+      return true;
+    }
+    capture.workerAttempts++;
+    const encoder = {
+      worker,
+      id: ++this._saveWorkerRequestId,
+      entries: Object.entries(capture.data),
+      index: 0,
+      settled: false,
+      timeout: null,
+      runEpoch: job.runEpoch,
+      roundtripStartedAtMs: nowMs(),
+    };
+    const fail = (failure = 'save_worker_failed', fallback = true) => {
+      if (encoder.settled) return;
+      encoder.settled = true;
+      capture.workerRoundtripMs += Math.max(0, nowMs() - encoder.roundtripStartedAtMs);
+      clearTimeout(encoder.timeout);
+      worker.__spacefaceSaveSupersede = null;
+      try { worker.terminate(); } catch (error) {}
+      if (this._autosaveJobCurrent(job)) {
+        if (fallback && capture.workerAttempts < 2) {
+          this._scheduleAutosaveWork(() => this._startAutosaveEncoding(job, capture));
+        } else if (fallback) {
+          this._scheduleAutosaveWork(() => this._encodeAutosaveFallback(job, capture));
+        }
+        else this._failAutosave(job, failure, capture);
+      }
+    };
+    worker.onmessage = (event) => {
+      const message = event && event.data;
+      if (!message || message.id !== encoder.id || message.type !== 'encoded'
+        || typeof message.json !== 'string') return fail('save_worker_failed');
+      encoder.settled = true;
+      capture.workerRoundtripMs += Math.max(0, nowMs() - encoder.roundtripStartedAtMs);
+      clearTimeout(encoder.timeout);
+      worker.__spacefaceSaveSupersede = null;
+      try { worker.terminate(); } catch (error) {}
+      if (!this._autosaveJobCurrent(job)) return;
+      const envelope = { ...capture.descriptor, checksum: message.checksum, data: capture.data };
+      this._beginAutosaveTransaction(job, {
+        envelope,
+        json: message.json,
+        serializeMs: capture.serializeMs,
+        stringifyMs: Number(message.workerCpuMs) || 0,
+        blockingSlices: capture.blockingSlices,
+        blockingSamples: capture.blockingSamples,
+        serializerTimings: capture.serializerTimings,
+        slowSerializer: capture.slowSerializer || null,
+        workerSetupMs: capture.workerSetupMs,
+        workerDispatchMs: capture.workerDispatchMs,
+        workerRoundtripMs: capture.workerRoundtripMs,
+      });
+    };
+    worker.onerror = () => fail('save_worker_failed');
+    worker.__spacefaceSaveSupersede = () => fail('superseded', false);
+    encoder.timeout = setTimeout(() => fail('save_worker_timeout'), SAVE_WORKER_TIMEOUT_MS);
+    const started = workNowMs();
+    try { worker.postMessage({ id: encoder.id, type: 'encode_begin', payload: { descriptor: capture.descriptor } }); }
+    catch (error) { fail(); return true; }
+    const beginDispatchMs = workNowMs() - started;
+    capture.workerDispatchMs += beginDispatchMs;
+    this._pushAutosaveSlice(capture, 'encode_begin_dispatch', beginDispatchMs);
+    this._scheduleAutosaveWork(() => this._postAutosaveEncodeParts(job, capture, encoder, fail));
+    return true;
+  },
+
+  _beginRunEpoch(_reason = 'run') {
+    this._cancelActiveAutosave('superseded');
+    const current = Number.isSafeInteger(this._runEpoch) ? this._runEpoch : 0;
+    this._runEpoch = current + 1;
+    this._autosaveGeneration = (Number.isSafeInteger(this._autosaveGeneration)
+      ? this._autosaveGeneration : 0) + 1;
+    this._autosavePending = null;
+    const workers = this._activeSaveWorkers ? [...this._activeSaveWorkers] : [];
+    for (const worker of workers) {
+      try {
+        if (typeof worker.__spacefaceSaveSupersede === 'function') worker.__spacefaceSaveSupersede();
+        else worker.terminate();
+      } catch (error) {}
+    }
+    return this._runEpoch;
+  },
+
+  _beginRestoreSequence() {
+    this._cancelActiveAutosave('superseded');
+    const previous = Number.isSafeInteger(this._restoreSequence) ? this._restoreSequence : 0;
+    this._restoreSequence = previous + 1;
+    const workers = this._activeSaveWorkers ? [...this._activeSaveWorkers] : [];
+    for (const worker of workers) {
+      try {
+        if (typeof worker.__spacefaceSaveSupersede === 'function') worker.__spacefaceSaveSupersede();
+        else worker.terminate();
+      } catch (error) {}
+    }
+    return this._restoreSequence;
+  },
+
+  _cancelActiveAutosave(reason = 'superseded') {
+    const active = this._activeAutosaveTransaction;
+    const job = active && active.job || this._activeAutosaveJob || this._autosavePending;
+    this._autosavePending = null;
+    if (!job) return false;
+    if (active && !active.tx.finished) {
+      active.tx.cancelReason = reason;
+      if (active.tx.primaryWritten && !active.tx.rollbackDone) {
+        return this._scheduleAutosaveRollback(active.job, active.snapshot, active.tx, reason);
+      }
+      return this._finishAutosaveTransaction(active.job, active.snapshot, active.tx, {
+        ok: false,
+        reason,
+      });
+    }
+    if (this._autosaveInFlight || this._activeAutosaveJob === job) {
+      return this._failAutosave(job, reason, job.capture || null);
+    }
+    const timing = this._saveTiming({
+      slot: AUTOSAVE_SLOT,
+      reason: job.reason,
+      autosave: true,
+      started: job.requestedAt,
+      ok: false,
+      failure: reason,
+      blockingSlicesMs: [0],
+    });
+    this._recordSaveTiming(timing);
+    this.bus.emit('save:error', timing);
+    return false;
+  },
+
+  _postAutosaveEncodeParts(job, capture, encoder, fail) {
+    if (!this._autosaveJobCurrent(job) || encoder.runEpoch !== this._runEpoch) {
+      fail('superseded', false);
+      return false;
+    }
+    if (encoder.settled) return false;
+    const started = workNowMs();
+    try {
+      const [key, value] = encoder.entries[encoder.index++];
+      encoder.worker.postMessage({ id: encoder.id, type: 'encode_part', payload: { key, value } });
+      if (encoder.index >= encoder.entries.length) {
+        encoder.worker.postMessage({ id: encoder.id, type: 'encode_finish' });
+      }
+    } catch (error) {
+      const errorSliceMs = workNowMs() - started;
+      capture.workerDispatchMs += errorSliceMs;
+      this._pushAutosaveSlice(capture, 'encode_part_dispatch_error', errorSliceMs);
+      fail();
+      return false;
+    }
+    const sliceMs = workNowMs() - started;
+    capture.workerDispatchMs += sliceMs;
+    this._pushAutosaveSlice(capture, 'encode_part_dispatch', sliceMs);
+    if (encoder.index < encoder.entries.length) {
+      this._scheduleAutosaveWork(() => this._postAutosaveEncodeParts(job, capture, encoder, fail));
+    }
+    return true;
+  },
+
+  _encodeAutosaveFallback(job, capture) {
+    if (!this._autosaveJobCurrent(job)) return false;
+    const started = workNowMs();
+    let encoded;
+    try { encoded = encodeSavePayload({ descriptor: capture.descriptor, data: capture.data }); }
+    catch (error) { return this._failAutosave(job, 'stringify_failed', capture, workNowMs() - started); }
+    const encodeMs = workNowMs() - started;
+    if (encodeMs > AUTOSAVE_HARD_SLICE_MS) {
+      capture.slowSerializer = 'sync_encode_fallback';
+    }
+    const snapshot = {
+      envelope: { ...capture.descriptor, checksum: encoded.checksum, data: capture.data },
+      json: encoded.json,
+      serializeMs: capture.serializeMs,
+      stringifyMs: encodeMs,
+      blockingSlices: [...capture.blockingSlices, encodeMs],
+      blockingSamples: [...capture.blockingSamples, { phase: 'sync_encode_fallback', ms: encodeMs }],
+      serializerTimings: capture.serializerTimings,
+      slowSerializer: capture.slowSerializer || null,
+      workerSetupMs: capture.workerSetupMs,
+      workerDispatchMs: capture.workerDispatchMs,
+      workerRoundtripMs: capture.workerRoundtripMs,
+    };
+    // No worker means validation cannot be moved safely. Keep the existing transactional sync path
+    // as a correctness fallback and isolate it in its own task.
+    this._scheduleAutosaveWork(() => this._commitAutosaveSnapshot(job, snapshot));
+    return true;
+  },
+
+  _captureLegacyAutosave(job) {
+
+    const sliceStarted = workNowMs();
     let envelope;
     let json;
     let serializeMs = 0;
     let stringifyMs = 0;
     try {
-      const serializeStarted = nowMs();
+      const serializeStarted = workNowMs();
       envelope = this.serialize(AUTOSAVE_SLOT);
-      serializeMs = nowMs() - serializeStarted;
-      const stringifyStarted = nowMs();
+      serializeMs = workNowMs() - serializeStarted;
+      const stringifyStarted = workNowMs();
       json = JSON.stringify(envelope);
-      stringifyMs = nowMs() - stringifyStarted;
+      stringifyMs = workNowMs() - stringifyStarted;
     } catch (err) {
       console.error('[save] autosave snapshot failed', err);
-      const snapshotSliceMs = nowMs() - sliceStarted;
+      const snapshotSliceMs = workNowMs() - sliceStarted;
       const timing = this._saveTiming({
         slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true, started: job.requestedAt,
         serializeMs, stringifyMs, ok: false, failure: 'serialize_failed',
         blockingSlicesMs: [snapshotSliceMs],
       });
       this._autosaveInFlight = false;
+      if (this._activeAutosaveJob === job) this._activeAutosaveJob = null;
       return this._publishSaveResult(AUTOSAVE_SLOT, null, { ok: false }, timing);
     }
     const snapshot = {
@@ -714,7 +1080,8 @@ export const save = {
       json,
       serializeMs,
       stringifyMs,
-      blockingSliceMs: nowMs() - sliceStarted,
+      blockingSliceMs: workNowMs() - sliceStarted,
+      blockingSlices: [workNowMs() - sliceStarted],
     };
     try {
       this._scheduleAutosaveWork(() => this._commitAutosaveSnapshot(job, snapshot));
@@ -726,6 +1093,7 @@ export const save = {
         blockingSlicesMs: [snapshot.blockingSliceMs],
       });
       this._autosaveInFlight = false;
+      if (this._activeAutosaveJob === job) this._activeAutosaveJob = null;
       return this._publishSaveResult(AUTOSAVE_SLOT, null, { ok: false }, timing);
     }
   },
@@ -736,18 +1104,19 @@ export const save = {
       const timing = this._saveTiming({
         slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true, started: job.requestedAt,
         serializeMs: snapshot.serializeMs, stringifyMs: snapshot.stringifyMs,
-        ok: false, failure: 'superseded', blockingSlicesMs: [snapshot.blockingSliceMs, 0],
+        ok: false, failure: 'superseded', blockingSlicesMs: snapshot.blockingSlices || [snapshot.blockingSliceMs, 0],
       });
       this._autosaveInFlight = false;
+      if (this._activeAutosaveJob === job) this._activeAutosaveJob = null;
       return this._publishSaveResult(AUTOSAVE_SLOT, null, { ok: false }, timing);
     }
 
-    const writeStarted = nowMs();
+    const writeStarted = workNowMs();
     const write = this._writeSlot(AUTOSAVE_SLOT, snapshot.envelope, {
       json: snapshot.json,
       stringifyMs: snapshot.stringifyMs,
     });
-    const writeSliceMs = nowMs() - writeStarted;
+    const writeSliceMs = workNowMs() - writeStarted;
     const timing = this._saveTiming({
       slot: AUTOSAVE_SLOT,
       reason: job.reason,
@@ -761,7 +1130,7 @@ export const save = {
       bytes: write.bytes,
       ok: !!write.ok,
       failure: write.reason || null,
-      blockingSlicesMs: [snapshot.blockingSliceMs, writeSliceMs],
+      blockingSlicesMs: [...(snapshot.blockingSlices || [snapshot.blockingSliceMs]), writeSliceMs],
     });
     const ok = this._publishSaveResult(AUTOSAVE_SLOT, snapshot.envelope, write, timing);
     if (ok) {
@@ -771,7 +1140,476 @@ export const save = {
       this.state.save.lastAutosaveAt = completedAt;
     }
     this._autosaveInFlight = false;
+    if (this._activeAutosaveJob === job) this._activeAutosaveJob = null;
     return ok;
+  },
+
+  _autosaveJobCurrent(job) {
+    return !!(job && this._autosaveInFlight
+      && job.generation === this._autosaveGeneration
+      && job.runEpoch === this._runEpoch);
+  },
+
+  _trackSaveWorker(worker) {
+    if (!worker) return null;
+    if (!this._activeSaveWorkers) this._activeSaveWorkers = new Set();
+    if (worker.__spacefaceSaveWorkerTracked) {
+      this._activeSaveWorkers.add(worker);
+      return worker;
+    }
+    const originalTerminate = typeof worker.terminate === 'function'
+      ? worker.terminate.bind(worker) : () => {};
+    const objectUrl = worker.__spacefaceSaveObjectUrl || null;
+    const owner = this;
+    let disposed = false;
+    worker.terminate = () => {
+      if (disposed) return;
+      disposed = true;
+      try { originalTerminate(); }
+      finally {
+        owner._activeSaveWorkers && owner._activeSaveWorkers.delete(worker);
+        if (objectUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+          try { URL.revokeObjectURL(objectUrl); } catch (error) {}
+        }
+      }
+    };
+    worker.__spacefaceSaveWorkerTracked = true;
+    this._activeSaveWorkers.add(worker);
+    return worker;
+  },
+
+  _createSaveWorker() {
+    if (typeof Worker !== 'function' || typeof Blob !== 'function'
+      || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') return null;
+    let objectUrl = null;
+    try {
+      objectUrl = URL.createObjectURL(new Blob([SAVE_WORKER_SOURCE], { type: 'text/javascript' }));
+      const worker = new Worker(objectUrl, { name: 'spaceface-save' });
+      worker.__spacefaceSaveObjectUrl = objectUrl;
+      return this._trackSaveWorker(worker);
+    }
+    catch (error) {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      return null;
+    }
+  },
+
+  _requestSaveWorker(type, payload, onResult, onFailure, options = {}) {
+    const worker = this._trackSaveWorker(this._createSaveWorker());
+    if (!worker) return false;
+    const id = ++this._saveWorkerRequestId;
+    const roundtripStartedAtMs = nowMs();
+    let settled = false;
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      worker.__spacefaceSaveSupersede = null;
+      try { worker.terminate(); } catch (error) {}
+      if (typeof options.onRoundtrip === 'function') {
+        try { options.onRoundtrip(Math.max(0, nowMs() - roundtripStartedAtMs)); } catch (error) {}
+      }
+      callback(value);
+    };
+    const timeout = setTimeout(() => finish(onFailure, new Error('save_worker_timeout')), SAVE_WORKER_TIMEOUT_MS);
+    worker.__spacefaceSaveSupersede = () => finish(onFailure, new Error('superseded'));
+    worker.onmessage = (event) => {
+      const message = event && event.data;
+      if (!message || message.id !== id || message.type === 'error') {
+        finish(onFailure, new Error(message && message.reason || 'save_worker_failed'));
+        return;
+      }
+      finish(onResult, message);
+    };
+    worker.onerror = () => finish(onFailure, new Error('save_worker_failed'));
+    const recordSlice = (phase, started) => {
+      if (typeof options.onSlice !== 'function') return;
+      try { options.onSlice(phase, workNowMs() - started); } catch (error) {}
+    };
+    if (type === 'validate' && payload && typeof payload.raw === 'string'
+      && payload.raw.length > SAVE_VALIDATION_CHUNK_CHARS) {
+      try {
+        worker.postMessage({
+          id,
+          type: 'validate_begin',
+          payload: { currentVersion: payload.currentVersion },
+        });
+      } catch (error) {
+        finish(onFailure, error);
+        return true;
+      }
+      let offset = 0;
+      const postNextChunk = () => {
+        if (settled) return;
+        const started = workNowMs();
+        try {
+          if (offset < payload.raw.length) {
+            const end = Math.min(payload.raw.length, offset + SAVE_VALIDATION_CHUNK_CHARS);
+            worker.postMessage({
+              id,
+              type: 'validate_part',
+              payload: { chunk: payload.raw.slice(offset, end) },
+            });
+            offset = end;
+            recordSlice('validate_chunk_dispatch', started);
+            this._scheduleAutosaveWork(postNextChunk);
+          } else {
+            worker.postMessage({ id, type: 'validate_finish' });
+            recordSlice('validate_finish_dispatch', started);
+          }
+        } catch (error) {
+          recordSlice('validate_dispatch_error', started);
+          finish(onFailure, error);
+        }
+      };
+      this._scheduleAutosaveWork(postNextChunk);
+    } else {
+      try { worker.postMessage({ id, type, payload }); }
+      catch (error) { finish(onFailure, error); }
+    }
+    return true;
+  },
+
+  _beginAutosaveTransaction(job, snapshot) {
+    if (!this._autosaveJobCurrent(job)) return false;
+    const tx = {
+      runEpoch: job.runEpoch,
+      slices: [...(snapshot.blockingSlices || [])],
+      blockingSamples: [...(snapshot.blockingSamples || [])],
+      previousRaw: null,
+      previousValid: false,
+      previousSavedAt: null,
+      backupMs: 0,
+      storageMs: 0,
+      readbackMs: 0,
+      verifyMs: 0,
+      indexMs: 0,
+      workerRoundtripMs: Number(snapshot.workerRoundtripMs) || 0,
+      primaryWritten: false,
+      rollbackScheduled: false,
+      rollbackDone: false,
+      cancelReason: null,
+      finished: false,
+    };
+    this._activeAutosaveTransaction = { job, snapshot, tx };
+    this._scheduleAutosaveWork(() => this._autosaveReadPrevious(job, snapshot, tx));
+    return true;
+  },
+
+  _autosaveReadPrevious(job, snapshot, tx) {
+    if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
+    const started = workNowMs();
+    try { tx.previousRaw = localStorage.getItem(LS_PREFIX + AUTOSAVE_SLOT); }
+    catch (error) { return this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: 'read_failed' }); }
+    const readMs = workNowMs() - started;
+    tx.readbackMs += readMs;
+    this._pushAutosaveSlice(tx, 'storage_read_previous', readMs);
+    if (!tx.previousRaw) {
+      this._scheduleAutosaveWork(() => this._autosaveWriteBackup(job, snapshot, tx));
+      return true;
+    }
+    return this._autosaveValidatePrevious(job, snapshot, tx);
+  },
+
+  _autosaveValidatePrevious(job, snapshot, tx) {
+    const started = workNowMs();
+    const posted = this._requestSaveWorker('validate', {
+      raw: tx.previousRaw,
+      currentVersion: CURRENT_VERSION,
+    }, (message) => {
+      if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return;
+      const result = message && message.result;
+      if (result && result.ok && result.version === CURRENT_VERSION) {
+        tx.previousValid = true;
+        tx.previousSavedAt = result.savedAt || null;
+        this._scheduleAutosaveWork(() => this._autosaveWriteBackup(job, snapshot, tx));
+        return;
+      }
+      if (result && result.ok && result.version < CURRENT_VERSION) {
+        this._scheduleAutosaveWork(() => {
+          const verifyStarted = workNowMs();
+          const prepared = this._prepareEnvelopeString(tx.previousRaw);
+          const verifyMs = workNowMs() - verifyStarted;
+          tx.verifyMs += verifyMs;
+          this._pushAutosaveSlice(tx, 'validate_previous_migration', verifyMs);
+          tx.previousValid = !!prepared.ok;
+          tx.previousSavedAt = prepared.ok && prepared.env.savedAt || null;
+          this._scheduleAutosaveWork(() => this._autosaveWriteBackup(job, snapshot, tx));
+        });
+        return;
+      }
+      this._scheduleAutosaveWork(() => this._autosaveWriteBackup(job, snapshot, tx));
+    }, (error) => {
+      if (error && error.message === 'superseded') {
+        this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: 'superseded' });
+        return;
+      }
+      this._scheduleAutosaveWork(() => this._autosaveValidatePreviousSync(job, snapshot, tx));
+    }, {
+      onSlice: (phase, ms) => {
+        tx.verifyMs += ms;
+        this._pushAutosaveSlice(tx, `previous_${phase}`, ms);
+      },
+      onRoundtrip: (ms) => { tx.workerRoundtripMs += ms; },
+    });
+    const dispatchMs = workNowMs() - started;
+    tx.verifyMs += dispatchMs;
+    this._pushAutosaveSlice(tx, 'validate_previous_setup', dispatchMs);
+    if (!posted) this._scheduleAutosaveWork(() => this._autosaveValidatePreviousSync(job, snapshot, tx));
+    return true;
+  },
+
+  _autosaveValidatePreviousSync(job, snapshot, tx) {
+    if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
+    const started = workNowMs();
+    const prepared = this._prepareEnvelopeString(tx.previousRaw);
+    const verifyMs = workNowMs() - started;
+    tx.verifyMs += verifyMs;
+    this._pushAutosaveSlice(tx, 'validate_previous_sync', verifyMs);
+    tx.previousValid = !!prepared.ok;
+    tx.previousSavedAt = prepared.ok && prepared.env.savedAt || null;
+    this._scheduleAutosaveWork(() => this._autosaveWriteBackup(job, snapshot, tx));
+    return true;
+  },
+
+  _autosaveWriteBackup(job, snapshot, tx) {
+    if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
+    const started = workNowMs();
+    if (tx.previousRaw && tx.previousValid) {
+      try { localStorage.setItem(RECOVERY_PREFIX + AUTOSAVE_SLOT, tx.previousRaw); }
+      catch (error) {
+        const failureMs = workNowMs() - started;
+        tx.backupMs += failureMs;
+        this._pushAutosaveSlice(tx, 'storage_write_backup_error', failureMs);
+        const reason = error && error.name === 'QuotaExceededError' ? 'backup_quota' : 'backup_write_failed';
+        return this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason });
+      }
+    }
+    const sliceMs = workNowMs() - started;
+    tx.backupMs += sliceMs;
+    this._pushAutosaveSlice(tx, 'storage_write_backup', sliceMs);
+    this._scheduleAutosaveWork(() => this._autosaveWritePrimary(job, snapshot, tx));
+    return true;
+  },
+
+  _autosaveWritePrimary(job, snapshot, tx) {
+    if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
+    const started = workNowMs();
+    try { localStorage.setItem(LS_PREFIX + AUTOSAVE_SLOT, snapshot.json); }
+    catch (error) {
+      const failureMs = workNowMs() - started;
+      tx.storageMs += failureMs;
+      this._pushAutosaveSlice(tx, 'storage_write_primary_error', failureMs);
+      const reason = error && error.name === 'QuotaExceededError' ? 'quota' : 'write_failed';
+      return this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason });
+    }
+    const sliceMs = workNowMs() - started;
+    tx.primaryWritten = true;
+    tx.storageMs += sliceMs;
+    this._pushAutosaveSlice(tx, 'storage_write_primary', sliceMs);
+    this._scheduleAutosaveWork(() => this._autosaveReadback(job, snapshot, tx));
+    return true;
+  },
+
+  _autosaveReadback(job, snapshot, tx) {
+    if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
+    const started = workNowMs();
+    let storedRaw = null;
+    try { storedRaw = localStorage.getItem(LS_PREFIX + AUTOSAVE_SLOT); }
+    catch (error) {}
+    const matches = storedRaw === snapshot.json;
+    const sliceMs = workNowMs() - started;
+    tx.readbackMs += sliceMs;
+    this._pushAutosaveSlice(tx, 'storage_readback', sliceMs);
+    if (!matches) return this._scheduleAutosaveRollback(job, snapshot, tx, 'write_verify_failed');
+
+    const verifyStarted = workNowMs();
+    const posted = this._requestSaveWorker('validate', {
+      raw: storedRaw,
+      currentVersion: CURRENT_VERSION,
+    }, (message) => {
+      if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return;
+      const result = message && message.result;
+      if (!result || !result.ok) {
+        this._scheduleAutosaveRollback(job, snapshot, tx,
+          result && result.reason === 'parse_failed' ? 'write_verify_parse' : 'write_verify_failed');
+        return;
+      }
+      this._scheduleAutosaveWork(() => this._autosaveWriteIndex(job, snapshot, tx));
+    }, (error) => {
+      if (error && error.message === 'superseded') {
+        this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: 'superseded' });
+        return;
+      }
+      this._scheduleAutosaveWork(() => this._autosaveValidateReadbackSync(job, snapshot, tx, storedRaw));
+    }, {
+      onSlice: (phase, ms) => {
+        tx.verifyMs += ms;
+        this._pushAutosaveSlice(tx, `readback_${phase}`, ms);
+      },
+      onRoundtrip: (ms) => { tx.workerRoundtripMs += ms; },
+    });
+    const dispatchMs = workNowMs() - verifyStarted;
+    tx.verifyMs += dispatchMs;
+    this._pushAutosaveSlice(tx, 'validate_readback_setup', dispatchMs);
+    if (!posted) this._scheduleAutosaveWork(() => this._autosaveValidateReadbackSync(job, snapshot, tx, storedRaw));
+    return true;
+  },
+
+  _autosaveValidateReadbackSync(job, snapshot, tx, storedRaw) {
+    if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
+    const started = workNowMs();
+    const prepared = this._prepareEnvelopeString(storedRaw);
+    const verifyMs = workNowMs() - started;
+    tx.verifyMs += verifyMs;
+    this._pushAutosaveSlice(tx, 'validate_readback_sync', verifyMs);
+    if (!prepared.ok) {
+      return this._scheduleAutosaveRollback(job, snapshot, tx,
+        prepared.reason === 'parse_failed' ? 'write_verify_parse' : 'write_verify_failed');
+    }
+    this._scheduleAutosaveWork(() => this._autosaveWriteIndex(job, snapshot, tx));
+    return true;
+  },
+
+  _scheduleAutosaveRollback(job, snapshot, tx, reason) {
+    if (!tx || tx.finished) return false;
+    if (tx.rollbackDone) {
+      return this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason });
+    }
+    if (tx.rollbackScheduled) return true;
+    tx.rollbackScheduled = true;
+    this._scheduleAutosaveWork(() => {
+      tx.rollbackScheduled = false;
+      if (tx.finished) return;
+      const started = workNowMs();
+      let rollbackOk = true;
+      try {
+        if (tx.previousRaw == null) localStorage.removeItem(LS_PREFIX + AUTOSAVE_SLOT);
+        else localStorage.setItem(LS_PREFIX + AUTOSAVE_SLOT, tx.previousRaw);
+      } catch (error) { rollbackOk = false; }
+      const rollbackMs = workNowMs() - started;
+      tx.storageMs += rollbackMs;
+      this._pushAutosaveSlice(tx, 'storage_rollback', rollbackMs);
+      // The cleanup owner gets one authoritative rollback attempt and one terminal receipt. A
+      // storage exception is reported as rollback_failed; it must not enqueue an infinite retry.
+      tx.rollbackDone = true;
+      this._finishAutosaveTransaction(job, snapshot, tx, {
+        ok: false,
+        reason: rollbackOk ? reason : 'rollback_failed',
+      });
+    });
+    return true;
+  },
+
+  _autosaveWriteIndex(job, snapshot, tx) {
+    if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
+    const started = workNowMs();
+    this._updateIndex(AUTOSAVE_SLOT, snapshot.envelope);
+    const sliceMs = workNowMs() - started;
+    tx.indexMs += sliceMs;
+    this._pushAutosaveSlice(tx, 'storage_write_index', sliceMs);
+    return this._finishAutosaveTransaction(job, snapshot, tx, {
+      ok: true,
+      backupCreated: !!(tx.previousRaw && tx.previousValid),
+      backupSavedAt: tx.previousSavedAt,
+    });
+  },
+
+  _autosaveTransactionCurrent(job, snapshot, tx) {
+    if (!tx || tx.finished || this._activeAutosaveTransaction?.tx !== tx) return false;
+    if (tx.cancelReason || tx.runEpoch !== this._runEpoch || this._restoring
+      || job.restoreSequence !== this._restoreSequence) {
+      const reason = tx.cancelReason || 'superseded';
+      tx.cancelReason = reason;
+      if (tx.primaryWritten && !tx.rollbackDone) {
+        this._scheduleAutosaveRollback(job, snapshot, tx, reason);
+      } else {
+        this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason });
+      }
+      return false;
+    }
+    return true;
+  },
+
+  _finishAutosaveTransaction(job, snapshot, tx, result) {
+    if (!tx || tx.finished) return false;
+    if (!result.ok && tx.primaryWritten && !tx.rollbackDone) {
+      return this._scheduleAutosaveRollback(job, snapshot, tx, result.reason || 'save_failed');
+    }
+    tx.finished = true;
+    const writeMs = tx.backupMs + tx.storageMs + tx.readbackMs + tx.verifyMs + tx.indexMs;
+    const write = {
+      ...result,
+      bytes: snapshot.json.length,
+      stringifyMs: snapshot.stringifyMs,
+      storageMs: tx.storageMs,
+      indexMs: tx.indexMs,
+      backupCreated: !!result.backupCreated,
+      backupSavedAt: result.backupSavedAt || null,
+    };
+    const timing = this._saveTiming({
+      slot: AUTOSAVE_SLOT,
+      reason: job.reason,
+      autosave: true,
+      started: job.requestedAt,
+      serializeMs: snapshot.serializeMs,
+      writeMs,
+      stringifyMs: snapshot.stringifyMs,
+      storageMs: tx.storageMs,
+      indexMs: tx.indexMs,
+      bytes: snapshot.json.length,
+      ok: !!result.ok,
+      failure: result.reason || null,
+      blockingSlicesMs: tx.slices,
+      blockingSamples: tx.blockingSamples,
+      backupMs: tx.backupMs,
+      readbackMs: tx.readbackMs,
+      verifyMs: tx.verifyMs,
+      serializerTimings: snapshot.serializerTimings,
+      slowSerializer: snapshot.slowSerializer,
+      workerSetupMs: snapshot.workerSetupMs,
+      workerDispatchMs: snapshot.workerDispatchMs,
+      workerRoundtripMs: tx.workerRoundtripMs,
+    });
+    const ok = this._publishSaveResult(AUTOSAVE_SLOT, snapshot.envelope, write, timing);
+    if (ok) {
+      const completedAt = nowMs();
+      this._lastAutosaveAt = completedAt;
+      this._lastAutosavePlaytime = this.state.meta.playtimeS;
+      this.state.save.lastAutosaveAt = completedAt;
+    }
+    this._autosaveInFlight = false;
+    if (this._activeAutosaveJob === job) this._activeAutosaveJob = null;
+    if (this._activeAutosaveTransaction?.tx === tx) this._activeAutosaveTransaction = null;
+    job.capture = null;
+    return ok;
+  },
+
+  _failAutosave(job, failure, capture, finalSliceMs = 0) {
+    const timing = this._saveTiming({
+      slot: AUTOSAVE_SLOT,
+      reason: job.reason,
+      autosave: true,
+      started: job.requestedAt,
+      serializeMs: capture && capture.serializeMs || 0,
+      ok: false,
+      failure,
+      blockingSlicesMs: [...(capture && capture.blockingSlices || []), finalSliceMs],
+      blockingSamples: [
+        ...(capture && capture.blockingSamples || []),
+        { phase: failure || 'autosave_failure', ms: finalSliceMs },
+      ],
+      serializerTimings: capture && capture.serializerTimings,
+      slowSerializer: capture && capture.slowSerializer,
+      workerSetupMs: capture && capture.workerSetupMs,
+      workerDispatchMs: capture && capture.workerDispatchMs,
+      workerRoundtripMs: capture && capture.workerRoundtripMs,
+    });
+    this._autosaveInFlight = false;
+    if (this._activeAutosaveJob === job) this._activeAutosaveJob = null;
+    if (this._activeAutosaveTransaction?.job === job) this._activeAutosaveTransaction = null;
+    if (job) job.capture = null;
+    return this._publishSaveResult(AUTOSAVE_SLOT, null, { ok: false, reason: failure }, timing);
   },
 
   // ── load (read a slot) ──────────────────────────────────────────────────────────────────────
@@ -919,8 +1757,7 @@ export const save = {
     // The token travels to the async visual finalizer so stale completions become no-ops.
     const transitionToken = beginLoadedGameTransition ? beginLoadedGameTransition() : null;
     const timeEffects = createTimeEffects(state); // fixtures may call _restore without init()
-    const previousSequence = Number.isSafeInteger(this._restoreSequence) ? this._restoreSequence : 0;
-    this._restoreSequence = previousSequence + 1;
+    this._beginRestoreSequence();
     const restoreSource = `save:restore:${this._restoreSequence}`;
     this.bus.emit('save:restoring', { slot, source: restoreSource });
     timeEffects.reset();
@@ -1454,10 +2291,21 @@ export const save = {
   },
 };
 
+const CANONICAL_SAVE_SERIALIZE = save.serialize;
+
 // ── module helpers ────────────────────────────────────────────────────────────────────────────
 
 function nowMs() {
   return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+}
+
+// Named separately from end-to-end elapsed measurement so every synchronous autosave phase uses one
+// consistent high-resolution clock. This is deliberately wall/block time: browsers expose no
+// portable per-thread CPU clock, and Windows' Node CPU clocks advance in ~15 ms quanta (which can
+// report either 0 ms or a full tick for sub-millisecond work). A synchronous task occupies the frame
+// for its full wall interval; asynchronous worker round-trip time is measured separately with nowMs().
+function workNowMs() {
+  return nowMs();
 }
 
 function roundSaveMs(value) {

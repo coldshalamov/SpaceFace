@@ -167,7 +167,7 @@ Layered broad-phase grid used by physics (`src/core/physics.js`) and proximity q
 - **Contract:** `npm run check:spatial-hash` — static + runtime guard against legacy string-key cells,
   per-query `Set` allocation, and missing layered/stamp diagnostics.
 
-### 4.6 Release runtime assets — `assets/ships/release/parts/`
+### 4.5 Release runtime assets — `assets/ships/release/parts/`
 
 `npm run check:runtime-assets` inspects release GLBs with `@gltf-transform/core` and fails only on
 **structural real-time hazards** (missing hull LOD chains, uncompressed release textures, duplicate
@@ -177,12 +177,37 @@ material signatures, missing normals on lit meshes, extreme small-part material 
 Remaining cost: dynamic layer rebuild frequency, query rate from AI/physics/sensors, and candidate volume
 in dense sectors — optimize with cadence and index structure, not by deleting colliders.
 
-### 4.5 Renderer construction flags — `src/render/renderer.js`
+### 4.6 Renderer construction flags — `src/render/renderer.js`
 
 - `antialias: true` + `preserveDrawingBuffer: true` — `preserveDrawingBuffer` can tax some GPUs
   (needed for screenshots). Worth profiling on floor hardware.
 - Pixel ratio from `settings.video.pixelRatioCap` × `renderScale` — large fill-rate lever, but changing
   defaults to pass CI is forbidden (diagnostic bisect only).
+
+### 4.7 Transactional autosave — `src/save/saveSystem.js`
+
+- Normal autosave captures one coherent fixed-tick production payload by invoking each of the 29
+  canonical serializers exactly once, posts each captured key to a Blob worker, encodes/checksums off
+  the main thread, then validates backup and readback bytes in scheduled chunks before committing the
+  slot index. Concurrent triggers coalesce into one job.
+- The player-facing synchronous-slice target is **8 ms** and the hard observation threshold is
+  **12 ms**. These values are emitted as `targetSliceMs` / `hardSliceMs`; they are not relaxed under
+  load. Every raw sample is retained. `observedTargetMet` and `observedHardLimitMet` are direct
+  comparisons of the raw maximum against 8 ms and 12 ms; any sample above 12 ms makes the hard flag
+  false. The receipt attributes an overage through `maxBlockingPhase` / `slowSerializer`.
+- `blockingClock: high_resolution_sync_wall` means each sample is high-resolution wall time around one
+  synchronous main-thread operation. It is the browser/Electron-compatible frame-block observation.
+  `workerRoundtripMs` is separate and never counted as main-thread blocking. `totalCpuMs` is retained
+  for artifact compatibility but is an exact alias of the more accurate `totalBlockingMs`; it is not
+  OS CPU accounting.
+- Do **not** use Node `process.cpuUsage()` / `threadCpuUsage()` for this gate. On Windows those clocks
+  advance in scheduler-sized (~15 ms) quanta, which can report ordinary sub-millisecond structured
+  clones as either 0 ms or a full tick. Receipts and the runtime report preserve the unmodified
+  high-resolution wall samples; no aggregation or contention adjustment changes them.
+- A timing overage does not abort an otherwise valid transactional save after the block already
+  happened. Data safety and timing acceptance are independent: the receipt can complete with
+  `observedHardLimitMet:false`, and the perf gate still fails the unchanged 12 ms threshold. The
+  regression fixture proves a true 14 ms serializer remains visible while exact save parity survives.
 
 ---
 

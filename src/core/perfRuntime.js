@@ -158,16 +158,26 @@ export function ensurePerfRuntime(state) {
     autosave: createStat(),
     elapsed: createStat(),
     totalCpu: createStat(),
+    totalBlocking: createStat(),
     maxBlockingSlice: createStat(),
+    maxSerializer: createStat(),
     serialize: createStat(),
     write: createStat(),
     stringify: createStat(),
     storage: createStat(),
     index: createStat(),
+    backup: createStat(),
+    readback: createStat(),
+    verify: createStat(),
+    workerSetup: createStat(),
+    workerDispatch: createStat(),
+    workerRoundtrip: createStat(),
     bytes: createStat(),
     count: 0,
     autosaveCount: 0,
     errorCount: 0,
+    targetMissCount: 0,
+    hardLimitMissCount: 0,
     last: null,
     autosaveLast: null,
   };
@@ -278,6 +288,8 @@ export function ensurePerfRuntime(state) {
       saveStats.count++;
       if (autosave) saveStats.autosaveCount++;
       if (!ok) saveStats.errorCount++;
+      if (timing.observedTargetMet === false) saveStats.targetMissCount++;
+      if (timing.observedHardLimitMet === false) saveStats.hardLimitMissCount++;
       if (Number.isFinite(totalMs) && totalMs >= 0) {
         sample(saveStats.all, totalMs);
         if (autosave) sample(saveStats.autosave, totalMs);
@@ -285,12 +297,20 @@ export function ensurePerfRuntime(state) {
       for (const [field, stat] of [
         ['elapsedMs', saveStats.elapsed],
         ['totalCpuMs', saveStats.totalCpu],
+        ['totalBlockingMs', saveStats.totalBlocking],
         ['maxBlockingSliceMs', saveStats.maxBlockingSlice],
+        ['maxSerializerMs', saveStats.maxSerializer],
         ['serializeMs', saveStats.serialize],
         ['writeMs', saveStats.write],
         ['stringifyMs', saveStats.stringify],
         ['storageMs', saveStats.storage],
         ['indexMs', saveStats.index],
+        ['backupMs', saveStats.backup],
+        ['readbackMs', saveStats.readback],
+        ['verifyMs', saveStats.verify],
+        ['workerSetupMs', saveStats.workerSetup],
+        ['workerDispatchMs', saveStats.workerDispatch],
+        ['workerRoundtripMs', saveStats.workerRoundtrip],
         ['bytes', saveStats.bytes],
       ]) {
         const value = Number(timing[field]);
@@ -338,17 +358,27 @@ export function ensurePerfRuntime(state) {
         saveStats.autosave,
         saveStats.elapsed,
         saveStats.totalCpu,
+        saveStats.totalBlocking,
         saveStats.maxBlockingSlice,
+        saveStats.maxSerializer,
         saveStats.serialize,
         saveStats.write,
         saveStats.stringify,
         saveStats.storage,
         saveStats.index,
+        saveStats.backup,
+        saveStats.readback,
+        saveStats.verify,
+        saveStats.workerSetup,
+        saveStats.workerDispatch,
+        saveStats.workerRoundtrip,
         saveStats.bytes,
       ]) resetStat(stat);
       saveStats.count = 0;
       saveStats.autosaveCount = 0;
       saveStats.errorCount = 0;
+      saveStats.targetMissCount = 0;
+      saveStats.hardLimitMissCount = 0;
       saveStats.last = null;
       saveStats.autosaveLast = null;
     },
@@ -377,16 +407,26 @@ export function ensurePerfRuntime(state) {
           count: saveStats.count,
           autosaveCount: saveStats.autosaveCount,
           errorCount: saveStats.errorCount,
+          targetMissCount: saveStats.targetMissCount,
+          hardLimitMissCount: saveStats.hardLimitMissCount,
           all: reportStat(saveStats.all),
           autosave: reportStat(saveStats.autosave),
           elapsed: reportStat(saveStats.elapsed),
           totalCpu: reportStat(saveStats.totalCpu),
+          totalBlocking: reportStat(saveStats.totalBlocking),
           maxBlockingSlice: reportStat(saveStats.maxBlockingSlice),
+          maxSerializer: reportStat(saveStats.maxSerializer),
           serialize: reportStat(saveStats.serialize),
           write: reportStat(saveStats.write),
           stringify: reportStat(saveStats.stringify),
           storage: reportStat(saveStats.storage),
           index: reportStat(saveStats.index),
+          backup: reportStat(saveStats.backup),
+          readback: reportStat(saveStats.readback),
+          verify: reportStat(saveStats.verify),
+          workerSetup: reportStat(saveStats.workerSetup),
+          workerDispatch: reportStat(saveStats.workerDispatch),
+          workerRoundtrip: reportStat(saveStats.workerRoundtrip),
           bytes: reportStat(saveStats.bytes),
           last: saveStats.last,
           autosaveLast: saveStats.autosaveLast,
