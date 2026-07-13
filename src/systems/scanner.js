@@ -7,8 +7,16 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isPlayerWanted } from './heat.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity } from '../data/weakPoints.js';
+import {
+  CONTACT_HAIL_RANGE,
+  CONTACT_HAIL_REQUEST_TTL_S,
+  contactHailAvailability,
+  createContactHailOffer,
+  createContactHailResponse,
+  pirateParleyDemandForHandoff,
+} from '../data/contactHail.js';
 
-export const SCANNER_CONTACT_RANGE = 5200;
+export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;
 
 const PULSE_COOLDOWN_S = 8;
 const NEAR_SCAN_RADIUS = 1200;
@@ -18,6 +26,7 @@ const PINGED_S = 45;
 const SIGNAL_RECORD_CAP = 64;
 const SIGNAL_RECEIPT_CAP = 32;
 const SIGNAL_INVESTIGATE_RADIUS = 150;
+const CONTACT_HAIL_POLL_TICKS = 12; // 5 Hz at the fixed 60 Hz sim cadence.
 const UNSAFE_PLAYER_SECURITY = 0.45;
 const LANE_CONTEXT_INNER_R = 900;
 const LANE_CONTEXT_OUTER_R = 2200;
@@ -400,15 +409,33 @@ export const scanner = {
     this._scratch = [];
     this._cooldownUntil = 0;
     ensureSignalState(this.state);
+    this._contactHail = null;
+    this._contactHailAvailability = null;
+    this._contactHailAvailabilitySignature = '';
+    this._contactHailNextPollTick = 0;
+    this._contactHailLastTargetId = undefined;
     this._onSignalTrack = (payload) => this._trackSignal(payload || {});
-    if (this.bus && typeof this.bus.on === 'function') this.bus.on('signal:track', this._onSignalTrack);
+    this._onContactHailRequest = (payload) => this._requestContactHail(payload || {});
+    this._onContactHailChoice = (payload) => this._chooseContactHail(payload || {});
+    this._onContactHailReset = () => this._resetContactHail('lifecycle');
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('signal:track', this._onSignalTrack);
+      this.bus.on('contactHail:request', this._onContactHailRequest);
+      this.bus.on('contactHail:choice', this._onContactHailChoice);
+      this.bus.on('game:new', this._onContactHailReset);
+      this.bus.on('game:load', this._onContactHailReset);
+      this.bus.on('dock:docked', this._onContactHailReset);
+      this.bus.on('mode:changed', this._onContactHailReset);
+    }
   },
 
   newGame() {
+    this._resetContactHail('new_game');
     if (this.state) this.state.signalInvestigation = freshSignalState();
   },
 
   update(_dt, state) {
+    this._updateContactHail(state);
     if (state.mode !== 'flight') return;
     this._updateTrackedSignal(state);
     const actions = state.input && state.input.actions;
@@ -564,6 +591,142 @@ export const scanner = {
     return true;
   },
 
+  _requestContactHail(payload) {
+    const state = this.state;
+    const availability = contactHailAvailability(state);
+    if (!availability.enabled || payload.targetId != null && payload.targetId !== availability.targetId) {
+      this._clearContactHail('request_invalid');
+      return false;
+    }
+    if (availability.kind === 'toll') {
+      const demand = pirateParleyDemandForHandoff(availability.parley);
+      if (!demand || !(Number(demand.deadlineAt) > Number(state.simTime || 0))) {
+        this._clearContactHail('parley_invalid');
+        return false;
+      }
+      this._clearContactHail('parley_handoff');
+      this.bus.emit('contactHail:handoff', {
+        targetId: availability.targetId,
+        squadId: demand.squadId,
+      });
+      // Reuse the shipped presenter and its COMPLY / REFUSE / RUN intents verbatim. Scanner does
+      // not become a second payment, hostility, or escape authority.
+      this.bus.emit('pirateParley:demand', demand);
+      return true;
+    }
+    const now = Number(state.simTime) || 0;
+    const requestId = `contact-hail:${availability.kind}:${String(availability.targetId)}:${state.tick | 0}:${Math.round(now * 1000)}`;
+    const offer = createContactHailOffer(
+      state,
+      availability,
+      requestId,
+      now + CONTACT_HAIL_REQUEST_TTL_S,
+    );
+    if (!offer) {
+      this._clearContactHail('offer_invalid');
+      return false;
+    }
+    this._contactHail = offer;
+    this.bus.emit('contactHail:offer', cloneContactHailPayload(offer));
+    return true;
+  },
+
+  _chooseContactHail(payload) {
+    const active = this._contactHail;
+    if (!active || payload.requestId !== active.requestId) return false;
+    const state = this.state;
+    const now = Number(state && state.simTime) || 0;
+    const availability = contactHailAvailability(state);
+    const valid = now < Number(active.expiresAt)
+      && payload.targetId === active.targetId
+      && availability.enabled
+      && availability.targetId === active.targetId
+      && availability.kind === active.kind;
+    if (!valid) {
+      this._clearContactHail('choice_invalid');
+      return false;
+    }
+    const target = availability.entity;
+    const ai = target && target.data && target.data.ai || {};
+    const wanted = isPlayerWanted(state);
+    const response = createContactHailResponse(state, active, payload.choice, {
+      wanted,
+      weaponsAuthorized: wanted || ai.securityTargetId === state.playerId,
+      roe: ai.roe || null,
+    });
+    if (!response) return false;
+    this._contactHail = null;
+    this.bus.emit('contactHail:response', cloneContactHailPayload(response));
+    return true;
+  },
+
+  _updateContactHail(state) {
+    const active = this._contactHail;
+    const now = Number(state && state.simTime) || 0;
+    // Expiry remains exact at the fixed-step cadence; range/classification work sleeps at 5 Hz.
+    if (active && now >= Number(active.expiresAt)) this._clearContactHail('expired');
+
+    const targetId = state && state.player && state.player.targetId;
+    const targetDirty = targetId !== this._contactHailLastTargetId;
+    const tick = state && state.tick | 0;
+    if (!targetDirty && tick < this._contactHailNextPollTick) return;
+
+    const availability = contactHailAvailability(state);
+    this._contactHailLastTargetId = targetId;
+    this._contactHailNextPollTick = tick + CONTACT_HAIL_POLL_TICKS;
+    this._publishContactHailAvailability(availability);
+
+    const current = this._contactHail;
+    if (current && (!availability.enabled
+      || availability.targetId !== current.targetId
+      || availability.kind !== current.kind)) {
+      this._clearContactHail('availability_lost');
+    }
+  },
+
+  _publishContactHailAvailability(availability) {
+    const publicView = {
+      enabled: availability && availability.enabled === true,
+      reason: availability && availability.reason || null,
+      targetId: availability && availability.targetId != null ? availability.targetId : null,
+      kind: availability && availability.kind || null,
+      label: availability && availability.label || 'HAIL',
+    };
+    const signature = `${publicView.enabled}:${String(publicView.targetId)}:${publicView.kind}:${publicView.reason}:${publicView.label}`;
+    this._contactHailAvailability = publicView;
+    if (signature === this._contactHailAvailabilitySignature) return false;
+    this._contactHailAvailabilitySignature = signature;
+    this.bus.emit('contactHail:availability', { ...publicView });
+    return true;
+  },
+
+  _resetContactHail(reason) {
+    this._clearContactHail(reason);
+    this._contactHailAvailability = null;
+    this._contactHailAvailabilitySignature = '';
+    this._contactHailNextPollTick = 0;
+    this._contactHailLastTargetId = undefined;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('contactHail:availability', {
+        enabled: false, reason, targetId: null, kind: null, label: 'HAIL',
+      });
+    }
+  },
+
+  _clearContactHail(reason) {
+    if (!this._contactHail) return false;
+    const previous = this._contactHail;
+    this._contactHail = null;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('contactHail:clear', {
+        requestId: previous.requestId,
+        targetId: previous.targetId,
+        reason,
+      });
+    }
+    return true;
+  },
+
   _updateTrackedSignal(state) {
     const own = ensureSignalState(state);
     const record = own.trackedId && own.records[own.trackedId];
@@ -606,16 +769,41 @@ export const scanner = {
   },
 
   deserialize(data) {
+    this._resetContactHail('load');
     this.state.signalInvestigation = normalizeSignalState(data);
   },
 
   destroy() {
-    if (this.bus && this._onSignalTrack && typeof this.bus.off === 'function') {
-      this.bus.off('signal:track', this._onSignalTrack);
+    if (this.bus && typeof this.bus.off === 'function') {
+      if (this._onSignalTrack) this.bus.off('signal:track', this._onSignalTrack);
+      if (this._onContactHailRequest) this.bus.off('contactHail:request', this._onContactHailRequest);
+      if (this._onContactHailChoice) this.bus.off('contactHail:choice', this._onContactHailChoice);
+      if (this._onContactHailReset) {
+        this.bus.off('game:new', this._onContactHailReset);
+        this.bus.off('game:load', this._onContactHailReset);
+        this.bus.off('dock:docked', this._onContactHailReset);
+        this.bus.off('mode:changed', this._onContactHailReset);
+      }
     }
+    this._contactHail = null;
+    this._contactHailAvailability = null;
+    this._contactHailAvailabilitySignature = '';
     this._onSignalTrack = null;
+    this._onContactHailRequest = null;
+    this._onContactHailChoice = null;
+    this._onContactHailReset = null;
   },
 };
+
+function cloneContactHailPayload(payload) {
+  return {
+    ...payload,
+    lines: Array.isArray(payload.lines) ? payload.lines.slice(0, 2) : [],
+    actions: Array.isArray(payload.actions)
+      ? payload.actions.slice(0, 2).map((row) => ({ ...row }))
+      : [],
+  };
+}
 
 // ── Contact classification (Radar & Contacts — on-demand threat list) ────────────────────────
 // Pure, allocation-free readers the HUD contacts strip (hud.js updateOverview) uses to turn a live

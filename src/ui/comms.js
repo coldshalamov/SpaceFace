@@ -20,6 +20,7 @@ import { createPirateParleyPrompt } from './pirateParleyPrompt.js';
 import { createSectorLawPresenter } from './sectorLawPresenter.js';
 import { createSignalInvestigationPrompt } from './signalInvestigationPrompt.js';
 import { createRecoveryEncounterPrompt } from './recoveryEncounterPrompt.js';
+import { createContactHailPrompt } from './contactHailPrompt.js';
 
 const COMMS_STYLE_ID = 'sf-comms-style';
 
@@ -72,6 +73,7 @@ export function createComms(ctx) {
   const sectorLawPresenter = createSectorLawPresenter(ctx);
   const signalInvestigationPrompt = createSignalInvestigationPrompt(ctx);
   const recoveryEncounterPrompt = createRecoveryEncounterPrompt(ctx);
+  const contactHailPrompt = createContactHailPrompt(ctx);
 
   // ── 1. Comms feed (left edge) ────────────────────────────────────────────────────────────
   const feed = document.createElement('div');
@@ -437,6 +439,7 @@ export function createComms(ctx) {
     if (sectorLawPresenter && sectorLawPresenter.tick) sectorLawPresenter.tick();
     if (signalInvestigationPrompt && signalInvestigationPrompt.tick) signalInvestigationPrompt.tick();
     if (recoveryEncounterPrompt && recoveryEncounterPrompt.tick) recoveryEncounterPrompt.tick();
+    if (contactHailPrompt && contactHailPrompt.tick) contactHailPrompt.tick();
     tickHeldComms();
     sweep();
   }
@@ -461,7 +464,7 @@ export function createComms(ctx) {
     return choiceModalOpen;
   }
 
-  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, pirateParleyPrompt, sectorLawPresenter, signalInvestigationPrompt, recoveryEncounterPrompt };
+  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, pirateParleyPrompt, sectorLawPresenter, signalInvestigationPrompt, recoveryEncounterPrompt, contactHailPrompt };
 }
 
 function normalizeTtlMs(ttl) {
