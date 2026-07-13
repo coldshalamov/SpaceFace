@@ -71,14 +71,18 @@ test('ship on-demand plans request only the exact body or one modular family', (
     type: 'ship',
     data: { defId: 'ship_wasp' },
   });
-  assert.deepEqual(modular.hull, ['hulls/hull_fighter.glb']);
-  assert.equal(Object.hasOwn(modular, 'place'), false);
-  assert.ok(Object.keys(modular).every((slot) => slot !== 'hull' || modular[slot].length === 1));
-  assert.ok(
-    Object.values(modular).reduce((sum, files) => sum + files.length, 0)
-      < Object.values(partsLibrary.PART_LIBRARY_CONTRACT.slots).reduce((sum, files) => sum + files.length, 0),
-    'one ship must never pull the complete authored catalog',
-  );
+  assert.deepEqual(modular, {
+    hull: ['hulls/hull_fighter.glb'],
+    cockpit: ['cockpits/cockpit_recessed.glb'],
+    engine: ['engines/engine_vector.glb'],
+    fin: ['fins/fin_radiator_grid.glb'],
+    weapon: ['weapons/weapon_pulse_cannon.glb'],
+    pod: ['pods/pod_utility.glb'],
+    gear: ['gear/skid_trio.glb'],
+    greeble: ['greebles/greeble_nav_lights.glb', 'greebles/greeble_rcs.glb'],
+  });
+  assert.equal(Object.values(modular).flat().length, 9,
+    'ordinary modular demand must decode only its exact live composition, not all 34 family files');
 });
 
 test('world-place upgrades share the same bounded authored admission queue', () => {

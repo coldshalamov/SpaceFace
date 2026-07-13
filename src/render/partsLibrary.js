@@ -24,11 +24,13 @@ const ZERO_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
 const sceneStates = new WeakMap();
 const libraryByRenderer = new WeakMap();
 const resolvedLibraryByRenderer = new WeakMap();
+const planAdmissionByRenderer = new WeakMap();
 const sharedMaterialVariants = new Map();
 const sharedReadabilityShellVariants = new Map();
 const ownerReleaseState = new WeakMap();
 const compositionPrimitiveCache = new WeakMap();
 const upgradeQueuesByScene = new WeakMap();
+const contractRecordsBySlot = new Map();
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
 const IDENTITY_MATRIX = new THREE.Matrix4();
@@ -95,6 +97,8 @@ export function invalidatePartsLibraryCaches(renderer) {
     if (promises) promises.clear();
     const resolved = resolvedLibraryByRenderer.get(renderer);
     if (resolved) resolved.clear();
+    const admissions = planAdmissionByRenderer.get(renderer);
+    if (admissions) admissions.clear();
   }
 }
 
@@ -223,9 +227,6 @@ const AUTHORED_BOOTSTRAP_PLAN = Object.freeze({
   hull: Object.freeze(['wholeships/kestrel.glb']),
   place: Object.freeze(['places/place_station_trade_hub.glb']),
 });
-const MODULAR_SHIP_SLOTS = Object.freeze(
-  SHIP_ASSEMBLY_SLOTS.filter((slot) => slot !== 'hull'),
-);
 const REGULAR_HULL_FILES = Object.freeze(
   PART_LIBRARY_CONTRACT.slots.hull.filter((file) => !String(file).startsWith('wholeships/')),
 );
@@ -234,9 +235,8 @@ export function authoredBootstrapPreloadPlan() {
   return clonePreloadPlan(AUTHORED_BOOTSTRAP_PLAN);
 }
 
-/** Pure per-entity residency plan. Complete authored bodies need one GLB. Modular ships load their
- * exact hull plus the compact shared component family so deterministic assembly choices remain
- * byte-for-byte identical to the full catalog path. Places are never pulled by a ship request. */
+/** Pure per-entity residency plan. Complete authored bodies need one GLB. Modular ships predict the
+ * exact deterministic records consumed by live assembly before any decode/upload begins. */
 export function authoredPreloadPlanForEntity(entity, options = {}) {
   if (!entity || entity.type !== 'ship') return {};
   const whole = wholeShipVisualForEntity(entity, options);
@@ -244,17 +244,44 @@ export function authoredPreloadPlanForEntity(entity, options = {}) {
 
   const defId = entity.data && entity.data.defId;
   const seed = hashString(`${entity.id}|${defId}|${entity.factionId || ''}`);
+  const shipDef = SHIP_BY_ID.get(defId);
   const mappedHull = HULL_FILE_BY_DEF_ID[defId];
   const hullFile = mappedHull || (REGULAR_HULL_FILES.length
     ? REGULAR_HULL_FILES[((seed ^ hashString('hull')) >>> 0) % REGULAR_HULL_FILES.length]
     : null);
   const plan = {};
-  if (hullFile) plan.hull = [hullFile];
-  for (const slot of MODULAR_SHIP_SLOTS) {
-    const files = PART_LIBRARY_CONTRACT.slots[slot];
-    if (files && files.length) plan[slot] = [...files];
-  }
+  addPlanFiles(plan, 'hull', [hullFile]);
+  addPlanFiles(plan, 'cockpit', [seededContractFile('cockpit', seed)]);
+  addPlanFiles(plan, 'engine', [engineRecordFor(contractRecords('engine'), entity, seed)?.url]);
+  addPlanFiles(plan, 'fin', [seededContractFile('fin', seed)]);
+  addPlanFiles(plan, 'weapon', authoredWeaponMounts(entity, shipDef, contractRecords('weapon'), seed)
+    .map((mount) => mount.record && mount.record.url));
+  addPlanFiles(plan, 'pod', authoredPodMounts(entity, shipDef, contractRecords('pod'), seed)
+    .map((mount) => mount.record && mount.record.url));
+  addPlanFiles(plan, 'gear', [authoredGearMount(entity, shipDef, contractRecords('gear'), seed)?.record?.url]);
+  addPlanFiles(plan, 'greeble', authoredGreebleMounts(entity, shipDef, contractRecords('greeble'), seed)
+    .map((mount) => mount.record && mount.record.url));
   return plan;
+}
+
+function contractRecords(slot) {
+  let records = contractRecordsBySlot.get(slot);
+  if (!records) {
+    records = Object.freeze((PART_LIBRARY_CONTRACT.slots[slot] || [])
+      .map((url) => Object.freeze({ url })));
+    contractRecordsBySlot.set(slot, records);
+  }
+  return records;
+}
+
+function seededContractFile(slot, seed) {
+  const files = PART_LIBRARY_CONTRACT.slots[slot] || [];
+  return files.length ? files[((seed ^ hashString(slot)) >>> 0) % files.length] : null;
+}
+
+function addPlanFiles(plan, slot, files) {
+  const exact = [...new Set((files || []).filter(Boolean))];
+  if (exact.length) plan[slot] = exact;
 }
 
 export function isAuthoredPartLibraryUsable(library) {
@@ -1269,13 +1296,40 @@ function loadCanonicalLibrary(renderer, options = {}) {
 async function ensureEntityLibrary(renderer, entity, options = {}) {
   const library = await loadCanonicalLibrary(renderer, options);
   const plan = authoredPreloadPlanForEntity(entity, options);
-  if (!libraryHasPreloadPlan(library, plan)) {
-    await loadPlanIntoLibrary(renderer, options, library, plan);
-  }
+  await admitEntityPlan(renderer, options, library, plan);
   if (!libraryHasPreloadPlan(library, plan)) {
     throw new Error(`Authored entity assets are incomplete for ${entity && entity.id || 'unknown ship'}.`);
   }
   return library;
+}
+
+function admitEntityPlan(renderer, options, library, plan) {
+  const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
+  let lanes = planAdmissionByRenderer.get(renderer);
+  if (!lanes) {
+    lanes = new Map();
+    planAdmissionByRenderer.set(renderer, lanes);
+  }
+  const previous = lanes.get(partRoot) || Promise.resolve();
+  const task = previous.catch(() => {}).then(async () => {
+    // Re-check only after earlier demand has committed its records. Checking before joining the lane
+    // permits duplicate decodes; copying slot arrays outside the lane permits last-writer data loss.
+    if (!libraryHasPreloadPlan(library, plan)) {
+      await loadPlanIntoLibrary(renderer, options, library, plan);
+    }
+    return library;
+  });
+  lanes.set(partRoot, task);
+  const cleanup = () => {
+    if (lanes.get(partRoot) === task) lanes.delete(partRoot);
+  };
+  return task.then((value) => {
+    cleanup();
+    return value;
+  }, (error) => {
+    cleanup();
+    throw error;
+  });
 }
 
 async function loadPlanIntoLibrary(renderer, options, library, plan) {
@@ -1334,6 +1388,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   const releaseMode = isReleaseAssetMode(options);
   const partRoot = releaseMode ? PART_RELEASE_ROOT : PART_ROOT;
   const seed = hashString(`${entity.id}|${entity.data && entity.data.defId}|${entity.factionId || ''}`);
+  const entityPlan = authoredPreloadPlanForEntity(entity, options);
   const selected = new Map();
   // Whole-ship bodies (cockpit/fins/engine baked in) bypass the parts-assembly: use the body as the
   // hull and skip the structural slots so they don't stack on the baked geometry.
@@ -1349,12 +1404,17 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
         wholeShip = true;
       } else {
         const pool = records.filter((record) => !isWholeShipUrl(record.url));
-        const wanted = HULL_FILE_BY_DEF_ID[entity.data && entity.data.defId];
+        const wanted = entityPlan.hull && entityPlan.hull[0]
+          || HULL_FILE_BY_DEF_ID[entity.data && entity.data.defId];
         const exact = wanted && pool.find((record) => String(record.url || '').endsWith(wanted));
         selected.set(slot, exact || (pool.length ? pool[((seed ^ hashString(slot)) >>> 0) % pool.length] : null));
       }
     } else if (slot === 'engine') {
       selected.set(slot, engineRecordFor(records, entity, seed));
+    } else if (slot === 'cockpit' || slot === 'fin') {
+      const wanted = entityPlan[slot] && entityPlan[slot][0];
+      selected.set(slot, recordForFile(records, wanted)
+        || (records.length ? records[((seed ^ hashString(slot)) >>> 0) % records.length] : null));
     } else {
       selected.set(slot, records.length ? records[((seed ^ hashString(slot)) >>> 0) % records.length] : null);
     }
