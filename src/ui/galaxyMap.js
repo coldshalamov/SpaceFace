@@ -2433,16 +2433,21 @@ export const galaxyMapScreen = {
 
   onKey(event, ctx) {
     const key = event && typeof event.key === 'string' ? event.key.toLowerCase() : '';
+    const target = event && event.target;
+    const textEntry = !!(target
+      && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
+
+    // The search input owns ordinary typing. Without this guard the final `n` in a query such as
+    // "Helios Station" also reaches the map's global N shortcut, closes the screen, and leaves a
+    // correctly-built result list hidden under the inactive map. Escape intentionally remains the
+    // map-close key; Enter/Space/letters/slash keep their native text-entry behavior.
+    if (textEntry && key !== 'escape') return false;
 
     // Keyboard primary action mirrors the inspector button for owned bases. Text-entry controls
     // keep native Enter/Space behavior; the global UI input router normally filters them before
     // this handler, and this local guard keeps direct/synthetic dispatch safe too.
     if ((key === 'enter' || key === ' ' || key === 'spacebar')
       && this._selectedTarget && this._selectedTarget.kind === 'claim') {
-      const target = event && event.target;
-      const textEntry = !!(target
-        && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
-      if (textEntry) return false;
       if (event && typeof event.preventDefault === 'function') event.preventDefault();
       this._activateSelectedCourse();
       return true;

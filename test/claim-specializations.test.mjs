@@ -1048,6 +1048,29 @@ test('Enter and Space activate a selected claim without stealing text-entry keys
     assert.equal(textPrevented, 0);
     assert.equal(textPops, 0);
     assert.equal(textBus.emitLog.some((entry) => entry.evt === 'ui:setCourse'), false);
+
+    // A typed station query must not double as the map's M/N close shortcuts. The input's own
+    // keydown listener still owns Enter/Arrow navigation and the global route leaves it alone.
+    for (const key of ['n', 'm', '/', ' ']) {
+      const typingBus = makeBus();
+      let typingPops = 0;
+      let typingPrevented = 0;
+      galaxyMapScreen._ctx = {
+        state: h.state,
+        bus: typingBus,
+        screenManager: { popScreen: () => { typingPops += 1; } },
+      };
+      galaxyMapScreen._selectedTarget = target;
+      const typingHandled = galaxyMapScreen.onKey({
+        key,
+        target: { tagName: 'INPUT', isContentEditable: false },
+        preventDefault: () => { typingPrevented += 1; },
+      }, galaxyMapScreen._ctx);
+      assert.equal(typingHandled, false, `${JSON.stringify(key)} remains search text`);
+      assert.equal(typingPrevented, 0, `${JSON.stringify(key)} retains native input behavior`);
+      assert.equal(typingPops, 0, `${JSON.stringify(key)} does not close the map while typing`);
+      assert.equal(typingBus.emitLog.some((entry) => entry.evt === 'ui:setCourse'), false);
+    }
   } finally {
     galaxyMapScreen._ctx = old.ctx;
     galaxyMapScreen._selectedTarget = old.selectedTarget;
