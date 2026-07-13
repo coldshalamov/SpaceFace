@@ -146,6 +146,50 @@ export function setEntityDoctrine(entity, values = {}) {
   return ai;
 }
 
+/** Player wing orders refine squad advice; retreat remains an absolute survival override. */
+export function overrideDirectiveForWingOrder(directive, perception, freeze = Object.freeze) {
+  if (!directive || !directive.objective) return directive;
+  if (directive.objective.kind === ObjectiveKind.RETREAT) return directive;
+  const activity = normalizeActivity(perception && perception.self && perception.self.activity);
+  if (!activity || !String(activity.reason || '').startsWith('wing_order:')) return directive;
+  const order = String(activity.reason).slice('wing_order:'.length);
+  let kind = ObjectiveKind.REFORM;
+  let targetId = null;
+  if (order === 'attack') {
+    kind = ObjectiveKind.FOCUS;
+    targetId = activity.targetId;
+  } else if (order === 'screen') {
+    kind = ObjectiveKind.SCREEN;
+  } else if (order === 'hold') {
+    kind = ObjectiveKind.HOLD;
+  }
+  const anchor = activity.anchor;
+  const formation = anchor ? freeze({
+    ...directive.formation,
+    slot: freeze({ x: anchor.x, z: anchor.z }),
+    velocity: freeze({ x: 0, z: 0 }),
+    bound: activity.leashRadius,
+    breakFormation: false,
+  }) : directive.formation;
+  return freeze({
+    ...directive,
+    focusTargetId: kind === ObjectiveKind.FOCUS ? targetId : null,
+    objective: freeze({ kind, targetId, reason: activity.reason }),
+    formation,
+  });
+}
+
+/** Restrict combat-doctrine target scoring to an explicit player Attack target. */
+export function perceptionForWingOrderCombatDoctrine(perception, directive, freeze = Object.freeze) {
+  if (!perception || !directive || !directive.objective) return perception;
+  const activity = normalizeActivity(perception.self && perception.self.activity);
+  const exactTargetId = directive.objective.targetId;
+  if (!activity || activity.reason !== 'wing_order:attack' || exactTargetId == null) return perception;
+  const contacts = Array.isArray(perception.contacts) ? perception.contacts : [];
+  const filtered = contacts.filter((contact) => contact && (contact.kind !== 'ship' || contact.id === exactTargetId));
+  return freeze({ ...perception, contacts: freeze(filtered) });
+}
+
 export function applyDoctrineToSelection({ selected, perception, directive, tick = 0, freeze = Object.freeze }) {
   if (!selected) return selected;
   const self = perception && perception.self;

@@ -13,6 +13,7 @@ import { BehaviorExecutor, ShipUtilitySelector } from './shipDecision.js';
 import { SquadCommander } from './squad.js';
 import { ExplainabilityTrace } from './trace.js';
 import { CombatDoctrineRuntime, normalizeCombatDoctrineId, overrideDirectiveForCombatDoctrine } from './combatDoctrine.js';
+import { overrideDirectiveForWingOrder, perceptionForWingOrderCombatDoctrine } from './doctrine.js';
 
 const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
 const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
@@ -129,8 +130,9 @@ export class TacticalAIStack {
       }));
       for (const member of squadDef.members) {
         const perception = perceptionsByEntity.get(member.id);
-        const directive = squadResult.directives.get(member.id);
-        if (!perception || !directive) continue;
+        const squadDirective = squadResult.directives.get(member.id);
+        if (!perception || !squadDirective) continue;
+        const directive = overrideDirectiveForWingOrder(squadDirective, perception, freeze);
         const doctrineId = normalizeCombatDoctrineId(directive.combatDoctrineId, perception.self && perception.self.combatDoctrineId);
         const retreatOrdered = directive.objective && directive.objective.kind === ObjectiveKind.RETREAT;
         if (this.memberBatchEnabled && !doctrineId && !retreatOrdered && !activeMembers.has(member.id) && this.lastDecisionByEntity.has(member.id)) {
@@ -140,8 +142,9 @@ export class TacticalAIStack {
           continue;
         }
         if (retreatOrdered && doctrineId) this.combatDoctrine.forget(member.id);
+        const doctrinePerception = perceptionForWingOrderCombatDoctrine(perception, directive, freeze);
         const combatDoctrine = doctrineId && !retreatOrdered ? this.combatDoctrine.update({
-          tick, entityId: member.id, doctrineId, perception, directive,
+          tick, entityId: member.id, doctrineId, perception: doctrinePerception, directive,
         }) : null;
         const effectiveDirective = combatDoctrine ? overrideDirectiveForCombatDoctrine(directive, combatDoctrine) : directive;
         const actionDefs = this.ports.actions.list(member.id, this._actionContext(tick, perception, effectiveDirective)) || [];

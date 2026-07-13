@@ -2,12 +2,8 @@
 // radial on the comms key gives the player a taste of fleet control without leaving the cockpit").
 //
 // A four-wedge radial that pops at screen-center on the fleet-command key (bindings.fleetCommand / Z),
-// issues a single order to the WHOLE deployed wing, and closes. Orders route through the existing
-// ui:fleetOrder contract → automation.handleOrder → wingmen._onFleetOrder, so no new order plumbing:
-//   Attack My Target → orderAttack (carries the player's current target id)
-//   Form Up          → orderEscort (stick near the player)
-//   Defend Me        → orderGuard  (hold near + protect the player)
-//   Hold Position    → orderRecall (idle / hang back)
+// issues one batched ui:wingOrder intent and closes. The hub cycles ALL / a selected recipient;
+// the surrounding four-wedge geometry remains unchanged.
 //
 // Pure DOM + event listeners; reads state for the fleet + target, never mutates sim state (§0.6).
 // The radial keeps the player's hands on thrust/trigger — open, pick, gone — matching the cockpit feel.
@@ -16,12 +12,12 @@ import { BINDINGS } from './bindings.js';
 
 const STYLE_ID = 'sf-wingman-radial-style';
 
-// N / E / S / W wedges. `order` is the ui:fleetOrder kind; `key` is the number-key shortcut.
+// N / E / S / W wedges. `order` is the batched ui:wingOrder kind; `key` is the shortcut.
 const OPTIONS = [
-  { key: '1', order: 'orderAttack', label: 'Attack Target', glyph: '⌖', pos: 'top', needsTarget: true },
-  { key: '2', order: 'orderEscort', label: 'Form Up', glyph: '⛊', pos: 'right' },
-  { key: '3', order: 'orderGuard', label: 'Defend Me', glyph: '⚔', pos: 'bottom' },
-  { key: '4', order: 'orderRecall', label: 'Hold', glyph: '✦', pos: 'left' },
+  { key: '1', order: 'attack', label: 'Attack Target', glyph: '⌖', pos: 'top', needsTarget: true },
+  { key: '2', order: 'screen', label: 'Screen', glyph: '⛊', pos: 'right' },
+  { key: '3', order: 'regroup', label: 'Regroup', glyph: '↟', pos: 'bottom' },
+  { key: '4', order: 'hold', label: 'Hold', glyph: '✦', pos: 'left' },
 ];
 
 export function createWingmanRadial(ctx) {
@@ -36,11 +32,15 @@ export function createWingmanRadial(ctx) {
   overlay.setAttribute('aria-label', 'Wingman commands');
   overlay.hidden = true;
 
-  const hub = document.createElement('div');
+  const hub = document.createElement('button');
+  hub.type = 'button';
   hub.className = 'sf-wradial__hub';
-  hub.innerHTML = '<span class="sf-wradial__hub-title">FLEET</span><span class="sf-wradial__hub-count mono">0</span>';
+  hub.setAttribute('aria-label', 'Cycle wingman command scope');
+  hub.innerHTML = '<span class="sf-wradial__hub-title">ALL</span><span class="sf-wradial__hub-count mono">0</span><span class="sf-wradial__hub-scope mono">TAB</span>';
   overlay.appendChild(hub);
+  const hubTitle = hub.querySelector('.sf-wradial__hub-title');
   const hubCount = hub.querySelector('.sf-wradial__hub-count');
+  hub.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); cycleScope(); });
 
   const wedgeEls = [];
   for (const opt of OPTIONS) {
@@ -60,6 +60,9 @@ export function createWingmanRadial(ctx) {
   root.appendChild(overlay);
 
   let open = false;
+  let scope = 'all';
+  let selectedIndex = 0;
+  let previousFocus = null;
 
   function fleet() {
     return (state.automation && state.automation.fleet) || [];
@@ -79,16 +82,21 @@ export function createWingmanRadial(ctx) {
 
   function openRadial(count) {
     open = true;
+    previousFocus = document.activeElement;
     if (state.ui) state.ui.wingmanRadialOpen = true;
-    hubCount.textContent = String(count);
+    selectedIndex = Math.min(selectedIndex, Math.max(0, count - 1));
+    refreshScope();
     // Grey the Attack wedge when there's no target to focus.
     const hasTarget = state.player && state.player.targetId != null;
     wedgeEls[0].classList.toggle('sf-wradial__wedge--disabled', !hasTarget);
+    wedgeEls[0].disabled = !hasTarget;
+    wedgeEls[0].setAttribute('aria-disabled', String(!hasTarget));
     overlay.hidden = false;
     overlay.classList.remove('sf-wradial--in'); void overlay.offsetWidth;
     overlay.classList.add('sf-wradial--in');
     document.addEventListener('keydown', onKey, true);
     bus.emit('audio:cue', { id: 'ui_open' });
+    focusSafely(wedgeEls.find((wedge) => !wedge.disabled) || hub);
   }
 
   function close() {
@@ -97,6 +105,9 @@ export function createWingmanRadial(ctx) {
     if (state.ui) state.ui.wingmanRadialOpen = false;
     overlay.classList.remove('sf-wradial--in');
     document.removeEventListener('keydown', onKey, true);
+    const restore = previousFocus;
+    previousFocus = null;
+    if (restore && restore.isConnected !== false && !restore.disabled) focusSafely(restore);
     // let the fade-out play before hiding
     setTimeout(() => { if (!open) overlay.hidden = true; }, 160);
   }
@@ -109,13 +120,40 @@ export function createWingmanRadial(ctx) {
       bus.emit('audio:cue', { id: 'ui_deny' });
       return; // keep the radial open so the player can pick another order
     }
-    const targetRef = opt.order === 'orderAttack' ? (state.player && state.player.targetId) : null;
-    for (const fs of f) {
-      bus.emit('ui:fleetOrder', { shipId: fs.id, order: opt.order, targetRef });
-    }
-    bus.emit('toast', { text: `Wing (${f.length}): ${opt.label}`, kind: 'good', ttl: 2 });
-    bus.emit('audio:cue', { id: 'ui_confirm' });
+    const selected = f[selectedIndex] || null;
+    bus.emit('ui:wingOrder', {
+      order: opt.order,
+      scope,
+      selectedWingmanId: scope === 'selected' && selected ? selected.id : null,
+      targetId: opt.order === 'attack' ? (state.player && state.player.targetId) : null,
+    });
     close();
+  }
+
+  function cycleScope() {
+    const f = fleet();
+    if (!f.length) return;
+    if (scope === 'all') {
+      scope = 'selected';
+      selectedIndex = 0;
+    } else if (selectedIndex < f.length - 1) {
+      selectedIndex += 1;
+    } else {
+      scope = 'all';
+      selectedIndex = 0;
+    }
+    refreshScope();
+    bus.emit('audio:cue', { id: 'ui_tick' });
+  }
+
+  function refreshScope() {
+    const f = fleet();
+    const selected = f[selectedIndex] || null;
+    hubTitle.textContent = scope === 'all' ? 'ALL' : 'SELECTED';
+    hubCount.textContent = scope === 'all' ? String(f.length) : `${selectedIndex + 1}/${f.length}`;
+    hub.setAttribute('aria-label', scope === 'all'
+      ? `Command all ${f.length} wingmen; activate to select one`
+      : `Command selected wingman ${selected && (selected.name || selected.id) || selectedIndex + 1}; activate to cycle`);
   }
 
   function onKey(ev) {
@@ -125,6 +163,9 @@ export function createWingmanRadial(ctx) {
       bus.emit('audio:cue', { id: 'ui_back' });
       close();
       return;
+    }
+    if (ev.key === 'Tab') {
+      ev.preventDefault(); ev.stopPropagation(); cycleScope(); return;
     }
     const opt = OPTIONS.find((o) => o.key === ev.key);
     if (opt) { ev.preventDefault(); ev.stopPropagation(); issue(opt); return; }
@@ -155,10 +196,11 @@ function injectCss() {
     display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:50%;
     background:rgba(6,12,22,.9); border:1px solid var(--visor-cyan, #39d0ff);
     box-shadow:0 0 18px rgba(57,208,255,.25), inset 0 0 14px rgba(57,208,255,.08);
-    transition:transform .14s ease; }
+    transition:transform .14s ease; color:inherit; cursor:pointer; padding:0; pointer-events:auto; }
   .sf-wradial--in .sf-wradial__hub { transform:translate(-50%,-50%) scale(1); }
   .sf-wradial__hub-title { font-family:var(--mono); font-size:9px; letter-spacing:.18em; color:var(--visor-cyan, #39d0ff); }
   .sf-wradial__hub-count { font-family:var(--mono); font-size:16px; color:var(--text-primary, #eaf4ff); text-shadow:0 0 6px rgba(57,208,255,.5); }
+  .sf-wradial__hub-scope { font-size:7px; color:var(--text-secondary, #9fb4cc); }
   .sf-wradial__wedge { position:absolute; left:50%; top:50%; width:96px; height:66px; margin:-33px 0 0 -48px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
     background:rgba(6,12,22,.86); border:1px solid var(--panel-edge, rgba(120,160,200,.3)); border-radius:10px;
@@ -168,6 +210,7 @@ function injectCss() {
     border-color:var(--visor-cyan, #39d0ff); box-shadow:0 0 16px rgba(57,208,255,.35); outline:none; }
   .sf-wradial__wedge--disabled { opacity:.4; }
   .sf-wradial__wedge--disabled:hover { border-color:var(--panel-edge, rgba(120,160,200,.3)); box-shadow:none; }
+  .sf-wradial__wedge:disabled { cursor:not-allowed; }
   .sf-wradial__glyph { font-size:18px; color:var(--visor-cyan, #39d0ff); line-height:1; }
   .sf-wradial__label { font-size:10px; letter-spacing:.04em; white-space:nowrap; }
   .sf-wradial__key { font-size:9px; color:var(--text-secondary, #9fb4cc); border:1px solid var(--panel-edge, rgba(120,160,200,.3));
@@ -188,4 +231,11 @@ function injectCss() {
   }
   `;
   document.head.appendChild(s);
+}
+
+function focusSafely(element) {
+  if (!element || typeof element.focus !== 'function') return false;
+  try { element.focus({ preventScroll: true }); }
+  catch (_) { try { element.focus(); } catch (_) { return false; } }
+  return document.activeElement === element;
 }

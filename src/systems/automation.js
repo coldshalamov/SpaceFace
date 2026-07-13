@@ -30,6 +30,16 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { tickProgram, assignTemplate, clearTemplate, TEMPLATES } from './alphabet.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { ASTEROIDS } from '../data/mining.js';
+import {
+  WING_ORDER,
+  WING_ORDER_SCOPE,
+  legacyFleetOrderFor,
+  makeRecipientWingOrder,
+  makeWingOrderCommand,
+  normalizeLiveWingOrder,
+  normalizePersistedWingOrder,
+} from '../data/wingOrders.js';
+import { isHostileForAI } from '../ai/engagementAuthority.js';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
@@ -283,6 +293,7 @@ export const automation = {
     // every button (buyDrone/hireTrader/buildOutpost/recall/assignRoute/dismiss/decommission/order*/
     // assignFleet) through this one event; `order` is the verb we switch on.
     bus.on('ui:fleetOrder', (p) => { if (p) this.handleOrder(p); });
+    bus.on('ui:wingOrder', (p) => { if (p) this.handleWingOrder(p); });
 
     // Combat dealing damage to one of our assets (drone group / outpost / fleet ship).
     bus.on('combat:hitAsset', (p) => { if (p) this.onHitAsset(p); });
@@ -1002,6 +1013,87 @@ export const automation = {
     }
   },
 
+  handleWingOrder(p) {
+    const requestedOrder = String(p && p.order || '');
+    const validOrder = Object.values(WING_ORDER).includes(requestedOrder);
+    const meta = this.meta();
+    meta.wingCommandSeq = Math.max(0, Number.isInteger(meta.wingCommandSeq) ? meta.wingCommandSeq : 0) + 1;
+    const command = makeWingOrderCommand({
+      order: validOrder ? requestedOrder : WING_ORDER.REGROUP,
+      scope: p && p.scope,
+      selectedWingmanId: p && p.selectedWingmanId,
+      targetId: p && p.targetId,
+      issuedTick: Number.isInteger(this.state.tick) ? this.state.tick : 0,
+      sequence: meta.wingCommandSeq,
+      seed: this.state.meta && this.state.meta.seed,
+    });
+    const fleet = (this.state.automation.fleet || []).slice()
+      .sort((a, b) => String(a && a.id).localeCompare(String(b && b.id)));
+    let recipients = fleet;
+    if (command.scope === WING_ORDER_SCOPE.SELECTED) {
+      recipients = fleet.filter((row) => row && row.id === command.selectedWingmanId);
+    }
+    const acceptedRecipientIds = [];
+    const blockedRecipients = [];
+    if (!validOrder) {
+      blockedRecipients.push({ recipientId: null, reason: 'order_invalid' });
+      recipients = [];
+    } else if (command.scope === WING_ORDER_SCOPE.SELECTED && recipients.length === 0) {
+      blockedRecipients.push({ recipientId: command.selectedWingmanId, reason: 'recipient_missing' });
+    }
+
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    const target = command.targetId == null || !this.state.entities
+      ? null : this.state.entities.get(command.targetId);
+    const sectorId = this.state.world && this.state.world.currentSectorId || null;
+    for (const fs of recipients) {
+      const live = fs && fs._liveId != null && this.state.entities
+        ? this.state.entities.get(fs._liveId) : null;
+      let reason = null;
+      if (!live || live.alive === false) reason = 'not_deployed';
+      else if (command.order === WING_ORDER.ATTACK
+        && (!target || target.alive === false || !isHostileForAI(this.state, player, target))) {
+        reason = target && target.alive !== false ? 'target_not_hostile' : 'target_missing';
+      }
+      if (reason) {
+        blockedRecipients.push({ recipientId: fs.id, reason });
+        continue;
+      }
+      fs.wingOrder = makeRecipientWingOrder(command, {
+        anchor: command.order === WING_ORDER.HOLD ? live.pos : null,
+        sectorId,
+      });
+      fs.order = legacyFleetOrderFor(command.order);
+      fs.targetRef = command.order === WING_ORDER.ATTACK
+        ? { kind: 'ref', refId: command.targetId } : null;
+      fs.redeployTimer = 0;
+      fs.status = command.order;
+      acceptedRecipientIds.push(fs.id);
+    }
+
+    const payload = Object.freeze({
+      commandId: command.id,
+      order: command.order,
+      scope: command.scope,
+      targetId: command.targetId,
+      acceptedRecipientIds: Object.freeze(acceptedRecipientIds),
+      blockedRecipients: Object.freeze(blockedRecipients.map((row) => Object.freeze(row))),
+      text: acceptedRecipientIds.length
+        ? `Executing ${command.order.toUpperCase()} ${acceptedRecipientIds.length}/${acceptedRecipientIds.length + blockedRecipients.length}`
+        : `${command.order.toUpperCase()} blocked`,
+    });
+    if (acceptedRecipientIds.length) this.bus.emit('wingOrder:accepted', payload);
+    if (blockedRecipients.length) this.bus.emit('wingOrder:blocked', payload);
+    this.bus.emit('wingOrder:status', payload);
+    const acknowledgement = acceptedRecipientIds.length === 0 ? 'UNABLE'
+      : blockedRecipients.length ? 'PARTIAL' : command.order.toUpperCase();
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({ channel: 'comms', text: acknowledgement, kind: 'wingOrder', id: command.id });
+    }
+    return payload;
+  },
+
   // Assign (or clear) an alphabet program on a drone group. The drone then runs the template
   // instead of the legacy mine-to-buffer loop — mining into real cargo + selling at a depot.
   assignProgram(droneId, templateId) {
@@ -1167,6 +1259,7 @@ export const automation = {
     const fs = {
       id: this._allocId(), shipDefId: ship.defId, defId: ship.defId,
       name: ship.customName || null, order: 'escort', targetRef: null,
+      wingOrder: normalizeLiveWingOrder({ kind: WING_ORDER.SCREEN }),
       redeployTimer: 0, hp: 1, hullPct: 1, status: 'escort',
     };
     a.fleet.push(fs);
@@ -1181,6 +1274,12 @@ export const automation = {
     fs.targetRef = targetRef != null ? { kind: 'ref', refId: targetRef } : null;
     fs.redeployTimer = 2; // brief redeploy delay (spec)
     fs.status = order;
+    if (order === 'attack' || order === 'guard' || order === 'escort' || order === 'idle') {
+      fs.wingOrder = normalizeLiveWingOrder({
+        kind: order,
+        targetId: order === 'attack' && targetRef != null ? targetRef : null,
+      }, this.state.world && this.state.world.currentSectorId, order);
+    }
     return true;
   },
 
@@ -1648,6 +1747,13 @@ export const automation = {
     a.traders = a.traders || [];
     a.outposts = a.outposts || [];
     a.fleet = a.fleet || [];
+    const sectorId = this.state && this.state.world && this.state.world.currentSectorId || null;
+    for (const fs of a.fleet) {
+      fs.wingOrder = normalizePersistedWingOrder(fs.wingOrder, sectorId, fs.order);
+      fs.order = legacyFleetOrderFor(fs.wingOrder.kind);
+      fs.targetRef = fs.wingOrder.kind === WING_ORDER.ATTACK && fs.wingOrder.targetId != null
+        ? { kind: 'ref', refId: fs.wingOrder.targetId } : null;
+    }
     if (a.fleetCap == null) a.fleetCap = 0;
     a.balance = Object.assign({}, AUTO_BALANCE, a.balance || {});
     a.accumulators = a.accumulators || { creditBuffer: 0, upkeepDebt: 0 };
@@ -1660,6 +1766,7 @@ export const automation = {
     if (a.meta.rngSeed == null) a.meta.rngSeed = 0;
     if (a.meta.lastOfflineWindowStart == null) a.meta.lastOfflineWindowStart = 0;
     if (a.meta.lastOfflineReceipt === undefined) a.meta.lastOfflineReceipt = null;
+    if (!Number.isInteger(a.meta.wingCommandSeq) || a.meta.wingCommandSeq < 0) a.meta.wingCommandSeq = 0;
   },
 
   // ------------------------------------------------------------------------------------------
@@ -1686,7 +1793,12 @@ export const automation = {
     // Fleet entries carry a transient _liveId (the live wingman entity id, set by systems/wingmen.js
     // on spawn). It doesn't survive save/load (entity ids are per-session) → strip it like drone
     // entityIds so a reloaded save doesn't reference a dead/stale entity.
-    const fleet = a.fleet.map((fs) => { const { _liveId, ...rest } = fs; return rest; });
+    const sectorId = this.state.world && this.state.world.currentSectorId || null;
+    const fleet = a.fleet.map((fs) => {
+      const { _liveId, ...rest } = fs;
+      const wingOrder = normalizePersistedWingOrder(fs.wingOrder, sectorId, fs.order);
+      return { ...rest, order: legacyFleetOrderFor(wingOrder.kind), targetRef: null, wingOrder };
+    });
     return {
       drones, traders: a.traders, outposts: a.outposts, fleet,
       fleetCap: a.fleetCap, balance: a.balance, accumulators: a.accumulators,
@@ -1698,6 +1810,7 @@ export const automation = {
         // Offline idempotency + last receipt (plain JSON — re-load must not double-grant).
         lastOfflineWindowStart: a.meta.lastOfflineWindowStart || 0,
         lastOfflineReceipt: a.meta.lastOfflineReceipt || null,
+        wingCommandSeq: a.meta.wingCommandSeq || 0,
       },
       nextId: this._nextId,
     };
