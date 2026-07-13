@@ -42,7 +42,7 @@ const PLAYABLE_TIMEOUT_MS = Number(argv.playableTimeoutMs || argv['playable-time
 const RUNTIME_SAMPLE_MS = Number(argv.runtimeSampleMs || argv['runtime-sample-ms'] || 250);
 const AUTOSAVE_PROBE = argv.autosaveProbe !== 'false' && argv['autosave-probe'] !== 'false' && !argv.noAutosaveProbe && !argv['no-autosave-probe'];
 const AUTOSAVE_PROBE_AT_MS = Number(argv.autosaveProbeAtMs || argv['autosave-probe-at-ms'] || 1000);
-const AUTOSAVE_DURATION_BUDGET_MS = Number(argv.autosaveDurationMs || argv['autosave-duration-ms'] || 32);
+const AUTOSAVE_DURATION_BUDGET_MS = Number(argv.autosaveDurationMs || argv['autosave-duration-ms'] || 12);
 const ENTITY_SCALE_SWEEPS = argv.entityScaleSweeps !== 'false' && argv['entity-scale-sweeps'] !== 'false' && !argv.noEntityScaleSweeps && !argv['no-entity-scale-sweeps'];
 const ENTITY_SCALE_COUNTS = parseNumberList(argv.entityScaleCounts || argv['entity-scale-counts'] || '0,50,100,250,500,1000');
 const OUT = argv.out || '.devshots/perf/performance-profile.json';
@@ -375,6 +375,27 @@ async function sampleRuntime(cdp, durationMs) {
     let lastDiagAt = -Infinity;
     let unsubSaveCompleted = null;
     let unsubSaveError = null;
+    let longTaskObserver = null;
+    const longTasks = [];
+    const recordLongTasks = (entries) => {
+      for (const entry of entries) {
+        longTasks.push({
+          atMs: entry.startTime - started,
+          startedAtMs: entry.startTime,
+          endedAtMs: entry.startTime + entry.duration,
+          durationMs: entry.duration,
+        });
+      }
+    };
+
+    try {
+      longTaskObserver = new PerformanceObserver((list) => {
+        recordLongTasks(list.getEntries());
+      });
+      longTaskObserver.observe({ entryTypes: ['longtask'] });
+    } catch (_) {
+      longTaskObserver = null;
+    }
 
     if (autosaveProbe.enabled && window.SF && window.SF.bus && typeof window.SF.bus.on === 'function') {
       unsubSaveCompleted = window.SF.bus.on('save:completed', (payload = {}) => {
@@ -696,6 +717,11 @@ async function sampleRuntime(cdp, durationMs) {
       if (intervalId != null) clearInterval(intervalId);
       if (typeof unsubSaveCompleted === 'function') unsubSaveCompleted();
       if (typeof unsubSaveError === 'function') unsubSaveError();
+      if (longTaskObserver) {
+        recordLongTasks(longTaskObserver.takeRecords());
+        longTaskObserver.disconnect();
+      }
+      autosaveProbe.longTasks = longTasks;
       pushDiag(true);
       const state = window.SF && window.SF.state || null;
       resolve({
@@ -1720,6 +1746,12 @@ function evaluateBudgets({ rafFrameP95, rafHitchCount, diagnosticFrameP95, rende
         'crowded-flight sample should include a forced live autosave measurement'),
       budget('autosave.maxBlockingSlice.max', autosave && autosave.maxBlockingSliceMs && autosave.maxBlockingSliceMs.max, '<=', AUTOSAVE_DURATION_BUDGET_MS,
         'no autosave browser task should block the main thread past the hitch threshold'),
+      budget('autosave.maxSerializer.max', autosave && autosave.maxSerializerMs && autosave.maxSerializerMs.max, '<=', AUTOSAVE_DURATION_BUDGET_MS,
+        'no production serializer should exceed the save system hard observation threshold'),
+      budget('autosave.captureLongTasks.max', autosave && autosave.captureLongTaskCount, '<=', 0,
+        'autosave capture must not overlap a browser main-thread long task'),
+      budget('autosave.errors.max', autosave && autosave.errorCount, '<=', 0,
+        'crowded-flight autosave must complete without save:error receipts'),
       budget('autosave.requestCall.max', autosave && autosave.requestCallMs, '<=', AUTOSAVE_DURATION_BUDGET_MS,
         'autosave request call should return inside the hitch threshold'),
     );
@@ -2224,6 +2256,16 @@ function autosaveSummary(probe, perf) {
   const elapsed = completed.map((event) => Number(event.elapsedMs ?? event.durationMs)).filter(Number.isFinite);
   const totalCpu = completed.map((event) => Number(event.totalCpuMs)).filter(Number.isFinite);
   const maxBlockingSlices = completed.map((event) => Number(event.maxBlockingSliceMs)).filter(Number.isFinite);
+  const maxSerializers = completed.map((event) => Number(event.maxSerializerMs)).filter(Number.isFinite);
+  const longTasks = Array.isArray(probe && probe.longTasks) ? probe.longTasks : [];
+  const captureReceipts = [...completed, ...errors].filter((event) => (
+    Number.isFinite(Number(event && event.captureStartedAtMs))
+    && Number.isFinite(Number(event && event.captureEndedAtMs))
+  ));
+  const autosaveCaptureLongTasks = longTasks.filter((task) => captureReceipts.some((event) => (
+    Number(task && task.startedAtMs) < Number(event.captureEndedAtMs)
+    && Number(task && task.endedAtMs) > Number(event.captureStartedAtMs)
+  )));
   const perfSaves = perf && perf.saves || null;
   return {
     enabled: !!(probe && probe.enabled),
@@ -2237,6 +2279,9 @@ function autosaveSummary(probe, perf) {
     elapsedMs: seriesStats(elapsed),
     totalCpuMs: seriesStats(totalCpu),
     maxBlockingSliceMs: seriesStats(maxBlockingSlices),
+    maxSerializerMs: seriesStats(maxSerializers),
+    captureLongTaskCount: autosaveCaptureLongTasks.length,
+    captureLongTasks: autosaveCaptureLongTasks.slice(-8),
     events: completed.slice(-4),
     errors: errors.slice(-4),
     perf: perfSaves ? {

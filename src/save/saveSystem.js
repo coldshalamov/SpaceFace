@@ -485,7 +485,7 @@ export const save = {
     };
   },
 
-  _saveTiming({ slot, reason, autosave, started, serializeMs = 0, writeMs = 0, stringifyMs = 0, storageMs = 0, indexMs = 0, backupMs = 0, readbackMs = 0, verifyMs = 0, workerSetupMs = 0, workerDispatchMs = 0, workerRoundtripMs = 0, bytes = 0, ok = true, failure = null, blockingSlicesMs = null, blockingSamples = null, serializerTimings = null, slowSerializer = null }) {
+  _saveTiming({ slot, reason, autosave, started, serializeMs = 0, writeMs = 0, stringifyMs = 0, storageMs = 0, indexMs = 0, backupMs = 0, readbackMs = 0, verifyMs = 0, workerSetupMs = 0, workerDispatchMs = 0, workerRoundtripMs = 0, captureStartedAtMs = null, captureEndedAtMs = null, bytes = 0, ok = true, failure = null, blockingSlicesMs = null, blockingSamples = null, serializerTimings = null, slowSerializer = null }) {
     const elapsedMs = roundSaveMs(nowMs() - started);
     const samples = Array.isArray(blockingSamples)
       ? blockingSamples.map((entry) => ({
@@ -549,6 +549,10 @@ export const save = {
       workerSetupMs: roundSaveMs(workerSetupMs),
       workerDispatchMs: roundSaveMs(workerDispatchMs),
       workerRoundtripMs: roundSaveMs(workerRoundtripMs),
+      captureStartedAtMs: Number.isFinite(Number(captureStartedAtMs))
+        ? roundSaveMs(Number(captureStartedAtMs)) : null,
+      captureEndedAtMs: Number.isFinite(Number(captureEndedAtMs))
+        ? roundSaveMs(Number(captureEndedAtMs)) : null,
       bytes: Math.max(0, bytes | 0),
     };
   },
@@ -807,6 +811,8 @@ export const save = {
       workerDispatchMs: 0,
       workerRoundtripMs: 0,
       workerAttempts: 0,
+      captureStartedAtMs: null,
+      captureEndedAtMs: null,
       descriptor,
     };
     job.capture = capture;
@@ -826,6 +832,7 @@ export const save = {
   _captureAutosaveSlice(job, capture) {
     if (!this._autosaveJobCurrent(job) || capture.runEpoch !== this._runEpoch) return false;
     const started = workNowMs();
+    capture.captureStartedAtMs = started;
     try {
       // Capture every subsystem exactly once in one coherent JS task. Splitting live-state readers
       // across future ticks cannot produce an authoritative snapshot, and restarting on every tick
@@ -841,10 +848,12 @@ export const save = {
         }
       }
     } catch (error) {
+      capture.captureEndedAtMs = workNowMs();
       console.error('[save] autosave capture failed', error);
       return this._failAutosave(job, 'serialize_failed', capture, workNowMs() - started);
     }
-    const sliceMs = workNowMs() - started;
+    capture.captureEndedAtMs = workNowMs();
+    const sliceMs = capture.captureEndedAtMs - started;
     capture.serializeMs += sliceMs;
     this._pushAutosaveSlice(capture, 'capture', sliceMs);
     return this._startAutosaveEncoding(job, capture);
@@ -913,6 +922,8 @@ export const save = {
         workerSetupMs: capture.workerSetupMs,
         workerDispatchMs: capture.workerDispatchMs,
         workerRoundtripMs: capture.workerRoundtripMs,
+        captureStartedAtMs: capture.captureStartedAtMs,
+        captureEndedAtMs: capture.captureEndedAtMs,
       });
     };
     worker.onerror = () => fail('save_worker_failed');
@@ -1042,6 +1053,8 @@ export const save = {
       workerSetupMs: capture.workerSetupMs,
       workerDispatchMs: capture.workerDispatchMs,
       workerRoundtripMs: capture.workerRoundtripMs,
+      captureStartedAtMs: capture.captureStartedAtMs,
+      captureEndedAtMs: capture.captureEndedAtMs,
     };
     // No worker means validation cannot be moved safely. Keep the existing transactional sync path
     // as a correctness fallback and isolate it in its own task.
@@ -1570,6 +1583,8 @@ export const save = {
       workerSetupMs: snapshot.workerSetupMs,
       workerDispatchMs: snapshot.workerDispatchMs,
       workerRoundtripMs: tx.workerRoundtripMs,
+      captureStartedAtMs: snapshot.captureStartedAtMs,
+      captureEndedAtMs: snapshot.captureEndedAtMs,
     });
     const ok = this._publishSaveResult(AUTOSAVE_SLOT, snapshot.envelope, write, timing);
     if (ok) {
@@ -1604,6 +1619,8 @@ export const save = {
       workerSetupMs: capture && capture.workerSetupMs,
       workerDispatchMs: capture && capture.workerDispatchMs,
       workerRoundtripMs: capture && capture.workerRoundtripMs,
+      captureStartedAtMs: capture && capture.captureStartedAtMs,
+      captureEndedAtMs: capture && capture.captureEndedAtMs,
     });
     this._autosaveInFlight = false;
     if (this._activeAutosaveJob === job) this._activeAutosaveJob = null;

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
 
 import { fnv1a } from '../src/save/checksum.js';
@@ -12,6 +13,11 @@ import {
   SAVE_WORKER_SOURCE,
   validateSaveJson,
 } from '../src/save/saveWorker.js';
+
+const PERF_PROBE_SOURCE = fs.readFileSync(
+  new URL('../scripts/probe-performance-profile.mjs', import.meta.url),
+  'utf8',
+);
 
 function largeDataFixture() {
   const data = {
@@ -440,6 +446,10 @@ test('production capture plan is fixed-tick, worker-encoded, phased, and reports
       `raw receipt must meet the 8ms packet target; ${JSON.stringify(complete.payload.blockingSamples)}`);
     assert.equal(complete.payload.observedHardLimitMet, true,
       'raw receipt must meet the unchanged 12ms hard limit');
+    assert.ok(Number.isFinite(complete.payload.captureStartedAtMs)
+      && Number.isFinite(complete.payload.captureEndedAtMs)
+      && complete.payload.captureEndedAtMs >= complete.payload.captureStartedAtMs,
+    'receipt must expose the exact browser-clock capture interval for long-task attribution');
     assert.ok(complete.payload.workerSetupMs >= 0
       && complete.payload.blockingSamples.some(({ phase }) => phase === 'encode_worker_setup'),
     'worker/blob construction must be included in measured main-thread timing even below clock resolution');
@@ -771,4 +781,42 @@ test('new-game run epoch supersedes an in-flight autosave before any old-run wri
     h.bus.emit('game:newGame');
     assert.equal(save._runEpoch, epoch + 1, 'secondary newGame lifecycle event also advances the run epoch');
   } finally { h.restore(); }
+});
+
+test('crowded-flight probe enforces the save system 12ms serializer and capture-task contract', () => {
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /const AUTOSAVE_DURATION_BUDGET_MS\s*=\s*Number\([^;]+\|\|\s*12\s*\)/,
+    'the live perf probe must default to the save system hard 12ms observation threshold',
+  );
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /budget\('autosave\.maxSerializer\.max',[\s\S]{0,240}AUTOSAVE_DURATION_BUDGET_MS/,
+    'crowded flight must fail when an individual production serializer exceeds 12ms',
+  );
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /budget\('autosave\.captureLongTasks\.max',[\s\S]{0,240}'<=',\s*0/,
+    'crowded flight must reject a main-thread long task overlapping autosave capture',
+  );
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /budget\('autosave\.errors\.max',[\s\S]{0,240}'<=',\s*0/,
+    'crowded flight must reject every save:error receipt',
+  );
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /new PerformanceObserver\([\s\S]{0,500}entryTypes:\s*\['longtask'\]/,
+    'the browser sample must observe real main-thread long tasks instead of inferring them from wall time',
+  );
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /maxSerializerMs:\s*seriesStats\(maxSerializers\)/,
+    'autosave summary must retain the completed receipt serializer maximum',
+  );
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /captureLongTaskCount:\s*autosaveCaptureLongTasks\.length/,
+    'autosave summary must expose capture-overlapping long-task count',
+  );
 });
