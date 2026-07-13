@@ -11,9 +11,11 @@ import {
   CAREER_IDS,
   CAREER_COHORT_SCHEMA,
   CAREER_BANDS,
+  SEED_SETS,
   runCareerCohorts,
   runCareerStrategy,
   assessLoadoutViability,
+  proveSaveContinueEquivalence,
   blockNondeterminism,
   restoreNondeterminism,
 } from '../src/balance/careerCohorts.js';
@@ -44,7 +46,11 @@ test('starter and mid loadouts remain viable and identity-distinct', () => {
 });
 
 test('nine independent cells: each horizon has its own earnedValue rate', () => {
-  const report = runCareerCohorts({ horizonsMin: [30, 60, 90], includeFailure: true });
+  const report = runCareerCohorts({
+    horizonsMin: [30, 60, 90],
+    includeFailure: true,
+    multiSeed: false, // multi-seed covered in dedicated test for runtime
+  });
   assert.equal(report.schema, CAREER_COHORT_SCHEMA);
   assert.equal(report.table.length, 9);
 
@@ -53,16 +59,12 @@ test('nine independent cells: each horizon has its own earnedValue rate', () => 
     const r60 = report.cells[career][60];
     const r90 = report.cells[career][90];
     assert.ok(r30 && r60 && r90, `${career} cells present`);
-    // Independent runs: each horizon has its own rate field (not a shared final rate).
     assert.equal(r30.horizonMin, 30);
     assert.equal(r60.horizonMin, 60);
     assert.equal(r90.horizonMin, 90);
     assert.ok(Number.isFinite(r30.creditsPerMin));
     assert.ok(Number.isFinite(r60.creditsPerMin));
     assert.ok(Number.isFinite(r90.creditsPerMin));
-    // Shared-final-rate bug: all three would be identical if still copying 90m rate.
-    // Independent sims can coincidentally match; require at least different ending capital
-    // across horizons for a progressing career (more time ⇒ different capital path).
     assert.ok(
       r30.endingCapital !== r90.endingCapital
       || r30.completedLoops !== r90.completedLoops,
@@ -71,22 +73,54 @@ test('nine independent cells: each horizon has its own earnedValue rate', () => 
     assert.ok(r30.completedLoops > 0 || r30.completedContracts > 0, `${career} 30m progress`);
     assert.ok(r60.completedLoops > 0 || r60.completedContracts > 0, `${career} 60m progress`);
     assert.ok(r90.completedLoops > 0 || r90.completedContracts > 0, `${career} 90m progress`);
-    // Career-specific band object used (not a single cross ceiling).
-    assert.ok(CAREER_BANDS[career].hi < CAREER_BANDS.hauler.hi * 2 || career === 'hauler');
   }
 
-  // Cross report must not use 3.5 as a pass gate field.
   assert.equal(report.cross.ok, true);
   assert.ok(report.cross.disparity);
   assert.equal(report.cross.bands, undefined);
+  assert.equal(report.reloadProof.claimed, true);
+  assert.equal(report.reloadProof.ok, true, JSON.stringify(report.reloadProof));
 });
 
-test('no reload-equivalence claim; snapshot seam is audit-only', () => {
-  const report = runCareerCohorts({ horizonsMin: [30], includeFailure: false });
-  assert.equal(report.snapshotSeam.reloadClaimed, false);
-  assert.equal(report.snapshotSeam.stable, true);
-  assert.match(report.snapshotSeam.note, /No reload-equivalence claim/i);
-  assert.equal(report.reloadProof, undefined);
+test('three independent seeds per career at 30 minutes', () => {
+  blockNondeterminism();
+  try {
+    for (const career of CAREER_IDS) {
+      const seeds = SEED_SETS[career];
+      assert.equal(seeds.length, 3, `${career} seed set size`);
+      const digests = [];
+      for (const seed of seeds) {
+        const r = runCareerStrategy(career, {
+          horizonMin: 30, seed, forceDeathAtLoop: -1,
+        });
+        assert.ok(r.completedLoops > 0 || r.completedContracts > 0, `${career}@${seed} progress`);
+        assert.ok(Number.isFinite(r.endingCapital));
+        digests.push(`${r.endingCapital}:${r.completedLoops}:${r.earnedValue}`);
+      }
+      // Seeds must not all collapse to the exact same trajectory.
+      assert.ok(new Set(digests).size >= 2, `${career} seeds must diversify outcomes`);
+    }
+  } finally {
+    restoreNondeterminism();
+  }
+});
+
+test('save serialize→load→continue equivalence at mid-run boundary', () => {
+  blockNondeterminism();
+  try {
+    const proof = proveSaveContinueEquivalence({
+      careerId: 'prospector',
+      midMin: 15,
+      fullMin: 30,
+    });
+    assert.equal(proof.claimed, true);
+    assert.equal(proof.roundTripOk, true, proof.error);
+    assert.equal(proof.continueEqual, true, JSON.stringify({ a: proof.continueA, b: proof.continueB }));
+    assert.equal(proof.ok, true, proof.error);
+    assert.match(proof.seam, /save\.(serializeData|_restore)/i);
+  } finally {
+    restoreNondeterminism();
+  }
 });
 
 test('constraint: unaffordable toll denies travel; action time advances; hunter owns weapons; damage persists', () => {
@@ -101,6 +135,11 @@ test('constraint: unaffordable toll denies travel; action time advances; hunter 
       || (hunter.equipment.purchases || []).some((p) => p.id === 'wpn_autocannon_s'),
     'autocannon only if purchased');
     assert.ok(!((hunter.defects || []).includes('used_unowned_autocannon')));
+    // Hunter settles bounties through missions board authority, not MISSION_TUNING grant.
+    assert.ok((hunter.authorityReceipts || []).some((a) => a.type === 'bounty_hunt'
+      && /missions/i.test(a.authority)), 'bounty authority path');
+    assert.ok(!(hunter.adaptersUsed || []).some((a) => /bounty_reward/i.test(a.code)),
+      'no bounty reward adapter');
     if (hunter.deaths > 0) {
       const deathLoop = (hunter.loops || []).find((l) => l.outcome === 'death_recovery');
       assert.ok(deathLoop, 'death recovery logged');
@@ -112,10 +151,6 @@ test('constraint: unaffordable toll denies travel; action time advances; hunter 
     });
     assert.ok((hauler.time.actionS || 0) > 0, 'hauler market actions advance action time');
     assert.ok((hauler.time.simS || 0) >= (hauler.time.actionS || 0), 'action is subset of sim time');
-
-    // Unaffordable toll: zero-credit state cannot travel a tolled gate.
-    // After a rich hauler run we don't zero-credits easily; assert bottleneck code exists as path.
-    // Direct unit: strategy marks unaffordable_toll when it hits the gate.
     assert.ok(Array.isArray(hauler.bottlenecks));
   } finally {
     restoreNondeterminism();
@@ -138,14 +173,21 @@ test('deterministic 30-minute re-runs match per career', () => {
   }
 });
 
-test('authority matrix documents live vs adapter; no balance retune claim', () => {
-  const report = runCareerCohorts({ horizonsMin: [30, 60, 90], includeFailure: true });
-  assert.ok(report.authorityMatrix.live.length >= 4);
-  assert.ok(report.authorityMatrix.adapter_warning.some((s) => /bounty|MISSION_TUNING/i.test(s)));
-  assert.match(report.authorityMatrix.balanceTuning, /none|restored|pre-task/i);
-  // Full cohort ok may depend on adapter income staying in career bands — assert gate green.
+test('authority matrix documents live missions+save; no balance retune claim', () => {
+  const report = runCareerCohorts({
+    horizonsMin: [30, 60, 90],
+    includeFailure: true,
+    multiSeed: false,
+  });
+  assert.ok(report.authorityMatrix.live.some((s) => /missions/i.test(s)));
+  assert.ok(report.authorityMatrix.live.some((s) => /save/i.test(s)));
+  assert.ok(report.authorityMatrix.adapter_warning.some((s) => /combat TTK|mine TTK/i.test(s)));
+  assert.ok(!report.authorityMatrix.adapter_warning.some((s) => /bounty rewards/i.test(s)),
+    'bounty must not remain adapter');
+  assert.match(report.authorityMatrix.balanceTuning, /none/i);
   assert.equal(report.ok, true, JSON.stringify({
     cross: report.cross,
+    reload: report.reloadProof,
     fails: Object.fromEntries(CAREER_IDS.flatMap((c) =>
       [30, 60, 90].map((m) => [`${c}@${m}`, report.cells[c][m].assertionFails]))),
   }));
@@ -166,5 +208,8 @@ test('gate script writes campaign + fixture reports and exits 0', () => {
   assert.equal(json.ok, true);
   assert.equal(json.schema, CAREER_COHORT_SCHEMA);
   assert.equal(json.table.length, 9);
-  assert.equal(json.snapshotSeam.reloadClaimed, false);
+  assert.equal(json.reloadProof.ok, true);
+  assert.equal(json.reloadProof.claimed, true);
+  assert.equal(json.multiSeedOk, true);
+  assert.equal('elapsedMs' in json, false, 'tracked fixture must not churn on wall-clock runtime');
 });

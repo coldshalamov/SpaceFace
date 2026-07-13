@@ -38,11 +38,13 @@ const elapsedMs = round1(performance.now() - t0);
 const summary = summarizeCohortReport(report);
 summary.elapsedMs = elapsedMs;
 summary.gate = 'check-m3-career-cohorts';
-summary.generatedNote = 'Nine independent sims (career×horizon). Rates are per-horizon earnedValue/min. No reload-equivalence claim. No production balance retune.';
+summary.generatedNote = 'Nine independent sims (career×horizon) plus 3 seeds/career at 30m and a prospector-only save data round-trip with simplified continuation; finalizeLoadedGame is not exercised. Rates are per-horizon earnedValue/min. No production balance retune.';
 
 mkdirSync(FIXTURE_DIR, { recursive: true });
 mkdirSync(CAMPAIGN_DIR, { recursive: true });
-writeFileSync(REPORT_PATH, JSON.stringify(summary, null, 2));
+const fixtureSummary = { ...summary };
+delete fixtureSummary.elapsedMs;
+writeFileSync(REPORT_PATH, JSON.stringify(fixtureSummary, null, 2));
 writeFileSync(CAMPAIGN_PATH, JSON.stringify(summary, null, 2));
 
 const pad = (s, w) => String(s).padEnd(w);
@@ -51,7 +53,7 @@ const fmt = (n) => (Number.isFinite(n) ? Math.round(n).toLocaleString('en-US') :
 
 const HR = '-'.repeat(112);
 console.log(HR);
-console.log('SpaceFace M3 career cohorts v2 — 9 independent career×horizon strategies');
+console.log('SpaceFace M3 career cohorts v3 — production-authority career×horizon strategies');
 console.log('Career-specific bands (cr/min earnedValue). Cross disparity is reported, not used as a pass ceiling.');
 console.log(HR);
 console.log(
@@ -108,6 +110,17 @@ for (const id of CAREER_IDS) {
   if (!summary.determinism[id]?.equal) console.log(`  FAIL determinism:${id}`);
 }
 console.log(`  snapshotSeam: stable=${summary.snapshotSeam.stable} reloadClaimed=${summary.snapshotSeam.reloadClaimed}`);
+if (summary.reloadProof) {
+  console.log(`  reloadProof: ok=${summary.reloadProof.ok} continueEqual=${summary.reloadProof.continueEqual} seam=${summary.reloadProof.seam}`);
+  if (summary.reloadProof.error) console.log(`    reload error: ${summary.reloadProof.error}`);
+}
+console.log(`  multiSeedOk: ${summary.multiSeedOk}`);
+if (summary.multiSeed) {
+  for (const id of CAREER_IDS) {
+    const rows = summary.multiSeed[id] || [];
+    console.log(`    seeds ${id}: ${rows.map((r) => `${r.seed.toString(16)}@${r.creditsPerMin}cpm`).join(', ')}`);
+  }
+}
 console.log(`  authority: live=${summary.authorityMatrix.live.length} adapters=${summary.authorityMatrix.adapter_warning.length}`);
 console.log(`  report: ${REPORT_PATH}`);
 console.log(`  campaign: ${CAMPAIGN_PATH}`);
@@ -121,13 +134,16 @@ console.log(JSON.stringify({
   table: summary.table,
   cross: summary.cross,
   determinism: summary.determinism,
+  multiSeedOk: summary.multiSeedOk,
+  multiSeed: summary.multiSeed,
+  reloadProof: summary.reloadProof,
   snapshotSeam: summary.snapshotSeam,
   authorityMatrix: summary.authorityMatrix,
   residualSeams: summary.residualSeams,
 }, null, 2));
 
 if (!summary.ok || elapsedMs > 90000) {
-  console.error('[check-m3-career-cohorts] FAIL');
+  console.error('[check-m3-career-cohorts] FAIL', !summary.ok ? 'assertions' : `runtime ${elapsedMs}ms > 90000`);
   process.exit(1);
 }
 console.log('[check-m3-career-cohorts] PASS');

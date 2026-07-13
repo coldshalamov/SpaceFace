@@ -1,5 +1,5 @@
 {
-  "schema": "spaceface.m3.careerCohorts.v2",
+  "schema": "spaceface.m3.careerCohorts.v3",
   "ok": true,
   "horizonsMin": [
     30,
@@ -17,8 +17,7 @@
       "dead": 30,
       "lo": 62.5,
       "hi": 400,
-      "note": "Bounty payouts are MISSION_TUNING adapters (warning); repair uses live economy services",
-      "bountyAdapter": true
+      "note": "Bounty/recon settle via missions board accept + complete → economy:grantCredits; repair live"
     },
     "prospector": {
       "dead": 30,
@@ -31,25 +30,21 @@
     {
       "career": "hauler",
       "minutes": 30,
-      "credits": 19622,
-      "netWorth": 31292,
-      "earnedValue": 14622,
-      "creditsPerMin": 487.4,
-      "completedLoops": 21,
-      "completedContracts": 21,
+      "seed": 3232800769,
+      "credits": 16548,
+      "netWorth": 27532,
+      "earnedValue": 11548,
+      "creditsPerMin": 384.93,
+      "completedLoops": 20,
+      "completedContracts": 20,
       "failedContracts": 0,
       "shipId": "ship_kestrel",
       "phase": "starter",
-      "travelS": 1466.7,
-      "actionS": 312,
+      "travelS": 1457,
+      "actionS": 328,
       "bottlenecks": [],
-      "adaptersUsed": [
-        {
-          "code": "bonded_reward_adapter",
-          "detail": "Bonded reward amount from ladder defs, not missions board",
-          "authority": "adapter_warning"
-        }
-      ],
+      "adaptersUsed": [],
+      "authorityReceipts": 1,
       "ok": true,
       "assertionFails": [],
       "assertionWarns": []
@@ -57,25 +52,21 @@
     {
       "career": "hauler",
       "minutes": 60,
-      "credits": 29085,
-      "netWorth": 37085,
-      "earnedValue": 24085,
-      "creditsPerMin": 401.42,
-      "completedLoops": 44,
-      "completedContracts": 44,
+      "seed": 3232800769,
+      "credits": 25313,
+      "netWorth": 33313,
+      "earnedValue": 20313,
+      "creditsPerMin": 338.55,
+      "completedLoops": 41,
+      "completedContracts": 41,
       "failedContracts": 0,
       "shipId": "ship_kestrel",
       "phase": "starter",
-      "travelS": 2970.1,
-      "actionS": 624,
+      "travelS": 2910.4,
+      "actionS": 656,
       "bottlenecks": [],
-      "adaptersUsed": [
-        {
-          "code": "bonded_reward_adapter",
-          "detail": "Bonded reward amount from ladder defs, not missions board",
-          "authority": "adapter_warning"
-        }
-      ],
+      "adaptersUsed": [],
+      "authorityReceipts": 1,
       "ok": true,
       "assertionFails": [],
       "assertionWarns": []
@@ -83,30 +74,21 @@
     {
       "career": "hauler",
       "minutes": 90,
-      "credits": 33492,
-      "netWorth": 41492,
-      "earnedValue": 28492,
-      "creditsPerMin": 316.58,
-      "completedLoops": 66,
-      "completedContracts": 66,
+      "seed": 3232800769,
+      "credits": 30382,
+      "netWorth": 38382,
+      "earnedValue": 25382,
+      "creditsPerMin": 282.02,
+      "completedLoops": 62,
+      "completedContracts": 62,
       "failedContracts": 0,
       "shipId": "ship_kestrel",
       "phase": "starter",
-      "travelS": 4438,
-      "actionS": 928,
-      "bottlenecks": [
-        {
-          "code": "spread_collapse",
-          "detail": "Route cmdty_ore_bronzium collapsed"
-        }
-      ],
-      "adaptersUsed": [
-        {
-          "code": "bonded_reward_adapter",
-          "detail": "Bonded reward amount from ladder defs, not missions board",
-          "authority": "adapter_warning"
-        }
-      ],
+      "travelS": 4399.3,
+      "actionS": 992,
+      "bottlenecks": [],
+      "adaptersUsed": [],
+      "authorityReceipts": 1,
       "ok": true,
       "assertionFails": [],
       "assertionWarns": []
@@ -114,21 +96,26 @@
     {
       "career": "hunter",
       "minutes": 30,
-      "credits": 8598,
-      "netWorth": 16598,
-      "earnedValue": 3598,
-      "creditsPerMin": 119.93,
-      "completedLoops": 15,
-      "completedContracts": 15,
-      "failedContracts": 3,
+      "seed": 3232804866,
+      "credits": 5987,
+      "netWorth": 13987,
+      "earnedValue": 987,
+      "creditsPerMin": 32.9,
+      "completedLoops": 9,
+      "completedContracts": 9,
+      "failedContracts": 2,
       "shipId": "ship_kestrel",
       "phase": "starter",
-      "travelS": 1452.9,
-      "actionS": 136,
+      "travelS": 767.6,
+      "actionS": 126,
       "bottlenecks": [
         {
           "code": "rp_gate",
-          "detail": "Combat Basics needs research points; missions RP writer not registered (foreign dirty)"
+          "detail": "Combat Basics needs research points; seeking recon_scan board offers"
+        },
+        {
+          "code": "bounty_accept_failed",
+          "detail": "mo_station_ceres_0_3"
         },
         {
           "code": "death_recovery",
@@ -137,56 +124,59 @@
       ],
       "adaptersUsed": [
         {
-          "code": "bounty_reward_adapter",
-          "detail": "Bounty credits use MISSION_TUNING.BASE formula; missions board accept/complete not invoked (missions.js foreign dirty)",
-          "authority": "adapter_warning"
-        },
-        {
           "code": "combat_ttk_adapter",
           "detail": "Fight duration from enemy EHP / owned weapon DPS; full combat system not stepped",
           "authority": "adapter_warning"
         }
       ],
+      "authorityReceipts": 17,
       "ok": true,
       "assertionFails": [],
-      "assertionWarns": []
+      "assertionWarns": [
+        "below_healthy_band 32.9 < 62.5"
+      ]
     },
     {
       "career": "hunter",
       "minutes": 60,
-      "credits": 15516,
-      "netWorth": 23516,
-      "earnedValue": 10516,
-      "creditsPerMin": 175.27,
-      "completedLoops": 31,
-      "completedContracts": 31,
-      "failedContracts": 5,
+      "seed": 3232804866,
+      "credits": 7593,
+      "netWorth": 15593,
+      "earnedValue": 8593,
+      "creditsPerMin": 143.22,
+      "completedLoops": 25,
+      "completedContracts": 25,
+      "failedContracts": 3,
       "shipId": "ship_kestrel",
-      "phase": "starter",
-      "travelS": 2983.8,
-      "actionS": 280,
+      "phase": "researched",
+      "travelS": 1925.5,
+      "actionS": 262,
       "bottlenecks": [
         {
           "code": "rp_gate",
-          "detail": "Combat Basics needs research points; missions RP writer not registered (foreign dirty)"
+          "detail": "Combat Basics needs research points; seeking recon_scan board offers"
+        },
+        {
+          "code": "bounty_accept_failed",
+          "detail": "mo_station_ceres_0_3"
         },
         {
           "code": "death_recovery",
           "detail": "Controlled death with insurance downtime; residual hull damage"
+        },
+        {
+          "code": "capital_for_wasp",
+          "detail": "Need 28000cr for Wasp"
         }
       ],
       "adaptersUsed": [
-        {
-          "code": "bounty_reward_adapter",
-          "detail": "Bounty credits use MISSION_TUNING.BASE formula; missions board accept/complete not invoked (missions.js foreign dirty)",
-          "authority": "adapter_warning"
-        },
         {
           "code": "combat_ttk_adapter",
           "detail": "Fight duration from enemy EHP / owned weapon DPS; full combat system not stepped",
           "authority": "adapter_warning"
         }
       ],
+      "authorityReceipts": 51,
       "ok": true,
       "assertionFails": [],
       "assertionWarns": []
@@ -194,39 +184,44 @@
     {
       "career": "hunter",
       "minutes": 90,
-      "credits": 20268,
-      "netWorth": 28268,
-      "earnedValue": 15268,
-      "creditsPerMin": 169.64,
-      "completedLoops": 45,
-      "completedContracts": 45,
-      "failedContracts": 9,
+      "seed": 3232804866,
+      "credits": 12951,
+      "netWorth": 20951,
+      "earnedValue": 13951,
+      "creditsPerMin": 155.01,
+      "completedLoops": 36,
+      "completedContracts": 36,
+      "failedContracts": 5,
       "shipId": "ship_kestrel",
-      "phase": "starter",
-      "travelS": 4553.8,
-      "actionS": 424,
+      "phase": "researched",
+      "travelS": 2967.9,
+      "actionS": 366,
       "bottlenecks": [
         {
           "code": "rp_gate",
-          "detail": "Combat Basics needs research points; missions RP writer not registered (foreign dirty)"
+          "detail": "Combat Basics needs research points; seeking recon_scan board offers"
+        },
+        {
+          "code": "bounty_accept_failed",
+          "detail": "mo_station_ceres_0_3"
         },
         {
           "code": "death_recovery",
           "detail": "Controlled death with insurance downtime; residual hull damage"
+        },
+        {
+          "code": "capital_for_wasp",
+          "detail": "Need 28000cr for Wasp"
         }
       ],
       "adaptersUsed": [
-        {
-          "code": "bounty_reward_adapter",
-          "detail": "Bounty credits use MISSION_TUNING.BASE formula; missions board accept/complete not invoked (missions.js foreign dirty)",
-          "authority": "adapter_warning"
-        },
         {
           "code": "combat_ttk_adapter",
           "detail": "Fight duration from enemy EHP / owned weapon DPS; full combat system not stepped",
           "authority": "adapter_warning"
         }
       ],
+      "authorityReceipts": 75,
       "ok": true,
       "assertionFails": [],
       "assertionWarns": []
@@ -234,10 +229,11 @@
     {
       "career": "prospector",
       "minutes": 30,
-      "credits": 9223,
-      "netWorth": 17381,
-      "earnedValue": 4223,
-      "creditsPerMin": 140.77,
+      "seed": 3232808963,
+      "credits": 8891,
+      "netWorth": 17020,
+      "earnedValue": 3891,
+      "creditsPerMin": 129.7,
       "completedLoops": 11,
       "completedContracts": 11,
       "failedContracts": 0,
@@ -253,6 +249,7 @@
           "authority": "adapter_warning"
         }
       ],
+      "authorityReceipts": 0,
       "ok": true,
       "assertionFails": [],
       "assertionWarns": []
@@ -260,10 +257,11 @@
     {
       "career": "prospector",
       "minutes": 60,
-      "credits": 12722,
-      "netWorth": 21115,
-      "earnedValue": 7722,
-      "creditsPerMin": 128.7,
+      "seed": 3232808963,
+      "credits": 11873,
+      "netWorth": 20222,
+      "earnedValue": 6873,
+      "creditsPerMin": 114.55,
       "completedLoops": 20,
       "completedContracts": 20,
       "failedContracts": 0,
@@ -284,6 +282,7 @@
           "authority": "adapter_warning"
         }
       ],
+      "authorityReceipts": 0,
       "ok": true,
       "assertionFails": [],
       "assertionWarns": []
@@ -291,17 +290,18 @@
     {
       "career": "prospector",
       "minutes": 90,
-      "credits": 1922,
-      "netWorth": 17370,
-      "earnedValue": 11922,
-      "creditsPerMin": 132.47,
-      "completedLoops": 30,
-      "completedContracts": 30,
+      "seed": 3232808963,
+      "credits": 921,
+      "netWorth": 16057,
+      "earnedValue": 10921,
+      "creditsPerMin": 121.34,
+      "completedLoops": 31,
+      "completedContracts": 31,
       "failedContracts": 0,
       "shipId": "ship_pelican",
       "phase": "pelican",
-      "travelS": 2898.9,
-      "actionS": 2475.1,
+      "travelS": 2918.5,
+      "actionS": 2448,
       "bottlenecks": [
         {
           "code": "field_depleted",
@@ -319,6 +319,7 @@
           "authority": "adapter_warning"
         }
       ],
+      "authorityReceipts": 0,
       "ok": true,
       "assertionFails": [],
       "assertionWarns": []
@@ -328,32 +329,26 @@
     "hauler": {
       "30": {
         "ok": true,
-        "endingCapital": 19622,
-        "earnedValue": 14622,
-        "creditsPerMin": 487.4,
-        "netWorth": 31292,
-        "completedLoops": 21,
-        "completedContracts": 21,
+        "endingCapital": 16548,
+        "earnedValue": 11548,
+        "creditsPerMin": 384.93,
+        "netWorth": 27532,
+        "completedLoops": 20,
+        "completedContracts": 20,
         "failedContracts": 0,
         "shipId": "ship_kestrel",
         "phase": "starter",
         "purchases": [],
         "time": {
-          "simS": 1778.7,
-          "travelS": 1466.7,
-          "actionS": 312,
+          "simS": 1785,
+          "travelS": 1457,
+          "actionS": 328,
           "dockS": 0,
           "recoveryS": 0,
           "idleS": 0
         },
         "bottlenecks": [],
-        "adaptersUsed": [
-          {
-            "code": "bonded_reward_adapter",
-            "detail": "Bonded reward amount from ladder defs, not missions board",
-            "authority": "adapter_warning"
-          }
-        ],
+        "adaptersUsed": [],
         "assertionFails": [],
         "assertionWarns": [],
         "hullDamageHp": 0,
@@ -369,37 +364,32 @@
           "cargo add/remove via execute",
           "ships.buyShip",
           "factions via economy:tradeCompleted",
-          "economy.update time authority"
+          "economy.update time authority + market restock",
+          "missions.ensureBoard/acceptMission bulk_trade settle via tradeCompleted"
         ]
       },
       "60": {
         "ok": true,
-        "endingCapital": 29085,
-        "earnedValue": 24085,
-        "creditsPerMin": 401.42,
-        "netWorth": 37085,
-        "completedLoops": 44,
-        "completedContracts": 44,
+        "endingCapital": 25313,
+        "earnedValue": 20313,
+        "creditsPerMin": 338.55,
+        "netWorth": 33313,
+        "completedLoops": 41,
+        "completedContracts": 41,
         "failedContracts": 0,
         "shipId": "ship_kestrel",
         "phase": "starter",
         "purchases": [],
         "time": {
-          "simS": 3594.1,
-          "travelS": 2970.1,
-          "actionS": 624,
+          "simS": 3566.4,
+          "travelS": 2910.4,
+          "actionS": 656,
           "dockS": 0,
           "recoveryS": 0,
           "idleS": 0
         },
         "bottlenecks": [],
-        "adaptersUsed": [
-          {
-            "code": "bonded_reward_adapter",
-            "detail": "Bonded reward amount from ladder defs, not missions board",
-            "authority": "adapter_warning"
-          }
-        ],
+        "adaptersUsed": [],
         "assertionFails": [],
         "assertionWarns": [],
         "hullDamageHp": 0,
@@ -415,42 +405,32 @@
           "cargo add/remove via execute",
           "ships.buyShip",
           "factions via economy:tradeCompleted",
-          "economy.update time authority"
+          "economy.update time authority + market restock",
+          "missions.ensureBoard/acceptMission bulk_trade settle via tradeCompleted"
         ]
       },
       "90": {
         "ok": true,
-        "endingCapital": 33492,
-        "earnedValue": 28492,
-        "creditsPerMin": 316.58,
-        "netWorth": 41492,
-        "completedLoops": 66,
-        "completedContracts": 66,
+        "endingCapital": 30382,
+        "earnedValue": 25382,
+        "creditsPerMin": 282.02,
+        "netWorth": 38382,
+        "completedLoops": 62,
+        "completedContracts": 62,
         "failedContracts": 0,
         "shipId": "ship_kestrel",
         "phase": "starter",
         "purchases": [],
         "time": {
-          "simS": 5366,
-          "travelS": 4438,
-          "actionS": 928,
+          "simS": 5391.3,
+          "travelS": 4399.3,
+          "actionS": 992,
           "dockS": 0,
           "recoveryS": 0,
           "idleS": 0
         },
-        "bottlenecks": [
-          {
-            "code": "spread_collapse",
-            "detail": "Route cmdty_ore_bronzium collapsed"
-          }
-        ],
-        "adaptersUsed": [
-          {
-            "code": "bonded_reward_adapter",
-            "detail": "Bonded reward amount from ladder defs, not missions board",
-            "authority": "adapter_warning"
-          }
-        ],
+        "bottlenecks": [],
+        "adaptersUsed": [],
         "assertionFails": [],
         "assertionWarns": [],
         "hullDamageHp": 0,
@@ -466,35 +446,40 @@
           "cargo add/remove via execute",
           "ships.buyShip",
           "factions via economy:tradeCompleted",
-          "economy.update time authority"
+          "economy.update time authority + market restock",
+          "missions.ensureBoard/acceptMission bulk_trade settle via tradeCompleted"
         ]
       }
     },
     "hunter": {
       "30": {
         "ok": true,
-        "endingCapital": 8598,
-        "earnedValue": 3598,
-        "creditsPerMin": 119.93,
-        "netWorth": 16598,
-        "completedLoops": 15,
-        "completedContracts": 15,
-        "failedContracts": 3,
+        "endingCapital": 5987,
+        "earnedValue": 987,
+        "creditsPerMin": 32.9,
+        "netWorth": 13987,
+        "completedLoops": 9,
+        "completedContracts": 9,
+        "failedContracts": 2,
         "shipId": "ship_kestrel",
         "phase": "starter",
         "purchases": [],
         "time": {
-          "simS": 1780.9,
-          "travelS": 1452.9,
-          "actionS": 136,
-          "dockS": 102,
+          "simS": 1811.6,
+          "travelS": 767.6,
+          "actionS": 126,
+          "dockS": 18,
           "recoveryS": 90,
-          "idleS": 0
+          "idleS": 810
         },
         "bottlenecks": [
           {
             "code": "rp_gate",
-            "detail": "Combat Basics needs research points; missions RP writer not registered (foreign dirty)"
+            "detail": "Combat Basics needs research points; seeking recon_scan board offers"
+          },
+          {
+            "code": "bounty_accept_failed",
+            "detail": "mo_station_ceres_0_3"
           },
           {
             "code": "death_recovery",
@@ -503,69 +488,71 @@
         ],
         "adaptersUsed": [
           {
-            "code": "bounty_reward_adapter",
-            "detail": "Bounty credits use MISSION_TUNING.BASE formula; missions board accept/complete not invoked (missions.js foreign dirty)",
-            "authority": "adapter_warning"
-          },
-          {
             "code": "combat_ttk_adapter",
             "detail": "Fight duration from enemy EHP / owned weapon DPS; full combat system not stepped",
             "authority": "adapter_warning"
           }
         ],
         "assertionFails": [],
-        "assertionWarns": [],
-        "hullDamageHp": 0,
-        "readiness": 1,
+        "assertionWarns": [
+          "below_healthy_band 32.9 < 62.5"
+        ],
+        "hullDamageHp": 31.7,
+        "readiness": 0.77,
         "ownedWeapons": [
           "wpn_pulse_laser_s"
         ],
         "researchedNodes": [],
-        "researchPoints": 0,
+        "researchPoints": 12,
         "deaths": 1,
         "liveSeams": [
-          "economy.grantCredits/chargeCredits",
+          "missions.ensureBoard/acceptMission bounty_hunt",
+          "missions entity:killed → _completeMission → economy:grantCredits",
+          "missions recon_scan → researchPoints writer",
           "economy ui:service repair (proportional)",
-          "ships.unlockTech / buyShip when RP+capital allow",
-          "cargo munitions via addCargo/removeCargo"
+          "ships.unlockTech / buyShip / buyModule",
+          "cargo munitions via addCargo/removeCargo + chargeCredits"
         ]
       },
       "60": {
         "ok": true,
-        "endingCapital": 15516,
-        "earnedValue": 10516,
-        "creditsPerMin": 175.27,
-        "netWorth": 23516,
-        "completedLoops": 31,
-        "completedContracts": 31,
-        "failedContracts": 5,
+        "endingCapital": 7593,
+        "earnedValue": 8593,
+        "creditsPerMin": 143.22,
+        "netWorth": 15593,
+        "completedLoops": 25,
+        "completedContracts": 25,
+        "failedContracts": 3,
         "shipId": "ship_kestrel",
-        "phase": "starter",
+        "phase": "researched",
         "purchases": [],
         "time": {
-          "simS": 3563.8,
-          "travelS": 2983.8,
-          "actionS": 280,
-          "dockS": 210,
+          "simS": 3609.5,
+          "travelS": 1925.5,
+          "actionS": 262,
+          "dockS": 72,
           "recoveryS": 90,
-          "idleS": 0
+          "idleS": 1260
         },
         "bottlenecks": [
           {
             "code": "rp_gate",
-            "detail": "Combat Basics needs research points; missions RP writer not registered (foreign dirty)"
+            "detail": "Combat Basics needs research points; seeking recon_scan board offers"
+          },
+          {
+            "code": "bounty_accept_failed",
+            "detail": "mo_station_ceres_0_3"
           },
           {
             "code": "death_recovery",
             "detail": "Controlled death with insurance downtime; residual hull damage"
+          },
+          {
+            "code": "capital_for_wasp",
+            "detail": "Need 28000cr for Wasp"
           }
         ],
         "adaptersUsed": [
-          {
-            "code": "bounty_reward_adapter",
-            "detail": "Bounty credits use MISSION_TUNING.BASE formula; missions board accept/complete not invoked (missions.js foreign dirty)",
-            "authority": "adapter_warning"
-          },
           {
             "code": "combat_ttk_adapter",
             "detail": "Fight duration from enemy EHP / owned weapon DPS; full combat system not stepped",
@@ -579,52 +566,59 @@
         "ownedWeapons": [
           "wpn_pulse_laser_s"
         ],
-        "researchedNodes": [],
-        "researchPoints": 0,
+        "researchedNodes": [
+          "tech_combat_basics"
+        ],
+        "researchPoints": 2,
         "deaths": 1,
         "liveSeams": [
-          "economy.grantCredits/chargeCredits",
+          "missions.ensureBoard/acceptMission bounty_hunt",
+          "missions entity:killed → _completeMission → economy:grantCredits",
+          "missions recon_scan → researchPoints writer",
           "economy ui:service repair (proportional)",
-          "ships.unlockTech / buyShip when RP+capital allow",
-          "cargo munitions via addCargo/removeCargo"
+          "ships.unlockTech / buyShip / buyModule",
+          "cargo munitions via addCargo/removeCargo + chargeCredits"
         ]
       },
       "90": {
         "ok": true,
-        "endingCapital": 20268,
-        "earnedValue": 15268,
-        "creditsPerMin": 169.64,
-        "netWorth": 28268,
-        "completedLoops": 45,
-        "completedContracts": 45,
-        "failedContracts": 9,
+        "endingCapital": 12951,
+        "earnedValue": 13951,
+        "creditsPerMin": 155.01,
+        "netWorth": 20951,
+        "completedLoops": 36,
+        "completedContracts": 36,
+        "failedContracts": 5,
         "shipId": "ship_kestrel",
-        "phase": "starter",
+        "phase": "researched",
         "purchases": [],
         "time": {
-          "simS": 5385.8,
-          "travelS": 4553.8,
-          "actionS": 424,
-          "dockS": 318,
+          "simS": 5361.9,
+          "travelS": 2967.9,
+          "actionS": 366,
+          "dockS": 108,
           "recoveryS": 90,
-          "idleS": 0
+          "idleS": 1830
         },
         "bottlenecks": [
           {
             "code": "rp_gate",
-            "detail": "Combat Basics needs research points; missions RP writer not registered (foreign dirty)"
+            "detail": "Combat Basics needs research points; seeking recon_scan board offers"
+          },
+          {
+            "code": "bounty_accept_failed",
+            "detail": "mo_station_ceres_0_3"
           },
           {
             "code": "death_recovery",
             "detail": "Controlled death with insurance downtime; residual hull damage"
+          },
+          {
+            "code": "capital_for_wasp",
+            "detail": "Need 28000cr for Wasp"
           }
         ],
         "adaptersUsed": [
-          {
-            "code": "bounty_reward_adapter",
-            "detail": "Bounty credits use MISSION_TUNING.BASE formula; missions board accept/complete not invoked (missions.js foreign dirty)",
-            "authority": "adapter_warning"
-          },
           {
             "code": "combat_ttk_adapter",
             "detail": "Fight duration from enemy EHP / owned weapon DPS; full combat system not stepped",
@@ -633,29 +627,33 @@
         ],
         "assertionFails": [],
         "assertionWarns": [],
-        "hullDamageHp": 0,
-        "readiness": 1,
+        "hullDamageHp": 31.7,
+        "readiness": 0.77,
         "ownedWeapons": [
           "wpn_pulse_laser_s"
         ],
-        "researchedNodes": [],
-        "researchPoints": 0,
+        "researchedNodes": [
+          "tech_combat_basics"
+        ],
+        "researchPoints": 2,
         "deaths": 1,
         "liveSeams": [
-          "economy.grantCredits/chargeCredits",
+          "missions.ensureBoard/acceptMission bounty_hunt",
+          "missions entity:killed → _completeMission → economy:grantCredits",
+          "missions recon_scan → researchPoints writer",
           "economy ui:service repair (proportional)",
-          "ships.unlockTech / buyShip when RP+capital allow",
-          "cargo munitions via addCargo/removeCargo"
+          "ships.unlockTech / buyShip / buyModule",
+          "cargo munitions via addCargo/removeCargo + chargeCredits"
         ]
       }
     },
     "prospector": {
       "30": {
         "ok": true,
-        "endingCapital": 9223,
-        "earnedValue": 4223,
-        "creditsPerMin": 140.77,
-        "netWorth": 17381,
+        "endingCapital": 8891,
+        "earnedValue": 3891,
+        "creditsPerMin": 129.7,
+        "netWorth": 17020,
         "completedLoops": 11,
         "completedContracts": 11,
         "failedContracts": 0,
@@ -689,19 +687,20 @@
         "researchPoints": 0,
         "deaths": 0,
         "liveSeams": [
-          "fieldDepletion.recordFieldExtraction/recover",
+          "fieldDepletion.recordFieldExtraction + fieldDepletion.update recovery",
           "cargo addCargo/removeCargo",
-          "economy.execute sell",
+          "economy.execute sell + market restock via economy.update",
           "ships.buyShip pelican",
-          "economy.update time authority"
+          "economy.update time authority",
+          "save.serializeData/_restore mid-run (cohort proof)"
         ]
       },
       "60": {
         "ok": true,
-        "endingCapital": 12722,
-        "earnedValue": 7722,
-        "creditsPerMin": 128.7,
-        "netWorth": 21115,
+        "endingCapital": 11873,
+        "earnedValue": 6873,
+        "creditsPerMin": 114.55,
+        "netWorth": 20222,
         "completedLoops": 20,
         "completedContracts": 20,
         "failedContracts": 0,
@@ -740,21 +739,22 @@
         "researchPoints": 0,
         "deaths": 0,
         "liveSeams": [
-          "fieldDepletion.recordFieldExtraction/recover",
+          "fieldDepletion.recordFieldExtraction + fieldDepletion.update recovery",
           "cargo addCargo/removeCargo",
-          "economy.execute sell",
+          "economy.execute sell + market restock via economy.update",
           "ships.buyShip pelican",
-          "economy.update time authority"
+          "economy.update time authority",
+          "save.serializeData/_restore mid-run (cohort proof)"
         ]
       },
       "90": {
         "ok": true,
-        "endingCapital": 1922,
-        "earnedValue": 11922,
-        "creditsPerMin": 132.47,
-        "netWorth": 17370,
-        "completedLoops": 30,
-        "completedContracts": 30,
+        "endingCapital": 921,
+        "earnedValue": 10921,
+        "creditsPerMin": 121.34,
+        "netWorth": 16057,
+        "completedLoops": 31,
+        "completedContracts": 31,
         "failedContracts": 0,
         "shipId": "ship_pelican",
         "phase": "pelican",
@@ -764,16 +764,16 @@
             "id": "ship_pelican",
             "price": 15000,
             "reason": "buyShip:ship_pelican",
-            "atS": 4568,
-            "creditsBefore": 15327,
-            "creditsAfter": 327,
+            "atS": 5078.4,
+            "creditsBefore": 15348,
+            "creditsAfter": 348,
             "authority": "ships.buyShip"
           }
         ],
         "time": {
-          "simS": 5374,
-          "travelS": 2898.9,
-          "actionS": 2475.1,
+          "simS": 5366.5,
+          "travelS": 2918.5,
+          "actionS": 2448,
           "dockS": 0,
           "recoveryS": 0,
           "idleS": 0
@@ -806,11 +806,12 @@
         "researchPoints": 0,
         "deaths": 0,
         "liveSeams": [
-          "fieldDepletion.recordFieldExtraction/recover",
+          "fieldDepletion.recordFieldExtraction + fieldDepletion.update recovery",
           "cargo addCargo/removeCargo",
-          "economy.execute sell",
+          "economy.execute sell + market restock via economy.update",
           "ships.buyShip pelican",
-          "economy.update time authority"
+          "economy.update time authority",
+          "save.serializeData/_restore mid-run (cohort proof)"
         ]
       }
     }
@@ -818,22 +819,24 @@
   "cross": {
     "ok": true,
     "fails": [],
-    "warns": [],
+    "warns": [
+      "extreme_cross_disparity_30m ratio=11.7"
+    ],
     "disparity": {
       "30": {
-        "min": 119.93,
-        "max": 487.4,
-        "ratio": 4.06
+        "min": 32.9,
+        "max": 384.93,
+        "ratio": 11.7
       },
       "60": {
-        "min": 128.7,
-        "max": 401.42,
-        "ratio": 3.12
+        "min": 114.55,
+        "max": 338.55,
+        "ratio": 2.96
       },
       "90": {
-        "min": 132.47,
-        "max": 316.58,
-        "ratio": 2.39
+        "min": 121.34,
+        "max": 282.02,
+        "ratio": 2.32
       }
     }
   },
@@ -848,41 +851,155 @@
       "equal": true
     }
   },
+  "multiSeed": {
+    "hauler": [
+      {
+        "seed": 3232800769,
+        "ok": true,
+        "endingCapital": 16548,
+        "earnedValue": 11548,
+        "creditsPerMin": 384.93,
+        "completedLoops": 20,
+        "completedContracts": 20,
+        "assertionFails": []
+      },
+      {
+        "seed": 3232800785,
+        "ok": true,
+        "endingCapital": 15336,
+        "earnedValue": 10336,
+        "creditsPerMin": 344.53,
+        "completedLoops": 20,
+        "completedContracts": 20,
+        "assertionFails": []
+      },
+      {
+        "seed": 3232800801,
+        "ok": true,
+        "endingCapital": 18416,
+        "earnedValue": 13416,
+        "creditsPerMin": 447.2,
+        "completedLoops": 20,
+        "completedContracts": 20,
+        "assertionFails": []
+      }
+    ],
+    "hunter": [
+      {
+        "seed": 3232804866,
+        "ok": true,
+        "endingCapital": 6825,
+        "earnedValue": 7825,
+        "creditsPerMin": 260.83,
+        "completedLoops": 15,
+        "completedContracts": 15,
+        "assertionFails": []
+      },
+      {
+        "seed": 3232804882,
+        "ok": true,
+        "endingCapital": 7604,
+        "earnedValue": 8604,
+        "creditsPerMin": 286.8,
+        "completedLoops": 15,
+        "completedContracts": 15,
+        "assertionFails": []
+      },
+      {
+        "seed": 3232804898,
+        "ok": true,
+        "endingCapital": 2769,
+        "earnedValue": 3769,
+        "creditsPerMin": 125.63,
+        "completedLoops": 8,
+        "completedContracts": 8,
+        "assertionFails": []
+      }
+    ],
+    "prospector": [
+      {
+        "seed": 3232808963,
+        "ok": true,
+        "endingCapital": 8891,
+        "earnedValue": 3891,
+        "creditsPerMin": 129.7,
+        "completedLoops": 11,
+        "completedContracts": 11,
+        "assertionFails": []
+      },
+      {
+        "seed": 3232808979,
+        "ok": true,
+        "endingCapital": 9266,
+        "earnedValue": 4266,
+        "creditsPerMin": 142.2,
+        "completedLoops": 12,
+        "completedContracts": 12,
+        "assertionFails": []
+      },
+      {
+        "seed": 3232808995,
+        "ok": true,
+        "endingCapital": 9188,
+        "earnedValue": 4188,
+        "creditsPerMin": 139.6,
+        "completedLoops": 11,
+        "completedContracts": 11,
+        "assertionFails": []
+      }
+    ]
+  },
+  "multiSeedOk": true,
+  "reloadProof": {
+    "ok": true,
+    "claimed": true,
+    "seam": "prospector save.serializeData + save._restore + simplified continueCohortActions",
+    "scope": {
+      "careers": [
+        "prospector"
+      ],
+      "continuation": "simplified cohort continuation",
+      "finalizeLoadedGame": false,
+      "note": "Proves serialized authority state survives restore and equivalent simplified continuation; it does not prove the headed production Continue finalizer or every full career strategy."
+    },
+    "midMin": 20,
+    "fullMin": 40,
+    "continueEqual": true,
+    "roundTripOk": true,
+    "error": null
+  },
   "snapshotSeam": {
     "seam": "src/core/simSnapshot.js#snapshotSimState",
     "stable": true,
-    "note": "Audit snapshot stability only. Full saveSystem serialize/deserialize resume is not exercised (saveSystem.js excluded). No reload-equivalence claim is made.",
-    "reloadClaimed": false
+    "note": "Audit snapshot stability. reloadProof separately covers a prospector-only data round-trip and simplified continuation; finalizeLoadedGame is not exercised.",
+    "reloadClaimed": true
   },
   "authorityMatrix": {
     "live": [
-      "economy.quote/execute/grantCredits/chargeCredits/update",
+      "economy.quote/execute/grantCredits/chargeCredits/update (market restock)",
       "cargo via economy execute + addCargo/removeCargo",
       "ships.newGame/buyShip/unlockTech/buyModule",
       "factions.applyRep via faction:repDelta + tradeCompleted",
-      "fieldDepletion kernels",
-      "economy ui:service repair (proportional to credits)"
+      "fieldDepletion record + update recovery",
+      "economy ui:service repair (proportional to credits)",
+      "missions.ensureBoard/acceptMission + complete (bounty entity:killed, recon scan, bulk_trade)",
+      "missions recon_scan RP writer → ships.unlockTech gate",
+      "save.serializeData + save._restore prospector data continuity (simplified continue; no finalizeLoadedGame)"
     ],
     "adapter_warning": [
-      "mission bounty rewards (MISSION_TUNING formula; board not used)",
       "combat TTK (EHP/DPS; combat system not stepped)",
       "mine TTK (beam/asteroid tables; mining update not stepped)",
-      "gate toll amount (planGateScene + high-sec formula mirror)",
+      "gate toll amount (planGateScene + high-sec formula; chargeCredits is live)",
       "travel duration (MISSION_TUNING.cruiseSpeedRef + positions)"
     ],
     "excluded_foreign_dirty": [
-      "missions.js accept/complete/RP writer",
-      "modules.js / weapons.js data edits",
-      "saveSystem.js serialize/load resume"
+      "modules.js / weapons.js / ships.js price retunes (not owned; left pre-task)",
+      "missions.js source edits (WIP foreign lane — imported only, not modified)",
+      "full combat system step / mining system step"
     ],
     "balanceTuning": "none — production ship/tech prices left at pre-task values; adapters cannot justify retunes"
   },
   "residualSeams": [
-    {
-      "area": "adapter",
-      "status": "warning_only",
-      "detail": "mission bounty rewards (MISSION_TUNING formula; board not used)"
-    },
     {
       "area": "adapter",
       "status": "warning_only",
@@ -896,7 +1013,7 @@
     {
       "area": "adapter",
       "status": "warning_only",
-      "detail": "gate toll amount (planGateScene + high-sec formula mirror)"
+      "detail": "gate toll amount (planGateScene + high-sec formula; chargeCredits is live)"
     },
     {
       "area": "adapter",
@@ -905,13 +1022,13 @@
     },
     {
       "area": "balance_tuning",
-      "status": "restored_pre_task",
-      "detail": "Mule 35000 / Wasp 28000 / Combat Basics 6000+10RP restored; no retune without live mission RP+combat authority"
+      "status": "none",
+      "detail": "No production price/tech retune in this packet; bands use measured production outcomes"
     },
     {
-      "area": "bottleneck:hauler",
-      "status": "measured",
-      "detail": "spread_collapse"
+      "area": "save_reload_continue",
+      "status": "supporting",
+      "detail": "prospector save.serializeData + save._restore + simplified continueCohortActions mid=20m full=40m"
     },
     {
       "area": "bottleneck:hunter",
@@ -921,7 +1038,17 @@
     {
       "area": "bottleneck:hunter",
       "status": "measured",
+      "detail": "bounty_accept_failed"
+    },
+    {
+      "area": "bottleneck:hunter",
+      "status": "measured",
       "detail": "death_recovery"
+    },
+    {
+      "area": "bottleneck:hunter",
+      "status": "measured",
+      "detail": "capital_for_wasp"
     },
     {
       "area": "bottleneck:prospector",
@@ -944,9 +1071,17 @@
     },
     "hunter": {
       "roleHull": "ship_wasp",
-      "phase": "starter",
+      "phase": "researched",
       "purchases": [],
-      "researchUnlocks": [],
+      "researchUnlocks": [
+        {
+          "techId": "tech_combat_basics",
+          "atS": 2778.9,
+          "credits": 6000,
+          "rp": 10,
+          "authority": "ships.unlockTech"
+        }
+      ],
       "firstPurchaseAtS": null
     },
     "prospector": {
@@ -958,17 +1093,16 @@
           "id": "ship_pelican",
           "price": 15000,
           "reason": "buyShip:ship_pelican",
-          "atS": 4568,
-          "creditsBefore": 15327,
-          "creditsAfter": 327,
+          "atS": 5078.4,
+          "creditsBefore": 15348,
+          "creditsAfter": 348,
           "authority": "ships.buyShip"
         }
       ],
       "researchUnlocks": [],
-      "firstPurchaseAtS": 4568
+      "firstPurchaseAtS": 5078.4
     }
   },
-  "elapsedMs": 23378.4,
   "gate": "check-m3-career-cohorts",
-  "generatedNote": "Nine independent sims (career×horizon). Rates are per-horizon earnedValue/min. No reload-equivalence claim. No production balance retune."
+  "generatedNote": "Nine independent sims (career×horizon) plus 3 seeds/career at 30m and a prospector-only save data round-trip with simplified continuation; finalizeLoadedGame is not exercised. Rates are per-horizon earnedValue/min. No production balance retune."
 }
