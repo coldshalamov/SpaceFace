@@ -28,6 +28,7 @@ import { getLadderLeaf } from './ladderSchema.js';
 import {
   HAULER_LADDER_CAREER_ID,
   HAULER_LADDER_DEF,
+  HAULER_ROLE_HULL_DEF_ID,
   HAULER_LADDER_STORY_PREFIX,
   HAULER_STEP_PARAMS,
   buildHaulerLadderMissionOffer,
@@ -54,6 +55,30 @@ export {
 export { assertNoNondeterminism };
 
 const CAREER_ID = HAULER_LADDER_CAREER_ID;
+const ROLE_HULL_STEP_ID = 'role_hull_capstone';
+
+function ownsRoleHull(state) {
+  const owned = state && state.player && state.player.ownedShips;
+  return Array.isArray(owned) && owned.some((ship) => ship && ship.defId === HAULER_ROLE_HULL_DEF_ID);
+}
+
+function reopenLegacyRoleHullCapstone(state) {
+  const own = leafOf(state);
+  const rt = stepRuntime(own, ROLE_HULL_STEP_ID);
+  if (!own || own.status !== LADDER_STATUS.COMPLETED || !rt || rt.status !== STEP_STATUS.PENDING) {
+    return own;
+  }
+  const priorDone = HAULER_LADDER_DEF.steps.slice(0, -1)
+    .every((step) => stepRuntime(own, step.id)?.status === STEP_STATUS.DONE);
+  if (!priorDone) return own;
+  own.status = LADDER_STATUS.ACTIVE;
+  own.stepIndex = HAULER_LADDER_DEF.steps.length - 1;
+  own.stepId = ROLE_HULL_STEP_ID;
+  rt.status = STEP_STATUS.ACTIVE;
+  rt.attempts = Math.max(1, rt.attempts | 0);
+  rt.activeSinceS = simTimeOf(state);
+  return own;
+}
 
 /**
  * Register the hauler definition on the shared framework registry.
@@ -105,6 +130,11 @@ export function armHaulerStep(state, bus, registry, stepId, opts = {}) {
   const rt = stepRuntime(own, stepId);
   if (!rt) return { ok: false, reason: 'no_step_runtime' };
   const payload = ensureStepPayload(own, stepId);
+  if (stepId === ROLE_HULL_STEP_ID) {
+    payload.roleHullDefId = HAULER_ROLE_HULL_DEF_ID;
+    payload.armedAtS = simTimeOf(state);
+    return { ok: true, stepId, missionId: null, payload, intents: [], events: [] };
+  }
   const masterSeed = masterSeedOf(state);
   const attempt = rt.attempts | 0;
   const offerNonce = own.offerNonce | 0;
@@ -366,6 +396,10 @@ export function createHaulerLadderSystem(opts = {}) {
       this._listen('game:new', () => this.newGame());
       this._listen('save:loaded', () => {
         ensureCareerLaddersState(this.state);
+        this._syncRoleHullCapstone();
+      });
+      this._listen('ship:purchased', (p) => {
+        if (p && p.defId === HAULER_ROLE_HULL_DEF_ID) this._syncRoleHullCapstone();
       });
 
       // Framework UI intents (career:ladder:*).
@@ -404,8 +438,10 @@ export function createHaulerLadderSystem(opts = {}) {
       this._listen(CAREER_LADDER_EVENTS.STEP_ACTIVE, (p) => {
         if (p && p.careerId === CAREER_ID && p.stepId) {
           this._armActiveStep(p.stepId);
+          if (p.stepId === ROLE_HULL_STEP_ID) this._syncRoleHullCapstone();
         }
       });
+      this._syncRoleHullCapstone();
     },
 
     newGame() {
@@ -544,6 +580,19 @@ export function createHaulerLadderSystem(opts = {}) {
         }
       }
       return result;
+    },
+
+    _syncRoleHullCapstone() {
+      if (!this.state || !this.ladders) return { ok: false, reason: 'missing' };
+      const own = reopenLegacyRoleHullCapstone(this.state);
+      if (!own || own.status !== LADDER_STATUS.ACTIVE || own.stepId !== ROLE_HULL_STEP_ID) {
+        return { ok: true, reason: 'inactive' };
+      }
+      if (!ownsRoleHull(this.state)) return { ok: true, reason: 'not_owned' };
+      return this.ladders.applySignal(CAREER_ID, {
+        kind: 'complete',
+        receiptId: `step_done:${CAREER_ID}:${ROLE_HULL_STEP_ID}:${HAULER_ROLE_HULL_DEF_ID}`,
+      });
     },
 
     _tickDeadline() {

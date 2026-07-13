@@ -22,18 +22,20 @@ import { LADDER_REWARD_EVENTS } from './ladderShared.js';
 
 /** Stable career id — matches origin careerId and ladder leaf key. */
 export const PROSPECTOR_LADDER_ID = 'prospector';
+export const PROSPECTOR_ROLE_HULL_DEF_ID = 'ship_pelican';
 
 /** Soft skill-proof key for alternate unlock (no exclusive lock). */
 export const PROSPECTOR_SKILL_PROOF_KEY = 'mining_yield_u';
 export const PROSPECTOR_SKILL_PROOF_MIN = 3;
 
-/** Step ids in fixed order (five embodied professional beats). */
+/** Step ids in fixed order (six embodied professional beats). */
 export const PROSPECTOR_LADDER_STEP_IDS = Object.freeze([
   'survey_circuit',
   'seam_fracture_mastery',
   'claim_stake',
   'claim_conflict',
   'refinery_sector_consequence',
+  'role_hull_capstone',
 ]);
 
 /**
@@ -79,6 +81,9 @@ export const PROSPECTOR_LADDER_LISTEN = Object.freeze({
     'mining:bulkHaulDelivered',
     'fieldDepletion:changed',
   ]),
+  role_hull_capstone: Object.freeze([
+    'ship:purchased',
+  ]),
 });
 
 /** Deterministic balance / success thresholds (no wall clock). */
@@ -120,6 +125,10 @@ export const PROSPECTOR_LADDER_PARAMS = Object.freeze({
     recoveryCooldownS: 30,
     pathA: 'path_a_mod_refinery',
     pathB: 'path_b_station_sell',
+  }),
+  roleHull: Object.freeze({
+    roleHullDefId: PROSPECTOR_ROLE_HULL_DEF_ID,
+    recoveryCooldownS: 0,
   }),
   unlock: Object.freeze({
     skillProofKey: PROSPECTOR_SKILL_PROOF_KEY,
@@ -217,6 +226,12 @@ export const PROSPECTOR_LADDER_DIALOGUE = Object.freeze({
     successLine: 'Refinery loop closed. Prospector sealed.',
     failLine: 'No feedstock. Pull ore or build later.',
     recoveryLine: 'Mine again. Sell at the refinery.',
+  }),
+  role_hull_capstone: Object.freeze({
+    acceptLine: 'Own a Pelican. Bring the next seam home.',
+    successLine: 'Pelican registered. Belt work is yours.',
+    failLine: 'No Pelican on the ownership ledger.',
+    recoveryLine: 'Register a Pelican. Belt work waits.',
   }),
 });
 
@@ -384,6 +399,29 @@ export const PROSPECTOR_LADDER_DEF = Object.freeze({
         hint: PROSPECTOR_LADDER_DIALOGUE.refinery_sector_consequence.recoveryLine,
       }),
       // Step stamp omitted — completionBonus carries the professional seal payout.
+      rewards: Object.freeze({}),
+    }),
+    Object.freeze({
+      id: 'role_hull_capstone',
+      index: 5,
+      title: 'Pelican Command',
+      theme: 'physical_role_hull_ownership',
+      prerequisites: Object.freeze([
+        Object.freeze({
+          type: 'ladderStepDone',
+          careerId: PROSPECTOR_LADDER_ID,
+          stepId: 'refinery_sector_consequence',
+        }),
+      ]),
+      listen: PROSPECTOR_LADDER_LISTEN.role_hull_capstone,
+      objective: 'Own a Pelican. Bring the next seam home.',
+      teach: 'A career becomes physical when the right hull is yours.',
+      params: PROSPECTOR_LADDER_PARAMS.roleHull,
+      dialogue: PROSPECTOR_LADDER_DIALOGUE.role_hull_capstone,
+      recovery: Object.freeze({
+        cooldownS: PROSPECTOR_LADDER_PARAMS.roleHull.recoveryCooldownS,
+        hint: PROSPECTOR_LADDER_DIALOGUE.role_hull_capstone.recoveryLine,
+      }),
       rewards: Object.freeze({}),
     }),
   ]),

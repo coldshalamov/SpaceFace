@@ -202,7 +202,7 @@ test('active hauler broker: objective + progress + map action', () => {
   assert.equal(hauler.statusLabel, 'active');
   assert.equal(hauler.canAccept, false);
   assert.equal(hauler.stepTitle, 'Broker Desk');
-  assert.match(hauler.progressLabel, /Step 1\/5/);
+  assert.match(hauler.progressLabel, /Step 1\/6/);
   assert.match(hauler.progressLabel, /Broker Desk/);
   assert.equal(hauler.objective, HAULER_STEP_PARAMS.broker_desk.acceptLine);
   assert.ok(hauler.mapAction);

@@ -1,6 +1,6 @@
 // CL-01 Hauler professional ladder — data definitions only (candidate).
-// Embodied five-step freight arc: brokerage → convoy/risk → lane tax →
-// spread counterplay → lane infrastructure. Save-safe, non-binding.
+// Embodied six-step freight arc: brokerage → convoy/risk → lane tax →
+// spread counterplay → lane infrastructure → physical role-hull ownership.
 //
 // Framework contract:
 //  - rewards / choice consequences use ONLY canonical owner intents
@@ -22,6 +22,7 @@ import {
 
 export const HAULER_LADDER_CAREER_ID = 'hauler';
 export const HAULER_LADDER_TITLE = 'Hauler Professional';
+export const HAULER_ROLE_HULL_DEF_ID = 'ship_mule';
 /** Story-tag prefix for authored ladder missions (distinct from origin.hauler.v1). */
 export const HAULER_LADDER_STORY_PREFIX = 'ladder.hauler';
 
@@ -31,6 +32,7 @@ export const HAULER_LADDER_STEP_IDS = Object.freeze([
   'risk_lane_tax',
   'spread_counterplay',
   'lane_infrastructure',
+  'role_hull_capstone',
 ]);
 
 /** Soft alternate unlock skillProof key (framework __meta.skillProof). */
@@ -242,6 +244,22 @@ export const HAULER_STEP_PARAMS = Object.freeze({
       commodityId: 'cmdty_ore_iron',
     }),
   }),
+  role_hull_capstone: Object.freeze({
+    id: 'role_hull_capstone',
+    index: 5,
+    title: 'Mule Command',
+    theme: 'physical_role_hull_ownership',
+    roleHullDefId: HAULER_ROLE_HULL_DEF_ID,
+    recoveryCooldownS: 0,
+    recoveryHint: 'Register a Mule. Freight work waits.',
+    acceptLine: 'Own a Mule. Put real freight under your name.',
+    successLine: 'Mule registered. Freight work is yours.',
+    failLine: 'No Mule on the ownership ledger.',
+    recoveryLine: 'Register a Mule. Freight work waits.',
+    teach: 'A career becomes physical when the right hull is yours.',
+    failCodes: Object.freeze([]),
+    listen: Object.freeze(['ship:purchased']),
+  }),
 });
 
 const unlockPrereq = Object.freeze({
@@ -388,6 +406,25 @@ export function buildHaulerLadderDefinition() {
           unlockHints: ['mod_cargo_hold_s'],
           boardBias: { cargo_delivery: 0.12, bulk_trade: 0.12 },
         },
+      },
+      {
+        id: 'role_hull_capstone',
+        index: 5,
+        title: 'Mule Command',
+        prerequisites: [{
+          type: 'ladderStepDone',
+          careerId: HAULER_LADDER_CAREER_ID,
+          stepId: 'lane_infrastructure',
+        }],
+        objective: 'Own a Mule. Put real freight under your name.',
+        teach: 'A career becomes physical when the right hull is yours.',
+        rewards: {},
+        recovery: {
+          cooldownS: 0,
+          hint: HAULER_STEP_PARAMS.role_hull_capstone.recoveryHint,
+        },
+        dialogue: pickDialogue(HAULER_STEP_PARAMS.role_hull_capstone),
+        params: HAULER_STEP_PARAMS.role_hull_capstone,
       },
     ],
     completionBonus: {
@@ -555,7 +592,7 @@ export const HAULER_LADDER_TEST_VECTORS = Object.freeze([
   Object.freeze({ id: 'H3-spread-ok', stepId: 'spread_counterplay', expect: 'step done' }),
   Object.freeze({ id: 'H3-spread-fail', stepId: 'spread_counterplay', expect: 'spread_not_closed' }),
   Object.freeze({ id: 'H3-receipt-gate', stepId: 'spread_counterplay', expect: 'stamp grantCredits once' }),
-  Object.freeze({ id: 'H4-complete', stepId: 'lane_infrastructure', expect: 'completed; boom forceEvent' }),
+  Object.freeze({ id: 'H4-complete', stepId: 'lane_infrastructure', expect: 'role hull active; boom forceEvent' }),
   Object.freeze({ id: 'H4-save-roundtrip', stepId: 'lane_infrastructure', expect: 'status preserved' }),
   Object.freeze({ id: 'H4-no-story-touch', stepId: 'lane_infrastructure', expect: 'beatIndex unchanged' }),
 ]);

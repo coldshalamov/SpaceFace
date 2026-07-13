@@ -31,6 +31,7 @@ import {
   HUNTER_LADDER_LIVE_EVENTS,
   HUNTER_LADDER_PURSUIT_CONTACT_TICKS,
   HUNTER_LADDER_STEP_IDS,
+  HUNTER_ROLE_HULL_DEF_ID,
   createHunterLadderDefinition,
   validateHunterLadderDefinition,
 } from '../src/careers/ladders/hunterLadderDefs.js';
@@ -137,6 +138,13 @@ function leafOf(h) {
   return h.state.careers.ladders.hunter;
 }
 
+function ownRoleHull(h) {
+  const ships = h.state.player.ownedShips || (h.state.player.ownedShips = []);
+  if (!ships.some((ship) => ship && ship.defId === HUNTER_ROLE_HULL_DEF_ID)) {
+    ships.push({ defId: HUNTER_ROLE_HULL_DEF_ID, fittings: [] });
+  }
+}
+
 function advanceTo(h, stepId) {
   const order = HUNTER_LADDER_STEP_IDS;
   const target = order.indexOf(stepId);
@@ -211,10 +219,10 @@ test('no Math.random or Date.now in hunter ladder modules', () => {
   }
 });
 
-test('definition validates and has exactly five steps', () => {
+test('definition validates and ends in a reward-free Wasp ownership capstone', () => {
   const v = validateHunterLadderDefinition();
   assert.equal(v.ok, true, v.errors && v.errors.join('; '));
-  assert.equal(HUNTER_LADDER_DEF.steps.length, 5);
+  assert.equal(HUNTER_LADDER_DEF.steps.length, 6);
   assert.deepEqual(
     HUNTER_LADDER_DEF.steps.map((s) => s.id),
     [...HUNTER_LADDER_STEP_IDS],
@@ -444,9 +452,10 @@ test('U3-no-surrender-event: success never requires combat:surrendered', () => {
 
 // ── U4 ledger choice ─────────────────────────────────────────────────────────
 
-test('U4-law: dock military file_law completes ladder', () => {
+test('U4-law: file_law advances through an owned Wasp capstone', () => {
   const h = makeHarness();
   advanceTo(h, 'ledger_choice');
+  ownRoleHull(h);
   const beat = h.state.story.beatIndex;
   const credits = h.state.player.credits;
 
@@ -465,6 +474,7 @@ test('U4-law: dock military file_law completes ladder', () => {
 test('U4-dark: sell_dark pays more; no heat:delta emit', () => {
   const h = makeHarness();
   advanceTo(h, 'ledger_choice');
+  ownRoleHull(h);
 
   const r = h.hunter.choose('sell_dark', { stationType: 'blackmarket' });
   assert.equal(r.ok, true, JSON.stringify(r));
@@ -491,6 +501,7 @@ test('U4-wanted-law-block: WANTED blocks file_law', () => {
 test('U4-double-choice: second stamp blocked by receipt', () => {
   const h = makeHarness();
   advanceTo(h, 'ledger_choice');
+  ownRoleHull(h);
 
   const first = h.hunter.choose('file_law', { stationType: 'military' });
   assert.equal(first.ok, true);
@@ -566,6 +577,7 @@ test('never writes story.beatIndex / heat / credits / cargo on full happy path',
   const h = makeHarness();
   const pirate = advanceTo(h, 'ledger_choice');
   void pirate;
+  ownRoleHull(h);
   const credits = h.state.player.credits;
   const heat = h.state.player.heat;
   const cargo = JSON.stringify(h.state.player.cargo);
@@ -728,6 +740,7 @@ test('U3-execute-exclusive: capture after execute blocked; one choice receipt', 
 test('adversarial duplicate ordering: ledger law then dark blocked; single terminal grant', () => {
   const h = makeHarness();
   advanceTo(h, 'ledger_choice');
+  ownRoleHull(h);
 
   const first = h.hunter.choose('file_law', { stationType: 'military' });
   assert.equal(first.ok, true, JSON.stringify(first));
@@ -849,6 +862,7 @@ test('lostTicks payload save roundtrip mid-pursuit', () => {
 test('canonical-owner intents: full capture→law path emits only grantCredits+repDelta; one terminal grant', () => {
   const h = makeHarness();
   const pirate = advanceTo(h, 'capture_window');
+  ownRoleHull(h);
   pirate.alive = true;
   leafOf(h).steps.capture_window.payload.markEntityId = 50;
   leafOf(h).steps.capture_window.payload.markDisabled = true;

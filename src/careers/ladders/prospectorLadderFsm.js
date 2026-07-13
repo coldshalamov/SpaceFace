@@ -44,6 +44,7 @@ import {
   PROSPECTOR_LADDER_PARAMS,
   PROSPECTOR_LADDER_PAYLOAD_KEYS,
   PROSPECTOR_LADDER_STEP_IDS,
+  PROSPECTOR_ROLE_HULL_DEF_ID,
   PROSPECTOR_SKILL_PROOF_KEY,
   assertProspectorLadderCopyBudget,
 } from './prospectorLadderDefs.js';
@@ -66,6 +67,42 @@ export {
 };
 
 const ORE_LIKE = /^(cmdty_ore_|cmdty_silicate|cmdty_ice)/;
+const ROLE_HULL_STEP_ID = 'role_hull_capstone';
+
+function ownsRoleHull(state) {
+  const owned = state && state.player && state.player.ownedShips;
+  return Array.isArray(owned) && owned.some((ship) => ship && ship.defId === PROSPECTOR_ROLE_HULL_DEF_ID);
+}
+
+function reopenLegacyRoleHullCapstone(state) {
+  const own = getProspectorLeaf(state);
+  const rt = own && own.steps && own.steps[ROLE_HULL_STEP_ID];
+  if (!own || own.status !== LADDER_STATUS.COMPLETED || !rt || rt.status !== STEP_STATUS.PENDING) {
+    return own;
+  }
+  const priorDone = PROSPECTOR_LADDER_DEF.steps.slice(0, -1)
+    .every((step) => own.steps[step.id]?.status === STEP_STATUS.DONE);
+  if (!priorDone) return own;
+  own.status = LADDER_STATUS.ACTIVE;
+  own.stepIndex = PROSPECTOR_LADDER_DEF.steps.length - 1;
+  own.stepId = ROLE_HULL_STEP_ID;
+  rt.status = STEP_STATUS.ACTIVE;
+  rt.attempts = Math.max(1, rt.attempts | 0);
+  rt.activeSinceS = simTimeOf(state);
+  return own;
+}
+
+function syncRoleHullCapstone(state, bus) {
+  const own = reopenLegacyRoleHullCapstone(state);
+  if (!own || own.status !== LADDER_STATUS.ACTIVE || own.stepId !== ROLE_HULL_STEP_ID) {
+    return { ok: true, reason: 'inactive' };
+  }
+  if (!ownsRoleHull(state)) return { ok: true, reason: 'not_owned' };
+  return dispatchSignal(state, bus, {
+    kind: 'complete',
+    receiptId: `step_done:${PROSPECTOR_LADDER_ID}:${ROLE_HULL_STEP_ID}:${PROSPECTOR_ROLE_HULL_DEF_ID}`,
+  });
+}
 
 // ── definition registration (idempotent for harness re-runs) ─────────────────
 
@@ -739,6 +776,11 @@ export function applyProspectorLadderEvent(state, bus, event, payload = {}) {
     case 'refinery_sector_consequence':
       handleRefinery(state, bus, own, event, payload);
       break;
+    case ROLE_HULL_STEP_ID:
+      if (event === 'ship:purchased' && payload.defId === PROSPECTOR_ROLE_HULL_DEF_ID) {
+        syncRoleHullCapstone(state, bus);
+      }
+      break;
     default:
       break;
   }
@@ -872,6 +914,13 @@ export function createProspectorLadderSystem(opts = {}) {
           this.ladders.offer(PROSPECTOR_LADDER_ID);
         }
       });
+      this._listen('save:loaded', () => syncRoleHullCapstone(this.state, this.bus));
+      this._listen(CAREER_LADDER_EVENTS.STEP_ACTIVE, (p) => {
+        if (p && p.careerId === PROSPECTOR_LADDER_ID && p.stepId === ROLE_HULL_STEP_ID) {
+          syncRoleHullCapstone(this.state, this.bus);
+        }
+      });
+      syncRoleHullCapstone(this.state, this.bus);
     },
 
     newGame() {

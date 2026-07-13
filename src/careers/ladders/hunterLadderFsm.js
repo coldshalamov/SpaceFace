@@ -22,6 +22,7 @@ import {
 import {
   HUNTER_LADDER_CAREER_ID,
   HUNTER_LADDER_DEF,
+  HUNTER_ROLE_HULL_DEF_ID,
   HUNTER_LADDER_FAIL_CODES as FAIL,
   HUNTER_LADDER_LIVE_EVENTS as EV,
   HUNTER_LADDER_LOST_TICKS,
@@ -34,6 +35,30 @@ import {
 
 const LEGAL_MARK = new Set(HUNTER_LEGAL_MARK_WORDS);
 const FORBIDDEN_MARK = new Set(HUNTER_FORBIDDEN_MARK_WORDS);
+const ROLE_HULL_STEP_ID = 'role_hull_capstone';
+
+function ownsRoleHull(state) {
+  const owned = state && state.player && state.player.ownedShips;
+  return Array.isArray(owned) && owned.some((ship) => ship && ship.defId === HUNTER_ROLE_HULL_DEF_ID);
+}
+
+function reopenLegacyRoleHullCapstone(ladders, state) {
+  const own = activeLeaf(ladders, state);
+  const rt = own && own.steps && own.steps[ROLE_HULL_STEP_ID];
+  if (!own || own.status !== LADDER_STATUS.COMPLETED || !rt || rt.status !== STEP_STATUS.PENDING) {
+    return own;
+  }
+  const priorDone = HUNTER_LADDER_DEF.steps.slice(0, -1)
+    .every((step) => own.steps[step.id]?.status === STEP_STATUS.DONE);
+  if (!priorDone) return own;
+  own.status = LADDER_STATUS.ACTIVE;
+  own.stepIndex = HUNTER_LADDER_DEF.steps.length - 1;
+  own.stepId = ROLE_HULL_STEP_ID;
+  rt.status = STEP_STATUS.ACTIVE;
+  rt.attempts = Math.max(1, rt.attempts | 0);
+  rt.activeSinceS = simTimeOf(state);
+  return own;
+}
 
 const DISABLE_SUBSYSTEMS = new Set([
   'subsystem_drive',
@@ -260,6 +285,10 @@ export function createHunterLadderFsm(opts = {}) {
       this._listen(EV.COMBAT_OUTCOME, (p) => this._onCombatOutcome(p));
       this._listen(EV.DOCK_DOCKED, (p) => this._onDocked(p));
       this._listen(EV.MISSION_ACCEPTED, (p) => this._onMissionAccepted(p));
+      this._listen(EV.SHIP_PURCHASED, (p) => {
+        if (p && p.defId === HUNTER_ROLE_HULL_DEF_ID) this._syncRoleHullCapstone();
+      });
+      this._listen(EV.SAVE_LOADED, () => this._syncRoleHullCapstone());
       this._listen(CAREER_LADDER_EVENTS.STEP_ACTIVE, (p) => this._onStepActive(p));
       this._listen(CAREER_LADDER_EVENTS.CHOOSE, (p) => {
         // UI may emit choose on the bus; prefer ladders.choose if present.
@@ -267,6 +296,7 @@ export function createHunterLadderFsm(opts = {}) {
           this.choose(p.choiceId, p);
         }
       });
+      this._syncRoleHullCapstone();
     },
 
     newGame() {
@@ -741,6 +771,20 @@ export function createHunterLadderFsm(opts = {}) {
         p.markDisabled = !!p.markDisabled;
         p.choiceId = p.choiceId || null;
       }
+      if (payload.stepId === ROLE_HULL_STEP_ID) this._syncRoleHullCapstone();
+    },
+
+    _syncRoleHullCapstone() {
+      if (!this.state || !this.ladders) return { ok: false, reason: 'missing' };
+      const leaf = reopenLegacyRoleHullCapstone(this.ladders, this.state);
+      if (!leaf || leaf.status !== LADDER_STATUS.ACTIVE || leaf.stepId !== ROLE_HULL_STEP_ID) {
+        return { ok: true, reason: 'inactive' };
+      }
+      if (!ownsRoleHull(this.state)) return { ok: true, reason: 'not_owned' };
+      return this.ladders.applySignal(HUNTER_LADDER_CAREER_ID, {
+        kind: 'complete',
+        receiptId: `step_done:${HUNTER_LADDER_CAREER_ID}:${ROLE_HULL_STEP_ID}:${HUNTER_ROLE_HULL_DEF_ID}`,
+      });
     },
 
     _onHeatChanged() {

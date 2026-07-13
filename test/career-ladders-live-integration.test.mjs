@@ -31,7 +31,11 @@ import {
   computeLadderRngSeed,
   isForbiddenHeatEvent,
 } from '../src/careers/ladders/ladderShared.js';
-import { HAULER_LADDER_STEP_IDS, HAULER_SKILL_PROOF_KEY } from '../src/careers/ladders/haulerLadderDefs.js';
+import {
+  HAULER_LADDER_STEP_IDS,
+  HAULER_ROLE_HULL_DEF_ID,
+  HAULER_SKILL_PROOF_KEY,
+} from '../src/careers/ladders/haulerLadderDefs.js';
 import { HUNTER_LADDER_STEP_IDS } from '../src/careers/ladders/hunterLadderDefs.js';
 import {
   PROSPECTOR_LADDER_STEP_IDS,
@@ -193,9 +197,9 @@ test('definitions register exactly once across composite init', async () => {
   const ids = listLadderDefinitions().map((d) => d.careerId).sort();
   assert.deepEqual(ids, ['hauler', 'hunter', 'prospector']);
   assert.equal(listLadderDefinitions().length, 3);
-  assert.equal(getLadderDefinition('hauler').steps.length, 5);
-  assert.equal(getLadderDefinition('hunter').steps.length, 5);
-  assert.equal(getLadderDefinition('prospector').steps.length, 5);
+  assert.equal(getLadderDefinition('hauler').steps.length, 6, 'Hauler ends in its role-hull capstone');
+  assert.equal(getLadderDefinition('hunter').steps.length, 6, 'Hunter ends in its role-hull capstone');
+  assert.equal(getLadderDefinition('prospector').steps.length, 6, 'Prospector ends in its role-hull capstone');
 
   // Second init must not grow the definition set.
   composite.init(h.ctx);
@@ -390,6 +394,10 @@ test('non-binding origin reachability: skillProof unlock without exclusive lock'
   for (let i = 0; i < 5; i += 1) {
     assert.equal(hauler.applySignal({ kind: 'complete' }).ok, true);
   }
+  assert.equal(leaf(h.state, 'hauler').status, LADDER_STATUS.ACTIVE);
+  assert.equal(leaf(h.state, 'hauler').stepId, 'role_hull_capstone');
+  h.state.player.ownedShips.push({ defId: HAULER_ROLE_HULL_DEF_ID, fittings: [] });
+  h.bus.emit('ship:purchased', { defId: HAULER_ROLE_HULL_DEF_ID, price: 15000 });
   const own = leaf(h.state, 'hauler');
   assert.equal(own.status, LADDER_STATUS.COMPLETED);
   assert.equal(own.nonBinding, true);

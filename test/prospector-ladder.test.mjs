@@ -37,6 +37,7 @@ import {
   PROSPECTOR_LADDER_ID,
   PROSPECTOR_LADDER_PARAMS,
   PROSPECTOR_LADDER_STEP_IDS,
+  PROSPECTOR_ROLE_HULL_DEF_ID,
   PROSPECTOR_SKILL_PROOF_KEY,
   assertProspectorLadderCopyBudget,
 } from '../src/careers/ladders/prospectorLadderDefs.js';
@@ -303,6 +304,13 @@ function makeHarness(seed = 7703, opts = {}) {
   return { state, bus, system, intents, events, seed };
 }
 
+function ownRoleHull(h) {
+  const ships = h.state.player.ownedShips || (h.state.player.ownedShips = []);
+  if (!ships.some((ship) => ship && ship.defId === PROSPECTOR_ROLE_HULL_DEF_ID)) {
+    ships.push({ defId: PROSPECTOR_ROLE_HULL_DEF_ID, fittings: [] });
+  }
+}
+
 function activateAtStep(h, stepIndex = 0) {
   const r = acceptProspectorLadder(h.state, h.bus, { ignorePrereqs: true, stepIndex });
   assert.equal(r.ok, true, `accept failed: ${r.reason}`);
@@ -384,7 +392,7 @@ test('PROSPECTOR_LADDER_DEF validates and registers', () => {
   assert.equal(v.ok, true, v.errors && v.errors.join('; '));
   assert.equal(PROSPECTOR_LADDER_DEF.careerId, PROSPECTOR_LADDER_ID);
   assert.equal(PROSPECTOR_LADDER_DEF.nonBinding, true);
-  assert.equal(PROSPECTOR_LADDER_DEF.steps.length, 5);
+  assert.equal(PROSPECTOR_LADDER_DEF.steps.length, 6);
   assert.deepEqual(
     PROSPECTOR_LADDER_DEF.steps.map((s) => s.id),
     [...PROSPECTOR_LADDER_STEP_IDS],
@@ -457,6 +465,7 @@ test('verified listen events cover live seams only', () => {
 test('CL-nonbinding: prospector complete does not exclusive-lock peers', () => {
   const h = makeHarness();
   activateAtStep(h, 0);
+  ownRoleHull(h);
   for (let i = 0; i < 5; i++) {
     completeProspectorLadderStep(h.state, h.bus);
   }
@@ -813,6 +822,7 @@ test('P4-pathB-sell: live economy:tradeCompleted sell ≥8 ore completes', () =>
   const h = makeHarness();
   activateAtStep(h, 0);
   for (let i = 0; i < 4; i++) completeProspectorLadderStep(h.state, h.bus);
+  ownRoleHull(h);
   h.intents.length = 0;
 
   applyProspectorLadderEvent(h.state, h.bus, 'economy:tradeCompleted', liveTradeSell(8));
@@ -835,6 +845,7 @@ test('P4-pathA-module: live claim:moduleBuilt mod_refinery completes', () => {
   const h = makeHarness();
   activateAtStep(h, 0);
   for (let i = 0; i < 4; i++) completeProspectorLadderStep(h.state, h.bus);
+  ownRoleHull(h);
 
   applyProspectorLadderEvent(
     h.state, h.bus, 'claim:moduleBuilt',
@@ -851,6 +862,7 @@ test('P4-bulk: live mining:bulkHaulDelivered massU counts toward path B', () => 
   const h = makeHarness();
   activateAtStep(h, 0);
   for (let i = 0; i < 4; i++) completeProspectorLadderStep(h.state, h.bus);
+  ownRoleHull(h);
 
   applyProspectorLadderEvent(
     h.state, h.bus, 'mining:bulkHaulDelivered',
@@ -968,7 +980,7 @@ test('getProspectorLadderProgress exposes nonBinding objective', () => {
   assert.equal(prog.careerId, 'prospector');
   assert.equal(prog.nonBinding, true);
   assert.equal(prog.exclusive, false);
-  assert.equal(prog.stepsTotal, 5);
+  assert.equal(prog.stepsTotal, 6);
   assert.ok(typeof prog.objective === 'string' && prog.objective.length > 0);
 });
 

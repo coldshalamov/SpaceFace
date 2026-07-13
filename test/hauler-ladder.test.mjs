@@ -31,6 +31,7 @@ import {
   HAULER_LADDER_CAREER_ID,
   HAULER_LADDER_DEF,
   HAULER_LADDER_STEP_IDS,
+  HAULER_ROLE_HULL_DEF_ID,
   HAULER_LADDER_TEST_VECTORS,
   HAULER_LANE_TOLL_CR,
   HAULER_SKILL_PROOF_KEY,
@@ -127,6 +128,13 @@ function leaf(h) {
   return h.state.careers.ladders.hauler;
 }
 
+function ownRoleHull(h) {
+  const ships = h.state.player.ownedShips || (h.state.player.ownedShips = []);
+  if (!ships.some((ship) => ship && ship.defId === HAULER_ROLE_HULL_DEF_ID)) {
+    ships.push({ defId: HAULER_ROLE_HULL_DEF_ID, fittings: [] });
+  }
+}
+
 function activateOnStep(h, stepIndex = 0) {
   // Complete prior steps via signals to land on stepIndex.
   h.hauler.offer({ ignorePrereqs: true });
@@ -170,29 +178,32 @@ test('definition validates and registers with framework', () => {
   assert.equal(reg.ok, true, reg.reason);
   assert.equal(getLadderDefinition(HAULER_LADDER_CAREER_ID).careerId, 'hauler');
   assert.equal(listLadderDefinitions().length, 1);
-  assert.equal(getLadderDefinition('hauler').steps.length, 5);
+  assert.equal(getLadderDefinition('hauler').steps.length, 6);
 });
 
-test('exactly five embodied steps with stable ids and themes', () => {
+test('six embodied steps end in a reward-free Mule ownership capstone', () => {
   assert.deepEqual(HAULER_LADDER_STEP_IDS, [
     'broker_desk',
     'bonded_convoy',
     'risk_lane_tax',
     'spread_counterplay',
     'lane_infrastructure',
+    'role_hull_capstone',
   ]);
-  assert.equal(HAULER_LADDER_DEF.steps.length, 5);
+  assert.equal(HAULER_LADDER_DEF.steps.length, 6);
   assert.equal(HAULER_LADDER_DEF.nonBinding, true);
-  for (let i = 0; i < 5; i += 1) {
+  for (let i = 0; i < 6; i += 1) {
     const step = HAULER_LADDER_DEF.steps[i];
     assert.equal(step.id, HAULER_LADDER_STEP_IDS[i]);
     assert.equal(step.index, i);
-    assert.ok(step.rewards && Number.isFinite(step.rewards.credits));
+    if (i < 5) assert.ok(step.rewards && Number.isFinite(step.rewards.credits));
+    else assert.deepEqual(step.rewards, {});
     assert.ok(step.recovery && Number.isFinite(step.recovery.cooldownS));
     assert.ok(HAULER_STEP_PARAMS[step.id], `params for ${step.id}`);
     assert.ok(HAULER_STEP_PARAMS[step.id].teach);
     assert.ok(HAULER_STEP_PARAMS[step.id].acceptLine.split(/\s+/).length <= 12);
   }
+  assert.equal(HAULER_STEP_PARAMS.role_hull_capstone.roleHullDefId, HAULER_ROLE_HULL_DEF_ID);
   assert.ok(HAULER_LADDER_DEF.completionBonus.credits >= 1000);
 });
 
@@ -252,6 +263,7 @@ test('origin completed unlocks offer; skillProof alternate also works', () => {
 test('completing hauler ladder does not block peer origins or invent exclusive lock', () => {
   const h = makeHarness();
   activateOnStep(h, 0);
+  ownRoleHull(h);
   for (let i = 0; i < 5; i += 1) {
     assert.equal(h.hauler.applySignal({ kind: 'complete' }).ok, true);
   }
@@ -466,9 +478,10 @@ test('H3-receipt-gate: double complete grants stamp once', () => {
 
 // ── H4 infrastructure ────────────────────────────────────────────────────────
 
-test('H4-complete: final step completes ladder and emits boom forceEvent once', () => {
+test('H4-complete: infrastructure advances through owned Mule capstone and emits boom once', () => {
   const h = makeHarness();
   activateOnStep(h, 4);
+  ownRoleHull(h);
   const beatBefore = h.state.story.beatIndex;
   const missionId = leaf(h).steps.lane_infrastructure.payload.missionId;
   h.bus.emit('mission:completed', { missionId, type: 'cargo_delivery' });
@@ -487,6 +500,7 @@ test('H4-complete: final step completes ladder and emits boom forceEvent once', 
 test('H4-complete alternate: mining:bulkHaulDelivered settles infrastructure', () => {
   const h = makeHarness();
   activateOnStep(h, 4);
+  ownRoleHull(h);
   h.bus.emit('mining:bulkHaulDelivered', {
     stationId: 'station_ceres',
     storyTag: haulerLadderStoryTag('lane_infrastructure'),
@@ -534,6 +548,7 @@ test('H4-no-story-touch: full ladder never mutates story.beatIndex or player own
   const heat = h.state.player.heat;
   const cargo = JSON.stringify(h.state.player.cargo);
   activateOnStep(h, 0);
+  ownRoleHull(h);
   for (let i = 0; i < 5; i += 1) {
     h.hauler.applySignal({ kind: 'complete' });
   }

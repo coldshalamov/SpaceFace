@@ -1,5 +1,5 @@
 // CL-02 Hunter professional ladder — pure data definition (candidate pack).
-// Non-binding five-step progression on the quality-PASS CL-00 shared framework.
+// Non-binding six-step progression on the quality-PASS CL-00 shared framework.
 //
 // Authority boundaries:
 // - Never writes credits / cargo / rep / heat / story.beatIndex.
@@ -21,6 +21,7 @@ import {
 
 export const HUNTER_LADDER_CAREER_ID = 'hunter';
 export const HUNTER_LADDER_TITLE = 'Hunter Professional';
+export const HUNTER_ROLE_HULL_DEF_ID = 'ship_wasp';
 
 /** Fixed-timestep contact hold (mirrors hunter origin pursuit). 60 Hz × 4.5 s. */
 export const HUNTER_LADDER_PURSUIT_CONTACT_TICKS = 270;
@@ -61,6 +62,8 @@ export const HUNTER_LADDER_LIVE_EVENTS = Object.freeze({
   DOCK_DOCKED: 'dock:docked',
   SCAN_COMPLETED: 'scan:completed',
   SCAN_PULSE: 'scan:pulse',
+  SHIP_PURCHASED: 'ship:purchased',
+  SAVE_LOADED: 'save:loaded',
   // Explicitly NOT used — combatOutcome listens, but no live emitter exists.
   COMBAT_SURRENDERED: 'combat:surrendered',
 });
@@ -76,6 +79,7 @@ export const HUNTER_LADDER_STEP_IDS = Object.freeze([
   'escalation_package',
   'capture_window',
   'ledger_choice',
+  'role_hull_capstone',
 ]);
 
 export const HUNTER_LADDER_FAIL_CODES = Object.freeze({
@@ -107,8 +111,8 @@ const unlockPrereq = Object.freeze({
 
 /**
  * Data-driven ladder definition for CL-00 registerLadderDefinition().
- * Five embodied steps: lawful bounty intelligence → pursuit/escalation →
- * doctrine combat → capture/choice → ledger fork.
+ * Six embodied steps: lawful bounty intelligence → pursuit/escalation →
+ * doctrine combat → capture/choice → ledger fork → Wasp ownership.
  */
 export const HUNTER_LADDER_DEF = Object.freeze({
   careerId: HUNTER_LADDER_CAREER_ID,
@@ -466,6 +470,36 @@ export const HUNTER_LADDER_DEF = Object.freeze({
       params: Object.freeze({
         softDarkBoardBias: Object.freeze({ smuggling_run: 0.05 }),
       }),
+    }),
+    Object.freeze({
+      id: 'role_hull_capstone',
+      index: 5,
+      title: 'Wasp Command',
+      theme: 'physical_role_hull_ownership',
+      prerequisites: Object.freeze([
+        Object.freeze({
+          type: 'ladderStepDone',
+          careerId: HUNTER_LADDER_CAREER_ID,
+          stepId: 'ledger_choice',
+        }),
+      ]),
+      eventsConsumed: Object.freeze([HUNTER_LADDER_LIVE_EVENTS.SHIP_PURCHASED]),
+      objective: Object.freeze({
+        playerVisible: 'Own a Wasp. Carry the next warrant in it.',
+        teach: 'A career becomes physical when the right hull is yours.',
+      }),
+      dialogue: Object.freeze({
+        acceptLine: 'Own a Wasp. Carry the next warrant in it.',
+        successLine: 'Wasp registered. Warrant work is yours.',
+        failLine: 'No Wasp on the ownership ledger.',
+        recoveryLine: 'Register a Wasp. Warrants wait.',
+      }),
+      recovery: Object.freeze({
+        cooldownS: 0,
+        hint: 'Register a Wasp. Warrants wait.',
+      }),
+      rewards: Object.freeze({}),
+      params: Object.freeze({ roleHullDefId: HUNTER_ROLE_HULL_DEF_ID }),
     }),
   ]),
 });
