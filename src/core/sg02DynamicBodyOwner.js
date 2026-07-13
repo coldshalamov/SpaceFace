@@ -372,6 +372,11 @@ export class Sg02DynamicBodyOwner {
     const telemetryImpulse = Math.max(0, springState.lastImpulse || telemetryTension * this.fixedDt);
     const source = frameToGlobal(sourceLocal, this._frameOrigin);
     const target = frameToGlobal(targetLocal, this._frameOrigin);
+    // Coordinate conversion is intentionally XZ-only, but the SG-02 attachment telemetry schema
+    // is a 3D point contract. Restore the gameplay plane explicitly instead of leaking undefined
+    // y values to checks and downstream physics diagnostics.
+    source.y = 0;
+    target.y = 0;
     return Object.freeze({
       schemaVersion: SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
       attachmentId: attachment.id,
