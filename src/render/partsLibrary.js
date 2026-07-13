@@ -25,6 +25,7 @@ const sceneStates = new WeakMap();
 const libraryByRenderer = new WeakMap();
 const resolvedLibraryByRenderer = new WeakMap();
 const planAdmissionByRenderer = new WeakMap();
+const decodeAdmissionDiagnosticsByRenderer = new WeakMap();
 const sharedMaterialVariants = new Map();
 const sharedReadabilityShellVariants = new Map();
 const ownerReleaseState = new WeakMap();
@@ -692,6 +693,8 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
       }, (next) => {
         boundary.userData.hull = next;
       }),
+      renderer,
+      options: { releaseMode },
     });
   };
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
@@ -747,6 +750,8 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
       }, (next) => {
         boundary.userData.hull = next;
       }),
+      renderer,
+      options: { releaseMode },
     });
   };
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
@@ -957,22 +962,158 @@ function placeFileForEntity(entity) {
   return PLACE_FILE_BY_ID[id] || (PLACE_FILES.includes(`places/${id}.glb`) ? `places/${id}.glb` : null);
 }
 
-function enqueueBoundaryUpgrade(scene, job) {
+export function enqueueBoundaryUpgrade(scene, job) {
   const state = upgradeQueueState(scene);
   if (!job || !job.boundary || state.byBoundary.has(job.boundary)) return;
   if (!boundaryBelongsToScene(job.boundary, scene)) return;
-  state.jobs.push(job);
-  state.byBoundary.set(job.boundary, job);
+  const queuedJob = {
+    ...job,
+    priority: authoredUpgradePriority(job),
+    key: authoredUpgradeKey(job),
+    sequence: state.nextSequence++,
+    assetUrls: authoredUpgradeAssetUrls(job),
+    estimatedBytes: authoredUpgradeEstimatedBytes(job),
+  };
+  const keyedJob = state.byKey.get(queuedJob.key);
+  if (keyedJob) {
+    if (jobStillNeeded(state, keyedJob)) return;
+    const staleIndex = state.jobs.indexOf(keyedJob);
+    if (staleIndex >= 0) state.jobs.splice(staleIndex, 1);
+    cancelQueuedJob(state, keyedJob);
+  }
+  const insertionIndex = state.jobs.findIndex((candidate) => candidate.priority > queuedJob.priority);
+  if (insertionIndex < 0) state.jobs.push(queuedJob);
+  else state.jobs.splice(insertionIndex, 0, queuedJob);
+  state.byBoundary.set(queuedJob.boundary, queuedJob);
+  state.byKey.set(queuedJob.key, queuedJob);
   if (!state.running) processUpgradeQueue(state);
+  else scheduleNextUpgradeFrame(state);
 }
 
 function upgradeQueueState(scene) {
   let state = upgradeQueuesByScene.get(scene);
   if (!state) {
-    state = { scene, jobs: [], running: false, byBoundary: new Map() };
+    state = {
+      scene,
+      jobs: [],
+      running: false,
+      inFlight: 0,
+      frameScheduled: false,
+      byBoundary: new Map(),
+      byKey: new Map(),
+      nextSequence: 0,
+      diagnostics: {
+        schema: 'spaceface.authoredUpgradeDiagnostics.v1',
+        jobs: [],
+        activeJobs: 0,
+        maxConcurrentJobs: 0,
+        maxConcurrentDecode: 0,
+        activePlannedBytes: 0,
+        peakActivePlannedBytes: 0,
+        partLoads: [],
+      },
+    };
+    if (scene && scene.userData) scene.userData.authoredUpgradeDiagnostics = state.diagnostics;
     upgradeQueuesByScene.set(scene, state);
   }
   return state;
+}
+
+function authoredUpgradePriority(job) {
+  const entity = job && job.entity;
+  if (entity && entity.isPlayer === true) return 0;
+  if (isCriticalStartingHub(entity)) return 1;
+  return backgroundUpgradePriority(job);
+}
+
+function backgroundUpgradePriority(job) {
+  const liveState = authoredRuntimeState();
+  if (!liveState || liveState.mode !== 'flight') return 10;
+  const entity = job && job.entity;
+  if (!entity) return 10;
+  if (liveState.player && liveState.player.targetId === entity.id) return 2;
+  if (entity.team === 1) return 3;
+  if (entityIsOnscreen(entity, liveState)) return 4;
+  return 10;
+}
+
+function authoredRuntimeState() {
+  return globalThis && globalThis.window && globalThis.window.SF
+    ? globalThis.window.SF.state || null
+    : null;
+}
+
+function entityIsOnscreen(entity, state) {
+  const root = entity && entity.mesh;
+  if (!root || root.visible === false) return false;
+  for (let node = root.parent; node; node = node.parent) if (node.visible === false) return false;
+  const camera = state && state.render && state.render.camera;
+  if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) return true;
+  try {
+    camera.updateMatrixWorld(true);
+    root.updateWorldMatrix(true, false);
+    const projection = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    const frustum = new THREE.Frustum().setFromProjectionMatrix(projection);
+    return frustum.containsPoint(root.getWorldPosition(new THREE.Vector3()));
+  } catch {
+    return true;
+  }
+}
+
+function authoredUpgradeKey(job) {
+  if (job && job.key != null) return String(job.key);
+  const entity = job && job.entity;
+  if (entity && entity.isPlayer === true) return `player:${String(entity.id)}`;
+  if (isCriticalStartingHub(entity)) return `critical-hub:${String(entity.id)}`;
+  if (entity && entity.id != null) return `entity:${String(entity.type || 'unknown')}:${String(entity.id)}`;
+  return job.boundary;
+}
+
+function authoredUpgradePlan(job) {
+  const entity = job && job.entity;
+  if (!entity) return {};
+  if (entity.type === 'ship') return authoredPreloadPlanForEntity(entity, job.options || {});
+  const placeFile = placeFileForEntity(entity);
+  return placeFile ? { place: [placeFile] } : {};
+}
+
+function authoredUpgradeAssetUrls(job) {
+  if (job && Array.isArray(job.assetUrls)) return [...new Set(job.assetUrls.filter(Boolean).map(String))];
+  const partRoot = isReleaseAssetMode(job && job.options || {}) ? PART_RELEASE_ROOT : PART_ROOT;
+  return Object.values(authoredUpgradePlan(job)).flat().map((file) => `${partRoot}${file}`);
+}
+
+function authoredUpgradeEstimatedBytes(job) {
+  const explicit = Number(job && job.estimatedBytes);
+  if (Number.isFinite(explicit) && explicit >= 0) return explicit;
+  let bytes = 0;
+  if (globalThis.performance && typeof globalThis.performance.getEntriesByName === 'function') {
+    for (const url of authoredUpgradeAssetUrls(job)) {
+      const entries = globalThis.performance.getEntriesByName(url);
+      const resource = entries && entries[entries.length - 1];
+      bytes += Number(resource && (resource.decodedBodySize || resource.transferSize)) || 0;
+    }
+  }
+  return bytes;
+}
+
+function authoredUpgradeCacheStatus(job) {
+  const library = resolvedCanonicalLibrary(job && job.renderer, job && job.options || {});
+  if (!library) return 'miss';
+  return libraryHasPreloadPlan(library, authoredUpgradePlan(job)) ? 'hit' : 'miss';
+}
+
+function cleanupQueuedJob(state, job) {
+  if (state.byBoundary.get(job.boundary) === job) state.byBoundary.delete(job.boundary);
+  if (state.byKey.get(job.key) === job) state.byKey.delete(job.key);
+}
+
+function cancelQueuedJob(state, job) {
+  cleanupQueuedJob(state, job);
+  if (job.boundary && job.boundary.userData) {
+    job.boundary.userData.authoredAssetState = 'cancelled-before-load';
+  }
+  recordUpgradeCancellation(state, job);
 }
 
 function scheduleUpgradeFrame(callback) {
@@ -984,46 +1125,185 @@ function scheduleUpgradeFrame(callback) {
 }
 
 function processUpgradeQueue(state) {
-  if (state.running) return;
   state.running = true;
-  const step = () => {
-    const job = state.jobs.shift();
-    if (!job) {
-      state.running = false;
-      return;
-    }
-    if (!jobStillNeeded(state, job)) {
-      state.byBoundary.delete(job.boundary);
-      if (job.boundary && job.boundary.userData) {
-        job.boundary.userData.authoredAssetState = 'cancelled-before-load';
-      }
-      scheduleUpgradeFrame(step);
-      return;
-    }
-    // One entity admission per frame. The previous resolved-library fast path batched every queued
-    // ship into one Promise.all, which recreated the same decode/upload burst the scoped preloader
-    // is designed to prevent as soon as a populated sector materialized.
-    const run = typeof job.run === 'function'
-      ? job.run
-      : () => upgradeBoundary(
-        job.boundary,
-        job.fallbackRoot,
-        job.entity,
-        job.renderer,
-        job.scene,
-        job.options,
-        job.setActive,
-      );
-    Promise.resolve().then(run).catch((error) => {
-      job.boundary.userData.authoredAssetState = 'fallback-after-error';
-      console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
-    })
-      .finally(() => {
-        state.byBoundary.delete(job.boundary);
-        scheduleUpgradeFrame(step);
-      });
+  scheduleNextUpgradeFrame(state);
+}
+
+function scheduleNextUpgradeFrame(state) {
+  if (!state || state.frameScheduled) return;
+  if (state.jobs.length === 0) {
+    state.running = state.inFlight > 0;
+    publishUpgradeDiagnostics(state);
+    return;
+  }
+  if (state.inFlight >= authoredUpgradeConcurrencyLimit()) return;
+  state.frameScheduled = true;
+  scheduleUpgradeFrame(() => admitNextUpgradeJob(state));
+}
+
+function admitNextUpgradeJob(state) {
+  state.frameScheduled = false;
+  primeBackgroundAssetPlans(state);
+  state.jobs.sort((a, b) => {
+    const priorityDelta = authoredUpgradePriority(a) - authoredUpgradePriority(b);
+    return priorityDelta || a.sequence - b.sequence;
+  });
+  const job = state.jobs.shift();
+  if (!job) {
+    state.running = state.inFlight > 0;
+    publishUpgradeDiagnostics(state);
+    return;
+  }
+  if (!jobStillNeeded(state, job)) {
+    cancelQueuedJob(state, job);
+    scheduleNextUpgradeFrame(state);
+    return;
+  }
+
+  state.inFlight++;
+  const diagnostic = beginUpgradeDiagnostic(state, job);
+  // One entity admission per frame. Composition commits remain serial in every mode because they
+  // mutate shared library/batch state; flight throughput comes from the separate serial prefetch
+  // lane below, which overlaps the next decode only with the current composition commit.
+  const run = typeof job.run === 'function'
+    ? job.run
+    : () => upgradeBoundary(
+      job.boundary,
+      job.fallbackRoot,
+      job.entity,
+      job.renderer,
+      job.scene,
+      job.options,
+      job.setActive,
+      job.prefetchPromise,
+    );
+  Promise.resolve().then(run).then(() => {
+    diagnostic.status = job.boundary && job.boundary.userData
+      ? job.boundary.userData.authoredAssetState || 'completed'
+      : 'completed';
+  }).catch((error) => {
+    diagnostic.status = 'fallback-after-error';
+    diagnostic.error = error && error.message ? error.message : String(error);
+    job.boundary.userData.authoredAssetState = 'fallback-after-error';
+    console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
+  })
+    .finally(() => {
+      state.inFlight--;
+      finishUpgradeDiagnostic(state, job, diagnostic);
+      cleanupQueuedJob(state, job);
+      scheduleNextUpgradeFrame(state);
+    });
+  scheduleNextUpgradeFrame(state);
+}
+
+function authoredUpgradeConcurrencyLimit() {
+  return 1;
+}
+
+function primeBackgroundAssetPlans(state) {
+  const liveState = authoredRuntimeState();
+  if (!state || !liveState || liveState.mode !== 'flight') return;
+  for (const job of state.jobs) {
+    if (job.prefetchPromise || !job.entity || job.entity.type !== 'ship' || !job.renderer) continue;
+    job.prefetchPromise = preloadAuthoredAssetsForEntity(job.renderer, job.entity, job.options || {});
+    job.prefetchPromise.catch((error) => {
+      job.prefetchError = error && error.message ? error.message : String(error);
+    });
+  }
+}
+
+function monotonicNow() {
+  return globalThis.performance && typeof globalThis.performance.now === 'function'
+    ? globalThis.performance.now()
+    : Date.now();
+}
+
+function beginUpgradeDiagnostic(state, job) {
+  const diagnostic = {
+    sequence: job.sequence,
+    key: typeof job.key === 'string' ? job.key : 'boundary',
+    entityId: job.entity && job.entity.id,
+    entityType: job.entity && job.entity.type || null,
+    priority: authoredUpgradePriority(job),
+    modeAtStart: authoredRuntimeState() && authoredRuntimeState().mode || null,
+    assetUrls: [...job.assetUrls],
+    cacheStatus: authoredUpgradeCacheStatus(job),
+    estimatedBytes: job.estimatedBytes,
+    startedAtMs: monotonicNow(),
+    endedAtMs: null,
+    durationMs: null,
+    status: 'running',
   };
-  scheduleUpgradeFrame(step);
+  state.diagnostics.jobs.push(diagnostic);
+  if (state.diagnostics.jobs.length > 128) state.diagnostics.jobs.splice(0, state.diagnostics.jobs.length - 128);
+  state.diagnostics.activeJobs++;
+  state.diagnostics.maxConcurrentJobs = Math.max(
+    state.diagnostics.maxConcurrentJobs,
+    state.diagnostics.activeJobs,
+  );
+  state.diagnostics.activePlannedBytes += job.estimatedBytes;
+  state.diagnostics.peakActivePlannedBytes = Math.max(
+    state.diagnostics.peakActivePlannedBytes,
+    state.diagnostics.activePlannedBytes,
+  );
+  publishUpgradeDiagnostics(state, job.renderer);
+  return diagnostic;
+}
+
+function finishUpgradeDiagnostic(state, job, diagnostic) {
+  diagnostic.endedAtMs = monotonicNow();
+  diagnostic.durationMs = Math.max(0, diagnostic.endedAtMs - diagnostic.startedAtMs);
+  diagnostic.transferBytes = resourceBytesForUrls(job.assetUrls);
+  state.diagnostics.activeJobs = Math.max(0, state.diagnostics.activeJobs - 1);
+  state.diagnostics.activePlannedBytes = Math.max(
+    0,
+    state.diagnostics.activePlannedBytes - job.estimatedBytes,
+  );
+  publishUpgradeDiagnostics(state, job.renderer);
+}
+
+function recordUpgradeCancellation(state, job) {
+  if (!state || !state.diagnostics || !job || job.diagnosticCancellationRecorded) return;
+  job.diagnosticCancellationRecorded = true;
+  state.diagnostics.jobs.push({
+    sequence: job.sequence,
+    key: typeof job.key === 'string' ? job.key : 'boundary',
+    entityId: job.entity && job.entity.id,
+    entityType: job.entity && job.entity.type || null,
+    priority: authoredUpgradePriority(job),
+    modeAtStart: authoredRuntimeState() && authoredRuntimeState().mode || null,
+    assetUrls: [...(job.assetUrls || [])],
+    cacheStatus: authoredUpgradeCacheStatus(job),
+    estimatedBytes: job.estimatedBytes || 0,
+    startedAtMs: null,
+    endedAtMs: monotonicNow(),
+    durationMs: 0,
+    status: 'cancelled-before-load',
+  });
+  publishUpgradeDiagnostics(state, job.renderer);
+}
+
+function resourceBytesForUrls(urls) {
+  if (!globalThis.performance || typeof globalThis.performance.getEntriesByName !== 'function') return 0;
+  let bytes = 0;
+  for (const url of urls || []) {
+    const entries = globalThis.performance.getEntriesByName(url);
+    const resource = entries && entries[entries.length - 1];
+    bytes += Number(resource && (resource.decodedBodySize || resource.transferSize)) || 0;
+  }
+  return bytes;
+}
+
+function publishUpgradeDiagnostics(state, renderer = null) {
+  const decode = renderer && decodeAdmissionDiagnosticsByRenderer.get(renderer);
+  if (decode) {
+    state.diagnostics.maxConcurrentDecode = Math.max(state.diagnostics.maxConcurrentDecode, decode.maxConcurrent);
+    state.diagnostics.partLoads = decode.loads.slice(-128);
+  } else if (state.diagnostics.jobs.length > 0) {
+    // The renderer admission lane is serial by construction even when a custom probe job bypasses it.
+    state.diagnostics.maxConcurrentDecode = Math.max(state.diagnostics.maxConcurrentDecode, 1);
+  }
+  if (state.scene && state.scene.userData) state.scene.userData.authoredUpgradeDiagnostics = state.diagnostics;
 }
 
 function jobStillNeeded(state, job) {
@@ -1031,10 +1311,18 @@ function jobStillNeeded(state, job) {
   if (!boundaryBelongsToScene(job.boundary, state.scene)) return false;
   const entity = job.entity;
   if (!entity || entity.alive === false) return false;
-  // Once render ownership has published a mesh, only that exact boundary may consume residency.
-  // This drops sector-transition jobs whose entity was reused or replaced before its queue turn.
-  if (entity.mesh && entity.mesh !== job.boundary) return false;
+  // Once render ownership has published a mesh, only its active boundary may consume residency.
+  // Station HLOD publishes an outer wrapper while the authored boundary remains nested below its
+  // detailed root; a replaced or sector-transition boundary will no longer descend from that mesh.
+  if (entity.mesh && !boundaryBelongsToEntityMesh(job.boundary, entity.mesh)) return false;
   return true;
+}
+
+function boundaryBelongsToEntityMesh(boundary, entityMesh) {
+  for (let node = boundary; node; node = node.parent) {
+    if (node === entityMesh) return true;
+  }
+  return false;
 }
 
 function boundaryBelongsToScene(boundary, scene) {
@@ -1089,10 +1377,10 @@ function authoredAssetState(entity) {
 
 function isCriticalStartingHub(entity) {
   if (!entity || entity.alive === false || entity.type !== 'station') return false;
-  if (entity.id === 'station_helios') return true;
   const data = entity.data || {};
+  if (entity.id === 'station_helios' || data.stationId === 'station_helios') return true;
   const token = String(data.archetypeGlb || data.placeId || '').replace(/^places\//, '').replace(/\.glb$/, '');
-  return token === 'place_station_trade_hub';
+  return token === 'place_station_trade_hub' && data.sectorId === 'sector_helios_prime';
 }
 
 export function preloadAuthoredAssetsForEntity(renderer, entity, options = {}) {
@@ -1109,10 +1397,10 @@ export async function retryAuthoredPartLibrary(renderer, options = {}) {
   return loadCanonicalLibrary(renderer, options);
 }
 
-async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, options, setActive) {
+async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, options, setActive, prefetchedLibrary = null) {
   let swapped = false;
   try {
-    const library = await preloadAuthoredAssetsForEntity(renderer, entity, options);
+    const library = await (prefetchedLibrary || preloadAuthoredAssetsForEntity(renderer, entity, options));
     swapped = commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive);
   } catch (error) {
     if (!swapped) {
@@ -1344,16 +1632,61 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
     const records = Array.isArray(library.get(slot)) ? [...library.get(slot)] : [];
     for (const file of files || []) {
       if (records.some((record) => recordUrlEndsWith(record, file))) continue;
-      const record = await loadPart(`${partRoot}${file}`, {
-        renderer,
-        slot,
-        optional: true,
-      });
+      const url = `${partRoot}${file}`;
+      const diagnostic = beginDecodeAdmission(renderer, url, slot);
+      let record;
+      try {
+        record = await loadPart(url, {
+          renderer,
+          slot,
+          optional: true,
+        });
+      } finally {
+        finishDecodeAdmission(renderer, diagnostic);
+      }
       if (record) records.push(record);
     }
     library.set(slot, records);
   }
   return library;
+}
+
+function decodeAdmissionDiagnostics(renderer) {
+  if (!renderer) return null;
+  let diagnostics = decodeAdmissionDiagnosticsByRenderer.get(renderer);
+  if (!diagnostics) {
+    diagnostics = { active: 0, maxConcurrent: 0, loads: [] };
+    decodeAdmissionDiagnosticsByRenderer.set(renderer, diagnostics);
+  }
+  return diagnostics;
+}
+
+function beginDecodeAdmission(renderer, url, slot) {
+  const diagnostics = decodeAdmissionDiagnostics(renderer);
+  if (!diagnostics) return null;
+  const entry = {
+    url,
+    slot,
+    cacheStatus: 'library-miss',
+    startedAtMs: monotonicNow(),
+    endedAtMs: null,
+    durationMs: null,
+    transferBytes: 0,
+  };
+  diagnostics.active++;
+  diagnostics.maxConcurrent = Math.max(diagnostics.maxConcurrent, diagnostics.active);
+  diagnostics.loads.push(entry);
+  if (diagnostics.loads.length > 128) diagnostics.loads.splice(0, diagnostics.loads.length - 128);
+  return entry;
+}
+
+function finishDecodeAdmission(renderer, entry) {
+  const diagnostics = renderer && decodeAdmissionDiagnosticsByRenderer.get(renderer);
+  if (!diagnostics || !entry) return;
+  entry.endedAtMs = monotonicNow();
+  entry.durationMs = Math.max(0, entry.endedAtMs - entry.startedAtMs);
+  entry.transferBytes = resourceBytesForUrls([entry.url]);
+  diagnostics.active = Math.max(0, diagnostics.active - 1);
 }
 
 function libraryHasPreloadPlan(library, plan) {

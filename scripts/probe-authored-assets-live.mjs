@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { waitForAuthoredAssetDeadline } from './lib/authoredAssetDeadline.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const WIDTH = 1440;
@@ -64,7 +65,7 @@ try {
       error: reportError && reportError.message ? reportError.message : String(reportError),
     }));
     const startupTrace = await getStartupTrace(cdp).catch(() => []);
-    throw new Error(`seeded flight session did not become playable before authored asset proof: ${JSON.stringify(compactStartupFailure(startupReport, startupTrace, error), null, 2)}`);
+    throw new Error(`seeded flight session did not become playable before authored asset proof: ${JSON.stringify(compactStartupFailure(startupReport, startupTrace, error, pageIssues), null, 2)}`);
   }
   const startTick = playable.tick;
 
@@ -76,10 +77,13 @@ try {
 
   const player = report.player;
   const startupTrace = await getStartupTrace(cdp);
-  const badFlightSnapshots = startupTrace.filter((entry) => entry.mode === 'flight' && entry.nonAuthored > 0);
+  const badFlightSnapshots = startupTrace.filter((entry) => entry.mode === 'flight' && (
+    entry.playerState !== 'authored'
+    || !entry.criticalStations.some((station) => station.stationId === 'station_helios' && station.assetState === 'authored')
+  ));
   assert.equal(report.mode, 'flight', 'live probe should be in playable flight mode');
   assert.deepEqual(badFlightSnapshots, [],
-    `flight mode must not become active until live ships are authored: ${JSON.stringify(badFlightSnapshots)}`);
+    `flight mode must not become active until the player and Helios hub are authored: ${JSON.stringify(badFlightSnapshots)}`);
   assert.ok(report.tick >= startTick, 'gameplay tick should be advancing after authored startup readiness');
   assert.ok(player, 'player ship should be present in the live scene');
   assert.equal(player.state, 'authored', 'player ship should be authored before playable flight starts');
@@ -117,6 +121,12 @@ try {
     'scene should contain live authored GLB static batches or pooled instances');
   assert.equal(report.loaderDiagnostics.failureCount, 0,
     `all declared authored GLB parts should pass the live runtime loader: ${JSON.stringify(report.loaderDiagnostics.failures || [])}`);
+  assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.maxConcurrentJobs <= 1,
+    `authored composition admission must stay serial: ${JSON.stringify(report.authoredUpgradeDiagnostics)}`);
+  assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.maxConcurrentDecode <= 1,
+    `authored asset decode admission must remain serial: ${JSON.stringify(report.authoredUpgradeDiagnostics)}`);
+  assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.peakActivePlannedBytes < 3 * 1024 * 1024 * 1024,
+    `authored admission memory proxy must remain below 3 GiB: ${JSON.stringify(report.authoredUpgradeDiagnostics)}`);
   assert.deepEqual(pageIssues.errorIssues(), [], 'browser page should not report runtime errors during the asset probe');
 
   const output = {
@@ -150,6 +160,8 @@ try {
     },
     player: summarizeShip(player),
     authoredShips: report.authoredShips.map(summarizeShip),
+    authoredDeadline: report.authoredDeadline,
+    authoredUpgradeDiagnostics: report.authoredUpgradeDiagnostics,
     startupTrace,
     screenshot: SHOT,
   };
@@ -168,28 +180,61 @@ try {
 }
 
 async function waitForAuthoredShips(cdp) {
-  let last = null;
-  const started = Date.now();
-  while (Date.now() - started < 45000) {
-    await forceShipRender(cdp);
-    last = await collectAuthoredReport(cdp);
-    if (last.player
-      && last.player.state === 'authored'
-      && last.player.missingRequiredSlots.length === 0
-      && last.player.slotUrlsMissingFromGraph.length === 0
-      && last.shipCount >= MIN_AUTHORED_SHIPS
-      && last.authoredShipCount === last.shipCount
-      && last.ships.every((ship) => ship.authoredBodyProof && ship.authoredBodyProof.ok)
-      && last.loaderDiagnostics.available
-      && last.loaderDiagnostics.loadedCount === last.loaderDiagnostics.declaredCount
-      && last.loaderDiagnostics.wholeShipFailureCount === 0
-      && last.nonReleasePartUrls.length === 0
-      && (last.instancePoolLiveCount + last.staticBatchCount) > 0) {
-      return last;
-    }
-    await sleep(250);
+  const deadline = await waitForAuthoredAssetDeadline({
+    timeoutMs: 45000,
+    pollIntervalMs: 50,
+    onPoll: () => forceShipRender(cdp),
+    sample: () => collectAuthoredGateSnapshot(cdp),
+    isReady: (snapshot) => !!(
+      snapshot
+      && snapshot.playerState === 'authored'
+      && snapshot.shipCount >= MIN_AUTHORED_SHIPS
+      && snapshot.authoredShipCount === snapshot.shipCount
+    ),
+  });
+  const diagnosticsStartedAtMs = performance.now();
+  const report = await collectAuthoredReport(cdp);
+  const diagnosticsCompletedAtMs = performance.now();
+  report.authoredDeadline = {
+    ...deadline,
+    diagnosticsStartedAtMs,
+    diagnosticsCompletedAtMs,
+  };
+  if (!deadline.passed) {
+    throw new Error(`timeout waiting for authored GLB ships before playable flight; deadline=${JSON.stringify(report.authoredDeadline, null, 2)} diagnostics=${JSON.stringify({
+      mode: report.mode,
+      tick: report.tick,
+      shipCount: report.shipCount,
+      authoredShipCount: report.authoredShipCount,
+      criticalStations: report.criticalStations,
+      authoredUpgradeDiagnostics: report.authoredUpgradeDiagnostics,
+    }, null, 2)}`);
   }
-  throw new Error(`timeout waiting for authored GLB ships before playable flight; last=${JSON.stringify(last, null, 2)}`);
+  return report;
+}
+
+function collectAuthoredGateSnapshot(cdp) {
+  return evalJson(cdp, `(() => {
+    const state = window.SF && window.SF.state || null;
+    const ships = state && Array.isArray(state.entityList)
+      ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
+      : [];
+    let authoredShipCount = 0;
+    let playerState = 'missing';
+    for (const entity of ships) {
+      const root = entity.mesh || entity.view && entity.view.root || null;
+      const assetState = root && root.userData && root.userData.authoredAssetState || 'missing-mesh';
+      if (assetState === 'authored') authoredShipCount++;
+      if (state && entity.id === state.playerId) playerState = assetState;
+    }
+    return {
+      mode: state && state.mode || null,
+      tick: state && state.tick || 0,
+      shipCount: ships.length,
+      authoredShipCount,
+      playerState,
+    };
+  })()`);
 }
 
 async function collectAuthoredReport(cdp) {
@@ -200,12 +245,25 @@ async function collectAuthoredReport(cdp) {
     const sf = window.SF || null;
     const state = sf && sf.state || null;
     const scene = state && state.render && state.render.scene || null;
+    // Loader diagnostics can yield while expensive first-use GLBs finish. Sample entities only
+    // afterward so authoredShipCount and per-job diagnostics describe the same moment in time.
+    const loaderDiagnostics = await collectLoaderDiagnostics(state);
     const ships = state && Array.isArray(state.entityList)
       ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
       : [];
     const reports = ships.map((entity) => inspectShip(entity, state)).filter(Boolean);
     const authoredShips = reports.filter((entry) => entry.state === 'authored');
     const player = reports.find((entry) => entry.id === state.playerId) || null;
+    const criticalStations = state && Array.isArray(state.entityList)
+      ? state.entityList.filter((entity) => entity && entity.type === 'station' && entity.alive !== false)
+        .map((entity) => ({
+          id: entity.id,
+          stationId: entity.data && entity.data.stationId || null,
+          archetypeGlb: entity.data && entity.data.archetypeGlb || null,
+          assetState: entity.mesh && entity.mesh.userData && entity.mesh.userData.authoredAssetState || 'missing-mesh',
+        }))
+        .filter((station) => station.stationId === 'station_helios' || station.archetypeGlb === 'place_station_trade_hub')
+      : [];
     const nonReleasePartUrls = [...new Set(reports
       .flatMap((entry) => Object.values(entry.slots || {}).flat())
       .filter((url) => !String(url || '').startsWith('assets/ships/release/parts/')))];
@@ -220,7 +278,6 @@ async function collectAuthoredReport(cdp) {
         }
       });
     }
-    const loaderDiagnostics = await collectLoaderDiagnostics(state);
     return {
       mode: state && state.mode || null,
       tick: state && state.tick || 0,
@@ -233,6 +290,8 @@ async function collectAuthoredReport(cdp) {
       loaderDiagnostics,
       nonReleasePartUrls,
       player,
+      criticalStations,
+      authoredUpgradeDiagnostics: scene && scene.userData && scene.userData.authoredUpgradeDiagnostics || null,
       authoredShips,
       ships: reports,
     };
@@ -654,7 +713,7 @@ async function installStartupTrace(cdp) {
     const sf = window.SF || null;
     if (!sf || !sf.bus || !sf.state || window.__SF_AUTHORED_ASSET_STARTUP_TRACE__) return;
     const trace = [];
-    const snapshot = (label) => {
+    const snapshot = (label, detail = {}) => {
       const state = sf.state || {};
       const ships = Array.isArray(state.entityList)
         ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
@@ -666,6 +725,19 @@ async function installStartupTrace(cdp) {
         states[assetState] = (states[assetState] || 0) + 1;
       }
       const authored = states.authored || 0;
+      const player = ships.find((ship) => ship.id === state.playerId) || null;
+      const playerRoot = player && (player.mesh || (player.view && player.view.root)) || null;
+      const playerState = playerRoot && playerRoot.userData && playerRoot.userData.authoredAssetState || 'missing-mesh';
+      const criticalStations = Array.isArray(state.entityList)
+        ? state.entityList.filter((entity) => entity && entity.type === 'station' && entity.alive !== false)
+          .map((entity) => ({
+            id: entity.id,
+            stationId: entity.data && entity.data.stationId || null,
+            archetypeGlb: entity.data && entity.data.archetypeGlb || null,
+            assetState: entity.mesh && entity.mesh.userData && entity.mesh.userData.authoredAssetState || 'missing-mesh',
+          }))
+          .filter((station) => station.stationId === 'station_helios' || station.archetypeGlb === 'place_station_trade_hub')
+        : [];
       trace.push({
         label,
         mode: state.mode || null,
@@ -674,12 +746,17 @@ async function installStartupTrace(cdp) {
         authored,
         states,
         nonAuthored: Math.max(0, ships.length - authored),
+        playerState,
+        criticalStations,
+        ...detail,
       });
     };
     window.__SF_AUTHORED_ASSET_STARTUP_TRACE__ = trace;
     sf.bus.on('mode:changed', () => snapshot('mode:changed'));
     sf.bus.on('game:started', () => snapshot('game:started'));
-    sf.bus.on('game:startFailed', () => snapshot('game:startFailed'));
+    sf.bus.on('game:startFailed', (payload) => snapshot('game:startFailed', {
+      error: payload && payload.error ? String(payload.error) : null,
+    }));
     snapshot('installed');
   })()`);
 }
@@ -1025,7 +1102,7 @@ function summarizeShip(ship) {
   };
 }
 
-function compactStartupFailure(report, startupTrace, cause) {
+function compactStartupFailure(report, startupTrace, cause, pageIssues) {
   const loader = report && report.loaderDiagnostics || {};
   return {
     cause: cause && cause.message ? cause.message : String(cause),
@@ -1046,6 +1123,12 @@ function compactStartupFailure(report, startupTrace, cause) {
       error: loader.error,
     },
     startupTrace: Array.isArray(startupTrace) ? startupTrace.slice(-12) : [],
+    criticalStations: report && Array.isArray(report.criticalStations) ? report.criticalStations : [],
+    authoredUpgradeDiagnostics: report && report.authoredUpgradeDiagnostics || null,
+    pageIssues: {
+      errors: pageIssues && typeof pageIssues.errorIssues === 'function' ? pageIssues.errorIssues() : [],
+      warnings: pageIssues && typeof pageIssues.warningIssues === 'function' ? pageIssues.warningIssues() : [],
+    },
     reportError: report && report.error || undefined,
   };
 }
