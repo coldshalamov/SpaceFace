@@ -261,7 +261,7 @@ function checkRoleModules() {
   const byId = new Map(MODULES.map((m) => [m.id, m]));
   const expected = {
     mod_ram_plate: { ramSelfDamageMult: 0.40, ramDamageDealtMult: 1.80 },
-    mod_winch_hd: { tetherReelRateMult: 1.80, tetherBreakMult: 1.25 },
+    mod_winch_hd: { tetherReelRateMult: 1.80, tetherSpoolMult: 1.50 },
     mod_charge_rack: { impulseChargeCapacity: 8 },
     mod_drill_amp: { richCoreRingPctBonus: 0.04 },
     mod_survey_suite: { scannerRadiusMult: 1.50, pingPersistMult: 2.00 },
@@ -282,6 +282,12 @@ function checkRoleModules() {
     const before = getDerivedStats(fit.ship.id, []);
     const after = getDerivedStats(fit.ship.id, fit.fittings);
     assert(changedKeys(before, after).length > 0, `${id} should change derived stats measurably when fitted`);
+    if (id === 'mod_winch_hd') {
+      assert.equal('tetherBreakMult' in mod.mods, false,
+        'winch strength must have one source: max-folded tetherSpoolMult');
+      assert.equal(after.tetherReelRateMult, 1.80, 'winch reel-rate effect must reach live derived stats');
+      assert.equal(after.tetherSpoolMult, 1.50, 'winch spool strength must reach live derived stats');
+    }
   }
 }
 
