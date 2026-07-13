@@ -8,7 +8,9 @@ import { SECTORS } from '../src/data/sectors.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import {
   REGIONAL_ECOLOGY_PROFILES,
+  REGIONAL_ECOLOGY_FAMILY_IDS,
   getRegionalEcologyProfile,
+  regionalEcologyFamilyDistance,
   validateRegionalEcologyProfile,
 } from '../src/data/regionalEcology.js';
 import {
@@ -62,17 +64,43 @@ test('regional ecology catalog covers all 24 regions with bounded distinct ident
     new Set(SECTORS.map((sector) => sector.id)),
   );
   assert.equal(new Set(REGIONAL_ECOLOGY_PROFILES.map((profile) => profile.fingerprint)).size, 24);
-  assert.ok(new Set(REGIONAL_ECOLOGY_PROFILES.map((profile) => profile.familyId)).size >= 5);
+  const liveFamilies = new Set(REGIONAL_ECOLOGY_PROFILES.map((profile) => profile.familyId));
+  assert.ok(liveFamilies.size >= 6, `need ≥6 macro-families, got ${liveFamilies.size}`);
+  for (const familyId of liveFamilies) {
+    assert.ok(REGIONAL_ECOLOGY_FAMILY_IDS.includes(familyId), `unknown family ${familyId}`);
+  }
   for (const profile of REGIONAL_ECOLOGY_PROFILES) {
     assert.equal(validateRegionalEcologyProfile(profile), true, profile.sectorId);
     assert.ok(profile.resource.yieldMultiplier >= 0.75 && profile.resource.yieldMultiplier <= 1.35);
     assert.ok(profile.law.security >= 0 && profile.law.security <= 1);
     assert.ok(profile.danger.baseline >= 0 && profile.danger.baseline <= 1);
+    assert.ok(Array.isArray(profile.hazards.types));
+    assert.ok(profile.faction.net >= 0 && profile.faction.net <= 1);
+    assert.ok(profile.poi.hostedCount >= 0);
   }
   assert.equal(getRegionalEcologyProfile('sector_helios_prime').familyId, 'civic_core');
   assert.equal(getRegionalEcologyProfile('sector_ceres_belt').familyId, 'industrial_belt');
   assert.equal(getRegionalEcologyProfile('sector_sker_haven').familyId, 'outlaw_predation');
   assert.equal(getRegionalEcologyProfile('sector_veil_nebula').familyId, 'anomaly_research');
+});
+
+test('macro-families are pairwise distinguishable in traffic and encounter mix', () => {
+  const byFamily = new Map();
+  for (const profile of REGIONAL_ECOLOGY_PROFILES) {
+    if (!byFamily.has(profile.familyId)) byFamily.set(profile.familyId, profile);
+  }
+  assert.ok(byFamily.size >= 6);
+  const ids = [...byFamily.keys()].sort();
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const dist = regionalEcologyFamilyDistance(byFamily.get(ids[i]), byFamily.get(ids[j]));
+      assert.ok(
+        dist.total >= 3.5,
+        `${ids[i]} vs ${ids[j]} too similar (role=${dist.role.toFixed(2)} enc=${dist.enc.toFixed(2)})`,
+      );
+      assert.ok(dist.role >= 1.5 || dist.enc >= 1.5, `${ids[i]} vs ${ids[j]} needs role or encounter separation`);
+    }
+  }
 });
 
 test('entering a region publishes one quiet gameplay readout without spawning or alarming', () => {
@@ -83,8 +111,16 @@ test('entering a region publishes one quiet gameplay readout without spawning or
   assert.equal(readout.sectorId, sector.id);
   assert.equal(readout.familyId, 'industrial_belt');
   assert.equal(readout.resource.kind, 'metallic');
+  assert.ok(readout.summary.includes('Industrial') || readout.summary.includes('industrial') || readout.summary.includes('metallic'));
+  assert.ok(Array.isArray(readout.hazards.types));
+  assert.ok(readout.hazards.types.includes('dense_asteroid'));
+  assert.equal(typeof readout.faction.net, 'number');
+  assert.ok(readout.poi.hostedCount >= 1);
   assert.ok(readout.traffic.roleBias.miner > readout.traffic.roleBias.smuggler);
   assert.equal(log.filter((entry) => entry.name === 'regionalEcology:applied').length, 1);
+  const applied = log.find((entry) => entry.name === 'regionalEcology:applied');
+  assert.equal(applied.payload.fingerprint, readout.fingerprint);
+  assert.equal(applied.payload.summary, readout.summary);
   assert.equal(log.some((entry) => ['spawn:request', 'combat:fire', 'alert', 'toast'].includes(entry.name)), false);
 });
 

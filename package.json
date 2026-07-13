@@ -138,6 +138,7 @@
     "check:ai": "npm run check:sg06:ai && npm run check:ai:intentionality && npm run check:ai:movement-doctrine && npm run check:m1:combat-doctrines && npm run check:ai:telegraphs:live",
     "check:encounter-director": "node scripts/check-encounter-director.mjs && node scripts/check-encounter-one-voice.mjs",
     "check:living-universe": "node scripts/check-living-universe-events.mjs",
+    "check:m4:regional-ecology": "node scripts/check-m4-regional-ecology.mjs",
     "check:encounter-voice": "node scripts/check-encounter-one-voice.mjs",
     "check:one-voice": "node scripts/check-one-voice.mjs",
     "check:professional-first-hour-one-voice": "node scripts/check-professional-first-hour-one-voice.mjs",

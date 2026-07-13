@@ -119,12 +119,21 @@ export function regionalEcologyReadout(state, requestedSectorId = null) {
   if (!profile) return null;
   const row = ensureSector(state, sectorId);
   const causeBias = counterBiasFor(state, sectorId);
+  // Compact card for existing map/scanner/postcard seams — no new HUD chrome.
+  const summary = [
+    profile.familyLabel || profile.familyId,
+    profile.resource.kind,
+    profile.hazards.types.length ? profile.hazards.types.join('/') : 'clear',
+    `law ${Math.round(clamp(profile.law.security + row.lawDelta, 0, 1) * 100)}`,
+  ].join(' · ');
   return {
     schemaVersion: REGIONAL_ECOLOGY_SCHEMA_VERSION,
     sectorId,
     identityKey: profile.identityKey,
     familyId: profile.familyId,
+    familyLabel: profile.familyLabel || profile.familyId,
     fingerprint: profile.fingerprint,
+    summary,
     traffic: {
       baselinePerMin: profile.traffic.baselinePerMin,
       densityMultiplier: clamp(profile.traffic.densityMultiplier + row.trafficDelta, 0.45, 1.55),
@@ -133,6 +142,22 @@ export function regionalEcologyReadout(state, requestedSectorId = null) {
     resource: {
       kind: profile.resource.kind,
       yieldMultiplier: clamp(profile.resource.yieldMultiplier + row.resourceDelta, 0.70, 1.40),
+    },
+    hazards: {
+      types: profile.hazards.types.slice(),
+      count: profile.hazards.count,
+      anomalyScore: profile.hazards.anomalyScore,
+    },
+    faction: {
+      factionId: profile.faction.factionId,
+      lawful: profile.faction.lawful,
+      outlaw: profile.faction.outlaw,
+      net: profile.faction.net,
+    },
+    poi: {
+      affinity: { ...profile.poi.affinity },
+      dominantFamilyId: profile.poi.dominantFamilyId,
+      hostedCount: profile.poi.hostedCount,
     },
     law: {
       baseline: profile.law.security,
