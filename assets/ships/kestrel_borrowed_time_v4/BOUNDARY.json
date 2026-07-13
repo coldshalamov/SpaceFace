@@ -1,0 +1,32 @@
+{
+  "schema": "spaceface.assetPersistentBoundary.v1",
+  "packet": "SF-K0-BORROWED-TIME-V4-SOURCE-REMASTER-001",
+  "root": "assets/ships/kestrel_borrowed_time_v4",
+  "allowed": [
+    "DESIGN.md",
+    "BOUNDARY.json",
+    "PROVENANCE.json",
+    "MATERIAL_CONTRACT.json",
+    "SUBMISSION.json",
+    "scripts/*.py",
+    "scripts/*.mjs",
+    "blender/kestrel_borrowed_time_v4_production.blend",
+    "source/wholeships/kestrel_borrowed_time_v4_lod{0,1,2}.glb",
+    "release_candidates/wholeships/kestrel_borrowed_time_v4_lod{0,1,2}.glb",
+    "evidence/*.json",
+    "evidence/*.md",
+    "evidence/three/*.png",
+    "evidence/failure_masks/*.png",
+    "evidence/three_preview_kestrel_v4.html"
+  ],
+  "forbidden": [
+    "source ZIP copies",
+    "ZIP extraction trees",
+    "V2 or V3 geometry",
+    "cache/intermediate/temp outputs",
+    "files >= 100 MiB",
+    "live manifests or live release assets",
+    "src/render or Electron changes"
+  ],
+  "livePromotion": false
+}

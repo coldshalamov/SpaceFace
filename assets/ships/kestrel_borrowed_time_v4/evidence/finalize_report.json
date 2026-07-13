@@ -1,0 +1,750 @@
+{
+  "schema": "spaceface.kestrelBorrowedTimeV4.finalize.v1",
+  "packet": "SF-K0-BORROWED-TIME-V4-SOURCE-REMASTER-001",
+  "ok": true,
+  "errors": [],
+  "candidateOnly": true,
+  "livePromotion": false,
+  "sourceRuntimeReference": {
+    "zip": "C:/Users/93rob/Downloads/SpaceFace_SF-K0_Borrowed-Time_Runtime.zip",
+    "sha256": "D4ABD62179F9DFEDE39F4DF8275B2C4DBC1064E0EC3FDC936AF7BC448E0759E8",
+    "plumesExcludedFromPhysicalSilhouette": true
+  },
+  "determinism": [
+    {
+      "lod": 0,
+      "firstSha256": "8D42C4AD66656C4A87809BDB77F9C3B4B1DC67C34E74A1912FFB40B01C562291",
+      "secondSha256": "8D42C4AD66656C4A87809BDB77F9C3B4B1DC67C34E74A1912FFB40B01C562291",
+      "equal": true
+    },
+    {
+      "lod": 1,
+      "firstSha256": "D33E2143E67F68B8D392576CFFA245856BF5FD6358C0F681BEA86FACFD8AA594",
+      "secondSha256": "D33E2143E67F68B8D392576CFFA245856BF5FD6358C0F681BEA86FACFD8AA594",
+      "equal": true
+    },
+    {
+      "lod": 2,
+      "firstSha256": "766A7C115A03F81CBD387F14AEB1C5F016C22FF51106D5EA66008588C3553892",
+      "secondSha256": "766A7C115A03F81CBD387F14AEB1C5F016C22FF51106D5EA66008588C3553892",
+      "equal": true
+    }
+  ],
+  "lods": [
+    {
+      "lod": 0,
+      "path": "assets/ships/kestrel_borrowed_time_v4/release_candidates/wholeships/kestrel_borrowed_time_v4_lod0.glb",
+      "bytes": 21539320,
+      "sha256": "8D42C4AD66656C4A87809BDB77F9C3B4B1DC67C34E74A1912FFB40B01C562291",
+      "triangles": 19906,
+      "draws": 15,
+      "animatedRoleException": 0,
+      "staticDraws": 15,
+      "meshoptBufferViews": 58,
+      "imageCount": 27,
+      "ktx2Images": 27,
+      "mipLevelCounts": [
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11
+      ],
+      "primitiveErrors": [],
+      "visibleMaterialErrors": [],
+      "finiteSockets": true,
+      "bannedNames": [],
+      "metadata": {
+        "contractVersion": 2,
+        "assetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
+        "partId": "kestrel_borrowed_time_v4",
+        "packet": "SF-K0-BORROWED-TIME-V4-SOURCE-REMASTER-001",
+        "family": "kestrel_borrowed_time_v4",
+        "category": "wholeships",
+        "slot": "hull",
+        "lod": "lod0",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "tangentConvention": "MikkTSpace",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "KTX2/BasisU+mips",
+        "geometrySource": "user Revamp ZIP source blend",
+        "sourceGeometryPreservation": "85-95 percent",
+        "embeddedPlume": false,
+        "wiringStatus": "isolated_candidate_no_promote",
+        "acceptanceClaim": false,
+        "deliverableRole": "source-faithful-runtime-lod0",
+        "meshCompression": "EXT_meshopt_compression"
+      },
+      "extensions": [
+        "EXT_meshopt_compression",
+        "KHR_materials_anisotropy",
+        "KHR_materials_clearcoat",
+        "KHR_materials_emissive_strength",
+        "KHR_materials_ior",
+        "KHR_materials_transmission",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ]
+    },
+    {
+      "lod": 1,
+      "path": "assets/ships/kestrel_borrowed_time_v4/release_candidates/wholeships/kestrel_borrowed_time_v4_lod1.glb",
+      "bytes": 21236988,
+      "sha256": "D33E2143E67F68B8D392576CFFA245856BF5FD6358C0F681BEA86FACFD8AA594",
+      "triangles": 13962,
+      "draws": 12,
+      "animatedRoleException": 0,
+      "staticDraws": 12,
+      "meshoptBufferViews": 51,
+      "imageCount": 24,
+      "ktx2Images": 24,
+      "mipLevelCounts": [
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11
+      ],
+      "primitiveErrors": [],
+      "visibleMaterialErrors": [],
+      "finiteSockets": true,
+      "bannedNames": [],
+      "metadata": {
+        "contractVersion": 2,
+        "assetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
+        "partId": "kestrel_borrowed_time_v4",
+        "packet": "SF-K0-BORROWED-TIME-V4-SOURCE-REMASTER-001",
+        "family": "kestrel_borrowed_time_v4",
+        "category": "wholeships",
+        "slot": "hull",
+        "lod": "lod1",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "tangentConvention": "MikkTSpace",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "KTX2/BasisU+mips",
+        "geometrySource": "user Revamp ZIP source blend",
+        "sourceGeometryPreservation": "85-95 percent",
+        "embeddedPlume": false,
+        "wiringStatus": "isolated_candidate_no_promote",
+        "acceptanceClaim": false,
+        "deliverableRole": "source-faithful-runtime-lod1",
+        "meshCompression": "EXT_meshopt_compression"
+      },
+      "extensions": [
+        "EXT_meshopt_compression",
+        "KHR_materials_anisotropy",
+        "KHR_materials_clearcoat",
+        "KHR_materials_emissive_strength",
+        "KHR_materials_ior",
+        "KHR_materials_transmission",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ]
+    },
+    {
+      "lod": 2,
+      "path": "assets/ships/kestrel_borrowed_time_v4/release_candidates/wholeships/kestrel_borrowed_time_v4_lod2.glb",
+      "bytes": 18395984,
+      "sha256": "766A7C115A03F81CBD387F14AEB1C5F016C22FF51106D5EA66008588C3553892",
+      "triangles": 12584,
+      "draws": 8,
+      "animatedRoleException": 0,
+      "staticDraws": 8,
+      "meshoptBufferViews": 35,
+      "imageCount": 21,
+      "ktx2Images": 21,
+      "mipLevelCounts": [
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11,
+        11
+      ],
+      "primitiveErrors": [],
+      "visibleMaterialErrors": [],
+      "finiteSockets": true,
+      "bannedNames": [],
+      "metadata": {
+        "contractVersion": 2,
+        "assetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
+        "partId": "kestrel_borrowed_time_v4",
+        "packet": "SF-K0-BORROWED-TIME-V4-SOURCE-REMASTER-001",
+        "family": "kestrel_borrowed_time_v4",
+        "category": "wholeships",
+        "slot": "hull",
+        "lod": "lod2",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "tangentConvention": "MikkTSpace",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "KTX2/BasisU+mips",
+        "geometrySource": "user Revamp ZIP source blend",
+        "sourceGeometryPreservation": "85-95 percent",
+        "embeddedPlume": false,
+        "wiringStatus": "isolated_candidate_no_promote",
+        "acceptanceClaim": false,
+        "deliverableRole": "source-faithful-runtime-lod2",
+        "meshCompression": "EXT_meshopt_compression"
+      },
+      "extensions": [
+        "EXT_meshopt_compression",
+        "KHR_materials_anisotropy",
+        "KHR_materials_clearcoat",
+        "KHR_materials_emissive_strength",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ]
+    }
+  ],
+  "collision": {
+    "visibleDims": [
+      27.83963108062744,
+      6.942143213439421,
+      14.03888473658594
+    ],
+    "collisionDims": [
+      25.61334991455078,
+      6.384772548663313,
+      12.918064537121683
+    ],
+    "ratios": [
+      0.920031944402243,
+      0.9197120186605939,
+      0.9201631596459119
+    ]
+  },
+  "proofs": [
+    {
+      "name": "close_fore",
+      "lod": 0,
+      "mode": "close",
+      "az": -38,
+      "neutral": false,
+      "w": 960,
+      "h": 540,
+      "path": "assets/ships/kestrel_borrowed_time_v4/evidence/three/kestrel_v4_three_close_fore.png",
+      "bytes": 210105,
+      "sha256": "B4F9A45CA54A6F7DF62BACD786F96D301BB1CB7DB8393C8E24B745D700856F8B",
+      "meta": {
+        "ready": true,
+        "meshes": 15,
+        "draws": 15,
+        "size": [
+          27.83963108062744,
+          6.942143213439421,
+          14.03888473658594
+        ],
+        "visibleMin": [
+          -13.937827110290527,
+          -2.7696021625919744,
+          -7.01944236829297
+        ],
+        "visibleMax": [
+          13.901803970336914,
+          4.172541050847447,
+          7.01944236829297
+        ],
+        "collisionMin": [
+          -12.826376914978027,
+          -2.4913862991271887,
+          -6.459032268560842
+        ],
+        "collisionMax": [
+          12.786972999572754,
+          3.893386249536124,
+          6.459032268560842
+        ]
+      }
+    },
+    {
+      "name": "close_rear",
+      "lod": 0,
+      "mode": "close",
+      "az": 142,
+      "neutral": false,
+      "w": 960,
+      "h": 540,
+      "path": "assets/ships/kestrel_borrowed_time_v4/evidence/three/kestrel_v4_three_close_rear.png",
+      "bytes": 260401,
+      "sha256": "30D2AD55129A41F033C74C2C1BC4D64130E8B74A1821D9C1CE58EF868FB95743",
+      "meta": {
+        "ready": true,
+        "meshes": 15,
+        "draws": 15,
+        "size": [
+          27.83963108062744,
+          6.942143213439421,
+          14.03888473658594
+        ],
+        "visibleMin": [
+          -13.937827110290527,
+          -2.7696021625919744,
+          -7.01944236829297
+        ],
+        "visibleMax": [
+          13.901803970336914,
+          4.172541050847447,
+          7.01944236829297
+        ],
+        "collisionMin": [
+          -12.826376914978027,
+          -2.4913862991271887,
+          -6.459032268560842
+        ],
+        "collisionMax": [
+          12.786972999572754,
+          3.893386249536124,
+          6.459032268560842
+        ]
+      }
+    },
+    {
+      "name": "mid",
+      "lod": 0,
+      "mode": "mid",
+      "az": -38,
+      "neutral": false,
+      "w": 512,
+      "h": 512,
+      "path": "assets/ships/kestrel_borrowed_time_v4/evidence/three/kestrel_v4_three_mid.png",
+      "bytes": 57748,
+      "sha256": "FAB3874040D972D810DCE614F209A96CFAF38020626ED1D18260DABB37AE7BBF",
+      "meta": {
+        "ready": true,
+        "meshes": 15,
+        "draws": 15,
+        "size": [
+          27.83963108062744,
+          6.942143213439421,
+          14.03888473658594
+        ],
+        "visibleMin": [
+          -13.937827110290527,
+          -2.7696021625919744,
+          -7.01944236829297
+        ],
+        "visibleMax": [
+          13.901803970336914,
+          4.172541050847447,
+          7.01944236829297
+        ],
+        "collisionMin": [
+          -12.826376914978027,
+          -2.4913862991271887,
+          -6.459032268560842
+        ],
+        "collisionMax": [
+          12.786972999572754,
+          3.893386249536124,
+          6.459032268560842
+        ]
+      }
+    },
+    {
+      "name": "120px",
+      "lod": 0,
+      "mode": "mid",
+      "az": -38,
+      "neutral": false,
+      "w": 120,
+      "h": 120,
+      "path": "assets/ships/kestrel_borrowed_time_v4/evidence/three/kestrel_v4_three_120px.png",
+      "bytes": 5159,
+      "sha256": "A706DA46C0DD07CCB5431934118FE751B671B682470323F9265B888FC32A8C51",
+      "meta": {
+        "ready": true,
+        "meshes": 15,
+        "draws": 15,
+        "size": [
+          27.83963108062744,
+          6.942143213439421,
+          14.03888473658594
+        ],
+        "visibleMin": [
+          -13.937827110290527,
+          -2.7696021625919744,
+          -7.01944236829297
+        ],
+        "visibleMax": [
+          13.901803970336914,
+          4.172541050847447,
+          7.01944236829297
+        ],
+        "collisionMin": [
+          -12.826376914978027,
+          -2.4913862991271887,
+          -6.459032268560842
+        ],
+        "collisionMax": [
+          12.786972999572754,
+          3.893386249536124,
+          6.459032268560842
+        ]
+      }
+    },
+    {
+      "name": "under45px",
+      "lod": 2,
+      "mode": "mid",
+      "az": -38,
+      "neutral": false,
+      "w": 40,
+      "h": 40,
+      "path": "assets/ships/kestrel_borrowed_time_v4/evidence/three/kestrel_v4_three_under45px.png",
+      "bytes": 901,
+      "sha256": "6A5F751F0EDC9897C275BE7B4C233E75A60BC8148A5DA2B0DCEE564E54FF232B",
+      "meta": {
+        "ready": true,
+        "meshes": 8,
+        "draws": 8,
+        "size": [
+          27.690528298048612,
+          6.941701930066644,
+          14.040573465648407
+        ],
+        "visibleMin": [
+          -13.789931679396268,
+          -2.770154654999715,
+          -7.020286732824204
+        ],
+        "visibleMax": [
+          13.900596618652344,
+          4.171547275066929,
+          7.020286732824204
+        ],
+        "collisionMin": [
+          -12.826376914978027,
+          -2.4913862991271887,
+          -6.459032268560842
+        ],
+        "collisionMax": [
+          12.786972999572754,
+          3.893386249536124,
+          6.459032268560842
+        ]
+      }
+    },
+    {
+      "name": "top_ortho",
+      "lod": 0,
+      "mode": "top",
+      "az": 0,
+      "neutral": false,
+      "w": 640,
+      "h": 640,
+      "path": "assets/ships/kestrel_borrowed_time_v4/evidence/three/kestrel_v4_three_top_ortho.png",
+      "bytes": 94016,
+      "sha256": "EA20E9B75021D67E4A97E1D633ACA47E74666536471A8E5269571ED280A97775",
+      "meta": {
+        "ready": true,
+        "meshes": 15,
+        "draws": 15,
+        "size": [
+          27.83963108062744,
+          6.942143213439421,
+          14.03888473658594
+        ],
+        "visibleMin": [
+          -13.937827110290527,
+          -2.7696021625919744,
+          -7.01944236829297
+        ],
+        "visibleMax": [
+          13.901803970336914,
+          4.172541050847447,
+          7.01944236829297
+        ],
+        "collisionMin": [
+          -12.826376914978027,
+          -2.4913862991271887,
+          -6.459032268560842
+        ],
+        "collisionMax": [
+          12.786972999572754,
+          3.893386249536124,
+          6.459032268560842
+        ]
+      }
+    },
+    {
+      "name": "neutral_no_emission",
+      "lod": 0,
+      "mode": "close",
+      "az": -38,
+      "neutral": true,
+      "w": 960,
+      "h": 540,
+      "path": "assets/ships/kestrel_borrowed_time_v4/evidence/three/kestrel_v4_three_neutral_no_emission.png",
+      "bytes": 210249,
+      "sha256": "40BA8F96198CD209A994A9AC17A295FBA4991F516273D9406EDFCDA1FD8DA5BB",
+      "meta": {
+        "ready": true,
+        "meshes": 15,
+        "draws": 15,
+        "size": [
+          27.83963108062744,
+          6.942143213439421,
+          14.03888473658594
+        ],
+        "visibleMin": [
+          -13.937827110290527,
+          -2.7696021625919744,
+          -7.01944236829297
+        ],
+        "visibleMax": [
+          13.901803970336914,
+          4.172541050847447,
+          7.01944236829297
+        ],
+        "collisionMin": [
+          -12.826376914978027,
+          -2.4913862991271887,
+          -6.459032268560842
+        ],
+        "collisionMax": [
+          12.786972999572754,
+          3.893386249536124,
+          6.459032268560842
+        ]
+      }
+    }
+  ],
+  "silhouette": [
+    {
+      "view": "top",
+      "iou": 0.9981673544743701,
+      "xor": "assets/ships/kestrel_borrowed_time_v4/evidence/failure_masks/source_vs_v4_top_xor.png",
+      "xorSha256": "9E72F189C738E0D7C831C64F5637B798B9C1E7C3AE0C271F0605E8E9D72CC00C"
+    },
+    {
+      "view": "front3q",
+      "iou": 0.9988356862174356,
+      "xor": "assets/ships/kestrel_borrowed_time_v4/evidence/failure_masks/source_vs_v4_front3q_xor.png",
+      "xorSha256": "CF2AE495B999C77CCE6B1A01AA000096EFC4095D96497A359FB21806A80B021E"
+    },
+    {
+      "view": "rear3q",
+      "iou": 0.9989622550439231,
+      "xor": "assets/ships/kestrel_borrowed_time_v4/evidence/failure_masks/source_vs_v4_rear3q_xor.png",
+      "xorSha256": "CB6C7A8C2ED51E7D417C013F3C348A4EC7C39D2F8DB99D457309D672B4CBDA32"
+    },
+    {
+      "view": "side",
+      "iou": 0.987109375,
+      "xor": "assets/ships/kestrel_borrowed_time_v4/evidence/failure_masks/source_vs_v4_side_xor.png",
+      "xorSha256": "D46FF26FBC27BD53C2377B0AABF62930DD85AAF67FCBF47EDC97C4860236B081"
+    }
+  ],
+  "lod1": [
+    {
+      "az": 0,
+      "deviationPx": 1,
+      "iou": 0.9985352584222641
+    },
+    {
+      "az": 45,
+      "deviationPx": 0,
+      "iou": 1
+    },
+    {
+      "az": 90,
+      "deviationPx": 1,
+      "iou": 0.9981110691348697
+    },
+    {
+      "az": 135,
+      "deviationPx": 1,
+      "iou": 0.9995454545454545
+    },
+    {
+      "az": 180,
+      "deviationPx": 1,
+      "iou": 0.9991874873044891
+    },
+    {
+      "az": 225,
+      "deviationPx": 0,
+      "iou": 1
+    },
+    {
+      "az": 270,
+      "deviationPx": 1,
+      "iou": 0.9977469019902365
+    },
+    {
+      "az": 315,
+      "deviationPx": 1,
+      "iou": 0.998166819431714
+    }
+  ],
+  "lod2": [
+    {
+      "az": 0,
+      "iou": 0.9808695652173913
+    },
+    {
+      "az": 45,
+      "iou": 0.9849624060150376
+    },
+    {
+      "az": 90,
+      "iou": 0.9848942598187311
+    },
+    {
+      "az": 135,
+      "iou": 0.9844961240310077
+    },
+    {
+      "az": 180,
+      "iou": 0.9776632302405498
+    },
+    {
+      "az": 225,
+      "iou": 0.9884615384615385
+    },
+    {
+      "az": 270,
+      "iou": 0.9788519637462235
+    },
+    {
+      "az": 315,
+      "iou": 0.9847328244274809
+    }
+  ],
+  "islands": [
+    {
+      "az": 0,
+      "components": [
+        4778
+      ],
+      "unintendedIslandPixels": 0
+    },
+    {
+      "az": 45,
+      "components": [
+        2198
+      ],
+      "unintendedIslandPixels": 0
+    },
+    {
+      "az": 90,
+      "components": [
+        2645
+      ],
+      "unintendedIslandPixels": 0
+    },
+    {
+      "az": 135,
+      "components": [
+        2200
+      ],
+      "unintendedIslandPixels": 0
+    },
+    {
+      "az": 180,
+      "components": [
+        4923
+      ],
+      "unintendedIslandPixels": 0
+    },
+    {
+      "az": 225,
+      "components": [
+        2215
+      ],
+      "unintendedIslandPixels": 0
+    },
+    {
+      "az": 270,
+      "components": [
+        2660
+      ],
+      "unintendedIslandPixels": 0
+    },
+    {
+      "az": 315,
+      "components": [
+        2181
+      ],
+      "unintendedIslandPixels": 0
+    }
+  ],
+  "neutralClipping": {
+    "visiblePixels": 145976,
+    "clippedDark": 0.009796130870828082,
+    "clippedWhite": 0.000020551323505233737
+  },
+  "worstMasks": [
+    "assets/ships/kestrel_borrowed_time_v4/evidence/failure_masks/lod1_worst_120px_xor.png",
+    "assets/ships/kestrel_borrowed_time_v4/evidence/failure_masks/lod2_worst_40px_xor.png"
+  ],
+  "oversizeFiles": []
+}

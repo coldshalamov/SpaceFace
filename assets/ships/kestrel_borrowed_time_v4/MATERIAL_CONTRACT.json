@@ -1,0 +1,19 @@
+{
+  "schema": "spaceface.shipMaterialContract.v2",
+  "assetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
+  "normalConvention": "OpenGL",
+  "tangentConvention": "MikkTSpace",
+  "ormChannels": { "R": "ambientOcclusion", "G": "roughness", "B": "metallic" },
+  "textureShipping": "KTX2 BasisU with mipmaps",
+  "paint": {
+    "hull": "warm neutral worn paint",
+    "recess": "readable warm charcoal; never a clipped black mass",
+    "cyan": "ordinary Frontier/service paint",
+    "orange": "ordinary warning/mining paint"
+  },
+  "emissiveAllowedRoles": ["axial drive", "RCS/nav", "sensor", "mining lens", "cockpit displays"],
+  "emissiveForbiddenRoles": ["pulse muzzle at rest", "utility practicals", "hull paint", "radiator lips", "embedded plume"],
+  "wear": ["directional travel wear", "engine heat path", "service grime", "repair-green mismatch", "localized edge chips"],
+  "decals": ["one-sided BORROWED TIME", "engine hazard", "service stencil"],
+  "mirroredText": false
+}

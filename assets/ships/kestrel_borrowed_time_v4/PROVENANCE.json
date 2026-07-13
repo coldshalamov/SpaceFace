@@ -1,0 +1,15 @@
+{
+  "schema": "spaceface.assetProvenance.v2",
+  "packet": "SF-K0-BORROWED-TIME-V4-SOURCE-REMASTER-001",
+  "classification": "project-original",
+  "sourceZip": "C:/Users/93rob/Downloads/SpaceFace_SF-K0_Borrowed-Time_Revamp.zip",
+  "sourceZipSha256": "5457DACD44B63CF170ECF65DB253BB607D7615B8DDBD3CF97666D155BA355000",
+  "sourceBlendEntry": "SpaceFace_SF-K0_Borrowed-Time_Revamp/SF_K0_Borrowed_Time_Revamp.blend",
+  "sourceBlendSha256": "C48BCD2CD7AA9B8DAF4AC253221ED259DB781A1BF0602EDB7286D916191D6502",
+  "runtimeReferenceZip": "C:/Users/93rob/Downloads/SpaceFace_SF-K0_Borrowed-Time_Runtime.zip",
+  "runtimeReferenceZipSha256": "D4ABD62179F9DFEDE39F4DF8275B2C4DBC1064E0EC3FDC936AF7BC448E0759E8",
+  "license": "Project-original SpaceFace asset; no third-party model or texture payload",
+  "geometryDependencies": ["user source blend only"],
+  "excludedDependencies": ["kestrel_borrowed_time_v2", "kestrel_borrowed_time_v3"],
+  "wiringStatus": "isolated_candidate_no_promote"
+}

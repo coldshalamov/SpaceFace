@@ -1,0 +1,176 @@
+{
+  "schema": "spaceface.kestrelBorrowedTimeV4.build.v1",
+  "packet": "SF-K0-BORROWED-TIME-V4-SOURCE-REMASTER-001",
+  "sourceZip": "C:\\Users\\93rob\\Downloads\\SpaceFace_SF-K0_Borrowed-Time_Revamp.zip",
+  "sourceZipSha256": "5457DACD44B63CF170ECF65DB253BB607D7615B8DDBD3CF97666D155BA355000",
+  "sourceEntry": "SpaceFace_SF-K0_Borrowed-Time_Revamp/SF_K0_Borrowed_Time_Revamp.blend",
+  "sourceBlendSha256": "C48BCD2CD7AA9B8DAF4AC253221ED259DB781A1BF0602EDB7286D916191D6502",
+  "productionBlend": "blender/kestrel_borrowed_time_v4_production.blend",
+  "productionBlendBytes": 21461271,
+  "productionBlendSha256": "0663CA8BAA29C11BA3CF5C3C85523E5B444006997891FF695391344EA8257A37",
+  "removedObjects": [
+    "CAM_beauty_front_34",
+    "CAM_beauty_rear_34",
+    "CAM_detail_engine",
+    "CAM_detail_weapon",
+    "CAM_orthographic_top",
+    "EngineRingBolt_00",
+    "EngineRingBolt_01",
+    "EngineRingBolt_02",
+    "EngineRingBolt_03",
+    "EngineRingBolt_04",
+    "EngineRingBolt_05",
+    "EngineRingBolt_06",
+    "EngineRingBolt_07",
+    "EngineRingBolt_08",
+    "EngineRingBolt_09",
+    "EngineRingBolt_10",
+    "EngineRingBolt_11",
+    "EngineRingBolt_12",
+    "EngineRingBolt_13",
+    "EngineRingBolt_14",
+    "EngineRingBolt_15",
+    "EngineRingBolt_16",
+    "EngineRingBolt_17",
+    "EngineRingBolt_18",
+    "EngineRingBolt_19",
+    "EngineRingBolt_20",
+    "EngineRingBolt_21",
+    "EngineRingBolt_22",
+    "EngineRingBolt_23",
+    "Engine_Plume_HotCore",
+    "Engine_Plume_Inner",
+    "Engine_Plume_Outer",
+    "Fill_Area",
+    "GrabRail_-1_0",
+    "GrabRail_-1_1",
+    "GrabRail_-1_2",
+    "GrabRail_1_0",
+    "GrabRail_1_1",
+    "GrabRail_1_2",
+    "Key_Area",
+    "Nose_Kicker",
+    "Radiator_Lip_Lower_-1",
+    "Radiator_Lip_Lower_1",
+    "Radiator_Lip_Upper_-1",
+    "Radiator_Lip_Upper_1",
+    "Rim_Area",
+    "Studio_Floor",
+    "Studio_Pad",
+    "Studio_Pad_LightRing",
+    "_RivetSource"
+  ],
+  "materialRepairs": [
+    {
+      "object": "Engine_Coolant_Main_-1",
+      "from": "unassigned",
+      "to": "Material_BrushedMetal",
+      "reason": "visible engine coolant pipe",
+      "action": "assigned existing V4 material; visible source geometry preserved"
+    },
+    {
+      "object": "Engine_Coolant_Return_-1",
+      "from": "unassigned",
+      "to": "Material_BrushedMetal",
+      "reason": "visible engine coolant pipe",
+      "action": "assigned existing V4 material; visible source geometry preserved"
+    },
+    {
+      "object": "Engine_Coolant_Main_1",
+      "from": "unassigned",
+      "to": "Material_BrushedMetal",
+      "reason": "visible engine coolant pipe",
+      "action": "assigned existing V4 material; visible source geometry preserved"
+    },
+    {
+      "object": "Engine_Coolant_Return_1",
+      "from": "unassigned",
+      "to": "Material_BrushedMetal",
+      "reason": "visible engine coolant pipe",
+      "action": "assigned existing V4 material; visible source geometry preserved"
+    },
+    {
+      "object": "Pulse_Cable_Port",
+      "from": "unassigned",
+      "to": "Material_Rubber",
+      "reason": "visible pulse-gun cable",
+      "action": "assigned existing V4 material; visible source geometry preserved"
+    },
+    {
+      "object": "Pulse_Cable_Stbd",
+      "from": "unassigned",
+      "to": "Material_Rubber",
+      "reason": "visible pulse-gun cable",
+      "action": "assigned existing V4 material; visible source geometry preserved"
+    },
+    {
+      "object": "FieldRepair_WeldSeam",
+      "from": "unassigned",
+      "to": "Material_BrushedMetal",
+      "reason": "visible field-repair weld seam",
+      "action": "assigned existing V4 material; visible source geometry preserved"
+    }
+  ],
+  "preservedGeometryPolicy": "source macro/meso retained; only technique-card exclusions removed",
+  "visibleBoundsBlenderXYZ": {
+    "min": [
+      -13.940001,
+      -7.02,
+      -2.77
+    ],
+    "max": [
+      13.900597,
+      7.02,
+      4.172
+    ],
+    "dimensions": [
+      27.840597,
+      14.04,
+      6.942
+    ],
+    "center": [
+      -0.019702,
+      0.0,
+      0.701
+    ]
+  },
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 19906,
+      "draws": 15,
+      "animatedRoleException": 0,
+      "collisionTriangles": 22,
+      "path": "source/wholeships/kestrel_borrowed_time_v4_lod0.glb",
+      "bytes": 22895964,
+      "sha256": "2EAC62E9796707D910938A474A73AD86F0DC51606797C0D0BBBB0A5814888B9D"
+    },
+    {
+      "lod": 1,
+      "triangles": 13962,
+      "draws": 12,
+      "animatedRoleException": 0,
+      "collisionTriangles": 22,
+      "path": "source/wholeships/kestrel_borrowed_time_v4_lod1.glb",
+      "bytes": 22238900,
+      "sha256": "33BE2EBB0D5274DF4D28CD324926C99F4E8EE6740C6D0F499266B6FCC7BCE3E0"
+    },
+    {
+      "lod": 2,
+      "triangles": 12584,
+      "draws": 8,
+      "animatedRoleException": 0,
+      "collisionTriangles": 22,
+      "path": "source/wholeships/kestrel_borrowed_time_v4_lod2.glb",
+      "bytes": 18766040,
+      "sha256": "1F19E69C16FB4FA15E1BC731A80C615D669337A10B0BD6ECD42A9F067BE48241"
+    }
+  ],
+  "outputs": [
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\kestrel_borrowed_time_v4\\source\\wholeships\\kestrel_borrowed_time_v4_lod0.glb",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\kestrel_borrowed_time_v4\\source\\wholeships\\kestrel_borrowed_time_v4_lod1.glb",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\kestrel_borrowed_time_v4\\source\\wholeships\\kestrel_borrowed_time_v4_lod2.glb"
+  ],
+  "candidateOnly": true,
+  "livePromotion": false
+}
