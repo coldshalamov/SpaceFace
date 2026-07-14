@@ -28,6 +28,7 @@ import { PERSISTENT_CARGO } from '../data/narrative.js';
 import { estimateBrakingSolution } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { BINDINGS } from './bindings.js';
+import { coreText } from './localizedCoreCopy.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { weaponHeatSummary } from './weaponHeat.js';
@@ -3232,7 +3233,7 @@ export function createHud(ctx, alerts) {
       const tracked = trackedId ? active.find((m) => m.id === trackedId && m.status === 'active') : null;
       const navWaypoint = state.nav && state.nav.waypoint;
       if (tracked) {
-        setText(mtTitle, navWaypoint && navWaypoint.onboarding ? 'TUTORIAL OBJECTIVE' : 'CURRENT OBJECTIVE');
+        setText(mtTitle, coreText(navWaypoint && navWaypoint.onboarding ? 'tutorialObjective' : 'currentObjective'));
         setText(mtObj, mtObjectiveAction(navWaypoint && navWaypoint.reason || mtObjectiveText(tracked), navWaypoint));
         if (tracked.deadline_s != null && Number.isFinite(tracked.deadline_s)) {
           const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
@@ -3248,7 +3249,7 @@ export function createHud(ctx, alerts) {
       } else if (navWaypoint) {
         const wp = navWaypoint;
         const routeGuide = mtRouteGuidance(state, wp);
-        setText(mtTitle, wp.onboarding ? 'TUTORIAL OBJECTIVE' : 'CURRENT OBJECTIVE');
+        setText(mtTitle, coreText(wp.onboarding ? 'tutorialObjective' : 'currentObjective'));
         setText(mtObj, mtObjectiveAction(wp.reason || wp.label || 'Follow the marked route', wp));
         setText(mtTime, mtMarkerLine(state, wp, routeGuide && routeGuide.summary || ''));
         mtTime.classList.remove('sf-mt-urgent');
@@ -3256,16 +3257,19 @@ export function createHud(ctx, alerts) {
         setDisplay(missionTracker, true);
       } else if (active.some((m) => m && m.status === 'active')) {
         const candidate = active.find((m) => m && m.status === 'active');
-        setText(mtTitle, 'NEXT ACTION');
-        setText(mtObj, `${BINDINGS.missionLog.label} Mission Log · track ${candidate.title || candidate.name || 'one contract'}`);
-        setText(mtTime, 'NO GOAL MARKER · TRACK ONE CONTRACT');
+        setText(mtTitle, coreText('nextAction'));
+        setText(mtObj, coreText('trackContract', {
+          key: BINDINGS.missionLog.label,
+          contract: candidate.title || candidate.name || 'one contract',
+        }));
+        setText(mtTime, coreText('noGoalTrack'));
         mtTime.classList.remove('sf-mt-urgent');
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
       } else if (state.story && STORY_BEATS[state.story.beatIndex]) {
-        setText(mtTitle, 'NEXT ACTION');
-        setText(mtObj, `${BINDINGS.missionLog.label} Mission Log · choose the next story action`);
-        setText(mtTime, 'NO GOAL MARKER · SET ONE IN MISSION LOG');
+        setText(mtTitle, coreText('nextAction'));
+        setText(mtObj, coreText('chooseStoryAction', { key: BINDINGS.missionLog.label }));
+        setText(mtTime, coreText('noGoalSet'));
         mtTime.classList.remove('sf-mt-urgent');
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);

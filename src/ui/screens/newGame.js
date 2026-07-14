@@ -5,6 +5,7 @@ import { MODULES } from '../../data/modules.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { createShipPreviewMount } from '../shipPreviewMount.js';
+import { coreText } from '../localizedCoreCopy.js';
 
 const STYLE_ID = 'sf-new-game-style';
 const STARTER_SHIP = 'ship_kestrel';
@@ -209,7 +210,7 @@ export const newGameScreen = {
       try { refs.unsubStartFailed(); } catch (e) {}
     }
     disposeRefsPreview();
-    shell(rootEl, 'New Game', 'sf-menu-narrow');
+    shell(rootEl, coreText('newGame'), 'sf-menu-narrow');
     rootEl.classList.remove('sf-menu-narrow');
     rootEl.classList.add('sf-ng-shell');
     rootEl.style.width = '';
@@ -219,7 +220,7 @@ export const newGameScreen = {
 
     // Pilot name
     const nameRow = el('div', 'sf-row');
-    const nameLabel = el('label', null, 'Pilot name');
+    const nameLabel = el('label', null, coreText('pilotName'));
     nameLabel.htmlFor = 'sf-ng-pilot-name';
     nameRow.appendChild(nameLabel);
     const nameCtl = el('div', 'sf-ctl');
@@ -228,7 +229,7 @@ export const newGameScreen = {
 
     // Difficulty
     const diffRow = el('div', 'sf-row');
-    const diffLabel = el('label', null, 'Difficulty');
+    const diffLabel = el('label', null, coreText('difficulty'));
     diffLabel.htmlFor = 'sf-ng-difficulty';
     diffRow.appendChild(diffLabel);
     const diffCtl = el('div', 'sf-ctl');
@@ -242,9 +243,9 @@ export const newGameScreen = {
     diff.addEventListener('change', setDesc); setDesc();
 
     const route = el('div', 'sf-ng-route');
-    route.setAttribute('aria-label', 'First 15 minutes route');
+    route.setAttribute('aria-label', coreText('firstMinutes'));
     route.innerHTML =
-      '<div class="sf-ng-route__title">First 15 minutes</div>' +
+      '<div class="sf-ng-route__title">' + coreText('firstMinutes') + '</div>' +
       '<div class="sf-ng-route__steps">' +
         '<div class="sf-ng-route__step"><b>Wake at the beacon</b><span>Thrust to the beacon. One verb at a time.</span></div>' +
         '<div class="sf-ng-route__step"><b>Tether the derelict</b><span>Latch, winch, cut. The vacuum shows itself.</span></div>' +
@@ -293,9 +294,9 @@ export const newGameScreen = {
 
     // Foot: Back / Launch
     const foot = el('footer', 'sf-foot sf-ng-footer');
-    const back = el('button', 'sf-btn'); back.textContent = 'Back'; back.style.width = 'auto';
+    const back = el('button', 'sf-btn'); back.textContent = coreText('back'); back.style.width = 'auto';
     back.addEventListener('click', () => nav(ctx, 'popScreen'));
-    const launch = el('button', 'sf-btn'); launch.textContent = 'Launch'; launch.style.width = 'auto';
+    const launch = el('button', 'sf-btn'); launch.textContent = coreText('launch'); launch.style.width = 'auto';
     let launching = false;
     let veilTimer = null;
     // The disabled state must never be the visible resting state for >300ms (spec2/03 §3): async
@@ -319,7 +320,7 @@ export const newGameScreen = {
       back.disabled = launching;
       name.disabled = launching;
       diff.disabled = launching;
-      launch.textContent = launching ? 'Launching...' : 'Launch';
+      launch.textContent = launching ? coreText('launching') : coreText('launch');
       if (launching) {
         // Veil the warmup after 300ms so the disabled button itself is never the resting state.
         if (veilTimer) clearTimeout(veilTimer);

@@ -1,7 +1,7 @@
 // Platform-pure localization runtime. Safe for browser, Electron, tests, and deterministic tools.
 
-const DEFAULT_LOCALE = 'en-US';
-const PSEUDO_LOCALE = 'qps-ploc';
+export const DEFAULT_LOCALE = 'en-US';
+export const PSEUDO_LOCALE = 'qps-ploc';
 const PLACEHOLDER_RE = /\{([A-Za-z_][A-Za-z0-9_.-]*)\}/g;
 const ACCENTS = Object.freeze({
   a: 'à', b: 'ƀ', c: 'ç', d: 'đ', e: 'ë', f: 'ƒ', g: 'ğ', h: 'ħ', i: 'ï',
@@ -85,10 +85,10 @@ export function createLocalizationRuntime(options = {}) {
     const key = String(keyValue);
     const english = lookup(DEFAULT_LOCALE, key);
     if (locale === PSEUDO_LOCALE) {
-      if (english != null) return pseudoLocalize(interpolate(english, values));
-      const fallback = resolveCallFallback(callFallback, key, values);
+      if (english != null) return interpolate(pseudoLocalize(english), values);
+      const fallback = resolveCallFallbackRaw(callFallback, key, values);
       report(key, 'missing_key');
-      return pseudoLocalize(fallback == null ? key : fallback);
+      return interpolate(pseudoLocalize(fallback == null ? key : fallback), values);
     }
     for (const candidateLocale of localeFallbackChain(locale)) {
       const message = lookup(candidateLocale, key);
@@ -113,8 +113,13 @@ export function createLocalizationRuntime(options = {}) {
 }
 
 function resolveCallFallback(fallback, key, values) {
-  if (typeof fallback === 'function') return interpolate(fallback(key, values), values);
-  if (fallback != null) return interpolate(fallback, values);
+  const raw = resolveCallFallbackRaw(fallback, key, values);
+  return raw == null ? null : interpolate(raw, values);
+}
+
+function resolveCallFallbackRaw(fallback, key, values) {
+  if (typeof fallback === 'function') return String(fallback(key, values));
+  if (fallback != null) return String(fallback);
   return null;
 }
 

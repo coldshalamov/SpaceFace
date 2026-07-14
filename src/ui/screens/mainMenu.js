@@ -5,6 +5,7 @@
 // Browser, Electron dev, and packaged desktop all arrive here through the same player route.
 
 import { requestCodexTab } from './codex.js';
+import { coreText } from '../localizedCoreCopy.js';
 
 const STYLE_ID = 'sf-main-menu-style';
 const LS_PREFIX = 'sf.save.';
@@ -253,15 +254,15 @@ export const mainMenuScreen = {
     const col = el('div', 'sf-col');
     rootEl.appendChild(col);
 
-    const bNew = button('New Game');
-    const bContinue = button('Continue');
-    const bLoad = button('Load Game');
-    const bSettings = button('Settings');
+    const bNew = button(coreText('newGame'));
+    const bContinue = button(coreText('continue'));
+    const bLoad = button(coreText('loadGame'));
+    const bSettings = button(coreText('settings'));
     col.appendChild(bNew); col.appendChild(bContinue); col.appendChild(bLoad); col.appendChild(bSettings);
 
     // "Signal Archive" — opens the Codex on its Archive tab, where all four authored intro cinematics
     // replay from poster cards. (Replaces the old single-clip "Watch Intro Cinematic".)
-    const bArchive = button('Signal Archive');
+    const bArchive = button(coreText('signalArchive'));
     col.appendChild(bArchive);
     bArchive.addEventListener('click', () => { requestCodexTab('Archive'); pushWhenReady(ctx, 'codex', 'Signal Archive'); });
 
@@ -295,10 +296,10 @@ export const mainMenuScreen = {
     refs.saveSummary.classList.toggle('has-save', !!latest);
     if (latest) {
       const summary = saveSummaryText(latest.slot, latest.meta);
-      refs.saveSummary.textContent = 'Continue: ' + summary;
+      refs.saveSummary.textContent = coreText('continueSummary', { summary });
       refs.bContinue.title = 'Load ' + summary;
     } else {
-      refs.saveSummary.textContent = 'No save found - New Game opens Contract 47-A in Helios.';
+      refs.saveSummary.textContent = coreText('noSave');
       refs.bContinue.title = 'No save found yet';
     }
   },

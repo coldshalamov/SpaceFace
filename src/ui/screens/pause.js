@@ -7,6 +7,7 @@ import { confirm } from '../confirm.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS } from '../../data/sectors.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
+import { coreText } from '../localizedCoreCopy.js';
 
 const STYLE_ID = 'sf-pause-menu-style';
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -355,7 +356,7 @@ export const pauseScreen = {
 
   mount(rootEl, ctx) {
     injectStyle();
-    const { body } = screenShell(rootEl, 'Paused', 'sf-menu-narrow');
+    const { body } = screenShell(rootEl, coreText('paused'), 'sf-menu-narrow');
 
     const brief = document.createElement('div');
     brief.className = 'sf-slot';
@@ -364,7 +365,7 @@ export const pauseScreen = {
     briefMain.className = 'sf-slot-main';
     const briefKicker = document.createElement('div');
     briefKicker.className = 'sf-slot-sub';
-    briefKicker.textContent = 'FLIGHT BRIEF';
+    briefKicker.textContent = coreText('flightBrief');
     const briefObjective = document.createElement('div');
     briefObjective.className = 'sf-slot-name';
     const briefNext = document.createElement('div');
@@ -379,11 +380,11 @@ export const pauseScreen = {
     body.appendChild(brief);
 
     const mk = (label, fn) => { const b = button(label); b.addEventListener('click', fn); body.appendChild(b); return b; };
-    const bResume = mk('Resume', () => this._resume(ctx));
-    mk('Settings', () => nav(ctx, 'pushScreen', 'settings'));
-    mk('Save', () => nav(ctx, 'pushScreen', 'saveLoad'));
+    const bResume = mk(coreText('resume'), () => this._resume(ctx));
+    mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'));
+    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'));
     // Load discards unsaved current progress after a slot is chosen — confirm with the live run context first.
-    mk('Load', async () => {
+    mk(coreText('load'), async () => {
       const ok = await confirm({
         title: 'Open load screen?',
         body: pauseExitConfirmBody(ctx && ctx.state, 'load'),
@@ -391,18 +392,18 @@ export const pauseScreen = {
       });
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
     });
-    mk('Mission Log (' + BINDINGS.missionLog.label + ')', () => nav(ctx, 'pushScreen', 'missionLog'));
+    mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'));
     // Operations = the Automation ops board (drones / traders / outposts / fleet). Reachable from
     // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
     // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at
     // UI-polish scope this cycle; a first-class station tab would be promotion).
-    mk('Operations', () => nav(ctx, 'pushScreen', 'automation'));
+    mk(coreText('operations'), () => nav(ctx, 'pushScreen', 'automation'));
     const mapAction = pauseMapAction(ctx && ctx.state);
     if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction));
-    mk('Help / Controls', () => nav(ctx, 'pushScreen', 'help'));
-    mk('Codex', () => nav(ctx, 'pushScreen', 'codex'));
+    mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'));
+    mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'));
     // Main Menu discards the current session entirely — confirm with the live run context first.
-    mk('Main Menu', async () => {
+    mk(coreText('mainMenu'), async () => {
       const ok = await confirm({
         title: 'Return to main menu?',
         body: pauseExitConfirmBody(ctx && ctx.state, 'menu'),
