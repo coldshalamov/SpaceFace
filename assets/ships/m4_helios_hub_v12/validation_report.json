@@ -1,0 +1,333 @@
+{
+  "asset": "m4_helios_hub_v12",
+  "status": "candidate-exported-not-promoted",
+  "blender": "5.1.2",
+  "exports": [
+    {
+      "file": "release_candidates\\places\\place_station_trade_hub.glb",
+      "bytes": 6857816,
+      "glbMagic": "glTF",
+      "objectCount": 182,
+      "meshCount": 180,
+      "triangles": 123920,
+      "materials": [
+        "MAT_ForgeArmor",
+        "MAT_ForgeIdentity",
+        "MAT_HabitatCeramic",
+        "MAT_HeliosHull",
+        "MAT_HeliosNavigation",
+        "MAT_StructureDark"
+      ],
+      "meshCompression": "EXT_meshopt_compression",
+      "sha256": "9C6FE03948D0887D81F33B1D5E80DB1FB18FB272BB739165563B29FD85C8FF68"
+    },
+    {
+      "file": "release_candidates\\places\\place_gate_jump_ring.glb",
+      "bytes": 46788,
+      "glbMagic": "glTF",
+      "objectCount": 70,
+      "meshCount": 69,
+      "triangles": 1628,
+      "materials": [
+        "MAT_ForgeArmor",
+        "MAT_ForgeIdentity",
+        "MAT_GateField",
+        "MAT_HabitatCeramic",
+        "MAT_HeliosHull",
+        "MAT_HeliosNavigation"
+      ],
+      "meshCompression": "EXT_meshopt_compression",
+      "sha256": "39F5E88F32E475362B752B2591C15708C310E334D94FE0FA20F2DC6543FA0A0F"
+    },
+    {
+      "file": "release_candidates\\places\\place_asteroid_rock_a.glb",
+      "bytes": 38484,
+      "glbMagic": "glTF",
+      "objectCount": 7,
+      "meshCount": 7,
+      "triangles": 5240,
+      "materials": [
+        "MAT_OreFerrite",
+        "MAT_RockFerrite"
+      ],
+      "meshCompression": "EXT_meshopt_compression",
+      "sha256": "6E8A6711DDE67A4716B75673E8203DCDFD3EE802E0D45C036361F22DCB6EE6C9"
+    },
+    {
+      "file": "release_candidates\\places\\place_asteroid_rock_b.glb",
+      "bytes": 38708,
+      "glbMagic": "glTF",
+      "objectCount": 7,
+      "meshCount": 7,
+      "triangles": 5240,
+      "materials": [
+        "MAT_OreCrysal",
+        "MAT_RockIce"
+      ],
+      "meshCompression": "EXT_meshopt_compression",
+      "sha256": "E9157FF270828DF578FF6A0DB6104638A683154DA7A5D5F05FDAF2E097CB5EE3"
+    },
+    {
+      "file": "release_candidates\\places\\place_asteroid_rock_c.glb",
+      "bytes": 38312,
+      "glbMagic": "glTF",
+      "objectCount": 7,
+      "meshCount": 7,
+      "triangles": 5240,
+      "materials": [
+        "MAT_OreCobalt",
+        "MAT_RockCobalt"
+      ],
+      "meshCompression": "EXT_meshopt_compression",
+      "sha256": "67DF2E4B9898A9B014563FCB67B3A4AD479BE3886C6993AEDD1EFCE14E527890"
+    }
+  ],
+  "hub": {
+    "rootedHierarchy": 182,
+    "connectedAssembly": true,
+    "sourceDetailObjects": [
+      "CC0_base ring",
+      "CC0_base ring details",
+      "CC0_Interior pods",
+      "CC0_lights",
+      "CC0_outer ring",
+      "CC0_outer ring details",
+      "CC0_outer ring pods"
+    ],
+    "excludedArtifactObjects": [],
+    "dockingBite": "open fork corridor with rooted approach rails",
+    "removedDonorArtifactDatablocks": []
+  },
+  "gate": {
+    "rootedHierarchy": 70,
+    "connectedAssembly": true,
+    "fieldGap": "split-hex mechanical transit aperture"
+  },
+  "rocks": {
+    "meshHealth": [
+      {
+        "object": "ROCK_HeliosFerrite",
+        "vertices": 2562,
+        "faces": 5120,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_HeliosFerrite_Crystal_00",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_HeliosFerrite_Crystal_01",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_HeliosFerrite_Crystal_02",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_HeliosFerrite_Crystal_03",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_HeliosFerrite_Crystal_04",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_HeliosFerrite_Crystal_05",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_IceFracture",
+        "vertices": 2562,
+        "faces": 5120,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_IceFracture_Crystal_00",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_IceFracture_Crystal_01",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_IceFracture_Crystal_02",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_IceFracture_Crystal_03",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_IceFracture_Crystal_04",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_IceFracture_Crystal_05",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_CobaltCrown",
+        "vertices": 2562,
+        "faces": 5120,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_CobaltCrown_Crystal_00",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_CobaltCrown_Crystal_01",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_CobaltCrown_Crystal_02",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_CobaltCrown_Crystal_03",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_CobaltCrown_Crystal_04",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      },
+      {
+        "object": "ROCK_CobaltCrown_Crystal_05",
+        "vertices": 12,
+        "faces": 8,
+        "boundaryEdges": 0,
+        "nonManifoldEdges": 0,
+        "watertight": true
+      }
+    ],
+    "allWatertight": true,
+    "seamsEmbeddedAsClosedMeshFaceRoles": true,
+    "crystalsRootedBelowSurface": true
+  },
+  "promotion": "forbidden_until_three_loader_and_final_visual_review_pass",
+  "packaging": {
+    "tool": "@gltf-transform/functions meshopt",
+    "appearancePolicy": "no geometry deletion or simplification",
+    "results": [
+      {
+        "file": "place_station_trade_hub.glb",
+        "beforeBytes": 60436472,
+        "afterBytes": 6857816,
+        "ratio": 0.1135,
+        "beforeSha256": "F7DE0BD1D1018FBE95EB2ADCF10F4295068F8D296D67E37664998B0FC4A836F6",
+        "afterSha256": "9C6FE03948D0887D81F33B1D5E80DB1FB18FB272BB739165563B29FD85C8FF68",
+        "compression": "EXT_meshopt_compression"
+      },
+      {
+        "file": "place_gate_jump_ring.glb",
+        "beforeBytes": 374980,
+        "afterBytes": 46788,
+        "ratio": 0.1248,
+        "beforeSha256": "05F89C8B27E6B82740750895E11DA016402768BC49BDFA77FE73DA1FC76069B3",
+        "afterSha256": "39F5E88F32E475362B752B2591C15708C310E334D94FE0FA20F2DC6543FA0A0F",
+        "compression": "EXT_meshopt_compression"
+      },
+      {
+        "file": "place_asteroid_rock_a.glb",
+        "beforeBytes": 159232,
+        "afterBytes": 38484,
+        "ratio": 0.2417,
+        "beforeSha256": "99C6295FDDD65EA803A0720BFA2C818F6855CD5A2EB5EBD1F854AF5455682369",
+        "afterSha256": "6E8A6711DDE67A4716B75673E8203DCDFD3EE802E0D45C036361F22DCB6EE6C9",
+        "compression": "EXT_meshopt_compression"
+      },
+      {
+        "file": "place_asteroid_rock_b.glb",
+        "beforeBytes": 160012,
+        "afterBytes": 38708,
+        "ratio": 0.2419,
+        "beforeSha256": "BB4968D1D586410FAB67EE4153021FF0D16635CE6742F8FB9845850A37B42C3B",
+        "afterSha256": "E9157FF270828DF578FF6A0DB6104638A683154DA7A5D5F05FDAF2E097CB5EE3",
+        "compression": "EXT_meshopt_compression"
+      },
+      {
+        "file": "place_asteroid_rock_c.glb",
+        "beforeBytes": 159060,
+        "afterBytes": 38312,
+        "ratio": 0.2409,
+        "beforeSha256": "44BA893111C4C87D23936B73DC1E71C2DBF44F58E3DD843ED69B8C2E1CE48AD2",
+        "afterSha256": "67DF2E4B9898A9B014563FCB67B3A4AD479BE3886C6993AEDD1EFCE14E527890",
+        "compression": "EXT_meshopt_compression"
+      }
+    ]
+  }
+}

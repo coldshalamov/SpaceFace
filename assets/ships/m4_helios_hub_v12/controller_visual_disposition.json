@@ -1,0 +1,18 @@
+{
+  "schema": "spaceface.assetControllerDisposition.v1",
+  "asset": "m4_helios_hub_v12",
+  "status": "CANDIDATE_CHECKPOINT_ONLY",
+  "accepted": false,
+  "promotion": false,
+  "reason": "controller_visual_bar_not_met",
+  "knownVisualDefects": [
+    "hub and gate retain low-detail primitive forms and flat materials",
+    "antenna and mast artifacts remain visible in player-facing evidence",
+    "rock crystals read as pasted flat triangles"
+  ],
+  "technicalEvidence": {
+    "blender": "exported",
+    "threeLoaderParity": "11/11",
+    "candidateAcceptanceHarness": "technical-pass-only"
+  }
+}

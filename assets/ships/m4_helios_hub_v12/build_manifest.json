@@ -1,0 +1,11 @@
+{
+  "asset": "m4_helios_hub_v12",
+  "status": "candidate-checkpoint-unpromoted",
+  "sourcePolicy": "CC0 real-geometry kitbash",
+  "primarySource": "assets/third_party/helios_v12/c04_blenderkit_scifi_station/",
+  "secondarySources": [
+    "assets/third_party/helios_v12/c03_kenney_space_station_kit/",
+    "assets/third_party/helios_v12/c02_quaternius_modular_scifi_megakit/"
+  ],
+  "promotion": "forbidden_controller_visual_bar_not_met"
+}

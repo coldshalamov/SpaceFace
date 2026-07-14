@@ -1,0 +1,50 @@
+{
+  "schema": "spaceface.meshoptReceipt.v1",
+  "results": [
+    {
+      "file": "place_station_trade_hub.glb",
+      "beforeBytes": 60436472,
+      "afterBytes": 6857816,
+      "ratio": 0.1135,
+      "beforeSha256": "F7DE0BD1D1018FBE95EB2ADCF10F4295068F8D296D67E37664998B0FC4A836F6",
+      "afterSha256": "9C6FE03948D0887D81F33B1D5E80DB1FB18FB272BB739165563B29FD85C8FF68",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "file": "place_gate_jump_ring.glb",
+      "beforeBytes": 374980,
+      "afterBytes": 46788,
+      "ratio": 0.1248,
+      "beforeSha256": "05F89C8B27E6B82740750895E11DA016402768BC49BDFA77FE73DA1FC76069B3",
+      "afterSha256": "39F5E88F32E475362B752B2591C15708C310E334D94FE0FA20F2DC6543FA0A0F",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "file": "place_asteroid_rock_a.glb",
+      "beforeBytes": 159232,
+      "afterBytes": 38484,
+      "ratio": 0.2417,
+      "beforeSha256": "99C6295FDDD65EA803A0720BFA2C818F6855CD5A2EB5EBD1F854AF5455682369",
+      "afterSha256": "6E8A6711DDE67A4716B75673E8203DCDFD3EE802E0D45C036361F22DCB6EE6C9",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "file": "place_asteroid_rock_b.glb",
+      "beforeBytes": 160012,
+      "afterBytes": 38708,
+      "ratio": 0.2419,
+      "beforeSha256": "BB4968D1D586410FAB67EE4153021FF0D16635CE6742F8FB9845850A37B42C3B",
+      "afterSha256": "E9157FF270828DF578FF6A0DB6104638A683154DA7A5D5F05FDAF2E097CB5EE3",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "file": "place_asteroid_rock_c.glb",
+      "beforeBytes": 159060,
+      "afterBytes": 38312,
+      "ratio": 0.2409,
+      "beforeSha256": "44BA893111C4C87D23936B73DC1E71C2DBF44F58E3DD843ED69B8C2E1CE48AD2",
+      "afterSha256": "67DF2E4B9898A9B014563FCB67B3A4AD479BE3886C6993AEDD1EFCE14E527890",
+      "compression": "EXT_meshopt_compression"
+    }
+  ]
+}

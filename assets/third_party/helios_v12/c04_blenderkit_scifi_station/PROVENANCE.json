@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "campaign": "M4-HELIOS-V12-SOURCE-GROK-001",
+  "asset": {
+    "displayName": "Sci-Fi Station",
+    "internalName": "Sci-Fi Station base ring",
+    "author": "Pastean Narcis Dan",
+    "authorPortfolio": "https://npdan.artstation.com/",
+    "assetBaseId": "b180fdbd-668f-4081-ad51-f364e829f11d",
+    "versionId": "83d164c8-2aa1-4be4-bceb-ebb4f2cdc280",
+    "fileId": 157767,
+    "sourcePage": "https://www.blenderkit.com/asset-gallery-detail/b180fdbd-668f-4081-ad51-f364e829f11d/",
+    "metadataApi": "https://www.blenderkit.com/api/v1/search/?query=asset_base_id:b180fdbd-668f-4081-ad51-f364e829f11d",
+    "licensePage": "https://www.blendkit.com/docs/licenses/",
+    "license": "CC0-1.0",
+    "licenseEvidence": "Official BlenderKit API reports license=cc_zero; Blendkit license docs state CC0 allows unrestricted reuse including commercial/game shipping. verificationStatus=validated.",
+    "verificationStatus": "validated",
+    "isFree": true
+  },
+  "acquisition": {
+    "method": "Official BlenderKit public download API with scene_uuid (free asset) → signed assets.blenderkit.com URL",
+    "acquiredAt": "2026-07-14",
+    "localFile": "blenderkit_scifi_station_cc0.blend",
+    "bytes": 6967422,
+    "sha256": "F4818E9771E2E5BD5E990A40AFC24394615AB3E751062ED1B23C1D16D98487B6"
+  }
+}

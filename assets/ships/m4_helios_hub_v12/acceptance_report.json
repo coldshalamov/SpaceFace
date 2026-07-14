@@ -1,0 +1,13 @@
+{
+  "schema": "spaceface.heliosV12CandidateCheckpoint.v1",
+  "status": "TECHNICAL_PASS_VISUAL_REJECT",
+  "accepted": false,
+  "promotion": false,
+  "checks": 48,
+  "failures": [],
+  "evidence": {
+    "validation": "validation_report.json",
+    "runtime": "evidence/three_final/runtime_loader_receipt.json",
+    "controller": "controller_visual_disposition.json"
+  }
+}
