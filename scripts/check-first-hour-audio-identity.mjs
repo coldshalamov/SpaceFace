@@ -9,7 +9,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { AUDIO_RECIPE_BY_ID, audio, resolveAudioCueRecipeId } from '../src/audio/audioSystem.js';
+import {
+  AUDIO_RECIPE_BY_ID,
+  FIRST_HOUR_AUDIO_SIGNATURES,
+  audio,
+  resolveAudioCueRecipeId,
+  resolveFirstHourAudioSignature,
+} from '../src/audio/audioSystem.js';
 import { createCuePriorityBus, PRIORITY_DUCK_THRESHOLD, dbToGain, PRIORITY_DUCK_DB } from '../src/audio/cuePriorityBus.js';
 import { SECTOR_PALETTE_CLASSES } from '../src/data/sectors.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
@@ -139,6 +145,7 @@ function installTrace() {
 function makeState() {
   return {
     playerId: 'player',
+    tick: 100,
     simTime: 10,
     entities: new Map([
       ['player', {
@@ -150,6 +157,14 @@ function makeState() {
         team: 0,
         alive: true,
         type: 'ship',
+      }],
+      ['target', {
+        id: 'target', pos: { x: 120, z: 20 }, vel: { x: 0, z: 0 }, flags: {},
+        team: 1, alive: true, type: 'ship',
+      }],
+      ['npc-victim', {
+        id: 'npc-victim', pos: { x: 180, z: -30 }, vel: { x: 0, z: 0 }, flags: {},
+        team: 1, alive: true, type: 'ship',
       }],
     ]),
     player: {
@@ -220,6 +235,11 @@ audio.rt._priorityEngineProbe = { role: 'engineLoop', loop: true };
 audio.rt._priorityWeaponProbe = { role: 'weaponLoop', loop: true };
 audio.rt._priorityDuckEngine = 1;
 audio.rt._priorityDuckWeapon = 1;
+audio.rt._signatureLastAt = Object.create(null);
+audio.rt._heliosTrafficTarget = NaN;
+audio.rt._heliosTrafficTelemetry = { active: false, targetGain: 0.0001, sectorId: null };
+audio.rt.musicState = 'calm';
+audio.rt.threat = 0;
 audio.rt._engineTelemetry = {
   tier: 'idle', f1: 55, f2: 55, noiseG: 0.0001, humG: 0.48, massNorm: 1, duck: 1,
 };
@@ -233,6 +253,7 @@ audio._ensureContinuousSources();
 assert(audio.rt.engineOsc1, 'engine continuous source must start');
 assert(audio.rt.brakeGain, 'brake continuous source must start');
 assert(audio.rt.tetherOsc, 'tether continuous source must start');
+assert(audio.rt.heliosTrafficBed, 'Helios traffic bed graph must be pooled with continuous sources');
 
 const trace = {
   schema: 'spaceface.firstHourAudioTrace.v1',
@@ -295,8 +316,119 @@ assert(
   'scan:pulse must audibly schedule the normalized mining scanner motif',
 );
 
-// 3b) Story comms use the real popup seam and must own the mix.
+function clearPriority() {
+  audio.rt._criticalSquelchUntilMs = 0;
+  audio.rt._priorityBus.clear();
+  audio._updatePriorityDuckGains();
+}
+
+// 4) MASSLINE LATCH — shipped tether event through presentation adapters.
+step('massline_latch', () => {
+  clearPriority();
+  ctx.currentTime = 0.5;
+  state.tick += 20;
+  bus.emit('tether:attached', {
+    actorId: 'player', targetId: 'target', attachmentId: 'first-hour-latch',
+    pos: { x: 120, z: 20 },
+  });
+});
+assert(
+  trace.steps.find((s) => s.name === 'massline_latch').played.includes('sfx.tetherLatch'),
+  'tether:attached must audibly schedule the authored double mechanical latch',
+);
+
+// 5) STRAIN — real near-break events may arrive every dedupe window; audio caps the warning cadence.
+step('massline_strain_fatigue_guard', () => {
+  clearPriority();
+  const before = played.filter((p) => p.recipeId === 'sfx_tether_strain_creak' && p.voiceStarted).length;
+  ctx.currentTime = 1.0;
+  state.tick += 20;
+  bus.emit('tether:nearBreak', { actorId: 'player', targetId: 'target', tension: 0.84 });
+  ctx.currentTime = 1.2;
+  state.tick += 20;
+  bus.emit('tether:nearBreak', { actorId: 'player', targetId: 'target', tension: 0.88 });
+  ctx.currentTime = 1.8;
+  state.tick += 40;
+  bus.emit('tether:nearBreak', { actorId: 'player', targetId: 'target', tension: 0.94 });
+  const after = played.filter((p) => p.recipeId === 'sfx_tether_strain_creak' && p.voiceStarted).length;
+  assert.equal(after - before, 2, 'three rapid near-break events must schedule only two fatigue-safe warnings');
+  const blockedWeapon = audio.play('sfx_wpn_pulse_laser', { gain: 0.9 });
+  assert.equal(blockedWeapon, null, 'near-break warning must own the combat mix during its priority window');
+  audio._updatePriorityDuckGains();
+  assert(audio.rt._priorityDuckEngine < 1, 'near-break warning must duck the continuous engine layer');
+  trace.masslineStrain = { emitted: 3, audible: after - before, cooldownS: FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.cooldownS };
+});
+
+// 6) MASSLINE BREAK — wide mechanical crack/twang, priority-safe under its own squelch.
+step('massline_break', () => {
+  clearPriority();
+  ctx.currentTime = 2.2;
+  state.tick += 30;
+  bus.emit('tether:broken', { actorId: 'player', targetId: 'target', tension: 1.05, pos: { x: 120, z: 20 } });
+});
+assert(
+  trace.steps.find((s) => s.name === 'massline_break').played.includes('sfx.tetherSnap'),
+  'tether:broken must audibly schedule the mechanical snap',
+);
+
+// 7) SHIELD BREAK — canonical raw event owns one crystalline high-register voice.
+step('shield_break', () => {
+  clearPriority();
+  ctx.currentTime = 2.6;
+  bus.emit('shieldDown', { combatantId: 'player', pos: { x: 0, z: 0 } });
+});
+assert(
+  trace.steps.find((s) => s.name === 'shield_break').played.includes('sfx.shieldBreak'),
+  'shieldDown must audibly schedule the crystalline shield collapse',
+);
+
+// 8) KILL ROUTING — physical NPC death stays audible; the rising reward belongs only to player kills.
+step('kill_ownership', () => {
+  clearPriority();
+  ctx.currentTime = 3.0;
+  bus.emit('entity:killed', {
+    id: 'npc-victim', killerId: 'ally', type: 'ship', victimClass: 'fighter', pos: { x: 180, z: -30 },
+  });
+  clearPriority();
+  ctx.currentTime = 3.4;
+  state.tick += 30;
+  bus.emit('entity:killed', {
+    id: 'target', killerId: 'player', type: 'ship', victimClass: 'fighter', pos: { x: 120, z: 20 },
+  });
+});
+const killStep = trace.steps.find((s) => s.name === 'kill_ownership');
+assert(killStep.played.includes('sfx.killSmall'), 'NPC-vs-NPC kill must retain a physical crump');
+assert.equal(
+  killStep.played.filter((id) => id === 'sfx.killConfirmed').length,
+  1,
+  'exactly the player-caused kill must receive the rising confirmation layer',
+);
+for (const stepName of ['massline_latch', 'massline_strain_fatigue_guard', 'massline_break', 'kill_ownership']) {
+  assert(
+    !trace.steps.find((s) => s.name === stepName).played.includes('sfx_ui_alert'),
+    `${stepName} must not stack a generic alert beep over its authored signature`,
+  );
+}
+
+// 9) HELIOS TRAFFIC — sustained calm-flight bed, then fast fade on dock/threat ownership.
+step('helios_traffic_bed', () => {
+  clearPriority();
+  state.ui.docked = false;
+  state.entities.get('player').flags.docked = false;
+  audio.rt._docked = false;
+  audio.rt.musicState = 'calm';
+  audio.rt.threat = 0;
+  audio._updateHeliosTrafficBed();
+  assert(audio.rt._heliosTrafficTelemetry.active, 'calm undocked Helios flight must activate traffic bed');
+  assert(
+    audio.rt.heliosTrafficBed.gain.gain.value > 0.001,
+    'active Helios traffic bed must rise above its silent floor',
+  );
+});
+
+// 10) Story comms use the real popup seam and must own the mix.
 step('story_comms_priority', () => {
+  clearPriority();
   bus.emit('comms:popup', {
     category: 'story',
     text: 'Recover the sample.',
@@ -328,21 +460,22 @@ step('story_comms_priority', () => {
   };
 });
 
-// 4) REDOCK
+// 11) REDOCK
 step('redock', () => {
-  // clear critical window so dock UI confirm can play
-  audio.rt._criticalSquelchUntilMs = 0;
-  audio.rt._priorityBus.clear();
-  audio._updatePriorityDuckGains();
+  clearPriority();
   state.ui.docked = true;
+  state.entities.get('player').flags.docked = true;
   bus.emit('dock:docked', { stationId: 'station_helios' });
+  audio._updateHeliosTrafficBed();
 });
 assert(
-  trace.steps[4].played.includes('sfx_dock_clunk'),
+  trace.steps.find((s) => s.name === 'redock').played.includes('sfx_dock_clunk'),
   'redock must audibly schedule dock clunk',
 );
 assert(audio.rt._docked, 'docked flag must set');
 assert(audio.rt.loops.stationHum, 'station hum loop must start on dock');
+assert.equal(audio.rt._heliosTrafficTelemetry.active, false, 'traffic bed must fade when docked');
+assert.equal(audio.rt.heliosTrafficBed.gain.gain.value, 0.0001, 'docked traffic bed must target silent floor');
 
 // Helios pad class
 audio._updatePads(ctx.currentTime);
@@ -352,8 +485,31 @@ assert.equal(audio.rt.activePadClass, 'core', 'Helios sector uses core pad class
 for (const rid of [
   'sfx_undock_release', 'sfx_accel_transition', 'sfx_scan_pulse', 'sfx_travel_motif',
   'sfx_fringe_tick', 'sfx_anomaly_swell', 'sfx_station_machinery', 'sfx_traffic_blip',
+  'sfx.tetherLatch', 'sfx_tether_strain_creak', 'sfx.tetherSnap',
+  'sfx.shieldBreak', 'sfx.killSmall', 'sfx.killConfirmed', 'sfx_kill_confirm',
+  'sfx_shield_break_crystal',
 ]) {
   assert(AUDIO_RECIPE_BY_ID[rid], `recipe ${rid} required`);
+}
+
+// Structural separation guard: the two break families must not regress to the same crack+low sweep.
+assert(
+  AUDIO_RECIPE_BY_ID['sfx.shieldBreak'].layers.includes('sfx_shield_break_crystal'),
+  'shield collapse must retain its crystalline high-register layer',
+);
+assert(
+  AUDIO_RECIPE_BY_ID['sfx.tetherSnap'].layers.includes('sfx_tether_twang'),
+  'massline break must retain its low mechanical twang',
+);
+assert.notDeepEqual(
+  AUDIO_RECIPE_BY_ID['sfx.shieldBreak'].layers,
+  AUDIO_RECIPE_BY_ID['sfx.tetherSnap'].layers,
+  'shield and massline break layer sets must remain distinct',
+);
+for (const signature of Object.values(FIRST_HOUR_AUDIO_SIGNATURES)) {
+  if (!signature.semanticId) continue;
+  assert.equal(resolveFirstHourAudioSignature(signature.semanticId), signature);
+  assert.equal(resolveAudioCueRecipeId(signature.semanticId), signature.recipeId);
 }
 
 // resolveAudioCue still maps shield_break
@@ -369,7 +525,13 @@ trace.assertions.push(
   { id: 'engine_loop_duck', ok: true },
   { id: 'redock_clunk_station_hum', ok: true },
   { id: 'helios_core_pad', ok: true },
+  { id: 'massline_latch_event_recipe', ok: true },
+  { id: 'massline_strain_fatigue_guard', ok: true },
+  { id: 'shield_tether_spectral_separation', ok: true },
+  { id: 'player_kill_confirmation_ownership', ok: true },
+  { id: 'helios_traffic_continuous_bed', ok: true },
 );
+trace.signatureProfiles = FIRST_HOUR_AUDIO_SIGNATURES;
 trace.summary = {
   stepCount: trace.steps.length,
   totalPlayCalls: played.length,
@@ -380,6 +542,8 @@ trace.summary = {
     engine: !!audio.rt.engineOsc1,
     brake: !!audio.rt.brakeGain,
     tether: !!audio.rt.tetherOsc,
+    heliosTraffic: !!audio.rt.heliosTrafficBed,
+    heliosTrafficActiveAfterDock: !!audio.rt._heliosTrafficTelemetry.active,
     stationHum: !!audio.rt.loops.stationHum,
   },
   priorityThreshold: PRIORITY_DUCK_THRESHOLD,

@@ -96,6 +96,57 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
   }),
 });
 
+// The first-hour ear-training contract. These five foreground receipts deliberately occupy
+// different registers and priority levels; Helios traffic is the low-priority environmental floor.
+// The policy lives beside the live router so it cannot drift into an unwired design-only table.
+export const FIRST_HOUR_AUDIO_SIGNATURES = Object.freeze({
+  masslineLatch: Object.freeze({
+    sourceEvent: 'tether:attached', semanticId: 'presentation.tether.attach',
+    recipeId: 'sfx.tetherLatch', priority: 0.78, cooldownS: 0.08, register: 'mechanical-mid',
+  }),
+  masslineStrain: Object.freeze({
+    sourceEvent: 'tether:nearBreak', semanticId: 'presentation.tether.near_break',
+    recipeId: 'sfx_tether_strain_creak', priority: 0.88, cooldownS: 0.65,
+    register: 'strained-mid', warning: true,
+  }),
+  masslineBreak: Object.freeze({
+    sourceEvent: 'tether:broken', semanticId: 'presentation.tether.break',
+    recipeId: 'sfx.tetherSnap', priority: 0.95, cooldownS: 0.12,
+    register: 'mechanical-wide', warning: true,
+  }),
+  shieldBreak: Object.freeze({
+    sourceEvent: 'shieldDown', semanticId: 'presentation.shield.collapse',
+    recipeId: 'sfx.shieldBreak', priority: 0.94, cooldownS: 0,
+    register: 'crystalline-high', warning: true,
+  }),
+  enemyKill: Object.freeze({
+    sourceEvent: 'entity:killed[killerId=playerId]', semanticId: 'presentation.combat.player_kill',
+    recipeId: 'sfx.killConfirmed', priority: 0.82, cooldownS: 0,
+    register: 'sub-plus-rising-confirm',
+  }),
+  heliosTraffic: Object.freeze({
+    sourceEvent: 'calm Helios flight state', semanticId: null,
+    recipeId: null, priority: 0.12, cooldownS: 0, register: 'spatial-low-bed', gain: 0.032,
+  }),
+});
+
+const FIRST_HOUR_SIGNATURE_BY_SEMANTIC_ID = Object.freeze(Object.fromEntries(
+  Object.values(FIRST_HOUR_AUDIO_SIGNATURES)
+    .filter((signature) => signature.semanticId)
+    .map((signature) => [signature.semanticId, signature]),
+));
+const FIRST_HOUR_SIGNATURE_BY_PRESENTATION_CUE_ID = Object.freeze({
+  'tether.attach': FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch,
+  'tether.near_break': FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain,
+  'tether.break': FIRST_HOUR_AUDIO_SIGNATURES.masslineBreak,
+  'shield.collapse': FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak,
+  'combat.player.kill': FIRST_HOUR_AUDIO_SIGNATURES.enemyKill,
+});
+
+export function resolveFirstHourAudioSignature(cueId) {
+  return FIRST_HOUR_SIGNATURE_BY_SEMANTIC_ID[String(cueId || '')] || null;
+}
+
 function linearGain(v) { const c = v < 0 ? 0 : v > 1 ? 1 : v; return c * c; }
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 function isPhysicalAudioBus(name) { return name === 'engine' || name === 'ambient' || name === 'combat'; }
@@ -311,9 +362,9 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   // Gameplay cues with dedicated recipes (drill.js loot/hazard, countermeasures.js, combat shield break).
   loot_collect: 'sfx_loot_collect', mining_core_fizzle: 'sfx_mining_core_fizzle',
   shield_break: 'sfx.shieldBreak', cm_chaff: 'sfx_cm_chaff', cm_ecm: 'sfx_cm_ecm',
-  'presentation.tether.attach': 'sfx.tetherLatch',
-  'presentation.tether.near_break': 'sfx_tether_strain_creak',
-  'presentation.tether.break': 'sfx.tetherSnap',
+  [FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch.recipeId,
+  [FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.recipeId,
+  [FIRST_HOUR_AUDIO_SIGNATURES.masslineBreak.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineBreak.recipeId,
   'presentation.tether.whip_impact': 'sfx.tetherSnap',
   // Massline Physics Identity (Wave M2): throw/sling/tumble/bullet-time/cloak semantic cues.
   'massline.throw': 'sfx_massline_throw',
@@ -389,8 +440,8 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.combat.damage_applied': 'sfx.hullHit',
   'presentation.combat.near_miss': 'sfx_combat_near_miss',
   'presentation.combat.player_hit': 'sfx.playerDamage',
-  'presentation.combat.player_kill': 'sfx.killSmall',
-  'presentation.shield.collapse': 'sfx.shieldBreak',
+  [FIRST_HOUR_AUDIO_SIGNATURES.enemyKill.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.enemyKill.recipeId,
+  [FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak.recipeId,
   'presentation.subsystem.disabled': 'sfx_subsystem_disabled',
   'presentation.subsystem.drive_disabled': 'sfx_subsystem_drive_disabled',
   'presentation.subsystem.sensor_disabled': 'sfx_subsystem_sensor_disabled',
@@ -408,7 +459,10 @@ export function resolveAudioCueRecipeId(cueId) {
 }
 
 export function alertCueOwnsAudio(payload) {
-  return !(payload && payload.audioOwnedByPresentation);
+  if (payload && payload.audioOwnedByPresentation) return false;
+  // Presentation emits both a semantic audio lane and a visual `alert` for these receipts. The
+  // alert remains visible, but its generic beep must not double or blur the authored signature.
+  return !(payload && FIRST_HOUR_SIGNATURE_BY_PRESENTATION_CUE_ID[payload.cueId]);
 }
 
 export function getBusForRecipe(recipe, recipeId) {
@@ -548,6 +602,10 @@ export const audio = {
     rt._lastAccelTransitionMs = 0;
     rt._lastTrafficBlipAt = 0;
     rt._lastMachineryAt = 0;
+    rt._signatureLastAt = Object.create(null);
+    rt.heliosTrafficBed = null;
+    rt._heliosTrafficTarget = NaN;
+    rt._heliosTrafficTelemetry = { active: false, targetGain: 0.0001, sectorId: null };
     rt._lastSquelchEndTime = 0;
     rt.sidechainDuck = 1;
     rt._bulletTimeAudioActive = false;
@@ -577,8 +635,9 @@ export const audio = {
       const pos = p && p.pos;
       const target = p && p.combatantId ? this.state.entities.get(p.combatantId) : null;
       const position = pos || (target ? { x: target.pos.x, z: target.pos.z } : null);
-      this._applyPriorityCue({ id: 'shield.collapse', importance: 0.92, playerRelevance: 1 });
-      this.play('sfx.shieldBreak', { position, gain: 0.7, critical: true });
+      const signature = FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak;
+      this._applyPriorityCue({ id: 'shield.collapse', importance: signature.priority, playerRelevance: 1 });
+      this.play(signature.recipeId, { position, gain: 0.64, critical: true });
     });
     bus.on('shieldRestored', () => {});
     bus.on('entity:killed', (p) => this._onKilled(p));
@@ -792,6 +851,7 @@ export const audio = {
     this._ensureEngineHum();
     this._ensureBrakeHiss();
     this._ensureTetherHum();
+    this._ensureHeliosTrafficBed();
   },
 
   _wallClockMs() {
@@ -1135,6 +1195,19 @@ export const audio = {
   _onKilled(p) {
     if (!p) return;
     const rt = this.rt, ctx = rt.ctx;
+    // player:death owns the player's defeat sound. entity:killed is also emitted for NPC-vs-NPC
+    // combat, which should remain physically audible but must never masquerade as player reward.
+    if (p.id === this.state.playerId) return;
+    const killedByPlayer = p.killerId === this.state.playerId;
+    const signature = FIRST_HOUR_AUDIO_SIGNATURES.enemyKill;
+    if (killedByPlayer) {
+      this._applyPriorityCue({
+        id: 'combat.player.kill',
+        audioId: signature.recipeId,
+        importance: signature.priority,
+        playerRelevance: 1,
+      });
+    }
     const isCapital = p.victimClass === 'capital' || p.victimClass === 'large' || p.type === 'station';
     
     if (isCapital && ctx) {
@@ -1149,12 +1222,23 @@ export const audio = {
         z: p.pos.z + (Math.random() - 0.5) * radius * 0.7
       };
       // Play two 30ms pre-detonation clicks
-      this.play('sfx_ui_hover', { position: pos1, startTime: ctx.currentTime + 0.05, gain: 0.9, rate: 0.5 });
-      this.play('sfx_ui_hover', { position: pos2, startTime: ctx.currentTime + 0.20, gain: 0.9, rate: 0.5 });
+      this.play('sfx_ui_hover', { position: pos1, startTime: ctx.currentTime + 0.05, gain: 0.9, rate: 0.5, critical: killedByPlayer });
+      this.play('sfx_ui_hover', { position: pos2, startTime: ctx.currentTime + 0.20, gain: 0.9, rate: 0.5, critical: killedByPlayer });
       // Play the main capital explosion in 400ms
-      this.play('sfx.killCapital', { position: p.pos, startTime: ctx.currentTime + 0.40, gain: 1.0 });
+      this.play('sfx.killCapital', { position: p.pos, startTime: ctx.currentTime + 0.40, gain: 1.0, critical: killedByPlayer });
+      if (killedByPlayer) {
+        this.play('sfx_kill_confirm', {
+          position: p.pos, startTime: ctx.currentTime + 0.42, gain: 0.72, critical: true,
+        });
+      }
     } else {
-      this.play('sfx.killSmall', { position: p.pos, gain: 1.0 });
+      this.play(killedByPlayer ? signature.recipeId : 'sfx.killSmall', {
+        position: p.pos,
+        gain: killedByPlayer ? 0.9 : 0.72,
+        // The presentation priority receipt arrives before this raw physical handler. Marking the
+        // reward voice critical prevents the cue's own squelch window from suppressing it.
+        critical: killedByPlayer,
+      });
     }
   },
 
@@ -1404,12 +1488,21 @@ export const audio = {
     if (!id) { this.play('sfx_ui_click', { gain: 0.7 }); return; }
     const rid = resolveAudioCueRecipeId(id);
     const opts = (cue && typeof cue === 'object') ? cue : {};
+    const signature = resolveFirstHourAudioSignature(id);
+    const nowS = this.rt && this.rt.ctx
+      ? this.rt.ctx.currentTime
+      : Math.max(0, Number(this.state && this.state.simTime) || 0);
+    if (signature && signature.cooldownS > 0) {
+      const lastAt = this.rt._signatureLastAt && this.rt._signatureLastAt[id];
+      if (Number.isFinite(lastAt) && nowS - lastAt < signature.cooldownS) return null;
+    }
     // Some presentation receipts must remain visible on the semantic bus even though an earlier
     // raw event owns their physical sound. Do not turn that observability contract into a double hit.
     if (opts.playbackOwnedByRaw) return;
-    const importance = Number.isFinite(opts.importance)
+    const suppliedImportance = Number.isFinite(opts.importance)
       ? opts.importance
       : (opts.duck ? Math.max(PRIORITY_DUCK_THRESHOLD, 0.85) : 0);
+    const importance = Math.max(suppliedImportance, signature ? signature.priority : 0);
     // Priority duck for high-importance presentation / objective / warning cues.
     if (opts.duck || importance >= PRIORITY_DUCK_THRESHOLD) {
       this._applyPriorityCue({
@@ -1420,13 +1513,17 @@ export const audio = {
       });
     }
     if (opts.duck) this._duckMusic(opts.duckSeconds || 0.8);
-    const isCritical = importance >= PRIORITY_DUCK_THRESHOLD || !!opts.duck;
-    this.play(rid, {
+    const isCritical = importance >= PRIORITY_DUCK_THRESHOLD || !!opts.duck || !!(signature && signature.warning);
+    const voice = this.play(rid, {
       gain: opts.gain == null ? 0.8 : opts.gain,
       position: opts.position || null,
       rate: opts.rate || 1,
       critical: isCritical,
     });
+    if (voice && signature && signature.cooldownS > 0) {
+      this.rt._signatureLastAt[id] = nowS;
+    }
+    return voice;
   },
 
   _duckMusic(seconds) {
@@ -2029,6 +2126,7 @@ export const audio = {
     this._updateDrillGrind();
     this._updatePads(now);
     this._updateStationMurmur(now);
+    this._updateHeliosTrafficBed();
     this._updatePlaceContext(now);
 
     // recover music gain after a duck (skip while paused — _onPause manages the bus)
@@ -2733,8 +2831,96 @@ export const audio = {
   },
 
   /**
-   * Restrained place context: sparse station machinery when docked; quiet Helios traffic
-   * blips only in calm undocked flight. Silence discipline — never a constant bed of noise.
+   * A single low-cost, continuously pooled Helios traffic layer. Two quiet carriers share one
+   * low-pass and drift across the stereo field over ~42 s, suggesting distant shipping lanes
+   * without a fatiguing repeating loop. It lives on ambientBus, so the existing combat sidechain,
+   * mute and Ambient slider remain the only gain authorities.
+   */
+  _ensureHeliosTrafficBed() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || rt.heliosTrafficBed) return;
+
+    const low = ctx.createOscillator();
+    low.type = 'sine';
+    low.frequency.value = 49;
+    const upper = ctx.createOscillator();
+    upper.type = 'triangle';
+    upper.frequency.value = 73.5;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 240;
+    filter.Q.value = 0.65;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
+
+    const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    const drift = ctx.createOscillator();
+    drift.type = 'sine';
+    drift.frequency.value = 0.024;
+    const driftDepth = ctx.createGain();
+    driftDepth.gain.value = 0.42;
+    drift.connect(driftDepth);
+
+    low.connect(filter);
+    upper.connect(filter);
+    if (panner) {
+      filter.connect(panner);
+      panner.connect(gain);
+      driftDepth.connect(panner.pan);
+    } else {
+      filter.connect(gain);
+    }
+    gain.connect(rt.ambientBus);
+    try {
+      low.start(ctx.currentTime);
+      upper.start(ctx.currentTime);
+      drift.start(ctx.currentTime);
+    } catch (_) {}
+
+    rt.heliosTrafficBed = { low, upper, filter, gain, panner, drift, driftDepth };
+  },
+
+  _updateHeliosTrafficBed() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx) return;
+    if (!rt.heliosTrafficBed) this._ensureHeliosTrafficBed();
+    const bed = rt.heliosTrafficBed;
+    if (!bed) return;
+
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    const isHelios = !!(sectorId && String(sectorId).includes('helios'));
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    const docked = !!(rt._docked
+      || (this.state.ui && this.state.ui.docked)
+      || (player && player.flags && player.flags.docked));
+    const calm = (rt.threat == null || rt.threat < 0.35)
+      && rt.musicState !== 'combat'
+      && rt.musicState !== 'tense';
+    const active = this.state.mode === 'flight'
+      && isHelios
+      && !docked
+      && !rt._paused
+      && !this._motionReduced()
+      && calm;
+    const targetGain = active ? FIRST_HOUR_AUDIO_SIGNATURES.heliosTraffic.gain : 0.0001;
+
+    if (targetGain !== rt._heliosTrafficTarget) {
+      rt._heliosTrafficTarget = targetGain;
+      try {
+        bed.gain.gain.cancelScheduledValues(ctx.currentTime);
+        bed.gain.gain.setTargetAtTime(targetGain, ctx.currentTime, active ? 0.8 : 0.12);
+      } catch (_) { try { bed.gain.gain.value = targetGain; } catch (__) {} }
+    }
+    const telemetry = rt._heliosTrafficTelemetry || (rt._heliosTrafficTelemetry = {});
+    telemetry.active = active;
+    telemetry.targetGain = targetGain;
+    telemetry.sectorId = sectorId || null;
+  },
+
+  /**
+   * Restrained place accents above the pooled bed: sparse station machinery when docked and quiet
+   * Helios traffic blips in calm undocked flight. Silence discipline keeps both accents rare.
    */
   _updatePlaceContext(now) {
     const rt = this.rt, ctx = rt.ctx;
