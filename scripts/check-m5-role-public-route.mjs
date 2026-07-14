@@ -1,13 +1,9 @@
 #!/usr/bin/env node
-// M5 visible ship-role ownership — canonical Browser route.
+// M5 visible second-hull role transition — supporting Browser route.
 //
-// Public route under test:
-//   title New Game -> Launch -> F5 -> title Continue -> docked Shipyard Make Active ->
-//   public Undock control -> F5 -> title Continue.
-//
-// The spare Wasp and dock arrival are transparent setup assistance because earning a second hull
-// is a multi-hour progression precondition. Ownership changes, undock, saves, Continue, and every
-// screenshot are exercised through the normal player UI/input path; setup never writes state.
+// This route grants the multi-hour second-hull precondition through the ships authority and emits
+// dock arrival before exercising public Shipworks, Undock, save, and Continue controls. It is useful
+// supporting evidence, but injected setup means it can never be primary public acceptance.
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -165,19 +161,28 @@ try {
   const screenshotEvidence = {};
   for (const [key, path] of Object.entries(SHOTS)) screenshotEvidence[key] = await mediaReceipt(path);
   const report = {
-    schema: 'spaceface.m5RolePublicRoute.v2',
+    schema: 'spaceface.m5RoleSupportingRoute.v3',
     generatedAt: new Date().toISOString(),
     route: 'canonical root -> New Game/Launch -> F5 -> Continue -> public ship switch -> public Undock -> F5 -> Continue',
     url: server.baseUrl,
     canonicalRoot: new URL(page.url()).search === '',
     viewport: { width: 1440, height: 900, deviceScaleFactor: 1 },
-    setupAssistance: {
+    evidenceClassification: {
       primaryAcceptance: false,
+      injectedState: true,
+      reason: 'The second hull is granted through ships authority and dock arrival is emitted by the harness.',
+      setupWrites: 1,
+      directStateWrites: 0,
+      directEventEmits: 1,
+      teleports: 0,
+    },
+    setupAssistance: {
       reason: 'Second-hull ownership is a multi-hour progression precondition; setup uses ships.buyShip grant plus canonical dock event without direct state writes.',
       ...setup,
     },
-    publicAcceptance: {
-      primaryAcceptance: true,
+    supportingAcceptance: {
+      primaryAcceptance: false,
+      injectedState: true,
       difficulty: 'casual',
       stationFamily,
       actions: ['New Game', 'Casual', 'Launch', 'F5', 'Main Menu', 'Continue', 'Shipworks/Shipyard', 'Make Active', 'Undock', 'F5', 'Main Menu', 'Continue'],
@@ -194,7 +199,7 @@ try {
     browserVersion: await browser.version(),
   };
   await writeFile(RECEIPT, JSON.stringify(report, null, 2) + '\n');
-  process.stdout.write(`M5 visible ownership public route PASS\n${JSON.stringify({
+  process.stdout.write(`M5 supporting second-hull ownership route PASS\n${JSON.stringify({
     receipt: relativePath(RECEIPT),
     screenshots: Object.fromEntries(Object.entries(SHOTS).map(([key, path]) => [key, relativePath(path)])),
     activeAfterContinue: switchedContinue.activeDefId,
