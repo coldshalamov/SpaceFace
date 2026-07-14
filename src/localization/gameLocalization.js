@@ -1,5 +1,6 @@
 import { messages as englishMessages } from './catalogs/en-US.generated.js';
 import { createLocalizationRuntime, DEFAULT_LOCALE, PSEUDO_LOCALE } from './runtime.js';
+import { installLocalizedDocumentBridge, localizationBridgeStats } from './domBridge.js';
 
 const SUPPORTED_STARTUP_LOCALES = new Set([DEFAULT_LOCALE, PSEUDO_LOCALE]);
 const keyByEnglishMessage = new Map();
@@ -35,4 +36,13 @@ export function localizeText(message, values = {}) {
 if (typeof document !== 'undefined' && document.documentElement) {
   document.documentElement.lang = startupLocale;
   document.documentElement.dataset.locale = startupLocale;
+  if (startupLocale !== DEFAULT_LOCALE) {
+    installLocalizedDocumentBridge({ document, locale: startupLocale, translate: localizeText });
+    if (typeof window !== 'undefined') {
+      window.__SF_LOCALIZATION__ = Object.freeze({
+        get locale() { return gameLocalization.locale; },
+        stats: localizationBridgeStats,
+      });
+    }
+  }
 }
