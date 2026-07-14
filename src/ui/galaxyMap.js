@@ -28,6 +28,9 @@ import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
+import { mapFactionPresenceNodes } from '../data/factionPresence.js';
+import { sectorSignalFor } from '../systems/sectorSim.js';
+import { isHostileToPlayer } from '../systems/scanner.js';
 
 // ---------------------------------------------------------------------------------------------
 // Static catalogs (pure — safe at import time).
@@ -50,8 +53,8 @@ export function factionNameOf(id) {
 // Zoom grows as you zoom IN (LOCAL is the most zoomed-in). Kept exported so the screen + tests agree.
 export const ZOOM_MIN = 0.35;
 export const ZOOM_MAX = 22;
-export const LEVEL_SYSTEM_AT = 2.2;   // zoom >= this  -> SYSTEM (or LOCAL)
-export const LEVEL_LOCAL_AT = 8.0;    // zoom >= this  -> LOCAL
+export const LEVEL_SYSTEM_AT = 1.6;   // zoom >= this  -> SYSTEM (or LOCAL)
+export const LEVEL_LOCAL_AT = 2.8;    // zoom >= this  -> LOCAL
 
 /** Map a continuous zoom scalar to a discrete level label. */
 export function levelForZoom(zoom) {
@@ -64,9 +67,9 @@ export function levelForZoom(zoom) {
 /** Initial zoom scalar for a map-authority focus preset (LOCAL / SYSTEM / GALAXY). */
 export function zoomForMapFocus(focus) {
   const f = normalizeMapFocus(focus);
-  if (f === MAP_FOCUS.LOCAL) return LEVEL_LOCAL_AT + 0.5;
-  if (f === MAP_FOCUS.GALAXY) return Math.max(ZOOM_MIN, LEVEL_SYSTEM_AT - 0.5);
-  return LEVEL_SYSTEM_AT + 0.5;
+  if (f === MAP_FOCUS.LOCAL) return 3.2;
+  if (f === MAP_FOCUS.GALAXY) return 1.0;
+  return 2.0;
 }
 
 /**
@@ -846,6 +849,32 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
 export function buildGalaxyModel(state) {
   const records = sectorRecords(state);
   const curId = currentSectorId(state);
+  const story = state && state.story || {};
+  const verge = story.verge && typeof story.verge === 'object' ? story.verge : {};
+  const storyFlags = {
+    vergeLayersRevealed: verge.revealed === true,
+    vergeAwake: verge.awake === true,
+    valeGatesRevoked: verge.valeGatesRevoked === true,
+    playerUsedVergeClosureProtocol: verge.playerUsedClosureProtocol === true,
+  };
+  const revocationCount = Array.isArray(verge.revocations) ? verge.revocations.length : 0;
+  const presenceBySector = new Map();
+  for (const presence of mapFactionPresenceNodes({
+    seed: (state && state.meta && state.meta.seed) || 1,
+    revocationCount,
+    storyFlags,
+  })) {
+    if (presence.phase === 'asleep') continue;
+    for (const sectorId of presence.sectorIds || []) {
+      const rows = presenceBySector.get(sectorId) || [];
+      rows.push({
+        ...presence,
+        factionName: factionNameOf(presence.factionId),
+        color: factionColorOf(presence.factionId),
+      });
+      presenceBySector.set(sectorId, rows);
+    }
+  }
   const nodes = [];
   const nodeById = new Map();
   for (const s of records) {
@@ -854,6 +883,7 @@ export function buildGalaxyModel(state) {
     const charted = isSectorCharted(state, s);
     const confidence = mapConfidenceForSector(state, s);
     const bearingCount = uniqueWreckMapReadouts(state, s.id).length;
+    const presence = charted ? (presenceBySector.get(s.id) || []) : [];
     const node = {
       id: s.id,
       name: s.name || s.id,
@@ -868,6 +898,12 @@ export function buildGalaxyModel(state) {
       security: Number.isFinite(s.security) ? s.security : null,
       bearingCount,
       neighbors: Array.isArray(s.neighbors) ? s.neighbors.slice() : [],
+      presence,
+      searchText: [
+        s.name || s.id,
+        factionNameOf(s.factionId),
+        ...presence.flatMap((row) => [row.factionName, row.label]),
+      ].filter(Boolean).join(' '),
     };
     nodes.push(node);
     nodeById.set(s.id, node);
@@ -1294,12 +1330,12 @@ const CSS = `
 }
 
 #sf-galaxymap .gm-title {
-  font-size: 1.1rem;
-  letter-spacing: 0.15em;
+  font-size: 0.95rem;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent, #39d0ff);
-  text-shadow: 0 0 10px rgba(57, 208, 255, 0.5);
-  font-weight: 700;
+  color: var(--ink, #cfe3ff);
+  font-weight: 600;
+  opacity: 0.92;
 }
 
 #sf-galaxymap .gm-search-container {
@@ -1399,7 +1435,9 @@ const CSS = `
 #sf-galaxymap .gm-scale-btn[aria-pressed="true"] {
   border-color: var(--accent, #39d0ff);
   color: #fff;
-  background: rgba(57, 208, 255, 0.12);
+  background: rgba(57, 208, 255, 0.18);
+  box-shadow: 0 0 10px rgba(57, 208, 255, 0.25);
+  font-weight: 700;
 }
 
 #sf-galaxymap .gm-close {
@@ -1483,18 +1521,30 @@ const CSS = `
 }
 
 #sf-galaxymap .gm-layer-btn.active {
-  border-color: var(--accent, #39d0ff);
   color: #fff;
-  background: rgba(57, 208, 255, 0.12);
-  text-shadow: 0 0 6px rgba(57, 208, 255, 0.4);
+  font-weight: 700;
 }
+#sf-galaxymap .gm-layer-btn[data-layer="route"].active   { border-color: #ffd24a; background: rgba(255, 210, 74, 0.14); box-shadow: 0 0 10px rgba(255, 210, 74, 0.22); }
+#sf-galaxymap .gm-layer-btn[data-layer="mission"].active { border-color: #ffb35c; background: rgba(255, 179, 92, 0.14); box-shadow: 0 0 10px rgba(255, 179, 92, 0.22); }
+#sf-galaxymap .gm-layer-btn[data-layer="market"].active  { border-color: #62e08a; background: rgba(98, 224, 138, 0.14); box-shadow: 0 0 10px rgba(98, 224, 138, 0.22); }
+#sf-galaxymap .gm-layer-btn[data-layer="security"].active{ border-color: #ff5c5c; background: rgba(255, 92, 92, 0.14); box-shadow: 0 0 10px rgba(255, 92, 92, 0.22); }
+#sf-galaxymap .gm-layer-btn[data-layer="faction"].active { border-color: #c08bff; background: rgba(192, 139, 255, 0.14); box-shadow: 0 0 10px rgba(192, 139, 255, 0.22); }
+#sf-galaxymap .gm-layer-btn[data-layer="hazard"].active  { border-color: #ff8a4d; background: rgba(255, 138, 77, 0.14); box-shadow: 0 0 10px rgba(255, 138, 77, 0.22); }
+#sf-galaxymap .gm-layer-btn[data-layer="services"].active{ border-color: #39d0ff; background: rgba(57, 208, 255, 0.14); box-shadow: 0 0 10px rgba(57, 208, 255, 0.22); }
+#sf-galaxymap .gm-layer-btn[data-layer="discovery"].active{ border-color: #7a9fff; background: rgba(122, 159, 255, 0.14); box-shadow: 0 0 10px rgba(122, 159, 255, 0.22); }
 
 #sf-galaxymap .gm-layer-btn.active::after {
   content: "●";
-  color: var(--accent, #39d0ff);
   font-size: 0.6rem;
-  text-shadow: 0 0 6px rgba(57, 208, 255, 0.8);
 }
+#sf-galaxymap .gm-layer-btn[data-layer="route"].active::after   { color: #ffd24a; }
+#sf-galaxymap .gm-layer-btn[data-layer="mission"].active::after { color: #ffb35c; }
+#sf-galaxymap .gm-layer-btn[data-layer="market"].active::after  { color: #62e08a; }
+#sf-galaxymap .gm-layer-btn[data-layer="security"].active::after{ color: #ff5c5c; }
+#sf-galaxymap .gm-layer-btn[data-layer="faction"].active::after { color: #c08bff; }
+#sf-galaxymap .gm-layer-btn[data-layer="hazard"].active::after  { color: #ff8a4d; }
+#sf-galaxymap .gm-layer-btn[data-layer="services"].active::after{ color: #39d0ff; }
+#sf-galaxymap .gm-layer-btn[data-layer="discovery"].active::after{ color: #7a9fff; }
 
 #sf-galaxymap .gm-rail-commodity {
   display: flex;
@@ -1849,6 +1899,11 @@ function dangerColor(v) {
   if (v < 0.72) return '#ffb347';
   return '#ff5c5c';
 }
+function pressureColor(v) {
+  if (v > 0.08) return '#ffb347';
+  if (v < -0.08) return '#64ffda';
+  return '#9aa8bc';
+}
 
 function mapPercent(value, signed = false) {
   const n = Math.max(signed ? -1 : 0, Math.min(1, Number(value) || 0));
@@ -1880,6 +1935,88 @@ function escapeMapHtml(value) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/** Safe HTML for one dynamic map-search row, including imported-save claim names. */
+export function mapSearchItemHtml(target, index = 0) {
+  const t = target || {};
+  return `
+    <div class="gm-search-item ${index === 0 ? 'selected' : ''}" data-idx="${index}">
+      <span class="gm-search-item-name">${escapeMapHtml(t.name)}</span>
+      <div class="gm-search-item-detail">${escapeMapHtml(t.detail)}</div>
+    </div>
+  `;
+}
+
+/** Safe claim-inspector markup. Claim names are persisted and may originate in imported saves. */
+export function claimInspectorHtml(target) {
+  const t = target || {};
+  const color = t.color || '#ffd24a'; // specialization data owns this value; saves do not.
+  return `
+    <div class="gm-ins-section">
+      <div class="gm-title" style="color:${color}; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${escapeMapHtml(t.name)}</div>
+      <div style="color:var(--ink-dim); font-size: 0.65rem;">PLAYER-OWNED ${escapeMapHtml(t.role || 'BASE')} · ${escapeMapHtml(t.status || 'ACTIVE')}</div>
+    </div>
+
+    <div class="gm-ins-section">
+      <div class="gm-ins-title">Operations</div>
+      <div style="color:#fff; font-size:.68rem; line-height:1.4;">${escapeMapHtml(t.statusLine || 'No live operating telemetry.')}</div>
+      <div style="margin-top:7px; color:var(--ink); font-size:.68rem; line-height:1.4;">${escapeMapHtml(t.playerVerb || 'Fly to the base.')}</div>
+      <div style="margin-top:5px; color:var(--ink-dim); font-size:.64rem; line-height:1.4;">${escapeMapHtml(t.consequence || '')}</div>
+      <div style="margin-top:5px; color:${color}; font-size:.64rem; line-height:1.4;">${escapeMapHtml(t.riskLine || '')}</div>
+    </div>
+  `;
+}
+
+export function galaxyPresenceMarkerRows(presence = []) {
+  return (Array.isArray(presence) ? presence : []).map((row, index) => Object.freeze({
+    factionId: row && row.factionId || null,
+    label: row && row.factionName || factionNameOf(row && row.factionId),
+    color: row && row.color || factionColorOf(row && row.factionId),
+    phase: row && row.phase || 'active',
+    offsetY: index * 11,
+  }));
+}
+
+export function galaxyPresenceInspectorHtml(presence = []) {
+  const rows = galaxyPresenceMarkerRows(presence);
+  if (!rows.length) return '';
+  return `
+    <div class="gm-ins-section gm-ins-presence">
+      <div class="gm-ins-title">Presence</div>
+      ${rows.map((row) => `
+        <div class="gm-ins-row gm-ins-presence-row">
+          <span><span aria-hidden="true" style="display:inline-block;width:7px;height:7px;margin-right:6px;transform:rotate(45deg);background:${row.color};"></span>${escapeMapHtml(row.label)}</span>
+          <span class="gm-ins-row-val" style="color:${row.color}">${escapeMapHtml(row.phase)}</span>
+        </div>`).join('')}
+    </div>`;
+}
+
+export function visibleGalaxyPresence(model, factionLayerVisible = true) {
+  if (!factionLayerVisible || !model || !Array.isArray(model.nodes)) return [];
+  return model.nodes.filter((node) => node && node.charted)
+    .flatMap((node) => node.presence || []);
+}
+
+/** Keep the canvas' accessible name synchronized with the visible map scale. */
+export function setMapCanvasAriaLabel(canvas, level, ownership = [], options = {}) {
+  if (!canvas || typeof canvas.setAttribute !== 'function') return '';
+  if (level === 'galaxy' && options && options.chartedCount === 0) {
+    const empty = 'Galaxy map. No charted sectors.';
+    canvas.setAttribute('aria-label', empty);
+    return empty;
+  }
+  const scale = level === 'local' ? 'Local' : level === 'system' ? 'System' : 'Galaxy';
+  const detail = level === 'galaxy'
+    ? (Array.isArray(ownership) && ownership.length
+      ? ` Presence: ${[...new Set(ownership.map((row) => row.factionName || factionNameOf(row.factionId)).filter(Boolean))].join(', ')}.`
+      : '')
+    : Array.isArray(ownership) && ownership.length
+      ? ` ${ownership.map((marker) => `${marker.name}: ${marker.statusLine}`).join('; ')}`
+      : ' No owned bases in this sector.';
+  const label = `${scale} navigation map.${detail}`;
+  canvas.setAttribute('aria-label', label);
+  return label;
 }
 
 function sectorCauseIntelHtml(cause) {
@@ -1975,7 +2112,7 @@ export function computePreviewRoute(state, startSectorId, targetSectorId) {
 // Search Target Gathering Helper
 // ---------------------------------------------------------------------------------------------
 
-function getSearchTargets(state, level, curSecId, claimsSystem = null) {
+function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile = null) {
   const targets = [];
   // 1. Sectors
   const galaxyModel = buildGalaxyModel(state);
@@ -1990,6 +2127,8 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null) {
         y: n.y,
         factionId: n.factionId,
         security: n.security,
+        presence: n.presence,
+        searchText: n.searchText,
         detail: `Sector · ${factionNameOf(n.factionId)} · Sec: ${n.security ? n.security.toFixed(2) : '0.00'}`,
       });
     }
@@ -2043,7 +2182,10 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null) {
         detail: 'Active objective · Navigation fix',
       });
     }
-    const localModel = buildLocalModel(state, null, { claimsSystem });
+    // Search results must carry the same scanner classification as the painted LOCAL layer.
+    // Falling back to data.hostile here made named accepted warrants inspect as `Hostile NO`
+    // even while targeting and the canvas correctly treated the entity as hostile.
+    const localModel = buildLocalModel(state, isHostile, { claimsSystem });
     for (const c of localModel.contacts) {
       targets.push({
         id: c.id,
@@ -2053,6 +2195,7 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null) {
         z: c.z,
         entityId: c.entityId,
         factionId: c.factionId,
+        hostile: c.hostile,
         detail: `Contact · ${c.kind.toUpperCase()}`,
       });
     }
@@ -2085,7 +2228,7 @@ export const galaxyMapScreen = {
   _view: null,
   _clickTargets: [],
   _lastLabelLayout: [],
-  _isHostile: null,
+  _isHostile: isHostileToPlayer,
   _inspectorDetails: null,
   _setCourseButton: null,
   _inspectorDetailsHtml: null,
@@ -2135,7 +2278,7 @@ export const galaxyMapScreen = {
     rootEl.id = 'sf-galaxymap';
     rootEl.innerHTML = `
       <div class="gm-head">
-        <div class="gm-title">Tactical Command Table</div>
+        <div class="gm-title">STAR CHART</div>
         <div class="gm-search-container">
           <input type="text" class="gm-search-input" placeholder="Search galaxy... (Press /)" aria-label="Search map" tabindex="-1" />
           <div class="gm-search-results" hidden></div>
@@ -2271,6 +2414,7 @@ export const galaxyMapScreen = {
         levelForZoom(this._zoom),
         currentSectorId(this._ctx.state),
         this._claimsSystem(),
+        this._isHostile,
       );
       const searchGoal = activeMapGoal(state);
       const searchPlayer = playerEntity(state);
@@ -2286,12 +2430,7 @@ export const galaxyMapScreen = {
         return;
       }
 
-      resultsContainer.innerHTML = filtered.map((t, idx) => `
-        <div class="gm-search-item ${idx === 0 ? 'selected' : ''}" data-idx="${idx}">
-          <span class="gm-search-item-name">${t.name}</span>
-          <div class="gm-search-item-detail">${t.detail}</div>
-        </div>
-      `).join('');
+      resultsContainer.innerHTML = filtered.map((t, idx) => mapSearchItemHtml(t, idx)).join('');
       resultsContainer.hidden = false;
 
       this._searchResultsList = filtered;
@@ -2346,11 +2485,6 @@ export const galaxyMapScreen = {
       this._ro = new ResizeObserver(() => this._resize());
       this._ro.observe(this._body);
     }
-
-    // Lazy-load scan hostility predicate
-    import('../systems/scanner.js')
-      .then((m) => { if (m && typeof m.isHostileToPlayer === 'function') this._isHostile = m.isHostileToPlayer; })
-      .catch(() => {});
 
     this._resize();
     return this;
@@ -2429,6 +2563,12 @@ export const galaxyMapScreen = {
         zoomChanged = true; // Force redraw to animate ring
       }
 
+      // Advance local scan sweep phase
+      if (levelForZoom(galaxyMapScreen._zoom) === 'local') {
+        galaxyMapScreen._scanPhase = (galaxyMapScreen._scanPhase || 0) + 0.02;
+        zoomChanged = true;
+      }
+
       const refreshTick = now - galaxyMapScreen._lastDrawTime >= 64;
       if (refreshTick) {
         galaxyMapScreen._lastDrawTime = now;
@@ -2449,10 +2589,10 @@ export const galaxyMapScreen = {
     this._animFrame = null;
   },
 
-  _setScaleFocus(focus, { draw = true } = {}) {
+  _setScaleFocus(focus, { draw = true, animate = true } = {}) {
     const zoom = zoomForMapFocus(focus);
-    this._zoom = zoom;
     this._targetZoom = zoom;
+    if (!animate) this._zoom = zoom;
     this._syncScaleButtons();
     if (draw && HAS_DOC) this._draw();
     return levelForZoom(zoom);
@@ -2579,25 +2719,51 @@ export const galaxyMapScreen = {
     });
   },
 
+  _defaultInspectorHtml(state) {
+    const cur = currentSectorId(state);
+    const sectorName = (cur && ((state.world && state.world.sectors && state.world.sectors[cur] && state.world.sectors[cur].name) || (SECTOR_BY_ID.get(cur) && SECTOR_BY_ID.get(cur).name))) || cur || 'Unknown';
+    const player = playerEntity(state);
+    const credits = state.player && state.player.credits ? Math.round(state.player.credits).toLocaleString() : '0';
+    const cargo = state.player && state.player.cargo ? (state.player.cargo.volume || 0) : 0;
+    const cargoCap = state.player && state.player.cargo ? (state.player.cargo.capVolume || 1) : 1;
+    const heat = state.player && state.player.heat ? Math.round(state.player.heat * 100) : 0;
+    const hull = player && player.hull != null ? Math.round(player.hull) : 0;
+    const hullMax = player && player.hullMax != null ? Math.round(player.hullMax) : 0;
+    return `
+      <div class="gm-ins-section">
+        <div class="gm-ins-title">Command Status</div>
+        <div class="gm-ins-row"><span>Sector</span><span class="gm-ins-row-val">${escapeMapHtml(sectorName)}</span></div>
+        <div class="gm-ins-row"><span>Credits</span><span class="gm-ins-row-val">${credits} cr</span></div>
+        <div class="gm-ins-row"><span>Cargo</span><span class="gm-ins-row-val">${cargo}/${cargoCap} u</span></div>
+        <div class="gm-ins-row"><span>Heat</span><span class="gm-ins-row-val" style="color:${heat > 15 ? '#ff5c5c' : '#62e08a'}">${heat}%</span></div>
+        <div class="gm-ins-row"><span>Hull</span><span class="gm-ins-row-val">${hull}/${hullMax}</span></div>
+      </div>
+      <div class="gm-ins-section">
+        <div style="color:var(--ink-dim); font-size:.65rem; line-height:1.4;">Select a sector, station, or contact for detailed intel.</div>
+      </div>
+    `;
+  },
+
   _updateInspector() {
     if (!HAS_DOC || !this._root) return;
+    const state = this._ctx && this._ctx.state;
+    const player = state ? playerEntity(state) : null;
     const detailsEl = this._inspectorDetails || this._root.querySelector('.gm-inspector-details');
     const btn = this._setCourseButton || this._root.querySelector('#gm-set-course-btn');
     if (!detailsEl || !btn) return;
 
     const t = this._selectedTarget;
     if (!t) {
-      const emptyHtml = `<div class="gm-inspector-empty">No target selected. Click a sector, station, or contact to inspect.</div>`;
-      if (this._inspectorDetailsHtml !== emptyHtml) {
-        detailsEl.innerHTML = emptyHtml;
-        this._inspectorDetailsHtml = emptyHtml;
+      const defaultHtml = this._defaultInspectorHtml(state);
+      if (this._inspectorDetailsHtml !== defaultHtml) {
+        detailsEl.innerHTML = defaultHtml;
+        this._inspectorDetailsHtml = defaultHtml;
       }
       if (!btn.hidden) btn.hidden = true;
       if (!btn.disabled) btn.disabled = true;
       return;
     }
 
-    const state = this._ctx && this._ctx.state;
     if (!state) return;
 
     let html = '';
@@ -2614,6 +2780,7 @@ export const galaxyMapScreen = {
       const law = sectorLawProfile(state, t.id, sec);
       const activeMissions = state.missions && state.missions.active || [];
       const relevantMission = activeMissions.find(m => m.status === 'active' && (m.destSectorId === t.id || (m.params && m.params.sectorId === t.id)));
+      const presenceHtml = galaxyPresenceInspectorHtml(t.presence || []);
 
       // Compute route distance/cost
       const curSec = currentSectorId(state);
@@ -2645,6 +2812,8 @@ export const galaxyMapScreen = {
           </div>
         </div>
 
+        ${presenceHtml}
+
         <div class="gm-ins-section">
           <div class="gm-ins-title">Security & Jurisdiction</div>
           <div class="gm-ins-row">
@@ -2669,6 +2838,18 @@ export const galaxyMapScreen = {
       `;
 
       html += sectorCauseIntelHtml(cause);
+
+      if (record) {
+        const stationCount = (record.stations && record.stations.length) || 0;
+        const hazardList = (record.hazards && record.hazards.map(h => hazardTypeGlyph(h.type)).join(' ')) || 'None';
+        html += `
+          <div class="gm-ins-section">
+            <div class="gm-ins-title">Sector Summary</div>
+            <div class="gm-ins-row"><span>Stations</span><span class="gm-ins-row-val">${stationCount}</span></div>
+            <div class="gm-ins-row"><span>Hazards</span><span class="gm-ins-row-val">${hazardList}</span></div>
+          </div>
+        `;
+      }
 
       if (relevantMission) {
         html += `
@@ -2731,12 +2912,21 @@ export const galaxyMapScreen = {
         </div>
       `;
 
+      const stationDist = player && Number.isFinite(t.x) && Number.isFinite(t.z)
+        ? Math.round(Math.hypot(t.x - player.pos.x, t.z - player.pos.z)) : null;
+      html += `
+        <div class="gm-ins-section">
+          <div class="gm-ins-title">Navigation</div>
+          <div class="gm-ins-row"><span>Distance</span><span class="gm-ins-row-val">${stationDist != null ? stationDist + ' u' : 'Unknown'}</span></div>
+        </div>
+      `;
+
       if (!isGate && services.length > 0) {
         html += `
           <div class="gm-ins-section">
             <div class="gm-ins-title">Available Services</div>
             <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
-              ${services.map(s => `<span style="background:rgba(57,208,255,0.1); border:1px solid rgba(57,208,255,0.3); padding:2px 6px; border-radius:3px; font-size:0.6rem; color:#cfe3ff;">${s.toUpperCase()}</span>`).join('')}
+              ${services.map(s => `<span style="background:rgba(57,208,255,0.1); border:1px solid rgba(57,208,255,0.3); padding:2px 6px; border-radius:3px; font-size:0.6rem; color:#cfe3ff;">${serviceGlyph(s)} ${s.toUpperCase()}</span>`).join('')}
             </div>
           </div>
         `;
@@ -2782,20 +2972,7 @@ export const galaxyMapScreen = {
       }
 
     } else if (t.kind === 'claim') {
-      html += `
-        <div class="gm-ins-section">
-          <div class="gm-title" style="color:${t.color || '#ffd24a'}; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${t.name}</div>
-          <div style="color:var(--ink-dim); font-size: 0.65rem;">PLAYER-OWNED ${t.role || 'BASE'} · ${t.status || 'ACTIVE'}</div>
-        </div>
-
-        <div class="gm-ins-section">
-          <div class="gm-ins-title">Operations</div>
-          <div style="color:#fff; font-size:.68rem; line-height:1.4;">${t.statusLine || 'No live operating telemetry.'}</div>
-          <div style="margin-top:7px; color:var(--ink); font-size:.68rem; line-height:1.4;">${t.playerVerb || 'Fly to the base.'}</div>
-          <div style="margin-top:5px; color:var(--ink-dim); font-size:.64rem; line-height:1.4;">${t.consequence || ''}</div>
-          <div style="margin-top:5px; color:${t.color || '#ffd24a'}; font-size:.64rem; line-height:1.4;">${t.riskLine || ''}</div>
-        </div>
-      `;
+      html += claimInspectorHtml(t);
       buttonLabel = 'Set Base Waypoint';
     } else if (t.kind === 'zone') {
       html += `
@@ -2845,20 +3022,24 @@ export const galaxyMapScreen = {
       buttonLabel = 'Track Waypoint';
     } else {
       // General contact
+      const contactDist = player && Number.isFinite(t.x) && Number.isFinite(t.z)
+        ? Math.round(Math.hypot(t.x - player.pos.x, t.z - player.pos.z)) : null;
+      const contactSpeed = Number.isFinite(t.vx) ? Math.round(Math.hypot(t.vx, t.vz)) : 0;
+      const contactFaction = factionNameOf(t.factionId);
       html += `
         <div class="gm-ins-section">
           <div class="gm-title" style="color:#fff; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${t.name}</div>
-          <div style="color:var(--ink-dim); font-size: 0.65rem;">LOCAL CONTACT Intel</div>
+          <div style="color:var(--ink-dim); font-size: 0.65rem;">LOCAL CONTACT INTEL</div>
         </div>
 
         <div class="gm-ins-section">
           <div class="gm-ins-title">Object Class</div>
-          <div class="gm-ins-row">
-            <span>Type</span>
-            <span class="gm-ins-row-val">${t.kind ? t.kind.toUpperCase() : 'UNKNOWN'}</span>
-          </div>
+          <div class="gm-ins-row"><span>Type</span><span class="gm-ins-row-val">${t.kind ? t.kind.toUpperCase() : 'UNKNOWN'}</span></div>
+          <div class="gm-ins-row"><span>Faction</span><span class="gm-ins-row-val" style="color:${factionColorOf(t.factionId)}">${contactFaction}</span></div>
+          <div class="gm-ins-row"><span>Hostile</span><span class="gm-ins-row-val" style="color:${t.hostile ? '#ff5c5c' : '#62e08a'}">${t.hostile ? 'YES' : 'NO'}</span></div>
+          <div class="gm-ins-row"><span>Distance</span><span class="gm-ins-row-val">${contactDist != null ? contactDist + ' u' : 'Unknown'}</span></div>
+          <div class="gm-ins-row"><span>Speed</span><span class="gm-ins-row-val">${contactSpeed} u/s</span></div>
         </div>
-
       `;
       buttonLabel = 'Track Target';
     }
@@ -2907,6 +3088,15 @@ export const galaxyMapScreen = {
     }
 
     this.refresh();
+
+    // Search Enter is a complete keyboard handoff: once a result is selected, move focus out of
+    // the text field and onto the visible primary action. A second Enter then follows the native
+    // button path instead of re-selecting the same search row indefinitely.
+    const action = resolveGalaxyMapPrimaryAction(state, target);
+    const primary = this._setCourseButton || (this._root && this._root.querySelector('#gm-set-course-btn'));
+    if (action && primary && typeof primary.focus === 'function') {
+      try { primary.focus({ preventScroll: true }); } catch (_) { primary.focus(); }
+    }
 
     // Trigger ring at target center
     const w = this._canvas.width / this._dpr;
@@ -3067,13 +3257,21 @@ export const galaxyMapScreen = {
     if (!state) return;
 
     // Subtle background grid
-    g.strokeStyle = 'rgba(57, 208, 255, 0.03)';
+    g.strokeStyle = 'rgba(57, 208, 255, 0.018)';
     g.lineWidth = 1;
     const grid = 50;
     for (let gx = 0; gx < w; gx += grid) { g.beginPath(); g.moveTo(gx, 0); g.lineTo(gx, h); g.stroke(); }
     for (let gy = 0; gy < h; gy += grid) { g.beginPath(); g.moveTo(0, gy); g.lineTo(w, gy); g.stroke(); }
 
     const level = levelForZoom(this._zoom);
+
+    // Update search placeholder to match the active scale.
+    const searchInput = this._root && this._root.querySelector('.gm-search-input');
+    if (searchInput) {
+      const placeholder = level === 'local' ? 'Search local space… (Press /)' : level === 'system' ? 'Search system… (Press /)' : 'Search galaxy… (Press /)';
+      if (searchInput.placeholder !== placeholder) searchInput.placeholder = placeholder;
+    }
+
     if (this._levelEl) this._levelEl.textContent = level.toUpperCase();
 
     const scaleEl = this._root.querySelector('[data-level]');
@@ -3098,6 +3296,10 @@ export const galaxyMapScreen = {
   // --- GALAXY DRAW ---
   _drawGalaxy(g, state, w, h) {
     const model = buildGalaxyModel(state);
+    const visiblePresence = visibleGalaxyPresence(model, this._layers.faction);
+    setMapCanvasAriaLabel(this._canvas, 'galaxy', visiblePresence, {
+      chartedCount: model.nodes.filter((node) => node.charted).length,
+    });
     if (!model.nodes.length) return;
 
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
@@ -3184,6 +3386,33 @@ export const galaxyMapScreen = {
       }
     }
 
+    // Trade-flow arrows (market layer): point from surplus toward scarcity.
+    if (this._layers.market) {
+      for (const e of model.edges) {
+        if (!e.charted) continue;
+        const sa = sectorSignalFor(state, e.from);
+        const sb = sectorSignalFor(state, e.to);
+        if (!sa || !sb) continue;
+        const gradient = sb.pricePressure - sa.pricePressure;
+        if (Math.abs(gradient) < 0.03) continue;
+        const a = model.nodes.find(n => n.id === e.from);
+        const b = model.nodes.find(n => n.id === e.to);
+        if (!a || !b) continue;
+        const ax = sx(a.x), ay = sy(a.y), bx = sx(b.x), by = sy(b.y);
+        const from = gradient > 0 ? { x: ax, y: ay } : { x: bx, y: by };
+        const to = gradient > 0 ? { x: bx, y: by } : { x: ax, y: ay };
+        const angle = Math.atan2(to.y - from.y, to.x - from.x);
+        const midX = (from.x + to.x) / 2, midY = (from.y + to.y) / 2;
+        const arrowLen = 6 + Math.min(6, Math.abs(gradient) * 12);
+        g.save();
+        g.strokeStyle = pressureColor(gradient); g.fillStyle = pressureColor(gradient);
+        g.lineWidth = 1.5;
+        g.beginPath(); g.moveTo(midX, midY); g.lineTo(midX - arrowLen * Math.cos(angle - 0.45), midY - arrowLen * Math.sin(angle - 0.45)); g.stroke();
+        g.beginPath(); g.moveTo(midX, midY); g.lineTo(midX - arrowLen * Math.cos(angle + 0.45), midY - arrowLen * Math.sin(angle + 0.45)); g.stroke();
+        g.restore();
+      }
+    }
+
     // Draw Nodes
     for (const n of model.nodes) {
       const x = sx(n.x), y = sy(n.y);
@@ -3213,11 +3442,18 @@ export const galaxyMapScreen = {
       // Check charted status
       if (!n.charted) {
         if (this._layers.discovery) {
+          g.save();
           g.beginPath(); g.arc(x, y, r - 3, 0, Math.PI * 2);
-          g.fillStyle = 'rgba(30,45,65,0.55)'; g.fill();
-          g.strokeStyle = 'rgba(100,120,150,0.3)'; g.lineWidth = 1; g.stroke();
-          g.fillStyle = 'rgba(150,170,200,0.4)'; g.font = '10px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
-          g.fillText(n.bearingCount > 0 ? 'READ BEARING' : '???', x, y + r + 3);
+          g.fillStyle = 'rgba(30,45,65,0.35)'; g.fill();
+          g.strokeStyle = 'rgba(100,120,150,0.28)'; g.lineWidth = 1; g.setLineDash([3, 4]); g.stroke(); g.setLineDash([]);
+          if (n.bearingCount > 0) {
+            g.fillStyle = 'rgba(230,191,106,0.55)'; g.font = 'bold 9px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText('?', x, y);
+          } else {
+            g.fillStyle = 'rgba(120,140,170,0.35)'; g.font = 'bold 10px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText('?', x, y);
+          }
+          g.restore();
         }
         continue;
       }
@@ -3225,6 +3461,7 @@ export const galaxyMapScreen = {
       this._clickTargets.push({
         sx: x, sy: y, radiusPx: r + 8, kind: 'sector', id: n.id, sectorId: n.id, name: n.name,
         factionId: n.factionId, security: n.security, x: n.x, y: n.y,
+        presence: n.presence, searchText: n.searchText,
         detail: `Sector · ${factionNameOf(n.factionId)} · Sec: ${n.security ? n.security.toFixed(2) : '0.00'}`
       });
 
@@ -3238,6 +3475,26 @@ export const galaxyMapScreen = {
       if (n.current) {
         g.beginPath(); g.arc(x, y, r + 5, 0, Math.PI * 2);
         g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 1.5; g.stroke();
+      }
+
+      // Security / danger ring (security layer)
+      if (this._layers.security && n.security != null) {
+        const danger = 1 - n.security;
+        if (danger > 0.15) {
+          g.beginPath(); g.arc(x, y, r + 10, 0, Math.PI * 2);
+          g.strokeStyle = dangerColor(danger); g.lineWidth = 2; g.stroke();
+        }
+      }
+
+      // Contested-sector badge (faction layer)
+      if (this._layers.faction) {
+        const sig = sectorSignalFor(state, n.id);
+        if (sig && sig.contestMargin < 0.16) {
+          g.save();
+          g.fillStyle = '#c08bff'; g.font = 'bold 10px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
+          g.fillText('⚔', x + r + 6, y - r - 4);
+          g.restore();
+        }
       }
 
       // Draw node circle
@@ -3254,6 +3511,28 @@ export const galaxyMapScreen = {
       g.fillStyle = n.current ? '#fff' : 'rgba(211,230,255,0.9)';
       g.font = (n.current ? 'bold ' : '') + '11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
       g.fillText(n.name, x, y + r + 4);
+
+      if (this._layers.faction && n.presence && n.presence.length) {
+        g.save();
+        g.font = '8px monospace';
+        g.textAlign = 'left';
+        g.textBaseline = 'middle';
+        for (const row of galaxyPresenceMarkerRows(n.presence)) {
+          const textWidth = g.measureText(row.label).width;
+          const startX = x - (textWidth + 10) / 2;
+          const rowY = y + r + 18 + row.offsetY;
+          g.fillStyle = row.color;
+          g.beginPath();
+          g.moveTo(startX + 3, rowY - 3);
+          g.lineTo(startX + 6, rowY);
+          g.lineTo(startX + 3, rowY + 3);
+          g.lineTo(startX, rowY);
+          g.closePath();
+          g.fill();
+          g.fillText(row.label, startX + 10, rowY);
+        }
+        g.restore();
+      }
 
       // Security overlay
       if (this._layers.security && n.security != null) {
@@ -3362,16 +3641,22 @@ export const galaxyMapScreen = {
     const sx = (x) => w / 2 + (x - cam.cx) * baseScale * cam.zoom;
     const sz = (z) => h / 2 + (z - cam.cy) * baseScale * cam.zoom;
     const labelCandidates = [];
-    if (this._canvas && typeof this._canvas.setAttribute === 'function') {
-      const ownership = model.ownership.length
-        ? model.ownership.map((marker) => `${marker.name}: ${marker.statusLine}`).join('; ')
-        : 'No owned bases in this sector.';
-      this._canvas.setAttribute('aria-label', `System navigation map. ${ownership}`);
-    }
+    setMapCanvasAriaLabel(this._canvas, 'system', model.ownership);
 
     // Header sector label
     g.fillStyle = 'rgba(207,227,255,0.75)'; g.font = 'bold 13px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
     g.fillText(model.sectorName, 16, 16);
+
+    // Player position marker on the system map
+    const player = playerEntity(state);
+    if (player && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z)) {
+      const px = sx(player.pos.x), py = sz(player.pos.z);
+      g.save();
+      g.fillStyle = '#39d0ff'; g.strokeStyle = '#39d0ff'; g.shadowColor = '#39d0ff'; g.shadowBlur = 8;
+      g.translate(px, py); g.rotate(Math.PI + (player.rot || 0));
+      g.beginPath(); g.moveTo(7, 0); g.lineTo(-5, -4); g.lineTo(-5, 4); g.closePath(); g.fill();
+      g.restore();
+    }
 
     // Draw active system waypoint (tether path)
     if (wp && wp.pos && this._layers.route) {
@@ -3396,7 +3681,12 @@ export const galaxyMapScreen = {
       if (z.hazard && this._layers.hazard) {
         g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2);
         g.strokeStyle = '#ff5c5c'; g.lineWidth = 2.0; g.setLineDash([8, 6]); g.stroke(); g.setLineDash([]);
-        g.fillStyle = 'rgba(255,92,92,0.06)'; g.fill();
+        g.fillStyle = 'rgba(255,92,92,0.04)'; g.fill();
+        const hazardGlyph = hazardTypeGlyph(z.type);
+        g.save();
+        g.fillStyle = '#ff8a8a'; g.font = 'bold 12px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(hazardGlyph, x, y);
+        g.restore();
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `zone:${z.id}`,
           kind: 'hazard',
@@ -3410,8 +3700,8 @@ export const galaxyMapScreen = {
       } else {
         g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2);
         if (this._layers.faction) {
-          g.fillStyle = hexToRgba(z.color, 0.08); g.fill();
-          g.strokeStyle = hexToRgba(z.color, 0.35);
+          g.fillStyle = hexToRgba(z.color, 0.05); g.fill();
+          g.strokeStyle = hexToRgba(z.color, 0.32);
         } else {
           g.strokeStyle = 'rgba(120,140,170,0.18)';
         }
@@ -3426,6 +3716,28 @@ export const galaxyMapScreen = {
           anchorRadius: 4,
           color: z.color,
         }));
+      }
+    }
+
+    // Asteroid field regions (discovery / market layer)
+    if (this._layers.discovery || this._layers.market) {
+      const sectorRecord = sectorRecordById(state, model.sectorId);
+      const fields = sectorRecord && sectorRecord.fields ? sectorRecord.fields : [];
+      for (const f of fields) {
+        const cx = Number(f.center && f.center.x) || 0;
+        const cz = Number(f.center && f.center.z) || 0;
+        const radius = Number(f.clusterRadius) || Number(f.radius) || 300;
+        const fx = sx(cx), fy = sz(cz), fr = radius * baseScale * cam.zoom;
+        const glyph = asteroidOreGlyph(f.type);
+        g.save();
+        g.strokeStyle = 'rgba(255,177,61,0.28)';
+        g.fillStyle = 'rgba(255,177,61,0.04)';
+        g.setLineDash([2, 4]); g.lineWidth = 1;
+        g.beginPath(); g.arc(fx, fy, fr, 0, Math.PI * 2); g.fill(); g.stroke(); g.setLineDash([]);
+        g.fillStyle = 'rgba(255,177,61,0.75)';
+        g.font = 'bold 9px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(glyph, fx, fy);
+        g.restore();
       }
     }
 
@@ -3505,12 +3817,10 @@ export const galaxyMapScreen = {
 
       const pointLines = [p.name];
       let marketTint = null;
+      let services = [];
       if (this._layers.services && (isStation || isGate)) {
         const record = findStationRecord(state, p.stationId || p.id);
-        const services = record && record.services ? record.services : [];
-        if (services.length > 0) {
-          pointLines.push(services.map((service) => service[0].toUpperCase()).join(' · '));
-        }
+        services = record && record.services ? record.services : [];
       }
 
       if (this._layers.market && isStation) {
@@ -3532,6 +3842,10 @@ export const galaxyMapScreen = {
         secondaryColor: marketTint,
         selected: !!(this._selectedTarget && this._selectedTarget.id === p.id),
       }));
+
+      if (isStation && services.length > 0) {
+        drawServiceGlyphs(g, x, y + 13, services);
+      }
 
       // Mission relevance overlay
       if (this._layers.mission) {
@@ -3657,12 +3971,7 @@ export const galaxyMapScreen = {
     const sx = (x) => w / 2 - (x - cam.cx) * baseScale * cam.zoom;
     const sz = (z) => h / 2 - (z - cam.cy) * baseScale * cam.zoom;
     const labelCandidates = [];
-    if (this._canvas && typeof this._canvas.setAttribute === 'function') {
-      const ownership = model.ownership.length
-        ? model.ownership.map((marker) => `${marker.name}: ${marker.statusLine}`).join('; ')
-        : 'No owned bases in this sector.';
-      this._canvas.setAttribute('aria-label', `Local navigation map. ${ownership}`);
-    }
+    setMapCanvasAriaLabel(this._canvas, 'local', model.ownership);
 
     // Range rings
     g.strokeStyle = 'rgba(57,208,255,0.08)'; g.setLineDash([3, 5]);
@@ -3790,6 +4099,49 @@ export const galaxyMapScreen = {
     g.beginPath(); g.moveTo(8, 0); g.lineTo(-6, -5.5); g.lineTo(-6, 5.5); g.closePath(); g.fill();
     g.restore();
 
+    // Velocity vector
+    if (player && player.vel) {
+      const speed = Math.hypot(player.vel.x, player.vel.z);
+      if (speed > 0.5) {
+        const vLen = Math.min(80, Math.max(18, speed * 0.25));
+        const angle = Math.atan2(-player.vel.z, -player.vel.x);
+        g.save();
+        g.strokeStyle = 'rgba(255,210,74,0.75)'; g.lineWidth = 1.5; g.setLineDash([4, 3]);
+        g.beginPath(); g.moveTo(w / 2, h / 2); g.lineTo(w / 2 + Math.cos(angle) * vLen, h / 2 + Math.sin(angle) * vLen); g.stroke();
+        g.restore();
+      }
+    }
+
+    // Scan sweep animation around the player
+    const reduceMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduceMotion && this._scanPhase != null) {
+      g.save();
+      g.strokeStyle = 'rgba(57,208,255,0.18)';
+      g.lineWidth = 1.5;
+      g.translate(w / 2, h / 2); g.rotate(this._scanPhase);
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.min(w, h) * 0.42, 0); g.stroke();
+      g.restore();
+    }
+
+    // Range ring labels
+    g.fillStyle = 'rgba(120,145,175,0.65)'; g.font = '8px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle';
+    const ringUnits = Math.round(span / 2);
+    for (let i = 0; i < 3; i++) {
+      const frac = [0.33, 0.66, 1.0][i];
+      const rrPx = Math.min(w, h) * 0.42 * frac;
+      const label = Math.round(ringUnits * frac) + 'u';
+      g.fillText(label, w / 2 + rrPx + 4, h / 2);
+    }
+
+    // Empty-space reassurance
+    if (model.contacts.length === 0 && model.ownership.length === 0 && model.bearings.length === 0) {
+      g.save();
+      g.fillStyle = 'rgba(120,145,175,0.45)';
+      g.font = '11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText('CLEAR SKIES — no local contacts', w / 2, h / 2 + 30);
+      g.restore();
+    }
+
     // Player-owned bases remain labeled at local scale and can arm autopilot with a pointer action.
     for (const marker of model.ownership) {
       const x = sx(marker.x), y = sz(marker.z);
@@ -3909,7 +4261,65 @@ function drawUniqueWreckBearingMarker(g, x, y, radiusPx, options = {}) {
   g.restore();
 }
 
-// hexToRgba utility
+// glyph helpers
+function hazardTypeGlyph(type) {
+  switch (type) {
+    case 'radiation': return '☢';
+    case 'nebula': return '✦';
+    case 'dense_asteroid': return '◈';
+    case 'debris': return '⚙';
+    default: return '!';
+  }
+}
+
+function asteroidOreGlyph(typeId) {
+  switch (typeId) {
+    case 'ast_metallic': return 'Fe';
+    case 'ast_icy': return 'H₂O';
+    case 'ast_crystalline': return 'Cr';
+    case 'ast_gas_cloud': return 'Gas';
+    case 'ast_rare_exotic': return 'Xe';
+    default: return 'Si';
+  }
+}
+
+function serviceGlyph(service) {
+  switch (String(service || '').toLowerCase()) {
+    case 'trade': return '$';
+    case 'shipyard': return '⚙';
+    case 'refuel': return '⛽';
+    case 'repair': return '🔧';
+    case 'missions': return '!';
+    case 'ore_buy': return '◈';
+    case 'refine': return '♨';
+    case 'black_market': return '⚠';
+    case 'module_craft': return '✚';
+    case 'toll': return 'T';
+    case 'scan': return 'S';
+    default: return String(service || '?')[0].toUpperCase();
+  }
+}
+
+function drawServiceGlyphs(g, cx, cy, services) {
+  if (!g || !services || !services.length) return;
+  const size = 10, gap = 3;
+  const totalW = services.length * size + (services.length - 1) * gap;
+  let x = cx - totalW / 2 + size / 2;
+  g.save();
+  g.font = 'bold 8px sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  for (const svc of services) {
+    g.fillStyle = 'rgba(4,8,16,0.85)';
+    g.strokeStyle = 'rgba(57,208,255,0.45)';
+    g.beginPath(); g.rect(x - size / 2, cy - size / 2, size, size); g.fill(); g.stroke();
+    g.fillStyle = '#cfe3ff';
+    g.fillText(serviceGlyph(svc), x, cy + 0.5);
+    x += size + gap;
+  }
+  g.restore();
+}
+
 function hexToRgba(hex, alpha) {
   const s = String(hex || '').replace('#', '');
   if (s.length !== 6) return 'rgba(136,153,170,' + alpha + ')';
