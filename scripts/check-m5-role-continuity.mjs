@@ -226,6 +226,41 @@ function boot() {
 }
 
 // ---------------------------------------------------------------------------
+// Shipyard transition visibility — docked role changes wait until the public undock boundary
+// ---------------------------------------------------------------------------
+{
+  const ctx = boot();
+  const { state, bus, roleContexts, toasts, ships: shipsSys } = ctx;
+  state.mode = 'flight';
+  shipsSys.newGame();
+  installPlayerEntity(state);
+  assert.equal(briefingToasts(toasts).length, 1, 'starter briefing surfaces in playable flight');
+
+  state.ui.docked = true;
+  assert.equal(shipsSys.buyShip({ defId: 'ship_wasp', grant: true, setActive: false }), true);
+  bus.emit('ui:setActiveShip', { index: 1 });
+  assert.equal(state.player.activeShipIndex, 1, 'public Shipworks intent activates the owned hull while docked');
+  assert.equal(roleContexts.at(-1).source, 'active_ship_changed');
+  assert.equal(briefingToasts(toasts).length, 1,
+    'docked hull switch must not spend its five-second briefing behind the station modal');
+  assert.equal(ctx.presentationAdapters.inspect().pendingRoleBriefingSource, 'active_ship_changed');
+
+  bus.emit('dock:undocked', {});
+  await Promise.resolve();
+  assert.equal(briefingToasts(toasts).length, 1,
+    'committed undock keeps the briefing pending during the canonical launch fade');
+  state.ui.docked = false;
+  await new Promise((resolve) => setTimeout(resolve, 475));
+  assert.equal(briefingToasts(toasts).length, 2, 'undock surfaces exactly one deferred role briefing');
+  assert.match(briefingToasts(toasts).at(-1).text, /Wasp active.*Light Fighter/i);
+  assert.equal(ctx.presentationAdapters.inspect().pendingRoleBriefingSource, null);
+
+  bus.emit('dock:undocked', {});
+  await Promise.resolve();
+  assert.equal(briefingToasts(toasts).length, 2, 'repeated undock cannot replay a consumed briefing');
+}
+
+// ---------------------------------------------------------------------------
 // Missing / legacy role fallback
 // ---------------------------------------------------------------------------
 {

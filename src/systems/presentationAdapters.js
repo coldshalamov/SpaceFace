@@ -131,6 +131,7 @@ export const presentationAdapters = {
     this._lastApplied = null;
     this._lastRoleBriefingKey = null;
     this._pendingRoleBriefing = null;
+    this._pendingRoleUndockTimer = null;
     this._roleBriefings = 0;
     this._subscriptions = [
       this.bus.on('presentation:cue', (cue) => this._applyCue(cue || {})),
@@ -138,6 +139,7 @@ export const presentationAdapters = {
       this.bus.on('ship:roleContext', (context) => this._onShipRoleContext(context || {})),
       this.bus.on('mode:changed', ({ mode } = {}) => this._onModeChanged(mode)),
       this.bus.on('game:started', () => this._onGameStarted()),
+      this.bus.on('dock:undocked', () => this._onDockUndocked()),
       this.bus.on('save:loaded', () => this._resetRuntime()),
     ];
   },
@@ -149,6 +151,8 @@ export const presentationAdapters = {
     }
     this._lastRoleBriefingKey = null;
     this._pendingRoleBriefing = null;
+    if (this._pendingRoleUndockTimer != null) clearTimeout(this._pendingRoleUndockTimer);
+    this._pendingRoleUndockTimer = null;
   },
 
   inspect() {
@@ -199,7 +203,7 @@ export const presentationAdapters = {
     // Hold only that transition-time packet. Continue can surface at mode:changed(flight); New Game
     // waits until game:started has finished so the UI's run-boundary reset cannot erase the toast.
     // A later packet replaces an abandoned transition.
-    if (this.state && this.state.mode === 'loading') {
+    if (this.state && (this.state.mode === 'loading' || this.state.ui?.docked === true)) {
       this._pendingRoleBriefing = { ...context };
       return null;
     }
@@ -223,6 +227,33 @@ export const presentationAdapters = {
     // game:started consumer has reset its surface, then publish the one player-visible briefing.
     queueMicrotask(() => {
       if (this.bus && this.state && this.state.mode === 'flight') this._surfaceRoleBriefing(pending);
+    });
+    return pending;
+  },
+
+  _onDockUndocked() {
+    if (!this._pendingRoleBriefing || this._pendingRoleBriefing.source !== 'active_ship_changed') {
+      return null;
+    }
+    const pending = this._pendingRoleBriefing;
+    const surfaceAfterStationCloses = () => {
+      if (!this.bus || !this.state || this._pendingRoleBriefing !== pending) return;
+      if (this.state.mode !== 'flight' || this.state.ui?.docked === true) return;
+      this._pendingRoleBriefing = null;
+      this._pendingRoleUndockTimer = null;
+      this._surfaceRoleBriefing(pending);
+    };
+    // uiRoot commits the screen swap after its 400 ms launch fade. Wait beyond that canonical
+    // boundary before starting the five-second briefing clock; otherwise the toast expires behind
+    // the still-opaque station screen. Immediate delivery remains available to headless consumers.
+    queueMicrotask(() => {
+      if (!this.bus || !this.state || this._pendingRoleBriefing !== pending) return;
+      if (this.state.ui?.docked !== true) {
+        surfaceAfterStationCloses();
+        return;
+      }
+      if (this._pendingRoleUndockTimer != null) clearTimeout(this._pendingRoleUndockTimer);
+      this._pendingRoleUndockTimer = setTimeout(surfaceAfterStationCloses, 450);
     });
     return pending;
   },

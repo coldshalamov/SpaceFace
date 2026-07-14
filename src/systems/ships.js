@@ -504,6 +504,7 @@ export const ships = {
 
     // UI intent events (§4.4): the UI emits these; ships owns the mutation + credit emits.
     bus.on('ui:buyShip', (p) => this.buyShip(p || {}));
+    bus.on('ui:setActiveShip', (p) => this.setActiveShip(p && p.index));
     bus.on('ui:buyModule', (p) => this.buyModule(p || {}));
     bus.on('ui:fitModule', (p) => this.fitModule(p || {}));
     bus.on('ui:unfitModule', (p) => this.unfitModule(p || {}));
