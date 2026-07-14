@@ -308,6 +308,37 @@ export function mapTargetPriority(target) {
   return 10;
 }
 
+/** Keep the exact active navigation goal in the physically reachable part of filtered search. */
+export function mapSearchTargetPriority(state, target) {
+  if (!target) return -1;
+  const waypoint = state && state.nav && state.nav.waypoint;
+  const targetEntityId = target.entityId ?? target.targetEntityId ?? target.id;
+  if (waypoint && waypoint.targetEntityId != null
+    && String(targetEntityId) === String(waypoint.targetEntityId)) return 1_000;
+  const trackedMissionId = state && state.ui && state.ui.trackedMissionId;
+  const trackedMission = trackedMissionId && state.missions && Array.isArray(state.missions.active)
+    ? state.missions.active.find((mission) => mission && mission.status === 'active' && mission.id === trackedMissionId)
+    : null;
+  if (trackedMission && Array.isArray(trackedMission.targetEntityIds)
+    && trackedMission.targetEntityIds.some((id) => String(id) === String(targetEntityId))) return 950;
+  const trackedPos = trackedMission && trackedMission.params && trackedMission.params.samplePos;
+  if (trackedPos && Number.isFinite(target.x) && Number.isFinite(target.z)
+    && Math.hypot(target.x - trackedPos.x, target.z - trackedPos.z) <= 0.5) return 925;
+  const goal = activeMapGoal(state);
+  if (goal && goal.pos && Number.isFinite(target.x) && Number.isFinite(target.z)
+    && Math.hypot(target.x - goal.pos.x, target.z - goal.pos.z) <= 0.5) return 900;
+  return mapTargetPriority(target);
+}
+
+function compareMapSearchTargetDistance(a, b, anchor) {
+  if (!anchor) return 0;
+  const aDistance = a && Number.isFinite(a.x) && Number.isFinite(a.z)
+    ? Math.hypot(a.x - anchor.x, a.z - anchor.z) : null;
+  const bDistance = b && Number.isFinite(b.x) && Number.isFinite(b.z)
+    ? Math.hypot(b.x - anchor.x, b.z - anchor.z) : null;
+  return Number.isFinite(aDistance) && Number.isFinite(bDistance) ? aDistance - bDistance : 0;
+}
+
 /**
  * Resolve the one player-owned navigation goal independently of ambient mission destinations.
  * The result is presentation-only and deterministic; map drawing never mutates nav/mission state.
@@ -1993,6 +2024,25 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null) {
   }
   // 3. Contacts
   if (level === 'local') {
+    // The active objective marker is a first-class searchable target. Its label can be more
+    // specific than the underlying entity name (for example, the 47-A recovery rock), so merely
+    // searching the ambient contact list can never resolve the exact marker the canvas exposes.
+    const goal = activeMapGoal(state);
+    const waypoint = state && state.nav && state.nav.waypoint;
+    if (goal && goal.pos) {
+      targets.push({
+        id: goal.id,
+        name: goal.label,
+        kind: 'waypoint',
+        x: goal.pos.x,
+        z: goal.pos.z,
+        targetEntityId: waypoint && waypoint.targetEntityId != null ? waypoint.targetEntityId : null,
+        missionId: goal.missionId,
+        objective: true,
+        markerKind: goal.markerKind,
+        detail: 'Active objective · Navigation fix',
+      });
+    }
     const localModel = buildLocalModel(state, null, { claimsSystem });
     for (const c of localModel.contacts) {
       targets.push({
@@ -2222,7 +2272,13 @@ export const galaxyMapScreen = {
         currentSectorId(this._ctx.state),
         this._claimsSystem(),
       );
-      const filtered = targets.filter(t => t.name.toLowerCase().includes(q));
+      const searchGoal = activeMapGoal(state);
+      const searchPlayer = playerEntity(state);
+      const searchAnchor = (searchGoal && searchGoal.pos) || (searchPlayer && searchPlayer.pos) || null;
+      const filtered = targets
+        .filter((t) => String(t.searchText || t.name || '').toLowerCase().includes(q))
+        .sort((a, b) => mapSearchTargetPriority(state, b) - mapSearchTargetPriority(state, a)
+          || compareMapSearchTargetDistance(a, b, searchAnchor));
 
       if (filtered.length === 0) {
         resultsContainer.innerHTML = '<div class="gm-search-item" style="color:var(--ink-mute); font-style:italic;">No results found</div>';
