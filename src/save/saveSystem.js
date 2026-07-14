@@ -755,10 +755,7 @@ export const save = {
 
   /** Browser task/idle boundary. Tests replace this method with a deterministic queue. */
   _scheduleAutosaveWork(callback, retry = false) {
-    if (retry || typeof requestIdleCallback !== 'function') {
-      return setTimeout(callback, retry ? 120 : 0);
-    }
-    return requestIdleCallback(callback, { timeout: 250 });
+    return setTimeout(callback, retry ? 120 : 0);
   },
 
   _flushAutosave(job) {
@@ -1008,12 +1005,34 @@ export const save = {
       return false;
     }
     if (encoder.settled) return false;
+    // Batch multiple encode_part posts in one scheduled callback while the synchronous wall stays
+    // under AUTOSAVE_TARGET_SLICE_MS. Always post at least one key; defer encode_finish when the
+    // current task has already consumed the next post's observed headroom.
+    // Never relax AUTOSAVE_HARD_SLICE_MS — a single oversized clone still reports raw telemetry.
     const started = workNowMs();
+    let posted = 0;
+    let lastPostMs = 0;
     try {
-      const [key, value] = encoder.entries[encoder.index++];
-      encoder.worker.postMessage({ id: encoder.id, type: 'encode_part', payload: { key, value } });
-      if (encoder.index >= encoder.entries.length) {
-        encoder.worker.postMessage({ id: encoder.id, type: 'encode_finish' });
+      while (encoder.index < encoder.entries.length) {
+        const elapsed = workNowMs() - started;
+        // Reserve the last observed structured-clone cost before starting another post. Checking
+        // elapsed alone can admit two stable 6ms posts and turn an 8ms-target task into a >12ms one.
+        if (posted > 0 && elapsed + lastPostMs >= AUTOSAVE_TARGET_SLICE_MS) break;
+        const [key, value] = encoder.entries[encoder.index++];
+        const postStarted = workNowMs();
+        encoder.worker.postMessage({ id: encoder.id, type: 'encode_part', payload: { key, value } });
+        lastPostMs = workNowMs() - postStarted;
+        posted++;
+      }
+      if (encoder.index >= encoder.entries.length && !encoder.finishPosted) {
+        const elapsed = workNowMs() - started;
+        if (posted > 0 && elapsed + lastPostMs >= AUTOSAVE_TARGET_SLICE_MS) {
+          encoder.finishPending = true;
+        } else {
+          encoder.worker.postMessage({ id: encoder.id, type: 'encode_finish' });
+          encoder.finishPosted = true;
+          encoder.finishPending = false;
+        }
       }
     } catch (error) {
       const errorSliceMs = workNowMs() - started;
@@ -1024,8 +1043,9 @@ export const save = {
     }
     const sliceMs = workNowMs() - started;
     capture.workerDispatchMs += sliceMs;
-    this._pushAutosaveSlice(capture, 'encode_part_dispatch', sliceMs);
-    if (encoder.index < encoder.entries.length) {
+    this._pushAutosaveSlice(capture,
+      posted > 0 ? 'encode_part_dispatch' : 'encode_finish_dispatch', sliceMs);
+    if (encoder.index < encoder.entries.length || encoder.finishPending) {
       this._scheduleAutosaveWork(() => this._postAutosaveEncodeParts(job, capture, encoder, fail));
     }
     return true;
@@ -1254,22 +1274,50 @@ export const save = {
       let offset = 0;
       const postNextChunk = () => {
         if (settled) return;
+        // Bounded multi-chunk batch: keep posting validate_part while under the 8ms target so a
+        // large previous/readback envelope does not spend one hop per 8KB under main-thread load.
         const started = workNowMs();
         try {
-          if (offset < payload.raw.length) {
+          let postedParts = 0;
+          let lastPartMs = 0;
+          while (offset < payload.raw.length) {
+            const elapsed = workNowMs() - started;
+            if (postedParts > 0 && elapsed + lastPartMs >= AUTOSAVE_TARGET_SLICE_MS) break;
             const end = Math.min(payload.raw.length, offset + SAVE_VALIDATION_CHUNK_CHARS);
+            const partStarted = workNowMs();
             worker.postMessage({
               id,
               type: 'validate_part',
               payload: { chunk: payload.raw.slice(offset, end) },
             });
+            lastPartMs = workNowMs() - partStarted;
             offset = end;
+            postedParts++;
+          }
+          if (offset < payload.raw.length) {
             recordSlice('validate_chunk_dispatch', started);
             this._scheduleAutosaveWork(postNextChunk);
-          } else {
-            worker.postMessage({ id, type: 'validate_finish' });
-            recordSlice('validate_finish_dispatch', started);
+            return;
           }
+          const elapsed = workNowMs() - started;
+          if (postedParts > 0
+            && elapsed + lastPartMs >= AUTOSAVE_TARGET_SLICE_MS) {
+            recordSlice('validate_chunk_dispatch', started);
+            this._scheduleAutosaveWork(() => {
+              if (settled) return;
+              const finishStarted = workNowMs();
+              try {
+                worker.postMessage({ id, type: 'validate_finish' });
+                recordSlice('validate_finish_dispatch', finishStarted);
+              } catch (error) {
+                recordSlice('validate_dispatch_error', finishStarted);
+                finish(onFailure, error);
+              }
+            });
+            return;
+          }
+          worker.postMessage({ id, type: 'validate_finish' });
+          recordSlice(postedParts > 0 ? 'validate_chunk_dispatch' : 'validate_finish_dispatch', started);
         } catch (error) {
           recordSlice('validate_dispatch_error', started);
           finish(onFailure, error);

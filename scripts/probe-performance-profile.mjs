@@ -359,6 +359,7 @@ async function sampleRuntime(cdp, durationMs) {
     const rafFrames = [];
     const samples = [];
     const heapSamples = [];
+    const AUTOSAVE_SETTLE_TIMEOUT_MS = 5000;
     const autosaveProbe = {
       enabled: ${JSON.stringify(AUTOSAVE_PROBE)},
       triggerAtMs: ${JSON.stringify(AUTOSAVE_PROBE_AT_MS)},
@@ -366,12 +367,17 @@ async function sampleRuntime(cdp, durationMs) {
       requestAtMs: null,
       requestReturned: null,
       requestCallMs: null,
+      settled: null,
+      settleWaitMs: null,
       events: [],
       errors: [],
     };
     let lastRaf = null;
-    let settled = false;
+    let sampleEnded = false;
+    let resolved = false;
     let intervalId = null;
+    let settleTimerId = null;
+    let hardSettleTimerId = null;
     let lastDiagAt = -Infinity;
     let unsubSaveCompleted = null;
     let unsubSaveError = null;
@@ -400,9 +406,11 @@ async function sampleRuntime(cdp, durationMs) {
     if (autosaveProbe.enabled && window.SF && window.SF.bus && typeof window.SF.bus.on === 'function') {
       unsubSaveCompleted = window.SF.bus.on('save:completed', (payload = {}) => {
         autosaveProbe.events.push({ event: 'save:completed', atMs: performance.now() - started, ...payload });
+        if (sampleEnded) tryResolveAfterAutosave();
       });
       unsubSaveError = window.SF.bus.on('save:error', (payload = {}) => {
         autosaveProbe.errors.push({ event: 'save:error', atMs: performance.now() - started, ...payload });
+        if (sampleEnded) tryResolveAfterAutosave();
       });
     }
 
@@ -711,10 +719,35 @@ async function sampleRuntime(cdp, durationMs) {
       return stats;
     };
 
-    const finish = () => {
-      if (settled) return;
-      settled = true;
+    const hasTerminalAutosave = () => {
+      const completed = autosaveProbe.events.some((event) => (
+        event && event.event === 'save:completed' && (event.autosave || event.slot === 'auto')
+      ));
+      const errored = autosaveProbe.errors.some((event) => event && event.event === 'save:error');
+      return completed || errored;
+    };
+
+    const autosaveStillInFlight = () => {
+      if (!autosaveProbe.enabled || !autosaveProbe.requested || !autosaveProbe.requestReturned) return false;
+      if (hasTerminalAutosave()) return false;
+      try {
+        const sf = window.SF || null;
+        const saveSystem = sf && sf.registry && typeof sf.registry.get === 'function'
+          ? sf.registry.get('save')
+          : null;
+        if (saveSystem && (saveSystem._autosaveInFlight || saveSystem._autosavePending)) return true;
+      } catch (_) { /* fall through to event-based in-flight inference */ }
+      return true;
+    };
+
+    let settleStartedAt = null;
+    const finalize = () => {
+      if (resolved) return;
+      resolved = true;
+      sampleEnded = true;
       if (intervalId != null) clearInterval(intervalId);
+      if (settleTimerId != null) clearTimeout(settleTimerId);
+      if (hardSettleTimerId != null) clearTimeout(hardSettleTimerId);
       if (typeof unsubSaveCompleted === 'function') unsubSaveCompleted();
       if (typeof unsubSaveError === 'function') unsubSaveError();
       if (longTaskObserver) {
@@ -737,22 +770,74 @@ async function sampleRuntime(cdp, durationMs) {
       });
     };
 
+    const tryResolveAfterAutosave = () => {
+      if (!sampleEnded || resolved) return;
+      if (hasTerminalAutosave()) {
+        autosaveProbe.settled = true;
+        autosaveProbe.settleWaitMs = settleStartedAt == null
+          ? 0
+          : Math.max(0, performance.now() - settleStartedAt);
+        finalize();
+        return;
+      }
+      if (!autosaveStillInFlight()) {
+        autosaveProbe.settled = hasTerminalAutosave();
+        autosaveProbe.settleWaitMs = settleStartedAt == null
+          ? 0
+          : Math.max(0, performance.now() - settleStartedAt);
+        finalize();
+      }
+    };
+
+    const endSample = () => {
+      if (sampleEnded) return;
+      sampleEnded = true;
+      if (intervalId != null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      pushDiag(true);
+      // Keep save bus listeners alive until a terminal receipt or hard settle timeout. The sample
+      // window alone can end while encode/validate hops are still in flight after requestAutosave.
+      if (autosaveProbe.enabled && autosaveProbe.requested && autosaveProbe.requestReturned
+        && !hasTerminalAutosave() && autosaveStillInFlight()) {
+        settleStartedAt = performance.now();
+        hardSettleTimerId = setTimeout(() => {
+          if (resolved) return;
+          autosaveProbe.settled = hasTerminalAutosave();
+          autosaveProbe.settleWaitMs = Math.max(0, performance.now() - settleStartedAt);
+          finalize();
+        }, AUTOSAVE_SETTLE_TIMEOUT_MS);
+        const poll = () => {
+          if (resolved) return;
+          tryResolveAfterAutosave();
+          if (!resolved) settleTimerId = setTimeout(poll, 16);
+        };
+        settleTimerId = setTimeout(poll, 0);
+        return;
+      }
+      autosaveProbe.settled = !autosaveProbe.enabled || !autosaveProbe.requested
+        || !autosaveProbe.requestReturned || hasTerminalAutosave();
+      autosaveProbe.settleWaitMs = 0;
+      finalize();
+    };
+
     const step = (now) => {
-      if (settled) return;
+      if (sampleEnded || resolved) return;
       if (lastRaf != null) rafFrames.push(now - lastRaf);
       lastRaf = now;
       const elapsed = performance.now() - started;
       maybeTriggerAutosave(elapsed);
       pushDiag();
       if (elapsed >= ${JSON.stringify(durationMs)}) {
-        finish();
+        endSample();
       } else {
         requestAnimationFrame(step);
       }
     };
     pushDiag(true);
     intervalId = setInterval(pushDiag, ${JSON.stringify(RUNTIME_SAMPLE_MS)});
-    setTimeout(finish, ${JSON.stringify(durationMs)} + 100);
+    setTimeout(endSample, ${JSON.stringify(durationMs)} + 100);
     requestAnimationFrame(step);
   })`);
 }
@@ -2273,6 +2358,8 @@ function autosaveSummary(probe, perf) {
     requestAtMs: round(probe && probe.requestAtMs),
     requestReturned: probe ? probe.requestReturned : null,
     requestCallMs: round(probe && probe.requestCallMs),
+    settled: probe ? probe.settled : null,
+    settleWaitMs: round(probe && probe.settleWaitMs),
     completedCount: completed.length,
     errorCount: errors.length,
     durationMs: seriesStats(durations),

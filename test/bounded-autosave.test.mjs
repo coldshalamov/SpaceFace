@@ -672,6 +672,7 @@ test('production snapshot completes during 120+ continuously advancing scheduled
     advanceTickEveryScheduledTurn: true,
     trackProductionSerializers: true,
     serializerFloorMs: 0.12,
+    cloneFloorMs: 4.2,
   });
   try {
     const old = encodeSavePayload({
@@ -687,6 +688,8 @@ test('production snapshot completes during 120+ continuously advancing scheduled
 
     assert.ok(h.scheduledTurns >= 120,
       `fixture must exercise at least 120 tick-advancing task boundaries, got ${h.scheduledTurns}`);
+    assert.ok(h.tickAdvances >= 120,
+      `ticks must advance across scheduled hops, got ${h.tickAdvances}`);
     const completed = h.events.find((event) => event.name === 'save:completed');
     assert.ok(completed,
       `live-tick autosave must terminate; events=${JSON.stringify(h.events.filter((event) => event.name.startsWith('save:')))}`);
@@ -796,6 +799,16 @@ test('crowded-flight probe enforces the save system 12ms serializer and capture-
   );
   assert.match(
     PERF_PROBE_SOURCE,
+    /budget\('autosave\.maxBlockingSlice\.max',[\s\S]{0,240}AUTOSAVE_DURATION_BUDGET_MS/,
+    'crowded flight must fail when any autosave browser task exceeds 12ms',
+  );
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /budget\('autosave\.requestCall\.max',[\s\S]{0,240}AUTOSAVE_DURATION_BUDGET_MS/,
+    'crowded flight must fail when requestAutosave blocks past 12ms',
+  );
+  assert.match(
+    PERF_PROBE_SOURCE,
     /budget\('autosave\.captureLongTasks\.max',[\s\S]{0,240}'<=',\s*0/,
     'crowded flight must reject a main-thread long task overlapping autosave capture',
   );
@@ -819,4 +832,166 @@ test('crowded-flight probe enforces the save system 12ms serializer and capture-
     /captureLongTaskCount:\s*autosaveCaptureLongTasks\.length/,
     'autosave summary must expose capture-overlapping long-task count',
   );
+});
+
+test('production scheduler prefers prompt hops and never arms a 250ms idle deadline per work item', () => {
+  const source = fs.readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
+  assert.match(
+    source,
+    /_scheduleAutosaveWork\s*\(\s*callback\s*,\s*retry\s*=\s*false\s*\)\s*\{[\s\S]*?return setTimeout\(callback,\s*retry \? 120 : 0\);/,
+    'production autosave hops must use prompt setTimeout(0) scheduling (retry keeps 120ms backoff)',
+  );
+  assert.doesNotMatch(
+    source,
+    /requestIdleCallback\s*\(\s*callback\s*,\s*\{\s*timeout:\s*250\s*\}\s*\)/,
+    'per-hop requestIdleCallback({timeout:250}) starves encode under crowded-flight pressure and is forbidden',
+  );
+  assert.match(
+    source,
+    /AUTOSAVE_TARGET_SLICE_MS\s*=\s*8/,
+    'target slice budget must remain 8ms',
+  );
+  assert.match(
+    source,
+    /AUTOSAVE_HARD_SLICE_MS\s*=\s*12/,
+    'hard slice budget must remain 12ms and must never be relaxed',
+  );
+  assert.match(
+    source,
+    /while \(encoder\.index < encoder\.entries\.length\)[\s\S]{0,400}AUTOSAVE_TARGET_SLICE_MS/,
+    'encode_part dispatch must batch multiple keys per scheduled callback under the 8ms target',
+  );
+  assert.match(
+    source,
+    /while \(offset < payload\.raw\.length\)[\s\S]{0,400}AUTOSAVE_TARGET_SLICE_MS/,
+    'validation dispatch must batch multiple chunks per scheduled callback under the 8ms target',
+  );
+});
+
+test('batched encode_part dispatch uses far fewer schedule turns than save keys while still completing', () => {
+  const h = autosaveHarness({ productionCapture: true });
+  try {
+    assert.equal(save.requestAutosave('batched_encode', { force: true }), true);
+    // Pump only through encode scheduling: stop once worker encode finishes (transaction begins
+    // or terminal receipt). Count encode-phase scheduled turns separately from full drain.
+    let encodeScheduleTurns = 0;
+    const encodePhaseLimit = 200;
+    for (let turn = 0; turn < encodePhaseLimit; turn++) {
+      if (save._activeAutosaveTransaction || h.events.some((event) => (
+        event.name === 'save:completed' || event.name === 'save:error'
+      ))) break;
+      if (h.tasks.length) {
+        encodeScheduleTurns++;
+        h.tasks.shift()();
+      }
+      if (h.workerTasks.length) h.workerTasks.shift()();
+      if (!h.tasks.length && !h.workerTasks.length
+        && !save._activeAutosaveTransaction
+        && !h.events.some((event) => event.name === 'save:completed' || event.name === 'save:error')) {
+        // allow microtask/timeout-driven progress in harness via drain step
+        h.step();
+      }
+    }
+    h.drain();
+    const completed = h.events.find((event) => event.name === 'save:completed');
+    assert.ok(completed, 'batched encode path must complete');
+    const keyCount = completed.payload.serializerTimings.length;
+    assert.ok(keyCount >= 29, `production capture should expose many keys, got ${keyCount}`);
+    // Pre-repair: one hop per key plus setup ≈ keyCount+. Batched path must stay well under that.
+    assert.ok(
+      h.scheduledTurns < keyCount,
+      `total scheduled turns (${h.scheduledTurns}) must be below capture key count (${keyCount}) after batching`,
+    );
+    assert.ok(
+      encodeScheduleTurns < keyCount,
+      `encode-phase schedule turns (${encodeScheduleTurns}) must be below key count (${keyCount})`,
+    );
+    assert.ok(
+      encodeScheduleTurns <= Math.ceil(keyCount / 2) + 4,
+      `encode-phase schedule turns should be a small batch count, got ${encodeScheduleTurns} for ${keyCount} keys`,
+    );
+    assert.equal(completed.payload.observedHardLimitMet, true,
+      'batched encode must still meet the raw 12ms hard limit when posts are cheap');
+    assert.equal(completed.payload.hardSliceMs, 12);
+    assert.equal(completed.payload.targetSliceMs, 8);
+    assertCanonicalSaveData(h.storage.getItem('sf.save.auto'));
+  } finally { h.restore(); }
+});
+
+test('batched worker dispatch yields before repeated clone posts can cross the 12ms hard slice', () => {
+  const h = autosaveHarness({ productionCapture: true, cloneFloorMs: 6.2 });
+  try {
+    assert.equal(save.requestAutosave('bounded_clone_headroom', { force: true }), true);
+    h.drain(500);
+    const completed = h.events.find((event) => event.name === 'save:completed');
+    assert.ok(completed, 'cost-aware encode and validation batches must still complete');
+    const batchedDispatches = completed.payload.blockingSamples.filter(({ phase }) => (
+      phase === 'encode_part_dispatch'
+      || phase.endsWith('validate_chunk_dispatch')
+      || phase.endsWith('validate_finish_dispatch')
+    ));
+    assert.ok(batchedDispatches.length > 4,
+      `fixture must exercise repeated worker dispatch tasks; got ${JSON.stringify(batchedDispatches)}`);
+    assert.equal(completed.payload.observedHardLimitMet, true,
+      `repeated clone posts must yield before crossing 12ms; ${JSON.stringify(batchedDispatches)}`);
+    assert.ok(batchedDispatches.every(({ ms }) => ms <= completed.payload.hardSliceMs),
+      `every batched worker dispatch must remain within the raw hard slice; ${JSON.stringify(batchedDispatches)}`);
+    assertCanonicalSaveData(h.storage.getItem('sf.save.auto'));
+  } finally { h.restore(); }
+});
+
+test('crowded-flight probe keeps listeners and records settle wait for in-flight autosave', () => {
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /AUTOSAVE_SETTLE_TIMEOUT_MS\s*=\s*5000/,
+    'probe must arm a hard settle timeout after the sample window',
+  );
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /settled:\s*null/,
+    'autosaveProbe must expose a settled field',
+  );
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /settleWaitMs:\s*null/,
+    'autosaveProbe must expose settleWaitMs',
+  );
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /settled:\s*probe \? probe\.settled : null/,
+    'autosaveSummary must surface settled from the probe',
+  );
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /settleWaitMs:\s*round\(probe && probe\.settleWaitMs\)/,
+    'autosaveSummary must surface settleWaitMs from the probe',
+  );
+  // Sample end must not immediately unsubscribe when a requested autosave is still in flight.
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /autosaveStillInFlight[\s\S]{0,1200}hardSettleTimerId\s*=\s*setTimeout/,
+    'endSample must wait on an in-flight autosave with a hard settle timer before tearing down',
+  );
+  assert.match(
+    PERF_PROBE_SOURCE,
+    /if \(sampleEnded\) tryResolveAfterAutosave\(\)/,
+    'terminal save bus listeners must remain active after the sample window to capture completion',
+  );
+  assert.doesNotMatch(
+    PERF_PROBE_SOURCE,
+    /const finish = \(\) => \{\s*if \(settled\) return;\s*settled = true;[\s\S]{0,200}unsubSaveCompleted/,
+    'legacy finish-that-unsubscribes-immediately-at-window-end must not remain',
+  );
+});
+
+test('a raw wall observation above 12ms fails the hard budget flag (adversarial)', () => {
+  const timing = save._saveTiming({
+    slot: 'auto', reason: 'hard_fail_contract', autosave: true, started: performance.now(),
+    blockingSamples: [{ phase: 'encode_part_dispatch', ms: 12.5 }],
+  });
+  assert.equal(timing.hardSliceMs, 12);
+  assert.equal(timing.maxBlockingSliceMs, 12.5);
+  assert.equal(timing.observedHardLimitMet, false,
+    'any raw slice >12ms must fail observedHardLimitMet; batching must not relax this gate');
+  assert.equal(timing.observedTargetMet, false);
 });
