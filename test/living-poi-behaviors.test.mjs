@@ -13,6 +13,8 @@ import {
   poiBehaviorFingerprint,
 } from '../src/systems/livingPoiBehaviors.js';
 import { SECTORS } from '../src/data/sectors.js';
+import { sectorGlobalOrigin, sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { voiceArbiter } from '../src/ui/voiceArbiter.js';
 
 const SYNTHETIC_ZONES = Object.freeze([
   { id: 'yard-a', name: 'Licensed Yard', type: 'civilian_core', factionId: 'faction_scn', center: { x: 0, z: 0 }, radius: 400, threat: 0 },
@@ -82,14 +84,20 @@ test('catalog exposes exactly six distinct, solvable behavior grammars', () => {
   ]);
   const verbs = new Set();
   const aftermath = new Set();
+  const risks = new Set();
+  const rewards = new Set();
   for (const id of POI_FAMILY_IDS) {
     const family = POI_BEHAVIOR_FAMILIES[id];
     assert.equal(validatePoiBehaviorFamily(family), true, id);
     assert.ok(family.entryLine.trim().split(/\s+/).length <= 12, `${id} entry line exceeds one-voice copy limit`);
     assert.equal(verbs.has(family.contract.verb), false, `${id} duplicates interaction grammar`);
     assert.equal(aftermath.has(family.aftermath.kind), false, `${id} duplicates aftermath grammar`);
+    assert.equal(risks.has(family.riskLabel), false, `${id} duplicates risk identity`);
+    assert.equal(rewards.has(family.rewardLabel), false, `${id} duplicates reward identity`);
     verbs.add(family.contract.verb);
     aftermath.add(family.aftermath.kind);
+    risks.add(family.riskLabel);
+    rewards.add(family.rewardLabel);
   }
   assert.deepEqual([...verbs].sort(), ['clear', 'dock', 'escort', 'mine', 'salvage', 'triangulate'],
     'the six families expose six physical player verbs');
@@ -100,13 +108,14 @@ function makeRouteSystem(seed = 137) {
   state.world.sectors = Object.fromEntries(SECTORS.map((sector) => [sector.id, sector]));
   state.world.currentSectorId = 'sector_ceres_belt';
   const bus = createBus();
+  const spoken = [];
   const emitted = [];
   const rawEmit = bus.emit;
   bus.emit = (event, payload) => { emitted.push({ event, payload }); return rawEmit(event, payload); };
   const system = Object.create(livingPoiBehaviors);
-  system.init({ state, bus, helpers: { voice: { say: () => true } } });
+  system.init({ state, bus, helpers: { voice: { say: (cue) => { spoken.push(cue); return true; } } } });
   system.newGame();
-  return { state, bus, emitted, system };
+  return { state, bus, emitted, spoken, system };
 }
 
 function planSnapshot(state) {
@@ -139,6 +148,21 @@ test('continuous destination identity activates a nonempty deterministic physica
   }
   assert.deepEqual(planSnapshot(first.state), planSnapshot(second.state),
     'same seed/sector/day produces stable IDs and fingerprints through continuous handoff');
+});
+
+test('off-origin plans expose global positions to scanner/course consumers', () => {
+  const { state, bus, emitted } = makeRouteSystem(173);
+  const sector = state.world.sectors.sector_ceres_belt;
+  bus.emit('sector:enter', { sectorId: sector.id, sector, continuous: true, noTeleport: true });
+  const row = Object.values(state.livingPoiBehaviors.activeByZone)[0];
+  const zone = SYNTHETIC_ZONES.find((candidate) => candidate.id === row.zoneId);
+  const expected = sectorLocalToGlobalForSector(row.zoneLocalCenter || zone?.center || row.zoneCenter, sector.id);
+  const planned = emitted.find((entry) => entry.event === 'poi:behaviorPlanned'
+    && entry.payload.behaviorId === row.behaviorId);
+
+  assert.notDeepEqual(sectorGlobalOrigin(sector.id), { x: 0, z: 0 }, 'fixture must exercise an off-origin sector');
+  assert.deepEqual(row.zoneCenter, expected, 'live row uses the global coordinate membrane');
+  assert.deepEqual(planned?.payload.pos, expected, 'public discovery/course readout uses the same global position');
 });
 
 test('duplicate same-sector same-day handoff keeps the live plan and emits nothing twice', () => {
@@ -220,6 +244,10 @@ test('away/return and Continue rebuild preserve same-day aftermath, receipts, en
   assert.equal(rebuilt.status, 'aftermath');
   assert.deepEqual(continued.state.livingPoiBehaviors.receipts, stable.receipts);
   assert.deepEqual(continued.state.livingPoiBehaviors.entered, stable.entered);
+  continued.bus.emit('world:zoneEntered', { zoneId: rebuilt.zoneId, type: rebuilt.zoneType, threat: rebuilt.threat });
+  assert.ok(continued.spoken.some((cue) => cue.id === `poi:${rebuilt.behaviorId}`
+    && cue.text.includes(POI_BEHAVIOR_FAMILIES[rebuilt.familyId].aftermath.kind.replaceAll('_', ' ').toUpperCase())),
+  'Continue rebuild surfaces the saved aftermath on physical return');
   assert.equal(emitted.some((entry) => entry.event === 'spawn:request' || entry.event === 'combat:fire'), false);
 });
 
@@ -255,18 +283,221 @@ test('high-security jurisdiction suppresses contested escalation and never autho
   assert.equal(rows.some((row) => row.spawnIntent || row.fireIntent || row.hostileOnEntry), false);
 });
 
-test('entry is one-voice, repeated entry is quiet, and map/radar receipts name the affordance', () => {
+test('entry is one voice with verb, risk, reward; repeated entry is quiet; readout names the affordance', () => {
   const { bus, spoken, emitted } = makeSystem();
   bus.emit('world:zoneEntered', { zoneId: 'yard-a', name: 'Licensed Yard', type: 'civilian_core', threat: 0 });
   bus.emit('world:zoneEntered', { zoneId: 'yard-a', name: 'Licensed Yard', type: 'civilian_core', threat: 0 });
   assert.equal(spoken.length, 1);
-  assert.equal(spoken[0].channel, 'news');
-  assert.ok(spoken[0].text.split(/\s+/).length <= 12);
+  assert.equal(spoken[0].channel, 'objective');
+  assert.equal(spoken[0].id, 'poi:poib:sector_test:lawful_station_yard:yard-a');
+  assert.match(spoken[0].text, /DOCK 0\/1/);
+  assert.match(spoken[0].text, /LAWFUL INSPECTION/);
+  assert.match(spoken[0].text, /LOCAL TRUST/);
   const read = emitted.find((row) => row.event === 'poi:behaviorReadout');
   assert.ok(read);
   assert.equal(read.payload.mapLabel, 'YARD CONTROL');
   assert.equal(read.payload.radarKind, 'lawful-yard');
   assert.equal(read.payload.affordance, 'dock');
+});
+
+test('approach, progress, outcome, and returned aftermath reach the standard one-voice seam', () => {
+  const { system, bus, state, spoken, emitted } = makeSystem(67);
+  const row = Object.values(state.livingPoiBehaviors.activeByZone)
+    .find((candidate) => candidate.familyId === 'mining_field');
+
+  bus.emit('world:zoneEntered', { zoneId: row.zoneId, type: row.zoneType, threat: row.threat });
+  const approach = emitted.find((entry) => entry.event === 'poi:behaviorGuidance'
+    && entry.payload.behaviorId === row.behaviorId && entry.payload.phase === 'approach');
+  assert.equal(approach?.payload.objective, row.contract.objective);
+  assert.ok(spoken.some((cue) => cue.id === `poi:${row.behaviorId}`
+    && cue.text.includes(row.mapLabel)
+    && cue.text.includes('MINE 0/3')
+    && cue.text.includes('ACTIVE CUTTING LANE')
+    && cue.text.includes('LOCAL ORE DEMAND')), 'approach has one compact action/risk/reward line');
+
+  for (let index = 0; index < row.contract.required; index++) {
+    bus.emit('mining:yield', {
+      commodityId: 'cmdty_ore_iron', qty: 1,
+      pos: { x: row.zoneCenter.x + index * 30, z: row.zoneCenter.z },
+    });
+  }
+  assert.ok(emitted.some((entry) => entry.event === 'poi:behaviorGuidance'
+    && entry.payload.phase === 'progress' && entry.payload.progress === 1));
+  assert.ok(emitted.some((entry) => entry.event === 'poi:behaviorGuidance'
+    && entry.payload.phase === 'outcome' && entry.payload.aftermathKind === 'worked_seam'));
+  assert.equal(new Set(spoken.map((cue) => cue.id)).size, 1,
+    'progress and outcome replace one arbiter slot instead of stacking stale lines');
+
+  system.planSector(SYNTHETIC_SECTOR.id, {
+    zones: SYNTHETIC_ZONES, sector: SYNTHETIC_SECTOR, dayIndex: 4,
+  });
+  bus.emit('world:zoneEntered', { zoneId: row.zoneId, type: row.zoneType, threat: row.threat });
+  assert.ok(emitted.some((entry) => entry.event === 'poi:behaviorGuidance'
+    && entry.payload.phase === 'aftermath' && entry.payload.aftermathKind === 'worked_seam'),
+  'returning to a resolved place visibly recalls its durable aftermath');
+  const aftermathCue = spoken.at(-1);
+  assert.equal(aftermathCue.text.match(/WORKED SEAM/g)?.length, 1,
+    'returned aftermath is not duplicated between the durable map label and toast copy');
+});
+
+test('real voice arbiter refreshes the visible floor when a live POI resolves under one stable id', () => {
+  const state = makeState(89);
+  const bus = createBus();
+  const helpers = {};
+  const arbiter = Object.create(voiceArbiter);
+  arbiter.init({ state, bus, helpers });
+  arbiter.newGame();
+  const system = Object.create(livingPoiBehaviors);
+  system.init({ state, bus, helpers });
+  system.newGame();
+  system.planSector(SYNTHETIC_SECTOR.id, {
+    zones: SYNTHETIC_ZONES, sector: SYNTHETIC_SECTOR, dayIndex: 4,
+  });
+  const row = Object.values(state.livingPoiBehaviors.activeByZone)
+    .find((candidate) => candidate.familyId === 'mining_field');
+  const surfaces = [];
+  bus.on('voice:surface', (payload) => surfaces.push(payload));
+
+  bus.emit('world:zoneEntered', { zoneId: row.zoneId, type: row.zoneType, threat: row.threat });
+  arbiter.update(1 / 60, state);
+  bus.emit('voice:say', {
+    id: 'campaign:sample-secured', channel: 'story', text: 'Sample secured. Dock at Helios.', ttl: 4,
+  });
+  for (let index = 0; index < row.contract.required; index++) {
+    bus.emit('mining:yield', {
+      zoneId: row.zoneId,
+      commodityId: 'cmdty_ore_iron',
+      qty: 1,
+      pos: { x: row.zoneCenter.x + index * 20, z: row.zoneCenter.z },
+    });
+  }
+  arbiter.update(1 / 60, state);
+  assert.match(surfaces.at(-1)?.text || '', /Sample secured/,
+    'same-tick campaign story correctly owns the higher-priority floor first');
+  state.simTime = 4.1;
+  arbiter.update(1 / 60, state);
+
+  assert.match(surfaces.at(-1)?.text || '', /WORKED SEAM/);
+  assert.match(surfaces.at(-1)?.text || '', /LOCAL ORE DEMAND/);
+  assert.equal(new Set(surfaces.filter((payload) => payload.id.startsWith('poi:'))
+    .map((payload) => payload.id)).size, 1,
+    'approach and outcome refresh one visible floor rather than stacking notifications');
+});
+
+test('lawful-yard completion is bound to the exact docked station', () => {
+  const { system, bus, state } = makeSystem(79);
+  const sector = {
+    ...SYNTHETIC_SECTOR,
+    stations: [
+      { id: 'station_aaa_unplaced', factionId: 'faction_scn', type: 'trade_hub' },
+      { id: 'station_far', factionId: 'faction_scn', type: 'trade_hub', pos: { x: 5000, z: 5000 } },
+      { id: 'station_yard_a', factionId: 'faction_scn', type: 'trade_hub', pos: { x: 0, z: 0 } },
+      { id: 'station_yard_b', factionId: 'faction_scn', type: 'trade_hub', pos: { x: 800, z: 0 } },
+    ],
+  };
+  state.world.sectors[sector.id] = sector;
+  const stationEntityById = new Map([
+    ['station_yard_a', { id: 101, type: 'station', pos: { x: 0, z: 0 }, data: { stationId: 'station_yard_a' } }],
+    ['station_yard_b', { id: 102, type: 'station', pos: { x: 800, z: 0 }, data: { stationId: 'station_yard_b' } }],
+    ['station_far', { id: 103, type: 'station', pos: { x: 5000, z: 5000 }, data: { stationId: 'station_far' } }],
+  ]);
+  for (const entity of stationEntityById.values()) state.entities.set(entity.id, entity);
+  state.entities.set(201, { id: 201, type: 'poi', pos: { x: 0, z: 0 }, data: {} });
+  state.world.activeSector = {
+    stations: [...stationEntityById.entries()].map(([stationId, entity]) => ({
+      id: entity.id, stationId, pos: { ...entity.pos },
+    })),
+    fields: [],
+    pois: [{ id: 201, pos: { x: 0, z: 0 } }],
+    gates: [],
+  };
+  system.newGame();
+  system.planSector(sector.id, { zones: SYNTHETIC_ZONES, sector, dayIndex: 4 });
+  const row = Object.values(state.livingPoiBehaviors.activeByZone)
+    .find((candidate) => candidate.familyId === 'lawful_station_yard');
+  const expected = row.zoneLocalCenter.x === 0 ? 'station_yard_a' : 'station_yard_b';
+  assert.equal(row.stationId, expected, 'yard binds to its physically associated local station');
+  assert.equal(state.entities.get(row.anchorEntityId)?.data?.stationId, expected,
+    'public anchor identifies the exact station that can resolve the yard contract');
+
+  bus.emit('dock:docked', { stationId: 'station_far' });
+  assert.equal(state.livingPoiBehaviors.aftermath[row.behaviorId], undefined,
+    'docking elsewhere cannot remotely clear this yard');
+  bus.emit('dock:docked', { stationId: row.stationId });
+  assert.equal(state.livingPoiBehaviors.aftermath[row.behaviorId]?.kind, 'cleared_manifest');
+});
+
+test('all six visible contracts expose a distinct verb, risk, and reward through one arbiter slot each', () => {
+  const { bus, state, spoken } = makeSystem(97);
+  for (const row of Object.values(state.livingPoiBehaviors.activeByZone)) {
+    bus.emit('world:zoneEntered', { zoneId: row.zoneId, type: row.zoneType, threat: row.threat });
+    const family = POI_BEHAVIOR_FAMILIES[row.familyId];
+    const cue = spoken.find((candidate) => candidate.id === `poi:${row.behaviorId}`);
+    assert.ok(cue, row.familyId);
+    assert.ok(cue.text.includes(family.contract.verb.toUpperCase()), `${row.familyId} exposes its verb`);
+    assert.ok(cue.text.includes(family.riskLabel), `${row.familyId} exposes its risk`);
+    assert.ok(cue.text.includes(family.rewardLabel), `${row.familyId} exposes its reward`);
+  }
+  assert.equal(new Set(spoken.map((cue) => cue.text)).size, 6);
+});
+
+test('all six families resolve through shipped public authority events and survive Continue', () => {
+  const { system, bus, state } = makeSystem(83);
+  const byFamily = Object.fromEntries(Object.values(state.livingPoiBehaviors.activeByZone)
+    .map((row) => [row.familyId, row]));
+
+  bus.emit('world:zoneEntered', { zoneId: byFamily.lawful_station_yard.zoneId });
+  bus.emit('dock:docked', { stationId: byFamily.lawful_station_yard.stationId });
+  bus.emit('world:zoneEntered', { zoneId: byFamily.mining_field.zoneId });
+  for (let index = 0; index < byFamily.mining_field.contract.required; index++) {
+    bus.emit('mining:yield', {
+      commodityId: 'cmdty_ore_iron', qty: 1,
+      pos: { x: byFamily.mining_field.zoneCenter.x + index * 20, z: byFamily.mining_field.zoneCenter.z },
+    });
+  }
+  const wreck = {
+    id: 40, type: 'wreck', team: 1, factionId: 'faction_free', alive: true,
+    pos: { ...byFamily.derelict_salvage.zoneCenter }, data: {},
+  };
+  state.entities.set(wreck.id, wreck);
+  bus.emit('world:zoneEntered', { zoneId: byFamily.derelict_salvage.zoneId });
+  bus.emit('salvage:completed', { wreckId: wreck.id, loot: { cmdty_scrap_metal: 2 } });
+  bus.emit('world:zoneEntered', { zoneId: byFamily.anomaly_research.zoneId });
+  for (let index = 0; index < byFamily.anomaly_research.contract.required; index++) {
+    bus.emit('scan:pulse', {
+      pos: { x: byFamily.anomaly_research.zoneCenter.x + index * 220, z: byFamily.anomaly_research.zoneCenter.z },
+    });
+  }
+  bus.emit('world:zoneEntered', { zoneId: byFamily.convoy_industrial_route.zoneId });
+  bus.emit('encounter:resolved', {
+    shape: 'convoy_departure', outcome: 'arrived', zoneId: byFamily.convoy_industrial_route.zoneId,
+  });
+  bus.emit('world:zoneEntered', { zoneId: byFamily.pirate_contested_nest.zoneId });
+  for (let index = 0; index < byFamily.pirate_contested_nest.contract.required; index++) {
+    const victim = {
+      id: 50 + index, type: 'ship', team: 1, factionId: byFamily.pirate_contested_nest.factionId,
+      alive: false, pos: { ...byFamily.pirate_contested_nest.zoneCenter },
+      data: { ai: { zoneId: byFamily.pirate_contested_nest.zoneId, spawnContext: 'zone_hostile' } },
+    };
+    state.entities.set(victim.id, victim);
+    bus.emit('entity:killed', {
+      id: victim.id, killerId: state.playerId, factionId: victim.factionId, pos: { ...victim.pos },
+    });
+  }
+
+  assert.deepEqual(
+    Object.values(state.livingPoiBehaviors.aftermath).map((row) => row.familyId).sort(),
+    POI_FAMILY_IDS.slice().sort(),
+  );
+  const saved = system.serialize();
+  const continued = makeSystem(83);
+  continued.system.deserialize(saved);
+  continued.system.planSector(SYNTHETIC_SECTOR.id, {
+    zones: SYNTHETIC_ZONES, sector: SYNTHETIC_SECTOR, dayIndex: 4,
+  });
+  assert.deepEqual(continued.system.serialize(), saved, 'all six durable consequences round-trip exactly');
+  assert.equal(Object.values(continued.state.livingPoiBehaviors.activeByZone)
+    .filter((row) => row.status === 'aftermath').length, 6);
 });
 
 test('each family resolves only through its own physical verb and records distinct persistent aftermath', () => {

@@ -22,6 +22,8 @@ export const POI_BEHAVIOR_FAMILIES = Object.freeze({
     mapLabel: 'YARD CONTROL',
     radarKind: 'lawful-yard',
     dangerMode: 'protected',
+    riskLabel: 'LAWFUL INSPECTION',
+    rewardLabel: 'LOCAL TRUST',
     contract: {
       verb: 'dock', required: 1, targetKind: 'station',
       cause: 'licensed traffic requires a clean arrival',
@@ -39,6 +41,8 @@ export const POI_BEHAVIOR_FAMILIES = Object.freeze({
     mapLabel: 'WORKING SEAM',
     radarKind: 'mining-field',
     dangerMode: 'managed',
+    riskLabel: 'ACTIVE CUTTING LANE',
+    rewardLabel: 'LOCAL ORE DEMAND',
     contract: {
       verb: 'mine', required: 3, targetKind: 'field',
       cause: 'local buyers need fresh ore from this seam',
@@ -56,6 +60,8 @@ export const POI_BEHAVIOR_FAMILIES = Object.freeze({
     mapLabel: 'SALVAGE CLAIM',
     radarKind: 'derelict-salvage',
     dangerMode: 'uncertain',
+    riskLabel: 'UNSTABLE HULL',
+    rewardLabel: 'RECOVERY LEAD',
     contract: {
       verb: 'salvage', required: 1, targetKind: 'wreck',
       cause: 'a registered loss left recoverable evidence',
@@ -73,6 +79,8 @@ export const POI_BEHAVIOR_FAMILIES = Object.freeze({
     mapLabel: 'RESEARCH SIGNAL',
     radarKind: 'anomaly-research',
     dangerMode: 'instrumented',
+    riskLabel: 'SIGNAL INTERFERENCE',
+    rewardLabel: 'RESEARCH LEAD',
     contract: {
       verb: 'triangulate', required: 3, targetKind: 'signal',
       cause: 'three bearings can stabilize the local signal',
@@ -90,6 +98,8 @@ export const POI_BEHAVIOR_FAMILIES = Object.freeze({
     mapLabel: 'FREIGHT ROUTE',
     radarKind: 'industrial-route',
     dangerMode: 'traffic',
+    riskLabel: 'CONVOY EXPOSURE',
+    rewardLabel: 'ROUTE LIQUIDITY',
     contract: {
       verb: 'escort', required: 1, targetKind: 'convoy',
       cause: 'scheduled freight is moving through the route',
@@ -107,6 +117,8 @@ export const POI_BEHAVIOR_FAMILIES = Object.freeze({
     mapLabel: 'CONTESTED CLAIM',
     radarKind: 'contested-nest',
     dangerMode: 'telegraphed',
+    riskLabel: 'AUTHORIZED HOSTILES',
+    rewardLabel: 'SECURITY REPUTATION',
     contract: {
       verb: 'clear', required: 2, targetKind: 'raider',
       cause: 'documented raider losses trace back to this claim',
@@ -124,7 +136,7 @@ export function validatePoiBehaviorFamily(family) {
   if (!family || typeof family !== 'object') return false;
   if (!family.id || !Array.isArray(family.zoneTypes) || family.zoneTypes.length === 0) return false;
   if (!Number.isFinite(family.budgetCost) || family.budgetCost < 1) return false;
-  if (!family.entryLine || !family.mapLabel || !family.radarKind) return false;
+  if (!family.entryLine || !family.mapLabel || !family.radarKind || !family.riskLabel || !family.rewardLabel) return false;
   const contract = family.contract;
   if (!contract || !contract.verb || !Number.isInteger(contract.required) || contract.required < 1) return false;
   if (!contract.cause || !contract.objective || !contract.resolutionEvent || !contract.successOutcome) return false;

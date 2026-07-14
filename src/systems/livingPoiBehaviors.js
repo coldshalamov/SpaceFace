@@ -195,6 +195,11 @@ export const livingPoiBehaviors = {
     own.currentZoneId = null;
     own.activeByZone = {};
     for (const row of rows) {
+      // sectorZones are authored in sector-local coordinates while scanner courses, entities,
+      // autopilot, and the seamless world all consume global_v1. Keep the authored coordinate for
+      // diagnostics, but expose exactly one composed global position on the live/public row.
+      row.zoneLocalCenter = { x: row.zoneCenter.x, z: row.zoneCenter.z };
+      row.zoneCenter = sectorLocalToGlobalForSector(row.zoneLocalCenter, row.sectorId);
       const aftermath = own.aftermath[row.behaviorId];
       if (aftermath && aftermath.expiresDay > dayIndex) {
         row.status = 'aftermath';
@@ -216,16 +221,14 @@ export const livingPoiBehaviors = {
     if (!row) return;
     if (row.status === 'aftermath') {
       this._emit('poi:behaviorReadout', readoutOf(row));
+      this._publishGuidance(row, 'aftermath', own.aftermath[row.behaviorId] || null);
       return;
     }
     if (row.status === 'available') row.status = 'entered';
     this._emit('poi:behaviorReadout', readoutOf(row));
     if (own.entered[row.behaviorId]) return;
     own.entered[row.behaviorId] = true;
-    const voice = this.helpers && this.helpers.voice;
-    if (voice && typeof voice.say === 'function') {
-      voice.say({ channel: 'news', text: row.entryLine, kind: 'poi-behavior' });
-    }
+    this._publishGuidance(row, 'approach');
   },
 
   _interactAt(verb, payload) {
@@ -235,7 +238,12 @@ export const livingPoiBehaviors = {
 
   _interactFamily(familyId, verb, payload) {
     const own = ensureState(this.state);
-    const row = Object.values(own.activeByZone).find((item) => item.familyId === familyId);
+    const stationId = payload && payload.stationId != null ? String(payload.stationId) : null;
+    const row = Object.values(own.activeByZone).find((item) => (
+      item.familyId === familyId
+      && (familyId !== 'lawful_station_yard'
+        || stationId != null && item.stationId != null && String(item.stationId) === stationId)
+    ));
     if (row) this._interact(row.zoneId, verb, payload);
   },
 
@@ -261,6 +269,7 @@ export const livingPoiBehaviors = {
       progress: row.progress,
       required: row.contract.required,
     });
+    this._publishGuidance(row, 'progress');
     if (row.progress >= row.contract.required) this._resolve(row, row.contract.successOutcome, payload);
     return true;
   },
@@ -301,6 +310,62 @@ export const livingPoiBehaviors = {
     if (own.receipts.length > RECEIPT_CAP) own.receipts.splice(0, own.receipts.length - RECEIPT_CAP);
     this._emitConsequences(row, outcome, payload);
     this._emit('poi:behaviorOutcome', { ...aftermath, mapLabel: row.mapLabel, radarKind: row.radarKind });
+    this._publishGuidance(row, 'outcome', aftermath);
+    return true;
+  },
+
+  _publishGuidance(row, phase, aftermath = null) {
+    if (!row) return false;
+    const family = POI_BEHAVIOR_FAMILIES[row.familyId];
+    if (!family) return false;
+    const contract = row.contract && row.contract.verb ? row.contract : family.contract;
+    const durable = aftermath || ensureState(this.state).aftermath[row.behaviorId] || null;
+    const payload = {
+      ...readoutOf(row),
+      phase,
+      dangerMode: row.dangerMode,
+      riskLabel: family.riskLabel,
+      rewardLabel: family.rewardLabel,
+      rewardChannels: contract.channels.slice(),
+      aftermathKind: durable && durable.kind || family.aftermath.kind,
+      aftermathExpiresDay: durable && durable.expiresDay || null,
+      persistsDays: family.aftermath.persistsDays,
+    };
+    this._emit('poi:behaviorGuidance', payload);
+
+    const label = row.mapLabel.split(' · ')[0];
+    let text;
+    let kind = 'info';
+    if (phase === 'outcome') {
+      text = `${label} · ${prettyToken(payload.aftermathKind)} · ${family.rewardLabel}`;
+      kind = 'good';
+    } else if (phase === 'aftermath') {
+      const remaining = Math.max(1, (durable && durable.expiresDay || 0)
+        - Math.floor((this.state.simTime || 0) / DAY_SECONDS));
+      text = `${label} · ${prettyToken(payload.aftermathKind)} REMAINS · ${remaining}D`;
+      kind = 'info';
+    } else if (phase === 'progress') {
+      text = `${label} · ${prettyToken(contract.verb)} ${row.progress || 0}/${contract.required}`
+        + ` · ${family.riskLabel} → ${family.rewardLabel}`;
+      kind = row.progress >= contract.required ? 'good' : 'info';
+    } else {
+      text = `${label} · ${prettyToken(contract.verb)} ${row.progress || 0}/${contract.required}`
+        + ` · ${family.riskLabel} → ${family.rewardLabel}`;
+      kind = row.dangerMode === 'telegraphed' ? 'warn' : 'info';
+    }
+    // Resolution receipts must survive a same-tick campaign/tutorial line. A four-second story
+    // floor is common on first-hour authority events; keep the durable result live long enough to
+    // take the floor afterwards instead of expiring unseen in the arbiter queue.
+    const ttl = phase === 'outcome' ? 8 : phase === 'aftermath' ? 6 : phase === 'approach' ? 5 : 3.5;
+    const voice = this.helpers && this.helpers.voice;
+    const spoken = voice && typeof voice.say === 'function' && voice.say({
+      id: `poi:${row.behaviorId}`,
+      channel: phase === 'aftermath' ? 'info' : 'objective',
+      text,
+      kind,
+      ttl,
+    });
+    if (!spoken) this._emit('toast', { text, kind, ttl });
     return true;
   },
 
@@ -458,7 +523,25 @@ export const livingPoiBehaviors = {
   _annotateNearestAnchor(row) {
     const active = this.state.world && this.state.world.activeSector;
     if (!active || !this.state.entities || typeof this.state.entities.get !== 'function') return;
-    const center = sectorLocalToGlobalForSector(row.zoneCenter, row.sectorId);
+    const center = row.zoneCenter;
+    // A lawful-yard contract resolves at one exact authored station. Its public anchor must point
+    // at that same station rather than whichever unrelated POI/gate happens to be closer to the
+    // broad jurisdiction zone centre.
+    if (row.familyId === 'lawful_station_yard' && row.stationId != null) {
+      const station = (active.stations || []).find((item) => {
+        if (!item || item.id == null) return false;
+        if (item.stationId != null) return String(item.stationId) === String(row.stationId);
+        const entity = this.state.entities.get(item.id);
+        return entity && entity.data && String(entity.data.stationId) === String(row.stationId);
+      });
+      const entity = station && this.state.entities.get(station.id);
+      if (entity) {
+        entity.data = entity.data || {};
+        entity.data.poiBehavior = readoutOf(row);
+        row.anchorEntityId = station.id;
+        return;
+      }
+    }
     const candidates = [];
     for (const key of ['stations', 'fields', 'pois', 'gates']) {
       for (const item of active[key] || []) {
@@ -507,21 +590,29 @@ export const livingPoiBehaviors = {
 };
 
 function readoutOf(row) {
+  const family = POI_BEHAVIOR_FAMILIES[row.familyId];
+  const pos = row.zoneCenter || row.pos || { x: 0, z: 0 };
+  const contract = row.contract && row.contract.verb ? row.contract : family && family.contract || {};
   return {
     behaviorId: row.behaviorId,
     familyId: row.familyId,
     sectorId: row.sectorId,
     zoneId: row.zoneId,
     zoneName: row.zoneName,
-    pos: { x: row.zoneCenter.x, z: row.zoneCenter.z },
+    pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 },
     mapLabel: row.mapLabel,
     radarKind: row.radarKind,
-    affordance: row.affordance,
-    objective: row.contract.objective,
+    affordance: row.affordance || contract.verb || null,
+    objective: contract.objective || '',
     progress: row.progress || 0,
-    required: row.contract.required,
+    required: contract.required || 0,
     status: row.status,
     dangerMode: row.dangerMode,
+    riskLabel: family && family.riskLabel || null,
+    rewardLabel: family && family.rewardLabel || null,
+    rewardChannels: Array.isArray(contract.channels) ? contract.channels.slice() : [],
+    aftermathKind: family && family.aftermath.kind || null,
+    persistsDays: family && family.aftermath.persistsDays || 0,
     canAutoAggro: false,
     fingerprint: row.fingerprint,
   };
@@ -544,7 +635,19 @@ function selectStationForFamily(stations, zone, familyId) {
       : familyId === 'anomaly_research'
         ? new Set(['research'])
         : null;
-  return preferred && pool.find((item) => preferred.has(item.type)) || pool[0] || null;
+  const typed = preferred ? pool.filter((item) => preferred.has(item.type)) : pool;
+  const candidates = typed.length ? typed : pool;
+  const center = zone && zone.center || null;
+  return candidates.slice().sort((a, b) => {
+    const distanceA = dist2(a && a.pos, center);
+    const distanceB = dist2(b && b.pos, center);
+    if (distanceA !== distanceB) {
+      if (!Number.isFinite(distanceA)) return 1;
+      if (!Number.isFinite(distanceB)) return -1;
+      return distanceA - distanceB;
+    }
+    return String(a && a.id || '').localeCompare(String(b && b.id || ''));
+  })[0] || null;
 }
 
 function freshState() {
@@ -660,6 +763,10 @@ function dist2(a, b) {
   const dx = (Number(a.x) || 0) - (Number(b.x) || 0);
   const dz = (Number(a.z) || 0) - (Number(b.z) || 0);
   return dx * dx + dz * dz;
+}
+
+function prettyToken(value) {
+  return String(value || 'recorded').replaceAll('_', ' ').toUpperCase();
 }
 
 export default livingPoiBehaviors;
