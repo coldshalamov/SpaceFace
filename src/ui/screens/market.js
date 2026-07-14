@@ -3,6 +3,7 @@
 // Uses an industrial control panel layout with commodity card grid, left category filter rail,
 // right intel panel, and an expanded canvas price history & prediction chart.
 import { COMMODITIES } from '../../data/commodities.js';
+import { isUnsellableCargo } from '../../systems/cargo.js';
 import { economyBaseEqForSize, economySpotPriceForRole } from '../../systems/economy.js';
 import { confirm } from '../confirm.js';
 import { createListControls, buildSortHeader, sortHeaderAria } from '../listControls.js';
@@ -493,6 +494,7 @@ export function createMarketPanel(ctx) {
 
   // Buy|Sell mode param (Station OS control grammar): a segmented filter, not a hidden state.
   // "Selling" shows only what is in your hold; "Buying" shows only what this market has in stock.
+  // Handoff "Sell what you hauled" opens this panel with tradeMode 'sell' via setTradeMode().
   let tradeMode = 'all';
   const modeSeg = document.createElement('div');
   modeSeg.className = 'st-trade-modes';
@@ -502,14 +504,20 @@ export function createMarketPanel(ctx) {
     '<button type="button" data-trade-mode="all" class="active" title="Every commodity traded at this station">All</button>' +
     '<button type="button" data-trade-mode="buy" title="Only what this market has in stock to sell you">Buying</button>' +
     '<button type="button" data-trade-mode="sell" title="Only what is in your hold right now">Selling</button>';
+  function setTradeMode(mode, { silent } = {}) {
+    const next = (mode === 'buy' || mode === 'sell' || mode === 'all') ? mode : 'all';
+    tradeMode = next;
+    modeSeg.querySelectorAll('[data-trade-mode]').forEach((b) => {
+      b.classList.toggle('active', b.getAttribute('data-trade-mode') === tradeMode);
+    });
+    root.setAttribute('data-trade-mode', tradeMode);
+    rebuild();
+    if (!silent && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+  }
   modeSeg.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-trade-mode]');
     if (!btn) return;
-    tradeMode = btn.getAttribute('data-trade-mode') || 'all';
-    modeSeg.querySelectorAll('[data-trade-mode]').forEach((b) => b.classList.toggle('active', b === btn));
-    root.setAttribute('data-trade-mode', tradeMode);
-    rebuild();
-    ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    setTradeMode(btn.getAttribute('data-trade-mode') || 'all');
   });
   ctrls.el.appendChild(modeSeg);
 
@@ -1282,22 +1290,28 @@ export function createMarketPanel(ctx) {
       const sellTotal = sellP * sellQty;
       const selectedFits = (buyQty * vol) <= freeVolume + 1e-6;
       const canBuySelected = buyQty > 0 && buyQty <= maxBuy && buyTotal <= (p.credits || 0) && selectedFits;
-      const canSellSelected = sellQty > 0 && sellQty <= owned;
+      // Sealed contract freight (preloaded-mission cargo) cannot be sold — selling it bricks the
+      // delivery with no recovery. Lock the sell button the same way jettison is locked in the HUD.
+      const contractLocked = isUnsellableCargo(state, cmdtyId);
+      const canSellSelected = sellQty > 0 && sellQty <= owned && !contractLocked;
       buyBtn.disabled = !canBuySelected;
       sellBtn.disabled = !canSellSelected;
+      if (contractLocked) sellBtn.textContent = 'LOCK: CONTRACT';
       const cName = def ? def.name : cmdtyId;
       const purposeLine = def ? commodityPurpose(def) : 'Trade cargo for credits or objectives.';
-      
+
       // Kept exact strings matching playwright assertions
       const buyTitle = buyBtn.disabled
         ? (!room ? 'No cargo room for ' + cName + '. Sell cargo, refit cargo modules, or buy a larger hull.' :
           (buyQty > maxBuy ? 'Selected quantity exceeds current credits or cargo room. Pick Max or a smaller amount.' :
             'Need ' + fmtCr(Math.max(buyP, buyTotal)) + ' CR for the selected ' + cName + ' purchase.'))
         : 'Buy ' + formatCargoUnits(buyQty) + ' ' + cName + ' for ' + fmtCr(buyTotal) + ' CR, using about ' + formatCargoUnits(buyQty * vol) + 'u cargo. ' + purposeLine;
-      const sellTitle = sellBtn.disabled
-        ? (owned <= 0 ? 'You do not own any ' + cName + ' to sell here.' : 'Selected quantity exceeds the ' + formatCargoUnits(owned) + ' ' + cName + ' you own. Pick Max or a smaller amount.')
-        : 'Sell ' + formatCargoUnits(sellQty) + ' ' + cName + ' for about ' + fmtCr(sellTotal) + ' CR. Use proceeds for missions, hulls, modules, repairs, and fuel.';
-      
+      const sellTitle = contractLocked
+        ? cName + ' is sealed contract cargo and cannot be sold — it is required for an active mission.'
+        : (sellBtn.disabled
+          ? (owned <= 0 ? 'You do not own any ' + cName + ' to sell here.' : 'Selected quantity exceeds the ' + formatCargoUnits(owned) + ' ' + cName + ' you own. Pick Max or a smaller amount.')
+          : 'Sell ' + formatCargoUnits(sellQty) + ' ' + cName + ' for about ' + fmtCr(sellTotal) + ' CR. Use proceeds for missions, hulls, modules, repairs, and fuel.');
+
       buyBtn.setAttribute('title', buyTitle);
       sellBtn.setAttribute('title', sellTitle);
       buyBtn.setAttribute('aria-label', buyTitle);
@@ -1780,11 +1794,17 @@ export function createMarketPanel(ctx) {
   const panel = {
     el: root,
     stationId: null,
+    setTradeMode,
     onShow(c) {
       panel.stationId = (c && c.stationId) || panel.stationId;
       if (panel.stationId && ctx.bus) ctx.bus.emit('economy:marketOpened', { stationId: panel.stationId });
       rebuildCategoryRail();
-      rebuild();
+      // Handoff / deep-link can open straight into Selling or Buying (also rebuilds the list).
+      if (c && (c.tradeMode === 'buy' || c.tradeMode === 'sell' || c.tradeMode === 'all')) {
+        setTradeMode(c.tradeMode, { silent: true });
+      } else {
+        rebuild();
+      }
       if (stageFx) for (const k in stageFx) { try { stageFx[k].setActive(true); } catch (_) {} }
       if (selectedCmdtyId) refreshStage();
     },

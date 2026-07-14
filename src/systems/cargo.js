@@ -36,6 +36,33 @@ export function isPersistentCargo(state, commodityId) {
   return Array.isArray(locked) && locked.includes(commodityId);
 }
 
+/**
+ * True if `commodityId` is sealed contract freight that the player must not sell or jettison mid-run.
+ *
+ * This guards the player-facing trade/dump paths (market Sell, station hold Sell) the same way the
+ * HUD already guards jettison. It narrows to ONLY preloaded-mission cargo: contracts that load a
+ * sealed manifest into the hold at accept time (cargo_delivery / salvage_retrieval / smuggling_run
+ * with `preloadedCargo:true`). Selling those bricks the mission with no recovery. It deliberately
+ * does NOT cover `bulk_trade`/`bulk_haul` — those missions REQUIRE selling generic goods at the
+ * destination, so those commodity ids must stay sellable.
+ *
+ * Plain state read (no missions import) → no circular dependency. The canonical cargo writer
+ * (`removeCargo`) is intentionally NOT gated by this: the missions system has legitimate internal
+ * consumers (`_deliverCargo`, `_removePreloadedContractCargo`) that remove preloaded cargo through
+ * the writer directly. The guard belongs on player intent, not on the writer.
+ */
+export function isUnsellableCargo(state, commodityId) {
+  if (isPersistentCargo(state, commodityId)) return true;
+  const active = state && state.missions && state.missions.active;
+  if (!Array.isArray(active)) return false;
+  for (const m of active) {
+    if (m && m.status === 'active' && m.preloadedCargo === true && m.params && m.params.cmdtyId === commodityId) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Module-level bus reference so the exported helpers can emit cargo:changed when called
 // from outside the system instance (economy/mining/salvage). Stays null in unit tests → silent.
 let busRef = null;

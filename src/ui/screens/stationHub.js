@@ -22,6 +22,7 @@ import { SECTORS } from '../../data/sectors.js';
 import { FACTION_META } from '../../data/factions.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { COMMODITIES } from '../../data/commodities.js';
+import { isUnsellableCargo } from '../../systems/cargo.js';
 import { escapeHtml } from '../comms.js';
 import { missionPreflight } from '../missionPreflight.js';
 import { missionConsequenceSummary } from '../missionPreflight.js';
@@ -206,8 +207,8 @@ for (const sec of SECTORS) {
 
 const TABS = [
   { id: 'market', label: 'Market', icon: '⚖', help: 'Buy cargo, sell cargo, and set profitable trade nav routes.' },
-  { id: 'shipyard', label: 'Shipyard', icon: '⛴', help: 'Buy hulls to change cargo space, survivability, handling, and module slots.' },
-  { id: 'outfit', label: 'Outfitting', icon: '⚙', help: 'Install modules so your active hull can fight, mine, haul, or survive better.' },
+  { id: 'shipyard', label: 'Shipyard', icon: '⛴', help: 'Buy whole ships (new chassis). Changes base cargo, toughness, and what module sizes fit.' },
+  { id: 'outfit', label: 'Outfitting', icon: '⚙', help: 'Buy and install modules on your current ship: guns, shields, cargo pods, mining tools.' },
   { id: 'manufacture', label: 'Manufacture', icon: '⚒', help: 'Turn mined and traded materials into modules, upgrades, and hulls.' },
   { id: 'missions', label: 'Missions', icon: '✦', help: 'Accept contracts; accepted missions auto-track and place nav guidance.' },
   { id: 'services', label: 'Services', icon: '⛽', help: 'Refuel, repair, and handle station services before undocking.' },
@@ -660,12 +661,13 @@ function firstDockStoryIndex(state) {
 export function firstDockHandoffVisible(state, stationId) {
   if (!state || !stationId) return false;
   const ob = state.onboarding || null;
-  const done = ob && ob.done || {};
+  const beatDoneAt = ob && ob.beatDoneAt || {};
   const storyIndex = firstDockStoryIndex(state);
-  const firstLoopOpen = !!ob && ob.finished !== true && done.next !== true;
+  const firstLoopOpen = !!ob && ob.active === true && ob.finished !== true;
   const earlyStory = storyIndex != null && storyIndex <= 1;
+  if (ob && (ob.finished === true || beatDoneAt.choice != null)) return false;
   if (!firstLoopOpen && !earlyStory) return false;
-  if (activeMissionCount(state) > 0 && (done.sell === true || done.next === true || (ob && ob.finished === true))) return false;
+  if (activeMissionCount(state) > 0 && beatDoneAt.dock != null) return false;
   return true;
 }
 
@@ -677,45 +679,53 @@ function firstDockDepartureTarget(chips) {
 
 export function firstDockHandoffSteps(state = {}) {
   const ob = state.onboarding || {};
-  const done = ob.done || {};
+  const beatDoneAt = ob.beatDoneAt || {};
   const activeJobs = activeMissionCount(state);
-  const missionDone = activeJobs > 0 || done.next === true;
+  const missionDone = activeJobs > 0 || beatDoneAt.choice != null || ob.finished === true;
   const departureChips = departureReadinessChips(state);
   const departure = departureReadinessSummary(departureChips);
-  const marketDone = done.sell === true;
+  const marketDone = beatDoneAt.dock != null;
   const hasCargo = cargoUsedUnits(state) > 0;
   return [
     {
-      key: 'market',
-      label: 'Market',
-      title: hasCargo || marketDone ? 'Sell cargo' : 'Check the market',
+      // Sell path opens Market → Selling (trade desk), not the Hold manifest.
+      // Hold is inventory-only; Market is where buy/sell and price intel live.
+      key: 'hold',
+      label: 'Cargo',
+      title: marketDone
+        ? 'Cargo sold — hold is ready'
+        : (hasCargo ? 'Sell what you hauled' : 'Open your hold'),
       text: marketDone
-        ? 'Market checked; credits and hold space are ready.'
+        ? 'Credits banked and space free for the next run.'
         : (hasCargo
-            ? 'Sell cargo you are carrying and free up hold space.'
-            : 'Hold is empty — learn prices now, sell cargo after your first haul.'),
+            ? 'Opens Market → Selling. Sell what is in your hold at the station price, then free capacity for new cargo.'
+            : 'Opens Hold. Nothing to sell yet — check Market prices or undock to mine.'),
       kind: marketDone ? 'ok' : 'warn',
       done: marketDone,
-      targetTab: 'market',
+      targetTab: hasCargo ? 'market' : 'hold',
+      tradeMode: hasCargo ? 'sell' : null,
     },
     {
       key: 'missions',
-      label: 'Missions',
-      title: 'Take one easy job',
+      label: 'Jobs',
+      title: missionDone ? 'Job on the board' : 'Take one easy job',
       text: missionDone
-        ? (activeJobs === 1 ? 'One job is active; the Mission Log carries the route.' : activeJobs + ' jobs active; track the one you want next.')
-        : 'Pick a low-risk contract; accepting sets your nav.',
+        ? (activeJobs === 1
+            ? 'Opens Missions. One active job — Accept+Track already feeds nav.'
+            : 'Opens Missions. ' + activeJobs + ' jobs active; track the one you want next.')
+        : 'Opens Missions. Accept a nearby low-risk contract; Track puts the route on your nav.',
       kind: missionDone ? 'ok' : 'warn',
       done: missionDone,
       targetTab: 'missions',
     },
     {
       key: 'departure',
-      label: 'Departure',
-      title: 'Launch clean',
+      label: 'Launch',
+      title: departure.state === 'ready' ? 'Safe to undock' : 'Fix launch risks',
       text: departure.state === 'ready'
-        ? 'Fuel, hull, cargo, and tracked work look serviceable.'
-        : 'Clear the flagged item on the departure rail below.',
+        ? 'Opens Services / Departure. Fuel, hull, and tracked work look good — undock when ready.'
+        : 'Opens ' + tabLabel(firstDockDepartureTarget(departureChips))
+          + '. ' + departure.status + ' — repair, refuel, or resolve the red departure chip before undock.',
       kind: departure.state === 'risk' ? 'bad' : (departure.state === 'check' ? 'warn' : 'ok'),
       done: departure.state === 'ready' && missionDone,
       targetTab: firstDockDepartureTarget(departureChips),
@@ -731,9 +741,16 @@ function handoffStepHtml(step) {
     '<span class="st-handoff-step-title">' + escapeHtml(step.title) + '</span>' +
     '<span class="st-handoff-step-copy">' + escapeHtml(step.text) + '</span>';
   if (!step.targetTab) return '<span class="' + cls + '">' + body + '</span>';
+  const modeAttr = step.tradeMode
+    ? ' data-handoff-trade-mode="' + escapeHtml(step.tradeMode) + '"'
+    : '';
+  const modeSuffix = step.tradeMode === 'sell'
+    ? ' (Selling)'
+    : (step.tradeMode === 'buy' ? ' (Buying)' : '');
   return '<button type="button" class="' + cls + '" data-handoff-tab="' + escapeHtml(step.targetTab) + '"' +
-    ' title="' + escapeHtml('Open ' + tabLabel(step.targetTab) + ': ' + step.title) + '"' +
-    ' aria-label="' + escapeHtml('Open ' + tabLabel(step.targetTab) + ': ' + step.title + '. ' + step.text) + '">' +
+    modeAttr +
+    ' title="' + escapeHtml('Open ' + tabLabel(step.targetTab) + modeSuffix + ': ' + step.title) + '"' +
+    ' aria-label="' + escapeHtml('Open ' + tabLabel(step.targetTab) + modeSuffix + ': ' + step.title + '. ' + step.text) + '">' +
     body +
     '</button>';
 }
@@ -773,6 +790,13 @@ function missionRiskTier(m) {
   return Number.isFinite(risk) ? Math.max(0, Math.round(risk)) : 0;
 }
 
+function firstLoopNeedsSafeWork(state) {
+  const ob = state && state.onboarding;
+  if (!ob || ob.finished === true) return false;
+  const beatDoneAt = ob.beatDoneAt || {};
+  return beatDoneAt.choice == null && activeMissionCount(state) === 0;
+}
+
 function missionRiskCopy(riskValue) {
   const risk = Math.max(0, Math.round(Number(riskValue) || 0));
   const band = risk >= 4 ? 'severe'
@@ -808,7 +832,8 @@ function missionRecommendationReason(m, preflight, readiness, consequences) {
 }
 
 export function recommendMissionBoardOffer(slots = [], state = {}) {
-  const candidates = (Array.isArray(slots) ? slots : [])
+  const firstLoopSafeWork = firstLoopNeedsSafeWork(state);
+  let candidates = (Array.isArray(slots) ? slots : [])
     .map((mission, index) => {
       if (!mission) return null;
       const id = missionOfferId(mission);
@@ -827,20 +852,28 @@ export function recommendMissionBoardOffer(slots = [], state = {}) {
         (preflight.warning ? 250 : 0);
       return { mission, missionId: id, index, preflight, readiness, consequences, risk, score };
     })
-    .filter(Boolean)
-    .sort((a, b) => (b.score - a.score) || (a.risk - b.risk) || (a.index - b.index));
+    .filter(Boolean);
+  if (firstLoopSafeWork) {
+    const safeReady = candidates.filter((candidate) => candidate.risk <= 1 && candidate.readiness.state !== 'blocked');
+    if (safeReady.length) candidates = safeReady;
+  }
+  candidates.sort((a, b) => (b.score - a.score) || (a.risk - b.risk) || (a.index - b.index));
 
   const best = candidates[0];
   if (!best) return null;
-  const blocked = best.readiness.state === 'blocked';
+  const firstLoopRiskBlocked = firstLoopSafeWork && best.risk >= 2;
+  const blocked = best.readiness.state === 'blocked' || firstLoopRiskBlocked;
+  const reason = firstLoopRiskBlocked
+    ? 'Prep first: take a Risk 0-1 contract before elevated work. Risk ' + best.risk + ' stays on the board.'
+    : missionRecommendationReason(best.mission, best.preflight, best.readiness, best.consequences);
   return {
     mission: best.mission,
     missionId: best.missionId,
-    kind: best.readiness.kind,
-    state: best.readiness.state,
+    kind: firstLoopRiskBlocked ? 'warn' : best.readiness.kind,
+    state: firstLoopRiskBlocked ? 'blocked' : best.readiness.state,
     label: blocked ? 'PREP FIRST' : (best.readiness.state === 'caution' ? 'RECOMMENDED - CHECK' : 'RECOMMENDED'),
     title: best.mission.title || prettyType(best.mission.type),
-    reason: missionRecommendationReason(best.mission, best.preflight, best.readiness, best.consequences),
+    reason,
     actionLabel: blocked ? 'Resolve Prep' : 'Accept Recommended',
     disabled: blocked,
   };
@@ -886,7 +919,7 @@ const SERVICE_DESC = {
   ore_buy: 'Sell raw mined ore to the station ore buyer.',
   refine: 'Refine raw ore and gas into materials for manufacturing.',
   module_craft: 'Fabricate modules, upgrades, and hulls from materials.',
-  shipyard: 'Buy hulls to change cargo, survivability, and slot layout.',
+  shipyard: 'Buy a whole new ship. Bigger chassis = more base hold and bigger module slots.',
   missions: 'Accept contracts that auto-track and set nav guidance.',
   toll: 'Pay the customs toll levied on cargo passing through.',
   scan: 'Station security scan of your manifest for contraband.',
@@ -1150,7 +1183,7 @@ export const stationHub = {
     handoff.className = 'st-handoff';
     handoff.hidden = true;
     handoff.innerHTML =
-      '<span class="st-handoff-label mono">First dock</span>' +
+      '<span class="st-handoff-label mono">First dock — do these three</span>' +
       '<div class="st-handoff-steps"></div>' +
       '<button type="button" class="st-handoff-dismiss" data-handoff-dismiss ' +
         'title="Hide this checklist" aria-label="Dismiss the first-dock checklist">Got it</button>';
@@ -1168,7 +1201,8 @@ export const stationHub = {
       if (!target || !this._handoffEl || !this._handoffEl.contains(target)) return;
       const tabId = target.getAttribute('data-handoff-tab');
       if (!TABS.some((t) => t.id === tabId) && tabId !== 'hold') return;
-      this.setTab(tabId, { focusRail: true });
+      const tradeMode = target.getAttribute('data-handoff-trade-mode') || null;
+      this.setTab(tabId, { focusRail: true, tradeMode: tradeMode || undefined });
       ctx.bus.emit('audio:cue', { id: 'ui_tab' });
     });
 
@@ -1477,6 +1511,23 @@ export const stationHub = {
           const unitPay = stn ? holdUnitSellPrice(state, stn.id, id) : null;
           const priceText = unitPay != null ? unitPay.toLocaleString('en-US') + ' cr' : 'no quote';
 
+          // Sealed contract freight (preloaded-mission cargo) cannot be sold mid-run — selling it
+          // bricks the delivery with no recovery. Mirror the jettison lock: disable + relabel.
+          const locked = isUnsellableCargo(state, id);
+          let sellButtons;
+          if (locked) {
+            const lockTitle = 'Contract cargo cannot be sold — it is required for an active mission';
+            sellButtons = `
+                <button type="button" class="st-sell-btn" disabled
+                  title="${lockTitle}" aria-label="${lockTitle}">LOCK: CONTRACT</button>`;
+          } else {
+            sellButtons = `
+                <button type="button" class="st-sell-btn" data-sell-cmdty="${id}" data-sell-qty="1"
+                  title="Sell one unit at the station's live price">Sell 1</button>
+                <button type="button" class="st-sell-btn st-sell-btn--all" data-sell-cmdty="${id}" data-sell-qty="${qty}"
+                  title="Sell every unit${unitPay != null ? ' · about ' + (unitPay * qty).toLocaleString('en-US') + ' cr' : ''}">Sell all</button>`;
+          }
+
           html += `
             <div class="st-row">
               <span class="c-name">${com.name}</span>
@@ -1484,10 +1535,7 @@ export const stationHub = {
               <span class="c-num">${vol}</span>
               <span class="c-num">${priceText}</span>
               <span class="c-act">
-                <button type="button" class="st-sell-btn" data-sell-cmdty="${id}" data-sell-qty="1"
-                  title="Sell one unit at the station's live price">Sell 1</button>
-                <button type="button" class="st-sell-btn st-sell-btn--all" data-sell-cmdty="${id}" data-sell-qty="${qty}"
-                  title="Sell every unit${unitPay != null ? ' · about ' + (unitPay * qty).toLocaleString('en-US') + ' cr' : ''}">Sell all</button>
+                ${sellButtons}
               </span>
             </div>
           `;
@@ -1846,7 +1894,8 @@ export const stationHub = {
   /** Operations contract board (state.missions.boards[stationId]). The left rail is a set of compact
    *  contract selectors; picking one drives the CENTER preflight instrument (route beam + destination
    *  ping + risk/fuel/hold ring gauges + broker comms slate + morph contract state + full preflight
-   *  and consequence readouts). Accept emits ui:acceptMission; the accepted receipt plots the route. */
+   *  and consequence readouts). Accept emits ui:acceptMission; the receipt reports whether the
+   *  accepted mission owns nav now or is tracked behind the staged tutorial's opening route. */
   _buildMissionsPanel(content, ctx) {
     const panel = document.createElement('div');
     panel.className = 'st-tabpanel st-panel st-missions';
@@ -1865,7 +1914,7 @@ export const stationHub = {
       '</div>';
     panel.innerHTML =
       '<div class="st-sub-h">Contract Board</div>' +
-      '<div class="st-mission-guide">Pick a contract to preflight it — route, risk, fuel, and hold — then accept. Accepting sets your nav automatically.</div>' +
+      '<div class="st-mission-guide">Pick a contract to preflight it — route, risk, fuel, and hold — then accept. Accepting tracks it; nav follows when the current tutorial step releases the route.</div>' +
       '<div class="st-mission-recommend" hidden></div>' +
       '<div class="st-mission-accepted" hidden></div>' +
       '<div class="st-ops">' +
@@ -1989,17 +2038,22 @@ export const stationHub = {
       return;
     }
     const waypoint = this._ctx.state.nav && this._ctx.state.nav.waypoint;
-    const routeLine = waypoint && waypoint.reason
+    const ownsNav = !!(waypoint && waypoint.missionId === mission.id);
+    const routeLine = ownsNav && waypoint.reason
       ? waypoint.reason
       : missionAfterAcceptText(mission);
+    const receiptLabel = ownsNav ? 'Contract signed · nav set' : 'Contract signed · tracked';
+    const handoffLine = ownsNav
+      ? 'Mission Log (' + BINDINGS.missionLog.label + ') carries the route and timer. Launch when the departure rail is green.'
+      : 'Mission Log (' + BINDINGS.missionLog.label + ') has the contract. Finish the current tutorial step to hand navigation over.';
     status.hidden = false;
     // One clean contract receipt: the singular confirmation the accept produces. A one-shot border
     // trace marks it as freshly printed (the sanctioned state-change motion, not a rest animation).
     status.innerHTML =
-      '<div class="st-mission-accepted-label mono">Contract signed · nav set</div>' +
+      '<div class="st-mission-accepted-label mono">' + escapeHtml(receiptLabel) + '</div>' +
       '<div class="st-mission-accepted-title">' + escapeHtml(mission.title || prettyType(mission.type)) + '</div>' +
       '<div class="st-mission-accepted-next">' + escapeHtml(routeLine) + '</div>' +
-      '<div class="st-mission-accepted-log mono">Mission Log (' + BINDINGS.missionLog.label + ') carries the route and timer. Launch when the departure rail is green.</div>' +
+      '<div class="st-mission-accepted-log mono">' + escapeHtml(handoffLine) + '</div>' +
       '<div class="st-mission-accepted-actions">' +
         '<button class="st-ops-btn st-ops-btn--plot" data-act="plotRoute" data-mid="' + escapeHtml(String(mission.id)) + '" ' +
           'title="Open the map and ping this contract\'s destination" aria-label="Plot route and ping destination for ' + escapeHtml(mission.title || prettyType(mission.type)) + '">Plot Route</button>' +
@@ -2307,7 +2361,8 @@ export const stationHub = {
     ctx.bus.emit('toast', { text: 'Accept this contract to plot its nav route' + (offer ? ' to ' + missionDestName(offer) : '') + '.', kind: 'info', ttl: 3 });
   },
 
-  /** Activate a tab: toggle rail highlight + panel visibility, persist ui.activeStationTab. */
+  /** Activate a tab: toggle rail highlight + panel visibility, persist ui.activeStationTab.
+   *  options.tradeMode — when opening Market, force All/Buying/Selling filter (handoff sell path). */
   setTab(tabId, options = {}) {
     if (!TABS.some((t) => t.id === tabId) && tabId !== 'hold') tabId = 'market';
     // Navigating a section clears the Service Dock selection (its quote surface goes idle).
@@ -2321,6 +2376,8 @@ export const stationHub = {
       }
     }
     this._ctx.state.ui.activeStationTab = tabId;
+    // Stash panel open options for the following onShow (Market tradeMode, etc.).
+    this._pendingPanelOptions = options && typeof options === 'object' ? options : {};
     if (this._el) {
       this._el.dataset.activeTab = tabId;
       this._el.classList.toggle('st-hub--engineering', tabId === 'shipyard' || tabId === 'outfit');
@@ -2401,11 +2458,20 @@ export const stationHub = {
     if (id === 'missions') { this._refreshMissions(); return; }
     const p = this._panels[id];
     if (!p) return;
+    const pending = this._pendingPanelOptions || {};
+    this._pendingPanelOptions = null;
     // Error boundary: a child panel's onShow/refresh throwing must not crash the whole station hub or
     // bubble to an uncaught page error (matches the onHide guard). Degrade to a warning; rail stays usable.
     try {
-      if (isShow && typeof p.onShow === 'function') p.onShow({ stationId: this._stationId, state: this._ctx.state });
-      else if (typeof p.refresh === 'function') p.refresh({ stationId: this._stationId, state: this._ctx.state });
+      if (isShow && typeof p.onShow === 'function') {
+        p.onShow({
+          stationId: this._stationId,
+          state: this._ctx.state,
+          tradeMode: pending.tradeMode,
+        });
+      } else if (typeof p.refresh === 'function') {
+        p.refresh({ stationId: this._stationId, state: this._ctx.state });
+      }
     } catch (e) {
       console.warn('[stationHub] panel "' + id + '" refresh failed', e);
     }
@@ -2561,7 +2627,15 @@ export const stationHub = {
     this._handoffEl.hidden = !visible;
     if (!visible) return;
     const stepsEl = this._handoffEl.querySelector('.st-handoff-steps');
-    if (stepsEl) stepsEl.innerHTML = firstDockHandoffSteps(state).map((step) => handoffStepHtml(step)).join('');
+    if (stepsEl) {
+      const active = document.activeElement;
+      const focusedTab = active && stepsEl.contains(active) && active.getAttribute('data-handoff-tab');
+      stepsEl.innerHTML = firstDockHandoffSteps(state).map((step) => handoffStepHtml(step)).join('');
+      if (focusedTab) {
+        const replacement = stepsEl.querySelector('[data-handoff-tab="' + focusedTab + '"]');
+        if (replacement) replacement.focus({ preventScroll: true });
+      }
+    }
   },
 
   /** Called by screenManager when this screen becomes the top of the stack. */
@@ -2652,6 +2726,13 @@ export const stationHub = {
     // Implicit station Back (backdrop / Esc route): the screenManager emits station:exitRequest
     // directly; the exit owner cleans up, confirms when needed, then commits the undock.
     bus.on('station:exitRequest', (req) => { this.requestStationExit(req || {}); });
+    bus.on('ui:factionPresenceService', (payload = {}) => {
+      if (!this._visible() || payload.stationId !== this._stationId) return;
+      const targetTab = payload.serviceId === 'pitborn_yard'
+        ? 'shipyard'
+        : (payload.serviceId === 'pitborn_fence' ? 'market' : null);
+      if (targetTab) this.setTab(targetTab, { focusRail: true });
+    });
     const onActive = (wantTab) => () => {
       if (!this._visible()) return;
       const id = this._activePanelId();
@@ -3037,13 +3118,25 @@ const STATION_CSS = `
 .st-undock[data-readiness="risk"]:hover  { background: color-mix(in srgb, var(--danger) 20%, var(--os-surface)); }
 
 /* ── 4 · Berth strip: the Service Dock. Live readiness, hover quotes, click acts. ─────────────── */
+/* z-index keeps the magnify curve ABOVE the handoff + body (no clip, no scroll gutter). */
 .st-berth {
+  position: relative; z-index: 8; overflow: visible;
   display: flex; align-items: stretch; gap: 18px; padding: 0 22px;
   border-bottom: 1px solid var(--os-line);
   background: linear-gradient(180deg, rgba(255,255,255,0.015), transparent);
 }
-.st-service-nodes-pane { flex: 1 1 auto; min-width: 0; display: flex; align-items: flex-end; }
-.st-hub .sf-fx-dock { --sf-fx-dock-pad-top: 38px; flex-wrap: nowrap; gap: 8px; justify-content: flex-start; max-width: 100%; overflow-x: auto; overflow-y: visible; padding-bottom: 8px; scrollbar-width: thin; }
+.st-service-nodes-pane {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: flex-end;
+  overflow: visible; position: relative; z-index: 1;
+}
+/* overflow:visible — never scrollport-clip the hover scale. Extra X pad (~10px/side over the
+   effect default) gives edge chips room to grow without eating the berth padding budget. */
+.st-hub .sf-fx-dock {
+  --sf-fx-dock-pad-top: 38px;
+  --sf-fx-dock-pad-x: 20px;
+  flex-wrap: nowrap; gap: 8px; justify-content: flex-start; max-width: 100%;
+  overflow: visible; padding-bottom: 8px;
+}
 .st-hub .sf-fx-dock__item {
   min-width: 86px; padding: 8px 10px 7px; border-radius: var(--os-r-sm);
   background: var(--os-raised); border: 1px solid var(--os-line); box-shadow: var(--os-shadow);
