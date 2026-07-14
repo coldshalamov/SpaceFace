@@ -70,6 +70,11 @@ const MINING_TRANSIT_S = 35;
 const COMBAT_APPROACH_S = 25;
 const REPAIR_FRAC_OF_DAMAGE = 0.55;
 const DEATH_DOWNTIME_S = 90;
+// A worked lane is not dead forever: the live economy keeps drifting stock toward its
+// producer/consumer equilibrium. Retire it long enough for that authority to recover, then
+// allow the strategy to reassess the real quotes. This preserves price-impact decay without
+// turning a 90-minute Hauler career into a one-use list of commodities.
+const HAULER_ROUTE_RECOVERY_S = 7 * 60;
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -353,13 +358,18 @@ export function saveReloadRoundTrip(ctx) {
     /* researched nodes already on player via save */
   }
   const after = captureAuthoritySlice(restoredCtx);
-  const ok = before.credits === after.credits
-    && before.simTime === after.simTime
-    && before.researchPoints === after.researchPoints
-    && JSON.stringify(before.cargo) === JSON.stringify(after.cargo)
-    && JSON.stringify(before.researchedNodes) === JSON.stringify(after.researchedNodes)
-    && before.missionsDone === after.missionsDone;
-  return { ok, before, after, payload, restoredCtx, error: ok ? null : 'authority_slice_mismatch' };
+  const mismatchKeys = [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .filter((key) => canonicalStringify(before[key]) !== canonicalStringify(after[key]));
+  const ok = mismatchKeys.length === 0;
+  return {
+    ok,
+    before,
+    after,
+    mismatchKeys,
+    payload,
+    restoredCtx,
+    error: ok ? null : `authority_slice_mismatch:${mismatchKeys.join(',')}`,
+  };
 }
 
 /**
@@ -566,6 +576,44 @@ function tryTravel(ctx, {
   advanceTime(ctx, travelS, budget, 'travelS');
   ctx.state.world.currentSectorId = toSectorId;
   return { ok: true, toll: pay.charged, travelS };
+}
+
+/** Focused contract proof for the cohort's modeled gate-travel seam. */
+export function auditUnaffordableTravelDenial(options = {}) {
+  const seed = options.seed != null ? options.seed : SEED_BY_CAREER.hauler;
+  const fromSectorId = options.fromSectorId || 'sector_helios_prime';
+  const toSectorId = options.toSectorId || 'sector_ceres_belt';
+  const ctx = bootSim(seed);
+  ctx.state.player.credits = 0;
+  ctx.state.world.currentSectorId = fromSectorId;
+  const costs = emptyCosts();
+  const budget = emptyBudget();
+  const before = {
+    credits: ctx.state.player.credits,
+    sectorId: ctx.state.world.currentSectorId,
+    simTime: ctx.state.simTime,
+    travelS: budget.travelS,
+  };
+  const result = tryTravel(ctx, {
+    fromSectorId,
+    toSectorId,
+    travelS: options.travelS || 120,
+    reason: 'cohort_test:unaffordable_toll',
+    seed,
+    costs,
+    budget,
+  });
+  return {
+    result,
+    before,
+    after: {
+      credits: ctx.state.player.credits,
+      sectorId: ctx.state.world.currentSectorId,
+      simTime: ctx.state.simTime,
+      travelS: budget.travelS,
+    },
+    tollCost: costs.tollCost,
+  };
 }
 
 function emptyBudget() {
@@ -871,24 +919,56 @@ function runHauler(horizonS, options = {}) {
   };
 
   const buyStationId = 'station_beltout';
-  const sellStationId = 'station_ceres';
+  const sellStationIds = Object.freeze([
+    'station_ceres', 'station_helios', 'station_forge', 'station_coalition',
+    'station_tethys', 'station_customs',
+  ]);
   const buySector = STATION_TO_SECTOR.get(buyStationId);
-  const sellSector = STATION_TO_SECTOR.get(sellStationId);
   ctx.econ.ensureMarket(buyStationId);
-  ctx.econ.ensureMarket(sellStationId);
+  for (const stationId of sellStationIds) ctx.econ.ensureMarket(stationId);
 
-  const exhausted = new Set();
+  const retiredUntil = new Map();
   const selectRoute = () => {
     let best = null;
     for (const c of COMMODITIES) {
-      if (c.legality !== 'legal' || c.basePrice > EARLY_CMDTY_MAX_BASE || exhausted.has(c.id)) continue;
+      if (c.legality !== 'legal' || c.basePrice > EARLY_CMDTY_MAX_BASE) continue;
+      const buyEntry = ctx.state.economy.markets[buyStationId]?.[c.id];
+      if (!buyEntry || buyEntry.role !== 'produce') continue;
       const qb = ctx.econ.quote(buyStationId, c.id, 'buy', 1);
-      const qs = ctx.econ.quote(sellStationId, c.id, 'sell', 1);
-      if (!qb.ok || !qs.ok) continue;
-      const margin = qs.unitAvg - qb.unitAvg;
-      if (!(margin > 0)) continue;
-      if (!best || margin > best.margin) {
-        best = { cmdtyId: c.id, name: c.name, margin, buy: qb.unitAvg, sell: qs.unitAvg, vol: c.volPerU };
+      if (!qb.ok) continue;
+      for (const sellStationId of sellStationIds) {
+        const laneKey = `${c.id}|${sellStationId}`;
+        if ((retiredUntil.get(laneKey) || 0) > (ctx.state.simTime || 0)) continue;
+        const sellEntry = ctx.state.economy.markets[sellStationId]?.[c.id];
+        if (!sellEntry || sellEntry.role !== 'consume') continue;
+        const sellSector = STATION_TO_SECTOR.get(sellStationId);
+        if (!sellSector) continue;
+        const sellToll = routeTollAmount(seed, buySector.id, sellSector.id, 0);
+        const returnToll = routeTollAmount(seed, sellSector.id, buySector.id, 0);
+        const cycleToll = sellToll + returnToll;
+        const vol = c.volPerU > 0 ? c.volPerU : 1;
+        const cap = SHIP_BY_ID.get(ctx.currentShipId)?.cargo || NEW_GAME.cargoCap || 40;
+        let qty = Math.floor(cap / vol);
+        while (qty > 0) {
+          const buyLot = ctx.econ.quote(buyStationId, c.id, 'buy', qty);
+          if (buyLot.ok && buyLot.total + sellToll <= (ctx.state.player.credits | 0)) break;
+          qty = Math.floor(qty * 0.8);
+        }
+        if (qty <= 0) continue;
+        const buyLot = ctx.econ.quote(buyStationId, c.id, 'buy', qty);
+        const sellLot = ctx.econ.quote(sellStationId, c.id, 'sell', qty);
+        if (!buyLot.ok || !sellLot.ok) continue;
+        const projectedProfit = sellLot.total - buyLot.total - cycleToll;
+        if (!(projectedProfit > 0)) continue;
+        const margin = sellLot.unitAvg - buyLot.unitAvg;
+        const legS = stationTravelTimeS(buyStationId, sellStationId) + DOCK_OVERHEAD_S;
+        const score = projectedProfit / Math.max(legS, 1);
+        if (!best || score > best.score) {
+          best = {
+            cmdtyId: c.id, name: c.name, margin, buy: buyLot.unitAvg, sell: sellLot.unitAvg,
+            vol: c.volPerU, sellStationId, sellToll, cycleToll, projectedProfit, score,
+          };
+        }
       }
     }
     return best;
@@ -902,7 +982,7 @@ function runHauler(horizonS, options = {}) {
     return receipt;
   }
   receipt.route = {
-    buyStationId, sellStationId, commodityId: best.cmdtyId,
+    buyStationId, sellStationId: best.sellStationId, commodityId: best.cmdtyId,
     initialMargin: round2(best.margin),
   };
   receipt.routeHistory.push({ ...receipt.route, startedAtS: 0 });
@@ -919,7 +999,7 @@ function runHauler(horizonS, options = {}) {
   while (t < horizonS) {
     // Production bulk_trade contracts from the live mission board (not ladder bonded adapters).
     if (!activeBulk && loops > 0 && loops % 6 === 0 && ctx.missions) {
-      const hit = findBoardOffer(ctx, 'bulk_trade', [buyStationId, sellStationId, 'station_helios']);
+      const hit = findBoardOffer(ctx, 'bulk_trade', [buyStationId, ...sellStationIds]);
       if (hit && (hit.offer.collateral_cr || 0) <= (ctx.state.player.credits | 0)) {
         const inst = acceptBoardOffer(ctx, hit.offer.id, costs, receipt);
         if (inst && inst.type === 'bulk_trade') {
@@ -954,19 +1034,30 @@ function runHauler(horizonS, options = {}) {
     currentStationId = buyStationId;
 
     const liveBuy = ctx.econ.quote(buyStationId, best.cmdtyId, 'buy', 1);
-    const liveSell = ctx.econ.quote(sellStationId, best.cmdtyId, 'sell', 1);
+    const liveSell = ctx.econ.quote(best.sellStationId, best.cmdtyId, 'sell', 1);
     const liveMargin = liveBuy.ok && liveSell.ok ? liveSell.unitAvg - liveBuy.unitAvg : -Infinity;
     if (!(liveMargin > 0)) {
-      exhausted.add(best.cmdtyId);
-      markBottleneck(receipt, 'spread_collapse', `Route ${best.cmdtyId} collapsed`);
-      const next = selectRoute();
+      retiredUntil.set(`${best.cmdtyId}|${best.sellStationId}`, t + HAULER_ROUTE_RECOVERY_S);
+      markBottleneck(receipt, 'spread_collapse', `Route ${best.cmdtyId}→${best.sellStationId} collapsed`);
+      let next = selectRoute();
       if (!next) {
-        markBottleneck(receipt, 'market_exhaustion', 'All early routes exhausted');
-        break;
+        markBottleneck(receipt, 'market_exhaustion', 'All early routes cooling while live stock recovers');
+        while (!next && t < horizonS) {
+          const waits = [...retiredUntil.values()].filter((until) => until > t);
+          const until = waits.length ? Math.min(...waits) : t + 60;
+          const waitS = Math.min(horizonS - t, Math.max(30, until - t));
+          if (!(waitS > 0)) break;
+          advanceTime(ctx, waitS, budget, 'idleS');
+          t = ctx.state.simTime;
+          next = selectRoute();
+        }
+        if (!next) break;
       }
       receipt.routeHistory.push({
+        buyStationId, sellStationId: next.sellStationId,
         commodityId: next.cmdtyId, initialMargin: round2(next.margin),
         startedAtS: round1(t), retiredCommodityId: best.cmdtyId,
+        retiredSellStationId: best.sellStationId,
       });
       best = next;
     }
@@ -985,7 +1076,7 @@ function runHauler(horizonS, options = {}) {
     want = Math.min(want, stockAvail);
     while (want > 0) {
       const q = ctx.econ.quote(buyStationId, best.cmdtyId, 'buy', want);
-      if (q.ok && q.total <= (ctx.state.player.credits | 0)) break;
+      if (q.ok && q.total + (best.sellToll || 0) <= (ctx.state.player.credits | 0)) break;
       want = Math.floor(want * 0.85);
     }
     if (want <= 0) {
@@ -1003,7 +1094,8 @@ function runHauler(horizonS, options = {}) {
     advanceTime(ctx, 8, budget, 'actionS');
     t = ctx.state.simTime;
 
-    const leg2S = stationTravelTimeS(buyStationId, sellStationId) + DOCK_OVERHEAD_S;
+    const sellSector = STATION_TO_SECTOR.get(best.sellStationId);
+    const leg2S = stationTravelTimeS(buyStationId, best.sellStationId) + DOCK_OVERHEAD_S;
     if (t + leg2S > horizonS) {
       receipt.loops.push({ loop: loops, partial: true, bought: buyRes.qty, note: 'horizon_before_sell' });
       break;
@@ -1021,12 +1113,12 @@ function runHauler(horizonS, options = {}) {
     }
     t = ctx.state.simTime;
     currentSectorId = sellSector.id;
-    currentStationId = sellStationId;
+    currentStationId = best.sellStationId;
 
     const have = ctx.state.player.cargo.items[best.cmdtyId] || 0;
     const creditsBeforeSell = ctx.state.player.credits | 0;
     const missionsDoneBefore = ctx.state.player.stats?.missionsDone || 0;
-    const sellRes = ctx.econ.execute(sellStationId, best.cmdtyId, 'sell', have);
+    const sellRes = ctx.econ.execute(best.sellStationId, best.cmdtyId, 'sell', have);
     if (!sellRes.ok) {
       receipt.loops.push({ loop: loops, fail: sellRes.reason || 'sell_failed' });
       break;
@@ -1049,7 +1141,7 @@ function runHauler(horizonS, options = {}) {
       }
     }
     // Dock beat also refreshes boards / delivery objectives through the production path.
-    completeDeliveryAtDock(ctx, sellStationId);
+    completeDeliveryAtDock(ctx, best.sellStationId);
     advanceTime(ctx, 8, budget, 'actionS');
     t = ctx.state.simTime;
     loops += 1;
@@ -1063,7 +1155,7 @@ function runHauler(horizonS, options = {}) {
       stockAfterBuy: round1((ctx.state.economy.markets[buyStationId]?.[best.cmdtyId]?.stock) || 0),
     });
 
-    if (!upgraded && midShip && (ctx.state.player.credits | 0) >= midShip.price) {
+    if (!upgraded && midShip && (ctx.state.player.credits | 0) >= midShip.price + NEW_GAME.credits) {
       if (tryBuyShipLive(ctx, midShip.id, receipt, costs)) {
         upgraded = true;
         receipt.equipment.activePhase = 'mule';
@@ -1072,7 +1164,7 @@ function runHauler(horizonS, options = {}) {
     }
   }
 
-  receipt.marketExhaustion = exhausted.size > 0;
+  receipt.marketExhaustion = retiredUntil.size > 0;
   receipt.inventoryCreated = cargoCreated;
   receipt.inventoryRemoved = cargoDestroyed;
   receipt.equipment.activePhase = upgraded ? 'mule' : 'starter';
@@ -1310,13 +1402,32 @@ function runHunter(horizonS, options = {}) {
       continue;
     }
 
-    // Accept through missions.acceptMission without requiring a physical board leg first.
-    // Player-facing UI docks to browse; the production authority is acceptMission + economy events.
-    // Travel cost is paid on the dest-sector hunt leg (and optional home return).
+    // A player can only accept a board offer at that board. The old cohort selected a remote
+    // station's rich offer and accepted it in place, eliminating the travel/toll/time that makes
+    // the Hunter route honest and producing one held-out income spike.
     const boardStation = bountyHit.stationId;
-    if (STATION_TO_SECTOR.get(boardStation)?.id === currentSectorId) {
-      completeDeliveryAtDock(ctx, boardStation);
+    const boardSectorId = STATION_TO_SECTOR.get(boardStation)?.id || currentSectorId;
+    if (boardSectorId !== currentSectorId) {
+      const legBoard = travelTimeS(currentSectorId, boardSectorId) + DOCK_OVERHEAD_S;
+      if (t + legBoard > horizonS) break;
+      const moveBoard = tryTravel(ctx, {
+        fromSectorId: currentSectorId,
+        toSectorId: boardSectorId,
+        travelS: legBoard,
+        reason: `gate_toll:hunter:${loops}:to_board`,
+        seed, costs, budget,
+      });
+      if (!moveBoard.ok) {
+        markBottleneck(receipt, 'unaffordable_toll', `Bounty board leg denied need=${moveBoard.need}`);
+        advanceTime(ctx, 45, budget, 'idleS');
+        t = ctx.state.simTime;
+        loops += 1;
+        continue;
+      }
+      t = ctx.state.simTime;
+      currentSectorId = boardSectorId;
     }
+    completeDeliveryAtDock(ctx, boardStation);
 
     const mission = acceptBoardOffer(ctx, bountyHit.offer.id, costs, receipt);
     if (!mission || mission.type !== 'bounty_hunt') {
@@ -1749,6 +1860,18 @@ function runProspector(horizonS, options = {}) {
       creditsAfter: ctx.state.player.credits | 0,
     });
 
+    // The Pelican is bought at the station whose market just funded it. The former ordering
+    // flew back to the field before making a shipyard purchase, adding one artificial leg and
+    // pushing a valid 84.9-minute capital crossing outside the 85-minute window.
+    if (!upgraded && midShip && (ctx.state.player.credits | 0) >= midShip.price) {
+      if (tryBuyShipLive(ctx, midShip.id, receipt, costs)) {
+        upgraded = true;
+        receipt.equipment.activePhase = 'pelican';
+        receipt.equipment.currentShipId = midShip.id;
+        receipt.equipment.upgradedAtLoop = loops;
+      }
+    }
+
     const legField = travelTimeS(currentSectorId, fieldSectorId) + MINING_TRANSIT_S * 0.5;
     if (t + legField > horizonS) break;
     const moveField = tryTravel(ctx, {
@@ -1764,15 +1887,6 @@ function runProspector(horizonS, options = {}) {
     }
     t = ctx.state.simTime;
     currentSectorId = fieldSectorId;
-
-    if (!upgraded && midShip && (ctx.state.player.credits | 0) >= midShip.price) {
-      if (tryBuyShipLive(ctx, midShip.id, receipt, costs)) {
-        upgraded = true;
-        receipt.equipment.activePhase = 'pelican';
-        receipt.equipment.currentShipId = midShip.id;
-        receipt.equipment.upgradedAtLoop = loops;
-      }
-    }
 
     // Beam M only if researched + owned purchase path; otherwise stay gated.
     if (upgraded && midBeam && midBeam.requiresTech
@@ -2034,11 +2148,10 @@ export function runCareerCohorts(options = {}) {
         horizonMin: 30, forceDeathAtLoop: -1,
         seed: SEED_BY_CAREER[careerId],
       });
-      const equal = a.endingCapital === b.endingCapital
-        && a.completedLoops === b.completedLoops
-        && a.creditsPerMin === b.creditsPerMin
-        && a.earnedValue === b.earnedValue;
-      determinism[careerId] = { equal, a: digest(a), b: digest(b) };
+      const mismatchKeys = [...new Set([...Object.keys(a), ...Object.keys(b)])]
+        .filter((key) => canonicalStringify(a[key]) !== canonicalStringify(b[key]));
+      const equal = mismatchKeys.length === 0;
+      determinism[careerId] = { equal, mismatchKeys, a: digest(a), b: digest(b) };
     }
 
     // Production save serialize → restore authority slice + continue equivalence.
@@ -2061,10 +2174,21 @@ export function runCareerCohorts(options = {}) {
       reloadClaimed: true,
     };
 
+    const multiSeedDistinct = Object.fromEntries(CAREER_IDS.map((careerId) => {
+      const rows = multiSeedResults[careerId] || [];
+      const trajectories = new Set(rows.map((row) => [
+        row.endingCapital,
+        row.earnedValue,
+        row.completedLoops,
+        row.completedContracts,
+      ].join(':')));
+      return [careerId, trajectories.size];
+    }));
     const multiSeedOk = !multiSeed || CAREER_IDS.every((c) => (
       multiSeedResults[c]
       && multiSeedResults[c].length >= 3
       && multiSeedResults[c].every((r) => r.ok)
+      && multiSeedDistinct[c] >= 2
     ));
     const allCellsOk = CAREER_IDS.every((c) => horizonsMin.every((m) => cells[c][m].ok));
     const detOk = CAREER_IDS.every((c) => determinism[c].equal);
@@ -2081,7 +2205,7 @@ export function runCareerCohorts(options = {}) {
         'economy ui:service repair (proportional to credits)',
         'missions.ensureBoard/acceptMission + complete (bounty entity:killed, recon scan, bulk_trade)',
         'missions recon_scan RP writer → ships.unlockTech gate',
-        'save.serializeData + save._restore prospector data continuity (simplified continue; no finalizeLoadedGame)',
+        'save.serializeData + save._restore nontrivial Prospector economy/cargo/markets/field-depletion data continuity (simplified continue; no finalizeLoadedGame)',
       ],
       adapter_warning: [
         'combat TTK (EHP/DPS; combat system not stepped)',
@@ -2112,6 +2236,7 @@ export function runCareerCohorts(options = {}) {
       cross,
       determinism,
       multiSeed: multiSeedResults,
+      multiSeedDistinct,
       multiSeedOk,
       reloadProof,
       snapshotSeam,
@@ -2213,18 +2338,20 @@ export function proveSaveContinueEquivalence(options = {}) {
       careers: [careerId],
       continuation: 'simplified cohort continuation',
       finalizeLoadedGame: false,
-      note: 'Proves serialized authority state survives restore and equivalent simplified continuation; it does not prove the headed production Continue finalizer or every full career strategy.',
+      note: 'Proves nontrivial Prospector economy/cargo/markets/field-depletion data survives restore and equivalent simplified continuation. Missions, damage, and upgraded-hull fields are compared but trivial at this 20-minute seam; headed Continue/finalizeLoadedGame is not exercised.',
     },
     authorityPaths: [
       'save.serializeData',
       'save._restore',
-      'economy/cargo/player/missions/fieldDepletion via serialize plan',
+      'nontrivial economy/cargo/markets/fieldDepletion plus basic player fields via serialize plan',
+      'missions/hull/active-hull fields compared at default values only',
     ],
     midMin,
     fullMin,
     seed,
     careerId,
     roundTripOk: trip.ok,
+    mismatchKeys: trip.mismatchKeys || [],
     continueEqual,
     progressing,
     mid: digest(midReceipt),
@@ -2443,6 +2570,7 @@ export function summarizeCohortReport(report) {
       const r = report.cells[c][m];
       slimCells[c][m] = {
         ok: r.ok,
+        horizonMin: r.horizonMin,
         endingCapital: r.endingCapital,
         earnedValue: r.earnedValue,
         creditsPerMin: r.creditsPerMin,
@@ -2477,9 +2605,13 @@ export function summarizeCohortReport(report) {
     cells: slimCells,
     cross: report.cross,
     determinism: Object.fromEntries(
-      Object.entries(report.determinism || {}).map(([k, v]) => [k, { equal: v.equal }]),
+      Object.entries(report.determinism || {}).map(([k, v]) => [k, {
+        equal: v.equal,
+        mismatchKeys: v.mismatchKeys || [],
+      }]),
     ),
     multiSeed: report.multiSeed,
+    multiSeedDistinct: report.multiSeedDistinct,
     multiSeedOk: report.multiSeedOk,
     reloadProof: report.reloadProof && {
       ok: report.reloadProof.ok,
@@ -2490,6 +2622,7 @@ export function summarizeCohortReport(report) {
       fullMin: report.reloadProof.fullMin,
       continueEqual: report.reloadProof.continueEqual,
       roundTripOk: report.reloadProof.roundTripOk,
+      mismatchKeys: report.reloadProof.mismatchKeys,
       error: report.reloadProof.error,
     },
     snapshotSeam: report.snapshotSeam,

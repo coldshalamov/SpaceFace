@@ -12,10 +12,9 @@ import {
   CAREER_COHORT_SCHEMA,
   CAREER_BANDS,
   SEED_SETS,
-  runCareerCohorts,
   runCareerStrategy,
   assessLoadoutViability,
-  proveSaveContinueEquivalence,
+  auditUnaffordableTravelDenial,
   blockNondeterminism,
   restoreNondeterminism,
 } from '../src/balance/careerCohorts.js';
@@ -23,6 +22,18 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPORT = path.join(ROOT, 'test', 'fixtures', 'm3-career-cohorts', 'cohort-report.v2.json');
 const CAMPAIGN = path.join(ROOT, '.campaign', 'm3-career-cohorts', 'cohort-report.v2.json');
+let gateRun = null;
+
+function runGateOnce() {
+  if (gateRun) return gateRun;
+  const stdout = execFileSync(process.execPath, ['scripts/check-m3-career-cohorts.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  gateRun = { stdout, json: JSON.parse(readFileSync(REPORT, 'utf8')) };
+  return gateRun;
+}
 
 test('production role-hull and combat-basics costs are pre-task values (no retune)', () => {
   const pelican = SHIPS.find((s) => s.id === 'ship_pelican');
@@ -46,11 +57,7 @@ test('starter and mid loadouts remain viable and identity-distinct', () => {
 });
 
 test('nine independent cells: each horizon has its own earnedValue rate', () => {
-  const report = runCareerCohorts({
-    horizonsMin: [30, 60, 90],
-    includeFailure: true,
-    multiSeed: false, // multi-seed covered in dedicated test for runtime
-  });
+  const report = runGateOnce().json;
   assert.equal(report.schema, CAREER_COHORT_SCHEMA);
   assert.equal(report.table.length, 9);
 
@@ -83,44 +90,25 @@ test('nine independent cells: each horizon has its own earnedValue rate', () => 
 });
 
 test('three independent seeds per career at 30 minutes', () => {
-  blockNondeterminism();
-  try {
-    for (const career of CAREER_IDS) {
-      const seeds = SEED_SETS[career];
-      assert.equal(seeds.length, 3, `${career} seed set size`);
-      const digests = [];
-      for (const seed of seeds) {
-        const r = runCareerStrategy(career, {
-          horizonMin: 30, seed, forceDeathAtLoop: -1,
-        });
-        assert.ok(r.completedLoops > 0 || r.completedContracts > 0, `${career}@${seed} progress`);
-        assert.ok(Number.isFinite(r.endingCapital));
-        digests.push(`${r.endingCapital}:${r.completedLoops}:${r.earnedValue}`);
-      }
-      // Seeds must not all collapse to the exact same trajectory.
-      assert.ok(new Set(digests).size >= 2, `${career} seeds must diversify outcomes`);
-    }
-  } finally {
-    restoreNondeterminism();
+  const report = runGateOnce().json;
+  for (const career of CAREER_IDS) {
+    const seeds = SEED_SETS[career];
+    const rows = report.multiSeed[career];
+    assert.equal(seeds.length, 3, `${career} seed set size`);
+    assert.deepEqual(rows.map((row) => row.seed), seeds, `${career} exact fixed seeds`);
+    assert.equal(rows.every((row) => row.ok), true, `${career} held-out rows pass`);
+    assert.ok(report.multiSeedDistinct[career] >= 2, `${career} seeds diversify outcomes`);
   }
 });
 
-test('save serialize→load→continue equivalence at mid-run boundary', () => {
-  blockNondeterminism();
-  try {
-    const proof = proveSaveContinueEquivalence({
-      careerId: 'prospector',
-      midMin: 15,
-      fullMin: 30,
-    });
-    assert.equal(proof.claimed, true);
-    assert.equal(proof.roundTripOk, true, proof.error);
-    assert.equal(proof.continueEqual, true, JSON.stringify({ a: proof.continueA, b: proof.continueB }));
-    assert.equal(proof.ok, true, proof.error);
-    assert.match(proof.seam, /save\.(serializeData|_restore)/i);
-  } finally {
-    restoreNondeterminism();
-  }
+test('save serialize→_restore preserves the captured authority slice and simplified continuation', () => {
+  const proof = runGateOnce().json.reloadProof;
+  assert.equal(proof.claimed, true);
+  assert.equal(proof.roundTripOk, true, proof.error);
+  assert.deepEqual(proof.mismatchKeys, []);
+  assert.equal(proof.continueEqual, true);
+  assert.equal(proof.ok, true, proof.error);
+  assert.match(proof.seam, /save\.(serializeData|_restore)/i);
 });
 
 test('constraint: unaffordable toll denies travel; action time advances; hunter owns weapons; damage persists', () => {
@@ -146,6 +134,13 @@ test('constraint: unaffordable toll denies travel; action time advances; hunter 
       assert.ok(deathLoop.readiness < 0.99, 'respawn is not full heal');
     }
 
+    const denial = auditUnaffordableTravelDenial({ seed: 0xC0B0_A001 });
+    assert.equal(denial.result.ok, false);
+    assert.equal(denial.result.reason, 'unaffordable_toll');
+    assert.ok(denial.result.need > denial.result.have);
+    assert.deepEqual(denial.after, denial.before, 'denied travel changes no credits, sector, or time');
+    assert.equal(denial.tollCost, 0);
+
     const hauler = runCareerStrategy('hauler', {
       horizonMin: 30, forceDeathAtLoop: -1, seed: 0xC0B0_A001,
     });
@@ -158,27 +153,15 @@ test('constraint: unaffordable toll denies travel; action time advances; hunter 
 });
 
 test('deterministic 30-minute re-runs match per career', () => {
-  blockNondeterminism();
-  try {
-    for (const career of CAREER_IDS) {
-      const a = runCareerStrategy(career, { horizonMin: 30, forceDeathAtLoop: -1 });
-      const b = runCareerStrategy(career, { horizonMin: 30, forceDeathAtLoop: -1 });
-      assert.equal(a.endingCapital, b.endingCapital, `${career} capital`);
-      assert.equal(a.completedLoops, b.completedLoops, `${career} loops`);
-      assert.equal(a.creditsPerMin, b.creditsPerMin, `${career} independent rate`);
-      assert.equal(a.earnedValue, b.earnedValue, `${career} earnedValue`);
-    }
-  } finally {
-    restoreNondeterminism();
+  const determinism = runGateOnce().json.determinism;
+  for (const career of CAREER_IDS) {
+    assert.equal(determinism[career].equal, true, `${career} full stable receipt projection`);
+    assert.deepEqual(determinism[career].mismatchKeys, []);
   }
 });
 
 test('authority matrix documents live missions+save; no balance retune claim', () => {
-  const report = runCareerCohorts({
-    horizonsMin: [30, 60, 90],
-    includeFailure: true,
-    multiSeed: false,
-  });
+  const report = runGateOnce().json;
   assert.ok(report.authorityMatrix.live.some((s) => /missions/i.test(s)));
   assert.ok(report.authorityMatrix.live.some((s) => /save/i.test(s)));
   assert.ok(report.authorityMatrix.adapter_warning.some((s) => /combat TTK|mine TTK/i.test(s)));
@@ -194,16 +177,11 @@ test('authority matrix documents live missions+save; no balance retune claim', (
 });
 
 test('gate script writes campaign + fixture reports and exits 0', () => {
-  const stdout = execFileSync(process.execPath, ['scripts/check-m3-career-cohorts.mjs'], {
-    cwd: ROOT,
-    encoding: 'utf8',
-    maxBuffer: 16 * 1024 * 1024,
-  });
+  const { stdout, json } = runGateOnce();
   assert.match(stdout, /\[check-m3-career-cohorts\] PASS/);
   assert.equal(existsSync(REPORT), true);
   assert.equal(existsSync(CAMPAIGN), true);
   assert.equal(existsSync(path.join(ROOT, 'result.json')), false, 'root result.json must not exist');
-  const json = JSON.parse(readFileSync(REPORT, 'utf8'));
   assert.equal(json.gate, 'check-m3-career-cohorts');
   assert.equal(json.ok, true);
   assert.equal(json.schema, CAREER_COHORT_SCHEMA);
@@ -211,5 +189,6 @@ test('gate script writes campaign + fixture reports and exits 0', () => {
   assert.equal(json.reloadProof.ok, true);
   assert.equal(json.reloadProof.claimed, true);
   assert.equal(json.multiSeedOk, true);
+  assert.deepEqual(json.multiSeedDistinct, { hauler: 3, hunter: 3, prospector: 3 });
   assert.equal('elapsedMs' in json, false, 'tracked fixture must not churn on wall-clock runtime');
 });

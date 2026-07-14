@@ -84,6 +84,7 @@ const BAND_DEAD_FRAC = 0.15;
 const BAND_LO_FRAC = 0.25;   // minimum healthy sustained floor
 const BAND_HI_FRAC = 2.5;    // max plausible sustained (price impact + travel + sinks)
 const BAND_CROSS_MAX = 3.5;  // max/min across the three careers
+const HAULER_ROUTE_RECOVERY_S = 7 * 60;
 // Ladder: freighter ~4 h at A(T1) ⇒ 30 min should not buy a freighter from profit alone.
 const LADDER_FREIGHTER_PRICE = (SHIPS.find((s) => s.id === 'ship_mule') || {}).price || 35000;
 const LADDER_MAX_30MIN_FRAC_OF_FREIGHTER = 0.55; // 30 min profit < 55% of freighter (4 h target)
@@ -426,16 +427,18 @@ function runHauler() {
   receipt.ownedInventoryStart = { ...ctx.state.player.cargo.items };
 
   const buyStationId = 'station_beltout';  // mining producer
-  const sellStationId = 'station_ceres'; // refinery consumer
+  const sellStationIds = Object.freeze([
+    'station_ceres', 'station_helios', 'station_forge', 'station_coalition',
+    'station_tethys', 'station_customs',
+  ]);
   const buySector = STATION_TO_SECTOR.get(buyStationId);
-  const sellSector = STATION_TO_SECTOR.get(sellStationId);
   ctx.econ.ensureMarket(buyStationId);
-  ctx.econ.ensureMarket(sellStationId);
+  for (const stationId of sellStationIds) ctx.econ.ensureMarket(stationId);
 
   // Progression contract: Ceres is tier 1, while Platinoid is a tier-3 find. Starter markets may
   // buy a discovered unit from the player, but cannot mint a risk-free supply for repeat hauling.
   const deepBuy = ctx.econ.quote(buyStationId, 'cmdty_ore_platinoid', 'buy', 1);
-  const deepSell = ctx.econ.quote(sellStationId, 'cmdty_ore_platinoid', 'sell', 1);
+  const deepSell = ctx.econ.quote(sellStationIds[0], 'cmdty_ore_platinoid', 'sell', 1);
   if (deepBuy.ok || deepBuy.reason !== 'tier_unavailable' || deepBuy.stationTier !== 1 || deepBuy.marketTier !== 3) {
     receipt.defects.push(`market_tier_buy_gate_failed:${JSON.stringify(deepBuy)}`);
   }
@@ -443,19 +446,51 @@ function runHauler() {
 
   // Deterministic early-career commodity pick from live quotes (no exotics). Long windows retire
   // a route when its real bid/ask spread collapses, then choose the next still-profitable lane.
-  const exhaustedCommodityIds = new Set();
+  const retiredCommodityUntil = new Map();
+  let t = 0;
+  let upgraded = false;
   const selectBestRoute = () => {
     let selected = null;
     for (const c of COMMODITIES) {
-      if (c.legality !== 'legal' || c.basePrice > EARLY_CMDTY_MAX_BASE
-        || exhaustedCommodityIds.has(c.id)) continue;
+      if (c.legality !== 'legal' || c.basePrice > EARLY_CMDTY_MAX_BASE) continue;
+      const buyEntry = ctx.state.economy.markets[buyStationId]?.[c.id];
+      if (!buyEntry || buyEntry.role !== 'produce') continue;
       const qb = ctx.econ.quote(buyStationId, c.id, 'buy', 1);
-      const qs = ctx.econ.quote(sellStationId, c.id, 'sell', 1);
-      if (!qb.ok || !qs.ok) continue;
-      const margin = qs.unitAvg - qb.unitAvg;
-      if (!(margin > 0)) continue;
-      if (!selected || margin > selected.margin) {
-        selected = { cmdtyId: c.id, name: c.name, margin, buy: qb.unitAvg, sell: qs.unitAvg, basePrice: c.basePrice, vol: c.volPerU };
+      if (!qb.ok) continue;
+      for (const sellStationId of sellStationIds) {
+        const laneKey = `${c.id}|${sellStationId}`;
+        if ((retiredCommodityUntil.get(laneKey) || 0) > t) continue;
+        const sellEntry = ctx.state.economy.markets[sellStationId]?.[c.id];
+        if (!sellEntry || sellEntry.role !== 'consume') continue;
+        const sellSector = STATION_TO_SECTOR.get(sellStationId);
+        if (!sellSector) continue;
+        const sellToll = routeToll(seed, buySector.id, sellSector.id, 0).amount;
+        const returnToll = routeToll(seed, sellSector.id, buySector.id, 0).amount;
+        const cycleToll = sellToll + returnToll;
+        const vol = c.volPerU > 0 ? c.volPerU : 1;
+        const cap = (upgraded && midShip ? midShip : starter).cargo;
+        let qty = Math.floor(cap / vol);
+        while (qty > 0) {
+          const buyLot = ctx.econ.quote(buyStationId, c.id, 'buy', qty);
+          if (buyLot.ok && buyLot.total + sellToll <= (ctx.state.player.credits | 0)) break;
+          qty = Math.floor(qty * 0.8);
+        }
+        if (qty <= 0) continue;
+        const buyLot = ctx.econ.quote(buyStationId, c.id, 'buy', qty);
+        const sellLot = ctx.econ.quote(sellStationId, c.id, 'sell', qty);
+        if (!buyLot.ok || !sellLot.ok) continue;
+        const projectedProfit = sellLot.total - buyLot.total - cycleToll;
+        if (!(projectedProfit > 0)) continue;
+        const margin = sellLot.unitAvg - buyLot.unitAvg;
+        const legS = stationTravelTimeS(buyStationId, sellStationId) + DOCK_OVERHEAD_S;
+        const score = projectedProfit / Math.max(legS, 1);
+        if (!selected || score > selected.score) {
+          selected = {
+            cmdtyId: c.id, name: c.name, margin, buy: buyLot.unitAvg, sell: sellLot.unitAvg,
+            basePrice: c.basePrice, vol: c.volPerU, sellStationId,
+            sellToll, cycleToll, projectedProfit, score,
+          };
+        }
       }
     }
     return selected;
@@ -468,7 +503,7 @@ function runHauler() {
   }
   receipt.route = {
     buyStationId,
-    sellStationId,
+    sellStationId: best.sellStationId,
     commodityId: best.cmdtyId,
     commodityName: best.name,
     initialBuy: r2(best.buy),
@@ -477,10 +512,8 @@ function runHauler() {
   };
   receipt.routeHistory = [{ ...receipt.route, startedAtS: 0 }];
 
-  let t = 0;
   let loops = 0;
   let marketExhaustion = false;
-  let upgraded = false;
   let cargoCreated = 0;
   let cargoDestroyed = 0;
   const dayIndex = 0;
@@ -508,24 +541,36 @@ function runHauler() {
     currentStationId = buyStationId;
 
     const liveBuy = ctx.econ.quote(buyStationId, best.cmdtyId, 'buy', 1);
-    const liveSell = ctx.econ.quote(sellStationId, best.cmdtyId, 'sell', 1);
+    const liveSell = ctx.econ.quote(best.sellStationId, best.cmdtyId, 'sell', 1);
     const liveMargin = liveBuy.ok && liveSell.ok ? liveSell.unitAvg - liveBuy.unitAvg : -Infinity;
     if (!(liveMargin > 0)) {
       marketExhaustion = true;
-      exhaustedCommodityIds.add(best.cmdtyId);
-      const replacement = selectBestRoute();
+      retiredCommodityUntil.set(`${best.cmdtyId}|${best.sellStationId}`, t + HAULER_ROUTE_RECOVERY_S);
+      let replacement = selectBestRoute();
       if (!replacement) {
-        receipt.loops.push({
-          loop: loops, fail: 'all_early_routes_exhausted', t: r1(t),
-          retiredCommodityId: best.cmdtyId, liveMargin: r2(liveMargin),
-        });
-        break;
+        while (!replacement && t < HORIZON_S) {
+          const waits = [...retiredCommodityUntil.values()].filter((until) => until > t);
+          const until = waits.length ? Math.min(...waits) : t + 60;
+          const waitS = Math.min(HORIZON_S - t, Math.max(30, until - t));
+          if (!(waitS > 0)) break;
+          advanceEconomy(ctx, waitS);
+          t += waitS;
+          replacement = selectBestRoute();
+        }
+        if (!replacement) {
+          receipt.loops.push({
+            loop: loops, fail: 'all_early_routes_exhausted', t: r1(t),
+            retiredCommodityId: best.cmdtyId, liveMargin: r2(liveMargin),
+          });
+          break;
+        }
       }
       receipt.routeHistory.push({
-        buyStationId, sellStationId, commodityId: replacement.cmdtyId,
+        buyStationId, sellStationId: replacement.sellStationId, commodityId: replacement.cmdtyId,
         commodityName: replacement.name, initialBuy: r2(replacement.buy),
         initialSell: r2(replacement.sell), initialMargin: r2(replacement.margin),
         startedAtS: r1(t), retiredCommodityId: best.cmdtyId,
+        retiredSellStationId: best.sellStationId,
       });
       best = replacement;
     }
@@ -545,7 +590,7 @@ function runHauler() {
     // affordability probe via quote
     while (want > 0) {
       const q = ctx.econ.quote(buyStationId, best.cmdtyId, 'buy', want);
-      if (q.ok && q.total <= (ctx.state.player.credits | 0)) break;
+      if (q.ok && q.total + (best.sellToll || 0) <= (ctx.state.player.credits | 0)) break;
       want = Math.floor(want * 0.85);
     }
     if (want <= 0) {
@@ -564,7 +609,8 @@ function runHauler() {
     const stockAfterBuy = entry.stock;
 
     // Travel sell station
-    const leg2 = stationTravelTimeS(buyStationId, sellStationId) + DOCK_OVERHEAD_S;
+    const sellSector = STATION_TO_SECTOR.get(best.sellStationId);
+    const leg2 = stationTravelTimeS(buyStationId, best.sellStationId) + DOCK_OVERHEAD_S;
     if (t + leg2 > HORIZON_S) {
       // stuck with cargo; no free liquidation
       receipt.loops.push({
@@ -583,12 +629,12 @@ function runHauler() {
     t += leg2;
     receipt.travelTimeS += leg2;
     currentSectorId = sellSector.id;
-    currentStationId = sellStationId;
+    currentStationId = best.sellStationId;
 
     const have = ctx.state.player.cargo.items[best.cmdtyId] || 0;
-    const sellEntry = ctx.state.economy.markets[sellStationId][best.cmdtyId];
+    const sellEntry = ctx.state.economy.markets[best.sellStationId][best.cmdtyId];
     const stockBeforeSell = sellEntry.stock;
-    const sellRes = ctx.econ.execute(sellStationId, best.cmdtyId, 'sell', have);
+    const sellRes = ctx.econ.execute(best.sellStationId, best.cmdtyId, 'sell', have);
     if (!sellRes.ok) {
       receipt.loops.push({ loop: loops, fail: sellRes.reason || 'sell_failed', have });
       break;
@@ -615,7 +661,7 @@ function runHauler() {
     });
 
     // Mid-career upgrade: buy Mule when capital allows (pays ship price, gains cargo capacity).
-    if (!upgraded && midShip && (ctx.state.player.credits | 0) >= midShip.price) {
+    if (!upgraded && midShip && (ctx.state.player.credits | 0) >= midShip.price + NEW_GAME.credits) {
       ctx.econ.chargeCredits(midShip.price, 'shipyard:ship_mule');
       setHull(ctx.state, midShip.id);
       upgraded = true;
@@ -1114,16 +1160,8 @@ function runProspector() {
     }
     loops += 1;
 
-    // Return to field
-    const legField = travelTimeS(currentSectorId, fieldSectorId) + MINING_TRANSIT_S * 0.5;
-    if (t + legField > HORIZON_S) break;
-    advanceEconomy(ctx, legField);
-    t += legField;
-    receipt.travelTimeS += legField;
-    currentSectorId = fieldSectorId;
-
-    // First upgrade is the physical Pelican hull. The owned starter laser transfers with it;
-    // Beam M remains an independent, later research-gated outfitting purchase.
+    // Buy/outfit while physically docked at Helios. The former ordering flew back to the field
+    // first, then performed a fictional remote shipyard purchase 18 seconds outside the window.
     if (!upgraded && midShip && (ctx.state.player.credits | 0) >= midShip.price) {
       const techGates = unresolvedTech([midShip], ctx.state);
       if (techGates.length) {
@@ -1180,6 +1218,14 @@ function runProspector() {
         }
       }
     }
+
+    // Return to field only after station-side shipyard/outfitting work.
+    const legField = travelTimeS(currentSectorId, fieldSectorId) + MINING_TRANSIT_S * 0.5;
+    if (t + legField > HORIZON_S) break;
+    advanceEconomy(ctx, legField);
+    t += legField;
+    receipt.travelTimeS += legField;
+    currentSectorId = fieldSectorId;
 
     // Cross-check bulk haul kernel is wired (not used as free reward).
     if (yieldU > BULK_HAUL_MIN_U) {
