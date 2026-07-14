@@ -54,6 +54,8 @@ const AUTOPILOT_TURN_SOFT_ANGLE = 0.62;
 const AUTOPILOT_ARRIVAL_RADIUS = 38;
 const AUTOPILOT_MAX_LOOKAHEAD = 760;
 const AUTOPILOT_MIN_LOOKAHEAD = 180;
+const AUTOPILOT_CAPTURE_SPEED_FRACTION = 0.72;
+const AUTOPILOT_CAPTURE_ALIGNMENT = 0.58;
 const TETHER_HELM_MAX_YAW_RATE_MULT = 1.14;
 const TETHER_HELM_STRAIN_MULT = 1.75;
 const TETHER_HELM_PHASE_MULT = Object.freeze({
@@ -595,10 +597,22 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   const desiredSpeed = Math.sqrt(Math.max(0, 2 * brakeAccel * Math.max(0, dist - arrivalRadius)));
   const stoppingDistance = closingSpeed > 0 ? (closingSpeed * closingSpeed) / (2 * brakeAccel) : 0;
   const halfway = Number.isFinite(autopilot.initialDistance) && dist <= autopilot.initialDistance * 0.52;
-  const shouldBrake = closingSpeed > 4 && (
+  const terminalBrake = closingSpeed > 4 && (
     dist <= stoppingDistance + arrivalRadius + 45 + lateralSpeed * 1.4 ||
     (halfway && closingSpeed > desiredSpeed * 0.92)
   );
+  // Obstacle avoidance can ask a fast Newtonian hull to make a large heading change. Once the
+  // craft has committed momentum across or away from the new guidance vector, adding forward
+  // thrust produces a kilometer-wide orbit instead of capturing the course. Brake through the
+  // ordinary propulsion/physics authority until velocity is aligned again. This is deliberately
+  // inside active autopilot only. Entity-target resolution remains upstream, and obstacle guidance
+  // still owns the desired heading; capture braking only replaces forward thrust while momentum
+  // is misaligned with that resolved guidance.
+  const guidanceClosingSpeed = finite(vel.x) * guidance.x + finite(vel.z) * guidance.z;
+  const captureSpeed = Math.max(42, positive(profile.precisionSpeed, 72) * AUTOPILOT_CAPTURE_SPEED_FRACTION);
+  const guidanceMisaligned = guidanceClosingSpeed < speed * AUTOPILOT_CAPTURE_ALIGNMENT;
+  const headingCapture = speed > captureSpeed && guidanceMisaligned;
+  const shouldBrake = terminalBrake || headingCapture;
 
   let throttle = 0;
   let strafe = 0;
@@ -633,7 +647,16 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   const status = brake ? 'braking' : guidance.avoiding ? 'avoiding' : boost ? 'boosting' : 'cruising';
   autopilot.status = status;
   autopilot.distance = dist;
-  const telemetry = { dist, arrivalRadius, braking: brake, avoiding: guidance.avoiding, target, status, turnError };
+  const telemetry = {
+    dist,
+    arrivalRadius,
+    braking: brake,
+    captureBraking: headingCapture,
+    avoiding: guidance.avoiding,
+    target,
+    status,
+    turnError,
+  };
   syncAutopilotInput(state, nextInput, telemetry);
   return { active: true, input: nextInput, telemetry };
 }

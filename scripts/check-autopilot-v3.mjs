@@ -266,7 +266,154 @@ async function runRapierAvoidanceScenario(order, options = {}) {
   };
 }
 
+async function runRapierHeliosTerminalScenario() {
+  const state = createGameState(0x47a);
+  const { player } = makeState({
+    pos: { x: 0, z: 0 },
+    rot: 0,
+    target: { x: 1280, z: -420 },
+    initialDistance: Math.hypot(1280, -420),
+  });
+  player.id = 1;
+  player.radius = 14;
+  player.mass = 32;
+  player.data = { role: 'starter', derived: {} };
+  delete player.propulsion;
+  player.physicsBody.mass = 32;
+  player.physicsBody.inertiaY = 26.95970695970696;
+  player.physicsBody.radius = 14;
+  player.collides = true;
+  player.prevPos = { ...player.pos };
+  player.prevRot = player.rot;
+  const station = {
+    id: 2,
+    type: 'station',
+    alive: true,
+    collides: true,
+    pos: { x: 1280, z: -420 },
+    vel: { x: 0, z: 0 },
+    radius: 42,
+    mass: 1e6,
+    data: { stationId: 'station_helios', dockRadius: 90, name: 'Helios Station' },
+  };
+  // Deterministic seed-47 slice of the authored Helios belt. This is the obstacle geometry that
+  // made the public Kestrel course exit avoidance at boost speed with a kilometer of cross-track
+  // error, then orbit the station because away/lateral velocity never entered the brake branch.
+  const belt = [
+    [8, 512.52176210511, -146.0193639593829, 8.367559840902686, 534.7023936361074],
+    [44, 513.2840889877223, -149.80504009402833, 10.103003617376089, 604.1201446950436],
+    [29, 565.2483666605806, -184.67563491107853, 12.343275625258684, 693.7310250103474],
+    [28, 570.8143800245178, -180.58854538475694, 12.90486803650856, 716.1947214603424],
+    [25, 600.0798474513562, -238.76031261206515, 12.887068318203092, 715.4827327281237],
+    [16, 625.3196034402945, -218.36894819977886, 12.610429167747498, 704.4171667098999],
+    [17, 658.5633485060841, -213.53438439863714, 7.330031916499138, 493.2012766599655],
+    [24, 666.3165655658528, -226.96045656136732, 13.423339577391744, 736.9335830956697],
+    [11, 675.9838496401424, -217.14981330829744, 12.478578509762883, 699.1431403905153],
+    [18, 679.0438427051621, -255.91518657562818, 11.190595895051956, 647.6238358020782],
+    [22, 690.024135678615, -242.5061921510127, 9.552236685529351, 582.089467421174],
+    [20, 721.9997257477593, -231.08845170147356, 12.477446053177118, 699.0978421270847],
+    [33, 723.333344687083, -252.30734558704538, 10.75633093714714, 630.2532374858856],
+    [32, 734.4516295317034, -195.94116117222936, 7.712364956736565, 508.4945982694626],
+    [10, 759.7333276989908, -298.29508668134423, 13.34228645823896, 733.6914583295584],
+    [14, 753.0429721051537, -318.8989555431299, 11.509959502145648, 660.3983800858259],
+    [31, 782.361784370081, -384.97401946323714, 8.177172522991896, 527.0869009196758],
+    [37, 875.0378433811643, -386.71677750939625, 11.002711994573474, 640.108479782939],
+    [34, 937.7154537329609, -319.4816352876163, 12.77204997651279, 710.8819990605116],
+    [7, 939.8619772562213, -295.06696864660256, 10.195844253525138, 607.8337701410055],
+  ].map(([id, x, z, radius, mass]) => ({
+    id,
+    type: 'asteroid',
+    alive: true,
+    collides: true,
+    pos: { x, z },
+    vel: { x: 0, z: 0 },
+    radius,
+    mass,
+  }));
+  state.mode = 'flight';
+  state.playerId = player.id;
+  state.world.currentSector = {};
+  state.entities.clear();
+  state.entityList.length = 0;
+  for (const entity of [player, station, ...belt]) {
+    state.entities.set(entity.id, entity);
+    state.entityList.push(entity);
+  }
+  state.nav.autopilot = {
+    active: true,
+    target: { x: station.pos.x, z: station.pos.z },
+    targetEntityId: station.id,
+    label: 'Helios Station',
+    arrivalRadius: 90,
+    initialDistance: Math.hypot(1280, -420),
+    status: 'armed',
+  };
+  state.input.actions = { autopursuit: false, brake: false };
+
+  const bus = makeBus();
+  const helpers = {};
+  const flightSystem = Object.create(FLIGHT_UNDER_TEST);
+  const physicsSystem = Object.create(physics);
+  flightSystem.init({ state, bus, helpers });
+  physicsSystem.init({ state, bus, helpers });
+  const ready = await physicsSystem.prepareBackend(state, { reset: true });
+  assert.equal(ready, true, 'Helios terminal fixture must use the production Rapier authority');
+
+  const dockRange = ((station.data.dockRadius || station.radius) + player.radius) * 1.5;
+  let closestDistance = Infinity;
+  let maxCrossTrack = 0;
+  let maxSpeed = 0;
+  let completionTick = null;
+  let terminal = null;
+  try {
+    for (let tick = 0; tick < 1800; tick++) {
+      state.tick = tick;
+      state.simTime = tick * DT;
+      neutralizeGeneratedAutopilotInput(state);
+      flightSystem.update(DT, state);
+      physicsSystem.update(DT, state);
+      const distance = Math.hypot(station.pos.x - player.pos.x, station.pos.z - player.pos.z);
+      const speed = Math.hypot(player.vel.x, player.vel.z);
+      closestDistance = Math.min(closestDistance, distance);
+      maxSpeed = Math.max(maxSpeed, speed);
+      maxCrossTrack = Math.max(maxCrossTrack, Math.abs(player.pos.x * -420 - player.pos.z * 1280) / Math.hypot(1280, -420));
+      terminal = {
+        tick,
+        distance,
+        speed,
+        rot: player.rot,
+        angVel: player.angVel,
+        status: state.nav.autopilot.status,
+        active: state.nav.autopilot.active,
+        input: {
+          moveX: state.input.moveX,
+          moveZ: state.input.moveZ,
+          turnIntent: state.input.turnIntent,
+          boost: state.input.boost,
+          brake: state.input.brake,
+        },
+      };
+      if (distance <= dockRange) {
+        completionTick = tick;
+        break;
+      }
+    }
+  } finally {
+    physicsSystem._disableSg02DynamicAuthority();
+  }
+  return { dockRange, closestDistance, maxCrossTrack, maxSpeed, completionTick, terminal };
+}
+
 console.log('--- V3 AUTOPILOT ACCEPTANCE ---');
+
+{
+  const result = await runRapierHeliosTerminalScenario();
+  assert.notEqual(result.completionTick, null,
+    `seed-47 Kestrel course must enter the physical Helios dock envelope within 30 sim seconds: ${JSON.stringify(result)}`);
+  assert(result.closestDistance <= result.dockRange,
+    `Helios course must close within the live dock range: ${JSON.stringify(result)}`);
+  console.log('Check 0 PASSED: seed-47 Kestrel clears the authored belt and reaches Helios without an overspeed orbit.', result);
+}
 
 {
   const h = runHarness({ target: { x: 1200, z: 0 }, initialDistance: 1200 });
@@ -275,6 +422,38 @@ console.log('--- V3 AUTOPILOT ACCEPTANCE ---');
   assert.equal(h.player.flags.boosting, true, 'autopilot boost must flow through the normal boost resource gate');
   assert.equal(h.state.nav.autopilot.status, 'boosting', 'autopilot status must expose boosting');
   console.log('Check 1 PASSED: clear route thrusts and boosts through live V3.');
+}
+
+{
+  const bus = makeBus();
+  const { state, player } = makeState({
+    target: { x: 999, z: 999 },
+    vel: { x: -120, z: 0 },
+    initialDistance: 900,
+  });
+  const movingTarget = {
+    id: 'moving-convoy',
+    type: 'ship',
+    alive: true,
+    pos: { x: 700, z: 80 },
+    vel: { x: 20, z: -4 },
+    radius: 14,
+  };
+  state.entities.set(movingTarget.id, movingTarget);
+  state.entityList.push(movingTarget);
+  state.nav.autopilot.targetEntityId = movingTarget.id;
+  const system = Object.create(FLIGHT_UNDER_TEST);
+  system.init({ state, bus });
+  system.update(DT, state);
+  consumePhysicsCommand(player);
+  const telemetry = player._flightFrame.autopilot;
+  assert.equal(telemetry.target.entity, movingTarget,
+    'capture braking must keep resolving the live targetEntityId instead of the stale point fix');
+  assert.deepEqual({ x: telemetry.target.x, z: telemetry.target.z }, movingTarget.pos,
+    'moving-target guidance must use the entity current position');
+  assert.equal(telemetry.captureBraking, true,
+    'away velocity should enter capture braking after the moving target has been resolved');
+  console.log('Check 1b PASSED: capture braking preserves live moving-entity target resolution.');
 }
 
 {
@@ -313,6 +492,31 @@ console.log('--- V3 AUTOPILOT ACCEPTANCE ---');
   assert(Math.abs(state.input.moveX) > 0.05 || Math.abs(command.force.z) > 1,
     'blocking obstacle must produce lateral avoidance input/force');
   console.log('Check 4 PASSED: obstacle avoidance steers around a blocking body.');
+}
+
+{
+  const bus = makeBus();
+  const { state, player } = makeState({
+    target: { x: 1000, z: 0 },
+    vel: { x: 0, z: -180 },
+    initialDistance: 1000,
+  });
+  const obstacle = { id: 'capture-rock', type: 'asteroid', alive: true, pos: { x: 220, z: 0 }, vel: { x: 0, z: 0 }, radius: 90 };
+  state.entities.set(obstacle.id, obstacle);
+  state.entityList.push(obstacle);
+  const system = Object.create(FLIGHT_UNDER_TEST);
+  system.init({ state, bus });
+  system.update(DT, state);
+  consumePhysicsCommand(player);
+  const telemetry = player._flightFrame.autopilot;
+  const avoidanceSide = state.nav.autopilot._avoidanceSide;
+  assert.equal(telemetry.avoiding, true,
+    'capture braking must retain obstacle guidance while countering misaligned momentum');
+  assert.equal(telemetry.captureBraking, true,
+    'high cross-track velocity during an avoidance pass must engage capture braking');
+  assert.equal(Math.sign(state.input.turnIntent), avoidanceSide,
+    'avoidance guidance must continue to own desired heading while capture braking owns thrust');
+  console.log('Check 4e PASSED: capture braking preserves obstacle-guidance heading authority.');
 }
 
 {
@@ -495,14 +699,22 @@ console.log('--- V3 AUTOPILOT ACCEPTANCE ---');
     'clear course must release the completed avoidance commitment');
 
   const manual = makeCenteredAvoidanceHarness();
+  manual.player.vel.x = -180;
+  manual.player.vel.z = 120;
   neutralizeGeneratedAutopilotInput(manual.state);
   manual.state.input.moveX = 0.5;
   manual.state.tick++;
   manual.system.update(DT, manual.state);
-  consumePhysicsCommand(manual.player);
+  const manualCommand = consumePhysicsCommand(manual.player);
   assert.equal(manual.state.nav.autopilot.active, false, 'manual input must stop autopilot');
   assert.equal(manual.state.nav.autopilot.status, 'manual', 'manual stop must publish its reason');
   assert.equal(manual.state.nav.autopilot._avoidanceSide, 0, 'manual stop must clear avoidance commitment');
+  assert.equal(manual.state.input.brake, false,
+    'high lateral/away velocity under manual input must not inherit autopilot capture braking');
+  assert.equal(manual.player._flightFrame.autopilot, null,
+    'manual control must not publish an autopilot capture frame after disengaging the course');
+  assert(manualCommand && manualCommand.control,
+    'manual counterexample must still write an ordinary V3 physics command');
 
   const arrival = makeCenteredAvoidanceHarness();
   arrival.player.pos.x = 975;
