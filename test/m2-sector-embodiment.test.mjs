@@ -28,6 +28,8 @@ import {
   embodimentDigest,
   quantizeEpochDays,
   stableSerialize,
+  isFullFieldSectorList,
+  nextEmbodimentAuditDigests,
 } from '../src/sim/sector/embodiment.js';
 import { stableRecordId } from '../src/world/worldRecords.js';
 
@@ -521,4 +523,119 @@ test('embodimentDigest: projected field digest is payload-bound (not id-only)', 
     baseDangerFor: (id) => dangerIndex(SECTOR_BY_ID.get(id)),
   });
   assert.equal(again.digest, d0);
+});
+
+// ── full-field audit digest continuity (M2-C3 final repair) ───────────────────
+
+test('isFullFieldSectorList: full set vs subset / order-independent', () => {
+  assert.equal(isFullFieldSectorList(SECTOR_IDS, SECTOR_IDS), true);
+  assert.equal(isFullFieldSectorList(SECTOR_IDS.slice().reverse(), SECTOR_IDS), true);
+  assert.equal(isFullFieldSectorList(['sector_ceres_belt'], SECTOR_IDS), false);
+  assert.equal(isFullFieldSectorList([], SECTOR_IDS), false);
+  assert.equal(isFullFieldSectorList(null, SECTOR_IDS), false);
+  assert.equal(isFullFieldSectorList(SECTOR_IDS.slice(0, 23), SECTOR_IDS), false);
+});
+
+test('nextEmbodimentAuditDigests: subset never replaces lastDigest', () => {
+  const full = nextEmbodimentAuditDigests(
+    { lastDigest: 0, lastSubsetDigest: 0 },
+    0xabc123,
+    { fullField: true },
+  );
+  assert.equal(full.lastDigest, 0xabc123);
+  assert.equal(full.lastSubsetDigest, 0);
+  assert.equal(full.fullField, true);
+
+  const subset = nextEmbodimentAuditDigests(full, 0xdef456, { fullField: false });
+  assert.equal(subset.lastDigest, 0xabc123, 'subset must preserve full-field audit digest');
+  assert.equal(subset.lastSubsetDigest, 0xdef456);
+  assert.equal(subset.fullField, false);
+
+  const noopSubset = nextEmbodimentAuditDigests(subset, 0x111, { fullField: false });
+  assert.equal(noopSubset.lastDigest, 0xabc123);
+  assert.equal(noopSubset.lastSubsetDigest, 0x111);
+
+  const fullAgain = nextEmbodimentAuditDigests(noopSubset, 0xabc123, { fullField: true });
+  assert.equal(fullAgain.lastDigest, 0xabc123);
+  assert.equal(fullAgain.lastSubsetDigest, 0x111, 'full update leaves prior subset digest');
+});
+
+test('continuous enter after full advance preserves lastDigest (audit continuity)', () => {
+  const ctx = makeCtx(42);
+  boot(ctx);
+  ctx.state.simTime = 600 * 2;
+  sectorSim.state = ctx.state;
+  sectorSim._advanceModel(2, 'test');
+
+  const emb = ctx.state.sectorSim.embodiment;
+  const fullDigest = emb.lastDigest;
+  assert.ok(fullDigest > 0, 'full-field advance must stamp lastDigest');
+  assert.equal(emb.appliedIds.length > 0, true);
+
+  // Independent full projection for the same field must match lastDigest.
+  const field = ctx.state.sectorSim.field;
+  const fullProj = projectFieldEmbodiment({
+    field,
+    sectorIds: SECTOR_IDS,
+    sectorsById: SECTOR_BY_ID,
+    seed: 42,
+    baseDangerFor: (id) => dangerIndex(SECTOR_BY_ID.get(id)),
+  });
+  assert.equal(fullDigest, fullProj.digest, 'lastDigest must equal full-field embodiment digest');
+
+  // Continuous enter: subset / no-op reproject — must not corrupt full audit digest.
+  const subsetBefore = emb.lastSubsetDigest || 0;
+  sectorSim._onSectorEnter({
+    sectorId: 'sector_ceres_belt',
+    continuous: true,
+    noTeleport: true,
+  });
+
+  assert.equal(
+    ctx.state.sectorSim.embodiment.lastDigest,
+    fullDigest,
+    'continuous-enter subset/no-op must not overwrite lastDigest with subset digest',
+  );
+  // Subset projection may stamp a separate clearly-named digest.
+  const subsetAfter = ctx.state.sectorSim.embodiment.lastSubsetDigest;
+  assert.ok(
+    subsetAfter !== fullDigest || subsetAfter === subsetBefore,
+    'subset path should not masquerade as full-field digest continuity',
+  );
+  // Explicit reproject of the same single sector also preserves lastDigest.
+  const r = sectorSim._projectAndEmitEmbodiment({
+    source: 'reproject_subset',
+    sectorIds: ['sector_ceres_belt'],
+  });
+  assert.equal(r.emitted, 0);
+  assert.equal(r.fullField, false);
+  assert.equal(ctx.state.sectorSim.embodiment.lastDigest, fullDigest);
+  assert.equal(r.lastFullFieldDigest, fullDigest);
+  // Full-field no-op reproject still keeps the same lastDigest.
+  const fullNop = sectorSim._projectAndEmitEmbodiment({ source: 'reproject_full', sectorIds: null });
+  assert.equal(fullNop.emitted, 0);
+  assert.equal(fullNop.fullField, true);
+  assert.equal(ctx.state.sectorSim.embodiment.lastDigest, fullDigest);
+  assert.equal(fullNop.digest, fullDigest);
+});
+
+test('serialize/deserialize preserves full lastDigest across subset enter', () => {
+  const ctx = makeCtx(7);
+  boot(ctx);
+  sectorSim._advanceModel(1.25, 'test');
+  const fullDigest = ctx.state.sectorSim.embodiment.lastDigest;
+  assert.ok(fullDigest > 0);
+  sectorSim._onSectorEnter({ sectorId: 'sector_ashfall_reach', continuous: true });
+  assert.equal(ctx.state.sectorSim.embodiment.lastDigest, fullDigest);
+
+  const blob = sectorSim.serialize();
+  assert.equal(blob.embodiment.lastDigest, fullDigest);
+
+  const ctx2 = makeCtx(7);
+  boot(ctx2);
+  sectorSim.deserialize(blob);
+  assert.equal(ctx2.state.sectorSim.embodiment.lastDigest, fullDigest);
+  // After load, subset reproject still must not replace audit digest.
+  sectorSim._onSectorEnter({ sectorId: 'sector_ceres_belt', continuous: true, noTeleport: true });
+  assert.equal(ctx2.state.sectorSim.embodiment.lastDigest, fullDigest);
 });

@@ -305,6 +305,11 @@ export function projectFieldEmbodiment(opts = {}) {
  * canonical stable serialization (object keys sorted recursively). Same semantic
  * intents with reordered object keys hash equal; different nested payload with the
  * same identity fields hash different. No wall-clock, no Math.random, no deps.
+ *
+ * Audit continuity: the full-field digest (all stable sectors) is the only value that
+ * belongs in embodiment.lastDigest. Subset projections (e.g. continuous sector enter)
+ * produce a separate digest and must never replace the full-field audit digest — use
+ * {@link isFullFieldSectorList} + {@link nextEmbodimentAuditDigests}.
  */
 export function embodimentDigest(intents) {
   const ordered = (Array.isArray(intents) ? intents.slice() : [])
@@ -315,6 +320,53 @@ export function embodimentDigest(intents) {
     parts.push(stableSerialize(intentDigestView(it)));
   }
   return hash32(...parts) >>> 0;
+}
+
+/**
+ * True when sectorIds covers the full authored field (same multiset as allSectorIds).
+ * Order-independent. Empty/missing sectorIds is treated as "not full" so callers that
+ * default to the full list must pass the resolved full ids explicitly.
+ */
+export function isFullFieldSectorList(sectorIds, allSectorIds) {
+  const full = (Array.isArray(allSectorIds) ? allSectorIds : [])
+    .filter(Boolean)
+    .slice()
+    .sort((a, b) => a.localeCompare(b));
+  const got = (Array.isArray(sectorIds) ? sectorIds : [])
+    .filter(Boolean)
+    .slice()
+    .sort((a, b) => a.localeCompare(b));
+  if (!full.length || got.length !== full.length) return false;
+  for (let i = 0; i < full.length; i++) {
+    if (got[i] !== full[i]) return false;
+  }
+  return true;
+}
+
+/**
+ * Pure audit-digest bag update.
+ *
+ * - lastDigest: last full-field canonical embodiment digest (audit continuity).
+ * - lastSubsetDigest: last subset/partial projection digest (diagnostics only).
+ *
+ * Subset projections never overwrite lastDigest.
+ *
+ * @param {{ lastDigest?: number, lastSubsetDigest?: number }} prev
+ * @param {number} projectedDigest
+ * @param {{ fullField: boolean }} scope
+ * @returns {{ lastDigest: number, lastSubsetDigest: number, fullField: boolean }}
+ */
+export function nextEmbodimentAuditDigests(prev, projectedDigest, scope = {}) {
+  const fullField = !!(scope && scope.fullField);
+  const digest = (Number(projectedDigest) >>> 0) || 0;
+  const prevLast = prev && Number.isFinite(prev.lastDigest) ? (prev.lastDigest >>> 0) : 0;
+  const prevSubset = prev && Number.isFinite(prev.lastSubsetDigest)
+    ? (prev.lastSubsetDigest >>> 0)
+    : 0;
+  if (fullField) {
+    return { lastDigest: digest, lastSubsetDigest: prevSubset, fullField: true };
+  }
+  return { lastDigest: prevLast, lastSubsetDigest: digest, fullField: false };
 }
 
 /**

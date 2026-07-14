@@ -27,6 +27,8 @@ import {
   projectSectorEmbodiment,
   filterNewEmbodimentIntents,
   mergeAppliedIntentIds,
+  isFullFieldSectorList,
+  nextEmbodimentAuditDigests,
 } from '../sim/sector/embodiment.js';
 import {
   pressureShareRecipe,
@@ -160,7 +162,10 @@ export const sectorSim = {
     const emb = ss.embodiment;
     if (!Number.isFinite(emb.epochKey)) emb.epochKey = -1;
     if (!Array.isArray(emb.appliedIds)) emb.appliedIds = [];
+    // lastDigest = last full-field canonical embodiment digest (audit continuity).
+    // lastSubsetDigest = last continuous-enter / partial projection digest only.
     if (!Number.isFinite(emb.lastDigest)) emb.lastDigest = 0;
+    if (!Number.isFinite(emb.lastSubsetDigest)) emb.lastSubsetDigest = 0;
     if (!Number.isFinite(emb.lastEmitSimT)) emb.lastEmitSimT = 0;
     return ss;
   },
@@ -620,7 +625,7 @@ export const sectorSim = {
       sectors: {},
       impulses: [],
       field: null,
-      embodiment: { epochKey: -1, appliedIds: [], lastDigest: 0, lastEmitSimT: 0 },
+      embodiment: { epochKey: -1, appliedIds: [], lastDigest: 0, lastSubsetDigest: 0, lastEmitSimT: 0 },
       meta: {
         rngSeed: 0, lastTickSimT: this.state.simTime || 0, lastWallT: Date.now(), lossLog: [],
         nextImpulseSeq: 1, transitCounter: 0, marketAccumulatorDays: 0,
@@ -641,6 +646,7 @@ export const sectorSim = {
         epochKey: Number.isFinite(ss.embodiment.epochKey) ? ss.embodiment.epochKey : -1,
         appliedIds: (ss.embodiment.appliedIds || []).slice(-MAX_APPLIED_EMBODIMENT_IDS),
         lastDigest: ss.embodiment.lastDigest || 0,
+        lastSubsetDigest: ss.embodiment.lastSubsetDigest || 0,
         lastEmitSimT: ss.embodiment.lastEmitSimT || 0,
       },
       meta: {
@@ -669,6 +675,7 @@ export const sectorSim = {
       epochKey: Number.isFinite(emb.epochKey) ? emb.epochKey : -1,
       appliedIds: Array.isArray(emb.appliedIds) ? emb.appliedIds.slice(-MAX_APPLIED_EMBODIMENT_IDS) : [],
       lastDigest: emb.lastDigest || 0,
+      lastSubsetDigest: emb.lastSubsetDigest || 0,
       lastEmitSimT: emb.lastEmitSimT || 0,
     };
     const m = data && data.meta || {};
@@ -701,16 +708,24 @@ export const sectorSim = {
   /**
    * Project scalar field → embodiment intents and emit only new ones.
    * Does not create entities. Does not write credits/cargo/rep/hull.
+   *
+   * Audit digests: embodiment.lastDigest is the last *full-field* canonical digest only.
+   * Continuous-enter / subset reprojects store their digest on lastSubsetDigest and must
+   * never corrupt full-field audit continuity (even on no-op reproject).
+   *
    * @param {{ source?: string, sectorIds?: string[]|null }} opts
-   * @returns {{ emitted: number, total: number, digest: number, epochKey: number, intents: object[] }}
+   * @returns {{ emitted: number, total: number, digest: number, projectedDigest: number, fullField: boolean, epochKey: number, intents: object[] }}
    */
   _projectAndEmitEmbodiment(opts = {}) {
     const ss = this._ensureState();
     const field = this._ensureField();
     const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const allSectorIds = SECTORS.map((s) => s.id).sort((a, b) => a.localeCompare(b));
+    // null/empty sectorIds ⇒ full field; explicit list may be full or a continuous-enter subset.
     const sectorIds = Array.isArray(opts.sectorIds) && opts.sectorIds.length
       ? opts.sectorIds.slice().sort((a, b) => a.localeCompare(b))
-      : SECTORS.map((s) => s.id).sort((a, b) => a.localeCompare(b));
+      : allSectorIds.slice();
+    const fullField = isFullFieldSectorList(sectorIds, allSectorIds);
 
     const projected = projectFieldEmbodiment({
       field,
@@ -730,18 +745,30 @@ export const sectorSim = {
     }
 
     const fresh = filterNewEmbodimentIntents(projected.intents, ss.embodiment.appliedIds);
+    // Full-field digests update lastDigest; subset digests only touch lastSubsetDigest.
+    const audit = nextEmbodimentAuditDigests(
+      ss.embodiment,
+      projected.digest,
+      { fullField },
+    );
+    ss.embodiment.lastDigest = audit.lastDigest;
+    ss.embodiment.lastSubsetDigest = audit.lastSubsetDigest;
+
     if (fresh.length) {
       ss.embodiment.appliedIds = mergeAppliedIntentIds(
         ss.embodiment.appliedIds, fresh, MAX_APPLIED_EMBODIMENT_IDS,
       );
-      ss.embodiment.lastDigest = projected.digest;
       ss.embodiment.lastEmitSimT = Number(this.state.simTime) || 0;
       this.bus.emit('sectorsim:embodiment', {
         schemaId: EMBODIMENT_SCHEMA_ID,
         source: opts.source || 'field',
         epochDays: projected.epochDays,
         epochKey: projected.epochKey,
+        // Payload digest describes the projected list (may be subset). Audit bag lastDigest
+        // remains full-field-only; consumers that need continuity should read state bag.
         digest: projected.digest,
+        fullField,
+        lastFullFieldDigest: ss.embodiment.lastDigest,
         sectorIds,
         intents: fresh,
         // Explicit non-authority note for consumers (world C2 / traffic later).
@@ -751,14 +778,16 @@ export const sectorSim = {
         writesRep: false,
         writesHull: false,
       });
-    } else {
-      ss.embodiment.lastDigest = projected.digest;
     }
 
     return {
       emitted: fresh.length,
       total: projected.intents.length,
+      // Return value digest stays the projection digest (callers comparing emit material).
       digest: projected.digest,
+      projectedDigest: projected.digest,
+      lastFullFieldDigest: ss.embodiment.lastDigest,
+      fullField,
       epochKey: projected.epochKey,
       intents: fresh,
     };

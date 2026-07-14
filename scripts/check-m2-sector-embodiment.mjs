@@ -20,6 +20,8 @@ import {
   proposedRecordId,
   embodimentDigest,
   stableSerialize,
+  isFullFieldSectorList,
+  nextEmbodimentAuditDigests,
   EMBODIMENT_KIND,
   EMBODIMENT_SCHEMA_ID,
 } from '../src/sim/sector/embodiment.js';
@@ -133,6 +135,50 @@ function checkPayloadBoundDigest() {
   );
 }
 
+function checkFullFieldAuditContinuity() {
+  const sectorIds = SECTORS.map((s) => s.id).sort((a, b) => a.localeCompare(b));
+  assert.equal(isFullFieldSectorList(sectorIds, sectorIds), true);
+  assert.equal(isFullFieldSectorList([sectorIds[0]], sectorIds), false);
+
+  const fullBag = nextEmbodimentAuditDigests(
+    { lastDigest: 0, lastSubsetDigest: 0 },
+    0xfeed,
+    { fullField: true },
+  );
+  const afterSubset = nextEmbodimentAuditDigests(fullBag, 0xbeef, { fullField: false });
+  assert.equal(afterSubset.lastDigest, 0xfeed, 'pure policy: subset must not replace lastDigest');
+  assert.equal(afterSubset.lastSubsetDigest, 0xbeef);
+
+  const state = createGameState(42);
+  state.meta.seed = 42;
+  state.world.currentSectorId = 'sector_helios_prime';
+  for (const s of SECTORS) state.world.sectors[s.id] = { ...s, owner: s.factionId };
+  const emitLog = [];
+  const bus = { emit(e, p) { emitLog.push({ e, p }); }, on() {}, off() {} };
+  sectorSim.state = state;
+  sectorSim.bus = bus;
+  sectorSim.helpers = {};
+  sectorSim.registry = {
+    get(n) {
+      if (n === 'factions') return { addOffscreenTension() {}, contestedSectorFor() { return null; } };
+      if (n === 'automation') return { offscreenRiskPass() { return 0; } };
+      return null;
+    },
+  };
+  sectorSim.newGame();
+  sectorSim._advanceModel(2, 'check_audit');
+  const fullDigest = state.sectorSim.embodiment.lastDigest;
+  assert.ok(fullDigest > 0, 'full advance stamps lastDigest');
+  emitLog.length = 0;
+  sectorSim._onSectorEnter({ sectorId: 'sector_ceres_belt', continuous: true, noTeleport: true });
+  assert.equal(
+    state.sectorSim.embodiment.lastDigest,
+    fullDigest,
+    'continuous enter after full advance must preserve lastDigest',
+  );
+  assert.equal(emitLog.filter((x) => x.e === 'sectorsim:embodiment').length, 0);
+}
+
 let n = 0;
 runNodeTest();
 n++;
@@ -146,5 +192,8 @@ console.log('ok   m2-embodiment — adapter continuous idempotency');
 checkPayloadBoundDigest();
 n++;
 console.log('ok   m2-embodiment — payload-bound digest (key-order + nested)');
+checkFullFieldAuditContinuity();
+n++;
+console.log('ok   m2-embodiment — full-field lastDigest audit continuity');
 console.log(`\n${n} ok, 0 fail`);
 console.log('M2-C3 sector embodiment checks OK');
