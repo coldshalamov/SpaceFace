@@ -255,6 +255,7 @@
     "check:bundle": "npm run check:render-hotpath && npm run check:ship-material-sharing && node scripts/check-bundle.mjs && node scripts/check-asset-reachability.mjs",
     "check:m6:packaging": "node --test test/m6-packaging-parity.test.mjs && node scripts/check-bundle.mjs",
     "check:m6:localization": "node --test test/localization-runtime.test.mjs test/localization-reachability.test.mjs && node scripts/check-localization-reachability.mjs",
+    "check:m6:platform": "node scripts/check-m6-platform-matrix.mjs",
     "check:assets": "node scripts/check-runtime-asset-contract.mjs",
     "check:asset-reachability": "node scripts/check-asset-reachability.mjs",
     "check:launch-policy": "node scripts/check-launch-policy.mjs",
