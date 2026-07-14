@@ -31,6 +31,17 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   tether_control_raider: new Set(),
 });
 const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
+const SCENARIO_47A_SCAVENGERS = new Map([
+  ['scavenger_harasser', Object.freeze({
+    motive: 'screen_recovery_claim',
+    doctrineId: 'ranged_disengager',
+  })],
+  ['scavenger_thief', Object.freeze({
+    motive: 'recover_evidence_spindle',
+    doctrineId: 'tether_control_raider',
+  })],
+]);
+const SCENARIO_47A_INNER_SANCTUARY_RADIUS_WU = 1200;
 const FIRST_SESSION_OWNERSHIP = new WeakMap();
 
 /**
@@ -90,7 +101,8 @@ export function authorizeAIEngagement({
       || ((wanted || recentlyDamaged)
         && (ai.engagementTrigger === 'wanted_status' || ai.engagementTrigger === 'player_attack'))
     );
-    if (!lawfulEnforcement) return denied('station_protection');
+    const scenarioCounterplay = is47aScavengerCounterplayAuthorized(state, self, target);
+    if (!lawfulEnforcement && !scenarioCounterplay) return denied('station_protection');
   }
 
   if (inFirstSession(state, nowTick) && !claimFirstSessionAttackerOwnership(state, self, target)) {
@@ -98,6 +110,52 @@ export function authorizeAIEngagement({
   }
 
   return allowed();
+}
+
+/**
+ * Fail-closed bridge between the authored 47-A refusal contract and Helios jurisdiction.
+ *
+ * The demand is deliberately issued just outside the station's 1,200-WU inner sanctuary while
+ * the broader 1,400-WU starter jurisdiction still applies. Only the two named scenario actors may
+ * cross that outer 200-WU seam, and only after the player's explicit refusal plus the exact
+ * authored no-fire deadline. Moving back into the inner sanctuary restores ordinary protection.
+ */
+export function is47aScavengerCounterplayAuthorized(state, self, target) {
+  if (!state || !self || !target || target.id !== state.playerId || !target.pos
+    || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) return false;
+  if (state.world?.currentSectorId !== 'sector_helios_prime') return false;
+  const scenario = state.scenario;
+  const safe = scenario && scenario.safeOpening;
+  if (scenario?.active?.id !== 'scenario.47a.mass-discrepancy') return false;
+  if (!safe || safe.spindleClaimed !== true || safe.response !== 'refuse') return false;
+  if (!Number.isFinite(safe.demandIssuedAt) || !Number.isFinite(safe.noFireUntilS)
+    || safe.noFireUntilS < safe.demandIssuedAt || !Number.isFinite(state.simTime)
+    || state.simTime < safe.noFireUntilS) return false;
+  if ((state.story?.beatIndex | 0) < 2) return false;
+
+  const data = self.data;
+  const ai = data && data.ai;
+  const actorId = data && data.scenarioActorId;
+  const expected = SCENARIO_47A_SCAVENGERS.get(actorId);
+  const binding = scenario.actorBindings && scenario.actorBindings[actorId];
+  if (!expected || !binding || binding.status !== 'bound' || binding.entityId !== self.id
+    || !ai || ai.liveColdStartSafe !== true
+    || data._liveColdStartActivated !== true) return false;
+  if (ai.dormantUntilBeat !== 'scavenger_arrival'
+    || ai.engagementTrigger !== 'explicit_refusal'
+    || ai.motive !== expected.motive
+    || normalizeCombatDoctrineId(ai.combatDoctrineId) !== expected.doctrineId) return false;
+
+  const station = stationEntities(state).find((entity) => {
+    const stationId = entity.data?.stationId || entity.stationId;
+    return entity.alive !== false && stationId === 'station_helios' && entity.pos
+      && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z);
+  });
+  if (!station) return false;
+  const dx = target.pos.x - station.pos.x;
+  const dz = target.pos.z - station.pos.z;
+  return dx * dx + dz * dz >= SCENARIO_47A_INNER_SANCTUARY_RADIUS_WU
+    * SCENARIO_47A_INNER_SANCTUARY_RADIUS_WU;
 }
 
 /** Fresh hostility oracle for tactical perception and final execution authority. */

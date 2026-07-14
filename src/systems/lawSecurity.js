@@ -11,7 +11,10 @@ import { hash32 } from '../core/rng.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
-import { protectedStationAt } from '../ai/engagementAuthority.js';
+import {
+  is47aScavengerCounterplayAuthorized,
+  protectedStationAt,
+} from '../ai/engagementAuthority.js';
 import { isPlayerWanted } from './heat.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { effectiveRegionalSecurity } from './regionalEcology.js';
@@ -133,6 +136,7 @@ export const lawSecurity = {
       }
       const target = entityById(state, targetId);
       if (!target) continue;
+      if (is47aScavengerCounterplayAuthorized(state, entity, target)) continue;
       const jurisdiction = protectedStationAt(state, target) || protectedStationAt(state, entity);
       if (!jurisdiction) continue;
       this._withdrawFromSanctuary(entity, target, jurisdiction);
