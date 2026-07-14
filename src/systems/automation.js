@@ -302,15 +302,28 @@ export const automation = {
     bus.on('save:loaded', () => this.runOfflineCatchup());
     bus.on('game:started', () => { this.meta().lastTickTime = nowMs(); });
 
-    // Hard sector exit: world despawns sector-scoped entities — drop stale drone entity ids
-    // (they re-spawn from the group when the player returns). Continuous free-flight membership
-    // preserves live drone ids across Voronoi handoffs (M2-C1).
+    // Hard sector exit: world despawns sector-scoped entities — release live drone hulls and drop
+    // ids (they re-spawn from the group when the player returns). Continuous free-flight membership
+    // preserves live drone identity / task / route / progress across Voronoi handoffs (M2-C1).
     bus.on('sector:exit', (p) => {
       if (p && (p.continuous || p.noTeleport)) return;
-      for (const g of this.state.automation.drones) g.entityIds = [];
+      for (const g of this.state.automation.drones) this._releaseDroneEntities(g);
     });
+    // Continuous enter: adopt sector membership for still-live drone groups. No spawn, no task/
+    // route/program/cargo reset — identity stays on the live entity ids (M2-C1).
+    bus.on('sector:enter', (p) => this._onContinuousDroneMembership(p));
 
     // Tech can raise the drone tier cap → just affects gating/cap; nothing to do eagerly.
+  },
+
+  /** Soft handoff: live drone groups follow current sector membership without teardown or re-spawn. */
+  _onContinuousDroneMembership(p) {
+    if (!(p && (p.continuous || p.noTeleport))) return;
+    const sid = p.sectorId || (this.state.world && this.state.world.currentSectorId) || null;
+    if (!sid || !this.state.automation || !this.state.automation.drones) return;
+    for (const g of this.state.automation.drones) {
+      if (this._hasLiveDroneEntities(g)) g.sectorId = sid;
+    }
   },
 
   // ------------------------------------------------------------------------------------------
@@ -358,6 +371,15 @@ export const automation = {
 
       g.oreType = g.oreType || DRONE_ORE_ID;
 
+      // Continuous membership / mid-task sector cross (M2-C1): if live hulls still exist after a
+      // free-flight handoff, adopt current sector membership — never soft-reset task/route/ids by
+      // releasing just because g.sectorId lagged the player bubble. Abstract away-from-field path
+      // only when there are no live entities left for this group. Runs before program+legacy paths.
+      if (g.sectorId !== curSector) {
+        if (this._hasLiveDroneEntities(g)) g.sectorId = curSector;
+        else if (g.entityIds && g.entityIds.length) g.entityIds = [];
+      }
+
       // PROGRAM PATH (V2 §4 / cut-list #28): if the group has an assigned alphabet template,
       // run it instead of the legacy mine-to-buffer loop. The drone mines into the player's REAL
       // cargo (via canonical addCargo) and sells at a depot for real credits — the player-authored
@@ -384,7 +406,6 @@ export const automation = {
       const onRock = (g.sectorId === curSector)
         ? this._steerDroneEntities(g, def, dt, room > 0)
         : false;
-      if (g.sectorId !== curSector) this._releaseDroneEntities(g); // out-of-sector: entities unloaded
 
       // Mine into the shared buffer at the authored rate. In-sector the drones must be on a rock;
       // out-of-sector (abstract) we accrue as before so away-from-field passive income still works.
@@ -485,9 +506,11 @@ export const automation = {
 
   // Spawn the visible flying drones for a freshly deployed group near the nearest asteroid field.
   // Best-effort: needs the core spawnEntity helper and the group's home sector loaded.
+  // Continuous handoff must never stack a second wave on an already-live group (M2-C1).
   _spawnDroneEntities(g, def) {
     const spawn = this.helpers && this.helpers.spawnEntity;
     if (!spawn) return;
+    if (this._hasLiveDroneEntities(g)) return;
     const count = Math.max(1, g.count || 1);
     const origin = this._droneFieldOrigin(g, def);
     g.entityIds = g.entityIds || [];
@@ -630,8 +653,23 @@ export const automation = {
     return p ? { x: p.pos.x, z: p.pos.z } : null;
   },
 
-  // Despawn a group's flying drones (recall / loss / out-of-sector). Marks entities dead (swept
-  // end-of-step) and clears the id list so a later re-entry re-spawns them.
+  // True when the group still owns at least one live flying drone entity. Continuous handoff
+  // uses this to distinguish soft membership (keep task/route/identity) from abstract unload.
+  _hasLiveDroneEntities(g) {
+    if (!g || !g.entityIds || !g.entityIds.length) return false;
+    const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state.entities.get(id));
+    const alive = [];
+    for (const id of g.entityIds) {
+      const e = getEnt(id);
+      if (e && e.alive) alive.push(id);
+    }
+    if (alive.length !== g.entityIds.length) g.entityIds = alive;
+    return alive.length > 0;
+  },
+
+  // Despawn a group's flying drones (recall / loss / hard sector exit). Marks entities dead (swept
+  // end-of-step) and clears the id list so a later re-entry re-spawns them. Continuous free-flight
+  // membership must not call this solely because sectorId lagged (M2-C1).
   _releaseDroneEntities(g) {
     if (!g || !g.entityIds || !g.entityIds.length) return;
     const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state.entities.get(id));

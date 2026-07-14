@@ -29,6 +29,7 @@ import { gateControlDirector } from '../src/systems/gateControlDirector.js';
 import { missions } from '../src/systems/missions.js';
 import { traffic } from '../src/systems/traffic.js';
 import { wingmen } from '../src/systems/wingmen.js';
+import { automation } from '../src/systems/automation.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -319,6 +320,89 @@ section('behavioral: hard exit+enter reseeds director pressure');
   assert.equal(dir.lastMeaningfulAt, state.simTime, 'hard enter resets meaningful clock');
 }
 
+section('behavioral: adversarial mid-task drone continuous cross + hard exit');
+{
+  const state = makeState(42);
+  state.player = { credits: 50000, researchPoints: 0, stats: {}, droneTierCap: 3, cargo: { capVolume: 100, usedVolume: 0, items: {} } };
+  const bus = createBus();
+  const helpers = {
+    spawnEntity(spec) {
+      const id = ++state._nextId;
+      const e = {
+        id, type: spec.type || 'drone', alive: true,
+        pos: { ...(spec.pos || { x: 0, z: 0 }) },
+        vel: { x: 0, z: 0 }, rot: 0, angVel: 0,
+        hull: 40, hullMax: 40, team: 0,
+        data: { ...(spec.data || {}) },
+      };
+      state.entities.set(id, e);
+      state.entityList.push(e);
+      return e;
+    },
+    removeEntity(id) { const e = state.entities.get(id); if (e) e.alive = false; },
+    getEntity(id) { return state.entities.get(id); },
+    player() { return state.entities.get(state.playerId); },
+  };
+  state.entities.set(1, {
+    id: 1, type: 'ship', alive: true, isPlayer: true,
+    pos: { x: 0, z: 0 }, hull: 100, hullMax: 100, data: {},
+  });
+  state.entityList.push(state.entities.get(1));
+  automation.init({ state, bus, helpers, registry: { get() { return null; } } });
+
+  const e1 = {
+    id: 301, type: 'drone', alive: true, pos: { x: 5, z: 5 }, vel: { x: 1, z: 0 },
+    rot: 0, angVel: 0, hull: 40, hullMax: 40,
+    data: { kind: 'mining_drone', groupId: 'd_adv', targetAstId: null },
+  };
+  state.entities.set(301, e1);
+  state.entityList.push(e1);
+  state.automation.drones = [{
+    id: 'd_adv', defId: 'drone_mk1', count: 1, tier: 1, sectorId: HELIOS,
+    oreType: 'cmdty_ore_iron', originPos: { x: 5, z: 5 },
+    buffer: 22, bufferCap: 60, fuel: 180, fuelMax: 240,
+    durability: 40, durabilityMax: 40, status: 'program', entityIds: [301],
+    ownerId: 'player',
+    program: { templateId: 'mine_to_depot' },
+    programState: { pc: 1, waitT: 0, cargoWasFull: true },
+  }];
+
+  bus.emit('sector:exit', { sectorId: HELIOS, continuous: true, noTeleport: true });
+  state.world.currentSectorId = CERES;
+  bus.emit('sector:enter', { sectorId: CERES, continuous: true, noTeleport: true, firstVisit: false });
+  automation.update(1 / 60, state);
+
+  const g = state.automation.drones[0];
+  assert.deepEqual(g.entityIds, [301], 'mid-task continuous: entity id retained');
+  assert.equal(e1.alive, true, 'mid-task continuous: hull alive');
+  assert.ok(
+    g.programState && (g.programState.pc === 1 || g.programState.pc === 2),
+    'mid-task continuous: program route progress retained or advanced naturally',
+  );
+  assert.equal(g.programState.cargoWasFull, true, 'mid-task continuous: cargo latch retained');
+  assert.equal(g.buffer, 22, 'mid-task continuous: buffer retained');
+  assert.equal(g.sectorId, CERES, 'mid-task continuous: membership updated');
+  assert.equal(g.ownerId, 'player', 'mid-task continuous: ownership retained');
+
+  // Hard exit must teardown live hulls (may keep abstract ledger fields).
+  bus.emit('sector:exit', { sectorId: CERES, continuous: false, noTeleport: false });
+  assert.deepEqual(g.entityIds, [], 'hard exit clears entity ids');
+  assert.equal(e1.alive, false, 'hard exit despawns mid-task drone');
+}
+
+section('static: automation continuous membership + no soft-release on sector mismatch');
+{
+  const src = read('src/systems/automation.js');
+  assert.match(src, /_onContinuousDroneMembership|_hasLiveDroneEntities/, 'automation must retain live drones across continuous membership');
+  assert.match(src, /sector:enter[\s\S]*_onContinuousDroneMembership|bus\.on\(\s*['"]sector:enter['"]/, 'automation listens for continuous sector:enter membership');
+  // Soft-reset defect: releasing solely on g.sectorId !== curSector after continuous handoff.
+  assert.doesNotMatch(
+    src,
+    /if\s*\(\s*g\.sectorId\s*!==\s*curSector\s*\)\s*this\._releaseDroneEntities\s*\(\s*g\s*\)/,
+    'must not soft-release drones solely on sectorId !== curSector',
+  );
+}
+
 section('node:test test/m2-continuous-handoff*.test.mjs');
 {
   const r = spawnSync(process.execPath, ['--test', 'test/m2-continuous-handoff.test.mjs'], {
@@ -331,4 +415,4 @@ section('node:test test/m2-continuous-handoff*.test.mjs');
   assert.equal(r.status, 0, 'm2-continuous-handoff unit tests must pass');
 }
 
-console.log('M2 continuous handoff OK — continuous exit+enter preserves living systems (incl. director pressure/pending, ambush, gate); hard exit tears down; no sector:leave.');
+console.log('M2 continuous handoff OK — continuous exit+enter preserves living systems (incl. director pressure/pending, ambush, gate, mid-task drones); hard exit tears down; no sector:leave.');

@@ -21,6 +21,7 @@ import { gateControlDirector } from '../src/systems/gateControlDirector.js';
 import { missions } from '../src/systems/missions.js';
 import { traffic } from '../src/systems/traffic.js';
 import { wingmen } from '../src/systems/wingmen.js';
+import { automation } from '../src/systems/automation.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -415,4 +416,184 @@ test('noTeleport alone is treated as continuous handoff for budget', () => {
   api.request(3, 'x');
   bus.emit('sector:exit', { sectorId: HELIOS, continuous: false, noTeleport: true });
   assert.equal(api.current(), 3, 'noTeleport alone must preserve budget');
+});
+
+// ── Adversarial: live automation drones mid-task across continuous membership ─────────────────
+
+function bootAutomationOnly(state) {
+  const bus = createBus();
+  const helpers = {
+    spawnEntity(spec) {
+      const id = (state._nextId = (state._nextId || 2000) + 1);
+      const e = {
+        id,
+        type: spec.type || 'drone',
+        alive: true,
+        pos: { ...(spec.pos || { x: 0, z: 0 }) },
+        vel: { x: 0, z: 0 },
+        rot: spec.rot || 0,
+        angVel: 0,
+        hull: spec.hull ?? 40,
+        hullMax: spec.hullMax ?? 40,
+        team: spec.team ?? 0,
+        radius: spec.radius ?? 2,
+        mass: spec.mass ?? 6,
+        maxSpeed: spec.maxSpeed ?? 40,
+        drag: spec.drag ?? 1.4,
+        collides: spec.collides !== undefined ? spec.collides : false,
+        data: { ...(spec.data || {}) },
+      };
+      state.entities.set(id, e);
+      state.entityList.push(e);
+      return e;
+    },
+    removeEntity(id) {
+      const e = state.entities.get(id);
+      if (e) e.alive = false;
+    },
+    getEntity(id) { return state.entities.get(id); },
+    player() { return state.entities.get(state.playerId); },
+  };
+  state.entities.set(1, {
+    id: 1, type: 'ship', alive: true, isPlayer: true,
+    pos: { x: 0, z: 0 }, hull: 100, hullMax: 100, data: {},
+  });
+  state.entityList.push(state.entities.get(1));
+  state.player = state.player || { credits: 50000, researchPoints: 0, stats: {}, droneTierCap: 3 };
+  state.player.droneTierCap = state.player.droneTierCap || 3;
+  state.player.cargo = state.player.cargo || {
+    capVolume: 100, usedVolume: 0, items: {},
+  };
+  automation.init({ state, bus, helpers, registry: { get() { return null; } } });
+  return { bus, helpers };
+}
+
+function seedMidTaskDrone(state, opts = {}) {
+  const e1 = {
+    id: 101, type: 'drone', alive: true, team: 0,
+    pos: { x: 12, z: 8 }, vel: { x: 2, z: 1 }, rot: 0.4, angVel: 0,
+    hull: 40, hullMax: 40, data: { kind: 'mining_drone', groupId: 'd_mid', targetAstId: null },
+  };
+  const e2 = {
+    id: 102, type: 'drone', alive: true, team: 0,
+    pos: { x: 14, z: 6 }, vel: { x: 1.5, z: 0.5 }, rot: 0.2, angVel: 0,
+    hull: 40, hullMax: 40, data: { kind: 'mining_drone', groupId: 'd_mid', targetAstId: null },
+  };
+  state.entities.set(101, e1);
+  state.entities.set(102, e2);
+  state.entityList.push(e1, e2);
+  const group = {
+    id: 'd_mid',
+    defId: 'drone_mk1',
+    count: 2,
+    tier: 1,
+    sectorId: HELIOS,
+    homeSectorId: HELIOS,
+    fieldId: null,
+    oreType: 'cmdty_ore_iron',
+    originPos: { x: 12, z: 8 },
+    buffer: 17.5,
+    bufferCap: 60,
+    fuel: 200,
+    fuelMax: 240,
+    durability: 40,
+    durabilityMax: 40,
+    autoReturn: false,
+    status: 'program',
+    ratePerMin: 0,
+    entityIds: [101, 102],
+    ownerId: 'player',
+    program: { templateId: 'mine_to_depot' },
+    // Mid MOVE-to-depot step after mining filled cargo latch — continuous cross must not soft-reset.
+    programState: { pc: 1, waitT: 0, cargoWasFull: true },
+    ...opts,
+  };
+  state.automation.drones = [group];
+  return { group, e1, e2 };
+}
+
+test('adversarial: mid-task drone continuous crossing retains identity/task/route/progress/cargo', () => {
+  const state = makeState();
+  const { bus } = bootAutomationOnly(state);
+  const { group, e1, e2 } = seedMidTaskDrone(state);
+  const snap = {
+    entityIds: group.entityIds.slice(),
+    buffer: group.buffer,
+    fuel: group.fuel,
+    program: { ...group.program },
+    programState: { ...group.programState },
+    ownerId: group.ownerId,
+    pos1: { x: e1.pos.x, z: e1.pos.z },
+    pos2: { x: e2.pos.x, z: e2.pos.z },
+  };
+
+  // Membership handoff (world continuous path): exit soft + enter soft + bubble id change.
+  bus.emit('sector:exit', { sectorId: HELIOS, continuous: true, noTeleport: true });
+  state.world.currentSectorId = CERES;
+  state.world.activeSector = { id: CERES };
+  bus.emit('sector:enter', {
+    sectorId: CERES, continuous: true, noTeleport: true, firstVisit: false,
+  });
+
+  // Regression for DEF soft-reset at former _updateDrones sectorId mismatch release path.
+  automation.update(1 / 60, state);
+
+  const g = state.automation.drones[0];
+  assert.ok(g, 'drone group retained');
+  assert.equal(g.id, 'd_mid', 'identity retained');
+  assert.deepEqual(g.entityIds, snap.entityIds, 'live entity ids retained (no soft clear)');
+  assert.equal(e1.alive, true, 'drone hull 1 remains alive');
+  assert.equal(e2.alive, true, 'drone hull 2 remains alive');
+  assert.equal(g.program.templateId, snap.program.templateId, 'task/template retained');
+  // Soft-reset signature would be: entityIds wiped + hulls killed + program re-seeded at pc=0.
+  // Natural MOVE completion may advance pc 1→2 in the same tick — that is progress, not reset.
+  assert.ok(
+    g.programState
+      && (g.programState.pc === snap.programState.pc || g.programState.pc === snap.programState.pc + 1),
+    'program route progress retained or advanced naturally (not soft-reset to 0)',
+  );
+  assert.equal(g.programState.cargoWasFull, true, 'cargo latch retained');
+  assert.equal(g.buffer, snap.buffer, 'buffer/cargo progress retained');
+  assert.equal(g.ownerId, snap.ownerId, 'ownership retained');
+  assert.equal(g.sectorId, CERES, 'sector membership updated on continuous handoff');
+  // No duplicate spawn wave after membership adopt.
+  assert.equal(g.entityIds.length, 2, 'no duplicate spawn on continuous enter/update');
+  assert.equal(state.entities.get(101).pos.x, snap.pos1.x, 'entity pose not rebuilt from spawn');
+});
+
+test('adversarial: hard sector exit tears down live mid-task drone entities', () => {
+  const state = makeState();
+  const { bus } = bootAutomationOnly(state);
+  const { group, e1, e2 } = seedMidTaskDrone(state);
+
+  bus.emit('sector:exit', { sectorId: HELIOS, continuous: false, noTeleport: false });
+
+  assert.deepEqual(group.entityIds, [], 'hard exit clears drone entity ids');
+  assert.equal(e1.alive, false, 'hard exit despawns live drone 1');
+  assert.equal(e2.alive, false, 'hard exit despawns live drone 2');
+  // Ledger group itself remains (recall/loss paths remove groups); only live hulls teardown.
+  assert.equal(state.automation.drones[0].id, 'd_mid');
+  assert.equal(state.automation.drones[0].program.templateId, 'mine_to_depot');
+  assert.equal(state.automation.drones[0].buffer, 17.5, 'hard exit does not wipe abstract buffer ledger');
+});
+
+test('adversarial: continuous handoff does not re-spawn when live drones already present', () => {
+  const state = makeState();
+  const { bus, helpers } = bootAutomationOnly(state);
+  const { group } = seedMidTaskDrone(state);
+  let spawnCalls = 0;
+  const realSpawn = helpers.spawnEntity;
+  helpers.spawnEntity = (spec) => {
+    spawnCalls++;
+    return realSpawn(spec);
+  };
+
+  emitContinuousHandoff(bus, HELIOS, CERES);
+  state.world.currentSectorId = CERES;
+  automation.update(1 / 60, state);
+  // Force the spawn gate the same way a re-enter would.
+  automation._spawnDroneEntities(group, { durabilityMax: 40, deployRange: 350 });
+
+  assert.equal(spawnCalls, 0, 'no spawnEntity while live drones exist');
+  assert.deepEqual(group.entityIds, [101, 102]);
 });
