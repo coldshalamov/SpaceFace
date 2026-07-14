@@ -31,6 +31,9 @@ const LOAD_BASE_BY_PHASE = Object.freeze({ slack: 0, capture: 0.35, loaded: 0.55
 // Pickups are valid massline targets now; attachment liveness sweeps cut the line if a pickup is
 // collected/despawned, so the old invisible-anchor failure mode stays closed.
 const ATTACHABLE_TYPES = new Set(['asteroid', 'wreck', 'ship', 'drone', 'station', 'payload', 'pickup']);
+// Authored payloads and loose pickups are sensor bodies: they intentionally do not collide, so the
+// collidable-only spatial hash cannot be their sole acquisition source.
+const NON_COLLIDING_ACQUISITION_TYPES = new Set(['payload', 'pickup']);
 const TOW_TARGET_COM_TYPES = new Set(['wreck', 'ship', 'drone', 'payload', 'pickup']);
 
 export const tetherGameplay = {
@@ -43,6 +46,7 @@ export const tetherGameplay = {
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
     this._targetScratch = [];
+    this._nonCollidingTargetScratch = [];
     this._active = null;
     this._lastStrainT = -Infinity;
     this._noRelatchUntil = -Infinity;
@@ -214,6 +218,15 @@ export const tetherGameplay = {
       maxLength,
       this._targetScratch,
       state.entityList || [],
+    );
+    // This path runs only when the edge-triggered tether action is consumed, never per frame.
+    // Preserve the fast collidable hash while supplementing authored sensor payloads deterministically.
+    appendNonCollidingAttachableCandidates(
+      candidates,
+      state.entityList || [],
+      player,
+      maxLength,
+      this._nonCollidingTargetScratch,
     );
 
     let best = null;
@@ -582,6 +595,35 @@ function aimWorldFor(player, state, range) {
 function isAttachable(entity, playerId) {
   if (!entity || !entity.alive || !entity.pos || entity.id === playerId) return false;
   return ATTACHABLE_TYPES.has(entity.type);
+}
+
+function appendNonCollidingAttachableCandidates(candidates, entities, player, maxLength, scratch) {
+  scratch.length = 0;
+  for (const entity of entities) {
+    if (!isAttachable(entity, player.id)) continue;
+    if (entity.collides !== false || !NON_COLLIDING_ACQUISITION_TYPES.has(entity.type)) continue;
+    const dx = entity.pos.x - player.pos.x;
+    const dz = entity.pos.z - player.pos.z;
+    if (Math.hypot(dx, dz) > maxLength + (entity.radius || 0)) continue;
+    scratch.push(entity);
+  }
+  scratch.sort(compareEntityIds);
+  const seen = new Set(candidates.map((entity) => entity.id));
+  for (const entity of scratch) {
+    if (seen.has(entity.id)) continue;
+    candidates.push(entity);
+    seen.add(entity.id);
+  }
+  return candidates;
+}
+
+function compareEntityIds(a, b) {
+  if (Number.isFinite(a.id) && Number.isFinite(b.id)) return a.id - b.id;
+  if (Number.isFinite(a.id)) return -1;
+  if (Number.isFinite(b.id)) return 1;
+  const aId = String(a.id);
+  const bId = String(b.id);
+  return aId < bId ? -1 : aId > bId ? 1 : 0;
 }
 
 function isAuthorizedFocusTarget(state, player, target) {

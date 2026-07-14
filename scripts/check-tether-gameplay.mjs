@@ -6,6 +6,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { core } from '../src/core/coreSystem.js';
 import { physics } from '../src/core/physics.js';
 import { SIM_DT } from '../src/core/sim.js';
+import { makeEvidenceSpindleSpec } from '../src/data/scenarios/47aLiveScene.js';
 import { actions } from '../src/systems/actions.js';
 import { combat } from '../src/systems/combat.js';
 import { flightV3 } from '../src/systems/flightV3.js';
@@ -20,6 +21,7 @@ const REEL_IN_PER_TICK = -46 * DT;
 
 await assertGameplaySlingshot();
 await assertCursorTetherTargeting();
+await assertNonCollidingPayloadAcquisitionWithActiveSpatialHash();
 await assertLockedHostileTetherTargeting();
 await assertNearestTetherMode();
 await assertPickupMasslinePull();
@@ -171,6 +173,61 @@ async function assertCursorTetherTargeting() {
   assert.equal(events.latched.length, 1, 'cursor-targeted tether should latch exactly once');
   assert.equal(events.latched[0].targetId, aimedShip.id,
     `cursor-targeted tether should choose the reticle ship, not the nearer rock ${nearbyRock.id}`);
+}
+
+async function assertNonCollidingPayloadAcquisitionWithActiveSpatialHash() {
+  const harness = createHarness();
+  const { state, helpers, runtime, events } = harness;
+
+  const player = helpers.spawnEntity(makeShipEntitySpec('ship_wasp', {
+    isPlayer: true,
+    pos: { x: 0, z: 0 },
+    rot: 0,
+  }));
+  state.playerId = player.id;
+  const collidableDecoy = helpers.spawnEntity({
+    type: 'asteroid',
+    pos: { x: 48, z: 80 },
+    radius: 9,
+    mass: 260,
+    hull: 180,
+    hullMax: 180,
+    collides: true,
+    data: { typeId: 'ast_common_rock' },
+  });
+  // The live Rapier path maintains the spatial hash only above its broadphase threshold.
+  // Populate that threshold with far-away collidables so this regression cannot silently fall
+  // back to entityList and pass without exercising the production hash branch.
+  for (let i = 0; i < 95; i++) {
+    helpers.spawnEntity({
+      type: 'asteroid',
+      pos: { x: 900 + (i % 16) * 34, z: 700 + Math.floor(i / 16) * 34 },
+      radius: 5,
+      mass: 180,
+      hull: 80,
+      hullMax: 80,
+      collides: true,
+      data: { typeId: 'ast_common_rock' },
+    });
+  }
+  const spindle = helpers.spawnEntity(makeEvidenceSpindleSpec({ pos: { x: 92, z: 0 } }));
+
+  initializeSystems(harness);
+  await ensureSg02Ready(runtime, state);
+  state.input.aimWorld = { x: spindle.pos.x, z: spindle.pos.z };
+  state.input.aimAngle = 0;
+  fireTetherOnce(harness);
+
+  assert(state.spatialHash?.diagnostics?.activeBuckets > 0,
+    'fixture must exercise acquisition with the collidable spatial hash active');
+  assert(state.entityIndex?.collidables?.includes(collidableDecoy),
+    'collidable decoy must populate the active spatial hash source');
+  assert.equal(state.entityIndex?.collidables?.includes(spindle), false,
+    '47-A sensor payload must remain outside the collidable index');
+  assert.equal(spindle.collides, false, 'tether acquisition must not mutate authored payload collision behavior');
+  assert.equal(events.latched.length, 1, 'normal tether input should latch the non-colliding 47-A payload');
+  assert.equal(events.latched[0].targetId, spindle.id,
+    'active spatial hash must not hide an aimed non-colliding payload');
 }
 
 async function assertLockedHostileTetherTargeting() {
