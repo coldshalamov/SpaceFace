@@ -1,28 +1,62 @@
-# SESSION PLAN — depth-research checkpoint
+# PLAYABLE DEMO CHECKPOINT
 
-**Checkpoint date:** 2026-07-13
-**Status:** Research handoff only; not the active product-sprint authority and not an implementation acceptance record.
-**Current authority:** `design/vision/ALPHA_PROGRAM.md` controls milestone order and acceptance. `design/depth-program/BUILD_PLAN.md` and `design/depth-program/PROGRESS_LEDGER.md` control execution of the research-backed depth expansion beneath that ledger.
+**Date:** 2026-07-14  
+**Status:** The beginning of the game is playable and has one repeatable proof command. The larger Depth Program is paused, not finished.
 
-## What this session produced
+## What works now
 
-- A legacy five-game concept pass in `design/vision/ASSET_DEPTH_AND_PIPELINE_PLAN.md` and `design/vision/research/`. These files remain useful hypothesis catalogues, but their uncited counts, statistics, licensing conclusions, and completeness claims are explicitly non-authoritative.
-- A separate committed evidence corpus in `design/depth-program/research/verified/`, including source-grounded game audits, a SpaceFace baseline, cross-game synthesis, content candidates, and an implementation pipeline.
-- A current depth execution plan and progress ledger. At this checkpoint, the ledger is the place to record implementation progress; research prose is not proof that a feature or asset shipped.
+The verified demo starts from the normal title screen and uses normal keyboard and mouse controls. It proves:
 
-## Reconciliation rules
+- New Game launches with authored ship and station assets.
+- Ordinary flight input works.
+- The Star Chart can find Helios Station and arm the flight computer.
+- The player reaches a real dock prompt and physically docks.
+- The live station screen opens and the outfitting preview matches the real equipped module.
+- The player can undock, choose the Hunter opening, track its mission target, and enter readable combat.
+- A separate normal route crosses a gate, saves with F5, reloads to the title, clicks Continue, and restores the destination.
 
-1. Prefer `design/depth-program/research/verified/README.md` and its cited reports over the legacy vision audits.
-2. Recheck every external asset's file-level provenance, license compatibility, author, attribution, and derivative terms before download or integration.
-3. Do not inherit fixed polygon, texture, draw-call, or decimation caps from the legacy draft. Preserve the intended visual result and optimize from measured player-facing evidence using authored LODs, batching, compression, and residency controls.
-4. A concept enters production only through the active alpha/depth ledger, with the named checks and player-facing evidence. Documentation, tool-call counts, transcripts, and self-review do not establish completion.
-5. Update status with a date and concrete evidence; do not embed branch names, dirty-file totals, ephemeral scratch paths, or revision claims that immediately drift.
+Run the whole checkpoint with:
 
-## Next execution handoff
+```powershell
+npm run check:demo-opening
+```
 
-- Continue the highest-priority compatible packet named by `design/vision/ALPHA_PROGRAM.md` and `design/depth-program/BUILD_PLAN.md`.
-- Record its current owner and evidence in `design/depth-program/PROGRESS_LEDGER.md` when work actually begins or lands.
-- Keep Blender work in the exclusive graphics lane and require independent in-game visual acceptance before promotion.
-- Keep browser and Electron on the same game path; preserve visible quality while fixing performance structurally.
+Evidence is written to `.devshots/alpha/demo-opening-checkpoint/`.
 
-This file records the research-session handoff as of the checkpoint date. It does not declare the depth program, alpha milestone, visual family, or release gate complete.
+Checkpoint commits:
+
+- `e24596ab` — first-hour/onboarding checks updated to the current ten-step tutorial.
+- `f05997d6` — playable opening checkpoint command and real Chrome route.
+
+## Important limits
+
+- This checkpoint proves that the opening game works. It does not claim that the entire Depth Program is finished.
+- The demo route sees the tutorial and its objective tracker, but it does not automate completion of every tutorial step.
+- Launch can take tens of seconds; one manual Chrome run measured about 80 seconds. The current Kestrel and Helios startup models total roughly 74 MB and are decoded one after another. Fix this in the asset/render lane after its active lock clears; preserve visual quality and measure each startup stage before and after.
+- The stricter M3 recovery test still waits for the player to die after the first hit. On Standard difficulty the player survived, so that separate death/recovery stress test remains open. The demo correctly stops after proving readable natural damage while the player is alive.
+- The bundle itself builds, but the current material-sharing budget check reports 53 visible material keys against a ceiling of 49. That belongs to the active asset/render lane; do not reduce graphics quality to silence it.
+
+## Depth Program status
+
+The live ledger currently has 31 chunks: 15 marked IN-PROGRESS, 16 still TODO, and none accepted as DONE. Do not start more chunks until an existing one is completed with its real player-facing proof.
+
+Three especially important unfinished integrations are:
+
+- S4 Authority/Thunderchild: reducer groundwork exists but is deliberately not registered in the game.
+- W1 planet states: groundwork exists but is not a finished player-facing system.
+- A2 Ship's Ledger: code exists but is not wired into the station while another agent owns that UI.
+
+The full per-chunk record remains in `design/depth-program/PROGRESS_LEDGER.md`.
+
+## How to resume later
+
+1. Read `AGENTS.md` and this file.
+2. Run `git status` and preserve every unrelated dirty file.
+3. Run `npm run check:demo-opening`. If it is red, restore this checkpoint before adding features.
+4. Check the station and asset ownership signals. Do not edit those lanes while their agents or lock files are active.
+5. First fix the long Launch delay in the proper asset/render lane, then choose one IN-PROGRESS Depth chunk and finish it completely. Do not open another broad batch.
+6. Update this file and `design/depth-program/PROGRESS_LEDGER.md` with the exact command, result, and player-facing evidence.
+
+Copy-paste restart instruction:
+
+> Read AGENTS.md and design/vision/SESSION_PLAN.md. Preserve the dirty tree and active station/asset lanes. Run npm run check:demo-opening first. Keep the playable opening green, then finish one existing IN-PROGRESS Depth chunk to its real player-facing acceptance. Update SESSION_PLAN.md and PROGRESS_LEDGER.md before stopping.
