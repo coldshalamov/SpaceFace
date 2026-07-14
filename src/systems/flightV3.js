@@ -808,7 +808,7 @@ function autopilotObstacles(state, player, target) {
   const out = [];
   const list = state && state.entityList ? state.entityList : [];
   for (const e of list) {
-    if (!e || e === player || e === target.entity || e.alive === false || !e.pos) continue;
+    if (!e || e === player || e === target.entity || e.alive === false || e.collides === false || !e.pos) continue;
     if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
     const radius = Number.isFinite(e.radius) ? e.radius : 0;
     if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') continue;

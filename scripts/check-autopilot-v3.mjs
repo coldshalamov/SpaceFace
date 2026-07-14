@@ -316,6 +316,38 @@ console.log('--- V3 AUTOPILOT ACCEPTANCE ---');
 }
 
 {
+  const bus = makeBus();
+  const { state, player } = makeState({
+    pos: { x: 2.34877, z: 7.66702 },
+    vel: { x: 1.12576, z: 3.86076 },
+    target: { x: 502.28462, z: -338.93962 },
+    initialDistance: 608.41,
+  });
+  player.radius = 14;
+  const claimedSpindle = {
+    id: 295,
+    type: 'payload',
+    alive: true,
+    collides: false,
+    pos: { x: 91.90555, z: 0 },
+    vel: { x: 0, z: 0 },
+    radius: 10,
+  };
+  state.entities.set(claimedSpindle.id, claimedSpindle);
+  state.entityList.push(claimedSpindle);
+  const system = Object.create(FLIGHT_UNDER_TEST);
+  system.init({ state, bus });
+  neutralizeGeneratedAutopilotInput(state);
+  system.update(DT, state);
+  consumePhysicsCommand(player);
+  assert.notEqual(state.nav.autopilot.status, 'avoiding',
+    'the claimed non-colliding 47-A spindle must not trap B0 autopilot in obstacle avoidance');
+  assert.equal(state.nav.autopilot._avoidanceSide || 0, 0,
+    'non-colliding mission payloads must not establish an avoidance-side commitment');
+  console.log('Check 5 PASSED: non-colliding mission payloads do not obstruct B0 autopilot.');
+}
+
+{
   const corridorForward = await runRapierAvoidanceScenario(['upper', 'lower'], { symmetricCorridor: true });
   const corridorReverse = await runRapierAvoidanceScenario(['lower', 'upper'], { symmetricCorridor: true });
   const forwardOrder = await runRapierAvoidanceScenario(['upper', 'lower', 'center']);
