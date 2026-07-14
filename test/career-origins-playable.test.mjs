@@ -7,6 +7,7 @@ import { hash32, mulberry32 } from '../src/core/rng.js';
 import {
   buildOriginContractOffer,
   CAREER_ORIGIN_CONTRACTS,
+  HUNTER_ORIGIN_30M_GROSS_FLOOR_CR,
   ORIGIN_ROLE_KITS,
 } from '../src/careers/origins/careerOriginContracts.js';
 import {
@@ -16,8 +17,10 @@ import {
 } from '../src/careers/origins/careerOrigins.js';
 import { missions as missionsPrototype } from '../src/systems/missions.js';
 import { ships as shipsPrototype } from '../src/systems/ships.js';
+import { economy as economyPrototype } from '../src/systems/economy.js';
 import { MODULES } from '../src/data/modules.js';
 import { SHIPS } from '../src/data/ships.js';
+import { HUNTER_ORIGIN_REWARD } from '../src/careers/origins/hunterOriginData.js';
 
 function makeState(seed = 1) {
   const state = createGameState(seed);
@@ -215,14 +218,19 @@ test('Prospector public route advances scan to extraction to sale through real m
   assert.equal(state.player.moduleInventory.filter((item) => item.defId === 'mod_winch_hd').length, 1);
 });
 
-test('Hunter acceptance materializes a real marked contact outside the station UI', () => {
+test('Hunter public-event route settles three real writs, repair cost, and viable 30m gross', () => {
   const state = makeState(1911);
   const bus = createBus();
-  const player = { id: state.playerId, type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: {} };
+  const player = {
+    id: state.playerId, type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: {},
+    hull: 140, hullMax: 140, armorHp: 0, armorMax: 0,
+  };
   state.entities.set(player.id, player);
   state.entityList.push(player);
   let entityId = 200;
   const missionSystem = { ...missionsPrototype };
+  const shipSystem = { ...shipsPrototype };
+  const economySystem = { ...economyPrototype };
   const origins = createCareerOriginsSystem();
   const helpers = {
     hash32,
@@ -242,21 +250,72 @@ test('Hunter acceptance materializes a real marked contact outside the station U
       return entity;
     },
   };
-  const registry = { get: (name) => name === 'missions' ? missionSystem : null };
+  const registry = {
+    get(name) {
+      if (name === 'missions') return missionSystem;
+      if (name === 'ships') return shipSystem;
+      if (name === 'economy') return economySystem;
+      return null;
+    },
+  };
+  economySystem.init({ state, bus, helpers, registry });
+  shipSystem.init({ state, bus, helpers, registry });
   origins.init({ state, bus, registry });
-  missionSystem.init({ state, bus, helpers });
+  missionSystem.init({ state, bus, helpers, registry });
   bus.emit('dock:docked', { stationId: 'station_helios' });
-  assert.equal(origins.accept('hunter').ok, true);
+  bus.emit('career:origin:accept', { careerId: 'hunter' });
+
+  const startingCredits = state.player.credits;
+  const cargoBefore = structuredClone(state.player.cargo.items);
+  const researchBefore = state.player.researchPoints || 0;
+  const settled = [];
+  let repairCost = 0;
+
+  for (const [index, def] of CAREER_ORIGIN_CONTRACTS.hunter.entries()) {
+    const route = state.careers.origins.__meta.routes.hunter;
+    const mission = state.missions.active.find((candidate) => candidate.id === route.activeMissionId);
+    assert.equal(mission.type, 'bounty_hunt');
+    assert.equal(mission.originContractId, def.id);
+    if (state.world.currentSectorId !== mission.destSectorId) {
+      state.world.currentSectorId = mission.destSectorId;
+      bus.emit('sector:enter', { sectorId: mission.destSectorId });
+    }
+    assert.equal(mission.targetEntityIds.length, 1);
+    const contact = state.entities.get(mission.targetEntityIds[0]);
+    assert.ok(contact && contact.alive && Number.isFinite(contact.pos.x) && Number.isFinite(contact.pos.z));
+    assert.equal(contact.data.missionTag, mission.id);
+    assert.equal(state.nav.waypoint.targetEntityId, contact.id);
+
+    const before = state.player.credits;
+    bus.emit('entity:killed', { id: contact.id, killerId: state.playerId, killerTeam: 0 });
+    const paid = state.player.credits - before;
+    settled.push({ contractId: def.id, paid });
+    const expectedSettlement = def.rewardCr
+      + (index === CAREER_ORIGIN_CONTRACTS.hunter.length - 1 ? HUNTER_ORIGIN_REWARD.credits : 0);
+    assert.equal(paid, expectedSettlement, `${def.id} must settle through missions -> economy`);
+
+    // One real service charge proves the authored combat route keeps repair economics attached.
+    if (index === 0) {
+      player.hull = 100;
+      const beforeRepair = state.player.credits;
+      bus.emit('ui:service', { type: 'repair' });
+      repairCost = beforeRepair - state.player.credits;
+      assert.ok(repairCost > 0, 'Hunter route must expose a real repair bill');
+      assert.equal(player.hull, player.hullMax);
+    }
+  }
 
   const route = state.careers.origins.__meta.routes.hunter;
-  const mission = state.missions.active.find((candidate) => candidate.id === route.activeMissionId);
-  assert.equal(mission.type, 'bounty_hunt');
-  assert.equal(mission.targetEntityIds.length, 1);
-  const contact = state.entities.get(mission.targetEntityIds[0]);
-  assert.ok(contact && contact.alive && Number.isFinite(contact.pos.x) && Number.isFinite(contact.pos.z));
-  assert.equal(contact.data.missionTag, mission.id);
-  assert.equal(state.nav.waypoint.targetEntityId, contact.id);
-  assert.equal(state.nav.waypoint.markerId, 'origin:hunter:yard_writ');
+  const gross = state.player.credits - startingCredits + repairCost;
+  assert.equal(route.status, 'completed');
+  assert.equal(gross, CAREER_ORIGIN_CONTRACTS.hunter.reduce((sum, def) => sum + def.rewardCr, 0)
+    + HUNTER_ORIGIN_REWARD.credits);
+  assert.ok(gross >= HUNTER_ORIGIN_30M_GROSS_FLOOR_CR);
+  assert.deepEqual(state.player.cargo.items, cargoBefore, 'Hunter route must not fabricate cargo');
+  assert.equal(state.player.researchPoints || 0, researchBefore, 'Hunter route must not fabricate research');
+  assert.equal(player.alive, true);
+  assert.equal(state.careers.origins.__meta.upgradeReceipts.hunter.defId, ORIGIN_ROLE_KITS.hunter.defId);
+  assert.deepEqual(settled.map((row) => row.paid), [320, 480, 1300]);
 });
 
 test('mid-chain save/load preserves mission id, origin marker, destination, and route cursor', () => {

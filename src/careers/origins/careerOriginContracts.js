@@ -54,11 +54,18 @@ export const ORIGIN_PHYSICAL_IDENTITIES = Object.freeze({
   }),
 });
 
+// A clean first-pass Hunter route has no freight spread or ore sale alongside its contract
+// payouts, and it necessarily exposes the starter hull to repair cost.  The three writs plus the
+// 650cr completion award therefore carry a 2,100cr gross envelope: the accepted 30-minute Hunter
+// floor (62.5cr/min = 1,875cr) plus a modest 225cr repair reserve.  This remains below ordinary
+// generated bounty-board payouts while keeping the authored tutorial route economically viable.
+export const HUNTER_ORIGIN_30M_GROSS_FLOOR_CR = 2100;
+
 const HUNTER_CONTRACTS = Object.freeze([
   Object.freeze({
     id: 'yard_writ', title: 'Yard Perimeter Writ', type: 'bounty_hunt',
     stationId: 'station_helios', destSectorId: 'sector_helios_prime', factionId: 'faction_scn',
-    riskTier: 0, rewardCr: 180,
+    riskTier: 0, rewardCr: 320,
     description: 'Identify the marked raider. Keep lawful hulls clean.',
     objective: 'Intercept the marked hostile',
     storyTarget: Object.freeze({
@@ -70,7 +77,7 @@ const HUNTER_CONTRACTS = Object.freeze([
   Object.freeze({
     id: 'belt_pursuit', title: 'Belt Pursuit Writ', type: 'bounty_hunt',
     stationId: 'station_helios', destSectorId: 'sector_ceres_belt', factionId: 'faction_scn',
-    riskTier: 1, rewardCr: 300,
+    riskTier: 1, rewardCr: 480,
     description: 'Hold contact through the quarry doctrine. Finish clean.',
     objective: 'Pursue the marked hostile into Ceres',
     storyTarget: Object.freeze({
@@ -82,7 +89,7 @@ const HUNTER_CONTRACTS = Object.freeze([
   Object.freeze({
     id: 'junction_counter', title: 'Junction Counter-Writ', type: 'bounty_hunt',
     stationId: 'station_ceres', destSectorId: 'sector_tethys_junction', factionId: 'faction_scn',
-    riskTier: 1, rewardCr: 420,
+    riskTier: 1, rewardCr: 650,
     description: 'Read the telegraph. Close the warrant without WANTED heat.',
     objective: 'Close the marked warrant at Tethys',
     storyTarget: Object.freeze({
