@@ -355,6 +355,7 @@
     "check:kestrel:electron-route": "node scripts/check-kestrel-electron-route.mjs",
     "test:commodity-flavor": "node test/commodity-flavor.test.mjs",
     "check:m1:tether-mass": "node scripts/check-m1-tether-mass-grounding.mjs",
+    "check:demo-opening": "npm run check:launch-policy && node --test test/demo-opening-runtime-contract.test.mjs && node scripts/check-m3-player-facing-public-route.mjs --demo-opening",
     "check:m3:career-origins": "node --test test/career-origins-contract.test.mjs test/career-origins-playable.test.mjs test/career-origin-focus.test.mjs test/hauler-origin-chain.test.mjs test/hunter-origin.test.mjs test/prospector-origin.test.mjs && node scripts/check-hunter-origin.mjs",
     "check:m3:career-origins:browser": "node scripts/check-career-origins-browser.mjs",
     "check:m3:career-balance": "node scripts/check-career-earnings-benchmark.mjs --minutes 30 && node scripts/check-career-earnings-benchmark.mjs --minutes 90",
