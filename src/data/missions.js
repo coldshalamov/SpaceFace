@@ -4,7 +4,9 @@
 
 export const MISSION_TUNING = {
   BASE: {
-    cargo_delivery: 180, bulk_trade: 170, bounty_hunt: 80, mining_quota: 130,
+    // bounty_hunt 110: a single-target writ must clear gate tolls, repair, and death insurance
+    // after exclusive mission settlement without pushing the dense public route above 400 cr/min.
+    cargo_delivery: 180, bulk_trade: 170, bounty_hunt: 110, mining_quota: 130,
     salvage_retrieval: 160, escort: 180, patrol_clear: 220, smuggling_run: 250,
     passenger_transport: 160, recon_scan: 140,
   },
@@ -128,9 +130,10 @@ export const MISSION_TYPES = [
     constraints: { collateralPct: 0.25 },
   },
   {
-    type: 'bounty_hunt', riskTierRange: [2, 4], chainable: true,
+    // R1+ keeps the first low-risk writ reachable before standing climbs to R2.
+    type: 'bounty_hunt', riskTierRange: [1, 4], chainable: true,
     completionEvent: 'enemy.killed (entityId==targetId)',
-    rewardFormula: 'round(80 * (1 + distance/2000) * RISK_MULT[riskTier] * targetStrength * f_faction * f_time)',
+    rewardFormula: 'round(110 * (1 + distance/2000) * RISK_MULT[riskTier] * targetStrength * f_faction * f_time)',
     timeFormula: 'round((distance/140 + 60) * slack)', taskTime: 60,
     failureCondition: 'timer OR target despawns/flees sector',
     constraints: { fValueIsTargetStrength: true },
@@ -196,10 +199,10 @@ export const MISSION_TYPES = [
 // Offer-mix weights by station type (order matches MISSION_TYPES array above).
 // [cargo, trade, bounty, mining, salvage, escort, patrol, smuggling, passenger, recon]
 export const OFFER_MIX = {
-  mining:      [3, 2, 1, 4, 2, 1, 1, 0, 1, 1],
-  refinery:    [3, 2, 1, 4, 2, 1, 1, 0, 1, 1],
-  fab:         [3, 2, 1, 2, 2, 1, 1, 0, 1, 1],
-  trade_hub:   [4, 4, 1, 1, 1, 2, 1, 1, 3, 1],
+  mining:      [3, 2, 2, 4, 2, 1, 1, 0, 1, 1],
+  refinery:    [3, 2, 2, 4, 2, 1, 1, 0, 1, 1],
+  fab:         [3, 2, 2, 2, 2, 1, 1, 0, 1, 1],
+  trade_hub:   [4, 4, 2, 1, 1, 2, 1, 1, 3, 1],
   military:    [1, 1, 4, 0, 1, 2, 4, 0, 1, 2],
   research:    [2, 1, 1, 1, 2, 1, 1, 0, 1, 4],
   blackmarket: [2, 1, 3, 2, 3, 1, 2, 2, 1, 2],

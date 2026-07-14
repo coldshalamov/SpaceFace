@@ -124,8 +124,8 @@ test('independent 30/60/90 Hunter public-route cells stay inside the healthy ban
     // Horizons are independent runs, not cumulative — longer windows must still progress.
     assert.ok(report.cells[90].completedContracts > report.cells[30].completedContracts);
     assert.ok(report.cells[90].earnedValue > report.cells[30].earnedValue);
-    assert.equal(report.cells[60].first15kAtMin, 39.64);
-    assert.equal(report.cells[90].first15kAtMin, 39.64);
+    assert.equal(report.cells[60].first15kAtMin, 34.47);
+    assert.equal(report.cells[90].first15kAtMin, 34.47);
   } finally {
     restoreNondeterminism();
   }
