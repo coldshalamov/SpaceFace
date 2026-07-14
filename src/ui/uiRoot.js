@@ -46,7 +46,9 @@ import { createWingmanRadial } from './wingmanRadial.js';
 // chunks. A runtime string import works in the raw dev server but becomes /screens/*.js 404s in
 // build/web, which strands packaged players in an empty HUD before the menu registers.
 const SCREEN_MODULES = [
-  { path: './screens/stationHub.js', load: () => import('./screens/stationHub.js'), name: 'stationHub' },
+  // Docked station: the "Orbital Command" rebuild (src/ui/station/). The adapter re-exports
+  // installStationExitGate; legacy screens/stationHub.js stays on disk for its helper exports.
+  { path: './station/stationScreen.js', load: () => import('./station/stationScreen.js'), name: 'stationScreen' },
   // REVAMP 2.1 — one zoomable galaxy map (supersedes starmap+localmap once BP-03 parity passes). Lives in src/ui/, not screens/.
   { path: './galaxyMap.js', load: () => import('./galaxyMap.js'), name: 'galaxyMapScreen' },
   { path: './screens/starmap.js', load: () => import('./screens/starmap.js'), name: 'starmapScreen' },

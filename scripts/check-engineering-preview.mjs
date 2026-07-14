@@ -30,6 +30,7 @@ import { describeShipyardHullCompare } from '../src/ui/screens/shipyard.js';
 const presenterSrc = readFileSync(new URL('../src/ui/presenters/engineeringPreview.js', import.meta.url), 'utf8');
 const shipyardSrc = readFileSync(new URL('../src/ui/screens/shipyard.js', import.meta.url), 'utf8');
 const outfitSrc = readFileSync(new URL('../src/ui/screens/outfitting.js', import.meta.url), 'utf8');
+const liveShipworksSrc = readFileSync(new URL('../src/ui/station/screens/shipworks.js', import.meta.url), 'utf8');
 
 assert.equal(typeof window, 'undefined', 'engineering preview contract runs headless');
 assert.equal(ENGINEERING_PREVIEW_SCHEMA, 'spaceface.engineeringPreview.v1');
@@ -69,7 +70,19 @@ assert.match(presenterSrc, /getDerivedStats/,
   'presenter must call ships.getDerivedStats');
 assert.doesNotMatch(presenterSrc, /document\.|createElement|innerHTML/,
   'presenter must stay pure (no DOM)');
-ok('source wiring forbids fabricated mod-key shop deltas');
+assert.match(liveShipworksSrc, /presentDerivedReadout|presentModuleFitPreview|presentShopModuleDelta/,
+  'live Shipworks must consume the canonical engineering presenter');
+assert.doesNotMatch(liveShipworksSrc, /function\s+shipStats\s*\(|function\s+moduleStat\s*\(/,
+  'live Shipworks must not retain simplified parallel stat authorities');
+assert.doesNotMatch(liveShipworksSrc, /allowFastFallback:\s*true/,
+  'live Shipworks must refuse the fabricated fast preview fallback');
+assert.match(liveShipworksSrc, /if\s*\(!ghostActive\)\s*renderCenter\(\)/,
+  'periodic station refresh must preserve an active pointer/focus module preview');
+assert.match(liveShipworksSrc, /if\s*\(chooserEl\.hidden\)\s*renderSide\(\)/,
+  'periodic station refresh must not rebuild the active module chooser');
+assert.match(liveShipworksSrc, /if\s*\(periodicCtx\s*===\s*ctx\)\s*return/,
+  'station cadence must not replace event-driven Shipworks pointer targets');
+ok('source wiring forbids fabricated mod-key shop deltas in legacy and live station routes');
 
 // ---- stock player zeros cargo ----
 const stock = stockPreviewPlayer({ cargo: { usedMass: 40 }, efficiencyMods: { cargoCapMult: 1.1 } });
