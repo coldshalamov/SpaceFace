@@ -225,6 +225,13 @@ export function isCombatPairTetherTarget(state, player, target) {
   return isHostileToPlayer(target, pTeam, state);
 }
 
+function isExplicitTrainingFocusTarget(player, target) {
+  if (!target || target.alive === false || target === player) return false;
+  if (target.type !== 'ship' && target.type !== 'drone') return false;
+  return target.data?.onboardingTraining === true
+    && target.data?.trainingFocusEligible === true;
+}
+
 function isActiveHostileThreat(state, player, entity, primaryTarget) {
   if (!entity || entity === player || entity === primaryTarget) return false;
   if (entity.alive === false || !entity.pos) return false;
@@ -431,6 +438,7 @@ export function createCameraDirector() {
       let targetId = null;
       let target = null;
       let pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
+      let trainingFocusPair = false;
       let gateApproach = null;
 
       // Combat Focus is authoritative when active. Ordinary (asteroid/non-hostile) tether never
@@ -439,9 +447,15 @@ export function createCameraDirector() {
       if (focus && focus.active) {
         targetId = focus.targetId;
         target = entityFor(state, targetId);
-        if (target && isCombatPairTetherTarget(state, player, target)) {
+        const trainingFocus = isExplicitTrainingFocusTarget(player, target);
+        if (target && (isCombatPairTetherTarget(state, player, target) || trainingFocus)) {
           requestedMode = CameraDirectorMode.FOCUS_PAIR;
-          pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
+          trainingFocusPair = trainingFocus;
+          // The deterministic onboarding pass can separate farther than a combat Focus before its
+          // three-second lesson ends. Preserve the public 10% margin contract while keeping this
+          // authored training shot inside the 58-180 band; hostile Focus retains the tighter
+          // 15-20% cinematic margin and its independent engine-ceiling escape hatch.
+          pairSafeNdc = trainingFocus ? CAMERA_DIRECTOR_SAFE_NDC : CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
         } else {
           // Presentation fails closed if a stale/corrupt Focus lease points at mining clutter,
           // civilians, allies, or clean lawful traffic. The sim clears the lease on its next tick;
@@ -623,10 +637,15 @@ export function createCameraDirector() {
             pairPrediction.targetZ + targetRadius,
           )
         ) * 0.5;
-        const desiredRequired = requiredCombatZoom(
-          state, player, target, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
-          pairPrediction,
-        );
+        const desiredRequired = trainingFocusPair
+          ? requiredPairZoom(
+            player, target, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+            pairPrediction,
+          )
+          : requiredCombatZoom(
+            state, player, target, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+            pairPrediction,
+          );
         const impossible = desiredRequired > CAMERA_DIRECTOR_ENGINE_MAX_ZOOM + 1e-9;
         const fitLimit = desiredRequired <= CAMERA_DIRECTOR_MAX_ZOOM + 1e-9
           ? CAMERA_DIRECTOR_MAX_ZOOM
@@ -649,10 +668,15 @@ export function createCameraDirector() {
           candidateZoom = output.zoom + (clamp(desiredRequired, CAMERA_DIRECTOR_MIN_ZOOM, CAMERA_DIRECTOR_ENGINE_MAX_ZOOM) - output.zoom) * followAlpha;
         }
 
-        let required = requiredCombatZoom(
-          state, player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
-          pairPrediction,
-        );
+        let required = trainingFocusPair
+          ? requiredPairZoom(
+            player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+            pairPrediction,
+          )
+          : requiredCombatZoom(
+            state, player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+            pairPrediction,
+          );
         if (!impossible && required > fitLimit) {
           const startX = candidateX;
           const startZ = candidateZ;
@@ -662,25 +686,38 @@ export function createCameraDirector() {
             const mid = (lo + hi) * 0.5;
             const probeX = startX + (desiredX - startX) * mid;
             const probeZ = startZ + (desiredZ - startZ) * mid;
-            const probeRequired = requiredCombatZoom(
-              state, player, target, probeX, probeZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
-              pairPrediction,
-            );
+            const probeRequired = trainingFocusPair
+              ? requiredPairZoom(
+                player, target, probeX, probeZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+                pairPrediction,
+              )
+              : requiredCombatZoom(
+                state, player, target, probeX, probeZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+                pairPrediction,
+              );
             if (probeRequired <= fitLimit) hi = mid;
             else lo = mid;
           }
           candidateX = startX + (desiredX - startX) * hi;
           candidateZ = startZ + (desiredZ - startZ) * hi;
-          required = requiredCombatZoom(
-            state, player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
-            pairPrediction,
-          );
+          required = trainingFocusPair
+            ? requiredPairZoom(
+              player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+              pairPrediction,
+            )
+            : requiredCombatZoom(
+              state, player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+              pairPrediction,
+            );
         }
 
         output.mode = requestedMode;
         output.focusX = candidateX;
         output.focusZ = candidateZ;
-        output.zoom = clamp(Math.max(candidateZoom, required), CAMERA_DIRECTOR_MIN_ZOOM, CAMERA_DIRECTOR_ENGINE_MAX_ZOOM);
+        const pairZoomMax = trainingFocusPair
+          ? CAMERA_DIRECTOR_MAX_ZOOM
+          : CAMERA_DIRECTOR_ENGINE_MAX_ZOOM;
+        output.zoom = clamp(Math.max(candidateZoom, required), CAMERA_DIRECTOR_MIN_ZOOM, pairZoomMax);
         output.targetId = targetId;
         output.overflow = impossible;
         output.preferredBandExceeded = output.zoom > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9;

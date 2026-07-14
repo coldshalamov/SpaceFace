@@ -10,6 +10,7 @@ import {
   CAMERA_DIRECTOR_FOCUS_SAFE_NDC,
   CAMERA_DIRECTOR_GATE_MAX_ZOOM,
   CAMERA_DIRECTOR_GATE_SAFE_NDC,
+  CAMERA_DIRECTOR_MAX_ZOOM,
   CAMERA_DIRECTOR_MIN_ZOOM,
   CAMERA_DIRECTOR_SAFE_NDC,
   CameraDirectorMode,
@@ -394,6 +395,49 @@ test('Flyby Focus enters FOCUS_PAIR and frames player + exact hostile with 15-20
   assert.equal(frame.overflow, false, 'in-envelope flyby pair must fit');
   assertInFocusMargin(player, frame, CAMERA_DIRECTOR_FOCUS_SAFE_NDC, 'player');
   assertInFocusMargin(hostile, frame, CAMERA_DIRECTOR_FOCUS_SAFE_NDC, 'hostile');
+});
+
+test('explicit allied onboarding trainer stays inside 10% margins without exceeding authored zoom 180', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  // Late-window separation from the held-out public flyby. The general hostile Focus envelope may
+  // use the engine ceiling, but the authored onboarding composition must remain in the 58-180 band.
+  const trainer = entity(12, 200, 20, 8, {
+    type: 'drone',
+    team: 0,
+    data: {
+      onboarding: true,
+      onboardingTraining: true,
+      trainingFocusEligible: true,
+      ai: { passive: true, roe: 'hold_fire' },
+      weapons: [],
+    },
+  });
+  // A safe first-flight sector can still contain an unrelated hostile-classified contact. It must
+  // not expand the authored trainer shot beyond 180 when it is not the lesson's explicit pair.
+  const unrelated = entity(13, -240, -10, 8, { team: 1 });
+  const state = stateFor(player, [trainer, unrelated], {
+    focusActive: true,
+    focusTargetId: trainer.id,
+    targetId: trainer.id,
+  });
+  const director = createCameraDirector();
+  // Reproduce the held-out seed where FOLLOW arrived from a wide contextual shot. Training Focus
+  // must enforce its authored ceiling on entry instead of easing down through 250-330 zoom.
+  director.syncFollow(0, 0, CAMERA_DIRECTOR_ENGINE_MAX_ZOOM);
+  const entered = director.step(DT, state, player, view());
+  assert.ok(entered.zoom <= CAMERA_DIRECTOR_MAX_ZOOM + 1e-9,
+    `training Focus entry zoom ${entered.zoom} must clamp immediately to the authored ceiling`);
+  assertInFocusMargin(player, entered, CAMERA_DIRECTOR_SAFE_NDC, 'entry player');
+  assertInFocusMargin(trainer, entered, CAMERA_DIRECTOR_SAFE_NDC, 'entry trainer');
+  const frame = settle(director, 0.5, state, player);
+
+  assert.equal(frame.mode, CameraDirectorMode.FOCUS_PAIR,
+    'the two explicit training flags authorize pair framing without making ordinary allies eligible');
+  assert.equal(frame.targetId, trainer.id);
+  assert.ok(frame.zoom <= CAMERA_DIRECTOR_MAX_ZOOM + 1e-9,
+    `training Focus zoom ${frame.zoom} must remain inside the authored 58-180 band`);
+  assertInFocusMargin(player, frame, CAMERA_DIRECTOR_SAFE_NDC, 'player');
+  assertInFocusMargin(trainer, frame, CAMERA_DIRECTOR_SAFE_NDC, 'trainer');
 });
 
 test('Flyby Focus threat-aware zoom-out keeps nearby active hostile in frame', () => {
