@@ -264,7 +264,7 @@ export const aiPorts = {
         if (!entity || !entity.alive) continue;
         requests.push({ id, x: entity.pos.x, z: entity.pos.z, r: sensorRangeFor(state, entity), out: [] });
       }
-      hash.queryRadiusBatch(requests);
+      hash.queryRadiusBatch(requests, { shareResults: true, shareSupersetResults: true });
       this._diag.sensorBatches++;
     }
     const candidatesById = new Map(requests.map((request) => [request.id, request.out]));

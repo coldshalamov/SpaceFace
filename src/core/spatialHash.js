@@ -13,6 +13,12 @@ export class SpatialHash {
     this._staticActiveBuckets = [];
     this._staticActiveCellX = [];
     this._staticActiveCellZ = [];
+    // Static radius-query results are stable until staticVersion changes. Cache the deduped
+    // candidate lists by exact cell rectangle + traversal mode so repeated AI sensor frames do
+    // not rescan hundreds of asteroid buckets for every formation member and every AI cadence.
+    this._staticQueryCache = new Map();
+    this._staticQueryCacheEntries = 0;
+    this._staticQueryCacheLimit = 128;
     this._staticVersion = null;
     // id -> { entity, x0, x1, z0, z1, r, stamp } — dynamic membership for incremental rehash
     this._dynamicMembers = new Map();
@@ -41,6 +47,9 @@ export class SpatialHash {
       activeBuckets: 0,
       staticBuckets: 0,
       dynamicBuckets: 0,
+      staticQueryCacheHits: 0,
+      staticQueryCacheMisses: 0,
+      staticQueryCacheEntries: 0,
     };
   }
 
@@ -295,23 +304,24 @@ export class SpatialHash {
     const c = this.cell;
     const x0 = Math.floor((x - r) / c), x1 = Math.floor((x + r) / c);
     const z0 = Math.floor((z - r) / c), z1 = Math.floor((z + r) / c);
-    const seen = this._seenIds;
-    let stamp = this._queryStamp + 1;
-    if (stamp > 0x7fffffff) {
-      stamp = 1;
-      seen.clear();
-    }
-    this._queryStamp = stamp;
     let candidates = 0;
     const activeCount = this._activeBuckets.length + this._staticActiveBuckets.length;
     const cellSpanX = x1 - x0 + 1;
     const cellSpanZ = z1 - z0 + 1;
     const rectangularVisits = cellSpanX * cellSpanZ;
     const scanActive = activeCount > 0 && rectangularVisits > activeCount * 3;
+    const staticResult = this._cachedStaticQuery(x0, x1, z0, z1, scanActive);
+    candidates += staticResult.candidates;
+    const seen = this._seenIds;
+    const stamp = this._nextQueryStamp();
     candidates += this._queryLayer(this.buckets, this._activeBuckets, this._activeCellX, this._activeCellZ,
       scanActive, x0, x1, z0, z1, stamp, out);
-    candidates += this._queryLayer(this._staticBuckets, this._staticActiveBuckets, this._staticActiveCellX, this._staticActiveCellZ,
-      scanActive, x0, x1, z0, z1, stamp, out);
+    for (let i = 0; i < staticResult.entities.length; i++) {
+      const entity = staticResult.entities[i];
+      if (seen.get(entity.id) === stamp) continue;
+      seen.set(entity.id, stamp);
+      out.push(entity);
+    }
     if (!(opts && opts.countDiagnostics === false)) {
       this._pending.queries++;
       this._pending.candidates += candidates;
@@ -326,22 +336,84 @@ export class SpatialHash {
     if (!Array.isArray(requests) || requests.length === 0) return requests;
     const c = this.cell;
     const activeCount = this._activeBuckets.length + this._staticActiveBuckets.length;
-    const metas = requests.map((request, index) => {
-      const out = request.out || (request.out = []);
-      out.length = 0;
+    const shareResults = !!(opts && opts.shareResults === true);
+    const shareSupersetResults = shareResults && !!(opts && opts.shareSupersetResults === true);
+    const metas = [];
+    const footprints = requests.map((request) => {
       const r = Number(request.r) || 0;
       const x0 = Math.floor((request.x - r) / c), x1 = Math.floor((request.x + r) / c);
       const z0 = Math.floor((request.z - r) / c), z1 = Math.floor((request.z + r) / c);
-      let stamp = this._queryStamp + 1;
-      if (stamp > 0x7fffffff) { stamp = 1; this._seenIds.clear(); }
-      this._queryStamp = stamp;
-      const batchSeen = this._batchSeenIds[index] || (this._batchSeenIds[index] = new Set());
-      batchSeen.clear();
-      return { out, x0, x1, z0, z1, stamp, batchSeen, candidates: 0,
-        scanActive: activeCount > 0 && ((x1 - x0 + 1) * (z1 - z0 + 1)) > activeCount * 3 };
+      const scanActive = activeCount > 0 && ((x1 - x0 + 1) * (z1 - z0 + 1)) > activeCount * 3;
+      return { request, x0, x1, z0, z1, scanActive };
     });
+    const canShareSuperset = shareSupersetResults && footprints.length > 1 &&
+      footprints.every((footprint) => footprint.scanActive);
+    if (canShareSuperset) {
+      const firstRequest = footprints[0].request;
+      const out = firstRequest.out && !Object.isFrozen(firstRequest.out) ? firstRequest.out : [];
+      out.length = 0;
+      for (const footprint of footprints) footprint.request.out = out;
+      const x0 = Math.min(...footprints.map((footprint) => footprint.x0));
+      const x1 = Math.max(...footprints.map((footprint) => footprint.x1));
+      const z0 = Math.min(...footprints.map((footprint) => footprint.z0));
+      const z1 = Math.max(...footprints.map((footprint) => footprint.z1));
+      const batchSeen = this._batchSeenIds[0] || (this._batchSeenIds[0] = new Set());
+      batchSeen.clear();
+      metas.push({
+        out, x0, x1, z0, z1,
+        stamp: this._nextQueryStamp(),
+        batchSeen,
+        candidates: 0,
+        scanActive: true,
+      });
+    }
+    for (let index = 0; index < footprints.length && !canShareSuperset; index++) {
+      const { request, x0, x1, z0, z1, scanActive } = footprints[index];
+      if (shareResults) {
+        const shared = metas.find((meta) =>
+          meta.x0 === x0 && meta.x1 === x1 && meta.z0 === z0 && meta.z1 === z1 &&
+          meta.scanActive === scanActive);
+        if (shared) {
+          // The broadphase result is a function of occupied cells, not the exact center inside
+          // those cells. AI applies its exact circular range test afterwards, so sharing this
+          // read-only candidate array preserves contacts while eliminating duplicate traversal.
+          request.out = shared.out;
+          continue;
+        }
+      }
+      const out = request.out && !Object.isFrozen(request.out) ? request.out : (request.out = []);
+      out.length = 0;
+      const stamp = this._nextQueryStamp();
+      const metaIndex = metas.length;
+      const batchSeen = this._batchSeenIds[metaIndex] || (this._batchSeenIds[metaIndex] = new Set());
+      batchSeen.clear();
+      metas.push({ out, x0, x1, z0, z1, stamp, batchSeen, candidates: 0, scanActive });
+    }
+    // Resolve stable static candidates once per unique query footprint. Dynamic contacts still
+    // use the live layer below, while each caller keeps its own output array and ordering.
+    for (const meta of metas) {
+      const staticResult = this._cachedStaticQuery(
+        meta.x0, meta.x1, meta.z0, meta.z1, meta.scanActive,
+      );
+      meta.staticEntities = staticResult.entities;
+      meta.candidates += staticResult.candidates;
+    }
     this._queryLayerBatch(this.buckets, this._activeBuckets, this._activeCellX, this._activeCellZ, metas);
-    this._queryLayerBatch(this._staticBuckets, this._staticActiveBuckets, this._staticActiveCellX, this._staticActiveCellZ, metas);
+    for (const meta of metas) {
+      const staticEntities = meta.staticEntities;
+      for (let i = 0; i < staticEntities.length; i++) {
+        const entity = staticEntities[i];
+        if (meta.batchSeen.has(entity.id)) continue;
+        meta.batchSeen.add(entity.id);
+        meta.out.push(entity);
+      }
+    }
+    if (shareResults) {
+      // Opt-in shared batches are immutable by contract: downstream sensor consumers can read
+      // the common candidate list but cannot corrupt another formation member's view or the
+      // static cache. A subsequent batch receives fresh outputs.
+      for (const meta of metas) Object.freeze(meta.out);
+    }
     if (!(opts && opts.countDiagnostics === false)) {
       const candidates = metas.reduce((sum, meta) => sum + meta.candidates, 0);
       this._pending.queries++;
@@ -411,6 +483,71 @@ export class SpatialHash {
     return candidates;
   }
 
+  _nextQueryStamp() {
+    let stamp = this._queryStamp + 1;
+    if (stamp > 0x7fffffff) {
+      stamp = 1;
+      this._seenIds.clear();
+    }
+    this._queryStamp = stamp;
+    return stamp;
+  }
+
+  _cachedStaticQuery(x0, x1, z0, z1, scanActive) {
+    const cached = this._getStaticQueryCache(x0, x1, z0, z1, scanActive);
+    if (cached) {
+      this.diagnostics.staticQueryCacheHits++;
+      return { entities: cached, candidates: 0 };
+    }
+
+    const entities = [];
+    const stamp = this._nextQueryStamp();
+    const candidates = this._queryLayer(
+      this._staticBuckets,
+      this._staticActiveBuckets,
+      this._staticActiveCellX,
+      this._staticActiveCellZ,
+      scanActive,
+      x0, x1, z0, z1,
+      stamp,
+      entities,
+    );
+    this._setStaticQueryCache(x0, x1, z0, z1, scanActive, entities);
+    this.diagnostics.staticQueryCacheMisses++;
+    return { entities, candidates };
+  }
+
+  _getStaticQueryCache(x0, x1, z0, z1, scanActive) {
+    const a = this._staticQueryCache.get(x0);
+    const b = a && a.get(x1);
+    const c = b && b.get(z0);
+    const d = c && c.get(z1);
+    return d && d.get(scanActive) || null;
+  }
+
+  _setStaticQueryCache(x0, x1, z0, z1, scanActive, entities) {
+    if (this._staticQueryCacheEntries >= this._staticQueryCacheLimit) this._clearStaticQueryCache();
+    let a = this._staticQueryCache.get(x0);
+    if (!a) { a = new Map(); this._staticQueryCache.set(x0, a); }
+    let b = a.get(x1);
+    if (!b) { b = new Map(); a.set(x1, b); }
+    let c = b.get(z0);
+    if (!c) { c = new Map(); b.set(z0, c); }
+    let d = c.get(z1);
+    if (!d) { d = new Map(); c.set(z1, d); }
+    if (!d.has(scanActive)) {
+      d.set(scanActive, entities);
+      this._staticQueryCacheEntries++;
+      this.diagnostics.staticQueryCacheEntries = this._staticQueryCacheEntries;
+    }
+  }
+
+  _clearStaticQueryCache() {
+    this._staticQueryCache.clear();
+    this._staticQueryCacheEntries = 0;
+    this.diagnostics.staticQueryCacheEntries = 0;
+  }
+
   _clearDynamicLayer() {
     for (const bucket of this._activeBuckets) bucket.length = 0;
     this._activeBuckets.length = 0;
@@ -420,6 +557,7 @@ export class SpatialHash {
   }
 
   _clearStaticLayer() {
+    this._clearStaticQueryCache();
     for (const bucket of this._staticActiveBuckets) bucket.length = 0;
     this._staticActiveBuckets.length = 0;
     this._staticActiveCellX.length = 0;
