@@ -59,3 +59,25 @@ test('public route surfaces use the shared localization adapter', () => {
     assert.match(source, /coreText\(/);
   }
 });
+
+
+test('pseudo locale installs one dynamic DOM bridge while default play remains observer-free', () => {
+  const gameSource = fs.readFileSync('src/localization/gameLocalization.js', 'utf8');
+  const bridgeSource = fs.readFileSync('src/localization/domBridge.js', 'utf8');
+  const browserSource = fs.readFileSync('scripts/check-localization-reachability.mjs', 'utf8');
+
+  assert.match(gameSource, /startupLocale !== DEFAULT_LOCALE/);
+  assert.match(gameSource, /installLocalizedDocumentBridge/);
+  assert.match(bridgeSource, /MutationObserver/);
+  assert.match(bridgeSource, /attributeFilter: LOCALIZED_ATTRIBUTES/);
+  assert.match(bridgeSource, /CanvasRenderingContext2D/);
+  assert.match(bridgeSource, /localizedMeasureText/);
+  assert.match(bridgeSource, /data-localization-skip/);
+  assert.doesNotMatch(bridgeSource, /requestAnimationFrame|setInterval|setTimeout/);
+
+  for (const id of ['settings', 'help', 'saveLoad', 'missionLog', 'galaxyMap', 'codex', 'gameOver']) {
+    assert.match(browserSource, new RegExp(`\\['${id}'|showScreen\\('${id}'`), `${id} browser coverage`);
+  }
+  assert.match(browserSource, /englishLeaks/);
+  assert.match(browserSource, /evidence\.json/);
+});
