@@ -9,6 +9,7 @@ import {
   formatDefeatCause,
 } from '../src/combat/playerDefeat.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
+import { protectedStationAt } from '../src/ai/engagementAuthority.js';
 import { combat, UNDOCK_INVULN_S } from '../src/systems/combat.js';
 import { gameOverScreen } from '../src/ui/screens/gameOver.js';
 
@@ -206,10 +207,10 @@ test('lethal cause identifies attacker, weapon, layer, and context without gener
     dominantLayer: 'hull',
     context: 'projectile',
   });
-  assert.equal(cause, 'Reaver Pirate · Autocannon S · hull breach · projectile');
+  assert.equal(cause, 'Reaver Pirate · Crimson Reach · Autocannon S · hull breach · Projectile');
 });
 
-test('defeat receipt preserves final direction, subsystem, and truthful layer percentages', () => {
+test('defeat receipt preserves source faction, fatal summary, direction, subsystem, and truthful layer percentages', () => {
   const state = makeState();
   const receipt = buildDefeatReceipt(state, state.entities.get(1), 9, {
     origin: { kind: 'weapon', id: 'wpn_autocannon_s' },
@@ -221,6 +222,17 @@ test('defeat receipt preserves final direction, subsystem, and truthful layer pe
   });
   assert.equal(receipt.direction, 'STARBOARD');
   assert.equal(receipt.subsystemId, 'drive');
+  assert.deepEqual(receipt.source, {
+    kind: 'contact',
+    entityId: 9,
+    label: 'Reaver Pirate',
+    factionId: 'faction_reach',
+    faction: 'Crimson Reach',
+  });
+  assert.equal(
+    receipt.fatalSummary,
+    'Final hit from Reaver Pirate (Crimson Reach) · Autocannon S · starboard hull breach.',
+  );
   assert.deepEqual(receipt.vitalsPct, { shield: 0, armor: 0, hull: 0 });
 });
 
@@ -228,8 +240,34 @@ test('environmental loss does not fabricate an unknown weapon', () => {
   const state = makeState();
   assert.equal(
     formatDefeatCause(state, { killerId: null, dominantLayer: 'hull', context: 'collision' }),
-    'Environmental hazard · hull breach · collision',
+    'Environmental hazard · hull breach · Collision',
   );
+
+  const receipt = buildDefeatReceipt(state, state.entities.get(1), null, {
+    origin: { kind: 'deep_core_gas', asteroidId: 44 },
+    result: {
+      dominantLayer: 'hull',
+      after: { shield: 0, shieldMax: 55, armor: 0, armorMax: 30, hull: 0, hullMax: 140 },
+    },
+  });
+  assert.deepEqual(receipt.source, {
+    kind: 'environment', entityId: null, label: 'Deep-core gas pocket', factionId: null, faction: null,
+  });
+  assert.equal(receipt.weaponId, null);
+  assert.equal(receipt.weapon, null);
+  assert.equal(receipt.fatalSummary, 'Deep-core gas pocket breached the hull.');
+});
+
+test('unknown missing contacts remain explicit instead of being mislabeled as environmental', () => {
+  const state = makeState();
+  state.entities.delete(9);
+  const receipt = buildDefeatReceipt(state, state.entities.get(1), 9, {
+    origin: { kind: 'weapon', id: 'wpn_autocannon_s' },
+    result: { dominantLayer: 'hull' },
+  });
+  assert.equal(receipt.source.kind, 'unknown');
+  assert.equal(receipt.source.label, 'Unknown contact');
+  assert.equal(receipt.fatalSummary, 'Final hit from Unknown contact · Autocannon S · unknown hull breach.');
 });
 
 test('recovery quote never claims a larger charge than the economy can collect', () => {
@@ -239,6 +277,24 @@ test('recovery quote never claims a larger charge than the economy can collect',
   assert.equal(plan.quotedCostCr, 500);
   assert.equal(plan.costCr, 125);
   assert.equal(plan.hardshipCoveredCr, 375);
+});
+
+test('insurance quote distinguishes insured deductible from uninsured hull share', () => {
+  const state = makeState();
+  state.player.credits = 50000;
+  state.player.ownedShips[0].defId = 'ship_pelican';
+  state.entities.get(1).data.defId = 'ship_pelican';
+  state.player.insurance.insuredModules = false;
+  let plan = buildRecoveryPlan(state, state.entities.get(1));
+  assert.equal(plan.quotedCostCr, 6000);
+  assert.equal(plan.costCr, 6000);
+  assert.equal(plan.insuranceStatus, 'UNINSURED · 40% HULL SHARE');
+
+  state.player.insurance.insuredModules = true;
+  plan = buildRecoveryPlan(state, state.entities.get(1));
+  assert.equal(plan.quotedCostCr, 500);
+  assert.equal(plan.costCr, 500);
+  assert.equal(plan.insuranceStatus, 'INSURED · 60% COVERAGE');
 });
 
 test('standard death freezes once, emits one recoverable defeat, and applies consequences only after retry intent', () => {
@@ -281,8 +337,12 @@ test('standard death freezes once, emits one recoverable defeat, and applies con
   assert.equal(events.filter((e) => e.event === 'player:respawn').length, 1);
   assert.equal(events.filter((e) => e.event === 'economy:chargeCredits').length, 1);
   assert.equal(player.alive, true);
-  assert.equal(player.pos.x, 320);
+  assert.equal(player.pos.x, 460, 'recovery uses a collision-clear berth beside the station');
   assert.equal(player.pos.z, -80);
+  assert.equal(player.flags.invuln, false, 'recovery does not conceal unsafe placement with invulnerability');
+  assert.equal(player._invulnUntil, null);
+  assert.equal(protectedStationAt(state, player)?.stationId, 'station_helios',
+    'the berth is safe because it is inside lawful engagement authority, not because damage is disabled');
   assert.equal(player.hull, player.hullMax);
   assert.equal(player.armorHp, player.armorMax);
   assert.equal(state.player.cargo.items.cmdty_ore_iron, 3);
@@ -388,7 +448,7 @@ test('cross-sector recovery asks the world owner to enter the last lawful dock s
   combat.restorePlayerAtRecoveryDock(state.entities.get(1), plan);
   assert.equal(entered.sectorId, 'sector_ceres_belt');
   assert.equal(entered.options.via, 'recovery');
-  assert.equal(state.entities.get(1).pos.x, -900);
+  assert.equal(state.entities.get(1).pos.x, -760);
   assert.equal(state.entities.get(1).pos.z, 240);
 });
 
@@ -401,9 +461,9 @@ test('persistent command strip wires armor and a named, anchored impact receipt'
   assert.doesNotMatch(source, /aria-live="assertive"/);
 });
 
-test('after-action screen offers retry-from-dock and load routes with pointer and focus semantics', () => {
+test('after-action screen offers recovery-berth continue and load routes with pointer and focus semantics', () => {
   const source = readFileSync(new URL('../src/ui/screens/gameOver.js', import.meta.url), 'utf8');
-  assert.match(source, /Retry from dock/);
+  assert.match(source, /Continue from recovery berth/);
   assert.match(source, /player:recoveryRequested/);
   assert.match(source, /Load save/);
   assert.match(source, /receipt\.cause/);

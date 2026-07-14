@@ -179,9 +179,9 @@ export const gameOverScreen = {
 
     const bRetry = document.createElement('button');
     bRetry.className = 'sf-btn sf-go-retry';
-    bRetry.textContent = 'Retry from dock';
-    bRetry.title = 'Apply the shown recovery receipt and return to the named lawful dock';
-    bRetry.setAttribute('aria-label', 'Retry from dock with the shown recovery consequences');
+    bRetry.textContent = 'Continue from recovery berth';
+    bRetry.title = 'Apply the shown recovery receipt and continue beside the named lawful dock';
+    bRetry.setAttribute('aria-label', 'Continue from the recovery berth with the shown consequences');
     bRetry.addEventListener('click', () => {
       ctx.bus.emit('player:recoveryRequested', { source: 'after_action' });
     });
@@ -274,19 +274,23 @@ export const gameOverScreen = {
     const cargoText = cargoLost > 0
       ? cargoLost + 'u lost' + (protectedQty > 0 ? ' · ' + protectedQty + 'u protected' : '')
       : 'No cargo lost';
+    const charged = Math.max(0, Number(recovery.costCr) || 0);
+    const quoted = Math.max(charged, Number(recovery.quotedCostCr) || 0);
+    const recoveryFund = Math.max(0, Number(recovery.hardshipCoveredCr) || 0);
+    const costText = recoveryFund > 0
+      ? `${fmtCr(charged)} charged · ${fmtCr(quoted)} quote · ${fmtCr(recoveryFund)} recovery fund`
+      : fmtCr(charged);
     const values = {
-      cause: receipt && receipt.cause || death.cause,
+      cause: receipt && (receipt.fatalSummary || receipt.cause) || death.cause,
       lifespan: death.lifespan,
       damage: receipt ? [
         receipt.direction,
-        receipt.attacker,
-        receipt.weapon,
         String(receipt.dominantLayer || 'hull').toUpperCase(),
         receipt.subsystemId && String(receipt.subsystemId).replace(/_/g, ' ').toUpperCase(),
         receipt.vitalsPct && `S${receipt.vitalsPct.shield}% A${receipt.vitalsPct.armor}% H${receipt.vitalsPct.hull}%`,
       ].filter(Boolean).join(' · ') : 'Unresolved',
       dock: recovery.stationName || 'No recovery route',
-      cost: recovery.costCr != null ? fmtCr(recovery.costCr) : '-',
+      cost: recovery.costCr != null ? costText : '-',
       cargo: cargoText,
       insurance: recovery.insuranceStatus || 'No recovery coverage',
     };
@@ -298,12 +302,12 @@ export const gameOverScreen = {
       this._subEl.textContent = ironman
         ? 'Your ship was lost. In Ironman, death is final.'
         : recoverable
-        ? 'Flight controls locked. Review the loss, then recover.'
+        ? 'Flight controls locked. Review the loss, then continue from the lawful recovery berth.'
         : 'Recovery receipt unavailable. Load a save or start a new run.';
     }
     if (this._recoveryEl) {
       this._recoveryEl.textContent = recoverable
-        ? `RECOVERY · ${recovery.stationName || 'lawful dock'} · ${fmtCr(recovery.costCr)} · ${cargoText}`
+        ? `RECOVERY BERTH · ${recovery.stationName || 'lawful dock'} · ${costText} · ${cargoText}`
         : ironman
           ? 'This is Ironman mode: Casual, Standard, and Veteran deaths use insurance respawn, but this save is sealed. New Game starts fresh; Main Menu lets you Continue or Load another save.'
           : 'No recovery consequences were applied. Load a valid save or begin a new run.';

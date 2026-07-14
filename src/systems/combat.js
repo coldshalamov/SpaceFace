@@ -33,6 +33,7 @@ const CARGO_LOSS_RATE = 0.5;
 const WHIP_DAMAGE_TYPES = new Set(['ship', 'station', 'drone']);
 const WHIP_DAMAGE_MOMENTUM_SCALE = 1 / 1600; // 640-mass rock at 60 wu/s (solid) -> 24 damage
 const WHIP_DAMAGE_MAX = 45;                  // ceiling for the heaviest slings
+const RECOVERY_BERTH_CLEARANCE_WU = 140;
 /** Seconds of invulnerability after undock / soft respawn window extension (overnight B1). */
 export const UNDOCK_INVULN_S = 8;
 const BASE_AI_CAPABILITIES = Object.freeze(['drive', 'sensor', 'weapon']);
@@ -507,8 +508,12 @@ export const combat = {
       }
     }
     const livePos = this.respawnPosition(plan && plan.stationId);
-    const pos = livePos && (livePos.x !== 0 || livePos.z !== 0) ? livePos
+    const stationPos = livePos && (livePos.x !== 0 || livePos.z !== 0) ? livePos
       : plan && plan.stationPos || livePos || { x: 0, z: 0 };
+    // Recover beside the station rather than at its collision origin. Lawful-station engagement
+    // authority already prevents attackers firing into this berth, so recovery needs no temporary
+    // invulnerability reward-hack and stale projectiles remain back at the wreck site.
+    const pos = { x: stationPos.x + RECOVERY_BERTH_CLEARANCE_WU, z: stationPos.z };
     t.alive = true;
     t.hull = t.hullMax;
     t.armorHp = t.armorMax;
@@ -520,8 +525,8 @@ export const combat = {
     else setVecXZ(t.prevPos, pos.x, pos.z);
     t.flags = t.flags || {};
     delete t.flags.defeated;
-    t.flags.invuln = true;
-    t._invulnUntil = this.state.simTime + UNDOCK_INVULN_S;
+    t.flags.invuln = false;
+    t._invulnUntil = null;
   },
 
   rollLoot(loot) {

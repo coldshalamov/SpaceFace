@@ -23,6 +23,12 @@ for (const sector of SECTORS) {
 }
 
 const NON_LAWFUL_PERSONALITIES = new Set(['pirate', 'smuggler', 'xenophobic']);
+const ENVIRONMENT_LABELS = Object.freeze({
+  collision: 'Environmental hazard',
+  deep_core_gas: 'Deep-core gas pocket',
+  salvage_reactor: 'Salvage reactor',
+  environmental: 'Environmental hazard',
+});
 
 function pct(value, max) {
   return max > 0 ? Math.max(0, Math.min(100, Math.round((Number(value) || 0) / max * 100))) : 0;
@@ -52,6 +58,43 @@ export function attackerLabel(state, attackerId) {
   if (data.callsign) return String(data.callsign);
   const ship = SHIP_BY_ID.get(data.defId);
   return ship ? ship.name : titleWords(data.shipClass || attacker.type, 'Unknown contact');
+}
+
+function contextLabel(context) {
+  if (!context) return null;
+  if (context === 'deep_core_gas') return 'Deep-core gas';
+  return titleWords(context);
+}
+
+/** Stable source identity for the after-action receipt. Never infer "environment" from a missing
+ * entity when a non-null contact id was supplied: despawned attackers must remain Unknown contact. */
+export function defeatSource(state, attackerId, context = null) {
+  if (attackerId == null) {
+    return {
+      kind: 'environment',
+      entityId: null,
+      label: ENVIRONMENT_LABELS[context] || 'Environmental hazard',
+      factionId: null,
+      faction: null,
+    };
+  }
+  if (attackerId === state.playerId) {
+    return { kind: 'self', entityId: attackerId, label: 'Own ship', factionId: null, faction: null };
+  }
+  const entity = state.entities && typeof state.entities.get === 'function' ? state.entities.get(attackerId) : null;
+  if (!entity) {
+    return { kind: 'unknown', entityId: attackerId, label: 'Unknown contact', factionId: null, faction: null };
+  }
+  const data = entity.data || {};
+  const factionId = entity.factionId || data.factionId || null;
+  const faction = FACTION_BY_ID.get(factionId);
+  return {
+    kind: 'contact',
+    entityId: attackerId,
+    label: attackerLabel(state, attackerId),
+    factionId,
+    faction: faction ? faction.name : (factionId ? titleWords(factionId) : null),
+  };
 }
 
 export function weaponLabel(weaponId) {
@@ -99,12 +142,24 @@ export function buildDamageReadout(state, payload = {}) {
 }
 
 export function formatDefeatCause(state, receipt = {}) {
-  const attacker = attackerLabel(state, receipt.killerId);
+  const source = receipt.source || defeatSource(state, receipt.killerId, receipt.context);
   const weaponId = receipt.weaponId || weaponIdFromDamage(receipt);
   const weapon = weaponId ? weaponLabel(weaponId) : null;
   const layer = receipt.dominantLayer ? String(receipt.dominantLayer).toLowerCase() + ' breach' : 'hull loss';
-  const context = receipt.context || null;
-  return [attacker, weapon, layer, context].filter(Boolean).join(' · ');
+  const context = receipt.context && !['weapon', 'combat'].includes(receipt.context)
+    ? contextLabel(receipt.context) : null;
+  return [source.label, source.faction, weapon, layer, context].filter(Boolean).join(' · ');
+}
+
+function fatalSummary(source, weapon, direction, dominantLayer) {
+  const layer = String(dominantLayer || 'hull').toLowerCase();
+  if (source.kind === 'environment') return `${source.label} breached the ${layer}.`;
+  if (source.kind === 'self') {
+    return `${weapon || 'Self-inflicted damage'} breached your ${layer}.`;
+  }
+  const faction = source.faction ? ` (${source.faction})` : '';
+  const bearing = String(direction || 'unknown').toLowerCase();
+  return `Final hit from ${source.label}${faction} · ${weapon || 'unidentified weapon'} · ${bearing} ${layer} breach.`;
 }
 
 function stationIsLawful(station) {
@@ -203,6 +258,7 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
   });
   const dominantLayer = lethal.dominantLayer || lethal.result && lethal.result.dominantLayer || 'hull';
   const context = lethal.context || lethal.origin && lethal.origin.kind || 'combat';
+  const source = defeatSource(state, killerId, context);
   const subsystemId = lethal.subsystemId || lethal.result && lethal.result.subsystemId || null;
   const finalDamage = buildDamageReadout(state, {
     attackerId: killerId,
@@ -218,9 +274,12 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     tick: Number.isFinite(state.tick) ? state.tick | 0 : 0,
     simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
     killerId: killerId == null ? null : killerId,
-    attacker: attackerLabel(state, killerId),
+    source,
+    attacker: source.label,
+    factionId: source.factionId,
+    faction: source.faction,
     weaponId,
-    weapon: weaponLabel(weaponId),
+    weapon: weaponId ? weaponLabel(weaponId) : null,
     dominantLayer,
     direction: finalDamage.direction,
     subsystemId,
@@ -230,7 +289,8 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
       hull: finalDamage.hullPct,
     },
     context,
-    cause: formatDefeatCause(state, { killerId, weaponId, dominantLayer, context }),
+    cause: formatDefeatCause(state, { killerId, source, weaponId, dominantLayer, context }),
+    fatalSummary: fatalSummary(source, weaponId ? weaponLabel(weaponId) : null, finalDamage.direction, dominantLayer),
     pos: playerEntity && playerEntity.pos ? { x: playerEntity.pos.x, z: playerEntity.pos.z } : null,
     recovery,
   };
