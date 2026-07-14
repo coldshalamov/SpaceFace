@@ -405,6 +405,11 @@ export const combat = {
     if (!t.alive) return;
     t.alive = false;
     const killedByPlayer = killerId === state.playerId;
+    // Mission targets settle through missions' synchronous entity:killed listener. Paying their
+    // archetype bounty/loot here as well makes one contract kill resolve through two reward
+    // authorities. The durable mission identity survives sector rematerialization and Continue;
+    // ambient enemies have neither tag and retain the normal combat reward path below.
+    const missionOwnsReward = d.missionId != null || d.missionTag != null;
     const factionLawful = !!(d.ai && d.ai.lawful);
     bus.emit('entity:killed', {
       id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z },
@@ -413,14 +418,21 @@ export const combat = {
     });
     bus.emit('camera:shake', { amount: 0.5 });
     const bounty = Math.max(0, Math.round(d.bountyCr || 0));
-    if (bounty > 0 && killedByPlayer) bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });
+    if (bounty > 0 && killedByPlayer && !missionOwnsReward) {
+      bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });
+    }
     if (d.loot) {
       const { credits, items } = this.rollLoot(d.loot);
-      const creditedLoot = killedByPlayer ? credits : 0;
+      const creditedLoot = killedByPlayer && !missionOwnsReward ? credits : 0;
       if (creditedLoot > 0) bus.emit('economy:grantCredits', { amount: creditedLoot, reason: 'loot' });
-      bus.emit('loot:drop', { pos: { x: t.pos.x, z: t.pos.z }, credits: creditedLoot, items });
+      if (!missionOwnsReward) {
+        bus.emit('loot:drop', { pos: { x: t.pos.x, z: t.pos.z }, credits: creditedLoot, items });
+      }
       for (const it of items) {
         const ang = this.rng() * Math.PI * 2, sp = 18 + this.rng() * 28;
+        // Consume the same deterministic combat RNG draws for a contract target, but do not create
+        // a second reward pickup. This keeps subsequent encounter rolls stable across the repair.
+        if (missionOwnsReward) continue;
         const kind = lootPickupKind(it.id);
         this.helpers.spawnEntity({
           type: 'pickup', pos: { x: t.pos.x + Math.cos(ang) * 8, z: t.pos.z + Math.sin(ang) * 8 },

@@ -11,6 +11,7 @@ import {
   runHunterPublicRoute,
   measureHunterPublicRouteHorizons,
   HUNTER_HEALTHY_CR_PER_MIN,
+  HUNTER_HEALTHY_UPPER_CR_PER_MIN,
   HUNTER_PUBLIC_ROUTE_SCHEMA,
   HUNTER_PUBLIC_ROUTE_SEED,
   travelTimeS,
@@ -74,6 +75,7 @@ test('30-minute Hunter public route advances real time through live authorities'
     assert.ok(r.failedContracts > 0, 'retry/board failure must remain economically present');
     assert.ok(r.missionProceeds > 0, 'missions→economy payouts required');
     assert.ok(r.creditsPerMin >= HUNTER_HEALTHY_CR_PER_MIN, `healthy floor ${r.creditsPerMin}`);
+    assert.ok(r.creditsPerMin <= HUNTER_HEALTHY_UPPER_CR_PER_MIN, `healthy ceiling ${r.creditsPerMin}`);
     assert.ok(r.saveProof && r.saveProof.ok, r.saveProof && r.saveProof.error);
     assert.ok(r.origin.attemptHaircuts.length >= 1, 'origin retry haircut required');
     const haircut = r.origin.attemptHaircuts[0];
@@ -98,7 +100,7 @@ test('30-minute Hunter public route advances real time through live authorities'
   }
 });
 
-test('independent 30/60/90 Hunter public-route cells stay above the healthy floor', () => {
+test('independent 30/60/90 Hunter public-route cells stay inside the healthy band', () => {
   blockNondeterminism();
   try {
     const report = measureHunterPublicRouteHorizons({ seed: HUNTER_PUBLIC_ROUTE_SEED });
@@ -107,6 +109,7 @@ test('independent 30/60/90 Hunter public-route cells stay above the healthy floo
     for (const row of report.table) {
       assert.equal(row.ok, true, `${row.minutes}m ${JSON.stringify(row.assertionFails)}`);
       assert.ok(row.creditsPerMin >= HUNTER_HEALTHY_CR_PER_MIN, `${row.minutes}m rate`);
+      assert.ok(row.creditsPerMin <= HUNTER_HEALTHY_UPPER_CR_PER_MIN, `${row.minutes}m rate ceiling`);
       assert.equal(row.originStatus, 'completed');
       assert.equal(row.simS, row.minutes * 60, `${row.minutes}m exact registered time`);
       assert.ok(row.travelS > 0);
@@ -121,6 +124,8 @@ test('independent 30/60/90 Hunter public-route cells stay above the healthy floo
     // Horizons are independent runs, not cumulative — longer windows must still progress.
     assert.ok(report.cells[90].completedContracts > report.cells[30].completedContracts);
     assert.ok(report.cells[90].earnedValue > report.cells[30].earnedValue);
+    assert.equal(report.cells[60].first15kAtMin, 39.64);
+    assert.equal(report.cells[90].first15kAtMin, 39.64);
   } finally {
     restoreNondeterminism();
   }
@@ -161,5 +166,6 @@ test('check:m3-hunter-route gate passes and prints JSON receipt', () => {
   for (const row of json.table) {
     assert.equal(row.ok, true);
     assert.ok(row.creditsPerMin >= HUNTER_HEALTHY_CR_PER_MIN);
+    assert.ok(row.creditsPerMin <= HUNTER_HEALTHY_UPPER_CR_PER_MIN);
   }
 });

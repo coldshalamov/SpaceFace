@@ -9,6 +9,7 @@ import {
   restoreNondeterminism,
   measureHunterPublicRouteHorizons,
   HUNTER_HEALTHY_CR_PER_MIN,
+  HUNTER_HEALTHY_UPPER_CR_PER_MIN,
   HUNTER_PUBLIC_ROUTE_SCHEMA,
 } from '../src/balance/hunterPublicRoute.js';
 import { HUNTER_ORIGIN_CLEAN_GROSS_ENVELOPE_CR } from '../src/careers/origins/careerOriginContracts.js';
@@ -25,12 +26,12 @@ try {
 restoreNondeterminism();
 
 console.log(`[check-m3-hunter-route] schema=${report.schema || HUNTER_PUBLIC_ROUTE_SCHEMA}`);
-console.log(`[check-m3-hunter-route] healthy floor ${HUNTER_HEALTHY_CR_PER_MIN} cr/min; clean origin envelope ${HUNTER_ORIGIN_CLEAN_GROSS_ENVELOPE_CR} cr`);
-console.log('minutes  simS  credits  mission  earned  cr/min  contracts  failed  repair  toll  origin  ok');
+console.log(`[check-m3-hunter-route] healthy band ${HUNTER_HEALTHY_CR_PER_MIN}-${HUNTER_HEALTHY_UPPER_CR_PER_MIN} cr/min; clean origin envelope ${HUNTER_ORIGIN_CLEAN_GROSS_ENVELOPE_CR} cr`);
+console.log('minutes  simS  credits  mission  earned  cr/min  contracts  failed  repair  toll  first15k  origin  ok');
 for (const row of report.table) {
   const pad = (v, n) => String(v).padStart(n);
   console.log(
-    `${pad(row.minutes, 7)}  ${pad(row.simS, 4)}  ${pad(row.credits, 7)}  ${pad(row.missionProceeds, 7)}  ${pad(row.earnedValue, 6)}  ${pad(row.creditsPerMin, 6)}  ${pad(row.completedContracts, 9)}  ${pad(row.failedContracts, 6)}  ${pad(row.repairCost, 6)}  ${pad(row.tollCost, 5)}  ${pad(row.originStatus, 9)}  ${row.ok}`,
+    `${pad(row.minutes, 7)}  ${pad(row.simS, 4)}  ${pad(row.credits, 7)}  ${pad(row.missionProceeds, 7)}  ${pad(row.earnedValue, 6)}  ${pad(row.creditsPerMin, 6)}  ${pad(row.completedContracts, 9)}  ${pad(row.failedContracts, 6)}  ${pad(row.repairCost, 6)}  ${pad(row.tollCost, 5)}  ${pad(row.first15kAtMin ?? '-', 8)}  ${pad(row.originStatus, 9)}  ${row.ok}`,
   );
   if (!row.ok) {
     console.log('  fails:', (row.assertionFails || []).join('; '));
@@ -52,6 +53,7 @@ console.log(JSON.stringify({
   schema: report.schema,
   ok: report.ok,
   healthyFloorCrPerMin: report.healthyFloorCrPerMin,
+  healthyUpperCrPerMin: report.healthyUpperCrPerMin,
   table: report.table,
 }, null, 2));
 

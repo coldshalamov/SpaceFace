@@ -35,6 +35,7 @@ import { combat as combatSystem, makeEnemySpawnSpec } from '../systems/combat.js
 export const HUNTER_PUBLIC_ROUTE_SCHEMA = 'spaceface.m3.hunterPublicRoute.v1';
 export const HUNTER_PUBLIC_ROUTE_SEED = 0xC0B0_B091;
 export const HUNTER_HEALTHY_CR_PER_MIN = 62.5;
+export const HUNTER_HEALTHY_UPPER_CR_PER_MIN = 400;
 export const HUNTER_DEAD_CR_PER_MIN = 30;
 export const HUNTER_ROUTE_HORIZONS_MIN = Object.freeze([30, 60, 90]);
 
@@ -1092,6 +1093,9 @@ function finalize(receipt, ctx, costs, budget, horizonS) {
   receipt.earnedValue = earnedValue;
   receipt.creditsPerMin = round2(earnedValue / windowMin);
   receipt.creditsPerMinActive = round2(earnedValue / Math.max(elapsedS / 60, 1 / 60));
+  const first15kLoop = receipt.loops.find((loop) => Number(loop.creditsAfter) >= 15_000);
+  receipt.first15kAtS = first15kLoop ? round1(first15kLoop.t) : null;
+  receipt.first15kAtMin = first15kLoop ? round2(first15kLoop.t / 60) : null;
   receipt.repairCost = costs.repairCost;
   receipt.tollCost = costs.tollCost;
   receipt.missionCost = costs.missionCost;
@@ -1150,6 +1154,8 @@ function finalize(receipt, ctx, costs, budget, horizonS) {
     fails.push(`dead_income ${receipt.creditsPerMin} < ${HUNTER_DEAD_CR_PER_MIN}`);
   } else if (receipt.creditsPerMin < HUNTER_HEALTHY_CR_PER_MIN) {
     fails.push(`below_healthy_band ${receipt.creditsPerMin} < ${HUNTER_HEALTHY_CR_PER_MIN}`);
+  } else if (receipt.creditsPerMin > HUNTER_HEALTHY_UPPER_CR_PER_MIN) {
+    fails.push(`above_healthy_band ${receipt.creditsPerMin} > ${HUNTER_HEALTHY_UPPER_CR_PER_MIN}`);
   }
 
   // Gross origin envelope remains the clean-pass authored ceiling after haircut + repair.
@@ -1199,6 +1205,7 @@ export function measureHunterPublicRouteHorizons(options = {}) {
       retryHaircut: receipt.origin.attemptHaircuts[0] || null,
       originStatus: receipt.origin.status,
       originElapsedS: receipt.origin.elapsedS,
+      first15kAtMin: receipt.first15kAtMin,
       ok: receipt.ok,
       assertionFails: receipt.assertionFails,
     });
@@ -1209,6 +1216,7 @@ export function measureHunterPublicRouteHorizons(options = {}) {
     seed,
     ok,
     healthyFloorCrPerMin: HUNTER_HEALTHY_CR_PER_MIN,
+    healthyUpperCrPerMin: HUNTER_HEALTHY_UPPER_CR_PER_MIN,
     deadFloorCrPerMin: HUNTER_DEAD_CR_PER_MIN,
     cleanGrossEnvelopeCr: HUNTER_ORIGIN_CLEAN_GROSS_ENVELOPE_CR,
     table,
