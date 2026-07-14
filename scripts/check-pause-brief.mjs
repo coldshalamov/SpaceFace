@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { BINDINGS } from '../src/ui/bindings.js';
 import { MAP_FOCUS, MAP_SCREEN_ID } from '../src/ui/mapAuthority.js';
 import { pauseExitConfirmBody, pauseMapAction, pauseStatusLines } from '../src/ui/screens/pause.js';
 
@@ -94,7 +95,7 @@ lines = pauseStatusLines({
 });
 assert.match(lines.objective, /^NAV SET/);
 assert.match(lines.objective, /Sell Food at Vesta Exchange/);
-assert.match(lines.next, /Local Map \(N\)/);
+assert.match(lines.next, new RegExp(`Local Map \\(${BINDINGS.localmap.label}\\)`));
 assert.match(lines.save, /^Unsaved run/);
 
 lines = pauseStatusLines({
@@ -120,11 +121,11 @@ lines = pauseStatusLines({
 });
 assert.match(lines.objective, /^INTER-SYSTEM ROUTE/);
 assert.match(lines.objective, /Sell Food at Meridian Exchange/);
-assert.match(lines.next, /Star Map \(M\).*Meridian/);
+assert.match(lines.next, new RegExp(`Star Map \\(${BINDINGS.starmap.label}\\).*Meridian`));
 assert.match(lines.next, /before committing a jump/);
 
 // Map review CTA: one public surface (galaxyMap) + MAP_FOCUS vocabulary.
-// Product labels remain Local Map (N) / Star Map (M); commitment/hint copy preserved.
+// Product labels follow the live rebindable map bindings; commitment/hint copy is preserved.
 assert.match(pauseSrc, /mapHandoffAction|openGalaxyMap/,
   'pause map action should route through mapAuthority (not dual-primary legacy screens)');
 assert.doesNotMatch(pauseSrc, /screenId:\s*['"]localmap['"]/,
@@ -139,7 +140,7 @@ let mapAction = pauseMapAction({
 assert.equal(mapAction.screenId, MAP_SCREEN_ID);
 assert.equal(mapAction.screenId, 'galaxyMap');
 assert.equal(mapAction.focus, MAP_FOCUS.LOCAL);
-assert.equal(mapAction.label, 'Local Map (N)');
+assert.equal(mapAction.label, `Local Map (${BINDINGS.localmap.label})`);
 assert.equal(mapAction.commitment, 'local');
 assert.match(mapAction.hint, /live marker/);
 assert.match(mapAction.hint, /no jump route is required/);
@@ -151,7 +152,7 @@ mapAction = pauseMapAction({
 assert.equal(mapAction.screenId, MAP_SCREEN_ID);
 assert.equal(mapAction.screenId, 'galaxyMap');
 assert.equal(mapAction.focus, MAP_FOCUS.GALAXY);
-assert.equal(mapAction.label, 'Star Map (M)');
+assert.equal(mapAction.label, `Star Map (${BINDINGS.starmap.label})`);
 assert.equal(mapAction.commitment, 'inter-system');
 assert.match(mapAction.hint, /inter-system route/);
 assert.match(mapAction.hint, /Meridian/);
