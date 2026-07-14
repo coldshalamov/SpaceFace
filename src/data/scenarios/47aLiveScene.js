@@ -113,11 +113,45 @@ export function spawn47aScenarioCast(simOrOptions) {
   carrier.flags = Object.assign({}, carrier.flags, { persistent: true });
   result.carrier = carrier;
 
+  const interceptor = spawnEntity(makeShipEntitySpec('ship_wasp', {
+    team: 1,
+    factionId: 'faction_reavers',
+    fittings: fittingsFromDefaultModules('ship_wasp', ['wpn_pulse_laser_s']),
+    // Keep the deterministic harness interceptor clear of the harasser-to-player firing lane.
+    // The public live route replaces this with the authored cold-start holding position below.
+    pos: { x: 560, z: 260 },
+    rot: Math.PI,
+    ai: { role: '47a_interceptor', dormantUntilBeat: 'scavenger_arrival' },
+  }));
+  markScenarioActor(interceptor, {
+    actorId: 'scavenger_interceptor',
+    role: 'enemy_light_intercept',
+    assetRef: 'enemy_reaver_interceptor',
+    extraData: { tacticRole: 'interceptor_flyby' },
+  });
+  configure47aTacticalAI(interceptor, {
+    squadId: '47a_scavenger_wing',
+    doctrine: 'scavenger',
+    preferredRole: 'interceptor',
+    capabilities: ['drive', 'sensor', 'weapon', 'ranged', 'screen', 'counter_tether_overload'],
+    combatDoctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+  });
+  if (state && state.playerId && !liveColdStartSafe) {
+    interceptor.data.combat = Object.assign({}, interceptor.data.combat, { targetId: state.playerId });
+  }
+  if (liveColdStartSafe) markLiveColdStartDormant(interceptor, {
+    activationBeat: 'scavenger_arrival',
+    holdingPos: { x: 1760, z: 260 },
+  });
+  result.interceptor = interceptor;
+
   const harasser = spawnEntity(makeShipEntitySpec('ship_wasp', {
     team: 1,
     factionId: 'faction_reavers',
     fittings: fittingsFromDefaultModules('ship_wasp', ['wpn_pulse_laser_s']),
-    pos: { x: 690, z: 90 },
+    // The deterministic harness keeps this angle clear of its large target dummy so proof shots
+    // exercise real hostile damage instead of being swallowed as rejected friendly fire.
+    pos: { x: 650, z: 300 },
     rot: Math.PI,
     ai: { role: '47a_harasser', dormantUntilBeat: 'scavenger_arrival' },
   }));
@@ -219,10 +253,18 @@ export function spawn47aScenarioCast(simOrOptions) {
   return result;
 }
 
-export function configure47aTacticalAI(entity, { squadId, doctrine, preferredRole, capabilities }) {
-  const combatDoctrineId = preferredRole === 'tug'
+export function configure47aTacticalAI(entity, {
+  squadId,
+  doctrine,
+  preferredRole,
+  capabilities,
+  combatDoctrineId: authoredCombatDoctrineId = null,
+}) {
+  const combatDoctrineId = authoredCombatDoctrineId || (preferredRole === 'tug'
     ? CombatDoctrineId.TETHER_CONTROL_RAIDER
-    : CombatDoctrineId.RANGED_DISENGAGER;
+    : preferredRole === 'interceptor'
+      ? CombatDoctrineId.INTERCEPTOR_FLYBY
+      : CombatDoctrineId.RANGED_DISENGAGER);
   entity.data = entity.data || {};
   entity.data.ai = Object.assign({}, entity.data.ai, {
     passive: true,
@@ -233,7 +275,9 @@ export function configure47aTacticalAI(entity, { squadId, doctrine, preferredRol
     sensorRange: 1800,
     formation: doctrine === 'official' ? 'line' : 'wedge',
     combatDoctrineId,
-    motive: preferredRole === 'tug' ? 'recover_evidence_spindle' : 'screen_recovery_claim',
+    motive: preferredRole === 'tug' ? 'recover_evidence_spindle'
+      : preferredRole === 'interceptor' ? 'break_claim_screen'
+        : 'screen_recovery_claim',
     engagementTrigger: 'scenario_gate_pending',
     zoneId: 'zone_47a_wreck_field',
     approachTelegraph: combatDoctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER ? 'attach_spool' : 'weapon_charge',

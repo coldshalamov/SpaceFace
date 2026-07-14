@@ -173,7 +173,11 @@ function syncLiveColdStartCombatants(runtime) {
   const safe = scenario.safeOpening || (scenario.safeOpening = {});
   const now = state.simTime || 0;
   const scavengerBeat = activeBeatId === 'scavenger_arrival' || entered.includes('scavenger_arrival');
-  const storyReady = !!(state.story && (state.story.beatIndex | 0) >= 2);
+  // The first completed 47-A delivery is the player's authored combat graduation. Requiring B2
+  // forced the scavenger cast to survive a sector round trip, leaving them tens of thousands of
+  // world units from the player when the refusal finally armed. B1 keeps the cold open peaceful,
+  // then stages the explicit demand in the same Helios frame where the actors were authored.
+  const storyReady = !!(state.story && (state.story.beatIndex | 0) >= 1);
   const outsideProtection = playerOutsideHeliosProtection(state);
   if (scavengerBeat && safe.spindleClaimed && storyReady && outsideProtection && !Number.isFinite(safe.demandIssuedAt)) {
     safe.demandIssuedAt = now;
@@ -230,20 +234,23 @@ function authorizeLiveColdStartActor(state, entity, safe) {
   const ai = entity.data && entity.data.ai;
   if (!ai) return;
   const isTug = ai.preferredRole === 'tug' || ai.role === '47a_thief';
-  ai.combatDoctrineId = isTug
-    ? CombatDoctrineId.TETHER_CONTROL_RAIDER
-    : CombatDoctrineId.RANGED_DISENGAGER;
-  ai.motive = isTug ? 'recover_evidence_spindle' : 'screen_recovery_claim';
+  const isInterceptor = ai.preferredRole === 'interceptor' || ai.role === '47a_interceptor';
+  ai.combatDoctrineId = isTug ? CombatDoctrineId.TETHER_CONTROL_RAIDER
+    : isInterceptor ? CombatDoctrineId.INTERCEPTOR_FLYBY
+      : CombatDoctrineId.RANGED_DISENGAGER;
+  ai.motive = isTug ? 'recover_evidence_spindle'
+    : isInterceptor ? 'break_claim_screen'
+      : 'screen_recovery_claim';
   ai.engagementTrigger = safe && safe.provoked ? 'player_attack' : 'explicit_refusal';
   ai.zoneId = 'zone_47a_wreck_field';
-  ai.approachTelegraph = isTug ? 'attach_spool' : 'weapon_charge';
+  ai.approachTelegraph = isTug ? 'attach_spool' : isInterceptor ? 'engine_flare' : 'weapon_charge';
   ai.noFireResponseWindowS = 1;
   ai.activity = normalizeActivity({
     kind: ActivityKind.ATTACK_RUN,
-    reason: `47a:${ai.engagementTrigger}:${isTug ? 'tug' : 'screen'}`,
+    reason: `47a:${ai.engagementTrigger}:${isTug ? 'tug' : isInterceptor ? 'interceptor' : 'screen'}`,
     anchor: entity.pos,
     leashRadius: 2600,
-    preferredRange: isTug ? 180 : 620,
+    preferredRange: isTug ? 180 : isInterceptor ? 150 : 620,
     startedTick: Number.isInteger(state && state.tick) ? state.tick : Math.round((state && state.simTime || 0) * 60),
     targetId: state && state.playerId,
     encounterId: 'scenario.47a.mass-discrepancy',

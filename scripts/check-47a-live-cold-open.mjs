@@ -161,7 +161,7 @@ try {
   assert.deepEqual(missingEntities, [], 'all required physical scenario actors should have live entities');
   assert.equal(report.actors.find((actor) => actor.id === 'contact_kessler')?.sourceKind, 'narrativeFigure',
     'Kessler should bind through the narrative figure catalog');
-  for (const id of ['scavenger_harasser', 'scavenger_thief', 'official_recovery_tug']) {
+  for (const id of ['scavenger_interceptor', 'scavenger_harasser', 'scavenger_thief', 'official_recovery_tug']) {
     const actor = report.actors.find((entry) => entry.id === id);
     assert(actor, `${id} actor should exist in live cold-open report`);
     assert.equal(actor.team, 0, `${id} should be neutral before its scenario beat`);

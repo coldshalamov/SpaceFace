@@ -477,7 +477,10 @@ async function run47a({
     update47aScenarioActorIntents(state, { counterTetherProbe });
     sim.step(SIM_DT);
     if (reloadAt != null && state.tick === reloadAt) {
-      await reloadThroughSave(registry, state, metrics, reloadAt, { physicsBackend });
+      await reloadThroughSave(registry, state, metrics, reloadAt, {
+        physicsBackend,
+        flightBackend: flightSlot === flightV3 ? 'v3' : 'legacy',
+      });
     }
   }
 
@@ -522,6 +525,11 @@ async function reloadThroughSave(registry, state, metrics, reloadAt, options = {
   const persistentBefore = state.entityList.filter((e) => e.alive && e.flags && e.flags.persistent).length;
   const envelope = saveSys.serialize('sf-sim-reload');
   assert.equal(saveSys.loadEnvelope(envelope, 'sf-sim-reload'), true, '47-A reload check should load its own envelope');
+  // Production saves deliberately migrate every run to the one live V3 controller. sf-sim also
+  // exercises the frozen legacy controller as a CI fixture, so keep this restored marker aligned
+  // with the controller the harness already registered. This avoids a legacy-flight/V3-attachment
+  // hybrid after load.
+  state.settings.gameplay.flightBackend = options.flightBackend === 'v3' ? 'v3' : 'legacy';
   const persistentAfter = state.entityList.filter((e) => e.alive && e.flags && e.flags.persistent).length;
   assert.equal(state.tick, reloadAt, '47-A reload should preserve sim tick');
   assert.equal(persistentAfter, persistentBefore, '47-A reload should preserve persistent live actors');
@@ -882,23 +890,27 @@ function update47aScenarioActorIntents(state, options = {}) {
   const player = state.entities.get(state.playerId);
   const scenario = state.scenario && state.scenario.active;
   if (!player || !scenario) return;
+  const interceptor = resolveScenarioEntity(state, 'scavenger_interceptor');
   const harasser = resolveScenarioEntity(state, 'scavenger_harasser');
   const thief = resolveScenarioEntity(state, 'scavenger_thief');
   const recoveryTug = resolveScenarioEntity(state, 'official_recovery_tug');
   const activeBeat = scenario.activeBeatId;
   const simTime = state.simTime || 0;
   if (options.counterTetherProbe === 'dash') {
+    set47aTacticalActive(interceptor, false);
     set47aTacticalActive(harasser, false);
     set47aTacticalActive(thief, state.tick >= 6);
     set47aTacticalActive(recoveryTug, false);
     return;
   }
   if (options.counterTetherProbe === 'cut') {
+    set47aTacticalActive(interceptor, false);
     set47aTacticalActive(harasser, state.tick >= 6);
     set47aTacticalActive(thief, state.tick >= 6);
     set47aTacticalActive(recoveryTug, false);
     return;
   }
+  set47aTacticalActive(interceptor, simTime >= 75 || activeBeat === 'scavenger_arrival');
   set47aTacticalActive(harasser, simTime >= 75 || activeBeat === 'scavenger_arrival');
   set47aTacticalActive(thief, simTime >= 75 || activeBeat === 'scavenger_arrival');
   set47aTacticalActive(recoveryTug, simTime >= 270 || activeBeat === 'recovery_tug');
@@ -1163,8 +1175,8 @@ function assert47aPhase0Metrics(metrics, options = {}) {
   assert(metrics.firstMeaningfulSteeringTick != null && metrics.firstMeaningfulSteeringTick <= 300,
     '47-A Phase 0 tape should produce meaningful steering within 5s');
   assert(metrics.combatFire > 0, '47-A Phase 0 tape should exercise weapon fire');
-  // The current working-tree tape is intentionally waiting on a 47-A golden re-record: same-shape
-  // compare determinism is authoritative while projectile-hit/damage coverage is stale.
+  assert(metrics.projectileHits > 0, '47-A Phase 0 tape should land at least one projectile hit');
+  assert(metrics.combatDamage > 0, '47-A Phase 0 tape should exercise the combat damage path');
   assert(metrics.economyTicks > 0, '47-A Phase 0 tape should advance economy cadence');
   if (options.physicsBackend === 'rapier-dynamic') {
     assert(metrics.firstTetherAttachTick != null && metrics.firstTetherAttachTick <= 3600,

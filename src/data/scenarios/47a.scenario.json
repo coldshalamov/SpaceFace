@@ -31,6 +31,14 @@
       "capabilities": ["hazard.fracture", "cover.debris", "camera.framing_anchor"]
     },
     {
+      "id": "scavenger_interceptor",
+      "role": "enemy_light_intercept",
+      "required": true,
+      "assetRef": "enemy_reaver_interceptor",
+      "factionId": "faction_reavers",
+      "capabilities": ["ai.interceptor_flyby", "weapon.fire", "counterplay.vector_break"]
+    },
+    {
       "id": "scavenger_harasser",
       "role": "enemy_light_harass",
       "required": true,
@@ -272,7 +280,7 @@
       "timeEndS": 165,
       "title": "Scavengers approach in formation and demand the sealed spindle",
       "intent": "A deliberate Massline claim triggers a clear motive, warning, escape window, then a contest over the spindle.",
-      "requiredActors": ["player_kestrel", "evidence_spindle_47a", "scavenger_harasser", "scavenger_thief"],
+      "requiredActors": ["player_kestrel", "evidence_spindle_47a", "scavenger_interceptor", "scavenger_harasser", "scavenger_thief"],
       "requiredMechanics": ["combat.weapon_fire", "ai.screen_tug_steal", "counter_tether.cut", "counter_tether.dash"],
       "requiredPresentation": ["ui.counter_tether_warning", "audio.hostile_lock", "vfx.weapon_hits", "camera.threat_composition", "accessibility.directional_warning"],
       "presentationEventIds": ["tether.break", "shield.collapse"],

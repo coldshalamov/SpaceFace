@@ -12,8 +12,13 @@ function makeState({
   simTime = 20,
   playerX = 1250,
   actorId = 'scavenger_harasser',
-  motive = 'screen_recovery_claim',
-  doctrineId = actorId === 'scavenger_thief' ? 'tether_control_raider' : 'ranged_disengager',
+  motive = actorId === 'scavenger_interceptor' ? 'break_claim_screen'
+    : actorId === 'scavenger_thief' ? 'recover_evidence_spindle'
+      : 'screen_recovery_claim',
+  doctrineId = actorId === 'scavenger_interceptor' ? 'interceptor_flyby'
+    : actorId === 'scavenger_thief' ? 'tether_control_raider'
+      : 'ranged_disengager',
+  phase = doctrineId === 'interceptor_flyby' ? 'strike' : 'fire_window',
   activated = true,
   trigger = 'explicit_refusal',
 } = {}) {
@@ -32,7 +37,7 @@ function makeState({
     roe: RulesOfEngagement.WEAPONS_FREE,
     activity: normalizeActivity({
       kind: ActivityKind.ATTACK_RUN,
-      reason: 'combat_doctrine:ranged_disengager:fire_window',
+      reason: `combat_doctrine:${doctrineId}:${phase}`,
       anchor: { x: 1300, z: 0 },
       leashRadius: 2600,
       startedTick: 1000,
@@ -60,7 +65,7 @@ function makeState({
     simTime,
     playerId: player.id,
     player: { heat: 0 },
-    story: { beatIndex: 2 },
+    story: { beatIndex: 1 },
     world: { currentSectorId: 'sector_helios_prime', sectors: {} },
     scenario: {
       active: { id: 'scenario.47a.mass-discrepancy' },
@@ -97,7 +102,7 @@ function authorize(state) {
     self: state.entities.get(2),
     target: state.entities.get(1),
     tick: state.tick,
-    objectiveReason: 'combat_doctrine:ranged_disengager:fire_window',
+    objectiveReason: state.entities.get(2).data.ai.activity.reason,
     hostile: true,
   });
 }
@@ -128,9 +133,13 @@ test('47-A REFUSE remains fail-closed until the exact authored no-fire deadline'
   assert.equal(atDeadline.entities.get(2).data.combat.targetId, atDeadline.playerId);
 });
 
-test('the exception is limited to the two authored actors and the outer 200-WU seam', () => {
+test('the exception is limited to the three authored actors and the outer 200-WU seam', () => {
   const thief = makeState({ actorId: 'scavenger_thief', motive: 'recover_evidence_spindle' });
   assert.equal(is47aScavengerCounterplayAuthorized(thief, thief.entities.get(2), thief.entities.get(1)), true);
+  const interceptor = makeState({ actorId: 'scavenger_interceptor' });
+  assert.equal(is47aScavengerCounterplayAuthorized(interceptor, interceptor.entities.get(2), interceptor.entities.get(1)), true);
+  assert.deepEqual(authorize(interceptor), { ok: true, reason: 'authorized' },
+    'the 47-A interceptor should execute through its real strike authority path');
 
   const genericPirate = makeState({ actorId: 'ambient_pirate' });
   assert.equal(is47aScavengerCounterplayAuthorized(genericPirate, genericPirate.entities.get(2), genericPirate.entities.get(1)), false);

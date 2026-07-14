@@ -5591,7 +5591,7 @@ function check47aLiveColdStartCombatantsAreDormant() {
   state.playerId = player.id;
 
   const scene = spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
-  for (const key of ['harasser', 'thief', 'recoveryTug']) {
+  for (const key of ['interceptor', 'harasser', 'thief', 'recoveryTug']) {
     const entity = scene[key];
     assert(entity, `47-A live cold start should spawn ${key} actor`);
     assert.equal(entity.team, 0, `${key} should start neutral/friendly in the live cold open`);

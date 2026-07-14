@@ -58,7 +58,7 @@ scenarioRuntime.update();
 assertDormant(h, 'tether-only remains safe indefinitely while story progress is B0');
 assert.equal(h.demands.length, 0);
 
-h.state.story.beatIndex = 2;
+h.state.story.beatIndex = 1;
 h.state.simTime = 2000;
 scenarioRuntime.update();
 assertDormant(h, 'authored progress plus tether remains safe inside Helios protection');

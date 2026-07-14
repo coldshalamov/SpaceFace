@@ -32,6 +32,10 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
 });
 const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
 const SCENARIO_47A_SCAVENGERS = new Map([
+  ['scavenger_interceptor', Object.freeze({
+    motive: 'break_claim_screen',
+    doctrineId: 'interceptor_flyby',
+  })],
   ['scavenger_harasser', Object.freeze({
     motive: 'screen_recovery_claim',
     doctrineId: 'ranged_disengager',
@@ -116,7 +120,7 @@ export function authorizeAIEngagement({
  * Fail-closed bridge between the authored 47-A refusal contract and Helios jurisdiction.
  *
  * The demand is deliberately issued just outside the station's 1,200-WU inner sanctuary while
- * the broader 1,400-WU starter jurisdiction still applies. Only the two named scenario actors may
+ * the broader 1,400-WU starter jurisdiction still applies. Only the three named scenario actors may
  * cross that outer 200-WU seam, and only after the player's explicit refusal plus the exact
  * authored no-fire deadline. Moving back into the inner sanctuary restores ordinary protection.
  */
@@ -131,7 +135,7 @@ export function is47aScavengerCounterplayAuthorized(state, self, target) {
   if (!Number.isFinite(safe.demandIssuedAt) || !Number.isFinite(safe.noFireUntilS)
     || safe.noFireUntilS < safe.demandIssuedAt || !Number.isFinite(state.simTime)
     || state.simTime < safe.noFireUntilS) return false;
-  if ((state.story?.beatIndex | 0) < 2) return false;
+  if ((state.story?.beatIndex | 0) < 1) return false;
 
   const data = self.data;
   const ai = data && data.ai;

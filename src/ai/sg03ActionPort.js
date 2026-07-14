@@ -126,7 +126,16 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
       const entity = liveEntity(state, entityId);
       if (!entity || !entity.alive) return { ok: false, reason: 'actor_missing' };
       const authorization = authorizeOffensiveAction(state, entity, def, request);
-      if (!authorization.ok) return { ok: false, reason: `engagement:${authorization.reason}` };
+      if (!authorization.ok) {
+        const denial = {
+          ok: false,
+          reason: `engagement:${authorization.reason}`,
+        };
+        if (authorization.reason === 'response_window') {
+          denial.retryAtTick = responseWindowReadyTick(entity);
+        }
+        return denial;
+      }
       const capabilityView = fastCapabilityView(state, kernel, entityId) || {};
       const combat = liveCombatRuntime(state, entityId) || {};
       const capabilities = capabilityView.capabilities || combat.capabilities || {};
@@ -137,7 +146,7 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
       const blockedTag = (def.tags || []).find((tag) => blockedTags.includes(tag));
       if (blockedTag) return { ok: false, reason: `disabled:${blockedTag}` };
       const readyTick = cooldownReadyTick(state, entityId, actionId);
-      if (state.tick < readyTick) return { ok: false, reason: `cooldown:${readyTick}` };
+      if (state.tick < readyTick) return { ok: false, reason: `cooldown:${readyTick}`, retryAtTick: readyTick };
       const capCost = Math.max(0, Number(def.costs && def.costs.capacitor) || 0);
       const heatCost = Math.max(0, Number(def.costs && def.costs.heat) || 0);
       if ((Number(entity.cap) || 0) < capCost) return { ok: false, reason: 'insufficient_capacitor' };
@@ -300,6 +309,16 @@ function cooldownReadyTick(state, entityId, actionId) {
   const cooldowns = state && state.combat && state.combat.actions && state.combat.actions.cooldownReadyTickByActor || {};
   const byActor = cooldowns[String(entityId)] || {};
   return Number(byActor[actionId]) || 0;
+}
+
+function responseWindowReadyTick(entity) {
+  const ai = entity && entity.data && entity.data.ai || {};
+  const activity = ai.activity || {};
+  const startedTick = Number.isInteger(activity.startedTick) ? activity.startedTick : 0;
+  const windowS = Number(ai.noFireResponseWindowS);
+  return Number.isFinite(windowS) && windowS >= 0
+    ? startedTick + Math.ceil(windowS * 60)
+    : null;
 }
 
 function actionListSignature(capabilities, blockedTags) {

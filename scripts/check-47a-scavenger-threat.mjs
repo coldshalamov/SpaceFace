@@ -13,7 +13,7 @@ import {
 
 const contract = readScenarioContract();
 const beat = beatById(contract, 'scavenger_arrival');
-assertIncludesAll(beat.requiredActors, ['player_kestrel', 'evidence_spindle_47a', 'scavenger_harasser', 'scavenger_thief'],
+assertIncludesAll(beat.requiredActors, ['player_kestrel', 'evidence_spindle_47a', 'scavenger_interceptor', 'scavenger_harasser', 'scavenger_thief'],
   'scavenger_arrival actors');
 assertIncludesAll(beat.requiredMechanics, ['combat.weapon_fire', 'ai.screen_tug_steal', 'counter_tether.cut', 'counter_tether.dash'],
   'scavenger_arrival mechanics');
@@ -28,6 +28,10 @@ const thiefActor = actorById(contract, 'scavenger_thief');
 assert.equal(thiefActor.factionId, 'faction_reavers', 'thief should be authored as Reaver faction');
 assertIncludesAll(thiefActor.capabilities, ['ai.screen_tug_steal', 'massline.attach', 'counter_tether.dash'],
   'thief capabilities');
+const interceptorActor = actorById(contract, 'scavenger_interceptor');
+assert.equal(interceptorActor.factionId, 'faction_reavers', 'interceptor should be authored as Reaver faction');
+assertIncludesAll(interceptorActor.capabilities, ['ai.interceptor_flyby', 'weapon.fire', 'counterplay.vector_break'],
+  'interceptor capabilities');
 
 const result = runInspect({ tick: 5200 });
 assertBeatEntered(result, 'scavenger_arrival');
@@ -48,6 +52,14 @@ assert.equal(harasser.data.ai.passive, false, 'harasser should no longer be pass
 assert.equal(harasser.data.ai.doctrine, 'scavenger', 'harasser should use scavenger doctrine');
 assert.equal(harasser.data.ai.preferredRole, 'support', 'harasser should keep standoff support role');
 assert.equal(harasser.data.combat.targetId, result.snapshot.playerId, 'harasser should target the player');
+
+const interceptor = entityByActorId(result, 'scavenger_interceptor');
+assert.equal(interceptor.team, 1, 'interceptor should activate as a hostile team ship at scavenger beat');
+assert.equal(interceptor.factionId, 'faction_reavers', 'interceptor should activate with Reaver faction');
+assert.equal(interceptor.data.ai.passive, false, 'interceptor should no longer be passive after activation');
+assert.equal(interceptor.data.ai.preferredRole, 'interceptor', 'interceptor should keep its flyby role');
+assert.equal(interceptor.data.ai.combatDoctrineId, 'interceptor_flyby', 'interceptor should use the flyby doctrine');
+assert.equal(interceptor.data.combat.targetId, result.snapshot.playerId, 'interceptor should target the player');
 
 const thief = entityByActorId(result, 'scavenger_thief');
 assert.equal(thief.team, 1, 'thief should activate as hostile team ship at scavenger beat');
