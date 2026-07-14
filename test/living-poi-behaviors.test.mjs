@@ -384,6 +384,35 @@ test('real voice arbiter refreshes the visible floor when a live POI resolves un
     'approach and outcome refresh one visible floor rather than stacking notifications');
 });
 
+test('docked lawful outcome refreshes the active voice floor without waiting for another sim tick', () => {
+  const state = makeState(79);
+  const bus = createBus();
+  const helpers = {};
+  const arbiter = Object.create(voiceArbiter);
+  arbiter.init({ state, bus, helpers });
+  arbiter.newGame();
+  const system = Object.create(livingPoiBehaviors);
+  system.init({ state, bus, helpers });
+  system.newGame();
+  system.planSector(SYNTHETIC_SECTOR.id, {
+    zones: SYNTHETIC_ZONES, sector: SYNTHETIC_SECTOR, dayIndex: 4,
+  });
+  const row = Object.values(state.livingPoiBehaviors.activeByZone)
+    .find((candidate) => candidate.familyId === 'lawful_station_yard');
+  const surfaces = [];
+  bus.on('voice:surface', (payload) => surfaces.push(payload));
+
+  bus.emit('world:zoneEntered', { zoneId: row.zoneId, type: row.zoneType, threat: row.threat });
+  arbiter.update(1 / 60, state);
+  const beforeDock = surfaces.length;
+  bus.emit('dock:docked', { stationId: row.stationId });
+
+  assert.equal(surfaces.length, beforeDock + 1,
+    'same-id outcome refreshes synchronously when docking pauses subsequent updates');
+  assert.match(surfaces.at(-1)?.text || '', /CLEARED MANIFEST/);
+  assert.match(surfaces.at(-1)?.text || '', /LOCAL TRUST/);
+});
+
 test('lawful-yard completion is bound to the exact docked station', () => {
   const { system, bus, state } = makeSystem(79);
   const sector = {

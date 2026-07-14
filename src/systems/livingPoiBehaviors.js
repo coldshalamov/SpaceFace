@@ -269,8 +269,8 @@ export const livingPoiBehaviors = {
       progress: row.progress,
       required: row.contract.required,
     });
-    this._publishGuidance(row, 'progress');
-    if (row.progress >= row.contract.required) this._resolve(row, row.contract.successOutcome, payload);
+    if (row.progress < row.contract.required) this._publishGuidance(row, 'progress');
+    else this._resolve(row, row.contract.successOutcome, payload);
     return true;
   },
 

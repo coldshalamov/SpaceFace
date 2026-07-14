@@ -269,7 +269,15 @@ export const voiceArbiter = {
         ? { channel: msgOrChannel, text, ...(opts || {}) }
         : msgOrChannel;
       if (!msg || !msg.text) return false;
-      this.queue.enqueue(msg, this._now());
+      const activeBefore = this.queue.active;
+      const entry = this.queue.enqueue(msg, this._now());
+      // Docking can pause the fixed-tick loop immediately after an authority event. When a live
+      // readout replaces the CURRENT floor under the same stable id, refresh its presenter now;
+      // no queue step, priority decision, or preemption is involved. Normal new arrivals still
+      // wait for update() so the arbiter remains the sole ordering authority.
+      if (activeBefore && entry.id != null && activeBefore.id === entry.id) {
+        this._flushPresentation(null);
+      }
       return true;
     };
     if (ctx.helpers) {
