@@ -2,7 +2,7 @@
 // Contract: ARCHITECTURE §0.6 (single-writer credits), §0.12/§0.13 (cargo: volume is the only
 // hard cap), §3.6 (economy schema), §4.4 (master event table), design/specs/03-economy-trading.md.
 //
-// MODEL (reconciled with the spec's worked-route anchor — see "PRICING NOTE" below):
+// MODEL (reconciled with the spec's worked-route shape — see "PRICING NOTE" below):
 //   Each station S owns a market: cmdtyId -> MarketEntry {stock, equilibrium, baseEq, role,
 //   lastMid, lastBuy, lastSell, eventMods}. Price is a pure function of (stock / baseEq):
 //     mid = basePrice * clamp((stock/baseEq)^(-elasticity), 0.40, 2.60)
@@ -10,17 +10,18 @@
 //   - equilibrium = stock DRIFT TARGET (role- & event-modified). Producers drift stock ABOVE baseEq
 //                   (surplus -> cheap, they sell what they make); consumers drift BELOW (shortage ->
 //                   dear, they buy what they need). This surplus/shortage gradient is what makes
-//                   A->B routes profitable.
+//                   A->B routes profitable. Role factors are intentionally milder than the 1.x
+//                   2.0/0.35 pair so freestyle freight cannot compound unbounded while missions
+//                   and discovery routes still read as profitable.
 //   Buy = mid*(1+spread/2), Sell = mid*(1-spread/2). Large trades move stock unit-by-unit (closed-
 //   form integral of the price curve), so each route has a capacity sweet spot (diminishing margin).
 //
 //   PRICING NOTE: §3.6's literal `effectiveEq = baseEq*roleFactor*...` used as BOTH the price
 //   reference AND the drift target collapses every market to basePrice (stock drifts to eq, price
-//   uses eq -> ratio 1). The spec's own worked route (refinery produce mid 62.2, fab consume mid
-//   146; 40u ~2.5k / 200u ~10k / 800u ~19k profit, 80-90% ROI early) only reproduces when the
-//   price reference is the FIXED baseEq and the role multiplies the stock target. We honor the
-//   schema field names (equilibrium = role-modified drift target, baseEq = fixed reference) and
-//   reproduce the anchor numbers. Verified numerically.
+//   uses eq -> ratio 1). The worked-route shape (producer cheap, consumer dear; large lots self-
+//   impact) only holds when the price reference is the FIXED baseEq and the role multiplies the
+//   stock target. We honor the schema field names (equilibrium = role-modified drift target,
+//   baseEq = fixed reference). Absolute early ROI is now moderated for M3 career parity.
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -39,14 +40,20 @@ import {
 import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
-const BASE_EQ_DEFAULT = 1000;      // baseEq before sizeFactor
-const ROLE_FACTOR = { produce: 2.0, consume: 0.35, none: 0 };
+// M3 courier/freight balance (2026-07): produce=2.0 / consume=0.35 at baseEq=1000 left a permanent
+// ~85% freestyle margin with <1% price impact on starter-scale lots, so same-sector arbitrage
+// compounded through 90 minutes (saleProceeds dominated missions). Causal levers (not Courier tax):
+//   1) milder produce/consume stock targets compress structural route spreads;
+//   2) moderately shallower baseEq makes freighter lots move the book (capacity sweet spot);
+//   3) slightly slower drift keeps flooded/drained lanes cooler between hauls.
+const BASE_EQ_DEFAULT = 720;       // was 1000; still deep enough for early hauls, thin enough for impact
+const ROLE_FACTOR = { produce: 1.58, consume: 0.50, none: 0 };
 const SIZE_FACTOR = { S: 0.5, M: 1, L: 2 };
 const PRICE_MULT_LO = 0.40, PRICE_MULT_HI = 2.60;
-const SPREAD_BASE = 0.08;          // 8% house edge
+const SPREAD_BASE = 0.085;         // mild house edge (was 0.08)
 const SPREAD_LO = 0.04, SPREAD_HI = 0.40;
 const FRONTIER_SPREAD_BONUS = 0.06; // low-wealth stations widen the spread up to +6%
-const DRIFT_RATE = 0.001;          // per-second; half-life ~11.6 min: a flooded lane must actually cool
+const DRIFT_RATE = 0.0006;         // per-second; half-life ~19 min (was ~11.6): lanes cool between hauls
 const ECON_TICK_S = 5;             // economy ticks every 5s of sim time
 const EVENT_INTERVAL_S = 90;       // average seconds between spontaneous economic events (game-wide)
 const EQ_MULT_CLAMP = [0.25, 4.0]; // clamp net event/propagation eq multiplier per (station,cmdty)
