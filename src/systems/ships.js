@@ -497,10 +497,9 @@ export const ships = {
     bus.on('cargo:massSettled', () => this.flushCargoMassRefresh());
     bus.on('save:loaded', () => {
       this.flushCargoMassRefresh();
-      // Role identity is derived from the restored active hull. Publish it for player-facing
-      // continuity consumers without serializing a second copy of lattice truth or replaying the
-      // hull-switch toast on every Continue.
-      this.publishActiveRoleContext({ source: 'save_loaded', announce: false });
+      // Role identity is derived from the restored active hull. Publish once per Continue so the
+      // presentation adapter can surface a one-time briefing without serializing lattice copy.
+      this.publishActiveRoleContext({ source: 'save_loaded', announce: true });
     });
 
     // UI intent events (§4.4): the UI emits these; ships owns the mutation + credit emits.
@@ -530,16 +529,20 @@ export const ships = {
 
   /**
    * Canonical player-facing role packet for the active owned hull. The role lattice remains the
-   * only identity source; this packet is transient event/UI context and is never serialized.
+   * only identity source for known hulls; missing/legacy defIds fall back to best-effort catalog
+   * fields so Continue never drops the briefing seam. Packet is transient event/UI context and is
+   * never serialized onto player ownership.
    */
   activeRoleContext({ source = 'query', previousDefId = null } = {}) {
     const p = this.state && this.state.player;
     if (!p || !Array.isArray(p.ownedShips)) return null;
     const activeShipIndex = Number.isInteger(p.activeShipIndex) ? p.activeShipIndex : 0;
     const owned = p.ownedShips[activeShipIndex] || null;
-    const identity = owned ? describeHullRole(owned.defId) : null;
-    if (!owned || !identity) return null;
+    if (!owned) return null;
+    const identity = describeHullRole(owned.defId) || legacyRoleIdentity(owned.defId);
+    if (!identity) return null;
     const path = identity.rolePath || null;
+    const fallback = !!identity.fallback;
     return Object.freeze({
       schema: 'spaceface.shipRoleContext.v1',
       source,
@@ -552,24 +555,27 @@ export const ships = {
       roleLabel: identity.roleLabel,
       flightClass: identity.flightClass,
       identityLine: identity.identityLine,
-      signatureVerb: path ? path.signatureVerb : identity.shortWhy,
-      counterplay: path ? path.counterplay : (identity.weaknesses || []).join(', '),
+      signatureVerb: path ? path.signatureVerb : (identity.signatureVerb || identity.shortWhy),
+      counterplay: path
+        ? path.counterplay
+        : (identity.counterplay || (identity.weaknesses || []).join(', ')),
       primaryCareers: Object.freeze((identity.primaryCareers || []).slice()),
+      fallback,
     });
   },
 
-  /** Publish active role continuity to systems/UI, with an optional concise visible briefing. */
+  /**
+   * Publish active role continuity. Visible briefing is owned by presentationAdapters via
+   * ship:roleContext — ships never touches the DOM and never emits toast from this path.
+   */
   publishActiveRoleContext({ source = 'query', previousDefId = null, announce = false } = {}) {
-    const context = this.activeRoleContext({ source, previousDefId });
-    if (!context) return null;
+    const base = this.activeRoleContext({ source, previousDefId });
+    if (!base) return null;
+    const context = Object.freeze({
+      ...base,
+      announce: !!announce,
+    });
     this.bus.emit('ship:roleContext', context);
-    if (announce) {
-      this.bus.emit('toast', {
-        text: context.name + ' active · ' + context.roleLabel + ' — ' + context.signatureVerb,
-        kind: 'info',
-        ttl: 5,
-      });
-    }
     return context;
   },
 
@@ -957,6 +963,8 @@ export const ships = {
     p.researchPoints = NEW_GAME.researchPoints || 0;
     p.droneTierCap = 0;
     p.efficiencyMods = { miningYieldMult: 1, shieldRegenMult: 1, energyRegenMult: 1, cargoCapMult: 1, tradeFeeMult: 1 };
+    // One-time New Game role packet for presentationAdapters (no permanent HUD, no mission text).
+    this.publishActiveRoleContext({ source: 'new_game', announce: true });
   },
 
   /** Place each default-fitted module/weapon defId into its first compatible empty slot. */
@@ -968,6 +976,33 @@ export const ships = {
 // ---- small utils ---------------------------------------------------------------------------
 
 function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+
+/** Best-effort identity when a save carries a hull outside the live lattice (legacy / missing). */
+function legacyRoleIdentity(defId) {
+  if (defId == null || defId === '') return null;
+  const def = SHIP_BY_ID.get(defId);
+  const role = String((def && def.role) || 'multirole');
+  const name = (def && def.name) || String(defId);
+  const roleLabel = role
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ') || 'Multirole';
+  return Object.freeze({
+    name,
+    role,
+    roleLabel,
+    flightClass: flightClassForHull(def || defId) || 'medium',
+    identityLine: 'Restored hull using a best-effort role read for a missing lattice entry.',
+    shortWhy: 'Fly the restored hull; verify loadout at the next shipyard.',
+    signatureVerb: 'Fly the restored hull; verify loadout at the next shipyard.',
+    counterplay: 'Treat unfamiliar or legacy hulls cautiously until fittings are confirmed.',
+    weaknesses: Object.freeze(['Unverified legacy loadout']),
+    primaryCareers: Object.freeze(['hauler', 'hunter', 'prospector']),
+    rolePath: null,
+    fallback: true,
+  });
+}
 
 /** Copy the flat derived stat fields onto the entity top level so flight/physics read them. */
 function copyDerivedOntoEntity(e, d) {

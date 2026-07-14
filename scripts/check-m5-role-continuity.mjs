@@ -1,9 +1,15 @@
-// M5 active-hull role continuity — live ships-authority contract.
+// M5 active-hull role continuity + one-time role briefing — live ships + presentation contract.
 // Run: node scripts/check-m5-role-continuity.mjs
 //
-// Proves that every canonical hull can produce a complete player-facing role packet, a real
-// Make Active transition publishes exactly one role briefing, overflow/no-op attempts do not
-// publish false transitions, and Continue reconstructs role context from saved hull ownership.
+// Proves:
+//   • every canonical hull produces a complete deterministic player-facing role packet
+//   • New Game publishes exactly one packet + one presentation toast
+//   • Continue (save:loaded) publishes exactly one restored packet + one presentation toast
+//   • a real hull switch publishes exactly one transition briefing
+//   • no-op active selection, recompute, and failed overflow stay silent
+//   • destroy/reinit of the presentation consumer does not replay a stale briefing
+//   • missing/legacy hull defIds fall back without crashing the briefing seam
+//   • ships never emits toast on ship:roleContext (presentationAdapters owns visible UI)
 
 import assert from 'node:assert/strict';
 
@@ -15,6 +21,7 @@ import {
   makeShipEntitySpec,
   ships,
 } from '../src/systems/ships.js';
+import { presentationAdapters } from '../src/systems/presentationAdapters.js';
 
 function installPlayerEntity(state) {
   const owned = state.player.ownedShips[state.player.activeShipIndex];
@@ -35,96 +42,254 @@ function installPlayerEntity(state) {
   return entity;
 }
 
-const state = createGameState(0x5a17);
-const bus = createBus();
-const roleContexts = [];
-const toasts = [];
-bus.on('ship:roleContext', (payload) => roleContexts.push(payload));
-bus.on('toast', (payload) => toasts.push(payload));
-
-ships.init({ state, bus, helpers: {} });
-ships.newGame();
-const playerEntity = installPlayerEntity(state);
-
-// Every authored hull must expose a complete, deterministic player-facing role context.
-const roleIds = new Set();
-for (const def of SHIPS) {
-  const previousPlayer = state.player;
-  state.player = {
-    ...previousPlayer,
-    activeShipIndex: 0,
-    ownedShips: [{ defId: def.id, fittings: [] }],
-  };
-  const first = ships.activeRoleContext({ source: 'held_out_role_probe' });
-  const second = ships.activeRoleContext({ source: 'held_out_role_probe' });
-  assert.deepEqual(second, first, `${def.id} role context must be deterministic`);
-  assert.equal(first.schema, 'spaceface.shipRoleContext.v1');
-  assert.equal(first.defId, def.id);
-  assert.ok(first.roleLabel.length >= 4, `${def.id} role label`);
-  assert.ok(first.identityLine.length >= 20, `${def.id} identity line`);
-  assert.ok(first.signatureVerb.length >= 20, `${def.id} signature verb`);
-  assert.ok(first.counterplay.length >= 20, `${def.id} counterplay`);
-  assert.ok(first.primaryCareers.length >= 1, `${def.id} primary careers`);
-  assert.equal(roleIds.has(first.role), false, `${def.id} duplicate public role ${first.role}`);
-  roleIds.add(first.role);
+function briefingToasts(toasts) {
+  return toasts.filter((toast) => toast
+    && toast.kind === 'info'
+    && (toast.key === 'ship.role.briefing' || / active · /.test(String(toast.text || ''))));
 }
-assert.equal(roleIds.size, 13, 'all thirteen hull roles must remain distinct');
 
-// Restore the real new-game ownership and exercise the live ship authority.
-ships.newGame();
-playerEntity.data.defId = state.player.ownedShips[0].defId;
-ships.recomputeEntity(playerEntity.id, state.player.ownedShips[0].fittings);
+function boot() {
+  const state = createGameState(0x5a17);
+  const bus = createBus();
+  const roleContexts = [];
+  const toasts = [];
+  const rawShipToasts = [];
 
-assert.equal(ships.buyShip({ defId: 'ship_wasp', grant: true, setActive: true }), true);
-assert.equal(state.player.activeShipIndex, 1, 'purchased Wasp must become active');
-assert.equal(playerEntity.data.defId, 'ship_wasp', 'live player entity must swap hull');
-assert.equal(playerEntity.data.derived.roleIdentity.role, 'fighter', 'live derived role identity');
-assert.equal(roleContexts.length, 1, 'successful transition publishes one role context');
-assert.equal(roleContexts[0].source, 'active_ship_changed');
-assert.equal(roleContexts[0].previousDefId, 'ship_kestrel');
-assert.equal(roleContexts[0].defId, 'ship_wasp');
-assert.match(roleContexts[0].signatureVerb, /gun|attack|pass|charge/i);
-const briefingToasts = () => toasts.filter((toast) => toast && toast.kind === 'info');
-assert.equal(briefingToasts().length, 1, 'successful transition publishes one visible briefing');
-assert.match(briefingToasts()[0].text, /Wasp active.*Light Fighter/i);
+  // Capture toast emissions that would mean ships (or anyone else) bypassed presentation.
+  const originalEmit = bus.emit.bind(bus);
+  bus.emit = (event, payload) => {
+    if (event === 'toast') toasts.push(payload);
+    return originalEmit(event, payload);
+  };
 
-// Re-selecting the active hull is a no-op, not a false progression receipt.
-playerEntity.data.derived.roleIdentity = null;
-assert.equal(ships.setActiveShip(1), true);
-assert.equal(playerEntity.data.derived.roleIdentity.role, 'fighter',
-  'no-op active selection must preserve the existing derived-stat recomputation path');
-assert.equal(roleContexts.length, 1, 'no-op active selection must not republish context');
-assert.equal(briefingToasts().length, 1, 'no-op active selection must not replay briefing');
+  bus.on('ship:roleContext', (payload) => {
+    roleContexts.push(payload);
+    // Adversarial: ships must not also emit toast while publishing the packet.
+    // (toast listener order is independent; we assert totals after each action.)
+  });
 
-// Cargo overflow must fail closed: keep the old hull and never claim the new role became active.
-assert.equal(ships.buyShip({ defId: 'ship_hornet', grant: true, setActive: false }), true);
-const hornetIndex = state.player.ownedShips.length - 1;
-const hornet = state.player.ownedShips[hornetIndex];
-const hornetCargo = getDerivedStats(hornet.defId, hornet.fittings || [], state.player).cargoCap;
-state.player.cargo.usedVolume = hornetCargo + 1;
-assert.equal(ships.setActiveShip(hornetIndex), false, 'overflow switch must fail');
-assert.equal(state.player.activeShipIndex, 1, 'failed switch must retain Wasp');
-assert.equal(playerEntity.data.defId, 'ship_wasp', 'failed switch must retain live entity hull');
-assert.equal(roleContexts.length, 1, 'failed switch must not publish role context');
-assert.equal(briefingToasts().length, 1, 'failed switch must not publish role briefing');
+  // Presentation is the production-visible consumer; register before ships matches registry order.
+  presentationAdapters.init({ state, bus, helpers: {} });
+  ships.init({ state, bus, helpers: {} });
 
-// Save only ownership/loadout truth. Continue derives the exact active role and does not replay UI.
-state.player.cargo.usedVolume = 0;
-const serializedPlayer = JSON.stringify(state.player);
-assert.equal(serializedPlayer.includes('roleContext'), false, 'transient role context must not serialize');
-assert.equal(serializedPlayer.includes('signatureVerb'), false, 'lattice copy must not serialize');
-const restoredPlayer = JSON.parse(serializedPlayer);
-state.player.activeShipIndex = 0;
-state.player = restoredPlayer;
-const toastsBeforeLoad = briefingToasts().length;
-bus.emit('save:loaded', { slot: 2, visualGatePending: false });
-assert.equal(roleContexts.length, 2, 'Continue publishes one reconstructed role context');
-const restoredContext = roleContexts[1];
-assert.equal(restoredContext.source, 'save_loaded');
-assert.equal(restoredContext.defId, 'ship_wasp');
-assert.equal(restoredContext.role, 'fighter');
-assert.equal(restoredContext.signatureVerb, roleContexts[0].signatureVerb);
-assert.equal(restoredContext.counterplay, roleContexts[0].counterplay);
-assert.equal(briefingToasts().length, toastsBeforeLoad, 'Continue must not replay switch toast');
+  return { state, bus, roleContexts, toasts, presentationAdapters, ships, rawShipToasts };
+}
 
-console.log('M5 role continuity OK — 13 role contexts, live switch briefing, fail-closed overflow, save/Continue reconstruction.');
+// ---------------------------------------------------------------------------
+// Lattice completeness (13 distinct roles, deterministic packets)
+// ---------------------------------------------------------------------------
+{
+  const { state, roleContexts, toasts, ships: shipsSys } = boot();
+  // Probe without counting New Game noise: clear after a silent query-only path.
+  shipsSys.newGame();
+  const afterNewGameContexts = roleContexts.length;
+  const afterNewGameToasts = briefingToasts(toasts).length;
+  assert.equal(afterNewGameContexts, 1, 'New Game publishes exactly one role context');
+  assert.equal(afterNewGameToasts, 1, 'New Game surfaces exactly one visible briefing');
+  assert.equal(roleContexts[0].source, 'new_game');
+  assert.equal(roleContexts[0].announce, true);
+  assert.equal(roleContexts[0].defId, 'ship_kestrel');
+  assert.match(briefingToasts(toasts)[0].text, /Hitch active/i);
+
+  const roleIds = new Set();
+  for (const def of SHIPS) {
+    const previousPlayer = state.player;
+    state.player = {
+      ...previousPlayer,
+      activeShipIndex: 0,
+      ownedShips: [{ defId: def.id, fittings: [] }],
+    };
+    const first = shipsSys.activeRoleContext({ source: 'held_out_role_probe' });
+    const second = shipsSys.activeRoleContext({ source: 'held_out_role_probe' });
+    assert.deepEqual(second, first, `${def.id} role context must be deterministic`);
+    assert.equal(first.schema, 'spaceface.shipRoleContext.v1');
+    assert.equal(first.defId, def.id);
+    assert.equal(first.fallback, false, `${def.id} canonical hull is not a fallback packet`);
+    assert.ok(first.roleLabel.length >= 4, `${def.id} role label`);
+    assert.ok(first.identityLine.length >= 20, `${def.id} identity line`);
+    assert.ok(first.signatureVerb.length >= 20, `${def.id} signature verb`);
+    assert.ok(first.counterplay.length >= 20, `${def.id} counterplay`);
+    assert.ok(first.primaryCareers.length >= 1, `${def.id} primary careers`);
+    assert.equal(roleIds.has(first.role), false, `${def.id} duplicate public role ${first.role}`);
+    roleIds.add(first.role);
+  }
+  assert.equal(roleIds.size, 13, 'all thirteen hull roles must remain distinct');
+  // Queries must not emit packets or toasts.
+  assert.equal(roleContexts.length, afterNewGameContexts, 'queries must not publish role context');
+  assert.equal(briefingToasts(toasts).length, afterNewGameToasts, 'queries must not toast');
+}
+
+// ---------------------------------------------------------------------------
+// Live switch, no-op silence, overflow fail-closed, Continue briefing, recompute silence
+// ---------------------------------------------------------------------------
+{
+  const ctx = boot();
+  const { state, bus, roleContexts, toasts, ships: shipsSys } = ctx;
+  shipsSys.newGame();
+  const playerEntity = installPlayerEntity(state);
+  assert.equal(roleContexts.length, 1, 'New Game exactly once (packet)');
+  assert.equal(briefingToasts(toasts).length, 1, 'New Game exactly once (toast)');
+
+  // Recompute must not republish or toast.
+  const beforeRecomputeContexts = roleContexts.length;
+  const beforeRecomputeToasts = briefingToasts(toasts).length;
+  shipsSys.recomputeEntity(playerEntity.id, state.player.ownedShips[0].fittings);
+  assert.equal(roleContexts.length, beforeRecomputeContexts, 'recompute must not publish role context');
+  assert.equal(briefingToasts(toasts).length, beforeRecomputeToasts, 'recompute must not toast');
+
+  assert.equal(shipsSys.buyShip({ defId: 'ship_wasp', grant: true, setActive: true }), true);
+  assert.equal(state.player.activeShipIndex, 1, 'purchased Wasp must become active');
+  assert.equal(playerEntity.data.defId, 'ship_wasp', 'live player entity must swap hull');
+  assert.equal(playerEntity.data.derived.roleIdentity.role, 'fighter', 'live derived role identity');
+  assert.equal(roleContexts.length, 2, 'successful transition publishes one additional role context');
+  assert.equal(roleContexts[1].source, 'active_ship_changed');
+  assert.equal(roleContexts[1].announce, true);
+  assert.equal(roleContexts[1].previousDefId, 'ship_kestrel');
+  assert.equal(roleContexts[1].defId, 'ship_wasp');
+  assert.match(roleContexts[1].signatureVerb, /gun|attack|pass|charge/i);
+  assert.equal(briefingToasts(toasts).length, 2, 'successful transition publishes one additional briefing');
+  assert.match(briefingToasts(toasts)[1].text, /Wasp active.*Light Fighter/i);
+
+  // Re-selecting the active hull is a no-op, not a false progression receipt.
+  playerEntity.data.derived.roleIdentity = null;
+  assert.equal(shipsSys.setActiveShip(1), true);
+  assert.equal(playerEntity.data.derived.roleIdentity.role, 'fighter',
+    'no-op active selection must preserve the existing derived-stat recomputation path');
+  assert.equal(roleContexts.length, 2, 'no-op active selection must not republish context');
+  assert.equal(briefingToasts(toasts).length, 2, 'no-op active selection must not replay briefing');
+
+  // Cargo overflow must fail closed: keep the old hull and never claim the new role became active.
+  assert.equal(shipsSys.buyShip({ defId: 'ship_hornet', grant: true, setActive: false }), true);
+  const hornetIndex = state.player.ownedShips.length - 1;
+  const hornet = state.player.ownedShips[hornetIndex];
+  const hornetCargo = getDerivedStats(hornet.defId, hornet.fittings || [], state.player).cargoCap;
+  state.player.cargo.usedVolume = hornetCargo + 1;
+  assert.equal(shipsSys.setActiveShip(hornetIndex), false, 'overflow switch must fail');
+  assert.equal(state.player.activeShipIndex, 1, 'failed switch must retain Wasp');
+  assert.equal(playerEntity.data.defId, 'ship_wasp', 'failed switch must retain live entity hull');
+  assert.equal(roleContexts.length, 2, 'failed switch must not publish role context');
+  assert.equal(briefingToasts(toasts).length, 2, 'failed switch must not publish role briefing');
+
+  // Save only ownership/loadout truth. Continue reconstructs role and shows one briefing.
+  state.player.cargo.usedVolume = 0;
+  const serializedPlayer = JSON.stringify(state.player);
+  assert.equal(serializedPlayer.includes('roleContext'), false, 'transient role context must not serialize');
+  assert.equal(serializedPlayer.includes('signatureVerb'), false, 'lattice copy must not serialize');
+  assert.equal(serializedPlayer.includes('announce'), false, 'announce flag must not serialize');
+  const restoredPlayer = JSON.parse(serializedPlayer);
+  state.player.activeShipIndex = 0;
+  state.player = restoredPlayer;
+  const toastsBeforeLoad = briefingToasts(toasts).length;
+  const contextsBeforeLoad = roleContexts.length;
+  bus.emit('save:loaded', { slot: 2, visualGatePending: false });
+  assert.equal(roleContexts.length, contextsBeforeLoad + 1, 'Continue publishes one reconstructed role context');
+  const restoredContext = roleContexts[roleContexts.length - 1];
+  assert.equal(restoredContext.source, 'save_loaded');
+  assert.equal(restoredContext.announce, true);
+  assert.equal(restoredContext.defId, 'ship_wasp');
+  assert.equal(restoredContext.role, 'fighter');
+  assert.equal(restoredContext.signatureVerb, roleContexts[1].signatureVerb);
+  assert.equal(restoredContext.counterplay, roleContexts[1].counterplay);
+  assert.equal(
+    briefingToasts(toasts).length,
+    toastsBeforeLoad + 1,
+    'Continue surfaces exactly one restored-role briefing',
+  );
+  assert.match(briefingToasts(toasts)[briefingToasts(toasts).length - 1].text, /Wasp active.*Light Fighter/i);
+
+  // Second save:loaded is another Continue (exactly one more), not a silent no-op of the consumer.
+  bus.emit('save:loaded', { slot: 2, visualGatePending: false });
+  assert.equal(roleContexts.length, contextsBeforeLoad + 2, 'each Continue publishes one packet');
+  assert.equal(briefingToasts(toasts).length, toastsBeforeLoad + 2, 'each Continue surfaces one briefing');
+}
+
+// ---------------------------------------------------------------------------
+// Destroy / reinit idempotence — no phantom toast without a fresh publish
+// ---------------------------------------------------------------------------
+{
+  const ctx = boot();
+  const { state, bus, roleContexts, toasts, ships: shipsSys } = ctx;
+  shipsSys.newGame();
+  assert.equal(briefingToasts(toasts).length, 1);
+
+  presentationAdapters.dispose();
+  // Re-init consumer mid-session. Must not replay the prior New Game briefing.
+  const toastsAfterDispose = briefingToasts(toasts).length;
+  const contextsAfterDispose = roleContexts.length;
+  presentationAdapters.init({ state, bus, helpers: {} });
+  assert.equal(roleContexts.length, contextsAfterDispose, 'reinit must not republish role context');
+  assert.equal(briefingToasts(toasts).length, toastsAfterDispose, 'reinit must not replay briefing toast');
+
+  // A real publish after reinit still works once.
+  shipsSys.publishActiveRoleContext({ source: 'active_ship_changed', announce: true });
+  assert.equal(briefingToasts(toasts).length, toastsAfterDispose + 1, 'post-reinit announce still surfaces once');
+}
+
+// ---------------------------------------------------------------------------
+// Missing / legacy role fallback
+// ---------------------------------------------------------------------------
+{
+  const ctx = boot();
+  const { state, bus, roleContexts, toasts, ships: shipsSys } = ctx;
+  shipsSys.newGame();
+  const baselineToasts = briefingToasts(toasts).length;
+  const baselineContexts = roleContexts.length;
+
+  state.player.ownedShips = [{ defId: 'ship_legacy_unknown_hull', fittings: [] }];
+  state.player.activeShipIndex = 0;
+  const fallback = shipsSys.activeRoleContext({ source: 'legacy_probe' });
+  assert.ok(fallback, 'missing lattice hull still yields a role packet');
+  assert.equal(fallback.fallback, true);
+  assert.equal(fallback.defId, 'ship_legacy_unknown_hull');
+  assert.ok(fallback.roleLabel.length >= 4);
+  assert.ok(fallback.signatureVerb.length >= 20);
+  assert.ok(fallback.counterplay.length >= 20);
+  assert.ok(fallback.primaryCareers.length >= 1);
+
+  const published = shipsSys.publishActiveRoleContext({
+    source: 'save_loaded',
+    announce: true,
+  });
+  assert.ok(published);
+  assert.equal(published.fallback, true);
+  assert.equal(published.announce, true);
+  assert.equal(roleContexts.length, baselineContexts + 1);
+  assert.equal(briefingToasts(toasts).length, baselineToasts + 1);
+  assert.match(briefingToasts(toasts)[briefingToasts(toasts).length - 1].text, /legacy|unknown|hull|active/i);
+
+  // Empty ownership fails closed (no packet, no toast).
+  state.player.ownedShips = [];
+  assert.equal(shipsSys.publishActiveRoleContext({ source: 'save_loaded', announce: true }), null);
+  assert.equal(roleContexts.length, baselineContexts + 1, 'empty ownership must not publish');
+  assert.equal(briefingToasts(toasts).length, baselineToasts + 1, 'empty ownership must not toast');
+
+  // Silent publish (announce:false) still emits packet for internal consumers, no toast.
+  state.player.ownedShips = [{ defId: 'ship_wasp', fittings: [] }];
+  shipsSys.publishActiveRoleContext({ source: 'query', announce: false });
+  assert.equal(roleContexts.length, baselineContexts + 2);
+  assert.equal(roleContexts[roleContexts.length - 1].announce, false);
+  assert.equal(briefingToasts(toasts).length, baselineToasts + 1, 'announce:false must stay silent');
+}
+
+// ---------------------------------------------------------------------------
+// ships authority never emits toast itself for role briefings (adapter path only)
+// ---------------------------------------------------------------------------
+{
+  const state = createGameState(0x5a18);
+  const bus = createBus();
+  const toasts = [];
+  const roleContexts = [];
+  bus.on('toast', (p) => toasts.push(p));
+  bus.on('ship:roleContext', (p) => roleContexts.push(p));
+  // Deliberately do NOT init presentationAdapters — ships alone must not toast.
+  ships.init({ state, bus, helpers: {} });
+  ships.newGame();
+  assert.equal(roleContexts.length, 1, 'ships still publishes the packet without adapters');
+  assert.equal(roleContexts[0].announce, true);
+  assert.equal(toasts.length, 0, 'ships must not emit toast without presentationAdapters');
+  ships.publishActiveRoleContext({ source: 'active_ship_changed', previousDefId: 'ship_kestrel', announce: true });
+  assert.equal(roleContexts.length, 2);
+  assert.equal(toasts.length, 0, 'hull-switch packet without adapters stays non-visual');
+}
+
+console.log('M5 role continuity OK — 13 roles, New Game/Continue/switch briefings once each, silence guards, legacy fallback, presentation-owned toast.');

@@ -129,8 +129,12 @@ export const presentationAdapters = {
     this.bus = ctx.bus;
     this._applied = 0;
     this._lastApplied = null;
+    this._lastRoleBriefingKey = null;
+    this._roleBriefings = 0;
     this._subscriptions = [
       this.bus.on('presentation:cue', (cue) => this._applyCue(cue || {})),
+      // M5 active-hull role briefing: ships publishes ship:roleContext; adapters own the toast.
+      this.bus.on('ship:roleContext', (context) => this._onShipRoleContext(context || {})),
       this.bus.on('save:loaded', () => this._resetRuntime()),
     ];
   },
@@ -140,6 +144,7 @@ export const presentationAdapters = {
       const unsub = this._subscriptions.pop();
       try { unsub(); } catch (_err) {}
     }
+    this._lastRoleBriefingKey = null;
   },
 
   inspect() {
@@ -148,12 +153,16 @@ export const presentationAdapters = {
       schemaVersion: PRESENTATION_ADAPTERS_SCHEMA_VERSION,
       applied: this._applied || 0,
       lastApplied: this._lastApplied,
+      roleBriefings: this._roleBriefings || 0,
+      lastRoleBriefingKey: this._lastRoleBriefingKey || null,
     };
   },
 
   _resetRuntime() {
     this._applied = 0;
     this._lastApplied = null;
+    // Allow one Continue briefing after restore; do not re-fire without a new ship:roleContext.
+    this._lastRoleBriefingKey = null;
     this._travelAudioTick = null;
     this._travelAudioSources = new Set();
     this._miningAudioTick = null;
@@ -162,6 +171,59 @@ export const presentationAdapters = {
     this._doctrineAudioSources = new Set();
     this._combatAftermathAudioTick = null;
     this._combatAftermathAudioClaimed = false;
+  },
+
+  /**
+   * Production consumer for active-hull role continuity. Emits a concise non-diegetic toast only
+   * when ships marks the packet announce:true (New Game, Continue, real hull switch). Silent for
+   * queries, no-ops, recomputes, and reinit without a fresh publish.
+   */
+  _onShipRoleContext(context) {
+    if (!context || context.announce !== true) return null;
+    const source = context.source || '';
+    if (source !== 'new_game' && source !== 'save_loaded' && source !== 'active_ship_changed') {
+      return null;
+    }
+    const name = String(context.name || '').trim();
+    const roleLabel = String(context.roleLabel || '').trim();
+    const signatureVerb = String(context.signatureVerb || '').trim();
+    if (!name || !roleLabel || !signatureVerb) return null;
+
+    const tick = currentTick(this.state);
+    const key = [source, context.defId || '', context.role || '', tick].join('|');
+    if (this._lastRoleBriefingKey === key) return null;
+    this._lastRoleBriefingKey = key;
+
+    const text = name + ' active · ' + roleLabel + ' — ' + signatureVerb;
+    const toast = {
+      text,
+      kind: 'info',
+      ttl: 5,
+      key: 'ship.role.briefing',
+      source,
+      defId: context.defId || null,
+      role: context.role || null,
+    };
+    this.bus.emit('toast', toast);
+    this.bus.emit('presentation:uiCue', {
+      key: 'presentation:ship:role-briefing',
+      sev: 'info',
+      text,
+      ttl: 5,
+      cueId: 'ship.role.briefing',
+      lane: 'ui.toast',
+      source,
+      defId: context.defId || null,
+    });
+    this._roleBriefings = (this._roleBriefings || 0) + 1;
+    this._applied = (this._applied || 0) + 1;
+    this._lastApplied = {
+      tick,
+      id: 'ship.role.briefing',
+      outputLanes: ['ui'],
+      source,
+    };
+    return toast;
   },
 
   _applyCue(cue) {
