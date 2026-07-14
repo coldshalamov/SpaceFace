@@ -166,6 +166,9 @@ Layered broad-phase grid used by physics (`src/core/physics.js`) and proximity q
   `flushPerfCounters()` feeds `perfRuntime.recordSpatialHash()` for `check:perf` budgets.
 - **Contract:** `npm run check:spatial-hash` — static + runtime guard against legacy string-key cells,
   per-query `Set` allocation, and missing layered/stamp diagnostics.
+- **Static-query cache contract:** `npm run check:perf:spatial-cache` — proves exact candidate/order
+  parity, dynamic/static invalidation, and the measured crowded-formation candidate reduction. The
+  gate is part of `check:ui:perf` so broad-phase reuse cannot silently regress.
 
 ### 4.5 Release runtime assets — `assets/ships/release/parts/`
 
