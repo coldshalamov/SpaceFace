@@ -363,9 +363,11 @@ const HULL_FILE_BY_DEF_ID = Object.freeze({
 // bad whole-ship file can never blank the live ship or silently replace a readable modular hull.
 const WHOLE_SHIP_FILE_BY_DEF_ID = Object.freeze({
   'ship_kestrel': 'wholeships/kestrel.glb',
+  'ship_wasp': 'wholeships/wasp_production_v1.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_DEF_ID = Object.freeze({
   'ship_kestrel': 'SF_K0_KESTREL_BORROWED_TIME_V4',
+  'ship_wasp': 'SF_WASP_PRODUCTION_V1',
 });
 // V4 is authored as three independent GLBs so the runtime can retain only the selected level.
 // The current whole-ship seam accepts one file, therefore LOD0 is canonical live truth while the
@@ -376,6 +378,11 @@ const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
     lod0: 'wholeships/kestrel.glb',
     lod1: 'wholeships/kestrel_lod1.glb',
     lod2: 'wholeships/kestrel_lod2.glb',
+  }),
+  ship_wasp: Object.freeze({
+    lod0: 'wholeships/wasp_production_v1.glb',
+    lod1: 'wholeships/wasp_production_v1_lod1.glb',
+    lod2: 'wholeships/wasp_production_v1_lod2.glb',
   }),
 });
 // Reach hostiles are selected by their authoritative combat archetype, not by ship def: several
@@ -1937,7 +1944,11 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     fallbackParts.push('hull');
   }
   const authoredHullLevels = hullRecord ? authoredLevels(hullRecord) : new Set();
-  safetyCore.visible = wholeShip ? false : true;
+  // A conforming authored hull is the silhouette authority. Keeping the larger emergency pressure
+  // shell visible at LOD0 covered its panel work with one flat grey surface (most obvious on the
+  // Wasp). The shell remains available only when the requested authored hull level is genuinely
+  // absent; it is continuity geometry, not a second skin.
+  safetyCore.visible = !wholeShip && authoredHullLevels.size === 0;
   // Snapshot only mounts supplied by the hull. Parts may themselves contain internal markers, but
   // assembly topology belongs to the hull grammar and must not change as later slots are mounted.
   const hullMounts = snapshotMounts(bindings.mounts);
@@ -2067,6 +2078,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   canonicalizeMaplessHullMaterials(root, palette);
 
   const primaryDrive = completeDriveBinding(bindings);
+  normalizeWaspDomeGlass(root, entity);
   const navLightBase = bindings.navLights.map((mesh) => (
     mesh && mesh.material && Number.isFinite(mesh.material.emissiveIntensity)
       ? mesh.material.emissiveIntensity : 1
@@ -3015,6 +3027,7 @@ function completeDriveBinding(bindings) {
   for (const driveFan of bindings.driveFans) kit.captureDrivePose(driveFan);
   for (const core of bindings.driveCores) kit.captureDrivePose(core);
   for (const drivePlume of bindings.drivePlumes) {
+    normalizeAuthoredDrivePlume(drivePlume);
     kit.captureDrivePose(drivePlume);
     if (drivePlume.material) {
       drivePlume.material.transparent = true;
@@ -3113,7 +3126,7 @@ function installAuthoredLod(root, bindings, safetyCore, authoredHullLevels, whol
       object.visible = baseVisible && requested !== 'lod2';
     }
     const visibleAuthoredHullLevel = closestAvailableLod(requested, authoredHullLevels);
-    safetyCore.visible = wholeShip ? false : requested === 'lod0' || !authoredHullLevels.has(visibleAuthoredHullLevel);
+    safetyCore.visible = !wholeShip && !authoredHullLevels.has(visibleAuthoredHullLevel);
     if (root.userData.damageState === 'critical') {
       for (const secondary of bindings.secondary) secondary.visible = false;
     }
@@ -3441,6 +3454,58 @@ function createPoolStats() {
   };
 }
 
+function normalizeAuthoredDrivePlume(plume) {
+  if (!plume || plume.userData?.spacefaceDrivePlumeNormalized) return;
+  plume.userData = plume.userData || {};
+  plume.userData.spacefaceDrivePlumeNormalized = true;
+  const sourceUrl = String(plume.userData.spacefacePartUrl || '').replace(/\\/g, '/').toLowerCase();
+  const isVectorDrive = sourceUrl.endsWith('/engines/engine_vector.glb');
+  // The vector-drive export uses a rounded volume suited to a close-up nozzle test. Mounted twice
+  // on a flight-scale fighter, its broad emissive faces overlap into one clipped white disk. Keep
+  // the authored mesh and animation, but give that specific drive a long, narrow exhaust profile
+  // before the pose is captured. Other authored plumes retain the gentler continuity normalization.
+  plume.scale.x *= isVectorDrive ? 1.65 : 1.45;
+  plume.scale.y *= isVectorDrive ? 0.16 : 0.42;
+  plume.scale.z *= isVectorDrive ? 0.16 : 0.42;
+  const material = plume.material;
+  if (!material) return;
+  material.transparent = true;
+  material.depthWrite = false;
+  const opacityCeiling = isVectorDrive ? 0.22 : 0.42;
+  const emissiveCeiling = isVectorDrive ? 0.68 : 1.05;
+  material.opacity = Math.min(Number.isFinite(material.opacity) ? material.opacity : 0.55, opacityCeiling);
+  if (Number.isFinite(material.emissiveIntensity)) material.emissiveIntensity = Math.min(material.emissiveIntensity, emissiveCeiling);
+  material.needsUpdate = true;
+}
+
+function normalizeWaspDomeGlass(root, entity) {
+  if (entity?.data?.defId !== 'ship_wasp' || !root?.traverse) return;
+  root.traverse((object) => {
+    if (!object?.isMesh || object.name !== 'Cockpit_Dome_Glass') return;
+    const sourceUrl = String(object.userData?.spacefacePartUrl || '').replace(/\\/g, '/').toLowerCase();
+    if (!sourceUrl.endsWith('/cockpits/cockpit_dome.glb')) return;
+    const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material];
+    const normalized = sourceMaterials.map((source) => {
+      if (!source || source.userData?.spacefaceWaspCanopyNormalized) return source;
+      const material = source.clone();
+      material.name = 'SF_Wasp_Canopy_Glass';
+      material.userData = { ...(source.userData || {}), spacefaceWaspCanopyNormalized: true };
+      material.color?.setHex?.(0x163849);
+      material.emissive?.setHex?.(0x0a2230);
+      material.emissiveIntensity = Math.min(Number.isFinite(material.emissiveIntensity)
+        ? material.emissiveIntensity : 0.45, 0.45);
+      material.transparent = true;
+      material.opacity = Math.min(Number.isFinite(material.opacity) ? material.opacity : 0.66, 0.66);
+      material.depthWrite = false;
+      if (Number.isFinite(material.roughness)) material.roughness = Math.min(Math.max(material.roughness, 0.18), 0.32);
+      if (Number.isFinite(material.metalness)) material.metalness = Math.min(material.metalness, 0.18);
+      material.needsUpdate = true;
+      return material;
+    });
+    object.material = Array.isArray(object.material) ? normalized : normalized[0];
+  });
+}
+
 function resetPoolStats(state) {
   state.stats = createPoolStats();
   return state.stats;
@@ -3655,12 +3720,12 @@ export function runAuthoredInstanceFrameContractProbe() {
 // whose material uniforms are actually mutated at runtime receive ship-local clones.
 // -------------------------------------------------------------------------------------------------
 function sharedMaterialFor(base, tags, palette) {
-  const role = tintRole(tags);
+  const role = tintRole(tags, base);
   const tint = tintHex(palette, role);
   const key = `${materialShareSignature(base, tags)}|${role}|${tint}`;
   let material = sharedMaterialVariants.get(key);
   if (!material) {
-    material = tintMaterial(base.clone(), tint, role);
+    material = boundAuthoredEmission(tintMaterial(base.clone(), tint, role), base, role);
     material.name = authoredMaterialName(base, tags, role, tint, false);
     const canonical = resolveCanonicalHullMaterial(material);
     if (canonical !== material) {
@@ -3684,12 +3749,12 @@ function materialNeedsShipLocalMutation(tags = {}) {
 }
 
 function mutableMaterialFor(base, tags, palette, cache, instanceKey) {
-  const role = tintRole(tags);
+  const role = tintRole(tags, base);
   const tint = tintHex(palette, role);
   const key = `${materialBatchSignature(base)}|${role}|${tint}|${materialMutationScope(tags, instanceKey)}`;
   let material = cache.get(key);
   if (!material) {
-    material = tintMaterial(base.clone(), tint, role);
+    material = boundAuthoredEmission(tintMaterial(base.clone(), tint, role), base, role);
     material.name = authoredMaterialName(base, tags, role, tint, true);
     cache.set(key, material);
   }
@@ -3726,7 +3791,12 @@ function tintMaterial(material, hex, role) {
   if (role === 'none') return material;
   const tint = new THREE.Color(hex);
   if (material.color) {
-    material.color.multiply(tint);
+    if (role === 'accent' || role === 'thruster') {
+      const sourceLuminance = 0.2126 * material.color.r + 0.7152 * material.color.g + 0.0722 * material.color.b;
+      material.color.copy(tint).multiplyScalar(Math.max(0.72, Math.min(1.08, 0.62 + sourceLuminance * 0.52)));
+    } else {
+      material.color.multiply(tint);
+    }
     if (role === 'hull') {
       material.color.lerp(tint, 0.58);
       liftColorFloor(material.color, 0.34);
@@ -3737,7 +3807,7 @@ function tintMaterial(material, hex, role) {
     if (Number.isFinite(material.roughness)) material.roughness = Math.max(material.roughness, 0.58);
   }
   if (material.emissive && material.emissive.getHex() !== 0 && (role === 'accent' || role === 'thruster')) {
-    material.emissive.multiply(tint);
+    material.emissive.copy(tint);
   }
   if (role === 'hull' && material.emissive && material.emissive.getHex() === 0) {
     material.emissive.copy(tint).multiplyScalar(0.11);
@@ -3754,12 +3824,36 @@ function liftColorFloor(color, floor) {
   color.b = Math.max(color.b, min);
 }
 
-function tintRole(tags) {
-  if (tags.tint) return String(tags.tint).toLowerCase();
+function tintRole(tags = {}, material = null) {
   if (tags.canopy) return 'none';
-  if (tags.drive) return 'thruster';
+  // Engine exports historically inherited `tint: hull` from their structural parent. A plume is
+  // never hull paint: honoring that inherited tag turns its emissive disk neutral-white after tone
+  // mapping. Give the live exhaust the faction thruster role before considering inherited tags.
+  if (tags.drive === 'plume') return 'thruster';
   if (tags.damageRole === 'navLight' || tags.damageRole === 'sensor') return 'accent';
+  const source = String(material && material.name || '').toLowerCase();
+  if (/(?:glass|canopy|windscreen)/.test(source)) return 'none';
+  if (/(?:thruster|drive[_ -]?aperture)/.test(source)) return 'thruster';
+  // Older modular exports also stamped their whole LOD subtree as `tint: hull`, even where authored
+  // material names carry a stronger semantic role. Preserve those authored material families so a
+  // fighter keeps dark machinery and accent panels instead of collapsing to one flat grey value.
+  if (/(?:accent|trim|livery|stripe|warning)/.test(source)) return 'accent';
+  if (/(?:armor|armour|mechanical|machinery|mech|interior|rib|clamp|frame)/.test(source)) return 'dark';
+  if (/(?:energy|emit|glow|nav)/.test(source)) return 'accent';
+  if (tags.tint) return String(tags.tint).toLowerCase();
+  if (tags.drive) return 'thruster';
   return 'hull';
+}
+
+function boundAuthoredEmission(material, base, role) {
+  const source = String(base && base.name || '').toLowerCase();
+  if (role !== 'thruster' || !/(?:thruster|drive[_ -]?aperture)/.test(source)) return material;
+  material.toneMapped = true;
+  material.emissiveIntensity = Math.min(Number.isFinite(material.emissiveIntensity)
+    ? material.emissiveIntensity : 0.62, 0.62);
+  material.userData = { ...(material.userData || {}), spacefaceBoundedDriveAperture: true };
+  material.needsUpdate = true;
+  return material;
 }
 
 function normalizeTintHex(value) {

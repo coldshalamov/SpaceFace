@@ -1,0 +1,259 @@
+{
+  "schema": "spaceface.waspProductionV1.build.v1",
+  "packet": "SF-WASP-PRODUCTION-V1-001",
+  "assetId": "SF_WASP_PRODUCTION_V1",
+  "status": "isolated_candidate_no_promote",
+  "sourceZip": "C:\\Users\\93rob\\Downloads\\SpaceFace_SF-K0_Borrowed-Time_Revamp.zip",
+  "sourceZipSha256": "5457DACD44B63CF170ECF65DB253BB607D7615B8DDBD3CF97666D155BA355000",
+  "sourceUse": "first-party PBR material treatment only; no geometry copied",
+  "textureSourceHashes": {
+    "hull_basecolor.png": "20898063BB3FF76D68D72A86C8BFDF5A9F24A96684FAD9001816997F0BF8CA43",
+    "hull_normal.png": "C7B2BA2B829E33032C4FFA8239C65533EDA654A3688E82B1936DF51C3267A0ED",
+    "hull_orm.png": "0818D38FC2926D4113ADF607E3DB2CE17B36447CE72A927379E7280D4979F499",
+    "armor_dark_basecolor.png": "E43603145665D77FFF1DA0C0D96112A17D405C000BBC96E16E07A4BBA08DDA4F",
+    "armor_dark_normal.png": "530685F6C6FB885DCA92B866598D5E351F77D882B17A3C087EE682EB7183A218",
+    "armor_dark_orm.png": "BDD576610491BF1C1DB675716E6E0B37BEDD1528A3C481AA6CCED19C9933CD0B",
+    "mechanical_basecolor.png": "2F05EA260EA0063D67A2B2EC1DD41D7A4CF897A6744F6527A1B19C85513394B7",
+    "mechanical_normal.png": "E767DFBF00F7F79C0E012A5C0B29DB66BE74A010583BF864E8AC3BC9EDC1B157",
+    "mechanical_orm.png": "66C5B7FF047B658342AAE754BAFFEDABBED0935D6146F9F729C44AF8E8417715",
+    "frontier_cyan_basecolor.png": "C40E3AD27C9BA821CCD6E5955962081596149F79D41B0407052D317C080213EA",
+    "frontier_cyan_normal.png": "707A3B4B35E04784704F7FAB297A97A5F57BC2171FC208E567BD7D7711F5A54C",
+    "frontier_cyan_orm.png": "B349B43D66D7C20CD554A675D8AE51645ED91F2E5E7E2D46E4F78B1499E245B2",
+    "warning_orange_basecolor.png": "2D416CB20B1C41FF173A4E0D46B447AA5F742217F067CD286626405C2FCA51E0",
+    "warning_orange_normal.png": "3406FB09AA7DD654D21C5F480A18644B5BCBEA1FBA1E7EBD33964D2961F99900",
+    "warning_orange_orm.png": "C6D785BB86C39BACFBA6A6F9C76E017C5747B8CE2A56D49FFA559DABBBC4300B"
+  },
+  "productionBlend": "blender/wasp_production_v1.blend",
+  "productionBlendBytes": 12751842,
+  "productionBlendSha256": "D2A4D2BBDB03D1461198B23225BF5928E95AE99FCBD6383633504F2CCBD54D41",
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 11504,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "meshNodes": [
+        "LOD0_Accent",
+        "LOD0_Armor",
+        "LOD0_Canopy",
+        "LOD0_Hull",
+        "LOD0_Mechanical",
+        "LOD0_Thruster",
+        "LOD0_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "embeddedPlume": false,
+      "path": "source/wholeships/wasp_production_v1_lod0.glb",
+      "bytes": 534884,
+      "sha256": "B0EB547D0FA0453578C2565EE0D0DC7D2CA2384A44678A672E679D3CC1AC4979"
+    },
+    {
+      "lod": 1,
+      "triangles": 7656,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "meshNodes": [
+        "LOD1_Accent",
+        "LOD1_Armor",
+        "LOD1_Canopy",
+        "LOD1_Hull",
+        "LOD1_Mechanical",
+        "LOD1_Thruster",
+        "LOD1_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "embeddedPlume": false,
+      "path": "source/wholeships/wasp_production_v1_lod1.glb",
+      "bytes": 353084,
+      "sha256": "09EF14E6BCDA99BFE53A55EC1AD7E8D64FB07EBA95D519BAA10643FA0162B930"
+    },
+    {
+      "lod": 2,
+      "triangles": 5372,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "meshNodes": [
+        "LOD2_Accent",
+        "LOD2_Armor",
+        "LOD2_Canopy",
+        "LOD2_Hull",
+        "LOD2_Mechanical",
+        "LOD2_Thruster",
+        "LOD2_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "embeddedPlume": false,
+      "path": "source/wholeships/wasp_production_v1_lod2.glb",
+      "bytes": 242792,
+      "sha256": "70F68C0E772500A5637D04E5039BD199803CF053089F910D570408DEBB8A156A"
+    }
+  ],
+  "renders": [
+    {
+      "view": "wasp_v1_front_34",
+      "path": "evidence/blender/wasp_v1_front_34.png",
+      "bytes": 1068419,
+      "sha256": "C941BF5049334EA768A5ABA8668C7A65C774B11D54AD8DB7F0B5FC63789053EF",
+      "camera": [
+        30,
+        -31,
+        24
+      ],
+      "target": [
+        0,
+        0,
+        0.1
+      ],
+      "lensMm": 58,
+      "resolution": 1024,
+      "exposure": 1.15
+    },
+    {
+      "view": "wasp_v1_rear_34",
+      "path": "evidence/blender/wasp_v1_rear_34.png",
+      "bytes": 1127201,
+      "sha256": "673FF4F4E29E330C0C8B985013E70FDAD67A2E176DAA602E7803D941C08CC029",
+      "camera": [
+        -30,
+        -30,
+        21
+      ],
+      "target": [
+        -0.5,
+        0,
+        0.1
+      ],
+      "lensMm": 58,
+      "resolution": 1024,
+      "exposure": 1.15
+    },
+    {
+      "view": "wasp_v1_top",
+      "path": "evidence/blender/wasp_v1_top.png",
+      "bytes": 1140977,
+      "sha256": "1D11720337AC6171BF660EC0D285C3A02DEE537ED6A10A30DEE16436826B9EFA",
+      "camera": [
+        0,
+        0,
+        52
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "lensMm": 62,
+      "resolution": 1024,
+      "exposure": 1.15
+    },
+    {
+      "view": "wasp_v1_gameplay_scale",
+      "path": "evidence/blender/wasp_v1_gameplay_scale.png",
+      "bytes": 297446,
+      "sha256": "1A829BB32A53C66DDAE262BFBF7A9953C0F517507A51ABF3F5FB9C1378F7D2A6",
+      "camera": [
+        0,
+        -3,
+        66
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "lensMm": 72,
+      "resolution": 512,
+      "exposure": 1.15
+    }
+  ],
+  "contracts": {
+    "forward": "+X",
+    "upAfterExport": "+Y",
+    "starboardAfterExport": "+Z",
+    "meters": true,
+    "embeddedPlume": false,
+    "semanticMaterials": [
+      "Material_Accent",
+      "Material_Armor",
+      "Material_Canopy",
+      "Material_Hull",
+      "Material_Mechanical",
+      "Material_Thruster",
+      "Material_Warning"
+    ],
+    "requiredSockets": [
+      "SOCKET_Camera_Focus",
+      "SOCKET_Cargo_Ventral",
+      "SOCKET_Engine_Main",
+      "SOCKET_Mining_Front",
+      "SOCKET_RCS_Port",
+      "SOCKET_RCS_Starboard",
+      "SOCKET_Trail_Main",
+      "SOCKET_Trail_Port",
+      "SOCKET_Trail_Starboard",
+      "SOCKET_Utility_Dorsal",
+      "SOCKET_Weapon_Front"
+    ],
+    "maxFileBytes": 104857600
+  }
+}

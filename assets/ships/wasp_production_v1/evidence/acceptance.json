@@ -1,0 +1,84 @@
+{
+  "schema": "spaceface.waspProductionV1.acceptance.v1",
+  "packet": "SF-WASP-PRODUCTION-V1-001",
+  "assetId": "SF_WASP_PRODUCTION_V1",
+  "acceptedAt": "2026-07-14",
+  "verdict": "PASS",
+  "runtime": {
+    "canonicalLod0": "assets/ships/release/parts/wholeships/wasp_production_v1.glb",
+    "lods": [
+      {
+        "lod": 0,
+        "bytes": 12797604,
+        "sha256": "FDFD7C76C793C5BE9593E9C095BADE0708C36163086F181FF08BDDFBE5173E5A",
+        "triangles": 11526,
+        "draws": 7
+      },
+      {
+        "lod": 1,
+        "bytes": 12615760,
+        "sha256": "10E47344EB1974B4428312A9D25673AE64647794E68A13C8A8B87436F1A98DD0",
+        "triangles": 7678,
+        "draws": 7
+      },
+      {
+        "lod": 2,
+        "bytes": 12505480,
+        "sha256": "885028EB6B575AC77D9DD6351FDF248CE2FCF527E61C225A70B296DEFE576583",
+        "triangles": 5394,
+        "draws": 7
+      }
+    ],
+    "materials": [
+      "Material_Hull",
+      "Material_Armor",
+      "Material_Mechanical",
+      "Material_Accent",
+      "Material_Warning",
+      "Material_Canopy",
+      "Material_Thruster"
+    ],
+    "socketCount": 11,
+    "embeddedPlume": false
+  },
+  "publicRoute": {
+    "command": "node scripts/check-m5-role-public-route.mjs --visual-diagnostic",
+    "receipt": ".devshots/alpha/m5-role-public-route-v2/evidence.json",
+    "undockCapture": {
+      "path": ".devshots/alpha/m5-role-public-route-v2/04-wasp-role-after-undock.png",
+      "sha256": "81DEA2DA7BF9F807204B542B84C80DCA738D2B0AFE5BEB1740BABF410E897F4",
+      "width": 1440,
+      "height": 900
+    },
+    "continueCapture": {
+      "path": ".devshots/alpha/m5-role-public-route-v2/05-wasp-role-after-continue.png",
+      "sha256": "8C4699147FD7FC6B768F94C95DDC459F5B0818AF84E2EA63E71E155B21828E38",
+      "width": 1440,
+      "height": 900
+    },
+    "assertions": {
+      "canonicalAssetInBothStages": true,
+      "identicalEntityRotation": true,
+      "identicalRootRotation": true,
+      "identicalLighting": true,
+      "identicalMaterialBinding": true,
+      "boundedToneMappedDrive": true,
+      "darkZeroEmissionCanopy": true,
+      "embeddedPlumeCount": 0,
+      "pressureShellCount": 0,
+      "pageErrorCount": 0
+    }
+  },
+  "visualReview": {
+    "centralHullSeparation": "PASS",
+    "fighterSilhouetteAtGameplayScale": "PASS",
+    "engineBloomRestraint": "PASS",
+    "saveContinuePersistence": "PASS",
+    "rejectedWhiteOvalAbsent": true
+  },
+  "gates": {
+    "waspProductionRouting": "PASS",
+    "assetReachability": "PASS",
+    "assetStatus": "PASS"
+  }
+}

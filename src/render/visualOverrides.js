@@ -23,6 +23,15 @@ export function isPlayerKestrel(entity) {
     && entity.data && entity.data.defId === 'ship_kestrel';
 }
 
+function requiresProductionWholeShip(entity) {
+  if (!entity || entity.type !== 'ship' || !entity.data) return false;
+  // The active-hull rebuild uses a short-lived render entity that does not retain `isPlayer`, even
+  // though its authoritative defId has already changed. Keep the Kestrel's strict player-only boot
+  // rule, while selecting the production Wasp for every Wasp render entity so ship switching cannot
+  // silently reconstruct the older modular body.
+  return isPlayerKestrel(entity) || entity.data.defId === 'ship_wasp';
+}
+
 function isWorldPlaceProp(entity) {
   if (!entity || entity.type !== 'fx' || !entity.data) return false;
   return typeof entity.data.placeId === 'string' || typeof entity.data.landmarkGlb === 'string';
@@ -126,7 +135,10 @@ export function installVisualOverrides(factory, options = {}) {
     try {
       return wrapShipWithAuthoredParts(entity, visual, {
         releaseMode,
-        requiredWholeShip: isPlayerKestrel(entity),
+        // The authored boundary is opt-in: only player hulls with a production whole-ship mapping
+        // may bypass modular assembly. Keep the Kestrel boot rule intact while allowing a later
+        // player switch to the production Wasp to select its complete body on undock and Continue.
+        requiredWholeShip: requiresProductionWholeShip(entity),
         onSwap: (payload) => {
           configureTransparentSinglePassSurfaces(payload && (payload.authoredRoot || payload.boundary));
           if (typeof options.onAuthoredAssetSwap === 'function') options.onAuthoredAssetSwap(payload);
