@@ -65,6 +65,7 @@ console.log(JSON.stringify({
   healthyFloorCrPerMin: report.healthyFloorCrPerMin,
   cleanGrossEnvelopeCr: report.cleanGrossEnvelopeCr,
   retryDelta: report.retryDelta,
+  roleHullPacing: report.roleHullPacing,
   determinism: report.determinism,
   table: report.table,
 }, null, 2));

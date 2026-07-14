@@ -12,12 +12,14 @@ import { COMMODITIES } from '../data/commodities.js';
 import { MISSION_TUNING } from '../data/missions.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { SECTORS } from '../data/sectors.js';
+import { SHIPS } from '../data/ships.js';
 import {
   HAULER_COMPLETION_REWARD,
   HAULER_FAIL_RETRY_COOLDOWN_S,
   HAULER_STEPS,
   haulerRewardMultiplier,
 } from '../careers/origins/haulerOriginData.js';
+import { HAULER_ROLE_HULL_DEF_ID } from '../careers/ladders/haulerLadderDefs.js';
 import { careerOrigins as careerOriginsSystem } from '../careers/origins/careerOrigins.js';
 import { cargo as cargoSystem } from '../systems/cargo.js';
 import { combat as combatSystem } from '../systems/combat.js';
@@ -33,14 +35,20 @@ import { world as worldSystem } from '../systems/world.js';
 import { save as saveSystem } from '../save/saveSystem.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 
-export const COURIER_PUBLIC_ROUTE_SCHEMA = 'spaceface.m3.courierPublicRoute.v1';
+export const COURIER_PUBLIC_ROUTE_SCHEMA = 'spaceface.m3.courierPublicRoute.v2';
 export const COURIER_PUBLIC_ROUTE_SEED = 0xC0B0_A091;
 /** Healthy band aligns with career-cohort hauler lo floor (A_T1 * 0.45 = 112.5). */
 export const COURIER_HEALTHY_CR_PER_MIN = 112.5;
 export const COURIER_DEAD_CR_PER_MIN = 50;
 export const COURIER_ROUTE_HORIZONS_MIN = Object.freeze([30, 60, 90]);
 export const COURIER_HAULER_COHORT_REFERENCE = Object.freeze({ 30: 384.93, 60: 338.55, 90: 282.02 });
-export const COURIER_FIRST_SHIP_TARGET_CR = 15_000;
+/** Meaningful first-window bank progress without pretending the wrong hull is the career goal. */
+export const COURIER_30M_CAPITAL_PROGRESS_CR = 15_000;
+export const COURIER_ROLE_HULL_DEF_ID = HAULER_ROLE_HULL_DEF_ID;
+const COURIER_ROLE_HULL = SHIPS.find((ship) => ship.id === COURIER_ROLE_HULL_DEF_ID);
+/** The first Courier ship target is the authored Mule, not the 15k mining Pelican. */
+export const COURIER_FIRST_SHIP_TARGET_CR = COURIER_ROLE_HULL?.price ?? 0;
+export const COURIER_ROLE_HULL_DEADLINE_MIN = 90;
 
 /** Clean first-pass origin: three step base rewards + completion award (attempt-0, no haircut). */
 export const COURIER_ORIGIN_CLEAN_GROSS_ENVELOPE_CR = HAULER_STEPS.reduce(
@@ -82,8 +90,8 @@ export const COURIER_ROUTE_PACING = Object.freeze({
   maxBoardTollCr: 90,
   /** Prefer freestyle same-sector arbitrage after this many consecutive board skips. */
   arbAfterBoardSkips: 1,
-  /** Cap freestyle buy lots so early capital compounds instead of over-buying thin spreads. */
-  arbMaxUnits: 28,
+  /** Use the live hull's available hold; market stock and wallet remain the natural lot limits. */
+  arbMaxUnits: null,
 });
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -1485,7 +1493,13 @@ export function runCourierPublicRoute(options = {}) {
     let want = Math.floor(freeVol / (best.vol || 1));
     const entry = ctx.state.economy.markets[buyStationId]?.[best.cmdtyId];
     const stockAvail = Math.max(0, Math.floor((entry && entry.stock) - 1));
-    want = Math.min(want, stockAvail, COURIER_ROUTE_PACING.arbMaxUnits || 28);
+    want = Math.min(
+      want,
+      stockAvail,
+      Number.isFinite(COURIER_ROUTE_PACING.arbMaxUnits)
+        ? COURIER_ROUTE_PACING.arbMaxUnits
+        : Number.POSITIVE_INFINITY,
+    );
     while (want > 0) {
       const q = ctx.econ.quote(buyStationId, best.cmdtyId, 'buy', want);
       if (q.ok && q.total <= (ctx.state.player.credits | 0)) break;
@@ -1534,6 +1548,9 @@ export function runCourierPublicRoute(options = {}) {
       minCreditsAfter: 400,
       readinessGate: 0.9,
     });
+    // One successful spot-market leg cools the board-skip streak. Without this reset a single
+    // abandoned contract permanently exiled the Courier from authored freight work.
+    boardSkips = 0;
     boardLoop += 1;
     receipt.completedLoops = boardLoop;
     // Arbitrage freestyle is not a mission contract, but is freight causality proof.
@@ -1600,10 +1617,16 @@ function finalize(receipt, ctx, costs, budget, horizonS) {
   const purchaseReady = (receipt.loops || []).find((row) => (row.creditsAfter | 0) >= COURIER_FIRST_SHIP_TARGET_CR);
   const cohortRate = COURIER_HAULER_COHORT_REFERENCE[receipt.horizonMin] || null;
   receipt.purchasePacing = {
+    roleHullDefId: COURIER_ROLE_HULL_DEF_ID,
     targetCredits: COURIER_FIRST_SHIP_TARGET_CR,
     reached: endingCapital >= COURIER_FIRST_SHIP_TARGET_CR,
     firstReadyAtS: purchaseReady ? round1(purchaseReady.t || 0) : null,
     firstReadyAtMin: purchaseReady ? round2((purchaseReady.t || 0) / 60) : null,
+  };
+  receipt.capitalProgress = {
+    targetCredits: COURIER_30M_CAPITAL_PROGRESS_CR,
+    reached: endingCapital >= COURIER_30M_CAPITAL_PROGRESS_CR,
+    fractionOfRoleHull: round2(endingCapital / COURIER_FIRST_SHIP_TARGET_CR),
   };
   receipt.balanceReview = {
     cohortRate,
@@ -1680,6 +1703,12 @@ function finalize(receipt, ctx, costs, budget, horizonS) {
   if (receipt.creditsPerMin > receipt.balanceReview.cohortUpperBand) {
     warns.push(`hauler_upper_band_exceeded ${receipt.creditsPerMin} > ${receipt.balanceReview.cohortUpperBand}`);
   }
+  if (horizonS === 30 * 60 && !receipt.capitalProgress.reached) {
+    fails.push(`thirty_minute_capital_progress_missing ${endingCapital} < ${COURIER_30M_CAPITAL_PROGRESS_CR}`);
+  }
+  if (horizonS >= COURIER_ROLE_HULL_DEADLINE_MIN * 60 && !receipt.purchasePacing.reached) {
+    fails.push(`role_hull_not_affordable ${endingCapital} < ${COURIER_FIRST_SHIP_TARGET_CR}`);
+  }
 
   if (receipt.origin.status === 'completed') {
     const originRewards = receipt.loops
@@ -1710,6 +1739,8 @@ function determinismProjection(receipt) {
     missionProceeds: receipt.missionProceeds,
     saleProceeds: receipt.saleProceeds,
     purchaseSpend: receipt.purchaseSpend,
+    capitalProgress: receipt.capitalProgress,
+    purchasePacing: receipt.purchasePacing,
     time: receipt.time,
     origin: receipt.origin,
     loops: receipt.loops,
@@ -1749,6 +1780,7 @@ export function measureCourierPublicRouteHorizons(options = {}) {
       travelS: receipt.time.travelS,
       actionS: receipt.time.actionS,
       firstShipReadyMin: receipt.purchasePacing.firstReadyAtMin,
+      capitalProgressReached: receipt.capitalProgress.reached,
       cohortRate: receipt.balanceReview.cohortRate,
       cohortRatio: receipt.balanceReview.cohortRatio,
       originStatus: receipt.origin.status,
@@ -1770,7 +1802,6 @@ export function measureCourierPublicRouteHorizons(options = {}) {
       mismatch: expected === actual ? null : 'projected_receipt_mismatch',
     };
   }
-  const ok = table.every((row) => row.ok) && determinism.ok;
   // Retry economics: forced origin haircut + board abandon vs clean origin at 30m.
   let retryDelta = null;
   if (options.includeRetryDelta !== false) {
@@ -1778,7 +1809,7 @@ export function measureCourierPublicRouteHorizons(options = {}) {
       seed, horizonMin: 30, forceRetryOnFirstStep: true, forceBoardFailureAt: 2,
     });
     const cleanPass = runCourierPublicRoute({
-      seed, horizonMin: 30, forceRetryOnFirstStep: false, forceBoardFailureAt: 0,
+      seed, horizonMin: 30, forceRetryOnFirstStep: false, forceBoardFailureAt: 2,
     });
     const originPaid = (receipt) => (receipt.loops || [])
       .filter((l) => l.phase === 'origin' && l.outcome === 'completed')
@@ -1786,6 +1817,8 @@ export function measureCourierPublicRouteHorizons(options = {}) {
     const originWithRetry = originPaid(withRetry);
     const originClean = originPaid(cleanPass);
     const haircut = withRetry.origin.attemptHaircuts && withRetry.origin.attemptHaircuts[0];
+    const earnedDelta = round2(cleanPass.earnedValue - withRetry.earnedValue);
+    const crPerMinDelta = round2(cleanPass.creditsPerMin - withRetry.creditsPerMin);
     retryDelta = {
       withRetryEarned: withRetry.earnedValue,
       withRetryCrPerMin: withRetry.creditsPerMin,
@@ -1796,15 +1829,31 @@ export function measureCourierPublicRouteHorizons(options = {}) {
       cleanCrPerMin: cleanPass.creditsPerMin,
       cleanFailed: cleanPass.failedContracts,
       cleanOriginPaid: originClean,
-      earnedDelta: round2(cleanPass.earnedValue - withRetry.earnedValue),
-      crPerMinDelta: round2(cleanPass.creditsPerMin - withRetry.creditsPerMin),
+      earnedDelta,
+      crPerMinDelta,
       originPaidDelta: round2(originClean - originWithRetry),
       haircutApplied: !!(haircut && haircut.rewardAfter < haircut.rewardBefore),
-      meaningful: (haircut && haircut.rewardAfter < haircut.rewardBefore)
-        || (withRetry.failedContracts > cleanPass.failedContracts)
-        || (originClean > originWithRetry),
+      meaningful: earnedDelta > 0
+        && !!(haircut && haircut.rewardAfter < haircut.rewardBefore)
+        && withRetry.failedContracts > cleanPass.failedContracts
+        && originClean > originWithRetry,
     };
+    retryDelta.ok = retryDelta.meaningful;
   }
+  const affordableCell = table.find((row) => row.firstShipReadyMin != null) || null;
+  const roleHullPacing = {
+    roleHullDefId: COURIER_ROLE_HULL_DEF_ID,
+    targetCredits: COURIER_FIRST_SHIP_TARGET_CR,
+    deadlineMin: COURIER_ROLE_HULL_DEADLINE_MIN,
+    affordableByMin: affordableCell ? affordableCell.firstShipReadyMin : null,
+    sampledHorizonMin: affordableCell ? affordableCell.minutes : null,
+  };
+  roleHullPacing.ok = roleHullPacing.affordableByMin != null
+    && roleHullPacing.affordableByMin <= roleHullPacing.deadlineMin;
+  const ok = table.every((row) => row.ok)
+    && determinism.ok
+    && (retryDelta == null || retryDelta.ok)
+    && roleHullPacing.ok;
   return {
     schema: COURIER_PUBLIC_ROUTE_SCHEMA,
     seed,
@@ -1814,6 +1863,7 @@ export function measureCourierPublicRouteHorizons(options = {}) {
     cleanGrossEnvelopeCr: COURIER_ORIGIN_CLEAN_GROSS_ENVELOPE_CR,
     determinism,
     retryDelta,
+    roleHullPacing,
     table,
     cells,
   };

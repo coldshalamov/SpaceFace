@@ -14,6 +14,8 @@ import {
   COURIER_PUBLIC_ROUTE_SCHEMA,
   COURIER_PUBLIC_ROUTE_SEED,
   COURIER_FIRST_SHIP_TARGET_CR,
+  COURIER_30M_CAPITAL_PROGRESS_CR,
+  COURIER_ROLE_HULL_DEF_ID,
   travelTimeS,
 } from '../src/balance/courierPublicRoute.js';
 import {
@@ -28,7 +30,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 test('authored Courier clean gross envelope is the three freight steps plus completion award', () => {
   const stepSum = HAULER_STEPS.reduce((sum, def) => sum + def.baseRewardCr, 0);
   assert.equal(stepSum + HAULER_COMPLETION_REWARD.credits, COURIER_ORIGIN_CLEAN_GROSS_ENVELOPE_CR);
-  assert.equal(COURIER_ORIGIN_CLEAN_GROSS_ENVELOPE_CR, 1180);
+  assert.equal(COURIER_ORIGIN_CLEAN_GROSS_ENVELOPE_CR, 3970);
 });
 
 test('travel adapter is grounded in MISSION_TUNING cruise speed and sector graph', () => {
@@ -73,8 +75,13 @@ test('30-minute Courier public route advances real time through live authorities
     assert.equal(r.creditAccounting.residual, 0, 'all wallet deltas must reconcile to authority receipts');
     assert.ok(r.transitDamageReceipts.some((x) => x.ok && x.hullDamage > 0),
       'transit wear must route through combat damage authority');
+    assert.equal(r.purchasePacing.roleHullDefId, COURIER_ROLE_HULL_DEF_ID);
     assert.equal(r.purchasePacing.targetCredits, COURIER_FIRST_SHIP_TARGET_CR);
-    assert.ok(r.purchasePacing.reached, '30m route should expose first-ship purchase pacing');
+    assert.equal(COURIER_ROLE_HULL_DEF_ID, 'ship_mule');
+    assert.equal(COURIER_FIRST_SHIP_TARGET_CR, 35_000);
+    assert.equal(r.capitalProgress.targetCredits, COURIER_30M_CAPITAL_PROGRESS_CR);
+    assert.ok(r.capitalProgress.reached,
+      '30m route should bank meaningful progress toward the real Courier hull');
     // Clean envelope remains a settlement ceiling; timed net after repair/retry is lower or costed.
     const originPaid = r.loops
       .filter((l) => l.phase === 'origin' && l.outcome === 'completed')
@@ -113,7 +120,15 @@ test('independent 30/60/90 Courier public-route cells stay above the healthy flo
       || report.cells[90].creditsPerMin >= COURIER_HEALTHY_CR_PER_MIN);
     assert.ok(report.retryDelta && report.retryDelta.meaningful,
       'retry economics must reduce earnings or increase failures vs clean pass');
-    assert.ok(report.retryDelta.earnedDelta > 0 || report.retryDelta.withRetryFailed > report.retryDelta.cleanFailed);
+    assert.equal(report.retryDelta.ok, true);
+    assert.ok(report.retryDelta.earnedDelta > 0);
+    assert.ok(report.retryDelta.withRetryFailed > report.retryDelta.cleanFailed);
+    assert.equal(report.roleHullPacing.roleHullDefId, 'ship_mule');
+    assert.equal(report.roleHullPacing.targetCredits, 35_000);
+    assert.equal(report.roleHullPacing.ok, true,
+      `Mule must be affordable by ${report.roleHullPacing.deadlineMin}m`);
+    assert.ok(report.roleHullPacing.affordableByMin <= 90);
+    assert.ok(report.roleHullPacing.affordableByMin <= report.roleHullPacing.sampledHorizonMin);
     assert.equal(report.determinism.ok, true, report.determinism.mismatch);
   } finally {
     restoreNondeterminism();

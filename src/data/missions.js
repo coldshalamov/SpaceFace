@@ -4,9 +4,11 @@
 
 export const MISSION_TUNING = {
   BASE: {
+    // Freight bases must cover real cargo acquisition, collateral exposure, tolls, and repair.
+    // The old 180/170 values made successful Courier contracts net-negative.
     // bounty_hunt 110: a single-target writ must clear gate tolls, repair, and death insurance
     // after exclusive mission settlement without pushing the dense public route above 400 cr/min.
-    cargo_delivery: 180, bulk_trade: 170, bounty_hunt: 110, mining_quota: 130,
+    cargo_delivery: 600, bulk_trade: 550, bounty_hunt: 110, mining_quota: 130,
     salvage_retrieval: 160, escort: 180, patrol_clear: 220, smuggling_run: 250,
     passenger_transport: 160, recon_scan: 140,
   },
@@ -116,7 +118,7 @@ export const MISSION_TYPES = [
   {
     type: 'cargo_delivery', riskTierRange: [0, 1], chainable: true,
     completionEvent: 'cargo.delivered',
-    rewardFormula: 'round(180 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
+    rewardFormula: 'round(600 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
     timeFormula: 'round((distance/140 + 20) * slack)', taskTime: 20,
     failureCondition: 'timer OR cargo lost (ship destroyed)',
     constraints: { needsCargoSpace: true },
@@ -124,7 +126,7 @@ export const MISSION_TYPES = [
   {
     type: 'bulk_trade', riskTierRange: [1, 2], chainable: true, collateral: true,
     completionEvent: 'trade.sold (aggregated to quota)',
-    rewardFormula: 'round(170 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
+    rewardFormula: 'round(550 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
     timeFormula: 'round((distance/140 + quotaQty*1.5) * slack)', taskTime: 'quotaQty*1.5',
     failureCondition: 'timer OR fail to sell quota; collateral forfeited',
     constraints: { collateralPct: 0.25 },

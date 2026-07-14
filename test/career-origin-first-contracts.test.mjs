@@ -111,7 +111,7 @@ test('Hauler starts with a sealed physical manifest, delivers it, and persists t
   assert.equal(hauler.canOriginAccept, false, 'service class must be chosen before the bonded run');
   assert.equal(hauler.canChoose, true);
   assert.deepEqual(hauler.choices.map((choice) => choice.id), ['bonded_express', 'open_manifest']);
-  assert.match(hauler.choiceSummary, /320 cr payout/);
+  assert.match(hauler.choiceSummary, /1,100 cr payout/);
   assert.match(hauler.choiceSummary, /no bond/);
 
   h.bus.emit(CAREER_ORIGINS_EVENTS.CHOOSE, {
@@ -122,7 +122,7 @@ test('Hauler starts with a sealed physical manifest, delivers it, and persists t
   assert.equal(hauler.canOriginAccept, true);
   assert.equal(hauler.selectedChoiceId, 'open_manifest');
   assert.match(hauler.receiptLine, /no bond/);
-  assert.equal(h.credits.some((row) => row.amount === 180 && String(row.reason).startsWith('mission:')), true);
+  assert.equal(h.credits.some((row) => row.amount === 1120 && String(row.reason).startsWith('mission:')), true);
 
   const loaded = createGameState(12002);
   deserializeCareerOrigins(loaded, serializeCareerOrigins(h.state));
@@ -147,10 +147,10 @@ test('Hauler service class changes real mission stakes, is immutable in flight, 
   let own = h.state.careers.origins.hauler;
   let mission = h.state.missions.active.find((row) => row.id === own.activeContract.missionId);
   assert.equal(own.activeContract.choiceId, 'open_manifest');
-  assert.equal(own.activeContract.reward_cr, 220);
+  assert.equal(own.activeContract.reward_cr, 920);
   assert.equal(own.activeContract.collateral_cr, 0);
   assert.equal(own.activeContract.deadlineS - own.acceptedAtS, 300);
-  assert.equal(mission.reward_cr, 220);
+  assert.equal(mission.reward_cr, 920);
   assert.equal(mission.collateral_cr, 0);
   assert.match(mission.mapLabel, /no collateral/);
   const openObjective = objectiveText(mission);
@@ -185,14 +185,14 @@ test('Hauler service class changes real mission stakes, is immutable in flight, 
   own = h.state.careers.origins.hauler;
   mission = h.state.missions.active.find((row) => row.id === own.activeContract.missionId);
   assert.equal(own.activeContract.choiceId, 'open_manifest');
-  assert.equal(mission.reward_cr, 187, 'retry decay applies to the selected service class');
+  assert.equal(mission.reward_cr, 782, 'retry decay applies to the selected service class');
   assert.equal(mission.collateral_cr, 0);
 
   const saved = serializeCareerOrigins(h.state);
   const restored = createGameState(12006);
   deserializeCareerOrigins(restored, saved);
   assert.equal(restored.careers.origins.hauler.activeContract.choiceId, 'open_manifest');
-  assert.equal(restored.careers.origins.hauler.activeContract.reward_cr, 187);
+  assert.equal(restored.careers.origins.hauler.activeContract.reward_cr, 782);
 });
 
 test('Hunter first writ materializes one named hostile and advances only on the player kill', () => {
