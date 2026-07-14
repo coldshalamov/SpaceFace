@@ -218,7 +218,11 @@ assert.equal(overlapCount, 0, 'text overlap count must be 0 across the first-15 
 assert.match(onboardingSrc, /_tryAdvanceBeat/, 'the beat timing-gate engine (_tryAdvanceBeat) must exist');
 assert.match(onboardingSrc, /SILENCE_S = 4/, 'the ≥4s silence gate constant must be authored');
 assert.match(onboardingSrc, /ob\.beatDoneAt/, 'beat DONE timestamps must be tracked on state.onboarding');
-assert.match(onboardingSrc, /_sayTutorial\(text\)/, 'a single tutorial-voice chokepoint (_sayTutorial) must exist');
+assert.match(
+  onboardingSrc,
+  /_sayTutorial\(text,\s*\{\s*visual\s*=\s*true\s*\}\s*=\s*\{\}\)/,
+  'a single tutorial-voice chokepoint (_sayTutorial) must exist',
+);
 
 // ── The intro modal must be GONE (spec2/03 B0: "no modal") ────────────────────────────────────
 assert.doesNotMatch(onboardingSrc, /_showIntro/, 'the intro modal (_showIntro) must be removed (spec2/03 B0: no modal)');

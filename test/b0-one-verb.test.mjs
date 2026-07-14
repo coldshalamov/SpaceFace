@@ -33,6 +33,7 @@ const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 
 const ONBOARDING_SRC = read('../src/systems/onboarding.js');
 const HUD_SRC = read('../src/ui/hud.js');
+const CORE_COPY_SRC = read('../src/ui/localizedCoreCopy.js');
 const MISSION_LOG_SRC = read('../src/ui/screens/missionLog.js');
 const STORY_SRC = read('../src/systems/story.js');
 const MISSIONS_SYS_SRC = read('../src/systems/missions.js');
@@ -236,9 +237,11 @@ check('HUD mission tracker is the persistent Tutorial Objective surface for onbo
   assert.match(HUD_SRC, /sf-mt-obj/, 'HUD mounts .sf-mt-obj objective line');
   assert.match(
     HUD_SRC,
-    /navWaypoint\.onboarding[\s\S]{0,200}TUTORIAL OBJECTIVE/,
-    'onboarding waypoint path paints Tutorial Objective on the HUD tracker',
+    /coreText\(navWaypoint && navWaypoint\.onboarding \? 'tutorialObjective' : 'currentObjective'\)/,
+    'onboarding waypoint path selects the localized Tutorial Objective label',
   );
+  assert.match(CORE_COPY_SRC, /tutorialObjective:\s*\{\s*label:\s*'TUTORIAL OBJECTIVE'\s*\}/,
+    'localized core copy keeps the player-facing Tutorial Objective label');
   assert.match(
     HUD_SRC,
     /wp\.reason\s*\|\|\s*wp\.label/,

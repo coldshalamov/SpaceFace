@@ -28,6 +28,7 @@ import {
   VoiceQueue,
   voiceArbiter,
 } from '../src/ui/voiceArbiter.js';
+import { FLIGHT_DRILL_BEATS } from '../src/onboarding/flightDrill.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (rel) => {
@@ -109,7 +110,9 @@ check('toasts suppress arbiter _fromVoice mirror (no double-surface)', 'SOURCE',
 check('registry installs voice before callers and updates after story/onboarding', 'SOURCE', () => {
   assert.match(registrySrc, /core, voiceArbiter, input/,
     'voiceArbiter must init early so helpers.voice exists for first-hour speakers');
-  assert.match(registrySrc, /onboarding, voiceArbiter/,
+  const updateOrder = registrySrc.match(/const UPDATE_ORDER = \[([\s\S]*?)\n\s*\];/);
+  assert.ok(updateOrder, 'registry UPDATE_ORDER must remain statically auditable');
+  assert.ok(updateOrder[1].indexOf('voiceArbiter') > updateOrder[1].indexOf('onboarding'),
     'voiceArbiter update must run after onboarding so tutorial lines surface same tick');
 });
 
@@ -230,7 +233,7 @@ check('B0 waits for first-run splash; generic firstFlight waits for the staged r
 });
 
 check('B0 one-verb: single tutorial chokepoint + HUD tracker owns persistent command', 'SOURCE', () => {
-  assert.match(onboardingSrc, /_sayTutorial\(text\)/,
+  assert.match(onboardingSrc, /_sayTutorial\(text,\s*\{\s*visual\s*=\s*true\s*\}\s*=\s*\{\}\)/,
     'single tutorial-voice chokepoint required');
   assert.match(onboardingSrc, /channel:\s*'tutorial'/,
     'tutorial lines must route on tutorial channel');
@@ -270,9 +273,13 @@ check('active objective owns attention without suppressing combat/mining targeti
   assert.match(commsSrc, /state && state\.nav && state\.nav\.waypoint/,
     'active navigation route must hold noncritical chatter');
   assert.match(commsSrc, /!GATE_BYPASS\.test/, 'danger/critical comms must bypass the quiet gate');
+  assert.match(commsSrc, /!bypassAttentionGate\s*&&\s*attentionGateActive\(\)/,
+    'ordinary ambient comms must remain held while actionable onboarding owns attention');
+  assert.match(commsSrc, /scenario:dialogueLine[\s\S]*pushComms\(comms,\s*\{\s*bypassAttentionGate:\s*true\s*\}\)/,
+    'authored scenario dialogue must bypass the onboarding gate without globally promoting story chatter');
   assert.match(onboardingSrc, /_retireTutorialPanel\(\)/,
     'story transition must retire the tutorial/lore panel');
-  assert.match(onboardingSrc, /const demoteObjectiveCopy = true/,
+  assert.match(onboardingSrc, /const demoteObjectiveCopy = !!\(this\.state\.nav/,
     'all B0-B5 tutorial verbs must yield persistent ownership to the HUD tracker');
   assert.doesNotMatch(onboardingSrc, /title\.setAttribute\('aria-live'/,
     'hidden tutorial verb copy must not remain an assistive live region');
@@ -298,20 +305,23 @@ check('objective hierarchy remains legible and quiet for assistive technology', 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 4. B0 → B1 SILENCE
 // ═══════════════════════════════════════════════════════════════════════════════
-check('inter-beat silence gate is ≥4s and orders wake → derelict', 'SOURCE', () => {
+check('inter-beat silence gate is ≥4s and preserves the shared drill order', 'SOURCE', () => {
   assert.match(onboardingSrc, /SILENCE_S\s*=\s*4/, 'SILENCE_S must be 4 seconds');
   assert.match(onboardingSrc, /_tryAdvanceBeat/, 'beat advance engine must exist');
   assert.match(onboardingSrc,
     /now - Math\.max\(prevDoneAt, this\._lastTextAtS\) < SILENCE_S/,
     'advance must require DONE + silence since last text');
-  // Beat key order: wake then derelict (B0 then B1)
+  // The deterministic flight drill is data-owned; onboarding appends seam, dock, and choice.
   const beatsBlock = onboardingSrc.match(/const BEATS = \[([\s\S]*?)\n\];/);
   assert.ok(beatsBlock, 'BEATS table must exist');
-  const keys = [...beatsBlock[1].matchAll(/key:\s*'([a-z_]+)'/g)].map((m) => m[1]);
-  assert.deepEqual(keys.slice(0, 2), ['wake', 'derelict'],
-    'B0 wake must precede B1 derelict');
-  assert.deepEqual(keys, ['wake', 'derelict', 'seam', 'snare', 'dock', 'choice'],
-    'six first-hour beats must stay in spec order');
+  assert.match(beatsBlock[1], /\.\.\.FLIGHT_DRILL_BEATS/,
+    'onboarding must consume the shared flight-drill sequence');
+  const localKeys = [...beatsBlock[1].matchAll(/key:\s*'([a-z_]+)'/g)].map((m) => m[1]);
+  const keys = [...FLIGHT_DRILL_BEATS.map((beat) => beat.key), ...localKeys];
+  assert.deepEqual(keys, [
+    'thrust', 'brake', 'marker', 'focus', 'tether', 'burst', 'disengage',
+    'seam', 'dock', 'choice',
+  ], 'ten first-hour beats must stay in the production drill order');
 });
 
 check('story/missions yield the opening channel to the tutorial (no parallel cold-start voice)', 'SOURCE', () => {
@@ -414,15 +424,20 @@ check('onboarding yields first-dock persistence to the station handoff rail', 'S
 // ═══════════════════════════════════════════════════════════════════════════════
 // 7. TRUTHFUL CONTROLS
 // ═══════════════════════════════════════════════════════════════════════════════
-check('B1 teaches massline + production tether:reel (never G / dead reelMax)', 'SOURCE', () => {
+check('the tether drill teaches massline + production tether:reel (never G / dead reelMax)', 'SOURCE', () => {
   assert.doesNotMatch(onboardingSrc, /Latch it\. G\./,
     'B1 must not teach Latch it. G. (G is combat computer)');
   assert.doesNotMatch(onboardingSrc, /tether:reelMax/,
     'B1 must not listen for dead tether:reelMax');
-  assert.match(onboardingSrc, /Latch it\. Massline\./,
-    'B1 entry must teach massline');
-  assert.match(onboardingSrc, /on:\s*'tether:reel'/,
-    'B1 cut follow-up must use production tether:reel');
+  const drillLines = FLIGHT_DRILL_BEATS.flatMap((beat) => [
+    beat.line,
+    ...(beat.followups || []).map((followup) => followup.line),
+  ]);
+  assert.ok(drillLines.includes('Latch it. Massline.'),
+    'the tether drill must teach massline');
+  assert.ok(FLIGHT_DRILL_BEATS.some((beat) =>
+    (beat.followups || []).some((followup) => followup.on === 'tether:reel')),
+  'the tether drill cut follow-up must use production tether:reel');
   assert.match(onboardingSrc, /_onTetherReel/,
     'B1 must gate reel follow-up on tether:reel payload');
   assert.match(attachmentsSrc, /bus\.emit\('tether:reel'/,
