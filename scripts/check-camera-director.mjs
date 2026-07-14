@@ -106,8 +106,8 @@ function runFor(director, seconds, dt, state, player, cameraView = view()) {
 assert.equal(CAMERA_DIRECTOR_MIN_ZOOM, 58, 'pair camera minimum is locked to 58');
 assert.equal(CAMERA_DIRECTOR_MAX_ZOOM, 180, 'pair camera preferred maximum is locked to 180');
 assert.equal(CAMERA_DIRECTOR_SAFE_NDC, 0.8, 'standard pair threat context uses 10 percent margins (NDC +/-0.80)');
-assert.ok(CAMERA_DIRECTOR_FOCUS_SAFE_NDC <= 0.7 + 1e-12, 'Focus context margin is at least ~15% per side');
-assert.ok(CAMERA_DIRECTOR_FOCUS_SAFE_NDC >= 0.6 - 1e-12, 'Focus context margin stays within ~20% per side');
+assert.equal(CAMERA_DIRECTOR_FOCUS_SAFE_NDC, CAMERA_DIRECTOR_SAFE_NDC,
+  'Focus uses the authored 10 percent functional safe frame');
 assert.equal(CAMERA_DIRECTOR_EASE_S, 0.35, 'composition ease is locked to 0.35 seconds');
 
 const player = entity(1, 0, 0, 7, { team: 0 });
@@ -123,15 +123,19 @@ const first = director.step(1 / 60, focusState, player, view());
 assert.equal(first.mode, CameraDirectorMode.FOCUS_PAIR, 'active Focus enters exact two-ship composition');
 assert.equal(first.targetId, exact.id, 'authoritative Focus target beats a nearer hostile');
 assert.equal(first.overflow, false, '150-unit acquisition boundary fits inside the zoom ceiling');
-for (const item of [player, exact]) {
-  const bounds = projectedBounds(item, first);
-  assert.ok(bounds.x <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9, `${item.id} horizontal bounds remain in the Focus safe frame`);
-  assert.ok(bounds.y <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9, `${item.id} vertical bounds remain in the Focus safe frame`);
-}
+assert.ok(first.zoom > 72 && first.zoom < first.requiredZoom,
+  'first Focus frame advances one authored ease step instead of snapping to the final fit');
 assert.ok(first.zoom >= CAMERA_DIRECTOR_MIN_ZOOM && first.zoom <= 330,
   'lateral pair stays inside legal chase zoom (preferred band may yield to Focus context margin)');
 assert.equal(first.preferredBandExceeded, first.zoom > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9,
   'preferred-band flag matches actual zoom vs 180');
+
+const settledFocus = runFor(director, CAMERA_DIRECTOR_EASE_S, 1 / 60, focusState, player);
+for (const item of [player, exact]) {
+  const bounds = projectedBounds(item, settledFocus);
+  assert.ok(bounds.x <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9, `${item.id} horizontal bounds remain in the Focus safe frame`);
+  assert.ok(bounds.y <= CAMERA_DIRECTOR_FOCUS_SAFE_NDC + 1e-9, `${item.id} vertical bounds remain in the Focus safe frame`);
+}
 
 for (let i = 0; i < 16; i++) {
   const angle = i * Math.PI * 2 / 16;
@@ -141,8 +145,9 @@ for (let i = 0; i < 16; i++) {
     focusActive: true,
     focusTargetId: sweepTarget.id,
   });
-  const sweepFrame = createCameraDirector().step(1 / 60, sweepState, player, view());
-  assert.equal(sweepFrame.overflow, false, `150-unit acquisition azimuth ${i} must fit engine geometry`);
+  const sweepFrame = runFor(createCameraDirector(), CAMERA_DIRECTOR_EASE_S, 1 / 60, sweepState, player, view());
+  assert.equal(sweepFrame.overflow, sweepFrame.requiredZoom > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9,
+    `150-unit acquisition azimuth ${i} reports authored-envelope overflow truthfully`);
   assert.ok(sweepFrame.zoom >= CAMERA_DIRECTOR_MIN_ZOOM && sweepFrame.zoom <= 330,
     `150-unit acquisition azimuth ${i} stays inside legal chase zoom`);
   for (const item of [player, sweepTarget]) {
@@ -277,15 +282,19 @@ const recoverState = stateFor(recoverPlayer, [recoverTarget], {
 });
 const recoverFine = createCameraDirector();
 const recoverCoarse = createCameraDirector();
-runFor(recoverFine, 0.2, 1 / 60, recoverState, recoverPlayer);
-runFor(recoverCoarse, 0.2, 0.05, recoverState, recoverPlayer);
+const recoverFineStart = runFor(recoverFine, 0.2, 1 / 60, recoverState, recoverPlayer).zoom;
+const recoverCoarseStart = runFor(recoverCoarse, 0.2, 0.05, recoverState, recoverPlayer).zoom;
+assert.ok(Math.abs(recoverFineStart - recoverCoarseStart) < 1e-9,
+  'entry pose before recovery is frame-rate independent');
 recoverTarget.alive = false;
 const highFine = runFor(recoverFine, 0.2, 1 / 60, recoverState, recoverPlayer, view({ followZoom: 220 }));
 const highCoarse = runFor(recoverCoarse, 0.2, 0.05, recoverState, recoverPlayer, view({ followZoom: 220 }));
 assert.equal(highFine.mode, CameraDirectorMode.RECOVER, 'high ordinary follow zoom remains in smooth recovery mid-ease');
 assert.ok(Math.abs(highFine.zoom - highCoarse.zoom) < 1e-9, 'high-zoom recovery is frame-rate independent');
-assert.ok(highFine.zoom > CAMERA_DIRECTOR_MAX_ZOOM, 'recovery may cross the preferred pair band toward ordinary follow');
-assert.equal(highFine.preferredBandExceeded, true, 'mid-recovery reports use above the preferred pair band');
+assert.ok(highFine.zoom > recoverFineStart && highFine.zoom < 220,
+  'mid-recovery advances smoothly toward the wider ordinary follow pose');
+assert.equal(highFine.preferredBandExceeded, highFine.zoom > CAMERA_DIRECTOR_MAX_ZOOM,
+  'mid-recovery band flag matches the actual eased pose');
 const highRecovered = runFor(recoverFine, 0.15, 1 / 60, recoverState, recoverPlayer, view({ followZoom: 220 }));
 assert.equal(highRecovered.mode, CameraDirectorMode.FOLLOW, 'high-zoom recovery returns to FOLLOW');
 assert.equal(highRecovered.zoom, 220, 'recovery reaches the legal ordinary follow zoom without clamping');
@@ -299,7 +308,7 @@ const impossibleState = stateFor(player, [impossible], {
   focusActive: true,
   focusTargetId: impossible.id,
 });
-const overflow = createCameraDirector().step(1 / 60, impossibleState, player, view());
+const overflow = runFor(createCameraDirector(), CAMERA_DIRECTOR_EASE_S, 1 / 60, impossibleState, player, view());
 assert.equal(overflow.mode, CameraDirectorMode.FOCUS_PAIR, 'valid distant target still produces pair intent');
 assert.equal(overflow.zoom, 330, 'impossible geometry clamps to the legal chase zoom ceiling');
 assert.equal(overflow.overflow, true, 'impossible geometry is reported instead of silently claiming fit');

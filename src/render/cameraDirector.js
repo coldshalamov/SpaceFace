@@ -3,14 +3,15 @@ import { isHostileToPlayer } from '../systems/scanner.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 
 export const CAMERA_DIRECTOR_MIN_ZOOM = 58;
-// 58-180 is the authored/aesthetic pair band, not a clipping mandate. Exact Focus acquisition is
-// allowed to use the chase camera's existing legal 330 ceiling when conservative bounds need it.
+// 58-180 is the authored pair envelope. A wider exact pair may use the chase camera's existing
+// legal 330 ceiling rather than crop either ship, but must report that authored-envelope overflow.
 export const CAMERA_DIRECTOR_MAX_ZOOM = 180;
 export const CAMERA_DIRECTOR_ENGINE_MAX_ZOOM = 330;
 // Standard combat-pair margin: content stays inside NDC +/-0.80 → 10% context each side.
 export const CAMERA_DIRECTOR_SAFE_NDC = 0.8;
-// Flyby Focus primary pair: 15–20% context margin each side (NDC 0.60–0.70). 0.65 ≈ 17.5%.
-export const CAMERA_DIRECTOR_FOCUS_SAFE_NDC = 0.65;
+// Focus shares the same 10% functional safe frame; extra cinematic tightening must never push an
+// otherwise valid flyby outside the authored 58-180 envelope.
+export const CAMERA_DIRECTOR_FOCUS_SAFE_NDC = CAMERA_DIRECTOR_SAFE_NDC;
 export const CAMERA_DIRECTOR_EASE_S = 0.35;
 // Gate approach is a presentation-only cinematic envelope. Authored gates can be much larger than
 // combat contacts, so this ceiling intentionally exceeds the player's manual 330 wu zoom limit.
@@ -646,26 +647,29 @@ export function createCameraDirector() {
             state, player, target, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
             pairPrediction,
           );
-        const impossible = desiredRequired > CAMERA_DIRECTOR_ENGINE_MAX_ZOOM + 1e-9;
-        const fitLimit = desiredRequired <= CAMERA_DIRECTOR_MAX_ZOOM + 1e-9
-          ? CAMERA_DIRECTOR_MAX_ZOOM
-          : CAMERA_DIRECTOR_ENGINE_MAX_ZOOM;
+        const pairZoomMax = CAMERA_DIRECTOR_ENGINE_MAX_ZOOM;
+        // Overflow describes the best authored pair pose, not the transient pose during its ease.
+        // Publish it immediately so a 245-wu requirement can never masquerade as a successful
+        // 180-wu fit while the visible camera is still moving.
+        const impossible = desiredRequired > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9;
+        const engineOverflow = desiredRequired > pairZoomMax + 1e-9;
 
         let candidateX;
         let candidateZ;
         let candidateZoom;
-        if (transitionElapsed < CAMERA_DIRECTOR_EASE_S) {
+        const easingEntry = transitionElapsed < CAMERA_DIRECTOR_EASE_S;
+        if (easingEntry) {
           transitionElapsed = Math.min(CAMERA_DIRECTOR_EASE_S, transitionElapsed + frameDt);
           const ease = smoothstep01(transitionElapsed / CAMERA_DIRECTOR_EASE_S);
           candidateX = transitionStartX + (desiredX - transitionStartX) * ease;
           candidateZ = transitionStartZ + (desiredZ - transitionStartZ) * ease;
-          const desiredZoom = clamp(desiredRequired, CAMERA_DIRECTOR_MIN_ZOOM, CAMERA_DIRECTOR_ENGINE_MAX_ZOOM);
+          const desiredZoom = clamp(desiredRequired, CAMERA_DIRECTOR_MIN_ZOOM, pairZoomMax);
           candidateZoom = transitionStartZoom + (desiredZoom - transitionStartZoom) * ease;
         } else {
           const followAlpha = 1 - Math.exp(-frameDt / CAMERA_DIRECTOR_EASE_S);
           candidateX = output.focusX + (desiredX - output.focusX) * followAlpha;
           candidateZ = output.focusZ + (desiredZ - output.focusZ) * followAlpha;
-          candidateZoom = output.zoom + (clamp(desiredRequired, CAMERA_DIRECTOR_MIN_ZOOM, CAMERA_DIRECTOR_ENGINE_MAX_ZOOM) - output.zoom) * followAlpha;
+          candidateZoom = output.zoom + (clamp(desiredRequired, CAMERA_DIRECTOR_MIN_ZOOM, pairZoomMax) - output.zoom) * followAlpha;
         }
 
         let required = trainingFocusPair
@@ -677,7 +681,10 @@ export function createCameraDirector() {
             state, player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
             pairPrediction,
           );
-        if (!impossible && required > fitLimit) {
+        // Do not move the focus ahead of the authored 0.35-second composition ease just to make an
+        // intermediate frame look settled. Once acquired, the bounded search may keep a moving,
+        // in-envelope pair fitted without changing its exact target authority.
+        if (!easingEntry && !engineOverflow && required > pairZoomMax) {
           const startX = candidateX;
           const startZ = candidateZ;
           let lo = 0;
@@ -695,7 +702,7 @@ export function createCameraDirector() {
                 state, player, target, probeX, probeZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
                 pairPrediction,
               );
-            if (probeRequired <= fitLimit) hi = mid;
+            if (probeRequired <= pairZoomMax) hi = mid;
             else lo = mid;
           }
           candidateX = startX + (desiredX - startX) * hi;
@@ -714,14 +721,18 @@ export function createCameraDirector() {
         output.mode = requestedMode;
         output.focusX = candidateX;
         output.focusZ = candidateZ;
-        const pairZoomMax = trainingFocusPair
-          ? CAMERA_DIRECTOR_MAX_ZOOM
-          : CAMERA_DIRECTOR_ENGINE_MAX_ZOOM;
-        output.zoom = clamp(Math.max(candidateZoom, required), CAMERA_DIRECTOR_MIN_ZOOM, pairZoomMax);
+        // During acquisition, preserve the real pose we started from (including a wider legal
+        // FOLLOW shot) and ease to the pair envelope. After acquisition, keep an in-envelope moving
+        // pair fitted immediately; impossible pairs remain clamped and explicitly reported.
+        const appliedZoom = easingEntry ? candidateZoom : Math.max(candidateZoom, required);
+        const transitionZoomMax = easingEntry
+          ? Math.max(pairZoomMax, transitionStartZoom)
+          : pairZoomMax;
+        output.zoom = clamp(appliedZoom, CAMERA_DIRECTOR_MIN_ZOOM, transitionZoomMax);
         output.targetId = targetId;
         output.overflow = impossible;
         output.preferredBandExceeded = output.zoom > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9;
-        output.requiredZoom = required;
+        output.requiredZoom = desiredRequired;
         output.nearPlane = transitionElapsed < CAMERA_DIRECTOR_EASE_S
           ? transitionStartNear + (1 - transitionStartNear) * smoothstep01(transitionElapsed / CAMERA_DIRECTOR_EASE_S)
           : 1;

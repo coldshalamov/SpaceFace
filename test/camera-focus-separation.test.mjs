@@ -253,7 +253,7 @@ test('live mining camera never tightens inside tactical view while nearby threat
     'active attacker remains visible under reduced motion while the player works a utility tether');
 });
 
-test('every azimuth admitted by the early Focus envelope fits the camera margin', () => {
+test('every azimuth admitted by early Focus either fits the authored band or reports its overflow', () => {
   for (let step = 0; step < 16; step++) {
     const angle = step * Math.PI * 2 / 16;
     const player = entity(1, 0, 0, 7, { team: 0, vel: { x: 0, z: 0 } });
@@ -275,9 +275,15 @@ test('every azimuth admitted by the early Focus envelope fits the camera margin'
     director.syncFollow(0, 0, TACTICAL_ZOOM);
     const frame = settle(director, 0.6, state, player);
     assert.equal(frame.mode, CameraDirectorMode.FOCUS_PAIR, `azimuth ${step} enters Focus pair`);
-    assert.equal(frame.overflow, false, `azimuth ${step} does not overflow at admitted range ${distance + 5}`);
-    assertInFocusMargin(player, frame, CAMERA_DIRECTOR_FOCUS_SAFE_NDC, `azimuth ${step} player`);
-    assertInFocusMargin(target, frame, CAMERA_DIRECTOR_FOCUS_SAFE_NDC, `azimuth ${step} target`);
+    assert.equal(frame.targetId, target.id, `azimuth ${step} keeps the exact acquired hostile`);
+    assert.ok(frame.zoom <= CAMERA_DIRECTOR_ENGINE_MAX_ZOOM + 1e-9,
+      `azimuth ${step} remains inside the legal chase-camera ceiling`);
+    assert.equal(frame.overflow, frame.requiredZoom > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9,
+      `azimuth ${step} reports authored-envelope overflow truthfully`);
+    assert.equal(frame.preferredBandExceeded, frame.zoom > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9,
+      `azimuth ${step} reports actual use of the wider chase envelope`);
+    assertInFocusMargin(player, frame, CAMERA_DIRECTOR_SAFE_NDC, `azimuth ${step} player`);
+    assertInFocusMargin(target, frame, CAMERA_DIRECTOR_SAFE_NDC, `azimuth ${step} target`);
   }
 });
 
@@ -369,15 +375,9 @@ test('ordinary tether composition stays modest and keeps threat context bias', (
 // RED: combat Flyby Focus must frame player + hostile with context margin
 // ---------------------------------------------------------------------------
 
-test('Flyby Focus enters FOCUS_PAIR and frames player + exact hostile with 15-20% margin', () => {
-  assert.ok(
-    CAMERA_DIRECTOR_FOCUS_SAFE_NDC <= 0.7 + 1e-12,
-    'Focus safe NDC must encode at least ~15% context margin per side (NDC <= 0.70)',
-  );
-  assert.ok(
-    CAMERA_DIRECTOR_FOCUS_SAFE_NDC >= 0.6 - 1e-12,
-    'Focus safe NDC must not exceed ~20% margin floor (NDC >= 0.60)',
-  );
+test('Flyby Focus enters FOCUS_PAIR and frames player + exact hostile with 10% margins', () => {
+  assert.equal(CAMERA_DIRECTOR_FOCUS_SAFE_NDC, CAMERA_DIRECTOR_SAFE_NDC,
+    'Focus uses the authored 10% functional safe frame');
 
   const player = entity(1, 0, 0, 7, { team: 0 });
   const hostile = entity(9, 110, 0, 8, { team: 1 });
@@ -397,7 +397,7 @@ test('Flyby Focus enters FOCUS_PAIR and frames player + exact hostile with 15-20
   assertInFocusMargin(hostile, frame, CAMERA_DIRECTOR_FOCUS_SAFE_NDC, 'hostile');
 });
 
-test('explicit allied onboarding trainer stays inside 10% margins without exceeding authored zoom 180', () => {
+test('explicit allied onboarding trainer eases into the authored 10% / zoom-180 composition', () => {
   const player = entity(1, 0, 0, 7, { team: 0 });
   // Late-window separation from the held-out public flyby. The general hostile Focus envelope may
   // use the engine ceiling, but the authored onboarding composition must remain in the 58-180 band.
@@ -421,14 +421,15 @@ test('explicit allied onboarding trainer stays inside 10% margins without exceed
     targetId: trainer.id,
   });
   const director = createCameraDirector();
-  // Reproduce the held-out seed where FOLLOW arrived from a wide contextual shot. Training Focus
-  // must enforce its authored ceiling on entry instead of easing down through 250-330 zoom.
+  // Reproduce a wide contextual FOLLOW shot. Focus must take the real authored 0.35-second path
+  // into its final envelope instead of snapping 330 -> 180 on the acquisition frame.
   director.syncFollow(0, 0, CAMERA_DIRECTOR_ENGINE_MAX_ZOOM);
   const entered = director.step(DT, state, player, view());
-  assert.ok(entered.zoom <= CAMERA_DIRECTOR_MAX_ZOOM + 1e-9,
-    `training Focus entry zoom ${entered.zoom} must clamp immediately to the authored ceiling`);
-  assertInFocusMargin(player, entered, CAMERA_DIRECTOR_SAFE_NDC, 'entry player');
-  assertInFocusMargin(trainer, entered, CAMERA_DIRECTOR_SAFE_NDC, 'entry trainer');
+  assert.ok(entered.zoom < CAMERA_DIRECTOR_ENGINE_MAX_ZOOM && entered.zoom > CAMERA_DIRECTOR_MAX_ZOOM,
+    `training Focus entry ${entered.zoom} advances one smooth step instead of snapping`);
+  assert.equal(entered.overflow, false, 'the optimal trainer pose fits the authored envelope');
+  assert.equal(entered.preferredBandExceeded, true,
+    'the transient wide pose is reported until the ease reaches the authored envelope');
   const frame = settle(director, 0.5, state, player);
 
   assert.equal(frame.mode, CameraDirectorMode.FOCUS_PAIR,
@@ -438,6 +439,37 @@ test('explicit allied onboarding trainer stays inside 10% margins without exceed
     `training Focus zoom ${frame.zoom} must remain inside the authored 58-180 band`);
   assertInFocusMargin(player, frame, CAMERA_DIRECTOR_SAFE_NDC, 'player');
   assertInFocusMargin(trainer, frame, CAMERA_DIRECTOR_SAFE_NDC, 'trainer');
+});
+
+test('300-unit hostile Focus remains exact, eases smoothly, and truthfully reports authored overflow', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  const hostile = entity(91, 300, 0, 8, { team: 1 });
+  const state = stateFor(player, [hostile], {
+    focusActive: true,
+    focusTargetId: hostile.id,
+    targetId: hostile.id,
+  });
+  const director = createCameraDirector();
+  director.syncFollow(0, 0, CAMERA_DIRECTOR_ENGINE_MAX_ZOOM);
+
+  const entered = director.step(DT, state, player, view());
+  assert.equal(entered.mode, CameraDirectorMode.FOCUS_PAIR);
+  assert.equal(entered.targetId, hostile.id, 'the held-out pair keeps the authoritative hostile');
+  assert.equal(entered.overflow, true, 'overflow is immediate even while the visible pose eases');
+  assert.ok(entered.requiredZoom > CAMERA_DIRECTOR_MAX_ZOOM
+    && entered.requiredZoom < CAMERA_DIRECTOR_ENGINE_MAX_ZOOM,
+  `held-out pair exposes its real ${entered.requiredZoom} zoom requirement`);
+  assert.ok(entered.zoom < CAMERA_DIRECTOR_ENGINE_MAX_ZOOM
+    && entered.zoom > entered.requiredZoom,
+  `first frame ${entered.zoom} is one ease step, not a 330 -> ${entered.requiredZoom} snap`);
+
+  const frame = settle(director, CAMERA_DIRECTOR_EASE_S + DT, state, player);
+  assert.equal(frame.targetId, hostile.id);
+  assert.equal(frame.overflow, true);
+  assert.ok(frame.zoom > CAMERA_DIRECTOR_MAX_ZOOM && frame.zoom < CAMERA_DIRECTOR_ENGINE_MAX_ZOOM,
+    'out-of-band pair uses the legal wider chase envelope instead of cropping either ship');
+  assertInFocusMargin(player, frame, CAMERA_DIRECTOR_SAFE_NDC, 'held-out player');
+  assertInFocusMargin(hostile, frame, CAMERA_DIRECTOR_SAFE_NDC, 'held-out hostile');
 });
 
 test('Flyby Focus threat-aware zoom-out keeps nearby active hostile in frame', () => {
