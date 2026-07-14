@@ -55,11 +55,10 @@ export const ORIGIN_PHYSICAL_IDENTITIES = Object.freeze({
 });
 
 // A clean first-pass Hunter route has no freight spread or ore sale alongside its contract
-// payouts, and it necessarily exposes the starter hull to repair cost.  The three writs plus the
-// 650cr completion award therefore carry a 2,100cr gross envelope: the accepted 30-minute Hunter
-// floor (62.5cr/min = 1,875cr) plus a modest 225cr repair reserve.  This remains below ordinary
-// generated bounty-board payouts while keeping the authored tutorial route economically viable.
-export const HUNTER_ORIGIN_30M_GROSS_FLOOR_CR = 2100;
+// payouts. The three writs plus the 650cr completion award carry a 2,100cr gross envelope.
+// Retries haircut below this amount. Timed travel/combat/repair viability is proven by
+// src/balance/hunterPublicRoute.js (npm run check:m3:hunter-route), not by settlement alone.
+export const HUNTER_ORIGIN_CLEAN_GROSS_ENVELOPE_CR = 2100;
 
 const HUNTER_CONTRACTS = Object.freeze([
   Object.freeze({
@@ -71,7 +70,10 @@ const HUNTER_CONTRACTS = Object.freeze([
     storyTarget: Object.freeze({
       id: 'origin_hunter_yard_mark', name: 'Rook Nine', label: 'ROOK NINE — WARRANT',
       role: 'probationary_writ', archetype: 'wasp_swarmer', factionId: 'faction_reach',
-      zoneId: 'zone_helios_memorial',
+      // The Memorial Array is inside Helios Station's lawful sanctuary. The opening writ belongs
+      // at the already-authored outer-yard wreck instead: far enough from both lawful stations for
+      // a legal interception, while still remaining a short, readable first contract from Helios.
+      zoneId: 'mission_helios_yard_perimeter', anchorId: 'poi_helios_yard', anchorRadius: 180,
     }),
   }),
   Object.freeze({

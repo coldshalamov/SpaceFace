@@ -37,6 +37,7 @@ import {
   STORY_BRANCH_INTRO_TAG,
 } from '../data/missions.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
+import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
@@ -44,6 +45,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { POI_CAUSAL_BOARD_CAP, validatePoiCausalOffer } from '../missions/poiCausalOffers.js';
 import {
   RECORD_KIND,
@@ -325,6 +327,9 @@ export const missions = {
       if (m.deadline_s != null && Number.isFinite(m.deadline_s) && now >= m.deadline_s) { this._expireMission(m, i); continue; }
       // Escort: steer the friendly escortee toward the destination each tick.
       if (m.type === 'escort' && m._escorteeId != null) this._steerEscortee(m, state, dt);
+      if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
+        this._armAcceptedCombatTargets(m, state);
+      }
     }
     // Story credit/net-worth gates are checked opportunistically (cheap, no per-frame DOM).
     this._checkStoryGates();
@@ -2334,6 +2339,24 @@ export const missions = {
     ent.data.missionTag = m.id;
     ent.data.missionId = m.id;
     ent.data.missionPinned = true;
+    // Accepted combat contracts are the authored authority that makes their tagged quarry a
+    // legal hostile. Stamp the existing scanner/engagement context here so fresh spawns and
+    // Continue-adopted targets agree, without widening ambient team mismatch into hostility.
+    // Lawful actors still resolve through scanner's earlier WANTED/securityTargetId gate.
+    if ((m.type === 'bounty_hunt' || m.type === 'patrol_clear') && ent.data.ai) {
+      const ai = ent.data.ai;
+      const playerId = this.state.playerId;
+      const player = this.state.entities && this.state.entities.get(playerId);
+      ai.spawnContext = 'mission';
+      ai.squadId = `mission:${m.id}`;
+      ai.preferredRole = 'attack';
+      ai.motive = 'accepted_combat_contract';
+      ai.engagementTrigger = 'accepted_warrant';
+      ai.zoneId = ent.data.storyTargetZoneId || m.storyTarget && m.storyTarget.zoneId || ai.zoneId;
+      if (player && player.team != null) {
+        ai.hostileTeams = [player.team];
+      }
+    }
     ent.flags = ent.flags || {};
     ent.flags.missionPinned = true;
     if (sectorId) {
@@ -2348,6 +2371,34 @@ export const missions = {
     ent.data.identityKey = key;
     ent.data.durable = true;
     ent.data.recordCreatedTick = this.state.tick | 0;
+  },
+
+  /**
+   * Acceptance makes the quarry legally hostile, but does not make it chase a player out of a
+   * station berth. Once the player crosses beyond lawful protection, bind the accepted mission's
+   * exact live target into the tactical activity/combat seam. This is deliberately mission-owned:
+   * ambient ships and unaccepted lookalikes never receive this lock.
+   */
+  _armAcceptedCombatTargets(m, state = this.state) {
+    if (!m || m.status !== 'active' || (m.type !== 'bounty_hunt' && m.type !== 'patrol_clear')) return 0;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    if (!player || player.alive === false || protectedStationAt(state, player)) return 0;
+    let armed = 0;
+    for (const id of m.targetEntityIds || []) {
+      const ent = state.entities.get(id);
+      const data = ent && ent.data;
+      const ai = data && data.ai;
+      if (!ent || ent.alive === false || !ai || ai.lawful || ai.passive) continue;
+      if (String(missionIdentityOf(ent)) !== String(m.id)) continue;
+      const activity = ai.activity;
+      if (activity && activity.targetId !== player.id) {
+        ai.activity = Object.freeze({ ...activity, targetId: player.id });
+      }
+      const combat = data.combat || (data.combat = {});
+      if (combat.targetId !== player.id) combat.targetId = player.id;
+      armed++;
+    }
+    return armed;
   },
 
   _spawnTargetsFor(m) {
@@ -2429,6 +2480,7 @@ export const missions = {
         if (storyTarget) {
           spec.data.storyTargetId = storyTarget.id || null;
           spec.data.storyTargetRole = storyTarget.role || null;
+          spec.data.storyTargetZoneId = storyTarget.zoneId || null;
           spec.data.registry = storyTarget.registry || null;
           spec.data.name = storyTarget.name || null;
           spec.data.scanLabel = storyTarget.label || storyTarget.name || 'UNKNOWN';
@@ -3208,6 +3260,25 @@ function missionHostileSpawnPos(state, origin, rng) {
  * create a real aftermathWrecks marker. Zone centers are sector-local; live entities are global. */
 function missionStoryTargetSpawnPos(mission, target, rng) {
   const sectorId = mission && mission.destSectorId;
+  const anchorId = target && target.anchorId;
+  const anchors = sectorId && SECTOR_ANCHORS[sectorId];
+  const anchor = anchorId && anchors
+    ? ['stations', 'gates', 'fields', 'pois']
+      .flatMap((key) => Array.isArray(anchors[key]) ? anchors[key] : [])
+      .find((candidate) => candidate && (candidate.id === anchorId || candidate.to === anchorId))
+    : null;
+  const anchorCenter = anchor && (anchor.pos || anchor.center);
+  if (anchorCenter) {
+    const angle = rng() * Math.PI * 2;
+    const authoredRadius = Number(target.anchorRadius);
+    const radius = Math.sqrt(rng()) * (Number.isFinite(authoredRadius)
+      ? Math.max(0, Math.min(320, authoredRadius))
+      : 120);
+    return sectorLocalToGlobalForSector({
+      x: anchorCenter.x + Math.cos(angle) * radius,
+      z: anchorCenter.z + Math.sin(angle) * radius,
+    }, sectorId);
+  }
   const zoneId = target && target.zoneId;
   const zone = zonesForSector(sectorId).find((candidate) => candidate && candidate.id === zoneId);
   if (!zone || !zone.center) return null;

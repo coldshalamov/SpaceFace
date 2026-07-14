@@ -22,6 +22,7 @@ const IDS = new Set(Object.values(CombatDoctrineId));
 const INTERCEPTOR_STRIKE_MIN_TICKS = 24;
 const INTERCEPTOR_STRIKE_MAX_TICKS = 54;
 const INTERCEPTOR_EXTEND_TICKS = 75;
+const INTERCEPTOR_EXTEND_MAX_TICKS = 180;
 const INTERCEPTOR_REFORM_TICKS = 45;
 const BRAWLER_COMMIT_MIN_TICKS = 90;
 const BRAWLER_COMMIT_MAX_TICKS = 120;
@@ -187,7 +188,8 @@ function updateInterceptor(record, tick, self, target, distance) {
     if ((age >= INTERCEPTOR_STRIKE_MIN_TICKS && passed) || age >= INTERCEPTOR_STRIKE_MAX_TICKS) {
       beginEgress(record, 'extend', tick, self, target, 'attack_run_complete');
     }
-  } else if (record.phase === 'extend' && age >= INTERCEPTOR_EXTEND_TICKS && distance >= 520) {
+  } else if (record.phase === 'extend' && age >= INTERCEPTOR_EXTEND_TICKS &&
+    (distance >= 520 || age >= INTERCEPTOR_EXTEND_MAX_TICKS)) {
     beginReform(record, tick);
   } else if (record.phase === 'reform' && age >= INTERCEPTOR_REFORM_TICKS) {
     advanceCycle(record, tick, 'ingress');

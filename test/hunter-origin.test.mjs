@@ -9,6 +9,12 @@ import { dirname, join } from 'node:path';
 
 import { isPlayerWanted, THRESHOLD as WANTED_THRESHOLD } from '../src/systems/heat.js';
 import { CombatDoctrineId } from '../src/ai/combatDoctrine.js';
+import { isHostileToPlayer } from '../src/systems/scanner.js';
+import { missions } from '../src/systems/missions.js';
+import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+import { authorizeAIEngagement, isHostileForAI, protectedStationAt } from '../src/ai/engagementAuthority.js';
+import { ObjectiveKind } from '../src/ai/contracts.js';
+import { applyAIFiringIntent } from '../src/systems/aiFireIntent.js';
 
 import {
   HUNTER_ORIGIN_ID,
@@ -227,6 +233,137 @@ function testClassificationUsesLiveAuthorities() {
   assert.equal(tCls.legalBounty, false);
   assert.equal(tCls.hostile, false);
   ok('classification uses scanner contact words, isHostileToPlayer, heat, combat doctrines');
+}
+
+function testAcceptedWritStampsExactMissionTargetHostile() {
+  const state = makeState(23);
+  const player = installPlayer(state);
+  const writ = {
+    id: 'hunter-yard-writ-test',
+    status: 'active',
+    type: 'bounty_hunt',
+    destSectorId: 'sector_helios_prime',
+  };
+  state.tick = 180;
+  state.world.currentSectorId = 'sector_helios_prime';
+  player.pos = { x: 0, z: 0 };
+  player.vel = { x: 0, z: 0 };
+  const rook = {
+    ...makeEnemySpawnSpec('wasp_swarmer', 1, { x: -1760, z: -1260 }, { startedTick: 0 }),
+    id: 51,
+    alive: true,
+    vel: { x: 0, z: 0 },
+  };
+  rook.data.name = 'Rook Nine';
+  rook.data.scanLabel = 'ROOK NINE — WARRANT';
+  state.entities.set(rook.id, rook);
+  const previousState = missions.state;
+  try {
+    missions.state = state;
+    missions._stampMissionTargetIdentity(rook, writ, 0);
+  } finally {
+    missions.state = previousState;
+  }
+
+  assert.equal(rook.data.missionId, writ.id, 'warrant owns the exact spawned entity');
+  assert.equal(rook.data.ai.spawnContext, 'mission', 'accepted combat target receives authored mission context');
+  assert.equal(rook.data.ai.squadId, `mission:${writ.id}`, 'warranted quarry owns an isolated mission squad');
+  assert.deepEqual(rook.data.ai.hostileTeams, [player.team], 'accepted writ binds the player team explicitly');
+  assert.equal(rook.data.ai.forcePlayerTarget, undefined, 'acceptance does not create a sanctuary-crossing forced lock');
+  assert.equal(rook.data.ai.huntPlayer, undefined, 'acceptance does not launch an immediate station attack');
+  assert.equal(rook.data.combat?.targetId, null, 'the quarry waits for ordinary sensor acquisition');
+  assert.equal(isHostileToPlayer(rook, player.team, state), true,
+    'accepted Rook Nine warrant reads HOSTILE before first fire');
+  assert.equal(isHostileForAI(state, rook, player), true,
+    'tactical perception may classify the player only after the writ is accepted');
+  assert.equal(protectedStationAt(state, player)?.stationId, 'station_helios',
+    'the clean player begins inside the authored Helios sanctuary');
+  writ.targetEntityIds = [rook.id];
+  const previousArmState = missions.state;
+  try {
+    missions.state = state;
+    assert.equal(missions._armAcceptedCombatTargets(writ, state), 0,
+      'acceptance cannot arm the quarry while the player remains in sanctuary');
+  } finally {
+    missions.state = previousArmState;
+  }
+  assert.equal(rook.data.combat?.targetId, null,
+    'sanctuary keeps the accepted quarry free of a premature player lock');
+  assert.deepEqual(authorizeAIEngagement({
+    state,
+    self: rook,
+    target: player,
+    tick: state.tick,
+    objectiveReason: 'combat_doctrine:interceptor_flyby:strike',
+  }), { ok: false, reason: 'station_protection' }, 'accepted writ still cannot fire into sanctuary');
+
+  player.pos = { x: -1500, z: -1100 };
+  assert.equal(protectedStationAt(state, player), null, 'public pursuit reaches the outer-yard combat envelope');
+  try {
+    missions.state = state;
+    assert.equal(missions._armAcceptedCombatTargets(writ, state), 1,
+      'accepted mission target acquires the player after the player leaves sanctuary');
+  } finally {
+    missions.state = previousArmState;
+  }
+  assert.equal(rook.data.combat?.targetId, player.id,
+    'outer-yard acquisition binds the exact accepted quarry to the player');
+  assert.equal(rook.data.ai.activity?.targetId, player.id,
+    'tactical activity carries the same exact player target');
+  assert.deepEqual(authorizeAIEngagement({
+    state,
+    self: rook,
+    target: player,
+    tick: state.tick,
+    objectiveReason: 'combat_doctrine:interceptor_flyby:strike',
+  }), { ok: true, reason: 'authorized' }, 'authored response window and outer-yard strike authorize Rook');
+  applyAIFiringIntent({
+    entityId: rook.id,
+    directive: {
+      tactic: 'swarm_pincer',
+      objective: {
+        kind: ObjectiveKind.FOCUS,
+        targetId: player.id,
+        reason: 'combat_doctrine:interceptor_flyby:strike',
+      },
+    },
+    combatDoctrine: { doctrineId: 'interceptor_flyby', phase: 'strike', fireWindow: true },
+  }, state);
+  assert.equal(rook.data.intent.fire, true, 'accepted Rook warrant reaches live firing intent');
+
+  const unaccepted = {
+    ...makeEnemySpawnSpec('wasp_swarmer', 1, { x: 1650, z: -780 }, { startedTick: 0 }),
+    id: 53,
+    alive: true,
+    vel: { x: 0, z: 0 },
+  };
+  state.entities.set(unaccepted.id, unaccepted);
+  assert.equal(isHostileForAI(state, unaccepted, player), false,
+    'the same archetype cannot acquire the player before a mission accepts and stamps it');
+  applyAIFiringIntent({
+    entityId: unaccepted.id,
+    directive: {
+      tactic: 'swarm_pincer',
+      objective: {
+        kind: ObjectiveKind.FOCUS,
+        targetId: player.id,
+        reason: 'combat_doctrine:interceptor_flyby:strike',
+      },
+    },
+    combatDoctrine: { doctrineId: 'interceptor_flyby', phase: 'strike', fireWindow: true },
+  }, state);
+  assert.equal(unaccepted.data.intent?.fire, false, 'unaccepted Helios Wasp remains a no-spawn-attack counterexample');
+
+  const patrol = makeLawfulPatrol({ id: 52 });
+  try {
+    missions.state = state;
+    missions._stampMissionTargetIdentity(patrol, writ, 1);
+  } finally {
+    missions.state = previousState;
+  }
+  assert.equal(isHostileToPlayer(patrol, player.team, state), false,
+    'mission context never bypasses lawful patrol WANTED gating');
+  ok('accepted warrant stamps exact mission target HOSTILE without widening lawful patrols');
 }
 
 function testIdentifyStepSuccessAndLawfulFailure() {
@@ -482,6 +619,7 @@ guarded(() => {
   testSaveSchemaDeterministic();
   testFirstDockOfferDeclineReoffer();
   testClassificationUsesLiveAuthorities();
+  testAcceptedWritStampsExactMissionTargetHostile();
   testIdentifyStepSuccessAndLawfulFailure();
   testPursuitAndCounterplayHappyPath();
   testCleanKillPathAndIllegalKillFailure();
