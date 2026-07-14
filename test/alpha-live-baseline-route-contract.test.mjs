@@ -119,6 +119,7 @@ for (const required of [
   /keyboard\.down\(['"]KeyW['"]\)/,
   /keyboard\.down\(['"]Shift['"]\)/,
   /keyboard\.press\(['"]KeyN['"]\)/,
+  /#sf-galaxymap/,
   /keyboard\.press\(['"]\/['"]\)/,
   /keyboard\.type\(['"]Helios Station['"]\)/,
   /keyboard\.press\(['"]KeyE['"]\)/,

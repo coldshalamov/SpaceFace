@@ -478,6 +478,7 @@ function fullContractEvidence({ worktree, artifact }) {
     errors: Object.fromEntries(['pageErrors', 'requestFailures', 'glErrors', 'consoleErrors', 'httpErrors', 'warnings'].map((key) => [key, []])),
     contextLoss: {
       available: true, lostEvent: true, restoredEvent: true, meshRebuilt: true,
+      meshRetained: false, meshResourceReady: true,
       pixelProof: true, frameAdvanced: true, recovered: true, before: false, after: false,
     },
     cleanup: {

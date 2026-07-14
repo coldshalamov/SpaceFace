@@ -171,7 +171,11 @@ export async function runBrowserPublicRoute({
 
     phase = 'galaxy-map';
     await page.keyboard.press('KeyN');
-    await waitForVisible(page, '[data-screen="galaxyMap"]', 20_000, 'galaxy map');
+    // The flagship map mounts directly onto the cached ScreenManager element and promotes that
+    // element to the stable #sf-galaxymap surface. Playwright can report the generic cached-screen
+    // wrapper as hidden while the fixed map surface is visibly painting; bind acceptance to the
+    // player-facing surface that owns the canvas, controls, and accessibility tree.
+    await waitForVisible(page, '#sf-galaxymap', 20_000, 'galaxy map');
     await screenshot(page, outputDir, SCREENSHOTS.galaxyMap);
     mark('galaxy-map-visible');
     recordCanonicalUrl('galaxy-map');

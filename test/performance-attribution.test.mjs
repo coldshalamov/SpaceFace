@@ -183,7 +183,8 @@ test('controller command is wired and restoration is failure-atomic', async () =
   assert.match(vfxSource, /trail\.getMesh\?\.\(\)/);
   assert.match(vfxSource, /for \(const object of this\._perfVfxRoots\(\)\)/);
   assert.match(trailSource, /getMesh\(\) \{ return mesh; \}/);
-  assert.match(probeSource, /committed:\s*true/);
-  assert.match(probeSource, /performance-attribution-recovery/);
+  assert.match(probeSource, /getByRole\(['"]button['"],\s*\{\s*name:\s*['"]Undock['"],\s*exact:\s*true\s*\}\)/);
+  assert.doesNotMatch(probeSource, /bus\?\.emit\(['"]dock:undocked['"]/,
+    'performance attribution must use the visible station departure confirmation');
   assert.match(bloomSource, /perf\.renderWorkEnabled/);
 });

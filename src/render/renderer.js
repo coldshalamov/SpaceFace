@@ -973,6 +973,18 @@ export const render = {
     // already spawned by the time this fires (enterSector spawns before its sector:enter resolves),
     // so a blind clearAllMeshes(keepPlayer) used to wipe the station/asteroids and leave the player
     // alone in empty space. reconcileMeshes() removes only meshes for entities that are gone.
+    bus.on('save:restoring', () => {
+      // The save system emits this synchronously before it destroys the current entity graph.
+      // Keep the current sector's decoded authored resources resident across that short gap; the
+      // registry hands this temporary hold back only after rebuilt live boundaries cover every
+      // asset. This preserves full visual quality while preventing one full GLB re-decode (and a
+      // retained material generation) on every quick-load.
+      const sectorId = state.world && state.world.currentSectorId;
+      if (this._assetResidency && sectorId) {
+        this._assetResidency.prepareSectorExit(sectorId, { includePlayer: true });
+      }
+      this._publishAssetResidencyDiagnostics();
+    });
     bus.on('sector:exit', ({ sectorId } = {}) => {
       if (this._assetResidency) this._assetResidency.prepareSectorExit(sectorId);
       this._publishAssetResidencyDiagnostics();

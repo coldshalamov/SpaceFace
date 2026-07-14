@@ -19,6 +19,13 @@ import {
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 
+test('probe rejects a changed worktree after persisting diagnostic telemetry', async () => {
+  const source = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
+  assert.match(source, /const worktreeStable = endFingerprint\.digest === startFingerprint\.digest/);
+  assert.match(source, /status: worktreeStable \? 'pass' : 'fail'[\s\S]*await writeTelemetry\(/);
+  assert.doesNotMatch(source, /assert\.equal\(endFingerprint\.digest, startFingerprint\.digest/);
+});
+
 test('parser locks the wrapper runtime and rejects acceptance bypass flags', () => {
   assert.throws(
     () => parseReleaseSoakArgs(['--runtime=electron'], { runtime: 'browser', root: process.cwd() }),
@@ -276,6 +283,8 @@ function makeValidEvidence({ runtime, taskId, artifact }) {
       lostEvent: true,
       restoredEvent: true,
       meshRebuilt: true,
+      meshRetained: false,
+      meshResourceReady: true,
       pixelProof: true,
       frameAdvanced: true,
       recovered: true,

@@ -166,6 +166,45 @@ test('bootstrap ownership hands off atomically only after every boot asset has a
   assert.equal(kestrel.disposals(), 0);
 });
 
+test('same-sector save restore keeps one decoded generation until rebuilt boundaries cover it', () => {
+  const registry = createAssetResidencyRegistry();
+  const playerAsset = gpuResource('player-generation', 96 * 1024 * 1024);
+  const hubAsset = gpuResource('hub-generation', 32 * 1024 * 1024);
+  register(registry, 'helios:player', [playerAsset]);
+  register(registry, 'helios:hub', [hubAsset]);
+  registry.rotateSector('helios');
+
+  const oldPlayer = {};
+  const oldHub = {};
+  registry.retain('helios:player', oldPlayer, { role: 'player', sectorId: 'helios' });
+  registry.retain('helios:hub', oldHub, { role: 'current-sector', sectorId: 'helios' });
+
+  registry.prepareSectorExit('helios', { includePlayer: true });
+  registry.releaseOwner(oldPlayer, 'save-restore');
+  registry.releaseOwner(oldHub, 'save-restore');
+  registry.rotateSector('helios');
+  assert.equal(playerAsset.disposals(), 0);
+  assert.equal(hubAsset.disposals(), 0);
+  assert.equal(registry.canonicalDiagnostics().residentAssets, 2);
+
+  const newPlayer = {};
+  const newHub = {};
+  registry.retain('helios:player', newPlayer, { role: 'player', sectorId: 'helios' });
+  assert.equal(registry.canonicalDiagnostics().warmSectorId, 'helios',
+    'the warm hold stays until every restored boundary covers its asset');
+  registry.retain('helios:hub', newHub, { role: 'current-sector', sectorId: 'helios' });
+  const restored = registry.canonicalDiagnostics();
+  assert.equal(restored.warmSectorId, null);
+  assert.equal(restored.ownerCount, 2, 'only rebuilt live boundaries remain after atomic handoff');
+  assert.equal(restored.residentBytes, 128 * 1024 * 1024);
+  assert.ok(restored.assets.every((asset) => asset.refCount === 1));
+
+  registry.releaseOwner(newPlayer, 'done');
+  registry.releaseOwner(newHub, 'done');
+  assert.equal(playerAsset.disposals(), 1);
+  assert.equal(hubAsset.disposals(), 1);
+});
+
 test('explicit preview leases plateau across root cycles and release to zero', async () => {
   const assetLoader = await import('../src/render/assetLoader.js');
   assert.equal(typeof assetLoader.createAuthoredAssetLease, 'function');

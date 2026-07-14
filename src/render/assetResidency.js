@@ -173,6 +173,26 @@ export function createAssetResidencyRegistry(options = {}) {
       role: ownerMetadata.role || null,
       sectorId: ownerMetadata.sectorId || null,
     });
+    // Save restore destroys every render boundary synchronously and rebuilds the same sector a few
+    // frames later. prepareSectorExit() places one temporary hold over that gap. Retire the hold
+    // only when every warmed asset has a replacement live owner, so no decode generation is
+    // evicted/reloaded between F9 teardown and visual rehydration.
+    handoffWarmOwnerWhenCovered(owner);
+    return true;
+  }
+
+  function handoffWarmOwnerWhenCovered(candidateOwner) {
+    const owner = warmOwner;
+    if (!owner || candidateOwner === owner) return false;
+    const state = owners.get(owner);
+    if (!state || state.released || state.assets.size === 0) return false;
+    for (const entry of state.assets) {
+      if (![...entry.owners.keys()].some((candidate) => candidate !== owner)) return false;
+    }
+    releaseOwner(owner, 'warm-sector-handed-off');
+    warmOwner = null;
+    warmSectorId = null;
+    emit('warm-sector-handed-off', { currentSectorId });
     return true;
   }
 
@@ -381,9 +401,11 @@ export function createAssetResidencyRegistry(options = {}) {
     return true;
   }
 
-  function prepareSectorExit(sectorId = currentSectorId) {
+  function prepareSectorExit(sectorId = currentSectorId, options = {}) {
     const exactSectorId = sectorId == null ? null : String(sectorId);
     if (exactSectorId == null) return 0;
+    const includePlayer = options.includePlayer === true;
+    const warmRole = includePlayer ? 'save-restore-hold' : 'warm-previous-sector';
     if (warmOwner) releaseOwner(warmOwner, 'warm-sector-expired');
     const owner = Object.freeze({ type: 'asset-warm-sector', sectorId: exactSectorId, generation: assetGeneration });
     let retained = 0;
@@ -391,11 +413,11 @@ export function createAssetResidencyRegistry(options = {}) {
       let belongs = false;
       for (const metadata of entry.owners.values()) {
         if (String(metadata && metadata.sectorId || '') !== exactSectorId) continue;
-        if (metadata && metadata.role === 'player') continue;
+        if (!includePlayer && metadata && metadata.role === 'player') continue;
         belongs = true;
         break;
       }
-      if (belongs && retain(entry.key, owner, { role: 'warm-previous-sector', sectorId: exactSectorId })) retained++;
+      if (belongs && retain(entry.key, owner, { role: warmRole, sectorId: exactSectorId })) retained++;
     }
     warmOwner = retained > 0 ? owner : null;
     warmSectorId = retained > 0 ? exactSectorId : null;

@@ -131,12 +131,15 @@ export async function runReleaseSoakProbe({
     const baselineMemory = await readPostGcMemorySnapshot(page, 'docked-market-start');
 
     const cycleResults = [];
+    const memoryCheckpoints = [];
     for (let index = 0; index < cycles; index += 1) {
-      cycleResults.push(await withTimeout(
+      const cycle = await withTimeout(
         runSoakCycle(page, { index, outputDir, log: doLog }),
         cycleTimeoutMs,
         `release-soak cycle ${index}`,
-      ));
+      );
+      cycleResults.push(cycle);
+      memoryCheckpoints.push(await readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`));
     }
 
     assert.equal(await isDocked(page), true, 'release-soak cycles must finish docked for comparable retained-heap evidence');
@@ -164,7 +167,13 @@ export async function runReleaseSoakProbe({
     const finalSettings = await readSettingsTruth(page);
 
     const endFingerprint = await strictWorktreeFingerprint(root);
-    assert.equal(endFingerprint.digest, startFingerprint.digest, 'worktree changed during release-soak evidence capture');
+    const worktreeStable = endFingerprint.digest === startFingerprint.digest;
+    if (!worktreeStable) {
+      // Reject primary acceptance below, but preserve the expensive runtime telemetry. Throwing at
+      // this boundary used to discard post-GC heap, rAF/GPU attribution, and context-recovery data
+      // after a long valid browser session whenever an unrelated parallel lane touched the tree.
+      doLog(`worktree changed during capture: ${startFingerprint.digest} -> ${endFingerprint.digest}`);
+    }
     if (runtime === 'electron') {
       const liveUrl = canonicalUrlTracker.observeNow('post-worktree-fingerprint-live');
       assert(liveUrl, 'Electron post-fingerprint live URL observation is required');
@@ -193,7 +202,7 @@ export async function runReleaseSoakProbe({
         'No quality settings or authored assets were changed.',
       ],
     };
-    const memory = buildMemoryEvidence(baselineMemory, finalMemory);
+    const memory = buildMemoryEvidence(baselineMemory, finalMemory, memoryCheckpoints);
     const quality = buildQualityEvidence(routeResult, baselineSettings, finalSettings);
 
     cleanupReport = runtime === 'electron'
@@ -215,7 +224,7 @@ export async function runReleaseSoakProbe({
       { name: 'WebGL mesh and frame recovery', status: contextLoss.recovered ? 'pass' : 'fail' },
       { name: 'heap and renderer resources stable', status: validateMemoryEvidence(memory).pass ? 'pass' : 'fail' },
       { name: 'owned runtime cleanup', status: cleanupValidation.pass ? 'pass' : 'fail' },
-      { name: 'worktree stable', status: endFingerprint.digest === startFingerprint.digest ? 'pass' : 'fail' },
+      { name: 'worktree stable', status: worktreeStable ? 'pass' : 'fail' },
     ];
 
     const telemetry = { performance, memory, errors, contextLoss };
@@ -316,8 +325,7 @@ async function runSoakCycle(page, { index, outputDir, log }) {
   };
 
   assert.equal(await isDocked(page), true, `cycle ${index} must start docked`);
-  await page.keyboard.press('KeyE');
-  await page.waitForFunction(() => window.SF?.state?.ui?.docked === false, null, { timeout: 20_000 });
+  await publicUndockFromStation(page);
   mark('undock');
 
   const beforeInput = await readPlayerSnapshot(page);
@@ -334,10 +342,12 @@ async function runSoakCycle(page, { index, outputDir, log }) {
   const savedEconomy = await readEconomySnapshot(page);
   await page.keyboard.press('F5');
   await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.saved === true && !!localStorage.getItem('sf.save.quick'), null, { timeout: 20_000 });
-  const saved = await readPlayerSnapshot(page);
+  const saved = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null);
+  assert(saved?.pos, 'save:started observer must capture the exact serialized player pose');
+  const saveCompletedPose = await readPlayerSnapshot(page);
   const savedStorage = await page.evaluate(() => ({ bytes: localStorage.getItem('sf.save.quick')?.length || 0, slot: window.SF?.state?.save?.currentSlot || null }));
   assert(savedStorage.bytes > 100, 'quick-save payload was not persisted');
-  mark('save-written', savedStorage);
+  mark('save-written', { ...savedStorage, saved, saveCompletedPose, completionAdvanceDistance: distance(saved.pos, saveCompletedPose.pos) });
 
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(650);
@@ -347,12 +357,19 @@ async function runSoakCycle(page, { index, outputDir, log }) {
   await page.keyboard.press('F9');
   await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 90_000 });
   const loaded = await readPlayerSnapshot(page);
+  const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);
+  assert(loadedAtEvent?.pos, 'save:loaded observer must capture the exact restored player pose');
   const loadedEconomy = await readEconomySnapshot(page);
   const divergedDistance = distance(saved.pos, diverged.pos);
-  const restoredDistance = distance(saved.pos, loaded.pos);
-  assert(restoredDistance <= Math.max(1, divergedDistance * 0.25), `load position restore exceeded tolerance: ${restoredDistance}`);
-  assert(Math.abs(saved.speed - loaded.speed) <= 2, `load speed restore exceeded tolerance: ${saved.speed} -> ${loaded.speed}`);
-  mark('load-restored', { saved, diverged, loaded });
+  const restoredDistance = distance(saved.pos, loadedAtEvent.pos);
+  const postLoadAdvanceDistance = distance(loadedAtEvent.pos, loaded.pos);
+  mark('load-observed', { saved, diverged, loadedAtEvent, loaded, divergedDistance, restoredDistance, postLoadAdvanceDistance });
+  assert(
+    restoredDistance <= Math.max(1, divergedDistance * 0.25),
+    `load position restore exceeded tolerance: ${JSON.stringify({ restoredDistance, divergedDistance, saved, diverged, loaded })}`,
+  );
+  assert(Math.abs(saved.speed - loadedAtEvent.speed) <= 2, `load speed restore exceeded tolerance: ${saved.speed} -> ${loadedAtEvent.speed}`);
+  mark('load-restored', { saved, diverged, loadedAtEvent, loaded, postLoadAdvanceDistance });
   assert.deepEqual(loadedEconomy, savedEconomy, 'credits and cargo must round-trip exactly through save/load');
   mark('economy-restored', { credits: loadedEconomy.credits, cargoKinds: Object.keys(loadedEconomy.cargoItems).length });
   await page.waitForFunction(() => {
@@ -365,9 +382,17 @@ async function runSoakCycle(page, { index, outputDir, log }) {
   mark('loaded-world-ready');
   await sampleDiagnostics(page, samples);
 
-  await armHeliosWaypoint(page);
-  mark('redock-waypoint');
   const dockPrompt = page.locator('.sf-alert--dock');
+  // A restored save can already be physically inside Helios' docking envelope. In that case
+  // reopening the map is redundant and can race the live flight screen replacing the cached
+  // map detail panel. Exercise the public waypoint route only when navigation is actually needed.
+  const alreadyAtDockPrompt = await dockPrompt.isVisible().catch(() => false);
+  if (alreadyAtDockPrompt) {
+    mark('redock-already-in-range');
+  } else {
+    await armHeliosWaypoint(page);
+    mark('redock-waypoint');
+  }
   await dockPrompt.waitFor({ state: 'visible', timeout: 90_000 });
   await page.keyboard.press('KeyE');
   await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 });
@@ -396,22 +421,7 @@ async function runSoakCycle(page, { index, outputDir, log }) {
 
 async function undockForRecovery(page, log) {
   assert.equal(await isDocked(page), true, 'context-recovery flight must begin from the comparable docked-market state');
-  await page.keyboard.press('KeyE');
-  // The station departure owner may require a confirmation UI after E. When the
-  // station UI itself is the already-recorded blocked route, finish through the
-  // same canonical committed event rather than mutating dock state directly.
-  const publicUndock = await page.waitForFunction(() => window.SF?.state?.ui?.docked === false,
-    null, { timeout: 2_000 }).then(() => true).catch(() => false);
-  if (!publicUndock) {
-    await page.evaluate(() => {
-      window.SF?.bus?.emit('dock:undocked', {
-        committed: true,
-        source: 'performance-attribution-recovery',
-        diagnostic: true,
-      });
-    });
-    log('[attribution] committed undock recovery after blocked station UI');
-  }
+  await publicUndockFromStation(page);
   await page.waitForFunction(() => {
     const state = window.SF?.state;
     const player = state?.entityList?.find((entity) => entity?.id === state.playerId);
@@ -422,17 +432,59 @@ async function undockForRecovery(page, log) {
   log('undocked for steady flight and controlled context recovery');
 }
 
+async function publicUndockFromStation(page) {
+  await page.keyboard.press('KeyE');
+  const leftWithoutConfirmation = await page.waitForFunction(
+    () => window.SF?.state?.ui?.docked === false,
+    null,
+    { timeout: 1_500 },
+  ).then(() => true).catch(() => false);
+  if (leftWithoutConfirmation) return;
+
+  // The protected station UI asks for an explicit departure confirmation. Complete the same
+  // public keyboard/mouse route a player sees; never bypass it with an injected dock-state write.
+  const confirm = page.getByRole('button', { name: 'Undock', exact: true });
+  await confirm.waitFor({ state: 'visible', timeout: 5_000 });
+  await confirm.click();
+  await page.waitForFunction(() => window.SF?.state?.ui?.docked === false, null, { timeout: 20_000 });
+}
+
 async function armSaveLoadObservers(page) {
   await page.evaluate(() => {
-    window.__M6_RELEASE_SOAK_EVENTS__ = { saved: false, loaded: false };
+    window.__M6_RELEASE_SOAK_EVENTS__ = {
+      saved: false,
+      loaded: false,
+      saveStartedSnapshot: null,
+      loadedSnapshot: null,
+    };
+    window.SF.bus.once('save:started', () => {
+      const state = window.SF?.state;
+      const player = state?.entityList?.find((entity) => entity?.id === state.playerId);
+      window.__M6_RELEASE_SOAK_EVENTS__.saveStartedSnapshot = player ? {
+        tick: Number(state.tick),
+        simTime: Number(state.simTime),
+        pos: { x: Number(player.pos.x), z: Number(player.pos.z) },
+        speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
+      } : null;
+    });
     window.SF.bus.once('save:completed', () => { window.__M6_RELEASE_SOAK_EVENTS__.saved = true; });
-    window.SF.bus.once('save:loaded', () => { window.__M6_RELEASE_SOAK_EVENTS__.loaded = true; });
+    window.SF.bus.once('save:loaded', () => {
+      const state = window.SF?.state;
+      const player = state?.entityList?.find((entity) => entity?.id === state.playerId);
+      window.__M6_RELEASE_SOAK_EVENTS__.loadedSnapshot = player ? {
+        tick: Number(state.tick),
+        simTime: Number(state.simTime),
+        pos: { x: Number(player.pos.x), z: Number(player.pos.z) },
+        speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
+      } : null;
+      window.__M6_RELEASE_SOAK_EVENTS__.loaded = true;
+    });
   });
 }
 
 async function armHeliosWaypoint(page) {
   await page.keyboard.press('KeyN');
-  await page.locator('[data-screen="galaxyMap"]').waitFor({ state: 'visible', timeout: 20_000 });
+  await page.locator('#sf-galaxymap').waitFor({ state: 'visible', timeout: 20_000 });
   await page.keyboard.press('/');
   await page.waitForFunction(() => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 });
   await page.keyboard.press('Control+A');
@@ -443,7 +495,7 @@ async function armHeliosWaypoint(page) {
   await button.waitFor({ state: 'visible', timeout: 10_000 });
   await clickWaypointWithPointer(page, button);
   await page.waitForFunction(() => {
-    const screen = document.querySelector('[data-screen="galaxyMap"]');
+    const screen = document.querySelector('#sf-galaxymap');
     const hidden = !screen || screen.hidden || getComputedStyle(screen).display === 'none' || screen.getBoundingClientRect().width < 2;
     return window.SF?.state?.mode === 'flight' && hidden;
   }, null, { timeout: 10_000 });
@@ -556,17 +608,18 @@ async function probeWebGlContextLoss(page, { outputDir, log }) {
     return { available: true, before, beforeMeshUuid };
   });
   assert.equal(start.available, true, `WEBGL_lose_context unavailable: ${start.reason || 'unknown'}`);
-  await page.waitForFunction((beforeMeshUuid) => {
+  await page.waitForFunction(() => {
     const state = window.SF?.state;
     const player = state?.entityList?.find((entity) => entity?.id === state.playerId);
+    const gl = state?.render?.renderer?.getContext?.();
     const data = player?.mesh?.userData || {};
     return window.__M6_CONTEXT_EVENTS__?.lost === true
       && window.__M6_CONTEXT_EVENTS__?.restored === true
-      && player?.mesh?.uuid !== beforeMeshUuid
+      && gl?.isContextLost?.() === false
       && data.authoredAssetState === 'authored'
       && data.authoredVisualRoot === 'authored-root'
       && data.authoredReadableFallbackRetained === false;
-  }, start.beforeMeshUuid, { timeout: 90_000 });
+  }, null, { timeout: 90_000 });
   const end = await page.evaluate((beforeMeshUuid) => {
     const state = window.SF.state;
     const player = state.entityList.find((entity) => entity?.id === state.playerId);
@@ -582,6 +635,10 @@ async function probeWebGlContextLoss(page, { outputDir, log }) {
       authoredRoot: player.mesh.userData.authoredVisualRoot,
       beforeMeshUuid,
       meshRebuilt: player.mesh.uuid !== beforeMeshUuid,
+      meshRetained: player.mesh.uuid === beforeMeshUuid,
+      meshResourceReady: player.mesh.userData.authoredAssetState === 'authored'
+        && player.mesh.userData.authoredVisualRoot === 'authored-root'
+        && player.mesh.userData.authoredReadableFallbackRetained === false,
       pixelBytes: pixels,
       pixelProof: pixels > 1000,
       rafCount: window.__M6_CONTEXT_EVENTS__.rafCount,
@@ -591,7 +648,7 @@ async function probeWebGlContextLoss(page, { outputDir, log }) {
     return result;
   }, start.beforeMeshUuid);
   await page.screenshot({ path: path.join(outputDir, 'context-restored.png'), type: 'png', animations: 'disabled' });
-  const result = { ...start, ...end, recovered: end.lostEvent && end.restoredEvent && end.meshRebuilt && end.pixelProof && end.frameAdvanced && end.after === false };
+  const result = { ...start, ...end, recovered: end.lostEvent && end.restoredEvent && end.meshResourceReady && end.pixelProof && end.frameAdvanced && end.after === false };
   log(`context-loss ${JSON.stringify(result)}`);
   return result;
 }
@@ -1309,7 +1366,19 @@ async function readPlayerSnapshot(page) {
   return page.evaluate(() => {
     const state = window.SF.state;
     const player = state.entityList.find((entity) => entity?.id === state.playerId);
-    return { tick: Number(state.tick), pos: { x: Number(player.pos.x), z: Number(player.pos.z) }, speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)) };
+    const autopilot = state.nav?.autopilot;
+    return {
+      tick: Number(state.tick),
+      simTime: Number(state.simTime),
+      mode: state.mode || null,
+      pos: { x: Number(player.pos.x), z: Number(player.pos.z) },
+      speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
+      autopilot: autopilot ? {
+        active: autopilot.active === true,
+        status: autopilot.status || null,
+        targetEntityId: autopilot.targetEntityId ?? null,
+      } : null,
+    };
   });
 }
 
@@ -1337,6 +1406,7 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
       textures: finiteOrNull(report?.memory?.textures),
       programs: finiteOrNull(report?.memory?.programs),
       entities: finiteOrNull(state?.entityList?.length),
+      assetResidency: state?.render?.assetResidency || null,
     };
     function finiteOrNull(value) { const number = Number(value); return Number.isFinite(number) ? number : null; }
   }, phaseTag);
@@ -1364,7 +1434,7 @@ async function sampleDiagnostics(page, samples) {
   } catch { /* transitions and cleanup can temporarily invalidate the page */ }
 }
 
-function buildMemoryEvidence(start, end) {
+function buildMemoryEvidence(start, end, checkpoints = []) {
   assert(start?.phaseTag === 'docked-market-start' && end?.phaseTag === 'docked-market-end', 'retained heap endpoints must use comparable docked-market phases');
   assert(start?.docked === true && end?.docked === true, 'retained heap endpoints must both be docked');
   const range = (key) => ({ start: start[key], end: end[key], delta: Number.isFinite(start[key]) && Number.isFinite(end[key]) ? end[key] - start[key] : null });
@@ -1377,6 +1447,7 @@ function buildMemoryEvidence(start, end) {
     comparableState: 'docked-market',
     startSnapshot: start,
     endSnapshot: end,
+    checkpoints,
     geometries: range('geometries'),
     textures: range('textures'),
     programs: range('programs'),

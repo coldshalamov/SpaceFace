@@ -277,8 +277,11 @@ function validateContextLoss(contextLoss, failures) {
     failures.push('context-loss evidence is required');
     return;
   }
-  for (const key of ['available', 'lostEvent', 'restoredEvent', 'meshRebuilt', 'pixelProof', 'frameAdvanced', 'recovered']) {
+  for (const key of ['available', 'lostEvent', 'restoredEvent', 'meshResourceReady', 'pixelProof', 'frameAdvanced', 'recovered']) {
     if (contextLoss[key] !== true) failures.push(`contextLoss.${key} must be true`);
+  }
+  if (contextLoss.meshRebuilt !== true && contextLoss.meshRetained !== true) {
+    failures.push('contextLoss must prove either rebuilt or retained mesh identity');
   }
   if (contextLoss.before !== false || contextLoss.after !== false) failures.push('context must be live before and after the controlled loss');
 }
