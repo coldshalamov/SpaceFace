@@ -183,6 +183,21 @@ export const tetherGameplay = {
 
   _acquireTarget(player, def, state, nearestMode = false) {
     const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
+    // Flyby Focus is an exact-target lease, not a request for generic nearest-object assistance.
+    // Validate the leased entity at the moment F is consumed, then resolve it before every lower-
+    // authority selected-target/cursor/nearest path so dense rocks and traffic cannot steal it.
+    const focus = state.player?.flybyFocus;
+    const focusTarget = focus?.active && focus.targetId != null
+      ? state.entities?.get(focus.targetId)
+      : null;
+    if (isAuthorizedFocusTarget(state, player, focusTarget)) {
+      const focusDx = focusTarget.pos.x - player.pos.x;
+      const focusDz = focusTarget.pos.z - player.pos.z;
+      const focusDistance = Math.hypot(focusDx, focusDz);
+      if (focusDistance <= maxLength + (focusTarget.radius || 0)) {
+        return { entity: focusTarget, targetWorld: surfacePointToward(focusTarget, player.pos) };
+      }
+    }
     const locked = lockedHostileEntity(state);
     if (locked && isAttachable(locked, player.id) && isHostileToPlayer(locked, player.team, state)) {
       const lockDx = locked.pos.x - player.pos.x;
@@ -567,6 +582,14 @@ function aimWorldFor(player, state, range) {
 function isAttachable(entity, playerId) {
   if (!entity || !entity.alive || !entity.pos || entity.id === playerId) return false;
   return ATTACHABLE_TYPES.has(entity.type);
+}
+
+function isAuthorizedFocusTarget(state, player, target) {
+  if (!isAttachable(target, player?.id)) return false;
+  if (target.type !== 'ship' && target.type !== 'drone') return false;
+  const training = target.data?.onboardingTraining === true
+    && target.data?.trainingFocusEligible === true;
+  return training || isHostileToPlayer(target, player?.team, state);
 }
 
 /** Presentation/play scale: Flyby Focus and future assists widen latch without changing physics. */

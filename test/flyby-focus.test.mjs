@@ -197,6 +197,32 @@ function runtimeFor(contacts, options = {}) {
   f.system.destroy();
 }
 
+// Held-out public route: a lower-authority contact writer can temporarily replace player.targetId
+// after Focus arms, and Focus requests nearest-mode latch assistance. The massline must still honor
+// the explicit Focus lease instead of degrading it into a generic nearest-object search.
+{
+  const target = hostile(20, { pos: { x: 118, z: 0 } });
+  const clutter = {
+    id: 21, type: 'asteroid', team: null, alive: true,
+    pos: { x: 24, z: 0 }, vel: { x: 0, z: 0 }, radius: 11, mass: 300, data: {},
+  };
+  const f = runtimeFor([target, clutter], { targetId: clutter.id });
+  f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.targetId, target.id, 'fixture arms exact flyby target');
+
+  // Reproduce the public inter-system timing rather than calling flybyFocus.update() again.
+  f.state.player.targetId = clutter.id;
+  const latch = tetherGameplay._acquireTarget.call(
+    { _targetScratch: [] },
+    f.p,
+    { maxLength: 390 },
+    f.state,
+    true,
+  );
+  assert.equal(latch?.entity?.id, target.id,
+    'active Focus hard-prefers its validated target even when selected target and nearest clutter disagree');
+}
+
 // Invalidation and runtime boundaries clear only the Focus-owned transient request.
 for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:docked', 'player:death']) {
   const target = hostile(2);
