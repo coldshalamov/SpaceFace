@@ -307,7 +307,8 @@ check('firstFlight control-hint wall is deferred until B0 is complete/silent', (
 // ── 4. Voice: one concise tutorial beat ───────────────────────────────────────
 
 check('tutorial voice is a single chokepoint with one B0 beat line', () => {
-  assert.match(ONBOARDING_SRC, /_sayTutorial\(text\)/, 'single tutorial-voice chokepoint');
+  assert.match(ONBOARDING_SRC, /_sayTutorial\(text,\s*\{\s*visual\s*=\s*true\s*\}\s*=\s*\{\}\)/,
+    'single tutorial-voice chokepoint');
   assert.match(
     ONBOARDING_SRC,
     /channel:\s*'tutorial'[\s\S]{0,80}id:\s*'tutorial:beat'/,
@@ -315,11 +316,39 @@ check('tutorial voice is a single chokepoint with one B0 beat line', () => {
   );
   assert.match(
     ONBOARDING_SRC,
-    /_sayTutorial\(beat\.line\)/,
-    'beat entry speaks only the authored line through _sayTutorial',
+    /_sayTutorial\(beat\.line,\s*\{\s*visual:\s*!persistentObjectiveOwnsLine\s*\}\)/,
+    'beat entry emits only the authored line through _sayTutorial and conditionally yields its visual',
   );
   // No parallel B0 splash/modal voice stack.
   assert.doesNotMatch(ONBOARDING_SRC, /sf-ob-intro|_showIntro/, 'no intro modal competing with B0 voice');
+});
+
+check('matching persistent objective suppresses only the duplicate visual tutorial line', () => {
+  const advance = extractMethodBody(ONBOARDING_SRC, '_tryAdvanceBeat');
+  assert.match(
+    advance,
+    /persistentObjectiveOwnsLine\s*=\s*!!\(waypoint\s*&&\s*waypoint\.onboarding/,
+    'beat entry must detect an onboarding waypoint that owns the exact command',
+  );
+  assert.match(
+    advance,
+    /_sayTutorial\(beat\.line,\s*\{\s*visual:\s*!persistentObjectiveOwnsLine\s*\}\)/,
+    'only the transient visual is suppressed when the persistent objective owns the line',
+  );
+
+  const emitted = [];
+  const surfaced = [];
+  onboarding.state = { simTime: 3, onboarding: {} };
+  onboarding.bus = { emit: (type, payload) => emitted.push({ type, payload }) };
+  onboarding.helpers = { voice: { say: (payload) => { surfaced.push(payload); return true; } } };
+  onboarding._sayTutorial('Thrust until speed passes forty.', { visual: false });
+
+  assert.equal(emitted.filter((event) => event.type === 'tutorial:say').length, 1,
+    'tutorial event remains available to audio, audit, and cadence consumers');
+  assert.equal(surfaced.length, 0, 'duplicate command does not enter the transient visual floor');
+  assert.equal(onboarding.state.onboarding.tutorialLog.length, 1, 'tutorial audit log remains intact');
+  assert.match(HUD_SRC, /missionTracker\.setAttribute\('aria-label',\s*'Active objective'\)/,
+    'the persistent owner remains named for assistive technology');
 });
 
 // ── 5. Mission Log / story context non-primary / on-demand ────────────────────

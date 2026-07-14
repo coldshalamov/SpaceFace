@@ -69,7 +69,8 @@ assert.doesNotMatch(src, /_closeIntro/, 'the intro teardown (_closeIntro) must b
 assert.doesNotMatch(src, /beginBtn/, 'the Begin button (intro modal) must be removed');
 assert.doesNotMatch(src, /Pulse Laser S and a mining beam/, 'the intro legend copy must be removed (taught one verb at a time now)');
 assert.match(src, /const BEATS = \[/, 'the 10-beat pacing table must replace the old STEPS chain');
-assert.match(src, /_sayTutorial\(text\)/, 'a single tutorial-voice chokepoint must exist (one-voice audit)');
+assert.match(src, /_sayTutorial\(text,\s*\{\s*visual\s*=\s*true\s*\}\s*=\s*\{\}\)/,
+  'a single tutorial-voice chokepoint must exist (one-voice audit)');
 assert.match(src, /_tryAdvanceBeat/, 'the silence-gated beat-advance engine must exist');
 assert.doesNotMatch(src, /const STEPS = \[/, 'the old 5-step STEPS chain must be removed (replaced by BEATS)');
 

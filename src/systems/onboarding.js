@@ -456,7 +456,7 @@ export const onboarding = {
   // ── The single tutorial-voice chokepoint (spec2/03 §5.2 one-voice audit) ──────────────────
   // EVERY first-hour tutorial line passes through here so the check can audit text overlap at one
   // place. Emits on the 'tutorial' tier (toast kind 'info'). Updates the silence-gate clock.
-  _sayTutorial(text) {
+  _sayTutorial(text, { visual = true } = {}) {
     if (!text) return;
     this._lastTextAtS = this.state.simTime || 0;
     // Record for the one-voice audit: { atS, text } appended to a session log on state.onboarding.
@@ -466,6 +466,10 @@ export const onboarding = {
       ob.tutorialLog.push({ atS: this._lastTextAtS, text });
     }
     this.bus.emit('tutorial:say', { text, atS: this._lastTextAtS });
+    // A matching onboarding waypoint already exposes this command through the persistent,
+    // accessible HUD objective. Keep the canonical tutorial event (audio/audit/story cadence) but
+    // do not repeat the exact imperative on the transient top-center visual floor.
+    if (!visual) return;
     // Route the tutorial voice through the one-voice arbiter (channel 'tutorial'): it preempts
     // objective nudges + chatter but yields to danger and story. A stable id means a beat's followup
     // lines replace the beat line in place (one tutorial voice at a time). Fall back to a toast only
@@ -496,8 +500,11 @@ export const onboarding = {
     ob.currentBeat = nextIndex;
     const beat = BEATS[nextIndex];
     ob.beatAction = beat.line;
-    this._sayTutorial(beat.line);
     this._enterBeat(beat);
+    const waypoint = this.state.nav && this.state.nav.waypoint;
+    const persistentObjectiveOwnsLine = !!(waypoint && waypoint.onboarding
+      && String(waypoint.reason || '').trim() === String(beat.line || '').trim());
+    this._sayTutorial(beat.line, { visual: !persistentObjectiveOwnsLine });
     this._refreshBeatPanel();
   },
 
