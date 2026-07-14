@@ -130,11 +130,14 @@ export const presentationAdapters = {
     this._applied = 0;
     this._lastApplied = null;
     this._lastRoleBriefingKey = null;
+    this._pendingRoleBriefing = null;
     this._roleBriefings = 0;
     this._subscriptions = [
       this.bus.on('presentation:cue', (cue) => this._applyCue(cue || {})),
       // M5 active-hull role briefing: ships publishes ship:roleContext; adapters own the toast.
       this.bus.on('ship:roleContext', (context) => this._onShipRoleContext(context || {})),
+      this.bus.on('mode:changed', ({ mode } = {}) => this._onModeChanged(mode)),
+      this.bus.on('game:started', () => this._onGameStarted()),
       this.bus.on('save:loaded', () => this._resetRuntime()),
     ];
   },
@@ -145,6 +148,7 @@ export const presentationAdapters = {
       try { unsub(); } catch (_err) {}
     }
     this._lastRoleBriefingKey = null;
+    this._pendingRoleBriefing = null;
   },
 
   inspect() {
@@ -155,6 +159,7 @@ export const presentationAdapters = {
       lastApplied: this._lastApplied,
       roleBriefings: this._roleBriefings || 0,
       lastRoleBriefingKey: this._lastRoleBriefingKey || null,
+      pendingRoleBriefingSource: this._pendingRoleBriefing && this._pendingRoleBriefing.source || null,
     };
   },
 
@@ -184,6 +189,46 @@ export const presentationAdapters = {
     if (source !== 'new_game' && source !== 'save_loaded' && source !== 'active_ship_changed') {
       return null;
     }
+    const name = String(context.name || '').trim();
+    const roleLabel = String(context.roleLabel || '').trim();
+    const signatureVerb = String(context.signatureVerb || '').trim();
+    if (!name || !roleLabel || !signatureVerb) return null;
+
+    // New Game and Continue publish their role packet while the canonical authored-visual gate is
+    // still in loading mode. Starting the five-second toast there makes it expire behind the veil.
+    // Hold only that transition-time packet. Continue can surface at mode:changed(flight); New Game
+    // waits until game:started has finished so the UI's run-boundary reset cannot erase the toast.
+    // A later packet replaces an abandoned transition.
+    if (this.state && this.state.mode === 'loading') {
+      this._pendingRoleBriefing = { ...context };
+      return null;
+    }
+
+    return this._surfaceRoleBriefing(context);
+  },
+
+  _onModeChanged(mode) {
+    if (mode !== 'flight' || !this._pendingRoleBriefing) return null;
+    if (this._pendingRoleBriefing.source === 'new_game') return null;
+    const pending = this._pendingRoleBriefing;
+    this._pendingRoleBriefing = null;
+    return this._surfaceRoleBriefing(pending);
+  },
+
+  _onGameStarted() {
+    if (!this._pendingRoleBriefing || this._pendingRoleBriefing.source !== 'new_game') return null;
+    const pending = this._pendingRoleBriefing;
+    this._pendingRoleBriefing = null;
+    // presentationAdapters is initialized before UI listeners. Defer until every synchronous
+    // game:started consumer has reset its surface, then publish the one player-visible briefing.
+    queueMicrotask(() => {
+      if (this.bus && this.state && this.state.mode === 'flight') this._surfaceRoleBriefing(pending);
+    });
+    return pending;
+  },
+
+  _surfaceRoleBriefing(context) {
+    const source = String(context.source || '').trim();
     const name = String(context.name || '').trim();
     const roleLabel = String(context.roleLabel || '').trim();
     const signatureVerb = String(context.signatureVerb || '').trim();

@@ -292,4 +292,56 @@ function boot() {
   assert.equal(toasts.length, 0, 'hull-switch packet without adapters stays non-visual');
 }
 
-console.log('M5 role continuity OK — 13 roles, New Game/Continue/switch briefings once each, silence guards, legacy fallback, presentation-owned toast.');
+// Public-route timing: New Game and Continue publish during the authored-visual loading gate.
+// The role briefing must wait for the shared playable flight boundary so its TTL is useful.
+{
+  const ctx = boot();
+  const { state, bus, roleContexts, toasts, ships: shipsSys } = ctx;
+  state.mode = 'loading';
+  shipsSys.newGame();
+  assert.equal(roleContexts.length, 1, 'loading New Game still publishes exactly one role context');
+  assert.equal(briefingToasts(toasts).length, 0, 'loading gate defers the role briefing toast');
+  assert.equal(
+    ctx.presentationAdapters.inspect().pendingRoleBriefingSource,
+    'new_game',
+    'presentation adapter retains the deferred New Game briefing',
+  );
+
+  state.mode = 'flight';
+  bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
+  assert.equal(briefingToasts(toasts).length, 0, 'New Game waits through the flight-mode UI reset');
+  bus.emit('game:started', {});
+  await Promise.resolve();
+  assert.equal(briefingToasts(toasts).length, 1, 'post-reset New Game boundary surfaces one deferred briefing');
+  assert.equal(
+    ctx.presentationAdapters.inspect().pendingRoleBriefingSource,
+    null,
+    'deferred New Game briefing is consumed after the UI reset',
+  );
+
+  bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
+  bus.emit('game:started', {});
+  await Promise.resolve();
+  assert.equal(briefingToasts(toasts).length, 1, 'repeated lifecycle events do not duplicate New Game briefing');
+}
+
+{
+  const ctx = boot();
+  const { state, bus, toasts } = ctx;
+  state.mode = 'loading';
+  bus.emit('ship:roleContext', {
+    announce: true,
+    source: 'save_loaded',
+    defId: 'ship_kestrel',
+    role: 'starter',
+    name: 'Hitch',
+    roleLabel: 'Starter Scout',
+    signatureVerb: 'Mine, tow, or fight without changing hulls.',
+  });
+  assert.equal(briefingToasts(toasts).length, 0, 'loading Continue defers its restored-hull briefing');
+  state.mode = 'flight';
+  bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
+  assert.equal(briefingToasts(toasts).length, 1, 'Continue surfaces one restored-hull briefing at flight');
+}
+
+console.log('M5 role continuity OK — 13 roles, New Game/Continue/switch briefings once each, loading-boundary delivery, silence guards, legacy fallback, presentation-owned toast.');
