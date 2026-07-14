@@ -495,7 +495,13 @@ export const ships = {
     bus.on('tech:researched', () => this.recomputeActiveShip());
     bus.on('cargo:changed', () => { this._cargoMassRefreshPending = true; });
     bus.on('cargo:massSettled', () => this.flushCargoMassRefresh());
-    bus.on('save:loaded', () => this.flushCargoMassRefresh());
+    bus.on('save:loaded', () => {
+      this.flushCargoMassRefresh();
+      // Role identity is derived from the restored active hull. Publish it for player-facing
+      // continuity consumers without serializing a second copy of lattice truth or replaying the
+      // hull-switch toast on every Continue.
+      this.publishActiveRoleContext({ source: 'save_loaded', announce: false });
+    });
 
     // UI intent events (§4.4): the UI emits these; ships owns the mutation + credit emits.
     bus.on('ui:buyShip', (p) => this.buyShip(p || {}));
@@ -520,6 +526,51 @@ export const ships = {
     const p = this.state.player;
     const i = (index == null) ? p.activeShipIndex : index;
     return p.ownedShips[i] || null;
+  },
+
+  /**
+   * Canonical player-facing role packet for the active owned hull. The role lattice remains the
+   * only identity source; this packet is transient event/UI context and is never serialized.
+   */
+  activeRoleContext({ source = 'query', previousDefId = null } = {}) {
+    const p = this.state && this.state.player;
+    if (!p || !Array.isArray(p.ownedShips)) return null;
+    const activeShipIndex = Number.isInteger(p.activeShipIndex) ? p.activeShipIndex : 0;
+    const owned = p.ownedShips[activeShipIndex] || null;
+    const identity = owned ? describeHullRole(owned.defId) : null;
+    if (!owned || !identity) return null;
+    const path = identity.rolePath || null;
+    return Object.freeze({
+      schema: 'spaceface.shipRoleContext.v1',
+      source,
+      tick: Number(this.state.tick) || 0,
+      activeShipIndex,
+      previousDefId: previousDefId || null,
+      defId: owned.defId,
+      name: identity.name,
+      role: identity.role,
+      roleLabel: identity.roleLabel,
+      flightClass: identity.flightClass,
+      identityLine: identity.identityLine,
+      signatureVerb: path ? path.signatureVerb : identity.shortWhy,
+      counterplay: path ? path.counterplay : (identity.weaknesses || []).join(', '),
+      primaryCareers: Object.freeze((identity.primaryCareers || []).slice()),
+    });
+  },
+
+  /** Publish active role continuity to systems/UI, with an optional concise visible briefing. */
+  publishActiveRoleContext({ source = 'query', previousDefId = null, announce = false } = {}) {
+    const context = this.activeRoleContext({ source, previousDefId });
+    if (!context) return null;
+    this.bus.emit('ship:roleContext', context);
+    if (announce) {
+      this.bus.emit('toast', {
+        text: context.name + ' active · ' + context.roleLabel + ' — ' + context.signatureVerb,
+        kind: 'info',
+        ttl: 5,
+      });
+    }
+    return context;
   },
 
   /** Recompute derived stats for an entity from its def + fittings, copy onto the entity, and
@@ -759,6 +810,8 @@ export const ships = {
     const p = this.state.player;
     const owned = p.ownedShips[index];
     if (!owned) return false;
+    const isTransition = index !== p.activeShipIndex;
+    const previousOwned = p.ownedShips[p.activeShipIndex] || null;
     const target = getDerivedStats(owned.defId, owned.fittings || [], p);
     const cargo = p.cargo || {};
     if ((cargo.usedVolume || 0) > target.cargoCap) {
@@ -771,6 +824,13 @@ export const ships = {
     if (e) {
       e.data.defId = owned.defId;
       this.recomputeEntity(e.id, owned.fittings);
+    }
+    if (isTransition) {
+      this.publishActiveRoleContext({
+        source: 'active_ship_changed',
+        previousDefId: previousOwned && previousOwned.defId,
+        announce: true,
+      });
     }
     return true;
   },
