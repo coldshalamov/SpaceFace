@@ -1,7 +1,7 @@
-// src/ui/station/dock.js — the one Command Dock: destinations + dock actions in a single bar.
-// Destinations navigate (active one SEATS/lights, it does not stay floating). Actions fire
-// instantly and carry a live cost label. Hover gives a refined single-tile lift, never the
-// over-eager neighbour bounce.
+// src/ui/station/dock.js — the station's kinetic command instrument.
+// Destinations and immediate service verbs share one physical rail, but they do not share
+// semantics. Pointer proximity bends the whole field; selection returns to equilibrium and
+// latches into the rail. This is deliberately not a row of hover-scaling tabs.
 import { icon } from './icons.js';
 
 function tileHtml(item, kind) {
@@ -34,6 +34,7 @@ export function createCommandDock(cfg) {
   el.className = 'sx-dock';
   el.setAttribute('role', 'toolbar');
   el.setAttribute('aria-label', 'Station command dock');
+  el.setAttribute('aria-orientation', 'horizontal');
   el.innerHTML =
     `<div class="sx-dock__group sx-dock__group--nav" role="tablist">` +
       destinations.map((d) => tileHtml(d, 'nav')).join('') +
@@ -76,6 +77,79 @@ export function createCommandDock(cfg) {
     onNavigate && onNavigate(tabs[next].getAttribute('data-nav'));
   });
 
+  // A distance field gives the dock its physical legibility: the item under the pointer responds
+  // most, its neighbours yield less, and the rest remain seated. Work is event-bound, not an idle
+  // animation loop. Keyboard focus gets an equivalent (and calmer) neighbour response.
+  const motionQuery = typeof matchMedia === 'function'
+    ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+  const tiles = [...el.querySelectorAll('.sx-tile')];
+  let fieldFrame = 0;
+  let pendingPointerX = null;
+
+  function resetField() {
+    for (const tile of tiles) {
+      tile.style.setProperty('--dock-scale', '1');
+      tile.style.setProperty('--dock-lift', '0px');
+      tile.style.setProperty('--dock-near', '0');
+    }
+  }
+
+  function applyPointerField(clientX) {
+    fieldFrame = 0;
+    if (motionQuery && motionQuery.matches) { resetField(); return; }
+    const radius = Math.max(112, Math.min(176, el.getBoundingClientRect().width * 0.13));
+    for (const tile of tiles) {
+      const rect = tile.getBoundingClientRect();
+      const distance = Math.abs(clientX - (rect.left + rect.width / 2));
+      const proximity = Math.max(0, 1 - distance / radius);
+      // Cosine easing keeps the field smooth at the radius edge. Service verbs move less than
+      // destinations so cost labels remain easy to read while the rail is alive.
+      const eased = (1 - Math.cos(proximity * Math.PI)) / 2;
+      const peak = tile.hasAttribute('data-act') ? 0.27 : 0.40;
+      tile.style.setProperty('--dock-scale', (1 + peak * eased).toFixed(4));
+      tile.style.setProperty('--dock-lift', `${(-17 * eased).toFixed(2)}px`);
+      tile.style.setProperty('--dock-near', eased.toFixed(4));
+    }
+  }
+
+  function queuePointerField(clientX) {
+    pendingPointerX = clientX;
+    if (fieldFrame) return;
+    fieldFrame = requestAnimationFrame(() => applyPointerField(pendingPointerX));
+  }
+
+  function applyKeyboardField(target) {
+    resetField();
+    if (!target || (motionQuery && motionQuery.matches)) return;
+    const index = tiles.indexOf(target);
+    if (index < 0) return;
+    tiles.forEach((tile, i) => {
+      const steps = Math.abs(i - index);
+      const proximity = steps === 0 ? 1 : (steps === 1 ? 0.28 : 0);
+      const peak = tile.hasAttribute('data-act') ? 0.20 : 0.30;
+      tile.style.setProperty('--dock-scale', (1 + peak * proximity).toFixed(4));
+      tile.style.setProperty('--dock-lift', `${(-13 * proximity).toFixed(2)}px`);
+      tile.style.setProperty('--dock-near', proximity.toFixed(4));
+    });
+  }
+
+  const onPointerMove = (ev) => queuePointerField(ev.clientX);
+  const onPointerLeave = () => {
+    pendingPointerX = null;
+    if (fieldFrame) cancelAnimationFrame(fieldFrame);
+    fieldFrame = 0;
+    resetField();
+  };
+  const onFocusIn = (ev) => applyKeyboardField(ev.target.closest('.sx-tile'));
+  const onFocusOut = (ev) => {
+    if (!el.contains(ev.relatedTarget)) resetField();
+  };
+  el.addEventListener('pointermove', onPointerMove, { passive: true });
+  el.addEventListener('pointerleave', onPointerLeave);
+  el.addEventListener('focusin', onFocusIn);
+  el.addEventListener('focusout', onFocusOut);
+  resetField();
+
   /** cost = { text, disabled?, tone? } tone ∈ 'warn'|'gain'|'' */
   function setActionCost(id, cost) {
     const tile = el.querySelector(`[data-act="${id}"]`);
@@ -91,5 +165,13 @@ export function createCommandDock(cfg) {
     if (cost && cost.tone === 'loss') label.classList.add('is-loss');
   }
 
-  return { el, setActive, setActionCost };
+  function dispose() {
+    if (fieldFrame) cancelAnimationFrame(fieldFrame);
+    el.removeEventListener('pointermove', onPointerMove);
+    el.removeEventListener('pointerleave', onPointerLeave);
+    el.removeEventListener('focusin', onFocusIn);
+    el.removeEventListener('focusout', onFocusOut);
+  }
+
+  return { el, setActive, setActionCost, dispose };
 }

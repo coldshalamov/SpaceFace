@@ -268,8 +268,13 @@ async function runRepositoryWiringAssertions() {
   );
   assert.match(
     taste,
-    /ARCHITECTURE\.md.*>.*GDD_2_0\.md.*>.*00_MASTER_TASTE\.md.*>.*specific task spec.*>.*supporting docs/is,
-    'taste body states architecture > GDD > taste > task spec > supporting docs',
+    /ARCHITECTURE\.md.*>.*GDD_2_0\.md.*>.*00_MASTER_TASTE\.md.*historical taste reference/is,
+    'taste banner keeps architecture and GDD authoritative while marking taste historical',
+  );
+  assert.match(
+    taste,
+    /never outranks the\s+current program, an activated task spec, or stronger player-facing evidence/is,
+    'taste body defers to the current program, activated task specs, and player-facing evidence',
   );
 
   const rootAgents = await readFile(path.join(PROJECT_ROOT, 'AGENTS.md'), 'utf8');

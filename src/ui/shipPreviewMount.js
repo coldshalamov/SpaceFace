@@ -281,7 +281,7 @@ function meshCacheKey(defId, loadout) {
  * @param {object} opts
  * @param {object} [opts.envMap]  - the main scene's PMREM envMap (for chrome); optional
  * @param {string} [opts.dockId]  - place_dock_interior* part id for station hangar backdrop; optional
- * @returns {{ show(defId, opts):void, setRotating(boolean):void, setDockId(string):void, setActive(boolean):void, warmAssets():Promise<boolean>, resize():void, frame():void, dispose():void }}
+ * @returns {{ show(defId, opts):void, setRotating(boolean):void, setYaw(number):void, rotateBy(number):void, setZoom(number):void, zoomBy(number):void, getView():object, setDockId(string):void, setActive(boolean):void, warmAssets():Promise<boolean>, resize():void, frame():void, dispose():void }}
  */
 export function createShipPreviewMount(canvas, opts) {
   opts = opts || {};
@@ -347,6 +347,7 @@ export function createShipPreviewMount(canvas, opts) {
   let rotating = true;
   let active = true;
   let yaw = 0;
+  let zoom = 1;
   let rafId = 0;
   let disposed = false;
   let renderedDefId = null;
@@ -461,6 +462,17 @@ export function createShipPreviewMount(canvas, opts) {
     cam.updateProjectionMatrix();
   }
 
+  // The settled engineering view is event-rendered. A ResizeObserver prevents a stale 1x-sized
+  // backing store when the workspace morphs without paying for a permanent animation loop.
+  const resizeObserver = typeof ResizeObserver !== 'undefined'
+    ? new ResizeObserver(() => {
+      if (disposed || !active) return;
+      resize();
+      renderer.render(scene, cam);
+    })
+    : null;
+  if (resizeObserver) resizeObserver.observe(canvas);
+
   async function loadDockBackdrop(id) {
     if (!id || disposed) return;
     const gen = ++dockLoadGen;
@@ -566,6 +578,9 @@ export function createShipPreviewMount(canvas, opts) {
    */
   function show(defId, o) {
     o = o || {};
+    const preserveView = o.preserveView === true && !!current;
+    const priorYaw = yaw;
+    const priorZoom = zoom;
     if (current) {
       scene.remove(current);
       current = null;
@@ -597,7 +612,9 @@ export function createShipPreviewMount(canvas, opts) {
       return;
     }
     current = mesh;
-    yaw = Math.PI * 0.22; // slight turn so the silhouette reads immediately
+    yaw = preserveView ? priorYaw : Math.PI * 0.22; // slight turn so the silhouette reads immediately
+    zoom = preserveView ? priorZoom : 1;
+    cam.zoom = zoom;
     mesh.rotation.y = yaw;
     scene.add(mesh);
     // frame around the bounding sphere so big capitals fit the same as scouts
@@ -634,6 +651,28 @@ export function createShipPreviewMount(canvas, opts) {
       rafId = 0;
     }
   }
+  function setYaw(v) {
+    if (!Number.isFinite(Number(v))) return;
+    yaw = Number(v);
+    if (current) current.rotation.y = yaw;
+    renderNow();
+  }
+  function rotateBy(delta) {
+    if (!Number.isFinite(Number(delta))) return;
+    setYaw(yaw + Number(delta));
+  }
+  function setZoom(v) {
+    if (!Number.isFinite(Number(v))) return;
+    zoom = Math.max(0.72, Math.min(2.1, Number(v)));
+    cam.zoom = zoom;
+    cam.updateProjectionMatrix();
+    renderNow();
+  }
+  function zoomBy(delta) {
+    if (!Number.isFinite(Number(delta))) return;
+    setZoom(zoom + Number(delta));
+  }
+  function getView() { return { yaw, zoom }; }
   function setDockId(id) {
     const next = typeof id === 'string' && id.length > 0 ? id : null;
     if (next === dockId) return;
@@ -662,6 +701,7 @@ export function createShipPreviewMount(canvas, opts) {
 
   function dispose() {
     disposed = true;
+    if (resizeObserver) resizeObserver.disconnect();
     if (rafId) cancelAnimationFrame(rafId);
     rafId = 0;
     dockLoadGen++;
@@ -674,5 +714,8 @@ export function createShipPreviewMount(canvas, opts) {
     renderer.dispose();
   }
 
-  return { show, setRotating, setDockId, setActive, warmAssets, resize, frame, dispose, projectLocalPoint, getDefId };
+  return {
+    show, setRotating, setYaw, rotateBy, setZoom, zoomBy, getView, setDockId, setActive,
+    warmAssets, resize, frame, dispose, projectLocalPoint, getDefId,
+  };
 }

@@ -58,6 +58,14 @@ const ECON_TICK_S = 5;             // economy ticks every 5s of sim time
 const EVENT_INTERVAL_S = 90;       // average seconds between spontaneous economic events (game-wide)
 const EQ_MULT_CLAMP = [0.25, 4.0]; // clamp net event/propagation eq multiplier per (station,cmdty)
 const MAX_EVENTS_PER_STATION = 3;
+// The chart samples every 15 seconds and keeps roughly sixteen minutes. A new campaign is
+// pre-seeded from the live formula, so the first dock reads like a market with a past rather than
+// a blank instrument waiting for the player to stand around.
+const HISTORY_SAMPLE_S = 15;
+const HISTORY_POINT_LIMIT = 64;
+const HISTORY_SPAN_S = HISTORY_SAMPLE_S * (HISTORY_POINT_LIMIT - 1);
+const HISTORY_REGIME_AGE_MIN_S = HISTORY_SPAN_S + HISTORY_SAMPLE_S * 4;
+const HISTORY_REGIME_AGE_MAX_S = HISTORY_SPAN_S + HISTORY_SAMPLE_S * 18;
 const BASE_SCAN = 0.25;            // p_scan = clamp(BASE_SCAN*(1+security) - cloak, 0.02, 0.95)
 const SCAN_LO = 0.02, SCAN_HI = 0.95;
 const FINE_MULT = { legal: 0, restricted: 0.8, illegal: 1.2, contraband: 1.5 };
@@ -227,6 +235,25 @@ function spreadOf(entry, frontierPenalty) {
   return clamp(SPREAD_BASE * ev * (1 + (frontierPenalty || 0)), SPREAD_LO, SPREAD_HI);
 }
 
+function pricePointAt(entry, def, cycle, t) {
+  const stockMid = economyMidPrice(def, entry.stock, entry.baseEq);
+  const mid = Math.max(1, round(cycle
+    ? applyCycleToMid(def.basePrice, stockMid, cycle, t)
+    : stockMid));
+  // The chart only needs its mid-price trace; current bid/ask remains on the listing. Keeping
+  // snapshots this small preserves a long lived history without bloating save files.
+  return { t: Number(t) || 0, mid };
+}
+
+function sanitizeHistory(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(-HISTORY_POINT_LIMIT).map((p) => {
+    const mid = Math.max(1, round(Number(p && (p.mid != null ? p.mid : p)) || 0));
+    const t = Number(p && p.t);
+    return Number.isFinite(t) && mid > 0 ? { t, mid } : null;
+  }).filter(Boolean);
+}
+
 function ensurePlayerMarketMemory(player) {
   if (!player) return {};
   if (!player.marketMemory || typeof player.marketMemory !== 'object' || Array.isArray(player.marketMemory)) {
@@ -390,6 +417,7 @@ export const economy = {
         // stock' = clamp(stock + DRIFT_RATE*driftMod*(eff - stock)*dt, 0, cap)
         entry.stock = Math.max(0, entry.stock + DRIFT_RATE * driftMod * (eff - entry.stock) * tickDt);
         this.recomputePrices(entry, def, frontier, liveCycle, state.simTime);
+        this.recordPriceHistory(entry, def, liveCycle, state.simTime);
       }
     }
 
@@ -449,6 +477,47 @@ export const economy = {
     return this.recomputePrices(entry, def, frontier, cycle, state.simTime || 0);
   },
 
+  /** Seed and retain the player-visible history from the actual formula state. */
+  seedPriceHistory(entry, def, cycle, simTime) {
+    const now = Number(simTime) || 0;
+    entry.history = [];
+    for (let i = 0; i < HISTORY_POINT_LIMIT; i++) {
+      const t = now - HISTORY_SPAN_S + i * HISTORY_SAMPLE_S;
+      entry.history.push(pricePointAt(entry, def, cycle, t));
+    }
+    return entry.history;
+  },
+
+  /** Record one bounded chart point; forced calls replace the same-timestamp point after a trade. */
+  recordPriceHistory(entry, def, cycle, simTime, force = false) {
+    const now = Number(simTime) || 0;
+    if (!Array.isArray(entry.history) || entry.history.length < 2) {
+      this.seedPriceHistory(entry, def, cycle, now);
+      return entry.history;
+    }
+    const history = entry.history;
+    const last = history[history.length - 1];
+    if (!force && last && (now - Number(last.t)) < HISTORY_SAMPLE_S) return history;
+    const point = pricePointAt(entry, def, cycle, now);
+    if (last && Math.abs(Number(last.t) - now) < 0.001) history[history.length - 1] = point;
+    else history.push(point);
+    if (history.length > HISTORY_POINT_LIMIT) history.splice(0, history.length - HISTORY_POINT_LIMIT);
+    return history;
+  },
+
+  /** Add an immediate point after a player or automation trade changes the quote. */
+  recordLivePriceHistory(entry, def, stationId, commodityId, force = true) {
+    const state = this.state;
+    const cycle = getCycleCore(
+      state,
+      stationId,
+      commodityId,
+      () => (typeof this._rng === 'function' ? this._rng() : 0.5),
+      state.simTime || 0,
+    );
+    return this.recordPriceHistory(entry, def, cycle, state.simTime || 0, force);
+  },
+
   /** Frontier (low-wealth) stations widen the spread. Derived from sector security. */
   frontierPenalty(info) {
     const sec = (info && info.security != null) ? info.security : 0.7;
@@ -494,10 +563,16 @@ export const economy = {
       // seed the hidden formula cycle first so the opening mid includes the wave
       if (!state.economy.cycles) state.economy.cycles = {};
       if (!state.economy.cycles[stationId]) state.economy.cycles[stationId] = {};
-      const cycle = createCycle(() => this._rng(), def, state.simTime || 0);
+      const now = state.simTime || 0;
+      // Every market begins with a formula already in progress. That lets the chart expose a
+      // learnable current trend on the very first dock instead of faking one in the UI.
+      const historyAge = HISTORY_REGIME_AGE_MIN_S
+        + this._rng() * (HISTORY_REGIME_AGE_MAX_S - HISTORY_REGIME_AGE_MIN_S);
+      const cycle = createCycle(() => this._rng(), def, now - historyAge);
       cycle.cmdtyId = def.id;
       state.economy.cycles[stationId][def.id] = cycle;
-      this.recomputePrices(entry, def, frontier, cycle, state.simTime || 0);
+      this.recomputePrices(entry, def, frontier, cycle, now);
+      this.seedPriceHistory(entry, def, cycle, now);
       market[def.id] = entry;
     }
     markets[stationId] = market;
@@ -675,6 +750,7 @@ export const economy = {
       entry.stock = Math.max(1, entry.stock - realQty);
       this.chargeCredits(realCost, 'trade:buy:' + commodityId);
       this.recomputeLivePrices(entry, def, stationId, commodityId);
+      this.recordLivePriceHistory(entry, def, stationId, commodityId);
       const unitAvg = realCost / realQty;
       this.afterTrade(state, stationId, commodityId, 'buy', realQty, unitAvg, realCost, fq.priceImpactPct, def, null);
       return { ok: true, qty: realQty, unitAvg, total: realCost, priceImpactPct: fq.priceImpactPct };
@@ -693,6 +769,7 @@ export const economy = {
       entry.stock = entry.stock + realQty;
       this.grantCredits(realGross, 'trade:sell:' + commodityId);
       this.recomputeLivePrices(entry, def, stationId, commodityId);
+      this.recordLivePriceHistory(entry, def, stationId, commodityId);
       const unitAvg = realGross / realQty;
       // profit estimate: sale proceeds minus the goods' base value (for stats/ledger)
       const profit = round(realGross - def.basePrice * realQty);
@@ -847,6 +924,7 @@ export const economy = {
     if (side === 'buy') entry.stock = Math.max(1, entry.stock - qty);
     else entry.stock = entry.stock + qty;
     this.recomputeLivePrices(entry, def, stationId, commodityId);
+    this.recordLivePriceHistory(entry, def, stationId, commodityId);
   },
 
   // -------------------------------------------------------------------------------------------
@@ -1272,7 +1350,7 @@ export const economy = {
     if (sec) for (const st of sec.stations || []) this.ensureMarket(st.id, st.type, st.size);
   },
 
-  /** Serialize stock + equilibrium + baseEq + role + eventMods (prices recomputed on load). */
+  /** Serialize stock, formula state, and bounded player-visible market history. */
   serialize() {
     const econ = this.state.economy;
     const markets = {};
@@ -1280,7 +1358,11 @@ export const economy = {
       const m = econ.markets[sid]; const out = {};
       for (const cid in m) {
         const e = m[cid];
-        out[cid] = { stock: e.stock, equilibrium: e.equilibrium, baseEq: e.baseEq, role: e.role, eventMods: (e.eventMods || []).map((x) => ({ field: x.field, mult: x.mult, eventId: x.eventId })) };
+        out[cid] = {
+          stock: e.stock, equilibrium: e.equilibrium, baseEq: e.baseEq, role: e.role,
+          eventMods: (e.eventMods || []).map((x) => ({ field: x.field, mult: x.mult, eventId: x.eventId })),
+          history: sanitizeHistory(e.history),
+        };
       }
       markets[sid] = out;
     }
@@ -1311,7 +1393,13 @@ export const economy = {
           stock: e.stock, equilibrium: e.equilibrium, baseEq: e.baseEq, role: e.role,
           lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: (e.eventMods || []).slice(),
         };
-        if (def) this.recomputeLivePrices(entry, def, sid, cid);
+        if (def) {
+          this.recomputeLivePrices(entry, def, sid, cid);
+          const cycle = getCycleCore(this.state, sid, cid, () => this._rng(), this.state.simTime || 0);
+          const restoredHistory = sanitizeHistory(e.history);
+          if (restoredHistory.length >= 2) entry.history = restoredHistory;
+          else this.seedPriceHistory(entry, def, cycle, this.state.simTime || 0);
+        }
         out[cid] = entry;
       }
       econ.markets[sid] = out;

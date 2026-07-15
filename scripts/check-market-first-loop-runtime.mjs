@@ -7,13 +7,16 @@
 // a new player can read prices, actually trade (credits move), and plot a profitable route.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
 import { createServer as createNetServer } from 'node:net';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const MARKET_CAPTURE = process.env.SF_MARKET_CAPTURE || '';
 const START_TIMEOUT_MS = 90000;
 const DOCK_TIMEOUT_MS = 15000;
 const { chromium } = await loadPlaywright();
@@ -123,6 +126,39 @@ try {
     .catch(() => { throw new Error('a Market BUY should move the player\'s credits (trade must actually execute)'); });
   const c1 = await page.evaluate(() => window.SF.state.player.credits);
   assert.ok(c1 < c0, 'buying should spend credits: ' + c0 + ' -> ' + c1);
+
+  // ---- cargo handoff: the common "sell what I hauled" action must open the same Market in
+  // sell mode and focus its list on what is actually in the hold, even when Market is already open.
+  await domClick(page, '[data-screen="station"] .sx-hstep[data-handoff="market"][data-handoff-mode="sell"]');
+  await page.waitForFunction(() => {
+    const active = document.querySelector('[data-screen="station"] .sx-seg__btn.is-on');
+    return active && active.getAttribute('data-mode') === 'sell';
+  }, null, { timeout: 5000 });
+  const sellHandoff = await page.evaluate(() => {
+    const state = window.SF.state;
+    const rows = [...document.querySelectorAll('[data-screen="station"] .sx-mkt-row[data-cmdty]')]
+      .map((row) => row.getAttribute('data-cmdty'));
+    const selected = document.querySelector('[data-screen="station"] .sx-mkt-row.is-active');
+    const selectedId = selected && selected.getAttribute('data-cmdty');
+    return {
+      rows,
+      rowHeld: rows.map((id) => Number(state.player.cargo.items[id] || 0)),
+      selectedId,
+      held: selectedId && Number(state.player.cargo.items[selectedId] || 0),
+      mode: document.querySelector('[data-screen="station"] .sx-seg__btn.is-on')?.getAttribute('data-mode'),
+    };
+  });
+  assert.equal(sellHandoff.mode, 'sell', 'cargo handoff should open the sell console');
+  assert.ok(sellHandoff.rows.length > 0, 'cargo handoff should retain sellable cargo rows');
+  assert.ok(sellHandoff.rowHeld.every((qty) => qty > 0),
+    'cargo handoff should focus an item that is actually in the player hold: ' + JSON.stringify(sellHandoff));
+  assert.ok(sellHandoff.held > 0, 'cargo handoff should select a hauled item ready to sell: ' + JSON.stringify(sellHandoff));
+  if (MARKET_CAPTURE) {
+    const file = join(ROOT, MARKET_CAPTURE);
+    await mkdir(dirname(file), { recursive: true });
+    await page.screenshot({ path: file, type: 'png' });
+    console.log('Market screenshot:', file);
+  }
 
   // ---- routes: best-run panel shows a profitable run + Set Course plots a trade waypoint ----
   const routes = await page.evaluate(() => {

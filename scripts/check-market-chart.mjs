@@ -12,16 +12,20 @@ import { fileURLToPath } from 'node:url';
 
 import { COMMODITIES } from '../src/data/commodities.js';
 import { economy, getCycle as liveCycleFor } from '../src/systems/economy.js';
-import { cycleFactorAt, predictPriceCurve, regimeLabel } from '../src/systems/economyCycles.js';
+import { cycleFactorAt, maybeAdvanceRegime, predictPriceCurve, rawCycleFactorAt, regimeLabel } from '../src/systems/economyCycles.js';
 import { initPriceHistory, getPriceHistory, loadHistory } from '../src/ui/priceHistory.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MARKET_SOURCE = readFileSync(join(ROOT, 'src/ui/screens/market.js'), 'utf8');
+const STATION_MARKET_SOURCE = readFileSync(join(ROOT, 'src/ui/station/screens/market.js'), 'utf8');
+const STATION_APP_SOURCE = readFileSync(join(ROOT, 'src/ui/station/stationApp.js'), 'utf8');
 
 assert.equal(typeof window, 'undefined', 'this check must run headless');
 
 guarded(testRealEconomyHistoryAndForecast);
+guarded(testSeededStationMarketHistory);
 testMarketScreenChartSourceContract();
+testStationMarketSourceContract();
 
 console.log('PASS  check:market-chart');
 
@@ -115,6 +119,71 @@ function testMarketScreenChartSourceContract() {
       throw new Error(`market chart source contract failed: ${label}`);
     }
   }
+}
+
+function testSeededStationMarketHistory() {
+  const { state, bus, econ, stationId } = bootEconomyChartFixture();
+  const market = state.economy.markets[stationId];
+  const ids = Object.keys(market);
+  assert.ok(ids.length >= 3, 'fixture should expose multiple tradable commodities');
+
+  const signatures = ids.map((id) => {
+    const entry = market[id];
+    assert.equal(entry.history.length, 64, `new ${id} listing has a full seeded history`);
+    assert.equal(entry.history.at(-1).mid, entry.lastMid,
+      `${id} history ends at the currently quoted market mid`);
+    assert.ok(entry.history.every((p) => Number.isFinite(p.t) && p.mid > 0),
+      `${id} history contains finite positive quotes`);
+    const signature = entry.history.map((p) => p.mid).join(',');
+    assert.ok(new Set(entry.history.map((p) => p.mid)).size > 1,
+      `${id} opening history has visible integer-price movement`);
+    return signature;
+  });
+  assert.ok(new Set(signatures).size > 1,
+    'new-game commodities start with distinct formula-derived histories, not one decorative graph');
+
+  const saved = econ.serialize();
+  assert.deepEqual(saved.markets[stationId][ids[0]].history, market[ids[0]].history,
+    'market history is part of the economy save payload');
+
+  const restoredState = {
+    mode: 'flight', simTime: state.simTime, meta: { seed: state.meta.seed },
+    player: { credits: 10000, cargo: { items: {}, capacity: 100, used: 0 } },
+    economy: {}, world: { currentSectorId: 'sector_helios_prime' }, ui: {}, nav: {},
+  };
+  const restored = { ...economy };
+  restored.init({ state: restoredState, bus: makeBus(), helpers: {}, registry: { get: () => null } });
+  restored.deserialize(structuredClone(saved));
+  assert.deepEqual(restoredState.economy.markets[stationId][ids[0]].history, market[ids[0]].history,
+    'loading a save keeps the existing market timeline instead of bootstrapping a generic one');
+
+  const currentCycle = liveCycleFor(stationId, ids[0]);
+  const invalid = {
+    ...currentCycle,
+    family: 'falling', regime: 'falling', amplitude: 0, bias: 0, slope: -2,
+    regimeStartT: state.simTime - 1, regimeEndT: state.simTime + 600,
+  };
+  assert.ok(rawCycleFactorAt(invalid, state.simTime) <= 0,
+    'fixture forces a formula that would make a price non-positive');
+  assert.notEqual(maybeAdvanceRegime(invalid, () => 0.5, state.simTime), invalid,
+    'a non-positive formula re-rolls immediately instead of relying on a display clamp');
+
+  economy._instance = null;
+}
+
+function testStationMarketSourceContract() {
+  assert.doesNotMatch(STATION_MARKET_SOURCE, /synthesize a gentle series/i,
+    'the shipped Station Market must not fabricate one shared fallback chart');
+  assert.match(STATION_MARKET_SOURCE, /entry && Array\.isArray\(entry\.history\)/,
+    'the shipped Station Market reads the economy-owned price history');
+  assert.match(STATION_MARKET_SOURCE, /linearGradient id="\$\{gradientId\}"/,
+    'each Station Market chart owns a distinct SVG gradient id');
+  assert.match(STATION_MARKET_SOURCE, /cargoOnly = mode === 'sell'/,
+    'the cargo handoff can filter the market to sellable hold contents');
+  assert.match(STATION_APP_SOURCE, /data-handoff-mode/,
+    'the Station shell carries the handoff sell intent into the Market');
+  assert.match(STATION_APP_SOURCE, /screen\.onShow\(\{ \.\.\.ctx, \.\.\.options \}\)/,
+    'the Station shell forwards handoff options to an already-open Market');
 }
 
 function bootEconomyChartFixture() {

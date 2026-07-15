@@ -34,6 +34,7 @@ export function createBarScreen(ctx) {
   const railEl = el.querySelector('.sx-bar__rail');
   const stageEl = el.querySelector('.sx-bar__stage');
   const leadsEl = el.querySelector('.sx-bar__leads');
+  railEl.setAttribute('role', 'tablist');
 
   let selectedId = null;
   let saidText = null;   // what the selected contact just said
@@ -102,7 +103,7 @@ export function createBarScreen(ctx) {
       `</div>`;
 
     const big = stageEl.querySelector('[data-bigpic]');
-    if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 84 }); } catch (_) {} }
+    if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 160 }); } catch (_) {} }
   }
 
   // ---------- leads: intel + survey + mission leads ----------
@@ -133,7 +134,7 @@ export function createBarScreen(ctx) {
       ? leads.map((m) => `<div class="sx-lead">` +
           `<div class="sx-lead__body"><span class="sx-lead__t">${escapeHtml(m.title || 'Contract')}</span>` +
             `<span class="sx-lead__s">${fmt(rewardOf(m))} cr</span></div>` +
-          `<button type="button" class="sx-lead__go" data-accept="${escapeHtml(String(mid(m)))}">Accept</button>` +
+          `<button type="button" class="sx-lead__go" data-inspect="${escapeHtml(String(mid(m)))}">Inspect</button>` +
         `</div>`).join('')
       : `<p class="sx-muted">No leads on the board.</p>`;
 
@@ -188,16 +189,15 @@ export function createBarScreen(ctx) {
       setTimeout(() => renderAll(ctx.state || {}), 70);
       return;
     }
-    const ac = ev.target.closest('[data-accept]');
-    if (ac) {
+    const inspect = ev.target.closest('[data-inspect]');
+    if (inspect) {
       if (ctx.bus) {
-        ctx.bus.emit('ui:acceptMission', { missionId: ac.getAttribute('data-accept') });
-        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+        ctx.bus.emit('station:navigate', { destination: 'contracts', options: { missionId: inspect.getAttribute('data-inspect') } });
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
-      setTimeout(() => renderAll(ctx.state || {}), 70);
       return;
     }
-    if (ev.target.closest('[data-log]') && ctx.bus) ctx.bus.emit('ui:pushScreen', { id: 'missionLog' });
+    if (ev.target.closest('[data-log]') && ctx.bus) ctx.bus.emit('station:navigate', { destination: 'contracts' });
   });
 
   return {

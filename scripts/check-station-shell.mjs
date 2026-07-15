@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// check-station-shell.mjs — Station OS shell contract (design/STATION_SHELL_CONTRACT.md).
-// Structural + live-intent proof: no permanent bullseye/beam layout, sell/buy/service wiring,
-// Hold price helper, dismissible first-dock strip, AND real economy mutations via ui:sell/ui:service.
+// check-station-shell.mjs — live station strategy-mode contract.
+// Protects reachability, task context, canonical intents, accessibility semantics and real economy
+// mutations. It deliberately does not prescribe panel topology, palette or visual technique.
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -14,52 +14,68 @@ import { holdUnitSellPrice } from '../src/ui/screens/stationHub.js';
 import { serviceQuote } from '../src/ui/screens/services.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const hubPath = join(ROOT, 'src/ui/screens/stationHub.js');
-const marketPath = join(ROOT, 'src/ui/screens/market.js');
-const servicesPath = join(ROOT, 'src/ui/screens/services.js');
+const appPath = join(ROOT, 'src/ui/station/stationApp.js');
+const dockPath = join(ROOT, 'src/ui/station/dock.js');
+const marketPath = join(ROOT, 'src/ui/station/screens/market.js');
+const shipworksPath = join(ROOT, 'src/ui/station/screens/shipworks.js');
+const industryPath = join(ROOT, 'src/ui/station/screens/industry.js');
+const contractsPath = join(ROOT, 'src/ui/station/screens/contracts.js');
 const contractPath = join(ROOT, 'design/STATION_SHELL_CONTRACT.md');
 const economyPath = join(ROOT, 'src/systems/economy.js');
 
-const hub = readFileSync(hubPath, 'utf8');
+const app = readFileSync(appPath, 'utf8');
+const dock = readFileSync(dockPath, 'utf8');
 const market = readFileSync(marketPath, 'utf8');
-const services = readFileSync(servicesPath, 'utf8');
+const shipworks = readFileSync(shipworksPath, 'utf8');
+const industry = readFileSync(industryPath, 'utf8');
+const contracts = readFileSync(contractsPath, 'utf8');
 const economySrc = readFileSync(economyPath, 'utf8');
 
 assert.ok(existsSync(contractPath), 'design/STATION_SHELL_CONTRACT.md must exist');
 const contract = readFileSync(contractPath, 'utf8');
-assert.match(contract, /Nav/i, 'contract defines Nav control type');
-assert.match(contract, /Verb/i, 'contract defines Verb control type');
-assert.match(contract, /Param/i, 'contract defines Param control type');
-assert.match(contract, /Meta/i, 'contract defines Meta control type');
-assert.match(contract, /≥70%|70%/, 'contract states workspace height budget');
+assert.match(contract, /Select an object[\s\S]*preview real[\s\S]*commit/i, 'contract defines object-to-consequence strategy loop');
+assert.match(contract, /superseded/i, 'contract explicitly retires the legacy Station OS layout authority');
+assert.match(contract, /must not freeze a[\s\S]*palette/i, 'contract forbids aesthetic source checks');
 
-// Shell: Station OS desk mode default
-assert.match(hub, /st-hub--os|st-hub--desk/, 'station hub uses Station OS / desk shell class');
-assert.match(hub, /st-top-credits/, 'top strip shows credits');
-assert.match(hub, /st-top-cargo/, 'top strip shows cargo');
-assert.match(hub, /st-inspector-toggle/, 'Briefing is Meta (opt-in)');
-assert.match(hub, /is-collapsed/, 'briefing drawer starts collapsed');
-assert.match(hub, /data-handoff-dismiss|st-handoff-dismiss/, 'first-dock strip is dismissible');
-assert.ok(
-  /data-centerpiece=["']station-service-console["']/.test(hub)
-    || /setAttribute\(\s*['"]data-centerpiece['"]\s*,\s*['"]station-service-console['"]\s*\)/.test(hub),
-  'workspace carries station centerpiece slug');
+// Live command model: six destinations, immediate services, task-carrying handoff and keyboard tabs.
+for (const id of ['market', 'shipworks', 'industry', 'contracts', 'factions', 'bar']) {
+  assert.match(app, new RegExp(`id:\\s*['"]${id}['"]`), `station exposes ${id}`);
+}
+for (const id of ['repair', 'refuel', 'resupply', 'undock']) {
+  assert.match(app, new RegExp(`id:\\s*['"]${id}['"]`), `station exposes ${id} action`);
+}
+assert.match(app, /data-handoff-mode/, 'first-dock handoff carries trade mode instead of destination only');
+assert.match(app, /tradeMode/, 'handoff mode reaches destination onShow');
+assert.match(app, /ui:service/, 'station services emit canonical ui:service');
+assert.match(app, /dock:undocked/, 'station departure emits canonical dock event');
+assert.match(dock, /aria-selected/, 'command destinations expose selected state');
+assert.match(dock, /ArrowRight[\s\S]*ArrowLeft[\s\S]*Home[\s\S]*End/, 'command dock implements roving keyboard navigation');
+assert.match(dock, /dispose\(\)/, 'command dock owns animation/listener disposal');
 
-// No dead trade event
-assert.doesNotMatch(hub, /ui:trade/, 'Hold must not emit dead ui:trade');
-assert.match(hub, /ui:sell/, 'Hold emits live ui:sell');
+// Market task continuity and live intents.
 assert.match(market, /ui:buy/, 'Market emits ui:buy');
 assert.match(market, /ui:sell/, 'Market emits ui:sell');
 assert.match(market, /data-trade-mode|tradeMode/, 'Market has Buy|Sell mode param');
-assert.match(services, /ui:service/, 'Services emit ui:service');
-assert.match(services, /confirm\(/, 'Services use quote→confirm for paid verbs');
+assert.match(market, /cargoOnly/, 'Market supports owned-cargo filtering');
+assert.match(market, /tradedList/, 'owned-cargo filter uses real held quantities');
+
+// Shipworks unifies hulls and fitting around real authored/derived paths.
+assert.match(shipworks, /ui:buyShip/, 'Shipworks can buy hulls');
+assert.match(shipworks, /ui:setActiveShip/, 'Shipworks can explicitly activate an inspected hull');
+assert.match(shipworks, /ui:buyModule/, 'Shipworks can buy and fit a module');
+assert.match(shipworks, /ui:unfitModule/, 'Shipworks can remove a module');
+assert.match(shipworks, /presentModuleFitPreview/, 'Shipworks previews real derived fitting consequences');
+assert.match(shipworks, /data-spatial-slot/, 'Shipworks exposes spatial slot selection');
+assert.match(shipworks, /authoredRequired/, 'Shipworks requires authored preview quality');
+
+assert.match(industry, /crafting\.build/, 'Industry commits through the crafting owner');
+assert.match(contracts, /ui:acceptMission/, 'Contracts emit canonical accept intent');
+assert.match(contracts, /ui:trackMission/, 'Contracts preserve track behavior');
+
+// Owning systems retain mutation authority.
 assert.match(economySrc, /bus\.on\(['"]ui:sell['"]/, 'economy listens to ui:sell');
 assert.match(economySrc, /bus\.on\(['"]ui:buy['"]/, 'economy listens to ui:buy');
 assert.match(economySrc, /bus\.on\(['"]ui:service['"]/, 'economy listens to ui:service');
-
-// Accept primary on missions
-assert.match(hub, /data-act=["']accept["']/, 'Missions expose Accept action');
-assert.match(hub, /st-mission-accept|Accept<\/button>/, 'Accept is the primary mission verb label');
 
 // ── Runtime: drive SHIPPED economy handlers on the real intent path ────────────
 // Step 3 of the Station OS verification plan: ui:sell / ui:service must mutate
@@ -237,4 +253,4 @@ function bootDockedEconomy(seed = 0x50a1) {
   console.log('ok   ui:service repair mutates hull+credits via live economy');
 }
 
-console.log('Station shell OK — OS layout, dismissible handoff, live trade/service mutations');
+console.log('Station strategy mode OK — live command/task continuity, Shipworks paths, trade/service mutations');

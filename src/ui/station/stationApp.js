@@ -8,6 +8,7 @@
 //   · Cargo hold manifest  → the Hold readout opens the manifest (qty + what the station pays).
 //   · First-dock handoff   → the opening docked route shows the 3-step guidance strip.
 import { createCommandDock } from './dock.js';
+import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import { createFactionsScreen } from './screens/factions.js';
 import { createMarketScreen } from './screens/market.js';
 import { createContractsScreen } from './screens/contracts.js';
@@ -41,15 +42,20 @@ const TARGET_MAP = {
   outfit: 'shipworks', manufacture: 'industry', factions: 'factions', bar: 'bar', services: null,
 };
 
-const STATION_CSS_HREF = '/styles/station.css';
+const STATION_STYLES = [
+  { id: 'sx-station-css', href: '/styles/station.css' },
+  { id: 'sx-station-workbench-css', href: '/styles/station-workbench.css' },
+];
 function ensureStylesheet() {
   if (typeof document === 'undefined') return;
-  if (document.getElementById('sx-station-css')) return;
-  const link = document.createElement('link');
-  link.id = 'sx-station-css';
-  link.rel = 'stylesheet';
-  link.href = STATION_CSS_HREF;
-  document.head.appendChild(link);
+  for (const style of STATION_STYLES) {
+    if (document.getElementById(style.id)) continue;
+    const link = document.createElement('link');
+    link.id = style.id;
+    link.rel = 'stylesheet';
+    link.href = style.href;
+    document.head.appendChild(link);
+  }
 }
 
 const DESTINATIONS = [
@@ -107,6 +113,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const app = document.createElement('div');
   app.className = 'sx-app';
   app.innerHTML =
+    `<div class="sx-backplane" aria-hidden="true">` +
+      `<span class="sx-backplane__rail sx-backplane__rail--a"></span>` +
+      `<span class="sx-backplane__rail sx-backplane__rail--b"></span>` +
+      `<span class="sx-backplane__stamp">ORBITAL OPERATIONS / LOCAL AUTHORITY</span>` +
+    `</div>` +
     `<header class="sx-topbar">` +
       `<div class="sx-crest">` +
         `<span class="sx-crest__mark">${icon('factions', 30)}</span>` +
@@ -122,12 +133,21 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       `<div class="sx-handoff" hidden></div>` +
     `</div>` +
     `<main class="sx-workspace">` +
+      `<div class="sx-operation-rail" aria-hidden="true"><span class="sx-operation-rail__index">01</span><span class="sx-operation-rail__track"></span><span class="sx-operation-rail__mode">MARKET</span></div>` +
       `<section class="sx-screen">` +
-        `<header class="sx-screen__head"><div class="sx-screen__id"><h1 class="sx-screen__title"></h1><p class="sx-screen__sub"></p></div></header>` +
+        `<header class="sx-screen__head">` +
+          `<span class="sx-screen__sigil" aria-hidden="true"></span>` +
+          `<div class="sx-screen__id"><h1 class="sx-screen__title"></h1><p class="sx-screen__sub"></p></div>` +
+          `<button type="button" class="sx-context-help" aria-label="Explain the active station operation" title="Context help">?</button>` +
+        `</header>` +
         `<div class="sx-screen__body" id="sx-panel" role="tabpanel" tabindex="0"></div>` +
       `</section>` +
     `</main>` +
-    `<div class="sx-pop" hidden></div>`;
+    `<div class="sx-pop" hidden></div>` +
+    `<div class="sx-receipt" role="status" aria-live="polite" aria-atomic="true" hidden>` +
+      `<span class="sx-receipt__pulse" aria-hidden="true"></span>` +
+      `<span class="sx-receipt__kind"></span><strong class="sx-receipt__title"></strong><span class="sx-receipt__delta"></span>` +
+    `</div>`;
   rootEl.appendChild(app);
 
   const crestName = app.querySelector('.sx-crest__name');
@@ -139,6 +159,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const bodyEl = app.querySelector('.sx-screen__body');
   const handoffEl = app.querySelector('.sx-handoff');
   const popEl = app.querySelector('.sx-pop');
+  const screenSigil = app.querySelector('.sx-screen__sigil');
+  const helpEl = app.querySelector('.sx-context-help');
+  const operationIndexEl = app.querySelector('.sx-operation-rail__index');
+  const operationModeEl = app.querySelector('.sx-operation-rail__mode');
+  const receiptEl = app.querySelector('.sx-receipt');
 
   const dock = createCommandDock({
     destinations: DESTINATIONS,
@@ -150,26 +175,102 @@ export function createStationApp(rootEl, ctx, opts = {}) {
 
   const screenCache = new Map();
   let activeId = null;
+  let stopPopPositioning = null;
+  let popCloseTimer = 0;
+  let receiptTimer = 0;
+  let fieldFrame = 0;
+  let fieldPulseTimer = 0;
+  let pendingFieldPoint = null;
+  const subscriptions = [];
+
+  // The workspace behaves like a local projection surface. Pointer light is bounded to the active
+  // instrument and updates only in response to input; there is no ambient render loop.
+  function commitFieldPoint() {
+    fieldFrame = 0;
+    if (!pendingFieldPoint) return;
+    const rect = bodyEl.getBoundingClientRect();
+    if (!(rect.width > 0 && rect.height > 0)) return;
+    const x = Math.max(0, Math.min(100, ((pendingFieldPoint.x - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((pendingFieldPoint.y - rect.top) / rect.height) * 100));
+    bodyEl.style.setProperty('--sx-field-x', `${x.toFixed(2)}%`);
+    bodyEl.style.setProperty('--sx-field-y', `${y.toFixed(2)}%`);
+  }
+  function onFieldMove(ev) {
+    pendingFieldPoint = { x: ev.clientX, y: ev.clientY };
+    if (!fieldFrame) fieldFrame = requestAnimationFrame(commitFieldPoint);
+  }
+  function onFieldDown(ev) {
+    onFieldMove(ev);
+    if (fieldPulseTimer) clearTimeout(fieldPulseTimer);
+    bodyEl.classList.remove('is-field-contact');
+    void bodyEl.offsetWidth;
+    bodyEl.classList.add('is-field-contact');
+    fieldPulseTimer = setTimeout(() => bodyEl.classList.remove('is-field-contact'), 520);
+  }
+  function onFieldLeave() {
+    pendingFieldPoint = null;
+    bodyEl.style.setProperty('--sx-field-x', '50%');
+    bodyEl.style.setProperty('--sx-field-y', '48%');
+  }
+  bodyEl.addEventListener('pointermove', onFieldMove, { passive: true });
+  bodyEl.addEventListener('pointerdown', onFieldDown, { passive: true });
+  bodyEl.addEventListener('pointerleave', onFieldLeave);
 
   // ---------- popover ----------
+  function stopFloating() {
+    if (stopPopPositioning) { try { stopPopPositioning(); } catch (_) {} }
+    stopPopPositioning = null;
+  }
+
+  function positionPop(anchorEl) {
+    if (!anchorEl || !anchorEl.isConnected || popEl.hidden) return;
+    computePosition(anchorEl, popEl, {
+      strategy: 'fixed',
+      placement: 'bottom',
+      middleware: [
+        offset(12),
+        flip({ padding: 14 }),
+        shift({ padding: 14 }),
+        size({
+          padding: 14,
+          apply({ availableWidth, availableHeight, elements }) {
+            elements.floating.style.maxWidth = `${Math.max(280, availableWidth)}px`;
+            elements.floating.style.maxHeight = `${Math.max(220, availableHeight)}px`;
+          },
+        }),
+      ],
+    }).then(({ x, y }) => {
+      if (popEl.hidden) return;
+      Object.assign(popEl.style, { left: `${x}px`, top: `${y}px` });
+    }).catch(() => {});
+  }
+
   function openPop(html, anchorEl, cls) {
+    if (popCloseTimer) clearTimeout(popCloseTimer);
+    stopFloating();
     popEl.className = 'sx-pop' + (cls ? ' ' + cls : '');
     popEl.innerHTML = html;
     popEl.hidden = false;
-    const a = anchorEl.getBoundingClientRect();
-    const r = app.getBoundingClientRect();
-    popEl.style.top = (a.bottom - r.top + 10) + 'px';
-    const w = popEl.offsetWidth;
-    let left = (a.left - r.left) + a.width / 2 - w / 2;
-    left = Math.max(12, Math.min(left, r.width - w - 12));
-    popEl.style.left = left + 'px';
+    positionPop(anchorEl);
+    stopPopPositioning = autoUpdate(anchorEl, popEl, () => positionPop(anchorEl), {
+      ancestorResize: true,
+      ancestorScroll: true,
+      elementResize: true,
+      animationFrame: false,
+    });
     requestAnimationFrame(() => popEl.classList.add('is-open'));
   }
   function closePop() {
     if (popEl.hidden) return;
+    stopFloating();
     popEl.classList.remove('is-open');
     // reset the variant class too, or the popover stays "findable" (and styled) while hidden
-    setTimeout(() => { popEl.hidden = true; popEl.innerHTML = ''; popEl.className = 'sx-pop'; }, 150);
+    popCloseTimer = setTimeout(() => {
+      popEl.hidden = true;
+      popEl.innerHTML = '';
+      popEl.className = 'sx-pop';
+      popCloseTimer = 0;
+    }, 150);
   }
   app.addEventListener('click', (ev) => {
     if (popEl.hidden) return;
@@ -263,7 +364,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       steps.map((st) => {
         const dest = TARGET_MAP[st.targetTab] || 'market';
         const cls = st.done ? 'is-done' : (st.kind === 'bad' ? 'is-bad' : (st.kind === 'warn' ? 'is-warn' : 'is-ok'));
+        const mode = st.tradeMode === 'sell' || st.tradeMode === 'buy' ? st.tradeMode : '';
         return `<button type="button" class="sx-hstep ${cls}" data-handoff="${escapeHtml(dest)}"` +
+          (mode ? ` data-handoff-mode="${mode}"` : '') +
           ` title="${escapeHtml(st.text)}" aria-label="${escapeHtml(st.title + '. ' + st.text)}">` +
           `<span class="sx-hstep__n">${escapeHtml(st.label)}</span>` +
           `<span class="sx-hstep__t">${escapeHtml(st.title)}</span></button>`;
@@ -271,7 +374,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
   handoffEl.addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-handoff]');
-    if (b) navigate(b.getAttribute('data-handoff'));
+    if (b) navigate(b.getAttribute('data-handoff'), { tradeMode: b.getAttribute('data-handoff-mode') || undefined });
   });
 
   // ---------- screens ----------
@@ -292,25 +395,99 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     return screen;
   }
 
-  function navigate(id) {
+  function navigate(id, options = {}) {
     const dest = DESTINATIONS.find((d) => d.id === id);
-    if (!dest || id === activeId) return;
+    if (!dest) return;
+    if (id === activeId) {
+      const active = screenCache.get(activeId);
+      if (active && typeof active.onShow === 'function') active.onShow({ ...ctx, ...options });
+      return;
+    }
     const prev = activeId && screenCache.get(activeId);
     if (prev && typeof prev.onHide === 'function') { try { prev.onHide(); } catch (_) {} }
     activeId = id;
+    app.dataset.operation = id;
     dock.setActive(id);
     bodyEl.setAttribute('aria-labelledby', 'sx-tab-' + id);
     titleEl.textContent = dest.label;
     subEl.textContent = dest.tagline || '';
+    screenSigil.innerHTML = icon(dest.icon, 26);
+    const operationIndex = DESTINATIONS.indexOf(dest) + 1;
+    operationIndexEl.textContent = String(operationIndex).padStart(2, '0');
+    operationModeEl.textContent = dest.label.toUpperCase();
     const screen = screenFor(dest);
     bodyEl.replaceChildren(screen.el);
     screen.el.classList.remove('sx-enter');
     void screen.el.getBoundingClientRect();
     screen.el.classList.add('sx-enter');
-    if (typeof screen.onShow === 'function') screen.onShow(ctx);
+    if (typeof screen.onShow === 'function') screen.onShow({ ...ctx, ...options });
     if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
     closePop();
   }
+
+  const HELP = {
+    market: ['Trade scope', 'Select a commodity to inspect price, demand and station pressure. Buy or sell against your credits and hold.'],
+    shipworks: ['Shipworks bay', 'Select a hull or a physical ship slot, preview compatible equipment, then install through the real fitting system.'],
+    industry: ['Production line', 'Trace raw stock into refined goods and fabricated modules. Broken paths identify the exact missing input.'],
+    contracts: ['Contract plotting', 'Choose a job to see its route, preparation, faction consequence and payout before accepting it.'],
+    factions: ['Authority network', 'Select a faction to expose its standing thresholds, relationships, recent change and immediate unlocks.'],
+    bar: ['Station contacts', 'Contacts turn rumors and local knowledge into actionable leads, survey data and contracts.'],
+  };
+  helpEl.addEventListener('click', () => {
+    const help = HELP[activeId] || ['Station operation', 'Select an operation from the command dock.'];
+    openPop(`<div class="sx-pop__head">${escapeHtml(help[0])}</div><p class="sx-context-copy">${escapeHtml(help[1])}</p>`, helpEl, 'sx-pop--help');
+  });
+
+  // ---------- causal receipts ----------
+  function showReceipt(kind, title, delta = '') {
+    if (receiptTimer) clearTimeout(receiptTimer);
+    receiptEl.hidden = false;
+    receiptEl.classList.remove('is-settled');
+    receiptEl.querySelector('.sx-receipt__kind').textContent = kind;
+    receiptEl.querySelector('.sx-receipt__title').textContent = title;
+    receiptEl.querySelector('.sx-receipt__delta').textContent = delta;
+    void receiptEl.offsetWidth;
+    receiptEl.classList.add('is-live');
+    receiptTimer = setTimeout(() => {
+      receiptEl.classList.remove('is-live');
+      receiptEl.classList.add('is-settled');
+      receiptTimer = setTimeout(() => { receiptEl.hidden = true; }, 280);
+    }, 3600);
+  }
+
+  function subscribe(event, handler) {
+    const bus = ctx && ctx.bus;
+    if (!bus || typeof bus.on !== 'function') return;
+    bus.on(event, handler);
+    subscriptions.push(() => { try { bus.off && bus.off(event, handler); } catch (_) {} });
+  }
+
+  subscribe('station:navigate', (request = {}) => {
+    const destination = DESTINATIONS.some((d) => d.id === request.destination)
+      ? request.destination : null;
+    if (!destination) return;
+    navigate(destination, request.options && typeof request.options === 'object' ? request.options : {});
+  });
+
+  subscribe('economy:tradeCompleted', (p = {}) => {
+    const name = CMDTY_NAME.get(p.commodityId) || titleCaseWords(p.commodityId || 'cargo');
+    const verb = p.side === 'sell' ? 'SOLD' : 'BOUGHT';
+    const sign = p.side === 'sell' ? '+' : '−';
+    showReceipt('TRADE CLEARED', `${verb} ${fmtCr(p.qty)}u ${name}`, `${sign}${fmtCr(p.total)} cr`);
+    // The cargo handoff is a live task shortcut, not static onboarding copy. A completed trade
+    // changes hold contents, credits, and whether the shortcut must open owned-only Sell mode.
+    refresh();
+  });
+  subscribe('module:purchased', (p = {}) => showReceipt('SHIPWORKS', 'MODULE ACQUIRED', `−${fmtCr(p.price)} cr`));
+  subscribe('module:equipped', () => showReceipt('SHIPWORKS', 'FIT COMMITTED', 'LOADOUT RECALCULATED'));
+  subscribe('module:unequipped', () => showReceipt('SHIPWORKS', 'MODULE RETURNED', 'INVENTORY UPDATED'));
+  subscribe('ship:purchased', (p = {}) => showReceipt('SHIPWORKS', 'HULL ACQUIRED', p.price ? `−${fmtCr(p.price)} cr` : 'FABRICATION COMPLETE'));
+  subscribe('mission:accepted', () => showReceipt('CONTRACT BOUND', 'ROUTE ADDED TO NAVIGATION', 'STAGE 01 ACTIVE'));
+  subscribe('credits:changed', (p = {}) => {
+    const reason = String(p.reason || '');
+    if (!reason.startsWith('service:')) return;
+    showReceipt('BERTH SERVICE', `${titleCaseWords(reason.slice(8))} COMPLETE`, `${p.delta < 0 ? '−' : '+'}${fmtCr(Math.abs(p.delta))} cr`);
+  });
 
   // ---------- dock actions ----------
   function actionCosts() {
@@ -443,8 +620,18 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (scr && typeof scr.onHide === 'function') { try { scr.onHide(); } catch (_) {} }
     },
     dispose() {
+      stopFloating();
+      if (popCloseTimer) clearTimeout(popCloseTimer);
+      if (receiptTimer) clearTimeout(receiptTimer);
+      if (fieldFrame) cancelAnimationFrame(fieldFrame);
+      if (fieldPulseTimer) clearTimeout(fieldPulseTimer);
+      bodyEl.removeEventListener('pointermove', onFieldMove);
+      bodyEl.removeEventListener('pointerdown', onFieldDown);
+      bodyEl.removeEventListener('pointerleave', onFieldLeave);
       window.removeEventListener('keydown', onEscCapture, true);
       if (offExit) offExit();
+      subscriptions.splice(0).forEach((off) => off());
+      try { dock.dispose && dock.dispose(); } catch (_) {}
       try { setStationExitOwner(null); } catch (_) {}
       screenCache.forEach((s) => { try { s.dispose && s.dispose(); } catch (_) {} });
       screenCache.clear();

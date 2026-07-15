@@ -84,13 +84,16 @@ export function createIndustryScreen(ctx) {
     const inputs = Object.keys(bp.inputs || {}).map((id) => {
       const need = bp.inputs[id]; const have = Math.floor(it[id] || 0);
       const ok = have >= need; const frac = Math.max(0, Math.min(1, need ? have / need : 1));
+      const tag = ok ? 'div' : 'button';
+      const source = ok ? '' : ` type="button" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market"`;
       return (
-        `<div class="sx-fab-in${ok ? ' is-ok' : ''}">` +
+        `<${tag} class="sx-fab-in${ok ? ' is-ok' : ' is-missing'}"${source}>` +
           `<span class="sx-fab-in__ic">${icon('cargo', 16)}</span>` +
           `<span class="sx-fab-in__name">${escapeHtml(matName(id))}</span>` +
           `<span class="sx-fab-in__bar"><span style="width:${(frac * 100).toFixed(0)}%;background:${ok ? 'var(--gain)' : 'var(--warn)'}"></span></span>` +
           `<span class="sx-fab-in__q">${have}<i>/${need}</i></span>` +
-        `</div>`
+          (!ok ? `<span class="sx-fab-in__source">SOURCE IN MARKET</span>` : '') +
+        `</${tag}>`
       );
     }).join('');
     stageEl.innerHTML =
@@ -113,14 +116,19 @@ export function createIndustryScreen(ctx) {
     const stn = stationType(ctx);
     const r = readiness(bp, state, stn);
     const tone = r.state === 'ready' ? 'gain' : r.state === 'materials' ? 'warn' : 'loss';
+    const sid = state && state.ui && state.ui.dockedStationId;
+    const queue = state && state.crafting && state.crafting.queues && sid && state.crafting.queues[sid];
+    const queueBp = queue && BLUEPRINTS.find((item) => item.id === queue.bpId);
+    const progress = queue && queue.total > 0 ? Math.max(0, Math.min(1, (Number(queue.elapsed) || 0) / queue.total)) : 0;
     const notes = [];
     if (bp.requiresTech) notes.push({ ok: researched(state).has(bp.requiresTech), text: 'Tech: ' + String(bp.requiresTech).replace(/^tech_/, '').replace(/_/g, ' ') });
     if (bp.stationType) notes.push({ ok: !stn || bp.stationType === stn, text: 'Facility: ' + bp.stationType + ' bay' });
     consoleEl.innerHTML =
       `<div class="sx-panel">` +
-        `<div class="sx-fab-status sx-fab-status--${tone}"><span class="sx-fab-status__dot"></span>${r.label}</div>` +
+        `<div class="sx-fab-status sx-fab-status--${queue ? 'warn' : tone}"><span class="sx-fab-status__dot"></span>${queue ? 'Fabricator occupied' : r.label}</div>` +
+        (queue ? `<div class="sx-fab-queue"><span>ACTIVE LINE / ${escapeHtml((queueBp && queueBp.name) || queue.bpId || 'job')}</span><b>${Math.round(progress * 100)}%</b><i><span style="width:${(progress * 100).toFixed(1)}%"></span></i><em>${Math.max(0, Math.ceil((queue.total || 0) - (queue.elapsed || 0)))}s remaining</em></div>` : `<div class="sx-fab-queue is-idle"><span>ACTIVE LINE</span><b>IDLE</b><em>One strategic build slot available</em></div>`) +
         `<div class="sx-fab-notes">${notes.map((n) => `<div class="sx-fab-note${n.ok ? ' is-ok' : ''}">${icon(n.ok ? 'spark' : 'info', 13)}<span>${escapeHtml(n.text)}</span></div>`).join('')}</div>` +
-        `<button type="button" class="sx-btn-primary" data-build="${escapeHtml(bp.id)}" ${r.state === 'ready' ? '' : 'disabled'}>${r.state === 'ready' ? 'Fabricate' : r.label}</button>` +
+        `<button type="button" class="sx-btn-primary" data-build="${escapeHtml(bp.id)}" ${r.state === 'ready' && !queue ? '' : 'disabled'}>${queue ? 'Line occupied' : (r.state === 'ready' ? 'Fabricate' : r.label)}</button>` +
       `</div>`;
   }
 
@@ -133,6 +141,15 @@ export function createIndustryScreen(ctx) {
     renderList(state); renderStage(state); renderConsole(state);
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   });
+  stageEl.addEventListener('click', (ev) => {
+    const source = ev.target.closest('[data-source-cmdty]');
+    if (!source || !ctx.bus) return;
+    ctx.bus.emit('station:navigate', {
+      destination: 'market',
+      options: { tradeMode: 'buy', commodityId: source.getAttribute('data-source-cmdty') },
+    });
+    ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+  });
   consoleEl.addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-build]'); if (!b || b.disabled) return;
     const bpId = b.getAttribute('data-build');
@@ -142,7 +159,8 @@ export function createIndustryScreen(ctx) {
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
     setTimeout(() => renderAll(ctx.state || {}), 80);
   });
-  if (ctx.bus && ctx.bus.on) { ctx.bus.on('craft:complete', () => renderAll(ctx.state || {})); ctx.bus.on('craft:queueChanged', () => renderAll(ctx.state || {})); }
+  const onCraftChanged = () => renderAll(ctx.state || {});
+  if (ctx.bus && ctx.bus.on) { ctx.bus.on('craft:complete', onCraftChanged); ctx.bus.on('craft:queueChanged', onCraftChanged); }
 
   return {
     el,
@@ -157,6 +175,11 @@ export function createIndustryScreen(ctx) {
       renderAll(st);
     },
     refresh(c) { renderAll((c || ctx).state || {}); },
-    dispose() {},
+    dispose() {
+      if (ctx.bus && ctx.bus.off) {
+        ctx.bus.off('craft:complete', onCraftChanged);
+        ctx.bus.off('craft:queueChanged', onCraftChanged);
+      }
+    },
   };
 }

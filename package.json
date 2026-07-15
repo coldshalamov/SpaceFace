@@ -452,6 +452,7 @@
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.3",
+    "@floating-ui/dom": "^1.8.0",
     "three": "0.184.0"
   }
 }

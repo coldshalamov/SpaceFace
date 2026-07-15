@@ -135,6 +135,48 @@ try {
   const undock = shell.acts.find((a) => a.id === 'undock');
   assert.match(undock.cost.trim(), /^(READY|CHECK|RISK)$/, 'Undock should surface departure readiness, got: ' + undock.cost);
 
+  // ---- kinetic field: distance response, equilibrium selection, and reduced-motion parity ----
+  const marketTile = page.locator('[data-screen="station"] .sx-tile[data-nav="market"]');
+  const marketBox = await marketTile.boundingBox();
+  assert.ok(marketBox, 'Market tile should expose a pointer target for the magnetic field');
+  await page.mouse.move(marketBox.x + marketBox.width / 2, marketBox.y + marketBox.height / 2);
+  await page.waitForTimeout(100);
+  const kinetic = await page.evaluate(() => [...document.querySelectorAll('[data-screen="station"] .sx-tile')].map((tile) => ({
+    id: tile.getAttribute('data-nav') || tile.getAttribute('data-act'),
+    scale: Number(tile.style.getPropertyValue('--dock-scale')),
+    lift: tile.style.getPropertyValue('--dock-lift'),
+  })));
+  const marketMotion = kinetic.find((entry) => entry.id === 'market');
+  const shipworksMotion = kinetic.find((entry) => entry.id === 'shipworks');
+  const undockMotion = kinetic.find((entry) => entry.id === 'undock');
+  assert.ok(marketMotion.scale > 1.25 && parseFloat(marketMotion.lift) < -10,
+    'pointer target should respond physically, got: ' + JSON.stringify(marketMotion));
+  assert.ok(shipworksMotion.scale > 1.01 && shipworksMotion.scale < marketMotion.scale,
+    'magnetic response should yield through neighboring items, got: ' + JSON.stringify(shipworksMotion));
+  assert.ok(Math.abs(undockMotion.scale - 1) < 0.01,
+    'far dock actions should remain seated, got: ' + JSON.stringify(undockMotion));
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(80);
+  const seated = await page.evaluate(() => [...document.querySelectorAll('[data-screen="station"] .sx-tile')].map((tile) => ({
+    scale: Number(tile.style.getPropertyValue('--dock-scale')),
+    selected: tile.getAttribute('aria-selected'),
+    hasSeat: !!tile.querySelector('.sx-tile__seat'),
+  })));
+  assert.ok(seated.every((entry) => Math.abs(entry.scale - 1) < 0.001),
+    'the field should return every tile to equilibrium after pointer leave: ' + JSON.stringify(seated));
+  assert.ok(seated.find((entry) => entry.selected === 'true' && entry.hasSeat),
+    'selection should be carried by a stable physical seat, not frozen hover magnification');
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.mouse.move(marketBox.x + marketBox.width / 2, marketBox.y + marketBox.height / 2);
+  await page.waitForTimeout(80);
+  const reducedScales = await page.evaluate(() => [...document.querySelectorAll('[data-screen="station"] .sx-tile')]
+    .map((tile) => Number(tile.style.getPropertyValue('--dock-scale'))));
+  assert.ok(reducedScales.every((scale) => Math.abs(scale - 1) < 0.001),
+    'reduced motion should keep the command dock composed and static: ' + JSON.stringify(reducedScales));
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.mouse.move(5, 5);
+
   // ---- first-dock handoff (the opening docked route guides a new player) ----
   const handoff = await page.evaluate(() => {
     const strip = document.querySelector('[data-screen="station"] .sx-handoff:not([hidden])');
@@ -168,6 +210,54 @@ try {
   await pressAndExpectNav(page, 'Enter', 'factions');
   await focusNav(page, 'contracts');
   await pressAndExpectNav(page, ' ', 'contracts');
+
+  // ---- mini-game depth: object focus and task-preserving cross-system handoffs ----
+  await clickAndExpectNav(page, '[data-screen="station"] .sx-tile[data-nav="shipworks"]', 'shipworks');
+  await page.waitForSelector('[data-screen="station"] [data-spatial-slot]', { timeout: 15000 });
+  await page.locator('[data-screen="station"] [data-spatial-slot]').first().focus();
+  await page.keyboard.press('Enter');
+  await waitForVisible(page, '[data-screen="station"] .sx-sw__chooser.is-open', 5000, 'anchored compatible-module tray');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('[data-screen="station"] .sx-sw__chooser.is-open'), null, { timeout: 3000 });
+
+  await clickAndExpectNav(page, '[data-screen="station"] .sx-tile[data-nav="industry"]', 'industry');
+  const missingCommodity = await page.evaluate(() => {
+    const source = document.querySelector('[data-screen="station"] [data-source-cmdty]');
+    return source && source.getAttribute('data-source-cmdty');
+  });
+  assert.ok(missingCommodity, 'Industry should expose a real missing-input source action in the empty starting hold');
+  await domClick(page, `[data-screen="station"] [data-source-cmdty="${missingCommodity}"]`);
+  await waitForNav(page, 'market', 'Industry missing-input source action');
+  await page.waitForFunction((commodityId) => {
+    const active = document.querySelector('[data-screen="station"] .sx-mkt-row.is-active');
+    const buy = document.querySelector('[data-screen="station"] [data-mode="buy"].is-on');
+    return !!(active && active.getAttribute('data-cmdty') === commodityId && buy);
+  }, missingCommodity, { timeout: 5000 });
+
+  await clickAndExpectNav(page, '[data-screen="station"] .sx-tile[data-nav="factions"]', 'factions');
+  const relationTarget = await page.evaluate(() => {
+    const node = document.querySelector('[data-screen="station"] .sx-fac-node[data-fac]');
+    return node && node.getAttribute('data-fac');
+  });
+  assert.ok(relationTarget, 'the selected station authority should expose consequential faction links');
+  await domClick(page, `[data-screen="station"] .sx-fac-node[data-fac="${relationTarget}"]`);
+  await page.waitForFunction((factionId) => {
+    const active = document.querySelector('[data-screen="station"] .sx-fac-row.is-active');
+    return !!(active && active.getAttribute('data-fac') === factionId);
+  }, relationTarget, { timeout: 3000 });
+
+  await clickAndExpectNav(page, '[data-screen="station"] .sx-tile[data-nav="bar"]', 'bar');
+  const leadId = await page.evaluate(() => {
+    const lead = document.querySelector('[data-screen="station"] [data-inspect]');
+    return lead && lead.getAttribute('data-inspect');
+  });
+  assert.ok(leadId, 'the contact table should expose at least one inspectable live contract lead');
+  await domClick(page, `[data-screen="station"] [data-inspect="${leadId}"]`);
+  await waitForNav(page, 'contracts', 'Bar lead inspection');
+  await page.waitForFunction((missionId) => {
+    const active = document.querySelector('[data-screen="station"] .sx-ct-row.is-active');
+    return !!(active && active.getAttribute('data-mid') === missionId);
+  }, leadId, { timeout: 5000 });
 
   // ---- departure check: not-ready launch must surface the risks, never strand the player ----
   await page.evaluate(() => { const f = window.SF.state.fuel; if (f && f.max) f.current = Math.max(1, Math.round(f.max * 0.08)); });

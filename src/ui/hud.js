@@ -252,6 +252,41 @@ export function objectiveBearingGlyph(state, wp) {
   return ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(octant + 8) % 8];
 }
 
+/**
+ * Project an off-screen goal onto the HUD edge using the same fixed world orientation as the
+ * radar. Do not use worldToScreen() for a point behind the chase camera: perspective projection
+ * mirrors that point across the screen, which makes the arrow send the player away from the goal.
+ *
+ * The camera never yaws and the radar deliberately maps +X left / +Z up, so this is the stable
+ * player-relative bearing contract for the edge cue.
+ */
+export function resolveObjectiveEdgePlacement(width, height, player, target, margin = 34) {
+  const playerPos = player && player.pos;
+  const targetPos = target && target.pos ? target.pos : target;
+  if (!playerPos || !targetPos) return null;
+  const worldDx = Number(targetPos.x) - Number(playerPos.x);
+  const worldDz = Number(targetPos.z) - Number(playerPos.z);
+  const length = Math.hypot(worldDx, worldDz);
+  if (!Number.isFinite(worldDx) || !Number.isFinite(worldDz) || length < 0.001) return null;
+
+  const w = Math.max(320, Number(width) || 1280);
+  const h = Math.max(240, Number(height) || 720);
+  // Same transform as radar.js: +X appears left and +Z appears up in the fixed chase view.
+  const dx = -worldDx / length;
+  const dy = -worldDz / length;
+  const mx = Math.max(24, w / 2 - margin);
+  const my = Math.max(24, h / 2 - margin);
+  const tx = Math.abs(dx) > 0.001 ? mx / Math.abs(dx) : Infinity;
+  const ty = Math.abs(dy) > 0.001 ? my / Math.abs(dy) : Infinity;
+  const edgeT = Math.min(tx, ty);
+  const x = w / 2 + dx * edgeT;
+  const y = h / 2 + dy * edgeT;
+  const edge = x > w * 0.72
+    ? 'right'
+    : (x < w * 0.28 ? 'left' : (dy < 0 ? 'top' : 'bottom'));
+  return { x, y, edge, angleRad: Math.atan2(dy, dx) };
+}
+
 function mtObjectiveAction(action, wp) {
   const verb = String(action || 'Open the Mission Log').trim();
   // Prefer the physical target label; sector name is the fallback for cross-sector guidance.
@@ -3445,29 +3480,17 @@ export function createHud(ctx, alerts) {
       setDisplay(arrow, true);
       return;
     }
-    // clamp to a screen-edge ellipse around center, pointing toward target
-    let dx = proj.x - w / 2, dy = proj.y - h / 2;
-    // worldToScreen returns mirrored coords for behind-camera points; normalize direction
-    const len = Math.hypot(dx, dy) || 1;
-    dx /= len; dy /= len;
-    const margin = 34;
-    const mx = Math.max(24, w / 2 - margin);
-    const my = Math.max(24, h / 2 - margin);
-    const tx = Math.abs(dx) > 0.001 ? mx / Math.abs(dx) : Infinity;
-    const ty = Math.abs(dy) > 0.001 ? my / Math.abs(dy) : Infinity;
-    const edgeT = Math.min(tx, ty);
-    const ex = w / 2 + dx * edgeT, ey = h / 2 + dy * edgeT;
-    // Corners borrow the side-facing plate so the label grows inward instead of clipping past the
-    // viewport. The chevron itself still points at the exact projected bearing.
-    const edge = ex > w * 0.72
-      ? 'right'
-      : (ex < w * 0.28 ? 'left' : (dy < 0 ? 'top' : 'bottom'));
+    const edgePlacement = resolveObjectiveEdgePlacement(w, h, p, wp);
+    if (!edgePlacement) {
+      setDisplay(arrow, false);
+      return;
+    }
     arrow.classList.add('sf-objarrow--edge');
     arrow.classList.remove('sf-objarrow--onscreen', 'sf-objarrow--compact');
-    arrow.dataset.edge = edge;
-    arrow.style.setProperty('--sf-arrow-angle', `${Math.atan2(dy, dx)}rad`);
+    arrow.dataset.edge = edgePlacement.edge;
+    arrow.style.setProperty('--sf-arrow-angle', `${edgePlacement.angleRad}rad`);
     setDisplay(arrow, true);
-    arrow.style.transform = `translate3d(${ex}px,${ey}px,0)`;
+    arrow.style.transform = `translate3d(${edgePlacement.x}px,${edgePlacement.y}px,0)`;
   }
 
   function setVisible(v) {

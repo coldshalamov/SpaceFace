@@ -9,13 +9,14 @@ import { join } from 'node:path';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const OUT = join(ROOT, '.devshots', 'station-restore');
+const CAPTURE_WIDTH = Math.max(1024, Number(process.env.SF_CAPTURE_WIDTH) || 1440);
+const CAPTURE_HEIGHT = Math.max(700, Number(process.env.SF_CAPTURE_HEIGHT) || 900);
+const CAPTURE_DPR = Math.max(1, Math.min(2, Number(process.env.SF_CAPTURE_DPR) || 1));
+const CAPTURE_PROFILE = String(process.env.SF_CAPTURE_PROFILE || '').replace(/[^a-z0-9@._-]/gi, '');
+const OUT = join(ROOT, '.devshots', 'station-restore', CAPTURE_PROFILE);
 mkdirSync(OUT, { recursive: true });
 
-const TABS = [
-  'market', 'hold', 'shipyard', 'outfitting', 'manufacture',
-  'missions', 'services', 'factions', 'bar',
-];
+const TABS = ['market', 'shipworks', 'industry', 'contracts', 'factions', 'bar'];
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -70,6 +71,8 @@ async function clickTab(page, id) {
   return page.evaluate((id) => {
     const root = document.querySelector('[data-screen="station"]');
     if (!root) return false;
+    const destination = root.querySelector(`[data-nav="${id}"]`);
+    if (destination) { destination.click(); return true; }
     const exact = root.querySelector(`[data-tab="${id}"]`);
     if (exact) { exact.click(); return true; }
     const re = new RegExp('^\\s*' + id + '\\b', 'i');
@@ -88,7 +91,10 @@ try {
   // Headless Playwright often fails authored GLB preload on this machine; headed matches assets-live.
   const headless = process.env.SF_CAPTURE_HEADLESS === '1';
   browser = await chromium.launch({ headless, args: ['--use-gl=angle', '--ignore-gpu-blocklist'] });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+  const page = await browser.newPage({
+    viewport: { width: CAPTURE_WIDTH, height: CAPTURE_HEIGHT },
+    deviceScaleFactor: CAPTURE_DPR,
+  });
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch { /* ok */ }
   });
@@ -148,6 +154,18 @@ try {
     const name = `tab-${tab}${ok ? '' : '-miss'}.png`;
     await page.screenshot({ path: join(OUT, name) });
     console.log('saved', name, ok ? 'ok' : 'MISS');
+    if (ok && tab === 'shipworks') {
+      await page.waitForSelector('[data-spatial-slot]', { timeout: 15000 });
+      const firstSlot = page.locator('[data-spatial-slot]').first();
+      await firstSlot.focus();
+      await page.keyboard.press('Enter');
+      await page.waitForSelector('.sx-sw__chooser.is-open', { timeout: 5000 });
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: join(OUT, 'tab-shipworks-focus.png') });
+      console.log('saved tab-shipworks-focus.png ok');
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(250);
+    }
   }
 
   console.log('done →', OUT);

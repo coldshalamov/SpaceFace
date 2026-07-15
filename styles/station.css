@@ -276,8 +276,9 @@
 .sx-mkt-delta.is-up { color:var(--gain); } .sx-mkt-delta.is-down { color:var(--loss); }
 .sx-mkt-chart { width:100%; flex:1; min-height:170px; margin:8px 0 14px; }
 .sx-mkt-avg { stroke:var(--line-3); stroke-width:1; stroke-dasharray:4 5; }
-.sx-mkt-line { stroke-dasharray:2600; stroke-dashoffset:2600; animation:sxDraw 1s var(--ease) forwards; }
-@keyframes sxDraw { to { stroke-dashoffset:0; } }
+/* This line is refreshed from live prices. Replaying a one-second draw animation on every economy
+   refresh made the signal appear to blink between its accent and the background. */
+.sx-mkt-line { vector-effect:non-scaling-stroke; }
 .sx-mkt-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; border-top:1px solid var(--line-1); padding-top:14px; }
 .sx-stat { display:flex; flex-direction:column; gap:3px; }
 .sx-stat__k { font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); }

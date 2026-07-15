@@ -13,6 +13,7 @@ import { WEAPONS } from '../../../data/weapons.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
 import { createShipPreviewMount } from '../../shipPreviewMount.js';
+import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import {
   formatPreviewDelta,
   presentDerivedReadout,
@@ -60,15 +61,28 @@ export function createShipworksScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'sx-sw';
   el.innerHTML =
-    `<nav class="sx-sw__rail">` +
+    `<nav class="sx-sw__rail" aria-label="Shipworks hull selection">` +
       `<div class="sx-seg"><button type="button" class="sx-seg__btn is-on" data-mode="fleet">My Fleet</button><button type="button" class="sx-seg__btn" data-mode="buy">Buy Hull</button></div>` +
       `<div class="sx-sw__list"></div>` +
     `</nav>` +
     `<section class="sx-sw__main">` +
-      `<div class="sx-sw__stage"><canvas class="sx-sw__canvas"></canvas><div class="sx-sw__nameplate"></div></div>` +
+      `<div class="sx-sw__stage">` +
+        `<canvas class="sx-sw__canvas" tabindex="0" aria-label="Interactive ship preview. Drag to rotate and use the mouse wheel to zoom."></canvas>` +
+        `<div class="sx-sw__baylines" aria-hidden="true"><span></span><span></span><span></span></div>` +
+        `<div class="sx-sw__slotfield" role="group" aria-label="Ship systems"></div>` +
+        `<div class="sx-sw__focusline" aria-hidden="true"></div>` +
+        `<div class="sx-sw__delta" aria-live="polite" hidden></div>` +
+        `<div class="sx-sw__nameplate"></div>` +
+        `<div class="sx-sw__camera" aria-label="Ship preview controls">` +
+          `<button type="button" data-camera="left" aria-label="Rotate ship left">↶</button>` +
+          `<button type="button" data-camera="reset" aria-label="Reset ship view">CENTER</button>` +
+          `<button type="button" data-camera="right" aria-label="Rotate ship right">↷</button>` +
+        `</div>` +
+        `<span class="sx-sw__dragcue" aria-hidden="true">DRAG TO ORBIT / WHEEL TO INSPECT</span>` +
+      `</div>` +
       `<div class="sx-sw__stats"></div>` +
     `</section>` +
-    `<aside class="sx-sw__side"></aside>` +
+    `<aside class="sx-sw__side" aria-label="Shipworks operation controls"></aside>` +
     `<div class="sx-sw__chooser" hidden></div>`;
 
   const railListEl = el.querySelector('.sx-sw__list');
@@ -77,6 +91,9 @@ export function createShipworksScreen(ctx) {
   const statsEl = el.querySelector('.sx-sw__stats');
   const sideEl = el.querySelector('.sx-sw__side');
   const chooserEl = el.querySelector('.sx-sw__chooser');
+  const stageEl = el.querySelector('.sx-sw__stage');
+  const slotfieldEl = el.querySelector('.sx-sw__slotfield');
+  const deltaEl = el.querySelector('.sx-sw__delta');
 
   // Authored mesh required — never treat box-LOD / false warmup as primary truth.
   canvas.dataset.authoredRequired = 'true';
@@ -90,6 +107,11 @@ export function createShipworksScreen(ctx) {
   let curPreviewKey = '';
   let expectedPreviewDefId = null;
   let ghostActive = false;
+  let selectedSlot = -1;
+  let chooserAnchor = null;
+  let stopChooserPositioning = null;
+  let projectionFrame = 0;
+  let chooserCloseTimer = 0;
 
   function owned() { return (ctx.state.player && ctx.state.player.ownedShips) || []; }
   function viewedShip() { const o = owned(); return o[viewIdx] || o[ctx.state.player && ctx.state.player.activeShipIndex] || o[0] || null; }
@@ -121,6 +143,7 @@ export function createShipworksScreen(ctx) {
         if (!defId || defId !== expectedPreviewDefId) return;
         canvas.dataset.previewReady = 'true';
         canvas.dataset.previewDefId = defId;
+        scheduleSpatialProjection();
       },
     });
     // Warm authored assets; do not mark ready from a false/failed warmup.
@@ -149,10 +172,15 @@ export function createShipworksScreen(ctx) {
     }
     curPreviewKey = key;
     try {
-      mount.show(defId, { fittings: fittings || [], isPlayer: !!isPlayer, rotating: true });
+      const preserveView = mount.getDefId && mount.getDefId() === defId;
+      // Shipworks is direct manipulation: the settled ship does not burn a render loop merely to
+      // prove it is alive. Drag, zoom, selection and authored-asset upgrades render on demand.
+      mount.show(defId, { fittings: fittings || [], isPlayer: !!isPlayer, rotating: false, preserveView });
+      if (!preserveView) mount.setZoom(1.68);
       mount.setActive(true);
       mount.resize();
       canvas.dataset.previewReady = mount.getDefId() === defId ? 'true' : 'false';
+      scheduleSpatialProjection();
     } catch (e) { /* preview optional; UI still works — ready stays false */ }
   }
 
@@ -212,6 +240,8 @@ export function createShipworksScreen(ctx) {
 
   function restoreCurrentPreview() {
     ghostActive = false;
+    deltaEl.hidden = true;
+    deltaEl.innerHTML = '';
     const ctxPrev = currentPreviewContext();
     if (!ctxPrev) {
       nameplateEl.innerHTML = '';
@@ -222,6 +252,134 @@ export function createShipworksScreen(ctx) {
     previewShip(ctxPrev.defId, ctxPrev.fittings, ctxPrev.isPlayer, null);
     const readout = presentDerivedReadout(ctxPrev.defId, ctxPrev.fittings, ctxPrev.player);
     renderDerivedStats(readout, ctxPrev.fittings);
+    scheduleSpatialProjection();
+  }
+
+  // ---------- object-centric system projection ----------
+  let spatialAnchors = new Map();
+
+  function typeOrdinal(slots, slotIndex) {
+    const type = slots[slotIndex] && slots[slotIndex].type;
+    return slots.slice(0, slotIndex).filter((s) => s.type === type).length;
+  }
+
+  function localSlotAnchor(def, slots, slotIndex) {
+    const slot = slots[slotIndex];
+    if (!def || !slot) return { x: 0, y: 0, z: 0, authored: false };
+    const visuals = def.visuals || {};
+    const radius = Math.max(5, Number(def.collisionRadius) || 12);
+    const ordinal = typeOrdinal(slots, slotIndex);
+    let pos = null;
+    let authored = false;
+    if (slot.type === 'weapon' && visuals.hardpoints && visuals.hardpoints[ordinal]) {
+      pos = visuals.hardpoints[ordinal].pos;
+      authored = true;
+    } else if (slot.type === 'engine' && visuals.engineMounts && visuals.engineMounts.length) {
+      const mounts = visuals.engineMounts;
+      if (slots.filter((s) => s.type === 'engine').length > 1 && mounts[ordinal]) {
+        pos = mounts[ordinal].pos;
+      } else {
+        const sum = mounts.reduce((a, m) => [a[0] + m.pos[0], a[1] + m.pos[1], a[2] + m.pos[2]], [0, 0, 0]);
+        pos = sum.map((n) => n / mounts.length);
+      }
+      authored = true;
+    } else if (slot.type === 'mining' && visuals.drill) {
+      const spread = (ordinal - (slots.filter((s) => s.type === 'mining').length - 1) / 2) * .18;
+      pos = [visuals.drill[0], visuals.drill[1] - .04, visuals.drill[2] + spread];
+      authored = true;
+    } else if (slot.type === 'utility' && visuals.sensor) {
+      pos = visuals.sensor;
+      authored = true;
+    } else {
+      // Shield and cargo are abstract ship systems when the authored hull has no literal socket.
+      // Keep the distinction explicit in data attributes and copy; these are honest schematic
+      // anchors, not invented physical hardpoints.
+      const count = slots.filter((s) => s.type === slot.type).length;
+      const spread = (ordinal - (count - 1) / 2) * .28;
+      if (slot.type === 'shield') pos = [0.02, .36, spread];
+      else if (slot.type === 'cargo') pos = [-.12 + ordinal * .08, -.28, spread];
+      else pos = [.05, .28 - ordinal * .18, spread];
+    }
+    return {
+      x: (pos && Number(pos[0]) || 0) * radius,
+      y: (pos && Number(pos[1]) || 0) * radius,
+      z: (pos && Number(pos[2]) || 0) * radius,
+      authored,
+    };
+  }
+
+  function renderSpatialSlots() {
+    spatialAnchors = new Map();
+    if (mode !== 'fleet') { slotfieldEl.innerHTML = ''; return; }
+    const ship = viewedShip();
+    const def = ship && SHIP_BY_ID.get(ship.defId);
+    if (!def) { slotfieldEl.innerHTML = ''; return; }
+    const slots = buildSlotList(def);
+    const fittings = ship.fittings || [];
+    slotfieldEl.innerHTML = slots.map((slot, i) => {
+      const fitted = fittings[i] && FITTABLE_BY_ID.get(fittings[i]);
+      const anchor = localSlotAnchor(def, slots, i);
+      spatialAnchors.set(i, anchor);
+      const label = fitted ? fitted.name : `Empty ${SLOT_LABEL[slot.type] || slot.type}`;
+      const selected = i === selectedSlot ? ' is-selected' : '';
+      const kind = anchor.authored ? 'PHYSICAL' : 'SYSTEM';
+      return `<button type="button" class="sx-hardpoint sx-hardpoint--${escapeHtml(slot.type)}${selected}" data-spatial-slot="${i}" data-anchor-kind="${kind.toLowerCase()}" aria-label="${escapeHtml(`${SLOT_LABEL[slot.type] || slot.type} ${i + 1}: ${label}. Open compatible modules.`)}">` +
+        `<span class="sx-hardpoint__reticle" aria-hidden="true"><i></i></span>` +
+        `<span class="sx-hardpoint__copy"><b>${escapeHtml(label)}</b><em>${kind} / ${escapeHtml(slot.size || '')}</em></span>` +
+      `</button>`;
+    }).join('');
+    scheduleSpatialProjection();
+  }
+
+  function scheduleSpatialProjection() {
+    if (projectionFrame) cancelAnimationFrame(projectionFrame);
+    projectionFrame = requestAnimationFrame(() => {
+      projectionFrame = 0;
+      updateSpatialProjection();
+    });
+  }
+
+  function updateSpatialProjection() {
+    if (!mount || mode !== 'fleet' || !stageEl.isConnected) return;
+    const stageRect = stageEl.getBoundingClientRect();
+    const nodes = [...slotfieldEl.querySelectorAll('[data-spatial-slot]')];
+    const rows = Math.max(1, Math.ceil(nodes.length / 2));
+    nodes.forEach((node, order) => {
+      const index = Number(node.getAttribute('data-spatial-slot'));
+      const local = spatialAnchors.get(index);
+      const projected = local && mount.projectLocalPoint(local);
+      if (!projected) return;
+      const x = Math.max(42, Math.min(stageRect.width - 42, projected.x - stageRect.left));
+      const y = Math.max(46, Math.min(stageRect.height - 64, projected.y - stageRect.top));
+      node.style.left = `${x}px`;
+      node.style.top = `${y}px`;
+      node.style.zIndex = String(nodes.length - order + 2);
+      // Labels fan into a stable schematic constellation while each reticle remains tied to its
+      // projected physical/system point. That preserves spatial truth without producing a knot of
+      // overlapping text on compact hulls.
+      const onLeft = order % 2 === 0;
+      const row = Math.floor(order / 2);
+      const desiredY = (row - (rows - 1) / 2) * 52 - 10;
+      const absoluteLabelY = Math.max(8, Math.min(stageRect.height - 40, y + desiredY));
+      const calloutY = absoluteLabelY - y;
+      node.classList.toggle('is-callout-left', onLeft);
+      node.style.setProperty('--callout-x', onLeft ? '-184px' : '34px');
+      node.style.setProperty('--callout-y', `${calloutY}px`);
+      if (index === selectedSlot) {
+        const line = el.querySelector('.sx-sw__focusline');
+        const cx = stageRect.width / 2;
+        const cy = stageRect.height / 2;
+        const dx = x - cx;
+        const dy = y - cy;
+        line.style.left = `${cx}px`;
+        line.style.top = `${cy}px`;
+        line.style.width = `${Math.hypot(dx, dy)}px`;
+        line.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+        line.classList.add('is-on');
+        deltaEl.style.left = `${Math.max(16, Math.min(stageRect.width - 270, x + 24))}px`;
+        deltaEl.style.top = `${Math.max(70, Math.min(stageRect.height - 130, y - 18))}px`;
+      }
+    });
   }
 
   // ---------- left rail ----------
@@ -269,6 +427,7 @@ export function createShipworksScreen(ctx) {
       nameplateEl.innerHTML = `<h2>${escapeHtml(def.name)}</h2><span>${escapeHtml(def.role || '')} hull · Tier ${def.tier}</span>`;
       const readout = presentDerivedReadout(def.id, fittings, ctx.state.player);
       renderDerivedStats(readout, fittings);
+      renderSpatialSlots();
     } else {
       const def = SHIP_BY_ID.get(buyId);
       if (!def) return;
@@ -276,6 +435,7 @@ export function createShipworksScreen(ctx) {
       nameplateEl.innerHTML = `<h2>${escapeHtml(def.name)}</h2><span>${escapeHtml(def.role || '')} hull · Tier ${def.tier}</span>`;
       const readout = presentDerivedReadout(def.id, [], stockPreviewPlayer(ctx.state.player));
       renderDerivedStats(readout, []);
+      renderSpatialSlots();
     }
   }
 
@@ -306,39 +466,44 @@ export function createShipworksScreen(ctx) {
         `</div>`;
       return;
     }
-    // fleet: slots
+    // Fleet: the projected nodes on the hull own selection. This lower circuit makes the loadout
+    // legible at a glance without duplicating every slot in a permanent sidebar.
     const s = viewedShip();
     const def = s ? SHIP_BY_ID.get(s.defId) : null;
     if (!def) { sideEl.innerHTML = ''; return; }
     const slots = buildSlotList(def);
     const fittings = s.fittings || [];
-    // group by type, keep flat index
-    const groups = new Map();
-    slots.forEach((slot, i) => { const t = slot.type; if (!groups.has(t)) groups.set(t, []); groups.get(t).push({ slot, i }); });
-    let html = `<div class="sx-panel__head sx-panel__head--bare">${icon('spark', 15)}<span>Loadout</span><em class="sx-sw__hint">Click a slot to change it</em></div>`;
-    for (const [t, arr] of groups) {
-      html += `<div class="sx-slotgroup"><div class="sx-slotgroup__k">${SLOT_LABEL[t] || t}</div>`;
-      html += arr.map(({ slot, i }) => {
-        const fittedId = fittings[i];
-        const fitted = fittedId ? FITTABLE_BY_ID.get(fittedId) : null;
-        const identity = fitted ? fittedIdentityLine(fitted) : '';
-        return (
-          `<button type="button" class="sx-slot${fitted ? ' is-filled' : ' is-empty'}" data-slot="${i}">` +
-            `<span class="sx-slot__ic">${icon(SLOT_ICON[t] || 'spark', 18)}</span>` +
-            `<span class="sx-slot__body">` +
-              `<span class="sx-slot__name">${fitted ? escapeHtml(fitted.name) : 'Empty ' + (SLOT_LABEL[t] || t) + ' · ' + (slot.size || '')}</span>` +
-              (fitted
-                ? `<span class="sx-slot__stat">${escapeHtml(identity)}</span>`
-                : `<span class="sx-slot__stat sx-slot__stat--empty">Install a module</span>`) +
-            `</span>` +
-            `<span class="sx-slot__size">${escapeHtml(slot.size || '')}</span>` +
-            `<span class="sx-slot__chev">${icon('chevron', 16)}</span>` +
-          `</button>`
-        );
-      }).join('');
-      html += `</div>`;
+    const equippedDefs = fittings.map((id) => id && FITTABLE_BY_ID.get(id)).filter(Boolean);
+    const moduleMass = equippedDefs.reduce((sum, d) => sum + (Number(d.mass) || 0), 0);
+    const systemDraw = new Map();
+    for (const t of ['weapon', 'shield', 'engine', 'mining', 'utility']) systemDraw.set(t, 0);
+    for (const d of equippedDefs) {
+      const draw = Number(d.energyDraw) || (d.continuous ? Number(d.energyCost) || 0 : 0);
+      systemDraw.set(d.slotType, (systemDraw.get(d.slotType) || 0) + draw);
     }
-    sideEl.innerHTML = html;
+    const totalDraw = [...systemDraw.values()].reduce((a, b) => a + b, 0);
+    const flows = [...systemDraw.entries()].filter(([type]) => slots.some((slot) => slot.type === type));
+    const activeIndex = Number(ctx.state.player && ctx.state.player.activeShipIndex) || 0;
+    const inspectedIndex = owned().indexOf(s);
+    const activeControl = inspectedIndex !== activeIndex
+      ? `<button type="button" class="sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}">MAKE ACTIVE</button>`
+      : `<span class="sx-sw-circuit__active">ACTIVE FLIGHT HULL</span>`;
+    sideEl.innerHTML =
+      `<div class="sx-sw-circuit">` +
+        `<div class="sx-sw-circuit__identity"><span>BUILD IDENTITY</span><strong>${escapeHtml((def.role || 'ship').toUpperCase())}</strong><em>${equippedDefs.length}/${slots.length} systems fitted · ${fmt(moduleMass)}t modules</em></div>` +
+        `<div class="sx-sw-circuit__core"><i aria-hidden="true"></i><span>ENERGY CORE</span><b>${fmt(def.energyCap || 0)}</b><em>${fmt(totalDraw)} continuous draw</em></div>` +
+        `<div class="sx-sw-circuit__bus" aria-hidden="true"></div>` +
+        `<div class="sx-sw-circuit__flows">${flows.map(([type, draw]) => {
+          const available = slots.filter((slot) => slot.type === type).length;
+          const fitted = slots.reduce((n, slot, i) => n + (slot.type === type && fittings[i] ? 1 : 0), 0);
+          const strength = Math.max(.12, Math.min(1, totalDraw > 0 ? draw / totalDraw : .12));
+          return `<div class="sx-sw-flow" style="--flow:${strength}" data-system-type="${escapeHtml(type)}">` +
+            `<span class="sx-sw-flow__beam" aria-hidden="true"></span><span class="sx-sw-flow__ic">${icon(SLOT_ICON[type] || 'spark', 15)}</span>` +
+            `<span class="sx-sw-flow__copy"><b>${escapeHtml(SLOT_LABEL[type] || type)}</b><em>${fitted}/${available} · ${fmt(draw)} draw</em></span>` +
+          `</div>`;
+        }).join('')}</div>` +
+        `<div class="sx-sw-circuit__instruction"><span>SELECT ON HULL</span><b>Choose a system node to preview compatible hardware.</b>${activeControl}</div>` +
+      `</div>`;
   }
 
   function specRow(k, v) { return `<div class="sx-kv"><span>${k}</span><b>${v}</b></div>`; }
@@ -360,7 +525,35 @@ export function createShipworksScreen(ctx) {
   }
 
   // ---------- slot chooser (dim + reveal compatible modules) ----------
-  function openChooser(slotIndex) {
+  function stopChooserFloating() {
+    if (stopChooserPositioning) { try { stopChooserPositioning(); } catch (_) {} }
+    stopChooserPositioning = null;
+  }
+
+  function positionChooser(anchor, panel) {
+    if (!anchor || !panel || chooserEl.hidden) return;
+    computePosition(anchor, panel, {
+      strategy: 'fixed',
+      placement: 'right-start',
+      middleware: [
+        offset(18),
+        flip({ fallbackPlacements: ['left-start', 'bottom'], padding: 18 }),
+        shift({ padding: 18 }),
+        size({
+          padding: 18,
+          apply({ availableWidth, availableHeight, elements }) {
+            elements.floating.style.maxWidth = `${Math.max(340, Math.min(520, availableWidth))}px`;
+            elements.floating.style.maxHeight = `${Math.max(320, availableHeight)}px`;
+          },
+        }),
+      ],
+    }).then(({ x, y }) => {
+      if (chooserEl.hidden) return;
+      Object.assign(panel.style, { left: `${x}px`, top: `${y}px` });
+    }).catch(() => {});
+  }
+
+  function openChooser(slotIndex, anchorEl) {
     const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null;
     if (!def) return;
     const slots = buildSlotList(def); const slot = slots[slotIndex]; if (!slot) return;
@@ -398,9 +591,18 @@ export function createShipworksScreen(ctx) {
       );
     }).join('');
 
+    if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
+    stopChooserFloating();
+    selectedSlot = slotIndex;
+    chooserAnchor = anchorEl || slotfieldEl.querySelector(`[data-spatial-slot="${slotIndex}"]`);
+    slotfieldEl.classList.add('is-focusing');
+    slotfieldEl.querySelectorAll('[data-spatial-slot]').forEach((node) => {
+      node.classList.toggle('is-selected', Number(node.getAttribute('data-spatial-slot')) === slotIndex);
+    });
+    scheduleSpatialProjection();
     chooserEl.innerHTML =
       `<div class="sx-chooser__scrim" data-close></div>` +
-      `<div class="sx-chooser__panel">` +
+      `<div class="sx-chooser__panel" role="dialog" aria-modal="true" aria-label="Compatible ${escapeHtml(SLOT_LABEL[slot.type] || slot.type)} modules">` +
         `<header class="sx-chooser__head">` +
           `<div><span class="sx-chooser__kicker">${SLOT_LABEL[slot.type] || slot.type} slot · Size ${escapeHtml(slot.size || '')}${slot.facing ? ' · ' + escapeHtml(slot.facing) : ''}</span>` +
           `<h3>Compatible Modules</h3></div>` +
@@ -410,13 +612,36 @@ export function createShipworksScreen(ctx) {
         `<div class="sx-chooser__list">${list || '<p class="sx-muted" style="padding:14px">No compatible modules.</p>'}</div>` +
       `</div>`;
     chooserEl.hidden = false;
-    requestAnimationFrame(() => chooserEl.classList.add('is-open'));
+    const panel = chooserEl.querySelector('.sx-chooser__panel');
+    positionChooser(chooserAnchor, panel);
+    if (chooserAnchor && panel) {
+      stopChooserPositioning = autoUpdate(chooserAnchor, panel, () => positionChooser(chooserAnchor, panel), {
+        ancestorResize: true, ancestorScroll: true, elementResize: true, animationFrame: false,
+      });
+    }
+    requestAnimationFrame(() => {
+      chooserEl.classList.add('is-open');
+      const first = chooserEl.querySelector('[data-preview-module], [data-unfit], [data-close]');
+      if (first && typeof first.focus === 'function') first.focus({ preventScroll: true });
+    });
   }
 
   function closeChooser() {
+    const returnFocus = chooserAnchor;
+    stopChooserFloating();
     restoreCurrentPreview();
+    selectedSlot = -1;
+    chooserAnchor = null;
+    slotfieldEl.classList.remove('is-focusing');
+    slotfieldEl.querySelectorAll('[data-spatial-slot]').forEach((node) => node.classList.remove('is-selected'));
+    el.querySelector('.sx-sw__focusline').classList.remove('is-on');
     chooserEl.classList.remove('is-open');
-    setTimeout(() => { chooserEl.hidden = true; chooserEl.innerHTML = ''; }, 200);
+    chooserCloseTimer = setTimeout(() => {
+      chooserEl.hidden = true;
+      chooserEl.innerHTML = '';
+      chooserCloseTimer = 0;
+      if (returnFocus && returnFocus.isConnected && typeof returnFocus.focus === 'function') returnFocus.focus({ preventScroll: true });
+    }, 200);
   }
 
   function applyModuleGhost(moduleId, slotIndex) {
@@ -438,13 +663,27 @@ export function createShipworksScreen(ctx) {
     });
     const readout = presentDerivedReadout(ghost.defId, ghost.afterFittings, ctx.state.player);
     renderDerivedStats(readout, ghost.afterFittings);
+    const changed = (ghost.changedRows || []).filter((row) => row.tone !== 'same').slice(0, 4);
+    if (changed.length) {
+      deltaEl.hidden = false;
+      deltaEl.innerHTML = `<span>PROPOSED FIT</span>` + changed.map((row) => {
+        const label = formatPreviewDelta(row);
+        return `<b class="is-${row.tone === 'better' ? 'gain' : 'loss'}">${escapeHtml(label || row.label)}</b>`;
+      }).join('');
+      scheduleSpatialProjection();
+    } else {
+      deltaEl.hidden = true;
+      deltaEl.innerHTML = '';
+    }
   }
 
   // ---------- events ----------
   el.querySelector('.sx-seg').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-mode]'); if (!b) return;
     const m = b.getAttribute('data-mode'); if (m === mode) return;
+    if (!chooserEl.hidden) closeChooser();
     mode = m;
+    selectedSlot = -1;
     el.querySelectorAll('.sx-seg__btn').forEach((x) => x.classList.toggle('is-on', x.getAttribute('data-mode') === mode));
     renderRail(); renderCenter(); renderSide();
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
@@ -452,7 +691,13 @@ export function createShipworksScreen(ctx) {
 
   railListEl.addEventListener('click', (ev) => {
     const f = ev.target.closest('[data-fleet]');
-    if (f) { viewIdx = Number(f.getAttribute('data-fleet')); if (ctx.bus) ctx.bus.emit('ui:setActiveShip', { index: viewIdx }); renderRail(); renderCenter(); renderSide(); return; }
+    if (f) {
+      viewIdx = Number(f.getAttribute('data-fleet'));
+      selectedSlot = -1;
+      renderRail(); renderCenter(); renderSide();
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+      return;
+    }
     const b = ev.target.closest('[data-buy]');
     if (b) { buyId = b.getAttribute('data-buy'); renderRail(); renderCenter(); renderSide(); if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' }); }
   });
@@ -462,7 +707,72 @@ export function createShipworksScreen(ctx) {
     if (slot) { openChooser(Number(slot.getAttribute('data-slot'))); if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' }); return; }
     const buy = ev.target.closest('[data-buyship]');
     if (buy && !buy.disabled) { if (ctx.bus) { ctx.bus.emit('ui:buyShip', { defId: buy.getAttribute('data-buyship') }); ctx.bus.emit('audio:cue', { id: 'ui_accept' }); } setTimeout(refresh, 60); }
+    const activate = ev.target.closest('[data-activate-ship]');
+    if (activate && ctx.bus) {
+      ctx.bus.emit('ui:setActiveShip', { index: Number(activate.getAttribute('data-activate-ship')) });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      setTimeout(refresh, 60);
+    }
   });
+
+  slotfieldEl.addEventListener('click', (ev) => {
+    const node = ev.target.closest('[data-spatial-slot]');
+    if (!node) return;
+    openChooser(Number(node.getAttribute('data-spatial-slot')), node);
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+  });
+
+  // Direct manipulation camera. Rendering and projection are event-bound; no idle frame loop.
+  let dragPointer = null;
+  let dragX = 0;
+  const endDrag = (ev) => {
+    if (dragPointer == null || (ev.pointerId != null && ev.pointerId !== dragPointer)) return;
+    try { canvas.releasePointerCapture(dragPointer); } catch (_) {}
+    dragPointer = null;
+    canvas.classList.remove('is-dragging');
+  };
+  canvas.addEventListener('pointerdown', (ev) => {
+    if (ev.button !== 0 || !mount) return;
+    dragPointer = ev.pointerId;
+    dragX = ev.clientX;
+    canvas.setPointerCapture(ev.pointerId);
+    canvas.classList.add('is-dragging');
+  });
+  canvas.addEventListener('pointermove', (ev) => {
+    if (dragPointer !== ev.pointerId || !mount) return;
+    const dx = ev.clientX - dragX;
+    dragX = ev.clientX;
+    mount.rotateBy(dx * .009);
+    scheduleSpatialProjection();
+  });
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('wheel', (ev) => {
+    if (!mount) return;
+    ev.preventDefault();
+    mount.zoomBy(-ev.deltaY * .0012);
+    scheduleSpatialProjection();
+  }, { passive: false });
+  canvas.addEventListener('keydown', (ev) => {
+    if (!mount) return;
+    if (ev.key === 'ArrowLeft') { ev.preventDefault(); mount.rotateBy(-.14); scheduleSpatialProjection(); }
+    else if (ev.key === 'ArrowRight') { ev.preventDefault(); mount.rotateBy(.14); scheduleSpatialProjection(); }
+    else if (ev.key === '+' || ev.key === '=') { ev.preventDefault(); mount.zoomBy(.1); scheduleSpatialProjection(); }
+    else if (ev.key === '-') { ev.preventDefault(); mount.zoomBy(-.1); scheduleSpatialProjection(); }
+    else if (ev.key === 'Home') { ev.preventDefault(); mount.setYaw(Math.PI * .22); mount.setZoom(1); scheduleSpatialProjection(); }
+  });
+  el.querySelector('.sx-sw__camera').addEventListener('click', (ev) => {
+    const control = ev.target.closest('[data-camera]');
+    if (!control || !mount) return;
+    const command = control.getAttribute('data-camera');
+    if (command === 'left') mount.rotateBy(-.22);
+    else if (command === 'right') mount.rotateBy(.22);
+    else { mount.setYaw(Math.PI * .22); mount.setZoom(1); }
+    scheduleSpatialProjection();
+  });
+  const stageResizeObserver = typeof ResizeObserver !== 'undefined'
+    ? new ResizeObserver(() => scheduleSpatialProjection()) : null;
+  if (stageResizeObserver) stageResizeObserver.observe(stageEl);
 
   chooserEl.addEventListener('click', (ev) => {
     if (ev.target.closest('[data-close]')) { closeChooser(); return; }
@@ -500,7 +810,18 @@ export function createShipworksScreen(ctx) {
     if (ghostActive || !chooserEl.hidden) restoreCurrentPreview();
   });
 
-  el.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !chooserEl.hidden) closeChooser(); });
+  el.addEventListener('keydown', (ev) => {
+    if (chooserEl.hidden) return;
+    if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); closeChooser(); return; }
+    if (ev.key !== 'Tab') return;
+    const focusable = [...chooserEl.querySelectorAll('button:not([disabled]),[tabindex="0"]')]
+      .filter((node) => node.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+    else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+  });
 
   function refresh(periodicCtx) {
     // The shell owns its 18-frame status cadence. Shipworks is event-driven; repainting its full
@@ -517,6 +838,12 @@ export function createShipworksScreen(ctx) {
     onShow() { refresh(); if (mount) mount.setActive(true); },
     onHide() { if (mount) mount.setActive(false); }, // stop the render loop when leaving (perf)
     refresh,
-    dispose() { if (mount) { try { mount.dispose(); } catch (_) {} mount = null; } },
+    dispose() {
+      stopChooserFloating();
+      if (chooserCloseTimer) clearTimeout(chooserCloseTimer);
+      if (projectionFrame) cancelAnimationFrame(projectionFrame);
+      if (stageResizeObserver) stageResizeObserver.disconnect();
+      if (mount) { try { mount.dispose(); } catch (_) {} mount = null; }
+    },
   };
 }

@@ -97,7 +97,10 @@ function volScale(def) {
  */
 export function createCycle(rng, def, simTime) {
   if (typeof rng !== 'function') rng = () => 0.5;
-  simTime = Math.max(0, Number(simTime) || 0);
+  // A market can be established before the pilot's clock begins. Preserve that negative
+  // start time so its initial history samples the same live formula rather than flattening
+  // every point to t=0.
+  simTime = Number.isFinite(Number(simTime)) ? Number(simTime) : 0;
   const regime = pickWeighted(rng, REGIME_WEIGHTS);
   const vs = volScale(def);
   const period = randRange(rng, PERIOD_LO_S, PERIOD_HI_S);
@@ -239,6 +242,11 @@ export function normalizeCycle(raw, cmdtyId) {
   const regime = CYCLE_REGIMES.includes(raw.regime)
     ? raw.regime
     : (CYCLE_REGIMES.includes(raw.family) ? raw.family : 'sine');
+  // A new campaign starts with each market already partway through a regime, so its
+  // opening chart has a truthful, readable past. Those pre-campaign seconds are
+  // intentionally negative relative to the pilot's playtime clock and must survive
+  // a save/load round trip.
+  const regimeStartT = Number.isFinite(Number(raw.regimeStartT)) ? Number(raw.regimeStartT) : 0;
   return {
     cmdtyId: raw.cmdtyId || cmdtyId || null,
     regime,
@@ -258,10 +266,10 @@ export function normalizeCycle(raw, cmdtyId) {
     amp3: Number.isFinite(raw.amp3) ? raw.amp3 : 0,
     freq3: Number.isFinite(raw.freq3) ? raw.freq3 : (Number(raw.frequency) || periodToFreq(300)) * 2.4,
     phase3: Number.isFinite(raw.phase3) ? raw.phase3 : 0,
-    regimeStartT: Math.max(0, Number(raw.regimeStartT) || 0),
+    regimeStartT,
     regimeEndT: Math.max(
-      (Number(raw.regimeStartT) || 0) + REGIME_MIN_S,
-      Number(raw.regimeEndT) || ((Number(raw.regimeStartT) || 0) + REGIME_MIN_S),
+      regimeStartT + REGIME_MIN_S,
+      Number(raw.regimeEndT) || (regimeStartT + REGIME_MIN_S),
     ),
   };
 }
@@ -284,13 +292,10 @@ export function getCycle(state, stationId, cmdtyId, rng, simTime) {
   return c;
 }
 
-/**
- * Evaluate the hidden formula → dimensionless price factor (~1).
- * Pure. Never returns non-finite or ≤ 0 values.
- */
-export function cycleFactorAt(cycle, simTime) {
+/** Evaluate the hidden formula before its safety band is applied. */
+export function rawCycleFactorAt(cycle, simTime) {
   if (!cycle) return 1;
-  const start = Math.max(0, Number(cycle.regimeStartT) || 0);
+  const start = Number.isFinite(Number(cycle.regimeStartT)) ? Number(cycle.regimeStartT) : 0;
   const end = Math.max(start + 1, Number(cycle.regimeEndT) || (start + REGIME_MIN_S));
   const duration = end - start;
   const elapsed = Math.max(0, (Number(simTime) || 0) - start);
@@ -354,6 +359,15 @@ export function cycleFactorAt(cycle, simTime) {
       break;
   }
 
+  return raw;
+}
+
+/**
+ * Evaluate the hidden formula → dimensionless price factor (~1).
+ * Pure. Never returns non-finite or ≤ 0 values.
+ */
+export function cycleFactorAt(cycle, simTime) {
+  const raw = rawCycleFactorAt(cycle, simTime);
   if (!Number.isFinite(raw)) return 1;
   return clamp(raw, CYCLE_FACTOR_LO, CYCLE_FACTOR_HI);
 }
@@ -375,7 +389,12 @@ export function applyCycleToMid(basePrice, stockMid, cycle, simTime) {
 
 /** Maybe re-roll the formula if its regime has expired. Returns next cycle object. */
 export function maybeAdvanceRegime(cycle, rng, simTime) {
-  if (!cycle || simTime < cycle.regimeEndT) return cycle;
+  if (!cycle) return cycle;
+  // A formula that would make a price non-positive is never allowed to linger
+  // behind the display clamp. Re-roll immediately, then keep normal regime
+  // changes deliberately infrequent.
+  const raw = rawCycleFactorAt(cycle, simTime);
+  if (simTime < cycle.regimeEndT && Number.isFinite(raw) && raw > 0) return cycle;
   const def = CMDTY_BY_ID.get(cycle.cmdtyId);
   const next = createCycle(typeof rng === 'function' ? rng : () => 0.5, def, simTime);
   if (cycle.cmdtyId) next.cmdtyId = cycle.cmdtyId;

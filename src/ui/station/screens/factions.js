@@ -5,7 +5,13 @@
 // Screen module shape (hosted by stationApp): create(ctx) -> { el, onShow, refresh, dispose }.
 import { FACTION_META } from '../../../data/factions.js';
 import { NEW_GAME } from '../../../data/newGameDefaults.js';
-import { tierFor, FACTION_TIERS } from '../../screens/factions.js';
+import { SECTORS } from '../../../data/sectors.js';
+import {
+  tierFor,
+  FACTION_TIERS,
+  FACTION_AGGRO_THRESHOLD,
+  factionStandingGuidance,
+} from '../../screens/factions.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
 
@@ -35,6 +41,10 @@ const FACTION_TINT = {
   faction_choir: '#78c6d8',
 };
 const DEFAULT_TINT = '#4aa8ff';
+const STATION_FACTION = new Map();
+for (const sector of SECTORS) {
+  for (const station of (sector.stations || [])) STATION_FACTION.set(station.id, station.factionId || sector.factionId || null);
+}
 
 const DIAL_MIN = -1000;
 const DIAL_MAX = 1000;
@@ -82,6 +92,23 @@ function nextTierInfo(rep) {
   return null; // already Hero
 }
 
+function signed(value) {
+  const n = Math.round(Number(value) || 0);
+  return `${n > 0 ? '+' : ''}${n}`;
+}
+
+function liveFaction(state, id) {
+  return (state && state.factions && state.factions[id]) || null;
+}
+
+function relationEntries(meta) {
+  return Object.entries((meta && meta.relations) || {})
+    .map(([id, weight]) => ({ id, weight: Number(weight) || 0 }))
+    .filter((entry) => Math.abs(entry.weight) >= 0.19)
+    .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight))
+    .slice(0, 7);
+}
+
 // Build the static dial svg (arc segments + ticks + track). Needle + labels are separate.
 function buildDialSvg() {
   const S = 260, cx = 130, cy = 138, R = 104;
@@ -110,7 +137,7 @@ function buildDialSvg() {
     `<circle cx="${cx}" cy="${my}" r="11" class="sx-dial-marker-halo"/>` +
     `<circle cx="${cx}" cy="${my}" r="6.5" class="sx-dial-marker-dot"/>` +
     `</g>`;
-  return `<svg class="sx-dial-svg" viewBox="0 0 ${S} ${S}" role="img">${track}${segs}${ticks}${marker}</svg>`;
+  return `<svg class="sx-dial-svg" viewBox="0 0 ${S} ${S}" role="img" aria-label="Standing threshold instrument"><title>Standing threshold instrument</title>${track}${segs}${ticks}${marker}</svg>`;
 }
 
 export function createFactionsScreen(ctx) {
@@ -120,6 +147,7 @@ export function createFactionsScreen(ctx) {
   // faction list (real names from FACTION_META; rep from state)
   const factions = FACTION_META.map((m) => ({ id: m.id, name: m.name || m.id, meta: m }));
   let selectedId = factions[0] && factions[0].id;
+  let picked = false;
   let lastRot = 0; // for smooth needle animation between selections
 
   el.innerHTML =
@@ -130,8 +158,10 @@ export function createFactionsScreen(ctx) {
   const railEl = el.querySelector('.sx-fac__rail');
   const stageEl = el.querySelector('.sx-fac__stage');
   const detailEl = el.querySelector('.sx-fac__detail');
+  railEl.setAttribute('role', 'tablist');
 
   function renderRail(state) {
+    const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
     railEl.innerHTML = factions.map((f) => {
       const rep = repOf(state, f.id);
       const tier = tierFor(rep);
@@ -146,7 +176,7 @@ export function createFactionsScreen(ctx) {
             `<span class="sx-fac-row__name">${escapeHtml(f.name)}</span>` +
             `<span class="sx-fac-row__bar"><span class="sx-fac-row__mid"></span><span class="sx-fac-row__fill" style="width:${(frac * 100).toFixed(1)}%;background:${col}"></span></span>` +
           `</span>` +
-          `<span class="sx-fac-row__tier" style="color:${col}">${escapeHtml(tier.name)}</span>` +
+          `<span class="sx-fac-row__tier" style="color:${col}">${f.id === authorityId ? 'AUTHORITY · ' : ''}${escapeHtml(tier.name)}</span>` +
         `</button>`
       );
     }).join('');
@@ -159,20 +189,67 @@ export function createFactionsScreen(ctx) {
     const col = standingColor(rep);
     const tint = tintFor(f.id);
     const next = nextTierInfo(rep);
-    const nextLine = next
-      ? `<span class="sx-dial-next">${next.need} to <b>${escapeHtml(next.name)}</b></span>`
-      : `<span class="sx-dial-next sx-dial-next--peak">Peak standing held</span>`;
+    const live = liveFaction(state, f.id);
+    const guidance = factionStandingGuidance(rep, f.meta || {}, live && live.lastDelta);
+    const relations = relationEntries(f.meta);
+    const positions = relations.map((relation, index) => {
+      const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / Math.max(1, relations.length));
+      return {
+        ...relation,
+        x: 50 + Math.cos(angle) * 34,
+        y: 50 + Math.sin(angle) * 34,
+      };
+    });
+    const lines = positions.map((relation) => {
+      const relationColor = relation.weight > 0 ? '#56c7a5' : '#d76550';
+      return `<line x1="50" y1="50" x2="${relation.x.toFixed(2)}" y2="${relation.y.toFixed(2)}" ` +
+        `style="--relation:${relationColor};--weight:${Math.abs(relation.weight).toFixed(2)}"/>`;
+    }).join('');
+    const nodes = positions.map((relation) => {
+      const related = factions.find((candidate) => candidate.id === relation.id);
+      const relatedRep = repOf(state, relation.id);
+      const relationColor = relation.weight > 0 ? '#56c7a5' : '#d76550';
+      return `<button type="button" class="sx-fac-node" data-fac="${escapeHtml(relation.id)}" ` +
+        `style="--x:${relation.x.toFixed(2)}%;--y:${relation.y.toFixed(2)}%;--relation:${relationColor};--identity:${tintFor(relation.id)}" ` +
+        `aria-label="Inspect ${escapeHtml(related ? related.name : relation.id)}, ${relation.weight > 0 ? 'aligned' : 'rival'} relation ${Math.abs(relation.weight).toFixed(2)}">` +
+          `<span class="sx-fac-node__mark">${icon('factions', 15)}</span>` +
+          `<span class="sx-fac-node__copy"><b>${escapeHtml(related ? related.name : relation.id)}</b>` +
+          `<em>${relation.weight > 0 ? 'ALIGN' : 'RIVAL'} ${Math.abs(relation.weight).toFixed(2)} · ${signed(relatedRep)}</em></span>` +
+        `</button>`;
+    }).join('');
+    const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
+    const controls = (f.meta && f.meta.controls) || [];
     stageEl.innerHTML =
-      `<div class="sx-dial" style="--tint:${tint};--standing:${col}">` +
-        buildDialSvg() +
-        `<div class="sx-dial-core">` +
-          `<span class="sx-dial-tier" style="color:${col}">${escapeHtml(tier.name)}</span>` +
-          `<span class="sx-dial-rep">${rep > 0 ? '+' : ''}${rep}</span>` +
-          nextLine +
-        `</div>` +
-      `</div>` +
-      `<h2 class="sx-dial-name">${escapeHtml(f.name)}</h2>` +
-      `<p class="sx-dial-sub">Standing runs from <span style="color:${STANDING_RAMP[0]}">Sworn Enemy</span> to <span style="color:${STANDING_RAMP[8]}">Hero</span> · −1000 to +1000</p>`;
+      `<div class="sx-fac-overview" style="--tint:${tint};--standing:${col}">` +
+        `<section class="sx-fac-pulse" aria-label="Standing with ${escapeHtml(f.name)}">` +
+          `<div class="sx-dial sx-dial--compact">` +
+            buildDialSvg() +
+            `<div class="sx-dial-core">` +
+              `<span class="sx-dial-tier" style="color:${col}">${escapeHtml(tier.name)}</span>` +
+              `<span class="sx-dial-rep">${signed(rep)}</span>` +
+              `<span class="sx-dial-next">${next ? `${next.need} TO ${escapeHtml(next.name)}` : 'PEAK HELD'}</span>` +
+            `</div>` +
+          `</div>` +
+          `<div class="sx-fac-ident">` +
+            `<span class="sx-fac-ident__flag">${f.id === authorityId ? 'CURRENT STATION AUTHORITY' : 'EXTERNAL POWER'}</span>` +
+            `<h2>${escapeHtml(f.name)}</h2>` +
+            `<p>${controls.length ? escapeHtml(controls.slice(0, 3).join(' · ')) : 'No confirmed jurisdiction at this berth'}</p>` +
+          `</div>` +
+          `<div class="sx-fac-decisions">` +
+            `<div><span>NOW</span><b style="color:${col}">${escapeHtml(tier.name)} ${signed(rep)}</b><em>${escapeHtml(guidance.last)}</em></div>` +
+            `<div><span>NEXT</span><b>${next ? escapeHtml(`${next.need} reputation`) : 'Standing cap'}</b><em>${escapeHtml(guidance.next)}</em></div>` +
+            `<div><span>HOSTILITY BUFFER</span><b>${Math.max(0, rep - FACTION_AGGRO_THRESHOLD)} rep</b><em>${escapeHtml(guidance.risk)}</em></div>` +
+          `</div>` +
+        `</section>` +
+        `<section class="sx-fac-network" aria-label="Relationship field for ${escapeHtml(f.name)}">` +
+          `<header><span>RELATION FIELD</span><b>Select a connected power to follow the consequence web</b></header>` +
+          (relations.length
+            ? `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>` +
+              `<div class="sx-fac-network__core"><span style="--identity:${tint}">${icon('factions', 25)}</span><b>${escapeHtml(f.meta.short || f.name)}</b><em>SELECTED</em></div>${nodes}`
+            : `<div class="sx-fac-network__empty">NO MATERIAL RELATIONS RECORDED</div>`) +
+          `<footer><span><i class="is-aligned"></i> aligned spillover</span><span><i class="is-rival"></i> rival spillover</span></footer>` +
+        `</section>` +
+      `</div>`;
 
     // animate the marker from its previous rotation to the new value along the arc
     const marker = stageEl.querySelector('.sx-dial-marker');
@@ -206,32 +283,17 @@ export function createFactionsScreen(ctx) {
       );
     }).join('');
     const meta = f.meta || {};
-    const controls = meta.controls || (meta.control ? [meta.control] : []);
-    const allies = meta.allies || (meta.relationships && meta.relationships.allies) || [];
-    const rivals = meta.rivals || (meta.relationships && meta.relationships.rivals) || [];
-    const nameOf = (id) => {
-      const m = factions.find((x) => x.id === id || x.meta && x.meta.id === id);
-      return m ? m.name : String(id).replace(/^faction_/, '');
-    };
-    const relBlock = (label, ids, cls) => {
-      if (!ids || !ids.length) return '';
-      return `<div class="sx-rel"><span class="sx-rel__k">${label}</span><span class="sx-rel__v">` +
-        ids.map((id) => `<span class="sx-tag sx-tag--${cls}">${escapeHtml(nameOf(id))}</span>`).join('') +
-        `</span></div>`;
-    };
+    const guidance = factionStandingGuidance(rep, meta, liveFaction(state, f.id) && liveFaction(state, f.id).lastDelta);
+    const relations = relationEntries(meta);
 
     detailEl.innerHTML =
-      `<div class="sx-panel sx-panel--ladder">` +
-        `<div class="sx-panel__head">${icon('spark', 15)}<span>Standing Ladder</span></div>` +
+      `<div class="sx-fac-ladder">` +
+        `<div class="sx-fac-ladder__head">${icon('spark', 15)}<span>Standing ladder</span><b>Each threshold changes access and contract consequence</b></div>` +
         `<ol class="sx-ladder">${ladder}</ol>` +
       `</div>` +
-      `<div class="sx-panel sx-panel--rel">` +
-        `<div class="sx-panel__head">${icon('info', 15)}<span>Relations</span></div>` +
-        (controls.length ? `<div class="sx-rel"><span class="sx-rel__k">Controls</span><span class="sx-rel__v">${controls.map((c) => `<span class="sx-tag">${escapeHtml(String(c))}</span>`).join('')}</span></div>` : '') +
-        relBlock('Allies', allies, 'good') +
-        relBlock('Rivals', rivals, 'bad') +
-        (!controls.length && !allies.length && !rivals.length
-          ? `<p class="sx-muted">Relations intel unavailable at this berth. Run contracts to surface their web of alliances.</p>` : '') +
+      `<div class="sx-fac-intent">` +
+        `<span>NEXT MOVE</span><b>${escapeHtml(guidance.plan)}</b>` +
+        `<em>${relations.length} consequential relation${relations.length === 1 ? '' : 's'} mapped</em>` +
       `</div>`;
   }
 
@@ -242,23 +304,47 @@ export function createFactionsScreen(ctx) {
     renderDetail(state);
   }
 
-  railEl.addEventListener('click', (ev) => {
-    const btn = ev.target.closest('[data-fac]');
-    if (!btn) return;
-    const id = btn.getAttribute('data-fac');
-    if (id === selectedId) return;
+  function selectFaction(id) {
+    if (!factions.some((f) => f.id === id) || id === selectedId) return;
     selectedId = id;
+    picked = true;
     const state = (ctx && ctx.state) || {};
     renderRail(state);
     renderStage(state, true);
     renderDetail(state);
+    const active = railEl.querySelector(`[data-fac="${CSS.escape(id)}"]`);
+    if (active && active.scrollIntoView) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
-  });
+  }
+
+  function onFactionClick(ev) {
+    const btn = ev.target.closest('[data-fac]');
+    if (!btn) return;
+    selectFaction(btn.getAttribute('data-fac'));
+  }
+  railEl.addEventListener('click', onFactionClick);
+  stageEl.addEventListener('click', onFactionClick);
+
+  const onRepChanged = (payload = {}) => {
+    if (!payload.factionId || payload.factionId === selectedId) refresh(ctx);
+    else renderRail((ctx && ctx.state) || {});
+  };
+  if (ctx.bus && ctx.bus.on) ctx.bus.on('faction:repChanged', onRepChanged);
 
   return {
     el,
-    onShow(c) { refresh(c); },
+    onShow(c) {
+      const state = (c || ctx).state || {};
+      if (!picked) {
+        const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
+        if (authorityId && factions.some((f) => f.id === authorityId)) selectedId = authorityId;
+        picked = true;
+      }
+      refresh(c);
+    },
     refresh,
-    dispose() {},
+    dispose() {
+      if (ctx.bus && ctx.bus.off) ctx.bus.off('faction:repChanged', onRepChanged);
+    },
   };
 }

@@ -8,6 +8,7 @@ import {
   contactOverflowSummary,
   objectiveBearingGlyph,
   objectiveTravelReadout,
+  resolveObjectiveEdgePlacement,
   resolveObjectiveHudLayout,
 } from '../src/ui/hud.js';
 import {
@@ -41,6 +42,25 @@ test('goal bearing is an explicit eight-way direction, not an unlabeled color', 
     const { playerId, entities, waypoint } = bearingState(x, z);
     assert.equal(objectiveBearingGlyph({ playerId, entities }, waypoint), glyph);
   }
+});
+
+test('off-screen waypoint arrow follows the real radar bearing, including behind-camera goals', () => {
+  const player = { pos: { x: 0, z: 0 } };
+  const viewport = { width: 1440, height: 900 };
+  const cases = [
+    [{ x: 0, z: 1000 }, 'top'],
+    [{ x: 0, z: -1000 }, 'bottom'],
+    [{ x: 1000, z: 0 }, 'left'],
+    [{ x: -1000, z: 0 }, 'right'],
+  ];
+  for (const [target, edge] of cases) {
+    const placement = resolveObjectiveEdgePlacement(viewport.width, viewport.height, player, target);
+    assert.ok(placement, `placement exists for ${edge} target`);
+    assert.equal(placement.edge, edge);
+  }
+  const behind = resolveObjectiveEdgePlacement(viewport.width, viewport.height, player, { x: 0, z: -1000 });
+  assert.ok(behind.y > viewport.height / 2,
+    'a target behind the chase camera must guide down toward the true world bearing, never mirror upward');
 });
 
 test('goal readout reports honest distance and ETA only while closing', () => {
