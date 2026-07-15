@@ -22,15 +22,11 @@ const GLB_MAGIC = 0x46546c67;
 const GLB_VERSION = 2;
 const CHUNK_JSON = 0x4e4f534a;
 
-// Documented thresholds — quality-preserving, not "make it tiny".
-const MAX_TEXTURE_EDGE = 2048;
-const TEXTURE_ALLOWLIST = new Set([
-  // Singular hero landmark: full 4096 source is preserved as 4096 UASTC KTX2 with mipmaps;
-  // one visible instance, 40 draws per LOD, explicit distance LODs. This is not a general 4K pass.
-  'places/place_station_trade_hub.glb',
-]);
-const SMALL_PART_MAX_MATERIALS = 16;
-const STATION_SCALE_MAX_MATERIALS = 28;
+// Historical profiles provide triage signals only. Measured frame/load/memory evidence owns hard
+// performance acceptance; generic counts must not silently cap authored visual quality.
+const HISTORICAL_TEXTURE_EDGE_PROFILE = 2048;
+const HISTORICAL_SMALL_PART_MATERIAL_PROFILE = 16;
+const HISTORICAL_STATION_MATERIAL_PROFILE = 28;
 
 const HULL_FILES = new Set((PART_LIBRARY_CONTRACT.slots.hull || []).map(normalizeRel));
 const STATION_FILES = new Set([
@@ -57,7 +53,7 @@ assert.ok(existsSync(RELEASE_PARTS_ROOT), `release parts root missing: ${RELEASE
 
 const manifest = existsSync(MANIFEST_PATH)
   ? JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'))
-  : { parts: [], textureContract: { resolution: 1024 } };
+  : { parts: [], textureContract: {} };
 const manifestByFile = new Map();
 const blockedFiles = new Set();
 for (const part of manifest.parts || []) {
@@ -158,14 +154,14 @@ function evaluateContract(row, manifestPart) {
     }
   }
 
-  if (SMALL_PART_CATEGORIES.has(category) && materials > SMALL_PART_MAX_MATERIALS) {
-    pushIssue(row, 'required', 'small-part-material-explosion',
-      `${materials} materials exceeds small-part structural budget (${SMALL_PART_MAX_MATERIALS}); merge/share roles`);
+  if (SMALL_PART_CATEGORIES.has(category) && materials > HISTORICAL_SMALL_PART_MATERIAL_PROFILE) {
+    pushIssue(row, 'advisory', 'small-part-material-profile',
+      `${materials} materials exceeds historical small-part profile (${HISTORICAL_SMALL_PART_MATERIAL_PROFILE}); measure draw cost and merge only redundant roles`);
   }
 
-  if (STATION_FILES.has(path) && materials > STATION_SCALE_MAX_MATERIALS) {
-    pushIssue(row, 'required', 'station-material-explosion',
-      `${materials} materials exceeds station-scale structural budget (${STATION_SCALE_MAX_MATERIALS}); batch by role`);
+  if (STATION_FILES.has(path) && materials > HISTORICAL_STATION_MATERIAL_PROFILE) {
+    pushIssue(row, 'advisory', 'station-material-profile',
+      `${materials} materials exceeds historical station profile (${HISTORICAL_STATION_MATERIAL_PROFILE}); measure draw cost and batch only compatible roles`);
   }
 
   if (row.duplicateMaterialGroups > 0) {
@@ -183,9 +179,9 @@ function evaluateContract(row, manifestPart) {
       `${uncompressedTextures} texture(s) use PNG/JPEG instead of KTX2/BasisU — compress for release`);
   }
 
-  if (maxEdge > MAX_TEXTURE_EDGE && !TEXTURE_ALLOWLIST.has(path)) {
-    pushIssue(row, 'required', 'oversized-texture',
-      `max texture edge ${maxEdge}px exceeds ${MAX_TEXTURE_EDGE}px without allowlist entry`);
+  if (maxEdge > HISTORICAL_TEXTURE_EDGE_PROFILE) {
+    pushIssue(row, 'advisory', 'texture-resolution-profile',
+      `max texture edge ${maxEdge}px exceeds historical ${HISTORICAL_TEXTURE_EDGE_PROFILE}px profile; accept by measured memory/load evidence`);
   }
 
   const genericNames = row.repeatedMaterialNames
@@ -288,7 +284,7 @@ function maxTextureEdge(gltfJson, manifestPart) {
   let maxEdge = 0;
   const fallback = manifestPart && manifestPart.textureSize
     ? manifestPart.textureSize
-    : (manifest.textureContract && manifest.textureContract.resolution) || 1024;
+    : (manifest.textureContract && manifest.textureContract.resolution) || 0;
   for (const image of gltfJson.images || []) {
     const extras = image.extras || {};
     const spaceface = extras.spaceface || {};

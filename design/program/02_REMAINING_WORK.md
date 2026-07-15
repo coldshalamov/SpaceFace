@@ -38,31 +38,31 @@ Program. Detailed behavior remains in the linked source plans; this file owns st
 
 ## Depth Program roll-up
 
-`IP-WT` means implementation/checks exist in the current dirty worktree. It does not mean the chunk
-is recoverable from committed master or accepted. After audit correction, the roll-up is **0 DONE,
-16 IP-WT, 15 TODO**.
+`IP-CP` means implementation/check surfaces are preserved by checkpoint `850c80f3`. It does not mean
+the prior focused result has been rerun at current HEAD or that the chunk is accepted. After the
+repository-state reconciliation, the roll-up remains **0 DONE, 16 IP-CP, 15 TODO**.
 
 ### Enabling and M3 narrative/content track
 
 | Chunk | State | Exact next action before DONE |
 |---|---|---|
-| F1 `.faction` migration | IP-WT | Preserve logical slice; run full repo gate and current parity review. |
-| F2 validators/loader | IP-WT | Preserve validators/indexes/package aliases; run full repo gate and bad-fixture matrix from committed state. |
-| V1 fifteen NPCs | IP-WT | Preserve 15 contacts; replace compressed gates with natural/unassisted contact/read-through proof; full gate. |
-| V2 rumor/flavor corpus | IP-WT | Add ad-board, Quiessence, and Hush producers; finish wreck-rumor reachability and Contracts presentation; resolve Bar station identity without regressing station UI; full gate. |
-| R1 unique-wreck system | IP-WT | Unassisted rumor→bearing→scan→decision→salvage route and full gate. |
-| R2 twelve wrecks | IP-WT | Preserve all 12 and surface carriers; full gate and natural sweep confirmation. |
-| SP1 set-piece missions | IP-WT | Real unassisted human-duration observation for success/failure/retry routes; full gate. |
-| E1 eight encounters | IP-WT | Preserve the two explicitly banked follow-ons as honest stubs; finish natural, uncompressed public-route acceptance for the eight canonical encounters and run the full gate. |
-| A1 The Band | IP-WT | Materialize physical Quiessence/Hush actors and canonical proximity capture; full gate. |
-| A2 Ship’s Ledger | IP-WT | Integrate player-reachably without redesigning protected station UI; capture panel; UI/full gates. |
+| F1 `.faction` migration | IP-CP | Rerun the full repo gate and current parity review from committed HEAD. |
+| F2 validators/loader | IP-CP | Rerun the full repo gate and bad-fixture matrix from committed HEAD. |
+| V1 fifteen NPCs | IP-CP | Revalidate 15 contacts; replace compressed gates with natural/unassisted contact/read-through proof; full gate. |
+| V2 rumor/flavor corpus | IP-CP | Add ad-board, Quiessence, and Hush producers; finish wreck-rumor reachability and Contracts presentation; resolve Bar station identity without regressing station UI; full gate. |
+| R1 unique-wreck system | IP-CP | Unassisted rumor→bearing→scan→decision→salvage route and full gate. |
+| R2 twelve wrecks | IP-CP | Revalidate all 12 and surface carriers; full gate and natural sweep confirmation. |
+| SP1 set-piece missions | IP-CP | Real unassisted human-duration observation for success/failure/retry routes; full gate. |
+| E1 eight encounters | IP-CP | Keep the two explicitly banked follow-ons as honest stubs; finish natural, uncompressed public-route acceptance for the eight canonical encounters and run the full gate. |
+| A1 The Band | IP-CP | Materialize physical Quiessence/Hush actors and canonical proximity capture; full gate. |
+| A2 Ship’s Ledger | IP-CP | Verify player reachability without redesigning protected station UI; capture panel; UI/full gates. |
 
 ### M4/M5 world, identity, art, and doctrine track
 
 | Chunk | State | Exact next action before DONE |
 |---|---|---|
 | L1 faction livery | TODO | Implement distinct runtime liveries and accepted captures. |
-| K1 five factions live | IP-WT | Preserve live behavior/data; full repo gate and unassisted faction exposure review. |
+| K1 five factions live | IP-CP | Revalidate live behavior/data; full repo gate and unassisted faction exposure review. |
 | PR1 props 1–8 | TODO | Author, optimize, wire, classify, and capture props 1–8. |
 | PR2 props 9–15 | TODO | Author, optimize, wire, classify, and capture props 9–15. |
 | H1a Wreck Cathedral | TODO | Author landmark, place it, give it a readable interaction/history, and accept it in play. |
@@ -75,25 +75,27 @@ is recoverable from committed master or accepted. After audit correction, the ro
 | H1h five capitals | TODO | Build and accept five distinct faction-capital identities. |
 | S1 Vael bio line | TODO | Build Vael ship family, behavior, assets, natural carriers, and acceptance. |
 | S2 Fulfillment + Understory kit | TODO | Build both ship/attachment families, behaviors, carriers, and acceptance. |
-| S3 Reach sub-cultures | IP-WT | Add browser/Electron frames, unassisted 60–90s intro review, B11–B15 hulls, and Maw-volley proof. |
-| S4 Authority + Thunderchild | IP-WT | Add B16–B20 assets, real hold producer, registry/package wiring, morale/decal/news consumers, forced succession, and public fleet proof. |
-| W1 planet states 1–4 | IP-WT | Corrected from TODO: preserve green data groundwork; add shaders/runtime visuals, state transitions, save continuity, `check:visual-stability`, four orbital plus four combat-distance captures, and a deterministic Scrawl ace-challenge sector-entry route. |
+| S3 Reach sub-cultures | IP-CP | Add browser/Electron frames, unassisted 60–90s intro review, B11–B15 hulls, and Maw-volley proof. |
+| S4 Authority + Thunderchild | IP-CP | Add B16–B20 assets, real hold producer, registry/package wiring, morale/decal/news consumers, forced succession, and public fleet proof. |
+| W1 planet states 1–4 | IP-CP | Corrected from TODO: revalidate committed data groundwork; add shaders/runtime visuals, state transitions, save continuity, `check:visual-stability`, four orbital plus four combat-distance captures, and a deterministic Scrawl ace-challenge sector-entry route. |
 | W2 planet states 5–8 | TODO | Implement second planet-state wave and acceptance. |
 | A3 Living Hull | TODO | Implement bounded persistent hull history/decal/wash loop and public before/after series. |
-| D1 doctrine audit | IP-WT | Give original nine/Helix natural fleet carriers; complete S1–S4 adoption/assets and player-route differentiation. |
+| D1 doctrine audit | IP-CP | Give original nine/Helix natural fleet carriers; complete S1–S4 adoption/assets and player-route differentiation. |
 
 ### M6 Depth closeout
 
 | Chunk | State | Exact next action before DONE |
 |---|---|---|
-| GT1 Golden Thread + Gallery | IP-WT | Preserve loot-leak audit, then archive full `npm run check`, build ~40-shot gallery, and run unassisted first-hour Candle Fleet→ticker→bearing→unique→Band route. |
+| GT1 Golden Thread + Gallery | IP-CP | Rerun the loot-leak audit, then archive full `npm run check`, build ~40-shot gallery, and run unassisted first-hour Candle Fleet→ticker→bearing→unique→Band route. |
 
 ## Cross-program work that must not disappear
 
-1. Classify and commit the dirty implementation in coherent subsystem groups.
-2. Create durable evidence manifests because `.devshots/depth-program/**` is ignored.
-3. Review dirty telemetry goldens separately; never sweep them into integration.
+1. Audit the broad `850c80f3` checkpoint by coherent subsystem; recoverable does not mean reviewed or accepted.
+2. Create durable evidence manifests because `.devshots/depth-program/**` remains ignored.
+3. Review telemetry-golden changes included in `850c80f3` as an explicit re-record decision; a bulk
+   commit is not acceptance evidence.
 4. Keep `src/systems/input.js`, station UI, render/assets, and active lease paths under their named
    ownership rules.
-5. Re-run status counts and update [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md)
-   after every integration batch.
+5. Keep residual concurrent WIP separate, re-run status counts, and update
+   [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md) after every checkpoint or
+   integration batch.

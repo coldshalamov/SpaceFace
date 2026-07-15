@@ -38,9 +38,10 @@ status system.
 - Valuable Depth-adjacent ideas not yet admitted belong in
   [`../program/06_RETAINED_FUTURE_BACKLOG.md`](../program/06_RETAINED_FUTURE_BACKLOG.md), not in a
   new competing queue.
-- Before dispatch, check current file ownership and asset/graphics locks. Asset outcomes never
-  inherit historical triangle/byte counts as quality ceilings; use current framing and measured
-  performance.
+- Before dispatch, verify current file ownership against live processes, active edits, and asset
+  build state. Marker files are evidence to investigate, not permanent ownership by themselves.
+  Asset outcomes never inherit historical triangle/byte/material counts as quality ceilings; use
+  current framing and measured performance.
 - Canon comes from [`../../docs/worldbuilding/README.md`](../../docs/worldbuilding/README.md), place
   identity from [`../world-identity/README.md`](../world-identity/README.md), technical contracts
   from [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md), and game-design intent from

@@ -198,7 +198,7 @@
 | File | Role |
 |---|---|
 | `src/save/saveSystem.js` | Versioned saves, autosave, migrations. Destructive restore owns one transient latest-route callback, releases ownership, then drains the winner. A failed superseded outer restore returns stale without publishing its error; only the winner owns failure output. |
-| `src/audio/audioSystem.js` / `synth.js` | 100% procedural Web Audio. AudioContext created lazily on first gesture. |
+| `src/audio/audioSystem.js` / `synth.js` | Shared Web Audio mix for synthesized and licensed authored sources. AudioContext is created lazily on first gesture. |
 | `src/data/audioRecipes.js` | Synth recipes. |
 | `src/systems/presentationOrchestrator.js` + `presentationAdapters.js` 🟢 | Registered presentation system: produces normalized cues, fans them to camera/audio/UI buses. |
 | `src/presentation/cueRecipes.js` / `cueSchema.js` 📚 | Cue recipe/schema data (consumed by the orchestrator). Not a registered system. |

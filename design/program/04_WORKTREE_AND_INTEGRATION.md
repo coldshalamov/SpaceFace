@@ -1,30 +1,31 @@
 # Worktree and Integration Inventory
 
-**Audit snapshot:** 2026-07-14 before this document set was added. Counts are volatile under
-concurrent work; re-run the command below before acting.
+**Audit snapshot:** 2026-07-14 after commits `850c80f3` and `50bd5505`, revalidated after concurrent
+upstream and working-tree movement during reconciliation. This file's containing commit is newer by
+definition. Treat the values below as checkpoint history and re-run the commands before acting.
 
 ## Repository checkpoint
 
 - Branch: `master`.
-- HEAD and upstream: `05b9cf60394df7f7c8a183fd958c30815616fc10`.
-- Ahead/behind: `0 / 0`.
-- `codex/depth-program`: 0 commits ahead of master; do not merge it.
-- Audit snapshot: 8,052 status entries, 7,127 tracked-but-unstaged, 925 untracked, 0 staged.
-- Tracked breakdown: 6,813 intent-to-add, 238 modified, 76 deleted.
-- Untracked bytes: 615,449,407; no current dirty file exceeds 100 MiB; largest approximately 48.6 MB.
+- Snapshot local HEAD: `50bd550579338c6a62cf50be06354093f0bee52f`.
+- Snapshot upstream `origin/master`: `850c80f30ac52646aaed5602efbb096bc7b77f50`.
+- At that snapshot local HEAD was 1 commit ahead and 0 behind. Verify current synchronization; do not
+  repeat this historical count as live status.
+- `codex/depth-program` is an ancestor of `master`, 89 commits behind and 0 ahead; do not merge it.
+- At the reconciliation snapshot: 21 tracked unstaged modifications outside `design/program/**`,
+  plus the 6 program-doc edits in this pass; 0 staged paths and 0 untracked paths.
 
 ## Dominant clusters
 
-| Cluster | Tracked | Untracked | Current interpretation |
-|---|---:|---:|---|
-| `assets/**` | 6,722 | 869 | Helios V7/V8/V9 candidates, third-party source acquisitions, release candidates, evidence, manifests. Requires licensing/provenance, quality, duplication, and runtime classification. |
-| `src/**` | 152 | 1 | Depth systems/data/UI plus concurrent gameplay work. Must split by subsystem and ownership. |
-| `scripts/**` | 76 | 6 | Depth checks, captures, validators, indexes, and other campaign tooling. |
-| `test/**` | 71 | 1 | Depth contracts plus high-risk telemetry/input fixtures. |
-| `design/**` | 50 | 23 | Depth ledger/plan, revamp/history, status and program documentation. |
-| `docs/**` | 21 | ~1 | Generated/reference/handoff material; classify generated versus authored. |
-| `tools/**` | 13 | 22 | Blender/art finalizers and acquisition/build tools. |
-| `styles/**` | 9 | 0 | Fonts and UI changes; verify ownership and runtime reachability. |
+| Residual cluster | Tracked | Current interpretation |
+|---|---:|---|
+| Root `README.md` | 1 | Concurrent repository-orientation cleanup. |
+| `design/depth-program/**` | 7 | Concurrent Depth plan/rule cleanup; not part of this status reconciliation. |
+| `design/graphics-sprints/**` | 3 | Concurrent graphics orchestration/rule cleanup. |
+| `design/spec3/**` | 2 | Concurrent F6/F7 plan cleanup. |
+| `scripts/**` + `tools/**` | 4 | Exporter/manifest-check and asset-generation/exporter work; preserve owning lane. |
+| `src/ui/hud.js` | 1 | Active HUD WIP; protected lead-owned seam. |
+| `test/**` | 3 | Alpha-evidence, objective-navigation, and exporter-state contract WIP paired with other lanes. |
 
 ## High-risk paths
 
@@ -43,14 +44,20 @@ restored last-known-good presentation. Assets/render paths require active-lane c
 
 ## Recoverability truth
 
-- The Depth aggregate passes only in this dirty tree.
-- Most July-14 Depth package aliases, scripts, systems, data, tests, and UI files are absent from HEAD.
-- All `.devshots/depth-program/**` evidence is ignored; a fresh worktree or clone receives none of it.
-- Committed master therefore cannot reproduce the current Depth result yet.
+- `850c80f3` is a broad local recovery checkpoint containing the July-14 Depth package aliases,
+  scripts, systems, data, tests, UI work, asset sources/candidates, tools, and high-risk files.
+- `850c80f3` was present on `origin/master`; `50bd5505` was a local-only follow-up test-contract
+  cleanup at the snapshot. Verify current upstream state rather than assuming it remains one commit behind.
+- The last recorded Depth aggregate green predates the checkpoint. It has not been rerun at
+  `50bd5505`; committed implementation is recoverable, but current focused-green status is unproven.
+- All `.devshots/depth-program/**` evidence remains ignored; a fresh worktree or clone receives none
+  of it unless durable manifests/media are added deliberately.
+- Telemetry goldens and other high-risk paths were included in the bulk checkpoint. Their presence
+  in a commit is not a reviewed re-record decision or acceptance verdict.
 
 ## Required classification fields
 
-Every dirty path or coherent directory group should receive:
+Every residual dirty path or coherent checkpoint subsystem should receive:
 
 | Field | Values/examples |
 |---|---|
@@ -61,22 +68,20 @@ Every dirty path or coherent directory group should receive:
 | Verification | exact command/evidence or “not yet verified” |
 | Intended disposition | commit batch ID, preserve outside git, regenerate, or deliberately remove after review |
 
-## Proposed logical integration batches
+## Checkpoint follow-up review units
 
-These are review units, not permission to stage everything matching a directory:
+The bulk checkpoint already exists. These are audit units, not permission to rewrite or re-stage it:
 
-1. **PROGRAM-DOCS** — this unified document set and pointer updates.
-2. **DEPTH-FOUNDATION** — F1/F2 validators, loaders, generated indexes, package aliases, tests.
-3. **DEPTH-VOICE** — V1/V2 contacts, flavor corpus, Band data/runtime, checks.
-4. **DEPTH-WRECKS** — R1/R2 unique wrecks, reward/rumor surfaces, GT1 loot audit.
-5. **DEPTH-MISSIONS** — SP1/E1 mission/encounter runtime, choices, tests.
-6. **DEPTH-FACTIONS** — K1/S3/D1 behavior/data; S4 and W1 only at their honest groundwork maturity.
-7. **DEPTH-LEDGER-UI** — A2 separately, because station UI is a protected regression surface.
-8. **ASSET-SOURCE** — provenance/licensing/source acquisitions, separated from runtime promotion.
-9. **ASSET-CANDIDATES** — each visual family separately with manifests, GLBs, screenshots, checks,
-   and classification; never one 7,000-file asset dump.
-10. **FOREIGN/HIGH-RISK** — input, goldens, station, render, and unrelated concurrent changes stay
-    outside every batch until explicitly owned and verified.
+1. **CHECKPOINT-IDENTITY** — keep `850c80f3`/`50bd5505`, local/upstream identity, and residual-tree
+   counts explicit until upstream synchronization is actually verified.
+2. **DEPTH-REVALIDATION** — rerun the aggregate and focused bad-fixture matrices from current HEAD;
+   preserve 0/31 DONE until natural routes and evidence pass.
+3. **HIGH-RISK-REVIEW** — review input, telemetry goldens, station/HUD, render, exporter, and release
+   asset changes under their owners. Do not infer approval from checkpoint inclusion.
+4. **EVIDENCE-DURABILITY** — promote only reviewed manifests/media needed by a clean checkout;
+   `.devshots` remains ignored by default.
+5. **RESIDUAL-WIP** — keep the current Depth/spec/exporter/HUD/test edits in their active lanes and
+   commit them only as coherent verified follow-ups.
 
 ## Re-run inventory
 

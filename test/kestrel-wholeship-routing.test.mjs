@@ -25,11 +25,13 @@ assert.deepEqual(ASSET_AUTHORING_CONTRACT.supportedVersions, [1, 2],
 assert.match(ASSET_AUTHORING_CONTRACT.rootExtras.required.textureCompression, /KTX2\/BasisU\+mips/,
   'the loader contract must name the mipmapped V4 release token');
 assert.equal(isAuthoredTextureSizeValid({ width: 1024, height: 256 }, { factorOnly: true }), true,
-  'semantic decal strips preserve their authored aspect ratio at the 1K long-edge quality floor');
-assert.equal(isAuthoredTextureSizeValid({ width: 1024, height: 255 }, { factorOnly: true }), false,
-  'semantic strips below the 256px short-edge floor remain invalid');
-assert.equal(isAuthoredTextureSizeValid({ width: 1024, height: 512 }), false,
-  'ordinary PBR sheets still require 1K on both axes');
+  'semantic decal strips preserve their authored aspect ratio');
+assert.equal(isAuthoredTextureSizeValid({ width: 4096, height: 4096 }), true,
+  'the runtime contract does not reject higher-resolution authored textures');
+assert.equal(isAuthoredTextureSizeValid({ width: 512, height: 256 }), true,
+  'the runtime contract does not invent a universal texture-resolution floor');
+assert.equal(isAuthoredTextureSizeValid({ width: 0, height: 256 }), false,
+  'empty texture dimensions remain invalid');
 
 assert.equal(player.isPlayer, true, 'new/load player construction must preserve the explicit player marker');
 assert.equal(courier.isPlayer, false, 'same-team NPC construction must not inherit player identity');

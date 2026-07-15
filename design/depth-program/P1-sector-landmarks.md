@@ -1,6 +1,7 @@
 # P1 — Sector Signature Landmarks
 
-**Thread:** depth-P1 · **Reads:** `00_DEPTH_PROGRAM.md`, `assets/AGENTS.md`, `assets/ships/AGENTS.md`, `design/spec3/SPEC3-F9-asset-pipeline.md` · **Status:** PLAN
+**Thread:** depth-P1 · **Reads:** root `AGENTS.md`, `assets/AGENTS.md`, `assets/ships/AGENTS.md`,
+`src/render/AGENTS.md`, this pipeline, and `design/spec3/SPEC3-F9-asset-pipeline.md` · **Status:** PLAN
 **Thread pitch:** Every named zone in the galaxy currently dresses itself from the same ~13 shared prop meshes. A player flying through three sectors recognizes the same `place_dead_hulk`, the same `place_nav_buoy`, the same `place_conveyor_barge` — only the fog color changes. This pipeline produces **one bespoke hero landmark per signature named zone** so places read as places. It is the spatial pipeline that makes both story beats (P2) and faction identity (P3) land in real, memorable locations.
 
 ---
@@ -66,7 +67,11 @@ function paletteFor(entity) {
 }
 ```
 
-**Implication for the GLB author:** use the material slot convention `Material_Hull` / `Material_Accent` (and `Material_Emissive` for glow). The runtime classifier (`partsLibrary.js:2755`) maps these to `tintRole`s and applies the faction palette. So one GLB reads as Concord-blue in Helios and Vael-green in the Veil without re-authoring — *if* the slots are named correctly. This is how P1 and P3 (Faction Kits) compose.
+**Implication for the GLB author:** the current classifier supports roles such as `Material_Hull`,
+`Material_Accent`, and `Material_Emissive`, mapping them to `tintRole`s and optional faction palettes.
+Verify the live classifier before export and use these roles where reuse strengthens the asset. They are
+not an exclusive material vocabulary; extend the documented runtime contract when a stronger landmark
+needs distinct authored materials or roles. This is one way P1 and P3 compose.
 
 ## §5. Assets & generation — the landmark backlog
 
@@ -111,8 +116,11 @@ Priority order = story-beat tie-in first (stages P2), then faction-distinctivene
 - **DON'T** treat a triangle count as either a quality target or an automatic reason to reduce visible quality. Profile representative scenes and solve actual bottlenecks structurally.
 - **DON'T** hand-edit `release_manifest.json` — it's auto-written by the release build.
 - **DON'T** place a landmark on a bare radial ring — use the existing anchor-relative placement idiom (`offsetAlongRadial`, `polarOffset` relative to gate/station/field/POI). A landmark floating in empty space feels wrong.
-- **DON'T** author one GLB per faction tint — use `Material_Hull`/`Material_Accent` slots and let `paletteFor` tint at runtime. One asset, many factions.
-- **DON'T** roll an existing asset back to "fix" a perf or asset-structure conflict during another graphics lane — report it (AGENTS.md §6 Concurrent-agent ownership).
+- **DON'T** duplicate an asset solely to bake a flat faction tint when shared runtime roles produce the
+  same quality. Faction-specific materials, markings, geometry, wear, and animation remain valid when
+  they create a meaningfully stronger identity.
+- **DON'T** roll an existing asset back to resolve overlap. Verify the live owner/process and coordinate
+  the shared path or continue with a non-overlapping target.
 
 ## §9. Ambition ceiling
 
@@ -124,7 +132,9 @@ Each signature landmark is also a **story stage**. Once P2 (Story-Beat Embodimen
 
 > **You are THREAD depth-P1 — Sector Signature Landmarks only.**
 >
-> Read in order: root `AGENTS.md` · `design/depth-program/00_DEPTH_PROGRAM.md` · this file · `assets/AGENTS.md` · `assets/ships/AGENTS.md` · `design/spec3/SPEC3-F9-asset-pipeline.md`. Then stop reading and do the work.
+> Read in order: root `AGENTS.md` · `assets/AGENTS.md` · `assets/ships/AGENTS.md` ·
+> `src/render/AGENTS.md` · this file · `design/spec3/SPEC3-F9-asset-pipeline.md`. Use the current
+> policy and live manifest/runtime seams; `00_DEPTH_PROGRAM.md` is supporting orientation only.
 >
 > **Target landmark:** `<LANDMARK_ID>` (e.g. `place_landmark_wreck_cathedral` at `zone_io_derelict`, `sector_io_reach` — see §5 backlog row).
 >
@@ -132,7 +142,10 @@ Each signature landmark is also a **story stage**. Once P2 (Story-Beat Embodimen
 >
 > **Do:** author and review the GLB at its real in-game exposure, register it through the current manifest/build/runtime path, wire placement at the named zone, screenshot into `.devshots/`, and run the named acceptance checks.
 >
-> **FORBIDDEN:** `git checkout .` / `git reset --hard` / `git stash` / `git clean` / `git restore` on tracked files (AGENTS.md §3). Editing `release_manifest.json` by hand. Editing legacy `flight.js`/`ai.js`/`flightDynamics.js`. Silent procedural fallback masquerading as "done." Hand-editing `test/*.expected.json`. Touching another lane's files (§3).
+> **FORBIDDEN:** destructive shared-tree git operations prohibited by root policy. Editing
+> `release_manifest.json` by hand. Editing legacy `flight.js`/`ai.js`/`flightDynamics.js`. Silent
+> procedural fallback masquerading as "done." Hand-editing `test/*.expected.json`. Overwriting a path
+> verified to be under active concurrent ownership without coordinating it.
 >
 > **Acceptance:** `npm run check:asset-reachability` green · `npm run check:assets:live` green (failureCount: 0) · `npm run check:asset-status` · `npm run check:visual-stability` · `npm run check:sim:compare` (hashEqual:true) · `node scripts/check-tether-gameplay.mjs` · screenshot pair in `.devshots/`.
 >

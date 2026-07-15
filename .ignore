@@ -13,9 +13,11 @@ scratch/
 .serena/
 design/_ARCHIVE/
 design/revamp/_history/
-design/production/reviews/
+design/production/
+design/graphics-sprints/
 design/depth-program/research/
 docs/handoffs/
 skills/
 assets/**/evidence/
+assets/**/revamp-evidence/
 assets/**/source/reference/

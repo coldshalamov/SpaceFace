@@ -39,10 +39,9 @@ You are working in the SpaceFace repo. Read these before touching code, in this 
   1. ARCHITECTURE.md — the technical contract (fixed 60 Hz sim, XZ plane, sim never imports Three.js,
      UI emits intents only, determinism via state.rng, no per-frame allocations in hot paths).
   2. design/GDD_2_0.md and root AGENTS.md — design authority and current repo policy.
-  3. The specific spec file named below.
-  4. design/spec2/00_MASTER_TASTE.md — historical context and behavioral intent only. Its old visual
-     prescriptions are not rejection grounds. Where a spec leaves room, choose the strongest
-     coherent option supported by current player-facing evidence.
+  3. The specific activated spec named below. Implement its player-facing and behavioral outcome;
+     treat numeric/visual recipes as starting hypotheses unless they encode a tested behavior or
+     current technical contract. Choose the strongest coherent option supported by current evidence.
 
 Non-negotiables:
 - Explain deliberate changes to behavioral acceptance values in the same change. Historical visual
@@ -67,7 +66,7 @@ Non-negotiables:
 
 ### 1. `01_MASSLINE_FEEL` — Backend / physics agent
 ```
-Implement design/spec2/01_MASSLINE_FEEL.md exactly. This is a physics fix: the tether uses a hard
+Implement the player-facing and tested behavior in `design/spec2/01_MASSLINE_FEEL.md`. This is a physics fix: the tether uses a hard
 Rapier rope joint that "boinks" the player elastically; replace it with a damped-spring radial
 capture so momentum converts into swing instead of bouncing back.
 
@@ -205,7 +204,10 @@ Camera (spec §2, camera.js constants only): default zoom 95->88; speed zoom ban
 0->cruise (ease 1.4/s); look-ahead cap 18->26wu at cruise only; kill-cam kiss push-zoom 0.96x 250ms
 on player kill only. Keep: no yaw-follow (locked), trauma model, aim bias.
 
-Juice stack (spec §3 table — implement EACH cue exactly via existing pooled systems): shield hit
+Juice stack (spec §3 table): implement each event's readable cue outcome through the shared
+presentation path. Listed timings, counts, colors, and layer recipes are starting candidates to tune
+from representative combat evidence unless a value is asserted by a current behavioral/accessibility
+check. Candidate examples include: shield hit
 hex-ripple 220ms + pitch-rising tink; shield break full-ring flash 320ms + 40ms hit-stop + 0.3
 trauma; armor hit 6-10 sparks + clank; hull hit smoke+ember + 0.08 trauma if player target; kill
 small interior flash->2-stage breakup->shockwave 260ms + 60ms hit-stop + kill-cam; kill capital 3
@@ -233,7 +235,7 @@ Regression floor:
 
 ### 5. `05_ECONOMY_PROGRESSION` — Backend / systems agent
 ```
-Implement design/spec2/05_ECONOMY_PROGRESSION.md exactly. The economy sim is the crown jewel — this
+Implement the player-facing and tested behavior in `design/spec2/05_ECONOMY_PROGRESSION.md`. The economy sim is the crown jewel — this
 spec SURFACES it and paces the climb; it does NOT rebuild pricing math.
 
 You own: src/ui/screens/{market,starmap,localmap}.js, src/systems/{economy,missions,mining}.js
@@ -282,7 +284,7 @@ Regression floor:
 
 ### 6. `04_WORLD_ALIVE` — Backend / sim + AI agent
 ```
-Implement design/spec2/04_WORLD_ALIVE.md exactly. Pillar 4 is this spec's law: the universe was here
+Implement the player-facing and tested behavior in `design/spec2/04_WORLD_ALIVE.md`. Pillar 4 is this spec's intent: the universe was here
 before you. Charted space is charted; traffic flies its own routes.
 
 You own: src/systems/{traffic,aiEncounter,missions,world}.js, src/data/{sectors,missions}.js, a NEW
@@ -329,7 +331,9 @@ Definition of done — scripts/check-encounter-director.mjs (spec §5):
      >= 1.0s; V-drop + 90deg veer within warning avoids it.
   3. Toll payment moves credits + rep + clears hostility (assert all three).
   4. Determinism: same seed -> identical encounter log across 2 runs + reload.
-  5. Every encounter emits exactly one one-voice line (trace audit) — no modals.
+  5. Encounter announcements register priority and dedupe behavior with the attention arbiter; scripted
+     stress runs show no competing primary transient or blocking modal while persistent/accessibility
+     context remains available.
 Regression floor:
   node scripts/check-encounter-director.mjs
   npm run check:sg06:ai && npm run check:balance
@@ -395,7 +399,7 @@ Regression floor:
 
 ### 8. `08_RELEASE_READINESS` — PC/browser QA / release agent
 ```
-Implement design/spec2/08_RELEASE_READINESS.md exactly. This is the EXIT CHECKLIST — no features, only
+Implement the tested release outcomes in `design/spec2/08_RELEASE_READINESS.md`. This is an exit review — no features, only
 BARS. A build that passes this file is demo-able as a PC/browser game. Run AFTER every other spec and
 AFTER the 47a golden re-record batch (documented in BUILD_PLAN — do that re-record first, it
 unblocks the whole suite).
@@ -461,9 +465,10 @@ Regression floor: npm run check:ci  (the whole suite — this spec IS the final 
 1. git status — ONLY the spec's named files changed. Anything in assets/** or src/render/** that
    shouldn't be there = stop (active graphics lane).
 2. Run the spec's acceptance script + the regression floor yourself. Don't trust the agent's transcript.
-3. For anything visual: demand the .devshots screenshot pairs, apply the five-second test (pause,
-   screenshot, ask "can a stranger name every element?").
-4. Reject functional regressions and weak player-facing quality. Do not reject a coherent visual direction merely because it differs from historical 00_MASTER_TASTE tokens.
+3. For anything visual: require representative `.devshots` captures and review hierarchy,
+   readability, composition, identity, and behavior on the normal player route.
+4. Reject functional regressions and weak player-facing quality. Historical taste tokens, fixed
+   technique recipes, and ritual compliance are not independent rejection grounds.
 5. If the agent changed a spec NUMBER, confirm the one-line justification is in the diff.
 ```
 
@@ -484,8 +489,8 @@ dressing. You produce SOURCE .glb files; the build pipeline ships them.
 
 READ FIRST (in order):
   - AGENTS.md  — "Concurrent Graphics Work" + "Performance Policy" sections are law.
-  - design/spec2/00_MASTER_TASTE.md §3 for historical context. It imposes no palette, shell, glow,
-    blur, texture, or geometry ceiling. NO first-person/visor/cockpit motifs remains a user decision.
+  - assets/AGENTS.md and src/render/AGENTS.md for current asset/render contracts and ownership.
+    The standing no first-person/visor/cockpit HUD decision remains current root policy.
   - assets/ships/parts/parts_manifest.json — the current runtime interoperability contract; update it
     coherently when a higher-quality asset needs a justified profile change.
   - ARCHITECTURE.md  — renderer features and the one-game-path rule.
@@ -569,11 +574,12 @@ RULES THAT WILL GET YOUR WORK REJECTED IF BROKEN:
   - A new hue introduced without a player-facing reason and screenshot evidence.
   - Dozens of un-merged one-off primitives (Performance Policy).
   - Shipping under assets/ships/release/ by hand instead of via build:sg04:release-assets.
-  - Running while another graphics/asset lane is active (check release.__lock/owner.json first;
-    if present, STOP and report).
+  - Overwriting paths owned by a verified active graphics/asset process without coordination. Check
+    markers, owner metadata, live processes, recent writes, and agent activity together; stale marker
+    files do not reserve the lane.
 
-WORKING RHYTHM: small batches. Author -> update manifest -> build:sg04:release-assets -> check:art
--> commit with a one-line note per batch. Keep .devshots/ renders of before/after for silhouette
-changes (five-second test). When done with a phase, print the audit table again so the delta is
-visible. Never stage assets/** while a code agent might be touching src/render/** — coordinate.
+WORKING RHYTHM: choose coherent batches that can be authored, wired, built, checked, and reviewed.
+Keep representative `.devshots/` evidence for visible changes and update the current status surface
+with proven outcomes and remaining work. Coordinate verified overlapping asset/render writers; do not
+infer conflict merely because another code agent exists.
 ```

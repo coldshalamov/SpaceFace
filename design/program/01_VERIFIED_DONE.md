@@ -25,13 +25,15 @@ exited red during Electron launch and must be revalidated.
 | M3 career origins | `npm run check:m3:career-origins` passes the three origins, 22 aggregate tests, Hunter’s 14 sections, and live Hunter check. | Focused green. |
 | M5 role continuity | `npm run check:m5:role-continuity` passes 13 roles and New Game/Continue/hull-switch delivery. | Focused green; ordinary player-route ownership acceptance open. |
 | Release capture machinery | Release-capture contract passes 4/4; ffmpeg/ffprobe self-test plus 23 hostile cases passes without a browser. | Tooling green; real store capture open. |
-| Depth focused aggregate | `npm run check:depth-program:contracts` passes in the current dirty worktree. | Working-tree focused green; not reproducible from committed `master`. |
-| S4/W1 isolated groundwork | Thunderchild and W1 data tests pass 18/18 combined; W1 contributes 7 green data/placement tests. | Dirty-tree groundwork only. |
+| Depth focused aggregate | The last audited `npm run check:depth-program:contracts` passed before the recovery checkpoint; its implementation and check surfaces are now committed in `850c80f3`. | Prior focused green; not freshly rerun at `50bd5505`, so acceptance is unchanged. |
+| S4/W1 isolated groundwork | Thunderchild and W1 data tests passed 18/18 combined before the checkpoint; their groundwork is now represented in `850c80f3`. | Committed groundwork; no chunk acceptance promotion. |
 
 ## Major committed implementation now on `master`
 
 | Commit(s) | Implemented outcome | What remains before final acceptance |
 |---|---|---|
+| `850c80f3` | Bulk July-14 recovery checkpoint: Depth validators/content/runtime/tests, broad gameplay/UI work, asset sources/candidates/tooling, and program documentation are now recoverable from local `master`. | Rerun focused/full gates at current HEAD; audit telemetry goldens and other high-risk inclusions; create durable evidence manifests; complete natural routes and independent visual review. Committed does not mean accepted. |
+| `50bd5505` | Prospector copy tests no longer impose a fixed English word-count taste budget. | No feature acceptance change; this is a follow-up contract cleanup. |
 | `7b0ad557` | Autopilot retains its course after obstacle avoidance. | Strict Helios approach/dock route is still red. |
 | `4a6b3f56` | Authored Wasp full/LOD runtime routing, Shipyard/Undock/save/Continue path. | Add canonical asset-classification record and re-run visual/performance acceptance. |
 | `ae1813c9` | Rook Nine uses accepted-mission intent outside sanctuary; interceptor cycles cannot stall forever. | Natural recovery and held-out counterplay route. |
@@ -47,7 +49,7 @@ map scales, localization groundwork, cargo ownership, platform/release tests, li
 combat-doctrine wing work, claims, and role ownership. Their milestone acceptance remains governed
 by the matrix in [`03_LIVE_ACCEPTANCE_MATRIX.md`](./03_LIVE_ACCEPTANCE_MATRIX.md).
 
-## Depth Program: what is preserved on committed master
+## Depth Program: what is preserved on local committed `master`
 
 No Depth chunk is fully DONE. The committed foundations include:
 
@@ -56,9 +58,12 @@ No Depth chunk is fully DONE. The committed foundations include:
 - R1/R2 core unique-wreck discovery and salvage foundation (`58ef888c`).
 - Depth plan/research documents (`48758795`, `d5e4e7ae`, `e4cc5621`).
 
-The July-14 validators, content corpus, set pieces, factions, encounters, Band, Ship’s Ledger,
-Thunderchild, doctrine matrix, W1 data, and most evidence are not yet safely represented by those
-commits. They are catalogued in the remaining-work and worktree documents.
+Checkpoint `850c80f3` additionally preserves the July-14 validators, content corpus, set pieces,
+factions, encounters, Band, Ship’s Ledger, Thunderchild, doctrine matrix, W1 data, broad asset work,
+and their checked-in tests/tooling. This changes recoverability, not completion: the focused results
+predate the checkpoint, natural routes remain open, and ignored `.devshots/depth-program/**` media is
+still absent from a clean checkout. Check current local/upstream identity before resuming; policy
+follow-ups after the pushed recovery checkpoint do not change feature acceptance.
 
 ## Explicitly not counted as done
 

@@ -1,7 +1,10 @@
 # P3 — Faction Visual Identity Kit
 
-**Thread:** depth-P3 · **Reads:** `00_DEPTH_PROGRAM.md`, `design/spec2/00_MASTER_TASTE.md`, `src/data/factions.js`, `src/data/palettes.js`, `src/render/partsLibrary.js`, `src/systems/world.js` (station spawn), `src/data/sectorAnchors.js` · **Status:** PLAN
-**Thread pitch:** 8 factions have distinct identity (Concord lawful-blue, Meridian corporate-gold, Drift blue-collar-orange, Reach pirate-red, Quiet smuggler-violet, Vael alien-green, Frontier independent-cyan, Choir zealot-magenta) — but **a station's GLB is chosen by station type, with faction never consulted.** A Concord trade_hub and a Meridian trade_hub look identical. Faction identity surfaces today only as ship hull/accent material tint, galaxy-map node color, and a colored dot on the factions screen. Stations — where players spend their docked time — have zero faction visual identity. This pipeline fixes that in two tiers: **runtime livery** wiring for broad coverage and evidence-selected **hero silhouettes** where material treatment alone cannot carry the faction.
+**Thread:** depth-P3 · **Reads:** root `AGENTS.md`, `assets/AGENTS.md`, `assets/ships/AGENTS.md`,
+`src/render/AGENTS.md`, this pipeline, `src/data/factions.js`, `src/data/palettes.js`,
+`src/render/partsLibrary.js`, `src/systems/world.js` (station spawn), and
+`src/data/sectorAnchors.js` · **Status:** PLAN
+**Thread pitch:** 8 factions have distinct identity (Concord lawful-blue, Meridian corporate-gold, Drift blue-collar-orange, Reach pirate-red, Quiet smuggler-violet, Vael alien-green, Frontier independent-cyan, Choir zealot-magenta) — but **a station's GLB is chosen by station type, with faction never consulted.** A Concord trade_hub and a Meridian trade_hub look identical. Faction identity surfaces today only as ship hull/accent material tint, galaxy-map node color, and a colored dot on the factions screen. Stations — where players spend their docked time — have zero faction visual identity. This pipeline combines **runtime livery** for reusable coverage with evidence-selected **hero silhouettes** wherever authored form carries the identity.
 
 ---
 
@@ -22,30 +25,38 @@ KNOWN BUGS: none. The glyph layer (`stationGlyphs.js`) is type-driven too; a Con
 
 Stations are where players spend docked time — the shipyard, the market, the missions board, the bar. Flying to a station and not knowing *whose* station it is until you read the faction label is a constant low-grade "same place" friction. Faction identity is the second-biggest spatial-repetition driver (after same-prop-per-zone, which is P1). Runtime livery (tint + emissive accent + decal slot) is the efficient first layer; bespoke geometry remains available wherever playtesting shows that material treatment cannot deliver a distinct faction read.
 
-## §2. The design — two tiers
+## §2. The design — complementary identity layers
 
-### Tier A — Runtime Faction Livery (cheap, most factions)
+### Layer A — Runtime faction livery (broad reusable coverage)
 
 A per-faction **livery override** that goes beyond the existing `paletteFor` material tint. For each faction, define a `stationLivery` block (in `palettes.js` or a new `src/data/factionLivery.js`) keyed by factionId, containing: an `accentEmissive` color (glow strips / running lights), an optional `decalMaterial` slot ref, and a `silhouetteTag` (for future hero-station routing). Wire a new resolver — `stationLiveryFor(entity)` in `partsLibrary.js`, sibling to `paletteFor` — that the station build path consults when `entity.factionId` matches a livery entry.
 
-This means: a Concord station gets cool-blue emissive window strips + clean geometry; a Reach station gets red-orange jittery emissives + a grime profile from `PAINT_PROFILES.pirate`; a Vael station gets green-cyan resonance glow + the alien profile. **Same GLB, different read.** ~1 day per faction once the wiring lands.
+This can make a shared station body read differently through faction-authored material, marking,
+lighting, wear, and motion treatments. The existing palette values are starting references; judge each
+result in representative sectors and extend the data shape when tint and emissive fields are not enough.
 
-### Tier B — Hero Faction Station GLBs (evidence-selected)
+### Layer B — Hero faction station GLBs (evidence-selected authored identity)
 
-For the factions whose identity cannot be carried by tint alone, author a **bespoke station archetype GLB** and route specific stations to it via a faction-keyed extension of `STATION_ARCHETYPE_FILES`. Initial candidates (by silhouette strength): **Vael** (alien — resonance rings, organic curves; green-cyan), **Reach** (pirate — cobbled, welded, asymmetric; red), **Choir** (zealot — cathedral geometry, tall spires; magenta). Choose geometry, materials, and LOD from the station's real exposure and representative performance captures rather than a fixed triangle range.
+Author **bespoke station archetype GLBs** wherever silhouette, structure, material response, animation,
+or close exposure is central to faction identity, and route specific stations through a faction-aware
+extension of `STATION_ARCHETYPE_FILES`. Initial candidates include Vael, Reach, and Choir, but current
+captures may justify others. Choose geometry, materials, and LOD from real exposure and representative
+performance captures rather than a fixed range.
 
-**The rule:** Tier A for every faction first. Tier B only for factions where playtesters still can't tell stations apart after livery. Do not sculpt before the livery proves insufficient.
+**Allocation rule:** establish a reusable livery path and author hero silhouettes in parallel where
+the intended identity clearly depends on form. Captures/playtests decide the mix; livery is not a gate
+that a faction must fail before authored geometry is allowed.
 
 ## §3. Architecture & wiring (touch files)
 
-| Touch | Purpose | Tier |
+| Touch | Purpose | Layer |
 |---|---|---|
 | `src/data/palettes.js` **or** new `src/data/factionLivery.js` | define `STATION_LIVERY[factionId] = { accentEmissive, decalMaterial?, silhouetteTag? }` | A |
 | `src/render/partsLibrary.js` (~line 3110, sibling to `paletteFor`) | add `stationLiveryFor(entity)`; consult it in `buildPlacePropRoot` (line 730) for the `Material_Emissive`/`Material_Accent` slot tints | A |
-| `src/render/partsLibrary.js:44-53` (`STATION_ARCHETYPE_FILES`) | append hero faction GLBs (Tier B only) | B |
-| `assets/ships/parts/places/place_station_<faction>_<archetype>.glb` | new hero GLBs (Tier B only) | B |
-| `assets/ships/parts/parts_manifest.json` | register hero GLBs (Tier B only) | B |
-| `src/data/sectorAnchors.js` + `src/data/frontierRegions/*.js` | point specific stations at hero `archetypeGlb` by faction (Tier B only) | B |
+| `src/render/partsLibrary.js:44-53` (`STATION_ARCHETYPE_FILES`) | append evidence-selected hero faction GLBs | B |
+| `assets/ships/parts/places/place_station_<faction>_<archetype>.glb` | new hero GLBs | B |
+| `assets/ships/parts/parts_manifest.json` | register hero GLBs | B |
+| `src/data/sectorAnchors.js` + `src/data/frontierRegions/*.js` | point specific stations at hero `archetypeGlb` by faction | B |
 
 **Do NOT touch:** `release_manifest.json` (auto-written). The legacy render files. `src/systems/input.js`.
 
@@ -97,7 +108,7 @@ The build-time accent-variant block to optionally rename/extend:
 
 ## §5. The faction backlog
 
-Tier A (all 8 — runtime livery, cheap, one iteration each):
+Layer A (runtime-livery coverage for the sector-owning factions):
 
 | Faction | `factionId` | Palette anchor | Livery character | Paint profile (personality) |
 |---|---|---|---|---|
@@ -110,7 +121,7 @@ Tier A (all 8 — runtime livery, cheap, one iteration each):
 | Free Frontier | `faction_free` | `#4ECBE0` cyan | plain cyan, utilitarian, no strong identity (the "default") | independent |
 | Ascendant Choir | `faction_choir` | `#E85FD0` magenta | magenta cathedral-glow, tall emissive spires | (zealot — add to PAINT_PROFILES) |
 
-Tier B (hero silhouette — only after Tier A proves insufficient per faction):
+Layer B hero-silhouette candidates (can proceed alongside livery when form is identity-defining):
 
 | Faction | Candidate archetype | Why bespoke |
 |---|---|---|
@@ -118,12 +129,15 @@ Tier B (hero silhouette — only after Tier A proves insufficient per faction):
 | `faction_reach` | blackmarket | Cobbled/welded pirate haven silhouette is identity-defining |
 | `faction_choir` | research / military | Cathedral/spire zealot geometry |
 
-**First worked example (the template):** Tier A for **`faction_vael`** — the most visually distinct faction (alien, green-cyan). Proves the resolver + livery-block pattern. If playtest still can't read it, escalate to the Tier B Vael hero GLB. **Do all 8 Tier A before any Tier B.**
+**First worked example:** implement the reusable livery resolver and a representative faction treatment,
+then compare Vael and Concord in normal routes. In parallel, use the Vael hero GLB as the authored-form
+proof if current evidence shows that alien identity depends on silhouette. The example proves both
+paths can compose; it does not impose a global livery-first sequence.
 
 ## §6. Libraries / tooling
 
 - **Implementation fit:** existing data and resolver seams should cover the base feature. Runtime or build dependencies remain allowed when they materially improve quality and their license, bundle/performance, determinism/save, and maintenance impact are documented.
-- **New acceptance check recommended:** `scripts/check-faction-livery.mjs` — asserts (a) every `factionId` in `FACTION_META` that owns sectors has a `STATION_LIVERY` entry, (b) each livery has valid color data and preserves semantic contrast/accessibility, and (c) Tier B hero GLBs (if any) are registered in all required manifests and runtime maps. Distinctness itself is accepted from representative side-by-side player-route captures at real viewing conditions, not a synthetic palette-distance threshold. Wire as `check:faction-livery`, add to `check` aggregate. Build it as iteration 0.
+- **New acceptance check recommended:** `scripts/check-faction-livery.mjs` — asserts (a) every `factionId` in `FACTION_META` that owns sectors has a `STATION_LIVERY` entry, (b) each livery has valid color data and preserves semantic contrast/accessibility, and (c) Layer B hero GLBs (if any) are registered in all required manifests and runtime maps. Distinctness itself is accepted from representative side-by-side player-route captures at real viewing conditions, not a synthetic palette-distance threshold. Wire as `check:faction-livery`, add to `check` aggregate. Build it as iteration 0.
 
 ## §7. Build plan
 
@@ -133,13 +147,13 @@ Tier B (hero silhouette — only after Tier A proves insufficient per faction):
 3. Build `scripts/check-faction-livery.mjs` (iteration 0 check).
 4. Run `npm run check:visual-stability`, `npm run check:sim:compare`. Screenshot a Vael station vs a Concord station into `.devshots/`.
 
-### Per faction (Tier A)
+### Per faction (Layer A)
 1. Define `STATION_LIVERY[factionId] = { accentEmissive, silhouetteTag }`.
 2. If the faction's personality isn't in `PAINT_PROFILES`, add it (e.g. `zealot` for Choir).
 3. Run `check:faction-livery`, `check:visual-stability`, screenshot the faction's stations in 2–3 owned sectors.
 4. Update `**Status:**`. Print 10-line summary.
 
-### Per faction (Tier B, only if Tier A insufficient)
+### Per faction (Layer B, when authored form materially improves identity)
 1. Verify current asset ownership, then author `place_station_<faction>_<archetype>.glb` with the material roles required by the runtime classifier. Set geometry and LOD from screen-space need and measured scene cost.
 2. Register in all 3 registries (parts_manifest.json, auto-written release_manifest, `STATION_ARCHETYPE_FILES`).
 3. Point the faction's stations at the hero `archetypeGlb` in `sectorAnchors.js` / `frontierRegions/*.js`.
@@ -147,7 +161,8 @@ Tier B (hero silhouette — only after Tier A proves insufficient per faction):
 
 ## §8. Anti-patterns
 
-- **DON'T** sculpt a Tier B hero GLB before Tier A livery is in for that faction. Tint is cheap and may suffice; sculpture is not.
+- **DON'T** force every faction through a tint-only gate before authoring form. Spend authored effort
+  where current captures show silhouette, material, or animation is the identity-bearing layer.
 - **DON'T** edit `partsLibrary.js` while a graphics lane is active — it's the C-thread single-writer point. Coordinate or wait.
 - **DON'T** key livery by palette-class (the existing mis-named `factionAccentVariants` mistake) — key by `factionId`. The whole point is per-faction identity.
 - **DON'T** make livery colors that clash with the faction's canonical `FACTION_PALETTES` — livery *extends* the palette, it doesn't override it. The accent emissive should harmonize with `faction.accent`/`emissive`.
@@ -164,18 +179,27 @@ A fully-liveried galaxy is the foundation for **faction territory read** — fly
 
 > **You are THREAD depth-P3 — Faction Visual Identity Kit only.**
 >
-> Read in order: `AGENTS.md` §1, §3, §5, §6, §10 · `design/spec2/00_MASTER_TASTE.md` · `design/depth-program/00_DEPTH_PROGRAM.md` · `design/depth-program/P3-faction-visual-identity.md` (this file) · `src/data/factions.js` · `src/data/palettes.js` · `src/render/partsLibrary.js` (especially `paletteFor` line 3110, `buildPlacePropRoot` line 730, `STATION_ARCHETYPE_FILES` line 44) · `src/data/sectorAnchors.js`. Then stop reading and do the work.
+> Read in order: root `AGENTS.md` · `assets/AGENTS.md` · `assets/ships/AGENTS.md` ·
+> `src/render/AGENTS.md` · this file · `src/data/factions.js` · `src/data/palettes.js` · the live
+> `src/render/partsLibrary.js` faction/material and station-routing seams · `src/data/sectorAnchors.js`.
+> Use current manifests and code when dated line references have drifted.
 >
-> **Target:** `<FACTION_ID>` (e.g. `faction_vael` — see §5 backlog) at Tier A (runtime livery). **Tier B (hero GLB) only if dispatched explicitly after Tier A proves insufficient.**
+> **Target:** `<FACTION_ID>` (e.g. `faction_vael` — see §5 backlog), with reusable livery, an
+> evidence-selected hero asset, or both as the intended identity requires.
 >
 > **Iteration 0 (wiring, once):** add `stationLiveryFor(entity)` to `partsLibrary.js`, consult in `buildPlacePropRoot`; build `scripts/check-faction-livery.mjs`; screenshot a Vael vs Concord station.
 >
-> **Lock protocol (Tier B only):** acquire `assets/ships/blender.LOCK` as thread depth-P3. If held, **STOP and report.**
+> **Ownership protocol for authored assets:** inspect markers together with live Blender/export
+> processes, recent writes, and active agent ownership. Coordinate genuine overlap or select a
+> non-overlapping asset; a marker alone is not a stop condition.
 >
-> **Do (Tier A):** define `STATION_LIVERY[factionId]`, add personality to `PAINT_PROFILES` if missing, run checks, screenshot the faction's stations across 2–3 owned sectors (default game path).
+> **Do (Layer A):** define `STATION_LIVERY[factionId]`, add personality to `PAINT_PROFILES` if missing, run checks, screenshot the faction's stations across representative owned sectors (default game path).
 >
-> **FORBIDDEN:** Tier B before Tier A. Editing `partsLibrary.js` during an active graphics lane (coordinate). Keying livery by palette-class. Clashing with `FACTION_PALETTES`. Browser/desktop divergence. Silent perf cuts. Editing `release_manifest.json` by hand. `git checkout .` / `git reset --hard` / etc. (AGENTS.md §3).
+> **FORBIDDEN:** overwriting `partsLibrary.js` during verified active overlapping work without
+> coordination. Keying livery by palette-class. Treating existing palette values as exclusive art
+> direction. Browser/desktop divergence. Silent perf cuts. Editing `release_manifest.json` by hand.
+> Destructive shared-tree git operations prohibited by root policy.
 >
-> **Acceptance:** `node scripts/check-faction-livery.mjs` green (after iter 0) · `npm run check:visual-stability` · `npm run check:asset-reachability` (Tier B) · `npm run check:assets:live` (Tier B, failureCount:0) · `npm run check:sim:compare` (hashEqual:true) · `node scripts/check-tether-gameplay.mjs` · screenshot pair in `.devshots/`.
+> **Acceptance:** `node scripts/check-faction-livery.mjs` green (after iter 0) · `npm run check:visual-stability` · `npm run check:asset-reachability` (Layer B) · `npm run check:assets:live` (Layer B, failureCount:0) · `npm run check:sim:compare` (hashEqual:true) · `node scripts/check-tether-gameplay.mjs` · screenshot pair in `.devshots/`.
 >
 > `git add -N` every new file immediately. Report which faction and tier shipped, livery fields or authored asset characteristics, which sectors show it, representative performance observations, green checks, screenshot paths, and deferred items.

@@ -62,8 +62,9 @@ const trackingMul = 1 + 0.02 * e.onSeamS;            // +2%/s → +20% cap
 ```
 
 ### 5–6. Assets / deps
-Seam patterns = emissive decals from existing seam shader params (no new textures); volatile =
-amber tint + audio warble (SPEC3-39 recipe). No new deps.
+Existing seam shaders and audio recipes are starting candidates. Authored textures, shaders, audio,
+media, or dependencies are allowed when they materially improve readability/quality and document
+license, performance, determinism/save, parity, accessibility, and maintenance impact.
 
 ### 7. Build plan
 1. Asteroid signature data + spin/seam-pattern variants; extend `check:mining:2` (yield deltas per
@@ -135,7 +136,8 @@ function mergeLots(a, b) {
 ```
 
 ### 5–6. Assets / deps
-Claim refinery gets a visible hopper part + smelt-glow when running (SPEC3-37 queue, small). No new deps.
+Claim refinery needs a convincing visible processing state; hopper and smelt-glow are initial
+candidates. New assets or dependencies remain allowed under the documented repository impact policy.
 
 ### 7. Build plan
 1. Purity on lots + refine math + station fee vs claim free; `scripts/check-refining.mjs`
@@ -146,7 +148,8 @@ Claim refinery gets a visible hopper part + smelt-glow when running (SPEC3-37 qu
 5. Floor: `check:balance` (extend with chain-margin assertion), `check:sim:compare`.
 
 ### 8. Anti-patterns
-Deep crafting trees (3 steps, hard cap — X4/Factorio depth is out of scope and out of taste here);
+Crafting depth that adds bookkeeping without meaningful decisions; begin with a compact three-step
+pacing target, then extend or simplify it from play evidence, economy legibility, and career depth;
 refining as a timer-wall (claim slowness must overlap play, never gate it); purity micromanagement
 (two decisions max: sort or don't, station or home); producing anything with no consumer in the
 commodity graph.
@@ -204,7 +207,8 @@ if (core.cracked && rng.next() < field.veinChance) {
 ```
 
 ### 5–6. Assets / deps
-Class glyphs from existing icon atlas; vein VFX = amplified existing ore-burst recipe. No new deps.
+The current icon atlas and ore-burst recipe are reuse candidates, not media ceilings. Add authored
+assets or dependencies when they materially improve the result and document repository-policy impact.
 
 ### 7. Build plan
 1. Field richness chips + regrowth surfacing; `scripts/check-field-states.mjs`.

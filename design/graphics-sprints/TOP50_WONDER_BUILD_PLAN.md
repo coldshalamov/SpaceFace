@@ -53,17 +53,19 @@
 | “Loads in Blender / exported GLB” | Not done until **release + checks + in-game authored screenshot** |
 | Flat gray / single material | Fail **Material zones** + **Wear/story** criteria |
 | Apply a universal technique recipe | Choose techniques because they solve the asset's actual visible gaps |
-| Stop after starter only | Forbidden by FGRG; this plan still requires **Slice A exit** then continue |
+| Treat one improved asset as the whole slice | Claim only the assets and slice outcomes actually proven; retain unfinished admitted work in the current program backlog |
 
-### 2.2 Three professional passes (every hero 3D asset)
+### 2.2 Professional review dimensions (apply as the asset requires)
 
-| Pass | Skill | Gate |
+| Dimension | Useful skill | Evidence question |
 |---|---|---|
-| **Modeling** | `spaceface-blender-blockout` | Clay form survives professional review at the game camera |
-| **Surfacing** | `spaceface-blender-hardsurface` | Materials, surface story, and lighting response read in the actual renderer |
-| **Life & polish** | `spaceface-blender-surface-pass` | Secondary life, thruster/gun readiness, sockets/hooks, final lit set |
+| **Modeling** | `spaceface-blender-blockout` | Does form, scale, construction, and silhouette work at the game camera? |
+| **Surfacing** | `spaceface-blender-hardsurface` | Do materials, surface story, and lighting response work in the actual renderer? |
+| **Life & polish** | `spaceface-blender-surface-pass` | Do motion, function, sockets/hooks, wear, and final presentation support this asset's role? |
 
-Distant C-tier props may abbreviate Life pass; **never** for ranks 1, 6–8, 11, 16–21, 28–29, 31–32, 48.
+Use as many of these dimensions and techniques as the visible deficiencies require. Do not force a
+fixed pass count, technique checklist, or rank-based ceremony when current evidence supports a more
+direct route to the same professional result.
 
 ### 2.3 Fidelity tiers
 
@@ -84,7 +86,8 @@ Distant C-tier props may abbreviate Life pass; **never** for ranks 1, 6–8, 11,
 | Presentation | **D** | VFX, camera, lighting, thrusters, LODs |
 | Integrator | daily | Release build + checks |
 
-**One Blender lock at a time** (`BLENDER_EXCLUSIVE_LOCK.md`).
+**One active writer for overlapping Blender/source-GLB paths at a time.** Verify marker, process,
+heartbeat, and current edits per `BLENDER_EXCLUSIVE_LOCK.md`; stale markers do not reserve the lane.
 
 ---
 
@@ -160,7 +163,9 @@ Distant C-tier props may abbreviate Life pass; **never** for ranks 1, 6–8, 11,
 
 ## 4. Execution slices (do these in order)
 
-Do **not** open all 50 in parallel. One Blender owner; D/UI can parallel if no lock conflict.
+Select coherent slices whose file sets and review surfaces can complete together. Parallelize
+non-overlapping Blender, runtime, and UI work while keeping a single verified writer on each
+overlapping source-GLB path.
 
 ### Slice A — “Undock and believe” (ranks 1–10, 13–14 core)
 
@@ -283,20 +288,20 @@ Run `INTEGRATION_GATE.md` fully. **Thread C may wire only `RELEASE_BUILT` IDs.**
 ┌─────────────────────────────────────────────────────────────┐
 │ 0. Director assigns ONE slice item / ONE asset ID           │
 │ 1. Read: this file §5 + QUALITY_RITUAL + pipeline skill     │
-│ 2. Acquire blender.LOCK (if 3D)                             │
+│ 2. Verify and record the current 3D writer/paths            │
 │ 3. Inspect current → representative context/detail shots    │
 │ 4. Define character (3–5 sentences)                         │
-│ 5. LOOP while meaningful gaps remain:                       │
-│      render → critique → coherent repair → render again     │
+│ 5. Repair the meaningful gaps shown by current evidence     │
 │ 6. Export → finalize → evidence bundle                      │
-│ 7. Handoff YAML → release lock                              │
+│ 7. Handoff YAML → release or transfer live ownership       │
 │ 8. Integrator: release build + checks                       │
 │ 9. In-game screenshots → only then mark DONE                │
-│ 10. Next asset — do NOT skip remaining slice items          │
+│ 10. Update the program with proven and remaining outcomes   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Batch size:** Thread A = one category (e.g. engines) or **one hero** at a time for ranks 1/6/7. Never “all 63 this session” if it causes early stop.
+**Batch sizing:** choose the largest coherent batch that can be authored, reviewed, integrated, and
+proven without hiding half-built work. Asset rank does not impose a universal one-at-a-time ritual.
 
 **Time posture:** Prefer **one asset at true bar** over five half-done. Incomplete assets stay **not done** in status — honesty over vanity counts.
 
@@ -339,7 +344,7 @@ Top 50 is the **priority spine**. FGRG owns full authored-asset coverage and the
 
 ## 9. Copy-paste goals
 
-Use **§9.1** for a multi-asset / slice campaign that must not quit early.  
+Use **§9.1** for a multi-asset / slice campaign with a coherent shared outcome.
 Use **§9.2** for a single-asset hero (Blender MCP).  
 Use existing `GOAL_PROMPTS.md` threads when staying inside A/B/C/D/E isolation.
 
@@ -378,7 +383,9 @@ Slice: <SLICE_LETTER>   (A | B | C | D | E)
 Asset / pack IDs (only these — do not wander): <ASSET_OR_PACK_IDS>
 Thread role: <A|B|C|D|E|INTEGRATOR|UI>
 
-If Blender is required: acquire assets/ships/blender.LOCK first. If lock held by another owner, STOP.
+If Blender is required, verify `assets/ships/blender.LOCK` against live Blender/export processes,
+heartbeat, recent writes, and current agent ownership. Coordinate genuine overlap or select
+non-overlapping work; recover stale residue safely rather than returning a report-only result.
 
 ## Outcome discipline
 - Build toward the whole visible goal for the current pass, then critique the result honestly.
@@ -387,22 +394,23 @@ If Blender is required: acquire assets/ships/blender.LOCK first. If lock held by
   self-scores as proof of quality.
 - Select techniques for the asset's actual role, construction, and story rather than applying a universal
   surface recipe.
-- Do not stop because you are “tired of the asset,” context is long, or “it’s better than before.”
-  Stop only when the applicable §5 asset/pack gate and slice evidence are met.
+- Claim completion only when the applicable §5 asset/pack gate and slice evidence are met. If a
+  bounded dispatch ends earlier, preserve the working artifact and record the remaining player-facing
+  outcome in the current program rather than manufacturing process output.
 
 ## 3D pipeline (when Thread A/B/E)
 For EACH id:
-1. Inspect current GLB/blend via Blender MCP; capture representative full-view clay, lit, and player-route evidence.
-2. Write character brief (3–5 sentences: role, faction wear, silhouette promise).
-3. Modeling Pass (blockout skill): iterate until silhouette, hierarchy, scale, and construction survive review.
-4. Surfacing Pass (hardsurface skill): full node layering, bakes (AO/N/rough ORM), wear, decals, material roles.
-5. Life Pass (surface-pass skill): secondary life, sockets/hooks, thruster/gun readiness.
-6. Capture the neutral, lit, detail, and player-route views needed to evaluate the current result.
-7. Keep `deficiency.md` focused on the material gaps and chosen repairs; chronology is optional.
-9. Export via spaceface_export.py / finalize_part.mjs — zero failures.
-10. Evidence under assets/ships/parts/revamp-evidence/<id>/
-11. Handoff YAML to design/graphics-sprints/handoffs/
-12. Release blender.LOCK when batch done.
+1. Inspect the current GLB/blend and its player-route presentation; capture the views needed to expose
+   real deficiencies.
+2. State the asset's role, identity, silhouette, construction, and exposure target concisely enough to
+   guide decisions.
+3. Repair modeling, surfacing, motion/life, sockets, and authored maps in the combination current
+   evidence requires. The named Blender skills are technique references, not mandatory pass counts.
+4. Capture representative neutral, lit, detail, and player-route evidence for the resulting claim.
+5. Keep `deficiency.md` focused on material remaining gaps and chosen repairs; chronology is optional.
+6. Export through `spaceface_export.py` / `finalize_part.mjs` with zero assertion failures.
+7. Store evidence under `assets/ships/parts/revamp-evidence/<id>/`, write the handoff YAML, and release
+   or explicitly transfer verified ownership when the batch is safe to hand off.
 
 ## VFX / RUNTIME / UI packs (when Thread D / UI)
 - Implement full state checklist for the pack (e.g. massline: fire, latch, taut, break, whip).
@@ -456,18 +464,18 @@ Top-50 rank: <N>
 Character target: <one paragraph from BP-08 / needed-assets / QUEUE>
 
 Rules:
-- Acquire blender.LOCK. Use Blender MCP heavily.
-- Use fully framed context views, useful detail views, and written critique; repeat until independent review
-  supports the professional result.
-- Pass order: Modeling until clay is pro → Surfacing until lit is pro → Life until ready to export.
-- Attempt the **whole pass goal** every modeling/surfacing cycle; critique; rebuild.
-- Do not stop at merely “better than before”; resolve the material gaps visible at the real game camera.
+- Verify and record the live Blender/source-GLB owner; stale lock markers do not reserve the lane.
+- Use fully framed context views, useful detail views, and written critique sufficient for independent
+  review of the claimed result.
+- Address modeling, surfacing, motion/life, and integration in the order the asset's actual deficiencies
+  require; no fixed number of cycles or techniques proves quality.
 - Done only when independent visual review passes, exporter is green, release is built,
   `check:assets:live` is green, and a current in-game authored screenshot is saved.
 - Evidence: assets/ships/parts/revamp-evidence/<ID>/
 - Handoff YAML when complete.
 
-Forbidden: early stop, cropped shots, relaxing exporter, wiring blocked wholeships, git destructive commands.
+Forbidden: cropped-only evidence, relaxing exporter contracts, wiring invalid wholeships, destructive
+shared-tree git commands, or overwriting verified active concurrent work.
 
 Print: review result, shot paths, and check output.
 ```
@@ -506,4 +514,5 @@ If any box fails → **reject done claim**; resume with §9.1 CONTINUATION rules
 
 ---
 
-*Built for agents that stop early. The gates and §9 goals exist to make half-finished clay impossible to call done.*
+*The gates and §9 goals distinguish a coherent player-facing result from partial work without making
+iteration ceremony, self-reporting, or process volume a substitute for quality.*

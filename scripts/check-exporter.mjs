@@ -13,13 +13,11 @@ const EXPORTER_PY = resolve(ROOT, 'tools/blender/spaceface_export.py');
 const EXPORT_STATE_TEST_PY = resolve(ROOT, 'test/spaceface-export-state.test.py');
 const PYTHON_ENV = Object.freeze(withPythonNoBytecodeEnv());
 
-// Mirrors tools/blender/spaceface_export.py. Complexity limits are explicit per-asset review inputs,
-// not universal targets agents should meet by deleting authored silhouette or surface detail.
+// Mirrors tools/blender/spaceface_export.py. There are no universal complexity ceilings. A reviewed
+// per-asset spec may opt into a measured limit, which remains enforceable for that asset only.
 const KIND_BUDGETS = Object.freeze({
-  // Defaults are diagnostic opt-ins, not universal quality ceilings. Per-asset specs may provide a
-  // measured budget; otherwise preserve authored detail and review performance structurally.
   part: { triBudget: null, minHullTris: 0 },
-  wholeship: { triBudget: null, minHullTris: 800 },
+  wholeship: { triBudget: null, minHullTris: null },
   prop: { triBudget: null, minHullTris: 0 },
   landmark: { triBudget: null, minHullTris: 0 },
 });
@@ -101,12 +99,12 @@ function isHullMesh(gltf, mesh, nodeName) {
     || (nodeRoleToken(nodeName).includes('lod0_') && nodeRoleToken(nodeName).includes('_main'));
 }
 
-function validateGltfDocument(gltf, spec) {
+function validateGltfDocument(gltf, spec, diagnostics = []) {
   const errors = [];
   const assetId = spec.id || spec.assetId || 'asset';
   const kind = spec.kind || 'part';
   const budget = spec.triBudget ?? KIND_BUDGETS[kind]?.triBudget ?? null;
-  const minHullTris = spec.minHullTris ?? KIND_BUDGETS[kind]?.minHullTris ?? 0;
+  const minHullTris = spec.minHullTris ?? KIND_BUDGETS[kind]?.minHullTris ?? null;
   const skipMaps = spec.skipMaps === true;
 
   const extras = gltf.asset?.extras || {};
@@ -156,7 +154,9 @@ function validateGltfDocument(gltf, spec) {
 
     if (nodeExtras.chamfered !== true && !spec.skipChamfer) {
       if (nodeRoleToken(name).includes('lod0_') || nodeRoleToken(name).startsWith('merged_material_')) {
-        errors.push(`${assetId}: unchamfered hard edge at ${name}`);
+        const message = `${assetId}: hard-edge chamfer assertion absent at ${name}`;
+        diagnostics.push(message);
+        if (spec.requireChamfered === true) errors.push(message);
       }
     }
 
@@ -179,12 +179,17 @@ function validateGltfDocument(gltf, spec) {
   // Runtime only displays one authored LOD at a time. Budget the unique LOD0 render primitives,
   // while retaining totalTris for diagnostics/fallback assets without an authored LOD chain.
   const budgetTris = trisByLod.lod0 || totalTris;
+  if (!Number.isFinite(budgetTris) || budgetTris <= 0) {
+    errors.push(`${assetId}: geometry is empty or non-triangular`);
+  }
   if (Number.isFinite(budget) && budgetTris > budget) {
     errors.push(`${assetId}: tri budget exceeded: LOD0 ${budgetTris} tris > ${budget}`);
   }
-  if (kind === 'wholeship' && hullTris < minHullTris) {
+  if (kind === 'wholeship' && hullTris <= 0) {
     const meshNames = (gltf.meshes || []).map((m, i) => m.name || `mesh#${i}`);
-    errors.push(`wholeship:missing hull body: hull triangles=${hullTris} < ${minHullTris}; meshes=${meshNames.join(', ')}`);
+    errors.push(`wholeship:missing or empty hull body: hull triangles=${hullTris}; meshes=${meshNames.join(', ')}`);
+  } else if (kind === 'wholeship' && Number.isFinite(minHullTris) && hullTris < minHullTris) {
+    errors.push(`wholeship:reviewed hull floor not met: hull triangles=${hullTris} < ${minHullTris}`);
   }
 
   return errors;
@@ -216,6 +221,11 @@ function buildBrokenFixture(kind) {
     gltf.nodes[0].extras.spaceface.chamfered = false;
   } else if (kind === 'tris') {
     gltf.accessors[1].count = 60000;
+  } else if (kind === 'empty') {
+    gltf.accessors[1].count = 0;
+  } else if (kind === 'accessory') {
+    gltf.nodes[0].name = 'LOD0_ANTENNA';
+    gltf.meshes[0].name = 'ANTENNA';
   }
   const json = Buffer.from(JSON.stringify(gltf));
   const pad = (4 - (json.length % 4)) % 4;
@@ -286,11 +296,20 @@ try {
 
   const brokenChamfer = join(tmp, 'broken-chamfer.glb');
   writeFileSync(brokenChamfer, buildBrokenFixture('chamfer'));
+  const chamferDiagnostics = [];
   const chamferErrors = validateGltfDocument(parseGlb(readFileSync(brokenChamfer)), {
     kind: 'part', id: 'broken-chamfer', skipMaps: true, allowMissingMetadata: true,
+  }, chamferDiagnostics);
+  check('hard-edge technique is diagnostic by default',
+    chamferErrors.length === 0 && chamferDiagnostics.some((entry) => entry.includes('chamfer assertion absent')),
+    `errors=${chamferErrors.join('; ')} diagnostics=${chamferDiagnostics.join('; ')}`);
+  const reviewedChamferErrors = validateGltfDocument(parseGlb(readFileSync(brokenChamfer)), {
+    kind: 'part', id: 'broken-chamfer-reviewed', skipMaps: true, allowMissingMetadata: true,
+    requireChamfered: true,
   });
-  check('broken fixture fails unchamfered hard edge', chamferErrors.some((e) => e.includes('unchamfered hard edge')),
-    chamferErrors.join('; '));
+  check('per-asset reviewed chamfer declaration remains enforceable',
+    reviewedChamferErrors.some((entry) => entry.includes('chamfer assertion absent')),
+    reviewedChamferErrors.join('; '));
 
   const brokenTris = join(tmp, 'broken-tris.glb');
   writeFileSync(brokenTris, buildBrokenFixture('tris'));
@@ -299,6 +318,38 @@ try {
   });
   check('broken fixture fails tri budget exceeded', trisErrors.some((e) => e.includes('tri budget exceeded')),
     trisErrors.join('; '));
+
+  const emptyGeometry = join(tmp, 'empty-geometry.glb');
+  writeFileSync(emptyGeometry, buildBrokenFixture('empty'));
+  const emptyErrors = validateGltfDocument(parseGlb(readFileSync(emptyGeometry)), {
+    kind: 'part', id: 'empty-geometry', skipMaps: true, skipChamfer: true, allowMissingMetadata: true,
+  });
+  check('empty geometry remains a structural failure',
+    emptyErrors.some((entry) => entry.includes('geometry is empty or non-triangular')),
+    emptyErrors.join('; '));
+
+  const accessoryOnly = join(tmp, 'accessory-only.glb');
+  writeFileSync(accessoryOnly, buildBrokenFixture('accessory'));
+  const accessoryErrors = validateGltfDocument(parseGlb(readFileSync(accessoryOnly)), {
+    kind: 'wholeship', id: 'accessory-only', skipMaps: true, skipChamfer: true, allowMissingMetadata: true,
+  });
+  check('accessory-only whole ship still fails body-presence contract',
+    accessoryErrors.some((entry) => entry.includes('missing or empty hull body')),
+    accessoryErrors.join('; '));
+
+  const minimalBody = parseGlb(buildBrokenFixture('body'));
+  const minimalBodyErrors = validateGltfDocument(minimalBody, {
+    kind: 'wholeship', id: 'minimal-body', skipMaps: true, skipChamfer: true, allowMissingMetadata: true,
+  });
+  check('non-empty whole-ship body has no universal triangle floor', minimalBodyErrors.length === 0,
+    minimalBodyErrors.join('; '));
+  const reviewedFloorErrors = validateGltfDocument(minimalBody, {
+    kind: 'wholeship', id: 'reviewed-floor', minHullTris: 2,
+    skipMaps: true, skipChamfer: true, allowMissingMetadata: true,
+  });
+  check('per-asset reviewed hull floor remains enforceable',
+    reviewedFloorErrors.some((entry) => entry.includes('reviewed hull floor not met')),
+    reviewedFloorErrors.join('; '));
 } finally {
   rmSync(tmp, { recursive: true, force: true });
 }

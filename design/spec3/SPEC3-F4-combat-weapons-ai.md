@@ -60,7 +60,9 @@ export function leadPoint(shooter, target, projSpeed, rng, sigma) {
 ```
 
 ### 5–6. Assets / deps
-No new assets (arcs use pooled sprites); no new deps.
+Pooled sprites are an initial arc treatment. New authored media or dependencies are allowed when they
+materially improve combat readability/quality and document license, performance, determinism/save,
+parity, accessibility, and maintenance impact.
 
 ### 7. Build plan
 1. Lead aim + σ per archetype + `scripts/check-velocity-lead.mjs` (scripted straight-line dummy gets
@@ -123,8 +125,8 @@ function turretTarget(policy, contacts, playerTargetId) {
 ```
 
 ### 5–6. Assets / deps
-Charge/mine/torp reuse existing projectile meshes + tint; disruptor gets a distinct blue-white
-corkscrew trail (SPEC3-34 recipe). No new deps.
+Current projectile meshes and trail recipes are starting candidates. Choose authored geometry,
+materials, VFX, audio, and dependencies from weapon identity/readability evidence and documented impact.
 
 ### 7. Build plan
 1. Weapon family/heat-shape data pass + soft-cap; extend heat checks (respect weapons.js vent gate).
@@ -192,7 +194,8 @@ function maybeSpawn(state, rng) {
 ```
 
 ### 5–6. Assets / deps
-No new assets (shapes recombine existing enemies/VFX); no new deps.
+Recombining current enemies/VFX is efficient when the encounter remains distinctive. New authored
+media or dependencies are allowed when they materially improve encounter identity with documented impact.
 
 ### 7. Build plan
 1. Director skeleton + pressure model + 2 shapes (patrol-scan, pirate-toll) +
@@ -255,7 +258,8 @@ signature parts, small queue) + name chip on target panel. Barks: text only. No 
 (codex chip = initials + hue).
 
 ### 6–7. Deps / build plan
-No new deps. Build: 1) data + grudge state + 3 hunters + `scripts/check-named-hunters.mjs`
+Dependencies follow current repository policy; their presence or absence is not an acceptance result.
+Build: 1) data + grudge state + 3 hunters + `scripts/check-named-hunters.mjs`
 (escalation table, drop guarantee, entrance timing); 2) remaining 9; 3) rumor gating; 4) kill-cam
 beat. Parallel-safe after director ships.
 

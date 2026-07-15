@@ -33,8 +33,10 @@ Every change must serve at least one. When in doubt, cut.
    feature can be expressed through physics instead of a menu, express it through physics.
 2. **Read the battlefield at a glance.** Top-down is a *readability superpower*. Every entity, threat,
    and opportunity is identifiable in one screen glance — silhouette, color, motion all carry meaning.
-3. **One voice at a time.** The game never says two things at once. Objectives, tutorials, comms, and
-   alerts share a single attention budget with strict priority.
+3. **One primary transient voice at a time.** Tutorials, comms, objective changes, and danger alerts
+   share priority and dedupe rules so competing messages do not talk over one another. Persistent
+   navigation/objective context, player-requested detail, and accessibility equivalents remain
+   available without competing for the same transient slot.
 4. **The universe was here before you.** Charted space is charted. Traffic flies its own routes.
    Prices move without you. Discovery means *frontier and secrets*, not "the map is blank."
 
@@ -153,7 +155,8 @@ The archetype FSM (swarmer/sniper/brawler/pirate/capital) is solid. Add **intent
 - **Formations-lite:** patrols fly wedges (offset-slot steering, no new pathfinding — the
   `check:sg06:formation` convergence work already exists); breaking the leader scatters them for
   8 s of morale panic. Readable group behavior for one week of work.
-- Comms barks routed through the existing comms system with a 1-per-4s global cap (§8's voice budget).
+- Comms barks route through the existing attention system with priority, dedupe, stale-drop, and
+  measured pacing; tune cadence from representative combat rather than a universal interval.
 
 ### 6.3 The juice contract (every hit answers)
 All via existing pooled VFX/audio/floating-text systems — this is wiring + tuning, no new tech:
@@ -201,8 +204,10 @@ place ??? is allowed — as *bait*). One system, three loops served (mining, sal
 
 ### 7.5 Overview strip (EVE's one great UI idea, miniaturized)
 Right-edge compact list of nearby contacts: IFF chip, class glyph, name, distance, closing-speed
-arrow. Click = target. Sort: hostiles first, then by distance. Cap 8 rows + "+N more". This kills
-"wtf is around me" *without* opening any map. Collapsible for purists.
+arrow. Click = target. Sort by immediate threat and player relevance, then distance. Keep every
+targetable contact reachable through responsive scrolling, virtualization, grouping, or compact
+rows; never solve density by silently deleting the roster. This kills "wtf is around me" *without*
+opening any map. Collapsible for players who choose it.
 
 ### 7.6 Minimap (existing radar, kept honest)
 The existing radar widget stays bottom-right, but: IFF colors from the accessibility palette,
@@ -210,11 +215,12 @@ off-screen objective arrows on its bezel, station/gate glyphs instead of anonymo
 
 ## 8. Onboarding & the attention budget
 
-### 8.1 One-voice rule (pillar 3, enforced in code)
-A single **attention arbiter** gates all text surfaces. Priority: death/danger alerts > tutorial
-step > mission objective update > comms chatter > flavor barks. Lower tiers queue; comms chatter
-drops if stale. The measured 5-simultaneous-text-sources opening becomes: one modal (skippable),
-then *silence*, then the first objective line. Nothing else speaks for 20 s.
+### 8.1 Primary-transient attention rule (pillar 3, enforced in code)
+A single **attention arbiter** coordinates primary transient text and audio. Priority: death/danger
+alerts > tutorial step > mission objective update > comms chatter > flavor barks. Lower tiers queue;
+stale chatter drops. Persistent objective/navigation context, player-opened detail, and accessibility
+equivalents remain available. The opening should establish one clear action before secondary chatter;
+tune its quiet interval from play evidence rather than a fixed duration.
 
 ### 8.2 First fifteen minutes (rework pacing, reuse beats)
 Existing STEPS are right; the delivery is a wall. New pacing — each beat completes before the next
@@ -227,7 +233,7 @@ speaks, each teaches exactly one verb:
 4. **The snare** (5:00) — scripted weak pirate interdicts; brake (Space), damage triangle on his shield;
    he flees at 30% hull (teaches flee-read). First kill juice payoff.
 5. **Dock at Helios** (7:00) — auto-dock prompt; sell ore; buy the tier-1 module the mission rewards
-   suggest; board shows *exactly one* recommended job (existing recommendation system).
+   suggest; the board clearly marks one recommended job while keeping the full mission list available.
 6. **Choice** (12:00) — three jobs: haul (trade loop), bounty (combat loop), survey (explore loop).
    The player picks their game. Tutorial ends. HUD "?" hints stay contextual thereafter.
 

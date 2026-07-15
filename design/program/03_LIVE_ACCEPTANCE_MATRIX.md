@@ -13,7 +13,7 @@
 | M4 | Regional ecology/POI foundations built | RED 8/9 on registry/save initialization order | Sparse/normal/crowded diversity routes open | Art/classification incomplete | 0 recorded | NOT EXITED |
 | M5 | Story/endings/outposts/role foundations built | Role continuity green | Supporting injected role route only; ordinary story/ownership routes open | Partial | 0 recorded | NOT EXITED |
 | M6 | Capture/release/localization/perf foundations and Wasp routing built | Capture contract/self-test green; perf RED | Real store route absent | Wasp has no accepted classification; localization/capture incomplete; Hitch glare and Helios material defects remain | 0 recorded | NOT EXITED |
-| Depth | Focused implementations for 16 chunks after W1 correction | Aggregate green in dirty tree | Many routes compress state/timing; final unassisted routes open | All Depth `.devshots` ignored; no chunk DONE | N/A | 0 / 31 DONE |
+| Depth | Checkpoint `850c80f3` preserves focused implementations for 16 chunks after W1 correction | Pre-checkpoint aggregate green; not rerun at current HEAD | Many routes compress state/timing; final unassisted routes open | All Depth `.devshots` ignored; no chunk DONE | N/A | 0 / 31 DONE |
 
 ## Fresh audit details
 
@@ -27,8 +27,9 @@
 - `npm run check:m3:career-origins`.
 - `npm run check:m5:role-continuity`.
 - Release-capture contract 4/4 and no-browser self-test.
-- `npm run check:depth-program:contracts` in the current dirty tree.
-- S4/W1 isolated tests — 18/18.
+- Last recorded `npm run check:depth-program:contracts` before checkpoint `850c80f3`; rerun at current
+  HEAD is required before calling it current green.
+- Last recorded S4/W1 isolated tests — 18/18 before the checkpoint; no acceptance promotion.
 
 ### Red or incomplete
 

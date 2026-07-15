@@ -30,26 +30,11 @@ except ImportError:
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-
-def _manifest_triangle_growth_guard() -> int:
-    """Read the measured library guard; this is a structural-review trigger, not a quality target."""
-    path = os.path.join(ROOT, 'assets', 'ships', 'parts', 'parts_manifest.json')
-    try:
-        with open(path, 'r', encoding='utf-8') as handle:
-            manifest = json.load(handle)
-        value = manifest.get('budgets', {}).get('trianglesPerLandmark', [None, None])[1]
-        return int(value) if isinstance(value, (int, float)) and value > 0 else 1100000
-    except (OSError, ValueError, TypeError, IndexError):
-        return 1100000
-
-
-MANIFEST_TRIANGLE_GROWTH_GUARD = _manifest_triangle_growth_guard()
-
 KIND_BUDGETS = {
-    # Defaults are diagnostic opt-ins, not universal quality ceilings. Per-asset specs may provide a
-    # measured budget; otherwise preserve authored detail and review performance structurally.
+    # There are no universal complexity ceilings. A reviewed per-asset spec may opt into a measured
+    # limit, which remains enforceable for that asset only.
     'part': {'tri_budget': None, 'min_hull_tris': 0},
-    'wholeship': {'tri_budget': None, 'min_hull_tris': 800},
+    'wholeship': {'tri_budget': None, 'min_hull_tris': None},
     'prop': {'tri_budget': None, 'min_hull_tris': 0},
     'landmark': {'tri_budget': None, 'min_hull_tris': 0},
 }
@@ -187,7 +172,7 @@ def validate_merged_node_mesh_alignment(objects: list[Any]) -> None:
                 _fail('wholeship:merged material node mesh mismatch', f'{obj.name} is not mechanical geometry')
 
 
-def validate_wholeship_hull_body(objects: list[Any], min_hull_tris: int) -> None:
+def validate_wholeship_hull_body(objects: list[Any], min_hull_tris: int | None) -> None:
     hull_tris = 0
     hull_nodes = []
     for obj in objects:
@@ -197,15 +182,18 @@ def validate_wholeship_hull_body(objects: list[Any], min_hull_tris: int) -> None
             count = tri_count_mesh(obj)
             hull_tris += count
             hull_nodes.append(f'{obj.name}({count}t)')
-    if hull_tris < min_hull_tris:
+    if hull_tris <= 0:
         mesh_names = [obj.name for obj in objects if obj.type == 'MESH']
         _fail(
-            'wholeship:missing hull body',
-            f'hull triangles={hull_tris} < {min_hull_tris}; meshes={", ".join(mesh_names)}',
+            'wholeship:missing or empty hull body',
+            f'hull triangles={hull_tris}; meshes={", ".join(mesh_names)}',
         )
+    if min_hull_tris is not None and hull_tris < min_hull_tris:
+        _fail('wholeship:reviewed hull floor not met', f'hull triangles={hull_tris} < {min_hull_tris}')
 
 
-def validate_object(obj: Any, spec: dict[str, Any]) -> None:
+def validate_object(obj: Any, spec: dict[str, Any]) -> list[str]:
+    diagnostics: list[str] = []
     asset_id = spec.get('id') or spec.get('assetId')
     extras = obj.get('spacefaceAsset') if isinstance(obj.get, type(lambda: None)) else None
     if IN_BLENDER:
@@ -214,22 +202,31 @@ def validate_object(obj: Any, spec: dict[str, Any]) -> None:
     if IN_BLENDER and obj.type == 'MESH':
         edges = hard_edges_unbeveled(obj)
         if edges:
-            _fail('unchamfered hard edge', f'{obj.name} edge index {edges[0]}')
+            detail = f'{asset_id}: {obj.name} hard-edge chamfer assertion absent at edge {edges[0]}'
+            diagnostics.append(detail)
+            if spec.get('require_chamfered') is True:
+                _fail('required chamfer treatment absent', detail)
         for role in spec.get('required_maps', REQUIRED_MAPS):
             if not has_baked_map(obj, role):
                 _fail(f"missing baked map '{role}'", obj.name)
         tris = tri_count_mesh(obj)
-        budget = spec.get('tri_budget', KIND_BUDGETS.get(spec.get('kind', 'part'), {}).get('tri_budget', 1200))
+        budget = spec.get('tri_budget', KIND_BUDGETS.get(spec.get('kind', 'part'), {}).get('tri_budget'))
         if budget is not None and tris > budget:
             _fail('tri budget exceeded', f'{obj.name}: {tris} tris > {budget}')
+    return diagnostics
 
 
-def validate_gltf_document(gltf: dict[str, Any], spec: dict[str, Any]) -> list[str]:
+def validate_gltf_document(
+    gltf: dict[str, Any],
+    spec: dict[str, Any],
+    diagnostics: list[str] | None = None,
+) -> list[str]:
     """Headless GLB JSON validation — mirrors Blender gate for check-exporter.mjs parity."""
     errors: list[str] = []
+    diagnostics = diagnostics if diagnostics is not None else []
     asset_id = spec.get('id') or spec.get('assetId') or ''
     kind = spec.get('kind', 'part')
-    budget = spec.get('tri_budget', KIND_BUDGETS.get(kind, {}).get('tri_budget', 1200))
+    budget = spec.get('tri_budget', KIND_BUDGETS.get(kind, {}).get('tri_budget'))
     min_hull_tris = spec.get('min_hull_tris', KIND_BUDGETS.get(kind, {}).get('min_hull_tris', 0))
 
     extras = (gltf.get('asset') or {}).get('extras') or {}
@@ -299,7 +296,10 @@ def validate_gltf_document(gltf: dict[str, Any], spec: dict[str, Any]) -> list[s
                     hull_tris += tris
             if extras_node.get('chamfered') is not True and kind != 'fixture':
                 if 'lod0_' in name.lower() or name.lower().startswith('merged_material_'):
-                    errors.append(f'{asset_id}: unchamfered hard edge at {name}')
+                    message = f'{asset_id}: hard-edge chamfer assertion absent at {name}'
+                    diagnostics.append(message)
+                    if spec.get('require_chamfered') is True:
+                        errors.append(message)
 
             lname = name.lower()
             if lname.startswith('merged_material_'):
@@ -320,14 +320,18 @@ def validate_gltf_document(gltf: dict[str, Any], spec: dict[str, Any]) -> list[s
     # Runtime displays one authored LOD at a time. Use unique LOD0 render primitives for the
     # structural guard; fall back to total unique primitives when no LOD chain is authored.
     budget_tris = tris_by_lod['lod0'] or total_tris
+    if budget_tris <= 0:
+        errors.append(f'{asset_id}: geometry is empty or non-triangular')
     if budget is not None and budget_tris > budget:
         errors.append(f'{asset_id}: tri budget exceeded: LOD0 {budget_tris} tris > {budget}')
 
-    if kind == 'wholeship' and hull_tris < min_hull_tris:
+    if kind == 'wholeship' and hull_tris <= 0:
         mesh_names = [(m.get('name') or f'mesh#{i}') for i, m in enumerate(gltf.get('meshes') or [])]
         errors.append(
-            f'wholeship:missing hull body: hull triangles={hull_tris} < {min_hull_tris}; meshes={", ".join(mesh_names)}'
+            f'wholeship:missing or empty hull body: hull triangles={hull_tris}; meshes={", ".join(mesh_names)}'
         )
+    elif kind == 'wholeship' and min_hull_tris is not None and hull_tris < min_hull_tris:
+        errors.append(f'wholeship:reviewed hull floor not met: hull triangles={hull_tris} < {min_hull_tris}')
 
     return errors
 
@@ -345,22 +349,24 @@ def stamp_spaceface_metadata(spec: dict[str, Any]) -> dict[str, Any]:
         'normalConvention': 'OpenGL',
         'ormChannels': 'R=AO,G=Roughness,B=Metallic',
         'textureCompression': spec.get('textureCompression', 'PNG-source'),
-        'chamfered': True,
-        'bevelRadiusM': 0.025,
     }
 
 
-def validate_scene_objects(spec: dict[str, Any], objects: list[Any] | None = None) -> None:
+def validate_scene_objects(spec: dict[str, Any], objects: list[Any] | None = None) -> list[str]:
     if not IN_BLENDER:
-        return
+        return []
     source_objects = objects if objects is not None else list(bpy.data.objects)
     meshes = [obj for obj in source_objects if obj and obj.type == 'MESH']
+    if not meshes or sum(tri_count_mesh(obj) for obj in meshes) <= 0:
+        _fail('geometry is empty or non-triangular', spec.get('id', 'asset'))
+    diagnostics: list[str] = []
     for obj in meshes:
-        validate_object(obj, spec)
+        diagnostics.extend(validate_object(obj, spec))
     if spec.get('kind') == 'wholeship':
         validate_merged_node_mesh_alignment(meshes)
         min_hull = spec.get('min_hull_tris', KIND_BUDGETS['wholeship']['min_hull_tris'])
         validate_wholeship_hull_body(meshes, min_hull)
+    return diagnostics
 
 
 def _object_is_live(obj: Any) -> bool:
@@ -443,25 +449,24 @@ def _restore_export_state(
     bpy.context.view_layer.objects.active = previous_active if _object_is_live(previous_active) else None
 
 
-def _stamp_validated_export_properties(spec: dict[str, Any], objects: list[Any]) -> None:
+def _stamp_validated_export_properties(spec: dict[str, Any]) -> None:
     metadata = stamp_spaceface_metadata(spec)
-    for obj in objects:
-        if obj and obj.type == 'MESH':
-            obj['spaceface_chamfered'] = True
     for scene in bpy.data.scenes:
         scene['spacefaceAsset'] = metadata
 
 
-def export_gltf(output_path: str, spec: dict[str, Any], objects: list[Any] | None = None) -> None:
+def export_gltf(output_path: str, spec: dict[str, Any], objects: list[Any] | None = None) -> list[str]:
     if not IN_BLENDER:
         raise RuntimeError('export_gltf requires Blender bpy')
     export_objects = [obj for obj in (objects or []) if obj and obj.name in bpy.data.objects]
     state_snapshot, previous_active, scene_snapshot = _snapshot_export_state()
     export_succeeded = False
+    diagnostics: list[str] = []
     try:
-        validate_scene_objects(spec, export_objects if objects is not None else None)
-        validated_objects = export_objects if objects is not None else list(bpy.data.objects)
-        _stamp_validated_export_properties(spec, validated_objects)
+        diagnostics = validate_scene_objects(spec, export_objects if objects is not None else None)
+        for message in diagnostics:
+            print(f'DIAG  {message}')
+        _stamp_validated_export_properties(spec)
         if objects is not None:
             if not export_objects:
                 _fail('export selection empty', spec.get('id', 'asset'))
@@ -492,6 +497,7 @@ def export_gltf(output_path: str, spec: dict[str, Any], objects: list[Any] | Non
             scene_snapshot,
             restore_export_properties=not export_succeeded,
         )
+    return diagnostics
 
 
 def parse_cli(argv: list[str]) -> dict[str, Any]:
@@ -574,26 +580,27 @@ def main() -> int:
         if not IN_BLENDER:
             print('export mode requires Blender')
             return 2
-        export_gltf(args['path'], spec)
-        print(json.dumps({'schema': 'spaceface.export.v1', 'ok': True, 'path': args['path']}))
+        diagnostics = export_gltf(args['path'], spec)
+        print(json.dumps({'schema': 'spaceface.export.v1', 'ok': True, 'path': args['path'], 'diagnostics': diagnostics}))
         return 0
 
     if IN_BLENDER and os.path.isfile(args['path']) and args['path'].endswith('.blend'):
         bpy.ops.wm.open_mainfile(filepath=args['path'])
         try:
-            validate_scene_objects(spec)
+            diagnostics = validate_scene_objects(spec)
         except ExportContractError as err:
             print(json.dumps({'schema': 'spaceface.export.v1', 'ok': False, 'assertion': err.assertion, 'detail': err.detail}))
             return 1
-        print(json.dumps({'schema': 'spaceface.export.v1', 'ok': True, 'path': args['path']}))
+        print(json.dumps({'schema': 'spaceface.export.v1', 'ok': True, 'path': args['path'], 'diagnostics': diagnostics}))
         return 0
 
     gltf = load_gltf_json(args['path'])
-    errors = validate_gltf_document(gltf, spec)
+    diagnostics: list[str] = []
+    errors = validate_gltf_document(gltf, spec, diagnostics)
     if errors:
-        print(json.dumps({'schema': 'spaceface.export.v1', 'ok': False, 'errors': errors}))
+        print(json.dumps({'schema': 'spaceface.export.v1', 'ok': False, 'errors': errors, 'diagnostics': diagnostics}))
         return 1
-    print(json.dumps({'schema': 'spaceface.export.v1', 'ok': True, 'path': args['path']}))
+    print(json.dumps({'schema': 'spaceface.export.v1', 'ok': True, 'path': args['path'], 'diagnostics': diagnostics}))
     return 0
 
 

@@ -2,8 +2,8 @@
 """Generate the SpaceFace modular ship-parts library as deterministic, game-ready GLBs.
 
 No third-party packages are required. Each GLB is self-contained and includes:
-  * authored chamfered/faceted geometry in the project coordinate system;
-  * embedded 1K base-color, tangent normal, and ORM textures;
+  * authored geometry in the project coordinate system, with edge treatment chosen per asset;
+  * embedded base-color, tangent normal, and ORM textures at the requested resolution;
   * glTF PBR materials with stable tintable material names;
   * named mount, hook, and socket nodes consumed by partsLibrary.js;
   * metadata used by scripts/check-ship-parts-library.mjs.
@@ -1394,24 +1394,32 @@ def write_glb(path: Path, spec: PartSpec, root: Node, textures: dict[str, bytes]
     return {'triangles':tri,'bytes':len(glb),'nodes':len(gltf_nodes),'meshes':len(gltf_meshes),'boundsMin':[round(v,5) for v in minv],'boundsMax':[round(v,5) for v in maxv],'dimensionsM':dims}
 
 
-def add_budget_detail(builder: PartBuilder, minimum: int = 520) -> None:
-    # Every small pack still gets enough authored edge/fastener geometry to clear the hard per-part floor.
-    tri=triangle_count(builder.root)
-    if tri>=minimum: return
-    minv,maxv=mesh_bounds(builder.root)
-    x0,x1=minv[0],maxv[0]; z0,z1=minv[2],maxv[2]; y=maxv[1]+.025
-    spanx=max(.5,x1-x0); spanz=max(.5,z1-z0)
-    i=0
-    while triangle_count(builder.root)<minimum and i<48:
-        fx=((i*37)%101)/100; fz=((i*61+17)%101)/100
-        builder.bolt((x0+.06+fx*max(.1,spanx-.12),y,z0+.06+fz*max(.1,spanz-.12)),.034,.055)
-        i+=1
+HISTORICAL_TRIANGLE_PROFILE = (500, 15000)
+HISTORICAL_BYTE_PROFILE_MAX = 5_000_000
+
+
+def historical_profile_diagnostics(asset_id: str, triangles: int, byte_size: int) -> list[str]:
+    diagnostics = []
+    tri_min, tri_max = HISTORICAL_TRIANGLE_PROFILE
+    if not tri_min <= triangles <= tri_max:
+        diagnostics.append(
+            f'{asset_id}: {triangles} tris outside historical profile {tri_min}..{tri_max}; '
+            'review measured runtime and visual evidence'
+        )
+    if byte_size > HISTORICAL_BYTE_PROFILE_MAX:
+        diagnostics.append(
+            f'{asset_id}: {byte_size} bytes exceeds historical {HISTORICAL_BYTE_PROFILE_MAX}-byte '
+            'profile; review transfer/residency evidence'
+        )
+    return diagnostics
 
 
 PRESERVE_MANIFEST_IDS = frozenset()
 
 
 def build_all(output: Path, texture_size: int, only_ids: frozenset[str] | None = None) -> dict[str, Any]:
+    if not isinstance(texture_size, int) or texture_size <= 0:
+        raise ValueError('texture_size must be a positive integer')
     texture_cache={style:make_texture_set(style,texture_size) for style in sorted({p.texture_style for p in PARTS})}
     manifest_path = output / 'parts_manifest.json'
     preserved_parts: list[dict[str, Any]] = []
@@ -1426,15 +1434,19 @@ def build_all(output: Path, texture_size: int, only_ids: frozenset[str] | None =
             continue
         if spec.id in PRESERVE_MANIFEST_IDS:
             continue
-        b=PartBuilder(spec); spec.build(b); add_budget_detail(b)
+        b=PartBuilder(spec); spec.build(b)
         consolidate_static_geometry(b.root); consolidate_global_by_material(b.root)
         tri=triangle_count(b.root)
-        if not 500<=tri<=15000:
-            raise RuntimeError(f'{spec.id}: triangle budget {tri} outside 500..15000')
+        if tri <= 0:
+            raise RuntimeError(f'{spec.id}: generated geometry is empty or non-triangular')
         path=output/spec.category/f'{spec.id}.glb'
         stats=write_glb(path,spec,b.root,texture_cache[spec.texture_style],texture_size)
-        if stats['bytes']>5_000_000:
-            raise RuntimeError(f'{spec.id}: file budget {stats["bytes"]} > 5000000')
+        if stats['bytes'] <= 0:
+            raise RuntimeError(f'{spec.id}: generated GLB is empty')
+        if not all(math.isfinite(value) for value in (*stats['boundsMin'], *stats['boundsMax'], *stats['dimensionsM'])):
+            raise RuntimeError(f'{spec.id}: generated bounds are not finite')
+        for message in historical_profile_diagnostics(spec.id, tri, stats['bytes']):
+            print(f'DIAG  {message}')
         names={n.name for n in iter_nodes(b.root)}
         missing=[n for n in (*spec.required_hooks,*spec.required_sockets) if n not in names]
         if missing: raise RuntimeError(f'{spec.id}: missing nodes {missing}')
@@ -1469,7 +1481,11 @@ def build_all(output: Path, texture_size: int, only_ids: frozenset[str] | None =
             'libraryId':'SF_SHIP_PARTS_V1',
             'coordinateSystem':{'handedness':'right','forward':'+X','up':'+Y','starboard':'+Z','unit':'metre','origin':'mount point'},
             'textureContract':{'baseColor':'sRGB','normal':'tangent OpenGL green-up','orm':'R=AO G=roughness B=metallic','resolution':texture_size},
-            'budgets':{'trianglesPerPart':[500,15000],'maxBytesPerPart':5000000},
+            'budgets':{
+                'trianglesPerPart':list(HISTORICAL_TRIANGLE_PROFILE),
+                'maxBytesPerPart':HISTORICAL_BYTE_PROFILE_MAX,
+                'note':'Historical profiling ranges only; runtime/visual evidence owns acceptance.',
+            },
             'materialContract':{'hull':'Material_Hull','accent':'Material_Accent','glass':'Material_Glass','mechanical':'Material_Mechanical'},
             'parts':preserved_parts + rows,
         }
@@ -1483,7 +1499,7 @@ def main() -> int:
     parser.add_argument('--texture-size',type=int,default=1024)
     parser.add_argument('--only',type=str,default='',help='Comma-separated part ids to regenerate without touching other GLBs')
     args=parser.parse_args()
-    if args.texture_size not in (512,1024,2048): parser.error('--texture-size must be 512, 1024, or 2048')
+    if args.texture_size <= 0: parser.error('--texture-size must be a positive integer')
     only_ids = frozenset(x.strip() for x in args.only.split(',') if x.strip()) or None
     manifest=build_all(args.output,args.texture_size,only_ids=only_ids)
     total=sum(p['bytes'] for p in manifest['parts'])

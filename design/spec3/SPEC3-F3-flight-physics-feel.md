@@ -119,8 +119,9 @@ No new meshes. VFX/audio hooks consumed by SPEC3-18/34/39: cruise spool whine (3
 drop-stumble "compressor dump" cue, counter-thrust puffs for brake — all procedural (audioRecipes).
 
 ### 6. Libraries / tooling
-No new deps. (Tuning lab: expose `flightTuning.js` values in the existing debug overlay; do NOT add
-tweakpane at runtime — constitution §2.)
+Start the tuning lab from the existing debug overlay. Tooling/runtime dependencies are allowed when
+they materially improve tuning or the shipped result and document license, bundle/performance,
+determinism/save, parity, and maintenance impact; keep development-only tooling out of the player path.
 
 ### 7. Build plan
 1. `steerToPoint` + deadzone + feel-target check `scripts/check-helm-leash.mjs` (asserts 90°-turn
@@ -213,7 +214,8 @@ Cable filament: 12-segment ribbon mesh, additive, vertex-colored by tension (no 
 hum: procedural (SPEC3-39 owns recipes). Impulse charge: reuse mine mesh with amber strobe.
 
 ### 6. Libraries / tooling
-No new deps. Rapier impulse/rope joints already vendored.
+Use the current Rapier impulse/rope facilities where they meet the behavior target. Additional
+dependencies remain allowed under repository policy when their material benefit and impact are proven.
 
 ### 7. Build plan
 1. `tetherSystem.js` skeleton + fire/cut on static asteroid + `scripts/check-tether-verbs.mjs`

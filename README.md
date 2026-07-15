@@ -92,9 +92,9 @@ status and pickup surface is [`design/program/README.md`](design/program/README.
 [`design/vision/ALPHA_PROGRAM.md`](design/vision/ALPHA_PROGRAM.md) owns Alpha scope/order, while the
 activated spec2/spec3/revamp/depth/graphics plan owns task detail.
 
-> **Agents and contributors:** read [`AGENTS.md`](AGENTS.md) first — it is the front door to the whole repo
-> (where to start, the uncommitted-tree warning, which implementation is LIVE, common-bug routing,
-> verification gates). `ARCHITECTURE.md` (repo root) is the technical contract; `design/GDD_2_0.md` is
+> **Agents and contributors:** read [`AGENTS.md`](AGENTS.md) first — it is the concise front door to the
+> repository (task routing, shared-tree safety, live implementations, policy classes, and verification).
+> `ARCHITECTURE.md` (repo root) is the technical contract; `design/GDD_2_0.md` is
 > the design authority. Start current work from
 > [`design/program/README.md`](design/program/README.md), then follow its link to the activated plan.
 
@@ -123,16 +123,11 @@ Desktop packaging is a shell concern only. It must not change gameplay, assets, 
 
 ---
 
-## Known first‑pass simplifications
+## Current status and future work
 
-Honest list of things that work but are intentionally shallow in this first build:
-- **Automation drones** are modeled as an abstract production buffer, not individually flying drone entities.
-- **Escort/delivery missions** complete on docking at the destination (no per‑item cargo inspection).
-- **Story beat 6→7** soft‑gates on deploying an automation asset.
-- **Balance** (prices, difficulty, progression pacing) is a reasonable first cut, not tuned.
-- Audio can't be auto‑verified headlessly; it's wired and synthesizes without errors.
-
-These are flagged in code and are good next‑pass targets.
+Implementation status changes quickly and is intentionally not duplicated here. The verified done/open split,
+acceptance state, retained future ideas, and exact resume order live in
+[`design/program/`](design/program/README.md).
 
 ---
 

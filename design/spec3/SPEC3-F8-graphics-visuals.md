@@ -63,8 +63,9 @@ if (p95 > TARGET_FRAME_MS) {
 ```
 
 ### 5–6. Assets / deps
-Dust/mote textures: 2 procedural blob sprites (canvas-generated at boot — no files). No new deps
-(post-processing stays the existing composer; no library swap this cycle).
+Procedural sprites and the current composer are starting candidates for dust/motes and post-processing.
+Authored textures, media, renderer techniques, or dependencies are allowed when they materially improve
+the result and document license, bundle/memory/performance, parity, and maintenance impact.
 
 ### 7. Build plan
 1. Stability probe → fix findings → probe green in CI. **Blocks all other F8 work.**
@@ -266,7 +267,8 @@ unbounded animation/compositor cost, and unreadable priority—not historical to
 ```
 
 ### 5–6. Assets / deps
-Class/IFF glyphs from the SPEC3-38 atlas. No new deps (no font added — mono family already shipped).
+Class/IFF glyphs may begin from the SPEC3-38 atlas and shipped typography. New media, type, or
+dependencies are allowed when they materially improve legibility/identity and document impact.
 
 ### 7. Build plan
 1. Overview strip + contact events; `scripts/check-overview-strip.mjs` (rows sort, cap 8+N, click

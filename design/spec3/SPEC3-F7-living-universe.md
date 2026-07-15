@@ -65,7 +65,9 @@ function npcTradeArrive(run, econ) {
 ```
 
 ### 5–6. Assets / deps
-Reuses hulls/AI/VFX; convoy escort doctrine data only. No new deps.
+Start with current hulls/AI/VFX and convoy-doctrine data. Build/runtime dependencies are allowed when
+they materially improve the result and document license, bundle/memory/performance, determinism/save,
+parity, and maintenance impact.
 
 ### 7. Build plan
 1. Civilian deck + trader itineraries + bounded econ valve; `scripts/check-living-traffic.mjs`
@@ -77,13 +79,16 @@ Reuses hulls/AI/VFX; convoy escort doctrine data only. No new deps.
 
 ### 8. Anti-patterns
 NPCs that orbit the player (itineraries are sacred — indifference IS the feature); ambient life
-that eats the frame budget (hard cap: ≤8 civilian entities per sector, pooled); NPC economy actually
-balancing the market (bounded valve or the player's edge dies); distress that's always bait or
-never bait.
+that consumes frame time without adding readable life (measure density, cadence, culling, pooling,
+and simulation LOD in representative sectors rather than imposing a universal population cap); NPC
+economy actually balancing the market (bounded valve or the player's edge dies); distress that's
+always bait or never bait.
 
 ### 9. Ambition ceiling
-Persistent named civilians: 6 recurring captains with schedules ("the Tuesday hauler") — recognition
-without simulation depth; kill one and the route stays empty a while. The world remembers lightly.
+Persistent named civilians with recognizable schedules ("the Tuesday hauler") create continuity;
+size the recurring roster from encounter variety, writing quality, route coverage, memory cost, and
+player recognition rather than a fixed population count. Kill one and the route stays empty a while.
+The world remembers lightly.
 
 ---
 
@@ -131,7 +136,8 @@ Per-sector prop palettes from existing kit + SPEC3-35 treatments; Vale's tower +
 are 2 authored meshes (SPEC3-37 queue).
 
 ### 6–7. Deps / build plan
-No new deps. Build: 1) Charon bounty board + Tethys contracts board (closes recon §4.6 gaps);
+Use repository dependency policy; dependency absence is not an acceptance result. Build: 1) Charon
+bounty board + Tethys contracts board (closes recon §4.6 gaps);
 2) claimable-body pass (with F6-26); 3) POI/hazard density pass per table; 4) hidden-POI/anomaly
 placement (with F7-31); 5) lint check green.
 
@@ -194,8 +200,9 @@ function addPing(anom, shipPos, rng) {
 ```
 
 ### 5–6. Assets / deps
-Anomaly VFX = existing nebula/energy recipes re-parameterized; vault prop = 1 authored mesh
-(SPEC3-37). No new deps.
+Anomaly VFX may begin from current nebula/energy recipes; the vault needs an authored, player-reviewed
+prop. Dependencies are allowed when their player-facing gain and license/performance/determinism/
+maintenance impact are documented.
 
 ### 7. Build plan
 1. `anomalies.js` + triangulate loop + 1 Veil site; `scripts/check-anomaly.mjs` (seeded solve
@@ -261,7 +268,8 @@ const VALE_MOMENTS = [
 ```
 
 ### 5–6. Assets / deps
-12 graffiti/bark text variants (writing, no art); ending epilogue cards = UI template. No new deps.
+Graffiti/bark writing and ending epilogue presentation use the strongest coherent authored/UI approach.
+Dependencies follow repository policy and are judged by documented impact, not presence or absence.
 
 ### 7. Build plan
 1. Beat-delivery audit to arbiter lines (kill any post-opening modal).

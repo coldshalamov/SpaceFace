@@ -66,7 +66,9 @@ function sampleIntel(entry, ring) {           // called on the existing 5s econ 
 ```
 
 ### 5–6. Assets / deps
-Sparkline + glyphs = canvas/CSS, existing atlas. No new deps.
+Canvas/CSS and the current atlas are starting candidates for sparklines/glyphs. New media or
+dependencies are allowed when they materially improve the result with documented license,
+bundle/performance, determinism/save, parity, accessibility, and maintenance impact.
 
 ### 7. Build plan
 1. Intel ring + sparkline + regime label on market screen; `scripts/check-market-chart.mjs`
@@ -139,7 +141,8 @@ export function bestKnownLane(memory, graph, cmdtyId, fuelPrice) {
 ```
 
 ### 5–6. Assets / deps
-Map chips/lines use existing map styling. No new deps.
+Map chips/lines should begin from coherent current map behavior. New media or dependencies remain
+allowed under the documented repository impact policy when they improve clarity or quality.
 
 ### 7. Build plan
 1. Memory overlay + age fade on both maps (`scripts/check-memory-overlay.mjs`: only visited
@@ -216,7 +219,8 @@ bus.emit('comms:choice', {
 ```
 
 ### 5–6. Assets / deps
-Bounty-board station reuses station meshes + palette swap; no new deps.
+Reuse current station assets where that produces a convincing bounty-board identity; author or adopt
+new media/dependencies when they materially improve the player-facing result and document impact.
 
 ### 7. Build plan
 1. Scan card (Submit/Bribe/Run) + hot flag + chase hook; `scripts/check-smuggling-card.mjs`.

@@ -112,7 +112,8 @@ part variant yet, flag it in `parts_manifest.json` as `wantsVisual: true` — SP
 queue picks these up in Blender priority order.
 
 ### 6. Libraries / tooling
-No new deps.
+Dependencies are allowed when they materially improve the result and document license,
+bundle/performance, determinism/save, parity, accessibility, and maintenance impact.
 
 ### 7. Build plan
 1. Data migration + `scripts/check-fit-budgets.mjs` (every stock fit fits; derived stats within 1%
@@ -199,7 +200,8 @@ amber / red-gold hairline borders — no new icons. Legendaries each get a 1-lin
 icon tint. No 3D work.
 
 ### 6. Libraries / tooling
-No new deps.
+Dependencies follow current repository policy and are judged by demonstrated player-facing benefit
+and documented impact, not presence or absence.
 
 ### 7. Build plan
 1. Modifier table + application fold + `scripts/check-modifiers.mjs` (every modifier op total,
@@ -271,7 +273,8 @@ media) — promote 18 via SPEC3-38's image-gen pass (spec there); fallback = ini
 readable without portraits. Wingman hulls: existing GLBs.
 
 ### 6. Libraries / tooling
-No new deps.
+Use current systems where they fit; allow dependencies under repository policy when they materially
+improve quality and document their impact.
 
 ### 7. Build plan
 1. Crew data + hire flow + passive perks via flags + `scripts/check-crew.mjs` (deterministic pools,

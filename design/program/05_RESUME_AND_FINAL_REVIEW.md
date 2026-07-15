@@ -19,8 +19,8 @@ appears complete.
 
 ## Current pickup order
 
-1. **Recovery checkpoint:** preserve and commit coherent dirty Depth work and durable evidence
-   manifests without absorbing asset dumps or protected files.
+1. **Checkpoint reconciliation:** rerun the Depth aggregate and high-risk review at current HEAD;
+   create durable evidence manifests; keep the small residual shared-tree WIP separate.
 2. **M0 evidence:** repair the 20-record Alpha corpus and current-revision baselines.
 3. **M1:** restore strict Helios docking, then close Focus/camera/tether/doctrine/HUD acceptance.
 4. **M3:** close natural recovery and all three unassisted career routes.
@@ -31,8 +31,8 @@ appears complete.
    if the draft production policy is adopted.
 
 This order can be parallelized where ownership is disjoint. It must not be reordered in a way that
-leaves working-tree-only implementation at risk or claims a later release gate while an earlier
-player-visible P0/P1 remains red.
+loses checkpoint or residual-WIP recoverability, conflates a bulk commit with acceptance, or claims a
+later release gate while an earlier player-visible P0/P1 remains red.
 
 ## Per-item completion ritual
 

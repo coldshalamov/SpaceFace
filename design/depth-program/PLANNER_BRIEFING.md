@@ -1,8 +1,12 @@
 # PLANNER BRIEFING — SpaceFace worldbuilding depth program
 
-**Read this first. This is your single source of truth.** The repo has ~17,000 lines of uncommitted work, many stale docs, and an active Wave 4 revamp (codex) running in parallel. **Do NOT grep the repo to orient yourself** — this briefing has done that work for you. Every code shape, contract, ownership signal, and research finding below was verified against the working tree on 2026-07-12.
+**Supporting planning reference.** Use the root `AGENTS.md` and `design/program/README.md` as current
+routing/status authority. Counts, code shapes, ownership signals, and campaign state below are a
+dated research snapshot: verify the relevant seam in the live tree before planning or editing it.
 
-**Your job:** read this briefing + the research files it points at, then produce an excruciatingly detailed build plan (see the PROMPT at the end) that other, lesser agents will execute. You are the taste-maker. The plans must be chunked into medium-to-large self-contained pieces, each polished and working at conclusion, never half-built.
+**Your job:** use this briefing and its research to produce implementation-ready chunks with coherent
+player-facing outcomes. Exercise current evidence-based judgment; this file is neither a taste
+authority nor a reason to avoid live code, checks, manifests, or player-route evidence.
 
 ---
 
@@ -132,19 +136,29 @@ LIVE: `flightV3.js`, `tacticalAI.js`+`aiPorts.js`, `rapier-dynamic`. LEGACY (fro
 
 **Why models silently fail:** a broken/missing GLB falls back to procedural geometry with NO error. "It renders" is NOT proof the authored asset is wired. **Always run `npm run check:assets:live` (failureCount:0) + screenshot.**
 
-**Material slot convention:** `Material_Hull`, `Material_Accent`, `Material_Emissive`. The runtime `paletteFor(entity)` resolver tints these per faction palette — so ONE GLB reads as Concord-blue in one sector and Vael-green in another without re-authoring.
+**Current material-classifier path:** the live renderer recognizes roles such as `Material_Hull`,
+`Material_Accent`, and `Material_Emissive`, and `paletteFor(entity)` can tint those roles by faction.
+Verify the current classifier before export. These roles enable reuse but are not an exclusive
+material vocabulary; extend the documented contract when an authored result needs additional roles.
 
-**Tri budgets:** landmarks 8-15k tris; props 1-3k tris; hulls ≤15k. Merge static detail into few submeshes per material/animated role.
+**Geometry and draw structure:** historical triangle ranges are profiling hints, not visual limits.
+Choose geometry, textures, materials, LOD/HLOD, and compression from screen-space exposure and
+representative profiling. Merge static detail into sensible material/animated roles, instance reuse,
+cull invisible work, and solve measured bottlenecks structurally before reducing visible quality.
 
 **Boot gate:** `src/main.js` refuses flight if authored assets aren't preloaded. Don't weaken it.
 
-**Ownership signals:** `assets/ships/release.__lock/`, `.__building/`, `.__previous/`, active Blender processes — **do NOT touch `assets/**` or `src/render/**` while present.**
+**Ownership signals:** inspect `assets/ships/release.__lock/`, `.__building/`, `.__previous/`, active
+Blender/export processes, recent writes, and agent ownership together. Coordinate a live overlapping
+owner or select non-overlapping work; marker presence alone is not a stop condition.
 
 ---
 
-## §6. The Wave 4 collision map (codex is running — avoid its files)
+## §6. Historical Wave 4 collision map (verify every row live)
 
-The active revamp is **Wave 4** (`design/revamp/REVAMP_MASTER.md` §11, tracked in `design/revamp/PROGRESS.md`). T4 (BP-11 Sector Atmosphere, BP-12 Causal Economy, BP-01.1 Wreck Provenance, BP-13 Pirate Ecology) is **DONE**. What's queued (`NEXT`): T6 (asset authoring), T7b (perf CI), T8 (story-narrative checks), T9 (release gate).
+This table records the Wave 4 state observed when the research snapshot was written. It does not grant
+current ownership or define current completion. Check `design/program/`, live git state, processes,
+and the relevant checks before using a row to select or defer work.
 
 | Depth-program move | Touches | Wave 4 owns? | Safe now? |
 |---|---|---|---|
@@ -182,9 +196,10 @@ The collision map reads as "what to avoid." Read it instead as **what you get to
 
 ---
 
-## §8. The aesthetic north star (taste guidance for the planner)
+## §8. Aesthetic references to test in the current game
 
-**Gritty space-western. Firefly/Serenity.** Not generic sci-fi. Not Star Wars. Not Star Trek. Think:
+The established gritty space-western direction and existing fiction are useful starting references,
+not a closed style bible. Test each choice against current GDD intent and representative game captures:
 - **Lived-in, not pristine.** Ships have histories — grime, repair patches, kill marks, hand-painted nose art. The `PAINT_PROFILES` system encodes this; lean into it.
 - **Dark humor, not grimdark.** "BORROWED TIME" graffiti. Bureaucratic horror (REF-44C paperwork, Director Vale). The tone in `narrative.js` and `barks.js` — terse, loaded, slightly literary.
 - **Bold and unique over safe.** Avoid generic tropes. The faction concepts in `examples_A_factions.md` lean this way (the Fulfillment = a feral logistics-AI still fulfilling orders for a dead corporation; the Verge-Layers = dormant gate-builders nobody is minding). Push further.

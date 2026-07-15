@@ -76,12 +76,16 @@ function migrateOutpostsToClaims(state) {
 ```
 
 ### 5. Assets & generation
-7 module structure parts (Blender, SPEC3-37 queue: hopper, battery mast, hangar frame, hab ring,
-sensor dish, depot silo, teleport ring — each ≤600 tris, emissive accents per palette). Bodies reuse
-asteroid/moonlet meshes at scale.
+Author a coherent visible module suite for the shipped roster (hopper, battery, hangar, habitat,
+sensor, depot, and teleporter are the initial needs). Choose geometry, materials, animation, LOD, and
+reuse from each module's silhouette, interaction, viewing distance, and measured scene cost; no
+triangle or material count in this plan is a quality ceiling. Existing asteroid/moonlet bodies may be
+reused where the result remains distinctive, with authored bodies available when reuse weakens the
+claim's identity.
 
 ### 6. Libraries / tooling
-No new deps.
+Prefer existing seams, but allow build/runtime dependencies when they materially improve the result
+and document license, bundle/memory/performance, determinism/save, parity, and maintenance impact.
 
 ### 7. Build plan
 1. Unification: move outpost math into claims; migration shim; retire outpost purchase UI;
@@ -157,7 +161,9 @@ function onRaidTrip(claim, state, rng) {
 
 ### 5–6. Assets / deps
 Battery turret = existing turret meshes on a mount part; beam-mark telegraph = existing decal pool.
-No new deps.
+Existing assets are a starting point, not a dependency ban. Add build/runtime dependencies when they
+materially improve the result and document license, performance, determinism/save, parity, and
+maintenance impact.
 
 ### 7. Build plan
 1. `siege.js` skeleton + conversion rule + 2-wave probe siege; `scripts/check-siege.mjs`
@@ -225,7 +231,8 @@ function applyChainOutcome(pair, side, state) {
 ```
 
 ### 5–6. Assets / deps
-Overlay = map styling; flip reskin = existing palette/services data. No new deps.
+Overlay starts from current map styling; flip reskin starts from current palette/services data.
+Dependencies remain allowed under the documented repository impact policy when they improve quality.
 
 ### 7. Build plan
 1. War-state read API + map overlay; `scripts/check-war-overlay.mjs` (overlay mirrors sim state).

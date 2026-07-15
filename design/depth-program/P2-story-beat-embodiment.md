@@ -1,6 +1,8 @@
 # P2 — Story-Beat Embodiment
 
-**Thread:** depth-P2 · **Reads:** `00_DEPTH_PROGRAM.md`, `design/spec2/00_MASTER_TASTE.md`, `src/story/campaign47a/` (the existing pattern), `src/systems/story.js`, `src/systems/missions.js` (story-trigger regions), `src/data/missions.js`, `src/data/narrative.js` · **Status:** PLAN
+**Thread:** depth-P2 · **Reads:** root `AGENTS.md`, `docs/MODULE_MAP.md`, this pipeline,
+`src/story/campaign47a/` (the existing pattern), `src/systems/story.js`, `src/systems/missions.js`
+(story-trigger regions), `src/data/missions.js`, `src/data/narrative.js` · **Status:** PLAN
 **Thread pitch:** The 8-beat story spine and 17 campaign-47a beats already exist as *prose and objective-trackers*, and campaign-47a already has a working **embodied-mission pattern** that turns a beat into real player actions (mine → dock → identify → resolve). This pipeline does *not* build a new story system — it **deepens each beat's embodiment** and stages it at a signature location (from P1), with a tied encounter, a custom comms voice, and a memorable set-piece. It is the narrative-actualization pipeline you described as your priority.
 
 ---
@@ -139,7 +141,11 @@ A fully-embodied spine is the foundation for the **5 endings (A–E + sandbox)**
 
 > **You are THREAD depth-P2 — Story-Beat Embodiment only.**
 >
-> Read in order: `AGENTS.md` §1, §3, §5, §6 · `design/spec2/00_MASTER_TASTE.md` · `design/depth-program/00_DEPTH_PROGRAM.md` · `design/depth-program/P2-story-beat-embodiment.md` (this file) · `src/story/campaign47a/embodiedMissions.js` (the B2 entry is your template) · `src/story/campaign47a/campaignTransitions.js` · `src/story/campaign47a/embodiedDialogue.js` · `src/systems/story.js` · `src/data/narrative.js`. Then stop reading and do the work.
+> Read in order: root `AGENTS.md` · `docs/MODULE_MAP.md` story/mission routing · this file ·
+> `src/story/campaign47a/embodiedMissions.js` (the B2 entry is a working reference) ·
+> `src/story/campaign47a/campaignTransitions.js` · `src/story/campaign47a/embodiedDialogue.js` ·
+> `src/systems/story.js` · `src/data/narrative.js`. Use live code and checks when dated line references
+> in this plan have drifted.
 >
 > **Target beat:** `<BEAT_ID>` (e.g. B0 `cold_start` — see §5 backlog row).
 >

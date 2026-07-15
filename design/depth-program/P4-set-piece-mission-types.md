@@ -1,6 +1,8 @@
 # P4 — Set-Piece Mission Types
 
-**Thread:** depth-P4 · **Reads:** `00_DEPTH_PROGRAM.md`, `design/spec2/00_MASTER_TASTE.md`, `src/data/missions.js`, `src/systems/missions.js` (the generator + completion dispatch) · **Status:** PLAN
+**Thread:** depth-P4 · **Reads:** root `AGENTS.md`, `docs/MODULE_MAP.md`, this pipeline,
+`src/data/missions.js`, and `src/systems/missions.js` (the generator + completion dispatch) ·
+**Status:** PLAN
 **Thread pitch:** The mission engine is 3,170 lines and supports **10 archetypes** — but every one is a *single-stage, single-destination, single-threshold* activity: fetch, kill, or scan. After a few hours, procedural boards feel samey no matter how much art (P1/P3) or story (P2) you add, because the *shape of the activity* never changes. This pipeline adds **3–5 structurally distinct mission types** — boarding, blockade run, station defense, investigation, escort-with-twist — each a *new shape*, not a parameterized variant. Each new type creates a *class* of content the generator fills forever after. It is bespoke (not churn), small-batch, and the highest-leverage structural investment in the program.
 
 ---
@@ -195,7 +197,10 @@ Once 3–5 new shapes exist, the generator composes them: a `boarding` mission t
 
 > **You are THREAD depth-P4 — Set-Piece Mission Types only.**
 >
-> Read in order: `AGENTS.md` §1, §3, §5, §6 (especially Determinism) · `design/spec2/00_MASTER_TASTE.md` · `design/depth-program/00_DEPTH_PROGRAM.md` · `design/depth-program/P4-set-piece-mission-types.md` (this file) · `src/data/missions.js` (MISSION_TYPES, OFFER_MIX, MISSION_TUNING) · `src/systems/missions.js` (`_generateOffers`, `_pickType`, `_rollOffer`, `_rollParams`, the `bus.on` listeners at :266-306, `_completeMission`, `_progressMission`). Then stop reading and do the work.
+> Read in order: root `AGENTS.md` (especially determinism and live-backend routing) ·
+> `docs/MODULE_MAP.md` mission routing · this file · `src/data/missions.js` (`MISSION_TYPES`,
+> `OFFER_MIX`, `MISSION_TUNING`) · the live `src/systems/missions.js` generation, completion, and
+> progression seams. Verify dated line numbers before editing.
 >
 > **Target type:** `<TYPE>` (e.g. `boarding` — see §5 backlog) **OR iteration 0** (the structural prerequisite).
 >

@@ -37,7 +37,7 @@ class FakeObject:
         self.material_slots = []
         self.data = SimpleNamespace(
             edges=[SimpleNamespace(index=7, use_edge_sharp=True, crease=0.0)] if hard_edge else [],
-            polygons=[],
+            polygons=[SimpleNamespace(vertices=[0, 1, 2])],
             attributes={},
         ) if object_type == 'MESH' else None
 
@@ -184,20 +184,18 @@ exporter.IN_BLENDER = True
 export_target.data.edges.append(SimpleNamespace(index=0, use_edge_sharp=False))
 assert exporter.hard_edges_unbeveled(export_target) == []
 
-# Creases moved to the generic edge-domain attribute API; keep enforcing them.
+# Creases moved to the generic edge-domain attribute API; keep detecting them for diagnostics.
 assert exporter.hard_edges_unbeveled(modern_crease_target) == [0]
 
-try:
-    exporter.validate_scene_objects(
-        {'id': 'fixture_hard_edge', 'required_maps': []},
-        [hard_edge_target],
-    )
-except exporter.ExportContractError as error:
-    assert error.assertion == 'unchamfered hard edge'
-else:
-    raise AssertionError('a hard edge without bevel or author claim must fail validation')
+hard_edge_diagnostics = exporter.validate_scene_objects(
+    {'id': 'fixture_hard_edge', 'required_maps': []},
+    [hard_edge_target],
+)
+assert any('chamfer assertion absent' in entry for entry in hard_edge_diagnostics), (
+    'a hard edge without bevel metadata should be reported without imposing one modeling technique'
+)
 assert 'spaceface_chamfered' not in hard_edge_target.keys(), (
-    'validation must not stamp a chamfer claim before checking actual geometry'
+    'diagnostic validation must not mutate source metadata'
 )
 
 prior_scene_metadata = {'prior': 'scene-metadata'}
@@ -251,13 +249,14 @@ try:
             'assetId': 'SF_FIXTURE_VALIDATION',
             'slot': 'engine',
             'required_maps': [],
+            'require_chamfered': True,
         },
         [hard_edge_target],
     )
 except exporter.ExportContractError as error:
-    assert error.assertion == 'unchamfered hard edge'
+    assert error.assertion == 'required chamfer treatment absent'
 else:
-    raise AssertionError('export_gltf must preserve the hard-edge validation gate')
+    raise AssertionError('an explicit per-asset chamfer declaration must remain enforceable')
 assert 'spaceface_chamfered' not in hard_edge_target.keys()
 assert hard_edge_target.select_get() is False
 assert hard_edge_target.hide_get() is True
@@ -283,30 +282,30 @@ exporter.export_gltf(
     },
     [export_target],
 )
-assert export_target.get('spaceface_chamfered') is True, (
-    'successful export retains the post-validation chamfer claim used by GLB extras'
+assert 'spaceface_chamfered' not in export_target.keys(), (
+    'successful export must not invent a chamfer claim for source geometry'
 )
 assert exporter.bpy.data.scenes[0]['spacefaceAsset']['assetId'] == 'SF_FIXTURE_SUCCESS'
 assert exporter.bpy.data.scenes[1]['spacefaceAsset']['assetId'] == 'SF_FIXTURE_SUCCESS'
+assert 'chamfered' not in exporter.bpy.data.scenes[0]['spacefaceAsset'], (
+    'root export metadata must not invent a mandatory modeling-technique claim'
+)
 assert export_target.select_get() is False, 'successful export still restores selection'
 assert export_target.hide_get() is True, 'successful export still restores hide_set state'
 assert export_target.hide_viewport is True, 'successful export still restores viewport hiding'
 assert export_target.hide_render is True, 'successful export still restores render hiding'
 
-# A successful export stamp is provenance, not a permanent waiver for later geometry edits.
+# A successful export does not suppress later geometry diagnostics.
 export_target.data.edges.append(SimpleNamespace(index=19, use_edge_sharp=True, crease=0.0))
-try:
-    exporter.validate_scene_objects(
-        {'id': 'fixture_stale_chamfer_stamp', 'required_maps': []},
-        [export_target],
-    )
-except exporter.ExportContractError as error:
-    assert error.assertion == 'unchamfered hard edge'
-    assert 'edge index 19' in error.detail
-else:
-    raise AssertionError('a persisted exporter stamp must not conceal a newly added sharp unbeveled edge')
-assert export_target.get('spaceface_chamfered') is True, (
-    'failed revalidation may retain provenance, but it must not bypass current geometry inspection'
+stale_stamp_diagnostics = exporter.validate_scene_objects(
+    {'id': 'fixture_stale_chamfer_stamp', 'required_maps': []},
+    [export_target],
+)
+assert any('edge 19' in entry for entry in stale_stamp_diagnostics), (
+    'a persisted exporter stamp must not conceal a newly added sharp unbeveled edge diagnostic'
+)
+assert 'spaceface_chamfered' not in export_target.keys(), (
+    'diagnostic revalidation does not add false technique metadata'
 )
 
-print('PASS Blender exporter state: chamfer validation plus selection, metadata, property, and visibility rollback')
+print('PASS Blender exporter state: technique diagnostics plus selection, metadata, property, and visibility rollback')

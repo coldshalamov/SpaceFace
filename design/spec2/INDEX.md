@@ -34,8 +34,9 @@ coherent result, including integration files. Never edit test/*.expected.json. P
 Same pattern per spec. `agy -p "..." --dangerously-skip-permissions` works for the UI spec;
 `grok --prompt-file brief.md --always-approve --check` for contained new modules.
 
-## Non-negotiables for every dispatch (paste into every brief)
-- Use 00_MASTER_TASTE only for historical context. Do not inherit a default palette, panel, glow, radius, or surface treatment; choose from current player-facing evidence.
+## Current dispatch guardrails
+- Read root `AGENTS.md`, `design/GDD_2_0.md`, and the activated spec. Historical taste material is
+  optional context, not inherited authority.
 - Explain deliberate changes to behavioral acceptance values in the same change. Historical visual
   values are references, not mandatory palette, glow, radius, shell, texture, or triangle ceilings.
 - Acceptance assertions are the definition of done; transcripts are not evidence — checks are.
@@ -48,5 +49,6 @@ Same pattern per spec. `agy -p "..." --dangerously-skip-permissions` works for t
 ## Review gate (run by whoever dispatches — human or lead agent)
 1. `git status` — only the spec's named files changed.
 2. Run the spec's acceptance script + regression floor yourself.
-3. For anything visual: demand the .devshots screenshot pairs, apply the five-second test.
-4. Reject on any Forbidden-list item (00 §6). Patch small, re-brief structural.
+3. For anything visual: require representative `.devshots` evidence and judge the normal player route.
+4. Reject functional regressions, incoherent integration, or weak player-facing quality—not deviation
+   from a historical Forbidden list, fixed technique recipe, or process ritual.

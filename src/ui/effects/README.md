@@ -1,14 +1,19 @@
 # src/ui/effects/ — the command-deck effect layer
 
-**Status:** implemented — nine primitives + `effectRuntime.js` (shared helpers) + `index.js` (barrel +
-registry), linted by `scripts/check-ui-effects.mjs` (`npm run check:ui-effects`, also wired into the
-`check` / `check:ci` aggregates). **Not yet wired into any screen** — this pass ships the reusable
-  reusable effect modules only; screen adoption is the next lane. This directory is the current shared
-  home for the visual-effect grammar described in
-[`design/revamp/COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md`](../../../design/revamp/COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md).
+**Status:** implemented registry and shared runtime, linted by `scripts/check-ui-effects.mjs`
+(`npm run check:ui-effects`, also wired into the `check` / `check:ci` aggregates). Effects are used by
+the HUD, engineering stage, Market, Station Hub, Outfitting, and Shipyard; inspect current imports
+before changing lifecycle or registration. `index.js` is the live inventory rather than a fixed
+primitive-count promise.
 
-Read that reference §1 for candidate effects, then follow root `AGENTS.md` and the owning screen's
-player-facing evidence. The reference does not impose fixed palette, motion, or dependency bans.
+This directory is the shared view-only effect seam. The former command-deck bible is retained as a
+concept/reference quarry:
+[`design/revamp/COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md`](../../../design/revamp/COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md).
+It is not a mandatory visual recipe, palette, or completion checklist.
+
+Its §1 may be consulted for candidate effects. Root `AGENTS.md`, the owning screen, current checks,
+and player-facing evidence govern implementation; the reference imposes no fixed palette, motion, or
+dependency recipe.
 
 ## What lives here
 Vanilla DOM/CSS/`<canvas>` reimplementations of the screen effects. Shipped:
@@ -25,10 +30,10 @@ Vanilla DOM/CSS/`<canvas>` reimplementations of the screen effects. Shipped:
 | `morphLabel.js` | Readout Morph | DOM, CSS crossfade animation (no rAF) |
 | `supplyTree.js` | Dependency Spindle | SVG, class-gated marching edge (no rAF) |
 
-Deferred (the reference names them but they are not in this slice): **Console Key** (hover button),
-**Nav Globe** (globe) — add them as new registered modules when a screen needs them. Magic UI is one
-reference; use or replace dependencies only when license, bundle/performance, accessibility, and
-maintenance evidence supports the result.
+Reference-only concepts not currently registered include **Console Key** and **Nav Globe**. They are
+not required backlog items. Add a registered module only when a current screen problem and
+player-facing evidence justify it. Magic UI is one reference; use or replace dependencies only when
+license, bundle/performance, accessibility, and maintenance evidence supports the result.
 
 ## The rules
 1. Keep one coherent effect/runtime seam. A new dependency must materially improve the result and
@@ -38,8 +43,9 @@ maintenance evidence supports the result.
 3. **No idle rAF when hidden** — start on `setActive(true)`, cancel on `setActive(false)`/`dispose()`.
    A loop running behind a closed screen is a defect (`check-ui-frame-sleep` is the precedent).
 4. `motionReduce` respected — degrade to a legible static state (never blank).
-5. Preserve learnable semantic color and accessibility. Existing tokens are useful defaults, not a
-   closed hue list; new color needs a clear screen role and representative contrast review.
+5. Choose color and compositor technique from the owning screen's semantics and current evidence.
+   Existing tokens are useful defaults, not a palette allowlist. Validate accessibility, contrast,
+   readability, and representative performance rather than forbidding new hues or blur universally.
 6. Green on `check:ui:perf`, `check:ui-a11y`, `check:wcag-contrast`, `check:bundle` (if the import
    graph changes), `check:launch-policy`.
 
@@ -62,10 +68,14 @@ export function createRouteBeam(mountEl, opts = {}) {
 Same shape as `src/ui/shipPreviewMount.js`. Every primitive is registered in `index.js`'s `EFFECTS`
 array (`{ name, create, cue }`) and its `cue` joins `EFFECT_CUES`. `scripts/check-ui-effects.mjs` walks
 that registry to prove: import-safe with no DOM, mounts→renders→**self-parks**→disposes with no rAF
-left pending, a bounded reduced-motion path, and source-level bans (no hex/rgb/hsl/named colour, no
-`backdrop-filter`, no `Math.random`/wall-clock, tokens on the palette allowlist). Add a new effect =
-add a module + register it, or the check fails (no silent orphans).
+left pending, a bounded reduced-motion path, deterministic runtime sources, registry/file coverage,
+and cue/lifecycle structure. It intentionally does not enforce palette, blur, dependency, primitive
+count, or cue-duration taste. Add a new effect factory + registry row together so no silent orphan is
+shipped.
 
 ## Do not
-Ship an effect with no game state behind it (decoration is forbidden — spec2/00 §3), animate at rest,
-introduce a hue, or copy GPL game code. Effects express state; that is the whole job.
+Mutate simulation/game state, animate behind a hidden or inactive surface, leave listeners/DOM/rAF
+alive after disposal, erase the reduced-motion static state, ship unmeasured expensive compositor
+work, obscure readable information, or copy incompatibly licensed code. Atmospheric and decorative
+effects are allowed when they support the owning composition and pass accessibility and measured
+performance review.

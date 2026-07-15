@@ -65,14 +65,18 @@ P4 Mission Types (parallel, independent — new activity shapes)
 
 These are non-negotiable across all four pipelines. Each pipeline doc restates the ones specific to it.
 
-### Authority & taste
-- **Taste constitution governs.** `design/spec2/00_MASTER_TASTE.md` §6 Forbidden list rejects diffs. Non-diegetic HUD only (no visor/cockpit motifs). Read it first every dispatch.
-- **Don't contradict the GDD pillars.** This program extends `design/GDD_2_0.md`; it never overrides it.
+### Authority and player-facing direction
+- Root `AGENTS.md` supplies current repository policy; `design/GDD_2_0.md` supplies game-design
+  intent; the activated pipeline/spec supplies task detail. Historical taste documents are optional
+  references and cannot reject a stronger result by palette, technique, count, or process ritual.
+- Preserve the standing clean non-diegetic HUD decision (no visor/cockpit motifs) and the GDD pillars.
 
 ### Repo safety (from `AGENTS.md` §3)
-- **Never run `git checkout .`, `git reset --hard`, `git stash`, `git clean`, `git restore` on tracked files.** The working tree has ~17,000 lines of uncommitted work.
+- Preserve the shared working tree: inspect live `git status` and relevant diffs before editing, and
+  never use destructive reset/clean/stash/restore operations that could erase another agent's work.
 - **`git add -N <newfile>` immediately** when you create a file — this environment deletes untracked files between turns.
-- **Commit only when asked. Always stay on `master`.**
+- Follow the current user and root `AGENTS.md` git instructions. Do not switch branches or rewrite a
+  shared working tree merely because this supporting plan recorded an older branch convention.
 - **Before diagnosing a bug, check `git diff`** — your fix may already exist in the working tree.
 
 ### Two-implementation awareness (from `AGENTS.md` §5)
@@ -85,14 +89,17 @@ These are non-negotiable across all four pipelines. Each pipeline doc restates t
 - Any sim-affecting change must say how it preserves or deliberately re-records goldens.
 
 ### Concurrent-agent ownership (from `AGENTS.md` §10)
-- Do **not** edit `assets/**`, ship manifests, release outputs, or `src/render/**` while a graphics/asset lane is active (look for `assets/ships/release.__lock/`, `.__building/`, `.__previous/`, or a running Blender process) unless the user redirects ownership.
-- If you see those lock signals: **STOP and report.** Do not roll assets back to "fix" a conflict.
+- Before editing `assets/**`, manifests, release outputs, or `src/render/**`, inspect markers together
+  with live Blender/build processes, recent writes, and active agent ownership. Coordinate genuinely
+  overlapping live work or select a non-overlapping unit; a stale marker alone is not a stop signal.
+- Never roll assets back to resolve an ownership conflict. Preserve current work and integrate through
+  the live owner/process when paths overlap.
 
 ### Wired Feature Policy (from `AGENTS.md` §6)
 - Player-facing features/assets must be **reachable in the default game or intentionally removed.** No "sometimes wired" work. If a landmark or beat isn't good enough for default play, improve it or delete it — don't leave it half-wired.
 - Browser and desktop must see the same assets and defaults.
 
-### Acceptance ritual (from `00_MASTER_TASTE.md` §7)
+### Acceptance ritual
 - The pipeline's named acceptance check must be green.
 - Plus the no-regression floor: `npm run check:sim:compare` (hashEqual:true is the pass bar while the 47a golden re-record is pending) + `node scripts/check-tether-gameplay.mjs`.
 - For anything visual: a screenshot pair into `.devshots/`. **Transcripts are not proof — checks are. Never accept an agent's claim without file evidence.**
@@ -127,7 +134,10 @@ For each iteration of any pipeline:
 3. The agent reads in authority order, runs the worked example as a template if it's the first iteration, produces one unit of output, runs the named acceptance check, screenshots (if visual), prints the 10-line summary.
 4. You (or the integrator) review the handoff; if green, queue the next target.
 
-For asset pipelines (P1, P3), respect the single-writer graphics lock (`design/graphics-sprints/BLENDER_EXCLUSIVE_LOCK.md`) — only one Blender-owner thread at a time. P2 and P4 are pure code/data and can run alongside.
+For asset pipelines (P1, P3), verify the current Blender/export owner from live processes, build
+state, and active edits before entering an overlapping path. Coordinate actual overlap; do not infer
+permanent ownership from a marker or historical lock document. P2 and P4 can run alongside when their
+live file sets do not overlap.
 
 ---
 

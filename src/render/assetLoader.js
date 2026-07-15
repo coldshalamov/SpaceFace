@@ -23,20 +23,18 @@ export const ASSET_AUTHORING_CONTRACT = Object.freeze({
       normalConvention: 'OpenGL',
       ormChannels: 'R=AO,G=Roughness,B=Metallic',
       textureCompression: 'KTX2/BasisU | KTX2/BasisU+mips | PNG-source',
-      chamfered: true,
     }),
   }),
   textures: Object.freeze({
     baseColor: 'sRGB',
     normal: 'tangent-space, OpenGL green-up',
     orm: 'AO/Roughness/Metallic packed into R/G/B',
-    minResolution: 1024,
-    maxResolution: 2048,
+    resolution: 'positive finite dimensions selected per asset and verified in representative play',
     requiredContainer: 'KTX2/BasisU via KHR_texture_basisu; contract v2 release assets include mip chains',
   }),
   tintRoles: Object.freeze(['hull', 'dark', 'accent', 'thruster', 'none']),
   canopy: Object.freeze({ material: 'MeshPhysicalMaterial', transmission: 0.6, ior: 1.4, clearcoat: 1.0 }),
-  topology: Object.freeze({ chamferedOrBeveledRequired: true, reason: 'machined highlights are part of the runtime contract' }),
+  topology: Object.freeze({ edgeTreatment: 'asset-specific; runtime requires valid finite triangle geometry, not one modeling technique' }),
   runtime: Object.freeze({
     gltfLoader: 'three/addons/loaders/GLTFLoader.js',
     ktx2Loader: 'three/addons/loaders/KTX2Loader.js',
@@ -71,7 +69,6 @@ export const ASSET_RUNTIME_DECODER_CONTRACT = Object.freeze({
 });
 
 const warned = new Set();
-const WHOLE_SHIP_BODY_MIN_TRIS = 800;
 const WHOLE_SHIP_ACCESSORY_TOKENS = Object.freeze(['antenna', 'decal', 'canopy', 'lens', 'clamp', 'brace', 'identity', 'cockpit']);
 const GLB_MAGIC = 0x46546c67;
 const GLB_VERSION = 2;
@@ -591,8 +588,6 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
   _inverseRoot.copy(scene.matrixWorld).invert();
   const primitives = [];
   const markers = [];
-  const globalChamferAssertion = metadata.chamfered === true || finitePositive(metadata.bevelRadiusM);
-
   scene.traverse((node) => {
     if (node === scene) return;
     const tags = collectTags(node, scene, metadata.slot, metadata.legacyPart === true);
@@ -661,11 +656,6 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
   });
 
   if (!primitives.length) errors.push('part contains no mesh primitives');
-  for (const primitive of primitives) {
-    if (!globalChamferAssertion && primitive.tags.chamfered !== true && !finitePositive(primitive.tags.bevelRadiusM)) {
-      errors.push(`${primitive.name} lacks a chamfer/bevel assertion (asset or inherited node extras: spaceface.chamfered=true or bevelRadiusM>0)`);
-    }
-  }
 
   validateHookSurface(expectedSlot || metadata.slot, primitives, markers, errors, { legacyPart: metadata.legacyPart === true });
   if (isWholeShipUrl(url)) validateWholeShipBody(url, primitives, errors);
@@ -782,7 +772,6 @@ function normalizeAssetMetadata(raw, gltf, expectedSlot) {
     normalConvention: meta.normalConvention || 'OpenGL',
     ormChannels: meta.ormChannels || 'R=AO,G=Roughness,B=Metallic',
     textureCompression: meta.textureCompression || inferTextureCompression(gltf),
-    chamfered: meta.chamfered !== false,
     legacyPart: true,
   };
 }
@@ -892,7 +881,7 @@ function validatePrimitive(node, material, canopy, gltf, metadata, errors, warni
     if (!size) {
       errors.push(`${prefix} ${role} texture dimensions are not inspectable`);
     } else if (!isAuthoredTextureSizeValid(size, { factorOnly })) {
-      errors.push(`${prefix} ${role} texture must be 1K–2K; got ${size.width}x${size.height}`);
+      errors.push(`${prefix} ${role} texture dimensions must be positive finite values; got ${size.width}x${size.height}`);
     }
     if (!legacyPart && !isSupportedPartTexture(texture, gltf, metadata)) {
       errors.push(`${prefix} ${role} texture does not match declared compression pipeline`);
@@ -956,6 +945,10 @@ function isWholeShipUrl(url) {
   return /\/wholeships\/[^/]+\.glb$/i.test(String(url || ''));
 }
 
+export function hasNonEmptyWholeShipHullBody(hullTriangles) {
+  return Number.isFinite(hullTriangles) && hullTriangles > 0;
+}
+
 async function validateWholeShipGlbJson(url) {
   if (!isWholeShipUrl(url) || typeof fetch !== 'function') return;
   // Electron intentionally keeps a stable localhost origin so saves persist. Revalidate whole-ship
@@ -999,8 +992,8 @@ function validateWholeShipJsonDocument(url, gltf) {
     meshNames.push(mesh.name || node.name || 'unnamed');
     if (wholeShipJsonMeshLooksLikeBody(gltf, node, mesh)) hullTris += gltfMeshTriangleCount(gltf, mesh);
   }
-  if (hullTris >= WHOLE_SHIP_BODY_MIN_TRIS) return [];
-  return [`whole-ship hull body missing: hull triangles=${hullTris} < ${WHOLE_SHIP_BODY_MIN_TRIS}; asset=${url}; meshes=${meshNames.join(', ')}`];
+  if (hasNonEmptyWholeShipHullBody(hullTris)) return [];
+  return [`whole-ship hull body missing or empty: hull triangles=${hullTris}; asset=${url}; meshes=${meshNames.join(', ')}`];
 }
 
 function wholeShipJsonMeshLooksLikeBody(gltf, node, mesh) {
@@ -1037,8 +1030,8 @@ function validateWholeShipBody(url, primitives, errors) {
       hullTris += triangleCount(primitive.geometry);
     }
   }
-  if (hullTris < WHOLE_SHIP_BODY_MIN_TRIS) {
-    errors.push(`whole-ship hull body missing: hull triangles=${hullTris} < ${WHOLE_SHIP_BODY_MIN_TRIS}; asset=${url}; meshes=${meshNames.join(', ')}`);
+  if (!hasNonEmptyWholeShipHullBody(hullTris)) {
+    errors.push(`whole-ship hull body missing or empty: hull triangles=${hullTris}; asset=${url}; meshes=${meshNames.join(', ')}`);
   }
 }
 
@@ -1212,17 +1205,10 @@ function blueprintGpuResources(blueprint) {
   return [...resources];
 }
 
-export function isAuthoredTextureSizeValid(size, { factorOnly = false } = {}) {
+export function isAuthoredTextureSizeValid(size, { factorOnly: _factorOnly = false } = {}) {
   const width = Number(size?.width);
   const height = Number(size?.height);
-  if (!Number.isFinite(width) || !Number.isFinite(height)) return false;
-  if (!factorOnly) return width >= 1024 && height >= 1024 && width <= 2048 && height <= 2048;
-
-  // Explicit semantic decal/emissive/canopy sheets are not full-surface PBR sets. Preserve their
-  // authored strip aspect ratios while retaining the same 1K long-edge detail floor and 2K cap.
-  const longEdge = Math.max(width, height);
-  const shortEdge = Math.min(width, height);
-  return longEdge >= 1024 && longEdge <= 2048 && shortEdge >= 256;
+  return Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0;
 }
 
 function materialTextures(material) {

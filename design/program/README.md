@@ -24,8 +24,8 @@ not have to reconcile several conflicting handoffs before working.
 3. [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md) — every open Alpha and Depth item.
 4. [`03_LIVE_ACCEPTANCE_MATRIX.md`](./03_LIVE_ACCEPTANCE_MATRIX.md) — current checks, public routes,
    evidence, and milestone-exit truth.
-5. [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md) — what exists only in the
-   shared dirty tree and how to preserve it.
+5. [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md) — current repository identity,
+   checkpoint recoverability, and residual shared-tree work.
 6. [`05_RESUME_AND_FINAL_REVIEW.md`](./05_RESUME_AND_FINAL_REVIEW.md) — exact pickup and final review
    procedure.
 7. [`06_RETAINED_FUTURE_BACKLOG.md`](./06_RETAINED_FUTURE_BACKLOG.md) — valuable partial/future
@@ -85,7 +85,7 @@ These levels must never be collapsed into a single “done” label.
 
 | Track | Current audited truth |
 |---|---|
-| Repository | `master` and `origin/master` are synchronized at `05b9cf60`; the worktree is deeply dirty and the index is empty. |
+| Repository | Recovery checkpoint `850c80f3` is on `origin/master`; follow-up contract/policy work begins at `50bd5505`. This document's own commit is necessarily newer, so refresh identity and tree counts with `git log -1`, `git status --short`, and `git rev-list --left-right --count origin/master...HEAD` rather than copying this snapshot forward. |
 | M0 | Validator contract and Observatory Phase A are green; the live Alpha evidence corpus is red with 13 issues across 20 records, and the asset-classification corpus currently accepts 0 visual candidates. |
 | M1 | Core mechanics are substantially implemented and focused combat/tether checks pass; the strict Helios public route still fails before docking, and the starter/Helios/feedback visual family is not accepted. |
 | M2 | Seamless-world architecture is substantially built; the fresh combined acceptance run exited red during Electron launch, so current milestone exit is unconfirmed. |
@@ -93,11 +93,12 @@ These levels must never be collapsed into a single “done” label.
 | M4 | Regional ecology implementation is broad, but its fresh gate is 8/9 and player-facing art/diversity acceptance remains. |
 | M5 | Story/role/ownership systems are substantial and role continuity is green; ordinary B0–B7, ending, sandbox, and ownership routes remain. |
 | M6 | Capture machinery and Wasp routing exist; performance is red, store capture is absent, Wasp lacks the classification record required for canonical acceptance, and visible Hitch-glare/Helios-material defects remain. |
-| Depth | 0 chunks are DONE. After correcting W1’s existing data groundwork: 16 are IN-PROGRESS and 15 are TODO. Most July-14 work exists only in the dirty tree. |
+| Depth | 0 chunks are DONE. After correcting W1’s existing data groundwork: 16 implementation slices are preserved by checkpoint `850c80f3` and 15 remain TODO. The pre-checkpoint aggregate green has not been rerun at current HEAD, and ignored Depth media is still not recoverable from Git. |
 
 ## Current order
 
-1. Preserve and classify the dirty Depth/asset work so it is recoverable from `master`.
+1. Audit checkpoint `850c80f3` at current HEAD: rerun its focused gates, review high-risk inclusions,
+   and create durable evidence manifests without folding residual concurrent WIP into the checkpoint.
 2. Repair the 20-record Alpha evidence corpus and bind baselines to the current revision.
 3. Restore the strict M1 Helios public route; then finish Focus/camera/tether/doctrine acceptance.
 4. Close M3 natural recovery and the three unassisted career routes.

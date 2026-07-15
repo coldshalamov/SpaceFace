@@ -1,8 +1,8 @@
 # Blender Exclusive Lock — One MCP Agent at a Time
 
 > **Activated-sprint coordination only.** The A–E thread labels below apply only during a named
-> graphics sprint. The underlying rule is general: one current Blender/source-GLB writer, represented
-> by a live lock. When no valid lock/build owner exists, this document does not permanently reserve
+> graphics sprint. The underlying rule is general: one current Blender/source-GLB writer, recorded by
+> a marker and corroborated by live process/build/edit evidence. When no valid owner exists, this document does not permanently reserve
 > files or tools for a historical thread.
 
 ## Rule
@@ -21,34 +21,43 @@ Path: `assets/ships/blender.LOCK`
 Format (plain text):
 
 ```
-owner: thread-A | agent-session-id | 2026-07-08T14:30:00Z
+owner: thread-A | agent-session-id
 asset_ids: engine_vector, engine_resonator
-expires: none
+started: 2026-07-08T14:30:00Z
+heartbeat: 2026-07-08T14:45:00Z
+process: blender/export process id if available
 contact: optional
 ```
 
 ### Acquire (before first `execute_blender_code`)
 
-1. Check `assets/ships/release.__building/` — if present, **stop** (release build in progress).
-2. If `blender.LOCK` exists, read owner — **stop** unless you are resuming that session.
-3. Create `blender.LOCK` with your thread ID and planned `asset_ids`.
-4. `git add -N assets/ships/blender.LOCK` if untracked.
+1. Inspect `assets/ships/release.__building/` together with the release process and recent writes. If a
+   build is live and overlaps the GLBs, coordinate or wait for its safe completion. Recover stale build
+   residue only after confirming no process owns it.
+2. If `blender.LOCK` exists, verify its owner/session against live Blender/export processes, recent
+   writes, and agent activity. Coordinate a live owner; a stale marker does not reserve the lane.
+3. When the lane is free or handed off, write `blender.LOCK` with your thread/session, planned
+   `asset_ids`, start/heartbeat, and process identity where available.
+4. Refresh the heartbeat during long authoring runs so another agent can distinguish live work from
+   residue.
 
 ### Release (after sprint batch or handoff)
 
 1. Finish evidence bundle per `QUALITY_RITUAL.md`.
-2. Delete `blender.LOCK` (or hand off to integrator with note in HANDOFF).
-3. Do **not** delete another agent's lock.
+2. Delete your `blender.LOCK`, or update it during an explicit handoff and record that handoff.
+3. Do not delete a verified live owner's marker. A stale marker may be removed or replaced only after
+   checking that no Blender/export process or active agent still owns the recorded paths.
 
 ## Coordination with release lock
 
 | Lock | Meaning |
 |------|---------|
-| `assets/ships/blender.LOCK` | Blender MCP / source GLB authoring |
-| `assets/ships/release.__lock/` | Graphics lane ownership — no `src/render/**` edits |
-| `assets/ships/release.__building/` | Release script running — no GLB edits |
+| `assets/ships/blender.LOCK` | Claimed Blender/source-GLB writer; verify owner/process/heartbeat |
+| `assets/ships/release.__lock/` | Claimed graphics-lane owner; verify live edits/process before excluding work |
+| `assets/ships/release.__building/` | Claimed release build; verify a matching process/recent build activity |
 
-**Order:** release building → wait → blender work → release build → integrate.
+**Order when processes overlap:** finish or hand off the live release build → Blender work → release
+build → integrate. Stale directories do not add a waiting stage.
 
 ## Thread B (world places)
 
@@ -59,4 +68,6 @@ Thread B sprint plan is **data + concept + queue** until Blender lock free. When
 
 ## Violations
 
-If two agents write GLBs concurrently, **stop both** and run `npm run check:asset-status` before continuing. Trust evidence folders over chat claims.
+If two agents write overlapping GLBs concurrently, pause further writes, identify each process's exact
+outputs, preserve both evidence sets, run `npm run check:asset-status`, and designate one current owner
+before resuming or merging through a safe handoff. Trust filesystem/process evidence over chat claims.

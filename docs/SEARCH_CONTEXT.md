@@ -26,8 +26,8 @@ Do not broadly read or search:
 ```text
 .campaign/  .devshots/  build/  dist/  terminals/  agent-tools/
 advisor-artifacts/  scratch/  .tmp*/  .grok-scratch/  .zcode/  .serena/
-design/_ARCHIVE/  design/revamp/_history/  design/production/reviews/  docs/handoffs/
-skills/  assets/**/evidence/  assets/**/source/reference/
+design/_ARCHIVE/  design/revamp/_history/  design/production/  design/graphics-sprints/  docs/handoffs/
+skills/  assets/**/evidence/  assets/**/revamp-evidence/  assets/**/source/reference/
 ```
 
 These contain outputs, snapshots, prompts, transcripts, captures, or third-party/reference material.
@@ -45,7 +45,10 @@ rg -n --hidden `
   --glob '!agent-tools/**' --glob '!advisor-artifacts/**' `
   --glob '!scratch/**' --glob '!.tmp*/**' --glob '!.zcode/**' --glob '!.serena/**' `
   --glob '!design/_ARCHIVE/**' --glob '!design/revamp/_history/**' `
-  --glob '!design/production/reviews/**' --glob '!docs/handoffs/**' --glob '!skills/**' `
+  --glob '!design/production/**' --glob '!design/graphics-sprints/**' `
+  --glob '!docs/handoffs/**' --glob '!skills/**' `
+  --glob '!assets/**/evidence/**' --glob '!assets/**/revamp-evidence/**' `
+  --glob '!assets/**/source/reference/**' `
   "PATTERN" AGENTS.md ARCHITECTURE.md README.md package.json src scripts test design docs assets styles tools electron schemas
 ```
 

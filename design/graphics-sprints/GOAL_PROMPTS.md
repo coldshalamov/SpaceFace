@@ -3,7 +3,8 @@
 > **Manual prompt library — explicit activation required.** Paste a prompt only after a user/lead
 > selects a named sprint thread. The path lists coordinate simultaneous writers; they are not
 > repository-wide or permanent prohibitions. Adapt them when the designated integrator must cross a
-> seam for a coherent result, but never cross a live lock or overwrite another agent's work.
+> seam for a coherent result. Verify markers against current owner/process/build activity before
+> treating a lane as occupied, and never overwrite genuinely active work.
 
 Paste **one** prompt below as the opening message for a new Cursor/Grok thread. Keep concurrent
 threads separate; update the coordination paths if the live ownership plan changes.
@@ -14,7 +15,8 @@ threads separate; update the coordination paths if the live ownership plan chang
 
 ## Master campaign (Top-50 wonder)
 
-For a **full slice or multi-asset campaign** that must not stop early, **do not use the thin prompts below alone**.
+For a **full slice or multi-asset campaign**, use the campaign prompt so shared scope, ownership,
+evidence, integration, and coherent exit outcomes travel together.
 
 Copy the fenced goal from:
 
@@ -69,7 +71,10 @@ You are THREAD A — Kit Quality only.
 Sprint batch: <SPRINT_BATCH>   (example: A-engines)
 Asset IDs: <ASSET_IDS>         (example: engine_resonator, engine_vector)
 
-Acquire assets/ships/blender.LOCK as thread-A before any Blender MCP call. If lock exists, STOP and report owner.
+Before any Blender MCP call, inspect `assets/ships/blender.LOCK` together with live Blender/export
+processes, recent writes, and current agent ownership. Coordinate a live overlapping owner or choose
+non-overlapping work. If no active owner exists, clear/replace stale residue safely and record thread-A
+as the current writer.
 
 For EACH asset ID:
 - Use screenshot-driven critique until the modeling, surfacing, life, and role-specific result withstand
@@ -111,9 +116,10 @@ You are THREAD B — World Identity only.
 Sprint batch: <SPRINT_BATCH>   (example: B-faction-station-meridian)
 Asset IDs: <ASSET_IDS>         (example: place_station_meridian_exchange)
 
-If assets/ships/blender.LOCK is held by thread-A or thread-E, STOP — produce concept alignment + handoff PLAN only, no MCP.
-
-When lock available: acquire as thread-B.
+Verify whether `assets/ships/blender.LOCK` identifies a live thread-A/thread-E process. If the work
+really overlaps, coordinate the handoff or continue useful non-overlapping concept/data work; do not
+reduce the task to a report merely because a marker exists. When the authoring lane is genuinely free,
+record thread-B as the current Blender writer.
 
 Per place ID:
 - Iterate until independent review supports the intended silhouette, scale, material response, and identity.
@@ -150,7 +156,9 @@ You are THREAD C — Backend Wiring only.
 Sprint batch: <SPRINT_BATCH>   (example: C-sector-helios-places)
 Asset IDs: <ASSET_IDS>         (from integrator-approved handoffs only)
 
-NEVER wire an ID below RELEASE_BUILT. If handoff missing, STOP.
+Never wire an ID below `RELEASE_BUILT`. If a handoff is missing, inspect the current asset evidence and
+release state, then complete or recover the required handoff before wiring; do not substitute a
+report-only response for the integration prerequisite.
 
 Per ID, make one coherent wiring change, run the relevant checks, and diagnose/rerun any failures:
 - PART_LIBRARY_CONTRACT.slots.*
@@ -226,7 +234,8 @@ You are THREAD E — Wholeship Repair only.
 Sprint batch: <SPRINT_BATCH>   (example: E-kestrel)
 Asset ID: <ONE OF wholeship_kestrel | wholeship_pelican | wholeship_wasp>
 
-Acquire blender.LOCK as thread-E. Thread A must be paused.
+Verify the live Blender/source-GLB owner before authoring. Thread E and an actively overlapping Thread A
+must not write concurrently; coordinate an explicit handoff, then record Thread E as the current writer.
 
 Goal: credible complete hull body, full current `spacefaceAsset` contract, required maps, and intentional edge
 treatment. The live exporter/checker—not this prompt—owns exact thresholds.
