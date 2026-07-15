@@ -1,8 +1,8 @@
 # SPEC2/00 — MASTER TASTE REFERENCE
 
 > **Current authority banner:** root `ARCHITECTURE.md` (technical) > `design/GDD_2_0.md`
-> (design) > root `AGENTS.md` (current repo policy) > the activated task spec. This file is a
-> historical taste and release-intent reference, not a visual constitution or rejection gate.
+> (design) > `design/spec2/00_MASTER_TASTE.md` (historical taste reference; visual tokens not binding).
+> This file is a historical taste and release-intent reference, not a visual constitution or rejection gate.
 > `design/vision/ALPHA_PROGRAM.md` owns current execution order and solo-alpha scope beneath that
 > chain.
 
@@ -12,10 +12,8 @@ by current player-facing evidence. Behavioral acceptance values remain targets w
 or check relies on them. Historical visual values are starting points, not mandatory tokens or ceilings,
 and may change without amending this file when screenshots, accessibility, and measured performance
 support the result.
-Authority chain: root `ARCHITECTURE.md` > `design/GDD_2_0.md` > root `AGENTS.md` >
-the specific task spec > supporting references, including this file.
-`design/vision/ALPHA_PROGRAM.md` selects current execution order/scope and activates task specs or
-supporting references beneath that chain; it does not reverse design or taste authority.
+Authority is defined by root `AGENTS.md` and `design/PLAN_REGISTRY.md`. This file never outranks the
+current program, an activated task spec, or stronger player-facing evidence.
 
 ## 1. The one-sentence bar
 This game must feel like a **$30 premium PC/browser release**: nothing on screen is unexplained, nothing stutters,
@@ -84,8 +82,9 @@ Terse, dry, working-space professionalism. Crews talk like riggers, not like mar
 - Camera yaw-follow (locked decision: position-follow only, anti-nausea).
 - Hard rope/limit joints for gameplay lines (see spec2/01 — springs with damped capture only).
 - Restitution ("bounciness") on any player-feel constraint.
-- New dependencies without lead sign-off. Editing `test/*.expected.json` goldens to make a check
-  pass (fix the code, or flag the golden for a deliberate re-record batch).
+- Unexamined dependencies with no license, bundle/performance, determinism/save, or maintenance
+  record. Editing `test/*.expected.json` goldens to make a check pass (fix the code, or flag the
+  golden for a deliberate re-record batch).
 - `Math.random()` in sim code (use `state.rng`); wall-clock time in sim (use `state.simTime`).
 - Per-frame allocations in update loops (preallocate scratch; the codebase shows the pattern).
 

@@ -94,15 +94,14 @@ Currently a flat array `FACTION_META` of 8+1 entries. Each: `{id, name, short, c
 ### Determinism
 60Hz fixed-timestep sim. **NEVER `Math.random()` in sim** — use `state.rng` (mulberry32 seeded). **NEVER wall-clock** — use `state.simTime`. VFX/particles may use `Math.random()` (cosmetic, not serialized). **NEVER edit `test/*.expected.json` goldens** to make a check pass.
 
-### Taste constitution (`design/spec2/00_MASTER_TASTE.md` §6 forbidden list)
-- No `???` markers on charted space (only frontier/anomaly may be undiscovered)
-- No text walls (>1 simultaneous new text surface — arbiter/one-voice violation)
-- No new modal screens for things a HUD chip can say
-- No camera yaw-follow (position-follow only, anti-nausea)
-- No hard rope/limit joints for gameplay lines (springs with damped capture only)
-- No restitution ("bounciness") on player-feel constraints
-- No new dependencies without lead sign-off; no editing goldens to pass checks
-- No per-frame allocations in update loops (preallocate scratch)
+### Player-facing and engineering guardrails
+- Charted/frontier information, text density, modal/HUD choice, camera behavior, and constraint feel
+  must be selected from the current task spec and verified in public play; historical taste recipes
+  are references, not blanket bans.
+- Keep the clean non-diegetic HUD decision and accessible signal hierarchy.
+- Dependencies require documented license, bundle/performance, determinism/save, and maintenance
+  impact; they are not rejected merely for being dependencies.
+- Never edit goldens just to pass checks. Avoid per-frame allocations in measured hot loops.
 
 ### HUD rule (standing user preference)
 **Clean NON-diegetic HUD.** No first-person/visor/cockpit motifs — no screen-edge arcs, no helmet avatars, no pilot portraits on the HUD. Non-negotiable.

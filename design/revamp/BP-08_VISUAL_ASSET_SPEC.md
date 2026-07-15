@@ -12,14 +12,16 @@
 
 ## 0. How this combines with `FULL_GRAPHICS_REVAMP_GOAL.md` (Grok's active brief)
 
+> **Path note:** FGRG lives at `design/graphics-sprints/FULL_GRAPHICS_REVAMP_GOAL.md` (moved from repo root 2026-07-13). Its companion `GOAL_FULL_PROFESSIONAL_GRAPHICS_REVAMP.md` is in the same folder.
+
 The Blender agent (Grok) is already running **`FULL_GRAPHICS_REVAMP_GOAL.md` (FGRG)**. The two docs are
 **complementary — do not treat them as competing plans.** Read this section, then run them together:
 
 | | FGRG (`FULL_GRAPHICS_REVAMP_GOAL.md`) | BP-08 (this doc) |
 |---|---|---|
-| **Role** | **QUALITY + PROCESS master.** How to author to a pro bar: the 3-pass workflow (modeling → surfacing → life), per-asset evidence, batch discipline, verification gates, the export contract. | **COVERAGE + DESIGN-TARGET supplement.** *Which new assets the revamped gameplay now needs*, and *what silhouette/identity each must hit* so it reads at a glance (pillar 2). |
+| **Role** | **COVERAGE + OUTCOME master.** Which authored surfaces need a professional result and how to prove it in the player route. | **COVERAGE + DESIGN-TARGET supplement.** *Which new assets the revamped gameplay now needs*, and *what silhouette/identity each must hit* so it reads at a glance. |
 | **Scope** | Upgrade the ~70 **existing** authored GLBs (hulls, parts, current places). | Author the **missing** assets the new systems reference (faction-distinct stations, landmarks, ring-gates, wrecks, hero rocks) + re-author blocked whole-ships. |
-| **Authority** | Owns the *how* — process, quality bar, gates, budgets, contract. **Never lower FGRG's bar.** | Owns the *what & why* — the list below + the faction/identity targets. |
+| **Authority** | Owns full-set coverage and the professional outcome/evidence bar. Live exporter/runtime files own exact technical constraints. | Owns the *what & why* — the list below + the faction/identity targets. |
 
 **The one rule when they touch the same asset:** FGRG's process/quality bar always applies; BP-08 supplies the
 **character/silhouette target** to hit. Where BP-08 asks for something FGRG already lists, they are the *same
@@ -33,13 +35,13 @@ task* — use BP-08's identity note as that asset's "define character" step (FGR
 2. **FGRG Batch 3 (stations) ← BP-08 §2 P0 is the design brief for it.** Do not merely polish the 8 generic
    station meshes — **redesign them to the 8 faction-distinct silhouettes** in §2 P0 (Concord orthogonal-sealed,
    Meridian tiered-rings, Drift ore-hoppers, Reach scavenged-welded, Quiet low-signature, Choir ritual-radial,
-   Free patched-open, Vael alien-teal-best-lit). Each still gets FGRG's full 3-pass + evidence.
+   Free patched-open, Vael alien-teal-best-lit). Each gets the modeling, surfacing, life, and evidence work
+   justified by its current gaps.
 3. **NEW "Batch 3.5 — gameplay-driven landmarks" (BP-08 §2 P2–P4).** These do **not** exist in FGRG's
    existing-70 scope; they are new assets the zones/encounters/salvage/galaxy-map systems now reference:
    landmarks (vault-maw, crystal-spire, pit-anchor, cathedral-wreck), 3 faction ring-gate variants, and the
-   4–6 wreck variants + `place_comm_beacon` (the salvage "floating communicator"). Full FGRG rigor; larger
-   landmark budget (live exporter default ≤10k, 2048² allowed; raise with manifest/spec rationale
-   and perf evidence).
+   wreck variants + `place_comm_beacon` (the salvage "floating communicator"). Apply the full outcome and
+   evidence bar; use measured screen-space value and runtime evidence for any resource decision.
 4. **FGRG Batch 4 (asteroids/props) ← BP-08 §2 P5** hero asteroids (`place_asteroid_luminite`/`_ice`) join here.
 5. **FGRG Batch 5 (whole-ships) = BP-08 §2 P1** — identical task (repair `kestrel`/`pelican`/`wasp` to contract).
 6. **FGRG Batch 6 sign-off unchanged.**
@@ -63,10 +65,10 @@ reports them export-clean (see WAVE2_PROMPT.md "asset-gated" note).
 | Coordinate frame | right-hand, **forward = +X, up = +Y, starboard = +Z**, unit = **metre**, origin = mount point (nose for ships). |
 | Root extras | `spacefaceAsset` JSON: `{ contractVersion:1, slot, forward:"+X", up:"+Y", starboard:"+Z", unit:"metre", normalConvention:"OpenGL", ormChannels:"R=AO,G=Roughness,B=Metallic", textureCompression:"KTX2/BasisU", chamfered:true }`. |
 | Materials (named roles) | `Material_Hull` (tintable body), `Material_Accent` (faction edge trim), `Material_Glass` (MeshPhysical, transmission 0.6 / IOR 1.4), `Material_Mechanical` (dark metallic). |
-| Textures | baseColor (sRGB), normal (tangent, **OpenGL green-up**), ORM (packed: **R=AO, G=Roughness, B=Metallic**). 1024² default; 2048² only for hero landmarks. All KTX2. |
-| Geometry | **Bevel every hard edge (≥2 segments)** — the contract asserts chamfer. LOD0/LOD1/LOD2 node groups (`LOD0_*` …). |
+| Textures | baseColor (sRGB), normal (tangent, **OpenGL green-up**), ORM (packed: **R=AO, G=Roughness,B=Metallic**) when required by the live contract. Choose resolution/compression from screen-space need and measured runtime evidence; use the live exporter as authority. |
+| Geometry | Use intentional edge treatment and the LOD groups required by the live exporter. Bevels, weighted normals, bakes, and topology choices are asset-specific means, not a universal visual recipe. |
 | Nodes | `MOUNT_*` hardpoints, `SOCKET_*` anchors (e.g. `SOCKET_Trail_Main`, `SOCKET_Weapon_Front`), optional damage hooks `HOOK_*`, drive-anim `HOOK_DRIVE_FAN/CORE/PLUME`. |
-| Tri budgets | Follow the live `assets/ships/parts/parts_manifest.json` + `tools/blender/spaceface_export.py` budgets: current defaults are part ≤15k, whole-ship body ≥800 and ≤20k, prop ≤3k, landmark/station ≤10k. Budgets are alarms, not taste ceilings; raise a row only with rationale + perf evidence. |
+| Resource alarms | Follow the live `assets/ships/parts/parts_manifest.json` and `tools/blender/spaceface_export.py`. Do not copy their changing numeric alarms into design policy or treat them as taste ceilings; justify exceptions with screen-space value and measured performance evidence. |
 | Faction accent | provide `factionAccentVariants` in the manifest row (accent color per palette class: core/belt/fringe/anomaly). |
 
 **Per-asset delivery = 3 steps:** (1) export GLB to `assets/ships/parts/<category>/<id>.glb`; (2) add a row to
@@ -97,12 +99,14 @@ so a player reads the faction and function instantly.
 | `place_station_free_waystation` | Free Frontier | patched-together but welcoming; open docking arms; mixed salvage |
 | `place_station_vael_spire` | The Vael | alien geometry, non-human proportions, teal glow (**best-lit — they have the best air**) |
 
-### P1 — Re-author the 3 BLOCKED whole-ships
-`kestrel`, `pelican`, `wasp` in `assets/ships/parts/wholeships/` contain **accessories only (0 hull tris)** and
-fail the `WHOLE_SHIP_BODY_MIN_TRIS ≥ 800` audit. Re-export each with a proper `Material_Hull` body (≥800 tris),
-all maps, and MOUNT/SOCKET nodes so they load without the modular-assembly fallback.
+### P1 — Verify and finish production whole-ships
 
-### P2 — LANDMARKS (navigation + identity; default ≤10k, can be 2048²)
+Whole-ship routing has changed since this brief was written. Inspect the current manifest, classification,
+`WHOLE_SHIP_FILE_BY_DEF_ID`, and player route before acting. Repair any routed Kestrel/Pelican/Wasp candidate
+that lacks a credible hull body, required material/maps, or mount/socket semantics; do not roll back a current
+production route to match this dated diagnosis.
+
+### P2 — LANDMARKS (navigation + identity)
 The player should say "meet me at the crystal spire." One authored landmark per key sector.
 
 | id | Sector / fiction | Silhouette |
@@ -122,7 +126,7 @@ The player should say "meet me at the crystal spire." One authored landmark per 
 `place_dead_hulk` + `place_debris_chunk` exist. Add distinct destroyed-hull types with visible internal
 structure so a wreck field tells a story: `place_wreck_freighter`, `place_wreck_patrol`, `place_wreck_miner`,
 `place_wreck_capital_section`, and a small `place_comm_beacon` (the "floating communicator" that starts a
-mission chain — a blinking antenna buoy, ≤300 tris).
+mission chain—a blinking antenna buoy whose complexity matches its screen-space role).
 
 ### P5 — HERO asteroids + world dressing
 1–2 hand-sculpted hero rocks (`place_asteroid_luminite`, `place_asteroid_ice`) for first-impression contrast

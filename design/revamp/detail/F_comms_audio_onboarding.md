@@ -220,7 +220,7 @@
 |---|---|---|
 | Adaptive music state (investigation/pressure/combat/reversal/aftermath) | **DEFER** | Doctrine §8 names adaptive-music-state as gold-plating; the lane brief explicitly defers it. `_duckMusic` already covers the one high-value beat (mission/kill ducking). |
 | Music drop-out on false-mass / story-contradiction | **DEFER** | Rides on adaptive-music-state (deferred); the 47-A false-mass beat is carried by cue + caption, not a music engine. |
-| "No voice-acting-required" design (text barks + audio signatures) | **VALIDATED as constraint** | Already the shipped architecture (`barks.js` is text; audio is procedural). It's a design constraint we meet, not a packet. |
+| Text-first barks + audio signatures | **CURRENT BASELINE, NOT A MEDIUM BAN** | The shipped route is text-forward today. Authored voice or recorded cues remain admissible when provenance, accessibility, mix, memory, and player-facing evidence justify them. |
 | Objective-arrow language (distance/risk/route/recommended-action) | **DEFER to BP-03/onboarding** | Onboarding already renders a direction hint + story objective; the richer arrow language is a map/nav (BP-03) enrichment, not comms/audio. |
 | "Ask station contact: why does this matter?" | **DEFER to BP-11/BP-05** | Station-contact dialogue is Station Life (BP-11) / story (BP-05) surface, not this lane. |
 | Codex-unlock-from-action (not menu dump) | **DEFER to BP-05** | Narrative/codex ownership is BP-05; onboarding's `player.hints` already does the action-triggered reveal for mechanics. |

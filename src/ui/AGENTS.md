@@ -6,11 +6,16 @@
 ## Standing rules
 
 - **Clean NON-diegetic HUD.** No first-person/visor/cockpit motifs — no screen-edge arcs, no helmet avatars, no pilot portraits. Standing user preference, non-negotiable across all spec suites.
-- **No `backdrop-filter`** in CSS (prior perf pass). Use opaque `rgba(5,9,18,.88)` panels.
-- **No new modal screens for things a HUD chip can say.** No text walls (>1 simultaneous text surface — arbiter/one-voice violation).
-- **Damage numbers off by default** (toggle exists). Floating text is for money/loot/level-ups only.
-- UI transitions 120-250ms ease-out. Screen pushes ≤250ms.
-- Player-facing strings pass `check:player-facing-labels`. Comms barks ≤12 words, no exclamation marks outside genuine emergencies, station names/callsigns in CAPS.
+- Choose panels, blur, transparency, and surface treatment per screen; measure compositor cost and
+  optimize the owning hot path without imposing a universal opaque-panel recipe.
+- Match the interaction surface to the decision. Use persistent HUD, contextual cards, modal flows,
+  or full screens where each produces the clearest player result; avoid duplicate simultaneous copy.
+- Combat and economy feedback must remain configurable and legible. Existing defaults are baselines,
+  not a ban on a better tested presentation.
+- Motion timing and easing follow interaction purpose and reduced-motion settings; inherited
+  millisecond ranges are reference values, not universal gates.
+- Player-facing strings pass `check:player-facing-labels`. Voice and typography are judged for
+  clarity, urgency, and character in context, not fixed word counts, capitalization, or punctuation.
 - Respect `motionReduce`/`flashReduce` (`accessibility.js`): all shake/hit-stop/FOV effects ×0.25 or off.
 
 ## File quick reference
@@ -37,6 +42,7 @@ canvas (z0) < vignette (z5) < hud (z10) < modal-backdrop (z90) < screens (z100) 
 
 `npm run check:ui-a11y`, `npm run check:wcag-contrast`, `npm run check:ui:perf` (frame sleep + radar perf + identity), `npm run check:player-facing-labels`, `npm run check:ui-identity`, `node scripts/check-ui-screen-imports.mjs`.
 
-Current: `check-ui-screen-imports` passes 41/41. The active-objective panel intentionally omits
-generic map-key copy; the always-mounted `controlPrompts.js` flight route owns those binding-backed
-hints so objective guidance stays one-voice.
+`check-ui-screen-imports` validates the current screen registry plus binding, reachability, and
+one-voice contracts; do not hard-code its assertion count here. The active-objective panel
+intentionally omits generic map-key copy; the always-mounted `controlPrompts.js` flight route owns
+those binding-backed hints so objective guidance stays one-voice.

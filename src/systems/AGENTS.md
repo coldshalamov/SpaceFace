@@ -9,18 +9,23 @@
 
 | 🟢 LIVE | ⚪ LEGACY (don't edit — no effect in normal play) |
 |---|---|
-| `flightV3.js` | `flight.js` (zero importers) |
-| `tacticalAI.js` (+ `../ai/*` + `aiPorts.js`) | `ai.js` (zero importers) |
+| `flightV3.js` | `flight.js` (statically imported fallback and compatibility-check fixture) |
+| `tacticalAI.js` (+ `../ai/*` + `aiPorts.js`) | `ai.js` (statically imported fallback and compatibility-check fixture) |
 
 Both `flight.js` and `ai.js` are retained because CI runs legacy `check:sim` against them. Don't delete without removing those scripts.
 
-**Before diagnosing any bug here, `git diff <file>`** — the working tree has ~17k uncommitted insertions and may already contain the fix you're about to write. (E.g. the `aiPorts.isHostile` lawful gate is in the working tree but NOT in HEAD.)
+**Before diagnosing any bug here, run `git diff <file>`** — the shared working tree may already
+contain the fix or a newer implementation than HEAD.
 
 ## The hostility system is SUBTLE — read the playbook
 
-Live hostility oracle: **`aiPorts.js:784` `isHostile(state, self, other)`**. In the working tree it has a lawful+heat gate (lines 793-795: `lawful && otherIsPlayer → isPlayerWanted(state)`). In HEAD it's team-only. There's ALSO a squad fallback clause (`squad.js:272`) that can vote hostile when `contact.hostile` is undefined. **Three interacting factors — read `docs/COMMON_BUGS.md` §2 in full before grepping.**
+Live final-fire authority and fresh hostility oracle: **`../ai/engagementAuthority.js`**
+(`authorizeAIEngagement`, `isHostileForAI`). `aiPorts.js` consumes that authority, while squad target
+selection remains advisory. Read `docs/COMMON_BUGS.md` §2 before changing team, lawful, heat,
+station-jurisdiction, response-window, or target-vote behavior.
 
-Canonical "is player wanted" check: `heat.isPlayerWanted(state)` (`heat.js:147`). The `ai.playerWanted` field is DEAD (read, never written) — don't use it.
+Canonical "is player wanted" check: `heat.isPlayerWanted(state)`. The `ai.playerWanted` field is dead
+compatibility state; do not use it as authority.
 
 ## Library modules vs registered systems
 
@@ -33,12 +38,12 @@ These live in `src/systems/` but are imported by other code; they do NOT run eve
 
 ## File quick reference
 
-**Flight:** `flightV3.js` (live, +520 lines uncommitted), `cruise.js`, `impulseCharges.js`. Physics math in `../core/flight/`.
-**AI:** `tacticalAI.js` (live) + `../ai/*` (stack/perception/director/squad/shipDecision/maneuver); `aiPorts.js` (bridge + hostility oracle); `aiEncounter.js` (reinforcements). Legacy: `ai.js`.
+**Flight:** `flightV3.js` (live), `cruise.js`, `impulseCharges.js`. Physics math in `../core/flight/`.
+**AI:** `tacticalAI.js` (live) + `../ai/*` (stack/perception/director/squad/shipDecision/maneuver/engagementAuthority); `aiPorts.js` (execution bridge); `aiEncounter.js` (reinforcements). Legacy: `ai.js`.
 **Combat:** `combat.js` (registered) → calls into `../combat/` shared library (kernel/damage/attachments/etc — busy, imported by 9 systems). `weapons.js` (firing + weapon heat; `typeof window` vent preserves determinism). `countermeasures.js`.
-**Heat (3 meanings!):** `heat.js` = WANTED heat (`state.player.heat`, sole writer, `isPlayerWanted` line 147). Weapon heat = `weapons.js`. Sector danger = `dangerModel.js` (library, not combat).
+**Heat (3 meanings!):** `heat.js` = WANTED heat (`state.player.heat`, sole writer, `isPlayerWanted`). Weapon heat = `weapons.js`. Sector danger = `dangerModel.js` (library, not combat).
 **Mining/cargo/economy:** `mining.js`, `drill.js`, `cargo.js` (sole writer of `player.cargo`), `economy.js` (sole writer of `player.credits`, 5s tick), `crafting.js`.
-**World/factions:** `world.js` (sectors, spawns; `_spawnEnemies` ~line 584, WANTED-hunter gate ~line 606), `factions.js` (sole writer of `factions[id].rep`; combat AI reads heat, not rep directly), `traffic.js` (team:2 civilians, ai.passive), `sectorSim.js` (offscreen), `scanner.js` (`actions.scanPulse`), `claims.js` / `beacons.js` (`actions.deployBeacon`).
+**World/factions:** `world.js` (sectors, spawns, WANTED-hunter spawning), `factions.js` (sole writer of `factions[id].rep`; combat AI reads heat, not rep directly), `traffic.js` (civilian traffic), `sectorSim.js` (offscreen), `scanner.js` (`actions.scanPulse`), `claims.js` / `beacons.js` (`actions.deployBeacon`).
 **Missions/story:** `missions.js`, `story.js`, `onboarding.js` (runs last, reads state only).
 **Ships/wingmen:** `ships.js` (sole writer of `entity.derived`; default `team:0`), `wingmen.js` (team:0).
 **Presentation:** `presentationOrchestrator.js` + `presentationAdapters.js` (registered; consume `../presentation/` data).

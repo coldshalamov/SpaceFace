@@ -24,13 +24,21 @@ You are building SpaceFace. Read these fully before coding:
 4) design/vision/01_CURRENT_STATE.md — relevant domain rows
 5) ARCHITECTURE.md sections that touch your files (sim vs render, ownership)
 
-Product law: playable fun first; open chart travel; massline toy; easy piloting; liquid-glass strategy UI (data not prose); original identity (not Freelancer cosplay); no sore thumbs; assist-first difficulty.
-Where design/spec2/00_MASTER_TASTE.md conflicts (anti-glass, minimalism-for-its-own-sake), the vision constitution wins.
-Technical law: 60Hz fixed sim, determinism via state.rng, sim never imports Three.js, no silent runtime deps.
+Product law: playable fun first; open chart travel; massline toy; easy piloting; data-dense strategy
+UI with clear hierarchy; original identity; no sore thumbs; assist-first difficulty.
+UI keeps the standing non-diegetic/no-visor HUD decision. Palette, panel material, blur, motion, and
+layout come from the screen's job and current player-facing evidence, not Master Taste tokens.
+Technical law: 60Hz fixed sim, determinism via state.rng, sim never imports Three.js, and every new
+dependency has documented license, bundle/performance, determinism/save, and maintenance impact.
 
-OPEN-ENDED DUTY: research peers and implement common-sense must-haves (06 §5) inside this wave without waiting for the human to list them. Plan and implement. Spawn subagents for research, review, art, and checks. Use image gen, video gen, Blender MCP, and screenshot iteration (10–20 passes for visual/feel) with weighted scoring; fix dimensions ≤4 before claiming done. Expand automated tests when bug classes recur. Fun/lame judgment is mandatory.
+OPEN-ENDED DUTY: research peers and implement common-sense must-haves (06 §5) inside this wave
+without waiting for the human to list them. Plan and implement. Use the best available research,
+review, art, and verification tools. Iterate from current screenshots until observed defects are
+closed and independent player-route review accepts the result; iteration counts and self-scores are
+not quality evidence. Expand automated tests when bug classes recur. Fun/lame judgment is mandatory.
 
-Acceptance: automated checks + PLAYTEST RUBRIC + quality score sheet + no sore thumbs on touched surfaces. Transcripts are not proof.
+Acceptance: automated checks + public-route play review + current visual/audio evidence + no sore
+thumbs on touched surfaces. Transcripts and self-scores are not proof.
 Update design/vision/01_CURRENT_STATE.md when done (PLAY column honest).
 Print a 15-line summary: files, checks, score totals, playtest evidence paths, remaining risks.
 ```
@@ -55,14 +63,14 @@ MUST DELIVER:
 - Deduce any other peer-game must-haves that block "playable pilot fantasy" and implement if small
 
 PLAYTEST RUBRIC (required evidence):
-- Feel matrix (06 §4.2) ≥80; controllability & fairness ≥7
-- 10 min starter play: ≤2 deaths OR written blockers with video/shots
-- 5/5 scripted flyby latch attempts succeed with Focus or soft latch
+- Independent §4.2 feel review finds no critical controllability or fairness defect
+- Ten-minute starter route is survivable, readable, and explains any loss through visible causes
+- Held-out combat-speed flybys demonstrate reliable Focus/soft-latch capture and escape
 - Cold-start: set course to station without reading docs (prompt or UI label)
-- .devshots/vision/w1-*  (iterate 10–20 on ship/bank/latch if visual); no sore thumb on hero frame
+- `.devshots/vision/w1-*` comparison evidence; no unresolved sore thumb on the hero frame
 
 CHECKS: run + extend massline/flight/ai/combat tests; fix regressions you cause.
-Do NOT start empire building, multiplayer, or full UI glass redesign (mode labels OK).
+Do NOT start empire building, multiplayer, or a full UI visual redesign (mode labels OK).
 ```
 
 ---
@@ -90,12 +98,14 @@ Update 01_CURRENT_STATE world rows + 04_ASSET_TRUTH if new placeables wired.
 
 ---
 
-## W3 — Liquid glass strategy UI
+## W3 — Data-dense strategy UI
 
 ```
 [UNIVERSAL PREAMBLE]
 
-GOAL: Wave 3 — liquid glass + data-dense strategy UI; purge station prose walls.
+GOAL: Wave 3 — data-dense strategy UI; remove duplicated station prose while preserving the
+known-good station shell. Choose intentional screen materials and hierarchy from current evidence;
+do not apply a universal panel/blur recipe.
 
 MUST DELIVER:
 - Design tokens + modular components used by station hub + flight chrome

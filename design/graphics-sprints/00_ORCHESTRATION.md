@@ -1,16 +1,19 @@
 # Graphics Sprint Threads — Orchestration
 
-**Status:** LIVE routing for parallel agent sprints (2026-07-08).  
+**Status:** LIVE routing for parallel agent sprints.
 **Purpose:** Run multiple north-star goals in parallel **without domain overlap**. One Blender owner at a time. Integrate in series.
 
 ## Authority chain
 
-1. `Agents.md` §3 (uncommitted tree) + §10 (lane ownership)
-2. `design/spec2/00_MASTER_TASTE.md` (taste constitution — Forbidden list rejects diffs)
-3. This folder (`design/graphics-sprints/`)
-4. **`TOP50_WONDER_BUILD_PLAN.md`** — Top-50 order, slice exits, weighted gates, **anti-lazy master goal** (§9)
-5. `FULL_GRAPHICS_REVAMP_GOAL.md` (full-kit quality + process — never lower)
-6. `design/revamp/EXECUTION_LANES.md` (backend vs graphics split)
+1. Root `AGENTS.md` for repository safety, ownership, live paths, and performance policy.
+2. [`README.md`](README.md) for this folder's authority map and quality doctrine.
+3. **`TOP50_WONDER_BUILD_PLAN.md`** for priority/order and slice outcomes.
+4. `FULL_GRAPHICS_REVAMP_GOAL.md` for full authored-asset coverage and outcome bar.
+5. `design/revamp/BP-08_VISUAL_ASSET_SPEC.md` for missing-asset and silhouette intent.
+6. Live exporter/runtime contracts and current checks for technical truth.
+
+`design/spec2/00_MASTER_TASTE.md` is historical taste context, not a visual-token authority. Apply its
+standing non-diegetic HUD restriction where relevant, but judge current work from player-facing evidence.
 
 ## The five threads (never merge domains)
 
@@ -47,9 +50,9 @@ See `HANDOFF_TEMPLATE.md` for the machine handoff block between threads.
 | `src/render/vfx.js`, `vfxProfiles.js` | **D only** | |
 | `test/*.expected.json` | Nobody in graphics sprint | Forbidden |
 
-## Daily integrate window (required)
+## Integration window
 
-Once per day (or after any graphics handoff), **one integrator agent** runs:
+After a graphics handoff or before runtime wiring, **one integrator agent** runs:
 
 1. Merge handoff blocks from A/B/E into `assets/ASSET_STATUS.json` (or run `npm run report:asset-status` when script exists).
 2. Update `parts_manifest.json` / `runtimeSlots` if new IDs.
@@ -61,10 +64,11 @@ Once per day (or after any graphics handoff), **one integrator agent** runs:
 
 ## Quality bar (all threads)
 
-- **3D hero assets:** minimum **20 screenshot-driven iterations** per asset (see `QUALITY_RITUAL.md`).
-- **Simple parts / props:** minimum **10 iterations**.
-- **Code / wiring:** minimum **10 verification cycles** (check run → fix → re-run); no screenshot bar unless visual.
-- **Top-50 / M3 wonder:** follow `TOP50_WONDER_BUILD_PLAN.md` — full-view law, weighted rubric, ≥50% rebuild per iter, slice exit shots. Copy-paste goals live in that file §9.
+- Use `QUALITY_RITUAL.md` to capture useful views, concrete critique, and before/after evidence.
+- Iterate until the asset or presentation change survives independent visual review at the real game camera;
+  iteration counts and self-scores are not acceptance criteria.
+- Run the checks that cover the touched contract. Repeating an unchanged check does not create more proof.
+- Top-50 work follows `TOP50_WONDER_BUILD_PLAN.md` for order and player-visible slice exits.
 
 **Transcripts are not proof — checks and screenshots are.**
 
@@ -84,7 +88,8 @@ All goal prompts for Cursor/Grok threads: **`GOAL_PROMPTS.md`**
 
 ## Related docs
 
-- `QUALITY_RITUAL.md` — screenshot angles, deficiency rubric, iteration floors
+- `README.md` — authority map and quality doctrine
+- `QUALITY_RITUAL.md` — evidence views and critique template
 - `BLENDER_EXCLUSIVE_LOCK.md` — single Blender agent protocol
 - `HANDOFF_TEMPLATE.md` — cross-thread handoff block
 - `INTEGRATION_GATE.md` — integrator checklist

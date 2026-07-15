@@ -7,11 +7,10 @@ Ground truth: Three.js under a tilted top-down camera; DOM/CSS overlay UI (hud.j
 uiRoot.js); pooled VFX in `vfx.js` (130KB); ship assembly via `visualFactory.js`/`partsLibrary.js`
 from authored GLB parts; bloom threshold ~0.65; ACES tone-mapping deliberately deferred (palette
 was tuned pre-ACES; switching now re-grades every material — do it once, deliberately, or not at
-all). KNOWN BUGS: whole-ship GLBs fail the authored-part runtime contract (missing `spacefaceAsset`
-metadata/maps/chamfer assertions → modular fallback); ships flicker/disappear with NO stability
-probe; measured 54 ms worst-frame hitches (shader compile + spawn spikes); some machines fall to
-SwiftShader software rendering (2–3 fps — environment, not code; needs GPU-detect + dynamic
-resolution). Perf gospel: GDD §10 — zero >32 ms frames in normal play.
+  all). Historical bugs included invalid whole-ship candidates, visual instability, and large
+  shader/spawn hitches. Current routing, checks, and performance artifacts decide which remain;
+  Kestrel and Wasp now have production whole-ship routes. Software-renderer fallback is a runtime
+  diagnosis to surface, not permission to silently lower release quality. Perf target: GDD §10.
 
 ---
 
@@ -40,10 +39,11 @@ the blocking cluster.
   load; (3) GC audit of 10-min play — kill per-frame allocations in event emission + HUD string
   building (memoize 10 Hz strings); (4) measure compositor-heavy CSS effects and retain them only
   where their player-facing benefit justifies the recorded cost.
-- **GPU-detect + dynamic resolution:** boot probe (WEBGL_debug_renderer_info; SwiftShader/llvmpipe
-  match → warn banner + auto-low preset). Dynamic resolution: render-target scale steps
-  1.0/0.85/0.7/0.55 driven by 120-frame p95 frame-time; UI/DOM never scales. The 2–3 fps machine
-  gets an honest 30+ at 0.55 with the DOM HUD still crisp.
+- **GPU/runtime diagnosis without silent degradation:** detect software rendering and surface an
+  actionable warning with measured attribution. Structural optimization, batching, culling,
+  lifetime repair, and warm-up own the default performance target. Any emergency resolution/preset
+  reduction is explicit and player-controlled, reported in evidence, and excluded from visual
+  acceptance captures; it is not an automatic way to make a gate pass.
 - **Tone-mapping baseline:** the current grade is non-ACES. Change it only as a deliberate full
   regrade with representative captures, material review, and performance evidence—not as a casual
   toggle or inherited prohibition.
@@ -51,16 +51,15 @@ the blocking cluster.
 ### 3. Architecture & wiring
 Probe: `scripts/check-ship-stability.mjs` driving the headless preview (SF global + manual frame
 ticks — the proven harness). Parallax: new `render/parallaxStack.js` module, layers as pooled
-instanced meshes keyed off camera transform (render-side only). Warm-up in renderer boot path;
-dynamic-res in `renderer.js` frame loop. All render-side — zero sim/determinism contact.
+instanced meshes keyed off camera transform (render-side only). Warm-up and runtime diagnostics stay
+in the renderer boot/frame path. All render-side — zero sim/determinism contact.
 
 ### 4. Key code
 ```js
-// Dynamic resolution — hysteresis or it oscillates visibly. Step down fast, up slow.
-const P95_HI = 30, P95_LO = 20;                     // ms thresholds
-if (p95 > P95_HI && scaleIdx < SCALES.length - 1) { scaleIdx++; cooldown = 240; }
-else if (p95 < P95_LO && scaleIdx > 0 && --cooldown <= 0) { scaleIdx--; cooldown = 600; }
-renderer.setPixelRatio(base * SCALES[scaleIdx]);    // DOM overlay untouched — text stays crisp
+// Diagnose sustained pressure without mutating player quality behind their back.
+if (p95 > TARGET_FRAME_MS) {
+  performanceTelemetry.reportPressure({ p95, render, sim, ui, allocations, visibleWork });
+}
 ```
 
 ### 5–6. Assets / deps
@@ -71,7 +70,7 @@ Dust/mote textures: 2 procedural blob sprites (canvas-generated at boot — no f
 1. Stability probe → fix findings → probe green in CI. **Blocks all other F8 work.**
 2. Warm-up + spawn amortization; extend `check:perf` with hitch-count assertion (0 frames >32 ms
    over scripted 60 s combat+mining).
-3. GPU-detect + dynamic res + low preset.
+3. GPU/runtime diagnosis + explicit player-controlled fallback settings; no automatic quality cut.
 4. Parallax stack + motionReduce + boost-streak hook.
 5. GC audit pass (heap profile, memoize HUD strings).
 

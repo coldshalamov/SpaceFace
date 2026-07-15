@@ -44,7 +44,8 @@ You are the sole overnight developer for SpaceFace. Execute the **FULL** autonom
 - [ ] **Live play proof (not optional):** either  
   - (A) headed browser probe / `check:flight:clean` (or equivalent) succeeds with log in `{SCRATCH}`, **and** you write a 15+ minute play note with death count, latch attempts, and fun/lame judgment, **or**  
   - (B) you prove the environment cannot run headed browser after **3** distinct attempts and save failures to `{SCRATCH}/browser-env-limit.log` — then you **must** compensate with extra automated play harnesses that drive flight+tether+combat systems for ≥30 simulated seconds of scripted flyby+fight and assert player hull remaining > 0 and ≥1 successful latch  
-- [ ] Operating-model **flight/massline/combat weighted score ≥ 80** with **no dimension ≤ 4**. If score < 80, keep fixing — **do not complete**.
+- [ ] Independent flight/massline/combat review reports no unresolved critical or major defect in
+  controllability, fairness, intention, feedback, or discoverability. If it rejects, keep fixing.
 
 #### Gate STRICT-G2 — Density (required)
 - [ ] Starter region has ≥3 named findable destinations (stations/POIs/fields) and rock/traffic presence that is not “one tiny pile in a void”
@@ -69,24 +70,24 @@ You are the sole overnight developer for SpaceFace. Execute the **FULL** autonom
 
 #### Gate STRICT-G6 — Multi-agent review (required)
 You **must** use subagents or terminal agents (spawn_subagent / codex / claude / agy as available) for at least **two** of:
-- **Gamer reviewer** — “would I rage-quit in 10 minutes?” score 0–10  
-- **Combat/feel designer** — massline + flight bank score  
+- **Gamer reviewer** — “would I rage-quit in 10 minutes?” with concrete evidence
+- **Combat/feel designer** — massline + flight-bank defect review
 - **UI designer** — scannability / prose / discoverability  
 - **Skeptic engineer** — tests drive real code? false DONE?
 
-Each reviewer uses the weighted matrices in `06_OPERATING_MODEL.md`.  
-**If any reviewer scores a required gate dimension ≤ 4, you must fix and re-review.**  
+Each reviewer uses the critique dimensions in `06_OPERATING_MODEL.md`.
+**If any reviewer reports a critical or major defect, fix and re-review.**
 Paste reviewer summaries into WAKE_REPORT §Review.
 
 #### Gate STRICT-G7 — Handoff (required)
 - [ ] WAKE_REPORT executive table filled  
-- [ ] Scores ≥ thresholds above  
+- [ ] Independent review verdicts pass with no unresolved critical/major defect
 - [ ] Residual backlog only contains items **outside** STRICT-G1…G5 (or true HARD BLOCKERs)  
 - [ ] You did **not** stop solely because “B1 checks green”
 
 ### Forbidden early-exit excuses (explicitly rejected)
 - “Partial success is OK per pipeline G0+G1+G7” — **OVERRIDDEN by this STRICT contract**
-- “Fun matrix ~72 is honest enough” — **must reach ≥80 or keep working**
+- “A self-score is honest enough” — **self-scores do not accept the work; fix the named defects**
 - “No headed browser so we’re done” — **must use STRICT-G1 compensation harness**
 - “Docs + handoff only” — **not completion**
 - “Out of time” — **not completion**; leave WAKE_REPORT as FAILED-STRICT with remaining gate checklist, and do **not** claim goal complete
@@ -109,7 +110,7 @@ Document blocker evidence under `{SCRATCH}/hard-blocker.md` and WAKE_REPORT.
 
 ### Definition of DONE (STRICT)
 1. All STRICT-G0…G7 checkboxes satisfied  
-2. Flight/massline/combat matrix **≥ 80**, no dim ≤ 4  
+2. Flight/massline/combat independent review passes with no critical/major defect
 3. Reviewer agents did not reject  
 4. WAKE_REPORT says **YES** to “more playable” and **YES or PARTIAL→YES** to “safe 10-min demo” with play evidence  
 5. `check:overnight:playable` + tether-gameplay green  
@@ -123,14 +124,14 @@ Begin with Phase A (rewrite SESSION_PLAN from prior WAKE_REPORT P0). End only wh
 ## After paste
 
 - Morning: open `design/vision/WAKE_REPORT.md`  
-- If it says **FAILED-STRICT** or scores &lt; 80 → the agent stopped early or couldn’t pass; re-run this same prompt  
-- If executive demo = YES and scores ≥ 80 → it actually finished  
+- If it says **FAILED-STRICT** or independent review rejects → continue this same goal
+- If executive demo = YES and review/evidence pass → it reached this prompt's exit
 
 ## Relationship to soft goal
 
 | File | Behavior |
 |---|---|
 | `OVERNIGHT_GOAL.md` | Allows partial B1 + handoff |
-| **`OVERNIGHT_GOAL_STRICT.md` (this)** | Forbids partial; requires ≥80 fun matrix, G2–G6, multi-agent review, live/compensated play |
+| **`OVERNIGHT_GOAL_STRICT.md` (this)** | Forbids partial; requires G2–G6, independent review with no critical/major defect, and live/compensated play |
 
 Point the harness/goal at **this file** when you do not want early stop.

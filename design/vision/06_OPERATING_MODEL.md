@@ -33,29 +33,30 @@ When ambiguous: **choose the more playable, more beautiful, more original** opti
 | **Video generation** | Motion references (bank, cruise streak, gate transit), short feel clips for review |
 | **Blender MCP** | Hero meshes, stations, landmarks, hard-surface iteration |
 | **Subagents** | Parallel: explore code, plan, review fun, run checks, draft assets |
-| **Weighted scoring sheet** | Per iteration (see §4) |
+| **Structured critique matrix** | Name visible/player-facing defects and compare evidence (see §4) |
 | **Automated tests** | Expand when a bug class recurs; never sole acceptance |
 
 Generated art is **authoring input** until wired through the real pipeline (`release` → manifest → runtime map → `check:assets:live`). Reference-only dumps in `assets/concept/` do not count as shipped.
 
 ---
 
-## 3. Quality ritual (10–20 iterations)
+## 3. Outcome-driven quality loop
 
-Borrowed from what already worked on this project: **screenshot → score → fix worst → reshoot**.
+Use **capture → critique → fix the largest justified defect → recapture**.
 
 ### For any visual surface (ship, station, UI, VFX, portrait)
 
 1. **Baseline shot** (`.devshots/vision/<wave>/<thing>-00-baseline.png`)  
 2. List **sore thumbs** (anything a player would mock in 2 seconds)  
-3. Iterate **10–20 times** (or until composite score ≥ target)  
-4. Each iteration: change ≤ few levers; reshoot; **rescore**  
-5. Stop only when **no dimension is in the “sore” band** (see matrix)
+3. Make the largest coherent improvement supported by the evidence.
+4. Recapture in comparable framing and record what improved, regressed, or remains.
+5. Stop only when objective defects are closed and independent in-context review accepts the result;
+   iteration count and self-score are not evidence.
 
 ### For flight / massline / combat feel
 
 1. Scripted or manual clip (boost turn, latch flyby, undock, dock)  
-2. Score piloting dimensions (see matrix)  
+2. Review piloting dimensions (see matrix) and name concrete failure evidence
 3. Tune constants / assists / visuals  
 4. Re-capture; do not rely on headless telemetry alone  
 
@@ -65,13 +66,16 @@ Borrowed from what already worked on this project: **screenshot → score → fi
 2. Fix fairness/density/intention  
 3. Re-play same route  
 
-**Transcripts are not proof. Shots + scores + play notes are.**
+**Transcripts and self-scores are not proof. Current captures, public-route play notes, checks, and
+independent review are.**
 
 ---
 
-## 4. Internal weighted metric (use every quality pass)
+## 4. Critique matrices
 
-Score each dimension **0–10**. Weighted total = Σ(score × weight) / 10 → **0–100**.
+Use these dimensions to prevent blind spots. The former weights are retained only as relative
+attention hints; do not compute a composite, threshold, or DONE claim from them. Acceptance is a
+reasoned defect verdict against current captures and public play.
 
 ### 4.1 Visual / asset surface
 
@@ -86,7 +90,8 @@ Score each dimension **0–10**. Weighted total = Σ(score × weight) / 10 → *
 | Performance honesty | 10 | 30fps crater for one prop | Within budget |
 | Pipeline correctness | 10 | Fallback procedural | Authored path wired |
 
-**Target:** ≥ **82** and **no dimension ≤ 4**.
+**Acceptance:** no unresolved critical failure in silhouette, identity, materials, scale, framing,
+runtime stability, or player-camera readability.
 
 ### 4.2 Flight / massline / combat feel
 
@@ -100,21 +105,23 @@ Score each dimension **0–10**. Weighted total = Σ(score × weight) / 10 → *
 | Feedback juice | 10 | Whisper hits | Hits/kills/latch answer |
 | Discoverability | 10 | Hidden autopilot | Modes obvious |
 
-**Target:** ≥ **80** and **no dimension ≤ 4**. Controllability or fairness ≤ 4 = **wave fail**.
+**Acceptance:** controllability, fairness, enemy intention, feedback, and discoverability survive an
+unassisted public route without a critical defect.
 
 ### 4.3 UI / strategy front
 
 | Dimension | W | 0–3 sore | 8–10 excellent |
 |---|---:|---|---|
 | Hierarchy / scannability | 20 | Wall of text | Numbers first, 5 s parse |
-| Beauty / glass system | 15 | Debug overlay | Coherent liquid glass |
+| Beauty / polish | 15 | Debug overlay | Coherent clean chrome |
 | Density (good kind) | 15 | Empty or spam | Data-rich, quiet labels |
 | Mode / control clarity | 15 | Mystery keys | Always know mode |
 | Consistency | 10 | Each screen different OS | One kit |
 | A11y / contrast | 10 | Unreadable | Passes contrast |
 | No nonsense copy | 15 | Tutorial essays | Short professional |
 
-**Target:** ≥ **82**, nonsense-copy ≥ **7**.
+**Acceptance:** the supported resolutions and inputs remain clear, accessible, coherent, and free of
+duplicated or obstructive instruction.
 
 ### 4.4 World / density
 
@@ -179,7 +186,7 @@ Agents should **add** to this list when research finds another universal (docume
 | No copy-paste faction pastiche without twist | Own factions, voice, icons |
 | Signature verb is ours | Massline, not “just another laser trader” |
 | Portraits | Semi-real cinematic headshots, not cartoony stickers |
-| UI | Liquid glass SpaceFace, not default Three.js debug |
+| UI | Clean data-dense SpaceFace chrome, not default Three.js debug |
 
 Rename work is a **real backlog item** (data ids may stay for saves with display-name remap + migration notes).
 
@@ -192,7 +199,7 @@ When a sore thumb is reported or seen (e.g. **floating white emissive box on sta
 1. **Reproduce** with screenshot (label the mesh if possible)  
 2. **File in** `01_CURRENT_STATE.md` under PLAY defects  
 3. **Priority ≥ feature work** in the same surface (ship visual fix before new greebles)  
-4. Fix → reshoot → score “No sore thumbs” ≥ 8  
+4. Fix → reshoot → obtain independent confirmation that the defect is gone without a worse regression
 
 Likely Kestrel candidates (code-native hero): high-intensity `sensor` emissive materials on boxes/slits/nav lights (`kestrelHero.js` — `mat.sensor` intensity ~3.2 on box meshes). Treat as **W1/W4 visual hotfix** lane.
 
@@ -205,11 +212,13 @@ Likely Kestrel candidates (code-native hero): high-intensity `sensor` emissive m
 | Unit/sim checks | Regress determinism, latch math, AI envelopes |
 | Browser probes | Boot, assets live, visual stability |
 | **Play rubric** | Fun/lame judgment (required) |
-| **Score sheet** | Weighted metrics (§4) |
+| **Critique record** | Named defects, comparison evidence, and independent verdict (§4) |
 
 If a class of bug escapes twice, **add a check**. If a check is green but play is lame, **the wave is not done**.
 
-Subagent **reviewer** role: after implementation, second agent scores §4 matrices from shots/clips and lists sore thumbs. Implementer must address ≤4 scores before DONE.
+Subagent **reviewer** role: after implementation, a second agent uses §4 to list concrete defects
+from shots/clips and gives a reasoned accept/reject verdict. The implementer addresses every critical
+or major defect before DONE.
 
 ---
 
@@ -221,7 +230,7 @@ Subagent **reviewer** role: after implementation, second agent scores §4 matric
 | Plan | Multi-file waves |
 | Implement | Single wave row |
 | Art pass | Image gen portraits/textures + Blender |
-| Review / fun judge | Score matrices, reject lame |
+| Review / fun judge | Use critique matrices, reject concrete lame/unreadable results |
 | Check runner | Parallel `npm run check:*` |
 
 Parallelize art + code when file ownership doesn’t collide. Blender lock remains exclusive.
@@ -233,7 +242,7 @@ Parallelize art + code when file ownership doesn’t collide. Blender lock remai
 - [ ] Constitution-aligned  
 - [ ] Wave deliverables implemented  
 - [ ] Relevant automated checks green (or debt named)  
-- [ ] Quality ritual complete; composite score ≥ target; **no dim ≤ 4**  
+- [ ] Quality loop complete; independent review has no unresolved critical/major defect
 - [ ] Play notes: fun ≥ lame for the wave’s fantasy  
 - [ ] `.devshots/vision/...` evidence  
 - [ ] `01_CURRENT_STATE.md` updated honestly  

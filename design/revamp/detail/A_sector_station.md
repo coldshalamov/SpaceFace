@@ -70,10 +70,11 @@
   readability + comms cue, NOT a new hostility source).
 - **newFiles:** `src/data/stationBubbles.js` (pure: `bubblesFor(station)` → `{traffic, patrol, docking, noFire}`
   radii + colors, derived from `dockRadius`·multipliers + `size`), `src/render/stationBubbleRings.js` (guarded
-  ring meshes, ≤4 rings/station, faction-tinted).
+  ring meshes with count/detail derived from clarity and measured scene cost, faction-readable).
 - **noTouch:** `world.js`, `combat.js`, `uiRoot.js`, `render` root, `scanner.js`.
-- **budget:** spawn:none · voice:`warn` (one bark on first weapon-draw inside no-fire ring, decays) · draw:+4 rings
-  per *visible* station (LOD: rings fade beyond N; only the docked-target station renders all four).
+- **performance profile:** spawn:none · voice:`warn` (one bark on first weapon-draw inside no-fire
+  ring, decays) · initial implementation used four rings per visible station with distance LOD; rederive
+  the representation from current readability and profile evidence rather than treating four as law.
 - **rng:** none / pure geometry (radii are deterministic functions of `dockRadius`).
 - **acceptance:** `bubblesFor` returns four monotonic radii for a size-L station (`noFire < docking < patrol <
   traffic`); a headless test pins the radii; approaching Helios Station shows four tinted rings; drawing a weapon

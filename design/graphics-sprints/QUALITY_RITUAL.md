@@ -1,93 +1,70 @@
-# Quality Ritual — Screenshot-Driven Iteration
+# Quality Evidence Ritual — Screenshot-Driven Critique
 
-**Mandatory for all Thread A, B, and E work.** Thread C and D use the verification cycles in their thread docs unless claiming a visual change.
+This is an evidence template for Threads A, B, and E and for any visible Thread D change. It is **not**
+count-based acceptance. A fixed number of renders, iterations, deficiencies, named techniques, or self-score
+points cannot prove an asset is good.
 
-## Iteration floors (non-negotiable)
+## Review views
 
-| Asset class | Min iterations | Examples |
-|-------------|----------------|----------|
-| **Hero / complex 3D** | **20** | Hulls, capitals, faction stations, wholeships, landmarks |
-| **Standard part 3D** | **20** | Engines, weapons, cockpits, fins, greebles |
-| **Small prop / rock** | **10** | Nav buoys, debris chunks, simple asteroids |
-| **Code / wiring** | **10 verify cycles** | `check:*` green, break-fix-restore once |
-| **Integrate pass** | **1 full gate** | `INTEGRATION_GATE.md` checklist |
+Capture the smallest set of views needed to judge the asset honestly. Include:
 
-An iteration = **render → assess → change → render again**. Skipping assessment does not count.
+- a fully framed clay or neutral-material view that exposes silhouette and form hierarchy;
+- a lit game-camera view that shows scale, material separation, and emissive restraint;
+- a close/detail view when surface craft or functional detail matters;
+- a current player-route screenshot showing the authored asset in its real scene, lighting, tint, and UI
+  context;
+- comparison views when assessing a revision, a reference target, or a claimed regression.
 
-## Camera framing law (SpaceFace 60° chase)
+Ships and places must be legible from the elevated chase/game camera. Add front, side, top, nozzle, muzzle,
+docking, or extreme-distance views only when they answer a real review question. Cropped images are valid for
+detail review but never substitute for a fully framed context view.
 
-Game camera is ~60° elevated rear chase. Every asset must be shot from angles that match in-game readability:
+## Critique loop
 
-| Shot ID | Purpose | Distance |
-|---------|---------|----------|
-| `clay_34_full` | Silhouette read at game scale | `dist = 1.05 × max(bounds)` for parts; `1.15×` for stations |
-| `clay_front` | Nose / forward identity | same dist |
-| `clay_side` | Profile width | same dist |
-| `clay_top` | Planform (ships/places) | same dist |
-| `lit_34_full` | PBR + emissive in HDRI | same dist |
-| `lit_close_detail` | Macro wear, bevels, decals | `0.45×` dist on hero surface |
-| `lit_nozzle` / `lit_muzzle` | Engine/weapon emissive | `0.35×` on exhaust/barrel |
+1. Inspect the current source, export, manifest/runtime route, and prior evidence.
+2. Render representative neutral, lit, and in-game views.
+3. Write the concrete visible gaps that matter most. Useful categories include silhouette; macro/meso/micro
+   hierarchy; functional construction; material response; wear and story; faction identity; scale truth;
+   lighting readability; animation/readiness; and fit with the surrounding scene.
+4. Choose techniques because they address those gaps. `professional-techniques.md` is a menu and vocabulary,
+   not a mandatory recipe.
+5. Make the largest coherent improvement justified by the critique, then render again.
+6. Repeat while meaningful gaps remain. Stop when independent review and technical evidence support the
+   outcome, not when a counter reaches a target.
 
-**If any shot crops the subject:** redo at wider distance before counting the iteration.
+Keep `deficiency.md` or an equivalent review note concise and current. An optional `iteration_ledger.json`
+may record chronology, but its count has no acceptance meaning.
 
-## Per-iteration workflow
+## Independent visual judgment
 
-1. **Render** clay + lit set (MCP viewport or `finalize_part.mjs` path).
-2. **Save** to `assets/ships/parts/revamp-evidence/<id>/renders/` with date + iter number.
-3. **Assess** against rubric below — write ≥5 specific deficiencies (≥8 for hero).
-4. **Name techniques** from `.grok/skills/spaceface-blender-pipeline/references/professional-techniques.md` you will apply next.
-5. **Apply** one focused pass (modeling OR surfacing OR life — not all three in one iter).
-6. **Increment** `iteration_ledger.json` in evidence folder:
+The final reviewer should judge the saved evidence and current player route, not merely trust the authoring
+transcript. There is no numeric pass bar. The reviewer should answer:
 
-```json
-{ "iter": 7, "pass": "surfacing", "deficiencies_addressed": ["DET_soot_vent", "trim_sheet_wear"], "shots": ["2026-07-08_engine_vector_iter7_lit_34_full.png"] }
-```
+- Does the subject read immediately at gameplay distance and remain distinct from adjacent roles/factions?
+- Does the construction look intentional and functional rather than primitive, noisy, or generically
+  procedural?
+- Do materials respond convincingly under the actual renderer and lighting, including shadow and motion?
+- Is detail distributed by visual importance instead of evenly sprayed across the surface?
+- Does wear, signage, color, and asymmetry tell this asset's story without becoming a universal recipe?
+- Is scale, orientation, mount placement, animation, and surrounding composition believable?
+- Is the live route using the authored result rather than a fallback?
+- Did performance remain healthy through structural optimization rather than visible quality cuts?
 
-## Deficiency rubric (score each 1–5 every iter)
+## Technical evidence
 
-| Criterion | Fail signals |
-|-----------|--------------|
-| **Silhouette** | Reads as blob at `clay_34_full`; confusable with another part class |
-| **Macro/meso/micro** | Flat slabs; no panel steps; greeble noise without hierarchy |
-| **Bevel language** | Razor edges; ngons on hero curves; bevel seg < 2 on hard edges |
-| **Material zones** | Single gray; accent/hull/mechanical not distinguishable in lit pass |
-| **Wear/story** | Factory-fresh on Pit/Belt assets; no decals/stencil/soot per `needed-assets.md` role |
-| **Scale truth** | Bounds wrong vs manifest `dimensionsM`; mount origin lies |
-| **Lighting readability** | Emissive blows out; no form in shadow; bloom soup |
+The evidence bundle should contain the current critique, representative renders, exporter/finalizer output,
+the relevant check results, and paths to player-route captures. Preserve provenance and license records where
+external source material is used.
 
-**Pass bar for export:** no criterion below **4** on hero surfaces; silhouette and scale truth must be **5**.
+Typical handoff shape:
 
-## Reference comparison (every iter ≥3)
-
-Load side-by-side:
-
-- Same-class concept from `assets/concept/` or bible `assets/bible/B-002_ship_materials.jpg`
-- Previous iter render
-- Optional: Eve / user ref (mental bar — "would this pass a 2026 ArtStation WIP thread?")
-
-## Forbidden "done" claims
-
-- "Loads in Blender" — not done
-- "Exported GLB" — not done (needs release + checks)
-- "Looks fine to me" without saved screenshots — not done
-- One turntable only — not done (full shot set required)
-- Iteration count < floor — not done
-
-## Evidence bundle (required at handoff)
-
-```
+```text
 revamp-evidence/<id>/
-  deficiency.md          # before/after narrative
-  iteration_ledger.json  # all iters counted
-  renders/               # full shot sets per iter (keep last 3 iters minimum)
-  finalize.log           # exporter output
+  deficiency.md
+  iteration_ledger.json     # optional chronology, never a quota
+  renders/                  # representative current and comparison views
+  finalize.log              # exporter output
 ```
 
-## Thread D visual claims
-
-If Thread D changes anything visible, capture:
-
-- `.devshots/<thread-id>/<change>-wide.png`
-- `.devshots/<thread-id>/<change>-close.png`
-
-Run `npm run check:visual-stability` before claiming done.
+Run `npm run check:visual-stability` for visible runtime changes and the asset checks selected by
+`INTEGRATION_GATE.md`. Transcripts alone are not proof.

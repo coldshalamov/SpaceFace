@@ -25,18 +25,18 @@ You are the sole overnight developer for SpaceFace (repo root). Execute the **fu
 ### Product law (short)
 - Playable first, easy piloting, fair combat, massline toy + Flyby Focus  
 - Freelancer-like open chart, dense places, seamless-feeling gates  
-- Liquid-glass strategy UI = **data density**, not prose walls  
+- Data-dense strategy UI = **data density**, not prose walls or a copied SaaS/glass template
 - Original identity (rename Freelancer-clone ship names; cinematic portraits)  
 - No quality cliffs / sore thumbs (e.g. floating white box on starter hull)  
 - Building/empire only after playable core  
-- Green checks alone ≠ done; fun judgment + weighted scores required  
+- Green checks alone ≠ done; independent fun/readability judgment and current evidence required
 - Open-ended: deduce peer-game must-haves and implement; harvest unfinished **worth-doing** repo work; skip shitty/check-theater work  
 
 ### What you must produce
 1. `design/vision/SESSION_PLAN.md` — triage keep/skip + ordered work (Phase A)  
 2. Implementation across pipeline B1→… as far as quality allows  
 3. Tests expanded where bug classes recur  
-4. `.devshots/vision/` evidence + score sheets  
+4. `.devshots/vision/` comparison evidence + defect/review notes
 5. Docs sync (`01_CURRENT_STATE`, `04_ASSET_TRUTH`, banners on stale docs)  
 6. `design/vision/WAKE_REPORT.md` — mandatory final handoff (pipeline §5 D3)  
 
@@ -44,7 +44,7 @@ You are the sole overnight developer for SpaceFace (repo root). Execute the **fu
 - Follow `07_AUTONOMOUS_PIPELINE.md` phases A→B→C→D  
 - Use subagents for explore/review/checks/art; Blender lock exclusive  
 - Use image gen / video gen / screenshots for assets, portraits, mockups, motion refs  
-- Quality ritual: iterate 10–20 on visual/feel surfaces; score per `06_OPERATING_MODEL`  
+- Quality loop: capture, critique, fix evidenced defects, recapture, and seek independent review
 - Prefer fixing play (B1) over expanding content  
 - Prefer making existing directors/economy/pirate systems **felt** over new backend spam  
 - Never `git reset --hard` / stash / clean that risks the working tree  
@@ -53,7 +53,7 @@ You are the sole overnight developer for SpaceFace (repo root). Execute the **fu
 
 ### Success priority if time-limited
 1. Phase A complete  
-2. B1 playable core (feel matrix ≥80, deaths down, massline latch, flight not broken, sore thumb fixed)  
+2. B1 playable core (independent feel review accepted, deaths down, massline latch, flight not broken, sore thumb fixed)
 3. Phase D WAKE_REPORT honest  
 4. B2 density  
 5. Everything else  

@@ -8,12 +8,13 @@ Ground truth: parts are authored in Blender → `assets/ships/parts/` (authoring
 pipeline → `assets/ships/release/parts/` (runtime truth; browser + desktop identical).
 `parts_manifest.json` / `release_manifest.json` track them; a Blender MCP bridge is available for
 scripted authoring; the dev→release hot-swap seam is proven (zero-refactor part replacement).
-KNOWN FAILURE: `release/parts/wholeships/{kestrel,pelican,wasp}.glb` are declared + manifest-covered
-but the live `assetLoader` REJECTS them — their metadata and declared runtime inputs do not satisfy
-the current loader contract, producing modular fallback (`npm run check:assets:live` red). Historical
-map/chamfer/profile assertions are not independent visual-quality law.
-Production coordination via `assets/ships/release.__lock/` + `release.__building/`. Audio is 100%
-procedural (audioSystem.js + synth + audioRecipes patterns) — a shipping advantage, keep it.
+Historical whole-ship candidates did not all satisfy the loader or visual contract. Current status
+is per exact asset ID: Kestrel and Wasp have production whole-ship routes; Pelican and other
+candidates must be checked against the live manifests, classification records, and normal-route
+evidence. Historical map/chamfer/profile assertions are not independent visual-quality law.
+Production coordination via `assets/ships/release.__lock/` + `release.__building/`. Audio uses the
+Web Audio mix/event architecture and may combine procedural synthesis with licensed authored
+sources when that produces the strongest identity and runtime result.
 
 ---
 
@@ -165,15 +166,15 @@ ten sector variants, zero extra generation.
 
 ---
 
-## SPEC3-39 — Procedural audio expansion
-**One-line pitch:** extend the zero-asset synth identity to every new verb — tension you can hear,
+## SPEC3-39 — Audio identity expansion
+**One-line pitch:** extend the audio identity to every new verb — tension you can hear,
 sectors you can identify blind, and a mix that respects the one-voice law.
 
 ### 1. Why
 Every SPEC3 thread ordered cues (tether hum, vent chime, siege stingers, ticker blips, vein
-strikes). The procedural approach (audioSystem.js + audioRecipes patterns) is a shipping advantage —
-and the semantic-cue groundwork (audio identity check green) is laid. What's missing is the
-catalogue + the mixing law.
+strikes). The procedural system is strong for continuous parameterized state, and the semantic-cue
+groundwork is laid. Authored recordings may provide impact, material, ambience, music, or voice when
+they outperform synthesis. What's missing is the catalogue, source/provenance policy, and mixing law.
 
 ### 2. The design
 - **New recipe families:** (a) *tension drones* — tether hum (pitch ∝ tension 80→220 Hz, breaks
@@ -208,8 +209,9 @@ bus.on('tether:cut', ({ slingshot }) => { hum.stop(); if (slingshot) recipes.whi
 ```
 
 ### 5–6. Assets / deps
-Zero files (the whole point). No new deps (pure WebAudio; howler et al. explicitly rejected —
-the procedural stack is the identity).
+Use the smallest maintainable mix of procedural recipes and licensed authored sources that meets the
+bar. New files or dependencies require provenance, bundle/memory/latency, accessibility, and
+maintenance evidence; neither presence nor absence of dependencies is a quality result by itself.
 
 ### 7. Build plan
 1. Bus/ducking graph + `scripts/check-audio-mix.mjs` (bus routing, duck timing, voice caps).
@@ -218,8 +220,9 @@ the procedural stack is the identity).
 4. Sector pads + palette-class mapping; extend `check-audio-identity.mjs`.
 
 ### 8. Anti-patterns
-Sample files "just this once"; retriggered one-shots for continuous states; cue spam (the 4 s law);
-music that swells at rest; cues without visual twins; recipes outside audioRecipes patterns.
+Unlicensed or untracked sources; retriggered one-shots for continuous states; cue spam that masks
+priority; cues without accessible visual twins; bypassing the common bus/event architecture; judging
+audio quality by whether it is synthesized or sampled rather than by the in-game mix.
 
 ### 9. Ambition ceiling
 Doppler-lite on world signals (convoy horns pitch-bend by closing speed) — spatial storytelling

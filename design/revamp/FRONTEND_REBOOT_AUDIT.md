@@ -335,7 +335,7 @@ H  Meta shell     mainMenu.js, newGame.js, pause.js, settings.js, saveLoad.js, h
 
 | From | Into | Rationale |
 |---|---|---|
-| `commandBar.js` vitals + economy | Bottom-left schematic cluster (4th+ micro-bars) | Restores three-anchor law |
+| `commandBar.js` vitals + economy | Bottom-left schematic cluster (4th+ micro-bars) | Reduces duplicate vitals in this audited layout |
 | HUD contextual cargo/credits chips | Drop if command bar kept — **pick one** | Duplication |
 | Mission tracker (top-left) + objective (top-right) | Single tracked-mission chip in bottom-center **or** arbiter `objective` tier | One mission voice |
 | `alerts.js` + `comms` live feed + toasts + ticker | `attentionArbiter.js` top-center line + optional card | SPEC3-F10 mechanical one-voice |

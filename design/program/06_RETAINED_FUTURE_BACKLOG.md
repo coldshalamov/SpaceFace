@@ -1,0 +1,133 @@
+# Retained Future Backlog
+
+This is the pickup index for valuable SpaceFace scope that is **not currently admitted** to the
+Alpha + Depth execution backlog. It prevents good ideas from disappearing without allowing every
+old plan, brainstorm, or asset list to become a second roadmap.
+
+The committed work queue remains [`02_REMAINING_WORK.md`](02_REMAINING_WORK.md). An item in this
+file is **not a promise, milestone requirement, or completion claim** until the lead/status
+integrator admits a concrete slice to that queue with dependencies, an owner, and player-facing
+acceptance. If a row below points to an existing Alpha/Depth row, execute it there; do not create a
+duplicate task here.
+
+## Retention and admission rules
+
+| Maturity | Meaning |
+|---|---|
+| **FUTURE** | Valuable product intent with no accepted default-route implementation yet. |
+| **PARTIAL** | Some foundation or implementation exists, but the source plan's player outcome is not accepted. |
+| **REFERENCE** | Useful canon, research, quality intent, or idea quarry; not independently dispatchable. |
+
+Source documents contribute **outcomes and hard-won context**, not automatic law. Their dated
+status claims, file paths, palette recipes, iteration quotas, triangle/byte budgets, feature caps,
+and implementation recipes must be checked against the live architecture, profiler, player route,
+and current quality bar when a slice is admitted. In particular:
+
+- no aesthetic token or asset budget is binding merely because an old plan printed a number;
+- performance work preserves visual quality and removes invisible/duplicated work first;
+- `WRITTEN`, `DONE`, a green narrow check, an exported asset, or a transcript never proves the
+  player-facing outcome;
+- activation requires a small coherent outcome, current owning seams, conflict/lease checks, a
+  normal public route, and the relevant deterministic/performance/visual acceptance;
+- when an admitted slice is complete, update the source ledger and `design/program/` in the same
+  integration pass. Keep the stable ID below as provenance.
+
+## Already represented by the active program
+
+These families are retained through the existing queue and are intentionally not restated here:
+
+| Stable ID | Source | Maturity | Admission / activation rule | Next acceptance outcome |
+|---|---|---|---|---|
+| `ACTIVE-ALPHA` | [`ALPHA_PROGRAM.md`](../vision/ALPHA_PROGRAM.md) | PARTIAL | Work only through the corresponding M0–M6 row in [`02_REMAINING_WORK.md`](02_REMAINING_WORK.md). | The row's named public route, checks, evidence, and recoverable integration. |
+| `ACTIVE-DEPTH` | [`depth-program/BUILD_PLAN.md`](../depth-program/BUILD_PLAN.md) | PARTIAL | Work only through the corresponding Depth chunk in [`02_REMAINING_WORK.md`](02_REMAINING_WORK.md); the detailed ledger is evidence, not another roll-up. | The chunk's natural player route, full regression floor, accepted media where visual, and committed recovery point. |
+
+## SPEC2 — polish and release intent
+
+| Stable ID | Source | Maturity | Admission / activation rule | Next acceptance outcome |
+|---|---|---|---|---|
+| `S2-00-TASTE` | [`00_MASTER_TASTE.md`](../spec2/00_MASTER_TASTE.md) | REFERENCE | Consult for pillars, non-diegetic HUD intent, and failure modes only; never activate its visual tokens as a house style. | A newly admitted surface is judged against current player evidence for hierarchy, coherence, originality, and usability. |
+| `S2-01-MASSLINE` | [`01_MASSLINE_FEEL.md`](../spec2/01_MASSLINE_FEEL.md) | PARTIAL | Use existing `M1-TETHER`; admit a follow-on only for a demonstrated feel gap not covered by that row. | Natural starter-ship tether play is durable, legible, survivable, deterministic, and fun. |
+| `S2-02-FLIGHT-CAMERA` | [`02_FLIGHT_CAMERA_JUICE.md`](../spec2/02_FLIGHT_CAMERA_JUICE.md) | PARTIAL | Use `M1-FOCUS` and `M1-CAMERA`; re-resolve any legacy file paths before dispatch. | Held-out flybys, two-ship framing, travel readability, reduced-motion behavior, and clean escape/counterplay pass. |
+| `S2-03-FIRST-HOUR` | [`03_FIRST_HOUR.md`](../spec2/03_FIRST_HOUR.md) | PARTIAL | Use `M3-CAREERS`, `M3-NAV-HUD`, and the strict M1 route before admitting extra onboarding work. | A new player completes the opening without external explanation, instruction clutter, or surprise spawn death. |
+| `S2-04-WORLD-ALIVE` | [`04_WORLD_ALIVE.md`](../spec2/04_WORLD_ALIVE.md) | PARTIAL | Use `M4-ECOLOGY`, `M4-FAMILIES`, and Depth `E1`; admit only uncovered encounter/traffic shapes after those rows are revalidated. | Five minutes of ordinary play produces readable, motivated activity with jurisdiction and counterplay. |
+| `S2-05-LONG-LADDER` | [`05_ECONOMY_PROGRESSION.md`](../spec2/05_ECONOMY_PROGRESSION.md) | FUTURE | After the three M3 career routes and market loop are accepted, admit one measured progression slice at a time; tuning must come from play telemetry. | Price knowledge matters, the mining/trade loop closes, and the 30-hour ladder has no grind wall or economy exploit. |
+| `S2-06-UI` | [`06_UI_IDENTITY.md`](../spec2/06_UI_IDENTITY.md) | PARTIAL | Use `M1-HUD` and `M3-NAV-HUD`; protect the contact roster and station UI. Admit only a named usability gap with before evidence. | One objective, one action, one threat; target/map information is immediately readable at supported resolutions. |
+| `S2-07-AUDIO` | [`07_AUDIO_IDENTITY.md`](../spec2/07_AUDIO_IDENTITY.md) | PARTIAL | Admit after a current mix/voice-cap audit identifies an audible default-route gap; preserve the five user-facing sliders and deterministic cue triggers. | Engine, combat, world, focus/bullet-time, and UI cues remain distinct under load, captioned where critical, without clipping or voice starvation. |
+| `S2-08-RELEASE` | [`08_RELEASE_READINESS.md`](../spec2/08_RELEASE_READINESS.md) | PARTIAL | Execute through `M6-PERFORMANCE` and `M6-RELEASE`; admit post-Alpha 1.0 content floors only after the release candidate is stable. | Browser/desktop parity, smooth target-hardware play, accessibility, migration, soak, and store-ready capture are accepted. |
+
+## SPEC3 — ambitious expansion threads
+
+| Stable ID | Source | Maturity | Admission / activation rule | Next acceptance outcome |
+|---|---|---|---|---|
+| `S3-F1-ECONOMY` | [`SPEC3-F1-economy-trading.md`](../spec3/SPEC3-F1-economy-trading.md) | PARTIAL | Admit after M3 career/market evidence; choose one legible economy consequence, not a broad rewrite. | Supply shocks, price intelligence, contracts, black markets, and economic warfare have visible causes and player agency. |
+| `S3-F2-MINING` | [`SPEC3-F2-mining-resources.md`](../spec3/SPEC3-F2-mining-resources.md) | PARTIAL | Admit after the starter tether/mining route is accepted and telemetry identifies the next mastery gap. | Prospecting, extraction, refining, and production form a readable risk/reward craft with distinct resources and tools. |
+| `S3-F3-FLIGHT` | [`SPEC3-F3-flight-physics-feel.md`](../spec3/SPEC3-F3-flight-physics-feel.md) | PARTIAL | First close M1 Focus/camera/tether; translate all work to `flightV3.js` and `src/core/flight/`, not cited legacy seams. | Helm assist, pursuit, travel, momentum verbs, and camera feel work together without destroying control or determinism. |
+| `S3-F4-COMBAT` | [`SPEC3-F4-combat-weapons-ai.md`](../spec3/SPEC3-F4-combat-weapons-ai.md) | PARTIAL | First close `M1-DOCTRINES` and M4 ecology; treat the encounter director as an existing system, not a missing one. | Weapons, defenses, doctrines, bosses, motives, and set pieces create readable escalating combat with recovery. |
+| `S3-F5-OUTFITTING` | [`SPEC3-F5-ships-outfitting-progression.md`](../spec3/SPEC3-F5-ships-outfitting-progression.md) | PARTIAL | After M3 truthful previews and career progression are accepted, admit one build-identity slice with save/migration coverage. | Mass, power, heat, mounts, modules, crafting, crew, and wingmen create distinct viable builds visible on the ship. |
+| `S3-F5A-POWER` | [`SPEC3-F5a-active-power-routing.md`](../spec3/SPEC3-F5a-active-power-routing.md) | FUTURE | Admit only after the underlying power model and station engineering route are truthful; station UI ownership requires explicit coordination. | Station-only power routing creates understandable tradeoffs, persists safely, and is operable by mouse, keyboard, and controller. |
+| `S3-F6-BASES` | [`SPEC3-F6-bases-defense-territory.md`](../spec3/SPEC3-F6-bases-defense-territory.md) | PARTIAL | Use `M5-OWNERSHIP` first; admit tower-defense/war expansion only after three specializations work naturally. | Claims grow into visible productive bases whose defense and territory effects are legible in flight, economy, and map. |
+| `S3-F7-UNIVERSE` | [`SPEC3-F7-living-universe.md`](../spec3/SPEC3-F7-living-universe.md) | PARTIAL | Use M4 ecology, M5 story, and relevant Depth chunks; admit one missing world/exploration shape after natural-route audit. | Traffic, sectors, anomalies, exploration, and narrative consequences form a coherent persistent universe. |
+| `S3-F8-GRAPHICS` | [`SPEC3-F8-graphics-visuals.md`](../spec3/SPEC3-F8-graphics-visuals.md) | PARTIAL | Use M1/M4/M6 visual and performance rows; profile before choosing implementation and never reduce default quality as the fix. | Stable depth-rich rendering, differentiated VFX/sectors, and a clean readable HUD hold the target frame budget. |
+| `S3-F9-ASSET-PIPELINE` | [`SPEC3-F9-asset-pipeline.md`](../spec3/SPEC3-F9-asset-pipeline.md) | PARTIAL | Admit pipeline changes only for a measured production/acceptance failure; preserve licenses, provenance, source recovery, LOD, and runtime reachability. | Blender, generated textures, and audio reliably produce optimized, characterful, independently accepted game assets. |
+| `S3-F10-UX-META` | [`SPEC3-F10-ux-meta-tastemaster.md`](../spec3/SPEC3-F10-ux-meta-tastemaster.md) | PARTIAL | Use M1 HUD, M3 navigation, and M6 release first; map conceptual names to current implementations such as `voiceArbiter`. | Attention is serialized, onboarding is comprehensible, saves/telemetry are trustworthy, and the capstone review finds no incoherent surface. |
+
+## Revamp — outcome packets and detail quarry
+
+The revamp suite is indexed by [`revamp/README.md`](../revamp/README.md). Its old check ledger is not
+global status and its historical file/ownership claims must be rechecked.
+
+| Stable ID | Source | Maturity | Admission / activation rule | Next acceptance outcome |
+|---|---|---|---|---|
+| `RV-WORLD-ECOLOGY` | [`BP-01`](../revamp/BP-01_WORLD_ALIVE.md), [`BP-11`](../revamp/BP-11_SECTOR_ATMOSPHERE.md), [`BP-13`](../revamp/BP-13_PIRATE_ECOLOGY.md), [`detail/A`](../revamp/detail/A_sector_station.md), [`detail/B`](../revamp/detail/B_traffic_pirates.md) | PARTIAL | Use M4 ecology/families and Depth encounters first; admit an uncovered motivated-world slice only after a sit-still/natural-route audit. | Stations, sectors, traffic, pirates, patrols, rescue, and named actors visibly behave for reasons. |
+| `RV-COMBAT-FLIGHT` | [`BP-02`](../revamp/BP-02_COMBAT_CEILING.md), [`BP-07`](../revamp/BP-07_FLIGHT_TRAVERSAL.md), [`detail/C`](../revamp/detail/C_combat_encounters.md), [`detail/D`](../revamp/detail/D_flight_ships_mining.md) | PARTIAL | Close M1 mechanics/doctrines first; admit only a distinct remaining combat or traversal verb against live V3/tactical seams. | Skilled flight, readable defenses, tactics, travel lanes, mining, and tether verbs create controllable mastery. |
+| `RV-MAP` | [`BP-03_ONE_MAP.md`](../revamp/BP-03_ONE_MAP.md) | PARTIAL | Use M3 navigation and world-identity navigation; activation requires a current dual-map/parity audit. | One truthful zoomable map answers destination, price, ownership, danger, discovery, and route questions. |
+| `RV-ECONOMY` | [`BP-04`](../revamp/BP-04_ECONOMY_VISIBLE.md), [`BP-12`](../revamp/BP-12_CAUSAL_ECONOMY.md), [`detail/E`](../revamp/detail/E_salvage_economy_contracts.md) | PARTIAL | Admit after M3 career/market routes; choose one cause-to-consequence loop with telemetry. | Trade, salvage, contracts, news, forecasts, and supply chains expose their causes and let players profit or intervene. |
+| `RV-STORY` | [`BP-05_STORY_WIRE.md`](../revamp/BP-05_STORY_WIRE.md), [`detail/G`](../revamp/detail/G_story_evidence_map.md) | PARTIAL | Use M5 story and the canonical worldbuilding map; admit only a canon-approved missing embodiment. | B0–B7, characters, choices, paperwork, and post-ending consequences remain coherent across saves and public routes. |
+| `RV-BASES` | [`BP-06_BASES_TERRITORY.md`](../revamp/BP-06_BASES_TERRITORY.md) | PARTIAL | Use M5 ownership first; admit expansion after three specializations are visible and stable. | Player logistics, construction, upkeep, defense, and territorial change are materially present in world and economy. |
+| `RV-VISUAL-ASSETS` | [`BP-08_VISUAL_ASSET_SPEC.md`](../revamp/BP-08_VISUAL_ASSET_SPEC.md) | PARTIAL | Use current visual rows and asset classifications; treat its coverage as input, never its budgets or dated finish notes as ceilings/proof. | Faction-distinct, story-specific assets are optimized, reachable, classified, and strong in normal gameplay framing. |
+| `RV-OUTFITTING` | [`BP-09_SHIPS_FITTING.md`](../revamp/BP-09_SHIPS_FITTING.md) | PARTIAL | Admit with `S3-F5-OUTFITTING` after truthful previews and a specific build gap. | Fitting choices have physical, visual, tactical, and economic consequences without false UI. |
+| `RV-POLISH` | [`BP-10_POLISH_UX.md`](../revamp/BP-10_POLISH_UX.md), [`detail/F`](../revamp/detail/F_comms_audio_onboarding.md) | PARTIAL | Admit a named accessibility/audio/onboarding defect after current evidence; protect station UI and existing controls. | Information, comms, audio, feedback, onboarding, and accessibility feel deliberate under real play load. |
+| `RV-COMMAND-DECK` | [`COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md`](../revamp/COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md) | REFERENCE | Do not dispatch as a redesign. Extract one interaction only when a player problem and station-UI owner explicitly activate it. | The selected station interaction improves clarity and fiction without replacing the protected known-good station shell. |
+| `RV-DETAIL-QUARRY` | [`DETAIL_PACKETS.md`](../revamp/DETAIL_PACKETS.md), [`DETAIL_BRAINSTORM_R2.md`](../revamp/DETAIL_BRAINSTORM_R2.md), [`DETAIL_DOCTRINE.md`](../revamp/DETAIL_DOCTRINE.md) | REFERENCE | Promote one packet only after deduping it against Alpha, Depth, SPEC3, and live code; rewrite stale seams and acceptance before admission. | The promoted packet produces a distinct player-visible payoff rather than another hidden subsystem or duplicate rule. |
+
+## World identity and worldbuilding
+
+| Stable ID | Source | Maturity | Admission / activation rule | Next acceptance outcome |
+|---|---|---|---|---|
+| `WI-NAV-PLACES` | [`WORLD_NAVIGATION_SPEC.md`](../world-identity/WORLD_NAVIGATION_SPEC.md), [`PIPELINE.md`](../world-identity/PIPELINE.md) | PARTIAL | Use M3 navigation, M4 families, and relevant Depth landmarks; admit only a missing place/readability slice. | Named fixed geography is discoverable, visually unique, useful to navigation/gameplay, and stable across save/load. |
+| `WI-SECTOR-FAMILIES` | [`SECTOR_STYLE_INDEX.md`](../world-identity/SECTOR_STYLE_INDEX.md), [`sectors/`](../world-identity/sectors/) | PARTIAL | Activate one sector family with world/graphics ownership and a current performance baseline; visual recipes are briefs, not binding tokens. | The selected sector reads instantly by silhouette, lighting, landmarks, traffic, sound, and behavior without quality loss. |
+| `WI-CURATED-FEATURES` | [`CURATED_SPACE_FEATURES.md`](../world-identity/CURATED_SPACE_FEATURES.md) | FUTURE | Admit one researched feature only after deduping it against live systems and proving it strengthens SpaceFace's own loop. | The feature is reachable, teaches itself, interacts with existing economy/combat/world systems, and survives save/reload. |
+| `WB-B0-B7` | [`worldbuilding/README.md`](../../docs/worldbuilding/README.md), [`STORY-STRUCTURE.md`](../../docs/worldbuilding/story/STORY-STRUCTURE.md) | PARTIAL | Execute through `M5-STORY`; canon prose guides intent but runtime and held-out routes establish coverage. | All ordinary chapters, choices, endings, and post-ending sandbox preserve voice, causality, and continuity. |
+| `WB-B5B-REUNION` | [`chapter-05b-the-reunion.md`](../../docs/worldbuilding/story/chapter-05b-the-reunion.md) | FUTURE | Admit only after B0–B7 ordinary continuity is accepted and the branch has a clear dependency/save design. | The optional reunion branch is discoverable, choice-reactive, canon-consistent, and cleanly rejoins or alters the ending graph. |
+| `WB-ENTITY-GAPS` | [`sheets/INDEX.md`](../../docs/worldbuilding/sheets/INDEX.md) | FUTURE | Admit explicit mappings one family at a time: narrative `com_*` to runtime commodities, Free Frontier canon, paper-only ships/factions/characters to real carriers. | Each admitted entity has a stable ID, canon source, runtime data, natural producer/consumer, and visible player encounter. |
+| `WB-WORLD-AFTER` | [`THE-WORLD-AFTER.md`](../../docs/worldbuilding/story/THE-WORLD-AFTER.md), [`ENDGAME-B7-REDESIGN.md`](../../docs/worldbuilding/story/ENDGAME-B7-REDESIGN.md) | PARTIAL | Use M5 story/ownership first; activate after ending/save variants are accepted. | The chosen ending changes ordinary sandbox facts, dialogue, economy, ownership, and encounters without ending play. |
+| `WB-LORE-SURFACING` | [`NPC-ECOLOGY.md`](../../docs/worldbuilding/story/NPC-ECOLOGY.md), [`SPACER-SUPERSTITIONS.md`](../../docs/worldbuilding/story/SPACER-SUPERSTITIONS.md), [`ATMOSPHERIC-ECONOMY.md`](../../docs/worldbuilding/story/ATMOSPHERIC-ECONOMY.md) | FUTURE | Admit only through an existing carrier such as encounters, contracts, props, comms, markets, or the ledger; no lore-only modal dumps. | Lore is learned through action, place, consequence, and recurring characters while the attention arbiter stays readable. |
+
+## Production machinery, asset production, and graphics
+
+| Stable ID | Source | Maturity | Admission / activation rule | Next acceptance outcome |
+|---|---|---|---|---|
+| `PROD-OBS-CAP` | [`04_GAMEPLAY_OBSERVATORY.md`](../production/04_GAMEPLAY_OBSERVATORY.md), [`05_AGENT_CAPABILITY_MATRIX.md`](../production/05_AGENT_CAPABILITY_MATRIX.md), [`10_OBSERVATORY_HARD_GATES.md`](../production/10_OBSERVATORY_HARD_GATES.md) | PARTIAL | Execute through M0 Observatory/calibration; add machinery only when it replaces a named manual evidence gap. | Matched browser/Electron sessions expose temporal play defects and tool capability with reproducible evidence. |
+| `PROD-AUTOMATION` | [`02_ORCHESTRATOR_SPEC.md`](../production/02_ORCHESTRATOR_SPEC.md), [`08_IMPLEMENTATION_BACKLOG.md`](../production/08_IMPLEMENTATION_BACKLOG.md), [`11_ENFORCEMENT_MACHINERY_SPEC.md`](../production/11_ENFORCEMENT_MACHINERY_SPEC.md) | FUTURE | Optional M0 production debt only. Admit when unsupervised external mutation is actually needed; do not restart frozen SAFE review cycles. | Hash-bound dispatch, candidate isolation, review, integration, and campaign state work without self-acceptance or tree corruption. |
+| `PROD-GEN-MEDIA` | [`09_GENERATED_MEDIA_PIPELINE.md`](../production/09_GENERATED_MEDIA_PIPELINE.md) | FUTURE | Admit when a named 2D/video asset family has rights, provenance, runtime format, and acceptance requirements. | Generated media is reproducible, licensed, optimized, versioned, reachable, and independently judged in context. |
+| `PROD-RESEARCH` | [`06_RESEARCH_AND_IDEATION_PIPELINE.md`](../production/06_RESEARCH_AND_IDEATION_PIPELINE.md) | REFERENCE | Launch research only for a concrete design/technique uncertainty; cite primary evidence and end in a decision or rejected option. | The resulting decision changes an admitted packet, acceptance test, or production method and records why. |
+| `ASSET-CLASSIFY` | [`03_ASSET_PRODUCTION_SPEC.md`](../production/03_ASSET_PRODUCTION_SPEC.md), [`asset-classifications/`](../production/asset-classifications/) | PARTIAL | Use M0 asset integrity plus the relevant M1/M4/M5/M6/Depth visual row. Existing classification files must be validated against current release assets and captures. | Every routed visual candidate has provenance, source recovery, required views, optimization, reachability, and an independent contextual verdict. |
+| `ASSET-COVERAGE` | [`needed-assets.md`](../../needed-assets.md), [`assets/QUEUE.md`](../../assets/QUEUE.md) | FUTURE | Promote one player-visible family after deduping manifest, queue, BP-08, Top-50, and Depth IDs. Re-derive per-asset budgets from framing and measured performance. | The selected family closes a visible silhouette/story/gameplay gap and passes export, classification, normal-route, and performance gates. |
+| `ASSET-LONG-TAIL` | [`parts_manifest.json`](../../assets/ships/parts/parts_manifest.json) | PARTIAL | Activate by release-manifest ID and current classification, not dated `FULL FINISH` prose. Coordinate the graphics lock before any asset edit. | Every shipping part/whole ship is characterful, efficient, source-recoverable, correctly routed, and visibly better than fallback geometry. |
+| `GFX-TOP50` | [`TOP50_WONDER_BUILD_PLAN.md`](../graphics-sprints/TOP50_WONDER_BUILD_PLAN.md) | PARTIAL | Use as visual priority input to current program rows, not a second status ledger; recheck old authority citations and iteration quotas. | Each admitted slice produces materially stronger normal-route/store framing with stable performance and independent visual acceptance. |
+| `GFX-FULL-KIT` | [`FULL_GRAPHICS_REVAMP_GOAL.md`](../graphics-sprints/FULL_GRAPHICS_REVAMP_GOAL.md), [`GOAL_FULL_PROFESSIONAL_GRAPHICS_REVAMP.md`](../graphics-sprints/GOAL_FULL_PROFESSIONAL_GRAPHICS_REVAMP.md) | PARTIAL | Retain the professional form/surfacing/story bar, but admit assets by current coverage and evidence; quotas and budgets are diagnostic, never quality proxies. | The full shipped visual kit has distinctive form, materials, wear, function, LOD/batching, and coherent in-game lighting at the target frame budget. |
+| `GFX-PRESENTATION` | [`THREAD_D_PRESENTATION_CODE.md`](../graphics-sprints/THREAD_D_PRESENTATION_CODE.md), [`SPEC3-F8`](../spec3/SPEC3-F8-graphics-visuals.md) | PARTIAL | Admit after profiling and ownership checks; coordinate render/UI lanes and preserve one-game-path parity. | Lighting, VFX, trails, feedback, UI composition, and camera presentation amplify authored assets without clutter, hitching, or lost readability. |
+
+## Admitting an item
+
+1. Quote the stable ID and source outcome.
+2. Audit live code, normal player route, current checks, git diff, and overlapping Alpha/Depth rows.
+3. Write the smallest coherent deliverable, current owner/files, dependencies, and explicit non-goals.
+4. Define deterministic/save/performance checks plus public-route and visual/audio evidence as needed.
+5. Add or cross-link the admitted row in [`02_REMAINING_WORK.md`](02_REMAINING_WORK.md); do not
+   silently convert this whole source document into scope.
+6. On completion, update the source ledger, verified-done/acceptance/integration records, and this
+   row's provenance together. Retain the stable ID even if the source document is later archived.
+
+This file should grow slowly. New rows must represent a genuinely distinct future outcome, not a
+different phrasing of work already present in the active program.

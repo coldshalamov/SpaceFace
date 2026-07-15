@@ -1,10 +1,12 @@
 # SpaceFace — Visual Asset Generation Plan (Pure Image & Video)
 
-**Current status (2026-07-04):** Asset/reference ledger only. Use
-`design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`, `design/CURRENT_BUILD_STATUS.md`, and
-`design/spec2/*` for current implementation authority. Helmet, visor, cockpit, and pilot-face
-material here is off-HUD cinematic/reference material only; do not wire it into the default
-player-facing HUD or cockpit framing.
+> **Role:** HISTORICAL GENERATION LEDGER + REFERENCE LIBRARY. This long-form file records early
+> image/video generation and still contains reusable asset ideas, but it does not own current
+> priorities, completion, visual acceptance, or implementation routing. Use `design/program/README.md`
+> for current status, `design/PLAN_REGISTRY.md` for plan relationships, and
+> `design/graphics-sprints/` plus `design/spec3/SPEC3-F8-graphics-visuals.md` for active graphics work.
+> Helmet, visor, cockpit, and pilot-face material here is off-HUD cinematic/reference material only;
+> do not wire it into the default player-facing HUD or cockpit framing.
 
 **Purpose**: Exhaustive, structured list of everything that can be created with Grok's image_gen, image_edit, image_to_video, and reference_to_video tools.  
 **Scope**: Visuals only (textures, sprites, illustrations, UI elements, concepts, cutscene stills, short videos, atlas sheets, PBR decompositions, and more). No code, no Three.js integration details.  

@@ -369,7 +369,7 @@ BP-13 pirate ecology (T4, LAST) — every packet a spawnBudget client; depends o
 | Issue | Reality (verified) | Fix |
 |---|---|---|
 | 3 blocked wholeships (`kestrel`/`pelican`/`wasp`) | `QUEUE.md` says blocked; `parts_manifest.json` has **no `status:"blocked"` entries** and lists them in `runtimeSlots.hull` → ambiguous per `check-asset-status.mjs` | Add `parts[]` entries with `status:"blocked"` + `statusNote`, OR drop from `runtimeSlots` |
-| `WHOLE_SHIP_FILE_BY_DEF_ID` | Correctly empty (`partsLibrary.js:227`) until SPEC3-37 re-exports real hull bodies | **No action** (correct as-is; do not populate) |
+| `WHOLE_SHIP_FILE_BY_DEF_ID` | Active production routes for Kestrel and Wasp; other definitions remain modular unless deliberately validated/promoted | Verify exact manifest/classification and player-route evidence before changing a route |
 | Queued-but-unbuilt assets (per `assets/QUEUE.md`) | 7 claim props, 12 hunter-sig rails, 5 landmarks+vault/tower, 8 module-visual variants | The build queue — authored as BP-11/12/13 packets demand them, not as a wishlist |
 
 ---
@@ -378,8 +378,9 @@ BP-13 pirate ecology (T4, LAST) — every packet a spawnBudget client; depends o
 
 > *The canon is written (`docs/worldbuilding/`); the inspiration art exists (`assets/concept/`, 49 paintings);
 > 63 release GLBs are live. The job is to **wire more of the canon into runtime** and **build assets that clarify
-> gameplay** — not to add sprawl. Every asset must obey `assets/AGENTS.md`: role + silhouette + palette + budget +
-> validation + runtime reachability.*
+> gameplay** — not to add sprawl. Every asset follows `assets/AGENTS.md`: authored role, readable
+> silhouette, provenance, validation, runtime reachability, representative captures, and measured
+> performance. Historical palettes and budget numbers are diagnostics, not quality ceilings.*
 
 ### 13.1 Story wiring (extends BP-05; reuses shipped `narrative.js`, `story.js`, `scenarioRuntime.js`)
 

@@ -1,6 +1,13 @@
 # SpaceFace Needed Assets — Professional Graphics Revamp Inventory
 
-> Master list for strict continuation pass. Story roles from `docs/worldbuilding/vibe/vibe-CANONICAL.md`, `STORY-STRUCTURE.md`, `design/revamp/BP-08_VISUAL_ASSET_SPEC.md`.
+> **Role:** ACTIVE COVERAGE INVENTORY, not a completion ledger or quality ceiling. Use it to find
+> missing visual subjects and story roles. Verify what is actually shipped through `assets/AGENTS.md`,
+> the live manifests/checks, and the graphics rows in `design/program/02_REMAINING_WORK.md`.
+> `design/PLAN_REGISTRY.md` owns the relationship between this inventory and the active graphics plans.
+>
+> Story roles come from `docs/worldbuilding/vibe/vibe-CANONICAL.md`, `STORY-STRUCTURE.md`, and
+> `design/revamp/BP-08_VISUAL_ASSET_SPEC.md`. Dated inline finish notes below are production history,
+> not proof that the current release asset is accepted.
 
 ## Tier Legend
 - **T1 (10+ screenshots)**: Previously touched — hull_starter, weapon_gatling, fin_wedge, cockpit_recessed, place_asteroid_rock_a, place_station_trade_hub

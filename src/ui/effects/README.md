@@ -3,11 +3,12 @@
 **Status:** implemented — nine primitives + `effectRuntime.js` (shared helpers) + `index.js` (barrel +
 registry), linted by `scripts/check-ui-effects.mjs` (`npm run check:ui-effects`, also wired into the
 `check` / `check:ci` aggregates). **Not yet wired into any screen** — this pass ships the reusable
-primitives only; screen adoption is the next lane. This directory is the *only* sanctioned home for the
-visual-effect grammar defined in
+  reusable effect modules only; screen adoption is the next lane. This directory is the current shared
+  home for the visual-effect grammar described in
 [`design/revamp/COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md`](../../../design/revamp/COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md).
 
-Read that bible §1 (the effect grammar) and §6 (dependency policy) before adding anything here.
+Read that reference §1 for candidate effects, then follow root `AGENTS.md` and the owning screen's
+player-facing evidence. The reference does not impose fixed palette, motion, or dependency bans.
 
 ## What lives here
 Vanilla DOM/CSS/`<canvas>` reimplementations of the screen effects. Shipped:
@@ -24,19 +25,21 @@ Vanilla DOM/CSS/`<canvas>` reimplementations of the screen effects. Shipped:
 | `morphLabel.js` | Readout Morph | DOM, CSS crossfade animation (no rAF) |
 | `supplyTree.js` | Dependency Spindle | SVG, class-gated marching edge (no rAF) |
 
-Deferred (the bible names them but they are not in this slice): **Console Key** (hover button),
-**Nav Globe** (globe) — add them as new registered modules when a screen needs them. **Reference** for
-the look/behaviour is Magic UI; **dependency** on it (or React/Tailwind/Next/shadcn) is forbidden.
+Deferred (the reference names them but they are not in this slice): **Console Key** (hover button),
+**Nav Globe** (globe) — add them as new registered modules when a screen needs them. Magic UI is one
+reference; use or replace dependencies only when license, bundle/performance, accessibility, and
+maintenance evidence supports the result.
 
-## The rules (bible §6 — enforced)
-1. No new framework/runtime dependency. Reference notes in a header are fine; code ports that add a
-   dep are not.
+## The rules
+1. Keep one coherent effect/runtime seam. A new dependency must materially improve the result and
+   carry the repository's required license, bundle/performance, accessibility, and maintenance record.
 2. Isolated & view-only: an effect module never imports a screen, never mutates `gameState`, never
    imports the sim. Screens import effect factories.
 3. **No idle rAF when hidden** — start on `setActive(true)`, cancel on `setActive(false)`/`dispose()`.
    A loop running behind a closed screen is a defect (`check-ui-frame-sleep` is the precedent).
 4. `motionReduce` respected — degrade to a legible static state (never blank).
-5. Palette tokens only, no new hue (`color-mix(in srgb, var(--token) N%, transparent)` for tints).
+5. Preserve learnable semantic color and accessibility. Existing tokens are useful defaults, not a
+   closed hue list; new color needs a clear screen role and representative contrast review.
 6. Green on `check:ui:perf`, `check:ui-a11y`, `check:wcag-contrast`, `check:bundle` (if the import
    graph changes), `check:launch-policy`.
 

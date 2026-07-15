@@ -1,6 +1,6 @@
-# ADR-0001: Three.js zero-build ESM + DOM-overlay UI + procedural Web Audio
+# ADR-0001: Three.js ESM + DOM-overlay UI + Web Audio
 
-- **Status:** Accepted (retroactive — documents a decision already in force)
+- **Status:** Accepted stack; media/asset restrictions amended by current architecture
 - **Date:** 2026-06-17 (decision predates this record; see ARCHITECTURE.md §1)
 - **Deciders:** SpaceFace lead / architecture contract
 - **Tags:** engine, render, ui, audio, build
@@ -36,8 +36,8 @@ play:
 
 ## Decision
 
-We will build on a **zero-build, native-ESM Three.js r0.160 stack**, with **all UI as a DOM/CSS
-overlay** and **100% procedural Web Audio**, served as plain static files. Specifically:
+We build on a native-ESM Three.js stack with DOM/CSS overlay UI and Web Audio, served directly in
+development and bundled for release. Authored and procedural media are both supported. Specifically:
 
 - **Three.js r0.160**, vendored at `vendor/three.module.js` (+ `vendor/addons/`), loaded via a
   `<script type="importmap">` in `index.html` (`"three" → "./vendor/three.module.js"`). No bundler,
@@ -47,9 +47,10 @@ overlay** and **100% procedural Web Audio**, served as plain static files. Speci
   `pointer-events:none` `#ui-root` whose interactive children opt back in; the *only* 3D→DOM bridge
   is `render.worldToScreen(vec3)` (ARCHITECTURE.md §1.2). No 3D text. Screen shake moves only the
   camera, so the HUD stays readable.
-- **Procedural everything for media.** Audio is synthesized at runtime (Web Audio graph,
-  AudioContext resumed on first user gesture); meshes are Three primitives; textures are generated on
-  `<canvas>`. No audio/image files are required for the game to run.
+- **Hybrid media behind common runtime seams.** Web Audio owns playback/mixing and supports both
+  synthesis and licensed authored sources. The renderer supports production GLB/KTX2 assets plus
+  procedural dressing/fallbacks. Media technique is selected by player-facing quality, provenance,
+  memory/performance, and maintenance evidence.
 - **Static-served, optionally desktop-packaged.** A zero-dependency static server (`server.js`) for
   the primary browser route; an optional Electron shell (`electron/main.cjs`) serves the same
   player-facing route. Release builds may serve the minified `build/web/` bundle, but packaging must

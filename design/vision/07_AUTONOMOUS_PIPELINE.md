@@ -13,12 +13,12 @@ The run is **DONE** only if all of the following are true (or honestly **BLOCKED
 | Gate | Pass condition |
 |---|---|
 | **G0 Docs** | Vision pack is authority; stale status docs bannered; `01_CURRENT_STATE` matches tree |
-| **G1 Playable** | Feel matrix ≥80; deaths/10m ≤2 in starter; massline flyby works; flight not “weird pin-spin” |
+| **G1 Playable** | Independent feel review finds no critical controllability/fairness defect; massline flyby works; flight is not “weird pin-spin” |
 | **G2 Density** | Starter region has ≥3 findable landmarks; no 60s void in play belt |
-| **G3 UI** | Station/flight scannable; no prose walls; modes discoverable; glass direction started or mocked |
+| **G3 UI** | Station/flight scannable; no prose walls; modes discoverable; UI polish direction started or mocked |
 | **G4 Assets** | Sore thumbs on starter ship fixed; portraits plan or regen started; ASSET_STATUS populated or partial with honesty |
 | **G5 QA** | Named check suite for touched areas green; new tests for fixed bug classes; CI blockers named |
-| **G6 Review** | Independent review pass filed (subagent or self-adversarial); score sheets in `.devshots/vision/scores/` |
+| **G6 Review** | Independent review filed with comparison evidence, named defects, and a reasoned verdict; no self-score acceptance |
 | **G7 Handoff** | `design/vision/WAKE_REPORT.md` written for human |
 
 **Partial overnight success is OK** if G0 + G1 + G7 land. G2–G6 may be IN PROGRESS with ranked residual backlog.
@@ -37,7 +37,7 @@ The run is **DONE** only if all of the following are true (or honestly **BLOCKED
 ┌─────────────────────────────────────────────────────────────────────┐
 │  PHASE B — BUILD LOOPS (priority order)                             │
 │  B1 Playable core → B2 World density → B3 Flight/massline polish    │
-│  → B4 UI glass/data → B5 Assets/wonder → B6 Living systems harvest  │
+│  → B4 UI data-dense → B5 Assets/wonder → B6 Living systems harvest  │
 │  → B7 Empire only if B1–B3 play-pass                                 │
 │  Each loop: implement → auto-test → screenshot score → fun judge    │
 └────────────────────────────┬────────────────────────────────────────┘
@@ -93,7 +93,7 @@ Mine unfinished work from:
 | Frontend presentation halves of audio/signatures | Polish | B3/B4 |
 | Rename derivative ship names | Original identity | B5 |
 | Portrait regen (cinematic) | Identity | B5 |
-| Liquid glass UI reboot | Professional front | B4 |
+| Data-dense UI polish | Professional front | B4 |
 | Flyby Focus + latch assist | Signature toy | B1 |
 | Docs unification (this pack) | Continuity | A continuous |
 
@@ -133,7 +133,8 @@ Write the keep/skip table into `design/vision/SESSION_PLAN.md` at run start.
 
 ## 3. Phase B — Build loops (priority order)
 
-Each item: **implement → tests → 10–20 iter quality if visual/feel → fun judge → update CURRENT_STATE**.
+Each item: **implement → tests → defect-driven capture/play loop → independent fun judge → update
+the owning status ledger**.
 
 ### B1 — Playable core (P0 — do not leave unfinished if time is short)
 
@@ -145,7 +146,8 @@ Each item: **implement → tests → 10–20 iter quality if visual/feel → fun
 6. Starter ship sore thumbs (white emissive junk)  
 7. Expand tests for latch/fairness regressions  
 
-**Exit B1:** feel matrix ≥80 OR documented BLOCKED with max effort evidence.
+**Exit B1:** independent feel review passes with no critical/major defect, or the run records the
+exact unresolved condition and preserves all evidence without claiming completion.
 
 ### B2 — World density (P0 after B1 soft-pass)
 
@@ -160,10 +162,10 @@ Each item: **implement → tests → 10–20 iter quality if visual/feel → fun
 2. Juice for latch/strain/kill  
 3. Camera composition with Focus  
 
-### B4 — UI (strategy glass)
+### B4 — UI (data-dense strategy)
 
 1. Station text purge (data first)  
-2. Component tokens / glass direction  
+2. Component tokens / clean panel direction
 3. Mode chrome, target data density  
 4. Mockups via image gen if redesign large  
 5. One-map clarity (reduce dual-map confusion)  
@@ -213,7 +215,7 @@ Add **new** checks when you fix a class of bug (latch success, undock grace, sof
 
 ### C2. Play QA (required)
 - 15–30 min continuous play notes in WAKE_REPORT  
-- Score matrices from `06_OPERATING_MODEL.md`  
+- Defect critique using the dimensions from `06_OPERATING_MODEL.md`
 - List remaining sore thumbs  
 
 ### C3. Perf / hitch

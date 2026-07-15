@@ -8,26 +8,24 @@
 
 ## Preconditions
 
-Current manifest status:
-
-| ID | Issue |
-|----|-------|
-| wholeship_kestrel | Accessory-only — 0 hull body tris |
-| wholeship_pelican | Same |
-| wholeship_wasp | Same |
-
-Do **not** wire until `check:assets:live` passes with real hull bodies.
+This thread began when several candidates were accessory-only, but whole-ship routing has since changed.
+Inspect the live manifest/classification, `WHOLE_SHIP_FILE_BY_DEF_ID`, and player route before selecting work.
+Do not overwrite or disconnect a current production Kestrel or Wasp route to match the dated diagnosis. Repair
+only a currently incomplete candidate and do not wire it until the live body/classification and asset checks
+pass.
 
 ## Sprint scope
 
-**One wholeship per sprint** (hero complexity — 20+ iterations each).
+Prefer one wholeship per sprint so a hero-scale repair receives coherent review and evidence.
 
 ## Task list
 
 1. Pause Thread A — acquire `blender.LOCK` as Thread E.
-2. Round-trip through `spaceface_export.py` with full hull body (≥800 Material_Hull tris).
+2. Round-trip through `spaceface_export.py` with a credible complete `Material_Hull` body. The live contract
+   owns exact validation thresholds.
 3. Bake AO/roughness/normal per contract.
-4. **20 iterations** minimum per wholeship (`QUALITY_RITUAL.md`).
+4. Use `QUALITY_RITUAL.md` until the complete ship reads professionally at the player camera and independent
+   review finds no material gaps.
 5. Update manifest `statusNote` only via integrator after checks pass.
 6. Handoff YAML with `blocked: false` only after exporter + hull audit green.
 7. Release lock → Thread A may resume.

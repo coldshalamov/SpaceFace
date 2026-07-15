@@ -1,11 +1,12 @@
 # SpaceFace Common Bugs — Debugging Playbooks
 
 > **What this is:** playbooks for the bugs agents keep failing to fix. Each names the exact files,
-> functions, and line numbers — and the *wrong* place agents usually look first.
+> functions and ownership seams — and the *wrong* place agents usually look first. Line numbers are
+> deliberately avoided where possible because this file must survive implementation growth.
 > Companion to `AGENTS.md` §7 (common-bug routing) and `docs/MODULE_MAP.md`.
 >
-> **Every claim here was verified first-hand against the working tree on 2026-07-05.** Where the
-> working tree and HEAD (committed) differ, that is called out — the divergence is itself a bug source.
+> Verify every claim against the current working tree before editing; code and live checks outrank
+> this playbook.
 >
 > **Why this exists:** these bugs resisted diagnosis for 10-20 prompts each not because they were
 > hard, but because the docs didn't explain the architecture well enough. This file is that
@@ -38,19 +39,24 @@ The engine has flag-selected backend swaps. Defaults pick V3/tactical, but docs 
 
 **The wrong files (editing these has no effect in normal play):**
 - `src/systems/flight.js` — legacy flight controller
-- `src/systems/ai.js` — legacy AI FSM (**zero importers anywhere**)
+- `src/systems/ai.js` — legacy AI FSM, statically imported and compatibility/check-load-bearing,
+  but not selected by the default tactical backend
 - `src/core/flightDynamics.js` — legacy flight math (still imported by `aiPorts.js` for compat, but not by the live flight controller)
 
 **The right files (LIVE — defaults `flightBackend:'v3'`, `aiBackend:'sg06-tactical'`):**
 - `src/systems/flightV3.js` + `src/core/flight/` (propulsionCatalog, propulsionKernel, flightTelemetry)
 - `src/systems/tacticalAI.js` + `src/ai/*` + `src/systems/aiPorts.js`
 
-**Selection site:** `src/core/registry.js:170-186`. **Confirm before editing:** `grep -rl "systems/<file>" src/ scripts/ test/` — if nothing imports it, it isn't running.
+**Selection site:** `src/core/registry.js`. Confirm both static import and default selection before
+editing; an imported compatibility fixture may load in CI without owning normal gameplay.
 
 ### Cause B — The fix already exists in the uncommitted working tree (the new trap)
-`git status` shows ~202 files / ~17k insertions uncommitted. An agent reading HEAD or a stale clone sees an older, buggier game. **Before diagnosing, run `git diff <file>` and `git log -L <func>,<func>:<file>`** — your "fix" may already be there. If so, the bug you're chasing is elsewhere.
+The repository may contain substantial uncommitted implementation. An agent reading HEAD or a stale
+clone can see a different game. **Before diagnosing, run `git status`, `git diff <file>`, and when
+useful `git log -L <func>,<func>:<file>`** — your "fix" may already be in the working tree.
 
-**Do NOT run `git checkout`/`git reset --hard`/`git stash`/`git clean`** on tracked files to "get a clean baseline" — you will destroy ~17,000 lines of uncommitted work.
+**Do NOT run `git checkout`/`git reset --hard`/`git stash`/`git clean`** on tracked files to "get a
+clean baseline" — you can destroy unrelated working-tree implementation.
 
 See `AGENTS.md` §3 + §5 for the full picture.
 
@@ -62,30 +68,23 @@ See `AGENTS.md` §3 + §5 for the full picture.
 
 **This bug is subtle and has THREE interacting factors. Read all of this before grepping.**
 
-### Factor 1 — The lawful+heat gate EXISTS in the working tree (but not in HEAD)
+### Factor 1 — Selection and execution are separate authorities
 
-The live hostility oracle is `src/systems/aiPorts.js:784` `isHostile(state, self, other)`. **In the working tree** it is NOT just `team !== team` — it has the lawful gate:
+`src/ai/engagementAuthority.js` owns the fresh hostility oracle
+`isHostileForAI(state, self, other)` and the final fail-closed execution gate
+`authorizeAIEngagement(...)`. `src/systems/aiPorts.js` consumes the oracle while building tactical
+contacts; it is not the policy owner.
 
-```js
-function isHostile(state, self, other) {
-  if (!self || !other || self.team == null || other.team == null) return false;
-  if (self.id === other.id || self.team === other.team) return false;
-  const selfIsPlayer = !!(state && self.id === state.playerId);
-  const otherIsPlayer = !!(state && other.id === state.playerId);
-  const selfAi = self.data && self.data.ai || {};
-  const otherAi = other.data && other.data.ai || {};
-  if (selfAi.passive || otherAi.passive || self.team === 2 || other.team === 2) return false;  // line 793
-  if (selfAi.lawful && otherIsPlayer) return isPlayerWanted(state);  // line 794 ← THE GATE
-  if (otherAi.lawful && selfIsPlayer) return isPlayerWanted(state);  // line 795
-  return self.team !== other.team;
-}
-```
+The oracle handles explicit incident/retaliation targets, faction first-fire authority, same-team
+rules, player-facing scanner hostility, passive/civilian status, and lawful/WANTED behavior. The
+execution gate then revalidates authored motive, escalation trigger, response time, doctrine phase,
+leash/jurisdiction, station protection, and the first-session attacker cap. A target can therefore be
+selected as tactically relevant and still be forbidden to fire.
 
-So a lawful patrol (`ai.lawful:true`) should only attack the player if `isPlayerWanted(state)` returns true (`state.player.heat >= 0.15`, `heat.js:147,33`).
+Do not repair spawn attacks by adding another team check to weapons or by changing spawn counts.
+Trace the denial/allow reason at the final authority first.
 
-**BUT in HEAD (committed) this gate does not exist** — `isHostile` was just `self.team !== other.team`. So if you are reading committed code (or a stale clone, or HEAD after a partial revert), you will see lawful patrols attack unconditionally and "fix" something that's already fixed in the working tree. **Always `git diff src/systems/aiPorts.js` first.**
-
-### Factor 2 — The squad fallback clause can override the gate
+### Factor 2 — Squad voting is advisory but stale contacts still mislead movement
 
 Even with the gate working, the squad target-vote at `src/ai/squad.js:271-273` has a fallback:
 
@@ -95,9 +94,11 @@ const hostile = contact.hostile === true || (contact.hostile !== false && teamMi
 if (hostile) record.hostileVotes++;
 ```
 
-The second clause (`contact.hostile !== false && teamMismatch && contact.threat > 0`) means: **if `contact.hostile` is undefined (not explicitly set true/false) AND there's a team mismatch AND `contact.threat > 0`, vote hostile anyway.**
-
-Normally this is safe because `contact.hostile` IS set explicitly (`aiPorts.js:514,525`) and `threatFor` returns 0 when `!isHostile(...)` (`aiPorts.js:778-782`). But if any code path builds a contact WITHOUT setting `hostile` explicitly, OR computes threat independently of `isHostile`, the fallback can vote a lawful patrol hostile despite the gate. **This is the likely real bug if the gate is in place but the symptom persists.** Check: is `contact.hostile` always set? Is `threatFor` always gated on `isHostile`?
+The second clause means an incomplete contact can receive a hostile vote when team differs and threat
+is positive. That vote may distort formation, pursuit, or focus selection, but it does not bypass
+`authorizeAIEngagement` at the damage/fire boundary. Check that every contact builder writes an
+explicit boolean `hostile` and derives threat through `isHostileForAI`; then separately inspect the
+final authorization reason for any actual shot.
 
 ### Factor 3 — The team-number model (undocumented until now)
 
@@ -106,27 +107,34 @@ Set at spawn, never changes:
 - **team 1** = ALL combat-spawned enemies, **including lawful patrols AND fleeing traders** (`combat.js:70` `makeEnemySpawnSpec` hardcodes `team:1`; `ai.lawful = !!def.factionLawful` at line 111 is a separate flag)
 - **team 2** = ambient civilian traffic (`traffic.js` all `team:2`, marked `ai.passive`)
 
-So lawful patrols are `team:1` + `ai.lawful:true`. The gate (Factor 1) is what makes team:1 lawful NPCs not attack a clean player. If the gate is missing (HEAD) or the fallback fires (Factor 2), team:1 alone is enough to trigger hostility.
+So lawful patrols can share the coarse combat team with raiders. Explicit incident targets and the
+engagement authority—not team number alone—decide whether they may attack.
 
 ### The spawn → aggro flow (for context)
 
-1. **Spawn** (`src/systems/world.js:_spawnEnemies` ~line 584): sizes spawn count; pool by sector security. High-sec pool is `LAWFUL_ENEMIES = ['patrol_lawman']`. The WANTED-hunter block (~line 606) correctly gates on `player.heat >= 0.15` — but ambient patrol spawns are NOT heat-gated; they rely on the AI-side gate.
-2. **Enemy construction** (`combat.js:65 makeEnemySpawnSpec`): `team:1` (line 70), `ai.lawful = !!def.factionLawful` (line 111).
-3. **Hostility** (`aiPorts.js:784 isHostile`): Factor 1 above.
-4. **Contact building** (`aiPorts.js:514`): `hostile = isHostile(...)`, `threat = threatFor(...)` (0 if not hostile).
-5. **Squad vote** (`squad.js:271-273`): Factor 2 above. `selectFocusTarget` (line 289) picks focus from `hostileVotes > friendlyVotes`.
-6. **Firing** (`weapons.js` NPC path): services every ship with `intent.fire`. No additional lawful gate on the NPC firing path — it trusts the AI's directive.
+1. **Spawn and authored motive:** world/encounter code chooses actor, location, faction, doctrine,
+   motive, trigger, telegraph, and initial activity.
+2. **Perception:** `aiPorts.js` calls `isHostileForAI` and writes normalized contact hostility/threat.
+3. **Squad/director:** advisory layers choose formation, objective, and candidate focus.
+4. **Action/damage boundary:** `authorizeAIEngagement` revalidates the current target and returns a
+   named allow/deny result before an offensive action can land.
+5. **Presentation:** telegraph and response-window evidence must exist before the authorized fire
+   phase; absence is a behavior bug even if damage is technically gated.
 
 ### How to actually debug this in one pass
 
-1. `git diff src/systems/aiPorts.js` — is the lawful gate present? If not, you're on HEAD; the working tree already fixes it.
-2. If the gate IS present and the symptom persists: instrument `squad.js:272` — log when the fallback clause fires (i.e. `contact.hostile` is undefined) for a lawful contact. That's your leak.
-3. Verify the contact's `hostile` field is explicitly `false` (not undefined) for lawful-not-wanted patrols — if it's undefined, find the contact-builder path that omitted it.
-4. Regression floor: `npm run check:sg06:ai` (100 runs × 600 ticks) must stay green; add a scenario spawning a lawful patrol with `player.heat = 0` asserting it does NOT fire within N ticks.
+1. Inspect the actor's authored `motive`, `engagementTrigger`, `approachTelegraph`, activity start,
+   doctrine/phase, leash/zone, lawful/passive flags, incident target, and station context.
+2. Record `isHostileForAI` and `authorizeAIEngagement` results for the exact actor/target/tick.
+3. Verify `contact.hostile` is explicit and threat is zero when the oracle says non-hostile.
+4. Verify the player received the authored response window and a readable reason before fire.
+5. Run the focused law/authority, intentionality, doctrine, and spawn-opening checks named in
+   `package.json`, plus a normal public-route reproduction. Do not rely on a headless green alone.
 
 ### The dead `ai.playerWanted` field
 
-`ai.playerWanted` is **read** in a few places (e.g. legacy `ai.js`, `weapons.js:~552` player auto-fire) but **never written anywhere** (grep confirms zero assignments). The gameState.js comment (line 31-34) describes the *intent* ("drives the lawful playerWanted AI flag") but the implementation reads heat live via `isPlayerWanted` instead. **Do not try to "wire up" `playerWanted` — use `heat.isPlayerWanted(state)`.**
+Do not add a second wanted-state writer to AI records. The canonical player WANTED state is owned by
+`heat` and read via `isPlayerWanted(state)`; confirm any legacy compatibility field before trusting it.
 
 ---
 
@@ -154,19 +162,27 @@ So lawful patrols are `team:1` + `ai.lawful:true`. The gate (Factor 1) is what m
 
 1. **`assets/ships/parts/parts_manifest.json`** — authoring contract; `parts[]` entry + `runtimeSlots.<category>`. Drives the release build.
 2. **`assets/ships/release/release_manifest.json`** — release parity manifest. Auto-written by `build-sg04-release-assets.mjs`.
-3. **`src/render/partsLibrary.js`** — runtime declaration. **For modular parts:** `PART_LIBRARY_CONTRACT.slots.<category>` (~line 115). **For ship-specific hulls:** `HULL_FILE_BY_DEF_ID` (line 202) — this is the LIVE path. **`WHOLE_SHIP_FILE_BY_DEF_ID` (line 220) is currently EMPTY** — whole-ship bodies are disabled until SPEC3-37.
+3. **`src/render/partsLibrary.js`** — runtime declaration. Modular definitions use
+   `PART_LIBRARY_CONTRACT.slots.<category>` and `HULL_FILE_BY_DEF_ID`; production whole bodies use
+   `WHOLE_SHIP_FILE_BY_DEF_ID`. The current map routes Kestrel and Wasp whole-ship bodies, while
+   other ship definitions remain modular unless deliberately promoted.
 
 ### The shipId→GLB link lives in partsLibrary.js, NOT ships.js
 
-`src/data/ships.js` defines gameplay stats only. `partsLibrary.js:202` `HULL_FILE_BY_DEF_ID` maps `ship_kestrel → 'hulls/hull_starter.glb'`, etc.
+`src/data/ships.js` defines gameplay stats. `partsLibrary.js` owns both modular hull and production
+whole-body routing; inspect the exact `defId` in both maps before assuming which representation loads.
 
 ### Ranked failure modes
 
 1. **Forgot the release build** — dropped GLB in `parts/` but never ran `npm run build:whole-ships` + `build-sg04-release-assets.mjs`. Runtime fetches `release/parts/...glb` → 404 → silent fallback. **#1 trap.**
 2. **Missing `spacefaceAsset` metadata** — finalize skipped; assetLoader rejects it (`assetLoader.js:114` `validateWholeShipGlbJson`, `:117-125`). Use `getAuthoredAssetDiagnostic(renderer, url)` to see the actual error.
-3. **Failed hull-body audit** — `finalize_whole_ship.mjs:155-156` requires ≥800 tris from `Material_Hull` meshes. If you only exported accessories (antennas, decals, canopy), finalize throws `wholeship:missing hull body`. (Current `assets/QUEUE.md` blocker for Kestrel/Pelican/Wasp.)
+3. **Failed hull-body audit** — the whole-ship finalizer rejects accessory-only exports with no
+   credible hull body. Check the current finalizer and exact manifest record; do not carry an old
+   family-wide blocked claim forward after a ship has been re-exported and accepted.
 4. **Missing `parts_manifest.json` entry** — `build-sg04-release-assets.mjs` won't include it.
-5. **Missing `partsLibrary.js` runtime declaration** — even with a perfect release GLB, if it's not in `PART_LIBRARY_CONTRACT.slots.<cat>` OR `HULL_FILE_BY_DEF_ID`, the runtime never requests it. **Do NOT add to `WHOLE_SHIP_FILE_BY_DEF_ID` — it's intentionally empty until SPEC3-37.**
+5. **Missing `partsLibrary.js` runtime declaration** — even with a perfect release GLB, the runtime
+   never requests an unregistered asset. Add a whole-ship route only after exact manifest,
+   classification, framing, and normal-route validation; otherwise retain the modular route.
 6. **Missing `ships.js` defId mapping** — a new ship id with no partsLibrary entry gets a seed-pick hull.
 7. **Texture/contract violations** — wrong normal convention (OpenGL green-up), wrong ORM order (R=AO, G=Roughness, B=Metallic), un-chamfered hard edges. All silently rejected.
 
@@ -196,21 +212,22 @@ So lawful patrols are `team:1` + `ai.lawful:true`. The gate (Factor 1) is what m
 
 **Symptom:** You (or another agent) ran a "make sure all assets are loaded" pass. Now the main ship renders as a low-detail blob, or as floating antennas/canopy with no body.
 
-**Root cause — file size does NOT distinguish a good model from a broken export.** The repo carried three 10-14MB wholeship GLBs (`kestrel.glb` 14.2MB, `pelican.glb` 10.8MB, `wasp.glb` 10.6MB) that **look like the real detailed models** but are actually **broken exports**: accessory meshes only (antennas, canopies, decals, cargo clamps), **NO `Material_Hull` body**. The 14.2MB kestrel is 14,916 triangles — all of it antenna/canopy detail, zero hull. An agent sees the big file, assumes it's the good model, wires it into `WHOLE_SHIP_FILE_BY_DEF_ID`, and the ship becomes floating accessories.
+**Root cause — reachability is not visual acceptance, and file size proves neither.** A whole-ship
+candidate can be contract-valid yet badly framed, accessory-heavy, materially weak, or wrong for its
+role. Conversely, an older family-wide warning may be stale after a production re-export. Inspect
+the exact manifest ID, provenance/classification record, release route, and current captures.
 
-**The fix is already in place — use it:**
-- `parts_manifest.json` `parts[]` now carries a **`status`** field. The three wholeships are marked `"status": "blocked"` with a `statusNote` explaining why.
-- **`npm run check:asset-status`** fails if any `status:"blocked"` asset becomes reachable from `HULL_FILE_BY_DEF_ID` / `WHOLE_SHIP_FILE_BY_DEF_ID`. Run it after ANY asset wiring change.
+Kestrel and Wasp currently have production whole-ship routes. Other definitions and candidates have
+different states; do not copy a status from one family member to another.
 
 **Before wiring an asset, always check its manifest entry:**
 ```bash
 node -e "const m=require('./assets/ships/parts/parts_manifest.json'); console.log(m.parts.filter(p=>p.file.includes('<your-file>')))"
 ```
-If you see `status: "blocked"`, **do not wire it** — it's a known-broken export. Re-export from Blender with a real `Material_Hull` body (≥800 hull tris) first.
-
-**Why default play uses the "smaller" modular hulls:** the modular `hulls/hull_*.glb` files (1.0-1.5MB, 2,800-4,400 tris) are **complete, contract-valid ship bodies** with real hull meshes. The wholeships are bigger files but broken. Until SPEC3-37 re-exports the wholeships with hull bodies, the modular hulls are the correct, good-looking default — `HULL_FILE_BY_DEF_ID` (partsLibrary.js:202) wires them and that is correct.
-
-**The detection is now machine-enforced:** `check:asset-status` catches the exact mistake that produced the turd. If you're asked to "wire up assets" and that check fails, the failing asset is blocked on purpose — fix the export, don't bypass the check.
+If the exact record is blocked, fix and reclassify that export before routing it. If it is accepted,
+still verify the normal player camera, silhouette, materials, lighting, attachments, and LOD behavior.
+Run the asset-status/reachability/live/stability gates and inspect same-framing browser/Electron
+captures. Never bypass a failing classification, and never assume a green loader makes the art good.
 
 ---
 
@@ -255,7 +272,8 @@ If you see `status: "blocked"`, **do not wire it** — it's a known-broken expor
 - Reputation-gated missions (`missions.js`)
 - The WANTED path: `factions.applyRep` emits `faction:aggro` → `heat.js` raises `state.player.heat` → `world.js:~606` spawns WANTED hunters + `isPlayerWanted` flips lawful hostility.
 
-So rep affects combat **indirectly** through heat. If you want rep to affect combat more directly, the wiring point is `aiPorts.isHostile` (or the squad vote) — it's not there today.
+So rep affects combat **indirectly** through heat. If a design deliberately adds direct faction
+first-fire rules, route them through `engagementAuthority.js`; squad voting remains advisory.
 
 ---
 
@@ -271,12 +289,13 @@ So rep affects combat **indirectly** through heat. If you want rep to affect com
 3. **Don't roll assets back** to "fix" a graphics conflict during active graphics work — report and leave the graphics lane untouched.
 
 **Specific traps:**
-- **`backdrop-filter: blur()`** — forbidden. Use opaque `rgba(5,9,18,.88)` panels.
-- **Per-frame allocations** in update loops — preallocate scratch.
-- **Bloom strength > 0.9** — raise per-material `emissiveIntensity` instead.
-- **`EVENT_LIGHT_POOL_SIZE`** in `vfx.js` — shader cache key; `precompile.js` must warm against exactly that count.
+- Removing or banning a visual technique without first attributing its current compositor/GPU cost.
+- Per-frame allocations in update loops instead of scratch reuse or bounded pooling.
+- Changing bloom/exposure globally without representative material and same-framing review.
+- Letting shader precompile coverage drift from the live pooled VFX/material variants.
 
-See `design/PERF_BUDGET.md`. Known-red: `check:perf` strict 60fps p95 is 16.9ms vs 16.7ms target — polish, not asset failure.
+See `design/PERF_BUDGET.md` and read the current performance artifact; dated numbers in prose are not
+the performance truth.
 
 ---
 

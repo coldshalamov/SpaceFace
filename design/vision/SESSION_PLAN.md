@@ -1,5 +1,9 @@
 # PLAYABLE DEMO CHECKPOINT
 
+> **Run-specific historical handoff.** Use [`design/program/README.md`](../program/README.md) for the
+> current overall task and pickup order. This file describes the demo-opening route only; a green
+> demo does not close the stricter red M1 Helios route.
+
 **Date:** 2026-07-14  
 **Status:** The beginning of the game is playable and has one repeatable proof command. The larger Depth Program is paused, not finished.
 
@@ -38,7 +42,9 @@ Checkpoint commits:
 
 ## Depth Program status
 
-The live ledger currently has 31 chunks: 15 marked IN-PROGRESS, 16 still TODO, and none accepted as DONE. Do not start more chunks until an existing one is completed with its real player-facing proof.
+At this checkpoint the corrected ledger has 31 chunks: 16 marked IN-PROGRESS, 15 still TODO, and
+none accepted as DONE. This is a historical run note; use `design/program/02_REMAINING_WORK.md` for
+the current roll-up. Do not promote a chunk without its real player-facing proof.
 
 Three especially important unfinished integrations are:
 

@@ -23,7 +23,8 @@ One **category** per sprint (not the whole 63 at once):
 2. Load concept/bible refs per `spaceface-blender-pipeline` SKILL.
 3. Acquire `assets/ships/blender.LOCK` (Thread A).
 4. Inspect current GLB + MCP renders → `deficiency.md` iter0.
-5. Run **20 iterations** minimum (`QUALITY_RITUAL.md`): modeling → surfacing → life.
+5. Use `QUALITY_RITUAL.md` to critique and improve modeling, surfacing, and life until independent review
+   supports the professional outcome.
 6. Export via `spaceface_export.py` / `finalize_part.mjs`.
 7. Write handoff YAML (`HANDOFF_TEMPLATE.md`).
 8. Release Blender lock.
@@ -32,8 +33,8 @@ One **category** per sprint (not the whole 63 at once):
 
 | Gate | When |
 |------|------|
-| Screenshot set complete | Every iteration |
-| Iteration count ≥ 20 | Before handoff |
+| Representative neutral, lit, detail, and player-route evidence | Before handoff |
+| Independent visual review addresses material gaps | Before handoff |
 | Exporter assertions green | Before handoff |
 | Integrator: `INTEGRATION_GATE.md` | After handoff (not your job) |
 

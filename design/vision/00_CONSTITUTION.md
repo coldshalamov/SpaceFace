@@ -1,7 +1,7 @@
 # 00 — Product Constitution (supporting product framing)
 
 > **Current authority banner:** root `ARCHITECTURE.md` (technical) > `design/GDD_2_0.md`
-> (design) > `design/spec2/00_MASTER_TASTE.md` (taste/rejection).
+> (design) > `design/spec2/00_MASTER_TASTE.md` (historical taste reference; visual tokens not binding).
 > `design/vision/ALPHA_PROGRAM.md` owns current execution order and solo-alpha scope beneath that
 > chain. This file records supporting product framing and cannot override that chain.
 
@@ -16,7 +16,7 @@ historical framing conflicts with root `ARCHITECTURE.md`, `design/GDD_2_0.md`,
 
 ## 1. One-sentence product
 
-A **browser/PC open space sandbox** in the *spirit* of Freelancer (travel grammar, living chart, pilot agency) but with **original IP, names, and voice**: dense places, strategic trading/combat/mining, **massline as the signature verb**, **flight that is easy to pilot**, and a **liquid-glass strategy UI** dense with *data*, not walls of text.
+A **browser/PC open space sandbox** in the *spirit* of Freelancer (travel grammar, living chart, pilot agency) but with **original IP, names, and voice**: dense places, strategic trading/combat/mining, **massline as the signature verb**, **flight that is easy to pilot**, and a **data-dense strategy UI** dense with *data*, not walls of text.
 
 ---
 
@@ -27,7 +27,10 @@ A **browser/PC open space sandbox** in the *spirit* of Freelancer (travel gramma
 3. **Massline is the toy.** Latch must work at combat speed (wide cone + Flyby Focus). Swing, reel-in, cut-whip must be usable strategies.
 4. **Open chart travel (Freelancer-like).** Open charted space; jump gates = go fast / continuous feel; **no loading screens** if we can help it. Density per system > empty radius.
 5. **Living systems.** Economy, factions, traffic, encounters — player actions ripple. Empty “one rock pile in a void” is a bug.
-6. **Strategy UI, glass chrome.** Information density: prices, risk, mass delta, route, heat. Help is hover/first-run only. **No prose spam** in station hubs.
+6. **Strategy UI, clear hierarchy.** Information density: prices, risk, mass delta, route, heat.
+   Help appears where it supports a decision; station surfaces avoid duplicated prose. Panel material,
+   brightness, blur, and layout are chosen per screen and accepted through screenshots,
+   accessibility, and measured performance—not inherited recipes.
 7. **Wonder & polish — no quality cliffs.** Authored assets, lighting, VFX, audio, portraits. Every surface in a hero frame should survive a 5-second sore-thumb test. Iterate with shots and scores (`06_OPERATING_MODEL.md`).
 8. **Original identity.** Inspired by classics, **not derivative cosplay** (rename Freelancer-clone ship names; cinematic portraits not cartoon stickers).
 9. **Building later.** Claims/automation/empire (Mindustry-adjacent) only after 1–8 make a 30–60 min session fun.
@@ -78,13 +81,16 @@ A **browser/PC open space sandbox** in the *spirit* of Freelancer (travel gramma
 
 ---
 
-## 5. UI law (liquid glass + strategy density)
+## 5. UI law (strategy density + clean chrome)
 
 ### Visual
 
-- **Liquid glass** panels allowed (blur / translucency / depth). Perf: quality toggle; not a ban.
-- Modular component system: Panel, TabRail, DataTable, StatChip, Sparkline, Modal, MapChrome, Toast.
-- One visual language for flight chrome, station, map, outfit.
+- **Outcome-based surfaces.** Avoid generic glassmorphic/SaaS treatment, but do not ban a CSS
+  technique or prescribe one opaque color globally. Each screen needs intentional material,
+  hierarchy, state semantics, accessibility, and measured compositor cost.
+- Reuse components when it improves coherence and maintenance; do not force every interaction into
+  the same Panel/TabRail/DataTable shell.
+- Flight, station, map, and fitting should feel related without becoming visually identical.
 
 ### Information
 
@@ -122,7 +128,8 @@ Agents may not claim DONE without:
 
 1. **Named automated checks** for the wave (if any) green — *and* new tests added if a bug class recurred.
 2. **Playtest rubric + fun judgment** — is this more fun or still lame? (required prose in handoff)
-3. **Quality ritual** per `06_OPERATING_MODEL.md`: multi-iteration screenshots (target 10–20 for visual/feel), **weighted scores**, no dimension left in the sore band.
+3. **Quality loop** per `06_OPERATING_MODEL.md`: comparable before/after evidence, named defects,
+   and an independent in-context verdict. Iteration counts and weighted self-scores are not proof.
 4. **Sore-thumb sweep** on every touched surface (e.g. starter ship emissive junk).
 5. **Screenshot / capture** (`.devshots/vision/…`); video when motion is the claim.
 6. **Update** `01_CURRENT_STATE.md` and the active wave row in `03_MASTER_BUILD_PLAN.md`.

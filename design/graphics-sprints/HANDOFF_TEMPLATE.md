@@ -14,7 +14,7 @@ assets:
     source_glb: assets/ships/parts/engines/engine_vector.glb
     blend_path: assets/ships/parts/blender/engine_vector.blend | null
     art_status: full_finish | surfacing_wip | blocked
-    iteration_count: 20
+    review_status: independently_reviewed | author_review_only | needs_review
     evidence: assets/ships/parts/revamp-evidence/engine_vector/
     lifecycle: SOURCE_GLB  # CONCEPT | SOURCE_GLB | RELEASE_BUILT | MANIFEST_SLOT | RUNTIME_MAP | VISIBLE_IN_PLAY
     manifest_row: exists | needs_new_row

@@ -163,5 +163,7 @@ structural. Never accept transcript claims without file evidence.
 ## 3. Standing constraints
 - ARCHITECTURE.md contracts hold: sim never touches Three.js; UI emits intents only; XZ plane; y=0.
 - Determinism: any RNG in sim paths uses `state.rng`/sector-seeded hash; check:sim must stay green.
-- No new deps without lead sign-off. No `backdrop-filter`. Respect `motionReduce`/`flashReduce`.
+- Dependencies and visual techniques are allowed when they improve the result and carry documented
+  license, bundle/performance, determinism/save, accessibility, and maintenance evidence. Respect
+  `motionReduce`/`flashReduce`; measure CSS/render cost instead of banning properties by name.
 - Do not edit `test/*.expected.json` goldens to make checks pass — fix the code or flag the lead.

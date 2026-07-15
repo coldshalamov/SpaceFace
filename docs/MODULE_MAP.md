@@ -2,16 +2,17 @@
 
 > **What this is:** the single index of "which file does what, which implementation is LIVE,
 > and where to start reading." If you don't know where something lives, start here.
-> Companion to `AGENTS.md` (policy) and `docs/COMMON_BUGS.md` (debugging playbooks).
+> Companion to `AGENTS.md` (policy), `docs/README.md` (documentation routing), and
+> `docs/COMMON_BUGS.md` (debugging playbooks).
 >
-> **Verified first-hand against the working tree 2026-07-05.** The working tree has ~202 files /
-> ~17k insertions uncommitted (see `AGENTS.md` §3) — claims here reflect the working tree, not HEAD.
+> This map describes the working tree, not a recorded HEAD snapshot. Run `git status --short` and
+> verify the relevant import/selection seam before editing; the shared tree changes continuously.
 >
 > **Live vs legacy:** the engine has flag-selected backend swaps (see `AGENTS.md` §5).
 > Files marked 🟢 are default-on. Files marked ⚪ are fallback/test-fixture only — editing them
-> has no effect in normal play. Defaults: `physicsBackend:'rapier-dynamic'`,
-> `aiBackend:'sg06-tactical'`, `flightBackend:'v3'` (`src/core/gameState.js:16`,
-> force-stamped on every save at `src/save/saveSystem.js:1411-1413`).
+> has no effect in normal play. Defaults are `physicsBackend:'rapier-dynamic'`,
+> `aiBackend:'sg06-tactical'`, and `flightBackend:'v3'`; `src/core/gameState.js` declares them and
+> `src/save/saveSystem.js` force-stamps them during normalization.
 >
 > **System vs library:** a *system* is registered in `src/core/registry.js` (runs every tick).
 > A *library module* lives in `src/systems/` but is just imported by other code — it does NOT run
@@ -24,13 +25,15 @@
 | File | Role | Notes |
 |---|---|---|
 | `index.html` | DOM shell + Three.js importmap. z-layered: canvas (0) < vignette (5) < hud (10) < modal-backdrop (90) < screens (100) < toasts (1000) < alerts (1100). | `#ui-root` is `pointer-events:none`; interactive children opt back in. |
-| `src/main.js` | Boot + bootstrap. **Boots to Main Menu** (`state.mode='menu'`). On `game:new` → `startNewGame()` → builds world → **hard gate: refuses flight if authored assets not ready** (lines 196-199, 203-206, 216-223) → `state.mode='flight'`. Exposes `window.SF = {state, bus, registry, ctx, helpers, THREE, telemetry, eventTrace}` in debug. | Don't weaken the asset-ready gates — they prevent silent procedural-fallback ships. |
+| `src/main.js` | Boot + bootstrap. **Boots to Main Menu** (`state.mode='menu'`). On `game:new` → save transition deferral → `startNewGame()` → builds world → **hard gate: refuses flight if authored assets not ready** → `state.mode='flight'`. Token creation and startup both wait for any synchronous restore to drain. | Don't weaken the asset-ready gates — they prevent silent procedural-fallback ships. |
 | `server.js` | Zero-dependency static dev server (port 8123). | Browser route is the primary player path. |
 | `electron/main.cjs` | Optional desktop shell. Serves the SAME game route on private port 41788. | Shell-only; must not change gameplay/assets/reachability. `check:launch-policy` enforces. |
-| `src/core/gameState.js` | `createGameState(seed)` — the single flat `GameState`. Default backend flags at line 16. `state.input` raw axes at line 85 (`actions.*` added lazily by input.js). | The one state object every system reads/writes. See `AGENTS.md` §6 for single-writer rules. |
+| `src/core/gameState.js` | `createGameState(seed)` — the single flat `GameState`, including default backend flags and raw input axes (`actions.*` are added by input.js). | The one state object every system reads/writes. See `AGENTS.md` §6 for single-writer rules. |
 | `src/core/eventBus.js` | The event bus. All cross-system comms. Event names: `domain:verb`, lowercase, `:`-delimited. | ARCHITECTURE §0.3, §4.4. |
-| `src/core/registry.js` 🟢 | System registry: instantiates every system, `init(ctx)` in registration order, `step(dt)` runs `UPDATE_ORDER`. **Flight/AI backend selection at lines 170-186.** `get(name)` returns the slot winner by name (lines 84-85). | If a system isn't here, it doesn't run. Update order in `AGENTS.md` §8. |
+| `src/core/registry.js` 🟢 | System registry: instantiates systems, runs `init(ctx)` in registration order, selects the flight/AI backends, and steps `UPDATE_ORDER`. `get(name)` returns the selected slot winner by name. | Authoritative order; use generated `SYSTEM_REGISTRY.md` as the navigable projection. |
 | `src/core/loop.js` 🟢 | Fixed-timestep loop. 60 Hz sim, render every frame, accumulator capped at 8 steps. | ARCHITECTURE §2. |
+| `src/core/timeEffects.js` 🟢 | Sole runtime writer of `state.timeScale`. Per-state singleton; minimum named request wins (`0` pause, fractions slow-time, `1` normal). | Requests are transient/nonserialized; owners clear only their own source. |
+| `src/core/runTransitionGuard.js` 🟢 | Monotonic ownership for async New Game/load readiness. Privately branded token identity rejects forged/cloned generation objects; the issued current token commits once. | Complements save's synchronous latest-route deferral queue. |
 | `src/core/sim.js` / `simSnapshot.js` | Deterministic sim harness + canonical serialization (for replay hashing). | `canonicalStringify` is the hash basis — change it and all goldens break. |
 | `src/core/entity.js` | Entity factory + the single entity store (`state.entities: Map` + `entityList`). | ARCHITECTURE §0.15 — `combatants` is a derived per-tick index, NOT a separate store. |
 | `src/core/physics.js` / `physicsAuthority.js` 🟢 / `rapierCollisionWorld.js` / `spatialHash.js` | Physics: Rapier dynamic bodies (live), the single-writer authority membrane (only thing that writes pos/vel/rot), core's spatial hash (cell 64 wu). | Everything else emits force/torque/impulse commands through `physicsAuthority`. |
@@ -45,8 +48,8 @@
 
 | File | Role | Live? |
 |---|---|---|
-| `src/systems/flightV3.js` 🟢 | **LIVE flight controller.** Production adapter over the propulsion stack. Writes only force/torque/impulse through `physicsAuthority` — never touches pos/vel/rot directly. Adds autopursuit verb. `_diag.version = 3`. **Currently +520 lines uncommitted** (active rewrite). | YES — `flightBackend:'v3'`. |
-| `src/systems/flight.js` ⚪ | Legacy flight controller. Directly edits `e.vel`/`e.rot` via `flightDynamics.js`. | NO — registered fallback only; **zero importers anywhere**. CI runs legacy `check:sim` against it. GDD §4 still cites it (line 25) — stale. |
+| `src/systems/flightV3.js` 🟢 | **LIVE flight controller.** Production adapter over the propulsion stack. Writes force/torque/impulse through `physicsAuthority`. | YES — selected by default `flightBackend:'v3'`. |
+| `src/systems/flight.js` ⚪ | Legacy flight controller. Directly edits `e.vel`/`e.rot` via `flightDynamics.js`. | Default-off fallback. Statically imported by `registry.js` and directly used by compatibility/sim checks; do not delete or edit for default gameplay. |
 | `src/core/flight/propulsionCatalog.js` 🟢 | V3 propulsion profile catalog (thrust/drag/vmax per ship role). | YES — V3's math. |
 | `src/core/flight/propulsionKernel.js` 🟢 | V3 force integration kernel. | YES. |
 | `src/core/flight/flightTelemetry.js` 🟢 | V3 telemetry export for HUD/radar. | YES — read by `ui/hud.js`, `ui/radar.js`. |
@@ -59,7 +62,7 @@
 
 ## AI (two stacks — SG-06 tactical is live)
 
-> **If your AI fix "didn't apply," you edited `src/systems/ai.js`.** It's dead at runtime.
+> **If your AI fix "didn't apply," you edited `src/systems/ai.js`.** It is default-off.
 > The live stack is `tacticalAI.js` + `src/ai/` + `aiPorts.js`.
 
 | File | Role | Live? |
@@ -68,13 +71,14 @@
 | `src/ai/stack.js` 🟢 | `TacticalAIStack.update` — the per-tick AI driver. | YES. |
 | `src/ai/perception.js` 🟢 | Builds per-ship sensor frames; counts `hostileContacts`/`visibleThreat` feeding the director. | YES. |
 | `src/ai/director.js` 🟢 | Encounter pacing — ramps pressure based on perceived threat, emits reinforcement requests. | YES. |
-| `src/ai/squad.js` 🟢 | Target voting (`mergeContacts`, hostile-vote at line 271-273) + `selectFocusTarget` (line 289). **Contains a fallback clause at line 272** that can vote hostile when `contact.hostile` is undefined + team mismatch + threat > 0. | YES — read `docs/COMMON_BUGS.md` §2. |
+| `src/ai/squad.js` 🟢 | Contact merge and target voting. Its selection is advisory; final execution revalidates engagement authority. | YES — read `docs/COMMON_BUGS.md` §2. |
 | `src/ai/shipDecision.js` / `maneuver.js` 🟢 | Per-ship action pick (attack/ranged/flee) + steering (INTERCEPT/ORBIT). | YES. |
 | `src/ai/contracts.js` 🟢 | AI data contracts (sensor frames, contact kinds, director phases). Imported widely. | YES. |
 | `src/ai/sg03ActionPort.js` / `inspection.js` / `trace.js` 🟢 | Action port (writes `intent.fire`/`intent.thrust`), test inspection endpoint, tracing. | YES. |
-| `src/systems/aiPorts.js` 🟢 | Bridges tactical AI to physics via `physicsAuthority`. **Contains `isHostile` (line 784)** — the live hostility oracle. In the working tree it has the lawful+heat gate (lines 793-795: `lawful && otherIsPlayer → isPlayerWanted(state)`); in HEAD it's team-only. | YES — critical for hostility debugging. |
+| `src/ai/engagementAuthority.js` 🟢 | Final fail-closed engagement authorization plus fresh hostility oracle. Revalidates motive, response window, doctrine phase, leash, station jurisdiction, and first-session attacker ownership. | YES — final-fire authority; critical for hostility debugging. |
+| `src/systems/aiPorts.js` 🟢 | Bridges tactical decisions to physics/actions and consumes `engagementAuthority`. | YES. |
 | `src/systems/aiEncounter.js` 🟢 | Consumes director reinforcement requests, spawns `REINFORCEMENT_PACKAGES` (all `team:1`). | YES. |
-| `src/systems/ai.js` ⚪ | Legacy per-NPC FSM. Has a correct lawful+heat gate (line 536-549) — but the file is **dead at runtime** (zero importers). | NO. |
+| `src/systems/ai.js` ⚪ | Legacy per-NPC FSM. | Default-off fallback. Statically imported by `registry.js` and used by compatibility checks. |
 
 ---
 
@@ -82,10 +86,10 @@
 
 | File | Role | Notes |
 |---|---|---|
-| `src/systems/combat.js` 🟢 | The registered combat system → calls into `src/combat/` library. **`makeEnemySpawnSpec` (line 65) hardcodes `team:1` for every enemy including lawful patrols** (line 70). Sets `ai.lawful = !!def.factionLawful` (line 111). | ARCHITECTURE §0.15. |
+| `src/systems/combat.js` 🟢 | The registered combat system → calls into `src/combat/` library. `makeEnemySpawnSpec` creates team-tagged NPC specs and carries authored lawful/motive/engagement context into AI state. | ARCHITECTURE §0.15. |
 | `src/combat/` (`kernel.js`, `damage.js`, `actions.js`, `runtime.js`, `statuses.js`, `subsystems.js`, `attachments.js`, `geometry.js`, `persistence.js`, `trace.js`, `validate.js`, `index.js`) 🟢 | **Busy shared combat library** — imported by `combat.js`, `weapons.js`, `actions.js`, `ai.js`, `aiEncounter.js`, `impulseCharges.js`, `missions.js`, `onboarding.js`, `world.js`. `attachments.js` = tether (imports masslineController). `index.js` = barrel re-export. | Library, not a registered system. |
-| `src/systems/weapons.js` 🟢 | Weapon firing + weapon heat. NPC firing path services every ship with `intent.fire` set. The `typeof window`-gated heat vent (line 31) preserves determinism — don't "fix" it. | The player-auto-fire lawful gate is at line ~552 (player side only). |
-| `src/systems/heat.js` 🟢 | **WANTED heat** (`state.player.heat`, 0..1) — the ONLY writer. Raised by `faction:aggro` events. `WANTED_THRESHOLD = 0.15` (line 33). **`isPlayerWanted(state)` at line 147** — the canonical "is the player wanted" check. | Do not confuse with weapon heat or sector danger. |
+| `src/systems/weapons.js` 🟢 | Weapon firing + weapon heat. NPC firing consumes authorized intent. The `typeof window`-gated weapon vent preserves headless determinism; do not "fix" it casually. | Final AI-fire authority lives in `src/ai/engagementAuthority.js`. |
+| `src/systems/heat.js` 🟢 | **WANTED heat** (`state.player.heat`, 0..1) — the only writer. Raised by faction/aggression events; exports canonical `isPlayerWanted(state)`. | Do not confuse with weapon heat or sector danger. |
 | `src/systems/countermeasures.js` | Countermeasures (missile decoys). | Live. |
 | `src/systems/dangerModel.js` 📚 | **Sector danger index kernel** — offscreen sector-field simulation. Imported only by `sectorSim.js`. **NOT a registered system, NOT combat threat.** `dangerIndex()` itself is in `src/data/sectors.js:254`. | Library module — do not edit expecting combat changes. |
 | `src/data/combatDefs.js` / `enemies.js` | Combat definitions + enemy archetypes (swarmer/sniper/brawler/pirate/trader/capital) + `factionLawful` flag. | `enemies.js` `patrol_lawman` has `factionLawful:true` → spawns `ai.lawful:true` but still `team:1`. |
@@ -97,7 +101,7 @@
 | File | Role |
 |---|---|
 | `src/systems/mining.js` | Beam mining, seams (deterministic 1-4/asteroid), fracture-into-chunks, vacuum buff, rich cores. `check:mining:2` gates it. |
-| `src/systems/drill.js` | Charged-drill timing ring (rich cores 3-8× rare). |
+| `src/systems/drill.js` + `src/ui/screens/drill.js` | Asteroid deep-core extraction grid: deterministic strata, drill heat/tier gates, gas hazards, cargo yield, and the seismic survey pulse. Separate from beam-mining rich cores. |
 | `src/systems/cargo.js` | The ONLY writer of `state.player.cargo` (`addCargo`/`removeCargo`). Volume (`u`) is the only hard cap; mass is a handling penalty, not a second cap. |
 | `src/systems/economy.js` (57KB) | The ONLY writer of `state.player.credits`. Per-station supply/demand market, price-from-stock, spreads, drift, events, contraband. 5s tick. |
 | `src/systems/economyCycles.js` 📚 | Economic event cycles. Imported by `ui/screens/market.js`. Library module, not a registered system. |
@@ -158,12 +162,12 @@
 | File | Role | Notes |
 |---|---|---|
 | `src/render/renderer.js` (72KB) | WebGLRenderer setup, scene management, render frame (`renderFrame` / split `prepareFrame`+`drawPreparedFrame`). | Perf lane. |
-| `src/render/assetLoader.js` (48KB) | Fetches + validates authored GLB parts. **`loadAuthoredPart` (line 100): on ANY contract violation the `.catch` (lines 117-125) records the failure and returns null → `partsLibrary` falls back to procedural geometry (silent, no throw).** | #1 reason "my model won't render." Use `getAuthoredAssetDiagnostic` to see the actual failure. |
-| `src/render/partsLibrary.js` (110KB) | Composes ships from parts. **`HULL_FILE_BY_DEF_ID` (line 202) is the LIVE modular hull map** (`ship_kestrel → 'hulls/hull_starter.glb'`, etc.). **`WHOLE_SHIP_FILE_BY_DEF_ID` (line 220) is currently EMPTY** (`Object.freeze({})`) — whole-ship bodies are disabled until SPEC3-37 re-exports complete hull bodies. Pulls from `assets/ships/release/parts/` by default (`PART_RELEASE_ROOT`, line 17; release mode on at `releaseMode.js:1`). | The shipId→GLB link lives HERE, not in `ships.js`. |
+| `src/render/assetLoader.js` | Fetches and validates authored GLB parts. `loadAuthoredPart` records failures and resolves `null`, retaining the caller's procedural fallback. | Use `getAuthoredAssetDiagnostic` to inspect the actual failure. |
+| `src/render/partsLibrary.js` | Composes ships from parts. `WHOLE_SHIP_FILE_BY_DEF_ID` routes production Kestrel and Wasp bodies; `HULL_FILE_BY_DEF_ID` supplies modular hulls for other definitions. Pulls from release parts by default. | The ship-definition-to-GLB link lives here, not in `ships.js`. |
 | `src/render/releaseMode.js` | `isReleaseAssetMode()` returns `true` unless overridden. | Release is the default game path. |
 | `src/render/vfx.js` (131KB) | Pooled GPU particle cloud + additive sprites. Purely cosmetic, event-driven, never writes sim state. Has a good header — read it. `EVENT_LIGHT_POOL_SIZE` is a shader cache key. |
 | `src/render/visualFactory.js` (131KB) | World prop / station / structure factory. `applyStructureProfile` controls shell opacity. |
-| `src/render/spaceBackground.js` (66KB) / `starfield.js` / `parallaxLayers.js` / `bloom.js` / `feel.js` / `camera.js` | Background, starfield, parallax dust/motes, selective bloom (**never > 0.9 global**), game-feel (shake/trauma), camera (position-follow only, never yaw). | Camera params canonical at ARCHITECTURE §0.14. |
+| `src/render/spaceBackground.js` (66KB) / `starfield.js` / `parallaxLayers.js` / `bloom.js` / `feel.js` / `camera.js` | Background, starfield, parallax dust/motes, selective bloom (**never > 0.9 global**), game-feel (shake/trauma plus owned `feel:hit-stop` request), camera (position-follow only, never yaw). | Camera params canonical at ARCHITECTURE §0.14. |
 | `src/render/precompile.js` | Shader precompile (hitch elimination). | Perf lane. |
 | `src/render/adaptiveQuality.js` / `lod.js` | Dynamic resolution + LOD. |
 | `src/render/materialLibrary.js` / `canvasTextures.js` | Material + runtime canvas texture factories. |
@@ -177,7 +181,7 @@
 | File | Role |
 |---|---|
 | `src/ui/uiRoot.js` (64KB) | Mounts `#ui-root`, manages screen lifecycle. |
-| `src/ui/screenManager.js` | Modal screen caching/switching (one visible at a time). |
+| `src/ui/screenManager.js` | Modal caching/switching plus aggregate `ui:pausing-screen` request; nested screens/docking emit one pause/resume pair. |
 | `src/ui/hud.js` (90KB) | Always-mounted flight HUD. **Has a good header — read it.** Reads state for display, never mutates sim. |
 | `src/ui/radar.js` (33KB) | Radar glyph/IFF pass. |
 | `src/ui/targetPanel.js` | Shield/armor/hull segmented bars + in-world target arcs. |
@@ -193,7 +197,7 @@
 
 | File | Role |
 |---|---|
-| `src/save/saveSystem.js` | Versioned saves (localStorage + JSON export/import), autosave, migrations. **Force-stamps backend defaults at line 1411-1413.** |
+| `src/save/saveSystem.js` | Versioned saves, autosave, migrations. Destructive restore owns one transient latest-route callback, releases ownership, then drains the winner. A failed superseded outer restore returns stale without publishing its error; only the winner owns failure output. |
 | `src/audio/audioSystem.js` / `synth.js` | 100% procedural Web Audio. AudioContext created lazily on first gesture. |
 | `src/data/audioRecipes.js` | Synth recipes. |
 | `src/systems/presentationOrchestrator.js` + `presentationAdapters.js` 🟢 | Registered presentation system: produces normalized cues, fans them to camera/audio/UI buses. |
@@ -246,18 +250,24 @@ These live in `src/systems/` but are imported by other code; they do NOT run eve
 | `tools/blender/spaceface_export.py` | Blender export script. |
 | `scripts/` | All `check:*` scripts, sim harnesses (`sf-sim.mjs`), probes (`probe-*`), build scripts (`build-sg04-release-assets.mjs`, `build-bundle.mjs`). ~100+ scripts — see `package.json` `scripts` for the canonical list. |
 | `test/` | Golden telemetry (`47a.telemetry.expected.json` legacy + `47a.telemetry.v3.expected.json` V3), input tapes (`47a.inputs.json`), spec tests. **Never edit `*.expected.json` to pass — fix the code.** |
-| `assets/QUEUE.md` | Live asset work queue (current blocker: Kestrel/Pelican/Wasp whole-ship hull bodies missing). |
+| `assets/QUEUE.md` | Asset work queue. Cross-check its claims against `assets/AGENTS.md`, manifests, runtime maps, and current asset checks. |
 
 ---
 
 ## Where things are NOT (common dead-ends)
 
-- **`src/systems/flight.js` and `src/systems/ai.js` are dead at runtime.** Defaults run V3 + tactical. Editing them appears to work but has no effect. (Verified: zero importers in `src/`, `scripts/`, `test/`.)
+- **`src/systems/flight.js` and `src/systems/ai.js` are not the default controllers.** Defaults run
+  V3 + tactical, but both legacy files remain statically imported fallbacks and CI/compatibility fixtures.
 - **There is no `src/core/flight/flightDynamics.js`** despite some spec docs referencing it. V3 files are `propulsionCatalog.js`/`propulsionKernel.js`/`flightTelemetry.js` under that dir. `flightDynamics.js` lives one level up at `src/core/flightDynamics.js` (legacy, but still imported by `aiPorts.js`).
-- **`WHOLE_SHIP_FILE_BY_DEF_ID` is empty** (`partsLibrary.js:220`). Whole-ship bodies are disabled; default play uses modular hulls (`HULL_FILE_BY_DEF_ID`). Don't add to the whole-ship map until SPEC3-37 re-exports complete hull bodies.
-- **`ai.playerWanted` is a dead field** — read in a few places, never written. The canonical wanted check is `heat.isPlayerWanted(state)` (`heat.js:147`).
-- **`dangerModel.js` is NOT combat threat** — it's the offscreen sector difficulty kernel. Combat hostility is decided by `aiPorts.isHostile` (team + lawful + heat).
+- **`WHOLE_SHIP_FILE_BY_DEF_ID` is active for Kestrel and Wasp.** Other ship definitions use
+  modular `HULL_FILE_BY_DEF_ID` entries unless a production-validated complete body is deliberately wired.
+- **`ai.playerWanted` is deprecated state, not authority.** The canonical wanted check is
+  `heat.isPlayerWanted(state)`.
+- **`dangerModel.js` is NOT combat threat** — it is the offscreen sector difficulty kernel. Final
+  engagement and fresh hostility authority live in `src/ai/engagementAuthority.js`.
 - **`combatants` is not a separate store** (ARCHITECTURE §0.15) — derived per-tick index over `state.entities`.
-- **`backdrop-filter` is forbidden** in UI CSS (prior perf pass). Use opaque `rgba(5,9,18,.88)` panels.
+- **No CSS effect is globally forbidden by this map.** Attribute current compositor cost and follow
+  `design/PERF_BUDGET.md`; optimize without replacing the design with an inherited panel recipe.
 - **`design/ARCHITECTURE.md` no longer exists** — it was a stale handoff blurb that collided with the authoritative repo-root `ARCHITECTURE.md`. It has been archived to `design/_ARCHIVE/handoff_architecture.md`. The repo-root `ARCHITECTURE.md` is the only authoritative architecture doc.
-- **The working tree ≠ HEAD.** ~202 files / ~17k insertions uncommitted. Always `git diff` before diagnosing — your bug may already be fixed in the working tree, or your "fix" may already exist there. See `AGENTS.md` §3.
+- **The working tree may differ materially from HEAD.** Always run `git diff <file>` before diagnosing;
+  the fix or a newer architecture may already exist in shared work. See `AGENTS.md` §3.

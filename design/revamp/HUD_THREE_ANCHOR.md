@@ -1,12 +1,13 @@
 # HUD Three-Anchor Reconciliation
 
 **Date:** 2026-07-08
-**Scope:** flight HUD only. Authority: `design/spec3/SPEC3-F8-graphics-visuals.md` SPEC3-36 (anchor
-budget law) + `design/spec2/06_UI_IDENTITY.md` §1 (three-anchor HUD). Resolves debt #2 of
-`design/revamp/FRONTEND_REBOOT_AUDIT.md` (command bar vs three-anchor).
+**Disposition:** DATED RECONCILIATION RECEIPT, not current layout law. It records why one HUD pass
+collapsed duplicate surfaces. Current work follows `design/GDD_2_0.md`, the activated UX spec, and
+player-facing evidence. Do not delete the contact roster, station UI, navigation, or tactical
+information merely to preserve this anchor count.
 
-## The law
-The flight screen has exactly four zones, nothing permanent outside them:
+## The layout used by that pass
+The reconciled flight screen used four zones:
 1. **Bottom-left** — ship schematic + vitals + persistent state ("who I am, where I'm going").
 2. **Bottom-center** — action bar + status readouts + transient chips ("what I'm doing now").
 3. **Bottom-right** — radar + overview + target panel, one tactical stack ("what's around me").

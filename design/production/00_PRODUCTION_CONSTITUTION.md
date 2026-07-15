@@ -77,8 +77,8 @@ Missing evidence is not a pass. “Not observed” is not “working.”
 - Required shots may not be excluded from a pass decision.
 - An iteration counts only if source/GLB evidence proves a substantive candidate change; camera,
   lighting, filename, metadata, or neutral-map-only changes do not count.
-- Fixed iteration floors never imply completion. Hero/cast assets receive at least the planned
-  review budget and continue until accepted.
+- Fixed iteration floors are not acceptance requirements. Iterate until observed defects are closed
+  and independent in-context review accepts the result; stop counting effort as a proxy for quality.
 - Technique counts never imply quality. Techniques must be selected because they solve an observed
   problem and survive the Blender-to-GLB-to-Three.js path.
 - The worker may not weaken its evaluator, rewrite expected results, relabel assets, or stamp

@@ -62,8 +62,9 @@ the semantic validator resolves that decision artifact rather than trusting a ha
 card. An all-N/A card is legal only when those independent decisions and the profile genuinely prove
 it, never as an escape from difficult craft work.
 
-Exposure floors are: hero and recurring cast assets ≥20 meaningful macro-cycles, standard assets
-≥8, and background assets ≥3. These are review budgets, never pass conditions. The asset kinds are:
+Exposure determines how broad and adversarial the review must be, but there is no fixed cycle floor.
+Review continues until the required views/routes are covered and independent review finds no open
+critical or major defect. The asset kinds are:
 
 - hero player ship;
 - cast/NPC ship;

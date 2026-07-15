@@ -1,4 +1,4 @@
-# Command-Deck Effects & Gameplay Expansion Bible
+# Command-Deck Effects & Gameplay Expansion Reference
 
 **Date:** 2026-07-08 · **Type:** research + design synthesis (NO implementation this pass).
 **Authority chain:** `ARCHITECTURE.md` > `design/GDD_2_0.md` > `design/spec2/00_MASTER_TASTE.md` >
@@ -25,38 +25,38 @@ trap: depth expressed as tables. Our law: every number the player must know has 
 temporal read first.* SPEC3-42 §3: *numbers are for crime and fitting* — everywhere else, show the
 state (arc, color, motion, position), not the digit.
 
-Three inherited hard walls frame everything below (spec2/00 §3–4, unchanged):
+Three outcome constraints frame everything below:
 
-- **Locked palette (tokens only, never raw hex):** `--accent` cyan = interactive/friendly/info ·
-  `--warn` amber = warning/strain/attention · `--danger` red = danger/hostile · `--accent-3` violet
-  = story/anomaly · `--accent-2` mint = resource/gain · `--ink` white = text. Sector accents live in
-  `src/data/sectors.js` palette blocks, ≤10% usage. **No new hue enters without adding it there
-  first.** Reuse `--console-*` for flight-console surfaces and the `sf-*` primitive tunables
-  (`--sf-bar-*`, `--sf-trace-dur`, `--sf-cut`, `--sf-chip-color`).
-- **Motion means state change.** Nothing pulses, glows, morphs, or animates at rest. Transitions
-  120–250 ms ease-out (`--ease`), decays ≤600 ms. The ONLY at-rest exceptions in the whole game are
-  the 4.2 Hz seam ember (≤18% amplitude) and ≤8% engine idle flicker — **neither is a UI effect.**
-- **Non-diegetic, dark, cheap.** No visor/cockpit/helmet motifs (permanent user decision). No
-  `backdrop-filter`. Background luminance <18% sRGB. No new runtime dependency, no second frontend
-  framework — the whole overlay is vanilla DOM/CSS/`<canvas>` over Three.js (AGENTS.md §2).
+- **Semantic clarity:** color, shape, text, sound, and motion may expand beyond the current tokens,
+  but interaction, warning, hostility, story, and resource meanings must remain learnable and
+  accessible. New hues and materials need player-facing justification, not permission from a closed
+  palette.
+- **Signal hierarchy:** state changes must read above ambient atmosphere. Resting motion, glow, and
+  environmental animation are allowed when they communicate place, machine life, or tone and remain
+  subordinate to gameplay cues. Reduced-motion/flash modes require an equally legible static state.
+- **Professional non-diegetic UI:** keep the standing no-visor/cockpit/helmet HUD decision. Surface
+  brightness, blur, dependencies, frameworks, and implementation techniques are engineering/design
+  choices to validate for coherence, maintainability, accessibility, and measured performance—not
+  inherited bans or cheapness targets.
 
-Everything in §1–§6 is a way to be *more* expressive inside those walls, never a reason to breach
-them.
+Everything in §1–§6 is a candidate technique. Use only what improves the actual screen and revise
+the reference when stronger player-facing evidence contradicts it.
 
 ---
 
 ## 1. Visual-effect grammar
 
-Eleven effects, each mapped from a Magic UI reference to a **game meaning**. An effect with no state
-behind it is decorative and therefore forbidden (spec2/00 §3, SPEC3-F8 anti-patterns: "effects at
-rest"). Reduced-motion behavior assumes `state.settings.video.motionReduce` /
+Eleven effects, each mapped from a Magic UI reference to a **game meaning**. Gameplay effects need a
+clear signal purpose; ambient decoration is allowed when it strengthens place/identity without
+competing with decisions. Reduced-motion behavior assumes `state.settings.video.motionReduce` /
 `html.sf-reduce-motion` (the global blanket in `styles/accessibility.css` already forces
 animation/transition to ~0 ms; effects must *degrade to a legible static state*, never to a blank).
 
 Every effect below composes with the existing `sf-*` primitive layer
 (`src/ui/uiPrimitives.js` + the `styles/ui.css` EOF block) and must obey the flight-HUD frame-sleep
-rule (`scripts/check-ui-frame-sleep.mjs`): **no `box-shadow`/`transition`/`animation` on always-mounted
-flight elements** — these effects live on *screens* and *contextual* surfaces, not the resting HUD.
+rule (`scripts/check-ui-frame-sleep.mjs`): always-mounted flight effects must remain within measured
+frame/compositor budgets. Prefer event-driven or sleeping implementations; do not reject a visual
+technique solely by CSS property name.
 
 ### 1.1 Scanner Grid  *(Magic UI: flickering grid)*
 - **Mechanic meaning:** an active sensor field. Cell brightness = signal return at that bearing;
@@ -432,9 +432,9 @@ idea* in that stack.
    `html.sf-reduce-motion`; every effect degrades to a legible static state (see each §1 entry). The
    global blanket in `styles/accessibility.css` zeroes durations; effects must still *look right*
    static.
-5. **No new hue.** Palette tokens only (`--accent`, `--warn`, `--danger`, `--accent-3`, `--accent-2`,
-   `--ink*`, `--console-*`, sector accents). Use `color-mix(in srgb, var(--token) N%, transparent)`
-   for tints (already the accessibility.css pattern). No raw hex.
+5. **Semantic, accessible color.** Existing tokens are useful defaults, not a closed hue list. A new
+   hue or material needs a clear interaction/story role, accessible contrast/redundancy, and
+   representative screenshot review; implementation may use tokens or local values as appropriate.
 6. **Checks pass:** `check:ui:perf` (incl. `scripts/check-ui-frame-sleep.mjs`), `check:ui-a11y`,
    `check:wcag-contrast`, `check:bundle` (if `package.json`/import graph changed), `check:launch-policy`
    (effects must not diverge browser vs desktop or gate reachability). Add a `check:ui-effects` lint
@@ -503,7 +503,8 @@ are *behaviors bound to data*, and SpaceFace binds each to a game state and kill
 
 - No gameplay implementation, no screen rewrites this pass (documentation + optional
   `src/ui/effects/README.md` stub only).
-- No new dependency, no new hue, no visor motif, no `backdrop-filter`, no rest-state animation
-  introduced anywhere.
+- No visor motif. Any new dependency, hue, surface treatment, or rest-state animation belongs to the
+  later implementation slice and must justify itself through coherence, accessibility, maintenance,
+  and measured player-route performance.
 - This doc is a *plan*; each feature still owes its own spec-named check + five-second-test screenshot
   pair when it is actually built (SPEC3-42 §7 review protocol).

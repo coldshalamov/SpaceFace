@@ -1,5 +1,8 @@
 # SpaceFace Story Sheets — Schema & Convention
 
+> **Scope:** structured discovery layer. See [`../README.md`](../README.md) for the authority map.
+> Sheets do not prove runtime implementation.
+
 The **structured index** for the narrative canon. The prose files in `../story/`,
 `../vibe/`, `../orgs/`, `../contracts/` remain the *voice*. A sheet never duplicates
 prose — it extracts structured fields from it and points back.
@@ -131,21 +134,24 @@ canon_refs:         # [STORY-SPINE section, STORY-STRUCTURE section, etc.]
 
 ---
 
-## File tree (built across Phases 3–5)
+## File tree
 
 ```
 docs/worldbuilding/
   sheets/
     README.md            (this file)
     INDEX.md             (master entity × sheet × chapter map)
-    characters/          (14 files — Phase 3)
-    factions/            (8 files — Phase 4)
-    worlds/              (10 files — Phase 4)
-    commodities/         (6 files — Phase 4)
-    chapters/            (8 files — Phase 5)
-  DOSTOYEVSKY-LAYER.md   (Phase 2 — the canonical Dosto-element map)
+    characters/          (17 files)
+    factions/            (8 files)
+    worlds/              (11 files)
+    commodities/         (6 files; narrative concepts, not runtime cmdty_* IDs)
+    chapters/            (8 beat sheets)
+    groups/ gangs/ rivals/ crew/ ships/
+  DOSTOYEVSKY-LAYER.md   (craft scaffold and element map)
   story/
-    chapter-00-cold-start.md         (Phase 5)
-    chapter-01-first-run.md          (renamed from chapter-01-CANONICAL.md, footer added)
-    chapter-02 .. chapter-07-*.md    (Phase 5)
+    chapter-00-cold-start.md         (B0 prose frame)
+    chapter-01-CANONICAL.md          (B0 canonical first-run HUD script; legacy filename)
+    chapter-01-honest-work.md        (B1)
+    chapter-02 .. chapter-07-*.md    (B2-B7 authored intent)
+    chapter-05b-the-reunion.md       (future optional B5 branch)
 ```

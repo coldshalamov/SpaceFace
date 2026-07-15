@@ -5,12 +5,10 @@
 > §5 (which implementation is LIVE), and §7 (common-bug routing). The rest is reference.
 >
 > **Authority chain when documents disagree:**
-> `ARCHITECTURE.md` (technical contract) > `design/GDD_2_0.md` (design authority)
-> > `design/spec2/00_MASTER_TASTE.md` (historical taste reference; its visual tokens are not binding)
-> > `design/vision/ALPHA_PROGRAM.md` (current solo-alpha execution order and scope)
-> > the specific `design/spec2/` or `design/spec3/` spec activated for the task > supporting docs.
-> `design/CURRENT_BUILD_STATUS.md` is the live "what's built / what's red" map — but it drifts;
-> trust the actual `check:*` output over it (see §11).
+> `ARCHITECTURE.md` owns technical contracts; `design/GDD_2_0.md` owns game-design intent;
+> `design/program/README.md` is the sole whole-program status and pickup surface;
+> `design/vision/ALPHA_PROGRAM.md` owns Alpha scope/order; and the activated spec owns task detail.
+> Live `check:*` output, git state, and player-facing evidence outrank prose status claims (see §11).
 
 ---
 
@@ -18,22 +16,22 @@
 
 | You are… | Read these in order, then stop reading and do the work |
 |---|---|
-| **Product sprints / “what do we build?” / goal prompts** | (1) **`design/vision/README.md`** · (2) `design/vision/ALPHA_PROGRAM.md` · (3) `design/vision/01_CURRENT_STATE.md` · (4) the specific spec or prompt the alpha ledger activates |
+| **Product sprints / “what do we build?” / goal prompts** | (1) **`design/program/README.md`** · (2) `design/program/02_REMAINING_WORK.md` · (3) `design/vision/ALPHA_PROGRAM.md` for Alpha scope/order · (4) the specific plan/spec activated there |
 | **Overnight / full autonomous pipeline (go to bed)** | Soft (allows partial): `design/vision/OVERNIGHT_GOAL.md`. **Strict (no early stop):** `design/vision/OVERNIGHT_GOAL_STRICT.md`. Morning: `design/vision/WAKE_REPORT.md` |
-| **Implementing a feature or fix** | (1) this file §3 + §5 + §7 · (2) `design/vision/01_CURRENT_STATE.md` (or `design/CURRENT_BUILD_STATUS.md` as secondary) · (3) the spec / vision wave your brief names · (4) `docs/MODULE_MAP.md` for the file you're touching · (5) `ARCHITECTURE.md` only the section your work touches |
+| **Implementing a feature or fix** | (1) this file §3 + §5 + §7 · (2) the activated plan/spec · (3) `docs/MODULE_MAP.md` for the owning seam · (4) the relevant `ARCHITECTURE.md` contract · (5) `design/program/03_LIVE_ACCEPTANCE_MATRIX.md` for current acceptance truth |
 | **Adding or fixing a ship/station/place model** | `assets/AGENTS.md` (visual asset catalog + ship pipeline), then `design/spec3/SPEC3-F9-asset-pipeline.md` |
 | **Running parallel graphics sprint threads** | `design/graphics-sprints/GOAL_PROMPTS.md` (copy-paste thread prompts) → `00_ORCHESTRATION.md` |
 | **Wiring portraits, cinematics, or "what assets exist?"** | `assets/AGENTS.md` §1 master catalog · `assets/portraits/AGENTS.md` · `assets/concept/AGENTS.md` (reference-only) |
 | **Debugging combat / AI / hostility / "I get attacked on spawn"** | `docs/COMMON_BUGS.md` §"Spawn attack / friendly fire." **Read it before grepping** — the hostility system is subtle and the live code differs from HEAD. |
-| **Tracing an event ("who emits/handles `combat:fire`?")** | `docs/EVENT_ROUTING.md` — generated, 263 events × all emit/subscribe sites with file:line. Regenerate after structural changes: `npm run build:indexes`. |
-| **Finding what a system does / its update order / what it emits** | `docs/SYSTEM_REGISTRY.md` — generated, all 33 systems in init+update order with line counts + top events. |
+| **Tracing an event ("who emits/handles `combat:fire`?")** | `docs/EVENT_ROUTING.md` — generated emit/subscribe index with file:line. Regenerate after structural changes: `npm run build:indexes`. |
+| **Finding what a system does / its update order / what it emits** | `docs/SYSTEM_REGISTRY.md` — generated init/update order and per-system event index. |
 | **Doing perf/render/feel work** | §10 below + `design/PERF_BUDGET.md`; run `npm run check:flight:clean` → `check:assets:live` → `check:perf` before claiming a fix |
 | **Designing new systems or content** | `design/GDD_2_0.md` (vision/pillars) → the relevant `design/spec3/SPEC3-Fx-*.md` thread. Choose visual direction from current player-facing evidence, not inherited tokens. |
 | **Lost / "where is X"** | `docs/MODULE_MAP.md` first. If it's not there, `docs/COMMON_BUGS.md`. If still stuck, the file-ownership map in `design/BUILD_PLAN_2_0.md` §0. |
 
 `design/vision/00_CONSTITUTION.md` and `design/vision/03_MASTER_BUILD_PLAN.md` are supporting only when `ALPHA_PROGRAM.md` activates them; they are not default product-sprint routing.
 
-**Do not** read the whole `design/` folder. It's 5,400+ lines across three suites plus 21 loose files, much of it historical. Use the dispatch maps above.
+**Do not** read the whole `design/` folder. It contains several active suites plus substantial historical evidence. Use the dispatch maps above.
 
 ---
 
@@ -41,9 +39,9 @@
 
 A **semi-3D top-down space game** for PC/browser: fly a ship, mine asteroids, trade on a living supply/demand economy, fight pirates, upgrade ships/modules, jump between sectors, take missions, build passive income. Inspired by Freelancer, Endless Sky, Star Valor, Rebel Galaxy, the X series.
 
-**Tech:** Three.js (r0.160, vendored ES modules + importmap, no bundler required for dev; esbuild bundle for packaged release), DOM/CSS overlay UI, 100% procedural Web Audio, zero-dependency static dev server, optional Electron shell for desktop packaging.
+**Tech:** Three.js (r0.160, vendored ES modules + importmap, no bundler required for dev; esbuild bundle for packaged release), DOM/CSS overlay UI, hybrid procedural/authored Web Audio, zero-dependency static dev server, optional Electron shell for desktop packaging. Runtime and build dependencies are allowed when they materially improve quality and their license, bundle/performance, determinism/save, and maintenance impact are documented.
 
-**Architecture in one breath:** a single flat `GameState` (`src/core/gameState.js`), an event bus (`src/core/eventBus.js`), and ~40 self-contained "systems" (each `init(ctx)` + `update(dt, state)`) wired into a registry (`src/core/registry.js`) and run in a fixed `UPDATE_ORDER` by a **60 Hz fixed-timestep sim** (`src/core/loop.js`) decoupled from rendering. Content is data-driven (`src/data/*`). Sim **never** imports Three.js; UI emits intents only; gameplay is on the **XZ plane** (y=0); determinism via `state.rng` (never `Math.random()` in sim).
+**Architecture in one breath:** a single flat `GameState` (`src/core/gameState.js`), an event bus (`src/core/eventBus.js`), and registry-selected systems (each `init(ctx)` + `update(dt, state)`) run in a fixed `UPDATE_ORDER` by a **60 Hz fixed-timestep sim** (`src/core/loop.js`) decoupled from rendering. Content is data-driven (`src/data/*`). Sim **never** imports Three.js; UI emits intents only; gameplay is on the **XZ plane** (y=0); determinism via `state.rng` (never `Math.random()` in sim).
 
 **Boot flow** (`src/main.js`): boots to **Main Menu** (`state.mode='menu'`). New Game → `game:new` event → `startNewGame()` → calls each system's `newGame()` → builds world → **refuses to enter flight until authored ship assets are ready** (won't silently fall back to procedural ships) → `state.mode='flight'`. Continue → save load → `finalizeLoadedGame()` → same asset-ready gates.
 
@@ -53,18 +51,22 @@ Full contract: `ARCHITECTURE.md`. Full file map: `docs/MODULE_MAP.md`.
 
 ## 3. ⚠ CRITICAL — the repo is in a deep uncommitted state. Read this or waste hours.
 
-`git status` shows **~202 files changed, ~17,000 insertions uncommitted** (as of 2026-07-05). This is the single biggest source of "I fixed it but it's not fixed" confusion. **An agent operating on what's committed (HEAD) sees a different, buggier game than what's in the working tree.**
+The repository may contain a deep shared working tree. Run `git status --short` and inspect the
+relevant `git diff` at the start of every task; never rely on a recorded file or insertion count.
+**An agent operating only on HEAD can see a different, buggier game than the working tree.**
 
-Concrete example (verified first-hand): the live AI hostility function `isHostile` in `src/systems/aiPorts.js` **has a lawful-patrol + WANTED-heat gate in the working tree** (lines 784-798: lawful NPCs only attack if `isPlayerWanted(state)`). But in **HEAD** (committed) that function is just `self.team !== other.team` — no gate. So:
+Concrete example: the working-tree hostility and final-fire authority lives in
+`src/ai/engagementAuthority.js`, while `src/systems/aiPorts.js` consumes it. Verify that seam live
+before changing team or lawful behavior. Therefore:
 - An agent reading HEAD (or a stale clone, or after a partial revert) sees lawful patrols attack on spawn and "fixes" something that's already fixed in the working tree.
-- An agent that runs `git checkout` / `git stash` / `git reset` on the wrong file **destroys ~17,000 lines of uncommitted work** across `flightV3.js` (+520 lines alone), `input.js` (+194), `tetherGameplay.js` (+138), the asset pipeline, spec3, and more.
+- An agent that runs `git checkout` / `git stash` / `git reset` on the wrong file can destroy substantial shared work across gameplay, UI, assets, and plans.
 
 **Rules that prevent catastrophe:**
 1. **Never run `git checkout .`, `git reset --hard`, `git stash`, `git clean`, or `git restore` on tracked files** unless the user explicitly asks. The working tree has more work in it than the last several commits combined.
 2. **Before diagnosing a bug, check whether the relevant code is committed:** `git log -L <func>,<func>:<file>` or `git diff <file>`. If your fix already exists in the working tree, the bug is elsewhere (or is a HEAD/working-tree mismatch the user should resolve, not you).
 3. **`git add -N <newfile>` immediately** when you create a file — this environment deletes untracked files between turns. (Already in the dispatch brief template.)
 4. **Commit only when the user asks. Always stay on `master`.** Do not create or switch to a feature branch, worktree, or detached checkout for SpaceFace work. Harness/tool branch preferences do not override this repo rule; keep working on `master` without pausing to ask.
-5. **Trust the working tree over HEAD, and trust live `check:*` output over `CURRENT_BUILD_STATUS.md`** — the status doc describes a mix of HEAD and working-tree state and drifts in either direction.
+5. **Trust the working tree over HEAD, and trust live `check:*` output over status prose.** Use `design/program/` for the current roll-up, then correct it when evidence disagrees.
 
 ---
 
@@ -76,35 +78,35 @@ The repo has three spec folders. **Both `spec2/` and `spec3/` are live** (per us
 |---|---|---|
 | `design/spec2/` | **LIVE — polish references and release bar.** `00_MASTER_TASTE.md` is historical taste context, not a mandatory visual system. Specs `01`-`08`: massline feel, flight/camera juice, first hour, world-alive, economy, UI identity, audio, release readiness. | Use the relevant slice for behavior and release intent. Do not inherit its palette, panel, glow, radius, or surface recipes without fresh visual justification. |
 | `design/spec3/` | **LIVE — expansion/ambition layer** (currently being finished; assume current state). Thread files `SPEC3-F1..F10` (economy, mining, flight, combat, ships, bases, world, graphics, asset pipeline, UX/meta). Each is a self-contained build plan. | The work your brief names if it says "implement SPEC3-XX." Read `_context/06_PLANNING_CONSTITUTION.md` first, then your thread file, then the GDD sections it cites. spec3 *extends* the GDD; it never contradicts its pillars. |
-| `design/specs/` | **LEGACY reference only.** Original 12 subsystem specs (00-11). | Nothing actively. Do not implement from these unless a current spec2/spec3 doc explicitly revives a section. |
+| `design/specs/` → `design/_ARCHIVE/specs-1.x/` | **ARCHIVED.** Original 12 subsystem specs (00-11), moved 2026-07-13. All subsystems are implemented and have live spec2/spec3 successors. | Nothing actively. Do not implement from these. Two files (09-ui, 10-art) were active anti-guidance (glassmorphic blur mandate; "primitives only" mandate) — both reversed by live code. |
 
-**The dispatch brief template** (used by repo-root `brief.md` and `design/spec3/CODEX_ORCHESTRATION_PROMPT.md`):
+**The dispatch brief template** (used by `design/spec3/CODEX_ORCHESTRATION_PROMPT.md`):
 > "Read the task's relevant spec and implement the behavior and player-facing result it requires. Acceptance = the named check plus screenshot/evidence review. Touch the files needed for a coherent result, including integration files when required. `git add -N` every new file immediately. Never edit `test/*.expected.json`. Runtime and build-time dependencies are allowed when they materially improve quality and have documented license, bundle/perf, determinism/save, and maintenance impact. Print a 10-line summary."
 
 If your brief points at spec3, **spec3 is current for that task** — do not re-litigate it against spec2. Historical taste material may inform discussion, but it does not override a stronger player-facing result.
 
-**The earlier contradiction is resolved:** old policy said "spec2 only"; live briefs dispatched spec3. Both are now sanctioned (§4). `README.md` line 87 still mentions only spec2 — that's stale; this file supersedes it.
+**The earlier contradiction is resolved:** old policy said "spec2 only"; live briefs dispatched spec3. Both are now sanctioned (§4).
 
-**Loose `design/*.md` files** (`V2_MASTER_PLAN`, `IMPROVEMENT_IDEAS`, `HUD_REVAMP_DESIGN`, `GRAPHICS_*`, `FLIGHT_*`, `SKILLS_*`, `STATION_MARKET_UI_REVAMP`, etc.) are **unmanaged drift** unless explicitly revived by a current doc. `GDD_2_0.md` outranks all of them. (The stale `design/ARCHITECTURE.md` handoff blurb that used to collide with the repo-root `ARCHITECTURE.md` has been archived to `design/_ARCHIVE/handoff_architecture.md`; the **repo-root** `ARCHITECTURE.md` is the only authoritative one.) **Archived 2026-07-08:** `HUD_REVAMP_DESIGN.md`, `STATION_MARKET_UI_REVAMP.md`, `GRAPHICS_SPEC.md`, `GRAPHICS_MASTERPLAN.md`, `GRAPHICS_UPGRADE_PLAN.md` are now in `design/_ARCHIVE/` with drift banners — a frontend agent reading `design/` will no longer find a forbidden visor HUD presented as a live spec. The live UI authorities are `design/spec2/06_UI_IDENTITY.md`, `design/spec3/SPEC3-F8-graphics-visuals.md`, `design/spec3/SPEC3-F10-ux-meta-tastemaster.md`, and the surface inventory `design/revamp/FRONTEND_REBOOT_AUDIT.md`.
+**Archived / removed drift (2026-07-13 cleanup):** the legacy 1.x subsystem specs (`design/specs/00-11`) moved to `design/_ARCHIVE/specs-1.x/`. The stale graphics/HUD plans (`HUD_REVAMP_DESIGN.md`, `STATION_MARKET_UI_REVAMP.md`, `GRAPHICS_SPEC.md`, `GRAPHICS_MASTERPLAN.md`, `GRAPHICS_UPGRADE_PLAN.md`) remain in `design/_ARCHIVE/`. Removed entirely (superseded, no live citations): `V2_MASTER_PLAN`, `IMPROVEMENT_IDEAS`, `FLIGHT_PHYSICS_SPEC`, `SKILLS_IMPROVEMENT_SPEC`, `WORLD_OVERHAUL_2_1`, `FLIGHT_ENGINE_SELF_REVIEW`, `PLAYTEST_SCRIPT`, `QA_MATRIX`, `LOCATIONS`, `mining_spec`, `plan`, `brief`. The live UI authorities are `design/spec2/06_UI_IDENTITY.md`, `design/spec3/SPEC3-F8-graphics-visuals.md`, `design/spec3/SPEC3-F10-ux-meta-tastemaster.md`, and the surface inventory `design/revamp/FRONTEND_REBOOT_AUDIT.md`.
 
 ---
 
 ## 5. CRITICAL — most core systems have TWO implementations. Know which is LIVE.
 
-This is the #2 reason fixes "don't get applied" (after the uncommitted-tree trap). The engine has flag-selected backend swaps. **The defaults pick one; the docs and even file names often point at the other.** Defaults are force-stamped onto every save (`src/save/saveSystem.js:1411-1413`), so old saves cannot resurrect the legacy backend.
+This is the #2 reason fixes "don't get applied" (after the uncommitted-tree trap). The engine has flag-selected backend swaps. **The defaults pick one; the docs and even file names often point at the other.** Save normalization force-stamps those defaults, so old saves cannot resurrect the legacy backend.
 
 | System | 🟢 LIVE (default-on) | ⚪ LEGACY (fallback / test-fixture only — editing has no effect in normal play) | Selection site | Default flag |
 |---|---|---|---|---|
-| **Flight controller** | `src/systems/flightV3.js` | `src/systems/flight.js` (**not dead** — statically imported by `registry.js:13`, `scripts/sf-sim.mjs`, and every legacy `check:sim` gate; CI-load-bearing but never the registered controller under default `flightBackend:'v3'`) | `src/core/registry.js:180-186` `selectFlightSystem` | `flightBackend:'v3'` |
-| **Flight physics math** | `src/core/flight/` (`propulsionCatalog.js`, `propulsionKernel.js`, `flightTelemetry.js`) | `src/core/flightDynamics.js` (still imported by `aiPorts.js:13` for legacy compat + legacy `check:sim`) | follows the flight flag | — |
-| **AI** | `src/systems/tacticalAI.js` + `src/ai/*` library + `src/systems/aiPorts.js` (the "SG-06 tactical" stack) | `src/systems/ai.js` (**not dead** — statically imported by `registry.js:9`, `scripts/sf-sim.mjs`, and several `check-ai-*.mjs` CI gates; CI-load-bearing but never the registered controller under default `aiBackend:'sg06-tactical'`) | `src/core/registry.js:170-176` `selectAISystem` | `aiBackend:'sg06-tactical'` |
-| **Physics backend** | `rapier-dynamic` (Rapier, dynamic bodies, single authority via `physicsAuthority.js`) | `custom` (legacy manual integrator in `physics.js`) | `src/core/registry.js` + `src/core/gameState.js:16` | `physicsBackend:'rapier-dynamic'` |
-| Combat | `src/systems/combat.js` (the registered system) calling into `src/combat/` shared library (`kernel.js`, `damage.js`, `attachments.js`, etc.) | — | `registry.js:17` | n/a — layered, not duplicate |
-| Presentation | `src/systems/presentationOrchestrator.js` + `presentationAdapters.js` (registered) consuming `src/presentation/` (data) | — | `registry.js:31-32` | n/a — layered |
+| **Flight controller** | `src/systems/flightV3.js` | `src/systems/flight.js` (**not dead** — statically imported fallback and directly exercised by compatibility/sim checks) | `src/core/registry.js` `selectFlightSystem` | `flightBackend:'v3'` |
+| **Flight physics math** | `src/core/flight/` (`propulsionCatalog.js`, `propulsionKernel.js`, `flightTelemetry.js`) | `src/core/flightDynamics.js` (still imported by `aiPorts.js` and compatibility checks) | follows the flight flag | — |
+| **AI** | `src/systems/tacticalAI.js` + `src/ai/*` library + `src/systems/aiPorts.js` (the "SG-06 tactical" stack) | `src/systems/ai.js` (**not dead** — statically imported fallback and directly exercised by compatibility checks) | `src/core/registry.js` `selectAISystem` | `aiBackend:'sg06-tactical'` |
+| **Physics backend** | `rapier-dynamic` (Rapier, dynamic bodies, single authority via `physicsAuthority.js`) | `custom` (legacy manual integrator in `physics.js`) | `src/core/registry.js` + `src/core/gameState.js` | `physicsBackend:'rapier-dynamic'` |
+| Combat | `src/systems/combat.js` (the registered system) calling into `src/combat/` shared library (`kernel.js`, `damage.js`, `attachments.js`, etc.) | — | `src/core/registry.js` | n/a — layered, not duplicate |
+| Presentation | `src/systems/presentationOrchestrator.js` + `presentationAdapters.js` (registered) consuming `src/presentation/` (data) | — | `src/core/registry.js` | n/a — layered |
 
 **Rules:**
-- **Editing the legacy file will appear to work but have no effect in normal play.** If your fix to `flight.js` or `ai.js` "didn't apply," this is why (or §3 — check if it's already fixed in the working tree). Always edit the LIVE column. **They are not dead code** — they're statically imported by `registry.js` (lines 9, 13) and pinned by CI (`check:sim` legacy runs them; `check:sim:v3` runs V3). Treat them as frozen fixtures: do not edit for gameplay fixes, and do not delete without removing the legacy check scripts that import them.
-- **Both flight systems export `name: 'flight'`** and both AI systems fill the `'ai'` slot — the registry addresses the slot by name (`registry.js:84-85`), so `registry.get('flight')` returns whichever won the flag, never both. (Both are imported unconditionally at the top of `registry.js`; the `selectX` functions only decide which gets *registered*.)
+- **Editing the legacy file will appear to work but have no effect in normal play.** If your fix to `flight.js` or `ai.js` "didn't apply," this is why (or §3 — check if it's already fixed in the working tree). Always edit the LIVE column. **They are not dead code** — they're statically imported by `registry.js` and pinned by compatibility checks. Treat them as fixtures: do not edit for default gameplay fixes, and do not delete without removing their selection/check paths.
+- **Both flight systems export `name: 'flight'`** and both AI systems fill the `'ai'` slot — the registry addresses the slot by name, so `registry.get('flight')` returns whichever won the flag, never both. Both are imported unconditionally; `selectX` decides which gets registered.
 - **The legacy flight/AI files are retained because CI runs `check:sim` (legacy) AND `check:sim:v3`** — both controllers must keep passing their golden telemetry. Do not delete them without removing the legacy check scripts too.
 - **Even the GDD points at legacy files.** `design/GDD_2_0.md:25` cites `src/systems/flight.js:169` as the location of the "hard to fly" problem — true when written, but `flightV3.js` is the live controller now. Cross-check before assuming a cited file is live.
 - **ADR-0003** (`design/adr/0003-flight-physics-controller.md`) is **stale** — it documents "custom controller, Rapier optional." The V3 migration made `rapier-dynamic` + V3 mandatory and default.
@@ -152,9 +154,10 @@ Test via scripted inputs in the sim harness (`scripts/sf-sim.mjs --inputs`), not
 - Performance work must not "fix" graphics conflicts by rolling assets back. If render or asset structure is the bottleneck during active graphics work, report the evidence and leave the graphics lane untouched.
 
 ### Performance policy
-- **Do not solve performance by silently lowering visible quality, disabling authored assets, or making browser and desktop diverge.**
+- **Performance is solved by algorithmic optimization — NEVER by gutting graphics.** This game's visuals are rudimentary next to comparable titles (e.g. Destiny 2) that run smoothly on this hardware; a choppy frame means unoptimized code, not asset cost. If a frame is slow, find the hot path and fix the algorithm.
+- **Forbidden as a "fix":** lowering default `renderScale`/`pixelRatioCap`/`bloom`/`shadows`/`particleQuality`; disabling authored visuals or procedural fallbacks; replacing detailed models with primitives; making browser and desktop diverge. These are reward-hacks, not fixes. Full doctrine + measurement protocol: `design/PERF_BUDGET.md` §3.
 - Measure before and after in Chrome/Electron-compatible runtime paths; keep screenshots when render changes are involved.
-- Prefer structural fixes: batching, instancing, cache reuse, allocation reduction, frame pacing, avoiding duplicate system work.
+- Required structural fixes: batching, instancing, cache reuse, allocation reduction, frame pacing, cadence reduction (AI/scanner/HUD at fixed Hz), culling, LOD/HLOD, material role sharing, precompile/warm-up gates. Remove invisible work before touching visible quality.
 - Authored model exports should merge static bolts, ribs, panels, and repeated detail into a small number of submeshes per material/animated role.
 
 ### Single-writer ownership (ARCHITECTURE §0.6 — summarized)
@@ -162,7 +165,8 @@ Test via scripted inputs in the sim harness (`scripts/sf-sim.mjs --inputs`), not
 - **Reputation** — only `factions` writes `state.factions[id].rep`, via `applyRep()`; others emit `faction:repDelta`.
 - **Cargo** — only `cargo` writes `state.player.cargo`, via `addCargo`/`removeCargo`.
 - **Ship derived stats** — only `ships` writes `entity.derived`, via `getDerivedStats()`.
-- **WANTED heat** — only `heat` writes `state.player.heat`. Canonical "is player wanted" check: `heat.isPlayerWanted(state)` (`heat.js:147`, `WANTED_THRESHOLD = 0.15` at line 33). Do NOT use the dead `ai.playerWanted` field.
+- **WANTED heat** — only `heat` writes `state.player.heat`. Canonical "is player wanted" check:
+  `heat.isPlayerWanted(state)`; do not use deprecated `ai.playerWanted` state.
 - **Sector ownership** — `factions` writes `state.world.sectors[id].owner` (war resolution only); `world` reads it.
 
 ---
@@ -174,9 +178,9 @@ When a fix "doesn't apply" or a bug resists diagnosis, it is almost always one o
 | Symptom | Real cause | Entry point |
 |---|---|---|
 | "I made a fix and nothing changed" | (a) You edited a **legacy** file (`flight.js`/`ai.js`/`flightDynamics.js`); defaults run V3+tactical. OR (b) the fix **already exists in the uncommitted working tree** — check `git diff` before diagnosing. | §3 + §5 above. |
-| "I get attacked by enemies on spawn" / "friendlies hostile" | Subtle. The live `isHostile` (`aiPorts.js:784`) **does** gate lawful patrols on `isPlayerWanted(state)` — but only in the **working tree**; HEAD is team-only. There's also a squad fallback clause (`squad.js:272`) that can vote hostile when `contact.hostile` is undefined + team mismatch + threat > 0. | `docs/COMMON_BUGS.md` §2. **Read it before grepping** — three interacting factors. |
-| "My new ship model doesn't render" | Asset pipeline is 5 steps with 3 registries. A broken model **silently** falls back to procedural geometry (no error). The whole-ship map (`WHOLE_SHIP_FILE_BY_DEF_ID`) is currently **EMPTY** — default play uses modular hulls (`HULL_FILE_BY_DEF_ID`). | `assets/AGENTS.md` + `docs/COMMON_BUGS.md` §3. |
-| "After wiring assets, the main ship is a turd / floating antennas" | You wired a **broken export** masquerading as a detailed model. The 10-14MB wholeship GLBs are accessory-only (no hull body). Check `status:"blocked"` in `parts_manifest.json` and run `npm run check:asset-status` — file size does NOT mean "good model." | `docs/COMMON_BUGS.md` §3b. |
+| "I get attacked by enemies on spawn" / "friendlies hostile" | Subtle. `src/ai/engagementAuthority.js` owns final engagement authorization and the fresh hostility oracle; `aiPorts.js` consumes it and squad voting is advisory. Motive, response time, doctrine, station jurisdiction, heat, and explicit incident targets interact. | `docs/COMMON_BUGS.md` §2. Read it before grepping. |
+| "My new ship model doesn't render" | A broken authored model can fail validation and fall back. `WHOLE_SHIP_FILE_BY_DEF_ID` currently routes production whole-ship bodies for the Kestrel and Wasp; other definitions use `HULL_FILE_BY_DEF_ID` modular hulls. | `assets/AGENTS.md` + `docs/COMMON_BUGS.md` §3. |
+| "After wiring assets, the main ship is a turd / floating antennas" | A routed candidate may still have missing hull mass, bad framing, accessory-only geometry, or weak materials. Check the exact manifest/classification record and normal-route captures; Kestrel and Wasp currently have production whole-ship routes, while other candidates differ. File size proves nothing. | `docs/COMMON_BUGS.md` §3b. |
 | "Game refuses to start / 'authored ship assets did not preload'" | `main.js:196-199, 203-206` **refuses to enter flight** if authored assets aren't ready (won't silently degrade). This is intentional. Fix the asset, don't weaken the gate. | `main.js` boot gates. |
 | "Friendlies labeled as heat / threat" | **"heat" means three different things**: (1) WANTED heat `state.player.heat` (`heat.js`), (2) weapon overheat `w._heat` (`weapons.js`), (3) sector danger index (`dangerModel.js` — offscreen sim, NOT combat). Grep lands you in the wrong one. | `docs/COMMON_BUGS.md` §4. |
 | "I changed a faction/rep number and combat didn't react" | The live combat AI reads `ai.lawful` + team + (via `isPlayerWanted`) heat — **not** raw faction rep. Faction rep affects docking, missions, and (via `faction:aggro`→heat) the WANTED path. | `docs/COMMON_BUGS.md` §5. |
@@ -186,17 +190,10 @@ When a fix "doesn't apply" or a bug resists diagnosis, it is almost always one o
 
 ## 8. The system update order (so you know what runs before/after what)
 
-From `src/core/registry.js:77-80`. Each step: `core.preStep` → `UPDATE_ORDER` systems → `core.lifetimeSweep`. Render phase (`renderUpdate`) runs every frame: `render` → `vfx` → `feel` → `ui`.
-
-```
-input → scanner → ai → aiEncounter → actions → beacons → flight → cruise → aiPorts →
-weapons → countermeasures → impulseCharges → physics → combat → tetherGameplay →
-mining → cargo → automation → wingmen → crafting → economy → intervention →
-world → factions → sectorSim → missions → story → scenarioRuntime → heat →
-traffic → drill → claims → onboarding
-```
-
-Read the rationale comments at `registry.js:60-76` before reordering. Key invariants: AI submits commands before actions resolve; actions before flight; weapons before physics; beacons after AI/actions and before flight (lure override); heat late (piracy events from combat/factions this tick landed before decay); traffic after world (sector:enter spawned stations) and after heat; sectorSim after world+factions; onboarding last (reads state only).
+`src/core/registry.js` is authoritative. [`docs/SYSTEM_REGISTRY.md`](docs/SYSTEM_REGISTRY.md) is its
+generated, navigable projection and includes the complete current init/update order. Regenerate it
+with `npm run build:indexes` after structural changes; do not duplicate the order here, because it
+changes as systems are added. Read the rationale comments beside `UPDATE_ORDER` before reordering.
 
 ---
 
@@ -229,17 +226,13 @@ When multiple agents run in parallel, do not cross these lanes. Full map in `des
 
 ## 11. Status-doc drift warning
 
-`design/CURRENT_BUILD_STATUS.md` and `design/BUILD_PLAN_2_0.md` are useful maps but **they drift** in both directions — some "missing" scripts now exist (e.g. `scripts/check-cruise.mjs` exists but CURRENT_BUILD_STATUS calls it missing), and some "built" items may have regressed in the uncommitted tree. Verified first-hand 2026-07-05:
-- `scripts/check-cruise.mjs` — **EXISTS** (status doc says missing — stale).
-- `src/systems/encounterDirector.js` — **BUILT** (2026-07-06): full campaign director (two-deck
-  pressure model, phases/choices/receipts, named captains) + `src/systems/encounterScripts.js` +
-  expanded `src/data/encounters.js`. Checks: `check:encounter-director`, `check:living-universe`,
-  `check:encounter-voice` (SPEC2/04 + SPEC3-21/29 core).
-- `scripts/check-release-soak.mjs` — **EXISTS**: `npm run check:release-soak` passes the deterministic
-  quick campaign and `test/release-soak-contract.test.mjs` passes 13/13. The broader M6 platform,
-  performance, capture, and clean-wave acceptance matrix remains open.
+`design/program/` is the sole whole-program roll-up. `design/CURRENT_BUILD_STATUS.md`,
+`design/BUILD_PLAN_2_0.md`, suite-specific ledgers, wake reports, and terminal transcripts are useful
+maps or evidence, but not competing global status authorities.
 
-**Always trust the actual `check:*` output and `git status`/`git diff` over the status docs.** If a doc and a live check disagree, fix the doc in the same pass.
+**Always trust actual `check:*` output, `git status`/`git diff`, and current player-route evidence over
+status prose.** If the live evidence and `design/program/` disagree, update the program record in the
+same pass.
 
 ---
 
@@ -252,4 +245,4 @@ When multiple agents run in parallel, do not cross these lanes. Full map in `des
 
 ---
 
-*Built collaboratively by a fleet of AI subagents against a single architectural contract. This file is the contract's front door — keep it accurate; drift here becomes 20-prompt debugging sessions downstream. Every claim above was verified first-hand against the working tree on 2026-07-05.*
+*Built collaboratively by a fleet of AI subagents against a single architectural contract. This file is the contract's front door; keep its claims tied to live paths and commands rather than dated counts.*

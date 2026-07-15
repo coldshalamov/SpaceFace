@@ -5,6 +5,11 @@ dist/
 /nul
 .campaign/
 
+# Root-local agent scratch and temporary comparison trees. Historical, intentionally committed
+# evidence under .tmp/, scratch/, terminals/, agent-tools/, and advisor-artifacts/ is unaffected.
+/.tmp*
+/.grok-scratch/
+
 # Local agent/tool scratch artifacts (never production source)
 /-
 /.zcode/

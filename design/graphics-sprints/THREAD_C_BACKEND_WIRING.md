@@ -24,7 +24,7 @@ One **wiring pack** per sprint from integrator inbox:
 2. Add to `PART_LIBRARY_CONTRACT.slots.<slot>` if missing.
 3. Add role map entry (`HULL_FILE_BY_DEF_ID`, `ENGINE_FILE_BY_*`, `PLACE_FILES`, etc.).
 4. For places: update `sectorAnchors.js` `archetypeGlb` / `landmarkGlb`.
-5. **10 verification cycles:** edit → `check:*` → fix → repeat.
+5. Run the relevant checks after the coherent change; diagnose and rerun any failure until green.
 6. Update `assets/ASSET_STATUS.json` `wired` array.
 7. Mark lifecycle `RUNTIME_MAP` or `VISIBLE_IN_PLAY`.
 

@@ -14,7 +14,7 @@ One **place pack** per sprint:
 
 | Sprint | Source | Count |
 |--------|--------|-------|
-| B-faction-stations-P0 | `needed-assets.md` §B P0 | 1 station (hero — 20 iter) |
+| B-faction-stations-P0 | `needed-assets.md` §B P0 | 1 hero station |
 | B-landmark | `needed-assets.md` §B P2 or `QUEUE.md` | 1 landmark |
 | B-hero-asteroid | §B P5 | luminite OR ice |
 | B-gate-variant | §B P3 | 1 faction gate |
@@ -25,7 +25,8 @@ One **place pack** per sprint:
 2. Load `assets/concept/index.json` entry → Blender `REF_<id>` plane.
 3. Acquire Blender lock (coordinate with A/E).
 4. `npm run author:place-archetype -- <part_id>` OR MCP sculpt per pipeline.
-5. **20 iterations** (stations/landmarks) or **10** (small props).
+5. Iterate from representative renders and player-route critique until the silhouette, material language,
+   scale, and faction identity withstand independent review.
 6. `finalize_part.mjs` + `check:place-concept-resemblance` when promoted.
 7. Handoff YAML — `thread_c_actions` must list `sectorAnchors` + `PLACE_FILES`.
 8. Release lock.

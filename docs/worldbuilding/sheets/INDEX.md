@@ -3,6 +3,9 @@
 Every entity × its sheet × its canon prose home × where it first appears.
 The single cohesion map. Updated as sheets and chapters are written.
 
+> **Scope:** discovery index, not build status. Start at [`../README.md`](../README.md) for canon,
+> future-work, and history classification. Live code/checks decide what is implemented.
+
 Legend: ✅ sheet exists · ☐ sheet pending · ⬩ prose home exists (no sheet)
 
 ---
@@ -88,7 +91,8 @@ Legend: ✅ sheet exists · ☐ sheet pending · ⬩ prose home exists (no sheet
 > Note: the corpus canon has **Helix Directorate** as the 8th faction. "Free
 > Frontier" / `faction_free` exists in `src/data/factions.js` as a playable
 > faction and as a comms sender (`FREE FRONTIER RELAY`) but has no canon
-> faction sheet — flagged for resolution in Phase 4.
+> faction sheet. Live data now also exposes `faction_helix`, so the remaining
+> gap is Free Frontier's missing narrative treatment. Preserve it for an explicit canon decision.
 
 ## Worlds / Sectors (`sheets/worlds/`)
 
@@ -117,12 +121,16 @@ Legend: ✅ sheet exists · ☐ sheet pending · ⬩ prose home exists (no sheet
 | `com_atmo_credit` | Atmo Credit | ✅ `commodities/atmo-credit.md` | mentioned in prose, no table row — Phase 4 adds |
 | `com_atmo_debt` | Atmo Debt (balance) | ✅ `commodities/atmo-debt.md` | `vibe/vibe-04-the-pit.md#the-debt-mechanism-atmo-debt` |
 
+> These are narrative concept IDs (`com_*`), not claims that the live economy exposes them.
+> Runtime commodities use `cmdty_*` IDs in `src/data/commodities.js`; an explicit mapping or
+> implementation is still required.
+
 ## Chapters (`sheets/chapters/` + `story/chapter-NN-*.md`)
 
 | beat | title | chapter file | chapter sheet | Dosto beat-theme |
 |------|-------|--------------|---------------|------------------|
-| B0 | Cold Start | ✅ `story/chapter-00-cold-start.md` | ✅ `chapters/B0.md` | crime-before-the-criminal |
-| B1 | Honest Work | ✅ `story/chapter-01-first-run.md` (rename of existing) | ✅ `chapters/B1.md` | the-punishment-that-doesnt-come |
+| B0 | Cold Start / First Run | ✅ `story/chapter-00-cold-start.md` + `story/chapter-01-CANONICAL.md` | ✅ `chapters/B0.md` | crime-before-the-criminal |
+| B1 | Honest Work | ✅ `story/chapter-01-honest-work.md` | ✅ `chapters/B1.md` | the-punishment-that-doesnt-come |
 | B2 | First Blood | ✅ `story/chapter-02-first-blood.md` | ✅ `chapters/B2.md` | crime-without-punishment-system-stolen |
 | B3 | Bigger Boat | ✅ `story/chapter-03-bigger-boat.md` | ✅ `chapters/B3.md` | the-double-appears |
 | B4 | Pick a Side | ✅ `story/chapter-04-pick-a-side.md` | ✅ `chapters/B4.md` | grand-inquisitor-ui |
@@ -130,12 +138,13 @@ Legend: ✅ sheet exists · ☐ sheet pending · ⬩ prose home exists (no sheet
 | B6 | Empire Seed | ✅ `story/chapter-06-empire-seed.md` | ✅ `chapters/B6.md` | guilt-returns-as-physiology |
 | B7 | The Deep Reach | ✅ `story/chapter-07-deep-reach.md` | ✅ `chapters/B7.md` | the-double-met-mercy-refused |
 
-> **Naming note:** the existing `chapter-01-CANONICAL.md` is the B1 "First Run"
-> chapter in the live STORY-SPINE overlay (the contract run with 12.4t). The
-> beat structure opens at B0. To keep both the zero-indexed beat map and the
-> chapter-01 history readable, the rename is `chapter-01-CANONICAL.md` →
-> `chapter-01-first-run.md`, content preserved, footer added (Phase 5). A new
-> `chapter-00-cold-start.md` covers the B0 pre-flight beat.
+> **Naming note:** `chapter-01-CANONICAL.md` retains a historical filename but is the canonical
+> first-run HUD script paired with B0's `chapter-00-cold-start.md`. It was never renamed to the
+> previously documented, nonexistent `chapter-01-first-run.md`. B1 is the separate
+> `chapter-01-honest-work.md`. Keep both canonical files and their distinct jobs.
+>
+> `story/chapter-05b-the-reunion.md` is a preserved optional **future** expansion of B5. It has no
+> separate beat sheet or accepted runtime route and is therefore not counted as a ninth beat.
 
 ---
 
@@ -143,12 +152,14 @@ Legend: ✅ sheet exists · ☐ sheet pending · ⬩ prose home exists (no sheet
 
 - **Phase 1 (this file + README):** ✅ schema declared
 - **Phase 2:** ✅ `DOSTOYEVSKY-LAYER.md` — six themes, element→entity map, two deepened figures
-- **Phase 3:** ✅ 15 character sheets
+- **Phase 3:** ✅ 17 character sheets
 - **Phase 4:** ✅ 8 faction + 11 world + 6 commodity sheets
 - **Phase 5:** ✅ 8 chapters + 8 chapter sheets + chapter-01 footer
 - **Phase 6:** ✅ diff-back, this index finalized, `review/iteration-05.md`
 
-**Total: 48 sheets (15 char + 8 faction + 11 world + 6 commodity + 8 chapter) + 9 chapter files (8 new + chapter-01-CANONICAL), wired to 1 Dosto layer + the existing prose canon.**
+**Current inventory: 67 entity sheets** (17 character + 8 faction + 11 world + 6 commodity +
+8 chapter + 2 group + 4 gang + 4 rival + 4 crew + 3 ship), plus the prose canon and review
+history. Inventory is not implementation status.
 
 ## How to use this index
 

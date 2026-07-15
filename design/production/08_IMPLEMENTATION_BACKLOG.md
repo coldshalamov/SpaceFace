@@ -2,6 +2,12 @@
 
 **Status:** DRAFT execution order for Milestone 0
 
+> **Subordinate machinery backlog, not global status.** Current Alpha + Depth completion truth lives
+> in [`design/program/`](../program/README.md). This file preserves high-value future controller,
+> evidence, capability, and asset-pipeline work. Its packet table may be updated as detailed evidence,
+> but only the lead/status integrator promotes cross-program state. Clean-wave requirements in the
+> draft build program apply only when the controller explicitly adopts them for a named release run.
+
 This is the first implementation wave beneath `design/vision/ALPHA_PROGRAM.md`. It builds the
 machinery that makes later Grok/Claude/OpenCode/Codex campaigns persistent and independently
 verifiable. It does not authorize edits across an active asset/render ownership signal.

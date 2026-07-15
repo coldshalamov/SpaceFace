@@ -1,14 +1,14 @@
 # 03 — Master Build Plan (supporting historical pre-alpha roadmap)
 
 > **Current authority banner:** root `ARCHITECTURE.md` (technical) > `design/GDD_2_0.md`
-> (design) > `design/spec2/00_MASTER_TASTE.md` (taste/rejection).
+> (design) > `design/spec2/00_MASTER_TASTE.md` (historical taste reference; visual tokens not binding).
 > `design/vision/ALPHA_PROGRAM.md` owns current execution order and solo-alpha scope beneath that
 > chain. This file is a supporting pre-alpha roadmap and wave history; a section is active only
 > when `ALPHA_PROGRAM.md` cites or activates it.
 
 **Status:** HISTORICAL / SUPPORTING — not the current execution authority.
 **Ambitious scope:** yes — full premium Freelancer-class browser/PC sandbox.  
-**Sequence:** playable fun → dense world → glass UI → wonder assets → living ripples → empire.
+**Sequence:** playable fun → dense world → data-dense UI → wonder assets → living ripples → empire.
 
 Dispatch from [`ALPHA_PROGRAM.md`](./ALPHA_PROGRAM.md). Use `05_GOAL_PROMPTS.md` only when that
 ledger explicitly activates a historical wave or prompt.
@@ -42,22 +42,23 @@ Update [`01_CURRENT_STATE.md`](./01_CURRENT_STATE.md) when a wave’s PLAY colum
 ### WAVE 1 — PLAYABLE COMBAT, FLIGHT & MASSLINE (highest priority)
 **Milestone:** M0  
 **Why first:** Game is “basically unplayable”; graphics won’t save that.  
-**Process:** `06_OPERATING_MODEL.md` — screenshot/feel iterate, weighted scores, expand tests, fun judgment.
+**Process:** `06_OPERATING_MODEL.md` — capture/feel critique, fix evidenced defects, expand tests, and
+obtain an independent fun/readability verdict.
 
 | ID | Workstream | Outcomes | Key files (likely) | Acceptance (PLAY + checks) |
 |---|---|---|---|---|
-| W1-A | **Ship body + piloting** | Easy to pilot; bank reads as flight lean; no pin-spin; nose vector clear; assist-first defaults | `flightV3.js`, propulsion, `renderer.js` hull bank | Feel matrix ≥80; controllability ≥7; shots of turn |
-| W1-B | **Massline lever + latch** | Spool near nose; wide soft latch; Ctrl-nearest discoverable or default soft | `combatDefs.js` sockets, `tetherGameplay.js` | Flyby latch ≥80%; spool forward of COM; new latch tests |
+| W1-A | **Ship body + piloting** | Easy to pilot; bank reads as flight lean; no pin-spin; nose vector clear; assist-first defaults | `flightV3.js`, propulsion, `renderer.js` hull bank | Unassisted controllability route has no critical defect; same-framing turn evidence |
+| W1-B | **Massline lever + latch** | Spool near nose; wide soft latch; Ctrl-nearest discoverable or default soft | `combatDefs.js` sockets, `tetherGameplay.js` | Reliable held-out combat-speed latches; spool forward of COM; new latch tests |
 | W1-C | **Flyby Focus** | High-speed near hostile → slow + frame zoom + magnet latch radius | feel/camera + input | GIF-quality moment; video or shot series |
 | W1-D | **Combat fairness** | Starter TTK fair; undock grace; damage/accuracy nerf early threats | enemies data, weapons, combat, spawn | Deaths/10 min ≤ 2 |
 | W1-E | **Enemy intention (play-proof)** | Approach/orbit/break readable; no zip murder | `ai/maneuver.js`, spawn levels, weapons | Fun judge: “they’re piloting” |
 | W1-F | **Mode UX** | Gunnery vs Combat Computer vs Focus obvious; pursuit/autopilot labeled | HUD, control prompts, input toasts | Cold player finds goto + auto guns in 2 min |
 | W1-G | **Starter sore thumbs + identity kickoff** | Fix floating white/emissive junk on starter hull; plan display rename off “Kestrel” | `kestrelHero.js`, ship display names | No sore thumb on hero shot; rename design noted or shipped |
 
-**Out of scope for W1:** multiplayer, full empire, full glass reboot (mode labels OK).
+**Out of scope for W1:** multiplayer, full empire, full UI visual reboot (mode labels OK).
 
 **Detail specs to mine (not obey blindly):**  
-`spec2/01_MASSLINE_FEEL`, `spec2/02_FLIGHT_CAMERA_JUICE`, `spec3/SPEC3-F3`, `SPEC3-F4`, `docs/handoffs/SG-06_INTENTIONAL_FLIGHT.md`, revamp BP-02/BP-07.
+`spec2/01_MASSLINE_FEEL`, `spec2/02_FLIGHT_CAMERA_JUICE`, `spec3/SPEC3-F3`, `SPEC3-F4`, revamp BP-02/BP-07. (The intentional-flight design note that was `docs/handoffs/SG-06_INTENTIONAL_FLIGHT.md` is resolved in `src/systems/tacticalAI.js` / `src/ai/maneuver.js`.)
 
 ---
 
@@ -92,7 +93,7 @@ Update [`01_CURRENT_STATE.md`](./01_CURRENT_STATE.md) when a wave’s PLAY colum
 
 **Anti-goal:** “Dense” ≠ more paragraphs.  
 **Detail:** `FRONTEND_REBOOT_AUDIT.md` is an inventory. Any activated UI work follows the GDD,
-MASTER_TASTE, and its task spec; supporting glass/density ideas cannot override that chain.
+MASTER_TASTE, and its task spec; supporting density/polish ideas cannot override that chain.
 
 ---
 
@@ -108,10 +109,11 @@ MASTER_TASTE, and its task spec; supporting glass/density ideas cannot override 
 | W4-D | **Lighting / VFX / thrusters** | Night emissives, latch/focus VFX, kill readability |
 | W4-E | **Pipeline hygiene** | Populate `ASSET_STATUS.json`; every LIVE asset has lifecycle row |
 | W4-F | **Image/video gen pipeline** | Concept → texture/portrait plates → wire; **cinematic headshots** replace cartoony portraits |
-| W4-G | **Mockups** | UI glass mockups via image gen before large DOM rewrites; motion refs via video gen |
+| W4-G | **Mockups** | UI mockups via image gen before large DOM rewrites; motion refs via video gen |
 
 **Process:** `06_OPERATING_MODEL.md` + `design/graphics-sprints/00_ORCHESTRATION.md` + Blender exclusive lock.  
-**Quality:** **10–20** screenshot iterations per hero asset; weighted scores; subagent review.
+**Quality:** comparable player-camera captures, defect-driven iteration, runtime/perf checks, and
+independent visual review; no fixed pass count or self-score threshold.
 
 ---
 

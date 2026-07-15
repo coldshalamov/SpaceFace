@@ -157,7 +157,7 @@ After M0 PLAY-DONE, flip toward heavier asset flood (W4).
 | **Image generation** | Concepts, trim/wear refs, **cinematic portraits**, UI mockups, texture guides |
 | **Video generation** | Motion refs (bank, cruise, gate, massline) for feel review |
 | **Subagents** | Parallel art + review + checks |
-| **Screenshot ritual** | 10–20 iters + weighted scores (`06_OPERATING_MODEL.md`) |
+| **Screenshot loop** | Comparable captures + named defects + independent verdict (`06_OPERATING_MODEL.md`) |
 
 Blender rules:
 

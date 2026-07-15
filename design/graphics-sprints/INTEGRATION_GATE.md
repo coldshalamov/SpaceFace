@@ -10,11 +10,11 @@
 
 ## Per asset ID
 
-1. [ ] Evidence folder exists with `iteration_count` ≥ floor (`QUALITY_RITUAL.md`)
+1. [ ] Evidence folder contains current critique, representative renders, and player-route proof
 2. [ ] `finalize_part.mjs` / exporter log shows **zero** assertion failures
 3. [ ] Source GLB path matches handoff
 4. [ ] If **new** id: add to `parts_manifest.json` `parts[]` + `runtimeSlots`
-5. [ ] If **blocked** wholeship: verify hull body ≥800 `Material_Hull` tris before clearing `status`
+5. [ ] If a wholeship is blocked: run the live body/classification audit before clearing its status
 
 ## Build
 
@@ -46,7 +46,7 @@ Append to `assets/ASSET_STATUS.json` (create if missing):
 "engine_vector": {
   "lifecycle": "RELEASE_BUILT",
   "art": "full_finish",
-  "iterations": 20,
+  "review": "independent visual review recorded in evidence folder",
   "handoff": "design/graphics-sprints/handoffs/2026-07-08-A-engines.yaml",
   "wired": [],
   "pending_thread_c": ["PART_LIBRARY_CONTRACT", "engineRecordFor"]

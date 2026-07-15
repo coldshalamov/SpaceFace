@@ -142,9 +142,15 @@ Two distinct quantities that specs conflated:
 ### 1.1 Stack
 - **Three.js r0.160**, ES modules, vendored at `vendor/three.module.js` (+ `vendor/BufferGeometryUtils.js`). No bundler required; native ESM via `<script type="importmap">`.
 - **DOM overlay** for ALL UI (HUD, menus, trade, map, tech tree). No 3D text.
-- **Web Audio API** for 100% procedural audio. No audio files.
-- **No external art assets.** Meshes from Three primitives; textures from runtime `<canvas>`.
-- **Zero-dependency static server** for dev; packaged later via Electron/Tauri for Steam.
+- **Web Audio API** owns playback, routing, mixing, and procedural synthesis. Licensed authored
+  audio is also allowed when it materially improves identity or production quality; record
+  provenance and keep deterministic sim state independent of playback.
+- **Authored art is the normal release path.** GLB/KTX2 assets, textures, generated materials, and
+  procedural rendering may be combined. Primitive/canvas geometry is a fallback or a deliberate
+  stylistic/tooling choice, never a quality ceiling.
+- **Static dev server + Electron release shell.** Runtime/build dependencies are allowed when they
+  materially improve quality and their license, bundle/performance, determinism/save, and
+  maintenance impact are documented.
 
 ### 1.2 DOM layering (single `index.html`)
 ```

@@ -1,5 +1,8 @@
 # Place-Identity Pipeline — Story → Concept Art → Blender → Release → Fixed Geography
 
+> **Scope:** active pipeline contract, not global completion status. See [`README.md`](README.md)
+> for this suite's map and [`../program/README.md`](../program/README.md) for unified status.
+
 End-to-end workflow for making SpaceFace sectors feel like **named places** (Eve-style readability)
 rather than procedural void with dots.
 
@@ -23,7 +26,8 @@ Machine-readable index: `design/world-identity/place-identity-index.json`
 
 ### 1. Story intake (read-only canon)
 
-- **Sources:** `docs/worldbuilding/story/SECTOR-GRADIENT.md`, `docs/worldbuilding/vibe/*`,
+- **Sources:** `docs/worldbuilding/story/SECTOR-GRADIENT.md`,
+  `docs/worldbuilding/vibe/vibe-CANONICAL.md`,
   `docs/worldbuilding/orgs/factions-CANONICAL.md`, chapter docs.
 - **Output:** story↔data mapping (`STORY_SECTOR_MAP.md`) — never overwrite canon prose.
 - **Rule:** story names (Tycho Relay, Hollow Station) map to `sector_*` IDs via explicit table.
@@ -108,4 +112,6 @@ Proven before scaling to S4–S9:
 
 ## Deviations log
 
-See parent goal `plan.md` § Deviations — pipeline doc does not duplicate.
+The former parent `plan.md` no longer exists. Record implementation/status changes in the unified
+[`design/program/`](../program/README.md) pickup set and record pipeline-specific rationale in the
+active packet or evidence receipt. Do not create another competing completion ledger here.

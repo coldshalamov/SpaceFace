@@ -48,7 +48,7 @@ contact: optional
 
 Thread B sprint plan is **data + concept + queue** until Blender lock free. When lock acquired:
 
-- One place ID per sub-sprint (stations are hero — 20 iter floor).
+- Prefer one place ID per sub-sprint when hero-scale review would otherwise become diffuse.
 - Follow `design/world-identity/PIPELINE.md` bootstrap → promote flow.
 
 ## Violations

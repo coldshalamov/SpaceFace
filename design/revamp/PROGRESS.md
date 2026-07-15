@@ -1,16 +1,20 @@
 # PROGRESS LEDGER — revamp task ledger (check-level DONE)
 
-> **2026-07-09:** Product / overnight execution authority is **`design/vision/`**  
-> (`OVERNIGHT_GOAL.md`, `07_AUTONOMOUS_PIPELINE.md`, `01_CURRENT_STATE.md`).  
-> This ledger remains the best map of **which revamp packets were CODE-DONE** — but  
+> **2026-07-14 authority correction:** Cross-program status lives only in
+> [`design/program/`](../program/README.md). Alpha scope/order remains in
+> [`design/vision/ALPHA_PROGRAM.md`](../vision/ALPHA_PROGRAM.md). This ledger remains the best map of
+> **which revamp packets were CODE-DONE** — but
 > **CODE-DONE ≠ PLAY-DONE**. Overnight runs harvest T6–T9 / presentation remainders from here;  
 > they do not treat green checks as “game is fun.”
 >
-> **Read this for packet history.** For “what do we build next / go to bed,” read vision pack first.
+> **Read this for subordinate packet history and check evidence.** For current work and pickup order,
+> read the unified program first.
 > If a task is marked `DONE` here, do not rebuild the same check-theater; **do** re-verify play if relevant.
 >
-> **Authority chain:** `ARCHITECTURE.md` > `design/vision/*` (product) > `design/GDD_2_0.md` >
-> `design/revamp/REVAMP_MASTER.md` > this ledger (task state) > `STATUS.md`.
+> **Authority chain:** `ARCHITECTURE.md` > `design/GDD_2_0.md` >
+> `design/vision/ALPHA_PROGRAM.md` (Alpha scope/order) > `design/revamp/REVAMP_MASTER.md`
+> (revamp design) > this ledger (subordinate packet evidence). `design/program/**` owns the global
+> status projection; live checks/routes/evidence outrank all prose.
 >
 > **Snapshot basis:** working tree as of 2026-07-06 (~17k lines ahead of HEAD; trust the tree over HEAD per
 > `AGENTS.md §3`). Re-verify any `DONE` row's claim before building on top of it — grep the file, run the check.

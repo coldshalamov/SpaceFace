@@ -262,11 +262,11 @@ Between backdrop and play plane, add camera-relative parallax layers (all cheap,
 5. Play plane: ships, asteroids, stations (contact shadows already ground them).
 Boost/cruise stretch near-mote streaks (classic warp-speed read). Motion-reduce halves densities.
 
-### 9.2 Sector identity (data-driven palettes)
-Lighting recon scored palette data-driveness 2/5 — fix: per-sector `palette` block in `sectors.js`
-(key/rim/fill light colors + nebula tint + fog color + dust hue). Core worlds: clean cyan/steel.
-Mining belts: rust/amber haze. Pirate fringes: sodium-red murk. Anomaly space: violet/green wrongness.
-One glance at the screen tells you *where you are* — that's Freelancer's system-identity trick.
+### 9.2 Sector identity (data-driven art direction)
+Each sector carries an explicit visual profile in data: lighting, atmosphere, background, material,
+landmark, traffic, and environmental cues. Palette is one tool, not a locked four-color taxonomy.
+The acceptance outcome is that one representative frame communicates *where you are* without a
+label while preserving gameplay readability and faction/IFF accessibility.
 
 ### 9.3 Readability pass
 - Ships get faction-hue rim-light + engine glow; hostiles carry warm signatures, friendlies cool
@@ -277,20 +277,21 @@ One glance at the screen tells you *where you are* — that's Freelancer's syste
   is close; audit per-material emissive intensities instead of cranking post.
 
 ### 9.4 HUD 2.0 (clean, non-diegetic, hierarchical)
-Design principles (full mockup in build plan WS-B):
-- **Three anchors, not seven:** bottom-left ship status cluster (hull/shield schematic + energy/boost/
-  heat micro-bars — exists, keep), bottom-right radar + overview strip, top-center *single-line*
-  priority channel (the attention arbiter's output). Everything else appears contextually.
-- Bottom text-strip (SPD/THR/CARGO/CR) is retired; speed becomes a compact dial by the schematic;
-  credits/cargo live on a contextual chip that appears on change, then fades.
-- Type discipline: one mono family, three sizes, uppercase only for labels; the existing cyan/amber/
-  red semantic palette stays (it's good and a11y-vetted).
-- Nothing pulses or glows at rest (pillar 3 for the eyes). Glow = state change.
+Design principles (screen-specific composition owns the solution):
+- Flight presents one clear current objective, one immediate action, and one threat picture while
+  preserving the contact roster, radar, target state, and ship survival information.
+- Stable information stays stable; contextual information appears near the decision it supports.
+  Do not remove useful navigation or targeting surfaces merely to reduce element count.
+- Typography, color, motion, glow, and layout must establish hierarchy and remain accessible, but
+  no inherited font count, anchor count, palette, or animation recipe is mandatory.
+- Ambient motion and light may establish atmosphere or machine life. State-change cues must remain
+  more salient, and reduced-motion/flash preferences must retain a legible static result.
 
 ### 9.5 Audio direction
-Procedural synth stays (zero-asset is a shipping advantage). Add: engine hum layered by thrust tier,
-tether tension whine, vent-bonus chime, shield-break bass drop, sector-tinted ambient pads (one per
-palette class). All existing `audioRecipes.js` patterns.
+Use a hybrid sound pipeline: procedural synthesis where continuous state benefits from parameterized
+response, and licensed/authored recordings where they provide stronger weight, material identity,
+voice, ambience, or music. Route both through the same buses, accessibility settings, concurrency
+limits, and deterministic event seams. Judge the mix in play, not by asset count or technique.
 
 ## 10. Performance & hitch elimination
 
@@ -302,7 +303,9 @@ Target: zero >32 ms frames in normal play on mid hardware. Measured hitches (54 
    mesh-builds/frame); pre-build one pooled mesh per enemy archetype at sector load.
 3. **GC audit:** heap-profile 10 min of play; kill per-frame allocations found in event emissions and
    UI string building (10 Hz HUD strings — precompute/memoize).
-4. Keep the `backdrop-filter` removals from the working tree (GPU cost on every overlay).
+4. Attribute UI/compositor cost with representative screens. Cache, isolate, and reduce redundant
+   work before removing a visible treatment; no CSS property is globally banned without current
+   measurements showing it is the owning bottleneck.
 5. Frame budget guardrail in CI: extend `check:perf` with a hitch-count assertion (no frame > 32 ms
    during scripted 60 s combat+mining run).
 

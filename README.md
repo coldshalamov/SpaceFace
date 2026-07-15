@@ -2,7 +2,7 @@
 
 A semi‑3D, top‑down space game for desktop — fly a ship, **mine** asteroids, **trade** on a living supply/demand economy, **fight** pirates, **upgrade** your ship and modules, **jump** between sectors, take **missions**, and build **passive income** (drones, hired traders, outposts) that grows while you play. Inspired by *Freelancer*, *Endless Sky*, *Star Valor*, *Rebel Galaxy*, and the *X* series.
 
-Built with **Three.js** (true 3D meshes under a tilted top‑down camera), release-authored GLB ship parts, procedural world props/VFX, a DOM/CSS overlay UI, and 100% procedural Web Audio.
+Built with **Three.js** (true 3D meshes under a tilted top‑down camera), release-authored GLB ship parts, procedural world dressing/VFX, a DOM/CSS overlay UI, and a Web Audio mix that supports both synthesis and licensed authored sources.
 
 ---
 
@@ -56,7 +56,7 @@ Asteroids live out in the **belt sectors** (e.g. Ceres Belt) — the starting hu
 - **Automation (anti‑idle)** — mining drones, hired traders on routes, outposts, fleet orders — passive income that is **capped** below active earnings, with upkeep, loss risk, and offline catch‑up.
 - **Full UI** — flight HUD (vitals, throttle, radar, target panel, cargo/credits, alerts), station hub (market/shipyard/outfitting/missions/services/factions/bar), star map, tech tree, automation panel, pause/settings/save‑load/help/main menu.
 - **Save/load** — versioned saves to localStorage + JSON export/import, autosave, migrations.
-- **Procedural audio** — synthesized SFX (weapons, explosions, mining, UI, alarms) + an adaptive music bed.
+- **Audio system** — synthesized state-driven SFX and adaptive music today, with shared buses and an authored-source path for cues that benefit from recorded material.
 
 ---
 
@@ -82,15 +82,21 @@ ARCHITECTURE.md       the canonical contract (state schema, event table, file ma
 design/               current GDD/build plan plus historical design material
 ```
 
-**Architecture in one breath:** a single flat `GameState`, an event bus, and ~20 self‑contained "systems" (each `init(ctx)` + `update(dt, state)`) wired in a fixed order and driven by a 60 Hz fixed‑timestep loop decoupled from rendering. Content is data‑driven. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full contract and [`design/`](design/) for subsystem specs.
+**Architecture in one breath:** a single flat `GameState`, an event bus, and registry-selected systems
+(each `init(ctx)` + `update(dt, state)`) wired in a fixed order and driven by a 60 Hz fixed-timestep
+loop decoupled from rendering. Content is data-driven. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for
+the full contract and [`docs/README.md`](docs/README.md) for task-oriented documentation routing.
 
-Current design authority lives in [`design/GDD_2_0.md`](design/GDD_2_0.md), [`design/BUILD_PLAN_2_0.md`](design/BUILD_PLAN_2_0.md), [`design/CURRENT_BUILD_STATUS.md`](design/CURRENT_BUILD_STATUS.md), [`design/spec2/INDEX.md`](design/spec2/INDEX.md), and [`design/spec3/`](design/spec3/) (expansion threads SPEC3-F1..F10). The older `design/specs/` suite is retained as legacy reference material only unless a current 2.0/spec3 doc explicitly revives a section.
+Current design authority lives in [`design/GDD_2_0.md`](design/GDD_2_0.md). The sole whole-program
+status and pickup surface is [`design/program/README.md`](design/program/README.md);
+[`design/vision/ALPHA_PROGRAM.md`](design/vision/ALPHA_PROGRAM.md) owns Alpha scope/order, while the
+activated spec2/spec3/revamp/depth/graphics plan owns task detail.
 
 > **Agents and contributors:** read [`AGENTS.md`](AGENTS.md) first — it is the front door to the whole repo
 > (where to start, the uncommitted-tree warning, which implementation is LIVE, common-bug routing,
 > verification gates). `ARCHITECTURE.md` (repo root) is the technical contract; `design/GDD_2_0.md` is
-> the design authority. The active build plan + task ledger lives in
-> [`design/revamp/`](design/revamp/) (`REVAMP_MASTER.md` + `PROGRESS.md`).
+> the design authority. Start current work from
+> [`design/program/README.md`](design/program/README.md), then follow its link to the activated plan.
 
 ### Dev helpers
 - `node scripts/check-data.mjs` — verify every data module's exports.

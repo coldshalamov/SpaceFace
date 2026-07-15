@@ -20,9 +20,9 @@ One **presentation vertical** per sprint:
 
 ## Task list
 
-1. Read `design/spec2/00_MASTER_TASTE.md` §3–4 (no HUD diegesis, hit-stop rules).
+1. Read root `AGENTS.md` for the non-diegetic HUD and performance rules, then the activated presentation spec.
 2. Implement smallest diff for sprint vertical.
-3. **10 verification cycles:**
+3. Run the checks that cover the changed presentation seam; fix failures and rerun:
 
 ```bash
 node scripts/check-sg08-render-vfx.mjs
@@ -37,7 +37,7 @@ npm run check:visual-stability   # if render-visible
 ## Verification bar
 
 - Checks green (evidence in terminal output).
-- No silent quality reduction (forbidden per Agents.md perf policy).
+- No silent quality reduction (forbidden per `AGENTS.md` performance policy).
 - `Math.random()` only in render/vfx (cosmetic).
 
 ## References

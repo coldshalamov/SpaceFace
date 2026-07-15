@@ -1,11 +1,13 @@
-# Top-50 Wonder Build Plan + Quality Gates
+# Top-50 Wonder Build Plan
 
-**Status:** LIVE — director-facing production slate for **M3 Wonder / ~$30 Steam visual bar**  
+> **ACTIVE PRIORITY SPINE.** This file owns the ranked order and slice outcomes. It does not own global
+> program status, impose iteration quotas, or replace independent visual judgment. Start at `README.md`.
+
+**Status:** LIVE — director-facing visual production slate
 **Date:** 2026-07-09  
 **Owner:** Human director + graphics / presentation agents  
-**Product authority:** `design/vision/00_CONSTITUTION.md` · `design/vision/03_MASTER_BUILD_PLAN.md` Wave 4  
-**Process authority:** this file + `QUALITY_RITUAL.md` + `.grok/skills/spaceface-blender-pipeline/SKILL.md`  
-**Complement (do not lower bar):** `FULL_GRAPHICS_REVAMP_GOAL.md` (full kit process) · `design/revamp/BP-08_VISUAL_ASSET_SPEC.md` (coverage/identity) · `needed-assets.md` (inventory) · `assets/QUEUE.md`
+**Authority:** `README.md` · this file (order) · `FULL_GRAPHICS_REVAMP_GOAL.md` (coverage/outcome) ·
+`design/revamp/BP-08_VISUAL_ASSET_SPEC.md` (coverage/identity) · live contracts/checks
 
 ---
 
@@ -13,10 +15,10 @@
 
 | Problem | This doc’s job |
 |---|---|
-| Agents stop after half-done clay / few iters | **Hard gates** + a **copy-paste goal** that forbids early exit |
+| Agents stop after half-done clay | Outcome gates and a copy-paste goal that requires player-route evidence |
 | “Revamp everything” is too large to start | **Top 50 ranked** + **5 slices** with clear exit shots |
 | FGRG / BP-08 / QUEUE overlap confuses agents | **One priority spine** for store-page + first-hour wonder |
-| Screenshots crop or fake progress | **Full-view law** + weighted rubric + evidence paths |
+| Screenshots crop or fake progress | Fully framed context views, independent critique, and evidence paths |
 | Mesh work without VFX/UI/audio leaves clay universe | Ranks include **RUNTIME / VFX / UI2D / AUDIO-VIS** |
 
 **Prime directive:** Space games live on wonder + tactile feedback. Excellent systems under clay placeholders do not sell at ~$30. Target is **real 2026 hard-surface + presentation** (Eve / modern space-sim bar at game scale), browser-safe via LOD/instancing/batching.
@@ -27,52 +29,47 @@
 
 ## 1. Authority chain (when docs disagree)
 
-1. Root `Agents.md` §3 (uncommitted tree — never `reset`/`stash`/`checkout .`) + §10 (lanes) + graphics lock  
-2. `design/vision/00_CONSTITUTION.md` (product pillars)  
-3. **This file** for Top-50 order + slice exits + anti-laziness goal  
-4. `QUALITY_RITUAL.md` for iteration floors + shot IDs + rubric  
-5. `spaceface-blender-pipeline` + three pass skills + `professional-techniques.md`  
-6. `FULL_GRAPHICS_REVAMP_GOAL.md` for whole-kit process when expanding past Top 50  
-7. `BP-08` for faction silhouettes / missing gameplay assets  
-8. Exporter contract: `tools/blender/spaceface_export.py` (never relax assertions)
-
-**Taste:** `design/spec2/00_MASTER_TASTE.md` Forbidden list still rejects diffs (including HUD visor motifs).
+1. Root `AGENTS.md` for repository safety, live paths, ownership, and performance doctrine.
+2. `README.md` for graphics-document authority and quality doctrine.
+3. **This file** for Top-50 order and slice exits.
+4. `FULL_GRAPHICS_REVAMP_GOAL.md` for whole-kit coverage and outcome bar.
+5. `BP-08` for faction silhouettes and missing gameplay assets.
+6. `QUALITY_RITUAL.md` for evidence/critique structure.
+7. Exporter/runtime contracts and current checks for technical truth.
 
 ---
 
 ## 2. Build philosophy
 
-### 2.1 Effort multiplier (non-negotiable)
-
-Agents default to **~5–10% of real craft**. This plan forces **10–20× that effort**:
+### 2.1 Outcome discipline
 
 | Lazy failure mode | Required behavior |
 |---|---|
-| One blockout, call it done | **≥20** full iteration cycles (hero/standard 3D); **≥10** small props |
-| Tiny nudge each iter (“add a bevel”) | Each iter **rebuilds ≥50% of the remaining gap** toward the full goal for that pass |
-| Cropped / dark / partial screenshots | **Invalid** — subject must be fully framed; redo before counting |
+| One blockout, call it done | Review modeling, surfacing, life, and the live player route before acceptance |
+| Tiny cosmetic changes avoid the main gap | Make the largest coherent improvement justified by current critique |
+| Only cropped / dark / partial screenshots | Add a fully framed neutral and lit context view |
 | “Loads in Blender / exported GLB” | Not done until **release + checks + in-game authored screenshot** |
 | Flat gray / single material | Fail **Material zones** + **Wear/story** criteria |
-| Skip techniques doc | Every deficiency list **names** techniques from `professional-techniques.md` |
+| Apply a universal technique recipe | Choose techniques because they solve the asset's actual visible gaps |
 | Stop after starter only | Forbidden by FGRG; this plan still requires **Slice A exit** then continue |
 
 ### 2.2 Three professional passes (every hero 3D asset)
 
 | Pass | Skill | Gate |
 |---|---|---|
-| **Modeling** | `spaceface-blender-blockout` | Clay form would pass pro scrutiny (macro/meso/micro, bevel language, silhouette 5/5) |
-| **Surfacing** | `spaceface-blender-hardsurface` | Baked AO/normal/roughness (ORM), wear, decals, material roles, lit rubric ≥4 |
+| **Modeling** | `spaceface-blender-blockout` | Clay form survives professional review at the game camera |
+| **Surfacing** | `spaceface-blender-hardsurface` | Materials, surface story, and lighting response read in the actual renderer |
 | **Life & polish** | `spaceface-blender-surface-pass` | Secondary life, thruster/gun readiness, sockets/hooks, final lit set |
 
 Distant C-tier props may abbreviate Life pass; **never** for ranks 1, 6–8, 11, 16–21, 28–29, 31–32, 48.
 
 ### 2.3 Fidelity tiers
 
-| Tier | Use | Iter floor | Budget posture |
-|---|---|---:|---|
-| **A — Hero** | Starter ship, trailer stations, landmarks, massline VFX | 20 | Full bake set; raise budget only with rationale + perf proof |
-| **B — Cast** | Common NPCs, archetype stations, engines/weapons | 20 | Shared materials; strong silhouette |
-| **C — Crowd** | Debris, simple rocks, distant traffic dressing | 10 | Instanced / efficient; still bevel + AO |
+| Tier | Use | Review posture | Performance posture |
+|---|---|---|---|
+| **A — Hero** | Starter ship, trailer stations, landmarks, massline VFX | Highest scrutiny across context and detail | Measure; use appropriate LOD/HLOD and structural optimization |
+| **B — Cast** | Common NPCs, archetype stations, engines/weapons | Strong role/faction read at play distance | Share/cache materials where coherent; preserve identity |
+| **C — Crowd** | Debris, rocks, distant traffic dressing | Convincing composition and variation at its actual screen size | Instance, batch, cull, and simplify only where visually equivalent |
 
 ### 2.4 Parallel tracks (meshes alone are not enough)
 
@@ -137,10 +134,10 @@ Distant C-tier props may abbreviate Life pass; **never** for ranks 1, 6–8, 11,
 | 40 | Icon atlas | UI2D | UI lane | D | commodities, weapons, modules, POIs, status |
 | 41 | Cinematic portraits pack | UI2D | UI lane | D | named + roles (non-sticker, non-visor-HUD) |
 | 42 | Steam key art set | UI2D | Marketing | D | capsule, library, 4–6 stills matching **in-game** |
-| 43 | Liquid glass UI juice | RUNTIME | UI | D | DOM + canvas sync; data-dense, not prose |
+| 43 | UI polish juice | RUNTIME | UI | D | DOM + canvas sync; data-dense, not prose; intentional screen-specific materials and measured compositor cost |
 | 44 | Map/scanner silhouettes | UI2D | UI | D | ship 2D silhouettes + markers |
 | 45 | Night emissives / station windows | RUNTIME | D | C | light language after dark |
-| 46 | Engine audio-visual sync | AUDIO-VIS | Audio+D | A | glow/heat ramps tied to procedural audio |
+| 46 | Engine audio-visual sync | AUDIO-VIS | Audio+D | A | glow/heat ramps tied to the shared audio event/mix path |
 | 47 | Massline audio bed | AUDIO-VIS | Audio+D | A | spool / taut / break |
 | 48 | Faction NPC heroes | SHIP | A (+ code builders) | E | Concord, Meridian, Quiet, Drift signature looks |
 | 49 | Anomaly / hazard language | ENV | D | E | Veil, Ashfall war-wash, hazard readability |
@@ -198,9 +195,9 @@ Faction stations, landmarks, dressing flood, dock stages.
 
 ### Slice D — “Retail surfaces” (40–47, 42–44)
 
-Icons, portraits, key art, glass juice, audio-visual sync.
+Icons, portraits, key art, UI polish juice, audio-visual sync.
 
-**Exit:** Station bar + market + one key art frame match product constitution (glass, data-first, cinematic faces).
+**Exit:** Station bar + market + one key art frame match product constitution (clean chrome, data-first, cinematic faces).
 
 ### Slice E — “Scale & fleets” (19, 28–30, 48–50)
 
@@ -210,71 +207,50 @@ Haulers, capitals, faction materials, NPC heroes, perf lock.
 
 ---
 
-## 5. Quality gates (hard)
+## 5. Quality gates
 
-### 5.1 Per-iteration gate (every counted iter)
+### 5.1 Review evidence
 
-An iteration **only counts** if **all** of the following are true:
+Save representative fully framed neutral and lit views, useful detail views, and a current player-route
+screenshot. Record the visible gaps that matter and how the revision addressed them. Compare against relevant
+concepts, the prior result, adjacent in-game assets, and professional genre references when useful.
 
-1. **Full-view law:** Subject fully visible in `clay_34_full` and `lit_34_full` (see `QUALITY_RITUAL.md` shot table). Cropped / black void / auto-frame miss = **0 credit**.  
-2. **Shot set saved** under `assets/ships/parts/revamp-evidence/<id>/renders/` with `iterN` in filename (3D), or `.devshots/<slice>/` for RUNTIME/VFX.  
-3. **Written assessment** in `deficiency.md` or ledger: ≥5 deficiencies (≥8 hero), each naming a technique from `professional-techniques.md`.  
-4. **Substantial rebuild:** Next change addresses ≥50% of listed critical deficiencies for that pass — not a single micro-tweak “to save the next iter.”  
-5. **Weighted self-score** recorded (see §5.2).  
-6. **`iteration_ledger.json`** incremented.
+Use the categories in `QUALITY_RITUAL.md` as critique prompts, not a numeric scorecard. Iteration counts,
+deficiency counts, technique counts, and author self-scores have no acceptance weight.
 
-### 5.2 Weighted rubric (score 1–5 every iter)
-
-| Criterion | Weight | Pass for export (hero) |
-|---|---:|---|
-| **Silhouette** (readable at game chase / 34 full) | 20% | **= 5** |
-| **Macro / meso / micro hierarchy** | 15% | ≥ 4 |
-| **Bevel language / edge craft** | 10% | ≥ 4 |
-| **Material zones** (hull / accent / mechanical / glass) | 15% | ≥ 4 |
-| **Wear / story / character** | 15% | ≥ 4 |
-| **Scale truth** (bounds, mounts, origin) | 10% | **= 5** |
-| **Lighting readability** (emissive control, form in shadow) | 10% | ≥ 4 |
-| **Contract readiness** (roles, maps, chamfer path) | 5% | ≥ 4 |
-
-**Weighted score** = Σ (score × weight).  
-**Export bar (hero):** weighted ≥ **4.4** and no hard-fail on silhouette or scale (must be 5).  
-**Export bar (standard part):** weighted ≥ **4.2**, silhouette ≥ 4, scale = 5.  
-**Export bar (small prop):** weighted ≥ **4.0**, silhouette ≥ 4.
-
-Compare every iter ≥3 against: concept/bible plane, previous iter, and mental bar “2026 ArtStation WIP / Eve-class surface.”
-
-### 5.3 Per-asset completion gate (3D)
+### 5.2 Per-asset completion gate (3D)
 
 Asset is **DONE** only when:
 
 | # | Gate | Proof |
 |---:|---|---|
-| G1 | Iter floor met | ledger `iter` ≥ 20 (or 10 prop) |
-| G2 | Three passes executed | modeling → surfacing → life entries in ledger |
-| G3 | Rubric export bar met | last lit set scores in `deficiency.md` |
+| G1 | Visual outcome reviewed | independent critique of current context/detail/player-route views |
+| G2 | Relevant passes complete | modeling, surfacing, and life/polish as appropriate to the asset's role |
+| G3 | Identity and craft hold up | silhouette, hierarchy, materials, story, scale, and lighting are convincing |
 | G4 | Exporter clean | `spaceface_export.py` / `finalize_part.mjs` **zero** assertion failures |
 | G5 | Source on disk | `assets/ships/parts/<cat>/<id>.glb` (+ `.blend` if authored) |
-| G6 | Evidence bundle | `revamp-evidence/<id>/{deficiency.md,iteration_ledger.json,renders/,finalize.log}` |
+| G6 | Evidence bundle | current critique, representative renders, exporter log; optional chronology |
 | G7 | Handoff written | `design/graphics-sprints/handoffs/*.yaml` per `HANDOFF_TEMPLATE.md` |
 | G8 | Integrator release | `npm run build:sg04:release-assets` |
 | G9 | Live checks | `check:assets:live`, `check:asset-reachability`, `check:visual-stability` (and station checks if place) |
 | G10 | In-game authored | Screenshot proves **authored** mesh (not procedural fallback / boxes) |
-| G11 | No sore thumbs | 5-second stare test on hero frame (constitution pillar 7) |
+| G11 | No sore thumbs | independent review of the complete hero frame |
 
-**Forbidden “done” claims:** loads in Blender · GLB exists · “looks fine” without shots · iter &lt; floor · release not built · only beauty render, no game shot.
+**Forbidden “done” claims:** loads in Blender · GLB exists · “looks fine” without evidence · release not built ·
+only a beauty render with no current game shot.
 
-### 5.4 Per-pack completion gate (VFX / ENV / RUNTIME / UI)
+### 5.3 Per-pack completion gate (VFX / ENV / RUNTIME / UI)
 
 | # | Gate | Proof |
 |---:|---|---|
 | P1 | Spec events covered | Checklist of states (e.g. massline: idle/fire/latch/taut/break) |
-| P2 | ≥10 verify cycles | change → play/probe → note → fix |
+| P2 | Coherent verification | relevant checks and player/probe evidence; diagnose and rerun failures |
 | P3 | Wide + close `.devshots` | full subject, correct game camera language |
 | P4 | Perf honest | no silent quality drop; hitch/perf check when touching render loop |
 | P5 | Determinism | sim-affecting changes use `state.rng` / no golden cheats |
 | P6 | Taste | no visor HUD; non-diegetic chrome |
 
-### 5.5 Slice completion gate
+### 5.4 Slice completion gate
 
 | Slice | Gate |
 |---|---|
@@ -306,11 +282,10 @@ Run `INTEGRATION_GATE.md` fully. **Thread C may wire only `RELEASE_BUILT` IDs.**
 │ 0. Director assigns ONE slice item / ONE asset ID           │
 │ 1. Read: this file §5 + QUALITY_RITUAL + pipeline skill     │
 │ 2. Acquire blender.LOCK (if 3D)                             │
-│ 3. Inspect current → iter0 full-view shots + scores         │
+│ 3. Inspect current → representative context/detail shots    │
 │ 4. Define character (3–5 sentences)                         │
-│ 5. LOOP until export bar + iter floor:                      │
-│      full-view render set → score → deficiency list →       │
-│      LARGE rebuild (≥50% gap) → techniques named → ledger   │
+│ 5. LOOP while meaningful gaps remain:                       │
+│      render → critique → coherent repair → render again     │
 │ 6. Export → finalize → evidence bundle                      │
 │ 7. Handoff YAML → release lock                              │
 │ 8. Integrator: release build + checks                       │
@@ -336,8 +311,7 @@ Maintain rows in `assets/ASSET_STATUS.json` (or create) per integrator:
     "slice": "A",
     "lifecycle": "RELEASE_BUILT",
     "art": "full_finish",
-    "iterations": 20,
-    "weighted_score": 4.6,
+    "visual_review": "independent review passed; see evidence path",
     "in_game_shot": ".devshots/slice-A/undock-wide.png",
     "handoff": "design/graphics-sprints/handoffs/..."
   }
@@ -352,12 +326,12 @@ Director reviews slice exits with shots — **transcripts are not proof**.
 
 | After Top 50 slices | Still required for full FGRG |
 |---|---|
-| Slice A–E complete | Remaining manifest parts not in Top 50 get full 20-iter pass |
+| Slice A–E complete | Remaining manifest parts not in Top 50 receive the same outcome/evidence bar |
 | | BP-08 wrecks, comm beacon, extra gate variants |
 | | Claim/empire props when Wave 6 opens |
 | | ASSET_STATUS populated for **all** LIVE assets |
 
-Top 50 is the **spine**. FGRG is the **completion law** for every authored GLB. Never lower FGRG’s bar when doing long-tail work.
+Top 50 is the **priority spine**. FGRG owns full authored-asset coverage and the professional outcome bar.
 
 ---
 
@@ -369,12 +343,12 @@ Use existing `GOAL_PROMPTS.md` threads when staying inside A/B/C/D/E isolation.
 
 ---
 
-### 9.1 MASTER GOAL — Top-50 Wonder Campaign (anti-lazy, no early stop)
+### 9.1 MASTER GOAL — Top-50 Wonder Campaign
 
 Copy everything in the fence as the session goal:
 
 ```
-# GOAL: SpaceFace Top-50 Wonder Build — NO EARLY STOP / NO LAZY HALF-ASSETS
+# GOAL: SpaceFace Top-50 Wonder Build — professional player-facing outcome
 
 You are executing the professional 2026 visual overhaul for SpaceFace under:
 design/graphics-sprints/TOP50_WONDER_BUILD_PLAN.md
@@ -385,8 +359,8 @@ readable at game scale). Wonder + tactile feedback. Clay placeholders and “goo
 indie” are failures. Target enables Steam ~$30 store stills and Freelancer-successor fantasy.
 
 ## Read first (mandatory, in order)
-1. Agents.md §3 + §6 concurrent graphics + §10 lanes
-2. design/vision/00_CONSTITUTION.md pillars 2, 7, 8
+1. AGENTS.md §3 + §6 concurrent graphics + §10 lanes
+2. design/graphics-sprints/README.md
 3. design/graphics-sprints/TOP50_WONDER_BUILD_PLAN.md (THIS plan — build order + gates)
 4. design/graphics-sprints/QUALITY_RITUAL.md
 5. design/graphics-sprints/00_ORCHESTRATION.md + BLENDER_EXCLUSIVE_LOCK.md
@@ -394,7 +368,7 @@ indie” are failures. Target enables Steam ~$30 store stills and Freelancer-suc
 7. .grok/skills/spaceface-blender-pipeline/references/professional-techniques.md
 8. assets/AGENTS.md (ship stack, blocked wholeships, registries)
 9. tools/blender/spaceface_export.py contract (do not relax)
-10. FULL_GRAPHICS_REVAMP_GOAL.md §2–3 (quality bar — never lower)
+10. FULL_GRAPHICS_REVAMP_GOAL.md (coverage and outcome bar)
 11. design/revamp/BP-08_VISUAL_ASSET_SPEC.md §0 for station/landmark identity when relevant
 
 ## Your assignment this session
@@ -404,29 +378,25 @@ Thread role: <A|B|C|D|E|INTEGRATOR|UI>
 
 If Blender is required: acquire assets/ships/blender.LOCK first. If lock held by another owner, STOP.
 
-## Effort law (you will violate this unless you re-read it every asset)
-- Default agent effort is too low. Work at **10–20×** normal “one pass and ship” effort.
-- Minimum iterations: **20** for hero/standard 3D; **10** for small props; **10 verify cycles** for code/VFX/UI packs.
-- Each iteration = full-view render set → weighted score → written deficiencies → **large rebuild**.
-- **≥50% rule:** every iteration must attempt to close most of the remaining gap for the *current pass*
-  (modeling OR surfacing OR life), not a cosmetic 5% nudge “because another iter is coming.”
-- You are building toward the **whole goal each time** (complete form / complete surface / complete life),
-  then critiquing and rebuilding. Tiny incrementalism is forbidden.
-- Partial-view, cropped, black-void, or auto-framed-miss screenshots **do not count**.
+## Outcome discipline
+- Build toward the whole visible goal for the current pass, then critique the result honestly.
+- Use representative full-context and detail views; cropped detail views cannot replace a fully framed view.
+- Make the largest coherent improvement justified by current evidence. Do not manufacture process loops or
+  self-scores as proof of quality.
+- Select techniques for the asset's actual role, construction, and story rather than applying a universal
+  surface recipe.
 - Do not stop because you are “tired of the asset,” context is long, or “it’s better than before.”
-  Stop only when §5.3 / §5.4 gates in TOP50_WONDER_BUILD_PLAN.md are met with evidence paths.
+  Stop only when the applicable §5 asset/pack gate and slice evidence are met.
 
 ## 3D pipeline (when Thread A/B/E)
 For EACH id:
-1. Inspect current GLB/blend via Blender MCP; iter0 full-view clay+lit set; score rubric.
+1. Inspect current GLB/blend via Blender MCP; capture representative full-view clay, lit, and player-route evidence.
 2. Write character brief (3–5 sentences: role, faction wear, silhouette promise).
-3. Modeling Pass (blockout skill): iterate until clay silhouette=5, hierarchy≥4, professional techniques visible.
+3. Modeling Pass (blockout skill): iterate until silhouette, hierarchy, scale, and construction survive review.
 4. Surfacing Pass (hardsurface skill): full node layering, bakes (AO/N/rough ORM), wear, decals, material roles.
 5. Life Pass (surface-pass skill): secondary life, sockets/hooks, thruster/gun readiness.
-6. Every iter: shots clay_34_full, clay_front, clay_side, lit_34_full, lit_close_detail
-   (+ lit_nozzle / lit_muzzle when engines/weapons). Distance = ritual law (subject fully in frame).
-7. deficiency.md: ≥5 items (≥8 hero), name techniques from professional-techniques.md.
-8. iteration_ledger.json after every iter.
+6. Capture the neutral, lit, detail, and player-route views needed to evaluate the current result.
+7. Keep `deficiency.md` focused on the material gaps and chosen repairs; chronology is optional.
 9. Export via spaceface_export.py / finalize_part.mjs — zero failures.
 10. Evidence under assets/ships/parts/revamp-evidence/<id>/
 11. Handoff YAML to design/graphics-sprints/handoffs/
@@ -434,12 +404,12 @@ For EACH id:
 
 ## VFX / RUNTIME / UI packs (when Thread D / UI)
 - Implement full state checklist for the pack (e.g. massline: fire, latch, taut, break, whip).
-- ≥10 verify cycles with .devshots wide+close under .devshots/slice-<X>/
+- Verify the coherent change with relevant checks and `.devshots` context/detail views under `.devshots/slice-<X>/`.
 - Prefer structural perf (LOD, pool, batch); never silent quality cliffs or browser/desktop divergence.
 - Sync audio hooks when ranks 46–47 are in scope (procedural Web Audio + visual ramp).
 
 ## Quality bar (fail any → not done)
-- Weighted rubric export bar (plan §5.2)
+- Independent review of plan §5 and `QUALITY_RITUAL.md` evidence
 - No sore-thumb geometry on hero frames
 - In-game screenshot shows authored asset (not procedural fallback boxes)
 - Checks: as applicable — check:assets:live, check:asset-reachability, check:visual-stability,
@@ -458,13 +428,13 @@ For EACH id:
 
 ## Continuity
 If context limits force a pause: write CONTINUATION.md in the evidence or handoff folder with:
-- exact iter number, last scores, remaining deficiencies, next techniques, file paths.
+- current outcome, remaining deficiencies, next justified repairs, and file paths.
 The next agent must resume from that file — not restart from zero and not skip to a new asset.
 
 ## Definition of done for this session
-- Every assigned ID meets DONE gates in TOP50_WONDER_BUILD_PLAN.md §5.3 or §5.4
+- Every assigned ID meets the applicable asset or pack gate in TOP50_WONDER_BUILD_PLAN.md §5
 - Exit screenshots for the slice listed in §4 exist on disk
-- 15-line summary: IDs, iter counts, weighted scores, check commands+results, shot paths, blockers
+- concise summary: IDs, review outcome, check commands/results, player-route and detail evidence paths
 
 Begin with the highest-rank incomplete ID in your assignment. Do not quit early.
 ```
@@ -474,7 +444,7 @@ Begin with the highest-rank incomplete ID in your assignment. Do not quit early.
 ### 9.2 SINGLE HERO GOAL — one asset, maximum rigor
 
 ```
-# GOAL: Single hero asset — 20 full rebuild iterations — 2026 pro bar
+# GOAL: Single hero asset — professional player-facing result
 
 Read design/graphics-sprints/TOP50_WONDER_BUILD_PLAN.md §5 + QUALITY_RITUAL.md +
 spaceface-blender-pipeline SKILL + professional-techniques.md + assets/AGENTS.md.
@@ -485,19 +455,19 @@ Character target: <one paragraph from BP-08 / needed-assets / QUEUE>
 
 Rules:
 - Acquire blender.LOCK. Use Blender MCP heavily.
-- Minimum **20** iterations. Each iteration: FULL-VIEW shot set (no crops) → score all rubric rows →
-  write ≥8 deficiencies naming techniques → rebuild **most of the remaining gap** (not a tiny tweak).
+- Use fully framed context views, useful detail views, and written critique; repeat until independent review
+  supports the professional result.
 - Pass order: Modeling until clay is pro → Surfacing until lit is pro → Life until ready to export.
 - Attempt the **whole pass goal** every modeling/surfacing cycle; critique; rebuild.
-- Effort: 10–20× normal. Do not stop at “better than before.”
-- Done only when weighted ≥4.4 (hero), silhouette=5, scale=5, exporter green, release built,
-  check:assets:live green, in-game authored screenshot saved.
+- Do not stop at merely “better than before”; resolve the material gaps visible at the real game camera.
+- Done only when independent visual review passes, exporter is green, release is built,
+  `check:assets:live` is green, and a current in-game authored screenshot is saved.
 - Evidence: assets/ships/parts/revamp-evidence/<ID>/
 - Handoff YAML when complete.
 
 Forbidden: early stop, cropped shots, relaxing exporter, wiring blocked wholeships, git destructive commands.
 
-Print: iter count, final scores, shot paths, check output.
+Print: review result, shot paths, and check output.
 ```
 
 ---
@@ -507,8 +477,8 @@ Print: iter count, final scores, shot paths, check output.
 Before accepting a graphics session:
 
 - [ ] Shot paths open and subject is fully framed  
-- [ ] `iteration_ledger.json` iter ≥ floor  
-- [ ] Weighted scores present; silhouette/scale hard gates  
+- [ ] Current critique and representative context/detail views exist
+- [ ] Independent review covers silhouette, scale, materials, story, and surrounding composition
 - [ ] In-game shot is authored (not fallback)  
 - [ ] Checks cited with real command output  
 - [ ] Handoff exists; lock released  
@@ -522,7 +492,7 @@ If any box fails → **reject done claim**; resume with §9.1 CONTINUATION rules
 
 | Doc | Role |
 |---|---|
-| `QUALITY_RITUAL.md` | Shot IDs, iter floors, evidence layout |
+| `QUALITY_RITUAL.md` | Review views, critique prompts, evidence layout |
 | `00_ORCHESTRATION.md` | Thread isolation + daily integrate |
 | `GOAL_PROMPTS.md` | Per-thread paste prompts |
 | `INTEGRATION_GATE.md` | Release + checks |
