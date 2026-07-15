@@ -379,8 +379,8 @@ test('source isolation: no registry/save/UI/input/package imports', () => {
   }
 });
 
-test('player-facing copy stays within 12-word budget', () => {
-  const result = assertProspectorLadderCopyBudget(12);
+test('player-facing copy is authored and inline-safe', () => {
+  const result = assertProspectorLadderCopyBudget();
   assert.equal(result.ok, true, `offenders: ${JSON.stringify(result.offenders)}`);
 });
 

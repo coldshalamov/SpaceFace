@@ -92,8 +92,8 @@ test('does not mutate package.json or registry wiring (source isolation)', () =>
 
 // ── Taste / copy ─────────────────────────────────────────────────────────────
 
-test('player-facing copy stays within 12-word budget', () => {
-  const result = assertProspectorCopyBudget(12);
+test('player-facing copy is authored and inline-safe', () => {
+  const result = assertProspectorCopyBudget();
   assert.equal(result.ok, true, `offenders: ${JSON.stringify(result.offenders)}`);
 });
 
