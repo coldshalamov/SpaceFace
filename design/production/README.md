@@ -1,8 +1,16 @@
 # SpaceFace Production System
 
+> **Manual campaign system — not automatic repository policy.** This folder applies only when the
+> user or lead explicitly activates a named production campaign or packet. Ordinary feature/fix
+> work follows the scoped `AGENTS.md`, architecture, activated product plan, and live checks; it
+> should implement a coherent result across every required integration seam. Campaign roles,
+> submission states, dispatch quotas, and writable-path lanes do not constrain ordinary work.
+
 **Status:** DRAFT, live planning workspace
-**Created:** 2026-07-10
 **Roadmap authority:** `design/vision/ALPHA_PROGRAM.md`
+
+**Unified live status:** `design/program/README.md`. This production folder defines process and
+acceptance contracts; it no longer duplicates the current Alpha + Depth done/remaining roll-up.
 
 This folder is the durable planning surface for turning the Alpha roadmap into an actual
 professional production process. It exists because chat context, agent transcripts, self-scores,
@@ -33,7 +41,7 @@ contains the machine-enforced states that workers, reviewers, assets, generated 
 sessions, and the coverage ledger are allowed to return. `reviews/` is append-only rejection and
 re-review history; the initial suite was explicitly rejected and hardened rather than self-approved.
 
-## Working law
+## Working law (inside an explicitly activated campaign only)
 
 - The authoritative roadmap stays `design/vision/ALPHA_PROGRAM.md`.
 - A worker produces a **candidate**. It never accepts its own work.
@@ -47,25 +55,10 @@ re-review history; the initial suite was explicitly rejected and hardened rather
   commentary; this folder is the durable record.
 - Current live checks and working-tree evidence outrank prose.
 
-## Current critical finding
+## Status routing
 
-The target fully automated production factory is not accepted yet. SAFE-001 is frozen under the
-2026-07-12 controller waiver at 88/88 current fixtures; its remaining findings are known P2
-control-plane debt and do not block current game, evidence, or asset production. PROD-001 remains
-rejected/stale and PROD-004's manual counter remains REVISE. The current supervised workflow keeps
-worker output separate and integrates only targeted, ownership-safe chunks. The honest current table
-is in `08_IMPLEMENTATION_BACKLOG.md`; historical SAFE findings remain in
-`reviews/2026-07-10-safe-001-advisory-rejections.md`, and PROD controller findings remain in
-`reviews/2026-07-10-prod-control-candidates-red-team.md`.
-The current eight Alpha evidence records are also legacy v1/path-only; EVID-001/002 must harden and
-migrate them before Milestone 0 exits.
-
-The existing graphics process also contains strong intentions but a compromised acceptance surface.
-Several campaign scripts derive quality scores from iteration number, some required views are
-excluded from pass decisions, exporter/finalizer paths can stamp claims or synthesize neutral maps,
-and much of `revamp-evidence/` lacks the ledgers/renders required by its own ritual. Therefore:
-
-> Existing visual outputs remain usable candidates, but none is accepted at the professional bar
-> merely because it has 20 iterations, a high score, a green exporter, or a handoff marked DONE.
-
-Independent reclassification is Milestone 0 work.
+Do not preserve campaign state in this README. Current whole-program completion and pickup live in
+`design/program/`; packet state belongs to the activated packet/controller. `08_IMPLEMENTATION_BACKLOG.md`,
+`DECISIONS.md`, and `reviews/` retain machinery proposals and historical evidence, not a second current
+status surface. Visual outputs require current player-route evidence and independent judgment; iteration
+counts, self-scores, file existence, and author-written completion claims do not establish acceptance.

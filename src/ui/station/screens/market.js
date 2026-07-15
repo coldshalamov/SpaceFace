@@ -2,10 +2,16 @@
 // Central price chart (area + gradient) for the selected commodity, a categorised commodity
 // list, and a live BUY/SELL console. Emits ui:buy / ui:sell {commodityId, qty}.
 import { COMMODITIES } from '../../../data/commodities.js';
+import { SECTORS } from '../../../data/sectors.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
+// Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
+// contract the legacy panel used) — never re-derive routes or nav here.
+import { computeBestTrades, applyTradeNavigation } from '../../screens/market.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const STATION_NAME = new Map();
+for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_NAME.set(s.id, s.name || s.id);
 
 const LEGAL_TONE = { legal: '', restricted: 'warn', contraband: 'loss' };
 const LEGAL_LABEL = { legal: 'Legal', restricted: 'Restricted', contraband: 'Contraband' };
@@ -79,14 +85,32 @@ export function createMarketScreen(ctx) {
   el.innerHTML =
     `<nav class="sx-mkt__list" aria-label="Commodities"></nav>` +
     `<section class="sx-mkt__stage"></section>` +
-    `<aside class="sx-mkt__console"></aside>`;
+    `<aside class="sx-mkt__console">` +
+      `<div class="sx-mkt__trade"></div>` +
+      `<div class="sx-mkt__routes" aria-label="Trade routes"></div>` +
+    `</aside>`;
   const listEl = el.querySelector('.sx-mkt__list');
   const stageEl = el.querySelector('.sx-mkt__stage');
   const consoleEl = el.querySelector('.sx-mkt__console');
+  const tradeEl = el.querySelector('.sx-mkt__trade');
+  const routesEl = el.querySelector('.sx-mkt__routes');
 
   let selectedId = null;
   let mode = 'buy';   // 'buy' | 'sell'
   let qty = 1;
+
+  // The commodity your tracked contract wants loaded. Market flags it so the accept→buy→deliver loop
+  // is legible ("buy this here for your job"). Prefer an explicit trade waypoint; else fall back to
+  // the tracked mission's own cargo commodity (works even when nav points elsewhere).
+  function trackedCmdty(state) {
+    const wp = state && state.nav && state.nav.waypoint;
+    if (wp && wp.kind === 'trade' && wp.commodityId) return wp.commodityId;
+    const tid = state && state.ui && state.ui.trackedMissionId;
+    const active = (state && state.missions && state.missions.active) || [];
+    const m = tid ? active.find((x) => x && x.id === tid) : null;
+    const cid = m && ((m.cargo && m.cargo.commodityId) || (m.params && m.params.cmdtyId));
+    return cid || null;
+  }
 
   function tradedList(state) {
     const table = marketTable(state);
@@ -97,6 +121,7 @@ export function createMarketScreen(ctx) {
 
   function renderList(state) {
     const rows = tradedList(state);
+    const tracked_ = trackedCmdty(state);
     if (!selectedId && rows.length) selectedId = rows[0].id;
     // group by category, preserve COMMODITIES order
     const groups = new Map();
@@ -114,8 +139,10 @@ export function createMarketScreen(ctx) {
         const up = hist[hist.length - 1] >= hist[0];
         const pct = hist[0] ? Math.round(((hist[hist.length - 1] - hist[0]) / hist[0]) * 100) : 0;
         const active = r.id === selectedId ? ' is-active' : '';
+        const tracked = r.id === tracked_ ? ' is-tracked' : '';
         return (
-          `<button type="button" class="sx-mkt-row${active}" data-cmdty="${escapeHtml(r.id)}" role="tab" aria-selected="${r.id === selectedId}">` +
+          `<button type="button" class="sx-mkt-row${active}${tracked}" data-cmdty="${escapeHtml(r.id)}" role="tab" aria-selected="${r.id === selectedId}">` +
+            (tracked ? `<span class="sx-mkt-row__flag" title="Tracked contract cargo">◆</span>` : '') +
             `<span class="sx-mkt-row__name">${escapeHtml(r.def.name)}</span>` +
             `<span class="sx-mkt-row__price">${fmt(buy)}</span>` +
             `<span class="sx-mkt-row__tr ${up ? 'is-up' : 'is-down'}">${up ? '▲' : '▼'} ${Math.abs(pct)}%</span>` +
@@ -140,7 +167,9 @@ export function createMarketScreen(ctx) {
     const demandLabel = demand >= 3 ? 'High' : demand === 2 ? 'Med' : 'Low';
     const legal = def.legality || 'legal';
     const legalTone = LEGAL_TONE[legal];
+    const isTracked = trackedCmdty(state) === r.id;
     stageEl.innerHTML =
+      (isTracked ? `<div class="sx-mkt-tracked">${icon('contracts', 15)}<span><b>Tracked contract</b> — buy ${escapeHtml(def.name)} here to load your job.</span></div>` : '') +
       `<div class="sx-mkt-head">` +
         `<div class="sx-mkt-title"><h2>${escapeHtml(def.name)}</h2>` +
           `<span class="sx-tag${legalTone ? ' sx-tag--' + (legalTone === 'loss' ? 'bad' : 'warn') : ''}">${LEGAL_LABEL[legal]}</span>` +
@@ -165,7 +194,7 @@ export function createMarketScreen(ctx) {
   function renderConsole(state) {
     const rows = tradedList(state);
     const r = rows.find((x) => x.id === selectedId) || rows[0];
-    if (!r) { consoleEl.innerHTML = ''; return; }
+    if (!r) { tradeEl.innerHTML = ''; return; }
     const def = r.def, entry = r.entry;
     const buy = unitBuy(entry, def), sell = unitSell(entry, def);
     const unit = mode === 'buy' ? buy : sell;
@@ -181,7 +210,7 @@ export function createMarketScreen(ctx) {
     const total = unit * qty;
     const canAct = qty >= 1 && qty <= maxQty && maxQty >= 1;
 
-    consoleEl.innerHTML =
+    tradeEl.innerHTML =
       `<div class="sx-trade">` +
         `<div class="sx-seg" role="tablist">` +
           `<button type="button" class="sx-seg__btn${mode === 'buy' ? ' is-on' : ''}" data-mode="buy">Buy</button>` +
@@ -213,7 +242,32 @@ export function createMarketScreen(ctx) {
     return `<div class="sx-kv"><span>${k}</span><b class="${tone ? 'is-' + tone : ''}">${v}</b></div>`;
   }
 
-  function renderAll(state) { renderList(state); renderStage(state); renderConsole(state); }
+  // Best trade runs from here + one-click course plotting (canonical logic, same nav contract).
+  function renderRoutes(state) {
+    let trades = [];
+    try { trades = computeBestTrades(state, stationId(state)) || []; } catch (_) { trades = []; }
+    const rows = trades.slice(0, 3).map((t) => {
+      const dest = STATION_NAME.get(t.destStation) || t.destStation;
+      const profit = Number(t.loadProfit) || 0;
+      const units = Number(t.loadUnits) || 0;
+      return (
+        `<div class="sx-route-row">` +
+          `<span class="sx-route-row__body">` +
+            `<span class="sx-route-row__t">${escapeHtml(t.cmdtyName || t.cmdtyId)} → ${escapeHtml(dest)}</span>` +
+            `<span class="sx-route-row__s">${profit > 0 ? '+' + fmt(profit) + ' cr' : '—'}${units > 0 ? ' · ' + fmt(units) + 'u run' : ''}</span>` +
+          `</span>` +
+          `<button type="button" class="sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">Set Course</button>` +
+        `</div>`
+      );
+    }).join('');
+    routesEl.innerHTML =
+      `<div class="sx-panel">` +
+        `<div class="sx-panel__head">${icon('route', 15)}<span>Trade Routes</span></div>` +
+        (rows || `<p class="sx-muted">No profitable runs known from here yet — visit more stations to learn their prices.</p>`) +
+      `</div>`;
+  }
+
+  function renderAll(state) { renderList(state); renderStage(state); renderConsole(state); renderRoutes(state); }
 
   // ---- interactions ----
   listEl.addEventListener('click', (ev) => {
@@ -228,6 +282,15 @@ export function createMarketScreen(ctx) {
   });
 
   consoleEl.addEventListener('click', (ev) => {
+    const course = ev.target.closest('[data-course]');
+    if (course) {
+      const cmdtyId = course.getAttribute('data-course');
+      const dest = course.getAttribute('data-dest');
+      try { applyTradeNavigation(ctx, dest, cmdtyId); } catch (_) {}
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      setTimeout(() => renderAll(ctx.state || {}), 60);
+      return;
+    }
     const seg = ev.target.closest('[data-mode]');
     if (seg) { mode = seg.getAttribute('data-mode'); qty = 1; renderConsole(ctx.state || {}); if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' }); return; }
     const q = ev.target.closest('[data-q]');
@@ -266,6 +329,9 @@ export function createMarketScreen(ctx) {
       // (parity with the legacy market panel — without this, ui:buy/ui:sell are no-ops).
       const sid = stationId(st);
       if (ctx.bus && sid) ctx.bus.emit('economy:marketOpened', { stationId: sid });
+      // If a tracked contract wants cargo sold/bought here, open straight to that commodity.
+      const tracked = trackedCmdty(st);
+      if (tracked && tradedList(st).some((r) => r.id === tracked)) selectedId = tracked;
       renderAll(st);
     },
     refresh(c) { renderAll((c || ctx).state || {}); },

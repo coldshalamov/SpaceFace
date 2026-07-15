@@ -60,7 +60,18 @@ assert.equal(counts['scenario:actorBindings'], 1, 'scenario trace should prove a
 assert.equal(counts['scenario:beatEntered'], 1, 'scenario trace should prove beat entry');
 assert.equal(counts['scenario:dialogueLine'], 1, 'scenario trace should prove authored dialogue execution for the first beat');
 assert.equal(counts['tether:attached'], 1, 'scenario trace should prove the first Massline attach');
-assert.equal(counts['presentation:cue'], 3, 'scenario trace should prove SG-08 cue routing for first beat, Massline attach, and near-break warning');
+const smokePresentationCues = result.trace.records.filter((record) => record.type === 'presentation:cue');
+const smokeScenarioTetherCues = smokePresentationCues.filter((record) => {
+  const id = String(record.payload && record.payload.id || '');
+  return id.startsWith('scenario.') || id.startsWith('tether.');
+});
+assert.equal(smokeScenarioTetherCues.length, 3,
+  'scenario trace should prove SG-08 cue routing for first beat, Massline attach, and near-break warning');
+assert.deepEqual([...new Set(smokeScenarioTetherCues.map((record) => record.payload.id))].sort(), [
+  'scenario.signal.pulse',
+  'tether.attach',
+  'tether.near_break',
+], 'smoke scenario/tether cue family should remain exact while combat adds its own cues');
 assert(result.trace.records.some((record) => record.type === 'scenario:beatEntered'
   && record.payload.beatId === 'drop_wreck_field'), 'trace records should name the first beat');
 assert(result.trace.records.some((record) => record.type === 'tether:attached'
@@ -104,7 +115,22 @@ assert((progressed.traceSummary.types['scenario:beatEntered'] || 0) >= 3,
   'progressed trace should prove the first three beat entries');
 assert.equal(progressed.traceSummary.types['scenario:dialogueLine'], 3,
   'progressed trace should execute one authored dialogue line for each entered beat through scavenger arrival');
-assert.equal(progressed.metrics.presentationCue, 5, 'progressed run should route scenario and tether presentation cues through SG-08');
+const progressedPresentationCues = progressed.trace.records.filter((record) => record.type === 'presentation:cue');
+const progressedScenarioTetherCues = progressedPresentationCues.filter((record) => {
+  const id = String(record.payload && record.payload.id || '');
+  return id.startsWith('scenario.') || id.startsWith('tether.');
+});
+assert.equal(progressedScenarioTetherCues.length, 5,
+  'progressed run should route the five authored scenario and tether cues through SG-08');
+assert.deepEqual([...new Set(progressedScenarioTetherCues.map((record) => record.payload.id))].sort(), [
+  'scenario.comms.denial',
+  'scenario.comms.kessler',
+  'scenario.signal.pulse',
+  'tether.attach',
+  'tether.near_break',
+], 'progressed scenario/tether cue family should remain exact while combat adds its own cues');
+assert(progressed.metrics.presentationCue >= progressedScenarioTetherCues.length,
+  'progressed presentation metric should include the authored scenario/tether cues');
 assert(progressed.trace.records.some((record) => record.type === 'scenario:beatEntered'
   && record.payload.beatId === 'scavenger_arrival'), 'trace records should name scavenger_arrival');
 assert(progressed.trace.records.some((record) => record.type === 'presentation:cue'

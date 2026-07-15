@@ -1,0 +1,46 @@
+{
+  "schema": "spaceface.heliosV9.vendor.v1",
+  "packet": "M4-HELIOS-V9-NEW-FOUNDATION",
+  "thirdPartyRoot": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/third_party/helios_v9",
+  "assets": [
+    {
+      "assetId": "helios_rock_a",
+      "role": "fractured_crag",
+      "license": "CC0-1.0",
+      "canonicalUrl": "https://polyhaven.com/a/coastal_cliff_01",
+      "local": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/third_party/helios_v9/polyhaven/coastal_cliff_01/coastal_cliff_01_2k.gltf",
+      "exists": true,
+      "sha256": "8E82762AE04616A4C383CF9B91EE42D01852C07445C7B66FCC199FC635024D47",
+      "bytes": 2825
+    },
+    {
+      "assetId": "helios_rock_b",
+      "role": "stratified_slab",
+      "license": "CC0-1.0",
+      "canonicalUrl": "https://polyhaven.com/a/rock_face_01",
+      "local": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/third_party/helios_v9/polyhaven/rock_face_01/rock_face_01_2k.gltf",
+      "exists": true,
+      "sha256": "5AB7FA969B57DE507DB72627D41F1B901E11AE406E52024B1C267C7C1CAAD40A",
+      "bytes": 2793
+    },
+    {
+      "assetId": "helios_rock_c",
+      "role": "rounded_chondrite",
+      "license": "CC0-1.0",
+      "canonicalUrl": "https://polyhaven.com/a/moon_rock_03",
+      "local": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/third_party/helios_v9/polyhaven/moon_rock_03/moon_rock_03_2k.gltf",
+      "exists": true,
+      "sha256": "F8DB505C924EE208BA1976B0873197D5F231AAA5BA28F7ED6CE3EA95103167E4",
+      "bytes": 2789
+    }
+  ],
+  "acceptedCount": 3,
+  "forbidden": [
+    "blenderkit",
+    "m4_helios_hub_v7",
+    "m4_helios_hub_v8",
+    "rock_09",
+    "boulder_01",
+    "Rock023"
+  ]
+}

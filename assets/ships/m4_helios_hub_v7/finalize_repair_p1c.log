@@ -1,0 +1,18 @@
+(node:7568) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+prune: Removed types... Accessor (75)
+prune: Removed types... Accessor (30)
+[m4-helios-hub-v7-finalize] helios_hub_station: 6240084 ΓåÆ 7323144 bytes meshopt=61 ktx2=15
+prune: Removed types... Accessor (40)
+prune: Removed types... Accessor (16)
+[m4-helios-hub-v7-finalize] helios_gate: 3483128 ΓåÆ 4556588 bytes meshopt=33 ktx2=9
+prune: Removed types... Accessor (28)
+prune: Removed types... Accessor (12)
+[m4-helios-hub-v7-finalize] helios_rock_a: 2943160 ΓåÆ 3870512 bytes meshopt=17 ktx2=6
+prune: Removed types... Accessor (28)
+prune: Removed types... Accessor (12)
+[m4-helios-hub-v7-finalize] helios_rock_b: 2888156 ΓåÆ 3856024 bytes meshopt=17 ktx2=6
+prune: Removed types... Accessor (41)
+prune: Removed types... Accessor (18)
+[m4-helios-hub-v7-finalize] helios_rock_c: 3731320 ΓåÆ 5146536 bytes meshopt=21 ktx2=9
+[m4-helios-hub-v7-finalize] done ok=5 fail=0 three=true promote=false acceptanceClaim=false family=helios_hub_env_v7

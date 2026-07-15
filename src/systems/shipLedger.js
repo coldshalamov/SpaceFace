@@ -1,0 +1,403 @@
+// A2 Ship's Ledger — pure, read-only projection over existing durable receipts.
+//
+// This module intentionally has no registry slot, init(), event subscriptions, serializer, or
+// state mutation. Source systems remain the sole writers. Dock UI asks for a page and receives a
+// deterministic snapshot assembled from loss, trade, wreck, encounter, title, and recovered-name
+// state that already round-trips through saves.
+
+import { hash32 } from '../core/rng.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { SECTORS } from '../data/sectors.js';
+import { SHIPS } from '../data/ships.js';
+import { uniqueWreckById } from '../data/uniqueWrecks.js';
+import {
+  SHIP_LEDGER_TEMPLATES,
+  VOLS_LEDGER_ANNOTATIONS,
+} from '../data/shipLedgerTemplates.js';
+
+export const SHIP_LEDGER_SCHEMA_VERSION = 1;
+export const SHIP_LEDGER_PAGE_SIZE = 12;
+export const SHIP_LEDGER_MAX_PAGE_SIZE = 24;
+export const SHIP_LEDGER_MAX_ENTRIES = 240;
+export const SHIP_LEDGER_MAX_SOURCE_RECORDS = 512;
+export const SHIP_LEDGER_CYCLE_SECONDS = 600;
+export const VOLS_ANNOTATION_BEAT_GATE = 3;
+
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((entry) => [entry.id, entry]));
+const SHIP_BY_ID = new Map(SHIPS.map((entry) => [entry.id, entry]));
+const SECTOR_BY_ID = new Map(SECTORS.map((entry) => [entry.id, entry]));
+const STATION_BY_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) STATION_BY_ID.set(station.id, station);
+}
+
+const ENCOUNTER_TITLES = Object.freeze({
+  depth_h1_distress_from_inside: 'the distress from inside',
+  depth_h2_drifting_bloom: 'first contact with the Drifting Bloom',
+  depth_h3_wreck_that_knows_you: 'the wreck that knew the Tessera',
+  depth_h4_love_letter_buoy: 'the love-letter buoy',
+  depth_h5_corridor_massacre: 'the corridor massacre',
+  depth_h6_patrol_ambush: 'the patrol ambush',
+  depth_h7_spared_return: 'the spared return',
+  depth_h8_echo_of_player: 'the echo of the player',
+});
+
+const PREVIOUS_CREW_ENCOUNTERS = new Set([
+  'depth_h1_distress_from_inside',
+  'depth_h3_wreck_that_knows_you',
+]);
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(Number(value)) ? Number(value) : fallback;
+}
+
+function boundedInt(value, min, max, fallback = min) {
+  const number = Number.isFinite(Number(value)) ? Math.trunc(Number(value)) : fallback;
+  return Math.max(min, Math.min(max, number));
+}
+
+function text(value, fallback = 'unfiled') {
+  const out = String(value == null ? fallback : value).replace(/\s+/g, ' ').trim();
+  return out || fallback;
+}
+
+function humanizeId(value, fallback = 'unnamed') {
+  return text(value, fallback)
+    .replace(/^(?:cmdty|sector|station|ship|wreck|depth)_/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function sectorName(id) {
+  const entry = id && SECTOR_BY_ID.get(id);
+  return entry && entry.name || humanizeId(id, 'unknown space');
+}
+
+function stationName(id) {
+  const entry = id && STATION_BY_ID.get(id);
+  return entry && entry.name || humanizeId(id, 'an unnamed port');
+}
+
+function commodityName(id) {
+  const entry = id && COMMODITY_BY_ID.get(id);
+  return entry && entry.name || humanizeId(id, 'unlisted cargo');
+}
+
+function shipName(entry) {
+  const retainedIdentity = entry && (entry.victimCallsign || entry.victimName);
+  if (retainedIdentity) return text(retainedIdentity, 'an unnamed hull');
+  const def = entry && entry.shipDefId && SHIP_BY_ID.get(entry.shipDefId);
+  if (def && def.name) return def.name;
+  if (entry && entry.assetId) return humanizeId(entry.assetId, 'an unnamed hull');
+  return humanizeId(entry && entry.kind, 'an unnamed hull');
+}
+
+function cycleOf(t) {
+  return Math.max(0, Math.floor(finite(t, 0) / SHIP_LEDGER_CYCLE_SECONDS) + 1);
+}
+
+export function formatLedgerCycle(t) {
+  return `CYCLE ${String(cycleOf(t)).padStart(4, '0')}`;
+}
+
+function fillTemplate(template, tokens) {
+  return String(template || '').replace(/\{([a-zA-Z0-9_]+)\}/g, (_match, key) => text(tokens[key], 'unfiled'));
+}
+
+function sourceArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function sourceObjectValues(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? Object.values(value) : [];
+}
+
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  Object.freeze(value);
+  for (const child of Object.values(value)) deepFreeze(child);
+  return value;
+}
+
+function templateFor(seed, type, sourceId) {
+  const bank = SHIP_LEDGER_TEMPLATES[type] || [];
+  if (!bank.length) return { id: `${type}.missing`, text: 'Record unavailable.' };
+  return bank[hash32(seed, type, sourceId) % bank.length];
+}
+
+function volsAnnotationFor(seed, sourceId) {
+  return VOLS_LEDGER_ANNOTATIONS[hash32(seed, 'vols-ledger-hand', sourceId) % VOLS_LEDGER_ANNOTATIONS.length];
+}
+
+export function volsLedgerGateOpen(state) {
+  const story = state && state.story || {};
+  const flags = story.flags && typeof story.flags === 'object' ? story.flags : {};
+  const beatOpen = finite(story.beatIndex, 0) >= VOLS_ANNOTATION_BEAT_GATE;
+  if (!beatOpen) return false;
+  if (flags.volsEchoUnlocked || flags.volsBlackBoxRecovered || flags.volsMaydayGhost
+    || flags.volsLetterRead || flags.volsLetterCarried || flags.volsHandGraffiti) return true;
+  const completed = story.depthProgramEncounters && story.depthProgramEncounters.completed;
+  return !!(completed && (completed.depth_h1_distress_from_inside || completed.depth_h3_wreck_that_knows_you));
+}
+
+function recoveredNames(state) {
+  const story = state && state.story || {};
+  // G6/Senna is an upstream dependency. Accept one explicit future durable receipt contract rather
+  // than guessing across generic story/player flags, where an unrelated boolean or display string
+  // could make the ledger claim Senna recovered a name she never did.
+  const candidates = sourceArray(story.recoveredNames);
+  const out = [];
+  const seen = new Set();
+  for (const candidate of candidates) {
+    const name = typeof candidate === 'string' ? candidate : candidate && candidate.name;
+    const clean = text(name, '');
+    if (!clean || seen.has(clean.toLowerCase())) continue;
+    seen.add(clean.toLowerCase());
+    out.push(typeof candidate === 'object' ? candidate : { name: clean });
+  }
+  return out;
+}
+
+function titleRecords(state) {
+  const story = state && state.story || {};
+  // S4/Thunderchild is also upstream. The future title owner gets one durable receipt array; the
+  // projector must not infer a sighting from ad-hoc flags or a similarly named player property.
+  return [...sourceArray(story.titlesSeen)].sort((a, b) => {
+    const at = (record) => typeof record === 'object' && record
+      ? finite(record.seenAt == null ? record.at : record.seenAt, 0)
+      : 0;
+    return at(b) - at(a);
+  });
+}
+
+function tradeReceiptBase(entry, side) {
+  return `trade:${entry.seenAt || 0}:${entry.stationId || ''}:${entry.commodityId || ''}`
+    + `:${side}:${entry.qty || 0}:${entry.total || 0}`;
+}
+
+function makeCandidate(seed, input, gateOpen) {
+  const sourceId = text(input.sourceId, `${input.type}:unknown`);
+  const template = templateFor(seed, input.type, sourceId);
+  const annotationTemplate = gateOpen && input.aboutPreviousCrew
+    ? volsAnnotationFor(seed, sourceId)
+    : null;
+  const at = Math.max(0, finite(input.at, 0));
+  const candidate = {
+    id: `ledger_${hash32(seed, input.type, sourceId).toString(36)}`,
+    schemaVersion: SHIP_LEDGER_SCHEMA_VERSION,
+    type: input.type,
+    sourceId,
+    sourceKind: input.sourceKind || input.type,
+    at,
+    cycle: cycleOf(at),
+    cycleLabel: formatLedgerCycle(at),
+    templateId: template.id,
+    text: fillTemplate(template.text, input.tokens || {}),
+    hand: annotationTemplate ? 'vols' : 'captain',
+    annotationId: annotationTemplate && annotationTemplate.id || null,
+    annotation: annotationTemplate && annotationTemplate.text || null,
+  };
+  if (input.type === 'loss') candidate.playerCaused = input.playerCaused === true;
+  return candidate;
+}
+
+function collectCandidates(state) {
+  const candidates = [];
+  const seen = new Set();
+  const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0 || 1;
+  const gateOpen = volsLedgerGateOpen(state);
+  let observed = 0;
+  const add = (input) => {
+    observed++;
+    if (!input || !SHIP_LEDGER_TEMPLATES[input.type] || observed > SHIP_LEDGER_MAX_SOURCE_RECORDS) return;
+    const candidate = makeCandidate(seed, input, gateOpen);
+    if (seen.has(candidate.id)) return;
+    seen.add(candidate.id);
+    candidates.push(candidate);
+  };
+
+  for (const entry of sourceArray(state && state.lossLedger && state.lossLedger.entries)) {
+    if (!entry) continue;
+    add({
+      type: 'loss',
+      sourceId: entry.lossId || `${entry.source || 'loss'}:${entry.assetId || ''}:${entry.t || 0}`,
+      sourceKind: entry.source || 'lossLedger',
+      at: entry.t,
+      playerCaused: entry.killedByPlayer === true,
+      tokens: {
+        ship: shipName(entry),
+        sector: sectorName(entry.sectorId),
+        cargo: humanizeId(entry.cargoHint, 'the listed cargo'),
+      },
+    });
+  }
+
+  const tradeLedger = sourceArray(state && state.player && state.player.tradeLedger);
+  // The live economy ledger predates receipt ids. Count identical rows oldest-first so two UI
+  // actions in one fixed sim tick remain two receipts instead of collapsing at the projection seam.
+  // A future canonical receiptId wins immediately without changing this reader.
+  const tradeOccurrenceByIndex = new Map();
+  const tradeOccurrenceCounts = new Map();
+  for (let index = tradeLedger.length - 1; index >= 0; index--) {
+    const entry = tradeLedger[index];
+    if (!entry) continue;
+    const side = entry.side === 'sell' ? 'sell' : 'buy';
+    const base = tradeReceiptBase(entry, side);
+    const occurrence = (tradeOccurrenceCounts.get(base) || 0) + 1;
+    tradeOccurrenceCounts.set(base, occurrence);
+    tradeOccurrenceByIndex.set(index, occurrence);
+  }
+  for (const [index, entry] of tradeLedger.entries()) {
+    if (!entry) continue;
+    const side = entry.side === 'sell' ? 'sell' : 'buy';
+    const base = tradeReceiptBase(entry, side);
+    const receiptIdentity = text(entry.receiptId, '')
+      || `${base}:occurrence-${tradeOccurrenceByIndex.get(index) || 1}`;
+    add({
+      type: 'trade',
+      sourceId: receiptIdentity,
+      sourceKind: 'player.tradeLedger',
+      at: entry.seenAt,
+      tokens: {
+        verb: side === 'sell' ? 'Sold' : 'Bought',
+        verbPast: side === 'sell' ? 'sold' : 'bought',
+        qty: Math.max(0, Math.floor(finite(entry.qty, 0))),
+        commodity: commodityName(entry.commodityId),
+        station: stationName(entry.stationId),
+        credits: Math.round(Math.abs(finite(entry.total, 0))).toLocaleString('en-US'),
+      },
+    });
+  }
+
+  const bearings = sourceObjectValues(state && state.player && state.player.uniqueWrecks
+    && state.player.uniqueWrecks.bearings);
+  for (const record of bearings) {
+    if (!record || !record.wreckId) continue;
+    const def = uniqueWreckById(record.wreckId);
+    const wreck = record.name || def && def.name || humanizeId(record.wreckId, 'an unnamed wreck');
+    const sector = sectorName(record.sectorId || def && def.sectorId);
+    add({
+      type: 'rumor',
+      sourceId: `rumor:${record.wreckId}:${record.sourceRef || ''}`,
+      sourceKind: record.channelId || 'uniqueWreck.rumor',
+      at: record.heardAtS,
+      tokens: { wreck, sector, source: humanizeId(record.sourceRef || record.channelId, 'an unnamed source') },
+    });
+    if (record.fixedAtS != null || ['fixed', 'decision', 'salvaged'].includes(record.phase)) {
+      add({
+        type: 'bearing',
+        sourceId: `bearing:${record.wreckId}`,
+        sourceKind: 'uniqueWreck.bearing',
+        at: record.fixedAtS == null ? record.heardAtS : record.fixedAtS,
+        tokens: { wreck, sector, radius: Math.max(0, Math.round(finite(record.radius, 0))) },
+      });
+    }
+    if (record.phase === 'salvaged' || record.salvagedAtS != null || record.rewardReceipt) {
+      add({
+        type: 'unique',
+        sourceId: `unique:${record.wreckId}:${record.choiceId || 'resolved'}`,
+        sourceKind: 'uniqueWreck.salvaged',
+        at: record.salvagedAtS == null ? record.resolvedAtS : record.salvagedAtS,
+        tokens: {
+          wreck,
+          choice: humanizeId(record.choiceId, 'a choice kept off the public file'),
+          outcome: humanizeId(record.outcome, 'settled'),
+        },
+      });
+    }
+  }
+
+  const encounterHistory = sourceArray(state && state.story && state.story.depthProgramEncounters
+    && state.story.depthProgramEncounters.history);
+  for (const [index, record] of encounterHistory.entries()) {
+    if (!record || !record.shapeId) continue;
+    add({
+      type: 'witness',
+      sourceId: `witness:${record.shapeId}:${record.tick == null ? index : record.tick}:${record.outcome || ''}`,
+      sourceKind: 'story.depthProgramEncounters',
+      at: record.at,
+      aboutPreviousCrew: PREVIOUS_CREW_ENCOUNTERS.has(record.shapeId),
+      tokens: {
+        event: ENCOUNTER_TITLES[record.shapeId] || humanizeId(record.shapeId, 'an unfiled encounter'),
+        outcome: humanizeId(record.outcome, 'unresolved'),
+      },
+    });
+  }
+
+  // Named dead are the smallest and most important receipt family. Project them before the future
+  // title stream so a long succession history cannot starve Senna's recovered name at the source cap.
+  for (const record of recoveredNames(state)) {
+    add({
+      type: 'name',
+      sourceId: `senna-name:${record.id || record.name}`,
+      sourceKind: 'story.recoveredNames',
+      at: record.recoveredAt == null ? record.at : record.recoveredAt,
+      tokens: { name: text(record.name, 'an unnamed dead') },
+    });
+  }
+
+  for (const record of titleRecords(state)) {
+    const title = typeof record === 'string' ? record : record && (record.title || record.name);
+    if (!title) continue;
+    add({
+      type: 'title',
+      sourceId: `title:${typeof record === 'object' && record.id || title}`,
+      sourceKind: 'story.titlesSeen',
+      at: typeof record === 'object' ? record.seenAt == null ? record.at : record.seenAt : 0,
+      tokens: { title: text(title) },
+    });
+  }
+
+  candidates.sort((a, b) => b.at - a.at || b.cycle - a.cycle || a.id.localeCompare(b.id));
+  return { candidates, observed, gateOpen };
+}
+
+function quoteCandidates(entries, enabled) {
+  if (!enabled) return [];
+  return entries
+    .filter((entry) => entry.type !== 'trade' && entry.type !== 'rumor')
+    .slice(0, 4)
+    .map((entry) => ({
+      id: `ledger-quote:${entry.id}`,
+      sourceEntryId: entry.id,
+      set: 'ledger_quote',
+      text: entry.text.toUpperCase(),
+    }));
+}
+
+/**
+ * Build one bounded ledger page without writing to `state` or any source slice.
+ * Page 0 is newest; older entries live in archive pages. The UI never receives more than 24 rows.
+ */
+export function buildShipLedger(state, options = {}) {
+  const pageSize = boundedInt(options.pageSize, 1, SHIP_LEDGER_MAX_PAGE_SIZE, SHIP_LEDGER_PAGE_SIZE);
+  const { candidates, observed, gateOpen } = collectCandidates(state || {});
+  const bounded = candidates.slice(0, SHIP_LEDGER_MAX_ENTRIES);
+  const pageCount = Math.max(1, Math.ceil(bounded.length / pageSize));
+  const page = boundedInt(options.page, 0, pageCount - 1, 0);
+  const start = page * pageSize;
+  const story = state && state.story || {};
+  const flags = story.flags && typeof story.flags === 'object' ? story.flags : {};
+  const endgameOpen = !!(story.endgameResolved || story.endgameChoice || flags.sandboxContinued);
+  return deepFreeze({
+    schemaVersion: SHIP_LEDGER_SCHEMA_VERSION,
+    page,
+    pageSize,
+    pageCount,
+    total: bounded.length,
+    observed,
+    archiveCount: Math.max(0, bounded.length - pageSize),
+    truncatedCount: Math.max(0, observed - bounded.length),
+    hasNewer: page > 0,
+    hasOlder: page + 1 < pageCount,
+    volsAnnotationOpen: gateOpen,
+    entries: bounded.slice(start, start + pageSize),
+    endgameQuotes: quoteCandidates(bounded, endgameOpen),
+  });
+}
+
+export function shipLedgerGraffitiQuotes(state) {
+  return buildShipLedger(state, { page: 0, pageSize: SHIP_LEDGER_MAX_PAGE_SIZE }).endgameQuotes;
+}
+
+export default buildShipLedger;

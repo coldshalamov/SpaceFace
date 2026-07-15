@@ -23,12 +23,14 @@ universe was here before you; readable at a glance).
 
 ## Contracts
 Determinism (seeded); `spawnBudget` client for any spawns; `voiceArbiter` for station comms; `sectorZones` is
-the placement substrate; map-glyph + silhouette budgets are hard caps (doctrine §1).
+the placement substrate. Map glyphs and station silhouettes must remain readable at their actual display sizes;
+choose their complexity from representative screen-space and performance measurements rather than hard caps.
 
 ## Acceptance
 `check:sector-atmosphere` (new): entering any sector fires exactly one postcard through `voiceArbiter`; a
 non-dockable station returns a specific reason; each hazard type renders a distinct readable glyph; five-second-
-screenshot test — every station type is identifiable by silhouette. No console errors; perf within the 30fps floor.
+screenshot test — every station type is identifiable by silhouette. No console errors; representative player-route
+captures meet the current frame-time and memory budgets without lowering authored quality.
 
 ## Dependencies
 `sectorZones` (shipped) · `marketNews`/`dockDeny` (shipped) · BP-08 station/landmark assets (Grok) for the visual half.

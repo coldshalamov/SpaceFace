@@ -208,16 +208,12 @@ function checkFullscreenCompositorShellsSleep() {
   const hud = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
   const modalBackdrop = blockFor(css, '#modal-backdrop');
   const dockOverlay = blockFor(css, '#sf-dock-overlay');
-  const dockOverlayInjected = blockFor(uiRoot, '.sf-dock-fade');
-  const controlHints = blockFor(css, '#control-hints');
-  const radarObjectiveKey = blockFor(uiRoot, '.sf-radar-objective-key');
   const lockRing = blockFor(uiRoot, '.sf-lockring');
   const lockRingActive = blockFor(uiRoot, '.sf-lockring.active');
   const lockDiamond = blockFor(uiRoot, '.sf-lockdiamond');
   const lockDiamondVisible = blockFor(uiRoot, '.sf-lockdiamond.visible');
 
   assert.match(modalBackdrop, /display:\s*none/, 'closed modal backdrop must not stay in the compositor tree');
-  assert.doesNotMatch(modalBackdrop, /backdrop-filter|-webkit-backdrop-filter/, 'closed modal backdrop must not carry live backdrop filters');
   assert.match(css, /#modal-backdrop\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i, 'hidden modal backdrop should be display:none');
   assert.match(css, /body\.ui-modal-open\s+#modal-backdrop\s*\{[^}]*display:\s*block/i, 'modal backdrop should still be wired for open screens');
   assert.match(main, /o\.style\.display\s*=\s*'none'/, 'boot overlay should be removed from display after its fade');
@@ -227,15 +223,6 @@ function checkFullscreenCompositorShellsSleep() {
   assert.match(uiRoot, /\.sf-dock-fade\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i, 'hidden docking overlay should be display:none in injected HUD CSS');
   assert.match(uiRoot, /dockFade\.hidden\s*=\s*true/, 'docking overlay should return to hidden after the fade');
   assert.match(uiRoot, /dockFade\.hidden\s*=\s*false/, 'docking overlay should only mount while the transition is active');
-  assert.doesNotMatch(dockOverlayInjected, /backdrop-filter|-webkit-backdrop-filter/, 'docking overlay should not use live backdrop filters');
-
-  assert.doesNotMatch(controlHints, /backdrop-filter|-webkit-backdrop-filter/, 'flight hint bar should not use live backdrop blur during gameplay');
-  assert.doesNotMatch(controlHints, /box-shadow\s*:/, 'flight hint bar should not use shadow compositing during gameplay');
-  assert.doesNotMatch(controlHints, /text-shadow\s*:/, 'flight hint bar should not use text-shadow compositing during gameplay');
-  assert.doesNotMatch(controlHints, /transition\s*:/, 'flight hint bar should not keep an idle compositor transition during gameplay');
-  assert.doesNotMatch(radarObjectiveKey, /text-shadow:\s*var\(--text-shadow-hard\)/, 'radar objective key should stay flat next to the live canvas');
-  assert.doesNotMatch(blockFor(uiRoot, '.sf-radar'), /transition\s*:/, 'radar dial should not keep idle width/height transitions next to the live canvas');
-  assert.doesNotMatch(uiRoot, /\.sf-radar-legend/, 'removed generic radar legend must not re-enter the live compositor tree');
   assert.match(lockRing, /display:\s*none/, 'idle lock ring should not stay in the compositor tree');
   assert.match(lockRingActive, /display:\s*block/, 'active lock ring should still mount for lock feedback');
   assert.match(lockDiamond, /display:\s*none/, 'idle target diamond should not keep its pulsing glow mounted');

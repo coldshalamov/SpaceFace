@@ -1,7 +1,11 @@
 # Depth Program — actualization pipelines for SpaceFace
 
-**Status:** PLAN · **Authority:** dispatch program (below `GDD_2_0.md`, `design/spec2/00_MASTER_TASTE.md`, `ARCHITECTURE.md`, and any live `design/spec3/` thread). This folder *references* live specs; it does not override them.
-**Reads (in order):** `AGENTS.md` §1, §3, §5, §6, §10 · `design/spec2/00_MASTER_TASTE.md` (taste constitution — its Forbidden list rejects diffs) · this file · then the specific pipeline doc you're dispatched on.
+> **Supporting intake map.** The current 31-chunk status is rolled up in
+> [`design/program/02_REMAINING_WORK.md`](../program/02_REMAINING_WORK.md); detailed chunk scope is
+> in `BUILD_PLAN.md`. This older four-pipeline view is not a second live backlog.
+
+**Status:** SUPPORTING PLAN · **Authority:** below `ARCHITECTURE.md`, `design/GDD_2_0.md`, `design/vision/ALPHA_PROGRAM.md`, and any activated live task spec. This folder references live specs; it does not override them.
+**Reads (in order):** `AGENTS.md` §1, §3, §5, §6, §10 · `design/program/README.md` · `design/vision/ALPHA_PROGRAM.md` · `BUILD_PLAN.md` · then the assigned detailed spec.
 
 ---
 

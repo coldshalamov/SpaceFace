@@ -1,0 +1,92 @@
+Reloading external rigs...
+Reloading external metarigs...
+[m4-helios-hub-v3] [v9] Packet M4-HELIOS-V9-NEW-FOUNDATION ΓÇö NEW FOUNDATION (not V8 repair)
+[m4-helios-hub-v3] [v9] Acquired authoring lock ΓåÆ C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v9\authoring.__lock
+[m4-helios-hub-v3] Packet M4-HELIOS-V9-NEW-FOUNDATION ΓÇö Helios hub V3 professional rebuild (isolated)
+[m4-helios-hub-v3] Vendor components accepted=3 diskCc0=0
+[m4-helios-hub-v3] Reusing existing texture atlas under C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v9\textures (force=False)
+[m4-helios-hub-v3] === Building helios_gate: Helios Gate V9 (Split-Hex Arch) ===
+[m4-helios-hub-v3] [v9] Building gate: split-hex armored arch (no torus primary)
+[m4-helios-hub-v3] [v9] voxel remesh gate primary for LOD
+[m4-helios-hub-v3] Decimated postvoxel:Gate_HexArchFrame: ΓåÆ10976 tris (cap 11932)
+[m4-helios-hub-v3] [v9] gate primary after voxel trisΓëê57684
+[m4-helios-hub-v3] [v9] Gate primary trisΓëê57684 parts=16
+[m4-helios-hub-v3] Authored 16 parts; primary trisΓëê57684
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] helios_gate LOD0 60656 > soft budget 36000 ΓÇö adaptive trim
+[m4-helios-hub-v3] Decimated budget:LOD0_Merged_Material_Mechanical: ΓåÆ564 tris (cap 614)
+[m4-helios-hub-v3] WARN decimate stalled budget:LOD0_Merged_Material_Hull: 50389ΓåÆ50273 target=34220
+[m4-helios-hub-v3] WARN budget:LOD0_Merged_Material_Hull still 50273 tris > cap 34220
+[m4-helios-hub-v3] Decimated budget:LOD0_Merged_Material_Warm: ΓåÆ334 tris (cap 364)
+[m4-helios-hub-v3] Decimated budget:LOD0_HOOK_EMISSIVE: ΓåÆ56 tris (cap 61)
+[m4-helios-hub-v3] Decimated budget:LOD0_Merged_Material_Mechanical: ΓåÆ180 tris (cap 197)
+[m4-helios-hub-v3] WARN decimate stalled budget:LOD0_Merged_Material_Hull: 50269ΓåÆ50171 target=35430
+[m4-helios-hub-v3] WARN budget:LOD0_Merged_Material_Hull still 50171 tris > cap 35430
+[m4-helios-hub-v3] Decimated budget:LOD0_Merged_Material_Warm: ΓåÆ106 tris (cap 116)
+[m4-helios-hub-v3] Decimated budget:LOD0_Merged_Material_Mechanical: ΓåÆ56 tris (cap 62)
+[m4-helios-hub-v3] WARN decimate stalled budget:LOD0_Merged_Material_Hull: 50171ΓåÆ50147 target=35782
+[m4-helios-hub-v3] WARN budget:LOD0_Merged_Material_Hull still 50147 tris > cap 35782
+[m4-helios-hub-v3] WARN decimate stalled budget:LOD0_Merged_Material_Hull: 50146ΓåÆ50084 target=35782
+[m4-helios-hub-v3] WARN budget:LOD0_Merged_Material_Hull still 50084 tris > cap 35782
+[m4-helios-hub-v3] WARN decimate stalled budget:LOD0_Merged_Material_Hull: 50084ΓåÆ50074 target=35782
+[m4-helios-hub-v3] WARN budget:LOD0_Merged_Material_Hull still 50074 tris > cap 35782
+[m4-helios-hub-v3] WARN decimate stalled budget:LOD0_Merged_Material_Hull: 50073ΓåÆ50071 target=35782
+[m4-helios-hub-v3] WARN budget:LOD0_Merged_Material_Hull still 50071 tris > cap 35782
+[m4-helios-hub-v3] WARN helios_gate LOD0 still 50289 after trim (budget 36000)
+[m4-helios-hub-v3] helios_gate lod0: tris=50289 objects=4
+[m4-helios-hub-v3] WARN decimate stalled LOD1_Merged_Material_Hull: 50264ΓåÆ50140 target=24138
+[m4-helios-hub-v3] WARN LOD1_Merged_Material_Hull still 50140 tris > cap 24138
+Info: Removed: 1 vertices, 1 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] Decimated LOD1_Merged_Material_Mechanical: ΓåÆ678 tris (cap 737)
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] Decimated LOD1_Merged_Material_Warm: ΓåÆ400 tris (cap 436)
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] Decimated LOD1_HOOK_EMISSIVE: ΓåÆ88 tris (cap 96)
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] Decimated v9ratio:LOD1_Merged_Material_Hull: ΓåÆ58 tris (cap 64)
+[m4-helios-hub-v3] helios_gate lod1: tris=1224 objects=4
+[m4-helios-hub-v3] WARN decimate stalled LOD2_Merged_Material_Hull: 50264ΓåÆ50140 target=8652
+[m4-helios-hub-v3] WARN LOD2_Merged_Material_Hull still 50140 tris > cap 8652

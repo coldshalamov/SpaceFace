@@ -223,6 +223,70 @@ function runtimeFor(contacts, options = {}) {
     'active Focus hard-prefers its validated target even when selected target and nearest clutter disagree');
 }
 
+// A valid Focus lease can outlive tether reach (720 wu hold range versus a 390 wu tether). In that
+// interval F must wait for the leased target instead of silently latching lower-authority clutter.
+{
+  const target = hostile(22, { pos: { x: 118, z: 0 } });
+  const clutter = {
+    id: 23, type: 'asteroid', team: null, alive: true,
+    pos: { x: 24, z: 0 }, vel: { x: 0, z: 0 }, radius: 11, mass: 300, data: {},
+  };
+  const f = runtimeFor([target, clutter], { targetId: clutter.id });
+  f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.targetId, target.id, 'fixture arms exact flyby target');
+
+  target.pos.x = 450;
+  f.state.simTime = 0.5;
+  f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.active, true, 'lease remains valid inside the 720 wu hold range');
+  f.state.player.targetId = clutter.id;
+  const latch = tetherGameplay._acquireTarget.call(
+    { _targetScratch: [] },
+    f.p,
+    { maxLength: 390 },
+    f.state,
+    true,
+  );
+  assert.equal(latch, null, 'out-of-reach exact target blocks lower-authority nearest clutter');
+}
+
+// Combat runs between Focus and tether gameplay. If it invalidates the leased target in that
+// window, the public tether update must fail closed for this press instead of creating on clutter.
+{
+  const target = hostile(24, { pos: { x: 118, z: 0 } });
+  const clutter = {
+    id: 25, type: 'asteroid', team: null, alive: true,
+    pos: { x: 24, z: 0 }, vel: { x: 0, z: 0 }, radius: 11, mass: 300, data: {},
+  };
+  const f = runtimeFor([target, clutter], { targetId: clutter.id });
+  f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.targetId, target.id, 'fixture arms exact flyby target');
+
+  let createCalls = 0;
+  const attachments = {
+    create() { createCalls += 1; return { ok: false }; },
+  };
+  const kernel = {
+    attachments,
+    catalog: { attachments: new Map([['tether_standard', { maxLength: 390 }]]) },
+  };
+  const tether = Object.assign({}, tetherGameplay);
+  tether.init({
+    state: f.state,
+    bus: f.bus,
+    helpers: {},
+    registry: { get: (name) => (name === 'actions' ? { kernel } : null) },
+  });
+  f.state.input.actions = { tetherFire: true };
+  f.state.input.tetherMode = 'nearest';
+  target.alive = false;
+  tether.update(DT, f.state);
+
+  assert.equal(f.state.player.flybyFocus.active, true, 'Focus owner has not run again in this tick');
+  assert.equal(createCalls, 0, 'invalid exact lease does not create an attachment on clutter');
+  assert.equal(f.state.player.tether.active, false, 'public update leaves the tether unlatched');
+}
+
 // Invalidation and runtime boundaries clear only the Focus-owned transient request.
 for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:docked', 'player:death']) {
   const target = hostile(2);

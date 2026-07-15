@@ -1,0 +1,5 @@
+owner: M4-HELIOS-V10-GREYBOX-GATE | sole-blender-writer | 2026-07-13
+asset_ids: m4_helios_hub_v10
+stage: A
+expires: session
+contact: stage-a-rebuild

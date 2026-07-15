@@ -4,14 +4,19 @@
 //
 // The codex reads SHIP, COLD_START, REFS, FIGURES, COMMS (category-keyed arrays), BEAT_CONTENT,
 // ENDGAME_CHOICES, GRAFFITI, and PERSISTENT_CARGO. The story tracker reads STORY_BEATS[beat].objective
-// + BEAT_CONTENT[beat].hint for all 8 beats (0..7). A future refactor that renames a field or
+// + BEAT_CONTENT[beat].hint for all 8 playable beats (0..7). Triggered post-spine hooks live in
+// POST_SPINE_BEAT_CONTENT so they cannot become a permanently locked ninth Codex chapter. A future
+// refactor that renames a field or
 // restructures COMMS would silently break these screens (empty/garbled sections, no error). This
 // check pins the shapes so that drift fails the gate loudly.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO } from '../src/data/narrative.js';
+import {
+  SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT,
+  POST_SPINE_BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO,
+} from '../src/data/narrative.js';
 import { STORY_BEATS } from '../src/data/missions.js';
 import { cargo, isPersistentCargo, removeCargo } from '../src/systems/cargo.js';
 import { codexProgressSummary, commUnlocked } from '../src/ui/screens/codex.js';
@@ -60,13 +65,17 @@ for (const cat of COMMS_CATS) {
   });
 }
 
-// BEAT_CONTENT — 8 beats (Story tab indexes 0..7).
-assert.ok(Array.isArray(BEAT_CONTENT) && BEAT_CONTENT.length === 8, `BEAT_CONTENT must have 8 entries (got ${(BEAT_CONTENT || []).length})`);
+// BEAT_CONTENT — exactly the 8 playable beats rendered by the Codex Story tab.
+assert.ok(Array.isArray(BEAT_CONTENT) && BEAT_CONTENT.length === 8,
+  `BEAT_CONTENT must have 8 playable entries (got ${(BEAT_CONTENT || []).length})`);
 BEAT_CONTENT.forEach((b, i) => {
   for (const k of ['beat', 'phase', 'hint']) {
     assert.ok(k in b, `BEAT_CONTENT[${i}] missing "${k}"`);
   }
+  assert.equal(b.beat, i, `BEAT_CONTENT[${i}].beat must equal its ordered index`);
 });
+assert.equal(POST_SPINE_BEAT_CONTENT[8].beat, 8,
+  'triggered B8 content must stay outside the playable eight-beat Codex spine');
 
 // ENDGAME_CHOICES — 5 choices (Story tab endgame section).
 assert.ok(Array.isArray(ENDGAME_CHOICES) && ENDGAME_CHOICES.length === 5, `ENDGAME_CHOICES must have 5 (got ${(ENDGAME_CHOICES || []).length})`);
@@ -136,7 +145,7 @@ assert.match(uiInputSource, /matchesBinding\(ev, BINDINGS\.codex\)[\s\S]*screenM
 
   let storyState = { beatIndex: 0, seenComms: {}, graffitiShown: {} };
   let summary = codexProgressSummary(storyState);
-  assert.equal(valueFor(summary, 'Story'), '1/8 beats',
+  assert.equal(valueFor(summary, 'Story'), `1/${BEAT_CONTENT.length} beats`,
     'new games should show only the current story beat as unlocked');
   assert.equal(valueFor(summary, 'Comms'), countUnlockedComms(storyState, 0) + '/' + commsTotal + ' unlocked',
     'Codex status should count beat-reached comms without exposing future or unseen conditional lines');
@@ -155,7 +164,7 @@ assert.match(uiInputSource, /matchesBinding\(ev, BINDINGS\.codex\)[\s\S]*screenM
     graffitiShown: { ['airlock:' + GRAFFITI.REDISTRIBUTED]: true },
   };
   summary = codexProgressSummary(storyState);
-  assert.equal(valueFor(summary, 'Story'), '5/8 beats',
+  assert.equal(valueFor(summary, 'Story'), `5/${BEAT_CONTENT.length} beats`,
     'Codex status should advance story counts with beat progress');
   assert.equal(valueFor(summary, 'Figures'), '10/11 known',
     'Codex status should count beat-gated figures through beat 4');
@@ -239,9 +248,11 @@ assert.ok(STORY_BEATS[0].objective.includes('47-A mass signal'), 'story tracker 
 assert.ok(STORY_BEATS[0].objective.includes('Helios'), 'story tracker should still point the player back to Helios');
 // Cross-contract: every beat index the tracker can show (0..7) must have a matching BEAT_CONTENT
 // entry with a hint (the flavor line). A missing BEAT_CONTENT[beat] would make the tracker show the
-// objective with no flavor — not fatal, but the contract is 8-for-8.
-assert.equal(BEAT_CONTENT.length, 8, 'BEAT_CONTENT must have 8 entries to match STORY_BEATS (tracker cross-reads both)');
-BEAT_CONTENT.forEach((b, i) => {
+// objective with no flavor; the two arrays are deliberately 8-for-8.
+assert.equal(BEAT_CONTENT.length, STORY_BEATS.length,
+  'BEAT_CONTENT must exactly match STORY_BEATS; triggered hooks use POST_SPINE_BEAT_CONTENT');
+STORY_BEATS.forEach((_, i) => {
+  const b = BEAT_CONTENT[i];
   assert.ok(typeof b.hint === 'string' && b.hint.length > 0, `BEAT_CONTENT[${i}].hint must be a non-empty string (tracker flavor line)`);
 });
 

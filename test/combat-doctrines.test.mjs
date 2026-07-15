@@ -326,12 +326,14 @@ for (const [label, selfOverrides, contactOverrides] of [
     perception: perception([shipContact(1, { x: 640, mobilityBand: 'low', threat: 0.95 })]), directive,
   });
   assert.equal(result.phase, 'outer_standoff');
+  assert.equal(result.faceTarget, true, 'standoff translation must pre-align fixed guns before the cue');
   result = runtime.update({
     tick: 45, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: perception([shipContact(1, { x: 620, mobilityBand: 'low', threat: 0.95 })]), directive,
   });
   assert.equal(result.phase, 'charge_cue');
   assert.equal(result.telegraph.durationTicks, 30);
+  assert.equal(result.faceTarget, true, 'the charge cue must use its telegraph time to align fixed guns');
   result = runtime.update({
     tick: 74, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: perception([shipContact(1, { x: 620, mobilityBand: 'low', threat: 0.95 })]), directive,
@@ -343,6 +345,52 @@ for (const [label, selfOverrides, contactOverrides] of [
   });
   assert.equal(result.phase, 'fire_window');
   assert.equal(result.fireWindow, true);
+  assert.equal(result.faceTarget, true, 'the ranged fire window must keep the target-facing contract');
+
+  const aimedSelection = applyCombatDoctrineToSelection({
+    actionId: 'action_burst',
+    targetId: 1,
+    targetContact: shipContact(1, { x: 0, z: 300 }),
+    maneuver: {
+      kind: ManeuverKind.HOLD,
+      targetId: 1,
+      formationSlot: { x: 300, z: 0 },
+      formationVelocity: { x: 0, z: 0 },
+      formationBound: 170,
+      breakFormation: true,
+      reason: 'fixture',
+    },
+  }, result);
+  const aimedRequest = new ManeuverPlanner({ seed: 211 }).plan({
+    tick: 75,
+    entityId: 'sniper',
+    perception: perception([shipContact(1, { x: 0, z: 300 })]),
+    behavior: { maneuver: aimedSelection.maneuver },
+    directive: baseDirective(),
+  });
+  assert(Math.abs(aimedRequest.targetHeading - Math.PI / 2) < 1e-9,
+    'ranged HOLD translation must decouple from yaw and face the live target');
+  assert(aimedRequest.forceLocal.forward > 0 && Math.abs(aimedRequest.forceLocal.right) < 1e-9,
+    'target-facing yaw must preserve translation toward the authored formation slot');
+  const ordinaryHold = new ManeuverPlanner({ seed: 211 }).plan({
+    tick: 75,
+    entityId: 'ordinary_hold',
+    perception: perception([shipContact(1, { x: 0, z: 300 })]),
+    behavior: {
+      maneuver: {
+        kind: ManeuverKind.HOLD,
+        targetId: 1,
+        formationSlot: { x: 300, z: 0 },
+        formationVelocity: { x: 0, z: 0 },
+        formationBound: 170,
+        breakFormation: true,
+        reason: 'ordinary_hold_fixture',
+      },
+    },
+    directive: baseDirective(),
+  });
+  assert(Math.abs(ordinaryHold.targetHeading) < 1e-9,
+    'ordinary HOLD without the opt-in must still face its formation/desired vector');
 
   result = runtime.update({
     tick: 76, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,

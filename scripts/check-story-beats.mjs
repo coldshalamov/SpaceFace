@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { createBus } from '../src/core/eventBus.js';
 import { story } from '../src/systems/story.js';
-import { BEAT_CONTENT } from '../src/data/narrative.js';
+import { POST_SPINE_BEAT_CONTENT } from '../src/data/narrative.js';
 import { FACTION_META } from '../src/data/factions.js';
 import { VoiceQueue } from '../src/ui/voiceArbiter.js';
 
@@ -25,9 +25,9 @@ run('Helix Directorate paper faction row exists (zero ships)', () => {
   assert.equal(helix.homeSectors.length, 0);
 });
 
-run('B8 beat content registered in narrative.js', () => {
-  const b8 = BEAT_CONTENT[8];
-  assert.ok(b8, 'BEAT_CONTENT[8] missing');
+run('B8 post-spine content registered in narrative.js', () => {
+  const b8 = POST_SPINE_BEAT_CONTENT[8];
+  assert.ok(b8, 'POST_SPINE_BEAT_CONTENT[8] missing');
   assert.equal(b8.beat, 8);
   assert.ok(b8.comms && b8.comms.includes('story_b8_helix_audit'));
 });

@@ -1,5 +1,7 @@
 # PACKET EVID-001 — Hash-bind every Alpha evidence artifact
 
+> **Manual packet; exact activation required.** See `README.md`. Discovery does not activate it.
+
 packetId: EVID-001
 milestone: M0 Wave A/B
 kind: evidence-control

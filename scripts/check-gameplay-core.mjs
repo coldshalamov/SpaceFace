@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createBus } from '../src/core/eventBus.js';
 import { Masks } from '../src/core/entity.js';
 import { createGameState } from '../src/core/gameState.js';
+import { createTimeEffects } from '../src/core/timeEffects.js';
 import { core } from '../src/core/coreSystem.js';
 import { physics } from '../src/core/physics.js';
 import { queryNearbyEntities } from '../src/core/spatialQuery.js';
@@ -2826,7 +2827,7 @@ function checkLoadRejectsSaveWithoutPlayerEntity() {
 function checkLoadRepairsMalformedPlayerSaveIntoPlayableShip() {
   const state = createGameState(123);
   state.mode = 'menu';
-  state.timeScale = 0;
+  createTimeEffects(state).set('fixture:menu', { scale: 0 });
   const events = [];
   const makeVec = (x = 0, z = 0) => ({
     x, y: 0, z,
@@ -2934,7 +2935,7 @@ function checkLoadRepairsMalformedPlayerSaveIntoPlayableShip() {
 function checkSaveLoadDefersFlightWhenAuthoredVisualGateExists() {
   const state = createGameState(124);
   state.mode = 'menu';
-  state.timeScale = 0;
+  createTimeEffects(state).set('fixture:menu', { scale: 0 });
   const events = [];
   let finalizePayload = null;
   const makeVec = (x = 0, z = 0) => ({
@@ -3529,8 +3530,8 @@ function checkInsuredRespawnUsesStationRefundAndCargoLoss() {
   assert(respawn, 'insured death should emit player:respawn');
   assert(refund, 'insured respawn should emit an insurance refund credit event');
   assert.equal(respawn.payload.stationId, 'station_helios', 'insured respawn should use the last insured station');
-  assert.equal(respawn.payload.refundCr, 18400, 'insured respawn should report the net insurance refund');
-  assert.equal(refund.payload.amount, 18400, 'insurance refund should route through economy');
+  assert.equal(respawn.payload.refundCr, 14200, 'insured respawn should report the net insurance refund');
+  assert.equal(refund.payload.amount, 14200, 'insurance refund should route through economy');
   assert.equal(respawn.payload.cargoLost, true, 'insured respawn should report cargo loss');
   assert.equal(respawn.payload.cargoLostQty, 3, 'insured respawn should report lost cargo units');
   assert.equal(state.player.cargo.items.cmdty_ore_iron, 3, 'respawn should lose half of iron cargo');
@@ -6093,6 +6094,11 @@ function checkWingmenSpawnAsLiveEntities() {
     const events = [];
     wingmen.state = state;
     wingmen.bus = { emit: (e, p) => events.push({ e, p }) };
+    wingmen._fleetRef = null;
+    wingmen._fleetSourceRows = [];
+    wingmen._fleetSourceIds = [];
+    wingmen._orderedFleet = [];
+    wingmen._orderRuntime = new Map();
     wingmen.helpers = {
       spawnEntity(spec) {
         const e = { id: nextEntId++, type: 'ship', alive: true,

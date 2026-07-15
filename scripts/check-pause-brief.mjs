@@ -7,8 +7,12 @@ import { pauseExitConfirmBody, pauseMapAction, pauseStatusLines } from '../src/u
 
 const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
 const uiInputSrc = readFileSync(new URL('../src/ui/input.js', import.meta.url), 'utf8');
+const localizedCoreCopySrc = readFileSync(new URL('../src/ui/localizedCoreCopy.js', import.meta.url), 'utf8');
 
-assert.match(pauseSrc, /FLIGHT BRIEF/, 'pause menu should render a visible flight brief panel');
+assert.match(localizedCoreCopySrc, /flightBrief:\s*\{\s*label:\s*'FLIGHT BRIEF'\s*\}/,
+  'localized core copy should retain the visible flight brief label');
+assert.match(pauseSrc, /briefKicker\.textContent\s*=\s*coreText\('flightBrief'\)/,
+  'pause menu should render the localized flight brief label');
 assert.match(pauseSrc, /aria-live/, 'flight brief should announce refreshed objective state politely');
 assert.match(pauseSrc, /Mission Log \(' \+ BINDINGS\.missionLog\.label \+ '\)/,
   'pause menu should label the Mission Log action with the live binding');

@@ -1,0 +1,510 @@
+{
+  "id": "helios_hub_station",
+  "assetId": "SF_PLACE_HELIOS_HUB_STATION",
+  "partId": "place_station_trade_hub",
+  "liveId": "place_station_trade_hub",
+  "title": "Helios Hub Station V9 (Tuning-Fork Shipyard)",
+  "role": "hub_station_focal_v9",
+  "kind": "landmark",
+  "ok": true,
+  "elapsedSec": 35.51,
+  "sourceGlb": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/source/places/helios_hub_station.glb",
+  "productionBlend": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/blender/helios_hub_station_production.blend",
+  "sourceBytes": 5833180,
+  "sourceSha256": "310D27C243EBD07B45C51332084E1A6B9152B49CDC2430FCDACF45D95828C194",
+  "totalTriangles": 22396,
+  "hullTriangles": 16972,
+  "lod0Triangles": 14854,
+  "sockets": [
+    "SOCKET_Dock_North",
+    "SOCKET_Dock_South",
+    "SOCKET_Emissive_Tower",
+    "SOCKET_Structure_Core"
+  ],
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "collisionCoverageMin": 0.92,
+  "lod0WithinBudget": true,
+  "renderCount": 15,
+  "renders": [
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_detail.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_full.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_gamesky.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_gamesky_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_lod_continuity_lod0.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_lod_continuity_lod1.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_lod_continuity_lod2.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_readability_120px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_readability_close.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_readability_under45px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_rear.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_rear_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_side_ortho.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_hub_station/helios_hub_station_top.png"
+  ],
+  "export": {
+    "file": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/source/places/helios_hub_station.glb",
+    "bytes": 5833180,
+    "sha256": "310D27C243EBD07B45C51332084E1A6B9152B49CDC2430FCDACF45D95828C194",
+    "totalTriangles": 22396,
+    "hullTriangles": 16972,
+    "lodBreakdown": {
+      "lod0": {
+        "triangles": 14854,
+        "primitives": 6,
+        "drawEstimate": 6,
+        "nodes": [
+          {
+            "name": "LOD0_HOOK_EMISSIVE",
+            "tris": 36
+          },
+          {
+            "name": "LOD0_Merged_Material_Accent",
+            "tris": 48
+          },
+          {
+            "name": "LOD0_Merged_Material_Glass",
+            "tris": 60
+          },
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 11410
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 3240
+          },
+          {
+            "name": "LOD0_Merged_Material_Warm",
+            "tris": 60
+          }
+        ]
+      },
+      "lod1": {
+        "triangles": 5862,
+        "primitives": 6,
+        "drawEstimate": 6,
+        "nodes": [
+          {
+            "name": "LOD1_HOOK_EMISSIVE",
+            "tris": 36
+          },
+          {
+            "name": "LOD1_Merged_Material_Accent",
+            "tris": 48
+          },
+          {
+            "name": "LOD1_Merged_Material_Glass",
+            "tris": 60
+          },
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 4408
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 1250
+          },
+          {
+            "name": "LOD1_Merged_Material_Warm",
+            "tris": 60
+          }
+        ]
+      },
+      "lod2": {
+        "triangles": 1680,
+        "primitives": 4,
+        "drawEstimate": 4,
+        "nodes": [
+          {
+            "name": "LOD2_HOOK_EMISSIVE",
+            "tris": 36
+          },
+          {
+            "name": "LOD2_Merged_Material_Glass",
+            "tris": 44
+          },
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 1154
+          },
+          {
+            "name": "LOD2_Merged_Material_Mechanical",
+            "tris": 446
+          }
+        ]
+      }
+    },
+    "sockets": [
+      "SOCKET_Dock_North",
+      "SOCKET_Dock_South",
+      "SOCKET_Emissive_Tower",
+      "SOCKET_Structure_Core"
+    ],
+    "materials": [
+      "Material_Accent",
+      "Material_Glass",
+      "Material_Hull",
+      "Material_Mechanical",
+      "Material_Warm"
+    ],
+    "primitiveCount": 16,
+    "tangentPrimitiveCount": 16,
+    "uvPrimitiveCount": 16,
+    "lod0Aabb": {
+      "min": [
+        -16.07383155822754,
+        -5.915877342224121,
+        -17.950000762939453
+      ],
+      "max": [
+        16.030254364013672,
+        10.832869529724121,
+        19.600000381469727
+      ],
+      "size": [
+        32.10408592224121,
+        16.748746871948242,
+        37.55000114440918
+      ],
+      "center": [
+        -0.021788597106933594,
+        2.45849609375,
+        0.8249998092651367
+      ]
+    },
+    "collisionAabb": {
+      "min": [
+        -14.789668121337892,
+        -5.245927467346192,
+        -16.448000717163087
+      ],
+      "max": [
+        14.746090927124024,
+        10.162919654846192,
+        18.09800033569336
+      ],
+      "size": [
+        29.535759048461916,
+        15.408847122192384,
+        34.54600105285645
+      ],
+      "center": [
+        -0.021788597106933594,
+        2.45849609375,
+        0.8249998092651367
+      ],
+      "coverage": 0.92
+    },
+    "collisionCoverageRatio": {
+      "perAxis": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "min": 0.92,
+      "mean": 0.92
+    },
+    "images": [
+      {
+        "name": "accent_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "accent_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "accent_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "glass_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "glass_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "glass_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_basecolor",
+        "mimeType": "image/png"
+      }
+    ],
+    "spacefaceAsset": {
+      "contractVersion": 1,
+      "assetId": "SF_PLACE_HELIOS_HUB_STATION",
+      "slot": "place",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "textureCompression": "PNG-source",
+      "textureSize": 1024,
+      "chamfered": true,
+      "bevelRadiusM": 0.05,
+      "partId": "place_station_trade_hub",
+      "liveId": "place_station_trade_hub",
+      "category": "places",
+      "sourceRole": "place-environment",
+      "packet": "M4-HELIOS-V9-NEW-FOUNDATION",
+      "family": "helios_hub_env_v9",
+      "role": "hub_station_focal_v9",
+      "title": "Helios Hub Station V9 (Tuning-Fork Shipyard)",
+      "kind": "landmark",
+      "triangleCount": 22396,
+      "hullTriangleCount": 16972,
+      "deliverableRole": "production_multi_lod",
+      "lods": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "wiringStatus": "candidate_pending_promote",
+      "lod0AabbSize": [
+        32.10408592224121,
+        16.748746871948242,
+        37.55000114440918
+      ],
+      "collisionBounds": {
+        "min": [
+          -14.789668121337892,
+          -5.245927467346192,
+          -16.448000717163087
+        ],
+        "max": [
+          14.746090927124024,
+          10.162919654846192,
+          18.09800033569336
+        ],
+        "size": [
+          29.535759048461916,
+          15.408847122192384,
+          34.54600105285645
+        ],
+        "center": [
+          -0.021788597106933594,
+          2.45849609375,
+          0.8249998092651367
+        ],
+        "coverage": 0.92
+      },
+      "collisionAabb": {
+        "min": [
+          -14.789668121337892,
+          -5.245927467346192,
+          -16.448000717163087
+        ],
+        "max": [
+          14.746090927124024,
+          10.162919654846192,
+          18.09800033569336
+        ],
+        "size": [
+          29.535759048461916,
+          15.408847122192384,
+          34.54600105285645
+        ],
+        "center": [
+          -0.021788597106933594,
+          2.45849609375,
+          0.8249998092651367
+        ],
+        "coverage": 0.92
+      },
+      "collisionCoverageRatio": {
+        "perAxis": [
+          0.92,
+          0.92,
+          0.92
+        ],
+        "min": 0.92,
+        "mean": 0.92
+      },
+      "triBudget": 48000,
+      "triBudgetAlarm": 35000
+    },
+    "lodBuildStats": [
+      {
+        "lod": "lod0",
+        "decimateRatio": 1.0,
+        "mergedMeshes": [
+          "LOD0_Merged_Material_Hull",
+          "LOD0_Merged_Material_Mechanical",
+          "LOD0_Merged_Material_Glass",
+          "LOD0_Merged_Material_Warm",
+          "LOD0_Merged_Material_Accent"
+        ],
+        "separateMeshes": [
+          "LOD0_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [],
+        "triangles": 14854,
+        "objectCount": 6,
+        "explicitGateSilhouette": false
+      },
+      {
+        "lod": "lod1",
+        "decimateRatio": 0.42,
+        "mergedMeshes": [
+          "LOD1_Merged_Material_Hull",
+          "LOD1_Merged_Material_Mechanical",
+          "LOD1_Merged_Material_Glass",
+          "LOD1_Merged_Material_Warm",
+          "LOD1_Merged_Material_Accent"
+        ],
+        "separateMeshes": [
+          "LOD1_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [],
+        "triangles": 5862,
+        "objectCount": 6,
+        "explicitGateSilhouette": false,
+        "v9RatioEnforced": true,
+        "v9TargetTotal": 6387
+      },
+      {
+        "lod": "lod2",
+        "decimateRatio": 0.15,
+        "mergedMeshes": [
+          "LOD2_Merged_Material_Hull",
+          "LOD2_Merged_Material_Mechanical",
+          "LOD2_Merged_Material_Glass"
+        ],
+        "separateMeshes": [
+          "LOD2_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [
+          "Hub_Radiator_0",
+          "Hub_Radiator_1",
+          "Hub_Radiator_2",
+          "Hub_Radiator_3",
+          "Hub_Radiator_4",
+          "Hub_Solar_0",
+          "Hub_Solar_1",
+          "Hub_Solar_2",
+          "Hub_Solar_3"
+        ],
+        "triangles": 1680,
+        "objectCount": 4,
+        "explicitGateSilhouette": false,
+        "v9RatioEnforced": true,
+        "v9TargetTotal": 1782
+      }
+    ],
+    "withinBudget": true,
+    "lod0WithinBudget": true
+  },
+  "lodStats": [
+    {
+      "lod": "lod0",
+      "decimateRatio": 1.0,
+      "mergedMeshes": [
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Mechanical",
+        "LOD0_Merged_Material_Glass",
+        "LOD0_Merged_Material_Warm",
+        "LOD0_Merged_Material_Accent"
+      ],
+      "separateMeshes": [
+        "LOD0_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [],
+      "triangles": 14854,
+      "objectCount": 6,
+      "explicitGateSilhouette": false
+    },
+    {
+      "lod": "lod1",
+      "decimateRatio": 0.42,
+      "mergedMeshes": [
+        "LOD1_Merged_Material_Hull",
+        "LOD1_Merged_Material_Mechanical",
+        "LOD1_Merged_Material_Glass",
+        "LOD1_Merged_Material_Warm",
+        "LOD1_Merged_Material_Accent"
+      ],
+      "separateMeshes": [
+        "LOD1_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [],
+      "triangles": 5862,
+      "objectCount": 6,
+      "explicitGateSilhouette": false,
+      "v9RatioEnforced": true,
+      "v9TargetTotal": 6387
+    },
+    {
+      "lod": "lod2",
+      "decimateRatio": 0.15,
+      "mergedMeshes": [
+        "LOD2_Merged_Material_Hull",
+        "LOD2_Merged_Material_Mechanical",
+        "LOD2_Merged_Material_Glass"
+      ],
+      "separateMeshes": [
+        "LOD2_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [
+        "Hub_Radiator_0",
+        "Hub_Radiator_1",
+        "Hub_Radiator_2",
+        "Hub_Radiator_3",
+        "Hub_Radiator_4",
+        "Hub_Solar_0",
+        "Hub_Solar_1",
+        "Hub_Solar_2",
+        "Hub_Solar_3"
+      ],
+      "triangles": 1680,
+      "objectCount": 4,
+      "explicitGateSilhouette": false,
+      "v9RatioEnforced": true,
+      "v9TargetTotal": 1782
+    }
+  ]
+}

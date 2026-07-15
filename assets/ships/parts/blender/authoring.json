@@ -22,9 +22,10 @@
     },
     "place_station_trade_hub": {
       "method": "blender_mcp",
-      "concept_id": "concept_station_trade_hub",
-      "concept_path": "assets/concept/archetypes/concept_station_trade_hub.jpg",
-      "blend_path": "assets/ships/parts/blender/place_station_trade_hub.blend",
+      "concept_id": "concept_helios_overview",
+      "concept_path": "assets/concept/sectors/sector_helios_prime/concept_helios_overview.jpg",
+      "blend_path": "assets/ships/parts/blender/place_station_trade_hub_authored.blend",
+      "semantic_note": "concept_station_trade_hub.jpg is portal-like (swapped); Helios overview is commercial-hub authority",
       "min_tris": 1500
     },
     "place_station_refinery": {
@@ -116,14 +117,32 @@
       "blend_path": null,
       "min_tris": 500
     },
+    "place_station_billboard": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/place_station_billboard_authored.blend",
+      "semantic_note": "Lane/station billboard prop; Blender-authored via author_place_archetype pipeline; low-tri dress prop",
+      "min_tris": 500
+    },
+    "place_dead_hulk": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/place_dead_hulk_authored.blend",
+      "semantic_note": "Fringe dead hulk wreck prop; Blender-authored via author_place_archetype pipeline",
+      "min_tris": 1500
+    },
+    "place_conveyor_barge": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/place_conveyor_barge_authored.blend",
+      "semantic_note": "Belt ore conveyor barge prop; Blender-authored via author_place_archetype pipeline",
+      "min_tris": 500
+    },
     "wholeship_kestrel": {
       "method": "blender_generic",
       "production_whole_ship": true,
-      "blend_path": "assets/ships/parts/blender/kestrel_borrowed_time_production.blend",
-      "exporter_path": "tools/blender/build_kestrel_borrowed_time.py",
+      "blend_path": "assets/ships/kestrel_borrowed_time_v4/blender/kestrel_borrowed_time_v4_production.blend",
+      "exporter_path": "assets/ships/kestrel_borrowed_time_v4/scripts/build_v4.py",
       "texture_role_owner": "blender-source-v1",
-      "provenance_path": "assets/ships/parts/revamp-evidence/kestrel_borrowed_time/provenance.json",
-      "semantic_note": "K0 Borrowed Time production whole ship; complete body, three structural LODs, stable sockets, semantic materials, no embedded plume",
+      "provenance_path": "assets/ships/kestrel_borrowed_time_v4/PROVENANCE.json",
+      "semantic_note": "Accepted source-faithful K0 Borrowed Time V4; canonical player-only LOD0 plus retained independently authored LOD1/LOD2 family, stable sockets, collision proxy, semantic materials, no embedded plume",
       "min_tris": 1500
     }
   }

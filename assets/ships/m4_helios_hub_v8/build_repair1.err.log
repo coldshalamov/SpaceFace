@@ -1,0 +1,35 @@
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v8.py:971: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  if world and world.use_nodes:
+Traceback (most recent call last):
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3751, in main
+    results.append(build_one_asset(asset, mats, tex_map, family_dirs))
+                   ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3420, in build_one_asset
+    shots = render_evidence(all_export_meshes, render_dir, asset_id)
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v8.py", line 1102, in render_evidence_v8
+    shutil.copy2(src_close, dst_close)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Blender Foundation\Blender 5.1\5.1\python\Lib\shutil.py", line 453, in copy2
+    _winapi.CopyFile2(src_, dst_, flags)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+OSError: [WinError 1224] The requested operation cannot be performed on a file with a user-mapped section open
+Traceback (most recent call last):
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v8.py", line 1337, in <module>
+    code = base.main()
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3824, in main
+    (family_dirs['evidence'] / 'material_draw_call_report.json').write_text(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        json.dumps(mat_report, indent=2), encoding='utf-8',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Program Files\Blender Foundation\Blender 5.1\5.1\python\Lib\pathlib\_local.py", line 555, in write_text
+    return PathBase.write_text(self, data, encoding, errors, newline)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Blender Foundation\Blender 5.1\5.1\python\Lib\pathlib\_abc.py", line 651, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Blender Foundation\Blender 5.1\5.1\python\Lib\pathlib\_local.py", line 537, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 22] Invalid argument: 'C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v8\\evidence\\material_draw_call_report.json'

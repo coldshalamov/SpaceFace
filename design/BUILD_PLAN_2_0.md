@@ -1,18 +1,16 @@
 # SPACEFACE 2.0 — Build Plan & Agent Orchestration
 
-> **2026-07-09:** Live product execution moved to **`design/vision/`**.  
-> Front door: `design/vision/README.md`. Full overnight run: `design/vision/OVERNIGHT_GOAL.md`.  
-> Morning handoff: `design/vision/WAKE_REPORT.md`. This file is historical ownership / older acceptance notes.
+> **Historical ownership/reference only.** Current cross-program status and pickup live in
+> `design/program/README.md`; current Alpha scope lives in `design/vision/ALPHA_PROGRAM.md`.
+> Do not dispatch from the dated status tables in this file.
 
 **Companion to `design/GDD_2_0.md` (authoritative design).** This file was the execution contract:
 if the current session dies, a fresh agent reads GDD → this file → picks the next unclaimed item.
 **Prefer vision pack over this for “what to build next.”**
 
-**Current-state reconciliation (2026-07-04):** `design/CURRENT_BUILD_STATUS.md` is the quick status
-map for what is built, what needs proof/cleanup, and what remains. Use it with this file. Older rows
-below were synchronized on 2026-07-04 where live checks gave clear evidence; if a row and a named
-check disagree later, trust the live check and update both docs in the same pass. Prefer
-`design/vision/01_CURRENT_STATE.md` for play-truth.
+**Dated snapshot:** the status sections below describe a 2026-07-04 tree. Use
+`design/program/01_VERIFIED_DONE.md`, `02_REMAINING_WORK.md`, and `03_LIVE_ACCEPTANCE_MATRIX.md`
+instead. Live checks and player-route evidence outrank every prose status.
 
 **Target platform:** PC/browser. Electron/packaged desktop is an optional distribution shell for the
 same player route. Handheld-specific readiness is not a target or release blocker.
@@ -129,7 +127,7 @@ re-derive the 47a expectations — run the sf-sim record path for `test/47a.tele
 test/47a.inputs.json if the tutorial rock now fractures first), then freeze with
 `npm run check:sim` (--repeat 20 --reload-at 600) and `check:sim:compare` green.
 
-**Status reconciliation (2026-07-04):** C1/C2/C3, D3/D4, E1/E2/E3, B3/B4, SPEC2/01, SPEC2/03 static,
+**Historical status snapshot (2026-07-04; do not dispatch from this list):** C1/C2/C3, D3/D4, E1/E2/E3, B3/B4, SPEC2/01, SPEC2/03 static,
 SPEC2/05 mining/economy slices, SPEC2/06, and SPEC2/07 all have passing targeted checks as listed in
 `design/CURRENT_BUILD_STATUS.md`. Do not re-brief those as unstarted work. Current red/missing gates
 are: `check:cruise` (missing script), `check:first-15-runtime` (timeout),

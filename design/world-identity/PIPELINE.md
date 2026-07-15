@@ -37,42 +37,48 @@ Machine-readable index: `design/world-identity/place-identity-index.json`
 - **Location:** `design/world-identity/sectors/<sector_id>.md` + `SECTOR_STYLE_INDEX.md`
 - **Each spec lists:**
   - Story band + citations
-  - Mood tokens aligned to `design/spec2/00_MASTER_TASTE.md` §3 (palette class, UI hues)
-  - Signature landmark (≥1 unmissable authored anchor)
-  - Required renderable asset roles (station archetype GLB, gate, dressing props)
+  - Atmosphere and identity references grounded in current world data, assets, and player-facing evidence
+  - A signature landmark or other unmistakable place cue when it materially improves navigation/identity
+  - Renderable asset roles that the location actually needs (station, gate, landmark, dressing, or others)
   - Procedural vs fixed spawn policy
+
+Palette labels, mood boards, and historical taste tokens are starting vocabulary, not a closed style
+system. Each location may choose a stronger direction when it remains coherent, accessible, and legible
+in the player route.
 
 ### 3. Concept art (image gen → tweak → file)
 
 - **Location:** `assets/concept/` organized by `sectors/`, `factions/`, `archetypes/`, `map/`
 - **Index:** `assets/concept/index.json` maps `concept_id → target_asset_role → story_citation`
-- **Rules:**
-  - Clean single-subject reference sheets — **no baked caption/contact-sheet text** (runtime-safe)
-  - 16:9 or 1:1 per subject; filename = concept_id
-  - Heavy reference chaining within a sector band for visual consistency
-  - Use `assets/bible/B-001.jpg` + sector palette tokens as style anchors
+- **Guidance:** choose the views, annotations, aspect ratio, and reference set that communicate the
+  asset's role to the authoring lane. Keep the stable `concept_id` filename/index relationship.
+  Existing bibles, sector sheets, and related concepts may inform a direction, but do not override a
+  stronger coherent result or become mandatory palette/style matching.
 
 ### 4. Blender authoring (longform lane)
 
 - **Bootstrap:** `npm run author:place-archetype -- <part_id>` → Blender build → `finalize_part.mjs` → `authoring.json` **`bootstrap_pending`**
-- **Promotion:** `npm run promote:place-archetype -- <part_id>` (or `--all`) → silhouette IoU gate → **`blender_mcp`** + `iteration_ledger.json`
+- **Promotion:** `npm run promote:place-archetype -- <part_id>` (or `--all`) validates the source/export,
+  records authoring provenance, and appends `iteration_ledger.json`. Its concept-overlap result is a
+  diagnostic: use a justified override when player-camera silhouette, identity, or quality evidence is
+  stronger than the legacy configured threshold.
 - **Tool:** Blender MCP per `design/spec2/AGENT_PROMPTS.md` §10 — load concept JPG as `REF_<part_id>` in Blender
-- **Builder script:** `tools/art/blender/author_place_archetype.py` — concept-referenced templates (bevel/torus silhouettes);
-  human/MCP sculpt pass iterates until the mesh reads like the concept (not auto-sculpted from pixels)
-- **Resemblance gate:** `npm run check:place-concept-resemblance` — 96×96 concept↔GLB silhouette IoU (min 0.12)
+- **Builder script:** `tools/art/blender/author_place_archetype.py` — a bootstrap for concept-informed
+  authoring, not a mandatory geometry or surfacing recipe.
+- **Resemblance diagnostic:** `npm run check:place-concept-resemblance` reports concept↔GLB silhouette
+  overlap. It can reveal a missed identity target, but no universal score proves visual quality.
 - **Provenance:** `authoring.json` records `bootstrap_pending` | `blender_mcp` | `procedural_fallback` per archetype
 - **Source saves:** `assets/ships/parts/blender/<part_id>.blend`
 - **Export path:** `assets/ships/parts/places/<part_id>.glb` → `node tools/art/finalize_part.mjs <glb> <part_id> --method=blender_mcp`
-- **Contract:** `assets/ships/parts/parts_manifest.json` (+X forward, +Y up, metre units,
-  `Material_Hull|Accent|Glass|Mechanical`, 500–8000 tris, ≤3.5 MB)
-- **Vertical slice shipped (5 promoted `blender_mcp` + IoU ledger):**
-  - `place_station_trade_hub` — IoU 0.61
-  - `place_station_refinery` — IoU 0.74
-  - `place_station_military` — IoU 0.39
-  - `place_station_blackmarket` — IoU 0.47
-  - `place_gate_jump_ring` — IoU 0.27
+- **Contract:** the live exporter, loader, and exact `parts_manifest.json` schema own coordinate,
+  metadata, material-role, socket/hook, and compatibility requirements. Manifest resource profiles are
+  measured alarms, not design ceilings; justify exceptions with screen-space and performance evidence.
+- **Prior vertical-slice evidence:** see `BLENDER_ITERATION_EVIDENCE.md`. Its historic overlap values
+  are receipts, not promotion criteria for new work.
 - **CI/dev fallback:** `procedural_fallback` in `authoring.json` for fab, mining, research until promoted
-- **Validators:** `check:place-concept-resemblance`, `check:station-archetype-glb-load` (provenance + geometry), `probe-station-archetypes-live.mjs` (runtime + method)
+- **Validators:** `check:station-archetype-glb-load` (provenance + compatibility),
+  `probe-station-archetypes-live.mjs` (runtime + method), plus the resemblance diagnostic when it helps
+  assess the intended concept relationship.
 
 ### 5. Release build
 

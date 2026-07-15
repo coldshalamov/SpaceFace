@@ -1,5 +1,9 @@
 # Integration Gate — Integrator Checklist
 
+> **Activated-sprint checklist.** Use after a named graphics handoff. It does not force ordinary
+> coherent asset work into a separate integrator session when the task owns the integration seam and
+> no active writer or lock conflicts.
+
 **One agent, once per handoff batch.** Not parallel with Blender lock holder.
 
 ## Preconditions

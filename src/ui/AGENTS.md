@@ -1,7 +1,8 @@
 # src/ui/ — Agent Notes
 
-> The DOM/CSS overlay UI. Reads state for display, **emits intents only** — never mutates sim state.
-> Read root `AGENTS.md` §HUD design rule + Wired Feature Policy first.
+> The DOM/CSS overlay UI. It reads state and emits gameplay intents. Explicit UI/input-owned
+> selection state such as `state.player.targetId` is the narrow direct-write exception.
+> Read root `AGENTS.md` §6 (hard engineering contracts) first.
 
 ## Standing rules
 
@@ -16,20 +17,24 @@
   millisecond ranges are reference values, not universal gates.
 - Player-facing strings pass `check:player-facing-labels`. Voice and typography are judged for
   clarity, urgency, and character in context, not fixed word counts, capitalization, or punctuation.
-- Respect `motionReduce`/`flashReduce` (`accessibility.js`): all shake/hit-stop/FOV effects ×0.25 or off.
+- Respect `motionReduce`/`flashReduce` through `accessibility.js` and current checks. Reduction must
+  materially reduce motion/flash; exact treatment is surface-specific.
 
 ## File quick reference
 
-- `uiRoot.js` (64KB) — mounts `#ui-root`, screen lifecycle.
+- `uiRoot.js` — mounts `#ui-root`, screen lifecycle.
 - `screenManager.js` — modal screen caching/switching (one visible).
-- `hud.js` (90KB) — always-mounted flight HUD. **Has a good header — read it.** Layout, update split, the works.
-- `radar.js` (33KB) — radar glyph/IFF pass.
+- `hud.js` — always-mounted flight HUD; its header documents layout/update ownership.
+- `radar.js` — radar glyph/IFF pass.
 - `targetPanel.js` — segmented bars + in-world target arcs.
-- `comms.js` (30KB) — comms barks (one-voice arbiter).
+- `comms.js` — comms barks (one-voice arbiter).
 - `alerts.js` / `toasts.js` / `floatingText.js` / `damageIndicators.js` — alert queue, toasts, floaters, damage numbers.
 - `accessibility.js` — `motionReduce`/`flashReduce`.
-- `input.js` / `bindings.js` / `controlPrompts.js` — UI input, key bindings, prompts. **`input.js` here is UI input; the LOCKED sim input contract is `src/systems/input.js` (lead-only).**
-- `screens/*` — modal screens: `stationHub.js` (114KB!), `market.js`, `shipyard.js`, `outfitting.js`, `starmap.js`, `localmap.js`, `techTree.js`, `bar.js`, `missionLog.js`, `automationPanel.js`, etc.
+- `input.js` / `bindings.js` / `controlPrompts.js` — UI input, key bindings, prompts. `input.js` here
+  is UI input; `src/systems/input.js` owns the sim input contract and requires task ownership,
+  coordination, and focused rebind/input/sim validation.
+- `screens/*` — modal screens including station, market, shipyard, outfitting, maps, tech tree,
+  bar, mission log, and automation.
 
 ## DOM layering (ARCHITECTURE §1.2)
 

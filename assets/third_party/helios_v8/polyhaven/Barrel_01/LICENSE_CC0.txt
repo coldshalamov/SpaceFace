@@ -1,0 +1,12 @@
+Poly Haven model: Barrel_01
+Canonical: https://polyhaven.com/a/Barrel_01
+License: CC0 1.0 — https://polyhaven.com/license
+Attribution: not required; appreciated
+Resolution: 2k glTF package
+Acquired: 2026-07-11T15:15:25.4353713-04:00
+Files SHA256:
+Barrel_01_2k.gltf:1b9f9774879a071146045bb0d3557b06a97f4f9c360e3c57664cfe723e1c55e9
+Barrel_01.bin:fe8369c1ac796059b62a091c0db7367dc420aa2cee212672e48f991f4208da98
+Barrel_01_explosive_arm_2k.jpg:3f6fdb68391e4369e551d90f8577b0899c30589b532ebd416e996170279cd852
+Barrel_01_explosive_diff_2k.jpg:09da9d519d87d34c0318da3bb293296071ce2e09c78415befe1157949a644b8b
+Barrel_01_explosive_nor_gl_2k.jpg:050d5dfcf86b37172708637d1c1939010dd1837ed503b7e5561b5b1e67cb0379

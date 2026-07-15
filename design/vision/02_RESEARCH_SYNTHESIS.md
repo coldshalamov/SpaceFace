@@ -48,7 +48,7 @@
 
 **Yes:**
 
-> Top-down Freelancer spiritual successor with **massline physics combat/utility**, **strategy-dense glass UI**, **living trade/faction loops**, and **authored wonder** — easy to pick up, deep to master via fit and space sense.
+> Top-down Freelancer spiritual successor with **massline physics combat/utility**, **strategy-dense clean UI**, **living trade/faction loops**, and **authored wonder** — easy to pick up, deep to master via fit and space sense.
 
 Signature differentiator: **massline** (if PLAY-DONE). Without it, game is “another top-down trader” and loses the wedge.
 
@@ -63,7 +63,7 @@ Aligned with constitution + research + play pain:
 | 1 | Playable combat + massline flyby fantasy | Retention zero if unplayable |
 | 2 | Dense Freelancer systems + seamless-feeling gates | Empty space kills exploration |
 | 3 | Ship body identity (bank + nose lever) | Makes toy and flight sell |
-| 4 | Liquid-glass strategy UI (data-first) | Professional front door |
+| 4 | Data-dense strategy UI (clean, data-first) | Professional front door |
 | 5 | Asset flood + wiring (stations, landmarks, props) | Wonder; marketing |
 | 6 | Emergent director ripples (economy/faction) | Long-session glue |
 | 7 | Outfit/strategy clarity | Star Valor build hook |

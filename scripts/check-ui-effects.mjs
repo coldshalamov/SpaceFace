@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 // check-ui-effects.mjs — contract lint for the command-deck effect layer (src/ui/effects/*).
 //
-// Enforces the dependency policy in design/revamp/COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md §6:
+// Enforces the runtime contract in design/revamp/COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md §6:
 //   1. every primitive imports in Node WITHOUT touching the DOM (import-before-DOM proof);
 //   2. every primitive creates → renders → self-parks → disposes cleanly in a fake-DOM harness, with
 //      NO requestAnimationFrame left pending after setActive(false) or dispose() (no idle rAF);
 //   3. a reduced-motion path exists and never spins a free-running loop;
-//   4. no backdrop-filter, no raw hex / rgb() / hsl() colour literals, no off-palette custom property;
-//   5. deterministic only — no Math.random / performance.now / Date.now / new Date in the layer;
-//   6. every module exposes setActive()/dispose(); every primitive is registered in EFFECTS; and the
-//      EFFECT_CUES table stays within its declared max durations.
+//   4. deterministic only — no Math.random / performance.now / Date.now / new Date in the layer;
+//   5. every registered primitive exposes setActive()/dispose(), has a cue, and is file-backed.
+//
+// Visual technique is intentionally outside this source lint. Palette, blur, dependency choice,
+// primitive count, and cue duration are judged by accessibility, measured performance, and current
+// player-route evidence rather than a universal recipe.
 //
 // Zero dependencies: a hand-rolled DOM (the check-ui-frame-sleep pattern) + a DEFERRED rAF whose
 // pending callbacks live in a Set, so "no rAF after dispose" is directly assertable.
@@ -28,9 +30,15 @@ const UI_PRIMITIVES_URL = new URL('../src/ui/uiPrimitives.js', import.meta.url);
 // ───────────────────────────────────────────────────────────────────────────
 assert.equal(typeof globalThis.document, 'undefined', 'harness must start with no document installed');
 const fx = await import(INDEX_URL);
-assert.ok(Array.isArray(fx.EFFECTS) && fx.EFFECTS.length === 9, 'EFFECTS registry should list all 9 primitives');
-assert.ok(Array.isArray(fx.EFFECT_CUES) && fx.EFFECT_CUES.length === 9, 'EFFECT_CUES should mirror EFFECTS');
-assert.ok(Array.isArray(fx.EFFECT_TOKENS) && fx.EFFECT_TOKENS.length > 0, 'EFFECT_TOKENS allowlist should be exported');
+assert.ok(Array.isArray(fx.EFFECTS) && fx.EFFECTS.length > 0, 'EFFECTS registry should not be empty');
+assert.ok(Array.isArray(fx.EFFECT_CUES) && fx.EFFECT_CUES.length === fx.EFFECTS.length,
+  'EFFECT_CUES should mirror the current EFFECTS registry');
+assert.equal(new Set(fx.EFFECTS.map((effect) => effect.name)).size, fx.EFFECTS.length,
+  'EFFECTS registry names must be unique');
+for (const effect of fx.EFFECTS) {
+  assert.equal(typeof effect.name, 'string', 'every effect needs a stable name');
+  assert.equal(typeof effect.create, 'function', `${effect.name}: registry entry needs a factory`);
+}
 const uiPrimitives = await import(UI_PRIMITIVES_URL);
 assert.equal(typeof uiPrimitives.trace, 'function', 'uiPrimitives.trace should import without a document');
 console.log('ok   import-before-DOM — the effect layer imports in Node without a document');
@@ -284,21 +292,18 @@ installDom();
 console.log('ok   ui primitives — trace() restarts cleanly and never keeps stale tone classes');
 
 // ───────────────────────────────────────────────────────────────────────────
-// 6. SOURCE CONTRACTS — deps, hues, determinism, backdrop-filter, exports.
+// 6. SOURCE CONTRACTS — deterministic behavior and registry/file coverage.
 // ───────────────────────────────────────────────────────────────────────────
 const files = readdirSync(EFFECTS_DIR).filter((f) => f.endsWith('.js'));
-const FACTORY_FILES = files.filter((f) => f !== 'index.js' && f !== 'effectRuntime.js');
-assert.equal(FACTORY_FILES.length, 9, 'there should be exactly 9 primitive modules');
+const sources = new Map(files.map((file) => [file, readFileSync(join(EFFECTS_DIR, file), 'utf8')]));
+const FACTORY_FILES = files.filter((file) => {
+  const source = sources.get(file);
+  return /export const CUE\b/.test(source) && /export function create[A-Za-z0-9_]*\s*\(/.test(source);
+});
 
-const ALLOWED_TOKENS = new Set([...fx.EFFECT_TOKENS, '--ease', '--sp-2', '--r-2', '--dur', '--mono']);
-const HEX = /#[0-9a-fA-F]{3,8}\b/;
-// Guard against hyphenated identifiers (white-space, off-white, sf-lime-…) so only bare colour words
-// (e.g. `color: red`) are flagged, not CSS property names that merely contain a colour word.
-const NAMED_COLOR = /(?<!-)\b(?:red|green|blue|black|white|yellow|orange|purple|pink|cyan|magenta|gray|grey|silver|gold|navy|teal|lime|maroon)\b(?!-)/;
-
-// Strip comments before the text bans so prose (which legitimately names "red", "Tailwind",
-// "Math.random", etc. as documentation) cannot trip them. String/template CSS is preserved, and the
-// [^:] guard keeps 'http://' URLs intact.
+// Strip comments before the determinism scan so documentation can discuss timing/randomness without
+// tripping the runtime-source contract. String/template code is preserved, and the [^:] guard keeps
+// 'http://' URLs intact.
 function stripComments(source) {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
@@ -306,40 +311,15 @@ function stripComments(source) {
 }
 
 for (const f of files) {
-  const src = readFileSync(join(EFFECTS_DIR, f), 'utf8');
+  const src = sources.get(f);
   const scan = stripComments(src);
-  assert.ok(!/backdrop-filter/i.test(scan), `${f}: backdrop-filter is forbidden`);
-  assert.ok(!HEX.test(scan), `${f}: raw hex colour literal is forbidden (palette tokens only)`);
-  assert.ok(!/\brgba?\(/.test(scan) && !/\bhsla?\(/.test(scan), `${f}: rgb()/hsl() colour literals are forbidden (tokens/color-mix only)`);
-  assert.ok(!NAMED_COLOR.test(scan), `${f}: named CSS colours are forbidden (palette tokens only)`);
   assert.ok(!/Math\.random\s*\(|performance\.now\s*\(|Date\.now\s*\(|new\s+Date\s*\(/.test(scan), `${f}: non-deterministic time/random source is forbidden in the effect layer`);
-  assert.ok(!/from\s+['"]three['"]|from\s+['"]react['"]|tailwind/i.test(scan), `${f}: no framework/THREE dependency in the effect layer`);
-  // Every REAL custom-property reference must be on the palette allowlist (or an internal --sf-fx-*
-  // var). Match only var(--x) and quoted '--x' literals so BEM modifier classes (.foo--done) are not
-  // mistaken for custom properties.
-  const tokenRefs = new Set();
-  let mm;
-  const reVar = /var\(\s*(--[a-z0-9-]+)/g;
-  while ((mm = reVar.exec(scan))) tokenRefs.add(mm[1]);
-  const reStr = /['"](--[a-z0-9-]+)['"]/g;
-  while ((mm = reStr.exec(scan))) tokenRefs.add(mm[1]);
-  for (const t of tokenRefs) {
-    if (t.startsWith('--sf-fx-')) continue;
-    assert.ok(ALLOWED_TOKENS.has(t), `${f}: off-palette custom property ${t} (not in the effect token allowlist)`);
-  }
 }
-for (const f of FACTORY_FILES) {
-  const src = readFileSync(join(EFFECTS_DIR, f), 'utf8');
-  assert.ok(/function\s+setActive|setActive\s*[(:]/.test(src) && /setActive/.test(src), `${f}: must define setActive()`);
-  assert.ok(/function\s+dispose|dispose\s*[(:]/.test(src) && /dispose/.test(src), `${f}: must define dispose()`);
-  assert.ok(/export const CUE\b/.test(src), `${f}: must export a CUE descriptor`);
-}
-console.log('ok   source contracts — no deps/hex/named-colour/backdrop-filter, deterministic, tokens on-palette');
+console.log('ok   source contracts — deterministic and free of orphan effect factories');
 
 // ───────────────────────────────────────────────────────────────────────────
-// 7. CUE TABLE — every effect declares where/when it fires and stays in budget.
+// 7. CUE TABLE — every effect declares where/when it fires and its lifecycle shape.
 // ───────────────────────────────────────────────────────────────────────────
-const MAX_BUDGET_MS = 700;
 const seen = new Set();
 for (const cue of fx.EFFECT_CUES) {
   assert.equal(typeof cue.effect, 'string', 'each cue needs an effect name');
@@ -348,15 +328,19 @@ for (const cue of fx.EFFECT_CUES) {
   assert.ok(Array.isArray(cue.screens) && cue.screens.length > 0, `${cue.effect}: cue must list allowed screens`);
   assert.ok(Array.isArray(cue.triggers) && cue.triggers.length > 0, `${cue.effect}: cue must list triggers`);
   if (cue.maxMs == null) assert.equal(cue.loop, true, `${cue.effect}: an unbounded cue must be an explicit active-gated loop`);
-  else assert.ok(cue.maxMs > 0 && cue.maxMs <= MAX_BUDGET_MS, `${cue.effect}: maxMs ${cue.maxMs} out of budget`);
+  else assert.ok(Number.isFinite(cue.maxMs) && cue.maxMs > 0, `${cue.effect}: maxMs must be a positive duration`);
 }
-assert.equal(seen.size, 9, 'every registered effect should have a cue');
+assert.equal(seen.size, fx.EFFECTS.length, 'every registered effect should have a cue');
 // registry ↔ files coverage: no orphan primitive module.
 const REGISTERED = new Set(fx.EFFECTS.map((e) => e.name.toLowerCase()));
 for (const f of FACTORY_FILES) {
   const base = f.replace(/\.js$/, '').toLowerCase();
   assert.ok(REGISTERED.has(base), `${f}: primitive is not registered in EFFECTS (orphan module)`);
 }
-console.log('ok   cue table — all 9 effects registered, budgeted, and file-backed');
+for (const effect of fx.EFFECTS) {
+  assert.ok(FACTORY_FILES.some((file) => file.replace(/\.js$/, '').toLowerCase() === effect.name.toLowerCase()),
+    `${effect.name}: registered primitive has no matching factory module`);
+}
+console.log(`ok   cue table — ${seen.size} effects registered, lifecycle-declared and file-backed`);
 
-console.log('UI effects checks OK — 9 command-deck primitives, no idle rAF, reduced-motion safe, tokens-only');
+console.log(`UI effects checks OK — ${seen.size} command-deck primitives, no idle rAF, reduced-motion safe`);

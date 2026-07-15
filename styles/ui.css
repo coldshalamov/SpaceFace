@@ -1,5 +1,6 @@
-/* SpaceFace — UI theme + layout. Professional hard sci-fi using generated bible assets (B-006 icons, B-001/B-013 mood, pilot portraits, cinematic stills).
-   Enhanced for clarity, fun feedback, and beauty while keeping the industrial + vibrant cyan/purple/orange vibe. */
+/* SpaceFace — UI theme + layout. Existing tokens preserve runtime compatibility with older screens.
+   They are not an art-direction mandate. New UI must not automatically inherit the old cyan/purple,
+   glass, rounded-card, visor, or console vocabulary; choose a deliberate surface-specific direction. */
 :root {
   --bg: #05070d;
   --panel: #0b1220; --panel-2: #111d30; --panel-edge: #1d3350; --panel-edge-2: #2b4a72;
@@ -15,9 +16,8 @@
   --nebula-cyan: #0e4030;
   --glow-cyan: #7af7ff;
 
-  /* ===== Tactical Visor palette (HUD_REVAMP_DESIGN.md §2) =====
-     Diegetic helmet-projection HUD: crisp neon thin-lines + hard glow, no panels.
-     Legibility over the bright nebula comes from drop-shadow / text-shadow, not backgrounds. */
+  /* ===== Legacy visor palette, compatibility only =====
+     Do not extend these tokens or use them as a visual direction. */
   --visor-cyan: #00F0FF;
   --visor-cyan-dim: rgba(0, 240, 255, 0.4);
   --visor-amber: #FF9900;
@@ -120,7 +120,8 @@ button:disabled { opacity: .4; cursor: default; }
 /* --- Pause (flight): preserve + dim the live rendered frame ---
    Title/menu screens keep the cinematic #screens plate. Pause clears that opaque
    art and the full-opacity menu vignette so #gl-canvas stays visible under the
-   shared #modal-backdrop dim (no GPU blur filter — taste constitution).
+   shared #modal-backdrop dim. This is the current readable, low-cost implementation, not a
+   repository-wide ban on other treatments that pass accessibility and measured performance.
    Triggered by screenManager's .sf-screen--visible / --entering on data-screen=pause. */
 #screens:has(> .screen[data-screen="pause"].sf-screen--visible),
 #screens:has(> .screen[data-screen="pause"].sf-screen--entering) {
@@ -469,10 +470,9 @@ button:active { transform: translateY(1px); }
   clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
   padding: var(--sp-3) var(--sp-4);
 }
-/* Flight-HUD variant — MUST stay compositor-cheap: NO box-shadow / transition / backdrop-filter.
-   check-ui-frame-sleep forbids those on always-mounted elements next to the live canvas; a solid
-   border + semi-transparent fill does the framing work. This is why the strategy-console direction
-   is verification-friendly where the old visor-glow direction was not. */
+/* Flight-HUD variant — current low-cost baseline for an always-mounted surface. Any richer treatment
+   must prove idle frame-sleep and measured compositor performance; this selector is not a universal
+   opaque/no-blur art-direction rule for other screens. */
 .sf-console-panel--hud {
   background: var(--console-bg);
   border: 1px solid var(--console-edge);
@@ -718,9 +718,10 @@ button:active { transform: translateY(1px); }
 /* ==============================================================================================
    UI PRIMITIVE LAYER  ·  frontend-reboot reusable building blocks (design/revamp/FRONTEND_REBOOT_AUDIT.md)
    ----------------------------------------------------------------------------------------------
-   One additive, token-only vocabulary of "premium sci-fi" primitives, built from plain CSS/DOM/SVG
-   — NO new dependency, NO backdrop-filter, NO new hues (semantic palette tokens only). Matching DOM
-   factory helpers live in src/ui/uiPrimitives.js. Kept as ONE contiguous end-of-file section so
+   One additive compatibility vocabulary of reusable primitives. Matching DOM factory helpers live
+   in src/ui/uiPrimitives.js. New work may extend or replace the visual technique, including colors,
+   compositing, or dependencies, when accessibility, maintenance, and measured performance support
+   it. Kept as ONE contiguous end-of-file section so
    concurrent writers merge cleanly. It EXTENDS the existing .sf-console-* / .sf-card / .sf-badge /
    .sf-bar--segmented layers; it does not redefine or break them.
 
@@ -738,12 +739,10 @@ button:active { transform: translateY(1px); }
    └────────────────────┴──────────────────────────────────┴────────────┴─────────────────────────┘
    .sf-chip is the canonical status primitive going forward; .sf-badge is its legacy equivalent.
 
-   MOTION LAW (spec2/00 §3–4): nothing animates AT REST — motion means a state change. Every
-   transition/animation below fires ONLY on :hover, :focus, open/close, or a toggled state class;
-   runs 120–250ms on --ease; and is auto-neutralised by the global reduce-motion blanket in
-   styles/accessibility.css (@media prefers-reduced-motion + html.sf-reduce-motion *). No glow at
-   rest anywhere. Base primitives carry NO box-shadow/transition, so they are safe next to the live
-   canvas (the check-ui-frame-sleep contract); every "loud" affordance is an opt-in modifier.
+   MOTION CONTRACT: motion must communicate state, respect reduced-motion, and avoid idle work on
+   always-mounted flight surfaces. Durations and visual technique are chosen per interaction and
+   judged in the player route; the values below describe the current implementation, not a global
+   timing or glow ceiling. Base primitives currently sleep until an explicit interaction/state class.
 
    ── WHEN IS .sf-border-trace ALLOWED? ─────────────────────────────────────────────────────────
    ONLY as a one-shot acknowledgement of a discrete STATE CHANGE on a SCREEN / menu surface — e.g. a
@@ -756,16 +755,17 @@ button:active { transform: translateY(1px); }
    ONLY to raise a hover/focus target on a SCREEN / menu surface (list row, card, rail item). It is a
    STATIC radial wash revealed by an opacity transition on :hover / :focus-within — there is NO idle
    animation and NO cursor tracking (per-frame style writes are forbidden by the frame-sleep budget).
-   Alpha stays ≤ .08 so it never reads as "glow at rest." Do not apply it to always-mounted HUD chrome.
+   The current alpha is deliberately quiet. Re-evaluate it from screenshots and measured idle cost
+   before applying the effect to always-mounted HUD chrome.
    ============================================================================================== */
 
-/* Primitive-scoped tunables — all live in property-VALUE positions and reference nothing off-palette. */
+/* Primitive-scoped defaults for the current implementation; not a palette or quality ceiling. */
 :root {
-  --sf-trace-dur: 220ms;   /* one-shot edge sweep — inside the 250ms ceiling */
+  --sf-trace-dur: 220ms;   /* current one-shot edge sweep duration */
   --sf-cut: 10px;          /* command-console corner-cut depth */
 }
 
-/* 1 ─ sf-panel : opaque dark panel, 1px edge, no backdrop-filter, quiet by default ------------- */
+/* 1 ─ sf-panel : current quiet compatibility surface ------------------------------------------ */
 .sf-panel {
   background: var(--console-bg-solid);
   border: 1px solid var(--panel-edge);
@@ -862,8 +862,8 @@ button:active { transform: translateY(1px); }
    reflow-free (JS sets ONE custom property, never touches layout). Segmentation is a mask on the
    CONTAINER, so gaps reveal whatever truly sits behind the bar and can never distort the scaled fill.
    Base has NO transition (a heat bar updates every frame while firing and must stay quiet at rest);
-   --animate opts screens into a transform-ONLY ease — never `all`, because a threshold hue swap must
-   SNAP, never interpolate through an off-palette mid-tone (a per-frame constitution violation). */
+   --animate opts screens into a transform-only ease so rapidly changing threshold colors remain
+   legible and do not accidentally animate layout or unrelated properties. */
 .sf-data-bar {
   --sf-bar-v: 0; --sf-bar-color: var(--accent); --sf-bar-seg: 9px; --sf-bar-gap: 2px;
   position: relative; height: 6px; overflow: hidden; border-radius: 1px;

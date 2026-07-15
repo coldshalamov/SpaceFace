@@ -36,15 +36,18 @@ const TRANSITION_MS = 140;
 const CSS_ID = 'sf-fx-dock-css';
 const CSS = `
 .sf-fx-dock {
-  /* Room for MAX_SCALE + LIFT_PX above the berth baseline (keeps overflow-x scroll from clipping Y). */
+  /* Room for MAX_SCALE + LIFT_PX above the berth baseline (lift paints into this pad, not into a clip). */
   --sf-fx-dock-pad-top: 40px;
+  --sf-fx-dock-pad-x: 10px;
   position: relative;
   display: flex;
   gap: var(--sp-2, 8px);
   align-items: flex-end;
   justify-content: center;
-  /* Headroom lives INSIDE the scrollport so overflow-x cannot clip the upward scale/lift. */
-  padding: var(--sf-fx-dock-pad-top) 10px 6px;
+  /* Visible on both axes: hosts may stack the rail above siblings; never create a scrollport that
+     clips the hover scale (overflow-x:auto forces overflow-y to auto per CSS and chops the sides). */
+  overflow: visible;
+  padding: var(--sf-fx-dock-pad-top) var(--sf-fx-dock-pad-x) 6px;
   box-sizing: border-box;
 }
 .sf-fx-dock__item {

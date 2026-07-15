@@ -7,8 +7,9 @@
 // hears as a one-line news headline.
 //
 // CRITICAL DISCIPLINE (enforced structurally):
-//   • EVENT-SOURCED — never rolls its own losses. Subscribes ONLY to `automation:assetLost`
-//     { kind, id, value, sectorId } and `automation:outpostRaided` { outpostId, sectorId, lossVol }.
+//   • EVENT-SOURCED — never rolls its own losses. Subscribes to `automation:assetLost`
+//     { kind, id, value, sectorId }, `automation:outpostRaided` { outpostId, sectorId, lossVol },
+//     and canonical `entity:killed` events for live ship losses.
 //     If those events never fire (the 47-A golden slice), the ledger stays empty ⇒ no leak.
 //   • SEEDED lossId — `hash32(seed, sectorId, kind, simTime, assetId)`. The SAME loss ⇒ the SAME id
 //     on every load. The wreck-class assignment keys off (lossId, sectorId) so the ledger and the
@@ -18,12 +19,14 @@
 //     sets `data.provenance` + `data.wreckClass` + enriches `data.scanLabel` to the class label.
 //     NEVER overwrites a communicator's mission-bearing scanLabel (communicators carry wreckMissions;
 //     their label is the mission hook, not the class). Only enriches debris-class wrecks.
-//   • SINGLE-WRITER honored — emits intents (`lossLedger:recorded`) and a voice headline only.
+//   • SINGLE-WRITER honored — every entry emits `lossLedger:recorded`; automation losses alone may
+//     also emit a voice headline.
 //     NEVER writes credits, cargo, rep, or the entity store (entity:spawned is read-only; the wreck's
 //     `data` is enriched in place as additive metadata the producers already permit — they set
 //     `data.scanLabel` themselves, so this is a read-then-enrich on the same field, not a second writer).
-//   • ONE-VOICE — the loss headline goes through `ctx.helpers.voice.say({ channel:'news' })` exactly
-//     once per recorded loss, with a `toast` fallback if the arbiter declines.
+//   • ONE-VOICE — each automation-loss headline goes through
+//     `ctx.helpers.voice.say({ channel:'news' })` exactly once, with a `toast` fallback if declined.
+//     Live `entity:killed` history is ledger-only so combat churn cannot consume the news channel.
 //
 // noTouch honored: sectorSim.js / automation.js / salvage.js / marketNews.js / economy.js are NOT
 // edited. This system reads `state.world.sectors[id].owner` (factions owns it — read-only, §0.6) for
@@ -34,7 +37,7 @@
 // channel (via voiceArbiter — marketNews.js has no inbound custom-headline event; the 'news' voice
 // channel IS the station-news channel per voiceArbiter CHANNEL_PRIORITY).
 //
-// budget: spawn:none (salvage.js keeps its ≤2/zone cap) · voice:news channel (one line per loss)
+// budget: spawn:none (salvage.js keeps its ≤2/zone cap) · voice:news (one line per automation loss)
 //         · draw:none
 // rng: seeded — the ledger itself is event-sourced (no roll); lossId + wreckClass are hash32-derived.
 //
@@ -45,6 +48,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { SECTORS } from '../data/sectors.js';
+import { SHIPS } from '../data/ships.js';
 import { MISSION_TUNING } from '../data/missions.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
 import { pickWreckClass, wreckClassById } from '../data/wreckClasses.js';
@@ -55,13 +59,16 @@ const MAX_TOTAL = 64;               // global backstop across all sectors (rare;
 const GHOST_CONVOY_THRESHOLD = 3;
 const GHOST_CONVOY_DRIVER = 'reach_pressure';
 const GHOST_CONVOY_MISSION_ID = 'wm_reach_bounty';
+const AUTOMATION_LOSS_SOURCES = new Set(['automation:assetLost', 'automation:outpostRaided']);
 const STATION_BY_SECTOR = new Map();
 for (const sector of SECTORS) STATION_BY_SECTOR.set(sector.id, sector.stations || []);
+const SHIP_IDS = new Set(SHIPS.map((ship) => ship.id));
 const KIND_NORMALIZE = {
   trader: 'trader',
   drone: 'drone',
   fleet: 'fleet',
   outpost: 'outpost',               // from automation:outpostRaided (synthesized kind)
+  ship: 'ship',
 };
 // Cargo-hint lean per loss kind — flavor only, never the real pool (salvage.js owns the pool).
 const CARGO_HINT = {
@@ -69,7 +76,14 @@ const CARGO_HINT = {
   drone: 'ore buffer',
   fleet: 'fleet stores',
   outpost: 'outpost goods',
+  ship: 'ship stores',
 };
+
+function durableIdentityText(value) {
+  if (typeof value !== 'string') return null;
+  const clean = value.replace(/\s+/g, ' ').trim();
+  return clean ? clean.slice(0, 80) : null;
+}
 
 function dayOf(state) {
   // 1 in-game day = DAY_SECONDS sim seconds (matches coreSystem.js:8 / sectorSim cadence).
@@ -104,9 +118,9 @@ export function ensureState(state) {
 
 /** Public read: all recorded losses for a sector (newest first). Pure, deterministic. */
 export function lossesFor(state, sectorId) {
-  const L = ensureState(state);
+  const L = state && state.lossLedger;
   if (!L || !sectorId) return [];
-  const arr = L.bySector[sectorId];
+  const arr = L.bySector && L.bySector[sectorId];
   return arr ? arr.slice() : [];
 }
 
@@ -132,6 +146,7 @@ function lossLine(e, sName) {
   const noun = e.kind === 'outpost' ? 'outpost'
     : e.kind === 'fleet' ? 'fleet vessel'
     : e.kind === 'drone' ? 'mining drone'
+    : e.kind === 'ship' ? 'ship'
     : 'hauler';
   const verb = e.kind === 'outpost' ? 'was raided' : 'went dark';
   return `A ${factionWord} ${noun} ${verb} near ${sName}.`;
@@ -280,6 +295,9 @@ function record(state, bus, helpers, entry) {
   if (L.entries.length > MAX_TOTAL) L.entries.length = MAX_TOTAL;
   // Emit the sanctioned intent (consumers: GHOST_CONVOY_RUMOR threshold, CONVOY_LOSS_INVESTIGATION).
   if (bus && bus.emit) bus.emit('lossLedger:recorded', { ...entry });
+  // Live combat losses remain durable ledger history, but only automation losses become lane news
+  // or accumulate toward a ghost-convoy rumor/mission offer.
+  if (!AUTOMATION_LOSS_SOURCES.has(entry.source)) return entry;
   // One-voice news headline (marketNews.js has no inbound custom-headline event; the 'news' voice
   // channel IS the station-news channel per voiceArbiter CHANNEL_PRIORITY). Fire once per loss.
   const line = lossLine(entry, sectorName(state, entry.sectorId));
@@ -306,12 +324,14 @@ export const lossLedger = {
     this._onAssetLost = (p) => this._handleAssetLost(p);
     this._onOutpostRaided = (p) => this._handleOutpostRaided(p);
     this._onEntitySpawned = (p) => this._tagWreck(p);
+    this._onEntityKilled = (p) => this._handleEntityKilled(p);
     this._onNewGame = () => this._reset();
 
     if (this._bus && this._bus.on) {
       this._bus.on('automation:assetLost', this._onAssetLost);
       this._bus.on('automation:outpostRaided', this._onOutpostRaided);
       this._bus.on('entity:spawned', this._onEntitySpawned);
+      this._bus.on('entity:killed', this._onEntityKilled);
       this._bus.on('game:newGame', this._onNewGame);
     }
   },
@@ -340,6 +360,7 @@ export const lossLedger = {
       t: state.simTime || 0,
       cargoHint: CARGO_HINT[kind] || 'cargo',
       value: p.value || 0,
+      shipDefId: SHIP_IDS.has(p.shipDefId) ? p.shipDefId : null,
       source: 'automation:assetLost',
     };
     record(state, this._bus, this._helpers, entry);
@@ -363,6 +384,41 @@ export const lossLedger = {
       source: 'automation:outpostRaided',
     };
     record(state, this._bus, this._helpers, entry);
+  },
+
+  _handleEntityKilled(p) {
+    const state = this._state;
+    if (!state || !p || p.type !== 'ship' || p.id === state.playerId) return;
+    const entity = state.entities && state.entities.get ? state.entities.get(p.id) : null;
+    const marker = entity && entity.data && entity.data.factionPresence;
+    if (marker && marker.factionId === 'faction_understory') return;
+    const shipDefId = entity && entity.data && entity.data.defId;
+    if (!SHIP_IDS.has(shipDefId)) return;
+    const sectorId = entity && entity.data && entity.data.sectorId
+      || state.world && state.world.currentSectorId;
+    if (!sectorId) return;
+    const L = ensureState(state);
+    const kind = 'ship';
+    const data = entity && entity.data || {};
+    const victimName = durableIdentityText(data.name) || durableIdentityText(data.ai && data.ai.name);
+    const victimCallsign = durableIdentityText(data.callsign);
+    record(state, this._bus, this._helpers, {
+      lossId: makeLossId(L.seed, sectorId, kind, state.simTime || 0, p.id),
+      sectorId,
+      assetId: p.id,
+      factionId: p.factionId || entity.factionId || ownerOf(state, sectorId),
+      kind,
+      simDay: dayOf(state),
+      t: state.simTime || 0,
+      cargoHint: CARGO_HINT.ship,
+      value: Number(p.bountyCr) || 0,
+      shipDefId,
+      killerId: p.killerId == null ? null : p.killerId,
+      killedByPlayer: p.killerId === state.playerId,
+      victimName,
+      victimCallsign,
+      source: 'entity:killed',
+    });
   },
 
   // Additive wreck tagging — the seam that makes a wreck read its provenance. Reads entity:spawned
@@ -408,11 +464,13 @@ export const lossLedger = {
       if (this._onAssetLost) this._bus.off('automation:assetLost', this._onAssetLost);
       if (this._onOutpostRaided) this._bus.off('automation:outpostRaided', this._onOutpostRaided);
       if (this._onEntitySpawned) this._bus.off('entity:spawned', this._onEntitySpawned);
+      if (this._onEntityKilled) this._bus.off('entity:killed', this._onEntityKilled);
       if (this._onNewGame) this._bus.off('game:newGame', this._onNewGame);
     }
     this._onAssetLost = null;
     this._onOutpostRaided = null;
     this._onEntitySpawned = null;
+    this._onEntityKilled = null;
     this._onNewGame = null;
   },
 

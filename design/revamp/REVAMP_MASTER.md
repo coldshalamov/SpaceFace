@@ -346,7 +346,7 @@ BP-13 pirate ecology (T4, LAST) — every packet a spawnBudget client; depends o
 | Doc | Problem (verified) | Fix |
 |---|---|---|
 | `design/ARCHITECTURE.md` (3.5KB) | Name-collides with the authoritative 68KB root `ARCHITECTURE.md`; it's a stale agent self-report | Move → `design/_ARCHIVE/handoff_architecture.md` (or delete) |
-| `design/adr/0003-flight-physics-controller.md` | Says "custom controller, Rapier optional" — reality is rapier-dynamic + V3 mandatory (§9.3) | Add `Status: SUPERSEDED by V3 migration` header |
+| `design/_ARCHIVE/adr/0003-flight-physics-controller.md` | Historical custom-controller decision superseded by rapier-dynamic + V3 (§9.3) | Archived; never implementation authority |
 | `design/FLIGHT_PHYSICS_SPEC.md` | Same stale "not raw rigid-body" framing | Mark legacy; point to `design/spec3/SPEC3-F3-flight-physics-feel.md` |
 | `design/BUILD_PLAN_2_0.md §42` | Ownership line names `flight.js` + `flightDynamics.js` (pre-V3) | Revise → `flightV3.js` + `src/core/flight/*` |
 | `README.md §87` | Mentions only spec2; both spec2+spec3 live (AGENTS.md §4) | Add spec3 + point to `AGENTS.md` as front door |
@@ -360,8 +360,8 @@ BP-13 pirate ecology (T4, LAST) — every packet a spawnBudget client; depends o
 | Candidate | Verdict (verified) | Action |
 |---|---|---|
 | `flight.js`, `ai.js`, `flightDynamics.js` | **Load-bearing** — CI-live/runtime-fallback (§9.3); `flightDynamics.js` live in all paths | **KEEP.** Not deletion candidates. |
-| ~60 scratch scripts (`*-temp.mjs`, one-off `gen-*`/`purge-graphics-revamp-*`, `probe-dod-*`, `inspect-*`) | Tooling, not shipped; several may be re-run | **Verify-then-retire** each with lead sign-off; the 3 `-temp` files are the only clear deletes |
-| `design/specs/` legacy suite (12 files) | Correctly marked legacy reference (AGENTS.md §4) | **KEEP** (already correctly demoted) |
+| Scratch scripts (`*-temp.mjs`, one-off generators/purges/probes/inspectors) | Tooling, not shipped; some may be useful | Trace current callers and retained evidence, then archive or delete tools with no current purpose. No fixed filename quota or approval ritual proves safety. |
+| Legacy 1.x spec suite | Archived under `design/_ARCHIVE/specs-1.x/` | Historical only; route retained outcomes through the current program. |
 | Shipped systems | **Zero dead** — all 47 systems have importers; smallest (`actions.js`, 13 lines) is a real delegating system | None |
 
 ### 12.3 Asset manifest sync (T6 — coordinate with graphics lane)

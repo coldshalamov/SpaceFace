@@ -146,9 +146,10 @@ deterministic director that shapes encounters like a DM — this is SPEC2/04 Wor
 specified.
 
 ### 1. Why
-`CURRENT_BUILD_STATUS`: `src/systems/encounterDirector.js` is NOT BUILT — the biggest missing system
-in the repo. The FSM archetypes are solid but mute and context-blind. Fights spawn as stat lumps, not
-situations.
+`src/systems/encounterDirector.js` and `encounterScripts.js` now provide a deterministic campaign
+director foundation with pressure, phases, choices, receipts, and named captains. This spec remains
+useful as an expansion and quality brief: inspect the live implementation and close player-facing
+gaps rather than recreating the system from an old status claim.
 
 ### 2. The design
 - **Telegraph grammar (GDD §6.2 kept + locked):** 0.5 s engine-flare + sting before attack runs;
@@ -168,10 +169,10 @@ situations.
   PD screen, disruptor), never +HP%.
 
 ### 3. Architecture & wiring
-- New `src/systems/encounterDirector.js` (the missing SPEC2/04 system — this spec IS its build
-  order): consumes `dangerModel` noise, faction state, story flags; seeded from sector RNG stream;
-  emits `encounter:spawned {shape, seed}` / `encounter:resolved {shape, outcome}` for telemetry +
-  missions. Runs at 1 Hz in the fixed step.
+- Extend the live `src/systems/encounterDirector.js` through its existing pressure, phase, script,
+  telemetry, and mission seams. Preserve deterministic sector RNG, fixed-step cadence, and the
+  established encounter event contracts; add new shapes through the data/script architecture rather
+  than a parallel director.
 - Shapes as data: `src/data/encounters.js` (deck weights per sector class, spawn recipes referencing
   existing enemy defs, script = small FSM per shape).
 - Wire cruise snare (F3), disruptor (F4-20), formations (`check:sg06:formation` steering), comms
@@ -200,7 +201,7 @@ No new assets (shapes recombine existing enemies/VFX); no new deps.
 2. Telegraph pass on all archetypes (extend `check:ai:telegraphs`).
 3. Build-reading policies (derived-stat inputs) + hail/toll event cards.
 4. Remaining shapes (ambush, distress-bait, convoy, bounty-hunter, rescue).
-5. This closes SPEC2/04 — reconcile `CURRENT_BUILD_STATUS.md` when green.
+5. Reconcile the detailed ledger and `design/program/` status surfaces when the activated slice is green.
 
 ### 8. Anti-patterns
 Random spawn timers (pressure budget or nothing); stat-inflation difficulty; two shapes running at

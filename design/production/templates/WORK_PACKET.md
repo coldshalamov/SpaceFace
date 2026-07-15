@@ -1,5 +1,8 @@
 # WORK PACKET `<ID>` — `<PLAYER OUTCOME>`
 
+> **Activated-campaign template only.** This becomes operative only after a user/lead activates a
+> named packet. Unfilled templates and discovered copies are not repository policy.
+
 > This template must be compiled. Dispatch fails if any `<PLACEHOLDER>` remains.
 
 ## Coverage

@@ -1,7 +1,6 @@
-# DETAIL DOCTRINE — the anti-flatness constitution
+# Detail Doctrine — anti-flatness reference
 
-> **THE ONE FILTER (print this at the top of every detail brief):**
-> ## *A detail earns its place only if the player can **see** it, **predict** it, or **change** it. If none of the three, it's not detail — it's cost.*
+> **Useful review question:** can the player see, predict, change, feel, or remember this detail?
 >
 > This single sentence turns the 500-item quarry (`DETAIL_BRAINSTORM_R2.md`) into the ~150 that actually kill
 > the flat, empty, cheap feeling — and it's what keeps Wave 3+ from becoming the same flat game with more nouns.
@@ -14,18 +13,18 @@ that already exists*, not building a new one.
 
 ---
 
-## 1. Load-bearing rules (GATE-BLOCKING — a packet that violates one is rejected at review)
+## 1. High-value principles
 
 | Rule | How it's enforced in this codebase |
 |---|---|
 | **No random spawn without provenance** | `encounterDirector` plans deterministically; wreck fields seed from `sectorSim` offscreen losses — "who died here?" must be answerable. |
 | **No enemy without readable intent** | An **intent banner** over the SG-06 state the ship is already in (Intercepting / Fleeing / Scanning / Tethering / Overheating / Calling-Reinforcements). |
 | **No economy change without cause** | A **"why prices changed" tooltip → cause ledger**, sourced from the `dangerModel`/`sectorSim` driver; `marketNews` already surfaces the headline. |
-| **No UI without decision** | Every glyph / marker / panel maps to a player action. If it informs nothing actionable, cut it. |
+| **Give every UI element a purpose** | An element may support action, orientation, explanation, atmosphere, world identity, accessibility, or emotional pacing. Remove it only when it adds clutter without helping the experience. |
 | **Delete old path when new path ships** | The one-`galaxyMap` cutover; every future replacement removes its predecessor (no "two-and-a-half maps"). |
 | **One source of truth for tuning** | Constants live in `src/data/*`, never duplicated across systems. |
-| **Budgets are hard caps** | comms/min (**`voiceArbiter` already enforces**), map-glyph, ship/station-silhouette, VFX-per-significance, entity-per-role. |
-| **Gold-packet format is mandatory** | No packet enters a wave without the full §4 schema. |
+| **Budgets are diagnostic alarms** | Measure comms density, map clutter, VFX load, entities, and performance in representative play. Tune or optimize the actual bottleneck without treating a starting number as a quality ceiling. |
+| **Use the brief format when it helps** | The §4 schema is a planning aid for complex work, not a prerequisite for an ordinary coherent implementation. |
 
 ## 2. Corollary rules (hygiene — one line each, not gate-blocking but expected)
 
@@ -33,7 +32,7 @@ No faction without behavior · no station without purpose · no POI without payo
 · no lore without embodiment · no feature without counterplay · no procedural generator without validation · no
 heroic object as primitive geometry in release.
 
-## 3. The pillar filter (every packet names the pillar it serves — a packet serving none is CUT)
+## 3. Product pillars
 
 1. **Momentum is the toy** — express it through physics (mass, tether, slingshot, impulse), not a menu.
 2. **Read the battlefield at a glance** — silhouette, colour, motion, glyph all carry meaning.
@@ -47,9 +46,10 @@ system) × (visibility in first-15 / 47-A).** A packet that *transforms a shippe
 
 ---
 
-## 4. The gold-packet schema (the mandatory deliverable format)
+## 4. Optional detailed-brief schema
 
-Every curated detail is authored as a **gold packet** with these fields — no exceptions:
+For complex or risky details, this compact brief can expose intent, integration seams, evidence, and
+tradeoffs. Omit fields that add no value and expand the brief when the work crosses more systems:
 
 ```
 - name:            <short, verb-forward>
@@ -58,21 +58,21 @@ Every curated detail is authored as a **gold packet** with these fields — no e
 - wave/BP:         <e.g. W3 / BP-11>
 - reuses:          [<named existing systems/files this SURFACES — not reinvents>]
 - newFiles:        [<new files only; obey the merge protocol>]
-- noTouch:         [<hot files a lane must NOT edit; orchestrator integrates>]
-- budget:          spawn:<n via spawnBudget|none>  voice:<channel|none>  draw:<+n|none>
+- coordination:    [<currently active overlapping work, if any>]
+- measurements:    <relevant spawn/voice/draw/runtime evidence, if any>
 - rng:             <seeded domain, or "none / pure UI">
 - acceptance:      <the check / observable proof it works>
 - failureModes:    <how it could read flat, break determinism, or blow a budget>
 - size:            <S | M | L>
 ```
 
-## 5. The four-way triage (how all 500 map to work — every item goes to exactly one)
+## 5. A useful triage
 
 | Bucket | Meaning | Destination |
 |---|---|---|
 | **(a) Surface** | An already-shipped system the player can't *see* yet | Detail pass on the owning lane; often trivial (a glyph, a tooltip, a bark). |
-| **(b) Enrich** | A detail-pass on an already-planned BP | **Addendum doc `BP-0X.1_*`**, applied *after* the owning wave (hard-freeze rule §7). |
-| **(c) New packet** | Genuinely new machinery | **BP-11 / BP-12 / BP-13** (capped at three — see `DETAIL_PACKETS.md`). |
+| **(b) Enrich** | A detail-pass on an already-planned BP | Update the active plan or implementation so the integration remains coherent. |
+| **(c) New work** | Genuinely new machinery | Add it to the current program only when its player value and integration cost justify it. |
 | **(d) Cut / Defer** | See §8 | Cut (violates a decision) or deferred to backlog (gold-plating). |
 
 **Convergent validation (NOT new work).** The brainstorm independently re-derived shipped systems:

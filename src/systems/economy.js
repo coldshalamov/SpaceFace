@@ -25,10 +25,10 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
-import { addCargo, removeCargo } from './cargo.js';
+import { addCargo, isUnsellableCargo, removeCargo } from './cargo.js';
 import {
   getCycle as getCycleCore, cycleFactorAt, maybeAdvanceRegime, createCycle,
-  serializeCycles, deserializeCycles,
+  serializeCycles, deserializeCycles, applyCycleToMid,
 } from './economyCycles.js';
 import {
   hiddenHoldCapacity,
@@ -63,6 +63,7 @@ const SCAN_LO = 0.02, SCAN_HI = 0.95;
 const FINE_MULT = { legal: 0, restricted: 0.8, illegal: 1.2, contraband: 1.5 };
 const REP_HIT_LO = 2, REP_HIT_HI = 25;
 const BRIBE_FRAC = 0.30;
+export const TRADE_LEDGER_MAX = 10;
 const REGIONAL_PRESSURE_RECIPES = Object.freeze(
   Object.values(allRegionalPressureRecipes()).flat(),
 );
@@ -197,14 +198,19 @@ export function economySpotPriceForRole(def, role, side = 'mid', opts = {}) {
   return mid;
 }
 
-/** Effective stock drift target = equilibrium (role*size*BASE_EQ) * event eq mods * cycle factor. */
+/** Effective stock drift target = equilibrium * event mods * mild cycle pull.
+ *  Cycle motion is applied directly to mid in recomputePrices (charts need it);
+ *  stock only soft-tracks so produce/consume roles stay authoritative. */
 function effectiveEq(entry, state, stationId, cmdtyId) {
   const m = clamp(eventModMult(entry, 'equilibrium'), EQ_MULT_CLAMP[0], EQ_MULT_CLAMP[1]);
   const cycle = state && state.economy && state.economy.cycles
     ? getCycleCore(state, stationId, cmdtyId, cycleRngFor(state, stationId, cmdtyId), state.simTime || 0)
     : null;
   const cf = cycle ? cycleFactorAt(cycle, state.simTime || 0) : 1;
-  return entry.equilibrium * m * cf;
+  // Soft structural pull: 70% role equilibrium + 30% cycle-scaled, so hauling still matters
+  // but formula waves do not empty/flood stock on their own.
+  const soft = 0.70 + 0.30 * cf;
+  return entry.equilibrium * m * soft;
 }
 
 function cycleRngFor(state, stationId, cmdtyId) {
@@ -234,6 +240,20 @@ function ensurePlayerTradeState(player) {
   if (!Array.isArray(player.tradeLedger)) player.tradeLedger = [];
   if (!player.tradeLots || typeof player.tradeLots !== 'object' || Array.isArray(player.tradeLots)) player.tradeLots = {};
   return { ledger: player.tradeLedger, lots: player.tradeLots };
+}
+
+function nextTradeSequence(player, ledger) {
+  const persisted = Number.isSafeInteger(player.tradeReceiptSeq) && player.tradeReceiptSeq > 0
+    ? player.tradeReceiptSeq
+    : 0;
+  let retained = 0;
+  for (const entry of ledger) {
+    const sequence = Number(entry && entry.tradeSequence);
+    if (Number.isSafeInteger(sequence) && sequence > retained) retained = sequence;
+  }
+  const sequence = Math.max(persisted, retained) + 1;
+  player.tradeReceiptSeq = sequence;
+  return sequence;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -358,17 +378,18 @@ export const economy = {
         const entry = market[cid];
         const def = commodityDef(state, cid);
         if (!def) continue;
-        // advance hidden regional cycle regime (may re-roll amplitude/bias/frequency)
+        // advance hidden formula regime (rare re-roll of equation family + coeffs)
         const cycle = getCycleCore(state, sid, cid, () => this._rng(), state.simTime);
         const nextCycle = maybeAdvanceRegime(cycle, () => this._rng(), state.simTime);
         if (nextCycle !== cycle) {
           state.economy.cycles[sid][cid] = nextCycle;
         }
+        const liveCycle = state.economy.cycles[sid][cid] || nextCycle || cycle;
         const eff = effectiveEq(entry, state, sid, cid);
         const driftMod = eventModMult(entry, 'drift'); // BLOCKADE freezes drift (mult 0.1)
         // stock' = clamp(stock + DRIFT_RATE*driftMod*(eff - stock)*dt, 0, cap)
         entry.stock = Math.max(0, entry.stock + DRIFT_RATE * driftMod * (eff - entry.stock) * tickDt);
-        this.recomputePrices(entry, def, frontier);
+        this.recomputePrices(entry, def, frontier, liveCycle, state.simTime);
       }
     }
 
@@ -392,14 +413,40 @@ export const economy = {
     }
   },
 
-  /** Cache lastMid/lastBuy/lastSell on an entry from its current stock. */
-  recomputePrices(entry, def, frontierPenalty) {
-    const mid = economyMidPrice(def, entry.stock, entry.baseEq);
+  /**
+   * Cache lastMid/lastBuy/lastSell from stock mid × cycle formula.
+   * cycle/simTime optional — without them mid is pure stock (init before cycles exist).
+   * Final mid is always a positive integer credit value.
+   */
+  recomputePrices(entry, def, frontierPenalty, cycle = null, simTime = 0) {
+    const stockMid = economyMidPrice(def, entry.stock, entry.baseEq);
+    const midRaw = cycle
+      ? applyCycleToMid(def.basePrice, stockMid, cycle, simTime)
+      : stockMid;
+    const mid = Math.max(1, round(midRaw));
     const spread = spreadOf(entry, frontierPenalty);
     entry.lastMid = mid;
-    entry.lastBuy = round(mid * (1 + spread / 2));
-    entry.lastSell = round(mid * (1 - spread / 2));
+    entry.lastBuy = Math.max(1, round(mid * (1 + spread / 2)));
+    // Sell floor 1; keep buy > sell when mid is tiny.
+    entry.lastSell = Math.max(1, Math.min(entry.lastBuy - 1, round(mid * (1 - spread / 2))));
+    if (entry.lastSell < 1) entry.lastSell = 1;
+    if (entry.lastBuy <= entry.lastSell) entry.lastBuy = entry.lastSell + 1;
     return entry;
+  },
+
+  /** Resolve the live cycle (if any) and recompute mid/buy/sell for a station listing. */
+  recomputeLivePrices(entry, def, stationId, commodityId) {
+    const state = this.state;
+    const frontier = this.frontierPenaltyFor(state, stationId);
+    if (!state || !state.economy) return this.recomputePrices(entry, def, frontier);
+    const cycle = getCycleCore(
+      state,
+      stationId,
+      commodityId,
+      () => (typeof this._rng === 'function' ? this._rng() : 0.5),
+      state.simTime || 0,
+    );
+    return this.recomputePrices(entry, def, frontier, cycle, state.simTime || 0);
   },
 
   /** Frontier (low-wealth) stations widen the spread. Derived from sector security. */
@@ -444,14 +491,14 @@ export const economy = {
         lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: [],
       };
       const frontier = info ? this.frontierPenalty(info) : 0;
-      this.recomputePrices(entry, def, frontier);
-      market[def.id] = entry;
-      // seed the hidden regional price cycle for this commodity
+      // seed the hidden formula cycle first so the opening mid includes the wave
       if (!state.economy.cycles) state.economy.cycles = {};
       if (!state.economy.cycles[stationId]) state.economy.cycles[stationId] = {};
       const cycle = createCycle(() => this._rng(), def, state.simTime || 0);
       cycle.cmdtyId = def.id;
       state.economy.cycles[stationId][def.id] = cycle;
+      this.recomputePrices(entry, def, frontier, cycle, state.simTime || 0);
+      market[def.id] = entry;
     }
     markets[stationId] = market;
     return market;
@@ -525,6 +572,12 @@ export const economy = {
     const entry = market && market[commodityId];
     const def = commodityDef(state, commodityId);
     if (!entry || !def) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: entry ? entry.stock : 0 };
+    if (side === 'sell' && isUnsellableCargo(state, commodityId)) {
+      return {
+        ok: false, reason: 'mission_cargo_locked', unitAvg: entry.lastSell || 0, total: 0,
+        priceImpactPct: 0, stockAfter: entry.stock,
+      };
+    }
     const info = stationInfo(state, stationId);
     const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
     const marketTier = Math.max(0, Number(def.marketTier) || 0);
@@ -545,6 +598,14 @@ export const economy = {
     const frontier = info ? this.frontierPenalty(info) : 0;
     const spread = spreadOf(entry, frontier);
     const el = def.elasticity;
+    const cycle = getCycleCore(
+      state,
+      stationId,
+      commodityId,
+      () => (typeof this._rng === 'function' ? this._rng() : 0.5),
+      state.simTime || 0,
+    );
+    const tNow = state.simTime || 0;
     let avgMidPrice, stockAfter;
     if (side === 'buy') {
       const sHi = entry.stock, sLo = Math.max(1, entry.stock - qty);
@@ -555,10 +616,12 @@ export const economy = {
       avgMidPrice = avgMid(def.basePrice, entry.baseEq, el, sLo, sHi);
       stockAfter = sHi;
     }
+    // Same formula layer as charts / lastMid so quote matches what the board shows.
+    avgMidPrice = applyCycleToMid(def.basePrice, avgMidPrice, cycle, tNow);
     const unitAvg = side === 'buy' ? avgMidPrice * (1 + spread / 2) : avgMidPrice * (1 - spread / 2);
     const total = round(unitAvg * qty);
-    const beforeMid = economyMidPrice(def, entry.stock, entry.baseEq);
-    const afterMid = economyMidPrice(def, stockAfter, entry.baseEq);
+    const beforeMid = applyCycleToMid(def.basePrice, economyMidPrice(def, entry.stock, entry.baseEq), cycle, tNow);
+    const afterMid = applyCycleToMid(def.basePrice, economyMidPrice(def, stockAfter, entry.baseEq), cycle, tNow);
     const priceImpactPct = beforeMid > 0 ? ((afterMid - beforeMid) / beforeMid) * 100 : 0;
     return {
       ok: true, stationId, commodityId, side, qty,
@@ -573,6 +636,12 @@ export const economy = {
   execute(stationId, commodityId, side, qty) {
     const state = this.state;
     qty = Math.max(0, Math.floor(qty || 0));
+    // Enforce sealed-freight authority at execution as well as quote. This is the final shared
+    // boundary for every station UI (legacy and Orbital Command) and keeps a stale or custom quote
+    // adapter from turning mission cargo into credits.
+    if (side === 'sell' && isUnsellableCargo(state, commodityId)) {
+      return { ok: false, reason: 'mission_cargo_locked' };
+    }
     const q = this.quote(stationId, commodityId, side, qty);
     if (!q.ok) return { ok: false, reason: q.reason || 'invalid' };
     const market = state.economy.markets[stationId];
@@ -605,7 +674,7 @@ export const economy = {
       const realCost = realQty === qty ? cost : round(this.quote(stationId, commodityId, 'buy', realQty).total);
       entry.stock = Math.max(1, entry.stock - realQty);
       this.chargeCredits(realCost, 'trade:buy:' + commodityId);
-      this.recomputePrices(entry, def, this.frontierPenaltyFor(state, stationId));
+      this.recomputeLivePrices(entry, def, stationId, commodityId);
       const unitAvg = realCost / realQty;
       this.afterTrade(state, stationId, commodityId, 'buy', realQty, unitAvg, realCost, fq.priceImpactPct, def, null);
       return { ok: true, qty: realQty, unitAvg, total: realCost, priceImpactPct: fq.priceImpactPct };
@@ -623,7 +692,7 @@ export const economy = {
       const realGross = realQty === qty ? gross : round(this.quote(stationId, commodityId, 'sell', realQty).total);
       entry.stock = entry.stock + realQty;
       this.grantCredits(realGross, 'trade:sell:' + commodityId);
-      this.recomputePrices(entry, def, this.frontierPenaltyFor(state, stationId));
+      this.recomputeLivePrices(entry, def, stationId, commodityId);
       const unitAvg = realGross / realQty;
       // profit estimate: sale proceeds minus the goods' base value (for stats/ledger)
       const profit = round(realGross - def.basePrice * realQty);
@@ -659,12 +728,15 @@ export const economy = {
       }
       if (def && def.legality !== 'legal') stats.smuggledValue = (stats.smuggledValue || 0) + Math.abs(total);
     }
-    this.recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def);
+    const receipt = this.recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def);
     this.snapshotIntel(stationId);
     this.bus.emit('economy:tradeCompleted', {
       stationId, commodityId, side, qty, unitAvg, total,
       priceImpactPct, profit: profit != null ? profit : undefined,
       factionId: info ? info.factionId : null,
+      receiptId: receipt && receipt.receiptId,
+      tradeSequence: receipt && receipt.tradeSequence,
+      seenAt: receipt && receipt.seenAt,
     });
   },
 
@@ -685,7 +757,11 @@ export const economy = {
       marginPerUnit = cleanUnit - basisUnit;
       profitCr = Math.round(marginPerUnit * cleanQty);
     }
+    const tradeSequence = nextTradeSequence(player, ledger);
+    const seed = (Number(state && state.meta && state.meta.seed) >>> 0) || 1;
     const entry = {
+      receiptId: `trade:${seed.toString(36)}:${tradeSequence.toString(36)}`,
+      tradeSequence,
       stationId,
       commodityId,
       side,
@@ -698,7 +774,7 @@ export const economy = {
       total: Math.round(Number(total) || 0),
     };
     ledger.unshift(entry);
-    if (ledger.length > 10) ledger.length = 10;
+    if (ledger.length > TRADE_LEDGER_MAX) ledger.length = TRADE_LEDGER_MAX;
     return entry;
   },
 
@@ -745,6 +821,7 @@ export const economy = {
       const msg = res.reason === 'credits' ? 'Insufficient credits'
         : res.reason === 'cargo_full' ? 'Cargo hold full'
         : res.reason === 'no_cargo' ? 'Nothing to sell'
+        : res.reason === 'mission_cargo_locked' ? 'Sealed contract cargo cannot be sold'
         : res.reason === 'no_stock' ? 'Station out of stock'
         : 'Trade failed';
       this.bus.emit('toast', { text: msg, kind: 'error', ttl: 2 });
@@ -769,7 +846,7 @@ export const economy = {
     if (!entry || !def || !(qty > 0)) return;
     if (side === 'buy') entry.stock = Math.max(1, entry.stock - qty);
     else entry.stock = entry.stock + qty;
-    this.recomputePrices(entry, def, this.frontierPenaltyFor(state, stationId));
+    this.recomputeLivePrices(entry, def, stationId, commodityId);
   },
 
   // -------------------------------------------------------------------------------------------
@@ -1185,6 +1262,7 @@ export const economy = {
     state.player.marketMemory = {};
     state.player.tradeLedger = [];
     state.player.tradeLots = {};
+    state.player.tradeReceiptSeq = 0;
     this.resetRng();
     this._nextEventId = 1;
     this._eventAccumulator = 0;
@@ -1221,6 +1299,8 @@ export const economy = {
   deserialize(data) {
     if (!data) return;
     const econ = this.state.economy;
+    // Restore formula state before pricing so mid includes the saved wave, not a fresh invent.
+    deserializeCycles(this.state, data.cycles);
     econ.markets = {};
     for (const sid in (data.markets || {})) {
       const m = data.markets[sid]; const out = {};
@@ -1231,7 +1311,7 @@ export const economy = {
           stock: e.stock, equilibrium: e.equilibrium, baseEq: e.baseEq, role: e.role,
           lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: (e.eventMods || []).slice(),
         };
-        if (def) this.recomputePrices(entry, def, this.frontierPenaltyFor(this.state, sid));
+        if (def) this.recomputeLivePrices(entry, def, sid, cid);
         out[cid] = entry;
       }
       econ.markets[sid] = out;
@@ -1239,7 +1319,6 @@ export const economy = {
     econ.econEvents = (data.econEvents || []).map((e) => ({ ...e }));
     econ.econClock = data.econClock || { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     econ.marketIntel = data.marketIntel || {};
-    deserializeCycles(this.state, data.cycles);
     econ.rngSeed = (Number.isFinite(data.rngSeed) && (data.rngSeed >>> 0) !== 0)
       ? data.rngSeed >>> 0
       : hash32(this.state.meta && this.state.meta.seed, 'economy');

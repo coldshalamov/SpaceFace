@@ -1,14 +1,15 @@
 # SPEC3-F10 — UX, Meta & the Taste-Master Capstone (specs 40–42)
 **Thread:** F10 · **Reads:** GDD §8/§13, constitution, all thread files · **Status:** PLAN
-**Thread pitch:** the connective tissue — one attention system that keeps 33 specs from shouting
-over each other, a meta layer that proves the game respects your time, and the capstone doc that
+**Thread pitch:** the connective tissue — one attention policy that keeps the game's systems from
+competing incoherently, a meta layer that proves the game respects your time, and the capstone doc that
 holds the whole plan to one standard of taste.
 
 ---
 
 ## SPEC3-40 — UX & onboarding: the attention arbiter, industrialized
-**One-line pitch:** build the single attention arbiter GDD §8.1 specified, extend the first-15
-pacing to every SPEC3 system, and make "one voice at a time" a mechanical guarantee.
+**One-line pitch:** build the attention arbiter GDD §8.1 specified, extend the first-15 pacing to
+every SPEC3 system, and make primary-message priority a mechanical guarantee without suppressing
+useful persistent, contextual, or accessible redundancy.
 
 ### 1. Why / what's holding us back
 GDD's measured finding: 5 simultaneous text sources in the first second of play. SPEC3 multiplies
@@ -17,18 +18,21 @@ convention — the plan re-creates the wall it was written to demolish. `check:f
 currently times out; onboarding truth is static-only.
 
 ### 2. The design
-- **The arbiter (one queue, five tiers):** `danger > tutorial > objective > comms/story > chatter`.
-  One surface (top-center line + optional card). Rules: higher tier preempts (lower re-queues);
-  same tier FIFO; chatter drops if stale (>8 s) or if anything above it spoke in the last 4 s;
-  danger is the only tier allowed audio+visual simultaneously. EVERY text-speaking system registers
-  a tier at init — emitting outside the arbiter becomes a lint failure.
+- **The primary transient arbiter:** begin with semantic priority classes such as danger, tutorial,
+  objective, comms/story, and chatter, then tune preemption, queuing, staleness, and pacing from
+  scripted stress runs and playtests. The arbiter owns competing transient announcements, not every
+  word on screen. Persistent status/objectives, spatial labels, target/context panels, player-opened
+  screens, captions, and accessibility or multimodal equivalents may coexist when hierarchy and
+  layout keep them intelligible. Systems that emit transient announcements register their class and
+  dedupe key; bypassing that path is a lint failure.
 - **Teach-once ledger:** every verb (tether, vent stance, autopursuit, claim, siege repair…) has
   one contextual hint, shown at first *opportunity*, never again after first *use*
   (`state.player.taught[verbId]`). No permanent tutorial furniture (constitution taste rule).
 - **First-15 extended, not rewritten:** the 6-beat opening (GDD §8.2) stays canonical. SPEC3 verbs
   enter at their natural systems: first fracture-chunk >20 u triggers the tether hint (mining
-  teaches the tether — the designed loop-lock); first amber heat teaches vent; first claim beacon
-  teaches claims. The tutorial is the world noticing you, one line at a time.
+  teaches the tether — the designed loop-lock); first relevant heat state teaches vent; first claim
+  beacon teaches claims. The tutorial is the world responding at a pace that preserves control and
+  situational awareness.
 - **The choice beat hardened:** minute-12's three jobs (haul/bounty/survey) each carry a
   playstyle tag that seeds early OFFER_MIX weighting (+15% their lane for 2 hours) — the game
   leans toward what you picked without locking anything.
@@ -37,16 +41,19 @@ currently times out; onboarding truth is static-only.
   minute one (all specified across GDD/SPEC3 — this spec owns their *existence check*).
 
 ### 3. Architecture & wiring
-New `src/ui/attentionArbiter.js` (owns the queue + the top-center DOM node; consumed by hud.js).
-API: `arbiter.say(tier, line, {card?, ttl?})`. All SPEC3 systems route through it (F1 ticker
-registers as `chatter`; F4 barks as `comms`; siege warnings as `danger`). Teach ledger in save.
-Lint: `scripts/check-one-voice.mjs` — scripted 10-min run asserts zero overlapping text events and
-zero direct DOM text writes outside arbiter/screens (the GDD §13 audit, automated). Repair
+New `src/ui/attentionArbiter.js` owns the primary transient queue and its presentation slot; persistent
+and contextual surfaces register their region, salience, and collision behavior with the HUD layout.
+API: `arbiter.say(tier, line, {card?, ttl?, dedupeKey?, modality?})`. SPEC3 transient speakers route
+through it (F1 ticker as `chatter`; F4 barks as `comms`; siege warnings as `danger`). Teach ledger in
+save. Evolve `scripts/check-one-voice.mjs` into an attention-policy check: scripted stress runs assert
+priority/preemption, dedupe, stale-message cleanup, readable region occupancy, reduced-motion behavior,
+and preservation of captions/accessibility equivalents. It rejects competing urgent transients and
+unsanctioned transient DOM writes, not all simultaneous text. Repair
 `check:first-15-runtime` (probe or boot-path fix) as this spec's gate 0.
 
 ### 4. Key code
 ```js
-// The arbiter's entire policy — small enough to be law, strict enough to matter.
+// The primary transient policy is centralized; contextual and accessibility surfaces remain available.
 say(tier, line, opts = {}) {
   const t = TIERS[tier];
   if (this.current && TIERS[this.current.tier] < t) this.requeue(this.current);
@@ -62,16 +69,18 @@ say(tier, line, opts = {}) {
 None / none.
 
 ### 7. Build plan
-1. Arbiter + hud node + tier registration for ALL existing speakers; `check-one-voice.mjs` green.
+1. Arbiter + HUD slot + registration for existing transient speakers; evolve and pass the
+   attention-policy assertions in `check-one-voice.mjs`.
 2. Repair first-15 runtime probe; extend with SPEC3 verb hints (teach-once ledger).
 3. Choice-beat OFFER_MIX lean.
 4. Settings existence check + F1 sheet surfacing.
 5. Floor: `check:onboarding`, `check-first-hour.mjs`, `check:ui-identity`.
 
 ### 8. Anti-patterns
-Convention-based discipline (the arbiter is code or it is nothing); tutorial gates that block
-verbs (hints ride opportunities, never lock them); teaching in menus what happens in space;
-re-showing taught hints "just in case"; two cards at once, ever.
+Convention-based transient priority (the arbiter is code or it is nothing); tutorial gates that
+block verbs (hints ride opportunities, never lock them); teaching in menus what happens in space;
+re-showing taught hints without a contextual or accessibility reason; simultaneous urgent cards that
+obscure each other or player control.
 
 ### 9. Ambition ceiling
 Stall detection: telemetry notices a player 10+ min without credits/progress delta and has the
@@ -84,10 +93,9 @@ Stall detection: telemetry notices a player 10+ min without credits/progress del
 design questions, and a release cadence with proof gates.
 
 ### 1. Why
-Versioned saves + migrations exist and work; telemetry (`createTelemetry`) is wired-but-dormant;
-`CURRENT_BUILD_STATUS` holds a red cluster of runtime probes (flight:clean, first-15, market-first-
-loop, claim-base, ui-screen-imports, 47a compare) that gates any honest release claim. SPEC3 adds
-~20 systems and ~15 new state fields — without this spec, save integrity and truth-gates rot first.
+Versioned saves + migrations exist and work; telemetry (`createTelemetry`) is wired-but-dormant.
+The current program acceptance matrix owns release-gate status. SPEC3 adds substantial system and
+state surface area, so save integrity and evidence quality must evolve with it.
 
 ### 2. The design
 - **Save schema discipline for SPEC3:** every new field ships with (a) a migration from the prior
@@ -101,9 +109,9 @@ loop, claim-base, ui-screen-imports, 47a compare) that gates any honest release 
   tether adoption % by hour-2, autopursuit usage, siege win rate by claim value, market-chart open
   rate, spec-verb reach (did anyone find vein events?). Local-first: JSON ring in localStorage +
   export button — no network, no consent problem, but the data exists when a playtest happens.
-- **The truth-gate ritual:** `check:ci` becomes the release word: the red cluster above must be
-  green or *deliberately rebaselined with a dated note* in CURRENT_BUILD_STATUS. SPEC3 threads
-  never merge on transcripts — checks only (constitution law, restated as the release bar).
+- **The truth-gate ritual:** the current acceptance matrix defines the checks and player routes for
+  a release claim. Rebaselines require an explicit reason and matching program update. Transcripts
+  are context, not acceptance evidence.
 - **Golden-tape governance:** one named batch per sim-shape change (projectile momentum, tether,
   mining signatures), each re-recording 47a + new scenario tapes with a CHANGES.md entry. Never
   incremental drift.
@@ -177,39 +185,38 @@ you frontier-ward (exploration) → the frontier holds the story's answer (Vale)
 *visible* (F8), *audible* (F9), *legible* (F10), and *provable* (checks). Cut any spec and note
 which arrows break; that's the review question for all future scope decisions.
 
-### 3. The attention-to-detail bible (the standing orders)
-- **The five-second test** is the master metric: pause anywhere; a stranger names every entity.
-  Every visual/UI change re-takes the test.
-- **Numbers are for crime and fitting.** Scan-risk cards and the outfitting screen show numbers;
-  the flight HUD shows states (arcs, colors, motion). If a feature "needs" HUD numbers, its
-  feedback design is unfinished.
-- **Quiet is the default; loud is information.** Rest = still. Every glow, pulse, shake, and sting
-  maps to a state change a player can act on. (The audit exists: one-voice check + rest-state lint.)
-- **Feel targets are contracts.** Cursor <50 ms, scout 90° <0.45 s, brake <2.5 s, vent chime at
-  70–95, siege telegraph 10 s, hunter entrance 10 s. Deviating means editing the spec in the same
-  change with one line of why (constitution law — repeated because it's the one that erodes).
+### 3. Attention-to-detail review heuristics
+- A paused representative frame should communicate identity, threat, objective, and interaction
+  affordances quickly. Evaluate this with players and current screenshots rather than a universal
+  time threshold.
+- Use numbers, bars, motion, sound, spatial cues, or combinations according to the decision. The
+  flight HUD may show precise values when precision improves play.
+- Ambient presentation may create life and atmosphere. Actionable changes must remain more salient,
+  and reduced-motion/flash settings must preserve meaning.
+- Treat response, handling, telegraph, and cue timings as tunable targets. Record current measured
+  values in checks/telemetry, not as permanent design law in this capstone.
 - **Physics comedy is content; physics *betrayal* is not.** Emergent chaos from real rules =
   delight (slung rocks, chain-yanks). Fake forces the player can't model = betrayal (rubber-band
   joints, magic brakes on NPCs, G-caps). When in doubt, let the sim be true and make the *feedback*
   louder.
-- **Every system speaks once, through its surface:** ticker (world), arbiter line (you),
-  target panel (them), map overlays (strategy). A fact appearing in two surfaces at once is a bug.
-- **Content earns its place by interacting.** The sector-content lint (`interacts:` field) is the
-  taste rule mechanized: no POI, hazard, module, or event that touches zero player verbs.
+- Give each message a clear primary surface. Redundant presentation is useful when it improves
+  accessibility, urgency, persistence, or cross-scale navigation; avoid simultaneous clutter.
+- Content should support play, atmosphere, fiction, navigation, or world credibility. Not every
+  valuable place or detail needs a direct gameplay verb.
 
 ### 4. The anti-pattern catalogue (genre failures we are explicitly refusing)
-- **The spreadsheet trap** (X4/EVE failure mode): depth expressed as tables. Our law: every number
-  the player must know has a *spatial or temporal* read first.
-- **The empty-map tax** (procedural-genre failure): breadth via generation. Ten authored sectors
-  that sing beat forty templates. No procedural sector gen — ever (constitution).
+- **The spreadsheet trap:** use tables when comparison is the actual task; otherwise pair data with
+  spatial, temporal, visual, or contextual explanation.
+- **The empty-map tax:** authored identity matters more than raw count. Procedural assistance is
+  allowed when it produces curated, coherent places rather than repeated templates.
 - **The tutorial wall** (sim-genre failure): teaching before playing. Teach-once, in-world, at
   opportunity.
-- **The idle drift** (automation-genre failure): the game playing itself. The passive cap
-  (A(T)·0.45 funnel) is sacred; bases/fleets are texture and strategy, never the main income.
+- **The idle drift:** automation should create strategic decisions and progression rather than erase
+  active play. Tune its value from economy telemetry and desired career fantasy.
 - **The juice inflation** (indie failure): screenshake as substance. Trauma budgets, momentum
   scaling, and the quiet-default law keep juice meaning something.
-- **The lore dump** (worldbuilding failure): fiction delivered as reading. ≤3-line fragments,
-  environmental corroboration, systems-triggered story beats.
+- **The lore dump:** match delivery length and medium to context; combine concise in-flight cues with
+  optional deeper reading, environmental evidence, and system-triggered story.
 - **The difficulty lie** (action failure): stat-inflated enemies. Composition, gimmicks, and
   build-reading only.
 - **The betrayed save** (live-game failure): migrations that lose player property. Preserve+flag,
@@ -225,24 +232,26 @@ speaks, mining deepens — the built world becomes visible.
 Each wave ends at `check:ci` green + a playtest against GDD §13 metrics before the next begins.
 Threads within a wave are lane-parallel (constitution dispatch rules).
 
-### 6. The bar (what "matches or exceeds" means, concretely)
+### 6. The bar (comparison targets, not content ceilings)
 - Flight/feel: **beats** Rebel Galaxy Outlaw's assist suite (their autopursuit + our tether ceiling).
 - Trading: **matches** Elite's market data honesty, **beats** it on legibility (charts + ticker
   + knowledge-honest advisor, no third-party tools needed).
 - Mining: **matches** DRG's rhythm satisfaction in a top-down frame (seams+vent+tracking+veins).
-- World life: **matches** Freelancer's indifferent-universe feel at one-tenth the content budget
-  via the director + itineraries.
+- World life: **matches or exceeds** Freelancer's indifferent-universe feel through authored places,
+  credible traffic, encounters, schedules, and consequences.
 - Bases/defense: **beats** the genre's menu-outposts with the only flown tower-defense in a
   space-trader.
 - Readability: **beats** everyone — it's the pillar the whole engine was pointed at.
-When a spec's ambition conflicts with this table's honesty, the table wins: we do fewer things at
-this bar rather than more things below it.
+When scope and quality conflict, prioritize coherent player-facing results while retaining valuable
+future work in the program backlog. Do not use this table to cap content or asset ambition.
 
 ### 7. Review protocol for everything SPEC3 ships
 1. Named checks green + regression floor (`check:sim:compare` hashEqual, tether gameplay).
-2. The five-second test on any visual change (screenshot pair in `.devshots/`).
-3. One-voice audit clean (no overlapping text events in the feature's scripted run).
-4. Feel targets hit or spec edited-with-reason in the same change.
+2. Representative visual-change screenshot comparison and player-route review.
+3. Attention-policy audit clean: primary transients arbitrate correctly, persistent/contextual
+   surfaces remain legible, and accessibility redundancy is preserved in the scripted stress run.
+4. Feel targets measured and judged against the current experience goal.
 5. The coherence question: which arrows in §2 does this strengthen? (An honest "none" = cut it.)
 
-*Capstone written by the lead session (Fable 5), 2026-07-04. This document outranks enthusiasm.*
+This capstone supplies coherence questions and comparison targets; it does not override the current
+program, architecture, GDD, or player-facing evidence.

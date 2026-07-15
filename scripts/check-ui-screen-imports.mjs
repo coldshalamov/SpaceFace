@@ -51,13 +51,14 @@ for (const [path, exportName] of checks) {
 const starmap = loaded.get('starmapScreen');
 if (starmap) {
   let popped = 0;
+  // Live binding: starmap = N (M is local near-field).
   const handled = typeof starmap.onKey === 'function' &&
-    starmap.onKey({ key: 'M' }, { screenManager: { popScreen() { popped++; } } });
+    starmap.onKey({ key: 'N' }, { screenManager: { popScreen() { popped++; } } });
   if (!handled || popped !== 1) {
-    console.log('FAIL starmapScreen - M shortcut must close the starmap');
+    console.log('FAIL starmapScreen - N shortcut must close the starmap');
     fail++;
   } else {
-    console.log('ok   starmapScreen - M shortcut closes');
+    console.log('ok   starmapScreen - N shortcut closes');
     ok++;
   }
 }
@@ -65,13 +66,14 @@ if (starmap) {
 const localmap = loaded.get('localmapScreen');
 if (localmap) {
   let popped = 0;
+  // Live binding: localmap = M (primary map key opens near-field).
   const handled = typeof localmap.onKey === 'function' &&
-    localmap.onKey({ key: 'N' }, { screenManager: { popScreen() { popped++; } } });
+    localmap.onKey({ key: 'M' }, { screenManager: { popScreen() { popped++; } } });
   if (!handled || popped !== 1) {
-    console.log('FAIL localmapScreen - N shortcut must close the local map');
+    console.log('FAIL localmapScreen - M shortcut must close the local map');
     fail++;
   } else {
-    console.log('ok   localmapScreen - N shortcut closes');
+    console.log('ok   localmapScreen - M shortcut closes');
     ok++;
   }
 }
@@ -98,6 +100,7 @@ const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.
 const settingsSrc = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
 const saveLoadSrc = readFileSync(new URL('../src/ui/screens/saveLoad.js', import.meta.url), 'utf8');
 const baseSrc = readFileSync(new URL('../src/ui/screens/base.js', import.meta.url), 'utf8');
+const localizedCoreCopySrc = readFileSync(new URL('../src/ui/localizedCoreCopy.js', import.meta.url), 'utf8');
 
 const menuStyleSources = [
   ['mainMenu', mainMenuSrc],
@@ -218,8 +221,8 @@ if (!bindingsSrc.includes("techTree: { key: 't', code: 'KeyT', label: 'T' }")
   console.log('ok   tech/drill/claim binding - input and visible copy read the binding registry');
   ok++;
 }
-if (!pauseSrc.includes("mk('Mission Log', () => nav(ctx, 'pushScreen', 'missionLog'))") &&
-    !pauseSrc.includes("mk('Mission Log (' + BINDINGS.missionLog.label + ')', () => nav(ctx, 'pushScreen', 'missionLog'))")) {
+if (!localizedCoreCopySrc.includes("missionLog: { label: 'Mission Log ({key})' }") ||
+    !pauseSrc.includes("mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'))")) {
   console.log('FAIL pauseScreen - controller-friendly pause menu must expose Mission Log');
   fail++;
 } else if (!helpSrc.includes("['Open mission log', null, 'Start / Options → Pause → Mission Log']")) {
@@ -356,7 +359,9 @@ if (automationSrc.includes('ore-u placeholder') || !automationSrc.includes('DRON
   console.log('ok   automationScreen - drone yield display uses commodity baseline');
   ok++;
 }
-if (!newGameSrc.includes('let launching = false') || !newGameSrc.includes("launch.textContent = launching ? 'Launching...' : 'Launch'")
+if (!newGameSrc.includes('let launching = false')
+    || !localizedCoreCopySrc.includes("launching: { label: 'Launching...' }")
+    || !newGameSrc.includes("launch.textContent = launching ? coreText('launching') : coreText('launch')")
   || !newGameSrc.includes("ctx.bus.on('game:startFailed', restoreLaunch)") || !newGameSrc.includes('if (launching) return')) {
   console.log('FAIL newGameScreen - Launch must guard duplicate async starts and restore after failure');
   fail++;

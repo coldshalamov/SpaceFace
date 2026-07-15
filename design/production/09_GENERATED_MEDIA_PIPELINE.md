@@ -1,5 +1,9 @@
 # 09 — Generated Image and Video Production Pipeline
 
+> **Manual campaign pipeline.** Its provenance and ingestion safeguards are useful whenever
+> generated media is used, but its worker roles and packet workflow apply only when explicitly
+> activated. They do not prevent coherent end-to-end media integration in ordinary work.
+
 **Status:** DRAFT; subordinate to F9 and the taste constitution until AUTH-001
 
 ## 1. Purpose and boundary

@@ -76,6 +76,14 @@ The crate in the hold — the one labeled UNCLASSIFIED COMPOSITE — 3.1 KG — 
 
 The mass is 12.4 tonnes. The mass was always going to be 12.4 tonnes. The crime happened in year 3. The player is the latest courier. The graffiti knew.
 
+## THE DOCKMASTER'S MATH (the argument that doesn't need a body)
+
+The Helios dockmaster who took the berth fee did not look up. The fee was posted. The fee was paid. The transaction occupied the dockmaster for the length of time it takes a man to stamp a chit and slide it back. The dockmaster has stamped eight thousand chits this cycle. The dockmaster will stamp eight thousand more. The dockmaster is not a villain. The dockmaster is arithmetic.
+
+What the dockmaster knows: berth fees fund the maintenance fund, the maintenance fund funds the recycler service, the recycler service funds the air. The Pit's berth fees fund the Pit's air. The Pit's berth fees have funded the Pit's air every cycle for nineteen years. The Pit's air has gotten worse every cycle for nineteen years. The dockmaster has processed nineteen years of berth fees for the Pit's air and the air is worse and the fee cleared both times — the fee that was paid and the air that didn't arrive. The two line items do not reconcile. The dockmaster does not reconcile them. The dockmaster stamps the chit. The chit is the reconciliation. The chit says the fee cleared and the air is funded and the column balances and the column has balanced for nineteen years and the Pit's lower decks breathe chalk. The math works. The math has always worked. The math is why the air is gone.
+
+The player is not asked to understand this at B0. The player is asked to pay the berth fee. The player pays the berth fee. The chit is stamped. The dockmaster does not look up. The argument was made in 19 years of chits and it doesn't need the player's comprehension to close. It closes the way it closes every cycle. The math is sound. The math is the disease.
+
 ---
 
 ### Sheet wiring (entities this chapter touches)

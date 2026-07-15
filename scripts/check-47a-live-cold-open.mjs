@@ -75,7 +75,7 @@ try {
         distanceToPlayer: dx == null || dz == null ? null : Math.hypot(dx, dz),
         sourceKind: binding && binding.source && binding.source.kind || null,
       };
-    });
+      });
     const player = state.entities.get(state.playerId);
     const playerTeam = player && player.team != null ? player.team : 0;
     const coldOpenShips = state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.id !== state.playerId)
@@ -101,9 +101,11 @@ try {
           firing: intent.fire === true,
           fireGroup: intent.fireGroup ?? null,
         };
-      });
+    });
     const byType = {};
     for (const record of trace) byType[record.type] = (byType[record.type] || 0) + 1;
+    const ambientGateProbe = 'COLD-OPEN AMBIENT GATE PROBE';
+    sf.bus.emit('comms:popup', { sender: 'TEST CARRIER', category: 'ambient', text: ambientGateProbe });
     return {
       mode: state.mode,
       playerId: state.playerId,
@@ -128,6 +130,8 @@ try {
       hasSignalCueApplied: trace.some((record) =>
         record.type === 'presentation:cueApplied' && record.payload && record.payload.id === 'scenario.signal.pulse'),
       kesslerCommsVisible: /Kestrel, that pulse is the job/i.test(document.body.textContent || ''),
+      onboardingGateActive: !!(state.onboarding && state.onboarding.active && !state.onboarding.finished),
+      ambientGateProbeVisible: (document.body.textContent || '').includes(ambientGateProbe),
       scenarioId,
       scenarioPath,
     };
@@ -151,6 +155,9 @@ try {
   assert(report.hasSignalCue, 'live cold open should emit the first signal presentation cue');
   assert(report.hasSignalCueApplied, 'live cold open should apply the first signal presentation cue');
   assert(report.kesslerCommsVisible, 'live cold open should render Kessler dialogue in the comms feed');
+  assert.equal(report.onboardingGateActive, true, 'cold-open comms proof must exercise the active onboarding gate');
+  assert.equal(report.ambientGateProbeVisible, false,
+    'ordinary ambient chatter should remain held while authored scenario dialogue bypasses the onboarding gate');
 
   const missing = report.actors.filter((actor) => actor.required && actor.status !== 'bound');
   assert.deepEqual(missing, [], 'all required scenario actors should bind');

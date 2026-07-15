@@ -7,6 +7,11 @@ import vael from './vael.js';
 import free from './free.js';
 import choir from './choir.js';
 import helix from './helix.js';
+import understory from './understory.js';
+import fulfillment from './fulfillment.js';
+import archive from './archive.js';
+import pitborn from './pitborn.js';
+import vergelayers from './vergelayers.js';
 
 export const FACTION_KITS = [
   scn,
@@ -18,6 +23,11 @@ export const FACTION_KITS = [
   free,
   choir,
   helix,
+  understory,
+  fulfillment,
+  archive,
+  pitborn,
+  vergelayers,
 ];
 
 function toLegacyMeta(faction) {

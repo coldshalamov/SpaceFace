@@ -70,9 +70,9 @@ they do not create a universal visual-style law.
 Terse, dry, working-space professionalism. Crews talk like riggers, not like marketing.
 - Good (existing, keep this energy): "Masslines only. If the spool lies, believe the spool."
 - Bad (never): "Welcome, brave pilot! Ready for an epic adventure?"
-- Rules: ≤ 12 words per comms bark. No exclamation marks outside genuine emergencies. Station names
-  and callsigns in caps ("HELIOS DOCKMASTER"). Tutorial lines are imperative and name ONE verb
-  ("Thrust to the beacon." not "Try using W to fly toward the beacon!").
+- Direction: keep comms concise enough for their real display duration and gameplay load, but do not
+  enforce a universal word count. Use punctuation, capitalization, and sentence length to serve the
+  speaker and moment. Tutorial prompts should make the current verb and objective immediately clear.
 - All player-facing strings pass `check:player-facing-labels`.
 
 ## 6. Functional and release drift guard

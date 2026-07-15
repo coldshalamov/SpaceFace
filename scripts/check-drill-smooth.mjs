@@ -327,8 +327,19 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   console.log(JSON.stringify({ ok: true, section: 'seismic-survey', contacts: pulses[0].contacts, radius: SCAN_RADIUS }));
 }
 
-// --- 7. Material choice: hardness visibly changes time, energy, and heat receipts ---
+// --- 7. Material choice is visible and predictable ---
 {
+  const { state } = setup();
+  drill.begin(420042);
+  const dirtProfiles = new Set();
+  for (const column of state.drill.field) {
+    for (const tile of column) {
+      if (tile.type === 'dirt') dirtProfiles.add(`${tile.maxHp}:${tile.hardness}`);
+    }
+  }
+  assert.equal(dirtProfiles.size, 1,
+    `identical-looking soft regolith must not hide multiple cut rates (${[...dirtProfiles].join(', ')})`);
+
   const soft = { type: 'dirt', hp: 12, maxHp: 12, hardness: 0.65 };
   const hard = { type: 'rock', hp: 12, maxHp: 12, hardness: 1.9 };
   const softReadout = extractionTelemetry(soft, 18);
@@ -421,6 +432,7 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   assert.match(uiSrc, /stepParticles/, 'UI must step particles via shared helper');
   assert.match(uiSrc, /data-drill-scan/, 'UI must expose the survey as a real button');
   assert.match(uiSrc, /resolveDrillControlMap/, 'UI must resolve movement and survey from live bindings');
+  assert.match(uiSrc, /addEventListener\('keyup', onKeyUp\)/, 'UI must stop held drilling on physical key release');
   assert.match(uiSrc, /data-energy/, 'UI must expose actual rig energy');
   assert.match(uiSrc, /Restart bore/, 'UI must expose deterministic retry');
   assert.match(uiSrc, /Abort & return/, 'UI must expose an explicit abort action');
@@ -430,6 +442,9 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
     'routine feedback must never be mounted over the drill playfield');
   assert.match(uiSrc, /canvasDirty/, 'idle frames must be able to skip the expensive canvas repaint');
   assert.match(uiSrc, /buildHeadlightSprite/, 'headlight gradient must be pre-rasterized');
+  assert.match(uiSrc, /buildStrataCache/, 'unchanged strata must be pre-rasterized instead of repainted per frame');
+  assert.match(uiSrc, /paintStrataNeighborhood/, 'movement and survey changes must repaint only nearby cached tiles');
+  assert.match(uiSrc, /ctx2d\.drawImage\(strataCanvas/, 'the hot render path must blit the cached strata layer');
   assert.doesNotMatch(uiSrc, /const beamGrad = ctx2d\.createRadialGradient/, 'render loop must not allocate headlight gradients');
   assert.doesNotMatch(uiSrc, /Object\.entries\(d\.yieldLog\)\.filter/, 'manifest must rebuild from events, not every frame');
   // Must not rely solely on discrete col*TILE without interp helper
@@ -440,7 +455,7 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   console.log(JSON.stringify({ ok: true, section: 'struct-ui' }));
 }
 
-// --- 10b. Screen input contract: one press owns one adjacent cell, even across a hitch ---
+// --- 10b. Screen input contract: hold repeats smoothly; release stops; hitches cannot burst ---
 {
   const { state } = setup();
   drill.begin(551122);
@@ -452,36 +467,47 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   });
 
   assert.equal(controls.press('down'), true, 'a direction press is accepted immediately');
-  controls.tick(1.0);
-  assert.equal(state.drill.avatar.row, 1,
-    'one press stops at its adjacent cell instead of racing through a cleared tunnel');
+  for (let i = 0; i < 30; i++) controls.tick(1 / 60);
+  assert.ok(state.drill.avatar.row >= 5,
+    `holding one direction must continue through a cleared tunnel (row ${state.drill.avatar.row})`);
 
-  controls.tick(0.2);
-  assert.equal(state.drill.avatar.row, 1, 'a completed press never auto-repeats');
+  controls.release('down');
+  const releasedRow = state.drill.avatar.row;
+  controls.tick(0.5);
+  assert.equal(state.drill.avatar.row, releasedRow, 'releasing the direction stops continuous travel');
+
+  // A one-second render hitch is clamped and may cross at most one cell during that frame.
   controls.press('down');
-  for (let i = 0; i < 10; i++) controls.tick(1 / 60);
-  assert.equal(state.drill.avatar.row, 2, 'a second press advances exactly one more cell');
+  const beforeHitch = state.drill.avatar.row;
+  controls.tick(1.0);
+  assert.ok(state.drill.avatar.row - beforeHitch <= 1,
+    `one delayed frame must not burst across cells (advanced ${state.drill.avatar.row - beforeHitch})`);
+  controls.release('down');
 
-  state.drill.field[col][3] = {
+  const rockRow = state.drill.avatar.row + 1;
+  state.drill.field[col][rockRow] = {
     type: 'rock', hp: 20, maxHp: 20, hardness: 1, ore: null, hazard: false, tierReq: 1, risk: 'low',
   };
-  const hpBefore = state.drill.field[col][3].hp;
+  const hpBefore = state.drill.field[col][rockRow].hp;
   controls.press('down');
   controls.tick(1.0);
-  const hpAfterHitch = state.drill.field[col][3].hp;
+  const hpAfterHitch = state.drill.field[col][rockRow].hp;
   assert.ok(hpBefore - hpAfterHitch <= drill.getDrillDPS() * (7 / 60) + 1e-9,
     `one slow frame must cap catch-up at 100 ms plus immediate acknowledgment (cut ${hpBefore - hpAfterHitch} HP)`);
-  assert.equal(state.drill.avatar.row, 2, 'a hitch cannot punch through the selected tile');
+  assert.equal(state.drill.avatar.row, rockRow - 1, 'a hitch cannot punch through the selected tile');
 
-  for (let i = 0; i < 180 && state.drill.avatar.row === 2; i++) controls.tick(1 / 60);
-  assert.equal(state.drill.avatar.row, 3, 'the selected solid tile completes without requiring a held key');
-  controls.tick(1.0);
-  assert.equal(state.drill.avatar.row, 3, 'completion stops before the next, unselected tile');
+  for (let i = 0; i < 180 && state.drill.avatar.row < rockRow; i++) controls.tick(1 / 60);
+  assert.equal(state.drill.avatar.row, rockRow, 'held input continuously drills the selected solid tile');
+  controls.release('down');
+  const stoppedAfterRock = state.drill.avatar.row;
+  controls.tick(0.5);
+  assert.equal(state.drill.avatar.row, stoppedAfterRock, 'release after drilling prevents entering another cell');
 
   state.drill.avatar.col = 0;
   controls.press('left');
   assert.equal(controls.hasActiveIntent(), false, 'an asteroid-boundary press retires immediately');
-  console.log(JSON.stringify({ ok: true, section: 'single-cell-input', hpBefore, hpAfterHitch }));
+  controls.release('left');
+  console.log(JSON.stringify({ ok: true, section: 'held-input', hpBefore, hpAfterHitch }));
 }
 
 // --- 10c. Low-frame input work keeps real-time cadence without crossing the selected cell ---

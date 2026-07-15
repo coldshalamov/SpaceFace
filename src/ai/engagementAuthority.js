@@ -1,4 +1,5 @@
 import { normalizeCombatDoctrineId } from './combatDoctrine.js';
+import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 import {
   RulesOfEngagement,
   activityAllowsOffense,
@@ -68,6 +69,10 @@ export function authorizeAIEngagement({
   const ai = self.data && self.data.ai;
   if (!ai || ai.passive) return denied('passive');
   if (normalizeRoe(ai.roe) === RulesOfEngagement.HOLD_FIRE) return denied('hold_fire');
+  const factionBehavior = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
+  if (targetIsDisabled(state, target) && factionBehavior && factionBehavior.destroyTarget === false) {
+    return denied('target_disabled_nonlethal');
+  }
 
   for (const key of ['motive', 'engagementTrigger', 'zoneId', 'approachTelegraph']) {
     if (!nonEmpty(ai[key])) return denied(key);
@@ -176,6 +181,8 @@ export function isHostileForAI(state, self, other) {
   if (otherAi.lawful && otherAi.securityTargetId === self.id) return true;
   if (selfAi.retaliationTargetId === other.id) return true;
   if (otherAi.retaliationTargetId === self.id) return true;
+  if (hasFactionFirstFireAuthority(self, selfAi, other)) return true;
+  if (hasFactionFirstFireAuthority(other, otherAi, self)) return true;
   if (self.team === other.team) return false;
 
   const selfIsPlayer = !!(state && self.id === state.playerId);
@@ -187,6 +194,21 @@ export function isHostileForAI(state, self, other) {
   if (selfAi.lawful && otherIsPlayer) return isPlayerWanted(state);
   if (otherAi.lawful && selfIsPlayer) return isPlayerWanted(state);
   return self.team !== other.team;
+}
+
+function hasFactionFirstFireAuthority(actor, ai, target) {
+  if (!actor || !target || !ai || ai.passive) return false;
+  const profile = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
+  return !!profile && profile.firstFire === true
+    && profile.firstFireAgainst.includes(target.factionId);
+}
+
+function targetIsDisabled(state, target) {
+  if (!target || target.alive === false) return true;
+  if (target.disabled === true) return true;
+  const runtime = state && state.combat && state.combat.entities
+    && state.combat.entities[String(target.id)];
+  return !!(runtime && runtime.capabilities && runtime.capabilities.drive === false);
 }
 
 /**

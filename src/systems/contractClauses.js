@@ -13,12 +13,12 @@
 //   • Breach fires ONCE per clause (flagged on the instance), then emits `contract:clauseBroken`
 //     { missionId, clauseId, event }. The missions layer routes that through its existing fail path.
 //     This system NEVER writes credits/cargo/rep (single-writer honored).
-//   • HONOR bonus: when a clause-bearing mission completes WITHOUT breach, the system emits
-//     `contract:clauseHonored` so the missions layer can apply the clause.rewardMult bonus. (The
-//     bonus is the carrot; the deposit forfeit is the stick — both via the shipped paths.)
+//   • HONOR bonus is settled synchronously by missions before payout/removal. This observer marks
+//     breaches; its completion listener is an explicitly guarded legacy-check fallback because a
+//     live completed instance has already left the canonical list.
 //
-// noTouch honored: missions.js / economy.js / factions.js are not edited. This system reads
-// state.missions.active (the live instances) and listens to the same bus events missions does.
+// Missions is the canonical settlement owner; this observer only reads active instances and emits
+// breach intents. Economy/factions/cargo authority remains untouched.
 // Budget: spawn:none · voice: one 'comms' line on breach · draw:none.
 
 import { CONTRACT_CLAUSES, OBSERVED_CLAUSE_EVENTS, CLAUSE_IDS } from '../data/contractClauses.js';
@@ -86,12 +86,15 @@ export const contractClausesSystem = {
     this._onKilled = (p) => this._evaluate('entity:killed', p);
     this._onScanned = (p) => this._evaluate('player:scannedByPatrol', p);
     this._onAccept = (p) => this._onMissionAccepted(p);
-    this._onComplete = (p) => this._onMissionCompleted(p);
+    this._onLegacyComplete = (p) => this._onLegacyMissionCompleted(p);
     if (this._bus && this._bus.on) {
       this._bus.on('entity:killed', this._onKilled);
       this._bus.on('player:scannedByPatrol', this._onScanned);
-      this._bus.on('ui:acceptMission', this._onAccept);
-      this._bus.on('mission:completed', this._onComplete);
+      this._bus.on('mission:accepted', this._onAccept);
+      // Compatibility only for the isolated clause checker. Canonical missions includes rewardCr
+      // after settling clauses and removes the active instance before this event, so live play can
+      // never enter the fallback or emit a second honor.
+      this._bus.on('mission:completed', this._onLegacyComplete);
     }
   },
 
@@ -115,7 +118,7 @@ export const contractClausesSystem = {
     if (!state) return;
     const active = (state.missions && state.missions.active) || [];
     const playerId = state.playerId || (state.player && state.player.id);
-    for (const m of active) {
+    for (const m of [...active]) {
       if (!m || !m.clauses || !m.clauses.length) continue;
       if (m._clauseState && m._clauseState._completed) continue;
       for (const c of m.clauses) {
@@ -140,19 +143,21 @@ export const contractClausesSystem = {
     }
   },
 
-  _onMissionCompleted(p) {
-    const state = this._state;
-    if (!state || !p || !p.missionId) return;
-    const m = this._findActive(p.missionId);
-    if (!m || !m.clauses || !m.clauses.length) return;
-    if (m._clauseState && m._clauseState._completed) return;
-    if (!m._clauseState) m._clauseState = {};
-    m._clauseState._completed = true;
-    // HONOR: any clause that did NOT breach → the run was clean. Emit clauseHonored for each.
-    for (const c of m.clauses) {
-      const breached = !!(m._clauseState[c.id] && m._clauseState[c.id].breached);
+  _onLegacyMissionCompleted(payload) {
+    if (!payload || !payload.missionId || Number.isFinite(payload.rewardCr)) return;
+    const mission = this._findActive(payload.missionId);
+    if (!mission || !Array.isArray(mission.clauses) || !mission.clauses.length) return;
+    if (!mission._clauseState) mission._clauseState = {};
+    if (mission._clauseState._legacyHonored) return;
+    mission._clauseState._legacyHonored = true;
+    for (const clause of mission.clauses) {
+      const breached = !!(mission._clauseState[clause.id] && mission._clauseState[clause.id].breached);
       if (!breached && this._bus && this._bus.emit) {
-        this._bus.emit('contract:clauseHonored', { missionId: m.id, clauseId: c.id, rewardMult: c.rewardMult });
+        this._bus.emit('contract:clauseHonored', {
+          missionId: mission.id,
+          clauseId: clause.id,
+          rewardMult: clause.rewardMult,
+        });
       }
     }
   },
@@ -182,13 +187,13 @@ export const contractClausesSystem = {
     if (this._bus && this._bus.off) {
       if (this._onKilled) this._bus.off('entity:killed', this._onKilled);
       if (this._onScanned) this._bus.off('player:scannedByPatrol', this._onScanned);
-      if (this._onAccept) this._bus.off('ui:acceptMission', this._onAccept);
-      if (this._onComplete) this._bus.off('mission:completed', this._onComplete);
+      if (this._onAccept) this._bus.off('mission:accepted', this._onAccept);
+      if (this._onLegacyComplete) this._bus.off('mission:completed', this._onLegacyComplete);
     }
     this._onKilled = null;
     this._onScanned = null;
     this._onAccept = null;
-    this._onComplete = null;
+    this._onLegacyComplete = null;
   },
 };
 

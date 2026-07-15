@@ -357,7 +357,7 @@ const EMITTED_CUES = {
   ui_accept: { distinct: true }, ui_undock: { distinct: true },
   ui_charge_start: { distinct: true }, ui_charge_abort: { distinct: true },
   click: { distinct: false }, hover: { distinct: true }, confirm: { distinct: true },
-  deny: { distinct: true }, alert: { distinct: true }, error: { distinct: true },
+  deny: { distinct: true }, alert: { distinct: true }, warning: { distinct: true }, error: { distinct: true },
   lock_acquired: { distinct: true }, scan_resolve: { distinct: true },
   // Gameplay
   loot_collect: { distinct: true }, mining_core_fizzle: { distinct: true },

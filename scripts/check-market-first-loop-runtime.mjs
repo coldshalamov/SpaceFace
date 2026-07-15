@@ -1,12 +1,10 @@
 #!/usr/bin/env node
-// check-market-first-loop-runtime.mjs - browser smoke for first-session economy readability.
+// check-market-first-loop-runtime.mjs — browser smoke for first-session economy readability.
 //
-// Boots the canonical player URL, starts New Game through the UI, docks via the normal dock:docked
-// event path, opens the station Market, and verifies the player can understand the first trade loop:
-// credits/cargo context, station purpose, commodity purpose copy, live prices, actionable buy/sell
-// labels, and a Best Trades row with current-run load/profit plus route actions. Test-only market
-// intel is injected after live boot so the planner path is deterministic without changing content
-// defaults or launch routes.
+// DESIGN TRUTH (src/ui/station/screens/market.js): the Market is an instrument, not a table — a
+// commodity list with live price + trend, a central price chart, a BUY/SELL console, and a Trade
+// Routes panel that shows the best known runs (profit) with one-click "Set Course". First-loop bar:
+// a new player can read prices, actually trade (credits move), and plot a profitable route.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
@@ -22,367 +20,157 @@ const { chromium } = await loadPlaywright();
 
 let server = null;
 let browser = null;
+let issues = null;
 
 try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-  const issues = collectPageIssues(page);
-  await page.addInitScript(() => {
-    try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
-  });
+  const page = await browser.newPage({ viewport: { width: 1460, height: 900 }, deviceScaleFactor: 1 });
+  issues = collectPageIssues(page, { includeWarnings: true });
+  await page.addInitScript(() => { try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {} });
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
   assert.equal(new URL(page.url()).search, '', 'market first-loop probe must use the canonical root URL with no query flags');
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 15000 });
   await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
-  await waitForBootOverlayGone(page);
-
   assert.equal(await clickButton(page, 'New Game'), true, 'main menu should expose New Game');
-  await waitForVisible(page, '[data-screen="newGame"] .sf-ng-route', 10000, 'new-game route rail');
+  await waitForVisible(page, '[data-screen="newGame"] .sf-ng-route', 10000, 'new-game rail');
   assert.equal(await clickButton(page, 'Launch'), true, 'New Game should expose Launch');
   await page.waitForFunction(() => {
-    const sf = window.SF;
-    const state = sf && sf.state;
+    const state = window.SF && window.SF.state;
     const player = state && state.entities && state.entities.get(state.playerId);
     return !!(state && state.mode === 'flight' && player && player.alive && player.hull > 0);
   }, null, { timeout: START_TIMEOUT_MS });
 
   const dockTarget = await page.evaluate(() => {
     const sf = window.SF;
-    const state = sf && sf.state;
-    const station = state && state.entityList && state.entityList.find((e) =>
+    const station = sf.state.entityList && sf.state.entityList.find((e) =>
       e && e.alive !== false && e.type === 'station' && e.data && e.data.stationId && !e.data.isGate);
     if (!station) throw new Error('No dockable station entity found in first-session sector');
     sf.bus.emit('dock:docked', { stationId: station.data.stationId });
-    return {
-      stationId: station.data.stationId,
-      label: station.data.name || station.data.stationName || station.data.stationId,
-    };
+    return { stationId: station.data.stationId };
   });
+  await waitForVisible(page, '[data-screen="station"] .sx-dock', DOCK_TIMEOUT_MS, 'command dock after dock');
 
-  await waitForVisible(page, '[data-screen="station"]', DOCK_TIMEOUT_MS, 'station hub after dock');
-
-  const seededTrade = await page.evaluate((fallbackStationId) => {
-    const sf = window.SF;
-    const state = sf && sf.state;
-    const stationId = state && state.ui && state.ui.dockedStationId || fallbackStationId;
-    const markets = state && state.economy && state.economy.markets || {};
-    const here = markets[stationId] || {};
-    const cmdtyId = Object.keys(here).find((id) => here[id] && Number.isFinite(here[id].lastBuy) && here[id].lastBuy > 0);
+  // Open Market so its live market initialises (onShow emits economy:marketOpened), then seed a
+  // known higher-priced buyer elsewhere so the Trade Routes panel has a profitable run to show.
+  await domClick(page, '[data-screen="station"] .sx-dock [data-nav="market"]');
+  await waitForVisible(page, '[data-screen="station"] .sx-mkt', 8000, 'Market instrument');
+  const seeded = await page.evaluate(() => {
+    const state = window.SF.state;
+    const stationId = state.ui.dockedStationId;
+    const here = (state.economy.markets && state.economy.markets[stationId]) || {};
+    const cmdtyId = Object.keys(here).find((id) => here[id] && Number.isFinite(here[id].lastBuy) && here[id].lastBuy > 0)
+      || Object.keys(here)[0];
     if (!cmdtyId) return null;
-    const buyHere = here[cmdtyId].lastBuy;
+    const buyHere = here[cmdtyId].lastBuy || here[cmdtyId].buy || 50;
     state.economy.marketIntel = state.economy.marketIntel || {};
     state.economy.marketIntel.__probe_trade_dest = {
       seenAtT: state.simTime || 0,
-      snapshot: { [cmdtyId]: { sell: Math.ceil(buyHere * 1.7), demand: 100 } },
+      snapshot: { [cmdtyId]: { sell: Math.ceil(buyHere * 1.8), demand: 100 } },
     };
+    state.world = state.world || {};
     state.world.sectors = state.world.sectors || {};
     state.world.sectors.__probe_trade_sector = {
-      id: '__probe_trade_sector',
-      name: 'Probe Trade Sector',
+      id: '__probe_trade_sector', name: 'Probe Trade Sector',
       stations: [{ id: '__probe_trade_dest', name: 'Probe Buyer', type: 'trade_hub' }],
     };
     return { stationId, cmdtyId, buyHere };
-  }, dockTarget.stationId);
-  assert(seededTrade && seededTrade.cmdtyId, 'runtime probe should find a live commodity to seed Best Trades intel');
-
-  await page.evaluate(() => {
-    const marketTab = [...document.querySelectorAll('[data-screen="station"] [data-tab], [data-screen="station"] button')]
-      .find((el) => /Market/i.test(el.textContent || '') || el.getAttribute('data-tab') === 'market');
-    if (marketTab) marketTab.click();
   });
-  await waitForVisible(page, '[data-screen="station"] .st-market', 10000, 'station market panel');
-  await page.waitForTimeout(250);
+  assert.ok(seeded && seeded.cmdtyId, 'probe should find a live commodity to seed route intel');
 
-  const report = await page.evaluate(() => {
-    const visible = (el) => {
-      if (!el) return false;
-      const cs = getComputedStyle(el);
-      const r = el.getBoundingClientRect();
-      return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 20 && r.height > 10;
-    };
+  // re-render market so routes pick up the seeded intel
+  await domClick(page, '[data-screen="station"] .sx-dock [data-nav="factions"]');
+  await domClick(page, '[data-screen="station"] .sx-dock [data-nav="market"]');
+  await page.waitForTimeout(200);
+
+  // ---- readability: list rows with prices + trend, a price chart, stats ----
+  const readable = await page.evaluate(() => {
     const text = (el) => (el && el.textContent || '').replace(/\s+/g, ' ').trim();
-    const market = document.querySelector('[data-screen="station"] .st-market');
-    const rows = [...document.querySelectorAll('[data-screen="station"] .st-market .st-list [data-cmdty]')];
-    const sampled = rows.slice(0, 5).map((row) => ({
-      commodityId: row.getAttribute('data-cmdty'),
-      name: text(row.querySelector('.c-name')),
-      purpose: text(row.querySelector('.st-cmdty-purpose')),
-      owned: text(row.querySelector('.st-owned')),
-      buy: text(row.querySelector('.st-buy')),
-      sell: text(row.querySelector('.st-sell')),
-      buyTitle: row.querySelector('.st-buy-btn')?.getAttribute('aria-label') || row.querySelector('.st-buy-btn')?.title || '',
-      sellTitle: row.querySelector('.st-sell-btn')?.getAttribute('aria-label') || row.querySelector('.st-sell-btn')?.title || '',
-      buyDisabled: !!row.querySelector('.st-buy-btn')?.disabled,
-      sellDisabled: !!row.querySelector('.st-sell-btn')?.disabled,
-    }));
-    const plannerRows = [...document.querySelectorAll('[data-screen="station"] .st-planner-row')]
-      .map((row) => text(row));
-    const plannerRunTexts = [...document.querySelectorAll('[data-screen="station"] .st-pl-run')]
-      .map((row) => text(row));
+    const rows = [...document.querySelectorAll('[data-screen="station"] .sx-mkt-row[data-cmdty]')];
     return {
-      marketVisible: visible(market),
-      stationText: text(document.querySelector('[data-screen="station"]')),
-      purpose: text(document.querySelector('[data-screen="station"] .st-market-purpose')),
-      credits: text(document.querySelector('[data-screen="station"] .st-credits')),
-      cargo: text(document.querySelector('[data-screen="station"] .st-cargo')),
-      searchVisible: visible(document.querySelector('[data-screen="station"] .sf-list-search input, [data-screen="station"] input[placeholder*="Search"]')),
-      sortHeaders: [...document.querySelectorAll('[data-screen="station"] .st-row-head .sf-sort')].map((el) => text(el)),
       rowCount: rows.length,
-      sampled,
-      plannerVisible: visible(document.querySelector('[data-screen="station"] .st-market-planner')),
-      plannerRows,
-      plannerRunTexts,
-      plannerEmpty: text(document.querySelector('[data-screen="station"] .st-planner-empty')),
-      loadButtonText: text(document.querySelector('[data-screen="station"] .st-pl-load')),
-      navButtonText: text(document.querySelector('[data-screen="station"] .st-pl-nav')),
+      sampled: rows.slice(0, 5).map((r) => ({
+        id: r.getAttribute('data-cmdty'),
+        name: text(r.querySelector('.sx-mkt-row__name')),
+        price: text(r.querySelector('.sx-mkt-row__price')),
+        trend: text(r.querySelector('.sx-mkt-row__tr')),
+      })),
+      chart: !!document.querySelector('[data-screen="station"] .sx-mkt-chart'),
+      stats: [...document.querySelectorAll('[data-screen="station"] .sx-mkt-stats .sx-stat__k')].map((k) => text(k)),
+      credits: text(document.querySelector('[data-screen="station"] .sx-credits__v')),
     };
   });
-
-  assert.equal(report.marketVisible, true, 'Market panel should be visible after docking');
-  assert.match(report.purpose, /Market loop:/, 'Market should expose an explicit loop-purpose rail');
-  assert.match(report.purpose, /credits|cargo|buy|sell|routes|trade|modules|fuel|repairs/i,
-    'Market purpose copy should explain why trading matters');
-  assert.match(report.credits, /\d/, 'Market header should show current credits');
-  assert.match(report.cargo, /\d+\s*\/\s*\d+\s*u/i, 'Market header should show cargo used/capacity');
-  assert.equal(report.searchVisible, true, 'Market should expose commodity search');
-  for (const header of ['Commodity', 'Owned', 'Buy', 'Sell']) {
-    assert(report.sortHeaders.some((label) => label.includes(header)), 'Market missing sortable header: ' + header);
+  assert.ok(readable.rowCount > 0, 'Market should list at least one traded commodity at the first dockable station');
+  for (const row of readable.sampled) {
+    assert.ok(row.name, 'commodity row should show a name: ' + JSON.stringify(row));
+    assert.match(row.price, /\d/, 'commodity row should show a numeric price: ' + JSON.stringify(row));
+    assert.notEqual(row.price.replace(/[^\d]/g, ''), '0', 'commodity price should not read as zero: ' + JSON.stringify(row));
+    assert.match(row.trend, /%/, 'commodity row should show a trend %: ' + JSON.stringify(row));
   }
-  assert(report.rowCount > 0, 'Market should show at least one traded commodity at the first dockable station');
-
-  for (const row of report.sampled) {
-    assert(row.name, 'Commodity row should show a name: ' + JSON.stringify(row));
-    assert.match(row.purpose, /credits|cargo|profit|supply|demand|upgrade|mission|risk|sell|buy|feed/i,
-      'Commodity row should explain the economic purpose: ' + JSON.stringify(row));
-    assert.match(row.buy, /\d/, 'Commodity row should show a numeric buy price: ' + JSON.stringify(row));
-    assert.match(row.sell, /\d/, 'Commodity row should show a numeric sell price: ' + JSON.stringify(row));
-    assert.notEqual(row.buy, '0', 'Commodity buy price should not read as zero: ' + JSON.stringify(row));
-    assert.notEqual(row.sell, '0', 'Commodity sell price should not read as zero: ' + JSON.stringify(row));
-    assert.match(row.buyTitle + ' ' + row.sellTitle, /CR|cargo|credits|mission|hulls|modules|fuel|repairs/i,
-      'Buy/sell controls should expose actionable trade consequences: ' + JSON.stringify(row));
+  assert.equal(readable.chart, true, 'Market should render a price chart for the selected commodity');
+  for (const stat of ['Buy', 'Sell', 'Demand']) {
+    assert.ok(readable.stats.some((s) => new RegExp(stat, 'i').test(s)), 'Market stats should include ' + stat + ': ' + JSON.stringify(readable.stats));
   }
+  assert.match(readable.credits, /\d/, 'the docked view should show current credits');
 
-  assert.equal(report.plannerVisible, true, 'Best Trades planner should be visible in the Market panel');
-  assert(report.plannerRows.length > 0, 'Seeded first-loop market intel should create a Best Trades row');
-  assert(report.plannerRows.some((row) => /buy/i.test(row) && /sell/i.test(row) && /\+/.test(row)),
-    'Best Trades row should show buy/sell spread and margin: ' + JSON.stringify(report.plannerRows));
-  assert(report.plannerRows.some((row) => /fresh intel|market feed|stale \d+m intel|\d+m intel/i.test(row)),
-    'Best Trades row should disclose route intel quality: ' + JSON.stringify(report.plannerRows));
-  assert(report.plannerRunTexts.some((row) => /load\s+\d+/i.test(row) && /\+\d[\d,]*\s+CR/i.test(row)),
-    'Best Trades row should show current-run load and expected profit: ' + JSON.stringify(report.plannerRunTexts));
-  assert.equal(report.loadButtonText, 'Load & Nav', 'Best Trades row should expose a route-load action');
-  assert.equal(report.navButtonText, 'Set Nav', 'Best Trades row should expose Set Nav');
+  // ---- trade: a real BUY moves credits (the loop actually works) ----
+  const c0 = await page.evaluate(() => window.SF.state.player.credits);
+  await domClick(page, '[data-screen="station"] .sx-mkt-row');
+  await page.waitForTimeout(200);
+  await domClick(page, '[data-screen="station"] .sx-trade__go[data-go]');
+  await page.waitForFunction((prev) => window.SF.state.player.credits !== prev, c0, { timeout: 6000 })
+    .catch(() => { throw new Error('a Market BUY should move the player\'s credits (trade must actually execute)'); });
+  const c1 = await page.evaluate(() => window.SF.state.player.credits);
+  assert.ok(c1 < c0, 'buying should spend credits: ' + c0 + ' -> ' + c1);
 
-  const navReport = await page.evaluate(() => {
-    const btn = document.querySelector('[data-screen="station"] .st-pl-nav');
-    if (!btn) return { clicked: false };
-    btn.click();
-    const sf = window.SF;
-    const waypoint = sf.state && sf.state.nav && sf.state.nav.waypoint;
-    const toastText = [...document.querySelectorAll('.toast, .sf-toast, [class*="toast"]')]
-      .map((el) => (el.textContent || '').replace(/\s+/g, ' ').trim())
-      .filter(Boolean)
-      .join(' | ');
-    return { clicked: true, waypoint, toastText };
-  });
-
-  assert.equal(navReport.clicked, true, 'Set Nav should be clickable');
-  assert.equal(navReport.waypoint && navReport.waypoint.kind, 'trade', 'Set Nav should create a trade waypoint');
-  assert.equal(navReport.waypoint && navReport.waypoint.stationId, '__probe_trade_dest', 'Set Nav should target the seeded buyer station');
-  assert.match((navReport.waypoint && navReport.waypoint.label) || '', /Probe Buyer/, 'Trade waypoint should name the buyer station');
-
-  const blockedLoadStart = await page.evaluate(() => {
-    const btn = document.querySelector('[data-screen="station"] .st-pl-load');
-    if (!btn) return { clicked: false };
-    const sf = window.SF;
-    const state = sf.state;
-    const stationId = state.ui && state.ui.dockedStationId;
-    const cmdtyId = btn.getAttribute('data-cmdty');
-    const entry = state.economy.markets[stationId] && state.economy.markets[stationId][cmdtyId];
-    if (!entry) return { clicked: false, reason: 'missing-entry', stationId, cmdtyId };
-    const oldStock = entry.stock;
-    entry.stock = 1;
-    state.nav.waypoint = null;
-    state.nav.route = null;
-    state.nav.autoTravel = false;
-    const beforeQty = (state.player.cargo.items[cmdtyId]) || 0;
-    btn.click();
-    return {
-      clicked: true,
-      stationId,
-      cmdtyId,
-      oldStock,
-      beforeQty,
-      confirmOpen: !!document.querySelector('#sf-confirm-root .sf-confirm'),
-    };
-  });
-  assert.equal(blockedLoadStart.clicked, true, 'Blocked Load & Nav probe should be clickable: ' + JSON.stringify(blockedLoadStart));
-  if (blockedLoadStart.confirmOpen) {
-    await page.locator('#sf-confirm-root .sf-confirm__ok').click({ timeout: 10000 });
-  }
-  await page.waitForFunction(({ cmdtyId, beforeQty }) => {
-    const sf = window.SF;
-    const afterQty = (sf.state.player.cargo.items[cmdtyId]) || 0;
-    const waypoint = sf.state.nav && sf.state.nav.waypoint;
-    const foot = document.querySelector('[data-screen="station"] .st-foot-msg');
-    const footText = (foot && foot.textContent || '').toLowerCase();
-    return afterQty === beforeQty && !(waypoint && waypoint.kind === 'trade') &&
-      /route load (failed|did not complete)|nav unchanged/.test(footText);
-  }, { cmdtyId: blockedLoadStart.cmdtyId, beforeQty: blockedLoadStart.beforeQty }, { timeout: 5000 });
-  const blockedLoadReport = await page.evaluate((cmdtyId) => ({
-    afterQty: (window.SF.state.player.cargo.items[cmdtyId]) || 0,
-    waypoint: window.SF.state.nav && window.SF.state.nav.waypoint,
-    footer: (document.querySelector('[data-screen="station"] .st-foot-msg')?.textContent || '').replace(/\s+/g, ' ').trim(),
-  }), blockedLoadStart.cmdtyId);
-  assert.equal(blockedLoadReport.afterQty, blockedLoadStart.beforeQty,
-    'Failed Load & Nav should not add cargo: ' + JSON.stringify({ blockedLoadStart, blockedLoadReport }));
-  assert.notEqual(blockedLoadReport.waypoint && blockedLoadReport.waypoint.kind, 'trade',
-    'Failed Load & Nav should not set a trade waypoint: ' + JSON.stringify(blockedLoadReport));
-  assert.match(blockedLoadReport.footer, /nav unchanged/i,
-    'Failed Load & Nav should tell the player nav is unchanged: ' + JSON.stringify(blockedLoadReport));
-  await page.evaluate(({ stationId, cmdtyId, oldStock }) => {
-    const sf = window.SF;
-    const entry = sf.state.economy.markets[stationId] && sf.state.economy.markets[stationId][cmdtyId];
-    if (entry) entry.stock = oldStock;
-  }, blockedLoadStart);
-
-  const loadStart = await page.evaluate(() => {
-    const btn = document.querySelector('[data-screen="station"] .st-pl-load');
-    if (!btn) return { clicked: false };
-    const sf = window.SF;
-    const cmdtyId = btn.getAttribute('data-cmdty');
-    const beforeQty = (sf.state.player.cargo.items[cmdtyId]) || 0;
-    btn.click();
-    return {
-      clicked: true,
-      cmdtyId,
-      requestedQty: Number(btn.getAttribute('data-qty') || 0),
-      beforeQty,
-      confirmOpen: !!document.querySelector('#sf-confirm-root .sf-confirm'),
-    };
-  });
-  assert.equal(loadStart.clicked, true, 'Load & Nav should be clickable');
-  assert(loadStart.requestedQty > 0, 'Load & Nav should request a positive route load');
-  if (loadStart.confirmOpen) {
-    await page.locator('#sf-confirm-root .sf-confirm__ok').click({ timeout: 10000 });
-  }
-  await page.waitForFunction(({ cmdtyId, beforeQty }) => {
-    const sf = window.SF;
-    const afterQty = (sf.state.player.cargo.items[cmdtyId]) || 0;
-    const waypoint = sf.state && sf.state.nav && sf.state.nav.waypoint;
-    return afterQty > beforeQty && waypoint && waypoint.kind === 'trade' && waypoint.stationId === '__probe_trade_dest';
-  }, { cmdtyId: loadStart.cmdtyId, beforeQty: loadStart.beforeQty }, { timeout: 5000 });
-  const loadReport = await page.evaluate((cmdtyId) => {
-    const sf = window.SF;
-    const waypoint = sf.state && sf.state.nav && sf.state.nav.waypoint;
-    const departureChips = [...document.querySelectorAll('[data-screen="station"] .st-departure-chip')].map((chip) => ({
-      label: (chip.querySelector('b')?.textContent || '').trim(),
-      text: (chip.querySelector('span')?.textContent || '').trim(),
-      className: chip.className,
-    }));
-    return {
-      afterQty: (sf.state.player.cargo.items[cmdtyId]) || 0,
-      waypoint,
-      departureChips,
-    };
-  }, loadStart.cmdtyId);
-  assert(loadReport.afterQty > loadStart.beforeQty,
-    'Load & Nav should buy cargo through the economy path: ' + JSON.stringify({ loadStart, loadReport }));
-  assert.equal(loadReport.waypoint && loadReport.waypoint.commodityId, loadStart.cmdtyId,
-    'Trade waypoint should retain the route commodity id');
-  assert.equal(loadReport.waypoint && loadReport.waypoint.stationId, '__probe_trade_dest',
-    'Load & Nav should keep nav on the seeded buyer station');
-  assert(loadReport.departureChips.some((chip) => chip.label === 'Route' && /Probe Buyer/.test(chip.text) && /\d/.test(chip.text)),
-    'Departure Check should summarize loaded trade route cargo: ' + JSON.stringify(loadReport.departureChips));
-
-  const destinationPrep = await page.evaluate((cmdtyId) => {
-    const sf = window.SF;
-    const state = sf.state;
-    const sourceStationId = state.ui && state.ui.dockedStationId;
-    const sourceEntry = state.economy.markets[sourceStationId] && state.economy.markets[sourceStationId][cmdtyId];
-    if (!sourceEntry) return { ok: false, reason: 'missing-source-market', sourceStationId, cmdtyId };
-    state.economy.markets.__probe_trade_dest = state.economy.markets.__probe_trade_dest || {};
-    state.economy.markets.__probe_trade_dest[cmdtyId] = {
-      ...sourceEntry,
-      role: 'consume',
-      stock: Math.max(1, Math.floor((sourceEntry.baseEq || 100) * 0.38)),
-      equilibrium: sourceEntry.equilibrium || sourceEntry.baseEq || 100,
-      baseEq: sourceEntry.baseEq || 100,
-      eventMods: [],
-    };
-    // Scripted probe undock: bare dock:undocked is bus-gated into the implicit-exit confirm
-    // (UIUX-STATION-EXIT-CONFIRMATION); a programmatic hop must use the committed form.
-    sf.bus.emit('dock:undocked', { committed: true, intent: 'explicit', source: 'first-loop-probe' });
-    return {
-      ok: true,
-      sourceStationId,
-      beforeQty: (state.player.cargo.items[cmdtyId]) || 0,
-      beforeCredits: state.player.credits || 0,
-    };
-  }, loadStart.cmdtyId);
-  assert.equal(destinationPrep.ok, true, 'Destination market prep should have a source market: ' + JSON.stringify(destinationPrep));
-  await page.waitForFunction(() => {
-    const sf = window.SF;
-    const stack = sf.state && sf.state.ui && sf.state.ui.screenStack || [];
-    return sf.state && sf.state.ui && sf.state.ui.docked === false && !stack.includes('station');
-  }, null, { timeout: 5000 });
-  await page.evaluate(() => { window.SF.bus.emit('dock:docked', { stationId: '__probe_trade_dest' }); });
-  await waitForVisible(page, '[data-screen="station"] .st-market-route', DOCK_TIMEOUT_MS, 'route destination callout');
-  const destinationReport = await page.evaluate(() => {
+  // ---- routes: best-run panel shows a profitable run + Set Course plots a trade waypoint ----
+  const routes = await page.evaluate(() => {
     const text = (el) => (el && el.textContent || '').replace(/\s+/g, ' ').trim();
-    const route = document.querySelector('[data-screen="station"] .st-market-route');
-    const btn = route && route.querySelector('[data-act="route-sell"]');
+    const panel = document.querySelector('[data-screen="station"] .sx-mkt__routes');
+    const rows = [...document.querySelectorAll('[data-screen="station"] .sx-route-row')];
     return {
-      dockedStationId: window.SF.state.ui && window.SF.state.ui.dockedStationId,
-      routeText: text(route),
-      sellButtonText: text(btn),
-      sellButtonHint: btn ? (btn.getAttribute('aria-label') || btn.title || '') : '',
-      sellDisabled: !!(btn && btn.disabled),
+      panel: !!panel,
+      rows: rows.map((r) => ({
+        text: text(r),
+        profit: text(r.querySelector('.sx-route-row__s')),
+        hasCourse: !!r.querySelector('[data-course]'),
+        dest: (r.querySelector('[data-course]') || {}).getAttribute && r.querySelector('[data-course]').getAttribute('data-dest'),
+      })),
     };
   });
-  assert.equal(destinationReport.dockedStationId, '__probe_trade_dest',
-    'Destination route probe should dock at the seeded buyer: ' + JSON.stringify(destinationReport));
-  assert.match(destinationReport.routeText, /TRADE ROUTE DESTINATION/i,
-    'Destination Market should identify route arrival: ' + JSON.stringify(destinationReport));
-  assert.match(destinationReport.routeText, /Probe Buyer/i,
-    'Destination Market should name the buyer station: ' + JSON.stringify(destinationReport));
-  assert.equal(destinationReport.sellButtonText, 'Sell Route Cargo',
-    'Destination Market should expose a route sell action: ' + JSON.stringify(destinationReport));
-  assert.match(destinationReport.sellButtonHint, /clear the completed trade waypoint/i,
-    'Route sell action should explain the sell consequence: ' + JSON.stringify(destinationReport));
-  assert.equal(destinationReport.sellDisabled, false,
-    'Route sell action should be enabled while cargo is aboard: ' + JSON.stringify(destinationReport));
+  assert.equal(routes.panel, true, 'Market should show a Trade Routes panel');
+  assert.ok(routes.rows.length > 0, 'seeded route intel should produce at least one trade route');
+  assert.ok(routes.rows.some((r) => /\+\d/.test(r.profit)), 'a trade route should disclose expected profit: ' + JSON.stringify(routes.rows));
+  assert.ok(routes.rows.every((r) => r.hasCourse), 'each trade route should expose a Set Course action: ' + JSON.stringify(routes.rows));
 
-  await page.evaluate(() => {
-    document.querySelector('[data-screen="station"] .st-market-route [data-act="route-sell"]').click();
+  const probeRow = routes.rows.find((r) => r.dest === '__probe_trade_dest');
+  assert.ok(probeRow, 'the seeded buyer should appear as a route destination: ' + JSON.stringify(routes.rows));
+  const nav = await page.evaluate(() => {
+    const btn = document.querySelector('[data-screen="station"] .sx-route-row [data-course][data-dest="__probe_trade_dest"]');
+    if (!btn) return { clicked: false };
+    btn.click();
+    const wp = window.SF.state.nav && window.SF.state.nav.waypoint;
+    return { clicked: true, waypoint: wp };
   });
-  await page.waitForFunction(({ cmdtyId, beforeQty, beforeCredits }) => {
-    const sf = window.SF;
-    const qty = (sf.state.player.cargo.items[cmdtyId]) || 0;
-    const credits = sf.state.player.credits || 0;
-    const nav = sf.state.nav || {};
-    const waypoint = nav.waypoint;
-    return qty < beforeQty && credits > beforeCredits && !(waypoint && waypoint.kind === 'trade');
-  }, { cmdtyId: loadStart.cmdtyId, beforeQty: destinationPrep.beforeQty, beforeCredits: destinationPrep.beforeCredits }, { timeout: 5000 });
-  const routeSellReport = await page.evaluate((cmdtyId) => ({
-    afterQty: (window.SF.state.player.cargo.items[cmdtyId]) || 0,
-    credits: window.SF.state.player.credits || 0,
-    waypoint: window.SF.state.nav && window.SF.state.nav.waypoint,
-    route: window.SF.state.nav && window.SF.state.nav.route,
-    autoTravel: window.SF.state.nav && window.SF.state.nav.autoTravel,
-  }), loadStart.cmdtyId);
-  assert(routeSellReport.afterQty < destinationPrep.beforeQty,
-    'Sell Route Cargo should unload the route commodity through the economy path: ' + JSON.stringify({ destinationPrep, routeSellReport }));
-  assert.notEqual(routeSellReport.waypoint && routeSellReport.waypoint.kind, 'trade',
-    'Sell Route Cargo should clear the completed trade waypoint before any story guidance resumes: ' + JSON.stringify(routeSellReport));
-  assert.deepEqual(issues.errorIssues(), [], 'market first-loop runtime probe should not record page errors');
+  assert.equal(nav.clicked, true, 'Set Course should be clickable');
+  assert.equal(nav.waypoint && nav.waypoint.kind, 'trade', 'Set Course should plot a trade waypoint');
+  assert.equal(nav.waypoint && nav.waypoint.stationId, '__probe_trade_dest', 'Set Course should target the seeded buyer station');
 
-  console.log('Market first-loop runtime OK: New Game -> dock -> Market purpose/prices/Best Trades/Load & Nav/route sell are legible.');
+  assert.deepEqual(issues.errorIssues(), [], 'market first-loop probe should not record page errors');
+  console.log('Market first loop OK: readable prices + chart -> BUY moves credits -> Trade Routes profit + Set Course plots a trade waypoint');
+  console.log('Dock target:', dockTarget.stationId, 'commodity:', seeded.cmdtyId);
+} catch (err) {
+  if (typeof issues !== 'undefined' && issues) console.error('Captured page issues during run:', issues.issues);
+  throw err;
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
+}
+
+async function domClick(page, selector) {
+  const ok = await page.evaluate((sel) => { const el = document.querySelector(sel); if (!el) return false; el.click(); return true; }, selector);
+  assert.equal(ok, true, 'probe should be able to click: ' + selector);
 }
 
 async function waitForVisible(page, selector, timeoutMs, label) {
@@ -392,33 +180,22 @@ async function waitForVisible(page, selector, timeoutMs, label) {
     const cs = getComputedStyle(el);
     const r = el.getBoundingClientRect();
     return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 20 && r.height > 10;
-  }, selector, { timeout: timeoutMs }).catch((err) => {
-    throw new Error('Timed out waiting for ' + label + ': ' + err.message);
-  });
+  }, selector, { timeout: timeoutMs }).catch((err) => { throw new Error('Timed out waiting for ' + label + ': ' + err.message); });
 }
 
 async function clickButton(page, label) {
-  const button = page.getByRole('button', { name: label, exact: true }).first();
-  if (await button.count() <= 0) return false;
-  await button.click({ timeout: 10000 });
-  return true;
-}
-
-// The full-screen boot overlay (z-index 2000, pointer-events:auto) intercepts clicks until
-// precompilePipelines() finishes and hideBootOverlay() adds `.hidden` (→ pointer-events:none). That's
-// sub-second on a real GPU but ~20 s under software rendering (SwiftShader), which would otherwise
-// blow the New Game click's 10 s actionability timeout. Wait for it to clear first.
-async function waitForBootOverlayGone(page, timeoutMs = 90000) {
-  await page.waitForFunction(() => {
-    const o = document.getElementById('boot-overlay');
-    if (!o) return true;
-    const s = getComputedStyle(o);
-    return o.classList.contains('hidden') || s.pointerEvents === 'none' || s.display === 'none' || s.visibility === 'hidden';
-  }, null, { timeout: timeoutMs });
+  return page.evaluate((wanted) => {
+    const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const exact = [...document.querySelectorAll('button')].find((b) => normalize(b.textContent) === normalize(wanted));
+    const button = exact || [...document.querySelectorAll('button')].find((b) => normalize(b.textContent).includes(normalize(wanted)));
+    if (!button || button.disabled) return false;
+    button.click();
+    return true;
+  }, label);
 }
 
 async function startFreshServer() {
-  const port = await findFreePort(8130);
+  const port = await findFreePort(8390);
   const url = `http://127.0.0.1:${port}/`;
   const child = spawnProbeServer(port);
   await waitForReachable(url, child);
@@ -426,11 +203,7 @@ async function startFreshServer() {
 }
 
 function spawnProbeServer(port) {
-  const child = spawn(process.execPath, ['server.js', String(port)], {
-    cwd: ROOT,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    windowsHide: true,
-  });
+  const child = spawn(process.execPath, ['server.js', String(port)], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   let output = '';
   const capture = (chunk) => { output = (output + String(chunk)).slice(-4000); };
   child.stdout.on('data', capture);
@@ -441,9 +214,7 @@ function spawnProbeServer(port) {
 
 async function waitForReachable(url, child) {
   for (let i = 0; i < 80; i++) {
-    if (child.exitCode != null) {
-      throw new Error(`Dev server exited before becoming reachable at ${url}\n${child.probeOutput ? child.probeOutput() : ''}`);
-    }
+    if (child.exitCode != null) throw new Error(`Dev server exited before becoming reachable at ${url}\n${child.probeOutput ? child.probeOutput() : ''}`);
     if (await reachable(url)) return;
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
@@ -452,26 +223,19 @@ async function waitForReachable(url, child) {
 }
 
 async function findFreePort(start) {
-  for (let port = start; port < start + 80; port++) {
-    if (await isPortFree(port)) return port;
-  }
-  throw new Error('No free local port found for market first-loop runtime check');
+  for (let port = start; port < start + 80; port++) if (await isPortFree(port)) return port;
+  throw new Error('No free local port found for the market first-loop runtime check');
 }
 
 function isPortFree(port) {
   return new Promise((resolve) => {
-    const server = createNetServer();
-    server.once('error', () => resolve(false));
-    server.once('listening', () => server.close(() => resolve(true)));
-    server.listen(port, '127.0.0.1');
+    const s = createNetServer();
+    s.once('error', () => resolve(false));
+    s.once('listening', () => s.close(() => resolve(true)));
+    s.listen(port, '127.0.0.1');
   });
 }
 
 async function reachable(url) {
-  try {
-    const res = await fetch(url, { method: 'GET' });
-    return !!res.ok;
-  } catch (_) {
-    return false;
-  }
+  try { const res = await fetch(url, { method: 'GET' }); return !!res.ok; } catch (_) { return false; }
 }

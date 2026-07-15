@@ -580,7 +580,13 @@ export const mining = {
     if (hit) {
       qty = Math.max(3, Math.min(8, Math.round(core.multiplier || 3)));
       this._giveCargo(core.commodityId, qty, this.state.playerId);
-      this.bus.emit('mining:yield', { commodityId: core.commodityId, qty, minerId: this.state.playerId, richCore: true });
+      const rock = this.state.entities && this.state.entities.get && this.state.entities.get(core.asteroidId);
+      const pos = rock && rock.pos
+        ? { x: rock.pos.x, z: rock.pos.z }
+        : null;
+      this.bus.emit('mining:yield', {
+        commodityId: core.commodityId, qty, pos, minerId: this.state.playerId, richCore: true,
+      });
       this.bus.emit('mining:richCoreCompleted', { asteroidId: core.asteroidId, commodityId: core.commodityId, qty, multiplier: qty });
     } else {
       this.bus.emit('mining:richCoreFizzle', { asteroidId: core.asteroidId, commodityId: core.commodityId });

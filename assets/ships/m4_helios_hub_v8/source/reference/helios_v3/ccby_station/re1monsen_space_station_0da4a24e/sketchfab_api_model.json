@@ -1,0 +1,187 @@
+{
+  "animationCount": 0,
+  "categories": [
+    {
+      "uid": "17d20ca7b35243d4a45171838b50704c",
+      "name": "Science & Technology",
+      "slug": "science-technology",
+      "uri": "https://api.sketchfab.com/v3/categories/17d20ca7b35243d4a45171838b50704c",
+      "icon": "https://static.sketchfab.com/static/builds/web/dist/static/assets/images/icons/categories/86b1bae49e0ed3f43b2d59b26700234e-v2.svg",
+      "thumbnails": [
+        {
+          "width": "512",
+          "height": "288",
+          "url": "https://static.sketchfab.com/categories/17d20ca7b35243d4a45171838b50704c/512x288.png"
+        },
+        {
+          "width": "800",
+          "height": "450",
+          "url": "https://static.sketchfab.com/categories/17d20ca7b35243d4a45171838b50704c/800x450.png"
+        }
+      ]
+    }
+  ],
+  "commentCount": 21,
+  "createdAt": "2022-10-26T21:19:37.158594",
+  "embedUrl": "https://sketchfab.com/models/0da4a24e7edd49159737675ffcc06228/embed",
+  "faceCount": 170282,
+  "isAgeRestricted": false,
+  "license": {
+    "uri": "https://api.sketchfab.com/v3/licenses/322a749bcfa841b29dff1e8a1bb74b0b",
+    "label": "CC Attribution",
+    "fullName": "Creative Commons Attribution",
+    "requirements": "Author must be credited. Commercial use is allowed.",
+    "url": "http://creativecommons.org/licenses/by/4.0/",
+    "slug": "by"
+  },
+  "likeCount": 852,
+  "name": "Space Station",
+  "publishedAt": "2022-10-27T07:26:25.279175",
+  "soundCount": 0,
+  "staffpickedAt": null,
+  "tags": [
+    {
+      "name": "unreal",
+      "slug": "unreal",
+      "uri": "https://api.sketchfab.com/v3/tags/unreal"
+    },
+    {
+      "name": "opera",
+      "slug": "opera",
+      "uri": "https://api.sketchfab.com/v3/tags/opera"
+    },
+    {
+      "name": "painter",
+      "slug": "painter",
+      "uri": "https://api.sketchfab.com/v3/tags/painter"
+    },
+    {
+      "name": "asset",
+      "slug": "asset",
+      "uri": "https://api.sketchfab.com/v3/tags/asset"
+    },
+    {
+      "name": "game",
+      "slug": "game",
+      "uri": "https://api.sketchfab.com/v3/tags/game"
+    },
+    {
+      "name": "3d",
+      "slug": "3d",
+      "uri": "https://api.sketchfab.com/v3/tags/3d"
+    },
+    {
+      "name": "blender",
+      "slug": "blender",
+      "uri": "https://api.sketchfab.com/v3/tags/blender"
+    },
+    {
+      "name": "scifi",
+      "slug": "scifi",
+      "uri": "https://api.sketchfab.com/v3/tags/scifi"
+    },
+    {
+      "name": "space",
+      "slug": "space",
+      "uri": "https://api.sketchfab.com/v3/tags/space"
+    }
+  ],
+  "thumbnails": {
+    "images": [
+      {
+        "uid": "21e8ef34b6df43b891bb90e03ae08e5c",
+        "width": 1920,
+        "height": 1080,
+        "size": 228443,
+        "url": "https://media.sketchfab.com/models/0da4a24e7edd49159737675ffcc06228/thumbnails/6b769db8e3044048b7040abb5d15b951/cfa943b35b1a43bdbad1d209bf2e62cc.jpeg"
+      },
+      {
+        "uid": "9d70e054b40749659f376d9f95af0461",
+        "width": 1024,
+        "height": 576,
+        "size": 63702,
+        "url": "https://media.sketchfab.com/models/0da4a24e7edd49159737675ffcc06228/thumbnails/6b769db8e3044048b7040abb5d15b951/73f65e4aa8ff4c4ebe7ffcf408d38976.jpeg"
+      },
+      {
+        "uid": "00ab946cd89f41d1a9e06f5dd5ee2a7c",
+        "width": 720,
+        "height": 405,
+        "size": 34383,
+        "url": "https://media.sketchfab.com/models/0da4a24e7edd49159737675ffcc06228/thumbnails/6b769db8e3044048b7040abb5d15b951/83dfe53c4cc24f41afd8a75ffd11d18a.jpeg"
+      },
+      {
+        "uid": "c4e3868c1fc04b758aadf1794b727c8f",
+        "width": 256,
+        "height": 144,
+        "size": 5881,
+        "url": "https://media.sketchfab.com/models/0da4a24e7edd49159737675ffcc06228/thumbnails/6b769db8e3044048b7040abb5d15b951/deb7725f7a3f40de9f042204b45e9a24.jpeg"
+      },
+      {
+        "uid": "7e6e3cecdeed459fb8f53f35838f0865",
+        "width": 64,
+        "height": 36,
+        "size": 1128,
+        "url": "https://media.sketchfab.com/models/0da4a24e7edd49159737675ffcc06228/thumbnails/6b769db8e3044048b7040abb5d15b951/52b27e7b2a6145ff8cf09fc5d58fdd7f.jpeg"
+      }
+    ]
+  },
+  "uid": "0da4a24e7edd49159737675ffcc06228",
+  "uri": "https://api.sketchfab.com/v3/models/0da4a24e7edd49159737675ffcc06228",
+  "user": {
+    "uid": "0c4b99c0925b420199d7e1c164aeb827",
+    "username": "re1monsen",
+    "displayName": "re1monsen",
+    "account": "basic",
+    "profileUrl": "https://sketchfab.com/re1monsen",
+    "avatar": {
+      "uid": "2042907b535c461a8cb354842fee307e",
+      "uri": "https://api.sketchfab.com/v3/avatars/2042907b535c461a8cb354842fee307e",
+      "images": [
+        {
+          "width": 32,
+          "height": 32,
+          "size": 957,
+          "url": "https://media.sketchfab.com/avatars/2042907b535c461a8cb354842fee307e/7a5085cf273349fe99b318a0c549eccd.jpeg"
+        },
+        {
+          "width": 48,
+          "height": 48,
+          "size": 1133,
+          "url": "https://media.sketchfab.com/avatars/2042907b535c461a8cb354842fee307e/19d370889f834e0a84052d2052c18bc8.jpeg"
+        },
+        {
+          "width": 90,
+          "height": 90,
+          "size": 1946,
+          "url": "https://media.sketchfab.com/avatars/2042907b535c461a8cb354842fee307e/6204850b235d4ed193b7736ec4aedd9b.jpeg"
+        },
+        {
+          "width": 100,
+          "height": 100,
+          "size": 2096,
+          "url": "https://media.sketchfab.com/avatars/2042907b535c461a8cb354842fee307e/9cf698461e9c49019758eeecc0077896.jpeg"
+        }
+      ]
+    },
+    "uri": "https://api.sketchfab.com/v3/users/0c4b99c0925b420199d7e1c164aeb827"
+  },
+  "vertexCount": 101868,
+  "viewCount": 30446,
+  "viewerUrl": "https://sketchfab.com/3d-models/space-station-0da4a24e7edd49159737675ffcc06228",
+  "isDownloadable": true,
+  "isProtected": false,
+  "description": "Drag and Drop and you are good to go. 4k Textures.\n\nYou can also find me on https://www.artstation.com/re1mon \nCheck my profile for free models https://sketchfab.com/re1monsen If you enjoy my work please consider supporting me I have many affordable models in the shop. Smash that follow!\n\nFeel free to contact me. I’d love yo hear from you.\n\nThanks!",
+  "price": null,
+  "downloadCount": 8459,
+  "editorUrl": "https://sketchfab.com/models/0da4a24e7edd49159737675ffcc06228/edit",
+  "status": {
+    "warning": {},
+    "processing": "SUCCEEDED"
+  },
+  "source": "website",
+  "hasCommentsDisabled": false,
+  "updatedAt": "2023-09-21T17:24:05.672678",
+  "pbrType": "metalness",
+  "textureCount": 5,
+  "materialCount": 2
+}

@@ -444,8 +444,14 @@ function expandByAccessorVertices(gltf, binary, accessorIndex, matrix, outMin, o
   const accessor = gltf.accessors?.[accessorIndex];
   const view = gltf.bufferViews?.[accessor?.bufferView];
   if (!accessor || !view || accessor.type !== 'VEC3' || accessor.componentType !== 5126 || accessor.sparse) return false;
+  // EXT_meshopt stores compressed bytes in the GLB while the accessor's byteLength describes the
+  // decoded view. The raw validator cannot index decoded offsets; fall back to the accessor's
+  // required min/max bounds, which visitNode already transforms through every hierarchy matrix.
+  if (view.extensions?.EXT_meshopt_compression) return false;
   const stride = view.byteStride || 12;
   const start = (view.byteOffset || 0) + (accessor.byteOffset || 0);
+  const requiredEnd = start + Math.max(0, accessor.count - 1) * stride + 12;
+  if (start < 0 || requiredEnd > binary.byteLength) return false;
   const data = new DataView(binary.buffer, binary.byteOffset, binary.byteLength);
   const point = new THREE.Vector3();
   for (let i = 0; i < accessor.count; i++) {

@@ -45,3 +45,5 @@ function directOnlyScript() {
 
 export const uniqueWreckHeldMass = directOnlyScript();
 export const uniqueWreckPingElite = directOnlyScript();
+export const uniqueWreckSilverDraftCleaner = directOnlyScript();
+export const uniqueWreckCassandraHardliners = directOnlyScript();

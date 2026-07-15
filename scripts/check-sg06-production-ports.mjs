@@ -336,7 +336,7 @@ function assertFrameWhitelist(frame) {
   assertExactKeys(frame, ['contacts', 'events', 'self', 'tick'], 'SensorFrame');
   assertExactKeys(frame.self, [
     'activity', 'capabilities', 'cargoBand', 'combatDoctrineId', 'disabled', 'energyFraction',
-    'heatFraction', 'hullFraction', 'id', 'mobilityBand', 'operationalMassBand', 'pos', 'radius',
+    'factionBehavior', 'heatFraction', 'hullFraction', 'id', 'mobilityBand', 'operationalMassBand', 'pos', 'radius',
     'ramAuthorized', 'roe', 'rot', 'subsystemFractions', 'team', 'tetherabilityBand', 'tethered', 'vel',
   ], 'SensorFrame.self');
   assertExactKeys(frame.self.pos, ['x', 'z'], 'SensorFrame.self.pos');

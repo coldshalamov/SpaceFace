@@ -1,10 +1,11 @@
-import { entityLocalPointToWorld, socketWorldPosition, worldPointToEntityLocal } from './geometry.js';
+import { entityLocalPointToWorld, socketLocalPosition, socketWorldPosition, worldPointToEntityLocal } from './geometry.js';
 import { ensureCombatant, entityKey } from './runtime.js';
 import { appendCombatTrace } from './trace.js';
 import { createMasslineRuntime, stepMassline } from '../core/constraints/masslineController.js';
 import { SIM_DT } from '../core/sim.js';
 
-const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 140, maxImpulse: 90, graceTicks: 1 });
+// +25% vs prior 140/90 — keep legacy 47-A massline break in lockstep with the player-facing buff.
+const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 175, maxImpulse: 112.5, graceTicks: 1 });
 
 /** Resolve player spool strength from immutable attachment data. Ratings are max-folded by ships;
  *  this layer scales only the standard tether's break policy and never mutates the catalog. */
@@ -125,8 +126,12 @@ export function createAttachmentService(context) {
       targetId: target.id,
       sourceSocketId: sourceSocket.id,
       targetSocketId: targetSocket.id,
-      sourceAnchorLocal: requestedSourceWorld ? worldPointToEntityLocal(owner, sourceWorld) : null,
-      targetAnchorLocal: requestedTargetWorld ? worldPointToEntityLocal(target, targetWorld) : null,
+      sourceAnchorLocal: requestedSourceWorld
+        ? worldPointToEntityLocal(owner, sourceWorld)
+        : socketLocalPosition(owner, sourceSocket),
+      targetAnchorLocal: requestedTargetWorld
+        ? worldPointToEntityLocal(target, targetWorld)
+        : socketLocalPosition(target, targetSocket),
       physicsHandle: null,
       state: 'active',
       createdTick: state.tick,
@@ -355,8 +360,50 @@ export function createAttachmentService(context) {
     if (!attachment || attachment.state !== 'active') return fail('attachment_missing');
     if (attachment.ownerId !== fromOwnerId) return fail('not_attachment_owner');
     if (!def || !def.ownership || !def.ownership.transferable) return fail('ownership_not_transferable');
-    if (!entity(toOwnerId)) return fail('new_owner_missing');
+    const nextOwner = entity(toOwnerId);
+    if (!nextOwner || nextOwner.alive === false) return fail('new_owner_missing');
+    const nextRuntime = ensureCombatant(state, nextOwner, catalog);
+    const nextSocket = selectSocket(nextRuntime, def.sourceSocketTags, null, nextOwner.id, attachment.id);
+    if (!nextSocket) return fail('source_socket_unavailable');
+    const physics = combatPhysics();
+    if (!physics || typeof physics.cutAttachment !== 'function' || typeof physics.createAttachment !== 'function') {
+      return fail('physics_port_unavailable');
+    }
+    const previous = {
+      ownerId: attachment.ownerId,
+      sourceSocketId: attachment.sourceSocketId,
+      sourceAnchorLocal: attachment.sourceAnchorLocal && { ...attachment.sourceAnchorLocal },
+    };
+    try {
+      const released = physics.cutAttachment({
+        attachmentId: attachment.id,
+        physicsHandle: attachment.physicsHandle,
+        reason: 'owner_transfer',
+        tick: state.tick,
+      });
+      if (released === false) return fail('physics_transfer_cut_rejected');
+    } catch (error) {
+      return fail('physics_transfer_cut_failed', error);
+    }
     attachment.ownerId = toOwnerId;
+    attachment.sourceSocketId = nextSocket.id;
+    attachment.sourceAnchorLocal = socketLocalPosition(nextOwner, nextSocket);
+    attachment.physicsHandle = null;
+    const rebound = createPhysicsAttachment(attachment, def);
+    if (!rebound.ok) {
+      attachment.ownerId = previous.ownerId;
+      attachment.sourceSocketId = previous.sourceSocketId;
+      attachment.sourceAnchorLocal = previous.sourceAnchorLocal;
+      const rollback = createPhysicsAttachment(attachment, def);
+      if (!rollback.ok) {
+        attachment.physicsHandle = null;
+        breakAttachment(attachment, 'physics_transfer_rollback_failed', previous.ownerId);
+        return fail('physics_transfer_rollback_failed', rollback.error || rebound.error);
+      }
+      attachment.physicsHandle = serializableHandle(rollback.physicsHandle);
+      return fail('physics_transfer_rebind_failed', rebound.error);
+    }
+    attachment.physicsHandle = serializableHandle(rebound.physicsHandle);
     appendCombatTrace(state.combat, state.tick, 'attachment.ownerTransferred', {
       actorId: fromOwnerId,
       targetId: toOwnerId,
@@ -561,12 +608,10 @@ export function createAttachmentService(context) {
     const targetSocket = selectSocket(targetRuntime, def.targetSocketTags, attachment.targetSocketId, target.id, attachment.id);
     if (!sourceSocket) return { ok: false, reason: 'source_socket_unavailable' };
     if (!targetSocket) return { ok: false, reason: 'target_socket_unavailable' };
-    const sourceWorld = attachment.sourceAnchorLocal
-      ? entityLocalPointToWorld(owner, attachment.sourceAnchorLocal)
-      : socketWorldPosition(owner, sourceSocket);
-    const targetWorld = attachment.targetAnchorLocal
-      ? entityLocalPointToWorld(target, attachment.targetAnchorLocal)
-      : socketWorldPosition(target, targetSocket);
+    const sourceAnchorLocal = validLocalPoint(attachment.sourceAnchorLocal) || socketLocalPosition(owner, sourceSocket);
+    const targetAnchorLocal = validLocalPoint(attachment.targetAnchorLocal) || socketLocalPosition(target, targetSocket);
+    const sourceWorld = entityLocalPointToWorld(owner, sourceAnchorLocal);
+    const targetWorld = entityLocalPointToWorld(target, targetAnchorLocal);
     const fallbackRestLength = Math.hypot(targetWorld.x - sourceWorld.x, targetWorld.z - sourceWorld.z);
     const restLength = Number.isFinite(attachment.restLength) && attachment.restLength > 0
       ? attachment.restLength
@@ -579,6 +624,8 @@ export function createAttachmentService(context) {
         targetId: target.id,
         sourceSocketId: sourceSocket.id,
         targetSocketId: targetSocket.id,
+        sourceAnchorLocal,
+        targetAnchorLocal,
         sourceWorld,
         targetWorld,
         restLength,
@@ -592,6 +639,8 @@ export function createAttachmentService(context) {
       if (physicsHandle === false || physicsHandle == null) return { ok: false, reason: 'physics_create_rejected' };
       attachment.sourceSocketId = sourceSocket.id;
       attachment.targetSocketId = targetSocket.id;
+      attachment.sourceAnchorLocal = sourceAnchorLocal;
+      attachment.targetAnchorLocal = targetAnchorLocal;
       attachment.restLength = restLength;
       return { ok: true, physicsHandle };
     } catch (error) {
@@ -700,6 +749,11 @@ function entityMasslineForceScale(value) {
 function validWorldPoint(value) {
   if (!value || !Number.isFinite(value.x) || !Number.isFinite(value.z)) return null;
   return { x: value.x, y: Number.isFinite(value.y) ? value.y : 0, z: value.z };
+}
+
+function validLocalPoint(value) {
+  if (!value || !Number.isFinite(value.x) || !Number.isFinite(value.z)) return null;
+  return { x: value.x, z: value.z };
 }
 
 function uses47aLegacyMassline(def, owner, target, state = null) {

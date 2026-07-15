@@ -35,7 +35,7 @@ const actor = helpers.spawnEntity(makeShipSpec({
     engagementTrigger: 'authorized_hostile_spawn',
     zoneId: 'zone_live_shadow',
     approachTelegraph: 'engine_flare',
-    noFireResponseWindowS: 0.5,
+    noFireResponseWindowS: 1,
     activity: normalizeActivity({
       kind: ActivityKind.ATTACK_RUN,
       reason: 'live_shadow:attack_probe',
@@ -70,7 +70,9 @@ assert.equal(helpers.aiSensors.frameFor(actor.id, state.tick).contacts.some((con
 assert.equal(helpers.aiRoster.listSquads(state.tick).length, 1,
   'production SG-06 roster should include the tactical wing');
 
-for (let i = 0; i < 38; i++) stepShadowHarness(harness, tacticalAI);
+// The authored response window is one second. Run just beyond that boundary so this
+// live-shadow check proves SG-06 stays quiet during the window, then submits once.
+for (let i = 0; i < 68; i++) stepShadowHarness(harness, tacticalAI);
 
 const events = state.combat.trace.events;
 const aiRequests = events.filter((event) =>

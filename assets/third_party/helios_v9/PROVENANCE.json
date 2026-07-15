@@ -1,0 +1,40 @@
+{
+  "schema": "spaceface.thirdPartyProvenance.v1",
+  "packet": "M4-HELIOS-V9-NEW-FOUNDATION",
+  "lane": "assets/third_party/helios_v9",
+  "acquiredFor": "Helios hub/gate/rock V9 isolated candidates",
+  "assets": [
+    {
+      "id": "polyhaven_coastal_cliff_01",
+      "displayName": "coastal_cliff_01",
+      "author": "Poly Haven",
+      "license": "CC0-1.0",
+      "canonicalUrl": "https://polyhaven.com/a/coastal_cliff_01",
+      "localPath": "polyhaven/coastal_cliff_01/",
+      "role": "fractured_crag",
+      "modifications": "Import \u2192 reshape \u2192 voxel remesh \u2192 decimate \u2192 embed ore seams \u2192 weighted normals"
+    },
+    {
+      "id": "polyhaven_rock_face_01",
+      "displayName": "rock_face_01",
+      "author": "Poly Haven",
+      "license": "CC0-1.0",
+      "canonicalUrl": "https://polyhaven.com/a/rock_face_01",
+      "localPath": "polyhaven/rock_face_01/",
+      "role": "stratified_slab",
+      "modifications": "Import \u2192 reshape \u2192 voxel remesh \u2192 decimate \u2192 embed ore seams \u2192 weighted normals"
+    },
+    {
+      "id": "polyhaven_moon_rock_03",
+      "displayName": "moon_rock_03",
+      "author": "Poly Haven",
+      "license": "CC0-1.0",
+      "canonicalUrl": "https://polyhaven.com/a/moon_rock_03",
+      "localPath": "polyhaven/moon_rock_03/",
+      "role": "rounded_chondrite",
+      "modifications": "Import \u2192 reshape \u2192 voxel remesh \u2192 decimate \u2192 embed ore seams \u2192 weighted normals"
+    }
+  ],
+  "credentialsCircumvention": false,
+  "livePromotion": false
+}

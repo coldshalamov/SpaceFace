@@ -30,10 +30,11 @@ Design consequences:
 - **The indicator always announces the armed verb** (see §4): self-exit chevron when no
   throw is armed, payload arc + target bracket while RMB is held. "Always show the player
   what will happen before it happens."
-- RMB normally fires weapon group 2 / mining beam. **While the tether is latched (and the
-  feature flag is on), RMB is the throw verb instead.** Mining-while-tethered is
-  sacrificed knowingly (towing and mining the same rock simultaneously was judged niche);
-  this is a dial (`massline2.throwArmInput`) if playtests disagree.
+- RMB normally fires weapon group 2 / mining beam. **While latched to a throwable payload
+  (ship/drone, fracture chunk, cargo mass) and the feature flag is on, RMB is the throw
+  verb instead.** While latched to a mineable **asteroid or wreck**, RMB stays the mining
+  beam — tether station-keeping for extraction is the designed dance partner (playtest
+  dial; see `isThrowArmPayload` in `input.js`).
 - Physics already enforces the anchor/payload split: asteroids/stations are immovable
   anchors (invMass 0 / non-dynamic) — you swing off them (B); ships, drones, salvage
   wrecks (mass 1800), chunks and pickups are dynamic — they can be thrown (C/D).

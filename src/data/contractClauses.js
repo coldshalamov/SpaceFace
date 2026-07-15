@@ -110,6 +110,44 @@ export function clauseById(id) {
   return CONTRACT_CLAUSES[id];
 }
 
+/**
+ * Pure completion settlement for a canonical mission instance.
+ *
+ * Clause observation records breach flags on the normal active mission. Missions calls this before
+ * payout/removal so the bonus and receipt are one atomic settlement, while this data helper remains
+ * free of bus/state writes. Multiple honored clauses compose multiplicatively in their authored
+ * order; malformed or unknown rows never create a bonus.
+ */
+export function settleContractClauses(mission) {
+  const terms = Array.isArray(mission && mission.clauses) ? mission.clauses : [];
+  const clauseState = mission && mission._clauseState && typeof mission._clauseState === 'object'
+    ? mission._clauseState : {};
+  const honored = [];
+  const breached = [];
+  let rewardMult = 1;
+  for (const term of terms) {
+    const canonical = term && clauseById(term.id);
+    if (!canonical) continue;
+    if (clauseState[canonical.id] && clauseState[canonical.id].breached) {
+      breached.push(canonical.id);
+      continue;
+    }
+    // The catalog, not mutable save/offer metadata, is the payout authority.
+    const rewardTerm = Number.isFinite(Number(canonical.rewardMult)) && canonical.rewardMult >= 1
+      ? canonical.rewardMult : 1;
+    rewardMult *= rewardTerm;
+    honored.push({ id: canonical.id, rewardMult: rewardTerm });
+  }
+  const baseRewardCr = Math.max(0, Math.round(Number(mission && mission.reward_cr) || 0));
+  return Object.freeze({
+    baseRewardCr,
+    rewardMult,
+    rewardCr: Math.max(0, Math.round(baseRewardCr * rewardMult)),
+    honored: Object.freeze(honored.map((row) => Object.freeze(row))),
+    breached: Object.freeze(breached),
+  });
+}
+
 /** All clause ids (for seeded attachment selection). */
 export const CLAUSE_IDS = Object.freeze(Object.keys(CONTRACT_CLAUSES));
 

@@ -12,6 +12,7 @@ import {
   moduleRiskGlyphs,
   moduleRiskStrip,
 } from '../src/ui/panels/moduleRisk.js';
+import { statSnippet } from '../src/ui/screens/outfitting.js';
 
 assert.equal(typeof window, 'undefined', 'this check must run headless');
 assert.ok(existsSync(new URL('../src/ui/panels/moduleRisk.js', import.meta.url)),
@@ -36,6 +37,7 @@ function guarded(fn) {
 guarded(testCatalogAndStaticModuleRisks);
 guarded(testAggregateDerivedRisks);
 guarded(testNoInventedDrawbacks);
+guarded(testMasslineModuleReadouts);
 testPackageAndNoTouchGuards();
 
 console.log(`[check-module-risk] PASS - ${sections} sections green`);
@@ -141,6 +143,18 @@ function testNoInventedDrawbacks() {
   assert.equal(MODULE_IDS.has('mod_smuggler_hold'), true, 'smuggler hold exists in live module data');
   assert.equal(MODULE_IDS.has('mod_mining_industrial_l'), true, 'industrial mining module exists in live module data');
   ok('risk labels are absent unless the corresponding live flag/aggregate exists');
+}
+
+function testMasslineModuleReadouts() {
+  const byId = new Map(MODULES.map((def) => [def.id, def]));
+  const cloak = statSnippet(byId.get('mod_cloak_mk1'));
+  assert.match(cloak, /320 detection ring/, 'cloak readout names its live detection radius');
+  assert.match(cloak, /9% cloak drain\/s/, 'cloak readout names its energy cost');
+  assert.match(cloak, /6% cloak recharge\/s/, 'cloak readout names its recovery rate');
+  const vectorRack = statSnippet(byId.get('mod_charge_vector_rack'));
+  assert.match(vectorRack, /8 charges/, 'vector rack names its capacity');
+  assert.match(vectorRack, /aft-drop enabled/, 'vector rack exposes its late-game propulsion verb');
+  ok('massline modules expose their real behavior in outfitting readouts');
 }
 
 function testPackageAndNoTouchGuards() {

@@ -73,8 +73,78 @@ const DEFINITIONS = Object.freeze([
   }),
 ]);
 
+// Depth Program S3 Reach cultures. These are combat-facing profiles, not additional B9 parley
+// doctrines: keeping a separate roster preserves the five-doctrine demand/scan contract while the
+// live SG-06 adapters consume each culture's complete factionPresenceDoctrine.
+const REACH_CULTURE_DEFINITIONS = Object.freeze([
+  Object.freeze({
+    id: 'maw',
+    label: 'The Maw',
+    combatReadout: 'Reaver blades commit hard in a wedge, slash through, and break before the hull folds.',
+    factionPresenceDoctrine: Object.freeze({
+      pursuitCommitment: 0.88,
+      preferredRange: 285,
+      liveFormation: 'wedge',
+      retreatHullFraction: 0.27,
+      combatDoctrineId: 'interceptor_flyby',
+      disableThenRun: false,
+      firstFire: true,
+      firstFireAgainst: Object.freeze([]),
+      firstFireCondition: null,
+      stationDefenseAggression: 0.82,
+      disableChance: 0.12,
+      destroyTarget: true,
+      fixedRoute: false,
+    }),
+  }),
+  Object.freeze({
+    id: 'rust-lords',
+    label: 'The Rust-Lords',
+    combatReadout: 'Jury-rigged line crews hold volume, foul drives with tethers, and make the scrap field theirs.',
+    factionPresenceDoctrine: Object.freeze({
+      pursuitCommitment: 0.64,
+      preferredRange: 360,
+      liveFormation: 'line',
+      retreatHullFraction: 0.49,
+      combatDoctrineId: 'tether_control_raider',
+      disableThenRun: false,
+      firstFire: true,
+      firstFireAgainst: Object.freeze([]),
+      firstFireCondition: null,
+      stationDefenseAggression: 0.72,
+      disableChance: 0.58,
+      destroyTarget: true,
+      fixedRoute: false,
+    }),
+  }),
+  Object.freeze({
+    id: 'drift-kings',
+    label: 'The Drift-Kings',
+    combatReadout: 'Masked corsairs work a long ring, pick the cleanest firing lane, and disengage on their own terms.',
+    factionPresenceDoctrine: Object.freeze({
+      pursuitCommitment: 0.46,
+      preferredRange: 455,
+      liveFormation: 'ring',
+      retreatHullFraction: 0.38,
+      combatDoctrineId: 'ranged_disengager',
+      disableThenRun: false,
+      firstFire: false,
+      firstFireAgainst: Object.freeze([]),
+      firstFireCondition: null,
+      stationDefenseAggression: 0.54,
+      disableChance: 0.08,
+      destroyTarget: true,
+      fixedRoute: false,
+    }),
+  }),
+]);
+
 export const PIRATE_DOCTRINE_IDS = Object.freeze(DEFINITIONS.map((d) => d.id));
 export const PIRATE_DOCTRINES = Object.freeze(Object.fromEntries(DEFINITIONS.map((d) => [d.id, d])));
+export const REACH_CULTURE_IDS = Object.freeze(REACH_CULTURE_DEFINITIONS.map((culture) => culture.id));
+export const REACH_CULTURE_DOCTRINES = Object.freeze(Object.fromEntries(
+  REACH_CULTURE_DEFINITIONS.map((culture) => [culture.id, culture]),
+));
 
 export function isPirateDoctrine(id) {
   return !!pirateDoctrineById(id);
@@ -83,6 +153,11 @@ export function isPirateDoctrine(id) {
 export function pirateDoctrineById(id) {
   if (id == null) return null;
   return PIRATE_DOCTRINES[String(id)] || null;
+}
+
+export function reachCultureDoctrineById(id) {
+  if (id == null) return null;
+  return REACH_CULTURE_DOCTRINES[String(id)] || null;
 }
 
 export function pirateDoctrineForEntity(entity) {

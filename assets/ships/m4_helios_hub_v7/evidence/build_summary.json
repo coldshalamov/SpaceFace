@@ -1,0 +1,43 @@
+{
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V7-GROK-001",
+  "family": "helios_hub_env_v7",
+  "ok": true,
+  "acceptanceClaim": false,
+  "assets": [
+    {
+      "id": "helios_hub_station",
+      "ok": true,
+      "lod0Triangles": 17948,
+      "sourceSha256": "5985865FEC0CB634291FD139BD295DD441E6C4C256BC18153714A3B7CEA2B177",
+      "liveId": "place_station_trade_hub"
+    },
+    {
+      "id": "helios_gate",
+      "ok": true,
+      "lod0Triangles": 8180,
+      "sourceSha256": "D7F3C0614FB55AFBCFD5B1159D73400B32172338F354B5662C0043CEAB039225",
+      "liveId": "place_gate_jump_ring"
+    },
+    {
+      "id": "helios_rock_a",
+      "ok": true,
+      "lod0Triangles": 3220,
+      "sourceSha256": "C99704B30AA47A4A1EB2E5AC0E77A0B95294090979949A9400D6C78D2F35B5C9",
+      "liveId": "place_asteroid_rock_a"
+    },
+    {
+      "id": "helios_rock_b",
+      "ok": true,
+      "lod0Triangles": 3220,
+      "sourceSha256": "F121D82F1E33E4B2F250923B6AAB849D66FA25CCBC0FA0DB5490E222909B8206",
+      "liveId": "place_asteroid_rock_b"
+    },
+    {
+      "id": "helios_rock_c",
+      "ok": true,
+      "lod0Triangles": 3224,
+      "sourceSha256": "219E1294CCA282D22C6E32898DABA2F1F66FC8BD894DF5360B8C2FFD1503E6C2",
+      "liveId": "place_asteroid_rock_c"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "schema": "spaceface.finalizeMaterialReport.v1",
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6.1-CODEX-001",
+  "assets": [
+    {
+      "id": "helios_gate",
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "materialCount": 4,
+      "ktx2ImageCount": 12,
+      "meshoptBufferViewCount": 37,
+      "candidateBytes": 6784316
+    },
+    {
+      "id": "helios_support_gantry",
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Warm"
+      ],
+      "materialCount": 3,
+      "ktx2ImageCount": 9,
+      "meshoptBufferViewCount": 37,
+      "candidateBytes": 4702468
+    },
+    {
+      "id": "helios_support_dock_arm",
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "materialCount": 5,
+      "ktx2ImageCount": 15,
+      "meshoptBufferViewCount": 53,
+      "candidateBytes": 7208516
+    },
+    {
+      "id": "helios_nav_spire",
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "materialCount": 4,
+      "ktx2ImageCount": 12,
+      "meshoptBufferViewCount": 53,
+      "candidateBytes": 6045104
+    }
+  ]
+}

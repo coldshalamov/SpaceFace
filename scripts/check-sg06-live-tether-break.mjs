@@ -102,8 +102,11 @@ try {
     `Massline should stay below catastrophic break tension before the SG-06 dash-armed overload fixture; got ${beforeOverload.tension}`);
 
   const armedOverload = armDashOverloadFixture(harness, attachmentId);
-  assert(armedOverload.tension > MASSLINE_MAX_TENSION,
-    `SG-06 dash-armed overload fixture should load the Massline above threshold; got ${armedOverload.tension}`);
+  // The +25% player-facing Massline durability pass intentionally moved the static short-reel
+  // preload below the break threshold. Keep the fixture physical: arm it in the high-load band,
+  // then let the already-started SG-06 dash and SG-02 impulses cross the real threshold below.
+  assert(armedOverload.tension > MASSLINE_MAX_TENSION * 0.8,
+    `SG-06 dash-armed overload fixture should preload the Massline near threshold; got ${armedOverload.tension}`);
 
   for (let i = 0; i < 60; i++) {
     applyDashOverloadLoad(harness, attachmentId, actor.id);

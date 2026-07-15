@@ -1,0 +1,6 @@
+{
+  "ts": "2026-07-11T15:23:53.4204517-04:00",
+  "status": "blocked_auth",
+  "http": 401,
+  "endpoint": "https://api.sketchfab.com/v3/models/0da4a24e7edd49159737675ffcc06228/download"
+}

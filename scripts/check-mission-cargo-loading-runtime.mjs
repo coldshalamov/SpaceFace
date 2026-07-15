@@ -37,6 +37,8 @@ try {
     return !!(state && state.mode === 'flight' && player && player.alive && player.hull > 0);
   }, null, { timeout: START_TIMEOUT_MS });
 
+  await finishOnboardingForProbe(page);
+
   const dockTarget = await page.evaluate(() => {
     const sf = window.SF;
     const station = sf.state.entityList.find((e) => e && e.alive !== false && e.type === 'station' && e.data && e.data.stationId && !e.data.isGate);
@@ -101,7 +103,24 @@ try {
     const state = window.SF.state;
     const mission = state.missions.active.find((m) => m.title === 'Probe contract cargo loading' && m.status === 'active');
     return !!(mission && state.ui.trackedMissionId === mission.id && state.nav.waypoint && state.nav.waypoint.missionId === mission.id);
-  }, null, { timeout: 10000 });
+  }, null, { timeout: 10000 }).catch(async (err) => {
+    const report = await page.evaluate(() => {
+      const state = window.SF.state;
+      const mission = state.missions.active.find((m) => m.title === 'Probe contract cargo loading');
+      return {
+        mission: mission && { id: mission.id, status: mission.status, title: mission.title },
+        activeCount: state.missions.active.length,
+        trackedMissionId: state.ui && state.ui.trackedMissionId,
+        waypoint: state.nav && state.nav.waypoint,
+        onboarding: state.onboarding && {
+          active: state.onboarding.active,
+          finished: state.onboarding.finished,
+          beat: state.onboarding.beat,
+        },
+      };
+    });
+    throw new Error('Timed out waiting for accepted contract nav: ' + JSON.stringify(report) + ' :: ' + err.message);
+  });
 
   await stationTab(page, 'market');
   let marketReport = await trackedMarketReport(page);
@@ -150,12 +169,20 @@ try {
       missionId: mission && mission.id,
       cargoQty: mission && mission.params && state.player.cargo.items[mission.params.cmdtyId] || 0,
       waypointMissionId: state.nav.waypoint && state.nav.waypoint.missionId,
+      waypointLabel: state.nav.waypoint && (state.nav.waypoint.label || state.nav.waypoint.stationName || state.nav.waypoint.sectorName || state.nav.waypoint.mapLabel),
       trackerText: (document.querySelector('.sf-mission-tracker')?.textContent || '').replace(/\s+/g, ' ').trim(),
     };
   });
   assert.equal(hud.mode, 'flight', 'undock should return to flight mode');
   assert.equal(hud.waypointMissionId, hud.missionId, 'flight nav should still target the loaded contract mission');
-  assert(hud.trackerText.includes('Probe contract cargo loading'), 'flight HUD should still name the loaded contract mission: ' + JSON.stringify(hud));
+  assert.match(hud.trackerText, /CURRENT OBJECTIVE/i,
+    'flight HUD should carry the loaded contract as the current objective: ' + JSON.stringify(hud));
+  assert.match(hud.trackerText, /sell/i,
+    'flight HUD should carry the loaded contract sell action: ' + JSON.stringify(hud));
+  assert(hud.waypointLabel && hud.trackerText.includes(hud.waypointLabel),
+    'flight HUD should carry the loaded contract destination: ' + JSON.stringify(hud));
+  assert.match(hud.trackerText, /AMBER DIAMOND \/ GOAL/i,
+    'flight HUD should keep the loaded contract goal marker visible: ' + JSON.stringify(hud));
   assert(hud.cargoQty >= 1, 'contract cargo should remain aboard after undock: ' + JSON.stringify(hud));
   assert.deepEqual(issues.errorIssues(), [], 'mission cargo-loading runtime probe should not record page errors');
 
@@ -198,6 +225,26 @@ async function stationTab(page, tabId) {
   }, tabId);
   assert.equal(opened, true, 'station ' + tabId + ' tab should exist');
   await waitVisible(page, '[data-screen="station"] #st-panel-' + tabId, 'station ' + tabId + ' panel');
+}
+
+async function finishOnboardingForProbe(page) {
+  const report = await page.evaluate(() => {
+    const sf = window.SF;
+    const system = sf && sf.ctx && sf.ctx.registry && sf.ctx.registry.get('onboarding');
+    if (system && typeof system._finish === 'function') system._finish();
+    else {
+      const onboarding = sf.state.onboarding || (sf.state.onboarding = {});
+      onboarding.finished = true;
+      onboarding.active = false;
+      sf.bus.emit('tutorial:finished', { source: 'mission-cargo-loading-probe' });
+    }
+    return {
+      active: !!(sf.state.onboarding && sf.state.onboarding.active),
+      finished: !!(sf.state.onboarding && sf.state.onboarding.finished),
+    };
+  });
+  assert.deepEqual(report, { active: false, finished: true },
+    'cargo-loading probe must enter the ordinary post-tutorial mission flow');
 }
 
 async function waitVisible(page, selector, label, timeout = 10000) {

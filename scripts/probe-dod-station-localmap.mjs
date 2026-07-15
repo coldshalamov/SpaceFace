@@ -178,8 +178,8 @@ try {
     };
   })())`);
 
-  // (b) Local system map — N key, the LocalSpaceIntel-fed local map.
-  await press('n', 'KeyN', 78); await sleep(700);
+  // (b) Local system map — M key, the LocalSpaceIntel-fed local map.
+  await press('m', 'KeyM', 77); await sleep(700);
   const localReport = await evalJson(`JSON.stringify((() => {
     const el = document.getElementById('sf-localmap');
     const canvas = el && el.querySelector('canvas');
@@ -193,8 +193,8 @@ try {
   })())`);
   await press('Escape', 'Escape', 27); await sleep(300);
 
-  // (c) Galaxy star map — M key.
-  await press('m', 'KeyM', 77); await sleep(700);
+  // (c) Galaxy star map — N key.
+  await press('n', 'KeyN', 78); await sleep(700);
   const galaxyReport = await evalJson(`JSON.stringify((() => {
     const el = document.getElementById('sf-starmap') || document.querySelector('[data-screen="starmap"]');
     const ui = window.SF.registry && typeof window.SF.registry.get === 'function' ? window.SF.registry.get('ui') : null;

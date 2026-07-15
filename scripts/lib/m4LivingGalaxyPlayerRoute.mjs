@@ -116,11 +116,11 @@ const FORBIDDEN_INJECTION = Object.freeze([
 ]);
 
 const REQUIRED_PUBLIC_SEAMS = Object.freeze([
-  [/New Game/, 'must use public New Game'],
-  [/Launch/, 'must use public Launch'],
-  [/KeyN|KeyM/, 'must open map via public N/M'],
-  [/Set Waypoint|Set Course & Jump/, 'must arm navigation via public map controls'],
-  [/F5|Continue/, 'must exercise save/Continue durability'],
+  [/getByRole\(\s*['"]button['"]\s*,\s*\{\s*name:\s*['"]New Game['"]/, 'must use public New Game'],
+  [/getByRole\(\s*['"]button['"]\s*,\s*\{\s*name:\s*['"]Launch['"]/, 'must use public Launch'],
+  [/keyboard\.press\(\s*['"]Key[MN]['"]\s*\)/, 'must open map via public N/M'],
+  [/(?=[\s\S]*getByRole\(\s*['"]button['"]\s*,\s*\{\s*name:\s*['"]Set Waypoint['"])(?=[\s\S]*getByRole\(\s*['"]button['"]\s*,\s*\{\s*name:\s*\/Set Course & Jump)/, 'must arm navigation via public map controls'],
+  [/(?=[\s\S]*keyboard\.press\(\s*['"]F5['"]\s*\))(?=[\s\S]*getByRole\(\s*['"]button['"]\s*,\s*\{\s*name:\s*['"]Continue['"])/, 'must exercise save/Continue durability'],
   [/injectedState:\s*false|injectedState\s*=\s*false/, 'must claim uninjected primary route'],
   [/primaryAcceptance/, 'must declare primaryAcceptance'],
   [/collectPageIssues|pageerror|errorIssues/, 'must collect runtime/page errors'],
@@ -148,7 +148,9 @@ export function validateLivingGalaxyRouteSources(sources = {}) {
     if (re.test(harness)) failures.push(msg);
   }
   for (const [re, msg] of REQUIRED_PUBLIC_SEAMS) {
-    if (!re.test(harness)) failures.push(msg);
+    // Only executable checker code can prove a public control seam. Matrix labels,
+    // contract prose, and tests are intentionally unable to satisfy these rules.
+    if (!re.test(checkerSrc)) failures.push(msg);
   }
 
   // Contract lib must not soft-pass empty family sets.
@@ -202,6 +204,9 @@ export function evaluateLivingGalaxyRouteReport(report = {}) {
     }
     if (cell.injectedState === true) failures.push(`${cell.id || '?'}: cell injectedState true`);
     if (!cell.id) failures.push('route cell missing id');
+    if (cell.seed == null || (typeof cell.seed === 'number' && !Number.isFinite(cell.seed))) {
+      failures.push(`${cell.id || '?'}: missing route seed`);
+    }
     if (!cell.sectorId) failures.push(`${cell.id || '?'}: missing sectorId`);
     if (!cell.regionalFamilyId && !cell.poiFamilyId) {
       failures.push(`${cell.id || '?'}: missing family identity`);
@@ -214,15 +219,41 @@ export function evaluateLivingGalaxyRouteReport(report = {}) {
       poiIds.add(cell.poiFamilyId);
       familyKeys.add(`poi:${cell.poiFamilyId}`);
     }
-    if (!cell.playerFacing?.joined && !cell.playerFacing?.surfaces?.length) {
-      failures.push(`${cell.id || '?'}: missing player-facing surface evidence`);
+    const screenshotPaths = new Set((cell.screenshots || []).map((shot) => (
+      typeof shot === 'string' ? shot : shot?.path
+    )).filter(Boolean));
+    const visibleSurfaces = (cell.playerFacing?.surfaces || []).filter((surface) => (
+      surface
+      && surface.visible === true
+      && typeof surface.text === 'string'
+      && surface.text.trim().length > 0
+      && typeof surface.capturedIn === 'string'
+      && screenshotPaths.has(surface.capturedIn)
+      && !/^(?:event|composed|private):/i.test(String(surface.selector || ''))
+    ));
+    if (!visibleSurfaces.length) {
+      failures.push(`${cell.id || '?'}: missing captured visible surface evidence`);
     }
     if (cell.playerFacing?.placeholder === true) {
       failures.push(`${cell.id || '?'}: player-facing surface marked placeholder`);
     }
+    const matrixCell = ROUTE_MATRIX.find((candidate) => candidate.id === cell.id);
+    const causalVisibleSurfaceKeys = new Set(visibleSurfaces
+      .filter((surface) => {
+        if (!matrixCell) return false;
+        const classification = classifySurfaceText(surface.text, matrixCell);
+        return classification.approach || classification.causal;
+      })
+      .map((surface) => `${surface.selector || '?'}@${surface.capturedIn}`));
+    const visibleCausalKeys = (cell.causal?.visibleSurfaceSelectors || [])
+      .filter((key) => causalVisibleSurfaceKeys.has(key));
     if (cell.causal?.readable !== true) {
       failures.push(`${cell.id || '?'}: causal behavior not marked readable`);
-    } else {
+    }
+    if (visibleCausalKeys.length < 1) {
+      failures.push(`${cell.id || '?'}: missing visible causal surface evidence`);
+    }
+    if (cell.causal?.readable === true && visibleCausalKeys.length > 0) {
       causalCount += 1;
     }
     if (cell.aftermath?.persisted === true) aftermathCount += 1;

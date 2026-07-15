@@ -18,9 +18,10 @@ export const DEFAULT_MASSLINE_DEF = Object.freeze({
   reelAcceleration: 90,
   holdCompliance: 0.035,
   damping: 18,
-  maxTension: 8200,
-  maxImpulse: 165,
-  maxYank: 420,
+  // +25% vs prior 8200/165/420 — keep DEFAULT in lockstep with combatDefs attachment_massline.
+  maxTension: 10250,
+  maxImpulse: 206.25,
+  maxYank: 525,
   overloadGraceS: 0.22,
   catastrophicRatio: 1.75,
   heatPerWork: 0.00012,

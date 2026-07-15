@@ -1,5 +1,5 @@
 # SPEC3-F9 — Asset Pipeline: Blender, Image-Gen & Audio (specs 37–39)
-**Thread:** F9 · **Reads:** GDD §9, VISUAL_ASSET_PLAN.md, `design/CURRENT_BUILD_STATUS.md` · **Status:** PLAN
+**Thread:** F9 · **Reads:** GDD §9, VISUAL_ASSET_PLAN.md, `design/program/README.md` · **Status:** PLAN
 **Thread pitch:** the production lane that feeds every other thread — a Blender ship/part pipeline
 that can't ship a broken runtime contract, an evidence-reviewed image-gen lane, and the procedural
 audio identity extended to every new verb.
@@ -110,7 +110,8 @@ composition, and review path are explicit, and hurt when they are incoherent or 
 spec makes the lane repeatable without locking the game to one rendering style or technique.
 
 ### 2. The design — initial generation scope and review boundary
-- **Initial candidates:** the 8-glyph decal/UI atlas (F8-34/36), a hard-surface material/trim study
+- **Initial candidates:** a decal/UI mark atlas sized from the approved cue inventory (F8-34/36),
+  a hard-surface material/trim study
   (panels/vents/greebles for SPEC3-37 parts), sector backdrop nebula plates (seamless-checked),
   splash/menu backgrounds, 18 crew portraits (F5-25) with a coherent reviewed direction,
   station ad-board plates (F8-35 core-world dressing), store/marketing capsules.
@@ -161,14 +162,16 @@ Incoherent one-offs without player-facing review; baked localized text; unreadab
 surfaces; untracked provenance; unlicensed sources; assets shipped without runtime and quality proof.
 
 ### 9. Ambition ceiling
-Sector-palette re-tints of the one trim sheet done *procedurally at build* — one authored sheet,
-ten sector variants, zero extra generation.
+Build-time material variation is one candidate for extending a coherent visual family. Compare trim
+sheets, authored material sets, decals, masks, geometry detail, procedural variation, and hybrids in
+normal-route captures; choose the smallest maintainable set that preserves asset identity and meets
+the visual bar. Neither a single sheet nor procedural recoloring is a quality requirement.
 
 ---
 
 ## SPEC3-39 — Audio identity expansion
 **One-line pitch:** extend the audio identity to every new verb — tension you can hear,
-sectors you can identify blind, and a mix that respects the one-voice law.
+sectors you can identify blind, and a mix whose priorities remain intelligible under load.
 
 ### 1. Why
 Every SPEC3 thread ordered cues (tether hum, vent chime, siege stingers, ticker blips, vein
@@ -177,21 +180,21 @@ groundwork is laid. Authored recordings may provide impact, material, ambience, 
 they outperform synthesis. What's missing is the catalogue, source/provenance policy, and mixing law.
 
 ### 2. The design
-- **New recipe families:** (a) *tension drones* — tether hum (pitch ∝ tension 80→220 Hz, breaks
-  add noise burst "whipcrack"), cruise spool riser, siege approach bed; (b) *confirmation chimes* —
-  vent-bonus, tracking-bonus tick, claim-built, chain-complete (all ≤180 ms, pentatonic family so
-  overlaps never sour); (c) *world signals* — ticker blip (per headline class), convoy departure
-  horn (distant, filtered), vein-strike rumble+arp, war-state shift (one low brass-ish swell);
-  (d) *sector ambience pads* — one per palette class (core/belt/fringe/anomaly), 2-oscillator
-  drones with sector-seeded detune so Veil never sounds like Sker.
-- **The mixing law (one voice, for ears):** 4 buses — alerts > speech-equivalent (arbiter line
-  blips) > world > ambience. Side-chain: alerts duck everything −6 dB, 120 ms attack. Max ONE
-  world-signal per 4 s (matches bark cap). Combat intensity drives the existing adaptive music bed
-  ±1 layer only (restraint = premium).
+- **New recipe families:** explore continuous tension cues, confirmation cues, world signals, and
+  sector ambience. Oscillator ranges, envelope lengths, intervals, instrumentation, authored versus
+  synthesized sources, and layering are starting hypotheses to audition in context—not identity
+  rules. Each family must communicate its state, remain distinct in the mix, and avoid listener
+  fatigue across representative play sessions.
+- **The mixing policy:** route semantic categories through buses that support priority, ducking,
+  accessibility, and settings control. Start from the current graph, then measure masking, peak/RMS
+  headroom, latency, voice pressure, and intelligibility during quiet flight and worst-case combat.
+  Bus count, duck depth/attack/release, signal cadence, music layers, and concurrency caps are tunable
+  hypotheses recorded with the evidence that justifies them.
 - **Every cue via the cueRouter** (F8-34): `audioCue` column in `vfxCues.js` — audio and visuals
   stay in lockstep by construction.
-- **Accessibility:** all semantic cues carry a visual twin (existing radar/HUD redundancy law);
-  a "reduced audio" setting caps simultaneous voices at 8.
+- **Accessibility:** semantic cues have an equivalent visual or haptic channel where applicable.
+  Reduced-audio behavior controls density, dynamics, startling transients, and masking; establish its
+  concurrency and mix policy through accessibility review rather than a fixed global voice count.
 
 ### 3. Architecture & wiring
 New recipes in `audioRecipes.js` (patterns exist to copy); buses/ducking in audioSystem.js master
@@ -201,10 +204,9 @@ cueRouter rows. Headless verification stays "synthesizes without errors" + recip
 
 ### 4. Key code
 ```js
-// Tether hum — tension is a CONTINUOUS param, not retriggered one-shots. One voice, always alive
-// while attached, silent at rest. Retriggering per tension change is the amateur mistake.
-const hum = recipes.drone({ base: 80, q: 8 });
-bus.on('tether:tension', ({ t01 }) => hum.set({ freq: 80 + 140 * t01, gain: 0.05 + 0.25 * t01 }));
+// Continuous state drives a continuous parameter source; values are tuned from an in-game audition.
+const hum = recipes.continuousCue(tetherHumCandidate);
+bus.on('tether:tension', ({ t01 }) => hum.set(mapTensionToAudibleState(t01)));
 bus.on('tether:cut', ({ slingshot }) => { hum.stop(); if (slingshot) recipes.whipcrack(); });
 ```
 
@@ -214,7 +216,8 @@ bar. New files or dependencies require provenance, bundle/memory/latency, access
 maintenance evidence; neither presence nor absence of dependencies is a quality result by itself.
 
 ### 7. Build plan
-1. Bus/ducking graph + `scripts/check-audio-mix.mjs` (bus routing, duck timing, voice caps).
+1. Bus/ducking graph + `scripts/check-audio-mix.mjs` (routing, priority behavior, headroom, masking,
+   cleanup, settings response, and evidence-backed timing/concurrency bounds).
 2. Tension drones (tether first — F3-17 dependency).
 3. Chime + world-signal families via cueRouter rows.
 4. Sector pads + palette-class mapping; extend `check-audio-identity.mjs`.

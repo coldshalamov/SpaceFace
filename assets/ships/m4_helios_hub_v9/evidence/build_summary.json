@@ -1,0 +1,22 @@
+{
+  "packet": "M4-HELIOS-V9-NEW-FOUNDATION",
+  "ok": true,
+  "acceptanceClaim": false,
+  "elapsedSec": 72.56,
+  "assets": [
+    {
+      "id": "helios_hub_station",
+      "ok": true,
+      "lod0Triangles": 14854,
+      "sourceSha256": "310D27C243EBD07B45C51332084E1A6B9152B49CDC2430FCDACF45D95828C194",
+      "liveId": "place_station_trade_hub"
+    },
+    {
+      "id": "helios_gate",
+      "ok": true,
+      "lod0Triangles": 8071,
+      "sourceSha256": "2952A780231B7DD383908D7ED698832799849BC7CBA3E6D8C791656CEE72CA86",
+      "liveId": "place_gate_jump_ring"
+    }
+  ]
+}

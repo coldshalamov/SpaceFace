@@ -1,0 +1,458 @@
+Reloading external rigs...
+Reloading external metarigs...
+[m4-helios-hub-v3] Acquired authoring lock ΓåÆ C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\authoring.__lock
+[m4-helios-hub-v3] Packet PROFESSIONAL-HELIOS-HUB-VISUAL-V7-GROK-001 ΓÇö Helios hub V3 professional rebuild (isolated)
+[m4-helios-hub-v3] Vendor verify: accepted=11 diskCc0=9
+[m4-helios-hub-v3] Vendor components accepted=11 diskCc0=9
+[m4-helios-hub-v3] Reusing existing texture atlas under C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\textures (force=False)
+[m4-helios-hub-v3] === Building helios_rock_a: Helios Rock A (slab) ===
+18:31:10 | INFO: Data are loaded, start creating Blender stuff
+18:31:10 | INFO: Blender create Mesh node rock_PROXY_5m.002
+18:31:11 | INFO: glTF import finished in 1.03s
+[m4-helios-hub-v3] Decimated V6 rock:V6_Rock_A_Scan: ΓåÆ2760 tris (cap 3000)
+[m4-helios-hub-v3] Authored 3 parts; primary trisΓëê454
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] helios_rock_a lod0: tris=478 objects=2
+[m4-helios-hub-v3] Decimated LOD1_Merged_Material_Rock: ΓåÆ174 tris (cap 190)
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] helios_rock_a lod1: tris=198 objects=2
+[m4-helios-hub-v3] Decimated LOD2_Merged_Material_Rock: ΓåÆ62 tris (cap 68)
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] helios_rock_a lod2: tris=62 objects=1
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+18:31:14 | INFO: Starting glTF 2.0 export
+18:31:14 | INFO: Extracting primitive: LOD0_HOOK_EMISSIVE
+18:31:14 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+18:31:14 | INFO: Primitives created: 1
+18:31:14 | INFO: Extracting primitive: LOD0_Merged_Material_Rock
+18:31:14 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+18:31:14 | INFO: Primitives created: 1
+18:31:14 | INFO: Extracting primitive: LOD1_HOOK_EMISSIVE
+18:31:14 | INFO: Primitives created: 1
+18:31:14 | INFO: Extracting primitive: LOD1_Merged_Material_Rock
+18:31:14 | INFO: Primitives created: 1
+18:31:14 | INFO: Extracting primitive: LOD2_Merged_Material_Rock
+18:31:14 | INFO: Primitives created: 1
+18:31:14 | INFO: Finished glTF 2.0 export in 0.2373964786529541 s
+
+[m4-helios-hub-v3] Exported GLB ΓåÆ C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\source\places\helios_rock_a.glb (2660692 bytes)
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v7.py:484: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  if world and world.use_nodes:
+00:35.406  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_full.__tmp_6752.png'
+Info: Saved as "helios_rock_a_production.blend"
+[m4-helios-hub-v3] Rendered helios_rock_a_full.png
+00:37.078  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_full.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_full.png
+00:38.671  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_forward_34.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_forward_34.png
+00:40.015  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_forward_34.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_forward_34.png
+00:41.625  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_readability_close.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_readability_close.png
+00:43.031  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_readability_120px.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_readability_120px.png
+00:44.593  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_readability_under45px.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_readability_under45px.png
+00:46.578  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_top.png
+00:49.531  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_rear.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_rear.png
+00:52.000  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_rear.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_rear.png
+00:54.734  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_rear_34.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_rear_34.png
+00:57.296  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_rear_34.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_rear_34.png
+01:00.062  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_detail.png
+01:02.546  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_detail.png
+01:04.484  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_detail.png
+01:06.890  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_detail.png
+01:08.531  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_detail.png
+01:09.890  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_detail.png
+01:11.062  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_detail.png
+01:12.234  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_detail.png
+01:13.312  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_detail.png
+01:14.531  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_detail.png
+01:16.265  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_side_ortho.png
+01:18.046  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_gamesky.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_gamesky.png
+01:19.203  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_gamesky_forward_34.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_gamesky_forward_34.png
+01:20.015  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_lod_continuity_lod0.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_lod_continuity_lod0.png
+01:20.671  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_lod_continuity_lod1.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_lod_continuity_lod1.png
+01:21.390  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_a\helios_rock_a_lod_continuity_lod2.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_a_lod_continuity_lod2.png
+[m4-helios-hub-v3] DONE helios_rock_a in 61.8s tris=738 lod0=478 budget_ok=True
+[m4-helios-hub-v3] === Building helios_rock_b: Helios Rock B (wedge) ===
+18:32:11 | INFO: Data are loaded, start creating Blender stuff
+18:32:11 | INFO: Blender create Mesh node realCap_Model_1
+18:32:12 | INFO: glTF import finished in 0.16s
+[m4-helios-hub-v3] Authored 3 parts; primary trisΓëê1452
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] helios_rock_b lod0: tris=1476 objects=2
+[m4-helios-hub-v3] Decimated LOD1_Merged_Material_Rock: ΓåÆ560 tris (cap 609)
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] helios_rock_b lod1: tris=584 objects=2
+[m4-helios-hub-v3] Decimated LOD2_Merged_Material_Rock: ΓåÆ198 tris (cap 217)
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] helios_rock_b lod2: tris=198 objects=1
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+18:32:12 | INFO: Starting glTF 2.0 export
+18:32:12 | INFO: Extracting primitive: LOD0_HOOK_EMISSIVE
+18:32:12 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+18:32:12 | INFO: Primitives created: 1
+18:32:12 | INFO: Extracting primitive: LOD0_Merged_Material_Rock
+18:32:12 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+18:32:12 | INFO: Primitives created: 1
+18:32:12 | INFO: Extracting primitive: LOD1_HOOK_EMISSIVE
+18:32:12 | INFO: Primitives created: 1
+18:32:12 | INFO: Extracting primitive: LOD1_Merged_Material_Rock
+18:32:12 | INFO: Primitives created: 1
+18:32:12 | INFO: Extracting primitive: LOD2_Merged_Material_Rock
+18:32:12 | INFO: Primitives created: 1
+18:32:12 | INFO: Finished glTF 2.0 export in 0.07670092582702637 s
+
+[m4-helios-hub-v3] Exported GLB ΓåÆ C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\source\places\helios_rock_b.glb (2732340 bytes)
+01:23.734  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_full.__tmp_6752.png'
+Info: Saved as "helios_rock_b_production.blend"
+[m4-helios-hub-v3] Rendered helios_rock_b_full.png
+01:25.109  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_forward_34.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_forward_34.png
+01:26.296  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_readability_close.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_readability_close.png
+01:27.265  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_readability_close.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_readability_close.png
+01:28.187  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_readability_close.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_readability_close.png
+01:28.968  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_readability_120px.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_readability_120px.png
+01:29.593  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_readability_under45px.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_readability_under45px.png
+01:30.687  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_top.png
+01:32.281  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_top.png
+01:33.812  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_top.png
+01:35.203  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_top.png
+01:37.046  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_top.png
+01:38.546  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_top.png
+01:40.281  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_top.png
+01:41.984  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_top.png
+01:43.343  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_top.png
+01:44.500  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_top.png
+01:45.484  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_rear.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_rear.png
+01:46.593  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_rear_34.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_rear_34.png
+01:48.453  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_detail.png
+01:50.171  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_detail.png
+01:51.343  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_detail.png
+01:52.406  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_detail.png
+01:53.453  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_detail.png
+01:54.531  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_detail.png
+01:55.640  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_detail.png
+01:56.656  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_detail.png
+01:57.578  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_detail.png
+01:58.734  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_detail.png
+01:59.812  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_side_ortho.png
+02:00.828  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_side_ortho.png
+02:01.734  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_side_ortho.png
+02:02.656  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_side_ortho.png
+02:03.546  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_side_ortho.png
+02:04.468  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_side_ortho.png
+02:05.421  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_side_ortho.png
+02:06.359  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_side_ortho.png
+02:07.343  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_side_ortho.png
+02:08.312  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_side_ortho.png
+02:09.312  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_gamesky.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_gamesky.png
+02:09.875  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_gamesky_forward_34.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_gamesky_forward_34.png
+02:10.375  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_lod_continuity_lod0.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_lod_continuity_lod0.png
+02:10.859  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_lod_continuity_lod1.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_lod_continuity_lod1.png
+02:11.312  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_b\helios_rock_b_lod_continuity_lod2.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_b_lod_continuity_lod2.png
+[m4-helios-hub-v3] DONE helios_rock_b in 49.8s tris=2258 lod0=1476 budget_ok=True
+[m4-helios-hub-v3] === Building helios_rock_c: Helios Rock C (cluster) ===
+18:33:01 | INFO: Data are loaded, start creating Blender stuff
+18:33:01 | INFO: Blender create Mesh node rock_PROXY_5m.002
+18:33:02 | INFO: glTF import finished in 0.39s
+[m4-helios-hub-v3] Decimated V6 rock:V6_Rock_C_Scan: ΓåÆ2760 tris (cap 3000)
+[m4-helios-hub-v3] Authored 3 parts; primary trisΓëê2992
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] helios_rock_c lod0: tris=3016 objects=2
+[m4-helios-hub-v3] Decimated LOD1_Merged_Material_Rock: ΓåÆ1154 tris (cap 1256)
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] helios_rock_c lod1: tris=1178 objects=2
+[m4-helios-hub-v3] Decimated LOD2_Merged_Material_Rock: ΓåÆ412 tris (cap 448)
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+[m4-helios-hub-v3] helios_rock_c lod2: tris=412 objects=1
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed: 0 vertices, 0 edges, 0 faces
+Info: Removed 0 vertices
+18:33:03 | INFO: Starting glTF 2.0 export
+18:33:03 | INFO: Extracting primitive: LOD0_HOOK_EMISSIVE
+18:33:03 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+18:33:03 | INFO: Primitives created: 1
+18:33:03 | INFO: Extracting primitive: LOD0_Merged_Material_Rock
+18:33:03 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+18:33:03 | INFO: Primitives created: 1
+18:33:03 | INFO: Extracting primitive: LOD1_HOOK_EMISSIVE
+18:33:03 | INFO: Primitives created: 1
+18:33:03 | INFO: Extracting primitive: LOD1_Merged_Material_Rock
+18:33:03 | INFO: Primitives created: 1
+18:33:03 | INFO: Extracting primitive: LOD2_Merged_Material_Rock
+18:33:03 | INFO: Primitives created: 1
+18:33:03 | INFO: Finished glTF 2.0 export in 0.06406188011169434 s
+
+[m4-helios-hub-v3] Exported GLB ΓåÆ C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\source\places\helios_rock_c.glb (2896216 bytes)
+02:13.765  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_full.__tmp_6752.png'
+Info: Saved as "helios_rock_c_production.blend"
+[m4-helios-hub-v3] Rendered helios_rock_c_full.png
+02:14.812  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_forward_34.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_forward_34.png
+02:15.562  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_readability_close.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_readability_close.png
+02:16.328  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_readability_close.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_readability_close.png
+02:16.718  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_readability_120px.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_readability_120px.png
+02:17.031  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_readability_under45px.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_readability_under45px.png
+02:17.968  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_top.png
+02:19.312  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_top.png
+02:20.625  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_top.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_top.png
+02:21.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_rear.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_rear.png
+02:22.875  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_rear.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_rear.png
+02:23.953  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_rear.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_rear.png
+02:25.437  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_rear_34.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_rear_34.png
+02:26.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_rear_34.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_rear_34.png
+02:27.828  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_rear_34.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_rear_34.png
+02:29.234  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_detail.png
+02:30.484  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_detail.png
+02:32.203  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_detail.png
+02:33.531  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_detail.png
+02:34.890  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_detail.png
+02:36.359  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_detail.png
+02:37.593  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_detail.png
+02:38.812  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_detail.png
+02:39.937  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_detail.png
+02:40.968  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_detail.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_detail.png
+02:41.921  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_side_ortho.png
+02:42.843  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_side_ortho.png
+02:43.906  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_side_ortho.png
+02:45.250  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_side_ortho.png
+02:46.734  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_side_ortho.png
+02:48.234  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_side_ortho.png
+02:49.781  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_side_ortho.png
+02:51.500  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_side_ortho.png
+02:53.109  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_side_ortho.png
+02:54.156  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_side_ortho.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_side_ortho.png
+02:55.484  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_gamesky.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_gamesky.png
+02:56.250  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_gamesky_forward_34.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_gamesky_forward_34.png
+02:57.187  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_lod_continuity_lod0.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_lod_continuity_lod0.png
+02:57.734  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_lod_continuity_lod1.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_lod_continuity_lod1.png
+02:58.437  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v7\evidence\renders\helios_rock_c\helios_rock_c_lod_continuity_lod2.__tmp_6752.png'
+[m4-helios-hub-v3] Rendered helios_rock_c_lod_continuity_lod2.png
+[m4-helios-hub-v3] DONE helios_rock_c in 47.6s tris=4606 lod0=3016 budget_ok=True
+[m4-helios-hub-v3] FAMILY DONE in 171.9s ΓÇö ok=3 fail=0 (no acceptance claim)
+[m4-helios-hub-v3] Released authoring lock
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)

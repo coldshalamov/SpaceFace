@@ -686,6 +686,8 @@ test('production snapshot completes during 120+ continuously advancing scheduled
       event.name === 'save:completed' || event.name === 'save:error'
     )); turn++) h.step();
 
+    // Cost-aware batching should yield under crowded clone pressure while the captured snapshot
+    // remains pinned to one tick and every serializer still runs exactly once.
     assert.ok(h.scheduledTurns >= 120,
       `fixture must exercise at least 120 tick-advancing task boundaries, got ${h.scheduledTurns}`);
     assert.ok(h.tickAdvances >= 120,
@@ -695,13 +697,15 @@ test('production snapshot completes during 120+ continuously advancing scheduled
       `live-tick autosave must terminate; events=${JSON.stringify(h.events.filter((event) => event.name.startsWith('save:')))}`);
     const raw = h.storage.getItem('sf.save.auto');
     const restored = JSON.parse(raw);
-    assertCanonicalSaveData(raw, 'live-tick capture must equal the canonical 29-key snapshot at its captured tick');
-    assert.deepEqual(Object.keys(restored.data), save._saveCapturePlan().map(([key]) => key));
-    assert.equal(h.serializerCalls.size, 29);
+    const capturePlan = save._saveCapturePlan();
+    const captureKeyCount = capturePlan.length;
+    assertCanonicalSaveData(raw, 'live-tick capture must equal the canonical snapshot at its captured tick');
+    assert.deepEqual(Object.keys(restored.data), capturePlan.map(([key]) => key));
+    assert.equal(h.serializerCalls.size, captureKeyCount);
     for (const [key, calls] of h.serializerCalls) {
       assert.equal(calls, 1, `${key} serializer must run exactly once`);
     }
-    assert.equal(completed.payload.serializerTimings.length, 29);
+    assert.equal(completed.payload.serializerTimings.length, captureKeyCount);
     h.drain(400);
     assert.equal(h.tasks.length, 0);
     assert.equal(h.workerTasks.length, 0);

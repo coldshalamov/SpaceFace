@@ -53,24 +53,22 @@
     "scenario:dialogueLine": 1,
     "tether:attached": 1,
     "tether:broken": 1,
-    "combat:fire": 12,
-    "projectile:hit": 1,
-    "combat:damage": 1,
+    "combat:fire": 17,
+    "projectile:hit": 8,
+    "combat:damage": 8,
     "economy:tick": 2,
-    "graffiti:show": 1,
-    "comms:popup": 2,
     "camera:shake": 3,
     "presentation:cameraCue": 3,
     "presentation:vfxCue": 4,
     "presentation:audioCue": 4,
     "presentation:uiCue": 4,
     "presentation:caption": 4,
-    "presentation:cueApplied": 4,
-    "presentation:cue": 4,
+    "presentation:cueApplied": 12,
+    "presentation:cue": 12,
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "730403fc8beca599788aad12007844f75a9b30cfdf4a5f687282a5739433b90d",
+    "authoritativeHash": "a6c96aad61fc4c185c070e0d9349e5d3e7a860cf47d86c0ffea190a20d9e0ff1",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -86,7 +84,9 @@
     "V3's authored handling differs from the legacy controller, so the hash differs from the legacy envelope in test/47a.telemetry.expected.json.",
     "sourceScenarioContract ties replay evidence to the SG-05 scenario graph consumed by sf-sim.",
     "phase0ObservedTraceCounts asserts events emitted by this rapier-dynamic 720-tick V3 run, captured deterministically across repeat + save/reload.",
-    "The current V3 Massline path attaches at tick 4 and breaks at tick 166 before the first projectile hit; the envelope records both tether events.",
-    "The Massline attach expectation proves the first SG-03 combatAction command reaches SG-02 dynamic tether physics within 60 seconds under V3."
+    "The current V3 Massline path attaches at tick 4 and breaks at tick 173 before the first projectile hit; the envelope records both tether events.",
+    "The Massline attach expectation proves the first SG-03 combatAction command reaches SG-02 dynamic tether physics within 60 seconds under V3.",
+    "2026-07-14 deliberate re-record: starter pulse-laser fire-rate update and corrected V3 aim tape yield 17 fire / 8 hit / 8 damage; tutorial-owned opening removes duplicate graffiti/comms.",
+    "Repeat-20, reload@600, and uninterrupted-vs-reload comparison were deterministic."
   ]
 }

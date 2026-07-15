@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import {
+  CONTACT_COUNTER_DEFS,
+  createInitialStationContactCounters,
   normalizeStationContactRecord,
+  stationContactCounterValue,
   stationContactMemoryFor,
   stationContactMemoryLine,
   stationContactStanding,
@@ -48,6 +51,21 @@ test('talk persists through player save blob without foreign writes', () => {
   assert.deepEqual({ credits: state.player.credits, heat: state.player.heat, cargo: state.player.cargo, factions: state.factions, missions: state.missions }, before);
   save.state = state;
   assert.equal(save._serializePlayer().stationContacts[payload.contactId].talkCount, 2);
+  stationContacts.destroy();
+});
+
+test('named-contact counters are event-owned, bounded, and included in the player save blob', () => {
+  const bus = createBus();
+  const state = { simTime: 1, player: { stationContacts: {} }, stationLife: { traffic: [] } };
+  stationContacts.init({ state, bus });
+  assert.deepEqual(state.player.stationContactCounters, createInitialStationContactCounters());
+  bus.emit('stationContact:counterDelta', { trackerId: 'orrin.case', delta: 4.9, reason: 'sealed-record' });
+  bus.emit('stationContact:counterDelta', { trackerId: 'orrin.case', delta: 99, reason: 'clamp' });
+  bus.emit('stationContact:counterDelta', { trackerId: 'bogus.counter', delta: 50 });
+  assert.equal(stationContactCounterValue(state, 'orrin.case'), CONTACT_COUNTER_DEFS['orrin.case'].max);
+  assert.equal(Object.hasOwn(state.player.stationContactCounters, 'bogus.counter'), false);
+  save.state = state;
+  assert.equal(save._serializePlayer().stationContactCounters['orrin.case'], CONTACT_COUNTER_DEFS['orrin.case'].max);
   stationContacts.destroy();
 });
 

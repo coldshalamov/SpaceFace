@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
@@ -7,13 +10,18 @@ import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
+const EVIDENCE_DIR = fileURLToPath(new URL('../.devshots/', import.meta.url));
+const EVIDENCE_PATH = fileURLToPath(new URL('../.devshots/galaxy-map-search-pointer-evidence.json', import.meta.url));
+const SCREENSHOT_TEMP_PATH = path.join(EVIDENCE_DIR, `.galaxy-map-active-objective-search.${process.pid}.pending.png`);
+const EVIDENCE_TEMP_PATH = `${EVIDENCE_PATH}.${process.pid}.pending`;
 
-const server = await acquireVisualProbeServer({ root: ROOT });
-const { chromium } = await loadPlaywright();
+let server = null;
 let browser = null;
 let context = null;
 
 try {
+  server = await acquireVisualProbeServer({ root: ROOT });
+  const { chromium } = await loadPlaywright();
   browser = await chromium.launch({
     headless: true,
     args: ['--incognito', '--no-first-run', '--disable-extensions'],
@@ -27,7 +35,8 @@ try {
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   assert.equal(new URL(page.url()).search, '', 'pointer regression must use the canonical root');
   await bootNewGame(page);
-  const targetId = await claimAndReadB0Target(page);
+  const objective = await readActiveObjectiveTarget(page);
+  const { sourceId, label: searchLabel } = objective;
 
   await page.keyboard.press('KeyM');
   await page.locator('#sf-galaxymap').waitFor({ state: 'visible', timeout: 20_000 });
@@ -35,11 +44,19 @@ try {
     const screen = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.();
     return screen?._activeLevel?.() === 'local';
   }, null, { timeout: 10_000 });
-  const searchLabel = await page.waitForFunction((id) => {
+  const canvasObjective = await page.waitForFunction(() => {
     const screen = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.();
-    const target = screen?._clickTargets?.find((entry) => String(entry?.entityId ?? entry?.targetEntityId ?? entry?.id) === String(id));
-    return String(target?.name || target?.label || '').trim() || null;
-  }, targetId, { timeout: 20_000 }).then((handle) => handle.jsonValue());
+    const target = screen?._clickTargets?.find((entry) => entry?.objective === true);
+    return target ? {
+      id: target.id,
+      name: String(target.name || target.label || '').trim(),
+      targetEntityId: target.targetEntityId == null ? null : String(target.targetEntityId),
+      pos: { x: target.x, z: target.z },
+    } : null;
+  }, null, { timeout: 20_000 }).then((handle) => handle.jsonValue());
+  assert.equal(canvasObjective.name.length > 0, true, 'canvas objective must have a visible label');
+  assert.deepEqual(canvasObjective.pos, objective.pos,
+    `canvas marker and searchable objective must share the persisted position: ${JSON.stringify({ objective, canvasObjective })}`);
   await page.keyboard.press('/');
   const search = page.locator('.gm-search-input');
   await search.waitFor({ state: 'visible', timeout: 5_000 });
@@ -49,32 +66,52 @@ try {
     const screen = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.();
     const list = screen?._searchResultsList;
     const index = Array.isArray(list)
-      ? list.findIndex((entry) => String(entry?.entityId ?? entry?.targetEntityId ?? entry?.id) === String(id))
+      ? list.findIndex((entry) => String(entry?.id) === String(id))
       : -1;
+    const match = index >= 0 ? list[index] : null;
     return {
       index,
       input: document.querySelector('.gm-search-input')?.value || null,
       level: screen?._activeLevel?.() || null,
       listLength: Array.isArray(list) ? list.length : null,
       firstIds: Array.isArray(list) ? list.slice(0, 8).map((entry) => String(entry?.entityId ?? entry?.targetEntityId ?? entry?.id)) : [],
+      match: match ? {
+        sourceId: match.id,
+        name: match.name,
+        kind: match.kind,
+        objective: match.objective === true,
+        targetEntityId: match.targetEntityId == null ? null : String(match.targetEntityId),
+      } : null,
     };
-  }, targetId);
+  }, sourceId);
   const resultIndex = searchState.index;
   assert.equal(resultIndex >= 0, true,
-    `exact B0 row must remain in filtered search: ${JSON.stringify({ targetId, searchLabel, searchState })}`);
+    `exact active-objective row must remain in filtered search: ${JSON.stringify({ objective, searchState })}`);
+  assert.deepEqual(searchState.match, {
+    sourceId: 'active-map-goal',
+    name: searchLabel,
+    kind: 'waypoint',
+    objective: true,
+    targetEntityId: objective.targetEntityId,
+  }, `search must resolve the synthetic active-goal row, not an ambient contact: ${JSON.stringify(searchState)}`);
   const result = page.locator(`.gm-search-item[data-idx="${resultIndex}"]`);
   await result.waitFor({ state: 'visible', timeout: 10_000 });
+  await mkdir(EVIDENCE_DIR, { recursive: true });
+  await page.screenshot({ path: SCREENSHOT_TEMP_PATH, type: 'png', animations: 'disabled' });
   const expected = await page.evaluate((idx) => {
     const screen = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.();
     const target = screen?._searchResultsList?.[idx];
     return target ? {
       id: String(target.entityId ?? target.targetEntityId ?? target.id),
+      sourceId: target.id,
       name: target.name,
       kind: target.kind,
+      objective: target.objective === true,
       pos: { x: target.x, z: target.z },
     } : null;
   }, resultIndex);
-  assert.equal(expected?.id, String(targetId), `expected exact B0 row, got ${JSON.stringify(expected)}`);
+  assert.equal(expected?.id, sourceId, `expected exact active-objective row, got ${JSON.stringify(expected)}`);
+  assert.equal(expected?.sourceId, 'active-map-goal', `expected synthetic active-goal row, got ${JSON.stringify(expected)}`);
   const routingContext = await page.evaluate((id) => {
     const state = window.SF.state;
     const trackedId = state.ui?.trackedMissionId;
@@ -96,7 +133,7 @@ try {
         pos: { x: entry?.x, z: entry?.z },
       })).filter((entry) => entry.index < 8 || entry.id === String(id)),
     };
-  }, targetId);
+  }, sourceId);
 
   await page.evaluate(() => {
     window.__MAP_POINTER_TRACE__ = [];
@@ -140,7 +177,7 @@ try {
 
   // The same public search must remain keyboard-navigable to a distinct result. This differential
   // proves that a red pointer assertion belongs to hit testing/event routing, not search resolution.
-  await search.fill(searchLabel);
+  await search.fill('asteroid');
   const keyboardExpected = await page.evaluate((pointerId) => {
     const screen = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.();
     const list = screen?._searchResultsList || [];
@@ -161,6 +198,15 @@ try {
   const keyboardSelected = await selectedTarget(page);
   assert.equal(keyboardSelected?.id, keyboardExpected.id,
     `keyboard Enter must select a different visible row ${keyboardExpected.id}: ${JSON.stringify(keyboardSelected)}`);
+
+  // Return to the exact active-objective row before exercising the persistent action node.
+  await search.fill(searchLabel);
+  await search.focus();
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(100);
+  const actionSelected = await selectedTarget(page);
+  assert.equal(actionSelected?.id, expected.id,
+    `keyboard must restore the active objective before course activation: ${JSON.stringify(actionSelected)}`);
 
   // Hold the real action node across several inspector refresh cadences, then activate it from its
   // physical center. The document-bubble trace observes the synchronous ui:setCourse result before
@@ -198,14 +244,14 @@ try {
     connected: true,
     hidden: false,
     disabled: false,
-    selectedId: keyboardExpected.id,
+    selectedId: expected.id,
   }, `selected result must expose a usable primary action: ${JSON.stringify(actionBefore)}`);
   assert.deepEqual(actionStable, {
     sameNode: true,
     connected: true,
     hidden: false,
     disabled: false,
-    selectedId: keyboardExpected.id,
+    selectedId: expected.id,
   }, `inspector refresh must preserve the primary action node and selection: ${JSON.stringify(actionStable)}`);
 
   await page.evaluate(() => {
@@ -224,6 +270,7 @@ try {
           status: autopilot.status,
           targetEntityId: autopilot.targetEntityId == null ? null : String(autopilot.targetEntityId),
           label: autopilot.label,
+          target: autopilot.target ? { x: autopilot.target.x, z: autopilot.target.z } : null,
         } : null,
         mapVisible: document.querySelector('#sf-galaxymap')?.classList.contains('sf-screen--visible') || false,
       });
@@ -253,32 +300,58 @@ try {
         status: autopilot.status,
         targetEntityId: autopilot.targetEntityId == null ? null : String(autopilot.targetEntityId),
         label: autopilot.label,
+        target: autopilot.target ? { x: autopilot.target.x, z: autopilot.target.z } : null,
       } : null,
       mapVisible: document.querySelector('#sf-galaxymap')?.classList.contains('sf-screen--visible') || false,
     };
   });
   assert.equal(actionTrace.length, 1, `physical primary-action click must bubble once: ${JSON.stringify(actionTrace)}`);
-  assert.equal(actionTrace[0].selectedId, keyboardExpected.id,
+  assert.equal(actionTrace[0].selectedId, expected.id,
     `physical primary action must retain selected target through activation: ${JSON.stringify(actionTrace[0])}`);
   assert.equal(actionTrace[0].autopilot?.active, true,
     `ui:setCourse must synchronously arm autopilot: ${JSON.stringify(actionTrace[0])}`);
-  assert.equal(actionTrace[0].autopilot?.targetEntityId, keyboardExpected.id,
-    `autopilot must target the selected search result: ${JSON.stringify(actionTrace[0])}`);
+  assert.equal(actionTrace[0].autopilot?.targetEntityId, objective.targetEntityId,
+    `autopilot target identity must match the persisted objective: ${JSON.stringify(actionTrace[0])}`);
+  assert.deepEqual(actionTrace[0].autopilot?.target, objective.pos,
+    `autopilot must target the selected objective position: ${JSON.stringify(actionTrace[0])}`);
+  assert.equal(actionTrace[0].autopilot?.label, objective.label,
+    `autopilot must retain the selected objective label: ${JSON.stringify(actionTrace[0])}`);
   assert.equal(actionTrace[0].mapVisible, false,
     `successful primary action must pop the map: ${JSON.stringify(actionTrace[0])}`);
 
   const evidence = {
+    schema: 'spaceface.galaxy_map_search_pointer.v1',
     expected, routingContext, center, hitBefore, pointerTrace, pointerSelected,
     keyboardExpected, keyboardSelected, actionBefore, actionStable, actionCenter,
     actionHit, actionTrace, navAfter,
   };
   assert.equal(pointerSelected?.id, expected.id,
     `real row-center pointer click must select exact result: ${JSON.stringify(evidence)}`);
+  const screenshotBytes = await readFile(SCREENSHOT_TEMP_PATH);
+  const screenshotSha256 = createHash('sha256').update(screenshotBytes).digest('hex');
+  const screenshotName = `galaxy-map-active-objective-search-${screenshotSha256.slice(0, 16)}.png`;
+  const screenshotPath = path.join(EVIDENCE_DIR, screenshotName);
+  try {
+    await rename(SCREENSHOT_TEMP_PATH, screenshotPath);
+  } catch (error) {
+    const existing = await readFile(screenshotPath).catch(() => null);
+    assert(existing && existing.equals(screenshotBytes),
+      `content-addressed screenshot publish failed: ${String(error && error.message || error)}`);
+    await rm(SCREENSHOT_TEMP_PATH, { force: true });
+  }
+  evidence.screenshot = `.devshots/${screenshotName}`;
+  evidence.screenshotSha256 = screenshotSha256;
+  await writeFile(EVIDENCE_TEMP_PATH, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
+  // Publish the manifest last. A crash leaves either the prior matching pair or no accepted JSON.
+  await rm(EVIDENCE_PATH, { force: true });
+  await rename(EVIDENCE_TEMP_PATH, EVIDENCE_PATH);
   console.log(`Galaxy-map search pointer OK: ${JSON.stringify(evidence)}`);
 } finally {
   if (context) await context.close().catch(() => {});
   if (browser) await browser.close().catch(() => {});
-  await server.close().catch(() => {});
+  if (server) await server.close().catch(() => {});
+  await rm(SCREENSHOT_TEMP_PATH, { force: true }).catch(() => {});
+  await rm(EVIDENCE_TEMP_PATH, { force: true }).catch(() => {});
 }
 
 async function bootNewGame(page) {
@@ -301,61 +374,24 @@ async function bootNewGame(page) {
   await page.locator('#gl-canvas').focus();
 }
 
-async function claimAndReadB0Target(page) {
-  const spindleId = await page.evaluate(() => (window.SF.state.entityList || [])
-    .find((entity) => entity?.data?.scenarioActorId === 'evidence_spindle_47a')?.id ?? null);
-  assert.notEqual(spindleId, null, '47-A evidence spindle must exist in normal play');
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await aimAt(page, spindleId);
-    await page.keyboard.press('KeyF');
-    const claimed = await page.waitForFunction(() => window.SF?.state?.scenario?.safeOpening?.spindleClaimed === true,
-      null, { timeout: 3_000 }).then(() => true).catch(() => false);
-    if (claimed) break;
-  }
-  assert.equal(await page.evaluate(() => window.SF?.state?.scenario?.safeOpening?.spindleClaimed === true), true,
-    'ordinary F must claim the visible evidence spindle');
-  await page.waitForTimeout(220);
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await page.keyboard.press('KeyF');
-    const cut = await page.waitForFunction(() => window.SF?.state?.player?.tether?.active !== true,
-      null, { timeout: 2_000 }).then(() => true).catch(() => false);
-    if (cut) break;
-    await page.waitForTimeout(220);
-  }
-  assert.equal(await page.evaluate(() => window.SF?.state?.player?.tether?.active === true), false,
-    'ordinary F must cut the evidence-spindle tether');
-  const targetId = await page.evaluate(() => {
+async function readActiveObjectiveTarget(page) {
+  const objective = await page.waitForFunction(() => {
     const state = window.SF.state;
-    const mission = (state.missions?.active || []).find((entry) => entry?.storyTag === 'campaign47a:b0:recovery');
-    const wanted = mission?.params?.samplePos || state.nav?.waypoint?.pos || null;
-    const player = state.entities.get(state.playerId);
-    let best = null;
-    let bestDistance = Infinity;
-    for (const entity of state.entityList || []) {
-      if (!entity || entity.alive === false || entity.type !== 'asteroid' || !entity.pos) continue;
-      const origin = wanted || player.pos;
-      const distance = Math.hypot(entity.pos.x - origin.x, entity.pos.z - origin.z);
-      if (distance < bestDistance) { bestDistance = distance; best = entity; }
-    }
-    return best?.id ?? null;
-  });
-  assert.notEqual(targetId, null, 'B0 must expose a live recovery asteroid');
-  return targetId;
-}
-
-async function aimAt(page, entityId) {
-  const point = await page.evaluate((id) => {
-    const entity = window.SF.state.entities.get(id);
-    const projected = entity && window.SF.helpers.worldToScreen?.({ x: entity.pos.x, y: 0, z: entity.pos.z });
-    return projected && Number.isFinite(projected.x) && Number.isFinite(projected.y)
-      ? { x: projected.x, y: projected.y }
-      : { x: innerWidth * 0.6, y: innerHeight * 0.5 };
-  }, entityId);
-  await page.mouse.move(
-    Math.max(4, Math.min(VIEWPORT.width - 4, point.x)),
-    Math.max(4, Math.min(VIEWPORT.height - 4, point.y)),
-  );
-  await page.waitForTimeout(80);
+    const waypoint = state.nav?.waypoint;
+    const label = String(waypoint?.label || waypoint?.sectorName || waypoint?.reason || waypoint?.mapLabel || '').trim();
+    if (!waypoint?.pos || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z) || !label) return null;
+    return {
+      sourceId: 'active-map-goal',
+      targetEntityId: waypoint.targetEntityId == null ? null : String(waypoint.targetEntityId),
+      label,
+      pos: { x: waypoint.pos.x, z: waypoint.pos.z },
+      waypointId: waypoint.id || waypoint.markerId || null,
+      onboarding: waypoint.onboarding === true,
+    };
+  }, null, { timeout: 20_000 }).then((handle) => handle.jsonValue());
+  assert.equal(objective.onboarding, true,
+    `canonical New Game must begin with a real onboarding objective: ${JSON.stringify(objective)}`);
+  return objective;
 }
 
 async function selectedTarget(page) {

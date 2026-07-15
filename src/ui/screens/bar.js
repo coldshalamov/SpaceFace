@@ -11,12 +11,14 @@ import { COMMODITIES }  from '../../data/commodities.js';
 import { missionPreflight } from '../missionPreflight.js';
 import { missionConsequenceSummary } from '../missionPreflight.js';
 import { mountContactPortrait } from '../portraitArt.js';
-import { uniqueWreckBarRumor } from '../uniqueWreckRumorSurface.js';
+import { CONTACT_VOICE_REGISTERS } from '../../data/barks.js';
+import { depthContactsForStation } from '../../story/campaign47a/embodiedDialogue.js';
 import {
   stationContactMemoryFor,
   stationContactMemoryLine,
   stationContactStanding,
 } from '../../data/stationContacts.js';
+import { uniqueWreckBarRumor } from '../uniqueWreckRumorSurface.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -188,7 +190,28 @@ function canonicalContactForStation(stationId) {
   };
 }
 
-function generateContacts(stationId) {
+export function authoredBarContactsForStation(stationId, state = {}) {
+  return depthContactsForStation(stationId, state).map((card) => {
+    const voice = CONTACT_VOICE_REGISTERS[card.id];
+    return {
+      id: card.id,
+      name: card.name,
+      role: card.role,
+      roleLabel: card.roleLabel,
+      factionId: card.factionId,
+      line: card.blurb,
+      canonicalKey: card.id,
+      trackerId: card.trackerId,
+      depthProgram: card.programId,
+      voiceLines: voice ? voice.lines : [],
+      choices: voice && voice.firstContact ? voice.firstContact.choices : [],
+      dialogueComplete: !!(voice && voice.dialogueComplete),
+      oneChoicePerVisit: card.id === 'contact_question',
+    };
+  });
+}
+
+export function generateContacts(stationId, state = {}) {
   const seed = fnvHash('bar_contacts_' + stationId);
   const rng  = mulberry32(seed);
   const count = 2 + Math.floor(rng() * 3); // 2-4 contacts
@@ -245,12 +268,13 @@ function generateContacts(stationId) {
     }
   }
 
-  return contacts;
+  return [...authoredBarContactsForStation(stationId, state), ...contacts];
 }
 
 /* ── dialog option builders (per role) ────────────────────────────── */
 
-function getChoices(role) {
+export function getChoices(role, contact = null) {
+  if (contact && Array.isArray(contact.choices) && contact.choices.length) return contact.choices;
   switch (role) {
     case 'barkeep':       return [
       { id: 'rumors',    label: 'Any rumors?' },
@@ -404,7 +428,7 @@ function sectorDiscovered(state, sectorId) {
   return !!(disc && disc.discovered);
 }
 
-function availableSurveyOffer(state, stationId) {
+export function availableSurveyOffer(state, stationId) {
   const sec = currentSector(stationId);
   const candidates = [];
   for (const nId of (sec.neighbors || [])) {
@@ -423,7 +447,7 @@ function availableSurveyOffer(state, stationId) {
   } : null;
 }
 
-function surveyOfferLabel(offer) {
+export function surveyOfferLabel(offer) {
   return 'Survey Data: ' + (offer && offer.sectorName || 'Unknown Sector');
 }
 
@@ -473,7 +497,7 @@ function fieldTypeName(type) {
   return MAP[type] || type;
 }
 
-function missionBoardSlots(state, stationId) {
+export function missionBoardSlots(state, stationId) {
   const board = getMissionBoard(state, stationId);
   return board && Array.isArray(board.slots) ? board.slots.filter(Boolean) : [];
 }
@@ -616,7 +640,8 @@ function bestTradeRoute(state, currentStationId) {
  * Build a reply for the given role + choiceId, pulling from ctx.state.
  * Returns { text, missionOffer? }.
  */
-function buildReply(role, choiceId, ctx, stationId, contact = null) {
+export function buildReply(role, choiceId, ctx, stationId, contact = null) {
+  if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
   const canonical = contact && contact.canonicalKey
     ? buildCanonicalReply(contact, choiceId, ctx, stationId)
     : null;
@@ -835,6 +860,18 @@ function buildReply(role, choiceId, ctx, stationId, contact = null) {
   }
 }
 
+function buildDepthContactReply(contact, choiceId, ctx) {
+  const choice = (contact.choices || []).find((entry) => entry.id === choiceId);
+  if (!choice) return { text: contact.line || 'No answer.' };
+  const indexes = Array.isArray(choice.lineIndexes) && choice.lineIndexes.length
+    ? choice.lineIndexes
+    : [choice.lineIndex];
+  const memory = stationContactMemoryFor(ctx.state || {}, contact.id);
+  const visit = Math.max(0, (memory && memory.talkCount || 1) - 1);
+  const index = indexes[visit % indexes.length];
+  return { text: contact.voiceLines[index] || contact.line || 'No answer.' };
+}
+
 function buildCanonicalReply(contact, choiceId, ctx, stationId) {
   const state = ctx.state || {};
 
@@ -1040,6 +1077,7 @@ export function createBarPanel(ctx) {
       choiceId,
       stationId: currentStationId,
       canonicalKey: contact.canonicalKey || null,
+      trackerId: contact.trackerId || null,
       name: contact.name,
     });
     ctx.bus.emit('audio:cue', { id: 'ui_click' });
@@ -1071,6 +1109,10 @@ export function createBarPanel(ctx) {
 
     reply.textContent = result.text;
     reply.classList.add('show');
+
+    if (contact.oneChoicePerVisit) {
+      for (const choiceButton of card.querySelectorAll('[data-choice]')) choiceButton.disabled = true;
+    }
 
     if (result.missionOffer) {
       const offer = result.missionOffer;
@@ -1141,12 +1183,12 @@ export function createBarPanel(ctx) {
   /* ── render ───────────────────────────────────────────────────── */
   function refresh() {
     if (!currentStationId) return;
-    currentContacts = generateContacts(currentStationId);
+    currentContacts = generateContacts(currentStationId, ctx.state || {});
 
     const frag = document.createDocumentFragment();
     for (const c of currentContacts) {
       const fac = c.factionId ? FACTION_BY_ID.get(c.factionId) : null;
-      const choices = getChoices(c.role);
+      const choices = getChoices(c.role, c);
       const roleLabel = c.roleLabel || ROLE_LABELS[c.role] || c.role;
 
       const card = document.createElement('div');

@@ -17,9 +17,11 @@ import {
   resolveFirstHourAudioSignature,
 } from '../src/audio/audioSystem.js';
 import { createCuePriorityBus, PRIORITY_DUCK_THRESHOLD, dbToGain, PRIORITY_DUCK_DB } from '../src/audio/cuePriorityBus.js';
+import { createCombatKernel } from '../src/combat/kernel.js';
 import { SECTOR_PALETTE_CLASSES } from '../src/data/sectors.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
 import { presentationAdapters } from '../src/systems/presentationAdapters.js';
+import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.join(__dirname, '../.devshots/audio');
@@ -160,7 +162,8 @@ function makeState() {
       }],
       ['target', {
         id: 'target', pos: { x: 120, z: 20 }, vel: { x: 0, z: 0 }, flags: {},
-        team: 1, alive: true, type: 'ship',
+        team: 1, alive: true, type: 'ship', radius: 8,
+        data: { onboardingTraining: true, trainingFocusEligible: true },
       }],
       ['npc-victim', {
         id: 'npc-victim', pos: { x: 180, z: -30 }, vel: { x: 0, z: 0 }, flags: {},
@@ -209,10 +212,22 @@ const bus = {
   queue(evt, payload) { this.emit(evt, payload); },
 };
 
+// Match the live path through combat attachments and tetherGameplay. Only the external physics
+// port is replaced; the attachment service still owns creation and emits tether:attached itself.
+const helpers = {
+  combatPhysics: {
+    createAttachment(spec) { return { id: spec.attachmentId }; },
+  },
+};
+const combatKernel = createCombatKernel({ state, bus, helpers });
+const registry = {
+  get(name) { return name === 'combat' ? { kernel: combatKernel } : null; },
+};
+tetherGameplay.init({ state, bus, helpers, registry });
 // Match registry order: normalized presentation owns semantic one-shots before audio consumes them.
 presentationOrchestrator.init({ state, bus });
 presentationAdapters.init({ state, bus });
-audio.init({ state, bus, helpers: {} });
+audio.init({ state, bus, helpers });
 // Force context (gesture path)
 const ctx = new MockAudioContext();
 audio.rt.ctx = ctx;
@@ -322,19 +337,20 @@ function clearPriority() {
   audio._updatePriorityDuckGains();
 }
 
-// 4) MASSLINE LATCH — shipped tether event through presentation adapters.
+// 4) MASSLINE LATCH — drive the shipped tetherGameplay -> attachment-service path.
 step('massline_latch', () => {
   clearPriority();
   ctx.currentTime = 0.5;
   state.tick += 20;
-  bus.emit('tether:attached', {
-    actorId: 'player', targetId: 'target', attachmentId: 'first-hour-latch',
-    pos: { x: 120, z: 20 },
-  });
+  state.player.flybyFocus = { active: true, targetId: 'target', latchScale: 2.4 };
+  state.input.actions.tetherFire = true;
+  tetherGameplay.update(1 / 60, state);
+  state.input.actions.tetherFire = false;
 });
-assert(
-  trace.steps.find((s) => s.name === 'massline_latch').played.includes('sfx.tetherLatch'),
-  'tether:attached must audibly schedule the authored double mechanical latch',
+assert.deepEqual(
+  trace.steps.find((s) => s.name === 'massline_latch').played,
+  ['sfx.tetherLatch'],
+  'one real latch must schedule exactly the authored mechanical signature, never legacy ui_confirm',
 );
 
 // 5) STRAIN — real near-break events may arrive every dedupe window; audio caps the warning cadence.

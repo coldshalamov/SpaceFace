@@ -1,0 +1,14 @@
+prune: Removed types... Accessor (72)
+prune: Removed types... Accessor (30)
+[m4-helios-hub-v8-finalize] helios_hub_station: 14455472 ΓåÆ 11639504 bytes meshopt=49 ktx2=15
+prune: Removed types... Accessor (45)
+prune: Removed types... Accessor (18)
+[m4-helios-hub-v8-finalize] helios_gate: 9804308 ΓåÆ 8896148 bytes meshopt=37 ktx2=12
+Error: UNKNOWN: unknown error, open 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v8\evidence\source_candidate_hashes.json'
+    at writeFileSync (node:fs:2414:20)
+    at main (file:///C:/Users/93rob/Documents/GitHub/SpaceFace/tools/art/finalize_m4_helios_hub_v8_candidate.mjs:935:3) {
+  errno: -4094,
+  code: 'UNKNOWN',
+  syscall: 'open',
+  path: 'C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v8\\evidence\\source_candidate_hashes.json'
+}

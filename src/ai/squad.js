@@ -11,6 +11,7 @@ import {
   wrapAngle,
 } from './contracts.js';
 import { normalizeCombatDoctrineId } from './combatDoctrine.js';
+import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 
 const DEFAULTS = Object.freeze({
   formation: 'wedge',
@@ -37,14 +38,18 @@ export class SquadCommander {
     if (!definition || definition.id == null) throw new TypeError('squad id is required');
     if (!Array.isArray(definition.members) || definition.members.length === 0) throw new TypeError('squad requires members');
     const members = definition.members.map((member, index) => normalizeMember(member, index));
+    const factionBehavior = normalizeFactionBehaviorProfile(definition.factionBehavior)
+      || members.map((member) => member.factionBehavior).find(Boolean)
+      || null;
     const state = {
       id: definition.id,
       doctrine: definition.doctrine || 'balanced',
       faction: definition.faction || 'unknown',
-      formation: definition.formation || this.config.formation,
+      formation: factionBehavior ? factionBehavior.liveFormation : (definition.formation || this.config.formation),
       formationSpacing: Number(definition.formationSpacing) || this.config.formationSpacing,
       formationBound: Number(definition.formationBound) || this.config.formationBound,
       members,
+      factionBehavior,
       roles: assignRoles(members),
       currentTactic: null,
       tacticSinceTick: -Infinity,
@@ -89,7 +94,8 @@ export class SquadCommander {
     let selected = candidates[0];
     const current = candidates.find((candidate) => candidate.id === squad.currentTactic);
     const dwell = tick - squad.tacticSinceTick;
-    const urgentRetreat = director && director.command && director.command.type === 'order_retreat';
+    const urgentRetreat = (director && director.command && director.command.type === 'order_retreat')
+      || profileRetreatRequired(squad, perceptions);
     if (!urgentRetreat && current && dwell < this.config.minTacticTicks && selected.id !== current.id) selected = current;
     else if (!urgentRetreat && current && selected.id !== current.id && selected.utility < current.utility + this.config.switchMargin) selected = current;
     if (selected.id !== squad.currentTactic) {
@@ -129,6 +135,7 @@ export class SquadCommander {
         squadId,
         memberId: member.id,
         combatDoctrineId: member.combatDoctrineId,
+        factionBehavior: member.factionBehavior || squad.factionBehavior,
         role,
         tactic: selected.id,
         focusTargetId: focus ? focus.id : null,
@@ -214,14 +221,27 @@ export class SquadCommander {
     candidates.length = 0;
     const push = (id, utility, reason) => candidates.push({ id, utility: saturate(utility + jitter(id)), reason });
 
-    push('hold_formation', hostileShips ? 0.18 : 0.56, 'maintain cohesion while contact picture is weak');
-    push('swarm_pincer', hostileShips ? 0.48 + (squad.doctrine === 'scavenger' ? 0.22 : 0) : 0, 'split attack vectors around a perceived focus target');
-    push('standoff_focus', hostileShips && capabilities.has('ranged') ? 0.5 + (squad.doctrine === 'official' ? 0.2 : 0) : 0, 'concentrate ranged actions while preserving formation');
+    const profile = squad.factionBehavior;
+    const pursuit = profile ? profile.pursuitCommitment : 0.5;
+    const profileRetreat = profileRetreatRequired(squad, perceptions);
+    push('hold_formation', (hostileShips ? 0.18 : 0.56) + (1 - pursuit) * 0.08, 'maintain cohesion while contact picture is weak');
+    push('swarm_pincer', hostileShips ? 0.48 + (squad.doctrine === 'scavenger' ? 0.22 : 0) + pursuit * 0.16 : 0, 'split attack vectors around a perceived focus target');
+    push('standoff_focus', hostileShips && capabilities.has('ranged') ? 0.5 + (squad.doctrine === 'official' ? 0.2 : 0) + (1 - pursuit) * 0.16 : 0, 'concentrate ranged actions while preserving formation');
     push('screen_tug_steal', objectives && (capabilities.has('tug') || capabilities.has('steal')) ? 0.62 + firstObjectiveValue * 0.2 : 0, 'screen a specialist while contesting the objective');
-    push('contain_and_disable', hostileShips && capabilities.has('disable') ? 0.55 + (squad.doctrine === 'official' ? 0.14 : 0) : 0, 'official wing disables mobility before capture');
+    push('contain_and_disable', !profileRetreat && hostileShips && capabilities.has('disable')
+      ? 0.55 + (squad.doctrine === 'official' ? 0.14 : 0)
+        + (profile && profile.disableThenRun ? 0.24 : 0)
+        + (profile ? profile.disableChance * 0.2 : 0)
+        + pursuit * 0.08
+      : 0, profile && profile.destroyTarget === false
+      ? 'sampled nonlethal doctrine prioritizes disabling mobility'
+      : 'disable mobility before capture or egress');
     push('cut_and_scatter', exposedTether && capabilities.has('counter_tether_cut') ? 0.92 : 0, 'exposed hostile tether can be severed');
     push('overload_and_break', memberTethered && capabilities.has('counter_tether_overload') ? 0.96 : 0, 'tethered member has energy and overload capability');
-    push('fighting_retreat', director && director.command && director.command.type === 'order_retreat' ? 1 : lowHull * 0.62 + disabled * 0.5 + outnumbered * 0.35, 'explicit director retreat or observed wing attrition');
+    push('fighting_retreat', (director && director.command && director.command.type === 'order_retreat') || profileRetreat
+      ? 1
+      : lowHull * 0.62 + disabled * 0.5 + outnumbered * 0.35,
+    profileRetreat ? 'sampled hull retreat threshold' : 'explicit director retreat or observed wing attrition');
     return candidates;
   }
 
@@ -243,7 +263,17 @@ function normalizeMember(member, index) {
     preferredRole: member.preferredRole || null,
     capabilities: Object.freeze(Array.isArray(member.capabilities) ? [...new Set(member.capabilities)].sort() : []),
     combatDoctrineId: normalizeCombatDoctrineId(member.combatDoctrineId),
+    factionBehavior: normalizeFactionBehaviorProfile(member.factionBehavior),
   });
+}
+
+function profileRetreatRequired(squad, perceptions) {
+  for (const perception of perceptions) {
+    const profile = normalizeFactionBehaviorProfile(perception.self && perception.self.factionBehavior)
+      || squad.factionBehavior;
+    if (profile && perception.self.hullFraction <= profile.retreatHullFraction) return true;
+  }
+  return false;
 }
 
 function assignRoles(members) {
@@ -487,6 +517,7 @@ function freezeSquad(squad) {
     faction: squad.faction,
     formation: squad.formation,
     formationBound: squad.formationBound,
+    factionBehavior: squad.factionBehavior,
     currentTactic: squad.currentTactic,
     tacticSinceTick: squad.tacticSinceTick,
     focusTargetId: squad.focusTargetId,

@@ -48,12 +48,6 @@ const PLACEHOLDER_KEYS = {
   trader_pass: ['{cargo}', '{dest}'],
 };
 
-const EMERGENCY_OK = new Set(['ambush_spring', 'distress_call', 'distress_bait_spring']);
-
-function wordCount(text) {
-  return text.replace(/\{\w+\}/g, 'x').trim().split(/\s+/).filter(Boolean).length;
-}
-
 let failures = 0;
 function fail(msg) { console.error(`FAIL: ${msg}`); failures++; }
 
@@ -74,9 +68,9 @@ for (const [key, tokens] of Object.entries(PLACEHOLDER_KEYS)) {
 
 for (const key of EXPANDED_KEYS) {
   for (const line of ENCOUNTER_BARKS[key]) {
-    const words = wordCount(line);
-    if (words > 14) fail(`${key} is ${words} words: "${line}"`);
-    if (!EMERGENCY_OK.has(key) && line.includes('!')) fail(`${key} has forbidden !: "${line}"`);
+    if (typeof line !== 'string' || !line.trim()) fail(`${key} has empty/non-string copy`);
+    if (/[\r\n\u2028\u2029]/u.test(line)) fail(`${key} must fit the inline voice surface: "${line}"`);
+    if (/[\u0000-\u001f\u007f\ufffd]/u.test(line)) fail(`${key} contains an unsafe control/replacement character: "${line}"`);
   }
 }
 

@@ -1,0 +1,26 @@
+{
+  "schema": "spaceface.independentTasteReview.v1",
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6.1-CODEX-001",
+  "reviewCount": 1,
+  "disposition": "REJECT",
+  "livePromotion": false,
+  "bar": "SF-K0 Borrowed Time craft quality, adjusted for secondary environmental support scale",
+  "evidence": {
+    "threeJsClose": [
+      "evidence/devshots/helios_gate_three_close.png",
+      "evidence/devshots/helios_support_gantry_three_close.png",
+      "evidence/devshots/helios_support_dock_arm_three_close.png",
+      "evidence/devshots/helios_nav_spire_three_close.png"
+    ],
+    "readability120px": "evidence/devshots/*_readability_120px.png",
+    "readabilityUnder45px": "evidence/devshots/*_readability_under45px.png"
+  },
+  "observations": [
+    "Gate close-view proof still shows an opaque dark member bisecting the luminous aperture, which triggers the bounded repair brief's explicit rejection condition.",
+    "Warm service nodes and cool navigation rails remain readable without flattening the PBR material hierarchy.",
+    "Gantry retains an asymmetric crane silhouette, dock arm retains truss plus clamp identity, and nav spire retains tripod plus halo identity at 45-120 px.",
+    "The repaired gantry clears the featureless-black-cuboid rejection condition, but the remaining gate aperture obstruction is sufficient to reject the family candidate."
+  ],
+  "reviewLoopClosed": true,
+  "acceptanceClaim": "rejected bounded V6.1 candidate; no live-family promotion"
+}

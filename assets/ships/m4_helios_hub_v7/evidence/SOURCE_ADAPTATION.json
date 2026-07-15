@@ -1,0 +1,31 @@
+{
+  "schema": "spaceface.assetAdaptation.v1",
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V7-GROK-001",
+  "family": "helios_hub_env_v7",
+  "candidateOnly": true,
+  "livePromotion": false,
+  "acceptanceClaim": false,
+  "qualityFloor": "SF-K0 Borrowed Time craft bar (reference only; geometry not reused)",
+  "sources": [
+    {
+      "role": "station_macro_donor",
+      "path": "assets/ships/m4_helios_hub_v7/source/reference/blenderkit_scifi_station/blenderkit_scifi_station_cc0.blend",
+      "license": "CC0-1.0",
+      "sha256": "F4818E9771E2E5BD5E990A40AFC24394615AB3E751062ED1B23C1D16D98487B6",
+      "adaptation": "spike removal, scale normalize, material reassignment, bounded topology + filled civic/industrial body mass"
+    },
+    {
+      "role": "hero_rocks_and_kitbash",
+      "path": "assets/ships/m4_helios_hub_v7/source/reference/helios_v3",
+      "license": "CC0-1.0 / Kenney permissive",
+      "adaptation": "scan retopology + fracture storytelling per rock variant"
+    }
+  ],
+  "rejectedComparisons": [
+    "PROFESSIONAL-HELIOS-HUB-VISUAL-V4/V5 empty-ring reading",
+    "V6 framing hard-fail / soft empty-ring residual",
+    "Primitive blockouts / beveled boxes as final forms",
+    "Accessory-only hulls / file-size quality proxies"
+  ],
+  "qualityIntent": "Kestrel Borrowed Time craft floor; filled trade-hub body mass; open gate aperture; distinct geology; shared PBR language; LOD0/1/2 material-merged; no live promote; no acceptance claim"
+}

@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "status": "r2-twelve-wreck-data-wired",
+  "channels": [
+    { "id": "bar", "carrier": "src/ui/screens/bar.js" },
+    { "id": "news", "carrier": "src/data/newsTemplates.js" },
+    { "id": "comms_intercept", "carrier": "src/ui/comms.js" },
+    { "id": "bark", "carrier": "src/systems/barkDirector.js" },
+    { "id": "mission", "carrier": "src/story/campaign47a/embodiedMissions.js" },
+    { "id": "campaign", "carrier": "src/story/campaign47a/index.js" },
+    { "id": "loss_investigation", "carrier": "src/systems/lossInvestigation.js" }
+  ],
+  "wrecks": [
+    {
+      "id": "wreck_isc_vigilant",
+      "programSlot": "D1",
+      "sectorId": "sector_veil_nebula",
+      "status": "wired",
+      "uniqueDrops": [
+        { "id": "unique_veil_cutter", "kind": "weapon", "baseId": "wpn_beam_laser_m" }
+      ],
+      "rumorSources": [
+        { "id": "losses_in_the_veil", "channelId": "news", "status": "authored", "sourceRef": "news.losses_in_the_veil" },
+        { "id": "vigilant_case_file", "channelId": "loss_investigation", "status": "wired", "sourceRef": "loss.vigilant" }
+      ]
+    },
+    {
+      "id": "wreck_dmc_ironsong",
+      "programSlot": "D2",
+      "sectorId": "sector_nyx_march",
+      "status": "data-wired",
+      "uniqueDrops": [
+        { "id": "unique_ironsong_ac", "kind": "weapon", "baseId": "wpn_autocannon_m" }
+      ],
+      "rumorSources": [
+        { "id": "ironsing_gun_intercept", "channelId": "comms_intercept", "status": "authored", "sourceRef": "comms.ironsing_gun" }
+      ]
+    },
+    {
+      "id": "wreck_isc_lighthouse",
+      "programSlot": "D3",
+      "sectorId": "sector_ashfall_reach",
+      "status": "data-wired",
+      "uniqueDrops": [
+        { "id": "unique_lighthouse_heavy_beam", "kind": "weapon", "baseId": "wpn_heavy_beam_l" }
+      ],
+      "rumorSources": [
+        { "id": "lighthouse_campaign_reveal", "channelId": "campaign", "status": "authored", "sourceRef": "campaign.lighthouse_reveal" }
+      ]
+    },
+    {
+      "id": "wreck_lanebreaker_pale_coil",
+      "programSlot": "D4",
+      "sectorId": "sector_phoebe_echo",
+      "status": "data-wired",
+      "uniqueDrops": [
+        { "id": "unique_pale_coil_warp_drive", "kind": "module", "baseId": "mod_engine_warp_l" }
+      ],
+      "rumorSources": [
+        { "id": "the_lost_coils", "channelId": "mission", "status": "authored", "sourceRef": "mission.the_lost_coils" }
+      ]
+    },
+    {
+      "id": "wreck_choir_bell_aegis",
+      "programSlot": "D5",
+      "sectorId": "sector_triton_wake",
+      "status": "data-wired",
+      "uniqueDrops": [
+        { "id": "unique_choir_bell_aegis", "kind": "module", "baseId": "mod_shield_aegis_l" }
+      ],
+      "rumorSources": [
+        { "id": "singing_bell_taunt", "channelId": "bark", "status": "authored", "sourceRef": "bark.singing_bell" }
+      ]
+    },
+    {
+      "id": "wreck_gravhand_tideline",
+      "programSlot": "D6",
+      "sectorId": "sector_eunomia_gulf",
+      "status": "data-wired",
+      "uniqueDrops": [
+        { "id": "unique_tideline_tractor", "kind": "module", "baseId": "mod_tractor_beam_m" }
+      ],
+      "rumorSources": [
+        { "id": "hand_that_fed_the_gulf", "channelId": "news", "status": "authored", "sourceRef": "news.hand_that_fed_the_gulf" }
+      ]
+    },
+    {
+      "id": "wreck_nestbreaker",
+      "programSlot": "D7",
+      "sectorId": "sector_sker_haven",
+      "status": "data-wired",
+      "uniqueDrops": [
+        { "id": "unique_nestbreaker_rack", "kind": "weapon", "baseId": "wpn_missile_rack_m" }
+      ],
+      "rumorSources": [
+        { "id": "vraels_nestbreaker_legend", "channelId": "bar", "status": "authored", "sourceRef": "bar.sker.nestbreaker" }
+      ]
+    },
+    {
+      "id": "wreck_deepsurvey",
+      "programSlot": "D8",
+      "sectorId": "sector_haumea_rift",
+      "status": "data-wired",
+      "uniqueDrops": [
+        { "id": "unique_deepsurvey_suite", "kind": "module", "baseId": "mod_survey_suite" }
+      ],
+      "rumorSources": [
+        { "id": "okars_deep_ping", "channelId": "bar", "status": "authored", "sourceRef": "bar.rift_observatory.deepsurvey" }
+      ]
+    },
+    {
+      "id": "wreck_smokesong",
+      "programSlot": "D9",
+      "sectorId": "sector_io_reach",
+      "status": "data-wired",
+      "uniqueDrops": [
+        { "id": "unique_smokesong_chaff", "kind": "module", "baseId": "mod_chaff_dispenser_m" }
+      ],
+      "rumorSources": [
+        { "id": "tirrs_smokesong", "channelId": "bar", "status": "authored", "sourceRef": "bar.io_mercenary.smokesong" }
+      ]
+    },
+    {
+      "id": "wreck_choir_tender",
+      "programSlot": "D10",
+      "sectorId": "sector_helios_prime",
+      "status": "wired",
+      "uniqueDrops": [
+        { "id": "unique_knitbots", "kind": "module", "baseId": "mod_repair_nanobots_m" }
+      ],
+      "bonusLoot": [
+        { "id": "cmdty_medical", "qty": 50 }
+      ],
+      "rumorSources": [
+        { "id": "tragedy_at_helios", "channelId": "news", "status": "wired", "sourceRef": "news.tragedy_at_helios" }
+      ]
+    },
+    {
+      "id": "wreck_mts_silver_draft",
+      "programSlot": "D11",
+      "sectorId": "sector_helios_prime",
+      "status": "data-wired",
+      "uniqueDrops": [
+        { "id": "unique_lost_ledger", "kind": "story", "baseId": null },
+        { "id": "unique_truesight_scanner", "kind": "module", "baseId": "mod_cargo_scanner_s" }
+      ],
+      "rumorSources": [
+        { "id": "silver_draft_clerk", "channelId": "bar", "status": "authored", "sourceRef": "bar.helios_meridian.silver_draft" }
+      ]
+    },
+    {
+      "id": "wreck_choir_cassandra",
+      "programSlot": "D12",
+      "sectorId": "sector_haumea_rift",
+      "status": "data-wired",
+      "uniqueDrops": [
+        { "id": "unique_cassandra_treaty", "kind": "story", "baseId": null },
+        { "id": "unique_quietcloak", "kind": "module", "baseId": "mod_cloak_mk2" }
+      ],
+      "rumorSources": [
+        { "id": "cassandra_thread_reveal", "channelId": "campaign", "status": "authored", "sourceRef": "campaign.cassandra_reveal" }
+      ]
+    }
+  ]
+}

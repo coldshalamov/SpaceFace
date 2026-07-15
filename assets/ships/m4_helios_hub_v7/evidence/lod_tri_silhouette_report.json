@@ -1,0 +1,317 @@
+{
+  "schema": "spaceface.lodTriSilhouette.v1",
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V7-GROK-001",
+  "assets": [
+    {
+      "id": "helios_hub_station",
+      "lod0Triangles": 17948,
+      "totalTriangles": 26735,
+      "lodBreakdown": {
+        "lod0": {
+          "triangles": 17948,
+          "primitives": 5,
+          "drawEstimate": 5,
+          "nodes": [
+            {
+              "name": "LOD0_HOOK_EMISSIVE",
+              "tris": 292
+            },
+            {
+              "name": "LOD0_Merged_Material_Glass",
+              "tris": 432
+            },
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 12480
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 4612
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 132
+            }
+          ]
+        },
+        "lod1": {
+          "triangles": 6968,
+          "primitives": 5,
+          "drawEstimate": 5,
+          "nodes": [
+            {
+              "name": "LOD1_HOOK_EMISSIVE",
+              "tris": 112
+            },
+            {
+              "name": "LOD1_Merged_Material_Glass",
+              "tris": 166
+            },
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 4821
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 1781
+            },
+            {
+              "name": "LOD1_Merged_Material_Warm",
+              "tris": 88
+            }
+          ]
+        },
+        "lod2": {
+          "triangles": 1819,
+          "primitives": 5,
+          "drawEstimate": 5,
+          "nodes": [
+            {
+              "name": "LOD2_HOOK_EMISSIVE",
+              "tris": 24
+            },
+            {
+              "name": "LOD2_Merged_Material_Glass",
+              "tris": 58
+            },
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 1074
+            },
+            {
+              "name": "LOD2_Merged_Material_Mechanical",
+              "tris": 619
+            },
+            {
+              "name": "LOD2_Merged_Material_Warm",
+              "tris": 44
+            }
+          ]
+        }
+      },
+      "lod0Aabb": {
+        "min": [
+          -19.771499633789062,
+          -4.550000190734863,
+          -14.600000381469727
+        ],
+        "max": [
+          28.25,
+          17.100000381469727,
+          16.684288024902344
+        ],
+        "size": [
+          48.02149963378906,
+          21.65000057220459,
+          31.28428840637207
+        ],
+        "center": [
+          4.239250183105469,
+          6.275000095367432,
+          1.0421438217163086
+        ]
+      },
+      "triBudget": 35000,
+      "lod0WithinBudget": true,
+      "screenSpaceSilhouetteError": {
+        "lod1TriRetention": 0.3882,
+        "lod2TriRetention": 0.1013,
+        "proxySilhouetteErrorLod1": 0.0318,
+        "proxySilhouetteErrorLod2": 0.0787,
+        "lod0AabbSize": [
+          48.02149963378906,
+          21.65000057220459,
+          31.28428840637207
+        ],
+        "method": "tri_retention_vs_silhouette_designed_targets_0.42_0.18_plus_aabb",
+        "note": "Proxy metric; pixel silhouette compare deferred to evidence review"
+      }
+    },
+    {
+      "id": "helios_gate",
+      "lod0Triangles": 8180,
+      "totalTriangles": 13836,
+      "lodBreakdown": {
+        "lod0": {
+          "triangles": 8180,
+          "primitives": 3,
+          "drawEstimate": 3,
+          "nodes": [
+            {
+              "name": "LOD0_HOOK_EMISSIVE",
+              "tris": 1544
+            },
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 2640
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 3996
+            }
+          ]
+        },
+        "lod1": {
+          "triangles": 4212,
+          "primitives": 3,
+          "drawEstimate": 3,
+          "nodes": [
+            {
+              "name": "LOD1_HOOK_EMISSIVE",
+              "tris": 596
+            },
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 3572
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 44
+            }
+          ]
+        },
+        "lod2": {
+          "triangles": 1444,
+          "primitives": 2,
+          "drawEstimate": 2,
+          "nodes": [
+            {
+              "name": "LOD2_HOOK_EMISSIVE",
+              "tris": 208
+            },
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 1236
+            }
+          ]
+        }
+      },
+      "lod0Aabb": {
+        "min": [
+          -6.699999809265137,
+          -16.600000381469727,
+          -12.700000762939453
+        ],
+        "max": [
+          4.300000190734863,
+          12.449999809265137,
+          12.700000762939453
+        ],
+        "size": [
+          11.0,
+          29.050000190734863,
+          25.400001525878906
+        ],
+        "center": [
+          -1.1999998092651367,
+          -2.075000286102295,
+          0.0
+        ]
+      },
+      "triBudget": 30000,
+      "lod0WithinBudget": true,
+      "screenSpaceSilhouetteError": {
+        "lod1TriRetention": 0.5149,
+        "lod2TriRetention": 0.1765,
+        "proxySilhouetteErrorLod1": 0.0949,
+        "proxySilhouetteErrorLod2": 0.0035,
+        "lod0AabbSize": [
+          11.0,
+          29.050000190734863,
+          25.400001525878906
+        ],
+        "method": "tri_retention_vs_silhouette_designed_targets_0.42_0.18_plus_aabb",
+        "note": "Proxy metric; pixel silhouette compare deferred to evidence review"
+      }
+    },
+    {
+      "id": "helios_rock_b",
+      "lod0Triangles": 3220,
+      "totalTriangles": 5194,
+      "lodBreakdown": {
+        "lod0": {
+          "triangles": 3220,
+          "primitives": 2,
+          "drawEstimate": 2,
+          "nodes": [
+            {
+              "name": "LOD0_Merged_Material_Rock",
+              "tris": 3196
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 24
+            }
+          ]
+        },
+        "lod1": {
+          "triangles": 1444,
+          "primitives": 2,
+          "drawEstimate": 2,
+          "nodes": [
+            {
+              "name": "LOD1_Merged_Material_Rock",
+              "tris": 1420
+            },
+            {
+              "name": "LOD1_Merged_Material_Warm",
+              "tris": 24
+            }
+          ]
+        },
+        "lod2": {
+          "triangles": 530,
+          "primitives": 2,
+          "drawEstimate": 2,
+          "nodes": [
+            {
+              "name": "LOD2_Merged_Material_Rock",
+              "tris": 506
+            },
+            {
+              "name": "LOD2_Merged_Material_Warm",
+              "tris": 24
+            }
+          ]
+        }
+      },
+      "lod0Aabb": {
+        "min": [
+          -2.714806079864502,
+          -1.6839625835418701,
+          -7.542002201080322
+        ],
+        "max": [
+          2.67213773727417,
+          3.3658607006073,
+          9.944695472717285
+        ],
+        "size": [
+          5.386943817138672,
+          5.04982328414917,
+          17.486697673797607
+        ],
+        "center": [
+          -0.021334171295166016,
+          0.8409490585327148,
+          1.2013466358184814
+        ]
+      },
+      "triBudget": 3500,
+      "lod0WithinBudget": true,
+      "screenSpaceSilhouetteError": {
+        "lod1TriRetention": 0.4484,
+        "lod2TriRetention": 0.1646,
+        "proxySilhouetteErrorLod1": 0.0284,
+        "proxySilhouetteErrorLod2": 0.0154,
+        "lod0AabbSize": [
+          5.386943817138672,
+          5.04982328414917,
+          17.486697673797607
+        ],
+        "method": "tri_retention_vs_silhouette_designed_targets_0.42_0.18_plus_aabb",
+        "note": "Proxy metric; pixel silhouette compare deferred to evidence review"
+      }
+    }
+  ]
+}

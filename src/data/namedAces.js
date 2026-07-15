@@ -44,8 +44,53 @@ const CORE_ROSTER = Object.freeze([
   }),
 ]);
 
+// S3 Reach culture aces extend aceMemory through a separate roster so the original B10 export
+// remains exactly three entries. Each culture contributes one escalation-capable returning crew.
+const REACH_CULTURE_ROSTER = Object.freeze([
+  Object.freeze({
+    id: 'ace_maw_rake_veyra',
+    name: 'Rake Veyra',
+    crew: 'The Red Wake',
+    factionId: 'faction_reach',
+    cultureId: 'maw',
+    gimmickTag: 'slash-and-run',
+    returnArchetype: 'reaver_pirate',
+    escortArchetype: 'wasp_swarmer',
+    baseReturnLevel: 5,
+    signatureBark: 'THE RED WAKE: count the painted edge. Every hand is a ship that failed to turn.',
+  }),
+  Object.freeze({
+    id: 'ace_rust_lord_orro',
+    name: 'Boiler-King Orro',
+    crew: 'The Nine Kettles',
+    factionId: 'faction_reach',
+    cultureId: 'rust-lords',
+    gimmickTag: 'tether-scrapline',
+    returnArchetype: 'corsair_raider',
+    escortArchetype: 'reaver_pirate',
+    baseReturnLevel: 5,
+    signatureBark: 'NINE KETTLES: nothing leaves the field before Orro weighs the scrap.',
+  }),
+  Object.freeze({
+    id: 'ace_drift_king_iona',
+    name: 'Iona False-Face',
+    crew: 'The Gilt Masks',
+    factionId: 'faction_reach',
+    cultureId: 'drift-kings',
+    gimmickTag: 'masked-disengager',
+    returnArchetype: 'lancer_sniper',
+    escortArchetype: 'corsair_raider',
+    baseReturnLevel: 5,
+    signatureBark: 'GILT MASKS: a courteous distance, captain. We only need the ship intact.',
+  }),
+]);
+
 export const NAMED_ACE_IDS = Object.freeze(CORE_ROSTER.map((ace) => ace.id));
 export const NAMED_ACES = Object.freeze(Object.fromEntries(CORE_ROSTER.map((ace) => [ace.id, ace])));
+export const REACH_CULTURE_ACE_IDS = Object.freeze(REACH_CULTURE_ROSTER.map((ace) => ace.id));
+export const REACH_CULTURE_ACES = Object.freeze(Object.fromEntries(
+  REACH_CULTURE_ROSTER.map((ace) => [ace.id, ace]),
+));
 
 const CAPTAIN_ALIASES = Object.freeze(NAMED_CAPTAINS.map((cap) => Object.freeze({
   id: cap.id,
@@ -60,7 +105,7 @@ const CAPTAIN_ALIASES = Object.freeze(NAMED_CAPTAINS.map((cap) => Object.freeze(
   encounterCaptain: true,
 })));
 
-const ALL_KNOWN_ACES = Object.freeze([...CORE_ROSTER, ...CAPTAIN_ALIASES]);
+const ALL_KNOWN_ACES = Object.freeze([...CORE_ROSTER, ...REACH_CULTURE_ROSTER, ...CAPTAIN_ALIASES]);
 const ACE_BY_ID = new Map(ALL_KNOWN_ACES.map((ace) => [ace.id, ace]));
 const ACE_BY_NAME = new Map(ALL_KNOWN_ACES.map((ace) => [normalizeName(ace.name), ace]));
 

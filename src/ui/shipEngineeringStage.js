@@ -38,19 +38,21 @@ function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
  * mount points so every system gets a visible node.
  */
 function slotLocalAnchor(shipDef, slot, typeIndex, totalOfType) {
+  // visualFactory hardpoints are authored in normalized ship space and multiplied by collisionRadius.
+  const scale = (shipDef && shipDef.collisionRadius) || 14;
   const visuals = shipDef && shipDef.visuals;
   if (slot.type === 'weapon' && visuals && visuals.hardpoints && visuals.hardpoints[typeIndex]) {
-    const p = visuals.hardpoints[typeIndex].pos;
-    return { x: p[0] || 0, y: p[1] || 0, z: p[2] || 0 };
+    const p = visuals.hardpoints[typeIndex].pos || [0, 0, 0];
+    return { x: (p[0] || 0) * scale, y: (p[1] || 0) * scale, z: (p[2] || 0) * scale };
   }
   if (slot.type === 'engine' && visuals && visuals.engineMounts && visuals.engineMounts[typeIndex]) {
-    const p = visuals.engineMounts[typeIndex].pos;
-    return { x: p[0] || 0, y: p[1] || 0, z: p[2] || 0 };
+    const p = visuals.engineMounts[typeIndex].pos || [0, 0, 0];
+    return { x: (p[0] || 0) * scale, y: (p[1] || 0) * scale, z: (p[2] || 0) * scale };
   }
-  // Polar fallback ring: distribute non-weapon/engine slots around the midship.
-  const R = 0.55;
+  // Polar fallback ring: distribute non-weapon/engine slots around the midship (mesh-local units).
   const ang = (typeIndex / Math.max(1, totalOfType)) * Math.PI * 2 + Math.PI * 0.25;
-  return { x: Math.cos(ang) * 0.1, y: 0.12, z: Math.sin(ang) * R };
+  const ring = scale * 0.55;
+  return { x: Math.cos(ang) * scale * 0.12, y: scale * 0.14, z: Math.sin(ang) * ring };
 }
 
 /**
@@ -83,11 +85,14 @@ export function createShipEngineeringStage(container, opts = {}) {
   const gaugeWrap = stage.querySelector('.st-eng-stage__gauges');
   const labelEl = stage.querySelector('.st-eng-stage__label');
 
+  // Real ship meshes only — never the box LOD. Hitch uses buildKestrelHero (flight body).
   const preview = createShipPreviewMount(canvas, {
     envMap: opts.envMap,
     dockId: opts.dockId,
-    authoredWarmup: false,
-    fastPreview: true,
+    authoredShips: opts.authoredShips !== false,
+    authoredWarmup: opts.authoredWarmup !== false,
+    fastPreview: false,
+    allowFastFallback: false,
     onFirstFrame: () => {
       stage.classList.add('is-ready');
       stage.classList.remove('is-loading');
@@ -109,10 +114,19 @@ export function createShipEngineeringStage(container, opts = {}) {
   }
 
   let currentDefId = null;
+  let currentFitKey = null;   // defId + fittings fingerprint so module swaps rebuild the mesh
   let currentSlots = [];
   let currentTypeIndices = [];
   let beamSpec = [];          // [{slotIndex, kind, active}]
   let highlightedSlot = null; // slotIndex
+
+  function fitKey(defId, fittings, isPlayer) {
+    if (!defId) return null;
+    const base = !Array.isArray(fittings)
+      ? defId + '::stock'
+      : defId + '::' + fittings.map((id) => (id == null ? '-' : String(id))).join('|');
+    return isPlayer ? base + '::player' : base;
+  }
 
   function overlayRect() { return overlay.getBoundingClientRect(); }
 
@@ -170,9 +184,26 @@ export function createShipEngineeringStage(container, opts = {}) {
     ping.ping(p.x, p.y, { kind: kind || 'accent', radius: 38, ttl: 420 });
   }
 
-  function setShip(defId) {
-    if (defId === currentDefId && preview.getDefId() === defId) return;
+  /**
+   * @param {string} defId
+   * @param {object} [options]
+   * @param {Array<string|null>} [options.fittings] — player's current loadout (outfitting); stock defaults if omitted
+   * @param {Array<object>} [options.weapons] — optional weapon runtime rows for barrel mounts
+   * @param {boolean} [options.isPlayer] — use the flight hero mesh for the starter hull
+   * @param {boolean} [options.rotating]
+   */
+  function setShip(defId, options = {}) {
+    const fittings = Array.isArray(options.fittings) ? options.fittings : null;
+    const weapons = Array.isArray(options.weapons) ? options.weapons : null;
+    // Hitch is always the player starter — force hero path even for catalog stock preview.
+    const isPlayer = options.isPlayer === true || defId === 'ship_kestrel';
+    const key = fitKey(defId, fittings, isPlayer);
+    if (key && key === currentFitKey && preview.getDefId() === defId && options.force !== true) {
+      // Same ship + loadout — keep the mesh; still allow highlight/beam refresh from caller.
+      return;
+    }
     currentDefId = defId;
+    currentFitKey = key;
     const shipDef = SHIP_BY_ID.get(defId);
     currentSlots = shipDef ? buildSlotList(shipDef) : [];
     // Compute per-slot type index for authored mount lookup.
@@ -181,13 +212,22 @@ export function createShipEngineeringStage(container, opts = {}) {
     stage.classList.remove('is-ready');
     stage.classList.add('is-loading');
     highlightedSlot = null;
-    preview.show(defId, { rotating: false });
+    preview.show(defId, {
+      rotating: options.rotating === true,
+      fittings,
+      weapons,
+      isPlayer,
+    });
     if (preview.getDefId() === defId) {
       stage.classList.add('is-ready');
       stage.classList.remove('is-loading');
       syncBeams();
+    } else {
+      stage.classList.remove('is-loading');
+      labelEl.textContent = (shipDef ? shipDef.name : defId) + ' — preview failed';
+      return;
     }
-    labelEl.textContent = shipDef ? shipDef.name : '';
+    if (shipDef) labelEl.textContent = shipDef.name;
   }
 
   /**

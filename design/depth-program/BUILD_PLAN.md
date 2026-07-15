@@ -1,6 +1,11 @@
 # BUILD_PLAN — The SpaceFace Depth Program
 ## "THE GALAXY KEEPS RECEIPTS"
 
+> **Detailed subordinate specification.** Current cross-program status and next actions live in
+> [`design/program/README.md`](../program/README.md) and
+> [`design/program/02_REMAINING_WORK.md`](../program/02_REMAINING_WORK.md). This file owns detailed
+> chunk intent and acceptance shape, not the current completion count.
+
 **Status:** EXECUTION PLAN. This is a supporting depth-program roadmap, subordinate to `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `design/vision/ALPHA_PROGRAM.md`, and any activated live spec. Live code, current checks, and player-facing evidence decide what ships.
 **Authored:** 2026-07-13 from the research corpus (`design/depth-program/PLANNER_BRIEFING.md` + `research/verified/*`). Its concepts and sequencing are proposals to implement, test, expand, merge, or replace when stronger repo evidence or player results justify it.
 **Audience:** build agents. Read the current authority chain first, then §1, §2, the assigned chunk in §5, and the live ledger (§6). Read the cited research or live implementation surfaces when a chunk depends on their claims; this plan is a synthesis, not a substitute for current evidence.
@@ -13,7 +18,7 @@
 - **§2 — The Guardrails.** One screen. Read before every chunk.
 - **§3 — Proposed Content Roster.** A 98-slot research-derived starting inventory: 5 faction concepts, 20 ship concepts, 15 landmarks, 12 wrecks, 8 planet states, 15 props, 15 NPCs, and 8 encounters. These counts organize the first campaign; they do not cap the game or forbid better substitutions and additions.
 - **§4 — The Three Additions.** The Band, the Ship's Ledger, the Living Hull — high-ROI systems the research didn't ask for and the thesis demands.
-- **§5 — The Build Sequence.** 31 chunks, ordered, each self-contained: files, steps, traps, acceptance, tools, iteration budget, Wave-4 collision status.
+- **§5 — The Build Sequence.** Ordered chunks with files, steps, traps, acceptance evidence, tools, and known integration overlap.
 - **§6 — The Progress Ledger.** How the program tracks itself across agent handoffs.
 - **§7 — Research Departures & Reasoning.** Where this plan deliberately departs from the research, while remaining subordinate to the repo authority chain.
 
@@ -37,7 +42,7 @@ What a player remembers a year later: *the shipping AI had been looking for my s
 
 # §2 — THE GUARDRAILS (one screen — read before every chunk)
 
-**The soul.** Firefly/Serenity. Lived-in, not pristine. Dark humor, not grimdark. Bureaucratic horror is the house style. Terse, loaded, slightly literary prose — the 12-word blurb limit is the medium, not a constraint. Authority is chrome; outlaws are filthy; every hull has a history. REJECT ON SIGHT: shiny space-navy-as-US-Navy, wise riddle-aliens who love the protagonist, hearts-of-gold mercenaries, Chosen One prophecies, "space pirates #4."
+**The soul.** Firefly/Serenity is one useful reference: lived-in rather than pristine, darkly funny rather than uniformly grim, and attentive to bureaucratic horror. Prose should be concise when the moment calls for it, but rhythm, clarity, and character matter more than a word count. Avoid generic genre defaults unless the implementation gives them a specific SpaceFace purpose.
 
 **Determinism.** NEVER `Math.random()` or `Date.now()` in sim — use `state.rng` (seeded) and `state.simTime`. Every new spawner seeds per-offer and documents its seed source in a comment. VFX-only randomness may use `Math.random()`. NEVER edit `test/*.expected.json` goldens to make a check pass — fix the code or flag the golden for a named re-record batch.
 
@@ -47,13 +52,13 @@ What a player remembers a year later: *the shipping AI had been looking for my s
 
 **Assets.** 3 registries or it doesn't exist: `parts_manifest.json` + auto-built `release_manifest.json` (never hand-edit) + `partsLibrary.js`. Material roles should remain compatible with the runtime tint path (`Material_Hull` / `Material_Accent` / `Material_Emissive`) unless the live asset pipeline adopts a better documented contract. Historical starting profiles were roughly 1–3k triangles for common props, 8–15k for landmarks, and up to about 15k for hulls; these are planning estimates, never quality ceilings. Choose geometry, texture resolution, material count, LODs, compression, and draw structure from measured on-screen need and representative runtime captures. Exceed a starting profile when visual quality requires it, then recover performance through structural optimization while preserving the accepted image. THE SILENT-FALLBACK TRAP: a broken GLB renders procedural geometry with no error — "it renders" proves nothing. Proof = `npm run check:assets:live` (failureCount:0) + screenshot into `.devshots/` compared against the visual target in this file and current player-facing references. Boot gate stays intact. If `assets/ships/release.__lock/`, `.__building/`, or `.__previous/` exist, or Blender is running — do not touch `assets/**` or `src/render/**`.
 
-**Palette claims.** Existing primaries: scn `#3A78FF` blue, mts `#F2B233` gold, dmc `#C9772E` copper, reach `#D8334A` red, quiet `#7A5FB0` violet, vael `#2FCFA0` teal, free `#4ECBE0` cyan, choir `#E85FD0` magenta, helix `#8B9CB8` slate. New claims (this plan): Understory bile-green `#8FA82E`, Fulfillment clinical-white `#F0F0E8` + status-cyan `#40B8E0`, Archive abyssal-indigo `#2A1A4A` + script-gold `#D4A040`, Pitborn prison-orange `#C8501C` (distinguished from dmc copper by saturation AND by pattern: orange patches over other factions' paint, never a clean coat), Verge-Layers nacre-pearl `#D8D0E0`. The faction-kit validator (chunk F2) enforces hue distance.
+**Faction visual directions.** The existing and proposed colors in §3-A are starting references, not reserved hues or machine-enforced identities. Build faction recognition from the combined silhouette, materials, markings, motion, sound, and context; allow colors to evolve when runtime comparison shows a stronger and more legible family.
 
-**Repo hygiene.** Stay on `master`. Never `git checkout .` / `reset --hard` / `stash` on tracked files (~17k uncommitted lines live here). `git add -N <file>` immediately on every new file. Two implementations: LIVE = `flightV3.js`, `tacticalAI.js`+`aiPorts.js`; LEGACY (frozen, never edit) = `flight.js`, `ai.js`, `flightDynamics.js`.
+**Repository safety.** Follow the current root `AGENTS.md`, scoped `AGENTS.md`, and live runtime selection in `src/core/registry.js`. Do not copy volatile dirty-tree counts, branch assumptions, or backend status into this plan.
 
 **Wave 4.** Coordinate before touching: `registry.js` (T4 added ~10 systems), `wreckClasses.js`/`aftermathWrecks.js` (T4c owns), `parts_manifest.json`/`partsLibrary.js` (T6 lane). Wave 4 systems are your substrate, not your obstacle: `lossLedger`, `pirateDoctrines`, `namedAces`, `aceMemory`, `pirateRumor`, `contractClauses`, `stationBubbles`, `stationGlyphs`, `hazardLanguage` — fill them, never rebuild them.
 
-**Proof discipline.** Transcripts are not proof. A chunk is DONE when: named checks are green (paste output), the screenshot pair exists in `.devshots/`, and the ledger row (§6) carries both. Every asset chunk states its iteration budget — spend it. First renders are never the bar.
+**Proof discipline.** Transcripts and iteration counts are not proof. A chunk is DONE when the relevant checks are green, player-facing evidence exists for visual or experiential claims, and the ledger records the result. First renders are rarely the bar, but repeated passes without a named defect are not progress either.
 
 # §3 — PROPOSED CONTENT ROSTER (98 research slots; not a scope ceiling)
 
@@ -119,7 +124,7 @@ The five new factions are a thematic set: **five kinds of remembering.** Each is
 ## §3-B · SHIPS (20 slots → four lines, three production tiers)
 
 **Production doctrine (read first).** Treat the twenty ship concepts as a prioritized starting roster, not an asset-count commitment. Building every hull to one arbitrary triangle ceiling would be the slowest path to depth. The plan assigns production approaches so identity-per-workday is maximized (Pattern D — role-distinctiveness beats count), while each ship's final geometry and texture profile is earned by its on-screen read and measured cost:
-- **Tier-HERO** — bespoke Blender hull, full 15–20+ iteration budget. Reserved for silhouettes that carry a faction's whole identity.
+- **Tier-HERO** — bespoke Blender hull with extensive in-engine review. Reserved for silhouettes that carry a faction's whole identity.
 - **Tier-GEO** — simple geometric solids (Fulfillment line): beveled primitives with machined seams. Cheap in Blender, and the cheapness IS the aesthetic (mass-produced machine horror).
 - **Tier-KIT** — existing hull + attachment meshes + palette + behavior (Understory growth-kits, Fulfillment requisitioned haulers, Bulwark reskin). The fiction justifies the reuse: *these factions literally fly our ships.*
 
@@ -179,7 +184,7 @@ Pattern C: the initial landmark roster gives priority named zones a hero visual;
 - **C8 · THE FLIGHT DECK** — `poi_kepler_hulk`, `sector_kepler_scar`. C8-e's capsized carrier + C8-c's spectacle-lore: the carrier *Void-Reach* lies upside-down, its flat flight deck forming a vast ceiling over the market built on the upturned belly — launch catapult rails hang down like stalactites (a real collision hazard tall ships joke about). Reach-red neon, awnings of hull-plate, "we killed this, now we live in it." Black-market specialism: carrier-grade military surplus. Rep-gated vendors; a claimable stall for high-Reach players. ~13k tris. Emotion: greed under a dead ship's shadow.
 - **C9 · THE SHARD SPHERE** — `station_phoebe_echo`, `sector_phoebe_echo`. C9-c whole: ~60 crystal shards of a construct destroyed in a Vael schism, held in a 350u spherical formation by nothing visible, each shard retaining a fragment of the old construct's resonance. Shards chime — brief teal rings — and together they replay a fragmentary song. Scan each shard for a fragment of the schism story (collect-across-visits); a high-rep quest reconstructs the full song for a Vael reward. Hostile players trigger a shard-storm. The research module at the center is the dockable station. ~12k tris across instanced shards. Emotion: awe (a shattered instrument still playing).
 - **C10 · THE FUNNEL** — `poi_proteus_hulk`, `sector_proteus_well`. C10-b + C10-d's below-deck stash: a 400u freighter hulk deliberately re-shaped into a tapering throat — wide bow to a 40u stern aperture, violet Quiet strip-lights marching down the interior, smuggler craft emerging single-file. Security architecture as geometry: one-way for large hulls, an ambush chokepoint for the unwelcome. Beneath the debris floor, a concealed cache layer detectable only with a debris-penetrating scan. Rep-gated black-market dock inside. ~11k tris. Emotion: dread (a throat you fly down) → greed.
-- **C11 · THE RINGWORLD ARC** — `sector_sedna_dark`. C11-a, the program's poster asset: a ~60° surviving arc of a ringworld whose star is *gone* — a 3000u-implied ribbon, 400u wide, standing edge-on to the plane. The inner face carries the ghost of dead terrain (rivers, plains, texture-mapped); the outer face is structural lattice; and **a few city-grid lights still cycle on the inner face, on battery power that should have died millennia ago.** The lights spell something in precursor script (long questline; ties to C15's Watcher and the Vael lance-lore from C5). The arc casts a real shadow across the sector. Vael permit no landings. ~14k tris, LOD-friendly lattice. Emotion: awe, full stop. *This is the screenshot the game gets remembered by; its iteration budget is unlimited-within-chunk.*
+- **C11 · THE RINGWORLD ARC** — `sector_sedna_dark`. C11-a, the program's poster asset: a ~60° surviving arc of a ringworld whose star is *gone* — a 3000u-implied ribbon, 400u wide, standing edge-on to the plane. The inner face carries the ghost of dead terrain (rivers, plains, texture-mapped); the outer face is structural lattice; and **a few city-grid lights still cycle on the inner face, on battery power that should have died millennia ago.** The lights spell something in precursor script (long questline; ties to C15's Watcher and the Vael lance-lore from C5). The arc casts a real shadow across the sector. Vael permit no landings. Build an LOD-friendly structure whose detail is justified by its actual exposure. Emotion: awe, full stop. *This is the screenshot the game gets remembered by.*
 - **C12 · THE METRONOME** — `sector_eris_margin`. C12-b renamed (the pool's "Lighthouse" collides with wreck D3's ISC Lighthouse) + the Heliolater rhythm-mechanic salvaged from the rejected A3-e: a neutron star whose polar beam sweeps exactly along the galactic plane — odds astronomical — lighting everything it crosses on an ~8s period. **The beam is a hard radiation plane; crossing is a timing skill.** The Quiet keep their schedules in Metronome-rotations; navigators use it as the region's lighthouse; a Quiet contact pays for precise beam-timing data. Learnable rhythm = the game's one "boss you defeat with a wristwatch." ~9k tris (sphere + jet bands + beam plane shader). Emotion: awe → dread.
 - **C13 · THE FIVE CAPITALS** — one signature structure per legacy faction, at its core sector; the faction-identity pattern made monumental (all five canon; staged across two chunks):
   - **Concord Citadel** (`zone_helios_core`) — C13-a: octagonal armored citadel, four broadside lance-turrets kept live through 40 years of peace, gold sun-emblem hologram (largest holo in core space). The existing `station_coalition` becomes this. Emotion: awe (the center of order).
@@ -263,7 +268,7 @@ All register in `PLACE_FILES`, place via the four `_spawn*Dressing` palette-clas
 
 ## §3-G · NAMED NPCs (15 slots → depth that costs words, not polygons)
 
-Pattern D (Rebel Galaxy): write the person; the systems render them. All use the `card()` shape (id / name / roleLabel / stationHint / blurb ≤12 words) + the 8 `barks.js` voice registers. Every stationHint below is a real id. Blurbs are canon — ship them verbatim. Where an NPC carries a mechanic, it rides an existing system (rep gates, flags, `aceMemory`, missions) — no new UI.
+Pattern D (Rebel Galaxy): write the person; the systems render them. The current `card()` shape and voice registers are implementation seams, not prose limits. Every stationHint below is a real id. Treat the blurbs as starting canon and edit them when actual UI fit, clarity, or characterization improves. Where an NPC carries a mechanic, prefer existing systems (rep gates, flags, `aceMemory`, missions) and add UI only when the interaction needs it.
 
 - **G1 · CLERK YUNE** — *Sealed-Evidence Broker (Quiet)*, `station_nyx_march`. Blurb: **"Sealed files open for a fee. Then re-seal."** Worked the records office that filed Incident 7741 — the Tessera. Knows REF 44-C from the inside; the only NPC who speaks the player's hull registration aloud without flinching. For a steep fee (gated: Quiet friendly + ≥B6) she reveals Contract 47-A's payment was never going to clear — seeding Choice C. Voice: quiet-terse with bureaucratic residue; she *whispers* ref codes. Synthesis note: won over Mother Vesh (G1-b) for spine-criticality; Vesh's air-booth line "Air for sale. Origin unspecified. You buy." survives as an ambient bark at Sker.
 - **G2 · "COLDBURN" REY** — *Named Rival (Free Frontier)*, roams, first near `station_reach`. Blurb: **"You took that lane. I remember which one."** Not a pirate — a competitor who shoots: an independent hauler who lost a contract to the player in an early beat and nursed it into vendetta. Gimmick: *intercept* — he cuts your lane rather than ambushing from cover. Rides `namedAces` escalation (escort +1 per escape, never +HP%). Third defeat: he surrenders, becomes a reluctant ally, unlocks a co-op convoy run. The most Firefly rival in the pool — a working man with a grudge, not a supervillain. (Echo Tann's mirror-flying gimmick banked as a later second-tier ace row.)
@@ -308,7 +313,7 @@ The research manifest covers *things in the world*. Three systems the manifest n
 
 ### ADD-1 · THE BAND (diegetic radio)
 **What:** a ship's radio — a tunable band of faction frequencies rendered as procedural Web Audio + a one-line text ticker (arbiter-compliant: the Band counts as ONE text surface and yields to anything urgent). Channels: **Concord Bulletin** (Pell-edited official record — true and never accurate), **The Margin** (Vonn — the player's own deeds, spun), **The Static** (a pirate host roasting everyone; fastest Reach-rep read), **The Ballad Line** (frontier folk verses; major encounters become lyrics), **Choir Vespers** (harmonic drones), **the Fulfillment's routing loop** (found, held, delivered), **numbers stations** (Quiet — and, rarely, a wreck bearing read as coordinates in the clear: the Band is a rumor channel), and near certain landmarks, *the landmark itself* (the Quiessence buoy; the Hush's audible RF hole). Signal strength varies by sector and proximity — the fringe sounds different from the core because it *is*.
-**Why it's the #1 addition:** the synthesis names Rebel Galaxy's diegetic radio the single highest depth-per-dollar technique in the genre, and lists audio worldbuilding as must-fix #7 — then the 98-item manifest never allocates it a slot. SpaceFace's audio is already 100% procedural Web Audio; the pipes exist. This is the cheapest large immersion win available to this program, and it federates every voice in §3-G into one surface.
+**Why it matters:** the synthesis identifies Rebel Galaxy's diegetic radio as a high-leverage worldbuilding technique. SpaceFace already has a Web Audio foundation, and may combine procedural, recorded, generated, or licensed sources when provenance, coherence, memory, and performance are handled well. The Band can federate the voices in §3-G into one surface.
 **Research trace:** Pattern D (feel-layer over asset count) + must-fix #7. **Cost:** code + writing. Zero art.
 
 ### ADD-2 · THE SHIP'S LEDGER (the game writes your story back)
@@ -327,7 +332,7 @@ The research manifest covers *things in the world*. Three systems the manifest n
 
 **31 chunks in 6 waves.** Ordering logic: (1) Wave-4 collision safety — words and data first (zero-collision), asset waves after T6 clears; (2) dependency — validators before content, systems before the content that fills them; (3) visible value — every wave ends with something a player sees. Each chunk is self-contained: when it's DONE the repo is shippable at that scope, checks green, screenshots filed. **No chunk starts if `release.__lock`/`__building`/`__previous` is present** (asset chunks) — that rule is per-chunk law and won't be repeated below.
 
-**Iteration budgets are floors, not ceilings.** Hero landmark: 20+ Blender iterations (block-in → silhouette pass → material pass → emissive pass → in-engine screenshot loop). Ship hull: 15+. Prop: 8–10. Code chunk: 10+ verify cycles (check → fix → re-check). "One good try" is not a budget.
+**Iteration counts do not prove quality.** Use blockout, silhouette, material, lighting, export, and in-engine review passes as needed. Stop when the player-facing result meets the active acceptance criteria and the remaining defects are understood; continue when evidence shows a meaningful deficiency.
 
 **The per-asset loop (all Blender chunks):** model in Blender (Blender MCP) → export via `tools/blender/spaceface_export.py` → finalize (`tools/art/finalize_part.mjs` / `finalize_whole_ship.mjs` — stamps `spacefaceAsset` metadata) → register (parts_manifest.json + partsLibrary.js; release manifest auto-builds via `scripts/build-sg04-release-assets.mjs`) → `npm run check:assets:live` (failureCount:0) + `check:asset-reachability` + `check:visual-stability` → boot `localhost:8123`, navigate to the asset, screenshot pair into `.devshots/` → compare against §3's visual spec (silhouette? materials? emissive? scale? *emotion*?) → iterate. **A screenshot that shows procedural-fallback geometry is a FAIL even though it renders.**
 
@@ -341,30 +346,30 @@ The research manifest covers *things in the world*. Three systems the manifest n
 - **Steps:** (1) snapshot current `FACTION_META` values into a fixture; (2) generate the 9 files with the full future schema stubbed (`palette`, `shipRoles`, `illegalCommodities`, `custom` flags, `voiceRegister` — empty/derived where not yet used); (3) loader; (4) assert deep-equality of the assembled registry vs the fixture; (5) full check gate.
 - **Traps:** consumers importing `FACTION_META` by shape — keep the export IDENTICAL; the relations matrix is order-sensitive — port it as data, don't recompute; do NOT "improve" any value in this chunk (identical port is the acceptance).
 - **Acceptance:** `npm run check` fully green; deep-equal fixture test passes; game boots, galaxy map unchanged (screenshot pair: map before/after — pixel-identical expectation).
-- **Tools:** file tools + bash. **Iterations:** 10+ verify cycles. **Collision:** none.
+- **Tools:** file tools + shell. **Collision:** none.
 
 ### F2 · Validators & registries (the program's immune system)
-- **Deliverable:** (a) `scripts/check-faction-kit.mjs` — every faction file schema-valid; palette hue-distance ≥ threshold vs all claimed hues (the §2 claims table is the fixture); every `personality` has a `PAINT_PROFILES` row; relations matrix symmetric-complete. (b) `scripts/check-unique-loot.mjs` — no unique-drop id in any station inventory; every unique wreck has ≥1 wired rumor source; every rumor's channel exists. (c) `scripts/check-blurb-voice.mjs` — 12-word limits on new contact blurbs/comms; banned-word lint for the tone (no "very unique", no exclamation-point stacking, flag >2 adjectives/line). (d) Naev-style **self-registering encounter loader**: encounter files under `src/data/encounters/` declare trigger metadata in a header block; the director builds its registry by scan — adding an encounter = adding a file.
+- **Deliverable:** (a) `scripts/check-faction-kit.mjs` — every faction file schema-valid; every `personality` has a `PAINT_PROFILES` row; relations matrix symmetric-complete; visual distinctness is reviewed from runtime captures rather than hue arithmetic. (b) `scripts/check-unique-loot.mjs` — no unique-drop id in any station inventory; every unique wreck has ≥1 wired rumor source; every rumor's channel exists. (c) prose review that checks clarity, voice, repetition, and fit in the actual UI without enforcing adjective or word-count recipes. (d) Naev-style **self-registering encounter loader**: encounter files under `src/data/encounters/` declare trigger metadata in a header block; the director builds its registry by scan — adding an encounter = adding a file.
 - **Files:** `scripts/check-*.mjs`, `package.json` (script entries), `src/systems/encounterDirector.js` (loader seam only), `src/data/encounters/` (dir + migration of the 12 existing archetypes into files).
 - **Traps:** **`registry.js` is T4-owned — coordinate before any edit; if unclear, the loader seam goes in `encounterDirector.js` only and registry wiring waits.** Don't let the blurb linter fail on shipped legacy prose — scope it to new/changed lines (a `since` marker file).
 - **Acceptance:** all three new checks run green on the current tree (proving no false positives), then each is proven to FAIL on a deliberate bad fixture (temp file, then removed); existing 12 encounters spawn identically post-migration (`check:encounter-director` green).
-- **Tools:** file tools + bash. **Iterations:** 12+. **Collision:** ⚠ registry.js — coordinate; encounter migration is otherwise clean.
+- **Tools:** file tools + shell. **Collision:** verify current ownership before editing `registry.js`; encounter migration is otherwise clean.
 
 ## WAVE 1 — WORDS (safe now; the galaxy learns to talk)
 
 ### V1 · The fifteen (NPCs)
 - **Deliverable:** all 15 §3-G NPCs live: `card()` entries with canon blurbs verbatim, station wiring, voice-register bark additions (≥6 lines each in-register), rep/beat gates, and their *flags* (`orrin.case`, `mara.debt`, `latch.child`, `hale.trust`-style counters) registered — but mission *chains* stubbed to first-contact dialogue only (chains land in W4/SP1). Vols and the Question ship dialogue-complete (they're load-bearing for H1/H8 and the 47-A reveal).
 - **Files:** `src/story/campaign47a/embodiedDialogue.js` (+cards), `src/data/barks.js` (+registers: `saprophyte`, `automaton`, `precursor` hybrids as specified), `src/data/narrative.js` (figure entries), `src/data/stationContacts.js`.
-- **Traps:** the 12-word validator (F2) gates this chunk — run it locally per edit; single-writer — NPC hooks EMIT events (`faction:repDelta`), never write rep; do not spend the one-voice budget — contact dialogue is dock-UI, not overlay spam.
+- **Traps:** verify dialogue in its real UI and attention context; single-writer — NPC hooks EMIT events (`faction:repDelta`), never write rep; contact dialogue belongs in dock UI rather than competing with urgent flight overlays.
 - **Acceptance:** `check:blurb-voice` green; `check:story-beats` + `check:encounter-voice` green; screenshot: each NPC's card rendered at its station (15 screenshots, `.devshots/npc-*`); manual read-through against §3-G voice notes logged in the ledger row.
-- **Tools:** file tools + bash + browser. **Iterations:** 10+ (prose passes count). **Collision:** none.
+- **Tools:** file tools + shell + browser. **Collision:** none.
 
 ### V2 · The rumor & flavor corpus
 - **Deliverable:** every written surface the canon needs, authored and wired to ids (content dormant until its system lands): 12 wreck-rumor sets (each in its §3-D channel's native format — bar lines, ticker articles, intercept fragments, bark taunts, mission-hook copy), ad-board copy deck (≥20 lines, house voice — bureaucratic-horror commerce), graffiti additions (Vols's-hand set, kindness/cynic lines, Senna's name slot), Band scripts (channel beds + ≥60 ticker lines across the 8 channels), Insolvent & Slow Fleet flavor packs (see §7), Quiessence's 17 incompatible black-box facts, the Hush's scan copy, C-landmark scan-lore fragments (3–5 per landmark).
 - **Files:** `src/data/narrative.js`, `src/data/newsTemplates.js`, `src/data/barks.js`, new `src/data/flavor/*.js` corpus modules (loader-registered).
 - **Traps:** length discipline is the medium — the validator catches counts, only taste catches wall-of-text *tone*: every entry must survive being read aloud in 4 seconds; no lore dumps — fragments imply, never explain (the Quiessence facts must stay incompatible; do not "solve" it in copy).
 - **Acceptance:** `check:blurb-voice` green; corpus modules load (boot clean); a generated read-out file (`.devshots/corpus-review.md`) pasted into the ledger row for human taste review — this chunk ships words, so the evidence is the words.
-- **Tools:** file tools + bash. **Iterations:** 3 full prose passes minimum. **Collision:** none.
+- **Tools:** file tools + shell. **Collision:** none.
 
 ## WAVE 2 — THE READING GAME (coordinate T4c; the thesis becomes mechanics)
 
@@ -373,20 +378,20 @@ The research manifest covers *things in the world*. Three systems the manifest n
 - **Files:** new `src/data/uniqueWrecks.js` (header documents the seed: `(programSeed, wreckId, sectorId)`), `src/systems/` salvage/scan seams, map UI layer, `src/data/weapons.js`/`modules.js` variant tables. ⚠ `wreckClasses.js`/`aftermathWrecks.js` — **T4c owns; propose the integration seam (a `promoteToAuthored(lossLike)` hook) to the owner rather than editing their internals.**
 - **Traps:** determinism — bearing generation and cleaner-timer use `state.rng` per-offer, seeds documented; single-writer — salvage emits `economy:`/cargo events; the map layer must not violate the no-`???` rule (bearings appear ONLY post-rumor); don't let blueprint variants stack with themselves (unique = one per save).
 - **Acceptance:** `check:unique-loot` green; `check:sim:compare` hashEqual:true; playtest script: fresh save → hear D10's ticker in Helios → bearing ring appears → scan hardens → salvage → Knitbots in cargo → ticker follow-up fires. Screenshot pair: map bearing ring; salvage moment. Second wreck (D1) proves the pipeline generalizes (different channel, different sector, restricted-class fine fires when scanned by patrol).
-- **Tools:** file tools + bash + browser playtest. **Iterations:** 15+ verify cycles. **Collision:** ⚠ T4c — coordinate first, integrate via seam.
+- **Tools:** file tools + shell + browser playtest. **Collision:** verify current overlap before editing the T4c seam.
 
 ### R2 · The twelve (wreck content pass)
 - **Deliverable:** all 12 §3-D wrecks live: placed (seeded), hazard contexts wired (existing hazards/props only — hero dressing upgrades come with the asset waves), rumors live in all seven channels, D6's held-thing boss hook and D8's ping-summon elite wired as encounter entries (self-registering, F2 loader), D3 gated behind the moving-radiation timing, restricted-class crime wiring (Concord fines, Pitborn fence once K1 lands — until then, Quiet fences).
 - **Traps:** channel spread is canon — do not converge on bar-rumors because they're easiest; D11's cleaner and R2 timers = seeded; the teaching wreck (D10) must be *gentle* — verify a fresh save can complete it in ≤10 minutes without combat.
 - **Acceptance:** `check:unique-loot` green (12/12 rumor coverage); determinism gate green; a sweep-playtest log (each wreck reached and salvaged on a test save) + 12 screenshots filed; news/bar/comms surfaces each shown carrying at least one live rumor.
-- **Tools:** file tools + bash + browser. **Iterations:** 12+ cycles. **Collision:** rides R1's seam; no new T4c edits.
+- **Tools:** file tools + shell + browser. **Collision:** rides R1's seam; broaden only when a coherent result requires it.
 
 ### SP1 · Set-piece missions (structural variety — must-fix #5)
 - **Deliverable:** three multi-stage mission archetypes riding T4b's `contractClauses`: **The Long Read** (rumor-chase: buy rumor → survey bearing → salvage under complication → fence choice — the D-loop as a repeatable contract), **The Witness Run** (escort a person who talks — Dorin/Kell-class extraction with mid-run branch), **The Hearing** (defend or expedite a Gavel-style station siege — pick a side mid-mission). Each: 3–4 stages, one branch point, failure states that resolve (no dead ends), receipts in house voice.
 - **Files:** `src/data/missions.js` (+3 archetypes), `src/systems/missions.js` (multi-stage state machine seam — the current generator is single-stage; add stages as a chained-offer pattern rather than rewriting the generator), mission copy in flavor modules.
 - **Traps:** ALL current archetypes are single-stage — the state machine is the risk; build stages as sequential offers sharing a seeded chain-id (deterministic, save-safe) rather than a new persistent object; `check:mission-standing-ladder` must stay green (standing gates per stage, not per chain).
 - **Acceptance:** `check:mission-standing-ladder` + `check:sim:compare` green; playtest each archetype start→finish including the branch and the failure path; screenshots of stage-transition receipts.
-- **Tools:** file tools + bash + browser. **Iterations:** 15+. **Collision:** T4b files are DONE/stable — additive use only.
+- **Tools:** file tools + shell + browser. **Collision:** inspect the live T4b implementation before changing its contract.
 
 ## WAVE 3 — IDENTITY WITHOUT NEW MESHES (the cheapest visible transformation in the plan)
 
@@ -395,13 +400,13 @@ The research manifest covers *things in the world*. Three systems the manifest n
 - **Files:** `src/systems/world.js` (dressing + archetype seam), `src/render/` material-tint path for places (exists for ships — extend), `src/data/palettes.js` (additive).
 - **Traps:** ⚠ `partsLibrary.js` is T6-lane — if the tint path requires edits there, coordinate; keep the type-driven GLB map intact (faction changes *materials and dressing*, not meshes — mesh-level faction skins are a later, separate call); visual-stability golden may legitimately change → flag for a deliberate re-record batch with reason "L1 livery", never silent-edit.
 - **Acceptance:** `check:assets:live` + `check:visual-stability` (re-recorded, flagged) green; screenshot grid: the same station type in 4 factions' space, visibly distinct; `check:wcag-contrast` on any new glyph text.
-- **Tools:** file tools + bash + browser. **Iterations:** 12+. **Collision:** ⚠ T6 if partsLibrary touched — coordinate.
+- **Tools:** file tools + shell + browser. **Collision:** verify current ownership if `partsLibrary` is touched.
 
 ### K1 · The five factions, live (data + behavior; visuals ride later waves)
 - **Deliverable:** `src/data/factions/{understory,fulfillment,archive,pitborn,vergelayers}.js` — full kit files (palette, PAINT_PROFILES rows, fleet comps **on existing hulls** per §3-A production notes, illegal goods, `custom` flags, relations rows both directions, voice registers, home sectors/waypoints); doctrine rows in `pirateDoctrines`-style tables where applicable; encounter presence (Fulfillment convoys on fixed routes; Understory post-battle salvagers; Archive reading-room stations rep-gated; Pitborn yard + fence; Verge-Layer surveyor-prisms observing, phase-gated); the five appear on the galaxy map correctly colored.
-- **Traps:** `check:faction-kit` gates everything (hue distance!); the Understory's `refliesLedgerHullsOnly` needs a lossLedger read — READ ONLY, no writes; Fulfillment boarding = blackout-transit event chain (emits, never writes credits/cargo directly — the cargo removal goes through the cargo owner); Verge-Layer wake-phases keyed to story flags, seeded, never wall-clock; relations rows must keep the matrix symmetric (F2 validator).
+- **Traps:** `check:faction-kit` gates schema and relationship integrity, while runtime captures judge visual identity; the Understory's `refliesLedgerHullsOnly` needs a lossLedger read — READ ONLY, no writes; Fulfillment boarding = blackout-transit event chain (emits, never writes credits/cargo directly — the cargo removal goes through the cargo owner); Verge-Layer wake-phases keyed to story flags, seeded, never wall-clock; relations rows must keep the matrix symmetric (F2 validator).
 - **Acceptance:** `check:faction-kit` green; headless sim: **fleet doctrines measurably differ** (a sim harness run logging per-faction behavior distributions — pursuit rates, engagement ranges — attached to the ledger row); galaxy map screenshot with 5 new nodes; one staged encounter per faction screenshotted (Fulfillment formation, Understory salvage arrival, etc.).
-- **Tools:** file tools + bash + browser. **Iterations:** 15+. **Collision:** none (additive data), encounter files via F2 loader.
+- **Tools:** file tools + shell + browser. **Collision:** none expected for additive data; encounter files use the F2 loader.
 
 ## WAVE 4 — THE ASSET CAMPAIGN (Blender MCP; **gated on T6 clear** — every chunk here checks the collision map + ownership signals before starting)
 
@@ -409,84 +414,84 @@ The research manifest covers *things in the world*. Three systems the manifest n
 
 ### PR1 · Props, first eight
 - **Deliverable:** F1 Container Stack, F2 Power Pylon, F3 Dish Relay (+ Jammer variant from the same mast base), F5 Claim Stele, F6 Spar Cluster, F7 Pod Rack, F8 Memorial Buoy, F10 Tagged Fragment — modeled, wired into `PLACE_FILES`, placed by the four dressing functions per §3-F placement rules, gameplay effects wired (relay scan-buff radius, stele territorial signal, pod-rack semantic lights, memorial scan-epitaphs pulling from V2 corpus).
-- **Traps:** THE SILENT FALLBACK — verify each of the 8 individually via `check:assets:live` + close-up screenshot; dressing density — additions must respect `DRESSING_RADIUS` and not spam (steles are 1–2/sector by canon); semantic emissives (pod racks) must NOT tint by faction (they're meaning, not livery).
+- **Traps:** THE SILENT FALLBACK — verify each asset individually via `check:assets:live` + close-up screenshot; tune dressing density from composition, navigation clarity, and measured runtime cost rather than a fixed count; semantic emissives (pod racks) should preserve their gameplay meaning even when faction livery is present.
 - **Acceptance:** `check:assets:live` failureCount:0; `check:asset-reachability`; 8 close-up screenshots + 4 sector-context screenshots (one per palette class) showing dressing integration; perf unchanged (`check:perf`).
-- **Iterations:** 8–10 per prop. **Collision:** T6-lane — coordinate, hold if signals present.
+- **Collision:** verify active T6/asset ownership before editing overlapping files.
 
 ### PR2 · Props, second seven
 - **Deliverable:** F4 Beam Borer (animated), F9 Transfer Gantry (animated), F11 Station Vent (timed hazard), F12 Ad Board (V2 copy deck cycling), F13 Minefield Buoy, F14 Dead-Drop Buoy, F15 The Index + Standing Obelisk sibling — same wiring standard; the vent's damage tick and ad-board copy rotation are seeded/sim-clocked.
 - **Traps:** animation in the fixed-timestep world — drive from `state.simTime`, no per-frame allocation (preallocate scratch — the §2 perf rule bites animated props first); the vent is a *hazard*: its damage goes through the hazard system, not a new writer.
 - **Acceptance:** as PR1 + a timing capture of the vent cycle and gantry motion (short screen recording or frame-pair), `check:perf` green.
-- **Iterations:** 8–10 per prop; 12 for the Index. **Collision:** T6-lane.
+- **Collision:** verify active T6/asset ownership before editing overlapping files.
 
 ### H1a · Hero landmark — THE WRECK CATHEDRAL *(the bar-setter)*
 - **Deliverable:** C1 built to spec and placed at `zone_io_derelict`; salvage nodes, scan-lore fragments (V2), the Marker light, scavenger-nest encounter hook wired. **This chunk defines the program's quality bar — its screenshots become the reference every later landmark chunk compares against.**
-- **Build steps (exacting, the template for all hero chunks):** (1) blockout both hull halves + deck planes, verify fly-through clearances at player-ship scale ×3 margin; (2) silhouette pass at 3 camera distances (200m read: "broken capital, ribcage"); (3) interior hang-deck pass (angles, not clutter — 4 submeshes total); (4) material pass (scored grey, burned blue stripe, scorch lips); (5) emissive pass (flicker strips on battery-cadence — seeded flicker, sim-clocked; the amber Marker steady); (6) export→finalize→register→live-check; (7) in-engine screenshot loop vs the C1 emotional target ("awe → greed") — iterate ≥20 total passes; (8) wire interactions; (9) full acceptance.
+- **Build steps:** block out the hull and deck planes; verify fly-through clearances at representative ship scale; review silhouette at gameplay and showcase distances; develop interior, materials, and emissives according to the target; export, finalize, register, and inspect in engine; wire interactions; then run full acceptance. Pass counts and submesh counts follow observed quality and performance needs.
 - **Acceptance:** `check:assets:live` 0-fail; screenshot set: approach (500m), fly-through (interior), the Marker close-up, night-side; scan shows 3 lore fragments; scavengers aggro on approach; `check:perf` green at the zone.
-- **Iterations:** 20+ (floor). **Collision:** T6.
+- **Collision:** verify current T6/asset ownership before editing overlapping files.
 
 ### H1b · Anomaly pair — RESONANCE OBELISK + SHARD SPHERE
 - **Deliverable:** C2 + C9 built, placed, pulse-rate persistence (obelisk scan-count is save-state, Vael patrol tempo reads it), shard chime-rings + collect-the-song fragments wired.
 - **Traps:** the obelisk's "doesn't obey scene lighting" read = emissive-dominant material with near-zero lit response — verify in both light extremes; chime-rings are FX (may use Math.random) but chime *order* in the song quest is seeded.
-- **Acceptance:** standard + a two-screenshot proof of the pulse-rate difference (fresh save vs 5-scan save). **Iterations:** 15+ each. **Collision:** T6.
+- **Acceptance:** standard + a two-screenshot proof of the pulse-rate difference (fresh save vs 5-scan save). **Collision:** verify current T6/asset ownership.
 
 ### H1c · Memorial pair — CANDLE FLEET + THE QUIESSENCE
 - **Deliverable:** C3 + C14. Cheap geometry, heavy mood — the acceptance is 90% tone. Candle grid + dark plinth + relight behavior; 17 dark freighter instances + the violet buoy + 17 black-box facts (V2).
 - **Traps:** the Quiessence must NOT get dressing clutter — silence is the design; verify the dressing functions *exclude* the formation zone. Candle relight = seeded timer, rep-hit event emitted once.
-- **Acceptance:** standard + dusk-palette screenshots of both; a read-through of all 17 facts in-situ logged. **Iterations:** 10+ each (instancing does the work). **Collision:** T6.
+- **Acceptance:** standard + representative dusk screenshots of both; a read-through of all 17 facts in situ logged. **Collision:** verify current T6/asset ownership.
 
 ### H1d · Inhabited pair — LUNG-OF-CHARON + THE FUNNEL
 - **Deliverable:** C7 + C10 with their service/market wiring (trade hub services; rep-gated interior dock), snapped-tether rescue event (seeded), Funnel's one-way navigation envelope + below-floor cache (debris-penetrating scan gate).
-- **Acceptance:** standard + a docking-run screenshot sequence for each (approach → interior). **Iterations:** 15+ each. **Collision:** T6.
+- **Acceptance:** standard + a docking-run screenshot sequence for each (approach → interior). **Collision:** verify current T6/asset ownership.
 
 ### H1e · Industry/outlaw pair — THE FLIGHT DECK + THE CAVED SHAFT
 - **Deliverable:** C8 + C6 with market specialism (carrier surplus vendor), hanging-rail collision hazard, shaft probe-quest (returns the single authored image), auger salvage.
-- **Acceptance:** standard + one screenshot proving the rail hazard reads (a tall ship near-miss framing). **Iterations:** 15+ each. **Collision:** T6.
+- **Acceptance:** standard + one screenshot proving the rail hazard reads (a tall ship near-miss framing). **Collision:** verify current T6/asset ownership.
 
 ### H1f · Deep-space triptych — RINGWORLD ARC + TIDE-LOCKED WATCHER + THE METRONOME
-- **Deliverable:** C11 + C15 + C12. The Arc is the program's poster: its chunk-internal iteration budget is uncapped — it ships when it produces the screenshot a stranger would set as a wallpaper. Watcher sightline mechanic (seen-effect, rite-détente persistence); Metronome beam plane (sim-clocked 8s period, radiation damage through the hazard system, timing-crossing playtest).
+- **Deliverable:** C11 + C15 + C12. The Arc is a showcase landmark and ships when its runtime composition, material quality, scale, and interaction meet the visual target. Watcher sightline mechanic (seen-effect, rite-détente persistence); Metronome beam plane (sim-clocked 8s period, radiation damage through the hazard system, timing-crossing playtest).
 - **Traps:** the Arc's scale illusion — parallax placement + LOD lattice; verify it reads at 3000u implied WITHOUT tanking perf (`check:perf` is an acceptance gate here, not a formality); the Watcher's audio cue is the game's quietest — one shot, no loop.
-- **Acceptance:** standard + the wallpaper shot; Metronome crossing playtest (fail = death log, success = clean cross) recorded in the ledger row. **Iterations:** Arc 25+, others 15+. **Collision:** T6.
+- **Acceptance:** standard + a strong showcase capture; Metronome crossing playtest (fail = death log, success = clean cross) recorded in the ledger row. **Collision:** verify current T6/asset ownership.
 
 ### H1g · Ashfall endgame pair — VAULT MAW + IRON MAW
 - **Deliverable:** C4 + C5. The two-asset climax of the landmark program: jaw-vault (petal rig set up for the one scripted opening — build the animation seam now, trigger later), Iron Maw bio-dreadnought (boss entity + place hybrid: the toll gap, the scar-bow scan provenance, ram behavior via existing AI ports).
 - **Traps:** the Iron Maw is LIVE-implementation AI (`tacticalAI.js`+`aiPorts.js`) — never touch legacy `ai.js`; boss stats escalate by composition, not +HP% (the namedAces rule applies to it in spirit).
-- **Acceptance:** standard + toll-pass playtest (Vael-positive save) AND hostile-approach playtest (ram observed, survivable by design); scar-bow scan shows 7 provenance entries. **Iterations:** 20+ each. **Collision:** T6 + boss-AI review.
+- **Acceptance:** standard + toll-pass playtest (Vael-positive save) AND hostile-approach playtest (ram observed, survivable by design); scar-bow scan shows 7 provenance entries. **Collision:** verify current asset and boss-AI ownership.
 
 ### H1h · The Five Capitals (two chunks' work, one canon set)
 - **Deliverable:** C13 ×5 across two passes — pass 1: Concord Citadel, Skerris Throne, Drift Crucible (maximum contrast trio: order/defiance/industry); pass 2: Meridian Spire, Resonant Cathedral. Each replaces/anchors its existing sector station per §3-C, services intact, faction questline hooks stubbed to scan-lore.
 - **Traps:** these upgrade LIVE stations — service continuity is acceptance #1 (dock, trade, missions all still work); the Throne's growing skull emblem is stateful — seeded, event-driven, capped.
-- **Acceptance:** standard + a five-frame "postcard row" (one per capital, same framing standard) — this row is the program's faction-identity proof and goes in the ledger. **Iterations:** 15+ each. **Collision:** T6.
+- **Acceptance:** standard + a five-frame "postcard row" (one per capital, comparable framing) — this row is the program's faction-identity proof and goes in the ledger. **Collision:** verify current T6/asset ownership.
 
 ### S1 · Ship line — Vael bio (5 hulls)
 - **Deliverable:** B1–B5 modeled (Tier-HERO ×5), registered (HULL_FILE_BY_DEF_ID / enemy visuals), stats per §3-B sketches into `ships.js`/`enemies.js`, signature tactics wired via tactical AI ports (Moth pair-vision relay, Mantis dark-stalk, Nautilus turtle, Shellback comb-jettison feeding `pirate_toll`, Deep-Mother brood-launch + mouth-phase), Iron Maw lineage lore linked.
 - **Traps:** enemy behavior lives in LIVE `tacticalAI.js`/`aiPorts.js` ONLY; the Moth's rep-spike on kill emits `faction:repDelta`; silhouettes verified against the line audit (§3-B) at combat range, not in the hangar.
-- **Acceptance:** `check:assets:live` + `check:flight:clean` + combat playtest vs each (behavior matches signature tactic — logged); silhouette lineup screenshot (all 5 side-by-side at combat zoom). **Iterations:** 15+ per hull. **Collision:** T6.
+- **Acceptance:** `check:assets:live` + `check:flight:clean` + combat playtest vs each (behavior matches signature tactic — logged); silhouette lineup screenshot (all 5 side-by-side at combat zoom). **Collision:** verify current T6/asset ownership.
 
 ### S2 · Ship line — Fulfillment + Understory kit
 - **Deliverable:** B6–B10 (GEO trio fast, DEPOT + ROUTING CLERK hero) + the Understory growth-kit (4–6 parasite attachment meshes + placement map per host hull + saprophyte palette pass) — both factions' fleets stop being placeholders. Routing Clerk ring-phase fight wired; Depot wreck-consumption loop wired (reads battle debris, seeded).
 - **Traps:** requisitioned-tier Fulfillment hulls = material/behavior only — resist the urge to remesh; growth-kit placement must not break collision radii (attachments are visual-layer); formation flying is the Fulfillment's horror — verify the formation solver holds under fire before calling behavior done.
-- **Acceptance:** standard + two staged screenshots: a Fulfillment convoy in perfect formation; a known hull (Mule) clean vs green-bloomed side-by-side. **Iterations:** hero hulls 15+, kit 10+. **Collision:** T6.
+- **Acceptance:** standard + two staged screenshots: a Fulfillment convoy in formation; a known hull (Mule) clean vs green-bloomed side-by-side. **Collision:** verify current T6/asset ownership.
 
 ### S3 · Ship line — Reach sub-cultures
 - **Deliverable:** B11–B15 (Scythe/Casket/Murder-Crow hero; Kettle/Tyrant-Maw kit+hero-bow), sub-culture doctrine rows filled in `pirateDoctrines.js` **as data** (Maw/Rust-Lords/Drift-Kings), named-ace roster extensions (one ace per culture riding `namedAces` escalation), Crow gun-port folk-art via per-instance accent variation.
 - **Traps:** `pirateDoctrines`/`namedAces` are T4d-shipped systems — FILL, don't fork; Tyrant-Maw's tooth-provenance reads lossLedger where entries exist, authored otherwise — never fabricates ledger rows.
-- **Acceptance:** standard + doctrine sim log (three cultures measurably distinct in behavior distributions) + maw-volley windup playtest. **Iterations:** 15+ hero, 10+ kit. **Collision:** T6 (+T4d fill-only).
+- **Acceptance:** standard + doctrine sim log (three cultures measurably distinct in behavior distributions) + maw-volley windup playtest. **Collision:** verify current asset and T4d ownership.
 
 ### S4 · Ship line — Authority + the Thunderchild
 - **Deliverable:** B16–B19 hero hulls + B20 Bulwark reskin + **the Thunderchild title system** (title state, kill-marks decal hook — shared plumbing with ADD-3, morale aura, succession event + ticker article template).
 - **Traps:** the title is cross-faction state — one writer (a small `titles` system) that everything else reads; Gavel's "hearing" broadcast copy comes from V2 (do not improvise tone in-code).
-- **Acceptance:** standard + a staged fleet screenshot (Censor/Aerie/Ironclad/Gavel in Concord space); Thunderchild succession forced in a test sim → ticker fires, aura moves. **Iterations:** 15+ per hero. **Collision:** T6.
+- **Acceptance:** standard + a staged fleet screenshot (Censor/Aerie/Ironclad/Gavel in Concord space); Thunderchild succession forced in a test sim → ticker fires, aura moves. **Collision:** verify current T6/asset ownership.
 
 ### W1 · Planet states, first four — SHATTERSTONE · VESTA'S BURN · RAZOR-RING(+Crown config) · REACH SCRAWL
 - **Deliverable:** shader/state-overlay work on `planetFactory.js` per §3-E (fracture web + bite + debris ring; fire-front scroll; ring hazard + aurora + Crown wreck-shards; planetary decal tags + ace-challenge wiring), `scannerSignal` per state, sector assignments live.
-- **Traps:** planetFactory is render-lane but NOT partsLibrary — still respect T6 signals on `src/render/**`; shaders reuse `uSunDir`/`uTime`/`uSeed` (no new uniforms without need); backdrop-only discipline — nothing here is reachable, everything must read *from the play plane*.
+- **Traps:** verify current ownership signals before changing `src/render/**`; reuse existing shader inputs when appropriate, but add well-owned inputs when the effect requires them; these planet states are primarily distant composition and must remain readable from normal play.
 - **Acceptance:** `check:visual-stability` (flagged re-record if goldens shift, reason "W1 planet states"); 4 orbital screenshots + 1 from combat distance each (the read must survive gameplay zoom); Scrawl ace-challenge fires on sector entry in test save.
-- **Iterations:** 12+ per state (shader iteration is cheap — spend it). **Collision:** ⚠ `src/render/**` signals.
+- **Collision:** verify current `src/render/**` ownership before editing overlapping files.
 
 ### W2 · Planet states, second four — VEILED SISTER · MYCELIA · THE HUSH · THE CAGE
 - **Deliverable:** as W1 (cloud occlusion + scan windows; night-side network + terminator-flip verdict; frozen-lights + RF-hole signal feeding ADD-1; lattice + gap-entry field), Mycelia↔Understory lore link live in scan copy.
-- **Acceptance:** as W1 + the Hush's scanner-void demonstrated (scan log screenshot showing the absence render). **Iterations:** 12+ each. **Collision:** as W1.
+- **Acceptance:** as W1 + the Hush's scanner-void demonstrated (scan log screenshot showing the absence render). **Collision:** as W1.
 
 ## WAVE 5 — THE STORIES & THE INSTRUMENTS
 
@@ -494,35 +499,35 @@ The research manifest covers *things in the world*. Three systems the manifest n
 - **Deliverable:** all §3-H encounters as self-registering files (F2 loader): the four uniques (H1/H3/H5/H8) with their once-ever persistence, H2 first-contact with permanent-flag consequence, H4's re-seed verb, H6 repeatable, H7 riding a generalized `aceMemory`→`moralMemory` seam; the two banked variants (Vael Enforcement, Mass Migration) stubbed as follow-ons.
 - **Traps:** unique-once = save-state flags, seeded spawn windows, NEVER wall-clock; H5 has no neutral exit — verify all three branches set their flags and the *absence* of a fourth path is intentional in code comments; H8's mirror-course check runs in sim coordinates (determinism).
 - **Acceptance:** `check:encounter-director` + `check:encounter-voice` + `check:sim:compare` green; each encounter forced via debug seed and played through every branch (branch log in ledger row); screenshots of H1's mayday moment and H8's mirror contact.
-- **Tools:** file tools + bash + browser. **Iterations:** 15+. **Collision:** none (loader from F2).
+- **Tools:** file tools + shell + browser. **Collision:** none expected; use the F2 loader.
 
 ### A1 · THE BAND (ADD-1)
 - **Deliverable:** the radio: tuner state (off/channel), procedural channel beds (Web Audio — existing synth pipeline), ticker line surface (arbiter-registered, yields to urgent), channel content from V2 scripts, signal-strength-by-sector, landmark bleed-ins (Quiessence buoy near C14; the Hush's hole in the band), the numbers-station rumor drop (rare, seeded, one D-wreck bearing per save via this channel).
 - **Traps:** ONE text surface — the Band ticker registers with the one-voice arbiter and silences during comms/story; audio is cosmetic (Math.random fine) but *content selection* is seeded; keybind + HUD chip, no modal.
-- **Acceptance:** `check:ui-a11y` + arbiter test (Band yields when story fires); a listening-tour log: every channel heard in its home region; the numbers-drop verified to resolve to a real bearing. **Iterations:** 12+. **Collision:** none.
+- **Acceptance:** `check:ui-a11y` + arbiter test (Band yields when story fires); a listening-tour log: every channel heard in its home region; the numbers-drop verified to resolve to a real bearing. **Collision:** none.
 
 ### A2 · THE SHIP'S LEDGER (ADD-2)
 - **Deliverable:** the dock-UI Ledger tab: auto-written entries from lossLedger/trades/rumors/bearings/uniques/witness-flags/titles via prose templates (V2 voice), Vols's second-hand annotations post-B-gate, Senna's name entry, endgame graffiti quoting ledger lines.
 - **Traps:** read-only over every source system (zero new writers); template variety — ≥4 variants per entry type so the log never stutters; cap + archive pagination (no unbounded DOM).
-- **Acceptance:** `check:ui-a11y` green; a played session's ledger screenshot showing ≥6 entry types; Vols annotation appears post-gate in test save. **Iterations:** 10+. **Collision:** none.
+- **Acceptance:** `check:ui-a11y` green; a played session's ledger screenshot showing representative entry types; Vols annotation appears post-gate in test save. **Collision:** none.
 
 ### A3 · THE LIVING HULL (ADD-3)
 - **Deliverable:** dynamic paint-profile inputs: kill-tally decal increments (capped, from lossLedger), post-repair weld patches, grime-by-cycles + dock wash service, heat scorch, event graffiti lines; decal atlas (the one small art task); shares the decal hook built in S4.
-- **Traps:** caps and taste — the Kestrel must read *storied, not noisy* (hard caps in data, reviewed via screenshot at each stage); parameters through the existing paint pipeline only; wash service writes through economy (a priced service).
-- **Acceptance:** `check:assets:live` + before/after screenshot series across a staged 5-fight session; wash-service round trip. **Iterations:** 12+. **Collision:** render-lane signals.
+- **Traps:** the Kestrel should read *storied, not noisy*; judge accumulation and cleanup from gameplay and close-up captures rather than fixed cosmetic caps. Extend the paint pipeline coherently if needed; wash service writes through economy (a priced service).
+- **Acceptance:** `check:assets:live` + before/after screenshot series across a representative combat session; wash-service round trip. **Collision:** verify current render ownership.
 
 ### D1 · Doctrine differentiation audit (must-fix #8)
-- **Deliverable:** with 13 factions live, the doctrine matrix gets its tuning pass: every faction's fleet behavior measurably distinct in the headless sim (pursuit, range, formation, disengage); doctrine gaps closed with data (no two factions within tolerance on all axes); the sim harness itself lands as `scripts/sim-doctrine-audit.mjs` (Pattern F: offline balance) and joins the check suite as `check:doctrine-distinct`.
-- **Acceptance:** `check:doctrine-distinct` green with the distance matrix printed in the ledger row; `check:sim:compare` unaffected. **Iterations:** 10+. **Collision:** none.
+- **Deliverable:** with 14 registered faction kits, the doctrine matrix gets its tuning pass: every registered faction profile is measurably distinct in the headless production-AI audit (pursuit, range, formation, disengage); doctrine gaps close with data (no two factions within tolerance on all axes); the sim harness itself lands as `scripts/sim-doctrine-audit.mjs` (Pattern F: offline balance) and joins the check suite as `check:doctrine-distinct`. The audit must report natural player-route reachability separately: an isolated production-AI proof does not by itself make a registry-only fleet (currently Helix) player-reachable.
+- **Acceptance:** `check:doctrine-distinct` green with the distance matrix printed in the ledger row; `check:sim:compare` unaffected. **Collision:** none.
 
 ## WAVE 6 — THE GOLDEN THREAD
 
 ### GT1 · Full-program verification & the gallery
 - **Deliverable:** (1) `npm run check` — the entire gate, green, output archived; (2) the offline balance sim extended to loot: `scripts/sim-loot-audit.mjs` proving unique-loot rarity/unpurchasability across 1,000 seeded runs (Pattern F closes the program the way it opened it — with evidence); (3) **the Gallery**: a curated `.devshots/gallery/` of ~40 screenshots — every landmark, every ship line, every planet state, the five capitals postcard row, the map bearing layer, the Band, the Ledger, a storied hull — assembled into `design/depth-program/GALLERY.md` with one caption line each in the house voice; (4) a fresh-save "first hour" playtest transcript proving the on-ramp: Candle Fleet visible from spawn → Choir-Tender ticker → first bearing → first unique → first Band broadcast about it.
 - **Acceptance:** the full gate + the gallery + the first-hour log ARE the acceptance. This chunk is the program's receipt.
-- **Tools:** everything. **Iterations:** until green, no exceptions. **Collision:** none.
+- **Tools:** whatever the integrated acceptance pass requires. **Collision:** none.
 
-**Dependency spine (what blocks what):** F1→F2→{V1,V2}→R1→R2→SP1; L1 and K1 after F2 (K1 uses V1 voices); Wave 4 gated on T6 + uses V2 lore; E1 after V1/V2 + F2 loader; A1 after V2; A2 after R1 (bearings) + V2; A3 after S4 (decal hook); D1 after K1+S1–S4; GT1 last. Within Wave 4, chunks are parallelizable across agents EXCEPT the shared-registry touch (serialize manifest/partsLibrary commits).
+**Dependency spine (what gates integration and DONE):** F1→F2→{V1,V2}→R1→R2→SP1; L1 and K1 after F2 (K1 uses V1 voices); Wave 4 gated on T6 + uses V2 lore; E1 after V1/V2 + F2 loader; A1 after V2; A2 after R1 (bearings) + V2; A3 after S4 (decal hook); D1 after K1+S1–S4; GT1 last. Isolated tests, data, authored content, and other non-integrated groundwork may proceed in parallel before prerequisites are DONE, but integration, player-facing acceptance, and a DONE stamp require every named prerequisite to be accepted. Within Wave 4, chunks are parallelizable across agents EXCEPT the shared-registry touch (serialize manifest/partsLibrary commits).
 
 ---
 
@@ -532,8 +537,10 @@ The research manifest covers *things in the world*. Three systems the manifest n
 
 **Protocol (per agent, per session):**
 1. Read §2 (guardrails). Read the ledger. Check the Wave-4 collision state for your candidate chunk (and the `release.__*` signals if it's an asset chunk).
-2. Claim: set your chunk `IN-PROGRESS — <agent/session id> — <date>`. Never claim a chunk whose dependencies (§5 spine) aren't `DONE`.
-3. Build. Iterate to the chunk's floor, then to the spec.
+2. Claim: set your chunk `IN-PROGRESS — <agent/session id> — <date>`. If dependencies are not DONE,
+   limit work to isolated groundwork and record that boundary; do not integrate or stamp DONE until
+   the dependency spine is accepted.
+3. Build, inspect the real player route, and iterate against observed defects and the active acceptance criteria.
 4. Stamp: `DONE` requires current named checks (name + summary line, e.g. `check:assets:live → failureCount:0`), valid screenshot paths for visual work, and a one-line review note tied to the current visual target. Stale or missing evidence returns the row to `TODO` or `IN-PROGRESS`.
 5. If ownership or an external dependency prevents one chunk, record the exact dependency and immediately advance another safe chunk; the overall program does not stop.
 

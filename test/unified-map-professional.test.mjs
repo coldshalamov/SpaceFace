@@ -213,8 +213,13 @@ test('gamepad map entry has a deterministic focused scale control', () => {
     '.gm-scale-btn[data-focus="local"]',
   );
   assert.equal(mapFocusButtonSelector({ source: 'keyboard', focus: MAP_FOCUS.LOCAL }), null,
-    'keyboard map entry does not steal focus from map pan/search input');
+    'keyboard map entry does not claim a scale chip (onShow parks on dialog root instead)');
   const galaxyMap = read('../src/ui/galaxyMap.js');
   assert.match(galaxyMap, /mapFocusButtonSelector\(intent\)[\s\S]*querySelector\(focusSelector\)[\s\S]*\.focus\(/,
     'the live onShow path must focus the resolved gamepad scale control');
+  // Regression: search must not be the first Tab stop / focus fallback, or M types into the box.
+  assert.match(galaxyMap, /gm-search-input[^>]*tabindex="-1"/,
+    'search is programmatic-only (Press /); never the autoFocus first-operable fallback');
+  assert.match(galaxyMap, /_root\.focus/,
+    'keyboard/pointer open parks focus on the dialog root so M/N still close the map');
 });

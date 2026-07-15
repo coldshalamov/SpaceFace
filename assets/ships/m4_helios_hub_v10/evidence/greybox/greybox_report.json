@@ -1,0 +1,698 @@
+{
+  "packet": "M4-HELIOS-V10-GREYBOX-GATE",
+  "stage": "A",
+  "static_validator": [
+    "static_validate_source OK (64893 bytes)",
+    "no forbidden visible primitive calls outside cutter scope",
+    "no prior-version imports",
+    "CUTTER_OBJECTS registry present"
+  ],
+  "hub_glb": {
+    "path": "assets/ships/m4_helios_hub_v10/greybox/hub_greybox_v10.glb",
+    "sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+    "bytes": 109148
+  },
+  "gate_glb": {
+    "path": "assets/ships/m4_helios_hub_v10/greybox/gate_greybox_v10.glb",
+    "sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d",
+    "bytes": 175736
+  },
+  "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+  "metrics": {
+    "hub": {
+      "name": "Hub_HeroShell_V10",
+      "tri_count": 2056,
+      "vert_count": 1028,
+      "connected_components": 1,
+      "largest_component_tris": 2056,
+      "largest_component_tri_share": 1.0,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "bbox_min": [
+        -16.0,
+        -10.300000190734863,
+        -2.4697229862213135
+      ],
+      "bbox_max": [
+        14.5,
+        9.499844551086426,
+        2.7296946048736572
+      ],
+      "bbox_volume": 3139.9036620730335,
+      "largest_component_volume_share": 1.0,
+      "watertight_guess": true
+    },
+    "gate": {
+      "name": "Gate_HeroShell_V10",
+      "tri_count": 3340,
+      "vert_count": 1672,
+      "connected_components": 1,
+      "largest_component_tris": 3340,
+      "largest_component_tri_share": 1.0,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "bbox_min": [
+        -3.0484094619750977,
+        -13.11831283569336,
+        -4.9840874671936035
+      ],
+      "bbox_max": [
+        3.3126211166381836,
+        13.11831283569336,
+        12.722594261169434
+      ],
+      "bbox_volume": 2955.1031405673216,
+      "largest_component_volume_share": 1.0,
+      "watertight_guess": true
+    },
+    "hub_silhouette": {
+      "occupancy": 0.6320037841796875,
+      "shell_share": 0.6320037841796875,
+      "proj_width": 30.5,
+      "proj_height": 19.79984474182129,
+      "axis": "z"
+    },
+    "gate_silhouette": {
+      "occupancy": 0.4746551513671875,
+      "shell_share": 0.4746551513671875,
+      "proj_width": 26.23662567138672,
+      "proj_height": 17.706681728363037,
+      "axis": "x"
+    },
+    "gate_aperture": {
+      "authored_aperture_r": 7.0,
+      "authored_outer_r": 12.79,
+      "clearance_frac_authored": 0.547302580140735,
+      "measured_min_radius_yz": 6.08100399889455,
+      "measured_clearance_frac": 0.47544988263444493,
+      "pass_traversal": true
+    },
+    "hub_negative_space": {
+      "top_occupancy": 0.6327039930555556,
+      "proj_span_x": 30.5,
+      "proj_span_y": 19.79984474182129,
+      "expected_negative_spaces": 2,
+      "note": "Y-fork loft includes deep docking notch + inter-wing fork voids"
+    }
+  },
+  "renders": [
+    {
+      "view": "close_forward_34",
+      "margin_target": 0.12,
+      "distance": 70.16165587472992,
+      "center": [
+        -0.75,
+        -0.40007781982421875,
+        0.12998580932617188
+      ],
+      "radius": 15.25,
+      "measured_margins": {
+        "margin_left": 0.0,
+        "margin_right": 0.0,
+        "margin_top": 0.0,
+        "margin_bottom": 0.0,
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "content_frac_x": 1.0,
+        "content_frac_y": 1.0
+      },
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v10\\evidence\\greybox\\hub_close_forward_34.png",
+      "px": 768,
+      "label": "hub_close_forward_34",
+      "sha256": "2b8e58ddeaadb000c0bc2bb558a7eb3312f24d110909295a53e1ba49ac4c3698",
+      "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+      "hub_glb_sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+      "gate_glb_sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d"
+    },
+    {
+      "view": "side",
+      "margin_target": 0.12,
+      "distance": 70.16165587472992,
+      "center": [
+        -0.75,
+        -0.40007781982421875,
+        0.12998580932617188
+      ],
+      "radius": 15.25,
+      "measured_margins": {
+        "margin_left": 0.0,
+        "margin_right": 0.0,
+        "margin_top": 0.0,
+        "margin_bottom": 0.0,
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "content_frac_x": 1.0,
+        "content_frac_y": 1.0
+      },
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v10\\evidence\\greybox\\hub_side.png",
+      "px": 768,
+      "label": "hub_side",
+      "sha256": "32f597fb6bc8564e08b621dfae5d8d446e9c303ae2c59966dfae722883c30d2f",
+      "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+      "hub_glb_sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+      "gate_glb_sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d"
+    },
+    {
+      "view": "close_forward_34",
+      "margin_target": 0.12,
+      "distance": 70.16165587472992,
+      "center": [
+        -0.75,
+        -0.40007781982421875,
+        0.12998580932617188
+      ],
+      "radius": 15.25,
+      "measured_margins": {
+        "margin_left": 0.0,
+        "margin_right": 0.0,
+        "margin_top": 0.0,
+        "margin_bottom": 0.0,
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "content_frac_x": 1.0,
+        "content_frac_y": 1.0
+      },
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v10\\evidence\\greybox\\hub_120px.png",
+      "px": 120,
+      "label": "hub_120px",
+      "sha256": "f628192861bedfa0decb27923ad0f1b7c94f963965349c551151738feb0b3403",
+      "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+      "hub_glb_sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+      "gate_glb_sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d"
+    },
+    {
+      "view": "close_forward_34",
+      "margin_target": 0.12,
+      "distance": 70.16165587472992,
+      "center": [
+        -0.75,
+        -0.40007781982421875,
+        0.12998580932617188
+      ],
+      "radius": 15.25,
+      "measured_margins": {
+        "margin_left": 0.0,
+        "margin_right": 0.0,
+        "margin_top": 0.0,
+        "margin_bottom": 0.0,
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "content_frac_x": 1.0,
+        "content_frac_y": 1.0
+      },
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v10\\evidence\\greybox\\hub_under45px.png",
+      "px": 40,
+      "label": "hub_under45px",
+      "sha256": "075cd2873aa9bb065632d777f08fa033669166c6eab4cd72e0c8130605e93044",
+      "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+      "hub_glb_sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+      "gate_glb_sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d"
+    },
+    {
+      "view": "negspace",
+      "margin_target": 0.12,
+      "distance": 70.16165587472992,
+      "center": [
+        -0.75,
+        -0.40007781982421875,
+        0.12998580932617188
+      ],
+      "radius": 15.25,
+      "measured_margins": {
+        "margin_left": 0.0,
+        "margin_right": 0.0,
+        "margin_top": 0.0,
+        "margin_bottom": 0.0,
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "content_frac_x": 1.0,
+        "content_frac_y": 1.0
+      },
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v10\\evidence\\greybox\\hub_top_negspace.png",
+      "px": 768,
+      "label": "hub_top_negspace",
+      "sha256": "fce37edb553ab34c18dc7a30105cf2a0a75301cc88dbc55e8f35de0afa77efdb",
+      "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+      "hub_glb_sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+      "gate_glb_sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d"
+    },
+    {
+      "view": "close_forward_34",
+      "margin_target": 0.12,
+      "distance": 60.35426562852261,
+      "center": [
+        0.13210582733154297,
+        0.0,
+        3.869253396987915
+      ],
+      "radius": 13.11831283569336,
+      "measured_margins": {
+        "margin_left": 0.0,
+        "margin_right": 0.0,
+        "margin_top": 0.0,
+        "margin_bottom": 0.0,
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "content_frac_x": 1.0,
+        "content_frac_y": 1.0
+      },
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v10\\evidence\\greybox\\gate_close_forward_34.png",
+      "px": 768,
+      "label": "gate_close_forward_34",
+      "sha256": "fb570a004a70217b17d95b29a42dd5862ab188a5f896386a37aadab448e5fbc5",
+      "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+      "hub_glb_sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+      "gate_glb_sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d"
+    },
+    {
+      "view": "side",
+      "margin_target": 0.12,
+      "distance": 60.35426562852261,
+      "center": [
+        0.13210582733154297,
+        0.0,
+        3.869253396987915
+      ],
+      "radius": 13.11831283569336,
+      "measured_margins": {
+        "margin_left": 0.0,
+        "margin_right": 0.0,
+        "margin_top": 0.0,
+        "margin_bottom": 0.0,
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "content_frac_x": 1.0,
+        "content_frac_y": 1.0
+      },
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v10\\evidence\\greybox\\gate_side.png",
+      "px": 768,
+      "label": "gate_side",
+      "sha256": "c731a025ea14be0b35f00c5935ea1e1f53d7716c0ac01222897f5244b566cb82",
+      "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+      "hub_glb_sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+      "gate_glb_sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d"
+    },
+    {
+      "view": "axial",
+      "margin_target": 0.12,
+      "distance": 60.35426562852261,
+      "center": [
+        0.13210582733154297,
+        0.0,
+        3.869253396987915
+      ],
+      "radius": 13.11831283569336,
+      "measured_margins": {
+        "margin_left": 0.0,
+        "margin_right": 0.0,
+        "margin_top": 0.0,
+        "margin_bottom": 0.0,
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "content_frac_x": 1.0,
+        "content_frac_y": 1.0
+      },
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v10\\evidence\\greybox\\gate_axial.png",
+      "px": 768,
+      "label": "gate_axial",
+      "sha256": "473e00cfb96375b753cebe87f772648647daf87a6386fe63f2179cf2f73d7f3a",
+      "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+      "hub_glb_sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+      "gate_glb_sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d"
+    },
+    {
+      "view": "close_forward_34",
+      "margin_target": 0.12,
+      "distance": 60.35426562852261,
+      "center": [
+        0.13210582733154297,
+        0.0,
+        3.869253396987915
+      ],
+      "radius": 13.11831283569336,
+      "measured_margins": {
+        "margin_left": 0.0,
+        "margin_right": 0.0,
+        "margin_top": 0.0,
+        "margin_bottom": 0.0,
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "content_frac_x": 1.0,
+        "content_frac_y": 1.0
+      },
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v10\\evidence\\greybox\\gate_120px.png",
+      "px": 120,
+      "label": "gate_120px",
+      "sha256": "1edaa40234044c08702dd11cc646c8f4e062a7ad3332a78d0745be68f0ae958d",
+      "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+      "hub_glb_sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+      "gate_glb_sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d"
+    },
+    {
+      "view": "close_forward_34",
+      "margin_target": 0.12,
+      "distance": 60.35426562852261,
+      "center": [
+        0.13210582733154297,
+        0.0,
+        3.869253396987915
+      ],
+      "radius": 13.11831283569336,
+      "measured_margins": {
+        "margin_left": 0.0,
+        "margin_right": 0.0,
+        "margin_top": 0.0,
+        "margin_bottom": 0.0,
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "content_frac_x": 1.0,
+        "content_frac_y": 1.0
+      },
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v10\\evidence\\greybox\\gate_under45px.png",
+      "px": 40,
+      "label": "gate_under45px",
+      "sha256": "2463388e051276eb75737217a60d708ca4e4e9731e757929cf87ed4b4c4c9f91",
+      "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+      "hub_glb_sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+      "gate_glb_sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d"
+    },
+    {
+      "view": "side",
+      "margin_target": 0.12,
+      "distance": 60.35426562852261,
+      "center": [
+        0.13210582733154297,
+        0.0,
+        3.869253396987915
+      ],
+      "radius": 13.11831283569336,
+      "measured_margins": {
+        "margin_left": 0.0,
+        "margin_right": 0.0,
+        "margin_top": 0.0,
+        "margin_bottom": 0.0,
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "content_frac_x": 1.0,
+        "content_frac_y": 1.0
+      },
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v10\\evidence\\greybox\\gate_side_traversal.png",
+      "px": 768,
+      "label": "gate_side_traversal",
+      "sha256": "2deadb4c0dab61f10465c33d5b450e81e49b71e3d8ad35eea480282481ef53a8",
+      "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+      "hub_glb_sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+      "gate_glb_sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d"
+    },
+    {
+      "view": "close_forward_34",
+      "margin_target": 0.1,
+      "distance": 107.48346904479737,
+      "center": [
+        8.65631103515625,
+        0.0,
+        3.869253396987915
+      ],
+      "radius": 24.65631103515625,
+      "measured_margins": {
+        "margin_left": 0.0,
+        "margin_right": 0.0,
+        "margin_top": 0.0,
+        "margin_bottom": 0.0,
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "content_frac_x": 1.0,
+        "content_frac_y": 1.0
+      },
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v10\\evidence\\greybox\\hub_gate_composition.png",
+      "px": 900,
+      "label": "hub_gate_composition",
+      "sha256": "03411fbc72916af6600f3fcdb68f3b16cec8fa1f8c0eb93f90d0c41be92ed3ba",
+      "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+      "hub_glb_sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+      "gate_glb_sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d"
+    }
+  ],
+  "evaluation": {
+    "verdict": "GREYBOX REJECT",
+    "failures": [
+      "framing too tight on hub_close_forward_34: min_margin=0.000",
+      "framing too tight on hub_side: min_margin=0.000",
+      "framing too tight on hub_120px: min_margin=0.000",
+      "framing too tight on hub_top_negspace: min_margin=0.000",
+      "framing too tight on gate_close_forward_34: min_margin=0.000",
+      "framing too tight on gate_side: min_margin=0.000",
+      "framing too tight on gate_axial: min_margin=0.000",
+      "framing too tight on gate_120px: min_margin=0.000",
+      "framing too tight on gate_side_traversal: min_margin=0.000",
+      "framing too tight on hub_gate_composition: min_margin=0.000"
+    ],
+    "hub_metrics": {
+      "name": "Hub_HeroShell_V10",
+      "tri_count": 2056,
+      "vert_count": 1028,
+      "connected_components": 1,
+      "largest_component_tris": 2056,
+      "largest_component_tri_share": 1.0,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "bbox_min": [
+        -16.0,
+        -10.300000190734863,
+        -2.4697229862213135
+      ],
+      "bbox_max": [
+        14.5,
+        9.499844551086426,
+        2.7296946048736572
+      ],
+      "bbox_volume": 3139.9036620730335,
+      "largest_component_volume_share": 1.0,
+      "watertight_guess": true
+    },
+    "gate_metrics": {
+      "name": "Gate_HeroShell_V10",
+      "tri_count": 3340,
+      "vert_count": 1672,
+      "connected_components": 1,
+      "largest_component_tris": 3340,
+      "largest_component_tri_share": 1.0,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "bbox_min": [
+        -3.0484094619750977,
+        -13.11831283569336,
+        -4.9840874671936035
+      ],
+      "bbox_max": [
+        3.3126211166381836,
+        13.11831283569336,
+        12.722594261169434
+      ],
+      "bbox_volume": 2955.1031405673216,
+      "largest_component_volume_share": 1.0,
+      "watertight_guess": true
+    },
+    "hub_silhouette": {
+      "occupancy": 0.6320037841796875,
+      "shell_share": 0.6320037841796875,
+      "proj_width": 30.5,
+      "proj_height": 19.79984474182129,
+      "axis": "z"
+    },
+    "gate_silhouette": {
+      "occupancy": 0.4746551513671875,
+      "shell_share": 0.4746551513671875,
+      "proj_width": 26.23662567138672,
+      "proj_height": 17.706681728363037,
+      "axis": "x"
+    },
+    "gate_aperture": {
+      "authored_aperture_r": 7.0,
+      "authored_outer_r": 12.79,
+      "clearance_frac_authored": 0.547302580140735,
+      "measured_min_radius_yz": 6.08100399889455,
+      "measured_clearance_frac": 0.47544988263444493,
+      "pass_traversal": true
+    },
+    "hub_negative_space": {
+      "top_occupancy": 0.6327039930555556,
+      "proj_span_x": 30.5,
+      "proj_span_y": 19.79984474182129,
+      "expected_negative_spaces": 2,
+      "note": "Y-fork loft includes deep docking notch + inter-wing fork voids"
+    },
+    "margin_checks": [
+      {
+        "label": "hub_close_forward_34",
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "detail": {
+          "margin_left": 0.0,
+          "margin_right": 0.0,
+          "margin_top": 0.0,
+          "margin_bottom": 0.0,
+          "min_margin": 0.0,
+          "max_margin": 0.0,
+          "content_frac_x": 1.0,
+          "content_frac_y": 1.0
+        }
+      },
+      {
+        "label": "hub_side",
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "detail": {
+          "margin_left": 0.0,
+          "margin_right": 0.0,
+          "margin_top": 0.0,
+          "margin_bottom": 0.0,
+          "min_margin": 0.0,
+          "max_margin": 0.0,
+          "content_frac_x": 1.0,
+          "content_frac_y": 1.0
+        }
+      },
+      {
+        "label": "hub_120px",
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "detail": {
+          "margin_left": 0.0,
+          "margin_right": 0.0,
+          "margin_top": 0.0,
+          "margin_bottom": 0.0,
+          "min_margin": 0.0,
+          "max_margin": 0.0,
+          "content_frac_x": 1.0,
+          "content_frac_y": 1.0
+        }
+      },
+      {
+        "label": "hub_top_negspace",
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "detail": {
+          "margin_left": 0.0,
+          "margin_right": 0.0,
+          "margin_top": 0.0,
+          "margin_bottom": 0.0,
+          "min_margin": 0.0,
+          "max_margin": 0.0,
+          "content_frac_x": 1.0,
+          "content_frac_y": 1.0
+        }
+      },
+      {
+        "label": "gate_close_forward_34",
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "detail": {
+          "margin_left": 0.0,
+          "margin_right": 0.0,
+          "margin_top": 0.0,
+          "margin_bottom": 0.0,
+          "min_margin": 0.0,
+          "max_margin": 0.0,
+          "content_frac_x": 1.0,
+          "content_frac_y": 1.0
+        }
+      },
+      {
+        "label": "gate_side",
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "detail": {
+          "margin_left": 0.0,
+          "margin_right": 0.0,
+          "margin_top": 0.0,
+          "margin_bottom": 0.0,
+          "min_margin": 0.0,
+          "max_margin": 0.0,
+          "content_frac_x": 1.0,
+          "content_frac_y": 1.0
+        }
+      },
+      {
+        "label": "gate_axial",
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "detail": {
+          "margin_left": 0.0,
+          "margin_right": 0.0,
+          "margin_top": 0.0,
+          "margin_bottom": 0.0,
+          "min_margin": 0.0,
+          "max_margin": 0.0,
+          "content_frac_x": 1.0,
+          "content_frac_y": 1.0
+        }
+      },
+      {
+        "label": "gate_120px",
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "detail": {
+          "margin_left": 0.0,
+          "margin_right": 0.0,
+          "margin_top": 0.0,
+          "margin_bottom": 0.0,
+          "min_margin": 0.0,
+          "max_margin": 0.0,
+          "content_frac_x": 1.0,
+          "content_frac_y": 1.0
+        }
+      },
+      {
+        "label": "gate_side_traversal",
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "detail": {
+          "margin_left": 0.0,
+          "margin_right": 0.0,
+          "margin_top": 0.0,
+          "margin_bottom": 0.0,
+          "min_margin": 0.0,
+          "max_margin": 0.0,
+          "content_frac_x": 1.0,
+          "content_frac_y": 1.0
+        }
+      },
+      {
+        "label": "hub_gate_composition",
+        "min_margin": 0.0,
+        "max_margin": 0.0,
+        "detail": {
+          "margin_left": 0.0,
+          "margin_right": 0.0,
+          "margin_top": 0.0,
+          "margin_bottom": 0.0,
+          "min_margin": 0.0,
+          "max_margin": 0.0,
+          "content_frac_x": 1.0,
+          "content_frac_y": 1.0
+        }
+      }
+    ]
+  },
+  "visual_judgement": {
+    "kestrel_v4_bar": "continuous hard-surface shell, readable silhouette at 120px, no floating debris",
+    "hub_notes": [
+      "Y/tuning-fork identity from lofted asymmetric wing profiles",
+      "three zones: habitation (+Y light clay), industrial (-Y dark), keel/truss mid",
+      "deep notch authored into profile ring (not thin sheets)"
+    ],
+    "gate_notes": [
+      "split-hex arch loft along open U path (not torus)",
+      "four machinery sectors + asymmetric service spine fused",
+      "open bottom traversal clearance measured"
+    ],
+    "reject_if": [
+      "shapes look like boxes/cylinders stacks",
+      "floating/exploded parts",
+      "thin frames / unreadable thumbnails"
+    ],
+    "agent_visual_call": "GREYBOX REJECT"
+  },
+  "verdict": "GREYBOX REJECT"
+}

@@ -84,6 +84,21 @@ export const FIGURES = {
   voss:          { name: 'Voss',        org: 'Drift Miners Collective', role: 'claim filer' },
   elroy:         { name: 'Elroy',       org: 'Pit Engineering, Maintenance Division', role: 'whistleblower (B2 target)' },
   kurtz:         { name: '(unnamed)',   role: 'the Kurtz figure — derelict administrator, Ashfall Reach' },
+  clerk_yune:    { name: 'Clerk Yune', org: 'The Quiet', role: 'sealed-evidence broker' },
+  coldburn_rey:  { name: '“Coldburn” Rey', org: 'Free Frontier', role: 'independent hauler and named rival' },
+  iren_suhl:     { name: 'Dr. Iren Suhl', org: 'Research Station Veil', role: 'xenolinguist' },
+  warrant_orrin: { name: 'Warrant Orrin', org: 'Concord Inspector General', role: 'evidence-case witness' },
+  sker_vane:     { name: 'Boss Sker Vane', org: 'Crimson Reach', role: 'lane kingpin' },
+  dustwife_senna:{ name: '“Dustwife” Senna', org: 'Drift Miners Collective', role: 'wreck elder and keeper of names' },
+  latch_child:   { name: 'Latch-Child', org: 'Quiet logistics, origin lapsed', role: 'feral salvage automaton' },
+  the_question:  { name: 'The Question', org: 'precursor unknown', role: 'persistent interrogative' },
+  filecleaver_dorin: { name: '“Filecleaver” Dorin', org: 'Concord records, bounty-posted', role: 'seal-log whistleblower' },
+  lira_vonn:     { name: 'Lira Vonn, “The Margin”', org: 'The Margin', role: 'independent correspondent' },
+  tinker_zell:   { name: 'Tinker Zell', org: 'Sker Bazaar', role: 'black-market mechanic' },
+  mara_children: { name: 'Mara and the Children', org: 'civilian convoy', role: 'refugee witness' },
+  wraith_kell:   { name: '“Wraith” Kell', org: 'The Quiet, embedded at Customs', role: 'deep-cover manifest clerk' },
+  halev_doss:    { name: 'Prof. Halev Doss', org: 'Helios public archive', role: 'university archivist' },
+  maera_vols:    { name: 'Captain Maera Vols', org: 'Tessera / The Quiet', role: 'previous captain and hull ghost' },
 };
 
 // ── Comms popup catalog ──────────────────────────────────────────────────────────────────────
@@ -252,7 +267,8 @@ export const GRAFFITI = {
 // `hint` is the new "Captain's Log north star" — in-world voice, not tutorial.
 // `phase` sets the HUD meta-arc phase (1 Protective / 2 Complicit / 3 Absent).
 //
-// Beat indices match src/data/missions.js STORY_BEATS[] (0..7) plus B8+ narrative extensions (8+).
+// Beat indices match src/data/missions.js STORY_BEATS[] exactly (0..7). Trigger-only extensions
+// live in POST_SPINE_BEAT_CONTENT so the Codex cannot mistake them for playable chapters.
 export const BEAT_CONTENT = [
   { // B0 — COLD START
     beat: 0, phase: 1,
@@ -326,14 +342,19 @@ export const BEAT_CONTENT = [
     comms: ['late_atmo_debt'],
     hudLie: 'phase3_freeze', // final contract entry PENDING; cannot be closed
   },
-  { // B8 — WREN THREAD (post-spine salvage hook; fires on salvage:communicatorFound)
+];
+
+// Triggered narrative hooks outside the playable eight-beat mission spine. These reuse the same
+// device packet shape, but are addressed explicitly by their trigger rather than story.beatIndex.
+export const POST_SPINE_BEAT_CONTENT = {
+  8: { // B8 — WREN THREAD (fires on salvage:communicatorFound)
     beat: 8, phase: 3,
     hint: 'The communicator still carries a coordinate file. The registry cross-check returns NO MATCH. That is also normal.',
     graffiti: [{ line: GRAFFITI.COORDINATES_DONT_MATCH, where: 'bulkhead' }],
     comms: ['story_b8_helix_audit'],
     hudLie: null,
   },
-];
+};
 
 // ── Endgame choices (Ashfall Reach, after B7 gate met) ───────────────────────────────────────
 // Presented as board entries + a graffiti-only option + a stay-at-desk option. Only one can be
@@ -389,7 +410,7 @@ export const ENDGAME_CHOICES = [
     promptText: 'Contract settled. New one\u2019s open.',
     graffitiHome: GRAFFITI.NEXT_RUN_HOME,
     summary: 'Decline all four (A, B, C, D). Approach the Ashfall Reach station one final time. A courier who was not there before says the line. Accept the payout for 47-A: +1,200cr. Status: CLOSED. Immediately: CONTRACT 47-B: STATUS: PENDING.',
-    hiddenCost: 'You are not a Sector Baron. Not a shadow coordinator. Not a witness. Not a symbol. You are just another tired pilot in a cheap hull who needs to pay for reactor fuel. You know exactly whose air is being cut off by the cargo you carry. You click Accept anyway.',
+    hiddenCost: 'You know exactly whose air is being cut off by the cargo you carry. You need reactor fuel. You click Accept.',
     requires: (s) => declinedAll(s, ['A', 'B', 'C', 'D']),
     kind: 'courier',
   },
@@ -406,7 +427,8 @@ export const KURTZ = {
   coordsMass: 0.01,
   dialogue: [
     'I know what you\u2019re carrying. I knew before you got here. The mass is always the same. Only the manifest changes.',
-    'The count never ends. You know that. That\u2019s why you\u2019re here.',
+    'Filed it myself. Eleven years. Same columns. The handwriting hasn\u2019t improved.', // muttered, to the wall
+    'The count never ends. You know that. That\u2019s why you\u2019re here.', // the parting line (canonical)
     "You're still here.",   // on repeat approach
     'You can have the desk.', // later
   ],

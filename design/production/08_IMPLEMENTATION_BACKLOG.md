@@ -1,5 +1,9 @@
 # 08 — Production-System Implementation Backlog
 
+> **Retained campaign-machinery backlog.** Items here are not automatically active product work.
+> Start one only when the program ledger or user/lead explicitly activates it; otherwise use
+> `design/program/02_REMAINING_WORK.md` for current implementation pickup.
+
 **Status:** DRAFT execution order for Milestone 0
 
 > **Subordinate machinery backlog, not global status.** Current Alpha + Depth completion truth lives

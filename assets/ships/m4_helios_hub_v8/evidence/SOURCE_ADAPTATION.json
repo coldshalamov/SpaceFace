@@ -1,0 +1,47 @@
+{
+  "schema": "spaceface.assetAdaptation.v1",
+  "packet": "M4-HELIOS-V8-NEW-FOUNDATION-GROK-001",
+  "family": "helios_hub_env_v8",
+  "candidateOnly": true,
+  "livePromotion": false,
+  "acceptanceClaim": false,
+  "newFoundation": true,
+  "notV7Repair": true,
+  "qualityFloor": "Borrowed-Time Kestrel V4 close and 120px craft/material/readability bar",
+  "sources": [
+    {
+      "role": "station_macro_donor_continuous",
+      "path": "assets/ships/m4_helios_hub_v8/source/reference/blenderkit_scifi_station/blenderkit_scifi_station_cc0.blend",
+      "canonicalUrl": "https://www.blenderkit.com/asset-gallery-detail/b180fdbd-668f-4081-ad51-f364e829f11d/",
+      "license": "CC0-1.0",
+      "author": "Pastean Narcis Dan",
+      "sha256": "F4818E9771E2E5BD5E990A40AFC24394615AB3E751062ED1B23C1D16D98487B6",
+      "adaptation": "spike removal, scale normalize, material-role reassignment, bounded topology; + asymmetric hangar/pier/hab/truss/solar/radiator anatomy; layered bevels; recessed cyan/amber wayfinding"
+    },
+    {
+      "role": "hero_rocks_polyhaven_ambientcg",
+      "path": "assets/ships/m4_helios_hub_v8/source/reference/helios_v3",
+      "alsoMirrored": "assets/third_party/helios_v8",
+      "assets": [
+        "polyhaven/rock_09 (CC0)",
+        "polyhaven/boulder_01 (CC0)",
+        "ambientcg/Rock023 (CC0)"
+      ],
+      "license": "CC0-1.0",
+      "adaptation": "import scan \u2192 anisotropic reshape \u2192 multi-pass displace \u2192 non-ortho fracture \u2192 voxel remesh \u2192 bevel \u2192 embedded ore seams"
+    },
+    {
+      "role": "industrial_kitbash_subordinate",
+      "path": "assets/ships/m4_helios_hub_v8/source/reference/helios_v3/polyhaven",
+      "license": "CC0-1.0",
+      "adaptation": "pipes/power/utility/aircon/barrels as subordinate detail only"
+    }
+  ],
+  "rejectedPredecessorDefects": [
+    "V7: primitive cylinder/box station without continuous macro donor hull",
+    "V7: torus-primary gate reading as bare hoop + box projectors",
+    "V7 residual: rocks still readable as soft blobs under some framings",
+    "All prior: floating kit / accessory-only / missing LOD-collision contract"
+  ],
+  "qualityIntent": "Singular asymmetric continuous hub; substantial gate aperture with nested coils; geological hero rocks; shared PBR; LOD0/1/2 material-merged; anchors+collision; Meshopt+KTX2 on candidates; no live promote; no acceptance claim"
+}

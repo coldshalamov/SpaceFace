@@ -5,6 +5,51 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { SERVICE_PRICES } from '../../systems/economy.js';
 import { confirm } from '../confirm.js';
 
+export function factionPresenceServiceRows(state, stationId) {
+  const own = state && state.factionPresence;
+  const stored = own && own.servicesByStation && own.servicesByStation[stationId];
+  if (!stored) return [];
+  const rep = Number(state && state.factions && state.factions[stored.factionId] && state.factions[stored.factionId].rep) || 0;
+  const available = stored.requiredRep == null || rep >= stored.requiredRep;
+  if (stored.factionId === 'faction_archive' && stored.services.includes('reading_room')) {
+    return [{
+      id: 'archive_reading_room',
+      label: 'Archive Reading Room',
+      desc: 'Open a seeded, persistent redacted record.',
+      available,
+      disabledReason: available ? '' : `Requires Archive reputation ${stored.requiredRep}`,
+      targetTab: null,
+    }];
+  }
+  if (stored.factionId === 'faction_pitborn') {
+    const rows = [];
+    if (stored.services.includes('yard')) rows.push({
+        id: 'pitborn_yard', label: 'Pitborn Yard',
+        desc: 'Route to the existing Shipyard chassis and repair surface.',
+        available, disabledReason: available ? '' : `Requires Pitborn reputation ${stored.requiredRep}`,
+        targetTab: 'shipyard',
+      });
+    if (stored.services.includes('fence')) rows.push({
+        id: 'pitborn_fence', label: 'Pitborn Fence',
+        desc: 'Route to the existing Market and black-market trade surface.',
+        available, disabledReason: available ? '' : `Requires Pitborn reputation ${stored.requiredRep}`,
+        targetTab: 'market',
+      });
+    return rows;
+  }
+  if (stored.factionId === 'faction_understory' && stored.services.includes('wreck_buy')) {
+    return [{
+      id: 'understory_wreck_buy',
+      label: 'Understory Wreck Buyer',
+      desc: 'Review the newest loss-ledger hull this berth can appraise.',
+      available,
+      disabledReason: available ? '' : 'Understory appraisal unavailable',
+      targetTab: null,
+    }];
+  }
+  return [];
+}
+
 export const AMMO_BATCH = 100;         // munitions per ammo purchase
 const MUNITIONS = COMMODITIES.find((c) => c.id === 'cmdty_munitions') || { volPerU: 1 };
 
@@ -325,6 +370,16 @@ export function createServicesPanel(ctx) {
   const list = root.querySelector('.st-svc-list');
 
   list.addEventListener('click', async (ev) => {
+    const presenceBtn = ev.target.closest('[data-faction-presence-service]');
+    if (presenceBtn) {
+      ctx.bus.emit('ui:factionPresenceService', {
+        stationId: panel.stationId,
+        serviceId: presenceBtn.getAttribute('data-faction-presence-service'),
+        targetTab: presenceBtn.getAttribute('data-target-tab') || null,
+      });
+      ctx.bus.emit('audio:cue', { id: presenceBtn.disabled ? 'ui_deny' : 'ui_click' });
+      return;
+    }
     const btn = ev.target.closest('[data-svc]');
     if (!btn) return;
     const type = btn.getAttribute('data-svc');
@@ -425,6 +480,25 @@ export function createServicesPanel(ctx) {
         '<div class="st-svc-detail mono">' + quote.detail + (offered ? '' : ' · not offered here') + '</div>' +
         '<div class="st-svc-meta">' + chips + '</div></div>' +
         '<button data-svc="' + r.type + '" data-amount="' + quote.amount + '" title="' + title + '" aria-label="' + title + '"' + (dis ? ' disabled' : '') + '>' + actionLabel + '</button>';
+      frag.appendChild(row);
+    }
+    for (const r of factionPresenceServiceRows(state, panel.stationId)) {
+      const row = document.createElement('div');
+      row.className = 'st-svc-row st-svc-row--faction' + (r.available ? '' : ' disabled st-svc-row--blocked');
+      const title = r.available ? r.desc : r.disabledReason;
+      row.innerHTML =
+        '<div class="st-svc-info"><div class="st-svc-name"></div>' +
+        '<div class="st-svc-detail mono"></div></div>' +
+        '<button type="button"></button>';
+      row.querySelector('.st-svc-name').textContent = r.label;
+      row.querySelector('.st-svc-detail').textContent = r.available ? r.desc : r.disabledReason;
+      const button = row.querySelector('button');
+      button.textContent = r.available ? (r.targetTab ? 'Open' : 'Read') : 'Locked';
+      button.disabled = !r.available;
+      button.setAttribute('data-faction-presence-service', r.id);
+      if (r.targetTab) button.setAttribute('data-target-tab', r.targetTab);
+      button.setAttribute('title', title);
+      button.setAttribute('aria-label', `${r.label}. ${title}`);
       frag.appendChild(row);
     }
     list.textContent = '';

@@ -43,3 +43,9 @@ Tri budgets follow the live manifest/exporter contract: part ≤15k · whole-shi
 | module_vis_tow_winch | part | F5-23 | 1200 | industrial amber | queued (`wantsVisual`) |
 
 **Priority order:** whole-ship repairs (blocked) → claim modules → hunter signatures → landmarks/vault/tower → module-visual variants.
+
+## M4 Helios Hub Env (2026-07-11)
+Promoted live place family under packet `M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001`:
+hub station, gate, rocks a/b/c, gantry/dock-arm/nav-spire → existing place IDs.
+See `assets/ships/m4_helios_hub/`.
+

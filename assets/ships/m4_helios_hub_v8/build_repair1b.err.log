@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v8.py", line 1344, in <module>
+    code = base.main()
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3724, in main
+    tex_map = generate_material_textures(family_dirs['textures'])
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v8.py", line 163, in generate_v8_textures
+    maps = _generate_textures(tex_dir, force=True)
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 1080, in generate_material_textures
+    _write_png_rgba(base_path, n, n, base_px)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 907, in _write_png_rgba
+    img.save()
+    ~~~~~~~~^^
+RuntimeError: Error: Could not write image: internal error, see console
+Error: Image 'accent_basecolor' could not be saved to 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v8\textures\accent_basecolor.png'
+

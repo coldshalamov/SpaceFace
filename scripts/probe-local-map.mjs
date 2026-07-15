@@ -183,9 +183,9 @@ try {
   assert.equal(cargoEscReport.cargoStillOpen, false, 'Escape must close the cargo panel: ' + JSON.stringify(cargoEscReport));
   assert.notEqual(cargoEscReport.topScreen, 'pause', 'Escape must not open Pause while closing the cargo panel: ' + JSON.stringify(cargoEscReport));
 
-  // Open the local system map via the N key.
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'n', code: 'KeyN', windowsVirtualKeyCode: 78 });
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'n', code: 'KeyN', windowsVirtualKeyCode: 78 });
+  // Open the local system map via the M key (primary map binding → LOCAL focus).
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'm', code: 'KeyM', windowsVirtualKeyCode: 77 });
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'm', code: 'KeyM', windowsVirtualKeyCode: 77 });
   await sleep(600);
 
   const report = await evalJson(`JSON.stringify((() => {

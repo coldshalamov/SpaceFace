@@ -442,12 +442,15 @@ export const input = {
       ? (down || this._held(state, 'brake') || gpBrake)
       : (down || gpBrake || gpMoveZ < -0.55 || tpMoveZ < -0.55);
     inp.fire = kbdFire || gpFire || tpFire;
-    // Massline throw-arm (§3.3, flag massline2.throw): while the line is LATCHED, RMB is the
-    // throw verb — the mining beam yields (fireGroup never reads 2) and actions.throwArm carries
-    // the held state for masslineThrow's solution/auto-cut. Unlatched play is unchanged.
+    // Massline throw-arm (§3.3, flag massline2.throw): while latched to a throwable payload
+    // (hostile ship/drone, fracture chunk, cargo mass), RMB is throwArm — mining yields and
+    // masslineThrow owns the solution/auto-cut. While latched to a mineable asteroid or wreck,
+    // RMB stays the mining beam so tether station-keeping works for extraction (the designed
+    // dance partner; see mining.activeMineableTetherTarget). Unlatched play is unchanged.
     const mineHeld = !!(this._m2 || gpMine || tpMine);
     const tetherLatched = !!(state.player && state.player.tether && state.player.tether.active);
-    const throwArmHeld = massline2Flag('throw') && tetherLatched && mineHeld;
+    const throwArmHeld = massline2Flag('throw') && tetherLatched && mineHeld
+      && isThrowArmPayload(state);
     inp.fireGroup = (mineHeld && !throwArmHeld) ? 2 : (inp.fire ? 1 : null);
 
     // Countermeasure deploy (P1-7): edge-triggered flag consumed by systems/countermeasures.js.
@@ -613,6 +616,22 @@ export const input = {
 
 function entityLabel(e) {
   return (e && (e.name || (e.data && e.data.name))) || (e && e.type) || 'target';
+}
+
+/**
+ * True when the active tether payload should steal RMB for throwArm.
+ * Ships/drones = combat throw (case D). Fracture chunks / tow payloads = throw-mass (case C).
+ * Parent asteroids and wrecks keep RMB as the mining/salvage beam so latched extraction works.
+ */
+function isThrowArmPayload(state) {
+  const tether = state && state.player && state.player.tether;
+  if (!tether || !tether.active || tether.targetId == null) return false;
+  const target = state.entities && state.entities.get && state.entities.get(tether.targetId);
+  if (!target || target.alive === false) return false;
+  if (target.type === 'ship' || target.type === 'drone') return true;
+  if (target.type === 'asteroid' && target.data && target.data.isChunk) return true;
+  if (target.type === 'payload') return true;
+  return false;
 }
 
 function tetherFacingAngle(player, state, tether) {

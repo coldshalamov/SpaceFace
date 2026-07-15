@@ -1,0 +1,447 @@
+{
+  "schema": "spaceface.devshotHashes.v1",
+  "packet": "M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001",
+  "count": 88,
+  "shots": [
+    {
+      "file": ".devshots/m4-helios-hub/helios_gate_forward_34.png",
+      "bytes": 501042,
+      "sha256": "DE52FA2E8DFDB24D96980008B5AB13DE4BAA1C74481E021D5BA1F24E82E3CA77"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_gate_gamesky_forward_34.png",
+      "bytes": 477631,
+      "sha256": "CF2BD546EC01E08349F84E8DF36236810855B4866D2C025CD5908880B6DBBCF1"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_gate_lod_continuity_lod0.png",
+      "bytes": 231426,
+      "sha256": "5D2CD182D6CD4847E8FFC3770DAB9BC88E8D84B7556E5A99D414D4E502F2B1F9"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_gate_lod_continuity_lod1.png",
+      "bytes": 231249,
+      "sha256": "7CFDC8D7CAE4AB56EF2248B0F4977B4FA5385D52E6971F07C59AC83ABDA8BEF8"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_gate_lod_continuity_lod2.png",
+      "bytes": 232190,
+      "sha256": "DAFB7D4855E430581F496EA7D5B5977325A140D31F87D68B8BA25505B7D23906"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_gate_readability_close.png",
+      "bytes": 254208,
+      "sha256": "13AAAEA47318A504A380904694F0E3315990E53E5B5CA5A4F5F1CB3B002D3375"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_gate_rear_34.png",
+      "bytes": 498691,
+      "sha256": "7A649EB19FC324EBEFA10E0D62664D75D32A728A27DDF5E4F39CDF72D551C82D"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_gate_side_ortho.png",
+      "bytes": 400771,
+      "sha256": "A1715971775A223A21113DC561CB3FA5815FF08879E1E4E42FDA48E5DBEF1EEC"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_gate_three_close.png",
+      "bytes": 68754,
+      "sha256": "3817F61C4047F91A4FE6BA4AD8306B1D5C93B450A0841059387C52A90D4350F5"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_gate_three_far.png",
+      "bytes": 409,
+      "sha256": "3E6219827F0BBFF02B42B2D12E6D6DDE0CEC7C500E1C3CD6D5C8BF25A2C65F14"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_gate_three_mid.png",
+      "bytes": 3193,
+      "sha256": "F2D5BD987958A9318222746A7BC553BD1F1840C12979033901036FC885782B74"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_hub_station_forward_34.png",
+      "bytes": 511658,
+      "sha256": "46D6F71FACAB51878A7188F9F52C5518531C69268561C2E1998797D0436759A1"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_hub_station_gamesky_forward_34.png",
+      "bytes": 477194,
+      "sha256": "EAD018485E4F54FC9020BA562B669EA54076CD2F1794AE2CD6C8B722E30E5334"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_hub_station_lod_continuity_lod0.png",
+      "bytes": 236402,
+      "sha256": "0B556A467173EDA5B8FCF7E5238B5D71B569933D526F7F579B2EAD68CC20BBEC"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_hub_station_lod_continuity_lod1.png",
+      "bytes": 235828,
+      "sha256": "CDF76C3FA0FE92567FC9B0344BBF844BE0B0C1D527D2E26BF8FB7AF932F82689"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_hub_station_lod_continuity_lod2.png",
+      "bytes": 235766,
+      "sha256": "849A8C687CE8B765562594D8141BEC40D01B5974754394768094153901980B59"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_hub_station_readability_close.png",
+      "bytes": 251586,
+      "sha256": "A5C978F87E8995582886805A782AD3802CD1D2BDB1ABDF134D3AFD4A651DDD4E"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_hub_station_rear_34.png",
+      "bytes": 517113,
+      "sha256": "AE6D4934BF6648E91139F61372CC87DE91F11AFEEC9E294552D889E365308E2C"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_hub_station_side_ortho.png",
+      "bytes": 425924,
+      "sha256": "3A52E505958080FE839CC9D097495DCA59BDA89DB9529CA81B42E696C1F28F09"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_hub_station_three_close.png",
+      "bytes": 72938,
+      "sha256": "E60202AF64C3E832690361603AD96F118BFFC34EE873AB41C7E5BE004D46BF7F"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_hub_station_three_far.png",
+      "bytes": 313,
+      "sha256": "F7C713BB6123211050DF92BAE7A9A8D9026C7823B0856BF808FCA7882675A7BB"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_hub_station_three_mid.png",
+      "bytes": 2959,
+      "sha256": "3D294B12F0558B4A20D76DC81F4CB00CC453B838117ED5DCED5378EBB4324376"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_nav_spire_forward_34.png",
+      "bytes": 486403,
+      "sha256": "B2A1A01093DE99454948A1FED8B8D123A241155405C5B88D5FAB0C29EB97D41A"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_nav_spire_gamesky_forward_34.png",
+      "bytes": 449049,
+      "sha256": "34067041D740ED36F12633761A1A0EF9B84CE226AD6639A84285A3EDFD8DB11F"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_nav_spire_lod_continuity_lod0.png",
+      "bytes": 217976,
+      "sha256": "E4CCD4928AAC3B1C966F3561A53A28C0A706E3856249C997B657540B2DDD1393"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_nav_spire_lod_continuity_lod1.png",
+      "bytes": 217294,
+      "sha256": "306249FCC3674230846FE6CD2B0025D8500E2BB1EF698EEE1E8C4A9C97775E33"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_nav_spire_lod_continuity_lod2.png",
+      "bytes": 217441,
+      "sha256": "FCCC644216345507D652214E389E9A3563A5D556EBF1786041820EBA1267FED2"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_nav_spire_readability_close.png",
+      "bytes": 254064,
+      "sha256": "656810C3FBFD87C4512B44F25DBA02C89D447A0488B0C0BDA4397542AD60FFE5"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_nav_spire_rear_34.png",
+      "bytes": 484859,
+      "sha256": "237F06179F10C4A25E417B65FC199E98382C203A273890B7F831CC587EC09488"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_nav_spire_side_ortho.png",
+      "bytes": 430881,
+      "sha256": "89768DEC6E35D357D7F48AC43E2D4E13F17BADF4929F5A50CF529548782037E2"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_nav_spire_three_close.png",
+      "bytes": 22958,
+      "sha256": "77EAFBAA860364C755149B4F32457153BCBDD445CB2B27862F438F29E3B60030"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_nav_spire_three_far.png",
+      "bytes": 260,
+      "sha256": "FB4DCA0905E45FEDD7CD44CC3526E1B526D1D8033706ED57317E8D73BD193320"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_nav_spire_three_mid.png",
+      "bytes": 1391,
+      "sha256": "01D1EDF50125598ACC52A96285598C01BA2331550670D1E0FBD7C60662B3AD5F"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_a_forward_34.png",
+      "bytes": 488964,
+      "sha256": "D0648247BD8F3CBEC21E297225AEB829C7D3A6F842568B3A48D68EDDE773A881"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_a_gamesky_forward_34.png",
+      "bytes": 467187,
+      "sha256": "87F628D0EB8301F28AFE67D886966E1E2710A22C67414B31FEB43BF06E9F8A9B"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_a_lod_continuity_lod0.png",
+      "bytes": 225554,
+      "sha256": "77527FBD36C28EC57F9D4C1ECDE973B56A4BD6C9C4DB589B0AD90DBAC2184492"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_a_lod_continuity_lod1.png",
+      "bytes": 225835,
+      "sha256": "BBB6F4803EF6B5D0EDF7199E05AD6A4D2F3DC1346EBDC5F755BC3B0C005B6490"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_a_lod_continuity_lod2.png",
+      "bytes": 227919,
+      "sha256": "27CD7C1D8223650004D0A4A7E0DFF8A77E302CCB39C419C2734241423FA2BB05"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_a_readability_close.png",
+      "bytes": 243711,
+      "sha256": "7ECB55310CBFC60BA865FA4063BE00A440550839C9D09DF830FDEA2890137862"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_a_rear_34.png",
+      "bytes": 493108,
+      "sha256": "E638B4C1AB68841EFACE5389C313DCFD51A5A1B7DCFA03CC08B7FAE6961C4060"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_a_side_ortho.png",
+      "bytes": 450274,
+      "sha256": "F53F2371B768340BAC0420312BE10ECDA95B7447BEEC3EBAE602516EE374EA03"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_a_three_close.png",
+      "bytes": 57630,
+      "sha256": "3B6A4637956C25A41F665369F3FCC4FC07606951E58A627AAA9EE134EC1F7C28"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_a_three_far.png",
+      "bytes": 338,
+      "sha256": "953C6F72AA831C4ACD1A1BAAF659C4145CFD89F75147C2C7323EFBC750299A01"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_a_three_mid.png",
+      "bytes": 2790,
+      "sha256": "8196F917E19CBDB06AF7ACF967C0778FDD95706B29FE0A2F81082FDD9DC14043"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_b_forward_34.png",
+      "bytes": 484981,
+      "sha256": "AEC16F2656BB19C8E1F2080BA5F0D84F1FF9201780D321B4F3F11CF1ACD63D97"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_b_gamesky_forward_34.png",
+      "bytes": 468141,
+      "sha256": "7ADE7BE970692BD9699C15AFB89FB8F3EE7ADB70EAE46A716E418834BA37E495"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_b_lod_continuity_lod0.png",
+      "bytes": 220948,
+      "sha256": "5B143E962286046BB344F85DA75508B6BC88D1419F3500581C399AE44E900D44"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_b_lod_continuity_lod1.png",
+      "bytes": 221600,
+      "sha256": "3352C802D2DC942DDEC2BBD790F71AE230C062127768A20529EEE7FB3E862351"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_b_lod_continuity_lod2.png",
+      "bytes": 222462,
+      "sha256": "28AB0BEF03D872595993C915E9703D5DB9BD7E339922FA70FD41C0CCEF3DF5C9"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_b_readability_close.png",
+      "bytes": 242542,
+      "sha256": "74062503FCDE0BDD7B8BACB62EE681502DADB93D0AF49F61A12932E8673CBD82"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_b_rear_34.png",
+      "bytes": 494522,
+      "sha256": "54BA656EA52CFE60DD1D08A8331970D8477B01AA5BD154D1D3BBF4DB1457E1B3"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_b_side_ortho.png",
+      "bytes": 421175,
+      "sha256": "009F49EBB0995660F6AC52A058BB4E40EA31085F65302D5D265941B2271C8521"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_b_three_close.png",
+      "bytes": 60541,
+      "sha256": "87A3F73E328E3551FDCBBD0FE5D5F9E10F39AA2E6527A103F64ED539469680A4"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_b_three_far.png",
+      "bytes": 355,
+      "sha256": "5B76241D9934EE03D55008E49527A29C99672EE8F2CD0B35C964FFA79B84362F"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_b_three_mid.png",
+      "bytes": 2928,
+      "sha256": "D01A4A61BF48591087C3DAA642054A9709D6198E8723830407302DD71EA4055E"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_c_forward_34.png",
+      "bytes": 491184,
+      "sha256": "464F6E1E2C1B912DF7BA8DF5477475FC4FCA20FD98080F9070FA9CD7C5B4A17E"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_c_gamesky_forward_34.png",
+      "bytes": 467622,
+      "sha256": "5AF98F6CCBB96C2F18CA1D92814AA63335B446748E0BE7217DA9430AC2C3D5E6"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_c_lod_continuity_lod0.png",
+      "bytes": 225118,
+      "sha256": "B318EFEF64244072576B8614D756B2A7B53C454E0E89A059368320D9B76262F2"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_c_lod_continuity_lod1.png",
+      "bytes": 226330,
+      "sha256": "6ACC45E0B24A34C56E7B394AB095B3E05E3952684959E8B9A805A2C087988D43"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_c_lod_continuity_lod2.png",
+      "bytes": 227088,
+      "sha256": "B62E569E512911F3038B7C989CB1137224FF63CDEB9A10D850BF494598BEC769"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_c_readability_close.png",
+      "bytes": 246684,
+      "sha256": "646467D29FBAA87BB392D2186C7C98A123B0EF00AC83321680A3FF61C8FAF807"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_c_rear_34.png",
+      "bytes": 508327,
+      "sha256": "C9A46B183A071C23A23B206B2B8711DE155267FF241069629CCC86A35905BC9B"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_c_side_ortho.png",
+      "bytes": 441362,
+      "sha256": "89AAB91088251AFCB7D60F1665C0F3B40BCEBDC8D854C8B53A4485FA288E6881"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_c_three_close.png",
+      "bytes": 95837,
+      "sha256": "D271DAC921C3FB8C1609D85D4F0F6BF285215D2BD4BD5E78F1736F6FD823A2C1"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_c_three_far.png",
+      "bytes": 410,
+      "sha256": "D0E37AE9971C266D6BEF4BC7861481C9033012E944FE0210CB82E2550F1AE435"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_rock_c_three_mid.png",
+      "bytes": 4367,
+      "sha256": "D3C2AFE47A84E495D29DF03B55F9FC2B80009904EB9F031E0149B147B9768EB3"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_dock_arm_forward_34.png",
+      "bytes": 512153,
+      "sha256": "557FFFBF820D2AFFF60CD855186650FE25A9852FB506F7D2262EBE7563F5AECF"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_dock_arm_gamesky_forward_34.png",
+      "bytes": 451942,
+      "sha256": "8C1E537531F13E973E9EE0C1D13045BDCEB08D466494A351713D5D4F1EC2F2D6"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_dock_arm_lod_continuity_lod0.png",
+      "bytes": 234988,
+      "sha256": "9DE92C12FDC9566CD1473957567C48CCC9CCF28C7F09B8EF825EF9B261A1D1F2"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_dock_arm_lod_continuity_lod1.png",
+      "bytes": 234797,
+      "sha256": "6A2E860245311D8D4142A9C8D18CD7488D50360B6186F6EB6C9FFAFEECCC02F2"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_dock_arm_lod_continuity_lod2.png",
+      "bytes": 235037,
+      "sha256": "FD76C57B539FFDDE15300EA17AC350FBBD207A0FEEFD9113CFE5FBE24BDF21D0"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_dock_arm_readability_close.png",
+      "bytes": 260470,
+      "sha256": "BB5D693E27F38C426BDFABDBEDDA47C1CFB602880B29DE553311C45F69BAA2D0"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_dock_arm_rear_34.png",
+      "bytes": 511360,
+      "sha256": "73249BF3AFF041433856D48870297DFC00F98A2F556D0331B88CED686FB348F5"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_dock_arm_side_ortho.png",
+      "bytes": 440295,
+      "sha256": "23A0A8CFB8B4454159AA62569AEB53AD4DFA72909DC0356A12CDB87BBBE208C6"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_dock_arm_three_close.png",
+      "bytes": 31729,
+      "sha256": "C9EDFE46E350AE7F4758FEE36A72683B378E351650D27DCB9A6DB9C880021228"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_dock_arm_three_far.png",
+      "bytes": 277,
+      "sha256": "3558B0A82AC7C03E01123A2B82C9F697908E4C84F4F666AF0885401A731FDD36"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_dock_arm_three_mid.png",
+      "bytes": 1874,
+      "sha256": "E80863BCE0246F14D499C5D7D2AA67AB95EF579657488CB4627F215B61F8ED88"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_gantry_forward_34.png",
+      "bytes": 506288,
+      "sha256": "BBA71459548567F25F89EDBF2F6BBE12262162C3AD9D11A7331AFDE1342133D3"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_gantry_gamesky_forward_34.png",
+      "bytes": 453284,
+      "sha256": "BA647EF3634DEAA15289C57DF68C4EC3AD75886169CDFC4979A7D1D9B4A2C056"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_gantry_lod_continuity_lod0.png",
+      "bytes": 229171,
+      "sha256": "ABBDD013FB8365EBB65A30DEE860FBFF437D99765F6C727A234AE9B85361D457"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_gantry_lod_continuity_lod1.png",
+      "bytes": 229000,
+      "sha256": "0EB9B55A631478C26EE4E49341F3FCC01C92432ED486B344E1F520EE4584EC22"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_gantry_lod_continuity_lod2.png",
+      "bytes": 228969,
+      "sha256": "07FAE4E2E11612EA3D3B34EDA7654E93965ADF0F9A592ED824C9229720150818"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_gantry_readability_close.png",
+      "bytes": 258223,
+      "sha256": "0187B9051135BB0FD743260695C428458322BC99BD94BF3D5D6B819334CE4D33"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_gantry_rear_34.png",
+      "bytes": 498859,
+      "sha256": "319594DCB114BBB4B522C313078B6137F323B48DC82DFB0EC6F4F22A27D78DEC"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_gantry_side_ortho.png",
+      "bytes": 437994,
+      "sha256": "E3D917006E0DF0983363450B4D750641ED2E0285A381713BE96FCBE00BC9D56D"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_gantry_three_close.png",
+      "bytes": 39670,
+      "sha256": "1D8FE8A8C4D2A544FBE6D86B22633165B41497B3BE47138789D9B87F8DFC149E"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_gantry_three_far.png",
+      "bytes": 334,
+      "sha256": "301795801A50833E949DDE74F67D0ABBD1DA16386C5B07EF72086A84ED9B5D29"
+    },
+    {
+      "file": ".devshots/m4-helios-hub/helios_support_gantry_three_mid.png",
+      "bytes": 2246,
+      "sha256": "773BB6CB3407FA0E4EE548042386C60185C8571406B63652622F411540746F65"
+    }
+  ]
+}

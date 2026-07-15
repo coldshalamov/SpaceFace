@@ -1,0 +1,72 @@
+{
+  "schema": "spaceface.finalizeMaterialReport.v1",
+  "packet": "M4-HELIOS-V8-NEW-FOUNDATION-GROK-001",
+  "family": "helios_hub_env_v8",
+  "assets": [
+    {
+      "id": "helios_hub_station",
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "materialCount": 5,
+      "ktx2ImageCount": 15,
+      "meshoptBufferViewCount": 61,
+      "candidateBytes": 8257552,
+      "candidateSha256": "F386782AEAE263F1924897D4289FA2CA6D99E48D8D329D42CC231EC2835366AF"
+    },
+    {
+      "id": "helios_gate",
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical"
+      ],
+      "materialCount": 3,
+      "ktx2ImageCount": 9,
+      "meshoptBufferViewCount": 33,
+      "candidateBytes": 5004820,
+      "candidateSha256": "C89BDF1EA6736763BDC4C8FBA97A965036744067161ABEAFD85522A63A994FC6"
+    },
+    {
+      "id": "helios_rock_a",
+      "materials": [
+        "Material_Rock",
+        "Material_Warm"
+      ],
+      "materialCount": 2,
+      "ktx2ImageCount": 6,
+      "meshoptBufferViewCount": 17,
+      "candidateBytes": 3979304,
+      "candidateSha256": "4D88C289EC608DBDC25FF8F4E424737D02BBF5BBDF950BEE177399DBFC8AD862"
+    },
+    {
+      "id": "helios_rock_b",
+      "materials": [
+        "Material_Rock",
+        "Material_Warm"
+      ],
+      "materialCount": 2,
+      "ktx2ImageCount": 6,
+      "meshoptBufferViewCount": 17,
+      "candidateBytes": 3942948,
+      "candidateSha256": "A423F96C38D1C68867D164F22DBB8C38126C18A138E131F72AB5A9FFA63EECA0"
+    },
+    {
+      "id": "helios_rock_c",
+      "materials": [
+        "Material_Mechanical",
+        "Material_Rock",
+        "Material_Warm"
+      ],
+      "materialCount": 3,
+      "ktx2ImageCount": 9,
+      "meshoptBufferViewCount": 21,
+      "candidateBytes": 5323348,
+      "candidateSha256": "5019F23364C5A293BC67DCB593096747C2BD7BC6159FE3B3626C6F26659301E8"
+    }
+  ]
+}

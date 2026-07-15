@@ -1,10 +1,8 @@
 # SPACEFACE 2.0 — Game Design Document
 
-**Status: AUTHORITATIVE.** This document governs all design decisions. Where it conflicts with
-`V2_MASTER_PLAN.md`, `HUD_REVAMP_DESIGN.md` (superseded — see §9), or `IMPROVEMENT_IDEAS.md`, this wins.
-`ARCHITECTURE.md` remains the authoritative *technical* contract; nothing here violates it.
-
-**Companion doc:** `design/BUILD_PLAN_2_0.md` — workstreams, owners, acceptance criteria.
+**Status: PRODUCT AUTHORITY.** This document owns durable game pillars and experience goals.
+`ARCHITECTURE.md` owns technical contracts, `design/program/` owns current status/acceptance, and the
+activated plan/spec owns task detail. Historical or archived plans never override this hierarchy.
 
 ---
 
@@ -14,22 +12,13 @@
 Mine, trade, fight, and take contracts across a faction-contested frontier — in a ship that moves
 like a real mass, tethers onto anything, and slingshots around asteroids at full burn.
 
-## 2. The core diagnosis (why 1.x doesn't land)
+## 2. The core product challenge
 
-Recon of the codebase (2026-07) found a production-grade simulation — deterministic 60 Hz fixed-timestep
-sim, supply/demand economy, 9-tier faction reputation, deterministic mission boards, versioned saves —
-underneath an experience layer that fails it. Every complaint traces to the surface, not the core:
-
-| Complaint | Root cause (evidence) | Fix section |
-|---|---|---|
-| "Really hard to fly" | Split attention: arrows steer the ship, mouse aims weapons independently (`src/systems/flight.js:169`) | §4 |
-| "Choppy" | 59.5 avg fps but 54 ms worst-frame hitches (measured in preview); shader compile + spawn spikes, not sustained load | §10 |
-| "Combat weak" | Damage model is fine; feedback is whispery, AI intent unreadable, no physics verbs | §6 |
-| "Mining UX bad" | Beam-hold → ore balls scatter → chase. Magnet exists (`mining.js:270`) but weak; zero skill expression | §5 |
-| "Confused what to do" | 5 simultaneous text sources in the first play second (measured); objectives whisper from a corner | §8 |
-| "Map useless (???)" | Galaxy map fogs *charted civilization* behind discovery flags (`starmap.js:521`); "what's around me" is buried on N | §7 |
-| "No depth in background" | Single skydome nebula; zero parallax layers between camera and backdrop | §9 |
-| "Missing the fun physics stuff" | **A complete tether/grapple system exists and is wired to nothing** (`src/combat/attachments.js`, dormant) | §4.3 |
+SpaceFace has substantial simulation depth. The design task is to make that depth controllable,
+legible, responsive, intentional, and professionally presented: approachable flight, purposeful
+combat AI, expressive mining/tether mechanics, clear objectives/navigation, a living authored world,
+and stable high-quality performance. Current defects and measurements belong in `design/program/`
+and live check/probe evidence rather than this long-lived GDD.
 
 **2.0 is not an engine rewrite. It is a design-led experience overhaul on a proven engine.**
 We keep: Three.js + Rapier, the flat-state/event-bus/registry architecture, the XZ-plane sim,
@@ -253,14 +242,11 @@ sheet (exists as help screen — bind it and say so on the HUD's first minute).
 Supersedes `HUD_REVAMP_DESIGN.md`'s visor concept (rejected: no first-person/cockpit motifs in a
 third-person game — no screen-edge arcs, no helmet avatars, no diegetic visor framing).
 
-### 9.1 Parallax depth stack (the "background has no depth" fix)
-Between backdrop and play plane, add camera-relative parallax layers (all cheap, all pooled):
-1. Skydome nebula (exists) — parallax ~0.
-2. **Far dust sheets** (2–3 additive planes, factor 0.15–0.3) — huge soft nebula wisps.
-3. **Mid debris field** (instanced micro-rocks/motes, factor 0.5–0.7) — occasional slow tumble.
-4. **Near dust motes** (factor 1.2–1.5, subtle) — the layer that *sells speed* during boost/cruise.
-5. Play plane: ships, asteroids, stations (contact shadows already ground them).
-Boost/cruise stretch near-mote streaks (classic warp-speed read). Motion-reduce halves densities.
+### 9.1 Spatial depth and speed
+The world needs convincing scale separation, atmosphere, motion parallax, and speed cues. Use the
+combination of authored backgrounds, geometry, particles, lighting, fog, post-processing, and camera
+response that best serves each place while preserving gameplay readability, reduced-motion support,
+and measured performance. No fixed layer count or parallax factor is a design requirement.
 
 ### 9.2 Sector identity (data-driven art direction)
 Each sector carries an explicit visual profile in data: lighting, atmosphere, background, material,
@@ -271,10 +257,10 @@ label while preserving gameplay readability and faction/IFF accessibility.
 ### 9.3 Readability pass
 - Ships get faction-hue rim-light + engine glow; hostiles carry warm signatures, friendlies cool
   (redundant with IFF glyphs for colorblind safety — palette already built in `accessibility.js`).
-- The ambiguous giant translucent spheres (planet atmospheres?) get horizon-line treatment + label
-  on approach; nothing on screen may be unidentifiable for more than one second (pillar 2).
-- Bloom: selective on emissives only (engines, seams, tether, weapon cores). Current threshold 0.65
-  is close; audit per-material emissive intensities instead of cranking post.
+- Ambiguous large forms need silhouette, lighting, motion, context, or labeling sufficient for rapid
+  identification without obscuring gameplay.
+- Bloom and other light response should reinforce material/energy identity without flattening the
+  frame; tune materials, exposure, and post-processing together from representative captures.
 
 ### 9.4 HUD 2.0 (clean, non-diegetic, hierarchical)
 Design principles (screen-specific composition owns the solution):
@@ -295,19 +281,12 @@ limits, and deterministic event seams. Judge the mix in play, not by asset count
 
 ## 10. Performance & hitch elimination
 
-Target: zero >32 ms frames in normal play on mid hardware. Measured hitches (54 ms worst) attack list:
-1. **Shader/pipeline precompile** at boot & sector-load behind the existing loading veil
-   (`renderer.compileAsync` for all material×light combos; play a hidden one-frame VFX salvo to warm
-   particle/sprite pipelines).
-2. **Spawn amortization:** stagger wave spawns across frames (spawner already queues; enforce ≤2
-   mesh-builds/frame); pre-build one pooled mesh per enemy archetype at sector load.
-3. **GC audit:** heap-profile 10 min of play; kill per-frame allocations found in event emissions and
-   UI string building (10 Hz HUD strings — precompute/memoize).
-4. Attribute UI/compositor cost with representative screens. Cache, isolate, and reduce redundant
-   work before removing a visible treatment; no CSS property is globally banned without current
-   measurements showing it is the owning bottleneck.
-5. Frame budget guardrail in CI: extend `check:perf` with a hitch-count assertion (no frame > 32 ms
-   during scripted 60 s combat+mining run).
+Performance must be smooth on target hardware without lowering the intended presentation. Measure
+representative player routes, identify the owning CPU/GPU/memory/I/O path, and use structural fixes:
+precompile/warm-up, amortization, pooling, caching, allocation reduction, batching/instancing,
+culling/LOD/residency, cadence control, and frame pacing. Attribute UI/compositor cost before changing
+visible treatment. Current thresholds, route duration, and evidence belong in `design/PERF_BUDGET.md`
+and live probes rather than this GDD.
 
 ## 11. Economy & progression (mostly surfacing, not new sim)
 
@@ -324,21 +303,18 @@ The economy sim is the codebase's crown jewel — expose it:
 
 ## 12. Explicitly out of scope for 2.0
 
-No multiplayer. No engine swap. No true-3D flight (the XZ plane is a feature). No procedural galaxy
-regen (fixed sector graph is right for Freelancer-style authored identity). No new ship hulls until
-the six verb-kits ship. No voice acting. Automation/claims/tech-tree stay as-is this cycle beyond
-UI polish — they're depth for later, breadth now.
+The current release scope is single-player, Three.js/Rapier, XZ-plane flight, and an authored stable
+sector graph. New hulls, voice, automation, claims, technology, and other expansion work are admitted
+through `design/program/`; this section does not permanently prohibit them.
 
 ## 13. Success criteria (how we know 2.0 landed)
 
-Telemetry funnel (now wired): first-kill < 6 min median, first-trade < 10 min, session-2 return
-signal via save-continue rate. Feel checklist (manual, per build): cursor-response test, brake test,
-slingshot ring-out test (can a tester whip 180° around Helios anchor at full boost?), "one voice"
-audit (record 10 min, count overlapping text events — must be 0), hitch counter = 0 over scripted run,
-and the five-second test: paused screenshot → a stranger names every entity on screen.
+Track onboarding comprehension, time to meaningful verbs, survival/fairness, return/continue behavior,
+flight/tether control, information overlap, navigation success, and frame stability. Set thresholds from
+current baselines and desired audience outcomes in the live acceptance matrix. Combine telemetry,
+checks, representative play, and player-facing evidence; no single metric establishes quality.
 
 ---
-*Written by Claude (lead design), 2026-07-03, from full-codebase recon + live play baseline.
-Reference lineage: Freelancer (travel grammar, faction life, encounter shapes), EVE (economy surfacing,
+*Reference lineage: Freelancer (travel grammar, faction life, encounter shapes), EVE (economy surfacing,
 overview), No Man's Sky (scanner, mining rhythm), Endless Sky (top-down flight assist), Subspace/
 Continuum (newtonian skill ceiling), FTL (event cards), DRG (seam mining), Highfleet (impulse desperation).*

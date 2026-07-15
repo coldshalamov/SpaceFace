@@ -46,6 +46,8 @@ export const DRILL_HEAT_COOLING = 36;
 export const SCAN_RADIUS = 5;
 export const SCAN_COOLDOWN_S = 6;
 export const SCAN_ACTIVE_S = 0.9;
+export const DIRT_HP = 4;
+export const DIRT_HARDNESS = 0.7;
 
 // Empty-tile move cadence. Base 0.06s (~2× the prior 0.12s) so held travel samples twice as often;
 // cargo load still slows movement proportionally (up to +0.05s when holds are full).
@@ -127,9 +129,14 @@ function commitAvatarMove(d, nc, nr, cooldownVal) {
 function tileFor(col, row, rng) {
   const depth = row / ROWS; // 0 at surface, 1 at bottom
 
-  // Surface rows (0 to 2) are always soft dirt, no gas, no rare veins
+  // One visible material has one cut rate. Depth difficulty comes from the increasingly common
+  // basalt, richer veins, and hazards—not hidden stat changes on identical soft-regolith tiles.
+  // Surface rows (0 to 2) are always soft dirt, no gas, no rare veins.
   if (row <= 2) {
-    return { type: 'dirt', hp: 3, maxHp: 3, ore: null, hazard: false, tierReq: 1, hardness: 0.65, risk: 'low' };
+    return {
+      type: 'dirt', hp: DIRT_HP, maxHp: DIRT_HP, ore: null, hazard: false, tierReq: 1,
+      hardness: DIRT_HARDNESS, risk: 'low',
+    };
   }
 
   // Gas pocket probability scales with depth
@@ -191,10 +198,9 @@ function tileFor(col, row, rng) {
   }
 
   // Dirt
-  const hp = 3 + Math.floor(depth * 10);
   return {
-    type: 'dirt', hp, maxHp: hp, ore: null, hazard: false, tierReq: 1,
-    hardness: Number((0.65 + depth * 0.35).toFixed(2)), risk: 'low',
+    type: 'dirt', hp: DIRT_HP, maxHp: DIRT_HP, ore: null, hazard: false, tierReq: 1,
+    hardness: DIRT_HARDNESS, risk: 'low',
   };
 }
 
@@ -572,6 +578,11 @@ export const drill = {
             d.yieldLog[ore] = (d.yieldLog[ore] || 0) + added;
             this.bus.emit('drill:yield', { commodityId: ore, qty: added, pos: { col: nc, row: nr } });
           } else {
+            // Dedicated signal so the screen can flag a wasted break at the tile (red floater) and
+            // hold a persistent "holds full" banner until the player offloads — not a vanishing toast.
+            this.bus.emit('drill:cargoFull', {
+              commodityId: ore, qty: yieldU, pos: { col: nc, row: nr },
+            });
             this.bus.emit('drill:warn', { text: 'Cargo holds are full!' });
           }
         }

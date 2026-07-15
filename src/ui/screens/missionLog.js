@@ -19,8 +19,10 @@ import { endingDef } from '../../story/endings/endingDefs.js';
 import { escapeHtml } from '../comms.js';
 import { BINDINGS } from '../bindings.js';
 import {
+  missionClauseTerms,
   missionConsequenceSummary,
   missionTimePacing,
+  missionUpfrontCost,
 } from '../missionPreflight.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
 import {
@@ -124,6 +126,16 @@ export function objectiveText(m) {
   const prog = m.objectiveProgress || 0;
   const tgt = m.objectiveTarget || 1;
   const dest = m.destStationId ? destStationName(m.destStationId) : 'destination';
+  if (p.setPieceObjective === 'long_read_rumor_survey') {
+    const rumorLabel = p.rumorAlreadyKnown ? 'RUMOR KNOWN' : 'RUMOR PURCHASED';
+    return `${rumorLabel} ${p.rumorPurchased ? '✓' : '○'} / BEARING FIXED ${p.bearingFixed ? '✓' : '○'}`;
+  }
+  if (p.setPieceObjective === 'long_read_salvage') {
+    return `COMPLICATION LIVE ${p.complicationObserved ? '✓' : '○'} / WRECK RECOVERED ${p.salvageDecisionReady ? '✓' : '○'}`;
+  }
+  if (p.setPieceObjective === 'long_read_fence') {
+    return `CHOOSE / CONFIRM DISPOSITION · ${titleCaseWords(p.wreckChoiceId || 'wreck outcome')}`;
+  }
   switch (m.type) {
     case 'cargo_delivery': {
       const serviceClass = `${m.originChoiceId || ''} ${m.title || ''} ${m.mapLabel || ''}`.toLowerCase();
@@ -168,6 +180,32 @@ export function objectiveText(m) {
 function nextStepText(m) {
   const p = m.params || {};
   const dest = m.destStationId ? destStationName(m.destStationId) : 'the tracked marker';
+  const wreckName = p.wreckName || 'the marked wreck';
+  const complicationKind = Array.isArray(p.complicationKinds) && p.complicationKinds[0]
+    ? titleCaseWords(p.complicationKinds[0])
+    : p.hasReactorComplication ? 'unstable reactor'
+      : p.hasHazardComplication ? 'local hazard' : 'live complication';
+  if (p.setPieceObjective === 'long_read_rumor_survey') {
+    if (p.rumorAlreadyKnown) {
+      return `Next: follow the known bearing ring and pulse scan until ${wreckName} fixes to a point.`;
+    }
+    return p.rumorPurchased
+      ? `Next: follow the purchased bearing ring and pulse scan until ${wreckName} fixes to a point.`
+      : `Next: purchase the brokered rumor, follow its bearing ring, and pulse scan until ${wreckName} fixes.`;
+  }
+  if (p.setPieceObjective === 'long_read_salvage') {
+    if (p.salvageDecisionReady && !p.complicationObserved) {
+      return `Next: survive or observe ${wreckName}'s ${complicationKind} before confirming recovery.`;
+    }
+    if (p.complicationObserved) {
+      return `Next: recover ${wreckName} until its live disposition decision opens.`;
+    }
+    return `Next: reach ${wreckName}, survive or observe its ${complicationKind}, and recover the wreck to decision.`;
+  }
+  if (p.setPieceObjective === 'long_read_fence') {
+    const choice = titleCaseWords(p.wreckChoiceId || 'wreck outcome');
+    return `Next: confirm ${choice} for ${wreckName}; this is a disposition receipt, not a freight handoff.`;
+  }
   switch (m.type) {
     case 'cargo_delivery':
     case 'passenger_transport':
@@ -201,7 +239,7 @@ function stripNextPrefix(text) {
 
 function missionPurposeText(m) {
   if (!m) return 'Complete the contract and secure its payout.';
-  const authored = m.why || m.motive || m.brief || m.description || m.instruction
+  const authored = m.why || m.motive || m.brief || m.description || m.instruction || m.summary
     || (m.params && (m.params.why || m.params.reason));
   if (authored) return String(authored).trim();
   switch (m.type) {
@@ -475,6 +513,24 @@ export function activeMissionContractTerms(m, state) {
     });
   }
 
+  const upfrontCost = missionUpfrontCost(m);
+  if (upfrontCost > 0) {
+    terms.push({
+      kind: 'info',
+      label: 'Paid',
+      text: formatCredits(upfrontCost) + ' non-refundable first-attempt service fee',
+    });
+  }
+
+  for (const clause of missionClauseTerms(m)) {
+    const bonus = clause.bonusPct > 0 ? ' / +' + clause.bonusPct + '% if kept' : '';
+    terms.push({
+      kind: 'warn',
+      label: 'Clause',
+      text: clause.label + ': ' + clause.prose + bonus,
+    });
+  }
+
   const miss = [];
   if (consequences.repPenalty < 0) miss.push(consequences.repPenalty + ' rep');
   if (consequences.collateral > 0) miss.push('stake forfeited');
@@ -489,7 +545,7 @@ export function activeMissionContractTerms(m, state) {
     terms.push({ kind: 'bad', label: 'Heat', text: 'customs scans escalate' });
   }
 
-  return terms.slice(0, 6);
+  return terms.slice(0, 8);
 }
 
 export function missionCommandBrief(m, state) {
@@ -873,6 +929,81 @@ function stationRouteAction(stationId, title = 'Open Star Map') {
   });
 }
 
+export function setPieceContinuationAction(state) {
+  const missions = state && state.missions || {};
+  const boards = missions.boards && typeof missions.boards === 'object' ? missions.boards : {};
+  const receipts = Array.isArray(missions.receipts) ? missions.receipts : [];
+  const posted = [];
+  for (const [boardStationId, board] of Object.entries(boards)) {
+    for (const offer of board && Array.isArray(board.slots) ? board.slots : []) {
+      const cause = offer && offer.cause;
+      if (!offer || offer.source !== 'setPieceMission' || !cause || !cause.chainId) continue;
+      if ((cause.stageIndex | 0) <= 0 && (cause.attempt | 0) <= 0) continue;
+      posted.push({ offer, cause, stationId: offer.stationId || boardStationId });
+    }
+  }
+  if (!posted.length) return null;
+
+  const postedChains = new Set(posted.map((row) => row.cause.chainId));
+  const stationIdsByChain = new Map();
+  for (const row of posted) {
+    const ids = stationIdsByChain.get(row.cause.chainId) || new Set();
+    if (row.stationId) ids.add(row.stationId);
+    stationIdsByChain.set(row.cause.chainId, ids);
+  }
+  const latestReceipt = receipts.find((receipt) => {
+    if (!receipt || !postedChains.has(receipt.chainId)) return false;
+    const expected = stationIdsByChain.get(receipt.chainId) || new Set();
+    return Array.isArray(receipt.nextStationIds)
+      && receipt.nextStationIds.some((stationId) => expected.has(stationId));
+  }) || receipts.find((receipt) => receipt && postedChains.has(receipt.chainId)) || null;
+  const selectedChainId = latestReceipt && latestReceipt.chainId || [...postedChains].sort()[0];
+  const selected = posted.filter((row) => row.cause.chainId === selectedChainId);
+
+  const maxStage = Math.max(...selected.map((row) => row.cause.stageIndex | 0));
+  const atStage = selected.filter((row) => (row.cause.stageIndex | 0) === maxStage);
+  const maxAttempt = Math.max(...atStage.map((row) => row.cause.attempt | 0));
+  const current = atStage.filter((row) => (row.cause.attempt | 0) === maxAttempt)
+    .sort((a, b) => String(a.offer.id).localeCompare(String(b.offer.id)));
+  const stationIds = [...new Set(current.map((row) => row.stationId).filter(Boolean))];
+  const stationNames = stationIds.map((stationId) => {
+    const info = STATION_INFO.get(stationId);
+    return info && info.name ? info.name : prettyId(stationId, 'the posted contract board');
+  });
+  const first = current[0];
+  const receipt = latestReceipt && latestReceipt.chainId === first.cause.chainId ? latestReceipt : null;
+  const retrying = maxAttempt > 0 || !!(receipt && receipt.outcome && receipt.outcome !== 'completed');
+  const house = receipt && receipt.house || first.cause.house || 'Contract House';
+  const voice = receipt && (receipt.recoveryText || receipt.houseText) || '';
+  const destination = stationNames.length === 1
+    ? stationNames[0]
+    : stationNames.length > 1 ? stationNames.join(' or ') : 'the posted contract board';
+  const title = current.length === 1
+    ? (first.offer.title || 'Continue the authored contract')
+    : 'Choose the next contract route';
+  const routeBody = `${voice ? voice + ' ' : ''}Dock at ${destination} and open Missions.`;
+  const oneStation = stationIds.length === 1 ? STATION_INFO.get(stationIds[0]) : null;
+
+  return {
+    tone: retrying ? 'warn' : 'primary',
+    label: retrying ? 'RECOVERY POSTED' : 'NEXT CONTRACT',
+    title,
+    body: `${house}: ${routeBody}`,
+    meta: `STAGE ${maxStage + 1} · ${destination}`,
+    mapAction: mapHandoffAction({
+      focus: MAP_FOCUS.GALAXY,
+      label: 'STAR MAP',
+      title: stationIds.length === 1 ? `Plot route to ${destination}` : 'Compare continuation boards',
+      body: stationIds.length === 1
+        ? `Plot the route to ${destination} for the next contract stage.`
+        : 'Open the galaxy chart and compare the posted continuation boards.',
+      stationId: stationIds.length === 1 ? stationIds[0] : null,
+      sectorId: oneStation && oneStation.sectorId || null,
+      source: 'missionLog-setPiece',
+    }),
+  };
+}
+
 function replayStage(state, chain, run) {
   if (!chain || !run) return null;
   if (run.stageIndex === 0) return { stage: chain.opening, branch: null };
@@ -1020,7 +1151,7 @@ export function storyActionForBeat(beat, state) {
         tone: 'primary',
         label: 'COMBAT',
         title: 'Arm for a bounty',
-        body: 'Fit the Kestrel for a low-risk bounty, track the target, and cash the first kill.',
+        body: 'Fit the Hitch for a low-risk bounty, track the target, and cash the first kill.',
         meta: 'Bounty',
       };
     case 3:
@@ -1099,6 +1230,14 @@ export function persistentCampaignAction(state, activeMissions = [], trackedMiss
   return ordinaryWorkOwnsCurrent ? action : null;
 }
 
+/** True while the staged first-session tutorial owns the single opening command surface. */
+export function stagedOpeningOwnsCommand(state) {
+  const gameplay = state && state.settings && state.settings.gameplay;
+  if (gameplay && gameplay.tutorialHints === false) return false;
+  const ob = state && state.onboarding;
+  return !!(ob && ob.active && !ob.finished);
+}
+
 export function recommendedActions(state, activeMissions, trackedMissionId) {
   const active = (activeMissions || []).filter((m) => m && m.status === 'active');
   const tracked = trackedMissionId ? active.find((m) => m.id === trackedMissionId) : null;
@@ -1106,11 +1245,18 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
   const storyBeat = STORY_BEATS[beatIndex];
   const storyAction = storyActionForBeat(storyBeat, state);
   const activeTradeRoute = tradeRouteAction(state);
+  const setPieceContinuation = setPieceContinuationAction(state);
   const cargo = cargoLoad(state);
   const readiness = serviceReadinessAction(state, tracked ? [tracked] : active);
   const actions = [];
+  // Staged tutorial owns one opening command (story first-route / "Follow the anomaly").
+  // Cold-start 47-A stays tracked for later handoff and still appears in ACTIVE MISSIONS cards,
+  // but must not promote a competing CURRENT ACTION or mission-kind waypoint during teaching.
+  const openingOwns = stagedOpeningOwnsCommand(state);
 
-  if (tracked) {
+  if (openingOwns && storyAction) {
+    actions.push(storyAction);
+  } else if (tracked) {
     const mapAction = missionMapAction(state, tracked, true);
     const brief = missionCommandBrief(tracked, state);
     actions.push({
@@ -1137,6 +1283,8 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
       actionLabel: 'TRACK NAV',
       missionId: candidate.id,
     });
+  } else if (setPieceContinuation) {
+    actions.push(setPieceContinuation);
   } else if (storyAction) {
     actions.push(storyAction);
   }
@@ -1238,18 +1386,31 @@ export function missionReceiptRows(state, limit = 5) {
       if (lostCr > 0) parts.push(formatCredits(lostCr) + ' stake forfeited');
     }
 
+    const voice = [];
+    if (receipt.houseText) {
+      voice.push((receipt.house ? receipt.house + ': ' : '') + receipt.houseText);
+    }
+    if (receipt.recoveryText) voice.push(receipt.recoveryText);
+    const nextStationIds = Array.isArray(receipt.nextStationIds)
+      ? receipt.nextStationIds : receipt.nextStationId ? [receipt.nextStationId] : [];
+    const nextStations = [...new Set(nextStationIds)].map((stationId) => {
+      const info = STATION_INFO.get(stationId);
+      return info && info.name ? info.name : prettyId(stationId, 'posted board');
+    });
+
     const dest = receiptDestinationLabel(receipt);
     const meta = [
       prettyType(receipt.type),
       dest,
       receipt.reason ? 'Reason: ' + receiptReasonLabel(receipt.reason) : '',
+      nextStations.length ? 'Next: ' + nextStations.join(' or ') : '',
     ].filter(Boolean).join(' · ');
 
     return {
       tone: receiptTone(outcome),
       outcome: receiptOutcomeLabel(outcome),
       title: receipt.title || prettyType(receipt.type),
-      body: parts.join(' · '),
+      body: [...voice, parts.join(' · ')].filter(Boolean).join(' · '),
       meta,
     };
   });

@@ -9,6 +9,7 @@ import {
   hashUnit,
   stableId,
 } from './contracts.js';
+import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 
 export const CombatDoctrineId = Object.freeze({
   INTERCEPTOR_FLYBY: 'interceptor_flyby',
@@ -81,6 +82,7 @@ export class CombatDoctrineRuntime {
       return null;
     }
     const self = perception && perception.self || null;
+    const factionBehavior = normalizeFactionBehaviorProfile(self && self.factionBehavior);
     const flightProfile = flightProfileFor(doctrineId, self);
     if (!record || record.doctrineId !== doctrineId || record.targetId !== (target && target.id) ||
       record.flightProfile !== flightProfile) {
@@ -94,10 +96,18 @@ export class CombatDoctrineRuntime {
 
     if (!target) {
       enter(record, initialPhase(doctrineId), tick, null);
-      return snapshot(record, null, directive);
+      return snapshot(record, null, directive, factionBehavior);
     }
 
     const distance = self && self.pos ? distance2(self.pos, target.pos) : Infinity;
+    if (factionBehavior && (factionBehavior.disableThenRun || factionBehavior.destroyTarget === false)
+      && target.disabled === true) {
+      const egressPhase = doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY ? 'breakaway'
+        : doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER ? 'escape'
+          : 'retreat';
+      if (record.phase !== egressPhase) beginEgress(record, egressPhase, tick, self, target, 'target_disabled');
+      return snapshot(record, target, directive, factionBehavior);
+    }
     if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
       updateInterceptor(record, tick, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
@@ -105,7 +115,7 @@ export class CombatDoctrineRuntime {
     } else {
       updateRanged(record, tick, self, target, distance);
     }
-    return snapshot(record, target, directive);
+    return snapshot(record, target, directive, factionBehavior);
   }
 
   forget(entityId) {
@@ -163,6 +173,7 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
       targetId: doctrine.maneuverTargetId,
       preferredRange: doctrine.preferredRange,
       lateralSign: doctrine.lateralSign,
+      faceTarget: doctrine.faceTarget === true,
       ramAuthorized: doctrine.ramAuthorized === true,
       flightPoint: doctrine.flightPoint,
       formationLocked: doctrine.formationLocked,
@@ -313,7 +324,7 @@ function beginReform(record, tick) {
   enter(record, 'reform', tick, null);
 }
 
-function snapshot(record, target, directive) {
+function snapshot(record, target, directive, factionBehavior = null) {
   const phase = record.phase;
   const doctrineId = record.doctrineId;
   let maneuverKind = ManeuverKind.INTERCEPT;
@@ -322,6 +333,7 @@ function snapshot(record, target, directive) {
   let formationLocked = false;
   let maneuverTargetId = target ? target.id : record.targetId;
   let lateralSign = record.side;
+  let faceTarget = false;
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
     const brawler = record.flightProfile === 'brawler_commit';
     formationLocked = phase === 'ingress' || phase === 'reform';
@@ -351,8 +363,13 @@ function snapshot(record, target, directive) {
     maneuverKind = phase === 'retreat' ? ManeuverKind.RETREAT
       : (phase === 'outer_standoff' || phase === 'reset' ? ManeuverKind.ORBIT : ManeuverKind.HOLD);
     preferredRange = 620;
+    // The standoff orbit is translational: fixed-gun ships keep their nose on the target while
+    // sliding around the engagement ring, so even high-inertia hulls are aligned before the cue.
+    faceTarget = phase !== 'retreat';
     if (phase === 'fire_window') allowedActionId = 'action_burst';
   }
+  const isEgress = phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'retreat';
+  if (factionBehavior && !isEgress) preferredRange = factionBehavior.preferredRange;
   return Object.freeze({
     doctrineId,
     flightProfile: record.flightProfile,
@@ -363,6 +380,7 @@ function snapshot(record, target, directive) {
     cycle: record.cycle,
     side: record.side,
     lateralSign,
+    faceTarget,
     telegraph: record.telegraph,
     telegraphStarted: record.telegraphStartedTick === record.lastTick,
     fireWindow: !!record.fireWindow,

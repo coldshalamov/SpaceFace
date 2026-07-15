@@ -1,0 +1,76 @@
+{
+  "packet": "M1-SLICEA-VISUAL-001",
+  "lane": "blender_mutation",
+  "date": "2026-07-10",
+  "status": "submitted_for_controller_review",
+  "gates": {
+    "check:asset-status": "PASS",
+    "check:asset-reachability": "PASS",
+    "check:station-archetype-glb-load": "PASS",
+    "check-place-concept-resemblance": "PASS",
+    "check:assets:live": "PASS",
+    "check:visual-stability": "PASS_prior_and_pending_reconfirm"
+  },
+  "assets": {
+    "place_station_trade_hub": {
+      "blend": "assets/ships/parts/blender/place_station_trade_hub_authored.blend",
+      "sourceGlb": "assets/ships/parts/places/place_station_trade_hub.glb",
+      "releaseGlb": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+      "sourceTris": 15904,
+      "sourceBytes": 544544,
+      "releaseBytes": 153764,
+      "semanticAuthority": "assets/concept/sectors/sector_helios_prime/concept_helios_overview.jpg",
+      "evidence": [
+        "assets/ships/parts/revamp-evidence/place_station_trade_hub/renders/2026-07-10_place_station_trade_hub_rebuild2_lit_34_full.png",
+        ".devshots/slice-A/station-approach.png",
+        ".devshots/slice-A/station-approach-close.png"
+      ]
+    },
+    "place_gate_jump_ring": {
+      "blend": "assets/ships/parts/blender/place_gate_jump_ring_authored.blend",
+      "sourceGlb": "assets/ships/parts/places/place_gate_jump_ring.glb",
+      "releaseGlb": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
+      "sourceTris": 12500,
+      "sourceBytes": 466096,
+      "releaseBytes": 121908,
+      "semanticAuthority": "portal/ring semantics (not concept_gate_jump_ring.jpg tower plate)",
+      "evidence": [
+        "assets/ships/parts/revamp-evidence/place_gate_jump_ring/renders/2026-07-10_place_gate_jump_ring_rebuild3_lit_34_full.png",
+        ".devshots/slice-A/gate-approach.png",
+        ".devshots/slice-A/gate-close.png"
+      ]
+    },
+    "place_asteroid_rock_a": {
+      "blend": "assets/ships/parts/blender/place_asteroid_rock_a_authored.blend",
+      "sourceGlb": "assets/ships/parts/places/place_asteroid_rock_a.glb",
+      "sourceTris": 8330,
+      "sourceBytes": 246216,
+      "releaseBytes": 99300,
+      "silhouette": "tall layered pillar mass + ore seams"
+    },
+    "place_asteroid_rock_b": {
+      "blend": "assets/ships/parts/blender/place_asteroid_rock_b_authored.blend",
+      "sourceGlb": "assets/ships/parts/places/place_asteroid_rock_b.glb",
+      "sourceTris": 6186,
+      "sourceBytes": 192936,
+      "releaseBytes": 78668,
+      "silhouette": "wide flattened pancake + stratum/ore band"
+    },
+    "place_asteroid_rock_c": {
+      "blend": "assets/ships/parts/blender/place_asteroid_rock_c_authored.blend",
+      "sourceGlb": "assets/ships/parts/places/place_asteroid_rock_c.glb",
+      "sourceTris": 5052,
+      "sourceBytes": 160368,
+      "releaseBytes": 66280,
+      "silhouette": "angular wedge/split mass + ore vein"
+    }
+  },
+  "pipeline": [
+    "blend rebuild (MCP + m1_slicea_visual_rebuild.py)",
+    "blender --background export via spaceface_export.export_gltf",
+    "node tools/art/finalize_part.mjs",
+    "npm run build:sg04:release-assets"
+  ],
+  "selfAccept": false,
+  "qualityScore": null
+}

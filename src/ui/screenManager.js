@@ -29,6 +29,7 @@ export function createScreenManager(ctx) {
   const stack = state.ui.screenStack;
 
   let pauseEmitted = false;
+  let destroyed = false;
 
   // UX-6: focus management. On each push we snapshot the currently-focused element so popScreen can
   // restore it — keyboard + screen-reader users return to the button that opened the modal instead
@@ -191,7 +192,11 @@ export function createScreenManager(ctx) {
       if (open) screensRoot.removeAttribute('aria-hidden');
       else screensRoot.setAttribute('aria-hidden', 'true');
     }
-    const modalOpen = open || state.ui.docked === true;
+    // Fulfillment boarding is an external modal owned by uiRoot. Keep it in the same semantic
+    // reconciliation as screens/docking so a late syncVisibility() during init/re-init cannot
+    // expose the HUD or clear body modal chrome for even one input frame.
+    const modalOpen = open || state.ui.docked === true
+      || state.ui.fulfillmentBlackoutActive === true;
     document.body.classList.toggle('ui-modal-open', modalOpen);
     syncHudAccessibility(modalOpen || state.mode !== 'flight');
     if (backdrop) {
@@ -374,11 +379,57 @@ export function createScreenManager(ctx) {
 
   // Runtime reset/load paths can clear transient requests without changing the visible stack.
   // Reconcile on their mode/error signals so UI state and the request cannot drift apart.
-  bus.on('mode:changed', syncPause);
-  bus.on('save:error', syncPause);
+  const runtimeUnsubscribers = [
+    bus.on('mode:changed', syncPause),
+    bus.on('save:error', syncPause),
+  ];
+
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    document.removeEventListener('keydown', _trapKeydown);
+    if (screensRoot) {
+      shieldedPointerEvents.forEach((type) => {
+        screensRoot.removeEventListener(type, shieldModalPointerEvent);
+      });
+    }
+    if (backdrop) {
+      shieldedPointerEvents.forEach((type) => {
+        backdrop.removeEventListener(type, shieldModalPointerEvent);
+      });
+      backdrop.removeEventListener('click', dismissTopFromBackdrop);
+    }
+    for (const unsubscribe of runtimeUnsubscribers.splice(0)) {
+      try { unsubscribe(); } catch (_) {}
+    }
+    timeEffects.clear('ui:pausing-screen');
+    for (const rec of registry.values()) {
+      if (rec && rec.mounted && rec.def && rec.def.onHide) {
+        try { rec.def.onHide(); } catch (_) {}
+      }
+      if (rec && rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+    }
+    registry.clear();
+    focusStack.length = 0;
+    stack.length = 0;
+    if (screensRoot) {
+      screensRoot.style.display = 'none';
+      screensRoot.inert = true;
+      screensRoot.setAttribute('aria-hidden', 'true');
+    }
+    if (backdrop) {
+      backdrop.hidden = true;
+      backdrop.style.pointerEvents = 'none';
+    }
+    const externalModal = state.ui.docked === true
+      || state.ui.fulfillmentBlackoutActive === true;
+    document.body.classList.toggle('ui-modal-open', externalModal);
+    syncHudAccessibility(externalModal || state.mode !== 'flight');
+  }
 
   return {
     register, pushScreen, popScreen, replaceScreen, closeAll,
-    isOpen, hasScreen, top, getActiveScreenDef, refreshTop, syncVisibility, locked,
+    isOpen, hasScreen, top, getActiveScreenDef, refreshTop, syncVisibility, syncHudAccessibility,
+    locked, destroy,
   };
 }

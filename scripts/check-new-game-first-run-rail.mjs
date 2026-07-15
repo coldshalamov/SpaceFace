@@ -13,9 +13,13 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 
 const newGame = read('src/ui/screens/newGame.js');
+const localizedCoreCopy = read('src/ui/localizedCoreCopy.js');
 
 assert.match(newGame, /sf-ng-route/, 'New Game must render a first-15-minutes route rail');
-assert.match(newGame, /First 15 minutes/, 'route rail must be explicitly labeled for first-session clarity');
+assert.match(localizedCoreCopy, /firstMinutes:\s*\{\s*label:\s*'First 15 minutes'\s*\}/,
+  'localized core copy must explicitly label the route rail for first-session clarity');
+assert.match(newGame, /coreText\('firstMinutes'\)/,
+  'New Game must render the localized first-session route label');
 // spec2/03 supersedes the prior first-15 route copy. The rail now teaches the 6-beat pacing:
 // wake/beacon → tether derelict → mine seam → dock + pick work.
 for (const phrase of [

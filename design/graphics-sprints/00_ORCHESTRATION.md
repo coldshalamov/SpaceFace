@@ -1,5 +1,9 @@
 # Graphics Sprint Threads — Orchestration
 
+> **ACTIVATION SCOPE:** This five-thread topology exists only for an explicitly launched graphics
+> sprint. Outside that sprint, its A–E ownership table is reference history, not a permanent file
+> prohibition. Live lock/build signals still protect concurrent asset work.
+
 **Status:** LIVE routing for parallel agent sprints.
 **Purpose:** Run multiple north-star goals in parallel **without domain overlap**. One Blender owner at a time. Integrate in series.
 
@@ -15,7 +19,7 @@
 `design/spec2/00_MASTER_TASTE.md` is historical taste context, not a visual-token authority. Apply its
 standing non-diegetic HUD restriction where relevant, but judge current work from player-facing evidence.
 
-## The five threads (never merge domains)
+## The five threads (keep domains separate while they run concurrently)
 
 | Thread | ID | Owner | Blender? | Goal prompt file |
 |--------|-----|-------|----------|------------------|
@@ -27,7 +31,7 @@ standing non-diegetic HUD restriction where relevant, but judge current work fro
 
 **Blender rule:** Only **one** thread may hold the Blender MCP lock at a time. Thread A and Thread E are mutually exclusive. Thread B uses Blender only after acquiring the lock from A/E (usually same graphics agent, sequential sub-sprints).
 
-Thread C and D never call Blender MCP.
+Thread C and D do not call Blender MCP while the activated A/B/E Blender owner holds the sprint lock.
 
 ## Lifecycle (every asset)
 
@@ -45,7 +49,7 @@ See `HANDOFF_TEMPLATE.md` for the machine handoff block between threads.
 | `assets/ships/parts/**/*.glb` (source) | A, B, or E | Only lock holder |
 | `npm run build:sg04:release-assets` | Integrator | After graphics handoff; never parallel |
 | `parts_manifest.json` | Integrator or C | C adds rows only from handoff; A/E do not edit manifest (integrator does) |
-| `src/render/partsLibrary.js` | **C only** | Graphics threads forbidden |
+| `src/render/partsLibrary.js` | C or the designated integrator | Authoring threads hand off while a concurrent writer owns it; coherent sequential integration may edit it |
 | `src/data/sectorAnchors.js` | **C only** | Thread B produces GLB; C wires geography |
 | `src/render/vfx.js`, `vfxProfiles.js` | **D only** | |
 | `test/*.expected.json` | Nobody in graphics sprint | Forbidden |

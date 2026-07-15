@@ -1,0 +1,24 @@
+{
+  "candidates": {
+    "gate": "assets/ships/m4_helios_hub_v8/release_candidates/places/helios_gate.glb",
+    "hub": "assets/ships/m4_helios_hub_v8/release_candidates/places/helios_hub_station.glb"
+  },
+  "rocksUnchanged": true,
+  "packet": "M4-HELIOS-V8-NEW-FOUNDATION-GROK-001",
+  "changes": [
+    "Hub: continuous macro donor denser (min 1500 tris); multi-volume hangar mouth; bulkheaded transit; stepped plate hab; ring dock bays",
+    "Gate: double-layer structural octagon frame; recessed single cyan rail; continuous power plants; Material_Warm bands",
+    "Materials: offline industrial plate basecolors with value separation for game-sky",
+    "Lighting: gamesky exposure 1.55 + fill boost + rim light"
+  ],
+  "schema": "spaceface.m4HeliosHubV8.repair1.v1",
+  "promote": false,
+  "acceptanceClaim": false,
+  "residualDefects": [
+    "Hub still partially ring+core silhouette; continuous donor detail improved but not Destiny/Kestrel V4 surface craft",
+    "Authored center still uses plate/box primitives rather than fully continuous hard-surface sculpt",
+    "Gate frame improved but secondary structure still rectilinear",
+    "Finalize receipt write hit WinError on some evidence json files mid-pass"
+  ],
+  "phase": "REPAIR1 after quality review reject"
+}

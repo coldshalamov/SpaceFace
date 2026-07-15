@@ -1,0 +1,462 @@
+{
+  "id": "helios_gate",
+  "assetId": "SF_PLACE_HELIOS_GATE",
+  "partId": "place_gate_jump_ring",
+  "liveId": "place_gate_jump_ring",
+  "title": "Helios Gate V9 (Split-Hex Arch)",
+  "role": "gate_landmark_v9",
+  "kind": "landmark",
+  "ok": true,
+  "elapsedSec": 30.88,
+  "sourceGlb": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/source/places/helios_gate.glb",
+  "productionBlend": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/blender/helios_gate_production.blend",
+  "sourceBytes": 4856584,
+  "sourceSha256": "2952A780231B7DD383908D7ED698832799849BC7CBA3E6D8C791656CEE72CA86",
+  "totalTriangles": 18204,
+  "hullTriangles": 14977,
+  "lod0Triangles": 8071,
+  "sockets": [
+    "SOCKET_Emissive_Ring",
+    "SOCKET_Gate_Aperture",
+    "SOCKET_Structure_Core"
+  ],
+  "materials": [
+    "Material_Accent",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "collisionCoverageMin": 0.92,
+  "lod0WithinBudget": true,
+  "renderCount": 15,
+  "renders": [
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_detail.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_full.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_gamesky.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_gamesky_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_lod_continuity_lod0.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_lod_continuity_lod1.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_lod_continuity_lod2.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_readability_120px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_readability_close.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_readability_under45px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_rear.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_rear_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_side_ortho.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/evidence/renders/helios_gate/helios_gate_top.png"
+  ],
+  "export": {
+    "file": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v9/source/places/helios_gate.glb",
+    "bytes": 4856584,
+    "sha256": "2952A780231B7DD383908D7ED698832799849BC7CBA3E6D8C791656CEE72CA86",
+    "totalTriangles": 18204,
+    "hullTriangles": 14977,
+    "lodBreakdown": {
+      "lod0": {
+        "triangles": 8071,
+        "primitives": 4,
+        "drawEstimate": 4,
+        "nodes": [
+          {
+            "name": "LOD0_HOOK_EMISSIVE",
+            "tris": 176
+          },
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 5099
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 1756
+          },
+          {
+            "name": "LOD0_Merged_Material_Warm",
+            "tris": 1040
+          }
+        ]
+      },
+      "lod1": {
+        "triangles": 5111,
+        "primitives": 4,
+        "drawEstimate": 4,
+        "nodes": [
+          {
+            "name": "LOD1_HOOK_EMISSIVE",
+            "tris": 58
+          },
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 4939
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 58
+          },
+          {
+            "name": "LOD1_Merged_Material_Warm",
+            "tris": 56
+          }
+        ]
+      },
+      "lod2": {
+        "triangles": 5022,
+        "primitives": 4,
+        "drawEstimate": 4,
+        "nodes": [
+          {
+            "name": "LOD2_HOOK_EMISSIVE",
+            "tris": 28
+          },
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 4939
+          },
+          {
+            "name": "LOD2_Merged_Material_Mechanical",
+            "tris": 27
+          },
+          {
+            "name": "LOD2_Merged_Material_Warm",
+            "tris": 28
+          }
+        ]
+      }
+    },
+    "sockets": [
+      "SOCKET_Emissive_Ring",
+      "SOCKET_Gate_Aperture",
+      "SOCKET_Structure_Core"
+    ],
+    "materials": [
+      "Material_Accent",
+      "Material_Hull",
+      "Material_Mechanical",
+      "Material_Warm"
+    ],
+    "primitiveCount": 12,
+    "tangentPrimitiveCount": 12,
+    "uvPrimitiveCount": 12,
+    "lod0Aabb": {
+      "min": [
+        -2.2817542552948,
+        -13.97624683380127,
+        -12.281754493713379
+      ],
+      "max": [
+        2.7754034996032715,
+        14.0,
+        16.700000762939453
+      ],
+      "size": [
+        5.057157754898071,
+        27.97624683380127,
+        28.981755256652832
+      ],
+      "center": [
+        0.24682462215423584,
+        0.011876583099365234,
+        2.209123134613037
+      ]
+    },
+    "collisionAabb": {
+      "min": [
+        -2.079467945098877,
+        -12.857196960449219,
+        -11.122484283447266
+      ],
+      "max": [
+        2.573117189407349,
+        12.88095012664795,
+        15.54073055267334
+      ],
+      "size": [
+        4.652585134506226,
+        25.73814708709717,
+        26.663214836120606
+      ],
+      "center": [
+        0.24682462215423584,
+        0.011876583099365234,
+        2.209123134613037
+      ],
+      "coverage": 0.92
+    },
+    "collisionCoverageRatio": {
+      "perAxis": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "min": 0.92,
+      "mean": 0.92
+    },
+    "images": [
+      {
+        "name": "accent_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "accent_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "accent_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_basecolor",
+        "mimeType": "image/png"
+      }
+    ],
+    "spacefaceAsset": {
+      "contractVersion": 1,
+      "assetId": "SF_PLACE_HELIOS_GATE",
+      "slot": "place",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "textureCompression": "PNG-source",
+      "textureSize": 1024,
+      "chamfered": true,
+      "bevelRadiusM": 0.05,
+      "partId": "place_gate_jump_ring",
+      "liveId": "place_gate_jump_ring",
+      "category": "places",
+      "sourceRole": "place-environment",
+      "packet": "M4-HELIOS-V9-NEW-FOUNDATION",
+      "family": "helios_hub_env_v9",
+      "role": "gate_landmark_v9",
+      "title": "Helios Gate V9 (Split-Hex Arch)",
+      "kind": "landmark",
+      "triangleCount": 18204,
+      "hullTriangleCount": 14977,
+      "deliverableRole": "production_multi_lod",
+      "lods": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "wiringStatus": "candidate_pending_promote",
+      "lod0AabbSize": [
+        5.057157754898071,
+        27.97624683380127,
+        28.981755256652832
+      ],
+      "collisionBounds": {
+        "min": [
+          -2.079467945098877,
+          -12.857196960449219,
+          -11.122484283447266
+        ],
+        "max": [
+          2.573117189407349,
+          12.88095012664795,
+          15.54073055267334
+        ],
+        "size": [
+          4.652585134506226,
+          25.73814708709717,
+          26.663214836120606
+        ],
+        "center": [
+          0.24682462215423584,
+          0.011876583099365234,
+          2.209123134613037
+        ],
+        "coverage": 0.92
+      },
+      "collisionAabb": {
+        "min": [
+          -2.079467945098877,
+          -12.857196960449219,
+          -11.122484283447266
+        ],
+        "max": [
+          2.573117189407349,
+          12.88095012664795,
+          15.54073055267334
+        ],
+        "size": [
+          4.652585134506226,
+          25.73814708709717,
+          26.663214836120606
+        ],
+        "center": [
+          0.24682462215423584,
+          0.011876583099365234,
+          2.209123134613037
+        ],
+        "coverage": 0.92
+      },
+      "collisionCoverageRatio": {
+        "perAxis": [
+          0.92,
+          0.92,
+          0.92
+        ],
+        "min": 0.92,
+        "mean": 0.92
+      },
+      "triBudget": 36000,
+      "triBudgetAlarm": 22000
+    },
+    "lodBuildStats": [
+      {
+        "lod": "lod0",
+        "decimateRatio": 1.0,
+        "mergedMeshes": [
+          "LOD0_Merged_Material_Hull",
+          "LOD0_Merged_Material_Mechanical",
+          "LOD0_Merged_Material_Warm"
+        ],
+        "separateMeshes": [
+          "LOD0_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [],
+        "triangles": 8071,
+        "objectCount": 4,
+        "explicitGateSilhouette": false
+      },
+      {
+        "lod": "lod1",
+        "decimateRatio": 0.42,
+        "mergedMeshes": [
+          "LOD1_Merged_Material_Hull",
+          "LOD1_Merged_Material_Mechanical",
+          "LOD1_Merged_Material_Warm"
+        ],
+        "separateMeshes": [
+          "LOD1_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [],
+        "triangles": 5115,
+        "objectCount": 4,
+        "explicitGateSilhouette": false,
+        "v9RatioEnforced": true,
+        "v9TargetTotal": 3470
+      },
+      {
+        "lod": "lod2",
+        "decimateRatio": 0.15,
+        "mergedMeshes": [
+          "LOD2_Merged_Material_Hull",
+          "LOD2_Merged_Material_Mechanical",
+          "LOD2_Merged_Material_Warm"
+        ],
+        "separateMeshes": [
+          "LOD2_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [
+          "Gate_HazardLip",
+          "Gate_SpineRad_0",
+          "Gate_SpineRad_1",
+          "Gate_SpineRad_2",
+          "Gate_SpineRad_3"
+        ],
+        "triangles": 5023,
+        "objectCount": 4,
+        "explicitGateSilhouette": false,
+        "v9RatioEnforced": true,
+        "v9TargetTotal": 968
+      }
+    ],
+    "withinBudget": true,
+    "lod0WithinBudget": true
+  },
+  "lodStats": [
+    {
+      "lod": "lod0",
+      "decimateRatio": 1.0,
+      "mergedMeshes": [
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Mechanical",
+        "LOD0_Merged_Material_Warm"
+      ],
+      "separateMeshes": [
+        "LOD0_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [],
+      "triangles": 8071,
+      "objectCount": 4,
+      "explicitGateSilhouette": false
+    },
+    {
+      "lod": "lod1",
+      "decimateRatio": 0.42,
+      "mergedMeshes": [
+        "LOD1_Merged_Material_Hull",
+        "LOD1_Merged_Material_Mechanical",
+        "LOD1_Merged_Material_Warm"
+      ],
+      "separateMeshes": [
+        "LOD1_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [],
+      "triangles": 5115,
+      "objectCount": 4,
+      "explicitGateSilhouette": false,
+      "v9RatioEnforced": true,
+      "v9TargetTotal": 3470
+    },
+    {
+      "lod": "lod2",
+      "decimateRatio": 0.15,
+      "mergedMeshes": [
+        "LOD2_Merged_Material_Hull",
+        "LOD2_Merged_Material_Mechanical",
+        "LOD2_Merged_Material_Warm"
+      ],
+      "separateMeshes": [
+        "LOD2_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [
+        "Gate_HazardLip",
+        "Gate_SpineRad_0",
+        "Gate_SpineRad_1",
+        "Gate_SpineRad_2",
+        "Gate_SpineRad_3"
+      ],
+      "triangles": 5023,
+      "objectCount": 4,
+      "explicitGateSilhouette": false,
+      "v9RatioEnforced": true,
+      "v9TargetTotal": 968
+    }
+  ]
+}

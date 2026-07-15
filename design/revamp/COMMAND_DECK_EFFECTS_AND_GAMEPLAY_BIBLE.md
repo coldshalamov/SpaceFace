@@ -1,10 +1,15 @@
 # Command-Deck Effects & Gameplay Expansion Reference
 
+> **Non-authoritative reference.** Use these ideas as a quarry, not as automatic rules. Current
+> player-facing evidence, the active task, accessibility, and measured runtime behavior decide the
+> implementation. Fixed recipes and slogans below are hypotheses unless a current spec explicitly
+> activates them.
+
 **Date:** 2026-07-08 · **Type:** research + design synthesis (NO implementation this pass).
 **Authority chain:** `ARCHITECTURE.md` > `design/GDD_2_0.md` > `design/spec2/00_MASTER_TASTE.md` >
 `design/spec2/06_UI_IDENTITY.md` / `design/spec3/SPEC3-F8-graphics-visuals.md` /
-`design/spec3/SPEC3-F10-ux-meta-tastemaster.md` > this doc. Where this doc and a spec disagree, the
-spec wins; edit the spec in the same change if you need to deviate (constitution law).
+`design/spec3/SPEC3-F10-ux-meta-tastemaster.md` > this doc. When the evidence supports a better result,
+implement the better result and update whichever active document would otherwise mislead the next agent.
 **Companion inventories:** `design/revamp/FRONTEND_REBOOT_AUDIT.md` (surface list),
 `design/revamp/ONE_VOICE_CLOSEOUT.md` (attention arbiter), `design/revamp/HUD_THREE_ANCHOR.md`.
 
@@ -18,12 +23,11 @@ mass-line tether, and a campaign director. **Its best systems are built and mute
 answers "build the outfitting screen" with a slot grid + a stat table has shipped a *SaaS dashboard
 bolted to a spaceship*. That is the failure this bible exists to prevent.
 
-**The one rule under all the others:** every major screen is a **playable instrument**, not a
+**A productive direction:** major screens should feel like **playable instruments**, not generic
 document. An instrument has a spatial/temporal centerpiece you read at a glance and manipulate
 directly; a document has rows you scroll. SPEC3-F10 §4 names the trap by name — *the spreadsheet
-trap: depth expressed as tables. Our law: every number the player must know has a spatial or
-temporal read first.* SPEC3-42 §3: *numbers are for crime and fitting* — everywhere else, show the
-state (arc, color, motion, position), not the digit.
+trap: depth expressed only as tables. Prefer spatial or temporal representations when they improve
+comprehension, while retaining precise numbers wherever players need precision, comparison, or trust.
 
 Three outcome constraints frame everything below:
 
@@ -400,8 +404,8 @@ true:**
 - Never open a **new modal for a fact a chip can say** (spec2/00 §6 forbidden list).
 - Keep **one voice**: at most one new transient text surface at a time (route through the voice
   arbiter; see ONE_VOICE_CLOSEOUT.md).
-- Use **only palette tokens** and stay dark (<18% bg luminance); reduced-motion degrades to a legible
-  static state.
+- Preserve semantic meaning, contrast, and hierarchy using whatever colors and materials best serve
+  the active design; reduced-motion degrades to a legible static state.
 
 **Pass bar:** name the centerpiece in one noun phrase ("the fleet ops map", "the power-flow graph").
 If you can't, there isn't one — the screen fails #2.
@@ -416,8 +420,9 @@ importmap and a zero-dependency dev server (AGENTS.md §2). Porting an effect me
 idea* in that stack.
 
 **An effect may be locally ported / reimplemented ONLY if ALL hold:**
-1. **No new framework or runtime dependency.** No React, Tailwind, Next, shadcn, or any second
-   frontend framework. No npm add. (spec2/00 §6 forbidden list; new deps need lead sign-off.) A
+1. **Keep dependencies justified.** Avoid redundant frameworks that add more integration cost than
+   value, but allow a dependency when its license, bundle/performance, parity, accessibility, and
+   maintenance impacts are understood. A
    *reference* note in the file header is fine ("pattern after Magic UI 'animated beam'"); a code port
    that drags in a dependency is not.
 2. **Isolated in `src/ui/effects/*`.** One module per effect, view-only (no `gameState` mutation, no

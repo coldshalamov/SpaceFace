@@ -1,0 +1,87 @@
+{
+  "schema": "spaceface.assetProvenance.v1",
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V7-GROK-001",
+  "family": "helios_hub_env_v7",
+  "generator": "tools/blender/build_m4_helios_hub_v3.py",
+  "builtAt": "2026-07-13T23:53:42Z",
+  "textureSize": 1024,
+  "qualityFloor": "SF-K0 Borrowed Time (reference craft; geometry not reused)",
+  "acceptanceClaim": false,
+  "referencePackages": [
+    "assets/ships/revamp-evidence/_k0_inspect/revamp/SpaceFace_SF-K0_Borrowed-Time_Revamp"
+  ],
+  "rejectedComparisons": [
+    "assets/ships/m4_helios_hub (rejected four-arm cylinder / stacked gate / ico rocks)",
+    "Primitive blockouts / beveled boxes as final forms",
+    "Accessory-only hulls",
+    "Generic gray materials / file-size proxies"
+  ],
+  "wiringStatus": "isolated_candidate_no_promote",
+  "allowlist": [
+    "assets/ships/m4_helios_hub_v3/**",
+    "assets/third_party/helios_v3/**",
+    "tools/blender/build_m4_helios_hub_v3.py",
+    "tools/art/finalize_m4_helios_hub_v3_candidate.mjs",
+    ".campaign/parallel-research-20260711/helios-v3-build/**"
+  ],
+  "vendorProvenance": "assets/third_party/helios_v3/PROVENANCE.json",
+  "assets": [
+    {
+      "id": "helios_hub_station",
+      "liveId": "place_station_trade_hub",
+      "candidateSha256": "B06F4DD95C904D7A7BBEFF7746F2DD9737C1520AAF7E6A3B4CC291D635E54574",
+      "candidateBytes": 7323144,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ]
+    },
+    {
+      "id": "helios_gate",
+      "liveId": "place_gate_jump_ring",
+      "candidateSha256": "0A881B785147FDDD2D09F961BA8B70B50FAE4DF403C35B9A6DE9698A279EC8F4",
+      "candidateBytes": 4556588,
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "id": "helios_rock_a",
+      "liveId": "place_asteroid_rock_a",
+      "candidateSha256": "6B84D57EC84242F08C5F9B062637CC099B185BE0EF4931CB608409EAE05FC1EA",
+      "candidateBytes": 3870512,
+      "materials": [
+        "Material_Rock",
+        "Material_Warm"
+      ]
+    },
+    {
+      "id": "helios_rock_b",
+      "liveId": "place_asteroid_rock_b",
+      "candidateSha256": "01E952990FF3A8ACECC9C40295BD7781A1BA3B132696DEFA36A7CB6E3204271B",
+      "candidateBytes": 3856024,
+      "materials": [
+        "Material_Rock",
+        "Material_Warm"
+      ]
+    },
+    {
+      "id": "helios_rock_c",
+      "liveId": "place_asteroid_rock_c",
+      "candidateSha256": "06F24C0A629E70F394DE0D86DCC3A74E730984574DE44DC259D0D9211C212023",
+      "candidateBytes": 5146536,
+      "materials": [
+        "Material_Mechanical",
+        "Material_Rock",
+        "Material_Warm"
+      ]
+    }
+  ],
+  "updatedAt": "2026-07-14T00:44:25.516Z",
+  "note": "P1 repair pass — five-asset atomic family; not promoted; not ACCEPTED"
+}

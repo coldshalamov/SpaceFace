@@ -1,12 +1,19 @@
 # SPEC2 — Agent Dispatch Prompts
 
+> **Manual prompt library — explicit activation required.** These lane briefs apply only when a
+> user/lead selects and dispatches one. They are not repository-wide ownership law. For ordinary
+> implementation, follow the applicable `AGENTS.md` and activated spec, and touch every integration
+> seam required for a coherent player-facing result. A lane boundary prevents concurrent writers;
+> it is not a permanent prohibition once ownership is free or coordinated.
+
 Ready-to-paste briefs, one per implementing lane. Each is self-contained: a fresh agent with no
 memory of this session should land in the right place from the prompt alone. Specs are the source of
 truth — these prompts frame *who* does *what*, point at the spec, and pin the exact verification
 commands (the INDEX gives these generically; this file makes them spec-specific from `package.json`).
 
 ## How to use
-1. Dispatch in **waves** (table below) — never run two specs that share a lane concurrently.
+1. When using this library as a concurrent campaign, dispatch in **waves** and avoid simultaneous
+   writers in overlapping files. Sequential/integrated work may cross the listed lanes.
 2. Paste the **shared preamble** + the chosen lane's prompt into the agent.
 3. Run the **review gate** yourself on each result before claiming it.
 
@@ -42,9 +49,9 @@ Non-negotiables:
   values are not mandatory palette, glow, radius, shell, texture, or triangle ceilings. Transcripts
   are not evidence — checks and player-facing captures are.
 - Never edit test/*.expected.json goldens to make a check pass (fix the code, or flag the golden for
-  a deliberate re-record batch). Never add dependencies silently: build-time tools need
-  documentation, and runtime deps require lead sign-off with license, bundle/perf, determinism/save,
-  and maintenance notes.
+  a deliberate re-record batch). Never add dependencies silently: build-time and runtime dependencies
+  are allowed when they materially improve the result and document license, integration/maintenance,
+  bundle/memory/performance, determinism/save, and browser/Electron parity impact as applicable.
 - Acceptance assertions in the spec are the definition of done. If the named check script does not
   exist yet, WRITE IT (it is part of the task).
 - Use the spec's named files as the ownership starting point, then touch the integration files needed
@@ -97,10 +104,10 @@ Regression floor (run all, must be green):
 
 ### 2. `03_FIRST_HOUR` — Content / narrative systems agent
 ```
-Implement design/spec2/03_FIRST_HOUR.md exactly. The problem is PACING, not deletion: the current
+Implement the player-facing outcome in `design/spec2/03_FIRST_HOUR.md`. The problem is pacing, not deletion: the current
 open teaches five things at once. Re-pace the first 15 minutes so one beat -> one verb -> silence
--> next beat. §5 copy voice is LAW here (dry-rigger, <=12 words/comms bark, no exclamations outside
-emergencies, caps for station names/callsigns, imperative tutorial lines naming ONE verb).
+-> next beat. Write concise, characterful copy that remains readable during play; do not optimize for
+a universal word, punctuation, or capitalization recipe.
 
 You own: src/systems/onboarding.js, src/systems/story.js, src/data/missions.js (STORY_BEATS /
 BEAT_CONTENT), src/contracts/ (47a scenario scripting), src/ui/screens/{mainMenu,newGame}.js, and a
@@ -126,8 +133,8 @@ floor: B2 ore >=180cr (adjust station equilibrium, NOT prices).
 
 Definition of done — scripts/check-first-hour.mjs (spec §5):
   1. Beats fire in order; no beat text before predecessor DONE + 4s silence.
-  2. Text overlap count == 0 across the full scripted first-15 (one-voice audit, automated).
-  3. Every tutorial line <=12 words, passes check:player-facing-labels.
+  2. Urgent instructional transients are not obscured; useful persistent context remains available.
+  3. Tutorial lines pass check:player-facing-labels and are readable in their real action window.
   4. B3 pirate flees <=30% hull, drops >=1 pickup; player death during B3 respawns <=3s.
 Regression floor:
   node scripts/check-first-hour.mjs
@@ -139,31 +146,30 @@ Regression floor:
 
 ### 3. `07_AUDIO_IDENTITY` — Audio / systems agent
 ```
-Implement design/spec2/07_AUDIO_IDENTITY.md exactly. The synth stack stays 100% PROCEDURAL — that is
-a shipping advantage (tiny build, infinite variation). Give it a spine. Mix rule of law: the game at
-rest is QUIET. Silence is the canvas; sounds are information.
+Implement the audio identity outcome in `design/spec2/07_AUDIO_IDENTITY.md`. Preserve the useful
+procedural foundation, but choose procedural, recorded, generated, licensed, or hybrid sources from
+the strongest coherent result and document provenance and runtime cost.
 
-You own: src/audio/audioSystem.js, src/audio/synth.js, src/data/audioRecipes.js, and a NEW
-scripts/check-audio-identity.mjs. Hook ONLY existing bus events (no new sim events).
+Work through the live audio system, recipes, buses, and `scripts/check-audio-identity.mjs`; touch
+additional integration seams when the activated result requires them. Prefer existing gameplay
+events and add a typed event only when no coherent source exists.
 Do NOT touch: sim, src/render/*, input.
 
-Mix architecture (spec §1): master <= -6 dBFS. Buses engine(-18) world/ambient(-24) combat(-12)
-ui(-20) comms(-16) music/pads(-26). Sidechain: combat ducks ambient+pads by 6dB (120ms attack, 900ms
-release). Max 12 simultaneous voices; steal oldest-quietest.
+Tune buses, headroom, ducking, and voice arbitration from representative quiet, travel, station, and
+dense-combat captures. Historical numeric targets are starting profiles, not ambition ceilings.
 
-Bind the spec2/02 juice table 1:1 (spec §3): every juice-table event gets exactly one recipe id
-named sfx.<event> (sfx.shieldBreak, sfx.killSmall, sfx.tetherLatch...). Shield hits pitch-stack +1
-semitone per consecutive hit within 2s (max +4) — the "you're winning" ladder. Tether hum while
-phase='loaded' = sine at 90 + strain*220 Hz, gain ∝ strain (reads tension with no HUD). Vent-bonus
-chime = major third pair 90ms — THE reward sound, never reuse elsewhere.
+Route gameplay audio through owned recipes and buses (spec §3); layered cues are allowed when the
+mix remains legible. Each covered event should have an intentional response, and important
+continuous states such as tether strain should remain audible without forcing one synthesis recipe.
 
-Palette-class pads (spec §4): one evolving 4-voice pad per class, LFO 0.05Hz, -26dB. core=clean
-fifths A2+E3 + bell ~45s; belt=detuned drone + brown noise LP 120Hz; fringe=minor seconds + radio
-static; anomaly=inharmonic partials (ratio 2.76) + reversed swells. Crossfade 4s on jump:arrive.
+Give sectors recognizably different ambience through composition, instrumentation, texture, spatial
+behavior, and transition design. Judge the family in a listening tour rather than a fixed oscillator,
+voice-count, or chord recipe.
 
 Definition of done — scripts/check-audio-identity.mjs (spec §6):
-  1. Recipe coverage: every juice-table event id resolves to a recipe (static audit). Missing = fail.
-  2. Mix budget: scripted 60s combat — master peak <= -6 dBFS, voice count <=12 at all times.
+  1. Important gameplay and UI events have reachable, intentional audio behavior with no dead ids.
+  2. Representative quiet/travel/station/combat scenes retain headroom and priority-cue clarity;
+     record measured peaks and voice behavior.
   3. Tether hum gain tracks strain monotonically (0 -> 0.9 sweep).
   4. Pads: crossfade <=4.5s, zero clicks/pops (zero-crossing check).
   5. Mute/volume settings apply within 100ms; per-bus sliders in Settings->Audio work.
@@ -465,7 +471,8 @@ Regression floor: npm run check:ci  (the whole suite — this spec IS the final 
 
 ## 10. Asset production — Blender MCP agent (longform, sustained run)
 
-This lane is SEPARATE from the spec2 waves. It owns `assets/**` and the source `.glb` library, and
+When explicitly dispatched, this lane is separate from concurrent spec2 writers. It temporarily owns
+`assets/**` and the source `.glb` library while its live ownership signals are present, and
 must coordinate via the lock dirs (`assets/ships/release.__lock/`, `release.__building/`). Per
 AGENTS.md: do not run it concurrently with another graphics/asset lane, and never let a code agent
 touch `assets/**` or `src/render/**` while this is active.

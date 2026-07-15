@@ -138,7 +138,7 @@ function combatAI(overrides = {}) {
     engagementTrigger: 'authorized_hostile_spawn',
     zoneId: 'zone_ceres_ambush',
     approachTelegraph: 'engine_flare',
-    noFireResponseWindowS: 0.5,
+    noFireResponseWindowS: 1,
     combatDoctrineId: 'interceptor_flyby',
     roe: 'weapons_free',
     forcePlayerTarget: true,

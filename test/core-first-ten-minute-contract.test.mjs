@@ -174,8 +174,8 @@ function assertFirstHostileLedgerComplete(ledger, label) {
     `${label}: first hostile ledger incomplete — missing [${missing.join(', ')}] (got ${JSON.stringify(ledger)})`,
   );
   assert.ok(
-    ledger.noFireResponseWindowS + 1e-9 >= DOCTRINE_TELEGRAPH_TICKS / 60,
-    `${label}: no-fire window ${ledger.noFireResponseWindowS}s must cover >=${DOCTRINE_TELEGRAPH_TICKS} ticks`,
+    ledger.noFireResponseWindowS + 1e-9 >= 1,
+    `${label}: no-fire window ${ledger.noFireResponseWindowS}s must cover >=1.0 sim seconds`,
   );
 }
 
@@ -357,11 +357,12 @@ await check('first hostile that engages records motive, trigger, zone, approach 
   assertFirstHostileLedgerComplete(ledger, 'tutorial first hostile');
 });
 
-await check('doctrine telegraph floor is ≥30 ticks (0.5s) for approach no-fire window', () => {
+await check('doctrine telegraph and engagement response windows meet their production floors', () => {
   assert.ok(DOCTRINE_TELEGRAPH_TICKS >= 30,
     `DOCTRINE_TELEGRAPH_TICKS must be ≥30 (got ${DOCTRINE_TELEGRAPH_TICKS})`);
-  assert.ok(DOCTRINE_TELEGRAPH_TICKS / 60 >= 0.5 - 1e-9,
-    'telegraph no-fire window must cover ≥0.5 sim seconds');
+  const firstHostile = makeEnemySpawnSpec('reaver_pirate', 1, { x: 180, z: 0 });
+  assert.ok(firstHostile.data.ai.noFireResponseWindowS >= 1,
+    'first-hostile no-fire response window must cover ≥1.0 sim seconds');
 });
 
 // ─── 3. Starter weapon 20-shot / 4s sustain ───────────────────────────────────

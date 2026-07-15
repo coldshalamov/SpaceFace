@@ -1,0 +1,22 @@
+{
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6.1-CODEX-001",
+  "ok": false,
+  "acceptanceClaim": false,
+  "elapsedSec": 122.74,
+  "assets": [
+    {
+      "id": "helios_gate",
+      "ok": false,
+      "lod0Triangles": null,
+      "sourceSha256": null,
+      "liveId": null
+    },
+    {
+      "id": "helios_support_gantry",
+      "ok": false,
+      "lod0Triangles": null,
+      "sourceSha256": null,
+      "liveId": null
+    }
+  ]
+}

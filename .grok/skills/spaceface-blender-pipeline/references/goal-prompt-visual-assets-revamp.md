@@ -1,89 +1,57 @@
-# Goal Prompt: Visual Assets Revamp for SpaceFace (Blender MCP)
+# Bounded Visual-Asset Campaign Prompt
 
-**Instructions for use:** Copy the entire block below (starting after the --- line) as the main goal or system prompt when briefing yourself or a subagent to perform the visual assets overhaul with the connected Blender MCP. Combine with the full pipeline skill context.
+> **Manual prompt template — explicit activation required.** Do not launch a whole-repository revamp
+> because this file was discovered. A user/lead must supply a bounded asset ID/set, desired player
+> outcome, and current ownership. Program status, current manifests, and live locks decide scope.
 
-This prompt incorporates professional 3D game design practices: strong character definition, per-asset advanced technique selection, iteration with evaluation renders, optimization within constraints, diversity, and the three-pass structure from the skills.
-
----
-
-**GOAL: Execute a comprehensive Visual Assets Pass to elevate SpaceFace graphics to professional game standards (target: 3x+ improvement in visual quality, character, polish, and appeal while maintaining excellent performance).**
-
-**Primary starting point:** The main starting ship (player's kestrel / hull_starter and its modular supporting parts: engines, fins, greebles, weapons, cockpits). Make this the flagship example of the new quality.
-
-**Full scope (prioritize after starter):**
-- All ship hulls and parts (modular system for variety).
-- Stations and large places.
-- Guns and thrusters.
-- Asteroids and rocks.
-- Planets (authored details or improvements to procedural bases).
-- Any other authored visual GLBs/props.
-
-**Core principles drawn from professional 3D game asset pipelines:**
-- **Character first:** Every asset must have distinct personality. Futuristic and beautiful as a base. Add weathered, painted, decaled elements appropriate to its role/faction (e.g., starter ship = accessible, slightly beat-up industrial with stencils and honest wear; military = disciplined armor with precise panels; pirate = heavily scarred and patched with aggressive markings). Avoid generic or toy-like results.
-- **Diversity with cohesion:** Different ships/stations feel unique but share a unified visual language (PBR materials respond consistently, color palettes from game data, hard-surface style).
-- **Professional craft:** Strong silhouettes at game distance. Interesting macro-to-micro detail hierarchy. Rich material response (layered PBR with proper variation in roughness, AO, normals). Good lighting interaction. Weathering and decals feel purposeful, not slapped on.
-- **Optimization by design (pro game dev standard):** Respect exact tri budgets from parts_manifest. Prefer bakes, trim sheets, vertex colors, and smart node materials over dense geometry or large textures. Use LODs, instancing/variation via Geometry Nodes, shared materials. Result must run smoothly even on modest hardware – no over-modeling.
-- **Advanced techniques (chosen per-case):** Do not default to basics. From the full palette of professional techniques (detailed in professional-techniques.md): non-destructive modifier stacks, advanced bevel/boolean workflows, Geometry Nodes for efficient detail and variation, sculpt for organic form, full Shader Editor node groups and layering, procedural + hand-painted hybrid texturing, multiple bake types with post-processing, decals, rigging for life/animation where it adds value, etc. Pick what elevates *this specific asset* most (e.g., heavy GN variation for asteroids, deep node layering + decals for hulls, detailed small-part surfacing for guns).
-- **Iteration with rigor:** Never one-pass. For each major asset or pass: inspect current → plan character + techniques → work → produce clean turntable/ortho/lit renders (via MCP) → self-critique (deficiency list naming exact techniques from the doc and how current falls short vs pro standards/bible) → apply fixes using those techniques → repeat until the asset looks professionally designed and 3x better.
-- **Performance + release ready:** End every asset with validation through the exact exporter contract, full check suite (assets:live, asset-status, reachability, visual-stability, perf where relevant), release build, and in-game confirmation (screenshots in flight showing improvement at multiple distances, lighting, and faction tints).
-
-**Step-by-step execution (follow the three passes from the skills):**
-1. **Preparation (MCP + reads):** 
-   - Read the full pipeline skill (especially Visual Assets Pass section), professional-techniques.md (all sections, especially asset-type guidance and MCP best practices), assets/AGENTS.md, SPEC3-F9, parts_manifest.json, bible images, concept art, QUEUE.md.
-   - In Blender via MCP: inspect current authored assets for the target (e.g., load hull_starter.glb or create new .blend from it). Get stats (tris, materials, UVs, topology issues). Render current "before" turntables (matcap for form, basic PBR lit for surfacing).
-   - Load style references (bible B-002 for ship materials, concepts) as image planes/empties.
-
-2. **For the main starting ship (and each subsequent asset):**
-   - **Define character:** Futuristic beautiful core. Weathered/painted/decals matching role (starter: practical, lived-in, beginner-friendly grit with nose art/stencils). Reference game lore/palettes.
-   - **Modeling Pass:** Establish/improve base geometry using advanced modeling techniques (full modifier mastery, consistent professional bevels, support loops, GN where efficient, sculpt for refinement, clean quad topology). Iterate with renders vs character refs + techniques doc until form is strong and professional. Respect budget. For modular: ensure good mating and slot compatibility.
-   - **Surfacing Pass:** Apply rich layered surfacing. Node groups for reusable wear/decals/panels. Procedural base + hand details. Proper multi-map bakes (AO, roughness variation, normal, emissive). Trim sheets. Faction accents + emissive. Weathering that tells a story. Iterate with lit renders. Make materials beautiful and responsive.
-   - **Life & Polish Pass:** Add thruster/gun details with character and subtle animation potential (where it fits without perf cost). Secondary polish, micro details, integration. Final character touches. Animated or multi-state turntables if applicable.
-   - **Validate:** Export ONLY via spaceface_export.py (MCP or background). Fix any contract failures. Run all relevant npm check:* commands. Update manifest if new.
-   - **Test & Document:** In-game flight tests + screenshots (distance readability, close detail, different lighting, faction variants). Note perf impact. Update iteration log with before/after, techniques used, deficiencies fixed.
-
-3. **Expansion & Systematization:**
-   - After starter ship is dramatically improved (showcase quality), apply same process to other core assets following QUEUE and priority (other hulls for diversity, key stations, weapons/thrusters, asteroids, etc.).
-   - For procedural assets (planets, some asteroids, some VFX): Improve authored components or provide better inputs for visualFactory/vfx (e.g., better normal maps or detail meshes).
-   - Ensure overall game cohesion: consistent material language, lighting response, scale, wear philosophy.
-
-4. **Optimization & Professional Balance:**
-   - Always trade for performance where needed (smart LOD thinking, efficient texturing, reuse).
-   - Result must feel like a modern released game asset pack: beautiful, characterful, performant, readable, detailed where it counts.
-
-5. **Completion criteria for the pass:**
-   - Main starting ship visibly 3x+ better with strong character.
-   - Other major categories improved.
-   - All updated assets pass exporter + checks + in-game.
-   - Documentation of techniques and improvements.
-   - Game looks diverse, professional, and polished across all asset types.
-
-**MCP Execution Rules:**
-- Prefer execute_blender_code for everything possible (scene setup, modifier stacks, bakes, inspections, renders).
-- Always inspect before editing (hierarchy, current stats).
-- Use code for repeatable/professional results (e.g., consistent bevel application, bake scene prep).
-- Render evaluation images programmatically where feasible for consistency.
-- After Blender work: trigger release build steps and checks via terminal if needed.
-- Respect all locks, contracts, and release process.
-
-**Constraints (do not break):**
-- Modular ship system and assembly logic.
-- Exact material roles, ORM contract, chamfer/bevel rules, tri budgets.
-- Author in appropriate locations, release to release/parts.
-- No unnecessary runtime impact.
-- Player ship may blend authored + code-native (coordinate).
-
-**Output format for progress:**
-- For each major step/asset: describe character choice, techniques selected and why, key MCP actions, before/after description + (if possible) render paths.
-- Deficiency lists and fixes.
-- Final check outputs and in-game evidence.
-- Recommendations for further passes.
-
-Begin immediately with the main starting ship. Make it the proof of the new professional standard. Then expand. Use the skills as your detailed playbook.
-
-This revamp will make the game look like it was built by a professional team using real 3D game asset pipelines.
+Copy and fill the block below for a named Blender/asset task.
 
 ---
 
-**End of goal prompt block.**
+## Goal
 
-When using with Blender MCP, prefix or combine with the current skill context and any active .blend or GLB. Iterate until the visual quality jump is obvious and assets have distinct, high-quality character while staying lean and performant.
+Improve `<ASSET_IDS>` so `<PLAYER_FACING_OUTCOME>` reaches a professional standard in the normal
+SpaceFace route without lowering visible quality or introducing unjustified runtime cost.
+
+## Read first
+
+- `.grok/skills/spaceface-blender-pipeline/SKILL.md`
+- `assets/AGENTS.md` and the exact current asset manifest/classification records
+- `tools/blender/spaceface_export.py`
+- `design/spec3/SPEC3-F9-asset-pipeline.md`
+- `<TASK_SPEC_AND_RELEVANT_REFERENCES>`
+
+Do not infer readiness, ownership, or quality from old queue prose, historical prompts, file size, or
+the existence of a GLB. Verify the exact source, release route, runtime map, and current player view.
+
+## Work
+
+1. Check the shared tree and live asset/release/authoring locks. Do not enter another writer's lane.
+2. Inspect the exact current source and runtime result. Preserve representative baseline views.
+3. Define role, silhouette/identity intent, camera distances, integration needs, and the few material
+   defects that currently prevent the desired outcome.
+4. Choose modeling, surfacing, texture, bake, animation, socket, LOD, or reuse techniques because they
+   solve those defects. `professional-techniques.md` is an optional menu, not a quota.
+5. Author and evaluate fully framed neutral/lit views and the real player camera. Repair meaningful
+   defects while evidence still exposes them; do not manufacture iteration or deficiency counts.
+6. Optimize structurally through appropriate topology, bakes, material sharing, batching/instancing,
+   and LOD/HLOD. Profile material cost. Manifest limits are diagnostics/alarms unless the live exporter
+   defines a hard interoperability constraint; do not cap quality by rote.
+7. Export through the sanctioned pipeline. Complete manifest/runtime wiring when this task owns the
+   seam and it is free; otherwise hand off explicitly to its live owner.
+8. Run the relevant asset, reachability, visual-stability, and measured-performance checks. Verify the
+   authored result on the normal player route.
+
+## Evidence and completion
+
+- exact source/candidate identity and exporter result;
+- consistent before/after form and material views plus useful detail views;
+- current normal-route screenshots or clips at representative gameplay distances;
+- relevant check output and measured performance when cost changed materially;
+- provenance/license records for external or generated inputs;
+- independent visual review for consequential player-facing assets.
+
+Finish when objective defects are resolved and the technical plus player-facing evidence is
+convincing. Named techniques, self-scores, pass counts, and long reports do not prove completion.
+
+---

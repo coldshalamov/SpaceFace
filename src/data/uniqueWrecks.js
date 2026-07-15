@@ -364,7 +364,14 @@ const RAW_UNIQUE_WRECKS = [
     rumorSources: [{ id: 'silver_draft_clerk', sourceRef: 'bar.helios_meridian.silver_draft', channelId: 'bar' }],
     provenance: { lossId: 'loss_mts_silver_draft', incidentId: 'incident_silver_draft_ledger', sourceRef: 'bar.helios_meridian.silver_draft', recordType: 'courier_loss' },
     hazardContext: { label: 'Helios outer field', anchorType: 'sector', anchorId: 'sector_helios_prime', zoneId: null, hazardTypes: [], placementRule: 'outer_field', approachGate: null },
-    complications: [{ id: 'silver_draft_cleaner', kind: 'cleaner_pursuit', trigger: 'bearing_recorded', role: 'meridian_cleaner' }],
+    complications: [{
+      id: 'silver_draft_cleaner',
+      kind: 'cleaner_pursuit',
+      trigger: 'bearing_recorded',
+      role: 'meridian_cleaner',
+      encounterRef: 'unique_wreck_silver_draft_cleaner',
+    }],
+    encounterRefs: ['unique_wreck_silver_draft_cleaner'],
     seededTimers: [{ id: 'silver_draft_cleaner', trigger: 'bearing_recorded', minS: 180, maxS: 300, seedSalt: 'wreck_mts_silver_draft:cleaner:v1', clock: 'sim_time' }],
     placement: { anchorLocal: { x: 0, z: 0 }, minRadius: 1350, maxRadius: 1850, bearingRadiusMin: 320, bearingRadiusMax: 520 },
     decision: salvageDecision({
@@ -390,7 +397,15 @@ const RAW_UNIQUE_WRECKS = [
     rumorSources: [{ id: 'cassandra_thread_reveal', sourceRef: 'campaign.cassandra_reveal', channelId: 'campaign' }],
     provenance: { lossId: 'loss_choir_cassandra', incidentId: 'incident_cassandra_treaty_sabotage', sourceRef: 'campaign.cassandra_reveal', recordType: 'diplomatic_loss' },
     hazardContext: { label: 'Ice Fissure Signal', anchorType: 'poi', anchorId: 'poi_haumea_fissure', zoneId: 'zone_haumea_fissure', hazardTypes: ['dense_asteroid', 'anomaly_deep'], placementRule: 'inside_ice_fissure', approachGate: null },
-    complications: [{ id: 'cassandra_hardliners', kind: 'story_reward_pursuit', trigger: 'story_reward_granted', factionIds: ['faction_choir', 'faction_vael'] }],
+    complications: [{
+      id: 'cassandra_hardliners',
+      kind: 'story_reward_pursuit',
+      trigger: 'story_reward_granted',
+      requiredRewardId: 'unique_cassandra_treaty',
+      factionIds: ['faction_choir', 'faction_vael'],
+      encounterRef: 'unique_wreck_cassandra_hardliners',
+    }],
+    encounterRefs: ['unique_wreck_cassandra_hardliners'],
     placement: { anchorLocal: { x: 0, z: 180 }, minRadius: 280, maxRadius: 460, bearingRadiusMin: 300, bearingRadiusMax: 520 },
     decision: salvageDecision({
       headline: 'CASSANDRA TREATY CLAIM', prompt: 'Choose whether the peace draft travels or disappears.',

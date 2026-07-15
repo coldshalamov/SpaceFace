@@ -180,8 +180,6 @@ export const tetherGameplay = {
     this._ignoreReleaseCutUntilReelIdle = true;
     this._latchGraceUntil = now + 0.55;
     this.bus.emit('tether:latched', { targetId: target.id, type: TETHER_DEF_ID });
-    // Juice: acknowledge latch within one frame (constitution input ACK).
-    this.bus.emit('audio:cue', { id: 'ui_confirm' });
     this.bus.emit('camera:shake', { amount: 0.06 });
   },
 
@@ -191,16 +189,22 @@ export const tetherGameplay = {
     // Validate the leased entity at the moment F is consumed, then resolve it before every lower-
     // authority selected-target/cursor/nearest path so dense rocks and traffic cannot steal it.
     const focus = state.player?.flybyFocus;
-    const focusTarget = focus?.active && focus.targetId != null
-      ? state.entities?.get(focus.targetId)
-      : null;
-    if (isAuthorizedFocusTarget(state, player, focusTarget)) {
+    if (focus?.active) {
+      const focusTarget = focus.targetId != null ? state.entities?.get(focus.targetId) : null;
+      // Combat can kill or deauthorize the leased target after flybyFocus updates but before this
+      // later system consumes F. The lease stays fail-closed for that tick; its owner clears it on
+      // the next update rather than allowing tether targeting to retarget or mutate Focus state.
+      if (!isAuthorizedFocusTarget(state, player, focusTarget)) return null;
       const focusDx = focusTarget.pos.x - player.pos.x;
       const focusDz = focusTarget.pos.z - player.pos.z;
       const focusDistance = Math.hypot(focusDx, focusDz);
       if (focusDistance <= maxLength + (focusTarget.radius || 0)) {
         return { entity: focusTarget, targetWorld: surfacePointToward(focusTarget, player.pos) };
       }
+      // A valid Focus lease remains exclusive even before the target enters tether reach. Falling
+      // through here would turn the authored exact-target window into nearest-mode assistance and
+      // let nearby rocks or traffic steal the press.
+      return null;
     }
     const locked = lockedHostileEntity(state);
     if (locked && isAttachable(locked, player.id) && isHostileToPlayer(locked, player.team, state)) {

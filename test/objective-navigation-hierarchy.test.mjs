@@ -92,7 +92,7 @@ test('flight HUD and Mission Log paint one command instead of repeated story/mis
   assert.match(hud, /one-objective-one-action-one-threat/);
   assert.match(hud, /setDisplay\(objWrap, false\)/,
     'legacy multi-mission HUD list must remain hidden');
-  assert.match(hud, /NO GOAL MARKER · TRACK ONE CONTRACT/,
+  assert.match(hud, /NO GOAL MARKER · .*MISSION LOG/,
     'untracked contracts must give one explicit recovery action');
   assert.match(hud, /AMBER DIAMOND \/ GOAL/,
     'goal line must name the marker instead of relying on color alone');

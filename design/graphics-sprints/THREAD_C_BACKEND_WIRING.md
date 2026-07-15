@@ -1,5 +1,9 @@
 # Thread C — Backend Wiring (Runtime Maps)
 
+> **Manual sprint lane.** This scope is exclusive only while Thread C is explicitly activated and its
+> ownership signal is live. Outside that sprint, the agent owning a coherent asset task may complete
+> required runtime wiring after checking current locks and diffs.
+
 ## Domain (exclusive)
 
 **Owns:** `src/render/partsLibrary.js` (slots + role maps), `src/data/sectorAnchors.js`, commodity→place spawn maps, `assets/ASSET_STATUS.json` wiring fields, handoff processing for **RELEASE_BUILT+** IDs only.

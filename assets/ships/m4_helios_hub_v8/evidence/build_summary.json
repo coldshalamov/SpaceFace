@@ -1,0 +1,43 @@
+{
+  "packet": "M4-HELIOS-V8-NEW-FOUNDATION-GROK-001",
+  "ok": false,
+  "acceptanceClaim": false,
+  "elapsedSec": 774.06,
+  "assets": [
+    {
+      "id": "helios_hub_station",
+      "ok": false,
+      "lod0Triangles": null,
+      "sourceSha256": null,
+      "liveId": null
+    },
+    {
+      "id": "helios_gate",
+      "ok": false,
+      "lod0Triangles": null,
+      "sourceSha256": null,
+      "liveId": null
+    },
+    {
+      "id": "helios_rock_a",
+      "ok": false,
+      "lod0Triangles": null,
+      "sourceSha256": null,
+      "liveId": null
+    },
+    {
+      "id": "helios_rock_b",
+      "ok": false,
+      "lod0Triangles": null,
+      "sourceSha256": null,
+      "liveId": null
+    },
+    {
+      "id": "helios_rock_c",
+      "ok": false,
+      "lod0Triangles": null,
+      "sourceSha256": null,
+      "liveId": null
+    }
+  ]
+}

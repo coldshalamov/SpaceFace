@@ -1,0 +1,15 @@
+node:fs:2414
+    return binding.writeFileUtf8(
+                   ^
+
+Error: UNKNOWN: unknown error, open 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v8\evidence\three_preview_helios_hub_station.html'
+    at writeFileSync (node:fs:2414:20)
+    at writePreviewHtml (file:///C:/Users/93rob/Documents/GitHub/SpaceFace/tools/art/_capture_v8_three_repair.mjs:108:3)
+    at file:///C:/Users/93rob/Documents/GitHub/SpaceFace/tools/art/_capture_v8_three_repair.mjs:137:5 {
+  errno: -4094,
+  code: 'UNKNOWN',
+  syscall: 'open',
+  path: 'C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v8\\evidence\\three_preview_helios_hub_station.html'
+}
+
+Node.js v24.15.0

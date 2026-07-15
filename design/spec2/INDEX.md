@@ -4,11 +4,10 @@
 PC/browser release bar. Written 2026-07-04 by the lead-design session. Every file is self-contained for one agent
 lane; `00_MASTER_TASTE.md` is historical context, not a visual constitution that every task must inherit.
 
-**Current status:** before dispatching, read `design/CURRENT_BUILD_STATUS.md`. As of 2026-07-04,
-SPEC2/01, /06, and /07 are built on targeted checks. SPEC2/02, /03, and /05 have passing targeted
-checks but still need broader runtime/browser proof (`check:flight:clean`, `check:first-15-runtime`,
-`check:market-first-loop`). SPEC2/04 is not built. SPEC2/08 remains a PC/browser release-readiness
-lane, not handheld-specific work.
+**Current status:** before activating a spec, read `design/program/README.md`, then
+`design/program/02_REMAINING_WORK.md` and `design/program/03_LIVE_ACCEPTANCE_MATRIX.md`. This index
+describes the suite's intended relationships; it does not own completion claims. Trust live checks
+and player-route evidence over dated prose.
 
 ## Dispatch order (respects dependencies + file-conflict lanes)
 | Wave | Spec | Lane / files | Parallel-safe with |
@@ -21,7 +20,7 @@ lane, not handheld-specific work.
 | 3 | `04_WORLD_ALIVE` | sim: encounterDirector, traffic, world dressing | 06 |
 | 3 | `06_UI_IDENTITY` | frontend: hud, radar, targetPanel, ui.css | 04 |
 | 4 | `08_RELEASE_READINESS` | PC/browser release/QA: checks, captures, soak | (after all) |
-Do not run two specs that share a lane concurrently. Wave 2 waits for 01 (juice binds to tether
+Coordinate only genuinely overlapping files among concurrently active specs. Wave 2 waits for 01 (juice binds to tether
 phases). Wave 3 waits for 02 (encounters use cruise; UI uses juice events). BEFORE wave 4: run the
 47a golden re-record batch (BUILD_PLAN "Golden/tape note").
 
@@ -40,9 +39,9 @@ Same pattern per spec. `agy -p "..." --dangerously-skip-permissions` works for t
 - Explain deliberate changes to behavioral acceptance values in the same change. Historical visual
   values are references, not mandatory palette, glow, radius, shell, texture, or triangle ceilings.
 - Acceptance assertions are the definition of done; transcripts are not evidence — checks are.
-- Never edit test/*.expected.json to make something pass. Never add dependencies silently: build-time
-  tools need documentation, and runtime deps require lead sign-off with license, bundle/perf,
-  determinism/save, and maintenance notes.
+- Never edit `test/*.expected.json` merely to make something pass. Dependencies require documented
+  license, bundle/performance, determinism/save, browser/Electron parity, and maintenance impact;
+  architectural changes require the normal architecture review.
 - Regression floor after every task: the spec's named checks + `npm run check:sim:compare`
   (hashEqual:true) + `node scripts/check-tether-gameplay.mjs`.
 

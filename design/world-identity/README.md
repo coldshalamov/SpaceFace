@@ -13,9 +13,10 @@ and navigation. It owns design mapping, not global completion status.
    entries marked future are plans, not shipped claims.
 6. [`place-identity-index.json`](place-identity-index.json) — machine-readable mapping.
 
-`sectors/*.md` are per-sector render/style sheets. Narrative meaning remains under
-[`docs/worldbuilding/`](../../docs/worldbuilding/README.md); these sheets own palette, placement,
-landmark, and asset-role requirements rather than duplicating story prose.
+`sectors/*.md` are per-sector render/style briefs. Narrative meaning remains under
+[`docs/worldbuilding/`](../../docs/worldbuilding/README.md); these sheets express atmosphere,
+placement, landmark, and asset-role intent. Their palettes and techniques are references to interpret
+against current assets, lighting, accessibility, and player-facing evidence—not fixed requirements.
 
 ## Status and evidence
 

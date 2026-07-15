@@ -1,13 +1,14 @@
-# SpaceFace Current Build Status
+# SpaceFace Historical Build-Status Snapshot
 
-Updated: 2026-07-04 · **Superseded for product priority 2026-07-09**
+Snapshot date: 2026-07-04 · **Superseded; not current status or build order**
 
-> **Unified product truth now lives in `design/vision/`.**  
-> Read `design/vision/README.md` → `01_CURRENT_STATE.md` (done/play truth) → `03_MASTER_BUILD_PLAN.md` (what to build).  
-> This file remains a historical Spec2 check map; it **drifts** and does not encode play-fun or the 2026-07-09 constitution.
+> **Unified cross-program status now lives in `design/program/`.** Read
+> `design/program/README.md` → `01_VERIFIED_DONE.md` → `02_REMAINING_WORK.md` →
+> `03_LIVE_ACCEPTANCE_MATRIX.md`. This file remains only because historical plans cite it. Do not
+> dispatch from its tables or copy its results without rerunning the live check.
 
-This is the repo-facing status map for SpaceFace 2.0. It reconciles `design/GDD_2_0.md`,
-`design/BUILD_PLAN_2_0.md`, `design/spec2/*`, live source files, and the named check scripts.
+The tables below record an older Spec2 audit and may contain corrections added later. They are
+forensic context, not a reconciliation surface.
 
 Target platform: PC/browser. Electron/packaged desktop is an optional distribution shell for the same
 game route. Handheld-specific readiness is not a target and should not be used as a release blocker.
@@ -26,7 +27,6 @@ game route. Handheld-specific readiness is not a target and should not be used a
 | SPEC2/01 Massline feel | `node scripts/check-massline-feel.mjs` passed. |
 | SPEC2/03 First-hour static pacing slice | `node scripts/check-first-hour.mjs` passed; `npm run check:onboarding` passed. Runtime proof is tracked below. |
 | SPEC2/07 Audio identity | `node scripts/check-audio-identity.mjs` passed. |
-| Bundle/build import surface | `npm run check:bundle` passed in the current tree: bundle builds clean and `check-asset-reachability` reports the referenced runtime assets exist and are bundled. |
 | SPEC2/02 Flight/camera/juice contract slice | `node scripts/check-juice-contract.mjs` passed. Browser visual proof is tracked below. |
 | SPEC2/05 Economy progression/mining additions | `node scripts/check-price-memory.mjs` passed; `npm run check:mining:2` passed; `npm run check:market-nav` passed. Runtime market-loop proof is tracked below. |
 | SPEC2/06 UI identity | `node scripts/check-ui-identity.mjs` passed. |
@@ -42,6 +42,7 @@ game route. Handheld-specific readiness is not a target and should not be used a
 
 | Area | Current state | Next action |
 |---|---|---|
+| Bundle/build import surface | Fresh `npm run check:bundle` on 2026-07-14 reaches the render hot-path checks, then fails `check:ship-material-sharing`: the crowded-flight profile reports 53 visible material keys against the ceiling of 49. Artifact: `.devshots/perf/performance-profile.json`. | Keep the graphics/asset lane authoritative; diagnose material-role reuse or batching there without lowering visible quality or rolling assets back. Do not describe the bundle gate as green until this exact check passes. |
 | Cruise tier | `src/systems/cruise.js` is wired and `check-juice-contract` verifies charge/drop behavior. `scripts/check-cruise.mjs` **EXISTS** (11KB; verified 2026-07-06) — drives the real cruise system deterministically and asserts charge time, multipliers, damage/mass-lock/manual drops, weapons-block guard. | *(Corrected 2026-07-06: previously listed as "missing" — stale.)* Run `npm run check:cruise`; if it reds, the script exists, so debug the failure rather than looking for the file. |
 | First-15 runtime | Static first-hour/onboarding checks pass, but `npm run check:first-15-runtime` currently times out. | Repair the runtime probe or the route it waits for; do not call first-15 release-ready until this is green. |
 | Market first-loop runtime | `npm run check:market-nav` passes, but `npm run check:market-first-loop` currently times out. `npm run check:balance` exits 0 with warnings. | Repair the runtime market loop proof, then decide whether balance warnings are acceptable or need tuning before release. |
@@ -63,13 +64,17 @@ game route. Handheld-specific readiness is not a target and should not be used a
 
 - `design/GDD_2_0.md` is the design authority.
 - `ARCHITECTURE.md` is the technical authority.
-- `design/BUILD_PLAN_2_0.md` is the execution plan, but older table rows can drift; this file is
-  the current reconciliation point.
+- `design/BUILD_PLAN_2_0.md` and this file are historical. Current work is admitted and tracked in
+  `design/program/`.
 - `design/HUD_REVAMP_DESIGN.md` is superseded where it asks for visor/cockpit/helmet HUD motifs.
 - `design/V2_MASTER_PLAN.md`, `design/IMPROVEMENT_IDEAS.md`, and `design/specs/*.md` are historical
   or reference material unless a current 2.0 doc explicitly revives a section.
 
-## Continued Build Plan
+## Historical continued build plan (do not execute without re-admission)
+
+The following sequence is preserved for archaeology. Some items are now built, renamed, or replaced.
+Route any still-valuable outcome through `design/program/06_RETAINED_FUTURE_BACKLOG.md` and admit a
+fresh bounded slice to `design/program/02_REMAINING_WORK.md` before implementation.
 
 1. **Stabilize current truth gates.**
    Keep `check:bundle`, `check:flight:clean`, `check:assets:live`, and `check:visual-stability` green; then fix `check-ui-screen-imports`,

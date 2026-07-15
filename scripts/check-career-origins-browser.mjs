@@ -11,7 +11,9 @@ import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 import { closeOwnedResources } from './lib/alphaLiveBaselineContracts.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const CAREER_ID = String(process.argv.find((arg) => arg.startsWith('--career='))?.split('=')[1] || 'hauler');
+const careerArg = process.argv.find((arg) => arg.startsWith('--career='));
+assert(careerArg, 'pass one explicit --career=hauler|hunter|prospector (the npm matrix supplies all three)');
+const CAREER_ID = String(careerArg.split('=')[1]);
 assert(['hauler', 'hunter', 'prospector'].includes(CAREER_ID), `unsupported career ${CAREER_ID}`);
 const OUTPUT = path.join(ROOT, '.devshots', 'm3-career-origins', CAREER_ID);
 const FIRST_CONTRACT = Object.freeze({
@@ -154,6 +156,13 @@ try {
       { name: 'public-route', status: 'pass' },
       { name: 'authored-assets-ready', status: routeEvidence.launchSnapshot?.authored?.ready ? 'pass' : 'fail' },
       { name: 'physical-dock', status: routeEvidence.stableStation?.pass ? 'pass' : 'fail' },
+      {
+        name: 'first-objective-waypoint',
+        status: accepted.activeWaypointMarkerId === accepted.missionMarkerId ? 'pass' : 'blocked',
+        detail: accepted.activeWaypointMarkerId === accepted.missionMarkerId
+          ? 'accepted origin owns the active waypoint'
+          : `active waypoint remains ${accepted.activeWaypointMarkerId || 'unset'}; this acceptance-only probe does not claim objective navigation`,
+      },
     ],
   }, null, 2)}\n`, 'utf8');
 

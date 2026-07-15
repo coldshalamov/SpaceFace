@@ -1,0 +1,13 @@
+Poly Haven texture: metal_plate (diamond plate)
+Canonical: https://polyhaven.com/a/metal_plate
+License: CC0 1.0 — https://polyhaven.com/license
+Resolution: 2k JPG maps
+Acquired: 2026-07-11T15:17:42.0805920-04:00
+Files SHA256:
+metal_plate_diff_2k.jpg:864c9a653acd1f5034c9bbe7f955b18cc9687a81bbdfa805e7a2319939676910
+metal_plate_nor_gl_2k.jpg:146f8c00874a584bcc4a184643e72f160da2a7568d469198e02b26c9ff93cf43
+metal_plate_rough_2k.jpg:3cdc139df4ec5b304dd986278c1fb026c67c42e6623f0ee5caa7f373d51c7bef
+metal_plate_ao_2k.jpg:31e586f0bde9f28331077b30495f0f324aa9f91a9d656205d03242d1d3e2e439
+metal_plate_arm_2k.jpg:3b944444e12815f96c6850b385ba0e8f2f805338d8ad9e750907474b494f1ebe
+metal_plate_metal_2k.jpg:cc24a1f9aeaae8ef82266b86b6a875391312be113fbab03f6cb0697e5be00fdd
+metal_plate_disp_2k.jpg:c4ba1bc602d25bdd4725d856bbe5713373fa08456543d4d0168d9ff4e37c5f52

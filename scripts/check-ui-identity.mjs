@@ -1,55 +1,44 @@
-// check-ui-identity.mjs — SPEC2/06 UI IDENTITY static audit.
+// check-ui-identity.mjs — SPEC2/06 UI reachability and behavior audit.
 //
-// Verifies (via source reading) that the key contracts from
-// design/spec2/06_UI_IDENTITY.md are met.
-// Follows the same static needle-in-source-file pattern as check-ui-a11y.mjs.
+// This gate protects information hierarchy, targeting/navigation affordances, one-voice routing,
+// accessibility semantics, and bounded update cadence. It deliberately does not prescribe a
+// universal layout, palette, blur policy, transition duration, or pixel recipe; those require
+// player-route screenshots and the dedicated accessibility/performance checks.
 
+import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  contactDisplayBand,
+  contactDisplayLimit,
+  contactOverflowSummary,
+  createContactRosterClock,
+  consumeContactRosterClock,
+} from '../src/ui/hud.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const checks = [
-  // ---- §1: Three-anchor HUD -----------------------------------------------
+  // ---- §1: Persistent flight information remains reachable ---------------
   {
     path: 'src/ui/hud.js',
-    label: 'HUD three-anchor layout — schematic + rightdock + status cluster',
+    label: 'Flight HUD keeps the contact roster, target detail and in-world target status reachable',
     needs: [
-      'sf-schematic',      // bottom-left ship schematic
-      'sf-rightdock',      // bottom-right radar+overview+target
-      'sf-cluster',        // bottom-center status cluster (SPD/WPN/TETHER)
-      'sf-overview',       // overview strip created inside rightDock
-      'sf-target-arcs',    // in-world target arcs overlay
-    ],
-    forbids: [
-      // Spec §00: no visor/cockpit motifs as live DOM classes
-      // (comment mentions why they were removed — that's fine)
-      'backdrop-filter',   // §00 explicitly forbidden (GPU cost)
+      'sf-overview',
+      'createTargetPanel(ctx)',
+      'sf-target-arcs',
     ],
   },
 
   // ---- §2: Overview Strip -------------------------------------------------
   {
     path: 'src/ui/hud.js',
-    label: 'Overview strip — 5 Hz cadence, selected/threat/ally priority, responsive row cap, truthful overflow, click-to-target, memoised signature',
+    label: 'Contact roster — bounded cadence, useful priority, truthful overflow, click-to-target and memoised DOM work',
     needs: [
-      // Elapsed-time cadence stays at 5 Hz independently of display refresh rate.
-      'createContactRosterClock()',
-      'consumeContactRosterClock(overviewClock, frameDt)',
-      // Selected → threat → ally → wreck → ambient priority band.
-      'contactDisplayBand(a, targetId)',
-      // 5/4/3 row cap by viewport.
-      'contactDisplayLimit(',
-      // Truthful category overflow rather than a generic count.
-      'contactOverflowSummary(contacts, visibleCount)',
-      // Click sets targetId
       'state.player.targetId = e.id',
-      // Left IFF rule per row
       'sf-overview-row',
-      // Memoised via signature equality check
       'lastOverviewSignature',
-      // IFF from accessibility.js
       'SEMANTIC_PALETTE',
     ],
     forbids: [
@@ -105,47 +94,33 @@ const checks = [
     ],
   },
 
-  // ---- §3: Target Arcs (in hud.js) ----------------------------------------
+  // ---- §3: Target status mirrored in-world --------------------------------
   {
     path: 'src/ui/hud.js',
-    label: 'Target arcs — three SVG circles, radius offsets +6/+9/+12, 300° arc, 250 ms fade on death',
+    label: 'Target status overlay — shield, armor and hull layers use the real hp fractions and clear on death',
     needs: [
       'sf-arc-shield',
       'sf-arc-armor',
       'sf-arc-hull',
-      // Radius offsets: target.radius + 6/9/12 (larger = outer = shield)
-      'tgt.radius + 12',   // shield outer
-      'tgt.radius + 9',    // armor mid
-      'tgt.radius + 6',    // hull inner (spec says +6/+9/+12 from inner to outer)
-      // 300° arc
-      '300',
-      // 250 ms fade timer (260 = next-frame buffer over 250)
-      '260',
-      // HP fraction formula
       'tgt.shield / tgt.shieldMax',
+      'tgt.armorHp / tgt.armorMax',
+      'tgt.hull / tgt.hullMax',
+      'if (!tgt || !tgt.alive)',
     ],
   },
 
   // ---- §4: Radar honesty --------------------------------------------------
   {
     path: 'src/ui/radar.js',
-    label: 'Radar honesty — station square, gate ring, wreck cross, objective white outline, scan ping "?", nearest-hostile bezel arrow',
+    label: 'Radar honesty — stations, gates, wrecks, objectives, unknown pings and off-screen hostiles remain distinguishable',
     needs: [
-      // Station: fillRect (square)
       'fillRect',
-      // Gate: arc/circle (isGate branch)
       'isGate',
-      // Wreck: cross (two diagonal lines)
       "'wreck'",
-      // Objective diamond 1-px white outline
-      "strokeStyle = '#ffffff'",
       'drawWaypointDiamond',
       'drawWaypointEdgeArrow',
       'waypointLabel',
-      'rgba(4,28,38,0.54)',
-      // Scan pings as hollow '?'
       "strokeText('?'",
-      // Nearest off-screen hostile bezel arrow only (max 2: objective + hostile)
       'nearestOffScreenHostile',
     ],
   },
@@ -164,51 +139,24 @@ const checks = [
   // ---- §5: Local map polish -----------------------------------------------
   {
     path: 'src/ui/screens/localmap.js',
-    label: 'Local map — single-row legend, wheel-zoom 150 ms ease, hostile velocity ticks',
+    label: 'Local map — legend, wheel zoom and hostile motion cues remain available',
     needs: [
-      // One-line legend: nowrap
-      'white-space: nowrap',
-      // Wheel zoom listener
       "'wheel'",
       'targetZoom',
-      // 150 ms exponential ease (τ = 0.10 s)
-      '0.10',
-      // Velocity/3 ticks for hostiles
-      'velocity.x / 3',
-      'velocity.z / 3',
-      // 24 px max clamp
-      '24',
+      'velocity.x',
+      'velocity.z',
     ],
   },
 
   // ---- §5: Star map polish ------------------------------------------------
   {
     path: 'src/ui/screens/starmap.js',
-    label: 'Star map — security pips helper, 3-px marching dash route, price-memory per-node',
+    label: 'Star map — security semantics, route state and remembered prices remain available',
     needs: [
-      // Security pips HTML helper function
       'securityPips',
-      // Filled pip chars in pips output
-      '●●●',
-      // Marching dash: 3/z line width
-      'lineWidth = 3 / z',
-      // Animated lineDashOffset for marching effect
       'lineDashOffset',
-      // Price-memory quote per node (canvas label)
       'commQuote',
       'priceText',
-    ],
-  },
-
-  // ---- §6: Dialog chrome --------------------------------------------------
-  {
-    path: 'styles/ui.css',
-    label: 'Dialog chrome — 150 ms screen transitions, focus ring 2 px #39d0ff, destructive #ff5c5c text',
-    needs: [
-      '150ms',
-      '#39d0ff',
-      'focus-visible',
-      '#ff5c5c',
     ],
   },
 
@@ -236,6 +184,35 @@ const checks = [
     ],
   },
 ];
+
+// Exercise the roster contract through exported behavior rather than pinning its implementation
+// spelling or a particular visual composition.
+{
+  const selected = { e: { id: 'selected' }, isWreck: true };
+  const threat = { e: { id: 'threat' }, hostile: true };
+  const ally = { e: { id: 'ally' }, ally: true };
+  const wreck = { e: { id: 'wreck' }, isWreck: true };
+  const ambient = { e: { id: 'ambient' } };
+  const ordered = [ambient, wreck, ally, threat, selected]
+    .sort((a, b) => contactDisplayBand(a, 'selected') - contactDisplayBand(b, 'selected'))
+    .map((contact) => contact.e.id);
+  assert.deepEqual(ordered, ['selected', 'threat', 'ally', 'wreck', 'ambient'],
+    'contact roster must prioritize the selected contact, threats and allies over ambient traffic');
+
+  const narrowLimit = contactDisplayLimit(800, 600);
+  const wideLimit = contactDisplayLimit(1920, 1080);
+  assert.ok(narrowLimit > 0 && wideLimit >= narrowLimit,
+    'contact roster row capacity must remain positive and responsive');
+  assert.match(contactOverflowSummary([selected, threat, ally, wreck, ambient], 2), /^\+3\b/,
+    'contact roster overflow must disclose the omitted count');
+
+  const clock = createContactRosterClock();
+  assert.equal(consumeContactRosterClock(clock, 0.19), false,
+    'contact roster must not mutate every render frame');
+  assert.equal(consumeContactRosterClock(clock, 0.01), true,
+    'contact roster must still refresh at its bounded presentation cadence');
+  console.log('ok   contact roster behavior — priority, responsive capacity, truthful overflow and bounded cadence');
+}
 
 let ok = 0, fail = 0;
 for (const check of checks) {

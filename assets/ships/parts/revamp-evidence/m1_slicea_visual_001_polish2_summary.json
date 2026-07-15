@@ -1,0 +1,60 @@
+{
+  "packet": "M1-SLICEA-VISUAL-001",
+  "cycle": "polish2",
+  "date": "2026-07-11",
+  "status": "needs_continuation",
+  "selfAccept": false,
+  "gates": {
+    "check:asset-status": "PASS",
+    "check:asset-reachability": "PASS",
+    "check:station-archetype-glb-load": "PASS",
+    "check-place-concept-resemblance": "PASS",
+    "check:assets:live": "PASS",
+    "check:visual-stability": "PASS"
+  },
+  "k0Benchmark": {
+    "revampZip": "C:/Users/93rob/Downloads/SpaceFace_SF-K0_Borrowed-Time_Revamp.zip",
+    "runtimeZip": "C:/Users/93rob/Downloads/SpaceFace_SF-K0_Borrowed-Time_Runtime.zip",
+    "revampSha256Verified": "5457DACD44B63CF170ECF65DB253BB607D7615B8DDBD3CF97666D155BA355000",
+    "runtimeSha256Verified": "D4ABD62179F9DFEDE39F4DF8275B2C4DBC1064E0EC3FDC936AF7BC448E0759E8",
+    "stagedReadOnly": "assets/ships/parts/revamp-evidence/_k0_inspect/revamp/",
+    "wiredIntoCanonical": false,
+    "candidatesPendingProvenance": [
+      "exports/SF_K0_Borrowed_Time_LOD0/1/2.glb",
+      "exports/SF_K0_hull.glb",
+      "exports/SF_K0_engine_runtime.glb",
+      "textures/*_basecolor/normal/orm.png",
+      "source .blend if present in archive"
+    ],
+    "knownHazards": [
+      "many primitives/materials",
+      "missing tangents risk",
+      "socket .001 suffixes",
+      "no collision",
+      "separate LODs",
+      "embedded plume"
+    ],
+    "artDirectionFloorUsed": "wedge/axial hard-surface density + cyan-repair/orange-rail PBR hierarchy (visual target only)"
+  },
+  "changes": {
+    "hub": "Connected commercial mass retained; denser panel belts, arm rings, hangar mouths, truss ring, cargo/customs asymmetry, warm Helios gold bands, glass windows, radiators. Still reads as modular-primitive blockout vs Helios concept.",
+    "gate": "Full-object framing; multi-band ring + A-frame/lattice legs + base; floating segment debris removed in polish2d. Segmented armor integration still incomplete; legs blocky.",
+    "rocks": "Darker basalt/iron albedos; distinct tall/pancake/wedge silhouettes; ore accent present but seams still undersized/blocky vs flight-distance geology."
+  },
+  "evidence": {
+    "hub_final": "assets/ships/parts/revamp-evidence/place_station_trade_hub/renders/2026-07-11_place_station_trade_hub_final_lit_34_full.png",
+    "gate_final": "assets/ships/parts/revamp-evidence/place_gate_jump_ring/renders/2026-07-11_place_gate_jump_ring_polish2d_lit_34_full.png",
+    "rock_a": "assets/ships/parts/revamp-evidence/place_asteroid_rock_a/renders/2026-07-11_place_asteroid_rock_a_polish2b_lit_34_full.png",
+    "rock_b": "assets/ships/parts/revamp-evidence/place_asteroid_rock_b/renders/2026-07-11_place_asteroid_rock_b_polish2b_lit_34_full.png",
+    "rock_c": "assets/ships/parts/revamp-evidence/place_asteroid_rock_c/renders/2026-07-11_place_asteroid_rock_c_polish2b_lit_34_full.png",
+    "sliceA": ".devshots/slice-A/{station-approach,gate-approach,asteroid-rock-a,b,c}.png",
+    "liveProbe": ".devshots/authored-assets-live.jpg"
+  },
+  "remainingDefects": [
+    "Hub: toy-smooth tubes; missing painted ORM/normal density; truss/brace transitions still primitive",
+    "Gate: needs true segmented armored ring modules flush to tube; lattice not concept-grade; no service panel language",
+    "Rocks: ore seams not large continuous strata; need layered cavities/chipped planes + proper rock ORM/normal; no white clay relapse but still low meso geology",
+    "No fresh public player-route station/gate/rock world captures beyond authored-assets-live probe",
+    "No renderScale1 headed p95/p99/draw/mesh metrics captured this cycle (probe may still be running or omitted)"
+  ]
+}

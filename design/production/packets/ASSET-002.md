@@ -1,5 +1,7 @@
 # PACKET ASSET-002 — Repair the live asset-truth pipeline
 
+> **Manual packet; exact activation required.** See `README.md`. Discovery does not activate it.
+
 packetId: ASSET-002
 milestone: M0 Wave B
 kind: code

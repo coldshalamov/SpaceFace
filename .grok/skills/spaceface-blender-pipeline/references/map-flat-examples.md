@@ -1,6 +1,8 @@
-# Map Flat Rubric — What "Good" Looks Like
+# Map Flat Diagnostic Guide
 
-Agents often ship flat gray because they never produce or review map flats. This rubric describes what professional breakdown posts show in their texture sheets.
+Map flats can expose bake, packing, and material-authoring problems that a beauty render hides. Use
+this guide when the asset actually uses these maps; it is not a requirement to create every map or to
+force weathering/emissive onto every material.
 
 ## Contact sheet layout
 
@@ -13,39 +15,42 @@ Arrange in a single PNG grid:
 
 Label each quadrant. Include asset id and bake resolution (e.g. 1024²).
 
-## AO — pass criteria
+## AO diagnostics
 
 **Good:** Panel recesses read darker; overlapping plates show contact shadow; vent slots are deep; multiply blend on albedo would add depth without mud.
 
 **Fail:** Uniform mid-gray; pure black corners; seam streaks; no variation between mechanical and hull zones.
 
-## Roughness — pass criteria
+## Roughness diagnostics
 
-**Good:** Edge wear visible as lighter streaks on leading edges and panel borders; cavities slightly rougher; glass regions isolated to low roughness in separate material or mask.
+**Good:** Intentional material response and spatial variation appropriate to the asset; clean regions
+may remain clean, while used surfaces may show wear tied to contact, exposure, and construction.
 
 **Fail:** Single flat value (0.5 everywhere); roughness painted as color tint on albedo instead of baked map; noisy speckle that shimmers in game.
 
-## Normal — pass criteria
+## Normal diagnostics
 
 **Good:** Panel inset lines, bolt heads, grille depth visible in normal-only preview; smooth flats; no purple/green seam spikes.
 
 **Fail:** Normal baked from high-poly that doesn't match low-poly; cage too large (ray leaks); absent when geo is too flat (acceptable if panels are modeled).
 
-## Emissive mask — pass criteria
+## Emissive diagnostics
 
-**Good:** Thruster bells, window strips, running lights as crisp white shapes on black; no soft photographic glow baked in.
+**Good:** Crisp authored emission assigned to plausible or deliberately stylized sources. The asset's
+role may justify sources beyond engines/windows; visible bloom belongs to runtime presentation rather
+than a baked photographic flare.
 
 **Fail:** Color baked into emissive; entire hull glowing; photographic lens flare.
 
-## Comparison to "N64 slop"
+## Common failure comparisons
 
-| N64 slop signal | Professional signal |
+| Weak signal | Stronger signal |
 |---|---|
 | One gray `MeshStandardMaterial` | AO + roughness variation visible in flat preview |
 | Edge highlights from lights only | Edge wear in roughness map |
 | Detail from mesh subdiv only | Normal map panel lines at same tri budget |
 | Glowing hull | Emissive mask on thrusters/windows only |
-| 14MB accessory GLB | Budget-sized GLB with hull body + maps |
+| Large file with missing body or unused maps | Complete body and required maps with measured, justified cost |
 
 ## Vision check questions
 
@@ -56,4 +61,5 @@ When reviewing `maps_<id>.png` with vision:
 3. Would multiplying AO onto albedo add readable depth at game distance?
 4. Is emissive limited to propulsion/light sources?
 
-If all four are "no," return to Phase 5 — do not export.
+Use the answers to diagnose whether another authoring pass is needed. The live exporter and task's
+asset contract—not this guide—decide whether export is valid.

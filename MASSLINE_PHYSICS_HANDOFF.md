@@ -168,10 +168,10 @@ Cargo has real mass (`cargo.js`). Dumping it should thrust you forward (reaction
 ## 7. HARD CONSTRAINTS — read carefully, these are not suggestions
 
 1. **Another agent is concurrently working on flight feel (BP-07).** Its lane: `src/systems/flightV3.js`, `src/data/flightTuning.js`, `src/core/flight/propulsionKernel.js` (and generally the core flight controller). **Do not modify those files.** Where your features want flight-side changes (speed cap softening §4.1, float inhibitor §4.2), implement on your side of the boundary (state flags, velocity tagging, modifiers applied in your own systems) and/or leave explicit coordination notes in your final report.
-2. **The golden sim baseline must stay clean.** The repo is gated by ~360 `check:*` npm scripts and a deterministic golden replay (scenario 47A: `src/data/scenarios/47a.scenario.json`, `docs/Spec/47A_SLICE_CONTRACT.md`). `check:sim:compare` must remain byte-identical (there is one documented pre-existing 47A projectile-collision precondition failure — see `design/revamp/_BASELINE.md`; don't chase it, don't worsen it). **The clean pattern: feature-flag everything, default OFF**, so the 47A replay never sees your systems until a flag is deliberately flipped. Look at how existing systems register in `src/core/registry.js` (SYSTEMS + UPDATE_ORDER) and follow local conventions for gating.
+2. **The golden sim baseline must stay clean.** The repo is gated by ~360 `check:*` npm scripts and a deterministic golden replay (scenario 47A: `src/data/scenarios/47a.scenario.json`, `docs/Spec/47A_SLICE_CONTRACT.md`). `check:sim:compare` must remain byte-identical (there is one documented pre-existing 47A projectile-collision precondition failure — see `design/revamp/_history/_BASELINE.md`; don't chase it, don't worsen it). **The clean pattern: feature-flag everything, default OFF**, so the 47A replay never sees your systems until a flag is deliberately flipped. Look at how existing systems register in `src/core/registry.js` (SYSTEMS + UPDATE_ORDER) and follow local conventions for gating.
 3. **Run the relevant checks** before and after (`package.json` scripts; combat/tether/sim ones especially). New persistent state (tumble states, cloak module, ace memories of being flung) must go through the save system properly: `src/save/saveSystem.js` + `src/save/migrations.js` (schema is check-gated).
 4. **Ignore `.campaign/workspaces/*`** — they are stale duplicate snapshots of the whole repo. Also ignore `node_modules`, `.devshots`, `.serena`. Work only in the real tree.
-5. **Match repo conventions**: native ES modules, no bundler in dev (`node server.js` to run), data-driven tuning in `src/data/`, DOM/CSS UI overlay (not canvas UI), procedural Web Audio (no audio assets), pooled VFX. Read `design/revamp/STATUS.md` for the ledger format used to record shipped work — append your work there in the same style.
+5. **Match repo conventions**: native ES modules, no bundler in dev (`node server.js` to run), data-driven tuning in `src/data/`, DOM/CSS UI overlay (not canvas UI), procedural Web Audio (no audio assets), pooled VFX. Read `design/revamp/PROGRESS.md` for the current task ledger format; `design/revamp/_history/STATUS.md` has the historical shipped-wave ledger (read for conventions).
 6. **New mechanics need teaching**: `src/systems/onboarding.js` runs a paced first-hour rail including a tether drill (`onboarding/flightDrill.js` pattern) and one-time contextual hints in `state.player.hints`. Flag-gated onboarding beats for throw/cloak/slingshot should ship with the features (also flag-gated).
 
 ---
@@ -215,7 +215,7 @@ Cargo has real mass (`cargo.js`). Dumping it should thrust you forward (reaction
 - `src/systems/cargo.js`, `src/systems/fragileCargo.js`, `src/systems/salvage.js`
 - `src/ui/screens/outfitting.js`, `src/ui/screens/techTree.js`, `src/systems/ships.js`, `src/data/blueprints.js`
 
-**Status / spec ledger:** `design/revamp/STATUS.md` (1,577-line ledger of shipped waves — read for conventions, append your results), `design/revamp/_BASELINE.md` (the known 47A precondition), `design/FLIGHT_PHYSICS_SPEC.md` (context on flight; not your lane to edit)
+**Status / spec ledger:** `design/revamp/PROGRESS.md` (current task ledger — append your results here), `design/revamp/_history/STATUS.md` (1,577-line historical ledger of shipped waves — read for conventions), `design/revamp/_history/_BASELINE.md` (the known 47A precondition). Flight context: `design/spec3/SPEC3-F3-flight-physics-feel.md` (live successor to the removed `FLIGHT_PHYSICS_SPEC.md`).
 
 **Controls context:** WASD piloting + mouse aim is the working mode. Mouse-piloting mode exists but is currently broken/unusable (invisible cursor problem) — NOT your lane to fix (it's flight-adjacent), but don't design anything that only works with mouse piloting. F = tether/reel currently. Tab = cycle targets.
 
@@ -223,7 +223,7 @@ Cargo has real mass (`cargo.js`). Dumping it should thrust you forward (reaction
 
 ## 9. Suggested shape of the run (yours to improve)
 
-1. Read `design/revamp/STATUS.md`, `src/core/registry.js`, the massline files, and `weapons.js` first. Locate flyby focus. Confirm the current tether input model by reading, not assuming.
+1. Read `design/revamp/PROGRESS.md` and `design/revamp/_history/STATUS.md`, `src/core/registry.js`, the massline files, and `weapons.js` first. Locate flyby focus. Confirm the current tether input model by reading, not assuming.
 2. Design pass FIRST on §3.7 (disambiguation) and the input model — it constrains everything else. Write your chosen model down before coding.
 3. Build Tier 1 as one coherent flag-gated system family (suggest one master flag + per-feature subflags, e.g. `massline2.*`). Fire control before throw; throw before tumble; collision asymmetry early (it's small and de-risks playtests).
 4. Bullet time (§3.6) as soon as the throw indicator exists — they should be tuned together.

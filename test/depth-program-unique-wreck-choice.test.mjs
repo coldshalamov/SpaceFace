@@ -104,6 +104,9 @@ test('claiming unique hardware uses ship and cargo authorities once and records 
     assert.equal(t.state.player.cargo.items.cmdty_medical, 50);
     assert.equal(t.events.filter((entry) => entry.name === 'module:granted').length, 1);
     assert.equal(t.events.filter((entry) => entry.name === 'uniqueWreck:resolved').length, 1);
+    assert.equal(t.events.filter((entry) => entry.name === 'toast'
+      && /KNITBOTS CLAIMED/i.test(String(entry.payload?.text || ''))).length, 0,
+    'the dedicated recovery receipt owns settlement presentation without a duplicate long toast');
   } finally {
     t.sim.dispose();
   }

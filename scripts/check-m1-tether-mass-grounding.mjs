@@ -40,12 +40,12 @@ const npc = getDerivedStats('ship_wasp', [], null);
 assert.equal(npc.cargoMass, 0, 'NPC derivation is isolated from player cargo');
 
 const standard = ATTACHMENT_DEFS.find((def) => def.id === 'tether_standard');
-// CORE-COMBAT-LOOP: base strength approximately doubles the pre-pass catalog (420k/7.6k/6k).
-assert.equal(standard.breakTension, 840000, 'standard compatibility threshold is ~2× legacy base');
+// CORE-COMBAT-LOOP: doubled pre-pass strength, then the live feel pass raised that base by 25%.
+assert.equal(standard.breakTension, 1050000, 'standard compatibility threshold is 2.5× legacy base');
 assert.deepEqual(
   { maxTension: standard.break.maxTension, maxImpulse: standard.break.maxImpulse, maxYank: standard.break.maxYank },
-  { maxTension: 840000, maxImpulse: 15200, maxYank: 12000 },
-  'standard immutable base strength is ~2× legacy base',
+  { maxTension: 1050000, maxImpulse: 19000, maxYank: 15000 },
+  'standard immutable base strength includes the live +25% feel pass',
 );
 assert.equal(standard.spring.maxStretchRatio, 1.44,
   'standard tether doubles the real geometric stretch envelope, not only unreachable force numbers');
@@ -58,10 +58,10 @@ assert.equal(typeof attachmentModule.effectiveTetherBreak, 'function',
 assert.equal(typeof attachmentModule.effectiveTetherPolicy, 'function',
   'attachments exports one pure effective tether policy resolver');
 for (const [rating, expected] of [
-  [1, [840000, 15200, 12000]],
-  [1.5, [1260000, 22800, 18000]],
-  [3, [2520000, 45600, 36000]],
-  [6, [5040000, 91200, 72000]],
+  [1, [1050000, 19000, 15000]],
+  [1.5, [1575000, 28500, 22500]],
+  [3, [3150000, 57000, 45000]],
+  [6, [6300000, 114000, 90000]],
 ]) {
   const owner = { data: { derived: { tetherSpoolMult: rating } } };
   const effective = attachmentModule.effectiveTetherBreak(standard, owner);
@@ -120,7 +120,7 @@ assert.deepEqual(spoolStats(['mod_massline_spool_m', 'mod_winch_hd', 'mod_massli
 
 {
   const strainEvents = [];
-  const attachment = { id: 'att_spool_6', defId: standard.id, state: 'active', lastTension: 840000 };
+  const attachment = { id: 'att_spool_6', defId: standard.id, state: 'active', lastTension: 1050000 };
   const attachments = {
     get(id) { return id === attachment.id ? attachment : null; },
     breakPolicy(id) {
@@ -216,7 +216,7 @@ assert.deepEqual(spoolStats(['mod_massline_spool_m', 'mod_winch_hd', 'mod_massli
       ownerId: owner.id, targetId: target.id,
       sourceWorld: { x: -8, y: 0, z: 0 }, targetWorld: { x: 8, y: 0, z: 0 },
       restLength: 16,
-      break: { maxTension: 840000, maxImpulse: 15200, maxYank: 12000 },
+      break: { maxTension: 1050000, maxImpulse: 19000, maxYank: 15000 },
       spring: { mode: 'legacy_rope' },
       tick: 0,
     });

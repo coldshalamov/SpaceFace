@@ -39,6 +39,23 @@
     "glass": "Material_Glass",
     "mechanical": "Material_Mechanical"
   },
+  "wholeShipMaterialContract": {
+    "hull": "Material_Hull",
+    "mechanical": "Material_Mechanical",
+    "glass": "Material_Glass_Canopy",
+    "cyanPaint": "Material_Accent_FrontierCyan",
+    "warningPaint": "Material_Accent_WarningOrange",
+    "repairPaint": "Material_RepairGreen",
+    "armor": "Material_ArmorDark",
+    "brushedMetal": "Material_BrushedMetal",
+    "rubber": "Material_Rubber",
+    "cyanEmissive": "Material_Emissive_Cyan",
+    "warmEmissive": "Material_Emissive_Orange",
+    "driveCore": "Material_Emissive_DriveCore",
+    "decalBorrowedTime": "Material_Decal_BorrowedTime",
+    "decalHazard": "Material_Decal_Hazard",
+    "decalStencils": "Material_Decal_Stencils"
+  },
   "parts": [
     {
       "id": "hull_starter",
@@ -2444,14 +2461,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_lane_beacon.glb",
-      "tris": 8124,
-      "bytes": 747564,
+      "tris": 1292,
+      "bytes": 3777536,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for place_lane_beacon. Character: place_lane_beacon. tris=700.",
+      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for place_lane_beacon. Character: place_lane_beacon. tris=700. | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=10458676B330 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2500,14 +2517,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_nav_buoy.glb",
-      "tris": 540,
-      "bytes": 184964,
+      "tris": 1296,
+      "bytes": 3777968,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for nav buoy. Character: navigation buoy with barrel/collar, marine wear. 540 tris.",
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for nav buoy. Character: navigation buoy with barrel/collar, marine wear. 540 tris. | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=96CEF62D0E89 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2666,14 +2683,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_billboard.glb",
-      "tris": 948,
-      "bytes": 231964,
+      "tris": 988,
+      "bytes": 4488768,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris.",
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris. | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=7A371C0A3209 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2723,7 +2740,7 @@
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
       "tris": 1740,
-      "bytes": 261540,
+      "bytes": 210676,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2780,7 +2797,7 @@
       "priority": "P1",
       "file": "places/place_conveyor_barge.glb",
       "tris": 1144,
-      "bytes": 242592,
+      "bytes": 191884,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2893,14 +2910,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_a.glb",
-      "tris": 9403,
-      "bytes": 4955764,
+      "tris": 1250,
+      "bytes": 1971324,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — trim+wear image-gen textures, SF_EdgeWear, AO bake Hull/Mech/Accent, bump/clearcoat; DET dust_lee + mining seams/ore vein/drill/impact; 32 MCP renders. Belt hero irregular mined rock. tris=9403.",
+      "note": "PRO Full Finish 2026-07-06 — trim+wear image-gen textures, SF_EdgeWear, AO bake Hull/Mech/Accent, bump/clearcoat; DET dust_lee + mining seams/ore vein/drill/impact; 32 MCP renders. Belt hero irregular mined rock. tris=9403. | M1-SLICEA-VISUAL-001 connected rebuild 2026-07-10 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=ECF9469D2DC1 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=BCD808FD7F3B",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2924,19 +2941,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -10.1595,
-          -8.486,
-          -9.2364
+          -3.8644,
+          -5.9924,
+          -3.8009
         ],
         "max": [
-          9.9025,
-          8.6039,
-          8.6982
+          3.9773,
+          6.0792,
+          3.7345
         ],
         "dimensionsM": [
-          20.0619,
-          17.0899,
-          17.9346
+          7.8418,
+          12.0717,
+          7.5354
         ]
       }
     },
@@ -2945,14 +2962,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_b.glb",
-      "tris": 5508,
-      "bytes": 595948,
+      "tris": 1112,
+      "bytes": 1868420,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 688 tris.",
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 688 tris. | M1-SLICEA-VISUAL-001 connected rebuild 2026-07-10 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=9F09141B2841 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=5E8E63BFEC0F",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2976,19 +2993,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -2.6163,
-          -2.2,
-          -1.958
+          -5.9754,
+          -1.946,
+          -5.1313
         ],
         "max": [
-          2.4062,
-          2.2,
-          2.1143
+          5.7117,
+          2.0991,
+          5.0807
         ],
         "dimensionsM": [
-          5.0224,
-          4.4,
-          4.0723
+          11.6871,
+          4.0451,
+          10.212
         ]
       }
     },
@@ -2997,14 +3014,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_c.glb",
-      "tris": 5552,
-      "bytes": 432200,
+      "tris": 2044,
+      "bytes": 2815544,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 584 tris.",
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 584 tris. | M1-SLICEA-VISUAL-001 connected rebuild 2026-07-10 | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=8179C93F8853 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=D5DBBB5CD803",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3028,19 +3045,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -2.8272,
-          -2.2,
-          -2.046
+          -4.4778,
+          -4.2454,
+          -3.0497
         ],
         "max": [
-          2.4123,
-          2.2,
-          2.046
+          4.315,
+          3.8518,
+          2.6663
         ],
         "dimensionsM": [
-          5.2396,
-          4.4,
-          4.092
+          8.7928,
+          8.0972,
+          5.716
         ]
       }
     },
@@ -3555,7 +3572,7 @@
       "priority": "P0",
       "file": "wholeships/kestrel.glb",
       "tris": 19906,
-      "bytes": 22898172,
+      "bytes": 22897472,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4312,8 +4329,6 @@
       "hulls/hull_capital.glb",
       "hulls/hull_multirole.glb",
       "wholeships/kestrel.glb",
-      "wholeships/pelican.glb",
-      "wholeships/wasp.glb",
       "wholeships/ashline_dart.glb",
       "wholeships/ashline_lode.glb",
       "wholeships/ashline_rig.glb",
@@ -4391,24 +4406,11 @@
       "places/place_station_research.glb",
       "places/place_dock_interior.glb",
       "places/place_dock_interior_military.glb",
-      "places/place_dock_interior_grit.glb"
+      "places/place_dock_interior_grit.glb",
+      "places/place_claim_outpost_base.glb",
+      "places/place_claim_outpost_refinery.glb",
+      "places/place_claim_outpost_relay.glb",
+      "places/place_claim_outpost_bastion.glb"
     ]
-  },
-  "wholeShipMaterialContract": {
-    "hull": "Material_Hull",
-    "mechanical": "Material_Mechanical",
-    "glass": "Material_Glass_Canopy",
-    "cyanPaint": "Material_Accent_FrontierCyan",
-    "warningPaint": "Material_Accent_WarningOrange",
-    "repairPaint": "Material_RepairGreen",
-    "armor": "Material_ArmorDark",
-    "brushedMetal": "Material_BrushedMetal",
-    "rubber": "Material_Rubber",
-    "cyanEmissive": "Material_Emissive_Cyan",
-    "warmEmissive": "Material_Emissive_Orange",
-    "driveCore": "Material_Emissive_DriveCore",
-    "decalBorrowedTime": "Material_Decal_BorrowedTime",
-    "decalHazard": "Material_Decal_Hazard",
-    "decalStencils": "Material_Decal_Stencils"
   }
 }

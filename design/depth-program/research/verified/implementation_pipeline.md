@@ -45,7 +45,7 @@ These deliver depth-feeling through data + prose, not 3D assets. Cheapest, faste
 | Priority | Item | Track | Why this order |
 |---|---|---|---|
 | 1.1 | **Wreckage-as-progression loop** — 12 named wrecks with unique loot + rumor leaks (Cat D) | T-Code + T-Narrative | Highest-ROI feature work (Freelancer's signature pattern). Uses existing `aftermathWrecks` + `wreckClasses` + encounter/news. Turns existing systems into a progression loop. |
-| 1.2 | **+5 new factions as data files** (Cat A) | T-Data | Fills the doctrine gap (8→13). Once 0.1 lands, each is a drop-in file. |
+| 1.2 | **+5 new factions as data files** (Cat A) | T-Data | Fills the registered-kit set (9→14). Once 0.1 lands, each is a drop-in file. |
 | 1.3 | **+15 named NPCs/contacts** (Cat G) | T-Data + T-Narrative | Words-not-polygons depth (Rebel Galaxy lesson). Each enables a quest hook. |
 | 1.4 | **+8 encounter types** (Cat H) | T-Code | Chance-encounter/Easter-egg layer. Once 0.2 lands, each is drop-in. |
 
@@ -74,7 +74,7 @@ Now the story beats get played at the new landmarks, voiced by the new NPCs.
 | Priority | Item | Track | Why |
 |---|---|---|---|
 | 4.1 | **+3 set-piece mission types** (P4: boarding, investigation, blockade-run) | T-Code | Fixes the activity-shape gap. Each creates a *class* of content the generator fills forever. |
-| 4.2 | **Faction doctrine differentiation** — move 8→13 factions onto distinct doctrines | T-Data + T-Code (tuning) | Enemies fly differently per faction. |
+| 4.2 | **Faction doctrine differentiation** — move all 14 registered kits onto distinct doctrine profiles | T-Data + T-Code (tuning) | Enemies fly differently per faction; registry-only profiles remain labeled until a natural fleet carrier exists. |
 
 ---
 

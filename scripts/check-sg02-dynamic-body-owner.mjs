@@ -127,6 +127,8 @@ async function runTetherScenario() {
       targetId: targetShip.id,
       sourceSocketId: 'massline',
       targetSocketId: 'massline',
+      sourceAnchorLocal: { x: 2, z: 1 },
+      targetAnchorLocal: { x: 2, z: 1 },
       sourceWorld: { x: ownerShip.pos.x, y: 0, z: ownerShip.pos.z },
       targetWorld: { x: targetShip.pos.x, y: 0, z: targetShip.pos.z },
       restLength,
@@ -140,6 +142,11 @@ async function runTetherScenario() {
       ownerId: ownerShip.id,
       targetId: targetShip.id,
     }, 'createAttachment should return a serializable SG-03 physics handle');
+    const internalAttachment = owner.attachments.get('att_sg02_lab');
+    assert.deepEqual(internalAttachment.anchorA, { x: 2, y: 0, z: 1 },
+      'dynamic owner should consume the exact source local anchor supplied by the semantic attachment');
+    assert.deepEqual(internalAttachment.anchorB, { x: 2, y: 0, z: 1 },
+      'dynamic owner should consume the exact target local anchor supplied by the semantic attachment');
     assert.equal(owner.diagnostics().attachments, 1, 'dynamic owner should track the Rapier rope attachment');
 
     for (let i = 0; i < 30; i++) owner.step(1 / 60);

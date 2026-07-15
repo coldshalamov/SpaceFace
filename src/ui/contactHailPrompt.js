@@ -1,6 +1,8 @@
 // Compact target hail beside the comms log. Simulation validation lives in scanner.js; this module
 // only consumes scanner receipts, emits intents, and renders at most two lines/two ordinary actions.
 
+import { isUiInteractionFenced } from './input.js';
+
 const STYLE_ID = 'sf-contact-hail-style';
 
 export function createContactHailPrompt(ctx) {
@@ -70,13 +72,13 @@ export function createContactHailPrompt(ctx) {
   }
 
   function request(source = 'pointer') {
-    if (!availability.enabled) return false;
+    if (isUiInteractionFenced(state) || !availability.enabled) return false;
     bus.emit('contactHail:request', { targetId: availability.targetId, source });
     return true;
   }
 
   function choose(choice, source = 'pointer') {
-    if (!active || !choice) return false;
+    if (isUiInteractionFenced(state) || !active || !choice) return false;
     bus.emit('contactHail:choice', {
       requestId: active.requestId,
       targetId: active.targetId,
@@ -87,13 +89,14 @@ export function createContactHailPrompt(ctx) {
   }
 
   function onPanelClick(event) {
+    if (isUiInteractionFenced(state)) return;
     const button = event.target && event.target.closest && event.target.closest('[data-choice]');
     if (!button || !panel.contains(button)) return;
     choose(button.dataset.choice, 'pointer');
   }
 
   function onKeyDown(event) {
-    if (!active || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (isUiInteractionFenced(state) || !active || event.altKey || event.ctrlKey || event.metaKey) return;
     const index = event.code === 'Digit1' || event.code === 'Numpad1' ? 0
       : event.code === 'Digit2' || event.code === 'Numpad2' ? 1 : -1;
     if (index < 0) return;

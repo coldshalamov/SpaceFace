@@ -82,6 +82,10 @@ assert.match(inputSrc, /gp\.axes\.leftX/, 'input.js must merge gamepad left stic
 assert.match(inputSrc, /gp\.actions\.fire/, 'input.js must merge gamepad fire action');
 assert.match(inputSrc, /gp\.actions\.mine/, 'input.js must merge gamepad mine action');
 assert.match(inputSrc, /this\._m2 \|\| gpMine \|\| tpMine/, 'input.js must route gamepad mine to fireGroup 2');
+assert.match(inputSrc, /isThrowArmPayload/,
+  'input.js must gate throwArm on throwable payloads so asteroid/wreck tethers keep mining beam');
+assert.match(inputSrc, /target\.type === 'asteroid' && target\.data && target\.data\.isChunk/,
+  'fracture chunks remain throwable via RMB while parent asteroids stay mineable');
 assert.match(inputSrc, /tp\.axes\.leftX/, 'input.js must merge touch left stick (tp.axes.leftX)');
 assert.match(inputSrc, /tp\.actions\.fire/, 'input.js must merge touch fire action');
 assert.match(inputSrc, /tp\.actions\.mine/, 'input.js must merge touch mine action (fireGroup 2)');
@@ -259,15 +263,20 @@ assert.match(localmapSrc, /press \$\{localMapKey\} or Esc to close/,
 assert.match(localmapSrc, /key === BINDINGS\.localmap\.key/,
   'Local Map key close handler must keep reading the shared binding registry');
 assert.match(galaxyMapSrc, /id:\s*'galaxyMap'[\s\S]*data:\s*\{\s*autoFocus:\s*false\s*\}/,
-  'Galaxy Map must opt out of automatic focus so M/N can close it instead of typing into search');
-assert.match(screenManagerSrc, /function _autoFocusEnabled\(rec\)[\s\S]*autoFocus === false/,
-  'ScreenManager must honor per-screen autoFocus=false metadata');
-assert.match(screenManagerSrc, /function _ensureFocusIn\(rec\)[\s\S]*_autoFocusEnabled\(rec\)/,
-  'ScreenManager must skip initial focus movement for screens that disable auto-focus');
+  'Galaxy Map must opt out of automatic first-operable focus so M/N can close it instead of typing into search');
+// a11y still requires focus inside the dialog after push; autoFocus:false means "preserve onShow's
+// choice" — not "leave focus in the covered opener". Keyboard open parks on the dialog root;
+// search is tabindex=-1 so _focusFirst can never land on it. Map M/N also bypass textEntry.
+assert.match(screenManagerSrc, /function _ensureFocusIn\(rec\)[\s\S]*_focusFirst\(\)/,
+  'ScreenManager must keep a deterministic in-dialog focus fallback after push (cannot strand focus in a covered opener)');
+assert.match(galaxyMapSrc, /gm-search-input[^>]*tabindex="-1"/,
+  'Galaxy Map search must be programmatic-only (Press /) so it is never the first-operable autofocus target');
+assert.match(galaxyMapSrc, /_root\.focus/,
+  'Galaxy Map keyboard/pointer open must park focus on the dialog root so M/N still close the map');
 assert.match(uiInputSrc, /function isTextEntryTarget\(t\)[\s\S]*isContentEditable/,
   'UI input must classify focused text-entry targets explicitly');
-assert.match(uiInputSrc, /if \(modalOpen\)[\s\S]*if \(key === 'Escape'\)[\s\S]*closeActiveModal\(def\)[\s\S]*if \(textEntry\) return;[\s\S]*def && typeof def\.onKey === 'function'/,
-  'Keyboard Escape must close a modal before text-entry targets keep ordinary typing');
+assert.match(uiInputSrc, /if \(modalOpen\)[\s\S]*if \(key === 'Escape'\)[\s\S]*closeActiveModal\(def\)[\s\S]*mapToggleWhileTyping[\s\S]*if \(textEntry && !mapToggleWhileTyping\) return;[\s\S]*def && typeof def\.onKey === 'function'/,
+  'Keyboard Escape and map M/N must close a map even when search is focused; other typing stays in the field');
 assert.match(promptSrc, /Dock\/Map\/Log\/Star\/Pause buttons/, 'Touch flight hints must match the actual touch menu buttons');
 assert.match(promptSrc, /Tap Dock when the station prompt appears/, 'Touch tutorial docking copy must teach the touch Dock button');
 assert.match(promptSrc, /firstFlight: 'Left stick flies\. Right stick aims\.'/,

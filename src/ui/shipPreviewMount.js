@@ -20,6 +20,7 @@ import { preloadAuthoredPartLibrary } from '../render/partsLibrary.js';
 import { isReleaseAssetMode } from '../render/releaseMode.js';
 import { setEnvMapForShips, createVisualFactory } from '../render/visualFactory.js';
 import { installVisualOverrides } from '../render/visualOverrides.js';
+import { buildKestrelHero } from '../render/ships/kestrelHero.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
@@ -205,34 +206,73 @@ function buildFastPreviewMesh(defId) {
   return root;
 }
 
-// Build a minimal ship entity the visual factory can consume (same shape shipPreview.makePreviewEntity
-// makes). Starter-fittings so the mesh includes hardpoints + a basic drive glow.
-function makeEntity(defId, seedId) {
+/**
+ * Build a ship entity the visual factory can consume.
+ * When `loadout.fittings` is provided (outfitting / player's active hull), use that exact
+ * loadout so the pad shows the same ship you fly. Otherwise fill stock demo modules so
+ * catalog hull previews still show weapons/engines.
+ */
+function makeEntity(defId, seedId, loadout = null) {
   const def = SHIP_BY_ID.get(defId);
   if (!def) return null;
-  const slots = def.slots || {};
-  const fittings = [];
-  const weapons = [];
-  let wIdx = 0;
-  // one weapon per weapon slot (smallest that fits), so barrels render
-  for (const entry of (slots.weapon || [])) {
-    const size = (typeof entry === 'object' && entry.size) || (typeof entry === 'string' ? entry : 'S');
-    const w = WEAPONS.find((x) => x.size === size) || WEAPONS[0];
-    if (w) { fittings.push(w.id); weapons.push({ slotIndex: wIdx, defId: w.id, facing: (entry && entry.facing) || 'front', tracking: w.tracking || 'fixed' }); }
-    else fittings.push(null);
-    wIdx++;
+
+  let fittings;
+  let weapons;
+
+  if (loadout && Array.isArray(loadout.fittings)) {
+    // Player/outfitting path: fittings[] is parallel to buildSlotList (weapon, shield, …).
+    // visualFactory reads that array directly for barrels, engines, shield ring, mining drill.
+    fittings = loadout.fittings.slice();
+    weapons = Array.isArray(loadout.weapons) ? loadout.weapons.slice() : [];
+  } else {
+    // Stock catalog demo loadout — parallel to visualFactory slot order:
+    // weapon → shield → engine → cargo → mining → utility.
+    fittings = [];
+    weapons = [];
+    const slots = def.slots || {};
+    const order = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility'];
+    let slotIndex = 0;
+    for (const type of order) {
+      const arr = slots[type] || [];
+      for (let i = 0; i < arr.length; i++) {
+        const entry = arr[i];
+        const size = (typeof entry === 'object' && entry.size) || (typeof entry === 'string' ? entry : 'S');
+        let pick = null;
+        if (type === 'weapon') {
+          pick = WEAPONS.find((x) => x.size === size) || WEAPONS[0] || null;
+          if (pick) {
+            weapons.push({
+              slotIndex,
+              defId: pick.id,
+              facing: (entry && entry.facing) || 'front',
+              tracking: pick.tracking || 'fixed',
+            });
+          }
+        } else {
+          pick = MODULES.find((m) => m.slotType === type && (!m.size || m.size === size))
+            || MODULES.find((m) => m.slotType === type)
+            || null;
+        }
+        fittings.push(pick ? pick.id : null);
+        slotIndex++;
+      }
+    }
   }
-  // a shield + engine so the silhouette has those props
-  const sh = MODULES.find((m) => m.slotType === 'shield');
-  const en = MODULES.find((m) => m.slotType === 'engine');
-  if (sh) fittings.push(sh.id);
-  if (en) fittings.push(en.id);
+
   return {
     id: seedId, type: 'ship', team: 0, factionId: 'faction_free',
+    // isPlayer unlocks the Hitch/Kestrel hero visual (same mesh as flight). Catalog stock previews stay false.
+    isPlayer: !!(loadout && loadout.isPlayer),
     pos: { x: 0, z: 0 }, rot: Math.PI * 0.15, prevPos: { x: 0, z: 0 }, prevRot: 0, bank: 0,
     radius: def.collisionRadius || 14,
     data: { defId, fittings, weapons, miningBeam: null },
   };
+}
+
+function meshCacheKey(defId, loadout) {
+  if (!defId) return null;
+  if (!loadout || !Array.isArray(loadout.fittings)) return defId;
+  return defId + '::' + loadout.fittings.map((id) => (id == null ? '-' : String(id))).join('|');
 }
 
 /**
@@ -250,22 +290,36 @@ export function createShipPreviewMount(canvas, opts) {
   const useDock = typeof opts.dockId === 'string' && opts.dockId.length > 0;
   const onFirstFrame = typeof opts.onFirstFrame === 'function' ? opts.onFirstFrame : null;
   const authoredShips = opts.authoredShips !== false && opts.authoredWarmup !== false;
+  // Station/menu pads must never silently sit on the box LOD. Only allow it if the caller
+  // explicitly opts in (devtools). Outfitting/shipyard/new-game pass allowFastFallback:false.
   const fastPreview = opts.fastPreview === true;
+  const allowFastFallback = opts.allowFastFallback === true || fastPreview === true;
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !fastPreview, alpha: !useDock, powerPreference: fastPreview ? 'default' : 'low-power' });
-  renderer.setPixelRatio(fastPreview ? 1 : Math.min(window.devicePixelRatio || 1, 2));
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: true,
+    alpha: !useDock,
+    powerPreference: 'high-performance',
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(W, H, false);
   renderer.setClearColor(useDock ? 0x05070d : 0x000000, useDock ? 1 : 0);
+  // Match flight: tone-map so materials don't read as flat gray slabs.
+  if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
+  if ('toneMapping' in renderer) {
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+  }
 
   const scene = new THREE.Scene();
   if (useDock) scene.fog = new THREE.FogExp2(0x0a1426, 0.012);
   // Hangar rig: warmer key from dock lamps + cool rim from bay glass when a dock shell is present.
-  scene.add(new THREE.AmbientLight(0x42506f, useDock ? 0.75 : 0.9));
-  const key = new THREE.DirectionalLight(useDock ? 0xffd9b0 : 0xcfe2ff, useDock ? 1.35 : 1.6);
+  scene.add(new THREE.AmbientLight(0x6a7a96, useDock ? 0.85 : 1.0));
+  const key = new THREE.DirectionalLight(useDock ? 0xffd9b0 : 0xe8f0ff, useDock ? 1.55 : 1.85);
   key.position.set(-0.55, 1.1, 0.75); scene.add(key);
-  const rim = new THREE.DirectionalLight(0x6a5cff, useDock ? 0.45 : 0.7);
+  const rim = new THREE.DirectionalLight(0x8a7cff, useDock ? 0.55 : 0.85);
   rim.position.set(0.75, 0.35, -0.55); scene.add(rim);
-  const fill = new THREE.DirectionalLight(0x39d0ff, useDock ? 0.28 : 0.35);
+  const fill = new THREE.DirectionalLight(0x39d0ff, useDock ? 0.35 : 0.45);
   fill.position.set(0.5, -0.25, 0.45); scene.add(fill);
   if (useDock) {
     const pad = new THREE.PointLight(0x39d0ff, 0.55, 80);
@@ -277,7 +331,8 @@ export function createShipPreviewMount(canvas, opts) {
 
   // hand the main scene's envMap to the factory so chrome/authority hulls mirror the nebula
   if (opts.envMap) setEnvMapForShips(opts.envMap);
-  const vf = fastPreview ? null : createVisualFactory();
+  // Always create the factory for real ship meshes (even if a caller set fastPreview by mistake).
+  const vf = createVisualFactory();
   if (vf) {
     installVisualOverrides(vf, {
       authoredShips,
@@ -319,21 +374,11 @@ export function createShipPreviewMount(canvas, opts) {
     }
   }
 
-  function buildPreviewMesh(defId) {
-    if (fastPreview) {
-      const fastMesh = buildFastPreviewMesh(defId);
-      if (!fastMesh) return null;
-      fastMesh.userData.previewDefId = defId;
-      touchCachedMesh(defId, fastMesh);
-      return fastMesh;
-    }
-    const ent = makeEntity(defId, 1);
-    if (!ent || !vf) return null;
-    let mesh = null;
-    try { mesh = vf.build(ent); } catch (e) { mesh = null; }
+  function tagAndCache(mesh, defId, cacheId) {
     if (!mesh) return null;
     mesh.userData.previewDefId = defId;
-    // Warm up procedural canvas textures (force upload) so the first frame isn't black.
+    mesh.userData.previewCacheId = cacheId;
+    // Warm procedural canvas textures so the first frame isn't black.
     mesh.traverse((c) => {
       const m = c.material;
       if (!m) return;
@@ -342,8 +387,68 @@ export function createShipPreviewMount(canvas, opts) {
         if (v && v.isTexture && v.image && typeof v.needsUpdate !== 'undefined') v.needsUpdate = true;
       }
     });
-    touchCachedMesh(defId, mesh);
+    touchCachedMesh(cacheId, mesh);
     return mesh;
+  }
+
+  function isGrayFallbackBox(mesh) {
+    if (!mesh) return true;
+    if (mesh.userData && mesh.userData.kind === 'fallback') return true;
+    // visualFactory's last-resort is a single BoxGeometry mesh with no children.
+    return !!(mesh.isMesh
+      && mesh.geometry
+      && mesh.geometry.type === 'BoxGeometry'
+      && (!mesh.children || mesh.children.length === 0));
+  }
+
+  function buildPreviewMesh(defId, loadout = null) {
+    const cacheId = (meshCacheKey(defId, loadout) || defId)
+      + (loadout && loadout.isPlayer ? '::player' : '');
+
+    const ent = makeEntity(defId, 1, loadout) || makeEntity(defId, 1, { isPlayer: true });
+    if (ent) ent.isPlayer = !!(loadout && loadout.isPlayer) || defId === 'ship_kestrel';
+
+    // 1) Hitch (ship_kestrel) — flight hero mesh. This is the ship the player owns at start.
+    if (defId === 'ship_kestrel') {
+      try {
+        const hero = buildKestrelHero(ent);
+        if (hero && !isGrayFallbackBox(hero)) {
+          hero.userData.previewFastLod = false;
+          return tagAndCache(hero, defId, cacheId);
+        }
+        console.error('[shipPreviewMount] Hitch hero returned unusable mesh');
+      } catch (err) {
+        console.error('[shipPreviewMount] Hitch hero preview FAILED', err);
+      }
+    }
+
+    // 2) Full visual factory (same path as flight NPCs / non-starter hulls).
+    if (ent && vf) {
+      let mesh = null;
+      try {
+        // Ensure factory hero override also fires for Hitch if path (1) was skipped.
+        if (defId === 'ship_kestrel') ent.isPlayer = true;
+        mesh = vf.build(ent);
+      } catch (e) {
+        console.error('[shipPreviewMount] visualFactory.build failed', defId, e);
+        mesh = null;
+      }
+      if (mesh && !isGrayFallbackBox(mesh) && !mesh.userData.previewFastLod) {
+        mesh.userData.previewFastLod = false;
+        return tagAndCache(mesh, defId, cacheId);
+      }
+    }
+
+    // 3) Explicit box LOD only if allowed (devtools). Station UI does NOT allow this.
+    if (allowFastFallback || fastPreview) {
+      console.warn('[shipPreviewMount] using fast box silhouette for', defId);
+      const fastMesh = buildFastPreviewMesh(defId);
+      if (fastMesh) fastMesh.userData.previewFastLod = true;
+      return tagAndCache(fastMesh, defId, cacheId);
+    }
+
+    console.error('[shipPreviewMount] NO MESH for', defId, '— refusing box LOD');
+    return null;
   }
 
   function resize() {
@@ -457,7 +562,7 @@ export function createShipPreviewMount(canvas, opts) {
   /**
    * Show a ship by defId. Rebuilds the mesh + reframes the camera around its bounding sphere.
    * @param {string} defId
-   * @param {object} [o] - { rotating?: boolean }
+   * @param {object} [o] - { rotating?: boolean, fittings?: Array, weapons?: Array }
    */
   function show(defId, o) {
     o = o || {};
@@ -466,27 +571,58 @@ export function createShipPreviewMount(canvas, opts) {
       current = null;
     }
     if (o.rotating != null) rotating = !!o.rotating;
-    let mesh = meshCache.get(defId) || null;
-    if (mesh) touchCachedMesh(defId, mesh);
-    else mesh = buildPreviewMesh(defId);
-    if (!mesh) return;
+    const loadout = (Array.isArray(o.fittings) || Array.isArray(o.weapons) || o.isPlayer)
+      ? {
+        fittings: Array.isArray(o.fittings) ? o.fittings : null,
+        weapons: Array.isArray(o.weapons) ? o.weapons : null,
+        isPlayer: o.isPlayer === true || defId === 'ship_kestrel',
+      }
+      : (defId === 'ship_kestrel' ? { fittings: null, weapons: null, isPlayer: true } : null);
+    // Player loadouts cache separately from stock demos (hero mesh + real modules).
+    const cacheId = (meshCacheKey(defId, loadout) || defId) + (loadout && loadout.isPlayer ? '::player' : '');
+    let mesh = meshCache.get(cacheId) || null;
+    // Never reuse a cached box LOD when real ships are required.
+    if (mesh && mesh.userData && mesh.userData.previewFastLod && !allowFastFallback) {
+      meshCache.delete(cacheId);
+      const idx = meshCacheOrder.indexOf(cacheId);
+      if (idx >= 0) meshCacheOrder.splice(idx, 1);
+      try { disposePreviewMesh(mesh); } catch (_) {}
+      mesh = null;
+    }
+    if (mesh) touchCachedMesh(cacheId, mesh);
+    else mesh = buildPreviewMesh(defId, loadout);
+    if (!mesh) {
+      renderedDefId = null;
+      console.error('[shipPreviewMount] show() has no mesh for', defId);
+      return;
+    }
     current = mesh;
-    yaw = 0;
-    mesh.rotation.y = 0;
+    yaw = Math.PI * 0.22; // slight turn so the silhouette reads immediately
+    mesh.rotation.y = yaw;
     scene.add(mesh);
     // frame around the bounding sphere so big capitals fit the same as scouts
     const box = new THREE.Box3().setFromObject(mesh);
     const sphere = new THREE.Sphere();
     box.getBoundingSphere(sphere);
+    // Prefer looking at the mesh center — box fallbacks used to sit off-center and read as junk.
+    const cx = sphere.center.x;
+    const cy = sphere.center.y;
+    const cz = sphere.center.z;
     const R = Math.max(1, sphere.radius);
-    const D = R * 2.6;
-    cam.position.set(-D * 0.35, D * 0.55, D * 0.85);
-    cam.lookAt(0, sphere.center.y * 0.3, 0);
+    const D = R * 2.85;
+    cam.position.set(cx - D * 0.42, cy + D * 0.38, cz + D * 0.72);
+    cam.lookAt(cx, cy * 0.2, cz);
+    cam.near = Math.max(0.05, R * 0.02);
+    cam.far = Math.max(2000, R * 40);
     cam.updateProjectionMatrix();
     renderNow();
-    requestCurrentAuthoredUpgrade();
-    warmAssets();
+    // Authored modular upgrades are optional; hero Hitch is already the final body.
+    if (defId !== 'ship_kestrel') {
+      requestCurrentAuthoredUpgrade();
+      warmAssets();
+    }
     if (rotating) requestLoop();
+    else renderNow();
   }
 
   function setRotating(v) {

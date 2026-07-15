@@ -1,8 +1,8 @@
 // marketNews.js — surface the already-deep-but-invisible economy as a 1-line NEWS TICKER plus
 // dock "event cards". READ-ONLY over the economy: this module NEVER mutates prices, stock, or any
-// economy state. It only listens to economy events (economy:eventStarted / :eventEnded), reads the
-// commodity catalog for display names, and emits presentation signals (voice on the "news" channel,
-// else a "toast").
+// economy state. It listens to economy events for generated headlines and to `news:publish` for
+// already-authored literal copy, then emits presentation signals (voice on the "news" channel, else
+// a "toast").
 //
 // Split of concerns:
 //   • generateHeadline(...) / buildEventCard(...) — PURE, deterministic given (inputs + seed). No DOM,
@@ -164,30 +164,52 @@ export function createMarketNews(ctx) {
     return (state.meta && (hash32(state.meta.seed) >>> 0)) || 0;
   }
 
-  // Surface a headline: push to the rolling log, route to voice("news") or fall back to a toast,
-  // and refresh the DOM ticker if mounted.
-  function surface(ev, { channel = 'news', quiet = false } = {}) {
-    const headline = generateHeadline(ev, { seed: seedOf() });
+  // Commit a resolved headline to the rolling log, one-voice floor, ticker, and downstream event.
+  // `metadata` is only supplied by the authored `news:publish` path; economy emissions retain their
+  // original compact payload shapes.
+  function commitHeadline(headline, ev, { quiet = false, metadata = null } = {}) {
     if (!headline) return null;
-    const rec = { text: headline, kind: ev.kind || normalizeKind(ev.type), t: (state.simTime || 0), stationId: ev.stationId || null };
+    const kind = ev.kind || normalizeKind(ev.type);
+    const stationId = ev.stationId || null;
+    const rec = metadata
+      ? { ...metadata, text: headline, kind, t: (state.simTime || 0), stationId }
+      : { text: headline, kind, t: (state.simTime || 0), stationId };
     model.log.unshift(rec);
     if (model.log.length > MAX_LOG) model.log.length = MAX_LOG;
 
     if (!quiet && bus) {
+      const voiceMetadata = metadata ? { ...metadata } : null;
+      if (voiceMetadata) delete voiceMetadata.channel;
       const said = helpers.voice && typeof helpers.voice.say === 'function'
-        ? helpers.voice.say({ channel: 'news', text: headline, kind: rec.kind })
+        ? helpers.voice.say({ channel: 'news', ...(voiceMetadata || {}), text: headline, kind: rec.kind })
         : false;
       if (!said) bus.emit('toast', { text: headline, kind: toastKind(rec.kind), ttl: 4 });
     }
     renderTicker();
-    if (bus) bus.emit('news:headline', { headline, kind: rec.kind, stationId: rec.stationId });
+    if (bus) bus.emit('news:headline', metadata
+      ? { ...metadata, headline, kind: rec.kind, stationId: rec.stationId }
+      : { headline, kind: rec.kind, stationId: rec.stationId });
     return rec;
+  }
+
+  // Economy events still use deterministic templates.
+  function surface(ev, { channel = 'news', quiet = false } = {}) {
+    const headline = generateHeadline(ev, { seed: seedOf() });
+    return commitHeadline(headline, ev, { quiet });
+  }
+
+  // Authored narrative copy must arrive verbatim. Do not pass it through generateHeadline: doing so
+  // would replace the authored line with a commodity template and discard provenance metadata.
+  function surfacePublished(ev) {
+    if (!ev || typeof ev.text !== 'string' || !ev.text.trim()) return null;
+    return commitHeadline(ev.text, ev, { metadata: ev });
   }
 
   // ---- economy subscriptions (READ-ONLY) ---------------------------------------------------
   const subs = [];
   function on(evt, fn) { if (bus && bus.on) { bus.on(evt, fn); subs.push([evt, fn]); } }
 
+  on('news:publish', surfacePublished);
   on('economy:eventStarted', (p) => {
     if (!p) return;
     surface({ type: p.type, stationId: p.stationId, commodityId: p.commodityId, eventId: p.eventId });

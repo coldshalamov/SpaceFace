@@ -1,91 +1,38 @@
-# Technique Checklist — SpaceFace Hard-Surface
+# Technique Menu — SpaceFace Authored Assets
 
-**Primary reference:** `professional-techniques.md` — this checklist is a quick reminder; the main doc has the depth.
+This is a diagnostic menu, not a checklist or acceptance score. Use only the sections relevant to the
+asset's observed defects, role, camera distance, and runtime contract. Do not add a technique merely to
+check a box. Exact tolerances come from the live exporter/manifest or measurement, not this reference.
 
-Use during each pass. Every pass must actively employ and document multiple advanced techniques from the main professional-techniques document. 
+## Form and construction
 
-If your work only touches basic inset + bevel + flat colors, it fails.
+- silhouette, proportion, orientation, and negative-space readability;
+- macro/secondary/micro hierarchy appropriate to camera distance;
+- plausible load paths, access, propulsion, weapons, docks, and attachment logic;
+- direct modeling, modifiers, booleans, sculpting, retopology, instances, or geometry nodes as useful;
+- stable transforms, scale, normals, pivots, and shading.
 
-## Silhouette & design
+## Surface and materials
 
-- [ ] Readable at thumbnail scale (64px ship height)
-- [ ] Asymmetric interest — avoid mirror-perfect kitbash
-- [ ] Engine read, cockpit read, weapon hardpoints obvious
-- [ ] Panel lines follow form flow (longitudinal on fuselage, radial on hubs)
-- [ ] Faction palette hint via accent placement, not full recolor
+- UV layout and texel use appropriate to the asset and reuse strategy;
+- trim sheets, decals, authored textures, vertex data, or procedural masks where they add value;
+- normal/AO/ORM/emissive bakes when the runtime and visible result benefit;
+- roughness and material-role separation that remain legible under representative lighting;
+- wear, grime, markings, and damage only where story, construction, and scale justify them.
 
-## Topology
+## Life and integration
 
-- [ ] Quads on hero surfaces; triangles only on hidden/low-visibility
-- [ ] Support loops around booleans and inset panels
-- [ ] No ngons on flat armor faces
-- [ ] Bevel-weight or sharp-edge marking consistent
+- sockets and pivots aligned to actual runtime consumers;
+- animation, bones, actions, shape keys, or state meshes only for behavior the game can use;
+- appropriate LOD/HLOD, material sharing, batching/instancing compatibility, and culling bounds;
+- exact metadata, naming, provenance, and release-path requirements from the live contract.
 
-## Chamfer / bevel (style law)
+## Review questions
 
-- [ ] Panel corner bevels: 2–3 segments, radius ~0.02–0.04m
-- [ ] Cutline bevels on every boolean seam
-- [ ] No 0-segment "fake" chamfers (edge split only)
-- [ ] Glass canopy lip beveled
+- Does the asset read correctly and distinctly at the real game camera?
+- Do construction and materials look intentional rather than primitive, noisy, or generically procedural?
+- Is important close detail present without spending cost on invisible work?
+- Does every expensive or complex technique survive export and visibly improve the player-facing result?
+- Is the authored result actually reachable on the normal route and technically valid?
 
-## UV
-
-- [ ] Uniform texel density on hull hero faces
-- [ ] Seams on undersides, panel backs, engine interior
-- [ ] 0–1 padding ≥4px at 1k
-- [ ] Trim sheet islands aligned to sheet grid if using trim workflow
-
-## High-poly detail
-
-- [ ] Panel inset depth 1–3mm at ship scale
-- [ ] Bolt/grille floaters only where normal bake resolves them
-- [ ] No micro-greeble noise that disappears at game camera distance
-- [ ] Weighted normals applied before bake
-
-## Bake quality rubric
-
-### AO
-- [ ] Contact shadows at panel overlaps
-- [ ] Cavity darkening in vents and recesses
-- [ ] No pure-black clipping (multiply-safe)
-- [ ] No bake artifacts at UV seams (cage tuned)
-
-### Roughness
-- [ ] Edges lighter (wear) than flats
-- [ ] Cavities darker/more matte
-- [ ] Mechanical bays slightly different from hull paint
-- [ ] Glass roughness near 0 in mask, not painted white
-
-### Normal
-- [ ] Panel lines visible without shimmer at glancing angles
-- [ ] No ray-distance spikes on corners
-- [ ] Consistent tangent space (OpenGL per metadata)
-
-### Emissive mask
-- [ ] White = emissive only (thrusters, windows)
-- [ ] Color comes from runtime — mask is grayscale
-- [ ] No bleed into hull albedo
-
-## Material roles
-
-- [ ] `Material_Hull` on primary body
-- [ ] `Material_Accent` on antennas/decals only
-- [ ] `Material_Mechanical` on engines/braces
-- [ ] `Material_Glass` on canopy/lens
-- [ ] Wholeship: hull tris ≥800 on hull role geometry
-
-## Export metadata
-
-- [ ] `spacefaceAsset` extras present
-- [ ] `chamfered: true`
-- [ ] `ormChannels: R=AO,G=Roughness,B=Metallic`
-- [ ] Forward +X, Up +Y, Starboard +Z
-- [ ] Tri count ≤ budget for kind
-
-## Post-export
-
-- [ ] `parts_manifest.json` entry
-- [ ] Release build run
-- [ ] `check:exporter` green
-- [ ] `check:assets:live` green
-- [ ] In-game screenshot confirms authored mesh (not procedural fallback)
+The strongest answer may use many techniques or very few.

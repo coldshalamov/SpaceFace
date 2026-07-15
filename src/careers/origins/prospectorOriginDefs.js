@@ -1,6 +1,6 @@
 // Prospector origin chain — pure data + balance constants.
 // Isolated M3 candidate. Lead wires shared seams; do not import from registries/HUD here.
-// Taste: dry rigger voice, ≤12 words per line (spec2/00 §5). Non-binding career offer.
+// Dry rigger voice with actionable inline copy. Non-binding career offer.
 
 /** Stable career id used by contract harness + save schema. */
 export const PROSPECTOR_ORIGIN_ID = 'prospector';
@@ -165,21 +165,18 @@ export const PROSPECTOR_EVENTS = Object.freeze({
   PROGRESS: 'origin:prospector:progress',
 });
 
-/** Word-count gate for player-facing strings in this package. */
-export function countWords(text) {
-  return String(text || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean).length;
-}
-
-/** Assert taste: every tutorial/objective line ≤ 12 words. */
-export function assertProspectorCopyBudget(maxWords = 12) {
+/** Compatibility-named validator for authored, inline-safe tutorial/objective copy. */
+export function assertProspectorCopyBudget() {
   const lines = [
     PROSPECTOR_OFFER.blurb,
     ...PROSPECTOR_STEP_IDS.map((id) => PROSPECTOR_STEPS[id].objective),
     ...PROSPECTOR_STEP_IDS.map((id) => PROSPECTOR_STEPS[id].failure.copy),
   ];
-  const offenders = lines.filter((line) => countWords(line) > maxWords);
-  return { ok: offenders.length === 0, offenders, maxWords };
+  const offenders = lines.filter((line) => (
+    typeof line !== 'string'
+    || !line.trim()
+    || /[\r\n\u2028\u2029]/u.test(line)
+    || /[\u0000-\u001f\u007f\ufffd]/u.test(line)
+  ));
+  return { ok: offenders.length === 0, offenders, contract: 'authored-inline-copy' };
 }

@@ -1,5 +1,9 @@
 # 11 — Enforcement Machinery Specification
 
+> **Manual control-plane specification.** Activate only for a named production-machinery packet.
+> It is not permission policy for ordinary repository agents and must not turn normal feature work
+> into submit-only, report-only, or controller-only behavior.
+
 **Status:** DRAFT implementation contracts for the tooling that makes the production constitution mechanically binding.
 
 The production constitution (00) and quality standard (07) are rules. Rules without enforcement

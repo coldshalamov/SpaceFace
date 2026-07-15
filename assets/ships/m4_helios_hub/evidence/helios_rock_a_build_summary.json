@@ -1,0 +1,335 @@
+{
+  "id": "helios_rock_a",
+  "assetId": "SF_PLACE_HELIOS_ROCK_A",
+  "partId": "place_asteroid_rock_a",
+  "liveId": "place_asteroid_rock_a",
+  "title": "Helios Rock A (slab)",
+  "role": "hero_rock",
+  "kind": "prop",
+  "ok": true,
+  "elapsedSec": 135.8,
+  "sourceGlb": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/source/places/helios_rock_a.glb",
+  "productionBlend": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/blender/helios_rock_a_production.blend",
+  "sourceBytes": 1971324,
+  "sourceSha256": "23F0671DD7D08EAB0D1629310BE1263F11E4E9F5F1AF93560579DEBCA559E9E0",
+  "totalTriangles": 1989,
+  "hullTriangles": 1960,
+  "lod0Triangles": 1250,
+  "sockets": [
+    "SOCKET_Structure_Core"
+  ],
+  "materials": [
+    "Material_Rock",
+    "Material_Warm"
+  ],
+  "collisionCoverageMin": 0.9199999849680489,
+  "lod0WithinBudget": true,
+  "renderCount": 10,
+  "renders": [
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_a/helios_rock_a_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_a/helios_rock_a_readability_close.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_a/helios_rock_a_readability_120px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_a/helios_rock_a_readability_under45px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_a/helios_rock_a_rear_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_a/helios_rock_a_side_ortho.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_a/helios_rock_a_gamesky_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_a/helios_rock_a_lod_continuity_lod0.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_a/helios_rock_a_lod_continuity_lod1.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_a/helios_rock_a_lod_continuity_lod2.png"
+  ],
+  "export": {
+    "file": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/source/places/helios_rock_a.glb",
+    "bytes": 1971324,
+    "sha256": "23F0671DD7D08EAB0D1629310BE1263F11E4E9F5F1AF93560579DEBCA559E9E0",
+    "totalTriangles": 1989,
+    "hullTriangles": 1960,
+    "lodBreakdown": {
+      "lod0": {
+        "triangles": 1250,
+        "primitives": 3,
+        "drawEstimate": 3,
+        "nodes": [
+          {
+            "name": "COLLISION_HULL",
+            "tris": 12
+          },
+          {
+            "name": "LOD0_Merged_Material_Rock",
+            "tris": 1226
+          },
+          {
+            "name": "LOD0_Merged_Material_Warm",
+            "tris": 12
+          }
+        ]
+      },
+      "lod1": {
+        "triangles": 518,
+        "primitives": 2,
+        "drawEstimate": 2,
+        "nodes": [
+          {
+            "name": "LOD1_Merged_Material_Rock",
+            "tris": 514
+          },
+          {
+            "name": "LOD1_Merged_Material_Warm",
+            "tris": 4
+          }
+        ]
+      },
+      "lod2": {
+        "triangles": 221,
+        "primitives": 2,
+        "drawEstimate": 2,
+        "nodes": [
+          {
+            "name": "LOD2_Merged_Material_Rock",
+            "tris": 220
+          },
+          {
+            "name": "LOD2_Merged_Material_Warm",
+            "tris": 1
+          }
+        ]
+      }
+    },
+    "sockets": [
+      "SOCKET_Structure_Core"
+    ],
+    "materials": [
+      "Material_Rock",
+      "Material_Warm"
+    ],
+    "primitiveCount": 7,
+    "tangentPrimitiveCount": 7,
+    "uvPrimitiveCount": 7,
+    "lod0Aabb": {
+      "min": [
+        -8.994595527648926,
+        -6.151984214782715,
+        -3.9485833644866943
+      ],
+      "max": [
+        8.730542182922363,
+        5.982447147369385,
+        4.299026012420654
+      ],
+      "size": [
+        17.72513771057129,
+        12.1344313621521,
+        8.247609376907349
+      ],
+      "center": [
+        -0.13202667236328125,
+        -0.08476853370666504,
+        0.17522132396697998
+      ]
+    },
+    "collisionAabb": {
+      "min": [
+        -8.153563499450684,
+        -5.581838607788086,
+        -3.79390025138855
+      ],
+      "max": [
+        8.153563499450684,
+        5.581838607788086,
+        3.79390025138855
+      ],
+      "size": [
+        16.307126998901367,
+        11.163677215576172,
+        7.5878005027771
+      ],
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "collisionCoverageRatio": {
+      "perAxis": [
+        0.9200000172171177,
+        0.9200000298651193,
+        0.9199999849680489
+      ],
+      "min": 0.9199999849680489,
+      "mean": 0.9200000106834286
+    },
+    "images": [
+      {
+        "name": "rock_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "rock_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "rock_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_basecolor",
+        "mimeType": "image/png"
+      }
+    ],
+    "spacefaceAsset": {
+      "contractVersion": 1,
+      "assetId": "SF_PLACE_HELIOS_ROCK_A",
+      "slot": "place",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "textureCompression": "PNG-source",
+      "textureSize": 1024,
+      "chamfered": true,
+      "bevelRadiusM": 0.05,
+      "partId": "place_asteroid_rock_a",
+      "liveId": "place_asteroid_rock_a",
+      "category": "places",
+      "sourceRole": "place-environment",
+      "packet": "M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001",
+      "family": "helios_hub_env",
+      "role": "hero_rock",
+      "title": "Helios Rock A (slab)",
+      "kind": "prop",
+      "triangleCount": 1989,
+      "hullTriangleCount": 1960,
+      "deliverableRole": "production_multi_lod",
+      "lods": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "wiringStatus": "candidate_pending_promote",
+      "lod0AabbSize": [
+        17.72513771057129,
+        12.1344313621521,
+        8.247609376907349
+      ],
+      "collisionBounds": {
+        "min": [
+          -8.153563499450684,
+          -5.581838607788086,
+          -3.79390025138855
+        ],
+        "max": [
+          8.153563499450684,
+          5.581838607788086,
+          3.79390025138855
+        ],
+        "size": [
+          16.307126998901367,
+          11.163677215576172,
+          7.5878005027771
+        ],
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "collisionCoverageRatio": {
+        "perAxis": [
+          0.9200000172171177,
+          0.9200000298651193,
+          0.9199999849680489
+        ],
+        "min": 0.9199999849680489,
+        "mean": 0.9200000106834286
+      },
+      "triBudget": 3500
+    },
+    "lodBuildStats": [
+      {
+        "lod": "lod0",
+        "decimateRatio": 1.0,
+        "mergedMeshes": [
+          "LOD0_Merged_Material_Rock",
+          "LOD0_Merged_Material_Warm"
+        ],
+        "separateMeshes": [],
+        "removedCloseOnly": [],
+        "triangles": 1238,
+        "objectCount": 2
+      },
+      {
+        "lod": "lod1",
+        "decimateRatio": 0.42,
+        "mergedMeshes": [
+          "LOD1_Merged_Material_Rock",
+          "LOD1_Merged_Material_Warm"
+        ],
+        "separateMeshes": [],
+        "removedCloseOnly": [],
+        "triangles": 518,
+        "objectCount": 2
+      },
+      {
+        "lod": "lod2",
+        "decimateRatio": 0.18,
+        "mergedMeshes": [
+          "LOD2_Merged_Material_Rock",
+          "LOD2_Merged_Material_Warm"
+        ],
+        "separateMeshes": [],
+        "removedCloseOnly": [],
+        "triangles": 222,
+        "objectCount": 2
+      }
+    ],
+    "withinBudget": true,
+    "lod0WithinBudget": true
+  },
+  "lodStats": [
+    {
+      "lod": "lod0",
+      "decimateRatio": 1.0,
+      "mergedMeshes": [
+        "LOD0_Merged_Material_Rock",
+        "LOD0_Merged_Material_Warm"
+      ],
+      "separateMeshes": [],
+      "removedCloseOnly": [],
+      "triangles": 1238,
+      "objectCount": 2
+    },
+    {
+      "lod": "lod1",
+      "decimateRatio": 0.42,
+      "mergedMeshes": [
+        "LOD1_Merged_Material_Rock",
+        "LOD1_Merged_Material_Warm"
+      ],
+      "separateMeshes": [],
+      "removedCloseOnly": [],
+      "triangles": 518,
+      "objectCount": 2
+    },
+    {
+      "lod": "lod2",
+      "decimateRatio": 0.18,
+      "mergedMeshes": [
+        "LOD2_Merged_Material_Rock",
+        "LOD2_Merged_Material_Warm"
+      ],
+      "separateMeshes": [],
+      "removedCloseOnly": [],
+      "triangles": 222,
+      "objectCount": 2
+    }
+  ]
+}

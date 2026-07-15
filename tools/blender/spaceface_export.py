@@ -46,12 +46,12 @@ def _manifest_triangle_growth_guard() -> int:
 MANIFEST_TRIANGLE_GROWTH_GUARD = _manifest_triangle_growth_guard()
 
 KIND_BUDGETS = {
-    'part': {'tri_budget': 15000, 'min_hull_tris': 0},
-    'wholeship': {'tri_budget': 20000, 'min_hull_tris': 800},
-    'prop': {'tri_budget': 3000, 'min_hull_tris': 0},
-    # Place heroes retain authored silhouette/detail up to the measured manifest guard. Crossing it
-    # requests batching/LOD/perf review; it must not be "fixed" by silently lowering visible quality.
-    'landmark': {'tri_budget': MANIFEST_TRIANGLE_GROWTH_GUARD, 'min_hull_tris': 0},
+    # Defaults are diagnostic opt-ins, not universal quality ceilings. Per-asset specs may provide a
+    # measured budget; otherwise preserve authored detail and review performance structurally.
+    'part': {'tri_budget': None, 'min_hull_tris': 0},
+    'wholeship': {'tri_budget': None, 'min_hull_tris': 800},
+    'prop': {'tri_budget': None, 'min_hull_tris': 0},
+    'landmark': {'tri_budget': None, 'min_hull_tris': 0},
 }
 
 REQUIRED_MAPS = ('ao', 'roughness')
@@ -220,7 +220,7 @@ def validate_object(obj: Any, spec: dict[str, Any]) -> None:
                 _fail(f"missing baked map '{role}'", obj.name)
         tris = tri_count_mesh(obj)
         budget = spec.get('tri_budget', KIND_BUDGETS.get(spec.get('kind', 'part'), {}).get('tri_budget', 1200))
-        if tris > budget:
+        if budget is not None and tris > budget:
             _fail('tri budget exceeded', f'{obj.name}: {tris} tris > {budget}')
 
 
@@ -320,7 +320,7 @@ def validate_gltf_document(gltf: dict[str, Any], spec: dict[str, Any]) -> list[s
     # Runtime displays one authored LOD at a time. Use unique LOD0 render primitives for the
     # structural guard; fall back to total unique primitives when no LOD chain is authored.
     budget_tris = tris_by_lod['lod0'] or total_tris
-    if budget_tris > budget:
+    if budget is not None and budget_tris > budget:
         errors.append(f'{asset_id}: tri budget exceeded: LOD0 {budget_tris} tris > {budget}')
 
     if kind == 'wholeship' and hull_tris < min_hull_tris:

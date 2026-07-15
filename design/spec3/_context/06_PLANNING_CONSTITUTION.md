@@ -30,7 +30,10 @@ Concretely, aim the game at these north stars:
   can be a physics verb instead of a menu, make it a physics verb. (GDD pillar 1.)
 - **Read the battlefield at a glance.** Top-down is a readability superpower. Every entity, threat, and
   opportunity is identifiable in one screen glance. (GDD pillar 2.)
-- **One voice at a time.** The game never says two things at once. (GDD pillar 3.)
+- **Attention is deliberately arbitrated.** Competing urgent/transient messages share a prioritized
+  channel. Persistent status and objectives, contextual/spatial information, captions, and other
+  accessibility or multimodal equivalents may coexist when their hierarchy remains legible. The
+  outcome is comprehension under load, not a universal ban on redundant information. (GDD pillar 3.)
 - **The universe was here before you.** Charted space is charted; traffic flies its own routes; prices
   move without you; discovery means *frontier and secrets*, not "the map is blank." (GDD pillar 4.)
 - **Depth without a cliff.** Complex, strategic systems (economy, production, territory) must be legible
@@ -38,11 +41,12 @@ Concretely, aim the game at these north stars:
 
 ## 2. Hard constraints — do not plan around breaking these
 
-- **No silent engine swap or runtime dependency.** Build-time/tooling dependencies are allowed when
-  they improve quality and are documented with license + integration cost. Runtime dependencies require
-  lead sign-off plus license, bundle/perf, determinism/save, maintenance, and browser/Electron parity
-  notes. Vendored single-file addons follow the same review. The game still ships as raw ES modules +
-  importmap with a zero-dep static server.
+- **No silent engine swap or dependency.** Build-time/tooling and runtime dependencies are allowed
+  when they materially improve the player-facing or production result. Document license, integration
+  and maintenance cost, bundle/memory/performance impact, determinism/save implications, and
+  browser/Electron parity as applicable. Vendored single-file addons follow the same evidence rule;
+  dependency absence is not itself a quality result. Preserve the shared raw-ES-module/importmap game
+  path and static-server contract unless an explicit architecture change replaces them coherently.
 - **No first-person / cockpit / visor motifs.** This is a third-person top-down game. No screen-edge
   arcs, helmet avatars, or diegetic visor framing. (GDD §9, rejected by the user.)
 - **Determinism is sacred.** The 60 Hz fixed-timestep sim, the 47a golden replay, and the `check:*`

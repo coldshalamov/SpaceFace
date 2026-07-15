@@ -20,13 +20,16 @@ assert.equal(guidance.disabled, true);
 assert.equal(guidance.label, 'Research Combat Basics');
 assert.match(guidance.title, /requires Combat Basics/);
 
-guidance = describeShipyardPurchase(ship('ship_pelican'), { credits: 500 }, true);
+const pelican = ship('ship_pelican');
+const pelicanFundingCredits = 500;
+const pelicanShortfall = pelican.price - pelicanFundingCredits;
+guidance = describeShipyardPurchase(pelican, { credits: pelicanFundingCredits }, true);
 assert.equal(guidance.state, 'funding');
 assert.equal(guidance.disabled, true);
-assert.equal(guidance.label, 'Need 21,500 cr');
-assert.match(guidance.title, /need 21,500 more credits/i);
+assert.equal(guidance.label, `Need ${pelicanShortfall.toLocaleString('en-US')} cr`);
+assert.match(guidance.title, new RegExp(`need ${pelicanShortfall.toLocaleString('en-US')} more credits`, 'i'));
 
-guidance = describeShipyardPurchase(ship('ship_pelican'), { credits: 22000 }, true);
+guidance = describeShipyardPurchase(pelican, { credits: pelican.price }, true);
 assert.equal(guidance.state, 'available');
 assert.equal(guidance.disabled, false);
 assert.equal(guidance.label, 'Buy');

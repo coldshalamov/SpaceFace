@@ -24,7 +24,7 @@
 
 | Subfolder | Contents | Typical use |
 |---|---|---|
-| `archetypes/` | Station/gate archetype mood boards | IoU gate target for `place_station_*` / `place_gate_jump_ring` GLBs |
+| `archetypes/` | Station/gate archetype mood boards | Silhouette and material reference for `place_station_*` / `place_gate_jump_ring` GLBs |
 | `sectors/` | Per-sector overview paintings | Landmark/station placement briefs |
 | `cities/` · `landmarks/` | Named location identity | Future landmark GLBs (`assets/QUEUE.md`) |
 | `ships/` | Ship silhouette concepts | Blender wholeship/hull authoring briefs — **not** the live `wholeships/*.glb` files |
@@ -37,19 +37,15 @@
 
 ## Concept → live asset mapping
 
-`index.json` entries tie a concept JPG to a **target** runtime asset role. Examples:
-
-| concept_id | blender_part_id (when set) | Live asset today |
-|---|---|---|
-| `concept_station_trade_hub` | `place_station_trade_hub` | ✅ `assets/ships/release/parts/places/place_station_trade_hub.glb` |
-| `concept_station_refinery` | `place_station_refinery` | ✅ GLB in release |
-| `concept_gate_jump_ring` | `place_gate_jump_ring` | ✅ GLB in release |
-| `concept_helios_overview` | *(null)* | ❌ queued landmark — no GLB yet |
-| Ship concepts (`concept_ship_*`) | often null | Use modular hulls + code-native faction ships, not concept JPGs directly |
+`index.json` ties concepts to intended asset roles. It does not prove the target is built, accepted,
+released, or wired. Verify exact status through the ship/place manifest, release manifest, runtime
+maps, asset checks, and current captures.
 
 **Promotion path:** concept JPG → Blender export → `assets/ships/parts/` → finalize → release build → `parts_manifest.json` + `partsLibrary.js`.
 
-Place models may also pass the **silhouette IoU gate** (`iteration_ledger.json`, min 0.12 vs concept) before promotion from procedural fallback.
+Concept comparisons may use silhouette overlap as a diagnostic, but no universal numeric similarity
+threshold proves quality. Promotion depends on the asset's intended role, player-camera silhouette,
+material/readability review, runtime validation, and measured performance.
 
 ---
 
@@ -71,4 +67,4 @@ Place models may also pass the **silhouette IoU gate** (`iteration_ledger.json`,
 | Bar portraits | `assets/portraits/*.jpg` | `src/data/portraits.js` |
 | Menu/codex stills | `assets/cinematics/C-INTRO-*.jpg` | `uiRoot.js`, `codex.js` |
 
-See `assets/AGENTS.md` §1 for the full catalog.
+See `assets/AGENTS.md` for asset-class and promotion routing.

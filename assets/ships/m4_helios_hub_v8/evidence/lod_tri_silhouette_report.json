@@ -1,0 +1,232 @@
+{
+  "schema": "spaceface.lodTriSilhouette.v1",
+  "packet": "M4-HELIOS-V8-NEW-FOUNDATION-GROK-001",
+  "assets": [
+    {
+      "id": "helios_hub_station",
+      "lod0Triangles": 32974,
+      "totalTriangles": 60424,
+      "lodBreakdown": {
+        "lod0": {
+          "triangles": 32974,
+          "primitives": 5,
+          "drawEstimate": 5,
+          "nodes": [
+            {
+              "name": "LOD0_HOOK_EMISSIVE",
+              "tris": 3398
+            },
+            {
+              "name": "LOD0_Merged_Material_Glass",
+              "tris": 24
+            },
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 21525
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 7943
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 84
+            }
+          ]
+        },
+        "lod1": {
+          "triangles": 23425,
+          "primitives": 5,
+          "drawEstimate": 5,
+          "nodes": [
+            {
+              "name": "LOD1_HOOK_EMISSIVE",
+              "tris": 800
+            },
+            {
+              "name": "LOD1_Merged_Material_Glass",
+              "tris": 24
+            },
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 12957
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 9560
+            },
+            {
+              "name": "LOD1_Merged_Material_Warm",
+              "tris": 84
+            }
+          ]
+        },
+        "lod2": {
+          "triangles": 4025,
+          "primitives": 5,
+          "drawEstimate": 5,
+          "nodes": [
+            {
+              "name": "LOD2_HOOK_EMISSIVE",
+              "tris": 44
+            },
+            {
+              "name": "LOD2_Merged_Material_Glass",
+              "tris": 24
+            },
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 3534
+            },
+            {
+              "name": "LOD2_Merged_Material_Mechanical",
+              "tris": 379
+            },
+            {
+              "name": "LOD2_Merged_Material_Warm",
+              "tris": 44
+            }
+          ]
+        }
+      },
+      "lod0Aabb": {
+        "min": [
+          -34.01000213623047,
+          -2.687694787979126,
+          -24.780338287353516
+        ],
+        "max": [
+          30.674999237060547,
+          15.100000381469727,
+          24.780338287353516
+        ],
+        "size": [
+          64.68500137329102,
+          17.787695169448853,
+          49.56067657470703
+        ],
+        "center": [
+          -1.667501449584961,
+          6.2061527967453,
+          0.0
+        ]
+      },
+      "triBudget": 35000,
+      "lod0WithinBudget": true,
+      "screenSpaceSilhouetteError": {
+        "lod1TriRetention": 0.7104,
+        "lod2TriRetention": 0.1221,
+        "proxySilhouetteErrorLod1": 0.2904,
+        "proxySilhouetteErrorLod2": 0.0579,
+        "lod0AabbSize": [
+          64.68500137329102,
+          17.787695169448853,
+          49.56067657470703
+        ],
+        "method": "tri_retention_vs_silhouette_designed_targets_0.42_0.18_plus_aabb",
+        "note": "Proxy metric; pixel silhouette compare deferred to evidence review"
+      }
+    },
+    {
+      "id": "helios_gate",
+      "lod0Triangles": 28701,
+      "totalTriangles": 33954,
+      "lodBreakdown": {
+        "lod0": {
+          "triangles": 28701,
+          "primitives": 4,
+          "drawEstimate": 4,
+          "nodes": [
+            {
+              "name": "LOD0_HOOK_EMISSIVE",
+              "tris": 776
+            },
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 11396
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 16025
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 504
+            }
+          ]
+        },
+        "lod1": {
+          "triangles": 3914,
+          "primitives": 3,
+          "drawEstimate": 3,
+          "nodes": [
+            {
+              "name": "LOD1_HOOK_EMISSIVE",
+              "tris": 298
+            },
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 3572
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 44
+            }
+          ]
+        },
+        "lod2": {
+          "triangles": 1339,
+          "primitives": 2,
+          "drawEstimate": 2,
+          "nodes": [
+            {
+              "name": "LOD2_HOOK_EMISSIVE",
+              "tris": 103
+            },
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 1236
+            }
+          ]
+        }
+      },
+      "lod0Aabb": {
+        "min": [
+          -10.501546859741211,
+          -18.19999885559082,
+          -14.300000190734863
+        ],
+        "max": [
+          6.800000190734863,
+          18.0902156829834,
+          14.300000190734863
+        ],
+        "size": [
+          17.301547050476074,
+          36.29021453857422,
+          28.600000381469727
+        ],
+        "center": [
+          -1.8507733345031738,
+          -0.05489158630371094,
+          0.0
+        ]
+      },
+      "triBudget": 30000,
+      "lod0WithinBudget": true,
+      "screenSpaceSilhouetteError": {
+        "lod1TriRetention": 0.1364,
+        "lod2TriRetention": 0.0467,
+        "proxySilhouetteErrorLod1": 0.2836,
+        "proxySilhouetteErrorLod2": 0.1333,
+        "lod0AabbSize": [
+          17.301547050476074,
+          36.29021453857422,
+          28.600000381469727
+        ],
+        "method": "tri_retention_vs_silhouette_designed_targets_0.42_0.18_plus_aabb",
+        "note": "Proxy metric; pixel silhouette compare deferred to evidence review"
+      }
+    }
+  ]
+}

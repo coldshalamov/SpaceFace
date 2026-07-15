@@ -72,6 +72,14 @@ This is the mirror to B2. At B2, the player killed a civilian and was punished w
 
 The player who understands this is the player who has begun to understand the game. The reconciliation is not coming. The betrayer stays prosperous. The data chip is the only thing that changes hands. The player leaves Meridian with a lead and no satisfaction. The game does not bring Callum back for closure. The absence of comeuppance is the point.
 
+## THE ARGUMENT (both parties know it's a lie)
+
+What the reunion is, structurally: two men performing a transaction they both know is not the transaction they are describing. Callum offers a data chip and calls it resolution. Wren accepts the data chip and calls it a lead. Neither object is what its holder says it is. The chip is a payoff — cheaper than a scene, cheaper than guilt, cheaper than the risk that Wren makes noise at a booth where Callum trades futures. The lead is a pretext — Wren is not at the booth for the lead. Wren is at the booth because the booth is where Callum is and Callum is the last person who touched the first fragment and Wren needs to stand in front of him long enough to decide whether to hit him. The chip postpones the decision. Both men know this. The transaction is the postponement. The postponement is filed as resolution.
+
+The argument Callum makes — *"That's the same thing, Wren"* — is the only place in the conversation where the lie is spoken aloud. Callum is saying: the part I'm willing to tell is the whole story. Wren hears: the part you're willing to tell is the part that costs you nothing. Both are true. The two readings of the same sentence are both correct. The sentence resolves nothing. The sentence closes the conversation. Callum is good at closing conversations. Wren is good at reading them. The chip changes hands because the conversation is over and the conversation is over because the sentence closed it and the sentence closed it because closing conversations is what Callum does instead of answering them. This is a man whose entire prosperity is built on the skill of saying the part that costs nothing in a voice that sounds like the whole.
+
+Wren takes the chip. Wren leaves. The booth is quiet. Callum goes back to futures. The futures are commodities. The commodities are real. The chip is a lead. The lead is real. The man who sold his partner for a share and a fragment is sitting in clean clothes trading futures in a market that will never penalize him for any of it, and the market is honest, and the clothes are clean, and the booth is open, and the chip is in Wren's pocket, and none of it is just, and the system that produces this exact outcome filed it as a business decision and a courtesy and a transaction that closed cleanly. The filing is correct. The filing is the wound.
+
 ---
 
 ### Sheet wiring

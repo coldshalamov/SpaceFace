@@ -6,6 +6,7 @@
 ## What belongs here
 
 - Engineering navigation and troubleshooting: `MODULE_MAP.md`, `COMMON_BUGS.md`.
+- Agent policy and context routing: `POLICY_MANIFEST.md`, `SEARCH_CONTEXT.md`.
 - Generated code projections: `EVENT_ROUTING.md`, `SYSTEM_REGISTRY.md`.
 - Narrow technical contracts and acceptance records: `Spec/`.
 - Setting, story, and content source material: `worldbuilding/`.

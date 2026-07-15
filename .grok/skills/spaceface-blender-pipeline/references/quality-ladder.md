@@ -1,47 +1,32 @@
-# Quality Ladder — Reference Image Mapping
+# Quality Review Guide — SpaceFace Authored Assets
 
-Use this when briefing agents or reviewing deliverables. Each tier has a named skill.
+This guide describes review dimensions, not mandatory tiers, pass order, or technique counts. Compare
+against current project references and admired professional examples that match the asset's role.
 
-## Reference Guidance
+## Form
 
-The images shared earlier (#1 current output vs #2 Eve, #3, #4 pro examples) show the target quality level. 
+- Immediate role, orientation, and faction/family read at gameplay distance.
+- Intentional proportions, construction, negative space, and secondary hierarchy.
+- Clean shading and edge treatment appropriate to scale and material.
 
-For any asset:
-- Use `references/professional-techniques.md` as the primary definition of what "professional" means.
-- Load any available concept art or bible images from the project as reference planes.
-- Apply the general rigor protocol in each skill.
+## Surface
 
-## What each pass actually delivers
+- Materials respond convincingly under representative lighting.
+- Roughness, normal, contact, color, emissive, wear, and markings reinforce the form and story.
+- Detail frequency remains controlled rather than flat, noisy, or samey.
 
-- **Modeling Pass:** Professional hard-surface form using advanced non-destructive techniques, full modifier power, topology rigor, and rigorous iteration. The clay result must already show real craft.
-- **Surfacing Pass:** Advanced skins, layers, node-based effects, procedural + painted systems, trim sheets, filters, and material complexity.
-- **Life & Polish Pass:** Animation, moving parts, secondary details, and finishing that make the asset feel alive instead of static.
+## Life and context
 
-The old "start basic and add a little" approach is explicitly rejected. Each pass has mandatory advanced technique lists and strict iteration protocols.
+- Thrusters, weapons, docking, damage, articulation, and state cues align with gameplay when relevant.
+- Scale and identity remain clear beside adjacent ships, stations, props, VFX, and UI.
+- The result holds up in motion on the normal player route, not only in a beauty render.
 
-## Vision gate questions
+## Technical integrity
 
-### Tier 1 → 2
-- Are there panel insets on every major face?
-- Is greeble density 3× higher at joints than on flats?
-- Does it look kit-bashed/asymmetric vs toy-symmetric?
+- Exact exporter/runtime contract, metadata, sockets, maps, LODs, provenance, and reachability pass.
+- Performance cost is measured and addressed structurally without lowering visible quality.
 
-### Tier 2 → 3
-- Does AO contact sheet show recess depth without the mesh?
-- Does roughness show edge wear and cavity dirt?
-- Would removing lights still show material variation?
+## Decision
 
-### Tier 3 → Image 2 (review only)
-- Under HDRI, do metals specular correctly?
-- Are emissive limited to engines/windows?
-- (Ignore explosions — not GLB work)
-
-## Do not conflate
-
-| Wrong target | Right target |
-|---|---|
-| More emissive glow (Image 1 fix) | Roughness + AO (Image 4 fix) |
-| Subdividing hull (burns tris) | Normal map from floaters |
-| Three.js metalness slider | Re-bake roughness |
-| Meshy photo-to-3D | Tier 1 blockout |
-| Beauty PNG as deliverable | Map flats + validated GLB |
+Record the few material defects that still prevent acceptance and repair those. A pass count, a long
+deficiency list, greeble density, node count, or named Blender feature cannot grant a pass.

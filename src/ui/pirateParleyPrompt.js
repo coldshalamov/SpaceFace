@@ -5,6 +5,7 @@
 // pauses flight, writes cargo/credits, or creates a second combat state machine.
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
+import { isUiInteractionFenced } from './input.js';
 
 const STYLE_ID = 'sf-pirate-parley-style';
 const RECEIPT_TTL_S = 4;
@@ -174,7 +175,7 @@ export function createPirateParleyPrompt(ctx) {
   }
 
   function choose(choice, source) {
-    if (!active || active.phase !== 'demand') return false;
+    if (isUiInteractionFenced(state) || !active || active.phase !== 'demand') return false;
     const canonical = choice === 'comply' || choice === 'refuse' || choice === 'run' ? choice : null;
     if (!canonical) return false;
     if (canonical === 'run') {
@@ -201,13 +202,15 @@ export function createPirateParleyPrompt(ctx) {
   }
 
   function onClick(event) {
+    if (isUiInteractionFenced(state)) return;
     const button = event.target && event.target.closest && event.target.closest('[data-choice]');
     if (!button || !root.contains(button)) return;
     choose(button.dataset.choice, 'click');
   }
 
   function onKeyDown(event) {
-    if (!active || active.phase !== 'demand' || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (isUiInteractionFenced(state)
+      || !active || active.phase !== 'demand' || event.altKey || event.ctrlKey || event.metaKey) return;
     const choice = KEY_CHOICE[event.code];
     if (!choice) return;
     event.preventDefault();
@@ -216,7 +219,7 @@ export function createPirateParleyPrompt(ctx) {
   }
 
   function tick() {
-    if (destroyed || !active) return;
+    if (destroyed || !active || isUiInteractionFenced(state)) return;
     if (state.mode !== 'flight' || state.ui && state.ui.docked) {
       hide();
       return;

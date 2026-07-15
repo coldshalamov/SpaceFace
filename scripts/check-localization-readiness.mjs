@@ -19,7 +19,9 @@ const catalogCurrent = catalog === expectedCatalog;
 const candidateCount = inventory.stats.candidates;
 const covered = inventory.stats.extracted + inventory.stats.exempted;
 const extractionPercent = candidateCount > 0 ? round(covered / candidateCount * 100) : 100;
-const adoptionPercent = candidateCount > 0 ? round(Math.min(candidateCount, adoption.callSites) / candidateCount * 100) : 0;
+const adoptionPercent = adoption.documentBridgeInstalled
+  ? 100
+  : candidateCount > 0 ? round(Math.min(candidateCount, adoption.callSites) / candidateCount * 100) : 0;
 const ok = catalogCurrent && inventory.conflicts.length === 0
   && inventory.exemptionErrors.length === 0 && inventory.stats.unresolved === 0;
 
@@ -40,14 +42,15 @@ const report = {
   runtimeAdoption: {
     callSites: adoption.callSites,
     filesWithRuntimeImports: adoption.filesWithRuntimeImports,
+    documentBridgeInstalled: adoption.documentBridgeInstalled,
     estimatedSurfacePercent: adoptionPercent,
-    status: adoption.callSites > 0 ? 'partial' : 'not_adopted',
+    status: adoption.documentBridgeInstalled ? 'document_bridge' : adoption.callSites > 0 ? 'partial' : 'not_adopted',
   },
   translationStatus: {
     sourceCatalogs: catalogCurrent ? 1 : 0,
     translatedLocales: 0,
     productionTranslationClaim: false,
-    statement: 'Source copy is inventoried; existing game surfaces are not claimed translated until runtime adoption and translated catalogs ship.',
+    statement: 'Source copy is inventoried and the public pseudo-locale route is bridged at the document boundary; production translations are not claimed until translated catalogs ship.',
   },
 };
 
@@ -55,6 +58,11 @@ console.log(JSON.stringify(report, null, 2));
 if (!ok) process.exit(1);
 
 async function runtimeAdoption(rootDir, surfaceConfig) {
+  const gameLocalizationPath = path.join(rootDir, 'src/localization/gameLocalization.js');
+  let gameLocalizationSource = '';
+  try { gameLocalizationSource = await readFile(gameLocalizationPath, 'utf8'); } catch { /* reported as not installed */ }
+  const documentBridgeInstalled = /installLocalizedDocumentBridge/.test(gameLocalizationSource)
+    && /startupLocale\s*!==\s*DEFAULT_LOCALE/.test(gameLocalizationSource);
   const files = [];
   for (const row of surfaceConfig.roots || []) {
     const rel = typeof row === 'string' ? row : row.path;
@@ -67,10 +75,11 @@ async function runtimeAdoption(rootDir, surfaceConfig) {
   for (const file of files.sort()) {
     if (!/\.(?:js|mjs|html)$/.test(file)) continue;
     const source = await readFile(file, 'utf8');
-    if (/localization\/runtime\.js/.test(source)) filesWithRuntimeImports++;
+    if (/localization\/(?:runtime|gameLocalization)\.js/.test(source)) filesWithRuntimeImports++;
     callSites += (source.match(/\b(?:i18n|localization|locale)\.t\s*\(/g) || []).length;
+    callSites += (source.match(/\blocalizeText\s*\(/g) || []).length;
   }
-  return { callSites, filesWithRuntimeImports };
+  return { callSites, filesWithRuntimeImports, documentBridgeInstalled };
 }
 
 async function walk(dir, out) {

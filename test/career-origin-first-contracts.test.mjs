@@ -10,6 +10,7 @@ import {
   deserializeCareerOrigins,
   serializeCareerOrigins,
 } from '../src/careers/origins/careerOrigins.js';
+import { CAREER_ORIGIN_CONTRACTS } from '../src/careers/origins/careerOriginContracts.js';
 import { buildMissionLogOriginChoiceModel } from '../src/ui/careerLadderView.js';
 import { objectiveText } from '../src/ui/screens/missionLog.js';
 import { missions as missionsPrototype } from '../src/systems/missions.js';
@@ -213,7 +214,8 @@ test('Hunter first writ materializes one named hostile and advances only on the 
   route = h.state.careers.origins.__meta.routes.hunter;
   assert.equal(route.contractIndex, 1);
   assert.equal(route.status, 'active');
-  assert.equal(h.credits.some((row) => row.amount === 180), true);
+  assert.equal(h.credits.some((row) => row.amount === CAREER_ORIGIN_CONTRACTS.hunter[0].rewardCr), true,
+    'first writ must settle the currently authored Hunter reward through economy authority');
   assert.equal(h.completions[0].factionId, 'faction_scn');
 });
 

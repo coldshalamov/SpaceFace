@@ -490,7 +490,12 @@ export function createOutfittingPanel(ctx) {
       return;
     }
     ensureStage();
-    stage.setShip(def.id);
+    // Your current ship + fitted modules. Hitch always uses the flight hero mesh.
+    stage.setShip(def.id, {
+      fittings: owned.fittings || [],
+      weapons: owned.weapons || null,
+      isPlayer: true,
+    });
     stage.setActive(true);
     // Re-fit the canvas to the laid-out stage size (the canvas may have been created before the
     // tab panel was visible/sized). Idempotent; cheap when already correct.
@@ -566,8 +571,13 @@ export function createOutfittingPanel(ctx) {
     const unavail = previewFit && previewFit.slotIndex < 0
       ? ' <span class="st-outfit-ghost-label" title="No compatible hardpoint">unavailable</span>'
       : '';
-    stage.setLabel('<span class="mono">' + escapeHtml(def.name) + '</span>' +
-      (ghostLabel ? ' <span class="st-outfit-ghost-label">preview</span>' : '') + unavail);
+    stage.setLabel(
+      'YOUR SHIP · <span class="mono">' + escapeHtml(def.name) + '</span>'
+      + ' · T' + (def.tier || 0)
+      + ' · fit modules here · new ships in Shipyard'
+      + (ghostLabel ? ' <span class="st-outfit-ghost-label">preview</span>' : '')
+      + unavail,
+    );
   }
 
   function renderMissionAdvisor() {

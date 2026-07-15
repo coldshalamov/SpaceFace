@@ -45,6 +45,16 @@ KURTZ [on approach]: "I know what you're carrying. I knew before you got here.
                      The mass is always the same. Only the manifest changes."
 ```
 
+If the player lingers — and the player will only linger if the player is the kind of player who stays in rooms others leave — the Kurtz figure mutters once, to the wall, not to the player. The mutter is the only defense the Kurtz figure has left, and it is not a defense the player is meant to hear, and it is not performed:
+
+```
+KURTZ [muttered, to the wall, not to the player]: "Filed it myself. Eleven years.
+                                                  Same columns. The handwriting
+                                                  hasn't improved."
+```
+
+The mutter is a man keeping himself company with the one piece of his work that is still legible to him: the bad handwriting. The handwriting is bad because the columns are full and the columns are full because the crimes didn't stop and the crimes didn't stop because the filing didn't stop and the filing didn't stop because the Kurtz figure kept filing, alone, at a desk that smells like the Pit, for eleven years, and the only thing that changed across eleven years of counting is that his hand got worse and the count got longer and neither fact altered the other. The mutter is not a confession. The mutter is a man noting, for the record only he keeps, that the record has not improved him and he has not improved it. The wall does not answer. The player is not invited to answer. The mutter closes itself, the way everything in this sector closes itself — by being filed and not resolved.
+
 The wall above the desk holds a hand-labeled chart. Twenty years of atmospheric maintenance budget allocations, sector by sector, cross-referenced with faction holdings. The column marked THE PIT has no entries after year 3. The column marked HELIOS PRIME has entries every cycle. The column correlating with ore-contract volume is labeled VIABILITY SCORE. The column showing reversion is labeled ADMINISTRATIVE CLOSURE. Vale's initial appears in the CLOSURE AUTHORITY column on every entry.
 
 The Kurtz figure holds the complete ledger. Every Kessler weight. Every Mira reroute. Every Hale clearance. The year-3 transfer. The ATMO DEBT spiral. Handwritten, cross-referenced, with names attached.

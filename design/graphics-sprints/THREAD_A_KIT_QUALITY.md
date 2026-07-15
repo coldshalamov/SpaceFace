@@ -1,5 +1,8 @@
 # Thread A — Kit Quality (Modular Parts Surfacing)
 
+> **Manual sprint lane.** This scope is exclusive only while Thread A is explicitly activated and its
+> ownership signal is live; it is not a permanent prohibition for later coherent work.
+
 ## Domain (exclusive)
 
 **Owns:** Blender MCP (via lock), source GLBs for manifest kit parts, `revamp-evidence/**`, `.blend` saves under `assets/ships/parts/blender/`.
@@ -22,7 +25,8 @@ One **category** per sprint (not the whole 63 at once):
 1. Read story role from `needed-assets.md` for this `id`.
 2. Load concept/bible refs per `spaceface-blender-pipeline` SKILL.
 3. Acquire `assets/ships/blender.LOCK` (Thread A).
-4. Inspect current GLB + MCP renders → `deficiency.md` iter0.
+4. Inspect the current GLB and representative renders; record only the material player-facing or
+   contract defects that the evidence actually demonstrates.
 5. Use `QUALITY_RITUAL.md` to critique and improve modeling, surfacing, and life until independent review
    supports the professional outcome.
 6. Export via `spaceface_export.py` / `finalize_part.mjs`.

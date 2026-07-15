@@ -1,0 +1,11 @@
+Poly Haven model: boulder_01
+Canonical: https://polyhaven.com/a/boulder_01
+License: CC0 1.0 — https://polyhaven.com/license
+Resolution: 1k glTF package
+Acquired: 2026-07-11T15:16:28.8081700-04:00
+Files SHA256:
+boulder_01_1k.gltf:51487934db898b4c24072780a451e34eca5c02e3ada24a62bbc600bbc4019e92
+boulder_01_arm_1k.jpg:c57187c5746b6be913fa53846cb44ff78743e7ca5000f131c9627b99563c2b87
+boulder_01_diff_1k.jpg:c38f0e918f6dc16b8d386ba3cdd89805c78320c119a1ceec85856f82b09a65b8
+boulder_01.bin:7f5b06503d62bd95bfe9c6b8a354a5cc8ff04a4d271a8cf87a3e3125db4232d7
+boulder_01_nor_gl_1k.jpg:0810cf6e89d89bb6eb065b4d2e2855288f5dcbd2c15c6e40ab90d462021b50aa

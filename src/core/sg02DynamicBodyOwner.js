@@ -18,6 +18,7 @@ export const SG02_DYNAMIC_BODY_OWNER_QUANTUM = 1e-4;
 const POSE_RESYNC_EPS2 = 1e-4;
 
 const CAPTURE_SLACK_S = 0.1;
+const REELED_ATTACHMENT_REPLAY_QUANTUM = 1e-7;
 const MAX_STRETCH_RATIO = 0.45;
 const REEL_SAFE_STRETCH_RATIO = 0.43;
 const STRETCH_EPSILON = 1e-6;
@@ -287,6 +288,8 @@ export class Sg02DynamicBodyOwner {
     if (!owner || !target || owner === target) return false;
     const sourceWorld = this._globalPointToFrameLocal(input.sourceWorld, owner.body.translation());
     const targetWorld = this._globalPointToFrameLocal(input.targetWorld, target.body.translation());
+    const sourceAnchorLocal = normalizeLocalAnchor(input.sourceAnchorLocal);
+    const targetAnchorLocal = normalizeLocalAnchor(input.targetAnchorLocal);
     const restLength = positive(input.restLength, distance2d(sourceWorld, targetWorld));
     const attachment = {
       id: attachmentId,
@@ -297,8 +300,8 @@ export class Sg02DynamicBodyOwner {
       targetSocketId: input.targetSocketId == null ? null : String(input.targetSocketId),
       owner,
       target,
-      anchorA: localAnchorFromWorld(owner, sourceWorld),
-      anchorB: localAnchorFromWorld(target, targetWorld),
+      anchorA: sourceAnchorLocal || localAnchorFromWorld(owner, sourceWorld),
+      anchorB: targetAnchorLocal || localAnchorFromWorld(target, targetWorld),
       restLength,
       break: normalizeBreak(input.break),
       spring: normalizeSpring(input.spring || (input.break && input.break.spring), input.defId, input.break),
@@ -429,9 +432,37 @@ export class Sg02DynamicBodyOwner {
     for (const rec of this.dynamicRecords) {
       const kinematics = this._enforcePlane(rec);
       this._clampSpeed(rec, kinematics);
+      if (this._hasManualSpringAttachment(rec)) this._canonicalizeManualSpringBody(rec, kinematics);
       this._syncEntityFromKinematics(rec, kinematics);
       this._publishTelemetry(rec);
     }
+  }
+
+  _hasManualSpringAttachment(rec) {
+    for (const attachment of this.attachments.values()) {
+      const reeled = Math.max(0, Math.trunc(finite(attachment.reelRevision))) > 0;
+      if (reeled && !usesLegacyRopeSpring(attachment.spring)
+        && (attachment.owner === rec || attachment.target === rec)) return true;
+    }
+    return false;
+  }
+
+  _canonicalizeManualSpringBody(rec, kinematics) {
+    // A save/load rebuild necessarily discards Rapier's private solver history. Manual springs are
+    // otherwise fully serialized, so keep their participating bodies on a deterministic lattice
+    // 1,000x finer than SG-02's published snapshot quantum. This prevents reconstruction noise from
+    // accumulating into replay-visible drift without quantizing unrelated or unreelled bodies.
+    const x = quantize(kinematics.x, REELED_ATTACHMENT_REPLAY_QUANTUM);
+    const z = quantize(kinematics.z, REELED_ATTACHMENT_REPLAY_QUANTUM);
+    const yaw = quantize(kinematics.yaw, REELED_ATTACHMENT_REPLAY_QUANTUM);
+    const vx = quantize(kinematics.vx, REELED_ATTACHMENT_REPLAY_QUANTUM);
+    const vz = quantize(kinematics.vz, REELED_ATTACHMENT_REPLAY_QUANTUM);
+    const wy = quantize(kinematics.wy, REELED_ATTACHMENT_REPLAY_QUANTUM);
+    rec.body.setTranslation({ x, y: 0, z }, true);
+    rec.body.setRotation(quatFromYaw(yaw), true);
+    rec.body.setLinvel({ x: vx, y: 0, z: vz }, true);
+    rec.body.setAngvel({ x: 0, y: wy, z: 0 }, true);
+    Object.assign(kinematics, { x, z, yaw, vx, vz, wy });
   }
 
   _captureExpectedKinematics(rec) {
@@ -1016,6 +1047,11 @@ function localAnchorFromWorld(rec, world) {
   const c = Math.cos(yaw);
   const s = Math.sin(yaw);
   return { x: c * dx + s * dz, y: 0, z: -s * dx + c * dz };
+}
+
+function normalizeLocalAnchor(value) {
+  if (!value || typeof value !== 'object' || !Number.isFinite(value.x) || !Number.isFinite(value.z)) return null;
+  return { x: value.x, y: Number.isFinite(value.y) ? value.y : 0, z: value.z };
 }
 
 function worldAnchor(rec, local) {

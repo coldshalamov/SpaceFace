@@ -628,7 +628,7 @@ function departureHullChip(state) {
   };
 }
 
-function departureReadinessChips(state) {
+export function departureReadinessChips(state) {
   return [
     departureMissionChip(state),
     departureCargoChip(state),

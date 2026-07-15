@@ -1,5 +1,9 @@
 # Thread E — Wholeship Repair (Blocked Heroes)
 
+> **Manual sprint lane.** This scope is exclusive only while Thread E is explicitly activated and its
+> ownership signal is live. Verify each exact whole-ship route and status from current manifests and
+> checks; this historical thread title is not family-wide status.
+
 ## Domain (exclusive)
 
 **Owns:** `wholeships/kestrel.glb`, `pelican.glb`, `wasp.glb` source + repair evidence. Blender lock **instead of** Thread A for this sprint.

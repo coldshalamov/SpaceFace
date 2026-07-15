@@ -1,4 +1,4 @@
-// R1 authored unique-wreck runtime.
+// R1 authored unique-wreck runtime and canonical bearing authority.
 // Owns only state.player.uniqueWrecks: what the player has read, fixed, recovered, and received.
 // It does not write credits, cargo, ship inventory, lossLedger, world discovery, or T4c aftermath
 // state. Rewards route through cargo's pickup:collected seam and ships.grantModule().
@@ -8,6 +8,7 @@ import { ENCOUNTERS } from '../data/encounters/index.generated.js';
 import { salvagePoolForWreck } from '../data/salvageLegality.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { fittedModuleDefs } from '../core/fittedModules.js';
 import {
   complicationEncounterId,
   deterministicTimer,
@@ -66,6 +67,7 @@ export function createUniqueWreckState(metaSeed) {
     storyRewards: {},
     complications: {},
     pingCounts: {},
+    pingRisks: {},
     offers: {},
     published: {},
     receipts: [],
@@ -84,6 +86,7 @@ export function normalizeUniqueWreckState(value, metaSeed) {
     storyRewards: {},
     complications: {},
     pingCounts: {},
+    pingRisks: {},
     offers: {},
     published: {},
     receipts: [],
@@ -149,7 +152,8 @@ export function normalizeUniqueWreckState(value, metaSeed) {
   }
   const complications = input.complications && typeof input.complications === 'object' ? input.complications : {};
   for (const [key, rec] of Object.entries(complications)) {
-    if (!rec || typeof rec !== 'object' || !uniqueWreckById(rec.wreckId)) continue;
+    const recDef = rec && uniqueWreckById(rec.wreckId);
+    if (!rec || typeof rec !== 'object' || !recDef) continue;
     out.complications[key] = {
       id: String(rec.id || key),
       wreckId: rec.wreckId,
@@ -161,11 +165,26 @@ export function normalizeUniqueWreckState(value, metaSeed) {
       dueAt: rec.dueAt == null ? null : Math.max(0, finite(rec.dueAt, 0)),
       triggeredAt: rec.triggeredAt == null ? null : Math.max(0, finite(rec.triggeredAt, 0)),
       encounterId: rec.encounterId == null ? null : String(rec.encounterId),
+      sectorId: typeof rec.sectorId === 'string' ? rec.sectorId : recDef.sectorId,
+      anchor: rec.anchor && typeof rec.anchor === 'object' ? copyPoint(rec.anchor) : null,
     };
   }
   const pingCounts = input.pingCounts && typeof input.pingCounts === 'object' ? input.pingCounts : {};
   for (const def of UNIQUE_WRECKS) {
     if (Number.isFinite(Number(pingCounts[def.id]))) out.pingCounts[def.id] = Math.max(0, Math.floor(Number(pingCounts[def.id])));
+  }
+  const pingRisks = input.pingRisks && typeof input.pingRisks === 'object' ? input.pingRisks : {};
+  for (const def of UNIQUE_WRECKS) {
+    const risk = pingRisks[def.id];
+    if (!risk || typeof risk !== 'object') continue;
+    out.pingRisks[def.id] = {
+      count: Math.max(0, Math.floor(finite(risk.count, 0))),
+      cooldownUntil: Math.max(0, finite(risk.cooldownUntil, 0)),
+      triggerCount: Math.max(0, Math.floor(finite(risk.triggerCount, 0))),
+      lastTriggeredAt: risk.lastTriggeredAt == null
+        ? null
+        : Math.max(0, finite(risk.lastTriggeredAt, 0)),
+    };
   }
   const offers = input.offers && typeof input.offers === 'object' ? input.offers : {};
   for (const [key, value] of Object.entries(offers)) if (value) out.offers[key] = true;
@@ -224,6 +243,7 @@ export const uniqueWrecks = {
     this.registry = ctx.registry;
     this._entityByWreck = new Map();
     this._wreckByEntity = new Map();
+    this._bandRequestResolutions = new Map();
     this._subscriptions = [];
     this._ensureState();
 
@@ -241,6 +261,7 @@ export const uniqueWrecks = {
     this._listen('salvage:completed', (payload) => this._onSalvageCompleted(payload));
     this._listen('uniqueWreck:choose', (payload) => this._onChoose(payload));
     this._listen('uniqueWreck:decisionRequest', (payload) => this._republishPendingDecisions(payload));
+    this._listen('band:bearingRequest', (payload) => this._onBandBearingRequest(payload));
     this._listen('encounter:resolved', (payload) => this._onEncounterResolved(payload));
     this._listen('entity:destroyed', (payload) => this._onEntityDestroyed(payload));
   },
@@ -261,6 +282,7 @@ export const uniqueWrecks = {
       || !current.storyRewards || typeof current.storyRewards !== 'object'
       || !current.complications || typeof current.complications !== 'object'
       || !current.pingCounts || typeof current.pingCounts !== 'object'
+      || !current.pingRisks || typeof current.pingRisks !== 'object'
       || !current.offers || typeof current.offers !== 'object'
       || !current.published || typeof current.published !== 'object'
       || !Array.isArray(current.receipts)) {
@@ -280,6 +302,7 @@ export const uniqueWrecks = {
   _clearRuntime() {
     if (this._entityByWreck) this._entityByWreck.clear();
     if (this._wreckByEntity) this._wreckByEntity.clear();
+    if (this._bandRequestResolutions) this._bandRequestResolutions.clear();
   },
 
   _receipt(type, wreckId) {
@@ -419,7 +442,7 @@ export const uniqueWrecks = {
       sectorId: def.sectorId,
       phase: 'rumored',
       sourceRef,
-      channelId: payload.channelId || source.channelId,
+      channelId: payload.recordedChannelId || payload.channelId || source.channelId,
       heardAtS: Math.max(0, finite(this.state.simTime, 0)),
       coordSpace: 'global_v1',
       bearingCenter: { ...placement.bearingCenterGlobal },
@@ -446,13 +469,81 @@ export const uniqueWrecks = {
       channelId: record.channelId,
       phase: record.phase,
     });
-    this.bus.emit('toast', {
-      text: `${def.name}: rumor charted. Search the amber bearing ring, then pulse scan.`,
-      kind: 'objective',
-      ttl: 6,
-    });
+    if (!payload.silent) {
+      this.bus.emit('toast', {
+        text: `${def.name}: rumor charted. Search the amber bearing ring, then pulse scan.`,
+        kind: 'objective',
+        ttl: 6,
+      });
+    }
     if (def.sectorId === (this.state.world && this.state.world.currentSectorId)) this._materialize(def.id);
     return record;
+  },
+
+  _onBandBearingRequest(payload) {
+    const requestId = payload && typeof payload.requestId === 'string' ? payload.requestId.trim() : '';
+    if (!requestId || !this.bus) return null;
+    const radio = this.state && this.state.bandRadio;
+    const pending = radio && radio.pendingBearingRequest;
+    const authorized = !!pending
+      && !radio.numbersReceipt
+      && payload.channelId === 'numbers_station'
+      && payload.contractVersion === 1
+      && requestId === pending.requestId
+      && payload.channelId === pending.channelId
+      && payload.contractVersion === pending.contractVersion
+      && payload.sequence === pending.sequence
+      && payload.requestedAtS === pending.requestedAtS;
+    // A request id correlates transport; it is not authority. Only the Band system's current,
+    // seeded request may mint the one canonical numbers-station bearing for this save.
+    if (!authorized) return null;
+    const prior = this._bandRequestResolutions && this._bandRequestResolutions.get(requestId);
+    if (prior) {
+      this.bus.emit('band:bearingResolved', clonePlain(prior));
+      return prior;
+    }
+
+    const own = this._ensureState();
+    const candidates = UNIQUE_WRECKS.filter((def) => !own.bearings[def.id] && !own.published[def.id]);
+    if (!candidates.length) {
+      this.bus.emit('band:bearingUnavailable', { requestId, reason: 'no-unread-canonical-wrecks' });
+      return null;
+    }
+    const pick = hash32(own.programSeed, 'band:numbers-bearing', requestId) % candidates.length;
+    const def = candidates[pick];
+    const source = def.rumorSources.find((entry) => entry.sourceRef === def.bearingSourceRef)
+      || def.rumorSources[0];
+    if (!source) {
+      this.bus.emit('band:bearingUnavailable', { requestId, reason: 'canonical-source-missing' });
+      return null;
+    }
+    // Keep the definition's exact source/channel validation as the authorization boundary, then
+    // record the Band as the delivery carrier. The numbers station reveals a real fuzzy map ring;
+    // it never invents a wreck, exact coordinate, source ref, or alternate salvage path.
+    const record = this._recordRumor({
+      wreckId: def.id,
+      sourceRef: source.sourceRef,
+      channelId: source.channelId,
+      recordedChannelId: 'band',
+      silent: true,
+    });
+    if (!record) {
+      this.bus.emit('band:bearingUnavailable', { requestId, reason: 'canonical-record-rejected' });
+      return null;
+    }
+    const a = hash32(own.programSeed, def.id, 'band-bearing-a') % 1000;
+    const b = hash32(own.programSeed, def.id, 'band-bearing-b') % 1000;
+    const resolution = {
+      requestId,
+      canonical: true,
+      wreckId: def.id,
+      sourceRef: record.sourceRef,
+      sectorId: record.sectorId,
+      bearingLabel: `${String(a).padStart(3, '0')}-${String(b).padStart(3, '0')}`,
+    };
+    this._bandRequestResolutions.set(requestId, resolution);
+    this.bus.emit('band:bearingResolved', clonePlain(resolution));
+    return resolution;
   },
 
   _scheduleSeededTimers(def, trigger) {
@@ -475,6 +566,8 @@ export const uniqueWrecks = {
         dueAt: now + delay,
         triggeredAt: null,
         encounterId: authored.encounterRef || authored.encounterId || null,
+        sectorId: def.sectorId,
+        anchor: null,
       };
       own.complications[key] = record;
       this.bus.emit('uniqueWreck:complicationScheduled', {
@@ -506,7 +599,9 @@ export const uniqueWrecks = {
       if (record.encounterId) {
         const def = uniqueWreckById(record.wreckId);
         const bearing = def && own.bearings[def.id];
-        if (def && bearing) this._requestEncounter(def, record.encounterId, bearing, record.kind);
+        if (def && bearing) this._requestEncounter(def, record.encounterId, bearing, record.kind, {
+          emitComplicationTriggered: false,
+        });
       }
     }
   },
@@ -610,12 +705,19 @@ export const uniqueWrecks = {
     return true;
   },
 
-  _requestEncounter(def, encounterId, bearing, kind = 'authored_encounter') {
+  _requestEncounter(def, encounterId, bearing, kind = 'authored_encounter', options = {}) {
     if (!def || def.programSlot === 'D10' || !encounterId || !bearing) return null;
     const own = this._ensureState();
     const key = `${def.id}:encounter:${encounterId}`;
-    if (own.complications[key]) return own.complications[key];
+    const existing = own.complications[key];
+    if (existing && !(options.allowCompletedRepeat === true && existing.status === 'completed')) {
+      return existing;
+    }
     const now = Math.max(0, finite(this.state.simTime, 0));
+    const sectorId = typeof options.sectorId === 'string'
+      ? options.sectorId
+      : typeof bearing.sectorId === 'string' ? bearing.sectorId : def.sectorId;
+    const anchor = copyPoint(options.anchor || options.pos || bearing.exactPos);
     const record = {
       id: key,
       wreckId: def.id,
@@ -627,20 +729,24 @@ export const uniqueWrecks = {
       dueAt: null,
       triggeredAt: now,
       encounterId: String(encounterId),
+      sectorId,
+      anchor,
     };
     // Persist before synchronous dispatch so re-entrant listeners cannot request the boss twice.
     own.complications[key] = record;
     this._receipt('encounter_requested', def.id);
     const payload = {
       wreckId: def.id,
-      sectorId: def.sectorId,
+      sectorId,
       encounterId: record.encounterId,
       kind: record.kind,
       trigger: record.trigger,
-      pos: { ...bearing.exactPos },
+      pos: { ...anchor },
       requestedAt: now,
     };
-    this.bus.emit('uniqueWreck:complicationTriggered', payload);
+    if (options.emitComplicationTriggered !== false) {
+      this.bus.emit('uniqueWreck:complicationTriggered', payload);
+    }
     this.bus.emit('uniqueWreck:encounterRequested', payload);
     this._activateEncounter(def, bearing, record);
     return record;
@@ -652,7 +758,9 @@ export const uniqueWrecks = {
 
   _activateEncounter(def, bearing, complication) {
     if (!def || !bearing || !complication || complication.status === 'completed') return false;
-    if ((this.state.world && this.state.world.currentSectorId) !== def.sectorId) return false;
+    const sectorId = complication.sectorId || bearing.sectorId || def.sectorId;
+    const anchor = copyPoint(complication.anchor || bearing.exactPos);
+    if ((this.state.world && this.state.world.currentSectorId) !== sectorId) return false;
     const director = this.registry && this.registry.get && this.registry.get('encounterDirector');
     const shape = ENCOUNTERS[complication.encounterId];
     const dir = this.state.encounterDirector;
@@ -664,7 +772,7 @@ export const uniqueWrecks = {
       return true;
     }
     const own = this._ensureState();
-    const center = globalToSectorLocalForSector(bearing.exactPos, def.sectorId);
+    const center = globalToSectorLocalForSector(anchor, sectorId);
     const rng = mulberry32(hash32(
       own.programSeed,
       def.id,
@@ -683,7 +791,7 @@ export const uniqueWrecks = {
     const item = planEncounterShape(
       shape,
       zone,
-      def.sectorId,
+      sectorId,
       Math.floor(Math.max(0, finite(this.state.simTime, 0)) / 600),
       0,
       rng,
@@ -701,10 +809,10 @@ export const uniqueWrecks = {
     complication.status = 'active';
     this.bus.emit('uniqueWreck:encounterActivated', {
       wreckId: def.id,
-      sectorId: def.sectorId,
+      sectorId,
       encounterId: complication.encounterId,
       instanceId: encounterId,
-      pos: { ...bearing.exactPos },
+      pos: { ...anchor },
     });
     return true;
   },
@@ -715,7 +823,8 @@ export const uniqueWrecks = {
       if (!complication || complication.status !== 'requested' || !complication.encounterId) continue;
       const def = uniqueWreckById(complication.wreckId);
       const bearing = def && own.bearings[def.id];
-      if (def && bearing && def.sectorId === sectorId) this._activateEncounter(def, bearing, complication);
+      const requestSectorId = complication.sectorId || (bearing && bearing.sectorId) || (def && def.sectorId);
+      if (def && bearing && requestSectorId === sectorId) this._activateEncounter(def, bearing, complication);
     }
   },
 
@@ -730,7 +839,7 @@ export const uniqueWrecks = {
       this._receipt('encounter_resolved', def.id);
       this.bus.emit('uniqueWreck:encounterCompleted', {
         wreckId: def.id,
-        sectorId: def.sectorId,
+        sectorId: complication.sectorId || def.sectorId,
         encounterId: complication.encounterId,
         instanceId: payload.encounterId,
         outcome: payload.outcome || null,
@@ -748,23 +857,66 @@ export const uniqueWrecks = {
     }
   },
 
-  _countPingAndMaybeRequest(def, bearing) {
-    const complication = (def && def.complications || []).find((entry) => entry
-      && entry.trigger === 'equipped_scan_pulse_threshold');
-    if (!complication) return 0;
+  _countDeepsurveyPingRisk() {
+    const def = uniqueWreckById('wreck_deepsurvey');
     const own = this._ensureState();
-    const count = (own.pingCounts[def.id] || 0) + 1;
-    own.pingCounts[def.id] = count;
-    const required = Math.max(1, Math.floor(finite(
-      complication.requiredPings ?? complication.triggerCount ?? complication.threshold,
-      3,
-    )));
-    if (count >= required) {
+    const bearing = def && own.bearings[def.id];
+    if (!def || !bearing || bearing.phase !== 'salvaged' || !own.grants[def.uniqueDropId]) return 0;
+
+    const fitted = fittedModuleDefs(this.state).find((moduleDef) => moduleDef.id === def.uniqueDropId);
+    const threshold = fitted && fitted.mods && fitted.mods.overusePingThreshold;
+    if (!Number.isFinite(threshold) || threshold < 1) return 0;
+    const required = Math.max(1, Math.floor(threshold));
+
+    const player = this.state.entities && this.state.entities.get
+      && this.state.entities.get(this.state.playerId);
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (!player || player.alive === false || !player.pos || !sectorId) return 0;
+
+    const risk = own.pingRisks[def.id] || (own.pingRisks[def.id] = {
+      count: 0,
+      cooldownUntil: 0,
+      triggerCount: 0,
+      lastTriggeredAt: null,
+    });
+    const now = Math.max(0, finite(this.state.simTime, 0));
+    if (now < risk.cooldownUntil) return risk.count;
+
+    risk.count += 1;
+    if (risk.count < required) return risk.count;
+
+    const complication = (def.complications || []).find((entry) => entry
+      && entry.trigger === 'equipped_scan_pulse_threshold');
+    const encounterId = complication && (complication.encounterRef || complication.encounterId
+      || complicationEncounterId(def, complication.kind));
+    if (!complication || !encounterId) return risk.count;
+
+    // The encounter's authored cooldown is sim-clocked and persisted with the count. Record it
+    // before synchronous dispatch so another scan listener cannot request the same answer twice.
+    const cooldownS = Math.max(0, finite(ENCOUNTERS[encounterId] && ENCOUNTERS[encounterId].cooldownS, 1200));
+    risk.count = 0;
+    risk.cooldownUntil = now + cooldownS;
+    risk.triggerCount += 1;
+    risk.lastTriggeredAt = now;
+    this._requestEncounter(def, encounterId, bearing, complication.kind, {
+      allowCompletedRepeat: true,
+      sectorId,
+      anchor: player.pos,
+    });
+    return risk.count;
+  },
+
+  _triggerStoryRewardComplications(def, bearing, grantedRewardIds) {
+    if (!def || !bearing || !Array.isArray(grantedRewardIds) || !grantedRewardIds.length) return 0;
+    let requested = 0;
+    for (const complication of Array.isArray(def.complications) ? def.complications : []) {
+      if (!complication || complication.trigger !== 'story_reward_granted') continue;
+      if (complication.requiredRewardId && !grantedRewardIds.includes(complication.requiredRewardId)) continue;
       const encounterId = complication.encounterRef || complication.encounterId
         || complicationEncounterId(def, complication.kind);
-      if (encounterId) this._requestEncounter(def, encounterId, bearing, complication.kind);
+      if (encounterId && this._requestEncounter(def, encounterId, bearing, complication.kind)) requested++;
     }
-    return count;
+    return requested;
   },
 
   _syncSector(sectorId) {
@@ -903,6 +1055,7 @@ export const uniqueWrecks = {
   _onScanPulse(payload) {
     const origin = payload && payload.pos;
     if (!origin) return;
+    this._countDeepsurveyPingRisk();
     const sectorId = this.state.world && this.state.world.currentSectorId;
     const own = this._ensureState();
     for (const record of Object.values(own.bearings)) {
@@ -910,10 +1063,7 @@ export const uniqueWrecks = {
       const def = uniqueWreckById(record.wreckId);
       if (!def || !hasModule(this.state, def.scanRequirement)) continue;
       if (distance(origin, record.exactPos) > UNIQUE_WRECK_SCAN_RADIUS) continue;
-      if (record.phase === 'fixed') {
-        this._countPingAndMaybeRequest(def, record);
-        continue;
-      }
+      if (record.phase === 'fixed') continue;
       const gate = movingRadiationGate(this.state, record, def);
       if (!gate.allowed) {
         this._receipt('scan_blocked', def.id);
@@ -927,9 +1077,6 @@ export const uniqueWrecks = {
         });
         continue;
       }
-      // D8 counts the identification pulse itself; the next two equipped pulses complete its
-      // authored three-ping call. Other wrecks have no threshold complication and this is a no-op.
-      this._countPingAndMaybeRequest(def, record);
       record.phase = 'fixed';
       record.fixedPos = { ...record.exactPos };
       record.fixedAtS = Math.max(0, finite(this.state.simTime, 0));
@@ -1039,6 +1186,10 @@ export const uniqueWrecks = {
     record.resolvedAtS = resolvedAtS;
     record.salvagedAtS = resolvedAtS;
 
+    const collector = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this.state.playerId) : null;
+    const recoveryPos = copyPoint(record.fixedPos || record.exactPos || (collector && collector.pos))
+      || { x: 0, z: 0 };
     const cargoGranted = {};
     if (choice.bonusCargo) {
       const rawCargo = {};
@@ -1063,6 +1214,7 @@ export const uniqueWrecks = {
           commodityId,
           source: 'unique_wreck',
           wreckId: def.id,
+          pos: { ...recoveryPos },
         });
         const after = finite(this.state.player && this.state.player.cargo
           && this.state.player.cargo.items && this.state.player.cargo.items[commodityId], before);
@@ -1115,6 +1267,7 @@ export const uniqueWrecks = {
       }
     }
     const uniqueDropGranted = uniqueDropIds.includes(def.uniqueDropId);
+    this._triggerStoryRewardComplications(def, record, storyRewardIds);
 
     if (choice.credits > 0) this.bus.emit('economy:grantCredits', {
       amount: choice.credits,
@@ -1170,11 +1323,10 @@ export const uniqueWrecks = {
       followup: true,
       receiptId: `depth-r1:${def.programSlot.toLowerCase()}:${choice.id}`,
     });
-    this.bus.emit('toast', {
-      text: `${choice.receiptTitle} — ${choice.receiptDetail}`,
-      kind: choice.repDelta < 0 ? 'warn' : 'success',
-      ttl: 8,
-    });
+    // `uniqueWreck:resolved` has one player-facing owner: recoveryEncounterPrompt renders the
+    // durable named receipt. Mirroring the same title/detail as an eight-second toast stacked two
+    // copies in the upper-right flight HUD and obscured contacts during the recovery aftermath.
+    // `news:publish` remains the durable follow-up/history surface.
     return record;
   },
 

@@ -6,12 +6,12 @@ This documents what the shipped vertical slice **proves** vs what remains **huma
 
 1. **`npm run author:place-archetype -- <part_id>`** — Blender export + `finalize_part.mjs`; sets `authoring.json` method to **`bootstrap_pending`** (not promoted).
 2. Human/MCP iteration in `.blend` until silhouette reads like concept at cruise distance.
-3. **`npm run promote:place-archetype -- <part_id>`** (or `--all`) — runs measurable **concept↔GLB silhouette IoU** gate; on pass sets **`blender_mcp`** and appends `iteration_ledger.json`.
+3. **`npm run promote:place-archetype -- <part_id>`** (or `--all`) — records measurable **concept↔GLB silhouette IoU** as a diagnostic, then sets **`blender_mcp`** and appends `iteration_ledger.json`. Promotion still requires independent in-game visual acceptance.
 
 ## Silhouette resemblance gate
 
 - Library: `scripts/lib/silhouette-raster.mjs` (96×96 orthographic, Kestrel raster pattern).
-- Check: `npm run check:place-concept-resemblance` (default min IoU **0.12**, override via `PLACE_SILHOUETTE_MIN_IOU`).
+- Check: `npm run check:place-concept-resemblance` validates that concepts, GLBs, hashes, and the diagnostic measurement are current. No universal IoU threshold proves quality or resemblance.
 - Concept JPG → luminance/chroma threshold; GLB → side-elevation triangle raster; **align/scale + small translation/mirror sweep** before IoU.
 
 ## Shipped vertical slice (5 promoted `blender_mcp`)
@@ -30,8 +30,8 @@ Remaining archetypes (`fab`, `mining`, `research`) stay `procedural_fallback` un
 
 | Stage | `authoring.json` method | Evidence |
 |-------|-------------------------|----------|
-| Blender export only | `bootstrap_pending` | GLB + `.blend` on disk; IoU not yet gated |
-| IoU gate pass | `blender_mcp` | `iteration_ledger.json` SHA256 + `silhouette_iou` |
+| Blender export only | `bootstrap_pending` | GLB + `.blend` on disk; diagnostic and independent runtime review not yet recorded |
+| Authored promotion | `blender_mcp` | `iteration_ledger.json` SHA256 + diagnostic `silhouette_iou` + independent in-game visual review |
 | Visual audit | promoted only | `npm run export:place-silhouette-audit` → scratch `silhouette-audit/*_silhouette_audit.png` (concept \| GLB \| overlap) |
 
 Re-running `promote:place-archetype` after mesh edits updates ledger hashes and IoU; a drop below 0.12 blocks promotion.

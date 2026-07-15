@@ -1,6 +1,8 @@
 # Professional Blender Techniques for Modern Game Spaceships (2026 bar)
 
-**Purpose:** This is the core reference that makes the skills actually force professional work. Every invocation of any pass **must** reference and actively use techniques from here. 
+**Purpose:** This is an optional craft reference. Use it to discover methods that can solve an observed
+form, surfacing, integration, or performance problem. It is not a mandatory recipe, technique quota,
+or definition of acceptance.
 
 Do not stop at "I added a bevel and some panels." Pros on forums discuss and combine dozens of these. The skills require you to name, apply, and iterate with specific ones.
 
@@ -10,9 +12,9 @@ The bar: Your output (in clay for modeling, lit for surfacing, alive for polish)
 - Always set up multiple cameras (orthographic front/side/top + 3/4 perspective + animated turntable).
 - Render clean evaluation images (matcap/flat for form; basic HDRI or studio for surfacing).
 - Analyze for absence of professional characteristics.
-- Write explicit deficiency list naming missing techniques from this doc.
-- Apply the named techniques using Blender tools (prefer non-destructive).
-- Re-evaluate. Repeat until the work demonstrates the technique in a way that visibly elevates quality.
+- Identify the material player-facing or technical defect.
+- Choose a technique whose tradeoffs fit that defect and the runtime path.
+- Re-evaluate the result. Keep the technique only when it visibly or functionally improves the asset.
 
 Use the Blender MCP (`execute_blender_code`) for precision: inspect topology with bmesh, apply modifier stacks correctly, set up bake scenes, validate node links, etc.
 
@@ -118,7 +120,7 @@ Internal references to use when no external concept is provided: assets/concept/
 ## General Review & Iteration Standards (all passes)
 
 - Produce evaluation renders that isolate the pass (clay for modeling, basic lit for surfacing, animated for life).
-- Deficiency lists must name specific techniques from this document that are missing or poorly executed.
+- Review notes should name visible or functional defects, not absent techniques.
 - "Looks okay" is not acceptance. Ask: Does this exhibit the hierarchy, variation, craft, and response of professional work?
 - Common failure modes to explicitly avoid: flat materials, insufficient bevels, random greeble, poor bake quality, no layering, low tool usage.
 - Leverage MCP for automation and validation (e.g., code to count ngons, verify modifier presence, batch apply bevels, set up consistent bake scenes).

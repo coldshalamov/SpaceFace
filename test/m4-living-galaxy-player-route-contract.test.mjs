@@ -107,6 +107,38 @@ test('source validator fails closed on injection patterns and requires public se
   });
   assert.equal(poisoned.pass, false);
   assert.ok(poisoned.failures.some((f) => /teleport|mining:yield/.test(f)));
+
+  const matrixProseOnly = validateLivingGalaxyRouteSources({
+    routeSrc,
+    checkerSrc: `
+      const primaryAcceptance = true;
+      const injectedState = false;
+      collectPageIssues();
+      acquireVisualProbeServer();
+      const labels = 'New Game Launch KeyN KeyM Set Waypoint Set Course & Jump F5 Continue';
+    `,
+    testSrc,
+  });
+  assert.equal(matrixProseOnly.pass, false);
+  assert.ok(matrixProseOnly.failures.some((f) => /public New Game/.test(f)));
+  assert.ok(matrixProseOnly.failures.some((f) => /public Launch/.test(f)));
+  assert.ok(matrixProseOnly.failures.some((f) => /public map/.test(f)));
+  assert.ok(matrixProseOnly.failures.some((f) => /public map controls/.test(f)));
+  assert.ok(matrixProseOnly.failures.some((f) => /save\/Continue durability/.test(f)));
+});
+
+test('checker clears foreign saves once per route page and invalidates primary pass artifacts', async () => {
+  const checkerSrc = await readFile(CHECKER, 'utf8');
+  assert.match(checkerSrc, /sessionStorage\.getItem\(['"]sf\.m4LivingRoute\.savesCleared['"]\)/);
+  assert.match(checkerSrc, /sessionStorage\.setItem\(['"]sf\.m4LivingRoute\.savesCleared['"],\s*['"]1['"]\)/);
+  assert.match(checkerSrc, /async function invalidatePrimaryPassArtifacts\s*\(/);
+  assert.match(checkerSrc, /async function invalidateStaleRouteArtifacts\s*\(/);
+  assert.match(checkerSrc, /rm\(FAILURE,\s*\{\s*force:\s*true\s*\}\)/);
+  assert.match(checkerSrc, /ROUTE_MATRIX\.flatMap\(\(cell\)\s*=>\s*Object\.values\(cell\.screenshots\)\)/);
+  assert.ok(
+    checkerSrc.match(/await invalidatePrimaryPassArtifacts\(\)/g)?.length >= 2,
+    'must invalidate stale route-report/evidence at run start and again on failure',
+  );
 });
 
 test('report evaluator accepts a complete uninjected three-family matrix', () => {
@@ -119,16 +151,31 @@ test('report evaluator accepts a complete uninjected three-family matrix', () =>
     pageIssues: [],
     routes: ROUTE_MATRIX.map((cell, index) => ({
       id: cell.id,
+      seed: 47 + index,
       sectorId: cell.sectorId,
       regionalFamilyId: cell.regionalFamilyId,
       poiFamilyId: cell.poiFamilyId,
       injectedState: false,
       playerFacing: {
         joined: `${cell.poiFamilyId} · ${cell.regionalFamilyId} · risk → reward · surface-${index}`,
-        surfaces: [{ selector: '#alerts .sf-alert', text: 'surface' }],
+        surfaces: [{
+          selector: '#alerts .sf-alert',
+          text: [
+            'YARD CONTROL · CLEARED MANIFEST · LOCAL TRUST',
+            'WORKING SEAM · ACTIVE CUTTING LANE → LOCAL ORE DEMAND',
+            'FREIGHT ROUTE · CONVOY EXPOSURE → ROUTE LIQUIDITY',
+          ][index],
+          visible: true,
+          capturedIn: `shot-${index}.png`,
+        }],
         placeholder: false,
       },
-      causal: { readable: true, risk: 'risk', reward: 'reward' },
+      causal: {
+        readable: true,
+        risk: 'risk',
+        reward: 'reward',
+        visibleSurfaceSelectors: [`#alerts .sf-alert@shot-${index}.png`],
+      },
       aftermath: { persisted: index === 0, via: index === 0 ? 'save-continue' : null },
       pageIssues: [],
       privateStateMutations: [],
@@ -144,6 +191,47 @@ test('report evaluator accepts a complete uninjected three-family matrix', () =>
   assert.equal(result.pass, true, result.failures.join('; '));
   assert.ok(result.summary.familyKeys.length >= MIN_DISTINCT_FAMILIES);
   assert.equal(result.summary.aftermathCount, 1);
+});
+
+test('report evaluator rejects seeds missing from the live route and supporting-only causal prose', () => {
+  const routes = ROUTE_MATRIX.map((cell, index) => ({
+    id: cell.id,
+    seed: index === 0 ? null : 80 + index,
+    sectorId: cell.sectorId,
+    regionalFamilyId: cell.regionalFamilyId,
+    poiFamilyId: cell.poiFamilyId,
+    injectedState: false,
+    playerFacing: {
+      joined: `${cell.approachNeedle} ${cell.causalNeedle}`,
+      surfaces: [{
+        selector: 'composed:ecology+plan+inspector',
+        text: 'WORKING SEAM · ACTIVE CUTTING LANE → LOCAL ORE DEMAND',
+      }],
+      placeholder: false,
+    },
+    supporting: {
+      observerEvents: [{ event: 'poi:behavior', familyId: cell.poiFamilyId }],
+      planned: [{ familyId: cell.poiFamilyId, riskLabel: 'risk', rewardLabel: 'reward' }],
+    },
+    causal: { readable: true, risk: 'risk', reward: 'reward' },
+    aftermath: { persisted: true },
+    pageIssues: [],
+    privateStateMutations: [],
+    screenshots: [`supporting-${index}.png`],
+  }));
+  const result = evaluateLivingGalaxyRouteReport({
+    schema: LIVING_GALAXY_ROUTE_SCHEMA,
+    pass: true,
+    injectedState: false,
+    primaryAcceptance: true,
+    inputSource: 'keyboard-mouse',
+    pageIssues: [],
+    routes,
+  });
+  assert.equal(result.pass, false);
+  assert.ok(result.failures.some((f) => /missing route seed/.test(f)));
+  assert.ok(result.failures.some((f) => /captured visible surface/.test(f)));
+  assert.ok(result.failures.some((f) => /visible causal surface/.test(f)));
 });
 
 test('report evaluator rejects placeholder, injection, thin family sets, and missing visual proof', () => {

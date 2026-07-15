@@ -1,5 +1,8 @@
 # Thread B — World Identity (Places, Stations, Landmarks)
 
+> **Manual sprint lane.** This scope is exclusive only while Thread B is explicitly activated and its
+> ownership signal is live; it is not a permanent prohibition for later coherent work.
+
 ## Domain (exclusive)
 
 **Owns:** New `place_*` / `landmark_*` GLBs, concept chaining, `design/world-identity/sectors/*.md` reads, evidence folders for places.

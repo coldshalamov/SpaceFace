@@ -11,7 +11,7 @@
 | `npm run check:wcag-contrast` | **PASS** (panel-composited text OK; 11 raw-nebula pairs below threshold — world backgrounds, not panel chrome) |
 | `npm run check:ui-identity` | **PASS** (12/12 static source contracts) |
 
-> **Note:** `check:ui-identity` validates *source patterns* (overview cadence, target arcs, radar glyphs). It does **not** assert runtime DOM zone compliance for stragglers like `commandBar.js` or `comms.js`. Those violations are documented below.
+> **Note:** `check:ui-identity` validates source-level reachability and behavior contracts. It does **not** prove runtime hierarchy, overlap, responsive composition, or cognitive load for surfaces such as `commandBar.js` and `comms.js`; those evidence gaps are documented below.
 
 ---
 
@@ -32,11 +32,11 @@ Each row: **Surface** → **Category** (A–H) → **Primary owner file(s)** →
 | Lead pip / weak-point reveal overlays | `hud.js` | World-anchored |
 | Aim reticle | `uiRoot.js` (`#aim-reticle`) | Follows pointer |
 | Control hints bar | `uiRoot.js` (`#control-hints`), copy from `controlPrompts.js` | Bottom, fades |
-| **Command bar** (hull/shield/energy/heat/cargo/credits/role/sector) | `src/ui/commandBar.js` | **Top-center — straggler** |
-| Alert pills (up to 3) | `src/ui/alerts.js` → `#alerts` | **Top-center — straggler** |
-| Comms live feed + backlog button | `src/ui/comms.js` | **Left edge + top-left button — straggler** |
-| Mission tracker | `hud.js` (`.sf-mission-tracker`) | **Top-left — straggler** |
-| Objective line + off-screen arrow | `hud.js` (`.sf-objectives`) | **Top-right — straggler** |
+| **Command bar** (hull/shield/energy/heat/cargo/credits/role/sector) | `src/ui/commandBar.js` | Top-center; duplicates several permanent facts |
+| Alert pills (up to 3) | `src/ui/alerts.js` → `#alerts` | Top-center; competes with other transient voice |
+| Comms live feed + backlog button | `src/ui/comms.js` | Left edge + top-left button; additional attention region |
+| Mission tracker | `hud.js` (`.sf-mission-tracker`) | Top-left; duplicates objective surfaces |
+| Objective line + off-screen arrow | `hud.js` (`.sf-objectives`) | Top-right; duplicates mission tracker copy |
 | Story HUD meta (STABLE LOAD, tag flicker, SYS readout, manifest ghost) | `src/ui/hudMeta.js` | Scattered in `#hud` |
 | Toasts | `src/ui/toasts.js` → `#toasts` | Bottom-right stack |
 | Floating combat text (damage, loot) | `src/ui/floatingText.js` | World-space |
@@ -189,30 +189,35 @@ H  Meta shell     mainMenu.js, newGame.js, pause.js, settings.js, saveLoad.js, h
 
 ---
 
-## 3. Violations — Three-Anchor / One-Voice / No-Rest-Animation
+## 3. Composition Risks — Hierarchy / One-Voice / No-Idle-Work
 
-### 3.1 Three-anchor HUD (`spec2/06` §1)
+### 3.1 Current three-region HUD baseline (`spec2/06` §1)
 
-**Spec law:** Only (a) bottom-left schematic cluster, (b) bottom-center status line + chips, (c) bottom-right radar + overview. Top-center is the **one-voice channel only**.
+The shipped composition is organized around (a) bottom-left ship state, (b) bottom-center actions/status,
+and (c) bottom-right radar/contacts. This is a useful baseline, not a universal three-anchor-only law.
+Additional regions are valid when they improve information hierarchy, remain responsive and non-overlapping,
+and survive player-route readability/accessibility review. Top-center should still avoid competing simultaneous
+transient messages because the one-voice contract is behavioral, not a layout preference.
 
 | Element | Zone | Verdict |
 |---|---|---|
-| Schematic + micro-bars | Bottom-left | ✅ In anchor |
-| Status cluster + action bar | Bottom-center | ✅ In anchor (action bar is dense but in cluster) |
-| Overview + radar + target panel | Bottom-right | ✅ In anchor |
-| `#alerts` pills | Top-center | ❌ Competes with one-voice channel |
-| `#sf-command-bar` | Top-center | ❌ Fourth permanent anchor — RTS strip outside spec |
-| Comms live feed | Left edge | ❌ Straggler |
-| Comms backlog `≡` button | Top-left | ❌ Straggler |
-| Mission tracker | Top-left | ❌ Straggler |
-| Objectives + arrow | Top-right | ❌ Straggler |
-| `#sf-news-ticker` | Top/bottom (mounts to `#hud`) | ❌ Straggler |
-| `#control-hints` | Bottom (full width) | ⚠️ Ephemeral — acceptable if strictly timed; still outside anchors |
-| `#aim-reticle` | Cursor | ✅ Combat instrument (not a panel) |
-| Toasts | Bottom-right | ⚠️ Overlaps right dock real estate |
-| `hudMeta` (STABLE LOAD, phase readout) | Various | ❌ Story exception — needs explicit story-tier placement rules |
+| Schematic + micro-bars | Bottom-left | Core ship-state surface; verify legibility and duplication |
+| Status cluster + action bar | Bottom-center | Core action surface; dense at smaller viewports |
+| Overview + radar + target panel | Bottom-right | Core tactical surface; verify roster/target overlap |
+| `#alerts` pills | Top-center | Competes with one-voice channel |
+| `#sf-command-bar` | Top-center | Duplicates permanent vitals/economy; justify or merge by evidence |
+| Comms live feed | Left edge | Additional attention region; evaluate simultaneous copy |
+| Comms backlog `≡` button | Top-left | Valid utility control if reachable and non-competing |
+| Mission tracker | Top-left | Duplicates objective surfaces |
+| Objectives + arrow | Top-right | Duplicates mission tracker; arrow itself is spatially useful |
+| `#sf-news-ticker` | Top/bottom (mounts to `#hud`) | Risks competing with story/combat copy |
+| `#control-hints` | Bottom (full width) | Ephemeral teaching surface; validate timing and obstruction in play |
+| `#aim-reticle` | Cursor | Combat instrument; position is functionally owned |
+| Toasts | Bottom-right | Can overlap the tactical surface; measure responsive behavior |
+| `hudMeta` (STABLE LOAD, phase readout) | Various | Needs explicit story-tier priority and reachability rules |
 
-**Static check gap:** `check:ui-identity` §1 does not fail on `commandBar.js` because it only reads `hud.js` source.
+**Evidence gap:** source checks do not establish runtime hierarchy, responsive overlap, or whether duplicate
+facts improve comprehension. Use browser/Electron captures and interaction evidence before removing or relocating a surface.
 
 ### 3.2 One-voice (`00_MASTER_TASTE` §2 pillar 3, `SPEC3-F10` §40)
 
@@ -252,8 +257,8 @@ H  Meta shell     mainMenu.js, newGame.js, pause.js, settings.js, saveLoad.js, h
 | Rule | Violation |
 |---|---|
 | No visor/cockpit motifs | `--visor-*` CSS tokens throughout `injectHudCss`; `wingmanRadial.js` comment references “cockpit” |
-| No backdrop-filter | ✅ No active `backdrop-filter` in shipped CSS |
-| Locked semantic palette | ⚠️ `--accent-3` / violet used in comms pulse `rgba(192,139,255)` — close to but not exactly `#8d66ff` |
+| Compositor effects | No universal blur/opaque-panel rule; profile any always-live full-frame effect and preserve the strongest legible result |
+| Semantic color | Violet comms pulse differs from the current token baseline; accept by meaning, contrast, accessibility, and player-route coherence rather than an exact allowlist |
 | No new modal for HUD-chip facts | Pause/missionLog duplicate objective text that HUD already shows |
 
 ---
@@ -284,7 +289,7 @@ H  Meta shell     mainMenu.js, newGame.js, pause.js, settings.js, saveLoad.js, h
 | Cluster | Chrome pattern | Issue |
 |---|---|---|
 | Flight HUD | `--visor-*` tokens, glow filters, schematic SVG | Legacy “visor” naming; glow-heavy |
-| Command bar | Clip-path RTS console, `--console-*` tokens | **Different design dialect** from HUD anchors |
+| Command bar | Clip-path RTS console, `--console-*` tokens | **Different design dialect** from the primary flight HUD |
 | Modal meta (`pause`, `settings`, `help`, `saveLoad`) | `.sf-menu` shared stylesheet | Coherent among themselves |
 | Station hub | Bespoke left rail + wide content pane (`stationHub.js` inline CSS) | **Does not share** `.sf-menu` / `ui.css` screen tokens |
 | Market panel | “Industrial control panel” grid + chart canvas | Third dialect (dense data UI) |
@@ -335,9 +340,9 @@ H  Meta shell     mainMenu.js, newGame.js, pause.js, settings.js, saveLoad.js, h
 
 | From | Into | Rationale |
 |---|---|---|
-| `commandBar.js` vitals + economy | Bottom-left schematic cluster (4th+ micro-bars) | Reduces duplicate vitals in this audited layout |
+| `commandBar.js` vitals + economy | One coherent vitals/economy surface chosen from player evidence | Reduces duplicate permanent facts without prescribing a fixed region |
 | HUD contextual cargo/credits chips | Drop if command bar kept — **pick one** | Duplication |
-| Mission tracker (top-left) + objective (top-right) | Single tracked-mission chip in bottom-center **or** arbiter `objective` tier | One mission voice |
+| Mission tracker (top-left) + objective (top-right) | One dominant tracked-mission surface plus spatial waypoint treatment, or arbiter `objective` tier | One mission voice |
 | `alerts.js` + `comms` live feed + toasts + ticker | `attentionArbiter.js` top-center line + optional card | SPEC3-F10 mechanical one-voice |
 | Station missions tab + mission log | Shared list component; station = accept, log = track/manage | DRY mission rows |
 | Market intel right rail + cause ledger | Single “why this price” inspector | One economy explanation surface |
@@ -368,7 +373,7 @@ flowchart TD
   end
 
   subgraph flight [A — Flight HUD]
-    HUD[Three anchors only]
+    HUD[Readable adaptive HUD regions]
     ARB[Top-center Attention Arbiter]
     RET[Aim reticle + world arcs]
   end
@@ -438,13 +443,13 @@ flowchart TD
 
 | Forbidden | Reason |
 |---|---|
-| `backdrop-filter` panels | Constitution §3 + perf |
+| Unmeasured always-live full-frame compositor effects | Profile the owning route; optimize actual cost without a blanket technique ban |
 | Cockpit / visor frames / helmet HUD | Standing user decision |
-| Permanent top resource strip outside anchors | Breaks spec2/06 three-anchor |
+| Duplicate permanent resource strip with no demonstrated comprehension benefit | Adds clutter and update work regardless of position |
 | Second parallel map stack | BP-03 — one zoomable map |
 | `SYS NOMINAL` / ambient “all fine” copy | Silence = nominal |
 | Rest-state UI pulses (reticle, bars, radar gems) | Motion = state **change** only |
-| New hues outside semantic palette | `#39d0ff / #ffb35c / #ff5c5c / #8d66ff / #d7e6ff` |
+| Semantically ambiguous or inaccessible color | Current tokens are baselines; new hues must preserve meaning and measured contrast |
 | Modal screens for facts a chip can show | Constitution forbidden list |
 | Duplicate vitals strips | Schematic OR command bar, not both |
 | `attentionArbiter` as convention-only docs | Must be code (`check-one-voice.mjs`) |
@@ -462,7 +467,7 @@ flowchart TD
 | Rank | Debt | Player impact | Primary files |
 |---|---|---|---|
 | 1 | **Three map systems alive** (galaxy + starmap + localmap; pause/gamepad still point at legacy) | Navigation confusion — “which map is truth?” | `galaxyMap.js`, `starmap.js`, `localmap.js`, `pause.js`, `input.js`, `missionLog.js` |
-| 2 | **Command bar vs three-anchor HUD** — duplicate vitals/economy at top | Cluttered frame; spec drift; “cockpit vs RTS” identity crisis | `commandBar.js`, `hud.js` |
+| 2 | **Command bar vs primary HUD** — duplicate vitals/economy | Cluttered frame and competing visual dialects | `commandBar.js`, `hud.js` |
 | 3 | **One-voice not mechanical** — alerts + comms + toasts + ticker + mission text simultaneous | Cognitive overload in first 15 minutes | `alerts.js`, `comms.js`, `toasts.js`, `marketNews.js`, `voiceArbiter.js` |
 | 4 | **Mission objective in 4+ places** | Same contract text competing for attention | `hud.js`, `pause.js`, `missionLog.js`, `stationHub.js` |
 | 5 | **Outfitting without hull preview** | Fitting is abstract — player cannot see ship identity | `outfitting.js` vs `shipyard.js` + `shipPreviewMount.js` |
@@ -477,12 +482,12 @@ flowchart TD
 ## 11. Reboot Sequencing (recommended, audit-only)
 
 1. **BP-03 map cutover** — galaxy parity checklist, retire legacy screens, fix pause/gamepad/missionLog links.
-2. **Anchor reconciliation** — resolve `commandBar` vs schematic (merge or delete); relocate mission/objective text.
+2. **Information-hierarchy reconciliation** — resolve duplicate command-bar/schematic facts and establish one dominant mission/objective surface from responsive player-route evidence.
 3. **Build `attentionArbiter.js`** — wire alerts/comms/toasts/news; add `check-one-voice.mjs`.
 4. **Station chrome unification** — station hub adopts `ui.css` screen tokens (`spec2/06` §6).
 5. **Outfitting 3D preview** — reuse `shipPreviewMount`.
 6. **Rest-animation lint** — fail CI on `@keyframes` pulses outside death/VFX exceptions.
-7. **Extend `check:ui-identity`** — runtime DOM zone walk in flight mode (headless probe).
+7. **Extend `check:ui-identity`** — runtime hierarchy, overlap, reachability, and responsive-state probe in flight mode.
 
 ---
 

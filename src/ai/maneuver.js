@@ -141,7 +141,13 @@ export class ManeuverPlanner {
     }
 
     const desiredUnit = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
-    const heading = Math.atan2(desiredUnit.z, desiredUnit.x);
+    // Some combat phases hold or return to a formation point while charging a fixed gun. Keep the
+    // translational request pointed at that slot, but let the authored intent explicitly aim the
+    // ship's nose at its target so HOLD does not turn a firing window into deterministic misses.
+    const facingUnit = intent.faceTarget === true && target
+      ? unit2(target.pos.x - self.pos.x, target.pos.z - self.pos.z, desiredUnit.x, desiredUnit.z)
+      : desiredUnit;
+    const heading = Math.atan2(facingUnit.z, facingUnit.x);
     const angleError = wrapAngle(heading - self.rot);
     const forwardDot = Math.cos(self.rot) * desiredUnit.x + Math.sin(self.rot) * desiredUnit.z;
     const rightDot = -Math.sin(self.rot) * desiredUnit.x + Math.cos(self.rot) * desiredUnit.z;
@@ -234,6 +240,7 @@ export class ManeuverPlanner {
           energyFraction: self.energyFraction,
           heatFraction: self.heatFraction,
           breakFormation: intent.breakFormation,
+          faceTarget: intent.faceTarget === true && !!target,
         },
       });
     }

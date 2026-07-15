@@ -1,0 +1,41 @@
+{
+  "schema": "spaceface.assetProvenance.v1",
+  "packet": "PROFESSIONAL-KESTREL-BORROWED-TIME-V2-CODEX-001",
+  "family": "kestrel_borrowed_time_v2",
+  "candidateOnly": true,
+  "livePromotion": false,
+  "qualityBar": "SF-K0 Borrowed Time package plus current production Kestrel",
+  "sources": [
+    {
+      "path": "C:\\Users\\93rob\\Downloads\\SpaceFace_SF-K0_Borrowed-Time_Revamp.zip",
+      "sha256": "5457DACD44B63CF170ECF65DB253BB607D7615B8DDBD3CF97666D155BA355000",
+      "license": "project-original; no third-party content per docs/THIRD_PARTY.md"
+    },
+    {
+      "path": "C:\\Users\\93rob\\Downloads\\SpaceFace_SF-K0_Borrowed-Time_Runtime.zip",
+      "sha256": "D4ABD62179F9DFEDE39F4DF8275B2C4DBC1064E0EC3FDC936AF7BC448E0759E8",
+      "license": "project-original; no third-party content per docs/THIRD_PARTY.md"
+    },
+    {
+      "path": "assets/ships/release/parts/wholeships/kestrel.glb",
+      "sha256": "633C6A26C384832D2D870198C5A39D4F209EC6B9E4096F9A8DAC0EBB3940AB3F",
+      "role": "current shipped comparison"
+    },
+    {
+      "path": "C:\\Users\\93rob\\AppData\\Local\\Temp\\spaceface_kestrel_bt_v2_source\\SF_K0_Borrowed_Time_Revamp.blend",
+      "sha256": "C48BCD2CD7AA9B8DAF4AC253221ED259DB781A1BF0602EDB7286D916191D6502",
+      "role": "editable authoring source"
+    }
+  ],
+  "adaptation": [
+    "stronger ventral keel and shoulder chine silhouette",
+    "open drive load ring and yoke for aft readability",
+    "canopy brows, painted nav rails, RCS cowlings, and asymmetric repair biography",
+    "higher-retention near LOD with restrained mid/far tiers"
+  ],
+  "forbidden": [
+    "live promotion",
+    "embedded drive plume",
+    "accessory-only hull"
+  ]
+}

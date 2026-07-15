@@ -53,6 +53,26 @@ function missionCollateral(m) {
   return Math.max(0, m && (m.collateral_cr || m.collateralCr || m.collateral || 0) || 0);
 }
 
+export function missionUpfrontCost(m) {
+  const value = Number(m && m.upfrontCostCr);
+  return Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
+}
+
+export function missionClauseTerms(m) {
+  const clauses = m && Array.isArray(m.clauses) ? m.clauses : [];
+  return clauses.filter((clause) => clause && clause.id).map((clause) => {
+    const rewardMult = Number(clause.rewardMult);
+    const bonusPct = Number.isFinite(rewardMult) && rewardMult > 1
+      ? Math.round((rewardMult - 1) * 100) : 0;
+    return {
+      id: String(clause.id),
+      label: String(clause.label || clause.id).replace(/_/g, ' '),
+      prose: String(clause.prose || 'Keep this condition until settlement.'),
+      bonusPct,
+    };
+  });
+}
+
 function signedRep(value) {
   const n = Math.round(Number(value) || 0);
   return (n > 0 ? '+' : '') + n;
@@ -185,6 +205,15 @@ export function missionConsequenceSummary(m) {
 
   if (m && m.type === 'smuggling_run') {
     chips.push({ kind: 'bad', label: 'Heat', text: 'customs scans can add legal trouble' });
+  }
+
+  for (const clause of missionClauseTerms(m)) {
+    const bonus = clause.bonusPct > 0 ? ` for +${clause.bonusPct}% payout` : '';
+    chips.push({
+      kind: 'warn',
+      label: `Clause: ${clause.label}`,
+      text: `${clause.prose} Keep it${bonus}; breach fails the contract.`,
+    });
   }
 
   return { reward, repReward, repPenalty, collateral, chips };
@@ -576,15 +605,38 @@ export function missionPreflight(m, state) {
   });
 
   const collateral = missionCollateral(m);
+  const upfrontCost = missionUpfrontCost(m);
+  const acceptCost = collateral + upfrontCost;
   const credits = Number(state && state.player && state.player.credits) || 0;
+  if (acceptCost > 0 && credits < acceptCost) {
+    blockers.push(upfrontCost > 0
+      ? `Need ${acceptCost.toLocaleString('en-US')} cr for deposit and service fees`
+      : `Need ${collateral.toLocaleString('en-US')} cr collateral`);
+  }
   if (collateral > 0) {
-    if (credits < collateral) blockers.push(`Need ${collateral.toLocaleString('en-US')} cr collateral`);
     chips.push({
-      kind: credits < collateral ? 'bad' : 'ok',
+      kind: credits < acceptCost ? 'bad' : 'ok',
       text: `${collateral.toLocaleString('en-US')} cr collateral`,
     });
   } else {
     chips.push({ kind: 'ok', text: 'No collateral' });
+  }
+  if (upfrontCost > 0) {
+    chips.push({
+      kind: credits < acceptCost ? 'bad' : 'warn',
+      text: `${upfrontCost.toLocaleString('en-US')} cr non-refundable service fee (first attempt only)`,
+    });
+  }
+
+  for (const clause of missionClauseTerms(m)) {
+    const bonus = clause.bonusPct > 0 ? `; +${clause.bonusPct}% clean payout` : '';
+    const breach = collateral > 0
+      ? '; breach fails the contract and forfeits collateral'
+      : '; breach fails the contract';
+    chips.push({
+      kind: 'warn',
+      text: `Fine print: ${clause.label} — ${clause.prose}${bonus}${breach}`,
+    });
   }
 
   const riskReward = missionRiskRewardSummary(m);

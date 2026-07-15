@@ -1,5 +1,7 @@
 # PACKET EVID-002 — Revalidate or recapture the live Alpha evidence corpus
 
+> **Manual packet; exact activation required.** See `README.md`. Discovery does not activate it.
+
 packetId: EVID-002
 milestone: M0 Wave A/B
 kind: controller-evidence-migration

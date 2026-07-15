@@ -56,3 +56,9 @@ test('the live Bar bridge emits the durable rumor receipt only after a returned 
   const source = readFileSync(new URL('../src/ui/screens/bar.js', import.meta.url), 'utf8');
   assert.match(source, /const result = buildReply[\s\S]*if \(result\.uniqueWreckRumor\)[\s\S]*emit\('uniqueWreck:rumorHeard', result\.uniqueWreckRumor\)/);
 });
+
+test('a settled unique-wreck receipt cannot leave its obsolete choice buttons visible', () => {
+  const source = readFileSync(new URL('../src/ui/recoveryEncounterPrompt.js', import.meta.url), 'utf8');
+  assert.match(source, /\.sf-recovery__actions\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/,
+    'component CSS must let the hidden attribute win over the actions flex rule');
+});

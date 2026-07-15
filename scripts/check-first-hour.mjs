@@ -6,7 +6,7 @@
 // assertions:
 //   1. Beats fire in order; no beat text before predecessor DONE + 4s silence.
 //   2. Text overlap count == 0 across the full scripted first-15 (one-voice audit).
-//   3. Every tutorial line ≤12 words + passes check:player-facing-labels.
+//   3. Every tutorial line is authored, inline-safe, and routed through the paced one-voice path.
 //   4. Training actors are inert, invulnerable, non-colliding with ships, and physically reachable.
 //   5. §4 difficulty ramp: telemetry funnel milestones exist (first kill/1000cr/module/jump).
 //
@@ -87,8 +87,7 @@ assert.deepEqual(
   'beats must teach flight controls in order before seam→dock→choice',
 );
 
-// ── Assertion 3: every tutorial line ≤12 words (spec2/00 §5 voice rule) ───────────────────────
-const MAX_WORDS = 12;
+// ── Assertion 3: tutorial copy is authored and safe for an inline localized UI surface ──
 const allLines = [];
 for (const b of BEATS) {
   allLines.push({ beat: b.key, line: b.line });
@@ -96,12 +95,10 @@ for (const b of BEATS) {
 }
 assert.ok(allLines.length >= 8, 'beats must author entry lines + in-beat followups');
 for (const { beat, line } of allLines) {
-  const words = line.trim().split(/\s+/).filter(Boolean).length;
-  assert.ok(
-    words <= MAX_WORDS,
-    `tutorial line ≤${MAX_WORDS} words FAILED — beat "${beat}": "${line}" (${words} words)`,
-  );
-  assert.ok(!/!/.test(line), `tutorial line must not use exclamations — "${line}"`);
+  assert.equal(typeof line, 'string', `tutorial line must be a string — beat "${beat}"`);
+  assert.ok(line.trim(), `tutorial line must contain player-facing copy — beat "${beat}"`);
+  assert.doesNotMatch(line, /[\r\n\u2028\u2029]/u, `tutorial line must fit the inline surface — beat "${beat}"`);
+  assert.doesNotMatch(line, /[\u0000-\u001f\u007f\ufffd]/u, `tutorial line contains an unsafe control/replacement character — beat "${beat}"`);
 }
 
 // ── Assertion 1 + 2: simulate the beat FSM to prove order + silence gate + zero overlap ───────
@@ -281,14 +278,15 @@ assert.match(newGameSrc, /showFirstRunSplash/, 'NEW GAME first-run must show the
 assert.match(newGameSrc, /Helios System\. Third shift\. The manifest is wrong\./, 'first-run splash line must be verbatim (spec2/03 §3)');
 assert.match(newGameSrc, /veilTimer = setTimeout\(showWarmupVeil, 300\)/, 'START disabled-state must be veiled after 300ms (spec2/03 §3)');
 
-// Difficulty copy ≤8 words each (spec2/03 §3).
+// Difficulty copy must remain authored and safe for the inline option-card surface.
 const diffMatches = newGameSrc.match(/DIFFICULTIES\s*=\s*\[([\s\S]*?)\];/);
 assert.ok(diffMatches, 'DIFFICULTIES table must exist');
 const diffDescs = [...diffMatches[1].matchAll(/,\s*'([^']+)'\s*\]/g)].map((m) => m[1]);
 assert.equal(diffDescs.length, 4, 'there must be 4 difficulty descriptions');
 for (const desc of diffDescs) {
-  const words = desc.trim().split(/\s+/).filter(Boolean).length;
-  assert.ok(words <= 8, `difficulty copy ≤8 words FAILED: "${desc}" (${words} words)`);
+  assert.ok(desc.trim(), 'difficulty description must contain player-facing copy');
+  assert.doesNotMatch(desc, /[\r\n\u2028\u2029]/u, `difficulty description must fit the inline option card: "${desc}"`);
+  assert.doesNotMatch(desc, /[\u0000-\u001f\u007f\ufffd]/u, `difficulty description contains an unsafe control/replacement character: "${desc}"`);
 }
 
 // ── B0 one-verb exclusivity (UIUX-B0-ONE-VERB / SPEC2/03 §1–2) ─────────────────
@@ -378,5 +376,5 @@ for (const desc of diffDescs) {
     'Mission Log may still expose optional RECOMMENDED NEXT context when opened on demand');
 }
 
-console.log(`First-hour OK — 10 beats in order, ${allLines.length} tutorial lines ≤${MAX_WORDS} words, ` +
+console.log(`First-hour OK — 10 beats in order, ${allLines.length} authored inline-safe tutorial lines, ` +
   `one-voice overlap=0, first-flight trainers nonlethal, §4 funnel milestones present.`);

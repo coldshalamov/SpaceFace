@@ -50,6 +50,11 @@ const OUTPOST_BY_ID = new Map(OUTPOSTS.map((o) => [o.id, o]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const ASTEROID_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
 const COMMON_ORES = ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_ore_titanium', 'cmdty_ore_platinoid'];
+const TRADER_SHIP_DEF = Object.freeze({
+  trader_hauler_l: 'ship_mule',
+  trader_freighter_m: 'ship_mule',
+  trader_bulk_h: 'ship_atlas',
+});
 
 // stationId -> { sectorId, factionId, type, position } from the SECTORS graph (same resolve
 // pattern economy uses — dock/UI hands us station ids, sectors own the geometry).
@@ -1357,13 +1362,22 @@ export const automation = {
       if (!fs) return;
       fs.hp = Math.max(0, (fs.hp || 1) - dmg / 100);
       fs.hullPct = fs.hp;
-      if (fs.hp <= 0) { const i = a.fleet.indexOf(fs); if (i >= 0) a.fleet.splice(i, 1); this._loseAsset('fleet', fs, 0, null); }
+      if (fs.hp <= 0) { const i = a.fleet.indexOf(fs); if (i >= 0) a.fleet.splice(i, 1); this._loseAsset('fleet', fs, 0, p.sectorId || (this.state.world && this.state.world.currentSectorId)); }
     }
   },
 
   _loseAsset(kind, inst, value, sectorId) {
+    const shipDefId = kind === 'fleet'
+      ? (inst.shipDefId || inst.defId || null)
+      : (kind === 'trader' ? (TRADER_SHIP_DEF[inst.defId] || null) : null);
     this.meta().lostAssetsLog.push({ kind, id: inst.id, value: value || 0, t: this.state.simTime || 0 });
-    this.bus.emit('automation:assetLost', { kind, id: inst.id, value: value || 0, sectorId: sectorId || null });
+    this.bus.emit('automation:assetLost', {
+      kind,
+      id: inst.id,
+      value: value || 0,
+      sectorId: sectorId || null,
+      shipDefId,
+    });
     this.bus.emit('toast', { text: `${kind} lost${sectorId ? ' in ' + prettySector(sectorId) : ''}`, kind: 'error', ttl: 4 });
   },
 

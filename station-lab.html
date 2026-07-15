@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SpaceFace · Station Lab</title>
+  <link rel="stylesheet" href="/styles/station.css" />
+  <style>
+    html,body { margin:0; height:100%; background:#05080e; overflow:hidden; }
+    #lab { position:fixed; inset:0; }
+  </style>
+  <script type="importmap">
+  { "imports": {
+      "three": "./vendor/three.module.js",
+      "three/addons/": "./vendor/addons/",
+      "@dimforge/rapier3d-compat": "./vendor/rapier3d-compat/rapier.mjs"
+  } }
+  </script>
+</head>
+<body>
+  <div id="lab"></div>
+  <script type="module">
+    import { createStationApp } from '/src/ui/station/stationApp.js';
+
+    // ---- mock ctx mirroring live state shapes (station-lab only) ----
+    const player = { hull: 133, hullMax: 140 };
+    const entities = new Map([[1, player]]);
+
+    // mock station market
+    const mkHist = (base, drift) => { const a = []; let v = base * (1 - Math.abs(drift) * 0.4);
+      for (let i = 0; i < 24; i++) { v += base * (drift / 24) + Math.sin(i * 0.8) * base * 0.012; a.push(Math.max(1, Math.round(v))); }
+      a.push(Math.round(base * (1 + drift * 0.5))); return a; };
+    const M = {}; const add = (id, base, drift, demand) => { M[id] = { buy: Math.round(base * 1.06), sell: Math.round(base * 0.9), demand, history: mkHist(base, drift) }; };
+    add('cmdty_ore_iron', 28, 0.14, 'high'); add('cmdty_ore_goldium', 250, -0.08, 'med');
+    add('cmdty_gem_emerald', 5000, 0.05, 'high'); add('cmdty_gas_hydrogen', 20, -0.12, 'low');
+    add('cmdty_refined_metals', 85, 0.10, 'high'); add('cmdty_alloys', 140, 0.03, 'med');
+    add('cmdty_fuel_cells', 95, -0.05, 'med'); add('cmdty_polymers', 70, 0.02, 'low');
+    add('cmdty_microchips', 185, 0.18, 'high'); add('cmdty_electronics', 150, -0.09, 'med');
+    add('cmdty_consumer_goods', 110, 0.04, 'med'); add('cmdty_luxury_goods', 190, 0.12, 'high');
+    add('cmdty_medical', 150, -0.03, 'med'); add('cmdty_food', 40, 0.01, 'low');
+
+    const state = {
+      playerId: 1,
+      entities,
+      player: {
+        credits: 12453,
+        cargo: { items: { cmdty_ore_iron: 18, cmdty_refined_metals: 6 }, capVolume: 40, usedVolume: 21 },
+        researchedNodes: [],
+        activeShipIndex: 0,
+        ownedShips: [
+          // fittings[] align to buildSlotList order: weapon, shield, engine, cargo, mining, utility
+          { defId: 'ship_kestrel', fittings: ['wpn_pulse_laser_s', 'mod_shield_booster_s', 'mod_engine_ion_m', null, 'mod_mining_laser_s', null], weapons: [] },
+          { defId: 'ship_wasp', fittings: ['wpn_pulse_laser_s', null, null, 'mod_engine_ion_m', null], weapons: [] },
+        ],
+      },
+      fuel: { current: 100, max: 100 },
+      economy: { markets: { stn_forge_foundry: M } },
+      missions: {
+        boards: { stn_forge_foundry: { slots: [
+          { id: 'm1', title: 'Ore run to Meridian Docks', type: 'cargo_delivery', factionId: 'faction_mts', risk: 1, reward: 3200, collateral: 800, cargo: { commodityId: 'cmdty_ore_iron', qty: 24 }, jumps: 1, destinationName: 'Meridian Docks', timeLabel: '25 min' },
+          { id: 'm2', title: 'Break the Vael raider wing', type: 'bounty_hunt', factionId: 'faction_scn', risk: 3, reward: 8600, collateral: 2400, jumps: 2, destinationName: 'Vael Reach', standingRequirement: 'Requires Accepted standing with Solar Concord Navy', clauses: [{ label: 'No civilian losses', prose: 'Collateral among civilian traffic voids the contract.' }] },
+          { id: 'm3', title: 'Discreet parcel — no questions', type: 'smuggling_run', factionId: 'faction_free', risk: 2, reward: 5400, collateral: 1500, cargo: { commodityId: 'cmdty_narcotics', qty: 8 }, jumps: 1, destinationName: 'Freeport Verge', clauses: [{ label: 'Avoid customs scans', prose: 'A customs interdiction forfeits the fee and your standing.' }] },
+          { id: 'm4', title: 'Survey the derelict field', type: 'recon_scan', factionId: 'faction_choir', risk: 1, reward: 2100, jumps: 1, destinationName: 'Choir Shoal', timeLabel: '20 min' },
+          { id: 'm5', title: 'Bulk refined metals lift', type: 'bulk_trade', factionId: 'faction_dmc', risk: 0, reward: 1800, cargo: { commodityId: 'cmdty_refined_metals', qty: 40 }, jumps: 0, destinationName: 'Local sector', local: true },
+        ] } },
+        active: [
+          { id: 'a1', title: 'Escort the ore convoy', type: 'escort', factionId: 'faction_dmc', risk: 2, reward: 4200, destinationName: 'Helios Prime', status: 'active' },
+          { id: 'a2', title: 'Deliver medical crates', type: 'cargo_delivery', factionId: 'faction_scn', risk: 1, reward: 2600, destinationName: 'Concord Watch', status: 'active' },
+        ],
+      },
+      ui: { docked: true, dockedStationId: 'stn_forge_foundry', activeStationTab: 'factions', trackedMissionId: 'a1' },
+      // realistic standing spread to exercise the full tier ramp
+      factions: {
+        faction_scn:   { rep: 6 },
+        faction_mts:   { rep: -1 },
+        faction_dmc:   { rep: 214 },
+        faction_reach: { rep: -180 },
+        faction_quiet: { rep: 0 },
+        faction_vael:  { rep: -430 },
+        faction_free:  { rep: 42 },
+        faction_choir: { rep: 720 },
+      },
+    };
+    const bus = {
+      emit: (e, p) => { (window.__sxlog || (window.__sxlog = [])).push([e, p]); },
+      on: () => {}, off: () => {},
+    };
+    const ctx = {
+      state, bus,
+      station: { name: 'Forge Foundry', typeLabel: 'Fabrication Complex', factionName: 'Drift Miners Collective', type: 'fab' },
+    };
+
+    const params = new URLSearchParams(location.search);
+    if (params.has('risk')) { state.fuel.current = 8; state.ui.trackedMissionId = null; } // exercise Departure Check
+    const app = createStationApp(document.getElementById('lab'), ctx);
+    const screen = params.get('screen');
+    if (screen) app.navigate(screen);
+    window.__sxapp = app;
+  </script>
+</body>
+</html>

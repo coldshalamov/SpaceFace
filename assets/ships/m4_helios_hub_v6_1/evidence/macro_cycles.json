@@ -1,0 +1,643 @@
+{
+  "schema": "spaceface.macroCycleLedger.v1",
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V6.1-CODEX-001",
+  "qualityFloor": "SF-K0 Borrowed Time craft bar (minimum; not a pass certificate)",
+  "selfPassForbidden": true,
+  "acceptanceClaim": false,
+  "requiredStationGateCycles": 20,
+  "requiredRockPropCycles": 10,
+  "stationGateCyclesRecorded": 20,
+  "rockPropCyclesRecorded": 10,
+  "cycleCountRecorded": 32,
+  "requirementMet": true,
+  "note": "RequirementMet is a count gate only; it is not visual acceptance.",
+  "cycles": [
+    {
+      "cycle": 0,
+      "family": "foundation",
+      "kind": "texture_atlas_authoring",
+      "defectsBefore": [
+        "flat / emissive-dependent material risk",
+        "no strata/ore geology maps"
+      ],
+      "defectsAfter": [
+        "smart-project UVs only"
+      ],
+      "hashBefore": null,
+      "hashAfter": {
+        "hull": {
+          "basecolor": "142F94B6D4A85BC85DF1EA05A35404F1EE72DE948DDC2E6A781272666B9E4362",
+          "orm": "978789300853B2DB3A0A184B638DAE2BCF64E22DD7D4BC219C909DDA94D5900E",
+          "normal": "A472DBE3C5196856E15775C21F9CF9736B1113416FA6E8930EDC31CB22C4A01B"
+        },
+        "mechanical": {
+          "basecolor": "4B642189093DA3781C06058D5C6DEF8379A1E3C0D82A0092FCB58459B55130E1",
+          "orm": "3BBB66645AC50DB79C084E19B50B9042EA8CE456F9CFC611AF41013A02D6D49B",
+          "normal": "11E1F373C8000FEB50555C445C0ABB682C18FE42D73126075AC055E57EAC8595"
+        },
+        "accent": {
+          "basecolor": "D34D7DF0571FBC3EA7BCDAB6B83095423D24E2DFDF6EB6E9026C6151AB2A75C5",
+          "orm": "83269F0CB9ED2F3B9A3B87983E18B023DB96316C11BCB33EFC175473E134AE0B",
+          "normal": "1932DFE009390A508B0820125EAB8AF0D358809807BFCDAA09190D528F38B79D"
+        },
+        "warm": {
+          "basecolor": "C614FC2A1D7CD48B84DC3A073D456E0A93785A2830C0651D2DEAB81FA60C2B91",
+          "orm": "BC2F34BEC8E09EA2CFC0049E6B24C29B4D14E07BA83013DD5BE1A27B0B789497",
+          "normal": "85B1B74956729F608955878E3BCF01D3E9434640001E3E7475676F0AC6B90B5B"
+        },
+        "glass": {
+          "basecolor": "02EE7D3364DBE9B89BD02EEA573E2D9E10A6D4B9E0FDCF9E469C8DF416E9C083",
+          "orm": "270AA2EC1DC4FF7C3499E4F0171111CEDED8FCE481EC0F8F19976C44BF9ADBFF",
+          "normal": "C74C82CA4C537185375506342A76E3FEF5A5940233DC6F9CD2F2A457B179CAD9"
+        },
+        "rock": {
+          "basecolor": "B7BA020CAB7F05A6DFE885AFEC4818B6592613794BCF8941F80BB469860E543D",
+          "orm": "0F929FAD9B05BB8A589A2A4CCC1F5EAC8D90B0365F851B45A687AD602319B1D2",
+          "normal": "E38D9AC25FB660700F9EA3F202EC5D6A20DF176482326D9A7783586B8444FF6D"
+        }
+      },
+      "repairsApplied": [
+        "1024 ivory/graphite/cyan/amber/glass/rock atlas roles"
+      ],
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 1,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "massline_continuous_orbital_port",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 2,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "habitation_mass_separation",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 3,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "industrial_mass_separation",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 4,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "transit_mass_separation",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 5,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "recessed_dock_mouths",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 6,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "ship_scale_bays",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 7,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "window_bands",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 8,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "maintenance_ladders",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 9,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "layered_hull_plates_bmesh",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 10,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "service_trenches",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 11,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "curve_piping_load_paths",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 12,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "kitbash_industrial_subordinates",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 13,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "gate_curved_truss_spars",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 14,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "gate_central_service_spine",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 15,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "gate_emitter_banks",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 16,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "gate_coils_cooling",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 17,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "gate_power_anatomy",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 18,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "gate_travel_axis_clarity",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 19,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "material_zones_without_emissive",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 20,
+      "family": "station_gate",
+      "kind": "macro_domain_repair",
+      "domain": "lod_merge_sockets_collision",
+      "assetId": null,
+      "defectsBefore": [
+        "missing station/gate result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "renderCount": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 21,
+      "family": "rock_prop",
+      "kind": "macro_domain_repair",
+      "domain": "rock_a_slab_scan_geology",
+      "assetId": null,
+      "defectsBefore": [
+        "missing rock/prop result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 22,
+      "family": "rock_prop",
+      "kind": "macro_domain_repair",
+      "domain": "rock_b_wedge_scan_geology",
+      "assetId": null,
+      "defectsBefore": [
+        "missing rock/prop result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 23,
+      "family": "rock_prop",
+      "kind": "macro_domain_repair",
+      "domain": "rock_c_cluster_scan_geology",
+      "assetId": null,
+      "defectsBefore": [
+        "missing rock/prop result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 24,
+      "family": "rock_prop",
+      "kind": "macro_domain_repair",
+      "domain": "strata_fracture_cuts",
+      "assetId": null,
+      "defectsBefore": [
+        "missing rock/prop result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 25,
+      "family": "rock_prop",
+      "kind": "macro_domain_repair",
+      "domain": "ore_claim_scars",
+      "assetId": null,
+      "defectsBefore": [
+        "missing rock/prop result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 26,
+      "family": "rock_prop",
+      "kind": "macro_domain_repair",
+      "domain": "gantry_continuous_mast_boom",
+      "assetId": null,
+      "defectsBefore": [
+        "missing rock/prop result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 27,
+      "family": "rock_prop",
+      "kind": "macro_domain_repair",
+      "domain": "dock_arm_clamp_hydraulics",
+      "assetId": null,
+      "defectsBefore": [
+        "missing rock/prop result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 28,
+      "family": "rock_prop",
+      "kind": "macro_domain_repair",
+      "domain": "nav_spire_beacon_identity",
+      "assetId": null,
+      "defectsBefore": [
+        "missing rock/prop result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 29,
+      "family": "rock_prop",
+      "kind": "macro_domain_repair",
+      "domain": "prop_material_batching",
+      "assetId": null,
+      "defectsBefore": [
+        "missing rock/prop result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 30,
+      "family": "rock_prop",
+      "kind": "macro_domain_repair",
+      "domain": "prop_lod_collision_sockets",
+      "assetId": null,
+      "defectsBefore": [
+        "missing rock/prop result"
+      ],
+      "defectsAfter": [
+        "build failed"
+      ],
+      "hashBefore": null,
+      "hashAfter": null,
+      "lod0Triangles": null,
+      "materials": null,
+      "countsDoNotSelfPass": true
+    },
+    {
+      "cycle": 31,
+      "family": "integration",
+      "kind": "family_integration_metrics",
+      "okCount": 0,
+      "failCount": 2,
+      "assetHashes": {},
+      "stationGateCycles": 20,
+      "rockPropCycles": 10,
+      "defectsAfter": [
+        "independent visual review still required",
+        "Three.js evidence produced by finalize (not this blender pass)",
+        "no live promote performed",
+        "cycle counts never self-pass"
+      ],
+      "acceptanceClaim": false,
+      "countsDoNotSelfPass": true
+    }
+  ]
+}

@@ -1,0 +1,413 @@
+{
+  "asset_id": "kenney_space_station_kit",
+  "title": "Space Station Kit",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0 Universal",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "source_url": "https://kenney.nl/assets/space-station-kit",
+  "download_url": "https://kenney.nl/media/pages/assets/space-station-kit/6475288f2e-1712749919/kenney_space-station-kit.zip",
+  "archive": {
+    "path": "kenney_space-station-kit.zip",
+    "bytes": 1835875,
+    "sha256": "215e79bd5415cff93665183390f0343ed9acf87780306331013b78520170c6d8"
+  },
+  "inventory": {
+    "file_count": 497,
+    "extension_counts": {
+      ".txt": 1,
+      ".html": 1,
+      ".png": 104,
+      ".url": 3,
+      ".fbx": 97,
+      ".glb": 97,
+      ".mtl": 97,
+      ".obj": 97
+    },
+    "glb_count": 97,
+    "obj_count": 97,
+    "fbx_count": 97,
+    "png_preview_count": 104
+  },
+  "geometry_aggregate_from_glb": {
+    "total_estimated_tris": 8698,
+    "total_position_verts": 14978,
+    "note": "Per-module kit; totals sum all modular pieces, not a single hero mesh."
+  },
+  "largest_modules_by_tris": [
+    {
+      "path": "Models/GLB format/table-display-small.glb",
+      "bytes": 29116,
+      "meshes": 3,
+      "primitives": 3,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 816,
+      "position_count": 486,
+      "estimated_tris": 272
+    },
+    {
+      "path": "Models/GLB format/structure-barrier-high.glb",
+      "bytes": 44348,
+      "meshes": 17,
+      "primitives": 17,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 768,
+      "position_count": 480,
+      "estimated_tris": 256
+    },
+    {
+      "path": "Models/GLB format/structure-barrier.glb",
+      "bytes": 44356,
+      "meshes": 17,
+      "primitives": 17,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 768,
+      "position_count": 480,
+      "estimated_tris": 256
+    },
+    {
+      "path": "Models/GLB format/table-display.glb",
+      "bytes": 24344,
+      "meshes": 2,
+      "primitives": 2,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 720,
+      "position_count": 418,
+      "estimated_tris": 240
+    },
+    {
+      "path": "Models/GLB format/balcony-rail.glb",
+      "bytes": 21644,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 642,
+      "position_count": 388,
+      "estimated_tris": 214
+    },
+    {
+      "path": "Models/GLB format/computer-screen.glb",
+      "bytes": 19584,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 594,
+      "position_count": 346,
+      "estimated_tris": 198
+    },
+    {
+      "path": "Models/GLB format/wall-corner-round-banner.glb",
+      "bytes": 18556,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 576,
+      "position_count": 324,
+      "estimated_tris": 192
+    },
+    {
+      "path": "Models/GLB format/computer-system.glb",
+      "bytes": 17552,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 528,
+      "position_count": 306,
+      "estimated_tris": 176
+    },
+    {
+      "path": "Models/GLB format/computer-wide.glb",
+      "bytes": 17136,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 522,
+      "position_count": 298,
+      "estimated_tris": 174
+    },
+    {
+      "path": "Models/GLB format/wall-corner-round.glb",
+      "bytes": 15872,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 492,
+      "position_count": 272,
+      "estimated_tris": 164
+    },
+    {
+      "path": "Models/GLB format/wall-pillar-banner.glb",
+      "bytes": 16256,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 468,
+      "position_count": 284,
+      "estimated_tris": 156
+    },
+    {
+      "path": "Models/GLB format/structure.glb",
+      "bytes": 29828,
+      "meshes": 13,
+      "primitives": 13,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 432,
+      "position_count": 288,
+      "estimated_tris": 144
+    },
+    {
+      "path": "Models/GLB format/chair-armrest-headrest.glb",
+      "bytes": 14308,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 426,
+      "position_count": 252,
+      "estimated_tris": 142
+    },
+    {
+      "path": "Models/GLB format/computer.glb",
+      "bytes": 13804,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 420,
+      "position_count": 242,
+      "estimated_tris": 140
+    },
+    {
+      "path": "Models/GLB format/table-display-planet.glb",
+      "bytes": 16740,
+      "meshes": 3,
+      "primitives": 3,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 420,
+      "position_count": 248,
+      "estimated_tris": 140
+    }
+  ],
+  "largest_modules_by_bytes": [
+    {
+      "path": "Models/GLB format/structure-barrier.glb",
+      "bytes": 44356,
+      "meshes": 17,
+      "primitives": 17,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 768,
+      "position_count": 480,
+      "estimated_tris": 256
+    },
+    {
+      "path": "Models/GLB format/structure-barrier-high.glb",
+      "bytes": 44348,
+      "meshes": 17,
+      "primitives": 17,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 768,
+      "position_count": 480,
+      "estimated_tris": 256
+    },
+    {
+      "path": "Models/GLB format/structure.glb",
+      "bytes": 29828,
+      "meshes": 13,
+      "primitives": 13,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 432,
+      "position_count": 288,
+      "estimated_tris": 144
+    },
+    {
+      "path": "Models/GLB format/table-display-small.glb",
+      "bytes": 29116,
+      "meshes": 3,
+      "primitives": 3,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 816,
+      "position_count": 486,
+      "estimated_tris": 272
+    },
+    {
+      "path": "Models/GLB format/table-display.glb",
+      "bytes": 24344,
+      "meshes": 2,
+      "primitives": 2,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 720,
+      "position_count": 418,
+      "estimated_tris": 240
+    },
+    {
+      "path": "Models/GLB format/balcony-rail.glb",
+      "bytes": 21644,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 642,
+      "position_count": 388,
+      "estimated_tris": 214
+    },
+    {
+      "path": "Models/GLB format/computer-screen.glb",
+      "bytes": 19584,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 594,
+      "position_count": 346,
+      "estimated_tris": 198
+    },
+    {
+      "path": "Models/GLB format/wall-corner-round-banner.glb",
+      "bytes": 18556,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 576,
+      "position_count": 324,
+      "estimated_tris": 192
+    },
+    {
+      "path": "Models/GLB format/computer-system.glb",
+      "bytes": 17552,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 528,
+      "position_count": 306,
+      "estimated_tris": 176
+    },
+    {
+      "path": "Models/GLB format/computer-wide.glb",
+      "bytes": 17136,
+      "meshes": 1,
+      "primitives": 1,
+      "materials": 1,
+      "images": 1,
+      "textures": 1,
+      "index_count": 522,
+      "position_count": 298,
+      "estimated_tris": 174
+    }
+  ],
+  "largest_obj_sample": [
+    {
+      "path": "Models/OBJ format/table-display-small.obj",
+      "bytes": 22284,
+      "verts": 174,
+      "faces": 448
+    },
+    {
+      "path": "Models/OBJ format/table-display.obj",
+      "bytes": 19112,
+      "verts": 150,
+      "faces": 416
+    },
+    {
+      "path": "Models/OBJ format/computer-screen.obj",
+      "bytes": 17346,
+      "verts": 124,
+      "faces": 396
+    },
+    {
+      "path": "Models/OBJ format/balcony-rail.obj",
+      "bytes": 15967,
+      "verts": 106,
+      "faces": 428
+    },
+    {
+      "path": "Models/OBJ format/computer-system.obj",
+      "bytes": 15507,
+      "verts": 110,
+      "faces": 352
+    },
+    {
+      "path": "Models/OBJ format/wall-corner-round-banner.obj",
+      "bytes": 15318,
+      "verts": 112,
+      "faces": 384
+    },
+    {
+      "path": "Models/OBJ format/computer-wide.obj",
+      "bytes": 15050,
+      "verts": 108,
+      "faces": 348
+    },
+    {
+      "path": "Models/OBJ format/wall-corner-round.obj",
+      "bytes": 12682,
+      "verts": 84,
+      "faces": 328
+    },
+    {
+      "path": "Models/OBJ format/computer.obj",
+      "bytes": 12362,
+      "verts": 84,
+      "faces": 280
+    },
+    {
+      "path": "Models/OBJ format/wall-pillar-banner.obj",
+      "bytes": 11948,
+      "verts": 108,
+      "faces": 312
+    }
+  ],
+  "license_txt": "\t\n\n\tSpace Station Kit (1.0)\n\n\tCreated/distributed by Kenney (www.kenney.nl)\n\tCreation date: 10-04-2024 13:50\n\t\n\t\t\t------------------------------\n\n\tLicense: (Creative Commons Zero, CC0)\n\thttp://creativecommons.org/publicdomain/zero/1.0/\n\n\tYou can use this content for personal, educational, and commercial purposes.\n\n\tSupport by crediting 'Kenney' or 'www.kenney.nl' (this is not a requirement)\n\n\t\t\t------------------------------\n\n\t\u2022 Website : www.kenney.nl\n\t\u2022 Donate  : www.kenney.nl/donate\n\n\t\u2022 Patreon : patreon.com/kenney\n\t\n\tFollow on social media for updates:\n\n\t\u2022 Twitter:   twitter.com/KenneyNL\n\t\u2022 Instagram: instagram.com/kenney_nl\n\t\u2022 Mastodon:  mastodon.gamedev.place/@kenney",
+  "quality_class": "lowpoly_modular_blockout",
+  "quality_vs_target_re1monsen": "NOT equal quality: Kenney is stylized low-poly modular kit without 4K PBR maps; target re1monsen is ~170k-tri metalness PBR with 4K textures.",
+  "modifications_required": [
+    "Pieces are already low-poly; retopology is not the primary need.",
+    "Author new materials/PBR or bake onto kit topology for SpaceFace visual bar.",
+    "Compose modules into a Helios-scale station silhouette (docking, massline, silhouette read).",
+    "Unit scale / up-axis check for Three.js Y-up game convention.",
+    "Merge/instance modules; add LODs for distance.",
+    "Do not treat as drop-in hero station donor equal to re1monsen."
+  ]
+}

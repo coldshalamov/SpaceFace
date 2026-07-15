@@ -35,8 +35,13 @@ assert.equal(
 );
 assert.equal(
   pkg.scripts['check:alpha:baseline:browser'],
-  'npm run check:alpha:baseline:contracts && node scripts/check-alpha-live-baseline-browser.mjs',
-  'headed browser gate always runs the non-headed contract preflight first',
+  'npm run check:alpha:baseline:contracts && node scripts/check-alpha-live-baseline-browser.mjs && npm run check:galaxy-map-search-pointer',
+  'headed browser gate runs the non-headed preflight, canonical baseline, and physical map-pointer regression',
+);
+assert.equal(
+  pkg.scripts['check:galaxy-map-search-pointer'],
+  'node scripts/check-galaxy-map-search-pointer.mjs',
+  'active-objective search and pointer routing have a direct canonical-browser gate',
 );
 for (const scriptName of ['check', 'check:ci']) {
   assert.equal(

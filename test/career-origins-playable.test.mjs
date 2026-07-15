@@ -7,7 +7,7 @@ import { hash32, mulberry32 } from '../src/core/rng.js';
 import {
   buildOriginContractOffer,
   CAREER_ORIGIN_CONTRACTS,
-  HUNTER_ORIGIN_30M_GROSS_FLOOR_CR,
+  HUNTER_ORIGIN_CLEAN_GROSS_ENVELOPE_CR,
   ORIGIN_ROLE_KITS,
 } from '../src/careers/origins/careerOriginContracts.js';
 import {
@@ -218,7 +218,7 @@ test('Prospector public route advances scan to extraction to sale through real m
   assert.equal(state.player.moduleInventory.filter((item) => item.defId === 'mod_winch_hd').length, 1);
 });
 
-test('Hunter public-event route settles three real writs, repair cost, and viable 30m gross', () => {
+test('Hunter public-event settlement pays three writs, one repair, and the clean gross envelope', () => {
   const state = makeState(1911);
   const bus = createBus();
   const player = {
@@ -266,6 +266,7 @@ test('Hunter public-event route settles three real writs, repair cost, and viabl
   bus.emit('career:origin:accept', { careerId: 'hunter' });
 
   const startingCredits = state.player.credits;
+  const startingSimTime = state.simTime;
   const cargoBefore = structuredClone(state.player.cargo.items);
   const researchBefore = state.player.researchPoints || 0;
   const settled = [];
@@ -310,7 +311,9 @@ test('Hunter public-event route settles three real writs, repair cost, and viabl
   assert.equal(route.status, 'completed');
   assert.equal(gross, CAREER_ORIGIN_CONTRACTS.hunter.reduce((sum, def) => sum + def.rewardCr, 0)
     + HUNTER_ORIGIN_REWARD.credits);
-  assert.ok(gross >= HUNTER_ORIGIN_30M_GROSS_FLOOR_CR);
+  assert.equal(gross, HUNTER_ORIGIN_CLEAN_GROSS_ENVELOPE_CR);
+  assert.equal(state.simTime, startingSimTime,
+    'settlement integration does not claim elapsed travel/combat-route timing');
   assert.deepEqual(state.player.cargo.items, cargoBefore, 'Hunter route must not fabricate cargo');
   assert.equal(state.player.researchPoints || 0, researchBefore, 'Hunter route must not fabricate research');
   assert.equal(player.alive, true);

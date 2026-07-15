@@ -114,7 +114,7 @@ export const HUNTER_ORIGIN_EVENTS = Object.freeze({
 });
 
 /**
- * Recovery copy for lawful failure paths. One voice, imperative, ≤12 words.
+ * Recovery copy for lawful failure paths. One voice, actionable, and safe for the inline hint UI.
  */
 export const HUNTER_RECOVERY_HINTS = Object.freeze({
   marked_lawful: 'Lawful marks void the bag. Re-mark a HOSTILE.',

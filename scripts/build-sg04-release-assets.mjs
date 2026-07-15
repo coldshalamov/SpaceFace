@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
-import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -56,7 +56,10 @@ const packageJson = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8
 // release/ uncompressed and unmanifested. Fold them into the standard build so they get meshopt
 // compression (their SOCKET_*/LOD* nodes are preserved by inspectReleaseAssetPair's parity check) and
 // a release_manifest.json entry — same release standard as the kestrel reference and every part.
-const WHOLE_SHIP_FILES = ['kestrel.glb', 'pelican.glb', 'wasp.glb'];
+// Kestrel V4 ships LOD0 through the canonical player path. Its independently authored LOD1/LOD2
+// family members remain release-built and hash-bound for a future separate-file residency selector;
+// the current runtime deliberately decodes only LOD0 rather than tripling starter-ship residency.
+const WHOLE_SHIP_FILES = ['kestrel.glb', 'kestrel_lod1.glb', 'kestrel_lod2.glb', 'pelican.glb', 'wasp.glb'];
 const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
 const allAssets = [
   {
@@ -195,7 +198,7 @@ for (let index = 0; index < assets.length; index++) {
     await document.transform(...transforms);
     stampReleaseTextureCompression(document, sourceInspection);
     await mkdir(dirname(releaseAbs), { recursive: true });
-    await io.write(releaseAbs, document);
+    await writeDocumentAtomic(io, releaseAbs, document);
 
     // gltf-transform deduplicates redundant texture objects on write (e.g. hull_starter
     // ships 9 texture entries over 5 images). Compare against a normalized source snapshot
@@ -230,7 +233,7 @@ for (let index = 0; index < assets.length; index++) {
 }
 
 const devDeps = packageJson.devDependencies || {};
-await writeFile(BUILD_RELEASE_MANIFEST, `${JSON.stringify({
+const releaseManifestPayload = `${JSON.stringify({
   schemaVersion: 1,
   releaseRoot: 'assets/ships/release',
   generatedBy: 'scripts/build-sg04-release-assets.mjs',
@@ -253,7 +256,8 @@ await writeFile(BUILD_RELEASE_MANIFEST, `${JSON.stringify({
     materialTextures: 'UASTC KTX2, mipmapped, zstd supercompressed, linear ORM/material data',
   },
   assets: manifestAssets,
-}, null, 2)}\n`);
+}, null, 2)}\n`;
+await writeFileAtomic(BUILD_RELEASE_MANIFEST, releaseManifestPayload);
 
 if (!DIRECT_LIVE_BUILD) {
   await publishStagedRelease();
@@ -298,8 +302,9 @@ function stampReleaseTextureCompression(document, sourceInspection) {
     : 0;
   if (textureCount <= 0) return;
   const root = document.getRoot();
-  const compression = 'KTX2/BasisU';
   const asset = root.getAsset();
+  const assetContractVersion = Number(asset.extras?.spacefaceAsset?.contractVersion) || 1;
+  const compression = assetContractVersion >= 2 ? 'KTX2/BasisU+mips' : 'KTX2/BasisU';
   if (asset.extras && asset.extras.spacefaceAsset) {
     asset.extras = {
       ...asset.extras,
@@ -439,6 +444,52 @@ function splitIncompatibleTextureSlots(document) {
       .setMimeType(normalTexture.getMimeType());
     material.setNormalTexture(clone);
   }
+}
+
+async function writeDocumentAtomic(ioInstance, target, document) {
+  const temp = `${target}.sg04-${process.pid}-${Date.now()}.tmp.glb`;
+  try {
+    await ioInstance.write(temp, document);
+    await replaceFileWithRetry(temp, target);
+  } finally {
+    await rm(temp, { force: true }).catch(() => {});
+  }
+}
+
+async function writeFileAtomic(target, contents) {
+  const temp = `${target}.sg04-${process.pid}-${Date.now()}.tmp`;
+  try {
+    await writeFile(temp, contents);
+    await replaceFileWithRetry(temp, target);
+  } finally {
+    await rm(temp, { force: true }).catch(() => {});
+  }
+}
+
+async function replaceFileWithRetry(temp, target) {
+  try {
+    await rename(temp, target);
+    return;
+  } catch (error) {
+    if (!isTransientWindowsReplaceError(error)) throw error;
+  }
+  let lastError = null;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    try {
+      await copyFile(temp, target);
+      await rm(temp, { force: true });
+      return;
+    } catch (error) {
+      if (!isTransientWindowsReplaceError(error)) throw error;
+      lastError = error;
+      await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+    }
+  }
+  throw lastError || new Error(`unable to replace ${target}`);
+}
+
+function isTransientWindowsReplaceError(error) {
+  return ['EPERM', 'EACCES', 'EBUSY', 'EEXIST', 'UNKNOWN'].includes(error?.code);
 }
 
 function decodePng(buffer) {

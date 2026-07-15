@@ -1,5 +1,10 @@
 # Graphics Program — Start Here
 
+> **Manual sprint kit — explicit activation required.** The files in this folder coordinate named
+> concurrent graphics threads only when a user/lead launches them. They are not automatic authority
+> for ordinary asset, renderer, UI, or integration work. Thread boundaries prevent simultaneous
+> writers; they do not prohibit a coherent task from crossing seams after ownership is coordinated.
+
 This folder coordinates the player-facing visual overhaul. It is not a taste bible and it does not
 authorize quality cuts, arbitrary asset budgets, or process metrics as substitutes for judgment.
 

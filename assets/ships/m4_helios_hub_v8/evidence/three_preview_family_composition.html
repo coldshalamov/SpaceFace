@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"/><title>M4 Helios Hub V8 Family</title>
+<style>html,body{margin:0;background:#0a0c10;overflow:hidden}canvas{display:block}</style>
+</head><body>
+<script type="importmap">
+{"imports":{
+  "three":"/node_modules/three/build/three.module.js",
+  "three/addons/":"/node_modules/three/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+const w = Number(new URLSearchParams(location.search).get('w') || 1280);
+const h = Number(new URLSearchParams(location.search).get('h') || 720);
+const glbUrls = ["/assets/ships/m4_helios_hub_v8/release_candidates/places/helios_hub_station.glb","/assets/ships/m4_helios_hub_v8/release_candidates/places/helios_gate.glb","/assets/ships/m4_helios_hub_v8/release_candidates/places/helios_rock_a.glb","/assets/ships/m4_helios_hub_v8/release_candidates/places/helios_rock_b.glb","/assets/ships/m4_helios_hub_v8/release_candidates/places/helios_rock_c.glb"];
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+renderer.setSize(w, h, false);
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0c10);
+const camera = new THREE.PerspectiveCamera(38, w / h, 0.05, 2000);
+scene.add(new THREE.HemisphereLight(0xb0c4de, 0x1a1c22, 0.55));
+const key = new THREE.DirectionalLight(0xfff2e0, 1.35); key.position.set(28, 30, 18); scene.add(key);
+const fill = new THREE.DirectionalLight(0x88aacc, 0.45); fill.position.set(-22, 10, -14); scene.add(fill);
+const rim = new THREE.DirectionalLight(0x44ddff, 0.35); rim.position.set(-10, 8, 22); scene.add(rim);
+
+const ktx2Loader = new KTX2Loader().setTranscoderPath('/node_modules/three/examples/jsm/libs/basis/').detectSupport(renderer);
+const loader = new GLTFLoader();
+loader.setMeshoptDecoder(MeshoptDecoder);
+loader.setKTX2Loader(ktx2Loader);
+
+function loadOne(url) {
+  return new Promise((resolve, reject) => loader.load(url, resolve, undefined, reject));
+}
+
+const spacing = 55;
+Promise.all(glbUrls.map(loadOne)).then((gltfs) => {
+  let meshCount = 0;
+  gltfs.forEach((gltf, i) => {
+    const root = gltf.scene;
+    root.traverse((o) => {
+      if (o.isMesh && /collision/i.test(o.name || '')) o.visible = false;
+      if (o.isMesh && o.visible) meshCount++;
+    });
+    const box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z, 1);
+    const s = 18 / maxDim;
+    root.scale.setScalar(s);
+    root.position.set((i - (gltfs.length - 1) / 2) * spacing * 0.45, 0, 0);
+    scene.add(root);
+  });
+  const all = new THREE.Box3().setFromObject(scene);
+  const center = all.getCenter(new THREE.Vector3());
+  const size = all.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z, 1);
+  const dist = maxDim * 1.35;
+  camera.position.set(center.x + dist * 0.55, center.y + dist * 0.35, center.z + dist * 0.75);
+  camera.lookAt(center);
+  camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+  const buf = new Uint8Array(w * h * 4);
+  renderer.getContext().readPixels(0, 0, w, h, renderer.getContext().RGBA, renderer.getContext().UNSIGNED_BYTE, buf);
+  let bright = 0;
+  for (let i = 0; i < buf.length; i += 4) if (buf[i] + buf[i+1] + buf[i+2] > 90) bright++;
+  window.__SF_PREVIEW__ = {
+    ready: true, meshCount, brightPixels: bright,
+    proceduralFallback: meshCount < 5 || bright < 40,
+    loaderPath: 'GLTFLoader+KTX2Loader+MeshoptDecoder',
+    assetCount: gltfs.length,
+  };
+}).catch((err) => {
+  window.__SF_PREVIEW__ = { ready: false, error: String(err) };
+});
+</script></body></html>

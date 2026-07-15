@@ -2,7 +2,12 @@
 // faction, cargo, credits, heat, missions, or traffic; it records conversations and receipts.
 
 import { COMMODITIES } from '../data/commodities.js';
-import { normalizeStationContactRecord } from '../data/stationContacts.js';
+import {
+  CONTACT_COUNTER_DEFS,
+  createInitialStationContactCounters,
+  normalizeStationContactCounters,
+  normalizeStationContactRecord,
+} from '../data/stationContacts.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((def) => [def.id, def]));
 const MAX_TRAFFIC_RECEIPTS = 8;
@@ -13,6 +18,12 @@ function ensureContactBag(state) {
     player.stationContacts = {};
   }
   return player.stationContacts;
+}
+
+function ensureCounterBag(state) {
+  const player = state.player || (state.player = {});
+  player.stationContactCounters = normalizeStationContactCounters(player.stationContactCounters);
+  return player.stationContactCounters;
 }
 
 function ensureLifeState(state) {
@@ -46,12 +57,14 @@ export const stationContacts = {
     this.bus = ctx.bus;
     this._subs = [];
     ensureContactBag(this.state);
+    ensureCounterBag(this.state);
     ensureLifeState(this.state);
     const on = (event, handler) => {
       this.bus.on(event, handler);
       this._subs.push([event, handler]);
     };
     on('ui:talkContact', (payload = {}) => this._recordTalk(payload));
+    on('stationContact:counterDelta', (payload = {}) => this._recordCounterDelta(payload));
     on('freight:arrival', (payload = {}) => this._recordFreight(payload, 'arrival'));
     on('freight:loss', (payload = {}) => this._recordFreight(payload, 'loss'));
   },
@@ -59,7 +72,28 @@ export const stationContacts = {
   newGame() {
     if (!this.state) return;
     this.state.player.stationContacts = {};
+    this.state.player.stationContactCounters = createInitialStationContactCounters();
     this.state.stationLife = { traffic: [] };
+  },
+
+  _recordCounterDelta(payload) {
+    const trackerId = String(payload.trackerId || '');
+    const def = CONTACT_COUNTER_DEFS[trackerId];
+    const delta = Math.trunc(Number(payload.delta) || 0);
+    if (!def || !delta) return;
+    const previous = ensureCounterBag(this.state);
+    const next = normalizeStationContactCounters({
+      ...previous,
+      [trackerId]: previous[trackerId] + delta,
+    });
+    this.state.player.stationContactCounters = next;
+    this.bus.emit('stationContact:counterChanged', {
+      trackerId,
+      contactId: def.contactId,
+      previous: previous[trackerId],
+      value: next[trackerId],
+      reason: String(payload.reason || '').slice(0, 96) || null,
+    });
   },
 
   _recordTalk(payload) {
@@ -120,4 +154,3 @@ export const stationContacts = {
     this._subs = [];
   },
 };
-

@@ -16,6 +16,10 @@ import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
 
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
+export function isUiInteractionFenced(state) {
+  return !!(state && state.ui && state.ui.fulfillmentBlackoutActive === true);
+}
+
 /** Live flight-action label (settings override → scheme → defaults). Empty when unbound. */
 function flightActionLabel(state, action) {
   const cfg = state && state.settings && state.settings.controls && state.settings.controls.bindings;
@@ -44,6 +48,7 @@ export function createUiInput(ctx, screenManager) {
   const gp = ctx.gamepad;
   let dockInRange = false;
   let dockStationId = null;
+  const unsubscribers = [];
 
   // Gamepad UI navigation state.
   const _nav = {
@@ -55,16 +60,16 @@ export function createUiInput(ctx, screenManager) {
   };
 
   // physics emits dock:range while the player is near a station
-  bus.on('dock:range', ({ stationId, inRange }) => {
+  unsubscribers.push(bus.on('dock:range', ({ stationId, inRange }) => {
     dockInRange = !!inRange;
     dockStationId = inRange ? stationId : null;
-  });
-  bus.on('dock:undocked', () => { /* HUD restoration handled in uiRoot */ });
+  }));
+  unsubscribers.push(bus.on('dock:undocked', () => { /* HUD restoration handled in uiRoot */ }));
 
   // Emit the dock intent; uiRoot's dock:docked handler owns setting ui.docked + pushing the
   // station hub (single owner of the flight→dock transition, avoids a double-push).
   function doDock() {
-    if (!dockInRange || state.ui.docked) return;
+    if (isUiInteractionFenced(state) || !dockInRange || state.ui.docked) return;
     state.ui.activeStationTab = state.ui.activeStationTab || 'market';
     bus.emit('dock:docked', { stationId: dockStationId });
     bus.emit('audio:cue', { id: 'ui_dock' });
@@ -73,7 +78,8 @@ export function createUiInput(ctx, screenManager) {
   function matchesBinding(ev, binding) {
     const k = ev && ev.key;
     const code = ev && ev.code;
-    return !!binding && (k === binding.key || k === binding.label || code === binding.code);
+    const shiftMatches = !binding || binding.shift == null || !!(ev && ev.shiftKey) === !!binding.shift;
+    return !!binding && shiftMatches && (k === binding.key || k === binding.label || code === binding.code);
   }
 
   function allowsMissionLogShortcut(def) {
@@ -102,6 +108,10 @@ export function createUiInput(ctx, screenManager) {
     const code = ev.code;
     const modalOpen = screenManager.isOpen();
 
+    // Fulfillment transit is a deterministic simulation event, not a paused screen. It still owns
+    // every player-facing command surface until the boarding FSM releases the wake_pending phase.
+    if (isUiInteractionFenced(state)) { ev.preventDefault(); return; }
+
     // If a shared confirm dialog is open (UX-2), let it own ALL keys — its own handler traps
     // Esc/Enter/Tab. Bail here so the modal screen underneath doesn't also react to the keystroke.
     if (isConfirmOpen()) { ev.preventDefault(); return; }
@@ -115,7 +125,16 @@ export function createUiInput(ctx, screenManager) {
         closeActiveModal(def);
         return;
       }
-      if (textEntry) return;
+      // Map toggle (M/N) must still close the map when search (or any text field) is focused.
+      // Without this, open → autofocus/search → second M types "m" instead of toggling closed.
+      // Escape already bypasses textEntry above; treat map bindings the same on map surfaces.
+      const mapToggleWhileTyping = !!(
+        textEntry
+        && def
+        && isMapScreenId(def.id)
+        && (matchesBinding(ev, BINDINGS.starmap) || matchesBinding(ev, BINDINGS.localmap))
+      );
+      if (textEntry && !mapToggleWhileTyping) return;
       // Mirror the live interact binding while docked: E docks from flight and undocks from the
       // station hub, preserving one airlock muscle-memory action. Leave Enter alone here so focused
       // station buttons and rail tabs keep normal keyboard activation.
@@ -154,6 +173,12 @@ export function createUiInput(ctx, screenManager) {
     // --- pure flight: UI-owned global keys only (mode must be flight) ---
     if (state.mode !== 'flight') return;
 
+    if (matchesBinding(ev, BINDINGS.band)) {
+      ev.preventDefault();
+      bus.emit('band:cycle', { source: 'keyboard' });
+      return;
+    }
+
     switch (key) {
       case 'Escape':
         if (state.ui && state.ui.commsBacklogOpen) {
@@ -172,7 +197,7 @@ export function createUiInput(ctx, screenManager) {
         screenManager.pushScreen('pause');
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
-      // Map authority: N → galaxyMap LOCAL focus; M → galaxyMap GALAXY (star-chart) focus.
+      // Map authority: M → galaxyMap LOCAL (near-field first); N → galaxyMap GALAXY (star chart).
       // Legacy localmap/starmap screens remain registered for tools/checks only.
       case BINDINGS.localmap.key:
       case BINDINGS.localmap.label:
@@ -264,6 +289,24 @@ export function createUiInput(ctx, screenManager) {
         else if (code === 'Minus' || code === 'NumpadSubtract') { bus.emit('camera:zoom', { delta: 8 }); }
         return;
     }
+  }
+
+  function onBlackoutKeyDown(ev) {
+    if (!isUiInteractionFenced(state)) return;
+    ev.preventDefault();
+    // Capture-phase ownership is required: ScreenManager's Tab trap is registered earlier on the
+    // document bubble path, and preventDefault alone cannot stop focus or later UI command handlers.
+    if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
+    else if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+  }
+
+  function onBlackoutPointerEvent(ev) {
+    if (!isUiInteractionFenced(state)) return;
+    // The opaque overlay prevents ordinary hit-testing, but global/document listeners and the
+    // native context menu still observe the event path. Own it in capture phase just like keys.
+    if (typeof ev.preventDefault === 'function') ev.preventDefault();
+    if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
+    else if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
   }
 
   // Resolve a drillable asteroid: player's selected target (if it's an asteroid), else the mining
@@ -385,24 +428,34 @@ export function createUiInput(ctx, screenManager) {
   // Emit the intent only; uiRoot's dock:undocked handler owns clearing ui.docked and popping
   // the station hub (single owner of the dock→HUD transition, avoids a double-pop).
   function undock() {
+    if (isUiInteractionFenced(state)) return;
     if (!state.ui.docked) { screenManager.popScreen(); return; }
     bus.emit('dock:undocked', {});
   }
 
   // mouse-wheel zoom passthrough (only in flight, not over a modal)
   function onWheel(ev) {
-    if (screenManager.isOpen() || state.ui.docked || state.mode !== 'flight') return;
+    if (isUiInteractionFenced(state) || screenManager.isOpen() || state.ui.docked || state.mode !== 'flight') return;
     bus.emit('camera:zoom', { delta: Math.sign(ev.deltaY) * 8 });
   }
 
+  const blackoutPointerEvents = [
+    'pointerdown', 'pointerup', 'mousedown', 'mouseup',
+    'click', 'dblclick', 'auxclick', 'contextmenu',
+    'touchstart', 'touchend', 'wheel',
+  ];
+  document.addEventListener('keydown', onBlackoutKeyDown, true);
+  for (const type of blackoutPointerEvents) {
+    document.addEventListener(type, onBlackoutPointerEvent, { capture: true, passive: false });
+  }
   document.addEventListener('keydown', onKeyDown);
   window.addEventListener('wheel', onWheel, { passive: true });
   const clearGamepadFocus = () => document.documentElement.classList.remove('sf-gamepad-focus');
   document.addEventListener('pointerdown', clearGamepadFocus, true);
 
   // let other modules (uiRoot Undock button) trigger an undock
-  bus.on('ui:undock', undock);
-  bus.on('touch:uiAction', ({ action } = {}) => { routeTouchUiAction(action); });
+  unsubscribers.push(bus.on('ui:undock', undock));
+  unsubscribers.push(bus.on('touch:uiAction', ({ action } = {}) => { routeTouchUiAction(action); }));
 
   // ---- gamepad UI layer -----------------------------------------------------
 
@@ -525,7 +578,7 @@ export function createUiInput(ctx, screenManager) {
   }
 
   function handleTouchUi() {
-    if (isConfirmOpen() || screenManager.isOpen() || state.mode !== 'flight') return;
+    if (isUiInteractionFenced(state) || isConfirmOpen() || screenManager.isOpen() || state.mode !== 'flight') return;
     if (touchActionPressed('dock')) { routeTouchUiAction('dock'); return; }
     if (touchActionPressed('missionLog')) { routeTouchUiAction('missionLog'); return; }
     if (touchActionPressed('localmap')) { routeTouchUiAction('localmap'); return; }
@@ -534,7 +587,7 @@ export function createUiInput(ctx, screenManager) {
   }
 
   function routeTouchUiAction(action) {
-    if (isConfirmOpen() || screenManager.isOpen() || state.mode !== 'flight') return false;
+    if (isUiInteractionFenced(state) || isConfirmOpen() || screenManager.isOpen() || state.mode !== 'flight') return false;
     if (action === 'dock') {
       if (dockInRange && !state.ui.docked) {
         doDock();
@@ -555,6 +608,12 @@ export function createUiInput(ctx, screenManager) {
     if (!gp || !gp.isConnected()) return;
     const cfg = getGamepadConfig();
     if (cfg.enabled === false) return;
+    if (isUiInteractionFenced(state)) {
+      _nav.up = _nav.down = _nav.left = _nav.right = false;
+      _nav.holdT = 0;
+      _nav.repeatT = 0;
+      return;
+    }
 
     const modalOpen = screenManager.isOpen();
     const top = modalOpen && screenManager.top ? screenManager.top() : null;
@@ -695,9 +754,16 @@ export function createUiInput(ctx, screenManager) {
   return {
     doDock, undock, tick,
     dispose() {
+      document.removeEventListener('keydown', onBlackoutKeyDown, true);
+      for (const type of blackoutPointerEvents) {
+        document.removeEventListener(type, onBlackoutPointerEvent, true);
+      }
       document.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('wheel', onWheel);
       document.removeEventListener('pointerdown', clearGamepadFocus, true);
+      for (const unsubscribe of unsubscribers.splice(0)) {
+        try { unsubscribe(); } catch (_) {}
+      }
     },
   };
 }

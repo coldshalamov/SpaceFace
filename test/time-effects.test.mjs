@@ -901,6 +901,7 @@ function testWriterAndRuntimeContracts(auditWriters, formatFindings) {
     `time-effects service must be the sole scalar writer:\n${formatFindings(writerFindings)}`);
 
   const main = fs.readFileSync(path.join(root, 'src/main.js'), 'utf8');
+  const newGameStart = fs.readFileSync(path.join(root, 'src/core/newGameStartTransition.js'), 'utf8');
   assert(main.indexOf('createTimeEffects(state)') < main.indexOf('createRegistry(ctx)'),
     'main must create time-effects before registry initialization');
   assert.match(main, /ctx\s*=\s*\{[^}]*timeEffects/s, 'main context must expose the service');
@@ -920,7 +921,9 @@ function testWriterAndRuntimeContracts(auditWriters, formatFindings) {
   );
   assert((main.match(/runTransitionGuard\.isCurrent\(transitionToken\)/g) || []).length >= 7,
     'main must check transition ownership after every readiness await and in both failure paths');
-  assert((main.match(/runTransitionGuard\.commit\(transitionToken/g) || []).length >= 2,
+  const guardedCommits = (main.match(/runTransitionGuard\.commit\(transitionToken/g) || []).length
+    + (newGameStart.match(/guard\.commit\(token/g) || []).length;
+  assert(guardedCommits >= 2,
     'new-game and load success must commit through the one-shot guard');
   assert.match(main, /catch \(error\)[\s\S]*failGameStart\([^;]+;[\s\S]*throw error;/,
     'loaded-game visual startup failure must be surfaced and rethrown to save');

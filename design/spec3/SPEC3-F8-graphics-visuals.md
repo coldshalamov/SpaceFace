@@ -1,5 +1,5 @@
 # SPEC3-F8 — Graphics & Visual Direction (specs 33–36)
-**Thread:** F8 · **Reads:** GDD §9–10, `design/CURRENT_BUILD_STATUS.md`, VISUAL_ASSET_PLAN.md · **Status:** PLAN
+**Thread:** F8 · **Reads:** GDD §9–10, `design/program/README.md`, VISUAL_ASSET_PLAN.md · **Status:** PLAN
 **Thread pitch:** a beautiful game on a budget renderer — depth you can feel, sectors you can name
 from one frame, ships that never flicker, and a HUD that disappears until it matters.
 
@@ -19,9 +19,9 @@ was tuned pre-ACES; switching now re-grades every material — do it once, delib
 stability, the parallax depth stack, shader warm-up, and a perf harness that keeps us honest.
 
 ### 1. Why
-You can't art-direct a renderer that drops ships (flicker bug) or hitches 54 ms. Stability and
-frame-pacing ARE the visual upgrade players feel first. CURRENT_BUILD_STATUS lists exactly this as
-the blocking cluster.
+You cannot art-direct an unstable renderer. Stability and frame pacing are visual qualities players
+feel immediately; use the current program acceptance matrix and live measurements to identify the
+actual blocking cluster.
 
 ### 2. The design
 - **Ship visual stability probe FIRST** (the missing regression): a live probe recording, per
@@ -94,20 +94,27 @@ F3/F4/F6/F2 all order feedback from the same kitchen: `vfx.js`'s pooled architec
 spec owning the grammar, juice becomes 6 inconsistent dialects and a draw-call bill.
 
 ### 2. The design — the effect grammar (families, not one-offs)
-- **Filaments** (tether, patrol scan-lock, teleport link): ribbon mesh, additive, vertex-color
-  gradient, tension/state → color+amplitude. One family serves F3-17, F1-12 scans, F6-26 teleporter.
-- **Decals/marks** (seam glow, siege target-mark, IFF arcs): camera-facing quads from one atlas,
-  pooled 128. Amber = warning, red = imminent, cyan = info — never decorative.
-- **Bursts** (shield-break ring, fracture, vein strike, kill breakup): the existing explosion pool
-  re-parameterized (scale/color/count curves in data). Kill = interior flash → breakup chunks →
-  shockwave ring (GDD §6.3 wiring).
-- **Trails** (missiles, disruptor corkscrew, slingshot streak): pooled ribbon trails, 24 max,
-  LOD'd off at low preset.
-- **Status overlays** (vent stance glow, overload stutter, complicity tells): material emissive
-  swaps on the ship mesh — zero extra draws.
-- **The juice contract extension:** every NEW event this plan ships maps to ≤1 effect per family +
-  ≤1 audio cue + optional trauma (F3-18's budget). A table in this spec's appendix is the single
-  registry (implementers add rows, checks lint them against emitted events).
+- **Filaments** (tether, patrol scan-lock, teleport link): share a semantic family whose shape,
+  motion, material, and state mapping are selected from representative captures. Ribbons, beams,
+  particles, geometry, or shaders are candidate techniques, not a mandated implementation.
+- **Decals/marks** (seam glow, siege target-mark, IFF arcs): use a reusable mark system with
+  priority, occlusion, colorblind-safe shape/motion redundancy, and measured pool growth. Atlases,
+  signed-distance fields, projected geometry, or authored meshes may be combined when they produce
+  the clearest result.
+- **Bursts** (shield break, fracture, vein strike, kill breakup): compose a readable event arc from
+  the smallest effective set of layers. Re-parameterizing existing pools is a starting candidate;
+  authored meshes, particles, lights, distortion, decals, or animation are allowed when evidence
+  shows a stronger result within the measured frame budget.
+- **Trails** (missiles, disruptor corkscrew, slingshot streak): choose geometry, particles, shaders,
+  or hybrids from motion readability and profiling. Capacity, culling, and LOD/HLOD thresholds are
+  derived from worst-case scenes rather than fixed here.
+- **Status overlays** (vent stance, overload, complicity tells): prefer changes that remain readable
+  on the moving ship without obscuring its identity. Material changes are one candidate alongside
+  decals, particles, animation, lights, and spatial UI.
+- **The cue contract extension:** every new event registers its visual, audio, camera, haptic, and
+  accessibility candidates in the cue table. Layer and voice counts follow salience, masking, and
+  measured performance; checks enforce registration, priority, cleanup, and budgets established by
+  representative stress captures rather than universal per-event ceilings.
 
 ### 3. Architecture & wiring
 All families live in `vfx.js` pools (extend, don't fork). Event→effect wiring via one data table
@@ -127,10 +134,13 @@ for (const cue of VFX_CUES) bus.on(cue.event, payload => {
 ```
 
 ### 5–6. Assets / deps
-One 8-glyph decal atlas (SPEC3-38 generates); everything else procedural. No new deps.
+SPEC3-38 may produce atlases, authored marks, textures, meshes, or other source assets after an
+in-game comparison. Procedural and authored techniques may be mixed. Dependencies are acceptable
+when their license, bundle/performance, determinism/save, browser/Electron parity, and maintenance
+impact are documented and the player-facing gain is demonstrated.
 
 ### 7. Build plan
-1. cueRouter + vfxCues table; migrate 5 existing hardcoded wirings as proof;
+1. cueRouter + vfxCues table; migrate a representative cross-section of existing hardcoded wirings;
    `scripts/check-vfx-cues.mjs` (every table event exists; every SPEC3 event with `juice:true`
    has a row; pool caps respected at worst case).
 2. Filament family (tether first — F3-17's dependency).
@@ -166,15 +176,17 @@ per sector are unowned. F7-30's verbs need matching looks.
   composition params: nebula mass position (Veil: enveloping; Ashfall: a wound on one horizon),
   star density, one *landmark silhouette* (Helios' sun lens, Charon's cinder giant) — the "you are
   here" read at zero draw cost beyond the stack.
-- **Readability discipline (GDD §9.3, enforced):** faction rim-light + engine glow (hostile warm /
-  friendly cool, colorblind-redundant with IFF glyphs); nothing unidentifiable on screen >1 s
-  (five-second test in CI screenshots); ambiguous translucent spheres get horizon-line + approach
-  label treatment.
-- **Prop dressing kits:** per-band prop palettes (core: clean gantries, ad boards; belt: slag
-  heaps, gutted frames; fringe: graffiti'd wrecks; anomaly: Vael geometry) — 6–10 props per band
-  from existing primitives + SPEC3-37/38 textures, instanced, density per sector data.
-- **The grade:** per-sector fog + vignette strength only (no LUTs this cycle — ACES decision).
-  Sker's murk is fog character, not a filter.
+- **Readability discipline (GDD §9.3, enforced):** affiliation and threat must survive motion,
+  distance, color-vision differences, and visually complex sectors. Rim lights, engine treatments,
+  silhouettes, formation, IFF glyphs, labels, audio, and behavior are candidate redundant channels;
+  choose combinations through capture and playtest evidence rather than fixed warm/cool semantics or
+  a universal identification-time threshold.
+- **Prop dressing kits:** develop per-sector or per-region prop families whose density, variety,
+  silhouette, material, interaction, and reuse are judged in representative routes. Instancing and
+  authored/procedural sources are implementation tools, not fixed counts or band recipes.
+- **The grade:** use lighting, fog, exposure, color management, post-processing, authored skies,
+  and selective grading techniques as the sector requires. LUTs and equivalent tools are candidates
+  when they improve identity without damaging readability or consistency.
 
 ### 3. Architecture & wiring
 Palette block read by renderer lighting rig + parallax stack + prop spawner + HUD accent (SPEC3-36
@@ -183,19 +195,19 @@ accent uniforms driven by `faction:sectorFlipped`. All render/data-side.
 
 ### 4. Key code
 ```js
-// One palette struct, five consumers, zero special cases. Adding a sector look = data.
-const PALETTE = { key:'#9fd8ff', rim:'#3a86ff', fill:'#16324f', nebula:'#5a3e8c',
-  fog:{ color:'#0a1420', density:0.012 }, dust:'#7aa7c7', accent:'#59f0d8', warWash:'#c0392b' };
+// A sector look remains data-driven while each value is art-directed from in-game evidence.
+const LOOK = { lighting, atmosphere, sky, materials, accents, grading, readabilityTreatments };
 ```
 
 ### 5–6. Assets / deps
-Landmark silhouettes: 4 authored low-poly meshes (SPEC3-37); prop textures via SPEC3-38. No new deps.
+Landmarks and dressing assets are authored to the number, fidelity, and technique the approved sector
+compositions require. Reuse is encouraged where it strengthens a visual family, not as a fixed cap.
 
 ### 7. Build plan
-1. Palette block extension + lighting-rig consumption; extend `check:sector-palettes` (all 10
-   populated, contrast ratios pass a11y floor).
+1. Look-data extension + lighting/render consumption; extend `check:sector-palettes` (every shipped
+   sector has complete data and player-facing information meets the accessibility floor).
 2. Sky composition params + landmarks (Helios/Charon first).
-3. Readability pass (rim-light, sphere labels) + five-second-test capture script.
+3. Readability pass + representative motion/still capture and identification review.
 4. Prop kits per band + density data.
 5. War-wash hook.
 
@@ -205,14 +217,15 @@ on the play plane; palette choices without a player-facing reason or evidence. C
 when the asset or location needs it.
 
 ### 9. Ambition ceiling
-Time-of-war lighting: a sector at `war` shifts its key light 10° and cools 300 K — players sense
-something's wrong before reading anything. Data lerp, zero new tech.
+Time-of-war presentation: a sector at `war` develops a perceptible environmental change before the
+player reads a label. Compare lighting, atmosphere, traffic, material, audio, and landmark treatments;
+store the selected transition in data and tune it against representative sector captures.
 
 ---
 
 ## SPEC3-36 — HUD 2.0 & the UI visual system
-**One-line pitch:** a clear hierarchy, one voice, and purposeful motion — a HUD that carries every
-SPEC3 system without accreting competing surfaces.
+**One-line pitch:** a clear hierarchy, an unmistakable primary focus, and purposeful motion — a HUD
+that carries every SPEC3 system without accreting competing surfaces.
 
 ### 1. Why
 GDD §9.4 established a proven reference hierarchy (three anchors: status cluster bottom-left,

@@ -190,10 +190,14 @@ try {
   assert.equal(b0Report.onboardingActive, true, 'B0 sample requires active onboarding');
   assert.equal(b0Report.onboardingFinished, false, 'B0 sample requires unfinished onboarding');
   assert.equal(b0Report.currentBeat, 0, 'B0 sample should still be on thrust (currentBeat 0)');
-  if (b0Report.waypoint) {
-    assert(b0Report.waypoint.kind === 'story' || b0Report.waypoint.onboarding === true,
-      'any opening waypoint must remain story/onboarding-owned');
-  }
+  // Opening marker must exist and be lifecycle-owned by the staged tutorial or story spine —
+  // never a bare kind:'mission' / local / trade claim while B0 is teaching.
+  assert.ok(b0Report.waypoint, 'opening must expose one authoritative waypoint/goal marker');
+  assert.ok(
+    b0Report.waypoint.kind === 'story' || b0Report.waypoint.onboarding === true,
+    'any opening waypoint must remain story/onboarding-owned'
+    + ` (got kind=${b0Report.waypoint.kind} onboarding=${b0Report.waypoint.onboarding})`,
+  );
 
   const panelCmd = !!(b0Report.panelVisible && b0Report.panelTitle);
   const trackerCmd = !!(b0Report.trackerVisible && b0Report.trackerObj);
@@ -262,7 +266,10 @@ try {
   assert.equal(flightReport.topAfter, 'missionLog', 'mission log should open on demand after launch');
   assert.match(flightReport.missionLogText, /CURRENT ACTION|RECOMMENDED NEXT/i,
     'mission log should show the current/recommended rail as optional context');
-  assert.match(flightReport.missionLogText, /Follow the anomaly/i, 'mission log should carry the first route action as optional context');
+  // Staged opening owns CURRENT ACTION as the story first-route. Cold-start 47-A remains tracked
+  // for later handoff (ACTIVE MISSIONS cards) but must not replace this opening command text.
+  assert.match(flightReport.missionLogText, /Follow the anomaly/i,
+    'mission log should carry the first route action as optional context');
   assert.deepEqual(issues.errorIssues(), [], 'first-15 runtime probe should not record page errors');
 
   console.log(

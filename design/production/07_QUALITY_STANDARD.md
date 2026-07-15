@@ -1,5 +1,9 @@
 # 07 — Operational Professional-Quality Standard
 
+> **Manual campaign acceptance reference, not an automatic style recipe.** Apply its review records
+> only when a named production packet explicitly activates them. Ordinary tasks still owe proportional checks and
+> player-facing proof, but no campaign role, form, score, or submission state is required by default.
+
 **Status:** DRAFT
 
 ## 1. Meaning of the target

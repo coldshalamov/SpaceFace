@@ -80,8 +80,8 @@ export function createFitTree(container, opts = {}) {
     const invalidRoot = preview && !slots.some((s, i) => !fittings[i] && fits(s, FITTABLE_BY_ID.get(preview.defId)));
     if (invalidRoot) hullNode.classList.add('st-fit-node--invalid');
     hullNode.innerHTML = `<span class="st-fit-icon st-fit-icon--hull">⛴</span>` +
-      `<span class="st-fit-label">${escapeHtml(shipDef.name)}</span>` +
-      `<span class="st-fit-meta mono">T${shipDef.tier} ${shipDef.role}</span>`;
+      `<span class="st-fit-label">SHIP · ${escapeHtml(shipDef.name)}</span>` +
+      `<span class="st-fit-meta mono">T${shipDef.tier} ${shipDef.role || ''}</span>`;
     frag.appendChild(hullNode);
 
     // Group slots by type.

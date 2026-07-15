@@ -31,6 +31,9 @@ step(source, 3);
 
 const attachmentId = Object.keys(source.state.combat.attachments.byId)[0];
 assert(attachmentId, 'attach should create a semantic Massline attachment before save');
+const sourceAttachment = source.state.combat.attachments.byId[attachmentId];
+assert(sourceAttachment.sourceAnchorLocal && sourceAttachment.targetAnchorLocal,
+  'socket-created Massline should retain exact local anchors before save');
 
 requestAndStep(source, 4, { actorId: player.id, actionId: 'action_reel', attachmentId, source: { kind: 'player' } });
 source.kernel.routeDamage({
@@ -65,6 +68,10 @@ assert.equal(saved.data.combat.attachments.byId[attachmentId].targetRef.saveId, 
   'saved attachment should remember the persistent target save id for remap');
 assert.equal(saved.data.combat.attachments.byId[attachmentId].physicsHandle, undefined,
   'saved attachment must not persist SG-02/Rapier handles');
+assert.deepEqual(saved.data.combat.attachments.byId[attachmentId].sourceAnchorLocal, sourceAttachment.sourceAnchorLocal,
+  'save should persist the exact source local anchor');
+assert.deepEqual(saved.data.combat.attachments.byId[attachmentId].targetAnchorLocal, sourceAttachment.targetAnchorLocal,
+  'save should persist the exact target local anchor');
 assert.equal(saved.data.combat.statusNextPendingSeq, source.state.combat.statusNextPendingSeq,
   'save should persist the SG-03 pending-status sequence cursor');
 
@@ -85,8 +92,19 @@ const restoredAttachment = restored.state.combat.attachments.byId[attachmentId];
 assert(restoredAttachment, 'load should restore the semantic attachment');
 assert.equal(restoredAttachment.ownerId, restoredPlayer.id, 'attachment owner should remap to the loaded player id');
 assert.equal(restoredAttachment.targetId, restoredTarget.id, 'attachment target should remap to the loaded persistent target id');
+assert.deepEqual(restoredAttachment.sourceAnchorLocal, sourceAttachment.sourceAnchorLocal,
+  'load should restore the exact source local anchor');
+assert.deepEqual(restoredAttachment.targetAnchorLocal, sourceAttachment.targetAnchorLocal,
+  'load should restore the exact target local anchor');
 assert(restoredAttachment.physicsHandle, 'SG-02 reset should recreate the physical rope before the next physics tick');
 assert.equal(restored.physics._sg02.diagnostics().attachments, 1, 'SG-02 owner should contain the pre-step reconciled physical rope');
+const restoredPhysicalAttachment = restored.physics._sg02.attachments.get(attachmentId);
+assert.deepEqual(restoredPhysicalAttachment.anchorA,
+  { x: sourceAttachment.sourceAnchorLocal.x, y: 0, z: sourceAttachment.sourceAnchorLocal.z },
+  'SG-02 reconcile should consume the restored source local anchor directly');
+assert.deepEqual(restoredPhysicalAttachment.anchorB,
+  { x: sourceAttachment.targetAnchorLocal.x, y: 0, z: sourceAttachment.targetAnchorLocal.z },
+  'SG-02 reconcile should consume the restored target local anchor directly');
 
 const restoredActive = restored.state.combat.actions.activeByActor[String(restoredPlayer.id)];
 assert(restoredActive, 'active action should restore under the loaded actor id');

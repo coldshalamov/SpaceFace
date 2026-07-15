@@ -51,24 +51,22 @@
     "scenario:beatEntered": 1,
     "scenario:dialogueLine": 1,
     "tether:attached": 1,
-    "combat:fire": 12,
-    "projectile:hit": 12,
-    "combat:damage": 12,
+    "combat:fire": 17,
+    "projectile:hit": 11,
+    "combat:damage": 11,
     "economy:tick": 2,
-    "graffiti:show": 1,
-    "comms:popup": 2,
     "camera:shake": 2,
     "presentation:cameraCue": 2,
     "presentation:vfxCue": 3,
     "presentation:audioCue": 3,
     "presentation:uiCue": 3,
     "presentation:caption": 3,
-    "presentation:cueApplied": 3,
-    "presentation:cue": 3,
+    "presentation:cueApplied": 14,
+    "presentation:cue": 14,
     "audio:cue": 3
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "0fb0e5228eeb8e7e6cab8022b08ffd7adb4e12a31de68512e9f010e310b91133",
+    "authoritativeHash": "7f4ecb2d454de26248a263f3faa24cebcffd4640e7c0669ce5fb10be9eed4ea1",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -84,6 +82,8 @@
     "sourceScenarioContract ties replay evidence to the SG-05 scenario graph consumed by sf-sim.",
     "phase0ExpectedTraceTypes includes future subscribed slice events; phase0ObservedTraceCounts asserts events emitted by this rapier-dynamic 720-tick run, including SG-05 authored dialogue plus SG-08 semantic cue and adapter-output evidence.",
     "The Massline attach expectation proves the first SG-03 combatAction command reaches SG-02 dynamic tether physics within 60 seconds.",
-    "deathToRetryTickMax pins the spec's under-6s failure-to-retry requirement at the canonical 60Hz tick rate."
+    "deathToRetryTickMax pins the spec's under-6s failure-to-retry requirement at the canonical 60Hz tick rate.",
+    "2026-07-14 deliberate re-record: starter pulse-laser fire-rate update and corrected legacy aim tape yield 17 fire / 11 hit / 11 damage; tutorial-owned opening removes duplicate graffiti/comms.",
+    "Repeat-20, reload@600, and uninterrupted-vs-reload comparison were deterministic."
   ]
 }

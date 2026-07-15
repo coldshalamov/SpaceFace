@@ -229,7 +229,16 @@ run('voice arbiter uses injected sim time and keeps legacy toast bridge disabled
 run('registry initializes voice before callers and updates it after story/onboarding', () => {
   const src = source('src/core/registry.js');
   assert.match(src, /core, voiceArbiter, input/);
-  assert.match(src, /story, scenarioRuntime, heat, traffic, drill, claims, onboarding, voiceArbiter/);
+  const start = src.indexOf('const UPDATE_ORDER = [');
+  const end = src.indexOf('];', start);
+  const order = src.slice(start, end);
+  const arbiterAt = order.indexOf('voiceArbiter');
+  assert.ok(start >= 0 && end > start && arbiterAt >= 0, 'UPDATE_ORDER and voiceArbiter must be present');
+  for (const producer of ['story', 'scenarioRuntime', 'onboarding', 'masslineHud']) {
+    const producerAt = order.indexOf(producer);
+    assert.ok(producerAt >= 0 && producerAt < arbiterAt,
+      `${producer} must update before voiceArbiter flushes the one-voice queue`);
+  }
 });
 
 run('spoken backend lanes route through helpers.voice.say', () => {
@@ -268,8 +277,8 @@ run('legacy story toast stragglers are migrated to voice helpers', () => {
   assert.doesNotMatch(missions, /BEAT_HINT\[b0\.beat\]\) this\.bus\.emit\('toast'/);
 
   const story = source('src/systems/story.js');
-  assert.match(story, /this\._sayStoryLine\(`Ending: \$\{def\.title\}`, 8\)/);
-  assert.doesNotMatch(story, /this\.bus\.emit\('toast', \{ text: `Ending: \$\{def\.title\}`, kind: 'story'/);
+  assert.match(story, /this\._sayStoryLine\(plan\.resolution \|\| plan\.title, 8\)/);
+  assert.doesNotMatch(story, /this\.bus\.emit\('toast', \{ text: plan\.resolution \|\| plan\.title, kind: 'story'/);
 });
 
 run('the two added tiers (tutorial, objective) arbitrate correctly against their neighbors', () => {

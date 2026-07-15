@@ -481,8 +481,8 @@ assert.doesNotMatch(missionLogSrc, /screenId:\s*'starmap'/,
   'Mission Log policy must not hand off to legacy starmap screen id');
 
 // Station Plot Route
-assert.match(stationHubSrc, /openGalaxyMap\(ctx,[\s\S]*MAP_FOCUS\.LOCAL[\s\S]*MAP_FOCUS\.GALAXY[\s\S]*source:\s*'stationHub'/,
-  'Station Plot Route must open galaxyMap with LOCAL/GALAXY focus and station source');
+assert.match(stationHubSrc, /openGalaxyMap\(ctx,[\s\S]*MAP_FOCUS\.LOCAL[\s\S]*MAP_FOCUS\.GALAXY[\s\S]*source:\s*'station:mission-route'/,
+  'Station Plot Route must open galaxyMap with LOCAL/GALAXY focus and station mission-route source');
 assert.doesNotMatch(stationHubSrc, /ui:pushScreen',\s*\{\s*id:\s*local \? 'localmap'/,
   'Station Plot Route must not emit legacy localmap/starmap screen ids');
 

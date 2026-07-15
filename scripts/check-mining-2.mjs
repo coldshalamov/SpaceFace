@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { cargo } from '../src/systems/cargo.js';
@@ -11,6 +14,8 @@ import {
   mining,
 } from '../src/systems/mining.js';
 import { world } from '../src/systems/world.js';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const TAU = Math.PI * 2;
 
@@ -271,6 +276,17 @@ function checkMiningNoiseCrossing() {
   assert(dangerEvents[0].level > 70, 'danger:miningNoise should include the crossed level');
 }
 
+function checkYieldFloatingTextNamesCommodity() {
+  // Starter beam is directToCargo — mining:yield is the only flight float for each unit.
+  // Bare "+1" without a commodity name is unreadable (player can't tell iron from silicate).
+  const floatSrc = readFileSync(resolve(ROOT, 'src/ui/floatingText.js'), 'utf8');
+  assert.match(floatSrc, /bus\.on\('mining:yield'/, 'floatingText must listen for mining:yield');
+  assert.match(floatSrc, /'\+' \+ p\.qty \+ ' ' \+ name/,
+    'mining yield float text must be "+N Commodity Name", not bare +qty');
+  assert.doesNotMatch(floatSrc, /mining:yield'[\s\S]{0,120}spawn\('\+' \+ p\.qty,/,
+    'mining yield must not spawn bare +qty floats');
+}
+
 checkWorldSpawnSeams();
 checkSeamYield();
 checkMiningHasNoHeatLockout();
@@ -278,5 +294,6 @@ checkMasslineTargetOwnsMiningBeam();
 checkBeamTargetSticksUntilRelease();
 checkFractureAndVacuumCargo();
 checkMiningNoiseCrossing();
+checkYieldFloatingTextNamesCommodity();
 
 console.log('Mining 2.0 core checks OK');

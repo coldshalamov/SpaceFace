@@ -61,6 +61,16 @@ The Inquisitor's compassion-argument, made UI: the truth (all three doors open o
 
 The player picks a side. The side is a door. The door is the system's mercy. The mercy is the disease.
 
+## THE CLEARING DESK (the laugh that tells you who someone is)
+
+The clearing station has a desk. The desk has a clerk. The clerk processes the three faction contracts in the order they're tendered, stamps the administrator field, and slides the chit back. The clerk does this eight times an hour. The clerk has done this for nine years. The clerk is good at it.
+
+The player, if the player lingers — and the player will only linger if the player is the kind of player who watches NPCs when the NPCs aren't being watched — sees the clerk laugh once. The laugh is at a manifest. The manifest is for a smuggling run. The smuggling run's cargo line reads MEDICAL SUPPLIES — HUMANITARIAN RELIEF. The clerk knows what's in the crate because the clerk processed the same crate's seizure notice two cycles ago and re-routed it back onto the board under a new tag. The crate is narcotics. The clerk knows. The administrator field knows. The board knows. The manifest does not know. The manifest says HUMANITARIAN RELIEF. The clerk laughed.
+
+The laugh is short. The laugh is not cruel. The laugh is the sound a man makes when the system's euphemism is so precise it becomes funny — when the word HUMANITARIAN has been applied to a crate of narcotics that will be sold on the Sker floor by sundown, and the application is, by every filing standard the clerk was handed, correct. The clerk is not a villain. The clerk is a man who has processed eight thousand manifests and learned to find the one in eighty that is, in its exact bureaucratic wrongness, funny. The funny one is always the one where the euphemism and the contents are the farthest apart and the filing is the cleanest. HUMANITARIAN RELIEF. The clerk laughed. The clerk stamped the chit. The chit cleared. The administrator field read V. DIRECTOR, ACTING. The narcotics will arrive on time.
+
+This is the moral x-ray. The clerk's laugh is not the laugh of a man who doesn't care. It's the laugh of a man who has learned that caring costs a thing he doesn't have, and that the euphemism is the only honest part of the manifest, because the euphemism at least admits the system knows what it's doing. The clerk calls it humor. The graffiti, if it appears, would call it complicity. The two words describe the same sound.
+
 ---
 
 ### Sheet wiring

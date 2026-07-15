@@ -1,0 +1,567 @@
+{
+  "stage": "A0",
+  "asset": "m4_helios_hub_v11",
+  "generated_by": "assets/ships/m4_helios_hub_v11/scripts/generate_a0_silhouettes.py",
+  "no_blender": true,
+  "reference": {
+    "kit": "Kenney Space Station Kit 1.0",
+    "author": "Kenney (www.kenney.nl)",
+    "license": "CC0 1.0 Universal",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "canonical_url": "https://kenney.nl/assets/space-station-kit",
+    "download_url": "https://kenney.nl/media/pages/assets/space-station-kit/6475288f2e-1712749919/kenney_space-station-kit.zip",
+    "path": "assets/third_party/helios_v11/kenney_space_station_kit/",
+    "usage": "design_reference",
+    "usage_note": "Informs modular junction logic, dock/service language, hard-surface proportions. Does NOT dictate ring/cylinder stack. Not used as shipped geometry."
+  },
+  "kestrel_v4_context": {
+    "path": "assets/ships/kestrel_borrowed_time_v4/evidence/three/kestrel_v4_three_120px.png",
+    "role": "detail/readability quality context on contact sheet \u2014 not shape imitation"
+  },
+  "candidates": [
+    {
+      "id": "cand_a_stepped_hab",
+      "label": "A \u2014 Stepped Hab Dominant",
+      "design_notes": "Broad stepped left habitation wing, lean notched industrial jaw, armored keel stem; service aperture through hab root.",
+      "design_units": {
+        "stem_len": 18.0,
+        "stem_w": 7.2,
+        "arm_len": 32.0,
+        "tip_sep": 25.0,
+        "hab_thick": 7.6,
+        "ind_thick": 5.5
+      },
+      "files": {
+        "mask_1024": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_a_stepped_hab_1024.png",
+        "overlay_1024": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_a_stepped_hab_1024_overlay.png",
+        "mask_128_nearest": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_a_stepped_hab_128px_nearest.png",
+        "mask_128_lanczos": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_a_stepped_hab_128px_lanczos.png",
+        "mask_40_nearest": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_a_stepped_hab_40px_nearest.png",
+        "mask_40_lanczos": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_a_stepped_hab_40px_lanczos.png"
+      },
+      "sha256": {
+        "mask_1024": "13c5619e86aba832c22749521b5535d505686a14fd274a1b979ea0c6e54af1c7",
+        "overlay_1024": "92a6ebb5393273ac6c64e7368809e39753f77149262fff9e9df9a472f7c1d254",
+        "mask_128_nearest": "af06d8456f3c2b47b14759b6d3da41840eecb35ad32d288a757f22508c423897",
+        "mask_128_lanczos": "4875dcf099af4bae371d9d909868ec63a3ee467e37c8a5cdbaf4ae3c5fc5e5cd",
+        "mask_40_nearest": "787b8a1d767801781386c5f566d2cac449e3ea2b6bc1eee9b20959e5befa6c94",
+        "mask_40_lanczos": "1133e05082c2fcb524d7dc78a878575d1d571582fe43fff09cd99ccef817cb29"
+      },
+      "metrics": {
+        "content_bbox_px": {
+          "x0": 166,
+          "y0": 96,
+          "x1": 841,
+          "y1": 911
+        },
+        "content_size_px": {
+          "w": 676,
+          "h": 816
+        },
+        "margins_frac": {
+          "left": 0.162109375,
+          "right": 0.177734375,
+          "top": 0.09375,
+          "bottom": 0.109375,
+          "min": 0.09375,
+          "max": 0.177734375
+        },
+        "foreground_connected_components": 1,
+        "negative_space_enclosed_holes": 8,
+        "hole_areas_px": [
+          117358,
+          3036,
+          119,
+          90,
+          84,
+          68,
+          55,
+          8
+        ],
+        "hole_bboxes_px": [
+          {
+            "x0": 367,
+            "y0": 143,
+            "x1": 707,
+            "y1": 572,
+            "area_px": 117358
+          },
+          {
+            "x0": 239,
+            "y0": 421,
+            "x1": 299,
+            "y1": 499,
+            "area_px": 3036
+          },
+          {
+            "x0": 830,
+            "y0": 290,
+            "x1": 835,
+            "y1": 318,
+            "area_px": 119
+          },
+          {
+            "x0": 832,
+            "y0": 198,
+            "x1": 835,
+            "y1": 228,
+            "area_px": 90
+          },
+          {
+            "x0": 834,
+            "y0": 331,
+            "x1": 837,
+            "y1": 354,
+            "area_px": 84
+          },
+          {
+            "x0": 833,
+            "y0": 359,
+            "x1": 837,
+            "y1": 376,
+            "area_px": 68
+          },
+          {
+            "x0": 829,
+            "y0": 378,
+            "x1": 831,
+            "y1": 400,
+            "area_px": 55
+          },
+          {
+            "x0": 837,
+            "y0": 239,
+            "x1": 837,
+            "y1": 246,
+            "area_px": 8
+          }
+        ],
+        "foreground_area_px": 234352,
+        "docking_bite_depth_px": 430,
+        "docking_bite_depth_frac_of_content_h": 0.5269607843137255,
+        "docking_bite_area_px": 117358,
+        "docking_bite_area_frac_of_fg": 0.5007766095446167,
+        "docking_bite_area_frac_of_projected": 0.3304276825182307,
+        "wing_asymmetry": {
+          "left_px": 127916,
+          "right_px": 106436,
+          "ratio_larger_over_smaller": 1.2018114171896728,
+          "hab_side": "left"
+        },
+        "center_of_mass_px": {
+          "x": 496.9045709018912,
+          "y": 430.5845608315696
+        },
+        "com_offset_frac_of_half_diag": 0.1383690578666061,
+        "compactness_isoperimetric": 0.149386925077931,
+        "iou_128_nearest_vs_lanczos_of_1024": 0.9937244201909959,
+        "iou_40_nearest_vs_lanczos_of_1024": 0.9811827956989247,
+        "gates": {
+          "fg_components_eq_1": true,
+          "holes_eq_2": false,
+          "bite_depth_ge_45pct": true,
+          "bite_area_ge_25pct_projected": true,
+          "asymmetry_1_25_to_1_55": false,
+          "margins_ok": false,
+          "com_balanced": false
+        }
+      }
+    },
+    {
+      "id": "cand_b_industrial_jaw",
+      "label": "B \u2014 Industrial Jaw Long",
+      "design_notes": "Longer arms and industrial jaw with deep refinery notches; service aperture on hab root; slightly tighter tip separation.",
+      "design_units": {
+        "stem_len": 17.0,
+        "stem_w": 6.6,
+        "arm_len": 34.5,
+        "tip_sep": 23.5,
+        "hab_thick": 7.2,
+        "ind_thick": 6.0
+      },
+      "files": {
+        "mask_1024": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_b_industrial_jaw_1024.png",
+        "overlay_1024": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_b_industrial_jaw_1024_overlay.png",
+        "mask_128_nearest": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_b_industrial_jaw_128px_nearest.png",
+        "mask_128_lanczos": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_b_industrial_jaw_128px_lanczos.png",
+        "mask_40_nearest": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_b_industrial_jaw_40px_nearest.png",
+        "mask_40_lanczos": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_b_industrial_jaw_40px_lanczos.png"
+      },
+      "sha256": {
+        "mask_1024": "9ccbd73ceed311eed098fcf5ecabd51eacdf475f090c1a30f9c5be2266a2a9dc",
+        "overlay_1024": "233b587f9a0a7be820e0ae47258c4eb7a73f4f4397d0652d5271a3e945ee0ab1",
+        "mask_128_nearest": "c7847244bd5f7986fa254194606c308ce8b1d909346c22d7b17d2e4463ae7baf",
+        "mask_128_lanczos": "3fe492bba250f7677c0fd37c49afd89e3bbc6a92d01e9e95e26d3beb1f60308b",
+        "mask_40_nearest": "bee9398e6baa3a629f8b6e93c3261c6f33f2c308eed6e3bc357e8533a65b937a",
+        "mask_40_lanczos": "51c0b465a732928d4732b12de72bb121cc5ffd48235e5673a339599e7f00f740"
+      },
+      "metrics": {
+        "content_bbox_px": {
+          "x0": 190,
+          "y0": 110,
+          "x1": 819,
+          "y1": 911
+        },
+        "content_size_px": {
+          "w": 630,
+          "h": 802
+        },
+        "margins_frac": {
+          "left": 0.185546875,
+          "right": 0.19921875,
+          "top": 0.107421875,
+          "bottom": 0.109375,
+          "min": 0.107421875,
+          "max": 0.19921875
+        },
+        "foreground_connected_components": 1,
+        "negative_space_enclosed_holes": 11,
+        "hole_areas_px": [
+          112548,
+          114,
+          111,
+          96,
+          81,
+          57,
+          42,
+          41,
+          38,
+          11,
+          6
+        ],
+        "hole_bboxes_px": [
+          {
+            "x0": 369,
+            "y0": 142,
+            "x1": 677,
+            "y1": 598,
+            "area_px": 112548
+          },
+          {
+            "x0": 811,
+            "y0": 377,
+            "x1": 816,
+            "y1": 395,
+            "area_px": 114
+          },
+          {
+            "x0": 810,
+            "y0": 257,
+            "x1": 813,
+            "y1": 286,
+            "area_px": 111
+          },
+          {
+            "x0": 810,
+            "y0": 400,
+            "x1": 816,
+            "y1": 417,
+            "area_px": 96
+          },
+          {
+            "x0": 808,
+            "y0": 337,
+            "x1": 811,
+            "y1": 364,
+            "area_px": 81
+          },
+          {
+            "x0": 811,
+            "y0": 171,
+            "x1": 813,
+            "y1": 201,
+            "area_px": 57
+          },
+          {
+            "x0": 813,
+            "y0": 297,
+            "x1": 815,
+            "y1": 315,
+            "area_px": 42
+          },
+          {
+            "x0": 813,
+            "y0": 321,
+            "x1": 815,
+            "y1": 335,
+            "area_px": 41
+          },
+          {
+            "x0": 806,
+            "y0": 419,
+            "x1": 808,
+            "y1": 440,
+            "area_px": 38
+          },
+          {
+            "x0": 815,
+            "y0": 211,
+            "x1": 815,
+            "y1": 221,
+            "area_px": 11
+          },
+          {
+            "x0": 816,
+            "y0": 255,
+            "x1": 816,
+            "y1": 260,
+            "area_px": 6
+          }
+        ],
+        "foreground_area_px": 224746,
+        "docking_bite_depth_px": 457,
+        "docking_bite_depth_frac_of_content_h": 0.5698254364089775,
+        "docking_bite_area_px": 112548,
+        "docking_bite_area_frac_of_fg": 0.5007786567947816,
+        "docking_bite_area_frac_of_projected": 0.33308966501031395,
+        "wing_asymmetry": {
+          "left_px": 120692,
+          "right_px": 104054,
+          "ratio_larger_over_smaller": 1.159897745401426,
+          "hab_side": "left"
+        },
+        "center_of_mass_px": {
+          "x": 502.7607476885017,
+          "y": 435.1461338577772
+        },
+        "com_offset_frac_of_half_diag": 0.14801684398823767,
+        "compactness_isoperimetric": 0.14198161686816377,
+        "iou_128_nearest_vs_lanczos_of_1024": 0.9903409090909091,
+        "iou_40_nearest_vs_lanczos_of_1024": 0.9755434782608695,
+        "gates": {
+          "fg_components_eq_1": true,
+          "holes_eq_2": false,
+          "bite_depth_ge_45pct": true,
+          "bite_area_ge_25pct_projected": true,
+          "asymmetry_1_25_to_1_55": false,
+          "margins_ok": false,
+          "com_balanced": false
+        }
+      }
+    },
+    {
+      "id": "cand_c_armored_keel",
+      "label": "C \u2014 Armored Keel Heavy",
+      "design_notes": "Heavy central armored operations stem; wider tip separation; service aperture at hab-root junction.",
+      "design_units": {
+        "stem_len": 19.5,
+        "stem_w": 8.0,
+        "arm_len": 30.0,
+        "tip_sep": 27.0,
+        "hab_thick": 7.8,
+        "ind_thick": 5.4
+      },
+      "files": {
+        "mask_1024": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_c_armored_keel_1024.png",
+        "overlay_1024": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_c_armored_keel_1024_overlay.png",
+        "mask_128_nearest": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_c_armored_keel_128px_nearest.png",
+        "mask_128_lanczos": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_c_armored_keel_128px_lanczos.png",
+        "mask_40_nearest": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_c_armored_keel_40px_nearest.png",
+        "mask_40_lanczos": "assets/ships/m4_helios_hub_v11/evidence/silhouette/cand_c_armored_keel_40px_lanczos.png"
+      },
+      "sha256": {
+        "mask_1024": "4b4354fa9c8c57baf6adcc61a08405e135a9b6bf49cc3bf7eb9add70b938c657",
+        "overlay_1024": "394e6145bb7dc5418be4b94d58bb8eb63052d454e03fd0692bd1cdf31da3c18c",
+        "mask_128_nearest": "833ceccf416d684575590742b21e68728b2954f73d585f56b1ad48a1853b985a",
+        "mask_128_lanczos": "2f543247dd38e02507332ca7be358a48b3a7d79740536609babfbc965bd8bef4",
+        "mask_40_nearest": "d23579145caaaee86f6a3acf7437f326b27c0416aec0cd806e7f13eb9b3fd49c",
+        "mask_40_lanczos": "94d5fb1d13ca65caf05c54be63e67ce4f3f79daeaaa85e906964e37a85e2e737"
+      },
+      "metrics": {
+        "content_bbox_px": {
+          "x0": 145,
+          "y0": 88,
+          "x1": 861,
+          "y1": 911
+        },
+        "content_size_px": {
+          "w": 717,
+          "h": 824
+        },
+        "margins_frac": {
+          "left": 0.1416015625,
+          "right": 0.158203125,
+          "top": 0.0859375,
+          "bottom": 0.109375,
+          "min": 0.0859375,
+          "max": 0.158203125
+        },
+        "foreground_connected_components": 1,
+        "negative_space_enclosed_holes": 8,
+        "hole_areas_px": [
+          121110,
+          3168,
+          123,
+          109,
+          71,
+          65,
+          63,
+          7
+        ],
+        "hole_bboxes_px": [
+          {
+            "x0": 356,
+            "y0": 144,
+            "x1": 731,
+            "y1": 545,
+            "area_px": 121110
+          },
+          {
+            "x0": 220,
+            "y0": 392,
+            "x1": 284,
+            "y1": 471,
+            "area_px": 3168
+          },
+          {
+            "x0": 850,
+            "y0": 251,
+            "x1": 855,
+            "y1": 279,
+            "area_px": 123
+          },
+          {
+            "x0": 854,
+            "y0": 292,
+            "x1": 857,
+            "y1": 324,
+            "area_px": 109
+          },
+          {
+            "x0": 852,
+            "y0": 169,
+            "x1": 854,
+            "y1": 197,
+            "area_px": 71
+          },
+          {
+            "x0": 848,
+            "y0": 349,
+            "x1": 851,
+            "y1": 370,
+            "area_px": 65
+          },
+          {
+            "x0": 853,
+            "y0": 330,
+            "x1": 857,
+            "y1": 346,
+            "area_px": 63
+          },
+          {
+            "x0": 857,
+            "y0": 210,
+            "x1": 857,
+            "y1": 216,
+            "area_px": 7
+          }
+        ],
+        "foreground_area_px": 242390,
+        "docking_bite_depth_px": 402,
+        "docking_bite_depth_frac_of_content_h": 0.4878640776699029,
+        "docking_bite_area_px": 121110,
+        "docking_bite_area_frac_of_fg": 0.49964932546722224,
+        "docking_bite_area_frac_of_projected": 0.3299047141697493,
+        "wing_asymmetry": {
+          "left_px": 132545,
+          "right_px": 109845,
+          "ratio_larger_over_smaller": 1.2066548318084573,
+          "hab_side": "left"
+        },
+        "center_of_mass_px": {
+          "x": 493.65555509715745,
+          "y": 428.35973431247163
+        },
+        "com_offset_frac_of_half_diag": 0.1315495362803838,
+        "compactness_isoperimetric": 0.14725961159797882,
+        "iou_128_nearest_vs_lanczos_of_1024": 0.9918292040063258,
+        "iou_40_nearest_vs_lanczos_of_1024": 0.9819121447028424,
+        "gates": {
+          "fg_components_eq_1": true,
+          "holes_eq_2": false,
+          "bite_depth_ge_45pct": true,
+          "bite_area_ge_25pct_projected": true,
+          "asymmetry_1_25_to_1_55": false,
+          "margins_ok": false,
+          "com_balanced": false
+        }
+      }
+    }
+  ],
+  "contact_sheet": {
+    "path": "assets/ships/m4_helios_hub_v11/evidence/silhouette/contact_sheet_a0.png",
+    "sha256": "cacaad4e215432f095fec0e45c37ccb490a9b710f5750e8b77ec7d14f73b8b9a"
+  },
+  "judgment": {
+    "ranked": [
+      {
+        "id": "cand_a_stepped_hab",
+        "label": "A \u2014 Stepped Hab Dominant",
+        "score": 8,
+        "passes_machine": false,
+        "reasons": [
+          "single continuous mass",
+          "bite depth 52.7%",
+          "bite area 33.0% projected",
+          "128px stable",
+          "40px stable"
+        ],
+        "fail": [
+          "holes=8",
+          "asym out of range",
+          "CoM offset 0.138",
+          "margins {'left': 0.162109375, 'right': 0.177734375, 'top': 0.09375, 'bottom': 0.109375, 'min': 0.09375, 'max': 0.177734375}"
+        ]
+      },
+      {
+        "id": "cand_b_industrial_jaw",
+        "label": "B \u2014 Industrial Jaw Long",
+        "score": 8,
+        "passes_machine": false,
+        "reasons": [
+          "single continuous mass",
+          "bite depth 57.0%",
+          "bite area 33.3% projected",
+          "128px stable",
+          "40px stable"
+        ],
+        "fail": [
+          "holes=11",
+          "asym out of range",
+          "CoM offset 0.148",
+          "margins {'left': 0.185546875, 'right': 0.19921875, 'top': 0.107421875, 'bottom': 0.109375, 'min': 0.107421875, 'max': 0.19921875}"
+        ]
+      },
+      {
+        "id": "cand_c_armored_keel",
+        "label": "C \u2014 Armored Keel Heavy",
+        "score": 8,
+        "passes_machine": false,
+        "reasons": [
+          "single continuous mass",
+          "bite depth 48.8%",
+          "bite area 33.0% projected",
+          "128px stable",
+          "40px stable"
+        ],
+        "fail": [
+          "holes=8",
+          "asym out of range",
+          "CoM offset 0.132",
+          "margins {'left': 0.1416015625, 'right': 0.158203125, 'top': 0.0859375, 'bottom': 0.109375, 'min': 0.0859375, 'max': 0.158203125}"
+        ]
+      }
+    ],
+    "provisional_winner": null,
+    "verdict": "SILHOUETTE REJECT",
+    "criteria": [
+      "bold continuous asymmetric tuning-fork/Y shipyard landmark",
+      "stem 16-20, arms 28-36, tip sep 22-28, arm thick 5-8 (design units)",
+      "docking bite depth >=45% length and area >=25% projected",
+      "exactly 2 enclosed negative spaces (bite + service aperture)",
+      "wing area asymmetry 1.25-1.55 with balanced CoM",
+      "unmistakable at 128; tuning-fork legible at 40",
+      "no ellipse/saucer, no generic Y icon, no thin line-art, no floating parts"
+    ]
+  }
+}

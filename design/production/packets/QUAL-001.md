@@ -1,5 +1,7 @@
 # PACKET QUAL-001 — Compile real reference-bound quality cards
 
+> **Manual packet; exact activation required.** See `README.md`. Discovery does not activate it.
+
 packetId: QUAL-001
 milestone: M0 Wave A
 kind: read-only-research-and-control-media

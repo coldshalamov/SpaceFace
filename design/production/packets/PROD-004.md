@@ -1,5 +1,7 @@
 # PACKET PROD-004 — Automatic campaign supervisor and dispatch journal
 
+> **Manual packet; exact activation required.** See `README.md`. Discovery does not activate it.
+
 packetId: PROD-004
 milestone: M0 Wave A
 kind: control-plane

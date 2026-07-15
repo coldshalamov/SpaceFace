@@ -1,0 +1,128 @@
+{
+  "id": "quaternius_modular_scifi_megakit",
+  "title": "Modular Sci-Fi MegaKit (Standard free tier)",
+  "author": "Quaternius",
+  "author_url": "https://quaternius.com/",
+  "classification": "support_only_meso_detail",
+  "classification_note": "SUPPORT-ONLY. Low-poly modular sci-fi environment pieces for station meso-detail and support dressing (doors, columns, floors/platforms, walls, vents, machinery props). NEVER claim this pack as hero macro topology, ship hero hull, or primary station massing.",
+  "helios_role": "station_meso_detail_support",
+  "license": {
+    "spdx": "CC0-1.0",
+    "name": "CC0 1.0 Universal (Public Domain Dedication)",
+    "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "legalcode_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt",
+    "pack_statement": "Free to use in personal, educational and commercial projects. (CC0 License)",
+    "pack_license_file": "License_Standard.txt",
+    "pack_license_sha256": "885b700f02932c08a41163b35cc97d1abe0895a05de29d9a9062fde5132969a8",
+    "verified_sources": [
+      "https://quaternius.com/packs/modularscifimegakit.html (License: CC0 link + free Standard wording)",
+      "https://quaternius.itch.io/modular-sci-fi-megakit (Asset license: Creative Commons Zero v1.0 Universal; free Standard file)",
+      "License_Standard.txt inside Modular SciFi MegaKit[Standard].zip"
+    ]
+  },
+  "source": {
+    "originator_site": "https://quaternius.com/packs/modularscifimegakit.html",
+    "originator_itch": "https://quaternius.itch.io/modular-sci-fi-megakit",
+    "download_channel": "official_originator_itch_free_standard",
+    "itch_game_id": 2992718,
+    "itch_upload_id_standard": 13454739,
+    "itch_filename": "Modular SciFi MegaKit[Standard].zip",
+    "tier": "Standard free 60-70% portion (not Pro, not Source)",
+    "paid_tiers_not_downloaded": [
+      {
+        "name": "Modular SciFi MegaKit[Pro].zip",
+        "listed_size": "187 MB",
+        "min_price_usd": 9.99,
+        "reason_skipped": "Paid/member extra 30-40% content — out of free-CC0 acquisition scope"
+      },
+      {
+        "name": "Modular SciFi MegaKit[Source].zip",
+        "listed_size": "899 MB",
+        "min_price_usd": 14.99,
+        "reason_skipped": "Paid Source engine projects + full model set — out of free-CC0 acquisition scope"
+      }
+    ],
+    "mirrors_not_used": [
+      "https://opengameart.org/content/modular-sci-fi-megakit",
+      "https://store.godotengine.org/asset/quaternius/modular-sci-fi-megakit/"
+    ],
+    "acquisition_method": "Official free skip-buy flow on originator itch page (min_price=0): POST /download_url with CSRF → temporary download landing → POST /file/{upload_id} for Standard only → short-lived signed itchio-mirror R2 URL.",
+    "acquired_utc": "2026-07-11T19:29:18Z",
+    "content_type_observed": "application/x-zip-compressed",
+    "content_disposition": "attachment; filename=\"Modular SciFi MegaKit[Standard].zip\"",
+    "signed_cdn_host": "itchio-mirror.cb031a832f44726753d6267436f3b414.r2.cloudflarestorage.com"
+  },
+  "archive": {
+    "local_path": "source_archive/Modular_SciFi_MegaKit_Standard.zip",
+    "original_filename": "Modular SciFi MegaKit[Standard].zip",
+    "bytes": 48559316,
+    "sha256": "6fae60cf5189e44dff0bd91097f094a765acc6d57d64a85a0cc0dd56e03035e3",
+    "zip_magic": "50 4B 03 04",
+    "integrity": "ZIP local file header verified; Expand-Archive succeeded; 1165 extracted files"
+  },
+  "format_inventory": {
+    "full_standard_extract": {
+      "gltf": 190,
+      "bin": 190,
+      "obj": 191,
+      "mtl": 191,
+      "fbx": 378,
+      "png": 24,
+      "txt": 1,
+      "total_files": 1165,
+      "note_fbx_count": "378 = FBX/ (standard) + FBX (Unity)/ engine-oriented duplicates of the same modular set"
+    },
+    "gltf_categories_in_pack": {
+      "Aliens": 3,
+      "Columns": 8,
+      "Decals": 29,
+      "Platforms": 38,
+      "Props": 28,
+      "Walls": 84
+    },
+    "formats_advertised_on_originator_page": ["FBX", "OBJ", "Blend", "glTF"],
+    "blend_in_standard_zip": false,
+    "blend_note": "Standard free zip contains FBX/OBJ/glTF + Textures; .blend is advertised for Source tier only and was not downloaded."
+  },
+  "selection": {
+    "path": "selected_support/",
+    "purpose": "Station meso-detail / support modules only",
+    "include_categories": ["Columns", "Platforms", "Props", "Walls"],
+    "exclude_categories": ["Aliens", "Decals"],
+    "exclude_reason": "Aliens are creature assets; Decals are 2D surface markings, not structural meso modules.",
+    "selected_module_basenames": 158,
+    "selected_files_including_textures_and_sidecars": 812,
+    "selected_bytes": 45198297,
+    "roles": {
+      "column": 8,
+      "door": 7,
+      "floor_platform": 31,
+      "wall": 84,
+      "machinery_prop": 15,
+      "support_prop": 13
+    },
+    "formats_in_selection": ["glTF", "OBJ", "FBX", "Textures"],
+    "hashes_file": "selected_support/HASHES.json",
+    "manifest_file": "selected_support/selection_manifest.json"
+  },
+  "layout": {
+    "License_Standard.txt": "CC0 statement from pack",
+    "PROVENANCE.json": "This file",
+    "source_archive/": "Original free Standard zip only",
+    "extracted/": "Full Standard extract for inventory / re-selection",
+    "selected_support/": "Curated support-only modules (glTF+OBJ+FBX+Textures)"
+  },
+  "constraints_observed": {
+    "no_safe001_inspection": true,
+    "no_browser_electron_blender": true,
+    "no_process_termination": true,
+    "no_live_game_edits": true,
+    "no_git_staging_or_commit": true,
+    "no_global_provenance_append": true,
+    "writable_paths_only": [
+      "assets/third_party/helios_v3/quaternius_modular_scifi_megakit/**",
+      ".campaign/parallel-research-20260711/helios-v3-quaternius-acquisition/**"
+    ]
+  },
+  "campaign_evidence": ".campaign/parallel-research-20260711/helios-v3-quaternius-acquisition/"
+}

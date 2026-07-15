@@ -21,6 +21,7 @@ import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { createBandBedRuntime } from './bandBeds.js';
 import {
   createCuePriorityBus,
   isPriorityCue,
@@ -612,6 +613,9 @@ export const audio = {
     rt._bulletTimePitch = 1;
     rt._bulletTimeMusicMult = 1;
     rt._bulletTimeFilters = [];
+    if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();
+    rt.bandBed = null;
+    rt._bandBedIntent = { active: false, reason: 'not-tuned' };
     this.rt = rt;
 
     const bus = this.bus;
@@ -729,6 +733,10 @@ export const audio = {
       if (massline2Flag('bulletTime')) this._setBulletTimeAudio(true);
     });
     bus.on('bulletTime:end', () => this._setBulletTimeAudio(false));
+    bus.on('band:bed', (intent = {}) => {
+      rt._bandBedIntent = { ...intent };
+      if (rt.bandBed) rt.bandBed.setIntent(rt._paused ? { active: false, reason: 'pause' } : rt._bandBedIntent);
+    });
     bus.on('settings:changed', (p) => {
       if (!p || p.section === 'audio' || p.section == null) {
         this._applySettings();
@@ -832,6 +840,9 @@ export const audio = {
     rt.engineBus = engineBus; rt.ambientBus = ambientBus; rt.combatBus = combatBus;
     rt.uiBus = uiBus; rt.commsBus = commsBus;
     rt._bulletTimeFilters = [engineSlowFilter, ambientSlowFilter, combatSlowFilter];
+    if (rt.bandBed) rt.bandBed.destroy();
+    rt.bandBed = createBandBedRuntime(ctx, ambientBus);
+    rt.bandBed.setIntent(rt._paused ? { active: false, reason: 'pause' } : rt._bandBedIntent);
 
     getNoiseBuffer(ctx, rt._caches); // pre-build the shared noise buffer
 
@@ -900,6 +911,9 @@ export const audio = {
   _onPause(paused) {
     const rt = this.rt;
     rt._paused = !!paused;
+    if (rt.bandBed) {
+      rt.bandBed.setIntent(paused ? { active: false, reason: 'pause' } : rt._bandBedIntent);
+    }
     const ctx = rt.ctx;
     if (!ctx) return;
     if (paused) {

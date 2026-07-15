@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import test from 'node:test';
 
@@ -80,4 +81,17 @@ test('pseudo locale installs one dynamic DOM bridge while default play remains o
   }
   assert.match(browserSource, /englishLeaks/);
   assert.match(browserSource, /evidence\.json/);
+});
+
+test('readiness checker recognizes the canonical document bridge adoption route', () => {
+  const probe = spawnSync(process.execPath, ['scripts/check-localization-readiness.mjs'], {
+    cwd: process.cwd(), encoding: 'utf8', windowsHide: true,
+  });
+  assert.equal(probe.error, undefined, 'readiness checker should execute');
+  const report = JSON.parse(probe.stdout);
+  assert.equal(report.runtimeAdoption.documentBridgeInstalled, true,
+    'readiness must recognize the public document-boundary localization route');
+  assert.equal(report.runtimeAdoption.status, 'document_bridge');
+  assert.equal(report.runtimeAdoption.estimatedSurfacePercent, 100,
+    'a whole-document bridge should not be reported as zero direct-call adoption');
 });

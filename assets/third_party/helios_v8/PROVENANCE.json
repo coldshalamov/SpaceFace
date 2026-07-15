@@ -1,0 +1,53 @@
+{
+  "schema": "spaceface.thirdPartyProvenance.v1",
+  "packet": "M4-HELIOS-V8-NEW-FOUNDATION-GROK-001",
+  "lane": "assets/third_party/helios_v8",
+  "acquiredFor": "Helios hub/gate/rock V8 isolated candidates",
+  "assets": [
+    {
+      "id": "blenderkit_scifi_station_cc0",
+      "displayName": "Sci-Fi Station (base ring)",
+      "author": "Pastean Narcis Dan",
+      "license": "CC0-1.0",
+      "canonicalUrl": "https://www.blenderkit.com/asset-gallery-detail/b180fdbd-668f-4081-ad51-f364e829f11d/",
+      "licensePage": "https://www.blenderkit.com/docs/licenses/",
+      "localPath": "blenderkit_scifi_station/blenderkit_scifi_station_cc0.blend",
+      "sourceSha256": "F4818E9771E2E5BD5E990A40AFC24394615AB3E751062ED1B23C1D16D98487B6",
+      "bytes": 6967422,
+      "acquisition": "Official BlenderKit public download API (prior V4 acquisition; re-homed for V8)",
+      "modifications": "Spike removal, scale normalize, material-role reassignment, bounded decimate, asymmetric Helios functional masses added in Blender build script"
+    },
+    {
+      "id": "polyhaven_rock_09",
+      "displayName": "Rock 09",
+      "author": "Poly Haven",
+      "license": "CC0-1.0",
+      "canonicalUrl": "https://polyhaven.com/a/rock_09",
+      "localPath": "polyhaven/rock_09/",
+      "source": "Junction/copy from assets/third_party/helios_v3/polyhaven/rock_09",
+      "modifications": "Import → reshape → multi-pass displace → fracture → voxel remesh → bake-ready UVs in V8 rock builders"
+    },
+    {
+      "id": "polyhaven_boulder_01",
+      "displayName": "Boulder 01",
+      "author": "Poly Haven",
+      "license": "CC0-1.0",
+      "canonicalUrl": "https://polyhaven.com/a/boulder_01",
+      "localPath": "polyhaven/boulder_01/",
+      "source": "Junction/copy from assets/third_party/helios_v3/polyhaven/boulder_01",
+      "modifications": "Same geology adaptation pipeline as rock_09; mesa/cluster variants"
+    },
+    {
+      "id": "ambientcg_Rock023",
+      "displayName": "Rock023",
+      "author": "ambientCG",
+      "license": "CC0-1.0",
+      "canonicalUrl": "https://ambientcg.com/view?id=Rock023",
+      "localPath": "ambientcg/Rock023/",
+      "source": "Junction/copy from assets/third_party/helios_v3/ambientcg/Rock023",
+      "modifications": "PBR map reference for rock material language; scan geometry from Poly Haven"
+    }
+  ],
+  "credentialsCircumvention": false,
+  "livePromotion": false
+}

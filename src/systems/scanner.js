@@ -4,6 +4,7 @@
 // plain data fields that UI/render layers can read. No RNG; all durations are simTime-based.
 import { ASTEROIDS } from '../data/mining.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { isPlayerWanted } from './heat.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity } from '../data/weakPoints.js';
@@ -34,6 +35,22 @@ const PLAYER_DANGER_CONTEXTS = new Set([
   'interdiction', 'spawn_request', 'bounty_hunter', 'mission', 'encounter', 'tutorial_pirate',
   'zone_hostile', // WORLD_OVERHAUL_2_1: pirates/raiders camping a named ambush/outlaw zone
 ]);
+
+export function scannerProfileForState(state) {
+  const radiusMult = Math.max(
+    1,
+    maxFittedModuleMod(state, 'scannerRadiusMult', 1),
+    maxFittedModuleMod(state, 'scanRangeMult', 1),
+  );
+  const pingPersistMult = Math.max(0.05, maxFittedModuleMod(state, 'pingPersistMult', 1));
+  return {
+    radiusMult,
+    pingPersistMult,
+    nearRadius: NEAR_SCAN_RADIUS * radiusMult,
+    hiddenPoiRadius: HIDDEN_POI_RADIUS * radiusMult,
+    pingPersistS: PINGED_S * pingPersistMult,
+  };
+}
 
 const ASTEROID_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
 const ORE_GLYPH_BY_TAG = Object.freeze({
@@ -247,7 +264,7 @@ function signalKindForLivingPoi(row) {
   return null;
 }
 
-function collectSignalCandidates(state, sectorId, origin, nearby = []) {
+function collectSignalCandidates(state, sectorId, origin, nearby = [], profile = scannerProfileForState(state)) {
   const byId = new Map();
   const add = (candidate) => {
     if (!candidate || !candidate.id || !candidate.pos || !candidate.kind) return;
@@ -269,7 +286,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = []) {
       sourceId: entity.id,
       entityId: entity.id,
       pos: entity.pos,
-      range: NEAR_SCAN_RADIUS,
+      range: profile.nearRadius,
     });
   }
 
@@ -288,7 +305,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = []) {
       sourceId,
       entityId: entity && entity.id || null,
       pos,
-      range: HIDDEN_POI_RADIUS,
+      range: profile.hiddenPoiRadius,
     });
   }
 
@@ -303,7 +320,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = []) {
       sourceId: row.behaviorId,
       entityId: null,
       pos: row.zoneCenter,
-      range: HIDDEN_POI_RADIUS,
+      range: profile.hiddenPoiRadius,
     });
   }
 
@@ -319,7 +336,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = []) {
       sourceId: tell.id,
       entityId: null,
       pos: tell.pos,
-      range: HIDDEN_POI_RADIUS,
+      range: profile.hiddenPoiRadius,
     });
   }
 
@@ -455,21 +472,22 @@ export const scanner = {
   _pulse(state, player, now) {
     const sectorId = state.world && state.world.currentSectorId || null;
     const origin = pos2(player.pos);
+    const profile = scannerProfileForState(state);
     const found = { asteroids: 0, wrecks: 0, anomalies: 0 };
-    const candidates = queryNearbyEntities(state, origin, NEAR_SCAN_RADIUS, this._scratch, state.entityList);
+    const candidates = queryNearbyEntities(state, origin, profile.nearRadius, this._scratch, state.entityList);
 
     this.bus.emit('scan:pulse', { pos: origin });
 
     for (const entity of candidates) {
       if (!entity || !entity.alive || entity.id === player.id || !entity.pos) continue;
-      if (dist(origin, entity.pos) > NEAR_SCAN_RADIUS) continue;
+      if (dist(origin, entity.pos) > profile.nearRadius) continue;
       const data = entity.data || (entity.data = {});
       if (entity.type === 'asteroid') {
         data.scanHighlightUntil = now + ASTEROID_HIGHLIGHT_S;
         data.scanOreGlyph = oreGlyphForAsteroid(entity);
         found.asteroids++;
       } else if (isWreckLike(entity)) {
-        data.pingedUntil = now + PINGED_S;
+        data.pingedUntil = now + profile.pingPersistS;
         // Scan-resolve the derelict: the strip's "??? UNSCANNED" ghost fills in with a manifest +
         // a weak-point callout (GDD 2.0 §7.4 "scanning resolves the outline into a manifest").
         data.scanned = true;
@@ -477,9 +495,9 @@ export const scanner = {
         if (!data.weakPoint) data.weakPoint = weakPointFor(entity);
         found.wrecks++;
       } else if (isCargoLike(entity)) {
-        data.pingedUntil = now + PINGED_S;
+        data.pingedUntil = now + profile.pingPersistS;
       } else if (isAnomalyLike(entity)) {
-        data.pingedUntil = now + PINGED_S;
+        data.pingedUntil = now + profile.pingPersistS;
         found.anomalies++;
       }
     }
@@ -492,15 +510,20 @@ export const scanner = {
       for (const entity of candidates) {
         if (!entity || !entity.alive || entity.id === player.id || !entity.pos) continue;
         if (entity.type !== 'ship' && entity.type !== 'drone') continue;
-        if (dist(origin, entity.pos) > NEAR_SCAN_RADIUS) continue;
+        if (dist(origin, entity.pos) > profile.nearRadius) continue;
         if (!isHostileToPlayer(entity, playerTeam, state)) continue;
         const wp = weakPointForEntity(entity);
-        if (wp) this.bus.emit('scan:weakPoint', { entityId: entity.id, label: wp.label, hint: wp.hint, until: now + PINGED_S });
+        if (wp) this.bus.emit('scan:weakPoint', {
+          entityId: entity.id,
+          label: wp.label,
+          hint: wp.hint,
+          until: now + profile.pingPersistS,
+        });
       }
     }
 
-    if (sectorId) this._pingHiddenPois(state, sectorId, origin);
-    const signals = this._scanSignals(state, sectorId, origin, now, candidates);
+    if (sectorId) this._pingHiddenPois(state, sectorId, origin, profile.hiddenPoiRadius);
+    const signals = this._scanSignals(state, sectorId, origin, now, candidates, profile);
     this.bus.emit('scan:completed', { targetId: null, sectorId, found, signalCount: signals.length });
     if (signals.length) this.bus.emit('signal:scanResults', {
       sectorId,
@@ -511,13 +534,13 @@ export const scanner = {
     });
   },
 
-  _pingHiddenPois(state, sectorId, origin) {
+  _pingHiddenPois(state, sectorId, origin, scanRadius = HIDDEN_POI_RADIUS) {
     const active = state.world && state.world.activeSector;
     for (const poi of active && active.pois || []) {
       if (!poi || !(poi.hidden || poi.type === 'anomaly')) continue;
       const entity = state.entities && state.entities.get && state.entities.get(poi.id);
       const pos = entity && entity.pos || poi.pos;
-      if (!pos || dist(origin, pos) > HIDDEN_POI_RADIUS) continue;
+      if (!pos || dist(origin, pos) > scanRadius) continue;
       upsertUnknownPing(state, sectorId, {
         id: poi.poiId || `poi_${poi.id}`,
         pos,
@@ -526,9 +549,9 @@ export const scanner = {
     }
   },
 
-  _scanSignals(state, sectorId, origin, now, candidates) {
+  _scanSignals(state, sectorId, origin, now, candidates, profile = scannerProfileForState(state)) {
     const own = ensureSignalState(state);
-    const raw = collectSignalCandidates(state, sectorId, origin, candidates);
+    const raw = collectSignalCandidates(state, sectorId, origin, candidates, profile);
     const rows = [];
     for (const candidate of raw) {
       if (own.completed[candidate.id]) continue;
@@ -866,6 +889,7 @@ export function isHostileToPlayer(e, playerTeam, state) {
 // Intent is the operational role (who they are / what they're doing), not a prose wall.
 export function contactStateWord(e, playerTeam, state) {
   if (isWreckLike(e)) return 'DERELICT';
+  if (e && e.data && e.data.echoOfPlayer === true) return 'ECHO';
   const playerId = state && state.playerId;
   if (e.team === 0 && e.id !== playerId) return (e.data && e.data.isWingman) ? 'WINGMAN' : 'ALLY';
   const data = e.data || {};

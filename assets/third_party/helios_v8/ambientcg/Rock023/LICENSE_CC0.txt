@@ -1,0 +1,6 @@
+ambientCG material: Rock023
+Canonical: https://ambientcg.com/a/Rock023
+License: CC0 1.0 Universal — https://docs.ambientcg.com/license/
+Attribution: not required; template available on license page
+Acquired: 2026-07-11T15:17:54.3665001-04:00
+Archive SHA256: 8793a32778c79cd62eb26a200c85b3747d119e7c570a7318bd124fb8342a7b04

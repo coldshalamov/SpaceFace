@@ -1,0 +1,123 @@
+{
+  "packet": "M4-HELIOS-V10-GREYBOX-GATE",
+  "stage": "A",
+  "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf",
+  "hub_glb_sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+  "gate_glb_sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d",
+  "files": {
+    "hub_glb": {
+      "path": "assets/ships/m4_helios_hub_v10/greybox/hub_greybox_v10.glb",
+      "sha256": "f95e1fbcd299211143c17d7c4c1952b22d2ca993be746a418cf651af6044d9d1",
+      "bytes": 109148
+    },
+    "gate_glb": {
+      "path": "assets/ships/m4_helios_hub_v10/greybox/gate_greybox_v10.glb",
+      "sha256": "07a14d39cec383c38bb25993fefc41111134f567d08da8a2f68f8015619f5e0d",
+      "bytes": 175736
+    },
+    "report": {
+      "path": "assets/ships/m4_helios_hub_v10/evidence/greybox/greybox_report.json",
+      "sha256": "e7af2bc4b3b402a2737a09f9d38e00bf5d0062445a04c6b2e88433a648488ba4",
+      "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf"
+    },
+    "images": {
+      "hub_close_forward_34": {
+        "path": "assets/ships/m4_helios_hub_v10/evidence/greybox/hub_close_forward_34.png",
+        "sha256": "2b8e58ddeaadb000c0bc2bb558a7eb3312f24d110909295a53e1ba49ac4c3698",
+        "px": 768,
+        "view": "close_forward_34",
+        "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf"
+      },
+      "hub_side": {
+        "path": "assets/ships/m4_helios_hub_v10/evidence/greybox/hub_side.png",
+        "sha256": "32f597fb6bc8564e08b621dfae5d8d446e9c303ae2c59966dfae722883c30d2f",
+        "px": 768,
+        "view": "side",
+        "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf"
+      },
+      "hub_120px": {
+        "path": "assets/ships/m4_helios_hub_v10/evidence/greybox/hub_120px.png",
+        "sha256": "f628192861bedfa0decb27923ad0f1b7c94f963965349c551151738feb0b3403",
+        "px": 120,
+        "view": "close_forward_34",
+        "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf"
+      },
+      "hub_under45px": {
+        "path": "assets/ships/m4_helios_hub_v10/evidence/greybox/hub_under45px.png",
+        "sha256": "075cd2873aa9bb065632d777f08fa033669166c6eab4cd72e0c8130605e93044",
+        "px": 40,
+        "view": "close_forward_34",
+        "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf"
+      },
+      "hub_top_negspace": {
+        "path": "assets/ships/m4_helios_hub_v10/evidence/greybox/hub_top_negspace.png",
+        "sha256": "fce37edb553ab34c18dc7a30105cf2a0a75301cc88dbc55e8f35de0afa77efdb",
+        "px": 768,
+        "view": "negspace",
+        "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf"
+      },
+      "gate_close_forward_34": {
+        "path": "assets/ships/m4_helios_hub_v10/evidence/greybox/gate_close_forward_34.png",
+        "sha256": "fb570a004a70217b17d95b29a42dd5862ab188a5f896386a37aadab448e5fbc5",
+        "px": 768,
+        "view": "close_forward_34",
+        "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf"
+      },
+      "gate_side": {
+        "path": "assets/ships/m4_helios_hub_v10/evidence/greybox/gate_side.png",
+        "sha256": "c731a025ea14be0b35f00c5935ea1e1f53d7716c0ac01222897f5244b566cb82",
+        "px": 768,
+        "view": "side",
+        "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf"
+      },
+      "gate_axial": {
+        "path": "assets/ships/m4_helios_hub_v10/evidence/greybox/gate_axial.png",
+        "sha256": "473e00cfb96375b753cebe87f772648647daf87a6386fe63f2179cf2f73d7f3a",
+        "px": 768,
+        "view": "axial",
+        "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf"
+      },
+      "gate_120px": {
+        "path": "assets/ships/m4_helios_hub_v10/evidence/greybox/gate_120px.png",
+        "sha256": "1edaa40234044c08702dd11cc646c8f4e062a7ad3332a78d0745be68f0ae958d",
+        "px": 120,
+        "view": "close_forward_34",
+        "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf"
+      },
+      "gate_under45px": {
+        "path": "assets/ships/m4_helios_hub_v10/evidence/greybox/gate_under45px.png",
+        "sha256": "2463388e051276eb75737217a60d708ca4e4e9731e757929cf87ed4b4c4c9f91",
+        "px": 40,
+        "view": "close_forward_34",
+        "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf"
+      },
+      "gate_side_traversal": {
+        "path": "assets/ships/m4_helios_hub_v10/evidence/greybox/gate_side_traversal.png",
+        "sha256": "2deadb4c0dab61f10465c33d5b450e81e49b71e3d8ad35eea480282481ef53a8",
+        "px": 768,
+        "view": "side",
+        "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf"
+      },
+      "hub_gate_composition": {
+        "path": "assets/ships/m4_helios_hub_v10/evidence/greybox/hub_gate_composition.png",
+        "sha256": "03411fbc72916af6600f3fcdb68f3b16cec8fa1f8c0eb93f90d0c41be92ed3ba",
+        "px": 900,
+        "view": "close_forward_34",
+        "greybox_bundle_hash": "e58ad6ca51011a4fce6e9cff582d082a8de338a3f7119bcbea512a093bd69ecf"
+      }
+    }
+  },
+  "verdict": "GREYBOX REJECT",
+  "failures": [
+    "framing too tight on hub_close_forward_34: min_margin=0.000",
+    "framing too tight on hub_side: min_margin=0.000",
+    "framing too tight on hub_120px: min_margin=0.000",
+    "framing too tight on hub_top_negspace: min_margin=0.000",
+    "framing too tight on gate_close_forward_34: min_margin=0.000",
+    "framing too tight on gate_side: min_margin=0.000",
+    "framing too tight on gate_axial: min_margin=0.000",
+    "framing too tight on gate_120px: min_margin=0.000",
+    "framing too tight on gate_side_traversal: min_margin=0.000",
+    "framing too tight on hub_gate_composition: min_margin=0.000"
+  ]
+}

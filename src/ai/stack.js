@@ -14,6 +14,7 @@ import { SquadCommander } from './squad.js';
 import { ExplainabilityTrace } from './trace.js';
 import { CombatDoctrineRuntime, normalizeCombatDoctrineId, overrideDirectiveForCombatDoctrine } from './combatDoctrine.js';
 import { overrideDirectiveForWingOrder, perceptionForWingOrderCombatDoctrine } from './doctrine.js';
+import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 
 const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
 const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
@@ -303,6 +304,7 @@ function normalizeRoster(value, freezeResults = true) {
         preferredRole: normalized.preferredRole || null,
         capabilities: freeze(Array.isArray(normalized.capabilities) ? [...new Set(normalized.capabilities)].sort() : []),
         combatDoctrineId: normalizeCombatDoctrineId(normalized.combatDoctrineId),
+        factionBehavior: normalizeFactionBehaviorProfile(normalized.factionBehavior),
       });
     });
     return freeze({
@@ -312,6 +314,7 @@ function normalizeRoster(value, freezeResults = true) {
       formation: squad.formation || 'wedge',
       formationSpacing: finitePositive(squad.formationSpacing, 72),
       formationBound: finitePositive(squad.formationBound, 170),
+      factionBehavior: normalizeFactionBehaviorProfile(squad.factionBehavior),
       members: freeze(members),
     });
   }).sort((a, b) => stableId(a.id).localeCompare(stableId(b.id)));
@@ -347,6 +350,7 @@ function rosterSignature(squad) {
       preferredRole: member.preferredRole,
       capabilities: member.capabilities,
       combatDoctrineId: member.combatDoctrineId,
+      factionBehavior: member.factionBehavior,
     })),
   });
 }

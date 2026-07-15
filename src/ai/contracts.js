@@ -1,4 +1,5 @@
 // SG-06 tactical AI contracts. This module contains no game-state access and no side effects.
+import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 
 export const AI_CONTRACT_VERSION = 1;
 export const NORMALIZED_SENSOR_FRAME_FLAG = '__spacefaceNormalizedSensorFrame';
@@ -250,6 +251,7 @@ function neutralSelf(entityId) {
     activity: null,
     roe: 'weapons_free',
     combatDoctrineId: null,
+    factionBehavior: null,
     ramAuthorized: false,
     operationalMassBand: 'medium',
     mobilityBand: 'medium',
@@ -277,6 +279,7 @@ function normalizeSelf(value, entityId) {
     activity: normalizeActivityView(value.activity),
     roe: normalizeRoeView(value.roe),
     combatDoctrineId: normalizeDoctrineIdView(value.combatDoctrineId),
+    factionBehavior: normalizeFactionBehaviorProfile(value.factionBehavior),
     ramAuthorized: value.ramAuthorized === true,
     operationalMassBand: normalizeBand(value.operationalMassBand, ['light', 'medium', 'heavy', 'capital'], 'medium'),
     mobilityBand: normalizeBand(value.mobilityBand, ['low', 'medium', 'high'], 'medium'),

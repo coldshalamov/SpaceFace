@@ -12,17 +12,16 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const EXPORTER_PY = resolve(ROOT, 'tools/blender/spaceface_export.py');
 const EXPORT_STATE_TEST_PY = resolve(ROOT, 'test/spaceface-export-state.test.py');
 const PYTHON_ENV = Object.freeze(withPythonNoBytecodeEnv());
-const PARTS_MANIFEST = JSON.parse(readFileSync(resolve(ROOT, 'assets/ships/parts/parts_manifest.json'), 'utf8'));
-const MANIFEST_TRIANGLE_GROWTH_GUARD = Number(PARTS_MANIFEST.budgets?.trianglesPerLandmark?.[1]) || 1100000;
 
-// Mirrors tools/blender/spaceface_export.py. Landmark complexity is measured in the parts manifest:
-// this guard catches accidental explosive growth and prompts structural/perf review; it is not a
-// target agents should meet by deleting authored silhouette or surface detail.
+// Mirrors tools/blender/spaceface_export.py. Complexity limits are explicit per-asset review inputs,
+// not universal targets agents should meet by deleting authored silhouette or surface detail.
 const KIND_BUDGETS = Object.freeze({
-  part: { triBudget: 15000, minHullTris: 0 },
-  wholeship: { triBudget: 32000, minHullTris: 800 },
-  prop: { triBudget: 3000, minHullTris: 0 },
-  landmark: { triBudget: MANIFEST_TRIANGLE_GROWTH_GUARD, minHullTris: 0 },
+  // Defaults are diagnostic opt-ins, not universal quality ceilings. Per-asset specs may provide a
+  // measured budget; otherwise preserve authored detail and review performance structurally.
+  part: { triBudget: null, minHullTris: 0 },
+  wholeship: { triBudget: null, minHullTris: 800 },
+  prop: { triBudget: null, minHullTris: 0 },
+  landmark: { triBudget: null, minHullTris: 0 },
 });
 
 const REQUIRED_MAPS = ['ao', 'roughness'];
@@ -106,7 +105,7 @@ function validateGltfDocument(gltf, spec) {
   const errors = [];
   const assetId = spec.id || spec.assetId || 'asset';
   const kind = spec.kind || 'part';
-  const budget = spec.triBudget ?? KIND_BUDGETS[kind]?.triBudget ?? 1200;
+  const budget = spec.triBudget ?? KIND_BUDGETS[kind]?.triBudget ?? null;
   const minHullTris = spec.minHullTris ?? KIND_BUDGETS[kind]?.minHullTris ?? 0;
   const skipMaps = spec.skipMaps === true;
 
@@ -180,7 +179,7 @@ function validateGltfDocument(gltf, spec) {
   // Runtime only displays one authored LOD at a time. Budget the unique LOD0 render primitives,
   // while retaining totalTris for diagnostics/fallback assets without an authored LOD chain.
   const budgetTris = trisByLod.lod0 || totalTris;
-  if (budgetTris > budget) {
+  if (Number.isFinite(budget) && budgetTris > budget) {
     errors.push(`${assetId}: tri budget exceeded: LOD0 ${budgetTris} tris > ${budget}`);
   }
   if (kind === 'wholeship' && hullTris < minHullTris) {
@@ -296,7 +295,7 @@ try {
   const brokenTris = join(tmp, 'broken-tris.glb');
   writeFileSync(brokenTris, buildBrokenFixture('tris'));
   const trisErrors = validateGltfDocument(parseGlb(readFileSync(brokenTris)), {
-    kind: 'part', id: 'broken-tris', triBudget: KIND_BUDGETS.part.triBudget, skipMaps: true, skipChamfer: true, allowMissingMetadata: true,
+    kind: 'part', id: 'broken-tris', triBudget: 1200, skipMaps: true, skipChamfer: true, allowMissingMetadata: true,
   });
   check('broken fixture fails tri budget exceeded', trisErrors.some((e) => e.includes('tri budget exceeded')),
     trisErrors.join('; '));

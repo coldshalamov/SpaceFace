@@ -32,8 +32,11 @@ assert.doesNotMatch(
   'station service summary must not print raw service ids with underscores',
 );
 
-assert.match(missionLogSource, /storyBeatDisplayName\(sb\.id\)/, 'mission log should title-case story beat IDs');
-assert.match(missionLogSource, /storyIntroducesDisplayName\(sb\.introduces\)/, 'mission log should render readable introduced systems');
+assert.match(
+  missionLogSource,
+  /title:\s*storyBeatDisplayName\(beat\.id\)/,
+  'mission log current action should title-case story beat IDs',
+);
 assert.doesNotMatch(
   missionLogSource,
   /sb\.introduces\.replace\(/,

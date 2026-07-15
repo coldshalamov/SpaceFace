@@ -1,5 +1,9 @@
 # 10 — Observatory Hard-Gate Thresholds
 
+> **Campaign-specific proposed gates.** These thresholds govern only a named observatory campaign
+> that explicitly activates them and implements the matching measurements. They are not universal
+> acceptance law for unrelated work; live player evidence and the task's named checks remain primary.
+
 **Status:** DRAFT — operational definitions for mechanically enforced acceptance
 **Authority:** These thresholds become hard gates (check fails, not warns) once OBS-003 lands them.
 No orchestrator judgment can round them up. If a threshold fires, the candidate is rejected and

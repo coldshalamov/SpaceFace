@@ -35,7 +35,9 @@ import {
   STORY_BRANCH_INTROS,
   STORY_BRANCH_INTRO_MIN_REP,
   STORY_BRANCH_INTRO_TAG,
+  SET_PIECE_MISSIONS,
 } from '../data/missions.js';
+import { settleContractClauses } from '../data/contractClauses.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
@@ -47,6 +49,11 @@ import { SHIPS } from '../data/ships.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { POI_CAUSAL_BOARD_CAP, validatePoiCausalOffer } from '../missions/poiCausalOffers.js';
+import {
+  SET_PIECE_MISSION_SOURCE,
+  advanceSetPieceMission,
+  buildSetPieceMissionOffers,
+} from './setPieceMissionOffers.js';
 import {
   RECORD_KIND,
   missionIdentityOf,
@@ -111,6 +118,15 @@ const MISSION_HOSTILE_SPAWN_MIN_WU = 1700;
 const MISSION_HOSTILE_SPAWN_MAX_WU = 2600;
 const MISSION_HOSTILE_SPAWN_ATTEMPTS = 24;
 const MISSION_PORT_SAFE_RADIUS_WU = 1200;
+const LONG_READ_RUMOR_EVENT = Object.freeze({
+  news: 'news:headline',
+  comms_intercept: 'comms:popup',
+  bark: 'barkDirector:voice',
+  mission: 'mission:accepted',
+  campaign: 'story:beatAdvanced',
+  loss_investigation: 'lossInvestigation:authoredRead',
+  bar: 'uniqueWreck:rumorHeard',
+});
 export const CONTRACT_47A_B0_TAG = 'campaign47a:b0:recovery';
 export const CONTRACT_47A_SAMPLE_ID = 'cmdty_47a_assay_sample';
 export const CONTRACT_47A_B1_TAG = 'campaign47a:b1:honest_work';
@@ -177,6 +193,52 @@ function missionOfferMinRep(offer, state = null) {
   return missionMinRepForRisk(offer && offer.riskTier);
 }
 
+function setPieceCauseOf(value) {
+  return value && value.source === SET_PIECE_MISSION_SOURCE && value.cause
+    && value.cause.chainId ? value.cause : null;
+}
+
+function setPieceEventFields(value, transition = null) {
+  const cause = setPieceCauseOf(value);
+  if (!cause) return {};
+  const receipt = transition && transition.receipt || null;
+  const nextStationIds = receipt && Array.isArray(receipt.nextStationIds)
+    ? receipt.nextStationIds : [];
+  return {
+    chainId: cause.chainId,
+    archetypeId: cause.archetypeId,
+    startEpoch: cause.startEpoch,
+    stageIndex: cause.stageIndex,
+    stageId: cause.stageId || undefined,
+    branchId: cause.branchId || null,
+    attempt: cause.attempt || 0,
+    house: receipt && receipt.house || cause.house || null,
+    houseText: receipt && receipt.houseText || undefined,
+    recoveryText: receipt && receipt.recoveryText || undefined,
+    nextStationId: receipt && receipt.nextStationId || null,
+    nextStationIds,
+    wreckId: cause.wreckId || value.wreckId || null,
+  };
+}
+
+function setPieceUpfrontCost(offer, state = null) {
+  const cause = setPieceCauseOf(offer);
+  if (!cause || (cause.attempt | 0) > 0) return 0;
+  if (cause.archetypeId === 'long_read' && cause.stageIndex === 0) {
+    const wreckId = cause.wreckId || offer.wreckId || offer.params && offer.params.wreckId;
+    const bearing = wreckId && state && state.player && state.player.uniqueWrecks
+      && state.player.uniqueWrecks.bearings && state.player.uniqueWrecks.bearings[wreckId];
+    if (bearing) return 0;
+  }
+  return Math.max(0, Math.round(Number(offer.upfrontCostCr) || 0));
+}
+
+function missionObservesClauseEvent(mission, eventName) {
+  return Array.isArray(mission && mission.clauses) && mission.clauses.some((clause) => (
+    clause && clause.event === eventName
+  ));
+}
+
 // Map-space distance between two sectors → world-unit-ish path length (deterministic, bounded).
 // Sector map positions are small integers (±~11); scale to a sensible wu range and floor same-sector.
 function sectorDistanceWu(aSectorId, bSectorId) {
@@ -194,6 +256,24 @@ function missionNavReason(m, station, sector) {
   const stationName = station && station.name || 'destination';
   const sectorName = sector && sector.name || 'target sector';
   const remaining = Math.max(0, (m.objectiveTarget || p.qty || 1) - (m.objectiveProgress || 0));
+  const wreckName = p.wreckName || 'the marked wreck';
+  if (p.setPieceObjective === 'long_read_rumor_survey') {
+    if (p.rumorAlreadyKnown) return `Fix the known ${wreckName} bearing in ${sectorName}`;
+    return p.rumorPurchased
+      ? `Fix the purchased ${wreckName} bearing in ${sectorName}`
+      : `Purchase the ${wreckName} rumor, then fix its bearing in ${sectorName}`;
+  }
+  if (p.setPieceObjective === 'long_read_salvage') {
+    if (p.salvageDecisionReady && !p.complicationObserved) {
+      return `Observe the ${wreckName} complication before confirming recovery`;
+    }
+    if (p.complicationObserved) return `Recover ${wreckName} to its disposition decision`;
+    return `Reach ${wreckName}, survive its complication, and recover the wreck`;
+  }
+  if (p.setPieceObjective === 'long_read_fence') {
+    const choice = p.wreckChoiceId === 'authority_handover' ? 'authority handover' : 'hardware claim';
+    return `Confirm the ${choice} disposition for ${wreckName}`;
+  }
   if (m.storyTag === CONTRACT_47A_B0_TAG) {
     return p.sampleRecovered
       ? 'Deliver the 47-A sample to Helios Station'
@@ -244,6 +324,12 @@ export const missions = {
     // Ensure the state tree exists (gameState seeds it, but be defensive for headless tests).
     if (!state.missions) state.missions = { boards: {}, active: [], completedLog: [], receipts: [], nextId: 1, config: null };
     state.missions.receipts = normalizeMissionReceipts(state.missions.receipts);
+    const setPieceSettlements = normalizeSetPieceSettlements(
+      state.missions.setPieceSettlements,
+      state.missions.receipts,
+    );
+    if (Object.keys(setPieceSettlements).length) state.missions.setPieceSettlements = setPieceSettlements;
+    else delete state.missions.setPieceSettlements;
     if (!state.story) state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 };
     if (!state.missions.config) state.missions.config = MISSION_TUNING;
 
@@ -301,6 +387,17 @@ export const missions = {
     bus.on('tether:reel', (p) => this._onContract47aB2TetherReel(p));
     // smuggling bust: a patrol scan caught contraband.
     bus.on('player:scannedByPatrol', (p) => this._onScannedByPatrol(p));
+    // Contract clauses are observers only. Their single breach intent returns here so the canonical
+    // mission failure path owns collateral, reputation, cleanup, receipts, and SP1 recovery offers.
+    bus.on('contract:clauseBroken', (p) => this._onContractClauseBroken(p));
+    // The Long Read is a chained-offer adapter over the live unique-wreck D-loop. These events are
+    // evidence of actual rumor, scan, complication, salvage, and decision state—not proxy counters.
+    bus.on('uniqueWreck:rumorRecorded', (p) => this._onLongReadRumorRecorded(p));
+    bus.on('uniqueWreck:bearingFixed', (p) => this._onLongReadBearingFixed(p));
+    bus.on('uniqueWreck:complicationTriggered', (p) => this._onLongReadComplication(p));
+    bus.on('uniqueWreck:encounterActivated', (p) => this._onLongReadComplication(p));
+    bus.on('uniqueWreck:decisionReady', (p) => this._onLongReadDecisionReady(p));
+    bus.on('uniqueWreck:resolved', (p) => this._onLongReadResolved(p));
 
     // ── Lazy mission-target spawning when the player enters a target sector ───────────────────
     bus.on('sector:enter', (p) => this._onSectorEnter(p));
@@ -359,22 +456,68 @@ export const missions = {
     const epoch = this._epoch();
     let board = state.missions.boards[stationId];
     if (board && board.refreshEpoch === epoch && board.slots && !this._boardNeedsStoryBranchIntro(info, board)) {
-      if (this._syncEmbodiedStoryOffer(info, board, epoch)) {
+      const storyChanged = this._syncEmbodiedStoryOffer(info, board, epoch);
+      const setPieceChanged = this._syncSetPieceOpeningOffers(info, board, epoch);
+      if (storyChanged || setPieceChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
     }
     // External causal POI leads are durable player-earned rows, not epoch rerolls. Carry their
     // still-valid identities through an ordinary board refresh while keeping the source bounded.
-    const retainedPoiOffers = (board && Array.isArray(board.slots) ? board.slots : [])
-      .filter((offer) => offer && offer.source === 'poiBehavior'
-        && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch))
+    const previousSlots = board && Array.isArray(board.slots) ? board.slots : [];
+    const retainedPoiOffers = previousSlots.filter((offer) => offer && offer.source === 'poiBehavior'
+      && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch))
       .slice(0, POI_CAUSAL_BOARD_CAP);
-    board = { refreshEpoch: epoch, slots: [...retainedPoiOffers, ...this._generateOffers(info, epoch)] };
-    this._syncEmbodiedStoryOffer(info, board, epoch);
+    // An in-flight set-piece chain is authored progress, not an expiring procedural roll. Preserve
+    // every sibling/recovery row through board refresh; its cause is the save-safe chain cursor.
+    const retainedSetPieceOffers = previousSlots.filter((offer) => (
+      offer && offer.source === SET_PIECE_MISSION_SOURCE && setPieceCauseOf(offer)
+    ));
+    board = {
+      refreshEpoch: epoch,
+      slots: [...retainedSetPieceOffers, ...retainedPoiOffers, ...this._generateOffers(info, epoch)],
+    };
     state.missions.boards[stationId] = board;
+    this._syncEmbodiedStoryOffer(info, board, epoch);
+    this._syncSetPieceOpeningOffers(info, board, epoch);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
+  },
+
+  /** Seed each authored SP1 opening on its real home board once per board epoch. */
+  _syncSetPieceOpeningOffers(info, board, epoch) {
+    if (!info || !board || !Array.isArray(board.slots)) return false;
+    let changed = false;
+    for (const definition of SET_PIECE_MISSIONS || []) {
+      if (!definition || definition.startStationId !== info.id) continue;
+      const opening = buildSetPieceMissionOffers(this.state, {
+        archetypeId: definition.id,
+        startEpoch: epoch,
+        stageIndex: 0,
+        branchId: null,
+        attempt: 0,
+      })[0];
+      const chainId = opening && opening.cause && opening.cause.chainId;
+      if (!opening || !chainId) continue;
+      const activeOrPosted = (this.state.missions.active || []).some((mission) => (
+        setPieceCauseOf(mission) && mission.cause.archetypeId === definition.id
+      )) || Object.values(this.state.missions.boards || {}).some((candidateBoard) => (
+        (candidateBoard && candidateBoard.slots || []).some((offer) => (
+          setPieceCauseOf(offer) && offer.cause.archetypeId === definition.id
+        ))
+      ));
+      const durableSettlement = this.state.missions.setPieceSettlements
+        && this.state.missions.setPieceSettlements[definition.id];
+      const alreadySettledThisEpoch = durableSettlement && durableSettlement.chainId === chainId
+        || (this.state.missions.receipts || []).some((receipt) => (
+        receipt && receipt.chainId === chainId
+      ));
+      if (activeOrPosted || alreadySettledThisEpoch) continue;
+      board.slots.unshift(opening);
+      changed = true;
+    }
+    return changed;
   },
 
   /** Keep one authored 47-A contract on the correct live board. The board remains the only
@@ -468,9 +611,12 @@ export const missions = {
       || rawOffer.source === 'careerContract'
       || rawOffer.source === 'postEndingReplay'
       || rawOffer.source === 'poiBehavior'
+      || rawOffer.source === 'uniqueWreck'
+      || rawOffer.source === SET_PIECE_MISSION_SOURCE
     );
     if (!allowedSource) return false;
     if (rawOffer.source === 'poiBehavior' && !validatePoiCausalOffer(rawOffer).ok) return false;
+    if (rawOffer.source === SET_PIECE_MISSION_SOURCE && !setPieceCauseOf(rawOffer)) return false;
     if (!rawOffer.id || !rawOffer.type || !rawOffer.stationId || !rawOffer.params) return false;
     const info = STATION_INFO.get(rawOffer.stationId);
     if (!info || !TYPE_BY_ID.has(rawOffer.type)) return false;
@@ -478,21 +624,27 @@ export const missions = {
     if (Number.isFinite(rawOffer.expiresAtEpoch) && rawOffer.expiresAtEpoch <= epoch) return false;
     if ((this.state.missions.active || []).some((m) => m && (
       m.id === rawOffer.id || m.sourceOfferId === rawOffer.id
-      || (rawOffer.source === 'poiBehavior' && m.cause && rawOffer.cause
+      || ((rawOffer.source === 'poiBehavior' || rawOffer.source === SET_PIECE_MISSION_SOURCE)
+        && m.cause && rawOffer.cause
         && m.cause.fingerprint === rawOffer.cause.fingerprint)
     ))) return false;
-    if (rawOffer.source === 'poiBehavior' && (this.state.missions.receipts || []).some((receipt) => (
+    if ((rawOffer.source === 'poiBehavior' || rawOffer.source === SET_PIECE_MISSION_SOURCE)
+      && (this.state.missions.receipts || []).some((receipt) => (
       receipt && (receipt.sourceOfferId === rawOffer.id
         || receipt.causeFingerprint === rawOffer.cause.fingerprint)
-    ))) return false;
+      ))) return false;
 
     const board = this.ensureBoard(rawOffer.stationId);
     if (!board || !Array.isArray(board.slots)) return false;
     if (board.slots.some((offer) => offer && offer.id === rawOffer.id)) return false;
-    if (rawOffer.source !== 'poiBehavior'
+    if (rawOffer.source !== 'poiBehavior' && rawOffer.source !== SET_PIECE_MISSION_SOURCE
       && board.slots.some((offer) => offer && offer.source === rawOffer.source)) return false;
     if (rawOffer.source === 'poiBehavior' && board.slots.some((offer) => (
       offer && offer.source === 'poiBehavior' && offer.cause && rawOffer.cause
+      && offer.cause.fingerprint === rawOffer.cause.fingerprint
+    ))) return false;
+    if (rawOffer.source === SET_PIECE_MISSION_SOURCE && board.slots.some((offer) => (
+      offer && offer.source === SET_PIECE_MISSION_SOURCE && offer.cause && rawOffer.cause
       && offer.cause.fingerprint === rawOffer.cause.fingerprint
     ))) return false;
 
@@ -542,8 +694,9 @@ export const missions = {
     for (const [stationId, board] of Object.entries(this.state.missions.boards || {})) {
       const info = STATION_INFO.get(stationId);
       if (!info || !this._boardNeedsStoryBranchIntro(info, board)) continue;
-      const epoch = this._epoch();
-      this.state.missions.boards[stationId] = { refreshEpoch: epoch, slots: this._generateOffers(info, epoch) };
+      // Re-enter the canonical refresh path so causal POI and set-piece chain rows survive the
+      // story-intro insertion instead of being replaced by a procedural-only board.
+      this.ensureBoard(stationId);
       changed = true;
     }
     return changed;
@@ -841,6 +994,21 @@ export const missions = {
     }
     const { offer, board } = this._findOffer(missionId);
     if (!offer) return false;
+    if (offer.params && offer.params.setPieceObjective === 'long_read_fence') {
+      const wreckId = offer.params.wreckId || offer.wreckId || offer.cause && offer.cause.wreckId;
+      const bearing = this.state.player && this.state.player.uniqueWrecks
+        && this.state.player.uniqueWrecks.bearings
+        && this.state.player.uniqueWrecks.bearings[wreckId];
+      if (bearing && bearing.phase === 'salvaged'
+        && bearing.choiceId !== offer.params.wreckChoiceId) {
+        if (board && Array.isArray(board.slots)) {
+          board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
+        }
+        this.bus.emit('mission:updated', { missionId: null, stationId: offer.stationId });
+        this.bus.emit('toast', { text: 'That wreck already has a different disposition', kind: 'warn', ttl: 4 });
+        return false;
+      }
+    }
     if (offer.source === 'poiBehavior' && !validatePoiCausalOffer(offer).ok) return false;
     if (offer.storyDisposition) {
       const choice = offer.storyDisposition;
@@ -854,24 +1022,40 @@ export const missions = {
       return false;
     }
 
-    // Collateral affordability check (read-only on credits; economy charges it).
-    if (offer.collateral_cr > 0 && (state.player.credits | 0) < offer.collateral_cr) {
-      this.bus.emit('toast', { text: `Need ${offer.collateral_cr}cr collateral`, kind: 'error', ttl: 3 });
+    // Affordability is read-only here; economy remains the sole wallet writer. SP1's authored
+    // service fee is paid only on attempt zero, so a recovery offer cannot charge it twice.
+    const collateralCr = Math.max(0, Math.round(Number(offer.collateral_cr) || 0));
+    const upfrontCostCr = setPieceUpfrontCost(offer, state);
+    const acceptCostCr = collateralCr + upfrontCostCr;
+    const availableCredits = Number.isFinite(Number(state.player && state.player.credits))
+      ? Number(state.player.credits) : 0;
+    if (acceptCostCr > 0 && availableCredits < acceptCostCr) {
+      const text = upfrontCostCr > 0
+        ? `Need ${acceptCostCr}cr for deposit and service fees`
+        : `Need ${collateralCr}cr collateral`;
+      this.bus.emit('toast', { text, kind: 'error', ttl: 3 });
       return false;
-    }
-    if (offer.collateral_cr > 0) {
-      this.bus.emit('economy:chargeCredits', { amount: offer.collateral_cr, reason: `collateral:${offer.id}` });
     }
 
     const inst = this._instanceFromOffer(offer);
-    // Remove from the board so it can't be re-accepted / doesn't reappear this visit.
-    if (board) board.slots = board.slots.filter((o) => o.id !== offer.id);
+    // A branch selection is atomic: withdraw both siblings from every board before any fee intent
+    // or sealed-manifest cargo write can expose a half-selected route to synchronous listeners.
+    const withdrawnSetPiece = setPieceCauseOf(offer)
+      ? this._withdrawSetPieceChoiceOffers(offer) : [];
+    if (!setPieceCauseOf(offer) && board) board.slots = board.slots.filter((o) => o.id !== offer.id);
+    if (collateralCr > 0) {
+      this.bus.emit('economy:chargeCredits', { amount: collateralCr, reason: `collateral:${offer.id}` });
+    }
+    if (upfrontCostCr > 0) {
+      this.bus.emit('economy:chargeCredits', { amount: upfrontCostCr, reason: `mission_upfront:${offer.id}` });
+    }
     state.missions.active.push(inst);
     if (inst.preloadedCargo && inst.params && inst.params.cmdtyId) {
       const loaded = addCargo(state, inst.params.cmdtyId, Math.max(1, inst.params.qty || 1));
       if (loaded < Math.max(1, inst.params.qty || 1)) {
         state.missions.active.pop();
-        if (board && !board.slots.some((candidate) => candidate.id === offer.id)) board.slots.unshift(offer);
+        if (withdrawnSetPiece.length) this._restoreWithdrawnSetPieceOffers(withdrawnSetPiece);
+        else if (board && !board.slots.some((candidate) => candidate.id === offer.id)) board.slots.unshift(offer);
         this.bus.emit('toast', { text: 'Cargo hold cannot receive the sealed manifest', kind: 'error', ttl: 3 });
         return false;
       }
@@ -889,7 +1073,11 @@ export const missions = {
       type: inst.type,
       storyTag: inst.storyTag || undefined,
       source: inst.source || undefined,
+      sourceRef: inst.sourceRef || undefined,
+      wreckId: inst.wreckId || undefined,
+      channelId: inst.channelId || undefined,
       causeFingerprint: inst.cause && inst.cause.fingerprint || undefined,
+      ...setPieceEventFields(inst),
     });
     this.bus.emit('mission:updated', { missionId: inst.id });
     this.bus.emit('toast', { text: `Mission accepted: ${inst.title}`, kind: 'success', ttl: 3 });
@@ -906,7 +1094,37 @@ export const missions = {
 
     // B4 branch: accepting a faction intro contract sets the story branch.
     this._maybeSetBranch(inst);
+    this._startLongReadObjective(inst);
     return true;
+  },
+
+  _withdrawSetPieceChoiceOffers(selectedOffer) {
+    const selected = setPieceCauseOf(selectedOffer);
+    if (!selected) return [];
+    const withdrawn = [];
+    for (const board of Object.values(this.state.missions.boards || {})) {
+      if (!board || !Array.isArray(board.slots)) continue;
+      const kept = [];
+      for (let index = 0; index < board.slots.length; index++) {
+        const candidate = board.slots[index];
+        const cause = setPieceCauseOf(candidate);
+        const sameChoice = cause && cause.chainId === selected.chainId
+          && cause.stageIndex === selected.stageIndex
+          && (candidate.id === selectedOffer.id || (selected.branchId && cause.branchId));
+        if (sameChoice) withdrawn.push({ board, offer: candidate, index });
+        else kept.push(candidate);
+      }
+      board.slots = kept;
+    }
+    return withdrawn;
+  },
+
+  _restoreWithdrawnSetPieceOffers(withdrawn) {
+    for (const row of [...withdrawn].sort((a, b) => a.index - b.index)) {
+      if (!row || !row.board || !Array.isArray(row.board.slots) || !row.offer) continue;
+      if (row.board.slots.some((candidate) => candidate && candidate.id === row.offer.id)) continue;
+      row.board.slots.splice(Math.min(row.index, row.board.slots.length), 0, row.offer);
+    }
   },
 
   /**
@@ -967,7 +1185,8 @@ export const missions = {
     if (!(requiredVolume > 0)) return { ok: true };
     const cargo = this.state.player && this.state.player.cargo || {};
     const capVolume = Number.isFinite(cargo.capVolume) ? cargo.capVolume : 0;
-    if (capVolume < requiredVolume) {
+    const usedVolume = Number.isFinite(cargo.usedVolume) ? cargo.usedVolume : 0;
+    if (Math.max(0, capVolume - usedVolume) < requiredVolume) {
       return {
         ok: false,
         reason: `Need ${fmtCargoUnits(requiredVolume)}u cargo capacity for this contract`,
@@ -1002,13 +1221,15 @@ export const missions = {
     const state = this.state;
     const id = `m_${state.missions.nextId++}`;
     const def = TYPE_BY_ID.get(offer.type);
+    const durationS = Number(offer.duration_s);
     return {
       id, type: offer.type, stationId: offer.stationId || null, factionId: offer.factionId,
       params: JSON.parse(JSON.stringify(offer.params)), // own copy (progress mutates)
       objectiveProgress: 0,
       objectiveTarget: this._objectiveTarget(offer.type, offer.params),
       acceptedAt_s: state.simTime,
-      deadline_s: null, // missions do not expire
+      deadline_s: Number.isFinite(durationS) && durationS > 0
+        ? Math.max(0, Number(state.simTime) || 0) + durationS : null,
       reward_cr: offer.reward_cr, collateral_cr: offer.collateral_cr,
       riskTier: offer.riskTier,
       destStationId: offer.destStationId, destSectorId: offer.destSectorId,
@@ -1027,9 +1248,17 @@ export const missions = {
       title: offer.title,
       summary: offer.summary || null,
       source: offer.source || null,
+      sourceRef: offer.sourceRef || null,
+      wreckId: offer.wreckId || null,
+      channelId: offer.channelId || null,
+      ...(Array.isArray(offer.clauses) && offer.clauses.length
+        ? { clauses: JSON.parse(JSON.stringify(offer.clauses)) } : {}),
+      ...(setPieceCauseOf(offer)
+        ? { upfrontCostCr: setPieceUpfrontCost(offer, this.state) } : {}),
       sourceOfferId: offer.id || null,
       cause: offer.cause ? JSON.parse(JSON.stringify(offer.cause)) : null,
-      chainNextSeed: (def && def.chainable) ? this._chainSeed(offer) : null,
+      chainNextSeed: (offer.source !== SET_PIECE_MISSION_SOURCE && def && def.chainable)
+        ? this._chainSeed(offer) : null,
     };
   },
 
@@ -1069,6 +1298,10 @@ export const missions = {
   },
 
   _refreshTrackedMissionNav(mission = null) {
+    // Direct callers (trackMission, objective progress) must not clobber the staged opening marker.
+    // Use active-teaching (not the broader pre-init _tutorialOwnsOpening) so headless harnesses
+    // without an onboarding subtree still get normal mission nav ownership.
+    if (this._onboardingOwnsOpeningNav()) return;
     const trackedId = this.state.ui && this.state.ui.trackedMissionId;
     if (!trackedId) return;
     const m = mission || (this.state.missions.active || []).find((x) => x.id === trackedId && x.status === 'active');
@@ -1078,6 +1311,19 @@ export const missions = {
   },
 
   _refreshNavigation(options = {}) {
+    // Staged first-session rail owns the opening marker while it is actively teaching.
+    // Mission/story nav resumes on tutorial:finished (active clears; release refreshes).
+    if (this._onboardingOwnsOpeningNav()) {
+      // Drop any mission-kind claim that slipped in before onboarding became active so the
+      // public route never shows an unowned / competing opening marker.
+      const nav = this.state && this.state.nav;
+      const wp = nav && nav.waypoint;
+      if (wp && wp.kind === 'mission' && !wp.onboarding) {
+        nav.waypoint = null;
+        this.bus.emit('nav:waypoint', null);
+      }
+      return false;
+    }
     const state = this.state;
     const mission = this._trackedOrFirstActiveMission();
     if (mission) {
@@ -1579,6 +1825,9 @@ export const missions = {
       const m = this.state.missions.active[i];
       if (m.status !== 'active') continue;
       if (m.type !== 'bounty_hunt' && m.type !== 'patrol_clear') continue;
+      // contractClauses observes this same synchronous event after missions. Never let the kill
+      // objective pay/complete first; the observer will emit the one canonical breach intent.
+      if (missionObservesClauseEvent(m, 'entity:killed')) continue;
       if (!m.targetEntityIds.includes(p.id)) continue;
       if (m.storyTag === CONTRACT_47A_B2_TAG) {
         this._resolveContract47aB2(m, i, 'force', p.id);
@@ -1610,6 +1859,7 @@ export const missions = {
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active' || m.type !== 'recon_scan') continue;
+      if (m.params && m.params.setPieceObjective === 'long_read_rumor_survey') continue;
       // POI causal recon is not a pulse counter. Scanner must first classify, then track, then
       // physically investigate the exact durable mission entity via signal:investigated.
       if (m.params && m.params.poiSignalFollowup) continue;
@@ -1636,6 +1886,236 @@ export const missions = {
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
+  },
+
+  _startLongReadObjective(mission) {
+    const params = mission && mission.params;
+    if (!mission || mission.status !== 'active' || !params) return false;
+    const objective = params.setPieceObjective;
+    const wreckId = params.wreckId || mission.wreckId || mission.cause && mission.cause.wreckId;
+    if (!wreckId || !String(objective || '').startsWith('long_read_')) return false;
+    const own = this.state.player && this.state.player.uniqueWrecks;
+    const bearing = own && own.bearings && own.bearings[wreckId];
+
+    if (objective === 'long_read_rumor_survey') {
+      if (bearing) {
+        params.rumorPurchased = true;
+        mission.objectiveProgress = Math.max(1, mission.objectiveProgress || 0);
+        if (bearing.phase === 'fixed' || bearing.phase === 'decision' || bearing.phase === 'salvaged') {
+          this._onLongReadBearingFixed({ wreckId, sectorId: mission.destSectorId, phase: bearing.phase });
+        } else {
+          this._refreshTrackedMissionNav(mission);
+          this.bus.emit('mission:updated', { missionId: mission.id, objectiveProgress: mission.objectiveProgress });
+        }
+        return true;
+      }
+      const eventName = LONG_READ_RUMOR_EVENT[params.channelId || mission.channelId];
+      if (!eventName) return false;
+      // mission:accepted was the native Pale-Coil carrier immediately above this hook. If the
+      // unique-wreck owner is absent, do not recursively publish a second lifecycle event.
+      if (eventName === 'mission:accepted') return false;
+      this.bus.emit(eventName, {
+        sourceRef: params.sourceRef || mission.sourceRef,
+        wreckId,
+        channelId: params.channelId || mission.channelId,
+        text: mission.summary || `Purchased bearing source for ${params.wreckName || wreckId}.`,
+        sender: 'DRIFT BROKER',
+        kind: 'mission_rumor_purchase',
+      });
+      return true;
+    }
+
+    if (objective === 'long_read_salvage') {
+      if (this._longReadComplicationObserved(mission)) params.complicationObserved = true;
+      if (bearing && (bearing.phase === 'decision' || bearing.phase === 'salvaged')) {
+        this._onLongReadDecisionReady({ wreckId, sectorId: mission.destSectorId, phase: bearing.phase });
+      } else {
+        this._refreshTrackedMissionNav(mission);
+        this.bus.emit('mission:updated', {
+          missionId: mission.id,
+          complicationObserved: !!params.complicationObserved,
+        });
+      }
+      return true;
+    }
+
+    if (objective === 'long_read_fence' && params.wreckChoiceId) {
+      if (bearing && bearing.phase === 'salvaged') {
+        if (bearing.choiceId !== params.wreckChoiceId) return false;
+        return this._onLongReadResolved({
+          wreckId,
+          choiceId: bearing.choiceId,
+          outcome: bearing.outcome || null,
+          reconciled: true,
+        });
+      }
+      this.bus.emit('uniqueWreck:choose', {
+        wreckId,
+        choiceId: params.wreckChoiceId,
+        missionId: mission.id,
+        chainId: mission.cause && mission.cause.chainId || null,
+      });
+      return true;
+    }
+    return false;
+  },
+
+  _longReadComplicationObserved(mission) {
+    const params = mission && mission.params || {};
+    const wreckId = params.wreckId || mission && mission.wreckId
+      || mission && mission.cause && mission.cause.wreckId;
+    const own = this.state.player && this.state.player.uniqueWrecks;
+    if (!wreckId || !own) return !!params.complicationObserved;
+    const complications = own.complications && Object.values(own.complications) || [];
+    if (complications.some((record) => record && record.wreckId === wreckId
+      && record.status !== 'scheduled')) return true;
+    const bearing = own.bearings && own.bearings[wreckId];
+    return !!params.complicationObserved
+      || !!(params.hasReactorComplication && bearing && bearing.reactorDueAt != null)
+      // Reaching the decision phase proves the live salvage crossed the wreck's authored hazard
+      // context/approach gate. That is the complication for wrecks without a separate encounter.
+      || !!(params.hasHazardComplication && bearing
+        && (bearing.phase === 'decision' || bearing.phase === 'salvaged'));
+  },
+
+  _reconcilePostedLongReadOpening(wreckId, phase = 'rumored') {
+    if (!wreckId) return false;
+    let changed = false;
+    for (const [stationId, board] of Object.entries(this.state.missions.boards || {})) {
+      if (!board || !Array.isArray(board.slots)) continue;
+      let boardChanged = false;
+      for (const offer of board.slots) {
+        const cause = setPieceCauseOf(offer);
+        const params = offer && offer.params;
+        if (!cause || cause.archetypeId !== 'long_read' || cause.stageIndex !== 0 || !params
+          || (cause.wreckId || offer.wreckId || params.wreckId) !== wreckId) continue;
+        const wreckName = params.wreckName || cause.wreckName || 'Known Wreck';
+        params.rumorAlreadyKnown = true;
+        params.rumorPurchased = true;
+        params.bearingFixed = phase === 'fixed' || phase === 'decision' || phase === 'salvaged';
+        offer.upfrontCostCr = 0;
+        offer.title = `Reconcile the Known Bearing: ${wreckName}`;
+        offer.summary = `${wreckName} is already in your ledger. Reconcile its bearing and proceed to recovery.`;
+        changed = true;
+        boardChanged = true;
+      }
+      if (boardChanged) this.bus.emit('mission:updated', { missionId: null, stationId, wreckId });
+    }
+    return changed;
+  },
+
+  _onLongReadRumorRecorded(payload) {
+    if (!payload || !payload.wreckId) return false;
+    let changed = this._reconcilePostedLongReadOpening(payload.wreckId, payload.phase || 'rumored');
+    for (const mission of [...(this.state.missions.active || [])]) {
+      const params = mission && mission.params;
+      if (!mission || mission.status !== 'active' || !params
+        || params.setPieceObjective !== 'long_read_rumor_survey'
+        || params.wreckId !== payload.wreckId) continue;
+      params.rumorPurchased = true;
+      mission.objectiveProgress = Math.max(1, mission.objectiveProgress || 0);
+      this._refreshTrackedMissionNav(mission);
+      this.bus.emit('mission:updated', {
+        missionId: mission.id,
+        objectiveProgress: mission.objectiveProgress,
+        rumorPurchased: true,
+      });
+      changed = true;
+    }
+    return changed;
+  },
+
+  _onLongReadBearingFixed(payload) {
+    if (!payload || !payload.wreckId) return false;
+    const postedChanged = this._reconcilePostedLongReadOpening(payload.wreckId, payload.phase || 'fixed');
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const mission = this.state.missions.active[i];
+      const params = mission && mission.params;
+      if (!mission || mission.status !== 'active' || !params
+        || params.setPieceObjective !== 'long_read_rumor_survey'
+        || params.wreckId !== payload.wreckId) continue;
+      params.rumorPurchased = true;
+      params.bearingFixed = true;
+      mission.objectiveProgress = mission.objectiveTarget;
+      this._completeMission(mission, i);
+      return true;
+    }
+    return postedChanged;
+  },
+
+  _onLongReadComplication(payload) {
+    if (!payload || !payload.wreckId) return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const mission = this.state.missions.active[i];
+      const params = mission && mission.params;
+      if (!mission || mission.status !== 'active' || !params
+        || params.setPieceObjective !== 'long_read_salvage'
+        || params.wreckId !== payload.wreckId) continue;
+      params.complicationObserved = true;
+      if (params.salvageDecisionReady) {
+        mission.objectiveProgress = mission.objectiveTarget;
+        this._completeMission(mission, i);
+      } else {
+        this._refreshTrackedMissionNav(mission);
+        this.bus.emit('mission:updated', { missionId: mission.id, complicationObserved: true });
+      }
+      return true;
+    }
+    return false;
+  },
+
+  _onLongReadDecisionReady(payload) {
+    if (!payload || !payload.wreckId) return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const mission = this.state.missions.active[i];
+      const params = mission && mission.params;
+      if (!mission || mission.status !== 'active' || !params
+        || params.setPieceObjective !== 'long_read_salvage'
+        || params.wreckId !== payload.wreckId) continue;
+      params.salvageDecisionReady = true;
+      if (!params.complicationObserved && this._longReadComplicationObserved(mission)) {
+        params.complicationObserved = true;
+      }
+      if (!params.complicationObserved) {
+        this._refreshTrackedMissionNav(mission);
+        this.bus.emit('mission:updated', { missionId: mission.id, salvageDecisionReady: true });
+        return false;
+      }
+      mission.objectiveProgress = mission.objectiveTarget;
+      this._completeMission(mission, i);
+      return true;
+    }
+    return false;
+  },
+
+  _onLongReadResolved(payload) {
+    if (!payload || !payload.wreckId || !payload.choiceId) return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const mission = this.state.missions.active[i];
+      const params = mission && mission.params;
+      if (!mission || mission.status !== 'active' || !params
+        || params.setPieceObjective !== 'long_read_fence'
+        || params.wreckId !== payload.wreckId
+        || params.wreckChoiceId !== payload.choiceId) continue;
+      mission.objectiveProgress = mission.objectiveTarget;
+      this._completeMission(mission, i);
+      return true;
+    }
+    let changed = false;
+    for (const board of Object.values(this.state.missions.boards || {})) {
+      if (!board || !Array.isArray(board.slots)) continue;
+      const before = board.slots.length;
+      board.slots = board.slots.filter((offer) => {
+        const params = offer && offer.params;
+        const wreckId = params && params.wreckId || offer && offer.wreckId
+          || offer && offer.cause && offer.cause.wreckId;
+        return !(params && params.setPieceObjective === 'long_read_fence'
+          && wreckId === payload.wreckId && params.wreckChoiceId !== payload.choiceId);
+      });
+      if (board.slots.length !== before) changed = true;
+    }
+    if (changed) this.bus.emit('mission:updated', { missionId: null, wreckId: payload.wreckId });
+    return changed;
   },
 
   _onSignalInvestigated(p) {
@@ -1742,8 +2222,26 @@ export const missions = {
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active' || m.type !== 'smuggling_run') continue;
+      // A scan clause observes this same event after missions. Let its one clauseBroken intent own
+      // settlement so the run cannot be failed once as "busted" and again as a clause breach.
+      if (missionObservesClauseEvent(m, 'player:scannedByPatrol')) continue;
       this._failMission(m, i, 'busted');
     }
+  },
+
+  _onContractClauseBroken(payload) {
+    const missionId = payload && payload.missionId;
+    const clauseId = payload && payload.clauseId;
+    if (!missionId || !clauseId) return false;
+    const index = this.state.missions.active.findIndex((mission) => (
+      mission && mission.id === missionId && mission.status === 'active'
+    ));
+    if (index < 0) return false;
+    const mission = this.state.missions.active[index];
+    if (!Array.isArray(mission.clauses)
+      || !mission.clauses.some((clause) => clause && clause.id === clauseId)) return false;
+    this._failMission(mission, index, `clause_broken:${clauseId}`);
+    return true;
   },
 
   _onContract47aB3ShipPurchased(p) {
@@ -1891,6 +2389,7 @@ export const missions = {
       const m = this.state.missions.active[i];
       if (m.status !== 'active') continue;
       const t = m.type;
+      if (m.params && String(m.params.setPieceObjective || '').startsWith('long_read_')) continue;
       if (m.storyTag === CONTRACT_47A_B1_TAG && m.params && m.params.cargoRecoveryNeeded
         && stationId === m.stationId) {
         const need = Math.max(1, m.params.qty || 1);
@@ -2041,8 +2540,9 @@ export const missions = {
     return 'Contract failed near ' + dest + '. The board closed the file without payment.';
   },
 
-  _emitMissionDebrief(m, outcome, reason) {
+  _emitMissionDebrief(m, outcome, reason, settlement = {}) {
     if (!m) return;
+    if (setPieceCauseOf(m)) return; // SP1 uses the authored house receipt below.
     const success = outcome === 'completed';
     const text = success ? this._missionSuccessDebriefText(m) : this._missionLossDebriefText(m, reason);
     this.bus.emit('comms:popup', {
@@ -2050,8 +2550,42 @@ export const missions = {
       text,
       category: success ? 'personal' : 'trap',
       ttl: success ? 8 : 7,
-      note: success ? ('Paid ' + (m.reward_cr || 0).toLocaleString('en-US') + ' cr.') : null,
+      note: success ? ('Paid ' + (settlement.rewardCr != null
+        ? settlement.rewardCr : (m.reward_cr || 0)).toLocaleString('en-US') + ' cr.') : null,
     });
+  },
+
+  _compileSetPieceTransition(mission, outcome, reason = null) {
+    if (!setPieceCauseOf(mission)) return null;
+    return advanceSetPieceMission(this.state, mission, { outcome, reason });
+  },
+
+  _boardSetPieceTransition(mission, transition) {
+    if (!transition || !transition.receipt) return false;
+    for (const offer of transition.offers || []) this._onExternalBoardOffer(offer);
+    const receipt = transition.receipt;
+    const fields = setPieceEventFields(mission, transition);
+    this.bus.emit('mission:setPieceTransition', {
+      missionId: mission.id,
+      status: transition.status,
+      outcome: receipt.outcome,
+      reason: receipt.reason || null,
+      offerIds: (transition.offers || []).map((offer) => offer.id),
+      ...fields,
+    });
+    const recoverySuffix = receipt.recoveryText ? ` ${receipt.recoveryText}` : '';
+    const nextStationNames = (receipt.nextStationIds || []).map((stationId) => {
+      const station = STATION_INFO.get(stationId);
+      return station && station.name || stationId;
+    });
+    this.bus.emit('comms:popup', {
+      sender: receipt.house || 'Contract House',
+      text: `${receipt.houseText}${recoverySuffix}`.trim(),
+      category: receipt.outcome === 'completed' ? 'personal' : 'trap',
+      ttl: receipt.recoveryText ? 10 : 8,
+      note: nextStationNames.length ? `Follow-up posted: ${nextStationNames.join(', ')}` : null,
+    });
+    return true;
   },
 
   // =========================================================================================
@@ -2060,16 +2594,32 @@ export const missions = {
   _completeMission(m, index) {
     const state = this.state;
     if (m.status !== 'active') return;
+    const setPieceTransition = this._compileSetPieceTransition(m, 'completed');
+    const clauseSettlement = settleContractClauses(m);
+    const settledRewardCr = clauseSettlement.rewardCr;
     m.status = 'completed';
     this._clearMissionNav(m.id);
-    const displayRewardCr = m.storyTag === CONTRACT_47A_B0_TAG ? CONTRACT_47A_REWARD_CR : (m.reward_cr || 0);
+    const displayRewardCr = m.storyTag === CONTRACT_47A_B0_TAG
+      ? CONTRACT_47A_REWARD_CR : settledRewardCr;
     if (m.storyTag === CONTRACT_47A_B0_TAG) {
       state.story.flags = state.story.flags || {};
       state.story.flags.contract_47a_b0_delivered = true;
     }
 
-    // ── reward credits + collateral refund ──
-    if (m.reward_cr > 0) this.bus.emit('economy:grantCredits', { amount: m.reward_cr, reason: `mission:${m.id}` });
+    // ── clean-clause honor + reward credits + collateral refund ──
+    // Clause math happens before any payout, receipt, or active-list removal. Missions emits the
+    // honor receipt itself because a post-completion observer can no longer find the instance.
+    for (const honored of clauseSettlement.honored) {
+      this.bus.emit('contract:clauseHonored', {
+        missionId: m.id,
+        clauseId: honored.id,
+        rewardMult: honored.rewardMult,
+        rewardCr: settledRewardCr,
+      });
+    }
+    if (settledRewardCr > 0) {
+      this.bus.emit('economy:grantCredits', { amount: settledRewardCr, reason: `mission:${m.id}` });
+    }
     if (m.collateral_cr > 0) {
       this.bus.emit('economy:grantCredits', { amount: m.collateral_cr, reason: `collateral_refund:${m.id}` });
     }
@@ -2086,10 +2636,17 @@ export const missions = {
       repMult,
       source: m.source || undefined,
       causeFingerprint: m.cause && m.cause.fingerprint || undefined,
+      causeTag: m.cause && m.cause.tag || undefined,
+      rewardCr: settledRewardCr,
+      ...setPieceEventFields(m, setPieceTransition),
     };
     if (storyOutcome !== undefined) completedPayload.storyOutcome = storyOutcome;
 
     // ── research points for cerebral mission types (recon/salvage) — missions is a legit RP writer.
+    // Combat fieldwork RP for bounty_hunt is intentionally NOT granted here: early auto-RP + a
+    // 6,000cr Combat Basics unlock strands a death-recovered pilot under gate tolls. Hunter
+    // combat tech remains recon/salvage-gated; bounty BASE pay is the cash authority for the
+    // career ladder.
     let researchPoints = 0;
     if (m.type === 'recon_scan' || m.type === 'salvage_retrieval') {
       const rp = m.type === 'recon_scan' ? (3 + (m.riskTier || 0)) : (1 + (m.riskTier || 0));
@@ -2106,11 +2663,15 @@ export const missions = {
       collateralRefundCr: m.collateral_cr || 0,
       repDelta: m.factionId ? specRep : 0,
       researchPoints,
+      setPieceReceipt: setPieceTransition && setPieceTransition.receipt || null,
     });
 
-    this._emitMissionDebrief(m, 'completed');
+    this._emitMissionDebrief(m, 'completed', null, { rewardCr: displayRewardCr });
     this.bus.emit('toast', { text: `Mission complete: ${m.title} +${displayRewardCr}cr`, kind: 'success', ttl: 4 });
     this._cleanupTargets(m);
+    // Keep the settled chain visible while ensureBoard refreshes the destination board. Otherwise
+    // a completion that crosses a board epoch can seed a second opening before its next stage lands.
+    this._boardSetPieceTransition(m, setPieceTransition);
     this._removeActive(m.id, index);
     this.bus.emit('mission:updated', { missionId: m.id });
 
@@ -2136,8 +2697,16 @@ export const missions = {
     });
   },
 
+  _removePreloadedContractCargo(mission) {
+    if (!mission || !mission.preloadedCargo || !mission.params || !mission.params.cmdtyId) return 0;
+    return removeCargo(
+      this.state, mission.params.cmdtyId, Math.max(1, mission.params.qty || 1),
+    );
+  },
+
   _failMission(m, index, reason) {
     if (m.status !== 'active') return;
+    const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
     m.status = 'failed';
     this._clearMissionNav(m.id);
 
@@ -2149,12 +2718,7 @@ export const missions = {
     }
     // A preloaded manifest belongs to the failed contract. Remove the remaining sealed quantity
     // through cargo authority so abandoning and reissuing cannot duplicate freight.
-    let contractCargoRemoved = 0;
-    if (m.preloadedCargo && m.params && m.params.cmdtyId) {
-      contractCargoRemoved = removeCargo(
-        this.state, m.params.cmdtyId, Math.max(1, m.params.qty || 1),
-      );
-    }
+    const contractCargoRemoved = this._removePreloadedContractCargo(m);
     // Collateral is forfeited (already charged at accept — nothing to refund).
     this._logCompletion(m.type, 0, false);
     this._recordMissionReceipt(m, 'failed', reason || 'failed', {
@@ -2162,13 +2726,18 @@ export const missions = {
       collateralLostCr: m.collateral_cr || 0,
       repDelta: penalty,
       contractCargoRemoved,
+      setPieceReceipt: setPieceTransition && setPieceTransition.receipt || null,
     });
     this._emitMissionDebrief(m, 'failed', reason || 'failed');
+    // Recovery must be physically present before public failure observers run. Those observers may
+    // render or inspect the promised next station synchronously from mission:failed.
+    this._boardSetPieceTransition(m, setPieceTransition);
     this.bus.emit('mission:failed', {
       missionId: m.id,
       reason: reason || 'failed',
       source: m.source || undefined,
       causeFingerprint: m.cause && m.cause.fingerprint || undefined,
+      ...setPieceEventFields(m, setPieceTransition),
     });
     this.bus.emit('toast', { text: `Mission FAILED: ${m.title}`, kind: 'error', ttl: 4 });
     this._recordStoryMissionFailure(m, reason || 'failed');
@@ -2179,24 +2748,30 @@ export const missions = {
 
   _expireMission(m, index) {
     if (m.status !== 'active') return;
+    const setPieceTransition = this._compileSetPieceTransition(m, 'expired', 'deadline');
     m.status = 'expired';
     this._clearMissionNav(m.id);
     const penalty = missionRepDeltaFor(m, 'expired');
     if (m.factionId && penalty < 0) {
       this.bus.emit('faction:repDelta', { factionId: m.factionId, delta: penalty, reason: `mission_expired:${m.type}` });
     }
+    const contractCargoRemoved = this._removePreloadedContractCargo(m);
     this._logCompletion(m.type, 0, false);
     this._recordMissionReceipt(m, 'expired', 'deadline', {
       rewardCr: 0,
       collateralLostCr: m.collateral_cr || 0,
       repDelta: penalty,
+      contractCargoRemoved,
+      setPieceReceipt: setPieceTransition && setPieceTransition.receipt || null,
     });
     this._emitMissionDebrief(m, 'expired', 'deadline');
+    this._boardSetPieceTransition(m, setPieceTransition);
     this.bus.emit('mission:expired', {
       missionId: m.id,
       reason: 'deadline',
       source: m.source || undefined,
       causeFingerprint: m.cause && m.cause.fingerprint || undefined,
+      ...setPieceEventFields(m, setPieceTransition),
     });
     this.bus.emit('toast', { text: `Mission expired: ${m.title}`, kind: 'warn', ttl: 4 });
     this._cleanupTargets(m);
@@ -2230,6 +2805,12 @@ export const missions = {
     if (!this.state.missions) return null;
     this.state.missions.receipts = normalizeMissionReceipts(this.state.missions.receipts);
     const receipt = missionReceiptFor(m, outcome, reason, { ...settlement, at_s: this.state.simTime || 0 });
+    if (receipt.chainId && receipt.archetypeId) {
+      this.state.missions.setPieceSettlements = normalizeSetPieceSettlements({
+        ...(this.state.missions.setPieceSettlements || {}),
+        [receipt.archetypeId]: receipt,
+      });
+    }
     const key = receipt.missionId + ':' + receipt.outcome;
     this.state.missions.receipts = [
       receipt,
@@ -2602,8 +3183,34 @@ export const missions = {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
     this.spawnTargetsForSector(sectorId);
+    this._emitSetPieceTravelLine(sectorId);
     this._refreshNavigation({ preferStory: true });
     this._storyTrigger('sector', { sectorId });
+  },
+
+  _emitSetPieceTravelLine(sectorId) {
+    for (const mission of this.state.missions.active || []) {
+      const cause = setPieceCauseOf(mission);
+      if (!cause || cause.archetypeId !== 'witness_run' || cause.stageIndex < 1) continue;
+      if (mission.status !== 'active' || mission.destSectorId !== sectorId) continue;
+      if (!cause.travelText || cause.travelLineSpoken) continue;
+      // The once flag lives in the normal active cause and therefore survives the ordinary mission
+      // save path without a witness-run sidecar.
+      cause.travelLineSpoken = true;
+      this.bus.emit('comms:popup', {
+        sender: cause.witnessName || 'Witness',
+        text: cause.travelText,
+        category: 'personal',
+        ttl: 8,
+      });
+      this.bus.emit('mission:setPieceTravelLine', {
+        missionId: mission.id,
+        witnessId: cause.witnessId || null,
+        witnessName: cause.witnessName || null,
+        text: cause.travelText,
+        ...setPieceEventFields(mission),
+      });
+    }
   },
 
   spawnTargetsForSector(sectorId) {
@@ -3037,7 +3644,10 @@ export const missions = {
     this.state.missions.active.push(mission);
     this.state.ui = this.state.ui || {};
     this.state.ui.trackedMissionId = mission.id;
-    this._refreshTrackedMissionNav(mission);
+    // Track the cold-start contract, but leave nav free while the staged tutorial owns the opening
+    // waypoint (onboarding builds markerId/onboarding:true). After tutorial:finished, release
+    // restores mission/story navigation ownership.
+    if (!this._tutorialOwnsOpening()) this._refreshTrackedMissionNav(mission);
     this.bus.emit('mission:updated', { missionId: mission.id, tracked: true, source: CONTRACT_47A_B0_TAG });
   },
 
@@ -3075,6 +3685,7 @@ export const missions = {
     state.missions.active = [];
     state.missions.completedLog = [];
     state.missions.receipts = [];
+    delete state.missions.setPieceSettlements;
     state.missions.nextId = 1;
     state.missions.config = MISSION_TUNING;
     // Clear story spine + any prior campaign47a sidecar (nested under state.story).
@@ -3106,6 +3717,16 @@ export const missions = {
     return !ob || (ob.active && !ob.finished) || ob.finished === false;
   },
 
+  /** True only while the staged tutorial is actively teaching — not the pre-init / unfinished-flag
+   *  breadth of _tutorialOwnsOpening. Used to suppress mission/story nav claims without breaking
+   *  headless harnesses that never materialize an onboarding subtree. */
+  _onboardingOwnsOpeningNav() {
+    const gameplay = this.state && this.state.settings && this.state.settings.gameplay;
+    if (gameplay && gameplay.tutorialHints === false) return false;
+    const ob = this.state && this.state.onboarding;
+    return !!(ob && ob.active && !ob.finished);
+  },
+
   serialize() {
     const m = this.state.missions;
     // Strip transient runtime fields (entity ids) from active missions.
@@ -3118,6 +3739,8 @@ export const missions = {
       nextId: m.nextId, config: m.config || MISSION_TUNING,
       story: this.state.story,
     };
+    const setPieceSettlements = normalizeSetPieceSettlements(m.setPieceSettlements, m.receipts);
+    if (Object.keys(setPieceSettlements).length) serialized.setPieceSettlements = setPieceSettlements;
     // Optional extension state must preserve absence for reduced headless registries that do not
     // register careerContracts; materializing a null key only after reload changes sim hashes.
     if (m.careerContracts) {
@@ -3135,6 +3758,9 @@ export const missions = {
     state.missions.boards = data.boards || {};
     state.missions.completedLog = data.completedLog || [];
     state.missions.receipts = normalizeMissionReceipts(data.receipts);
+    const setPieceSettlements = normalizeSetPieceSettlements(data.setPieceSettlements, state.missions.receipts);
+    if (Object.keys(setPieceSettlements).length) state.missions.setPieceSettlements = setPieceSettlements;
+    else delete state.missions.setPieceSettlements;
     state.missions.nextId = data.nextId || 1;
     state.missions.config = data.config || MISSION_TUNING;
     if (Object.prototype.hasOwnProperty.call(data, 'careerContracts')) {
@@ -3192,6 +3818,59 @@ function normalizeMissionReceipts(value) {
   return receipts;
 }
 
+function setPieceEpochFrom(value, archetypeId, chainId) {
+  if (Number.isFinite(Number(value && value.startEpoch))) {
+    return Math.max(0, Math.trunc(Number(value.startEpoch)));
+  }
+  const prefix = `sp1_${archetypeId}_`;
+  if (!String(chainId || '').startsWith(prefix)) return null;
+  const suffix = String(chainId).slice(prefix.length);
+  const separator = suffix.indexOf('_');
+  const parsed = Number(separator >= 0 ? suffix.slice(0, separator) : suffix);
+  return Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : null;
+}
+
+/**
+ * Compact durable identity for the latest settled chain per authored archetype. This is not a run
+ * object: boards/active missions/causes still own progression. It only survives the independent
+ * ten-row presentation receipt cap so ensureBoard cannot resurrect an already-settled epoch.
+ */
+function normalizeSetPieceSettlements(value, receipts = []) {
+  const known = new Set((SET_PIECE_MISSIONS || []).map((definition) => definition && definition.id).filter(Boolean));
+  const out = {};
+  const consider = (archetypeId, raw) => {
+    if (!known.has(archetypeId) || !raw || typeof raw !== 'object') return;
+    const chainId = typeof raw.chainId === 'string' ? raw.chainId : '';
+    if (!chainId) return;
+    const startEpoch = setPieceEpochFrom(raw, archetypeId, chainId);
+    if (startEpoch == null) return;
+    const candidate = {
+      chainId,
+      startEpoch,
+      stageIndex: Number.isFinite(Number(raw.stageIndex))
+        ? Math.max(0, Math.trunc(Number(raw.stageIndex))) : 0,
+      outcome: String(raw.outcome || 'settled'),
+      settledAtS: Math.max(0, Number(raw.settledAtS != null ? raw.settledAtS : raw.at_s) || 0),
+    };
+    const current = out[archetypeId];
+    if (!current || candidate.startEpoch > current.startEpoch
+      || (candidate.startEpoch === current.startEpoch && candidate.stageIndex > current.stageIndex)
+      || (candidate.startEpoch === current.startEpoch && candidate.stageIndex === current.stageIndex
+        && candidate.settledAtS >= current.settledAtS)) {
+      out[archetypeId] = candidate;
+    }
+  };
+  if (value && typeof value === 'object') {
+    for (const [archetypeId, raw] of Object.entries(value)) consider(archetypeId, raw);
+  }
+  // Migration for older saves: a surviving canonical receipt carries enough seeded identity to
+  // construct the durable marker. New settlements no longer depend on that receipt remaining.
+  for (const receipt of Array.isArray(receipts) ? receipts : []) {
+    consider(receipt && receipt.archetypeId, receipt);
+  }
+  return out;
+}
+
 function receiptTitle(m) {
   return (m && (m.title || m.name)) || String(m && m.type || 'contract')
     .replace(/_/g, ' ')
@@ -3219,6 +3898,30 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
   const repDelta = Number.isFinite(Number(settlement.repDelta)) ? Math.round(Number(settlement.repDelta)) : missionRepDeltaFor(m, outcome);
   const researchPoints = Math.max(0, Math.round(Number(settlement.researchPoints) || 0));
   const at_s = Math.max(0, Number(settlement.at_s) || 0);
+  const setPieceReceipt = settlement.setPieceReceipt && typeof settlement.setPieceReceipt === 'object'
+    ? settlement.setPieceReceipt : null;
+  const cause = m && m.cause && typeof m.cause === 'object' ? m.cause : null;
+  const nextStationIds = setPieceReceipt && Array.isArray(setPieceReceipt.nextStationIds)
+    ? [...setPieceReceipt.nextStationIds] : [];
+  const setPieceFields = (setPieceReceipt || (m && m.source === SET_PIECE_MISSION_SOURCE
+    && cause && cause.chainId)) ? {
+    chainId: setPieceReceipt && setPieceReceipt.chainId || cause && cause.chainId || null,
+    archetypeId: setPieceReceipt && setPieceReceipt.archetypeId || cause && cause.archetypeId || null,
+    startEpoch: Number.isInteger(setPieceReceipt && setPieceReceipt.startEpoch)
+      ? setPieceReceipt.startEpoch : Number.isInteger(cause && cause.startEpoch) ? cause.startEpoch : null,
+    stageIndex: Number.isInteger(setPieceReceipt && setPieceReceipt.stageIndex)
+      ? setPieceReceipt.stageIndex : Number.isInteger(cause && cause.stageIndex) ? cause.stageIndex : null,
+    stageId: setPieceReceipt && setPieceReceipt.stageId || cause && cause.stageId || null,
+    branchId: setPieceReceipt && setPieceReceipt.branchId || cause && cause.branchId || null,
+    attempt: Number.isInteger(setPieceReceipt && setPieceReceipt.attempt)
+      ? setPieceReceipt.attempt : Number.isInteger(cause && cause.attempt) ? cause.attempt : null,
+    house: setPieceReceipt && setPieceReceipt.house || cause && cause.house || null,
+    houseText: setPieceReceipt && setPieceReceipt.houseText || null,
+    recoveryText: setPieceReceipt && setPieceReceipt.recoveryText || null,
+    nextStationId: setPieceReceipt && setPieceReceipt.nextStationId || null,
+    nextStationIds,
+    wreckId: setPieceReceipt && setPieceReceipt.wreckId || cause && cause.wreckId || m && m.wreckId || null,
+  } : {};
   return {
     id: missionId + ':' + String(outcome || 'settled'),
     missionId,
@@ -3236,10 +3939,12 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
     collateralLostCr,
     repDelta,
     researchPoints,
+    contractCargoRemoved: Math.max(0, Math.round(Number(settlement.contractCargoRemoved) || 0)),
     storyOutcome: m && m.params && m.params.investigationOutcome || null,
     source: m && m.source || null,
     sourceOfferId: m && m.sourceOfferId || null,
     causeFingerprint: m && m.cause && m.cause.fingerprint || null,
+    ...setPieceFields,
     targetRecordId: m && m.params && m.params.poiSignalFollowup
       && m.params.poiSignalFollowup.targetRecordId || null,
   };

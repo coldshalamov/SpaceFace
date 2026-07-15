@@ -658,7 +658,7 @@ test('7. authored off-sanctuary danger remains aggressive; not converted to ambi
         engagementTrigger: 'zone_entry',
         zoneId: 'zone_ceres_ambush',
         approachTelegraph: 'engine_flare',
-        noFireResponseWindowS: 0.75,
+        noFireResponseWindowS: 1,
         roe: RulesOfEngagement.WEAPONS_FREE,
         forcePlayerTarget: true,
       },
@@ -677,7 +677,7 @@ test('7. authored off-sanctuary danger remains aggressive; not converted to ambi
         engagementTrigger: 'encounter_phase',
         zoneId: 'enc_named_raid_01',
         approachTelegraph: 'attack_bark',
-        noFireResponseWindowS: 0.75,
+        noFireResponseWindowS: 1,
         forcePlayerTarget: true,
       },
     });

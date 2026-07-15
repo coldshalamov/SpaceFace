@@ -24,8 +24,8 @@ import { hash32, mulberry32 } from '../core/rng.js';
 export const MTS_TOLL_MAX_SEC = 0.6;
 export const WING_MAX = 2;
 
-// One comms line per scene type (taste: ≤12 words, caps callsigns, factual, no exclamation). Silent
-// scenes carry no line. variantRoll picks among a type's lines.
+// One inline comms line per scene type. Callsigns identify the speaker and factual copy reflects the
+// actual scene outcome. Silent scenes carry no line. variantRoll picks among a type's lines.
 const LINES = Object.freeze({
   mts_toll: Object.freeze(['MERIDIAN LANE CONTROL: transit levy assessed. Clear on payment.']),
   scn_scan: Object.freeze(['CONCORD CHECKPOINT: hold your vector for a routine hold scan.']),

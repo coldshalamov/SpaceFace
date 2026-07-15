@@ -1,0 +1,17 @@
+Reloading external rigs...
+Reloading external metarigs...
+[m4-helios-hub-v3] WARN existing authoring lock — taking over: {
+  "packet": "M4-HELIOS-V8-NEW-FOUNDATION-GROK-001",
+  "heartbeatAt": "2026-07-14T02:26:27.6673041Z",
+  "pid": 8776,
+  "owner": "repair1d",
+  "phase": "repair1d",
+  "scope": "m4_helios_hub_v8",
+  "st
+[m4-helios-hub-v3] Acquired authoring lock → C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v8\authoring.__lock
+[m4-helios-hub-v3] Packet M4-HELIOS-V8-NEW-FOUNDATION-GROK-001 — Helios hub V3 professional rebuild (isolated)
+[m4-helios-hub-v3] Vendor verify: accepted=11 diskCc0=11
+[m4-helios-hub-v3] Vendor components accepted=11 diskCc0=11
+[m4-helios-hub-v3] Reusing existing texture atlas under C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v8\textures (force=False)
+[m4-helios-hub-v3] === Building helios_hub_station: Helios Hub Station ===
+[m4-helios-hub-v3] V8 REPAIR1 hub — continuous macro donor body + framed docking anatomy

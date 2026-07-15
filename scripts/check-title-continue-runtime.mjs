@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { CURRENT_VERSION } from '../src/data/saveVersion.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const { chromium } = await loadPlaywright();
@@ -24,11 +25,11 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   const issues = collectPageIssues(page);
 
-  await page.addInitScript(() => {
+  await page.addInitScript((currentVersion) => {
     try {
       sessionStorage.setItem('sf.cinematicSeen', '1');
       localStorage.clear();
-      localStorage.setItem('sf.save.index', JSON.stringify({
+      const index = {
         quick: {
           slot: 'quick',
           savedAt: '2026-06-27T12:00:00.000Z',
@@ -37,7 +38,7 @@ try {
           sectorName: 'Helios Reach',
           shipName: 'ship_kestrel',
           objectiveSummary: 'Story: Follow the anomaly',
-          version: 6,
+          version: currentVersion,
         },
         3: {
           slot: '3',
@@ -47,11 +48,42 @@ try {
           sectorName: 'Tethys Gate',
           shipName: 'ship_kestrel_runner',
           objectiveSummary: 'Route: Tethys Trade Hub - Provisions',
-          version: 6,
+          version: currentVersion,
         },
-      }));
+      };
+      for (const [slot, meta] of Object.entries(index)) {
+        const savedAt = meta.savedAt;
+        const envelope = {
+          fmt: 'spaceface-save',
+          version: currentVersion,
+          savedAt,
+          playtimeS: meta.playtimeS,
+          slot,
+          data: {
+            meta: { seed: 47, playtimeS: meta.playtimeS, createdAt: savedAt, lastSavedAt: savedAt },
+            player: { credits: meta.credits, ownedShips: [], activeShipIndex: 0 },
+            cargo: { items: {}, capVolume: 40, capMass: 60 },
+            economy: {},
+            factions: {},
+            world: { currentSectorId: 'sector_helios_prime', fuel: { current: 100, max: 100 } },
+            entities: {
+              player: {
+                type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: { defId: meta.shipName },
+                hull: 120, hullMax: 120, shield: 40, shieldMax: 40, cap: 140, capMax: 140,
+              },
+              persistent: [], simTime: 0, tick: 0,
+            },
+            missions: { boards: {}, active: [], completedLog: [], nextId: 1, story: { beatIndex: 0 } },
+            automation: {},
+            crafting: { queues: {} },
+            settings: {},
+          },
+        };
+        localStorage.setItem('sf.save.' + slot, JSON.stringify(envelope));
+      }
+      localStorage.setItem('sf.save.index', JSON.stringify(index));
     } catch (_) {}
-  });
+  }, CURRENT_VERSION);
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
   assert.equal(new URL(page.url()).search, '', 'title Continue probe must use the canonical root URL with no query flags');

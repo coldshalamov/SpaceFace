@@ -1,0 +1,45 @@
+{
+  "schema": "spaceface.m4HeliosHubV9.provenance.v1",
+  "packet": "M4-HELIOS-V9-NEW-FOUNDATION",
+  "family": "helios_hub_env_v9",
+  "newFoundation": true,
+  "notDerivedFrom": [
+    "m4_helios_hub_v7",
+    "m4_helios_hub_v8",
+    "blenderkit_scifi_station"
+  ],
+  "hub": {
+    "construction": "profile-loft continuous tuning-fork/Y shipyard + boolean dock notch + curve truss bridges",
+    "antiReference": "V8 cylinder stack / thin ring / giant dock box"
+  },
+  "gate": {
+    "construction": "split-hex armored arch segments + 4 machinery sectors + asymmetric service spine",
+    "antiReference": "V8 hoop-primary / blocky pylons / torus LOD"
+  },
+  "rocks": [
+    {
+      "id": "helios_rock_a",
+      "role": "fractured_crag",
+      "canonicalUrl": "https://polyhaven.com/a/coastal_cliff_01",
+      "license": "CC0-1.0",
+      "local": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/third_party/helios_v9/polyhaven/coastal_cliff_01/coastal_cliff_01_2k.gltf"
+    },
+    {
+      "id": "helios_rock_b",
+      "role": "stratified_slab",
+      "canonicalUrl": "https://polyhaven.com/a/rock_face_01",
+      "license": "CC0-1.0",
+      "local": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/third_party/helios_v9/polyhaven/rock_face_01/rock_face_01_2k.gltf"
+    },
+    {
+      "id": "helios_rock_c",
+      "role": "rounded_chondrite",
+      "canonicalUrl": "https://polyhaven.com/a/moon_rock_03",
+      "license": "CC0-1.0",
+      "local": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/third_party/helios_v9/polyhaven/moon_rock_03/moon_rock_03_2k.gltf"
+    }
+  ],
+  "qualityFloor": "Kestrel Borrowed Time V4 authored detail / material / readability bar",
+  "wiringStatus": "isolated_candidate_no_promote",
+  "acceptanceClaim": false
+}

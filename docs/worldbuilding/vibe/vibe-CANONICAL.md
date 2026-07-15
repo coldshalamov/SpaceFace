@@ -81,6 +81,5 @@ The ghost is haunted. The cipher has a backstory. The ex-gangster has ink under 
 - The player is someone specific. The game doesn't care.
 - Graffiti is the only honest narrator.
 - The HUD lies. Eventually it stops correcting itself in your favor.
-- The static between the stars sounds exactly like laughter if you listen long enough.
 
 **Welcome to the Pit.**

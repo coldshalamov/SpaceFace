@@ -57,23 +57,22 @@ reports them export-clean (see WAVE2_PROMPT.md "asset-gated" note).
 
 ---
 
-## 1. The authoring contract (every GLB must satisfy)
+## 1. Authoring and runtime compatibility
 
 | Aspect | Requirement |
 |---|---|
-| Format | **GLB binary** (not glTF). Textures **embedded as KTX2/BasisU** (`KHR_texture_basisu`). No loose .png/.jpg. |
+| Format and packaging | Produce the source/runtime format accepted by the current exporter, loader, bundle, and release manifest. Compression and embedding choices follow those live owners and measured runtime needs. |
 | Coordinate frame | right-hand, **forward = +X, up = +Y, starboard = +Z**, unit = **metre**, origin = mount point (nose for ships). |
-| Root extras | `spacefaceAsset` JSON: `{ contractVersion:1, slot, forward:"+X", up:"+Y", starboard:"+Z", unit:"metre", normalConvention:"OpenGL", ormChannels:"R=AO,G=Roughness,B=Metallic", textureCompression:"KTX2/BasisU", chamfered:true }`. |
-| Materials (named roles) | `Material_Hull` (tintable body), `Material_Accent` (faction edge trim), `Material_Glass` (MeshPhysical, transmission 0.6 / IOR 1.4), `Material_Mechanical` (dark metallic). |
-| Textures | baseColor (sRGB), normal (tangent, **OpenGL green-up**), ORM (packed: **R=AO, G=Roughness,B=Metallic**) when required by the live contract. Choose resolution/compression from screen-space need and measured runtime evidence; use the live exporter as authority. |
+| Root extras | Stamp the current `spacefaceAsset` metadata required by the live exporter/loader. Do not duplicate its evolving schema or visual-technique flags in this design brief. |
+| Materials | Preserve semantic/tintable roles required by the exact runtime slot. Names and channel conventions come from the live loader/manifest; richer asset-specific materials are allowed when wired coherently. |
+| Textures | Follow current loader/exporter channel conventions where required. Choose maps, resolution, compression, and authored technique from screen-space contribution and measured memory/upload/runtime evidence. |
 | Geometry | Use intentional edge treatment and the LOD groups required by the live exporter. Bevels, weighted normals, bakes, and topology choices are asset-specific means, not a universal visual recipe. |
 | Nodes | `MOUNT_*` hardpoints, `SOCKET_*` anchors (e.g. `SOCKET_Trail_Main`, `SOCKET_Weapon_Front`), optional damage hooks `HOOK_*`, drive-anim `HOOK_DRIVE_FAN/CORE/PLUME`. |
 | Resource alarms | Follow the live `assets/ships/parts/parts_manifest.json` and `tools/blender/spaceface_export.py`. Do not copy their changing numeric alarms into design policy or treat them as taste ceilings; justify exceptions with screen-space value and measured performance evidence. |
-| Faction accent | provide `factionAccentVariants` in the manifest row (accent color per palette class: core/belt/fringe/anomaly). |
+| Identity variants | Add tint, faction, regional, or role variants only when the runtime/data contract and player-facing identity benefit require them. Historical palette classes are references, not a mandatory variant set. |
 
 **Per-asset delivery = 3 steps:** (1) export GLB to `assets/ships/parts/<category>/<id>.glb`; (2) add a row to
-`assets/ships/parts/parts_manifest.json` (id, category, file, tris, bytes, textureSize, tintable materials,
-hooks, sockets, bounds, factionAccentVariants, priority, note); (3) leave a note for the code side to wire it
+`assets/ships/parts/parts_manifest.json` using its current schema; (3) leave a note for the code side to wire it
 (new `place`/`hull` ids map in `src/render/partsLibrary.js`). Then `npm run build:release:assets` →
 `check:assets:live` → `check:asset-reachability`.
 
@@ -90,14 +89,14 @@ so a player reads the faction and function instantly.
 
 | id | Faction / function | Silhouette intent |
 |---|---|---|
-| `place_station_concord_hub` | Concord (SCN) trade/authority | orthogonal, symmetrical, sealed; docking collars like filing slots; cold blue accent |
-| `place_station_meridian_exchange` | Meridian (MTS) market | tiered concentric rings (the "exchange floor"); gold accent; ostentatious |
-| `place_station_drift_refinery` | Drift (DMC) refinery | asymmetric ore hoppers + slag chutes; rust/amber; industrial clutter |
-| `place_station_reach_den` | Crimson Reach pirate | scavenged/asymmetric, welded-on modules, exposed guts; red warning stripes |
-| `place_station_quiet_cache` | The Quiet smuggler | small, dark, low-signature; hidden docking; minimal lights |
-| `place_station_choir_shrine` | Ascendant Choir | ritual/radial symmetry around a relic core; violet glow; ornate |
+| `place_station_concord_hub` | Concord (SCN) trade/authority | orthogonal, sealed authority; docking collars that read like controlled filing slots |
+| `place_station_meridian_exchange` | Meridian (MTS) market | tiered exchange-floor organization; visibly commercial and ostentatious |
+| `place_station_drift_refinery` | Drift (DMC) refinery | asymmetric ore handling, slag routing, and credible industrial work areas |
+| `place_station_reach_den` | Crimson Reach pirate | scavenged, asymmetric construction with exposed adaptation and repair history |
+| `place_station_quiet_cache` | The Quiet smuggler | low-signature concealment and docking that feels deliberately difficult to observe |
+| `place_station_choir_shrine` | Ascendant Choir | ritual organization around a relic core; ornate without prescribing one geometry or hue |
 | `place_station_free_waystation` | Free Frontier | patched-together but welcoming; open docking arms; mixed salvage |
-| `place_station_vael_spire` | The Vael | alien geometry, non-human proportions, teal glow (**best-lit — they have the best air**) |
+| `place_station_vael_spire` | The Vael | non-human proportions and construction logic; notably advanced environmental presentation |
 
 ### P1 — Verify and finish production whole-ships
 
@@ -119,8 +118,9 @@ The player should say "meet me at the crystal spire." One authored landmark per 
 
 ### P3 — RING-GATES (ring-lane travel, BP-07) — 3 faction variants
 `place_gate_jump_ring` exists (generic). Add faction-flavored variants so lane ownership reads:
-`place_gate_concord` (austere, official, blue lights), `place_gate_merchant` (ornate toll-ring, gold),
-`place_gate_reach` (modified/booby-trapped, red, sparking) — the last supports the "pirates blew the ring" beat.
+`place_gate_concord` (official authority), `place_gate_merchant` (commercial toll infrastructure),
+and `place_gate_reach` (visibly modified and hazardous) — the last supports the "pirates blew the ring" beat.
+These are identity prompts, not mandatory palettes, material recipes, or construction techniques.
 
 ### P4 — DERELICTS / WRECKS (salvage loop, `salvage.js`) — 4–6 variants
 `place_dead_hulk` + `place_debris_chunk` exist. Add distinct destroyed-hull types with visible internal
@@ -138,12 +138,13 @@ their manifest rows + `partsLibrary.js` slot entries (coordinate the code wiring
 
 ---
 
-## 3. Naming, palette, and hand-off
+## 3. Naming, identity, and hand-off
 
 - Path: `assets/ships/parts/<category>/<id>.glb`, category ∈ {hulls, engines, fins, cockpits, weapons,
   greebles, gear, pods, places, wholeships}. Size variants use `_S`/`_M`/`_L` suffixes.
-- Palette: read the four palette classes (core cyan-steel / belt rust-amber / fringe sodium-red / anomaly
-  violet-green) from `src/data/sectors.js` `SECTOR_PALETTE_CLASSES`; provide `Material_Accent` variants matching.
+- Visual identity: current sector/faction data, concepts, and palette classes are references. Choose the
+  strongest coherent material, color, decal, geometry, and lighting direction for the asset's role; add
+  runtime variants only when the owning data and player-facing result justify them.
 - Every station/landmark should carry a `landmark: true` manifest flag so the map + nav treat it as a named
   waypoint (the `galaxyMap` and radar read this).
 - Deliver in **priority batches** (P0 first). After each batch: run the release build + reachability + live
@@ -151,8 +152,10 @@ their manifest rows + `partsLibrary.js` slot entries (coordinate the code wiring
 
 ## 4. Acceptance
 
-- P0 done ⇒ each of the 8 station archetypes has a distinct bounding-box silhouette (`check:sector-geography`
-  / `check:station-archetype-wiring` green) and loads with `failureCount:0` in `check:assets:live`.
-- P1 done ⇒ `check:assets:live` shows Kestrel/Pelican/Wasp using whole-ship bodies with **no fallback parts**.
+- P0 done ⇒ each intended station archetype has a distinct, role-readable player-camera identity;
+  geography/wiring checks are green, current runtime routes load with `failureCount:0`, and representative
+  captures survive independent visual review.
+- P1 done ⇒ current intended whole-ship routes use credible complete bodies with no unintended fallback,
+  verified per exact manifest/runtime ID rather than this document's dated candidate list.
 - Landmarks/wrecks/gates ⇒ referenced by `sectorZones`/`salvage`/ring data and pass `check:asset-reachability`
   (or are correctly held out as reference-only).

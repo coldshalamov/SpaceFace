@@ -30,6 +30,7 @@ import { combat } from '../systems/combat.js';
 import { combatOutcome } from '../systems/combatOutcome.js';
 import { aftermathWrecks } from '../systems/aftermathWrecks.js';
 import { uniqueWrecks } from '../systems/uniqueWrecks.js';
+import { uniqueLootAbilities } from '../systems/uniqueLootAbilities.js';
 import { wingMorale } from '../systems/wingMorale.js';
 import { tetherGameplay } from '../systems/tetherGameplay.js';
 import { masslineTelemetry } from '../systems/masslineTelemetry.js';
@@ -108,6 +109,9 @@ import { priceForecastSystem } from '../ui/priceForecast.js';          // PRICE_
 import { contractClausesSystem } from '../systems/contractClauses.js'; // COLLATERAL_AND_CLAUSES: clause breach → contract:clauseBroken (one penalty path)
 import { moralTrapSystem } from '../systems/moralTrap.js';             // MORAL_TRAP_CONTRACTS: mid-run reveal + binary choice → distinct shipped consequences
 import { lossLedger } from '../systems/lossLedger.js';                 // BP-01.1 WRECK_PROVENANCE: event-sourced loss recorder (assetLost/outpostRaided → ring buffer + wreck tag)
+import { factionPresence } from '../systems/factionPresence.js';       // Depth Program K1: five additive faction presences + service/boarding seams
+import { bandRadio } from '../systems/bandRadio.js';                   // Depth Program A1: deterministic in-flight radio/ticker state
+import { v2FlavorRuntime } from '../systems/v2FlavorRuntime.js';       // Depth Program V2 physical-carrier flavor reachability
 import { lossInvestigation } from '../systems/lossInvestigation.js';   // CONVOY_LOSS_INVESTIGATION: loss-ledger provenance overlay on salvage communicator offers
 import { salvageActions } from '../systems/salvageActions.js';         // SALVAGE_DISTINCT_FROM_MINING: wreck verb readouts + unstable reactor counterplay
 import { survivorPod } from '../systems/survivorPod.js';               // SURVIVOR_POD_TRIAGE: wm_survivor_pod rescue/strip backend over salvage communicators
@@ -131,8 +135,8 @@ export function createRegistry(ctx) {
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, voiceArbiter, input, autoTargetAssist, flybyFocus, bulletTime, cloak, scanner, scanReveal, buildIdentity, lawSecurity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, physics, aiPorts, tumbleStates, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, combatOutcome, aftermathWrecks, uniqueWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, economy,
-    automation, wingmen, intervention, lossLedger, spawnBudget, world, regionalEcology, encounterDirector, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, stationContacts, stationContactLoadBoundary, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, careerOrigins, careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts, postEndingReplay, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, masslineHud, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
+    core, voiceArbiter, input, autoTargetAssist, flybyFocus, bulletTime, cloak, scanner, scanReveal, buildIdentity, lawSecurity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, physics, aiPorts, tumbleStates, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, uniqueLootAbilities, combat, combatOutcome, aftermathWrecks, uniqueWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, economy,
+    automation, wingmen, intervention, lossLedger, factionPresence, spawnBudget, world, regionalEcology, encounterDirector, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, stationContacts, stationContactLoadBoundary, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, careerOrigins, careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts, postEndingReplay, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, bandRadio, v2FlavorRuntime, onboarding, masslineHud, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // scanReveal, buildIdentity, and pirateDisguise subscribe to scanner's scan:pulse seam. scanReveal
@@ -183,9 +187,12 @@ export function createRegistry(ctx) {
   // emitting sanctioned intents (economy:applyTradePressure, factions.addOffscreenTension,
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
+  // factionPresence runs immediately before the selected tactical AI slot: fixed-route anchors,
+  // provoked convoy state, and boarding phase transitions must settle before SG-06 samples its
+  // sensor/roster frame, while physics remains later in the same fixed tick to consume commands.
   const UPDATE_ORDER = [
-    input, autoTargetAssist, flybyFocus, bulletTime, cloak, lawSecurity, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, aiSlot, barkDirector, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, tumbleStates, weapons, countermeasures, impulseCharges, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, automation, wingmen, crafting,
-    economy, intervention, world, regionalEcology, encounterDirector, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, missions, careerOrigins, careerLadders, liveCareerLadderBranches, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, masslineHud, voiceArbiter,
+    input, autoTargetAssist, flybyFocus, bulletTime, cloak, lawSecurity, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, factionPresence, aiSlot, barkDirector, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, tumbleStates, weapons, countermeasures, impulseCharges, uniqueLootAbilities, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, automation, wingmen, crafting,
+    economy, intervention, world, regionalEcology, encounterDirector, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, missions, careerOrigins, careerLadders, liveCareerLadderBranches, story, scenarioRuntime, heat, traffic, drill, claims, bandRadio, onboarding, masslineHud, voiceArbiter,
   ];
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
   // after combat/physics have settled. It is read-only telemetry — it writes only its own
@@ -205,6 +212,9 @@ export function createRegistry(ctx) {
   // • tumbleStates runs after aiPorts and before weapons: its zero-control overwrite must be the
   //   LAST writer on the physics command membrane, and its cleared fire intent must land before
   //   weapons reads intents this tick.
+  // • uniqueLootAbilities runs after impulseCharges and before physics: Choir-Bell and Tideline
+  //   cross the physics-command membrane in time for this tick's solve, while its unique-only
+  //   capacitor premium settles before combat's later regeneration pass.
   // • masslineThrow runs after masslineImpacts: it consumes the settled tether mirror + telemetry
   //   and may cut the attachment; tetherGameplay reconciles the cut next tick through the same
   //   path as any external cut. masslineImpactDamage / lootShards / terrainAnchors /

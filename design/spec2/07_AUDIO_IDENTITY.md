@@ -1,15 +1,15 @@
-# SPEC2/07 — AUDIO IDENTITY (procedural, zero-asset, layered)
+# SPEC2/07 — Audio Identity
 
-**Owner lane:** audio/systems agent. Read `spec2/00_MASTER_TASTE.md`. The synth stack
-(`src/audio/{audioSystem,synth}.js` + `src/data/audioRecipes.js`) stays 100% procedural — that is a
-shipping advantage (tiny build, infinite variation). This spec gives it a spine.
-**Files:** the three above + hooks reading existing bus events ONLY (no new sim events).
-Mix rule of law: the game at rest is QUIET. Silence is the canvas; sounds are information.
+**Scope:** audio systems and identity. The existing procedural synth stack is a useful foundation,
+not a permanent source restriction. Recorded, generated, licensed, or hybrid sources are allowed
+when provenance, bundle/memory cost, looping, mix coherence, and maintenance are handled well.
+Silence and restraint are useful tools, while atmosphere and musical richness may expand when they
+improve the player experience.
 
-## 1. The mix architecture (buses exist — enforce budgets)
-Master ≤ −6 dBFS. Buses: engine (−18 target), world/ambient (−24), combat (−12), UI (−20),
-comms (−16), music/pads (−26). Sidechain: combat bus ducks ambient+pads by 6 dB (120 ms attack,
-900 ms release). Never more than 12 simultaneous voices; steal oldest-quietest.
+## 1. Mix architecture
+Keep enough measured headroom for dense combat and ensure important cues remain intelligible across
+the volume sliders. Bus targets, duck depth/timing, and concurrency limits are tuning baselines, not
+quality ceilings; profile real scenes and use priority-aware voice management when limits are needed.
 
 ## 2. Engine & motion (continuous layers, all driven by existing state)
 - Engine hum: 2-osc drone (saw+sine, detune 6 ct) pitched by thrust tier — idle 55 Hz, combat
@@ -24,8 +24,8 @@ comms (−16), music/pads (−26). Sidechain: combat bus ducks ambient+pads by 6
   a fourth over 300 ms.
 
 ## 3. Combat & world (event one-shots — bind to the spec2/02 juice table 1:1)
-Every row of the juice table gets exactly one recipe id in audioRecipes.js, named
-`sfx.<event>` (e.g. `sfx.shieldBreak`). Shield hits pitch-stack: consecutive hits within 2 s climb
+Every gameplay event that needs sound should resolve through an owned recipe or music/ambience seam;
+an event may use layered cues when the mix remains legible. Shield hits can pitch-stack: consecutive hits within 2 s climb
 +1 semitone (max +4) — the classic "you're winning" ladder. Kill crump: 60 Hz sine burst + noise
 tail 400 ms; capital kills add two pre-detonations. Impulse charge: 45 Hz thump, radius-scaled gain.
 Mining: beam = filtered pink noise (center 1.2 kHz) + heat-pitch rise; vent-bonus chime = major
@@ -47,8 +47,8 @@ One-voice applies to audio: comms squelches never overlap (queue by the same gat
 ## 6. Acceptance assertions (`scripts/check-audio-identity.mjs`)
 1. Recipe coverage: every juice-table event id resolves to a recipe (static audit of
    audioRecipes.js vs the spec table). Missing = fail.
-2. Mix budget: scripted 60 s combat scene — master peak ≤ −6 dBFS, voice count ≤ 12 at all times
-   (instrument the scheduler).
+2. Representative quiet, travel, station, and dense-combat scenes retain headroom, avoid clipping,
+   and preserve priority-cue intelligibility; record measured peaks and voice behavior.
 3. Tether hum gain tracks strain monotonically in the harness (0 → 0.9 strain sweep).
 4. Pads: jump between two palette classes crossfades ≤ 4.5 s, no click/pop (zero-crossing check).
 5. Mute/volume settings apply within 100 ms; per-bus sliders in Settings→Audio work (extend the

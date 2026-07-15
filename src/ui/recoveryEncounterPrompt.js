@@ -1,6 +1,8 @@
 // Compact, non-modal presenter for the physical derelict recovery state machine.
 // Simulation owns range, condition, hazards, stabilization, settlement and persistence.
 
+import { isUiInteractionFenced } from './input.js';
+
 const STYLE_ID = 'sf-recovery-encounter-style';
 const RECEIPT_TTL_S = 6;
 
@@ -191,7 +193,7 @@ export function createRecoveryEncounterPrompt(ctx) {
   }
 
   function choose(choice, source) {
-    if (!active) return false;
+    if (isUiInteractionFenced(state) || !active) return false;
     if (active.mode === 'unique-wreck') {
       if (!(active.choices || []).some((entry) => entry.id === choice)) return false;
       bus.emit('uniqueWreck:choose', { wreckId: active.wreckId, choiceId: choice, source });
@@ -204,13 +206,14 @@ export function createRecoveryEncounterPrompt(ctx) {
   }
 
   function onClick(event) {
+    if (isUiInteractionFenced(state)) return;
     const button = event.target && event.target.closest && event.target.closest('[data-choice]');
     if (!button || button.disabled || !root.contains(button)) return;
     choose(button.dataset.choice, 'click');
   }
 
   function tick() {
-    if (destroyed || !active) return;
+    if (destroyed || !active || isUiInteractionFenced(state)) return;
     if (!canSurface()) { hide(); return; }
     if (active.mode === 'receipt') {
       if (Number(state.simTime || 0) >= active.hideAt) hide();
@@ -269,6 +272,7 @@ function injectStyle() {
   .sf-recovery__meter { height:3px; margin-top:8px; overflow:hidden; background:rgba(145,171,201,.16); }
   .sf-recovery__meter i { display:block; width:100%; height:100%; transform:scaleX(0); transform-origin:left center; background:#39d0ff; transition:transform .12s ease-out; }
   .sf-recovery__actions { display:flex; justify-content:flex-end; gap:6px; margin-top:8px; pointer-events:auto; }
+  .sf-recovery__actions[hidden] { display:none !important; }
   .sf-recovery__actions button { display:flex; align-items:center; gap:5px; min-height:32px; padding:5px 8px; border:1px solid rgba(57,208,255,.52);
     background:rgba(57,208,255,.09); color:#dff8ff; font:700 9px/1.2 var(--mono,Consolas,monospace); letter-spacing:.05em; cursor:pointer; }
   .sf-recovery__actions button b { display:inline-grid; place-items:center; min-width:16px; min-height:16px; border:1px solid rgba(223,248,255,.55); border-radius:50%; font-size:8px; }

@@ -69,6 +69,32 @@ import {
   serializeEmbodimentCache,
 } from '../world/embodimentRecipes.js';
 
+function applySameSectorPlayerRelocation(state, entryPoint) {
+  const player = state && state.entities && state.entities.get
+    ? state.entities.get(state.playerId)
+    : null;
+  if (!player || !player.pos || !entryPoint) return false;
+  const x = Number(entryPoint.x);
+  const z = Number(entryPoint.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
+  player.pos.x = x;
+  player.pos.z = z;
+  player.pos.y = 0;
+  if (player.prevPos && typeof player.prevPos.copy === 'function') player.prevPos.copy(player.pos);
+  else player.prevPos = { x, y: 0, z };
+  if (!player.vel) player.vel = { x: 0, y: 0, z: 0 };
+  player.vel.x = 0;
+  player.vel.y = 0;
+  player.vel.z = 0;
+  player.angVel = 0;
+  const heading = Number.isFinite(entryPoint.heading) ? entryPoint.heading : (Number(player.rot) || 0);
+  player.rot = heading;
+  player.prevRot = heading;
+  player.flags = player.flags || {};
+  player.flags.noInterp = true;
+  return true;
+}
+
 // ---- global tuning constants (design 05 "GLOBAL TUNING CONSTANTS" + "Formulas") -------------
 const DEFAULT_WORLD_RADIUS = 4000;
 const BASE_FUEL = 4;            // fuel units per lightyear
@@ -1658,14 +1684,21 @@ export const world = {
   },
 
   _placePlayer(entryPoint) {
-    const state = this.state;
-    const player = state.entities.get(state.playerId);
-    if (!player) return; // world never spawns the player; main.js/ships own that
-    player.pos.x = entryPoint.x; player.pos.z = entryPoint.z; player.pos.y = 0;
-    player.prevPos.copy(player.pos);
-    player.vel.x = 0; player.vel.z = 0;
-    player.rot = entryPoint.heading || 0; player.prevRot = player.rot;
-    if (player.flags) player.flags.noInterp = true; // skip interpolation across the teleport
+    return applySameSectorPlayerRelocation(this.state, entryPoint);
+  },
+
+  /** Public same-sector relocation seam for authored incidents; never changes sector membership. */
+  relocatePlayerInSector(entryPoint, { reason = 'system' } = {}) {
+    const moved = applySameSectorPlayerRelocation(this.state, entryPoint);
+    if (moved && this.bus) {
+      this.bus.emit('world:playerRelocated', {
+        sectorId: this.state.world && this.state.world.currentSectorId || null,
+        pos: { x: entryPoint.x, z: entryPoint.z },
+        reason,
+        tick: this.state.tick | 0,
+      });
+    }
+    return moved;
   },
 
   // Map-space bearing from one sector node to another (their static map positions), + jitter.

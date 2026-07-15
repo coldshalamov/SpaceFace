@@ -2,18 +2,19 @@
   "schemaVersion": 1,
   "promotions": {
     "place_station_trade_hub": {
-      "concept_sha256": "1203fc66395b42cf6e24629d587ef6d6cb35464bc8406c2d83b8e2301561b9e3",
-      "glb_sha256": "00ac855c87afa98b20a1827414ad05c8ead5f646e5eab21020c386255bb82439",
-      "blend_mtime": 1783201479207.8557,
-      "silhouette_iou": 0.4539,
+      "concept_sha256": "14d1ac9dc976ab2875af668c96c1bdfccb43ec39cd0f1be690c928a59515b892",
+      "glb_sha256": "1d62a98de199db09dc9851a31213f4018ce10e8a877467353cb2e5a1fc5571ce",
+      "blend_mtime": 1783731044591.5571,
+      "silhouette_iou": 0.402704,
       "align": {
         "dx": 6,
         "dy": -6,
         "flip": false
       },
-      "promoted_at": "2026-07-09T16:47:29.376Z",
+      "promoted_at": "2026-07-11T00:59:13.009Z",
       "min_iou_gate": 0.12,
-      "note": "re-promoted after TOP50 wonder campaign 2026-07-09 (geometry densify)"
+      "note": "asset-transaction-repair hooks+reexport",
+      "updated": "2026-07-11T03:18:18.522Z"
     },
     "place_station_refinery": {
       "concept_sha256": "53f31286e35a7f0e76c120169938713d560be1c1c807798ea017e7647d2b9d56",
@@ -55,18 +56,19 @@
       "min_iou_gate": 0.12
     },
     "place_gate_jump_ring": {
-      "concept_sha256": "3b67303a9b25883615ca8712f9fda9b7dfe4d75b13611b008528f2a5cfcb85f1",
-      "glb_sha256": "16c570791e2dbe30f530896a8f21f63be52fd6ab9bde21eca969f5e3204c0a28",
-      "blend_mtime": 1783203371291.3333,
-      "silhouette_iou": 0.2322,
+      "concept_sha256": "1203fc66395b42cf6e24629d587ef6d6cb35464bc8406c2d83b8e2301561b9e3",
+      "glb_sha256": "e2d5103fc309da17598988a154091d0070274744ae70bd6adf7bd30727dcfcc1",
+      "blend_mtime": 1783731486023.2925,
+      "silhouette_iou": 0.32556,
       "align": {
-        "dx": -6,
-        "dy": -5,
-        "flip": false
+        "dx": 6,
+        "dy": -6,
+        "flip": true
       },
-      "promoted_at": "2026-07-09T19:50:43.223Z",
+      "promoted_at": "2026-07-11T01:24:00.000Z",
       "min_iou_gate": 0.12,
-      "note": "re-promoted TOP50 wonder campaign 2026-07-09"
+      "note": "asset-transaction-repair hooks+reexport",
+      "updated": "2026-07-11T03:18:18.734Z"
     }
   }
 }

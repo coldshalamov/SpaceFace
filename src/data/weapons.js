@@ -41,10 +41,26 @@ export const WEAPONS = [
     heatPerShot: 14, heatMax: 100, heatDissip: 28, armorPierce: 0.5,
   },
   {
+    id: 'unique_ironsong_ac', baseId: 'wpn_autocannon_m', name: 'Ironsong AC', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 0,
+    dmg: 16.2, rof: 4.8, dps: 77.76, damageType: 'kinetic', energyCost: 2,
+    projSpeed: 400, range: 560, tracking: 'fixed', spreadDeg: 1.0,
+    heatPerShot: 14, heatMax: 100, heatDissip: 28, armorPierce: 0.5,
+    purchasable: false, unique: true, salvageOnly: true,
+    variantBonuses: { rateOfFirePct: 0.20, damagePct: -0.10, spreadDeg: 1.0 },
+  },
+  {
     id: 'wpn_beam_laser_m', name: 'Beam Laser M', slotType: 'weapon', size: 'M', tier: 3, mass: 7, price: 22000, requiresTech: 'tech_beam_focusing',
     dmg: 60, rof: 0, dps: 60, damageType: 'energy', energyCost: 14,
     projSpeed: Infinity, range: 520, tracking: 'hitscan',
     continuous: true, heatPerSec: 55, heatMax: 100, heatDissip: 22,
+  },
+  {
+    id: 'unique_veil_cutter', baseId: 'wpn_beam_laser_m', name: 'Veil-Cutter', slotType: 'weapon', size: 'M', tier: 3, mass: 7, price: 0,
+    dmg: 60, rof: 0, dps: 60, damageType: 'energy', energyCost: 14,
+    projSpeed: Infinity, range: 598, tracking: 'hitscan', spreadDeg: 0.3,
+    continuous: true, heatPerSec: 66, heatMax: 100, heatDissip: 22,
+    purchasable: false, unique: true, salvageOnly: true,
+    variantBonuses: { rangePct: 0.15, spreadDeg: 0.3, heatPerSecPct: 0.20 },
   },
   {
     id: 'wpn_railgun_m', name: 'Railgun M', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 21000, requiresTech: 'tech_kinetic_drivers',
@@ -62,6 +78,14 @@ export const WEAPONS = [
     projSpeed: 320, projSpeedMin: 180, range: 900, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
     ammo: 'cmdty_munitions',
   },
+  {
+    id: 'unique_nestbreaker_rack', baseId: 'wpn_missile_rack_m', name: 'Nestbreaker Rack', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 0,
+    dmg: 49, splashDmg: 24.5, splashRadius: 40, rof: 0.8, dps: 78.4, damageType: 'explosive', energyCost: 4,
+    projSpeed: 320, projSpeedMin: 180, range: 900, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
+    ammo: 'cmdty_munitions', splitCount: 2, submunitions: { count: 2, damageMult: 0.70 },
+    purchasable: false, unique: true, salvageOnly: true,
+    variantBonuses: { submunitionCount: 2, perMissileDamagePct: -0.30 },
+  },
 
   // --- LARGE (L slot) ---
   {
@@ -69,6 +93,14 @@ export const WEAPONS = [
     dmg: 160, rof: 0, dps: 160, damageType: 'energy', energyCost: 22,
     projSpeed: Infinity, range: 900, tracking: 'hitscan',
     continuous: true, heatPerSec: 50, heatMax: 100, heatDissip: 20,
+  },
+  {
+    id: 'unique_lighthouse_heavy_beam', baseId: 'wpn_heavy_beam_l', name: 'Lighthouse Heavy Beam', slotType: 'weapon', size: 'L', tier: 4, mass: 16, price: 0,
+    dmg: 200, rof: 0, dps: 200, damageType: 'energy', energyCost: 22,
+    projSpeed: Infinity, range: 1035, tracking: 'hitscan',
+    continuous: true, heatPerSec: 67.5, heatMax: 100, heatDissip: 20,
+    purchasable: false, unique: true, salvageOnly: true,
+    variantBonuses: { damagePct: 0.25, rangePct: 0.15, heatPerSecPct: 0.35 },
   },
   {
     id: 'wpn_torpedo_l', name: 'Torpedo L', slotType: 'weapon', size: 'L', tier: 4, mass: 24, price: 60000, requiresTech: 'tech_capital_weapons',

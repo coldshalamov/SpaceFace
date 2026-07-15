@@ -66,7 +66,7 @@ assert.match(rec.reason, /Risk 0/);
 rec = recommendMissionBoardOffer([
   mission({ id: 'early_risk2', type: 'bounty_hunt', title: 'Early Risk 2', reward_cr: 5200, riskTier: 2, params: {} }),
   mission({ id: 'early_safe', title: 'Early Safe', reward_cr: 650, riskTier: 1 }),
-], state({ onboarding: { active: true, finished: false, done: {} } }));
+], state({ onboarding: { active: true, finished: false, beatDoneAt: {} } }));
 assert.equal(rec.missionId, 'early_safe',
   'first-loop recommendation should prefer Risk 0-1 work before elevated combat is taught');
 assert.equal(rec.disabled, false);
@@ -74,7 +74,7 @@ assert.doesNotMatch(rec.reason, /Risk 2/);
 
 rec = recommendMissionBoardOffer([
   mission({ id: 'only_risk2', type: 'bounty_hunt', title: 'Only Risk 2', reward_cr: 5200, riskTier: 2, params: {} }),
-], state({ onboarding: { active: true, finished: false, done: {} } }));
+], state({ onboarding: { active: true, finished: false, beatDoneAt: {} } }));
 assert.equal(rec.missionId, 'only_risk2',
   'first-loop recommendation should still surface the best available prep target');
 assert.equal(rec.disabled, true,

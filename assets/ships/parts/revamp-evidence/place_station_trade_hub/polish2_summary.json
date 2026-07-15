@@ -1,0 +1,23 @@
+{
+  "part_id": "place_station_trade_hub",
+  "pass": "polish2",
+  "date": "2026-07-10",
+  "tris": 6244,
+  "mesh_count": 229,
+  "extents": [
+    32.22,
+    29.43,
+    17.88
+  ],
+  "blend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/blender\\place_station_trade_hub_authored.blend",
+  "renders": [
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_station_trade_hub\\renders\\2026-07-10_place_station_trade_hub_polish2_clay_34_full.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_station_trade_hub\\renders\\2026-07-10_place_station_trade_hub_polish2_clay_front.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_station_trade_hub\\renders\\2026-07-10_place_station_trade_hub_polish2_clay_side.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_station_trade_hub\\renders\\2026-07-10_place_station_trade_hub_polish2_lit_34_full.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_station_trade_hub\\renders\\2026-07-10_place_station_trade_hub_polish2_lit_close_detail.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_station_trade_hub\\renders\\2026-07-10_place_station_trade_hub_final_lit_34_full.png"
+  ],
+  "export": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_station_trade_hub\\_export_tmp.glb",
+  "export_ok": true
+}

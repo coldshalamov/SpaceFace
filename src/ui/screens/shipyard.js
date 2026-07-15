@@ -563,7 +563,18 @@ export function createShipyardPanel(ctx) {
   function selectHull(defId, options = {}) {
     selectedDefId = defId;
     ensureStage();
-    stage.setShip(defId);
+    // Your active hull uses live fittings + hero mesh so the pad matches the ship you fly;
+    // catalog hulls use stock demo loadouts.
+    const p = ctx.state && ctx.state.player || {};
+    const activeOwned = (p.ownedShips || [])[p.activeShipIndex || 0];
+    const isActiveOwned = !!(activeOwned && activeOwned.defId === defId);
+    stage.setShip(defId, isActiveOwned
+      ? {
+        fittings: activeOwned.fittings || [],
+        weapons: activeOwned.weapons || null,
+        isPlayer: true,
+      }
+      : {});
     renderIdentity();
     renderRequirements();
     renderComparePanel(cmpPanel, ctx.state.player, selectedDefId);
@@ -774,10 +785,10 @@ export function createShipyardPanel(ctx) {
     // Ownership-honest label: your active hull reads as YOURS; catalog hulls read as stock previews.
     const activeOwned = (p.ownedShips || [])[p.activeShipIndex || 0];
     const isYourActiveHull = !!(activeOwned && activeOwned.defId === selectedDefId);
-    stage.setLabel('<span class="mono">T' + def.tier + '</span> · ' + escapeHtml(def.name) +
+    stage.setLabel('<span class="mono">T' + def.tier + '</span> · SHIP · ' + escapeHtml(def.name) +
       (isYourActiveHull
-        ? ' <span class="st-sy-stock-tag">your active hull</span>'
-        : ' <span class="st-sy-stock-tag">stock preview</span>'));
+        ? ' <span class="st-sy-stock-tag">your ship</span>'
+        : ' <span class="st-sy-stock-tag">for sale · full ship</span>'));
   }
 
   // ---- event listeners ----

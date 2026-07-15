@@ -4,6 +4,7 @@ export function applyPendingSubsystemTransitions(context, entity, runtime) {
   const { state, catalog, attachments } = context;
   const tick = state.tick >>> 0;
   let changed = false;
+  let transitionAttackerId = null;
   for (const subsystemId of Object.keys(runtime.subsystems || {}).sort()) {
     const subsystem = runtime.subsystems[subsystemId];
     const pending = subsystem.pendingTransition;
@@ -12,6 +13,7 @@ export function applyPendingSubsystemTransitions(context, entity, runtime) {
     if (subsystem.destroyed !== !!pending.destroyed) {
       subsystem.destroyed = !!pending.destroyed;
       changed = true;
+      if (pending.destroyed && pending.attackerId != null) transitionAttackerId = pending.attackerId;
       appendCombatTrace(state.combat, tick, subsystem.destroyed ? 'subsystem.destroyed' : 'subsystem.repaired', {
         targetId: entity.id,
         subsystemId,
@@ -20,7 +22,11 @@ export function applyPendingSubsystemTransitions(context, entity, runtime) {
       });
     }
   }
-  if (changed) recomputeCombatantModifiers(context, entity, runtime, attachments);
+  if (changed) {
+    runtime.transitionAttackerId = transitionAttackerId;
+    recomputeCombatantModifiers(context, entity, runtime, attachments);
+    delete runtime.transitionAttackerId;
+  }
   else recomputeCombatantModifiers(context, entity, runtime, attachments, false);
   return changed;
 }
@@ -64,6 +70,9 @@ export function recomputeCombatantModifiers(context, entity, runtime, attachment
       });
       if (context.bus) {
         context.bus.emit(subsystem.effectiveDisabled ? 'combat:subsystemDisabled' : 'combat:subsystemEnabled', {
+          attackerId: subsystem.effectiveDisabled && runtime.transitionAttackerId != null
+            ? runtime.transitionAttackerId
+            : null,
           targetId: entity.id,
           subsystemId: id,
           dependencyDisabled: !subsystem.destroyed && subsystem.effectiveDisabled,
@@ -109,7 +118,7 @@ export function damageSubsystem(context, entity, runtime, subsystemId, incomingD
   const overflow = Math.max(0, incomingDamage - rawConsumed);
 
   if (before > 0 && subsystem.health <= 0) {
-    scheduleSubsystemTransition(subsystem, state.tick + 1, true, 'health_zero');
+    scheduleSubsystemTransition(subsystem, state.tick + 1, true, 'health_zero', context.currentAttackerId);
   }
   appendCombatTrace(state.combat, state.tick, 'subsystem.damage', {
     attackerId: context.currentAttackerId == null ? null : context.currentAttackerId,
@@ -154,8 +163,13 @@ export function actionBlockedByCombatant(runtime, actionDef) {
   return null;
 }
 
-export function scheduleSubsystemTransition(subsystem, atTick, destroyed, reason) {
-  const next = { atTick: Math.max(0, Math.floor(atTick)), destroyed: !!destroyed, reason: reason || null };
+export function scheduleSubsystemTransition(subsystem, atTick, destroyed, reason, attackerId = null) {
+  const next = {
+    atTick: Math.max(0, Math.floor(atTick)),
+    destroyed: !!destroyed,
+    reason: reason || null,
+    attackerId: attackerId == null ? null : attackerId,
+  };
   const current = subsystem.pendingTransition;
   if (!current || next.atTick < current.atTick || (next.atTick === current.atTick && next.destroyed)) subsystem.pendingTransition = next;
 }

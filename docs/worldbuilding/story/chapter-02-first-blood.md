@@ -76,6 +76,14 @@ What Elroy was carrying was the only evidence that the Pit's air was being kille
 
 The player, at B2, knows only that they collected a bounty. The system is satisfied. The graffiti is the only voice that insists otherwise.
 
+## THE PROCEDURE (competent work, the one detail wrong)
+
+The bounty was filed clean. The board posted the tag. The HUD resolved HOSTILE. The player closed to range, dropped shields, breached hull, collected the tag, docked, got paid. Every step was correct. Every step was the step the manual teaches. The player followed the manual. The manual is the procedure Concord wrote for exactly this work. The player did not invent a single step. The player executed the procedure as written.
+
+The procedure has a provision for what the target is carrying. The provision is: do not check. The IFF resolves HOSTILE. The manifest is not the pilot's department. The cargo is not the pilot's department. What the target is carrying is, per the procedure, a field the pilot declines to read because reading it is not in the pilot's job. The pilot's job is the tag. The pilot completed the job. The pilot completed the job by following, exactly, a procedure whose authors understood that the only way to get a pilot to kill a man carrying evidence is to write the evidence out of the pilot's field of view.
+
+This is the competent-incompetence the whole sector runs on. Elroy filed a report. Rook re-tagged it. The board posted it. The HUD resolved it. The player killed it. The kill feed filed it. The payment cleared it. Six steps. Six steps, each one correct, each one the step the prior step authorized, and the man who noticed the air was being killed is dead because the procedure worked. Not because it failed. The procedure worked the way the procedure was written to work, and the way the procedure was written to work produces a dead witness every time someone files a report about the air. The procedure does not know Elroy's name. The procedure knows the tag. The tag said HOSTILE. The pilot said HOSTILE. The kill feed said BOUNTY COLLECTED. The procedure is satisfied. The procedure has been satisfied every time. The air keeps getting worse. The two facts are filed under the same code, and the code is the procedure, and the procedure is correct.
+
 ## WREN (the cornered register, if pressed)
 
 Wren does not speak at B2. Wren's working register is silence. The HUD updates; Wren does not comment. This is the same focus learned in the maintenance shaft on the Vethari ship, where sound meant detection and detection meant the shared field.

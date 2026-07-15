@@ -1,6 +1,8 @@
 // Compact scanner investigation card. Simulation owns detection, classification, tracking and
 // durable receipts; this presenter only renders public signal events and emits `signal:track`.
 
+import { isUiInteractionFenced } from './input.js';
+
 const STYLE_ID = 'sf-signal-investigation-style';
 const RESULT_TTL_S = 8;
 const RECEIPT_TTL_S = 4;
@@ -130,7 +132,7 @@ export function createSignalInvestigationPrompt(ctx) {
   }
 
   function track(source = 'click') {
-    if (!active || active.mode !== 'result' || !active.signalId) return false;
+    if (isUiInteractionFenced(state) || !active || active.mode !== 'result' || !active.signalId) return false;
     const signalId = active.signalId;
     el.track.disabled = true;
     bus.emit('signal:track', { signalId, source });
@@ -138,7 +140,7 @@ export function createSignalInvestigationPrompt(ctx) {
   }
 
   function tick() {
-    if (destroyed || !active) return;
+    if (destroyed || !active || isUiInteractionFenced(state)) return;
     if (!canSurface()) { hide(); return; }
     if (Number(state.simTime || 0) >= active.hideAt) { hide(); return; }
     if (active.mode !== 'result') return;
@@ -152,7 +154,10 @@ export function createSignalInvestigationPrompt(ctx) {
     root.remove();
   }
 
-  function onTrackClick() { track('click'); }
+  function onTrackClick() {
+    if (isUiInteractionFenced(state)) return;
+    track('click');
+  }
   el.track.addEventListener('click', onTrackClick);
   bus.on('signal:scanResults', showResults);
   bus.on('signal:tracked', showTracked);

@@ -19,6 +19,8 @@ product status. For the current whole-program position, start at
 | Work on narrative or setting | [`worldbuilding/`](./worldbuilding/) and [`worldbuilding/sheets/README.md`](./worldbuilding/sheets/README.md) |
 | Review earlier integration evidence | [`handoffs/`](./handoffs/) (historical evidence, not current status) |
 | Decide whether a generated folder/file belongs in Git | [`ARTIFACT_RETENTION.md`](./ARTIFACT_RETENTION.md) |
+| Understand which files can direct an agent | [`POLICY_MANIFEST.md`](./POLICY_MANIFEST.md) |
+| Search without ingesting snapshots and transcripts | [`SEARCH_CONTEXT.md`](./SEARCH_CONTEXT.md) |
 
 ## Documentation classes
 

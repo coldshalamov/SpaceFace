@@ -1,0 +1,16 @@
+node:internal/fs/promises:640
+  return new FileHandle(await PromisePrototypeThen(
+                        ^
+
+Error: UNKNOWN: unknown error, open 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v8\evidence\renders\helios_hub_station_three_close.png'
+    at async open (node:internal/fs/promises:640:25)
+    at async Object.writeFile (node:internal/fs/promises:1257:14)
+    at async _Page.screenshot (C:\Users\93rob\Documents\GitHub\SpaceFace\node_modules\playwright-core\lib\coreBundle.js:60157:11)
+    at async file:///C:/Users/93rob/Documents/GitHub/SpaceFace/tools/art/_capture_v8_three_repair.mjs:155:7 {
+  errno: -4094,
+  code: 'UNKNOWN',
+  syscall: 'open',
+  path: 'C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_helios_hub_v8\\evidence\\renders\\helios_hub_station_three_close.png'
+}
+
+Node.js v24.15.0

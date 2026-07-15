@@ -1,7 +1,9 @@
 # Full Graphics Revamp — Coverage and Outcome Bar
 
 > **ACTIVE COVERAGE AUTHORITY.** This file defines the visual surfaces that must ultimately receive a
-> professional player-facing result and the evidence needed to accept them. `TOP50_WONDER_BUILD_PLAN.md`
+> professional player-facing result and the evidence needed to accept them. It does not activate all
+> surfaces as one task, impose the A–E lane topology on ordinary work, or override current program
+> pickup; a bounded slice must be explicitly selected. `TOP50_WONDER_BUILD_PLAN.md`
 > owns priority/order. `README.md` owns this folder's authority map and quality doctrine. Whole-program
 > status lives in `design/program/`.
 

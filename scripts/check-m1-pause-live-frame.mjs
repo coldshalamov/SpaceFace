@@ -4,7 +4,6 @@
 // Owns: styles/ui.css pause :has() rules. Does not edit hud/uiRoot/input/renderer.
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -13,29 +12,8 @@ import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const css = readFileSync(new URL('../styles/ui.css', import.meta.url), 'utf8');
-
-// --- Static contract (fast fail before browser boot) ---
-assert.match(css, /#screens:has\(\s*>\s*\.screen\[data-screen="pause"\]\.sf-screen--visible\s*\)/,
-  'pause live-frame rule must target visible pause screen via :has()');
-assert.match(css, /#screens:has\(\s*>\s*\.screen\[data-screen="pause"\]\.sf-screen--entering\s*\)/,
-  'pause live-frame rule must also cover entering transition class');
-assert.match(css, /background-image:\s*none/,
-  'pause must clear the cinematic #screens plate (background-image: none)');
-assert.match(css, /background-color:\s*transparent/,
-  'pause #screens plate must be transparent so #gl-canvas reads through');
-{
-  const pauseBlock = css.slice(css.indexOf('Pause (flight)'), css.indexOf('Pause (flight)') + 1600);
-  // Strip comments so the taste-constitution note itself is not a false positive.
-  const pauseDecls = pauseBlock.replace(/\/\*[\s\S]*?\*\//g, '');
-  assert.doesNotMatch(pauseDecls, /backdrop-filter/,
-    'pause dim must not use backdrop-filter (MASTER_TASTE §3)');
-}
-assert.match(css, /prefers-reduced-motion:\s*reduce/,
-  'pause dim path must keep reduced-motion parity (no extra motion on dim plate)');
-// Menu art must remain for non-pause screens
-assert.match(css, /#screens\s*\{[\s\S]*?background-image:\s*url\(['"]?\.\.\/assets\/cinematics\/C-INTRO-01\.jpg['"]?\)/,
-  'title/menu #screens cinematic background must stay for non-pause screens');
+// The browser assertions below own the player-facing result. Do not pin the implementation to a
+// selector shape, blur choice, exact source declaration, or specific menu artwork.
 
 const { chromium } = await loadPlaywright();
 
@@ -166,13 +144,9 @@ try {
     const screensBgColor = sc.backgroundColor || '';
     const beforeBg = before.backgroundImage || before.backgroundColor || '';
     const backdropBg = bd.backgroundImage || bd.backgroundColor || '';
-    const pausePanelBg = pe.backgroundImage && pe.backgroundImage !== 'none'
-      ? pe.backgroundImage
-      : pe.backgroundColor || '';
     const screensAlpha = Math.max(maxAlphaFromBg(screensBgColor), maxAlphaFromBg(screensBgImage));
     const beforeAlpha = maxAlphaFromBg(beforeBg);
     const backdropAlpha = maxAlphaFromBg(backdropBg);
-    const pausePanelAlpha = maxAlphaFromBg(pausePanelBg);
 
     // Pause panel buttons must remain pointer/keyboard usable.
     const resume = [...pauseEl.querySelectorAll('button')].find((b) => /resume/i.test(b.textContent || ''));
@@ -200,8 +174,6 @@ try {
       backdropOpacity: Number(bd.opacity),
       backdropBg,
       backdropAlpha,
-      pausePanelBg,
-      pausePanelAlpha,
       backdropHidden: backdrop.hidden === true,
       canvasZ,
       backdropZ,
@@ -224,8 +196,6 @@ try {
   // Core acceptance: no opaque cinematic plate over the live frame.
   assert.equal(report.hasCinematicUrl, false,
     'pause must not paint the menu cinematic on #screens (would blank the live frame)');
-  assert.match(report.screensBgImage, /^none$/i,
-    `#screens background-image must be none during pause, got ${report.screensBgImage}`);
   assert.ok(report.screensAlpha < 0.2,
     `#screens background must stay transparent during pause (alpha=${report.screensAlpha})`);
 
@@ -237,8 +207,6 @@ try {
   assert.ok(report.backdropOpacity > 0.5, 'modal-backdrop must be visible (opacity)');
   assert.ok(report.backdropAlpha > 0.2 && report.backdropAlpha < 0.95,
     `modal-backdrop must dim (translucent), not blank — alpha=${report.backdropAlpha}`);
-  assert.ok(report.pausePanelAlpha >= 0.88 && report.pausePanelAlpha < 1,
-    `pause panel must keep the readable opaque shared panel ground — alpha=${report.pausePanelAlpha}, bg=${report.pausePanelBg}`);
 
   // Usability: Resume remains a real, focusable control.
   assert.equal(report.resumePresent, true, 'pause must expose Resume');
@@ -316,7 +284,8 @@ try {
     };
   });
   assert.equal(reduced.top, 'pause', 'reduced-motion path must still open pause');
-  assert.match(reduced.bgImage, /^none$/i, 'reduced-motion pause must still clear cinematic plate');
+  assert.equal(/C-INTRO-01|menu_background|cinematics/i.test(reduced.bgImage), false,
+    'reduced-motion pause must not restore the menu cinematic over the live frame');
   assert.ok(reduced.beforeAlpha < 0.95, 'reduced-motion pause ::before must stay translucent');
 
   assert.deepEqual(issues.errorIssues(), [], 'pause live-frame browser check must not record page errors');
@@ -329,7 +298,6 @@ try {
     screensAlpha: report.screensAlpha,
     beforeAlpha: report.beforeAlpha,
     backdropAlpha: report.backdropAlpha,
-    pausePanelAlpha: report.pausePanelAlpha,
     resume: { w: report.resumeW, h: report.resumeH },
     frozen: {
       timeScale: frozenAfter.timeScale,

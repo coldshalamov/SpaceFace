@@ -32,12 +32,20 @@ import {
 import { describeSpecializationAction } from '../src/ui/screens/base.js';
 import {
   buildLocalModel,
+  buildSystemModel,
+  claimInspectorHtml,
   describeClaimMapMarker,
   emitGalaxyMapPrimaryAction,
   galaxyMapScreen,
+  mapSearchItemHtml,
   resolveCourseTarget,
   resolveGalaxyMapPrimaryAction,
+  setMapCanvasAriaLabel,
 } from '../src/ui/galaxyMap.js';
+import {
+  globalToSectorLocalForSector,
+  sectorLocalToGlobalForSector,
+} from '../src/data/sectorCoordinates.js';
 import { MAP_FOCUS, openGalaxyMap, peekMapOpenIntent } from '../src/ui/mapAuthority.js';
 import { automation } from '../src/systems/automation.js';
 import { OUTPOSTS } from '../src/data/automation.js';
@@ -920,9 +928,11 @@ test('local-map ownership markers make all three jobs distinct and actionable', 
 
 test('normal LOCAL map route exposes owned bases and pointer course-setting emits autopilot intent', () => {
   const h = boot({ seed: 72 });
+  const localPoiPos = { x: 122, z: -38 };
+  const globalPoiPos = sectorLocalToGlobalForSector(localPoiPos, FRONTIER);
   const poiEntity = {
     id: 'e_poi_map', alive: true, type: 'poi',
-    pos: { x: 122, z: -38 },
+    pos: globalPoiPos,
     data: { poi: true, claimable: true, poiId: 'poi_claim_pallas', name: 'Pallas Industrial Moon' },
   };
   h.state.entityList.push(poiEntity);
@@ -943,6 +953,12 @@ test('normal LOCAL map route exposes owned bases and pointer course-setting emit
   assert.ok(marker, 'commissioned base is present on the authoritative LOCAL model');
   assert.equal(marker.role, 'REFINERY');
   assert.match(marker.statusLine, /ore/i);
+  assert.deepEqual(globalToSectorLocalForSector(marker, FRONTIER), localPoiPos,
+    'Io Reach ownership marker preserves its nonzero galactic origin');
+  const systemMarker = buildSystemModel(h.state, FRONTIER, { claimsSystem: h.sys })
+    .ownership.find((entry) => entry.claimId === body.id);
+  assert.deepEqual(systemMarker.drawPos, localPoiPos,
+    'SYSTEM map converts the live global claim position back to authored sector-local coordinates');
 
   const pointerTarget = {
     ...marker,
@@ -1075,6 +1091,98 @@ test('Enter and Space activate a selected claim without stealing text-entry keys
     galaxyMapScreen._ctx = old.ctx;
     galaxyMapScreen._selectedTarget = old.selectedTarget;
   }
+});
+
+test('search selection hands keyboard focus to the claim primary action', () => {
+  const h = boot({ seed: 74 });
+  const target = {
+    id: 'player-claim:claim_search', claimId: 'claim_search', kind: 'claim', role: 'RELAY',
+    name: 'RELAY · Search Claim',
+    ...sectorLocalToGlobalForSector({ x: 300, z: 180 }, FRONTIER),
+    targetEntityId: 'entity_search_claim',
+  };
+  const old = {
+    ctx: galaxyMapScreen._ctx,
+    selectedTarget: galaxyMapScreen._selectedTarget,
+    button: galaxyMapScreen._setCourseButton,
+    canvas: galaxyMapScreen._canvas,
+    dpr: galaxyMapScreen._dpr,
+    visible: galaxyMapScreen._visible,
+    zoom: galaxyMapScreen._zoom,
+    targetZoom: galaxyMapScreen._targetZoom,
+  };
+  const bus = makeBus();
+  let focusCount = 0;
+  let popped = 0;
+  try {
+    galaxyMapScreen._ctx = {
+      state: h.state,
+      bus,
+      screenManager: { popScreen: () => { popped += 1; } },
+    };
+    galaxyMapScreen._canvas = { width: 1440, height: 900 };
+    galaxyMapScreen._dpr = 1;
+    galaxyMapScreen._visible = false;
+    galaxyMapScreen._setCourseButton = { focus: () => { focusCount += 1; } };
+    galaxyMapScreen._selectSearchTarget(target);
+    assert.equal(galaxyMapScreen._selectedTarget, target);
+    assert.equal(focusCount, 1, 'result Enter leaves search and focuses the primary action');
+    galaxyMapScreen._activateSelectedCourse();
+    const course = bus.emitLog.find((entry) => entry.evt === 'ui:setCourse');
+    assert.ok(course, 'focused primary action follows the normal ui:setCourse path');
+    assert.equal(course.payload.targetEntityId, target.targetEntityId);
+    assert.equal(popped, 1);
+  } finally {
+    galaxyMapScreen._ctx = old.ctx;
+    galaxyMapScreen._selectedTarget = old.selectedTarget;
+    galaxyMapScreen._setCourseButton = old.button;
+    galaxyMapScreen._canvas = old.canvas;
+    galaxyMapScreen._dpr = old.dpr;
+    galaxyMapScreen._visible = old.visible;
+    galaxyMapScreen._zoom = old.zoom;
+    galaxyMapScreen._targetZoom = old.targetZoom;
+  }
+});
+
+test('imported claim text is escaped in search and inspector markup', () => {
+  const hostile = '<img src=x onerror="globalThis.__claimInjected=1">';
+  const target = {
+    kind: 'claim',
+    name: `REFINERY · ${hostile}`,
+    detail: `Owned base · ${hostile}`,
+    role: hostile,
+    status: hostile,
+    statusLine: hostile,
+    playerVerb: hostile,
+    consequence: hostile,
+    riskLine: hostile,
+    color: '#ffb35c',
+  };
+  const search = mapSearchItemHtml(target, 0);
+  const inspector = claimInspectorHtml(target);
+  for (const markup of [search, inspector]) {
+    assert.equal(markup.includes('<img'), false, 'hostile markup never reaches innerHTML as an element');
+    assert.match(markup, /&lt;img/);
+    assert.match(markup, /&quot;globalThis\.__claimInjected=1&quot;/);
+  }
+});
+
+test('canvas accessible label follows LOCAL and SYSTEM back to GALAXY', () => {
+  const canvas = {
+    label: '',
+    setAttribute(name, value) {
+      assert.equal(name, 'aria-label');
+      this.label = value;
+    },
+  };
+  const ownership = [{ name: 'REFINERY · Safe Claim', statusLine: '4/12u ore' }];
+  assert.match(setMapCanvasAriaLabel(canvas, 'local', ownership), /^Local navigation map\./);
+  assert.match(canvas.label, /REFINERY · Safe Claim/);
+  assert.equal(setMapCanvasAriaLabel(canvas, 'galaxy'), 'Galaxy navigation map.');
+  assert.equal(canvas.label, 'Galaxy navigation map.');
+  assert.match(setMapCanvasAriaLabel(canvas, 'system', ownership), /^System navigation map\./);
+  assert.equal(setMapCanvasAriaLabel(canvas, 'galaxy'), 'Galaxy navigation map.');
+  assert.equal(canvas.label, 'Galaxy navigation map.');
 });
 
 test('git diff --check is clean for the feature paths', () => {

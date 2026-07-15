@@ -1,6 +1,6 @@
 // Guards the first dock handoff rail.
 // The rail is non-blocking UI, but it must keep the opening station loop explicit:
-// sell cargo (Hold), take one safe job (Missions), then fix launch risks / undock.
+// sell cargo (Market → Selling), take one safe job (Missions), then fix launch risks / undock.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -41,9 +41,12 @@ assert.ok(stationSource.includes('data-handoff-dismiss') || stationSource.includ
   'first dock handoff must be dismissible (single strip, not permanent chrome)');
 assert.match(stationSource, /target\.getAttribute\('data-handoff-tab'\)[\s\S]*this\.setTab\(tabId, \{ focusRail: true \}\)/,
   'handoff clicks must route through the same focus-aware station tab path as the rail');
-assert.ok(stationSource.includes("targetTab: hasCargo || marketDone ? 'hold' : 'market'")
-  || stationSource.includes("targetTab: 'hold'"),
-  'cargo handoff step should prefer Hold when the player has cargo to sell');
+assert.ok(
+  stationSource.includes("targetTab: hasCargo ? 'market' : 'hold'")
+    || stationSource.includes("tradeMode: hasCargo ? 'sell'"),
+  'cargo handoff step should open Market → Selling when the player has cargo to sell');
+assert.ok(stationSource.includes('data-handoff-trade-mode') || stationSource.includes('tradeMode'),
+  'sell handoff must pass tradeMode so Market opens in Selling filter');
 assert.match(stationSource, /ctx\.bus\.emit\('audio:cue', \{ id: 'ui_tab' \}\)/,
   'handoff clicks should use the existing tab audio cue');
 assert.match(stationSource, /function firstDockDepartureTarget\(chips\)/,
@@ -95,4 +98,4 @@ assert.ok(pkg.scripts.check.includes('npm run check:first-dock-handoff'),
 assert.ok(pkg.scripts['check:ci'].includes('npm run check:first-dock-handoff'),
   'npm run check:ci must include the first dock handoff guard');
 
-console.log('First dock handoff OK - station rail links Market, Missions, and Departure Check with current left-rail onboarding copy.');
+console.log('First dock handoff OK - station rail links Market→Selling, Missions, and Departure Check with current left-rail onboarding copy.');

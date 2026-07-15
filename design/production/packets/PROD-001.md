@@ -1,5 +1,7 @@
 # PACKET PROD-001 — Packet compiler + campaign-state manager
 
+> **Manual packet; exact activation required.** See `README.md`. Discovery does not activate it.
+
 packetId: PROD-001
 milestone: M0 Wave A
 status: REVISE — isolated candidate submitted but rejected by controller red-team; do not integrate

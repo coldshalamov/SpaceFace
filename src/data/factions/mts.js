@@ -4,7 +4,7 @@ export const faction = {
   homeSectors: ['sector_tethys_junction', 'sector_pallas_drift'],
   controls: ['trade-hub sectors', 'commodity exchanges', 'tolls'],
   fleetClass: 'syndicate',
-  relations: { faction_scn: 0.5, faction_dmc: -0.2, faction_reach: -0.35, faction_quiet: 0.0, faction_vael: 0.0, faction_free: 0.2, faction_choir: 0.0 },
+  relations: { faction_scn: 0.5, faction_dmc: -0.2, faction_reach: -0.35, faction_quiet: 0.0, faction_vael: 0.0, faction_free: 0.2, faction_choir: 0.0, faction_helix: 0.0, faction_understory: 0.0, faction_fulfillment: 0.0, faction_archive: 0.0, faction_pitborn: 0.0, faction_verge_layers: 0.0 },
   palette: { primary: '#F2B233' },
   shipRoles: [],
   illegalCommodities: [],

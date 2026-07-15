@@ -1,6 +1,12 @@
 # Goal Prompts — Copy Into Each Agent Thread
 
-Paste **one** prompt below as the opening message for a new Cursor/Grok thread. Do not combine threads. Do not edit the forbidden paths list.
+> **Manual prompt library — explicit activation required.** Paste a prompt only after a user/lead
+> selects a named sprint thread. The path lists coordinate simultaneous writers; they are not
+> repository-wide or permanent prohibitions. Adapt them when the designated integrator must cross a
+> seam for a coherent result, but never cross a live lock or overwrite another agent's work.
+
+Paste **one** prompt below as the opening message for a new Cursor/Grok thread. Keep concurrent
+threads separate; update the coordination paths if the live ownership plan changes.
 
 **Director:** replace `<SPRINT_BATCH>` and `<ASSET_IDS>` before paste.
 
@@ -74,7 +80,8 @@ For EACH asset ID:
 - Keep `deficiency.md` current; an iteration ledger is optional chronology, not an acceptance counter.
 - Export via spaceface_export.py / finalize_part.mjs — zero assertion failures.
 
-FORBIDDEN: src/render/**, src/data/**, parts_manifest.json, release/ manual edits, Thread B/C/D/E work, git checkout/reset/stash.
+CONCURRENT OWNERSHIP: while those threads are active, do not edit src/render/**, src/data/**,
+parts_manifest.json, release outputs, or Thread B/C/D/E work. Never use destructive git reset/stash/checkout.
 
 When batch complete: release blender.LOCK, write handoff YAML to design/graphics-sprints/handoffs/ per HANDOFF_TEMPLATE.md.
 
@@ -116,7 +123,8 @@ Per place ID:
   real game camera.
 - finalize_part.mjs + check:place-concept-resemblance when promoted.
 
-FORBIDDEN: kit parts (Thread A), wholeships (Thread E), partsLibrary.js, sectorAnchors.js, vfx.js, parts_manifest edits (integrator).
+CONCURRENT OWNERSHIP: while those threads are active, leave kit parts to A, wholeships to E, and
+partsLibrary.js, sectorAnchors.js, vfx.js, and manifest integration to the designated integrator.
 
 Handoff YAML must list thread_c_actions: PLACE_FILES + sectorAnchors entries needed.
 
@@ -157,7 +165,8 @@ node scripts/check-parts-manifest.mjs
 npm run check:station-archetype-wiring  (if places)
 npm run check:sector-geography         (if anchors)
 
-FORBIDDEN: assets/ships/parts/**, Blender MCP, vfx.js, test/*.expected.json, input.js, release build.
+CONCURRENT OWNERSHIP: do not enter active asset/Blender/VFX/input lanes. Never edit
+test/*.expected.json to manufacture a pass or hand-edit generated release output.
 
 Print a concise summary: files touched, checks output, and lifecycle per ID.
 ```
@@ -188,7 +197,8 @@ npm run check:visual-stability  (if visible change)
 
 If visual: save .devshots/thread-D/<sprint>/wide.png and close.png.
 
-FORBIDDEN: assets/**, Blender, partsLibrary.js, parts_manifest.json, test/*.expected.json, input.js.
+CONCURRENT OWNERSHIP: do not enter active asset/Blender/parts-library/manifest/input lanes. Never
+edit test/*.expected.json to manufacture a pass.
 
 No silent quality reduction. Math.random() only in vfx/render cosmetic paths.
 
@@ -224,7 +234,8 @@ treatment. The live exporter/checker—not this prompt—owns exact thresholds.
 Use `QUALITY_RITUAL.md` until the full ship passes independent visual review at the real player camera;
 capture representative neutral, lit, detail, and player-route evidence.
 
-FORBIDDEN: other kit parts, WHOLE_SHIP_FILE_BY_DEF_ID wiring (Thread C later), partsLibrary edits, claiming unblocked before check:assets:live passes.
+CONCURRENT OWNERSHIP: while A/C are active, leave their kit and runtime-wiring files untouched.
+Do not claim the asset route is ready before the live asset checks and player-route evidence pass.
 
 Handoff only when exporter + hull audit green. Integrator clears manifest blocked status.
 

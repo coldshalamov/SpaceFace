@@ -29,7 +29,8 @@
 export const SHIPS = [
   // ---------- T0 ----------
   {
-    // Display name "Hitch" — original IP (was Freelancer-adjacent "Kestrel"). id kept for saves.
+    // Player-facing name is ALWAYS "Hitch". Internal id ship_kestrel is legacy (saves/assets/CI);
+    // never surface "Kestrel" in UI copy — grep player strings for Hitch only.
     id: 'ship_kestrel', name: 'Hitch', role: 'starter', tier: 0,
     hull: 140, shield: 55, baseShieldRegen: 7, cargo: 40, mass: 18, handling: 1.05,
     bankFactor: 0.55,   // how aggressively the hull rolls into a turn (0..1.2) — lower = less pin-spin

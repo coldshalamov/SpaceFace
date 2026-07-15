@@ -10,7 +10,7 @@
 
 A **semi-3D top-down space game** for PC/browser. Fly a ship, mine asteroids, trade on a living economy, fight pirates, upgrade ships/modules, jump between sectors, take missions. Inspired by Freelancer, Endless Sky, Rebel Galaxy, the X series. Gritty space-western tone — **Firefly/Serenity** is the north star.
 
-**Tech:** Three.js (r0.160, vendored ES modules + importmap, esbuild bundle for release), DOM/CSS overlay UI, 100% procedural Web Audio, 60Hz fixed-timestep sim decoupled from rendering. Gameplay on the **XZ plane (y=0)**. Determinism via `state.rng` (NEVER `Math.random()` in sim).
+**Tech:** Three.js (r0.160, vendored ES modules + importmap, esbuild bundle for release), DOM/CSS overlay UI, a procedural Web Audio foundation with hybrid sources allowed, and a 60Hz fixed-timestep sim decoupled from rendering. Gameplay is on the **XZ plane (y=0)**. Determinism uses `state.rng` rather than ambient randomness in sim code.
 
 **The depth problem (your reason for existing):** the engine is over-built, but the *surface* is shallow. 13 ships sharing 10 hull meshes. 8 factions collapsing to 5 doctrines. 24 sectors dressing from the same ~13 prop meshes. 0 per-faction station skins. 0 signature landmarks at named zones. 0 unique-loot wrecks. The game feels repetitive not because systems are missing, but because **latent content isn't actualized**. Your plan fixes that.
 
@@ -61,7 +61,7 @@ Currently a flat array `FACTION_META` of 8+1 entries. Each: `{id, name, short, c
 **The Starsector `.faction` pattern to adopt (from `starsector.md`):** one file per faction carrying: `color`, `logo`, `portraits`, `shipNamePrefix`, `names`, `hullMods`, `illegalCommodities`, `music`, `ranks`, `custom` behavioral flags (`caresAboutAtrocities`, `allowsTransponderOffTrade`, `postsNoBounties`, `offersCommissions`), `shipRoles` (fleet composition weights), `doctrine` (officer counts/personalities), `traits` (captain personality mix). **No code change to add/retune a faction.**
 
 ### Palettes — `src/data/palettes.js`
-- `FACTION_PALETTES` — 6-field palette per faction: `{primary, secondary, accent, hull, emissive, thruster}`. Existing hexes occupy: blue, gold, orange, red, violet, green, cyan, magenta. New factions must use unclaimed hue regions (bone/ivory, acid-green, abyssal-indigo, bile-yellow, mercury-silver, rust, obsidian, etc.).
+- `FACTION_PALETTES` — 6-field palette per faction: `{primary, secondary, accent, hull, emissive, thruster}`. Existing colors are starting references; new factions earn their identity through the combined silhouette, material, marking, motion, sound, and context rather than an unclaimed-hue rule.
 - `PAINT_PROFILES` — keyed by `personality` (lawful/corporate/independent/blue_collar/pirate/smuggler/xenophobic) with `{grime, chrome, noseArt, killMarks, patches}`. **This is the soul of the art direction** — the "dirty outlaw vs clean authority" contrast, data-driven. The player's own ship (Free Frontier/independent) is the "haunted ex-gangster runner": heavy grime, bomber+punk hybrid nose-art, kill marks, repair patches.
 - `PLAYER_NOSE_ART` — `{motto: 'BORROWED TIME', mascot: 'ghost', sharkMouth: true, tally: 13}`. The Kestrel's canonical dark-humor graffiti.
 - `SECTOR_PALETTES` — environmental palettes per sector.
@@ -85,7 +85,7 @@ Currently a flat array `FACTION_META` of 8+1 entries. Each: `{id, name, short, c
 9 procedural backdrop types (terran/oceanic/gas_giant/arid/rocky/ice/lava/dead/scorched). Shader-driven (`PLANET_FRAG`), atmosphere shell (`ATMSHELL_FRAG`), reuses `uSunDir`/`uTime`/`uSeed` uniforms. **0 interactive planets** — backdrop only. The 40 planet-state concepts in `examples_EF_planets_props.md` add visible-from-orbit story anchors (cracked, burning, ringed-hazard, megastructure-wrapped) without landing (y=0 plane respected).
 
 ### Story/encounter — `src/systems/story.js`, `src/story/campaign47a/`, `src/systems/missions.js`, `src/data/encounters.js`
-8-beat spine (cold_start → deep_reach). Campaign-47a has 8 embodied missions with `physicalContact` steps binding world signals (`mining:yield`, `dock:docked`, `scan:completed`, `tether:reel`, `entity:killed`). 12 encounter archetypes. 10 mission archetypes (ALL single-stage). `embodiedDialogue.js` has `card()` (id/name/roleLabel/stationHint/blurb) + `line()` factories. **12-word blurb limit enforced.** 189 bark lines in 8 faction registers. `narrative.js` carries ~2,055 lines of prose (comms, graffiti, beats).
+The campaign spine and embodied missions bind story to world signals such as `mining:yield`, `dock:docked`, `scan:completed`, `tether:reel`, and `entity:killed`. `embodiedDialogue.js` has `card()` and `line()` factories. Treat current counts and prose limits as snapshot details to verify in the live code, not planning constraints.
 
 ---
 

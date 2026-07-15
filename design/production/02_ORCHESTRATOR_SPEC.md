@@ -1,5 +1,10 @@
 # 02 — Terminal-Agent Orchestrator Specification
 
+> **ACTIVATION SCOPE:** These leases, candidate states, dispatch rules, and role separations apply
+> only to an explicitly activated production campaign. They are not general repository authority.
+> In ordinary work, one agent may make the end-to-end code, asset-wiring, test, and documentation
+> changes needed for a coherent result, while respecting actual concurrent ownership signals.
+
 **Status:** DRAFT
 **Primary orchestrator:** Codex
 **High-volume asset executor:** Grok 4.5 with Blender MCP
@@ -10,7 +15,7 @@ Codex owns product synthesis, the coverage ledger, packet generation, resource s
 independent verification, acceptance/rejection, integration order, and continuation. It should not
 quietly take over implementation work assigned to terminal agents.
 
-The Alpha topology is numeric and non-negotiable:
+When this campaign controller is active, its writer topology is:
 
 - at most **one** active mutating code lease across Claude, Codex, Grok, OpenCode, or agy;
 - at most **one** active mutating Blender/asset lease;

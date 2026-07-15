@@ -78,6 +78,7 @@ export const BARKS = {
       'Every maneuver you make is being logged. All of it.',
       'You cannot outrun a filing.',
       'The fine accrues whether you comply or not.',
+      'Your transponder’s already filed as non-compliant. Catch up.',
     ],
     'patrol-greeting': [
       'Concord Patrol on station. Keep your transponder lit and pass.',
@@ -122,6 +123,7 @@ export const BARKS = {
       'Everything has a price. Even you. Especially you.',
       'You cannot afford this argument.',
       'The house always wins, and we are the house.',
+      'Your account moved to collections the moment you opened fire.',
     ],
     'patrol-greeting': [
       'Meridian escort. Rates are fair, mostly. Fly safe.',
@@ -165,7 +167,7 @@ export const BARKS = {
     taunt: [
       'You ever done an honest day’s work? Didn’t think so.',
       'Big talk from somebody who never dug a rock.',
-      'We been out here twenty cycles. You won’t last two.',
+      'Call it moisture loss when you’re gone. Fits the column.',
     ],
     'patrol-greeting': [
       'Drift rig, hauling. Mind the debris, friend.',
@@ -175,6 +177,10 @@ export const BARKS = {
   },
 
   // ── Reach — predatory but under-armed ──────────────────────────────────────
+  //  Idiolect = salvage math. Counting, weigh-slips, scrap-weight, the tally.
+  //  Vael has clause-numbers; Reach has the weigh. Predation fused with the
+  //  bureaucratic world the game is built on — not generic tough-guy ("we eat
+  //  ships," "nice flying, won't save you" = any pirate in any game).
   faction_reach: {
     scan: [
       'Crimson Reach. We been watching your heat signature for a while, friend.',
@@ -208,8 +214,9 @@ export const BARKS = {
     ],
     taunt: [
       'You’re already dead, you just haven’t filed it yet.',
-      'Nice flying. Won’t save you.',
-      'We eat ships like yours for the scrap.',
+      'Forty tonnes of hull, twelve of cargo, zero of sense. Weighed and found.',
+      'Your salvage value’s climbing by the second. Keep shooting.',
+      'We tag you before you cool. The weigh-slip’s already printed.',
     ],
     'patrol-greeting': [
       'Reach territory. Keep moving and maybe we let you.',
@@ -263,46 +270,49 @@ export const BARKS = {
   },
 
   // ── Ascendant Choir — zealot / ritual ──────────────────────────────────────
+  //  The uncanny lives in monotony and repetition, not adjectives. Liturgy, not
+  //  gothic poetry. Proof: Latch-Child is scarier than any of these and says six
+  //  words. Keep the cadence. Cut the metaphor-stacking (cling/body/void/claimed).
   faction_choir: {
     scan: [
-      'The Choir observes. Your pattern is being read, pilgrim.',
-      'We measure the resonance of your passage. Hold, and be known.',
-      'A signal in the dark. The Ascendant hears all who approach.',
+      'The Choir observes. Hold.',
+      'Hold. Be read.',
+      'Pattern open. Stand.',
     ],
     warn: [
-      'You tread on consecrated void. Withdraw before you are inscribed.',
-      'This space is given to the Pattern. You are not yet part of it. Turn away.',
-      'The shrine-lanes are not for the unascended. Depart.',
+      'Consecrated void. Withdraw.',
+      'Not yours. Turn.',
+      'Shrine-lane. Depart.',
     ],
     'demand-cargo': [
-      'Your burden is not yours. Offer it up and be lightened.',
-      'What you carry belongs to the ascent. Release it willingly.',
-      'Tithe your hold to the Pattern. Refusal is a kind of falling.',
+      'Tithe. Release. Rise.',
+      'The burden is ours. Give it.',
+      'Offer the hold. Be lightened.',
     ],
     attack: [
-      'You have chosen the fall. We deliver you to it.',
-      'Unmade, then, and remade cleaner. Hold still.',
-      'The Pattern demands your correction. It is given.',
+      'Corrected. Hold still.',
+      'The Pattern demands. It is given.',
+      'Unmade. Remade cleaner.',
     ],
     flee: [
-      'The moment passes. The ascent does not. We will return.',
-      'You are recorded in the Pattern now. Distance changes nothing.',
-      'We withdraw. The reckoning is only deferred, never denied.',
+      'Recorded. Distance changes nothing.',
+      'The Pattern holds. We withdraw.',
+      'Deferred. Never denied.',
     ],
     reinforce: [
-      'Choir, converge. Let the chorus be complete.',
-      'The faithful gather. Sing him into silence.',
-      'More voices rise. The Pattern will not be denied.',
+      'Choir, converge.',
+      'More voices. Complete the chorus.',
+      'The faithful gather. Sing him silent.',
     ],
     taunt: [
-      'You cling to a body the void has already claimed.',
-      'Your struggle is a note in a song you cannot hear.',
-      'Even your defiance is written into the Pattern.',
+      'You are already in the Pattern.',
+      'The void has filed you.',
+      'Hold still. It is faster.',
     ],
     'patrol-greeting': [
-      'The Choir passes. May the Pattern find you worthy.',
-      'Peace, unascended. Your time will come, or it will not.',
-      'We sing on. Do not fear us today.',
+      'The Choir passes.',
+      'Peace. Your time will come, or it will not.',
+      'We sing on.',
     ],
   },
 
@@ -342,6 +352,7 @@ export const BARKS = {
       'You fly like you got somewhere better to be.',
       'Big system out here. Plenty of room to run.',
       'No shame in leaving, friend. Offer’s open.',
+      'You took this lane because it was empty. It’s empty for a reason.',
     ],
     'patrol-greeting': [
       'Frontier watch. Waystation’s open if you need it. Fly easy.',
@@ -386,6 +397,7 @@ export const BARKS = {
       'Your resistance is a clause already anticipated and priced.',
       'You bargain against terms you cannot read.',
       'The ledger closes with or without your assent.',
+      'Clause 19: the losing party bears the cost of the verdict. This is the verdict.',
     ],
     'patrol-greeting': [
       'Vael passage. The terms hold. You are permitted, for now.',
@@ -443,4 +455,203 @@ export function barkFor(factionId, situation, rng) {
   return (typeof line === 'string' && line.length) ? line : '...';
 }
 
-export default { BARKS, BARK_FACTIONS, BARK_SITUATIONS, barkFor };
+const contactChoice = (id, label, lineIndexes) => Object.freeze({
+  id,
+  label,
+  lineIndex: lineIndexes[0],
+  lineIndexes: Object.freeze(lineIndexes.slice()),
+});
+
+const contactVoice = (register, lines, choices, dialogueComplete = false) => Object.freeze({
+  register,
+  lines: Object.freeze(lines.slice()),
+  firstContact: Object.freeze({ choices: Object.freeze(choices.slice()) }),
+  dialogueComplete,
+});
+
+// Dock conversations do not consume the one-voice overlay budget. Mission chains may unlock
+// later lines, but every named register is authored now so no contact falls back to generic copy.
+export const CONTACT_VOICE_REGISTERS = Object.freeze({
+  contact_yune: contactVoice('quiet-bureaucratic', [
+    'Registration VHL-4471-T. Incident 7741. Lower your voice.',
+    'Sealed files open for a fee. Then re-seal.',
+    'REF 44-C is not a rule. It is a drawer.',
+    'Contract 47-A was filed unpaid before you flew it.',
+    'Build a name first. Then ask who voided payment.',
+    'You heard no code here. I whispered no code.',
+  ], [
+    contactChoice('incident', 'Ask about 7741', [0, 2]),
+    contactChoice('contract', 'Ask about 47-A', [3, 4]),
+    contactChoice('reseal', 'Re-seal the file', [1, 5]),
+  ]),
+  contact_coldburn_rey: contactVoice('working-rival', [
+    'You took that lane. I remember which one.',
+    'I hauled it first. You got the stamp.',
+    'Not piracy. Competition with better aim.',
+    'I do not hide. I cut across your lane.',
+    'Keep winning. I can afford another escort.',
+    'Do not call me villain. Call me underbid.',
+  ], [
+    contactChoice('lane', 'Name the lane', [0, 1]),
+    contactChoice('settle', 'Settle the contract', [2, 5]),
+    contactChoice('intercept', 'Challenge his intercept', [3, 4]),
+  ]),
+  contact_iren_suhl: contactVoice('plain-clause', [
+    'The clauses answer back. I keep the transcripts.',
+    'The Vael clause repeats your breath before you speak.',
+    'They are not translating us. They are transcribing us.',
+    'Bring artifacts. I pay for field samples, not miracles.',
+    'Each shard unlocks one clause. Never two.',
+    'Peace requires the answer they expected, not the one you prefer.',
+  ], [
+    contactChoice('transcripts', 'Read the transcripts', [0, 1]),
+    contactChoice('artifact', 'Offer an artifact', [3, 4]),
+    contactChoice('peace', 'Ask about peace', [2, 5]),
+  ]),
+  contact_orrin: contactVoice('procedural-defeated', [
+    'The audit is clean. The audit is always clean.',
+    'Seventeen inquiries opened. Seventeen closures. All properly witnessed.',
+    'I cannot protect testimony. I can protect evidence.',
+    'Five sealed records become a case I cannot close.',
+    'The Quiet will charge you for becoming legible.',
+    'Bring black boxes, ledgers, originals. Not summaries.',
+  ], [
+    contactChoice('audits', 'Ask about the audits', [0, 1]),
+    contactChoice('evidence', 'Submit evidence', [2, 5]),
+    contactChoice('threshold', 'Ask what five means', [3, 4]),
+  ]),
+  contact_sker_vane: contactVoice('patient-bravado', [
+    'My lane. My toll. My cut of your apology.',
+    "That hull ran my captain's cargo. Poorly, but memorably.",
+    'I inherited the lane. You inherited the apology.',
+    'Tolls first. Raids later. Patience makes both profitable.',
+    'Orrin likes files. I like knowing who carries them.',
+    'Choose whose enemy you can afford before touching mine.',
+  ], [
+    contactChoice('toll', 'Discuss the toll', [0, 3]),
+    contactChoice('tessera', 'Ask about Tessera', [1, 2]),
+    contactChoice('file', 'Ask about the file', [4, 5]),
+  ]),
+  contact_dustwife_senna: contactVoice('soft-recordkeeper', [
+    'The dark remembers. I write it down.',
+    'Three wrecks visited. Only then did the dark mention you.',
+    'Registries lose names. Metal keeps the pronunciation.',
+    'I need one name returned. No cargo. No spectacle.',
+    'Write it once at Ashfall. That will be enough.',
+    'Come back when your first asset pays. Earlier would cheapen it.',
+  ], [
+    contactChoice('memory', 'Ask what remembers', [0, 2]),
+    contactChoice('wrecks', 'Ask about the wrecks', [1, 5]),
+    contactChoice('name', 'Offer to return the name', [3, 4]),
+  ]),
+  contact_latch_child: contactVoice('automaton-loop', [
+    'Found. Held. Delivered. Found. Held. Delivered.',
+    'Sold scrap returns.',
+    'Contraband feeds investigation.',
+    'Warnings found. Ignored.',
+    'Quiet maker absent.',
+    'Name held. Undelivered.',
+  ], [
+    contactChoice('scrap', 'Show sold scrap', [0, 1]),
+    contactChoice('contraband', 'Offer contraband', [2, 3]),
+    contactChoice('maker', 'Ask its maker', [4, 5]),
+  ]),
+  contact_question: contactVoice('precursor-interrogative', [
+    'What was carried?',
+    'What was carried?',
+    'What was owed?',
+    'What was owed?',
+    'Answer?',
+    'Answer?',
+  ], [
+    contactChoice('sample', 'Present the 47-A sample', [0, 1]),
+    contactChoice('ledger', 'Present the Kurtz ledger', [2, 3]),
+    contactChoice('navigation', 'Present navigational data', [4, 5]),
+  ], true),
+  contact_filecleaver_dorin: contactVoice('bureaucratic-panic', [
+    'I stole the seal log. It proves a massacre.',
+    'Bounty says pirate. Transponder says Concord. Scan before shooting.',
+    'REF 44-C. Corridor count attached. Please keep moving.',
+    'Turn me in and Vale opens a door.',
+    'Spare me and Orrin gets an original.',
+    'I copied the seal log. They copied my death notice.',
+  ], [
+    contactChoice('transponder', 'Scan his transponder', [1, 2]),
+    contactChoice('bounty', 'Invoke the bounty', [0, 3]),
+    contactChoice('cover', 'Offer him cover', [4, 5]),
+  ]),
+  contact_lira_vonn: contactVoice('plain-sourcework', [
+    'I print what happened. You happened. Talk.',
+    'You are a source, not a hero. Better for print.',
+    'Give me the deed. Then give me your spin.',
+    'I publish names only when names survive verification.',
+    'Some wrecks stay hidden until somebody prints the loss.',
+    'Decline politely. Silence is still a quote, just a worse one.',
+  ], [
+    contactChoice('interview', 'Grant an interview', [0, 1]),
+    contactChoice('spin', 'Choose your spin', [2, 3]),
+    contactChoice('wrecks', 'Ask about wrecks', [4, 5]),
+  ]),
+  contact_tinker_zell: contactVoice('fast-bravado', [
+    'Stolen parts, fair prices, no warranty. Park it.',
+    'Scrambler works. Warranty does not. Heat climbs anyway.',
+    'Pirate IFF says friend until a patrol asks twice.',
+    'Vane Special tracks faster and incriminates beautifully.',
+    'Slate welds regulations. I weld what regulations missed.',
+    'Park clean, leave dirty. That is the premium service.',
+  ], [
+    contactChoice('stock', 'See the stock', [0, 5]),
+    contactChoice('illegal', 'Ask about illegal installs', [1, 2]),
+    contactChoice('vane_special', 'Ask for the Vane Special', [3, 4]),
+  ]),
+  contact_mara_children: contactVoice('plain-exhausted', [
+    'Three children, one hold, no destination. Take us.',
+    'Mara. Three aboard besides me. I count every hail.',
+    'Drift tonight. Belt Outpost if the lane stays open.',
+    'No quest speech. Just keep the children breathing.',
+    'Ignore the call and nobody will invoice you.',
+    'Reach Ashfall with us and one witness remains.',
+  ], [
+    contactChoice('passengers', 'Count the passengers', [0, 1]),
+    contactChoice('escort', 'Offer an escort', [2, 3]),
+    contactChoice('otherwise', 'Ask what happens otherwise', [4, 5]),
+  ]),
+  contact_wraith_kell: contactVoice('split-clerk', [
+    'I file manifests by day, copy them by night. Burn?',
+    'Manifest accepted. Clerk present. Nothing unusual to report.',
+    'Off duty: the second fine is policy. Hale is the instrument.',
+    'Dead drop opens after the corridor file breathes.',
+    'Six years copying margins. One bad handoff burns everything.',
+    'Say burn only when you can carry a witness.',
+  ], [
+    contactChoice('clerk', 'Address the clerk', [0, 1]),
+    contactChoice('fine', 'Ask about the second fine', [2, 4]),
+    contactChoice('burn', 'Say “burn”', [3, 5]),
+  ]),
+  contact_halev_doss: contactVoice('precise-warm', [
+    'The sector has a paper trail. I walk it daily.',
+    'Primary sources, please. Memory is useful, but difficult to cite.',
+    'The administration edits nouns first. Verbs implicate people.',
+    'Each recovered document restores one public footnote.',
+    'Complete the record and I will add your name alphabetically.',
+    'The Archive keeps truth. I prefer lending copies.',
+  ], [
+    contactChoice('document', 'Submit a document', [1, 3]),
+    contactChoice('changes', 'Ask what changed', [0, 2]),
+    contactChoice('reward', 'Ask about the reward', [4, 5]),
+  ]),
+  contact_maera_vols: contactVoice('tired-fragment', [
+    'I left the engines warm. You fly her further than I did.',
+    'Keep port injector warm. It sticks after cold jumps.',
+    'Crew, answer status. ...No. Continue holding pattern.',
+    'Quiet job remains open. Message still in my pocket.',
+    'Yard beacon says fourteen months. Instrument fault.',
+    'Deliver it. Then tell me where everyone went.',
+  ], [
+    contactChoice('captain', 'Answer the captain', [0, 2]),
+    contactChoice('yard', 'Ask about the yard', [1, 4]),
+    contactChoice('message', 'Take the Quiet message', [3, 5]),
+  ], true),
+});
+
+export default { BARKS, BARK_FACTIONS, BARK_SITUATIONS, CONTACT_VOICE_REGISTERS, barkFor };

@@ -1,5 +1,7 @@
 # PACKET ASSET-001 — RED asset-truth contract
 
+> **Manual packet; exact activation required.** See `README.md`. Discovery does not activate it.
+
 packetId: ASSET-001
 milestone: M0 Wave B
 kind: control-plane

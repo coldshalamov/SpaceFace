@@ -1,0 +1,17 @@
+NASA 3D Resources — license notes (captured 2026-07-14)
+
+Canonical model page:
+  https://science.nasa.gov/resource/international-space-station-3d-model/
+
+GitHub mirror statement (NASA-3D-Resources README):
+  "These assets are free and without copyright."
+  https://github.com/nasa/NASA-3D-Resources
+
+Usage guidelines (brand/trademark constraints — not a pure CC0 grant):
+  https://www.nasa.gov/nasa-brand-center/images-and-media/
+
+Practical read for Helios V12 sourcing:
+  - Geometry/media from NASA 3D Resources is free of copyright per NASA statement.
+  - NASA names, logos, insignia, and endorsement implications remain restricted under brand guidelines.
+  - For a shipped commercial game: safe as hard-surface remix / structural donor if NASA trademarks are not used to imply endorsement; strip/replace any insignia materials if present.
+  - Prefer CC0 candidates (BlenderKit / Quaternius / Kenney) when a frictionless public-domain ship is required.

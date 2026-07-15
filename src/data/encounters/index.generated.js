@@ -15,6 +15,28 @@ import * as encounter011 from './110-salvage-signal.js';
 import * as encounter012 from './120-anomaly-whisper.js';
 import * as encounter013 from './130-unique-wreck-tideline-held-mass.js';
 import * as encounter014 from './140-unique-wreck-deepsurvey-ping-elite.js';
+import * as encounter015 from './150-unique-wreck-silver-draft-cleaner.js';
+import * as encounter016 from './160-unique-wreck-cassandra-hardliners.js';
+import * as encounter017 from './170-k1-understory-salvager.js';
+import * as encounter018 from './180-k1-fulfillment-fixed-route.js';
+import * as encounter019 from './190-k1-archive-reading-room.js';
+import * as encounter020 from './200-k1-pitborn-yard.js';
+import * as encounter021 from './210-k1-verge-observer-prism.js';
+import * as encounter022 from './220-depth-h1-distress-from-inside.js';
+import * as encounter023 from './230-depth-h2-drifting-bloom.js';
+import * as encounter024 from './240-depth-h3-wreck-that-knows-you.js';
+import * as encounter025 from './250-depth-h4-love-letter-buoy.js';
+import * as encounter026 from './260-depth-h5-corridor-massacre.js';
+import * as encounter027 from './270-depth-h6-patrol-ambush.js';
+import * as encounter028 from './280-depth-h7-spared-return.js';
+import * as encounter029 from './290-depth-h8-echo-of-player.js';
+import * as encounter030 from './300-depth-h6-vael-enforcement-follow-on.js';
+import * as encounter031 from './310-depth-h8-mass-migration-follow-on.js';
+import * as encounter032 from './320-the-botched-procedure.js';
+import * as encounter033 from './321-the-customs-logic-puzzle.js';
+import * as encounter034 from './322-the-backwater-escort.js';
+import * as encounter035 from './323-the-wrong-laugh.js';
+import * as encounter036 from './324-the-literalized-drawer.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -31,5 +53,27 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter012,
   encounter013,
   encounter014,
+  encounter015,
+  encounter016,
+  encounter017,
+  encounter018,
+  encounter019,
+  encounter020,
+  encounter021,
+  encounter022,
+  encounter023,
+  encounter024,
+  encounter025,
+  encounter026,
+  encounter027,
+  encounter028,
+  encounter029,
+  encounter030,
+  encounter031,
+  encounter032,
+  encounter033,
+  encounter034,
+  encounter035,
+  encounter036,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

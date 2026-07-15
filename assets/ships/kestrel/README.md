@@ -1,8 +1,9 @@
 # SF-K0 Kestrel / BORROWED TIME
 
 The starter ship and the first reference implementation of the SpaceFace hero-asset standard
-(see `docs/Spec/GRAPHICS_STYLE_GUIDE.md` §9). It is a bespoke, authored hull — not a generic
-procedural family build — that coexists with the catalog via a narrow override seam.
+(see `design/spec3/SPEC3-F9-asset-pipeline.md` and `design/graphics-sprints/FULL_GRAPHICS_REVAMP_GOAL.md`).
+It is a bespoke, authored hull — not a generic procedural family build — that coexists with the
+catalog via a narrow override seam.
 
 > **A death ship that still starts every morning.**
 

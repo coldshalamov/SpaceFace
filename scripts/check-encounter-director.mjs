@@ -16,7 +16,7 @@
 //   5. GATES — a gated shape (bounty_hunter) never fires without its motive, fires once given it.
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,10 +34,15 @@ function ok(label) { sections++; console.log(`  ✓ ${label}`); }
 
 // ─── 1. static discipline ────────────────────────────────────────────────────────────────────────
 {
+  const encounterDataFiles = readdirSync(path.join(ROOT, 'src/data/encounters'), { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.js'))
+    .map((entry) => `src/data/encounters/${entry.name}`)
+    .sort();
   const files = [
     'src/systems/encounterDirector.js',
     'src/systems/encounterScripts.js',
     'src/data/encounters.js',
+    ...encounterDataFiles,
   ];
   const forbidden = [
     [/Math\.random\s*\(/, 'Math.random in sim path'],

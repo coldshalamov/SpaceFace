@@ -204,7 +204,8 @@ export const ATTACHMENT_DEFS = Object.freeze([
     id: 'attachment_massline', version: 1,
     sourceSocketTags: ['massline'], targetSocketTags: ['tether'],
     ownership: { policy: 'initiator', transferable: true },
-    break: { maxTension: 8200, maxImpulse: 165, maxYank: 420, graceTicks: 4 },
+    // +25% break budget vs prior baseline (8200/165/420) — lines were snapping too readily in play.
+    break: { maxTension: 10250, maxImpulse: 206.25, maxYank: 525, graceTicks: 4 },
     spring: { K: 170, zeta: 0.90, captureS: 0.30, maxStretchRatio: 0.72, reelSafeStretchRatio: 0.66 },
     // Massline winch/heat/overload controller (spec §8). Opt-in: runs stepMassline per tick,
     // smoothing the joint rest length and breaking on sustained overload / integrity failure.
@@ -228,18 +229,18 @@ export const ATTACHMENT_DEFS = Object.freeze([
     // boost HOLDS; hard overloads (short-reeled line + full boost, fixed station anchor at speed)
     // SNAP. Verified by check-tether-gameplay + check:sg02:tether-break together — if you move
     // the socket further forward, re-run both before touching these numbers.
-    // CORE-COMBAT-LOOP: effective break budget approximately doubles the pre-pass baseline
-    // (420k/7.6k/6k → 840k/15.2k/12k) so standard capture holds ≥2.5s while severe overload still snaps.
-    breakTension: 840000,
+    // CORE-COMBAT-LOOP: break budget was doubled vs pre-pass (420k → 840k), then +25% again for
+    // play feel (→ 1.05M / 19k / 15k) so standard capture holds while severe overload still snaps.
+    breakTension: 1050000,
     snapImpulseNoise: 0,
     // maxYank: the line snaps on a SHARP jerk (rate-of-change of radial relative speed), never on
     // steady pull. Calibrated against measured flight yanks: a plain reel-in to min length produces
     // yank ~2400, and a max-speed (218 wu/s) orbit at minLength(18) produces centripetal yank
-    // ~2600. So normal-acrobatics yank tops out ~3000; doubled budget sits well above normal
+    // ~2600. So normal-acrobatics yank tops out ~3000; the raised budget sits well above normal
     // flight (reel-in, slingshot, dogfight, orbit, throttle bumps) and only yields to genuine
     // violence — boost-into-line, hard ramming, dash impulse. The masslineController harden term
     // raises this budget further under sustained load (pull-behind-fleeing-target protection).
-    break: { maxTension: 840000, maxImpulse: 15200, maxYank: 12000, graceTicks: 4, stiffness: 90, damping: 6 },
+    break: { maxTension: 1050000, maxImpulse: 19000, maxYank: 15000, graceTicks: 4, stiffness: 90, damping: 6 },
     // The force budget was doubled previously, but the independent geometric edge stayed at 0.72x
     // rest length and remained the real snap authority for short latches. Double that usable stretch
     // envelope as well; the massline overload controller still cuts violent/extreme-mass loads.

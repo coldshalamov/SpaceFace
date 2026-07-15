@@ -1,6 +1,7 @@
 # SPEC2/03 — THE FIRST HOUR (onboarding, menus, difficulty ramp)
 
-**Owner lane:** systems+content agent. Read `spec2/00_MASTER_TASTE.md` (§5 copy voice is law here).
+**Scope:** onboarding pacing and first-session content. `spec2/00_MASTER_TASTE.md` supplies historical
+voice examples, not a prose validator.
 **Files:** `src/systems/onboarding.js`, `src/systems/story.js`, `src/data/missions.js` STORY_BEATS /
 BEAT_CONTENT, `src/contracts/` 47a scenario scripting, `src/ui/screens/{mainMenu,newGame}.js`,
 new `scripts/check-first-hour.mjs`. **Do not touch:** comms gating (shipped), control prompts.
@@ -10,8 +11,8 @@ The intro modal + tutorial panel + objective + comms all landed in second one (p
 the one-voice gate). The fix is PACING, not deletion: one beat → one verb → silence → next beat.
 
 ## 2. The first fifteen minutes (replaces current STEPS pacing; reuse systems, not new ones)
-Timing gates: a beat's text may only fire when the previous beat's DONE condition fired AND ≥ 4 s of
-text silence has passed. All lines ≤ 12 words, dry-rigger voice.
+Timing gates should prevent instructional beats from competing. Tune spacing from reading time,
+urgency, input modality, and playtest evidence; write concise lines in the speaker's actual voice.
 - **B0 WAKE (0:00)** — no modal. Black → fade in over 2 s. Single line (tutorial tier):
   "Contract 47-A: thrust to the beacon." DONE: within 420 wu of beacon. Teaches thrust toward the marked objective; modality-specific chrome owns physical controls.
 - **B1 THE DERELICT (≈1:30)** — derelict wreck near beacon. "Latch it. Massline." → latch → "Winch in. Hold tether to reel." → reel ≤ 60 wu (production `tether:reel` after) → "Cut and coast. Tap tether to cut." DONE: released. Teaches tether trio. The wreck drops 2 salvage pickups on release (vacuum shows itself — no line needed).
@@ -54,8 +55,9 @@ text silence has passed. All lines ≤ 12 words, dry-rigger voice.
 
 ## 5. Acceptance assertions (`scripts/check-first-hour.mjs`)
 1. Scripted run: beats fire in order; no beat's text appears before predecessor DONE + 4 s silence.
-2. Text overlap count == 0 across the full scripted first-15 (one-voice audit, automated).
-3. Every tutorial line ≤ 12 words, passes check:player-facing-labels.
+2. Urgent instructional text is not obscured by competing transients; persistent objective/context
+   remains available when useful.
+3. Tutorial lines pass `check:player-facing-labels` and are readable during the action they teach.
 4. B3 pirate flees at ≤ 30% hull and drops ≥ 1 pickup; player death during B3 respawns ≤ 3 s.
 5. `check:onboarding`, `check:first-15-runtime`, `check:new-game-first-run` green (update their
    expectations deliberately in the same PR — this spec supersedes prior first-15 content).

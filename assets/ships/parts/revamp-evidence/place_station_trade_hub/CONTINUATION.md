@@ -1,33 +1,25 @@
-# CONTINUATION — place_station_trade_hub
+# CONTINUATION — place_station_trade_hub (M1-SLICEA-VISUAL-001)
 
-**Status:** SOURCE_GLB **DONE** at art floor (G1–G7). Integrator G8–G10 still open.
+**Status:** SOURCE_GLB + RELEASE_BUILT — **rebuild submitted for controller review** (not self-accepted).
 
 | Field | Value |
 |---|---|
-| **iter** | **20/20** (life polish) |
-| **weighted** | **4.9** |
-| **export_bar_ok** | **true** (sil=5, scale=5) |
-| **tris / bytes** | 21372 / 1,835,976 |
-| **source** | `places/place_station_trade_hub.glb` |
+| **packet** | M1-SLICEA-VISUAL-001 |
+| **date** | 2026-07-10 |
+| **problem fixed** | Exploded floating primitives → connected Helios commercial hub |
+| **semantic authority** | `assets/concept/sectors/sector_helios_prime/concept_helios_overview.jpg` (NOT portal-like `concept_station_trade_hub.jpg`) |
 | **blend** | `blender/place_station_trade_hub_authored.blend` |
-| **finalize** | `finalize.log` 2026-07-09 |
-| **handoff** | `design/graphics-sprints/handoffs/2026-07-09-A-place_station_trade_hub.yaml` |
-| **stills** | `.devshots/slice-A/station-approach.png` (+ close) |
+| **source** | `places/place_station_trade_hub.glb` (finalize tris≈15904, bytes≈544544) |
+| **release** | `release/parts/places/place_station_trade_hub.glb` |
+| **materials** | Material_Hull / Mechanical / Accent (warm Helios gold emissives) / Glass |
 
-## Residual (non-blocking for handoff)
-- lit_close_detail auto-frame often reports `ok:false` border_ratio — human still readable
-- Deficiency list in late iters reused template strings; visual density from campaign geometry is real
-- Need **release build** + in-game station approach still for G8–G10
+## What changed
+- Cleared 84-piece exploded collection.
+- Built connected modular hub: core stack + four radial habitat arms with integrated dock collars + deck disk + cargo underhangs + restrained gold crown/mid bands + window belts.
+- Mass hierarchy: large core dominant, arms secondary, docks tertiary.
+- Studio evidence under `renders/2026-07-10_*rebuild*` + `.devshots/slice-A/station-approach*.png`.
 
-## Integrator next
-1. `npm run build:sg04:release-assets`
-2. `npm run check:asset-reachability` + station load checks
-3. In-game authored screenshot (not procedural)
-
-## Slice A — do NOT restart this asset
-Next highest incomplete ranks after hub packaging:
-1. **hull_starter** — iters 25 but export_bar_ok **false** (scale_truth 4≠5); dark materials / release
-2. **landmark_beacon_spire** (or sector monument) — missing manifest row
-3. **place_gate_jump_ring** + gate VFX
-4. Helios sky kit / asteroids / chase camera
-5. engine_vector — 20 iters logged but deficiencies still “flat face / slab”; quality re-audit
+## Residual (controller)
+- Meso greeble density still blockout-tier vs Helios concept plate polish.
+- Flat AO/rough contract maps (not painted ORM).
+- In-game public-route dock approach still needs live screenshot if route free.

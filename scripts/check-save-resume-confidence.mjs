@@ -28,6 +28,7 @@ const save = read('src/save/saveSystem.js');
 const saveLoad = read('src/ui/screens/saveLoad.js');
 const uiRoot = read('src/ui/uiRoot.js');
 const missions = read('src/systems/missions.js');
+const localizedCoreCopy = read('src/ui/localizedCoreCopy.js');
 
 // Main menu: Continue must be informative, not a blind button.
 assert.match(menu, /sf-menu-save-summary/, 'mainMenu must render a latest-save summary beside Continue');
@@ -38,7 +39,10 @@ assert.match(menu, /function latestSave\(slots\)/, 'mainMenu must resolve the la
 assert.match(menu, /function saveSummaryText\(slot, meta\)/, 'mainMenu must format human-readable save metadata');
 assert.match(menu, /function objectiveSummaryText\(meta\)/,
   'mainMenu must accept nav, mission, or story resume metadata from the save index');
-assert.match(menu, /Continue: /, 'mainMenu summary must explicitly label what Continue will load');
+assert.match(localizedCoreCopy, /continueSummary:\s*\{\s*label:\s*'Continue: \{summary\}'\s*\}/,
+  'localized core copy must explicitly label what Continue will load');
+assert.match(menu, /coreText\('continueSummary',\s*\{\s*summary\s*\}\)/,
+  'mainMenu must render the localized Continue summary with the selected save metadata');
 assert.match(menu, /const latest = latestSave\(readSaveIndex\(ctx\)\);[\s\S]*ctx\.bus\.emit\('game:load',\s*\{\s*slot:\s*latest\.slot\s*\}\)/,
   'Continue should load the exact latest slot displayed in the title summary');
 assert.doesNotMatch(menu, /slot:\s*'latest'/,

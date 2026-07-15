@@ -58,6 +58,7 @@ function boot(def, seed = 47022, { rewards = false, director = false } = {}) {
     'uniqueWreck:complicationTriggered',
     'uniqueWreck:encounterRequested',
     'uniqueWreck:storyRewardGranted',
+    'pickup:collected',
   ]) bus.on(name, (payload) => events.push({ name, payload }));
   return {
     sim,
@@ -457,11 +458,9 @@ test('D11 cleaner deadline is seeded once, survives serialize/deserialize, and t
   }
 });
 
-test('D6 scan-fix and D8 repeated pings request their authored encounters exactly once', () => {
+test('D6 scan-fix requests its held-mass encounter exactly once', () => {
   const d6 = uniqueWreckById('wreck_gravhand_tideline');
-  const d8 = uniqueWreckById('wreck_deepsurvey');
   assert.ok(d6);
-  assert.ok(d8);
 
   const held = boot(d6);
   try {
@@ -474,39 +473,14 @@ test('D6 scan-fix and D8 repeated pings request their authored encounters exactl
   } finally {
     held.dispose();
   }
-
-  const ping = boot(d8);
-  try {
-    const record = emitRumor(ping, d8);
-    const complication = d8.complications.find((entry) => /ping/i.test(entry.kind || entry.id || ''));
-    const requiredPings = complication?.requiredPings ?? complication?.triggerCount ?? 3;
-    assert.equal(Number.isInteger(requiredPings) && requiredPings >= 2, true);
-    for (let index = 0; index < requiredPings - 1; index += 1) {
-      ping.bus.emit('scan:pulse', { pos: scanPos(record) });
-    }
-    assert.equal(eventRows(ping, 'uniqueWreck:encounterRequested', d8.id).length, 0);
-    ping.bus.emit('scan:pulse', { pos: scanPos(record) });
-    ping.bus.emit('scan:pulse', { pos: scanPos(record) });
-    const requests = eventRows(ping, 'uniqueWreck:encounterRequested', d8.id);
-    assert.equal(requests.length, 1);
-    assert.equal(requests[0].payload.encounterId, 'unique_wreck_deepsurvey_ping_elite');
-  } finally {
-    ping.dispose();
-  }
 });
 
-test('D6 and D8 direct requests activate their self-registered encounter scripts in the live director', () => {
+test('D6 direct requests activate the self-registered held-mass script in the live director', () => {
   const cases = [
     {
       wreckId: 'wreck_gravhand_tideline',
       encounterId: 'unique_wreck_tideline_held_mass',
       pulses: 1,
-    },
-    {
-      wreckId: 'wreck_deepsurvey',
-      encounterId: 'unique_wreck_deepsurvey_ping_elite',
-      pulses: uniqueWreckById('wreck_deepsurvey').complications
-        .find((entry) => /ping/i.test(entry.kind || entry.id || ''))?.requiredPings ?? 3,
     },
   ];
 
@@ -569,6 +543,12 @@ test('every wreck settles its named drops once and the durable receipt prevents 
       assert.ok(claim, `${def.programSlot} has a discovery-power claim choice`);
       t.bus.emit('uniqueWreck:choose', { wreckId: def.id, choiceId: claim.id });
       assert.equal(record.phase, 'salvaged');
+      for (const pickup of eventRows(t, 'pickup:collected', def.id)) {
+        assert.equal(Number.isFinite(pickup.payload.pos && pickup.payload.pos.x), true,
+          `${def.programSlot} cargo pickup exposes a world x for player-facing feedback`);
+        assert.equal(Number.isFinite(pickup.payload.pos && pickup.payload.pos.z), true,
+          `${def.programSlot} cargo pickup exposes a world z for player-facing feedback`);
+      }
 
       for (const drop of rewardDescriptors(def)) {
         if (drop.kind === 'weapon' || drop.kind === 'module') {

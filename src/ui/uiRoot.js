@@ -34,6 +34,8 @@ const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/sv
 // (Removed PILOT_AVATAR_SVG — the helmet/visor pilot circle violated the standing no-visor/no-
 //  cockpit HUD rule (00_MASTER_TASTE §3). The splash now uses a clean non-diegetic signal slate.)
 import { createHud } from './hud.js';
+import { createBandHud } from './bandHud.js';
+import { createEncounterChoicePrompt } from './encounterChoicePrompt.js';
 import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
 import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy news ticker + dock event cards
@@ -69,6 +71,98 @@ const SCREEN_MODULES = [
 ];
 
 const HUD_STYLE_ID = 'sf-hud-style';
+
+export function createFadeLeaseController(dockFade, {
+  requestFrame = (fn) => requestAnimationFrame(fn),
+  setDelay = (fn, ms) => setTimeout(fn, ms),
+  clearDelay = (id) => clearTimeout(id),
+  hideDelayMs = 420,
+} = {}) {
+  const reasons = new Map();
+  let hideTimer = null;
+  let destroyed = false;
+
+  const sync = () => {
+    if (destroyed) return;
+    clearDelay(hideTimer);
+    dockFade.classList.toggle('sf-administrative-blackout', reasons.has('fulfillment'));
+    if (reasons.size > 0) {
+      dockFade.hidden = false;
+      dockFade.setAttribute('aria-hidden', 'false');
+      dockFade.style.pointerEvents = 'auto';
+      requestFrame(() => {
+        if (reasons.size > 0 && !dockFade.hidden) dockFade.classList.add('active');
+      });
+      return;
+    }
+    dockFade.classList.remove('active');
+    // Release every input modality together. The visual can finish fading, but the transparent
+    // overlay must not keep swallowing pointer/touch after keyboard and gamepad controls resume.
+    dockFade.style.pointerEvents = 'none';
+    hideTimer = setDelay(() => {
+      if (reasons.size > 0 || dockFade.classList.contains('active')) return;
+      dockFade.setAttribute('aria-hidden', 'true');
+      dockFade.hidden = true;
+    }, hideDelayMs);
+  };
+
+  return {
+    acquire(reason = 'dock') {
+      reasons.set(reason, (reasons.get(reason) || 0) + 1);
+      sync();
+    },
+    release(reason = 'dock') {
+      const count = reasons.get(reason) || 0;
+      if (count <= 1) reasons.delete(reason);
+      else reasons.set(reason, count - 1);
+      sync();
+    },
+    set(reason, active) {
+      if (active) reasons.set(reason, 1);
+      else reasons.delete(reason);
+      sync();
+    },
+    has(reason) {
+      return reasons.has(reason);
+    },
+    destroy() {
+      destroyed = true;
+      reasons.clear();
+      clearDelay(hideTimer);
+      dockFade.classList.remove('active', 'sf-administrative-blackout');
+      dockFade.style.pointerEvents = 'none';
+      dockFade.setAttribute('aria-hidden', 'true');
+      dockFade.hidden = true;
+    },
+  };
+}
+
+const FULFILLMENT_BLACKOUT_PHASES = new Set(['blackout', 'transit', 'wake_pending']);
+
+export function createBoardingPhaseFence(state, bus, onChange = () => {}) {
+  let active = false;
+  let destroyed = false;
+  const sync = (payload = {}) => {
+    if (destroyed) return;
+    const phase = payload && typeof payload.phase === 'string' ? payload.phase : null;
+    const wasActive = active;
+    active = FULFILLMENT_BLACKOUT_PHASES.has(phase);
+    if (!state.ui) state.ui = {};
+    state.ui.fulfillmentBlackoutActive = active;
+    onChange({ active, wasActive, phase, payload });
+  };
+  const unsubscribe = bus.on('factionPresence:boardingPhase', sync);
+  return {
+    sync,
+    isActive: () => active,
+    destroy() {
+      if (destroyed) return;
+      try { unsubscribe(); } catch (_) {}
+      sync({ phase: 'cancelled' });
+      destroyed = true;
+    },
+  };
+}
 
 function saveSlotLabel(slot) {
   const id = slot || 'quick';
@@ -148,8 +242,23 @@ export const ui = {
   name: 'ui',
 
   init(ctx) {
+    if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();
+    this.hud = null;
+    if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
+    this.bandHud = null;
+    if (this.encounterChoicePrompt && typeof this.encounterChoicePrompt.destroy === 'function') {
+      this.encounterChoicePrompt.destroy();
+    }
+    this.encounterChoicePrompt = null;
+    if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
+    this.input = null;
+    if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();
+    this._fulfillmentBlackoutTeardown = null;
     if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
     this._cinematicTeardown = null;
+    if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
+    this.screenManager = null;
+    this.manager = null;
     this._cinematicInputFence = null;
     this._titleFlowDisposed = false;
     this.ctx = ctx;
@@ -168,12 +277,6 @@ export const ui = {
     this.alerts = createAlerts(ctx);
     wireSaveFeedback(this.bus);
 
-    // comms / graffiti / endgame narrative overlay (story system drives it via events)
-    this.comms = createComms(ctx);
-
-    // Wingman command radial (Micro-Loops) — a quick fleet-command wheel on the Z key.
-    this.wingmanRadial = createWingmanRadial(ctx);
-
     // screen manager — expose on ctx + on this system so screens can reach it (§ screens
     // resolve ctx.screenManager / registry.get('ui').screenManager / .manager).
     this.screenManager = createScreenManager(ctx);
@@ -181,8 +284,21 @@ export const ui = {
     ctx.screenManager = this.screenManager;
     ctx.screens = this.screenManager;
 
+    // Register the administrative-blackout capture fence before any interactive comms/HUD module.
+    // Document capture listeners on the same target run in registration order, so constructing the
+    // input router after a prompt would let that earlier prompt act before the fence could stop it.
+    this.input = createUiInput(ctx, this.screenManager);
+
+    // comms / graffiti / endgame narrative overlay (story system drives it via events)
+    this.comms = createComms(ctx);
+    this.encounterChoicePrompt = createEncounterChoicePrompt(ctx);
+
+    // Wingman command radial (Micro-Loops) — a quick fleet-command wheel on the Z key.
+    this.wingmanRadial = createWingmanRadial(ctx);
+
     // the always-mounted flight HUD
     this.hud = createHud(ctx, this.alerts);
+    this.bandHud = createBandHud(ctx);
 
     // Command Bar — a persistent top-center resource strip (hull/shield/energy/heat/cargo/credits/
     // role/sector). It is a FOURTH permanent anchor that duplicates the bottom-left schematic vitals
@@ -448,9 +564,6 @@ export const ui = {
     };
     window.playSpaceFaceCinematic = this.playCinematic; // handy for console or future buttons
 
-    // UI key router (UI-owned keys only; flight keys belong to the flight input system)
-    this.input = createUiInput(ctx, this.screenManager);
-
     // navigation fallback events (screens may emit these if they can't reach the manager)
     this.bus.on('ui:pushScreen', (payload = {}) => {
       const id = payload && payload.id;
@@ -487,27 +600,81 @@ export const ui = {
     dockFade.id = 'sf-dock-overlay';
     dockFade.hidden = true;
     dockFade.setAttribute('aria-hidden', 'true');
+    const blackoutStatus = document.createElement('div');
+    blackoutStatus.className = 'sr-only';
+    blackoutStatus.setAttribute('role', 'status');
+    blackoutStatus.setAttribute('aria-live', 'assertive');
+    blackoutStatus.setAttribute('aria-atomic', 'true');
+    blackoutStatus.tabIndex = -1;
+    dockFade.appendChild(blackoutStatus);
     document.getElementById('ui-root').appendChild(dockFade);
-    let dockFadeHideTimer = null;
-    const showDockFade = () => {
-      clearTimeout(dockFadeHideTimer);
-      dockFade.hidden = false;
-      dockFade.setAttribute('aria-hidden', 'false');
-      dockFade.style.pointerEvents = 'auto';
-      requestAnimationFrame(() => {
-        if (!dockFade.hidden) dockFade.classList.add('active');
-      });
+    const dockFadeLeases = createFadeLeaseController(dockFade);
+    const showDockFade = (reason = 'dock') => dockFadeLeases.acquire(reason);
+    const hideDockFade = (reason = 'dock') => dockFadeLeases.release(reason);
+    const boardingAnnouncement = {
+      blackout: 'Fulfillment administrative boarding. Flight and interface controls are locked.',
+      transit: 'Fulfillment administrative transit in progress.',
+      wake_pending: 'Fulfillment routing complete. Restoring ship controls.',
+      complete: 'Routing complete. Variance resolved. Ship controls restored.',
+      cancelled: 'Fulfillment administrative transit cancelled. Ship controls restored.',
     };
-    const hideDockFade = () => {
-      clearTimeout(dockFadeHideTimer);
-      dockFade.classList.remove('active');
-      dockFadeHideTimer = setTimeout(() => {
-        if (dockFade.classList.contains('active')) return;
-        dockFade.style.pointerEvents = 'none';
-        dockFade.setAttribute('aria-hidden', 'true');
-        dockFade.hidden = true;
-      }, 420);
+    let blackoutPreviousFocus = null;
+    const applyFulfillmentBlackout = ({ active, wasActive, phase }) => {
+      if (active && !wasActive) {
+        // Snapshot before body modal/HUD inert mutations can blur a focused HUD control.
+        blackoutPreviousFocus = document.activeElement && document.activeElement !== document.body
+          ? document.activeElement
+          : null;
+      }
+      this._fulfillmentBlackoutActive = active;
+      // Phase transitions can repeat after save rehydration; this lease is absolute/idempotent,
+      // unlike dock/drill transitions, whose same-reason overlaps are reference-counted.
+      dockFadeLeases.set('fulfillment', active);
+      blackoutStatus.textContent = boardingAnnouncement[phase] || '';
+
+      // Keep the normal modal/input and accessibility contracts authoritative while the simulation
+      // and deterministic boarding FSM continue advancing underneath the presentation fence.
+      const screenOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
+      const externalOpen = active || isConfirmOpen()
+        || !!(this.comms && this.comms.isModalOpen && this.comms.isModalOpen());
+      syncModalChrome(screenOpen, externalOpen);
+      const docked = !!(this.state.ui && this.state.ui.docked === true);
+      if (this.screenManager && typeof this.screenManager.syncHudAccessibility === 'function') {
+        this.screenManager.syncHudAccessibility(screenOpen || externalOpen || docked || this.state.mode !== 'flight');
+      }
+
+      if (active && !wasActive) {
+        requestAnimationFrame(() => {
+          if (!this._fulfillmentBlackoutActive || dockFade.hidden) return;
+          try { blackoutStatus.focus({ preventScroll: true }); } catch (_) { blackoutStatus.focus(); }
+        });
+      } else if (!active && wasActive) {
+        const restore = blackoutPreviousFocus;
+        blackoutPreviousFocus = null;
+        if (restore && restore.isConnected && !restore.inert && typeof restore.focus === 'function') {
+          try { restore.focus({ preventScroll: true }); } catch (_) { restore.focus(); }
+        }
+      }
     };
+    this._fulfillmentBlackoutActive = false;
+    if (!this.state.ui) this.state.ui = {};
+    this.state.ui.fulfillmentBlackoutActive = false;
+    const boardingFence = createBoardingPhaseFence(this.state, this.bus, applyFulfillmentBlackout);
+    let blackoutTornDown = false;
+    const teardownFulfillmentBlackout = () => {
+      if (blackoutTornDown) return;
+      blackoutTornDown = true;
+      boardingFence.destroy();
+      dockFadeLeases.destroy();
+      if (dockFade.parentNode) dockFade.parentNode.removeChild(dockFade);
+      if (this._fulfillmentBlackoutTeardown === teardownFulfillmentBlackout) {
+        this._fulfillmentBlackoutTeardown = null;
+      }
+    };
+    this._fulfillmentBlackoutTeardown = teardownFulfillmentBlackout;
+    // Re-init may happen between save:loaded and the next phase event. Rehydrate immediately from
+    // the semantic incident so no render/input frame exposes controls during transit or wake-up.
+    boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
 
     this.bus.on('dock:docked', ({ stationId }) => {
       this.state.ui.docked = true;
@@ -515,7 +682,7 @@ export const ui = {
       this.screenManager.syncVisibility();
 
       // Phase 1: fade to dark
-      showDockFade();
+      showDockFade('dock');
 
       // Dock fly-in: drive a scripted push-zoom via the camera controller instead of the old
       // hard-set on state.camera.zoom (which fought the dynamic-zoom damping and snapped). The
@@ -532,7 +699,7 @@ export const ui = {
 
         // Phase 3: fade back in
         setTimeout(() => {
-          hideDockFade();
+          hideDockFade('dock');
         }, 50); // brief hold at full dark before fading back
       }, 400); // matches the CSS transition duration
     });
@@ -551,7 +718,7 @@ export const ui = {
       }
 
       // Phase 1: fade to dark
-      showDockFade();
+      showDockFade('dock');
 
       // Launch reveal: a brief push-zoom on undock so emerging from the station reads as momentum.
       const camCtrl = this.state.render && this.state.render.cameraCtrl;
@@ -566,7 +733,7 @@ export const ui = {
 
         // Phase 3: fade back in
         setTimeout(() => {
-          hideDockFade();
+          hideDockFade('dock');
         }, 50);
       }, 400);
     });
@@ -580,7 +747,7 @@ export const ui = {
       this.state.input.blocked = true;
       player.vel.x = 0;
       player.vel.z = 0;
-      showDockFade();
+      showDockFade('drill');
 
       // Scripted close zoom-in push
       const camCtrl = this.state.render && this.state.render.cameraCtrl;
@@ -639,17 +806,23 @@ export const ui = {
         this.screenManager.pushScreen('drill');
 
         setTimeout(() => {
-          hideDockFade();
+          hideDockFade('drill');
         }, 50);
       }, 400);
     });
 
     // mode → boot screen: show Main Menu only if state.mode==='menu' (it's 'flight' now → just HUD).
-    this.bus.on('game:started', () => { this.screenManager.closeAll(); this.screenManager.syncVisibility(); refreshFlightUI(); });
+    this.bus.on('game:started', () => {
+      this.screenManager.closeAll();
+      this.screenManager.syncVisibility();
+      boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
+      refreshFlightUI();
+    });
     // Ironman permadeath: combat.kill() emits game:over instead of respawning. Open the game-over
     // screen over the wreck. The screen loads via dynamic import (registerScreens path), so retry
     // briefly until the 'gameOver' screen is registered, then push it (idempotent — only push once).
     this.bus.on('game:over', () => {
+      boardingFence.sync({ phase: 'cancelled' });
       if (this._gameOverShown) return;
       this._gameOverShown = true;
       const tryOpen = (attempts) => {
@@ -671,6 +844,7 @@ export const ui = {
       this.state.ui.dockedStationId = null;
       this.screenManager.closeAll();
       this.screenManager.syncVisibility();
+      boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
       refreshFlightUI();
     });
 
@@ -726,9 +900,13 @@ export const ui = {
 
       const st = state || this.state;
       const modalOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
-      const externalModalOpen = isConfirmOpen() || !!(this.comms && this.comms.isModalOpen && this.comms.isModalOpen());
+      const externalModalOpen = !!this._fulfillmentBlackoutActive || isConfirmOpen()
+        || !!(this.comms && this.comms.isModalOpen && this.comms.isModalOpen());
       const modalChromeOpen = syncModalChrome(modalOpen, externalModalOpen);
       const docked = !!(st && st.ui && st.ui.docked === true);
+      if (this.screenManager && typeof this.screenManager.syncHudAccessibility === 'function') {
+        this.screenManager.syncHudAccessibility(modalChromeOpen || docked || !st || st.mode !== 'flight');
+      }
       const hudVisible = !!(st && st.mode === 'flight' && !modalChromeOpen && !docked);
       if (this._syncFlightCursor) this._syncFlightCursor(hudVisible);
       if (this.hud) {
@@ -739,6 +917,10 @@ export const ui = {
           this.hud.tickHidden(dt);
         }
         this._hudVisibleLast = hudVisible;
+      }
+      if (this.bandHud && typeof this.bandHud.update === 'function') this.bandHud.update();
+      if (this.encounterChoicePrompt && typeof this.encounterChoicePrompt.tick === 'function') {
+        this.encounterChoicePrompt.tick();
       }
       if (this.toasts && this.toasts.tick) this.toasts.tick();
       // comms feed fade sweep + graffiti (narrative overlay; cheap, runs every frame)
@@ -760,8 +942,23 @@ export const ui = {
     // global capture listeners and timers. Re-init/destroy must remove them without marking the
     // cinematic seen or opening a menu behind the caller.
     this._titleFlowDisposed = true;
+    if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
+    this.input = null;
+    if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();
+    this.hud = null;
+    if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
+    this.bandHud = null;
+    if (this.encounterChoicePrompt && typeof this.encounterChoicePrompt.destroy === 'function') {
+      this.encounterChoicePrompt.destroy();
+    }
+    this.encounterChoicePrompt = null;
+    if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();
+    this._fulfillmentBlackoutTeardown = null;
     if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
     this._cinematicTeardown = null;
+    if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
+    this.screenManager = null;
+    this.manager = null;
     this._cinematicInputFence = null;
     this._cinematicActive = false;
     this._pendingMainMenu = false;
@@ -1330,6 +1527,7 @@ function injectHudCss() {
     opacity:0; transition:opacity 0.4s ease-in-out; }
   .sf-dock-fade[hidden] { display:none!important; }
   .sf-dock-fade.active { opacity:1; }
+  #sf-dock-overlay.sf-administrative-blackout { background:#05070d; }
   `;
   document.head.appendChild(s);
 }

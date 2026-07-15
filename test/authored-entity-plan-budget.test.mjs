@@ -487,3 +487,44 @@ test('concurrent entity demands merge into one serial renderer admission lane', 
   assert.ok(retained.includes(lodeUrl), 'merged hull slot must retain Lode');
   partsLibrary.invalidatePartsLibraryCaches(renderer);
 });
+
+test('an evicted matching authored record is reloaded before a repeated entity plan resolves', async () => {
+  const renderer = {};
+  const loads = new Map();
+  const loadAuthoredPart = async (url) => {
+    loads.set(url, (loads.get(url) || 0) + 1);
+    const record = fixtureRecord(url);
+    record.residency = {
+      key: `${url}::fixture`,
+      generation: loads.get(url),
+      state: 'resident',
+    };
+    return record;
+  };
+  const options = { releaseMode: true, loadAuthoredPart };
+  const wasp = {
+    id: 'continue-wasp', type: 'ship', alive: true, team: 0,
+    factionId: 'faction_free', radius: 12, data: { defId: 'ship_wasp' },
+  };
+  const hullFile = partsLibrary.authoredPreloadPlanForEntity(wasp).hull[0];
+  const hullUrl = `${RELEASE_ROOT}${hullFile}`;
+
+  await partsLibrary.preloadAuthoredPartLibrary(renderer, options);
+  const firstLibrary = await partsLibrary.preloadAuthoredAssetsForEntity(renderer, wasp, options);
+  const evictedHull = (firstLibrary.get('hull') || []).find((record) => record.url === hullUrl);
+  assert.ok(evictedHull, 'the initial Wasp request must install its authored hull record');
+  assert.equal(loads.get(hullUrl), 1, 'the initial Wasp request must decode its hull once');
+
+  evictedHull.residency.state = 'evicted';
+  const continuedLibrary = await partsLibrary.preloadAuthoredAssetsForEntity(renderer, wasp, options);
+  const matchingHulls = (continuedLibrary.get('hull') || []).filter((record) => record.url === hullUrl);
+
+  assert.equal(continuedLibrary, firstLibrary, 'repeated demand must update the renderer library in place');
+  assert.equal(loads.get(hullUrl), 2,
+    'an evicted URL match must miss the loaded-plan check and trigger a fresh decode');
+  assert.equal(matchingHulls.length, 1,
+    'the fresh resident record must replace, rather than accumulate beside, the evicted generation');
+  assert.notEqual(matchingHulls[0], evictedHull, 'Continue must not reuse the disposed blueprint record');
+  assert.equal(matchingHulls[0].residency.state, 'resident');
+  partsLibrary.invalidatePartsLibraryCaches(renderer);
+});

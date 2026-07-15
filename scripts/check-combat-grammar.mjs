@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { createCombatKernel } from '../src/combat/kernel.js';
 import { legacyHitToDamagePacket } from '../src/combat/damage.js';
+import { selectHitSubsystem } from '../src/combat/geometry.js';
 import { createCombatCatalog, ensureCombatant } from '../src/combat/runtime.js';
 import { validateCombatCatalog } from '../src/combat/validate.js';
 import { ACTION_DEFS } from '../src/data/combatDefs.js';
@@ -16,6 +17,7 @@ run('all authored combat definitions validate', checkCatalogValidation);
 run('dash→attach→reel→sling→cut→burst has the exact golden tick trace', checkMasteryTrace);
 run('player and AI invoke the same ActionDef path', checkSharedPlayerAiPath);
 run('drive/weapon/sensor/tether-spool disablement becomes functional on tick + 1', checkSubsystemNextTickEffects);
+run('swept projectile contact enters the hull without accepting distant off-hull coordinates', checkSweptProjectileSubsystemContact);
 run('legacy, action, and status damage converge on damage.routed', checkSingleDamageRoute);
 run('health, capacitor, heat, and cooldown invariants hold under generated inputs', checkProperties);
 run('combat is renderer/UI independent and source-neutral', checkOwnershipBoundaries);
@@ -164,6 +166,66 @@ function checkSubsystemNextTickEffects() {
     assert.equal(runtime.capabilities[capability], false, `${subsystemId} must disable ${capability} on the next tick`);
     assert.ok(runtime.blockedActionTags.includes(blockedTag), `${subsystemId} must block ${blockedTag}`);
   }
+}
+
+function checkSweptProjectileSubsystemContact() {
+  const fixture = makeFixture([
+    makeShip(1, 0, 0),
+    makeShip(2, 1, 80, { hull: 1000, hullMax: 1000, shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0 }),
+  ]);
+  const target = fixture.state.entities.get(2);
+  const projectileRadius = 0.7;
+  const sweptRearContact = target.pos.x - target.radius - projectileRadius;
+  const hit = fixture.kernel.routeDamage({
+    attackerId: 1,
+    targetId: target.id,
+    packet: {
+      channels: { ion: 45 }, penetration: 0, shieldBypass: 1, subsystemShare: 1,
+      heat: 0, statuses: [], hit: { pos: { x: sweptRearContact, z: target.pos.z } },
+    },
+    origin: { kind: 'weapon', id: 'swept_emp_regression' },
+  });
+  assert.equal(hit.subsystemId, 'subsystem_drive', 'first-contact EMP must enter the rear drive volume');
+
+  const distantFixture = makeFixture([
+    makeShip(1, 0, 0),
+    makeShip(2, 1, 80, { hull: 1000, hullMax: 1000, shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0 }),
+  ]);
+  const distantTarget = distantFixture.state.entities.get(2);
+  const distant = distantFixture.kernel.routeDamage({
+    attackerId: 1,
+    targetId: distantTarget.id,
+    packet: {
+      channels: { ion: 1 }, penetration: 0, shieldBypass: 1, subsystemShare: 1,
+      heat: 0, statuses: [],
+      hit: { pos: { x: distantTarget.pos.x - distantTarget.radius * 1.5, z: distantTarget.pos.z } },
+    },
+    origin: { kind: 'test', id: 'distant_off_hull_regression' },
+  });
+  assert.equal(distant.subsystemId, null, 'a distant off-hull coordinate must not invent a subsystem hit');
+
+  const capsuleEntity = { pos: { x: 0, z: 0 }, rot: 0, radius: 10 };
+  const capsuleCombatant = { subsystems: { subsystem_capsule: { health: 1, maxHealth: 1 } } };
+  const capsuleCatalog = {
+    subsystems: new Map([['subsystem_capsule', {
+      id: 'subsystem_capsule',
+      hitPriority: 1,
+      volume: { shape: 'capsule', space: 'normalized', a: [0.45, -0.2], b: [0.45, 0.2], radius: 0.1 },
+    }]]),
+  };
+  assert.equal(
+    selectHitSubsystem(capsuleEntity, capsuleCombatant, capsuleCatalog, { pos: { x: 10.7, z: 0 } }),
+    'subsystem_capsule',
+    'bounded first-contact tracing must support schema-valid capsule subsystem volumes',
+  );
+  capsuleCatalog.subsystems.get('subsystem_capsule').volume = {
+    shape: 'capsule', space: 'normalized', a: [-0.2, 0.55], b: [0.2, 0.55], radius: 0.1,
+  };
+  assert.equal(
+    selectHitSubsystem(capsuleEntity, capsuleCombatant, capsuleCatalog, { pos: { x: 10.7, z: 0 } }),
+    null,
+    'bounded first-contact tracing must not select a capsule outside the impact segment',
+  );
 }
 
 function checkSingleDamageRoute() {

@@ -1,0 +1,335 @@
+{
+  "id": "helios_rock_b",
+  "assetId": "SF_PLACE_HELIOS_ROCK_B",
+  "partId": "place_asteroid_rock_b",
+  "liveId": "place_asteroid_rock_b",
+  "title": "Helios Rock B (wedge)",
+  "role": "hero_rock",
+  "kind": "prop",
+  "ok": true,
+  "elapsedSec": 128.73,
+  "sourceGlb": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/source/places/helios_rock_b.glb",
+  "productionBlend": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/blender/helios_rock_b_production.blend",
+  "sourceBytes": 1868420,
+  "sourceSha256": "9525E5BD6C34FD992228954314128394C155F5B520047B65116E470344D520C8",
+  "totalTriangles": 1767,
+  "hullTriangles": 1738,
+  "lod0Triangles": 1112,
+  "sockets": [
+    "SOCKET_Structure_Core"
+  ],
+  "materials": [
+    "Material_Mechanical",
+    "Material_Rock"
+  ],
+  "collisionCoverageMin": 0.9199999915012124,
+  "lod0WithinBudget": true,
+  "renderCount": 10,
+  "renders": [
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_b/helios_rock_b_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_b/helios_rock_b_readability_close.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_b/helios_rock_b_readability_120px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_b/helios_rock_b_readability_under45px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_b/helios_rock_b_rear_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_b/helios_rock_b_side_ortho.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_b/helios_rock_b_gamesky_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_b/helios_rock_b_lod_continuity_lod0.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_b/helios_rock_b_lod_continuity_lod1.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_rock_b/helios_rock_b_lod_continuity_lod2.png"
+  ],
+  "export": {
+    "file": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/source/places/helios_rock_b.glb",
+    "bytes": 1868420,
+    "sha256": "9525E5BD6C34FD992228954314128394C155F5B520047B65116E470344D520C8",
+    "totalTriangles": 1767,
+    "hullTriangles": 1738,
+    "lodBreakdown": {
+      "lod0": {
+        "triangles": 1112,
+        "primitives": 3,
+        "drawEstimate": 3,
+        "nodes": [
+          {
+            "name": "COLLISION_HULL",
+            "tris": 12
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 12
+          },
+          {
+            "name": "LOD0_Merged_Material_Rock",
+            "tris": 1088
+          }
+        ]
+      },
+      "lod1": {
+        "triangles": 460,
+        "primitives": 2,
+        "drawEstimate": 2,
+        "nodes": [
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 4
+          },
+          {
+            "name": "LOD1_Merged_Material_Rock",
+            "tris": 456
+          }
+        ]
+      },
+      "lod2": {
+        "triangles": 195,
+        "primitives": 2,
+        "drawEstimate": 2,
+        "nodes": [
+          {
+            "name": "LOD2_Merged_Material_Mechanical",
+            "tris": 1
+          },
+          {
+            "name": "LOD2_Merged_Material_Rock",
+            "tris": 194
+          }
+        ]
+      }
+    },
+    "sockets": [
+      "SOCKET_Structure_Core"
+    ],
+    "materials": [
+      "Material_Mechanical",
+      "Material_Rock"
+    ],
+    "primitiveCount": 7,
+    "tangentPrimitiveCount": 7,
+    "uvPrimitiveCount": 7,
+    "lod0Aabb": {
+      "min": [
+        -3.4405910968780518,
+        -4.17866325378418,
+        -6.679811477661133
+      ],
+      "max": [
+        3.675133466720581,
+        6.885381698608398,
+        6.7857465744018555
+      ],
+      "size": [
+        7.115724563598633,
+        11.064044952392578,
+        13.465558052062988
+      ],
+      "center": [
+        0.11727118492126465,
+        1.3533592224121094,
+        0.05296754837036133
+      ]
+    },
+    "collisionAabb": {
+      "min": [
+        -3.273233413696289,
+        -5.089460849761963,
+        -6.194156646728516
+      ],
+      "max": [
+        3.273233413696289,
+        5.089460849761963,
+        6.194156646728516
+      ],
+      "size": [
+        6.546466827392578,
+        10.178921699523926,
+        12.388313293457031
+      ],
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "collisionCoverageRatio": {
+      "perAxis": [
+        0.9200000321656402,
+        0.9200000310304915,
+        0.9199999915012124
+      ],
+      "min": 0.9199999915012124,
+      "mean": 0.920000018232448
+    },
+    "images": [
+      {
+        "name": "mechanical_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "rock_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "rock_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "rock_basecolor",
+        "mimeType": "image/png"
+      }
+    ],
+    "spacefaceAsset": {
+      "contractVersion": 1,
+      "assetId": "SF_PLACE_HELIOS_ROCK_B",
+      "slot": "place",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "textureCompression": "PNG-source",
+      "textureSize": 1024,
+      "chamfered": true,
+      "bevelRadiusM": 0.05,
+      "partId": "place_asteroid_rock_b",
+      "liveId": "place_asteroid_rock_b",
+      "category": "places",
+      "sourceRole": "place-environment",
+      "packet": "M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001",
+      "family": "helios_hub_env",
+      "role": "hero_rock",
+      "title": "Helios Rock B (wedge)",
+      "kind": "prop",
+      "triangleCount": 1767,
+      "hullTriangleCount": 1738,
+      "deliverableRole": "production_multi_lod",
+      "lods": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "wiringStatus": "candidate_pending_promote",
+      "lod0AabbSize": [
+        7.115724563598633,
+        11.064044952392578,
+        13.465558052062988
+      ],
+      "collisionBounds": {
+        "min": [
+          -3.273233413696289,
+          -5.089460849761963,
+          -6.194156646728516
+        ],
+        "max": [
+          3.273233413696289,
+          5.089460849761963,
+          6.194156646728516
+        ],
+        "size": [
+          6.546466827392578,
+          10.178921699523926,
+          12.388313293457031
+        ],
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "collisionCoverageRatio": {
+        "perAxis": [
+          0.9200000321656402,
+          0.9200000310304915,
+          0.9199999915012124
+        ],
+        "min": 0.9199999915012124,
+        "mean": 0.920000018232448
+      },
+      "triBudget": 3500
+    },
+    "lodBuildStats": [
+      {
+        "lod": "lod0",
+        "decimateRatio": 1.0,
+        "mergedMeshes": [
+          "LOD0_Merged_Material_Rock",
+          "LOD0_Merged_Material_Mechanical"
+        ],
+        "separateMeshes": [],
+        "removedCloseOnly": [],
+        "triangles": 1100,
+        "objectCount": 2
+      },
+      {
+        "lod": "lod1",
+        "decimateRatio": 0.42,
+        "mergedMeshes": [
+          "LOD1_Merged_Material_Rock",
+          "LOD1_Merged_Material_Mechanical"
+        ],
+        "separateMeshes": [],
+        "removedCloseOnly": [],
+        "triangles": 460,
+        "objectCount": 2
+      },
+      {
+        "lod": "lod2",
+        "decimateRatio": 0.18,
+        "mergedMeshes": [
+          "LOD2_Merged_Material_Rock",
+          "LOD2_Merged_Material_Mechanical"
+        ],
+        "separateMeshes": [],
+        "removedCloseOnly": [],
+        "triangles": 196,
+        "objectCount": 2
+      }
+    ],
+    "withinBudget": true,
+    "lod0WithinBudget": true
+  },
+  "lodStats": [
+    {
+      "lod": "lod0",
+      "decimateRatio": 1.0,
+      "mergedMeshes": [
+        "LOD0_Merged_Material_Rock",
+        "LOD0_Merged_Material_Mechanical"
+      ],
+      "separateMeshes": [],
+      "removedCloseOnly": [],
+      "triangles": 1100,
+      "objectCount": 2
+    },
+    {
+      "lod": "lod1",
+      "decimateRatio": 0.42,
+      "mergedMeshes": [
+        "LOD1_Merged_Material_Rock",
+        "LOD1_Merged_Material_Mechanical"
+      ],
+      "separateMeshes": [],
+      "removedCloseOnly": [],
+      "triangles": 460,
+      "objectCount": 2
+    },
+    {
+      "lod": "lod2",
+      "decimateRatio": 0.18,
+      "mergedMeshes": [
+        "LOD2_Merged_Material_Rock",
+        "LOD2_Merged_Material_Mechanical"
+      ],
+      "separateMeshes": [],
+      "removedCloseOnly": [],
+      "triangles": 196,
+      "objectCount": 2
+    }
+  ]
+}

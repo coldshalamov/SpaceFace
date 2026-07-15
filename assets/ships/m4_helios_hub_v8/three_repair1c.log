@@ -1,0 +1,15 @@
+[three] helios_hub_station_three_close ok=true bright=28234 meshes=15
+[three] helios_hub_station_three_gameplay ok=true bright=10041 meshes=15
+[three] helios_hub_station_three_mid ok=true bright=622 meshes=15
+[three] helios_hub_station_three_far ok=true bright=27 meshes=15
+[three] helios_hub_station_three_lod0 ok=true bright=12540 meshes=15
+[three] helios_hub_station_three_lod1 ok=true bright=12565 meshes=15
+[three] helios_hub_station_three_lod2 ok=true bright=12218 meshes=15
+[three] helios_gate_three_close ok=true bright=66191 meshes=9
+[three] helios_gate_three_gameplay ok=true bright=23883 meshes=9
+[three] helios_gate_three_mid ok=true bright=1423 meshes=9
+[three] helios_gate_three_far ok=true bright=67 meshes=9
+[three] helios_gate_three_lod0 ok=true bright=29321 meshes=9
+[three] helios_gate_three_lod1 ok=true bright=8493 meshes=9
+[three] helios_gate_three_lod2 ok=true bright=7932 meshes=9
+[three] done shots=14 ok=14

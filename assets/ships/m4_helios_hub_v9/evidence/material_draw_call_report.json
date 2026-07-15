@@ -1,0 +1,39 @@
+{
+  "schema": "spaceface.materialDrawCall.v1",
+  "packet": "M4-HELIOS-V9-NEW-FOUNDATION",
+  "assets": [
+    {
+      "id": "helios_hub_station",
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "materialCount": 5,
+      "drawEstimateByLod": {
+        "lod0": 6,
+        "lod1": 6,
+        "lod2": 4
+      },
+      "primitiveCount": 16
+    },
+    {
+      "id": "helios_gate",
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "materialCount": 4,
+      "drawEstimateByLod": {
+        "lod0": 4,
+        "lod1": 4,
+        "lod2": 4
+      },
+      "primitiveCount": 12
+    }
+  ]
+}

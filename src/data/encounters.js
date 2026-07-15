@@ -34,9 +34,9 @@
 //                    has a PHYSICAL read (brake to pay, fly off to run, fire to refuse) so no
 //                    modal UI is ever required. `timeoutChoice` is the deterministic default.
 //
-// Taste (spec2/00): encounter barks ≤14 words on variant arrays (≤12 on legacy single strings),
-// no exclamation marks outside genuine emergencies, callsigns in caps on hails, receipts short
-// and factual — they must never overclaim what actually changed.
+// Copy contract: one authored inline line per voice event, callsigns in caps on hails, and receipts
+// factual about what changed. One-voice timing and UI fit are validated without English word-count
+// or punctuation taste rules so localization and distinct faction voices remain viable.
 
 import { ENCOUNTERS } from './encounters/index.generated.js';
 export { ENCOUNTERS };
@@ -69,8 +69,8 @@ export const NAMED_CAPTAINS = Object.freeze([
 ]);
 
 /** Bark lines keyed by bark id. Values are a string or a variant array (seeded pick via barkText).
- *  `{key}` placeholders are substituted after pick. One voice, ≤14 words on variant arrays,
- *  callsigns in caps on hails, no exclamation marks outside genuine emergencies.
+ *  `{key}` placeholders are substituted after pick. Lines use the one-voice route, remain safe for
+ *  its inline UI surface, and preserve required callsign/placeholder semantics.
  *
  *  Faction suitability (pool members — not runtime-filtered):
  *    toll_demand [0,1,3] Reach transactional; [2,4] Vael smuggler customs voice.

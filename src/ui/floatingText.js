@@ -88,7 +88,23 @@ export function createFloatingText(ctx) {
     if (!p || !p.pos) return;
     spawn('◈ ' + (p.label || 'WEAK POINT'), 'sf-ft--weak', p.pos.x, p.pos.z, p.targetId, { life: 1.0, vy: 40 });
   });
-  bus.on('mining:yield', (p) => { if (p && p.pos && p.qty) spawn('+' + p.qty, 'sf-ft--ore', p.pos.x, p.pos.z, null, { life: 1.0, vy: 40 }); });
+  // Direct-to-cargo mining never fires pickup:collected, so this is the only on-screen yield
+  // receipt — always name the commodity (bare "+1" is opaque; cargo hold is the real ledger).
+  bus.on('mining:yield', (p) => {
+    if (!p || !p.pos || !(p.qty > 0)) return;
+    if (p.minerId != null && p.minerId !== state.playerId) return;
+    const def = CMDTY_BY_ID[p.commodityId];
+    const name = def ? def.name : (p.commodityId || 'Ore');
+    const cat = def ? def.category : '';
+    const cls = (cat === 'raw ore' || cat === 'crystal') ? 'sf-ft--ore'
+      : cat === 'exotic' ? 'sf-ft--exotic'
+      : 'sf-ft--pickup';
+    const rich = p.richCore ? ' sf-ft--big' : '';
+    spawn('+' + p.qty + ' ' + name, cls + rich, p.pos.x, p.pos.z, null, {
+      life: p.richCore ? 1.35 : 1.05,
+      vy: p.richCore ? 48 : 40,
+    });
+  });
   bus.on('loot:drop', (p) => { if (p && p.pos && p.credits > 0) spawn('+' + p.credits + ' cr', 'sf-ft--credits', p.pos.x, p.pos.z, null, { life: 1.4, vy: 36 }); });
   // Phase 3/6: confirm a dash fired (violet, matches the boost bar) — only the player's, so a fleet
   // of dashing NPCs doesn't spam text.

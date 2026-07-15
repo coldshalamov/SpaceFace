@@ -1,5 +1,9 @@
 # 04 — Gameplay Observatory
 
+> **Manual campaign evidence design.** Activate it for a named observatory packet; do not treat its
+> worker roles or capture protocol as the default workflow for unrelated implementation. The useful
+> invariant is that player-visible claims require representative temporal evidence.
+
 **Status:** DRAFT
 **Purpose:** make recurring gameplay, balance, pacing, visual, and presentation failures observable
 

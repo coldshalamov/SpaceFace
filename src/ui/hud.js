@@ -37,6 +37,7 @@ import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './screens/market.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
 import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
+import { createHudDragController } from './hudLayout.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -741,6 +742,10 @@ export function createHud(ctx, alerts) {
     '<div class="sf-mt-obj mono"></div>' +
     '<div class="sf-mt-time mono"></div>';
   leftContext.appendChild(missionTracker);   // relocated into the bottom-left contextual column
+  missionTracker.style.pointerEvents = 'auto';
+  const objectiveHudDrag = createHudDragController({
+    state, bus: ctx.bus, element: missionTracker, key: 'objective', documentRef: document,
+  });
   const mtTitle = missionTracker.querySelector('.sf-mt-title');
   const mtObj = missionTracker.querySelector('.sf-mt-obj');
   const mtTime = missionTracker.querySelector('.sf-mt-time');
@@ -3485,5 +3490,8 @@ export function createHud(ctx, alerts) {
     if (targetPanel.forceRefresh) targetPanel.forceRefresh();
   }
 
-  return { frame, tickHidden, forceRefresh, setVisible, refreshCredits, refreshCargo, refreshObjectives };
+  return {
+    frame, tickHidden, forceRefresh, setVisible, refreshCredits, refreshCargo, refreshObjectives,
+    destroy() { objectiveHudDrag.destroy(); },
+  };
 }

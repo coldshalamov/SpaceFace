@@ -38,7 +38,7 @@ try {
       engagementTrigger: 'authorized_hostile_spawn',
       zoneId: 'zone_live_registry_probe',
       approachTelegraph: 'engine_flare',
-      noFireResponseWindowS: 0.5,
+      noFireResponseWindowS: 1,
       activity: normalizeActivity({
         kind: ActivityKind.ATTACK_RUN,
         reason: 'live_registry:attack_probe',
@@ -55,7 +55,10 @@ try {
   actor.data.intent = legacyIntent;
 
   const armedIntentTicks = [];
-  for (let i = 0; i < 38; i++) {
+  // Cross the authoritative one-second no-fire response window and the complete interceptor
+  // strike. The SG-03 request is an exact tick, while the physical weapon intent deliberately
+  // remains armed for the bounded doctrine fire window and must close during egress.
+  for (let i = 0; i < 122; i++) {
     registry.step(DT);
     if (actor.data.intent.fire === true) armedIntentTicks.push(state.tick);
   }
@@ -93,8 +96,14 @@ try {
   assert.equal(legacyIntent.fire, false, 'frozen legacy intent fixture must remain untouched');
   assert.equal(actor.data.intent.sentinel, 'live-registry-must-not-touch-legacy-intent',
     'fire adapter should preserve non-firing intent fields');
-  assert.deepEqual(armedIntentTicks, [aiRequest.tick],
-    'visible weapon intent should arm only on the canonical SG-03 request tick');
+  assert.equal(armedIntentTicks[0], aiRequest.tick,
+    'visible weapon intent should not arm before the canonical SG-03 request tick');
+  assert(armedIntentTicks.length > 1,
+    'physical weapon intent should remain armed across the doctrine fire window');
+  assert.equal(armedIntentTicks.every((tick, index) => index === 0 || tick === armedIntentTicks[index - 1] + 1), true,
+    'visible weapon intent should form one contiguous doctrine-authorized window');
+  assert(armedIntentTicks.at(-1) < state.tick,
+    'visible weapon intent should close before the completed-strike observation tick');
   assert.equal(aiEffect.tick, aiRequest.tick + 1,
     'canonical SG-03 burst effect should follow the doctrine-authorized request on the next tick');
   assert.equal(actor.data.intent.fire, false,

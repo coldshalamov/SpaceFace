@@ -50,7 +50,7 @@ export function resolveDrillControlMap(state) {
 
 const DRILL_INPUT_STEP_S = 1 / 60;
 // Catch up through ordinary 10–20 FPS dips, but never more than 100 ms in one render frame.
-// The single-cell intent boundary below prevents that catch-up from reaching another cell.
+// A render frame may cross at most one cell, so a hitch cannot turn a held key into a burst.
 const DRILL_INPUT_MAX_FRAME_S = 0.1;
 const DIRECTION_VECTORS = Object.freeze({
   left: Object.freeze({ dc: -1, dr: 0 }),
@@ -75,69 +75,111 @@ export function drillGasShakeOffset(remainingS, elapsedS, reducedMotion = false)
 }
 
 /**
- * Convert direction presses into bounded, single-cell drill commands.
+ * Convert physical held keys into bounded, fixed-step drill commands.
  *
- * A press keeps working on its selected adjacent cell after the key is released, but it is
- * retired as soon as that cell is entered or rejected. Fixed microsteps prevent a slow render
- * frame from becoming a larger, more dangerous drilling command.
+ * Browser key-repeat is intentionally irrelevant: keydown begins a hold and keyup ends it. The
+ * controller chains one adjacent-cell intent at a time on the 60 Hz drill clock, while allowing
+ * at most one cell boundary per rendered frame. That keeps low frame rates useful without letting
+ * a delayed frame race the rover several cells into a hidden hazard.
  */
 export function createDrillInputController({ drillSys, getState }) {
   const held = { left: false, right: false, up: false, down: false };
+  let activeDirection = null;
   let intent = null;
   let accumulator = 0;
+  let blockedUntilRelease = false;
 
-  function clearIntent() {
+  function clearCommand() {
     held.left = held.right = held.up = held.down = false;
     intent = null;
   }
 
+  function armIntent(direction) {
+    const vector = DIRECTION_VECTORS[direction];
+    const d = getState();
+    if (!vector || !d?.active || !d.avatar || blockedUntilRelease) return false;
+    clearCommand();
+    intent = {
+      direction,
+      col: d.avatar.col + vector.dc,
+      row: d.avatar.row + vector.dr,
+    };
+    held[direction] = true;
+    return true;
+  }
+
   function settleIntent() {
     const d = getState();
-    if (!intent || !d?.avatar) return;
+    if (!intent || !d?.avatar) return null;
     const reached = d.avatar.col === intent.col && d.avatar.row === intent.row;
     const targetTile = d.field?.[intent.col]?.[intent.row];
     const rejectedSolid = targetTile?.type !== 'empty'
       && !d.avatar.isDrilling
       && !d.avatar.drillTarget;
-    if (reached || !targetTile || rejectedSolid || d.avatar.drillBlocked || !d.active) clearIntent();
+    if (reached) {
+      clearCommand();
+      return 'reached';
+    }
+    if (!targetTile || rejectedSolid || d.avatar.drillBlocked || !d.active) {
+      clearCommand();
+      blockedUntilRelease = true;
+      return 'blocked';
+    }
+    return null;
   }
 
-  function step(dt) {
+  function step(dt, allowArm = true) {
+    if (!intent && activeDirection && allowArm && !blockedUntilRelease) armIntent(activeDirection);
+    const before = getState()?.avatar;
+    const beforeCol = before?.col;
+    const beforeRow = before?.row;
     drillSys.tickInput(held, dt);
     settleIntent();
+    const after = getState()?.avatar;
+    return !!after && (after.col !== beforeCol || after.row !== beforeRow);
   }
 
   return {
     held,
     press(direction) {
-      const vector = DIRECTION_VECTORS[direction];
       const d = getState();
-      if (!vector || !d?.active || !d.avatar) return false;
-      clearIntent();
-      intent = {
-        direction,
-        col: d.avatar.col + vector.dc,
-        row: d.avatar.row + vector.dr,
-      };
-      held[direction] = true;
-      // Immediate fixed-step acknowledgment: a tap cannot disappear between animation frames.
+      if (!DIRECTION_VECTORS[direction] || !d?.active || !d.avatar) return false;
+      activeDirection = direction;
+      blockedUntilRelease = false;
+      accumulator = 0;
+      armIntent(direction);
+      // Immediate fixed-step acknowledgment: keydown cannot disappear between animation frames.
       step(DRILL_INPUT_STEP_S);
+      return true;
+    },
+    release(direction) {
+      if (direction !== activeDirection) return false;
+      activeDirection = null;
+      blockedUntilRelease = false;
+      accumulator = 0;
+      clearCommand();
+      // Retire drilling state immediately instead of waiting for the next animation frame.
+      drillSys.tickInput(held, 0);
       return true;
     },
     tick(frameDt) {
       const bounded = Math.max(0, Math.min(DRILL_INPUT_MAX_FRAME_S, Number(frameDt) || 0));
       accumulator += bounded;
+      let crossedCell = false;
       while (accumulator >= DRILL_INPUT_STEP_S) {
-        step(DRILL_INPUT_STEP_S);
+        crossedCell = step(DRILL_INPUT_STEP_S, !crossedCell) || crossedCell;
         accumulator -= DRILL_INPUT_STEP_S;
       }
-      return !!intent;
+      return !!intent || (!!activeDirection && !blockedUntilRelease);
     },
     cancel() {
       accumulator = 0;
-      clearIntent();
+      activeDirection = null;
+      blockedUntilRelease = false;
+      clearCommand();
+      drillSys.tickInput(held, 0);
     },
-    hasActiveIntent() { return !!intent; },
+    hasActiveIntent() { return !!intent || (!!activeDirection && !blockedUntilRelease); },
     target() { return intent ? { ...intent } : null; },
   };
 }
@@ -350,8 +392,7 @@ function renderDrillLegend(gridEl, field, drillTier = 1) {
   const { ores, hasGas } = collectFieldLegendData(field);
 
   if (hasGas) {
-    gridEl.appendChild(makeLegendItem('Gas (disguised as dirt)', null, {
-      icons: ['dirt', 'gasRevealed'],
+    gridEl.appendChild(makeLegendItem('Compressed gas pocket', 'gasRevealed', {
       warn: true,
       badge: 'AVOID',
     }));
@@ -910,6 +951,30 @@ function injectStyle() {
 .drill-hud > span + span { border-left: 1px solid rgba(57,208,255,.1); }
 .drill-hud .v { color:var(--accent); }
 .drill-hud .warn { color:var(--warn); }
+.drill-hud .bad { color:var(--danger); }
+.drill-cargo-banner {
+  display:flex; align-items:center; gap:9px;
+  width:100%; max-width:900px; box-sizing:border-box;
+  padding:8px 12px; margin-top:2px;
+  border:1px solid rgba(255,92,92,0.5); border-radius:3px;
+  background:rgba(255,92,92,0.1);
+  color:var(--danger); font-size:11px; letter-spacing:.06em; line-height:1.35;
+  animation:drill-cargo-pulse 1.6s ease-in-out infinite;
+}
+.drill-cargo-banner[hidden] { display:none; }
+.drill-cargo-banner-icon {
+  flex:0 0 auto; width:16px; height:16px; display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:11px; border-radius:50%;
+  background:var(--danger); color:#160808;
+}
+.drill-cargo-banner-text { min-width:0; overflow-wrap:anywhere; }
+@keyframes drill-cargo-pulse {
+  0%,100% { background:rgba(255,92,92,0.1); }
+  50% { background:rgba(255,92,92,0.2); }
+}
+@media (prefers-reduced-motion: reduce) { .drill-cargo-banner { animation:none; } }
+html.sf-reduce-motion .drill-cargo-banner { animation:none; }
+.drill-screen.reduce-motion .drill-cargo-banner { animation:none; }
 .drill-legend {
   display:flex;
   flex-direction:column;
@@ -1129,6 +1194,7 @@ export const drillScreen = {
   mount(rootEl, ctx) {
     injectStyle();
     rootEl.innerHTML = '';
+    this._ctx = ctx;
     const state = ctx.state;
     const controlMap = resolveDrillControlMap(state);
     const wrap = document.createElement('div');
@@ -1176,7 +1242,7 @@ export const drillScreen = {
     controlSec.innerHTML = `
       <div class="sec-title">Rig controls</div>
       <ul class="drill-control-list">
-        <li><kbd>${controlMap.movementLabel}</kbd><span>Tap once to move or bore one cell</span></li>
+        <li><kbd>${controlMap.movementLabel}</kbd><span>Hold to move or bore continuously</span></li>
         <li><kbd>${controlMap.scanLabel}</kbd><span>Pulse the local seismic survey</span></li>
         <li><kbd>ESC</kbd><span>Retract the rig</span></li>
       </ul>
@@ -1213,7 +1279,7 @@ export const drillScreen = {
     canvas.height = 18 * TILE;
     canvas.tabIndex = 0;
     canvas.setAttribute('role', 'img');
-    canvas.setAttribute('aria-label', `Asteroid cross-section. Tap ${controlMap.movementLabel} to move or drill one adjacent cell. Press ${controlMap.scanLabel} to survey nearby strata.`);
+    canvas.setAttribute('aria-label', `Asteroid cross-section. Hold ${controlMap.movementLabel} to move or drill continuously. Release to stop. Press ${controlMap.scanLabel} to survey nearby strata.`);
     canvasWrap.appendChild(canvas);
     centerPanel.appendChild(canvasWrap);
     
@@ -1228,6 +1294,18 @@ export const drillScreen = {
       '<span>TEMP: <span class="v" data-temp>0%</span></span>' +
       '<span>ENERGY: <span class="v" data-energy>100%</span></span>';
     centerPanel.appendChild(hud);
+
+    // Persistent cargo-full banner. Hidden until holds are maxed; stays visible (not a toast) so
+    // the player understands continued mining wastes ore and knows the way out.
+    const cargoBanner = document.createElement('div');
+    cargoBanner.className = 'drill-cargo-banner';
+    cargoBanner.setAttribute('role', 'alert');
+    cargoBanner.setAttribute('aria-live', 'off');
+    cargoBanner.hidden = true;
+    cargoBanner.innerHTML =
+      '<span class="drill-cargo-banner-icon">!</span>' +
+      '<span class="drill-cargo-banner-text">CARGO HOLDS FULL — mining now wastes ore. Retract the rig to offload.</span>';
+    centerPanel.appendChild(cargoBanner);
 
     // Legend — uses the same SVG tile icons as the field, scoped to this deposit.
     const legend = document.createElement('div');
@@ -1420,12 +1498,27 @@ export const drillScreen = {
       else if (controlMap.scan.includes(c)) { if (!ev.repeat) pulseSurvey(); ev.preventDefault(); }
       else if (c === 'Escape') { exit(); }
     };
+    const onKeyUp = (ev) => {
+      const c = ev.code;
+      let direction = null;
+      if (controlMap.left.includes(c)) direction = 'left';
+      else if (controlMap.right.includes(c)) direction = 'right';
+      else if (controlMap.up.includes(c)) direction = 'up';
+      else if (controlMap.down.includes(c)) direction = 'down';
+      if (direction) {
+        if (inputController.release(direction)) canvasDirty = true;
+        ev.preventDefault();
+      }
+    };
+    const onWindowBlur = () => inputController.cancel();
     exitBtn.addEventListener('click', exit);
     scanBtn.addEventListener('click', pulseSurvey);
 
     const retryBore = () => {
       if (!drillSys?.retry()) return;
       inputController.cancel();
+      damagedTiles.clear();
+      buildStrataCache(state.drill);
       viewY = undefined;
       particles = [];
       canvasDirty = true;
@@ -1490,11 +1583,20 @@ export const drillScreen = {
     // Pre-rendered static depth overlay — drawn once, blitted per frame.
     let overlayCanvas = null;
     let headlightSprite = null;
+    // The field is mostly immutable. Rasterize it once and repaint only tiles whose reveal/empty
+    // state changed; the hot path then uploads one viewport slice instead of ~500 SVG tiles.
+    let strataCanvas = null;
+    let strataCtx = null;
+    let strataAvatarCol = null;
+    let strataAvatarRow = null;
+    const damagedTiles = new Set();
 
     const gasHitFlash = { t: 0 };
     const gasHitShake = { t: 0, elapsed: 0 };
     const yieldFlash = { t: 0, text: '' };
     const breakFlash = { t: 0, x: 0, y: 0 };
+    // Amber edge-vignette pulse when a vein breaks into full holds (immediate per-tile feedback).
+    const cargoFullFlash = { t: 0 };
     let motionReduce = prefersReducedMotion({
       motionReduce: !!(state.settings && state.settings.video && state.settings.video.motionReduce),
     });
@@ -1514,6 +1616,120 @@ export const drillScreen = {
       if (dir === 'up') return -Math.PI / 2;
       if (dir === 'down') return Math.PI / 2;
       return 0; // right
+    }
+
+    function paintStrataTile(d, col, row) {
+      if (!strataCtx || !d?.field?.[col]?.[row]) return;
+      const t = d.field[col][row];
+      const x = col * TILE;
+      const y = row * TILE;
+      strataCtx.clearRect(x, y, TILE, TILE);
+
+      if (t.type === 'empty') {
+        strataCtx.strokeStyle = 'rgba(57,208,255,0.03)';
+        strataCtx.lineWidth = 1;
+        strataCtx.strokeRect(x, y, TILE, TILE);
+        return;
+      }
+
+      const surveyed = drillSys.isTileSurveyed(col, row);
+      let img = null;
+      // Gas pockets are always legible as hazards — never disguised as dirt. A pocket you only
+      // learn about by dying into it is an unfair death, so the hazard sprite shows through the
+      // survey fog exactly as it does once adjacent/revealed.
+      if (t.type === 'gas') img = IMAGES.gasRevealed;
+      else if (!surveyed) img = (t.type === 'rock' || t.type === 'vein') ? IMAGES.rock : IMAGES.dirt;
+      else if (t.type === 'dirt') img = IMAGES.dirt;
+      else if (t.type === 'rock') img = IMAGES.rock;
+      else if (t.type === 'vein' && t.ore) img = IMAGES[t.ore];
+
+      if (img?.complete && img.naturalWidth > 0) {
+        strataCtx.drawImage(img, x, y, TILE, TILE);
+      } else if (surveyed && t.type === 'vein' && t.ore) {
+        strataCtx.fillStyle = 'rgba(255, 92, 92, 0.25)';
+        strataCtx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+        strataCtx.strokeStyle = '#ff5c5c';
+        strataCtx.lineWidth = 1.5;
+        strataCtx.strokeRect(x + 4, y + 4, TILE - 8, TILE - 8);
+        strataCtx.fillStyle = '#ffb35c';
+        strataCtx.font = 'bold 8px ' + monoFamily;
+        strataCtx.textAlign = 'center';
+        strataCtx.fillText('?', x + TILE / 2, y + TILE / 2 + 3);
+      } else {
+        // Images decode asynchronously on first boot. Preserve material readability for that short
+        // window; buildStrataCache runs again as soon as every SVG is decoded.
+        strataCtx.fillStyle = (t.type === 'rock' || t.type === 'vein') ? '#222f3d' : '#3b3026';
+        strataCtx.fillRect(x, y, TILE, TILE);
+      }
+
+      if (surveyed && t.type === 'vein' && t.ore) {
+        const req = t.tierReq || drillTierReqForOre(t.ore);
+        const tier = drillScreen._drillTier || 1;
+        if (tier < req) {
+          strataCtx.save();
+          strataCtx.fillStyle = 'rgba(8, 12, 20, 0.55)';
+          strataCtx.fillRect(x, y, TILE, TILE);
+          strataCtx.strokeStyle = 'rgba(255, 92, 92, 0.85)';
+          strataCtx.lineWidth = 1.5;
+          strataCtx.strokeRect(x + 3, y + 3, TILE - 6, TILE - 6);
+          strataCtx.fillStyle = '#ff8a4a';
+          strataCtx.font = 'bold 9px ' + monoFamily;
+          strataCtx.textAlign = 'center';
+          strataCtx.fillText(`MK${req}`, x + TILE / 2, y + TILE / 2 + 3);
+          strataCtx.restore();
+        }
+      }
+    }
+
+    function buildStrataCache(d) {
+      if (!d?.field || typeof document === 'undefined') return null;
+      if (!strataCanvas) strataCanvas = document.createElement('canvas');
+      strataCanvas.width = COLS * TILE;
+      strataCanvas.height = ROWS * TILE;
+      strataCtx = strataCanvas.getContext('2d', { alpha: true });
+      if (!strataCtx) return null;
+      strataCtx.clearRect(0, 0, strataCanvas.width, strataCanvas.height);
+      for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS; r++) paintStrataTile(d, c, r);
+      }
+      strataAvatarCol = d.avatar?.col ?? null;
+      strataAvatarRow = d.avatar?.row ?? null;
+      return strataCanvas;
+    }
+
+    function paintStrataNeighborhood(d, col, row, radius = SCAN_RADIUS) {
+      if (!strataCtx || !Number.isFinite(col) || !Number.isFinite(row)) return;
+      const minCol = Math.max(0, col - radius);
+      const maxCol = Math.min(COLS - 1, col + radius);
+      const minRow = Math.max(0, row - radius);
+      const maxRow = Math.min(ROWS - 1, row + radius);
+      for (let c = minCol; c <= maxCol; c++) {
+        for (let r = minRow; r <= maxRow; r++) paintStrataTile(d, c, r);
+      }
+    }
+
+    function syncStrataCache(d) {
+      if (!strataCanvas || !strataCtx) buildStrataCache(d);
+      const col = d.avatar?.col;
+      const row = d.avatar?.row;
+      if (col === strataAvatarCol && row === strataAvatarRow) return;
+      paintStrataNeighborhood(d, strataAvatarCol, strataAvatarRow, 3);
+      paintStrataNeighborhood(d, col, row, 3);
+      strataAvatarCol = col;
+      strataAvatarRow = row;
+    }
+
+    function drawDamageCracks(targetCtx, tile, x, y) {
+      if (!tile || tile.maxHp <= 0 || tile.hp >= tile.maxHp) return;
+      const frac = 1 - (tile.hp / tile.maxHp);
+      targetCtx.strokeStyle = 'rgba(0,0,0,' + (0.35 + frac * 0.4) + ')';
+      targetCtx.lineWidth = 1.5;
+      targetCtx.beginPath();
+      targetCtx.moveTo(x + 2, y + 4); targetCtx.lineTo(x + TILE - 4, y + TILE - 2);
+      if (frac > 0.5) {
+        targetCtx.moveTo(x + TILE - 3, y + 2); targetCtx.lineTo(x + 3, y + TILE - 3);
+      }
+      targetCtx.stroke();
     }
 
     // Register event subscriptions
@@ -1565,8 +1781,28 @@ export const drillScreen = {
       announce(p.text);
     }));
 
+    unsubs.push(ctx.bus.on('drill:cargoFull', (p) => {
+      // A vein broke but the holds were full — ore wasted. Immediate per-tile feedback: a red
+      // "CARGO FULL" floater at the tile and a brief amber edge vignette, plus an activity entry
+      // that stays distinct from the routine yield receipts.
+      const px = (p.pos?.col ?? 0) * TILE + TILE / 2;
+      const py = (p.pos?.row ?? 0) * TILE + TILE / 2;
+      const name = commodityName(p.commodityId);
+      spawnParticleBurst(particles, {
+        x: px, y: py - 6, count: 3, color: COL.danger, life: 1.0, size: 1.5,
+        speed: 8, kind: 'floater', text: 'CARGO FULL', vy0: -18,
+      });
+      cargoFullFlash.t = motionReduce ? 0.4 : 1.0;
+      pushActivity(`${name} vein mined — cargo full, ore wasted`, 'bad');
+      canvasDirty = true;
+      announce(`Cargo holds full. ${name} ore could not be stored.`);
+      updateHud(); // flip the HUD readout + banner immediately
+    }));
+
     unsubs.push(ctx.bus.on('drill:scanPulse', (p) => {
       sonarDirty = true;
+      const d = state.drill;
+      if (d?.avatar) paintStrataNeighborhood(d, d.avatar.col, d.avatar.row, SCAN_RADIUS);
       renderDrillLegend(legendGrid, state.drill?.field, drillSys.getDrillTier());
       const result = p.contacts === 1 ? '1 contact' : `${p.contacts} contacts`;
       pushActivity(`Survey resolved — ${result}`, 'info');
@@ -1577,6 +1813,8 @@ export const drillScreen = {
 
     unsubs.push(ctx.bus.on('drill:break', (p) => {
       if (!state.drill) return;
+      damagedTiles.delete(`${p.col}:${p.row}`);
+      paintStrataTile(state.drill, p.col, p.row);
       const cx = p.col * TILE + TILE / 2;
       const cy = p.row * TILE + TILE / 2;
       const color = sparkColorFor(p.type, p.ore);
@@ -1596,6 +1834,7 @@ export const drillScreen = {
 
     unsubs.push(ctx.bus.on('drill:spark', (p) => {
       if (!state.drill) return;
+      damagedTiles.add(`${p.col}:${p.row}`);
       sparkVisualPhase = (sparkVisualPhase + 1) % 2;
       if (sparkVisualPhase === 0) return;
       const d = state.drill;
@@ -1774,6 +2013,7 @@ export const drillScreen = {
       }
       if (yieldFlash.t > 0) yieldFlash.t -= dt;
       if (breakFlash.t > 0) breakFlash.t -= dt;
+      if (cargoFullFlash.t > 0) cargoFullFlash.t -= dt;
 
       sonarElapsed += dt;
       const scanActive = !!(d.scan && d.scan.active > 0);
@@ -1789,6 +2029,7 @@ export const drillScreen = {
         || gasHitShake.t > 0
         || yieldFlash.t > 0
         || breakFlash.t > 0
+        || cargoFullFlash.t > 0
         || scanActive;
       if (canvasDirty || cameraSettling || animated) {
         cameraSettling = render(dt);
@@ -1843,82 +2084,20 @@ export const drillScreen = {
       ctx2d.fillStyle = '#10141e';
       ctx2d.fillRect(0, tunnelTopY, canvas.width, Math.max(0, ROWS * TILE - viewY));
 
-      // Draw tiles
-      for (let c = 0; c < COLS; c++) {
-        for (let r = startRow; r < endRow; r++) {
-          const t = d.field[c][r];
-          const x = c * TILE;
-          const y = r * TILE - viewY;
-          
-          if (t.type === 'empty') {
-            // grid lines inside dug caverns
-            ctx2d.strokeStyle = 'rgba(57,208,255,0.03)';
-            ctx2d.lineWidth = 1;
-            ctx2d.strokeRect(x, y, TILE, TILE);
-            continue;
-          }
+      // The unchanged field is one cached bitmap. Only break/reveal neighborhoods repaint it.
+      syncStrataCache(d);
+      if (strataCanvas) {
+        ctx2d.drawImage(strataCanvas, 0, viewY, canvas.width, viewHeight, 0, 0, canvas.width, viewHeight);
+      }
 
-          const surveyed = drillSys.isTileSurveyed(c, r);
-          let img = null;
-          if (!surveyed) {
-            img = (t.type === 'rock' || t.type === 'vein') ? IMAGES.rock : IMAGES.dirt;
-          } else if (t.type === 'dirt') {
-            img = IMAGES.dirt;
-          } else if (t.type === 'rock') {
-            img = IMAGES.rock;
-          } else if (t.type === 'gas') {
-            img = (t.surveyed || drillSys.isHazardRevealed(c, r)) ? IMAGES.gasRevealed : IMAGES.dirt;
-          } else if (t.type === 'vein' && t.ore) {
-            img = IMAGES[t.ore];
-          }
-
-          if (img) {
-            ctx2d.drawImage(img, x, y, TILE, TILE);
-          } else if (surveyed && t.type === 'vein' && t.ore) {
-            // Missing tile art — draw a loud placeholder so ores never silently share another icon.
-            ctx2d.fillStyle = 'rgba(255, 92, 92, 0.25)';
-            ctx2d.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
-            ctx2d.strokeStyle = '#ff5c5c';
-            ctx2d.lineWidth = 1.5;
-            ctx2d.strokeRect(x + 4, y + 4, TILE - 8, TILE - 8);
-            ctx2d.fillStyle = '#ffb35c';
-            ctx2d.font = 'bold 8px ' + monoFamily;
-            ctx2d.textAlign = 'center';
-            ctx2d.fillText('?', x + TILE / 2, y + TILE / 2 + 3);
-          }
-
-          // Locked vein overlay — tier gate is per ore, not depth.
-          if (surveyed && t.type === 'vein' && t.ore) {
-            const req = t.tierReq || drillTierReqForOre(t.ore);
-            const tier = drillScreen._drillTier || 1;
-            if (tier < req) {
-              ctx2d.save();
-              ctx2d.fillStyle = 'rgba(8, 12, 20, 0.55)';
-              ctx2d.fillRect(x, y, TILE, TILE);
-              ctx2d.strokeStyle = 'rgba(255, 92, 92, 0.85)';
-              ctx2d.lineWidth = 1.5;
-              ctx2d.strokeRect(x + 3, y + 3, TILE - 6, TILE - 6);
-              ctx2d.fillStyle = '#ff8a4a';
-              ctx2d.font = 'bold 9px ' + monoFamily;
-              ctx2d.textAlign = 'center';
-              ctx2d.fillText(`MK${req}`, x + TILE / 2, y + TILE / 2 + 3);
-              ctx2d.restore();
-            }
-          }
-
-          // Damage cracks overlay
-          if (t.maxHp > 0 && t.hp < t.maxHp) {
-            const frac = 1 - (t.hp / t.maxHp);
-            ctx2d.strokeStyle = 'rgba(0,0,0,' + (0.35 + frac * 0.4) + ')';
-            ctx2d.lineWidth = 1.5;
-            ctx2d.beginPath();
-            ctx2d.moveTo(x + 2, y + 4); ctx2d.lineTo(x + TILE - 4, y + TILE - 2);
-            if (frac > 0.5) {
-              ctx2d.moveTo(x + TILE - 3, y + 2); ctx2d.lineTo(x + 3, y + TILE - 3);
-            }
-            ctx2d.stroke();
-          }
-        }
+      // Cracks are the only tile surface that changes continuously while the drill is in contact.
+      // Track those few cells explicitly instead of scanning every visible tile each frame.
+      for (const key of damagedTiles) {
+        const split = key.indexOf(':');
+        const col = Number(key.slice(0, split));
+        const row = Number(key.slice(split + 1));
+        if (row < startRow || row >= endRow) continue;
+        drawDamageCracks(ctx2d, d.field?.[col]?.[row], col * TILE, row * TILE - viewY);
       }
 
       // Seismic pulse: one state-driven ring, clipped naturally by the canvas.
@@ -1980,6 +2159,19 @@ export const drillScreen = {
         ctx2d.beginPath();
         ctx2d.arc(breakFlash.x, breakFlash.y - viewY, TILE * (0.6 + (1 - a) * 0.8), 0, Math.PI * 2);
         ctx2d.fill();
+      }
+
+      // Cargo-full edge vignette — an amber screen-border pulse the instant a vein is wasted into
+      // full holds, so the player feels each wasted break even while focused on the tile.
+      if (cargoFullFlash.t > 0) {
+        const a = Math.min(1, cargoFullFlash.t);
+        const vg = ctx2d.createLinearGradient(0, 0, 0, canvas.height);
+        vg.addColorStop(0, `rgba(255,179,92,${0.34 * a})`);
+        vg.addColorStop(0.18, 'rgba(255,179,92,0)');
+        vg.addColorStop(0.82, 'rgba(255,179,92,0)');
+        vg.addColorStop(1, `rgba(255,179,92,${0.34 * a})`);
+        ctx2d.fillStyle = vg;
+        ctx2d.fillRect(0, 0, canvas.width, canvas.height);
       }
 
       // Draw avatar (rover & rotating drill)
@@ -2401,7 +2593,10 @@ export const drillScreen = {
       setText(hudEls.gas, 'gas', d.gasHits);
       const cargo = state.player.cargo;
       const cargoUsed = cargo ? Math.round((cargo.usedVolume / cargo.capVolume) * 100) : 0;
-      setText(hudEls.cargo, 'cargo', cargoUsed + '%');
+      const cargoFull = cargoUsed >= 100;
+      setText(hudEls.cargo, 'cargo', cargoFull ? '100% FULL' : cargoUsed + '%');
+      setClassName(hudEls.cargo, 'cargoCn', cargoFull ? 'bad' : 'v');
+      if (hudEls.cargoBanner) hudEls.cargoBanner.hidden = !cargoFull;
       if (hudEls.temp && d.drillTemp !== undefined) {
         setText(hudEls.temp, 'temp', Math.round(d.drillTemp) + '%');
         setClassName(hudEls.temp, 'tempCn', d.overheated ? 'warn' : 'v');
@@ -2543,6 +2738,8 @@ export const drillScreen = {
       hudEls.scan = document.getElementById('drill-scan-target');
       hudEls.manifest = document.getElementById('drill-cargo-manifest-list');
       hudEls.scanState = scanBtn.querySelector('[data-scan-state]');
+      hudEls.cargoBanner = cargoBanner;
+      cargoBanner.hidden = true; // reset per session
 
       // Resolve --mono once. It never changes mid-session; reading it per-frame forced a layout.
       const monoVar = (typeof window !== 'undefined' && window.getComputedStyle)
@@ -2553,11 +2750,28 @@ export const drillScreen = {
       // Pre-render static overlays once. Rebuild only if the canvas backing store changes.
       overlayCanvas = buildOverlay(canvas.width, canvas.height);
       headlightSprite = buildHeadlightSprite();
+      strataCanvas = null;
+      strataCtx = null;
+      strataAvatarCol = null;
+      strataAvatarRow = null;
+      damagedTiles.clear();
+      buildStrataCache(state.drill);
+      const imageDecodes = Object.values(IMAGES)
+        .filter((img) => img && typeof img.decode === 'function' && (!img.complete || img.naturalWidth <= 0))
+        .map((img) => img.decode());
+      if (imageDecodes.length) {
+        Promise.allSettled(imageDecodes).then(() => {
+          if (!wrap.isConnected || !state.drill) return;
+          buildStrataCache(state.drill);
+          canvasDirty = true;
+        });
+      }
 
       gasHitFlash.t = 0;
       gasHitShake.t = 0;
       gasHitShake.elapsed = 0;
       yieldFlash.t = 0;
+      cargoFullFlash.t = 0;
       activityFeed.innerHTML = '<div class="drill-activity-empty">Bore events will appear here.</div>';
       lastActivity = null;
       inputController.cancel();
@@ -2568,6 +2782,8 @@ export const drillScreen = {
       drawSonar(state.drill);
       
       window.addEventListener('keydown', onKeyDown);
+      window.addEventListener('keyup', onKeyUp);
+      window.addEventListener('blur', onWindowBlur);
       canvas.addEventListener('mousemove', onMouseMove);
       canvas.addEventListener('mouseleave', onMouseLeave);
       
@@ -2583,7 +2799,14 @@ export const drillScreen = {
       this._active = false;
       cancelAnimationFrame(rafId);
       inputController.cancel();
+      strataCanvas = null;
+      strataCtx = null;
+      strataAvatarCol = null;
+      strataAvatarRow = null;
+      damagedTiles.clear();
       window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onWindowBlur);
       canvas.removeEventListener('mousemove', onMouseMove);
       canvas.removeEventListener('mouseleave', onMouseLeave);
       
@@ -2602,7 +2825,21 @@ export const drillScreen = {
     };
   },
 
-  onShow() { if (this._startSession) this._startSession(); },
+  onShow() {
+    // If the session was torn down out from under us — death dropped the gameOver screen on top,
+    // which onHide()→stopSession()→drillSys.end() nulls state.drill — there is nothing to resume.
+    // A pendingDrillAsteroidId is the only legitimate reason to (re)start; without it, re-exposure
+    // would leave a frozen dead frame (no rAF, no input). Pop back to flight, where respawn already
+    // relocated the ship to the recovery dock. ESC did this by hand before the fix.
+    if (this._active) return;                 // already running a live session — nothing to do
+    const st = this._ctx && this._ctx.state;
+    const pending = st && st.ui && st.ui.pendingDrillAsteroidId;
+    if (!pending && this._ctx && this._ctx.screenManager) {
+      this._ctx.screenManager.popScreen();
+      return;
+    }
+    if (this._startSession) this._startSession();
+  },
   onHide() { if (this._cleanup) this._cleanup(); },
   refresh() { if (this._refresh) this._refresh(); },
 };

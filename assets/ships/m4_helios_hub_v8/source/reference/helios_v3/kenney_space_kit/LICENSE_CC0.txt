@@ -1,0 +1,6 @@
+Kenney Space Kit
+Canonical: https://kenney.nl/assets/space-kit
+License: CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)
+Attribution: not required; "Assets by Kenney (https://kenney.nl)" appreciated. Do not use Kenney logo.
+Acquired: 2026-07-11T15:15:15.1680628-04:00
+SHA256 of zip: d5d7cdf2635ed5a43a9187deaf409b6f47484e402321128341d3c3698e9ef4d9

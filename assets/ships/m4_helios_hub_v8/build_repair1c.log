@@ -1,0 +1,34 @@
+Reloading external rigs...
+Reloading external metarigs...
+[m4-helios-hub-v3] WARN existing authoring lock ΓÇö taking over: {
+  "owner": "build_m4_helios_hub_v8.py repair1c",
+  "packet": "M4-HELIOS-V8-NEW-FOUNDATION-GROK-001",
+  "pid": 10300,
+  "startedAt": "2026-07-14T02:21:53.8574630Z",
+  "heartbeatAt": "2026-07-14T02:21
+[m4-helios-hub-v3] Acquired authoring lock ΓåÆ C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v8\authoring.__lock
+[m4-helios-hub-v3] Packet M4-HELIOS-V8-NEW-FOUNDATION-GROK-001 ΓÇö Helios hub V3 professional rebuild (isolated)
+[m4-helios-hub-v3] Vendor verify: accepted=11 diskCc0=11
+[m4-helios-hub-v3] Vendor components accepted=11 diskCc0=11
+[m4-helios-hub-v3] Generating 1024 textures: hull
+[m4-helios-hub-v3] Generating 1024 textures: mechanical
+[m4-helios-hub-v3] Generating 1024 textures: accent
+[m4-helios-hub-v3] Generating 1024 textures: warm
+[m4-helios-hub-v3] Generating 1024 textures: glass
+[m4-helios-hub-v3] Generating 1024 textures: rock
+02:36.375  image.write      | ERROR OpenImageIO write failed: Could not open file "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v8\textures\mechanical_basecolor.png"
+[m4-helios-hub-v3] Released authoring lock ΓåÆ C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v8\authoring.__lock
+Traceback (most recent call last):
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v8.py", line 1344, in <module>
+    code = base.main()
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3724, in main
+    tex_map = generate_material_textures(family_dirs['textures'])
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v8.py", line 200, in generate_v8_textures
+    image.save()
+    ~~~~~~~~~~^^
+RuntimeError: Error: Could not write image: internal error, see console
+Error: Image 'mechanical_basecolor' could not be saved to 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\m4_helios_hub_v8\textures\mechanical_basecolor.png'
+
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit

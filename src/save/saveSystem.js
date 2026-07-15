@@ -114,6 +114,9 @@ export const save = {
     bus.on('mission:expired', () => this.requestAutosave('mission'));
     bus.on('economy:tradeCompleted', () => this.requestAutosave('trade'));
     bus.on('story:beatAdvanced', () => this.requestAutosave('story'));
+    // HUD placement belongs to the game save (not the machine-wide profile), so keep the player's
+    // latest Ctrl-dragged layout durable even if they do not make another progression change.
+    bus.on('hud:layoutChanged', () => this.requestAutosave('hud_layout'));
     bus.on('player:respawn', () => this.requestAutosave('respawn', { force: true }));
   },
 
@@ -165,6 +168,9 @@ export const save = {
       ['claims', () => this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] })],
       ['aceMemory', () => this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {})],
       ['lossLedger', () => this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {})],
+      ['factionPresence', () => this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {})],
+      ['bandRadio', () => this._callSerialize('bandRadio') || clonePlain(state.bandRadio || {})],
+      ['v2Flavor', () => this._callSerialize('v2Flavor') || clonePlain(state.v2Flavor || {})],
       ['aftermathWrecks', () => this._callSerialize('aftermathWrecks') || clonePlain(state.aftermathWrecks || {})],
       ['fieldDepletion', () => this._callSerialize('fieldDepletion') || clonePlain(state.fieldDepletion || {})],
       ['livingPoiBehaviors', () => this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {})],
@@ -201,6 +207,9 @@ export const save = {
     data.claims = this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] });
     data.aceMemory = this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {});
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
+    data.factionPresence = this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {});
+    data.bandRadio = this._callSerialize('bandRadio') || clonePlain(state.bandRadio || {});
+    data.v2Flavor = this._callSerialize('v2Flavor') || clonePlain(state.v2Flavor || {});
     data.aftermathWrecks = this._callSerialize('aftermathWrecks') || clonePlain(state.aftermathWrecks || {});
     data.fieldDepletion = this._callSerialize('fieldDepletion') || clonePlain(state.fieldDepletion || {});
     data.livingPoiBehaviors = this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {});
@@ -753,7 +762,14 @@ export const save = {
     }
   },
 
-  /** Browser task/idle boundary. Tests replace this method with a deterministic queue. */
+  /**
+   * Browser task boundary for autosave hops. Tests replace this method with a deterministic queue.
+   *
+   * Prefer a prompt macrotask (setTimeout 0). Do NOT use requestIdleCallback with a 250ms timeout:
+   * under crowded-flight main-thread pressure idle never arrives, so each hop starves for the full
+   * deadline (~32 encode keys × 250ms can exceed SAVE_WORKER_TIMEOUT_MS and the perf sample window).
+   * Retry (jump/pause busy) still backs off so we do not spin while the gate is closed.
+   */
   _scheduleAutosaveWork(callback, retry = false) {
     return setTimeout(callback, retry ? 120 : 0);
   },
@@ -1860,6 +1876,11 @@ export const save = {
       // 5. spawn the saved player entity (fresh id) and adopt it.
       const savedPlayer = data.entities && data.entities.player;
       this._spawnPlayer(savedPlayer, entityIdRemap);
+      // K1 presence is semantic run state. Restore it after the current player has a fresh id but
+      // before world re-entry emits sector:enter and rematerializes route/presence actors.
+      this._callDeserialize('factionPresence', data.factionPresence);
+      this._callDeserialize('bandRadio', data.bandRadio);
+      this._callDeserialize('v2Flavor', data.v2Flavor);
 
       // 6. re-derive ship stats from restored fittings/research (sets caps, weapons, cargo cap).
       const shipsSys = this.registry.get('ships');

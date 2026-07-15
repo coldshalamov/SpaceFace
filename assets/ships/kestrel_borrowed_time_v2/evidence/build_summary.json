@@ -1,0 +1,59 @@
+{
+  "packet": "PROFESSIONAL-KESTREL-BORROWED-TIME-V2-CODEX-001",
+  "gateOk": true,
+  "gateErrors": [],
+  "totalTriangles": 42528,
+  "hullTriangles": 10036,
+  "lodTriangles": {
+    "lod0": 28672,
+    "lod1": 12034,
+    "lod2": 1822
+  },
+  "drawEstimates": {
+    "lod0": 15,
+    "lod1": 11,
+    "lod2": 7
+  },
+  "sockets": [
+    "SOCKET_Camera_Focus",
+    "SOCKET_Cargo_Ventral",
+    "SOCKET_Engine_Main",
+    "SOCKET_Mining_Front",
+    "SOCKET_RCS_Port",
+    "SOCKET_RCS_Starboard",
+    "SOCKET_Trail_Main",
+    "SOCKET_Utility_Dorsal",
+    "SOCKET_Weapon_Front"
+  ],
+  "materials": [
+    "Material_Mechanical",
+    "Material_Drive_Core",
+    "Material_Cyan_Emissive",
+    "Material_Cyan_Paint",
+    "Material_Decal_BorrowedTime",
+    "Material_Decal_Hazard",
+    "Material_Decal_Stencils",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Repair_Paint",
+    "Material_Warm_Emissive",
+    "Material_Warm_Paint"
+  ],
+  "tangentPrimitiveCount": 33,
+  "uvPrimitiveCount": 33,
+  "removedPlumes": [
+    "Engine_Plume_HotCore",
+    "Engine_Plume_Inner",
+    "Engine_Plume_Outer",
+    "Studio_Floor",
+    "Studio_Pad",
+    "Studio_Pad_LightRing",
+    "material:Material_Plume_HotCore",
+    "material:Material_Plume_Inner",
+    "material:Material_Plume_Outer"
+  ],
+  "sourceSha256": "C48BCD2CD7AA9B8DAF4AC253221ED259DB781A1BF0602EDB7286D916191D6502",
+  "targetSha256": "FEDC6A1C88683F9A4E2CB515E8D5A40FF83CB74A6FE6BBBC6609DC2C0C866759",
+  "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\kestrel_borrowed_time_v2\\source\\wholeships\\kestrel_borrowed_time_v2.glb",
+  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\kestrel_borrowed_time_v2\\blender\\kestrel_borrowed_time_v2_production.blend"
+}

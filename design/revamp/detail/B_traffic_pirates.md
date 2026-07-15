@@ -68,12 +68,12 @@
 - **pillar:** glance
 - **wave/BP:** W3 / BP-11
 - **reuses:** `scanner.js` (`contactStateWord`, `contactThreatTier`), `traffic.js` (`data.trafficRole` + `data.trafficLabel` already set on spawn), the HUD contacts strip
-- **newFiles:** `src/data/trafficGlyphs.js` (role→glyph + role→intent-word table: HAULER/COURIER/MINER/PATROL/ESCORT/SMUGGLER/RAIDER/RESCUE, capped at the 8 shipped roles) + a pure `trafficRoleReadout(entity)` reader
+- **newFiles:** `src/data/trafficGlyphs.js` (role→glyph + role→intent-word table for the currently shipped HAULER/COURIER/MINER/PATROL/ESCORT/SMUGGLER/RAIDER/RESCUE roles, with a readable fallback for future data-driven roles) + a pure `trafficRoleReadout(entity)` reader
 - **noTouch:** `scanner.js`, `hud.js`, `uiRoot.js`
 - **budget:** spawn:none · voice:none · draw:none (text/glyph only, reuses existing strip rows)
 - **rng:** none / pure UI
 - **acceptance:** five-second-screenshot test — every traffic contact in a populated sector shows a distinct role word; `contactStateWord` still returns its existing values for non-traffic entities (regression: no change to combat contacts)
-- **failureModes:** glyph budget blowout (hard cap = the 8 shipped roles, no more); collision with `contactStateWord`'s existing MINER/TRADER words (resolve by having the reader *prefer* `data.trafficRole` when present, fall through to the shipped word otherwise)
+- **failureModes:** unreadable or indistinguishable contact marks (validate current and future roles at actual strip/radar size, using text or shared shapes where that reads better); collision with `contactStateWord`'s existing MINER/TRADER words (resolve by having the reader *prefer* `data.trafficRole` when present, fall through to the shipped word otherwise)
 - **size:** S
 
 ### B3 · Consequence-When-Attacked (the missing causal hook)

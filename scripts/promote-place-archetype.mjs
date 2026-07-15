@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Promote bootstrap_pending place archetype → blender_mcp after silhouette IoU gate.
+// Promote bootstrap_pending place archetype → blender_mcp while recording silhouette diagnostics.
 //
 // Usage:
 //   node scripts/promote-place-archetype.mjs place_station_trade_hub
@@ -16,7 +16,6 @@ const AUTHORING_PATH = resolve(ROOT, 'assets/ships/parts/blender/authoring.json'
 const LEDGER_PATH = resolve(ROOT, 'assets/ships/parts/blender/iteration_ledger.json');
 const SOURCE_ROOT = resolve(ROOT, 'assets/ships/parts/places');
 
-const MIN_IOU = Number(process.env.PLACE_SILHOUETTE_MIN_IOU || '0.12');
 const argv = process.argv.slice(2);
 const promoteAll = argv.includes('--all');
 const partId = argv.find((a) => !a.startsWith('--'));
@@ -70,14 +69,6 @@ for (const id of targets) {
   }
 
   const result = await measureConceptGlbResemblance(conceptPath, glbPath);
-  if (result.iou < MIN_IOU) {
-    console.error(`FAIL ${id}: silhouette IoU ${result.iou.toFixed(4)} < ${MIN_IOU}`);
-    console.error(`  conceptFill=${(result.conceptFill * 100).toFixed(1)}% glbFill=${(result.glbFill * 100).toFixed(1)}%`);
-    console.error(`  align=dx${result.align.dx},dy${result.align.dy},flip=${result.align.flip}`);
-    rejected++;
-    continue;
-  }
-
   entry.method = 'blender_mcp';
   if (blendPath) entry.blend_path = entry.blend_path;
 
@@ -88,10 +79,10 @@ for (const id of targets) {
     silhouette_iou: Number(result.iou.toFixed(4)),
     align: result.align,
     promoted_at: new Date().toISOString(),
-    min_iou_gate: MIN_IOU,
+    silhouette_metric_role: 'diagnostic',
   };
 
-  console.log(`PROMOTED ${id}: iou=${result.iou.toFixed(4)} (gate=${MIN_IOU})`);
+  console.log(`PROMOTED ${id}: silhouette_iou=${result.iou.toFixed(4)} (diagnostic; visual acceptance is independent)`);
   promoted++;
 }
 

@@ -14,6 +14,7 @@ import { NEW_GAME } from './data/newGameDefaults.js';
 import { createTelemetry } from './systems/telemetry.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { createTimeEffects } from './core/timeEffects.js';
+import { resetFreshRunSystems } from './core/runReset.js';
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
 import { describeGameStartFailure, runNewGameStartTransition } from './core/newGameStartTransition.js';
 import { applyAccessibility } from './ui/accessibility.js';
@@ -221,11 +222,10 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       enterLoadingMode(state, bus);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
-      for (const name of ['world', 'regionalEcology', 'factions', 'economy', 'automation', 'intervention', 'sectorSim', 'missions', 'aiEncounter', 'crafting', 'traffic', 'drill', 'claims', 'beacons']) {
-        const sys = registry.get(name);
-        if (sys && typeof sys.newGame === 'function') sys.newGame();
-        if (!runTransitionGuard.isCurrent(transitionToken)) return;
-      }
+      const resetCompleted = resetFreshRunSystems(registry, {
+        afterEach: () => runTransitionGuard.isCurrent(transitionToken),
+      });
+      if (!resetCompleted || !runTransitionGuard.isCurrent(transitionToken)) return;
 
       const ships = registry.get('ships');
       if (ships && typeof ships.newGame === 'function') {

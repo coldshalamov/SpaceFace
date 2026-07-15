@@ -18,7 +18,7 @@
 | **MASTER_TASTE mood** | Violet/green Vael hospitality dissonance — HUD marks OUTSIDER, air is the best out here |
 | **UI semantic lock** | Violet `#8d66ff` (story/anomaly), cyan `#39d0ff` (scan tech info) |
 | **World palette** | `SECTOR_PALETTE_CLASSES.anomaly` — fill `0x4ddc92`, rim `0x54ffb0`, nebulaTint `0x5a1e8a` |
-| **Background rule** | Space luminance < 18% sRGB; nebula shell caps at 0.12 opacity; wormhole gated by survey tech |
+| **Background direction** | Preserve navigation and silhouette readability while allowing the nebula to feel deep, luminous, and distinctive; the wormhole remains gated by survey tech. Tune exposure and opacity from runtime captures. |
 
 ## Air / smell (one line)
 

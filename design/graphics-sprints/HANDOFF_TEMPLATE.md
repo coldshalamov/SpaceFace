@@ -1,5 +1,8 @@
 # Cross-Thread Handoff Template
 
+> **Activated-sprint template.** Use when concurrent ownership genuinely requires a handoff. It is
+> not a default terminal state and does not replace end-to-end integration in ordinary work.
+
 Paste this block at the end of every graphics sprint (Threads A, B, E) for the integrator and Thread C.
 
 ```yaml

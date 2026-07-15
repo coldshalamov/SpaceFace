@@ -1,5 +1,5 @@
 // src/data/palettes.js – visual palette definitions and ship mesh recipes.
-// FACTION_PALETTES: 8 faction color palettes keyed by faction_ IDs.
+// FACTION_PALETTES: 14 faction color palettes keyed by faction_ IDs.
 // SECTOR_PALETTES: 10 sector environmental palettes keyed by sector_ IDs.
 // SHIP_RECIPES: ship class mesh-build parameters keyed by ship_ IDs.
 // Pure data, no imports, no three/DOM deps.
@@ -69,6 +69,54 @@ export const FACTION_PALETTES = {
     emissive:  '#E85FD0',
     thruster:  '#FF80E8',
   },
+  faction_helix: {
+    primary:   '#8B9CB8',
+    secondary: '#465066',
+    accent:    '#C5CEDD',
+    hull:      '#667085',
+    emissive:  '#8B9CB8',
+    thruster:  '#A8B7D0',
+  },
+  faction_understory: {
+    primary:   '#8FA82E',
+    secondary: '#3A2A10',
+    accent:    '#3A2A10',
+    hull:      '#687A28',
+    emissive:  '#D0E060',
+    thruster:  '#C7D98A',
+  },
+  faction_fulfillment: {
+    primary:   '#F0F0E8',
+    secondary: '#C0C8C8',
+    accent:    '#40B8E0',
+    hull:      '#D8D8D0',
+    emissive:  '#40B8E0',
+    thruster:  '#A0E0F0',
+  },
+  faction_archive: {
+    primary:   '#3A2A5A',
+    secondary: '#1A0A2A',
+    accent:    '#B88830',
+    hull:      '#3A2A5A',
+    emissive:  '#B88830',
+    thruster:  '#8060C0',
+  },
+  faction_pitborn: {
+    primary:   '#C8501C',
+    secondary: '#4A3028',
+    accent:    '#E8B43A',
+    hull:      '#6B584F',
+    emissive:  '#B06020',
+    thruster:  '#D87838',
+  },
+  faction_verge_layers: {
+    primary:   '#B0A8B8',
+    secondary: '#6A6080',
+    accent:    '#6A6080',
+    hull:      '#B0A8B8',
+    emissive:  '#C0B8D8',
+    thruster:  '#C0B8D8',
+  },
 };
 
 // PAINT_PROFILES — the soul of the art direction. Maps a faction's `personality` to a paint profile
@@ -90,9 +138,17 @@ export const PAINT_PROFILES = {
   corporate:   { grime: 0.10, chrome: 0.70, noseArt: 'insignia', killMarks: false, patches: 0.0 },  // Meridian — clean chrome, corporate logos
   independent: { grime: 0.55, chrome: 0.05, noseArt: 'bomber', killMarks: true, patches: 0.4 },     // Free Frontier (PLAYER) — haunted ex-gangster runner
   blue_collar: { grime: 0.35, chrome: 0.0, noseArt: null, killMarks: false, patches: 0.3 },          // Drift Miners — workhorse, honest grime
+  'blue-collar': { grime: 0.35, chrome: 0.0, noseArt: null, killMarks: false, patches: 0.3 },        // Canonical faction-data spelling; keep blue_collar for legacy callers
   pirate:      { grime: 0.85, chrome: 0.0, noseArt: 'punk', killMarks: true, patches: 0.6 },         // Crimson Reach — filthy, tagged, scarred
   smuggler:    { grime: 0.50, chrome: 0.0, noseArt: 'punk', killMarks: false, patches: 0.35 },       // The Quiet — stealthy grime, tags
   xenophobic:  { grime: 0.15, chrome: 0.30, noseArt: 'insignia', killMarks: true, patches: 0.1 },    // The Vael — alien, austere
+  zealot:      { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2 },         // Choir explicit row; preserves the shipped fallback appearance
+  paper:       { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2 },         // Helix is content-only today; explicit for schema completeness
+  saprophyte:  { grime: 1.00, chrome: 0.00, noseArt: null, killMarks: true, patches: 1.0 },          // Understory — every hull is a recovered loss-ledger carcass
+  clinical_automaton: { grime: 0.00, chrome: 0.90, noseArt: null, killMarks: false, patches: 0.0 }, // Fulfillment — sterile routing machinery
+  archivist:   { grime: 0.08, chrome: 0.25, noseArt: null, killMarks: false, patches: 0.0 },         // Archive — dark, maintained, ceremonial
+  pitborn_patchwork: { grime: 0.90, chrome: 0.00, noseArt: 'punk', killMarks: true, patches: 1.0 }, // Pitborn — repaired stolen hulls and loud orange patches
+  nacre_precursor: { grime: 0.00, chrome: 1.00, noseArt: null, killMarks: false, patches: 0.0 },     // Verge-Layers — immaculate nacre precursor surfaces
   // default fallback for any faction lacking a personality match
   default:     { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2 },
 };

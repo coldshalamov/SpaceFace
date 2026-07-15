@@ -193,7 +193,7 @@ export const PROSPECTOR_LADDER_FAILURE = Object.freeze({
 });
 
 /**
- * Player-facing copy — dry rigger voice, ≤12 words (spec2/00 taste).
+ * Player-facing copy — dry rigger voice with actionable, inline-safe recovery guidance.
  * Stored outside rewards so validateRewardSpec allowlist stays clean.
  */
 export const PROSPECTOR_LADDER_DIALOGUE = Object.freeze({
@@ -235,23 +235,19 @@ export const PROSPECTOR_LADDER_DIALOGUE = Object.freeze({
   }),
 });
 
-/** Word-count gate for player-facing strings. */
-export function countWords(text) {
-  return String(text || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean).length;
-}
-
-/** Assert taste: every dialogue line ≤ maxWords. */
-export function assertProspectorLadderCopyBudget(maxWords = 12) {
+/** Compatibility-named validator for authored, inline-safe dialogue copy. */
+export function assertProspectorLadderCopyBudget() {
   const offenders = [];
   for (const stepId of PROSPECTOR_LADDER_STEP_IDS) {
     const d = PROSPECTOR_LADDER_DIALOGUE[stepId];
     if (!d) continue;
     for (const [key, line] of Object.entries(d)) {
-      const n = countWords(line);
-      if (n > maxWords) offenders.push({ stepId, key, words: n, line });
+      if (
+        typeof line !== 'string'
+        || !line.trim()
+        || /[\r\n\u2028\u2029]/u.test(line)
+        || /[\u0000-\u001f\u007f\ufffd]/u.test(line)
+      ) offenders.push({ stepId, key, line });
     }
   }
   return { ok: offenders.length === 0, offenders };

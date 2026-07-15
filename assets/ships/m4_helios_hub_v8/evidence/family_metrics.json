@@ -1,0 +1,96 @@
+{
+  "packet": "M4-HELIOS-V8-NEW-FOUNDATION-GROK-001",
+  "threeRuntimeOk": true,
+  "newFoundation": true,
+  "notV7Repair": true,
+  "candidatesFinalized": true,
+  "selfPassForbidden": true,
+  "schema": "spaceface.m4HeliosHubEnvV8.productionMetrics.v1",
+  "assets": [
+    {
+      "ok": true,
+      "candidateSha256": "F386782AEAE263F1924897D4289FA2CA6D99E48D8D329D42CC231EC2835366AF",
+      "id": "helios_hub_station",
+      "candidateBytes": 8257552,
+      "meshoptBufferViewCount": 61,
+      "collision": true,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ],
+      "candidate": "assets/ships/m4_helios_hub_v8/release_candidates/places/helios_hub_station.glb",
+      "ktx2ImageCount": 15
+    },
+    {
+      "ok": true,
+      "candidateSha256": "C89BDF1EA6736763BDC4C8FBA97A965036744067161ABEAFD85522A63A994FC6",
+      "id": "helios_gate",
+      "candidateBytes": 5004820,
+      "meshoptBufferViewCount": 33,
+      "collision": true,
+      "materials": [
+        "Material_Accent",
+        "Material_Hull",
+        "Material_Mechanical"
+      ],
+      "candidate": "assets/ships/m4_helios_hub_v8/release_candidates/places/helios_gate.glb",
+      "ktx2ImageCount": 9
+    },
+    {
+      "ok": true,
+      "candidateSha256": "4D88C289EC608DBDC25FF8F4E424737D02BBF5BBDF950BEE177399DBFC8AD862",
+      "id": "helios_rock_a",
+      "candidateBytes": 3979304,
+      "meshoptBufferViewCount": 17,
+      "collision": true,
+      "materials": [
+        "Material_Rock",
+        "Material_Warm"
+      ],
+      "candidate": "assets/ships/m4_helios_hub_v8/release_candidates/places/helios_rock_a.glb",
+      "ktx2ImageCount": 6
+    },
+    {
+      "ok": true,
+      "candidateSha256": "A423F96C38D1C68867D164F22DBB8C38126C18A138E131F72AB5A9FFA63EECA0",
+      "id": "helios_rock_b",
+      "candidateBytes": 3942948,
+      "meshoptBufferViewCount": 17,
+      "collision": true,
+      "materials": [
+        "Material_Rock",
+        "Material_Warm"
+      ],
+      "candidate": "assets/ships/m4_helios_hub_v8/release_candidates/places/helios_rock_b.glb",
+      "ktx2ImageCount": 6
+    },
+    {
+      "ok": true,
+      "candidateSha256": "5019F23364C5A293BC67DCB593096747C2BD7BC6159FE3B3626C6F26659301E8",
+      "id": "helios_rock_c",
+      "candidateBytes": 5323348,
+      "meshoptBufferViewCount": 21,
+      "collision": true,
+      "materials": [
+        "Material_Mechanical",
+        "Material_Rock",
+        "Material_Warm"
+      ],
+      "candidate": "assets/ships/m4_helios_hub_v8/release_candidates/places/helios_rock_c.glb",
+      "ktx2ImageCount": 9
+    }
+  ],
+  "acceptanceClaim": false,
+  "residualDefects": [
+    "Blender framing binary-search soft residual on hero full/forward_34 for large places and rocks (shots still written; soft-accept band used on re-run path)",
+    "Gate release materials list lacks Material_Warm (warm bands may have been role-merged into Hull/Mech/Accent — residual material-zone gap)",
+    "Nested field coils still use torus primitives as secondary emitters inside structural octagon frame (frame itself is non-hoop)",
+    "family_metrics from first blender pass recorded framing hard-fail before soft gate; geometry+evidence were still produced"
+  ],
+  "family": "helios_hub_env_v8",
+  "failCount": 0,
+  "okCount": 5
+}

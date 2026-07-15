@@ -82,13 +82,18 @@ export const HEADLINE_TEMPLATES = Object.freeze({
   ],
 });
 
-// Regime-change chatter (from economyCycles): a station commodity's hidden regime flipped.
+// Regime-change chatter (from economyCycles): a station commodity's hidden formula flipped.
 export const REGIME_TEMPLATES = Object.freeze({
   rising:    ['{station}: {noun} demand climbing', 'Buyers circle {name} at {station}'],
   falling:   ['{station}: {noun} demand cooling', '{name} softens at {station}'],
   volatile:  ['{station} {noun} turns choppy', 'Wild swings in {name} at {station}'],
   turbulent: ['{station}: {noun} market turbulent', 'No floor on {name} at {station} yet'],
   stable:    ['{station} {noun} settles', '{name} steadies at {station}'],
+  sine:      ['{station} {noun} enters a cycle', '{name} finds a rhythm at {station}'],
+  quadratic: ['{station}: {noun} curve bends', '{name} traces a new arc at {station}'],
+  cubic:     ['{station}: {noun} market inflects', 'An inflection hits {name} at {station}'],
+  sqrt:      ['{station}: {noun} eases into a new path', '{name} flattens after a burst at {station}'],
+  log:       ['{station}: {noun} demand saturates', '{name} climbs then settles at {station}'],
 });
 
 // Dock event-card copy (title + body) keyed by event kind. Body uses the same {tokens}.

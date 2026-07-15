@@ -37,7 +37,7 @@ const actor = helpers.spawnEntity(makeShipSpec({
     engagementTrigger: 'authorized_hostile_spawn',
     zoneId: 'zone_registry_probe',
     approachTelegraph: 'engine_flare',
-    noFireResponseWindowS: 0.5,
+    noFireResponseWindowS: 1,
     activity: normalizeActivity({
       kind: ActivityKind.ATTACK_RUN,
       reason: 'registry_init:attack_probe',
@@ -55,7 +55,9 @@ actor.data.intent = legacyIntent;
 
 await ensureSg02Ready(harness);
 
-for (let i = 0; i < 38; i++) stepHarness(harness);
+// Run beyond the authored one-second response window so the lazy registry path proves
+// both pre-window restraint and the exact ready-tick retry through SG-03.
+for (let i = 0; i < 68; i++) stepHarness(harness);
 
 const events = state.combat.trace.events;
 const aiRequest = events.find((event) =>

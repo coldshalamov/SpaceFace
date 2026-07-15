@@ -1,0 +1,95 @@
+{
+  "schema": "spaceface.sourceCandidateHashes.v1",
+  "packet": "PROFESSIONAL-HELIOS-HUB-VISUAL-V7-GROK-001",
+  "note": "Candidates populated by finalize_m4_helios_hub_v3_candidate.mjs",
+  "sources": [
+    {
+      "id": "helios_hub_station",
+      "sourceGlb": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v7/source/places/helios_hub_station.glb",
+      "sourceSha256": "5985865FEC0CB634291FD139BD295DD441E6C4C256BC18153714A3B7CEA2B177",
+      "sourceBytes": 6240084
+    },
+    {
+      "id": "helios_gate",
+      "sourceGlb": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v7/source/places/helios_gate.glb",
+      "sourceSha256": "D7F3C0614FB55AFBCFD5B1159D73400B32172338F354B5662C0043CEAB039225",
+      "sourceBytes": 3483128
+    },
+    {
+      "id": "helios_rock_b",
+      "sourceGlb": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v7/source/places/helios_rock_b.glb",
+      "sourceSha256": "F121D82F1E33E4B2F250923B6AAB849D66FA25CCBC0FA0DB5490E222909B8206",
+      "sourceBytes": 2888156
+    }
+  ],
+  "textures": {
+    "hull": {
+      "basecolor": "8E3BFA0C2909C9772564F196E93229C83D497DB47F5BA7F720A1AFEA723650D5",
+      "orm": "978789300853B2DB3A0A184B638DAE2BCF64E22DD7D4BC219C909DDA94D5900E",
+      "normal": "A472DBE3C5196856E15775C21F9CF9736B1113416FA6E8930EDC31CB22C4A01B"
+    },
+    "mechanical": {
+      "basecolor": "E0B56CA0DCA342DD12CB2C0C0E802C1BCFF7F1542E21B98FD520A66ED6765FE6",
+      "orm": "3BBB66645AC50DB79C084E19B50B9042EA8CE456F9CFC611AF41013A02D6D49B",
+      "normal": "11E1F373C8000FEB50555C445C0ABB682C18FE42D73126075AC055E57EAC8595"
+    },
+    "accent": {
+      "basecolor": "37CA35B45391A6FA28609E371E5507047616A7E0FA56AFE20EF4C11D18D9162B",
+      "orm": "83269F0CB9ED2F3B9A3B87983E18B023DB96316C11BCB33EFC175473E134AE0B",
+      "normal": "1932DFE009390A508B0820125EAB8AF0D358809807BFCDAA09190D528F38B79D"
+    },
+    "warm": {
+      "basecolor": "C6AAA567EF24DB2C03CD446999B7D0DB0B5BD6BC63321E61849B0F0AD1B0C40D",
+      "orm": "BC2F34BEC8E09EA2CFC0049E6B24C29B4D14E07BA83013DD5BE1A27B0B789497",
+      "normal": "85B1B74956729F608955878E3BCF01D3E9434640001E3E7475676F0AC6B90B5B"
+    },
+    "glass": {
+      "basecolor": "02EE7D3364DBE9B89BD02EEA573E2D9E10A6D4B9E0FDCF9E469C8DF416E9C083",
+      "orm": "270AA2EC1DC4FF7C3499E4F0171111CEDED8FCE481EC0F8F19976C44BF9ADBFF",
+      "normal": "C74C82CA4C537185375506342A76E3FEF5A5940233DC6F9CD2F2A457B179CAD9"
+    },
+    "rock": {
+      "basecolor": "B7BA020CAB7F05A6DFE885AFEC4818B6592613794BCF8941F80BB469860E543D",
+      "orm": "0F929FAD9B05BB8A589A2A4CCC1F5EAC8D90B0365F851B45A687AD602319B1D2",
+      "normal": "E38D9AC25FB660700F9EA3F202EC5D6A20DF176482326D9A7783586B8444FF6D"
+    }
+  },
+  "candidates": [
+    {
+      "id": "helios_hub_station",
+      "candidate": "assets/ships/m4_helios_hub_v7/release_candidates/places/helios_hub_station.glb",
+      "candidateSha256": "B06F4DD95C904D7A7BBEFF7746F2DD9737C1520AAF7E6A3B4CC291D635E54574",
+      "candidateBytes": 7323144,
+      "sourceSha256": "5985865FEC0CB634291FD139BD295DD441E6C4C256BC18153714A3B7CEA2B177"
+    },
+    {
+      "id": "helios_gate",
+      "candidate": "assets/ships/m4_helios_hub_v7/release_candidates/places/helios_gate.glb",
+      "candidateSha256": "0A881B785147FDDD2D09F961BA8B70B50FAE4DF403C35B9A6DE9698A279EC8F4",
+      "candidateBytes": 4556588,
+      "sourceSha256": "D7F3C0614FB55AFBCFD5B1159D73400B32172338F354B5662C0043CEAB039225"
+    },
+    {
+      "id": "helios_rock_a",
+      "candidate": "assets/ships/m4_helios_hub_v7/release_candidates/places/helios_rock_a.glb",
+      "candidateSha256": "6B84D57EC84242F08C5F9B062637CC099B185BE0EF4931CB608409EAE05FC1EA",
+      "candidateBytes": 3870512,
+      "sourceSha256": "C99704B30AA47A4A1EB2E5AC0E77A0B95294090979949A9400D6C78D2F35B5C9"
+    },
+    {
+      "id": "helios_rock_b",
+      "candidate": "assets/ships/m4_helios_hub_v7/release_candidates/places/helios_rock_b.glb",
+      "candidateSha256": "01E952990FF3A8ACECC9C40295BD7781A1BA3B132696DEFA36A7CB6E3204271B",
+      "candidateBytes": 3856024,
+      "sourceSha256": "F121D82F1E33E4B2F250923B6AAB849D66FA25CCBC0FA0DB5490E222909B8206"
+    },
+    {
+      "id": "helios_rock_c",
+      "candidate": "assets/ships/m4_helios_hub_v7/release_candidates/places/helios_rock_c.glb",
+      "candidateSha256": "06F24C0A629E70F394DE0D86DCC3A74E730984574DE44DC259D0D9211C212023",
+      "candidateBytes": 5146536,
+      "sourceSha256": "219E1294CCA282D22C6E32898DABA2F1F66FC8BD894DF5360B8C2FFD1503E6C2"
+    }
+  ],
+  "finalizedAt": "2026-07-14T00:39:58.526Z"
+}

@@ -1,5 +1,9 @@
 # 05 — Agent Capability Matrix and Bake-Off
 
+> **Manual scheduling reference.** Use only in an explicitly activated multi-agent campaign.
+> Capability labels are routing hypotheses, not permanent prohibitions; assign by the live task,
+> available tools, and demonstrated results, then independently review consequential work.
+
 **Status:** PROVISIONAL — user experience plus current local-tool inspection; must be benchmarked
 
 ## 1. Current candidate roles

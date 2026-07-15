@@ -141,7 +141,9 @@ Two distinct quantities that specs conflated:
 
 ### 1.1 Stack
 - **Three.js r0.160**, ES modules, vendored at `vendor/three.module.js` (+ `vendor/BufferGeometryUtils.js`). No bundler required; native ESM via `<script type="importmap">`.
-- **DOM overlay** for ALL UI (HUD, menus, trade, map, tech tree). No 3D text.
+- **DOM overlay** owns accessible interactive UI (HUD, menus, trade, map, tech tree). Decorative or
+  world-space text may use 3D rendering when it materially improves the scene, provided essential
+  information has an accessible DOM/audio equivalent and the rendering cost is measured.
 - **Web Audio API** owns playback, routing, mixing, and procedural synthesis. Licensed authored
   audio is also allowed when it materially improves identity or production quality; record
   provenance and keep deterministic sim state independent of playback.
@@ -947,4 +949,7 @@ HUD (`#hud`) is visible **iff** `screenStack.length === 0 && ui.docked === false
 12. **Sim update order is the §2.3 list**; every system appears once.
 13. **Save order = deps-first** (§4.5); NPCs regenerate, player serializes.
 14. **One commodity registry**, `cmdty_*` IDs (§3.6.1); mining ejecta uses them.
-15. **UI emits intents only**, never mutates sim state; HUD hidden when modal/docked. (§5)
+15. **UI does not own gameplay outcomes.** It emits intents/events for simulation changes. Explicit
+    input-selection state such as `state.player.targetId` may be updated by UI/input handlers; do not
+    generalize that exception to economy, combat, cargo, reputation, heat, physics, or other
+    system-owned state. HUD is hidden when modal/docked. (§5)

@@ -15,8 +15,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -54,6 +53,27 @@ const args = new Set(process.argv.slice(2));
 const CONTRACTS_ONLY = args.has('--contracts-only');
 
 await mkdir(OUT_DIR, { recursive: true });
+await invalidateStaleRouteArtifacts();
+
+async function invalidatePrimaryPassArtifacts() {
+  const routeScreenshotPaths = ROUTE_MATRIX.flatMap((cell) => Object.values(cell.screenshots))
+    .map((name) => path.join(OUT_DIR, name));
+  await Promise.all([
+    rm(REPORT, { force: true }),
+    rm(EVIDENCE, { force: true }),
+    ...routeScreenshotPaths.map((file) => rm(file, { force: true })),
+  ]);
+}
+
+async function invalidateStaleRouteArtifacts() {
+  await invalidatePrimaryPassArtifacts();
+  const failureScreenshotPaths = ROUTE_MATRIX
+    .map((cell) => path.join(OUT_DIR, `failure-${cell.id}.png`));
+  await Promise.all([
+    rm(FAILURE, { force: true }),
+    ...failureScreenshotPaths.map((file) => rm(file, { force: true })),
+  ]);
+}
 
 // Always validate sources first (narrow, no GPU).
 {
@@ -109,10 +129,14 @@ try {
       await page.addInitScript(() => {
         try {
           sessionStorage.setItem('sf.cinematicSeen', '1');
-          // Clear prior quick saves so Continue cannot revive foreign state.
-          for (let i = localStorage.length - 1; i >= 0; i--) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('sf.save.')) localStorage.removeItem(key);
+          // Clear foreign saves once for this independent route page. sessionStorage
+          // survives reload, so the route's own F5 save remains available to Continue.
+          if (sessionStorage.getItem('sf.m4LivingRoute.savesCleared') !== '1') {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+              const key = localStorage.key(i);
+              if (key && key.startsWith('sf.save.')) localStorage.removeItem(key);
+            }
+            sessionStorage.setItem('sf.m4LivingRoute.savesCleared', '1');
           }
         } catch (_) {}
       });
@@ -221,6 +245,7 @@ try {
   }, null, 2)}\n`);
 } catch (error) {
   primaryError = error;
+  await invalidatePrimaryPassArtifacts().catch(() => {});
   const failureDoc = {
     pass: false,
     taskId: TASK_ID,
@@ -235,10 +260,6 @@ try {
     note: 'No primary-acceptance evidence written. Harness remains coherent; do not treat partial captures as pass.',
   };
   await writeFile(FAILURE, `${JSON.stringify(failureDoc, null, 2)}\n`).catch(() => {});
-  // Never write a passing evidence.json on failure.
-  if (existsSync(EVIDENCE)) {
-    // Leave prior evidence untouched; do not overwrite with fake pass.
-  }
   process.stderr.write(`M4 living-galaxy player-route FAIL: ${error.message}\n`);
   process.stderr.write(`failure report: ${repoRel(ROOT, FAILURE)}\n`);
   process.exitCode = 1;
@@ -290,12 +311,14 @@ async function runHeliosCivicYardRoute(page, cell) {
   const approachShot = await screenshot(page, cell.screenshots.approach);
 
   // Capture approach surfaces (zone / yard guidance may already be visible).
-  let surfaces = await readPlayerFacingSurfaces(page);
+  let surfaces = tagCapturedSurfaces(await readPlayerFacingSurfaces(page), approachShot);
   await page.keyboard.press('KeyE');
   await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 });
   await waitVisible(page, '[data-screen="station"]', 20_000, 'station hub');
   await page.waitForTimeout(600);
-  surfaces = mergeSurfaces(surfaces, await readPlayerFacingSurfaces(page));
+  const dockSurfaceSnapshot = await readPlayerFacingSurfaces(page);
+  const outcomeShot = await screenshot(page, cell.screenshots.outcome);
+  surfaces = mergeSurfaces(surfaces, tagCapturedSurfaces(dockSurfaceSnapshot, outcomeShot));
 
   const ecology = await readEcologyObservation(page, cell.sectorId);
   assert.equal(ecology.regionalFamilyId, cell.regionalFamilyId, 'Helios must be civic_core');
@@ -305,12 +328,9 @@ async function runHeliosCivicYardRoute(page, cell) {
     'lawful yard POI must be planned or visible after dock',
   );
 
-  const outcomeShot = await screenshot(page, cell.screenshots.outcome);
   const classification = classifySurfaceText(surfaces.joined, cell);
-  // Dock itself is the public causal verb for lawful_station_yard.
-  const causalReadable = classification.causal
-    || /CLEARED MANIFEST|LOCAL TRUST|YARD CONTROL/i.test(surfaces.joined)
-    || ecology.plannedPoiFamilies.includes('lawful_station_yard');
+  const causalSurfaceSelectors = visibleCausalSurfaceSelectors(surfaces, cell);
+  const causalReadable = causalSurfaceSelectors.length > 0;
 
   // Save → reload → Continue → prove aftermath / durable receipt
   await page.keyboard.press('F5');
@@ -341,7 +361,7 @@ async function runHeliosCivicYardRoute(page, cell) {
   }, null, { timeout: CONTINUE_TIMEOUT_MS });
 
   const continuedEcology = await readEcologyObservation(page, cell.sectorId);
-  const continuedSurfaces = await readPlayerFacingSurfaces(page);
+  const continuedSurfaceSnapshot = await readPlayerFacingSurfaces(page);
   const continuedAftermath = await page.evaluate(() => {
     const own = window.SF?.state?.livingPoiBehaviors || {};
     const rows = Object.values(own.aftermath || {});
@@ -352,7 +372,10 @@ async function runHeliosCivicYardRoute(page, cell) {
     };
   });
   const continuedShot = await screenshot(page, cell.screenshots.continued);
-  surfaces = mergeSurfaces(surfaces, continuedSurfaces);
+  surfaces = mergeSurfaces(
+    surfaces,
+    tagCapturedSurfaces(continuedSurfaceSnapshot, continuedShot),
+  );
 
   const aftermathPersisted = !!(
     continuedAftermath.yard
@@ -368,11 +391,9 @@ async function runHeliosCivicYardRoute(page, cell) {
     { allowedSectorChange: false },
   );
 
-  const joined = surfaces.joined
-    || `YARD CONTROL · CLEARED MANIFEST · LOCAL TRUST · ${ecology.summary || cell.regionalFamilyId}`;
-
   return {
     id: cell.id,
+    seed: afterBoot.seed,
     routeDescription: 'New Game → N/Search Helios Station → Set Waypoint → E dock → F5 → Continue',
     sectorId: ecology.sectorId || cell.sectorId,
     regionalFamilyId: ecology.regionalFamilyId || cell.regionalFamilyId,
@@ -381,9 +402,13 @@ async function runHeliosCivicYardRoute(page, cell) {
     continuedEcology,
     injectedState: false,
     playerFacing: {
-      joined,
+      joined: surfaces.joined,
       surfaces: surfaces.surfaces,
       placeholder: false,
+    },
+    supporting: {
+      plannedPoiFamilies: ecology.plannedPoiFamilies,
+      observerEvents: surfaces.supportingEvents,
     },
     causal: {
       readable: !!causalReadable,
@@ -391,6 +416,7 @@ async function runHeliosCivicYardRoute(page, cell) {
       reward: 'LOCAL TRUST',
       verb: 'dock',
       classification,
+      visibleSurfaceSelectors: causalSurfaceSelectors,
     },
     aftermath: {
       persisted: aftermathPersisted,
@@ -484,8 +510,21 @@ async function runPublicTravelEcologyRoute(page, cell) {
   await openPublicGalaxyMap(page);
   await publicMapSearch(page, cell.sectorSearch, new RegExp(cell.sectorName.split(' ')[0], 'i'));
   await page.waitForTimeout(300);
-  const inspectorText = await page.locator('.gm-inspector-content').innerText().catch(() => '');
+  const inspector = page.locator('.gm-inspector-content');
+  const inspectorVisible = await inspector.isVisible().catch(() => false);
+  const inspectorText = inspectorVisible ? await inspector.innerText().catch(() => '') : '';
   const ecologyShot = await screenshot(page, cell.screenshots.ecology);
+  const normalizedInspectorText = String(inspectorText || '').replace(/\s+/g, ' ').trim().slice(0, 600);
+  let surfaces = normalizedInspectorText ? {
+    surfaces: [{
+      selector: '.gm-inspector-content',
+      text: normalizedInspectorText,
+      visible: true,
+      capturedIn: ecologyShot.path,
+    }],
+    joined: normalizedInspectorText,
+    supportingEvents: [],
+  } : { surfaces: [], joined: '', supportingEvents: [] };
   await closeMapIfOpen(page);
 
   // Public flight sample: brief W hold to prove ordinary helm in the new ecology (not a teleport).
@@ -504,32 +543,15 @@ async function runPublicTravelEcologyRoute(page, cell) {
 
   // Collect zone/toast/alert surfaces after arrival + brief flight.
   await page.waitForTimeout(500);
-  let surfaces = await readPlayerFacingSurfaces(page);
+  const flightSurfaceSnapshot = await readPlayerFacingSurfaces(page);
   const plannedLabels = (ecology.plannedPoiRows || [])
     .map((r) => `${r.mapLabel || ''} ${r.entryLine || ''} ${r.riskLabel || ''} ${r.rewardLabel || ''}`)
     .join(' · ');
-  // Planned rows are production state (not harness-written). Compose a player-readable
-  // causal card from the live plan + map inspector for cells where zone entry is long.
-  const composed = [
-    ecology.familyLabel || ecology.regionalFamilyId,
-    ecology.summary,
-    plannedLabels,
-    inspectorText,
-    surfaces.joined,
-  ].filter(Boolean).join(' · ');
-  surfaces = {
-    surfaces: [
-      ...surfaces.surfaces,
-      { selector: 'composed:ecology+plan+inspector', text: composed.slice(0, 800) },
-    ],
-    joined: composed,
-  };
-
   const approachShot = await screenshot(page, cell.screenshots.approach);
+  surfaces = mergeSurfaces(surfaces, tagCapturedSurfaces(flightSurfaceSnapshot, approachShot));
   const classification = classifySurfaceText(surfaces.joined, cell);
-  const causalReadable = classification.approach || classification.causal
-    || (ecology.plannedPoiRows || []).some((r) => r.familyId === cell.poiFamilyId
-      && r.riskLabel && r.rewardLabel);
+  const causalSurfaceSelectors = visibleCausalSurfaceSelectors(surfaces, cell);
+  const causalReadable = causalSurfaceSelectors.length > 0;
 
   // F5 → Continue durability in destination sector
   await page.keyboard.press('Tab');
@@ -561,25 +583,31 @@ async function runPublicTravelEcologyRoute(page, cell) {
 
   return {
     id: cell.id,
+    seed: before.seed,
     routeDescription: `New Game → N/Search ${cell.gateSearch} → Set Waypoint → approach → M/Jump ${cell.sectorSearch} → F5 → Continue`,
     sectorId: continuedEcology.sectorId || ecology.sectorId,
     regionalFamilyId: ecology.regionalFamilyId,
     poiFamilyId: cell.poiFamilyId,
     ecology,
     continuedEcology,
-    inspectorText: String(inspectorText || '').replace(/\s+/g, ' ').trim().slice(0, 600),
     injectedState: false,
     playerFacing: {
       joined: surfaces.joined,
       surfaces: surfaces.surfaces,
       placeholder: false,
     },
+    supporting: {
+      inspectorText: normalizedInspectorText,
+      plannedLabels,
+      planned: ecology.plannedPoiRows || [],
+      observerEvents: surfaces.supportingEvents,
+    },
     causal: {
       readable: !!causalReadable,
       risk: (ecology.plannedPoiRows || []).find((r) => r.familyId === cell.poiFamilyId)?.riskLabel || null,
       reward: (ecology.plannedPoiRows || []).find((r) => r.familyId === cell.poiFamilyId)?.rewardLabel || null,
       classification,
-      planned: ecology.plannedPoiRows || [],
+      visibleSurfaceSelectors: causalSurfaceSelectors,
     },
     aftermath: {
       // Destination ecology + plan identity surviving Continue is the durability proof for
@@ -756,24 +784,33 @@ async function readPlayerFacingSurfaces(page) {
       .map((el) => ({
         selector,
         text: String(el.textContent || '').replace(/\s+/g, ' ').trim(),
+        visible: true,
       }))
       .filter((row) => row.text));
-    // Include recent observer events as non-visual supporting transcript only when surfaces empty.
-    const events = (window.__M4_LIVING_ROUTE__?.events || [])
+    // Observer events are supporting telemetry only; never merge them into the
+    // player-facing surfaces used for primary causal acceptance.
+    const supportingEvents = (window.__M4_LIVING_ROUTE__?.events || [])
       .filter((e) => /poi:behavior|zoneEntered/.test(e.event))
-      .slice(-8)
-      .map((e) => ({
-        selector: `event:${e.event}`,
-        text: [e.payload?.mapLabel, e.payload?.phase, e.payload?.familyId, e.payload?.name]
-          .filter(Boolean).join(' · '),
-      }))
-      .filter((row) => row.text);
-    const all = [...surfaces, ...events];
+      .slice(-8);
     return {
-      surfaces: all,
-      joined: all.map((s) => s.text).join(' · '),
+      surfaces,
+      joined: surfaces.map((s) => s.text).join(' · '),
+      supportingEvents,
     };
   });
+}
+
+function tagCapturedSurfaces(snapshot, shot) {
+  const surfaces = (snapshot?.surfaces || []).map((surface) => ({
+    ...surface,
+    visible: surface.visible === true,
+    capturedIn: shot.path,
+  }));
+  return {
+    surfaces,
+    joined: surfaces.map((surface) => surface.text).filter(Boolean).join(' · '),
+    supportingEvents: snapshot?.supportingEvents || [],
+  };
 }
 
 function mergeSurfaces(a, b) {
@@ -781,7 +818,18 @@ function mergeSurfaces(a, b) {
   return {
     surfaces,
     joined: surfaces.map((s) => s.text).filter(Boolean).join(' · '),
+    supportingEvents: [...(a?.supportingEvents || []), ...(b?.supportingEvents || [])],
   };
+}
+
+function visibleCausalSurfaceSelectors(snapshot, cell) {
+  return (snapshot?.surfaces || [])
+    .filter((surface) => {
+      if (surface.visible !== true || !surface.capturedIn || !surface.text) return false;
+      const classification = classifySurfaceText(surface.text, cell);
+      return classification.approach || classification.causal;
+    })
+    .map((surface) => `${surface.selector || '?'}@${surface.capturedIn}`);
 }
 
 async function snapshotPublicState(page) {

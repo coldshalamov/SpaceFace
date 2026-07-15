@@ -1,0 +1,26 @@
+{
+  "schema": "spaceface.kestrelBorrowedTimeV2.tasteReview.v1",
+  "packet": "PROFESSIONAL-KESTREL-BORROWED-TIME-V2-CODEX-001",
+  "reviewCount": 1,
+  "repairCount": 1,
+  "disposition": "PASS",
+  "livePromotion": false,
+  "bar": "professional hero starter above the current shipped Borrowed Time geometry tier",
+  "evidence": [
+    "evidence/three/kestrel_v2_three_close.png",
+    "evidence/three/kestrel_v2_three_mid.png",
+    "evidence/three/kestrel_v2_three_120px.png",
+    "evidence/three/kestrel_v2_three_under45px.png",
+    "evidence/renders/forward_34.png",
+    "evidence/renders/rear_34.png",
+    "evidence/renders/top_ortho.png"
+  ],
+  "observations": [
+    "The forward keel, twin shoulder chines, and open aft drive yoke make orientation readable at a glance.",
+    "Hull, mechanical, cyan, warm, glass, and repair roles remain distinct without global glow or a featureless black primary mass.",
+    "The one repair shortened the cyan rails, added physical stanchions, and moved the dark drive load ring into the hull value family.",
+    "The 120px and under-45px Three.js proofs retain the long-low cutter silhouette and cyan/amber identity.",
+    "Close detail is organized around equipment and load paths; no accessory-only or random-cube assembly is present."
+  ],
+  "boundedAcceptance": "isolated candidate only; promotion requires separate live integration and player-route review"
+}

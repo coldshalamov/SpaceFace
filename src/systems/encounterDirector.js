@@ -42,6 +42,7 @@ import {
 } from '../data/sectorCoordinates.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { ENCOUNTERS, NAMED_CAPTAINS, barkText, receiptText } from '../data/encounters.js';
+import { ENCOUNTER_MODULES } from '../data/encounters/index.generated.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { ENCOUNTER_SCRIPTS } from './encounterScripts.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -54,11 +55,21 @@ import {
 } from './regionalEcology.js';
 import { activityForEncounterSpawn, roeForActivity, setEntityDoctrine } from '../ai/doctrine.js';
 import {
+  nextMoralDebt,
+  rememberAceMemoryTransition,
+  rememberMoralDebt,
+} from './moralMemory.js';
+import {
   buildEncounterCausality,
   resolvedEncounterFingerprint,
 } from '../world/encounterCausality.js';
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
+const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
+  ENCOUNTER_MODULES
+    .filter((module) => module && module.trigger && module.runtime)
+    .map((module) => [module.trigger.id, module.runtime]),
+);
 
 // ── schedule budget (per sector-day) ─────────────────────────────────────────────────────────────
 const MAX_MAJOR_PER_DAY = 1;
@@ -108,7 +119,15 @@ export const encounterDirector = {
       this.bus.on('encounter:namedCaptainBound', (p) => this._onExternalNamedBound(p));
       this.bus.on('combat:damage', (p) => this._onCombatDamage(p));
       this.bus.on('contraband:scanned', (p) => this._routeToScript('patrolScan', 'contrabandScanned', p));
-      this.bus.on('scan:pulse', (p) => this._routeToScript('distress', 'scanPulse', p));
+      this.bus.on('scan:pulse', (p) => {
+        this._routeToScript('distress', 'scanPulse', p);
+        this._routeToSelfRegistered('scanPulse', p);
+      });
+      this.bus.on('tether:attached', (p) => this._routeToSelfRegistered('tetherAttached', p));
+      this.bus.on('moralMemory:remember', (p) => rememberMoralDebt(this.state, p || {}));
+      this.bus.on('aceMemory:transition', (p) => rememberAceMemoryTransition(this.state, p || {}));
+      this.bus.on('poi:discovered', (p) => this._rememberPoiVisit(p));
+      this.bus.on('poi:identified', (p) => this._rememberPoiVisit(p));
       this.bus.on('salvage:communicatorFound', (p) => this._routeToScript('salvageSignal', 'communicatorFound', p));
       // The deterministic choice bridge (UI/test harness both speak this).
       this.bus.on('encounter:choose', (p) => this._onChoose(p));
@@ -167,8 +186,9 @@ export const encounterDirector = {
     // Live encounters in the sector we left resolve as abandoned (named grudges still book).
     for (const id of Object.keys(dir.live)) {
       const live = dir.live[id];
-      if (live.script === 'namedHunter' && ENCOUNTER_SCRIPTS.namedHunter) {
-        ENCOUNTER_SCRIPTS.namedHunter._depart(this, live, !!(live.data && live.data.engaged));
+      const script = encounterScriptFor(live);
+      if (live.script === 'namedHunter' && script) {
+        script._depart(this, live, !!(live.data && live.data.engaged));
       } else {
         this.abort(live, 'sector_exit');
       }
@@ -266,7 +286,7 @@ export const encounterDirector = {
     if (dueIdx < 0) return;
     const item = dir.pending[dueIdx];
     const shape = ENCOUNTERS[item.shapeId];
-    if (!shape || !ENCOUNTER_SCRIPTS[shape.script]) { dir.pending.splice(dueIdx, 1); return; }
+    if (!shape || !encounterScriptFor(shape)) { dir.pending.splice(dueIdx, 1); return; }
 
     const defer = () => { item.dueAt = now + DEFER_S; };
     const gateDefer = () => {
@@ -275,27 +295,7 @@ export const encounterDirector = {
       defer();
     };
 
-    if (now < (dir.cooldowns[shape.id] || 0)) return defer();
-    if (dir.pressure[shape.deck] < shape.pressureCost) return defer();
-
-    // Spacing + concurrency law.
-    const liveList = Object.values(dir.live);
-    const liveCombat = liveList.some((l) => l.deck === 'combat');
-    const liveMeaningful = liveList.filter((l) => l.tier !== 'ambient').length;
-    const liveAmbient = liveList.length - liveMeaningful;
-    if (shape.tier === 'ambient') {
-      if (liveAmbient >= 2) return defer();
-      if (now - dir.lastAmbientAt < AMBIENT_GAP_S) return defer();
-      if (now - dir.lastMeaningfulAt < AMBIENT_AFTER_MEANINGFUL_S) return defer();
-    } else {
-      if (now - dir.lastMeaningfulAt < MIN_GAP_S) return defer();
-      if (shape.deck === 'combat' && liveCombat) return defer();          // never two combat shapes
-      if (liveMeaningful >= 2) return defer();
-      const majors = dir.window.filter((w) => w.tier === 'major').length;
-      const minors = dir.window.filter((w) => w.tier === 'minor').length;
-      if (shape.tier === 'major' && (majors >= MAX_MAJOR_PER_DAY || now - dir.lastMajorAt < MAJOR_EXTRA_GAP_S)) return defer();
-      if (shape.tier === 'minor' && minors >= MAX_MINOR_PER_DAY) return defer();
-    }
+    if (encounterPacingBlockReason(dir, state, shape, now)) return defer();
 
     if (!this._gatesPass(shape, state)) return gateDefer();
     if (shape.proximity && !this._playerNearItemZone(item)) return gateDefer();
@@ -306,6 +306,28 @@ export const encounterDirector = {
   _gatesPass(shape, state) {
     const g = shape.gates || {};
     if (g.externalOnly) return false;
+    const sectorId = this._currentSectorId();
+    const sector = SECTORS.find((entry) => entry.id === sectorId);
+    const completed = state.story && state.story.depthProgramEncounters
+      && state.story.depthProgramEncounters.completed || {};
+    if (g.uniqueOnce && completed[shape.id]) return false;
+    if (g.blockAfterOutcome && completed[shape.id] && completed[shape.id].outcome === g.blockAfterOutcome) return false;
+    if (Array.isArray(g.sectorIds) && !g.sectorIds.includes(sectorId)) return false;
+    if (Number.isFinite(g.storyBeatMin) && ((state.story && state.story.beatIndex) | 0) < g.storyBeatMin) return false;
+    if (Number.isFinite(g.minSectorTier) && (!sector || (sector.tier | 0) < g.minSectorTier)) return false;
+    if (g.requiredTech && !(state.player && Array.isArray(state.player.researchedNodes)
+      && state.player.researchedNodes.includes(g.requiredTech))) return false;
+    if (g.requiredPoiDiscovered) {
+      const discovery = state.world && state.world.discovery && state.world.discovery[sectorId];
+      const poi = discovery && discovery.pois && discovery.pois[g.requiredPoiDiscovered];
+      if (!poi || poi.discovered !== true) return false;
+      if (g.requirePriorPoiVisit) {
+        const visits = state.story && state.story.depthProgramPoiVisits;
+        const firstSeenAt = visits && visits[g.requiredPoiDiscovered] && visits[g.requiredPoiDiscovered].firstSeenAt;
+        if (!Number.isFinite(firstSeenAt) || firstSeenAt >= (state.simTime || 0)) return false;
+      }
+    }
+    if (g.moralDebtOnly && !nextMoralDebt(state)) return false;
     if (g.minCargoValue && this.cargoValue() < g.minCargoValue) return false;
     if (g.bountyOnly && (((state.player && state.player.bounty) | 0) <= 0)) return false;
     if (Number.isFinite(g.maxSecurity) && sectorSecurityOf(state) > g.maxSecurity) return false;
@@ -328,6 +350,75 @@ export const encounterDirector = {
     const r = (item.zoneRadius || 400) + PROX_SLACK;
     const dx = p.pos.x - item.zoneCenter.x, dz = p.pos.z - item.zoneCenter.z;
     return dx * dx + dz * dz <= r * r;
+  },
+
+  /** Deterministic forcing seam for authored/self-registering encounters. Debug harnesses and
+   * future story owners provide a stable encounter id; normal calls still honor live header gates.
+   * `force` bypasses eligibility only, never RNG or sim-time. */
+  requestAuthoredEncounter(payload) {
+    if (!payload || !payload.shapeId || !payload.encounterId || !payload.sectorId) {
+      return { ok: false, reason: 'invalid_request' };
+    }
+    const state = this.state;
+    const dir = ensureDirectorState(state);
+    if (dir.live[payload.encounterId]) {
+      return { ok: true, encounterId: payload.encounterId, reused: true };
+    }
+    if (this._currentSectorId() !== payload.sectorId) return { ok: false, reason: 'wrong_sector' };
+    const shape = ENCOUNTERS[payload.shapeId];
+    if (!shape) return { ok: false, reason: 'missing_shape' };
+    if (!encounterScriptFor(shape)) return { ok: false, reason: 'missing_runtime' };
+    if (payload.respectPacing) {
+      const reason = encounterPacingBlockReason(dir, state, shape, state.simTime || 0);
+      if (reason) return { ok: false, reason };
+    }
+    if (!payload.force && !this._gatesPass(shape, state)) return { ok: false, reason: 'gated' };
+
+    const requestedZone = payload.zoneId
+      ? zonesForSector(payload.sectorId).find((candidate) => candidate.id === payload.zoneId)
+      : null;
+    const anchor = payload.anchor
+      || (requestedZone && sectorLocalToGlobalForSector(requestedZone.center, payload.sectorId))
+      || (this.player() && this.player().pos)
+      || { x: 0, z: 0 };
+    const local = globalToSectorLocalForSector(anchor, payload.sectorId);
+    const zone = {
+      ...(requestedZone || {}),
+      id: payload.zoneId || (requestedZone && requestedZone.id) || `authored:${shape.id}`,
+      name: payload.zoneName || (requestedZone && requestedZone.name) || shape.title || shape.id,
+      type: payload.zoneType || (requestedZone && requestedZone.type)
+        || (shape.zoneTypes && shape.zoneTypes[0]) || 'authored',
+      center: { x: local.x, z: local.z },
+      radius: Math.max(80, Number(payload.zoneRadius) || (requestedZone && requestedZone.radius) || 520),
+      threat: Number.isFinite(payload.threat)
+        ? payload.threat
+        : (Number.isFinite(requestedZone && requestedZone.threat) ? requestedZone.threat : 1),
+    };
+    const rng = mulberry32(hash32(
+      (state.meta && state.meta.seed) || 0,
+      payload.encounterId,
+      shape.id,
+      'authored-encounter',
+    ));
+    const item = resolveEncounter(
+      shape,
+      zone,
+      payload.sectorId,
+      Math.floor((state.simTime || 0) / DAY_SECONDS),
+      0,
+      rng,
+    );
+    if (!item) return { ok: false, reason: 'empty_plan' };
+    item.encounterId = payload.encounterId;
+    item.squadId = payload.encounterId;
+    item.sectorId = payload.sectorId;
+    item.zoneCenter = { x: anchor.x, z: anchor.z };
+    item.zoneRadius = zone.radius;
+    item.data = payload.data && typeof payload.data === 'object' ? { ...payload.data } : {};
+    this._fire(dir, state, item, shape, state.simTime || 0);
+    return dir.live[payload.encounterId]
+      ? { ok: true, encounterId: payload.encounterId }
+      : { ok: false, reason: 'resolved_on_fire' };
   },
 
   /** Materialize a claim-owned defense contract at its exact physical anchor. This bypasses the
@@ -451,7 +542,7 @@ export const encounterDirector = {
       pos: live.anchor ? { x: live.anchor.x, z: live.anchor.z } : null,
       causality: { ...live.causality },
     });
-    const script = ENCOUNTER_SCRIPTS[live.script];
+    const script = encounterScriptFor(live);
     try {
       script.fire(this, live, state);
     } catch (err) {
@@ -474,7 +565,7 @@ export const encounterDirector = {
     for (const id of keys) {
       const live = dir.live[id];
       if (!live || live.phase === 'done') continue;
-      const script = ENCOUNTER_SCRIPTS[live.script];
+      const script = encounterScriptFor(live);
       if (!script || typeof script.tick !== 'function') continue;
       try {
         script.tick(this, live, state, now);
@@ -569,10 +660,16 @@ export const encounterDirector = {
     const spawned = [];
     for (let i = 0; i < ships.length && spawned.length < grant; i++) {
       const sh = ships[i];
-      const spec = makeEnemySpawnSpec(sh.archetype, sh.level, sh.pos, {
-        factionId: sh.factionId,
-        startedTick: this.state.tick,
-      });
+      // Most encounters materialize an enemy archetype. A self-registered encounter may instead
+      // provide a complete ship spec when its identity is the mechanic (H8 mirrors the player's
+      // current hull). The spec still passes through the same budget, doctrine, causality, and
+      // live-id ownership below; it only avoids briefly spawning the wrong hull identity.
+      const spec = sh.entitySpec && sh.entitySpec.type === 'ship'
+        ? sh.entitySpec
+        : makeEnemySpawnSpec(sh.archetype, sh.level, sh.pos, {
+            factionId: sh.factionId,
+            startedTick: this.state.tick,
+          });
       if (sh.team != null) spec.team = sh.team;
       if (sh.hullFrac != null) spec.hull = Math.max(1, Math.round(spec.hullMax * sh.hullFrac));
       spec.data = spec.data || {};
@@ -582,6 +679,22 @@ export const encounterDirector = {
       ai.doctrine = sh.doctrine || ai.doctrine;
       if (sh.combatDoctrineId) ai.combatDoctrineId = sh.combatDoctrineId;
       if (sh.formation) ai.formation = sh.formation;
+      if (sh.factionPresenceDoctrine) {
+        ai.factionPresenceDoctrine = {
+          ...sh.factionPresenceDoctrine,
+          firstFireAgainst: Array.isArray(sh.factionPresenceDoctrine.firstFireAgainst)
+            ? sh.factionPresenceDoctrine.firstFireAgainst.slice()
+            : [],
+        };
+      }
+      if (sh.cultureId) {
+        ai.cultureId = sh.cultureId;
+        spec.data.cultureId = sh.cultureId;
+      }
+      if (sh.namedAceId) {
+        ai.namedAceId = sh.namedAceId;
+        spec.data.namedAceId = sh.namedAceId;
+      }
       ai.spawnContext = sh.context;
       ai.sectorId = live.sectorId;
       ai.zoneId = live.zoneId;
@@ -594,7 +707,7 @@ export const encounterDirector = {
       spec.data.encounterFingerprint = live.causality && live.causality.fingerprint || null;
       spec.data.encounterCausality = live.causality ? { ...live.causality } : null;
       if (sh.role) ai.encounterRole = sh.role;
-      if (sh.passive) ai.passive = true;
+      if (sh.passive != null) ai.passive = !!sh.passive;
       ai.activity = activityForEncounterSpawn(live, sh, { now: this.now() });
       ai.roe = roeForActivity(ai.activity, sh.roe);
       if (sh.bossName) { ai.name = sh.bossName; spec.data.encounterBoss = true; }
@@ -635,6 +748,29 @@ export const encounterDirector = {
         wreckMissionId: null,
         scanLabel: opts.scanLabel || 'Wreck Debris',
         encounterId: live.id,
+        storyPropKind: opts.storyPropKind || null,
+      },
+    });
+  },
+
+  spawnProp(live, opts) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function' || !opts || !opts.pos) return null;
+    return spawnEntity({
+      type: opts.type || 'beacon',
+      pos: { x: opts.pos.x, z: opts.pos.z },
+      vel: { x: 0, z: 0 },
+      radius: Math.max(2, Number(opts.radius) || 6),
+      mass: Math.max(1, Number(opts.mass) || 1e6),
+      hull: 1,
+      hullMax: 1,
+      data: {
+        parentType: 'story_prop',
+        scanLabel: opts.scanLabel || 'Encounter signal',
+        encounterId: live.id,
+        storyPropKind: opts.storyPropKind || null,
+        assetRef: opts.assetRef || null,
+        tetherable: opts.tetherable !== false,
       },
     });
   },
@@ -729,7 +865,8 @@ export const encounterDirector = {
       options.push({ id: def.id, label: def.label, available });
     }
     this.emit('encounter:choiceOffered', {
-      encounterId: live.id, kind: live.shapeId, options, deadlineAt,
+      encounterId: live.id, kind: live.shapeId, title: live.shape.title || live.zoneName || live.shapeId,
+      options, deadlineAt,
       timeoutChoice: timeoutChoice || live.shape.timeoutChoice || null,
     });
   },
@@ -739,8 +876,24 @@ export const encounterDirector = {
     const dir = ensureDirectorState(this.state);
     const live = dir.live[p.encounterId];
     if (!live || live.phase === 'done') return;
-    const script = ENCOUNTER_SCRIPTS[live.script];
-    if (script && typeof script.choose === 'function') script.choose(this, live, this.state, p.choiceId);
+    const script = encounterScriptFor(live);
+    if (script && typeof script.choose === 'function') {
+      this._recordPlayerChoiceLine(live, p.choiceId);
+      script.choose(this, live, this.state, p.choiceId);
+    }
+  },
+
+  _recordPlayerChoiceLine(live, choiceId) {
+    const choice = (live.shape.choices || []).find((entry) => entry && entry.id === choiceId);
+    const line = choice && typeof choice.playerLine === 'string' ? choice.playerLine.trim() : '';
+    if (!line) return;
+    const story = this.state.story || (this.state.story = { flags: {} });
+    const lines = Array.isArray(story.playerChoiceLines) ? story.playerChoiceLines : (story.playerChoiceLines = []);
+    lines.push(line);
+    if (lines.length > 24) lines.splice(0, lines.length - 24);
+    this.emit('story:playerChoiceRecorded', {
+      encounterId: live.id, shapeId: live.shapeId, choiceId, line, t: this.now(),
+    });
   },
 
   // ── outcomes / receipts ─────────────────────────────────────────────────────────────────────
@@ -783,7 +936,8 @@ export const encounterDirector = {
       instanceFingerprint: resolvedCausality.fingerprint,
       t: now,
     });
-    const text = receiptText(live.shapeId, outcome, o.vars || live.vars);
+    const text = (live.shape.receipts && live.shape.receipts[outcome])
+      || receiptText(live.shapeId, outcome, o.vars || live.vars);
     if (text && o.speak !== false) {
       const voice = this.helpers && this.helpers.voice;
       if (voice && typeof voice.say === 'function') voice.say({ channel: o.channel || 'info', text, kind: 'receipt' });
@@ -929,9 +1083,30 @@ export const encounterDirector = {
     }
   },
 
+  _routeToSelfRegistered(eventName, payload) {
+    const dir = ensureDirectorState(this.state);
+    for (const live of Object.values(dir.live)) {
+      if (SELF_REGISTERED_RUNTIME_BY_ID.has(live.shapeId)) this._scriptEvent(live, eventName, payload);
+    }
+  },
+
+  _rememberPoiVisit(payload) {
+    const poiId = payload && payload.poiId;
+    if (!poiId || !this.state) return;
+    const story = this.state.story || (this.state.story = { flags: {} });
+    const visits = story.depthProgramPoiVisits || (story.depthProgramPoiVisits = {});
+    if (!visits[poiId]) {
+      visits[poiId] = {
+        firstSeenAt: this.state.simTime || 0,
+        firstSeenTick: this.state.tick | 0,
+        sectorId: this._currentSectorId(),
+      };
+    }
+  },
+
   _scriptEvent(live, name, payload) {
     if (!live || live.phase === 'done') return;
-    const script = ENCOUNTER_SCRIPTS[live.script];
+    const script = encounterScriptFor(live);
     if (!script || typeof script.event !== 'function') return;
     try {
       script.event(this, live, this.state, name, payload);
@@ -990,9 +1165,16 @@ export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = n
   let seq = 0;
   const scheduleTier = (tier, maxCount, delayLo, delaySpan) => {
     const candidates = Object.values(encounterCatalog || ENCOUNTERS).filter((e) => {
-      if (e.tier !== tier || !e.zoneTypes || !e.zoneTypes.some((zt) => presentTypes.has(zt))) return false;
+      const anchoredHere = e.anchorPoiId && secDef && Array.isArray(secDef.pois)
+        && secDef.pois.some((poi) => poi.id === e.anchorPoiId && poi.pos);
+      if (e.tier !== tier || !e.zoneTypes
+        || (!anchoredHere && !e.zoneTypes.some((zt) => presentTypes.has(zt)))) return false;
       const g = e.gates || {};
       if (g.externalOnly) return false;
+      // These gates depend only on immutable sector data, so rejecting them here prevents an
+      // impossible authored shape from consuming the sector-day slot before the fire-time gate.
+      if (Array.isArray(g.sectorIds) && !g.sectorIds.includes(sectorId)) return false;
+      if (Number.isFinite(g.minSectorTier) && (!secDef || (secDef.tier | 0) < g.minSectorTier)) return false;
       if (Number.isFinite(g.maxSecurity) && sectorSecurity > g.maxSecurity) return false;
       if (Number.isFinite(g.minSecurity) && sectorSecurity < g.minSecurity) return false;
       return true;
@@ -1011,7 +1193,7 @@ export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = n
       ));
       if (!enc) continue;
       if (enc.rare && rng() < RARE_GATE) continue;     // rare shapes need the extra gate
-      const zone = pickZoneFor(enc, zonesByType, rng);
+      const zone = pickZoneFor(enc, zonesByType, rng, sectorId);
       if (!zone) continue;
       const item = resolveEncounter(enc, zone, sectorId, dayIndex, seq++, rng);
       if (!item) continue;
@@ -1083,7 +1265,10 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
   return {
     encounterId: squadId,
     shapeId: enc.id,
-    script: enc.script,
+    // Self-registering modules are resolved by shapeId at runtime. Keep a legacy script id on the
+    // schedule item so older planner/check tooling can still validate and inspect the schedule
+    // without needing to understand the module runtime extension point.
+    script: SELF_REGISTERED_RUNTIME_BY_ID.has(enc.id) ? (enc.fallbackScript || 'whisper') : enc.script,
     tier: enc.tier,
     deck: enc.deck,
     squadId,
@@ -1120,6 +1305,9 @@ function addSquad(ships, squad, factionId, context, zone, levelBand, rng, role) 
       context,
       doctrine: squad.doctrine,
       formation: squad.formation,
+      team: squad.team,
+      passive: squad.passive == null ? undefined : squad.passive === true,
+      roe: squad.roe,
       role: role || 'squad',
     });
   }
@@ -1134,7 +1322,23 @@ function jitter(zone, rng, clusterR) {
 }
 
 // Choose a zone matching the encounter's zoneTypes (seeded among matches).
-function pickZoneFor(enc, zonesByType, rng) {
+function pickZoneFor(enc, zonesByType, rng, sectorId) {
+  if (enc.anchorPoiId) {
+    const sector = SECTORS.find((entry) => entry.id === sectorId);
+    const poi = sector && Array.isArray(sector.pois)
+      ? sector.pois.find((entry) => entry.id === enc.anchorPoiId && entry.pos)
+      : null;
+    if (poi) {
+      return {
+        id: `encounter-anchor:${poi.id}`,
+        name: poi.name || enc.title || poi.id,
+        type: (enc.zoneTypes && enc.zoneTypes[0]) || 'authored',
+        center: { x: poi.pos.x, z: poi.pos.z },
+        radius: 360,
+        threat: 0,
+      };
+    }
+  }
   const matches = [];
   for (const zt of enc.zoneTypes) {
     const zs = zonesByType.get(zt);
@@ -1231,7 +1435,44 @@ function ensureDirectorState(state) {
   return d;
 }
 
+function encounterScriptFor(liveOrShape) {
+  if (!liveOrShape) return null;
+  const shapeId = liveOrShape.shapeId || liveOrShape.id;
+  return SELF_REGISTERED_RUNTIME_BY_ID.get(shapeId)
+    || ENCOUNTER_SCRIPTS[liveOrShape.script]
+    || null;
+}
+
 // ── small read-only helpers ───────────────────────────────────────────────────────────────────────
+
+function encounterPacingBlockReason(dir, state, shape, now) {
+  if (isDocked(state)) return 'docked';
+  if (isTutorialActive(state)) return 'tutorial';
+  if (now < (dir.cooldowns[shape.id] || 0)) return 'cooldown';
+  if ((dir.pressure[shape.deck] || 0) < shape.pressureCost) return 'pressure';
+
+  const liveList = Object.values(dir.live).filter(Boolean);
+  const liveCombat = liveList.some((live) => live.deck === 'combat');
+  const liveMeaningful = liveList.filter((live) => live.tier !== 'ambient').length;
+  const liveAmbient = liveList.length - liveMeaningful;
+  if (shape.tier === 'ambient') {
+    if (liveAmbient >= 2) return 'ambient_cap';
+    if (now - dir.lastAmbientAt < AMBIENT_GAP_S) return 'ambient_gap';
+    if (now - dir.lastMeaningfulAt < AMBIENT_AFTER_MEANINGFUL_S) return 'ambient_after_meaningful';
+    return null;
+  }
+
+  if (now - dir.lastMeaningfulAt < MIN_GAP_S) return 'pacing_gap';
+  if (shape.deck === 'combat' && liveCombat) return 'combat_busy';
+  if (liveMeaningful >= 2) return 'meaningful_cap';
+  const window = dir.window.filter((entry) => entry && entry.t >= now - WINDOW_S);
+  const majors = window.filter((entry) => entry.tier === 'major').length;
+  const minors = window.filter((entry) => entry.tier === 'minor').length;
+  if (shape.tier === 'major' && majors >= MAX_MAJOR_PER_DAY) return 'major_quota';
+  if (shape.tier === 'major' && now - dir.lastMajorAt < MAJOR_EXTRA_GAP_S) return 'major_gap';
+  if (shape.tier === 'minor' && minors >= MAX_MINOR_PER_DAY) return 'minor_quota';
+  return null;
+}
 
 function isDocked(state) {
   return !!((state.player && state.player.flags && state.player.flags.docked) || (state.ui && state.ui.docked));

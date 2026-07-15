@@ -1,5 +1,9 @@
 # 01 — Professional Build Program
 
+> **Manual campaign plan.** Apply this milestone machinery only when a user/lead explicitly
+> activates this production program. It is a retained planning and acceptance reference otherwise,
+> not the default routing for an ordinary implementation task.
+
 **Status:** DRAFT refinement of `design/vision/ALPHA_PROGRAM.md`
 **Strategy:** foundation → memorable route → reusable family → operational hardening → independent acceptance
 

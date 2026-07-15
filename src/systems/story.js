@@ -33,7 +33,7 @@
 // SERIALIZATION: serialize()/deserialize() round-trip state.story (missions.js already serializes
 // the base fields; we add the narrative fields defensively in deserialize).
 import {
-  COMMS, GRAFFITI, BEAT_CONTENT, KURTZ, COND,
+  COMMS, GRAFFITI, BEAT_CONTENT, POST_SPINE_BEAT_CONTENT, KURTZ, COND,
   COLD_START,
 } from '../data/narrative.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -66,6 +66,7 @@ const VALE_PROFIT_ID = 'story_vale_profit_100k';
 const VALE_CONFLICT_ID = 'story_vale_conflict_flip';
 const VALE_CLAIM_ID = 'story_vale_claim_charter';
 const VALE_PROFIT_THRESHOLD = 100000;
+const DEEP_REACH_VERGE_GATE_ID = 'gate_deep_reach_revoked';
 
 // Ambient comms cadence: one every 45–90s of flight sim time (the "constant low-grade migraine").
 const AMBIENT_MIN_S = 45;
@@ -131,6 +132,8 @@ export const story = {
     bus.on('scan:completed', (p) => this._onPostEndingSignal('scan:completed', p || {}));
     // UI intent: player opened/took/dropped the ledger with the Kurtz figure.
     bus.on('ui:kurtzInteract', (p) => this._onKurtzInteract(p || {}));
+    bus.on('ui:talkContact', (p) => this._onVergeKellEvidence(p || {}));
+    bus.on('factionPresence:archiveEvidenceRead', (p) => this._onVergeArchiveEvidence(p || {}));
 
     // ── B8 — Wren artifact thread: salvaged communicator carries a coordinate file that never resolves.
     bus.on('salvage:communicatorFound', () => this._onB8SalvageTrigger());
@@ -185,6 +188,9 @@ export const story = {
     const state = this.state;
     const s = state.story;
     this._ensureState();
+    if (fromIndex === 7 && toIndex === 7 && s.flags && s.flags.deep_reach_operation_complete) {
+      this._revealDeepReachVergeObservers();
+    }
     const content = BEAT_CONTENT[toIndex];
     if (!content) return;
 
@@ -345,7 +351,7 @@ export const story = {
     if ((s.beatIndex || 0) < 2) return;
     if (!s.flags) s.flags = {};
     s.flags.b8_fired = true;
-    const content = BEAT_CONTENT[8];
+    const content = POST_SPINE_BEAT_CONTENT[8];
     if (!content) return;
     this._fireComms({
       id: 'beat_hint_8', sender: 'CAPTAIN\u2019S LOG', text: content.hint,
@@ -731,6 +737,71 @@ export const story = {
     }, simTime);
   },
 
+  _revealDeepReachVergeObservers() {
+    const s = this.state.story;
+    const verge = s.verge;
+    if (verge.revealed) return false;
+    verge.revealed = true;
+    const receipt = {
+      source: 'campaign47a:b7:deep_reach_observed',
+      variant: s.flags && s.flags.deep_reach_variant || null,
+      revealedAt: this.state.simTime || 0,
+    };
+    this.bus.emit('story:vergeObserversRevealed', receipt);
+    this.bus.emit('presentation:caption', {
+      text: 'DEEP REACH — SILENT OBSERVER LATTICE DETECTED',
+      assertive: false,
+      shape: 'verge-observer-reveal',
+    });
+    this._maybeResolveVergeEvidenceTrail();
+    return true;
+  },
+
+  _onVergeKellEvidence(payload) {
+    if (payload.contactId !== 'contact_wraith_kell' || payload.choiceId !== 'burn') return false;
+    if ((this.state.story && this.state.story.beatIndex || 0) < 5) return false;
+    return this._markVergeEvidence('kellPaperTrail', 'contact_wraith_kell:burn');
+  },
+
+  _onVergeArchiveEvidence(payload) {
+    if (payload.evidenceId !== 'vale_gate_revocation_file') return false;
+    return this._markVergeEvidence('archiveFile', `archive:${payload.stationId || 'reading_room'}`);
+  },
+
+  _markVergeEvidence(key, source) {
+    const s = this.state.story;
+    const verge = s.verge;
+    if (!verge.evidence || !Object.hasOwn(verge.evidence, key) || verge.evidence[key]) return false;
+    verge.evidence[key] = true;
+    this.bus.emit('story:vergeEvidenceRecorded', { key, source, t: this.state.simTime || 0 });
+    this._maybeResolveVergeEvidenceTrail();
+    return true;
+  },
+
+  _maybeResolveVergeEvidenceTrail() {
+    const s = this.state.story;
+    const verge = s.verge;
+    if (!verge.revealed || verge.valeGatesRevoked) return false;
+    const evidence = verge.evidence || {};
+    if (!evidence.kellPaperTrail || !evidence.archiveFile || !evidence.kurtzLedger) return false;
+    const receipt = {
+      id: DEEP_REACH_VERGE_GATE_ID,
+      source: 'kell+archive+kurtz',
+      subject: 'director_vale',
+      revokedAt: this.state.simTime || 0,
+    };
+    verge.valeGatesRevoked = true;
+    verge.awake = true;
+    verge.revocations.push(receipt);
+    this.bus.emit('story:vergeValeGatesRevoked', { ...receipt, revocationCount: verge.revocations.length });
+    this.bus.emit('presentation:caption', {
+      text: 'VERGE LATTICE AWAKE — VALE GATE ACCESS REVOKED',
+      assertive: true,
+      shape: 'verge-gate-revocation',
+    });
+    return true;
+  },
+
   // =========================================================================================
   // VALE MILESTONES — system acknowledgements, never a parallel quest or reward authority.
   // =========================================================================================
@@ -923,6 +994,7 @@ export const story = {
       // Add the ledger as a persistent cargo item (PERSONAL EFFECTS — 1 UNIT / 0.4t).
       this._addPersistentCargo(KURTZ.ledgerCargoId, KURTZ.ledgerName, 1, KURTZ.ledgerMass);
       state.story.flags.hasLedger = true;
+      this._markVergeEvidence('kurtzLedger', 'kurtz:takeLedger');
       this._fireComms({
         id: 'kurtz_dialog_take', sender: 'THE KURTZ FIGURE', text: KURTZ.dialogue[1],
         category: 'story', ttl: 9, persist: false,
@@ -1105,6 +1177,7 @@ export const story = {
       s.postEnding = null;
       s.persistentCargo = [];
       s.valeMilestones = { conflictFlip: null };
+      s.verge = createVergeStoryState();
     } else {
       if (s.phase == null) s.phase = 1;
       if (!s.seenComms) s.seenComms = {};
@@ -1128,6 +1201,21 @@ export const story = {
         s.valeMilestones = { conflictFlip: null };
       } else if (s.valeMilestones.conflictFlip === undefined) {
         s.valeMilestones.conflictFlip = null;
+      }
+      if (!s.verge || typeof s.verge !== 'object' || Array.isArray(s.verge)) {
+        s.verge = createVergeStoryState();
+      } else {
+        s.verge.revealed = s.verge.revealed === true;
+        s.verge.awake = s.verge.awake === true;
+        s.verge.valeGatesRevoked = s.verge.valeGatesRevoked === true;
+        s.verge.playerUsedClosureProtocol = s.verge.playerUsedClosureProtocol === true;
+        const evidence = s.verge.evidence && typeof s.verge.evidence === 'object' ? s.verge.evidence : {};
+        s.verge.evidence = {
+          kellPaperTrail: evidence.kellPaperTrail === true,
+          archiveFile: evidence.archiveFile === true,
+          kurtzLedger: evidence.kurtzLedger === true,
+        };
+        if (!Array.isArray(s.verge.revocations)) s.verge.revocations = [];
       }
     }
   },
@@ -1175,3 +1263,14 @@ export const story = {
     }
   },
 };
+
+function createVergeStoryState() {
+  return {
+    revealed: false,
+    awake: false,
+    valeGatesRevoked: false,
+    playerUsedClosureProtocol: false,
+    evidence: { kellPaperTrail: false, archiveFile: false, kurtzLedger: false },
+    revocations: [],
+  };
+}

@@ -1,0 +1,4062 @@
+[
+  {
+    "path": "FBX/Columns/Column_Astra.fbx",
+    "bytes": 29228,
+    "sha256": "9616504de156cf66a1b69ed3e4ee49a15f8afd164656169e400c262b2dbb4fce"
+  },
+  {
+    "path": "FBX/Columns/Column_Hollow.fbx",
+    "bytes": 66684,
+    "sha256": "1486bdb2ee6289340918d16a88a83a8c7a9947c16973ccd27075142fca9275bc"
+  },
+  {
+    "path": "FBX/Columns/Column_Large_Straight.fbx",
+    "bytes": 48988,
+    "sha256": "5f86ea1c8126de3abbf5fc78532edff47b203b9604ef921d34cce9298973263e"
+  },
+  {
+    "path": "FBX/Columns/Column_MetalSupport_Curve.fbx",
+    "bytes": 63308,
+    "sha256": "0b7469bb04d4c781bacbf25eb5d66a367faf29eed9c7ee5ffd2586d3af6bf059"
+  },
+  {
+    "path": "FBX/Columns/Column_MetalSupport.fbx",
+    "bytes": 41116,
+    "sha256": "89992988a8c68000fa1f5757b73dc357683fa591a9451a1bd04433afa46557c3"
+  },
+  {
+    "path": "FBX/Columns/Column_Pipes.fbx",
+    "bytes": 192988,
+    "sha256": "c1fd5376f87b0ebeca3890b0319ca7e197c76cfe2253b68cc5acc3212d5b839d"
+  },
+  {
+    "path": "FBX/Columns/Column_Round.fbx",
+    "bytes": 34124,
+    "sha256": "e5c1a488ff835c2a3bb58e247dbc832f9e1c5eda92d6a0c69752a5a843206998"
+  },
+  {
+    "path": "FBX/Columns/Column_Simple.fbx",
+    "bytes": 24476,
+    "sha256": "d607748d370ef847ebf5fe99e730245a3029dea295c18cf19786a6b5ad6408d1"
+  },
+  {
+    "path": "FBX/Platforms/Door_DarkMetal.fbx",
+    "bytes": 20316,
+    "sha256": "4690f85efd9556fea126989507f049d418990654da5776f7f9dfe8076cae4c1a"
+  },
+  {
+    "path": "FBX/Platforms/Door_Frame_A.fbx",
+    "bytes": 28988,
+    "sha256": "c05ced29afdcce5804dfc9facd005663a919c34ad068c587b48d9a51cb67cae6"
+  },
+  {
+    "path": "FBX/Platforms/Door_Frame_Square_Blocked.fbx",
+    "bytes": 20556,
+    "sha256": "d74bf1f24cfe9a5f1dd4dbef095011a7fdcbde56427c30718fd437b79324e328"
+  },
+  {
+    "path": "FBX/Platforms/Door_Frame_Square.fbx",
+    "bytes": 24620,
+    "sha256": "2aa14ec98bc4b0166bc069603624c1f41ff6824a7a657eb1ccf2187d8afb39c4"
+  },
+  {
+    "path": "FBX/Platforms/Door_Frame_SquareTall.fbx",
+    "bytes": 24540,
+    "sha256": "1fb71a714f325dc2723f6f85f7eb7135fd9e845150460b347638332ade6f1014"
+  },
+  {
+    "path": "FBX/Platforms/Door_Simple.fbx",
+    "bytes": 26188,
+    "sha256": "7468d5e88572b483d39074901bb84ddeac219ec156e6992125e17b8240374e7e"
+  },
+  {
+    "path": "FBX/Platforms/Platform_3Plates.fbx",
+    "bytes": 20300,
+    "sha256": "3c8a53d8acf96585026e794bbd264530ade752f5592a2d95c7dd985c842a6477"
+  },
+  {
+    "path": "FBX/Platforms/Platform_CenterPlate_Curve.fbx",
+    "bytes": 28492,
+    "sha256": "19c0d6e179f7559d73866e6ab8c18fdca90f84c5476b40e7d697958e51868d33"
+  },
+  {
+    "path": "FBX/Platforms/Platform_CenterPlate.fbx",
+    "bytes": 22668,
+    "sha256": "9e007047c3e756317b30109c25d6850821e3d72e0dd29c4dce298a77d6ecdfa0"
+  },
+  {
+    "path": "FBX/Platforms/Platform_DarkPlates_Curves.fbx",
+    "bytes": 25676,
+    "sha256": "b93d55f035c18ee17d885fbca6a511f00bc56d67bceb4e92d78fe6fd71d39bf2"
+  },
+  {
+    "path": "FBX/Platforms/Platform_DarkPlates.fbx",
+    "bytes": 20300,
+    "sha256": "421c55e1d30438f64847f1d9914b7675bd1cc66499f7d4dc1abd096865fe8400"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Metal_Curve.fbx",
+    "bytes": 20236,
+    "sha256": "ed73b429c62a42ce1dba2533b6a07fba4f2614d162ae091563558dfd84ffd9cd"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Metal.fbx",
+    "bytes": 18716,
+    "sha256": "4cd7c4cb1c6041e534d6c3cf5ae6e82b735089871fbd3d94c4497b6a1fef408f"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Metal2_Curve.fbx",
+    "bytes": 24044,
+    "sha256": "6203dfe5689d285942b1eb00dac260765a003a9a16e137ba8e71cc6dc60e7bd3"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Metal2.fbx",
+    "bytes": 19116,
+    "sha256": "b697f5e3df41f1a34b3b527d731dca071d2a84b76de0cffe7e91720eaf037295"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Rails_2.fbx",
+    "bytes": 47244,
+    "sha256": "689f3ed60b2f70859e969d7969ea280eea1b45e4999e51ba4559df046f3ae091"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Rails_4.fbx",
+    "bytes": 47292,
+    "sha256": "1e3cd9f9083966239299abd4c566f0eb9dd0bacb8addce8a509657bd8e5bf3c2"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Rails_4Wide.fbx",
+    "bytes": 47324,
+    "sha256": "9f4ba0b9e575a4f7baa1fce485c753f0fc8e9871b978a7dede1f8ebcb66f690d"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Rails_4WideTall.fbx",
+    "bytes": 47356,
+    "sha256": "50de6da6f21600b2a83b9a619996db53dfbe21a17b3f66dbf848ced837b75712"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Ramp_2.fbx",
+    "bytes": 25548,
+    "sha256": "3a8975d2cc8380c2b30c73aff1d5e0de266cbfd6e614b9dbf968823a2546104b"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Ramp_2Short.fbx",
+    "bytes": 25548,
+    "sha256": "c4654678eaa9f99c311353e2de56db20bcee8cf62359e356bcf8f530b61dab6d"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Ramp_4.fbx",
+    "bytes": 26524,
+    "sha256": "8753b45fb986034e32b88539a4656789fef889703755322f7fcac93304439bc9"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Ramp_4Wide.fbx",
+    "bytes": 26748,
+    "sha256": "9e138813ba5fa5a61cde2393be5c90b3ad1dcd7cd411cd3d006e9185ba002fe7"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Round1.fbx",
+    "bytes": 37772,
+    "sha256": "1d3af3328e0733e8e0f8b571894f7a5ec702ad0624c7a5551ad5d3ef237e108a"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Simple_Curve.fbx",
+    "bytes": 20508,
+    "sha256": "a3a81571bce810bb1a704d9777375d46cc0bb36c40874f87717ca4f387402962"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Simple.fbx",
+    "bytes": 18716,
+    "sha256": "d1a2b34ca6ed49c26224aed3f26a323852e2ce0b1b4893b68f8b37ec4ee5b57b"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Simple2_Curve.fbx",
+    "bytes": 20284,
+    "sha256": "aa20d6d746981456cbcbdb84a82b9633b3b0bcc3b2d38170df42376ff63d50d4"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Simple2.fbx",
+    "bytes": 18700,
+    "sha256": "2d269bb0f50c3fac96c362e7dacd691d3dc2140c91865fa782a9634b74d45610"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Squares_Curve.fbx",
+    "bytes": 20284,
+    "sha256": "caadc2355e193bc2ae4358380f3e76b21f1100ed8794b9fdde27fed994775707"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Squares.fbx",
+    "bytes": 19036,
+    "sha256": "bddbedb91be8810f6a532486971f1870b6ecc4654400769bbc1a938ad6735209"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Stairs_2.fbx",
+    "bytes": 27020,
+    "sha256": "0443f9f2796b03a028c42df543f2d73de53d566d1de3c6305b1d6146f4b6778c"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Stairs_4.fbx",
+    "bytes": 31324,
+    "sha256": "cf15f020e361a95fd6ffaf39a48d960fbb7e7529e07c769dd4781f3023080907"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Stairs_4Wide.fbx",
+    "bytes": 31420,
+    "sha256": "fc63dbbd6ea1f703cfd189abdc7412edce43b3a1399a2c1656c18245ce649e26"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Stairs_4WideTall.fbx",
+    "bytes": 34764,
+    "sha256": "ed3e520e476f44f6ad1f8b2060a5a0f4339f4292bcecc6a902a6fc3e0a8941de"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Window_Thin.fbx",
+    "bytes": 35228,
+    "sha256": "9015f9481c37f19d5c2bf6c2e88499e6a21220edb1949f0b5454051e304ce626"
+  },
+  {
+    "path": "FBX/Platforms/Platform_Window_Wide.fbx",
+    "bytes": 38316,
+    "sha256": "89e3cc66d7681cb8323caec2efff9a3fb380c5db7266d2484128e9a3d7b993c5"
+  },
+  {
+    "path": "FBX/Platforms/Platform_X.fbx",
+    "bytes": 19052,
+    "sha256": "307a298cac48a1079e4609a99ee3f75959d18d3bf259931e98261893f7494701"
+  },
+  {
+    "path": "FBX/Props/Prop_AccessPoint.fbx",
+    "bytes": 44988,
+    "sha256": "74b629f5d5f2ec22b98b5a30c68a4412d108ae0073b35fe93743aca5513c40c4"
+  },
+  {
+    "path": "FBX/Props/Prop_Barrel_Large.fbx",
+    "bytes": 33372,
+    "sha256": "a13a915e9342220734e8880bcf2bb5e6d85d4e8fcac8bf8e84df4b02521e3f48"
+  },
+  {
+    "path": "FBX/Props/Prop_Cable_1.fbx",
+    "bytes": 93788,
+    "sha256": "dffe2cc8ed05f6eed44365e2bbc5ac9a9390a7631affbb91e807dea8b6a2afd6"
+  },
+  {
+    "path": "FBX/Props/Prop_Cable_3.fbx",
+    "bytes": 159980,
+    "sha256": "7fffb877014cd5ce6c948842e736fa1718e44cc473799d5a38ba323a276f1796"
+  },
+  {
+    "path": "FBX/Props/Prop_Chest.fbx",
+    "bytes": 125612,
+    "sha256": "f7ef43d249588b36400c40ff5b3a3f009766060eedd5c7c5ead1e3e0c51fd15e"
+  },
+  {
+    "path": "FBX/Props/Prop_Clamp.fbx",
+    "bytes": 32364,
+    "sha256": "e3038159ee10ec6b920d9f45182131c885755cf79e1ad763c06a645a3f67f0b0"
+  },
+  {
+    "path": "FBX/Props/Prop_Computer.fbx",
+    "bytes": 38604,
+    "sha256": "19c8078842001e566fb2502f71b391e7ea6bfb05ba728e997e398b02ce0c30e6"
+  },
+  {
+    "path": "FBX/Props/Prop_Crate3.fbx",
+    "bytes": 22172,
+    "sha256": "4427d5c49538e1d4ffff80ed3b2ba8a7952c8458a7f24101b45918bbd018fe15"
+  },
+  {
+    "path": "FBX/Props/Prop_Crate4.fbx",
+    "bytes": 38108,
+    "sha256": "b9ef38d5db72554d04f0fe435919ceee649e1fe9b3f95a4d53e9251de2aecdd2"
+  },
+  {
+    "path": "FBX/Props/Prop_Fan_Small.fbx",
+    "bytes": 64124,
+    "sha256": "e3a47955483c59ae620755264e7b3df9da837a2fd847cf6ebf414caece263c44"
+  },
+  {
+    "path": "FBX/Props/Prop_ItemHolder.fbx",
+    "bytes": 29308,
+    "sha256": "cb1e5254d636993755b16a4c71a73ea6ad59153518fbf9ab5d83961d32170f5c"
+  },
+  {
+    "path": "FBX/Props/Prop_Light_Corner.fbx",
+    "bytes": 58492,
+    "sha256": "1296af9bc5837e40fe3da21973fe5e353f5a8a875ba67635a48ee9f1eec5fa01"
+  },
+  {
+    "path": "FBX/Props/Prop_Light_Floor.fbx",
+    "bytes": 25132,
+    "sha256": "568c278e02af36fce1c8a0d7279879ab9bef5c49307405c6c399924f964676bd"
+  },
+  {
+    "path": "FBX/Props/Prop_Light_Small.fbx",
+    "bytes": 27756,
+    "sha256": "577ae9e849680d7bd5abb240c3a41af6e9968fcead6e4880f0bd9032f1dba0fe"
+  },
+  {
+    "path": "FBX/Props/Prop_Light_Wide.fbx",
+    "bytes": 27772,
+    "sha256": "b41e931166c1f5bdc08bd6b9b2ae73a85b853bb5735363c2ea269902df6d8c2b"
+  },
+  {
+    "path": "FBX/Props/Prop_PipeHolder.fbx",
+    "bytes": 129916,
+    "sha256": "0fc120fe769ee64d35aed2b2a6903ec78bea1375ac8a9889c364be3f5c932aed"
+  },
+  {
+    "path": "FBX/Props/Prop_Rail_2.fbx",
+    "bytes": 42076,
+    "sha256": "57197b61f8b8b569d5b3d3158964d648d21cd1e5dab67ee8c196eaba2a3f4d6e"
+  },
+  {
+    "path": "FBX/Props/Prop_Rail_3.fbx",
+    "bytes": 49388,
+    "sha256": "b35f01773567de7fce72015e29e6e1fa24e4fce9abec1fbb3e21f18b19983e56"
+  },
+  {
+    "path": "FBX/Props/Prop_Rail_4.fbx",
+    "bytes": 42460,
+    "sha256": "4d306fe4854a7eee63ab203227ba5fca2824f7a688b66f0a358b173de2ae260d"
+  },
+  {
+    "path": "FBX/Props/Prop_Rail_Incline_Long_L.fbx",
+    "bytes": 35196,
+    "sha256": "3619ba8d5790b9aad8652144028c49934b3f937e113972b6eee95f80703173ee"
+  },
+  {
+    "path": "FBX/Props/Prop_Rail_Incline_Long_R.fbx",
+    "bytes": 35244,
+    "sha256": "3c4dfe8d5955bb94ef0562b5e1a0215baf24e69118fd9ec405a0cfb97e5f7a6f"
+  },
+  {
+    "path": "FBX/Props/Prop_Rail_Incline_Short_L.fbx",
+    "bytes": 35212,
+    "sha256": "5469367c2f8bec75e72d6ae8a8c8733a0ab225742e3e84010f117a059fb62d15"
+  },
+  {
+    "path": "FBX/Props/Prop_Rail_Incline_Short_R.fbx",
+    "bytes": 35004,
+    "sha256": "5b95d719740b1b9505cb26cdaec520c6a1272c5dff1b1335bf5f16a100900dad"
+  },
+  {
+    "path": "FBX/Props/Prop_Rail_Round_Big.fbx",
+    "bytes": 70972,
+    "sha256": "dfb83d5207a56093c61545c527bcd8d28cd64ddb20f8c65d27cfac18884e2c5e"
+  },
+  {
+    "path": "FBX/Props/Prop_Rail_Round_Small.fbx",
+    "bytes": 63228,
+    "sha256": "f2414cea9593dd349fbe700192e43eacd2033c7a24823b2fe4ee5da742c577b4"
+  },
+  {
+    "path": "FBX/Props/Prop_Vent_Big.fbx",
+    "bytes": 28428,
+    "sha256": "25e93f1e294dae06d7c1d2055d25dcaed33e6ed6eb6e08cf1ab1813054d78b45"
+  },
+  {
+    "path": "FBX/Props/Prop_Vent_Small.fbx",
+    "bytes": 27612,
+    "sha256": "d0921cbf2a6367e3e44dec017224b4818b6c6a236148708429d33813d08aa8cb"
+  },
+  {
+    "path": "FBX/Props/Prop_Vent_Wide.fbx",
+    "bytes": 27596,
+    "sha256": "be565bba4f8848c3cae929f47c924cd0defe6928ad18457dc5d93b717f4f1456"
+  },
+  {
+    "path": "FBX/Walls/BottomMetal_Corner_Round_Inner.fbx",
+    "bytes": 26940,
+    "sha256": "cbfc385ac0f9a11812e4f54df011dc062a4bc424c77d1ee7488fe7b8299fc0b3"
+  },
+  {
+    "path": "FBX/Walls/BottomMetal_Corner_Round_Outer.fbx",
+    "bytes": 28428,
+    "sha256": "f4e69cd86cf732b8c18af10d181240f7d69a65d364fb971f6909f536253da9c7"
+  },
+  {
+    "path": "FBX/Walls/BottomMetal_Corner_Square_Inner.fbx",
+    "bytes": 23500,
+    "sha256": "661e39a6d5ccc8c38ce591c40c2918d1fe85800bedf103deaecafa1c81f347a1"
+  },
+  {
+    "path": "FBX/Walls/BottomMetal_Corner_Square_Outer_1.fbx",
+    "bytes": 23916,
+    "sha256": "1373b315ebfb679be4c892325fa02bb23df6a1a83b41aa4781f3372af41fd850"
+  },
+  {
+    "path": "FBX/Walls/BottomMetal_Corner_Square_Outer_2.fbx",
+    "bytes": 22796,
+    "sha256": "47f656aa60d0d5f5936716d943b95f051ee38ea77f8783a8d26b7e4230eac686"
+  },
+  {
+    "path": "FBX/Walls/BottomMetal_Straight.fbx",
+    "bytes": 22892,
+    "sha256": "84695fe94f1aec06988ec173578fee97b4ff9f94b085dbf9ff032708011ff494"
+  },
+  {
+    "path": "FBX/Walls/BottomSimple_Corner_Round_Inner.fbx",
+    "bytes": 26108,
+    "sha256": "b6c19e78195048a6a2d135cfbee09b86f4ab0361f3544395a75fee8f1e27adf3"
+  },
+  {
+    "path": "FBX/Walls/BottomSimple_Corner_Round_Outer.fbx",
+    "bytes": 23756,
+    "sha256": "6be9d2e68c2412031e099ad7db2e62e5a5f959c76dcefee813311a5e46827ea3"
+  },
+  {
+    "path": "FBX/Walls/BottomSimple_Corner_Square_Inner.fbx",
+    "bytes": 19772,
+    "sha256": "4c37e465f3b9110f1956309b3de5ee853c7af650e30bb15024daaa733f73f7a2"
+  },
+  {
+    "path": "FBX/Walls/BottomSimple_Corner_Square_Outer_1.fbx",
+    "bytes": 20300,
+    "sha256": "afc6193e0cfbf461b77f09d3fa6532c41126bdb44ea03bee29270b280d154d53"
+  },
+  {
+    "path": "FBX/Walls/BottomSimple_Corner_Square_Outer_2.fbx",
+    "bytes": 19036,
+    "sha256": "796a876fe131d5414b3de13c94204200ad5ea09994df33ec30a9f40dc1d3c5b3"
+  },
+  {
+    "path": "FBX/Walls/BottomSimple_Straight.fbx",
+    "bytes": 19180,
+    "sha256": "2476d5816f8cf274a1a6e69f18427a5b062bd36fe1a9db8766d74a290a2c50b8"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_AccentStrip_Corner_Inner.fbx",
+    "bytes": 21852,
+    "sha256": "ba277b7370c2c9af703949ec57a6113068c9404d0a7791554d65dedfac2d90d0"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_AccentStrip_Corner_Outer.fbx",
+    "bytes": 21868,
+    "sha256": "342e1dcca9b465d6eddc5cf4458944461bcbafda5d65ed0c1ff238edf15948b5"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_AccentStrip_Straight.fbx",
+    "bytes": 19996,
+    "sha256": "c9bcf3f674f8d6216ab5d97e002233568e5ec9ae3c42e1693ea87389315f13cf"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Band2_Corner_Inner.fbx",
+    "bytes": 22364,
+    "sha256": "95ad8565c6e14a79f92411ede6ee35c951473ae3fe29655619c6239a50b84255"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Band2_Corner_Outer.fbx",
+    "bytes": 22348,
+    "sha256": "571fab5527051b4a21ecfbfd5ecdc197239f001b11f43973b330b4397fb3d36b"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Band2_Straight.fbx",
+    "bytes": 21132,
+    "sha256": "c1e906df0a811c03a82f7c7517606af0cc2ac5e064f7ddca18fb2cf03b95485f"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_DarkMetal2_Corner_Inner.fbx",
+    "bytes": 21180,
+    "sha256": "9ff746552e0d099a62ead17a41f03f38a3f4b6db027904f441af219da87cf7de"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_DarkMetal2_Corner_Outer.fbx",
+    "bytes": 21180,
+    "sha256": "f1c6b9e1e17f43cd39a5cab542251ec92a595f5741c87e2fe1eb9ed372a737d9"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_DarkMetal2_Straight.fbx",
+    "bytes": 20012,
+    "sha256": "4144df899dbb6099b95c6be9513ba5fd25a0e72c2b4517ca3265309a02ab90de"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_DarkPlastic_Corner_Inner.fbx",
+    "bytes": 20524,
+    "sha256": "449b25bf8b3e4c28e4b64340aa4bc069fef387863495ab8264addff951c947d1"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_DarkPlastic_Corner_Outer.fbx",
+    "bytes": 20556,
+    "sha256": "f0572f9f3cbb4363dd56b34d03819bf6699eae558b4d3a628e3b11a9a73fad58"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_DarkPlastic_Straight.fbx",
+    "bytes": 18732,
+    "sha256": "249bc6ce719f68c2a10eb55ab8eedbf89f8bbf883e922d76f8fe2f32040fcb1a"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Metal2_Corner_Inner.fbx",
+    "bytes": 21036,
+    "sha256": "9f84488a3d5b3b72b513903f209a16865f82cbd369f6720fe6bf37b220a0009a"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Metal2_Corner_Outer.fbx",
+    "bytes": 21020,
+    "sha256": "9460f20fef847a7c97b382b0259aca94c0a14877ef9315f5b99c371f6467c60c"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Metal2_Straight.fbx",
+    "bytes": 20012,
+    "sha256": "5acad910ee2489047b276434046d993fb7841a7718d2f169e4ea37714ec9f78c"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_MetalPlates_Corner_Inner.fbx",
+    "bytes": 20492,
+    "sha256": "42ba1fdc9ec3a420e3124bc7ba38e437cf3a8f6fb95a13d8bd49c539bc499c9f"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_MetalPlates_Corner_Outer.fbx",
+    "bytes": 20492,
+    "sha256": "d74c7db321f738d4d456281f05e4098a353315f015939da68ca1cbce551df88c"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_MetalPlates_Straight.fbx",
+    "bytes": 18748,
+    "sha256": "51bcd3e2f8cded525421aa505421770ede1d1bd6a13fbff758472bde9cd247a1"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Simple1_Corner_Inner.fbx",
+    "bytes": 19692,
+    "sha256": "dc6ded71039fef13cbaf4e188a582234cff76755c4b156d62a66f60fa92b82de"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Simple1_Corner_Outer.fbx",
+    "bytes": 19692,
+    "sha256": "c3bd1064004007c40c8879a70a39986a1f2ca98e65fc6a94cf75c9eecdc60bdb"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Simple1_Straight.fbx",
+    "bytes": 18716,
+    "sha256": "dc2ec39b94440752aaebc3cea2e8288002980f8ff4325198ecea00674c07b930"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Simple2_Corner_Inner.fbx",
+    "bytes": 19788,
+    "sha256": "0ee87617280c130eaf27512b1f9338803c880999ada4989180a9369dd75fb8bd"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Simple2_Corner_Outer.fbx",
+    "bytes": 19788,
+    "sha256": "6e3b1fbfae478af3a0f4f07df88fa2e06e97b15e70866a6d5c987867adaafb21"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Simple2_Straight.fbx",
+    "bytes": 18748,
+    "sha256": "ffb82875658b59bbaaf2208bab9541c523a3a4571a2bbbe9ff7436e7709f89e0"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Triangles_Corner_Inner.fbx",
+    "bytes": 21836,
+    "sha256": "f02473dd856724e7b6c3cff3c83df3a8f7a0b41fe82645812e62fc93674b1f69"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Triangles_Corner_Outer.fbx",
+    "bytes": 21852,
+    "sha256": "5eae6d6dc83ac1bc9a5d68b30a972209a9d0f612014b1f47cc9f93a864535531"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_Triangles_Straight.fbx",
+    "bytes": 19996,
+    "sha256": "6712d5bde8fe31bce2c03c881308db5c9f2c28c448160f8dff0deb911f1a3263"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_WhitePlate2_Corner_Inner.fbx",
+    "bytes": 20124,
+    "sha256": "a73e13c277344f7d7c92d23233ea307bc29930cecb8153039b99f9f692a3ee1a"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_WhitePlate2_Corner_Outer.fbx",
+    "bytes": 20140,
+    "sha256": "67e5e85ec97f98282fec9f893ad802ecfa03fc40afda3375bec8d41298e33759"
+  },
+  {
+    "path": "FBX/Walls/ShortWall_WhitePlate2_Straight.fbx",
+    "bytes": 18924,
+    "sha256": "f7e3f44d03e2a7aa2546a697cdc056484974b253391610a1fd9cb47e1e9a99d8"
+  },
+  {
+    "path": "FBX/Walls/TopAstra_Corner_Round_Inner.fbx",
+    "bytes": 27884,
+    "sha256": "148fc0117aef0589a2357735ab4c2852fa1efee145788d4a95f9159d7bc6e1bc"
+  },
+  {
+    "path": "FBX/Walls/TopAstra_Curve_Round_Outer.fbx",
+    "bytes": 27836,
+    "sha256": "de04152eb225c77330f4e94a9f7bb0d0f58bdfce7d359e7d64032f3413cad4b9"
+  },
+  {
+    "path": "FBX/Walls/TopAstra_Straight.fbx",
+    "bytes": 25084,
+    "sha256": "b0360407d1bbc50e9ab16eeb401fab7f69d1901b8fa0314fb9249fb0e133284b"
+  },
+  {
+    "path": "FBX/Walls/TopCables_Corner_Round_Inner.fbx",
+    "bytes": 137100,
+    "sha256": "0300361b4b02522deee92292f6eec1661af00688ad4401ddb494d3d71a9dc7e8"
+  },
+  {
+    "path": "FBX/Walls/TopCables_Corner_Round_Outer.fbx",
+    "bytes": 137564,
+    "sha256": "16560cd0acd637ec3268e9023ea2f0d8f0051149e1485d360fe9c8496d8a6da5"
+  },
+  {
+    "path": "FBX/Walls/TopCables_Corner_Square_Inner.fbx",
+    "bytes": 122508,
+    "sha256": "8f9762dbf85f6dbd074a9bf5cd50cc815a2b8fd9645f18357d8cabb1e47ae72c"
+  },
+  {
+    "path": "FBX/Walls/TopCables_Corner_Square_Outer.fbx",
+    "bytes": 122332,
+    "sha256": "b29a2958186fb45c29cad92c774824d82e7595ff26626d74e84956ff0fa3ca13"
+  },
+  {
+    "path": "FBX/Walls/TopCables_Straight_Hanging.fbx",
+    "bytes": 138124,
+    "sha256": "fd06abd330238fbf94256683b5c9e477738789ffdefce25ab36b939947c33147"
+  },
+  {
+    "path": "FBX/Walls/TopCables_Straight.fbx",
+    "bytes": 51868,
+    "sha256": "b834083a11027372103ffe23b0e6a1a2eec2cdf563c7c04ab65beb43a79663f7"
+  },
+  {
+    "path": "FBX/Walls/TopPlastic_Corner_Outer.fbx",
+    "bytes": 28044,
+    "sha256": "488a85280c6e7044f9079e1b031b81258435a77bd6eae7e3bca8f085c1a834d1"
+  },
+  {
+    "path": "FBX/Walls/TopPlastic_Corner_Round_Inner.fbx",
+    "bytes": 43420,
+    "sha256": "7d72f509fa5509661081f478b115b678c09222741a639477056b9d1a2ada6eb3"
+  },
+  {
+    "path": "FBX/Walls/TopPlastic_Corner_Round_Outer.fbx",
+    "bytes": 43468,
+    "sha256": "680d3f0215e8f5fac995559080ff8291d0ebe562cca48e8986e83168e3a6bab8"
+  },
+  {
+    "path": "FBX/Walls/TopPlastic_Straight.fbx",
+    "bytes": 31180,
+    "sha256": "a5418bc47349ac7b1ff9ad4684dea2e5a6123dcca50d3348e110225d8209160c"
+  },
+  {
+    "path": "FBX/Walls/TopSimple_Corner_Round_Inner.fbx",
+    "bytes": 21276,
+    "sha256": "9ac3cdac159e1540d86419318561e10697c73d698b22b96006bd0eff81b2f4d3"
+  },
+  {
+    "path": "FBX/Walls/TopSimple_Corner_Round_Outer.fbx",
+    "bytes": 29964,
+    "sha256": "b52e866cedd2f653a4bf11be211f03ea45dbbab382d34155dfe06fb718216ac1"
+  },
+  {
+    "path": "FBX/Walls/TopSimple_Straight.fbx",
+    "bytes": 24748,
+    "sha256": "aa9db4988ecf8631168ae9a010baee69fef9e6ee79d4d9bc60766a5530f2ddfa"
+  },
+  {
+    "path": "FBX/Walls/TopWindow_Corner_Curve_Inner.fbx",
+    "bytes": 49420,
+    "sha256": "20b650f7b5c7ce7f60f280c1bb2a6bfde724f37a802f51bf8cc453f55f9c1273"
+  },
+  {
+    "path": "FBX/Walls/TopWindow_Corner_Curve_Outer.fbx",
+    "bytes": 49596,
+    "sha256": "3737bd34ccb32b2812746761ad8ac8dd1f56a57f36c19713da9cbf69ffb7cbb6"
+  },
+  {
+    "path": "FBX/Walls/TopWindow_Straight.fbx",
+    "bytes": 35628,
+    "sha256": "0ac54abe197227cf9f845e6c1d591f00654bd0e5ff7c783fc519a5d62a17a112"
+  },
+  {
+    "path": "FBX/Walls/WallAstra_Corner_Round_Inner.fbx",
+    "bytes": 58924,
+    "sha256": "2161f110c49b0c3df153b1dfd79ec9bd313c0ea3688858ddbff5cbc5a1c6fde0"
+  },
+  {
+    "path": "FBX/Walls/WallAstra_Corner_Round_Outer.fbx",
+    "bytes": 59004,
+    "sha256": "1935b4f3ec80c81c0594f4aac7d0b3f3135a887ab9445fb0c5c4e97c53a6b40a"
+  },
+  {
+    "path": "FBX/Walls/WallAstra_Corner_Square_Inner.fbx",
+    "bytes": 48748,
+    "sha256": "a0629e783f2612c65f84fd7e51ab58de0c147ad2e785e78ecd376a26a05abcb7"
+  },
+  {
+    "path": "FBX/Walls/WallAstra_Corner_Square_Outer.fbx",
+    "bytes": 48044,
+    "sha256": "7f127fd0ffe0ffe074db01a39f1983a5a46d5832008a4fd97cfde728544a3ece"
+  },
+  {
+    "path": "FBX/Walls/WallAstra_Straight_Broken.fbx",
+    "bytes": 173980,
+    "sha256": "72e6ec4c34222ab5b2a7c587f32289b9958f15e45e507f01603e9fb204d93d84"
+  },
+  {
+    "path": "FBX/Walls/WallAstra_Straight_Divided.fbx",
+    "bytes": 38700,
+    "sha256": "305065de38d24b54bcd67a42a5d095c56cd5f9d5bf268a5897db2c886058f712"
+  },
+  {
+    "path": "FBX/Walls/WallAstra_Straight_Flat_Window.fbx",
+    "bytes": 38924,
+    "sha256": "ebe7b82784ace1e8ac78d744d3a520e19ac704c37c899e49071af92b32e1d081"
+  },
+  {
+    "path": "FBX/Walls/WallAstra_Straight_Flat.fbx",
+    "bytes": 26540,
+    "sha256": "1f43da168d7e31118997d35add0ad477df75196d4e44c6038f9e92d5905fd72c"
+  },
+  {
+    "path": "FBX/Walls/WallAstra_Straight_Window.fbx",
+    "bytes": 39484,
+    "sha256": "e8d21d36f1d704f6b396baf29957c8138cec8d828325dee7980df6fd58ee847c"
+  },
+  {
+    "path": "FBX/Walls/WallAstra_Straight.fbx",
+    "bytes": 39372,
+    "sha256": "a308bf71c9c98a78f2cc5d92f08220535a8cdbc98072c58acee0fb352acf2ddf"
+  },
+  {
+    "path": "FBX/Walls/WallBand_Corner_Round_Inner.fbx",
+    "bytes": 27980,
+    "sha256": "0f922beb8d818c9f1d3797129e4cb4a8489f98ec4f25aec9d9c53aa4c1c0d5e1"
+  },
+  {
+    "path": "FBX/Walls/WallBand_Corner_Round_Outer.fbx",
+    "bytes": 27996,
+    "sha256": "c2861a51101937ae545d0e1c782fdb8506b9c3f596964d09562b868f43e81bb3"
+  },
+  {
+    "path": "FBX/Walls/WallBand_Corner_Square_Inner.fbx",
+    "bytes": 25420,
+    "sha256": "0766b7f0d23f61f1bbaf554ef22c3ff2ac60de575d2f7989ac07f1061b6d6be7"
+  },
+  {
+    "path": "FBX/Walls/WallBand_Corner_Square_Outer.fbx",
+    "bytes": 25452,
+    "sha256": "0249418217c3b1672ae58de11c1b06fcd2ab56d16233632368aff88fb17dcedb"
+  },
+  {
+    "path": "FBX/Walls/WallBand_Straight_Broken.fbx",
+    "bytes": 28876,
+    "sha256": "23f11f7901680338ff27743f16a7756c6513da7f40d12f42fd975d3bd36bce79"
+  },
+  {
+    "path": "FBX/Walls/WallBand_Straight.fbx",
+    "bytes": 25100,
+    "sha256": "91151d97b9236dbc424ebaff25dfefb8b3cf9157d6ad147abd48db0cdec9a180"
+  },
+  {
+    "path": "FBX/Walls/WallWindow_Cap_A.fbx",
+    "bytes": 26316,
+    "sha256": "f64c6088172d0510c9016d7b4708ff079637a416c5a00b50a885c0c1d3cc722e"
+  },
+  {
+    "path": "FBX/Walls/WallWindow_Cap_B.fbx",
+    "bytes": 26300,
+    "sha256": "4bb394f85b314e6eca09fc4e1b8c5886963ea88726b2e381648d3bc2b1c0a9be"
+  },
+  {
+    "path": "FBX/Walls/WallWindow_Corner_Round_Inner.fbx",
+    "bytes": 67388,
+    "sha256": "1939e6abca9b4632ebed896a19c27d05a3555f0b186c19692e52ffe748d71077"
+  },
+  {
+    "path": "FBX/Walls/WallWindow_Corner_Round_Outer.fbx",
+    "bytes": 66252,
+    "sha256": "12a1729110031416e4dc8082dba8d52fcdb0e784389001fe4613bc35591c9e90"
+  },
+  {
+    "path": "FBX/Walls/WallWindow_Corner_Square_Inner.fbx",
+    "bytes": 54940,
+    "sha256": "34f78e21457700ba8a001c02ed9bd3706bd30204bc528f4b7058ad79e99729c8"
+  },
+  {
+    "path": "FBX/Walls/WallWindow_Corner_Square_Outer.fbx",
+    "bytes": 50956,
+    "sha256": "9e63c31e5c7d0940af45d3c5bbafee833bf47ef6a15608bbdabaf8f6a54cc34e"
+  },
+  {
+    "path": "FBX/Walls/WallWindow_Straight.fbx",
+    "bytes": 39660,
+    "sha256": "ccfb968f9053a32a03d9a01262baa7f1856bafe7b4b4e4ba20045f4c3a502a34"
+  },
+  {
+    "path": "glTF/Columns/Column_Astra.bin",
+    "bytes": 5404,
+    "sha256": "c29f1fa5cd7fd93fdfc8cf5d45561721049a6a8aefbfdc5cb8de015a0df4e782"
+  },
+  {
+    "path": "glTF/Columns/Column_Astra.gltf",
+    "bytes": 5688,
+    "sha256": "99a71b481b4b10d62b1698d85b1aa7ec843a8f5b14313880c77763db3e8d99e6"
+  },
+  {
+    "path": "glTF/Columns/Column_Hollow.bin",
+    "bytes": 127680,
+    "sha256": "a6701c2b1966bb5136f1f5a11b4f93757ae5601dd6371a6caeb235a332c22a2d"
+  },
+  {
+    "path": "glTF/Columns/Column_Hollow.gltf",
+    "bytes": 4023,
+    "sha256": "0c515ca541ebc6fd88dd77754c8108eb4d5afbe97a71c60d2bae51ea5acb4a82"
+  },
+  {
+    "path": "glTF/Columns/Column_Large_Straight.bin",
+    "bytes": 37064,
+    "sha256": "5b60eea60cdb5a5dafdd2090c092d03961458bede7f3be4a7e1287db9e84282b"
+  },
+  {
+    "path": "glTF/Columns/Column_Large_Straight.gltf",
+    "bytes": 7187,
+    "sha256": "0b2b004682a58321be58c07dda37e6c4909a33a22cb8814f6caac544b0f42464"
+  },
+  {
+    "path": "glTF/Columns/Column_MetalSupport_Curve.bin",
+    "bytes": 53456,
+    "sha256": "6879dd250902ff807e3e59118a8d87c72a6b5eec2dbbc456af9866d6ff527805"
+  },
+  {
+    "path": "glTF/Columns/Column_MetalSupport_Curve.gltf",
+    "bytes": 4120,
+    "sha256": "1fff25d6ad341884ddffa5e506850de25bcc9ef3522983bc76fc077fcb97ac6b"
+  },
+  {
+    "path": "glTF/Columns/Column_MetalSupport.bin",
+    "bytes": 28296,
+    "sha256": "e7d613d9ce8c5c035a7e219eceeecd17d90f79cb8f5ee0b62fe0c6b809aa2865"
+  },
+  {
+    "path": "glTF/Columns/Column_MetalSupport.gltf",
+    "bytes": 4033,
+    "sha256": "749f009007a20928a0f2596e19e79d4dcdd79f9545bcfd48b7dfaf602521c405"
+  },
+  {
+    "path": "glTF/Columns/Column_Pipes.bin",
+    "bytes": 248160,
+    "sha256": "e44dc8fc69a124e983dcb6c9b11a4d7e27300ae699fd6584224c2e00a450dd2d"
+  },
+  {
+    "path": "glTF/Columns/Column_Pipes.gltf",
+    "bytes": 5890,
+    "sha256": "7b5a852e82ae98fdb717a878372b1fa70a4efedc354ad9ac8cc106171d7e97b5"
+  },
+  {
+    "path": "glTF/Columns/Column_Round.bin",
+    "bytes": 24808,
+    "sha256": "904989e7c9af11f7cefd05e319df70108d8a43b21724ae49fd8a25e25bd23d6b"
+  },
+  {
+    "path": "glTF/Columns/Column_Round.gltf",
+    "bytes": 3909,
+    "sha256": "ab8f34a7cca817e39cec67c3802cf0592e90df44071e48b1453e207dd5164a16"
+  },
+  {
+    "path": "glTF/Columns/Column_Simple.bin",
+    "bytes": 6216,
+    "sha256": "85f91d5bc4b03ae1da42b468e31f15d935fdee81323a29467cb80175a9a2b98b"
+  },
+  {
+    "path": "glTF/Columns/Column_Simple.gltf",
+    "bytes": 4012,
+    "sha256": "6e2db23b3719f52c3ad5d548e3056ba60c26826d32e3edbdee1f504b705e18c5"
+  },
+  {
+    "path": "glTF/Platforms/Door_DarkMetal.bin",
+    "bytes": 1360,
+    "sha256": "101990a5bc52a12adba5720d5306be053d0de4a26a6c8d4f26bd2d3f058e78c3"
+  },
+  {
+    "path": "glTF/Platforms/Door_DarkMetal.gltf",
+    "bytes": 2359,
+    "sha256": "07dbe2714ef6f8d59d36ef1f197c7609fa23687db527e3f5a1ab65c4775f0114"
+  },
+  {
+    "path": "glTF/Platforms/Door_Frame_A.bin",
+    "bytes": 9688,
+    "sha256": "d0591712af49d5391decc14177431f7057825ff83f5eb2da3c6c6c8a8c444970"
+  },
+  {
+    "path": "glTF/Platforms/Door_Frame_A.gltf",
+    "bytes": 5348,
+    "sha256": "b37935929f3d58fceea361568982cabec51c7dc7443a96bc775a9ee1b5532430"
+  },
+  {
+    "path": "glTF/Platforms/Door_Frame_Square_Blocked.bin",
+    "bytes": 2016,
+    "sha256": "328006dbc8203c29d46ec7ded6a7b40392d62d30b9aecde1049ebc0ed829a92b"
+  },
+  {
+    "path": "glTF/Platforms/Door_Frame_Square_Blocked.gltf",
+    "bytes": 2397,
+    "sha256": "2ac89752922d113c6a89310e95c21d2eb15cca2c8f43a53d416b574fbbedff74"
+  },
+  {
+    "path": "glTF/Platforms/Door_Frame_Square.bin",
+    "bytes": 14416,
+    "sha256": "34bc96ea81fdafbf7bca0f439c7b94f125108f58278d599df4c460c08259178e"
+  },
+  {
+    "path": "glTF/Platforms/Door_Frame_Square.gltf",
+    "bytes": 2395,
+    "sha256": "057175188e8899a281d5c768a2de314cf9721071210bcfe4efc193c8de5e2197"
+  },
+  {
+    "path": "glTF/Platforms/Door_Frame_SquareTall.bin",
+    "bytes": 13984,
+    "sha256": "806f763b95a30b57eb7dd52197d743cbb1fa5b101b02450ace23dfe2ea9ed8a6"
+  },
+  {
+    "path": "glTF/Platforms/Door_Frame_SquareTall.gltf",
+    "bytes": 2405,
+    "sha256": "f1251e11edcef8ecb5e186b4868304c618cfa34bb9ae9d4f643bab07240bb15d"
+  },
+  {
+    "path": "glTF/Platforms/Door_Metal.bin",
+    "bytes": 992,
+    "sha256": "ee30b65b79f86514d758672649da7879515f431a11657ebf2e66339cf169b1fb"
+  },
+  {
+    "path": "glTF/Platforms/Door_Metal.gltf",
+    "bytes": 3931,
+    "sha256": "bca8e81ab0237c99ac5a74b73a975a12cbfaec35f60600d300b108aa61c6b13c"
+  },
+  {
+    "path": "glTF/Platforms/Door_Simple.bin",
+    "bytes": 2340,
+    "sha256": "0b647b8afb5b561b9572d27aa5528bf2a354340273ebb3b4792303a8cc478031"
+  },
+  {
+    "path": "glTF/Platforms/Door_Simple.gltf",
+    "bytes": 5385,
+    "sha256": "e8b728e7b9f64f88130c122712c85a3e228926ef5506dcb645d6be4dad52ae84"
+  },
+  {
+    "path": "glTF/Platforms/Platform_3Plates.bin",
+    "bytes": 768,
+    "sha256": "3e4e61a3b014622869e51e03cabb6744e9446077d892cc18f1656d343755a38b"
+  },
+  {
+    "path": "glTF/Platforms/Platform_3Plates.gltf",
+    "bytes": 2357,
+    "sha256": "b7498bf0c89b3508f7b1c7512a60586a02f4a396ecf9d4abc7c4db528e9b7305"
+  },
+  {
+    "path": "glTF/Platforms/Platform_CenterPlate_Curve.bin",
+    "bytes": 9264,
+    "sha256": "8175ec47d9c9c8bf385183a4aa6b9b13a96d451e770729e020cf5967904387b4"
+  },
+  {
+    "path": "glTF/Platforms/Platform_CenterPlate_Curve.gltf",
+    "bytes": 4054,
+    "sha256": "a4f79c8d01079648241f2f0b1fc807e9f6665a7676899f4f21a2057f2ea14629"
+  },
+  {
+    "path": "glTF/Platforms/Platform_CenterPlate.bin",
+    "bytes": 700,
+    "sha256": "4995c330b1c465dfd0b269e6fe178eca019007a4b9d819020985c65ed2f49021"
+  },
+  {
+    "path": "glTF/Platforms/Platform_CenterPlate.gltf",
+    "bytes": 3981,
+    "sha256": "d31a64b1b5e300cbe38bbc212597e1230a36e17d3d44e0fe43225a419c7b5d04"
+  },
+  {
+    "path": "glTF/Platforms/Platform_DarkPlates_Curves.bin",
+    "bytes": 6640,
+    "sha256": "46fcdcb7bbb54a405995a3444660b7f20feda0c7517efbcc53ef0ed24c2d6042"
+  },
+  {
+    "path": "glTF/Platforms/Platform_DarkPlates_Curves.gltf",
+    "bytes": 2373,
+    "sha256": "95363b4b2519b4b6095ee309685bd4017b8031432f8bb208885e84e09dec40a3"
+  },
+  {
+    "path": "glTF/Platforms/Platform_DarkPlates.bin",
+    "bytes": 768,
+    "sha256": "699fed9cc818a93f110a5a201e01ba18e40a9703e9afdfffb9f9c2fa1c7ce7b2"
+  },
+  {
+    "path": "glTF/Platforms/Platform_DarkPlates.gltf",
+    "bytes": 2363,
+    "sha256": "1fb445848b118fcda47b9c8c4ecd5c25d0120c4633877a0204564b285d3b262b"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Metal_Curve.bin",
+    "bytes": 3792,
+    "sha256": "0b7cd9cfae73da9f6b2c57bd9b3e4a28016240792589852f95c7a2917b64ac02"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Metal_Curve.gltf",
+    "bytes": 2121,
+    "sha256": "daf95bb7e6aef175a68170028e7248c991dfa6c60de416bdf471b111b24b8f28"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Metal.bin",
+    "bytes": 336,
+    "sha256": "69620e7cf1c264771c9781f045785ee485939d7a4aaaf864ef53b9fa2c64565c"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Metal.gltf",
+    "bytes": 2061,
+    "sha256": "ca900795e7c1a859a35b60f70ed88975a2853e80d7ae1edc3fb0b4d53eea7e39"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Metal2_Curve.bin",
+    "bytes": 7088,
+    "sha256": "0ffae5290be9ed8a697b08e4c05c21cd8981b7a2d234bf5f25e38808d70c6db4"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Metal2_Curve.gltf",
+    "bytes": 2122,
+    "sha256": "b48a50fb650424f19fb3860832103f2796b216c08b4a78d52ea5f0dfe98c051c"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Metal2.bin",
+    "bytes": 1200,
+    "sha256": "29d1a4f2bdedd915a284f74cba49a5309fbab00e232609b545b32aaa37d09a61"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Metal2.gltf",
+    "bytes": 2070,
+    "sha256": "5cf0b1fd6b3ff948bbcefa733fa39f6024dc494acdf4c58a27518208338ad24f"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Rails_2.bin",
+    "bytes": 31472,
+    "sha256": "42d10048bb1ac29244ca1793736afb3cf509654b377c3828a14d7d1cd5b71214"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Rails_2.gltf",
+    "bytes": 2200,
+    "sha256": "5f32fc111388f15eebcd6af53bbcae210c264c7435e6855f913d0de3f780d3b9"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Rails_4.bin",
+    "bytes": 31472,
+    "sha256": "54ab8043869e9694534d2a477b8c41777b2a0ce44d3f13f48d4edfa7f019f771"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Rails_4.gltf",
+    "bytes": 2199,
+    "sha256": "f990f6f98317c1fef152b424813029c31d69954d10514e0b22fe0b32b0f3b01f"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Rails_4Wide.bin",
+    "bytes": 31472,
+    "sha256": "e95d0d30138b38454d0f0c898b69fd3922c70d85aa519908d68bbae44ddd54f8"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Rails_4Wide.gltf",
+    "bytes": 2205,
+    "sha256": "7fe0901fa657a3e8eeb7f0918ced78c723fb6a71134168bb75e670cff012e236"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Rails_4WideTall.bin",
+    "bytes": 31472,
+    "sha256": "cf840c26c0015f0c3c4d6878f01b0436b6754184ec6a97c49d673c8683e5cd1e"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Rails_4WideTall.gltf",
+    "bytes": 2193,
+    "sha256": "9f7d7caead5da097511c8f580a9c90fe171ba76b19ebef520ae04d564891b359"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Ramp_2.bin",
+    "bytes": 1680,
+    "sha256": "ebe595217a52d888c8ae5d0741260671be490205db1e5d70f9896553ac65ab1f"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Ramp_2.gltf",
+    "bytes": 5223,
+    "sha256": "f3cfd1509cdb7a53f5309e56d01b2f2b94e03ff645a64604fef6160a72d68057"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Ramp_2Short.bin",
+    "bytes": 1680,
+    "sha256": "10f9bb2e6b5584437477cfa7faa72902a321b5967f0559519b6d5559a51140aa"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Ramp_2Short.gltf",
+    "bytes": 5238,
+    "sha256": "6a4c3fc917397bc2601b6d72493b7b83fe4906a0d6e6b966b34e3f7fb3b30129"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Ramp_4.bin",
+    "bytes": 3440,
+    "sha256": "0a0d032cada697aaa610e2097b631cfe4a00fbf3df840c3883136227ac3c9d10"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Ramp_4.gltf",
+    "bytes": 5264,
+    "sha256": "35327bcb256d5ae231e5556c4459a9b1cd5ef6fc451d35e0af15cb48ef035ef4"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Ramp_4Wide.bin",
+    "bytes": 4204,
+    "sha256": "3f9fd9b095165b6839a5cc697fff384b97fa6015b7d2f6924633d868bbba6ea1"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Ramp_4Wide.gltf",
+    "bytes": 5347,
+    "sha256": "2305a17c2fb7e3b89a29a39e1fe4cf3976136f0d5c70c6eaf625ef8a8d6d001f"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Round1.bin",
+    "bytes": 27392,
+    "sha256": "24bb2aade7794beff95d67730f4c95407f9c99908f0676f30389e0906e1b8382"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Round1.gltf",
+    "bytes": 4074,
+    "sha256": "9a1a7765e7ce79c892ad6bc3e000991aa719d271d077c56cdb798150fb54f152"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Simple_Curve.bin",
+    "bytes": 3840,
+    "sha256": "2ae3f3d6968dbc5de86d6e1380a457dc2342fc133ada1d7a8c6d1833068c83af"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Simple_Curve.gltf",
+    "bytes": 2115,
+    "sha256": "c490619bbd1adf7edc050784664024af17b196c19011755873e8b552d0bfbbeb"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Simple.bin",
+    "bytes": 336,
+    "sha256": "5499764bea91114ee815504336565920deac0cd360b3b014c4e837bf58a4ee4b"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Simple.gltf",
+    "bytes": 2055,
+    "sha256": "0918d17414e3cdb3008575e3e3714d53bf0df7d20ae09999e4403af9df8215c6"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Simple2_Curve.bin",
+    "bytes": 3664,
+    "sha256": "f78e78c3feba07627de7761467dd25c4a5fe21bb39bb8854ccd431f3e586c1f0"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Simple2_Curve.gltf",
+    "bytes": 2117,
+    "sha256": "ab07bdc0a2c033a22a586760f667c9a92d2caa565b384eed6f4b8539a77486d1"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Simple2.bin",
+    "bytes": 336,
+    "sha256": "46cb6d4ae41f2a6b3bb8c20a59b387c0c320fc04f802b95a365f5ce8c60319bf"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Simple2.gltf",
+    "bytes": 2057,
+    "sha256": "102721b83b15234872a0f7aef6e4d5e4139b0a9bba76a041440e475c00e34db6"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Squares_Curve.bin",
+    "bytes": 3664,
+    "sha256": "64d2fe638b9f7112c8ce9c7b908a9d233382d40ba5091763d152b29e1331341e"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Squares_Curve.gltf",
+    "bytes": 2123,
+    "sha256": "e8d64c46de6180c0dc8c86b8d2baa1f2cafee73694a765a4b21faa5d15366c27"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Squares.bin",
+    "bytes": 1200,
+    "sha256": "33d281df0eb7993fe515c689b47f552f38466cea19da18aa7745e187a1f97b3c"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Squares.gltf",
+    "bytes": 2070,
+    "sha256": "f59779c3ce7317e432897c17a6cd8e8b6e9c976ead03239c57ee86b7dbd4517d"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Stairs_2.bin",
+    "bytes": 14028,
+    "sha256": "891b09e09ec707e05b69b1228b8e4ee9739538111c50c4afef7c5d685cfc08cb"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Stairs_2.gltf",
+    "bytes": 3961,
+    "sha256": "9419ea5a1e8e382ec8d61d87cd6d8436490f8c88a334ecc2b952ee0e46e3e03d"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Stairs_4.bin",
+    "bytes": 28136,
+    "sha256": "45a142335e54bb35e98c6c7752c2416757e9f4c92797061c7336dbed4f78f15a"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Stairs_4.gltf",
+    "bytes": 3999,
+    "sha256": "812ba49f03b3c998d107a710a997f8d8336f7cf294a1212ba632cfdf3a63868a"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Stairs_4Wide.bin",
+    "bytes": 28340,
+    "sha256": "b815fdebbc38ff190986f346f5fe09349c4dadb1894541b68ea7be6ad8548cfc"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Stairs_4Wide.gltf",
+    "bytes": 4060,
+    "sha256": "5382da5b7ae4f521da70918e869bd175ff2657725204661d0b3c277c1fb27c0e"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Stairs_4WideTall.bin",
+    "bytes": 40776,
+    "sha256": "aeb9312b8477dca95307eb7faaae57d0121892c05d5c3e69ee057bf3b2f14bb1"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Stairs_4WideTall.gltf",
+    "bytes": 4054,
+    "sha256": "4cece88fa7b8de1ed72fea7e34d1bde9b9d745681c7fd0f921f4ced1c19f19c8"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Window_Thin.bin",
+    "bytes": 20520,
+    "sha256": "b1427e12ff86083a3841a0b7417124a5dbd070015e06a9eea6607efedcee99c3"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Window_Thin.gltf",
+    "bytes": 6526,
+    "sha256": "59e854c30f2b131de0833baa1595dc9ffe0f6071e3f632efa65a84caf449bd88"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Window_Wide.bin",
+    "bytes": 23112,
+    "sha256": "2adb860aab9619f077730272075eb85f4f1e15ad63ccf3d5bc9f42f580c2c312"
+  },
+  {
+    "path": "glTF/Platforms/Platform_Window_Wide.gltf",
+    "bytes": 6497,
+    "sha256": "44ccc75a20dd2161b6c7c8bb18dcc6029f1d220ebed3fa71526cf9c5579b5815"
+  },
+  {
+    "path": "glTF/Platforms/Platform_X.bin",
+    "bytes": 1200,
+    "sha256": "aafaec5c8921146dba9660d334696cbbdd5dcdcb713a920733bd32dd04d85724"
+  },
+  {
+    "path": "glTF/Platforms/Platform_X.gltf",
+    "bytes": 2060,
+    "sha256": "72cf0b01881ba09b0e6649e2029d62acb08702f36fc6df976a149974daaa0ffe"
+  },
+  {
+    "path": "glTF/Props/Prop_AccessPoint.bin",
+    "bytes": 34588,
+    "sha256": "b490a23edf6226c5c699376d8368bb4a86d30381ca95a1950264bc922143b5e8"
+  },
+  {
+    "path": "glTF/Props/Prop_AccessPoint.gltf",
+    "bytes": 7110,
+    "sha256": "23281aebdf5904403c71217c5ca45c4e901b978b452ddfba9e968fd01b0aac77"
+  },
+  {
+    "path": "glTF/Props/Prop_Barrel_Large.bin",
+    "bytes": 22404,
+    "sha256": "adca6b70127025b0ac32aeb86a807a33f821b8b54db12a44d26d0677d4227979"
+  },
+  {
+    "path": "glTF/Props/Prop_Barrel_Large.gltf",
+    "bytes": 4078,
+    "sha256": "b8655db69eef6db7718f2dcf0ab341d717f0306196449433958b055e87766093"
+  },
+  {
+    "path": "glTF/Props/Prop_Cable_1.bin",
+    "bytes": 65872,
+    "sha256": "cc1f47046fc1f3fdf8e02d1c7e867eadc5d5501e8fb2ebfe371c2dbf168efabe"
+  },
+  {
+    "path": "glTF/Props/Prop_Cable_1.gltf",
+    "bytes": 3845,
+    "sha256": "d121066c92686f1b22440393f40cb5faace5fd9f97da4fca81e144f0a80928f1"
+  },
+  {
+    "path": "glTF/Props/Prop_Cable_3.bin",
+    "bytes": 131744,
+    "sha256": "c40fb11f91f3abfacc05b58a647925b859811ebdbdc265ccc9654c4d9ffddcb7"
+  },
+  {
+    "path": "glTF/Props/Prop_Cable_3.gltf",
+    "bytes": 3851,
+    "sha256": "188197d1d0cb93daa001b326babbbe9af8936b1337585109f3ee21359862fecd"
+  },
+  {
+    "path": "glTF/Props/Prop_Chest.bin",
+    "bytes": 33640,
+    "sha256": "89f1183556b3e7625aa0e3890bf20902d03c45cd7c79a64bc42db3ab4bccad0f"
+  },
+  {
+    "path": "glTF/Props/Prop_Chest.gltf",
+    "bytes": 21469,
+    "sha256": "94642289dbe56dd98215e31c617791b1974628d9e3f9369868693acd3467cf38"
+  },
+  {
+    "path": "glTF/Props/Prop_Clamp.bin",
+    "bytes": 12872,
+    "sha256": "df7b6631ccc019a9343a3847d17e11b079595dcc14c3af616ed2eb5330c31a69"
+  },
+  {
+    "path": "glTF/Props/Prop_Clamp.gltf",
+    "bytes": 3544,
+    "sha256": "a2a6319e6254ca8a3113e29b9fb9bb95a6442a7ab8e2740b7e51b4be85943378"
+  },
+  {
+    "path": "glTF/Props/Prop_Computer.bin",
+    "bytes": 24956,
+    "sha256": "4edcd2674633831714ae8aafe7174be52c2f3d21f24e009fd7e9417e27eb788d"
+  },
+  {
+    "path": "glTF/Props/Prop_Computer.gltf",
+    "bytes": 5621,
+    "sha256": "724525353d0c24a0596f77d5d461bd3cf58685e6e2c3abc1b5df3141759912f4"
+  },
+  {
+    "path": "glTF/Props/Prop_Crate3.bin",
+    "bytes": 12744,
+    "sha256": "fc89058d3c10c05b68108366e1d1e12d04489a977ecfb749bd9af75d785e8b36"
+  },
+  {
+    "path": "glTF/Props/Prop_Crate3.gltf",
+    "bytes": 2086,
+    "sha256": "1ab1b25afaff0eea9b9112469d8ab252d341ac6a92bf0e9b16af1d518bdfe724"
+  },
+  {
+    "path": "glTF/Props/Prop_Crate4.bin",
+    "bytes": 36744,
+    "sha256": "4f6c8e258818502078d4b18323c8eb49393c20b031cab5ef9fbfde41a9fab596"
+  },
+  {
+    "path": "glTF/Props/Prop_Crate4.gltf",
+    "bytes": 2181,
+    "sha256": "a02ff58ba6f83e4a0550459b17bc5cdc22e36da3a6ec9f07677b22838e008e22"
+  },
+  {
+    "path": "glTF/Props/Prop_Fan_Small.bin",
+    "bytes": 31564,
+    "sha256": "2c129f70b66e3a5c0c6dcee94ac8d239f10e274cd533c1702aa3efe2d9f39832"
+  },
+  {
+    "path": "glTF/Props/Prop_Fan_Small.gltf",
+    "bytes": 12289,
+    "sha256": "4b4ab1e94ba993d18bd07ff7fb4938f586b6d6e8088fb8881ae6eccc0b554f0a"
+  },
+  {
+    "path": "glTF/Props/Prop_ItemHolder.bin",
+    "bytes": 7556,
+    "sha256": "74bcb41e58d577bec18b850fa37f31c665b755ba0324f0525422d492483faa59"
+  },
+  {
+    "path": "glTF/Props/Prop_ItemHolder.gltf",
+    "bytes": 5038,
+    "sha256": "4e0c1867d92bd4d1ff2c96a5b1312defbdb4ace13d1d842f48bf201556f2f501"
+  },
+  {
+    "path": "glTF/Props/Prop_Light_Corner.bin",
+    "bytes": 54568,
+    "sha256": "7898e616183af9ff0c5bbf2c90aaace841ceb35d6d5bee4cc524a2975906dd31"
+  },
+  {
+    "path": "glTF/Props/Prop_Light_Corner.gltf",
+    "bytes": 3626,
+    "sha256": "532de4a47d9e9a78c3c8161299284b90d191cabf38f699242bce356306f08ef9"
+  },
+  {
+    "path": "glTF/Props/Prop_Light_Floor.bin",
+    "bytes": 5664,
+    "sha256": "6232f3a6a8dc1e589bf8f8f5804bf2242b396b5d2322d3092d7ab0b55344c0d5"
+  },
+  {
+    "path": "glTF/Props/Prop_Light_Floor.gltf",
+    "bytes": 3604,
+    "sha256": "101a2648b82e29deddc219968da1c632c4926f24c6d1c900b1daf4f83cbed0f0"
+  },
+  {
+    "path": "glTF/Props/Prop_Light_Small.bin",
+    "bytes": 8512,
+    "sha256": "d31557d8a0bca16e31cb578cc90528cc484908b641c897b5bb0f55335e292054"
+  },
+  {
+    "path": "glTF/Props/Prop_Light_Small.gltf",
+    "bytes": 3571,
+    "sha256": "0f9cbbe00a3ca817278dfac3e9f20eab3feec4c7a74b3d4ca32560a517e6f38a"
+  },
+  {
+    "path": "glTF/Props/Prop_Light_Wide.bin",
+    "bytes": 8512,
+    "sha256": "2ec8fa4cbe5d26f208a1b3a4a20635d1524359bbacdfed282ddc90e2358aa96c"
+  },
+  {
+    "path": "glTF/Props/Prop_Light_Wide.gltf",
+    "bytes": 3568,
+    "sha256": "bad2b6ffc330aaa185700edb7487f4c8315291fd23d834844f68d6c1695fff40"
+  },
+  {
+    "path": "glTF/Props/Prop_PipeHolder.bin",
+    "bytes": 163492,
+    "sha256": "a86f4a0c1e4fb91e456af2542fc520c4dbc99245212ad1dae5c1308550038c3d"
+  },
+  {
+    "path": "glTF/Props/Prop_PipeHolder.gltf",
+    "bytes": 5911,
+    "sha256": "897b39476c08efa9f7f118d36e2bf89a3493bb4caf9bdf50190ad5f43f286cfe"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_2.bin",
+    "bytes": 23952,
+    "sha256": "5c1959b13e37c52bab4d524df455afb225e5788119beb66ace9f066da1e7566f"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_2.gltf",
+    "bytes": 2196,
+    "sha256": "47726b85c4bfc9bcc91629421d4dd9e8ac69403178695b49426b7ca59fa2387f"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_3.bin",
+    "bytes": 29712,
+    "sha256": "163c64bb39b2b4291556b91309ac51c6eebc78c788b0b5e5d1900d0025cd107d"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_3.gltf",
+    "bytes": 2196,
+    "sha256": "09e15fa3ad3e83d5e99ab594c77e9799067695492ec5146ad7df0129ca938a0b"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_4.bin",
+    "bytes": 24720,
+    "sha256": "3ead7504df7679c8b89bf88817c0b9c9b5dd2f84b83622546ad16c2f269f3b0f"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_4.gltf",
+    "bytes": 2195,
+    "sha256": "8796d4c1b50fb0f7b86d59825af3f98de2c9bce2a65ce25cd01712f3f5efc971"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_Incline_Long_L.bin",
+    "bytes": 17208,
+    "sha256": "15b6f477a561e79bab8ed5f282108c3289d2a76fafb48e57d006162eb6f99569"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_Incline_Long_L.gltf",
+    "bytes": 2218,
+    "sha256": "aa2603b69b9c35df021abbca579a136b07e4f43a2d92f6a97499be0b8527b865"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_Incline_Long_R.bin",
+    "bytes": 17208,
+    "sha256": "17ab53caa0453fa9e21f960efe353e1d162ede291b33701224bec8ebecf52c13"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_Incline_Long_R.gltf",
+    "bytes": 2217,
+    "sha256": "25c29ca4b603f1e63daa79f58754906aa4e5f3c744aae16aaa637a130ed3280d"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_Incline_Short_L.bin",
+    "bytes": 17016,
+    "sha256": "d6c58c43b07d38699880a76d06d8d695ef6fa6c88077be1e5c58dd5054192fb0"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_Incline_Short_L.gltf",
+    "bytes": 2222,
+    "sha256": "1fc0fd6af75ee0f59adc08769ef4237e51e0a07446bc13845ec478274d02afbe"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_Incline_Short_R.bin",
+    "bytes": 17016,
+    "sha256": "347e644b3d4c4ca810b93f8024bfd6650bb5f23923510fa6bbc9c7f4c506c2cd"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_Incline_Short_R.gltf",
+    "bytes": 2392,
+    "sha256": "14c8c61c3cf15174efeda6e8ce972dbb0b6add49eee4d466d71dbc730d07256d"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_Round_Big.bin",
+    "bytes": 46368,
+    "sha256": "b65712978ad58e46ab8c15cb690b36e5d017f84e01f84c1323907e2524e9f851"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_Round_Big.gltf",
+    "bytes": 2213,
+    "sha256": "cf07a59e86878704e0a9687634853241cf17661783c9df76da1ba08355f5b4b5"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_Round_Small.bin",
+    "bytes": 40016,
+    "sha256": "4e03e845d729814917a5f76a742b48a88c2cfaf8136d495ba7d873b0f420a7bb"
+  },
+  {
+    "path": "glTF/Props/Prop_Rail_Round_Small.gltf",
+    "bytes": 2215,
+    "sha256": "4285fec1e4a6c98b90f4eb81061cb6abc4224605e81bb12680d6c62c691bcb5f"
+  },
+  {
+    "path": "glTF/Props/Prop_Vent_Big.bin",
+    "bytes": 20336,
+    "sha256": "80b875bd2e95104903f986fd3ec0325be28cba48740a9e76eb10dde8ea23bd66"
+  },
+  {
+    "path": "glTF/Props/Prop_Vent_Big.gltf",
+    "bytes": 4027,
+    "sha256": "4adeab6bee9068ec96f60ec5395693568dd996bc26cda02d77509f9bc0960e3e"
+  },
+  {
+    "path": "glTF/Props/Prop_Vent_Small.bin",
+    "bytes": 13932,
+    "sha256": "d577e41ecae119635009de90e5d18343764a5d1d0d2d08e677ca80d431020fa9"
+  },
+  {
+    "path": "glTF/Props/Prop_Vent_Small.gltf",
+    "bytes": 5310,
+    "sha256": "4d0e84335dfba7780fe9463c631040e1f0aac7b7814effede3c589b3d4c9db72"
+  },
+  {
+    "path": "glTF/Props/Prop_Vent_Wide.bin",
+    "bytes": 14048,
+    "sha256": "20bdac5e69a095731643b34d37a31363a44dddb54d83baae92e5bd0dfa24dea7"
+  },
+  {
+    "path": "glTF/Props/Prop_Vent_Wide.gltf",
+    "bytes": 5374,
+    "sha256": "eb5501d4e1254f75268679f57a1c1b68e11fb47d26557159be4385399b2ea4f6"
+  },
+  {
+    "path": "glTF/Walls/BottomMetal_Corner_Round_Inner.bin",
+    "bytes": 7992,
+    "sha256": "fbe2cbb262b9edc039c179e9a6e975a4d1882b1ed496ce10f73db6720105731f"
+  },
+  {
+    "path": "glTF/Walls/BottomMetal_Corner_Round_Inner.gltf",
+    "bytes": 4093,
+    "sha256": "e5402bbda00c61e6d8ea0c90a9524d4d176c7dcd3ebc57bded1cef15d8f4355c"
+  },
+  {
+    "path": "glTF/Walls/BottomMetal_Corner_Round_Outer.bin",
+    "bytes": 9408,
+    "sha256": "19283ba5de7d81bdac35e6a7b27a3738d975ab109119ce1adfca4386b112680d"
+  },
+  {
+    "path": "glTF/Walls/BottomMetal_Corner_Round_Outer.gltf",
+    "bytes": 4112,
+    "sha256": "56ef8d6ad6c91f3ef696b9fa4abbed31ff02ed893bf8945d02fde1722fc5ab75"
+  },
+  {
+    "path": "glTF/Walls/BottomMetal_Corner_Square_Inner.bin",
+    "bytes": 2008,
+    "sha256": "be3be2bfb3f51667e068d849db8daa54b7ee8cb8857134a044a39a0425d56055"
+  },
+  {
+    "path": "glTF/Walls/BottomMetal_Corner_Square_Inner.gltf",
+    "bytes": 4080,
+    "sha256": "a198dfa94014440122e834d7bcc167c2d2bb2d41fafa77ff6fa86beff0cc9e51"
+  },
+  {
+    "path": "glTF/Walls/BottomMetal_Corner_Square_Outer_1.bin",
+    "bytes": 2824,
+    "sha256": "6915ba7d4d5e00c7cadcc06dc6140be72da72a5307d273e45cec52a33a4a34b2"
+  },
+  {
+    "path": "glTF/Walls/BottomMetal_Corner_Square_Outer_1.gltf",
+    "bytes": 4060,
+    "sha256": "8dbaa5dd43f22c80dce80f1cbbb542bd22eac091142956e479a5b4d825b0fcf2"
+  },
+  {
+    "path": "glTF/Walls/BottomMetal_Corner_Square_Outer_2.bin",
+    "bytes": 636,
+    "sha256": "d16a0032c521cc074b2f37b976a88c6debcf3a1a5dde9b565d25d0bd718be295"
+  },
+  {
+    "path": "glTF/Walls/BottomMetal_Corner_Square_Outer_2.gltf",
+    "bytes": 4044,
+    "sha256": "ecabdfa79aa6532abe6d292ab00dde5a5267de24e981f4eb4a4b519f4957f0e0"
+  },
+  {
+    "path": "glTF/Walls/BottomMetal_Straight.bin",
+    "bytes": 864,
+    "sha256": "31d18e02d8080cce604877dcb88a1f04a47b481bf38e07897b3bab6885c7000d"
+  },
+  {
+    "path": "glTF/Walls/BottomMetal_Straight.gltf",
+    "bytes": 4051,
+    "sha256": "0989dd43997f9a970260e4b986865833527f8f5e8006e1b158a494d7ad08c5cd"
+  },
+  {
+    "path": "glTF/Walls/BottomSimple_Corner_Round_Inner.bin",
+    "bytes": 4800,
+    "sha256": "8cbd54f25432305cff07354abc0d64816f5864cb4011f5e9807f2f53f4abf305"
+  },
+  {
+    "path": "glTF/Walls/BottomSimple_Corner_Round_Inner.gltf",
+    "bytes": 4062,
+    "sha256": "c5f905a106438cfe765ff14e7f637b55451608f196f283beb45a8fd0f01913f0"
+  },
+  {
+    "path": "glTF/Walls/BottomSimple_Corner_Round_Outer.bin",
+    "bytes": 6144,
+    "sha256": "2551c3012cebc220906f7ed7f1c12a8811ea52207941292eead0a9ca263b7c9f"
+  },
+  {
+    "path": "glTF/Walls/BottomSimple_Corner_Round_Outer.gltf",
+    "bytes": 2215,
+    "sha256": "a254c42a64b65c58a172fe48026c3fa131975aba8bd84c03fa0068f5a1cbffa4"
+  },
+  {
+    "path": "glTF/Walls/BottomSimple_Corner_Square_Inner.bin",
+    "bytes": 1816,
+    "sha256": "d38b753ef9f83738301c4ea17db07105c5690fbcf74fd8fce9b42cc9c2d09d28"
+  },
+  {
+    "path": "glTF/Walls/BottomSimple_Corner_Square_Inner.gltf",
+    "bytes": 2196,
+    "sha256": "086695a8627d6937ac97a6fb01bd9622b5eed4261caa29f66410b34af68d056d"
+  },
+  {
+    "path": "glTF/Walls/BottomSimple_Corner_Square_Outer_1.bin",
+    "bytes": 2408,
+    "sha256": "608f0cce82a09df4aae9b25ebd0644d047b28028f43f50f43d61018b80c58c4f"
+  },
+  {
+    "path": "glTF/Walls/BottomSimple_Corner_Square_Outer_1.gltf",
+    "bytes": 2186,
+    "sha256": "ff01eb5f086e9e4b60dc86cbfa08029650f09bccfa6a7398f86902e3ad23fa46"
+  },
+  {
+    "path": "glTF/Walls/BottomSimple_Corner_Square_Outer_2.bin",
+    "bytes": 476,
+    "sha256": "c939b111651c1abb1febb16dd9a84b87b46c522883e19cf35a5bcfdb701e3908"
+  },
+  {
+    "path": "glTF/Walls/BottomSimple_Corner_Square_Outer_2.gltf",
+    "bytes": 2201,
+    "sha256": "e79eb7dbe7ba195aca6b8d72cd9028d67083645fc7a3bb7ae88b78c3f181aed5"
+  },
+  {
+    "path": "glTF/Walls/BottomSimple_Straight.bin",
+    "bytes": 768,
+    "sha256": "c92374b07f9d56586a7de11640ceac9d37e799d03c951ee05b62727ee9e6be53"
+  },
+  {
+    "path": "glTF/Walls/BottomSimple_Straight.gltf",
+    "bytes": 2174,
+    "sha256": "36da5630c81f5076d68ac69b1442a217dc2afa16c836d49bf89a3a9e3fbd39fb"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_AccentStrip_Corner_Inner.bin",
+    "bytes": 2688,
+    "sha256": "9cca89b4a7f2b48584ddc2af19303673230c4d83c7bfdbe272cf1c451b3e1da5"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_AccentStrip_Corner_Inner.gltf",
+    "bytes": 2440,
+    "sha256": "71fb98c3f2d9366c20b023b75312433b686f63b3d655f058ee260b41f9e20373"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_AccentStrip_Corner_Outer.bin",
+    "bytes": 2688,
+    "sha256": "dd2c84c897af198d02f779b6d15893a4e07538621d4484a31ecd1160c51579d6"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_AccentStrip_Corner_Outer.gltf",
+    "bytes": 2443,
+    "sha256": "cd91744de92238eeea3b1f0d89b3b5c5314a8bdba14678142ca6d87b4fd8a724"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_AccentStrip_Straight.bin",
+    "bytes": 280,
+    "sha256": "3e36274bbda8884d9924b1207e9a21a53a270c4a9f256fa8aaad2d934195e1cb"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_AccentStrip_Straight.gltf",
+    "bytes": 2418,
+    "sha256": "edbe07c5e7eb6f6918955d193f5d5eaa627445fb427c1f2bfafdf23bda6293e8"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Band2_Corner_Inner.bin",
+    "bytes": 1624,
+    "sha256": "8fd19a7463771a5e61d1040883bdc64c89e703996b14d274858fb47c1e4b3a07"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Band2_Corner_Inner.gltf",
+    "bytes": 3505,
+    "sha256": "7411b55244ecc073ce3fba7048dfa042e46c069f44935c094bc5c2d027dc6654"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Band2_Corner_Outer.bin",
+    "bytes": 1624,
+    "sha256": "c9c6da596a0385fa1751db9ae4425d62de51b151b513eefb845108381c8fa55f"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Band2_Corner_Outer.gltf",
+    "bytes": 3507,
+    "sha256": "1848a02223a46fe284f59649be605ed3dc1c53843448c7c7da6a2843f8dc7897"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Band2_Straight.bin",
+    "bytes": 280,
+    "sha256": "f557b9c1bd1dd37512f34ae2ef82f721e3f1010daf5d768de98b7e94885a1432"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Band2_Straight.gltf",
+    "bytes": 3459,
+    "sha256": "fead57cd3ec26c5c6e77896d23b9b66ede08c0d27c72c88f4c219f40ffdf0e4b"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_DarkMetal2_Corner_Inner.bin",
+    "bytes": 1344,
+    "sha256": "62ff1fccc52e3ec612493c2f9414851bbc194e5ba5116f4b146c2d6d146bcb21"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_DarkMetal2_Corner_Inner.gltf",
+    "bytes": 2437,
+    "sha256": "9a06782edbb645e712909ad44c05ae011ca96993e19a30635baaf02c829d19c0"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_DarkMetal2_Corner_Outer.bin",
+    "bytes": 1344,
+    "sha256": "661476057701a0f1c62d4e1142f32884816755cdcd2f961921a210abed5ce43e"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_DarkMetal2_Corner_Outer.gltf",
+    "bytes": 2440,
+    "sha256": "556a854c2bfdc9421de8a562c63c77b15141e9cae21da2f78ecbebf9625dd65d"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_DarkMetal2_Straight.bin",
+    "bytes": 216,
+    "sha256": "4a6efac68b1f7cea35d38f8b5086108ae4ee89a49c5d4445df9f2e0dda00b79a"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_DarkMetal2_Straight.gltf",
+    "bytes": 2399,
+    "sha256": "c3376cdf8cad5b79b54b6961784615ee66443eecd8203bbba8d136f818649d50"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_DarkPlastic_Corner_Inner.bin",
+    "bytes": 2688,
+    "sha256": "2de4088d7ccba59e760c869fe8bf98945d36caf49091c2884d26f8f5376f2c64"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_DarkPlastic_Corner_Inner.gltf",
+    "bytes": 2209,
+    "sha256": "d44904f41b2ca7ccc4285e37bb057948ff48a29cb9aeebde67f19887cea4156b"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_DarkPlastic_Corner_Outer.bin",
+    "bytes": 2688,
+    "sha256": "44346c186b9fc64fc9bf29085844e784a79bebbee61c5d2e9842ba4bb3606a9d"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_DarkPlastic_Corner_Outer.gltf",
+    "bytes": 2212,
+    "sha256": "ece81346bdd154ec899b0cf37bc2cc87c85aad8590d44983d56d525c653230ed"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_DarkPlastic_Straight.bin",
+    "bytes": 280,
+    "sha256": "3a5ec00210b1510841977151b0270e5e3550f2204e0e58bf8621a950c3048d3a"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_DarkPlastic_Straight.gltf",
+    "bytes": 2187,
+    "sha256": "a395fac4ce70edb2d1104ff288c9380d3c4ab6a3a088bd3c61e93f52b5a9cae9"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Metal2_Corner_Inner.bin",
+    "bytes": 1344,
+    "sha256": "3e15ebd8859b6e5fc513a93a7bb6aec5a3617c3db42afd794a2d00261ef2598a"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Metal2_Corner_Inner.gltf",
+    "bytes": 2427,
+    "sha256": "a5cc5761bd1b7e0448eeb3d4cf8a7d26c8fa3b7d8eed9dcfcb05165e215e013e"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Metal2_Corner_Outer.bin",
+    "bytes": 1344,
+    "sha256": "a9af37921b32af43862c5e7cf72f90ea94028975a80a31401fca284bacb67390"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Metal2_Corner_Outer.gltf",
+    "bytes": 2430,
+    "sha256": "4f3464f8c007fcfa039e87e3a7704458615629e48d4e3454763686448e91c9c9"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Metal2_Straight.bin",
+    "bytes": 216,
+    "sha256": "8b9272f662c121013ff091c858ff1dd3299ed1ce78d38ce749d72812dd84db2e"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Metal2_Straight.gltf",
+    "bytes": 2391,
+    "sha256": "cb2f925254df3db573cd6f44b5c0e2b859d4506be8c40413c1027662f3abb3ce"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_MetalPlates_Corner_Inner.bin",
+    "bytes": 2112,
+    "sha256": "dab9dbd7842e4744ede8c4c4e5531a1bc0c52b93ddc9e02e83387babff5b26d9"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_MetalPlates_Corner_Inner.gltf",
+    "bytes": 2219,
+    "sha256": "4eab6c3a5d9534f37d7c2c1446ec22a2f835393d40851f712190118543b72717"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_MetalPlates_Corner_Outer.bin",
+    "bytes": 2112,
+    "sha256": "7a98a0e85d9ab420b8ae402c3be1b027cc1ab0b288a669d2e53fffb894153961"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_MetalPlates_Corner_Outer.gltf",
+    "bytes": 2220,
+    "sha256": "f00f720e7c48105bf33164073f4bc80cfe4ae9fa40afa0b15d0ab02f6f38a2cd"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_MetalPlates_Straight.bin",
+    "bytes": 216,
+    "sha256": "42f66326a8707e4c4f63d8e9b9dc94b0072778a59612d98e7f0aef92aaae7c92"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_MetalPlates_Straight.gltf",
+    "bytes": 2196,
+    "sha256": "2208fb9ea62337f4bc39d3c51766ab3a8a337c55dcb71c861df4307a169051c0"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Simple1_Corner_Inner.bin",
+    "bytes": 1344,
+    "sha256": "3aa6a185e19aa2670c783b5af5c9fc856d48c09a2c27e34e4067a92c4591e14d"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Simple1_Corner_Inner.gltf",
+    "bytes": 2200,
+    "sha256": "5e3970d872171dd24166544095ca651dbae3ea3c29a3334013f9abd81479f5d8"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Simple1_Corner_Outer.bin",
+    "bytes": 1344,
+    "sha256": "2706aa934177b8136ff338229403a6def722499d4358eaeda0c9ca14a792d4be"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Simple1_Corner_Outer.gltf",
+    "bytes": 2203,
+    "sha256": "8aa68dc67054c584191f2c36917e4eb5649923660e97318f41802e84bb9f8a6a"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Simple1_Straight.bin",
+    "bytes": 140,
+    "sha256": "2b6e4316c7ea4aa687f8d308f901076543f105786c4a442c45446c21ee67966d"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Simple1_Straight.gltf",
+    "bytes": 2178,
+    "sha256": "938d2b21d19571a14b192324cfbb562f41b854c08a6851173c4171d48e637540"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Simple2_Corner_Inner.bin",
+    "bytes": 1344,
+    "sha256": "fa5792bb962cd3f53f9b225a4bd9308a999afff6b2f30362318127d609910576"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Simple2_Corner_Inner.gltf",
+    "bytes": 2213,
+    "sha256": "acf855184a2a1a536c423f383f1b897d61be6dd3f4afadfbd614e2df15a9ba34"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Simple2_Corner_Outer.bin",
+    "bytes": 1344,
+    "sha256": "3a89d4be739958c3d891d15bcf99656952dfac80e681bbfa55514e12f2410978"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Simple2_Corner_Outer.gltf",
+    "bytes": 2214,
+    "sha256": "362d320c0019a526fff51edd53402a8eceda203f834828419dd5c913ef93a559"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Simple2_Straight.bin",
+    "bytes": 140,
+    "sha256": "f4abc9cb4b05b6f60fea0b6645da4d15e28c6feefde77993e9da158e5ed615c6"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Simple2_Straight.gltf",
+    "bytes": 2187,
+    "sha256": "b10adff4698daca77a36bed62b8100b6bed272d925e1c6c07ce8c5bd41fed703"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Triangles_Corner_Inner.bin",
+    "bytes": 2688,
+    "sha256": "b470d0e303337313db380b7ee876516e4c7536faadab0dfb8893ff0bba11a860"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Triangles_Corner_Inner.gltf",
+    "bytes": 2436,
+    "sha256": "73cebe7d536b0615e7d81a140aace2d6ea7bf390b3f3d98106a7667fe7c713c6"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Triangles_Corner_Outer.bin",
+    "bytes": 2688,
+    "sha256": "9d01b94c2ce53562a2da297ecfe3a48ddca3cecdd787cc6d9ae0a2761f222196"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Triangles_Corner_Outer.gltf",
+    "bytes": 2439,
+    "sha256": "da7bb09f400e3918122a66de7870aa7c5f6beb4296561a1e34c37bd46f199a25"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Triangles_Straight.bin",
+    "bytes": 280,
+    "sha256": "997d4ecb8f731971f5099fb22b662caeefa9818c1b3d5f51bc95be36c54b4075"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_Triangles_Straight.gltf",
+    "bytes": 2414,
+    "sha256": "79b44b55c5eec2c77907ea14383bb778eab3fa4b93f3d51c222360613fc71d42"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_WhitePlate2_Corner_Inner.bin",
+    "bytes": 1904,
+    "sha256": "a89daad9d3b93db6003258c0d1c78fc31abcd9452e489aa95c18f2f84df514e8"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_WhitePlate2_Corner_Inner.gltf",
+    "bytes": 2211,
+    "sha256": "a31b36c96679f13f58ab3393e3d2604d4902ec3bc0d7d155b861e033bf25761b"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_WhitePlate2_Corner_Outer.bin",
+    "bytes": 1904,
+    "sha256": "4f44a60b632afe82b28fd8fa6fa4c46b9023eeaccd1bab4659f2b5a89488c2b4"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_WhitePlate2_Corner_Outer.gltf",
+    "bytes": 2214,
+    "sha256": "f163dbdf20706f91d6bcf95e19723b9b5b6f10a9f70d10eae9fc88dfa3c848e1"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_WhitePlate2_Straight.bin",
+    "bytes": 496,
+    "sha256": "11906200711b946bbd0ca106a3d563f52a082ed5fee6ef5c7ff209b2606ffa6e"
+  },
+  {
+    "path": "glTF/Walls/ShortWall_WhitePlate2_Straight.gltf",
+    "bytes": 2180,
+    "sha256": "5596b2a442eefa82a997f43adec90257613e24b6b49bca17cf50306ee5869493"
+  },
+  {
+    "path": "glTF/Walls/TopAstra_Corner_Round_Inner.bin",
+    "bytes": 6232,
+    "sha256": "cd33bf0d4015dc2132404f172458931b38d6333bec176b2754033f631cab2174"
+  },
+  {
+    "path": "glTF/Walls/TopAstra_Corner_Round_Inner.gltf",
+    "bytes": 4936,
+    "sha256": "2ae50221b86bc182a95163c827d27b14551473a17fbae37a5630f32c547131ec"
+  },
+  {
+    "path": "glTF/Walls/TopAstra_Curve_Round_Outer.bin",
+    "bytes": 6232,
+    "sha256": "cc0c8a09dce28a92a4d939612ff0e65e28550e40bef97a18e91c2f12f3557c6e"
+  },
+  {
+    "path": "glTF/Walls/TopAstra_Curve_Round_Outer.gltf",
+    "bytes": 4935,
+    "sha256": "f700b41d32de7f7c1a204404bdbf8071b36a33e538e824940a3da439f0690c4d"
+  },
+  {
+    "path": "glTF/Walls/TopAstra_Straight.bin",
+    "bytes": 3180,
+    "sha256": "ed63a505c76b57d2ebeb4c4cd9ceb65ca58ef77c03c0abf73e8ec709520e16bd"
+  },
+  {
+    "path": "glTF/Walls/TopAstra_Straight.gltf",
+    "bytes": 4807,
+    "sha256": "de57511ae39287eef12071597cb30c487034dab827d517aca40c894a666aefe8"
+  },
+  {
+    "path": "glTF/Walls/TopCables_Corner_Round_Inner.bin",
+    "bytes": 116264,
+    "sha256": "e23700b4611e5d5e6cc83324eed8c8282aaa83e7f8ca93451f520090376bb593"
+  },
+  {
+    "path": "glTF/Walls/TopCables_Corner_Round_Inner.gltf",
+    "bytes": 7143,
+    "sha256": "f61eb4aeedf04ace8dc0b0bba081154f377027b02812279512a1fba31f8a956e"
+  },
+  {
+    "path": "glTF/Walls/TopCables_Corner_Round_Outer.bin",
+    "bytes": 116264,
+    "sha256": "5d414a476345c330dc3036a34e15ee0dab898266feb166978b0a3ade779aee44"
+  },
+  {
+    "path": "glTF/Walls/TopCables_Corner_Round_Outer.gltf",
+    "bytes": 7140,
+    "sha256": "df905565a716dfedc134a77b3a58acac834ca6a59f8a66612bf461e69852d4a6"
+  },
+  {
+    "path": "glTF/Walls/TopCables_Corner_Square_Inner.bin",
+    "bytes": 116056,
+    "sha256": "d7af2e489fbaca363bb8cfee5def6b8d20ab1035c7143648bdc7c2f9be42a548"
+  },
+  {
+    "path": "glTF/Walls/TopCables_Corner_Square_Inner.gltf",
+    "bytes": 7084,
+    "sha256": "c65520f1587cf33bf3f6e11dcf38aa4f16211acc6d8f6b2f19243986005c1ef9"
+  },
+  {
+    "path": "glTF/Walls/TopCables_Corner_Square_Outer.bin",
+    "bytes": 115800,
+    "sha256": "ba40ff672fddd0c6538c1f624f2b4459832c37f1a88f79a58a346c9252dc6032"
+  },
+  {
+    "path": "glTF/Walls/TopCables_Corner_Square_Outer.gltf",
+    "bytes": 7060,
+    "sha256": "a9b8c1183ff964fec28e360961aec3347698cdb9055978b8f9fd5e5af743c77c"
+  },
+  {
+    "path": "glTF/Walls/TopCables_Straight_Hanging.bin",
+    "bytes": 111036,
+    "sha256": "4e1fdef2b940b1748ef3fc6ad2764d57b6e533109d23dc318b31934172004bd8"
+  },
+  {
+    "path": "glTF/Walls/TopCables_Straight_Hanging.gltf",
+    "bytes": 7052,
+    "sha256": "36e3eee1f01f8aeae6519642b3d0a819b2a6052aa0cba64fb010d0ff8f4b0934"
+  },
+  {
+    "path": "glTF/Walls/TopCables_Straight.bin",
+    "bytes": 34740,
+    "sha256": "5f0ded32e7b2e14cce63557af52851064cda1e33d045a6e5bf223abf823af972"
+  },
+  {
+    "path": "glTF/Walls/TopCables_Straight.gltf",
+    "bytes": 7021,
+    "sha256": "8f4dc2b60c983f4157a0f526a791c23c601e95ce92e1561530ae43751c4279cb"
+  },
+  {
+    "path": "glTF/Walls/TopPlastic_Corner_Outer.bin",
+    "bytes": 3180,
+    "sha256": "cb91f45d7e96e2d29ca58e049c9688045edfb0611a179ae1c82cf031edad2334"
+  },
+  {
+    "path": "glTF/Walls/TopPlastic_Corner_Outer.gltf",
+    "bytes": 3984,
+    "sha256": "ae859c5159a74a7ab23e45a8164d309c6f30320933cc94a8c3c7a8e87f41a9e6"
+  },
+  {
+    "path": "glTF/Walls/TopPlastic_Corner_Round_Inner.bin",
+    "bytes": 21080,
+    "sha256": "01ae9f911c91282c0aafd14cd933943ac0fa959c4ffcb473a9e46634eb542056"
+  },
+  {
+    "path": "glTF/Walls/TopPlastic_Corner_Round_Inner.gltf",
+    "bytes": 5497,
+    "sha256": "42d6af4a5f55d77921f49e1ed971efd51463f97ac8d70135cd94b6fda1629d9d"
+  },
+  {
+    "path": "glTF/Walls/TopPlastic_Corner_Round_Outer.bin",
+    "bytes": 21080,
+    "sha256": "732b2bed0c96d91e3ee497e073e430cdc402671f983d0e468bb7966dc95d80b1"
+  },
+  {
+    "path": "glTF/Walls/TopPlastic_Corner_Round_Outer.gltf",
+    "bytes": 5528,
+    "sha256": "4bc69624609669bcfe9b4e1dc65323a69651cbad9de7397c31bd9525d19e0953"
+  },
+  {
+    "path": "glTF/Walls/TopPlastic_Straight.bin",
+    "bytes": 6836,
+    "sha256": "5588a89ef3149e994b3fc52f7974f89088f44ed4f3f9d49f68cd6009e78e92ec"
+  },
+  {
+    "path": "glTF/Walls/TopPlastic_Straight.gltf",
+    "bytes": 5435,
+    "sha256": "7d1f80135b3d42111c9dd911635d34acd69cc1fac73134279649ced0affc62ae"
+  },
+  {
+    "path": "glTF/Walls/TopSimple_Corner_Round_Inner.bin",
+    "bytes": 4032,
+    "sha256": "6510b2407f589fb800547887ef8a6ea96f2187e75aa0c9f105437aa23e96ae87"
+  },
+  {
+    "path": "glTF/Walls/TopSimple_Corner_Round_Inner.gltf",
+    "bytes": 2196,
+    "sha256": "63cc2f7cba6e6ea23288adedc4a042036785dafe8195a8a84b969d1d604a1126"
+  },
+  {
+    "path": "glTF/Walls/TopSimple_Corner_Round_Outer.bin",
+    "bytes": 4032,
+    "sha256": "adbaf55de110fc70e5d812d877a0764c90b7fda558930d685848a5d9a8b82f20"
+  },
+  {
+    "path": "glTF/Walls/TopSimple_Corner_Round_Outer.gltf",
+    "bytes": 2196,
+    "sha256": "e32f74b728f502e2409c488b2824e32382814be31d3dd89d8fd10e7d3cd25506"
+  },
+  {
+    "path": "glTF/Walls/TopSimple_Straight.bin",
+    "bytes": 420,
+    "sha256": "5819f09b3c4c576d38d73eebc1fa33d1026ee3c8fac59cc9bd9c7064728ff550"
+  },
+  {
+    "path": "glTF/Walls/TopSimple_Straight.gltf",
+    "bytes": 2106,
+    "sha256": "c114644c2f3133e179406eb2a788459fadad956fe1794a216d5ac85cc9e23053"
+  },
+  {
+    "path": "glTF/Walls/TopWindow_Corner_Curve_Inner.bin",
+    "bytes": 30440,
+    "sha256": "b53d9e8d233ce4bfa009e91eccd9e931f575d8902b7ca8b324866dc11ecade93"
+  },
+  {
+    "path": "glTF/Walls/TopWindow_Corner_Curve_Inner.gltf",
+    "bytes": 6482,
+    "sha256": "666c78db0ad23a59278c132fdbc99ae6c68e41593b82abccebd7a435e0e3868e"
+  },
+  {
+    "path": "glTF/Walls/TopWindow_Corner_Curve_Outer.bin",
+    "bytes": 30752,
+    "sha256": "4b6e2bf4d676f34c7531ebf3d0b56ec212ee61f9bda47ae4bf908d33d541623c"
+  },
+  {
+    "path": "glTF/Walls/TopWindow_Corner_Curve_Outer.gltf",
+    "bytes": 6477,
+    "sha256": "2672a495347ef5f9af99201c8bd8035cd3e924a27d4090ddb6abd971b8e2b5f5"
+  },
+  {
+    "path": "glTF/Walls/TopWindow_Straight.bin",
+    "bytes": 15404,
+    "sha256": "3fbcad9e2865b485513941329f9cbcbcb5d499ca8991b4e7120d4dc503e6e36d"
+  },
+  {
+    "path": "glTF/Walls/TopWindow_Straight.gltf",
+    "bytes": 6417,
+    "sha256": "dedca17ecd1b3cdf6c87fde4a4973642d63f8d2d1b65e20a077df04ba6b76268"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Corner_Round_Inner.bin",
+    "bytes": 38020,
+    "sha256": "14b572e167b5520e0d34afc4ccb85d9f45bc6035c1c661ad9d0db64686b970ae"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Corner_Round_Inner.gltf",
+    "bytes": 8553,
+    "sha256": "817477d3db100680bb80431bd0f042939b452b2e2288764dcc5da15a3dbea460"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Corner_Round_Outer.bin",
+    "bytes": 38020,
+    "sha256": "3c2a08391bf8423caa296ea063e1621938840861857cdf637d342e6be1aa5dca"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Corner_Round_Outer.gltf",
+    "bytes": 8558,
+    "sha256": "e84b0b787e3223942b4d301b06d3cff16800e0544735f3ff3f7f1658d0d1b039"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Corner_Square_Inner.bin",
+    "bytes": 28828,
+    "sha256": "fda4bb74c0575235cb5ad9d8e1111f67f63699ea5d7a24f4255b92ce3d4d6c23"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Corner_Square_Inner.gltf",
+    "bytes": 8523,
+    "sha256": "cd394f7fdfcc4673d91380f445729c26b19bf565e8d986b8fb9724afb2a6cfa6"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Corner_Square_Outer.bin",
+    "bytes": 26772,
+    "sha256": "32de89a30e9865b3f732e9e76e8cbeb80ce81f0438deeb7275c204852d00c0fd"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Corner_Square_Outer.gltf",
+    "bytes": 8552,
+    "sha256": "df4c4ab0399dd432a100ded981d3b673cbe0aee4e6ec49db18df9744623caf63"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Straight_Broken.bin",
+    "bytes": 155764,
+    "sha256": "35fad20805d914bfd248efb3fb1e520826f60012f8891e5639770de0aabbc85b"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Straight_Broken.gltf",
+    "bytes": 9848,
+    "sha256": "0143b317a4c1384c949a4266394a97a58f5a6ed7b6cbdb3f2aec45a97d27d018"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Straight_Divided.bin",
+    "bytes": 14388,
+    "sha256": "c27cec1d925b8c637e3d42648f80e2232cfc2f38660e5de99ee8f70f18926706"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Straight_Divided.gltf",
+    "bytes": 8440,
+    "sha256": "a07451aee660d98b12f5b7da6f4f451af81c6b2091780e9d7ac307058860720e"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Straight_Flat_Window.bin",
+    "bytes": 21000,
+    "sha256": "6a573d7244b2b5f9a1392ec749375bbfef5c74dde3ae74eba6e8def97672bce5"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Straight_Flat_Window.gltf",
+    "bytes": 7808,
+    "sha256": "37be23fa5756e739a8117c9cc0809b1fd84dd137898f3b44b558cb574115c054"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Straight_Flat.bin",
+    "bytes": 4744,
+    "sha256": "4979819c780de114f8daa39b53441808ce058de019663355b54876697ac171fe"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Straight_Flat.gltf",
+    "bytes": 5161,
+    "sha256": "cbb4cb905dcfd6a806217f3b72d57eab42e637d52fcb1faf0edfbaf8b4d89506"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Straight_Window.bin",
+    "bytes": 21744,
+    "sha256": "3ccd060adc3c638a23835875a7ae4f45c7a8be0357db93ef16d9b1273cb93049"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Straight_Window.gltf",
+    "bytes": 7800,
+    "sha256": "e6801442d6961b72087d216b9024e2c056cb2d6b975450aeddda23662a40475f"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Straight.bin",
+    "bytes": 14324,
+    "sha256": "7b7b278650105dcf5e41d8bc4d1d3e0ed3f1a001c92d6835162753f87a3dd268"
+  },
+  {
+    "path": "glTF/Walls/WallAstra_Straight.gltf",
+    "bytes": 8458,
+    "sha256": "76ca46a4cac44e9c7a0971bdb2d1912f9d5d7e00fe2e8f7ffa488e98856a1368"
+  },
+  {
+    "path": "glTF/Walls/WallBand_Corner_Round_Inner.bin",
+    "bytes": 4312,
+    "sha256": "f0d6fa9753310e7f9318361daba58529ad9e8bf983fb5c6e1e44492d007e88c0"
+  },
+  {
+    "path": "glTF/Walls/WallBand_Corner_Round_Inner.gltf",
+    "bytes": 5387,
+    "sha256": "d436b38eee534e1c4b7bdca97d26030b040eb93f148e08043d1a09f6604f41bc"
+  },
+  {
+    "path": "glTF/Walls/WallBand_Corner_Round_Outer.bin",
+    "bytes": 4312,
+    "sha256": "1151001ad7d0a0f49737e2e75772e7e094d8d9fe93db67a4a581940c68bdbf77"
+  },
+  {
+    "path": "glTF/Walls/WallBand_Corner_Round_Outer.gltf",
+    "bytes": 5384,
+    "sha256": "ab17099717d5bb10e816660654b0c6f14fddb02e934cc0add2f17954ea6200c2"
+  },
+  {
+    "path": "glTF/Walls/WallBand_Corner_Square_Inner.bin",
+    "bytes": 1272,
+    "sha256": "27a0e90708a25bba767d5996322a8947d8ec0e97f9e22e2b4721a040f9715ea9"
+  },
+  {
+    "path": "glTF/Walls/WallBand_Corner_Square_Inner.gltf",
+    "bytes": 5377,
+    "sha256": "4060cadbaf818aaa82e3de51736af0b6c7555d5f609c936e15e3ce4a22e7f812"
+  },
+  {
+    "path": "glTF/Walls/WallBand_Corner_Square_Outer.bin",
+    "bytes": 1412,
+    "sha256": "95aebed2267889f86839f88187a8cf8fc4f1762e1c4fa024bb46cd4b47818cd6"
+  },
+  {
+    "path": "glTF/Walls/WallBand_Corner_Square_Outer.gltf",
+    "bytes": 5321,
+    "sha256": "ee6ba44a2c8d4270610af0fb022902ba8a07c9663a99043a440843932687e251"
+  },
+  {
+    "path": "glTF/Walls/WallBand_Straight_Broken.bin",
+    "bytes": 5156,
+    "sha256": "46d0b5b57be085f212a89b3f11329fb45b18ba3d49d74b9614a136ec5781e355"
+  },
+  {
+    "path": "glTF/Walls/WallBand_Straight_Broken.gltf",
+    "bytes": 5333,
+    "sha256": "56b59ca96247abd0c0c52eb0f3b52ffe172d73b0b0cd802649675c9de7d71d8d"
+  },
+  {
+    "path": "glTF/Walls/WallBand_Straight.bin",
+    "bytes": 636,
+    "sha256": "24b8d9b158440df24afabc7cf6791054179db184128f32cca0eab7f16cc9fcf2"
+  },
+  {
+    "path": "glTF/Walls/WallBand_Straight.gltf",
+    "bytes": 5282,
+    "sha256": "3537dee681643c10332127a1cb50115f7d62b944ade50a611dd58ddf7afb70be"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Cap_A.bin",
+    "bytes": 4732,
+    "sha256": "02ee0ede58b650bea9c002eec94838e8f47375bdaf0f763b1dec3bb6f9c5e9c7"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Cap_A.gltf",
+    "bytes": 4044,
+    "sha256": "7ca9ea7a73f01a6b1732cf1ff72995618529998f9d1f163253c5b23d7d46c3e7"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Cap_B.bin",
+    "bytes": 4732,
+    "sha256": "bf8edb122e568bd806c14aa32680703ad101299f47516980d65c4af23f6f67f2"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Cap_B.gltf",
+    "bytes": 4040,
+    "sha256": "711e07505680f5e1fe6f8fa27d57dfaca91ab0e2a354e99cb1ffb456b5916a0f"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Corner_Round_Inner.bin",
+    "bytes": 47108,
+    "sha256": "b73bde5fbcd17d606748d8153db5d6d132962fb1845e0547e5f1940eb58d0d73"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Corner_Round_Inner.gltf",
+    "bytes": 7196,
+    "sha256": "9739d6c4c5e75d81b8616298cc44409acd06e16395a37cb6615ed915d6fd8e4a"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Corner_Round_Outer.bin",
+    "bytes": 46324,
+    "sha256": "8dd2fff8519e8df23867e7c0f80ef5bca41a237e492d2f2c5ae336b5dbb497a1"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Corner_Round_Outer.gltf",
+    "bytes": 7195,
+    "sha256": "fc3166134d5f8956d3d17fd7af2db1028caed458ec39e4a729627ec127839b3b"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Corner_Square_Inner.bin",
+    "bytes": 37784,
+    "sha256": "d2e2dbd5001110684ac91dc72e0f3626508ad8cbca68fd44a565c62d399dc92c"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Corner_Square_Inner.gltf",
+    "bytes": 7125,
+    "sha256": "6492f36e32e9ddf98e144967351a7e701ba0b854365a449c4af46ac452df7031"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Corner_Square_Outer.bin",
+    "bytes": 32456,
+    "sha256": "28fb64cf2c831b987ebdd22ee467bbe292180fb2710285f4ce9340535f080119"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Corner_Square_Outer.gltf",
+    "bytes": 7161,
+    "sha256": "eb86526a013f1d674f242743973c2bafdd258761027dc170fc4e798a120d3469"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Straight.bin",
+    "bytes": 16528,
+    "sha256": "ba9316187d6161d38a6585be4498b160676f85215179d39c03fab882683520da"
+  },
+  {
+    "path": "glTF/Walls/WallWindow_Straight.gltf",
+    "bytes": 7088,
+    "sha256": "8963fbfb1431216caf8ed5c41e2bd2463a5583770b276072ae87d66fa7ebaa7a"
+  },
+  {
+    "path": "OBJ/Columns/Column_Astra.mtl",
+    "bytes": 1125,
+    "sha256": "498bfc398eb276051c7cc3194f55d5ebc4b26b59fc27281b264c49ed951bae49"
+  },
+  {
+    "path": "OBJ/Columns/Column_Astra.obj",
+    "bytes": 8848,
+    "sha256": "d921855c9c1a837cffcb13a425fbaaf05d7c03af14ce169d956c322f1ee9b2de"
+  },
+  {
+    "path": "OBJ/Columns/Column_Hollow.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Columns/Column_Hollow.obj",
+    "bytes": 143134,
+    "sha256": "9c8a3eb8c1935c295b41cbd0dcefc776acfa62bd587760b8914dce85569d7f3e"
+  },
+  {
+    "path": "OBJ/Columns/Column_Large_Straight.mtl",
+    "bytes": 1436,
+    "sha256": "84fc76af0ee0d92ab5bbbb42ff2f34dd7b347527fcc12229f1b55041ea7ec836"
+  },
+  {
+    "path": "OBJ/Columns/Column_Large_Straight.obj",
+    "bytes": 64671,
+    "sha256": "21d1dddd8551c543eebdbf8d5823d91dc98446b9b8caaf4253e21bc437a56735"
+  },
+  {
+    "path": "OBJ/Columns/Column_MetalSupport_Curve.mtl",
+    "bytes": 694,
+    "sha256": "fc7cf277ce7471846133841b9a56d90a654b8db4c84165e2a76629ea325a359e"
+  },
+  {
+    "path": "OBJ/Columns/Column_MetalSupport_Curve.obj",
+    "bytes": 103301,
+    "sha256": "9797322a66bdf9dfd7da1751913d24e773102683abd3edbbac3e43219178c0b0"
+  },
+  {
+    "path": "OBJ/Columns/Column_MetalSupport.mtl",
+    "bytes": 694,
+    "sha256": "fc7cf277ce7471846133841b9a56d90a654b8db4c84165e2a76629ea325a359e"
+  },
+  {
+    "path": "OBJ/Columns/Column_MetalSupport.obj",
+    "bytes": 50591,
+    "sha256": "fa4af67fa36dd95fb33722af4bf979d9300955effd6291cbb22872e63ca8fc2b"
+  },
+  {
+    "path": "OBJ/Columns/Column_Pipes.mtl",
+    "bytes": 1131,
+    "sha256": "9530c640ca49384434426f6cdd53099a0c1914234add3b33bec78dc4e43c33e2"
+  },
+  {
+    "path": "OBJ/Columns/Column_Pipes.obj",
+    "bytes": 491779,
+    "sha256": "56c452c1389e337f6c4ea01c4fe7ff7f86200962705164d98dae34395b5d7909"
+  },
+  {
+    "path": "OBJ/Columns/Column_Round.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Columns/Column_Round.obj",
+    "bytes": 35599,
+    "sha256": "054bf9ce437d72bbafdafce570abfcf7ad1dc53f4b889f337544c0d09b7f6676"
+  },
+  {
+    "path": "OBJ/Columns/Column_Simple.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Columns/Column_Simple.obj",
+    "bytes": 7034,
+    "sha256": "ea1223a12a5fafac822efcc237aa7397f7445920522882affa2ece03174d6622"
+  },
+  {
+    "path": "OBJ/Platforms/Door_DarkMetal.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Platforms/Door_DarkMetal.obj",
+    "bytes": 1722,
+    "sha256": "86838e8c7a08d3aa6b1cb65e0b92be8f00cebe5a9c1e59b2fbbdd619cc70df26"
+  },
+  {
+    "path": "OBJ/Platforms/Door_Frame_A.mtl",
+    "bytes": 1117,
+    "sha256": "f61192a607b0102b5b99806cae5c59247e3f803aabcd6a9d4b2bf1e78fff3fcc"
+  },
+  {
+    "path": "OBJ/Platforms/Door_Frame_A.obj",
+    "bytes": 12936,
+    "sha256": "415aa510ae75cd514317b5d90f727e951c93186d12423314ffec8a85401b78bb"
+  },
+  {
+    "path": "OBJ/Platforms/Door_Frame_Square_Blocked.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Platforms/Door_Frame_Square_Blocked.obj",
+    "bytes": 2985,
+    "sha256": "5b05f4eab5aafffc5d751e3f1700420c0a0404ccff324d4e7d2a62b10f91c9de"
+  },
+  {
+    "path": "OBJ/Platforms/Door_Frame_Square.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Platforms/Door_Frame_Square.obj",
+    "bytes": 17136,
+    "sha256": "57136821ef28b282187e2c4fb726329d5324d5e184c82458cb29699d54424942"
+  },
+  {
+    "path": "OBJ/Platforms/Door_Frame_SquareTall.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Platforms/Door_Frame_SquareTall.obj",
+    "bytes": 16862,
+    "sha256": "1e7aa912edd47ce3884fff938861984d38af253fb66f64adb57066db26d890ff"
+  },
+  {
+    "path": "OBJ/Platforms/Door_Metal.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Platforms/Door_Metal.obj",
+    "bytes": 2434,
+    "sha256": "efe62a60a32c28f00e4399c5ccf9936632252c4a6af8aa703ab205f5d22d13b2"
+  },
+  {
+    "path": "OBJ/Platforms/Door_Simple.mtl",
+    "bytes": 1123,
+    "sha256": "dd67eda5b9952d133e5369d467f35afc59c79de7e41381be063befb54dacb5b3"
+  },
+  {
+    "path": "OBJ/Platforms/Door_Simple.obj",
+    "bytes": 4999,
+    "sha256": "e354b8675cc1cdc7ca827121af8930369e50fe1a7286d5749d00256aac6a478a"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_3Plates.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_3Plates.obj",
+    "bytes": 1301,
+    "sha256": "09c9c831035f0faf456e210282a935db2c1e02d4b2468dfffeedd16786a3aa06"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_CenterPlate_Curve.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_CenterPlate_Curve.obj",
+    "bytes": 13645,
+    "sha256": "9c1270cb2540d9f138df4e752014822729d4887a54c6e6979ea8bb6945447adc"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_CenterPlate.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_CenterPlate.obj",
+    "bytes": 1139,
+    "sha256": "45124d7f82c6092cf9d51d5ab85d70fdd73c9c3421875ef39e53f1d03eb1d741"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_DarkPlates_Curves.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_DarkPlates_Curves.obj",
+    "bytes": 10051,
+    "sha256": "11802c28a7adf2ca1f4ce802267c96fc7500963ec9e29cab1c99a3b3ad0528d1"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_DarkPlates.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_DarkPlates.obj",
+    "bytes": 1304,
+    "sha256": "29327ee9c74a304c82837d871bf1da687ac4b0638765b1b6ac0a07745ddc12eb"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Metal_Curve.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Metal_Curve.obj",
+    "bytes": 5315,
+    "sha256": "23dc4447bf6333684222cf96a1d301cbb6d69c36018f786392c2250bd94a5e54"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Metal.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Metal.obj",
+    "bytes": 732,
+    "sha256": "eb34f599a1ed864ba131b4088528c0fbbe3fbcf726ab0ba5b55a64b651bfb716"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Metal2_Curve.mtl",
+    "bytes": 381,
+    "sha256": "d22663d67c9b613cfba94a56010de00a9ec9affad6d21d91a60149fbabf76dee"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Metal2_Curve.obj",
+    "bytes": 9023,
+    "sha256": "cc178b8635a5fc921933b4334c24b8401c6d2128f3e8bc065067ea47b488e439"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Metal2.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Metal2.obj",
+    "bytes": 1756,
+    "sha256": "95f3d964c0c0df784a6b458843afcd63b7abda7b2c540e807dfb264f2350b782"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Rails_2.mtl",
+    "bytes": 385,
+    "sha256": "9dcc03e986b819e5e60d1745ce91e6e6d40bdd3c35f18f1d369f1d6b73d876bd"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Rails_2.obj",
+    "bytes": 79877,
+    "sha256": "c5a32c36b8ab9f58eb37662b74b44318554fbeae493c79db5af3c4c518d2f474"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Rails_4.mtl",
+    "bytes": 385,
+    "sha256": "9dcc03e986b819e5e60d1745ce91e6e6d40bdd3c35f18f1d369f1d6b73d876bd"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Rails_4.obj",
+    "bytes": 79879,
+    "sha256": "2495acbc2c24001548a70758c8bb3cb4d97e3353b64a38aee3f8e6c75fca59a7"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Rails_4Wide.mtl",
+    "bytes": 385,
+    "sha256": "9dcc03e986b819e5e60d1745ce91e6e6d40bdd3c35f18f1d369f1d6b73d876bd"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Rails_4Wide.obj",
+    "bytes": 79887,
+    "sha256": "6d4cbe587a3c2d357019c897a16c3607577b2e3d7c0ba8f29959ca2cd5030958"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Rails_4WideTall.mtl",
+    "bytes": 385,
+    "sha256": "9dcc03e986b819e5e60d1745ce91e6e6d40bdd3c35f18f1d369f1d6b73d876bd"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Rails_4WideTall.obj",
+    "bytes": 79895,
+    "sha256": "4fd05181037747127b32ab5e30b7b8c50144474aa8bcc0fd3847e0b50d4f979a"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Ramp_2.mtl",
+    "bytes": 1123,
+    "sha256": "d14fa995b750a27bfb0d553a293b6415ae61e5402105e49faef90ba73929c2d5"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Ramp_2.obj",
+    "bytes": 2646,
+    "sha256": "b6abd14de090b0061cc406171e2b106da61548b8ed1a9add9c4af4b831f0c94d"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Ramp_2Short.mtl",
+    "bytes": 1123,
+    "sha256": "d14fa995b750a27bfb0d553a293b6415ae61e5402105e49faef90ba73929c2d5"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Ramp_2Short.obj",
+    "bytes": 2624,
+    "sha256": "a37bcd0bf47ab65daaaa773fd4015fd2d5b70fe02ed5dbb2f0552967ef9a829f"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Ramp_4.mtl",
+    "bytes": 1123,
+    "sha256": "d14fa995b750a27bfb0d553a293b6415ae61e5402105e49faef90ba73929c2d5"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Ramp_4.obj",
+    "bytes": 5289,
+    "sha256": "c8820cd7e1c158a8a5b52668d9c495f7146750fd89876baffbb66b9972080cf7"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Ramp_4Wide.mtl",
+    "bytes": 1123,
+    "sha256": "d14fa995b750a27bfb0d553a293b6415ae61e5402105e49faef90ba73929c2d5"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Ramp_4Wide.obj",
+    "bytes": 6489,
+    "sha256": "34aeba00ff9d0eb74e1e476de4aebfbf5a96eca6b6108b07817b00e363e3bea7"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Round1.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Round1.obj",
+    "bytes": 48638,
+    "sha256": "614d9792d58e5616d2300f2234a43ea6bcf043d0bfea6cc33fb50e96da63a3df"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Simple_Curve.mtl",
+    "bytes": 375,
+    "sha256": "4f17d1d1e010688f12f07e7390424b198dda0c63fa770a09d316c46dcc60e379"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Simple_Curve.obj",
+    "bytes": 6177,
+    "sha256": "9a3539c55fd6d7923089865e4bf192c937596b0df251091dea1e202c026acf9d"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Simple.mtl",
+    "bytes": 375,
+    "sha256": "4f17d1d1e010688f12f07e7390424b198dda0c63fa770a09d316c46dcc60e379"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Simple.obj",
+    "bytes": 734,
+    "sha256": "675bca16879099061a8c6d0004d92d46d2a1b793ab00e73302d58c606f7ae7bf"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Simple2_Curve.mtl",
+    "bytes": 375,
+    "sha256": "4f17d1d1e010688f12f07e7390424b198dda0c63fa770a09d316c46dcc60e379"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Simple2_Curve.obj",
+    "bytes": 5230,
+    "sha256": "a6feec00dabec867d985b1ba9e9b101d7337966d99dbfb8bc7348529b1ba1e57"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Simple2.mtl",
+    "bytes": 375,
+    "sha256": "4f17d1d1e010688f12f07e7390424b198dda0c63fa770a09d316c46dcc60e379"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Simple2.obj",
+    "bytes": 736,
+    "sha256": "a7061afb92c01c9ba174ab35966315ac203112750478ff384797c7e27e25d6eb"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Squares_Curve.mtl",
+    "bytes": 381,
+    "sha256": "d22663d67c9b613cfba94a56010de00a9ec9affad6d21d91a60149fbabf76dee"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Squares_Curve.obj",
+    "bytes": 5236,
+    "sha256": "1e86a442eeaf2af8fd58aed3db9374360866cc73ba2552c38e269beadd4ad43b"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Squares.mtl",
+    "bytes": 381,
+    "sha256": "d22663d67c9b613cfba94a56010de00a9ec9affad6d21d91a60149fbabf76dee"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Squares.obj",
+    "bytes": 1760,
+    "sha256": "558142a62511eda8abdffa787a21edbe3c488eb64ddbc0d0b06c5477bce8f2d8"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Stairs_2.mtl",
+    "bytes": 823,
+    "sha256": "9f68599e9439d1e80e1ea0c3cd39330523a20704d11c259f3eba71dcb5f9636a"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Stairs_2.obj",
+    "bytes": 17965,
+    "sha256": "948bc8186f42e25709a14d65648a879e628a44e84e058f13dda8febfd44b6678"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Stairs_4.mtl",
+    "bytes": 823,
+    "sha256": "9f68599e9439d1e80e1ea0c3cd39330523a20704d11c259f3eba71dcb5f9636a"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Stairs_4.obj",
+    "bytes": 36236,
+    "sha256": "6bda016ca81e7d9c1486ca8630399baa13c45892a4f85c1ad8bc650963486005"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Stairs_4Wide.mtl",
+    "bytes": 823,
+    "sha256": "9f68599e9439d1e80e1ea0c3cd39330523a20704d11c259f3eba71dcb5f9636a"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Stairs_4Wide.obj",
+    "bytes": 36483,
+    "sha256": "246a0255271ef7b62880d4743b718d8db8a295decda9484cf513628eeba2f0bf"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Stairs_4WideTall.mtl",
+    "bytes": 823,
+    "sha256": "9f68599e9439d1e80e1ea0c3cd39330523a20704d11c259f3eba71dcb5f9636a"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Stairs_4WideTall.obj",
+    "bytes": 53689,
+    "sha256": "92b4e377ed59d803eb9b2fc7a7dffe3b60aa78a74e4bab860a7d192912f2479f"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Window_Thin.mtl",
+    "bytes": 1182,
+    "sha256": "dc8e6b02cb95d172fb0fa10189ac6bb43add3754734563e61cca6a2526367f6a"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Window_Thin.obj",
+    "bytes": 34056,
+    "sha256": "9ae6f72c75fe5d42afffa03a6369f034c04178d190bd445ef943ef5081154d59"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Window_Wide.mtl",
+    "bytes": 1182,
+    "sha256": "dc8e6b02cb95d172fb0fa10189ac6bb43add3754734563e61cca6a2526367f6a"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_Window_Wide.obj",
+    "bytes": 37555,
+    "sha256": "9ed30b77c9f9cbe7a1e82241b840b248336f0587c35547a89e8ad0ea26ae4bbe"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_X.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Platforms/Platform_X.obj",
+    "bytes": 1742,
+    "sha256": "e50626ed7368cb43fab4ce183b62051fc86cd3e206089190bccafd9a5c743690"
+  },
+  {
+    "path": "OBJ/Props/Prop_AccessPoint.mtl",
+    "bytes": 1175,
+    "sha256": "ae3d172944c01858f384a0048646ff0ed4876aa8dc7fd7b694d2cd169f11f3cc"
+  },
+  {
+    "path": "OBJ/Props/Prop_AccessPoint.obj",
+    "bytes": 51447,
+    "sha256": "0e7ca8d626ca07af5be3e8283fc7db0c770b17702ac5db61d2c926b58e30f039"
+  },
+  {
+    "path": "OBJ/Props/Prop_Barrel_Large.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Props/Prop_Barrel_Large.obj",
+    "bytes": 34126,
+    "sha256": "765f4c818fe65b87fae5ad799ee2dbc299ed79da7bd762388d99bbe8a6d2bd97"
+  },
+  {
+    "path": "OBJ/Props/Prop_Cable_1.mtl",
+    "bytes": 692,
+    "sha256": "4780c8cc98f01d95e6f036ae99ca954928d94263b06df3d5a4766834dfdcc70e"
+  },
+  {
+    "path": "OBJ/Props/Prop_Cable_1.obj",
+    "bytes": 174203,
+    "sha256": "13cc6fc05fa067cad01451898b4c68e66524e8899f165ea32c288b49dc4aeeb3"
+  },
+  {
+    "path": "OBJ/Props/Prop_Cable_3.mtl",
+    "bytes": 692,
+    "sha256": "4780c8cc98f01d95e6f036ae99ca954928d94263b06df3d5a4766834dfdcc70e"
+  },
+  {
+    "path": "OBJ/Props/Prop_Cable_3.obj",
+    "bytes": 359573,
+    "sha256": "41e92db79be2f7d2f6ccbfd77458c4fb8cba2371a35d47a953e1bb0dc9118be5"
+  },
+  {
+    "path": "OBJ/Props/Prop_Chest.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Props/Prop_Chest.obj",
+    "bytes": 21386,
+    "sha256": "9b1e7d66b1e4c9249d19569ff1190ff9385ac1ab4a060a6827bd99cdf4364a78"
+  },
+  {
+    "path": "OBJ/Props/Prop_Clamp.mtl",
+    "bytes": 698,
+    "sha256": "7be0204e01dd487bb02f77a15c25e7333abd50f69230009eeea3ee39046d7bc6"
+  },
+  {
+    "path": "OBJ/Props/Prop_Clamp.obj",
+    "bytes": 28648,
+    "sha256": "b1d2c1865865338bd7f44af76516b68872e5ed138510c543e0ea8cdcfb5a5bf3"
+  },
+  {
+    "path": "OBJ/Props/Prop_Computer.mtl",
+    "bytes": 986,
+    "sha256": "5f0386b66cdcb30f64aacaba65c89ce44c58ab4ed375efe726070f8e73f07de6"
+  },
+  {
+    "path": "OBJ/Props/Prop_Computer.obj",
+    "bytes": 33817,
+    "sha256": "c4696488a5eb13a54a543691708adbb0c683a09146bcbfd703328f579d996014"
+  },
+  {
+    "path": "OBJ/Props/Prop_Crate3.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Props/Prop_Crate3.obj",
+    "bytes": 13604,
+    "sha256": "d04142e86cf851ff0313cd801d4479827af5b019c3f843246256ec338f9b175f"
+  },
+  {
+    "path": "OBJ/Props/Prop_Crate4.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Props/Prop_Crate4.obj",
+    "bytes": 63816,
+    "sha256": "61c7aecb9ca4a0aee7e9936fea93faace2a8abc06761eec4f3117e7a405379ac"
+  },
+  {
+    "path": "OBJ/Props/Prop_Fan_Small_Propeller.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Props/Prop_Fan_Small_Propeller.obj",
+    "bytes": 12969,
+    "sha256": "faf6a13a257e1dd929652c7a69a78e9de0cf4414d7b24d4c76f95ed89e97dc56"
+  },
+  {
+    "path": "OBJ/Props/Prop_Fan_Small.mtl",
+    "bytes": 997,
+    "sha256": "7d85b5fa501b42c4b4b66b850dece0b9094c90c2f9e27adfcca0e43b25ec93d6"
+  },
+  {
+    "path": "OBJ/Props/Prop_Fan_Small.obj",
+    "bytes": 20381,
+    "sha256": "95cc2d4e58aca970f98ab83dc1c72515a112aa94c7a24ae55d4614d3281886f8"
+  },
+  {
+    "path": "OBJ/Props/Prop_ItemHolder.mtl",
+    "bytes": 992,
+    "sha256": "d5ff65ab414c9ab1322ec3f5e4fdf5375cf815050498dbd3be4dd72f6359e537"
+  },
+  {
+    "path": "OBJ/Props/Prop_ItemHolder.obj",
+    "bytes": 16424,
+    "sha256": "f4fa3d51ef6f8cc9e2199ac089edcd89c9890099b7b4909afda1e8f5b128bda1"
+  },
+  {
+    "path": "OBJ/Props/Prop_Light_Corner.mtl",
+    "bytes": 684,
+    "sha256": "01ea6a96ce18066c8a29ee893163d9ea626d1f8bf9da86a96d2c40b46782901e"
+  },
+  {
+    "path": "OBJ/Props/Prop_Light_Corner.obj",
+    "bytes": 99217,
+    "sha256": "d6f17240941206e4aecad82ecb5b36d97f061f9d03af2ef42d9d756fb9abeb1a"
+  },
+  {
+    "path": "OBJ/Props/Prop_Light_Floor.mtl",
+    "bytes": 684,
+    "sha256": "01ea6a96ce18066c8a29ee893163d9ea626d1f8bf9da86a96d2c40b46782901e"
+  },
+  {
+    "path": "OBJ/Props/Prop_Light_Floor.obj",
+    "bytes": 10135,
+    "sha256": "b94abce2a311e1675f6caf9f316e2c2ad925d2bda33b0281becc697dbb18dbea"
+  },
+  {
+    "path": "OBJ/Props/Prop_Light_Small.mtl",
+    "bytes": 684,
+    "sha256": "01ea6a96ce18066c8a29ee893163d9ea626d1f8bf9da86a96d2c40b46782901e"
+  },
+  {
+    "path": "OBJ/Props/Prop_Light_Small.obj",
+    "bytes": 21091,
+    "sha256": "a2ff69aeec2e5e3f7bdfa882756ae2740d98714bb95d74cbc95308907624913b"
+  },
+  {
+    "path": "OBJ/Props/Prop_Light_Wide.mtl",
+    "bytes": 684,
+    "sha256": "01ea6a96ce18066c8a29ee893163d9ea626d1f8bf9da86a96d2c40b46782901e"
+  },
+  {
+    "path": "OBJ/Props/Prop_Light_Wide.obj",
+    "bytes": 21089,
+    "sha256": "d5fc8eaf291de05ccce0662f075869b81e34bd62ddd16e9de5f471ae85a4b47b"
+  },
+  {
+    "path": "OBJ/Props/Prop_PipeHolder.mtl",
+    "bytes": 1131,
+    "sha256": "9530c640ca49384434426f6cdd53099a0c1914234add3b33bec78dc4e43c33e2"
+  },
+  {
+    "path": "OBJ/Props/Prop_PipeHolder.obj",
+    "bytes": 302937,
+    "sha256": "ad79ae038bcd73e00c4f4c8b5cec5601c524768b80b3b0c0d75ad2fe5b8d2296"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_2.mtl",
+    "bytes": 385,
+    "sha256": "9dcc03e986b819e5e60d1745ce91e6e6d40bdd3c35f18f1d369f1d6b73d876bd"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_2.obj",
+    "bytes": 61977,
+    "sha256": "e84db4dc2bfcc0cc8ce88337eee6ee37533d8b8d11e35283c3abc9f068f46994"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_3.mtl",
+    "bytes": 385,
+    "sha256": "9dcc03e986b819e5e60d1745ce91e6e6d40bdd3c35f18f1d369f1d6b73d876bd"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_3.obj",
+    "bytes": 76589,
+    "sha256": "91361a8c2111b62ceee428ef0d712763ef3d243f0766325bb3f011224c5f27ea"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_4.mtl",
+    "bytes": 385,
+    "sha256": "9dcc03e986b819e5e60d1745ce91e6e6d40bdd3c35f18f1d369f1d6b73d876bd"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_4.obj",
+    "bytes": 64131,
+    "sha256": "e6a37d764db5bcf934ec6c2bb4d566c705626bdd05edc5a12d754c61f00ee7bd"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_Incline_Long_L.mtl",
+    "bytes": 385,
+    "sha256": "9dcc03e986b819e5e60d1745ce91e6e6d40bdd3c35f18f1d369f1d6b73d876bd"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_Incline_Long_L.obj",
+    "bytes": 39621,
+    "sha256": "648c4885b3ed98c0658952360715bd1554507990c67affbb34d94cbc28a97edf"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_Incline_Long_R.mtl",
+    "bytes": 385,
+    "sha256": "9dcc03e986b819e5e60d1745ce91e6e6d40bdd3c35f18f1d369f1d6b73d876bd"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_Incline_Long_R.obj",
+    "bytes": 39356,
+    "sha256": "4ef1151cea659fc8bd7c231469a9ae24b924ab6b887d255f7fdfae5b880121b8"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_Incline_Short_L.mtl",
+    "bytes": 385,
+    "sha256": "9dcc03e986b819e5e60d1745ce91e6e6d40bdd3c35f18f1d369f1d6b73d876bd"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_Incline_Short_L.obj",
+    "bytes": 39628,
+    "sha256": "96926ec4fe3015118068c257864630960f5c0f83befd1fe80e3e95e1a441a477"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_Incline_Short_R.mtl",
+    "bytes": 385,
+    "sha256": "9dcc03e986b819e5e60d1745ce91e6e6d40bdd3c35f18f1d369f1d6b73d876bd"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_Incline_Short_R.obj",
+    "bytes": 39351,
+    "sha256": "a1fe495bf3640ba0fad620abae2cb1ae4d44eb0a45d4a7749b88cc7fc09855fe"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_Round_Big.mtl",
+    "bytes": 385,
+    "sha256": "9dcc03e986b819e5e60d1745ce91e6e6d40bdd3c35f18f1d369f1d6b73d876bd"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_Round_Big.obj",
+    "bytes": 125762,
+    "sha256": "2c9159436ed72353da8029719562013111d0756213d731e6acf55597ade5867b"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_Round_Small.mtl",
+    "bytes": 385,
+    "sha256": "9dcc03e986b819e5e60d1745ce91e6e6d40bdd3c35f18f1d369f1d6b73d876bd"
+  },
+  {
+    "path": "OBJ/Props/Prop_Rail_Round_Small.obj",
+    "bytes": 107408,
+    "sha256": "5d3b6c733c70392d426a83b3a75944d4c2146fb5103e403924fd4ba680fe9f0d"
+  },
+  {
+    "path": "OBJ/Props/Prop_Vent_Big.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Props/Prop_Vent_Big.obj",
+    "bytes": 25608,
+    "sha256": "3362cee08fe20c0b3a7309e3226d8a75902c1ea25a1f2989f32a0d59b0e678e6"
+  },
+  {
+    "path": "OBJ/Props/Prop_Vent_Small.mtl",
+    "bytes": 997,
+    "sha256": "7d85b5fa501b42c4b4b66b850dece0b9094c90c2f9e27adfcca0e43b25ec93d6"
+  },
+  {
+    "path": "OBJ/Props/Prop_Vent_Small.obj",
+    "bytes": 18948,
+    "sha256": "db98fb87fa6d5d3a80be28bea66459b033fecfa725ae9db97407fddecd83c1ab"
+  },
+  {
+    "path": "OBJ/Props/Prop_Vent_Wide.mtl",
+    "bytes": 997,
+    "sha256": "7d85b5fa501b42c4b4b66b850dece0b9094c90c2f9e27adfcca0e43b25ec93d6"
+  },
+  {
+    "path": "OBJ/Props/Prop_Vent_Wide.obj",
+    "bytes": 18266,
+    "sha256": "f479d3fe49a9543150d311a28e6ae6602d9a24c7755880b1dd560216d57e9d6f"
+  },
+  {
+    "path": "OBJ/Walls/BottomMetal_Corner_Round_Inner.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Walls/BottomMetal_Corner_Round_Inner.obj",
+    "bytes": 13137,
+    "sha256": "c6e8feb94e6defc29640390bfbe27e49cb49c85cc3e2066cc1ed0f0b9aaab8ee"
+  },
+  {
+    "path": "OBJ/Walls/BottomMetal_Corner_Round_Outer.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Walls/BottomMetal_Corner_Round_Outer.obj",
+    "bytes": 15780,
+    "sha256": "4cc9149b68e18186ded9ac1632cb158902d36bac52a2d0f853f546824703aaa7"
+  },
+  {
+    "path": "OBJ/Walls/BottomMetal_Corner_Square_Inner.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Walls/BottomMetal_Corner_Square_Inner.obj",
+    "bytes": 3040,
+    "sha256": "1f1de201ce2f69b4c879921494190bf14171614e818bf5d651e79e26a0d89370"
+  },
+  {
+    "path": "OBJ/Walls/BottomMetal_Corner_Square_Outer_1.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Walls/BottomMetal_Corner_Square_Outer_1.obj",
+    "bytes": 4568,
+    "sha256": "40fb6436c2ccea7b0c6eeecc32774839e522cbed43f2ed0d66d9ff1b91dbc9aa"
+  },
+  {
+    "path": "OBJ/Walls/BottomMetal_Corner_Square_Outer_2.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Walls/BottomMetal_Corner_Square_Outer_2.obj",
+    "bytes": 1222,
+    "sha256": "1eefcef6dad47ea67263a4aa8279bb02b48f44a296340c152bd7d6463900ff9f"
+  },
+  {
+    "path": "OBJ/Walls/BottomMetal_Straight.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Walls/BottomMetal_Straight.obj",
+    "bytes": 1367,
+    "sha256": "6096ed62a8ea03bd61887e6065c8dc12ceb039c768fa6876e00618d48dbc675f"
+  },
+  {
+    "path": "OBJ/Walls/BottomSimple_Corner_Round_Inner.mtl",
+    "bytes": 814,
+    "sha256": "2d09e5e74f668824faa0a590ad681cf697d604c80ee5afe326afb03d70f9e5d0"
+  },
+  {
+    "path": "OBJ/Walls/BottomSimple_Corner_Round_Inner.obj",
+    "bytes": 9197,
+    "sha256": "2471bdb1f2ee84555ab4d9a0d49765c19628b1cf0f94e8c2e3768ada52e05108"
+  },
+  {
+    "path": "OBJ/Walls/BottomSimple_Corner_Round_Outer.mtl",
+    "bytes": 377,
+    "sha256": "05b6fee5740b4b44d1c76660d9c873b91c4180e591364c5075f85e1260f039ee"
+  },
+  {
+    "path": "OBJ/Walls/BottomSimple_Corner_Round_Outer.obj",
+    "bytes": 11033,
+    "sha256": "39bc54ff279094e254c87b851e09ac350b1cd6d3ee5ea0162e6530e873aadeaa"
+  },
+  {
+    "path": "OBJ/Walls/BottomSimple_Corner_Square_Inner.mtl",
+    "bytes": 377,
+    "sha256": "05b6fee5740b4b44d1c76660d9c873b91c4180e591364c5075f85e1260f039ee"
+  },
+  {
+    "path": "OBJ/Walls/BottomSimple_Corner_Square_Inner.obj",
+    "bytes": 2899,
+    "sha256": "85e87490149287ae217b63519aa77a158c6feba8aa1c8e02474da0d4c07423b5"
+  },
+  {
+    "path": "OBJ/Walls/BottomSimple_Corner_Square_Outer_1.mtl",
+    "bytes": 377,
+    "sha256": "05b6fee5740b4b44d1c76660d9c873b91c4180e591364c5075f85e1260f039ee"
+  },
+  {
+    "path": "OBJ/Walls/BottomSimple_Corner_Square_Outer_1.obj",
+    "bytes": 4648,
+    "sha256": "e34d6fce678e2d90bfc409b528c4d6e305bfc05a745608d15ebb87a416375a17"
+  },
+  {
+    "path": "OBJ/Walls/BottomSimple_Corner_Square_Outer_2.mtl",
+    "bytes": 377,
+    "sha256": "05b6fee5740b4b44d1c76660d9c873b91c4180e591364c5075f85e1260f039ee"
+  },
+  {
+    "path": "OBJ/Walls/BottomSimple_Corner_Square_Outer_2.obj",
+    "bytes": 1104,
+    "sha256": "f8edcb4b30765b608994b5b7dc761af1d09c05ae0de3d6a0dd0f7ef4da50d63e"
+  },
+  {
+    "path": "OBJ/Walls/BottomSimple_Straight.mtl",
+    "bytes": 377,
+    "sha256": "05b6fee5740b4b44d1c76660d9c873b91c4180e591364c5075f85e1260f039ee"
+  },
+  {
+    "path": "OBJ/Walls/BottomSimple_Straight.obj",
+    "bytes": 1394,
+    "sha256": "588049ef7af898c1fa501437a46cedd4136629f21925f6cb6fcb1981a4b2f1b1"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_AccentStrip_Corner_Inner.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_AccentStrip_Corner_Inner.obj",
+    "bytes": 4861,
+    "sha256": "2b77c7a87fb3a7a9ebb2b45157b68ec58278cbf3b8551511a32fd7f97fab7355"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_AccentStrip_Corner_Outer.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_AccentStrip_Corner_Outer.obj",
+    "bytes": 4906,
+    "sha256": "89a8a7a777894096f8957e0ff1dd3ee56dba4f33ad6d122fe2596891c8c08022"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_AccentStrip_Straight.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_AccentStrip_Straight.obj",
+    "bytes": 606,
+    "sha256": "148e3147bbfbbf3c7b7e1694d51fd7d89347c6ae9a1d9e4bbc09a6c219698792"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Band2_Corner_Inner.mtl",
+    "bytes": 680,
+    "sha256": "f5edfa2919291a596a39e95a9ab71eba26d8afe3a1a654d5e45ca10a2430774a"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Band2_Corner_Inner.obj",
+    "bytes": 3528,
+    "sha256": "2a827ce0e108364075616ea7890ad9e7664cf2629624ab89b6352def198c3f51"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Band2_Corner_Outer.mtl",
+    "bytes": 680,
+    "sha256": "f5edfa2919291a596a39e95a9ab71eba26d8afe3a1a654d5e45ca10a2430774a"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Band2_Corner_Outer.obj",
+    "bytes": 3563,
+    "sha256": "4c4a4a0ee3fb6d4f19736c35e9360b287d5fd18e2b4096cdaaca617259267e55"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Band2_Straight.mtl",
+    "bytes": 680,
+    "sha256": "f5edfa2919291a596a39e95a9ab71eba26d8afe3a1a654d5e45ca10a2430774a"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Band2_Straight.obj",
+    "bytes": 674,
+    "sha256": "6b4b4a0db89fc0de4b9ea97f5f7d2297f89a207cf882701736302d0e225dc444"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_DarkMetal2_Corner_Inner.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_DarkMetal2_Corner_Inner.obj",
+    "bytes": 3188,
+    "sha256": "ade24e9219f20d8a7f6352b4eea0b73012c8ce0ff63ec106270b1eb6c21728ab"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_DarkMetal2_Corner_Outer.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_DarkMetal2_Corner_Outer.obj",
+    "bytes": 3230,
+    "sha256": "81939fe0d5c3be7ccaba130b630dc6d8c592e2b4bdaa59997c28d642e115cd48"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_DarkMetal2_Straight.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_DarkMetal2_Straight.obj",
+    "bytes": 563,
+    "sha256": "df5fc751c5e400131c95944166b776d5746cfecb360d3f35c676d8f9b3117165"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_DarkPlastic_Corner_Inner.mtl",
+    "bytes": 377,
+    "sha256": "05b6fee5740b4b44d1c76660d9c873b91c4180e591364c5075f85e1260f039ee"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_DarkPlastic_Corner_Inner.obj",
+    "bytes": 4865,
+    "sha256": "856ce350fac894f8457e8f658e5234e192db9cf40b2355e0c2a145378b9c4ff6"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_DarkPlastic_Corner_Outer.mtl",
+    "bytes": 377,
+    "sha256": "05b6fee5740b4b44d1c76660d9c873b91c4180e591364c5075f85e1260f039ee"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_DarkPlastic_Corner_Outer.obj",
+    "bytes": 4908,
+    "sha256": "84b366495e6276b054203a5daa0635851ecdc968dc13e4ad79b526ca3ef9aa30"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_DarkPlastic_Straight.mtl",
+    "bytes": 377,
+    "sha256": "05b6fee5740b4b44d1c76660d9c873b91c4180e591364c5075f85e1260f039ee"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_DarkPlastic_Straight.obj",
+    "bytes": 611,
+    "sha256": "a204d70387a8e5bd15195ce873d077c2f6a5670b997c8971540499dfef0a82ab"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Metal2_Corner_Inner.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Metal2_Corner_Inner.obj",
+    "bytes": 2972,
+    "sha256": "4c65cddbc47ddbc92019b97660754861009004d72b57f289f67db4543747da65"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Metal2_Corner_Outer.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Metal2_Corner_Outer.obj",
+    "bytes": 3007,
+    "sha256": "7899ca38b4e74586a0188e8c3e060f1fbf1281b10cc68b8df5c1e45e7e7b148f"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Metal2_Straight.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Metal2_Straight.obj",
+    "bytes": 554,
+    "sha256": "93c3ca1f3829ef5f934772a8fe7cfcd2ec7a7b15e3397ac6051047751ac470cb"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_MetalPlates_Corner_Inner.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_MetalPlates_Corner_Inner.obj",
+    "bytes": 4478,
+    "sha256": "64537ddc9c9285cadfac9d2a078ffc18267897ee237e59341276f3ef300c6fed"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_MetalPlates_Corner_Outer.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_MetalPlates_Corner_Outer.obj",
+    "bytes": 4521,
+    "sha256": "a38ae520b0b9a3110ec1a9a006a0985d5e4da7838c6e38e8219bb4fb0e31934c"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_MetalPlates_Straight.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_MetalPlates_Straight.obj",
+    "bytes": 566,
+    "sha256": "c450706ab5f70baea6d0e8323264925e72688b85c65fa8ec5b57c7748d4ac2fe"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Simple1_Corner_Inner.mtl",
+    "bytes": 375,
+    "sha256": "4f17d1d1e010688f12f07e7390424b198dda0c63fa770a09d316c46dcc60e379"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Simple1_Corner_Inner.obj",
+    "bytes": 2971,
+    "sha256": "d65a0040d41f7694561ceeeacee6edf1d0bca737d6272c9f85b7d2cdc299750a"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Simple1_Corner_Outer.mtl",
+    "bytes": 375,
+    "sha256": "4f17d1d1e010688f12f07e7390424b198dda0c63fa770a09d316c46dcc60e379"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Simple1_Corner_Outer.obj",
+    "bytes": 3012,
+    "sha256": "2ea3d3aac95f3f77b8e2db38ae2c92468aa3f9bb986291df2c9be5802ca0058b"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Simple1_Straight.mtl",
+    "bytes": 375,
+    "sha256": "4f17d1d1e010688f12f07e7390424b198dda0c63fa770a09d316c46dcc60e379"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Simple1_Straight.obj",
+    "bytes": 427,
+    "sha256": "36e14952cd96b1b969b149f04358a467c2e8d70a2d0de5fe641a9fd8c73e8315"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Simple2_Corner_Inner.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Simple2_Corner_Inner.obj",
+    "bytes": 2973,
+    "sha256": "c2b86032b8e024d396b7b003a18f8ebe333a45e5523a5a27b2e435982ca6f402"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Simple2_Corner_Outer.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Simple2_Corner_Outer.obj",
+    "bytes": 3014,
+    "sha256": "805de987513b700a51e4cf07c597b693daef9bfb216fb442c9008a0dd7a31353"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Simple2_Straight.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Simple2_Straight.obj",
+    "bytes": 429,
+    "sha256": "9755c7f9243471457bd9a107af4c1ea288c285cc5d2c0bdd5d5982a86ad38380"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Triangles_Corner_Inner.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Triangles_Corner_Inner.obj",
+    "bytes": 4857,
+    "sha256": "2a38e66c0a400c81556d6fcffb9d935bd7c6243006a8b56b2ab919c153574616"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Triangles_Corner_Outer.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Triangles_Corner_Outer.obj",
+    "bytes": 4902,
+    "sha256": "73a8cda063b64a9d75d54290fb9315065be7832455e87e98a4f6ae7943b0db8f"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Triangles_Straight.mtl",
+    "bytes": 503,
+    "sha256": "527e6b3d5833c4e024fa1b2fdab1ccd8d1446983bc360f70f2ab22d13d434b62"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_Triangles_Straight.obj",
+    "bytes": 602,
+    "sha256": "a2d60b39eaae5f49412544ad3398107b484b90a3e82e4e13f8da89741ff5eb12"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_WhitePlate2_Corner_Inner.mtl",
+    "bytes": 375,
+    "sha256": "4f17d1d1e010688f12f07e7390424b198dda0c63fa770a09d316c46dcc60e379"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_WhitePlate2_Corner_Inner.obj",
+    "bytes": 3893,
+    "sha256": "bb6f4b7ed2faa219cf37245f85fe3ddd51104fc786fe38839d876bba12d6fb9b"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_WhitePlate2_Corner_Outer.mtl",
+    "bytes": 375,
+    "sha256": "4f17d1d1e010688f12f07e7390424b198dda0c63fa770a09d316c46dcc60e379"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_WhitePlate2_Corner_Outer.obj",
+    "bytes": 3945,
+    "sha256": "11fed862254991e9b2dca184e1a69bd5193961c782259a721187ee9f2998940f"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_WhitePlate2_Straight.mtl",
+    "bytes": 375,
+    "sha256": "4f17d1d1e010688f12f07e7390424b198dda0c63fa770a09d316c46dcc60e379"
+  },
+  {
+    "path": "OBJ/Walls/ShortWall_WhitePlate2_Straight.obj",
+    "bytes": 912,
+    "sha256": "27713bbbf2f5df1b28a12961a82fa1c65b1d0ab810134298158cdccb3a824152"
+  },
+  {
+    "path": "OBJ/Walls/TopAstra_Corner_Round_Inner.mtl",
+    "bytes": 987,
+    "sha256": "5ebcb9bccce0a32e11e141557246a5562c2245b540f5d59b57d1f3e76d9bb19d"
+  },
+  {
+    "path": "OBJ/Walls/TopAstra_Corner_Round_Inner.obj",
+    "bytes": 11246,
+    "sha256": "ec33b3bf626011b8c8a5b52addd2d5246684eded652f40d25644e1d805f65475"
+  },
+  {
+    "path": "OBJ/Walls/TopAstra_Curve_Round_Outer.mtl",
+    "bytes": 987,
+    "sha256": "5ebcb9bccce0a32e11e141557246a5562c2245b540f5d59b57d1f3e76d9bb19d"
+  },
+  {
+    "path": "OBJ/Walls/TopAstra_Curve_Round_Outer.obj",
+    "bytes": 11295,
+    "sha256": "a9722915a30ba00728578d2c5ae8f956a94008cd89a93aaa39960d9180a5d441"
+  },
+  {
+    "path": "OBJ/Walls/TopAstra_Straight.mtl",
+    "bytes": 987,
+    "sha256": "5ebcb9bccce0a32e11e141557246a5562c2245b540f5d59b57d1f3e76d9bb19d"
+  },
+  {
+    "path": "OBJ/Walls/TopAstra_Straight.obj",
+    "bytes": 5072,
+    "sha256": "22ffc7a475e6a0ba7a5d87c485ce081bd33ebed53c92a91d68c37d9996f2f34f"
+  },
+  {
+    "path": "OBJ/Walls/TopCables_Corner_Round_Inner.mtl",
+    "bytes": 1445,
+    "sha256": "741d9d93321d475c904f7921c735f232d1c506fc7ddcabeb601782ef145b9cd5"
+  },
+  {
+    "path": "OBJ/Walls/TopCables_Corner_Round_Inner.obj",
+    "bytes": 276127,
+    "sha256": "4f48d2f7661e60b38353ce195a2d20de72b9fb3cf8a32b8c28eebd901ff86885"
+  },
+  {
+    "path": "OBJ/Walls/TopCables_Corner_Round_Outer.mtl",
+    "bytes": 1445,
+    "sha256": "741d9d93321d475c904f7921c735f232d1c506fc7ddcabeb601782ef145b9cd5"
+  },
+  {
+    "path": "OBJ/Walls/TopCables_Corner_Round_Outer.obj",
+    "bytes": 276044,
+    "sha256": "05df05291ae24913be2fcc1e4352865a7e50ec5d39e75e7da1312255e8035ef1"
+  },
+  {
+    "path": "OBJ/Walls/TopCables_Corner_Square_Inner.mtl",
+    "bytes": 1445,
+    "sha256": "741d9d93321d475c904f7921c735f232d1c506fc7ddcabeb601782ef145b9cd5"
+  },
+  {
+    "path": "OBJ/Walls/TopCables_Corner_Square_Inner.obj",
+    "bytes": 236741,
+    "sha256": "af390efea2351c96677fcfa68c70213eb4af1d3879015d4612092e8e3747f814"
+  },
+  {
+    "path": "OBJ/Walls/TopCables_Corner_Square_Outer.mtl",
+    "bytes": 1445,
+    "sha256": "741d9d93321d475c904f7921c735f232d1c506fc7ddcabeb601782ef145b9cd5"
+  },
+  {
+    "path": "OBJ/Walls/TopCables_Corner_Square_Outer.obj",
+    "bytes": 236241,
+    "sha256": "cc249612f06322eb7c0760e8668cfad83bee4466f61455f09e684b076b95b159"
+  },
+  {
+    "path": "OBJ/Walls/TopCables_Straight_Hanging.mtl",
+    "bytes": 1445,
+    "sha256": "741d9d93321d475c904f7921c735f232d1c506fc7ddcabeb601782ef145b9cd5"
+  },
+  {
+    "path": "OBJ/Walls/TopCables_Straight_Hanging.obj",
+    "bytes": 278610,
+    "sha256": "c5a113c11abe5804cf32cf1a7fc756d2355dccd38d145acfdfb6ae7c2579bd73"
+  },
+  {
+    "path": "OBJ/Walls/TopCables_Straight.mtl",
+    "bytes": 1445,
+    "sha256": "741d9d93321d475c904f7921c735f232d1c506fc7ddcabeb601782ef145b9cd5"
+  },
+  {
+    "path": "OBJ/Walls/TopCables_Straight.obj",
+    "bytes": 60135,
+    "sha256": "64ed28c8f1e3c5c06ff0455a85c10238a6ddea4ba90ec873e294b320770f6b32"
+  },
+  {
+    "path": "OBJ/Walls/TopPlastic_Corner_Outer.mtl",
+    "bytes": 826,
+    "sha256": "19586b90128f865e62c26a9ea4f585f2a319bc4cf16e867031fabf9b39a55007"
+  },
+  {
+    "path": "OBJ/Walls/TopPlastic_Corner_Outer.obj",
+    "bytes": 8095,
+    "sha256": "ca983aa40e934668b565bd83aa213254cde73b28cde274aed54f760c36e47f58"
+  },
+  {
+    "path": "OBJ/Walls/TopPlastic_Corner_Round_Inner.mtl",
+    "bytes": 1139,
+    "sha256": "a8d8e321f92ea1c8e9eb1b2d223573ab81ecbcfb1c55338f5d6543e36df6d68b"
+  },
+  {
+    "path": "OBJ/Walls/TopPlastic_Corner_Round_Inner.obj",
+    "bytes": 42722,
+    "sha256": "e6d9a03acadacc7d72de5247493e5fda8512abf7a0e34c66fd7a98aa6e8f3774"
+  },
+  {
+    "path": "OBJ/Walls/TopPlastic_Corner_Round_Outer.mtl",
+    "bytes": 1139,
+    "sha256": "a8d8e321f92ea1c8e9eb1b2d223573ab81ecbcfb1c55338f5d6543e36df6d68b"
+  },
+  {
+    "path": "OBJ/Walls/TopPlastic_Corner_Round_Outer.obj",
+    "bytes": 43292,
+    "sha256": "8866231a0523e41329391c85740f96c6599e1c6c287bb4b538d43ef476e5f723"
+  },
+  {
+    "path": "OBJ/Walls/TopPlastic_Straight.mtl",
+    "bytes": 1139,
+    "sha256": "a8d8e321f92ea1c8e9eb1b2d223573ab81ecbcfb1c55338f5d6543e36df6d68b"
+  },
+  {
+    "path": "OBJ/Walls/TopPlastic_Straight.obj",
+    "bytes": 10017,
+    "sha256": "d2e35ae543a71ebeb6d0a02e73f783ffa7762ac5863a0c68376e3d68a2bdb6ec"
+  },
+  {
+    "path": "OBJ/Walls/TopSimple_Corner_Round_Inner.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Walls/TopSimple_Corner_Round_Inner.obj",
+    "bytes": 6693,
+    "sha256": "bc4c357f74152de23c88ee4668567104a39362a10de1075257893fc06268e683"
+  },
+  {
+    "path": "OBJ/Walls/TopSimple_Corner_Round_Outer.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Walls/TopSimple_Corner_Round_Outer.obj",
+    "bytes": 6693,
+    "sha256": "be9e17e25483c7df282a093d6bc6b50e2d60279b6c4c008523c80267713512d6"
+  },
+  {
+    "path": "OBJ/Walls/TopSimple_Straight.mtl",
+    "bytes": 379,
+    "sha256": "59c251754698679c0cb6b47859b5b555db00eb7186d9b3ce1119530e923e246b"
+  },
+  {
+    "path": "OBJ/Walls/TopSimple_Straight.obj",
+    "bytes": 763,
+    "sha256": "81c58cf185ba3eb2aab68709d21323bd2a5ae13117fa9c452cf0f2a27ce5705f"
+  },
+  {
+    "path": "OBJ/Walls/TopWindow_Corner_Curve_Inner.mtl",
+    "bytes": 1198,
+    "sha256": "c9e82cc729cf560e9d2820c6e3cb9e584d5abd8db026721e7ba102cf7b974c13"
+  },
+  {
+    "path": "OBJ/Walls/TopWindow_Corner_Curve_Inner.obj",
+    "bytes": 66718,
+    "sha256": "2c893e3b9197d96fa04ecf69f379f27f912213291a14d2453eb02d0bcca94473"
+  },
+  {
+    "path": "OBJ/Walls/TopWindow_Corner_Curve_Outer.mtl",
+    "bytes": 1198,
+    "sha256": "c9e82cc729cf560e9d2820c6e3cb9e584d5abd8db026721e7ba102cf7b974c13"
+  },
+  {
+    "path": "OBJ/Walls/TopWindow_Corner_Curve_Outer.obj",
+    "bytes": 67436,
+    "sha256": "21b251eb254dc8f0d6ece264f2f3955e7dae565b79583ec1f62696d37867432b"
+  },
+  {
+    "path": "OBJ/Walls/TopWindow_Straight.mtl",
+    "bytes": 1198,
+    "sha256": "c9e82cc729cf560e9d2820c6e3cb9e584d5abd8db026721e7ba102cf7b974c13"
+  },
+  {
+    "path": "OBJ/Walls/TopWindow_Straight.obj",
+    "bytes": 27784,
+    "sha256": "15b9353007fe8c6a94101f419843ad557e12774cec185f188e1dd3e74dec7f0a"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Corner_Round_Inner.mtl",
+    "bytes": 1736,
+    "sha256": "788412ac525c8a5923e51551ea682a4dc226a728e50e3e0d6b5eede6fe94e837"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Corner_Round_Inner.obj",
+    "bytes": 74939,
+    "sha256": "95bd7df3dd64a2de594074425a2e31126107ead4a427ea3a639a04359c9d7fbf"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Corner_Round_Outer.mtl",
+    "bytes": 1736,
+    "sha256": "788412ac525c8a5923e51551ea682a4dc226a728e50e3e0d6b5eede6fe94e837"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Corner_Round_Outer.obj",
+    "bytes": 76234,
+    "sha256": "b95c9709081ad9e3ddb2df38548ac24608fb9ce3420066375f3c0908b6845249"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Corner_Square_Inner.mtl",
+    "bytes": 1736,
+    "sha256": "788412ac525c8a5923e51551ea682a4dc226a728e50e3e0d6b5eede6fe94e837"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Corner_Square_Inner.obj",
+    "bytes": 48530,
+    "sha256": "4dc8151da0fd1d7a0f966009598a3bdb68287e4419b5b3f33c00e76c543d9583"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Corner_Square_Outer.mtl",
+    "bytes": 1736,
+    "sha256": "788412ac525c8a5923e51551ea682a4dc226a728e50e3e0d6b5eede6fe94e837"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Corner_Square_Outer.obj",
+    "bytes": 45345,
+    "sha256": "b9bb8541ebff9e5c8627995f41400dc5b6500ae9252fe313646e3fef4c762fc7"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Straight_Broken.mtl",
+    "bytes": 2049,
+    "sha256": "bd3add39fa1a93e8279809fe4c4453362b48f645e10030e47fe0337414be7e8e"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Straight_Broken.obj",
+    "bytes": 377437,
+    "sha256": "1b5b4b8e2c3a96e747a037b0ce702f355cf280c2bdbb2dee936a94fb8c75a1f4"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Straight_Divided.mtl",
+    "bytes": 1736,
+    "sha256": "788412ac525c8a5923e51551ea682a4dc226a728e50e3e0d6b5eede6fe94e837"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Straight_Divided.obj",
+    "bytes": 23054,
+    "sha256": "1d215bfe2a6912cd13f3d4ce1179f400e0cb75ddba73a3526d1f27c9fcf81c3c"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Straight_Flat_Window.mtl",
+    "bytes": 1493,
+    "sha256": "eda5b9344bb90284372d11dbfffa05c70765f5fa66b3b4d442977d5190703fb3"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Straight_Flat_Window.obj",
+    "bytes": 34774,
+    "sha256": "d1463bcebaf9a0233ee1b3235dc811a00333bcd62a971aea81ee1e9223fc52c3"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Straight_Flat.mtl",
+    "bytes": 999,
+    "sha256": "c7b6f2f9f8ac89911bff08df9b5edd164949847243f8994c61d62d6c13c08bc9"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Straight_Flat.obj",
+    "bytes": 8090,
+    "sha256": "553feee93bdd72f3aebe5c4bf6ace0f8afaadc47259c0d98eeb916401a928ae7"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Straight_Window.mtl",
+    "bytes": 1493,
+    "sha256": "eda5b9344bb90284372d11dbfffa05c70765f5fa66b3b4d442977d5190703fb3"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Straight_Window.obj",
+    "bytes": 35402,
+    "sha256": "6ff79f0731a649513dd399ce21b26c8901e4b9bb20d4470dc24d4553f3eb2df2"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Straight.mtl",
+    "bytes": 1736,
+    "sha256": "788412ac525c8a5923e51551ea682a4dc226a728e50e3e0d6b5eede6fe94e837"
+  },
+  {
+    "path": "OBJ/Walls/WallAstra_Straight.obj",
+    "bytes": 23090,
+    "sha256": "bdaea751b4703724378d4866ae71e6a56531e9fafc7ed79ba320b078ae96e5c3"
+  },
+  {
+    "path": "OBJ/Walls/WallBand_Corner_Round_Inner.mtl",
+    "bytes": 1117,
+    "sha256": "f61192a607b0102b5b99806cae5c59247e3f803aabcd6a9d4b2bf1e78fff3fcc"
+  },
+  {
+    "path": "OBJ/Walls/WallBand_Corner_Round_Inner.obj",
+    "bytes": 8622,
+    "sha256": "6d51dd33c63e1e370d40621bb13226904cb176f708a8365b0088a4da0fee17c8"
+  },
+  {
+    "path": "OBJ/Walls/WallBand_Corner_Round_Outer.mtl",
+    "bytes": 1117,
+    "sha256": "f61192a607b0102b5b99806cae5c59247e3f803aabcd6a9d4b2bf1e78fff3fcc"
+  },
+  {
+    "path": "OBJ/Walls/WallBand_Corner_Round_Outer.obj",
+    "bytes": 8793,
+    "sha256": "ad7b4cb2078fb8057a5081e3488221519987919092211094a0562d624f7238e7"
+  },
+  {
+    "path": "OBJ/Walls/WallBand_Corner_Square_Inner.mtl",
+    "bytes": 1117,
+    "sha256": "f61192a607b0102b5b99806cae5c59247e3f803aabcd6a9d4b2bf1e78fff3fcc"
+  },
+  {
+    "path": "OBJ/Walls/WallBand_Corner_Square_Inner.obj",
+    "bytes": 2362,
+    "sha256": "a0d6e72ef37360bc9dcaefef9781e8b4398d73c74abad9e8783bf2803502249f"
+  },
+  {
+    "path": "OBJ/Walls/WallBand_Corner_Square_Outer.mtl",
+    "bytes": 1117,
+    "sha256": "f61192a607b0102b5b99806cae5c59247e3f803aabcd6a9d4b2bf1e78fff3fcc"
+  },
+  {
+    "path": "OBJ/Walls/WallBand_Corner_Square_Outer.obj",
+    "bytes": 2627,
+    "sha256": "9770481fbe2fc8969f9d78d2d6b3d5dea965578add7a28bc5d52aeafa2de2e1c"
+  },
+  {
+    "path": "OBJ/Walls/WallBand_Straight_Broken.mtl",
+    "bytes": 1117,
+    "sha256": "f61192a607b0102b5b99806cae5c59247e3f803aabcd6a9d4b2bf1e78fff3fcc"
+  },
+  {
+    "path": "OBJ/Walls/WallBand_Straight_Broken.obj",
+    "bytes": 9466,
+    "sha256": "a3cffbb386570876160fa9ac34e1f21f292d6185d8f974c38869c04a717265f2"
+  },
+  {
+    "path": "OBJ/Walls/WallBand_Straight.mtl",
+    "bytes": 1117,
+    "sha256": "f61192a607b0102b5b99806cae5c59247e3f803aabcd6a9d4b2bf1e78fff3fcc"
+  },
+  {
+    "path": "OBJ/Walls/WallBand_Straight.obj",
+    "bytes": 1279,
+    "sha256": "291886386a9416ab8ccb4ed53a1384f76aee6600bca6301f1594ba806c9abae9"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Cap_A.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Cap_A.obj",
+    "bytes": 8558,
+    "sha256": "82702555de287dadc31983abe2b72c70eaf6175434b6ee9cc1f654b3f7d796db"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Cap_B.mtl",
+    "bytes": 816,
+    "sha256": "e94a51153dc2efd1ce59844e27d5ef493de396419a4cf1bbaba7b36bf99c05b1"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Cap_B.obj",
+    "bytes": 8488,
+    "sha256": "44a4944f338174b2e65849a9e5674af3ef933f8f78b2653a709e0a1d1c6f6012"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Corner_Round_Inner.mtl",
+    "bytes": 1312,
+    "sha256": "f96a13ec420376677a9b2ecff1b607d175e26991f562ef85ee3a527847064dcb"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Corner_Round_Inner.obj",
+    "bytes": 101157,
+    "sha256": "cb8529c6a26e459ea500b8dd7d4240203decc793467a2cc75ecf78494a46573d"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Corner_Round_Outer.mtl",
+    "bytes": 1312,
+    "sha256": "f96a13ec420376677a9b2ecff1b607d175e26991f562ef85ee3a527847064dcb"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Corner_Round_Outer.obj",
+    "bytes": 99281,
+    "sha256": "8a581427ec54bd955d101d525abe104a764099d2af55b1e87d2716e0e5e2ceef"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Corner_Square_Inner.mtl",
+    "bytes": 1312,
+    "sha256": "f96a13ec420376677a9b2ecff1b607d175e26991f562ef85ee3a527847064dcb"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Corner_Square_Inner.obj",
+    "bytes": 74221,
+    "sha256": "7a7247064e359ac3364966c921c0f74a3a98b329e01f2edb0e6d3ed010ac4315"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Corner_Square_Outer.mtl",
+    "bytes": 1312,
+    "sha256": "f96a13ec420376677a9b2ecff1b607d175e26991f562ef85ee3a527847064dcb"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Corner_Square_Outer.obj",
+    "bytes": 65904,
+    "sha256": "b320b206dbd90d68cab4e7aff40ceef4c8d902b0e12132357d81f65f4a4a17ca"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Straight.mtl",
+    "bytes": 1312,
+    "sha256": "f96a13ec420376677a9b2ecff1b607d175e26991f562ef85ee3a527847064dcb"
+  },
+  {
+    "path": "OBJ/Walls/WallWindow_Straight.obj",
+    "bytes": 32054,
+    "sha256": "81dcfb17c9a9dcb3de8b83ef6d23657dc8de10c11a881351013e7e1e6d126ea6"
+  },
+  {
+    "path": "Textures/T_Decals.png",
+    "bytes": 161794,
+    "sha256": "cfd1dfe9d3c86a7f5f9bc2e516d935599a70854090f413a29aec0ced1d6c908a"
+  },
+  {
+    "path": "Textures/T_PaddedWall_BaseColor.png",
+    "bytes": 2129999,
+    "sha256": "7b431c76896c8d2de736e33271049fc869f2a8a5c0632678c9f030146e90c650"
+  },
+  {
+    "path": "Textures/T_PaddedWall_Normal.png",
+    "bytes": 3491441,
+    "sha256": "141c075ee32a4dda83c4b954076ea563b86e2a6329d5c536aa7ddccb6c1328bf"
+  },
+  {
+    "path": "Textures/T_PaddedWall_ORM.png",
+    "bytes": 2846320,
+    "sha256": "555039f51a71803be3d617ac03eac05e840ec5b36c269de2115a50e956bff3b2"
+  },
+  {
+    "path": "Textures/T_PaddingWall_Emissive.png",
+    "bytes": 14752,
+    "sha256": "e29de6549929f2d8ba322e9477a290e63f761cf6afd51e114aa5232f7ab60f8a"
+  },
+  {
+    "path": "Textures/T_Trim_01_BaseColor_Red.png",
+    "bytes": 965873,
+    "sha256": "15fc0e344ed35483bc771aaa95c1c2a0b0ec2349a893cf24af18b8742f0842ac"
+  },
+  {
+    "path": "Textures/T_Trim_01_BaseColor.png",
+    "bytes": 980201,
+    "sha256": "a8f3271be2aa9c450ef5ef85c15bf8bcaeeaa48f5fc616df12d1334a96e78605"
+  },
+  {
+    "path": "Textures/T_Trim_01_DetailMask.png",
+    "bytes": 12808,
+    "sha256": "3ce977235dc82314cc8be07dcfe81293a3d0c6b317e267557d3849621dbb47e9"
+  },
+  {
+    "path": "Textures/T_Trim_01_Emissive.png",
+    "bytes": 12619,
+    "sha256": "e031d09286c602e5d5bd847a4f84e88a124a800c1eb151c40302650a955f69bb"
+  },
+  {
+    "path": "Textures/T_Trim_01_Normal.png",
+    "bytes": 585626,
+    "sha256": "1aec7ad47a642fc68216b5a3119341b7dca038c1fc9493df8a15ad4aa27ddbcf"
+  },
+  {
+    "path": "Textures/T_Trim_01_ORM.png",
+    "bytes": 3338790,
+    "sha256": "6ab7ad231df22867652048ebfd602684a9072d45c483ca57df0fcd4cb2cb4feb"
+  },
+  {
+    "path": "Textures/T_Trim_02_BaseColor_Blue.png",
+    "bytes": 1464045,
+    "sha256": "f5b2289f70fed4997f01e6f774c918bc30813ee9ec37f83f479f9bc36e0b68de"
+  },
+  {
+    "path": "Textures/T_Trim_02_BaseColor_Red.png",
+    "bytes": 1150649,
+    "sha256": "4a08abf8dc0a5bf558a0ae38dc0d70eddc328eaa8060725d07b95d7c8a75663c"
+  },
+  {
+    "path": "Textures/T_Trim_02_BaseColor.png",
+    "bytes": 1125543,
+    "sha256": "7b13c6a7d82b434314237c4b1930b8e12ddc69a70ffef28d73cbd178d3ff6293"
+  },
+  {
+    "path": "Textures/T_Trim_02_DetailMask.png",
+    "bytes": 14281,
+    "sha256": "cdbb533d3b25e552e528351c19449a840ec7feec6a62c4cf49c0e8131aad7e81"
+  },
+  {
+    "path": "Textures/T_Trim_02_Normal.png",
+    "bytes": 756841,
+    "sha256": "7faaa7059192f43aded9cc2f93917dd54fd14545509c37318d4e6bf0a8104960"
+  },
+  {
+    "path": "Textures/T_Trim_02_ORM.png",
+    "bytes": 3994352,
+    "sha256": "2a433e6a7fbcec375b5c5e5c7aa57dbe1fd23ca6592f48c52d09dde2d622aab8"
+  },
+  {
+    "path": "Textures/T_Trim_03_BaseColor.png",
+    "bytes": 1285125,
+    "sha256": "2a15eadbedbc928d771ed8f2a7a8c1a16bce89b2836a0ecf34ece7e2fab96769"
+  },
+  {
+    "path": "Textures/T_Trim_03_Cables.png",
+    "bytes": 779284,
+    "sha256": "758a95beccdc9f0621d8b8a283ee2593e04b56f1cd32776165ec85e1568e8eb8"
+  },
+  {
+    "path": "Textures/T_Trim_03_Normal.png",
+    "bytes": 375307,
+    "sha256": "b2c3238cbe2586e44df0b00179adf85e5b7ac7fed1713ec0b807482245a30738"
+  },
+  {
+    "path": "Textures/T_Trim_03_ORM.png",
+    "bytes": 3009230,
+    "sha256": "c57134b5d496b39b955a87765ea32b93567b1ab494fe6b890de24c75dcfd6fe4"
+  }
+]

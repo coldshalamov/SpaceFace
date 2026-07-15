@@ -1,5 +1,7 @@
 # PACKET SAFE-001-REPAIR — Close the rejected runner boundary
 
+> **Manual packet; exact activation required.** See `README.md`. Discovery does not activate it.
+
 packetId: SAFE-001
 revision: repair-1 after independent rejection
 milestone: M0 Wave A

@@ -1,5 +1,5 @@
 // New Game screen (ARCHITECTURE §1.3 step 7, §5; design/specs/09).
-// Pilot name + starter-ship (Kestrel) preview + difficulty -> emit game:new {name,shipId,difficulty}.
+// Pilot name + starter-ship (Hitch / id ship_kestrel) preview + difficulty -> emit game:new.
 // The save system handles game:new (newGame()), seeds GameState and switches to flight.
 import { MODULES } from '../../data/modules.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
@@ -267,8 +267,14 @@ export const newGameScreen = {
     let ngPreview = null;
     try {
       const envMap = ctx.state && ctx.state.render && ctx.state.render.envMap;
-      ngPreview = createShipPreviewMount(previewCanvas, { envMap });
-      ngPreview.show(STARTER_SHIP);
+      ngPreview = createShipPreviewMount(previewCanvas, {
+        envMap,
+        fastPreview: false,
+        allowFastFallback: false,
+        authoredWarmup: true,
+      });
+      // Hitch hero mesh (same as flight).
+      ngPreview.show(STARTER_SHIP, { isPlayer: true, fittings: NEW_GAME.fittedModules || [] });
     } catch (e) { console.warn('[newGame] ship preview failed', e); }
     const ship = starterShip(ctx);
     const grid = el('div', 'sf-grid2');
@@ -350,16 +356,22 @@ export const newGameScreen = {
   },
 
   onShow() {
+    const hitchShow = { isPlayer: true, fittings: NEW_GAME.fittedModules || [] };
     if (refs && refs.preview) {
       try {
         if (typeof refs.preview.setActive === 'function') refs.preview.setActive(true);
-        refs.preview.show(STARTER_SHIP);
+        refs.preview.show(STARTER_SHIP, hitchShow);
       } catch (e) { console.warn('[newGame] ship preview resume failed', e); }
     } else if (refs && refs.previewCanvas) {
       try {
         const envMap = refs.ctx && refs.ctx.state && refs.ctx.state.render && refs.ctx.state.render.envMap;
-        refs.preview = createShipPreviewMount(refs.previewCanvas, { envMap });
-        refs.preview.show(STARTER_SHIP);
+        refs.preview = createShipPreviewMount(refs.previewCanvas, {
+          envMap,
+          fastPreview: false,
+          allowFastFallback: false,
+          authoredWarmup: true,
+        });
+        refs.preview.show(STARTER_SHIP, hitchShow);
       } catch (e) { console.warn('[newGame] ship preview failed', e); }
     }
     if (refs && refs.setLaunching) refs.setLaunching(false);

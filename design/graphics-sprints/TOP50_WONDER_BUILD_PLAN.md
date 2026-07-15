@@ -1,7 +1,9 @@
 # Top-50 Wonder Build Plan
 
 > **ACTIVE PRIORITY SPINE.** This file owns the ranked order and slice outcomes. It does not own global
-> program status, impose iteration quotas, or replace independent visual judgment. Start at `README.md`.
+> program status, impose iteration quotas, or replace independent visual judgment. It also does not
+> activate a sprint merely by being discovered: a user/lead or the program ledger must select a bounded
+> slice before its thread prompts and ownership lanes apply. Start at `README.md`.
 
 **Status:** LIVE — director-facing visual production slate
 **Date:** 2026-07-09  

@@ -1,9 +1,11 @@
 // BP-13/B10 Named Crews & Aces.
 //
-// Durable event layer only: listens for named ace outcomes, records state.aceMemory, and emits the
-// station-news seam. It does not spawn ships or change hostility.
+// Durable lifecycle owner: records named-ace outcomes, schedules director-owned first contacts,
+// spawns only its established promoted-return crews, and emits the station-news seam. It never
+// owns first-contact entities or changes hostility.
 import {
   PIRATE_PROMOTION_MAX_TIER,
+  REACH_CULTURE_ACES,
   aceById,
   aceByName,
   aceFromText,
@@ -13,13 +15,30 @@ import {
   returnPlanForAce,
 } from '../data/namedAces.js';
 import { barkFor } from '../data/barks.js';
+import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { hash32 } from '../core/rng.js';
+import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { makeEnemySpawnSpec } from './combat.js';
 
-export const ACE_MEMORY_VERSION = 1;
+export const ACE_MEMORY_VERSION = 2;
 
-const META_KEYS = new Set(['schemaVersion', 'news', 'activeReturns']);
+const META_KEYS = new Set(['schemaVersion', 'news', 'activeReturns', 'cultureIntros']);
 const RETURN_CHECK_S = 0.5;
+const CULTURE_INTRO_RETRY_S = 10;
+const CULTURE_INTRO_ROUTES = Object.freeze([
+  Object.freeze({
+    aceId: 'ace_maw_rake_veyra', sectorId: 'sector_sker_haven', zoneId: 'zone_sker_gatecamp',
+  }),
+  Object.freeze({
+    aceId: 'ace_rust_lord_orro', sectorId: 'sector_ceres_belt', zoneId: 'zone_ceres_ambush',
+  }),
+  Object.freeze({
+    aceId: 'ace_drift_king_iona', sectorId: 'sector_io_reach', zoneId: 'zone_io_merc',
+  }),
+]);
+const CULTURE_INTRO_ROUTE_BY_SECTOR = new Map(
+  CULTURE_INTRO_ROUTES.map((route) => [route.sectorId, route]),
+);
 
 export const aceMemory = {
   name: 'aceMemory',
@@ -28,6 +47,7 @@ export const aceMemory = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
+    this.registry = ctx.registry || null;
     this._subs = [];
     this._returnAccum = 0;
     ensureMemory(this.state);
@@ -35,6 +55,9 @@ export const aceMemory = {
     this._listen('namedAce:fled', (p) => this._transition('fled', p));
     this._listen('namedAce:defeated', (p) => this._transition('defeated', p));
     this._listen('encounter:receipt', (p) => this._receipt(p));
+    this._listen('encounter:resolved', (p) => this._introResolved(p));
+    this._listen('sector:enter', (p) => this._scheduleCultureIntro(p));
+    this._listen('save:loaded', () => this._rearmCultureIntroAfterLoad());
     this._listen('entity:destroyed', (p) => this._entityDestroyed(p));
     this._listen('massline:tumbled', (p) => this._flung(p));
   },
@@ -57,6 +80,7 @@ export const aceMemory = {
     this._returnAccum = (this._returnAccum || 0) + dt;
     if (this._returnAccum < RETURN_CHECK_S) return;
     this._returnAccum = 0;
+    this._processCultureIntros(state);
     this._processReturns(state);
   },
 
@@ -85,6 +109,7 @@ export const aceMemory = {
     rec.lastSeenAt = nowOf(this.state, payload);
     rec.lastSectorId = sectorOf(this.state, payload);
     if (first) this._emitTransition('encountered', ace, rec);
+    if (payload && payload.signatureSpoken === true) rec.signatureSpoken = true;
     if (!rec.signatureSpoken) {
       rec.signatureSpoken = true;
       this._speakSignature(ace);
@@ -104,6 +129,7 @@ export const aceMemory = {
 
     if (transition === 'fled') {
       if (rec.defeated === true) return;
+      this._suppressCultureIntro(ace.id);
       const first = rec.fled !== true;
       rec.fled = true;
       rec.fledAt = now;
@@ -117,6 +143,7 @@ export const aceMemory = {
     }
 
     if (transition === 'defeated') {
+      this._suppressCultureIntro(ace.id);
       const first = rec.defeated !== true;
       rec.defeated = true;
       rec.defeatedAt = now;
@@ -136,6 +163,95 @@ export const aceMemory = {
     const ace = resolveAce(payload) || aceFromText(payload.text);
     if (!ace) return;
     this._transition(outcome, { ...payload, aceId: ace.id });
+  },
+
+  _scheduleCultureIntro(payload, options = {}) {
+    const sectorId = payload && typeof payload === 'object'
+      ? payload.sectorId
+      : (payload || sectorOf(this.state));
+    const route = CULTURE_INTRO_ROUTE_BY_SECTOR.get(sectorId);
+    if (!route) return;
+    const memory = ensureMemory(this.state);
+    if (!cultureIntroEligible(memory, route.aceId)) {
+      delete memory.cultureIntros[route.aceId];
+      return;
+    }
+    const now = nowOf(this.state);
+    const existing = memory.cultureIntros[route.aceId];
+    if (existing && existing.sectorId === route.sectorId && Number.isFinite(existing.dueAt)) {
+      if (existing.status === 'pending') return;
+      if (existing.status === 'live' && options.rearmLive !== true) return;
+    }
+    memory.cultureIntros[route.aceId] = {
+      aceId: route.aceId,
+      sectorId: route.sectorId,
+      zoneId: route.zoneId,
+      encounterId: `reachCultureIntro:${route.aceId}`,
+      dueAt: now + cultureIntroDelay(seedOf(this.state), route),
+      status: 'pending',
+      attempts: existing && Number.isFinite(existing.attempts) ? existing.attempts : 0,
+    };
+  },
+
+  _rearmCultureIntroAfterLoad() {
+    const sectorId = sectorOf(this.state);
+    const route = CULTURE_INTRO_ROUTE_BY_SECTOR.get(sectorId);
+    if (!route) return;
+    this._scheduleCultureIntro({ sectorId }, { rearmLive: true });
+  },
+
+  _processCultureIntros(state) {
+    const memory = ensureMemory(state);
+    const now = state.simTime || 0;
+    const sectorId = sectorOf(state);
+    const director = this.registry && this.registry.get('encounterDirector');
+    if (!director || typeof director.requestAuthoredEncounter !== 'function') return;
+    for (const [aceId, intro] of Object.entries(memory.cultureIntros)) {
+      if (!cultureIntroEligible(memory, aceId)) {
+        delete memory.cultureIntros[aceId];
+        continue;
+      }
+      if (!intro || intro.status !== 'pending' || intro.sectorId !== sectorId) continue;
+      if (!Number.isFinite(intro.dueAt) || intro.dueAt > now) continue;
+      const result = director.requestAuthoredEncounter({
+        shapeId: 'named_hunter',
+        encounterId: intro.encounterId,
+        sectorId: intro.sectorId,
+        zoneId: intro.zoneId,
+        force: true,
+        respectPacing: true,
+        data: { aceId },
+      });
+      const current = ensureMemory(state).cultureIntros[aceId];
+      if (!current) continue;
+      if (result && result.ok) {
+        current.status = 'live';
+        current.firedAt = now;
+      } else {
+        current.status = 'pending';
+        current.attempts = (current.attempts | 0) + 1;
+        current.lastRejectReason = result && result.reason || 'unavailable';
+        current.dueAt = Math.ceil(now) + CULTURE_INTRO_RETRY_S;
+      }
+    }
+  },
+
+  _introResolved(payload) {
+    if (!payload || !String(payload.encounterId || '').startsWith('reachCultureIntro:')) return;
+    const aceId = String(payload.encounterId).slice('reachCultureIntro:'.length);
+    const memory = ensureMemory(this.state);
+    if (!cultureIntroEligible(memory, aceId)) {
+      delete memory.cultureIntros[aceId];
+      return;
+    }
+    const route = CULTURE_INTRO_ROUTES.find((candidate) => candidate.aceId === aceId);
+    if (!route || route.sectorId !== sectorOf(this.state)) return;
+    this._scheduleCultureIntro({ sectorId: route.sectorId });
+  },
+
+  _suppressCultureIntro(aceId) {
+    const memory = this.state && this.state.aceMemory;
+    if (memory && memory.cultureIntros) delete memory.cultureIntros[aceId];
   },
 
   _flung(payload) {
@@ -250,21 +366,34 @@ export const aceMemory = {
     spec.data = spec.data || {};
     spec.data.ai = spec.data.ai || {};
     const ai = spec.data.ai;
+    const culture = reachCultureDoctrineById(ace.cultureId);
+    const cultureProfile = normalizeFactionBehaviorProfile(
+      culture && culture.factionPresenceDoctrine,
+    );
     ai.squadId = requestId;
     ai.doctrine = 'scavenger';
-    ai.formation = 'wedge';
+    ai.formation = cultureProfile ? cultureProfile.liveFormation : 'wedge';
     ai.spawnContext = 'ace_return';
     ai.encounterKind = 'named_ace_return';
     ai.encounterRole = ship.role;
     ai.forcePlayerTarget = true;
     ai.hostileTeams = [0];
     ai.passive = false;
+    if (cultureProfile) {
+      ai.cultureId = culture.id;
+      ai.combatDoctrineId = cultureProfile.combatDoctrineId;
+      ai.factionPresenceDoctrine = cultureProfile;
+      spec.data.reachCulture = {
+        id: culture.id,
+        label: culture.label,
+      };
+    }
     if (ship.role === 'boss') {
       ai.name = ace.name;
       spec.data.encounterBoss = true;
       spec.data.bountyCr = (spec.data.bountyCr || 0) + 250 * Math.max(1, rec.returnTier | 0);
     }
-    spec.data.aceMemory = {
+    const returnTag = {
       aceId: ace.id,
       aceName: ace.name,
       requestId,
@@ -274,6 +403,8 @@ export const aceMemory = {
       level: ship.level,
       gimmickTag: ace.gimmickTag || 'ace',
     };
+    if (culture) returnTag.cultureId = culture.id;
+    spec.data.aceMemory = returnTag;
     return spec;
   },
 
@@ -390,7 +521,7 @@ function resolveAceFromEntity(entity) {
 }
 
 function freshMemory() {
-  return { schemaVersion: ACE_MEMORY_VERSION, news: {}, activeReturns: {} };
+  return { schemaVersion: ACE_MEMORY_VERSION, news: {}, activeReturns: {}, cultureIntros: {} };
 }
 
 function ensureMemory(state) {
@@ -404,6 +535,7 @@ function normalizeMemory(input) {
   if (!input || typeof input !== 'object') return out;
   out.news = clonePlain(input.news || {});
   out.activeReturns = clonePlain(input.activeReturns || {});
+  out.cultureIntros = clonePlain(input.cultureIntros || {});
   if (input.aces && typeof input.aces === 'object') {
     for (const [id, rec] of Object.entries(input.aces)) out[id] = normalizeRecord(id, rec);
   }
@@ -439,6 +571,20 @@ function normalizeRecord(id, input, ace = null) {
   rec.flungCount = rec.flungCount | 0;
   rec.returnTier = rec.returnTier | 0;
   return rec;
+}
+
+function cultureIntroEligible(memory, aceId) {
+  if (!REACH_CULTURE_ACES[aceId]) return false;
+  const rec = memory && memory[aceId];
+  if (!rec || typeof rec !== 'object') return true;
+  return rec.defeated !== true
+    && rec.fled !== true
+    && rec.returnScheduled !== true
+    && rec.returned !== true;
+}
+
+function cultureIntroDelay(seed, route) {
+  return 60 + (hash32(seed, route.aceId, route.sectorId, 'culture-intro') % 31);
 }
 
 function seedOf(state) {

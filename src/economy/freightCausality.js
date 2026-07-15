@@ -46,6 +46,7 @@ export const FREIGHT_TRADING_ROLES = Object.freeze([
   'courier',
   'miner',
   'smuggler',
+  'express',
 ]);
 
 const ROLE_CAPACITY = Object.freeze({
@@ -53,6 +54,7 @@ const ROLE_CAPACITY = Object.freeze({
   courier: 12,
   miner: 20,
   smuggler: 14,
+  express: 28,
   patrol: 0,
   escort: 0,
   pirate: 0,

@@ -16,6 +16,12 @@ export const MODULES = [
     id: 'mod_shield_aegis_l', name: 'Aegis Shield L', slotType: 'shield', size: 'L', tier: 4, mass: 14, price: 95000, requiresTech: 'tech_hardened_deflectors',
     energyDraw: 9, mods: { shieldFlat: 520, shieldRegenFlat: 14 },
   },
+  {
+    id: 'unique_choir_bell_aegis', baseId: 'mod_shield_aegis_l', name: 'Choir-Bell Aegis', slotType: 'shield', size: 'L', tier: 4, mass: 14, price: 0,
+    energyDraw: 13.5, purchasable: false, unique: true, salvageOnly: true,
+    mods: { shieldFlat: 650, shieldRegenFlat: 14, reactiveMissileKnockback: { usesPerEncounter: 1 } },
+    variantBonuses: { shieldFlatPct: 0.25, energyDrawPct: 0.50, missileKnockbackUsesPerEncounter: 1 },
+  },
 
   // ===================== ENGINES (exactly 1 per ship) =====================
   {
@@ -29,6 +35,12 @@ export const MODULES = [
   {
     id: 'mod_engine_warp_l', name: 'Warp Coil L', slotType: 'engine', size: 'L', tier: 3, mass: 18, price: 70000, requiresTech: 'tech_graviton_drives',
     energyDraw: 12, mods: { topSpeed: 130, accelMult: 1.6, turnMult: 1.25 },
+  },
+  {
+    id: 'unique_pale_coil_warp_drive', baseId: 'mod_engine_warp_l', name: 'Pale-Coil Warp Drive', slotType: 'engine', size: 'L', tier: 3, mass: 18, price: 0,
+    energyDraw: 12, purchasable: false, unique: true, salvageOnly: true,
+    mods: { topSpeed: 149.5, accelMult: 1.6, turnMult: 1.25, microJumpBlink: { usesPerEncounter: 1 } },
+    variantBonuses: { topSpeedPct: 0.15, microJumpBlinkUsesPerEncounter: 1 },
   },
 
   // ===================== CARGO =====================
@@ -70,6 +82,12 @@ export const MODULES = [
     energyDraw: 1, mods: { revealCargo: true },
   },
   {
+    id: 'unique_truesight_scanner', baseId: 'mod_cargo_scanner_s', name: 'Truesight Scanner', slotType: 'utility', size: 'S', tier: 1, mass: 1, price: 0,
+    energyDraw: 1, purchasable: false, unique: true, salvageOnly: true,
+    mods: { revealCargo: true, scanRangeMult: 1.50 },
+    variantBonuses: { scanRangePct: 0.50 },
+  },
+  {
     id: 'mod_market_data_s', name: 'Market Data Uplink S', slotType: 'utility', size: 'S', tier: 1, mass: 1, price: 6000,
     energyDraw: 1, mods: { marketIntel: true },
   },
@@ -86,8 +104,20 @@ export const MODULES = [
     energyDraw: 3, mods: { hullRepairOOC: 4 },
   },
   {
+    id: 'unique_knitbots', baseId: 'mod_repair_nanobots_m', name: 'Knitbots', slotType: 'utility', size: 'M', tier: 3, mass: 6, price: 0,
+    energyDraw: 3, purchasable: false, unique: true, salvageOnly: true,
+    mods: { hullRepairOOC: 4.4, repairDockedDrones: true },
+    variantBonuses: { hullRepairPct: 0.10, repairDockedDrones: true },
+  },
+  {
     id: 'mod_tractor_beam_m', name: 'Tractor Beam M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 12000, requiresTech: 'tech_tractor_systems',
     energyDraw: 3, mods: { magnetRange: 400 },
+  },
+  {
+    id: 'unique_tideline_tractor', baseId: 'mod_tractor_beam_m', name: 'Tideline Tractor', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 0,
+    energyDraw: 6, purchasable: false, unique: true, salvageOnly: true,
+    mods: { magnetRange: 720, tractorWholeWrecks: true },
+    variantBonuses: { magnetRangePct: 0.80, energyDrawPct: 1.00, tractorWholeWrecks: true },
   },
   {
     id: 'mod_targeting_computer_m', name: 'Targeting Computer M', slotType: 'utility', size: 'M', tier: 3, mass: 4, price: 40000, requiresTech: 'tech_fire_control',
@@ -136,6 +166,12 @@ export const MODULES = [
     energyDraw: 5, mods: { cloakBaseRadius: 210, cloakDrainPerS: 0.07, cloakRechargePerS: 0.08 },
   },
   {
+    id: 'unique_quietcloak', baseId: 'mod_cloak_mk2', name: 'Quietcloak', slotType: 'utility', size: 'M', tier: 4, mass: 8, price: 0,
+    energyDraw: 5, purchasable: false, unique: true, salvageOnly: true,
+    mods: { cloakBaseRadius: 168, cloakDrainPerS: 0.056, cloakRechargePerS: 0.096 },
+    variantBonuses: { cloakRadiusPct: -0.20, cloakDrainPct: -0.20, cloakRechargePct: 0.20 },
+  },
+  {
     id: 'mod_charge_rack', name: 'Impulse Charge Rack', slotType: 'utility', size: 'S', tier: 1, mass: 2, price: 18000,
     energyDraw: 1, mods: { impulseChargeCapacity: 8 },
   },
@@ -153,6 +189,12 @@ export const MODULES = [
     energyDraw: 3, mods: { scannerRadiusMult: 1.50, pingPersistMult: 2.00, radarRangePct: 0.35 },
   },
   {
+    id: 'unique_deepsurvey_suite', baseId: 'mod_survey_suite', name: 'Deepsurvey Suite', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 0,
+    energyDraw: 4.5, purchasable: false, unique: true, salvageOnly: true,
+    mods: { scannerRadiusMult: 2.25, pingPersistMult: 4.00, radarRangePct: 0.35, overusePingThreshold: 3 },
+    variantBonuses: { scannerRadiusPct: 0.50, pingPersistPct: 1.00, energyDrawPct: 0.50 },
+  },
+  {
     id: 'mod_smuggler_hold', name: 'Smuggler Hold', slotType: 'cargo', size: 'S', tier: 2, mass: 4, price: 38000,
     energyDraw: 0, legality: 'contraband', mods: { hiddenCargoPct: 0.20, cargoFlat: 8 },
   },
@@ -164,6 +206,12 @@ export const MODULES = [
     id: 'mod_chaff_dispenser_m', name: 'Chaff Dispenser M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 14000, requiresTech: 'tech_deflector_theory',
     energyDraw: 1,
     mods: { countermeasure: { kind: 'chaff', radius: 380, durationS: 3.5, cooldownS: 8, lockBreakPct: 1.0, divertPct: 0.85 } },
+  },
+  {
+    id: 'unique_smokesong_chaff', baseId: 'mod_chaff_dispenser_m', name: 'Smokesong Chaff', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 0,
+    energyDraw: 1, purchasable: false, unique: true, salvageOnly: true,
+    mods: { countermeasure: { kind: 'chaff', radius: 608, durationS: 3.5, cooldownS: 16, lockBreakPct: 1.0, divertPct: 1.0, divertChanceMult: 1.50 } },
+    variantBonuses: { radiusPct: 0.60, divertPct: 0.50, cooldownPct: 1.00 },
   },
   {
     id: 'mod_ecm_jammer_l', name: 'ECM Jammer L', slotType: 'utility', size: 'L', tier: 4, mass: 10, price: 62000, requiresTech: 'tech_fire_control',

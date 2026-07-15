@@ -25,8 +25,14 @@ Current save version: `11`
 - `claims`
 - `aceMemory`
 - `lossLedger`
+- `factionPresence`
+- `bandRadio`
+- `v2Flavor`
 - `aftermathWrecks`
 - `fieldDepletion`
+- `livingPoiBehaviors`
+- `signalInvestigation`
+- `recoveryEncounters`
 - `regionalEcology`
 - `encounterDirector`
 - `flight`
@@ -88,6 +94,7 @@ Current save version: `11`
 | `$.automation.meta.totalPassiveEarnedLifetime` | number | 0 |
 | `$.automation.outposts` | array | length 0 |
 | `$.automation.traders` | array | length 0 |
+| `$.bandRadio` | object | {} |
 | `$.careerLadders` | object | {} |
 | `$.careerOrigins` | object | {} |
 | `$.cargo` | object | {} |
@@ -144,6 +151,7 @@ Current save version: `11`
 | `$.entities.player.vel.z` | number | 0 |
 | `$.entities.simTime` | number | 0 |
 | `$.entities.tick` | number | 0 |
+| `$.factionPresence` | object | {} |
 | `$.factions` | object | {} |
 | `$.fieldDepletion` | object | {} |
 | `$.flight` | object | {} |
@@ -151,6 +159,7 @@ Current save version: `11`
 | `$.flight.modeChangedTick` | number | 0 |
 | `$.flight.modeReason` | string | save |
 | `$.flight.previousMode` | string | manual |
+| `$.livingPoiBehaviors` | object | {} |
 | `$.lossLedger` | object | {} |
 | `$.meta` | object | {} |
 | `$.meta.createdAt` | string | schema-fixture |
@@ -251,6 +260,7 @@ Current save version: `11`
 | `$.player.stats.totalPassiveEarnedLifetime` | number | 0 |
 | `$.player.stats.tradesCount` | number | 0 |
 | `$.player.targetId` | null | null |
+| `$.recoveryEncounters` | object | {} |
 | `$.regionalEcology` | object | {} |
 | `$.scenario` | object | {} |
 | `$.scenario.active` | null | null |
@@ -262,10 +272,14 @@ Current save version: `11`
 | `$.sectorSim` | object | {} |
 | `$.settings` | object | {} |
 | `$.settings.accessibility` | object | {} |
+| `$.settings.accessibility.captionBackground` | boolean | true |
+| `$.settings.accessibility.captions` | boolean | true |
+| `$.settings.accessibility.captionSize` | string | medium |
 | `$.settings.accessibility.colorblindMode` | string | none |
 | `$.settings.accessibility.dyslexiaFont` | boolean | false |
 | `$.settings.accessibility.flashReduce` | boolean | false |
 | `$.settings.accessibility.highContrast` | boolean | false |
+| `$.settings.accessibility.motionPreference` | string | system |
 | `$.settings.audio` | object | {} |
 | `$.settings.audio.master` | number | 0.55 |
 | `$.settings.audio.music` | number | 0.32 |
@@ -306,4 +320,6 @@ Current save version: `11`
 | `$.settings.video.renderScale` | number | 0.85 |
 | `$.settings.video.shadows` | boolean | false |
 | `$.settings.video.vsync` | boolean | true |
+| `$.signalInvestigation` | object | {} |
+| `$.v2Flavor` | object | {} |
 | `$.world` | object | {} |

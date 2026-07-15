@@ -1,0 +1,439 @@
+{
+  "id": "helios_gate",
+  "assetId": "SF_PLACE_HELIOS_GATE",
+  "partId": "place_gate_jump_ring",
+  "liveId": "place_gate_jump_ring",
+  "title": "Helios Gate Landmark",
+  "role": "gate_landmark",
+  "kind": "landmark",
+  "ok": true,
+  "elapsedSec": 242.13,
+  "sourceGlb": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/source/places/helios_gate.glb",
+  "productionBlend": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/blender/helios_gate_production.blend",
+  "sourceBytes": 9804308,
+  "sourceSha256": "1802A19F5E1E3A23E8F00441939DC521E05DB933D42F2769BE0D790AA685C61B",
+  "totalTriangles": 33954,
+  "hullTriangles": 16204,
+  "lod0Triangles": 28701,
+  "sockets": [
+    "SOCKET_Emissive_Ring",
+    "SOCKET_Gate_Aperture",
+    "SOCKET_Structure_Core"
+  ],
+  "materials": [
+    "Material_Accent",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "collisionCoverageMin": 0.92,
+  "lod0WithinBudget": true,
+  "renderCount": 18,
+  "renders": [
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_full.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_readability_close.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_readability_120px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_readability_under45px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_top.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_rear.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_rear_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_detail.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_side_ortho.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_neutral_close.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_gamesky.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_gamesky_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_gamesky_close.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_gameplay.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_lod_continuity_lod0.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_lod_continuity_lod1.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/evidence/renders/helios_gate/helios_gate_lod_continuity_lod2.png"
+  ],
+  "export": {
+    "file": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub_v8/source/places/helios_gate.glb",
+    "bytes": 9804308,
+    "sha256": "1802A19F5E1E3A23E8F00441939DC521E05DB933D42F2769BE0D790AA685C61B",
+    "totalTriangles": 33954,
+    "hullTriangles": 16204,
+    "lodBreakdown": {
+      "lod0": {
+        "triangles": 28701,
+        "primitives": 4,
+        "drawEstimate": 4,
+        "nodes": [
+          {
+            "name": "LOD0_HOOK_EMISSIVE",
+            "tris": 776
+          },
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 11396
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 16025
+          },
+          {
+            "name": "LOD0_Merged_Material_Warm",
+            "tris": 504
+          }
+        ]
+      },
+      "lod1": {
+        "triangles": 3914,
+        "primitives": 3,
+        "drawEstimate": 3,
+        "nodes": [
+          {
+            "name": "LOD1_HOOK_EMISSIVE",
+            "tris": 298
+          },
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 3572
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 44
+          }
+        ]
+      },
+      "lod2": {
+        "triangles": 1339,
+        "primitives": 2,
+        "drawEstimate": 2,
+        "nodes": [
+          {
+            "name": "LOD2_HOOK_EMISSIVE",
+            "tris": 103
+          },
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 1236
+          }
+        ]
+      }
+    },
+    "sockets": [
+      "SOCKET_Emissive_Ring",
+      "SOCKET_Gate_Aperture",
+      "SOCKET_Structure_Core"
+    ],
+    "materials": [
+      "Material_Accent",
+      "Material_Hull",
+      "Material_Mechanical",
+      "Material_Warm"
+    ],
+    "primitiveCount": 9,
+    "tangentPrimitiveCount": 9,
+    "uvPrimitiveCount": 9,
+    "lod0Aabb": {
+      "min": [
+        -10.501546859741211,
+        -18.19999885559082,
+        -14.300000190734863
+      ],
+      "max": [
+        6.800000190734863,
+        18.0902156829834,
+        14.300000190734863
+      ],
+      "size": [
+        17.301547050476074,
+        36.29021453857422,
+        28.600000381469727
+      ],
+      "center": [
+        -1.8507733345031738,
+        -0.05489158630371094,
+        0.0
+      ]
+    },
+    "collisionAabb": {
+      "min": [
+        -9.809484977722168,
+        -16.748390274047853,
+        -13.156000175476075
+      ],
+      "max": [
+        6.107938308715821,
+        16.63860710144043,
+        13.156000175476075
+      ],
+      "size": [
+        15.91742328643799,
+        33.386997375488285,
+        26.31200035095215
+      ],
+      "center": [
+        -1.8507733345031738,
+        -0.05489158630371094,
+        0.0
+      ],
+      "coverage": 0.92
+    },
+    "collisionCoverageRatio": {
+      "perAxis": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "min": 0.92,
+      "mean": 0.92
+    },
+    "images": [
+      {
+        "name": "accent_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "accent_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "accent_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_basecolor",
+        "mimeType": "image/png"
+      }
+    ],
+    "spacefaceAsset": {
+      "contractVersion": 1,
+      "assetId": "SF_PLACE_HELIOS_GATE",
+      "slot": "place",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "textureCompression": "PNG-source",
+      "textureSize": 1024,
+      "chamfered": true,
+      "bevelRadiusM": 0.05,
+      "partId": "place_gate_jump_ring",
+      "liveId": "place_gate_jump_ring",
+      "category": "places",
+      "sourceRole": "place-environment",
+      "packet": "M4-HELIOS-V8-NEW-FOUNDATION-GROK-001",
+      "family": "helios_hub_env_v8",
+      "role": "gate_landmark",
+      "title": "Helios Gate Landmark",
+      "kind": "landmark",
+      "triangleCount": 33954,
+      "hullTriangleCount": 16204,
+      "deliverableRole": "production_multi_lod",
+      "lods": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "wiringStatus": "candidate_pending_promote",
+      "lod0AabbSize": [
+        17.301547050476074,
+        36.29021453857422,
+        28.600000381469727
+      ],
+      "collisionBounds": {
+        "min": [
+          -9.809484977722168,
+          -16.748390274047853,
+          -13.156000175476075
+        ],
+        "max": [
+          6.107938308715821,
+          16.63860710144043,
+          13.156000175476075
+        ],
+        "size": [
+          15.91742328643799,
+          33.386997375488285,
+          26.31200035095215
+        ],
+        "center": [
+          -1.8507733345031738,
+          -0.05489158630371094,
+          0.0
+        ],
+        "coverage": 0.92
+      },
+      "collisionAabb": {
+        "min": [
+          -9.809484977722168,
+          -16.748390274047853,
+          -13.156000175476075
+        ],
+        "max": [
+          6.107938308715821,
+          16.63860710144043,
+          13.156000175476075
+        ],
+        "size": [
+          15.91742328643799,
+          33.386997375488285,
+          26.31200035095215
+        ],
+        "center": [
+          -1.8507733345031738,
+          -0.05489158630371094,
+          0.0
+        ],
+        "coverage": 0.92
+      },
+      "collisionCoverageRatio": {
+        "perAxis": [
+          0.92,
+          0.92,
+          0.92
+        ],
+        "min": 0.92,
+        "mean": 0.92
+      },
+      "triBudget": 30000,
+      "triBudgetAlarm": 16000
+    },
+    "lodBuildStats": [
+      {
+        "lod": "lod0",
+        "decimateRatio": 1.0,
+        "mergedMeshes": [
+          "LOD0_Merged_Material_Hull",
+          "LOD0_Merged_Material_Mechanical",
+          "LOD0_Merged_Material_Warm"
+        ],
+        "separateMeshes": [
+          "LOD0_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [],
+        "triangles": 28701,
+        "objectCount": 4,
+        "explicitGateSilhouette": false
+      },
+      {
+        "lod": "lod1",
+        "decimateRatio": 0.42,
+        "mergedMeshes": [
+          "LOD1_Merged_Material_Hull",
+          "LOD1_Merged_Material_Mechanical"
+        ],
+        "separateMeshes": [
+          "LOD1_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [],
+        "triangles": 3914,
+        "objectCount": 3,
+        "explicitGateSilhouette": true
+      },
+      {
+        "lod": "lod2",
+        "decimateRatio": 0.15,
+        "mergedMeshes": [
+          "LOD2_Merged_Material_Hull"
+        ],
+        "separateMeshes": [
+          "LOD2_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [
+          "Sci-Fi_Station_outer ring pods",
+          "Sci-Fi_Station_outer ring details",
+          "Sci-Fi_Station_outer ring",
+          "Sci-Fi_Station_base ring details",
+          "Sci-Fi_Station_base ring"
+        ],
+        "triangles": 1339,
+        "objectCount": 2,
+        "explicitGateSilhouette": true
+      }
+    ],
+    "withinBudget": true,
+    "lod0WithinBudget": true
+  },
+  "lodStats": [
+    {
+      "lod": "lod0",
+      "decimateRatio": 1.0,
+      "mergedMeshes": [
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Mechanical",
+        "LOD0_Merged_Material_Warm"
+      ],
+      "separateMeshes": [
+        "LOD0_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [],
+      "triangles": 28701,
+      "objectCount": 4,
+      "explicitGateSilhouette": false
+    },
+    {
+      "lod": "lod1",
+      "decimateRatio": 0.42,
+      "mergedMeshes": [
+        "LOD1_Merged_Material_Hull",
+        "LOD1_Merged_Material_Mechanical"
+      ],
+      "separateMeshes": [
+        "LOD1_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [],
+      "triangles": 3914,
+      "objectCount": 3,
+      "explicitGateSilhouette": true
+    },
+    {
+      "lod": "lod2",
+      "decimateRatio": 0.15,
+      "mergedMeshes": [
+        "LOD2_Merged_Material_Hull"
+      ],
+      "separateMeshes": [
+        "LOD2_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [
+        "Sci-Fi_Station_outer ring pods",
+        "Sci-Fi_Station_outer ring details",
+        "Sci-Fi_Station_outer ring",
+        "Sci-Fi_Station_base ring details",
+        "Sci-Fi_Station_base ring"
+      ],
+      "triangles": 1339,
+      "objectCount": 2,
+      "explicitGateSilhouette": true
+    }
+  ]
+}

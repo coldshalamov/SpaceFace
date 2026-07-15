@@ -1,5 +1,8 @@
 # Thread D — Presentation Code (VFX, Feel, Maps)
 
+> **Manual sprint lane.** This scope is exclusive only while Thread D is explicitly activated and its
+> ownership signal is live; it is not a permanent prohibition for later coherent work.
+
 ## Domain (exclusive)
 
 **Owns:** `src/render/vfx.js`, `src/render/vfxProfiles.js`, `src/render/feel.js`, `src/render/spaceBackground.js` (sector mood only), `src/systems/presentationOrchestrator.js` consumers, commodity visual mapping in `world.js` / `visualFactory.js` **only when not touching GLBs**.

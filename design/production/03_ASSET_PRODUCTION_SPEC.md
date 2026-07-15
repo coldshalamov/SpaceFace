@@ -1,5 +1,10 @@
 # 03 — Professional Asset Production Specification
 
+> **Manual campaign contract.** This file governs an asset packet only after a user/lead activates
+> it. Its roles and records are not default instructions for ordinary Blender or asset integration
+> work. Live locks, exporter/runtime contracts, provenance, and player-facing evidence remain valid
+> regardless of workflow.
+
 **Status:** DRAFT proposed acceptance amendment; `design/spec3/SPEC3-F9-asset-pipeline.md` remains
 the active asset authority until AUTH-001 reconciles and activates these additions. This draft must
 not create new visual style, generation, texture, or triangle ceilings before activation.
@@ -83,7 +88,8 @@ asset's visual/functional problem and survive export/runtime. Unjustified techni
 
 ## 3. End-to-end macro-cycle
 
-Hero/cast work receives at least twenty **meaningful review cycles**, but count never grants a pass.
+Hero/cast work receives enough review and repair to resolve the material defects visible in current
+evidence. Review depth follows risk and visible quality; no cycle count grants or withholds a pass.
 Each cycle treats the candidate as a full asset rather than reserving tiny work for later:
 
 1. Open the canonical source and verify hash/provenance.

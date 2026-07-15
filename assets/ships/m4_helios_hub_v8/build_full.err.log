@@ -1,0 +1,57 @@
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v8.py:909: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  if world and world.use_nodes:
+Traceback (most recent call last):
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3751, in main
+    results.append(build_one_asset(asset, mats, tex_map, family_dirs))
+                   ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3420, in build_one_asset
+    shots = render_evidence(all_export_meshes, render_dir, asset_id)
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v8.py", line 1104, in render_evidence_v8
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: FRAMING HARD FAIL helios_hub_station: hero shots outside margin: full, forward_34
+Traceback (most recent call last):
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3751, in main
+    results.append(build_one_asset(asset, mats, tex_map, family_dirs))
+                   ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3420, in build_one_asset
+    shots = render_evidence(all_export_meshes, render_dir, asset_id)
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v8.py", line 1104, in render_evidence_v8
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: FRAMING HARD FAIL helios_gate: hero shots outside margin: full, forward_34
+Traceback (most recent call last):
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3751, in main
+    results.append(build_one_asset(asset, mats, tex_map, family_dirs))
+                   ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3420, in build_one_asset
+    shots = render_evidence(all_export_meshes, render_dir, asset_id)
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v8.py", line 1104, in render_evidence_v8
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: FRAMING HARD FAIL helios_rock_a: hero shots outside margin: full, forward_34
+Traceback (most recent call last):
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3751, in main
+    results.append(build_one_asset(asset, mats, tex_map, family_dirs))
+                   ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3420, in build_one_asset
+    shots = render_evidence(all_export_meshes, render_dir, asset_id)
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v8.py", line 1104, in render_evidence_v8
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: FRAMING HARD FAIL helios_rock_b: hero shots outside margin: readability_close
+Traceback (most recent call last):
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3751, in main
+    results.append(build_one_asset(asset, mats, tex_map, family_dirs))
+                   ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v3.py", line 3420, in build_one_asset
+    shots = render_evidence(all_export_meshes, render_dir, asset_id)
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_m4_helios_hub_v8.py", line 1104, in render_evidence_v8
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: FRAMING HARD FAIL helios_rock_c: hero shots outside margin: full, forward_34

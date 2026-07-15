@@ -10,10 +10,10 @@
 - **The spine:** `STORY_BEATS` — 8 beats at `src/data/missions.js:212-229`. Shape: `{beat, id, objective, reward, introduces, next}`. Beat ids: `cold_start → honest_work → first_blood → bigger_boat → pick_a_side → proving_ground → empire_seed → deep_reach`.
 - **The embodiment pattern already exists.** `src/story/campaign47a/embodiedMissions.js:82-178` defines `EMBODIED_MISSIONS` — exactly 8 entries, one per beat, with `physicalContact` steps that bind world signals (`mining:yield`, `dock:docked`, `scan:completed`, `tether:reel`, `entity:killed`) into ordered sequences. **The pipeline extends this pattern; it does not invent one.**
 - **The narrative overlay:** `src/systems/story.js` (1074 lines) owns NO progression. It reads `state.story` (owned by missions) and, on `story:beatAdvanced{fromIndex,toIndex,branch}` (`story.js:86`, emitted by missions at `missions.js:2689`), fires the beat's devices from `BEAT_CONTENT` via `_onBeatAdvanced` (`story.js:172-221`).
-- **The prose:** `BEAT_CONTENT` at `src/data/narrative.js:241-321` — shape `{beat, phase, hint, graffiti:[{line, where, delayS?, author?}], comms:[ids], hudLie}`.
+- **The prose:** `BEAT_CONTENT` at `src/data/narrative.js` covers the playable B0-B7 spine; triggered extensions use `POST_SPINE_BEAT_CONTENT`. Both use shape `{beat, phase, hint, graffiti:[{line, where, delayS?, author?}], comms:[ids], hudLie}`.
 - **Transition sidecar (read-only):** `src/story/campaign47a/campaignTransitions.js` observes `state.story`, records step progress / fail-recovery, **never advances `beatIndex`**. Sole writer of `beatIndex` is missions' `_advanceStory` (`missions.js:2663`).
 - **Validator exists:** `validateEmbodiedMissions()` at `embodiedMissions.js:412-432` asserts beat-count match + id parity + canonical signals. Exercised by `test/story-campaign47a-embodied-missions.test.mjs` (run via `node scripts/check-m5-story-progression.mjs`).
-- **Contact/dialogue:** `src/story/campaign47a/embodiedDialogue.js` — `card()` factory (id/name/roleLabel/stationHint/blurb/namedCaptainId) and `line()` factory (id/beatIndex/variant/contactId/sender/text/choiceId). Word limits enforced: `MAX_COMMS_WORDS=12`, `MAX_CONTACT_BLURB_WORDS=12`.
+- **Contact/dialogue:** `src/story/campaign47a/embodiedDialogue.js` — `card()` factory (id/name/roleLabel/stationHint/blurb/namedCaptainId) and `line()` factory (id/beatIndex/variant/contactId/sender/text/choiceId). The live file may still contain legacy word-count constants; they are implementation history, not a universal prose-quality law. Judge copy by clarity, voice, display duration, localization resilience, and player-route readability, and coordinate any validator change with the owning story task.
 - **`state.story` ownership (story.js:18-31):** missions owns `beatIndex, branch, flags, chainProgress`; story owns `phase, seenComms, ambientQueue, ambientTimerS, rngSeed, scheduled, graffitiShown, endgameChoice`.
 
 KNOWN BUGS: none P2-specific. The M5 story checks exist as test files under `test/` and run via `scripts/check-m5-story-progression.mjs` — they are **not** wired into `npm run check:*`; run them explicitly.
@@ -31,7 +31,7 @@ Campaign 47-A is already a genuine interactive story — but the beats are **thi
 1. **A physical-contact sequence** that uses *multiple* world signals in an *ordered* way (not a single threshold). B2's `identify → resolve` is the template. A beat that currently fires on one signal should grow a second staged step.
 2. **A signature location** (from P1). The beat's `location.zoneId` / `location.poiId` should resolve to a place with a landmark, not a generic POI.
 3. **A tied encounter** via `encounterDirector` (authority field `encounters:'encounterDirector'`). The beat should *meet* someone, not just receive a comms.
-4. **A custom comms voice** — a `primary` and `failure_recovery` variant in `BEAT_COMMS` (`embodiedDialogue.js:34-56`), within the 12-word limit.
+4. **A custom comms voice** — a `primary` and `failure_recovery` variant in `BEAT_COMMS` (`embodiedDialogue.js:34-56`), concise enough to read in play but long enough to carry voice and actionable meaning.
 5. **A consequence** — a `storyTarget` (named NPC), an `aftermath` (combat wreckage via `aftermathWrecks`), or a `consequenceRoute` (B3) / `consequenceStakes` (B4). Beats that *cost* something are remembered.
 
 **Hard constraint — do NOT advance progression outside missions.** The transition sidecar (`campaignTransitions.js`) is read-only by contract. Beat advancement happens only via missions' `_advanceStory`. This is the #1 way an enthusiastic agent breaks the spine.
@@ -41,7 +41,7 @@ Campaign 47-A is already a genuine interactive story — but the beats are **thi
 | Touch | Purpose | Notes |
 |---|---|---|
 | `src/story/campaign47a/embodiedMissions.js` | deepen the target beat's `EMBODIED_MISSIONS[beat]` entry | main work — add steps, storyTarget, aftermath, consequence routes |
-| `src/story/campaign47a/embodiedDialogue.js` | add `primary` + `failure_recovery` comms + any contact card | respect 12-word limits; validator enforces |
+| `src/story/campaign47a/embodiedDialogue.js` | add `primary` + `failure_recovery` comms + any contact card | preserve voice, legibility, localization, and the live dialogue schema; do not truncate meaningful copy to satisfy an inherited word count |
 | `src/story/campaign47a/campaignTransitions.js` | **only if** the beat needs a new step-validation rule | read-only contract — do not add progression writes |
 | `src/data/narrative.js` | enrich `BEAT_CONTENT[beat]` (hint/graffiti/comms/hudLie) | the prose the overlay fires |
 | `src/data/missions.js` | **rarely** — only if the beat's reward/objective in `STORY_BEATS` genuinely changes | the spine is frozen-ish; prefer enriching embodiment, not rewriting the beat def |
@@ -66,7 +66,7 @@ The entry shape to extend (B2 `first_blood` is the gold-standard template — co
   },
   missionBoardContract: <real contract from MISSION_TYPES> | null | { kind:'existing_branch_intro'|'branch_chain', storyTag },
   consequenceRoutes?, consequenceStakes?, empireSeedPrograms?, observeOnly?, aftermath?,
-  recovery: '<12+ word recovery hint>',
+  recovery: '<clear recovery hint>',
   careerIds: [...],
 }
 ```
@@ -103,7 +103,7 @@ Ordered by "current embodiment thinness × story weight." Each row is one iterat
 
 ## §6. Libraries / tooling
 
-- **No new runtime deps.** This pipeline is pure data + (rarely) missions.js wiring. Everything it needs (`encounterDirector`, `aftermathWrecks`, `campaignTransitions`, `story.js`) is already a system.
+- **Prefer the existing seams.** This pipeline is expected to be mostly data plus occasional missions wiring because `encounterDirector`, `aftermathWrecks`, `campaignTransitions`, and `story.js` already cover the core need. A runtime or build dependency is still allowed when it materially improves the result and its license, bundle/performance, determinism/save, and maintenance impact are documented.
 - **New acceptance check recommended:** a `scripts/check-story-beat-embodiment.mjs` that, for each beat, asserts ≥2 `physicalContact.steps` (or an `observe` gate), a `recovery` string, a `primary` comms variant, and a `consequenceRoutes`/`aftermath`/`storyTarget`/`observeOnly` field (i.e. "the beat has a consequence"). Model it on `scripts/check-mission-standing-ladder.mjs` (data-contract flavor) and call `validateEmbodiedMissions()` first. Wire it as `check:story-beat-embodiment` and add to the `check` aggregate. **Build this check as iteration 0** so every subsequent beat lands against it.
 
 ## §7. Build plan (per beat)
@@ -111,7 +111,7 @@ Ordered by "current embodiment thinness × story weight." Each row is one iterat
 1. Read the target beat's current `EMBODIED_MISSIONS[beat]` entry, its `BEAT_CONTENT[beat]`, and its `STORY_BEATS[beat]`.
 2. Decide the depth adds (§5 row's "Depth to add"). Confirm the staging location's P1 landmark status — if the landmark isn't built yet, either (a) block on P1, or (b) stage at the existing POI and add a TODO to re-stage when the P1 landmark lands. **Don't silently leave it un-staged.**
 3. Add the `physicalContact` steps (ordered-AND), keeping all `signal` values canonical. Add a `storyTarget` / `aftermath` / `consequenceRoutes` as appropriate.
-4. Add `primary` + `failure_recovery` comms in `embodiedDialogue.js` (12-word limit). Add/enrich the contact card if needed.
+4. Add `primary` + `failure_recovery` comms in `embodiedDialogue.js`. Review them at the real display duration and enrich the contact card if needed.
 5. Enrich `BEAT_CONTENT[beat]` (hint, graffiti, comms refs, hudLie) in `narrative.js`.
 6. If the beat needs a new world-signal listener, add it in missions.js init → `_storyTrigger`. Otherwise, no missions.js change.
 7. Run acceptance: `node scripts/check-m5-story-progression.mjs` green · `node scripts/check-story-beat-embodiment.mjs` green (after iteration 0) · `npm run check:sim:compare` (hashEqual:true) · `node scripts/check-tether-gameplay.mjs`.
@@ -124,7 +124,7 @@ Ordered by "current embodiment thinness × story weight." Each row is one iterat
 - **DON'T** advance `beatIndex` from anywhere but missions' `_advanceStory`. The transition sidecar is read-only by contract; violating this double-advances beats and corrupts the spine.
 - **DON'T** use a non-canonical step `signal`. The validator rejects it. If you genuinely need a new signal, add the `bus.on` listener in missions.js first.
 - **DON'T** rewrite `STORY_BEATS` reward/objective casually — the spine is the contract. Enrich *embodiment*, not the beat definition, unless the beat def is genuinely wrong.
-- **DON'T** exceed the 12-word comms/blurb limits — the validator enforces them (and the taste constitution favors terse, loaded lines).
+- **DON'T** turn comms into unreadable text walls or strip them down until voice and instructions disappear. Use player-route timing, localization, and legibility evidence rather than a universal word count.
 - **DON'T** write progression state from `story.js` — it's an overlay, read-only on `state.story` progression fields.
 - **DON'T** leave a beat "sometimes staged" (landmark not built) without a tracked TODO — Wired Feature Policy rejects half-wired work.
 - **DON'T** touch `test/*.expected.json` to make `check:sim:compare` pass — fix the code or flag the golden for a deliberate re-record batch with a named reason.
@@ -145,9 +145,9 @@ A fully-embodied spine is the foundation for the **5 endings (A–E + sandbox)**
 >
 > **If this is iteration 0:** build `scripts/check-story-beat-embodiment.mjs` first (model on `check-mission-standing-ladder.mjs`), wire it as `check:story-beat-embodiment`, then run it against the current beats to establish the baseline. Subsequent beats land against it.
 >
-> **Do:** deepen the beat's `physicalContact` steps (≥2 ordered, or an `observe` gate), add a consequence (`storyTarget`/`aftermath`/`consequenceRoutes`), add `primary`+`failure_recovery` comms (12-word limit), enrich `BEAT_CONTENT`, confirm the staging location (P1 landmark or tracked TODO), run the acceptance checks.
+> **Do:** deepen the beat's `physicalContact` steps (≥2 ordered, or an `observe` gate), add a consequence (`storyTarget`/`aftermath`/`consequenceRoutes`), add readable and voice-specific `primary`+`failure_recovery` comms, enrich `BEAT_CONTENT`, confirm the staging location (P1 landmark or tracked TODO), run the acceptance checks.
 >
-> **FORBIDDEN:** advancing `beatIndex` outside missions' `_advanceStory`. Writing progression state from `story.js`. Non-canonical step signals. Rewriting `STORY_BEATS` casually. Editing `test/*.expected.json`. Editing `src/systems/input.js`. Exceeding comms word limits. "Sometimes staged" work without a tracked TODO.
+> **FORBIDDEN:** advancing `beatIndex` outside missions' `_advanceStory`. Writing progression state from `story.js`. Non-canonical step signals. Rewriting `STORY_BEATS` casually. Editing `test/*.expected.json`. Editing `src/systems/input.js`. Unreadable comms walls. "Sometimes staged" work without a tracked TODO.
 >
 > **Acceptance:** `node scripts/check-m5-story-progression.mjs` green · `node scripts/check-story-beat-embodiment.mjs` green (after iter 0) · `npm run check:story-beats` · `npm run check:sim:compare` (hashEqual:true) · `node scripts/check-tether-gameplay.mjs` · screenshot pair in `.devshots/`.
 >

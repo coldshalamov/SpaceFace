@@ -1,0 +1,31 @@
+{
+  "schema": "spaceface.m4HeliosHub.reviews.v1",
+  "packet": "M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001",
+  "reviews": [
+    {
+      "kind": "spec_review",
+      "status": "pass_with_p2",
+      "notes": [
+        "SPEC3-F8/F9 place family delivered: hub focal, gate landmark, rock a/b/c, modular gantry/dock/nav",
+        "spacefaceAsset stamped; LOD0/1/2 material-merged; emissive hooks keep-separate",
+        "Helios material language: Hull/Mechanical/Accent/Warm/Glass/Rock + 1024 ORM/normal",
+        "Live promote into existing place IDs (no new runtime wiring needed)",
+        "Taste: non-diegetic, dark space, cyan accent emissives for nav readability"
+      ]
+    },
+    {
+      "kind": "quality_review",
+      "status": "pass_after_one_repair",
+      "repair": "Cylindrical continuous hub shell + brighter rock albedo + stronger displace + studio light boost",
+      "remainingP2": [
+        "Rock family still mid-tier low-poly geology — needs sculpt HP→LP bake for Destiny/Eve surface quality",
+        "Gate pylons still somewhat boxy — refine with continuous curved spars",
+        "Smart-project UVs not hand-packed; full multi-cage normal bake deferred",
+        "KTX2 candidates larger than PNG sources (UASTC mipmaps) — consider ETC1S tier for props",
+        "LOD1/2 decimate ratios leave high residual tris on station (boolean density) — retopology pass",
+        "place_station_billboard live slot now holds dock-arm module — semantic name mismatch intentional promote map; consider dedicated live id later"
+      ]
+    }
+  ],
+  "devshotCount": 88
+}

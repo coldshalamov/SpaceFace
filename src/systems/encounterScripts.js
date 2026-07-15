@@ -21,8 +21,15 @@
 //     (the claim-beacon pattern, beacons.js:147) — used for convoy/trader route life.
 
 import { NAMED_CAPTAINS, CONVOY_CARGO, WHISPER_LINES, FACTION_LABELS, tollAmountFor, barkText } from '../data/encounters.js';
+import { REACH_CULTURE_ACES } from '../data/namedAces.js';
+import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { massline2Flag } from '../data/featureFlags.js';
-import { uniqueWreckHeldMass, uniqueWreckPingElite } from './uniqueWreckEncounterScripts.js';
+import {
+  uniqueWreckCassandraHardliners,
+  uniqueWreckHeldMass,
+  uniqueWreckPingElite,
+  uniqueWreckSilverDraftCleaner,
+} from './uniqueWreckEncounterScripts.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
 const TOLL_PAY_DIST = 520;        // brake inside this of the toll leader to hand over the toll
@@ -642,13 +649,34 @@ const whisper = {
 const namedHunter = {
   fire(d, live, state) {
     const named = d.namedState();
-    const pool = NAMED_CAPTAINS.filter((c) => { const n = named[c.id]; return !n || n.alive !== false; });
-    if (!pool.length) return d.abort(live, 'all_dead');
     const rng = d.stream(live, 'captain');
-    const cap = pool[Math.floor(rng() * pool.length) % pool.length];
+    const cultureAce = live.data && REACH_CULTURE_ACES[live.data.aceId] || null;
+    const culture = cultureAce && reachCultureDoctrineById(cultureAce.cultureId);
+    const cultureProfile = culture && culture.factionPresenceDoctrine || null;
+    let cap;
+    if (cultureAce && cultureProfile) {
+      cap = {
+        ...cultureAce,
+        archetype: cultureAce.returnArchetype,
+        combatDoctrineId: cultureProfile.combatDoctrineId,
+        levelBonus: 2,
+        bountyCr: 500,
+        escort: {
+          archetypes: [cultureAce.escortArchetype],
+          size: [1, 1],
+          doctrine: 'scavenger',
+          formation: cultureProfile.liveFormation,
+        },
+      };
+    } else {
+      const pool = NAMED_CAPTAINS.filter((c) => { const n = named[c.id]; return !n || n.alive !== false; });
+      if (!pool.length) return d.abort(live, 'all_dead');
+      cap = pool[Math.floor(rng() * pool.length) % pool.length];
+    }
     const rec = named[cap.id] || (named[cap.id] = { alive: true, tier: 0, escapes: 0, kills: 0, lastSeenSector: null });
     const tier = rec.tier | 0;
     live.data.captainId = cap.id;
+    if (culture) live.data.cultureId = culture.id;
     live.vars.name = cap.name;
 
     const p = d.player(); if (!p) return d.abort(live, 'no_player');
@@ -667,7 +695,10 @@ const namedHunter = {
       factionId: live.factionId,
       context: 'encounter',
       doctrine: 'scavenger',
-      formation: 'wedge',
+      formation: cultureProfile ? cultureProfile.liveFormation : 'wedge',
+      factionPresenceDoctrine: cultureProfile,
+      cultureId: culture && culture.id,
+      namedAceId: cultureAce && cultureAce.id,
       role: 'boss',
       passive: true,                                    // the entrance: silhouette first, guns later
       bossName: cap.name,
@@ -685,6 +716,9 @@ const namedHunter = {
         context: 'encounter',
         doctrine: esc.doctrine || 'scavenger',
         formation: esc.formation || 'wedge',
+        factionPresenceDoctrine: cultureProfile,
+        cultureId: culture && culture.id,
+        namedAceId: cultureAce && cultureAce.id,
         role: 'escort',
         passive: true,
       });
@@ -695,7 +729,28 @@ const namedHunter = {
     live.data.engageAt = d.now() + (live.shape.entranceS || 8);
     live.data.engaged = false;
     live.deadlineAt = d.now() + 300;
-    d.say(live, 'alert', cap.bark || 'miniboss_taunt', live.vars, { primary: true });
+    if (cultureAce && culture) {
+      d.say(
+        live,
+        'alert',
+        `${cap.name}, ${culture.label}: This lane answers to ${cap.crew}.`,
+        live.vars,
+        { primary: true, literal: true },
+      );
+      d.emit('namedAce:appeared', {
+        aceId: cultureAce.id,
+        aceName: cultureAce.name,
+        cultureId: culture.id,
+        encounterId: live.id,
+        sectorId: live.sectorId,
+        zoneId: live.zoneId,
+        spawnedIds: ids.slice(),
+        signatureSpoken: true,
+        t: d.now(),
+      });
+    } else {
+      d.say(live, 'alert', cap.bark || 'miniboss_taunt', live.vars, { primary: true });
+    }
   },
 
   tick(d, live, state, now) {
@@ -845,4 +900,6 @@ export const ENCOUNTER_SCRIPTS = Object.freeze({
   claimThreat,
   uniqueWreckHeldMass,
   uniqueWreckPingElite,
+  uniqueWreckSilverDraftCleaner,
+  uniqueWreckCassandraHardliners,
 });

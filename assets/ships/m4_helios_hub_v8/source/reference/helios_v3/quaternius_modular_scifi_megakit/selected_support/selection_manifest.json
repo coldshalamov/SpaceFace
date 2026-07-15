@@ -1,0 +1,841 @@
+{
+  "classification": "support_only_meso_detail",
+  "never_claim": "Not hero macro topology. Low-poly modular sci-fi kit for station meso-detail / support dressing only.",
+  "include_categories": [
+    "Columns",
+    "Platforms",
+    "Props",
+    "Walls"
+  ],
+  "exclude_categories": [
+    "Aliens",
+    "Decals"
+  ],
+  "exclude_reason": "Aliens are creature assets; Decals are surface markings not structural meso modules.",
+  "selected_module_count": 158,
+  "selected_modules": [
+    {
+      "category": "Columns",
+      "basename": "Column_Astra",
+      "role": "column"
+    },
+    {
+      "category": "Columns",
+      "basename": "Column_Hollow",
+      "role": "column"
+    },
+    {
+      "category": "Columns",
+      "basename": "Column_Large_Straight",
+      "role": "column"
+    },
+    {
+      "category": "Columns",
+      "basename": "Column_MetalSupport",
+      "role": "column"
+    },
+    {
+      "category": "Columns",
+      "basename": "Column_MetalSupport_Curve",
+      "role": "column"
+    },
+    {
+      "category": "Columns",
+      "basename": "Column_Pipes",
+      "role": "column"
+    },
+    {
+      "category": "Columns",
+      "basename": "Column_Round",
+      "role": "column"
+    },
+    {
+      "category": "Columns",
+      "basename": "Column_Simple",
+      "role": "column"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Door_DarkMetal",
+      "role": "door"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Door_Frame_A",
+      "role": "door"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Door_Frame_Square",
+      "role": "door"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Door_Frame_Square_Blocked",
+      "role": "door"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Door_Frame_SquareTall",
+      "role": "door"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Door_Metal",
+      "role": "door"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Door_Simple",
+      "role": "door"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_3Plates",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_CenterPlate",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_CenterPlate_Curve",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_DarkPlates",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_DarkPlates_Curves",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Metal",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Metal_Curve",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Metal2",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Metal2_Curve",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Rails_2",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Rails_4",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Rails_4Wide",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Rails_4WideTall",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Ramp_2",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Ramp_2Short",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Ramp_4",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Ramp_4Wide",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Round1",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Simple",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Simple_Curve",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Simple2",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Simple2_Curve",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Squares",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Squares_Curve",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Stairs_2",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Stairs_4",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Stairs_4Wide",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Stairs_4WideTall",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Window_Thin",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_Window_Wide",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Platforms",
+      "basename": "Platform_X",
+      "role": "floor_platform"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_AccessPoint",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Barrel_Large",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Cable_1",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Cable_3",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Chest",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Clamp",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Computer",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Crate3",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Crate4",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Fan_Small",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_ItemHolder",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Light_Corner",
+      "role": "support_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Light_Floor",
+      "role": "support_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Light_Small",
+      "role": "support_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Light_Wide",
+      "role": "support_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_PipeHolder",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Rail_2",
+      "role": "support_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Rail_3",
+      "role": "support_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Rail_4",
+      "role": "support_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Rail_Incline_Long_L",
+      "role": "support_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Rail_Incline_Long_R",
+      "role": "support_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Rail_Incline_Short_L",
+      "role": "support_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Rail_Incline_Short_R",
+      "role": "support_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Rail_Round_Big",
+      "role": "support_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Rail_Round_Small",
+      "role": "support_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Vent_Big",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Vent_Small",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Props",
+      "basename": "Prop_Vent_Wide",
+      "role": "machinery_prop"
+    },
+    {
+      "category": "Walls",
+      "basename": "BottomMetal_Corner_Round_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "BottomMetal_Corner_Round_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "BottomMetal_Corner_Square_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "BottomMetal_Corner_Square_Outer_1",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "BottomMetal_Corner_Square_Outer_2",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "BottomMetal_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "BottomSimple_Corner_Round_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "BottomSimple_Corner_Round_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "BottomSimple_Corner_Square_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "BottomSimple_Corner_Square_Outer_1",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "BottomSimple_Corner_Square_Outer_2",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "BottomSimple_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_AccentStrip_Corner_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_AccentStrip_Corner_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_AccentStrip_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Band2_Corner_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Band2_Corner_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Band2_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_DarkMetal2_Corner_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_DarkMetal2_Corner_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_DarkMetal2_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_DarkPlastic_Corner_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_DarkPlastic_Corner_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_DarkPlastic_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Metal2_Corner_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Metal2_Corner_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Metal2_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_MetalPlates_Corner_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_MetalPlates_Corner_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_MetalPlates_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Simple1_Corner_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Simple1_Corner_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Simple1_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Simple2_Corner_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Simple2_Corner_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Simple2_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Triangles_Corner_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Triangles_Corner_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_Triangles_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_WhitePlate2_Corner_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_WhitePlate2_Corner_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "ShortWall_WhitePlate2_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopAstra_Corner_Round_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopAstra_Curve_Round_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopAstra_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopCables_Corner_Round_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopCables_Corner_Round_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopCables_Corner_Square_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopCables_Corner_Square_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopCables_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopCables_Straight_Hanging",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopPlastic_Corner_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopPlastic_Corner_Round_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopPlastic_Corner_Round_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopPlastic_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopSimple_Corner_Round_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopSimple_Corner_Round_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopSimple_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopWindow_Corner_Curve_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopWindow_Corner_Curve_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "TopWindow_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallAstra_Corner_Round_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallAstra_Corner_Round_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallAstra_Corner_Square_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallAstra_Corner_Square_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallAstra_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallAstra_Straight_Broken",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallAstra_Straight_Divided",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallAstra_Straight_Flat",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallAstra_Straight_Flat_Window",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallAstra_Straight_Window",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallBand_Corner_Round_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallBand_Corner_Round_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallBand_Corner_Square_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallBand_Corner_Square_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallBand_Straight",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallBand_Straight_Broken",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallWindow_Cap_A",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallWindow_Cap_B",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallWindow_Corner_Round_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallWindow_Corner_Round_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallWindow_Corner_Square_Inner",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallWindow_Corner_Square_Outer",
+      "role": "wall"
+    },
+    {
+      "category": "Walls",
+      "basename": "WallWindow_Straight",
+      "role": "wall"
+    }
+  ],
+  "roles": [
+    {
+      "role": "column",
+      "count": 8
+    },
+    {
+      "role": "door",
+      "count": 7
+    },
+    {
+      "role": "floor_platform",
+      "count": 31
+    },
+    {
+      "role": "machinery_prop",
+      "count": 15
+    },
+    {
+      "role": "support_prop",
+      "count": 13
+    },
+    {
+      "role": "wall",
+      "count": 84
+    }
+  ],
+  "formats_copied": [
+    "glTF",
+    "OBJ",
+    "FBX",
+    "Textures"
+  ],
+  "note_fbx": "FBX folder from Standard pack only (not FBX (Unity) engine-specific export)."
+}

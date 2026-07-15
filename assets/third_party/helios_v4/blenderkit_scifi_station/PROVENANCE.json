@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "asset": {
+    "displayName": "Sci-Fi Station",
+    "internalName": "Sci-Fi Station base ring",
+    "author": "Pastean Narcis Dan",
+    "authorId": 1986,
+    "authorPortfolio": "https://npdan.artstation.com/",
+    "assetBaseId": "b180fdbd-668f-4081-ad51-f364e829f11d",
+    "versionId": "83d164c8-2aa1-4be4-bceb-ebb4f2cdc280",
+    "fileId": 157767,
+    "sourcePage": "https://www.blenderkit.com/asset-gallery-detail/b180fdbd-668f-4081-ad51-f364e829f11d/",
+    "metadataApi": "https://www.blenderkit.com/api/v1/search/?query=asset_base_id:b180fdbd-668f-4081-ad51-f364e829f11d",
+    "licensePage": "https://www.blenderkit.com/docs/licenses/",
+    "license": "CC0-1.0",
+    "licenseEvidence": "The official BlenderKit API metadata reports license=cc_zero and verificationStatus=validated.",
+    "verificationStatus": "validated"
+  },
+  "acquisition": {
+    "method": "Official BlenderKit public download API, free asset, no login",
+    "acquiredAt": "2026-07-11",
+    "localFile": "blenderkit_scifi_station_cc0.blend",
+    "bytes": 6967422,
+    "sha256": "F4818E9771E2E5BD5E990A40AFC24394615AB3E751062ED1B23C1D16D98487B6"
+  },
+  "sourceProperties": {
+    "sourceApplication": "Blender 3.3.1",
+    "faceCount": 119303,
+    "renderFaceCount": 238606,
+    "objectCount": 11,
+    "nodeCount": 18,
+    "materials": [
+      "Sci-Fi_Station_base material",
+      "Sci-Fi_Station_lights"
+    ],
+    "purePbr": true,
+    "animated": true,
+    "uv": true,
+    "textureCount": 0,
+    "dimensions": [87.2246, 87.2246, 58.329]
+  },
+  "integrationIntent": {
+    "status": "candidate-only",
+    "livePromotion": false,
+    "purpose": "Helios V4 megastructure and gate spine",
+    "requiredBeforePromotion": [
+      "Remove game-scale needle noise while preserving layered macro silhouette",
+      "Add functional docking masses and approach lanes",
+      "Apply industrial PBR material separation and Helios cyan wayfinding",
+      "Create valid LOD and collision contract",
+      "Pass held-out semi-top-down gameplay-camera visual review at K0-or-better quality"
+    ]
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "schema": "spaceface.kestrelBorrowedTimeV3Finalize.v1",
+  "packet": "PROFESSIONAL-KESTREL-BORROWED-TIME-V3-CODEX-001",
+  "candidateOnly": true,
+  "livePromotion": false,
+  "acceptanceClaim": false,
+  "ok": true,
+  "errors": [],
+  "source": "assets/ships/kestrel_borrowed_time_v3/source/wholeships/kestrel_borrowed_time_v3.glb",
+  "candidate": "assets/ships/kestrel_borrowed_time_v3/release_candidates/wholeships/kestrel_borrowed_time_v3.glb",
+  "sourceBytes": 14590224,
+  "candidateBytes": 14268492,
+  "sourceSha256": "DCF513205F5DD4D3833A9A2F6682B01F5CFC8AA37941988A5910DF8908DFADEB",
+  "candidateSha256": "55741217724CBA8A19BFFF9C48625E20B82C4F4D8587E09E2FFA1047E843F31F",
+  "lod": {
+    "lod0": 18726,
+    "lod1": 7792,
+    "lod2": 1166
+  },
+  "materials": [
+    "Material_Drive_Core",
+    "Material_Mechanical",
+    "Material_Cyan_Emissive",
+    "Material_Cyan_Paint",
+    "Material_Decal_BorrowedTime",
+    "Material_Decal_Hazard",
+    "Material_Decal_Stencils",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Repair_Paint",
+    "Material_Warm_Emissive",
+    "Material_Warm_Paint"
+  ],
+  "sockets": [
+    "SOCKET_Weapon_Front",
+    "SOCKET_Mining_Front",
+    "SOCKET_Engine_Main",
+    "SOCKET_Trail_Main",
+    "SOCKET_Utility_Dorsal",
+    "SOCKET_Cargo_Ventral",
+    "SOCKET_Camera_Focus",
+    "SOCKET_RCS_Port",
+    "SOCKET_RCS_Starboard"
+  ],
+  "meshoptBufferViews": 129,
+  "ktx2Images": 18,
+  "imageCount": 18,
+  "shots": [
+    {
+      "name": "close",
+      "mode": "close",
+      "w": 960,
+      "h": 540,
+      "path": "assets/ships/kestrel_borrowed_time_v3/evidence/three/kestrel_v3_three_close.png",
+      "devshot": "assets/ships/kestrel_borrowed_time_v3/evidence/devshots/kestrel_v3_three_close.png",
+      "bytes": 140621,
+      "sha256": "9B9CC916E570A4833884A9BE60AE9D707DF9ACF7243096CE15AA692E65CDC801",
+      "meta": {
+        "ready": true,
+        "meshes": 32,
+        "size": [
+          27.83963108062744,
+          6.941658451349415,
+          13.280243105522667
+        ]
+      }
+    },
+    {
+      "name": "mid",
+      "mode": "mid",
+      "w": 512,
+      "h": 512,
+      "path": "assets/ships/kestrel_borrowed_time_v3/evidence/three/kestrel_v3_three_mid.png",
+      "devshot": "assets/ships/kestrel_borrowed_time_v3/evidence/devshots/kestrel_v3_three_mid.png",
+      "bytes": 51179,
+      "sha256": "FF77AB952D60F6C78E21E7F6A0DAEDD97333C04078CDBEC1AF4CFCF3E351D42F",
+      "meta": {
+        "ready": true,
+        "meshes": 32,
+        "size": [
+          27.83963108062744,
+          6.941658451349415,
+          13.280243105522667
+        ]
+      }
+    },
+    {
+      "name": "120px",
+      "mode": "px120",
+      "w": 120,
+      "h": 120,
+      "path": "assets/ships/kestrel_borrowed_time_v3/evidence/three/kestrel_v3_three_120px.png",
+      "devshot": "assets/ships/kestrel_borrowed_time_v3/evidence/devshots/kestrel_v3_three_120px.png",
+      "bytes": 4579,
+      "sha256": "BFE063EEA4C98C1BA006278939E88EE4CB842E256716EA0C9B11EA57E8619C31",
+      "meta": {
+        "ready": true,
+        "meshes": 32,
+        "size": [
+          27.83963108062744,
+          6.941658451349415,
+          13.280243105522667
+        ]
+      }
+    },
+    {
+      "name": "under45px",
+      "mode": "far",
+      "w": 40,
+      "h": 40,
+      "path": "assets/ships/kestrel_borrowed_time_v3/evidence/three/kestrel_v3_three_under45px.png",
+      "devshot": "assets/ships/kestrel_borrowed_time_v3/evidence/devshots/kestrel_v3_three_under45px.png",
+      "bytes": 776,
+      "sha256": "CF079D803B54C36F35204A06CDA9E09731F92C5A77412DE4DA3D956BE615F7AD",
+      "meta": {
+        "ready": true,
+        "meshes": 32,
+        "size": [
+          27.83963108062744,
+          6.941658451349415,
+          13.280243105522667
+        ]
+      }
+    }
+  ]
+}

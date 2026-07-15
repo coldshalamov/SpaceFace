@@ -1,0 +1,824 @@
+{
+  "schema": "spaceface.third_party.provenance.v1",
+  "package": "helios_v3",
+  "purpose": "PROFESSIONAL-HELIOS-HUB-V3 input acquisition only \u2014 reference/kitbash sources under third_party; not wired to release pipeline",
+  "acquiredAt": "2026-07-11T15:17:54.3761771-04:00",
+  "reverifyPolicy": "Independent re-fetch of originator license pages on 2026-07-11 before download; only unambiguous CC0 from originator domains",
+  "exclusions": [
+    "NASA media (endorsement/insignia constraints)",
+    "Marketplace reposts",
+    "CC-BY (and any non-CC0) sources",
+    "Ambiguous / no-license sources",
+    "Low-quality primitive packs beyond one bounded structure kit",
+    "8k/16k redundant map resolutions"
+  ],
+  "researchInputs": [
+    ".campaign/parallel-research-20260710/free-asset-sourcing.out.txt",
+    ".campaign/parallel-research-20260710/free-asset-provenance-review.out.txt",
+    "Note: .campaign/parallel-research-20260711/helios-v3-free-asset-sourcing.out.txt and helios-v3-license-quality-verification.out.txt were empty (0 bytes); independent license re-verification performed against originator pages"
+  ],
+  "licenseSnapshots": [
+    ".campaign/parallel-research-20260711/helios-v3-acquisition/license_snapshots/polyhaven_license.html",
+    ".campaign/parallel-research-20260711/helios-v3-acquisition/license_snapshots/ambientcg_license.html",
+    ".campaign/parallel-research-20260711/helios-v3-acquisition/license_snapshots/kenney_space_kit.html",
+    ".campaign/parallel-research-20260711/helios-v3-acquisition/license_snapshots/cc0_deed.html"
+  ],
+  "siteLicenseVerbatimShort": {
+    "polyhaven": "CC0 1.0 \u2014 You can use our assets for any purpose, including commercial work. You do not need to give credit. You can redistribute them, share them around, include them when sharing your own work, or even in a product you sell. (https://polyhaven.com/license)",
+    "ambientcg": "Creative Commons CC0 1.0 Universal License \u2014 You can copy, modify, distribute and perform the assets, even for commercial purposes; you can include the raw files in your project, for example a video game. (https://docs.ambientcg.com/license/)",
+    "kenney_space_kit": "Creative Commons CC0 (https://kenney.nl/assets/space-kit License field + pack License.txt)"
+  },
+  "writablePathsOnly": [
+    "assets/third_party/helios_v3/**",
+    ".campaign/parallel-research-20260711/helios-v3-acquisition/**"
+  ],
+  "notTouched": [
+    "assets/ships/parts",
+    "assets/ships/release",
+    "manifests",
+    "QUEUE",
+    "src/render",
+    "package.json",
+    "V1/V2 helios outputs",
+    "running processes"
+  ],
+  "acceptedCount": 11,
+  "rejectedCount": 6,
+  "sources": [
+    {
+      "id": "kenney_space_kit",
+      "source": "Kenney",
+      "title": "Space Kit (pack License.txt: 2.0; page listed 1.0)",
+      "type": "pack",
+      "canonicalUrl": "https://kenney.nl/assets/space-kit",
+      "downloadUrl": "https://kenney.nl/media/pages/assets/space-kit/20874c75ac-1677698978/kenney_space-kit.zip",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseIdentifier": "CC0 1.0",
+      "attributionStatus": "Not required; credit appreciated (do not use Kenney logo)",
+      "extractDir": "assets/third_party/helios_v3/kenney_space_kit",
+      "qualityRole": "Modular station/exterior structure kitbash and silhouette reference only \u2014 low-poly stylized; not hero surface quality",
+      "reverifyDate": "2026-07-11",
+      "format": null,
+      "resolution": null,
+      "polycount": "low-poly pack (~150 files)",
+      "acquiredArchive": "kenney_space-kit.zip",
+      "archiveBytes": 6677531,
+      "archiveSha256": "d5d7cdf2635ed5a43a9187deaf409b6f47484e402321128341d3c3698e9ef4d9",
+      "extractedFileCount": 1694,
+      "formatStats": ".dae=153, .fbx=153, .glb=153, .mtl=153, .obj=153, .png=772, .stl=153, .txt=1, .url=3",
+      "fileInventorySample": [
+        "Instructions.url",
+        "Kenney.url",
+        "License.txt",
+        "Patreon.url",
+        "Preview.png",
+        "Sample.png",
+        "Isometric\\alien_E.png",
+        "Isometric\\alien_N.png",
+        "Isometric\\alien_NE.png",
+        "Isometric\\alien_NW.png",
+        "Isometric\\alien_S.png",
+        "Isometric\\alien_SE.png",
+        "Isometric\\alien_SW.png",
+        "Isometric\\alien_W.png",
+        "Isometric\\astronautA_E.png",
+        "Isometric\\astronautA_N.png",
+        "Isometric\\astronautA_NE.png",
+        "Isometric\\astronautA_NW.png",
+        "Isometric\\astronautA_S.png",
+        "Isometric\\astronautA_SE.png",
+        "Isometric\\astronautA_SW.png",
+        "Isometric\\astronautA_W.png",
+        "Isometric\\astronautB_E.png",
+        "Isometric\\astronautB_N.png",
+        "Isometric\\astronautB_NE.png",
+        "Isometric\\astronautB_NW.png",
+        "Isometric\\astronautB_S.png",
+        "Isometric\\astronautB_SE.png",
+        "Isometric\\astronautB_SW.png",
+        "Isometric\\astronautB_W.png",
+        "Isometric\\barrel_NE.png",
+        "Isometric\\barrel_NW.png",
+        "Isometric\\barrel_SE.png",
+        "Isometric\\barrel_SW.png",
+        "Isometric\\barrels_NE.png",
+        "Isometric\\barrels_NW.png",
+        "Isometric\\barrels_rail_NE.png",
+        "Isometric\\barrels_rail_NW.png",
+        "Isometric\\barrels_rail_SE.png",
+        "Isometric\\barrels_rail_SW.png"
+      ],
+      "originatorLicenseFile": "assets/third_party/helios_v3/kenney_space_kit/License.txt",
+      "originatorLicenseTextShort": "Space Kit (2.0)\r\n\r\n\tCreated/distributed by Kenney (www.kenney.nl)\r\n\tCreation date: 27-08-2020 14:20\r\n\r\n\t\t\t------------------------------\r\n\r\n\tLicense: (Creative Commons Zero, CC0)\r\n\thttp://creativecommons.org/publicdomain/zero/1.0/\r\n\r\n\tThis content is free to use in personal, educational and commercial projects.\r\r\n\tSupport us by crediting Kenney or www.kenney.nl (this is not mandatory)\r\n\r\n\t\t\t------------------------------\r\n\r\n\tDonate:   http://support.kenney.nl\r\n\tRequest:  http://request.kenney.nl\r\n\tPatreon:  http://patreon.com/kenney/\r\n\r\n\tFollow on Twitter for updates:\r\n\thttp://twitter.com/KenneyNL"
+    },
+    {
+      "id": "Barrel_01",
+      "source": "Poly Haven",
+      "title": "Barrel_01",
+      "type": "model",
+      "canonicalUrl": "https://polyhaven.com/a/Barrel_01",
+      "downloadUrl": [
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/Barrel_01/Barrel_01_2k.gltf",
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/Barrel_01/Barrel_01.bin",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/Barrel_01/Barrel_01_explosive_arm_2k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/Barrel_01/Barrel_01_explosive_diff_2k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/Barrel_01/Barrel_01_explosive_nor_gl_2k.jpg"
+      ],
+      "licenseUrl": "https://polyhaven.com/license",
+      "licenseIdentifier": "CC0 1.0",
+      "attributionStatus": "Not required; credit appreciated",
+      "extractDir": "assets/third_party/helios_v3/polyhaven/Barrel_01",
+      "qualityRole": "Industrial fuel drum prop \u2014 metal wear/PBR reference for station cargo/hardpoint clutter",
+      "reverifyDate": "2026-07-11",
+      "format": "glTF + bin + JPG PBR maps",
+      "resolution": "2k",
+      "polycount": 2682,
+      "acquiredFiles": [
+        {
+          "filename": "Barrel_01_2k.gltf",
+          "bytes": 2711,
+          "sha256": "1b9f9774879a071146045bb0d3557b06a97f4f9c360e3c57664cfe723e1c55e9"
+        },
+        {
+          "filename": "Barrel_01.bin",
+          "bytes": 81756,
+          "sha256": "fe8369c1ac796059b62a091c0db7367dc420aa2cee212672e48f991f4208da98"
+        },
+        {
+          "filename": "Barrel_01_explosive_arm_2k.jpg",
+          "bytes": 814101,
+          "sha256": "3f6fdb68391e4369e551d90f8577b0899c30589b532ebd416e996170279cd852"
+        },
+        {
+          "filename": "Barrel_01_explosive_diff_2k.jpg",
+          "bytes": 613078,
+          "sha256": "09da9d519d87d34c0318da3bb293296071ce2e09c78415befe1157949a644b8b"
+        },
+        {
+          "filename": "Barrel_01_explosive_nor_gl_2k.jpg",
+          "bytes": 875565,
+          "sha256": "050d5dfcf86b37172708637d1c1939010dd1837ed503b7e5561b5b1e67cb0379"
+        }
+      ],
+      "totalBytes": 2387211.0,
+      "fileInventory": [
+        "Barrel_01_2k.gltf",
+        "Barrel_01.bin",
+        "textures\\Barrel_01_explosive_arm_2k.jpg",
+        "textures\\Barrel_01_explosive_diff_2k.jpg",
+        "textures\\Barrel_01_explosive_nor_gl_2k.jpg"
+      ]
+    },
+    {
+      "id": "power_box_01",
+      "source": "Poly Haven",
+      "title": "power_box_01",
+      "type": "model",
+      "canonicalUrl": "https://polyhaven.com/a/power_box_01",
+      "downloadUrl": [
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/power_box_01/power_box_01_1k.gltf",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/power_box_01/power_box_01_arm_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/power_box_01/power_box_01_nor_gl_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/power_box_01/power_box_01.bin",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/power_box_01/power_box_01_diff_1k.jpg"
+      ],
+      "licenseUrl": "https://polyhaven.com/license",
+      "licenseIdentifier": "CC0 1.0",
+      "attributionStatus": "Not required; credit appreciated",
+      "extractDir": "assets/third_party/helios_v3/polyhaven/power_box_01",
+      "qualityRole": "Electrical breaker/power box \u2014 station interior/exterior service panel language",
+      "reverifyDate": "2026-07-11",
+      "format": "glTF + bin + JPG PBR maps",
+      "resolution": "1k",
+      "polycount": 21272,
+      "acquiredFiles": [
+        {
+          "filename": "power_box_01_1k.gltf",
+          "bytes": 4417,
+          "sha256": "edb54e68fb1229e9f59906459d782c2ddc576f6bd1141cf09ad864f48d7cb93b"
+        },
+        {
+          "filename": "power_box_01_arm_1k.jpg",
+          "bytes": 801803,
+          "sha256": "4601e901e2f7c1584ab5ecf65e0e192a99a4be86da505527f1622658e1b1e527"
+        },
+        {
+          "filename": "power_box_01_nor_gl_1k.jpg",
+          "bytes": 646545,
+          "sha256": "199b6fe93776aa0934f7bc36d8c82f1b4db9be9243e82e0cb3727bbcf25d85f1"
+        },
+        {
+          "filename": "power_box_01.bin",
+          "bytes": 782096,
+          "sha256": "b46efdf668ec2d4e04ff51604b5f1486caf20df632f442aab62601718058db05"
+        },
+        {
+          "filename": "power_box_01_diff_1k.jpg",
+          "bytes": 490782,
+          "sha256": "845c425ebc0ded263a7d49909e2c26710dd6160da11c0ca44aebd723f4f6f168"
+        }
+      ],
+      "totalBytes": 2725643.0,
+      "fileInventory": [
+        "power_box_01_1k.gltf",
+        "power_box_01.bin",
+        "textures\\power_box_01_arm_1k.jpg",
+        "textures\\power_box_01_diff_1k.jpg",
+        "textures\\power_box_01_nor_gl_1k.jpg"
+      ]
+    },
+    {
+      "id": "utility_box_02",
+      "source": "Poly Haven",
+      "title": "utility_box_02",
+      "type": "model",
+      "canonicalUrl": "https://polyhaven.com/a/utility_box_02",
+      "downloadUrl": [
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/utility_box_02/utility_box_02_2k.gltf",
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/utility_box_02/utility_box_02.bin",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/utility_box_02/utility_box_02_nor_gl_2k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/utility_box_02/utility_box_02_diff_2k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/utility_box_02/utility_box_02_arm_2k.jpg"
+      ],
+      "licenseUrl": "https://polyhaven.com/license",
+      "licenseIdentifier": "CC0 1.0",
+      "attributionStatus": "Not required; credit appreciated",
+      "extractDir": "assets/third_party/helios_v3/polyhaven/utility_box_02",
+      "qualityRole": "Street utility/junction box \u2014 exterior service massing and panel grammar",
+      "reverifyDate": "2026-07-11",
+      "format": "glTF + bin + JPG PBR maps",
+      "resolution": "2k",
+      "polycount": 6268,
+      "acquiredFiles": [
+        {
+          "filename": "utility_box_02_2k.gltf",
+          "bytes": 2764,
+          "sha256": "31abfd95a081532fcba40239cb9aa499c62394ae9b18e756ab49e8c4e1c5e4a7"
+        },
+        {
+          "filename": "utility_box_02.bin",
+          "bytes": 199784,
+          "sha256": "0f0a3f8ecc0358e36e97120aa752c2456a78bf922671e6f77e402b0aa58ecfce"
+        },
+        {
+          "filename": "utility_box_02_nor_gl_2k.jpg",
+          "bytes": 2335447,
+          "sha256": "e8963358ce46a96cd63e78a5a950f06043231dfd2a7e31e4a9ed9d176ceac638"
+        },
+        {
+          "filename": "utility_box_02_diff_2k.jpg",
+          "bytes": 1960930,
+          "sha256": "59554c019e3bf270cd59eae1ff4f105ba92383174d9b706120cc92de872751a6"
+        },
+        {
+          "filename": "utility_box_02_arm_2k.jpg",
+          "bytes": 2598114,
+          "sha256": "e767bef42b431106db00cfb50374dd399f8acfe8a8d05045ab2590593920a177"
+        }
+      ],
+      "totalBytes": 7097039.0,
+      "fileInventory": [
+        "utility_box_02_2k.gltf",
+        "utility_box_02.bin",
+        "textures\\utility_box_02_arm_2k.jpg",
+        "textures\\utility_box_02_diff_2k.jpg",
+        "textures\\utility_box_02_nor_gl_2k.jpg"
+      ]
+    },
+    {
+      "id": "modular_industrial_pipes_01",
+      "source": "Poly Haven",
+      "title": "modular_industrial_pipes_01",
+      "type": "model",
+      "canonicalUrl": "https://polyhaven.com/a/modular_industrial_pipes_01",
+      "downloadUrl": [
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modular_industrial_pipes_01/modular_industrial_pipes_01_1k.gltf",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_industrial_pipes_01/modular_industrial_pipes_01_group02_arm_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_industrial_pipes_01/modular_industrial_pipes_01_group01_diff_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_industrial_pipes_01/modular_industrial_pipes_01_group02_nor_gl_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/modular_industrial_pipes_01/modular_industrial_pipes_01.bin",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_industrial_pipes_01/modular_industrial_pipes_01_group01_nor_gl_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_industrial_pipes_01/modular_industrial_pipes_01_group01_arm_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/modular_industrial_pipes_01/modular_industrial_pipes_01_group02_diff_1k.jpg"
+      ],
+      "licenseUrl": "https://polyhaven.com/license",
+      "licenseIdentifier": "CC0 1.0",
+      "attributionStatus": "Not required; credit appreciated",
+      "extractDir": "assets/third_party/helios_v3/polyhaven/modular_industrial_pipes_01",
+      "qualityRole": "Modular industrial pipe kit \u2014 station utility runs, massline coupling reference",
+      "reverifyDate": "2026-07-11",
+      "format": "glTF + bin + JPG PBR maps",
+      "resolution": "1k",
+      "polycount": 12340,
+      "acquiredFiles": [
+        {
+          "filename": "modular_industrial_pipes_01_1k.gltf",
+          "bytes": 15014,
+          "sha256": "455d3a0fe95b7900a08cbebb23cfb2c341672fcb67ae7355d776e53cfa3d0688"
+        },
+        {
+          "filename": "modular_industrial_pipes_01_group02_arm_1k.jpg",
+          "bytes": 898932,
+          "sha256": "4c65dcb651a3d345517fa93ad7c6e48f2388f4e8bb347446f70317c16049867b"
+        },
+        {
+          "filename": "modular_industrial_pipes_01_group01_diff_1k.jpg",
+          "bytes": 553576,
+          "sha256": "c0233f66b18e3374dfbbb8c8078a41f6571a0809d3eb14dd9d3c332265cfde7b"
+        },
+        {
+          "filename": "modular_industrial_pipes_01_group02_nor_gl_1k.jpg",
+          "bytes": 725187,
+          "sha256": "84a43ca11a4f1ac84f7fc8336a4e9b7b333d30c13e540f3ff42e662dc6f91b53"
+        },
+        {
+          "filename": "modular_industrial_pipes_01.bin",
+          "bytes": 515160,
+          "sha256": "2e11e1a7dabd56b1e158364f48b0b388bf316fcab61a01274740db75dbafa448"
+        },
+        {
+          "filename": "modular_industrial_pipes_01_group01_nor_gl_1k.jpg",
+          "bytes": 674568,
+          "sha256": "ed4728fde567efe420e3a6e1bdc4238b26c2782218737c7e2de88eeca1e91fb2"
+        },
+        {
+          "filename": "modular_industrial_pipes_01_group01_arm_1k.jpg",
+          "bytes": 860825,
+          "sha256": "7fff7d4604491eeb7531ad5f7520517015c72ec7316d1e865d62f23f976dfed6"
+        },
+        {
+          "filename": "modular_industrial_pipes_01_group02_diff_1k.jpg",
+          "bytes": 580676,
+          "sha256": "ef8a75c402a8871903dcaa147b023d57c640d0de4c7a8acdfdee822861656a92"
+        }
+      ],
+      "totalBytes": 4823938.0,
+      "fileInventory": [
+        "modular_industrial_pipes_01_1k.gltf",
+        "modular_industrial_pipes_01.bin",
+        "textures\\modular_industrial_pipes_01_group01_arm_1k.jpg",
+        "textures\\modular_industrial_pipes_01_group01_diff_1k.jpg",
+        "textures\\modular_industrial_pipes_01_group01_nor_gl_1k.jpg",
+        "textures\\modular_industrial_pipes_01_group02_arm_1k.jpg",
+        "textures\\modular_industrial_pipes_01_group02_diff_1k.jpg",
+        "textures\\modular_industrial_pipes_01_group02_nor_gl_1k.jpg"
+      ]
+    },
+    {
+      "id": "exterior_aircon_unit",
+      "source": "Poly Haven",
+      "title": "exterior_aircon_unit",
+      "type": "model",
+      "canonicalUrl": "https://polyhaven.com/a/exterior_aircon_unit",
+      "downloadUrl": [
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/exterior_aircon_unit/exterior_aircon_unit_1k.gltf",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/exterior_aircon_unit/exterior_aircon_unit_01_nor_gl_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/exterior_aircon_unit/exterior_aircon_unit_01_opacity_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/exterior_aircon_unit/exterior_aircon_unit_rusted_01_arm_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/exterior_aircon_unit/exterior_aircon_unit_01_arm_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/exterior_aircon_unit/exterior_aircon_unit_02_arm_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/exterior_aircon_unit/exterior_aircon_unit_rusted_02_arm_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/exterior_aircon_unit/exterior_aircon_unit.bin",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/exterior_aircon_unit/exterior_aircon_unit_02_nor_gl_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/exterior_aircon_unit/exterior_aircon_unit_rusted_01_nor_gl_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/exterior_aircon_unit/exterior_aircon_unit_rusted_01_diff_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/exterior_aircon_unit/exterior_aircon_unit_01_diff_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/exterior_aircon_unit/exterior_aircon_unit_rusted_02_opacity_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/exterior_aircon_unit/exterior_aircon_unit_rusted_02_nor_gl_1k.jpg"
+      ],
+      "licenseUrl": "https://polyhaven.com/license",
+      "licenseIdentifier": "CC0 1.0",
+      "attributionStatus": "Not required; credit appreciated",
+      "extractDir": "assets/third_party/helios_v3/polyhaven/exterior_aircon_unit",
+      "qualityRole": "Exterior HVAC unit \u2014 industrial housing, grille, fastener density reference",
+      "reverifyDate": "2026-07-11",
+      "format": "glTF + bin + JPG PBR maps",
+      "resolution": "1k",
+      "polycount": 18986,
+      "acquiredFiles": [
+        {
+          "filename": "exterior_aircon_unit_1k.gltf",
+          "bytes": 9634,
+          "sha256": "f19d85c76948903047c2846068aeaa376d5e956a410675268cb6cb6aac5d97c2"
+        },
+        {
+          "filename": "exterior_aircon_unit_01_nor_gl_1k.jpg",
+          "bytes": 472088,
+          "sha256": "e5a6f3c135b942d6efe62a24496c575d03f6a4316188efe65079035d7faf1c38"
+        },
+        {
+          "filename": "exterior_aircon_unit_01_opacity_1k.jpg",
+          "bytes": 333675,
+          "sha256": "c19feb434c2b01923fbb3e16ace3aa6d9cb16b05c2a5c479ad237759b2d331d6"
+        },
+        {
+          "filename": "exterior_aircon_unit_rusted_01_arm_1k.jpg",
+          "bytes": 673246,
+          "sha256": "51c103926b118bf00b902826001db802b15755c6eefa12b00afa24c60d7b341b"
+        },
+        {
+          "filename": "exterior_aircon_unit_01_arm_1k.jpg",
+          "bytes": 651293,
+          "sha256": "14671920f716691dc3b8940432f7aba5c469e3b466441ff8ad500de92d3178fb"
+        },
+        {
+          "filename": "exterior_aircon_unit_02_arm_1k.jpg",
+          "bytes": 484026,
+          "sha256": "1cdfa2d1c938c3af61a5f06510b0d94aeddddd4bdc1832008b3826240dd1535d"
+        },
+        {
+          "filename": "exterior_aircon_unit_rusted_02_arm_1k.jpg",
+          "bytes": 605557,
+          "sha256": "6ac4cfca6a8d8bec6ef1ff756652eb1f36b780d1ff7d70d9cb3e0f7fe1faf271"
+        },
+        {
+          "filename": "exterior_aircon_unit.bin",
+          "bytes": 494784,
+          "sha256": "b4b9ad082bdaa8f8b437bc14d9981caeaf318334499d4bf65d616fb2ec0c5ca8"
+        },
+        {
+          "filename": "exterior_aircon_unit_02_nor_gl_1k.jpg",
+          "bytes": 942230,
+          "sha256": "864c0fb1e55aff910d826a8c1f6a2ad459f7db0124b5846445d466cabf0cadf5"
+        },
+        {
+          "filename": "exterior_aircon_unit_rusted_01_nor_gl_1k.jpg",
+          "bytes": 583620,
+          "sha256": "14f105cda9172290be2e8b23b8e895099b65e222619850af3b13105901d922e2"
+        },
+        {
+          "filename": "exterior_aircon_unit_rusted_01_diff_1k.jpg",
+          "bytes": 606076,
+          "sha256": "a8771db98ed7f3d46ce48fd70867f58a74a2530666c339f8dcc14f3e5de86d0b"
+        },
+        {
+          "filename": "exterior_aircon_unit_01_diff_1k.jpg",
+          "bytes": 506664,
+          "sha256": "2ae5005b4836d2c91d1e712d9acf425c7dcc4973b7c0fc6f23da9afaa6381da6"
+        },
+        {
+          "filename": "exterior_aircon_unit_rusted_02_opacity_1k.jpg",
+          "bytes": 357558,
+          "sha256": "a86bcaf9c4858cf250fd67c9a0ee362504454b9972ff6e1ac44e38bac3213421"
+        },
+        {
+          "filename": "exterior_aircon_unit_rusted_02_nor_gl_1k.jpg",
+          "bytes": 947477,
+          "sha256": "3af4716b42812b742577594c7a0a342accd79925f02037c152b1da1c5831bb78"
+        }
+      ],
+      "totalBytes": 7667928.0,
+      "fileInventory": [
+        "exterior_aircon_unit_1k.gltf",
+        "exterior_aircon_unit.bin",
+        "textures\\exterior_aircon_unit_01_arm_1k.jpg",
+        "textures\\exterior_aircon_unit_01_diff_1k.jpg",
+        "textures\\exterior_aircon_unit_01_nor_gl_1k.jpg",
+        "textures\\exterior_aircon_unit_01_opacity_1k.jpg",
+        "textures\\exterior_aircon_unit_02_arm_1k.jpg",
+        "textures\\exterior_aircon_unit_02_nor_gl_1k.jpg",
+        "textures\\exterior_aircon_unit_rusted_01_arm_1k.jpg",
+        "textures\\exterior_aircon_unit_rusted_01_diff_1k.jpg",
+        "textures\\exterior_aircon_unit_rusted_01_nor_gl_1k.jpg",
+        "textures\\exterior_aircon_unit_rusted_02_arm_1k.jpg",
+        "textures\\exterior_aircon_unit_rusted_02_nor_gl_1k.jpg",
+        "textures\\exterior_aircon_unit_rusted_02_opacity_1k.jpg"
+      ]
+    },
+    {
+      "id": "boulder_01",
+      "source": "Poly Haven",
+      "title": "boulder_01",
+      "type": "rock_model",
+      "canonicalUrl": "https://polyhaven.com/a/boulder_01",
+      "downloadUrl": [
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/boulder_01/boulder_01_1k.gltf",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/boulder_01/boulder_01_arm_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/boulder_01/boulder_01_diff_1k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/boulder_01/boulder_01.bin",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/boulder_01/boulder_01_nor_gl_1k.jpg"
+      ],
+      "licenseUrl": "https://polyhaven.com/license",
+      "licenseIdentifier": "CC0 1.0",
+      "attributionStatus": "Not required; credit appreciated",
+      "extractDir": "assets/third_party/helios_v3/polyhaven/boulder_01",
+      "qualityRole": "High-detail photoscanned boulder sculpt \u2014 asteroid/debris form language and normal-map detail reference",
+      "reverifyDate": "2026-07-11",
+      "format": "glTF + bin + JPG PBR maps",
+      "resolution": "1k",
+      "polycount": 123976,
+      "acquiredFiles": [
+        {
+          "filename": "boulder_01_1k.gltf",
+          "bytes": 2773,
+          "sha256": "51487934db898b4c24072780a451e34eca5c02e3ada24a62bbc600bbc4019e92"
+        },
+        {
+          "filename": "boulder_01_arm_1k.jpg",
+          "bytes": 659386,
+          "sha256": "c57187c5746b6be913fa53846cb44ff78743e7ca5000f131c9627b99563c2b87"
+        },
+        {
+          "filename": "boulder_01_diff_1k.jpg",
+          "bytes": 987467,
+          "sha256": "c38f0e918f6dc16b8d386ba3cdd89805c78320c119a1ceec85856f82b09a65b8"
+        },
+        {
+          "filename": "boulder_01.bin",
+          "bytes": 2938808,
+          "sha256": "7f5b06503d62bd95bfe9c6b8a354a5cc8ff04a4d271a8cf87a3e3125db4232d7"
+        },
+        {
+          "filename": "boulder_01_nor_gl_1k.jpg",
+          "bytes": 1183552,
+          "sha256": "0810cf6e89d89bb6eb065b4d2e2855288f5dcbd2c15c6e40ab90d462021b50aa"
+        }
+      ],
+      "totalBytes": 5771986.0,
+      "fileInventory": [
+        "boulder_01_1k.gltf",
+        "boulder_01.bin",
+        "textures\\boulder_01_arm_1k.jpg",
+        "textures\\boulder_01_diff_1k.jpg",
+        "textures\\boulder_01_nor_gl_1k.jpg"
+      ]
+    },
+    {
+      "id": "rock_09",
+      "source": "Poly Haven",
+      "title": "rock_09",
+      "type": "rock_model",
+      "canonicalUrl": "https://polyhaven.com/a/rock_09",
+      "downloadUrl": [
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/rock_09/rock_09_2k.gltf",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/rock_09/rock_09_nor_gl_2k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/rock_09/rock_09_diff_2k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/rock_09/rock_09.bin",
+        "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/rock_09/rock_09_arm_2k.jpg"
+      ],
+      "licenseUrl": "https://polyhaven.com/license",
+      "licenseIdentifier": "CC0 1.0",
+      "attributionStatus": "Not required; credit appreciated",
+      "extractDir": "assets/third_party/helios_v3/polyhaven/rock_09",
+      "qualityRole": "Mid-poly rock with displacement-capable PBR \u2014 surface microdetail for hull wear / exterior rock silhouettes",
+      "reverifyDate": "2026-07-11",
+      "format": "glTF + bin + JPG PBR maps",
+      "resolution": "2k",
+      "polycount": 23280,
+      "acquiredFiles": [
+        {
+          "filename": "rock_09_2k.gltf",
+          "bytes": 2745,
+          "sha256": "f5f430215ad93e3d95755aa78c1c84a619497dfdc1ee297f8ac35df607ee03a3"
+        },
+        {
+          "filename": "rock_09_nor_gl_2k.jpg",
+          "bytes": 2565303,
+          "sha256": "944b7763b6431671e07b4e7ebe082cf747e791513e27c830a3bb2dbee0246614"
+        },
+        {
+          "filename": "rock_09_diff_2k.jpg",
+          "bytes": 2102702,
+          "sha256": "657406a77530db692061b475681f98cbf1c67be81a5c422830dbe6eb36df813a"
+        },
+        {
+          "filename": "rock_09.bin",
+          "bytes": 286592,
+          "sha256": "780c37d6fc11ca3a01c3763535ef883908b6007271a46bd446d2289ded820751"
+        },
+        {
+          "filename": "rock_09_arm_2k.jpg",
+          "bytes": 863180,
+          "sha256": "eaedeb8428079a27bc5e290a61375454035b5fcfb1e9c7d16ce4bc85313789da"
+        }
+      ],
+      "totalBytes": 5820522.0,
+      "fileInventory": [
+        "rock_09_2k.gltf",
+        "rock_09.bin",
+        "textures\\rock_09_arm_2k.jpg",
+        "textures\\rock_09_diff_2k.jpg",
+        "textures\\rock_09_nor_gl_2k.jpg"
+      ]
+    },
+    {
+      "id": "metal_plate",
+      "source": "Poly Haven",
+      "title": "Metal Plate",
+      "type": "pbr_texture",
+      "canonicalUrl": "https://polyhaven.com/a/metal_plate",
+      "downloadUrl": [
+        "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/metal_plate/metal_plate_diff_2k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/metal_plate/metal_plate_nor_gl_2k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/metal_plate/metal_plate_rough_2k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/metal_plate/metal_plate_ao_2k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/metal_plate/metal_plate_arm_2k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/metal_plate/metal_plate_metal_2k.jpg",
+        "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/metal_plate/metal_plate_disp_2k.jpg"
+      ],
+      "licenseUrl": "https://polyhaven.com/license",
+      "licenseIdentifier": "CC0 1.0",
+      "attributionStatus": "Not required; credit appreciated",
+      "extractDir": "assets/third_party/helios_v3/polyhaven/metal_plate",
+      "qualityRole": "Diamond-plate industrial floor/walkway surface \u2014 station deck plating and wear bake source",
+      "reverifyDate": "2026-07-11",
+      "format": "JPG PBR maps (diff, nor_gl, rough, ao, arm, metal, disp)",
+      "resolution": "2k",
+      "polycount": null,
+      "acquiredFiles": [
+        {
+          "filename": "metal_plate_diff_2k.jpg",
+          "bytes": 2670774,
+          "sha256": "864c9a653acd1f5034c9bbe7f955b18cc9687a81bbdfa805e7a2319939676910"
+        },
+        {
+          "filename": "metal_plate_nor_gl_2k.jpg",
+          "bytes": 2516654,
+          "sha256": "146f8c00874a584bcc4a184643e72f160da2a7568d469198e02b26c9ff93cf43"
+        },
+        {
+          "filename": "metal_plate_rough_2k.jpg",
+          "bytes": 3045988,
+          "sha256": "3cdc139df4ec5b304dd986278c1fb026c67c42e6623f0ee5caa7f373d51c7bef"
+        },
+        {
+          "filename": "metal_plate_ao_2k.jpg",
+          "bytes": 2392031,
+          "sha256": "31e586f0bde9f28331077b30495f0f324aa9f91a9d656205d03242d1d3e2e439"
+        },
+        {
+          "filename": "metal_plate_arm_2k.jpg",
+          "bytes": 3926194,
+          "sha256": "3b944444e12815f96c6850b385ba0e8f2f805338d8ad9e750907474b494f1ebe"
+        },
+        {
+          "filename": "metal_plate_metal_2k.jpg",
+          "bytes": 3399238,
+          "sha256": "cc24a1f9aeaae8ef82266b86b6a875391312be113fbab03f6cb0697e5be00fdd"
+        },
+        {
+          "filename": "metal_plate_disp_2k.jpg",
+          "bytes": 1067841,
+          "sha256": "c4ba1bc602d25bdd4725d856bbe5713373fa08456543d4d0168d9ff4e37c5f52"
+        }
+      ],
+      "totalBytes": 19018720.0,
+      "fileInventory": [
+        "metal_plate_ao_2k.jpg",
+        "metal_plate_arm_2k.jpg",
+        "metal_plate_diff_2k.jpg",
+        "metal_plate_disp_2k.jpg",
+        "metal_plate_metal_2k.jpg",
+        "metal_plate_nor_gl_2k.jpg",
+        "metal_plate_rough_2k.jpg"
+      ]
+    },
+    {
+      "id": "Rock023",
+      "source": "ambientCG",
+      "title": "Rock023",
+      "type": "pbr_texture",
+      "canonicalUrl": "https://ambientcg.com/a/Rock023",
+      "downloadUrl": "https://ambientcg.com/get?file=Rock023_1K-JPG.zip",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "licenseIdentifier": "CC0 1.0 Universal",
+      "attributionStatus": "Not required; credit appreciated",
+      "extractDir": "assets/third_party/helios_v3/ambientcg/Rock023",
+      "qualityRole": "Scanned/procedural rock surface \u2014 asteroid/exterior rocky material bake source",
+      "reverifyDate": "2026-07-11",
+      "format": "JPG PBR material pack",
+      "resolution": null,
+      "polycount": null,
+      "acquiredArchive": "Rock023_1K-JPG.zip",
+      "archiveBytes": 7832742,
+      "archiveSha256": "8793a32778c79cd62eb26a200c85b3747d119e7c570a7318bd124fb8342a7b04",
+      "extractedFileCount": 11,
+      "formatStats": null,
+      "fileInventorySample": null,
+      "fileInventory": [
+        "Rock023_1K-JPG_AmbientOcclusion.jpg",
+        "Rock023_1K-JPG_Color.jpg",
+        "Rock023_1K-JPG_Displacement.jpg",
+        "Rock023_1K-JPG_NormalDX.jpg",
+        "Rock023_1K-JPG_NormalGL.jpg",
+        "Rock023_1K-JPG_Roughness.jpg",
+        "Rock023_1K-JPG.blend",
+        "Rock023_1K-JPG.mtlx",
+        "Rock023_1K-JPG.tres",
+        "Rock023_1K-JPG.usdc",
+        "Rock023.png"
+      ]
+    },
+    {
+      "id": "kenney_space_station_kit",
+      "source": "Kenney",
+      "title": "Space Station Kit (1.0)",
+      "type": "pack",
+      "canonicalUrl": "https://kenney.nl/assets/space-station-kit",
+      "downloadUrl": "https://kenney.nl/media/pages/assets/space-station-kit/6475288f2e-1712749919/kenney_space-station-kit.zip",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseIdentifier": "CC0 1.0",
+      "attributionStatus": "Not required; credit appreciated (Kenney / www.kenney.nl); do not use logo as endorsement",
+      "extractDir": "assets/third_party/helios_v3/ccby_station/kenney_space_station_kit/extracted",
+      "qualityRole": "CC0 modular station interior/exterior blockout kit \u2014 NOT equal quality to re1monsen hero donor. Low-poly stylized; no 4K PBR maps. Useful for layout/kitbash only.",
+      "qualityGapVsTarget": "NOT equal quality: Kenney is stylized low-poly modular kit without 4K PBR maps; target re1monsen is ~170k-tri metalness PBR with 4K textures.",
+      "reverifyDate": "2026-07-11",
+      "format": "GLB + OBJ + FBX + PNG previews",
+      "resolution": "vertex colors / simple materials (no 4K PBR pack)",
+      "polycount": "aggregate ~8698 tris across 97 GLB modules",
+      "acquiredArchive": "kenney_space-station-kit.zip",
+      "archiveBytes": 1835875,
+      "archiveSha256": "215e79bd5415cff93665183390f0343ed9acf87780306331013b78520170c6d8",
+      "extractedFileCount": 497,
+      "formatStats": ".fbx=97, .glb=97, .html=1, .mtl=97, .obj=97, .png=104, .txt=1, .url=3",
+      "moduleCount": 97,
+      "moduleListPath": "assets/third_party/helios_v3/ccby_station/kenney_space_station_kit/MODULE_LIST.txt",
+      "validationPath": "assets/third_party/helios_v3/ccby_station/kenney_space_station_kit/VALIDATION.json",
+      "originatorLicenseFile": "assets/third_party/helios_v3/ccby_station/kenney_space_station_kit/extracted/License.txt",
+      "originatorLicenseTextShort": "\t\n\n\tSpace Station Kit (1.0)\n\n\tCreated/distributed by Kenney (www.kenney.nl)\n\tCreation date: 10-04-2024 13:50\n\t\n\t\t\t------------------------------\n\n\tLicense: (Creative Commons Zero, CC0)\n\thttp://creativecommons.org/publicdomain/zero/1.0/\n\n\tYou can use this content for personal, educational, and commercial purposes.\n\n\tSupport by crediting 'Kenney' or 'www.kenney.nl' (this is not a requirement)\n\n\t\t\t------------------------------\n\n\t\u2022 Website : www.kenney.nl\n\t\u2022 Donate  : www.kenney.nl/donate\n\n\t\u2022 Patre",
+      "modificationsRequired": [
+        "Pieces are already low-poly; retopology is not the primary need.",
+        "Author new materials/PBR or bake onto kit topology for SpaceFace visual bar.",
+        "Compose modules into a Helios-scale station silhouette (docking, massline, silhouette read).",
+        "Unit scale / up-axis check for Three.js Y-up game convention.",
+        "Merge/instance modules; add LODs for distance.",
+        "Do not treat as drop-in hero station donor equal to re1monsen."
+      ],
+      "acquiredAt": "2026-07-11T19:27:50.839072+00:00",
+      "acquisitionLane": "helios-v3-ccby-station",
+      "note": "Fallback because re1monsen CC-BY binary requires Sketchfab auth; quality is intentionally marked non-equivalent."
+    }
+  ],
+  "rejected": [
+    {
+      "category": "policy",
+      "id": "nasa_media",
+      "reason": "Policy exclude: NASA brand/endorsement constraints"
+    },
+    {
+      "category": "policy",
+      "id": "space_spheremaps",
+      "reason": "License is CC-BY 4.0 (not unambiguous CC0-only bar for this acquisition)"
+    },
+    {
+      "category": "quality_scope",
+      "id": "quaternius_modular_scifi_megakit",
+      "reason": "Skipped: low-poly stylized pack; Kenney Space Kit already covers modular structure role; avoid redundant primitive kits"
+    },
+    {
+      "category": "scope",
+      "id": "polyhaven_8k_16k",
+      "reason": "Skipped huge redundant resolutions per brief (prefer 1k-2k)"
+    },
+    {
+      "category": "auth_gate",
+      "id": "re1monsen_space_station_0da4a24e",
+      "title": "Space Station by re1monsen",
+      "canonicalUrl": "https://sketchfab.com/3d-models/space-station-0da4a24e7edd49159737675ffcc06228",
+      "apiUrl": "https://api.sketchfab.com/v3/models/0da4a24e7edd49159737675ffcc06228",
+      "fabListingId": "a50ebf13-2db6-49a2-8753-7cb9ffc09223",
+      "author": "re1monsen",
+      "uid": "0da4a24e7edd49159737675ffcc06228",
+      "licenseLabel": "CC Attribution (CC BY 4.0)",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+      "licenseRequirements": "Author must be credited. Commercial use is allowed.",
+      "isDownloadable": true,
+      "faceCount": 170282,
+      "vertexCount": 101868,
+      "textureCount": 5,
+      "materialCount": 2,
+      "pbrType": "metalness",
+      "reason": "Official Sketchfab Download API returned HTTP 401 without credentials. No SKETCHFAB_* token, cookie store, or Fab auth present. Did not scrape/rip/proxy/circumvent login or DRM. Metadata-only package at assets/third_party/helios_v3/ccby_station/re1monsen_space_station_0da4a24e/.",
+      "downloadAttempt": {
+        "endpoint": "https://api.sketchfab.com/v3/models/0da4a24e7edd49159737675ffcc06228/download",
+        "http": 401,
+        "ts": "2026-07-11T19:27:50.839072+00:00"
+      },
+      "qualityNote": "Would be high-quality hero donor (~170.3k tris, 4K textures claimed, metalness PBR) if authenticated download becomes available.",
+      "rejectedAt": "2026-07-11T19:27:50.839072+00:00"
+    },
+    {
+      "category": "quality_scope",
+      "id": "helindu_sci_fi_space_station_f6b9106",
+      "title": "Sci-Fi Space Station by Helindu",
+      "canonicalUrl": "https://sketchfab.com/3d-models/sci-fi-space-station-f6b9106fffc64fec93cabc17492cb2e4",
+      "reason": "Rejected unoptimized ~2.1M tri asset per acquisition brief; no bounded donor-module download processed.",
+      "rejectedAt": "2026-07-11T19:27:50.839072+00:00"
+    }
+  ],
+  "notes": [
+    "Acquisition only \u2014 no Blender launch, no game launch, no commit, no integration, no acceptance claim.",
+    "SAFE-001 was not inspected.",
+    "Kenney Space Kit retained as the sole modular structure kit (space-station silhouette/blockout). Quaternius Modular Sci-Fi Megakit skipped as redundant low-poly kit.",
+    "Poly Haven models downloaded as bounded 1k/2k glTF packages from dl.polyhaven.org (originator CDN).",
+    "Archives validated for ZIP magic PK; glTF JSON and JPEG magic checked; HTML masquerades rejected.",
+    "2026-07-11 ccby-station lane: verified re1monsen Space Station (uid 0da4a24e7edd49159737675ffcc06228) CC BY 4.0 + isDownloadable=true; binary blocked by Sketchfab Download API 401 (no credentials). Acquired Kenney Space Station Kit (CC0) as non-equivalent modular fallback. SAFE-001 not inspected. No Blender/game launch, no commit, no acceptance claim."
+  ],
+  "ccbyStationAcquisition": {
+    "lane": "helios-v3-ccby-station",
+    "completedAt": "2026-07-11T19:27:50.839072+00:00",
+    "primaryTargetStatus": "verified_license_download_blocked_auth",
+    "fallbackAcquired": "kenney_space_station_kit",
+    "report": ".campaign/parallel-research-20260711/helios-v3-ccby-acquisition/ACQUISITION_REPORT.md"
+  }
+}

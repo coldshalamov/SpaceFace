@@ -1,7 +1,7 @@
 # P3 — Faction Visual Identity Kit
 
 **Thread:** depth-P3 · **Reads:** `00_DEPTH_PROGRAM.md`, `design/spec2/00_MASTER_TASTE.md`, `src/data/factions.js`, `src/data/palettes.js`, `src/render/partsLibrary.js`, `src/systems/world.js` (station spawn), `src/data/sectorAnchors.js` · **Status:** PLAN
-**Thread pitch:** 8 factions have distinct identity (Concord lawful-blue, Meridian corporate-gold, Drift blue-collar-orange, Reach pirate-red, Quiet smuggler-violet, Vael alien-green, Frontier independent-cyan, Choir zealot-magenta) — but **a station's GLB is chosen by station type, with faction never consulted.** A Concord trade_hub and a Meridian trade_hub look identical. Faction identity surfaces today only as ship hull/accent material tint, galaxy-map node color, and a colored dot on the factions screen. Stations — where players spend their docked time — have zero faction visual identity. This pipeline fixes that, in two tiers: a cheap **runtime livery** wiring (most factions) and a small **hero silhouette** set (the 2–3 factions that earn bespoke station GLBs).
+**Thread pitch:** 8 factions have distinct identity (Concord lawful-blue, Meridian corporate-gold, Drift blue-collar-orange, Reach pirate-red, Quiet smuggler-violet, Vael alien-green, Frontier independent-cyan, Choir zealot-magenta) — but **a station's GLB is chosen by station type, with faction never consulted.** A Concord trade_hub and a Meridian trade_hub look identical. Faction identity surfaces today only as ship hull/accent material tint, galaxy-map node color, and a colored dot on the factions screen. Stations — where players spend their docked time — have zero faction visual identity. This pipeline fixes that in two tiers: **runtime livery** wiring for broad coverage and evidence-selected **hero silhouettes** where material treatment alone cannot carry the faction.
 
 ---
 
@@ -20,7 +20,7 @@ KNOWN BUGS: none. The glyph layer (`stationGlyphs.js`) is type-driven too; a Con
 
 ## §1. Why
 
-Stations are where players spend docked time — the shipyard, the market, the missions board, the bar. Flying to a station and not knowing *whose* station it is until you read the faction label is a constant low-grade "same place" friction. Faction identity is the second-biggest spatial-repetition driver (after same-prop-per-zone, which is P1). And unlike P1, the **cheap path is dominant**: runtime livery (tint + emissive accent + decal slot) requires no new sculpture, just a wiring change and a per-faction data block. Only the 2–3 factions with the strongest silhouette identity earn bespoke GLBs.
+Stations are where players spend docked time — the shipyard, the market, the missions board, the bar. Flying to a station and not knowing *whose* station it is until you read the faction label is a constant low-grade "same place" friction. Faction identity is the second-biggest spatial-repetition driver (after same-prop-per-zone, which is P1). Runtime livery (tint + emissive accent + decal slot) is the efficient first layer; bespoke geometry remains available wherever playtesting shows that material treatment cannot deliver a distinct faction read.
 
 ## §2. The design — two tiers
 
@@ -30,9 +30,9 @@ A per-faction **livery override** that goes beyond the existing `paletteFor` mat
 
 This means: a Concord station gets cool-blue emissive window strips + clean geometry; a Reach station gets red-orange jittery emissives + a grime profile from `PAINT_PROFILES.pirate`; a Vael station gets green-cyan resonance glow + the alien profile. **Same GLB, different read.** ~1 day per faction once the wiring lands.
 
-### Tier B — Hero Faction Station GLBs (expensive, 2–3 factions only)
+### Tier B — Hero Faction Station GLBs (evidence-selected)
 
-For the factions whose identity can't be carried by tint alone, author a **bespoke station archetype GLB** and route specific stations to it via a faction-keyed extension of `STATION_ARCHETYPE_FILES`. Candidates (by silhouette strength): **Vael** (alien — resonance rings, organic curves; green-cyan), **Reach** (pirate — cobbled, welded, asymmetric; red), **Choir** (zealot — cathedral geometry, tall spires; magenta). Each is a ~10k–15k-tri landmark-class asset.
+For the factions whose identity cannot be carried by tint alone, author a **bespoke station archetype GLB** and route specific stations to it via a faction-keyed extension of `STATION_ARCHETYPE_FILES`. Initial candidates (by silhouette strength): **Vael** (alien — resonance rings, organic curves; green-cyan), **Reach** (pirate — cobbled, welded, asymmetric; red), **Choir** (zealot — cathedral geometry, tall spires; magenta). Choose geometry, materials, and LOD from the station's real exposure and representative performance captures rather than a fixed triangle range.
 
 **The rule:** Tier A for every faction first. Tier B only for factions where playtesters still can't tell stations apart after livery. Do not sculpt before the livery proves insufficient.
 
@@ -122,8 +122,8 @@ Tier B (hero silhouette — only after Tier A proves insufficient per faction):
 
 ## §6. Libraries / tooling
 
-- **No new runtime deps.** Pure data + a resolver function.
-- **New acceptance check recommended:** `scripts/check-faction-livery.mjs` — asserts (a) every `factionId` in `FACTION_META` that owns sectors has a `STATION_LIVERY` entry, (b) each livery's `accentEmissive` is a valid hex and visually distinct from its neighbors (minimum color-distance threshold — model on any existing contrast check), (c) Tier B hero GLBs (if any) are registered in all 3 registries. Wire as `check:faction-livery`, add to `check` aggregate. Build it as iteration 0.
+- **Implementation fit:** existing data and resolver seams should cover the base feature. Runtime or build dependencies remain allowed when they materially improve quality and their license, bundle/performance, determinism/save, and maintenance impact are documented.
+- **New acceptance check recommended:** `scripts/check-faction-livery.mjs` — asserts (a) every `factionId` in `FACTION_META` that owns sectors has a `STATION_LIVERY` entry, (b) each livery has valid color data and preserves semantic contrast/accessibility, and (c) Tier B hero GLBs (if any) are registered in all required manifests and runtime maps. Distinctness itself is accepted from representative side-by-side player-route captures at real viewing conditions, not a synthetic palette-distance threshold. Wire as `check:faction-livery`, add to `check` aggregate. Build it as iteration 0.
 
 ## §7. Build plan
 
@@ -140,7 +140,7 @@ Tier B (hero silhouette — only after Tier A proves insufficient per faction):
 4. Update `**Status:**`. Print 10-line summary.
 
 ### Per faction (Tier B, only if Tier A insufficient)
-1. Acquire Blender lock. Author `place_station_<faction>_<archetype>.glb` (10k–15k tris, `Material_Hull`/`Material_Accent`/`Material_Emissive` slots).
+1. Verify current asset ownership, then author `place_station_<faction>_<archetype>.glb` with the material roles required by the runtime classifier. Set geometry and LOD from screen-space need and measured scene cost.
 2. Register in all 3 registries (parts_manifest.json, auto-written release_manifest, `STATION_ARCHETYPE_FILES`).
 3. Point the faction's stations at the hero `archetypeGlb` in `sectorAnchors.js` / `frontierRegions/*.js`.
 4. Run full asset acceptance (`check:asset-reachability`, `check:assets:live`, `check:asset-status`, `check:visual-stability`).
@@ -178,4 +178,4 @@ A fully-liveried galaxy is the foundation for **faction territory read** — fly
 >
 > **Acceptance:** `node scripts/check-faction-livery.mjs` green (after iter 0) · `npm run check:visual-stability` · `npm run check:asset-reachability` (Tier B) · `npm run check:assets:live` (Tier B, failureCount:0) · `npm run check:sim:compare` (hashEqual:true) · `node scripts/check-tether-gameplay.mjs` · screenshot pair in `.devshots/`.
 >
-> `git add -N` every new file immediately. Print a 10-line summary: which faction, tier A or B, livery fields / GLB tri budget, which sectors show it, which checks green, screenshot paths, deferred items.
+> `git add -N` every new file immediately. Report which faction and tier shipped, livery fields or authored asset characteristics, which sectors show it, representative performance observations, green checks, screenshot paths, and deferred items.

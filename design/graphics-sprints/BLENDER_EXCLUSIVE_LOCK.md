@@ -1,12 +1,18 @@
 # Blender Exclusive Lock — One MCP Agent at a Time
 
+> **Activated-sprint coordination only.** The A–E thread labels below apply only during a named
+> graphics sprint. The underlying rule is general: one current Blender/source-GLB writer, represented
+> by a live lock. When no valid lock/build owner exists, this document does not permanently reserve
+> files or tools for a historical thread.
+
 ## Rule
 
 **At most one agent/session may use Blender MCP or write source GLBs in a sprint.**
 
 Threads **A** (kit quality) and **E** (wholeship repair) compete for this lock. Thread **B** acquires it only when A/E release it.
 
-Threads **C** and **D** must never acquire the lock.
+Within the activated A–E sprint, Threads **C** and **D** do not acquire the lock because their assigned
+work is integration/presentation. A later explicitly assigned Blender task may acquire it normally.
 
 ## Lock file
 

@@ -178,27 +178,20 @@ function assertNoModal(emitted, label) {
   ok('distress scan-first: single quiet tell, no re-tell, spring stays within voice law');
 }
 
-// ── 3. copy law: barks ≤14 words (variant arrays) / ≤12 (legacy strings), no ! outside emergencies
+// ── 3. copy contract: every bark is authored and safe for the inline one-voice surface
 {
-  const EMERGENCY_OK = new Set(['ambush_spring', 'distress_call', 'distress_bait_spring']);
-  const VARIANT_KEYS = new Set([
-    'toll_demand', 'toll_paid_ack', 'toll_refused_ack', 'toll_flee_ack', 'toll_broke_ack',
-    'patrol_scan_hail', 'patrol_scan_clear', 'patrol_scan_caught', 'patrol_scan_refused',
-    'ambush_tele', 'ambush_spring', 'distress_call', 'distress_rescued_ack', 'distress_bait_spring',
-    'convoy_depart', 'trader_pass', 'patrol_beat_hail', 'salvage_ping', 'bounty_notice',
-  ]);
   let variantCount = 0;
   for (const [bid, val] of Object.entries(ENCOUNTER_BARKS)) {
     const lines = Array.isArray(val) ? val : [val];
-    const wordCap = VARIANT_KEYS.has(bid) ? 14 : 12;
     for (const text of lines) {
-      const words = text.replace(/\{\w+\}/g, 'x').trim().split(/\s+/).length;
-      assert(words <= wordCap, `bark ${bid} is ${words} words (law: ≤${wordCap}): "${text}"`);
-      if (!EMERGENCY_OK.has(bid)) assert(!text.includes('!'), `bark ${bid} uses an exclamation mark: "${text}"`);
+      assert.equal(typeof text, 'string', `bark ${bid} must be a string`);
+      assert(text.trim(), `bark ${bid} must contain player-facing copy`);
+      assert(!/[\r\n\u2028\u2029]/u.test(text), `bark ${bid} must fit the inline voice surface: "${text}"`);
+      assert(!/[\u0000-\u001f\u007f\ufffd]/u.test(text), `bark ${bid} contains an unsafe control/replacement character: "${text}"`);
     }
     if (Array.isArray(val)) variantCount++;
   }
-  ok(`copy law: ${Object.keys(ENCOUNTER_BARKS).length} bark keys (${variantCount} variant arrays) pass word/exclamation law`);
+  ok(`copy contract: ${Object.keys(ENCOUNTER_BARKS).length} bark keys (${variantCount} variant arrays) are authored and inline-safe`);
 }
 
 // ── 4. variant rotation: forced toll fires emit distinct primary lines across encounter ids ─────

@@ -1037,7 +1037,12 @@ export const onboarding = {
     if (!ob || !ob.active || ob.finished || !st.nav) return;
     const beat = BEATS[ob.currentBeat];
     const existing = st.nav.waypoint;
-    if (existing && !existing.onboarding && !force) return;
+    // While teaching, reclaim mission/story claims so the opening marker stays onboarding-owned.
+    // Leave player-set local/trade/autopilot courses alone unless force-stamping a lesson target.
+    if (existing && !existing.onboarding && !force) {
+      const foreignKind = existing.kind;
+      if (foreignKind !== 'mission' && foreignKind !== 'story') return;
+    }
     // Only the current physical lesson owns a waypoint; the marker identity stays beat-stable.
     let target = null;
     if (beat && (beat.key === 'thrust' || beat.key === 'brake')) target = this._findBeacon();

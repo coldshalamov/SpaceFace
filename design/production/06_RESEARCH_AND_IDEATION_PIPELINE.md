@@ -1,5 +1,9 @@
 # 06 — Multi-Agent Research and Ideation Pipeline
 
+> **Optional campaign workflow.** This pipeline applies only when explicitly activated for a named
+> research packet. It does not require ordinary implementation work to stop at a report or defer
+> integration that is already within the task's scope.
+
 **Status:** DRAFT
 
 ## Purpose

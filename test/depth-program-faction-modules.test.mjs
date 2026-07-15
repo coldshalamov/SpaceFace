@@ -19,9 +19,17 @@ const EXPECTED_MODULES = [
   'helix',
 ];
 const BASELINE_IDS = new Set(fixture.map((entry) => entry.id));
+const BASELINE_BY_ID = new Map(fixture.map((entry) => [entry.id, entry]));
 
 function baselineEntries(entries) {
-  return entries.filter((entry) => BASELINE_IDS.has(entry.id));
+  return entries.filter((entry) => BASELINE_IDS.has(entry.id)).map((entry) => {
+    const baseline = BASELINE_BY_ID.get(entry.id);
+    const relationKeys = Object.keys(baseline.relations || {});
+    return {
+      ...entry,
+      relations: Object.fromEntries(relationKeys.map((id) => [id, entry.relations[id]])),
+    };
+  });
 }
 
 test('F1 assembles the legacy faction export from one module per faction', async () => {
@@ -39,7 +47,7 @@ test('F1 assembles the legacy faction export from one module per faction', async
   assert.deepEqual(baselineEntries(shimModule.FACTION_META), fixture);
 });
 
-test('F1 faction modules expose future kit fields without changing FACTION_META', async () => {
+test('F1 faction modules expose future kit fields while preserving every baseline FACTION_META value', async () => {
   const indexUrl = new URL('../src/data/factions/index.js', import.meta.url);
   assert.equal(existsSync(indexUrl), true, 'src/data/factions/index.js must exist');
 

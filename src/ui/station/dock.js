@@ -5,8 +5,12 @@
 import { icon } from './icons.js';
 
 function tileHtml(item, kind) {
-  const dataAttr = kind === 'nav' ? `data-nav="${item.id}"` : `data-act="${item.id}"`;
-  const extra = kind === 'nav' ? '' : ' sx-tile--act';
+  const isNav = kind === 'nav';
+  // Nav tiles are a real ARIA tablist: role=tab + roving tabindex + arrow-key navigation.
+  const dataAttr = isNav
+    ? `data-nav="${item.id}" role="tab" id="sx-tab-${item.id}" aria-controls="sx-panel" aria-selected="false" tabindex="-1"`
+    : `data-act="${item.id}"`;
+  const extra = isNav ? '' : ' sx-tile--act';
   return (
     `<button type="button" class="sx-tile${extra}" ${dataAttr} title="${item.title || item.label}" aria-label="${item.aria || item.label}">` +
       `<span class="sx-tile__seat" aria-hidden="true"></span>` +
@@ -51,8 +55,26 @@ export function createCommandDock(cfg) {
       const on = t.getAttribute('data-nav') === id;
       t.classList.toggle('is-active', on);
       t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.setAttribute('tabindex', on ? '0' : '-1'); // roving tab stop
     });
   }
+
+  // Arrow / Home / End move between destinations (Enter+Space activate natively on <button>).
+  const navGroup = el.querySelector('.sx-dock__group--nav');
+  navGroup.addEventListener('keydown', (ev) => {
+    const tabs = [...navGroup.querySelectorAll('[data-nav]')];
+    const cur = tabs.indexOf(document.activeElement);
+    if (cur < 0) return;
+    let next = -1;
+    if (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') next = (cur + 1) % tabs.length;
+    else if (ev.key === 'ArrowLeft' || ev.key === 'ArrowUp') next = (cur - 1 + tabs.length) % tabs.length;
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = tabs.length - 1;
+    else return;
+    ev.preventDefault();
+    tabs[next].focus();
+    onNavigate && onNavigate(tabs[next].getAttribute('data-nav'));
+  });
 
   /** cost = { text, disabled?, tone? } tone ∈ 'warn'|'gain'|'' */
   function setActionCost(id, cost) {
@@ -62,9 +84,11 @@ export function createCommandDock(cfg) {
     label.textContent = (cost && cost.text != null) ? cost.text : '—';
     tile.classList.toggle('is-disabled', !!(cost && cost.disabled));
     tile.setAttribute('aria-disabled', cost && cost.disabled ? 'true' : 'false');
-    label.classList.remove('is-warn', 'is-gain');
+    if (cost && cost.title) { tile.setAttribute('title', cost.title); tile.setAttribute('aria-label', cost.title); }
+    label.classList.remove('is-warn', 'is-gain', 'is-loss');
     if (cost && cost.tone === 'warn') label.classList.add('is-warn');
     if (cost && cost.tone === 'gain') label.classList.add('is-gain');
+    if (cost && cost.tone === 'loss') label.classList.add('is-loss');
   }
 
   return { el, setActive, setActionCost };

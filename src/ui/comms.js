@@ -120,8 +120,10 @@ export function createComms(ctx) {
     }
   }
 
-  function pushComms(p, fromQueue = false) {
+  function pushComms(p, delivery = null) {
     if (!p || !p.text) return;
+    const fromQueue = delivery === true || !!(delivery && delivery.fromQueue);
+    const bypassAttentionGate = !!(delivery && delivery.bypassAttentionGate);
     // One-voice (spec2/06): a player-addressed line already surfaced by the arbiter as the top-center
     // floor pill is logged to the BACKLOG only — re-stacking it on the live left-edge feed would show
     // the same voice twice. Ambient chatter (unmarked) still fills the feed as the channel texture.
@@ -131,7 +133,7 @@ export function createComms(ctx) {
       if (!backlogOpen) backlogBtn.classList.add('sf-comm-backlog-btn--pulse');
       return;
     }
-    if (!fromQueue && attentionGateActive() && !GATE_BYPASS.test(p.category || '')) {
+    if (!fromQueue && !bypassAttentionGate && attentionGateActive() && !GATE_BYPASS.test(p.category || '')) {
       p._heldAt = performance.now();
       held.push(p);
       return;
@@ -221,7 +223,7 @@ export function createComms(ctx) {
   bus.on('comms:popup', pushComms);
   bus.on('scenario:dialogueLine', (payload) => {
     const comms = scenarioDialogueCommsPayload(payload || {});
-    if (comms) pushComms(comms);
+    if (comms) pushComms(comms, { bypassAttentionGate: true });
   });
   bus.on('scenario:branchResolved', (payload) => {
     const comms = branchLifecycleCommsPayload(payload || {});

@@ -1,0 +1,21 @@
+{
+  "part_id": "place_asteroid_rock_a",
+  "pass": "polish3",
+  "date": "2026-07-10",
+  "tris": 2256,
+  "meshes": 3,
+  "extents": [
+    7.82,
+    7.6,
+    12.1
+  ],
+  "renders": [
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_a\\renders\\2026-07-10_place_asteroid_rock_a_polish3_clay_34_full.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_a\\renders\\2026-07-10_place_asteroid_rock_a_polish3_lit_34_full.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_a\\renders\\2026-07-10_place_asteroid_rock_a_polish3_lit_close_detail.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_a\\renders\\2026-07-10_place_asteroid_rock_a_final_lit_34_full.png"
+  ],
+  "export_ok": true,
+  "export": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_a\\_export_tmp.glb",
+  "export_err": null
+}

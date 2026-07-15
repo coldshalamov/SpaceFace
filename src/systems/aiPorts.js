@@ -11,6 +11,7 @@ import {
 } from '../ai/contracts.js';
 import { activityAllowsOffense, effectiveActivityForAI, normalizeRoe } from '../ai/doctrine.js';
 import { normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
+import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
@@ -296,12 +297,14 @@ export const aiPorts = {
     for (const entity of source) {
       if (!isLiveCraft(entity) || entity.id === state.playerId) continue;
       const ai = entity.data && entity.data.ai;
-      if (!ai || ai.passive) continue;
+      const factionBehavior = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);
+      if (!ai || (ai.passive && !(ai.allowPassiveManeuver === true && factionBehavior))) continue;
       candidates.push(entity);
     }
     candidates.sort((a, b) => compareIds(a && a.id, b && b.id));
     for (const entity of candidates) {
       const ai = entity.data && entity.data.ai;
+      const factionBehavior = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
       const doctrine = String(ai.doctrine || doctrineFor(entity));
       const faction = String(entity.factionId || ai.faction || `team_${entity.team == null ? 'unknown' : entity.team}`);
       const squadId = String(ai.squadId || ai.wingId || `${doctrine}:${faction}`);
@@ -314,6 +317,7 @@ export const aiPorts = {
           formation: String(ai.formation || defaultFormation(doctrine)),
           formationSpacing: positive(ai.formationSpacing, DEFAULT_FORMATION_SPACING),
           formationBound: positive(ai.formationBound, DEFAULT_FORMATION_BOUND),
+          factionBehavior,
           members: [],
           tick,
         };
@@ -324,6 +328,7 @@ export const aiPorts = {
         preferredRole: ai.preferredRole || ai.role || null,
         capabilities: this._capabilitiesFor(entity, tick),
         combatDoctrineId: normalizeCombatDoctrineId(ai.combatDoctrineId),
+        factionBehavior,
       }));
     }
 
@@ -337,6 +342,7 @@ export const aiPorts = {
         formation: squad.formation,
         formationSpacing: squad.formationSpacing,
         formationBound: squad.formationBound,
+        factionBehavior: squad.factionBehavior,
         members,
       };
       Object.defineProperty(entry, ROSTER_SIGNATURE_FLAG, { value: rosterSignature(entry) });
@@ -449,15 +455,33 @@ export function clearIneligibleAIFiringIntents(state) {
     const intent = data && data.intent;
     if (!intent || (!intent.fire && intent.fireGroup == null)) continue;
     const ai = data && data.ai;
+    const disabledNonlethalTarget = disabledNonlethalTargetFor(state, entity, ai);
     const ineligible = !ai || ai.passive || entity.team === 2
       || normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free') === 'hold_fire'
-      || !activityAllowsOffense(effectiveActivityForAI(ai));
+      || !activityAllowsOffense(effectiveActivityForAI(ai))
+      || disabledNonlethalTarget;
     if (!ineligible) continue;
     intent.fire = false;
     intent.fireGroup = null;
+    if (disabledNonlethalTarget) {
+      intent.fireBlockReason = 'target_disabled_nonlethal';
+      intent.fireBlockerId = disabledNonlethalTarget.id;
+    }
     cleared++;
   }
   return cleared;
+}
+
+function disabledNonlethalTargetFor(state, entity, ai) {
+  const profile = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);
+  if (!profile || profile.destroyTarget !== false) return null;
+  const data = entity && entity.data || {};
+  const activity = effectiveActivityForAI(ai);
+  const combat = data.combat || {};
+  const targetId = combat.targetId ?? (activity && activity.targetId) ?? ai.retaliationTargetId;
+  const target = targetId == null ? null : getEntity(state, targetId);
+  if (!target || target.alive === false) return null;
+  return isDisabled(combatRuntimeFor(state, target.id), target) ? target : null;
 }
 
 function ensureEncounterState(state) {
@@ -575,6 +599,7 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     activity,
     roe: normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free'),
     combatDoctrineId: normalizeCombatDoctrineId(ai.combatDoctrineId),
+    factionBehavior: normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine),
     ramAuthorized,
     ...bands,
   });
@@ -799,6 +824,9 @@ function capabilitiesFor(state, entity) {
   for (const [name, enabled] of Object.entries(base)) if (enabled !== false) out.add(name);
   const ai = entity.data && entity.data.ai || {};
   for (const capability of ai.capabilities || []) add(capability);
+  const weapons = entity.data && Array.isArray(entity.data.weapons) ? entity.data.weapons : [];
+  if (weapons.length > 0) add('ranged');
+  if (weapons.some((weapon) => weapon && weapon.damageType === 'emp')) add('disable');
   const role = String(ai.role || ai.preferredRole || ai.archetype || '').toLowerCase();
   if (role.includes('sniper')) add('ranged');
   if (role.includes('tug')) add('tug');
@@ -870,11 +898,32 @@ function attachmentsFor(index, entityId) {
 }
 
 function rosterSignature(squad) {
-  let text = `${squad.id}|${squad.doctrine}|${squad.faction}|${squad.formation}|${squad.formationSpacing}|${squad.formationBound}`;
+  let text = `${squad.id}|${squad.doctrine}|${squad.faction}|${squad.formation}|${squad.formationSpacing}|${squad.formationBound}|${profileSignature(squad.factionBehavior)}`;
   for (const member of squad.members) {
-    text += `;${stableId(member.id)}:${member.preferredRole || ''}:${member.combatDoctrineId || ''}:${(member.capabilities || []).join('+')}`;
+    text += `;${stableId(member.id)}:${member.preferredRole || ''}:${member.combatDoctrineId || ''}:${profileSignature(member.factionBehavior)}:${(member.capabilities || []).join('+')}`;
   }
   return text;
+}
+
+function profileSignature(profile) {
+  const value = normalizeFactionBehaviorProfile(profile);
+  return value
+    ? [
+        value.pursuitCommitment,
+        value.preferredRange,
+        value.liveFormation,
+        value.retreatHullFraction,
+        value.combatDoctrineId,
+        Number(value.disableThenRun),
+        Number(value.firstFire),
+        JSON.stringify(value.firstFireAgainst),
+        value.firstFireCondition || '',
+        value.stationDefenseAggression,
+        value.disableChance,
+        Number(value.destroyTarget),
+        Number(value.fixedRoute),
+      ].join('/')
+    : '';
 }
 
 function operationalBandsFor(state, entity, runtime, attachmentIndex) {

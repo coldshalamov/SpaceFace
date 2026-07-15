@@ -1,0 +1,12 @@
+Poly Haven model: power_box_01
+Canonical: https://polyhaven.com/a/power_box_01
+License: CC0 1.0 — https://polyhaven.com/license
+Attribution: not required; appreciated
+Resolution: 1k glTF package
+Acquired: 2026-07-11T15:15:32.1391732-04:00
+Files SHA256:
+power_box_01_1k.gltf:edb54e68fb1229e9f59906459d782c2ddc576f6bd1141cf09ad864f48d7cb93b
+power_box_01_arm_1k.jpg:4601e901e2f7c1584ab5ecf65e0e192a99a4be86da505527f1622658e1b1e527
+power_box_01_nor_gl_1k.jpg:199b6fe93776aa0934f7bc36d8c82f1b4db9be9243e82e0cb3727bbcf25d85f1
+power_box_01.bin:b46efdf668ec2d4e04ff51604b5f1486caf20df632f442aab62601718058db05
+power_box_01_diff_1k.jpg:845c425ebc0ded263a7d49909e2c26710dd6160da11c0ca44aebd723f4f6f168

@@ -6,7 +6,7 @@ export const faction = {
   homeSectors: [],
   controls: ['contract allocation', 'variance audits', 'dock-deny paperwork'],
   fleetClass: 'none',
-  relations: { faction_scn: 0.0, faction_mts: 0.0, faction_dmc: 0.0, faction_reach: 0.0, faction_quiet: 0.0, faction_vael: 0.0, faction_free: 0.0, faction_choir: 0.0 },
+  relations: { faction_scn: 0.0, faction_mts: 0.0, faction_dmc: 0.0, faction_reach: 0.0, faction_quiet: 0.0, faction_vael: 0.0, faction_free: 0.0, faction_choir: 0.0, faction_understory: 0.0, faction_fulfillment: 0.0, faction_archive: 0.0, faction_pitborn: 0.0, faction_verge_layers: 0.0 },
   palette: { primary: '#8B9CB8' },
   shipRoles: [],
   illegalCommodities: [],

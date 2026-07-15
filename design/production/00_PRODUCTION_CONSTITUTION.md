@@ -1,5 +1,11 @@
 # 00 — Production Constitution
 
+> **ACTIVATION SCOPE:** This is a manual control-plane contract for an explicitly named production
+> campaign. It is not repository-wide agent policy. Outside such a campaign, implementers may own,
+> integrate, verify, and complete coherent work under the applicable `AGENTS.md` and task brief.
+> The separation below prevents self-acceptance inside the campaign; it does not require ordinary
+> agents to return reports or unintegrated candidates.
+
 **Status:** DRAFT process authority beneath `design/vision/ALPHA_PROGRAM.md`
 
 ## 1. The governing insight

@@ -1,0 +1,16 @@
+prune: Removed types... Accessor (75)
+prune: Removed types... Accessor (30)
+[m4-helios-hub-v8-finalize] helios_hub_station: 8987912 ΓåÆ 8257552 bytes meshopt=61 ktx2=15
+prune: Removed types... Accessor (40)
+prune: Removed types... Accessor (16)
+[m4-helios-hub-v8-finalize] helios_gate: 4745504 ΓåÆ 5004820 bytes meshopt=33 ktx2=9
+prune: Removed types... Accessor (28)
+prune: Removed types... Accessor (12)
+[m4-helios-hub-v8-finalize] helios_rock_a: 3081040 ΓåÆ 3979304 bytes meshopt=17 ktx2=6
+prune: Removed types... Accessor (28)
+prune: Removed types... Accessor (12)
+[m4-helios-hub-v8-finalize] helios_rock_b: 2981924 ΓåÆ 3942948 bytes meshopt=17 ktx2=6
+prune: Removed types... Accessor (41)
+prune: Removed types... Accessor (18)
+[m4-helios-hub-v8-finalize] helios_rock_c: 3889384 ΓåÆ 5323348 bytes meshopt=21 ktx2=9
+[m4-helios-hub-v8-finalize] done ok=5 fail=0 three=true promote=false acceptanceClaim=false family=helios_hub_env_v8
