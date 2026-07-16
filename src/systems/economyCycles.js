@@ -29,6 +29,10 @@ const REGIME_MAX_S = 5400;       // ~90 min sim
 // Soft factor band applied on top of stock mid. Stacked with stock mult, then absolute-clamped.
 export const CYCLE_FACTOR_LO = 0.58;
 export const CYCLE_FACTOR_HI = 1.72;
+// Structural stock, station role, and persistent sector demand establish the strategic price
+// level. Formula cycles remain readable and learnable, but contribute only half their authored
+// deviation so they no longer drown those persistent signals.
+export const CYCLE_WEIGHT = 0.5;
 // Final mid vs basePrice (after stock × cycle). Never below 1 credit unit after rounding.
 export const CYCLE_MID_LO_MULT = 0.35;
 export const CYCLE_MID_HI_MULT = 2.80;
@@ -109,7 +113,9 @@ export function createCycle(rng, def, simTime) {
   // Floor amplitude so integer-credit mids still move on the chart for cheap goods
   // (~±1.5 cr swing minimum at base). High-priced goods use the percent band only.
   const base = def && def.basePrice > 0 ? def.basePrice : 50;
-  const minReadableAmp = clamp(1.5 / base, 0.02, 0.10);
+  // Compensate the authored minimum for CYCLE_WEIGHT so cheap one-credit listings still cross an
+  // integer boundary on the chart after the short-term overlay is demoted.
+  const minReadableAmp = clamp(1.5 / (base * CYCLE_WEIGHT), 0.02, 0.20);
 
   // Amplitude budget scales with commodity volatility; families further modulate it.
   let amp = Math.max(minReadableAmp, randRange(rng, 0.06, 0.18) * vs);
@@ -369,7 +375,8 @@ export function rawCycleFactorAt(cycle, simTime) {
 export function cycleFactorAt(cycle, simTime) {
   const raw = rawCycleFactorAt(cycle, simTime);
   if (!Number.isFinite(raw)) return 1;
-  return clamp(raw, CYCLE_FACTOR_LO, CYCLE_FACTOR_HI);
+  const weighted = 1 + (raw - 1) * CYCLE_WEIGHT;
+  return clamp(weighted, CYCLE_FACTOR_LO, CYCLE_FACTOR_HI);
 }
 
 /**
@@ -416,7 +423,7 @@ export function predictPriceCurve(state, stationId, cmdtyId, steps = 24, stepS =
   const stockMid = def.basePrice * Math.pow(
     Math.max(entry.stock, 1) / Math.max(entry.baseEq, 1),
     -(def.elasticity > 0 ? def.elasticity : 0.4),
-  );
+  ) * (Number(entry.demandMult) > 0 ? Number(entry.demandMult) : 1);
   const out = [];
   const now = Math.max(0, state.simTime || 0);
   for (let i = 1; i <= steps; i++) {

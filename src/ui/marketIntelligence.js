@@ -17,6 +17,8 @@
 // noTouch: market.js / starmap.js / galaxyMap.js / localmap.js / hud.js / economy.js / world.js /
 // save / registry / package / goldens. Budget: spawn:none · voice:none · draw:none.
 
+import { summarizeDemandDrivers } from './demandDriverSummary.js';
+
 /** Fresh band upper bound (seconds) — matches starmap memoryTint + SPEC2/05. */
 export const AGE_BAND_FRESH_S = 600;
 /** Mid band upper bound (seconds) — older than this is "old" gray italic. */
@@ -135,6 +137,25 @@ export function knownStationQuotes(memory, commodityId, nowS) {
  */
 export function bestKnownSell(memory, commodityId, nowS) {
   return pickBest(knownStationQuotes(memory, commodityId, nowS), 'sell', true);
+}
+
+/**
+ * bestKnownSellAtStations(memory, stationIds, commodityId, nowS) → QuoteView | null
+ *
+ * Highest remembered sell across a caller-owned station set. This is the sector-map seam: it
+ * keeps multi-station sectors honest without assuming stations[0] represents the whole sector.
+ * Unknown stations remain excluded because the only quote source is player.marketMemory.
+ */
+export function bestKnownSellAtStations(memory, stationIds, commodityId, nowS) {
+  const allowed = new Set(
+    Array.isArray(stationIds)
+      ? stationIds.filter((stationId) => stationId != null && stationId !== '').map(String)
+      : [],
+  );
+  if (!allowed.size) return null;
+  const quotes = knownStationQuotes(memory, commodityId, nowS)
+    .filter((quote) => allowed.has(quote.stationId));
+  return pickBest(quotes, 'sell', true);
 }
 
 /**
@@ -354,6 +375,7 @@ function quoteView(stationId, commodityId, quote, nowS) {
   const seenAt = finiteNonNeg(quote.seenAt);
   const ageS = Math.max(0, nowS - seenAt);
   const band = ageBandFor(ageS);
+  const demand = demandView(quote);
   return {
     stationId: String(stationId),
     commodityId: String(commodityId),
@@ -364,7 +386,37 @@ function quoteView(stationId, commodityId, quote, nowS) {
     ageLabel: ageLabelFor(ageS),
     band,
     provenance,
+    demand,
+    demandReason: demand ? demand.label : null,
+    demandDirection: demand ? demand.direction : 'flat',
     staleCaveat: STALE_CAVEAT,
+  };
+}
+
+function demandView(quote) {
+  const rawDrivers = Array.isArray(quote && quote.demandDrivers) ? quote.demandDrivers : [];
+  const drivers = [];
+  for (const raw of rawDrivers) {
+    if (!raw || typeof raw !== 'object') continue;
+    const label = String(raw.shortLabel || raw.label || raw.explanation || '').trim();
+    if (!label) continue;
+    const direction = raw.direction === 'up' || raw.direction === 'down' ? raw.direction : 'flat';
+    drivers.push({
+      id: raw.id != null ? String(raw.id) : '',
+      label,
+      explanation: raw.explanation != null ? String(raw.explanation) : label,
+      direction,
+    });
+  }
+  const rawMultiplier = Number(quote && quote.demandMult);
+  const multiplier = Number.isFinite(rawMultiplier) && rawMultiplier > 0 ? rawMultiplier : 1;
+  if (!drivers.length && Math.abs(multiplier - 1) < 1e-9) return null;
+  const summary = summarizeDemandDrivers(drivers, multiplier);
+  return {
+    multiplier,
+    drivers,
+    label: summary ? summary.shortLabel : 'Persistent local demand',
+    direction: summary ? summary.direction : (multiplier > 1 ? 'up' : multiplier < 1 ? 'down' : 'flat'),
   };
 }
 
@@ -398,6 +450,7 @@ export default {
   quoteProvenance,
   knownStationQuotes,
   bestKnownSell,
+  bestKnownSellAtStations,
   bestKnownBuy,
   bestKnownMarginLane,
   tradeMarginReceipt,

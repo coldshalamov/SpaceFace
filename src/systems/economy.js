@@ -38,6 +38,7 @@ import {
   HOT_DURATION_S,
 } from '../economy/customsRisk.js';
 import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
+import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
 // M3 courier/freight balance (2026-07): produce=2.0 / consume=0.35 at baseEq=1000 left a permanent
@@ -237,9 +238,10 @@ function spreadOf(entry, frontierPenalty) {
 
 function pricePointAt(entry, def, cycle, t) {
   const stockMid = economyMidPrice(def, entry.stock, entry.baseEq);
+  const persistentMid = applyPersistentDemand(stockMid, entry && entry.demandMult);
   const mid = Math.max(1, round(cycle
-    ? applyCycleToMid(def.basePrice, stockMid, cycle, t)
-    : stockMid));
+    ? applyCycleToMid(def.basePrice, persistentMid, cycle, t)
+    : persistentMid));
   // The chart only needs its mid-price trace; current bid/ask remains on the listing. Keeping
   // snapshots this small preserves a long lived history without bloating save files.
   return { t: Number(t) || 0, mid };
@@ -392,6 +394,7 @@ export const economy = {
     this.helpers = ctx.helpers;
     this._registry = ctx.registry || null;
     this._lastDockedStation = null;
+    this._syntheticHistoryKeys = new Set();
     economy._instance = this; // so exported quote()/execute() reach the live system
 
     const state = this.state, bus = this.bus;
@@ -417,7 +420,11 @@ export const economy = {
     // ---- trade intents from UI ------------------------------------------------------------
     bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty); });
     bus.on('ui:sell', (p) => { if (p) this.handleTrade(p.commodityId, 'sell', p.qty); });
-    bus.on('economy:marketOpened', (p) => { if (p && p.stationId) this.recordMarketMemory(p.stationId); });
+    bus.on('economy:marketOpened', (p) => {
+      if (!p || !p.stationId) return;
+      this.refreshStationDemand(p.stationId);
+      this.snapshotIntel(p.stationId);
+    });
 
     // ---- NPC / passive-income trades route through the same execute path (self-balancing) --
     // NPC / drone trades move market stock (their activity shifts prices — the whole point of a
@@ -458,6 +465,13 @@ export const economy = {
     // ---- event injection from other systems (missions, combat) ----------------------------
     bus.on('mission:forceEvent', (p) => { if (p) this.injectEvent(p); });
     bus.on('combat:baseDestroyed', (p) => this.onBaseDestroyed(p || {}));
+    // Save owners restore after economy. Rebuild this derived read model only after factions and
+    // sectorSim have restored their authoritative conflict/field state.
+    bus.on('save:loaded', () => this.refreshAllPersistentDemand({ reseedSynthetic: true }));
+    // Registry listener order places economy before sectorSim. If offline catch-up crosses a
+    // blockade/surplus threshold, this receipt arrives after the field mutation and reconciles the
+    // same derived quotes and omitted chart caches immediately.
+    bus.on('sectorsim:offlineSummary', () => this.refreshAllPersistentDemand({ reseedSynthetic: true }));
   },
 
   // -------------------------------------------------------------------------------------------
@@ -503,6 +517,7 @@ export const economy = {
         const entry = market[cid];
         const def = commodityDef(state, cid);
         if (!def) continue;
+        this.refreshListingDemand(entry, def, sid);
         // advance hidden formula regime (rare re-roll of equation family + coeffs)
         const cycle = getCycleCore(state, sid, cid, () => this._rng(), state.simTime);
         const nextCycle = maybeAdvanceRegime(cycle, () => this._rng(), state.simTime);
@@ -517,6 +532,11 @@ export const economy = {
         this.recomputePrices(entry, def, frontier, liveCycle, state.simTime);
         this.recordPriceHistory(entry, def, liveCycle, state.simTime);
       }
+    }
+
+    // The docked exchange is a live feed. Remote intel remains intentionally stale until revisited.
+    if (this._lastDockedStation && markets[this._lastDockedStation]) {
+      this.snapshotIntel(this._lastDockedStation);
     }
 
     // 4) propagate event pressure to neighbour stations (along the sector graph)
@@ -546,9 +566,10 @@ export const economy = {
    */
   recomputePrices(entry, def, frontierPenalty, cycle = null, simTime = 0) {
     const stockMid = economyMidPrice(def, entry.stock, entry.baseEq);
+    const persistentMid = applyPersistentDemand(stockMid, entry && entry.demandMult);
     const midRaw = cycle
-      ? applyCycleToMid(def.basePrice, stockMid, cycle, simTime)
-      : stockMid;
+      ? applyCycleToMid(def.basePrice, persistentMid, cycle, simTime)
+      : persistentMid;
     const mid = Math.max(1, round(midRaw));
     const spread = spreadOf(entry, frontierPenalty);
     entry.lastMid = mid;
@@ -565,6 +586,7 @@ export const economy = {
     const state = this.state;
     const frontier = this.frontierPenaltyFor(state, stationId);
     if (!state || !state.economy) return this.recomputePrices(entry, def, frontier);
+    this.refreshListingDemand(entry, def, stationId);
     const cycle = getCycleCore(
       state,
       stationId,
@@ -623,6 +645,78 @@ export const economy = {
     return clamp((1 - sec) * FRONTIER_SPREAD_BONUS, 0, FRONTIER_SPREAD_BONUS);
   },
 
+  /** Rebuild one derived demand cache from factions + the averaged sector field. */
+  refreshListingDemand(entry, def, stationId) {
+    if (!entry || !def) return false;
+    const info = stationInfo(this.state, stationId);
+    const result = effectiveDemandFor({
+      state: this.state,
+      sectorId: info && info.sectorId,
+      commodity: def,
+    });
+    const nextMult = Number(result.multiplier) || 1;
+    const nextDrivers = Array.isArray(result.drivers) ? result.drivers.map((driver) => ({ ...driver })) : [];
+    const changed = Math.abs((Number(entry.demandMult) || 1) - nextMult) > 1e-9
+      || JSON.stringify(entry.demandDrivers || []) !== JSON.stringify(nextDrivers);
+    entry.demandMult = nextMult;
+    entry.demandDrivers = nextDrivers;
+    return changed;
+  },
+
+  /** Refresh a station atomically so its board, executable quotes, history, and route intel agree. */
+  refreshStationDemand(stationId, { recordHistory = true } = {}) {
+    const state = this.state;
+    const market = state && state.economy && state.economy.markets && state.economy.markets[stationId];
+    if (!market) return false;
+    const frontier = this.frontierPenaltyFor(state, stationId);
+    let changed = false;
+    for (const cid in market) {
+      const entry = market[cid];
+      const def = commodityDef(state, cid);
+      if (!entry || !def) continue;
+      const listingChanged = this.refreshListingDemand(entry, def, stationId);
+      const cycle = getCycleCore(state, stationId, cid, () => this._rng(), state.simTime || 0);
+      this.recomputePrices(entry, def, frontier, cycle, state.simTime || 0);
+      if (listingChanged && recordHistory) {
+        this.recordPriceHistory(entry, def, cycle, state.simTime || 0, true);
+      }
+      changed = listingChanged || changed;
+    }
+    return changed;
+  },
+
+  /** Save/load rebuilds derived quotes without inventing observations or history transitions. */
+  refreshAllPersistentDemand({ reseedSynthetic = false } = {}) {
+    const state = this.state;
+    const markets = state && state.economy && state.economy.markets || {};
+    for (const stationId of Object.keys(markets)) {
+      this.refreshStationDemand(stationId, { recordHistory: false });
+    }
+    if (reseedSynthetic) this.reseedSyntheticPriceHistories();
+  },
+
+  /** Rebuild only chart caches omitted from saves; genuinely observed histories remain untouched. */
+  reseedSyntheticPriceHistories() {
+    const keys = this._syntheticHistoryKeys;
+    if (!(keys instanceof Set) || !keys.size) return 0;
+    const state = this.state;
+    let count = 0;
+    for (const key of keys) {
+      const divider = key.indexOf('\u001f');
+      if (divider < 1) continue;
+      const stationId = key.slice(0, divider);
+      const commodityId = key.slice(divider + 1);
+      const entry = state.economy && state.economy.markets
+        && state.economy.markets[stationId] && state.economy.markets[stationId][commodityId];
+      const def = commodityDef(state, commodityId);
+      if (!entry || !def) continue;
+      const cycle = getCycleCore(state, stationId, commodityId, () => this._rng(), state.simTime || 0);
+      this.seedPriceHistory(entry, def, cycle, state.simTime || 0);
+      count++;
+    }
+    return count;
+  },
+
   // -------------------------------------------------------------------------------------------
   // MARKET CONSTRUCTION
   // -------------------------------------------------------------------------------------------
@@ -656,6 +750,7 @@ export const economy = {
       const entry = {
         stock, equilibrium, baseEq: baseEqRef, role,
         lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: [],
+        demandMult: 1, demandDrivers: [],
       };
       const frontier = info ? this.frontierPenalty(info) : 0;
       // seed the hidden formula cycle first so the opening mid includes the wave
@@ -669,6 +764,7 @@ export const economy = {
       const cycle = createCycle(() => this._rng(), def, now - historyAge);
       cycle.cmdtyId = def.id;
       state.economy.cycles[stationId][def.id] = cycle;
+      this.refreshListingDemand(entry, def, stationId);
       this.recomputePrices(entry, def, frontier, cycle, now);
       this.seedPriceHistory(entry, def, cycle, now);
       market[def.id] = entry;
@@ -704,7 +800,11 @@ export const economy = {
     const snapshot = {};
     for (const cid in market) {
       const e = market[cid];
-      snapshot[cid] = { mid: e.lastMid, buy: e.lastBuy, sell: e.lastSell, stock: e.stock, role: e.role };
+      snapshot[cid] = {
+        mid: e.lastMid, buy: e.lastBuy, sell: e.lastSell, stock: e.stock, role: e.role,
+        demandMult: Number(e.demandMult) || 1,
+        demandDrivers: Array.isArray(e.demandDrivers) ? e.demandDrivers.map((driver) => ({ ...driver })) : [],
+      };
     }
     state.economy.marketIntel[stationId] = { snapshot, seenAtT: state.simTime };
     this.recordMarketMemory(stationId, snapshot);
@@ -728,6 +828,8 @@ export const economy = {
         buy: Math.round(Number(buy) || 0),
         sell: Math.round(Number(sell) || 0),
         seenAt: Math.max(0, Number(state.simTime) || 0),
+        demandMult: Number(e.demandMult) || 1,
+        demandDrivers: Array.isArray(e.demandDrivers) ? e.demandDrivers.map((driver) => ({ ...driver })) : [],
       };
     }
     return stationMemory;
@@ -790,11 +892,22 @@ export const economy = {
       stockAfter = sHi;
     }
     // Same formula layer as charts / lastMid so quote matches what the board shows.
+    avgMidPrice = applyPersistentDemand(avgMidPrice, entry.demandMult);
     avgMidPrice = applyCycleToMid(def.basePrice, avgMidPrice, cycle, tNow);
     const unitAvg = side === 'buy' ? avgMidPrice * (1 + spread / 2) : avgMidPrice * (1 - spread / 2);
     const total = round(unitAvg * qty);
-    const beforeMid = applyCycleToMid(def.basePrice, economyMidPrice(def, entry.stock, entry.baseEq), cycle, tNow);
-    const afterMid = applyCycleToMid(def.basePrice, economyMidPrice(def, stockAfter, entry.baseEq), cycle, tNow);
+    const beforeMid = applyCycleToMid(
+      def.basePrice,
+      applyPersistentDemand(economyMidPrice(def, entry.stock, entry.baseEq), entry.demandMult),
+      cycle,
+      tNow,
+    );
+    const afterMid = applyCycleToMid(
+      def.basePrice,
+      applyPersistentDemand(economyMidPrice(def, stockAfter, entry.baseEq), entry.demandMult),
+      cycle,
+      tNow,
+    );
     const priceImpactPct = beforeMid > 0 ? ((afterMid - beforeMid) / beforeMid) * 100 : 0;
     return {
       ok: true, stationId, commodityId, side, qty,
@@ -1442,6 +1555,7 @@ export const economy = {
     this.resetRng();
     this._nextEventId = 1;
     this._eventAccumulator = 0;
+    this._syntheticHistoryKeys = new Set();
     // warm the home sector's markets so prices exist before first dock
     const home = (state.world && state.world.currentSectorId) || 'sector_helios_prime';
     const sec = SECTORS.find((s) => s.id === home);
@@ -1484,6 +1598,7 @@ export const economy = {
   deserialize(data) {
     if (!data) return;
     const econ = this.state.economy;
+    this._syntheticHistoryKeys = new Set();
     // Restore formula state before pricing so mid includes the saved wave, not a fresh invent.
     deserializeCycles(this.state, data.cycles);
     econ.markets = {};
@@ -1505,7 +1620,10 @@ export const economy = {
           const cycle = getCycleCore(this.state, sid, cid, () => this._rng(), this.state.simTime || 0);
           const restoredHistory = sanitizeHistory(e.history);
           if (restoredHistory.length >= 2) entry.history = restoredHistory;
-          else this.seedPriceHistory(entry, def, cycle, this.state.simTime || 0);
+          else {
+            this.seedPriceHistory(entry, def, cycle, this.state.simTime || 0);
+            this._syntheticHistoryKeys.add(`${sid}\u001f${cid}`);
+          }
         }
         out[cid] = entry;
       }

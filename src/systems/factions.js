@@ -9,6 +9,7 @@
 // state.world.sectors[id].owner on war resolution (§0.6). Pure-data deps only (no 'three').
 import { FACTION_META } from '../data/factions.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
+import { CONTESTED_SECTOR_BY_PAIR, contestedSectorForPair } from '../data/conflictZones.js';
 
 // ── Tiers (§0.9 / spec): 9 named bands across -1000..+1000, evaluated high→low. ──────────────
 const TIERS = [
@@ -42,13 +43,7 @@ const POWER_WEIGHT = 0.9;
 const DECAY_POSITIVE = false; // default: only negative rep decays toward neutral (spec)
 
 // Contested sectors flippable in war: pairKey → sectorId (spec CONTESTED SECTORS, sector_ ids).
-const CONTESTED = {
-  'faction_reach:faction_scn': 'sector_helios_prime',
-  'faction_dmc:faction_mts': 'sector_tethys_junction',
-  'faction_reach:faction_vael': 'sector_ashfall_reach',
-  'faction_quiet:faction_scn': 'sector_io_reach',
-  'faction_dmc:faction_reach': 'sector_charon_expanse',
-};
+const CONTESTED = CONTESTED_SECTOR_BY_PAIR;
 
 // ── Static lookups derived from FACTION_META once at module load ────────────────────────────
 const META_BY_ID = Object.create(null);
@@ -327,10 +322,9 @@ export const factions = {
     this._refreshConflictState(pairKey, c);
   },
 
-  // Resolve which sector a contested pair key maps to. Exposed so sectorSim can read the danger of
-  // the contested sector without importing CONTESTED (keeps the contested-sector allowlist private).
+  // Resolve the shared contested-sector catalog through the factions owner API for compatibility.
   contestedSectorFor(pairKey) {
-    return CONTESTED[pairKey] || null;
+    return contestedSectorForPair(pairKey);
   },
 
   _refreshConflictState(key, c) {

@@ -14,6 +14,7 @@ import { getCycle } from '../../systems/economy.js';
 import { predictPriceCurve, regimeLabel } from '../../systems/economyCycles.js';
 import { createCircularGauge, createRouteBeam, createSupplyTree, createMorphLabel, createRippleField } from '../effects/index.js';
 import { presentCommodityIntel } from '../marketIntelPresenter.js';
+import { summarizeDemandDrivers } from '../demandDriverSummary.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STEP_PRESETS = [1, 10, 100];
@@ -1922,7 +1923,12 @@ function knownMarketSnapshots(state) {
       for (const cid in station) {
         const q = station[cid];
         if (!q) continue;
-        snapshot[cid] = { buy: q.buy || 0, sell: q.sell || 0 };
+        snapshot[cid] = {
+          buy: q.buy || 0,
+          sell: q.sell || 0,
+          demandMult: Number(q.demandMult) || 1,
+          demandDrivers: Array.isArray(q.demandDrivers) ? q.demandDrivers.map((driver) => ({ ...driver })) : [],
+        };
       }
       out[sid] = { snapshot, seenAtT: newestMemorySeenAt(station), intelSource: 'memory' };
     }
@@ -1943,7 +1949,11 @@ function knownMarketSnapshots(state) {
       for (const cid in market || {}) {
         const e = market[cid];
         if (!e) continue;
-        snapshot[cid] = { mid: e.lastMid, buy: e.lastBuy, sell: e.lastSell, stock: e.stock, role: e.role };
+        snapshot[cid] = {
+          mid: e.lastMid, buy: e.lastBuy, sell: e.lastSell, stock: e.stock, role: e.role,
+          demandMult: Number(e.demandMult) || 1,
+          demandDrivers: Array.isArray(e.demandDrivers) ? e.demandDrivers.map((driver) => ({ ...driver })) : [],
+        };
       }
       out[sid] = { snapshot, seenAtT: (state && state.simTime) || 0, intelSource: 'market' };
     }
@@ -1984,7 +1994,7 @@ export function computeBestTrades(state, hereStationId) {
     if (!def) continue;
     const vol = def.volPerU > 0 ? def.volPerU : 1;
     const buyHere = entry.lastBuy;
-    let bestSell = -1, bestStation = null, bestSeen = 0, bestSource = 'unknown';
+    let bestSell = -1, bestStation = null, bestSeen = 0, bestSource = 'unknown', bestDemand = null;
     for (const sid in knownMarkets) {
       if (sid === hereStationId) continue;
       const known = knownMarkets[sid];
@@ -1996,11 +2006,16 @@ export function computeBestTrades(state, hereStationId) {
         bestStation = sid;
         bestSeen = known.seenAtT || 0;
         bestSource = known.intelSource || 'unknown';
+        bestDemand = s;
       }
     }
     if (!bestStation || bestSell <= buyHere) continue;
     const margin = bestSell - buyHere;
     const perVol = margin / vol;
+    const destinationDemandSummary = summarizeDemandDrivers(
+      bestDemand && bestDemand.demandDrivers,
+      bestDemand && bestDemand.demandMult,
+    );
     const trade = {
       cmdtyId,
       cmdtyName: def.name,
@@ -2012,6 +2027,14 @@ export function computeBestTrades(state, hereStationId) {
       age: bestSeen,
       seenAtT: bestSeen,
       intelSource: bestSource,
+      destinationDemand: {
+        multiplier: Number(bestDemand && bestDemand.demandMult) || 1,
+        label: destinationDemandSummary ? destinationDemandSummary.shortLabel : 'Market price advantage',
+        direction: destinationDemandSummary ? destinationDemandSummary.direction : 'flat',
+        drivers: Array.isArray(bestDemand && bestDemand.demandDrivers)
+          ? bestDemand.demandDrivers.map((driver) => ({ ...driver }))
+          : [],
+      },
       ...tradeRunCapacity(state, def, buyHere, margin),
     };
     trade.intelLabel = describeTradeIntel(state, trade);

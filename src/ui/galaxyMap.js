@@ -20,6 +20,7 @@
 // Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
+import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { BODY_SPECIALIZATION_BY_ID } from '../data/claimableBodies.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
@@ -31,6 +32,7 @@ import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
 import { sectorSignalFor } from '../systems/sectorSim.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { bestKnownSellAtStations, knownStationQuotes } from './marketIntelligence.js';
 
 // ---------------------------------------------------------------------------------------------
 // Static catalogs (pure — safe at import time).
@@ -1831,6 +1833,61 @@ function popCurrentScreen(ctx) {
 // Price/Market Memory Readers
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * Market Intel's selectable catalog. Lawful goods are always searchable; restricted/contraband
+ * goods appear only after the pilot has remembered a quote or armed a trade route for them.
+ * This reveals no prices and never consults live economy markets.
+ */
+export function marketIntelCommodityOptions(state, commodities = COMMODITIES) {
+  const memory = state && state.player && state.player.marketMemory;
+  const waypoint = state && state.nav && state.nav.waypoint;
+  const routedId = waypoint && waypoint.kind === 'trade' && waypoint.commodityId
+    ? String(waypoint.commodityId)
+    : null;
+  const nowS = Math.max(0, Number(state && state.simTime) || 0);
+  return (Array.isArray(commodities) ? commodities : [])
+    .filter((commodity) => commodity && commodity.id)
+    .filter((commodity) => {
+      const commodityId = String(commodity.id);
+      return commodity.legality === 'legal'
+        || commodityId === routedId
+        || knownStationQuotes(memory, commodityId, nowS).length > 0;
+    });
+}
+
+/** Keep Market Intel on the commodity the pilot is actively hauling when the chart opens. */
+export function selectedMarketCommodityOnOpen(state, currentCommodity, commodities = COMMODITIES) {
+  const options = marketIntelCommodityOptions(state, commodities);
+  const ids = new Set(options.map((commodity) => String(commodity.id)));
+  const waypoint = state && state.nav && state.nav.waypoint;
+  const routed = waypoint && waypoint.kind === 'trade' && waypoint.commodityId
+    ? String(waypoint.commodityId)
+    : null;
+  if (routed && ids.has(routed)) return routed;
+  const current = currentCommodity != null ? String(currentCommodity) : '';
+  if (current && ids.has(current)) return current;
+  if (ids.has('cmdty_ore_iron')) return 'cmdty_ore_iron';
+  return options[0] ? String(options[0].id) : '';
+}
+
+/**
+ * Best remembered sell in a sector, including secondary stations. The result carries the quote's
+ * age/provenance and persistent-demand explanation so UI surfaces do not need a second formula.
+ */
+export function bestKnownSectorMarket(state, sector, commodityId) {
+  const stations = sector && Array.isArray(sector.stations) ? sector.stations : [];
+  const stationIds = stations.map((station) => station && station.id).filter(Boolean);
+  const memory = state && state.player && state.player.marketMemory;
+  const nowS = Math.max(0, Number(state && state.simTime) || 0);
+  const quote = bestKnownSellAtStations(memory, stationIds, commodityId, nowS);
+  if (!quote) return null;
+  const station = stations.find((candidate) => candidate && String(candidate.id) === quote.stationId);
+  return {
+    ...quote,
+    stationName: station && station.name ? String(station.name) : quote.stationId,
+  };
+}
+
 function memoryTint(ageS) {
   if (ageS < 600) return { key: 'fresh', color: '#39d0ff', italic: false };
   if (ageS < 3600) return { key: 'mid', color: '#ffffff', italic: false };
@@ -1845,17 +1902,8 @@ function ageText(ageS) {
 function getMarketMemoryForStation(state, stationId, commodityId) {
   const memory = state && state.player && state.player.marketMemory;
   if (!memory || !stationId || !commodityId) return null;
-  const quotes = memory[stationId];
-  const q = quotes && quotes[commodityId];
-  if (!q || !Number.isFinite(Number(q.sell))) return null;
   const now = Math.max(0, Number(state.simTime) || 0);
-  const ageS = Math.max(0, now - Math.max(0, Number(q.seenAt) || 0));
-  return {
-    buy: Math.round(Number(q.buy) || 0),
-    sell: Math.round(Number(q.sell) || 0),
-    ageS,
-    reliability: Math.exp(-ageS / 1800),
-  };
+  return bestKnownSellAtStations(memory, [stationId], commodityId, now);
 }
 
 function findStationRecord(state, stationId) {
@@ -2362,14 +2410,7 @@ export const galaxyMapScreen = {
     // Populate commodity dropdown
     const commSelect = rootEl.querySelector('#gm-commodity-select');
     if (commSelect) {
-      import('../data/commodities.js').then((m) => {
-        const list = m.COMMODITIES || [];
-        commSelect.innerHTML = list
-          .filter(c => c.legality === 'legal')
-          .map(c => `<option value="${c.id}">${c.name}</option>`)
-          .join('');
-        commSelect.value = this._selectedCommodity || 'cmdty_ore_iron';
-      }).catch(() => {});
+      this._syncMarketCommoditySelector(this._ctx && this._ctx.state);
 
       commSelect.addEventListener('change', () => {
         this._selectedCommodity = commSelect.value;
@@ -2490,6 +2531,18 @@ export const galaxyMapScreen = {
     return this;
   },
 
+  _syncMarketCommoditySelector(state) {
+    if (!this._root) return;
+    const commSelect = this._root.querySelector('#gm-commodity-select');
+    if (!commSelect) return;
+    const options = marketIntelCommodityOptions(state, COMMODITIES);
+    this._selectedCommodity = selectedMarketCommodityOnOpen(state, this._selectedCommodity, COMMODITIES);
+    commSelect.innerHTML = options
+      .map((commodity) => `<option value="${escapeMapHtml(commodity.id)}">${escapeMapHtml(commodity.name)}</option>`)
+      .join('');
+    commSelect.value = this._selectedCommodity;
+  },
+
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
     this._visible = true;
@@ -2499,6 +2552,8 @@ export const galaxyMapScreen = {
 
     // Consume map-authority open intent (LOCAL vs STAR/GALAXY focus + optional target fix).
     const state = this._ctx && this._ctx.state;
+    this._selectedCommodity = selectedMarketCommodityOnOpen(state, this._selectedCommodity, COMMODITIES);
+    this._syncMarketCommoditySelector(state);
     const intent = takeMapOpenIntent(state) || { focus: MAP_FOCUS.SYSTEM };
     const view = applyMapOpenIntentToView({
       zoom: this._zoom,
@@ -2861,15 +2916,18 @@ export const galaxyMapScreen = {
         `;
       }
 
-      // Add main station market memory
-      if (record && record.stations && record.stations[0]) {
-        const mainStation = record.stations[0];
-        const marketData = getMarketMemoryForStation(state, mainStation.id, this._selectedCommodity);
+      // Sector market memory: show the best quote the pilot actually knows, regardless of station order.
+      if (record && record.stations && record.stations.length) {
+        const marketData = bestKnownSectorMarket(state, record, this._selectedCommodity);
         if (marketData) {
           const tint = memoryTint(marketData.ageS);
           html += `
             <div class="gm-ins-section">
-              <div class="gm-ins-title">Market Intel (${this._selectedCommodity.replace('cmdty_', '').replace('_', ' ').toUpperCase()})</div>
+              <div class="gm-ins-title">Best Known Sell (${this._selectedCommodity.replace('cmdty_', '').replace('_', ' ').toUpperCase()})</div>
+              <div class="gm-ins-row">
+                <span>Station</span>
+                <span class="gm-ins-row-val">${escapeMapHtml(marketData.stationName)}</span>
+              </div>
               <div class="gm-ins-row">
                 <span>Buy / Sell</span>
                 <span class="gm-ins-row-val" style="color:${tint.color}">${marketData.buy} / ${marketData.sell}</span>
@@ -2878,6 +2936,12 @@ export const galaxyMapScreen = {
                 <span>Data Age</span>
                 <span class="gm-ins-row-val ${tint.key}">${ageText(marketData.ageS)} ago</span>
               </div>
+              ${marketData.demandReason ? `
+                <div class="gm-ins-row">
+                  <span>Demand Driver</span>
+                  <span class="gm-ins-row-val">${escapeMapHtml(marketData.demandReason)}</span>
+                </div>
+              ` : ''}
             </div>
           `;
         }
@@ -2951,6 +3015,12 @@ export const galaxyMapScreen = {
                 <span>Data Age</span>
                 <span class="gm-ins-row-val ${tint.key}">${ageText(marketData.ageS)} ago</span>
               </div>
+              ${marketData.demandReason ? `
+                <div class="gm-ins-row">
+                  <span>Demand Driver</span>
+                  <span class="gm-ins-row-val">${escapeMapHtml(marketData.demandReason)}</span>
+                </div>
+              ` : ''}
             </div>
           `;
         }
@@ -3543,22 +3613,19 @@ export const galaxyMapScreen = {
       // Market price overlay
       if (this._layers.market) {
         const record = sectorRecordById(state, n.id);
-        const mainStation = record && record.stations && record.stations[0];
-        if (mainStation) {
-          const marketData = getMarketMemoryForStation(state, mainStation.id, this._selectedCommodity);
-          if (marketData) {
-            const tint = memoryTint(marketData.ageS);
-            g.save();
-            g.fillStyle = 'rgba(8,14,26,0.85)';
-            g.strokeStyle = tint.color; g.lineWidth = 1;
-            const text = `${marketData.buy}/${marketData.sell}`;
-            g.font = '9px monospace';
-            const tw = g.measureText(text).width;
-            g.beginPath(); g.rect(x + r + 3, y - 6, tw + 6, 12); g.fill(); g.stroke();
-            g.fillStyle = tint.color; g.textAlign = 'left'; g.textBaseline = 'middle';
-            g.fillText(text, x + r + 6, y);
-            g.restore();
-          }
+        const marketData = bestKnownSectorMarket(state, record, this._selectedCommodity);
+        if (marketData) {
+          const tint = memoryTint(marketData.ageS);
+          g.save();
+          g.fillStyle = 'rgba(8,14,26,0.85)';
+          g.strokeStyle = tint.color; g.lineWidth = 1;
+          const text = `BEST ${marketData.sell}`;
+          g.font = '9px monospace';
+          const tw = g.measureText(text).width;
+          g.beginPath(); g.rect(x + r + 3, y - 6, tw + 6, 12); g.fill(); g.stroke();
+          g.fillStyle = tint.color; g.textAlign = 'left'; g.textBaseline = 'middle';
+          g.fillText(text, x + r + 6, y);
+          g.restore();
         }
       }
 

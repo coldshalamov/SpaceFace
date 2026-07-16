@@ -40,7 +40,7 @@ export function snapshotSimState(state) {
     playerId: state.playerId | 0,
     player: sanitize(state.player),
     input: sanitize(snapshotInput(state.input)),
-    economy: sanitize(state.economy),
+    economy: snapshotEconomy(state.economy),
     missions: sanitize(state.missions),
     scenario: sanitize(state.scenario),
     story: sanitize(state.story),
@@ -54,6 +54,23 @@ export function snapshotSimState(state) {
   const physics = snapshotPhysicsRuntime(state);
   if (physics) snapshot.physics = physics;
   return snapshot;
+}
+
+// Per-listing price history is a bounded chart cache. Unvisited histories are deliberately omitted
+// from saves and formula-reseeded after load, so including them in the authoritative replay hash
+// makes an otherwise identical reload diverge. Normalize only this exact cache path: current stock,
+// quotes, cycles, demand drivers, player knowledge, and every unrelated `history` field remain.
+function snapshotEconomy(economy) {
+  const out = sanitize(economy);
+  const markets = out && out.markets;
+  if (!markets || typeof markets !== 'object' || Array.isArray(markets)) return out;
+  for (const station of Object.values(markets)) {
+    if (!station || typeof station !== 'object' || Array.isArray(station)) continue;
+    for (const entry of Object.values(station)) {
+      if (entry && typeof entry === 'object' && !Array.isArray(entry)) delete entry.history;
+    }
+  }
+  return out;
 }
 
 export function canonicalStringify(value) {

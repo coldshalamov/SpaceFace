@@ -6,6 +6,7 @@ import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo } from '../../../systems/cargo.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
+import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
 // contract the legacy panel used) — never re-derive routes or nav here.
 import { computeBestTrades, applyTradeNavigation } from '../../screens/market.js';
@@ -16,7 +17,6 @@ for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_NAME.se
 
 const LEGAL_TONE = { legal: '', restricted: 'warn', contraband: 'loss' };
 const LEGAL_LABEL = { legal: 'Legal', restricted: 'Restricted', contraband: 'Contraband' };
-const DEMAND_LEVEL = { low: 1, med: 2, medium: 2, high: 3 };
 const MARKET_FILTERS = [
   { id: 'all', label: 'All stock' },
   { id: 'hold', label: 'In hold' },
@@ -79,10 +79,11 @@ function holdFree(state) {
 function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
 
 // unit prices — station BUY (what you pay) / SELL (what station pays you)
-function unitBuy(entry, def) { return Math.round(Number(entry && entry.buy) || Number(def && def.basePrice) || 0); }
-function unitSell(entry, def) {
-  const v = entry && (entry.sell != null ? entry.sell : entry.lastSell);
-  return Math.round(Number(v != null ? v : (def && def.basePrice)) || 0);
+function unitBuy(entry, def) { return marketQuoteValue(entry, def, 'buy'); }
+function unitSell(entry, def) { return marketQuoteValue(entry, def, 'sell'); }
+function demandLevel(entry) {
+  const multiplier = Number(entry && entry.demandMult) || 1;
+  return multiplier > 1.08 ? 3 : multiplier < 0.94 ? 1 : 2;
 }
 function priceHistory(entry, def) {
   const points = entry && Array.isArray(entry.history) ? entry.history : [];
@@ -142,6 +143,9 @@ export function createMarketScreen(ctx) {
   const consoleEl = el.querySelector('.sx-mkt__console');
   const tradeEl = el.querySelector('.sx-mkt__trade');
   const routesEl = el.querySelector('.sx-mkt__routes');
+  stageEl.id = 'sx-market-instrument';
+  stageEl.setAttribute('role', 'tabpanel');
+  stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
 
   let selectedId = null;
   let mode = 'buy';   // 'buy' | 'sell'
@@ -226,34 +230,40 @@ export function createMarketScreen(ctx) {
       const buy = unitBuy(r.entry, r.def);
       const up = hist[hist.length - 1] >= hist[0];
       const pct = hist[0] ? Math.round(((hist[hist.length - 1] - hist[0]) / hist[0]) * 100) : 0;
-      const demand = DEMAND_LEVEL[(r.entry && r.entry.demand) || ''] || 2;
+      const demand = demandLevel(r.entry);
+      const drivers = presentMarketDrivers({ state, stationId: stationId(state), commodity: r.def, entry: r.entry });
       const active = r.id === selectedId ? ' is-active' : '';
       const tracked = r.id === tracked_ ? ' is-tracked' : '';
       const held = heldQty(state, r.id);
       const family = marketFamily(r.def.category || '');
       return (
-        `<button type="button" class="sx-mkt-row${active}${tracked}" data-cmdty="${escapeHtml(r.id)}" role="tab" aria-selected="${r.id === selectedId}"` +
+        `<button type="button" id="sx-market-tab-${escapeHtml(r.id)}" class="sx-mkt-row${active}${tracked}" data-cmdty="${escapeHtml(r.id)}" role="tab" aria-selected="${r.id === selectedId}" tabindex="${r.id === selectedId ? '0' : '-1'}" aria-controls="sx-market-instrument"` +
           ` data-family="${family}"` +
-          ` aria-label="${escapeHtml(r.def.name)}, ${fmt(buy)} credits, ${demand === 3 ? 'high' : demand === 2 ? 'medium' : 'low'} demand${held ? `, ${fmt(held)} units held` : ''}">` +
+          ` aria-label="${escapeHtml(r.def.name)}, ${fmt(buy)} credits, ${demand === 3 ? 'high' : demand === 2 ? 'normal' : 'low'} demand${held ? `, ${fmt(held)} units held` : ''}. ${escapeHtml(drivers.accessibleSummary)}">` +
           (tracked ? `<span class="sx-mkt-row__flag" title="Tracked contract cargo">◆</span>` : '') +
           `<span class="sx-mkt-row__glyph">${commodityGlyph(r.def.category || '')}</span>` +
           `<span class="sx-mkt-row__body"><span class="sx-mkt-row__name">${escapeHtml(r.def.name)}</span>` +
             `<span class="sx-mkt-row__category">${escapeHtml(r.def.category || 'goods')}</span></span>` +
           `<span class="sx-mkt-row__quote"><span class="sx-mkt-row__price">${fmt(buy)}<i> cr</i></span>` +
             `<span class="sx-mkt-row__tr ${up ? 'is-up' : 'is-down'}">${up ? '▲' : '▼'} ${Math.abs(pct)}%</span></span>` +
-          `<span class="sx-mkt-row__held">${held > 0 ? fmt(held) + 'u IN HOLD' : (demand === 3 ? 'HIGH DEMAND' : demand === 1 ? 'LOW DEMAND' : 'MED DEMAND')}</span>` +
+          `<span class="sx-mkt-row__held">${held > 0 ? fmt(held) + 'u IN HOLD' : (demand === 3 ? 'HIGH DEMAND' : demand === 1 ? 'LOW DEMAND' : 'NORMAL DEMAND')}</span>` +
+          `<span class="sx-mkt-row__drivers" aria-hidden="true">${drivers.primary.map((item) => `<i data-direction="${item.direction}">${escapeHtml(item.shortLabel)}</i>`).join('')}</span>` +
         `</button>`
       );
     }).join('');
     const signature = JSON.stringify({
       selectedId, marketFilter, marketQuery, cargoOnly,
-      rows: visible.map((r) => [r.id, unitBuy(r.entry, r.def), heldQty(state, r.id), r.entry && r.entry.demand,
+      rows: visible.map((r) => [r.id, unitBuy(r.entry, r.def), heldQty(state, r.id), r.entry && r.entry.demandMult,
+        JSON.stringify(r.entry && r.entry.demandDrivers || []),
         priceHistory(r.entry, r.def).at(-1)]),
     });
     if (signature === listRenderSignature) return;
     listRenderSignature = signature;
     const searchHadFocus = document.activeElement && document.activeElement.matches('[data-market-search]');
     const searchSelection = searchHadFocus ? document.activeElement.selectionStart : null;
+    const focusedCommodity = document.activeElement && document.activeElement.getAttribute
+      ? document.activeElement.getAttribute('data-cmdty')
+      : null;
     const filters = MARKET_FILTERS.map((filter) =>
       `<button type="button" class="sx-mkt-filter${filter.id === marketFilter ? ' is-on' : ''}" data-market-filter="${filter.id}" ` +
         `aria-pressed="${filter.id === marketFilter}">${filter.label}<b>${counts.get(filter.id) || 0}</b></button>`).join('');
@@ -279,6 +289,9 @@ export function createMarketScreen(ctx) {
         const at = Math.min(search.value.length, searchSelection == null ? search.value.length : searchSelection);
         try { search.setSelectionRange(at, at); } catch (_) {}
       }
+    } else if (focusedCommodity) {
+      const focused = listEl.querySelector(`[data-cmdty="${focusedCommodity}"]`);
+      if (focused) focused.focus({ preventScroll: true });
     }
   }
 
@@ -287,6 +300,8 @@ export function createMarketScreen(ctx) {
     const r = rows.find((x) => x.id === selectedId) || rows[0];
     if (!r) {
       activeChart = null;
+      stageEl.removeAttribute('aria-labelledby');
+      stageEl.removeAttribute('aria-describedby');
       stageEl.innerHTML = `<div class="sx-market-empty">${icon('cargo', 34)}<h3>${mode === 'sell' ? 'Your hold is empty' : 'No market at this berth'}</h3>` +
         `<p>${mode === 'sell' ? 'Buy cargo here or bring material back from mining before opening Sell.' : 'This station has no tradable stock.'}</p></div>`;
       return;
@@ -297,12 +312,15 @@ export function createMarketScreen(ctx) {
     const avg = Number(def.basePrice) || buy;
     const pct = hist[0] ? Math.round(((hist[hist.length - 1] - hist[0]) / hist[0]) * 100) : 0;
     const up = pct >= 0;
-    const demand = DEMAND_LEVEL[(entry && entry.demand) || ''] || (buy > avg * 1.1 ? 3 : buy < avg * 0.9 ? 1 : 2);
-    const demandLabel = demand >= 3 ? 'High' : demand === 2 ? 'Med' : 'Low';
+    const demand = demandLevel(entry);
+    const demandLabel = demand >= 3 ? 'High' : demand === 2 ? 'Normal' : 'Low';
+    const drivers = presentMarketDrivers({ state, stationId: stationId(state), commodity: def, entry });
     const legal = def.legality || 'legal';
     const legalTone = LEGAL_TONE[legal];
     const isTracked = trackedCmdty(state) === r.id;
     activeChart = { hist, avg, label: def.name };
+    stageEl.setAttribute('aria-labelledby', `sx-market-tab-${r.id}`);
+    stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
     stageEl.innerHTML =
       (isTracked ? `<div class="sx-mkt-tracked">${icon('contracts', 15)}<span><b>Tracked contract</b> — buy ${escapeHtml(def.name)} here to load your job.</span></div>` : '') +
       `<div class="sx-mkt-head">` +
@@ -311,6 +329,10 @@ export function createMarketScreen(ctx) {
           `<span class="sx-mkt-cat-inline">${escapeHtml(def.category || '')}</span></div>` +
         `<div class="sx-mkt-delta ${up ? 'is-up' : 'is-down'}">${up ? '▲' : '▼'} ${Math.abs(pct)}%<span>vs. period open</span></div>` +
       `</div>` +
+      `<div class="sx-mkt-driver-ribbon" aria-label="Why this quote">` +
+        drivers.primary.map((item) => `<span data-direction="${item.direction}" aria-label="${escapeHtml(item.explanation)}"><b>${escapeHtml(item.shortLabel)}</b><i>${escapeHtml(item.label)}</i></span>`).join('') +
+      `</div>` +
+      `<p class="sr-only" id="sx-market-driver-summary">${escapeHtml(drivers.accessibleSummary)}</p>` +
       `<div class="sx-mkt-scope">` +
         `<span class="sx-mkt-scope__mode">LIVE STATION SCOPE / ${hist.length} SAMPLES</span>` +
         buildChart(hist, avg, `sxmktfill-${chartToken(stationId(state))}-${chartToken(r.id)}`, def.name) +
@@ -448,11 +470,14 @@ export function createMarketScreen(ctx) {
       const dest = STATION_NAME.get(t.destStation) || t.destStation;
       const profit = Number(t.loadProfit) || 0;
       const units = Number(t.loadUnits) || 0;
+      const demandReason = t.destinationDemand && t.destinationDemand.drivers && t.destinationDemand.drivers.length
+        ? ` · ${t.destinationDemand.label}`
+        : '';
       return (
         `<div class="sx-route-row">` +
           `<span class="sx-route-row__body">` +
             `<span class="sx-route-row__t">${escapeHtml(t.cmdtyName || t.cmdtyId)} → ${escapeHtml(dest)}</span>` +
-            `<span class="sx-route-row__s">${profit > 0 ? '+' + fmt(profit) + ' cr' : '—'}${units > 0 ? ' · ' + fmt(units) + 'u run' : ''}</span>` +
+            `<span class="sx-route-row__s">${profit > 0 ? '+' + fmt(profit) + ' cr' : '—'}${units > 0 ? ' · ' + fmt(units) + 'u run' : ''}${escapeHtml(demandReason)}</span>` +
           `</span>` +
           `<button type="button" class="sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">Set Course</button>` +
         `</div>`
@@ -504,6 +529,22 @@ export function createMarketScreen(ctx) {
     renderList(state); renderStage(state); renderConsole(state);
   });
   listEl.addEventListener('keydown', (ev) => {
+    const commodityTab = ev.target.closest && ev.target.closest('[data-cmdty][role="tab"]');
+    if (commodityTab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) {
+      const tabs = [...listEl.querySelectorAll('[data-cmdty][role="tab"]')];
+      const index = tabs.indexOf(commodityTab);
+      let next = index;
+      if (ev.key === 'Home') next = 0;
+      else if (ev.key === 'End') next = tabs.length - 1;
+      else next = Math.max(0, Math.min(tabs.length - 1, index + (ev.key === 'ArrowLeft' ? -1 : 1)));
+      if (tabs[next]) {
+        ev.preventDefault();
+        tabs[next].focus({ preventScroll: true });
+        tabs[next].scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+        tabs[next].click();
+      }
+      return;
+    }
     if (ev.key !== 'Escape' || !ev.target.matches('[data-market-search]') || !marketQuery) return;
     ev.preventDefault();
     marketQuery = '';
