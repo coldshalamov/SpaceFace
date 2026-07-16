@@ -288,6 +288,171 @@ try {
   requireProbe(rail.hasProgressTrack && rail.hasPagingControls, 'Custom carousel controls are incomplete');
   await page.screenshot({ path: join(OUT, '03-buy-ship-carousel.png') });
 
+  // The ship rail is a local chooser, not a document scroller. Arrow keys must inspect adjacent
+  // ships, Home/End must reach the rail boundaries, and every selection must keep focus, preview,
+  // and accessibility state in agreement without moving the station chrome.
+  await page.locator('.sx-sw-row[data-buy].is-active').focus();
+  const railKeyboardStart = await page.evaluate(() => {
+    const copyRect = (selector) => {
+      const rect = document.querySelector(selector)?.getBoundingClientRect();
+      return rect && { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+    };
+    const rows = [...document.querySelectorAll('.sx-sw-row[data-buy]')];
+    return {
+      firstId: rows[0]?.getAttribute('data-buy'),
+      secondId: rows[1]?.getAttribute('data-buy'),
+      penultimateId: rows.at(-2)?.getAttribute('data-buy'),
+      lastId: rows.at(-1)?.getAttribute('data-buy'),
+      chrome: {
+        app: copyRect('.sx-app'),
+        dock: copyRect('.sx-dock'),
+        topbar: copyRect('.sx-topbar'),
+      },
+    };
+  });
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(900);
+  const arrowRightState = await page.evaluate(() => {
+    const active = document.querySelector('.sx-sw-row[data-buy].is-active');
+    const focused = document.activeElement?.closest?.('.sx-sw-row[data-buy]');
+    const canvas = document.querySelector('.sx-sw__canvas');
+    return {
+      selectedId: active?.getAttribute('data-buy'),
+      focusedId: focused?.getAttribute('data-buy'),
+      pressed: active?.getAttribute('aria-pressed'),
+      previewId: canvas?.dataset.previewDefId,
+      previewReady: canvas?.dataset.previewReady,
+    };
+  });
+  await page.keyboard.press('Home');
+  await page.waitForTimeout(900);
+  const homeState = await page.evaluate(() => {
+    const active = document.querySelector('.sx-sw-row[data-buy].is-active');
+    const focused = document.activeElement?.closest?.('.sx-sw-row[data-buy]');
+    const canvas = document.querySelector('.sx-sw__canvas');
+    return {
+      selectedId: active?.getAttribute('data-buy'),
+      focusedId: focused?.getAttribute('data-buy'),
+      pressed: active?.getAttribute('aria-pressed'),
+      previewId: canvas?.dataset.previewDefId,
+    };
+  });
+  const endTrace = await page.evaluate(async () => {
+    const rail = document.querySelector('.sx-sw__list');
+    const active = rail?.querySelector('.sx-sw-row[data-buy].is-active');
+    const samples = [];
+    const copyRect = (selector) => {
+      const rect = document.querySelector(selector)?.getBoundingClientRect();
+      return rect && { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+    };
+    active?.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true }));
+    const started = performance.now();
+    while (performance.now() - started < 1800) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const canvas = document.querySelector('.sx-sw__canvas');
+      const opacity = Number(canvas ? getComputedStyle(canvas).opacity : 0);
+      const visible = typeof canvas?.__sfPreviewDiagnostics === 'function'
+        ? canvas.__sfPreviewDiagnostics().filter((entry) => entry.displayed && entry.inCurrent)
+        : [];
+      samples.push({
+        elapsedMs: Math.round(performance.now() - started),
+        railLeft: Number((rail?.scrollLeft || 0).toFixed(2)),
+        selectedId: rail?.querySelector('.sx-sw-row[data-buy].is-active')?.getAttribute('data-buy'),
+        focusedId: document.activeElement?.closest?.('.sx-sw-row[data-buy]')?.getAttribute('data-buy'),
+        previewId: canvas?.dataset.previewDefId,
+        previewReady: canvas?.dataset.previewReady,
+        assetState: canvas?.dataset.previewAssetState,
+        canvasOpacity: opacity,
+        visibleUnsettled: opacity > .15 && /loading|procedural-fallback|fallback-after-error|unavailable/.test(canvas?.dataset.previewAssetState || ''),
+        visibleLargeRoundFallback: opacity > .15 && visible.some((entry) =>
+          /SphereGeometry|IcosahedronGeometry/.test(entry.geometry || '') && Number(entry.worldRadius || 0) > 40),
+      });
+    }
+    const chrome = {
+      app: copyRect('.sx-app'),
+      dock: copyRect('.sx-dock'),
+      topbar: copyRect('.sx-topbar'),
+    };
+    const finalActive = rail?.querySelector('.sx-sw-row[data-buy].is-active');
+    return {
+      samples,
+      selectedId: finalActive?.getAttribute('data-buy'),
+      focusedId: document.activeElement?.closest?.('.sx-sw-row[data-buy]')?.getAttribute('data-buy'),
+      pressed: finalActive?.getAttribute('aria-pressed'),
+      previewId: document.querySelector('.sx-sw__canvas')?.dataset.previewDefId,
+      chrome,
+    };
+  });
+  const railPositions = endTrace.samples.map((sample) => sample.railLeft);
+  const railRegressions = railPositions.slice(1).filter((value, index) => value + .5 < railPositions[index]);
+  const railMotion = railPositions.length ? Math.max(...railPositions) - Math.min(...railPositions) : 0;
+  const chromeShift = Math.max(0, ...Object.keys(railKeyboardStart.chrome).flatMap((key) => {
+    const before = railKeyboardStart.chrome[key];
+    const after = endTrace.chrome[key];
+    if (!before || !after) return [Infinity];
+    return ['left', 'top', 'width', 'height'].map((field) => Math.abs(before[field] - after[field]));
+  }));
+  await page.keyboard.press('ArrowLeft');
+  await page.waitForTimeout(900);
+  const arrowLeftState = await page.evaluate(() => {
+    const active = document.querySelector('.sx-sw-row[data-buy].is-active');
+    const focused = document.activeElement?.closest?.('.sx-sw-row[data-buy]');
+    const canvas = document.querySelector('.sx-sw__canvas');
+    return {
+      selectedId: active?.getAttribute('data-buy'),
+      focusedId: focused?.getAttribute('data-buy'),
+      pressed: active?.getAttribute('aria-pressed'),
+      previewId: canvas?.dataset.previewDefId,
+    };
+  });
+  await page.keyboard.press('End');
+  await page.waitForTimeout(900);
+  report.buyShipKeyboard = {
+    expected: railKeyboardStart,
+    arrowRight: arrowRightState,
+    arrowLeft: arrowLeftState,
+    home: homeState,
+    end: {
+      selectedId: endTrace.selectedId,
+      focusedId: endTrace.focusedId,
+      pressed: endTrace.pressed,
+      previewId: endTrace.previewId,
+    },
+    railMotionPx: Number(railMotion.toFixed(2)),
+    railRegressions: railRegressions.length,
+    chromeShiftPx: Number(chromeShift.toFixed(2)),
+    visibleUnsettledFrames: endTrace.samples.filter((sample) => sample.visibleUnsettled).length,
+    visibleLargeRoundFallbackFrames: endTrace.samples.filter((sample) => sample.visibleLargeRoundFallback).length,
+  };
+  requireProbe(arrowRightState.selectedId === railKeyboardStart.secondId
+    && arrowRightState.focusedId === railKeyboardStart.secondId
+    && arrowRightState.pressed === 'true'
+    && arrowRightState.previewId === railKeyboardStart.secondId,
+  `ArrowRight did not inspect the next ship in place (${JSON.stringify(arrowRightState)})`);
+  requireProbe(arrowLeftState.selectedId === railKeyboardStart.penultimateId
+    && arrowLeftState.focusedId === railKeyboardStart.penultimateId
+    && arrowLeftState.pressed === 'true'
+    && arrowLeftState.previewId === railKeyboardStart.penultimateId,
+  `ArrowLeft did not inspect the previous ship in place (${JSON.stringify(arrowLeftState)})`);
+  requireProbe(homeState.selectedId === railKeyboardStart.firstId
+    && homeState.focusedId === railKeyboardStart.firstId
+    && homeState.pressed === 'true'
+    && homeState.previewId === railKeyboardStart.firstId,
+  `Home did not inspect the first ship in place (${JSON.stringify(homeState)})`);
+  requireProbe(endTrace.selectedId === railKeyboardStart.lastId
+    && endTrace.focusedId === railKeyboardStart.lastId
+    && endTrace.pressed === 'true'
+    && endTrace.previewId === railKeyboardStart.lastId,
+  `End did not inspect the last ship in place (${JSON.stringify(report.buyShipKeyboard.end)})`);
+  requireProbe(railMotion >= 20 && railRegressions.length === 0,
+    `Ship rail motion was missing or oscillated (${railMotion.toFixed(2)}px, ${railRegressions.length} regressions)`);
+  requireProbe(chromeShift <= .5, `Ship selection displaced station chrome by ${chromeShift.toFixed(2)}px`);
+  requireProbe(report.buyShipKeyboard.visibleUnsettledFrames === 0,
+    `A non-authored preview was visible during keyboard browsing (${report.buyShipKeyboard.visibleUnsettledFrames} frames)`);
+  requireProbe(report.buyShipKeyboard.visibleLargeRoundFallbackFrames === 0,
+    `A large round fallback was visible during keyboard browsing (${report.buyShipKeyboard.visibleLargeRoundFallbackFrames} frames)`);
+  await page.screenshot({ path: join(OUT, '03b-buy-ship-keyboard-end.png') });
+
   // Leviathan must be framed without requiring pointer input to reveal it.
   await page.evaluate(() => document.querySelector('[data-buy="ship_leviathan"]')?.click());
   await page.waitForFunction(() => {

@@ -525,10 +525,27 @@ export function createShipworksScreen(ctx) {
     railProgressEl.style.transform = `translateX(${(progress * (100 / viewport - 100)).toFixed(2)}%)`;
   }
 
-  function revealSelectedShip() {
+  function revealSelectedShip({ focus = false } = {}) {
     const active = railListEl.querySelector('.sx-sw-row.is-active');
-    if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    if (!active) {
+      requestAnimationFrame(updateRailControls);
+      return;
+    }
+    if (focus) active.focus({ preventScroll: true });
+    const railRect = railListEl.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+    const max = Math.max(0, railListEl.scrollWidth - railListEl.clientWidth);
+    const desired = railListEl.scrollLeft
+      + (activeRect.left + activeRect.width / 2)
+      - (railRect.left + railRect.width / 2);
+    const left = Math.max(0, Math.min(max, desired));
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    railListEl.scrollTo({ left, behavior: reducedMotion ? 'auto' : 'smooth' });
     requestAnimationFrame(updateRailControls);
+  }
+
+  function queueRevealSelectedShip(options = {}) {
+    requestAnimationFrame(() => revealSelectedShip(options));
   }
 
   function renderRail() {
@@ -540,7 +557,7 @@ export function createShipworksScreen(ctx) {
         const on = i === viewIdx ? ' is-active' : '';
         const isActive = i === activeIdx;
         return (
-          `<button type="button" class="sx-sw-row${on}" data-fleet="${i}" title="${escapeHtml(def.name || s.defId)}" aria-label="Inspect ${escapeHtml(def.name || s.defId)}">` +
+          `<button type="button" class="sx-sw-row${on}" data-fleet="${i}" title="${escapeHtml(def.name || s.defId)}" aria-label="Inspect ${escapeHtml(def.name || s.defId)}" aria-pressed="${i === viewIdx}">` +
             `<span class="sx-sw-row__ic">${shipSilhouette(def)}</span>` +
             `<span class="sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(def.name || s.defId)}</span>` +
               `<span class="sx-sw-row__sub">${escapeHtml((def.role || 'ship'))} · T${def.tier != null ? def.tier : '?'}</span></span>` +
@@ -552,7 +569,7 @@ export function createShipworksScreen(ctx) {
       railListEl.innerHTML = SHIPS.filter((s) => (s.price || 0) >= 0).map((s) => {
         const on = s.id === buyId ? ' is-active' : '';
         return (
-          `<button type="button" class="sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" title="${escapeHtml(s.name)} · ${escapeHtml(s.role || 'ship')}" aria-label="Preview ${escapeHtml(s.name)}, ${escapeHtml(s.role || 'ship')}, ${s.price > 0 ? fmt(s.price) + ' credits' : 'owned'}">` +
+          `<button type="button" class="sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" title="${escapeHtml(s.name)} · ${escapeHtml(s.role || 'ship')}" aria-label="Preview ${escapeHtml(s.name)}, ${escapeHtml(s.role || 'ship')}, ${s.price > 0 ? fmt(s.price) + ' credits' : 'owned'}" aria-pressed="${s.id === buyId}">` +
             `<span class="sx-sw-row__ic">${shipSilhouette(s)}</span>` +
             `<span class="sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(s.name)}</span>` +
               `<span class="sx-sw-row__sub">${escapeHtml(s.role || 'ship')} · T${s.tier}</span></span>` +
@@ -562,6 +579,22 @@ export function createShipworksScreen(ctx) {
       }).join('');
     }
     requestAnimationFrame(updateRailControls);
+  }
+
+  function selectRailButton(button, { focus = false } = {}) {
+    if (!button || !railListEl.contains(button)) return false;
+    const fleetIndex = button.getAttribute('data-fleet');
+    const buyShipId = button.getAttribute('data-buy');
+    if (fleetIndex == null && buyShipId == null) return false;
+    if (fleetIndex != null) viewIdx = Number(fleetIndex);
+    else buyId = buyShipId;
+    selectedSlot = -1;
+    renderRail();
+    renderCenter();
+    renderSide();
+    queueRevealSelectedShip({ focus });
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    return true;
   }
 
   // ---------- center: preview + stats ----------
@@ -919,7 +952,7 @@ export function createShipworksScreen(ctx) {
     selectedSlot = -1;
     el.querySelectorAll('.sx-seg__btn').forEach((x) => x.classList.toggle('is-on', x.getAttribute('data-mode') === mode));
     renderRail(); renderCenter(); renderSide();
-    requestAnimationFrame(revealSelectedShip);
+    queueRevealSelectedShip();
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
   });
 
@@ -940,23 +973,29 @@ export function createShipworksScreen(ctx) {
     railListEl.scrollLeft = next;
   }, { passive: false });
 
-  railListEl.addEventListener('click', (ev) => {
-    const f = ev.target.closest('[data-fleet]');
-    if (f) {
-      viewIdx = Number(f.getAttribute('data-fleet'));
-      selectedSlot = -1;
-      renderRail(); renderCenter(); renderSide();
-      requestAnimationFrame(revealSelectedShip);
-      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+  railListEl.addEventListener('keydown', (ev) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) return;
+    const rows = [...railListEl.querySelectorAll('.sx-sw-row')];
+    if (!rows.length) return;
+    const current = ev.target.closest('.sx-sw-row') || railListEl.querySelector('.sx-sw-row.is-active');
+    const currentIndex = Math.max(0, rows.indexOf(current));
+    let nextIndex = currentIndex;
+    if (ev.key === 'ArrowLeft') nextIndex = Math.max(0, currentIndex - 1);
+    if (ev.key === 'ArrowRight') nextIndex = Math.min(rows.length - 1, currentIndex + 1);
+    if (ev.key === 'Home') nextIndex = 0;
+    if (ev.key === 'End') nextIndex = rows.length - 1;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (nextIndex === currentIndex) {
+      current?.focus({ preventScroll: true });
+      queueRevealSelectedShip({ focus: true });
       return;
     }
-    const b = ev.target.closest('[data-buy]');
-    if (b) {
-      buyId = b.getAttribute('data-buy');
-      renderRail(); renderCenter(); renderSide();
-      requestAnimationFrame(revealSelectedShip);
-      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
-    }
+    selectRailButton(rows[nextIndex], { focus: true });
+  });
+
+  railListEl.addEventListener('click', (ev) => {
+    selectRailButton(ev.target.closest('[data-fleet], [data-buy]'));
   });
 
   sideEl.addEventListener('click', (ev) => {
