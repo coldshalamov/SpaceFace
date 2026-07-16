@@ -223,14 +223,18 @@ function injectStyle() {
   style.id = STYLE_ID;
   style.textContent = `
   #sf-sector-law { position:absolute; top:112px; right:16px; width:min(390px, calc(100vw - 32px)); z-index:1070;
-    box-sizing:border-box; padding:9px 11px 10px; pointer-events:none; contain:layout paint style;
-    background:rgba(5,9,18,.92); border:1px solid rgba(57,208,255,.34); border-left:3px solid #39d0ff;
+    box-sizing:border-box; padding:10px 13px 11px; pointer-events:none; contain:layout paint style;
+    background:linear-gradient(180deg, rgba(14,23,41,.88), rgba(7,12,24,.92));
+    border:1px solid rgba(96,146,196,.3); border-top-color:rgba(148,205,255,.4); border-left:3px solid #39d0ff;
+    clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+    box-shadow:0 10px 26px rgba(0,0,0,.42), inset 0 1px 0 rgba(190,225,255,.06);
     color:#d7e6ff; font-family:var(--mono,Consolas,monospace); transition:opacity .16s ease-out, transform .16s ease-out; }
   #sf-sector-law[hidden] { display:none !important; }
-  .sf-law__head { display:flex; justify-content:space-between; gap:12px; font-size:9px; letter-spacing:.14em; color:#39d0ff; }
-  .sf-law__headline { margin-top:5px; font-size:14px; line-height:1.25; letter-spacing:.04em; }
+  .sf-law__head { display:flex; justify-content:space-between; gap:12px; font-size:9px; letter-spacing:.2em; color:#39d0ff;
+    padding-bottom:4px; border-bottom:1px solid rgba(96,146,196,.16); }
+  .sf-law__headline { margin-top:6px; font-size:14px; line-height:1.25; letter-spacing:.06em; }
   .sf-law__meta { margin-top:3px; font-size:9px; line-height:1.35; letter-spacing:.08em; color:#84a0c8; }
-  .sf-law__detail { margin-top:4px; font-size:10px; line-height:1.4; color:#b7c9e3; }
+  .sf-law__detail { margin-top:5px; font-size:10px; line-height:1.4; color:#b7c9e3; }
   #sf-sector-law.sf-law--medium, #sf-sector-law.sf-law--low { border-color:rgba(255,179,92,.44); border-left-color:#ffb35c; }
   #sf-sector-law.sf-law--medium .sf-law__head, #sf-sector-law.sf-law--low .sf-law__head { color:#ffb35c; }
   #sf-sector-law.sf-law--lawless, #sf-sector-law.sf-law--danger { border-color:rgba(255,92,92,.5); border-left-color:#ff5c5c; }
