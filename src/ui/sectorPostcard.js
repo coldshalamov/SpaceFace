@@ -176,9 +176,13 @@ export const sectorPostcard = {
     // Non-diegetic card, top-center, pointer-events none so it can NEVER block flight input.
     el.style.cssText = [
       'position:absolute', 'top:9%', 'left:50%', 'transform:translateX(-50%)',
-      'padding:10px 18px', 'background:rgba(8,14,26,0.82)', 'border:1px solid rgba(110,150,210,0.35)',
-      'border-radius:6px', 'color:#cfe2ff', 'font:13px/1.45 system-ui,sans-serif',
-      'text-align:center', 'pointer-events:none', 'z-index:40', 'max-width:46ch',
+      'padding:12px 22px 13px',
+      'background:linear-gradient(180deg, rgba(14,23,41,.9), rgba(7,12,24,.94))',
+      'border:1px solid rgba(96,146,196,.32)', 'border-top-color:rgba(148,205,255,.44)',
+      'clip-path:polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+      'box-shadow:0 12px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(190,225,255,.07)',
+      'color:#e2efff', 'font:13px/1.5 "Segoe UI", system-ui, sans-serif',
+      'text-align:center', 'pointer-events:none', 'z-index:40', 'max-width:52ch',
     ].join(';');
 
     // Six fields max, ONE line per field (packet failureMode: lore dump).
@@ -189,8 +193,9 @@ export const sectorPostcard = {
       d.textContent = text;
       el.appendChild(d);
     };
-    line(card.name, 'font-size:17px;font-weight:600;letter-spacing:0.06em');
-    line([card.faction, card.securityTier && card.securityTier.toUpperCase()].filter(Boolean).join(' · '));
+    line(card.name, 'font-size:18px;font-weight:600;letter-spacing:0.14em;color:#f2f8ff');
+    line([card.faction, card.securityTier && card.securityTier.toUpperCase()].filter(Boolean).join(' · '),
+      'font-size:10px;letter-spacing:0.22em;color:#8fb8dd;margin-top:2px');
     if (card.hazards && card.hazards.length) {
       line(card.hazards.map((h) => `${h.glyph} ${h.label}`).join('   '), 'opacity:0.9');
     }
