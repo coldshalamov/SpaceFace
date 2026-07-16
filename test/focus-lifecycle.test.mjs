@@ -457,6 +457,48 @@ function makeBus() {
   assert.equal(document.activeElement, hudBtn, 'pop to empty stack restores outside opener');
 }
 
+{
+  // Cached screens can be reopened faster than their 200ms exit transition. The previous exit
+  // callback must not hide a screen that has become the active stack owner again.
+  const dom = installDom();
+  const bus = makeBus();
+  const state = createGameState(131);
+  state.mode = 'flight';
+  const mgr = createScreenManager({ state, bus });
+  let automationRoot = null;
+  mgr.register({
+    id: 'pause',
+    mount(el) {
+      const operations = document.createElement('button');
+      operations.id = 'open-operations';
+      el.appendChild(operations);
+    },
+  });
+  mgr.register({
+    id: 'automation',
+    mount(el) {
+      automationRoot = el;
+      const close = document.createElement('button');
+      close.id = 'close-operations';
+      el.appendChild(close);
+    },
+  });
+
+  mgr.pushScreen('pause');
+  mgr.pushScreen('automation');
+  mgr.popScreen();
+  mgr.pushScreen('automation');
+  await new Promise((resolve) => setTimeout(resolve, 240));
+
+  assert.equal(mgr.top(), 'automation', 'rapid reopen keeps the cached screen on top');
+  assert.equal(automationRoot.style.display, 'flex',
+    'a stale exit timer cannot hide a rapidly reopened cached screen');
+  assert.equal(automationRoot.classList.contains('sf-screen--exiting'), false,
+    'rapid reopen cancels the prior exit state');
+  assert.equal(automationRoot.getAttribute('aria-hidden'), null,
+    'rapidly reopened screen remains exposed to assistive technology');
+}
+
 // ── M6 modal accessibility-tree ownership ─────────────────────────────────────
 
 {

@@ -22,7 +22,7 @@ export function createScreenManager(ctx) {
   const screensRoot = document.getElementById('screens');
   const backdrop = document.getElementById('modal-backdrop');
 
-  // id -> { def, el, mounted }
+  // id -> { def, el, mounted, exitTimer }
   const registry = new Map();
   // ensure the stack lives on ui state (transient; reset on load)
   if (!Array.isArray(state.ui.screenStack)) state.ui.screenStack = [];
@@ -131,7 +131,13 @@ export function createScreenManager(ctx) {
 
   function register(def) {
     if (!def || !def.id) throw new Error('screen def needs an id');
-    registry.set(def.id, { def, el: null, mounted: false });
+    registry.set(def.id, { def, el: null, mounted: false, exitTimer: null });
+  }
+
+  function cancelPendingExit(rec) {
+    if (!rec || rec.exitTimer == null) return;
+    clearTimeout(rec.exitTimer);
+    rec.exitTimer = null;
   }
 
   function build(id) {
@@ -163,6 +169,9 @@ export function createScreenManager(ctx) {
     for (const [id, rec] of registry) {
       if (!rec.el) continue;
       if (id === top) {
+        // A cached screen may be reopened before its previous 200ms exit transition settles.
+        // Cancel that stale callback so it cannot hide the newly active screen.
+        cancelPendingExit(rec);
         rec.el.style.display = 'flex';
         rec.el.removeAttribute('aria-hidden');
         rec.el.setAttribute('aria-modal', 'true');
@@ -279,9 +288,11 @@ export function createScreenManager(ctx) {
     // Fade out the closing screen before removing it
     if (closingRec && closingRec.el) {
       const el = closingRec.el;
+      cancelPendingExit(closingRec);
       el.classList.remove('sf-screen--visible', 'sf-screen--entering');
       el.classList.add('sf-screen--exiting');
-      setTimeout(() => {
+      closingRec.exitTimer = setTimeout(() => {
+        closingRec.exitTimer = null;
         el.classList.remove('sf-screen--exiting');
         el.style.display = 'none';
       }, 200); // matches the 0.2s exiting transition
@@ -404,6 +415,7 @@ export function createScreenManager(ctx) {
     }
     timeEffects.clear('ui:pausing-screen');
     for (const rec of registry.values()) {
+      cancelPendingExit(rec);
       if (rec && rec.mounted && rec.def && rec.def.onHide) {
         try { rec.def.onHide(); } catch (_) {}
       }
