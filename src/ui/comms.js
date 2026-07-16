@@ -236,7 +236,7 @@ export function createComms(ctx) {
   backlogBtn.id = 'sf-comm-backlog-btn';
   backlogBtn.title = 'Comms log (' + BINDINGS.comms.label + ')';
   backlogBtn.setAttribute('aria-label', 'Open comms log');
-  backlogBtn.textContent = '\u2261';  // trigram — "the channel"
+  backlogBtn.textContent = '≡';  // trigram — "the channel"
   document.getElementById('ui-root').appendChild(backlogBtn);
 
   const backlogView = document.createElement('div');
@@ -245,7 +245,7 @@ export function createComms(ctx) {
   backlogView.innerHTML =
     '<div class="sf-comm-backlog__head"><span class="sf-comm-backlog__title">COMMS LOG</span>' +
     '<button class="sf-comm-backlog__close">ESC</button></div>' +
-    '<div class="sf-comm-backlog__hint">Most of these are not for you. The ones that are don\u2019t name you.</div>' +
+    '<div class="sf-comm-backlog__hint">Most of these are not for you. The ones that are don’t name you.</div>' +
     '<div class="sf-comm-backlog__list"></div>';
   document.getElementById('ui-root').appendChild(backlogView);
   const backlogList = backlogView.querySelector('.sf-comm-backlog__list');
@@ -496,14 +496,18 @@ function injectCommsCss() {
   const s = document.createElement('style');
   s.id = COMMS_STYLE_ID;
   s.textContent = `
-  /* ===== comms feed (left edge) — chromeless thin-line cards above the ship schematic (§3C) ===== */
-  #sf-comms { position:absolute; left:16px; top:118px; bottom:170px; width:300px; display:flex;
+  /* ===== comms feed (left edge) — Flight Deck message cards above the left instrument stack ===== */
+  #sf-comms { position:absolute; left:16px; top:118px; bottom:352px; width:300px; display:flex;
     flex-direction:column-reverse; gap:8px; pointer-events:none; z-index:1050; overflow:hidden; }
   #sf-comms .sf-comm { pointer-events:auto; }
   body.ui-modal-open #sf-comms { opacity:0; pointer-events:none; }
   body.ui-modal-open .sf-comm-backlog-btn { opacity:0; visibility:hidden; pointer-events:none; }
-  .sf-comm { --comm-color:var(--text-secondary); --comm-glow:none; position:relative; padding:6px 11px;
-    border-left:2px solid var(--comm-color); box-shadow:-1px 0 8px -2px var(--comm-color);
+  .sf-comm { --comm-color:var(--fd-accent, #3fd8ff); --comm-glow:none; position:relative; padding:8px 12px 9px;
+    background:linear-gradient(180deg, rgba(14,23,41,.88), rgba(7,12,24,.92));
+    border:1px solid rgba(96,146,196,.26); border-top-color:rgba(148,205,255,.32);
+    border-left:3px solid var(--comm-color);
+    clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+    box-shadow:0 8px 22px rgba(0,0,0,.42);
     color:var(--text-primary); font-size:12px; text-shadow:var(--text-shadow-hard);
     cursor:pointer; transform:translateX(-130%); opacity:0; transition:transform .18s ease, opacity .18s ease; }
   .sf-comm--in { transform:translateX(0); opacity:1; }
@@ -515,10 +519,13 @@ function injectCommsCss() {
   .sf-comm__body { line-height:1.4; color:var(--text-primary); }
   .sf-comm--personal .sf-comm__body, .sf-comm--late .sf-comm__body, .sf-comm--story .sf-comm__body { color:#eaf4ff; }
 
-  /* comms backlog button (the ≡) — dedicated top-left anchor, chromeless thin outline */
+  /* comms backlog button (the ≡) — dedicated top-left anchor, Flight Deck chip */
   .sf-comm-backlog-btn { position:absolute; left:16px; top:54px; width:32px; height:32px; z-index:1060;
     display:flex; align-items:center; justify-content:center;
-    background:none; border:1px solid var(--visor-cyan-dim); border-radius:6px; color:var(--text-secondary);
+    background:linear-gradient(180deg, rgba(14,23,41,.85), rgba(7,12,24,.9));
+    border:1px solid rgba(96,146,196,.4); border-top-color:rgba(148,205,255,.42);
+    clip-path:polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+    color:var(--text-secondary);
     font-family:var(--mono); font-size:18px; cursor:pointer; pointer-events:auto; transition:color .12s, border-color .12s;
     text-shadow:var(--text-shadow-hard); }
   .sf-comm-backlog-btn:hover { border-color:var(--visor-cyan); color:var(--visor-cyan); }
