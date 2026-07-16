@@ -180,7 +180,7 @@ export function targetIntelReadout(target, player, state, distance = Infinity) {
 export function createTargetPanel(ctx) {
   const { state } = ctx;
   const el = document.createElement('div');
-  el.className = 'sf-target sf-hudpanel';
+  el.className = 'sf-target';
   el.style.display = 'none';
   el.dataset.hudSlot = 'current-threat';
   el.setAttribute('role', 'status');
