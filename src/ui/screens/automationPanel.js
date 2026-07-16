@@ -13,6 +13,7 @@ import { escapeHtml } from '../comms.js';
 
 const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
 const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 
 const PROGRAM_OPTIONS = Object.freeze([
@@ -92,6 +93,133 @@ export function describeAutomationPurchase(kind, def, state = {}) {
   };
 }
 
+// Pure view model for the outpost flow strip. Production telemetry is authoritative for live
+// throughput; authored recipes only explain its ratios. A legacy save with no telemetry stays
+// explicitly pending instead of presenting the theoretical rate as observed output.
+export function describeOutpostOperation(outpost = {}, def = {}) {
+  const production = outpost.production && typeof outpost.production === 'object'
+    ? outpost.production
+    : null;
+  const recipe = (def && def.recipe) || outpost.recipe || null;
+  const recipeInputs = recipe && recipe.inputs && typeof recipe.inputs === 'object'
+    ? Object.entries(recipe.inputs)
+      .filter(([, amount]) => Number(amount) > 0)
+      .sort(([left], [right]) => String(left).localeCompare(String(right)))
+    : [];
+  const recipeOutput = recipe && recipe.output && typeof recipe.output === 'object'
+    ? Object.entries(recipe.output).find(([, amount]) => Number(amount) > 0)
+    : null;
+  const outputPerBatch = recipeOutput ? Number(recipeOutput[1]) : 1;
+  const outputGoodId = (production && production.outputGoodId)
+    || (recipeOutput && recipeOutput[0])
+    || (recipe && recipe.passive ? 'credits' : null);
+  const observedActualRate = finiteNumber(production && production.actualRate);
+  const requestedRate = finiteNumber(production && production.requestedRate);
+  const hasTelemetry = observedActualRate != null && requestedRate != null;
+  const rawStatus = String(outpost.status || (production && production.status) || '').toLowerCase();
+
+  let state = 'pending';
+  if (rawStatus === 'distressed') state = 'distressed';
+  else if (rawStatus === 'raided') state = 'raided';
+  else if (rawStatus === 'storage_full') state = 'storage_full';
+  else if (rawStatus === 'starved') state = 'starved';
+  else if (hasTelemetry && (rawStatus === 'producing' || (production && production.status === 'producing'))) state = 'producing';
+
+  // Distress, raids, and a full output bay stop the line even if their last telemetry sample was
+  // recorded while producing. The status is newer authority than that stale sample.
+  const lineStopped = state === 'distressed' || state === 'raided' || state === 'storage_full';
+  const actualRate = lineStopped ? 0 : hasTelemetry ? observedActualRate : null;
+  const limitingGoodId = (production && production.limitingGoodId)
+    || firstPositiveKey(production && production.missingByGood);
+  const limitingLabel = limitingGoodId ? commodityName(limitingGoodId) : null;
+
+  let statusLabel = 'Awaiting telemetry';
+  let detail = 'Production telemetry will appear after the next simulation update.';
+  let tone = 'neutral';
+  if (state === 'producing') {
+    statusLabel = 'Producing';
+    detail = recipe && recipe.passive
+      ? 'Passive output is flowing into local storage.'
+      : 'Feedstock is reaching the line and output is accumulating.';
+    tone = 'ok';
+  } else if (state === 'starved') {
+    statusLabel = limitingLabel ? `Starved: ${limitingLabel}` : 'Starved';
+    detail = limitingLabel
+      ? `${limitingLabel} feed is below this recipe's current demand.`
+      : 'One or more required inputs are not reaching this facility.';
+    tone = 'warn';
+  } else if (state === 'storage_full') {
+    statusLabel = 'Storage full';
+    detail = outpost.autoSell
+      ? 'Output bay is full; the next autosell cycle will clear room.'
+      : 'Output bay is full; manual logistics must clear room.';
+    tone = 'warn';
+  } else if (state === 'raided') {
+    statusLabel = 'Raided';
+    detail = 'Production is paused during raid recovery.';
+    tone = 'bad';
+  } else if (state === 'distressed') {
+    statusLabel = 'Distressed';
+    detail = 'Production halted while upkeep is unpaid.';
+    tone = 'bad';
+  }
+
+  const inputs = recipeInputs.map(([goodId, amountPerBatchRaw]) => {
+    const amountPerBatch = Number(amountPerBatchRaw);
+    const perMinute = actualRate != null && outputPerBatch > 0
+      ? roundFlow((actualRate * amountPerBatch / outputPerBatch) * 60)
+      : null;
+    return {
+      goodId,
+      label: commodityName(goodId),
+      actualPerMin: perMinute,
+      short: !!(production && Number(production.missingByGood && production.missingByGood[goodId]) > 0),
+    };
+  });
+  const output = {
+    goodId: outputGoodId,
+    label: outputGoodId === 'credits' ? 'Credits' : commodityName(outputGoodId),
+    actualPerMin: actualRate == null ? null : roundFlow(actualRate * 60),
+    targetPerMin: requestedRate == null ? null : roundFlow(requestedRate * 60),
+    unit: outputGoodId === 'credits' ? 'cr/min' : 'u/min',
+  };
+  const capacity = Math.max(0, Number(outpost.storageCap != null ? outpost.storageCap : def.storageCap) || 0);
+  const stored = Math.max(0, Number(outpost.storage) || 0);
+  const storage = {
+    stored: Math.round(stored),
+    capacity: Math.round(capacity),
+    unit: outputGoodId === 'credits' ? 'cr' : 'u',
+    fill: capacity > 0 ? Math.max(0, Math.min(1, stored / capacity)) : 0,
+  };
+
+  let feeders;
+  if (recipe && recipe.passive) {
+    feeders = { state: 'not-needed', count: 0, label: 'No feedstock required', availability: 'Self-contained' };
+  } else {
+    const feederCount = finiteNumber(production && production.localFeeders);
+    if (feederCount == null) {
+      feeders = { state: 'pending', count: null, label: 'Feeder telemetry pending', availability: 'Availability pending' };
+    } else {
+      const count = Math.max(0, Math.floor(feederCount));
+      const feederState = state === 'starved' ? 'short' : count > 0 ? 'linked' : 'none';
+      feeders = {
+        state: feederState,
+        count,
+        label: count === 1 ? '1 local feeder detected' : `${count || 'No'} local feeders detected`,
+        availability: feederState === 'short' ? 'Feed unavailable' : feederState === 'linked' ? 'Feed linked' : 'No feed linked',
+      };
+    }
+  }
+
+  const inputSummary = inputs.length
+    ? inputs.map((entry) => `${entry.label} ${spokenRate(entry.actualPerMin, 'units per minute')}`).join(', ')
+    : 'no feedstock required';
+  const outputSummary = `${output.label} ${spokenComparisonRate(output.actualPerMin, output.targetPerMin, outputGoodId === 'credits' ? 'credits per minute' : 'units per minute')}`;
+  const accessibleSummary = `${statusLabel}. Input draw: ${inputSummary}. Output: ${outputSummary}. Storage ${storage.stored} of ${storage.capacity} ${outputGoodId === 'credits' ? 'credits' : 'units'}. ${feeders.label}; ${feeders.availability}. ${detail}`;
+
+  return { state, tone, statusLabel, detail, inputs, output, storage, feeders, accessibleSummary };
+}
+
 const STYLE_ID = 'sf-automation-style';
 const CSS = `
 #sf-automation { width: min(92vw, 1000px); height: min(88vh, 720px); display: flex; flex-direction: column;
@@ -152,6 +280,47 @@ const CSS = `
   display: flex; gap: 14px; flex-wrap: wrap; }
 #sf-automation .au-card .grow { flex: 1; min-width: 0; }
 #sf-automation .au-card button { padding: 7px 14px; white-space: nowrap; }
+#sf-automation .au-card.au-outpost { align-items: stretch; padding: 13px 14px; }
+#sf-automation .au-card.au-outpost > .au-recall { align-self: center; min-height: 38px; }
+#sf-automation .au-outpost-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+#sf-automation .au-outpost-head .nm { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+#sf-automation .au-outpost-flow { display: grid; grid-template-columns: minmax(150px, 1fr) 30px minmax(145px, .92fr) 30px minmax(170px, 1.12fr);
+  align-items: stretch; gap: 5px; margin-top: 9px; padding: 9px 10px; border-top: 1px solid rgba(57,208,255,.16);
+  border-bottom: 1px solid rgba(57,208,255,.16); background: linear-gradient(90deg, rgba(6,10,18,.46), rgba(12,23,36,.58), rgba(6,10,18,.46)); }
+#sf-automation .au-flow-node, #sf-automation .au-flow-core { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+#sf-automation .au-flow-core { padding: 5px 8px; text-align: center; border-left: 1px solid rgba(57,208,255,.2); border-right: 1px solid rgba(57,208,255,.2); }
+#sf-automation .au-flow-k { font-family: var(--mono); font-size: .62em; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-mute); }
+#sf-automation .au-flow-node strong, #sf-automation .au-flow-core strong { overflow: hidden; text-overflow: ellipsis; color: var(--ink); font-size: .84em; }
+#sf-automation .au-flow-core strong { white-space: normal; }
+#sf-automation .au-flow-v { font-family: var(--mono); font-size: .72em; color: var(--ink-dim); }
+#sf-automation .au-flow-v + .au-flow-v { margin-top: 1px; }
+#sf-automation .au-storebar { width: 72px; height: 5px; margin-left: 5px; border-radius: 1px; background: rgba(20,28,42,.9);
+  overflow: hidden; display: inline-block; vertical-align: middle; }
+#sf-automation .au-storebar > i { display: block; height: 100%; }
+#sf-automation .au-flow-link { align-self: center; position: relative; height: 1px; background: rgba(127,152,172,.3); }
+#sf-automation .au-flow-link::after { content: ''; position: absolute; right: -1px; top: -3px; width: 6px; height: 6px;
+  border-top: 1px solid currentColor; border-right: 1px solid currentColor; transform: rotate(45deg); color: rgba(127,152,172,.65); }
+#sf-automation .au-outpost-flow[data-state="producing"] .au-flow-link { background: rgba(98,224,138,.55); box-shadow: 0 0 8px rgba(98,224,138,.14); }
+#sf-automation .au-outpost-flow[data-state="producing"] .au-flow-link::after { color: var(--good); }
+#sf-automation .au-outpost-flow[data-state="starved"] .au-flow-link,
+#sf-automation .au-outpost-flow[data-state="storage_full"] .au-flow-link { background: rgba(255,179,71,.48); }
+#sf-automation .au-outpost-flow[data-state="starved"] .au-flow-link::after,
+#sf-automation .au-outpost-flow[data-state="storage_full"] .au-flow-link::after { color: var(--warn); }
+#sf-automation .au-outpost-flow[data-state="raided"] .au-flow-link,
+#sf-automation .au-outpost-flow[data-state="distressed"] .au-flow-link { background: rgba(255,84,112,.44); }
+#sf-automation .au-outpost-flow[data-state="raided"] .au-flow-link::after,
+#sf-automation .au-outpost-flow[data-state="distressed"] .au-flow-link::after { color: var(--danger); }
+#sf-automation .au-operation-status { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+#sf-automation .au-operation-status::before { content: ''; width: 6px; height: 6px; border: 1px solid currentColor; transform: rotate(45deg); }
+#sf-automation .au-operation-status.ok { color: var(--good); }
+#sf-automation .au-operation-status.warn { color: var(--warn); }
+#sf-automation .au-operation-status.bad { color: var(--danger); }
+#sf-automation .au-operation-status.neutral { color: var(--ink-dim); }
+#sf-automation .au-operation-reason { margin-top: 7px; font-size: .76em; line-height: 1.35; color: var(--ink-dim); }
+#sf-automation .au-outpost-detail { margin-top: 6px; font-size: .74em; color: var(--ink-dim); }
+#sf-automation .au-outpost-detail summary { width: fit-content; cursor: pointer; color: var(--accent-2); }
+#sf-automation .au-outpost-detail summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+#sf-automation .au-outpost-detail .au-detail-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; font-family: var(--mono); }
 #sf-automation .au-buy { background: rgba(98,224,138,.12); border-color: var(--good); color: #d9ffe7; }
 #sf-automation .au-buy:hover { border-color: var(--good); }
 #sf-automation .au-order { background: rgba(57,208,255,.1); border-color: var(--accent-2); }
@@ -175,6 +344,9 @@ const CSS = `
 @media (max-width: 760px) {
   #sf-automation .au-command { grid-template-columns: 1fr; }
   #sf-automation .au-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #sf-automation .au-outpost-flow { grid-template-columns: 1fr; }
+  #sf-automation .au-flow-link { display: none; }
+  #sf-automation .au-flow-node, #sf-automation .au-flow-core { padding: 5px 0; text-align: left; border-left: 0; border-right: 0; }
 }
 `;
 
@@ -362,7 +534,24 @@ export const automationScreen = {
       const buildUnlocked = (player.researchedNodes || []).includes('tech_outpost_charter');
       parts.push(buildUnlocked ? 1 : 0);
       for (const o of a.outposts || []) {
-        parts.push(o.id, o.defId, o.status, o.sectorId || '', Math.round(o.storage || 0), Math.round(o.ratePerMin || 0));
+        const production = o.production || {};
+        parts.push(
+          o.id,
+          o.defId,
+          o.status,
+          o.sectorId || '',
+          Math.round(o.storage || 0),
+          Math.round(o.storageCap || 0),
+          Math.round((o.ratePerMin || 0) * 100) / 100,
+          production.status || '',
+          production.outputGoodId || '',
+          production.actualRate != null ? Math.round(production.actualRate * 1000) / 1000 : '',
+          production.requestedRate != null ? Math.round(production.requestedRate * 1000) / 1000 : '',
+          production.limitingGoodId || '',
+          production.localFeeders != null ? production.localFeeders : '',
+          Object.keys(production.missingByGood || {}).sort().join(','),
+          o.autoSell ? 1 : 0,
+        );
       }
     } else {
       const owned = player.ownedShips || [];
@@ -378,6 +567,10 @@ export const automationScreen = {
   _renderBody() {
     const body = this._els && this._els.body;
     if (!body) return;
+    const focusSnapshot = captureAutomationBodyFocus(body);
+    const openOutpostDetails = this._tab === 'outposts'
+      ? new Set(Array.from(body.querySelectorAll('details[data-outpost-detail][open]'), (details) => details.dataset.outpostDetail))
+      : new Set();
     const frag = document.createDocumentFragment();
     this._renderOperationsBoard(frag);
     if (this._tab === 'drones') this._renderDrones(frag);
@@ -385,6 +578,12 @@ export const automationScreen = {
     else if (this._tab === 'outposts') this._renderOutposts(frag);
     else this._renderFleet(frag);
     body.replaceChildren(frag);
+    if (this._tab === 'outposts' && openOutpostDetails.size) {
+      for (const details of body.querySelectorAll('details[data-outpost-detail]')) {
+        if (openOutpostDetails.has(details.dataset.outpostDetail)) details.open = true;
+      }
+    }
+    restoreAutomationBodyFocus(body, focusSnapshot);
   },
 
   _section(title) {
@@ -411,7 +610,7 @@ export const automationScreen = {
         <div class="au-next-body">${escapeHtml(next.body)}</div>
         <div class="au-next-row">
           <span class="au-next-meta">${escapeHtml(next.meta)}</span>
-          <button class="au-cta" data-act="${escapeHtml(action)}" data-ref="${escapeHtml(actionTarget)}"${kindAttr} title="${escapeHtml(actionTitle)}" aria-label="${escapeHtml(actionTitle)}">${escapeHtml(next.cta)}</button>
+          <button class="au-cta" data-focus-key="operations-next:${escapeHtml(action)}:${escapeHtml(actionTarget)}" data-act="${escapeHtml(action)}" data-ref="${escapeHtml(actionTarget)}"${kindAttr} title="${escapeHtml(actionTitle)}" aria-label="${escapeHtml(actionTitle)}">${escapeHtml(next.cta)}</button>
         </div>
       </div>
       <div class="au-summary" aria-label="Automation summary">
@@ -568,22 +767,52 @@ export const automationScreen = {
     } else {
       for (const o of owned) {
         const def = OUTPOSTS.find((x) => x.id === o.defId) || o;
-        const stor = o.storage != null ? o.storage : 0;
-        const cap = def.storageCap || 1;
+        const operation = describeOutpostOperation(o, def);
+        const inputHtml = operation.inputs.length
+          ? operation.inputs.map((input) => `
+              <strong>${escapeHtml(input.label)}</strong>
+              <span class="au-flow-v">${escapeHtml(rateText(input.actualPerMin, 'u/min'))}${input.short ? ' · short' : ''}</span>`).join('')
+          : `<strong>No feedstock</strong><span class="au-flow-v">self-contained facility</span>`;
+        const outputRate = comparisonRateText(operation.output.actualPerMin, operation.output.targetPerMin, operation.output.unit);
+        const storageText = `${displayFlowNumber(operation.storage.stored)}/${displayFlowNumber(operation.storage.capacity)} ${operation.storage.unit} stored`;
         const card = document.createElement('div');
-        card.className = 'au-card';
+        card.className = 'au-card au-outpost';
         card.innerHTML = `
           <div class="grow">
-            <div class="nm">${prettyId(def.id)} ${statusPill(o.status)} <span class="au-pill">${o.sectorId ? prettyId(o.sectorId) : 'unsited'}</span></div>
-            <div class="meta">
-              <span>${recipeText(def.recipe)}</span>
-              <span>storage ${Math.round(stor)}/${cap} ${miniBar(stor / cap)}</span>
-              <span>defense ${def.defense}</span>
-              <span>upkeep ${def.upkeepPerMin}/min</span>
+            <div class="au-outpost-head">
+              <div class="nm">${prettyId(def.id)} <span class="au-pill">${o.sectorId ? prettyId(o.sectorId) : 'unsited'}</span></div>
             </div>
-            <div class="au-note">${o.autoSell ? 'Auto-sells stored output every minute through the passive cap.' : 'Stored output is waiting for manual logistics.'}</div>
+            <div class="au-outpost-flow" data-state="${escapeHtml(operation.state)}" role="img" aria-label="${escapeHtml(operation.accessibleSummary)}">
+              <div class="au-flow-node">
+                <span class="au-flow-k">Input draw</span>
+                ${inputHtml}
+              </div>
+              <span class="au-flow-link" aria-hidden="true"></span>
+              <div class="au-flow-core">
+                <span class="au-flow-k">Line state</span>
+                <strong class="au-operation-status ${escapeHtml(operation.tone)}">${escapeHtml(operation.statusLabel)}</strong>
+                <span class="au-flow-v">${escapeHtml(operation.feeders.label)} · ${escapeHtml(operation.feeders.availability)}</span>
+              </div>
+              <span class="au-flow-link" aria-hidden="true"></span>
+              <div class="au-flow-node">
+                <span class="au-flow-k">Output</span>
+                <strong>${escapeHtml(operation.output.label)}</strong>
+                <span class="au-flow-v">${escapeHtml(outputRate)}</span>
+                <span class="au-flow-v">${escapeHtml(storageText)} ${storageBar(operation.storage.fill)}</span>
+              </div>
+            </div>
+            <div class="au-operation-reason">${escapeHtml(operation.detail)}</div>
+            <details class="au-outpost-detail" data-outpost-detail="${escapeHtml(o.id != null ? o.id : def.id)}">
+              <summary>Facility details</summary>
+              <div class="au-detail-row">
+                <span>${escapeHtml(recipeText(def.recipe))}</span>
+                <span>defense ${escapeHtml(def.defense)}</span>
+                <span>upkeep ${escapeHtml(def.upkeepPerMin)}/min</span>
+                <span>${o.autoSell ? 'autosell every minute' : 'manual logistics'}</span>
+              </div>
+            </details>
           </div>
-          <button class="au-recall" data-act="decommission" data-ref="${o.id != null ? o.id : def.id}" data-kind="outpost">Decommission</button>`;
+          <button class="au-recall" data-act="decommission" data-ref="${o.id != null ? o.id : def.id}" data-kind="outpost" aria-label="Decommission ${prettyId(def.id)}">Decommission</button>`;
         frag.appendChild(card);
       }
     }
@@ -600,7 +829,7 @@ export const automationScreen = {
         <div class="grow">
           <div class="nm">${prettyId(def.id)}</div>
           <div class="meta">
-            <span>${recipeText(def.recipe)}</span>
+            <span>${escapeHtml(recipeText(def.recipe))}</span>
             <span>out ${def.outRate}/s</span>
             <span>storage ${def.storageCap}</span>
             <span>defense ${def.defense}</span>
@@ -722,6 +951,63 @@ export const automationScreen = {
     this.refresh(this._ctx, { forceBody: true });
   },
 };
+
+const AUTOMATION_BODY_FOCUSABLES = 'button, input, select, textarea, summary, [tabindex]';
+
+function captureAutomationBodyFocus(body) {
+  const active = typeof document !== 'undefined' ? document.activeElement : null;
+  if (!active || !body.contains(active)) return null;
+  const key = automationFocusKey(active);
+  if (!key) return null;
+
+  const tag = String(active.tagName || '').toUpperCase();
+  const inputType = String(active.type || '').toLowerCase();
+  const preservesTypedValue = tag === 'TEXTAREA'
+    || (tag === 'INPUT' && (!inputType || inputType === 'text' || inputType === 'search'));
+  return {
+    key,
+    typedValue: preservesTypedValue ? String(active.value || '') : null,
+    selectionStart: preservesTypedValue && Number.isFinite(active.selectionStart) ? active.selectionStart : null,
+    selectionEnd: preservesTypedValue && Number.isFinite(active.selectionEnd) ? active.selectionEnd : null,
+    selectionDirection: preservesTypedValue ? active.selectionDirection : null,
+  };
+}
+
+function restoreAutomationBodyFocus(body, snapshot) {
+  if (!snapshot) return;
+  const target = Array.from(body.querySelectorAll(AUTOMATION_BODY_FOCUSABLES))
+    .find((candidate) => automationFocusKey(candidate) === snapshot.key);
+  if (!target || target.disabled || target.hidden || target.isConnected === false) return;
+
+  if (snapshot.typedValue != null) target.value = snapshot.typedValue;
+  target.focus({ preventScroll: true });
+  if (snapshot.selectionStart != null && typeof target.setSelectionRange === 'function') {
+    try {
+      target.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd, snapshot.selectionDirection || 'none');
+    } catch (_) { /* unsupported input types retain focus without selection restoration */ }
+  }
+}
+
+function automationFocusKey(element) {
+  if (!element) return null;
+  const dataset = element.dataset || {};
+  if (dataset.focusKey) return `explicit:${dataset.focusKey}`;
+  if (element.id) return `id:${element.id}`;
+
+  const tag = String(element.tagName || '').toLowerCase();
+  if (dataset.act) {
+    return `action:${tag}:${dataset.act}:${dataset.ref || ''}:${dataset.kind || ''}`;
+  }
+  if (element.name) return `name:${tag}:${element.name}`;
+  if (dataset.search != null) return `search:${tag}:${dataset.search}`;
+  if (dataset.filter != null) return `filter:${tag}:${dataset.filter}`;
+
+  const details = typeof element.closest === 'function'
+    ? element.closest('details[data-outpost-detail]')
+    : null;
+  if (details && tag === 'summary') return `outpost-details:${details.dataset.outpostDetail}:summary`;
+  return null;
+}
 
 // ---- helpers ----------------------------------------------------------------
 export function summarizeAutomationOperations(state) {
@@ -1025,8 +1311,8 @@ function metricHtml(k, v, s) {
 function recipeText(r) {
   if (!r) return 'idle';
   if (r.passive) return `passive ${r.creditGen || 0} cr/s`;
-  const ins = r.inputs ? Object.entries(r.inputs).map(([k, v]) => `${v}×${prettyId(k)}`).join('+') : '?';
-  const out = r.output ? Object.entries(r.output).map(([k, v]) => `${v}×${prettyId(k)}`).join('+') : '?';
+  const ins = r.inputs ? Object.entries(r.inputs).map(([k, v]) => `${v}× ${commodityName(k)}`).join(' + ') : '?';
+  const out = r.output ? Object.entries(r.output).map(([k, v]) => `${v}× ${commodityName(k)}`).join(' + ') : '?';
   return `${ins} → ${out}`;
 }
 
@@ -1046,6 +1332,12 @@ function miniBar(frac) {
   const pct = Math.max(0, Math.min(1, frac || 0)) * 100;
   const col = pct < 25 ? 'var(--danger)' : pct < 55 ? 'var(--warn)' : 'var(--good)';
   return `<span class="au-minibar"><i style="width:${pct.toFixed(0)}%;background:${col}"></i></span>`;
+}
+
+function storageBar(frac) {
+  const pct = Math.max(0, Math.min(1, frac || 0)) * 100;
+  const color = pct >= 90 ? 'var(--warn)' : 'var(--accent-2)';
+  return `<span class="au-storebar" aria-hidden="true"><i style="width:${pct.toFixed(0)}%;background:${color}"></i></span>`;
 }
 
 function emptyEl(text) {
@@ -1069,6 +1361,53 @@ function prettyLabel(id) {
   return String(id || '')
     .replace(/^(drone_|trader_|outpost_|cmdty_|ship_|sector_|mod_)/, '')
     .replace(/_/g, ' ');
+}
+
+function commodityName(id) {
+  if (id === 'credits') return 'Credits';
+  const commodity = COMMODITY_BY_ID.get(id);
+  if (commodity && commodity.name) return commodity.name;
+  const label = prettyLabel(id);
+  return label.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function finiteNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && value !== null && value !== '' ? number : null;
+}
+
+function firstPositiveKey(record) {
+  return Object.keys(record || {}).sort().find((key) => Number(record[key]) > 0) || null;
+}
+
+function roundFlow(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function displayFlowNumber(value) {
+  if (value == null) return '—';
+  const number = Number(value) || 0;
+  return Number.isInteger(number) ? String(number) : number.toFixed(number < 10 ? 2 : 1).replace(/\.0$/, '');
+}
+
+function rateText(value, unit) {
+  return value == null ? 'awaiting telemetry' : `${displayFlowNumber(value)} ${unit}`;
+}
+
+function comparisonRateText(actual, target, unit) {
+  if (actual == null) return 'awaiting telemetry';
+  if (target == null) return `${displayFlowNumber(actual)} ${unit}`;
+  return `${displayFlowNumber(actual)} / ${displayFlowNumber(target)} ${unit}`;
+}
+
+function spokenRate(value, unit) {
+  return value == null ? 'awaiting telemetry' : `${displayFlowNumber(value)} ${unit}`;
+}
+
+function spokenComparisonRate(actual, target, unit) {
+  if (actual == null) return 'awaiting telemetry';
+  if (target == null) return `${displayFlowNumber(actual)} ${unit}`;
+  return `${displayFlowNumber(actual)} of ${displayFlowNumber(target)} ${unit}`;
 }
 
 function numOr(v) {

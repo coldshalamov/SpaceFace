@@ -42,6 +42,11 @@ import {
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+const compareStableId = (left, right) => {
+  const a = String(left && left.id != null ? left.id : left);
+  const b = String(right && right.id != null ? right.id : right);
+  return a < b ? -1 : a > b ? 1 : 0;
+};
 
 // Static lookups (built once).
 const DRONE_BY_ID = new Map(DRONES.map((d) => [d.id, d]));
@@ -54,6 +59,20 @@ const TRADER_SHIP_DEF = Object.freeze({
   trader_hauler_l: 'ship_mule',
   trader_freighter_m: 'ship_mule',
   trader_bulk_h: 'ship_atlas',
+});
+const OUTPOST_VISUAL_BY_DEF = Object.freeze({
+  outpost_refinery: Object.freeze({
+    placeId: 'place_claim_outpost_refinery',
+    claimSpecId: 'spec_refinery',
+  }),
+  outpost_fuelsynth: Object.freeze({
+    placeId: 'place_claim_outpost_refinery',
+    claimSpecId: 'spec_refinery',
+  }),
+  outpost_habhub: Object.freeze({
+    placeId: 'place_claim_outpost_relay',
+    claimSpecId: 'spec_relay',
+  }),
 });
 
 // stationId -> { sectorId, factionId, type, position } from the SECTORS graph (same resolve
@@ -81,6 +100,7 @@ const DRONE_ORE_FALLBACK_VALUE = 28; // cmdty_ore_iron basePrice (informational 
 // Cadences (s).
 const OUTPOST_RAID_INTERVAL_S = 600;
 const OUTPOST_AUTOSELL_INTERVAL_S = 60;
+const OFFSCREEN_NETWORK_INTERVAL_S = 60;
 
 // ---- mining-drone FLYING-ENTITY tuning (real type:'drone' entities that orbit/seek asteroids) ----
 const DRONE_ENTITY_RADIUS = 2.4;      // wu collision radius of a single drone mesh
@@ -253,6 +273,98 @@ export function outpostGrossCrPerMin(def, orePriceForGood, opts = {}) {
   return Math.round(outpostGrossValue(def, outRate * 60, orePriceForGood));
 }
 
+// Pure coarse production planner shared by live ticks and offline catch-up. The planner knows
+// recipe ratios and storage capacity, but nothing about drones, UI, entities, or wall time.
+export function planOutpostProduction({
+  recipe = null,
+  requestedOutput = 0,
+  storageRoom = Infinity,
+  availableByGood = {},
+} = {}) {
+  const requested = Math.max(0, Number(requestedOutput) || 0);
+  const room = Number.isFinite(storageRoom) ? Math.max(0, storageRoom) : Infinity;
+  const targetOutput = Math.min(requested, room);
+  const inputs = recipe && recipe.inputs && typeof recipe.inputs === 'object'
+    ? Object.entries(recipe.inputs)
+      .filter(([, amount]) => Number(amount) > 0)
+      .sort(([a], [b]) => compareStableId(a, b))
+    : [];
+  const output = recipe && recipe.output && typeof recipe.output === 'object'
+    ? Object.entries(recipe.output).find(([, amount]) => Number(amount) > 0)
+    : null;
+  const outputPerBatch = output ? Number(output[1]) : 1;
+
+  if (!(targetOutput > 0)) {
+    return {
+      produced: 0,
+      consumedByGood: {},
+      missingByGood: {},
+      limitingGoodId: null,
+      status: room <= 0 ? 'storage_full' : 'idle',
+    };
+  }
+
+  // Passive facilities intentionally have no feedstock contract. Preserve that authored behavior.
+  if (recipe && recipe.passive) {
+    return {
+      produced: targetOutput,
+      consumedByGood: {},
+      missingByGood: {},
+      limitingGoodId: null,
+      status: 'producing',
+    };
+  }
+
+  // Missing or malformed recipe data must fail closed. Treating an absent input/output contract as
+  // passive would silently recreate the produce-from-nothing bug this planner exists to prevent.
+  if (!recipe || inputs.length === 0 || !output) {
+    return {
+      produced: 0,
+      consumedByGood: {},
+      missingByGood: {},
+      limitingGoodId: null,
+      status: 'invalid_recipe',
+    };
+  }
+
+  const requestedBatches = targetOutput / outputPerBatch;
+  let possibleBatches = requestedBatches;
+  let limitingGoodId = null;
+  for (const [goodId, amountPerBatchRaw] of inputs) {
+    const amountPerBatch = Number(amountPerBatchRaw);
+    const available = Math.max(0, Number(availableByGood[goodId]) || 0);
+    const byInput = available / amountPerBatch;
+    if (byInput < possibleBatches) {
+      possibleBatches = byInput;
+      limitingGoodId = goodId;
+    }
+  }
+
+  const batches = Math.max(0, Math.min(requestedBatches, possibleBatches));
+  const produced = batches * outputPerBatch;
+  const consumedByGood = {};
+  const missingByGood = {};
+  for (const [goodId, amountPerBatchRaw] of inputs) {
+    const amountPerBatch = Number(amountPerBatchRaw);
+    const consumed = Math.min(
+      Math.max(0, Number(availableByGood[goodId]) || 0),
+      batches * amountPerBatch,
+    );
+    consumedByGood[goodId] = consumed;
+    const neededForRequest = requestedBatches * amountPerBatch;
+    const missing = Math.max(0, neededForRequest - Math.max(0, Number(availableByGood[goodId]) || 0));
+    if (missing > 1e-9) missingByGood[goodId] = missing;
+  }
+
+  return {
+    produced,
+    consumedByGood,
+    missingByGood,
+    limitingGoodId,
+    status: produced + 1e-9 < targetOutput ? 'starved' : 'producing',
+  };
+}
+
 export function traderProfitPerCycle(def, buyA, sellB, opts = {}) {
   const spread = Math.max(0, (sellB || 0) - (buyA || 0));
   const hotPenalty = opts.hotPenalty != null ? opts.hotPenalty : (1 - 0.5 * (opts.hotness || 0));
@@ -289,6 +401,7 @@ export const automation = {
       alphabetCandidates: 0,
     };
     this._programCtx = makeProgramContext(this);
+    this._saveRestoring = false;
 
     // Dedicated seeded RNG stream (§0.5) for loss/raid rolls so they don't disturb other streams.
     this._initRng();
@@ -303,20 +416,48 @@ export const automation = {
     // Combat dealing damage to one of our assets (drone group / outpost / fleet ship).
     bus.on('combat:hitAsset', (p) => { if (p) this.onHitAsset(p); });
 
-    // Offline catch-up: when a save is loaded, simulate the elapsed-away window once.
-    bus.on('save:loaded', () => this.runOfflineCatchup());
-    bus.on('game:started', () => { this.meta().lastTickTime = nowMs(); });
+    // Save restore re-enters the saved sector before automation.deserialize() runs. Suppress
+    // presence during that interval so structures from the previous run cannot flash into view.
+    bus.on('save:restoring', () => {
+      this._saveRestoring = true;
+      for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o);
+    });
+    // Offline catch-up: when a save is loaded, simulate the elapsed-away window once, then
+    // materialize only the restored current-sector ledger.
+    bus.on('save:loaded', () => {
+      this._saveRestoring = false;
+      this.runOfflineCatchup();
+      this._syncOutpostPresence(this.state.automation);
+    });
+    bus.on('save:error', () => {
+      if (!this._saveRestoring) return;
+      this._saveRestoring = false;
+      this._syncOutpostPresence(this.state.automation);
+    });
+    bus.on('game:started', () => {
+      this._saveRestoring = false;
+      this.meta().lastTickTime = nowMs();
+    });
 
     // Hard sector exit: world despawns sector-scoped entities — release live drone hulls and drop
     // ids (they re-spawn from the group when the player returns). Continuous free-flight membership
     // preserves live drone identity / task / route / progress across Voronoi handoffs (M2-C1).
     bus.on('sector:exit', (p) => {
+      // The off-screen cadence bucket describes the sector set that was remote during the elapsed
+      // partial minute. Settle that exact set before current-sector membership changes; otherwise
+      // the next sector can inherit time accrued before the handoff and receive/miss production.
+      this._flushOffscreenNetworkBeforeSectorTransition(p && p.sectorId);
       if (p && (p.continuous || p.noTeleport)) return;
       for (const g of this.state.automation.drones) this._releaseDroneEntities(g);
+      for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o);
     });
     // Continuous enter: adopt sector membership for still-live drone groups. No spawn, no task/
     // route/program/cargo reset — identity stays on the live entity ids (M2-C1).
-    bus.on('sector:enter', (p) => this._onContinuousDroneMembership(p));
+    bus.on('sector:enter', (p) => {
+      this._onContinuousDroneMembership(p);
+      if (this._saveRestoring) return;
+      this._syncOutpostPresence(this.state.automation);
+    });
 
     // Tech can raise the drone tier cap → just affects gating/cap; nothing to do eagerly.
   },
@@ -348,6 +489,7 @@ export const automation = {
 
     this._updateDrones(dt, a);
     this._updateTraders(dt, a);
+    this._updateOffscreenNetwork(dt, a);
     this._updateOutposts(dt, a);
     this._drainUpkeep(dt, a);
 
@@ -384,6 +526,10 @@ export const automation = {
         if (this._hasLiveDroneEntities(g)) g.sectorId = curSector;
         else if (g.entityIds && g.entityIds.length) g.entityIds = [];
       }
+
+      // Away-sector groups are aggregated with their local outposts once per minute. Keeping them
+      // out of the fixed tick preserves the observable-when-present / averaged-when-absent contract.
+      if (g.sectorId !== curSector) continue;
 
       // PROGRAM PATH (V2 §4 / cut-list #28): if the group has an assigned alphabet template,
       // run it instead of the legacy mine-to-buffer loop. The drone mines into the player's REAL
@@ -682,6 +828,249 @@ export const automation = {
     g.entityIds = [];
   },
 
+  _updateOffscreenNetwork(dt, a) {
+    a.accumulators = a.accumulators || {};
+    a.accumulators.offscreenNetworkS = Math.max(0,
+      (Number(a.accumulators.offscreenNetworkS) || 0) + dt);
+    while (a.accumulators.offscreenNetworkS + 1e-9 >= OFFSCREEN_NETWORK_INTERVAL_S) {
+      a.accumulators.offscreenNetworkS -= OFFSCREEN_NETWORK_INTERVAL_S;
+      this._settleOffscreenNetwork(OFFSCREEN_NETWORK_INTERVAL_S, a);
+    }
+  },
+
+  _flushOffscreenNetworkBeforeSectorTransition(exitingSectorId = null) {
+    const a = this.state.automation;
+    if (!a) return;
+    a.accumulators = a.accumulators || {};
+    const pending = Math.max(0, Number(a.accumulators.offscreenNetworkS) || 0);
+    if (pending > 1e-9) {
+      this._settleOffscreenNetwork(pending, a, exitingSectorId || undefined);
+    }
+    a.accumulators.offscreenNetworkS = 0;
+  },
+
+  _settleOffscreenNetwork(elapsed, a, currentSectorIdOverride = undefined) {
+    const currentSectorId = currentSectorIdOverride !== undefined
+      ? currentSectorIdOverride
+      : (this.state.world && this.state.world.currentSectorId || null);
+
+    // Aggregate extraction into a temporary streaming supply. Production consumes it before the
+    // physical drone buffer cap is applied, matching what repeated live ticks would deliver.
+    const exhaustedBeforeWork = [];
+    const exhaustedAfterWork = [];
+    for (let i = a.drones.length - 1; i >= 0; i--) {
+      const g = a.drones[i];
+      if (!g || g.sectorId === currentSectorId || g.status === 'distressed') continue;
+      const def = DRONE_BY_ID.get(g.defId) || g;
+      g.oreType = g.oreType || DRONE_ORE_ID;
+      // Alphabet steps resolve live beacons, steer rendered entities, and may touch the current
+      // player's cargo. None of those are valid proxies for a remote sector. Keep the assignment
+      // intact and park it until the logistics phase provides a program-aware averaged route model.
+      if (g.program && TEMPLATES[g.program.templateId]) {
+        g.status = 'program';
+        continue;
+      }
+      const fuelRate = Math.max(0, Number(def.fuelRate) || 0);
+      const activeSec = fuelRate > 0
+        ? Math.min(elapsed, Math.max(0, Number(g.fuel) || 0) / fuelRate)
+        : elapsed;
+
+      g.buffer = Math.max(0, Number(g.buffer) || 0)
+        + Math.max(0, Number(def.mineRate) || 0) * Math.max(1, Number(g.count) || 1) * activeSec;
+      g.ratePerMin = this._droneRatePerMin(g, def);
+
+      g.fuel = Math.max(0, (Number(g.fuel) || 0) - fuelRate * activeSec);
+      if (g.fuel <= 0) {
+        (activeSec > 1e-9 ? exhaustedAfterWork : exhaustedBeforeWork).push(g);
+      }
+    }
+
+    const retireExhausted = (g) => {
+      const index = a.drones.indexOf(g);
+      if (index < 0) return;
+      this._releaseDroneEntities(g);
+      this._loseAsset('drone', g, this._droneBufferValue(g), g.sectorId);
+      a.drones.splice(index, 1);
+    };
+    // A group with no operating time loses its pre-existing buffer before facilities can claim it.
+    for (const g of exhaustedBeforeWork) retireExhausted(g);
+
+    const orderedOutposts = a.outposts
+      .filter((o) => o && o.sectorId !== currentSectorId)
+      .slice()
+      .sort(compareStableId);
+    for (const o of orderedOutposts) {
+      const def = OUTPOST_BY_ID.get(o.defId) || o;
+      this._advanceOutpost(o, def, elapsed, a);
+    }
+
+    // A group that worked during this cadence delivers its final fuel-bounded batch first, then
+    // retires. This mirrors fine-step presence and offline catch-up ordering.
+    for (const g of exhaustedAfterWork) retireExhausted(g);
+
+    // Only residual ore occupies the drone's physical buffer after the coarse transfer settles.
+    for (const g of a.drones) {
+      if (!g || g.sectorId === currentSectorId || g.status === 'distressed'
+        || (g.program && TEMPLATES[g.program.templateId])) continue;
+      const def = DRONE_BY_ID.get(g.defId) || g;
+      const cap = Math.max(0, Number(g.bufferCap || def.bufferCap) || 0);
+      g.buffer = Math.min(cap, Math.max(0, Number(g.buffer) || 0));
+      g.status = g.buffer >= cap - 1e-6 ? 'idle' : 'mining';
+    }
+  },
+
+  // Outposts remain coarse ledger records everywhere, but materialize one authored place entity
+  // while their home sector is the player's current sector.
+  _syncOutpostPresence(a, { reconcile = true } = {}) {
+    if (this._saveRestoring) return;
+    if (!a || !Array.isArray(a.outposts)) return;
+    const currentSectorId = this.state.world && this.state.world.currentSectorId || null;
+    for (const o of a.outposts) {
+      if (currentSectorId && o.sectorId === currentSectorId) this._spawnOutpostEntity(o, reconcile);
+      else if (reconcile || o.entityId != null) this._releaseOutpostEntity(o, reconcile);
+    }
+  },
+
+  _spawnOutpostEntity(o, reconcile = true) {
+    if (!o) return null;
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (!spawn) return null;
+
+    this._ensureOutpostPosition(o);
+
+    const tracked = this._getRuntimeEntity(o.entityId);
+    if (tracked && tracked.alive !== false && tracked.data
+      && tracked.data.automationOutpostId === o.id && !reconcile) {
+      this._placeOutpostEntity(tracked, o);
+      return tracked;
+    }
+    if (o.entityId != null) delete o.entityId;
+
+    // Reconcile from the entity list as well as the transient id. This makes repeated enter/load
+    // events idempotent and cleans up a duplicate if an earlier partial transition spawned twice.
+    const live = ((this.state && this.state.entityList) || [])
+      .filter((entity) => entity && entity.alive !== false
+        && entity.data && entity.data.automationOutpostId === o.id);
+    if (live.length) {
+      const canonical = tracked && live.includes(tracked) ? tracked : live[0];
+      o.entityId = canonical.id;
+      this._placeOutpostEntity(canonical, o);
+      for (const duplicate of live) {
+        if (duplicate !== canonical) this._removeRuntimeEntity(duplicate);
+      }
+      return canonical;
+    }
+
+    const visual = OUTPOST_VISUAL_BY_DEF[o.defId]
+      || { placeId: 'place_claim_outpost_base', claimSpecId: null };
+    const entity = spawn({
+      type: 'fx',
+      team: 0,
+      factionId: 'faction_player',
+      pos: { x: Number(o.pos && o.pos.x) || 0, z: Number(o.pos && o.pos.z) || 0 },
+      rot: this._outpostOrientation(o),
+      radius: 24,
+      mass: 1e6,
+      collides: false,
+      homeSectorId: o.sectorId,
+      data: {
+        kind: 'automation_outpost',
+        automationOutpostId: o.id,
+        defId: o.defId,
+        sectorId: o.sectorId,
+        homeSectorId: o.sectorId,
+        placeId: visual.placeId,
+        landmarkGlb: visual.placeId,
+        claimSpecId: visual.claimSpecId,
+        claimOwned: true,
+      },
+    });
+    if (entity) o.entityId = entity.id;
+    return entity || null;
+  },
+
+  _releaseOutpostEntity(o, reconcile = true) {
+    if (!o) return;
+    const ids = new Set();
+    if (o.entityId != null) ids.add(o.entityId);
+    if (reconcile) {
+      for (const entity of (this.state && this.state.entityList) || []) {
+        if (entity && entity.alive !== false && entity.data
+          && entity.data.automationOutpostId === o.id) ids.add(entity.id);
+      }
+    }
+    if (!ids.size) return;
+    for (const id of ids) {
+      const entity = this._getRuntimeEntity(id);
+      if (entity) this._removeRuntimeEntity(entity);
+    }
+    delete o.entityId;
+  },
+
+  _getRuntimeEntity(id) {
+    if (id == null) return null;
+    if (this.helpers && this.helpers.getEntity) return this.helpers.getEntity(id);
+    return this.state.entities && this.state.entities.get(id) || null;
+  },
+
+  _removeRuntimeEntity(entity) {
+    if (!entity) return;
+    if (this.helpers && this.helpers.removeEntity) this.helpers.removeEntity(entity.id);
+    else entity.alive = false;
+  },
+
+  _placeOutpostEntity(entity, o) {
+    if (!entity || !o || !o.pos) return;
+    entity.pos = entity.pos || { x: 0, z: 0 };
+    entity.pos.x = Number(o.pos.x) || 0;
+    entity.pos.z = Number(o.pos.z) || 0;
+  },
+
+  _ensureOutpostPosition(o) {
+    const x = Number(o && o.pos && o.pos.x);
+    const z = Number(o && o.pos && o.pos.z);
+    if (Number.isFinite(x) && Number.isFinite(z) && (Math.abs(x) > 1e-6 || Math.abs(z) > 1e-6)) return;
+    const currentSectorId = this.state.world && this.state.world.currentSectorId || null;
+    if (!currentSectorId || o.sectorId !== currentSectorId) return;
+    o.pos = this._outpostDeploymentPos(o.defId, o.id);
+  },
+
+  _outpostOrientation(o) {
+    const seed = this.state.meta && this.state.meta.seed || 1;
+    return (hash32(seed, o.sectorId, o.id, o.defId, 'outpost-orientation') / 0xFFFFFFFF) * Math.PI * 2;
+  },
+
+  _outpostDeploymentPos(defId, outpostId) {
+    const world = this.state.world || {};
+    const fields = world.activeSector && world.activeSector.fields || [];
+    const player = this._playerPos();
+    const field = fields
+      .filter((entry) => entry && entry.center
+        && Number.isFinite(entry.center.x) && Number.isFinite(entry.center.z))
+      .sort((left, right) => {
+        if (!player) return compareStableId(left, right);
+        const ld = Math.hypot(left.center.x - player.x, left.center.z - player.z);
+        const rd = Math.hypot(right.center.x - player.x, right.center.z - player.z);
+        return ld - rd || compareStableId(left, right);
+      })[0] || null;
+    const fieldNearPlayer = field && (!player
+      || Math.hypot(field.center.x - player.x, field.center.z - player.z) <= 512);
+    const asteroid = player ? this._nearestAsteroid(player, 800) : null;
+    const anchor = (asteroid && asteroid.pos)
+      || (fieldNearPlayer && field.center)
+      || player
+      || (field && field.center)
+      || world.entryPoint
+      || { x: 0, z: 0 };
+    const seed = this.state.meta && this.state.meta.seed || 1;
+    const angle = (hash32(seed, world.currentSectorId, outpostId, defId, 'outpost-position') / 0xFFFFFFFF) * Math.PI * 2;
+    const offset = (asteroid || fieldNearPlayer) ? 88 : 112;
+    return {
+      x: Number(anchor.x || 0) + Math.cos(angle) * offset,
+      z: Number(anchor.z || 0) + Math.sin(angle) * offset,
+    };
+  },
+
   // Distressed group: stop the drones in place (don't despawn — they resume when upkeep is paid).
   _parkDroneEntities(g) {
     if (!g || !g.entityIds || !g.entityIds.length) return;
@@ -826,21 +1215,15 @@ export const automation = {
   // ------------------------------------------------------------------------------------------
   _updateOutposts(dt, a) {
     if (!a.outposts.length) return;
-    for (const o of a.outposts) {
+    const currentSectorId = this.state.world && this.state.world.currentSectorId || null;
+    // Stable id order makes shared-feed allocation reproducible even if a save or UI reorders rows.
+    const ordered = a.outposts
+      .filter((o) => o && o.sectorId === currentSectorId)
+      .slice()
+      .sort(compareStableId);
+    for (const o of ordered) {
       const def = OUTPOST_BY_ID.get(o.defId) || o;
-      if (o.status === 'distressed' || o.status === 'raided') {
-        // raided outposts thaw after their cooldown
-        if (o.status === 'raided') { o.raidCooldown = Math.max(0, (o.raidCooldown || 0) - dt); if (o.raidCooldown <= 0) o.status = 'producing'; }
-        continue;
-      }
-      const level = o.level || 1;
-      const outRate = (def.outRate || 0) * Math.pow(1.6, level - 1);
-      const cap = (def.storageCap || 0) * Math.pow(1.7, level - 1);
-      const room = cap - (o.storage || 0);
-      if (room > 0) o.storage = (o.storage || 0) + Math.min(outRate * dt, room);
-      o.storageCap = cap;
-      o.status = 'producing';
-      o.ratePerMin = this._outpostRatePerMin(o, def, outRate);
+      this._advanceOutpost(o, def, dt, a);
     }
 
     // periodic autosell (every 60s) — banks the surplus through the capped funnel.
@@ -860,6 +1243,85 @@ export const automation = {
   _outpostRatePerMin(o, def, outRate) {
     // Hab/trade hub generates credits directly; production outposts bank goods at the local price -20%.
     return outpostGrossCrPerMin(def, (goodId) => this._orePrice(goodId), { outRate, level: o.level || 1 });
+  },
+
+  _advanceOutpost(o, def, dt, a) {
+    if (o.status === 'distressed') return null;
+    if (o.status === 'raided') {
+      const blockedS = Math.min(Math.max(0, dt), Math.max(0, Number(o.raidCooldown) || 0));
+      o.raidCooldown = Math.max(0, (Number(o.raidCooldown) || 0) - blockedS);
+      if (o.raidCooldown > 0) return null;
+      o.status = 'producing';
+      const productiveS = Math.max(0, dt - blockedS);
+      return productiveS > 1e-9 ? this._produceOutpost(o, def, productiveS, a) : null;
+    }
+    return this._produceOutpost(o, def, dt, a);
+  },
+
+  _produceOutpost(o, def, dt, a) {
+    const level = o.level || 1;
+    const authoredRate = (def.outRate || 0) * Math.pow(1.6, level - 1);
+    const cap = (def.storageCap || 0) * Math.pow(1.7, level - 1);
+    const room = Math.max(0, cap - (o.storage || 0));
+    const recipe = def.recipe || o.recipe || null;
+    const availableByGood = this._availableOutpostInputs(o, recipe, a);
+    const requestedOutput = Math.max(0, authoredRate * dt);
+    const plan = planOutpostProduction({ recipe, requestedOutput, storageRoom: room, availableByGood });
+
+    this._consumeOutpostInputs(o, plan.consumedByGood, a);
+    o.storage = Math.min(cap, Math.max(0, (o.storage || 0) + plan.produced));
+    o.storageCap = cap;
+    o.status = plan.status === 'storage_full' ? 'storage_full' : plan.status;
+    const actualRate = dt > 0 ? plan.produced / dt : 0;
+    o.ratePerMin = this._outpostRatePerMin(o, def, actualRate);
+    o.production = {
+      status: o.status,
+      outputGoodId: recipe && recipe.passive ? 'credits' : outpostOutputGoodId(def),
+      requestedRate: authoredRate,
+      actualRate,
+      consumedByGood: plan.consumedByGood,
+      missingByGood: plan.missingByGood,
+      limitingGoodId: plan.limitingGoodId,
+      localFeeders: (a.drones || []).filter((g) => (
+        g && g.sectorId === o.sectorId && g.status !== 'distressed'
+        && !(g.program && TEMPLATES[g.program.templateId])
+      )).length,
+    };
+    return plan;
+  },
+
+  _outpostFeedGroups(o, goodId, a) {
+    return (a.drones || [])
+      .filter((g) => (
+        g
+        && g.sectorId === o.sectorId
+        && g.status !== 'distressed'
+        && !(g.program && TEMPLATES[g.program.templateId])
+        && (goodId == null || (g.oreType || DRONE_ORE_ID) === goodId)
+        && (g.buffer || 0) > 0
+      ))
+      .sort(compareStableId);
+  },
+
+  _availableOutpostInputs(o, recipe, a) {
+    const available = {};
+    for (const goodId of Object.keys((recipe && recipe.inputs) || {}).sort()) {
+      available[goodId] = this._outpostFeedGroups(o, goodId, a)
+        .reduce((sum, g) => sum + Math.max(0, Number(g.buffer) || 0), 0);
+    }
+    return available;
+  },
+
+  _consumeOutpostInputs(o, consumedByGood, a) {
+    for (const goodId of Object.keys(consumedByGood || {}).sort()) {
+      let remaining = Math.max(0, Number(consumedByGood[goodId]) || 0);
+      for (const g of this._outpostFeedGroups(o, goodId, a)) {
+        if (!(remaining > 1e-9)) break;
+        const take = Math.min(Math.max(0, Number(g.buffer) || 0), remaining);
+        g.buffer = Math.max(0, (Number(g.buffer) || 0) - take);
+        remaining -= take;
+      }
+    }
   },
 
   _outpostAutosell(a) {
@@ -983,6 +1445,7 @@ export const automation = {
     candidates.sort((x, y) => x.val - y.val);
     const pick = candidates[0];
     const idx = pick.list.indexOf(pick.inst);
+    if (pick.kind === 'outpost') this._releaseOutpostEntity(pick.inst);
     if (idx >= 0) pick.list.splice(idx, 1);
     this.bus.emit('automation:assetRepossessed', { kind: pick.kind, id: pick.inst.id });
     this.bus.emit('toast', { text: `Asset repossessed (unpaid upkeep): ${pick.kind}`, kind: 'error', ttl: 4 });
@@ -1265,15 +1728,17 @@ export const automation = {
     const def = OUTPOST_BY_ID.get(defId);
     if (!def) return false;
     if (!this._charge(def.buildCost, 'build:' + defId)) return false;
+    const id = this._allocId();
     const o = {
-      id: this._allocId(), defId, level: 1,
+      id, defId, level: 1,
       sectorId: (this.state.world && this.state.world.currentSectorId) || 'sector_helios_prime',
-      pos: { x: 0, z: 0 }, recipeId: defId,
+      pos: this._outpostDeploymentPos(defId, id), recipeId: defId,
       storage: 0, storageCap: def.storageCap, defense: def.defense,
       upkeepPerMin: def.upkeepPerMin, autoSell: true, raidCooldown: 0,
       status: 'producing', ratePerMin: 0,
     };
     this.state.automation.outposts.push(o);
+    this._syncOutpostPresence(this.state.automation);
     // Enrich payload with stable defId so story/campaign sidecar can tag specialization.
     // automation remains sole outpost deployer — no second ownership system.
     this.bus.emit('asset:deployed', { kind: 'outpost', id: o.id, defId: def.id || defId });
@@ -1285,6 +1750,7 @@ export const automation = {
     const a = this.state.automation;
     const idx = a.outposts.findIndex((o) => o.id === id);
     if (idx < 0) return false;
+    this._releaseOutpostEntity(a.outposts[idx]);
     a.outposts.splice(idx, 1);
     this.toast('Outpost decommissioned', 'info');
     return true;
@@ -1489,33 +1955,116 @@ export const automation = {
 
     let droneCr = 0, traderCr = 0, outpostCr = 0, cycles = 0, lost = 0;
 
-    // drones: fill buffer (capped), bank value through the offline funnel later
+    // Accrue upkeep from the roster that existed during the offline window, before coarse
+    // settlement can retire exhausted or lost assets. Legacy drone groups pay through their
+    // fuel-bounded operating lifetime; retained/programmed/distressed drones, traders, and
+    // outposts pay for the whole capped window. Trader loss is intentionally settled after the
+    // window, so an aggregate survival roll cannot also become an upkeep-evasion roll.
+    let offlineUpkeep = 0;
     for (const g of a.drones) {
-      if (g.status === 'distressed') continue;
       const def = DRONE_BY_ID.get(g.defId) || g;
-      const room = (g.bufferCap || def.bufferCap || 0) - (g.buffer || 0);
-      const mined = Math.min((def.mineRate || 0) * (g.count || 1) * elapsed, room);
-      g.buffer = (g.buffer || 0) + mined;
-      const v = (g.buffer || 0) * this._orePrice(g.oreType || DRONE_ORE_ID);
-      g.buffer = 0;
-      droneCr += v;
+      const isLegacyWorker = g.status !== 'distressed'
+        && !(g.program && TEMPLATES[g.program.templateId]);
+      const fuelRate = Math.max(0, Number(def.fuelRate) || 0);
+      const ownedSec = isLegacyWorker && fuelRate > 0
+        ? Math.min(elapsed, Math.max(0, Number(g.fuel) || 0) / fuelRate)
+        : elapsed;
+      offlineUpkeep += this._upkeepOf(DRONE_BY_ID, g) * (ownedSec / 60);
     }
-    // outposts: fill storage (capped), autosell at -20% (owner-safe: no market pressure emit)
+    for (const t of a.traders) {
+      offlineUpkeep += this._upkeepOf(TRADER_BY_ID, t) * (elapsed / 60);
+    }
     for (const o of a.outposts) {
-      if (o.status === 'distressed' || o.status === 'raided') continue;
       const def = OUTPOST_BY_ID.get(o.defId) || o;
-      const level = o.level || 1;
-      const outRate = (def.outRate || 0) * Math.pow(1.6, level - 1);
-      const storageCap = (def.storageCap || 0) * Math.pow(1.7, level - 1);
-      const room = storageCap - (o.storage || 0);
-      const produced = Math.min(outRate * elapsed, Math.max(0, room));
-      o.storage = (o.storage || 0) + produced;
-      const sellable = o.storage || 0;
-      if (sellable <= 0) continue;
-      const income = outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId));
-      o.storage = 0;
-      outpostCr += income;
+      const perMin = (def.upkeepPerMin || 0) * Math.pow(1.5, (o.level || 1) - 1);
+      offlineUpkeep += perMin * (elapsed / 60);
     }
+
+    // Settle the abstract drone -> facility -> sale network in bounded minute slices. This is not
+    // per-entity simulation: it is the same coarse node ledger used while a sector is absent. The
+    // cadence matters because auto-sell frees facility storage each minute; a single four-hour
+    // storage clamp would silently erase valid throughput.
+    const legacyDrones = a.drones.filter((g) => (
+      g
+      && g.status !== 'distressed'
+      && !(g.program && TEMPLATES[g.program.templateId])
+    ));
+    const orderedOutposts = [...a.outposts].sort(compareStableId);
+    const retireOfflineDrone = ({ g, def }) => {
+      const activeIndex = a.drones.indexOf(g);
+      if (activeIndex >= 0) a.drones.splice(activeIndex, 1);
+      const coarseIndex = legacyDrones.indexOf(g);
+      if (coarseIndex >= 0) legacyDrones.splice(coarseIndex, 1);
+      this._releaseDroneEntities(g);
+      this._loseAsset('drone', g, this._droneBufferValue(g), g.sectorId);
+      lost += 1;
+    };
+    let networkRemainingS = elapsed;
+    while (networkRemainingS > 1e-9) {
+      const stepS = Math.min(OFFSCREEN_NETWORK_INTERVAL_S, networkRemainingS);
+
+      // Keep the whole streamed supply available until local outposts consume it. The physical
+      // drone buffer cap applies only to the residual after the production network settles.
+      const exhaustedBeforeWork = [];
+      const exhaustedAfterWork = [];
+      for (const g of legacyDrones) {
+        const def = DRONE_BY_ID.get(g.defId) || g;
+        const fuelRate = Math.max(0, Number(def.fuelRate) || 0);
+        const activeSec = fuelRate > 0
+          ? Math.min(stepS, Math.max(0, Number(g.fuel) || 0) / fuelRate)
+          : stepS;
+        const mined = Math.max(0, Number(def.mineRate) || 0)
+          * Math.max(1, Number(g.count) || 1) * activeSec;
+        g.buffer = Math.max(0, Number(g.buffer) || 0) + mined;
+        g.fuel = Math.max(0, (Number(g.fuel) || 0) - fuelRate * activeSec);
+        if (g.fuel <= 0) {
+          (activeSec > 1e-9 ? exhaustedAfterWork : exhaustedBeforeWork).push({ g, def });
+        }
+      }
+
+      // A group with no active time is lost with its buffer before the production network runs.
+      for (const exhausted of exhaustedBeforeWork) retireOfflineDrone(exhausted);
+
+      // Same-sector recipe consumers compete in stable ledger-id order.
+      for (const o of orderedOutposts) {
+        if (o.status === 'distressed') continue;
+        const def = OUTPOST_BY_ID.get(o.defId) || o;
+        this._advanceOutpost(o, def, stepS, a);
+      }
+
+      // Let facilities consume the final streamed ore before an exhausted group is removed, as
+      // repeated live ticks would. Runtime entities are absent during this coarse settlement.
+      for (const exhausted of exhaustedAfterWork) retireOfflineDrone(exhausted);
+
+      // Mirror the live minute-cadence auto-sell without emitting market pressure off-screen.
+      for (const o of orderedOutposts) {
+        if (!o.autoSell || o.status === 'distressed' || o.status === 'raided') continue;
+        const def = OUTPOST_BY_ID.get(o.defId) || o;
+        const sellable = Math.max(0, Number(o.storage) || 0);
+        if (sellable <= 0) continue;
+        outpostCr += outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId));
+        o.storage = 0;
+        if (o.status === 'storage_full') o.status = 'producing';
+        if (o.production && o.production.status === 'storage_full') {
+          o.production.status = 'producing';
+        }
+      }
+
+      networkRemainingS -= stepS;
+    }
+
+    // Realize only raw feedstock left after local production has consumed its inputs.
+    for (const g of legacyDrones) {
+      const def = DRONE_BY_ID.get(g.defId) || g;
+      const residual = Math.min(
+        Math.max(0, Number(g.bufferCap || def.bufferCap) || 0),
+        Math.max(0, Number(g.buffer) || 0),
+      );
+      const value = residual * this._orePrice(g.oreType || DRONE_ORE_ID);
+      g.buffer = 0;
+      droneCr += value;
+    }
+
     // traders: complete floor(elapsed/cycleTime) cycles with one aggregated survival roll.
     // Owner-safe pressure: do NOT emit economy:applyTradePressure offline (economy sole market writer).
     for (let i = a.traders.length - 1; i >= 0; i--) {
@@ -1558,7 +2107,7 @@ export const automation = {
 
     // deduct upkeep for the elapsed window, clamped to available credits; distress unpaid remainder.
     // Read credits for affordability only — never write player.credits (economy is sole writer).
-    const upkeep = Math.round(this.totalUpkeepPerMin(a) * (elapsed / 60));
+    const upkeep = Math.round(offlineUpkeep);
     const playerCredits = (this.state.player && this.state.player.credits) || 0;
     const charge = Math.min(upkeep, Math.max(0, playerCredits));
     const unpaid = upkeep - charge;
@@ -1747,10 +2296,33 @@ export const automation = {
       const f = fields[0];
       const def = ASTEROID_BY_ID.get(f.type);
       if (def && def.oreTable) {
-        const oreLike = Object.entries(def.oreTable)
-          .sort((a, b) => b[1] - a[1])
-          .find(([k]) => k.includes('_ore_'));
-        if (oreLike) return oreLike[0];
+        const authoredGoods = Object.entries(def.oreTable)
+          .filter(([, weight]) => Number(weight) > 0)
+          .sort((left, right) => (Number(right[1]) - Number(left[1]))
+            || compareStableId(left[0], right[0]));
+        if (authoredGoods.length) {
+          // A deployed group is the only local feed source facilities can currently consume. When
+          // this field can yield an input required by a same-sector outpost, connect that authored
+          // supply chain first. Otherwise retain the established metal-ore preference where one
+          // exists, then fall back to the field's dominant authored commodity. This stays
+          // deterministic without inventing resources absent from the field.
+          const sectorId = (this.state.world && this.state.world.currentSectorId) || null;
+          const requiredInputs = new Set();
+          const localOutposts = ((this.state.automation && this.state.automation.outposts) || [])
+            .filter((o) => o && o.sectorId === sectorId)
+            .slice()
+            .sort(compareStableId);
+          for (const o of localOutposts) {
+            const outpostDef = OUTPOST_BY_ID.get(o.defId) || o;
+            const recipe = outpostDef.recipe || o.recipe;
+            for (const goodId of Object.keys((recipe && recipe.inputs) || {}).sort()) {
+              requiredInputs.add(goodId);
+            }
+          }
+          const requiredGood = authoredGoods.find(([goodId]) => requiredInputs.has(goodId));
+          const legacyOre = authoredGoods.find(([goodId]) => goodId.includes('_ore_'));
+          return (requiredGood || legacyOre || authoredGoods[0])[0];
+        }
       }
     }
     const seed = (this.state.meta && this.state.meta.seed) || 1;
@@ -1798,6 +2370,7 @@ export const automation = {
     for (const g of a.drones) g.entityIds = [];
     a.traders = a.traders || [];
     a.outposts = a.outposts || [];
+    for (const o of a.outposts) delete o.entityId;
     a.fleet = a.fleet || [];
     const sectorId = this.state && this.state.world && this.state.world.currentSectorId || null;
     for (const fs of a.fleet) {
@@ -1811,6 +2384,7 @@ export const automation = {
     a.accumulators = a.accumulators || { creditBuffer: 0, upkeepDebt: 0 };
     if (a.accumulators.upkeepDebt == null) a.accumulators.upkeepDebt = 0;
     if (a.accumulators.creditBuffer == null) a.accumulators.creditBuffer = 0;
+    if (a.accumulators.offscreenNetworkS == null) a.accumulators.offscreenNetworkS = 0;
     a.meta = a.meta || {};
     if (a.meta.lastTickTime == null) a.meta.lastTickTime = 0;
     if (a.meta.totalPassiveEarnedLifetime == null) a.meta.totalPassiveEarnedLifetime = 0;
@@ -1825,6 +2399,9 @@ export const automation = {
   // newGame / save-load (§4.5 — save key 'automation', order 9)
   // ------------------------------------------------------------------------------------------
   newGame() {
+    if (this.state.automation && Array.isArray(this.state.automation.outposts)) {
+      for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o);
+    }
     this.state.automation = makeDefaultAutomation();
     this._normalizeAutomation(this.state.automation);
     this._initRng(true);
@@ -1842,6 +2419,7 @@ export const automation = {
     // entityIds are live runtime ids (don't survive save/load or sector unload) → strip them; the
     // flying drones re-spawn from the group on the next in-sector tick.
     const drones = a.drones.map((g) => { const { entityIds, ...rest } = g; return rest; });
+    const outposts = a.outposts.map((o) => { const { entityId, ...rest } = o; return rest; });
     // Fleet entries carry a transient _liveId (the live wingman entity id, set by systems/wingmen.js
     // on spawn). It doesn't survive save/load (entity ids are per-session) → strip it like drone
     // entityIds so a reloaded save doesn't reference a dead/stale entity.
@@ -1852,7 +2430,7 @@ export const automation = {
       return { ...rest, order: legacyFleetOrderFor(wingOrder.kind), targetRef: null, wingOrder };
     });
     return {
-      drones, traders: a.traders, outposts: a.outposts, fleet,
+      drones, traders: a.traders, outposts, fleet,
       fleetCap: a.fleetCap, balance: a.balance, accumulators: a.accumulators,
       meta: {
         lastTickTime: a.meta.lastTickTime,
@@ -1870,6 +2448,9 @@ export const automation = {
 
   deserialize(data) {
     if (!data) return;
+    if (this.state.automation && Array.isArray(this.state.automation.outposts)) {
+      for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o);
+    }
     const a = this.state.automation = Object.assign(makeDefaultAutomation(), data);
     this._normalizeAutomation(a);
     this._nextId = data.nextId || (a.drones.length + a.traders.length + a.outposts.length + a.fleet.length + 1);
