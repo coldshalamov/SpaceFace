@@ -24,6 +24,7 @@ assert.equal(typeof window, 'undefined', 'this check must run headless');
 
 guarded(testRealEconomyHistoryAndForecast);
 guarded(testSeededStationMarketHistory);
+guarded(testRingBufferSeededOnFreshGame);
 testMarketScreenChartSourceContract();
 testStationMarketSourceContract();
 
@@ -142,9 +143,15 @@ function testSeededStationMarketHistory() {
   assert.ok(new Set(signatures).size > 1,
     'new-game commodities start with distinct formula-derived histories, not one decorative graph');
 
+  // Only a market the pilot has actually inspected carries its exact lived trace into the save.
+  // The serialized representation is packed [t, mid, ...] to keep autosaves compact; deserialize
+  // restores the normal object-per-point runtime shape.
+  state.player.marketMemory[stationId] = {};
   const saved = econ.serialize();
-  assert.deepEqual(saved.markets[stationId][ids[0]].history, market[ids[0]].history,
-    'market history is part of the economy save payload');
+  const savedRow = saved.markets[stationId].find((row) => row[0] === ids[0]);
+  const packedHistory = savedRow && savedRow[6];
+  assert.ok(Array.isArray(packedHistory) && packedHistory.length === market[ids[0]].history.length * 2,
+    'an inspected market saves its exact timeline in the packed history representation');
 
   const restoredState = {
     mode: 'flight', simTime: state.simTime, meta: { seed: state.meta.seed },
@@ -167,6 +174,35 @@ function testSeededStationMarketHistory() {
     'fixture forces a formula that would make a price non-positive');
   assert.notEqual(maybeAdvanceRegime(invalid, () => 0.5, state.simTime), invalid,
     'a non-positive formula re-rolls immediately instead of relying on a display clamp');
+
+  economy._instance = null;
+}
+
+function testRingBufferSeededOnFreshGame() {
+  // Regression: a freshly started game used to leave the UI price-history ring buffer empty until
+  // enough live economy ticks accrued, so every chart fed by getPriceHistory drew a flat line right
+  // after starting. The real boot emits game:new on the bus once the world is warm; the recorder
+  // must backfill the buffer from the economy's seeded entry.history so the first dock has a past.
+  const { state, bus, stationId, commodityId } = bootEconomyChartFixture();
+  bus.emit('game:new');
+  const ring = getPriceHistory(stationId, commodityId);
+  assert.equal(ring.length, 64,
+    'ring buffer is seeded from entry.history on game:new, before any economy tick');
+  assert.ok(new Set(ring.map((p) => p.mid)).size > 1,
+    'seeded ring buffer shows visible price movement, not a flat line');
+  for (let i = 0; i < ring.length; i++) {
+    const p = ring[i];
+    assert.ok(Number.isFinite(p.t) && p.t >= 0, `seeded[${i}] keeps the t>=0 ring-buffer invariant`);
+    assert.ok(Number.isFinite(p.buy) && p.buy > p.sell, `seeded[${i}] keeps buy above sell`);
+    assert.ok(Number.isFinite(p.sell) && p.sell > 0, `seeded[${i}] keeps a positive sell`);
+  }
+
+  // marketOpened is the immediate-open path (screen shown before the first 5s tick): it must also
+  // seed a buffer that was empty after a reset.
+  loadHistory({});
+  bus.emit('economy:marketOpened', { stationId });
+  const reopened = getPriceHistory(stationId, commodityId);
+  assert.equal(reopened.length, 64, 'opening the market seeds an empty buffer before the first tick');
 
   economy._instance = null;
 }

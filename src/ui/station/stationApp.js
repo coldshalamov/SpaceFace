@@ -60,7 +60,7 @@ function ensureStylesheet() {
 
 const DESTINATIONS = [
   { id: 'market', label: 'Market', icon: 'market', tagline: 'Live prices · demand · trade', create: createMarketScreen },
-  { id: 'shipworks', label: 'Shipworks', icon: 'shipworks', tagline: 'Buy hulls · fit modules · compare', create: createShipworksScreen },
+  { id: 'shipworks', label: 'Shipworks', icon: 'shipworks', tagline: 'Buy ships · fit modules · compare', create: createShipworksScreen },
   { id: 'industry', label: 'Industry', icon: 'industry', tagline: 'Refine ore · fabricate modules', create: createIndustryScreen },
   { id: 'contracts', label: 'Contracts', icon: 'contracts', tagline: 'Jobs · bounties · station leads', create: createContractsScreen },
   { id: 'factions', label: 'Factions', icon: 'factions', tagline: 'Standing & relations', create: createFactionsScreen },
@@ -144,10 +144,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       `</section>` +
     `</main>` +
     `<div class="sx-pop" hidden></div>` +
-    `<div class="sx-receipt" role="status" aria-live="polite" aria-atomic="true" hidden>` +
-      `<span class="sx-receipt__pulse" aria-hidden="true"></span>` +
-      `<span class="sx-receipt__kind"></span><strong class="sx-receipt__title"></strong><span class="sx-receipt__delta"></span>` +
-    `</div>`;
+    `<aside class="sx-comms" aria-label="Station communications">` +
+      `<div class="sx-comms__channel"><span class="sx-comms__signal" aria-hidden="true"></span><span>STATION COMMS</span></div>` +
+      `<div class="sx-receipt" role="status" aria-live="polite" aria-atomic="true" hidden>` +
+        `<span class="sx-receipt__pulse" aria-hidden="true"></span>` +
+        `<span class="sx-receipt__kind"></span><strong class="sx-receipt__title"></strong><span class="sx-receipt__delta"></span>` +
+      `</div>` +
+    `</aside>`;
   rootEl.appendChild(app);
 
   const crestName = app.querySelector('.sx-crest__name');
@@ -163,6 +166,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const helpEl = app.querySelector('.sx-context-help');
   const operationIndexEl = app.querySelector('.sx-operation-rail__index');
   const operationModeEl = app.querySelector('.sx-operation-rail__mode');
+  const commsEl = app.querySelector('.sx-comms');
   const receiptEl = app.querySelector('.sx-receipt');
 
   const dock = createCommandDock({
@@ -178,43 +182,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   let stopPopPositioning = null;
   let popCloseTimer = 0;
   let receiptTimer = 0;
-  let fieldFrame = 0;
-  let fieldPulseTimer = 0;
-  let pendingFieldPoint = null;
   const subscriptions = [];
-
-  // The workspace behaves like a local projection surface. Pointer light is bounded to the active
-  // instrument and updates only in response to input; there is no ambient render loop.
-  function commitFieldPoint() {
-    fieldFrame = 0;
-    if (!pendingFieldPoint) return;
-    const rect = bodyEl.getBoundingClientRect();
-    if (!(rect.width > 0 && rect.height > 0)) return;
-    const x = Math.max(0, Math.min(100, ((pendingFieldPoint.x - rect.left) / rect.width) * 100));
-    const y = Math.max(0, Math.min(100, ((pendingFieldPoint.y - rect.top) / rect.height) * 100));
-    bodyEl.style.setProperty('--sx-field-x', `${x.toFixed(2)}%`);
-    bodyEl.style.setProperty('--sx-field-y', `${y.toFixed(2)}%`);
-  }
-  function onFieldMove(ev) {
-    pendingFieldPoint = { x: ev.clientX, y: ev.clientY };
-    if (!fieldFrame) fieldFrame = requestAnimationFrame(commitFieldPoint);
-  }
-  function onFieldDown(ev) {
-    onFieldMove(ev);
-    if (fieldPulseTimer) clearTimeout(fieldPulseTimer);
-    bodyEl.classList.remove('is-field-contact');
-    void bodyEl.offsetWidth;
-    bodyEl.classList.add('is-field-contact');
-    fieldPulseTimer = setTimeout(() => bodyEl.classList.remove('is-field-contact'), 520);
-  }
-  function onFieldLeave() {
-    pendingFieldPoint = null;
-    bodyEl.style.setProperty('--sx-field-x', '50%');
-    bodyEl.style.setProperty('--sx-field-y', '48%');
-  }
-  bodyEl.addEventListener('pointermove', onFieldMove, { passive: true });
-  bodyEl.addEventListener('pointerdown', onFieldDown, { passive: true });
-  bodyEl.addEventListener('pointerleave', onFieldLeave);
 
   // ---------- popover ----------
   function stopFloating() {
@@ -427,7 +395,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
 
   const HELP = {
     market: ['Trade scope', 'Select a commodity to inspect price, demand and station pressure. Buy or sell against your credits and hold.'],
-    shipworks: ['Shipworks bay', 'Select a hull or a physical ship slot, preview compatible equipment, then install through the real fitting system.'],
+    shipworks: ['Shipworks bay', 'Select a ship or a physical system slot, preview compatible equipment, then install through the real fitting system.'],
     industry: ['Production line', 'Trace raw stock into refined goods and fabricated modules. Broken paths identify the exact missing input.'],
     contracts: ['Contract plotting', 'Choose a job to see its route, preparation, faction consequence and payout before accepting it.'],
     factions: ['Authority network', 'Select a faction to expose its standing thresholds, relationships, recent change and immediate unlocks.'],
@@ -441,6 +409,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   // ---------- causal receipts ----------
   function showReceipt(kind, title, delta = '') {
     if (receiptTimer) clearTimeout(receiptTimer);
+    commsEl.classList.add('has-message');
     receiptEl.hidden = false;
     receiptEl.classList.remove('is-settled');
     receiptEl.querySelector('.sx-receipt__kind').textContent = kind;
@@ -451,7 +420,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     receiptTimer = setTimeout(() => {
       receiptEl.classList.remove('is-live');
       receiptEl.classList.add('is-settled');
-      receiptTimer = setTimeout(() => { receiptEl.hidden = true; }, 280);
+      receiptTimer = setTimeout(() => {
+        receiptEl.hidden = true;
+        commsEl.classList.remove('has-message');
+      }, 280);
     }, 3600);
   }
 
@@ -481,7 +453,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   subscribe('module:purchased', (p = {}) => showReceipt('SHIPWORKS', 'MODULE ACQUIRED', `−${fmtCr(p.price)} cr`));
   subscribe('module:equipped', () => showReceipt('SHIPWORKS', 'FIT COMMITTED', 'LOADOUT RECALCULATED'));
   subscribe('module:unequipped', () => showReceipt('SHIPWORKS', 'MODULE RETURNED', 'INVENTORY UPDATED'));
-  subscribe('ship:purchased', (p = {}) => showReceipt('SHIPWORKS', 'HULL ACQUIRED', p.price ? `−${fmtCr(p.price)} cr` : 'FABRICATION COMPLETE'));
+  subscribe('ship:purchased', (p = {}) => showReceipt('SHIPWORKS', 'SHIP ACQUIRED', p.price ? `−${fmtCr(p.price)} cr` : 'FABRICATION COMPLETE'));
   subscribe('mission:accepted', () => showReceipt('CONTRACT BOUND', 'ROUTE ADDED TO NAVIGATION', 'STAGE 01 ACTIVE'));
   subscribe('credits:changed', (p = {}) => {
     const reason = String(p.reason || '');
@@ -623,11 +595,6 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       stopFloating();
       if (popCloseTimer) clearTimeout(popCloseTimer);
       if (receiptTimer) clearTimeout(receiptTimer);
-      if (fieldFrame) cancelAnimationFrame(fieldFrame);
-      if (fieldPulseTimer) clearTimeout(fieldPulseTimer);
-      bodyEl.removeEventListener('pointermove', onFieldMove);
-      bodyEl.removeEventListener('pointerdown', onFieldDown);
-      bodyEl.removeEventListener('pointerleave', onFieldLeave);
       window.removeEventListener('keydown', onEscCapture, true);
       if (offExit) offExit();
       subscriptions.splice(0).forEach((off) => off());

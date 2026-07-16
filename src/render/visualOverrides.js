@@ -93,6 +93,7 @@ export function installVisualOverrides(factory, options = {}) {
   const fallbackBuild = factory.build.bind(factory);
   const releaseMode = isReleaseAssetMode(options);
   const authoredShips = options.authoredShips !== false;
+  const authoredWholeShipsOnly = options.authoredWholeShipsOnly === true;
   const kestrelBuilder = typeof options.kestrelBuilder === 'function' ? options.kestrelBuilder : buildKestrelHero;
   factory.build = (entity) => {
     let visual = null;
@@ -130,6 +131,16 @@ export function installVisualOverrides(factory, options = {}) {
     configureTransparentSinglePassSurfaces(visual);
     if (!authoredShips) return visual;
 
+    const requiredWholeShip = requiresProductionWholeShip(entity);
+    // Inspection surfaces must not replace a readable catalog ship with the generic modular kit.
+    // That assembly is useful as a flight fallback, but it is not a validated complete body and its
+    // asynchronous hot-swap creates the visible "clay ship -> different ship" discontinuity. Only
+    // production whole-ship records may replace the object a player is directly manipulating.
+    if (authoredWholeShipsOnly && !requiredWholeShip) {
+      visual.userData.authoredAssetState = 'procedural-settled';
+      return visual;
+    }
+
     // The wrapper is synchronous. Any later transport, validation, or composition failure leaves
     // the selected procedural/bespoke visual mounted and alive.
     try {
@@ -138,7 +149,7 @@ export function installVisualOverrides(factory, options = {}) {
         // The authored boundary is opt-in: only player hulls with a production whole-ship mapping
         // may bypass modular assembly. Keep the Kestrel boot rule intact while allowing a later
         // player switch to the production Wasp to select its complete body on undock and Continue.
-        requiredWholeShip: requiresProductionWholeShip(entity),
+        requiredWholeShip,
         onSwap: (payload) => {
           configureTransparentSinglePassSurfaces(payload && (payload.authoredRoot || payload.boundary));
           if (typeof options.onAuthoredAssetSwap === 'function') options.onAuthoredAssetSwap(payload);

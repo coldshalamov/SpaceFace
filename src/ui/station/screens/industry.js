@@ -20,7 +20,6 @@ const STATION_TYPE = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_TYPE.set(s.id, s.type);
 
 const CAT_LABEL = { refine: 'Refine', assemble: 'Assemble', augment: 'Augment', ship: 'Shipyard' };
-const CAT_ORDER = ['refine', 'assemble', 'augment', 'ship'];
 
 function niceName(id, kind) { return NAME.get((kind || 'commodity') + ':' + id) || String(id).replace(/^cmdty_|^mod_|^wpn_|^ship_/, '').replace(/_/g, ' '); }
 function matName(id) { return CMDTY_NAME.get(id) || String(id).replace(/^cmdty_/, '').replace(/_/g, ' '); }
@@ -55,26 +54,29 @@ export function createIndustryScreen(ctx) {
 
   function renderList(state) {
     const stn = stationType(ctx);
-    const byCat = new Map();
-    for (const bp of BLUEPRINTS) { if (!byCat.has(bp.category)) byCat.set(bp.category, []); byCat.get(bp.category).push(bp); }
-    let html = '';
-    for (const cat of CAT_ORDER) {
-      const list = byCat.get(cat); if (!list) continue;
-      html += `<div class="sx-ind-cat">${CAT_LABEL[cat] || cat}</div>`;
-      html += list.map((bp) => {
-        const r = readiness(bp, state, stn);
-        const on = bp.id === selectedId ? ' is-active' : '';
-        const dot = r.state === 'ready' ? 'var(--gain)' : r.state === 'materials' ? 'var(--warn)' : 'var(--ink-3)';
-        return (
-          `<button type="button" class="sx-ind-row${on}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${bp.id === selectedId}">` +
-            `<span class="sx-ind-row__dot" style="background:${dot}"></span>` +
-            `<span class="sx-ind-row__name">${escapeHtml(niceName(bp.outputs.id, bp.outputs.kind))}${bp.outputs.qty > 1 ? ' ×' + bp.outputs.qty : ''}</span>` +
-            `<span class="sx-ind-row__tier">T${bp.tier}</span>` +
-          `</button>`
-        );
-      }).join('');
-    }
-    listEl.innerHTML = html;
+    const stateBand = { ready: 22, materials: 47, tech: 74, station: 80 };
+    const nodes = BLUEPRINTS.map((bp, index) => {
+      const r = readiness(bp, state, stn);
+      const on = bp.id === selectedId ? ' is-active' : '';
+      const tone = r.state === 'ready' ? 'var(--gain)' : r.state === 'materials' ? 'var(--warn)' : '#60757a';
+      const x = Math.max(16, Math.min(90, 16 + (Math.max(1, bp.tier) - 1) * 24 + (((index * 5) % 5) - 2) * 2.8));
+      const y = Math.max(18, Math.min(84, (stateBand[r.state] || 78) + (((index * 7) % 5) - 2) * 3.3));
+      const output = `${niceName(bp.outputs.id, bp.outputs.kind)}${bp.outputs.qty > 1 ? ' ×' + bp.outputs.qty : ''}`;
+      return (
+        `<button type="button" class="sx-ind-row${on}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${bp.id === selectedId}"` +
+          ` style="--map-x:${x.toFixed(2)}%;--map-y:${y.toFixed(2)}%;--signal:${tone}"` +
+          ` aria-label="${escapeHtml(output)}, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
+          `<span class="sx-ind-row__dot"></span>` +
+          `<span class="sx-ind-row__name">${escapeHtml(output)}</span>` +
+          `<span class="sx-ind-row__tier">T${bp.tier} · ${escapeHtml(r.label)}</span>` +
+        `</button>`
+      );
+    }).join('');
+    listEl.innerHTML =
+      `<span class="sx-ind-map__x" aria-hidden="true">REFINE → ASSEMBLE → AUGMENT → HULL</span>` +
+      `<span class="sx-ind-map__y" aria-hidden="true">CAPABILITY</span>` +
+      `<span class="sx-ind-map__mode" aria-hidden="true">FABRICATION CONSTELLATION / SELECT A BLUEPRINT</span>` +
+      nodes;
   }
 
   function renderStage(state) {

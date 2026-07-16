@@ -4,6 +4,12 @@
 //
 // Storage: history[stationId][cmdtyId] = { mid, buy, sell, t, events }[] (newest last).
 // Samples on every economy:tick so the buffer spans many minutes of sim time.
+//
+// A fresh game/load used to leave this buffer empty until enough live ticks accrued, so every
+// graph fed by it drew a flat line right after starting. The economy already authors an
+// authoritative, formula-seeded entry.history per listing (see systems/economy.js seedPriceHistory),
+// so on new game / load / market open we backfill the ring buffer from that history. The buffer
+// therefore shows a truthful price past on the first dock and keeps appending live ticks after.
 
 const MAX_POINTS = 256;
 
@@ -30,14 +36,67 @@ function activeEventIds(state, stationId, cmdtyId) {
   return out;
 }
 
+const NOMINAL_SPREAD = 0.085; // matches economy SPREAD_BASE; used only when an entry has no quotes yet
+
+function entrySpread(e) {
+  return (e && e.lastMid > 0 && e.lastBuy > e.lastSell)
+    ? (e.lastBuy - e.lastSell) / e.lastMid
+    : NOMINAL_SPREAD;
+}
+
+// Build a ring-buffer point from a historical mid. Spread is carried from the entry's current quote
+// (spread is near-constant per station), with buy/sell floored the same way economy.recomputePrices
+// does so buy > sell > 0 always holds. The seeded past predates the pilot's clock (entry.history
+// uses negative simTime for pre-campaign samples), but this UI buffer's invariant is t >= 0 and the
+// charts position by array index, so clamp the timestamp at the origin.
+function pointFromMid(mid, spread, t) {
+  const buy = Math.max(1, Math.round(mid * (1 + spread / 2)));
+  const sell = Math.max(1, Math.min(buy - 1, Math.round(mid * (1 - spread / 2))));
+  return { mid: Math.round(mid), buy, sell, t: Math.max(0, Number(t) || 0), events: [] };
+}
+
+/** Backfill one station's ring buffer from the economy's formula-seeded entry.history. No-op once
+ *  live ticks have populated the buffer (arr already non-empty) or when no seeded history exists. */
+function seedStationFromHistory(state, stationId) {
+  const market = state && state.economy && state.economy.markets && state.economy.markets[stationId];
+  if (!market) return;
+  for (const cid in market) {
+    const e = market[cid];
+    if (!e) continue;
+    const arr = _buf(stationId, cid);
+    if (arr.length) continue; // live data already present — never overwrite observed ticks
+    const hist = Array.isArray(e.history) ? e.history : [];
+    if (hist.length < 2) continue;
+    const spread = entrySpread(e);
+    for (const p of hist) {
+      const mid = Number(p && (p.mid != null ? p.mid : p));
+      if (!(mid > 0) || !isFinite(mid)) continue;
+      arr.push(pointFromMid(mid, spread, p && p.t));
+    }
+    if (arr.length > MAX_POINTS) arr.splice(0, arr.length - MAX_POINTS);
+  }
+}
+
 /** Wire the recorder to a bus. Call once at boot. */
 export function initPriceHistory(bus, state) {
   if (!bus) return;
+
+  // On new game / load the buffer is cleared, then reseeded from the economy's seeded entry.history
+  // for any markets that already exist. Markets warmed later (first tick / market open) reseed then.
+  const resetAndSeed = () => {
+    for (const k in _history) delete _history[k];
+    _tickCount = 0;
+    const markets = state && state.economy && state.economy.markets;
+    if (markets) for (const sid in markets) seedStationFromHistory(state, sid);
+  };
+
   bus.on('economy:tick', () => {
     _tickCount++;
     const markets = state && state.economy && state.economy.markets;
     if (!markets) return;
     for (const stationId in markets) {
+      // First tick after a reset: backfill a real price past before recording the live sample.
+      seedStationFromHistory(state, stationId);
       const market = markets[stationId];
       for (const cid in market) {
         const e = market[cid];
@@ -55,8 +114,10 @@ export function initPriceHistory(bus, state) {
       }
     }
   });
-  bus.on('game:new', () => { for (const k in _history) delete _history[k]; _tickCount = 0; });
-  bus.on('save:loaded', () => { for (const k in _history) delete _history[k]; _tickCount = 0; });
+  // Opening a market seeds it immediately so the chart has a past before the first 5s tick lands.
+  bus.on('economy:marketOpened', (p) => { if (p && p.stationId) seedStationFromHistory(state, p.stationId); });
+  bus.on('game:new', resetAndSeed);
+  bus.on('save:loaded', resetAndSeed);
 }
 
 /** Get the price series for a station+commodity (newest last). Returns [] if none. */

@@ -535,6 +535,7 @@ function engineGlow(pal, x, z, scale) {
     emissiveMaterial(pal.thruster, 2.4),
   );
   nozzle.scale.setScalar(scale);
+  nozzle.userData.spacefaceTags = { vfxRole: 'driveNozzleGlow' };
   g.add(nozzle);
   // tight exhaust plume: a short, fat cone trailing back (-X) — a flame, not a needle. apex points
   // -X (rear) via rotateZ(+90deg). A brighter inner cone gives a white-hot core.
@@ -544,6 +545,7 @@ function engineGlow(pal, x, z, scale) {
   );
   plume.scale.set(scale * 0.95, scale * 0.74, scale * 0.74);
   plume.position.x = -0.72 * scale;
+  plume.userData.spacefaceTags = { vfxRole: 'drivePlume' };
   g.add(plume);
   g.userData.plume = plume;
   const core = new THREE.Mesh(
@@ -552,10 +554,12 @@ function engineGlow(pal, x, z, scale) {
   );
   core.scale.set(scale * 0.9, scale * 0.6, scale * 0.6);
   core.position.x = -0.52 * scale;
+  core.userData.spacefaceTags = { vfxRole: 'driveCore' };
   g.add(core);
   // small soft core glow at the nozzle (modest — was scale*2.4, the blob)
   const halo = makeHalo(pal.thruster, scale * 0.5);
   halo.position.x = -0.28 * scale;
+  halo.userData.spacefaceTags = { vfxRole: 'driveHalo' };
   g.add(halo);
   return g;
 }
@@ -734,7 +738,9 @@ function engineProp(pal, R, scaleK, engineClass) {
   intake.position.x = 0.36 * s; intake.scale.setScalar(s); g.add(intake);
   // bright nozzle ring at the rear
   const nozzle = new THREE.Mesh(getGeometry('eng:nozzle2', () => new THREE.CylinderGeometry(0.30, 0.20, 0.18, 12).rotateZ(Math.PI / 2)), nozzleMat);
-  nozzle.position.x = -0.34 * s; nozzle.scale.set(s, s, s); g.add(nozzle);
+  nozzle.position.x = -0.34 * s; nozzle.scale.set(s, s, s);
+  nozzle.userData.spacefaceTags = { vfxRole: 'driveNozzleGlow' };
+  g.add(nozzle);
   // VISIBLE TURBINE FAN inside the nozzle — a spoked disk that the per-frame driver spins, so engines
   // read as real machinery with moving internals, not a glowing tube. Sat just inside the nozzle.
   const fan = new THREE.Group();
@@ -1220,7 +1226,23 @@ function buildCapital(ctx) {
     }
   }
   // sensor ring (rotating, animated by the engine driver later)
-  const ring = new THREE.Mesh(getGeometry('cap:ring', () => new THREE.TorusGeometry(W * 0.6, R * 0.03, 8, 24)), emissiveMaterial(pal.accent, 1.6));
+  // Geometry is authored in normalized hull space and the mesh is scaled by R below. Multiplying
+  // the tube by R here as well made the Leviathan's eight-sided ring render as an opaque cyan
+  // sphere-like mass that hid the ship. Rotation alone does not remove that geometry; any later
+  // disappearance is an independent authored-preview transition and is traced at the mount boundary.
+  const ring = new THREE.Mesh(
+    getGeometry(`cap:ring:${q(W)}`, () => new THREE.TorusGeometry(W * 0.6, Math.max(0.012, W * 0.018), 8, 48)),
+    getMaterial(`cap:ring-mat:${pal.accent}`, () => new THREE.MeshStandardMaterial({
+      color: new THREE.Color(pal.accent),
+      emissive: new THREE.Color(pal.accent),
+      emissiveIntensity: 0.78,
+      metalness: 0.18,
+      roughness: 0.42,
+      transparent: true,
+      opacity: 0.72,
+      depthWrite: false,
+    })),
+  );
   ring.rotation.x = Math.PI / 2; ring.position.set(L * 0.08 * R, H * 0.9 * R, 0); ring.scale.setScalar(R); g.add(ring);
   ctx.sensorRing = ring;
   // ventral hangar bay (a recessed box underneath)
@@ -1870,6 +1892,7 @@ function blinkerSprite(color, scale, phase, blinkers) {
   const s = makeHalo(color, scale);
   s.material = s.material.clone();
   s.userData.blink = { phase: phase || 0, hz: 0.6 + ((phase || 0) % 0.6), base: scale };
+  s.userData.spacefaceTags = { damageRole: 'navLight', vfxRole: 'navBlinker' };
   if (blinkers) blinkers.push(s);
   return s;
 }

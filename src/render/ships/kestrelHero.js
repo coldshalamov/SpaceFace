@@ -420,12 +420,12 @@ export function buildKestrelHero(entity) {
   addBox(hull, mat.warning, 'Kestrel_Nose_Service_Mark', [1.45, 0.08, 0.24], [11.4, -0.42, 0]);
 
   // 4) One axial M drive. Rings expose load and heat paths; the glow begins inside the nozzle.
-  addCylinderX(hull, mat.graphite, 'Kestrel_Axial_Drive_Housing', 2.05, 4.4, [-10.65, -0.05, 0], 16);
+  addCylinderX(hull, mat.graphite, 'Kestrel_Axial_Drive_Housing', 2.05, 4.4, [-10.65, -0.05, 0], 32);
   addTorusX(hull, mat.gunmetal, 'Kestrel_Drive_Forward_Ring', 1.86, 0.20, [-8.45, -0.05, 0]);
   const aftRing = addTorusX(hull, mat.frontier, 'Kestrel_Drive_Aft_Ring', 1.87, 0.22, [-13.33, -0.05, 0]);
-  const fan = addCylinderX(hull, mat.drive, 'Kestrel_Drive_Fan', 1.48, 0.18, [-13.53, -0.05, 0], 12);
-  const driveCore = addCylinderX(hull, mat.driveCore, 'Kestrel_Drive_Core', 0.94, 0.24, [-13.66, -0.05, 0], 14);
-  const plume = addMesh(hull, new THREE.CircleGeometry(2.55, 24), mat.driveGlow, 'Kestrel_Drive_Glow', [-13.82, -0.05, 0], [0, -Math.PI / 2, 0]);
+  const fan = addCylinderX(hull, mat.drive, 'Kestrel_Drive_Fan', 1.48, 0.18, [-13.53, -0.05, 0], 48);
+  const driveCore = addCylinderX(hull, mat.driveCore, 'Kestrel_Drive_Core', 0.94, 0.24, [-13.66, -0.05, 0], 48);
+  const plume = addMesh(hull, new THREE.CircleGeometry(2.0, 48), mat.driveGlow, 'Kestrel_Drive_Glow', [-13.82, -0.05, 0], [0, -Math.PI / 2, 0]);
   fan.userData.keepSeparate = true;
   driveCore.userData.keepSeparate = true;
   plume.userData.keepSeparate = true;
@@ -541,11 +541,17 @@ export function buildKestrelHero(entity) {
     const vz = entity.vel && Number.isFinite(entity.vel.z) ? entity.vel.z : 0;
     const speed = Math.hypot(vx, vz);
     const drive = Math.min(1, speed / 135);
-    fan.rotation.x = now * (1.5 + drive * 8.0);
-    const pulse = 1 + Math.sin(now * 9.0) * (0.025 + drive * 0.025);
+    // The parked station preview has zero velocity. At rest the drive is machinery, not an idle
+    // spinner: only real thrust may advance the fan or pulse the exhaust surfaces.
+    if (drive > 0.005) fan.rotation.x = now * (1.5 + drive * 8.0);
+    const pulse = 1 + Math.sin(now * 9.0) * drive * 0.05;
     driveCore.scale.setScalar(pulse * (0.92 + drive * 0.16));
-    plume.scale.setScalar(0.88 + drive * 0.40 + Math.sin(now * 7.0) * 0.025);
-    mat.driveGlow.opacity = 0.30 + drive * 0.35;
+    plume.scale.setScalar(0.82 + drive * 0.46 + Math.sin(now * 7.0) * drive * 0.025);
+    // Parked previews show an unpowered mechanical iris. The luminous exhaust only blooms when
+    // velocity proves the drive is active; this removes the giant white disc from Shipworks.
+    mat.drive.emissiveIntensity = 0.42 + drive * 1.98;
+    mat.driveCore.emissiveIntensity = 0.38 + drive * 2.82;
+    mat.driveGlow.opacity = drive * 0.65;
   };
 
   mergeStaticByMaterial(hull, new Set([fan, driveCore, plume]));

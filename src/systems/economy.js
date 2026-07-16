@@ -247,11 +247,109 @@ function pricePointAt(entry, def, cycle, t) {
 
 function sanitizeHistory(raw) {
   if (!Array.isArray(raw)) return [];
-  return raw.slice(-HISTORY_POINT_LIMIT).map((p) => {
+  const out = [];
+  // Current saves pack [time, mid, time, mid, ...]. This avoids tens of thousands of tiny
+  // objects in the autosave capture/structured-clone path. Older object-per-point saves remain
+  // accepted indefinitely so this storage optimization does not require a destructive migration.
+  if (raw.length > 0 && typeof raw[0] === 'number') {
+    const pairCount = Math.min(HISTORY_POINT_LIMIT, Math.floor(raw.length / 2));
+    const start = raw.length - pairCount * 2;
+    for (let i = Math.max(0, start - (start % 2)); i + 1 < raw.length; i += 2) {
+      const t = Number(raw[i]);
+      const mid = Math.max(1, round(Number(raw[i + 1]) || 0));
+      if (Number.isFinite(t) && mid > 0) out.push({ t, mid });
+    }
+    return out;
+  }
+  const start = Math.max(0, raw.length - HISTORY_POINT_LIMIT);
+  for (let i = start; i < raw.length; i++) {
+    const p = raw[i];
     const mid = Math.max(1, round(Number(p && (p.mid != null ? p.mid : p)) || 0));
     const t = Number(p && p.t);
-    return Number.isFinite(t) && mid > 0 ? { t, mid } : null;
-  }).filter(Boolean);
+    if (Number.isFinite(t) && mid > 0) out.push({ t, mid });
+  }
+  return out;
+}
+
+function serializeHistory(raw) {
+  if (!Array.isArray(raw)) return [];
+  const count = Math.min(HISTORY_POINT_LIMIT, raw.length);
+  const out = new Array(count * 2);
+  let cursor = 0;
+  for (let i = raw.length - count; i < raw.length; i++) {
+    const point = raw[i];
+    const t = Number(point && point.t);
+    const mid = Math.max(1, round(Number(point && (point.mid != null ? point.mid : point)) || 0));
+    if (!Number.isFinite(t) || !(mid > 0)) continue;
+    out[cursor++] = t;
+    out[cursor++] = mid;
+  }
+  out.length = cursor;
+  return out;
+}
+
+const MARKET_ROLE_CODE = Object.freeze({ none: 0, produce: 1, consume: 2 });
+const MARKET_ROLE_FROM_CODE = Object.freeze(['none', 'produce', 'consume']);
+
+function serializeEventMods(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  const out = new Array(raw.length * 3);
+  let cursor = 0;
+  for (const mod of raw) {
+    if (!mod || !mod.field) continue;
+    out[cursor++] = mod.field;
+    out[cursor++] = Number(mod.mult) || 1;
+    out[cursor++] = mod.eventId == null ? null : mod.eventId;
+  }
+  out.length = cursor;
+  return out;
+}
+
+function deserializeEventMods(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  if (raw[0] && typeof raw[0] === 'object') return raw.slice();
+  const out = [];
+  for (let i = 0; i + 2 < raw.length; i += 3) {
+    if (!raw[i]) continue;
+    out.push({ field: raw[i], mult: Number(raw[i + 1]) || 1, eventId: raw[i + 2] });
+  }
+  return out;
+}
+
+function serializeMarketRow(cid, entry, preserveHistory) {
+  const row = [
+    cid,
+    entry.stock,
+    entry.equilibrium,
+    entry.baseEq,
+    MARKET_ROLE_CODE[entry.role] ?? 0,
+    serializeEventMods(entry.eventMods),
+  ];
+  if (preserveHistory) row.push(serializeHistory(entry.history));
+  return row;
+}
+
+function deserializeMarketRow(cid, raw) {
+  if (!Array.isArray(raw)) {
+    return {
+      cid,
+      stock: raw && raw.stock,
+      equilibrium: raw && raw.equilibrium,
+      baseEq: raw && raw.baseEq,
+      role: raw && raw.role,
+      eventMods: raw && raw.eventMods,
+      history: raw && raw.history,
+    };
+  }
+  return {
+    cid: raw[0] || cid,
+    stock: raw[1],
+    equilibrium: raw[2],
+    baseEq: raw[3],
+    role: MARKET_ROLE_FROM_CODE[raw[4]] || 'none',
+    eventMods: deserializeEventMods(raw[5]),
+    history: raw[6],
+  };
 }
 
 function ensurePlayerMarketMemory(player) {
@@ -1354,15 +1452,20 @@ export const economy = {
   serialize() {
     const econ = this.state.economy;
     const markets = {};
+    // Price history is derived from the saved stock + cycle for stations the player has never
+    // inspected. Preserve the exact lived trace only where it can be player knowledge. This keeps
+    // an explored market continuous while avoiding ~90k invisible history points in a populated
+    // galaxy autosave; deserialize already reseeds any omitted trace from the authoritative curve.
+    const durableHistoryStations = new Set([
+      ...Object.keys(econ.marketIntel || {}),
+      ...Object.keys(this.state.player && this.state.player.marketMemory || {}),
+    ]);
+    if (this._lastDockedStation) durableHistoryStations.add(this._lastDockedStation);
     for (const sid in econ.markets) {
-      const m = econ.markets[sid]; const out = {};
+      const m = econ.markets[sid]; const out = [];
+      const preserveHistory = durableHistoryStations.has(sid);
       for (const cid in m) {
-        const e = m[cid];
-        out[cid] = {
-          stock: e.stock, equilibrium: e.equilibrium, baseEq: e.baseEq, role: e.role,
-          eventMods: (e.eventMods || []).map((x) => ({ field: x.field, mult: x.mult, eventId: x.eventId })),
-          history: sanitizeHistory(e.history),
-        };
+        out.push(serializeMarketRow(cid, m[cid], preserveHistory));
       }
       markets[sid] = out;
     }
@@ -1386,12 +1489,16 @@ export const economy = {
     econ.markets = {};
     for (const sid in (data.markets || {})) {
       const m = data.markets[sid]; const out = {};
-      for (const cid in m) {
-        const e = m[cid];
+      const rows = Array.isArray(m)
+        ? m.map((row) => deserializeMarketRow(null, row))
+        : Object.entries(m).map(([cid, entry]) => deserializeMarketRow(cid, entry));
+      for (const e of rows) {
+        const cid = e.cid;
+        if (!cid) continue;
         const def = commodityDef(this.state, cid);
         const entry = {
           stock: e.stock, equilibrium: e.equilibrium, baseEq: e.baseEq, role: e.role,
-          lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: (e.eventMods || []).slice(),
+          lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: deserializeEventMods(e.eventMods),
         };
         if (def) {
           this.recomputeLivePrices(entry, def, sid, cid);

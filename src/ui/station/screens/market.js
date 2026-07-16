@@ -17,6 +17,48 @@ for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_NAME.se
 const LEGAL_TONE = { legal: '', restricted: 'warn', contraband: 'loss' };
 const LEGAL_LABEL = { legal: 'Legal', restricted: 'Restricted', contraband: 'Contraband' };
 const DEMAND_LEVEL = { low: 1, med: 2, medium: 2, high: 3 };
+const MARKET_FILTERS = [
+  { id: 'all', label: 'All stock' },
+  { id: 'hold', label: 'In hold' },
+  { id: 'raw', label: 'Raw & rare' },
+  { id: 'industry', label: 'Industry' },
+  { id: 'civilian', label: 'Civilian' },
+  { id: 'salvage', label: 'Salvage' },
+  { id: 'military', label: 'Military' },
+  { id: 'restricted', label: 'Restricted' },
+];
+
+function marketFamily(category) {
+  if (['raw ore', 'gas', 'crystal', 'exotic'].includes(category)) return 'raw';
+  if (['refined', 'component', 'tech'].includes(category)) return 'industry';
+  if (['consumer', 'luxury', 'food', 'med'].includes(category)) return 'civilian';
+  if (category === 'salvage') return 'salvage';
+  if (category === 'military') return 'military';
+  if (category === 'contraband') return 'restricted';
+  return 'civilian';
+}
+
+// Compact cargo marks make commodity families recognizable without turning the selector back into
+// anonymous glowing particles. Names remain visible; these are orientation aids, not mystery icons.
+function commodityGlyph(category) {
+  const paths = {
+    'raw ore': '<path d="M4 16 7 6l7-3 6 7-4 9H8Z"/><path d="m7 6 5 6 8-2M12 12l4 7"/>',
+    gas: '<path d="M8 4h8v3H8zM7 7h10v13H7z"/><path d="M10 11h4M10 15h4"/>',
+    crystal: '<path d="m12 3 7 7-7 11-7-11Z"/><path d="m5 10 7 2 7-2M12 3v9"/>',
+    exotic: '<path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4Z"/>',
+    refined: '<path d="m4 13 5-4 5 4-5 4Zm7-5 4-3 5 4-5 4Z"/><path d="M4 13v4l5 3 5-3v-4M15 13v4l5-4V9"/>',
+    component: '<path d="M5 7h14v10H5z"/><path d="M8 4v3m4-3v3m4-3v3M8 17v3m4-3v3m4-3v3M9 10h6v4H9z"/>',
+    tech: '<path d="M5 5h14v14H5z"/><path d="M8 9h4v4h4M8 16h8M3 9h2m-2 6h2m14-6h2m-2 6h2"/>',
+    consumer: '<path d="m4 8 8-4 8 4-8 4Z"/><path d="M4 8v9l8 3 8-3V8M12 12v8"/>',
+    luxury: '<path d="m4 9 4-5h8l4 5-8 11Z"/><path d="M4 9h16M8 4l4 5 4-5M12 9v11"/>',
+    food: '<path d="M7 20V9m5 11V5m5 15V8"/><path d="M7 10c-3-1-3-4 0-5 3 1 3 4 0 5Zm5-4c-3-1-3-4 0-5 3 1 3 4 0 5Zm5 3c-3-1-3-4 0-5 3 1 3 4 0 5Z"/>',
+    med: '<path d="M8 4h8v5h5v7h-5v5H8v-5H3V9h5Z"/>',
+    salvage: '<path d="M4 17 9 4l4 6 7-3-3 13-6-4Z"/><path d="m7 13 5-1 3 5"/>',
+    contraband: '<path d="M5 7h14v12H5zM9 7V4h6v3"/><path d="m9 11 6 4m0-4-6 4"/>',
+    military: '<path d="M9 3h6l2 6-5 12L7 9Z"/><path d="M7 9h10M10 6h4"/>',
+  };
+  return `<svg class="sx-commodity-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">${paths[category] || paths.consumer}</svg>`;
+}
 
 function stationId(state) { return state && state.ui && state.ui.dockedStationId; }
 function marketTable(state) {
@@ -105,6 +147,9 @@ export function createMarketScreen(ctx) {
   let mode = 'buy';   // 'buy' | 'sell'
   let qty = 1;
   let cargoOnly = false;
+  let marketFilter = 'all';
+  let marketQuery = '';
+  let listRenderSignature = '';
   let activeChart = null;
   let chartIndex = -1;
   let brushStart = -1;
@@ -136,7 +181,13 @@ export function createMarketScreen(ctx) {
 
   function openTradeMode(nextMode, state, options = {}) {
     mode = nextMode === 'sell' ? 'sell' : 'buy';
-    cargoOnly = mode === 'sell' && !!options.cargoOnly;
+    // Sell is a cargo operation, so its selector always begins with things actually in the hold.
+    // options.cargoOnly remains accepted for call-site compatibility, but never widens Sell into
+    // forty-two commodities the player does not own.
+    cargoOnly = mode === 'sell';
+    marketFilter = cargoOnly ? 'hold' : 'all';
+    marketQuery = '';
+    listRenderSignature = '';
     const rows = tradedList(state);
     if (mode === 'sell' && rows.length) {
       const held = rows.find((r) => heldQty(state, r.id) > 0) || rows[0];
@@ -150,42 +201,96 @@ export function createMarketScreen(ctx) {
   function renderList(state) {
     const rows = tradedList(state);
     const tracked_ = trackedCmdty(state);
-    if (!selectedId && rows.length) selectedId = rows[0].id;
-    // group by category, preserve COMMODITIES order
-    const groups = new Map();
+    const query = marketQuery.trim().toLocaleLowerCase();
+    const visible = rows.filter((r) => {
+      const family = marketFamily(r.def.category || '');
+      if (marketFilter === 'hold' && heldQty(state, r.id) <= 0) return false;
+      if (marketFilter !== 'all' && marketFilter !== 'hold' && family !== marketFilter) return false;
+      return !query || `${r.def.name} ${r.def.category || ''}`.toLocaleLowerCase().includes(query);
+    });
+    if (visible.length && !visible.some((r) => r.id === selectedId)) {
+      selectedId = visible[0].id;
+      qty = mode === 'sell' ? heldQty(state, selectedId) : 1;
+    } else if (!selectedId && rows.length) selectedId = rows[0].id;
+
+    const counts = new Map(MARKET_FILTERS.map((filter) => [filter.id, 0]));
+    counts.set('all', rows.length);
     for (const r of rows) {
-      const cat = (r.def.category || 'other');
-      if (!groups.has(cat)) groups.set(cat, []);
-      groups.get(cat).push(r);
+      const family = marketFamily(r.def.category || '');
+      counts.set(family, (counts.get(family) || 0) + 1);
+      if (heldQty(state, r.id) > 0) counts.set('hold', (counts.get('hold') || 0) + 1);
     }
-    let html = '';
-    for (const [cat, items] of groups) {
-      html += `<div class="sx-mkt-cat">${escapeHtml(cat)}</div>`;
-      html += items.map((r) => {
-        const hist = priceHistory(r.entry, r.def);
-        const buy = unitBuy(r.entry, r.def);
-        const up = hist[hist.length - 1] >= hist[0];
-        const pct = hist[0] ? Math.round(((hist[hist.length - 1] - hist[0]) / hist[0]) * 100) : 0;
-        const active = r.id === selectedId ? ' is-active' : '';
-        const tracked = r.id === tracked_ ? ' is-tracked' : '';
-        return (
-          `<button type="button" class="sx-mkt-row${active}${tracked}" data-cmdty="${escapeHtml(r.id)}" role="tab" aria-selected="${r.id === selectedId}">` +
-            (tracked ? `<span class="sx-mkt-row__flag" title="Tracked contract cargo">◆</span>` : '') +
-            `<span class="sx-mkt-row__name">${escapeHtml(r.def.name)}</span>` +
-            `<span class="sx-mkt-row__price">${fmt(buy)}</span>` +
-            `<span class="sx-mkt-row__tr ${up ? 'is-up' : 'is-down'}">${up ? '▲' : '▼'} ${Math.abs(pct)}%</span>` +
-            `<span class="sx-mkt-row__held">${heldQty(state, r.id) > 0 ? fmt(heldQty(state, r.id)) + 'u HOLD' : ''}</span>` +
-          `</button>`
-        );
-      }).join('');
+
+    const nodes = visible.map((r) => {
+      const hist = priceHistory(r.entry, r.def);
+      const buy = unitBuy(r.entry, r.def);
+      const up = hist[hist.length - 1] >= hist[0];
+      const pct = hist[0] ? Math.round(((hist[hist.length - 1] - hist[0]) / hist[0]) * 100) : 0;
+      const demand = DEMAND_LEVEL[(r.entry && r.entry.demand) || ''] || 2;
+      const active = r.id === selectedId ? ' is-active' : '';
+      const tracked = r.id === tracked_ ? ' is-tracked' : '';
+      const held = heldQty(state, r.id);
+      const family = marketFamily(r.def.category || '');
+      return (
+        `<button type="button" class="sx-mkt-row${active}${tracked}" data-cmdty="${escapeHtml(r.id)}" role="tab" aria-selected="${r.id === selectedId}"` +
+          ` data-family="${family}"` +
+          ` aria-label="${escapeHtml(r.def.name)}, ${fmt(buy)} credits, ${demand === 3 ? 'high' : demand === 2 ? 'medium' : 'low'} demand${held ? `, ${fmt(held)} units held` : ''}">` +
+          (tracked ? `<span class="sx-mkt-row__flag" title="Tracked contract cargo">◆</span>` : '') +
+          `<span class="sx-mkt-row__glyph">${commodityGlyph(r.def.category || '')}</span>` +
+          `<span class="sx-mkt-row__body"><span class="sx-mkt-row__name">${escapeHtml(r.def.name)}</span>` +
+            `<span class="sx-mkt-row__category">${escapeHtml(r.def.category || 'goods')}</span></span>` +
+          `<span class="sx-mkt-row__quote"><span class="sx-mkt-row__price">${fmt(buy)}<i> cr</i></span>` +
+            `<span class="sx-mkt-row__tr ${up ? 'is-up' : 'is-down'}">${up ? '▲' : '▼'} ${Math.abs(pct)}%</span></span>` +
+          `<span class="sx-mkt-row__held">${held > 0 ? fmt(held) + 'u IN HOLD' : (demand === 3 ? 'HIGH DEMAND' : demand === 1 ? 'LOW DEMAND' : 'MED DEMAND')}</span>` +
+        `</button>`
+      );
+    }).join('');
+    const signature = JSON.stringify({
+      selectedId, marketFilter, marketQuery, cargoOnly,
+      rows: visible.map((r) => [r.id, unitBuy(r.entry, r.def), heldQty(state, r.id), r.entry && r.entry.demand,
+        priceHistory(r.entry, r.def).at(-1)]),
+    });
+    if (signature === listRenderSignature) return;
+    listRenderSignature = signature;
+    const searchHadFocus = document.activeElement && document.activeElement.matches('[data-market-search]');
+    const searchSelection = searchHadFocus ? document.activeElement.selectionStart : null;
+    const filters = MARKET_FILTERS.map((filter) =>
+      `<button type="button" class="sx-mkt-filter${filter.id === marketFilter ? ' is-on' : ''}" data-market-filter="${filter.id}" ` +
+        `aria-pressed="${filter.id === marketFilter}">${filter.label}<b>${counts.get(filter.id) || 0}</b></button>`).join('');
+    listEl.innerHTML =
+      `<div class="sx-mkt-browser">` +
+        `<div class="sx-mkt-browser__tools">` +
+          `<span class="sx-mkt-browser__mode">${cargoOnly ? 'YOUR CARGO HOLD' : 'STATION EXCHANGE'}<b>${visible.length} / ${rows.length} visible</b></span>` +
+          `<label class="sx-mkt-search"><span>FIND COMMODITY</span><input type="search" data-market-search value="${escapeHtml(marketQuery)}" placeholder="Name or category" autocomplete="off" spellcheck="false"/></label>` +
+        `</div>` +
+        `<div class="sx-mkt-browser__filters" aria-label="Commodity families">${filters}</div>` +
+        `<div class="sx-mkt-browser__deck">` +
+          `<button type="button" class="sx-mkt-browser__step" data-market-step="-1" aria-label="Previous commodities">‹</button>` +
+          `<div class="sx-mkt-browser__rail" role="tablist" aria-label="Visible commodities">` +
+            (nodes || `<div class="sx-mkt-browser__empty">No commodities match <b>${escapeHtml(marketQuery || MARKET_FILTERS.find((f) => f.id === marketFilter)?.label || 'this filter')}</b>.</div>`) +
+          `</div>` +
+          `<button type="button" class="sx-mkt-browser__step is-next" data-market-step="1" aria-label="Next commodities">›</button>` +
+        `</div>` +
+      `</div>`;
+    if (searchHadFocus) {
+      const search = listEl.querySelector('[data-market-search]');
+      if (search) {
+        search.focus({ preventScroll: true });
+        const at = Math.min(search.value.length, searchSelection == null ? search.value.length : searchSelection);
+        try { search.setSelectionRange(at, at); } catch (_) {}
+      }
     }
-    listEl.innerHTML = html;
   }
 
   function renderStage(state) {
     const rows = tradedList(state);
     const r = rows.find((x) => x.id === selectedId) || rows[0];
-    if (!r) { stageEl.innerHTML = '<p class="sx-muted">No market at this berth.</p>'; return; }
+    if (!r) {
+      activeChart = null;
+      stageEl.innerHTML = `<div class="sx-market-empty">${icon('cargo', 34)}<h3>${mode === 'sell' ? 'Your hold is empty' : 'No market at this berth'}</h3>` +
+        `<p>${mode === 'sell' ? 'Buy cargo here or bring material back from mining before opening Sell.' : 'This station has no tradable stock.'}</p></div>`;
+      return;
+    }
     const def = r.def, entry = r.entry;
     const hist = priceHistory(entry, def);
     const buy = unitBuy(entry, def), sell = unitSell(entry, def);
@@ -280,7 +385,14 @@ export function createMarketScreen(ctx) {
   function renderConsole(state) {
     const rows = tradedList(state);
     const r = rows.find((x) => x.id === selectedId) || rows[0];
-    if (!r) { tradeEl.innerHTML = ''; return; }
+    if (!r) {
+      tradeEl.innerHTML =
+        `<div class="sx-trade sx-trade--empty"><div class="sx-seg" role="tablist">` +
+          `<button type="button" class="sx-seg__btn${mode === 'buy' ? ' is-on' : ''}" data-mode="buy">Buy</button>` +
+          `<button type="button" class="sx-seg__btn${mode === 'sell' ? ' is-on' : ''}" data-mode="sell">Sell</button>` +
+        `</div><div class="sx-trade-empty">${icon('cargo', 28)}<b>Nothing in the hold</b><span>Switch to Buy to load cargo.</span></div></div>`;
+      return;
+    }
     const def = r.def, entry = r.entry;
     const buy = unitBuy(entry, def), sell = unitSell(entry, def);
     const unit = mode === 'buy' ? buy : sell;
@@ -354,19 +466,27 @@ export function createMarketScreen(ctx) {
   }
 
   function renderAll(state) {
-    // After the last hauled item is sold, return to the full exchange instead of leaving the
-    // player staring at an empty filtered instrument.
-    if (cargoOnly && tradedList(state).length === 0) {
-      cargoOnly = false;
-      mode = 'buy';
-      selectedId = null;
-      qty = 1;
-    }
     renderList(state); renderStage(state); renderConsole(state); renderRoutes(state);
   }
 
   // ---- interactions ----
   listEl.addEventListener('click', (ev) => {
+    const filter = ev.target.closest('[data-market-filter]');
+    if (filter) {
+      marketFilter = filter.getAttribute('data-market-filter') || 'all';
+      listRenderSignature = '';
+      const state = ctx.state || {};
+      renderList(state); renderStage(state); renderConsole(state);
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
+      return;
+    }
+    const step = ev.target.closest('[data-market-step]');
+    if (step) {
+      const rail = listEl.querySelector('.sx-mkt-browser__rail');
+      const direction = Number(step.getAttribute('data-market-step')) || 1;
+      if (rail) rail.scrollBy({ left: direction * Math.max(300, rail.clientWidth * .72), behavior: 'smooth' });
+      return;
+    }
     const btn = ev.target.closest('[data-cmdty]');
     if (!btn) return;
     const id = btn.getAttribute('data-cmdty');
@@ -376,6 +496,27 @@ export function createMarketScreen(ctx) {
     renderList(state); renderStage(state); renderConsole(state);
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   });
+  listEl.addEventListener('input', (ev) => {
+    if (!ev.target.matches('[data-market-search]')) return;
+    marketQuery = ev.target.value || '';
+    listRenderSignature = '';
+    const state = ctx.state || {};
+    renderList(state); renderStage(state); renderConsole(state);
+  });
+  listEl.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Escape' || !ev.target.matches('[data-market-search]') || !marketQuery) return;
+    ev.preventDefault();
+    marketQuery = '';
+    listRenderSignature = '';
+    const state = ctx.state || {};
+    renderList(state); renderStage(state); renderConsole(state);
+  });
+  listEl.addEventListener('wheel', (ev) => {
+    const rail = ev.target.closest('.sx-mkt-browser__rail');
+    if (!rail || Math.abs(ev.deltaY) <= Math.abs(ev.deltaX)) return;
+    ev.preventDefault();
+    rail.scrollLeft += ev.deltaY;
+  }, { passive: false });
 
   stageEl.addEventListener('pointermove', (ev) => {
     const svg = ev.target.closest && ev.target.closest('.sx-mkt-chart');
@@ -433,7 +574,7 @@ export function createMarketScreen(ctx) {
     const seg = ev.target.closest('[data-mode]');
     if (seg) {
       const nextMode = seg.getAttribute('data-mode');
-      openTradeMode(nextMode, ctx.state || {}, { cargoOnly: false });
+      openTradeMode(nextMode, ctx.state || {}, { cargoOnly: nextMode === 'sell' });
       renderList(ctx.state || {}); renderStage(ctx.state || {}); renderConsole(ctx.state || {});
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
       return;

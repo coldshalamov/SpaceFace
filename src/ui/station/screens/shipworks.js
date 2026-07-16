@@ -1,4 +1,4 @@
-// src/ui/station/screens/shipworks.js — "Shipworks": shipyard (buy hulls) + outfitter (fit
+// src/ui/station/screens/shipworks.js — "Shipworks": ship sales + outfitter (fit
 // modules) merged around ONE central ship preview. Fleet/Buy modes on the left; the ship is the
 // hero object; slots are clickable — clicking one dims the room and reveals compatible modules.
 // One reused preview mount (createShipPreviewMount) = the perf fix vs. a renderer-per-open.
@@ -23,6 +23,7 @@ import {
 } from '../../presenters/engineeringPreview.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+const CENTERED_SHIP_YAW = 0;
 const FITTABLE = MODULES.concat(WEAPONS);
 const FITTABLE_BY_ID = new Map(FITTABLE.map((d) => [d.id, d]));
 
@@ -57,17 +58,45 @@ function fittedIdentityLine(def) {
   return parts.join(' · ');
 }
 
+// Compact, top-down class silhouettes for the ship rail. They share one authored visual grammar,
+// while the outline and secondary masses describe each ship's actual role at a glance.
+const SHIP_SILHOUETTES = Object.freeze({
+  ship_kestrel: '<path d="M3 14 14 8l17-2 14 8-14 8-17-2Z"/><path d="m17 8 4-5 12 7-12 8-4-6Z" class="sx-shipmark__cut"/>',
+  ship_pelican: '<path d="M4 8h9l5 4h18l8 5-8 5H17l-5-4H4l7-5Z"/><path d="M35 12h9v-4l-7 2Z" class="sx-shipmark__cut"/>',
+  ship_wasp: '<path d="m3 14 14-4 10-8 18 12-18 12-10-8Z"/><path d="m16 10 7 4-7 4 4-4Z" class="sx-shipmark__cut"/>',
+  ship_mule: '<path d="M4 9h11l5-4h12l12 9-12 9H20l-5-4H4Z"/><path d="M7 6h10v6H7Zm0 10h10v6H7Z" class="sx-shipmark__cut"/>',
+  ship_drifter: '<path d="m3 14 12-7 14 2 16 5-16 5-14 2Z"/><path d="M10 4h15l5 5-15-2Zm0 20h15l5-5-15 2Z" class="sx-shipmark__cut"/>',
+  ship_hornet: '<path d="m2 14 17-3 13-9 14 12-14 12-13-9Z"/><path d="M12 7h18l-7 6Zm0 14h18l-7-6Z" class="sx-shipmark__cut"/>',
+  ship_ironback: '<path d="M3 7h15l7-4h14l7 11-7 11H25l-7-4H3Z"/><path d="M4 10h13v8H4Zm20-3h13v14H24Z" class="sx-shipmark__cut"/>',
+  ship_bastion: '<path d="M2 8h12l10-6 22 12-22 12-10-6H2l7-6Z"/><path d="M13 6h18l-7 7-11-3Zm0 16h18l-7-7-11 3Z" class="sx-shipmark__cut"/>',
+  ship_atlas: '<path d="M2 5h12l6 3h14l12 6-12 6H20l-6 3H2Z"/><path d="M4 2h13v9H4Zm0 15h13v9H4Zm18-7h13v8H22Z" class="sx-shipmark__cut"/>',
+  ship_ranger: '<path d="m2 14 18-5L35 3l11 11-11 11-15-6Z"/><path d="M11 5h18l-9 5Zm0 18h18l-9-5Z" class="sx-shipmark__cut"/><circle cx="30" cy="14" r="2" class="sx-shipmark__sensor"/>',
+  ship_warden: '<path d="M2 6h15l9-4 20 12-20 12-9-4H2Z"/><path d="M8 3h17l5 7-18-2Zm0 22h17l5-7-18 2Z" class="sx-shipmark__cut"/><path d="M27 7h13v3H27Zm0 11h13v3H27Z" class="sx-shipmark__battery"/>',
+  ship_colossus: '<path d="M1 5h15l10-4 21 13-21 13-10-4H1Z"/><path d="M5 2h24l8 7-22-3Zm0 24h24l8-7-22 3Z" class="sx-shipmark__cut"/><path d="M18 8h22v4H18Zm0 8h22v4H18Z" class="sx-shipmark__battery"/>',
+  ship_leviathan: '<path d="M1 3h17l10-3 20 14-20 14-10-3H1Z"/><path d="M4 0h26l12 9-25-4Zm0 28h26l12-9-25 4Z" class="sx-shipmark__cut"/><path d="M13 7h29v4H13Zm0 10h29v4H13Z" class="sx-shipmark__battery"/>',
+});
+
+function shipSilhouette(def) {
+  const body = SHIP_SILHOUETTES[def && def.id] || SHIP_SILHOUETTES.ship_kestrel;
+  return `<svg class="sx-shipmark" viewBox="0 0 48 28" aria-hidden="true" focusable="false">${body}</svg>`;
+}
+
 export function createShipworksScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'sx-sw';
   el.innerHTML =
-    `<nav class="sx-sw__rail" aria-label="Shipworks hull selection">` +
-      `<div class="sx-seg"><button type="button" class="sx-seg__btn is-on" data-mode="fleet">My Fleet</button><button type="button" class="sx-seg__btn" data-mode="buy">Buy Hull</button></div>` +
-      `<div class="sx-sw__list"></div>` +
+    `<nav class="sx-sw__rail" aria-label="Shipworks ship selection">` +
+      `<div class="sx-seg"><button type="button" class="sx-seg__btn is-on" data-mode="fleet">My Fleet</button><button type="button" class="sx-seg__btn" data-mode="buy">Buy Ship</button></div>` +
+      `<div class="sx-sw__carousel">` +
+        `<button type="button" class="sx-sw__railstep is-prev" data-rail-step="prev" aria-label="Previous ships">‹</button>` +
+        `<div class="sx-sw__list" tabindex="0" aria-label="Available ships"></div>` +
+        `<button type="button" class="sx-sw__railstep is-next" data-rail-step="next" aria-label="Next ships">›</button>` +
+        `<span class="sx-sw__railtrack" aria-hidden="true"><i></i></span>` +
+      `</div>` +
     `</nav>` +
     `<section class="sx-sw__main">` +
       `<div class="sx-sw__stage">` +
-        `<canvas class="sx-sw__canvas" tabindex="0" aria-label="Interactive ship preview. Drag to rotate and use the mouse wheel to zoom."></canvas>` +
+        `<canvas class="sx-sw__canvas" tabindex="0" aria-label="Interactive ship preview. Drag or scroll horizontally to orbit; scroll vertically or pinch to zoom."></canvas>` +
         `<div class="sx-sw__baylines" aria-hidden="true"><span></span><span></span><span></span></div>` +
         `<div class="sx-sw__slotfield" role="group" aria-label="Ship systems"></div>` +
         `<div class="sx-sw__focusline" aria-hidden="true"></div>` +
@@ -78,7 +107,7 @@ export function createShipworksScreen(ctx) {
           `<button type="button" data-camera="reset" aria-label="Reset ship view">CENTER</button>` +
           `<button type="button" data-camera="right" aria-label="Rotate ship right">↷</button>` +
         `</div>` +
-        `<span class="sx-sw__dragcue" aria-hidden="true">DRAG TO ORBIT / WHEEL TO INSPECT</span>` +
+        `<span class="sx-sw__dragcue" aria-hidden="true">DRAG / TWO-FINGER HORIZONTAL TO ORBIT · VERTICAL / PINCH TO ZOOM</span>` +
       `</div>` +
       `<div class="sx-sw__stats"></div>` +
     `</section>` +
@@ -86,6 +115,9 @@ export function createShipworksScreen(ctx) {
     `<div class="sx-sw__chooser" hidden></div>`;
 
   const railListEl = el.querySelector('.sx-sw__list');
+  const railPrevEl = el.querySelector('[data-rail-step="prev"]');
+  const railNextEl = el.querySelector('[data-rail-step="next"]');
+  const railProgressEl = el.querySelector('.sx-sw__railtrack i');
   const canvas = el.querySelector('.sx-sw__canvas');
   const nameplateEl = el.querySelector('.sx-sw__nameplate');
   const statsEl = el.querySelector('.sx-sw__stats');
@@ -99,6 +131,7 @@ export function createShipworksScreen(ctx) {
   canvas.dataset.authoredRequired = 'true';
   canvas.dataset.fallbackAllowed = 'false';
   canvas.dataset.previewReady = 'false';
+  canvas.dataset.previewAssetState = 'empty';
 
   let mode = 'fleet';
   let viewIdx = 0;          // owned ship index being viewed/fitted
@@ -143,8 +176,22 @@ export function createShipworksScreen(ctx) {
         if (!defId || defId !== expectedPreviewDefId) return;
         canvas.dataset.previewReady = 'true';
         canvas.dataset.previewDefId = defId;
+        canvas.dataset.previewAssetState = mount && mount.getAssetState ? mount.getAssetState() : 'rendered';
         scheduleSpatialProjection();
       },
+      onAssetSettled: ({ defId, state } = {}) => {
+        if (!defId || defId !== expectedPreviewDefId) return;
+        canvas.dataset.previewReady = 'true';
+        canvas.dataset.previewDefId = defId;
+        canvas.dataset.previewAssetState = state || (mount && mount.getAssetState ? mount.getAssetState() : 'authored');
+        scheduleSpatialProjection();
+      },
+    });
+    // Read-only hook used by the live browser acceptance probe. It exposes the preview's rendered
+    // scene facts without giving UI code permission to mutate Three.js objects.
+    Object.defineProperty(canvas, '__sfPreviewDiagnostics', {
+      configurable: true,
+      value: () => mount && mount.getVisualDiagnostics ? mount.getVisualDiagnostics() : [],
     });
     // Warm authored assets; do not mark ready from a false/failed warmup.
     try {
@@ -164,10 +211,12 @@ export function createShipworksScreen(ctx) {
     writeCanvasPreviewMeta(defId, fittings, meta);
     expectedPreviewDefId = defId || null;
     canvas.dataset.previewReady = 'false';
+    canvas.dataset.previewAssetState = 'loading';
     const key = defId + '|' + (fittings || []).join(',') + '|' + (isPlayer ? 'p' : 's') + '|' + ((meta && meta.mode) || 'base');
     if (key === curPreviewKey) {
       mount.setActive(true);
       canvas.dataset.previewReady = mount.getDefId() === defId ? 'true' : 'false';
+      canvas.dataset.previewAssetState = mount.getAssetState ? mount.getAssetState() : 'rendered';
       return;
     }
     curPreviewKey = key;
@@ -180,6 +229,7 @@ export function createShipworksScreen(ctx) {
       mount.setActive(true);
       mount.resize();
       canvas.dataset.previewReady = mount.getDefId() === defId ? 'true' : 'false';
+      canvas.dataset.previewAssetState = mount.getAssetState ? mount.getAssetState() : 'rendered';
       scheduleSpatialProjection();
     } catch (e) { /* preview optional; UI still works — ready stays false */ }
   }
@@ -383,6 +433,23 @@ export function createShipworksScreen(ctx) {
   }
 
   // ---------- left rail ----------
+  function updateRailControls() {
+    const max = Math.max(0, railListEl.scrollWidth - railListEl.clientWidth);
+    const progress = max > 0 ? Math.max(0, Math.min(1, railListEl.scrollLeft / max)) : 0;
+    const viewport = railListEl.scrollWidth > 0
+      ? Math.max(.12, Math.min(1, railListEl.clientWidth / railListEl.scrollWidth)) : 1;
+    railPrevEl.disabled = max <= 1 || railListEl.scrollLeft <= 1;
+    railNextEl.disabled = max <= 1 || railListEl.scrollLeft >= max - 1;
+    railProgressEl.style.width = `${(viewport * 100).toFixed(2)}%`;
+    railProgressEl.style.transform = `translateX(${(progress * (100 / viewport - 100)).toFixed(2)}%)`;
+  }
+
+  function revealSelectedShip() {
+    const active = railListEl.querySelector('.sx-sw-row.is-active');
+    if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    requestAnimationFrame(updateRailControls);
+  }
+
   function renderRail() {
     if (mode === 'fleet') {
       const o = owned();
@@ -392,8 +459,8 @@ export function createShipworksScreen(ctx) {
         const on = i === viewIdx ? ' is-active' : '';
         const isActive = i === activeIdx;
         return (
-          `<button type="button" class="sx-sw-row${on}" data-fleet="${i}">` +
-            `<span class="sx-sw-row__ic">${icon('shipworks', 20)}</span>` +
+          `<button type="button" class="sx-sw-row${on}" data-fleet="${i}" aria-label="Inspect ${escapeHtml(def.name || s.defId)}">` +
+            `<span class="sx-sw-row__ic">${shipSilhouette(def)}</span>` +
             `<span class="sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(def.name || s.defId)}</span>` +
               `<span class="sx-sw-row__sub">${escapeHtml((def.role || 'ship'))} · T${def.tier != null ? def.tier : '?'}</span></span>` +
             (isActive ? `<span class="sx-sw-row__flag">Active</span>` : '') +
@@ -404,8 +471,8 @@ export function createShipworksScreen(ctx) {
       railListEl.innerHTML = SHIPS.filter((s) => (s.price || 0) >= 0).map((s) => {
         const on = s.id === buyId ? ' is-active' : '';
         return (
-          `<button type="button" class="sx-sw-row${on}" data-buy="${escapeHtml(s.id)}">` +
-            `<span class="sx-sw-row__ic">${icon('shipworks', 20)}</span>` +
+          `<button type="button" class="sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" aria-label="Preview ${escapeHtml(s.name)}, ${escapeHtml(s.role || 'ship')}, ${s.price > 0 ? fmt(s.price) + ' credits' : 'owned'}">` +
+            `<span class="sx-sw-row__ic">${shipSilhouette(s)}</span>` +
             `<span class="sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(s.name)}</span>` +
               `<span class="sx-sw-row__sub">${escapeHtml(s.role || 'ship')} · T${s.tier}</span></span>` +
             `<span class="sx-sw-row__price">${s.price > 0 ? fmt(s.price) : 'Owned'}</span>` +
@@ -413,6 +480,7 @@ export function createShipworksScreen(ctx) {
         );
       }).join('');
     }
+    requestAnimationFrame(updateRailControls);
   }
 
   // ---------- center: preview + stats ----------
@@ -424,7 +492,7 @@ export function createShipworksScreen(ctx) {
       if (!def) { nameplateEl.innerHTML = ''; statsEl.innerHTML = ''; statsEl.removeAttribute('data-preview-source'); return; }
       const fittings = s.fittings || [];
       previewShip(def.id, fittings, true, null);
-      nameplateEl.innerHTML = `<h2>${escapeHtml(def.name)}</h2><span>${escapeHtml(def.role || '')} hull · Tier ${def.tier}</span>`;
+      nameplateEl.innerHTML = `<h2>${escapeHtml(def.name)}</h2><span>${escapeHtml(def.role || '')} ship · Tier ${def.tier}</span>`;
       const readout = presentDerivedReadout(def.id, fittings, ctx.state.player);
       renderDerivedStats(readout, fittings);
       renderSpatialSlots();
@@ -432,7 +500,7 @@ export function createShipworksScreen(ctx) {
       const def = SHIP_BY_ID.get(buyId);
       if (!def) return;
       previewShip(def.id, [], def.id === 'ship_kestrel', null);
-      nameplateEl.innerHTML = `<h2>${escapeHtml(def.name)}</h2><span>${escapeHtml(def.role || '')} hull · Tier ${def.tier}</span>`;
+      nameplateEl.innerHTML = `<h2>${escapeHtml(def.name)}</h2><span>${escapeHtml(def.role || '')} ship · Tier ${def.tier}</span>`;
       const readout = presentDerivedReadout(def.id, [], stockPreviewPlayer(ctx.state.player));
       renderDerivedStats(readout, []);
       renderSpatialSlots();
@@ -450,7 +518,7 @@ export function createShipworksScreen(ctx) {
       const afford = def.price <= credits;
       const isOwned = owned().some((s) => s.defId === def.id);
       sideEl.innerHTML =
-        `<div class="sx-panel"><div class="sx-panel__head">${icon('shipworks', 15)}<span>Hull Spec</span></div>` +
+        `<div class="sx-panel"><div class="sx-panel__head">${icon('shipworks', 15)}<span>Ship Spec</span></div>` +
           `<div class="sx-spec">` +
             specRow('Class', (def.role || 'ship') + ' · T' + def.tier) +
             specRow('Base hull', fmt(def.hull)) + specRow('Base shield', fmt(def.shield)) +
@@ -462,7 +530,7 @@ export function createShipworksScreen(ctx) {
           `<div class="sx-buybar__price"><span>Price</span><b>${def.price > 0 ? fmt(def.price) + ' cr' : 'Starter'}</b></div>` +
           (isOwned
             ? `<button type="button" class="sx-btn-ghost" disabled>In your fleet</button>`
-            : `<button type="button" class="sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford ? '' : 'disabled'}>${afford ? 'Buy Hull' : 'Not enough credits'}</button>`) +
+            : `<button type="button" class="sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford ? '' : 'disabled'}>${afford ? 'Buy Ship' : 'Not enough credits'}</button>`) +
         `</div>`;
       return;
     }
@@ -686,8 +754,26 @@ export function createShipworksScreen(ctx) {
     selectedSlot = -1;
     el.querySelectorAll('.sx-seg__btn').forEach((x) => x.classList.toggle('is-on', x.getAttribute('data-mode') === mode));
     renderRail(); renderCenter(); renderSide();
+    requestAnimationFrame(revealSelectedShip);
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
   });
+
+  el.querySelector('.sx-sw__carousel').addEventListener('click', (ev) => {
+    const step = ev.target.closest('[data-rail-step]');
+    if (!step || step.disabled) return;
+    const direction = step.getAttribute('data-rail-step') === 'prev' ? -1 : 1;
+    railListEl.scrollBy({ left: direction * Math.max(220, railListEl.clientWidth * .72), behavior: 'smooth' });
+  });
+  railListEl.addEventListener('scroll', updateRailControls, { passive: true });
+  railListEl.addEventListener('wheel', (ev) => {
+    if (Math.abs(ev.deltaY) <= Math.abs(ev.deltaX)) return;
+    const max = Math.max(0, railListEl.scrollWidth - railListEl.clientWidth);
+    if (max <= 0) return;
+    const next = Math.max(0, Math.min(max, railListEl.scrollLeft + ev.deltaY));
+    if (next === railListEl.scrollLeft) return;
+    ev.preventDefault();
+    railListEl.scrollLeft = next;
+  }, { passive: false });
 
   railListEl.addEventListener('click', (ev) => {
     const f = ev.target.closest('[data-fleet]');
@@ -695,11 +781,17 @@ export function createShipworksScreen(ctx) {
       viewIdx = Number(f.getAttribute('data-fleet'));
       selectedSlot = -1;
       renderRail(); renderCenter(); renderSide();
+      requestAnimationFrame(revealSelectedShip);
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
       return;
     }
     const b = ev.target.closest('[data-buy]');
-    if (b) { buyId = b.getAttribute('data-buy'); renderRail(); renderCenter(); renderSide(); if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' }); }
+    if (b) {
+      buyId = b.getAttribute('data-buy');
+      renderRail(); renderCenter(); renderSide();
+      requestAnimationFrame(revealSelectedShip);
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    }
   });
 
   sideEl.addEventListener('click', (ev) => {
@@ -750,7 +842,18 @@ export function createShipworksScreen(ctx) {
   canvas.addEventListener('wheel', (ev) => {
     if (!mount) return;
     ev.preventDefault();
-    mount.zoomBy(-ev.deltaY * .0012);
+    const unit = ev.deltaMode === 1 ? 16
+      : (ev.deltaMode === 2 ? Math.max(240, canvas.clientHeight) : 1);
+    const dx = ev.deltaX * unit;
+    const dy = ev.deltaY * unit;
+    if (!ev.ctrlKey && Math.abs(dx) > Math.abs(dy) * .7) {
+      // A two-finger horizontal gesture orbits the whole ship. It must never merely wake an idle
+      // engine animation while leaving the hull apparently fixed.
+      mount.rotateBy(dx * .0032);
+    } else {
+      // Vertical wheel and trackpad pinch both control magnification.
+      mount.zoomBy(-dy * (ev.ctrlKey ? .0024 : .0012));
+    }
     scheduleSpatialProjection();
   }, { passive: false });
   canvas.addEventListener('keydown', (ev) => {
@@ -759,7 +862,7 @@ export function createShipworksScreen(ctx) {
     else if (ev.key === 'ArrowRight') { ev.preventDefault(); mount.rotateBy(.14); scheduleSpatialProjection(); }
     else if (ev.key === '+' || ev.key === '=') { ev.preventDefault(); mount.zoomBy(.1); scheduleSpatialProjection(); }
     else if (ev.key === '-') { ev.preventDefault(); mount.zoomBy(-.1); scheduleSpatialProjection(); }
-    else if (ev.key === 'Home') { ev.preventDefault(); mount.setYaw(Math.PI * .22); mount.setZoom(1); scheduleSpatialProjection(); }
+    else if (ev.key === 'Home') { ev.preventDefault(); mount.setYaw(CENTERED_SHIP_YAW); mount.setZoom(1); scheduleSpatialProjection(); }
   });
   el.querySelector('.sx-sw__camera').addEventListener('click', (ev) => {
     const control = ev.target.closest('[data-camera]');
@@ -767,7 +870,7 @@ export function createShipworksScreen(ctx) {
     const command = control.getAttribute('data-camera');
     if (command === 'left') mount.rotateBy(-.22);
     else if (command === 'right') mount.rotateBy(.22);
-    else { mount.setYaw(Math.PI * .22); mount.setZoom(1); }
+    else { mount.setYaw(CENTERED_SHIP_YAW); mount.setZoom(1); }
     scheduleSpatialProjection();
   });
   const stageResizeObserver = typeof ResizeObserver !== 'undefined'
@@ -844,6 +947,7 @@ export function createShipworksScreen(ctx) {
       if (projectionFrame) cancelAnimationFrame(projectionFrame);
       if (stageResizeObserver) stageResizeObserver.disconnect();
       if (mount) { try { mount.dispose(); } catch (_) {} mount = null; }
+      try { delete canvas.__sfPreviewDiagnostics; } catch (_) {}
     },
   };
 }

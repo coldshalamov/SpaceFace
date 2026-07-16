@@ -289,6 +289,7 @@ export function createShipPreviewMount(canvas, opts) {
   let H = canvas.clientHeight || canvas.height || 200;
   const useDock = typeof opts.dockId === 'string' && opts.dockId.length > 0;
   const onFirstFrame = typeof opts.onFirstFrame === 'function' ? opts.onFirstFrame : null;
+  const onAssetSettled = typeof opts.onAssetSettled === 'function' ? opts.onAssetSettled : null;
   const authoredShips = opts.authoredShips !== false && opts.authoredWarmup !== false;
   // Station/menu pads must never silently sit on the box LOD. Only allow it if the caller
   // explicitly opts in (devtools). Outfitting/shipyard/new-game pass allowFastFallback:false.
@@ -334,9 +335,22 @@ export function createShipPreviewMount(canvas, opts) {
   // Always create the factory for real ship meshes (even if a caller set fastPreview by mistake).
   const vf = createVisualFactory();
   if (vf) {
-    installVisualOverrides(vf, {
-      authoredShips,
-      onWarning: (message, error) => console.warn(message, error),
+      installVisualOverrides(vf, {
+        authoredShips,
+        // A player-facing turntable keeps one coherent body. Catalog ships without a validated
+        // complete asset remain on their readable procedural model instead of hot-swapping into
+        // the loose modular flight assembly several seconds after selection.
+        authoredWholeShipsOnly: true,
+        onWarning: (message, error) => console.warn(message, error),
+      onAuthoredAssetSwap: ({ boundary } = {}) => {
+        if (disposed || !current || boundary !== current) return;
+        // The complete authored payload can have very different bounds from its immediate fallback.
+        // Reframe and render atomically when it settles; input must never be required to reveal it.
+        hidePreviewOnlySurfaces(current);
+        fitCameraToCurrent();
+        renderNow();
+        if (onAssetSettled) onAssetSettled({ defId: getDefId(), state: 'authored' });
+      },
     });
   }
 
@@ -409,21 +423,8 @@ export function createShipPreviewMount(canvas, opts) {
     const ent = makeEntity(defId, 1, loadout) || makeEntity(defId, 1, { isPlayer: true });
     if (ent) ent.isPlayer = !!(loadout && loadout.isPlayer) || defId === 'ship_kestrel';
 
-    // 1) Hitch (ship_kestrel) — flight hero mesh. This is the ship the player owns at start.
-    if (defId === 'ship_kestrel') {
-      try {
-        const hero = buildKestrelHero(ent);
-        if (hero && !isGrayFallbackBox(hero)) {
-          hero.userData.previewFastLod = false;
-          return tagAndCache(hero, defId, cacheId);
-        }
-        console.error('[shipPreviewMount] Hitch hero returned unusable mesh');
-      } catch (err) {
-        console.error('[shipPreviewMount] Hitch hero preview FAILED', err);
-      }
-    }
-
-    // 2) Full visual factory (same path as flight NPCs / non-starter hulls).
+    // 1) Full visual factory, including the authored whole-ship boundary for Hitch. The procedural
+    // hero is an immediate readable fallback, not the permanent settled station model.
     if (ent && vf) {
       let mesh = null;
       try {
@@ -437,6 +438,20 @@ export function createShipPreviewMount(canvas, opts) {
       if (mesh && !isGrayFallbackBox(mesh) && !mesh.userData.previewFastLod) {
         mesh.userData.previewFastLod = false;
         return tagAndCache(mesh, defId, cacheId);
+      }
+    }
+
+    // 2) Emergency Hitch fallback if the authored factory path itself failed to construct.
+    if (defId === 'ship_kestrel') {
+      try {
+        const hero = buildKestrelHero(ent);
+        if (hero && !isGrayFallbackBox(hero)) {
+          hero.userData.previewFastLod = false;
+          return tagAndCache(hero, defId, cacheId);
+        }
+        console.error('[shipPreviewMount] Hitch hero returned unusable mesh');
+      } catch (err) {
+        console.error('[shipPreviewMount] Hitch hero preview FAILED', err);
       }
     }
 
@@ -572,6 +587,104 @@ export function createShipPreviewMount(canvas, opts) {
   function getDefId() { return current && current.userData && current.userData.previewDefId; }
 
   /**
+   * Expose the preview boundary's real asset state for live UI diagnostics and browser probes.
+   * This is deliberately read-only: the authored-asset owner remains partsLibrary/visualOverrides.
+   * @returns {string}
+   */
+  function getAssetState() {
+    if (!current || !current.userData) return 'empty';
+    return current.userData.authoredAssetState || (current.userData.previewFastLod ? 'fast-fallback' : 'procedural-fallback');
+  }
+
+  /** Read-only live evidence for visual probes; never mutates scene ownership. */
+  function getVisualDiagnostics() {
+    if (!current) return [];
+    const entries = [];
+    const currentObjects = new Set();
+    current.traverse((object) => currentObjects.add(object));
+    scene.updateWorldMatrix(true, true);
+    scene.traverse((object) => {
+      if (!object || (!object.isMesh && !object.isSprite && !object.isInstancedMesh && !object.isBatchedMesh)) return;
+      let displayed = object.visible !== false;
+      for (let parent = object.parent; displayed && parent; parent = parent.parent) displayed = parent.visible !== false;
+      const tags = object.userData && object.userData.spacefaceTags;
+      const geometry = object.geometry;
+      if (geometry && !geometry.boundingSphere && typeof geometry.computeBoundingSphere === 'function') geometry.computeBoundingSphere();
+      entries.push({
+        name: object.name || '',
+        type: object.type || '',
+        geometry: geometry && geometry.type || '',
+        geometryRadius: Number((geometry && geometry.boundingSphere && geometry.boundingSphere.radius || 0).toFixed(3)),
+        material: object.material && object.material.name || object.material && object.material.type || '',
+        displayed,
+        inCurrent: currentObjects.has(object),
+        count: Number(object.count || 0),
+        scale: [object.scale.x, object.scale.y, object.scale.z].map((value) => Number(value.toFixed(3))),
+        position: [object.position.x, object.position.y, object.position.z].map((value) => Number(value.toFixed(3))),
+        tags: tags || null,
+      });
+    });
+    return entries;
+  }
+
+  function isPreviewOnlySurface(object) {
+    const tags = object && object.userData && object.userData.spacefaceTags;
+    const vfxRole = tags && tags.vfxRole;
+    return !!(object && (
+      object.name === 'Ship_Shield_Bubble'
+      || (tags && tags.vfxRole === 'shieldBubble')
+      || vfxRole === 'drivePlume'
+      || vfxRole === 'driveCore'
+      || vfxRole === 'driveHalo'
+      || vfxRole === 'driveNozzleGlow'
+      || vfxRole === 'navBlinker'
+    ));
+  }
+
+  function hidePreviewOnlySurfaces(root) {
+    if (!root || typeof root.traverse !== 'function') return;
+    root.traverse((object) => {
+      if (isPreviewOnlySurface(object)) object.visible = false;
+    });
+  }
+
+  function visibleShipBounds(root) {
+    const box = new THREE.Box3().makeEmpty();
+    const objectBox = new THREE.Box3();
+    if (!root || typeof root.traverse !== 'function') return box;
+    root.updateWorldMatrix(true, true);
+    root.traverse((object) => {
+      if (!object || !object.geometry || isPreviewOnlySurface(object)) return;
+      const geometry = object.geometry;
+      if (!geometry.boundingBox && typeof geometry.computeBoundingBox === 'function') geometry.computeBoundingBox();
+      if (!geometry.boundingBox) return;
+      objectBox.copy(geometry.boundingBox).applyMatrix4(object.matrixWorld);
+      box.union(objectBox);
+    });
+    return box;
+  }
+
+  function fitCameraToCurrent() {
+    if (!current) return false;
+    hidePreviewOnlySurfaces(current);
+    const box = visibleShipBounds(current);
+    if (box.isEmpty()) return false;
+    const sphere = new THREE.Sphere();
+    box.getBoundingSphere(sphere);
+    const cx = sphere.center.x;
+    const cy = sphere.center.y;
+    const cz = sphere.center.z;
+    const R = Math.max(1, sphere.radius);
+    const D = R * 2.85;
+    cam.position.set(cx - D * 0.42, cy + D * 0.38, cz + D * 0.72);
+    cam.lookAt(cx, cy * 0.2, cz);
+    cam.near = Math.max(0.05, R * 0.02);
+    cam.far = Math.max(2000, R * 40);
+    cam.updateProjectionMatrix();
+    return true;
+  }
+
+  /**
    * Show a ship by defId. Rebuilds the mesh + reframes the camera around its bounding sphere.
    * @param {string} defId
    * @param {object} [o] - { rotating?: boolean, fittings?: Array, weapons?: Array }
@@ -612,32 +725,18 @@ export function createShipPreviewMount(canvas, opts) {
       return;
     }
     current = mesh;
-    yaw = preserveView ? priorYaw : Math.PI * 0.22; // slight turn so the silhouette reads immediately
+    // The camera is already offset into a three-quarter view. Adding another +40deg here aligned
+    // long hulls almost directly with the camera: capitals became a giant aft cross-section and
+    // Hitch became an engine face. Zero yaw is the authored centered composition.
+    yaw = preserveView ? priorYaw : 0;
     zoom = preserveView ? priorZoom : 1;
     cam.zoom = zoom;
     mesh.rotation.y = yaw;
     scene.add(mesh);
-    // frame around the bounding sphere so big capitals fit the same as scouts
-    const box = new THREE.Box3().setFromObject(mesh);
-    const sphere = new THREE.Sphere();
-    box.getBoundingSphere(sphere);
-    // Prefer looking at the mesh center — box fallbacks used to sit off-center and read as junk.
-    const cx = sphere.center.x;
-    const cy = sphere.center.y;
-    const cz = sphere.center.z;
-    const R = Math.max(1, sphere.radius);
-    const D = R * 2.85;
-    cam.position.set(cx - D * 0.42, cy + D * 0.38, cz + D * 0.72);
-    cam.lookAt(cx, cy * 0.2, cz);
-    cam.near = Math.max(0.05, R * 0.02);
-    cam.far = Math.max(2000, R * 40);
-    cam.updateProjectionMatrix();
+    fitCameraToCurrent();
     renderNow();
-    // Authored modular upgrades are optional; hero Hitch is already the final body.
-    if (defId !== 'ship_kestrel') {
-      requestCurrentAuthoredUpgrade();
-      warmAssets();
-    }
+    requestCurrentAuthoredUpgrade();
+    warmAssets();
     if (rotating) requestLoop();
     else renderNow();
   }
@@ -716,6 +815,6 @@ export function createShipPreviewMount(canvas, opts) {
 
   return {
     show, setRotating, setYaw, rotateBy, setZoom, zoomBy, getView, setDockId, setActive,
-    warmAssets, resize, frame, dispose, projectLocalPoint, getDefId,
+    warmAssets, resize, frame, dispose, projectLocalPoint, getDefId, getAssetState, getVisualDiagnostics,
   };
 }
