@@ -110,6 +110,16 @@ try {
       panelLabelledBy: panel && panel.getAttribute('aria-labelledby'),
       // hold manifest lives on the Hold readout now (there is no Hold tab)
       holdButton: !!document.querySelector('[data-screen="station"] [data-hold]'),
+      readouts: [...document.querySelectorAll('[data-screen="station"] .sx-readout')].map((readout) => {
+        const track = readout.querySelector('.sx-readout__track');
+        const rect = track && track.getBoundingClientRect();
+        return {
+          label: readout.querySelector('.sx-readout__label')?.textContent?.trim() || '',
+          value: readout.querySelector('.sx-readout__v')?.textContent?.replace(/\s+/g, ' ').trim() || '',
+          trackWidth: rect ? rect.width : 0,
+        };
+      }),
+      commsToggle: !!document.querySelector('[data-screen="station"] .sx-comms__toggle'),
     };
   });
 
@@ -127,6 +137,14 @@ try {
   assert.equal(shell.panelRole, 'tabpanel', 'the workspace should expose role=tabpanel');
   assert.match(String(shell.panelLabelledBy || ''), /^sx-tab-/, 'the panel should be labelled by its owning tab');
   assert.equal(shell.holdButton, true, 'the Hold readout should open the cargo manifest (there is no Hold tab)');
+  assert.equal(shell.readouts.length, 3, 'Hull, Fuel, and Hold should each be a global instrument');
+  assert.deepEqual(shell.readouts.map((readout) => readout.label), ['Hull', 'Fuel', 'Hold'],
+    'global status instruments should name their systems without relying on tiny icons');
+  assert.ok(shell.readouts.every((readout) => readout.trackWidth >= 60),
+    'global status tracks should be substantial enough to scan: ' + JSON.stringify(shell.readouts));
+  assert.match(shell.readouts[2].value, /\d+\s*\/\s*\d+\s*u/i,
+    'Hold should expose used and total capacity, got: ' + shell.readouts[2].value);
+  assert.equal(shell.commsToggle, true, 'Station Comms should expose its session ledger control');
 
   assert.deepEqual(shell.acts.map((a) => a.id), DOCK_ACTIONS, 'dock actions should be repair/refuel/resupply/undock');
   for (const act of shell.acts) {
@@ -151,6 +169,8 @@ try {
   const undockMotion = kinetic.find((entry) => entry.id === 'undock');
   assert.ok(marketMotion.scale > 1.25 && parseFloat(marketMotion.lift) < -10,
     'pointer target should respond physically, got: ' + JSON.stringify(marketMotion));
+  assert.ok(marketMotion.scale <= 1.32 && parseFloat(marketMotion.lift) >= -13,
+    'dock response should stay controlled rather than ballooning: ' + JSON.stringify(marketMotion));
   assert.ok(shipworksMotion.scale > 1.01 && shipworksMotion.scale < marketMotion.scale,
     'magnetic response should yield through neighboring items, got: ' + JSON.stringify(shipworksMotion));
   assert.ok(Math.abs(undockMotion.scale - 1) < 0.01,

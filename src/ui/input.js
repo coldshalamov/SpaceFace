@@ -493,7 +493,7 @@ export function createUiInput(ctx, screenManager) {
   function stationTabButtons() {
     const root = activeScreenEl();
     if (!root || root.dataset.screen !== 'station') return [];
-    return Array.from(root.querySelectorAll('[role="tab"][data-tab], .st-rail [data-tab]')).filter((el) => {
+    return Array.from(root.querySelectorAll('[role="tab"][data-nav], [role="tab"][data-tab], .st-rail [data-tab]')).filter((el) => {
       if (!el || el.disabled) return false;
       let p = el;
       while (p && p !== root) {
@@ -502,6 +502,38 @@ export function createUiInput(ctx, screenManager) {
       }
       return true;
     });
+  }
+
+  // Controller focus follows the composed screen, not incidental DOM order. A directional move
+  // ranks only candidates that are physically in that direction, then prefers the shortest travel
+  // with a penalty for cross-axis drift. This keeps the command dock, hardpoints, manifests, and
+  // contextual trays behaving like spatial game controls even when their markup is progressive.
+  function spatialFocusTarget(items, active, dir) {
+    if (!active || !items.includes(active) || typeof active.getBoundingClientRect !== 'function') return null;
+    const origin = active.getBoundingClientRect();
+    const ox = origin.left + origin.width / 2;
+    const oy = origin.top + origin.height / 2;
+    const horizontal = dir === 'left' || dir === 'right';
+    const sign = dir === 'left' || dir === 'up' ? -1 : 1;
+    let best = null;
+    let bestScore = Infinity;
+    for (const candidate of items) {
+      if (candidate === active || typeof candidate.getBoundingClientRect !== 'function') continue;
+      const rect = candidate.getBoundingClientRect();
+      if (!(rect.width > 0 && rect.height > 0)) continue;
+      const dx = rect.left + rect.width / 2 - ox;
+      const dy = rect.top + rect.height / 2 - oy;
+      const primary = (horizontal ? dx : dy) * sign;
+      if (primary <= 1) continue;
+      const cross = Math.abs(horizontal ? dy : dx);
+      const overlap = horizontal
+        ? Math.max(0, Math.min(origin.bottom, rect.bottom) - Math.max(origin.top, rect.top))
+        : Math.max(0, Math.min(origin.right, rect.right) - Math.max(origin.left, rect.left));
+      const overlapBonus = overlap > 0 ? Math.min(42, overlap * 0.7) : 0;
+      const score = primary + cross * 2.35 - overlapBonus;
+      if (score < bestScore) { best = candidate; bestScore = score; }
+    }
+    return best;
   }
 
   function clickStationTab(btn) {
@@ -544,11 +576,12 @@ export function createUiInput(ctx, screenManager) {
         return;
       }
     }
-    let idx = items.indexOf(active);
-    if (idx < 0) idx = 0;
-    const delta = dir === 'up' || dir === 'left' ? -1 : 1;
-    const next = (idx + delta + items.length) % items.length;
-    try { items[next].focus(); } catch (e) {}
+    if (!items.includes(active)) {
+      try { items[0].focus(); } catch (e) {}
+      return;
+    }
+    const next = spatialFocusTarget(items, active, dir);
+    if (next) { try { next.focus(); } catch (e) {} }
   }
 
   function activateFocused() {

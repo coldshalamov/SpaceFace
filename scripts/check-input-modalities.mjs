@@ -301,6 +301,10 @@ assert.match(uiInputSrc, /function closeActiveModal\(def\)[\s\S]*screenManager\.
 // that keyboard navigation and mouse clicks use, without inventing another station route.
 assert.match(uiInputSrc, /function cycleStationTab\(dir\)/, 'UI input must support cycling docked station tabs from gamepad');
 assert.match(uiInputSrc, /root\.dataset\.screen !== 'station'/, 'station tab cycling must only run on the station screen');
+assert.match(uiInputSrc, /\[role="tab"\]\[data-nav\]/,
+  'station controller tab cycling must target the live command-dock data-nav tabs');
+assert.match(uiInputSrc, /function spatialFocusTarget\(/,
+  'station controller movement must resolve focus by on-screen direction instead of DOM order');
 assert.match(uiInputSrc, /gp\.actions\.tabPrev[\s\S]*cycleStationTab\(-1\)/, 'station hub must support LB/L1 previous-tab cycling');
 assert.match(uiInputSrc, /gp\.actions\.tabNext[\s\S]*cycleStationTab\(1\)/, 'station hub must support RB/R1 next-tab cycling');
 

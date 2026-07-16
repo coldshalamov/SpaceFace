@@ -20,6 +20,9 @@ const STATION_TYPE = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_TYPE.set(s.id, s.type);
 
 const CAT_LABEL = { refine: 'Refine', assemble: 'Assemble', augment: 'Augment', ship: 'Shipyard' };
+const CAT_ICON = { refine: 'cargo', assemble: 'industry', augment: 'spark', ship: 'shipworks' };
+const CAT_ORDER = ['refine', 'assemble', 'augment', 'ship'];
+const FACILITY_LABEL = { refinery: 'refinery station', fab: 'fabrication station' };
 
 function niceName(id, kind) { return NAME.get((kind || 'commodity') + ':' + id) || String(id).replace(/^cmdty_|^mod_|^wpn_|^ship_/, '').replace(/_/g, ' '); }
 function matName(id) { return CMDTY_NAME.get(id) || String(id).replace(/^cmdty_/, '').replace(/_/g, ' '); }
@@ -30,10 +33,11 @@ function stationType(ctx) {
   const id = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
   return (id && STATION_TYPE.get(id)) || null;
 }
+function facilityName(type) { return FACILITY_LABEL[type] || `${String(type || 'specialist')} station`; }
 
 function readiness(bp, state, stnType) {
   if (bp.requiresTech && !researched(state).has(bp.requiresTech)) return { state: 'tech', label: 'Tech locked' };
-  if (bp.stationType && stnType && bp.stationType !== stnType) return { state: 'station', label: 'Not buildable here' };
+  if (bp.stationType && stnType && bp.stationType !== stnType) return { state: 'station', label: `Requires ${facilityName(bp.stationType)}` };
   const it = items(state);
   for (const id in (bp.inputs || {})) if ((it[id] || 0) < bp.inputs[id]) return { state: 'materials', label: 'Missing materials' };
   return { state: 'ready', label: 'Ready to build' };
@@ -54,29 +58,28 @@ export function createIndustryScreen(ctx) {
 
   function renderList(state) {
     const stn = stationType(ctx);
-    const stateBand = { ready: 22, materials: 47, tech: 74, station: 80 };
-    const nodes = BLUEPRINTS.map((bp, index) => {
-      const r = readiness(bp, state, stn);
-      const on = bp.id === selectedId ? ' is-active' : '';
-      const tone = r.state === 'ready' ? 'var(--gain)' : r.state === 'materials' ? 'var(--warn)' : '#60757a';
-      const x = Math.max(16, Math.min(90, 16 + (Math.max(1, bp.tier) - 1) * 24 + (((index * 5) % 5) - 2) * 2.8));
-      const y = Math.max(18, Math.min(84, (stateBand[r.state] || 78) + (((index * 7) % 5) - 2) * 3.3));
-      const output = `${niceName(bp.outputs.id, bp.outputs.kind)}${bp.outputs.qty > 1 ? ' ×' + bp.outputs.qty : ''}`;
-      return (
-        `<button type="button" class="sx-ind-row${on}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${bp.id === selectedId}"` +
-          ` style="--map-x:${x.toFixed(2)}%;--map-y:${y.toFixed(2)}%;--signal:${tone}"` +
-          ` aria-label="${escapeHtml(output)}, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
-          `<span class="sx-ind-row__dot"></span>` +
-          `<span class="sx-ind-row__name">${escapeHtml(output)}</span>` +
-          `<span class="sx-ind-row__tier">T${bp.tier} · ${escapeHtml(r.label)}</span>` +
-        `</button>`
-      );
-    }).join('');
     listEl.innerHTML =
-      `<span class="sx-ind-map__x" aria-hidden="true">REFINE → ASSEMBLE → AUGMENT → HULL</span>` +
-      `<span class="sx-ind-map__y" aria-hidden="true">CAPABILITY</span>` +
-      `<span class="sx-ind-map__mode" aria-hidden="true">FABRICATION CONSTELLATION / SELECT A BLUEPRINT</span>` +
-      nodes;
+      `<span class="sx-ind-spindle__label" aria-hidden="true">MATERIAL BECOMES CAPABILITY</span>` +
+      `<div class="sx-ind-spindle" role="tablist" aria-label="Fabrication process and blueprints">` +
+        CAT_ORDER.map((category, processIndex) => {
+          const blueprints = BLUEPRINTS.filter((bp) => bp.category === category);
+          return `<section class="sx-ind-process" data-process="${category}">` +
+            `<header class="sx-ind-process__head"><span>${icon(CAT_ICON[category], 15)}</span><b>${CAT_LABEL[category]}</b><i>${String(processIndex + 1).padStart(2, '0')}</i></header>` +
+            `<div class="sx-ind-process__items">` + blueprints.map((bp) => {
+              const r = readiness(bp, state, stn);
+              const on = bp.id === selectedId ? ' is-active' : '';
+              const tone = r.state === 'ready' ? 'var(--gain)' : r.state === 'materials' ? 'var(--warn)' : '#60757a';
+              const output = `${niceName(bp.outputs.id, bp.outputs.kind)}${bp.outputs.qty > 1 ? ' ×' + bp.outputs.qty : ''}`;
+              return `<button type="button" class="sx-ind-row${on}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${bp.id === selectedId}" style="--signal:${tone}" aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
+                `<span class="sx-ind-row__dot" aria-hidden="true"></span>` +
+                `<span class="sx-ind-row__process">${CAT_LABEL[category]}</span>` +
+                `<span class="sx-ind-row__name">${escapeHtml(output)}</span>` +
+                `<span class="sx-ind-row__tier">T${bp.tier} · ${escapeHtml(r.label)}</span>` +
+              `</button>`;
+            }).join('') + `</div>` +
+          `</section>`;
+        }).join('') +
+      `</div>`;
   }
 
   function renderStage(state) {
@@ -124,7 +127,10 @@ export function createIndustryScreen(ctx) {
     const progress = queue && queue.total > 0 ? Math.max(0, Math.min(1, (Number(queue.elapsed) || 0) / queue.total)) : 0;
     const notes = [];
     if (bp.requiresTech) notes.push({ ok: researched(state).has(bp.requiresTech), text: 'Tech: ' + String(bp.requiresTech).replace(/^tech_/, '').replace(/_/g, ' ') });
-    if (bp.stationType) notes.push({ ok: !stn || bp.stationType === stn, text: 'Facility: ' + bp.stationType + ' bay' });
+    if (bp.stationType) {
+      const matches = !stn || bp.stationType === stn;
+      notes.push({ ok: matches, text: matches ? `${facilityName(bp.stationType)} online` : `Required: ${facilityName(bp.stationType)}` });
+    }
     consoleEl.innerHTML =
       `<div class="sx-panel">` +
         `<div class="sx-fab-status sx-fab-status--${queue ? 'warn' : tone}"><span class="sx-fab-status__dot"></span>${queue ? 'Fabricator occupied' : r.label}</div>` +

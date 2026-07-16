@@ -34,6 +34,7 @@ const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
 const FACTION_REC = new Map(FACTION_META.map((f) => [f.id, f]));
 const CMDTY_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
+const CMDTY_REC = new Map(COMMODITIES.map((c) => [c.id, c]));
 function titleCaseWords(v) { return String(v || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()); }
 
 // Legacy handoff/departure targets → the new destinations. 'services' is now the dock actions.
@@ -145,11 +146,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     `</main>` +
     `<div class="sx-pop" hidden></div>` +
     `<aside class="sx-comms" aria-label="Station communications">` +
-      `<div class="sx-comms__channel"><span class="sx-comms__signal" aria-hidden="true"></span><span>STATION COMMS</span></div>` +
+      `<button type="button" class="sx-comms__toggle" aria-expanded="false" aria-controls="sx-comms-history" aria-label="Open station communications history">` +
+        `<span class="sx-comms__signal" aria-hidden="true"></span><span>STATION COMMS</span><span class="sx-comms__count" hidden>0</span>` +
+      `</button>` +
       `<div class="sx-receipt" role="status" aria-live="polite" aria-atomic="true" hidden>` +
         `<span class="sx-receipt__pulse" aria-hidden="true"></span>` +
         `<span class="sx-receipt__kind"></span><strong class="sx-receipt__title"></strong><span class="sx-receipt__delta"></span>` +
       `</div>` +
+      `<div class="sx-comms__history" id="sx-comms-history" aria-label="Berth session log" hidden></div>` +
     `</aside>`;
   rootEl.appendChild(app);
 
@@ -167,6 +171,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const operationIndexEl = app.querySelector('.sx-operation-rail__index');
   const operationModeEl = app.querySelector('.sx-operation-rail__mode');
   const commsEl = app.querySelector('.sx-comms');
+  const commsToggle = app.querySelector('.sx-comms__toggle');
+  const commsCount = app.querySelector('.sx-comms__count');
+  const commsHistoryEl = app.querySelector('.sx-comms__history');
   const receiptEl = app.querySelector('.sx-receipt');
 
   const dock = createCommandDock({
@@ -182,6 +189,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   let stopPopPositioning = null;
   let popCloseTimer = 0;
   let receiptTimer = 0;
+  let commsOpen = false;
+  let commsUnread = 0;
+  const receiptHistory = [];
   const subscriptions = [];
 
   // ---------- popover ----------
@@ -250,10 +260,18 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   // immediately re-open it). Capture-phase on window so we win regardless of where focus sits.
   // With no popover open, Esc falls through normally → exit request → Departure Check.
   const onEscCapture = (ev) => {
-    if (ev.key !== 'Escape' || popEl.hidden) return;
-    ev.stopPropagation();
-    ev.preventDefault();
-    closePop();
+    if (ev.key !== 'Escape') return;
+    if (!popEl.hidden) {
+      ev.stopPropagation();
+      ev.preventDefault();
+      closePop();
+      return;
+    }
+    if (commsOpen) {
+      ev.stopPropagation();
+      ev.preventDefault();
+      setCommsOpen(false);
+    }
   };
   window.addEventListener('keydown', onEscCapture, true);
 
@@ -296,21 +314,46 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const ids = Object.keys(items).filter((id) => Number(items[id]) > 0);
     const rows = ids.map((id) => {
       const qty = Math.floor(Number(items[id]) || 0);
+      const def = CMDTY_REC.get(id) || {};
+      const volume = qty * Math.max(0, Number(def.volPerU) || 1);
+      const mass = qty * Math.max(0, Number(def.massPerU) || 0);
       let unit = null;
       try { unit = holdUnitSellPrice(s, sid, id); } catch (_) { unit = null; }
-      return `<div class="sx-holdrow"><span>${escapeHtml(CMDTY_NAME.get(id) || id)}</span>` +
-        `<b>${fmtCr(qty)}u</b><em>${unit != null ? fmtCr(unit * qty) + ' cr' : '—'}</em></div>`;
+      const legality = titleCaseWords(def.legality || 'legal');
+      return `<button type="button" class="sx-holdrow" data-hold-item="${escapeHtml(id)}" data-hold-volume="${volume.toFixed(2)}" aria-label="Sell ${escapeHtml(CMDTY_NAME.get(id) || id)}. ${fmtCr(qty)} units, ${fmtCr(volume)} hold units, ${unit != null ? fmtCr(unit * qty) + ' credits' : 'no quote'}.">` +
+        `<span class="sx-holdrow__mark" aria-hidden="true"></span>` +
+        `<span class="sx-holdrow__body"><strong>${escapeHtml(CMDTY_NAME.get(id) || id)}</strong><small>${escapeHtml(titleCaseWords(def.category || 'cargo'))} · ${escapeHtml(legality)}</small></span>` +
+        `<span class="sx-holdrow__load"><b>${fmtCr(qty)}<i> units</i></b><small>${fmtCr(volume)} u · ${fmtCr(mass)} t</small></span>` +
+        `<span class="sx-holdrow__quote"><b>${unit != null ? fmtCr(unit * qty) : '—'}<i> cr</i></b><small>${unit != null ? fmtCr(unit) + ' / unit' : 'No local quote'}</small></span>` +
+        `<span class="sx-holdrow__go" aria-hidden="true">SELL ›</span></button>`;
     }).join('');
     const used = Number(cargo.usedVolume) || 0;
     const cap = Number(cargo.capVolume) || 0;
+    const usedPct = cap > 0 ? Math.max(0, Math.min(100, used / cap * 100)) : 0;
+    const baySegments = ids.map((id) => {
+      const qty = Math.floor(Number(items[id]) || 0);
+      const def = CMDTY_REC.get(id) || {};
+      const volume = qty * Math.max(0, Number(def.volPerU) || 1);
+      const pct = cap > 0 ? Math.max(2, volume / cap * 100) : 0;
+      return `<span title="${escapeHtml(CMDTY_NAME.get(id) || id)}: ${fmtCr(volume)}u" style="--bay-share:${pct.toFixed(2)}%"></span>`;
+    }).join('');
     openPop(
-      `<div class="sx-pop__head">Cargo Hold · <em>${fmtCr(used)} / ${fmtCr(cap)}u</em></div>` +
+      `<div class="sx-pop__head">Cargo Hold <em>${fmtCr(used)} / ${fmtCr(cap)} u · ${usedPct.toFixed(0)}%</em></div>` +
+      `<div class="sx-holdbay" role="img" aria-label="Cargo hold ${usedPct.toFixed(0)} percent full, ${fmtCr(used)} of ${fmtCr(cap)} hold units used">` +
+        `<span class="sx-holdbay__used" style="width:${usedPct.toFixed(2)}%">${baySegments}</span><span class="sx-holdbay__free"></span>` +
+      `</div>` +
       (rows ? `<div class="sx-holdlist">${rows}</div>`
             : `<p class="sx-muted" style="padding:10px 2px 2px">Hold is empty. Buy cargo in the Market or mine it out there.</p>`),
       anchor, 'sx-pop--hold');
   }
 
   popEl.addEventListener('click', (ev) => {
+    const holdItem = ev.target.closest('[data-hold-item]');
+    if (holdItem) {
+      navigate('market', { tradeMode: 'sell', commodityId: holdItem.getAttribute('data-hold-item') });
+      closePop();
+      return;
+    }
     const nav = ev.target.closest('[data-pop-nav]');
     if (nav) { navigate(nav.getAttribute('data-pop-nav')); closePop(); return; }
     const scr = ev.target.closest('[data-pop-screen]');
@@ -407,8 +450,39 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   });
 
   // ---------- causal receipts ----------
+  function renderCommsHistory() {
+    commsToggle.setAttribute('aria-expanded', commsOpen ? 'true' : 'false');
+    commsToggle.setAttribute('aria-label', commsOpen ? 'Close station communications history' : 'Open station communications history');
+    commsHistoryEl.hidden = !commsOpen;
+    commsCount.hidden = commsUnread <= 0;
+    commsCount.textContent = String(commsUnread);
+    if (!commsOpen) return;
+    commsHistoryEl.innerHTML = receiptHistory.length
+      ? `<div class="sx-comms__history-head"><span>BERTH SESSION</span><b>${receiptHistory.length} EVENTS</b></div>` +
+        receiptHistory.slice().reverse().map((entry, reverseIndex) =>
+          `<div class="sx-comms-entry" data-comms-entry>` +
+            `<span class="sx-comms-entry__seq">${String(receiptHistory.length - reverseIndex).padStart(2, '0')}</span>` +
+            `<span class="sx-comms-entry__body"><small>${escapeHtml(entry.kind)}</small><strong>${escapeHtml(entry.title)}</strong></span>` +
+            `<span class="sx-comms-entry__delta">${escapeHtml(entry.delta || '')}</span>` +
+          `</div>`).join('')
+      : `<p class="sx-comms__empty">No berth activity recorded yet.</p>`;
+  }
+
+  function setCommsOpen(open) {
+    commsOpen = !!open;
+    commsEl.classList.toggle('is-open', commsOpen);
+    if (commsOpen) commsUnread = 0;
+    renderCommsHistory();
+  }
+
+  commsToggle.addEventListener('click', () => setCommsOpen(!commsOpen));
+
   function showReceipt(kind, title, delta = '') {
     if (receiptTimer) clearTimeout(receiptTimer);
+    receiptHistory.push({ kind: String(kind || 'STATION'), title: String(title || ''), delta: String(delta || '') });
+    if (receiptHistory.length > 12) receiptHistory.shift();
+    if (!commsOpen) commsUnread = Math.min(99, commsUnread + 1);
+    renderCommsHistory();
     commsEl.classList.add('has-message');
     receiptEl.hidden = false;
     receiptEl.classList.remove('is-settled');
@@ -458,7 +532,12 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   subscribe('credits:changed', (p = {}) => {
     const reason = String(p.reason || '');
     if (!reason.startsWith('service:')) return;
-    showReceipt('BERTH SERVICE', `${titleCaseWords(reason.slice(8))} COMPLETE`, `${p.delta < 0 ? '−' : '+'}${fmtCr(Math.abs(p.delta))} cr`);
+    const serviceResult = {
+      repair: 'HULL REPAIRED',
+      refuel: 'FUEL RESTORED',
+      ammo: 'MUNITIONS LOADED',
+    }[reason.slice(8)] || `${titleCaseWords(reason.slice(8))} COMPLETE`;
+    showReceipt('BERTH SERVICE', serviceResult, `${p.delta < 0 ? '−' : '+'}${fmtCr(Math.abs(p.delta))} cr`);
   });
 
   // ---------- dock actions ----------
@@ -472,13 +551,16 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     };
     const sq = opts.serviceQuote;
     if (typeof sq === 'function') {
-      const toCost = (r) => {
+      const toCost = (r, type) => {
         if (!r) return { text: '—' };
-        if (r.disabled) return { text: r.buttonLabel || 'OK', disabled: true, tone: 'gain' };
-        return { text: fmtCr(r.cost) + ' cr', tone: 'warn' };
+        const title = [r.buttonLabel, r.detail, r.cost > 0 ? `${fmtCr(r.cost)} credits` : '']
+          .filter(Boolean).join(' · ');
+        if (r.disabled) return { text: r.buttonLabel || 'OK', disabled: true, tone: 'gain', title };
+        const contents = type === 'ammo' && r.amount > 0 ? `${fmtCr(r.amount)} mun · ` : '';
+        return { text: contents + fmtCr(r.cost) + ' cr', tone: 'warn', title };
       };
       const q = (t) => { try { return sq(t, s, playerEntity(s)); } catch (_) { return null; } };
-      return { repair: toCost(q('repair')), refuel: toCost(q('refuel')), resupply: toCost(q('ammo')), undock };
+      return { repair: toCost(q('repair'), 'repair'), refuel: toCost(q('refuel'), 'refuel'), resupply: toCost(q('ammo'), 'ammo'), undock };
     }
     const hp = playerEntity(s);
     const hullMissing = hp && hp.hullMax > 0 ? Math.max(0, hp.hullMax - (hp.hull || 0)) : 0;
@@ -506,7 +588,15 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     }
     const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo' };
     const type = typeMap[id];
-    if (type && bus) { bus.emit('ui:service', { type }); bus.emit('audio:cue', { id: 'ui_click' }); }
+    if (type && bus) {
+      let quote = null;
+      if (typeof opts.serviceQuote === 'function') {
+        try { quote = opts.serviceQuote(type, state(), playerEntity(state())); } catch (_) { quote = null; }
+      }
+      if (quote && quote.disabled) return;
+      bus.emit('ui:service', { type, amount: quote && Number.isFinite(Number(quote.amount)) ? Number(quote.amount) : undefined });
+      bus.emit('audio:cue', { id: 'ui_click' });
+    }
     setTimeout(refresh, 60);
   }
 
@@ -514,20 +604,24 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   function renderStatus() {
     const s = state();
     creditsEl.textContent = fmtCr(credits(s));
+    const ship = playerEntity(s);
+    const fuel = s && s.fuel || {};
+    const cargo = s && s.player && s.player.cargo || {};
     const meters = [
-      { k: 'hull', ic: 'hull', label: 'Hull', frac: hullFrac(s) },
-      { k: 'fuel', ic: 'fuel', label: 'Fuel', frac: fuelFrac(s) },
-      { k: 'cargo', ic: 'cargo', label: 'Hold', frac: cargoFrac(s) },
+      { k: 'hull', ic: 'hull', label: 'Hull', frac: hullFrac(s), value: `${(hullFrac(s) * 100).toFixed(0)}%`, detail: `${fmtCr(ship && ship.hull)} / ${fmtCr(ship && ship.hullMax)}` },
+      { k: 'fuel', ic: 'fuel', label: 'Fuel', frac: fuelFrac(s), value: `${(fuelFrac(s) * 100).toFixed(0)}%`, detail: `${fmtCr(fuel.current)} / ${fmtCr(fuel.max)}` },
+      { k: 'cargo', ic: 'cargo', label: 'Hold', frac: cargoFrac(s), value: `${fmtCr(cargo.usedVolume)} / ${fmtCr(cargo.capVolume)} u`, detail: `${(cargoFrac(s) * 100).toFixed(0)}% occupied` },
     ];
     readoutsEl.innerHTML = meters.map((m) => {
       const pct = (m.frac * 100).toFixed(0);
       const inner =
         `<span class="sx-readout__ico">${icon(m.ic, 16)}</span>` +
-        `<span class="sx-readout__meter"><span class="sx-readout__fill" style="height:${pct}%;background:${meterTone(m.frac, m.k)}"></span></span>` +
-        `<span class="sx-readout__v">${pct}<i>%</i></span>`;
+        `<span class="sx-readout__body"><span class="sx-readout__label">${m.label}</span>` +
+          `<span class="sx-readout__track"><span class="sx-readout__fill" style="width:${pct}%;background:${meterTone(m.frac, m.k)}"></span><span class="sx-readout__ticks" aria-hidden="true"></span></span>` +
+          `<span class="sx-readout__v">${m.value}</span><span class="sx-readout__detail">${m.detail}</span></span>`;
       return m.k === 'cargo'
-        ? `<button type="button" class="sx-readout sx-readout--cargo sx-readout--btn" data-hold title="Cargo hold ${pct}% — open manifest" aria-label="Cargo hold ${pct} percent. Open manifest.">${inner}</button>`
-        : `<div class="sx-readout sx-readout--${m.k}" title="${m.label} ${pct}%">${inner}</div>`;
+        ? `<button type="button" class="sx-readout sx-readout--cargo sx-readout--btn" data-hold title="Cargo hold ${pct}% — open manifest" aria-label="Cargo hold ${fmtCr(cargo.usedVolume)} of ${fmtCr(cargo.capVolume)} units, ${pct} percent. Open manifest.">${inner}</button>`
+        : `<div class="sx-readout sx-readout--${m.k}" title="${m.label} ${pct}%" aria-label="${m.label} ${m.value}, ${m.detail}">${inner}</div>`;
     }).join('');
     const st = resolveStation(ctx);
     crestName.textContent = st.name || 'Station';

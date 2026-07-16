@@ -84,32 +84,25 @@ export function createContractsScreen(ctx) {
     const list = offers(state);
     if (!selectedId && list.length) selectedId = String(mid(list[0]));
     if (!list.length) { boardEl.innerHTML = `<div class="sx-empty">${icon('contracts', 30)}<h4>Board is quiet</h4><p>No contracts posted at this berth. Try a station with a mission desk or a black-market contact.</p></div>`; return; }
-    const rewards = list.map((m) => reward(m));
-    const minReward = Math.min(...rewards);
-    const maxReward = Math.max(...rewards);
-    const rewardSpan = Math.max(1, maxReward - minReward);
     boardEl.innerHTML =
-      `<span class="sx-ct-map__x" aria-hidden="true">ROUTINE ← OPERATION RISK → SEVERE</span>` +
-      `<span class="sx-ct-map__y" aria-hidden="true">REWARD</span>` +
-      `<span class="sx-ct-map__mode" aria-hidden="true">LIVE CONTRACT FIELD / SELECT A SIGNAL</span>` +
+      `<span class="sx-ct-dispatch__label" aria-hidden="true">LIVE DISPATCH / SELECT AN OPERATION</span>` +
       list.map((m, index) => {
       const id = String(mid(m));
       const active = id === selectedId ? ' is-active' : '';
       const r = risk(m);
-      const rewardNorm = (reward(m) - minReward) / rewardSpan;
-      const x = Math.max(14, Math.min(88, 17 + Math.min(5, r) * 14.2 + (((index * 5) % 4) - 1.5) * 3.8));
-      const y = Math.max(20, Math.min(80, 80 - rewardNorm * 56 + (((index * 3) % 5) - 2) * 3.8));
       return (
-        `<button type="button" class="sx-ct-row${active}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${id === selectedId}"` +
-          ` style="--map-x:${x.toFixed(2)}%;--map-y:${y.toFixed(2)}%;--signal:${facTint(m)}"` +
+        `<button type="button" class="sx-ct-row${active}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${id === selectedId}" title="${escapeHtml(m.title || typeLabel(m.type))}"` +
+          ` style="--signal:${facTint(m)}"` +
           ` aria-label="${escapeHtml(m.title || typeLabel(m.type))}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk">` +
-          `<span class="sx-ct-row__signal" aria-hidden="true"></span>` +
+          `<span class="sx-ct-row__seq" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>` +
           `<span class="sx-ct-row__ic" style="--tint:${facTint(m)}">${icon(TYPE_ICON[m.type] || 'contracts', 18)}</span>` +
           `<span class="sx-ct-row__mid">` +
             `<span class="sx-ct-row__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
-            `<span class="sx-ct-row__meta">${escapeHtml(facName(m))} · ${riskPips(r, 'xs')}</span>` +
+            `<span class="sx-ct-row__meta">${escapeHtml(facName(m))} · ${escapeHtml(destName(m))}</span>` +
           `</span>` +
-          `<span class="sx-ct-row__rew">${reward(m).toLocaleString('en-US')}<i>cr</i></span>` +
+          `<span class="sx-ct-row__route" aria-hidden="true"><i></i><b></b><i></i></span>` +
+          `<span class="sx-ct-row__risk">${RISK_LABEL[Math.min(r, 5)]} ${riskPips(r, 'xs')}</span>` +
+          `<span class="sx-ct-row__rew">${reward(m).toLocaleString('en-US')}<i> cr</i></span>` +
         `</button>`
       );
     }).join('');

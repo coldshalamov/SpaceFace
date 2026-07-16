@@ -309,21 +309,22 @@ export function createShipPreviewMount(canvas, opts) {
   if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
   if ('toneMapping' in renderer) {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 1.0;
   }
 
   const scene = new THREE.Scene();
   if (useDock) scene.fog = new THREE.FogExp2(0x0a1426, 0.012);
   // Hangar rig: warmer key from dock lamps + cool rim from bay glass when a dock shell is present.
-  scene.add(new THREE.AmbientLight(0x6a7a96, useDock ? 0.85 : 1.0));
-  const key = new THREE.DirectionalLight(useDock ? 0xffd9b0 : 0xe8f0ff, useDock ? 1.55 : 1.85);
+  scene.add(new THREE.AmbientLight(0x607087, useDock ? 0.34 : 0.38));
+  scene.add(new THREE.HemisphereLight(useDock ? 0xb9d8df : 0xbcdde6, 0x24170f, useDock ? 0.36 : 0.48));
+  const key = new THREE.DirectionalLight(useDock ? 0xffd9b0 : 0xf2e0c6, useDock ? 1.85 : 2.05);
   key.position.set(-0.55, 1.1, 0.75); scene.add(key);
-  const rim = new THREE.DirectionalLight(0x8a7cff, useDock ? 0.55 : 0.85);
+  const rim = new THREE.DirectionalLight(0x69cde0, useDock ? 0.88 : 1.05);
   rim.position.set(0.75, 0.35, -0.55); scene.add(rim);
-  const fill = new THREE.DirectionalLight(0x39d0ff, useDock ? 0.35 : 0.45);
+  const fill = new THREE.DirectionalLight(0x7193b2, useDock ? 0.38 : 0.48);
   fill.position.set(0.5, -0.25, 0.45); scene.add(fill);
   if (useDock) {
-    const pad = new THREE.PointLight(0x39d0ff, 0.55, 80);
+    const pad = new THREE.PointLight(0xf0a94d, 0.62, 80);
     pad.position.set(0, -1, 0); scene.add(pad);
   }
 
@@ -393,6 +394,36 @@ export function createShipPreviewMount(canvas, opts) {
     if (!mesh) return null;
     mesh.userData.previewDefId = defId;
     mesh.userData.previewCacheId = cacheId;
+    // Preview-owned material clones let the hangar use restrained, directional PBR response
+    // without mutating the flight scene's shared material pool. Lower ambient light now reveals
+    // authored panel changes instead of flattening the hull into a single clay value.
+    if (!mesh.userData.previewMaterialsPrepared) {
+      const materialClones = new Map();
+      const tuneMaterial = (material) => {
+        if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)) return material;
+        if (materialClones.has(material)) return materialClones.get(material);
+        const clone = material.clone();
+        clone.dithering = true;
+        if ('envMapIntensity' in clone) clone.envMapIntensity = Math.max(.72, Number(clone.envMapIntensity) || 0);
+        if (!clone.transparent || clone.opacity >= .98) {
+          const metalness = Number(clone.metalness) || 0;
+          const roughness = Number.isFinite(Number(clone.roughness)) ? Number(clone.roughness) : .6;
+          clone.roughness = metalness >= .45
+            ? Math.max(.32, Math.min(.58, roughness))
+            : Math.max(.48, Math.min(.76, roughness));
+        }
+        clone.needsUpdate = true;
+        materialClones.set(material, clone);
+        return clone;
+      };
+      mesh.traverse((object) => {
+        if (!object || !object.material) return;
+        object.material = Array.isArray(object.material)
+          ? object.material.map(tuneMaterial)
+          : tuneMaterial(object.material);
+      });
+      mesh.userData.previewMaterialsPrepared = true;
+    }
     // Warm procedural canvas textures so the first frame isn't black.
     mesh.traverse((c) => {
       const m = c.material;
@@ -610,11 +641,19 @@ export function createShipPreviewMount(canvas, opts) {
       const tags = object.userData && object.userData.spacefaceTags;
       const geometry = object.geometry;
       if (geometry && !geometry.boundingSphere && typeof geometry.computeBoundingSphere === 'function') geometry.computeBoundingSphere();
+      const worldScale = new THREE.Vector3();
+      const worldPosition = new THREE.Vector3();
+      object.getWorldScale(worldScale);
+      object.getWorldPosition(worldPosition);
+      const worldRadius = (geometry && geometry.boundingSphere && geometry.boundingSphere.radius || 0)
+        * Math.max(Math.abs(worldScale.x), Math.abs(worldScale.y), Math.abs(worldScale.z));
       entries.push({
         name: object.name || '',
         type: object.type || '',
         geometry: geometry && geometry.type || '',
         geometryRadius: Number((geometry && geometry.boundingSphere && geometry.boundingSphere.radius || 0).toFixed(3)),
+        worldRadius: Number(worldRadius.toFixed(3)),
+        worldPosition: [worldPosition.x, worldPosition.y, worldPosition.z].map((value) => Number(value.toFixed(3))),
         material: object.material && object.material.name || object.material && object.material.type || '',
         displayed,
         inCurrent: currentObjects.has(object),
@@ -631,8 +670,14 @@ export function createShipPreviewMount(canvas, opts) {
     const tags = object && object.userData && object.userData.spacefaceTags;
     const vfxRole = tags && tags.vfxRole;
     return !!(object && (
+      // Halo and navigation sprites are useful at flight scale but read as detached white balls in
+      // a close inspection turntable. The station uses its own DOM hardpoint projection instead.
+      object.isSprite
+      ||
       object.name === 'Ship_Shield_Bubble'
+      || object.name === 'GLTFKit_Nav_Lights'
       || (tags && tags.vfxRole === 'shieldBubble')
+      || (tags && tags.damageRole === 'navLight')
       || vfxRole === 'drivePlume'
       || vfxRole === 'driveCore'
       || vfxRole === 'driveHalo'

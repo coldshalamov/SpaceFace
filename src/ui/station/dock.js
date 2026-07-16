@@ -105,9 +105,9 @@ export function createCommandDock(cfg) {
       // Cosine easing keeps the field smooth at the radius edge. Service verbs move less than
       // destinations so cost labels remain easy to read while the rail is alive.
       const eased = (1 - Math.cos(proximity * Math.PI)) / 2;
-      const peak = tile.hasAttribute('data-act') ? 0.27 : 0.40;
+      const peak = tile.hasAttribute('data-act') ? 0.18 : 0.30;
       tile.style.setProperty('--dock-scale', (1 + peak * eased).toFixed(4));
-      tile.style.setProperty('--dock-lift', `${(-17 * eased).toFixed(2)}px`);
+      tile.style.setProperty('--dock-lift', `${(-12 * eased).toFixed(2)}px`);
       tile.style.setProperty('--dock-near', eased.toFixed(4));
     }
   }
@@ -126,9 +126,9 @@ export function createCommandDock(cfg) {
     tiles.forEach((tile, i) => {
       const steps = Math.abs(i - index);
       const proximity = steps === 0 ? 1 : (steps === 1 ? 0.28 : 0);
-      const peak = tile.hasAttribute('data-act') ? 0.20 : 0.30;
+      const peak = tile.hasAttribute('data-act') ? 0.16 : 0.25;
       tile.style.setProperty('--dock-scale', (1 + peak * proximity).toFixed(4));
-      tile.style.setProperty('--dock-lift', `${(-13 * proximity).toFixed(2)}px`);
+      tile.style.setProperty('--dock-lift', `${(-10 * proximity).toFixed(2)}px`);
       tile.style.setProperty('--dock-near', proximity.toFixed(4));
     });
   }

@@ -32,6 +32,8 @@ const SLOT_LABEL = { weapon: 'Weapon', shield: 'Shield', engine: 'Engine', cargo
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 const shipName = (id) => { const s = SHIP_BY_ID.get(id); return s ? s.name : id; };
+const titleCaseWords = (value) => String(value || '').replace(/[_-]+/g, ' ')
+  .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 function researched(state) {
   const r = state && state.player && (state.player.researchedNodes || state.player.researched);
@@ -101,6 +103,7 @@ export function createShipworksScreen(ctx) {
         `<div class="sx-sw__slotfield" role="group" aria-label="Ship systems"></div>` +
         `<div class="sx-sw__focusline" aria-hidden="true"></div>` +
         `<div class="sx-sw__delta" aria-live="polite" hidden></div>` +
+        `<div class="sx-sw__acquiring" role="status" aria-live="polite"><span>SHIPYARD OPTICS</span><b>Resolving final hull…</b><i aria-hidden="true"></i></div>` +
         `<div class="sx-sw__nameplate"></div>` +
         `<div class="sx-sw__camera" aria-label="Ship preview controls">` +
           `<button type="button" data-camera="left" aria-label="Rotate ship left">↶</button>` +
@@ -126,6 +129,7 @@ export function createShipworksScreen(ctx) {
   const stageEl = el.querySelector('.sx-sw__stage');
   const slotfieldEl = el.querySelector('.sx-sw__slotfield');
   const deltaEl = el.querySelector('.sx-sw__delta');
+  const acquiringEl = el.querySelector('.sx-sw__acquiring');
 
   // Authored mesh required — never treat box-LOD / false warmup as primary truth.
   canvas.dataset.authoredRequired = 'true';
@@ -145,6 +149,9 @@ export function createShipworksScreen(ctx) {
   let stopChooserPositioning = null;
   let projectionFrame = 0;
   let chooserCloseTimer = 0;
+  let previewSettleTimer = 0;
+  let previewSettleGeneration = 0;
+  let previewRevealPhase = 'idle';
 
   function owned() { return (ctx.state.player && ctx.state.player.ownedShips) || []; }
   function viewedShip() { const o = owned(); return o[viewIdx] || o[ctx.state.player && ctx.state.player.activeShipIndex] || o[0] || null; }
@@ -162,6 +169,82 @@ export function createShipworksScreen(ctx) {
     }
   }
 
+  function stablePreviewState(state) {
+    return !!state && !['empty', 'loading', 'procedural-fallback'].includes(state);
+  }
+
+  function beginPreviewReveal(defId, gated) {
+    previewSettleGeneration++;
+    if (previewSettleTimer) clearTimeout(previewSettleTimer);
+    previewSettleTimer = 0;
+    canvas.dataset.previewReady = 'false';
+    canvas.dataset.previewAssetState = 'loading';
+    canvas.dataset.previewReveal = gated ? 'acquiring' : 'direct';
+    previewRevealPhase = gated ? 'acquiring' : 'direct';
+    stageEl.classList.toggle('is-acquiring', gated);
+    stageEl.classList.remove('is-revealing');
+    if (acquiringEl) {
+      const label = acquiringEl.querySelector('b');
+      if (label) label.textContent = `Resolving ${shipName(defId)} final hull…`;
+    }
+    return previewSettleGeneration;
+  }
+
+  function settlePreviewReveal(defId, state, generation = previewSettleGeneration) {
+    if (generation !== previewSettleGeneration || !defId || defId !== expectedPreviewDefId) return;
+    if (previewRevealPhase === 'revealing') return;
+    const gated = stageEl.dataset.revealWasGated === 'true';
+    if (gated) {
+      if (previewSettleTimer) clearTimeout(previewSettleTimer);
+      canvas.dataset.previewDefId = defId;
+      canvas.dataset.previewAssetState = state || 'rendered';
+      canvas.dataset.previewReveal = 'revealing';
+      previewRevealPhase = 'revealing';
+      stageEl.classList.remove('is-acquiring');
+      stageEl.classList.add('is-revealing');
+      stageEl.dataset.revealWasGated = 'false';
+      // `previewReady` means visible and settled, not merely that a WebGL root exists. Holding it
+      // through the optical reveal prevents callers and screenshots from observing an empty bay.
+      previewSettleTimer = setTimeout(() => {
+        previewSettleTimer = 0;
+        if (generation !== previewSettleGeneration || defId !== expectedPreviewDefId) return;
+        canvas.dataset.previewReady = 'true';
+        canvas.dataset.previewReveal = 'settled';
+        previewRevealPhase = 'idle';
+        stageEl.classList.remove('is-revealing');
+        scheduleSpatialProjection();
+      }, 190);
+      return;
+    }
+    if (previewSettleTimer) clearTimeout(previewSettleTimer);
+    previewSettleTimer = 0;
+    canvas.dataset.previewReady = 'true';
+    canvas.dataset.previewDefId = defId;
+    canvas.dataset.previewAssetState = state || 'rendered';
+    canvas.dataset.previewReveal = 'settled';
+    previewRevealPhase = 'idle';
+    stageEl.classList.remove('is-acquiring');
+    stageEl.classList.remove('is-revealing');
+    stageEl.dataset.revealWasGated = 'false';
+    scheduleSpatialProjection();
+  }
+
+  function watchPreviewSettlement(defId, generation, startedAt = performance.now()) {
+    if (generation !== previewSettleGeneration || defId !== expectedPreviewDefId || !mount) return;
+    const state = mount.getAssetState ? mount.getAssetState() : 'rendered';
+    if (stablePreviewState(state)) {
+      settlePreviewReveal(defId, state, generation);
+      return;
+    }
+    if (performance.now() - startedAt >= 8000) {
+      // Never leave the bay blank forever. This is an explicit degraded terminal state, not a
+      // silent placeholder-to-final swap, and remains visible to the probe through the dataset.
+      settlePreviewReveal(defId, state === 'loading' ? 'fallback-timeout' : state, generation);
+      return;
+    }
+    previewSettleTimer = setTimeout(() => watchPreviewSettlement(defId, generation, startedAt), 50);
+  }
+
   function ensureMount() {
     if (mount) return mount;
     canvas.dataset.authoredRequired = 'true';
@@ -172,19 +255,14 @@ export function createShipworksScreen(ctx) {
       authoredShips: true,
       authoredWarmup: true,
       onFirstFrame: ({ defId } = {}) => {
-        // Ready only when the mount actually rendered the requested def — never on false/fallback.
         if (!defId || defId !== expectedPreviewDefId) return;
-        canvas.dataset.previewReady = 'true';
-        canvas.dataset.previewDefId = defId;
-        canvas.dataset.previewAssetState = mount && mount.getAssetState ? mount.getAssetState() : 'rendered';
-        scheduleSpatialProjection();
+        const state = mount && mount.getAssetState ? mount.getAssetState() : 'rendered';
+        if (!stageEl.classList.contains('is-acquiring') || stablePreviewState(state)) settlePreviewReveal(defId, state);
+        else watchPreviewSettlement(defId, previewSettleGeneration);
       },
       onAssetSettled: ({ defId, state } = {}) => {
         if (!defId || defId !== expectedPreviewDefId) return;
-        canvas.dataset.previewReady = 'true';
-        canvas.dataset.previewDefId = defId;
-        canvas.dataset.previewAssetState = state || (mount && mount.getAssetState ? mount.getAssetState() : 'authored');
-        scheduleSpatialProjection();
+        settlePreviewReveal(defId, state || (mount && mount.getAssetState ? mount.getAssetState() : 'authored'));
       },
     });
     // Read-only hook used by the live browser acceptance probe. It exposes the preview's rendered
@@ -210,27 +288,30 @@ export function createShipworksScreen(ctx) {
     ensureMount();
     writeCanvasPreviewMeta(defId, fittings, meta);
     expectedPreviewDefId = defId || null;
-    canvas.dataset.previewReady = 'false';
-    canvas.dataset.previewAssetState = 'loading';
+    const sameHull = mount.getDefId && mount.getDefId() === defId;
+    const gated = !sameHull && !(meta && meta.mode === 'module');
+    stageEl.dataset.revealWasGated = gated ? 'true' : 'false';
+    const revealGeneration = beginPreviewReveal(defId, gated);
     const key = defId + '|' + (fittings || []).join(',') + '|' + (isPlayer ? 'p' : 's') + '|' + ((meta && meta.mode) || 'base');
     if (key === curPreviewKey) {
       mount.setActive(true);
-      canvas.dataset.previewReady = mount.getDefId() === defId ? 'true' : 'false';
-      canvas.dataset.previewAssetState = mount.getAssetState ? mount.getAssetState() : 'rendered';
+      const state = mount.getAssetState ? mount.getAssetState() : 'rendered';
+      if (!gated || stablePreviewState(state)) settlePreviewReveal(defId, state, revealGeneration);
+      else watchPreviewSettlement(defId, revealGeneration);
       return;
     }
     curPreviewKey = key;
     try {
-      const preserveView = mount.getDefId && mount.getDefId() === defId;
+      const preserveView = sameHull;
       // Shipworks is direct manipulation: the settled ship does not burn a render loop merely to
       // prove it is alive. Drag, zoom, selection and authored-asset upgrades render on demand.
       mount.show(defId, { fittings: fittings || [], isPlayer: !!isPlayer, rotating: false, preserveView });
       if (!preserveView) mount.setZoom(1.68);
       mount.setActive(true);
       mount.resize();
-      canvas.dataset.previewReady = mount.getDefId() === defId ? 'true' : 'false';
-      canvas.dataset.previewAssetState = mount.getAssetState ? mount.getAssetState() : 'rendered';
-      scheduleSpatialProjection();
+      const state = mount.getAssetState ? mount.getAssetState() : 'rendered';
+      if (!gated || stablePreviewState(state)) settlePreviewReveal(defId, state, revealGeneration);
+      else watchPreviewSettlement(defId, revealGeneration);
     } catch (e) { /* preview optional; UI still works — ready stays false */ }
   }
 
@@ -459,7 +540,7 @@ export function createShipworksScreen(ctx) {
         const on = i === viewIdx ? ' is-active' : '';
         const isActive = i === activeIdx;
         return (
-          `<button type="button" class="sx-sw-row${on}" data-fleet="${i}" aria-label="Inspect ${escapeHtml(def.name || s.defId)}">` +
+          `<button type="button" class="sx-sw-row${on}" data-fleet="${i}" title="${escapeHtml(def.name || s.defId)}" aria-label="Inspect ${escapeHtml(def.name || s.defId)}">` +
             `<span class="sx-sw-row__ic">${shipSilhouette(def)}</span>` +
             `<span class="sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(def.name || s.defId)}</span>` +
               `<span class="sx-sw-row__sub">${escapeHtml((def.role || 'ship'))} · T${def.tier != null ? def.tier : '?'}</span></span>` +
@@ -471,7 +552,7 @@ export function createShipworksScreen(ctx) {
       railListEl.innerHTML = SHIPS.filter((s) => (s.price || 0) >= 0).map((s) => {
         const on = s.id === buyId ? ' is-active' : '';
         return (
-          `<button type="button" class="sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" aria-label="Preview ${escapeHtml(s.name)}, ${escapeHtml(s.role || 'ship')}, ${s.price > 0 ? fmt(s.price) + ' credits' : 'owned'}">` +
+          `<button type="button" class="sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" title="${escapeHtml(s.name)} · ${escapeHtml(s.role || 'ship')}" aria-label="Preview ${escapeHtml(s.name)}, ${escapeHtml(s.role || 'ship')}, ${s.price > 0 ? fmt(s.price) + ' credits' : 'owned'}">` +
             `<span class="sx-sw-row__ic">${shipSilhouette(s)}</span>` +
             `<span class="sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(s.name)}</span>` +
               `<span class="sx-sw-row__sub">${escapeHtml(s.role || 'ship')} · T${s.tier}</span></span>` +
@@ -576,10 +657,91 @@ export function createShipworksScreen(ctx) {
 
   function specRow(k, v) { return `<div class="sx-kv"><span>${k}</span><b>${v}</b></div>`; }
 
-  function shopDeltaChipsHtml(shopDelta) {
-    if (!shopDelta) return '';
-    if (shopDelta.ok && shopDelta.chips && shopDelta.chips.length) {
-      return shopDelta.chips.map((chip) => {
+  function moduleRole(def) {
+    if (!def) return 'Station hardware';
+    if (def.slotType === 'weapon') {
+      const tracking = def.tracking === 'auto_turret' ? 'point-defense turret'
+        : def.tracking === 'homing' ? 'guided ordnance'
+          : def.tracking === 'hitscan' ? 'precision beam' : 'direct-fire weapon';
+      return `${titleCaseWords(def.damageType || 'combat')} ${tracking}`;
+    }
+    if (def.slotType === 'shield') return 'Defensive field system';
+    if (def.slotType === 'engine') return 'Propulsion and handling system';
+    if (def.slotType === 'cargo') return def.mods && def.mods.hiddenCargoPct ? 'Concealed cargo system' : 'Load-space system';
+    if (def.slotType === 'mining') return def.directToCargo ? 'Direct-feed extraction system' : 'Ore extraction system';
+    if (def.mods && def.mods.hullRepairOOC) return 'Autonomous repair system';
+    if (def.mods && def.mods.weaponRangePct) return 'Fire-control support system';
+    if (def.mods && def.mods.radarRangePct) return 'Long-range sensor system';
+    if (def.mods && def.mods.countermeasure) return 'Defensive countermeasure';
+    if (def.mods && (def.mods.tetherSpoolMult || def.mods.tetherReelRateMult)) return 'Massline handling system';
+    return 'Utility support system';
+  }
+
+  function moduleMetricRows(def) {
+    if (!def) return [];
+    const rows = [];
+    const add = (label, value) => {
+      if (value == null || value === '' || !Number.isFinite(Number(value))) return;
+      rows.push({ label, value: Number(value) });
+    };
+    if (def.slotType === 'weapon' || def.slotType === 'mining') {
+      add(def.slotType === 'mining' ? 'ORE DPS' : 'DPS', def.dps);
+      add('RANGE', def.range);
+    } else if (def.slotType === 'shield') {
+      add('SHIELD', def.mods && def.mods.shieldFlat);
+      add('REGEN', def.mods && def.mods.shieldRegenFlat);
+    } else if (def.slotType === 'engine') {
+      add('SPEED', def.mods && def.mods.topSpeed);
+      add('ACCEL', def.mods && def.mods.accelMult);
+    } else if (def.slotType === 'cargo') {
+      add('CAPACITY', def.mods && def.mods.cargoFlat);
+      add('CAP %', def.mods && def.mods.cargoCapPct ? def.mods.cargoCapPct * 100 : null);
+    }
+    add('MASS', def.mass);
+    add('DRAW', def.energyDraw != null ? def.energyDraw : def.energyCost);
+    return rows.slice(0, 3);
+  }
+
+  function moduleMetricsHtml(def) {
+    return moduleMetricRows(def).map((row) => {
+      const suffix = row.label === 'RANGE' ? ' wu'
+        : row.label === 'MASS' ? ' t'
+          : row.label === 'DRAW' ? ' pwr'
+            : row.label === 'CAP %' ? '%' : '';
+      const value = Math.abs(row.value) >= 100 ? Math.round(row.value) : Math.round(row.value * 10) / 10;
+      return `<span class="sx-modrow__metric"><i>${escapeHtml(row.label)}</i><b>${escapeHtml(String(value) + suffix)}</b></span>`;
+    }).join('');
+  }
+
+  function capabilityDeltaChips(candidate, fitted) {
+    if (!candidate || (candidate.slotType !== 'weapon' && candidate.slotType !== 'mining')) return [];
+    const rows = [];
+    const add = (label, candidateValue, fittedValue, higherIsBetter = true) => {
+      const after = Number(candidateValue);
+      if (!Number.isFinite(after)) return;
+      const before = Number.isFinite(Number(fittedValue)) ? Number(fittedValue) : 0;
+      const delta = after - before;
+      if (Math.abs(delta) < .05) return;
+      const shown = Math.abs(delta) >= 100 ? Math.round(delta) : Math.round(delta * 10) / 10;
+      rows.push({
+        label: `${shown > 0 ? '+' : ''}${shown} ${label}`,
+        tone: (higherIsBetter ? delta > 0 : delta < 0) ? 'better' : 'worse',
+      });
+    };
+    add(candidate.slotType === 'mining' ? 'ore dps' : 'dps', candidate.dps, fitted && fitted.dps);
+    add('range', candidate.range, fitted && fitted.range);
+    const candidateHeat = candidate.heatPerSec != null ? candidate.heatPerSec : candidate.heatPerShot;
+    const fittedHeat = fitted && (fitted.heatPerSec != null ? fitted.heatPerSec : fitted.heatPerShot);
+    add(candidate.heatPerSec != null ? 'heat/s' : 'heat/shot', candidateHeat, fittedHeat, false);
+    return rows;
+  }
+
+  function shopDeltaChipsHtml(shopDelta, candidate, fitted) {
+    if (!shopDelta) return '<span class="sx-modrow__unchanged">Preview unavailable</span>';
+    if (shopDelta.ok) {
+      const all = [...capabilityDeltaChips(candidate, fitted), ...(shopDelta.chips || [])];
+      if (!all.length) return '<span class="sx-modrow__unchanged">Current fit · no ship-level change</span>';
+      return all.slice(0, 4).map((chip) => {
         const label = chip.label || formatPreviewDelta(chip);
         if (!label) return '';
         const tone = chip.tone === 'better' ? 'up' : (chip.tone === 'worse' ? 'down' : '');
@@ -589,7 +751,7 @@ export function createShipworksScreen(ctx) {
     if (!shopDelta.ok && shopDelta.detail) {
       return `<span class="sx-modrow__chip is-unavail">${escapeHtml(shopDelta.detail)}</span>`;
     }
-    return '';
+    return '<span class="sx-modrow__unchanged">No derived change</span>';
   }
 
   // ---------- slot chooser (dim + reveal compatible modules) ----------
@@ -610,7 +772,7 @@ export function createShipworksScreen(ctx) {
         size({
           padding: 18,
           apply({ availableWidth, availableHeight, elements }) {
-            elements.floating.style.maxWidth = `${Math.max(340, Math.min(520, availableWidth))}px`;
+            elements.floating.style.maxWidth = `${Math.max(340, Math.min(560, availableWidth))}px`;
             elements.floating.style.maxHeight = `${Math.max(320, availableHeight)}px`;
           },
         }),
@@ -642,18 +804,21 @@ export function createShipworksScreen(ctx) {
         slotIndex,
         player: ctx.state.player,
       });
-      const chips = shopDeltaChipsHtml(shopDelta);
+      const fittedDef = fittedId ? FITTABLE_BY_ID.get(fittedId) : null;
+      const chips = shopDeltaChipsHtml(shopDelta, d, fittedDef);
       const metaFallback = escapeHtml(d.size || '') + ' · T' + d.tier;
       const btn = equipped
         ? `<span class="sx-modrow__eq">Equipped</span>`
         : locked
           ? `<span class="sx-modrow__lock">${icon('info', 13)} Tech locked</span>`
-          : `<button type="button" class="sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}" data-slot="${slotIndex}" ${afford ? '' : 'disabled'}>${d.price > 0 ? (afford ? 'Buy · ' + fmt(d.price) : fmt(d.price) + ' cr') : 'Fit'}</button>`;
+          : `<button type="button" class="sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}" data-slot="${slotIndex}" ${afford ? '' : `disabled aria-label="${fmt(d.price)} credits, ${fmt(Math.max(0, (d.price || 0) - credits))} credits short"`}>${d.price > 0 ? (afford ? 'Buy · ' + fmt(d.price) : `<span>${fmt(d.price)} cr</span><small>${fmt(Math.max(0, d.price - credits))} short</small>`) : 'Fit'}</button>`;
       return (
         `<div class="sx-modrow${equipped ? ' is-eq' : ''}${locked ? ' is-locked' : ''}" data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}" tabindex="0">` +
           `<span class="sx-modrow__ic">${icon(SLOT_ICON[slot.type] || 'spark', 18)}</span>` +
           `<span class="sx-modrow__body"><span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
-            `<span class="sx-modrow__meta">${chips || metaFallback}</span></span>` +
+            `<span class="sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
+            `<span class="sx-modrow__metrics">${moduleMetricsHtml(d)}</span>` +
+            `<span class="sx-modrow__meta">${chips}</span></span>` +
           btn +
         `</div>`
       );
@@ -939,11 +1104,16 @@ export function createShipworksScreen(ctx) {
   return {
     el,
     onShow() { refresh(); if (mount) mount.setActive(true); },
-    onHide() { if (mount) mount.setActive(false); }, // stop the render loop when leaving (perf)
+    onHide() {
+      if (previewSettleTimer) clearTimeout(previewSettleTimer);
+      previewSettleTimer = 0;
+      if (mount) mount.setActive(false);
+    }, // stop the render loop when leaving (perf)
     refresh,
     dispose() {
       stopChooserFloating();
       if (chooserCloseTimer) clearTimeout(chooserCloseTimer);
+      if (previewSettleTimer) clearTimeout(previewSettleTimer);
       if (projectionFrame) cancelAnimationFrame(projectionFrame);
       if (stageResizeObserver) stageResizeObserver.disconnect();
       if (mount) { try { mount.dispose(); } catch (_) {} mount = null; }

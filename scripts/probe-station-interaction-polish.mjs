@@ -11,6 +11,9 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PROFILE = String(process.env.SF_PROBE_PROFILE || 'latest').replace(/[^a-z0-9@._-]/gi, '');
 const OUT = join(ROOT, '.devshots', 'station-polish', PROFILE);
 const TRANSITION_TRACE_MS = Math.max(0, Number(process.env.SF_TRACE_TRANSITION_MS) || 0);
+const VIEWPORT_WIDTH = Math.max(1024, Number(process.env.SF_VIEWPORT_WIDTH) || 1920);
+const VIEWPORT_HEIGHT = Math.max(720, Number(process.env.SF_VIEWPORT_HEIGHT) || 1080);
+const DEVICE_SCALE_FACTOR = Math.min(2, Math.max(1, Number(process.env.SF_DEVICE_SCALE_FACTOR) || 2));
 mkdirSync(OUT, { recursive: true });
 
 function freePort() {
@@ -80,8 +83,8 @@ try {
     args: ['--use-gl=angle', '--ignore-gpu-blocklist'],
   });
   const page = await browser.newPage({
-    viewport: { width: 1920, height: 1080 },
-    deviceScaleFactor: 2,
+    viewport: { width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT },
+    deviceScaleFactor: DEVICE_SCALE_FACTOR,
   });
   const pageErrors = [];
   const previewConsole = [];
@@ -115,6 +118,51 @@ try {
     window.SF.bus.emit('dock:docked', { stationId: station.data.stationId });
   });
   await page.waitForSelector('[data-screen="station"]', { timeout: 15000 });
+  report.globalInstruments = await page.evaluate(() => [...document.querySelectorAll('.sx-readout')].map((node) => {
+    const track = node.querySelector('.sx-readout__track')?.getBoundingClientRect();
+    return {
+      label: node.querySelector('.sx-readout__label')?.textContent?.trim() || '',
+      value: node.querySelector('.sx-readout__v')?.textContent?.replace(/\s+/g, ' ').trim() || '',
+      trackWidth: track?.width || 0,
+    };
+  }));
+  requireProbe(report.globalInstruments.length === 3, 'Global station instruments are incomplete');
+  requireProbe(report.globalInstruments.every((instrument) => instrument.label && instrument.trackWidth >= 60),
+    `Global station instruments remain tiny or unlabeled (${JSON.stringify(report.globalInstruments)})`);
+  requireProbe(/\d+\s*\/\s*\d+\s*u/i.test(report.globalInstruments[2]?.value || ''),
+    `Hold instrument omits used/total capacity (${report.globalInstruments[2]?.value || 'missing'})`);
+
+  // The command dock must behave like one physical control surface. Pointer proximity and keyboard
+  // focus receive the same kinetic hierarchy; selection settles back into its rail instead of
+  // preserving a hover pose.
+  const marketBox = await page.locator('[data-nav="market"]').boundingBox();
+  await page.mouse.move(marketBox.x + marketBox.width / 2, marketBox.y + marketBox.height / 2);
+  await page.waitForTimeout(180);
+  const dockSnapshot = () => page.evaluate(() => [...document.querySelectorAll('.sx-dock [data-nav]')].map((tile) => ({
+    id: tile.dataset.nav,
+    selected: tile.getAttribute('aria-selected') === 'true',
+    scale: Number(getComputedStyle(tile).getPropertyValue('--dock-scale')) || 1,
+    lift: Number.parseFloat(getComputedStyle(tile).getPropertyValue('--dock-lift')) || 0,
+    hasSeat: !!tile.querySelector('.sx-tile__seat'),
+  })));
+  report.dockHover = await dockSnapshot();
+  const marketHover = report.dockHover.find((entry) => entry.id === 'market');
+  const shipworksNeighbor = report.dockHover.find((entry) => entry.id === 'shipworks');
+  requireProbe(marketHover?.scale > 1.25 && marketHover.scale <= 1.32 && marketHover.lift <= -10 && marketHover.lift >= -13,
+    `Dock pointer response is uncontrolled or inert (${JSON.stringify(report.dockHover)})`);
+  requireProbe(shipworksNeighbor?.scale > 1.01 && shipworksNeighbor.scale < marketHover.scale,
+    `Dock neighbors do not yield magnetically (${JSON.stringify(report.dockHover)})`);
+  await page.mouse.move(4, 4);
+  await page.waitForTimeout(220);
+  report.dockSettled = await dockSnapshot();
+  const selectedSettled = report.dockSettled.find((entry) => entry.selected);
+  requireProbe(selectedSettled?.id === 'market' && Math.abs(selectedSettled.scale - 1) < .01 && selectedSettled.hasSeat,
+    `Selected dock destination remains frozen in a hover pose (${JSON.stringify(report.dockSettled)})`);
+  await page.locator('[data-nav="shipworks"]').focus();
+  await page.waitForTimeout(160);
+  report.dockKeyboard = await dockSnapshot();
+  requireProbe(report.dockKeyboard.find((entry) => entry.id === 'shipworks')?.scale > 1.1,
+    `Keyboard focus does not receive dock kinetics (${JSON.stringify(report.dockKeyboard)})`);
   await page.click('[data-nav="shipworks"]');
   await page.waitForSelector('.sx-sw__canvas[data-preview-ready="true"]', { timeout: 30000 });
   await page.waitForSelector('[data-spatial-slot]', { timeout: 15000 });
@@ -123,6 +171,26 @@ try {
     return state && state !== 'loading';
   }, null, { timeout: 30000 });
   await page.waitForTimeout(250);
+  report.initialShipPreview = await page.evaluate(() => {
+    const canvas = document.querySelector('.sx-sw__canvas');
+    const visible = typeof canvas?.__sfPreviewDiagnostics === 'function'
+      ? canvas.__sfPreviewDiagnostics().filter((entry) => entry.displayed && entry.inCurrent) : [];
+    return {
+      reveal: canvas?.dataset.previewReveal || '',
+      state: canvas?.dataset.previewAssetState || '',
+      visibleSpriteCount: visible.filter((entry) => entry.type === 'Sprite').length,
+      maxSphereWorldRadius: Math.max(0, ...visible.filter((entry) => /Sphere|Icosahedron/.test(entry.geometry))
+        .map((entry) => Number(entry.worldRadius) || 0)),
+      suspectRoundSurfaces: visible.filter((entry) => /Sphere|Icosahedron|Circle/.test(entry.geometry)
+        || /halo|glow|light|core/i.test(entry.name || '')),
+    };
+  });
+  requireProbe(report.initialShipPreview.reveal === 'settled',
+    `Shipworks exposed an unsettled visual root (${JSON.stringify(report.initialShipPreview)})`);
+  requireProbe(report.initialShipPreview.visibleSpriteCount === 0,
+    `Shipworks still displays detached flight-scale halo sprites (${report.initialShipPreview.visibleSpriteCount})`);
+  requireProbe(report.initialShipPreview.suspectRoundSurfaces.length === 0,
+    `Shipworks still displays detached round flight markers (${JSON.stringify(report.initialShipPreview.suspectRoundSurfaces)})`);
   await page.screenshot({ path: join(OUT, '01-shipworks.png') });
 
   // A selected hardpoint may change its reticle, but the projected button anchor cannot move.
@@ -147,6 +215,25 @@ try {
   const anchorShift = Math.hypot(hardpointAfter.cx - hardpointBefore.cx, hardpointAfter.cy - hardpointBefore.cy);
   report.hardpoint = { before: rectSummary(hardpointBefore), after: rectSummary(hardpointAfter), anchorShiftPx: Number(anchorShift.toFixed(3)) };
   requireProbe(anchorShift <= 1, `Selected hardpoint shifted ${anchorShift.toFixed(2)}px`);
+  report.fittingTray = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.sx-chooser__list [data-preview-module]')];
+    return {
+      rowCount: rows.length,
+      roleCount: rows.filter((row) => row.querySelector('.sx-modrow__role')?.textContent?.trim()).length,
+      metricCount: rows.filter((row) => row.querySelectorAll('.sx-modrow__metric').length >= 2).length,
+      consequenceCount: rows.filter((row) => row.querySelector('.sx-modrow__chip, .sx-modrow__unchanged')).length,
+      unexplainedDisabledPrices: rows.filter((row) => {
+        const button = row.querySelector('.sx-modrow__buy:disabled');
+        return button && !/short/i.test(button.textContent || '');
+      }).length,
+    };
+  });
+  requireProbe(report.fittingTray.rowCount > 0
+    && report.fittingTray.roleCount === report.fittingTray.rowCount
+    && report.fittingTray.metricCount === report.fittingTray.rowCount
+    && report.fittingTray.consequenceCount === report.fittingTray.rowCount
+    && report.fittingTray.unexplainedDisabledPrices === 0,
+  `Shipworks fitting tray is not consequence-first (${JSON.stringify(report.fittingTray)})`);
   await page.screenshot({ path: join(OUT, '02-hardpoint-focused.png') });
   await page.locator('.sx-chooser__scrim').evaluate((node) => node.click());
   await page.waitForFunction(() => !document.querySelector('.sx-sw__chooser.is-open'));
@@ -182,6 +269,10 @@ try {
       shipCount: rows.length,
       uniqueSilhouettes: new Set(silhouettes).size,
       names,
+      truncatedNames: rows.filter((row) => {
+        const name = row.querySelector('.sx-sw-row__name');
+        return name && name.scrollWidth > name.clientWidth + 1;
+      }).map((row) => row.querySelector('.sx-sw-row__name')?.textContent?.trim()),
       hasProgressTrack: !!document.querySelector('.sx-sw__railtrack i'),
       hasPagingControls: document.querySelectorAll('[data-rail-step]').length === 2,
     };
@@ -193,6 +284,7 @@ try {
   requireProbe(rail.rowHeight >= 70, `Ship controls are still too thin (${rail.rowHeight}px)`);
   requireProbe(rail.shipCount > 1 && rail.uniqueSilhouettes === rail.shipCount,
     `Ship silhouettes are not unique (${rail.uniqueSilhouettes}/${rail.shipCount})`);
+  requireProbe(rail.truncatedNames.length === 0, `Ship names remain visually truncated (${rail.truncatedNames.join(', ')})`);
   requireProbe(rail.hasProgressTrack && rail.hasPagingControls, 'Custom carousel controls are incomplete');
   await page.screenshot({ path: join(OUT, '03-buy-ship-carousel.png') });
 
@@ -216,7 +308,7 @@ try {
         return {
           assetState: canvas?.dataset.previewAssetState || 'missing',
           meshCount: visible.length,
-          geometrySignature: visible.map((entry) => `${entry.type}:${entry.geometry}:${entry.geometryRadius}`).join('|'),
+          geometrySignature: visible.map((entry) => `${entry.type}:${entry.geometry}:${entry.geometryRadius}:${entry.worldRadius}`).join('|'),
         };
       });
       const signature = `${sample.assetState}:${sample.meshCount}:${sample.geometrySignature}`;
@@ -238,6 +330,7 @@ try {
   await page.waitForTimeout(850);
   report.leviathan = await page.evaluate(() => {
     const canvas = document.querySelector('.sx-sw__canvas');
+    const acquiring = document.querySelector('.sx-sw__acquiring');
     return {
       defId: canvas?.dataset.previewDefId,
       ready: canvas?.dataset.previewReady,
@@ -246,17 +339,67 @@ try {
       height: canvas?.height,
       cssWidth: canvas?.clientWidth,
       cssHeight: canvas?.clientHeight,
+      canvasOpacity: Number(canvas ? getComputedStyle(canvas).opacity : 0),
+      acquiringVisible: !!acquiring && getComputedStyle(acquiring).visibility !== 'hidden',
       visibleMeshes: typeof canvas?.__sfPreviewDiagnostics === 'function'
         ? canvas.__sfPreviewDiagnostics().filter((entry) => entry.displayed) : [],
     };
   });
   requireProbe(report.leviathan.defId === 'ship_leviathan' && report.leviathan.ready === 'true', 'Leviathan did not render before input');
-  requireProbe(report.leviathan.width >= report.leviathan.cssWidth * 1.9, 'Leviathan canvas is not DPR-aware');
+  requireProbe(report.leviathan.canvasOpacity >= .99 && !report.leviathan.acquiringVisible,
+    `Leviathan reported ready before it was visibly settled (${JSON.stringify({ opacity: report.leviathan.canvasOpacity, acquiring: report.leviathan.acquiringVisible })})`);
+  requireProbe(
+    report.leviathan.width >= report.leviathan.cssWidth * DEVICE_SCALE_FACTOR * 0.95,
+    `Leviathan canvas is not DPR-aware at ${DEVICE_SCALE_FACTOR}x`,
+  );
   await page.screenshot({ path: join(OUT, '04-leviathan-before-input.png') });
   await page.locator('.sx-sw__canvas').dispatchEvent('wheel', { deltaX: 180, deltaY: 0, deltaMode: 0 });
   await page.waitForTimeout(140);
   report.leviathan.afterInputAssetState = await page.locator('.sx-sw__canvas').getAttribute('data-preview-asset-state');
   await page.screenshot({ path: join(OUT, '04b-leviathan-after-input.png') });
+
+  // Industry and Contracts must name choices before selection. Their visual fields can remain
+  // spatial, but anonymous luminous signals are not playable selectors.
+  await page.click('[data-nav="industry"]');
+  await page.waitForSelector('.sx-ind-row');
+  await page.waitForTimeout(240);
+  report.industrySelectors = await page.evaluate(() => [...document.querySelectorAll('.sx-ind-row')].map((row) => {
+    const name = row.querySelector('.sx-ind-row__name');
+    const rect = name?.getBoundingClientRect();
+    return {
+      name: name?.textContent?.trim() || '',
+      process: row.querySelector('.sx-ind-row__process')?.textContent?.trim() || '',
+      visible: !!rect && rect.width > 30 && Number(getComputedStyle(name).opacity) >= .9,
+    };
+  }));
+  requireProbe(report.industrySelectors.length > 0 && report.industrySelectors.every((item) => item.name && item.process && item.visible),
+    `Industry still exposes mystery signals (${JSON.stringify(report.industrySelectors)})`);
+  await page.screenshot({ path: join(OUT, '04c-industry-blueprint-spindle.png') });
+
+  await page.click('[data-nav="contracts"]');
+  await page.waitForSelector('.sx-ct-row');
+  await page.waitForTimeout(240);
+  report.contractSelectors = await page.evaluate(() => [...document.querySelectorAll('.sx-ct-row')].map((row) => {
+    const title = row.querySelector('.sx-ct-row__title');
+    const rect = title?.getBoundingClientRect();
+    return {
+      title: title?.textContent?.trim() || '',
+      reward: row.querySelector('.sx-ct-row__rew')?.textContent?.replace(/\s+/g, ' ').trim() || '',
+      visible: !!rect && rect.width > 36 && Number(getComputedStyle(title).opacity) >= .9,
+    };
+  }));
+  requireProbe(report.contractSelectors.length > 0 && report.contractSelectors.every((item) => item.title && item.reward && item.visible),
+    `Contracts still exposes mystery signals (${JSON.stringify(report.contractSelectors)})`);
+  report.contractLayout = await page.evaluate(() => {
+    const title = document.querySelector('.sx-screen__id')?.getBoundingClientRect();
+    const first = document.querySelector('.sx-ct-row')?.getBoundingClientRect();
+    const copy = (rect) => rect && ({ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+      width: rect.width, height: rect.height });
+    return { title: copy(title), firstTicket: copy(first) };
+  });
+  requireProbe(!overlaps(report.contractLayout.title, report.contractLayout.firstTicket),
+    `Contract dispatch ticket overlaps the operation identity (${JSON.stringify(report.contractLayout)})`);
+  await page.screenshot({ path: join(OUT, '04d-contract-dispatch-field.png') });
 
   // The help button must be circular and correctly centered.
   const help = await page.evaluate(() => {
@@ -371,10 +514,27 @@ try {
   await page.locator('.sx-mkt__trade [data-mode="buy"]').click();
   await page.locator('.sx-mkt__trade [data-go]').click();
   await page.waitForFunction(() => /BOUGHT/i.test(document.querySelector('.sx-receipt__title')?.textContent || ''));
+  await page.locator('[data-hold]').click();
+  await page.waitForSelector('.sx-pop--hold [data-hold-item]');
+  const holdStackId = await page.locator('.sx-pop--hold [data-hold-item]').first().getAttribute('data-hold-item');
+  report.cargoBay = await page.evaluate(() => {
+    const stacks = [...document.querySelectorAll('.sx-pop--hold [data-hold-item]')];
+    return {
+      hasCapacityTrack: !!document.querySelector('.sx-pop--hold .sx-holdbay'),
+      stackCount: stacks.length,
+      hasVolume: stacks.every((stack) => Number(stack.getAttribute('data-hold-volume')) > 0),
+    };
+  });
+  requireProbe(report.cargoBay.hasCapacityTrack && report.cargoBay.stackCount > 0 && report.cargoBay.hasVolume,
+    `Cargo hold is not a volume-bearing interactive manifest (${JSON.stringify(report.cargoBay)})`);
+  await page.locator('.sx-pop--hold [data-hold-item]').first().click();
+  await page.waitForFunction((commodityId) => {
+    const active = document.querySelector('.sx-mkt-row.is-active');
+    return active?.getAttribute('data-cmdty') === commodityId
+      && document.querySelector('[data-mode="sell"]')?.classList.contains('is-on');
+  }, holdStackId);
   const sellHandoff = page.locator('[data-handoff-mode="sell"]:visible').first();
   requireProbe(await sellHandoff.count() > 0, 'Sell what you hauled handoff is not available after buying cargo');
-  if (await sellHandoff.count() > 0) await sellHandoff.click();
-  else await page.evaluate(() => window.SF.bus.emit('station:navigate', { destination: 'market', options: { tradeMode: 'sell' } }));
   await page.waitForFunction(() => document.querySelector('.sx-mkt__trade [data-mode="sell"]')?.classList.contains('is-on'));
   const ownedSellRows = await page.locator('[data-cmdty]').count();
   requireProbe(ownedSellRows === 1, `Owned-only Sell mode exposed ${ownedSellRows} commodities after buying one`);
@@ -408,7 +568,41 @@ try {
   };
   requireProbe(comms.receipt && comms.action && !overlaps(comms.receipt, comms.action), 'Comms receipt overlaps the Market action');
   requireProbe(comms.channel && comms.channel.top < 180, 'Comms is not in the top-right information lane');
+  const commsToggle = page.locator('.sx-comms__toggle');
+  requireProbe(await commsToggle.count() === 1, 'Comms has no expandable session ledger');
+  if (await commsToggle.count()) await commsToggle.click();
+  report.comms.historyEntries = await page.locator('.sx-comms__history [data-comms-entry]').count();
+  report.comms.historyLabel = await commsToggle.getAttribute('aria-label');
+  requireProbe(report.comms.historyEntries >= 2,
+    `Comms did not retain both trade consequences (${report.comms.historyEntries} entries)`);
   await page.screenshot({ path: join(OUT, '05-market-comms-receipt.png') });
+
+  // Resupply is a real purchase, not a decorative quote. The dock must name the payload, send the
+  // quoted quantity, mutate credits and cargo together, and record the service in Comms.
+  const resupplyLabel = await page.locator('[data-cost="resupply"]').textContent();
+  const beforeResupply = await page.evaluate(() => ({
+    credits: Number(window.SF.state.player?.credits || 0),
+    munitions: Number(window.SF.state.player?.cargo?.items?.cmdty_munitions || 0),
+  }));
+  await page.locator('[data-act="resupply"]').click();
+  await page.waitForFunction(({ credits, munitions }) => Number(window.SF.state.player?.credits || 0) < credits
+    && Number(window.SF.state.player?.cargo?.items?.cmdty_munitions || 0) > munitions, beforeResupply);
+  const afterResupply = await page.evaluate(() => ({
+    credits: Number(window.SF.state.player?.credits || 0),
+    munitions: Number(window.SF.state.player?.cargo?.items?.cmdty_munitions || 0),
+  }));
+  report.resupply = {
+    label: resupplyLabel?.replace(/\s+/g, ' ').trim() || '',
+    creditsDelta: afterResupply.credits - beforeResupply.credits,
+    munitionsDelta: afterResupply.munitions - beforeResupply.munitions,
+    historyEntries: await page.locator('.sx-comms__history [data-comms-entry]').count(),
+  };
+  requireProbe(/mun/i.test(report.resupply.label), `Resupply quote does not name its payload (${report.resupply.label})`);
+  requireProbe(report.resupply.creditsDelta < 0 && report.resupply.munitionsDelta > 0,
+    `Resupply did not atomically trade credits for munitions (${JSON.stringify(report.resupply)})`);
+  requireProbe(report.resupply.historyEntries > report.comms.historyEntries,
+    `Resupply did not append a Comms receipt (${JSON.stringify(report.resupply)})`);
+  await page.screenshot({ path: join(OUT, '06-resupply-comms.png') });
 
   report.pageErrors = pageErrors;
   requireProbe(pageErrors.length === 0, `Page emitted ${pageErrors.length} error(s)`);
