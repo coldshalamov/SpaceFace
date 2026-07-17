@@ -1163,6 +1163,43 @@ export const uniqueWrecks = {
     return this._onChoose({ wreckId, choiceId, source });
   },
 
+  /**
+   * Public sector-entry carrier surface (production sector:enter handler body).
+   * Call after the player is in the sector (world.enterSector / flight sector ownership).
+   */
+  surfaceSectorCarriers(sectorId) {
+    this._surfaceSectorRumors(sectorId);
+    return this._ensureState().bearings;
+  },
+
+  /**
+   * Public dock carrier surface (production dock:docked Helios lost-coils offer path).
+   */
+  surfaceDockCarriers(stationId) {
+    if (stationId === 'station_helios') this._offerLostCoils();
+    return this._ensureState().offers;
+  },
+
+  /**
+   * Surface the authored primary carrier for a unique wreck using the same
+   * `_surfaceCanonicalRumor` path production sector/dock/campaign handlers use
+   * (emits the channel event, then records the bearing under source/channel guards).
+   * Prefer game:started / dock / sector public flows when available; this API is for
+   * Tier-A natural literacy when the player has already earned that surface.
+   */
+  surfaceAuthoredPrimaryCarrier(wreckId) {
+    const def = uniqueWreckById(wreckId);
+    if (!def) return null;
+    const source = (def.rumorSources || []).find((entry) => entry.sourceRef === def.bearingSourceRef)
+      || (def.rumorSources || [])[0];
+    if (!source) return null;
+    const eventName = RUMOR_EVENT_BY_CHANNEL[source.channelId];
+    if (!eventName) return null;
+    return this._surfaceCanonicalRumor(def.id, source.channelId, eventName, {
+      sender: 'natural-route-carrier',
+    });
+  },
+
   _onSalvageCompleted(payload) {
     const entityId = payload && payload.wreckId;
     let wreckId = this._wreckByEntity.get(entityId) || null;

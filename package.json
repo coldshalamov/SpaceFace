@@ -421,8 +421,9 @@
     "check:depth-program:r2:natural-d10:primary": "node scripts/check-depth-program-r2-natural-d10-primary.mjs",
     "check:depth-program:r2:natural-multi": "node scripts/check-depth-program-r2-natural-multi.mjs",
     "check:depth-program:e1:natural": "node scripts/check-depth-program-e1-natural.mjs",
+    "check:depth-program:d1:living-opposition": "node scripts/check-depth-program-d1-living-opposition.mjs",
     "check:professional-mining-presentation": "node scripts/check-professional-mining-presentation.mjs",
-    "check:depth-program:r2:natural-d10:primary": "node scripts/check-depth-program-r2-natural-d10-primary.mjs"
+    "check:depth-program:r2:natural-primary-matrix": "node scripts/check-depth-program-r2-natural-primary-matrix.mjs"
   },
   "private": true,
   "devDependencies": {

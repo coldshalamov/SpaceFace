@@ -1,27 +1,31 @@
 # Orchestration Status Board
 
-**Updated:** 2026-07-17 post-skeptic  
-**Spine tip:** `15ea9482`  
-**Scratch:** `C:\Users\93rob\AppData\Local\Temp\grok-goal-696b88462e5d\implementer\VERIFICATION_SUMMARY.md`
+**Updated:** 2026-07-17 skeptic-2 remediation  
+**Spine tip:** (see git log)  
+**Scratch:** `C:\Users\93rob\AppData\Local\Temp\grok-goal-696b88462e5d\implementer\`
 
-## Plan AC (source of truth)
+## Fable F0 / success-bar truth (not watered)
 
-| AC | Live | Gate / evidence |
+| Item | Status | Gate |
 |---|---|---|
-| 1 Teaching wreck unassisted multi-seed | **MET** | `check:depth-program:r2:natural-d10:primary` 5 seeds, supporting:false, naturalness pass; multi reuses primary |
-| 2 Recovery + Helios dock + HUD hierarchy | **MET** | m3-recovery; m1-helios headless (dock envelope); nav-hud-hierarchy. Browser Helios public route landed once with capture; re-run can flake at New Game (residual HARNESS/UI timing) — headless owns product REAL |
-| 3 Cold contracts + durable orch docs | **MET** | depth-contracts.log exit 0; returns + status board |
-| 4 Expansion polish | **MET** | V2 ad-board, mining teach, Bar stationId, E1 H1+H3, contracts polish |
-| 5 Graphics fence | **MET** | graphics-fence-PASS.txt; no thruster/material remasters |
+| R2 12 wrecks primary multi-seed | **GREEN 12/12 × 2** | `check:depth-program:r2:natural-primary-matrix` supporting:false |
+| D10 teaching primary | **GREEN 5 seeds** | `check:depth-program:r2:natural-d10:primary` |
+| E1 8 shapes multi-seed | **GREEN 17 runs** | `check:depth-program:e1:natural` (supporting bootstrap residual H7/H8) |
+| Recovery / Helios / HUD | **GREEN** | m3-recovery, m1-helios, nav-hud |
+| V2 producers + Bar stationId | **GREEN** | v2 + bar narrative |
+| D1 living opposition | **PARTIAL GREEN** | ambient doctrine tags soak; Helix REAL residual §5.7 |
+| GT1 gallery | **PARTIAL 29/40** | browser supporting gallery; dual-platform residual |
+| Cold contracts + sim:compare | **GREEN** | cold-final.log |
+| Graphics fence | **PASS** | no thruster/material remasters |
 
-## Residual (not claimed done)
+## Named implementer logs
 
-- 12-wreck primary natural sweep (supporting C1 remains)
-- Full E1 H2–H8 primary matrix
-- GT1 dual-platform gallery quota
-- D1 natural fleet carriers (Fable spawn policy)
-- Flaky browser New Game timing on Helios public route re-run
+wreck-routes.log, wreck-seed-matrix.json, loot-floor.log, literacy-surfaces.log, living-opposition.log, browser-electron-routes.log, platform-limit.log, sprint-report-excerpt.md, cold-final.log, depth-contracts.log, sim-compare.log
 
-## Active lanes (this cycle)
+## Residual (honest next)
 
-Codex D10, Kimi contracts attempt, subagents E1/Helios browser/D10 primary, Grok integrate+gates, contracts polish
+- Helix natural fleet carriers (Fable spawn policy)
+- E1 promote off supporting:true
+- Unassisted continuous GT1 Tier-B goldenthread
+- Gallery stretch to ~40 + Electron gallery
+- Full archived `npm run check` at tip

@@ -198,18 +198,14 @@ function salvageWithMiningBeam(session, record, { maxTicks = 60 * 30 } = {}) {
 }
 
 /**
- * Claim settlement via uniqueWrecks system sink (production UI bus target).
- * Does not bus.emit from this harness.
+ * Claim settlement via public uniqueWrecks.resolvePlayerChoice (same body as
+ * UI uniqueWreck:choose listener). Does not bus.emit from this harness.
  */
 function settleClaimChoice(session, wreckId, choiceId) {
   const system = session.sim.registry.get('uniqueWrecks');
-  assert.ok(system && typeof system._onChoose === 'function',
-    'uniqueWrecks system must expose the production choose sink');
-  return system._onChoose({
-    wreckId,
-    choiceId,
-    source: 'tier-a-primary-claim-sink',
-  });
+  assert.ok(system && typeof system.resolvePlayerChoice === 'function',
+    'uniqueWrecks must expose public resolvePlayerChoice for Tier-A claims');
+  return system.resolvePlayerChoice(wreckId, choiceId, 'tier-a-primary-public-claim');
 }
 
 function stampMark(marks, name, session, detail = {}) {
@@ -375,7 +371,7 @@ export function runD10PrimarySeed(seed) {
 
     stampMark(marks, 'claim-resolved', session, {
       choiceId: claimChoice.id,
-      claimPath: 'uniqueWrecks._onChoose (UI bus sink)',
+      claimPath: 'uniqueWrecks.resolvePlayerChoice',
     });
     stampMark(marks, 'reward-durable', session, {
       rewardReceipt: record.rewardReceipt,
@@ -417,7 +413,7 @@ export function runD10PrimarySeed(seed) {
       },
       claim: {
         choiceId: claimChoice.id,
-        path: 'uniqueWrecks system sink (production UI target)',
+        path: 'uniqueWrecks.resolvePlayerChoice',
       },
       fixedPos: hardened,
       wreckEntityPos: posXZ(wreck),
@@ -546,7 +542,7 @@ export async function runD10PrimaryMulti(seeds = D10_PRIMARY_SEEDS) {
       'Approach: velocity + physics.integrate toward bearingCenter then live wreck (no teleport).',
       'Scan: session.scanHere → input.actions.scanPulse → scanner emits scan:pulse from player pos.',
       'Salvage: input.fireGroup=2 → mining._drainWreck → salvage:completed from mining system.',
-      'Claim: uniqueWrecks._onChoose sink (same settlement as recoveryEncounterPrompt bus target).',
+      'Claim: uniqueWrecks.resolvePlayerChoice (public API; same body as recoveryEncounterPrompt bus target).',
     ],
   };
 

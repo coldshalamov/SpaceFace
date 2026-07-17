@@ -26,6 +26,7 @@ import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drif
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { factionDoctrineFor } from '../data/factionDoctrines.js';
 import { planZoneSpawns, zoneAt, zoneThreat } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
 import { applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import {
@@ -1528,6 +1529,9 @@ export const world = {
         spec.data.ai.formation = intent.formation;
         spec.data.ai.zoneId = intent.zoneId;
         spec.data.ai.zoneName = intent.zoneName;
+        // D1 living opposition: stamp FACTION_DOCTRINES id onto ordinary zone ambient without
+        // changing spawn counts/budget (Fable §5.7 still owns Helix carrier policy).
+        stampFactionDoctrineTag(spec, intent.factionId || spec.factionId);
         tagAiSpawnContext(spec, sector, sec, intent.context);
         const ent = this.helpers.spawnEntity(spec);
         this._stampHomeSector(ent, sector.id);
@@ -1542,6 +1546,7 @@ export const world = {
         const pos = this._ambientEnemySpawnPos(sector, active, rng, wr);
         if (!pos) continue;
         const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos, { startedTick: this.state.tick });
+        stampFactionDoctrineTag(spec, spec.factionId);
         tagAiSpawnContext(spec, sector, sec, 'ambient');
         const ent = this.helpers.spawnEntity(spec);
         this._stampHomeSector(ent, sector.id);
@@ -2619,6 +2624,24 @@ function tagAiSpawnContext(spec, sector, effectiveSector, context) {
   spec.data.ai.sectorTier = Number.isFinite(effectiveSector && effectiveSector.tier)
     ? effectiveSector.tier
     : (Number.isFinite(sector && sector.tier) ? sector.tier : 0);
+}
+
+/**
+ * D1 doctrine tag on ordinary ambient hostiles/patrols.
+ * Readability + contact identity only: does not request spawnBudget slots, does not add ships,
+ * and does not replace combatDoctrineId / ROE already set by makeEnemySpawnSpec.
+ * Helix remains without a natural zone carrier until Fable §5.7 rules budget/gating.
+ */
+function stampFactionDoctrineTag(spec, factionId) {
+  if (!spec || !factionId) return;
+  const doctrine = factionDoctrineFor(factionId);
+  if (!doctrine || !doctrine.id) return;
+  spec.data = spec.data || {};
+  spec.data.ai = spec.data.ai || {};
+  spec.data.factionDoctrineId = doctrine.id;
+  spec.data.ai.factionDoctrineId = doctrine.id;
+  // Surface the D1 profile id on contacts without rewiring combat doctrine ownership.
+  if (!spec.data.contactDoctrineId) spec.data.contactDoctrineId = doctrine.id;
 }
 
 function finitePositive(value) {

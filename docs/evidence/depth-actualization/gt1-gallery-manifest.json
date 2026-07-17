@@ -1,0 +1,490 @@
+{
+  "schema": "spaceface.gt1Gallery.v1",
+  "contentClass": "goldenthread",
+  "supporting": true,
+  "tier": "B",
+  "platform": "browser",
+  "seed": 48200,
+  "rev": {
+    "commit": "108f139dc70a3f80568fa36397f9ade9fa5ae147",
+    "dirty": null
+  },
+  "capturedAt": "2026-07-17T20:40:09.746Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "browserPath": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "headless": false,
+  "baseUrl": "http://127.0.0.1:62800/",
+  "boot": {
+    "seed": 48200,
+    "expectedSeed": 48200,
+    "sectorId": "sector_helios_prime",
+    "playerDefId": "ship_kestrel",
+    "bandHud": true,
+    "newsTicker": false,
+    "landmarks": [],
+    "systems": {
+      "bandRadio": true,
+      "uniqueWrecks": true,
+      "voiceArbiter": true
+    }
+  },
+  "d10": {
+    "id": "wreck_choir_tender",
+    "name": "Relief-Freighter Choir-Tender",
+    "slot": "D10",
+    "sectorId": "sector_helios_prime"
+  },
+  "candleFleetProbe": {
+    "entityCount": 0,
+    "entities": [],
+    "sectorId": "sector_helios_prime"
+  },
+  "shotCount": 29,
+  "targetMin": 15,
+  "targetStretch": 40,
+  "partial": true,
+  "meetsMinimum": true,
+  "shots": [
+    {
+      "id": "01-main-menu",
+      "beat": "new-game",
+      "caption": "Main menu — first-hour front door",
+      "file": ".devshots/depth-program/gt1-gallery/01-main-menu.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1060974,
+      "sha256": "289593a7c8a91adfb986a057340bc3564bb3684e4d470689d524af343cf02ca2",
+      "staged": false,
+      "notes": null
+    },
+    {
+      "id": "02-new-game",
+      "beat": "new-game",
+      "caption": "New Game setup screen",
+      "file": ".devshots/depth-program/gt1-gallery/02-new-game.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1004720,
+      "sha256": "e7ad3beb4969052cc9cdf880443dd9dcee36d518e1c0caa242f32e7a5d07b95c",
+      "staged": false,
+      "notes": null
+    },
+    {
+      "id": "03-flight-helios-boot",
+      "beat": "candle-fleet",
+      "caption": "Helios Prime flight after New Game (Candle Fleet home sector)",
+      "file": ".devshots/depth-program/gt1-gallery/03-flight-helios-boot.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1092871,
+      "sha256": "e69928b974bdce49283ad772f6a7afafe2a30d174c7d0a28c11bb8bea1aa0d15",
+      "staged": true,
+      "notes": "onboarding suppressed; time frozen for stable frames"
+    },
+    {
+      "id": "04-flight-hud-band-chip",
+      "beat": "band",
+      "caption": "Flight HUD with shipped Band chip",
+      "file": ".devshots/depth-program/gt1-gallery/04-flight-hud-band-chip.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1093432,
+      "sha256": "934ffa7062c0fb721161f857cee0ef11e3af2a3bbd7ce088ef860470a100fb5d",
+      "staged": false,
+      "notes": null
+    },
+    {
+      "id": "05-flight-overview",
+      "beat": "candle-fleet",
+      "caption": "Spawn-sector overview (literacy: where am I)",
+      "file": ".devshots/depth-program/gt1-gallery/05-flight-overview.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1094395,
+      "sha256": "59b7bec5f8e2cd4e19f1c7b8ffb2d22e2b544093ddc48cfb783c1c606873cf5d",
+      "staged": false,
+      "notes": null
+    },
+    {
+      "id": "06-galaxy-map",
+      "beat": "bearing",
+      "caption": "Galaxy / sector map (N)",
+      "file": ".devshots/depth-program/gt1-gallery/06-galaxy-map.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 165378,
+      "sha256": "dd804a1c67d1e39891e6b2b94408543c5a4bef0b28b527a9e9ae63692397a541",
+      "staged": false,
+      "notes": null
+    },
+    {
+      "id": "07-map-search-helios",
+      "beat": "bearing",
+      "caption": "Map search Helios",
+      "file": ".devshots/depth-program/gt1-gallery/07-map-search-helios.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 175593,
+      "sha256": "637feae411929d118196c67f1fd2a9d29ebbe6e355ed5b794c14b2c05971e99f",
+      "staged": true,
+      "notes": null
+    },
+    {
+      "id": "08-d10-ticker-rumor",
+      "beat": "ticker",
+      "caption": "D10 Relief-Freighter Choir-Tender rumor surface (news)",
+      "file": ".devshots/depth-program/gt1-gallery/08-d10-ticker-rumor.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1094092,
+      "sha256": "8e6be7dcda744f25be70d2096c8b9a8d6855f26c9dffc8d150b33196d0d52f67",
+      "staged": true,
+      "notes": {
+        "phase": "rumored",
+        "radius": 408.881,
+        "hasBearing": true,
+        "tickerText": "",
+        "floorText": "TRAGEDY AT HELIOS: RELIEF FREIGHTER LOST CHOIR-TENDER DRIFTED OFF THE YARD AFTER A REACTOR EVENT. AUTOMATED REPAIR CARGO REMAINS ABOARD. RECOVERY RIGHTS ARE UNDER REVIEW.",
+        "channelId": "news"
+      }
+    },
+    {
+      "id": "09-map-bearing-search-area",
+      "beat": "bearing",
+      "caption": "Map with unique-wreck fuzzy bearing / search area",
+      "file": ".devshots/depth-program/gt1-gallery/09-map-bearing-search-area.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 175709,
+      "sha256": "ba89ad86f0007f5191fe7ca852d3a48e5a043abc1fd34fdc727619d5731353bb",
+      "staged": true,
+      "notes": null
+    },
+    {
+      "id": "10-wreck-region-approach",
+      "beat": "unique-wreck",
+      "caption": "Near D10 search region (staged position)",
+      "file": ".devshots/depth-program/gt1-gallery/10-wreck-region-approach.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1107252,
+      "sha256": "bfe8c07fbd9c728539773f9e308d1568912d1280fb2519a8c56e483314a5035a",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "phase": "rumored",
+        "wreckSpawned": true,
+        "radius": 408.881
+      }
+    },
+    {
+      "id": "11-wreck-scan-or-materialized",
+      "beat": "unique-wreck",
+      "caption": "Post-scan unique wreck frame",
+      "file": ".devshots/depth-program/gt1-gallery/11-wreck-scan-or-materialized.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1104500,
+      "sha256": "c7dce2a477151de1b285ba89c852a70735d7a1e6c66ecb493b2e52c01ce7d04f",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "phase": "rumored",
+        "wreckSpawned": true,
+        "radius": 408.881
+      }
+    },
+    {
+      "id": "12-unique-claim-or-receipt",
+      "beat": "unique-wreck",
+      "caption": "Unique wreck claim / salvage receipt surface",
+      "file": ".devshots/depth-program/gt1-gallery/12-unique-claim-or-receipt.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1104980,
+      "sha256": "67748df74e00ef8fb64c4ba701a50a4fbf0f9f7d0e645815ee3b21ef4ab1d2ea",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "phase": "fixed",
+        "choiceId": null,
+        "defName": "Relief-Freighter Choir-Tender"
+      }
+    },
+    {
+      "id": "13-band-concord-bulletin",
+      "beat": "band",
+      "caption": "Band channel: Concord Bulletin",
+      "file": ".devshots/depth-program/gt1-gallery/13-band-concord-bulletin.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1106245,
+      "sha256": "01729ce9fd2773f666a6d4b38b4e3085c1f59bcc0eb1b5757e90d94efa67a69e",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "channelId": "concord_bulletin",
+        "chip": "BAND CONCORD BULLETIN |||",
+        "floor": ""
+      }
+    },
+    {
+      "id": "14-band-the-margin",
+      "beat": "band",
+      "caption": "Band channel: The Margin",
+      "file": ".devshots/depth-program/gt1-gallery/14-band-the-margin.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1102174,
+      "sha256": "c92e87b40c7dd8463cee56c8ae391d501906fc0d92d5606a91c2a8312f9968bb",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "channelId": "the_margin",
+        "chip": "BAND THE MARGIN |..",
+        "floor": "CONCORD BULLETIN. THE RECORD REMAINS ORDERLY."
+      }
+    },
+    {
+      "id": "15-band-the-static",
+      "beat": "band",
+      "caption": "Band channel: The Static",
+      "file": ".devshots/depth-program/gt1-gallery/15-band-the-static.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1101622,
+      "sha256": "f47ad940f61f5c7fb8aaab299e3aa6b8dd5438bb65228e665cfb564d43beeb79",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "channelId": "the_static",
+        "chip": "BAND THE STATIC |..",
+        "floor": "CONCORD BULLETIN. THE RECORD REMAINS ORDERLY."
+      }
+    },
+    {
+      "id": "16-band-ballad-line",
+      "beat": "band",
+      "caption": "Band channel: The Ballad Line",
+      "file": ".devshots/depth-program/gt1-gallery/16-band-ballad-line.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1102023,
+      "sha256": "726428cdb95cdf568d6243bebf8cf30f697140ddb442bb633e249668b77bf50f",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "channelId": "ballad_line",
+        "chip": "BAND THE BALLAD LINE |..",
+        "floor": "CONCORD BULLETIN. THE RECORD REMAINS ORDERLY."
+      }
+    },
+    {
+      "id": "17-band-choir-vespers",
+      "beat": "band",
+      "caption": "Band channel: Choir Vespers",
+      "file": ".devshots/depth-program/gt1-gallery/17-band-choir-vespers.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1103489,
+      "sha256": "46829449a95ce09e5cc557a08bd57fb5caa4e230bcf95cb44b4b2f48845bd1bc",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "channelId": "choir_vespers",
+        "chip": "BAND CHOIR VESPERS |..",
+        "floor": "CONCORD BULLETIN. THE RECORD REMAINS ORDERLY."
+      }
+    },
+    {
+      "id": "18-band-fulfillment-routing",
+      "beat": "band",
+      "caption": "Band channel: Fulfillment Routing",
+      "file": ".devshots/depth-program/gt1-gallery/18-band-fulfillment-routing.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1102311,
+      "sha256": "5ca49e697d0a7b40f8dc1e13ff9b276b871e69487cd5eaa23c4d11fc4af8d8b4",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "channelId": "fulfillment_routing",
+        "chip": "BAND FULFILLMENT ROUTING ||.",
+        "floor": "CONCORD BULLETIN. THE RECORD REMAINS ORDERLY."
+      }
+    },
+    {
+      "id": "19-band-numbers-station",
+      "beat": "band",
+      "caption": "Band channel: Quiet Numbers",
+      "file": ".devshots/depth-program/gt1-gallery/19-band-numbers-station.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1102969,
+      "sha256": "61e5279cef708079d0bcf179285a6f72000ebb74275b05a39dff402dd51dc819",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "channelId": "numbers_station",
+        "chip": "BAND QUIET NUMBERS |..",
+        "floor": "CONCORD BULLETIN. THE RECORD REMAINS ORDERLY."
+      }
+    },
+    {
+      "id": "20-station-hub",
+      "beat": "ticker",
+      "caption": "Station hub @ station_helios",
+      "file": ".devshots/depth-program/gt1-gallery/20-station-hub.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 515997,
+      "sha256": "6388e345676eeb8f9be025ed07f1902c074ec9f3fb01efcbad80143992881fff",
+      "staged": true,
+      "notes": null
+    },
+    {
+      "id": "21-station-bar",
+      "beat": "ticker",
+      "caption": "Bar / rumor literacy",
+      "file": ".devshots/depth-program/gt1-gallery/21-station-bar.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 579747,
+      "sha256": "f02c27a542df8d66842e9cf91f00dfaf2532d3fe00645e9e82993d7df4b71f14",
+      "staged": true,
+      "notes": {
+        "tab": "bar",
+        "ok": true
+      }
+    },
+    {
+      "id": "22-station-contracts",
+      "beat": "misc",
+      "caption": "Contracts board",
+      "file": ".devshots/depth-program/gt1-gallery/22-station-contracts.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 511981,
+      "sha256": "721e54a134995bd72c5df486e354750e62a33bb5bd331febeefa656b6c5d04d8",
+      "staged": true,
+      "notes": {
+        "tab": "contracts",
+        "ok": true
+      }
+    },
+    {
+      "id": "23-station-market",
+      "beat": "misc",
+      "caption": "Market",
+      "file": ".devshots/depth-program/gt1-gallery/23-station-market.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 718746,
+      "sha256": "54cb82312cf5612c46cdb0ab0ae699579eab6650e2bbd4a6838f4d7a86d91fc9",
+      "staged": true,
+      "notes": {
+        "tab": "market",
+        "ok": true
+      }
+    },
+    {
+      "id": "24-station-factions",
+      "beat": "misc",
+      "caption": "Factions / standings",
+      "file": ".devshots/depth-program/gt1-gallery/24-station-factions.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 709059,
+      "sha256": "cda9f1b768cea4ab6288707b0b8354cfe29979b0b0cb11e5911d49855f8af2d3",
+      "staged": true,
+      "notes": {
+        "tab": "factions",
+        "ok": true
+      }
+    },
+    {
+      "id": "25-station-shipworks",
+      "beat": "misc",
+      "caption": "Shipworks",
+      "file": ".devshots/depth-program/gt1-gallery/25-station-shipworks.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 467275,
+      "sha256": "35c16f1d820c605c6af41290f9bfcdc627dd0fe5091a27017a1628c7b59d5cdd",
+      "staged": true,
+      "notes": {
+        "tab": "shipworks",
+        "ok": true
+      }
+    },
+    {
+      "id": "26-pause-menu",
+      "beat": "misc",
+      "caption": "Pause menu (save/continue literacy)",
+      "file": ".devshots/depth-program/gt1-gallery/26-pause-menu.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 806234,
+      "sha256": "7992c576e33d5857d71681d0bb8b87da09b8fc56d0a0b48da083f5cfb8030181",
+      "staged": false,
+      "notes": null
+    },
+    {
+      "id": "27-help",
+      "beat": "misc",
+      "caption": "Help overlay (help)",
+      "file": ".devshots/depth-program/gt1-gallery/27-help.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 783169,
+      "sha256": "88b2e02713e1bd88079e8ba518ef006e6fb5807ca19ef3f8c9222eced5d3a1f5",
+      "staged": false,
+      "notes": null
+    },
+    {
+      "id": "29-band-numbers-station",
+      "beat": "band",
+      "caption": "Numbers Station Band channel",
+      "file": ".devshots/depth-program/gt1-gallery/29-band-numbers-station.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1105006,
+      "sha256": "c3afd990ec94cbe4e0b0329126f398b813daf616bf39f3154dcffdcc416385bd",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "channelId": "numbers_station",
+        "chip": "BAND QUIET NUMBERS |.."
+      }
+    },
+    {
+      "id": "30-flight-close",
+      "beat": "misc",
+      "caption": "Closing flight frame",
+      "file": ".devshots/depth-program/gt1-gallery/30-flight-close.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1105429,
+      "sha256": "9787c881f19e6d2262b78e340a530e4dadb1b03a335f5545b0a123d58f3235e1",
+      "staged": false,
+      "notes": null
+    }
+  ],
+  "failures": [],
+  "goldenthreadBeats": {
+    "new-game": 2,
+    "candle-fleet": 2,
+    "ticker": 3,
+    "bearing": 3,
+    "unique-wreck": 3,
+    "band": 9
+  },
+  "notes": [
+    "SUPPORTING gallery: travel/content staging via SF/registry allowed for durable frames.",
+    "Unassisted continuous goldenthread route remains a separate Tier-B natural-route gate.",
+    "Candle Fleet landmark entity not present in live entity list at capture (H1c may still be data-only)."
+  ]
+}
