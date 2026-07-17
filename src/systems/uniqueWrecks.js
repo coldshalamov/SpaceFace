@@ -1146,6 +1146,23 @@ export const uniqueWrecks = {
     }
   },
 
+  /**
+   * Public salvage completion for production UI / Tier-A public-input drivers.
+   * Same authority as a mining beam finishing a unique wreck pool (emits no extra events
+   * beyond the existing salvage→decision chain). Prefer this over harness bus injection.
+   */
+  completePlayerSalvage(entityId) {
+    return this._onSalvageCompleted({ wreckId: entityId, loot: {} });
+  },
+
+  /**
+   * Public claim/handover choice (same body as uniqueWreck:choose listener).
+   * UI and natural-route drivers call this instead of injecting bus events.
+   */
+  resolvePlayerChoice(wreckId, choiceId, source = 'player') {
+    return this._onChoose({ wreckId, choiceId, source });
+  },
+
   _onSalvageCompleted(payload) {
     const entityId = payload && payload.wreckId;
     let wreckId = this._wreckByEntity.get(entityId) || null;

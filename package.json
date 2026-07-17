@@ -138,6 +138,7 @@
     "check:ai:movement-doctrine": "node scripts/check-ai-movement-doctrine.mjs",
     "check:m1:combat-doctrines": "node scripts/check-m1-combat-doctrines.mjs",
     "check:m1:helios-route": "node scripts/check-m1-helios-route.mjs",
+    "check:m1:helios-route-browser": "node scripts/check-m1-helios-route-browser.mjs",
     "check:ai:telegraphs:live": "node scripts/check-ai-telegraphs-live.mjs",
     "check:ai:telegraphs": "node scripts/check-ai-telegraphs.mjs && npm run check:ai:telegraphs:live",
     "check:ai": "npm run check:sg06:ai && npm run check:ai:intentionality && npm run check:ai:movement-doctrine && npm run check:m1:combat-doctrines && npm run check:ai:telegraphs:live",
@@ -416,9 +417,11 @@
     "check:professional-travel:public-route:electron": "npm run check:professional-travel:public-route:contracts && node scripts/check-professional-travel-public-route-electron.mjs",
     "check:professional-travel:public-route": "npm run check:professional-travel:public-route:browser && npm run check:professional-travel:public-route:electron",
     "check:depth-program:r2:natural-d10": "node scripts/check-depth-program-r2-natural-d10.mjs",
+    "check:depth-program:r2:natural-d10:primary": "node scripts/check-depth-program-r2-natural-d10-primary.mjs",
     "check:depth-program:r2:natural-multi": "node scripts/check-depth-program-r2-natural-multi.mjs",
     "check:depth-program:e1:natural": "node scripts/check-depth-program-e1-natural.mjs",
-    "check:professional-mining-presentation": "node scripts/check-professional-mining-presentation.mjs"
+    "check:professional-mining-presentation": "node scripts/check-professional-mining-presentation.mjs",
+    "check:depth-program:r2:natural-d10:primary": "node scripts/check-depth-program-r2-natural-d10-primary.mjs"
   },
   "private": true,
   "devDependencies": {

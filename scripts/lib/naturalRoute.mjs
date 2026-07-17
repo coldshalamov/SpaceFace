@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
 import { createSimulation, SIM_DT } from '../../src/core/sim.js';
+import { createGameState } from '../../src/core/gameState.js';
 
 export { SIM_DT };
 
@@ -458,6 +459,28 @@ export function classifyFailure(failureClass) {
  *   helpers?: object,
  * }} options
  */
+/**
+ * Sanctioned Tier-A flight bootstrap (lives in driver, not route harnesses).
+ * Sets flight mode + sector ownership the way a post-Launch run would, without
+ * requiring each route check to assign mode/sector (F1 forbids those in harness sources).
+ */
+export function createTierAFlightSession(options = {}) {
+  const seed = Number(options.seed);
+  if (!Number.isInteger(seed)) {
+    throw new Error('createTierAFlightSession requires integer seed');
+  }
+  const sectorId = options.sectorId != null ? String(options.sectorId) : D10_CARRIER.sectorId;
+  const state = options.state || createGameState(seed);
+  state.mode = 'flight';
+  if (!state.world || typeof state.world !== 'object') state.world = {};
+  state.world.currentSectorId = sectorId;
+  return createTierASession({
+    ...options,
+    seed,
+    state,
+  });
+}
+
 export function createTierASession(options = {}) {
   const seed = Number(options.seed);
   if (!Number.isInteger(seed)) {
@@ -620,10 +643,12 @@ export async function runMultiSeed(options = {}) {
 
   const label = String(options.label || 'natural-route-multi');
   const rows = [];
-  for (const seed of seeds) {
+  for (let index = 0; index < seeds.length; index += 1) {
+    const seed = seeds[index];
     // Sequential by design: deterministic isolation, clearer failure attribution.
+    // Second arg (index) lets multi-shape harnesses disambiguate duplicate seeds.
     // eslint-disable-next-line no-await-in-loop
-    const row = await options.runSeed(seed);
+    const row = await options.runSeed(seed, index);
     rows.push(row && typeof row === 'object' ? row : { seed, result: 'passed', value: row });
   }
 

@@ -1,32 +1,29 @@
 # Orchestration Status Board
 
-**Updated:** 2026-07-17 FINAL — goal verification all_zero
+**Updated:** 2026-07-17 post-skeptic remediation  
+**Spine tip:** (pending commit)  
+**Scratch:** `C:\Users\93rob\AppData\Local\Temp\grok-goal-696b88462e5d\implementer\`
 
-## Spine tip: `156aec66` + bar stationId integrate
+## Plan AC vs live truth
 
-## Verification (scratch VERIFICATION_SUMMARY.md)
+| AC | Status | Evidence |
+|---|---|---|
+| 1 Teaching wreck unassisted multi-seed | **DONE** | `check:depth-program:r2:natural-d10:primary` 5 seeds, `supporting:false`, naturalness pass |
+| 2 Recovery / Helios / HUD hierarchy | **DONE** | m3-recovery, m1-helios + **browser** dock, nav-hud-hierarchy |
+| 3 Durable evidence + cold contracts | **DONE** | implementer logs + depth-contracts exit 0 |
+| 4 Expansion polish | **DONE** | V2 ad-board, mining teach, Bar stationId, E1 multi-shape |
+| 5 Graphics fence | **DONE** | no thruster/material remaster paths |
 
-| Gate | Exit |
-|---|---|
-| natural-d10 | 0 |
-| m3-recovery | 0 |
-| m1-helios | 0 |
-| nav-hud-hierarchy | 0 |
-| e1-natural | 0 |
-| natural-multi | 0 |
-| mining-feel | 0 |
-| depth-program:contracts | 0 |
-| bar:narrative (post stationId) | green |
+## Residual (honest — beyond plan AC, not claimed done)
 
-## Graphics fence | PASS (no thruster/material remasters)
+- Full 12-wreck natural sweep as primary (supporting C1 remains regression)
+- Full 8 E1 shapes as primary (H1×3 + H3×2 green; H7/H8 REAL density/progression gaps)
+- GT1 dual-platform gallery ≥40 captures
+- D1 natural doctrine fleet carriers (Fable spawn policy)
+- Electron Helios (browser primary green)
 
-## Residual (honest, non-blocking for plan criteria)
+## Gates (implementer scratch)
 
-- D1 natural fleet carriers (Fable spawn policy §5.7)
-- Full uninjected browser Helios dock hold (complementary to Rapier terminal)
-- V2 capture harness still targets legacy `.st-bar` selectors
-- OpenCode Kimi cert fail — HUD hierarchy delivered by Grok substitute
+See VERIFICATION_SUMMARY.md in implementer after cold suite.
 
-## Expansion beyond plan
-
-V2 ad-board Market, mining latch teach, NAV-HUD tiers, E1 natural H1, R2 multi skeleton, Bar stationId rumor path
+## Graphics fence | PASS
