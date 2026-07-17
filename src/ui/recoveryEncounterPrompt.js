@@ -30,7 +30,7 @@ function receiptDetail(receipt) {
 }
 
 export function createRecoveryEncounterPrompt(ctx) {
-  const { state, bus } = ctx;
+  const { state, bus, registry } = ctx;
   injectStyle();
   const root = document.createElement('aside');
   root.id = 'sf-recovery-encounter';
@@ -196,7 +196,13 @@ export function createRecoveryEncounterPrompt(ctx) {
     if (isUiInteractionFenced(state) || !active) return false;
     if (active.mode === 'unique-wreck') {
       if (!(active.choices || []).some((entry) => entry.id === choice)) return false;
-      bus.emit('uniqueWreck:choose', { wreckId: active.wreckId, choiceId: choice, source });
+      // Prefer public uniqueWrecks.resolvePlayerChoice (same body as the bus listener).
+      const uw = registry && typeof registry.get === 'function' ? registry.get('uniqueWrecks') : null;
+      if (uw && typeof uw.resolvePlayerChoice === 'function') {
+        uw.resolvePlayerChoice(active.wreckId, choice, source || 'click');
+      } else {
+        bus.emit('uniqueWreck:choose', { wreckId: active.wreckId, choiceId: choice, source });
+      }
       return true;
     }
     if (active.mode !== 'encounter') return false;

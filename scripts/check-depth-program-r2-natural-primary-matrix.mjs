@@ -665,7 +665,11 @@ const logLines = [
   '',
   `aggregate: ${OUT_AGG}`,
 ];
-writeFileSync(resolve(SCRATCH, 'wreck-routes.log'), `${logLines.join('\n')}\n`, 'utf8');
+try {
+  writeFileSync(resolve(SCRATCH, 'wreck-routes.log'), `${logLines.join('\n')}\n`, 'utf8');
+} catch {
+  writeFileSync(resolve(SCRATCH, `wreck-routes-${Date.now()}.log`), `${logLines.join('\n')}\n`, 'utf8');
+}
 
 console.log(`R2 natural PRIMARY matrix: ${wrecksFullyGreen}/12 wrecks fully green (${passedRuns}/${rows.length} runs)`);
 console.log(`Naturalness: pass=${naturalness.pass}`);

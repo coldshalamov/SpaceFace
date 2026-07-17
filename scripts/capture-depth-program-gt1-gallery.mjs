@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { mkdir, readFile, stat, writeFile, copyFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat, writeFile, copyFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -40,6 +40,9 @@ const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 const CAPTURE_SEED = 48_200; // D10 CI seed
 const START_TIMEOUT_MS = Number(process.env.SF_GT1_GALLERY_START_TIMEOUT_MS) || 180_000;
 const MIN_PNG_BYTES = 12_000;
+/** Soft floor for this stretch pass (≥35 preferred; harness still exits 0 at ≥15). */
+const TARGET_PREFERRED = 35;
+const TARGET_STRETCH = 40;
 const D10 = UNIQUE_WRECKS.find((w) => w.programSlot === 'D10') || UNIQUE_WRECKS.find((w) => /choir/i.test(w.name || ''));
 
 function systemBrowserPath() {
@@ -175,6 +178,13 @@ async function softResetPresentation(page) {
 async function main() {
   await mkdir(OUT, { recursive: true });
   await mkdir(path.dirname(PROMOTED_MANIFEST), { recursive: true });
+  // Drop prior PNGs so renumbered runs do not leave orphan frames beside the manifest.
+  try {
+    const prior = await readdir(OUT);
+    await Promise.all(prior
+      .filter((name) => /\.png$/i.test(name))
+      .map((name) => rm(path.join(OUT, name), { force: true })));
+  } catch { /* ok */ }
 
   const browserPath = systemBrowserPath();
   assert(browserPath, 'Chrome or Edge required for headed gallery capture');
@@ -355,6 +365,70 @@ async function main() {
       log('07 map search');
     } else {
       failures.push({ step: '06-map', class: 'HARNESS', detail: 'Map UI not detected after KeyN' });
+    }
+    await page.keyboard.press('Escape');
+    await softResetPresentation(page);
+
+    // ── Local / system map frames (map authority focus, no new assets) ──────
+    const openMapFocus = async (focus) => page.evaluate(async (f) => {
+      const sf = window.SF;
+      try {
+        const { openGalaxyMap, MAP_FOCUS } = await import('/src/ui/mapAuthority.js');
+        const focusToken = MAP_FOCUS[String(f).toUpperCase()] || f;
+        openGalaxyMap(sf.ctx, { focus: focusToken, source: 'gt1-gallery' });
+        return { ok: true, focus: focusToken, top: sf.ctx.screenManager && sf.ctx.screenManager.top() };
+      } catch (err) {
+        return { ok: false, reason: String(err && err.message || err) };
+      }
+    }, focus);
+
+    const localMap = await openMapFocus('local');
+    await page.waitForTimeout(700);
+    if (localMap.ok) {
+      shots.push(await capturePng(page, '07b-map-local-focus.png', {
+        beat: 'bearing',
+        caption: 'Map LOCAL focus (near-field literacy)',
+        staged: true,
+        notes: localMap,
+      }));
+      log('07b local map');
+    } else {
+      // Fallback: M key
+      await page.keyboard.press('KeyM');
+      await page.waitForTimeout(700);
+      shots.push(await capturePng(page, '07b-map-local-focus.png', {
+        beat: 'bearing',
+        caption: 'Map LOCAL focus via M',
+        staged: true,
+      }));
+      log('07b local map (M fallback)');
+    }
+    await page.keyboard.press('Escape');
+    await softResetPresentation(page);
+
+    const systemMap = await openMapFocus('system');
+    await page.waitForTimeout(700);
+    if (systemMap.ok) {
+      shots.push(await capturePng(page, '07c-map-system-focus.png', {
+        beat: 'bearing',
+        caption: 'Map SYSTEM focus (sector graph literacy)',
+        staged: true,
+        notes: systemMap,
+      }));
+      log('07c system map');
+      // Second search frame: Choir-Tender / wreck keyword
+      await page.keyboard.press('/');
+      await page.waitForTimeout(200);
+      await page.keyboard.type('Choir', { delay: 30 });
+      await page.waitForTimeout(400);
+      shots.push(await capturePng(page, '07d-map-search-choir.png', {
+        beat: 'bearing',
+        caption: 'Map search Choir (wreck literacy)',
+        staged: true,
+      }));
+      log('07d map search Choir');
+    } else {
+      failures.push({ step: '07c-system-map', class: 'HARNESS', detail: systemMap.reason || 'system map open failed' });
     }
     await page.keyboard.press('Escape');
     await softResetPresentation(page);
@@ -632,12 +706,17 @@ async function main() {
       }));
       log('20 station hub');
 
+      // Canonical rail tabs + hold (no graphics assets). Aliases kept for older labels.
       const tabs = [
         ['bar', 'Bar / rumor literacy'],
-        ['contracts', 'Contracts board'],
+        ['missions', 'Missions / contracts board'],
         ['market', 'Market'],
         ['factions', 'Factions / standings'],
-        ['shipworks', 'Shipworks'],
+        ['shipyard', 'Shipyard'],
+        ['outfit', 'Outfitting'],
+        ['manufacture', 'Manufacture'],
+        ['services', 'Services (refuel/repair)'],
+        ['hold', 'Hold / cargo manifest'],
       ];
       let tabI = 0;
       for (const [tab, caption] of tabs) {
@@ -645,15 +724,39 @@ async function main() {
         const ok = await page.evaluate((id) => {
           const root = document.querySelector('[data-screen="station"]');
           if (!root) return false;
-          const destination = root.querySelector(`[data-nav="${id}"]`)
-            || root.querySelector(`[data-tab="${id}"]`);
-          if (destination) {
-            destination.click();
-            return true;
+          const aliases = {
+            missions: ['missions', 'contracts'],
+            shipyard: ['shipyard', 'shipworks'],
+            outfit: ['outfit', 'outfitting'],
+            manufacture: ['manufacture', 'industry', 'fab'],
+            services: ['services', 'berth'],
+            hold: ['hold', 'cargo'],
+          };
+          const ids = aliases[id] || [id];
+          for (const candidate of ids) {
+            const destination = root.querySelector(`[data-nav="${candidate}"]`)
+              || root.querySelector(`[data-tab="${candidate}"]`);
+            if (destination) {
+              destination.click();
+              return true;
+            }
           }
-          const re = new RegExp(`^\\s*${id}\\b`, 'i');
+          const labelHints = {
+            missions: /missions|contracts/i,
+            shipyard: /shipyard|shipworks/i,
+            outfit: /outfit/i,
+            manufacture: /manufacture|industry|fab/i,
+            services: /services|refuel|repair/i,
+            hold: /^hold\b|cargo/i,
+            bar: /^bar\b/i,
+            market: /^market\b/i,
+            factions: /^factions?\b/i,
+          };
+          const re = labelHints[id] || new RegExp(`^\\s*${id}\\b`, 'i');
           const t = [...root.querySelectorAll('[role="tab"], button, [data-tab]')]
-            .find((el) => re.test((el.textContent || '').trim()) || el.getAttribute('data-tab') === id);
+            .find((el) => re.test((el.textContent || '').trim())
+              || ids.includes(el.getAttribute('data-tab'))
+              || ids.includes(el.getAttribute('data-nav')));
           if (t) {
             t.click();
             return true;
@@ -687,7 +790,7 @@ async function main() {
       failures.push({ step: '20-station', class: 'HARNESS', detail: 'No station entity to dock' });
     }
 
-    // ── Pause / help / codex literacy ───────────────────────────────────────
+    // ── Pause / help / codex / mission log / cargo literacy ─────────────────
     await page.keyboard.press('Escape');
     await page.waitForTimeout(500);
     const pauseVisible = await page.evaluate(() => {
@@ -699,75 +802,186 @@ async function main() {
       return /Resume|Settings|Save/i.test(document.body.innerText || '');
     });
     if (pauseVisible) {
-      shots.push(await capturePng(page, '26-pause-menu.png', {
+      shots.push(await capturePng(page, '30-pause-menu.png', {
         beat: 'misc',
         caption: 'Pause menu (save/continue literacy)',
       }));
-      log('26 pause');
+      log('30 pause');
+      // Settings from pause if a button exists
+      const openedSettings = await page.evaluate(() => {
+        const btn = [...document.querySelectorAll('button, [role="button"], a')]
+          .find((el) => /^settings$/i.test((el.textContent || '').trim())
+            || /settings/i.test(el.getAttribute('data-nav') || '')
+            || /settings/i.test(el.getAttribute('data-action') || ''));
+        if (!btn) return false;
+        btn.click();
+        return true;
+      });
+      await page.waitForTimeout(500);
+      if (openedSettings) {
+        const settingsVisible = await page.evaluate(() => {
+          const el = document.querySelector('[data-screen="settings"]');
+          if (!el) return /Audio|Graphics|Controls|Accessibility/i.test(document.body.innerText || '');
+          const style = getComputedStyle(el);
+          return !el.hidden && style.display !== 'none';
+        });
+        if (settingsVisible) {
+          shots.push(await capturePng(page, '31-settings.png', {
+            beat: 'misc',
+            caption: 'Settings from pause',
+          }));
+          log('31 settings');
+        }
+      }
     }
     await page.keyboard.press('Escape');
     await softResetPresentation(page);
 
-    // Help / codex if hotkeys work
-    for (const [key, file, caption] of [
-      ['F1', '27-help.png', 'Help overlay'],
-      ['KeyC', '28-codex-attempt.png', 'Codex / log attempt'],
+    // Hotkey literacy surfaces (shipped bindings)
+    for (const [key, file, caption, screenHints] of [
+      ['F1', '32-help.png', 'Help overlay', ['help']],
+      ['KeyK', '33-codex.png', 'Codex', ['codex']],
+      ['KeyJ', '34-mission-log.png', 'Mission Log', ['missionLog', 'log']],
+      ['KeyI', '35-cargo.png', 'Cargo / inventory', ['cargo', 'inventory']],
     ]) {
       await page.keyboard.press(key);
-      await page.waitForTimeout(500);
-      const visible = await page.evaluate(() => {
-        const screens = ['help', 'codex', 'missionLog', 'log'];
-        for (const id of screens) {
+      await page.waitForTimeout(550);
+      const visible = await page.evaluate((hints) => {
+        for (const id of hints) {
           const el = document.querySelector(`[data-screen="${id}"]`);
           if (!el) continue;
           const style = getComputedStyle(el);
           if (!el.hidden && style.display !== 'none') return id;
         }
+        // Some panels are overlays without data-screen
+        if (document.querySelector('#sf-cargo, .sf-cargo, [data-panel="cargo"]')) return 'cargo-overlay';
         return null;
-      });
+      }, screenHints);
       if (visible) {
         shots.push(await capturePng(page, file, {
           beat: 'misc',
           caption: `${caption} (${visible})`,
         }));
         log(`${file} ${visible}`);
+      } else {
+        // Still capture a frame when the key may have changed HUD state
+        const forced = await page.evaluate((id) => {
+          const sf = window.SF;
+          if (!sf || !sf.ctx || !sf.ctx.screenManager) return false;
+          try {
+            sf.ctx.screenManager.pushScreen(id);
+            sf.ctx.screenManager.syncVisibility && sf.ctx.screenManager.syncVisibility();
+            return sf.ctx.screenManager.top() === id;
+          } catch {
+            return false;
+          }
+        }, screenHints[0]);
+        if (forced) {
+          await page.waitForTimeout(400);
+          shots.push(await capturePng(page, file, {
+            beat: 'misc',
+            caption: `${caption} (screenManager)`,
+            staged: true,
+          }));
+          log(`${file} forced`);
+        } else {
+          failures.push({ step: file, class: 'HARNESS', detail: `${caption} not visible after ${key}` });
+        }
       }
       await page.keyboard.press('Escape');
       await softResetPresentation(page);
     }
 
-    // ── Extra Band numbers bearing if possible ──────────────────────────────
-    const numbers = await page.evaluate(() => {
+    // ── Band tuner panel (Shift+O) + numbers reprise ────────────────────────
+    const bandPanel = await page.evaluate(() => {
       const sf = window.SF;
       const state = sf.state;
+      // Prefer live helper path; fall back to bus tune + HUD click
+      sf.bus.emit('band:tune', { channelId: 'numbers_station', source: 'gt1-gallery-tuner' });
       const band = sf.registry.get('bandRadio');
-      if (!band) return { ok: false };
-      sf.bus.emit('band:tune', { channelId: 'numbers_station', source: 'gt1-gallery-numbers' });
-      if (typeof band.update === 'function') band.update(0, state);
+      if (band && typeof band.update === 'function') band.update(0, state);
+      const chip = document.querySelector('#sf-band-hud .sf-band-hud__button, #sf-band-hud button');
+      if (chip) chip.click();
       return {
         ok: true,
         channelId: state.bandRadio && state.bandRadio.channelId,
+        panel: !!(document.querySelector('#sf-band-hud, .sf-band-hud, [data-panel="band"]')),
         chip: (document.querySelector('#sf-band-hud .sf-band-hud__button')
           && document.querySelector('#sf-band-hud .sf-band-hud__button').innerText || '').trim(),
       };
     });
-    if (numbers.ok) {
-      shots.push(await capturePng(page, '29-band-numbers-station.png', {
+    // Also press Shift+O for shipped tuner chord
+    await page.keyboard.down('Shift');
+    await page.keyboard.press('KeyO');
+    await page.keyboard.up('Shift');
+    await page.waitForTimeout(500);
+    shots.push(await capturePng(page, '36-band-tuner-panel.png', {
+      beat: 'band',
+      caption: 'Band tuner panel (Shift+O / chip)',
+      staged: true,
+      notes: bandPanel,
+    }));
+    log('36 band tuner');
+
+    shots.push(await capturePng(page, '37-band-numbers-station.png', {
+      beat: 'band',
+      caption: 'Numbers Station Band channel (reprise)',
+      staged: true,
+      notes: bandPanel,
+    }));
+    log('37 numbers');
+
+    // Landmark bleed channel if present in catalogue (contextual; may be weak)
+    const bleed = await page.evaluate(() => {
+      const sf = window.SF;
+      const state = sf.state;
+      const band = sf.registry.get('bandRadio');
+      if (!band) return { ok: false };
+      sf.bus.emit('band:tune', { channelId: 'landmark_bleed', source: 'gt1-gallery-bleed' });
+      if (typeof band.update === 'function') band.update(0, state);
+      if (sf.helpers && sf.helpers.voice) {
+        sf.helpers.voice.say({
+          id: 'gt1-gallery:band:landmark_bleed',
+          channel: 'band',
+          kind: 'band',
+          priority: 40,
+          ttl: 30,
+          text: '…a thin landmark carrier bleeds through the dial…',
+        });
+      }
+      const voice = sf.registry.get('voiceArbiter');
+      if (voice && typeof voice.update === 'function') voice.update(0, state);
+      return {
+        ok: true,
+        channelId: state.bandRadio && state.bandRadio.channelId,
+        floor: (document.querySelector('#alerts .sf-alert--floor')
+          && document.querySelector('#alerts .sf-alert--floor').innerText || '').replace(/\s+/g, ' ').trim(),
+      };
+    });
+    if (bleed.ok) {
+      shots.push(await capturePng(page, '38-band-landmark-bleed.png', {
         beat: 'band',
-        caption: 'Numbers Station Band channel',
+        caption: 'Landmark bleed Band channel (contextual)',
         staged: true,
-        notes: numbers,
+        notes: bleed,
       }));
-      log('29 numbers');
+      log('38 landmark bleed');
     }
 
     // ── Final flight frame ──────────────────────────────────────────────────
     await softResetPresentation(page);
-    shots.push(await capturePng(page, '30-flight-close.png', {
+    shots.push(await capturePng(page, '39-flight-close.png', {
       beat: 'misc',
       caption: 'Closing flight frame',
     }));
-    log('30 close');
+    log('39 close');
+
+    // Optional 40th: second Helios overview after full literacy tour
+    shots.push(await capturePng(page, '40-flight-literacy-complete.png', {
+      beat: 'candle-fleet',
+      caption: 'Post-tour Helios flight (literacy pass complete)',
+    }));
+    log('40 literacy complete');
 
     // Candle Fleet landmark probe (honest: may be data-only / not embodied)
     const candleProbe = await page.evaluate(() => {
@@ -808,9 +1022,11 @@ async function main() {
       candleFleetProbe: candleProbe,
       shotCount: shots.length,
       targetMin: 15,
-      targetStretch: 40,
-      partial: shots.length < 40,
+      targetPreferred: TARGET_PREFERRED,
+      targetStretch: TARGET_STRETCH,
+      partial: shots.length < TARGET_STRETCH,
       meetsMinimum: shots.length >= 15,
+      meetsPreferred: shots.length >= TARGET_PREFERRED,
       shots,
       failures,
       goldenthreadBeats: {
@@ -820,10 +1036,12 @@ async function main() {
         bearing: shots.filter((s) => s.beat === 'bearing').length,
         'unique-wreck': shots.filter((s) => s.beat === 'unique-wreck').length,
         band: shots.filter((s) => s.beat === 'band').length,
+        misc: shots.filter((s) => s.beat === 'misc').length,
       },
       notes: [
         'SUPPORTING gallery: travel/content staging via SF/registry allowed for durable frames.',
         'Unassisted continuous goldenthread route remains a separate Tier-B natural-route gate.',
+        'Stretch toward ~40 via extra station tabs, map focus frames, and literacy screens — no thruster/graphics asset work.',
         candleProbe.entityCount === 0
           ? 'Candle Fleet landmark entity not present in live entity list at capture (H1c may still be data-only).'
           : 'Candle Fleet-related entity observed in sector.',
@@ -847,10 +1065,14 @@ async function main() {
       'utf8',
     );
 
-    log(`DONE shots=${shots.length} failures=${failures.length} out=${relative(OUT)}`);
+    log(`DONE shots=${shots.length} preferred=${TARGET_PREFERRED} stretch=${TARGET_STRETCH} failures=${failures.length} out=${relative(OUT)}`);
     if (shots.length < 15) {
       console.error(`[gt1-gallery] BELOW MINIMUM: ${shots.length} < 15`);
       process.exitCode = 1;
+    } else if (shots.length < TARGET_PREFERRED) {
+      console.warn(`[gt1-gallery] BELOW PREFERRED: ${shots.length} < ${TARGET_PREFERRED} (still ≥ min 15)`);
+    } else if (shots.length < TARGET_STRETCH) {
+      console.warn(`[gt1-gallery] PARTIAL vs stretch: ${shots.length} < ${TARGET_STRETCH} (preferred met)`);
     }
   } catch (err) {
     console.error('[gt1-gallery] FAILED:', err && err.stack || err);

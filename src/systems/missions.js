@@ -1959,12 +1959,24 @@ export const missions = {
           reconciled: true,
         });
       }
-      this.bus.emit('uniqueWreck:choose', {
-        wreckId,
-        choiceId: params.wreckChoiceId,
-        missionId: mission.id,
-        chainId: mission.cause && mission.cause.chainId || null,
-      });
+      // Prefer public uniqueWrecks.resolvePlayerChoice (same body as uniqueWreck:choose).
+      // Fall back to bus emit only when the system is missing (tests/partial boots).
+      const uw = this.registry && typeof this.registry.get === 'function'
+        ? this.registry.get('uniqueWrecks') : null;
+      if (uw && typeof uw.resolvePlayerChoice === 'function') {
+        uw.resolvePlayerChoice(
+          wreckId,
+          params.wreckChoiceId,
+          mission.id ? `mission:${mission.id}` : 'mission-long-read-fence',
+        );
+      } else {
+        this.bus.emit('uniqueWreck:choose', {
+          wreckId,
+          choiceId: params.wreckChoiceId,
+          missionId: mission.id,
+          chainId: mission.cause && mission.cause.chainId || null,
+        });
+      }
       return true;
     }
     return false;

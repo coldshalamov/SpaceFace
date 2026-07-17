@@ -6,17 +6,17 @@
   "platform": "browser",
   "seed": 48200,
   "rev": {
-    "commit": "108f139dc70a3f80568fa36397f9ade9fa5ae147",
+    "commit": "55c0416372c30bac4177f38f592eac332f7343a1",
     "dirty": null
   },
-  "capturedAt": "2026-07-17T20:40:09.746Z",
+  "capturedAt": "2026-07-17T20:54:52.420Z",
   "viewport": {
     "width": 1440,
     "height": 900
   },
   "browserPath": "C:/Program Files/Google/Chrome/Application/chrome.exe",
   "headless": false,
-  "baseUrl": "http://127.0.0.1:62800/",
+  "baseUrl": "http://127.0.0.1:58883/",
   "boot": {
     "seed": 48200,
     "expectedSeed": 48200,
@@ -42,11 +42,13 @@
     "entities": [],
     "sectorId": "sector_helios_prime"
   },
-  "shotCount": 29,
+  "shotCount": 42,
   "targetMin": 15,
+  "targetPreferred": 35,
   "targetStretch": 40,
-  "partial": true,
+  "partial": false,
   "meetsMinimum": true,
+  "meetsPreferred": true,
   "shots": [
     {
       "id": "01-main-menu",
@@ -55,8 +57,8 @@
       "file": ".devshots/depth-program/gt1-gallery/01-main-menu.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1060974,
-      "sha256": "289593a7c8a91adfb986a057340bc3564bb3684e4d470689d524af343cf02ca2",
+      "bytes": 1059361,
+      "sha256": "e90fd50e0a6dc0ce3f418a9a4c8b3c7974c15150a2cb6b91ac64a1a73852275f",
       "staged": false,
       "notes": null
     },
@@ -67,8 +69,8 @@
       "file": ".devshots/depth-program/gt1-gallery/02-new-game.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1004720,
-      "sha256": "e7ad3beb4969052cc9cdf880443dd9dcee36d518e1c0caa242f32e7a5d07b95c",
+      "bytes": 1004641,
+      "sha256": "3bc4c7ac5158b333bce908afe6591ee2d364078c068c5ebf838253da4fc04e54",
       "staged": false,
       "notes": null
     },
@@ -79,8 +81,8 @@
       "file": ".devshots/depth-program/gt1-gallery/03-flight-helios-boot.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1092871,
-      "sha256": "e69928b974bdce49283ad772f6a7afafe2a30d174c7d0a28c11bb8bea1aa0d15",
+      "bytes": 1120358,
+      "sha256": "944362789b9eb38dceb61021b75218e241bb240e9eb94eb3e5165a43039cc4d7",
       "staged": true,
       "notes": "onboarding suppressed; time frozen for stable frames"
     },
@@ -91,8 +93,8 @@
       "file": ".devshots/depth-program/gt1-gallery/04-flight-hud-band-chip.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1093432,
-      "sha256": "934ffa7062c0fb721161f857cee0ef11e3af2a3bbd7ce088ef860470a100fb5d",
+      "bytes": 1114237,
+      "sha256": "d0e92e0930bf6bad7b1ad81fef80b47187b5f812273c3366b40329443eafaf44",
       "staged": false,
       "notes": null
     },
@@ -103,8 +105,8 @@
       "file": ".devshots/depth-program/gt1-gallery/05-flight-overview.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1094395,
-      "sha256": "59b7bec5f8e2cd4e19f1c7b8ffb2d22e2b544093ddc48cfb783c1c606873cf5d",
+      "bytes": 1111764,
+      "sha256": "41f6d501a604988c0b5ecee80070d9eb3a7188d4510db83f2e8fed799a5261d3",
       "staged": false,
       "notes": null
     },
@@ -115,8 +117,8 @@
       "file": ".devshots/depth-program/gt1-gallery/06-galaxy-map.png",
       "width": 1440,
       "height": 900,
-      "bytes": 165378,
-      "sha256": "dd804a1c67d1e39891e6b2b94408543c5a4bef0b28b527a9e9ae63692397a541",
+      "bytes": 165331,
+      "sha256": "8cc02bc2191fc289f69a9dc4951f93d7b6ac7d7c06fe3723c2a808df58310e8d",
       "staged": false,
       "notes": null
     },
@@ -127,8 +129,52 @@
       "file": ".devshots/depth-program/gt1-gallery/07-map-search-helios.png",
       "width": 1440,
       "height": 900,
-      "bytes": 175593,
-      "sha256": "637feae411929d118196c67f1fd2a9d29ebbe6e355ed5b794c14b2c05971e99f",
+      "bytes": 175526,
+      "sha256": "26238f45983cbe2b633a47b64b02071948226190ce4c313be228e16ceeff099b",
+      "staged": true,
+      "notes": null
+    },
+    {
+      "id": "07b-map-local-focus",
+      "beat": "bearing",
+      "caption": "Map LOCAL focus (near-field literacy)",
+      "file": ".devshots/depth-program/gt1-gallery/07b-map-local-focus.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 184093,
+      "sha256": "370951938f0572b2508adc31165f6a8f1aa9081bedb68f0b50549f62080f4ec6",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "focus": "local",
+        "top": "galaxyMap"
+      }
+    },
+    {
+      "id": "07c-map-system-focus",
+      "beat": "bearing",
+      "caption": "Map SYSTEM focus (sector graph literacy)",
+      "file": ".devshots/depth-program/gt1-gallery/07c-map-system-focus.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 166388,
+      "sha256": "589499d9baf446c0878d9baeb4ba30cc100c9b16fc1e08f5d9804fb688bbc870",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "focus": "system",
+        "top": "galaxyMap"
+      }
+    },
+    {
+      "id": "07d-map-search-choir",
+      "beat": "bearing",
+      "caption": "Map search Choir (wreck literacy)",
+      "file": ".devshots/depth-program/gt1-gallery/07d-map-search-choir.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 159433,
+      "sha256": "b4525cc8c16e309b5f7f0cdcff7c6abb3fcb215565b88b589afae0235817af31",
       "staged": true,
       "notes": null
     },
@@ -139,8 +185,8 @@
       "file": ".devshots/depth-program/gt1-gallery/08-d10-ticker-rumor.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1094092,
-      "sha256": "8e6be7dcda744f25be70d2096c8b9a8d6855f26c9dffc8d150b33196d0d52f67",
+      "bytes": 1115116,
+      "sha256": "8028a0aea068d2baca7eeaccaa6b595f40e0ba2c442da7ef5e9f2956bb8b98aa",
       "staged": true,
       "notes": {
         "phase": "rumored",
@@ -158,8 +204,8 @@
       "file": ".devshots/depth-program/gt1-gallery/09-map-bearing-search-area.png",
       "width": 1440,
       "height": 900,
-      "bytes": 175709,
-      "sha256": "ba89ad86f0007f5191fe7ca852d3a48e5a043abc1fd34fdc727619d5731353bb",
+      "bytes": 168162,
+      "sha256": "ccba7e6fc1992b51140c688ba167476be1f6595cbe4e846b1ab2bc7659700dc0",
       "staged": true,
       "notes": null
     },
@@ -170,8 +216,8 @@
       "file": ".devshots/depth-program/gt1-gallery/10-wreck-region-approach.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1107252,
-      "sha256": "bfe8c07fbd9c728539773f9e308d1568912d1280fb2519a8c56e483314a5035a",
+      "bytes": 1122374,
+      "sha256": "b9731a24a2d6865d10f2758e21ff2520746aec50cb8dd7855dce3338ba218ec0",
       "staged": true,
       "notes": {
         "ok": true,
@@ -187,8 +233,8 @@
       "file": ".devshots/depth-program/gt1-gallery/11-wreck-scan-or-materialized.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1104500,
-      "sha256": "c7dce2a477151de1b285ba89c852a70735d7a1e6c66ecb493b2e52c01ce7d04f",
+      "bytes": 1121606,
+      "sha256": "04713fbde48b160b4a99a3cf7279a51b2b56c1666a3b8976c025f242cfd5c941",
       "staged": true,
       "notes": {
         "ok": true,
@@ -204,8 +250,8 @@
       "file": ".devshots/depth-program/gt1-gallery/12-unique-claim-or-receipt.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1104980,
-      "sha256": "67748df74e00ef8fb64c4ba701a50a4fbf0f9f7d0e645815ee3b21ef4ab1d2ea",
+      "bytes": 1122562,
+      "sha256": "a88670620c7d3275b69924d55467daf5493827c8bac75809fafac4cb41651471",
       "staged": true,
       "notes": {
         "ok": true,
@@ -221,8 +267,8 @@
       "file": ".devshots/depth-program/gt1-gallery/13-band-concord-bulletin.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1106245,
-      "sha256": "01729ce9fd2773f666a6d4b38b4e3085c1f59bcc0eb1b5757e90d94efa67a69e",
+      "bytes": 1121765,
+      "sha256": "50de768241ecebbe709a66f6ef19cc1febf961c3c03e7d15ef23456ba8dec36b",
       "staged": true,
       "notes": {
         "ok": true,
@@ -238,8 +284,8 @@
       "file": ".devshots/depth-program/gt1-gallery/14-band-the-margin.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1102174,
-      "sha256": "c92e87b40c7dd8463cee56c8ae391d501906fc0d92d5606a91c2a8312f9968bb",
+      "bytes": 1118912,
+      "sha256": "b519f63bd46a9d9faf71e121a703929cd6a6bfd28776d05c1f63ce4966e4aa5f",
       "staged": true,
       "notes": {
         "ok": true,
@@ -255,8 +301,8 @@
       "file": ".devshots/depth-program/gt1-gallery/15-band-the-static.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1101622,
-      "sha256": "f47ad940f61f5c7fb8aaab299e3aa6b8dd5438bb65228e665cfb564d43beeb79",
+      "bytes": 1120167,
+      "sha256": "e2d8695db65ad1609e96e958d3966dd5e552bfa4cc9a8789dcb80e56b9b6008b",
       "staged": true,
       "notes": {
         "ok": true,
@@ -272,8 +318,8 @@
       "file": ".devshots/depth-program/gt1-gallery/16-band-ballad-line.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1102023,
-      "sha256": "726428cdb95cdf568d6243bebf8cf30f697140ddb442bb633e249668b77bf50f",
+      "bytes": 1118282,
+      "sha256": "91a01430eac2690c9901a1dc700b9cbd11d0bed39a78a27f9c197b4d104d8a0d",
       "staged": true,
       "notes": {
         "ok": true,
@@ -289,8 +335,8 @@
       "file": ".devshots/depth-program/gt1-gallery/17-band-choir-vespers.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1103489,
-      "sha256": "46829449a95ce09e5cc557a08bd57fb5caa4e230bcf95cb44b4b2f48845bd1bc",
+      "bytes": 1119325,
+      "sha256": "37f21fa207d90a827bc4100c4b9aa288cfbca64aa0c945e551a45fd1190f7d06",
       "staged": true,
       "notes": {
         "ok": true,
@@ -306,8 +352,8 @@
       "file": ".devshots/depth-program/gt1-gallery/18-band-fulfillment-routing.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1102311,
-      "sha256": "5ca49e697d0a7b40f8dc1e13ff9b276b871e69487cd5eaa23c4d11fc4af8d8b4",
+      "bytes": 1120053,
+      "sha256": "34dc727afd279e3f4133120ab6b7805bb7406e9965d188d580b42bcd6650b910",
       "staged": true,
       "notes": {
         "ok": true,
@@ -323,8 +369,8 @@
       "file": ".devshots/depth-program/gt1-gallery/19-band-numbers-station.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1102969,
-      "sha256": "61e5279cef708079d0bcf179285a6f72000ebb74275b05a39dff402dd51dc819",
+      "bytes": 1119280,
+      "sha256": "bdbe7665968a750bf5b4d300d2d754a456501d8aa51185ad962d32d229104d8e",
       "staged": true,
       "notes": {
         "ok": true,
@@ -340,8 +386,8 @@
       "file": ".devshots/depth-program/gt1-gallery/20-station-hub.png",
       "width": 1440,
       "height": 900,
-      "bytes": 515997,
-      "sha256": "6388e345676eeb8f9be025ed07f1902c074ec9f3fb01efcbad80143992881fff",
+      "bytes": 514125,
+      "sha256": "d166f41c74eb0a7910a4c3f1489abcc021781dfdd06c3525ec209c61a1b8e867",
       "staged": true,
       "notes": null
     },
@@ -352,8 +398,8 @@
       "file": ".devshots/depth-program/gt1-gallery/21-station-bar.png",
       "width": 1440,
       "height": 900,
-      "bytes": 579747,
-      "sha256": "f02c27a542df8d66842e9cf91f00dfaf2532d3fe00645e9e82993d7df4b71f14",
+      "bytes": 578730,
+      "sha256": "47a76e35c82d7429170ef500b2c05ffa00fbf32d15c6d7ba46bfa02971c8cc17",
       "staged": true,
       "notes": {
         "tab": "bar",
@@ -361,17 +407,17 @@
       }
     },
     {
-      "id": "22-station-contracts",
+      "id": "22-station-missions",
       "beat": "misc",
-      "caption": "Contracts board",
-      "file": ".devshots/depth-program/gt1-gallery/22-station-contracts.png",
+      "caption": "Missions / contracts board",
+      "file": ".devshots/depth-program/gt1-gallery/22-station-missions.png",
       "width": 1440,
       "height": 900,
-      "bytes": 511981,
-      "sha256": "721e54a134995bd72c5df486e354750e62a33bb5bd331febeefa656b6c5d04d8",
+      "bytes": 511596,
+      "sha256": "f6ca080863f7b57dd090e92d3d50e6129d4900d053577c1dff443194dfb601e7",
       "staged": true,
       "notes": {
-        "tab": "contracts",
+        "tab": "missions",
         "ok": true
       }
     },
@@ -382,8 +428,8 @@
       "file": ".devshots/depth-program/gt1-gallery/23-station-market.png",
       "width": 1440,
       "height": 900,
-      "bytes": 718746,
-      "sha256": "54cb82312cf5612c46cdb0ab0ae699579eab6650e2bbd4a6838f4d7a86d91fc9",
+      "bytes": 715844,
+      "sha256": "f77b4f351ba3e80f72470362c1d2b8f842aeedc9ce04ebeb80829224a467f944",
       "staged": true,
       "notes": {
         "tab": "market",
@@ -397,8 +443,8 @@
       "file": ".devshots/depth-program/gt1-gallery/24-station-factions.png",
       "width": 1440,
       "height": 900,
-      "bytes": 709059,
-      "sha256": "cda9f1b768cea4ab6288707b0b8354cfe29979b0b0cb11e5911d49855f8af2d3",
+      "bytes": 705707,
+      "sha256": "1f04e7b2fa8d45337b330f6dd89037d5fd64a7a9e3875c4ff4d31a1ca0fe2dd1",
       "staged": true,
       "notes": {
         "tab": "factions",
@@ -406,85 +452,235 @@
       }
     },
     {
-      "id": "25-station-shipworks",
+      "id": "25-station-shipyard",
       "beat": "misc",
-      "caption": "Shipworks",
-      "file": ".devshots/depth-program/gt1-gallery/25-station-shipworks.png",
+      "caption": "Shipyard",
+      "file": ".devshots/depth-program/gt1-gallery/25-station-shipyard.png",
       "width": 1440,
       "height": 900,
-      "bytes": 467275,
-      "sha256": "35c16f1d820c605c6af41290f9bfcdc627dd0fe5091a27017a1628c7b59d5cdd",
+      "bytes": 508984,
+      "sha256": "9897fc70a82c87acfe760e9903eee243d1cea2b491a7d0038789a4789d841492",
       "staged": true,
       "notes": {
-        "tab": "shipworks",
+        "tab": "shipyard",
         "ok": true
       }
     },
     {
-      "id": "26-pause-menu",
+      "id": "26-station-outfit-miss",
       "beat": "misc",
-      "caption": "Pause menu (save/continue literacy)",
-      "file": ".devshots/depth-program/gt1-gallery/26-pause-menu.png",
+      "caption": "Outfitting",
+      "file": ".devshots/depth-program/gt1-gallery/26-station-outfit-miss.png",
       "width": 1440,
       "height": 900,
-      "bytes": 806234,
-      "sha256": "7992c576e33d5857d71681d0bb8b87da09b8fc56d0a0b48da083f5cfb8030181",
-      "staged": false,
-      "notes": null
-    },
-    {
-      "id": "27-help",
-      "beat": "misc",
-      "caption": "Help overlay (help)",
-      "file": ".devshots/depth-program/gt1-gallery/27-help.png",
-      "width": 1440,
-      "height": 900,
-      "bytes": 783169,
-      "sha256": "88b2e02713e1bd88079e8ba518ef006e6fb5807ca19ef3f8c9222eced5d3a1f5",
-      "staged": false,
-      "notes": null
-    },
-    {
-      "id": "29-band-numbers-station",
-      "beat": "band",
-      "caption": "Numbers Station Band channel",
-      "file": ".devshots/depth-program/gt1-gallery/29-band-numbers-station.png",
-      "width": 1440,
-      "height": 900,
-      "bytes": 1105006,
-      "sha256": "c3afd990ec94cbe4e0b0329126f398b813daf616bf39f3154dcffdcc416385bd",
+      "bytes": 508984,
+      "sha256": "9897fc70a82c87acfe760e9903eee243d1cea2b491a7d0038789a4789d841492",
       "staged": true,
       "notes": {
-        "ok": true,
-        "channelId": "numbers_station",
-        "chip": "BAND QUIET NUMBERS |.."
+        "tab": "outfit",
+        "ok": false
       }
     },
     {
-      "id": "30-flight-close",
+      "id": "27-station-manufacture",
       "beat": "misc",
-      "caption": "Closing flight frame",
-      "file": ".devshots/depth-program/gt1-gallery/30-flight-close.png",
+      "caption": "Manufacture",
+      "file": ".devshots/depth-program/gt1-gallery/27-station-manufacture.png",
       "width": 1440,
       "height": 900,
-      "bytes": 1105429,
-      "sha256": "9787c881f19e6d2262b78e340a530e4dadb1b03a335f5545b0a123d58f3235e1",
+      "bytes": 669150,
+      "sha256": "b260730422640ebc72b46809b0158344827722e8e1731c9d607c30a274780eba",
+      "staged": true,
+      "notes": {
+        "tab": "manufacture",
+        "ok": true
+      }
+    },
+    {
+      "id": "28-station-services",
+      "beat": "misc",
+      "caption": "Services (refuel/repair)",
+      "file": ".devshots/depth-program/gt1-gallery/28-station-services.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 668754,
+      "sha256": "05f06fbe32f9fee6ac0952625350ac00733903e16d6ae380e2c5bbffeb1dc3f8",
+      "staged": true,
+      "notes": {
+        "tab": "services",
+        "ok": true
+      }
+    },
+    {
+      "id": "29-station-hold",
+      "beat": "misc",
+      "caption": "Hold / cargo manifest",
+      "file": ".devshots/depth-program/gt1-gallery/29-station-hold.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 667316,
+      "sha256": "4a29aea9e601f508c7b6da25f763f72851f21be23b4ba3ce346d0222243dfedf",
+      "staged": true,
+      "notes": {
+        "tab": "hold",
+        "ok": true
+      }
+    },
+    {
+      "id": "30-pause-menu",
+      "beat": "misc",
+      "caption": "Pause menu (save/continue literacy)",
+      "file": ".devshots/depth-program/gt1-gallery/30-pause-menu.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 809778,
+      "sha256": "f31f654f4c3b56bd2b8adbda5fa9fe19590be13321532d75f7ebd59a83d3d665",
+      "staged": false,
+      "notes": null
+    },
+    {
+      "id": "31-settings",
+      "beat": "misc",
+      "caption": "Settings from pause",
+      "file": ".devshots/depth-program/gt1-gallery/31-settings.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 860169,
+      "sha256": "35ced8257f0f80bd7a959562b4326f4378fc4977e90a7ac6a5a220adca2b0b12",
+      "staged": false,
+      "notes": null
+    },
+    {
+      "id": "32-help",
+      "beat": "misc",
+      "caption": "Help overlay (help)",
+      "file": ".devshots/depth-program/gt1-gallery/32-help.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 782099,
+      "sha256": "6a909c5493f623d822c8e9ac8820eae72f42855a192993f2d3dc4216919a5290",
+      "staged": false,
+      "notes": null
+    },
+    {
+      "id": "33-codex",
+      "beat": "misc",
+      "caption": "Codex (codex)",
+      "file": ".devshots/depth-program/gt1-gallery/33-codex.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 772582,
+      "sha256": "ad1340d864b40372c6150b34aaa9b81b67bfd32bdd52487b57c5c526357a28b3",
+      "staged": false,
+      "notes": null
+    },
+    {
+      "id": "34-mission-log",
+      "beat": "misc",
+      "caption": "Mission Log (missionLog)",
+      "file": ".devshots/depth-program/gt1-gallery/34-mission-log.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 852132,
+      "sha256": "6a95eea0104028713db09fe31fdb2dfac077efd1969069cf93faa621738b3c12",
+      "staged": false,
+      "notes": null
+    },
+    {
+      "id": "36-band-tuner-panel",
+      "beat": "band",
+      "caption": "Band tuner panel (Shift+O / chip)",
+      "file": ".devshots/depth-program/gt1-gallery/36-band-tuner-panel.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1121875,
+      "sha256": "a3f7a86b4a62bf83b723c5bf33a0744e453098bc368e85293889c68a37ce670b",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "channelId": null,
+        "panel": true,
+        "chip": "BAND OFF ---"
+      }
+    },
+    {
+      "id": "37-band-numbers-station",
+      "beat": "band",
+      "caption": "Numbers Station Band channel (reprise)",
+      "file": ".devshots/depth-program/gt1-gallery/37-band-numbers-station.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1122852,
+      "sha256": "b64e84a726daa5abcff62ed3b4aee195527cfc697c12db60a1bbf20110bda869",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "channelId": null,
+        "panel": true,
+        "chip": "BAND OFF ---"
+      }
+    },
+    {
+      "id": "38-band-landmark-bleed",
+      "beat": "band",
+      "caption": "Landmark bleed Band channel (contextual)",
+      "file": ".devshots/depth-program/gt1-gallery/38-band-landmark-bleed.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1123762,
+      "sha256": "4cd3d0e19b8fabf8a3113989cf3e9ef373195c05ba73220763d0ca7d57348977",
+      "staged": true,
+      "notes": {
+        "ok": true,
+        "channelId": null,
+        "floor": "…A THIN LANDMARK CARRIER BLEEDS THROUGH THE DIAL…"
+      }
+    },
+    {
+      "id": "39-flight-close",
+      "beat": "misc",
+      "caption": "Closing flight frame",
+      "file": ".devshots/depth-program/gt1-gallery/39-flight-close.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1117585,
+      "sha256": "00586a4b85843b7a0a4ea614f7fb81ed7a974083845cd97d6c04434a9220538a",
+      "staged": false,
+      "notes": null
+    },
+    {
+      "id": "40-flight-literacy-complete",
+      "beat": "candle-fleet",
+      "caption": "Post-tour Helios flight (literacy pass complete)",
+      "file": ".devshots/depth-program/gt1-gallery/40-flight-literacy-complete.png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 1116143,
+      "sha256": "de84565d81c72a6d41e19c831ac9d31cee980882cbf847f54cb0a8bb49c0b215",
       "staged": false,
       "notes": null
     }
   ],
-  "failures": [],
+  "failures": [
+    {
+      "step": "35-cargo.png",
+      "class": "HARNESS",
+      "detail": "Cargo / inventory not visible after KeyI"
+    }
+  ],
   "goldenthreadBeats": {
     "new-game": 2,
-    "candle-fleet": 2,
+    "candle-fleet": 3,
     "ticker": 3,
-    "bearing": 3,
+    "bearing": 6,
     "unique-wreck": 3,
-    "band": 9
+    "band": 11,
+    "misc": 14
   },
   "notes": [
     "SUPPORTING gallery: travel/content staging via SF/registry allowed for durable frames.",
     "Unassisted continuous goldenthread route remains a separate Tier-B natural-route gate.",
+    "Stretch toward ~40 via extra station tabs, map focus frames, and literacy screens — no thruster/graphics asset work.",
     "Candle Fleet landmark entity not present in live entity list at capture (H1c may still be data-only)."
   ]
 }
