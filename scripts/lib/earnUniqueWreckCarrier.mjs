@@ -99,13 +99,17 @@ export function earnPrimaryCarrier(system, def, ctx = {}) {
 
 /**
  * Public survey-suite equip for scan-gated wrecks (D1 Vigilant / D4 Pale-Coil).
- * Prefer uniqueWrecks.equipSurveySuiteIfNeeded (ships.grantModule / owned fittings).
+ * Accepts wreck def or module id string. Uses ships.grantModule / owned fittings.
  */
-export function equipSurveySuiteIfNeeded(system, defId = 'mod_survey_suite') {
+export function equipSurveySuiteIfNeeded(system, defOrModuleId = 'mod_survey_suite') {
   if (!system || typeof system.equipSurveySuiteIfNeeded !== 'function') {
     throw new Error('uniqueWrecks.equipSurveySuiteIfNeeded missing');
   }
-  return system.equipSurveySuiteIfNeeded(defId);
+  const moduleId = typeof defOrModuleId === 'string'
+    ? defOrModuleId
+    : (defOrModuleId && defOrModuleId.scanRequirement) || null;
+  if (!moduleId) return { equipped: false, method: null };
+  return system.equipSurveySuiteIfNeeded(moduleId);
 }
 
 export function earnMethodForWreck(wreckId) {

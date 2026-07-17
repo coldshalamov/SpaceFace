@@ -41,7 +41,11 @@ import {
   classifyPrimarySteps,
   contractMeta,
 } from './lib/primaryNaturalRouteContract.mjs';
-import { earnPrimaryCarrier, equipSurveyViaFittings } from './lib/earnUniqueWreckCarrier.mjs';
+import {
+  earnPrimaryCarrier,
+  equipSurveySuiteIfNeeded,
+  earnMethodForWreck,
+} from './lib/earnUniqueWreckCarrier.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const THIS = fileURLToPath(import.meta.url);
@@ -167,7 +171,10 @@ function runOne(def, seed) {
   const steps = [];
   try {
     bootFlightContext(session, def.sectorId);
-    equipSurveyViaFittings(session, def);
+    const system = session.sim.registry.get('uniqueWrecks');
+    assert.ok(system, 'uniqueWrecks registered');
+    // Survey suite equip lives in earn helper (public fittings path when needed).
+    equipSurveySuiteIfNeeded(system, def);
 
     const ship = session.sim.spawn({
       type: 'ship',
@@ -183,13 +190,13 @@ function runOne(def, seed) {
     });
     session.state.playerId = ship.id;
 
-    const earned = earnPrimaryCarrier(session, def);
-    const record = earned.record;
-    assert.ok(record, `${def.id}: earned carrier must record bearing via ${earned.method}`);
+    const carrierMethod = earnMethodForWreck(def.id);
+    const record = earnPrimaryCarrier(system, def, { bus: session.bus });
+    assert.ok(record, `${def.id}: earned carrier must record bearing via ${carrierMethod}`);
     assert.equal(record.phase, 'rumored');
     stamp(marks, steps, 'carrier-surfaced', session, {
-      method: earned.method,
-      channelId: earned.channelId,
+      method: carrierMethod,
+      channelId: record.channelId,
     });
     stamp(marks, steps, 'bearing-recorded', session, { radius: record.radius });
 
@@ -236,8 +243,7 @@ function runOne(def, seed) {
     assert.equal(close.ok, true, `${def.id} must reach live wreck`);
     let salv = salvageWithMiningBeam(session, record);
     if (!salv.ok && record.phase === 'fixed') {
-      const uw = session.sim.registry.get('uniqueWrecks');
-      uw.completePlayerSalvage(wreck.id);
+      system.completePlayerSalvage(wreck.id);
       salv = {
         ok: record.phase === 'decision' || record.phase === 'salvaged',
         ticks: salv.ticks,
@@ -253,7 +259,6 @@ function runOne(def, seed) {
     const claim = (def.decision?.choices || []).find((c) => c.uniqueDrop)
       || (def.decision?.choices || [])[0];
     assert.ok(claim, `${def.id} needs a decision choice`);
-    const system = session.sim.registry.get('uniqueWrecks');
     assert.ok(typeof system.resolvePlayerChoice === 'function');
     system.resolvePlayerChoice(def.id, claim.id, 'r2-primary-matrix');
     assert.equal(record.phase, 'salvaged', `${def.id} claim must salvage`);
@@ -278,8 +283,8 @@ function runOne(def, seed) {
       supporting: false,
       carrier: {
         wreckId: def.id,
-        method: earned.method,
-        channelId: earned.channelId,
+        method: carrierMethod,
+        channelId: record.channelId,
         sectorId: def.sectorId,
       },
     });
@@ -296,8 +301,8 @@ function runOne(def, seed) {
       result: 'passed',
       supporting: false,
       primary: true,
-      carrierMethod: earned.method,
-      channelId: earned.channelId,
+      carrierMethod,
+      channelId: record.channelId,
       marks: marks.map((m) => m.name),
       ticks: session.ticks,
     };
