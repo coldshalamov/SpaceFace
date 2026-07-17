@@ -1,0 +1,5 @@
+{
+  "schema": "spaceface.naturalRouteSeeds.v1",
+  "description": "Held-out acceptance seeds kept out of route configs so route logic cannot overfit. Required for first-time route acceptance, golden re-pins, and driver/config edits. CI pair seeds live on each route config (defineRoute.ciSeeds), not here.",
+  "heldOut": [91011, 91027, 91043, 91059, 91071]
+}

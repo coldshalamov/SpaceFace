@@ -548,6 +548,7 @@ test('after-action DOM locks focus, emits retry intent, and only closes on succe
   globalThis.document = document;
   try {
     const state = makeState();
+    state.ui = { screenStack: ['gameOver'] };
     state.combat = {
       lastPlayerDefeat: buildDefeatReceipt(state, state.entities.get(1), 9, {
         origin: { kind: 'weapon', id: 'wpn_autocannon_s' },
@@ -572,10 +573,11 @@ test('after-action DOM locks focus, emits retry intent, and only closes on succe
     };
     let popped = 0;
     const pushed = [];
+    const stack = state.ui.screenStack;
     const manager = {
-      top() { return 'gameOver'; },
-      popScreen() { popped++; },
-      pushScreen(id) { pushed.push(id); },
+      top() { return stack.length ? stack[stack.length - 1] : null; },
+      popScreen() { popped++; return stack.length ? stack.pop() : null; },
+      pushScreen(id) { pushed.push(id); stack.push(id); },
     };
     const root = document.createElement('div');
     const ctx = {
@@ -596,9 +598,62 @@ test('after-action DOM locks focus, emits retry intent, and only closes on succe
     bus.emit('player:respawn', { stationId: 'station_helios' });
     assert.equal(popped, 1);
     assert.equal(events.filter((entry) => entry.event === 'game:over:dismissed').length, 1);
+    assert.deepEqual(stack, []);
 
     gameOverScreen._loadButton.click();
     assert.deepEqual(pushed, ['saveLoad']);
+  } finally {
+    globalThis.document = previousDocument;
+  }
+});
+
+test('player:respawn dismisses Game Over even when it is not strictly top of stack', () => {
+  const previousDocument = globalThis.document;
+  const document = new FakeDocument();
+  globalThis.document = document;
+  try {
+    const state = makeState();
+    state.ui = { screenStack: ['gameOver', 'saveLoad'] };
+    state.combat = {
+      lastPlayerDefeat: buildDefeatReceipt(state, state.entities.get(1), 9, {
+        origin: { kind: 'weapon', id: 'wpn_autocannon_s' },
+        result: {
+          dominantLayer: 'hull',
+          after: { shield: 0, shieldMax: 55, armor: 0, armorMax: 30, hull: 0, hullMax: 140 },
+        },
+      }),
+    };
+    const events = [];
+    const listeners = new Map();
+    const bus = {
+      on(event, fn) {
+        if (!listeners.has(event)) listeners.set(event, []);
+        listeners.get(event).push(fn);
+        return () => {};
+      },
+      emit(event, payload) {
+        events.push({ event, payload });
+        for (const fn of listeners.get(event) || []) fn(payload);
+      },
+    };
+    const stack = state.ui.screenStack;
+    const manager = {
+      top() { return stack.length ? stack[stack.length - 1] : null; },
+      popScreen() { return stack.length ? stack.pop() : null; },
+      pushScreen(id) { stack.push(id); },
+    };
+    const root = document.createElement('div');
+    const ctx = {
+      state, bus, screenManager: manager,
+      telemetry: { getSessionStats() { return { deathLog: [] }; } },
+    };
+
+    gameOverScreen.mount(root, ctx);
+    assert.notEqual(manager.top(), 'gameOver', 'nested modal sits above Game Over');
+    bus.emit('player:respawn', { stationId: 'station_helios' });
+    assert.equal(events.filter((entry) => entry.event === 'game:over:dismissed').length, 1);
+    assert.ok(!stack.includes('gameOver'));
+    assert.deepEqual(stack, []);
   } finally {
     globalThis.document = previousDocument;
   }

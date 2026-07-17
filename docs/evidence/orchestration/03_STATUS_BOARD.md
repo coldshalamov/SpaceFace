@@ -1,44 +1,43 @@
 # Orchestration Status Board
 
-**Updated:** 2026-07-17 (live)
+**Updated:** 2026-07-17 (cycle: recovery green + driver skeleton)
 
-## Agents
+## Active lanes (≥5)
 
-| Agent | Model | Status |
+| # | Lane | Work |
 |---|---|---|
-| Grok | orchestrator | Active — spine commits, M4 fix, context, dispatch |
-| Claude Fable | fable / xhigh | F0 DONE; F1 harness spec in flight |
-| Codex | config default `gpt-5.3-codex-spark` (xhigh) | Recovery + natural D10 dispatched |
-| Kimi K3 | opencode-go/kimi-k3 | Queued for W3 after Fable HUD ruling + W1/W2 |
+| 1 | Codex recovery2 | orch-codex-recovery (partial; spine integrated) |
+| 2 | Codex Helios | orch-codex-helios dispatched |
+| 3 | OpenCode Kimi | NAV-HUD taste slot 1 |
+| 4 | Subagent Helios fix | spine autopilot diagnose/fix |
+| 5 | Subagent V2/D1 | residual depth producers |
+| 6 | Grok spine | integrate, gates, packets |
 
-## Spine commits (`grok/depth-player-route-actualization`)
+## Spine commits
 
 | SHA | Summary |
 |---|---|
-| `1735d640` | fix(depth): focused gates M2/content growth |
-| `52f464de` | feat(depth): Ledger, titles, physical Band landmarks |
-| `de5397bc` | docs(orch): charter + Fable F0 plan |
+| `38de4306` | natural D10 multi-seed + F1 architecture |
+| *(pending)* | recovery settle + naturalRoute skeleton |
 
-## Grok completed after F0
+## Done this cycle
 
-- M4 ecology **9/9** (STALE test contract removed; product order was already correct)
-- Natural wreck path research packed
-- Mining polish audit packed (feel slices only)
-- Codex worktrees: recovery + natural at spine tip
+- **W1 recovery REAL:** `popAncestorsUntilGameOverResolves` + `check:m3:recovery` GREEN
+- **W2 driver skeleton:** `scripts/lib/naturalRoute.mjs` + seeds; D10 still GREEN 5/5
+- D10 `check:depth-program:r2:natural-d10` exit 0
 
-## In flight
+## Residual vs Steam bar
 
-- Fable F1 natural-route harness architecture
-- Codex recovery berth settle
-- Codex D10 natural multi-seed harness
+| Item | Status |
+|---|---|
+| Recovery settle | DONE (headless production path) |
+| Helios dock hold | IN FLIGHT |
+| NAV-HUD hierarchy | Kimi dispatched |
+| R2/E1 natural multi-seed | residual after driver |
+| V2/D1 carriers | subagent |
+| Expansion ~30% | pending after W1 close |
+| Graphics fence | held (no thrusters/assets) |
 
-## Fable rankings (do next)
+## Non-goals
 
-W1: spine (done commits) → recovery → Helios dock  
-W2: shared natural driver → R2/E1 → V2 producers → D1 carriers  
-W3: Kimi NAV-HUD → Contracts/Bar → corpus  
-W4: M2 Electron → GT1 gallery → mining feel  
-
-## Non-goals (Fable)
-
-Graphics assets, menu/input, station shell, mining rewrite, B0–B7 full story, perf without profiles, art landmarks
+Graphics assets, menu/input thrash, station shell, mining rewrite, B0–B7 full story
