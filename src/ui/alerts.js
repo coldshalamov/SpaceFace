@@ -21,6 +21,51 @@ import { BINDINGS, promptLabel } from './bindings.js';
 
 const SEV_RANK = { danger: 3, dock: 2.5, warn: 2, info: 1 };
 
+/**
+ * Human place label for dock prompt identity (first-hour professionalism).
+ * Prefers live stationName, then entity name, then title-cased station id.
+ * @param {{ stationId?: string|null, stationName?: string|null, state?: any }} args
+ */
+export function resolveDockStationLabel({ stationId = null, stationName = null, state = null } = {}) {
+  if (stationName && String(stationName).trim()) return String(stationName).trim();
+  const id = stationId != null ? String(stationId) : '';
+  if (id && state) {
+    const list = state.entityList || (state.entities && typeof state.entities.values === 'function'
+      ? [...state.entities.values()]
+      : null);
+    if (Array.isArray(list)) {
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e) continue;
+        const sid = (e.data && e.data.stationId) || e.stationId || e.id;
+        if (String(sid) !== id) continue;
+        const n = e.name || (e.data && e.data.name) || null;
+        if (n && String(n).trim()) return String(n).trim();
+      }
+    }
+  }
+  if (!id) return 'STATION';
+  return id
+    .replace(/^station_/i, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Persistent dock-range prompt text. Named place beats generic "STATION".
+ * @param {{ bindingLabel?: string, stationId?: string|null, stationName?: string|null, state?: any }} args
+ */
+export function formatDockRangePromptText({
+  bindingLabel = null,
+  stationId = null,
+  stationName = null,
+  state = null,
+} = {}) {
+  const key = bindingLabel || promptLabel('dock');
+  const place = resolveDockStationLabel({ stationId, stationName, state });
+  return `${key} DOCK AT ${place}`;
+}
+
 // ── Mechanical one-voice ownership (ONEVOICE-ALERT-DEDUPE) ─────────────────────────────────────
 // Short status lines that THIS module always routes through the arbiter (announce → voice:say).
 // Parallel emitters (e.g. floatingText cargo:full toast, legacy alert→toast bridges) must not also
@@ -61,6 +106,7 @@ export function isVoiceOwnedAlertToast(text) {
 
 export function createAlerts(ctx) {
   const { bus } = ctx;
+  const state = ctx.state || null;
   const root = document.getElementById('alerts');
   const map = new Map(); // key -> { key, sev, text, ttl(ms)|Infinity, born, el }
   const expiredKeys = [];
@@ -260,9 +306,22 @@ export function createAlerts(ctx) {
 
   // dock prompt (persistent while in range) — large and unmissable, a status affordance not a voice.
   // The key label is sourced from the live binding registry (spec §15.4) so it can never drift.
-  bus.on('dock:range', ({ inRange }) => {
-    if (inRange) raise({ key: 'dock', sev: 'dock', text: `${promptLabel('dock')} DOCK AT STATION`, ttl: Infinity });
-    else clear('dock');
+  // Place identity: physics emits stationId; prompt names Helios (etc.) instead of generic STATION.
+  bus.on('dock:range', (payload = {}) => {
+    const { inRange, stationId = null, stationName = null } = payload;
+    if (inRange) {
+      raise({
+        key: 'dock',
+        sev: 'dock',
+        text: formatDockRangePromptText({
+          bindingLabel: promptLabel('dock'),
+          stationId,
+          stationName,
+          state,
+        }),
+        ttl: Infinity,
+      });
+    } else clear('dock');
   });
   bus.on('dock:docked', () => clear('dock'));
 
