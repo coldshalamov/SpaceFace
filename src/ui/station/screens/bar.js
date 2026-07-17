@@ -38,8 +38,12 @@ export function createBarScreen(ctx) {
 
   let selectedId = null;
   let saidText = null;   // what the selected contact just said
-
-  const sid = () => (ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId) || null;
+  // Prefer stationId from stationApp onShow/refresh (mirrors legacy createBarPanel).
+  // Fall back to dockedStationId so contacts / wreck rumors stay reachable if ambient state is set.
+  let currentStationId = null;
+  const sid = () => currentStationId
+    || (ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId)
+    || null;
   function contacts(state) {
     try { return generateContacts(sid(), state) || []; } catch (_) { return []; }
   }
@@ -202,8 +206,14 @@ export function createBarScreen(ctx) {
 
   return {
     el,
-    onShow(c) { renderAll((c || ctx).state || {}); },
-    refresh(c) { renderAll((c || ctx).state || {}); },
+    onShow(c) {
+      if (c && c.stationId) currentStationId = c.stationId;
+      renderAll((c || ctx).state || {});
+    },
+    refresh(c) {
+      if (c && c.stationId) currentStationId = c.stationId;
+      renderAll((c || ctx).state || {});
+    },
     dispose() {},
   };
 }

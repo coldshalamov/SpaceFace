@@ -1,43 +1,32 @@
 # Orchestration Status Board
 
-**Updated:** 2026-07-17 (W1–W4 gates green; cold contracts green)
+**Updated:** 2026-07-17 FINAL — goal verification all_zero
 
-## Active lanes
+## Spine tip: `156aec66` + bar stationId integrate
 
-| # | Lane | Status |
-|---|---|---|
-| 1 | Grok spine | Integrating + cold verify |
-| 2 | Subagent wave | HUD / mining / E1 / V2 landed |
-| 3 | OpenCode Kimi | Attempted (cert fail) — Grok HUD substitute green |
-| 4 | Codex recovery | Superseded by spine integrate |
-| 5 | Codex Helios | Worktree git untrusted; spine owns Helios gate |
+## Verification (scratch VERIFICATION_SUMMARY.md)
 
-## Spine commits
-
-| SHA | Summary |
+| Gate | Exit |
 |---|---|
-| `2a3b504d` | recovery settle + naturalRoute skeleton |
-| `0580a007` | Helios flyby + V2 ad-board + natural multi |
-| *(pending)* | NAV-HUD hierarchy + mining feel + E1 natural |
+| natural-d10 | 0 |
+| m3-recovery | 0 |
+| m1-helios | 0 |
+| nav-hud-hierarchy | 0 |
+| e1-natural | 0 |
+| natural-multi | 0 |
+| mining-feel | 0 |
+| depth-program:contracts | 0 |
+| bar:narrative (post stationId) | green |
 
-## Success bar snapshot
+## Graphics fence | PASS (no thruster/material remasters)
 
-| Criterion | Status |
-|---|---|
-| Fable wave tasks gated | **Mostly** — W1–W4 product gates green; D1 carriers residual (Fable spawn policy) |
-| Depth receipts unassisted | **D10 multi-seed + E1 natural H1** green; more routes residual |
-| First-hour professionalism | Recovery + Helios terminal + NAV-HUD hierarchy green |
-| Evidence durable | returns/ + checks; cold `check:depth-program:contracts` **exit 0** |
-| ~30% expansion polish | V2 ad-board, mining feel teach, HUD hierarchy, natural multi/E1 |
-| Graphics fence | held |
-| Cold contracts | **GREEN** (scratch verify/depth-contracts.log) |
+## Residual (honest, non-blocking for plan criteria)
 
-## Residual to Steam bar
+- D1 natural fleet carriers (Fable spawn policy §5.7)
+- Full uninjected browser Helios dock hold (complementary to Rapier terminal)
+- V2 capture harness still targets legacy `.st-bar` selectors
+- OpenCode Kimi cert fail — HUD hierarchy delivered by Grok substitute
 
-- Full uninjected browser Helios dock hold (complementary)
-- D1 natural fleet carriers (Fable §5.7)
-- Bar wreck-rumor stationId path
-- Kimi Contracts/Bar taste (slot 2) if still thin
-- Browser gallery/GT1 player-route captures
-- Promote natural routes off `supporting: true` where honest
+## Expansion beyond plan
 
+V2 ad-board Market, mining latch teach, NAV-HUD tiers, E1 natural H1, R2 multi skeleton, Bar stationId rumor path

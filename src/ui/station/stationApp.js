@@ -412,12 +412,18 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     return screen;
   }
 
+  /** Screen show/refresh payload. Always include docked stationId so Bar (and peers) can
+   *  resolve contacts / wreck rumors without relying solely on ambient state reads. */
+  function screenPayload(extra = {}) {
+    return { ...ctx, stationId: stationId(), ...extra };
+  }
+
   function navigate(id, options = {}) {
     const dest = DESTINATIONS.find((d) => d.id === id);
     if (!dest) return;
     if (id === activeId) {
       const active = screenCache.get(activeId);
-      if (active && typeof active.onShow === 'function') active.onShow({ ...ctx, ...options });
+      if (active && typeof active.onShow === 'function') active.onShow(screenPayload(options));
       return;
     }
     const prev = activeId && screenCache.get(activeId);
@@ -437,7 +443,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     screen.el.classList.remove('sx-enter');
     void screen.el.getBoundingClientRect();
     screen.el.classList.add('sx-enter');
-    if (typeof screen.onShow === 'function') screen.onShow({ ...ctx, ...options });
+    if (typeof screen.onShow === 'function') screen.onShow(screenPayload(options));
     if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
     closePop();
   }
@@ -677,12 +683,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (activeId === 'contracts' && attention) {
       const screen = screenCache.get('contracts');
       if (screen && typeof screen.onShow === 'function') {
-        screen.onShow({
-          ...ctx,
+        screen.onShow(screenPayload({
           missionId: attention.focusMissionId,
           attention,
           focusSurface: attention.surface,
-        });
+        }));
       }
     }
     return attention;
@@ -695,11 +700,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (dest) {
       const screen = screenCache.get(dest.id);
       if (screen && typeof screen.refresh === 'function') {
-        screen.refresh({
-          ...ctx,
+        screen.refresh(screenPayload({
           missionId: lastMissionAttention && lastMissionAttention.focusMissionId,
           attention: lastMissionAttention,
-        });
+        }));
       }
     }
   }
@@ -744,11 +748,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         const scr = activeScreen();
         if (scr && typeof scr.onShow === 'function') {
           try {
-            scr.onShow({
-              ...ctx,
+            scr.onShow(screenPayload({
               missionId: lastMissionAttention && lastMissionAttention.focusMissionId,
               attention: lastMissionAttention,
-            });
+            }));
           } catch (_) {}
         }
       }
