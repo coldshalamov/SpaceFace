@@ -236,6 +236,12 @@ function signalKindForEntity(entity) {
   const data = entity.data || {};
   const label = String(data.scanLabel || data.label || data.name || '').toLowerCase();
   if (isAnomalyLike(entity)) return 'anomaly';
+  // A1/V2 physical flavor carriers (Hush / Quiessence census hulls / stamped landmarks) are often
+  // lightweight fx markers. They must remain scanner-visible so v2FlavorRuntime can bind copy
+  // without a bus-injected signal row.
+  if (data.flavorSourceId || data.flavorTargetRef || data.quiessenceShipIndex != null) {
+    return 'anomaly';
+  }
   if (isWreckLike(entity)) {
     if (data.isCommunicator || data.parentType === 'communicator' || label.includes('distress')) return 'distress';
     return 'salvage';

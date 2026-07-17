@@ -6,6 +6,14 @@ import { createGameState } from '../src/core/gameState.js';
 import { createRegistry } from '../src/core/registry.js';
 import { FLAVOR_PACKS } from '../src/data/flavor/index.generated.js';
 import { save } from '../src/save/saveSystem.js';
+import {
+  AD_BOARD_PACK_ID,
+  adBoardDeckSize,
+  selectAdBoardNotice,
+} from '../src/systems/v2AdBoard.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 let runtimeModule = null;
 try {
@@ -306,4 +314,42 @@ test('canonical save capture includes the same V2 flavor semantic payload', () =
   });
   assert.deepEqual(saveRuntime.serializeData().v2Flavor, expected);
   assert.equal(saveRuntime._saveCapturePlan().some(([key]) => key === 'v2Flavor'), true);
+});
+
+test('ad-board producer selects authored deck rows deterministically for a berth', () => {
+  assert.equal(AD_BOARD_PACK_ID, 'ad_board');
+  assert.ok(adBoardDeckSize() >= 20, 'authored ad deck must remain at least 20 lines');
+  assert.equal(selectAdBoardNotice({ seed: 47, stationId: null }), null,
+    'no berth means no dockside notice');
+
+  const a = selectAdBoardNotice({ seed: 0x56324c49, stationId: 'station_helios', simTime: 12 });
+  const b = selectAdBoardNotice({ seed: 0x56324c49, stationId: 'station_helios', simTime: 12 });
+  assert.ok(a && a.text && a.sponsor);
+  assert.deepEqual(a, b, 'same seed/station/cycle must pick the identical notice');
+  assert.ok(FLAVOR_PACKS.ad_board.entries.some((entry) => entry.id === a.id && entry.text === a.text),
+    'producer must consume the generated ad_board corpus directly');
+
+  const otherStation = selectAdBoardNotice({ seed: 0x56324c49, stationId: 'station_pallas', simTime: 12 });
+  assert.ok(otherStation && otherStation.text, 'every docked berth must select a notice');
+
+  // Prove the 90s sim-clock cycle is an input (may or may not change the line on a given berth).
+  const laterCycle = selectAdBoardNotice({ seed: 0x56324c49, stationId: 'station_helios', simTime: 90 });
+  assert.ok(laterCycle && laterCycle.text);
+  const many = new Set();
+  for (let i = 0; i < 8; i += 1) {
+    const row = selectAdBoardNotice({ seed: 0x56324c49, stationId: `station_probe_${i}`, simTime: 0 });
+    if (row) many.add(row.id);
+  }
+  assert.ok(many.size >= 2, 'seeded station ids diversify the ad board across berths');
+});
+
+test('station Market instrument imports the live ad-board producer', () => {
+  const root = path.dirname(fileURLToPath(import.meta.url));
+  const marketSrc = readFileSync(path.join(root, '../src/ui/station/screens/market.js'), 'utf8');
+  assert.match(marketSrc, /selectAdBoardNotice/,
+    'Market must call the V2 ad-board producer (dockside commerce notice)');
+  assert.match(marketSrc, /data-ad-board/,
+    'Market must mount a dockside notice surface for the selected ad');
+  assert.match(marketSrc, /from ['"]\.\.\/\.\.\/\.\.\/systems\/v2AdBoard\.js['"]/,
+    'Market must import the production ad-board module');
 });

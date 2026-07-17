@@ -137,6 +137,7 @@
     "check:ai:intentionality": "node scripts/check-ai-intentionality.mjs",
     "check:ai:movement-doctrine": "node scripts/check-ai-movement-doctrine.mjs",
     "check:m1:combat-doctrines": "node scripts/check-m1-combat-doctrines.mjs",
+    "check:m1:helios-route": "node scripts/check-m1-helios-route.mjs",
     "check:ai:telegraphs:live": "node scripts/check-ai-telegraphs-live.mjs",
     "check:ai:telegraphs": "node scripts/check-ai-telegraphs.mjs && npm run check:ai:telegraphs:live",
     "check:ai": "npm run check:sg06:ai && npm run check:ai:intentionality && npm run check:ai:movement-doctrine && npm run check:m1:combat-doctrines && npm run check:ai:telegraphs:live",
@@ -394,7 +395,6 @@
     "check:m3:starter-builds": "node scripts/check-m3-starter-builds.mjs",
     "check:m3:engineering-preview": "node scripts/check-engineering-preview.mjs",
     "check:m3:player-facing-public-route": "node scripts/check-m3-player-facing-public-route.mjs",
-    "check:m3:recovery": "node scripts/check-m3-recovery.mjs",
     "check:m5:role-continuity": "node scripts/check-m5-role-continuity.mjs",
     "check:m5:starter-ownership-public-route": "node --test test/m5-role-public-route-honesty.test.mjs && node scripts/check-m5-starter-ownership-public-route.mjs",
     "check:m5:role-public-route:supporting": "node scripts/check-m5-role-public-route.mjs",
@@ -414,7 +414,8 @@
     "check:professional-travel:public-route:browser": "npm run check:professional-travel:public-route:contracts && node scripts/check-professional-travel-public-route-browser.mjs",
     "check:professional-travel:public-route:electron": "npm run check:professional-travel:public-route:contracts && node scripts/check-professional-travel-public-route-electron.mjs",
     "check:professional-travel:public-route": "npm run check:professional-travel:public-route:browser && npm run check:professional-travel:public-route:electron",
-    "check:depth-program:r2:natural-d10": "node scripts/check-depth-program-r2-natural-d10.mjs"
+    "check:depth-program:r2:natural-d10": "node scripts/check-depth-program-r2-natural-d10.mjs",
+    "check:depth-program:r2:natural-multi": "node scripts/check-depth-program-r2-natural-multi.mjs"
   },
   "private": true,
   "devDependencies": {

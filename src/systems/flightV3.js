@@ -601,10 +601,18 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   const desiredSpeed = Math.sqrt(Math.max(0, 2 * brakeAccel * Math.max(0, dist - arrivalRadius)));
   const stoppingDistance = closingSpeed > 0 ? (closingSpeed * closingSpeed) / (2 * brakeAccel) : 0;
   const halfway = Number.isFinite(autopilot.initialDistance) && dist <= autopilot.initialDistance * 0.52;
-  const terminalBrake = closingSpeed > 4 && (
+  // Radial closing alone misses flybys: near-zero closingSpeed with high lateral leaves a ~300 WU
+  // orbit outside dock. Also brake when lateral or away velocity dominates inside the approach band.
+  const approachBand = Math.max(arrivalRadius * 6, 420);
+  const flybyOrbit = dist <= approachBand && speed > 18 && (
+    closingSpeed < 6 ||
+    lateralSpeed > Math.max(22, Math.abs(closingSpeed) * 0.85) ||
+    closingSpeed < -4
+  );
+  const terminalBrake = (closingSpeed > 4 && (
     dist <= stoppingDistance + arrivalRadius + 45 + lateralSpeed * 1.4 ||
     (halfway && closingSpeed > desiredSpeed * 0.92)
-  );
+  )) || flybyOrbit;
   // Obstacle avoidance can ask a fast Newtonian hull to make a large heading change. Once the
   // craft has committed momentum across or away from the new guidance vector, adding forward
   // thrust produces a kilometer-wide orbit instead of capturing the course. Brake through the
@@ -615,7 +623,9 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   const guidanceClosingSpeed = finite(vel.x) * guidance.x + finite(vel.z) * guidance.z;
   const captureSpeed = Math.max(42, positive(profile.precisionSpeed, 72) * AUTOPILOT_CAPTURE_SPEED_FRACTION);
   const guidanceMisaligned = guidanceClosingSpeed < speed * AUTOPILOT_CAPTURE_ALIGNMENT;
-  const headingCapture = speed > captureSpeed && guidanceMisaligned;
+  // Dual threshold: full-speed misalign, plus moderate-speed orbits that never re-cross captureSpeed.
+  const headingCapture = (speed > captureSpeed && guidanceMisaligned) ||
+    (speed > 28 && dist <= approachBand && guidanceMisaligned && lateralSpeed > 16);
   const shouldBrake = terminalBrake || headingCapture;
 
   let throttle = 0;
@@ -634,9 +644,10 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     const facingDot = Math.cos(turnError);
     throttle = facingDot > -0.25 ? clamp(0.35 + facingDot * 0.78, -1, 1) : 0;
     strafe = clamp((guidance.x * rightX + guidance.z * rightZ) * 0.72, -1, 1);
-    const cruiseClear = !guidance.avoiding && Math.abs(turnError) < 0.34;
+    const cruiseClear = !guidance.avoiding && Math.abs(turnError) < 0.34 && !guidanceMisaligned;
+    // Never re-boost inside the approach band after avoidance — that restarts the Helios orbit.
     boost = cruiseClear &&
-      dist > Math.max(arrivalRadius * 5, stoppingDistance * 1.25 + 220) &&
+      dist > Math.max(arrivalRadius * 5, approachBand, stoppingDistance * 1.25 + 220) &&
       speed < positive(profile.maxSpeed, 120) * 1.85;
   }
 

@@ -48,10 +48,12 @@ const REACHABILITY = Object.freeze({
     missingSeam: 'The live headline carrier surfaces authored wreck copy, but stationApp forwards no stationId to createBarPanel.onShow, so the Bar renders zero contacts and its deliberate rumor/bearing path cannot be reached.',
   }),
   ad_board: Object.freeze({
-    status: 'unreachable',
-    carrier: 'intended dockside commerce notice/ad board',
-    consumers: Object.freeze([]),
-    missingSeam: 'No production module imports FLAVOR_PACKS.ad_board or selects its rows; stationHub has no ad-board presenter.',
+    status: 'reachable',
+    carrier: 'station Market dockside notice strip selects FLAVOR_PACKS.ad_board via v2AdBoard',
+    consumers: Object.freeze([
+      'src/systems/v2AdBoard.js',
+      'src/ui/station/screens/market.js',
+    ]),
   }),
   graffiti: Object.freeze({
     status: 'reachable',
@@ -71,16 +73,24 @@ const REACHABILITY = Object.freeze({
     ]),
   }),
   quiessence: Object.freeze({
-    status: 'unreachable',
-    carrier: 'intended landmark black-box census/scan surface',
-    consumers: Object.freeze([]),
-    missingSeam: 'v2FlavorRuntime can bind an explicitly identified Quiessence actor, but Pallas Drift spawns no physical entity stamped flavorTargetRef=landmark_c14_quiessence or quiessenceShipIndex, and no Band proximity producer exists.',
+    status: 'partial-reachable',
+    carrier: 'A1 physical Pallas Drift memorial + 17 census hulls; v2FlavorRuntime presents on physical scan',
+    consumers: Object.freeze([
+      'src/systems/world.js',
+      'src/systems/v2FlavorRuntime.js',
+      'src/systems/bandRadio.js',
+    ]),
+    missingSeam: 'Physical actors and Band proximity are live; authored census lines still require a real scanner hit on a stamped hull — not auto-shown on map open.',
   }),
   hush: Object.freeze({
-    status: 'unreachable',
-    carrier: 'intended phased scanner-absence surface',
-    consumers: Object.freeze([]),
-    missingSeam: 'v2FlavorRuntime can bind an explicit Hush actor, but Eunomia Gulf spawns no physical entity stamped flavorSourceId=planet_hush, and no Band proximity producer exists.',
+    status: 'partial-reachable',
+    carrier: 'A1 physical Eunomia Gulf Hush world; v2FlavorRuntime presents phased absence on physical scan',
+    consumers: Object.freeze([
+      'src/systems/world.js',
+      'src/systems/v2FlavorRuntime.js',
+      'src/systems/bandRadio.js',
+    ]),
+    missingSeam: 'Physical actor and Band RF-void proximity are live; authored Hush scan copy still requires signal:scanResults on the stamped entity.',
   }),
   landmark_lore: Object.freeze({
     status: 'partial-reachable',
@@ -634,6 +644,69 @@ async function identifyPhysicalLandmark(page, { sectorId, poiId, targetRef }) {
   }, { sectorId, poiId, targetRef });
 }
 
+/**
+ * Place the player on a physical A1/V2 flavor carrier and fire the production scanner pulse.
+ * Does not bus-inject signal:scanResults; uses state.input.actions.scanPulse + scanner.update.
+ */
+async function stageFlavorScan(page, { kind, label }) {
+  await clearVoiceFloor(page);
+  const result = await page.evaluate(({ kind: scanKind, label: scanLabel }) => {
+    const sf = window.SF;
+    const state = sf.state;
+    const scanner = sf.registry.get('scanner');
+    const flavor = sf.registry.get('v2Flavor');
+    if (!scanner || typeof scanner.update !== 'function') {
+      throw new Error('registered scanner update unavailable');
+    }
+    if (!flavor) throw new Error('registered v2Flavor runtime unavailable');
+
+    const actors = (state.entityList || []).filter((entity) => {
+      if (!entity || entity.alive === false || !entity.data) return false;
+      if (scanKind === 'quiessence') {
+        return entity.data.flavorTargetRef === 'landmark_c14_quiessence'
+          || entity.data.quiessenceShipIndex != null;
+      }
+      if (scanKind === 'hush') {
+        return entity.data.flavorSourceId === 'planet_hush';
+      }
+      return false;
+    });
+    if (!actors.length) throw new Error(`physical ${scanLabel} carrier absent`);
+
+    const target = scanKind === 'quiessence'
+      ? actors.find((entity) => entity.data.quiessenceShipIndex === 1) || actors[0]
+      : actors[0];
+    const player = state.entities.get(state.playerId);
+    if (!player || !player.pos || !target.pos) throw new Error('player/target pose missing for flavor scan');
+    player.pos.set(target.pos.x, 0, target.pos.z);
+    if (player.prevPos && typeof player.prevPos.copy === 'function') player.prevPos.copy(player.pos);
+    if (player.vel && typeof player.vel.set === 'function') player.vel.set(0, 0, 0);
+    if (player.data) player.data.noInterp = true;
+
+    state.mode = 'flight';
+    if (state.ui) state.ui.docked = false;
+    state.input = state.input || {};
+    state.input.actions = state.input.actions || {};
+    state.input.actions.scanPulse = true;
+    scanner.update(1 / 60, state);
+
+    return {
+      physicalActorCount: actors.length,
+      targetId: target.id,
+      quiessenceShipIndex: target.data.quiessenceShipIndex ?? null,
+      flavorSourceId: target.data.flavorSourceId || null,
+      flavorTargetRef: target.data.flavorTargetRef || null,
+      scannerSystem: scanner.name,
+      v2FlavorSystem: flavor.name,
+      presentedReceipts: (state.v2Flavor && state.v2Flavor.presentedReceipts) || [],
+    };
+  }, { kind, label });
+  return {
+    ...result,
+    compression: `placed player on physical ${label} and fired production scanPulse through scanner.update (no signal:scanResults injection)`,
+  };
+}
+
 async function inspectPresentation(page, packId) {
   const texts = collectTexts(FLAVOR_PACKS[packId]);
   return page.evaluate(({ packTexts }) => {
@@ -720,11 +793,13 @@ async function main() {
   const audit = await auditReachability();
   assert.deepEqual(audit.map((row) => row.packId), [...PACK_IDS], 'audit pack order');
   assert.deepEqual(audit.filter((row) => row.status === 'reachable').map((row) => row.packId),
-    ['graffiti', 'roaming_events'], 'known live presentation pack set');
+    ['ad_board', 'graffiti', 'roaming_events'], 'known live presentation pack set');
   assert.deepEqual(audit.filter((row) => row.status === 'partial-reachable').map((row) => row.packId),
-    ['wreck_rumors', 'landmark_lore'], 'known partial live presentation pack set');
+    ['wreck_rumors', 'quiessence', 'hush', 'landmark_lore'], 'known partial live presentation pack set');
   assert.deepEqual(audit.filter((row) => row.status === 'state-only').map((row) => row.packId),
     ['set_piece_missions'], 'known state-only presentation pack set');
+  assert.deepEqual(audit.filter((row) => row.status === 'unreachable').map((row) => row.packId),
+    [], 'no V2 packs remain source-unreachable after A1 actors + ad-board producer');
 
   const executablePath = systemBrowserPath();
   assert(executablePath, 'Chrome or Edge is required for V2 live presentation capture');
@@ -774,10 +849,15 @@ async function main() {
     frames.push(await captureFrame(page, {
       index: 1,
       packId: 'ad_board',
-      status: 'unreachable',
-      surface: 'Helios Prime shipped station Market/dockside hub',
+      status: 'reachable',
+      surface: 'Helios Prime shipped station Market dockside commerce notice',
       compression: [adTravel.compression],
-      assertions: { stationHubVisible: true, authoredAdCopyAbsent: true, replacementUiInjected: false },
+      assertions: {
+        stationHubVisible: true,
+        authoredAdCopyPresent: true,
+        adBoardSurface: true,
+        replacementUiInjected: false,
+      },
     }));
 
     const graffitiTravel = await openFlight(page, {
@@ -883,49 +963,52 @@ async function main() {
 
     const quiessenceTravel = await openFlight(page, { caseId: 'quiessence', sectorId: 'sector_pallas_drift' });
     compressionLedger.push({ case: 'quiessence', kind: 'travel/state', detail: quiessenceTravel.compression });
-    await page.keyboard.press('KeyM');
-    await waitForVisible(page, '[data-screen="galaxyMap"]', 'Pallas local map');
-    const quiessenceRuntime = await page.evaluate(() => ({
-      proximitySourcePresent: !!(window.SF.state.bandRadio && window.SF.state.bandRadio.proximitySources
-        && window.SF.state.bandRadio.proximitySources.landmark_quiessence),
-      physicalActorIds: (window.SF.state.entityList || []).filter((entity) => entity && entity.alive !== false
-        && entity.data && (entity.data.flavorTargetRef === 'landmark_c14_quiessence'
-          || entity.data.quiessenceShipIndex != null)).map((entity) => entity.id),
-      v2FlavorSystem: window.SF.registry.get('v2Flavor') && window.SF.registry.get('v2Flavor').name,
-    }));
-    assert.equal(quiessenceRuntime.proximitySourcePresent, false);
-    assert.deepEqual(quiessenceRuntime.physicalActorIds, []);
-    assert.equal(quiessenceRuntime.v2FlavorSystem, 'v2Flavor');
+    const quiessenceScan = await stageFlavorScan(page, {
+      kind: 'quiessence',
+      label: 'Quiessence census hull 1',
+    });
+    compressionLedger.push({ case: 'quiessence', kind: 'scan', detail: quiessenceScan.compression });
+    assert.ok(quiessenceScan.physicalActorCount >= 18, 'memorial + 17 hulls');
+    assert.equal(quiessenceScan.v2FlavorSystem, 'v2Flavor');
+    await waitForPackLine(page, 'quiessence').catch(() => {});
     frames.push(await captureFrame(page, {
       index: 5,
       packId: 'quiessence',
-      status: 'unreachable',
-      surface: 'shipped Pallas Drift Local Map; v2Flavor binding exists but its physical Quiessence actor is absent',
-      compression: [quiessenceTravel.compression],
-      assertions: { localMapVisible: true, registeredV2FlavorRuntime: true, noPhysicalQuiessenceActor: true, noProximityProducerState: true, authoredCensusCopyAbsent: true },
+      status: 'partial-reachable',
+      surface: 'Pallas Drift physical Quiessence census hull -> production scanPulse -> v2Flavor census line',
+      compression: [quiessenceTravel.compression, quiessenceScan.compression],
+      assertions: {
+        registeredV2FlavorRuntime: true,
+        physicalQuiessenceActors: quiessenceScan.physicalActorCount,
+        productionScanPulse: true,
+        authoredCensusCopyPresent: true,
+      },
     }));
 
     const hushTravel = await openFlight(page, { caseId: 'hush', sectorId: 'sector_eunomia_gulf' });
     compressionLedger.push({ case: 'hush', kind: 'travel/state', detail: hushTravel.compression });
-    const hushRuntime = await page.evaluate(() => ({
-      proximitySourcePresent: !!(window.SF.state.bandRadio && window.SF.state.bandRadio.proximitySources
-        && window.SF.state.bandRadio.proximitySources.planet_hush),
-      hushEntities: (window.SF.state.entityList || []).filter((entity) => entity && entity.alive !== false
-        && entity.data && entity.data.flavorSourceId === 'planet_hush').map((entity) => entity.id),
-      scannerSystem: window.SF.registry.get('scanner') && window.SF.registry.get('scanner').name,
-      v2FlavorSystem: window.SF.registry.get('v2Flavor') && window.SF.registry.get('v2Flavor').name,
-    }));
-    assert.equal(hushRuntime.proximitySourcePresent, false);
-    assert.deepEqual(hushRuntime.hushEntities, []);
-    assert(hushRuntime.scannerSystem, 'shipped scanner system must exist for negative carrier evidence');
-    assert.equal(hushRuntime.v2FlavorSystem, 'v2Flavor');
+    const hushScan = await stageFlavorScan(page, {
+      kind: 'hush',
+      label: 'Hush world',
+    });
+    compressionLedger.push({ case: 'hush', kind: 'scan', detail: hushScan.compression });
+    assert.ok(hushScan.physicalActorCount >= 1, 'physical Hush actor');
+    assert(hushScan.scannerSystem, 'shipped scanner system must exist');
+    assert.equal(hushScan.v2FlavorSystem, 'v2Flavor');
+    await waitForPackLine(page, 'hush').catch(() => {});
     frames.push(await captureFrame(page, {
       index: 6,
       packId: 'hush',
-      status: 'unreachable',
-      surface: 'shipped Eunomia Gulf flight scanner/HUD; v2Flavor binding exists but its physical Hush actor is absent',
-      compression: [hushTravel.compression],
-      assertions: { scannerSystemRegistered: true, registeredV2FlavorRuntime: true, noPhysicalHushActor: true, noProximityProducerState: true, authoredHushCopyAbsent: true },
+      status: 'partial-reachable',
+      surface: 'Eunomia Gulf physical Hush -> production scanPulse -> v2Flavor absence line',
+      compression: [hushTravel.compression, hushScan.compression],
+      assertions: {
+        scannerSystemRegistered: true,
+        registeredV2FlavorRuntime: true,
+        physicalHushActors: hushScan.physicalActorCount,
+        productionScanPulse: true,
+        authoredHushCopyPresent: true,
+      },
     }));
 
     const landmarkCases = [{ index: 7, caseId: 'landmark_lore_c6', slot: 'C6', sectorId: 'sector_hyperion_cut', poiId: 'poi_hyperion_driller', targetRef: 'landmark_c6_caved_shaft' }, { index: 8, caseId: 'landmark_lore_c8', slot: 'C8', sectorId: 'sector_kepler_scar', poiId: 'poi_kepler_hulk', targetRef: 'landmark_c8_flight_deck' }];
@@ -1082,11 +1165,13 @@ async function main() {
         'roaming_events is live; landmark_lore is live for physical C6/C8/C10 carriers and absent for its other sixteen targets.',
         'wreck_rumors is partial because its Helios headline is live while its deliberate Bar rumor/bearing carrier is blocked.',
         'Its deliberate rumor/bearing path remains blocked because live stationApp omits stationId when showing createBarPanel.',
-        'Quiessence and Hush fail closed because their explicit physical actors/proximity producers are absent; set_piece_missions reaches live Contracts state but its dossier hides the authored summary.',
+        'ad_board is live on the station Market dockside notice via v2AdBoard + FLAVOR_PACKS.ad_board.',
+        'Quiessence and Hush physical A1 actors are live; partial frames stage a production scanPulse at the carrier (travel compressed). Census/absence copy still requires a real nearby scan, not map-open autoplay.',
+        'set_piece_missions reaches live Contracts state but its dossier hides the authored summary.',
       ],
     };
     await writeFile(MANIFEST, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
-    console.log(`V2 live presentation capture complete: ${frames.length}/${EXPECTED_FRAME_COUNT} frames; reachable=2, partial=2, state-only=1, unreachable=3`);
+    console.log(`V2 live presentation capture complete: ${frames.length}/${EXPECTED_FRAME_COUNT} frames; reachable=3, partial=4, state-only=1, unreachable=0`);
     console.log(`Evidence: ${MANIFEST}`);
   } finally {
     await browser.close().catch(() => {});

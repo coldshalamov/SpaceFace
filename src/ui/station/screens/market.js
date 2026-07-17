@@ -4,6 +4,7 @@
 import { COMMODITIES } from '../../../data/commodities.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo } from '../../../systems/cargo.js';
+import { selectAdBoardNotice } from '../../../systems/v2AdBoard.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
 import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
@@ -132,12 +133,14 @@ export function createMarketScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'sx-mkt';
   el.innerHTML =
+    `<aside class="sx-adboard" data-ad-board aria-label="Dockside commerce notice" hidden></aside>` +
     `<nav class="sx-mkt__list" aria-label="Commodities"></nav>` +
     `<section class="sx-mkt__stage"></section>` +
     `<aside class="sx-mkt__console">` +
       `<div class="sx-mkt__trade"></div>` +
       `<div class="sx-mkt__routes" aria-label="Trade routes"></div>` +
     `</aside>`;
+  const adEl = el.querySelector('[data-ad-board]');
   const listEl = el.querySelector('.sx-mkt__list');
   const stageEl = el.querySelector('.sx-mkt__stage');
   const consoleEl = el.querySelector('.sx-mkt__console');
@@ -146,6 +149,7 @@ export function createMarketScreen(ctx) {
   stageEl.id = 'sx-market-instrument';
   stageEl.setAttribute('role', 'tabpanel');
   stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
+  let adRenderSignature = '';
 
   let selectedId = null;
   let mode = 'buy';   // 'buy' | 'sell'
@@ -490,7 +494,36 @@ export function createMarketScreen(ctx) {
       `</div>`;
   }
 
+  function renderAdBoard(state) {
+    const sid = stationId(state);
+    const seed = state && state.meta && Number.isFinite(Number(state.meta.seed))
+      ? Number(state.meta.seed)
+      : 0;
+    const notice = selectAdBoardNotice({
+      seed,
+      stationId: sid,
+      simTime: state && state.simTime,
+    });
+    const signature = notice
+      ? `${sid}|${notice.id}|${notice.sponsor}|${notice.text}`
+      : `${sid}|none`;
+    if (signature === adRenderSignature) return;
+    adRenderSignature = signature;
+    if (!notice) {
+      adEl.hidden = true;
+      adEl.innerHTML = '';
+      return;
+    }
+    adEl.hidden = false;
+    adEl.dataset.adId = notice.id;
+    adEl.innerHTML =
+      `<span class="sx-adboard__k">Dockside notice</span>` +
+      `<span class="sx-adboard__sponsor">${escapeHtml(notice.sponsor)}</span>` +
+      `<p class="sx-adboard__text">${escapeHtml(notice.text)}</p>`;
+  }
+
   function renderAll(state) {
+    renderAdBoard(state);
     renderList(state); renderStage(state); renderConsole(state); renderRoutes(state);
   }
 
