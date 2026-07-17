@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { createSimulation } from '../src/core/sim.js';
 import { save } from '../src/save/saveSystem.js';
@@ -55,6 +56,27 @@ function reachDecision(t) {
 function moduleCount(t) {
   return t.state.player.moduleInventory.filter((item) => item?.defId === UNIQUE_DROP_ID).length;
 }
+
+test('recoveryEncounterPrompt prefers uniqueWrecks.resolvePlayerChoice over uniqueWreck:choose bus emit', () => {
+  const promptSrc = readFileSync(new URL('../src/ui/recoveryEncounterPrompt.js', import.meta.url), 'utf8');
+  const chooseBody = promptSrc.match(/function choose\(choice, source\) \{[\s\S]*?\n  \}/)?.[0] || '';
+  assert.match(chooseBody, /registry\.get\(['"]uniqueWrecks['"]\)/,
+    'unique-wreck choose must look up uniqueWrecks via registry');
+  assert.match(chooseBody, /resolvePlayerChoice\s*\(/,
+    'unique-wreck choose must call the public resolvePlayerChoice API first');
+  const resolveIdx = chooseBody.indexOf('resolvePlayerChoice');
+  const busEmitIdx = chooseBody.indexOf("uniqueWreck:choose");
+  assert.ok(resolveIdx >= 0 && busEmitIdx > resolveIdx,
+    'resolvePlayerChoice must be preferred; bus emit is only the fallback');
+
+  const uiRootSrc = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+  assert.match(uiRootSrc, /if\s*\(\s*!ctx\.registry\s*&&\s*this\.registry\s*\)\s*ctx\.registry\s*=\s*this\.registry/,
+    'uiRoot must put this.registry on ctx before createComms when ctx lacks registry');
+  const registryAssignIdx = uiRootSrc.indexOf('if (!ctx.registry && this.registry) ctx.registry = this.registry');
+  const createCommsIdx = uiRootSrc.indexOf('createComms(ctx)');
+  assert.ok(registryAssignIdx >= 0 && createCommsIdx > registryAssignIdx,
+    'ctx.registry must be set before createComms so recoveryEncounterPrompt receives it');
+});
 
 test('beam recovery opens a named take-or-handover decision before any named reward settles', () => {
   const t = boot();

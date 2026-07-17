@@ -266,6 +266,9 @@ export const ui = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    // recoveryEncounterPrompt prefers registry.get('uniqueWrecks').resolvePlayerChoice via ctx.registry
+    this.registry = ctx.registry || this.registry || null;
+    if (!ctx.registry && this.registry) ctx.registry = this.registry;
 
     injectHudCss();
 
@@ -290,7 +293,8 @@ export const ui = {
     // input router after a prompt would let that earlier prompt act before the fence could stop it.
     this.input = createUiInput(ctx, this.screenManager);
 
-    // comms / graffiti / endgame narrative overlay (story system drives it via events)
+    // comms / graffiti / endgame narrative overlay (story system drives it via events).
+    // createComms → recoveryEncounterPrompt reads ctx.registry for the public claim API.
     this.comms = createComms(ctx);
     this.encounterChoicePrompt = createEncounterChoicePrompt(ctx);
 
