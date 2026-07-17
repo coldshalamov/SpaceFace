@@ -411,7 +411,8 @@
     "check:professional-travel:public-route:contracts": "node --test test/professional-travel-public-route-contract.test.mjs test/galaxy-map-gate-jump-seam.test.mjs",
     "check:professional-travel:public-route:browser": "npm run check:professional-travel:public-route:contracts && node scripts/check-professional-travel-public-route-browser.mjs",
     "check:professional-travel:public-route:electron": "npm run check:professional-travel:public-route:contracts && node scripts/check-professional-travel-public-route-electron.mjs",
-    "check:professional-travel:public-route": "npm run check:professional-travel:public-route:browser && npm run check:professional-travel:public-route:electron"
+    "check:professional-travel:public-route": "npm run check:professional-travel:public-route:browser && npm run check:professional-travel:public-route:electron",
+    "check:depth-program:r2:natural-d10": "node scripts/check-depth-program-r2-natural-d10.mjs"
   },
   "private": true,
   "devDependencies": {
