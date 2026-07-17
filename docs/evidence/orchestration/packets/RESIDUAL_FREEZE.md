@@ -26,3 +26,9 @@ AC2 = first-hour: recovery settle + Helios dock + NAV-HUD hierarchy.
 
 Browser supporting gallery (42 shots) + classified Electron residual in `platform-limit.log` satisfies campaign AC5 residual documentation.  
 PrimaryAcceptance dual-platform golden-thread remains residual.
+
+## Claim honesty (2026-07-17)
+
+Compiler must **never** stamp `dualPlatformPrimaryAcceptance=DONE` from Electron new-game + Tier-A full spine alone.  
+Authoritative helpers: `scripts/lib/campaignClaimHonesty.mjs` + `npm run check:campaign-claim-honesty`.  
+Fable ratify: `returns/F_CLAIM_HONESTY_RATIFY.md`.
