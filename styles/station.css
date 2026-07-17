@@ -400,15 +400,40 @@
 .sx-ct-row { position:relative; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:12px; padding:11px 12px; border:1px solid transparent; border-radius:var(--r-md); background:transparent; cursor:pointer; text-align:left; font-family:var(--sx-ui); transition:background .14s var(--ease), box-shadow .14s var(--ease), border-color .14s var(--ease); }
 .sx-ct-row:hover { background:var(--surface-1); }
 .sx-ct-row.is-active { background:var(--surface-2); border-color:var(--line-2); }
+/* Attention rows must scan first — stronger than hover/active, left rail + glow + ACT flag. */
 .sx-ct-row.is-attention {
-  border-color:rgba(62,203,255,.7);
-  background:rgba(62,203,255,.10);
-  box-shadow:0 0 18px rgba(62,203,255,.22), inset 0 0 0 1px rgba(62,203,255,.25);
+  z-index:1;
+  border-color:rgba(62,203,255,.92);
+  background:linear-gradient(90deg, rgba(62,203,255,.20), rgba(62,203,255,.06) 55%, transparent);
+  box-shadow:
+    0 0 0 1px rgba(62,203,255,.40),
+    0 0 28px rgba(62,203,255,.34),
+    inset 3px 0 0 var(--azure-bright, #3ecbff),
+    inset 0 0 0 1px rgba(62,203,255,.22);
 }
+.sx-ct-row.is-active.is-attention {
+  border-color:rgba(62,203,255,.95);
+  background:linear-gradient(90deg, rgba(62,203,255,.24), rgba(62,203,255,.08) 60%, var(--surface-2));
+  box-shadow:
+    0 0 0 1px rgba(62,203,255,.48),
+    0 0 32px rgba(62,203,255,.38),
+    inset 3px 0 0 var(--azure-bright, #3ecbff),
+    inset 0 0 0 1px rgba(62,203,255,.28);
+}
+.sx-ct-row.is-attention .sx-ct-row__title {
+  color:var(--ink-0);
+  font-weight:600;
+}
+.sx-ct-row.is-attention .sx-ct-row__meta { color:var(--ink-2); }
 .sx-ct-row__flag, .sx-job__flag {
   font-family:var(--sx-mono); font-size:9px; font-weight:700; letter-spacing:.1em;
   color:#041018; background:var(--azure-bright, #3ecbff); border-radius:4px; padding:3px 6px;
-  box-shadow:0 0 10px rgba(62,203,255,.4);
+  box-shadow:0 0 12px rgba(62,203,255,.55);
+}
+.sx-ct-row.is-attention .sx-ct-row__flag {
+  font-size:10px;
+  padding:4px 7px;
+  box-shadow:0 0 14px rgba(62,203,255,.7);
 }
 .sx-ct-row__ic { display:grid; place-items:center; width:32px; height:32px; border-radius:8px; color:var(--tint); background:color-mix(in srgb,var(--tint) 15%,transparent); border:1px solid color-mix(in srgb,var(--tint) 30%,transparent); }
 .sx-ct-row__mid { min-width:0; display:flex; flex-direction:column; gap:4px; }
@@ -454,20 +479,62 @@
 .sx-dossier__gate .sx-ico { color:var(--warn); }
 .sx-dossier__clauses { display:flex; flex-wrap:wrap; gap:6px; }
 .sx-dossier__foot { display:flex; gap:10px; margin-top:2px; }
-.sx-btn-primary { flex:1; border:0; border-radius:10px; padding:13px; font-family:var(--sx-display); font-weight:700; font-size:14px; letter-spacing:.08em; text-transform:uppercase; color:#04121e; background:linear-gradient(180deg,var(--azure-bright),var(--azure)); cursor:pointer; transition:filter .14s,transform .1s, box-shadow .14s; }
+/* Primary Accept owns the foot: label dominant, readiness secondary, disabled quiet. */
+.sx-btn-primary {
+  flex:1; border:0; border-radius:10px; padding:13px 16px;
+  font-family:var(--sx-display); font-weight:700; font-size:14px; letter-spacing:.08em; text-transform:uppercase;
+  color:#04121e; background:linear-gradient(180deg,var(--azure-bright),var(--azure));
+  cursor:pointer; transition:filter .14s,transform .1s, box-shadow .14s;
+  box-shadow:0 2px 14px rgba(62,203,255,.22);
+}
 .sx-btn-primary:hover { filter:brightness(1.08); } .sx-btn-primary:active { transform:translateY(1px); }
-.sx-btn-primary.is-attention,
-.sx-dossier.is-attention .sx-ct-commit {
-  box-shadow:0 0 0 2px rgba(255,255,255,.35), 0 0 28px rgba(62,203,255,.55);
+.sx-btn-primary:disabled,
+.sx-btn-primary:disabled:hover {
+  background:var(--surface-2); color:var(--ink-3); cursor:default; filter:none;
+  box-shadow:none; transform:none;
+}
+/* Accept commit: primary verb left, readiness meta right (smaller, not title-case shout). */
+.sx-ct-commit {
+  display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px 16px;
+  min-height:52px; text-align:left;
+}
+.sx-ct-commit > span {
+  font-family:var(--sx-display); font-weight:700; font-size:15px; letter-spacing:.09em; line-height:1.15;
+}
+.sx-ct-commit > em {
+  justify-self:end; max-width:46%;
+  font-family:var(--sx-ui); font-style:normal; font-weight:500; font-size:11px; line-height:1.25;
+  letter-spacing:0; text-transform:none; color:rgba(4,18,30,.72); text-align:right;
+}
+.sx-ct-commit:disabled > em { color:var(--ink-3); }
+.sx-dossier.is-attention {
+  border-color:rgba(62,203,255,.55);
+  box-shadow:0 0 28px rgba(62,203,255,.14), inset 0 0 0 1px rgba(62,203,255,.16);
+}
+/* Ready Accept under attention: strongest CTA. Dossier attention still frames the foot when blocked. */
+.sx-dossier.is-attention .sx-ct-commit:not(:disabled),
+.sx-btn-primary.is-attention {
+  filter:brightness(1.05);
+  box-shadow:
+    0 0 0 2px rgba(255,255,255,.48),
+    0 0 36px rgba(62,203,255,.68),
+    0 4px 16px rgba(0,0,0,.28);
+}
+.sx-btn-primary.is-attention > span,
+.sx-dossier.is-attention .sx-ct-commit:not(:disabled) > span {
+  font-size:15.5px;
+  letter-spacing:.1em;
+  text-shadow:0 0 12px rgba(255,255,255,.35);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .sx-btn-primary.is-attention {
+  .sx-btn-primary.is-attention,
+  .sx-dossier.is-attention .sx-ct-commit.is-attention {
     animation:sx-ct-commit-pulse 1.5s ease-in-out infinite;
   }
 }
 @keyframes sx-ct-commit-pulse {
-  0%, 100% { box-shadow:0 0 0 2px rgba(255,255,255,.25), 0 0 18px rgba(62,203,255,.35); }
-  50% { box-shadow:0 0 0 3px rgba(255,255,255,.45), 0 0 34px rgba(62,203,255,.7); }
+  0%, 100% { box-shadow:0 0 0 2px rgba(255,255,255,.28), 0 0 22px rgba(62,203,255,.42), 0 3px 12px rgba(0,0,0,.22); }
+  50% { box-shadow:0 0 0 3px rgba(255,255,255,.55), 0 0 42px rgba(62,203,255,.78), 0 5px 18px rgba(0,0,0,.3); }
 }
 .sx-btn-ghost { border:1px solid var(--line-2); border-radius:10px; padding:13px 16px; font-family:var(--sx-display); font-weight:600; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-1); background:var(--surface-1); cursor:pointer; transition:border-color .14s,color .14s; white-space:nowrap; }
 .sx-btn-ghost:hover { border-color:var(--azure); color:var(--ink-0); }
