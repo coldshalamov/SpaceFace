@@ -1,0 +1,13 @@
+The advisor return is written to `docs/evidence/orchestration/returns/F0_FABLE_ADVISOR_RETURN.md` with all nine required sections plus the charter return block.
+
+The core judgments, for the orchestrator's quick read:
+
+**Stale vs live:** Six program rows (A1, A2, K1, SP1, GT1, F2) still describe work the depth worktree already finished ΓÇö the top-10 table tells builders what not to rediscover. M4 ecology is reclassified from "product repair" to a STALE/HARNESS contract fix, and M0-EVIDENCE is split: contract fixed, corpus regeneration deferred until after the spine commits.
+
+**The plan (15 tasks):** W1 commits the uncommitted spine (Grok, task #1 by fiat ΓÇö nothing merges on top of an uncommitted spine) and fixes the three first-hour disasters: M4 gate, natural recovery, and the strict Helios dock route. W2 is the campaign's heart ΓÇö one shared unassisted-route driver (built once, reused by R1/R2/E1/SP1/GT1) plus V2 producers and D1 natural doctrine carriers. W3 gives Kimi the HUD hierarchy and Contracts/Bar presentation while Grok regenerates the evidence corpus. W4 closes M2 Electron, the GT1 gallery/first-hour route, and a mining-feel slice.
+
+**Key rulings:** Kimi's non-negotiable slot is NAV-HUD information hierarchy (one objective/action/threat) ΓÇö highest taste-per-line in the program. Mining gets exactly one presentation-only feel slice, no system rewrite. Performance, B0ΓÇôB7 story, landmarks, ship families, and all art authoring are explicit non-goals this campaign. Fable's own next deliverables are the natural-route harness spec, the one-voice hierarchy extension, and the D1 spawn-policy ruling ΓÇö all three should exist before W2/W3 dispatch.
+
+**Integration:** single-writer file map (generated indexes and registry.js frozen to the spine, weapons.js frozen post-EMP-fix), merge order codexΓåÆkimiΓåÆgrok-captures per wave, gate after every merge, rebases only at wave boundaries.
+
+One residual for Grok: confirm the exact npm script names for the two new checks (`check:m1:helios-route`, `check:m3:recovery`) at dispatch time ΓÇö I proposed names rather than invent existing ones.
