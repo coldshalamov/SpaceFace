@@ -148,6 +148,19 @@ const CORE_SECTORS = [
     pois: [
       { id: 'poi_pwreck', type: 'wreck', name: 'Pirate Wreckage' },
       { id: 'poi_hcache', type: 'cache', name: 'Hidden Cache', hidden: true },
+      // A1/V2 physical Quiessence carrier (no new GLB — runtime marker + stamped flavor identity).
+      {
+        id: 'poi_quiessence',
+        type: 'anomaly',
+        name: 'The Quiessence',
+        landmark: true,
+        pos: { x: -1080, z: 540 },
+        visualRadius: 48,
+        scanRange: 900,
+        flavorTargetRef: 'landmark_c14_quiessence',
+        bandProximityRadius: 1600,
+        bandLandmarkFleet: 17,
+      },
     ],
   },
   {

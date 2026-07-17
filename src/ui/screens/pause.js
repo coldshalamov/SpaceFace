@@ -393,6 +393,8 @@ export const pauseScreen = {
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
     });
     mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'));
+    // A2 Ship's Ledger — flight/pause path so receipts stay readable without station redesign.
+    mk("Ship's Ledger", () => nav(ctx, 'pushScreen', 'shipLedger'));
     // Operations = the Automation ops board (drones / traders / outposts / fleet). Reachable from
     // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
     // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at

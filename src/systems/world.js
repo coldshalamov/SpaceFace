@@ -1239,6 +1239,12 @@ export const world = {
           visualRadius,
           placeRadius: visualRadius,
           homeSectorId: sector.id,
+          // A1/V2: explicit physical flavor identity for Band proximity + scan carriers.
+          ...(poi.flavorTargetRef ? { flavorTargetRef: String(poi.flavorTargetRef) } : {}),
+          ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),
+          ...(finitePositive(poi.bandProximityRadius)
+            ? { bandProximityRadius: Number(poi.bandProximityRadius) }
+            : {}),
         },
       });
       this._stampHomeSector(ent, sector.id);
@@ -1246,6 +1252,46 @@ export const world = {
         id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },
         hidden: !!poi.hidden, claimable: !!poi.claimable,
       });
+      // Quiessence memorial fleet: 17 dark freighter markers with census shipIndex stamps.
+      // No new GLBs — lightweight fx entities Band + V2 already know how to sample.
+      const fleetCount = Math.max(0, Math.min(24, Math.trunc(Number(poi.bandLandmarkFleet) || 0)));
+      if (fleetCount > 0 && poi.flavorTargetRef) {
+        for (let shipIndex = 1; shipIndex <= fleetCount; shipIndex += 1) {
+          const angle = (shipIndex / fleetCount) * Math.PI * 2;
+          const ring = 120 + (shipIndex % 5) * 28;
+          const hull = this.helpers.spawnEntity({
+            type: 'fx',
+            factionId: poi.factionId || null,
+            pos: {
+              x: pos.x + Math.cos(angle) * ring,
+              z: pos.z + Math.sin(angle) * ring,
+            },
+            radius: 14,
+            mass: 0,
+            collides: false,
+            ttl: Infinity,
+            data: {
+              poi: false,
+              name: `Quiessence Hull ${shipIndex}`,
+              sectorId: sector.id,
+              homeSectorId: sector.id,
+              flavorTargetRef: String(poi.flavorTargetRef),
+              quiessenceShipIndex: shipIndex,
+              bandProximityRadius: finitePositive(poi.bandProximityRadius)
+                ? Number(poi.bandProximityRadius)
+                : 1600,
+              memorialHull: true,
+              visualRadius: 14,
+            },
+          });
+          this._stampHomeSector(hull, sector.id);
+          active.pois.push({
+            id: hull.id, poiId: `${poi.id}_hull_${shipIndex}`, type: 'memorial_hull',
+            pos: { x: hull.pos.x, z: hull.pos.z },
+            hidden: false, claimable: false,
+          });
+        }
+      }
     }
   },
 

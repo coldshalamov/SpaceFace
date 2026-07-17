@@ -67,6 +67,8 @@ const SCREEN_MODULES = [
   { path: './screens/help.js', load: () => import('./screens/help.js'), name: 'helpScreen' },
   { path: './screens/codex.js', load: () => import('./screens/codex.js'), name: 'codexScreen' },
   { path: './screens/missionLog.js', load: () => import('./screens/missionLog.js'), name: 'missionLogScreen' },
+  // A2 Ship's Ledger: pause-route archive (no station chrome redesign).
+  { path: './screens/shipLedgerScreen.js', load: () => import('./screens/shipLedgerScreen.js'), name: 'shipLedgerScreen' },
 ];
 
 const HUD_STYLE_ID = 'sf-hud-style';
