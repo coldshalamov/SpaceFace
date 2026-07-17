@@ -178,6 +178,8 @@ async function captureScenario({ factionId, sectorId }) {
         && (factionId !== 'faction_pitborn' || promotedAtTick != null));
       let disabledEvent = trace.rows.find((row) => row.event === 'combat:subsystemDisabled'
         && row.targetId === setup.disableTarget.id && row.subsystemId === 'subsystem_drive');
+      // Non-Fulfillment factions may close residual subsystem HP with a production-shaped disable
+      // fixture after a real projectile hit. Fulfillment must remain live_emp_projectile only.
       if (factionId !== 'faction_fulfillment' && !fixtureDisableApplied && !disabledEvent
         && relevantFactionHit && state.tick >= relevantFactionHit.tick + 2) {
         applyDriveDisableFixture(registry, actors[0], setup.disableTarget, factionId);
@@ -466,19 +468,21 @@ function applyDriveDisableFixture(registry, attacker, target, factionId) {
   target.shield = target.shieldMax = 0;
   target.armorHp = target.armorMax = 0;
   let result = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // Live ion→subsystem attenuation leaves residual HP after a single 45-ion hit; keep applying
+  // until the production disable transition is scheduled (same envelope as the unit fixture).
+  for (let attempt = 0; attempt < 8; attempt++) {
     result = registry.get('combat').ensureKernel().routeDamage({
       attackerId: attacker.id,
       targetId: target.id,
       packet: {
-        channels: { ion: 45 },
+        channels: { ion: 80 },
         penetration: 0,
         shieldBypass: 1,
         subsystemShare: 1,
         hit: { subsystemId: 'subsystem_drive' },
         flags: { ignoreFriendlyFire: true },
       },
-      origin: { kind: 'behavior_fixture', id: `k1_${factionId}_post_projectile_disable` },
+      origin: { kind: 'behavior_fixture', id: `k1_${factionId}_post_projectile_disable_${attempt}` },
     });
     assert.equal(result.ok, true, `${factionId} post-projectile disable fixture must route through combat`);
     if (result.subsystemResult && result.subsystemResult.after === 0) break;

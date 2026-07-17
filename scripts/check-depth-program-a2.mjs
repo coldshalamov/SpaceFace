@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Focused A2 acceptance: prose breadth, read-only deterministic projection, archive bounds,
-// post-gate Vols hand, Senna name continuity, endgame quote provenance, and panel semantics.
+// post-gate Vols hand, Senna name continuity, endgame quote provenance, panel semantics,
+// and pause-route player reachability (no station chrome redesign).
 
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -44,10 +45,37 @@ const result = spawnSync(process.execPath, ['--test', testPath], { stdio: 'inher
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status == null ? 1 : result.status);
 
+// Player-route wiring: pause-accessible screen registered on the production uiRoot path.
+const uiRoot = readFileSync(fileURLToPath(new URL('../src/ui/uiRoot.js', import.meta.url)), 'utf8');
+const pause = readFileSync(fileURLToPath(new URL('../src/ui/screens/pause.js', import.meta.url)), 'utf8');
+const screen = readFileSync(fileURLToPath(new URL('../src/ui/screens/shipLedgerScreen.js', import.meta.url)), 'utf8');
+if (!uiRoot.includes('shipLedgerScreen') || !uiRoot.includes('shipLedgerScreen.js')) {
+  console.error(JSON.stringify({
+    check: 'depth-program-a2', ok: false,
+    errors: ['uiRoot must register shipLedgerScreen for default-route reachability'],
+  }, null, 2));
+  process.exit(1);
+}
+if (!/pushScreen['"]\s*,\s*['"]shipLedger['"]/.test(pause)) {
+  console.error(JSON.stringify({
+    check: 'depth-program-a2', ok: false,
+    errors: ['pause menu must open shipLedger without station redesign'],
+  }, null, 2));
+  process.exit(1);
+}
+if (!screen.includes('createShipLedgerPanel') || !screen.includes("id: 'shipLedger'")) {
+  console.error(JSON.stringify({
+    check: 'depth-program-a2', ok: false,
+    errors: ['shipLedgerScreen must wrap createShipLedgerPanel with id shipLedger'],
+  }, null, 2));
+  process.exit(1);
+}
+
 console.log(JSON.stringify({
   check: 'depth-program-a2',
   ok: true,
   sourcePolicy: 'read-only projector; zero subscriptions, emits, or serializers',
+  playerRoute: "pause → Ship's Ledger screen (no station chrome redesign)",
   entryTypes: 8,
   variantsPerType: '>=4',
   pageSize: SHIP_LEDGER_PAGE_SIZE,

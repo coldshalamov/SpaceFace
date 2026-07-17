@@ -21,12 +21,22 @@ import { mulberry32, hash32 } from '../src/core/rng.js';
 let sections = 0;
 function ok(label) { sections++; console.log(`  ✓ ${label}`); }
 
-function boot(seed, sectorId, pos, cargoItems) {
+// `posLocal` is sector-local authored coordinates. Live entities use galactic-global space (M2).
+function boot(seed, sectorId, posLocal, cargoItems) {
   const sim = createSimulation({ seed, systems: [spawnBudget, encounterDirector] });
   const { state, bus } = sim;
   state.mode = 'flight';
   state.world.currentSectorId = sectorId;
-  const player = sim.spawn({ type: 'ship', team: 0, pos: { x: pos.x, z: pos.z }, vel: { x: 0, z: 0 }, hull: 200, hullMax: 200, radius: 6 });
+  const globalPos = sectorLocalToGlobalForSector({ x: posLocal.x, z: posLocal.z }, sectorId);
+  const player = sim.spawn({
+    type: 'ship',
+    team: 0,
+    pos: { x: globalPos.x, z: globalPos.z },
+    vel: { x: 0, z: 0 },
+    hull: 200,
+    hullMax: 200,
+    radius: 6,
+  });
   state.playerId = player.id;
   if (cargoItems) state.player.cargo.items = { ...cargoItems };
   // Bus spy: every event name that ever crosses the bus (modal audit) + the voice audit stream.
@@ -89,13 +99,23 @@ function assertNoModal(emitted, label) {
 
 // ── 1. soak audit (Sker two-day + referee kills → full lifecycle chatter) ────────────────────────
 {
-  const { sim, state, bus, emitted, voice } = boot(31, 'sector_sker_haven', { x: -540, z: 680 }, { cmdty_refined_metals: 12 });
+  const sectorId = 'sector_sker_haven';
+  const { sim, state, bus, player, emitted, voice } = boot(31, sectorId, { x: -540, z: 680 }, { cmdty_refined_metals: 12 });
+  // Patrol authored zones so proximity-gated shapes can fire (matches production free-flight).
+  const patrol = zonesForSector(sectorId).map((zone) => ({
+    center: sectorLocalToGlobalForSector(zone.center, sectorId),
+  }));
   const referee = [];
   bus.on('encounter:telegraph', (p) => {
     const live = state.encounterDirector.live[p.encounterId];
     if (live) referee.push({ at: state.simTime + 45, ids: live.ids });
   });
   for (let s = 0; s < 1200; s++) {
+    if (patrol.length) {
+      const zone = patrol[Math.floor(s / 150) % patrol.length];
+      player.pos.x = zone.center.x;
+      player.pos.z = zone.center.z;
+    }
     for (const job of referee) {
       if (job.done || state.simTime < job.at) continue;
       job.done = true;
@@ -134,11 +154,9 @@ function assertNoModal(emitted, label) {
 }
 {
   // Ambush while CRUISING: snare warning must be danger-tier and precede the snare by ≥1 s.
-  // Zone centers are sector-local; encounter anchors are galactic-global — place the player in
-  // global space so playerNearZone / snare telegraph match live free-flight coordinates.
+  // boot() converts sector-local zone centers into galactic-global player pose.
   const zone = zonesForSector('sector_sker_haven').find((z) => z.type === 'ambush_lane');
-  const globalPos = sectorLocalToGlobalForSector(zone.center, 'sector_sker_haven');
-  const { sim, state, voice, snares, emitted } = boot(62, 'sector_sker_haven', globalPos, null);
+  const { sim, state, voice, snares, emitted } = boot(62, 'sector_sker_haven', zone.center, null);
   state.player.cruise = { phase: 'cruising', t: 3, stumbleT: 0 };
   const { id } = forceFire(sim, 'ambush_snare', 'sector_sker_haven', { zone });
   const warnAt = state.simTime;

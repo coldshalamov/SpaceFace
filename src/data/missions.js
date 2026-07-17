@@ -726,6 +726,9 @@ export const SET_PIECE_MISSIONS = [
         title: 'Recover the Black Box',
         type: 'salvage_retrieval',
         boardStationId: 'station_reach',
+        // Field recovery still settles at the posting station so ordinary dock completion
+        // (missions._onDockedObjectives) can advance the chain without a special-case driver.
+        destStationId: 'station_reach',
         destSectorId: 'sector_io_reach',
         factionId: 'faction_free',
         riskTier: 2,

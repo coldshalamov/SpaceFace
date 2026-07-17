@@ -9,7 +9,8 @@ test('SP1 completes all six authored routes through native objective events insi
   assert.equal(report.schemaVersion, 1);
   assert.equal(report.claim, 'native-objective-event audit; modeled travel/action time, not a human playtime claim');
   assert.equal(report.driverShortcutCount, 0, 'the audit source contains no direct settlement invocation');
-  assert.equal(report.routes.length, 6);
+  // Five authored houses × two branches each (original three plus blockade + investigation).
+  assert.equal(report.routes.length, 10);
   assert.deepEqual(
     new Set(report.routes.map((route) => `${route.archetypeId}/${route.branchId}`)),
     new Set([
@@ -19,6 +20,10 @@ test('SP1 completes all six authored routes through native objective events insi
       'witness_run/shelter',
       'hearing/defend',
       'hearing/expedite',
+      'blockade_run/pay_the_toll',
+      'blockade_run/break_the_guns',
+      'investigation_chain/file_public',
+      'investigation_chain/sell_quiet',
     ]),
   );
 

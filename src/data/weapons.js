@@ -119,8 +119,10 @@ export const WEAPONS = [
     // is to cripple capability (drive/weapon/sensor/power), not to destroy the ship. EMP damage is
     // heavily resisted by armor but ignores shields (it couples through them), making it the
     // counter to shield-turtling and the enabler of capture/disable play.
+    // dmg is sized so a single solid hit can zero the starter drive (health 45) after armor/ion
+    // attenuation — partial residual HP left Fulfillment boarding unable to schedule blackout.
     id: 'wpn_emp_disruptor_m', name: 'EMP Disruptor M', slotType: 'weapon', size: 'M', tier: 3, mass: 6, price: 36000, requiresTech: 'tech_plasma_dynamics',
-    dmg: 45, rof: 1.5, dps: 68, damageType: 'emp', energyCost: 11,
+    dmg: 96, rof: 1.5, dps: 144, damageType: 'emp', energyCost: 11,
     projSpeed: 380, range: 560, tracking: 'fixed', spreadDeg: 1.0,
     subsystemShare: 1.0, shieldBypass: 1.0,
   },

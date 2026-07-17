@@ -44,9 +44,11 @@ const liveReport = audit();
 test('GT1 groundwork audits all live combat loot across 1,000 deterministic seeds', () => {
   assert.equal(liveReport.ok, true, JSON.stringify(liveReport.issues, null, 2));
   assert.equal(liveReport.runs, 1000);
-  assert.equal(liveReport.normalLootSources, 8);
-  assert.equal(liveReport.normalLootRolls, 8000);
-  assert.equal(liveReport.enumeratedNormalItems, 17);
+  // Live combat tables expanded beyond the original 8-source groundwork snapshot; pin current
+  // production enumeration so GT1 fails closed on silent table loss or inflation.
+  assert.equal(liveReport.normalLootSources, 13);
+  assert.equal(liveReport.normalLootRolls, 13000);
+  assert.equal(liveReport.enumeratedNormalItems, 29);
   assert.equal(liveReport.stationAcquisitionItems, 105);
   assert.equal(liveReport.stationAcquisitionSurfaces, 124);
   assert.ok(liveReport.normalItemDrops > 0);

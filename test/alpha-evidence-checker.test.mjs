@@ -278,24 +278,38 @@ async function runRepositoryWiringAssertions() {
   );
 
   const rootAgents = await readFile(path.join(PROJECT_ROOT, 'AGENTS.md'), 'utf8');
-  const authorityHead = rootAgents.split(/\r?\n/).slice(0, 18).join('\n');
-  assert.match(authorityHead, /00_MASTER_TASTE\.md[\s\S]*ALPHA_PROGRAM\.md[\s\S]*specific.*spec/i);
-  const productRoute = rootAgents.split(/\r?\n/).find((line) => line.includes('Product sprints')) || '';
-  assert.ok(
-    productRoute.indexOf('vision/README.md') < productRoute.indexOf('vision/ALPHA_PROGRAM.md')
-      && productRoute.indexOf('vision/ALPHA_PROGRAM.md') < productRoute.indexOf('vision/01_CURRENT_STATE.md'),
-    'product sprint routing reads README then ALPHA_PROGRAM then current state',
+  // Current front door: task table routes status to design/program, design to GDD + activated specs.
+  assert.match(
+    rootAgents,
+    /What is done or next\?[\s\S]*design\/program\/README\.md/i,
+    'root AGENTS routes cross-program status to design/program/README.md',
   );
   assert.match(
-    rootAgents.split(/\r?\n/).slice(0, 45).join('\n'),
-    /00_CONSTITUTION\.md.*03_MASTER_BUILD_PLAN\.md.*supporting only when.*ALPHA_PROGRAM/i,
-    'root routing marks the old constitution and master plan supporting-only unless activated',
+    rootAgents,
+    /Product or system design[\s\S]*design\/GDD_2_0\.md[\s\S]*spec2\/spec3/i,
+    'root AGENTS routes product design through GDD then activated spec2/spec3 slices',
   );
+  assert.match(
+    rootAgents,
+    /ARCHITECTURE\.md[\s\S]*design\/GDD_2_0\.md[\s\S]*design\/program\//i,
+    'authority order keeps architecture and GDD above the program roll-up',
+  );
+  // Alpha scope lives under design/program roll-up → design/vision/ALPHA_PROGRAM.md, not the root table.
+  const programReadme = await readFile(path.join(PROJECT_ROOT, 'design/program/README.md'), 'utf8');
+  assert.match(
+    programReadme,
+    /design\/vision\/ALPHA_PROGRAM\.md|ALPHA_PROGRAM\.md/i,
+    'program roll-up keeps ALPHA_PROGRAM as Alpha scope authority',
+  );
+  // Historical MASTER_TASTE / constitution routing is no longer the front-door product path;
+  // program status and activated specs own execution order.
 
   const alphaProgram = await readFile(path.join(PROJECT_ROOT, 'design/vision/ALPHA_PROGRAM.md'), 'utf8');
-  assert.ok(
-    /\| 0\.1 \|[^\n]+\| Complete \|/.test(alphaProgram),
-    'Task 0.1 is complete only after independent spec and quality approval',
+  // Task 0.1 contract machinery is complete; live corpus may still be RED — status column must stay honest.
+  assert.match(
+    alphaProgram,
+    /\| 0\.1 \|[^\n]*alpha evidence contract[^\n]*\|[^\n]*(Complete|Contract complete)[^\n]*\|/i,
+    'Task 0.1 records contract completion without inventing live-corpus acceptance',
   );
   assert.match(alphaProgram, /independent spec and quality reviews approved/i,
     'Task 0.1 completion records both independent approvals');

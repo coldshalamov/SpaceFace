@@ -292,15 +292,16 @@ test('law and encounter planners consume ecology without authorizing ambient agg
 });
 
 test('registry and save pipeline wire ecology before sector materialization', () => {
+  // Product contract is registry init order + save deserialize before world.enterSector.
+  // main.js no longer exposes a debug system-name array; do not treat that as ecology wiring.
   const registrySource = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   const saveSource = readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
-  const mainSource = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(registrySource, /import \{ regionalEcology \} from '\.\.\/systems\/regionalEcology\.js'/);
   assert.ok(registrySource.indexOf('world, regionalEcology, encounterDirector') >= 0);
   assert.match(saveSource, /data\.regionalEcology = this\._callSerialize\('regionalEcology'\)/);
   const restoreEcology = saveSource.indexOf("this._callDeserialize('regionalEcology'");
   const enterSectorCall = /worldSys\.enterSector\(sectorId\s*,\s*(?:options|\{[\s\S]*?\})\s*\)/.exec(saveSource);
   const enterSector = enterSectorCall ? enterSectorCall.index : -1;
-  assert.ok(restoreEcology >= 0 && enterSector > restoreEcology);
-  assert.match(mainSource, /\['world', 'regionalEcology', 'factions'/);
+  assert.ok(restoreEcology >= 0 && enterSector > restoreEcology,
+    'regionalEcology must deserialize before world.enterSector rematerializes the sector');
 });

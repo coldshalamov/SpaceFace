@@ -24,6 +24,7 @@ import { createSimulation } from '../src/core/sim.js';
 import { encounterDirector, planEncounters, planEncounterShape } from '../src/systems/encounterDirector.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { ENCOUNTER_SCRIPTS } from '../src/systems/encounterScripts.js';
 import { mulberry32, hash32 } from '../src/core/rng.js';
@@ -104,23 +105,50 @@ function ok(label) { sections++; console.log(`  ✓ ${label}`); }
 }
 
 // ─── shared runtime boot ─────────────────────────────────────────────────────────────────────────
-function boot(seed, sectorId, playerPos, cargoItems) {
+// playerPos is sector-LOCAL (authored zone coordinates). Live entities use galactic-global space
+// after M2; convert once at the harness boundary so proximity gates match production.
+function boot(seed, sectorId, playerPosLocal, cargoItems) {
   const sim = createSimulation({ seed, systems: [spawnBudget, encounterDirector] });
   const { state, bus } = sim;
   state.mode = 'flight';
   state.world.currentSectorId = sectorId;
-  const player = sim.spawn({ type: 'ship', team: 0, pos: { x: playerPos.x, z: playerPos.z }, vel: { x: 0, z: 0 }, hull: 200, hullMax: 200, radius: 6 });
+  const globalPos = sectorLocalToGlobalForSector(
+    { x: playerPosLocal.x, z: playerPosLocal.z },
+    sectorId,
+  );
+  const player = sim.spawn({
+    type: 'ship',
+    team: 0,
+    pos: { x: globalPos.x, z: globalPos.z },
+    vel: { x: 0, z: 0 },
+    hull: 200,
+    hullMax: 200,
+    radius: 6,
+  });
   state.playerId = player.id;
   if (cargoItems) state.player.cargo.items = { ...cargoItems };
   bus.emit('sector:enter', { sectorId });
   return { sim, state, bus, player };
 }
 
+function globalZonePatrol(sectorId) {
+  return zonesForSector(sectorId).map((zone) => ({
+    id: zone.id,
+    center: sectorLocalToGlobalForSector(zone.center, sectorId),
+    radius: zone.radius || 400,
+  }));
+}
+
 // ─── 3. pacing soak (Sker Haven — dense combat pressure) ────────────────────────────────────────
 function soakSker(seed) {
-  const { sim, state, bus } = boot(seed, 'sector_sker_haven', { x: -540, z: 680 }, { cmdty_refined_metals: 12 });
+  const sectorId = 'sector_sker_haven';
+  const { sim, state, bus, player } = boot(seed, sectorId, { x: -540, z: 680 }, { cmdty_refined_metals: 12 });
   const events = [];
   const samples = [];
+  // Patrol authored zones so proximity-gated combat shapes (ambush/toll) can fire. A fixed
+  // haven-only pose after M2 global coordinates left every gatecamp-anchored schedule item
+  // permanently deferred — false quiet, not product pacing.
+  const patrol = globalZonePatrol(sectorId);
   // Deterministic referee: no combat systems run in this harness, so conflicts would never end.
   // 45 s after each encounter spawns, the "player" kills its remaining squad — exercising the full
   // resolve/receipt/budget-release lifecycle so follow-on pacing is actually tested.
@@ -136,6 +164,13 @@ function soakSker(seed) {
     state.player.flags = state.player.flags || {};
     state.player.flags.docked = s >= DOCK[0] && s < DOCK[1];
     state.onboarding = (s >= TUT[0] && s < TUT[1]) ? { active: true, finished: false } : null;
+    // 150 s dwell per zone keeps the player inside each proximity radius long enough for due
+    // items to pass the 1 Hz pump without inventing schedules.
+    if (patrol.length) {
+      const zone = patrol[Math.floor(s / 150) % patrol.length];
+      player.pos.x = zone.center.x;
+      player.pos.z = zone.center.z;
+    }
     for (const job of refereeQueue) {
       if (job.done || state.simTime < job.at) continue;
       job.done = true;
