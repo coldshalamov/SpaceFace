@@ -73,6 +73,11 @@ const RENDER_STREAM_EVICT_RADIUS = 6400;
 // remain dormant instead of replacing procedural placeholders during unrelated play.
 const AUTHORED_ASSET_PREFETCH_RADIUS = 2400;
 const AUTHORED_ASSET_IMMEDIATE_RADIUS = 1000;
+// Ships share the render-stream seam runway (same 5.2k used by loading composition). Helios pocket
+// traffic anchors around station_helios (~1.3k from spawn); the 1k place/immediate radius left those
+// NPC hulls at procedural-fallback after flight while the release pool already held their GLBs.
+// Stations/places keep the tighter immediate+approach policy below.
+const AUTHORED_SHIP_COMPOSITION_RADIUS = RENDER_STREAM_PREFETCH_RADIUS;
 const AUTHORED_ASSET_LOOKAHEAD_SECONDS = 10;
 const RENDER_RESIDENCY_POLL_SECONDS = 0.25;
 
@@ -198,6 +203,12 @@ export function isEntityAuthoredUpgradeRelevant(entity, state, radius = AUTHORED
   if (entityIsExplicitRenderFocus(entity, state)) return true;
   if (isCriticalStartingHub(entity)) return true;
   if (state && state.mode === 'loading' && isInitialAuthoredCompositionEntity(entity, state)) return true;
+  // Live ships inside the seam runway must leave procedural-fallback. Modular/whole-ship plans hit
+  // the shared release pool once resident; this does not eagerly decode every place/station GLB.
+  if (entity.type === 'ship'
+      && entityWithinPlayerRadius(entity, state, AUTHORED_SHIP_COMPOSITION_RADIUS)) {
+    return true;
+  }
   if (entityWithinPlayerRadius(entity, state, AUTHORED_ASSET_IMMEDIATE_RADIUS)) return true;
   return entityIsOnApproachVector(entity, state, radius);
 }

@@ -124,6 +124,19 @@ test('authored assets preload ahead of visibility without decoding the whole act
   assert.equal(isEntityAuthoredUpgradeRelevant(approaching, state), true, 'approaching content preloads before entry');
   assert.equal(isEntityAuthoredUpgradeRelevant(offAxis, state), false, 'stationary/off-axis content does not decode speculatively');
   assert.equal(isEntityAuthoredUpgradeRelevant(far, state), false, 'offscreen current-sector content stays dormant');
+
+  // Ships use the 5.2k seam runway so Helios pocket traffic (~1.3k from spawn) authors under release
+  // mode; places/stations keep the tighter immediate+approach dormancy above.
+  const pocketHauler = {
+    id: 6, type: 'ship', alive: true, homeSectorId: 'sector_helios_prime', pos: { x: 1340, z: -400 },
+  };
+  const farHauler = {
+    id: 7, type: 'ship', alive: true, homeSectorId: 'sector_helios_prime', pos: { x: 6200, z: 0 },
+  };
+  assert.equal(isEntityAuthoredUpgradeRelevant(pocketHauler, state), true,
+    'Helios pocket ships inside the seam runway must author (not stay procedural-fallback)');
+  assert.equal(isEntityAuthoredUpgradeRelevant(farHauler, state), false,
+    'ships beyond the seam runway stay dormant');
 });
 
 test('main-scene first renders do not decode every loading-screen entity', () => {
