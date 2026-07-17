@@ -12,9 +12,10 @@
 //   - Multi-seed (CI pair) isolation; deterministic report.
 //
 // Honest residual (fail-closed documentation, not a green claim):
-//   - Helix still has no natural zone / fleet carrier (Fable §5.7 spawn-policy
-//     still rules Helix budget class / gating). Report helixCarrierCount and
-//     fail only if FORCE_HELIX_CARRIER=1.
+//   - Helix still has no natural zone / fleet carrier. Static data audit proves
+//     product-safe options 1–2 are blocked (paper fleet, no homeSectors, zero
+//     zone ownership). Fable §5.7 spawn-policy still rules Helix budget class /
+//     gating. Report helixCarrierCount and fail only if FORCE_HELIX_CARRIER=1.
 //
 // Usage:
 //   npm run check:depth-program:d1:living-opposition
@@ -30,7 +31,9 @@ import { createGameState } from '../src/core/gameState.js';
 import { createRegistry } from '../src/core/registry.js';
 import { sectorGlobalOrigin } from '../src/data/sectorCoordinates.js';
 import { FACTION_DOCTRINES as DOCTRINES } from '../src/data/factionDoctrines.js';
+import helixFaction from '../src/data/factions/helix.js';
 import { SECTORS } from '../src/data/sectors.js';
+import { SECTOR_ZONES } from '../src/data/sectorZones.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -54,6 +57,20 @@ const HELIX_DOCTRINE_ID = DOCTRINES.faction_helix && DOCTRINES.faction_helix.id;
 assert.ok(DOCTRINE_IDS.size >= 9, 'FACTION_DOCTRINES must cover original nine + expansions');
 assert.equal(HELIX_DOCTRINE_ID, 'helix_controlled_escalation');
 
+// ── Static Helix impossibility audit (options 1–2 blocked by shipped data) ──
+// Option 1 requires Helix zone ownership to stamp doctrine on ambient already there.
+// Option 2 requires Helix faction presence + a fleet class that can carry ships.
+// Neither preconditions exist; inventing either without Fable §5.7 is not product-safe.
+const helixBlockers = auditHelixNaturalCarrierBlockers();
+assert.equal(helixBlockers.fleetClass, 'none', 'Helix remains paper fleetClass=none (no ship carrier class)');
+assert.deepEqual(helixBlockers.homeSectors, [], 'Helix homeSectors must be empty (no owned sector presence)');
+assert.equal(helixBlockers.shipRoleCount, 0, 'Helix shipRoles must be empty (zero hulls)');
+assert.equal(helixBlockers.zoneFactionOwnedCount, 0, 'No sector zone may declare factionId=faction_helix');
+assert.equal(helixBlockers.zonePresenceFactionCount, 0, 'No zone presence may declare factionId=faction_helix');
+assert.equal(helixBlockers.option1Allowed, false, 'Option 1 (stamp existing Helix zone ambient) blocked by data');
+assert.equal(helixBlockers.option2Allowed, false, 'Option 2 (authored Helix patrol on presence) blocked by data');
+assert.equal(helixBlockers.productSafePath, 'option3_fail_closed', 'Only option 3 (fail-closed residual) is product-safe');
+
 const restoreGlobals = installHeadlessBrowserStubs();
 let rows;
 try {
@@ -74,15 +91,32 @@ assert.ok(
   `every crowded-sector soak must surface ≥1 FACTION_DOCTRINES-tagged contact; tagged=${tagged.length}/${rows.length}`,
 );
 
+// Runtime soak must agree with static paper audit: zero Helix carriers until policy lands.
+if (helixRows.length === 0) {
+  assert.equal(
+    helixBlockers.productSafePath,
+    'option3_fail_closed',
+    'zero helixCarrierCount must keep product-safe path as option3_fail_closed',
+  );
+}
+
 if (FORCE_HELIX) {
+  // Fail-closed Helix bar: do not pass, do not invent carriers, do not weaken assertion.
   assert.ok(
     helixRows.length > 0,
-    'FORCE_HELIX_CARRIER=1: Helix natural carrier required but helixCarrierCount=0 (REAL residual; Fable §5.7)',
+    'FORCE_HELIX_CARRIER=1: Helix natural carrier required but helixCarrierCount=0 '
+      + `(REAL residual; blockers=${JSON.stringify({
+        fleetClass: helixBlockers.fleetClass,
+        homeSectors: helixBlockers.homeSectors,
+        zoneFactionOwnedCount: helixBlockers.zoneFactionOwnedCount,
+        zonePresenceFactionCount: helixBlockers.zonePresenceFactionCount,
+        fableSpawnPolicy: helixBlockers.fableSpawnPolicy,
+      })})`,
   );
 }
 
 const report = {
-  schema: 'spaceface.depth_program.d1_living_opposition.v1',
+  schema: 'spaceface.depth_program.d1_living_opposition.v2',
   check: 'depth-program-d1-living-opposition',
   seeds: [...CI_SEEDS],
   sectors: [CROWDED_SECTOR, SECONDARY_SECTOR],
@@ -90,8 +124,9 @@ const report = {
   pass: true,
   doctrineTaggedSoaks: tagged.length,
   helixCarrierSoaks: helixRows.length,
+  helixBlockers,
   helixResidual: helixRows.length === 0
-    ? 'REAL — Helix has no natural fleet/zone carrier; Fable §5.7 spawn-policy still blocks product change'
+    ? 'REAL — Helix has no natural fleet/zone carrier; options 1–2 blocked by paper data; Fable §5.7 still unwritten; FORCE_HELIX_CARRIER=1 fails closed'
     : null,
   rows,
   notes: [
@@ -99,6 +134,9 @@ const report = {
     'Ambient materializes through registered world.enterSector only',
     'factionDoctrineId stamped on zone/ring ambient when FACTION_DOCTRINES owns the faction',
     'Helix residual is documented, not waived as green',
+    'Option 1 blocked: zero Helix-owned zones / presence to stamp',
+    'Option 2 blocked: fleetClass=none, homeSectors=[], shipRoles=[]',
+    'Option 3 taken: strengthen fail-closed residual; do not invent carriers',
   ],
 };
 
@@ -112,6 +150,9 @@ console.log(JSON.stringify({
   doctrineTaggedSoaks: report.doctrineTaggedSoaks,
   helixCarrierSoaks: report.helixCarrierSoaks,
   helixResidual: report.helixResidual,
+  helixProductSafePath: report.helixBlockers.productSafePath,
+  helixOption1Allowed: report.helixBlockers.option1Allowed,
+  helixOption2Allowed: report.helixBlockers.option2Allowed,
   evidence: OUT,
   log: LOG,
 }, null, 2));
@@ -242,7 +283,70 @@ function makeHarness(seed, sectorId) {
   };
 }
 
+/**
+ * Machine-checkable proof that product-safe Helix carrier options 1–2 are blocked.
+ * Does not invent zones, fleets, or doctrine stamps — only reads shipped data.
+ */
+function auditHelixNaturalCarrierBlockers() {
+  const meta = helixFaction && (helixFaction.default || helixFaction);
+  const fleetClass = meta && meta.fleetClass != null ? String(meta.fleetClass) : null;
+  const homeSectors = Array.isArray(meta && meta.homeSectors) ? [...meta.homeSectors] : [];
+  const shipRoles = Array.isArray(meta && meta.shipRoles) ? meta.shipRoles : [];
+  const personality = meta && meta.personality != null ? String(meta.personality) : null;
+
+  let zoneFactionOwnedCount = 0;
+  let zonePresenceFactionCount = 0;
+  const helixZoneIds = [];
+  for (const [sectorId, zones] of Object.entries(SECTOR_ZONES || {})) {
+    for (const zone of zones || []) {
+      if (!zone) continue;
+      if (zone.factionId === 'faction_helix') {
+        zoneFactionOwnedCount += 1;
+        helixZoneIds.push(`${sectorId}:${zone.id}`);
+      }
+      if (zone.presence && zone.presence.factionId === 'faction_helix') {
+        zonePresenceFactionCount += 1;
+        helixZoneIds.push(`${sectorId}:${zone.id}:presence`);
+      }
+    }
+  }
+
+  // Option 1: stamp Helix doctrine on ambient already spawned under Helix zone ownership.
+  const option1Allowed = zoneFactionOwnedCount > 0 || zonePresenceFactionCount > 0;
+  // Option 2: author one ambient Helix patrol where Helix already has presence + a fleet.
+  const option2Allowed = homeSectors.length > 0
+    && fleetClass
+    && fleetClass !== 'none'
+    && shipRoles.length > 0;
+
+  return {
+    factionId: 'faction_helix',
+    doctrineId: HELIX_DOCTRINE_ID,
+    fleetClass,
+    personality,
+    homeSectors,
+    shipRoleCount: shipRoles.length,
+    zoneFactionOwnedCount,
+    zonePresenceFactionCount,
+    helixZoneIds,
+    fableSpawnPolicy: 'missing_§5.7',
+    option1Allowed,
+    option2Allowed,
+    // Option 3 is always the product-safe path when 1–2 fail and policy is missing.
+    productSafePath: (!option1Allowed && !option2Allowed)
+      ? 'option3_fail_closed'
+      : 'revisit_product_carrier',
+    rejectedUnsafeShortcuts: [
+      'stamp_helix_doctrine_on_mts_or_reach_without_zone_ownership',
+      'author_helix_zone_or_presence_without_fable_§5.7',
+      'encounterDirector_or_spawn_budget_thrash_without_policy',
+      'FORCE_HELIX_default_green_waiver',
+    ],
+  };
+}
+
 function formatLog(report) {
+  const b = report.helixBlockers || {};
   const lines = [
     `# D1 living-opposition implementer log`,
     `date: ${new Date().toISOString()}`,
@@ -253,6 +357,14 @@ function formatLog(report) {
     `doctrineTaggedSoaks: ${report.doctrineTaggedSoaks}/${report.rows.length}`,
     `helixCarrierSoaks: ${report.helixCarrierSoaks}`,
     `helixResidual: ${report.helixResidual || 'none'}`,
+    `helixProductSafePath: ${b.productSafePath || 'n/a'}`,
+    `helixFleetClass: ${b.fleetClass}`,
+    `helixHomeSectors: ${JSON.stringify(b.homeSectors || [])}`,
+    `helixZoneOwned: ${b.zoneFactionOwnedCount}`,
+    `helixZonePresence: ${b.zonePresenceFactionCount}`,
+    `helixOption1Allowed: ${b.option1Allowed}`,
+    `helixOption2Allowed: ${b.option2Allowed}`,
+    `fableSpawnPolicy: ${b.fableSpawnPolicy}`,
     ``,
     `## per-seed`,
   ];

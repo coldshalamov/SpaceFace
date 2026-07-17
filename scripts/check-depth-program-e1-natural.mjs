@@ -15,10 +15,18 @@
 //   H8 depth_h8_echo_of_player       — native telegraph; supporting mirror-course drive
 //                                     (timeoutChoice null — pure timeout cannot complete)
 //
-// Supporting under F1 §1: flight bootstrap (mode/sector/player eligibility + sector:enter
-// + zone placement; H2 tech; H7 moralMemory; H8 mirror placement). Not force-spawn.
-// Follow-ons (depth_h6_vael_enforcement_follow_on, depth_h8_mass_migration_follow_on)
-// remain stubs and never count toward pass.
+// Supporting under F1 §1: membership scaffold (mode/sector + sector:enter + zone place)
+// is still supporting for every shape — do NOT flip supporting:false globally.
+// Eligibility injects are per-shape and minimized for H1–H6:
+//   H1 — beat≥3 + discovery map + production poi:discovered (visit memory)
+//   H2 — tech_long_range_survey inject (Tier A has no research earn path)
+//   H3 — beat≥6 only
+//   H4 — eligibility-free (zone membership only)
+//   H5 — beat≥5 only
+//   H6 — eligibility-free (empty gates; zone membership only)
+//   H7 — moralMemory:remember stand-in (moralDebtOnly)
+//   H8 — beat≥7 + mirror-course drive (timeoutChoice null)
+// Follow-ons remain weight-0 stubs and never count toward pass.
 //
 // Usage:
 //   npm run check:depth-program:e1:natural
@@ -71,14 +79,17 @@ const H1_YARD_LOCAL = Object.freeze({ x: -1760, z: -1260 });
  * Held-out seeds stay in naturalRouteSeeds.json (not embedded).
  *
  * Bootstrap is per-shape and intentionally minimal:
- *   H1 — storyBeatMin 3 + prior POI visit/discovery
- *   H2 — tech_long_range_survey (production gate) + tier≥3 sector
+ *   H1 — storyBeatMin 3 + discovery map + production poi:discovered visit
+ *   H2 — tech_long_range_survey (production gate; no Tier-A research earn) + tier≥3
  *   H3 — storyBeatMin 6 only
- *   H4 — Io Reach zone only
+ *   H4 — Io Reach zone only (eligibility-free under membership scaffold)
  *   H5 — storyBeatMin 5 + Io Reach
- *   H6 — zone only (empty gates)
+ *   H6 — zone only / empty gates (eligibility-free under membership scaffold)
  *   H7 — moralMemory:remember stand-in (moralDebtOnly production gate)
  *   H8 — storyBeatMin 7 + post-telegraph mirror-course player drive stand-in
+ *
+ * supporting (F1 primary): always true while membership scaffold remains.
+ * eligibilitySupporting: true only when beat/POI/tech/moral/mirror injects are used.
  */
 const SHAPE_SPECS = Object.freeze([
   Object.freeze({
@@ -157,6 +168,21 @@ const SHAPE_SPECS = Object.freeze([
   }),
 ]);
 
+/** Shape needs beat/POI/tech/moral/mirror inject beyond membership scaffold. */
+function eligibilityInjectsOf(spec) {
+  const injects = [];
+  if ((spec.beatIndex | 0) > 0) injects.push(`storyBeatMin→beatIndex=${spec.beatIndex}`);
+  if (spec.poiId) injects.push(`poiDiscovery+poi:discovered:${spec.poiId}`);
+  if (spec.requiredTech) injects.push(`tech:${spec.requiredTech}`);
+  if (spec.moralDebt) injects.push('moralMemory:remember');
+  if (spec.mirrorCourse) injects.push('mirror-course drive');
+  return injects;
+}
+
+function hasEligibilityInject(spec) {
+  return eligibilityInjectsOf(spec).length > 0;
+}
+
 const OBSERVE_EVENTS = Object.freeze([
   'sector:enter',
   'encounter:telegraph',
@@ -167,29 +193,37 @@ const OBSERVE_EVENTS = Object.freeze([
 ]);
 
 const routesByShape = new Map(
-  SHAPE_SPECS.map((spec) => [
-    spec.shapeId,
-    defineRoute({
-      id: spec.routeId,
-      contentClass: CONTENT_CLASSES.encounter,
-      requiredMarks: REQUIRED_MARKS_BY_CLASS.encounter,
-      ciSeeds: [...spec.ciSeeds],
-      supporting: true,
-      carrier: {
-        slot: spec.slot,
-        channel: 'encounterDirector planEncounters + pacing gate',
-        shapeId: spec.shapeId,
-        sectorId: spec.sectorId,
-      },
-      steps: [],
-      meta: {
-        skeleton: false,
-        naturalDirector: true,
-        shapeId: spec.shapeId,
-        note: `${spec.slot} multi-seed native fire; bootstrap state is supporting`,
-      },
-    }),
-  ]),
+  SHAPE_SPECS.map((spec) => {
+    const eligibilitySupporting = hasEligibilityInject(spec);
+    return [
+      spec.shapeId,
+      defineRoute({
+        id: spec.routeId,
+        contentClass: CONTENT_CLASSES.encounter,
+        requiredMarks: REQUIRED_MARKS_BY_CLASS.encounter,
+        ciSeeds: [...spec.ciSeeds],
+        // Membership scaffold keeps all shapes supporting (F1 primary not claimed).
+        supporting: true,
+        carrier: {
+          slot: spec.slot,
+          channel: 'encounterDirector planEncounters + pacing gate',
+          shapeId: spec.shapeId,
+          sectorId: spec.sectorId,
+        },
+        steps: [],
+        meta: {
+          skeleton: false,
+          naturalDirector: true,
+          shapeId: spec.shapeId,
+          eligibilitySupporting,
+          eligibilityInjects: eligibilityInjectsOf(spec),
+          note: eligibilitySupporting
+            ? `${spec.slot} native fire; membership scaffold + eligibility injects`
+            : `${spec.slot} native fire; membership scaffold only (eligibility-free)`,
+        },
+      }),
+    ];
+  }),
 );
 
 function finite(value, fallback = 0) {
@@ -263,12 +297,22 @@ function mark(name, session, detail = {}) {
 }
 
 function naturalnessNote(spec) {
+  const injects = eligibilityInjectsOf(spec);
   const bits = [
-    'supporting bootstrap: mode/sector/storyBeatMin + sector:enter + zone placement',
+    'membership scaffold: mode/sector + sector:enter + zone placement (supporting)',
     'spawn path is production planEncounters/pacing (no force)',
   ];
-  if (spec.poiId) bits.push('H1 POI discovery + prior visit eligibility');
-  if (spec.requiredTech) bits.push(`tech eligibility inject ${spec.requiredTech}`);
+  if (injects.length === 0) {
+    bits.push('eligibility-free (no beat/POI/tech/moral/mirror inject)');
+  } else {
+    bits.push(`eligibility injects: ${injects.join(', ')}`);
+  }
+  if (spec.poiId) {
+    bits.push('H1 visit via production poi:discovered (discovery map still seeded)');
+  }
+  if (spec.requiredTech) {
+    bits.push(`H2 tech inject required — Tier A has no research earn path for ${spec.requiredTech}`);
+  }
   if (spec.moralDebt) bits.push('H7 moralMemory:remember stand-in for prior mercy');
   if (spec.mirrorCourse) {
     bits.push('H8 post-telegraph mirror-course placement (timeoutChoice null; no choose inject)');
@@ -278,25 +322,33 @@ function naturalnessNote(spec) {
 
 /**
  * Supporting bootstrap only — never requestAuthoredEncounter / force / choose inject.
- * Per-shape minimum: beatIndex, optional POI / tech / moral debt stand-ins.
+ * Per-shape minimum: beatIndex when gated; optional POI/tech/moral stand-ins.
+ * H4/H6: membership scaffold only (eligibility-free).
  */
 function applySupportingBootstrap(session, player, spec, planned) {
   session.state.mode = 'flight';
   session.state.world.currentSectorId = spec.sectorId;
-  session.state.story.beatIndex = spec.beatIndex;
+  // Only write beat when the shape actually gates on storyBeatMin (>0).
+  if ((spec.beatIndex | 0) > 0) {
+    session.state.story.beatIndex = spec.beatIndex;
+  }
 
   if (spec.poiId) {
+    // requiredPoiDiscovered still needs discovery map — world system not in Tier A list.
     session.state.world.discovery = session.state.world.discovery || {};
     session.state.world.discovery[spec.sectorId] = {
       discovered: true,
       pois: { [spec.poiId]: { discovered: true, identified: false } },
     };
-    session.state.story.depthProgramPoiVisits = {
-      [spec.poiId]: { firstSeenAt: -10 },
-    };
+    // Production visit memory: poi:discovered → encounterDirector._rememberPoiVisit.
+    // Prefer this over writing depthProgramPoiVisits directly.
+    session.bus.emit('poi:discovered', { poiId: spec.poiId, type: 'derelict' });
+    // requirePriorPoiVisit needs firstSeenAt < fire-time simTime.
+    session.runTicks(Math.ceil(2 * 60));
   }
 
   if (spec.requiredTech) {
+    // REAL residual: tech gate cannot be earned in Tier A without research systems.
     session.state.player = session.state.player || {};
     const nodes = Array.isArray(session.state.player.researchedNodes)
       ? session.state.player.researchedNodes
@@ -506,11 +558,15 @@ function runShapeSeed(spec, seed) {
       'production requestAuthoredEncounter must exist (unused)');
 
     const pass = failures.length === 0;
+    const eligibilitySupporting = hasEligibilityInject(spec);
+    const eligibilityInjects = eligibilityInjectsOf(spec);
     return {
       seed,
       pass,
       result: pass ? 'passed' : 'failed',
+      // Membership scaffold residual — never claim primary here.
       supporting: true,
+      eligibilitySupporting,
       routeId: spec.routeId,
       shapeId: spec.shapeId,
       sectorId: spec.sectorId,
@@ -529,7 +585,12 @@ function runShapeSeed(spec, seed) {
       snapshot: session.snapshot('end'),
       carrier: route?.carrier || null,
       bootstrap: {
+        membershipScaffold: true,
+        eligibilitySupporting,
+        eligibilityInjects,
+        beatIndex: (spec.beatIndex | 0) > 0 ? spec.beatIndex : 0,
         poi: !!spec.poiId,
+        poiVisitVia: spec.poiId ? 'poi:discovered' : null,
         tech: spec.requiredTech || null,
         moralDebt: !!spec.moralDebt,
         mirrorCourse: !!spec.mirrorCourse,
@@ -628,12 +689,14 @@ for (const row of multi.rows) {
     outcome: row.outcome || null,
     directorStats: row.directorStats || null,
     bootstrap: row.bootstrap || null,
+    eligibilitySupporting: row.eligibilitySupporting === true,
   };
   evidencePaths.push(writeEvidence(evidence, OUT_DIR));
 }
 
 const shapeSummary = SHAPE_SPECS.map((spec) => {
   const rows = multi.rows.filter((r) => r.shapeId === spec.shapeId);
+  const eligibilitySupporting = hasEligibilityInject(spec);
   return {
     routeId: spec.routeId,
     shapeId: spec.shapeId,
@@ -642,8 +705,16 @@ const shapeSummary = SHAPE_SPECS.map((spec) => {
     ciSeeds: [...spec.ciSeeds],
     seedCount: rows.length,
     pass: rows.every((r) => r.pass),
+    // F1 primary flag remains true while membership scaffold is used.
+    supporting: true,
+    eligibilitySupporting,
     bootstrap: {
+      membershipScaffold: true,
+      eligibilitySupporting,
+      eligibilityInjects: eligibilityInjectsOf(spec),
+      beatIndex: (spec.beatIndex | 0) > 0 ? spec.beatIndex : 0,
       poi: !!spec.poiId,
+      poiVisitVia: spec.poiId ? 'poi:discovered' : null,
       tech: spec.requiredTech || null,
       moralDebt: !!spec.moralDebt,
       mirrorCourse: !!spec.mirrorCourse,
@@ -656,9 +727,24 @@ const shapeSummary = SHAPE_SPECS.map((spec) => {
   };
 });
 
+// H1–H6 eligibility probe (documented; full CI still uses necessary injects).
+// H4/H6 are eligibility-free and pass full marks under membership scaffold alone.
+const h1h6 = SHAPE_SPECS.filter((s) => /^E1\/H[1-6]$/.test(s.slot));
+const eligibilityFreeH1H6 = h1h6.filter((s) => !hasEligibilityInject(s));
+const eligibilityFreeRows = multi.rows.filter(
+  (r) => eligibilityFreeH1H6.some((s) => s.shapeId === r.shapeId),
+);
+const eligibilityFreePassCount = eligibilityFreeRows.filter((r) => r.pass).length;
+const eligibilitySupportingH1H6 = h1h6.filter((s) => hasEligibilityInject(s));
+const eligibilitySupportingRows = multi.rows.filter(
+  (r) => eligibilitySupportingH1H6.some((s) => s.shapeId === r.shapeId),
+);
+
 const aggregate = {
   schema: NATURAL_ROUTE_SCHEMA,
   harness: 'check:depth-program:e1:natural',
+  // Do not flip globally: membership scaffold (mode/sector/sector:enter/zone place)
+  // remains supporting for every shape under F1 naturalness rules.
   supporting: true,
   seedMode: SEED_MODE,
   canonicalShapes: 8,
@@ -666,6 +752,27 @@ const aggregate = {
     'depth_h6_vael_enforcement_follow_on',
     'depth_h8_mass_migration_follow_on',
   ]),
+  eligibilityReduction: {
+    scope: 'H1-H6',
+    note: 'Per-shape eligibility injects minimized; membership scaffold keeps supporting:true',
+    eligibilityFreeShapes: eligibilityFreeH1H6.map((s) => s.slot),
+    eligibilityFreeSeedRuns: eligibilityFreeRows.length,
+    eligibilityFreePassCount,
+    eligibilitySupportingShapes: eligibilitySupportingH1H6.map((s) => ({
+      slot: s.slot,
+      injects: eligibilityInjectsOf(s),
+    })),
+    eligibilitySupportingSeedRuns: eligibilitySupportingRows.length,
+    // supporting:false partial: full marks under membership-only for eligibility-free shapes.
+    // Still not primary (sector:enter / mode / pos writes fail naturalness validator).
+    supportingFalsePrimaryClaim: false,
+    supportingFalsePartial: {
+      shapes: eligibilityFreeH1H6.map((s) => s.slot),
+      fullMarkPassRuns: eligibilityFreePassCount,
+      totalRuns: eligibilityFreeRows.length,
+      residual: 'membership scaffold still supporting; naturalness validator forbids sector:enter/mode/pos',
+    },
+  },
   shapes: shapeSummary,
   seeds: jobs.map((j) => j.seed),
   jobs: jobs.map((j) => ({ shapeId: j.spec.shapeId, seed: j.seed, slot: j.spec.slot })),
@@ -680,6 +787,8 @@ const aggregate = {
     routeId: row.routeId,
     pass: row.pass,
     result: row.result,
+    supporting: true,
+    eligibilitySupporting: row.eligibilitySupporting === true,
     planned: row.planned,
     teleAt: row.marks?.find((m) => m.name === 'encounter-spawned')?.detail?.simTime ?? null,
     outcome: row.outcome,
@@ -691,24 +800,27 @@ const aggregate = {
   })),
   evidencePaths,
   densityNotes: {
-    h1: 'Native on Helios when storyBeat≥3 + prior yard visit; CI triple day-1 windows.',
-    h2: 'Native on tier≥3 (Veil) with tech_long_range_survey; CI pair day-0/1; timeout→scanned.',
-    h3: 'Native widely; CI pair day-0 Helios minors. No POI/tech gate.',
-    h4: 'Rare ambient Io (weight 0.35 + RARE_GATE); day-0 CI seeds 15/22 avoid multi-day lag.',
-    h5: 'Native Io Reach major with storyBeat≥5; CI pair day-0; timeout→fled.',
-    h6: 'Empty gates; CI pair day-0 Helios; timeout→wait→vultured (+20s battle soak).',
+    h1: 'Native Helios when beat≥3 + yard discovery; visit via production poi:discovered; CI triple.',
+    h2: 'Native tier≥3 (Veil) with tech_long_range_survey inject (no Tier-A research earn); timeout→scanned.',
+    h3: 'Native widely; beat≥6 only. No POI/tech gate.',
+    h4: 'Eligibility-free; rare ambient Io day-0 CI seeds 15/22; timeout→heard.',
+    h5: 'Native Io Reach major with beat≥5; timeout→fled.',
+    h6: 'Eligibility-free; empty gates; timeout→wait→vultured (+20s battle soak).',
     h7: 'Plans widely; fire-time moralDebtOnly — supporting moralMemory:remember stand-in for CI.',
     h8: 'Telegraphs natively; timeoutChoice null — supporting mirror-course drive for outcome.',
     followOns: 'weight 0 stubs — never count toward pass (F1 §6).',
   },
   residual: [
-    'REAL unassisted H7: moralDebtOnly requires prior spared contact — progression density not earned in Tier A soak alone (CI uses moralMemory:remember stand-in)',
-    'REAL unassisted H8 pure timeout: timeoutChoice null; mirror-course needs player drive (CI uses post-telegraph placement stand-in, not choose inject)',
+    'Membership scaffold residual (all shapes): mode/sector/sector:enter/zone place — keeps supporting:true; naturalness validator would fail on harness sources',
+    'H1 still seeds discovery map (world system not in Tier A); visit memory now production poi:discovered',
+    'REAL H2 tech: requiredTech cannot be earned in Tier A without research systems — inject remains',
+    'H3/H5 beatIndex inject: missions progression not present in Tier A session',
+    'REAL unassisted H7: moralDebtOnly requires prior spared contact — moralMemory:remember stand-in',
+    'REAL unassisted H8 pure timeout: timeoutChoice null; mirror-course needs player drive',
     'H4 density lag without day-0 CI seeds: rare ambient often multi-day — product density residual',
-    'Replace supporting bootstrap with uninjected flight + world sector:enter only',
-    'Assert encounter:spawned entity ids when wreck helpers mirror onto live.ids',
+    'Eligibility-free H4/H6 pass full marks under membership scaffold only (4/4 CI runs) — still not primary',
+    'Do not flip supporting:false globally until uninjected flight membership + naturalness validator pass',
     'Tier-B browser observation (≥1) per F1 §6 encounter primary tier note',
-    'Promote off supporting when naturalness validator passes on harness sources',
     'Banked follow-ons remain weight-0 stubs until authored',
   ],
 };
@@ -717,6 +829,8 @@ mkdirSync(dirname(AGGREGATE), { recursive: true });
 writeFileSync(AGGREGATE, `${JSON.stringify(aggregate, null, 2)}\n`, 'utf8');
 
 const shapeLabels = shapeSummary.map((s) => `${s.slot}×${s.seedCount}`).join(', ');
+const freeLabels = eligibilityFreeH1H6.map((s) => s.slot).join(', ') || '(none)';
 console.log(`E1 natural multi-seed OK: ${multi.seedCount} runs (mode=${SEED_MODE}) shapes=[${shapeLabels}]`);
+console.log(`supporting:true (membership scaffold residual); eligibility-free H1–H6: [${freeLabels}] pass ${eligibilityFreePassCount}/${eligibilityFreeRows.length}`);
 console.log(`Aggregate: ${AGGREGATE}`);
 console.log(`Per-seed evidence: ${evidencePaths.length} files under ${OUT_DIR}`);
