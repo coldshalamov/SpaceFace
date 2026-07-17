@@ -74,12 +74,48 @@ export function drillHardnessBand(value) {
   return 'soft';
 }
 
+// Thin flight-HUD teach copy (presentation only). Keeps first-five-minute mining readable without
+// re-authoring mining.js / drill.js. Latch + optional mass residual; first-drill is one short line.
+export const MINING_LATCH_CALLOUT = 'CUTTER LOCK';
+export const MINING_SEAM_CALLOUT = 'SEAM';
+export const MINING_FIRST_DRILL_MAX_WORDS = 12;
+
+export function miningMassProgressLabel(oreHP, oreHPMax) {
+  const max = Number(oreHPMax);
+  if (!(max > 0)) return null;
+  const hp = Math.max(0, Number(oreHP) || 0);
+  const pct = Math.round(100 * Math.min(1, hp / max));
+  return `MASS ${pct}%`;
+}
+
+/** One latch callout: "CUTTER LOCK" or "CUTTER LOCK · MASS 72%". */
+export function miningLatchStateCallout(oreHP, oreHPMax) {
+  const mass = miningMassProgressLabel(oreHP, oreHPMax);
+  return mass ? `${MINING_LATCH_CALLOUT} · ${mass}` : MINING_LATCH_CALLOUT;
+}
+
+/** First-drill onboarding: one prompt, once, ≤12 words (exit label is binding-aware). */
+export function firstDrillTeachLine(exitLabel = 'B') {
+  const exit = String(exitLabel || 'B').trim() || 'B';
+  return `Drill active — cut ore veins, avoid gas. ${exit} exits.`;
+}
+
+export function countTeachWords(text) {
+  return String(text || '').trim().split(/\s+/).filter(Boolean).length;
+}
+
 export function validateMiningChoreography() {
   const issues = [];
   if (new Set(MINING_CHOREOGRAPHY_PHASES).size !== MINING_CHOREOGRAPHY_PHASES.length) issues.push('phase ids must be unique');
   if (new Set(MINING_PRESENTATION_CUE_IDS).size !== MINING_PRESENTATION_CUE_IDS.length) issues.push('cue ids must be unique');
   if (!MINING_PRESENTATION_CUE_IDS.every((id) => /^mining\.[a-z0-9_]+(?:\.[a-z0-9_]+)+$/.test(id))) {
     issues.push('cue ids must be dotted lowercase identifiers');
+  }
+  if (countTeachWords(firstDrillTeachLine('B')) > MINING_FIRST_DRILL_MAX_WORDS) {
+    issues.push('first-drill teach line must stay within the thin-teach word budget');
+  }
+  if (!String(miningLatchStateCallout(72, 100)).includes(MINING_LATCH_CALLOUT)) {
+    issues.push('latch state callout must include the cutter-lock receipt');
   }
   return { ok: issues.length === 0, issues };
 }

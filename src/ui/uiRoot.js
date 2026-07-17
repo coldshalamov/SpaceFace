@@ -1506,25 +1506,45 @@ function injectHudCss() {
     .sf-cargo-panel { width:calc(100vw - 24px); bottom:110px; }
   }
 
-  /* ===== HUD mission tracker — chromeless, with an edge marker; relocated into the bottom-left column ===== */
+  /* ===== HUD mission tracker — one primary objective line; title/meta stay quieter =====
+     NAV-HUD hierarchy (M3-NAV-HUD / W3): title = eyebrow, .sf-mt-obj = primary command verb,
+     time/marker = secondary meta. Soft mode = untracked "next action" guidance (quieter). */
   .sf-mission-tracker { position:relative; width:320px; max-width:calc(100vw - 32px);
-    padding:10px 12px; border-left:3px solid var(--visor-amber);
-    background:rgba(5,9,18,.92); box-shadow:none; pointer-events:none; contain:layout paint style; }
-  .sf-mt-title { font-family:var(--mono); font-size:10px; color:var(--visor-amber); letter-spacing:.18em;
-    margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    text-shadow:none; }
-  .sf-mt-obj { font-family:var(--mono); font-size:13px; line-height:1.35; color:var(--text-primary); margin-bottom:5px;
-    text-shadow:none; }
-  .sf-mt-time { font-family:var(--mono); font-size:10px; color:var(--visor-amber); letter-spacing:.1em;
-    text-shadow:none; }
-  .sf-mt-time.sf-mt-urgent { color:var(--visor-amber); text-shadow:none; }
+    padding:10px 12px 11px; border-left:3px solid var(--visor-amber);
+    background:rgba(5,9,18,.94); box-shadow:0 0 0 1px rgba(255,179,92,.08);
+    pointer-events:none; contain:layout paint style; }
+  .sf-mission-tracker--soft { border-left-color:rgba(57,208,255,.55);
+    background:rgba(5,9,18,.78); box-shadow:none; }
+  .sf-mt-title { font-family:var(--mono); font-size:9px; font-weight:500;
+    color:var(--visor-amber); letter-spacing:.16em; text-transform:uppercase;
+    margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    text-shadow:none; opacity:.72; }
+  .sf-mission-tracker--soft .sf-mt-title { color:var(--text-secondary); opacity:.65; }
+  /* Primary: the single actionable objective verb — largest, brightest flight-HUD text. */
+  .sf-mt-obj { font-family:var(--mono); font-size:14px; font-weight:700; line-height:1.3;
+    color:var(--text-primary); margin-bottom:5px; letter-spacing:.02em;
+    text-shadow:0 1px 2px rgba(0,0,0,.55); }
+  .sf-mission-tracker--soft .sf-mt-obj { font-size:12px; font-weight:600;
+    color:var(--text-secondary); text-shadow:none; }
+  /* Meta: distance / ETA / marker — readable but subordinate to the verb. */
+  .sf-mt-time { font-family:var(--mono); font-size:10px; font-weight:500;
+    color:var(--text-secondary); letter-spacing:.08em; text-shadow:none; opacity:.88; }
+  .sf-mt-time.sf-mt-urgent { color:var(--visor-amber); opacity:1;
+    text-shadow:0 0 8px rgba(255,179,92,.35); }
   @media (max-width: 760px) {
-    /* Sit below the fuel line + comms (≡) button + top-center SYS line so nothing overlaps. */
-    .sf-mission-tracker { max-width:calc(100vw - 16px); }
-    .sf-mt-title { font-size:10px; }
-    .sf-mt-obj { font-size:9px; }
+    /* Sit below the fuel line + comms (≡) button + top-center SYS line so nothing overlaps.
+       Preserve hierarchy: primary obj stays larger than title/meta (never invert). */
+    .sf-mission-tracker { max-width:calc(100vw - 16px); padding:8px 10px; }
+    .sf-mt-title { font-size:8px; }
+    .sf-mt-obj { font-size:12px; }
+    .sf-mission-tracker--soft .sf-mt-obj { font-size:11px; }
     .sf-mt-time { font-size:9px; }
   }
+  /* Spatial goal plate is a secondary cue; the tracker owns the command verb. */
+  .sf-objarrow__label { opacity:.92; font-weight:600; }
+  /* Nav readout fallback (only when no active objective owns attention) stays quieter. */
+  .sf-nav-readout { opacity:.88; }
+  .sf-nav-label { font-weight:600; }
 
   /* ===== dock transition overlay ===== */
   .sf-dock-fade { position:fixed; inset:0; z-index:2500; pointer-events:none;

@@ -772,10 +772,12 @@ export function createHud(ctx, alerts) {
   // technology does not announce the objective again on every HUD refresh.
   missionTracker.setAttribute('role', 'region');
   missionTracker.setAttribute('aria-label', 'Active objective');
+  // NAV-HUD hierarchy tiers (presentation only; a11y stays a single labelled region):
+  // primary = actionable verb, secondary = eyebrow title, meta = distance/ETA/marker.
   missionTracker.innerHTML =
-    '<div class="sf-mt-title mono"></div>' +
-    '<div class="sf-mt-obj mono"></div>' +
-    '<div class="sf-mt-time mono"></div>';
+    '<div class="sf-mt-title mono" data-hud-tier="secondary"></div>' +
+    '<div class="sf-mt-obj mono" data-hud-tier="primary"></div>' +
+    '<div class="sf-mt-time mono" data-hud-tier="meta"></div>';
   leftContext.appendChild(missionTracker);   // relocated into the bottom-left contextual column
   missionTracker.style.pointerEvents = 'auto';
   const objectiveHudDrag = createHudDragController({
@@ -2908,6 +2910,9 @@ export function createHud(ctx, alerts) {
     if (elOverview.style.display === 'none') elOverview.style.display = 'flex';
 
     const visibleCount = Math.min(displayLimit, contacts.length);
+    // One-threat lead: first hostile in the sorted roster is the visual primary threat.
+    // Remaining hostiles stay marked --threat (quieter) so the strip still ranks contacts.
+    let leadThreatMarked = false;
     for (let i = 0; i < visibleCount; i++) {
       const c = contacts[i];
       const e = c.e;
@@ -2939,6 +2944,13 @@ export function createHud(ctx, alerts) {
       const row = document.createElement('div');
       row.className = 'sf-overview-row';
       if (c.isWreck && !scannedWreck) row.classList.add('unscanned');
+      if (c.hostile) {
+        row.classList.add('sf-overview-row--threat');
+        if (!leadThreatMarked) {
+          row.classList.add('sf-overview-row--lead-threat');
+          leadThreatMarked = true;
+        }
+      }
       if (e.id === state.player.targetId) {
         row.classList.add('selected');
       }
@@ -3272,7 +3284,13 @@ export function createHud(ctx, alerts) {
       const active = (state.missions && state.missions.active) || [];
       const tracked = trackedId ? active.find((m) => m.id === trackedId && m.status === 'active') : null;
       const navWaypoint = state.nav && state.nav.waypoint;
+      // Soft = untracked guidance ("next action"); primary = tracked mission or live waypoint.
+      const setTrackerMode = (mode) => {
+        setClass(missionTracker, 'sf-mission-tracker--soft', mode === 'soft');
+        setClass(missionTracker, 'sf-mission-tracker--primary', mode === 'primary');
+      };
       if (tracked) {
+        setTrackerMode('primary');
         setText(mtTitle, coreText(navWaypoint && navWaypoint.onboarding ? 'tutorialObjective' : 'currentObjective'));
         setText(mtObj, mtObjectiveAction(navWaypoint && navWaypoint.reason || mtObjectiveText(tracked), navWaypoint));
         if (tracked.deadline_s != null && Number.isFinite(tracked.deadline_s)) {
@@ -3287,6 +3305,7 @@ export function createHud(ctx, alerts) {
         }
         setDisplay(missionTracker, true);
       } else if (navWaypoint) {
+        setTrackerMode('primary');
         const wp = navWaypoint;
         const routeGuide = mtRouteGuidance(state, wp);
         setText(mtTitle, coreText(wp.onboarding ? 'tutorialObjective' : 'currentObjective'));
@@ -3296,6 +3315,7 @@ export function createHud(ctx, alerts) {
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
       } else if (active.some((m) => m && m.status === 'active')) {
+        setTrackerMode('soft');
         const candidate = active.find((m) => m && m.status === 'active');
         setText(mtTitle, coreText('nextAction'));
         setText(mtObj, coreText('trackContract', {
@@ -3307,6 +3327,7 @@ export function createHud(ctx, alerts) {
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
       } else if (state.story && STORY_BEATS[state.story.beatIndex]) {
+        setTrackerMode('soft');
         setText(mtTitle, coreText('nextAction'));
         setText(mtObj, coreText('chooseStoryAction', { key: BINDINGS.missionLog.label }));
         setText(mtTime, coreText('noGoalSet'));
@@ -3314,6 +3335,7 @@ export function createHud(ctx, alerts) {
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
       } else {
+        setTrackerMode('primary');
         setDisplay(missionTracker, false);
       }
     }

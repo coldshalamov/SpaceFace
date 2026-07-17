@@ -7,10 +7,16 @@ import { createBus } from '../src/core/eventBus.js';
 import { validatePresentationRecipes } from '../src/presentation/cueRecipes.js';
 import {
   MINING_CHOREOGRAPHY_PHASES,
+  MINING_LATCH_CALLOUT,
   MINING_PRESENTATION_CUE_IDS,
+  MINING_SEAM_CALLOUT,
   classifyDrillWarning,
+  countTeachWords,
   drillHardnessBand,
   fieldDepletionBand,
+  firstDrillTeachLine,
+  miningLatchStateCallout,
+  miningMassProgressLabel,
   seamQualityTag,
   validateMiningChoreography,
 } from '../src/presentation/miningChoreography.js';
@@ -33,6 +39,15 @@ assert.equal(seamQualityTag({ seamHit: false, yieldMult: 0.35 }), 'off_seam');
 assert.equal(drillHardnessBand(0.6), 'soft');
 assert.equal(drillHardnessBand(1.1), 'firm');
 assert.equal(drillHardnessBand(1.8), 'hard');
+// Thin first-five-minute teach vocabulary (presentation only; no mining rewrite).
+assert.equal(miningMassProgressLabel(36, 100), 'MASS 36%');
+assert.equal(miningLatchStateCallout(36, 100), `${MINING_LATCH_CALLOUT} · MASS 36%`);
+assert.equal(miningLatchStateCallout(null, null), MINING_LATCH_CALLOUT);
+assert.equal(MINING_SEAM_CALLOUT, 'SEAM');
+const firstDrillLine = firstDrillTeachLine('B');
+assert.ok(countTeachWords(firstDrillLine) <= 12, `first-drill teach too long: ${firstDrillLine}`);
+assert.match(firstDrillLine, /Drill active/);
+assert.match(firstDrillLine, /B exits/);
 const recipes = validatePresentationRecipes();
 assert(recipes.ok, recipes.issues.join('\n'));
 
@@ -272,6 +287,24 @@ for (const rel of ['src/presentation/miningChoreography.js', 'src/systems/presen
     assert(!source.includes(forbidden), `${rel} must remain headless and deterministic: ${forbidden}`);
   }
 }
+
+// Flight HUD teach surfaces (presentation-only; mining.js / drill.js must stay authority).
+const floatingTextSource = readFileSync(resolve(ROOT, 'src/ui/floatingText.js'), 'utf8');
+const onboardingSource = readFileSync(resolve(ROOT, 'src/systems/onboarding.js'), 'utf8');
+assert(floatingTextSource.includes("bus.on('mining:start'"),
+  'flight HUD floatingText must call out mining:start latch state');
+assert(floatingTextSource.includes('miningLatchStateCallout'),
+  'flight HUD latch copy must reuse miningChoreography vocabulary');
+assert(floatingTextSource.includes("bus.on('mining:seamHit'"),
+  'flight HUD floatingText must call out mining:seamHit');
+assert(floatingTextSource.includes("bus.on('mining:yield'"),
+  'flight HUD floatingText must keep mining:yield receipts');
+assert(onboardingSource.includes('firstDrillTeachLine(BINDINGS.drill.label)'),
+  'firstDrill onboarding must use the thin teach line with live drill binding');
+assert(!onboardingSource.includes('Deep-drill active! You are now inside the asteroid'),
+  'firstDrill must not regress to multi-sentence wall copy');
+assert(!miningSource.includes('miningLatchStateCallout') && !drillSource.includes('firstDrillTeachLine'),
+  'mining feel teach must stay presentation-side (no mining/drill rewrite)');
 
 presentationAdapters.dispose();
 presentationOrchestrator.dispose();

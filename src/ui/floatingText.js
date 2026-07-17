@@ -5,6 +5,10 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { SECTORS } from '../data/sectors.js';
+import {
+  MINING_SEAM_CALLOUT,
+  miningLatchStateCallout,
+} from '../presentation/miningChoreography.js';
 
 const POOL = 56;
 
@@ -87,6 +91,34 @@ export function createFloatingText(ctx) {
   bus.on('combat:weakPointHit', (p) => {
     if (!p || !p.pos) return;
     spawn('◈ ' + (p.label || 'WEAK POINT'), 'sf-ft--weak', p.pos.x, p.pos.z, p.targetId, { life: 1.0, vy: 40 });
+  });
+  // Flight mining latch: audio/VFX already fire on mining:start, but first-five-minute feel needs a
+  // readable state receipt so the player knows the beam bit. Presentation only — no mining rewrite.
+  bus.on('mining:start', (p) => {
+    if (!p) return;
+    if (p.minerId != null && p.minerId !== state.playerId) return;
+    const rock = p.targetId != null && state.entities ? state.entities.get(p.targetId) : null;
+    const wx = rock ? rock.pos.x : (p.position && p.position.x);
+    const wz = rock ? rock.pos.z : (p.position && p.position.z);
+    if (wx == null || wz == null) return;
+    const d = rock && rock.data;
+    const text = miningLatchStateCallout(d && d.oreHP, d && d.oreHPMax);
+    spawn(text, 'sf-ft--mining-lock', wx, wz, p.targetId != null ? p.targetId : null, {
+      life: 0.95,
+      vy: 34,
+    });
+  });
+  // Seam bite (throttled by mining authority): short skill callout so on-seam work reads as skill.
+  bus.on('mining:seamHit', (p) => {
+    if (!p || p.asteroidId == null || !state.entities) return;
+    // Only when the player is holding the mine group — drone/NPC seams stay silent on HUD text.
+    if (!(state.input && state.input.fireGroup === 2)) return;
+    const rock = state.entities.get(p.asteroidId);
+    if (!rock || !rock.pos) return;
+    spawn(MINING_SEAM_CALLOUT, 'sf-ft--mining-seam', rock.pos.x, rock.pos.z, p.asteroidId, {
+      life: 0.8,
+      vy: 42,
+    });
   });
   // Direct-to-cargo mining never fires pickup:collected, so this is the only on-screen yield
   // receipt — always name the commodity (bare "+1" is opaque; cargo hold is the real ledger).
@@ -225,6 +257,8 @@ function injectStyle() {
   .sf-ft--kill { color:#ff8a4a; font-size:15px; letter-spacing:.16em; text-shadow:0 0 10px rgba(255,120,40,.7),0 0 4px #000; }
   .sf-ft--weak { color:#ffd24a; font-size:13px; font-weight:800; letter-spacing:.1em; text-shadow:0 0 9px rgba(255,200,60,.8),0 0 4px #000; }
   .sf-ft--ore { color:#7af7d0; }
+  .sf-ft--mining-lock { color:#7af7d0; font-size:12px; letter-spacing:.14em; text-shadow:0 0 8px rgba(80,240,200,.55),0 0 4px #000; }
+  .sf-ft--mining-seam { color:#b8ffe8; font-size:13px; letter-spacing:.16em; text-shadow:0 0 9px rgba(120,255,220,.7),0 0 4px #000; }
   .sf-ft--credits { color:#ffd84a; font-size:15px; }
   .sf-ft--dash { color:#c98cff; font-size:14px; letter-spacing:.18em; text-shadow:0 0 10px rgba(170,90,255,.8),0 0 4px #000; }
   .sf-ft--bounty { color:#ffd84a; font-size:18px; font-weight:900; letter-spacing:.06em;

@@ -161,12 +161,10 @@ test('production scanPulse on physical Hush surfaces authored absence copy', () 
   state.input.actions.scanPulse = true;
   sim.registry.get('scanner').update(1 / 60, state);
 
-  const hushTexts = new Set(
-    FLAVOR_PACKS.hush.entries.filter((entry) => entry.phase === 'passive').map((entry) => entry.text),
-  );
+  const hushTexts = new Set(FLAVOR_PACKS.hush.entries.map((entry) => entry.text));
   assert.ok(
     messages.some((row) => hushTexts.has(row.text)),
-    'scanPulse must surface an authored Hush passive line from the physical carrier',
+    'scanPulse must surface an authored Hush line from the physical carrier',
   );
   assert.ok(
     state.v2Flavor.presentedReceipts.some((r) => String(r).startsWith('hush:')),

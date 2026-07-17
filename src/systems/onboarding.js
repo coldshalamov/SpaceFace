@@ -23,6 +23,8 @@
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { Masks } from '../core/entity.js';
 import { controlPrompt, currentPromptModality } from '../ui/controlPrompts.js';
+import { BINDINGS } from '../ui/bindings.js';
+import { firstDrillTeachLine } from '../presentation/miningChoreography.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import {
@@ -249,10 +251,10 @@ export const onboarding = {
         'Use the left rail. Departure Check owns undock.');
     });
 
-    // Deep-drill (ant-farm mining): the first time the player activates a drill on an asteroid.
+    // Deep-drill (ant-farm mining): first open only — one short teach through the one-voice arbiter,
+    // then silence (_showHint dedupes via player.hints). Binding-aware exit; no multi-sentence wall.
     bus.on('drill:start', () => {
-      this._showHint('firstDrill',
-        'Deep-drill active! You are now inside the asteroid. Mine the colored ore veins and avoid gas pockets. Press B again or fly out to exit.');
+      this._showHint('firstDrill', firstDrillTeachLine(BINDINGS.drill.label));
     });
 
     // Outfitting: the first time the player equips OR buys a module at a station.

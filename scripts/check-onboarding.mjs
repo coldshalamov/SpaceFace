@@ -38,6 +38,22 @@ for (const { system, event, hintKey } of REQUIRED_HINTS) {
     `onboarding.js must call _showHint(${hintKey}) for ${system} — the contextual hint is missing`);
 }
 
+// W4 mining-feel teach: first drill is one short line from the presentation vocabulary (not a wall
+// of copy), binding-aware exit, fire-once via _showHint. Flight latch/seam floaters live next door.
+assert.match(src, /firstDrillTeachLine\(BINDINGS\.drill\.label\)/,
+  'firstDrill must use firstDrillTeachLine(BINDINGS.drill.label) — thin teach, binding-aware exit');
+assert.doesNotMatch(src, /Deep-drill active! You are now inside the asteroid/,
+  'firstDrill must not use the multi-sentence deep-drill wall (thin teach only)');
+const floatingTextSrc = readFileSync(join(ROOT, 'src/ui/floatingText.js'), 'utf8');
+assert.match(floatingTextSrc, /bus\.on\('mining:start'/,
+  'floatingText must surface mining:start latch feedback (CUTTER LOCK / MASS progress)');
+assert.match(floatingTextSrc, /miningLatchStateCallout/,
+  'floatingText latch copy must come from miningChoreography (shared teach vocabulary)');
+assert.match(floatingTextSrc, /bus\.on\('mining:seamHit'/,
+  'floatingText must surface mining:seamHit skill callout while the mine group is held');
+assert.match(floatingTextSrc, /bus\.on\('mining:yield'/,
+  'floatingText must keep mining:yield commodity receipts (existing juice)');
+
 // The _showHint mechanism itself must exist + respect the tutorialHints setting + dedupe via hints.
 assert.match(src, /_showHint\(key, text\)/, '_showHint(key, text) must exist (the hint display mechanism)');
 assert.match(src, /tutorialHints === false/, '_showHint must respect settings.gameplay.tutorialHints === false');

@@ -172,6 +172,7 @@
     "check:depth-program:gt1:loot-audit": "node --test test/depth-program-gt1-loot-audit.test.mjs && node scripts/sim-loot-audit.mjs",
     "check:depth-program:contracts": "npm run check:depth-program:validators && node scripts/build-encounter-index.mjs --check && node scripts/build-flavor-index.mjs --check && npm run check:flavor-corpus && npm run check:depth-program:v1 && npm run check:depth-program:v2 && npm run check:depth-program:r1 && npm run check:depth-program:r2 && npm run check:depth-program:sp1 && npm run check:depth-program:k1 && npm run check:depth-program:s3 && npm run check:doctrine-distinct && npm run check:depth-program:e1 && npm run check:depth-program:a1 && npm run check:depth-program:a2 && npm run check:depth-program:gt1:loot-audit",
     "check:one-voice": "node scripts/check-one-voice.mjs",
+    "check:nav-hud-hierarchy": "node scripts/check-nav-hud-hierarchy.mjs",
     "check:professional-first-hour-one-voice": "node scripts/check-professional-first-hour-one-voice.mjs",
     "check:release-soak": "node scripts/check-release-soak.mjs",
     "check:perf:attribution": "node scripts/check-performance-attribution.mjs",
@@ -415,7 +416,9 @@
     "check:professional-travel:public-route:electron": "npm run check:professional-travel:public-route:contracts && node scripts/check-professional-travel-public-route-electron.mjs",
     "check:professional-travel:public-route": "npm run check:professional-travel:public-route:browser && npm run check:professional-travel:public-route:electron",
     "check:depth-program:r2:natural-d10": "node scripts/check-depth-program-r2-natural-d10.mjs",
-    "check:depth-program:r2:natural-multi": "node scripts/check-depth-program-r2-natural-multi.mjs"
+    "check:depth-program:r2:natural-multi": "node scripts/check-depth-program-r2-natural-multi.mjs",
+    "check:depth-program:e1:natural": "node scripts/check-depth-program-e1-natural.mjs",
+    "check:professional-mining-presentation": "node scripts/check-professional-mining-presentation.mjs"
   },
   "private": true,
   "devDependencies": {
