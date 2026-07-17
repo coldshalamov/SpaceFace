@@ -35,7 +35,7 @@ Per `packets/RESIDUAL_FREEZE.md`. **None of these are DONE.** Outside plan AC1โ€
 |---|---|---|
 | **Helix** natural fleet carriers | **OPEN** | Paper faction (`fleetClass:'none'`), no natural zone/fleet carrier; Fable ยง5.7 spawn policy still required; fail-closed under `FORCE_HELIX_CARRIER=1`. See `packets/FABLE_HELIX_RESIDUAL.md`, `returns/G_D1_LIVING_OPPOSITION.md`. |
 | **E1 supporting membership** | **OPEN** | E1 gate remains membership-scaffold / `supporting:true` (H7/H8 eligibility specials). Not global `supporting:false` primary membership. See `returns/G_E1_EIGHT.md`. |
-| **GT1 continuous dual-platform `primaryAcceptance`** | **OPEN** | Continuous unassisted dual-platform primaryAcceptance is **not** product-ready. Candle Fleet not embodied; continuous gate is partial / supporting only. **Never claim GT1 continuous DONE.** See `returns/G_GT1_CONTINUOUS.md`. |
+| **GT1 continuous dual-platform `primaryAcceptance`** | **OPEN** (Electron / Tier-B) | Tier-A continuous full spine greens with embodied Candle (`supporting:false`). Dual-platform primaryAcceptance + Tier-B unassisted continuous remain residual. See `returns/G_GT1_CONTINUOUS.md`, `returns/G_CANDLE_FLEET_EMBODY.md`. |
 | **Electron gallery** (dual-platform) | **OPEN** | Gallery / capture parity is browser-primary; Electron dual-platform gallery residual (REAL + HARNESS). **Never claim Electron dual-platform DONE.** See `packets/ELECTRON_RESIDUAL_ONLY.md`. |
 
 Contract summary: `returns/G_PRIMARY_CONTRACT.md`  

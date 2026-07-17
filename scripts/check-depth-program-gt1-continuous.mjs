@@ -3,16 +3,20 @@
 //
 // Spine (required full marks): new-game → candle-fleet → ticker → bearing → unique-wreck → band
 //
-// Product truth (2026-07-17):
-//   - Continuous unassisted first-hour (Tier B, no SF staging, Candle embodied) is NOT ready.
-//   - D10 Choir-Tender primary path (ticker→bearing→unique) IS proven and reused here.
+// Product truth (2026-07-17, H1c embody):
+//   - poi_memorial stamps flavorTargetRef=landmark_c3_candle_fleet on Helios sector entry
+//     (production world.enterSector — no landmark inject).
+//   - probeCandleFleet observes that live entity → stamps candle-fleet when present.
+//   - D10 Choir-Tender primary path (ticker→bearing→unique) is proven and reused here.
 //   - Band soak reuses production bandRadio after the same continuous session (no reboot).
-//   - Candle Fleet (H1c) is flavor/data only — no live landmark entity → REAL residual.
+//   - Multi-seed: CI pair D10_CI_SEEDS (≥2) by default; GT1_CONTINUOUS_SEED_MODE=held-out for
+//     naturalRouteSeeds held-out set.
 //
 // Honesty contract:
-//   - Never claim supporting:false full-spine green while candle-fleet is missing.
-//   - Partial green: supporting:true when PARTIAL_MARKS land (D10 primary + band soak).
-//   - Full spine missing candle → residual failureClass REAL, not faked.
+//   - Full spine marks pass → supporting:false (Tier-A continuous goldenthread marks).
+//   - Else supporting:true with honest mark residual (candle-fleet REAL when missing).
+//   - When full spine greens, product residual is Electron dual-platform / Tier-B only —
+//     never claim dual-platform primaryAcceptance or unassisted Playwright continuous DONE.
 //
 // Prefer reuse of D10 primary production path over inject. No scan/salvage/claim bus injects.
 //
@@ -35,7 +39,9 @@ import { cargo } from '../src/systems/cargo.js';
 import { mining } from '../src/systems/mining.js';
 import { scanner } from '../src/systems/scanner.js';
 import { ships } from '../src/systems/ships.js';
+import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { uniqueWrecks } from '../src/systems/uniqueWrecks.js';
+import { world } from '../src/systems/world.js';
 import {
   CONTENT_CLASSES,
   D10_CARRIER,
@@ -45,6 +51,7 @@ import {
   createEvidenceShell,
   createTierASession,
   defineRoute,
+  loadHeldOutSeeds,
   runMultiSeed,
   validateMarkSequence,
   validateNaturalRouteSources,
@@ -59,12 +66,35 @@ const OUT_DIR = resolve(ROOT, '.devshots/depth-program/routes');
 export const GT1_CONTINUOUS_ROUTE_ID = 'gt1-continuous-goldenthread';
 export const GT1_CI_SEEDS = Object.freeze([...D10_CI_SEEDS]);
 
+/** CI pair (≥2) by default; set GT1_CONTINUOUS_SEED_MODE=held-out for held-out multi-seed. */
+export function resolveGt1ContinuousSeeds(mode = process.env.GT1_CONTINUOUS_SEED_MODE || 'ci') {
+  const normalized = String(mode || 'ci').toLowerCase();
+  if (normalized === 'held-out' || normalized === 'heldout') {
+    const held = [...loadHeldOutSeeds()];
+    if (held.length < 2) {
+      throw new Error(`held-out seed set requires ≥2 seeds; got ${held.length}`);
+    }
+    return Object.freeze(held);
+  }
+  if (GT1_CI_SEEDS.length < 2) {
+    throw new Error(`GT1 CI seeds must publish ≥2; got ${GT1_CI_SEEDS.length}`);
+  }
+  return GT1_CI_SEEDS;
+}
+
+/** Product residual when Tier-A full spine greens — dual-platform remains open. */
+export const GT1_ELECTRON_DUAL_PLATFORM_RESIDUAL = Object.freeze({
+  mark: 'electron-dual-platform',
+  failureClass: 'REAL',
+  reason: 'Tier-A continuous full spine does not close Electron dual-platform / Tier-B unassisted continuous primaryAcceptance',
+});
+
 /** Full goldenthread spine (F1 §6). Full green requires every mark in order. */
 export const GT1_FULL_MARKS = Object.freeze([...REQUIRED_MARKS_BY_CLASS.goldenthread]);
 
 /**
- * Partial supporting contract — continuous D10 primary + band soak without
- * embodied Candle Fleet. Does NOT include candle-fleet (REAL residual H1c).
+ * Partial supporting contract — continuous D10 primary + band soak.
+ * Candle-fleet is optional here (full spine requires it via GT1_FULL_MARKS).
  */
 export const GT1_PARTIAL_MARKS = Object.freeze([
   'new-game',
@@ -92,6 +122,8 @@ const OBSERVE_EVENTS = Object.freeze([
 ]);
 
 const CONTINUOUS_SYSTEMS = Object.freeze([
+  spawnBudget,
+  world,
   uniqueWrecks,
   cargo,
   ships,
@@ -108,6 +140,7 @@ const GT1_CONTINUOUS_ROUTE = defineRoute({
   contentClass: CONTENT_CLASSES.goldenthread,
   requiredMarks: GT1_FULL_MARKS,
   ciSeeds: [...GT1_CI_SEEDS],
+  // Route shell defaults supporting; multi runner promotes supporting:false when full spine greens.
   supporting: true,
   carrier: {
     ...D10_CARRIER,
@@ -120,6 +153,7 @@ const GT1_CONTINUOUS_ROUTE = defineRoute({
     continuous: true,
     reuses: 'check-depth-program-r2-natural-d10-primary production path',
     productReadyUnassisted: false,
+    candleCarrier: 'world.enterSector → poi_memorial flavorTargetRef=landmark_c3_candle_fleet',
   },
 });
 
@@ -147,9 +181,8 @@ function setVelocity(entity, vx, vz) {
 
 function bootHeliosFlightContext(session) {
   Object.assign(session.state, { mode: 'flight' });
-  if (session.state.world) {
-    Object.assign(session.state.world, { currentSectorId: HELIOS_SECTOR });
-  }
+  // Sector ownership is finalized by production world.enterSector after player spawn
+  // (materializes poi_memorial Candle Fleet). Do not assign currentSectorId here.
   if (session.state.settings && session.state.settings.gameplay) {
     Object.assign(session.state.settings.gameplay, { physicsBackend: 'custom' });
   }
@@ -157,6 +190,26 @@ function bootHeliosFlightContext(session) {
     session.state.player.cargo.capVolume = 1000;
     session.state.player.cargo.capMass = 1e9;
   }
+}
+
+/**
+ * Production Helios entry — same path main.js uses at boot.
+ * Materializes poi_memorial with flavorTargetRef=landmark_c3_candle_fleet (H1c).
+ * Observe-only after: never injects a landmark entity.
+ */
+function enterHeliosForCandle(session) {
+  const worldSys = session.sim.registry.get('world');
+  assert.ok(worldSys && typeof worldSys.enterSector === 'function',
+    'world.enterSector required to materialize Candle Fleet memorial');
+  worldSys.enterSector(HELIOS_SECTOR, {
+    placePlayer: true,
+    fromSectorId: null,
+  });
+  assert.equal(
+    session.state.world?.currentSectorId,
+    HELIOS_SECTOR,
+    'enterSector must land Helios for continuous goldenthread',
+  );
 }
 
 function liveWreck(state, wreckId) {
@@ -338,6 +391,7 @@ export function runGt1ContinuousSeed(seed) {
   const marks = [];
   const failures = [];
   const residuals = [];
+  let candle = null;
   const moduleRewards = rewardDescriptors(TARGET_SLOT)
     .filter((reward) => reward.kind === 'module' || reward.kind === 'weapon')
     .map((reward) => reward.id);
@@ -359,25 +413,29 @@ export function runGt1ContinuousSeed(seed) {
     });
     session.state.playerId = ship.id;
 
+    // Materialize Helios POIs (poi_memorial + flavorTargetRef) via production enterSector.
+    enterHeliosForCandle(session);
+
     // --- new-game (Tier-A stand-in for New Game → Helios launch) ---
     stampMark(marks, 'new-game', session, {
       mode: session.state.mode,
       sectorId: session.state.world?.currentSectorId,
-      via: 'tier-a-helios-flight-bootstrap',
+      via: 'tier-a-helios-flight-bootstrap+world.enterSector',
     });
 
-    // --- candle-fleet (honest probe; no inject) ---
-    const candle = probeCandleFleet(session.state);
+    // --- candle-fleet (honest probe; stamp only when live entity present) ---
+    candle = probeCandleFleet(session.state);
     if (candle.embodied) {
       stampMark(marks, 'candle-fleet', session, {
         entityCount: candle.entityCount,
         entities: candle.entities,
+        via: 'world.enterSector → live poi_memorial flavorTargetRef',
       });
     } else {
       residuals.push({
         mark: 'candle-fleet',
         failureClass: 'REAL',
-        reason: 'H1c Candle Fleet not embodied as a live landmark entity in Helios (flavor/data only)',
+        reason: 'H1c Candle Fleet not embodied as a live landmark entity in Helios after world.enterSector',
         sectorId: candle.sectorId,
         entityCount: 0,
       });
@@ -495,9 +553,16 @@ export function runGt1ContinuousSeed(seed) {
     const fullCheck = validateMarkSequence(marks, GT1_FULL_MARKS);
     if (!partialCheck.pass) failures.push(...partialCheck.failures);
 
-    // Full spine incomplete is expected until H1c; do not treat as harness pass failure
-    // when residual is documented REAL for candle-fleet only.
+    // Full spine incomplete is only non-fatal when candle residual is honestly REAL.
+    // When candle is embodied, missing full marks (or unstamped candle) must fail.
     const candleMissing = residuals.some((r) => r.mark === 'candle-fleet' && r.failureClass === 'REAL');
+    const candleMarked = marks.some((m) => m.name === 'candle-fleet');
+    if (candle.embodied && !candleMarked) {
+      failures.push('candle-fleet embodied but mark not stamped');
+    }
+    if (candle.embodied && candleMissing) {
+      failures.push('candle-fleet embodied but REAL residual still recorded');
+    }
     if (!fullCheck.pass && !candleMissing) {
       for (const msg of fullCheck.failures) {
         if (!failures.includes(msg)) failures.push(msg);
@@ -506,14 +571,18 @@ export function runGt1ContinuousSeed(seed) {
 
     const wallMs = Date.now() - wallStart;
     const partialPass = partialCheck.pass && failures.length === 0;
-    // Full unassisted continuous is NOT product-ready; never green full without candle.
-    const fullPass = fullCheck.pass && residuals.length === 0 && failures.length === 0;
+    // Full Tier-A spine greens when candle is embodied and every mark lands (no residuals).
+    // productReadyUnassisted stays false — Tier-B unassisted continuous is separate.
+    const fullPass = fullCheck.pass && residuals.length === 0 && failures.length === 0
+      && candle.embodied === true && candleMarked;
 
     return {
       seed,
       result: partialPass ? 'passed' : 'failed',
       pass: partialPass,
-      supporting: true,
+      // supporting:false when this seed's full goldenthread spine greens.
+      // primary stays false — dual-platform primaryAcceptance is a separate residual.
+      supporting: !fullPass,
       primary: false,
       continuous: true,
       productReadyUnassisted: false,
@@ -565,6 +634,7 @@ export function runGt1ContinuousSeed(seed) {
       failures: [...failures, String(error?.message || error)],
       residuals,
       marks,
+      candle,
       ticks: session.ticks,
       simTime: session.simTime,
       wallMs: Date.now() - wallStart,
@@ -584,7 +654,7 @@ function naturalnessForHarness() {
   });
 }
 
-export async function runGt1ContinuousMulti(seeds = GT1_CI_SEEDS) {
+export async function runGt1ContinuousMulti(seeds = resolveGt1ContinuousSeeds()) {
   const naturalness = naturalnessForHarness();
   const multi = await runMultiSeed({
     seeds: [...seeds],
@@ -592,10 +662,23 @@ export async function runGt1ContinuousMulti(seeds = GT1_CI_SEEDS) {
     runSeed: runGt1ContinuousSeed,
   });
 
-  // Continuous unassisted is not product-ready → always supporting:true for this gate.
-  // Promote supporting:false only when full spine greens without residuals (not today).
+  // supporting:false only when every seed full-spine greens AND naturalness holds.
   const anyFull = multi.rows.every((row) => row.fullSpinePass === true);
   const supporting = !(anyFull && naturalness.pass && multi.pass);
+  const fullSpinePass = anyFull && naturalness.pass && multi.pass;
+
+  const residualSummary = [];
+  for (const row of multi.rows) {
+    for (const residual of row.residuals || []) {
+      residualSummary.push({ seed: row.seed, ...residual });
+    }
+  }
+
+  // When Tier-A full spine greens, honest product residual is Electron dual-platform only.
+  const productResiduals = fullSpinePass
+    ? [{ ...GT1_ELECTRON_DUAL_PLATFORM_RESIDUAL }]
+    : [];
+
   const evidencePaths = [];
 
   for (const row of multi.rows) {
@@ -604,7 +687,7 @@ export async function runGt1ContinuousMulti(seeds = GT1_CI_SEEDS) {
       contentClass: CONTENT_CLASSES.goldenthread,
       tier: 'A',
       seed: row.seed,
-      supporting: true,
+      supporting: row.fullSpinePass === true ? false : true,
       carrier: { ...GT1_CONTINUOUS_ROUTE.carrier },
     });
     evidence.pass = row.pass === true;
@@ -639,26 +722,23 @@ export async function runGt1ContinuousMulti(seeds = GT1_CI_SEEDS) {
       failures: naturalness.failures,
     };
     evidence.primary = false;
+    evidence.supporting = row.fullSpinePass === true ? false : true;
     evidence.continuous = true;
     evidence.partialMarks = GT1_PARTIAL_MARKS;
     evidence.fullMarks = GT1_FULL_MARKS;
     evidence.partialCheck = row.partialCheck || null;
     evidence.fullCheck = row.fullCheck || null;
     evidence.residuals = row.residuals || [];
+    evidence.productResiduals = productResiduals;
     if (!row.fullSpinePass) {
       evidence.failureClass = 'REAL';
     } else if (!evidence.pass) {
       evidence.failureClass = naturalness.pass ? 'REAL' : 'HARNESS';
+    } else {
+      evidence.failureClass = null;
     }
     const path = writeEvidence(evidence, OUT_DIR);
     evidencePaths.push(path);
-  }
-
-  const residualSummary = [];
-  for (const row of multi.rows) {
-    for (const residual of row.residuals || []) {
-      residualSummary.push({ seed: row.seed, ...residual });
-    }
   }
 
   const aggregate = {
@@ -668,7 +748,7 @@ export async function runGt1ContinuousMulti(seeds = GT1_CI_SEEDS) {
     routeId: GT1_CONTINUOUS_ROUTE_ID,
     contentClass: CONTENT_CLASSES.goldenthread,
     tier: 'A',
-    supporting: true,
+    supporting,
     primary: false,
     continuous: true,
     productReadyUnassisted: false,
@@ -684,12 +764,13 @@ export async function runGt1ContinuousMulti(seeds = GT1_CI_SEEDS) {
     seedCount: seeds.length,
     result: multi.pass && naturalness.pass ? 'passed' : 'failed',
     pass: multi.pass && naturalness.pass,
-    fullSpinePass: anyFull && naturalness.pass && multi.pass,
+    fullSpinePass,
     naturalness,
     requiredMarksFull: GT1_FULL_MARKS,
     requiredMarksPartial: GT1_PARTIAL_MARKS,
     residuals: residualSummary,
     residualClasses: [...new Set(residualSummary.map((r) => r.failureClass))],
+    productResiduals,
     rows: multi.rows,
     evidencePaths,
     driver: 'scripts/lib/naturalRoute.mjs',
@@ -697,9 +778,10 @@ export async function runGt1ContinuousMulti(seeds = GT1_CI_SEEDS) {
       'Continuous Tier-A goldenthread marks path: one session, no reboot between beats.',
       'Reuses D10 primary production path (game:started news → flight → scanHere → mining salvage → resolvePlayerChoice).',
       'Band soak via band:cycle + bandRadio.update after unique claim (same session).',
-      'Candle Fleet mark omitted when not embodied — REAL residual (H1c), not faked green.',
-      'supporting:true until full spine greens without residuals (product-ready unassisted continuous).',
-      'Partial green is intentional; full unassisted Tier-B continuous remains residual.',
+      'Candle Fleet: world.enterSector materializes poi_memorial with flavorTargetRef=landmark_c3_candle_fleet; probe stamps candle-fleet when live.',
+      'supporting:false when full spine greens on every seed; else supporting:true with honest mark residual.',
+      'When full spine greens, product residual is Electron dual-platform only (Tier-B unassisted continuous not claimed).',
+      'Multi-seed: CI pair ≥2 by default; GT1_CONTINUOUS_SEED_MODE=held-out uses naturalRouteSeeds held-out set.',
     ],
   };
 
@@ -711,42 +793,75 @@ export async function runGt1ContinuousMulti(seeds = GT1_CI_SEEDS) {
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === HARNESS_PATH;
 if (isMain) {
-  const { multi, naturalness, aggregate, supporting } = await runGt1ContinuousMulti();
+  const seeds = resolveGt1ContinuousSeeds();
+  const { multi, naturalness, aggregate, supporting } = await runGt1ContinuousMulti(seeds);
 
-  assert.ok(GT1_CI_SEEDS.length >= 2, 'continuous harness requires ≥2 CI seeds');
-  assert.equal(multi.rows.length, GT1_CI_SEEDS.length, 'must execute every CI seed');
+  assert.ok(seeds.length >= 2, 'continuous harness requires multi-seed ≥2 (CI pair or held-out)');
+  assert.equal(multi.rows.length, seeds.length, 'must execute every seed');
   assert.equal(naturalness.pass, true,
     `naturalness validator must pass: ${naturalness.failures.join('; ')}`);
 
-  // Fail closed on partial path: D10 + band must work.
+  // Fail closed: continuous marks path must work (partial or full).
   assert.equal(multi.pass, true,
-    `partial continuous marks must pass: ${multi.rows.flatMap((r) => r.failures || []).join('; ')}`);
-  assert.equal(aggregate.pass, true, 'aggregate partial continuous must pass');
-  assert.equal(supporting, true,
-    'continuous gate must remain supporting:true while unassisted full spine is not product-ready');
-  assert.equal(aggregate.fullSpinePass, false,
-    'must not claim full goldenthread spine green without embodied Candle Fleet');
+    `continuous marks must pass: ${multi.rows.flatMap((r) => r.failures || []).join('; ')}`);
+  assert.equal(aggregate.pass, true, 'aggregate continuous must pass');
 
   for (const row of multi.rows) {
-    assert.equal(row.supporting, true, `seed ${row.seed} must be supporting`);
-    assert.equal(row.fullSpinePass, false, `seed ${row.seed} must not fake full spine`);
     const partial = validateMarkSequence(row.marks || [], GT1_PARTIAL_MARKS);
     assert.equal(partial.pass, true,
       `seed ${row.seed} missing partial marks: ${partial.missing.join(', ')}`);
-    assert.ok(
-      (row.residuals || []).some((r) => r.mark === 'candle-fleet' && r.failureClass === 'REAL'),
-      `seed ${row.seed} must document REAL residual for missing candle-fleet`,
+
+    const candleEmbodied = row.candle?.embodied === true;
+    const candleMarked = (row.marks || []).some((m) => m.name === 'candle-fleet');
+    const candleResidual = (row.residuals || []).some(
+      (r) => r.mark === 'candle-fleet' && r.failureClass === 'REAL',
     );
-    assert.equal(
-      (row.marks || []).some((m) => m.name === 'candle-fleet'),
-      false,
-      `seed ${row.seed} must not stamp candle-fleet without embodiment`,
-    );
+
+    if (candleEmbodied) {
+      assert.equal(candleMarked, true,
+        `seed ${row.seed}: embodied Candle Fleet must stamp candle-fleet mark`);
+      assert.equal(candleResidual, false,
+        `seed ${row.seed}: embodied Candle Fleet must not keep REAL residual`);
+      assert.equal(row.fullSpinePass, true,
+        `seed ${row.seed}: embodied Candle + partial marks must fullSpinePass`);
+      assert.equal(row.supporting, false,
+        `seed ${row.seed}: full spine green requires supporting:false`);
+    } else {
+      assert.equal(candleMarked, false,
+        `seed ${row.seed} must not stamp candle-fleet without embodiment`);
+      assert.equal(candleResidual, true,
+        `seed ${row.seed} must document REAL residual for missing candle-fleet`);
+      assert.equal(row.fullSpinePass, false,
+        `seed ${row.seed} must not fake full spine without candle`);
+      assert.equal(row.supporting, true,
+        `seed ${row.seed}: incomplete spine stays supporting:true`);
+    }
   }
 
-  console.log(`GT1 continuous PARTIAL OK: ${multi.rows.length} seeds (supporting:true)`);
-  console.log(`Full spine: pass=${aggregate.fullSpinePass} (expected false until H1c Candle embodied)`);
-  console.log(`Residuals: ${aggregate.residuals.map((r) => `${r.mark}:${r.failureClass}`).join(', ')}`);
+  if (aggregate.fullSpinePass) {
+    assert.equal(supporting, false,
+      'full spine green must promote aggregate supporting:false');
+    assert.equal(aggregate.residuals.length, 0,
+      'full spine green must not carry candle mark residuals');
+    assert.ok(
+      (aggregate.productResiduals || []).some(
+        (r) => r.mark === 'electron-dual-platform' && r.failureClass === 'REAL',
+      ),
+      'full spine green must keep honest Electron dual-platform product residual only',
+    );
+  } else {
+    assert.equal(supporting, true,
+      'incomplete full spine must keep aggregate supporting:true');
+  }
+
+  const residualLabel = aggregate.residuals.length
+    ? aggregate.residuals.map((r) => `${r.mark}:${r.failureClass}`).join(', ')
+    : (aggregate.productResiduals || []).map((r) => `${r.mark}:${r.failureClass}`).join(', ')
+      || '(none)';
+  const status = aggregate.fullSpinePass ? 'FULL SPINE OK' : 'PARTIAL OK';
+  console.log(`GT1 continuous ${status}: ${multi.rows.length} seeds (supporting:${supporting})`);
+  console.log(`Full spine: pass=${aggregate.fullSpinePass}`);
+  console.log(`Residuals: ${residualLabel}`);
   console.log(`Naturalness: pass=${naturalness.pass}`);
   console.log(`Aggregate: ${AGGREGATE}`);
   console.log(`Per-seed evidence under: ${OUT_DIR}/${GT1_CONTINUOUS_ROUTE_ID}/`);

@@ -32,7 +32,13 @@ const CORE_SECTOR_ANCHORS = {
     ],
     pois: [
       { id: 'poi_tutorial', pos: { x: 380, z: -120 }, landmarkGlb: 'place_lane_beacon' },
-      { id: 'poi_memorial', pos: { x: 1680, z: -820 }, landmarkGlb: 'place_station_billboard', landmark: true },
+      {
+        id: 'poi_memorial',
+        pos: { x: 1680, z: -820 },
+        landmarkGlb: 'place_station_billboard',
+        landmark: true,
+        flavorTargetRef: 'landmark_c3_candle_fleet',
+      },
       { id: 'poi_helios_yard', pos: { x: -1760, z: -1260 }, landmarkGlb: 'place_debris_chunk' },
     ],
   },

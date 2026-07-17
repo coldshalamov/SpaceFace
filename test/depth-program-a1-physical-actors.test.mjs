@@ -42,6 +42,31 @@ function entitiesWith(state, predicate) {
   return out;
 }
 
+test('Helios Prime materializes stamped Candle Fleet memorial (H1c carrier)', () => {
+  const { sim, state } = boot(90);
+  sim.registry.get('world').enterSector('sector_helios_prime');
+
+  const memorials = entitiesWith(state, (e) => e.data && e.data.poiId === 'poi_memorial'
+    && e.data.flavorTargetRef === 'landmark_c3_candle_fleet');
+  assert.equal(memorials.length, 1, 'one Candle Fleet memorial POI');
+  assert.equal(memorials[0].data.name, 'Candle Fleet Memorial');
+  assert.equal(memorials[0].data.landmark, true);
+  assert.equal(memorials[0].data.bandProximityRadius, 1400);
+  assert.equal(memorials[0].data.landmarkGlb, 'place_station_billboard');
+
+  // GT1 continuous probeCandleFleet contract: live entity stamped flavorTargetRef.
+  const probeHits = entitiesWith(state, (e) => {
+    const data = e.data || {};
+    return data.flavorTargetRef === 'landmark_c3_candle_fleet'
+      || data.landmarkId === 'landmark_c3_candle_fleet';
+  });
+  assert.equal(probeHits.length, 1, 'probeCandleFleet must find the Helios memorial entity');
+
+  const expected = sectorLocalToGlobalForSector({ x: 1680, z: -820 }, 'sector_helios_prime');
+  assert.ok(Math.hypot(memorials[0].pos.x - expected.x, memorials[0].pos.z - expected.z) < 1e-6,
+    'memorial uses galactic-global placement from authored sector-local pos');
+});
+
 test('Pallas Drift materializes a stamped Quiessence memorial and 17 census hulls', () => {
   const { sim, state, bus, player } = boot(91);
   const worldSys = sim.registry.get('world');

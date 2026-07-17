@@ -1,10 +1,10 @@
 # DONE_STAMPS — green owning checks only
 
 **Spine:** `C:\Users\93rob\Documents\GitHub\SpaceFace-depth-actualization`  
-**Tip:** `241cc7a0` (`fix(depth): held-out primary matrix with earned carriers only`)  
+**Tip:** `2226e908` (dirty tree: candle POI + GT1 continuous full-spine land; no commit)  
 **Scratch implementer:** `%TEMP%/grok-goal-696b88462e5d/implementer/`  
 **Rule:** Rows below are green-exit owning gates (or classified residual with honest non-green).  
-**Do not stamp DONE** for Helix carriers, dual-platform golden-thread primary, or continuous unassisted GT1.
+**Do not stamp DONE** for Helix carriers, dual-platform golden-thread primaryAcceptance, or Tier-B unassisted continuous.
 
 | Chunk | Gate | Exit | Tip | Claim |
 |---|---|---|---|---|
@@ -16,8 +16,9 @@
 | NAV-HUD | `check:nav-hud-hierarchy` | 0 | `156aec66` | DONE |
 | V2 | `check:depth-program:v2` | 0 | `0580a007` | DONE |
 | D1 ambient | `check:depth-program:d1:living-opposition` | 0 | `a0230957` | PARTIAL Helix residual |
+| H1c Candle Fleet embody | `node --test test/depth-program-a1-physical-actors.test.mjs` + continuous probe | 0 | `2226e908` | DONE Tier-A (no new GLB; `poi_memorial` flavorTargetRef) |
 | GT1 gallery | capture gallery 42 | 0 | `a8180c4c` | SUPPORTING not primaryAcceptance |
-| GT1 continuous | `check:depth-program:gt1:continuous` | 0 | `a0230957` | SUPPORTING residual candle REAL |
+| GT1 continuous | `check:depth-program:gt1:continuous` | 0 | `2226e908` | DONE primary Tier-A full spine (`supporting:false`); Electron dual-platform residual |
 | Electron dual-platform | `check:electron:new-game` | non-zero | `241cc7a0` | RESIDUAL REAL/HARNESS |
 
 ## Explicit non-DONE (frozen open — not stamped)
@@ -25,8 +26,8 @@
 | Item | Why not DONE |
 |---|---|
 | Helix natural fleet carriers | REAL residual (`fleetClass:'none'`); ambient soak green only under fail-closed option3; `FORCE_HELIX_CARRIER=1` fails closed |
-| Dual-platform golden-thread primary | Browser gallery supporting; Electron new-game RED; not primaryAcceptance |
-| Continuous unassisted GT1 | Gate exit 0 is **partial** (`supporting:true`, `fullSpinePass=false`); candle-fleet REAL residual |
+| Dual-platform golden-thread primaryAcceptance | Browser gallery supporting; Electron new-game RED; not primaryAcceptance |
+| Tier-B unassisted continuous | Playwright New Game → screenshots each beat / dual-platform path not closed; `productReadyUnassisted=false` |
 
 ## Evidence pointers (implementer logs)
 
@@ -40,8 +41,9 @@
 | NAV-HUD | `nav-hud.log` — 6 groups |
 | V2 | `depth-contracts.log` (v2 segment, fail 0) |
 | D1 ambient | `living-opposition.log` — ambient pass; Helix residual REAL |
+| H1c Candle Fleet | `returns/G_CANDLE_FLEET_EMBODY.md` — memorial stamp + a1 actors 6/6 |
 | GT1 gallery | `gt1-gallery-capture.log` / `.exit=0` — shots=42 |
-| GT1 continuous | `gt1-continuous.log` — PARTIAL OK supporting |
+| GT1 continuous | `gt1-continuous.log` / `.devshots/depth-program/gt1-continuous.json` — FULL SPINE OK `supporting:false` |
 | Electron dual-platform | `browser-electron-routes.log` — exit=1 procedural-fallback NPCs |
 
 ## Plan AC map (honest)
@@ -52,4 +54,4 @@
 | AC2 recovery / Helios / HUD | DONE ×3 | dual-platform GT1 is **not** AC2 |
 | AC4 expansion (V2) | DONE | — |
 | AC5 gallery residual docs | SUPPORTING gallery + Electron residual | primaryAcceptance dual-platform |
-| D1 / GT1 continuous | PARTIAL / SUPPORTING | Helix DONE; unassisted continuous DONE |
+| H1c Candle + GT1 continuous Tier-A | DONE embody + DONE primary Tier-A full spine | dual-platform primaryAcceptance; Tier-B unassisted continuous |

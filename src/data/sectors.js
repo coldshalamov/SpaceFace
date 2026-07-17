@@ -64,7 +64,17 @@ const CORE_SECTORS = [
     hazards: [],
     pois: [
       { id: 'poi_tutorial', type: 'beacon', name: 'Tutorial Beacon' },
-      { id: 'poi_memorial', type: 'beacon', name: 'Memorial Array' },
+      // H1c Candle Fleet physical carrier (no new GLB — existing memorial billboard + flavorTargetRef).
+      {
+        id: 'poi_memorial',
+        type: 'beacon',
+        name: 'Candle Fleet Memorial',
+        landmark: true,
+        visualRadius: 56,
+        scanRange: 1000,
+        flavorTargetRef: 'landmark_c3_candle_fleet',
+        bandProximityRadius: 1400,
+      },
       { id: 'poi_helios_yard', type: 'derelict', name: 'Outer Yard Derelict' },
     ],
   },
