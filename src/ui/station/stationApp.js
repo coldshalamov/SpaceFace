@@ -30,6 +30,7 @@ import {
   stationExitNeedsConfirm,
 } from '../screens/stationHub.js';
 import { missionDockAttention } from './missionDockAttention.js';
+import { buildDockArrival } from '../dockArrival.js';
 
 const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
@@ -39,9 +40,11 @@ const CMDTY_REC = new Map(COMMODITIES.map((c) => [c.id, c]));
 function titleCaseWords(v) { return String(v || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()); }
 
 // Legacy handoff/departure targets → the new destinations. 'services' is now the dock actions.
+// Dock-arrival primaryTarget uses hold | missions | undock — map those into live rails.
 const TARGET_MAP = {
   market: 'market', hold: 'market', missions: 'contracts', shipyard: 'shipworks',
   outfit: 'shipworks', manufacture: 'industry', factions: 'factions', bar: 'bar', services: null,
+  undock: null,
 };
 
 const STATION_STYLES = [
@@ -95,16 +98,35 @@ function meterTone(frac, kind) {
 }
 
 function resolveStation(ctx) {
-  if (ctx && ctx.station) return ctx.station;
+  if (ctx && ctx.station && ctx.station.name) {
+    const st = ctx.station;
+    return {
+      id: st.id || st.stationId || null,
+      name: st.name,
+      typeLabel: st.typeLabel || titleCaseWords(st.type || 'berth'),
+      factionName: st.factionName || '',
+      services: st.services || [],
+    };
+  }
   const id = ctx && ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
   const rec = id && STATION_REC.get(id);
-  if (!rec) return { name: 'Station', typeLabel: 'Orbital Berth', factionName: '' };
+  if (!rec) {
+    return {
+      id: id || null,
+      name: 'Station',
+      typeLabel: 'Orbital Berth',
+      factionName: '',
+      services: [],
+    };
+  }
   const s = rec.station;
   const fac = FACTION_REC.get(s.factionId);
   return {
+    id: s.id || id,
     name: s.name || String(id),
     typeLabel: titleCaseWords(s.type || 'berth') + (s.size ? ' · Class ' + s.size : ''),
     factionName: fac ? fac.name : '',
+    services: Array.isArray(s.services) ? s.services : [],
   };
 }
 
@@ -133,6 +155,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     `</header>` +
     `<div class="sx-dockzone">` +
       `<div class="sx-dockwrap"></div>` +
+      `<div class="sx-arrival" hidden role="region" aria-label="Dock arrival"></div>` +
       `<div class="sx-handoff" hidden></div>` +
     `</div>` +
     `<main class="sx-workspace">` +
@@ -167,6 +190,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const subEl = app.querySelector('.sx-screen__sub');
   const bodyEl = app.querySelector('.sx-screen__body');
   const handoffEl = app.querySelector('.sx-handoff');
+  const arrivalEl = app.querySelector('.sx-arrival');
   const popEl = app.querySelector('.sx-pop');
   const screenSigil = app.querySelector('.sx-screen__sigil');
   const helpEl = app.querySelector('.sx-context-help');
@@ -365,6 +389,66 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const scr = ev.target.closest('[data-pop-screen]');
     if (scr) { if (ctx.bus) ctx.bus.emit('ui:pushScreen', { id: scr.getAttribute('data-pop-screen') }); closePop(); return; }
     if (ev.target.closest('[data-pop-launch]')) { closePop(); commitUndock(); }
+  });
+
+  // ---------- dock arrival strip (pure presenter → live mount) ----------
+  function renderArrival() {
+    if (!arrivalEl) return;
+    const s = state();
+    const st = resolveStation(ctx);
+    const sid = stationId() || st.id;
+    if (!sid) {
+      arrivalEl.hidden = true;
+      arrivalEl.innerHTML = '';
+      return;
+    }
+    let view = null;
+    try {
+      view = buildDockArrival(s, {
+        id: sid,
+        stationId: sid,
+        name: st.name,
+        services: st.services,
+      });
+    } catch (_) {
+      view = null;
+    }
+    if (!view || !view.identity) {
+      arrivalEl.hidden = true;
+      arrivalEl.innerHTML = '';
+      return;
+    }
+    const dest = TARGET_MAP[view.primaryTarget] || null;
+    const lines = (view.lines || []).slice(0, 4).map((line) => (
+      `<li class="sx-arrival__line">${escapeHtml(line)}</li>`
+    )).join('');
+    arrivalEl.hidden = false;
+    arrivalEl.innerHTML =
+      `<div class="sx-arrival__head">` +
+        `<span class="sx-arrival__k">Berth arrival</span>` +
+        `<strong class="sx-arrival__id">${escapeHtml(view.identity)}</strong>` +
+        `<span class="sx-arrival__svc">${escapeHtml(view.serviceState || '')}</span>` +
+      `</div>` +
+      `<ul class="sx-arrival__lines">${lines}</ul>` +
+      (dest
+        ? `<button type="button" class="sx-arrival__next" data-arrival-nav="${escapeHtml(dest)}" aria-label="${escapeHtml(view.primaryAction)}">` +
+            `${escapeHtml(view.primaryAction)}` +
+          `</button>`
+        : view.primaryTarget === 'undock'
+          ? `<button type="button" class="sx-arrival__next" data-arrival-undock="1" aria-label="${escapeHtml(view.primaryAction)}">` +
+              `${escapeHtml(view.primaryAction)}` +
+            `</button>`
+          : `<span class="sx-arrival__next is-static">${escapeHtml(view.primaryAction || '')}</span>`);
+  }
+  arrivalEl.addEventListener('click', (ev) => {
+    const nav = ev.target.closest('[data-arrival-nav]');
+    if (nav) {
+      navigate(nav.getAttribute('data-arrival-nav'));
+      return;
+    }
+    if (ev.target.closest('[data-arrival-undock]')) {
+      runAction('undock');
+    }
   });
 
   // ---------- first-dock handoff ----------
@@ -649,6 +733,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     crestMeta.textContent = [st.typeLabel, st.factionName].filter(Boolean).join(' · ');
     const costs = actionCosts();
     for (const a of ACTIONS) dock.setActionCost(a.id, costs[a.id]);
+    renderArrival();
     renderHandoff();
   }
   readoutsEl.addEventListener('click', (ev) => {

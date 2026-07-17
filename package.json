@@ -427,7 +427,8 @@
     "check:depth-program:r2:natural-primary-matrix": "node scripts/check-depth-program-r2-natural-primary-matrix.mjs",
     "compile:campaign-claim": "node scripts/compile-campaign-claim.mjs",
     "check:campaign-claim-honesty": "node test/campaign-claim-honesty.test.mjs",
-    "check:dock-prompt-identity": "node scripts/check-dock-prompt-identity.mjs"
+    "check:dock-prompt-identity": "node scripts/check-dock-prompt-identity.mjs",
+    "check:dock-arrival-mount": "node scripts/check-dock-arrival-mount.mjs"
   },
   "private": true,
   "devDependencies": {
