@@ -27,8 +27,24 @@ import {
   uniqueWreckForSource,
 } from '../data/uniqueWrecks.js';
 import { planEncounterShape } from './encounterDirector.js';
+// Pure bar adapter (no DOM). Bar UI selects the line; uniqueWrecks records knowledge.
+import { uniqueWreckBarRumor } from '../ui/uniqueWreckRumorSurface.js';
 
 const VALID_PHASES = new Set(['rumored', 'fixed', 'decision', 'salvaged']);
+
+/** Campaign beat indices that surface unique-wreck bearings (production story:beatAdvanced path). */
+const CAMPAIGN_BEAT_BY_WRECK = Object.freeze({
+  wreck_choir_cassandra: 6,
+  wreck_isc_lighthouse: 7,
+});
+
+/** Authored station → bar wreck (mirrors uniqueWreckRumorSurface BAR_SOURCE_BY_STATION keys). */
+const BAR_STATIONS = Object.freeze([
+  'station_sker',
+  'station_haumea_rift',
+  'station_reach',
+  'station_helios',
+]);
 
 // The seven canon rumor channels remain native surfaces. A carrier event is only a transport:
 // `_recordRumor` additionally requires the exact primary sourceRef and matching channel.
@@ -1181,11 +1197,155 @@ export const uniqueWrecks = {
   },
 
   /**
-   * Surface the authored primary carrier for a unique wreck using the same
-   * `_surfaceCanonicalRumor` path production sector/dock/campaign handlers use
-   * (emits the channel event, then records the bearing under source/channel guards).
-   * Prefer game:started / dock / sector public flows when available; this API is for
-   * Tier-A natural literacy when the player has already earned that surface.
+   * Earned sector enter (D2 Ironsong / D6 Tideline).
+   * Production body of the sector:enter listener after world sector context is already set.
+   * Prefer this over surfaceAuthoredPrimaryCarrier for primary matrix.
+   */
+  earnSectorEnter(sectorId) {
+    const sid = sectorId || (this.state.world && this.state.world.currentSectorId);
+    this._onSectorEnter({ sectorId: sid });
+    // surfaceSectorCarriers is the public alias for the rumor half; _onSectorEnter already
+    // runs it, but re-calling is idempotent and keeps the public surface in the stack.
+    if (sid) this.surfaceSectorCarriers(sid);
+    return this._ensureState().bearings;
+  },
+
+  /**
+   * Earned bar rumor (D7 Nestbreaker / D8 Deepsurvey / D9 Smokesong / D11 Silver-Draft).
+   * Uses the pure production bar adapter, then records via the bar channel listener body
+   * (no harness bus.emit of uniqueWreck:* — same as bar.js after uniqueWreckBarRumor returns).
+   */
+  earnBarRumor(stationId) {
+    if (!stationId || !BAR_STATIONS.includes(stationId)) return null;
+    const rumor = uniqueWreckBarRumor(this.state, stationId, 'rumors');
+    if (!rumor) return null;
+    // Production listener: uniqueWreck:rumorHeard → _onNativeRumor('bar', payload).
+    return this._onNativeRumor('bar', rumor);
+  },
+
+  /**
+   * Earned Helios Lost Coils mission (D4 Pale-Coil).
+   * Production dock offer (_offerLostCoils / surfaceDockCarriers) then mission accept
+   * channel record (mission:accepted listener body) without requiring missions system.
+   */
+  earnLostCoilsMission() {
+    this.surfaceDockCarriers('station_helios');
+    const own = this._ensureState();
+    if (own.bearings.wreck_lanebreaker_pale_coil) return own.bearings.wreck_lanebreaker_pale_coil;
+    // Same payload fields missions.acceptMission emits on mission:accepted for this offer.
+    return this._onNativeRumor('mission', {
+      missionId: 'unique-wreck:the-lost-coils:v1',
+      source: 'uniqueWreck',
+      sourceRef: 'mission.the_lost_coils',
+      wreckId: 'wreck_lanebreaker_pale_coil',
+      channelId: 'mission',
+      type: 'recon_scan',
+      storyTag: 'mission.the_lost_coils',
+    });
+  },
+
+  /**
+   * Earned loss-investigation promote for Vigilant (D1).
+   * Production body of lossInvestigation:promoted → _onLossPromoted.
+   */
+  earnLossInvestigation() {
+    return this._onLossPromoted({
+      lossId: 'loss_vigilant',
+      authoredWreckId: 'wreck_isc_vigilant',
+      wreckId: 'wreck_isc_vigilant',
+    });
+  },
+
+  /**
+   * Earned campaign beat surface (D3 Lighthouse beat 7 / D12 Cassandra beat 6).
+   * Accepts wreckId (preferred) or numeric beat index for the story:beatAdvanced path.
+   */
+  earnCampaignBeat(wreckIdOrBeat) {
+    let beatIndex = null;
+    if (typeof wreckIdOrBeat === 'string' && CAMPAIGN_BEAT_BY_WRECK[wreckIdOrBeat] != null) {
+      beatIndex = CAMPAIGN_BEAT_BY_WRECK[wreckIdOrBeat];
+    } else if (Number.isFinite(Number(wreckIdOrBeat))) {
+      beatIndex = Number(wreckIdOrBeat);
+    }
+    if (beatIndex == null) return null;
+    return this._onNativeRumor('campaign', { toIndex: beatIndex, beatIndex });
+  },
+
+  /**
+   * Earned Vael patrol bark in Triton Wake (D5 Singing Bell / Choir-Bell Aegis).
+   * Production barkDirector:voice predicate path without a live bark director.
+   */
+  earnBarkPatrol() {
+    return this._onNativeRumor('bark', {
+      sectorId: 'sector_triton_wake',
+      factionId: 'faction_vael',
+      situation: 'patrol_contact',
+    });
+  },
+
+  /**
+   * Ensure scan-gate module is available without raw harness moduleInventory.push.
+   * Prefers ships.grantModule (inventory authority); falls back to active owned fittings.
+   * @param {string} [defId='mod_survey_suite']
+   * @returns {{ ok: boolean, defId: string, via: string|null, already?: boolean }}
+   */
+  equipSurveySuiteIfNeeded(defId = 'mod_survey_suite') {
+    if (!defId) return { ok: true, defId: null, via: null, already: true };
+    if (hasModule(this.state, defId)) {
+      return { ok: true, defId, via: null, already: true };
+    }
+
+    const player = ensurePlayer(this.state);
+    if (!Array.isArray(player.moduleInventory)) player.moduleInventory = [];
+
+    const shipsSys = this.registry && this.registry.get && this.registry.get('ships');
+    if (shipsSys && typeof shipsSys.grantModule === 'function') {
+      const granted = shipsSys.grantModule({
+        defId,
+        reason: 'unique-wreck:scan-requirement',
+      });
+      if (granted && hasModule(this.state, defId)) {
+        // Best-effort fit onto active hull when ownership exists (inventory still satisfies hasModule).
+        try {
+          const owned = typeof shipsSys.ownedShip === 'function' ? shipsSys.ownedShip() : null;
+          const inv = player.moduleInventory;
+          const item = inv.find((entry) => entry && entry.defId === defId);
+          if (owned && item && typeof shipsSys.fitModule === 'function') {
+            const fittings = Array.isArray(owned.fittings) ? owned.fittings : [];
+            // Find first empty slot index; fitModule validates size/type.
+            for (let slotIndex = 0; slotIndex < Math.max(fittings.length, 8); slotIndex += 1) {
+              if (fittings[slotIndex]) continue;
+              if (shipsSys.fitModule({ slotIndex, instanceId: item.instanceId })) break;
+            }
+          }
+        } catch {
+          // Inventory grant alone is enough for hasModule / scan gate.
+        }
+        return { ok: true, defId, via: 'ships.grantModule' };
+      }
+    }
+
+    // Owned-fittings fallback (hasModule reads active owned.fittings.includes(defId)).
+    if (!Array.isArray(player.ownedShips)) player.ownedShips = [];
+    if (!player.ownedShips.length) {
+      player.ownedShips.push({ defId: 'ship_kestrel', fittings: [defId] });
+      player.activeShipIndex = 0;
+    } else {
+      const owned = player.ownedShips[player.activeShipIndex || 0] || player.ownedShips[0];
+      if (!owned) return { ok: false, defId, via: null };
+      if (!Array.isArray(owned.fittings)) owned.fittings = [];
+      if (!owned.fittings.includes(defId)) owned.fittings.push(defId);
+    }
+    return {
+      ok: hasModule(this.state, defId),
+      defId,
+      via: 'owned.fittings',
+    };
+  },
+
+  /**
+   * @deprecated Primary natural matrix must not call this — use earn* public paths.
+   * Kept for supporting harnesses / capture scripts only.
    */
   surfaceAuthoredPrimaryCarrier(wreckId) {
     const def = uniqueWreckById(wreckId);
@@ -1196,7 +1356,7 @@ export const uniqueWrecks = {
     const eventName = RUMOR_EVENT_BY_CHANNEL[source.channelId];
     if (!eventName) return null;
     return this._surfaceCanonicalRumor(def.id, source.channelId, eventName, {
-      sender: 'natural-route-carrier',
+      sender: 'natural-route-carrier-supporting',
     });
   },
 

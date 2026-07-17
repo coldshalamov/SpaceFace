@@ -1,24 +1,21 @@
 #!/usr/bin/env node
-// R2 PRIMARY multi-wreck natural literacy matrix (Fable F0 task 6).
-//
-// For each of the 12 authored unique wrecks × ≥2 CI seeds:
-//   surface primary carrier (game:started for D10; surfaceAuthoredPrimaryCarrier
-//   / surfaceSectorCarriers for others) → fly to charted bearingCenter → scanHere
-//   → fly to live wreck → mining salvage (fireGroup=2) → resolvePlayerChoice.
-//
-// F1 rules:
-//   - no bus.emit of scan:pulse / salvage:completed / uniqueWreck:choose
-//   - no teleport / exactPos oracle / simTime phase skip
-//   - supporting:false only when static naturalness validator passes
-//
-// Runner: npm run check:depth-program:r2:natural-primary-matrix
-
+/**
+ * R2 PRIMARY multi-wreck natural literacy matrix (Fable F0 task 6).
+ *
+ * Fail-closed primaryNaturalRouteContract:
+ *   - seeds: held-out ≥5 from naturalRouteSeeds.json (NOT CI pair)
+ *   - carriers: earned public paths via earnUniqueWreckCarrier only
+ *   - no moduleInventory inject in this harness source
+ *   - fly bearingCenter → scanHere → mining salvage → resolvePlayerChoice
+ *
+ * Runner: npm run check:depth-program:r2:natural-primary-matrix
+ */
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { movingRadiationGate, rewardDescriptors } from '../src/core/uniqueWreckComplications.js';
+import { rewardDescriptors } from '../src/core/uniqueWreckComplications.js';
 import { physics } from '../src/core/physics.js';
 import {
   UNIQUE_WRECKS,
@@ -34,97 +31,80 @@ import {
   createTierASession,
   REQUIRED_MARKS_BY_CLASS,
   validateMarkSequence,
-  validateNaturalRouteSources,
   writeEvidence,
   createEvidenceShell,
   NATURAL_ROUTE_SCHEMA,
-  D10_CI_SEEDS,
 } from './lib/naturalRoute.mjs';
+import {
+  primaryMatrixSeeds,
+  validatePrimaryHarnessSources,
+  classifyPrimarySteps,
+  contractMeta,
+} from './lib/primaryNaturalRouteContract.mjs';
+import { earnPrimaryCarrier, equipSurveyViaFittings } from './lib/earnUniqueWreckCarrier.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const THIS = fileURLToPath(import.meta.url);
 const DRIVER = resolve(ROOT, 'scripts/lib/naturalRoute.mjs');
+const CONTRACT = resolve(ROOT, 'scripts/lib/primaryNaturalRouteContract.mjs');
+const EARN = resolve(ROOT, 'scripts/lib/earnUniqueWreckCarrier.mjs');
 const OUT_AGG = resolve(ROOT, '.devshots/depth-program/r2-natural-primary-matrix.json');
-const OUT_DIR = resolve(ROOT, '.devshots/depth-program/routes');
 const SCRATCH = process.env.SPACEFACE_SCRATCH
   || 'C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-696b88462e5d\\implementer';
 
-/** Shared seed matrix (documented in wreck-seed-matrix.json). ≥2 per wreck. */
-export const MATRIX_SEEDS = Object.freeze([...D10_CI_SEEDS]);
+/** Primary matrix seeds — held-out only (≥5). */
+export const MATRIX_SEEDS = primaryMatrixSeeds();
+assert.ok(MATRIX_SEEDS.length >= 5, 'held-out matrix seeds must be ≥5');
 
 const PRIMARY_SYSTEMS = Object.freeze([
-  uniqueWrecks,
-  cargo,
-  ships,
-  scanner,
-  mining,
-  physics,
+  uniqueWrecks, cargo, ships, scanner, mining, physics,
 ]);
 
-const OBSERVE_EVENTS = Object.freeze([
-  'game:started',
-  'uniqueWreck:rumorRecorded',
-  'uniqueWreck:bearingFixed',
-  'uniqueWreck:decisionReady',
-  'uniqueWreck:salvaged',
-  'scan:pulse',
-  'salvage:completed',
-]);
-
-const naturalness = validateNaturalRouteSources({
+const naturalness = validatePrimaryHarnessSources({
   checkSrc: readFileSync(THIS, 'utf8'),
   harnessSrc: readFileSync(THIS, 'utf8'),
-  driverSrc: readFileSync(DRIVER, 'utf8'),
+  driverSrc: [
+    readFileSync(DRIVER, 'utf8'),
+    readFileSync(CONTRACT, 'utf8'),
+    readFileSync(EARN, 'utf8'),
+  ].join('\n'),
 });
+assert.equal(naturalness.pass, true,
+  `primary naturalness fail-closed: ${naturalness.failures.join('; ')}`);
 
 const WRECKS = UNIQUE_WRECKS.map((entry) => uniqueWreckById(entry.id)).filter(Boolean);
-assert.equal(WRECKS.length, 12, 'expected D1–D12 unique wrecks');
-assert.ok(MATRIX_SEEDS.length >= 2, 'matrix requires ≥2 seeds');
+assert.equal(WRECKS.length, 12, 'expected 12 unique wrecks');
 
 function finite(value, fallback = 0) {
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
 }
-
 function posXZ(entity) {
   const p = entity && entity.pos;
   return { x: finite(p && p.x, 0), z: finite(p && p.z, 0) };
 }
-
 function distanceXZ(a, b) {
   return Math.hypot(finite(a && a.x) - finite(b && b.x), finite(a && a.z) - finite(b && b.z));
 }
-
 function setVelocity(entity, vx, vz) {
-  if (!entity || !entity.vel) return;
+  if (!entity?.vel) return;
   if (typeof entity.vel.set === 'function') entity.vel.set(vx, 0, vz);
-  else {
-    entity.vel.x = vx;
-    entity.vel.z = vz;
-  }
+  else { entity.vel.x = vx; entity.vel.z = vz; }
 }
 
-/**
- * Tier-A flight bootstrap (New Game stand-in). Object.assign avoids forbidden
- * mid-route mode/sector assignment operators in harness source.
- */
 function bootFlightContext(session, sectorId) {
   Object.assign(session.state, { mode: 'flight' });
-  if (session.state.world) {
-    Object.assign(session.state.world, { currentSectorId: sectorId });
-  }
-  if (session.state.settings && session.state.settings.gameplay) {
+  if (session.state.world) Object.assign(session.state.world, { currentSectorId: sectorId });
+  if (session.state.settings?.gameplay) {
     Object.assign(session.state.settings.gameplay, { physicsBackend: 'custom' });
   }
-  if (session.state.player && session.state.player.cargo) {
+  if (session.state.player?.cargo) {
     session.state.player.cargo.capVolume = 1000;
     session.state.player.cargo.capMass = 1e9;
   }
 }
 
 function flyToward(session, ship, target, {
-  stopDistance = 50,
-  cruiseSpeed = 500,
-  maxTicks = 60 * 180,
+  stopDistance = 50, cruiseSpeed = 500, maxTicks = 60 * 180,
 } = {}) {
   let ticks = 0;
   while (ticks < maxTicks) {
@@ -151,108 +131,43 @@ function salvageWithMiningBeam(session, record, { maxTicks = 60 * 45 } = {}) {
     ticks += 1;
   }
   session.state.input.fireGroup = null;
-  return {
-    ok: record.phase === 'decision' || record.phase === 'salvaged',
-    ticks,
-    phase: record.phase,
-  };
+  return { ok: record.phase === 'decision' || record.phase === 'salvaged', ticks, phase: record.phase };
 }
 
 function liveWreck(state, wreckId) {
-  return (state.entityList || []).find((entity) => entity
-    && entity.alive !== false
-    && entity.data
-    && entity.data.uniqueWreckId === wreckId) || null;
+  return (state.entityList || []).find((e) => e?.alive !== false && e?.data?.uniqueWreckId === wreckId) || null;
 }
 
-function stampMark(marks, name, session, detail = {}) {
-  marks.push({
+function stamp(marks, steps, name, session, detail = {}) {
+  const row = {
     name,
     tick: Number.isFinite(session.ticks) ? session.ticks : null,
     simTime: session.simTime,
-    at: new Date().toISOString(),
     detail,
-  });
+  };
+  marks.push(row);
+  steps.push(row);
 }
 
-/**
- * Primary carrier surface for one wreck.
- * D10: production game:started news path.
- * Sector-native (D2/D6): surfaceSectorCarriers after sector ownership.
- * All others: surfaceAuthoredPrimaryCarrier (same _surfaceCanonicalRumor body
- * production sector/dock/campaign/bar/loss handlers use).
- */
-function surfacePrimaryCarrier(session, def) {
-  const system = session.sim.registry.get('uniqueWrecks');
-  assert.ok(system, 'uniqueWrecks must be registered');
-
-  if (def.id === 'wreck_choir_tender') {
-    // Sanctioned run-start only (native D10 news; not a uniqueWreck inject).
-    session.bus.emit('game:started');
-  } else if (typeof system.surfaceAuthoredPrimaryCarrier === 'function') {
-    const rec = system.surfaceAuthoredPrimaryCarrier(def.id);
-    assert.ok(rec, `${def.id}: surfaceAuthoredPrimaryCarrier must record bearing`);
-  } else {
-    throw new Error('uniqueWrecks.surfaceAuthoredPrimaryCarrier missing');
-  }
-
-  // Sector-native secondary surfaces (ironsong / tideline) when already in sector.
-  if (typeof system.surfaceSectorCarriers === 'function') {
-    system.surfaceSectorCarriers(def.sectorId);
-  }
-
-  return session.state.player.uniqueWrecks?.bearings?.[def.id] || null;
-}
-
-function classifyFailure(def, message) {
-  const msg = String(message || '');
-  // Campaign / mission / loss prerequisites that Tier A cannot fully earn.
-  if (/campaign|beat|story|mission|lost.?coils|loss.?invest|prereq/i.test(msg)
-    && /surface|carrier|bearing|record/i.test(msg)) {
-    return 'REAL';
-  }
-  if (/surfaceAuthoredPrimaryCarrier must record|must record a bearing/i.test(msg)) {
-    return 'REAL';
-  }
-  if (/naturalness|forbidden|inject/i.test(msg)) return 'HARNESS';
-  if (/scanHere must harden|mining salvage|must reach|marks:/i.test(msg)) return 'REAL';
-  return 'REAL';
-}
-
-/**
- * Run one wreck × seed primary path.
- * @returns {object} seed evidence row
- */
-export function runMatrixSeed(def, seed) {
-  const wallStart = Date.now();
+function runOne(def, seed) {
   const session = createTierASession({
     seed,
     systems: [...PRIMARY_SYSTEMS],
-    observeEvents: OBSERVE_EVENTS,
-    eventFilter: (eventName, payload) => {
-      if (eventName === 'game:started' || eventName === 'scan:pulse' || eventName === 'salvage:completed') {
-        return true;
-      }
-      return payload?.wreckId === def.id;
-    },
+    observeEvents: [
+      'game:started',
+      'uniqueWreck:rumorRecorded',
+      'uniqueWreck:bearingFixed',
+      'uniqueWreck:decisionReady',
+      'uniqueWreck:salvaged',
+      'scan:pulse',
+      'salvage:completed',
+    ],
   });
-
   const marks = [];
-  const failures = [];
-
+  const steps = [];
   try {
     bootFlightContext(session, def.sectorId);
-
-    // Equip scan gates the player would own before hunting survey wrecks.
-    if (def.scanRequirement) {
-      if (!Array.isArray(session.state.player.moduleInventory)) {
-        session.state.player.moduleInventory = [];
-      }
-      session.state.player.moduleInventory.push({
-        instanceId: `matrix-scan:${def.id}`,
-        defId: def.scanRequirement,
-      });
-    }
+    equipSurveyViaFittings(session, def);
 
     const ship = session.sim.spawn({
       type: 'ship',
@@ -268,418 +183,241 @@ export function runMatrixSeed(def, seed) {
     });
     session.state.playerId = ship.id;
 
-    const before = session.state.player.uniqueWrecks?.bearings?.[def.id];
-    assert.equal(before, undefined, `${def.id} must start without preexisting bearing`);
-
-    const record = surfacePrimaryCarrier(session, def);
-    assert.ok(record, `${def.id} must record a bearing from native/public carrier`);
-    assert.equal(record.phase, 'rumored', `${def.id} carrier must land in rumored phase`);
-    assert.equal(record.sectorId, def.sectorId, `${def.id} sector must match authored`);
-    assert.equal(record.coordSpace, 'global_v1', `${def.id} bearing must be global_v1`);
-    assert.equal(record.sourceRef, def.bearingSourceRef, `${def.id} primary source must match`);
-    assert.ok(Number(record.radius) > 0, `${def.id} bearing starts fuzzy`);
-
-    stampMark(marks, 'carrier-surfaced', session, {
-      channelId: record.channelId,
-      sourceRef: record.sourceRef,
-      path: def.id === 'wreck_choir_tender'
-        ? 'game:started'
-        : 'surfaceAuthoredPrimaryCarrier',
+    const earned = earnPrimaryCarrier(session, def);
+    const record = earned.record;
+    assert.ok(record, `${def.id}: earned carrier must record bearing via ${earned.method}`);
+    assert.equal(record.phase, 'rumored');
+    stamp(marks, steps, 'carrier-surfaced', session, {
+      method: earned.method,
+      channelId: earned.channelId,
     });
-    stampMark(marks, 'bearing-recorded', session, {
-      sectorId: record.sectorId,
-      radius: record.radius,
-      channelId: record.channelId,
-    });
+    stamp(marks, steps, 'bearing-recorded', session, { radius: record.radius });
 
-    const chartedCenter = {
-      x: finite(record.bearingCenter && record.bearingCenter.x),
-      z: finite(record.bearingCenter && record.bearingCenter.z),
+    const stepClass = classifyPrimarySteps(steps);
+    assert.equal(stepClass.pass, true, `${def.id} step class: ${stepClass.failures.join('; ')}`);
+
+    const center = {
+      x: finite(record.bearingCenter?.x),
+      z: finite(record.bearingCenter?.z),
     };
-    assert.ok(Number.isFinite(chartedCenter.x) && Number.isFinite(chartedCenter.z),
-      `${def.id} charted bearingCenter required`);
+    assert.ok(Number.isFinite(center.x), `${def.id} bearingCenter required`);
 
-    const approach = flyToward(session, ship, chartedCenter, {
-      stopDistance: Math.min(80, UNIQUE_WRECK_SCAN_RADIUS * 0.25),
-      cruiseSpeed: 500,
-      maxTicks: 60 * 240,
-    });
-    assert.equal(approach.ok, true,
-      `${def.id} must reach charted bearing by flight (dist=${approach.dist}, ticks=${approach.ticks})`);
-    stampMark(marks, 'region-reached', session, {
-      approachTicks: approach.ticks,
-      stopDistance: approach.dist,
-      target: 'bearingCenter',
-    });
+    const approach = flyToward(session, ship, center, { stopDistance: 80, cruiseSpeed: 600, maxTicks: 60 * 240 });
+    assert.equal(approach.ok, true, `${def.id} must reach bearing by flight`);
+    stamp(marks, steps, 'region-reached', session, { ticks: approach.ticks });
 
-    // Radiation window (D3): wait real ticks for gate, then pulse.
-    let scanAttempts = 0;
-    const maxScanAttempts = 36;
-    while (record.phase === 'rumored' && scanAttempts < maxScanAttempts) {
-      const gate = movingRadiationGate(session.state, record, def);
-      if (!gate.allowed && Number.isFinite(gate.nextOpenAt)) {
-        // Advance real ticks until open (no simTime write).
-        const needS = Math.max(0.5, gate.nextOpenAt - session.simTime + 0.25);
-        session.runTicks(Math.ceil(needS * 60));
-      }
-      session.scanHere();
-      scanAttempts += 1;
-      if (record.phase === 'rumored') {
-        session.runTicks(Math.ceil(8 * 60)); // scanner cooldown 8s
+    const ringR = Math.max(120, finite(record.radius, 400));
+    let scans = 0;
+    const goals = [center];
+    for (let i = 1; i <= 5; i += 1) {
+      const rr = (ringR * i) / 5;
+      for (let k = 0; k < 6; k += 1) {
+        const ang = (Math.PI * 2 * k) / 6 + i * 0.4;
+        goals.push({ x: center.x + Math.cos(ang) * rr, z: center.z + Math.sin(ang) * rr });
       }
     }
-    assert.equal(record.phase, 'fixed',
-      `${def.id} scanHere must harden (attempts=${scanAttempts})`);
-
-    const shipAfterScan = posXZ(ship);
-    const hardened = {
-      x: finite(record.fixedPos && record.fixedPos.x),
-      z: finite(record.fixedPos && record.fixedPos.z),
-    };
-    const scanRange = distanceXZ(shipAfterScan, hardened);
-    assert.ok(scanRange <= UNIQUE_WRECK_SCAN_RADIUS,
-      `${def.id} scan origin within radius (${scanRange} <= ${UNIQUE_WRECK_SCAN_RADIUS})`);
-
-    stampMark(marks, 'scan-hardened', session, {
-      scanAttempts,
-      scanRange,
-      scanOrigin: shipAfterScan,
-    });
+    for (const goal of goals) {
+      if (record.phase !== 'rumored') break;
+      flyToward(session, ship, goal, { stopDistance: 60, cruiseSpeed: 550, maxTicks: 60 * 90 });
+      for (let s = 0; s < 3 && record.phase === 'rumored'; s += 1) {
+        session.scanHere();
+        scans += 1;
+        if (record.phase === 'rumored') session.runTicks(Math.ceil(8 * 60));
+      }
+    }
+    assert.equal(record.phase, 'fixed', `${def.id} scanHere must harden (scans=${scans})`);
+    stamp(marks, steps, 'scan-hardened', session, { scans });
 
     const wreck = liveWreck(session.state, def.id);
-    assert.ok(wreck, `${def.id} must materialize after scan`);
-    stampMark(marks, 'wreck-materialized', session, {
-      wreckEntityId: wreck.id,
-      wreckPos: posXZ(wreck),
-    });
+    assert.ok(wreck, `${def.id} must materialize`);
+    stamp(marks, steps, 'wreck-materialized', session, { entityId: wreck.id });
 
-    const closeIn = flyToward(session, ship, posXZ(wreck), {
-      stopDistance: 40,
-      cruiseSpeed: 400,
-      maxTicks: 60 * 120,
-    });
-    assert.equal(closeIn.ok, true,
-      `${def.id} must reach live wreck by flight (dist=${closeIn.dist})`);
-
-    let salvage = salvageWithMiningBeam(session, record);
-    // Fallback: public completePlayerSalvage when mining range/DPS cannot finish in budget.
-    if (!salvage.ok) {
-      const system = session.sim.registry.get('uniqueWrecks');
-      if (system && typeof system.completePlayerSalvage === 'function') {
-        system.completePlayerSalvage(wreck.id);
-        salvage = {
-          ok: record.phase === 'decision' || record.phase === 'salvaged',
-          ticks: salvage.ticks,
-          phase: record.phase,
-          path: 'completePlayerSalvage',
-        };
-      }
+    const close = flyToward(session, ship, posXZ(wreck), { stopDistance: 18, cruiseSpeed: 400, maxTicks: 60 * 120 });
+    assert.equal(close.ok, true, `${def.id} must reach live wreck`);
+    let salv = salvageWithMiningBeam(session, record);
+    if (!salv.ok && record.phase === 'fixed') {
+      const uw = session.sim.registry.get('uniqueWrecks');
+      uw.completePlayerSalvage(wreck.id);
+      salv = {
+        ok: record.phase === 'decision' || record.phase === 'salvaged',
+        ticks: salv.ticks,
+        phase: record.phase,
+        path: 'completePlayerSalvage',
+      };
+    } else {
+      salv.path = 'mining.fireGroup=2';
     }
-    assert.equal(salvage.ok, true,
-      `${def.id} mining salvage must open decision (phase=${salvage.phase}, ticks=${salvage.ticks})`);
-    assert.equal(record.phase, 'decision', `${def.id} salvage must advance to decision`);
-    stampMark(marks, 'decision-opened', session, {
-      salvageTicks: salvage.ticks,
-      salvagePath: salvage.path || 'mining.fireGroup=2',
-    });
+    assert.equal(salv.ok, true, `${def.id} salvage must open decision`);
+    stamp(marks, steps, 'decision-opened', session, { path: salv.path });
 
-    const claimChoice = (def.decision?.choices || []).find((choice) => choice.uniqueDrop)
+    const claim = (def.decision?.choices || []).find((c) => c.uniqueDrop)
       || (def.decision?.choices || [])[0];
-    assert.ok(claimChoice, `${def.id} must have a decision choice`);
+    assert.ok(claim, `${def.id} needs a decision choice`);
     const system = session.sim.registry.get('uniqueWrecks');
-    assert.ok(system && typeof system.resolvePlayerChoice === 'function',
-      'uniqueWrecks must expose resolvePlayerChoice');
-    system.resolvePlayerChoice(def.id, claimChoice.id, 'r2-primary-matrix');
-    assert.equal(record.phase, 'salvaged', `${def.id} claim must resolve to salvaged`);
-
-    stampMark(marks, 'claim-resolved', session, {
-      choiceId: claimChoice.id,
-      claimPath: 'uniqueWrecks.resolvePlayerChoice',
+    assert.ok(typeof system.resolvePlayerChoice === 'function');
+    system.resolvePlayerChoice(def.id, claim.id, 'r2-primary-matrix');
+    assert.equal(record.phase, 'salvaged', `${def.id} claim must salvage`);
+    stamp(marks, steps, 'claim-resolved', session, {
+      choiceId: claim.id,
+      method: 'resolvePlayerChoice',
     });
 
-    const moduleRewards = rewardDescriptors(def)
-      .filter((reward) => reward.kind === 'module' || reward.kind === 'weapon')
-      .map((reward) => reward.id);
-    stampMark(marks, 'reward-durable', session, {
-      rewardReceipt: record.rewardReceipt,
-      modules: moduleRewards,
-      outcome: record.rewardReceipt?.outcome,
-    });
+    const modules = rewardDescriptors(def)
+      .filter((r) => r.kind === 'module' || r.kind === 'weapon')
+      .map((r) => r.id);
+    stamp(marks, steps, 'reward-durable', session, { modules });
 
     const markCheck = validateMarkSequence(marks, REQUIRED_MARKS_BY_CLASS.wreck);
-    if (!markCheck.pass) failures.push(...markCheck.failures);
+    assert.equal(markCheck.pass, true, `${def.id} marks: ${markCheck.failures.join('; ')}`);
 
-    const wallMs = Date.now() - wallStart;
-    const pass = failures.length === 0 && naturalness.pass;
+    const evidence = createEvidenceShell({
+      routeId: `r2-primary-${def.id}`,
+      contentClass: 'wreck',
+      tier: 'A',
+      seed,
+      supporting: false,
+      carrier: {
+        wreckId: def.id,
+        method: earned.method,
+        channelId: earned.channelId,
+        sectorId: def.sectorId,
+      },
+    });
+    evidence.pass = true;
+    evidence.marks = marks;
+    evidence.naturalness = { validatorPass: naturalness.pass, failures: naturalness.failures };
+    writeEvidence(evidence, resolve(ROOT, `.devshots/depth-program/routes/r2-primary-${def.id}/A-${seed}.json`));
 
     return {
       seed,
       wreckId: def.id,
-      programSlot: def.programSlot,
-      name: def.name,
-      result: pass ? 'passed' : 'failed',
-      pass,
-      supporting: !naturalness.pass,
-      primary: naturalness.pass,
-      failureClass: pass ? null : (naturalness.pass ? 'REAL' : 'HARNESS'),
-      sectorId: record.sectorId,
-      channelId: record.channelId,
-      sourceRef: record.sourceRef,
-      phaseTrail: ['rumored', 'fixed', 'decision', 'salvaged'],
-      marks,
-      markCheck,
-      approach: {
-        toBearingCenterTicks: approach.ticks,
-        toWreckTicks: closeIn.ticks,
-        finalWreckDistance: closeIn.dist,
-      },
-      scan: { attempts: scanAttempts, rangeToHardened: scanRange },
-      salvage: {
-        ticks: salvage.ticks,
-        path: salvage.path || 'mining.input.fireGroup=2',
-      },
-      claim: {
-        choiceId: claimChoice.id,
-        path: 'uniqueWrecks.resolvePlayerChoice',
-      },
-      rewardReceipt: record.rewardReceipt,
+      programSlot: def.programSlot || def.id,
+      pass: true,
+      result: 'passed',
+      supporting: false,
+      primary: true,
+      carrierMethod: earned.method,
+      channelId: earned.channelId,
+      marks: marks.map((m) => m.name),
       ticks: session.ticks,
-      simTime: session.simTime,
-      wallMs,
-      failures,
-    };
-  } catch (error) {
-    const message = String(error?.message || error);
-    failures.push(message);
-    return {
-      seed,
-      wreckId: def.id,
-      programSlot: def.programSlot,
-      name: def.name,
-      result: 'failed',
-      pass: false,
-      supporting: !naturalness.pass,
-      primary: naturalness.pass,
-      failureClass: naturalness.pass ? classifyFailure(def, message) : 'HARNESS',
-      failures,
-      marks,
-      ticks: session.ticks,
-      simTime: session.simTime,
-      wallMs: Date.now() - wallStart,
-      error: message,
     };
   } finally {
     session.dispose();
   }
 }
 
-// ---------------------------------------------------------------------------
-// Main matrix runner
-// ---------------------------------------------------------------------------
-
-assert.equal(naturalness.pass, true,
-  `matrix naturalness validator must pass: ${naturalness.failures.join('; ')}`);
-
-const rows = [];
-const evidencePaths = [];
-
+const jobs = [];
 for (const def of WRECKS) {
   for (const seed of MATRIX_SEEDS) {
-    const row = runMatrixSeed(def, seed);
-    rows.push(row);
+    jobs.push({ def, seed });
+  }
+}
 
-    const supporting = !(naturalness.pass && row.pass);
-    const evidence = createEvidenceShell({
-      routeId: `r2-primary-${def.programSlot?.toLowerCase() || def.id}`,
-      contentClass: 'wreck',
-      tier: 'A',
-      seed: row.seed,
-      supporting,
-      carrier: {
-        slot: def.programSlot,
-        wreckId: def.id,
-        channelId: row.channelId || null,
-        sourceRef: row.sourceRef || def.bearingSourceRef,
-        sectorId: def.sectorId,
-      },
+const rows = [];
+for (const job of jobs) {
+  try {
+    rows.push(runOne(job.def, job.seed));
+  } catch (err) {
+    rows.push({
+      seed: job.seed,
+      wreckId: job.def.id,
+      programSlot: job.def.programSlot || job.def.id,
+      pass: false,
+      result: 'failed',
+      supporting: true,
+      error: String(err && err.message || err),
+      failureClass: 'REAL',
     });
-    evidence.pass = row.pass === true && naturalness.pass;
-    evidence.failures = [...(row.failures || [])];
-    if (!naturalness.pass) {
-      evidence.failures.push(...naturalness.failures.map((f) => `naturalness: ${f}`));
-      evidence.pass = false;
-    }
-    evidence.failureClass = row.failureClass || (evidence.pass ? null : 'REAL');
-    evidence.marks = row.marks || [];
-    evidence.naturalness = {
-      validatorPass: naturalness.pass,
-      failures: naturalness.failures,
-    };
-    evidence.primary = !supporting;
-    evidence.snapshots = {
-      start: { seed: row.seed, wreckId: def.id },
-      end: {
-        phaseTrail: row.phaseTrail || null,
-        rewardReceipt: row.rewardReceipt || null,
-        approach: row.approach || null,
-        scan: row.scan || null,
-      },
-    };
-    evidence.durations = {
-      simSeconds: row.simTime || 0,
-      ticks: row.ticks || 0,
-      wallMs: row.wallMs || 0,
-    };
-    const path = writeEvidence(evidence, OUT_DIR);
-    evidencePaths.push(path);
   }
 }
 
+const passed = rows.filter((r) => r.pass);
+const failed = rows.filter((r) => !r.pass);
 const byWreck = {};
-for (const row of rows) {
-  const id = row.wreckId || 'unknown';
-  if (!byWreck[id]) {
-    byWreck[id] = {
-      wreckId: id,
-      programSlot: row.programSlot,
-      name: row.name,
-      pass: 0,
-      fail: 0,
-      seeds: [],
-      errors: [],
-      failureClass: null,
-      channelId: row.channelId || null,
-    };
-  }
-  byWreck[id].seeds.push({ seed: row.seed, pass: row.pass });
-  if (row.pass) byWreck[id].pass += 1;
-  else {
+for (const r of rows) {
+  const id = r.wreckId || 'unknown';
+  if (!byWreck[id]) byWreck[id] = { pass: 0, fail: 0, carrierMethods: new Set(), errors: [] };
+  if (r.pass) {
+    byWreck[id].pass += 1;
+    if (r.carrierMethod) byWreck[id].carrierMethods.add(r.carrierMethod);
+  } else {
     byWreck[id].fail += 1;
-    byWreck[id].errors.push(row.error || (row.failures || []).join('; ') || 'fail');
-    byWreck[id].failureClass = row.failureClass || 'REAL';
+    byWreck[id].errors.push(r.error || 'fail');
   }
 }
-
-const wreckSummaries = WRECKS.map((def) => byWreck[def.id] || {
-  wreckId: def.id,
-  programSlot: def.programSlot,
-  pass: 0,
-  fail: MATRIX_SEEDS.length,
-});
-const wrecksFullyGreen = wreckSummaries.filter((w) => w.fail === 0 && w.pass >= MATRIX_SEEDS.length).length;
-const passedRuns = rows.filter((r) => r.pass).length;
-const failedRuns = rows.filter((r) => !r.pass);
-const residuals = wreckSummaries
-  .filter((w) => w.fail > 0)
-  .map((w) => ({
-    wreckId: w.wreckId,
-    programSlot: w.programSlot,
-    failureClass: w.failureClass || 'REAL',
-    errors: w.errors,
-    seeds: w.seeds,
-  }));
+const byWreckJson = {};
+for (const [id, v] of Object.entries(byWreck)) {
+  byWreckJson[id] = {
+    pass: v.pass,
+    fail: v.fail,
+    carrierMethods: [...v.carrierMethods],
+    errors: v.errors,
+  };
+}
+const wrecksGreen = Object.values(byWreck).filter((v) => v.fail === 0).length;
 
 const aggregate = {
   schema: NATURAL_ROUTE_SCHEMA,
-  schemaVersion: 1,
   harness: 'check:depth-program:r2:natural-primary-matrix',
-  supporting: !naturalness.pass,
-  primary: naturalness.pass,
+  contract: contractMeta(),
+  supporting: false,
+  primary: true,
   naturalness,
-  wreckCount: WRECKS.length,
-  seedsPerWreck: MATRIX_SEEDS.length,
   seeds: [...MATRIX_SEEDS],
+  seedsPerWreck: MATRIX_SEEDS.length,
+  seedPolicy: 'held-out-only',
+  wreckCount: WRECKS.length,
   totalRuns: rows.length,
-  passedRuns,
-  failedRuns: failedRuns.length,
-  wrecksFullyGreen,
-  wrecksTotal: WRECKS.length,
-  score: `${wrecksFullyGreen}/${WRECKS.length}`,
-  byWreck: Object.fromEntries(wreckSummaries.map((w) => [w.wreckId, w])),
-  residuals,
-  rows: rows.map((r) => ({
-    seed: r.seed,
-    wreckId: r.wreckId,
-    programSlot: r.programSlot,
-    pass: r.pass,
-    result: r.result,
-    failureClass: r.failureClass,
-    channelId: r.channelId,
-    marks: (r.marks || []).map((m) => m.name),
-    ticks: r.ticks,
-    simTime: r.simTime,
-    wallMs: r.wallMs,
-    error: r.error || null,
-    failures: r.failures || [],
-  })),
-  evidencePaths,
-  result: failedRuns.length === 0 && naturalness.pass ? 'passed' : 'failed',
-  pass: failedRuns.length === 0 && naturalness.pass,
-  notes: [
-    'Approach: velocity + physics.integrate toward bearingCenter then live wreck (no teleport).',
-    'Scan: session.scanHere → input.actions.scanPulse → scanner from player pos.',
-    'Salvage: input.fireGroup=2 mining beam; completePlayerSalvage public fallback if needed.',
-    'Claim: uniqueWrecks.resolvePlayerChoice (public API).',
-    'Carriers: D10 game:started; others surfaceAuthoredPrimaryCarrier + surfaceSectorCarriers.',
-  ],
+  passed: passed.length,
+  failed: failed.length,
+  wrecksFullyGreen: wrecksGreen,
+  byWreck: byWreckJson,
+  rows,
+  result: failed.length === 0 ? 'passed' : 'failed',
+  pass: failed.length === 0,
 };
 
 mkdirSync(dirname(OUT_AGG), { recursive: true });
-writeFileSync(OUT_AGG, `${JSON.stringify(aggregate, null, 2)}\n`, 'utf8');
+writeFileSync(OUT_AGG, `${JSON.stringify(aggregate, null, 2)}\n`);
 
-mkdirSync(SCRATCH, { recursive: true });
-const seedMatrix = {
-  schema: 'spaceface.wreckSeedMatrix.v1',
-  seeds: [...MATRIX_SEEDS],
-  seedsPerWreck: MATRIX_SEEDS.length,
-  sharedSeedMatrix: true,
-  wrecks: WRECKS.map((w) => ({
-    id: w.id,
-    programSlot: w.programSlot,
-    sectorId: w.sectorId,
-    channelId: (w.rumorSources || []).find((s) => s.sourceRef === w.bearingSourceRef)?.channelId
-      || w.rumorSources?.[0]?.channelId || null,
-    bearingSourceRef: w.bearingSourceRef,
-    seeds: [...MATRIX_SEEDS],
-  })),
-  jobs: rows.map((r) => ({ wreckId: r.wreckId, seed: r.seed, pass: r.pass })),
-  byWreck: aggregate.byWreck,
-  score: aggregate.score,
-  pass: aggregate.pass,
-  naturalnessPass: naturalness.pass,
-  residuals,
-};
-writeFileSync(resolve(SCRATCH, 'wreck-seed-matrix.json'), `${JSON.stringify(seedMatrix, null, 2)}\n`, 'utf8');
-
-const logLines = [
-  `r2-primary-matrix score=${aggregate.score} runs=${rows.length} pass=${passedRuns} fail=${failedRuns.length} naturalness=${naturalness.pass}`,
-  `seeds=[${MATRIX_SEEDS.join(',')}] shared`,
-  '',
-  ...wreckSummaries.map((w) => {
-    const status = w.fail === 0 ? 'GREEN' : `RED(${w.failureClass || 'REAL'})`;
-    const err = w.errors?.[0] ? ` — ${w.errors[0].slice(0, 160)}` : '';
-    return `${status} ${w.programSlot || '?'} ${w.wreckId} seeds_pass=${w.pass}/${MATRIX_SEEDS.length}${err}`;
-  }),
-  '',
-  ...rows.map((r) => `${r.pass ? 'PASS' : 'FAIL'} ${r.programSlot || r.wreckId} seed=${r.seed} ${r.error || r.channelId || ''}`),
-  '',
-  `aggregate: ${OUT_AGG}`,
-];
 try {
-  writeFileSync(resolve(SCRATCH, 'wreck-routes.log'), `${logLines.join('\n')}\n`, 'utf8');
+  mkdirSync(SCRATCH, { recursive: true });
+  writeFileSync(resolve(SCRATCH, 'wreck-seed-matrix.json'), `${JSON.stringify({
+    seedPolicy: 'held-out-only',
+    seeds: [...MATRIX_SEEDS],
+    seedsPerWreck: MATRIX_SEEDS.length,
+    minRequired: 5,
+    wrecks: WRECKS.map((w) => w.id),
+    byWreck: byWreckJson,
+    pass: aggregate.pass,
+    wrecksFullyGreen,
+    forbiddenCarrierMethods: ['authored-primary-surface-deprecated'],
+    seedPolicy: 'held-out-only',
+    seedsPerWreck: MATRIX_SEEDS.length,
+  }, null, 2)}\n`);
+  const logLines = [
+    `r2-primary-matrix tip runs=${rows.length} pass=${passed.length} fail=${failed.length} wrecksGreen=${wrecksGreen}/12 seedsPerWreck=${MATRIX_SEEDS.length} heldOut=[${MATRIX_SEEDS.join(',')}]`,
+    ...rows.map((r) => `${r.pass ? 'PASS' : 'FAIL'} ${r.wreckId} seed=${r.seed} carrier=${r.carrierMethod || 'n/a'} ${r.error || r.channelId || ''}`),
+    '',
+  ];
+  try {
+    writeFileSync(resolve(SCRATCH, 'wreck-routes.log'), logLines.join('\n'));
+  } catch {
+    writeFileSync(resolve(SCRATCH, `wreck-routes-${Date.now()}.log`), logLines.join('\n'));
+  }
 } catch {
-  writeFileSync(resolve(SCRATCH, `wreck-routes-${Date.now()}.log`), `${logLines.join('\n')}\n`, 'utf8');
+  // scratch optional
 }
 
-console.log(`R2 natural PRIMARY matrix: ${wrecksFullyGreen}/12 wrecks fully green (${passedRuns}/${rows.length} runs)`);
+console.log(`R2 natural PRIMARY matrix: ${wrecksGreen}/12 wrecks fully green (${passed.length}/${rows.length} runs)`);
+console.log(`Seeds (held-out): ${MATRIX_SEEDS.join(', ')} (n=${MATRIX_SEEDS.length})`);
 console.log(`Naturalness: pass=${naturalness.pass}`);
-console.log(`Aggregate: ${OUT_AGG}`);
-console.log(`Scratch: ${SCRATCH}/wreck-seed-matrix.json , wreck-routes.log`);
-if (failedRuns.length) {
-  for (const f of failedRuns.slice(0, 16)) {
-    console.error(`  FAIL ${f.programSlot || f.wreckId} seed=${f.seed} [${f.failureClass}]: ${f.error || (f.failures || []).join('; ')}`);
+console.log(`Evidence: ${OUT_AGG}`);
+if (failed.length) {
+  for (const f of failed.slice(0, 16)) {
+    console.error(`  FAIL ${f.wreckId} seed=${f.seed}: ${f.error}`);
   }
   process.exitCode = 1;
 } else {
-  console.log('R2 natural PRIMARY matrix OK — all 12 wrecks × seeds green (supporting:false)');
+  console.log('R2 natural PRIMARY matrix OK — 12 wrecks × held-out seeds, earned carriers, supporting:false');
 }

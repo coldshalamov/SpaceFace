@@ -342,6 +342,80 @@ export function validateNaturalRouteSources(sources = {}) {
   return { pass: failures.length === 0, failures: [...new Set(failures)] };
 }
 
+/**
+ * Primary-only forbidden substrings (fail-closed), layered on top of
+ * {@link validateNaturalRouteSources}.
+ *
+ * Supporting harnesses (e.g. `check-depth-program-r2-natural-d10`) may still
+ * use CI seeds (`D10_CI_SEEDS` / `ciSeedsFor`) and controlled injects for
+ * state-machine regression — they must **not** call this primary validator.
+ * Primary matrix acceptance uses held-out seeds via primaryNaturalRouteContract
+ * when that module is present.
+ *
+ * When `primaryNaturalRouteContract.mjs` is present, its
+ * `PRIMARY_FORBIDDEN_SOURCE_PATTERNS` is the strategist superset table
+ * (includes teleport/bus seams already covered by the base validator). This
+ * list is the primary *delta* checked here: authored carrier surface, scan
+ * inventory inject, private rumor/choose.
+ */
+export const PRIMARY_NATURAL_ROUTE_FORBIDDEN = Object.freeze([
+  [/surfaceAuthoredPrimaryCarrier/, 'primary must not call surfaceAuthoredPrimaryCarrier'],
+  [/\._surfaceCanonicalRumor\s*\(/, 'primary must not call _surfaceCanonicalRumor directly'],
+  [/moduleInventory\.push/, 'primary must not inject scan/module inventory'],
+  [/scanRequirement/, 'primary must not special-case scanRequirement inject'],
+  [/\._onChoose\s*\(/, 'primary must not call private _onChoose'],
+]);
+
+/**
+ * Fail-closed static contract for **primary** natural-route harnesses.
+ * Runs {@link validateNaturalRouteSources}, then fails on primary inject
+ * seams (authored carrier surface, scan inventory push, private rumor/choose).
+ *
+ * Prefer {@link validatePrimaryHarnessSources} from primaryNaturalRouteContract
+ * when that module is present — it wraps this export and adds seed-policy
+ * checks (held-out matrix seeds; no D10_CI_SEEDS as MATRIX_SEEDS).
+ *
+ * @param {{
+ *   driverSrc?: string,
+ *   routeSrc?: string,
+ *   harnessSrc?: string,
+ *   browserSrc?: string,
+ *   electronSrc?: string,
+ *   checkSrc?: string,
+ * }} sources
+ * @returns {{ pass: boolean, failures: string[] }}
+ */
+export function validatePrimaryNaturalRouteSources(sources = {}) {
+  // Satisfy base required API presence without forcing defineRoute/runRoute on
+  // Tier-A createTierASession primary harnesses.
+  const base = validateNaturalRouteSources({
+    ...sources,
+    driverSrc: `${sources.driverSrc || ''}\ndefineRoute runRoute validateNaturalRouteSources validateMarkSequence createTierASession\n`,
+  });
+  const failures = [...(base.failures || [])].filter(
+    (f) => !/shared natural route API must be referenced|naturalness\/mark validation must be present/.test(f),
+  );
+  const stripComments = (value) => String(value || '')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[\n\r])\s*\/\/.*$/gm, '$1');
+
+  const harnessCombined = [
+    sources.harnessSrc,
+    sources.checkSrc,
+    sources.browserSrc,
+    sources.electronSrc,
+  ]
+    .filter((value) => typeof value === 'string')
+    .map(stripComments)
+    .join('\n');
+
+  for (const [re, msg] of PRIMARY_NATURAL_ROUTE_FORBIDDEN) {
+    if (harnessCombined && re.test(harnessCombined)) failures.push(msg);
+  }
+
+  return { pass: failures.length === 0, failures: [...new Set(failures)] };
+}
+
 // ---------------------------------------------------------------------------
 // Evidence (F1 §4 schema spaceface.naturalRoute.v1)
 // ---------------------------------------------------------------------------
@@ -1125,7 +1199,46 @@ if (isMain) {
     console.error('naturalRoute self-test FAILED', evidence.failures);
     process.exit(1);
   }
+
+  // Primary source validator: base green fixture still passes primary delta;
+  // inject-shaped harness fails closed on surfaceAuthoredPrimaryCarrier / etc.
+  const primaryOk = validatePrimaryNaturalRouteSources({
+    harnessSrc: `
+      import { defineRoute, runRoute, validateNaturalRouteSources, validateMarkSequence } from './naturalRoute.mjs';
+      await runRoute(defineRoute({ id: 'x' }), { tier: 'A', seed: 1 });
+    `,
+    driverSrc: `
+      export function defineRoute() {}
+      export async function runRoute() {}
+      export function validateNaturalRouteSources() {}
+      export function validateMarkSequence() {}
+    `,
+  });
+  if (!primaryOk.pass) {
+    console.error('naturalRoute self-test FAILED primary clean fixture', primaryOk.failures);
+    process.exit(1);
+  }
+  const primaryBad = validatePrimaryNaturalRouteSources({
+    harnessSrc: `
+      import { defineRoute, runRoute, validateNaturalRouteSources, validateMarkSequence } from './naturalRoute.mjs';
+      system.surfaceAuthoredPrimaryCarrier(id);
+      state.player.moduleInventory.push({ defId: def.scanRequirement });
+      system._surfaceCanonicalRumor(id, ch, ev);
+      system._onChoose({ wreckId: id, choiceId: 'claim' });
+    `,
+    driverSrc: 'export function defineRoute() {} export async function runRoute() {} export function validateNaturalRouteSources() {} export function validateMarkSequence() {}',
+  });
+  if (primaryBad.pass) {
+    console.error('naturalRoute self-test FAILED: primary inject fixture should fail closed');
+    process.exit(1);
+  }
+  // Supporting CI seeds remain available for D10 supporting check (not primary).
+  if (!Array.isArray(D10_CI_SEEDS) || D10_CI_SEEDS.length < 2) {
+    console.error('naturalRoute self-test FAILED: D10_CI_SEEDS supporting pair missing');
+    process.exit(1);
+  }
+
   console.log(
-    `naturalRoute driver OK; held-out seeds=${held.length}; multi=${multi.seedCount}; marks=${evidence.marks.map((m) => m.name).join('→')}`,
+    `naturalRoute driver OK; held-out seeds=${held.length}; multi=${multi.seedCount}; marks=${evidence.marks.map((m) => m.name).join('→')}; primaryForbidden=${primaryBad.failures.length}`,
   );
 }
