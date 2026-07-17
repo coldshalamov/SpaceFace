@@ -842,6 +842,21 @@
 .sx-hstep.is-warn { border-left-color:var(--warn); }
 .sx-hstep.is-bad { border-left-color:var(--loss); }
 .sx-hstep.is-done { opacity:.62; border-left-color:var(--gain); }
+.sx-handoff__dismiss {
+  margin-left:auto;
+  border:1px solid var(--line-1);
+  border-radius:var(--r-md);
+  padding:8px 12px;
+  background:transparent;
+  color:var(--ink-2);
+  font-family:var(--sx-ui);
+  font-size:12px;
+  letter-spacing:.04em;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:border-color .14s,color .14s,background .14s;
+}
+.sx-handoff__dismiss:hover { border-color:var(--azure); color:var(--ink-0); background:var(--surface-2); }
 
 /* anchored popovers (departure check, cargo manifest) */
 .sx-pop { position:absolute; z-index:20; min-width:290px; max-width:370px; padding:14px; border:1px solid var(--line-2); border-radius:var(--r-md); background:linear-gradient(180deg,var(--surface-2),var(--void-1)); box-shadow:var(--sh-2); opacity:0; transform:translateY(-6px); transition:opacity .15s var(--ease), transform .15s var(--ease); }

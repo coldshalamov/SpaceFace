@@ -1,6 +1,11 @@
 // Guards the first dock handoff rail.
 // The rail is non-blocking UI, but it must keep the opening station loop explicit:
 // sell cargo (Market → Selling), take one safe job (Missions), then fix launch risks / undock.
+//
+// Two surfaces share the step plan:
+//   · legacy helpers live in stationHub.js (visibility + step planning)
+//   · live player route mounts stationApp.js (Orbital Command)
+// This check pins both so a stationApp-only regression cannot pass on hub source alone.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -8,9 +13,11 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const stationSource = readFileSync(join(ROOT, 'src/ui/screens/stationHub.js'), 'utf8');
+const stationAppSource = readFileSync(join(ROOT, 'src/ui/station/stationApp.js'), 'utf8');
 const onboardingSource = readFileSync(join(ROOT, 'src/systems/onboarding.js'), 'utf8');
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 
+// ── Shared step plan (stationHub exports consumed by live stationApp) ─────────
 assert.match(stationSource, /export function firstDockHandoffVisible\(state, stationId\)/,
   'station hub must keep first dock handoff visibility directly testable');
 assert.match(stationSource, /export function firstDockHandoffSteps\(state = \{\}\)/,
@@ -91,6 +98,40 @@ assert.doesNotMatch(stationSource, /ob\.done|done\.sell|done\.next/,
 assert.match(stationSource, /focusedTab[\s\S]*replacement\.focus/,
   'handoff refresh must restore focus after replacing its step DOM');
 
+// ── Live stationApp (Orbital Command) path ────────────────────────────────────
+assert.match(stationAppSource, /firstDockHandoffVisible/,
+  'live stationApp must import/use shared firstDockHandoffVisible');
+assert.match(stationAppSource, /firstDockHandoffSteps/,
+  'live stationApp must import/use shared firstDockHandoffSteps');
+assert.ok(stationAppSource.includes("className = 'sx-handoff'") || stationAppSource.includes('class="sx-handoff"') || stationAppSource.includes("class='sx-handoff'") || stationAppSource.includes('sx-handoff'),
+  'live stationApp must render the sx-handoff strip');
+assert.ok(stationAppSource.includes('First Dock Handoff') || stationAppSource.includes('sx-handoff__k'),
+  'live stationApp handoff must have a player-facing title');
+assert.ok(
+  stationAppSource.includes('data-handoff-dismiss') || stationAppSource.includes('sx-handoff__dismiss'),
+  'live stationApp handoff must be dismissible (not permanent chrome)');
+assert.match(stationAppSource, /firstDockHandoffDismissed/,
+  'live stationApp must honor firstDockHandoffDismissed like the hub');
+assert.ok(
+  stationAppSource.includes('data-handoff-mode') || stationAppSource.includes('tradeMode'),
+  'live stationApp sell handoff must pass tradeMode so Market opens in Selling filter');
+assert.match(stationAppSource, /tradeMode:\s*b\.getAttribute\('data-handoff-mode'\)|tradeMode:\s*.*data-handoff-mode/,
+  'live stationApp handoff click must forward tradeMode into navigate()');
+
+// services / undock must not fall through to Market via `TARGET_MAP[x] || 'market'`
+assert.match(stationAppSource, /isServicesHandoffTarget|data-handoff-services/,
+  'live stationApp must special-case services/undock handoff targets');
+assert.doesNotMatch(
+  stationAppSource,
+  /TARGET_MAP\[st\.targetTab\]\s*\|\|\s*['"]market['"]/,
+  'live stationApp must not map null services target to market via || fallback');
+assert.match(stationAppSource, /focusServicesPath|openDeparturePop/,
+  'services/undock handoff must route to dock actions / Departure Check, not Market');
+assert.ok(
+  /services:\s*null/.test(stationAppSource) && /undock:\s*null/.test(stationAppSource),
+  'TARGET_MAP must keep services/undock as null (dock actions), not destination ids');
+
+// ── package wiring ────────────────────────────────────────────────────────────
 assert.equal(pkg.scripts['check:first-dock-handoff'], 'node scripts/check-first-dock-handoff.mjs',
   'package.json must expose the first dock handoff guard');
 assert.ok(pkg.scripts.check.includes('npm run check:first-dock-handoff'),
@@ -98,4 +139,4 @@ assert.ok(pkg.scripts.check.includes('npm run check:first-dock-handoff'),
 assert.ok(pkg.scripts['check:ci'].includes('npm run check:first-dock-handoff'),
   'npm run check:ci must include the first dock handoff guard');
 
-console.log('First dock handoff OK - station rail links Market→Selling, Missions, and Departure Check with current left-rail onboarding copy.');
+console.log('First dock handoff OK - hub + live stationApp: Market→Selling, Missions, services≠market, dismissible.');

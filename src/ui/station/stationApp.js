@@ -39,13 +39,27 @@ const CMDTY_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
 const CMDTY_REC = new Map(COMMODITIES.map((c) => [c.id, c]));
 function titleCaseWords(v) { return String(v || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()); }
 
-// Legacy handoff/departure targets → the new destinations. 'services' is now the dock actions.
+// Legacy handoff/departure targets → the new destinations. 'services' is now the dock actions
+// (repair/refuel/resupply/undock tiles), not a destination rail — never fall through to market.
 // Dock-arrival primaryTarget uses hold | missions | undock — map those into live rails.
 const TARGET_MAP = {
   market: 'market', hold: 'market', missions: 'contracts', shipyard: 'shipworks',
   outfit: 'shipworks', manufacture: 'industry', factions: 'factions', bar: 'bar', services: null,
   undock: null,
 };
+
+/** True when the step owns berth services / undock (dock action tiles), not a market tab. */
+function isServicesHandoffTarget(targetTab) {
+  return targetTab === 'services' || targetTab === 'undock';
+}
+
+/** Resolve a legacy hub tab id to a live stationApp nav dest, or null for dock-action paths. */
+function resolveHandoffDest(targetTab) {
+  if (!targetTab || isServicesHandoffTarget(targetTab)) return null;
+  if (Object.prototype.hasOwnProperty.call(TARGET_MAP, targetTab)) return TARGET_MAP[targetTab];
+  // Already a live rail id (market, contracts, …) — pass through when known.
+  return targetTab;
+}
 
 const STATION_STYLES = [
   { id: 'sx-station-css', href: '/styles/station.css' },
@@ -452,10 +466,25 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   });
 
   // ---------- first-dock handoff ----------
+  // Shared step plan from stationHub helpers; live shell must also dismiss and must not map
+  // services/undock → market (TARGET_MAP.services is null; || 'market' was the regression).
+  function focusServicesPath() {
+    const undock = dock.el && dock.el.querySelector('[data-act="undock"]');
+    if (undock && typeof undock.focus === 'function') {
+      try { undock.focus({ preventScroll: false }); } catch (_) { try { undock.focus(); } catch (__) {} }
+    }
+    const dep = departureNow();
+    // When launch is not clear, surface the same Departure Check the Undock tile uses so
+    // fuel/hull issues are actionable (repair/refuel tiles live on the dock, not Market).
+    if (dep.state !== 'ready') openDeparturePop();
+    if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+  }
+
   function renderHandoff() {
     const s = state();
+    const dismissed = !!(s && s.ui && s.ui.firstDockHandoffDismissed);
     let visible = false;
-    try { visible = !!firstDockHandoffVisible(s, stationId()); } catch (_) { visible = false; }
+    try { visible = !dismissed && !!firstDockHandoffVisible(s, stationId()); } catch (_) { visible = false; }
     let steps = [];
     if (visible) { try { steps = firstDockHandoffSteps(s) || []; } catch (_) { steps = []; } }
     if (!visible || !steps.length) { handoffEl.hidden = true; handoffEl.innerHTML = ''; return; }
@@ -463,19 +492,43 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     handoffEl.innerHTML =
       `<span class="sx-handoff__k">First Dock Handoff</span>` +
       steps.map((st) => {
-        const dest = TARGET_MAP[st.targetTab] || 'market';
+        const servicesPath = isServicesHandoffTarget(st.targetTab);
+        const dest = servicesPath ? null : resolveHandoffDest(st.targetTab);
         const cls = st.done ? 'is-done' : (st.kind === 'bad' ? 'is-bad' : (st.kind === 'warn' ? 'is-warn' : 'is-ok'));
         const mode = st.tradeMode === 'sell' || st.tradeMode === 'buy' ? st.tradeMode : '';
-        return `<button type="button" class="sx-hstep ${cls}" data-handoff="${escapeHtml(dest)}"` +
+        // Services/undock steps must not acquire data-handoff="market" via null||fallback.
+        const routeAttr = servicesPath
+          ? ' data-handoff-services="1"'
+          : (dest ? ` data-handoff="${escapeHtml(dest)}"` : '');
+        return `<button type="button" class="sx-hstep ${cls}"${routeAttr}` +
           (mode ? ` data-handoff-mode="${mode}"` : '') +
           ` title="${escapeHtml(st.text)}" aria-label="${escapeHtml(st.title + '. ' + st.text)}">` +
           `<span class="sx-hstep__n">${escapeHtml(st.label)}</span>` +
           `<span class="sx-hstep__t">${escapeHtml(st.title)}</span></button>`;
-      }).join('');
+      }).join('') +
+      `<button type="button" class="sx-handoff__dismiss" data-handoff-dismiss ` +
+        `title="Hide this checklist" aria-label="Dismiss the first-dock checklist">Got it</button>`;
   }
   handoffEl.addEventListener('click', (ev) => {
+    const dismiss = ev.target.closest('[data-handoff-dismiss]');
+    if (dismiss) {
+      const s = state();
+      if (s) {
+        if (!s.ui) s.ui = {};
+        s.ui.firstDockHandoffDismissed = true;
+      }
+      renderHandoff();
+      if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      return;
+    }
+    const services = ev.target.closest('[data-handoff-services]');
+    if (services) { focusServicesPath(); return; }
     const b = ev.target.closest('[data-handoff]');
-    if (b) navigate(b.getAttribute('data-handoff'), { tradeMode: b.getAttribute('data-handoff-mode') || undefined });
+    if (b) {
+      navigate(b.getAttribute('data-handoff'), {
+        tradeMode: b.getAttribute('data-handoff-mode') || undefined,
+      });
+    }
   });
 
   // ---------- screens ----------
