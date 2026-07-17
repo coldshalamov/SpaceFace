@@ -13,6 +13,8 @@
 | Dock arrival mount | `a67b0a2e` | `check:dock-arrival-mount` |
 | Bar place identity | `67dd87a2` | `check:bar:place-identity` |
 | Shell arrival pins + Fable ratify | `12ab0317` / `b8a04604` | `check-station-shell` + F_CLAIM_HONESTY_RATIFY |
+| First-dock handoff dismiss + services path | `a92d0f0b` | `check:first-dock-handoff` |
+| Departure Check services chips → dock actions | `f78cf484` | `check:station-departure` |
 
 ## Frozen residual (honest)
 
