@@ -1,7 +1,7 @@
 # Orchestration Status Board
 
-**Updated:** 2026-07-17T21:51:02.039Z (compiler)
-**Spine tip:** `3312b5c7`
+**Updated:** 2026-07-17T22:04:14.211Z (compiler)
+**Spine tip:** `fcd30fa6`
 **Scratch:** `C:\Users\93rob\AppData\Local\Temp\grok-goal-696b88462e5d\implementer`
 
 ## Compiler gate exits
@@ -28,17 +28,21 @@
 | matrix pass | true seedsPerWreck=5 |
 | gt1 supporting | false |
 | gt1 fullSpinePass | true |
+| gt1 primary | false |
+| gt1 productReadyUnassisted | false |
 | gallery shotCount | 42 supporting=true |
 | electron exit | 0 |
-| dualPlatformPrimaryAcceptance | DONE |
+| dualPlatformPrimaryAcceptance | RESIDUAL |
 
 ## Residual (compiler-generated)
 
-- (dual-platform primaryAcceptance green)
+- Electron dual-platform primaryAcceptance — RESIDUAL (productReadyUnassisted=false; primary=false; product residual electron-dual-platform:REAL)
 - Helix fleet carriers — PARTIAL (ambient soak green; Helix residual if data fleetClass none)
 - E1 membership supporting residual (if harness still supporting:true)
+- GT1 gallery supporting capture (not primary dual-platform)
 
 ## Claim package
 
 All claim surfaces for this tip were written by `npm run compile:campaign-claim`.
 Do not hand-edit platform-limit / cold-final / DONE_STAMPS without re-running the compiler.
+Honesty: dualPlatformPrimaryAcceptance=DONE requires productReadyUnassisted+primary and no electron-dual-platform REAL residual.

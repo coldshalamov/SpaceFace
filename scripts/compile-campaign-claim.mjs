@@ -19,10 +19,17 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  buildBrowserElectronRoutesLog,
+  evaluateDualPlatformPrimaryAcceptance,
+  mergeGt1Residuals,
+} from './lib/campaignClaimHonesty.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SCRATCH = process.env.SPACEFACE_SCRATCH
   || 'C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-696b88462e5d\\implementer';
+/** When COMPILE_SKIP_GATES=1, reuse prior scratch *.log exit lines (claim surfaces only). */
+const SKIP_GATES = process.env.COMPILE_SKIP_GATES === '1' || process.env.COMPILE_SKIP_GATES === 'true';
 
 const GATES = Object.freeze([
   // Plan verification step 1
@@ -40,7 +47,7 @@ const GATES = Object.freeze([
   { id: 'living-opposition', cmd: 'npm', args: ['run', 'check:depth-program:d1:living-opposition'], ac: 'AC3' },
   // GT1 continuous (evidence; not dual-platform stamp)
   { id: 'gt1-continuous', cmd: 'npm', args: ['run', 'check:depth-program:gt1:continuous'], ac: 'AC5-evidence' },
-  // Electron residual probe (never stamps dual-platform DONE unless exit 0)
+  // Electron residual probe (never stamps dual-platform DONE from new-game alone)
   { id: 'electron-new-game', cmd: 'npm', args: ['run', 'check:electron:new-game'], ac: 'residual-probe' },
 ]);
 
@@ -48,8 +55,24 @@ function git(args) {
   return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' }).trim();
 }
 
+function parseExitFromLog(logPath) {
+  if (!existsSync(logPath)) return null;
+  const text = readFileSync(logPath, 'utf8');
+  const m = text.match(/(?:^|\n)exit=(\d+)\s*$/m) || text.match(/=== EXIT_CODE=(\d+) ===/);
+  if (!m) return null;
+  return Number(m[1]);
+}
+
 function runGate(gate) {
   const logPath = resolve(SCRATCH, `${gate.id}.log`);
+  if (SKIP_GATES) {
+    const reused = parseExitFromLog(logPath);
+    if (reused == null) {
+      console.error(`compile: SKIP_GATES missing exit in ${logPath}`);
+      return { id: gate.id, ac: gate.ac, exit: 1, log: logPath, skipped: true };
+    }
+    return { id: gate.id, ac: gate.ac, exit: reused, log: logPath, skipped: true };
+  }
   const result = spawnSync(gate.cmd, gate.args, {
     cwd: ROOT,
     encoding: 'utf8',
@@ -125,11 +148,26 @@ function main() {
     contradictions.push('gt1 continuous fullSpinePass=true but supporting=true (inconsistent product claim)');
   }
 
-  // Electron residual — never claim dual-platform primaryAcceptance DONE
+  // Electron residual — dual-platform DONE only when product-ready unassisted + primary
+  // (never from new-game authoring floor alone + Tier-A continuous marks).
   const electronExit = byId['electron-new-game']?.exit ?? 1;
-  const dualPlatformPrimaryDone = electronExit === 0 && gt1Full === true && gt1Supporting === false;
-  // If electron red, dual-platform must stay residual
-  const dualPlatformClaim = dualPlatformPrimaryDone ? 'DONE' : 'RESIDUAL';
+  const dualEval = evaluateDualPlatformPrimaryAcceptance({ electronExit, gt1c });
+  const dualPlatformClaim = dualEval.claim;
+  const mergedResiduals = dualEval.mergedResiduals;
+  if (dualPlatformClaim === 'DONE' && gt1c?.productReadyUnassisted !== true) {
+    contradictions.push('dualPlatform DONE but productReadyUnassisted!=true');
+  }
+  if (dualPlatformClaim === 'DONE' && gt1c?.primary !== true) {
+    contradictions.push('dualPlatform DONE but gt1 primary!=true');
+  }
+  if (
+    dualPlatformClaim === 'DONE'
+    && dualEval.reasons.length === 0
+    && Array.isArray(gt1c?.productResiduals)
+    && gt1c.productResiduals.some((r) => /electron-dual-platform/i.test(String(r?.mark || '')))
+  ) {
+    contradictions.push('dualPlatform DONE while electron-dual-platform product residual present');
+  }
 
   // Write wreck-seed-matrix from live aggregate
   if (matrix) {
@@ -157,6 +195,7 @@ function main() {
     `tipFull: ${tipFull}`,
     `branch: ${branch}`,
     `time: ${now}`,
+    SKIP_GATES ? 'mode: COMPILE_SKIP_GATES (reused prior gate exits)' : 'mode: live gates',
     '',
     '## Section A — Plan AC2 first-hour (owning checks)',
     `- m3-recovery exit=${byId['m3-recovery']?.exit}`,
@@ -169,29 +208,53 @@ function main() {
     `- fullSpinePass=${gt1Full}`,
     `- primary=${gt1c?.primary}`,
     `- productReadyUnassisted=${gt1c?.productReadyUnassisted}`,
-    `- residuals=${JSON.stringify(gt1c?.residuals || gt1c?.productResiduals || [])}`,
+    // Never use residuals||productResiduals — empty residuals:[] is truthy and hides REAL product residuals
+    `- residuals=${JSON.stringify(mergeGt1Residuals(gt1c))}`,
+    `- routeResiduals=${JSON.stringify(Array.isArray(gt1c?.residuals) ? gt1c.residuals : [])}`,
+    `- productResiduals=${JSON.stringify(Array.isArray(gt1c?.productResiduals) ? gt1c.productResiduals : [])}`,
     '',
     '## Section C — Gallery (browser)',
     `- shotCount=${gallery?.shotCount ?? 'missing'}`,
     `- supporting=${gallery?.supporting}`,
     `- platform=${gallery?.platform}`,
+    gallery?.supporting === true
+      ? '- Gallery is SUPPORTING capture only (not dual-platform primaryAcceptance)'
+      : '- Gallery supporting flag as emitted',
     '',
     '## Section D — Electron residual probe',
     `- check:electron:new-game exit=${electronExit}`,
     `- dualPlatformPrimaryAcceptance=${dualPlatformClaim}`,
     electronExit === 0
-      ? '- Electron new-game GREEN (authoring floor ok)'
+      ? '- Electron new-game GREEN (authoring floor ok; NOT dual-platform golden-thread sample)'
       : '- Electron new-game RED — REAL residual if NPC procedural-fallback; never stamp dual-platform primaryAcceptance DONE',
+    ...dualEval.reasons.map((r) => `- residual reason: ${r}`),
     '',
     '## Contradiction check',
     contradictions.length ? contradictions.map((c) => `- FAIL ${c}`).join('\n') : '- none',
     '',
   ].join('\n');
   writeFileSync(resolve(SCRATCH, 'platform-limit.log'), platformLimit, 'utf8');
-  writeFileSync(resolve(SCRATCH, 'browser-electron-routes.log'),
-    readFileSync(resolve(SCRATCH, 'electron-new-game.log'), 'utf8'), 'utf8');
 
-  // DONE_STAMPS — only green gates; dual-platform never DONE unless electron green
+  // Honest dual-platform residual surface (must not be a silent copy of electron-new-game alone)
+  const electronLogPath = resolve(SCRATCH, 'electron-new-game.log');
+  const electronLogExcerpt = existsSync(electronLogPath)
+    ? readFileSync(electronLogPath, 'utf8').slice(0, 4000)
+    : '';
+  writeFileSync(
+    resolve(SCRATCH, 'browser-electron-routes.log'),
+    buildBrowserElectronRoutesLog({
+      tip,
+      dualPlatformClaim,
+      dualReasons: dualEval.reasons,
+      electronExit,
+      electronLogExcerpt,
+      gt1c,
+      gallery,
+    }),
+    'utf8',
+  );
+
+  // DONE_STAMPS — only green gates; dual-platform never DONE unless product bar met
   const stamps = [
     '| Chunk | Gate | Exit | Tip | Claim |',
     '|---|---|---|---|---|',
@@ -203,12 +266,12 @@ function main() {
     `| NAV-HUD | check:nav-hud-hierarchy | ${byId['nav-hud']?.exit} | ${tip} | ${byId['nav-hud']?.exit === 0 ? 'DONE' : 'RED'} |`,
     `| Depth contracts | check:depth-program:contracts | ${byId['depth-contracts']?.exit} | ${tip} | ${byId['depth-contracts']?.exit === 0 ? 'DONE' : 'RED'} |`,
     `| D1 living opposition | check:depth-program:d1:living-opposition | ${byId['living-opposition']?.exit} | ${tip} | ${byId['living-opposition']?.exit === 0 ? 'PARTIAL (Helix residual)' : 'RED'} |`,
-    `| GT1 continuous | check:depth-program:gt1:continuous | ${byId['gt1-continuous']?.exit} | ${tip} | ${gt1Full && gt1Supporting === false ? 'DONE Tier-A full spine' : 'SUPPORTING/PARTIAL'} |`,
+    `| GT1 continuous | check:depth-program:gt1:continuous | ${byId['gt1-continuous']?.exit} | ${tip} | ${gt1Full && gt1Supporting === false ? 'DONE Tier-A full spine (not dual-platform primary)' : 'SUPPORTING/PARTIAL'} |`,
     `| GT1 gallery | browser capture | ${gallery?.shotCount ? 0 : 1} | ${tip} | SUPPORTING shotCount=${gallery?.shotCount ?? 0} |`,
-    `| Electron dual-platform primaryAcceptance | check:electron:new-game | ${electronExit} | ${tip} | ${dualPlatformClaim} |`,
+    `| Electron dual-platform primaryAcceptance | check:electron:new-game + gt1 product flags | ${electronExit} | ${tip} | ${dualPlatformClaim} |`,
     '',
     '## Non-DONE (frozen)',
-    dualPlatformClaim === 'DONE' ? '- (none for dual-platform)' : '- Electron dual-platform primaryAcceptance',
+    dualPlatformClaim === 'DONE' ? '- (none for dual-platform)' : '- Electron dual-platform primaryAcceptance (productReadyUnassisted/primary/product residual)',
     '- Helix natural fleet carriers (if living-opposition helix residual REAL)',
     '',
     `Machine-written by compile-campaign-claim.mjs at ${now}`,
@@ -224,16 +287,21 @@ function main() {
     `tipFull=${tipFull}`,
     `branch=${branch}`,
     `time=${now}`,
+    SKIP_GATES ? 'mode=COMPILE_SKIP_GATES' : 'mode=live',
     ...results.map((r) => `${r.id} exit=${r.exit} ac=${r.ac}`),
     `matrix_seeds=${JSON.stringify(matrix?.seeds || null)}`,
     `matrix_seedsPerWreck=${matrix?.seedsPerWreck}`,
     `matrix_pass=${matrix?.pass}`,
     `gt1_supporting=${gt1Supporting}`,
     `gt1_fullSpinePass=${gt1Full}`,
+    `gt1_primary=${gt1c?.primary}`,
+    `gt1_productReadyUnassisted=${gt1c?.productReadyUnassisted}`,
+    `gt1_mergedResiduals=${JSON.stringify(mergedResiduals)}`,
     `gallery_shotCount=${gallery?.shotCount}`,
     `gallery_supporting=${gallery?.supporting}`,
     `electron_exit=${electronExit}`,
     `dualPlatformPrimaryAcceptance=${dualPlatformClaim}`,
+    `dualPlatformReasons=${JSON.stringify(dualEval.reasons)}`,
     `contradictions=${contradictions.length}`,
     ...contradictions.map((c) => `contradiction=${c}`),
     '',
@@ -249,10 +317,10 @@ function main() {
     '## Plan.md AC map (verbatim mapping — no AC rewrite)',
     'See plan.md acceptance criteria 1–5. Compiler maps:',
     `- AC1 → wreck-routes (${byId['wreck-routes']?.exit}) + natural-d10-primary (${byId['natural-d10-primary']?.exit})`,
-    `- AC2 → m3-recovery (${byId['m3-recovery']?.exit}) + m1-helios (${byId['m1-helios']?.exit}) + nav-hud (${byId['nav-hud']?.exit})`,
+    `- AC2 → m3-recovery (${byId['m3-recovery']?.exit}) + m1-helios (${byId['m1-helios']?.exit}) + nav-hud (${byId['nav-hud']?.exit}) (first-hour; NOT dual-platform GT)`,
     `- AC3 → depth-contracts (${byId['depth-contracts']?.exit}) + e1 (${byId['e1-natural']?.exit}) + named logs`,
     `- AC4 → expansion polish (prior green; not re-run in compiler core)`,
-    `- AC5 → graphics fence + gallery supporting + Electron residual classification`,
+    `- AC5 → graphics fence + gallery supporting + Electron residual classification (dual-platform primaryAcceptance residual OK)`,
     '',
     '## Gate exits',
     ...results.map((r) => `- ${r.id}: ${r.exit}`),
@@ -260,9 +328,12 @@ function main() {
     '## Live GT1 continuous',
     `- supporting: ${gt1Supporting}`,
     `- fullSpinePass: ${gt1Full}`,
+    `- primary: ${gt1c?.primary}`,
+    `- productReadyUnassisted: ${gt1c?.productReadyUnassisted}`,
     '',
     '## Dual-platform primaryAcceptance',
     dualPlatformClaim,
+    ...dualEval.reasons.map((r) => `- reason: ${r}`),
     '',
     '## Contradictions',
     contradictions.length ? contradictions.map((c) => `- ${c}`).join('\n') : '- none',
@@ -292,20 +363,26 @@ function main() {
     `| matrix pass | ${matrix?.pass} seedsPerWreck=${matrix?.seedsPerWreck} |`,
     `| gt1 supporting | ${gt1Supporting} |`,
     `| gt1 fullSpinePass | ${gt1Full} |`,
+    `| gt1 primary | ${gt1c?.primary} |`,
+    `| gt1 productReadyUnassisted | ${gt1c?.productReadyUnassisted} |`,
     `| gallery shotCount | ${gallery?.shotCount} supporting=${gallery?.supporting} |`,
     `| electron exit | ${electronExit} |`,
     `| dualPlatformPrimaryAcceptance | ${dualPlatformClaim} |`,
     '',
     '## Residual (compiler-generated)',
     '',
-    dualPlatformClaim === 'DONE' ? '- (dual-platform primaryAcceptance green)' : '- Electron dual-platform primaryAcceptance — RESIDUAL',
+    dualPlatformClaim === 'DONE'
+      ? '- (dual-platform primaryAcceptance green)'
+      : `- Electron dual-platform primaryAcceptance — RESIDUAL (${dualEval.reasons.join('; ') || 'unproven'})`,
     byId['living-opposition']?.exit === 0 ? '- Helix fleet carriers — PARTIAL (ambient soak green; Helix residual if data fleetClass none)' : '- living-opposition red',
     byId['e1-natural']?.exit === 0 ? '- E1 membership supporting residual (if harness still supporting:true)' : '- e1 red',
+    gallery?.supporting === true ? '- GT1 gallery supporting capture (not primary dual-platform)' : '- gallery non-supporting or missing',
     '',
     '## Claim package',
     '',
     'All claim surfaces for this tip were written by `npm run compile:campaign-claim`.',
     'Do not hand-edit platform-limit / cold-final / DONE_STAMPS without re-running the compiler.',
+    'Honesty: dualPlatformPrimaryAcceptance=DONE requires productReadyUnassisted+primary and no electron-dual-platform REAL residual.',
     '',
   ].join('\n');
   writeFileSync(resolve(ROOT, 'docs/evidence/orchestration/03_STATUS_BOARD.md'), board, 'utf8');
