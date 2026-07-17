@@ -1,6 +1,7 @@
 // src/ui/station/screens/bar.js — "Bar": the conversation instrument.
 // Contact rail · a real conversation centrepiece (portrait, what they remember of you, what they
 // just said, what you can ask) · leads column (survey data + mission leads).
+// Quiet place-identity line when stationId is known (name + faction/sector cantina flavor).
 // Reuses the existing contact engine in screens/bar.js — no gameplay reinvented.
 // Emits ui:talkContact / ui:purchaseSurveyData / ui:acceptMission / ui:pushScreen.
 import {
@@ -13,6 +14,8 @@ import {
   barContactIntelTags,
 } from '../../screens/bar.js';
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
+import { SECTORS } from '../../../data/sectors.js';
+import { FACTION_META } from '../../../data/factions.js';
 import { mountContactPortrait } from '../../portraitArt.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
@@ -24,13 +27,70 @@ const rewardOf = (m) => Math.max(0, Math.round(Number(
   m && (m.reward != null ? m.reward : (m.reward_cr != null ? m.reward_cr : (m.rewardCr != null ? m.rewardCr : m.payout))),
 ) || 0));
 
+const STATION_PLACE = new Map();
+for (const sec of SECTORS) {
+  for (const s of sec.stations || []) STATION_PLACE.set(s.id, { station: s, sector: sec });
+}
+const FACTION_PLACE = new Map(FACTION_META.map((f) => [f.id, f]));
+
+/**
+ * Quiet bar place-identity line: station name + faction or sector cantina flavor.
+ * Returns null when stationId is missing (no chrome).
+ * @param {string|null|undefined} stationId
+ * @param {object|null} [state]
+ * @returns {string|null}
+ */
+export function formatBarPlaceLine(stationId, state = null) {
+  if (stationId == null || stationId === '') return null;
+  const id = String(stationId);
+  const rec = STATION_PLACE.get(id);
+  let name = rec && rec.station && rec.station.name ? String(rec.station.name).trim() : '';
+  if (!name && state) {
+    const list = state.entityList || (state.entities && typeof state.entities.values === 'function'
+      ? [...state.entities.values()]
+      : null);
+    if (Array.isArray(list)) {
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e) continue;
+        const sid = (e.data && e.data.stationId) || e.stationId || e.id;
+        if (String(sid) !== id) continue;
+        const n = e.name || (e.data && e.data.name) || null;
+        if (n && String(n).trim()) { name = String(n).trim(); break; }
+      }
+    }
+  }
+  if (!name) {
+    name = id
+      .replace(/^station_/i, '')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  const factionId = rec && rec.station && rec.station.factionId;
+  const fac = factionId ? FACTION_PLACE.get(factionId) : null;
+  let flavor = '';
+  if (fac) {
+    const label = (fac.short && String(fac.short).trim()) || (fac.name && String(fac.name).trim()) || '';
+    flavor = label ? `${label} cantina` : '';
+  }
+  if (!flavor && rec && rec.sector && rec.sector.name) {
+    flavor = `${String(rec.sector.name).trim()} cantina`;
+  }
+  if (!flavor) flavor = 'local cantina';
+  return `${name} · ${flavor}`;
+}
+
 export function createBarScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'sx-bar';
   el.innerHTML =
-    `<nav class="sx-bar__rail" aria-label="Contacts"></nav>` +
-    `<section class="sx-bar__stage" aria-live="polite"></section>` +
-    `<aside class="sx-bar__leads"></aside>`;
+    `<header class="sx-bar__place" hidden aria-label="Bar location"></header>` +
+    `<div class="sx-bar__body">` +
+      `<nav class="sx-bar__rail" aria-label="Contacts"></nav>` +
+      `<section class="sx-bar__stage" aria-live="polite"></section>` +
+      `<aside class="sx-bar__leads"></aside>` +
+    `</div>`;
+  const placeEl = el.querySelector('.sx-bar__place');
   const railEl = el.querySelector('.sx-bar__rail');
   const stageEl = el.querySelector('.sx-bar__stage');
   const leadsEl = el.querySelector('.sx-bar__leads');
@@ -50,6 +110,27 @@ export function createBarScreen(ctx) {
   function selected(state) {
     const list = contacts(state);
     return list.find((c) => c.id === selectedId) || list[0] || null;
+  }
+
+  // ---------- place identity (quiet chrome when stationId known) ----------
+  function renderPlace(state) {
+    const line = formatBarPlaceLine(sid(), state);
+    if (!line) {
+      placeEl.hidden = true;
+      placeEl.textContent = '';
+      return;
+    }
+    placeEl.hidden = false;
+    const sep = ' · ';
+    const i = line.indexOf(sep);
+    if (i > 0) {
+      placeEl.innerHTML =
+        `<span class="sx-bar__place-name">${escapeHtml(line.slice(0, i))}</span>` +
+        `<span class="sx-bar__place-sep" aria-hidden="true">${sep}</span>` +
+        `<span class="sx-bar__place-flavor">${escapeHtml(line.slice(i + sep.length))}</span>`;
+    } else {
+      placeEl.textContent = line;
+    }
   }
 
   // ---------- rail ----------
@@ -149,7 +230,12 @@ export function createBarScreen(ctx) {
         `<button type="button" class="sx-btn-ghost sx-bar__log" data-log>Open Mission Log</button></div>`;
   }
 
-  function renderAll(state) { renderRail(state); renderStage(state); renderLeads(state); }
+  function renderAll(state) {
+    renderPlace(state);
+    renderRail(state);
+    renderStage(state);
+    renderLeads(state);
+  }
 
   // ---------- interactions ----------
   railEl.addEventListener('click', (ev) => {

@@ -687,7 +687,33 @@
 .sx-ind__console .sx-btn-primary { width:100%; }
 
 /* =========================== BAR (CONVERSATION) INSTRUMENT =========================== */
-.sx-bar { height:100%; display:grid; grid-template-columns:250px minmax(380px,1fr) 300px; gap:20px; min-height:0; }
+.sx-bar { height:100%; display:flex; flex-direction:column; gap:10px; min-height:0; }
+/* Quiet place-identity chrome (station + faction/sector cantina) — not a shell redesign. */
+.sx-bar__place {
+  flex:none;
+  margin:0;
+  padding:0 2px 2px;
+  font-family:var(--sx-ui);
+  font-size:12px;
+  line-height:1.35;
+  letter-spacing:.04em;
+  color:var(--ink-3);
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.sx-bar__place[hidden] { display:none !important; }
+.sx-bar__place-name { color:var(--ink-2); font-weight:600; letter-spacing:.02em; }
+.sx-bar__place-sep { color:var(--ink-3); opacity:.7; }
+.sx-bar__place-flavor { color:var(--ink-3); font-style:italic; letter-spacing:.03em; }
+.sx-bar__body {
+  flex:1 1 auto;
+  min-height:0;
+  display:grid;
+  grid-template-columns:250px minmax(380px,1fr) 300px;
+  gap:20px;
+}
 .sx-bar__rail { display:flex; flex-direction:column; gap:4px; overflow-y:auto; min-height:0; padding-right:4px; }
 .sx-bar-row { display:grid; grid-template-columns:auto 1fr; align-items:center; gap:11px; padding:9px 11px; border:1px solid transparent; border-radius:var(--r-md); background:transparent; cursor:pointer; text-align:left; font-family:var(--sx-ui); transition:background .14s var(--ease); }
 .sx-bar-row:hover { background:var(--surface-1); }
