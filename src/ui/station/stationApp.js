@@ -329,15 +329,37 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     return { chips, state: sum.state, status: sum.status, title: sum.title };
   }
 
+  /** Map a services-target departure chip onto a live dock action tile (not a destination rail). */
+  function servicesDockActionForChip(chip) {
+    const lab = String(chip && chip.label || '').toLowerCase();
+    if (lab.includes('fuel')) return 'refuel';
+    if (lab.includes('hull')) return 'repair';
+    return 'undock';
+  }
+
+  function focusDockAction(actionId) {
+    const id = actionId || 'undock';
+    const el = dock.el && dock.el.querySelector(`[data-act="${id}"]`);
+    if (el && typeof el.focus === 'function') {
+      try { el.focus({ preventScroll: false }); } catch (_) { try { el.focus(); } catch (__) {} }
+    }
+    if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+  }
+
   function openDeparturePop() {
     const dep = departureNow();
     const anchor = dock.el.querySelector('[data-act="undock"]');
     if (!anchor) return;
     const rows = dep.chips.map((c) => {
       const cls = c.kind === 'bad' ? 'is-bad' : (c.kind === 'warn' ? 'is-warn' : 'is-ok');
-      const dest = c.targetTab ? TARGET_MAP[c.targetTab] : null;
-      const attr = c.targetScreen ? ` data-pop-screen="${escapeHtml(c.targetScreen)}"`
-        : (dest ? ` data-pop-nav="${escapeHtml(dest)}"` : '');
+      // services/undock are dock actions (TARGET_MAP null) — never leave Fuel/Hull as dead buttons.
+      const servicesPath = isServicesHandoffTarget(c.targetTab);
+      const dest = servicesPath ? null : resolveHandoffDest(c.targetTab);
+      const attr = c.targetScreen
+        ? ` data-pop-screen="${escapeHtml(c.targetScreen)}"`
+        : (servicesPath
+          ? ` data-pop-services="${escapeHtml(servicesDockActionForChip(c))}"`
+          : (dest ? ` data-pop-nav="${escapeHtml(dest)}"` : ''));
       const aria = escapeHtml((c.actionLabel || (c.label + ' ' + c.text)));
       return `<button type="button" class="sx-depchip ${cls}"${attr} aria-label="${aria}">` +
         `<b>${escapeHtml(c.label)}</b><span>${escapeHtml(c.text)}</span></button>`;
@@ -396,6 +418,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (holdItem) {
       navigate('market', { tradeMode: 'sell', commodityId: holdItem.getAttribute('data-hold-item') });
       closePop();
+      return;
+    }
+    const svc = ev.target.closest('[data-pop-services]');
+    if (svc) {
+      // Close first so focus lands on the dock tile, not under a still-open popover.
+      const act = svc.getAttribute('data-pop-services') || 'undock';
+      closePop();
+      focusDockAction(act);
       return;
     }
     const nav = ev.target.closest('[data-pop-nav]');
@@ -469,15 +499,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   // Shared step plan from stationHub helpers; live shell must also dismiss and must not map
   // services/undock → market (TARGET_MAP.services is null; || 'market' was the regression).
   function focusServicesPath() {
-    const undock = dock.el && dock.el.querySelector('[data-act="undock"]');
-    if (undock && typeof undock.focus === 'function') {
-      try { undock.focus({ preventScroll: false }); } catch (_) { try { undock.focus(); } catch (__) {} }
-    }
+    focusDockAction('undock');
     const dep = departureNow();
     // When launch is not clear, surface the same Departure Check the Undock tile uses so
     // fuel/hull issues are actionable (repair/refuel tiles live on the dock, not Market).
     if (dep.state !== 'ready') openDeparturePop();
-    if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   }
 
   function renderHandoff() {

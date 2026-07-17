@@ -1,10 +1,16 @@
 // Guards the Station Hub departure readiness strip.
 // The strip is non-blocking UI, but it must keep reading live mission/cargo/fuel/hull state.
+//
+// Two surfaces share the chip plan:
+//   · pure chip builders live in stationHub.js
+//   · live player route mounts stationApp.js Departure Check popover (Orbital Command)
+// This check pins both so Fuel/Hull services chips cannot regress to dead buttons on the live shell.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
 const servicesSource = readFileSync(new URL('../src/ui/screens/services.js', import.meta.url), 'utf8');
+const stationAppSource = readFileSync(new URL('../src/ui/station/stationApp.js', import.meta.url), 'utf8');
 const stationHubModule = await import('../src/ui/screens/stationHub.js');
 
 assert.equal(typeof stationHubModule.departureReadinessSummary, 'function',
@@ -129,4 +135,36 @@ for (const eventName of [
 assert.match(source, /const refreshDeparture = \(\) => \{ if \(this\._visible\(\)\) this\._refreshDeparture\(\); \};/,
   'station hub must only refresh departure readiness while visible');
 
-console.log('Station departure readiness OK - tracked objective, trade route, hold, fuel, and hull are visible before undock.');
+// ── Live stationApp (Orbital Command) Departure Check pop ─────────────────────
+// Fuel/Hull chips use targetTab:'services'. On the live shell, services is a dock-action
+// path (TARGET_MAP.services === null), not a destination rail. Chips must jump to
+// Refuel/Repair tiles via data-pop-services — never render as non-navigating buttons.
+assert.match(stationAppSource, /function openDeparturePop\(/,
+  'live stationApp must own the Departure Check popover used by Undock');
+assert.match(stationAppSource, /data-pop-services/,
+  'live Departure Check must route services-target chips with data-pop-services');
+assert.match(stationAppSource, /servicesDockActionForChip|isServicesHandoffTarget/,
+  'live Departure Check must special-case services/undock chip targets');
+assert.match(stationAppSource, /closest\('\[data-pop-services\]'\)/,
+  'live Departure Check click path must handle data-pop-services chips');
+assert.match(stationAppSource, /focusDockAction|\[data-act=/,
+  'services departure chips must focus a live dock action tile (refuel/repair/undock)');
+assert.match(stationAppSource, /lab\.includes\('fuel'\)[\s\S]*refuel|return 'refuel'/,
+  'Fuel departure chips must map onto the Refuel dock action');
+assert.match(stationAppSource, /lab\.includes\('hull'\)[\s\S]*repair|return 'repair'/,
+  'Hull departure chips must map onto the Repair dock action');
+assert.doesNotMatch(
+  stationAppSource,
+  /const dest = c\.targetTab \? TARGET_MAP\[c\.targetTab\] : null;/,
+  'live Departure Check must not resolve chip destinations only through TARGET_MAP (services is null)',
+);
+assert.match(stationAppSource, /data-pop-nav/,
+  'live Departure Check must still navigate market/missions chips via data-pop-nav');
+assert.match(stationAppSource, /data-pop-screen/,
+  'live Departure Check must still open missionLog via data-pop-screen');
+assert.ok(
+  /services:\s*null/.test(stationAppSource) && /undock:\s*null/.test(stationAppSource),
+  'TARGET_MAP must keep services/undock as null (dock actions), not destination ids',
+);
+
+console.log('Station departure readiness OK - hub chips + live Departure Check services→dock actions.');
