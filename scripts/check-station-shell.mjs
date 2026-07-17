@@ -48,6 +48,9 @@ assert.match(app, /data-handoff-mode/, 'first-dock handoff carries trade mode in
 assert.match(app, /tradeMode/, 'handoff mode reaches destination onShow');
 assert.match(app, /ui:service/, 'station services emit canonical ui:service');
 assert.match(app, /dock:undocked/, 'station departure emits canonical dock event');
+assert.match(app, /buildDockArrival/, 'dock arrival presenter is imported/wired in station shell');
+assert.match(app, /sx-arrival/, 'station shell reserves a dock arrival zone');
+assert.match(app, /data-arrival-nav|data-dock-arrival|data-arrival-undock/, 'dock arrival next-action is interactive');
 assert.match(dock, /aria-selected/, 'command destinations expose selected state');
 assert.match(dock, /ArrowRight[\s\S]*ArrowLeft[\s\S]*Home[\s\S]*End/, 'command dock implements roving keyboard navigation');
 assert.match(dock, /dispose\(\)/, 'command dock owns animation/listener disposal');
