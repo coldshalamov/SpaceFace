@@ -7,6 +7,7 @@
 //   3. station.css primary Accept hierarchy: span label > em readiness; disabled quiet.
 //   4. Attention Accept glow reserved for ready CTAs (not disabled).
 //   5. Shell destinations / stationApp wiring stay present (no redesign in this slice).
+//   6. Dossier renders authored summary/description under title via .sx-dossier__summary.
 //
 // Does NOT launch the game or rewrite goldens.
 
@@ -123,5 +124,29 @@ assert.doesNotMatch(
   'station.css polish must not hide the station shell',
 );
 ok('station shell fence (no redesign)');
+
+// ── 6. Authored mission summary on live dossier ────────────────────────────────
+// Narrative body sits under the title header and before reward/risk stats.
+assert.match(
+  contracts,
+  /m\.summary\s*\|\|\s*m\.description/,
+  'dossier narrative prefers authored summary then description',
+);
+assert.match(
+  contracts,
+  /class="sx-dossier__summary"/,
+  'dossier renders narrative under sx-dossier__summary',
+);
+assert.match(
+  contracts,
+  /<\/header>`\s*\+\s*\(narrative[\s\S]*?sx-dossier__summary[\s\S]*?sx-dossier__topline/,
+  'summary render path is under title header and before topline stats',
+);
+assert.match(
+  stationCss,
+  /\.sx-dossier__summary\s*\{/,
+  'station.css styles .sx-dossier__summary',
+);
+ok('dossier authored summary render path');
 
 console.log(`\nContracts board polish checks OK (${n} groups).`);

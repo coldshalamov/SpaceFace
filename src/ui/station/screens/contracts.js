@@ -191,6 +191,8 @@ export function createContractsScreen(ctx) {
         : !cargoOk ? `${Math.ceil(cargoVolume)}u free hold required` : 'Ship and account ready';
     const focusAccept = attention && attention.kind === 'accept'
       && String(attention.focusMissionId) === String(mid(m));
+    // Authored narrative for the brief: prefer short summary, then fuller description.
+    const narrative = String(m.summary || m.description || m.brief || m.instruction || '').trim();
 
     dossierEl.innerHTML =
       `<div class="sx-dossier${focusAccept ? ' is-attention' : ''}">` +
@@ -201,6 +203,9 @@ export function createContractsScreen(ctx) {
             `<h2>${escapeHtml(m.title || typeLabel(m.type))}</h2>` +
           `</div>` +
         `</header>` +
+        (narrative
+          ? `<p class="sx-dossier__summary">${escapeHtml(narrative)}</p>`
+          : '') +
 
         `<div class="sx-dossier__topline">` +
           `<div class="sx-dossier__reward"><span>Reward</span><b>${reward(m).toLocaleString('en-US')}<i>cr</i></b></div>` +
