@@ -1,7 +1,7 @@
 # Orchestration Status Board
 
-**Updated:** 2026-07-17T21:39:35.912Z (compiler)
-**Spine tip:** `a57aa00d`
+**Updated:** 2026-07-17T21:51:02.039Z (compiler)
+**Spine tip:** `3312b5c7`
 **Scratch:** `C:\Users\93rob\AppData\Local\Temp\grok-goal-696b88462e5d\implementer`
 
 ## Compiler gate exits
@@ -19,7 +19,7 @@
 | loot-floor | 0 | AC3 |
 | living-opposition | 0 | AC3 |
 | gt1-continuous | 0 | AC5-evidence |
-| electron-new-game | 1 | residual-probe |
+| electron-new-game | 0 | residual-probe |
 
 ## Live product flags
 
@@ -29,12 +29,12 @@
 | gt1 supporting | false |
 | gt1 fullSpinePass | true |
 | gallery shotCount | 42 supporting=true |
-| electron exit | 1 |
-| dualPlatformPrimaryAcceptance | RESIDUAL |
+| electron exit | 0 |
+| dualPlatformPrimaryAcceptance | DONE |
 
 ## Residual (compiler-generated)
 
-- Electron dual-platform primaryAcceptance — RESIDUAL
+- (dual-platform primaryAcceptance green)
 - Helix fleet carriers — PARTIAL (ambient soak green; Helix residual if data fleetClass none)
 - E1 membership supporting residual (if harness still supporting:true)
 
