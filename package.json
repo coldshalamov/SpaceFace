@@ -425,7 +425,8 @@
     "check:depth-program:d1:living-opposition": "node scripts/check-depth-program-d1-living-opposition.mjs",
     "check:professional-mining-presentation": "node scripts/check-professional-mining-presentation.mjs",
     "check:depth-program:r2:natural-primary-matrix": "node scripts/check-depth-program-r2-natural-primary-matrix.mjs",
-    "compile:campaign-claim": "node scripts/compile-campaign-claim.mjs"
+    "compile:campaign-claim": "node scripts/compile-campaign-claim.mjs",
+    "check:campaign-claim-honesty": "node test/campaign-claim-honesty.test.mjs"
   },
   "private": true,
   "devDependencies": {
