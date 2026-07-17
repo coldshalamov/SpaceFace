@@ -1,7 +1,0 @@
----
-pid: 24988
-cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
-command: "$scratch = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-17504a2e9a4f\\implementer\"; New-Item -ItemType Directory -Force -Path $scratch | Out-Null; (Get-ChildItem \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\graphics-revamp\\2026-07-06_hull_gunship*\" | Measure-Object).Count | Out-File \"$scratch\\screenshot-audit-hull_gunship.txt\"; Get-ChildItem \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\graphics-revamp\\2026-07-06_hull_gunship*\" | Select-Object Name | Out-File \"$scratch\\screenshot-audit-hull_gunship.txt\" -Append; Select-String -Path \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_gunship\\deficiency.md\" -Pattern \"Before iter\" | Out-File \"$scratch\\deficiency-sample-hull_gunship.txt\"; node \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\scripts\\probe-authored-assets-live.mjs\" 2>&1 | Out-File \"$scratch\\probe-authored-assets-live.log\"; node \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\scripts\\check-asset-reachability.mjs\" 2>&1 | Out-File \"$scratch\\check-asset-reachability.log\""
-started_at: 2026-07-06T07:43:42.645Z
-running_for_ms: 12675014 
----

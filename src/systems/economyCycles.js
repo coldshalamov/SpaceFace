@@ -458,32 +458,21 @@ export function serializeCycles(state) {
   const out = {};
   for (const sid in cycles) {
     const station = cycles[sid];
-    const sOut = {};
+    const sOut = [];
     for (const cid in station) {
       const c = normalizeCycle(station[cid], cid);
       if (!c) continue;
-      sOut[cid] = {
-        cmdtyId: c.cmdtyId || cid,
-        regime: c.regime,
-        family: c.family,
-        phase: c.phase,
-        frequency: c.frequency,
-        amplitude: c.amplitude,
-        bias: c.bias,
-        slope: c.slope,
-        a: c.a,
-        b: c.b,
-        c: c.c,
-        pivot: c.pivot,
-        amp2: c.amp2,
-        freq2: c.freq2,
-        phase2: c.phase2,
-        amp3: c.amp3,
-        freq3: c.freq3,
-        phase3: c.phase3,
-        regimeStartT: c.regimeStartT,
-        regimeEndT: c.regimeEndT,
-      };
+      // A populated galaxy owns more than a thousand cycles. Compact positional rows avoid
+      // allocating and structured-cloning ~20 named properties for every entry during autosave.
+      // deserializeCycles still accepts the original object map indefinitely.
+      sOut.push([
+        c.cmdtyId || cid, c.regime, c.family,
+        c.phase, c.frequency, c.amplitude, c.bias, c.slope,
+        c.a, c.b, c.c, c.pivot,
+        c.amp2, c.freq2, c.phase2,
+        c.amp3, c.freq3, c.phase3,
+        c.regimeStartT, c.regimeEndT,
+      ]);
     }
     out[sid] = sOut;
   }
@@ -495,8 +484,24 @@ export function deserializeCycles(state, data) {
   if (!cycles) return;
   for (const sid in data || {}) {
     cycles[sid] = {};
-    for (const cid in data[sid]) {
-      cycles[sid][cid] = normalizeCycle(data[sid][cid], cid);
+    const station = data[sid];
+    if (Array.isArray(station)) {
+      for (const row of station) {
+        if (!Array.isArray(row) || !row[0]) continue;
+        const cid = row[0];
+        cycles[sid][cid] = normalizeCycle({
+          cmdtyId: cid, regime: row[1], family: row[2],
+          phase: row[3], frequency: row[4], amplitude: row[5], bias: row[6], slope: row[7],
+          a: row[8], b: row[9], c: row[10], pivot: row[11],
+          amp2: row[12], freq2: row[13], phase2: row[14],
+          amp3: row[15], freq3: row[16], phase3: row[17],
+          regimeStartT: row[18], regimeEndT: row[19],
+        }, cid);
+      }
+      continue;
+    }
+    for (const cid in station || {}) {
+      cycles[sid][cid] = normalizeCycle(station[cid], cid);
     }
   }
 }

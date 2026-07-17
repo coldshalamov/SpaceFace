@@ -137,6 +137,9 @@ export const COMMS = {
       note: 'The seal code verification system logs to a database Mira has write access to.' },
     { id: 'amb_concord_atmo',   sender: 'CONCORD LOGISTICS OVERSIGHT', text: 'SECTOR MAINTENANCE ADVISORY: ATMOSPHERIC RECYCLER SERVICE SCHEDULED. SECTORS NOT MEETING VIABILITY THRESHOLD INELIGIBLE. REVIEW REQUIREMENTS UNDER REF 44-C.',
       note: "REF 44-C is also the framework for atmospheric viability scoring. The Pit's viability score fell below threshold in year 3. The Pit has not been on this advisory list since year 3." },
+    { id: 'amb_mts_clear_air', sender: 'MERIDIAN EXCHANGE',
+      text: 'CLEAR AIR INDEX: OUTER SECTORS WEAK. ATMO TOKEN DESK BID FIRM. SHORT INTEREST HELD.',
+      note: 'Beneficiary every cycle — MTS books gain when outer air fails. One legible receipt, no lecture.' },
     { id: 'amb_ala_silt',       sender: 'CONCORD ALA DIVISION', text: 'SILT ALLOCATION NOTICE: REFINED SLURRY DELIVERY SUSPENDED FOR SECTOR 0 PENDING ATMO DEBT REVIEW. APPEAL WINDOW: 12 CYCLES.',
       note: 'The appeal window has been open and unfilled for 14 years. The Pit does not know it has one.' },
     { id: 'amb_sec6_air',       sender: 'SECTOR 6 TRADING POST', text: 'BREATHABLE AIR: PRESSURIZED CANISTERS, 150KG, ORIGIN UNSPECIFIED. PRICE ON REQUEST.',
@@ -274,7 +277,7 @@ export const BEAT_CONTENT = [
     beat: 0, phase: 1,
     // Flavor-only Captain's Log voice (story-mode panel / Mission Log context). Not a flight
     // command — first-flight B0 uses the one-verb hierarchy (HUD tracker + single tutorial bark).
-    hint: 'Contract 47-A. Recover the sample. Deliver it. The weight on accept will not be the weight on delivery. That is not your problem.',
+    hint: 'Contract 47-A. Mass on accept: 12.4t. Authorization: VALE, D. / REF 44-C. Sample the discrepancy. Deliver Helios. Payment withheld.',
     // Bulkhead: the previous crew's last words. Set by _fireColdStart() on game:started so it's there
     // from the first frame. This beat's graffiti only adds the airlock line (seen on first dock).
     // The gang line stays on the bulkhead through B2; at B3 the story takes it over.
@@ -297,7 +300,7 @@ export const BEAT_CONTENT = [
   { // B2 — FIRST BLOOD (Elroy)
     beat: 2, phase: 1,
     hint: 'Eliminate the hostile. The tag will read UNKNOWN before, THREAT NEUTRALIZED after. There is a third tag, briefly. You may not catch it.',
-    graffiti: [{ line: GRAFFITI.THEY_WERE_CARRYING_MEDICINE, where: 'airlock', delayS: 8 }],
+    graffiti: [{ line: GRAFFITI.THEY_WERE_CARRYING_MEDICINE, where: 'airlock', delayS: 2 }],
     comms: [],
     hudLie: 'civilian_tag_flicker', // CIVILIAN VESSEL — REGISTERED flickers 0.5s, then kill feed overwrites
   },
@@ -330,14 +333,14 @@ export const BEAT_CONTENT = [
   },
   { // B6 — EMPIRE SEED
     beat: 6, phase: 3,
-    hint: 'Deploy your first asset. The first deposit clears through VALE HOLDINGS LLC. This was always the case. You just started generating enough income for the line to appear.',
+    hint: 'Deploy first asset. First remittance line: CLEARED — VALE HOLDINGS LLC.',
     graffiti: [{ line: GRAFFITI.THEY_KNEW_THE_MASS, where: 'bulkhead' }], // player's own bulkhead, their own hand
     comms: ['pers_47a_pending', 'late_blocked_sender', 'late_registry_unknown', 'late_ashfall_signal'],
     hudLie: 'phase3_freeze', // tags freeze on last-known state; CONTRACT 47-A shows PENDING (the truth)
   },
   { // B7 — THE DEEP REACH
     beat: 7, phase: 3,
-    hint: 'Ashfall Reach. The Kurtz figure has been here eleven years. Your callsign is in the ledger under COUNTERPARTY, filed six weeks before your first contract. You were in the record before you arrived.',
+    hint: 'Deep Reach operation, then Ashfall desk. Ledger COUNTERPARTY: your prior transponder; Elroy DECEASED (B2). Five dispositions — not a title.',
     graffiti: [{ line: GRAFFITI.THEY_ALWAYS_KNEW, where: 'bulkhead' }],
     comms: ['late_atmo_debt'],
     hudLie: 'phase3_freeze', // final contract entry PENDING; cannot be closed
@@ -440,8 +443,49 @@ export const PERSISTENT_CARGO = [
   { id: 'cmdty_47a_assay_sample', name: '47-A ASSAY SAMPLE', mass: 0.0031, note: 'SEALED EVIDENCE — CONTRACT 47-A. Deliver to Helios Station.' },
   { id: 'cmdty_unclassified_composite', name: 'UNCLASSIFIED COMPOSITE', mass: 0.0031, note: 'PERSONAL EFFECTS — 3.1 kg. The second fragment. In the manifest since first launch.' },
   KURTZ.ledgerCargoId && { id: KURTZ.ledgerCargoId, name: KURTZ.ledgerName, mass: KURTZ.ledgerMass, note: 'The Kurtz figure\u2019s ledger. 0.4t. The mass never changes, even if jettisoned.' },
-  KURTZ.coordsCargoId && { id: KURTZ.coordsCargoId, name: KURTZ.coordsName, mass: KURTZ.coordsMass, note: 'Coordinates in a format no database recognizes. 0.01t. Might weigh everything.' },
+  KURTZ.coordsCargoId && { id: KURTZ.coordsCargoId, name: KURTZ.coordsName, mass: KURTZ.coordsMass, note: 'Coordinates in a format no database recognizes. 0.01t. Format: unknown.' },
 ].filter(Boolean);
+
+/** Thread-B fragment present from New Game (PERSONAL EFFECTS). Not the B0 assay sample. */
+export const THREAD_B_FRAGMENT_ID = 'cmdty_unclassified_composite';
+
+/** B0 contract body — optional deep-read; numbers only, no lore dump. */
+export const CONTRACT_47A_B0_BODY = Object.freeze({
+  contractId: '47-A',
+  title: 'Contract 47-A: Mass Variance Sample',
+  massAcceptT: 12.4,
+  massDeliverT: 0,
+  authorization: 'APPROVED: VALE, D. / MID-SECTOR ADMIN / REF 44-C',
+  code: 'VALE-ALA-47A',
+  summary: 'Mass on accept: 12.4t. Authorization: VALE, D. / REF 44-C. Sample the discrepancy. Deliver to Helios Station.',
+  fullText: [
+    'CONTRACT 47-A — MASS VARIANCE / ASSAY RECOVERY',
+    'MASS ON ACCEPT: 12.4t',
+    'MASS ON DELIVERY: RECONCILED TO LOG',
+    'AUTHORIZATION: APPROVED: VALE, D. / MID-SECTOR ADMIN / REF 44-C',
+    'CODE: VALE-ALA-47A',
+    'STATUS: OPEN / PAYMENT: PENDING',
+  ].join('\n'),
+});
+
+/** Post-ending home airlock lines (ENDGAME-B7). Keyed by ending id. */
+export const ENDING_AIRLOCK_GRAFFITI = Object.freeze({
+  A: GRAFFITI.CLEAN_UNIFORM_AIRLOCK,
+  B: GRAFFITI.SILENCE_OLD_BERTH,
+  C: GRAFFITI.THEY_KNEW_THE_MASS,
+  D: GRAFFITI.THIS_ONE_STAYED,
+  E: GRAFFITI.NEXT_RUN_HOME,
+});
+
+/** Helios Bay 7 wrong-grid payoff (optional explore). */
+export const HELIOS_BAY7 = Object.freeze({
+  stationId: 'station_helios',
+  sectorId: 'sector_helios_prime',
+  poiId: 'poi_helios_bay7',
+  ticketId: 'Y3-C2',
+  scanLine: 'SHELVED GRID — 12.4t / TICKET Y3-C2: ODOR CONSISTENT WITH TRANSIT. NO ACTION.',
+  massT: 12.4,
+});
 
 // ── Condition helpers (pure; take state, return boolean) ────────────────────────────────────
 // These read state defensively so the data tables above can reference them without importing systems.

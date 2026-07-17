@@ -2,7 +2,6 @@
 // Rung 08 (massline auto-target wire): when the player is in MASSLINE MODE (tether out), the
 // auto-target picker prefers swing potential over the weapon "hostiles-first/distance" sort.
 // pickMasslineAutoTarget() below consumes the pure scorer from masslineTargetScoring.js.
-import { wrapAngle } from '../core/rng.js';
 import { solveLeadAngle } from '../systems/weapons.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { rankMasslineTargets } from './masslineTargetScoring.js';
@@ -11,8 +10,6 @@ export const AUTO_TARGET_REFRESH_S = 0.12;
 // Massline candidates include asteroids (mining/slingshot anchors), not just ships/drones — the
 // tether latches onto anything physical. Weapons-only targeting stays hostiles-only elsewhere.
 const MASSLINE_CANDIDATE_TYPES = new Set(['ship', 'drone', 'asteroid']);
-const HELM_SOFT_ANGLE = 0.55;
-const HELM_DEADBAND = 0.012;
 const RETICLE_EDGE_MARGIN = 28;
 
 export function createAutoTargetRuntime() {
@@ -31,7 +28,7 @@ export function toggleAutoTarget(state, bus, runtime = createAutoTargetRuntime()
   }
   if (bus) {
     bus.emit('toast', {
-      text: 'Auto-target ' + (inp.autoFire ? 'ON' : 'OFF'),
+      text: inp.autoFire ? 'Auto-target ON · trackpad joystick' : 'Auto-target OFF',
       kind: 'info',
       ttl: 2,
     });
@@ -87,10 +84,6 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
   const player = state.entities && state.entities.get(state.playerId);
   if (!player || !player.pos) return;
 
-  const cursorWx = inp.aimWorld.x;
-  const cursorWz = inp.aimWorld.z;
-  const cursorAngle = Math.atan2(cursorWz - player.pos.z, cursorWx - player.pos.x);
-
   const lockEnt = lockedHostileEntity(state);
   if (lockEnt) {
     const leadPt = computeLockedLeadPoint(state) || lockEnt.pos;
@@ -99,12 +92,13 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
     inp.aimWorld.z = leadPt.z;
   }
 
-  const pointer = inp.pointerScreen;
-  if (pointer && pointer.active) {
-    const err = wrapAngle(cursorAngle - player.rot);
-    inp.turnIntent = Math.abs(err) < HELM_DEADBAND
-      ? 0
-      : Math.max(-1, Math.min(1, err / HELM_SOFT_ANGLE));
+  // Auto-target owns weapon aim only. The captured trackpad is a ship-local joystick: horizontal
+  // deflection is yaw, vertical deflection is forward/reverse thrust. Neither axis depends on the
+  // target, cursor raycast, camera, or current ship heading.
+  const stick = inp.autoTargetStick;
+  if (stick && stick.active) {
+    if (Number.isFinite(stick.x)) inp.turnIntent = Math.max(-1, Math.min(1, stick.x));
+    if (Number.isFinite(stick.y)) inp.moveZ = Math.max(-1, Math.min(1, stick.y));
   }
 
   runtime.refreshT = Math.max(0, (runtime.refreshT || 0) - dt);

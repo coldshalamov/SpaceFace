@@ -5,6 +5,8 @@
 // approach, intercept lead and collision warnings. It is pure and can be shared by
 // HUD, AI, replay probes and automated balance tests.
 
+import { COAST_HELM_YAW_MULT } from './propulsionKernel.js';
+
 const EPS = 1e-9;
 const INF = Number.POSITIVE_INFINITY;
 
@@ -100,7 +102,13 @@ export function estimateBrakingSolution(body, profile = {}) {
 
   const desiredFlipHeading = Math.atan2(b.vel.z, b.vel.x) + Math.PI;
   const turnAngle = Math.abs(wrapAngle(desiredFlipHeading - b.rot));
-  const turnTime = estimateTurnTime(turnAngle, Math.abs(b.angVel), positive(profile.maxYawRate, 2.5), positive(profile.yawAccel, 8));
+  // Flip-and-burn turns happen while coasting, so use coast-helm yaw authority.
+  const turnTime = estimateTurnTime(
+    turnAngle,
+    Math.abs(b.angVel),
+    positive(profile.maxYawRate, 2.5) * COAST_HELM_YAW_MULT,
+    positive(profile.yawAccel, 8) * COAST_HELM_YAW_MULT
+  );
   const directTime = directAccel > EPS ? speed / directAccel : INF;
   const directDistance = directAccel > EPS ? speed * speed / (2 * directAccel) : INF;
   const flipBurnTime = flipBurnAccel > EPS ? turnTime + speed / flipBurnAccel : INF;

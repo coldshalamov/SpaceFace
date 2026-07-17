@@ -169,10 +169,25 @@ export const EMBODIED_MISSIONS = Object.freeze([
     careerIds: B(['hauler', 'hunter', 'prospector']),
   }),
   B({
-    beat: 7, id: 'deep_reach', contactId: 'contact_kurtz', contactName: 'Kurtz', observeOnly: true,
+    beat: 7, id: 'deep_reach', contactId: 'contact_kurtz', contactName: 'Kurtz',
+    // Physical place required: Deep Reach operation (missions) then Ashfall dock/desk (story flags).
+    // Net-worth/rep remain eligibility for the disposition offer, not a substitute for place.
     location: B({ sectorId: 'sector_ashfall_reach', stationId: 'station_ashcache', poiId: 'poi_boss' }),
-    physicalContact: B({ mode: 'observe', steps: B([]), gate: B({ netWorthCr: ENDGAME_NET_WORTH_CR, repMin: ENDGAME_REP_MIN }) }),
-    missionBoardContract: null, recovery: 'The gate remains unmet or deferred. The count continues.',
+    physicalContact: B({
+      mode: 'ordered_and',
+      steps: B([
+        B({ id: 'operation', signal: 'mission:completed', accept: B(['mission:completed']) }),
+        B({
+          id: 'ashfall_dock',
+          signal: 'dock:docked',
+          accept: B(['dock:docked']),
+          requiresPrior: B(['operation']),
+        }),
+      ]),
+      gate: B({ netWorthCr: ENDGAME_NET_WORTH_CR, repMin: ENDGAME_REP_MIN }),
+    }),
+    missionBoardContract: null,
+    recovery: 'Carry the Empire Seed into Deep Reach, then dock the Ashfall cache. Desk before disposition.',
     careerIds: B(['hauler', 'hunter', 'prospector']),
   }),
 ]);
@@ -333,6 +348,9 @@ function buildBranchChainOffer(def, seed, epoch, options) {
     storyTarget: captain ? {
       id: captain.id, name: captain.name, label: captain.name.toUpperCase(), archetype: captain.archetype,
       factionId: 'faction_reach', namedCaptainId: captain.id, zoneId: 'zone_charon_ambush',
+      // B5 paperwork plant (inspectable salvage even when captain storyTarget is present).
+      lastRegisteredOwner: 'VALE HOLDINGS LLC',
+      salvageCargo: 'ADMINISTRATIVE RECORDS — 3 YEARS / SEALED',
     } : null,
     preloadedCargo: branch === 'free',
     expiresAtEpoch: epoch + 1,

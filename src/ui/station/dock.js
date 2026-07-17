@@ -14,6 +14,7 @@ function tileHtml(item, kind) {
   return (
     `<button type="button" class="sx-tile${extra}" ${dataAttr} title="${item.title || item.label}" aria-label="${item.aria || item.label}">` +
       `<span class="sx-tile__seat" aria-hidden="true"></span>` +
+      `<span class="sx-tile__badge" data-badge="${item.id}" hidden></span>` +
       `<span class="sx-tile__icon">${icon(item.icon, 26)}</span>` +
       `<span class="sx-tile__label">${item.label}</span>` +
       (kind === 'act' ? `<span class="sx-tile__cost" data-cost="${item.id}">—</span>` : '') +
@@ -165,6 +166,32 @@ export function createCommandDock(cfg) {
     if (cost && cost.tone === 'loss') label.classList.add('is-loss');
   }
 
+  /**
+   * Pulse + badge a destination tile so the player knows which rail to open.
+   * @param {string|null} id destination id, or null to clear all
+   * @param {{ badge?: string|number, title?: string }|null} opts
+   */
+  function setAttention(id, opts = null) {
+    el.querySelectorAll('[data-nav]').forEach((tile) => {
+      const navId = tile.getAttribute('data-nav');
+      const on = id != null && navId === id;
+      tile.classList.toggle('is-attention', on);
+      const badge = tile.querySelector(`[data-badge="${navId}"]`);
+      if (!badge) return;
+      if (on && opts && opts.badge != null && opts.badge !== '') {
+        badge.hidden = false;
+        badge.textContent = String(opts.badge);
+      } else {
+        badge.hidden = true;
+        badge.textContent = '';
+      }
+      if (on && opts && opts.title) {
+        tile.setAttribute('title', opts.title);
+        tile.setAttribute('aria-label', opts.title);
+      }
+    });
+  }
+
   function dispose() {
     if (fieldFrame) cancelAnimationFrame(fieldFrame);
     el.removeEventListener('pointermove', onPointerMove);
@@ -173,5 +200,5 @@ export function createCommandDock(cfg) {
     el.removeEventListener('focusout', onFocusOut);
   }
 
-  return { el, setActive, setActionCost, dispose };
+  return { el, setActive, setActionCost, setAttention, dispose };
 }

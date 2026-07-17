@@ -1,8 +1,0 @@
-
-> spaceface@0.1.0 check:assets:live
-Authored GLB live probe PASS
-    "declaredCount": 63,
-    "loadedCount": 63,
-    "failureCount": 0,
-    "wholeShipDeclaredCount": 0,
-

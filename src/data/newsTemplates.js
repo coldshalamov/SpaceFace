@@ -51,6 +51,7 @@ export const HEADLINE_TEMPLATES = Object.freeze({
     '{station} locked down; The Quiet quote canister rates',
     'Concord embargo strangles {noun} into {station}',
     'Choke at {station} — {name} stops moving',
+    'Customs net tightens at {station}; {noun} manifests triple-checked',
   ],
   piracy: [
     'Raiders work the {station} approach — {noun} convoys thin',
@@ -58,6 +59,9 @@ export const HEADLINE_TEMPLATES = Object.freeze({
     'Piracy spike near {station} rattles the {noun} trade',
     'The Reach bleeds {station} of {noun}; premiums climb',
     'Ambushes off {station} — insurers flag {name}',
+    'Mine-wake warnings near {station}; {noun} haulers divert',
+    'PD curtain reported over a {station} convoy — {name} still moving',
+    'Quiet sniper contact on the {station} bearing; {noun} premiums jump',
   ],
   // ECON-P2 freight embodiment — live hauler loss / arrival (cause-tagged)
   freight_loss: [

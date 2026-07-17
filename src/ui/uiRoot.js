@@ -17,7 +17,6 @@ import { isConfirmOpen } from './confirm.js';
 import { controlPrompt } from './controlPrompts.js';
 import { setPromptScheme } from './controlPrompts.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
-import { projectLockedReticle } from '../combat/autoTargetMode.js';
 import { createCinematicInputFence } from './cinematicInputFence.js';
 import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
 
@@ -319,7 +318,19 @@ export const ui = {
     const reticle = document.createElement('div');
     reticle.id = 'aim-reticle';
     reticle.innerHTML = RETICLE_SVG;
-    document.getElementById('hud').appendChild(reticle);
+    const hudRoot = document.getElementById('hud');
+    hudRoot.appendChild(reticle);
+    // Auto-target uses a ship-local virtual joystick, not a cursor heading. A fixed base makes the
+    // neutral point explicit; the simple puck moves inside it while target diamonds remain weapons.
+    const autoTargetStickBase = document.createElement('div');
+    autoTargetStickBase.id = 'auto-target-stick-base';
+    autoTargetStickBase.setAttribute('aria-hidden', 'true');
+    autoTargetStickBase.innerHTML = '<span>HELM</span>';
+    const autoTargetStickPuck = document.createElement('div');
+    autoTargetStickPuck.id = 'auto-target-stick-puck';
+    autoTargetStickPuck.setAttribute('aria-hidden', 'true');
+    hudRoot.appendChild(autoTargetStickBase);
+    hudRoot.appendChild(autoTargetStickPuck);
     let lastReticleX = NaN;
     let lastReticleY = NaN;
 
@@ -364,32 +375,25 @@ export const ui = {
     const syncFlightCursor = (visible) => {
       const st = this.state;
       const pointer = st && st.input && st.input.pointerScreen;
-      const autoTarget = !!(st && st.input && st.input.autoFire);
       const active = !!(visible && pointer && pointer.active);
+      const autoTarget = !!(visible && st && st.input && st.input.autoFire);
       document.body.classList.toggle('sf-flight-cursor', active);
       const reticleEl = document.getElementById('aim-reticle') || reticle;
-      if (!reticleEl || !visible) return;
+      reticleEl.style.display = visible && !autoTarget ? 'block' : 'none';
+      autoTargetStickBase.style.display = autoTarget ? 'block' : 'none';
+      autoTargetStickPuck.style.display = autoTarget ? 'block' : 'none';
+      if (!visible) return;
       const fallbackX = typeof innerWidth === 'number' ? innerWidth * 0.5 : 0;
       const fallbackY = typeof innerHeight === 'number' ? innerHeight * 0.5 : 0;
       let x = active && Number.isFinite(pointer.x) ? pointer.x : fallbackX;
       let y = active && Number.isFinite(pointer.y) ? pointer.y : fallbackY;
-      if (autoTarget) {
-        const w2s = this.ctx && this.ctx.helpers && this.ctx.helpers.worldToScreen;
-        const locked = projectLockedReticle(st, w2s, {
-          width: typeof innerWidth === 'number' ? innerWidth : 0,
-          height: typeof innerHeight === 'number' ? innerHeight : 0,
-        });
-        if (locked) {
-          x = locked.x;
-          y = locked.y;
-        }
-      }
       if (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1
         || !Number.isFinite(lastReticleY) || Math.abs(y - lastReticleY) > 0.1) {
         const next = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) translate(-50%,-50%)`;
-        if (reticleEl._sfHudTransform !== next) {
-          reticleEl._sfHudTransform = next;
-          reticleEl.style.transform = next;
+        const movingEl = autoTarget ? autoTargetStickPuck : reticleEl;
+        if (movingEl._sfHudTransform !== next) {
+          movingEl._sfHudTransform = next;
+          movingEl.style.transform = next;
         }
         lastReticleX = x;
         lastReticleY = y;
@@ -402,7 +406,6 @@ export const ui = {
         hints.style.display = visible ? '' : 'none';
         if (visible) showHints(8000); else { clearTimeout(_hintFadeTimer); hints.classList.remove('sf-hint-visible'); }
       }
-      if (reticle) reticle.style.display = visible ? 'block' : 'none';
       syncFlightCursor(visible);
     };
     const refreshFlightUI = () => {

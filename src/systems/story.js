@@ -34,8 +34,9 @@
 // the base fields; we add the narrative fields defensively in deserialize).
 import {
   COMMS, GRAFFITI, BEAT_CONTENT, POST_SPINE_BEAT_CONTENT, KURTZ, COND,
-  COLD_START,
+  COLD_START, ENDING_AIRLOCK_GRAFFITI, HELIOS_BAY7, THREAD_B_FRAGMENT_ID,
 } from '../data/narrative.js';
+import { addCargo } from './cargo.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 // Campaign 47-A sidecar: ending sandbox/receipt meta only — endgameChoice stays canonical on state.story.
 import {
@@ -126,12 +127,15 @@ export const story = {
       this._onValeProfitMilestone();
       this._onPostEndingSignal('economy:tradeCompleted', p || {});
     });
+    bus.on('economy:grantCredits', (p) => this._onAutomationRemittance(p || {}));
+    bus.on('asset:deployed', () => this._armValeRemittanceWatch());
     bus.on('conflict:flip', (p) => this._onValeConflictMilestone(p || {}));
     bus.on('claim:claimed', (p) => this._onValeClaimMilestone(p || {}));
     bus.on('sector:enter', (p) => this._onPostEndingSignal('sector:enter', p || {}));
     bus.on('scan:completed', (p) => this._onPostEndingSignal('scan:completed', p || {}));
     // UI intent: player opened/took/dropped the ledger with the Kurtz figure.
     bus.on('ui:kurtzInteract', (p) => this._onKurtzInteract(p || {}));
+    bus.on('ui:heliosBay7Scan', () => this._onHeliosBay7Scan());
     bus.on('ui:talkContact', (p) => this._onVergeKellEvidence(p || {}));
     bus.on('factionPresence:archiveEvidenceRead', (p) => this._onVergeArchiveEvidence(p || {}));
 
@@ -190,6 +194,14 @@ export const story = {
     this._ensureState();
     if (fromIndex === 7 && toIndex === 7 && s.flags && s.flags.deep_reach_operation_complete) {
       this._revealDeepReachVergeObservers();
+    }
+    // B0 completion devices land when leaving beat 0 (beatAdvanced targets the *new* beat).
+    if (fromIndex === 0 && toIndex === 1) {
+      this._fireB0CompletionDevices();
+    }
+    // B2 → always leave the medicine wall even if dock graffiti was missed.
+    if (fromIndex === 2 && toIndex === 3) {
+      this._showGraffiti(GRAFFITI.THEY_WERE_CARRYING_MEDICINE, 'airlock', 2);
     }
     const content = BEAT_CONTENT[toIndex];
     if (!content) return;
@@ -409,11 +421,34 @@ export const story = {
     // beat so the station hub can render it at the airlock. The beat's graffiti was already emitted
     // on advance; we re-emit on dock so the UI (which mounts the hub on dock) receives it.
     const s = this.state.story;
+    if (!s) return;
+    s.flags = s.flags || {};
     const content = BEAT_CONTENT[s.beatIndex];
-    if (!content) return;
-    for (const g of (content.graffiti || [])) {
-      if (g.where === 'bulkhead') continue; // bulkhead shows in flight, not at the airlock
-      this.bus.emit('graffiti:show', { line: g.line, where: g.where, beat: s.beatIndex, author: g.author || null, dockedStationId: stationId });
+    if (content) {
+      for (const g of (content.graffiti || [])) {
+        if (g.where === 'bulkhead') continue; // bulkhead shows in flight, not at the airlock
+        this.bus.emit('graffiti:show', { line: g.line, where: g.where, beat: s.beatIndex, author: g.author || null, dockedStationId: stationId });
+      }
+    }
+    if (stationId === 'station_ashcache') {
+      s.flags.deep_reach_ashfall_docked = true;
+      s.flags.ashfall_visited = true;
+      // Desk is available as soon as the player docks the cache station.
+      if (!s.flags.kurtz_desk_opened) {
+        this._onKurtzInteract({ action: 'approach' });
+      }
+      this._maybeOfferEndgame();
+    }
+    // Optional Helios Bay 7 wrong-grid payoff (explore after B3+).
+    if (stationId === HELIOS_BAY7.stationId && (s.beatIndex >= 3 || s.flags.beat_2_done)
+        && !s.flags.helios_bay7_scanned) {
+      // Arm POI — player can request scan via ui:heliosBay7Scan or auto-note once per save.
+      s.flags.helios_bay7_available = true;
+    }
+    // Post-ending airlock mutation re-surface on home dock.
+    if (s.endgameChoice && ENDING_AIRLOCK_GRAFFITI[s.endgameChoice]
+        && (stationId === 'station_helios' || stationId === s.flags.homeStationId)) {
+      this._showGraffiti(ENDING_AIRLOCK_GRAFFITI[s.endgameChoice], 'airlock', 7);
     }
     if (stationId === 'station_ashcache' && s.endgameOffered && !s.endgameChoice && !s.endgameResolved
         && !(s.flags && s.flags.sandboxContinued)
@@ -438,6 +473,64 @@ export const story = {
       entityId, tag: 'CIVILIAN VESSEL \u2014 REGISTERED', durationMs: 500,
       note: 'Elroy, Maintenance Division, Pit Engineering. Filed the recycler report six weeks ago. Tag was double-billed by Rook.',
     });
+    // Required same-session residue (missable flicker still intentional).
+    this._showGraffiti(GRAFFITI.THEY_WERE_CARRYING_MEDICINE, 'airlock', 2);
+    // Soft after-action log — Thread B light; not tutorial-highlighted.
+    this._fireComms({
+      id: 'elroy_after_action_seal',
+      sender: 'AFTER-ACTION / LOGISTICS OVERSIGHT',
+      text: 'CASE FILE SEALED — LOGISTICS OVERSIGHT — REF 44-C.',
+      category: 'story',
+      ttl: 8,
+      persist: false,
+    });
+  },
+
+  _fireB0CompletionDevices() {
+    const s = this.state && this.state.story;
+    if (!s) return;
+    s.flags = s.flags || {};
+    if (s.flags.b0_completion_devices) return;
+    s.flags.b0_completion_devices = true;
+    this.bus.emit('hud:phase', { phase: 1, beat: 0, lie: 'stable_load' });
+    this._showGraffiti(GRAFFITI.THEY_KNEW_THE_MASS, 'airlock', 0);
+    this._scheduleNarrative(4, {
+      kind: 'graffiti',
+      line: GRAFFITI.HELIOS_NOT_NEEDED,
+      where: 'airlock',
+      beat: 0,
+    });
+  },
+
+  _armValeRemittanceWatch() {
+    const s = this.state && this.state.story;
+    if (!s) return;
+    s.flags = s.flags || {};
+    s.flags.vale_remittance_armed = true;
+  },
+
+  _onAutomationRemittance(p) {
+    const s = this.state && this.state.story;
+    if (!s || !s.flags || !s.flags.vale_remittance_armed) return;
+    if (s.flags.vale_remittance_noted) return;
+    const reason = String((p && p.reason) || '');
+    if (!reason.startsWith('automation:')) return;
+    s.flags.vale_remittance_noted = true;
+    const amount = Number(p && p.amount) || 0;
+    const ledger = s.transactionLog || (s.transactionLog = []);
+    ledger.push({
+      at: this.state.simTime || 0,
+      amount,
+      note: 'REMITTANCE FROM ASSET DEPLOYMENT / CLEARED: VALE HOLDINGS LLC',
+    });
+    this._fireComms({
+      id: 'vale_remittance_clear',
+      sender: 'VALE HOLDINGS LLC',
+      text: 'REMITTANCE CLEARED. SECONDARY LOG: VALE HOLDINGS LLC.',
+      category: 'story',
+      ttl: 8,
+      persist: false,
+    });
   },
 
   // =========================================================================================
@@ -451,6 +544,11 @@ export const story = {
     // The B7 gate (from missions.js _checkStoryGates): net worth >= 100k AND chosen-faction rep >= 50.
     if (!(s.flags && s.flags.endgame)) return;    // missions sets flags.endgame when beatIndex reaches 7
     if (!this._endgameGateMet()) return;
+    // Place required: Deep Reach is desk + ledger, not a credit toast in Helios.
+    if (!(s.flags && s.flags.deep_reach_operation_complete)) return;
+    if (!(s.flags && (s.flags.ashfall_visited || s.flags.deep_reach_ashfall_docked || s.flags.kurtz_desk_opened))) {
+      return;
+    }
     s.endgameOffered = true;
     // Fire the board update + comms + bulkhead graffiti simultaneously (no cutscene — per the doc).
     this._showGraffiti(GRAFFITI.THEY_ALWAYS_KNEW, 'bulkhead', 7);
@@ -661,6 +759,13 @@ export const story = {
     }
     if (plan.graffitiBulkhead) this._showGraffiti(plan.graffitiBulkhead, 'bulkhead', 7);
     if (plan.graffitiHome) this._showGraffiti(plan.graffitiHome, 'airlock', 7);
+    // Ending-specific home airlock mutation (canonical ENDGAME table).
+    if (!plan.isSandbox && plan.id && ENDING_AIRLOCK_GRAFFITI[plan.id]) {
+      this._showGraffiti(ENDING_AIRLOCK_GRAFFITI[plan.id], 'airlock', 7);
+    }
+    if (s.flags && s.flags.hasCoords) {
+      this._showGraffiti(GRAFFITI.COORDINATES_DONT_MATCH, 'bulkhead', 7);
+    }
 
     // Canonical owner events only. Ending A plans include heat:clear (heat sole writer).
     // Also: faction:repDelta, economy:grantCredits, endgame:loopBack.
@@ -990,34 +1095,62 @@ export const story = {
   // =========================================================================================
   _onKurtzInteract({ action }) {
     const state = this.state;
-    if (action === 'takeLedger') {
+    const s = state.story || (state.story = {});
+    s.flags = s.flags || {};
+    s.flags.kurtz_desk_opened = true;
+    s.flags.ashfall_visited = true;
+    // Build inspectable ledger rows (desk content — short facts only).
+    if (!s.kurtzLedgerRows) {
+      const callsign = (state.player && (state.player.callsign || state.player.name)) || 'OPERATOR';
+      const priorXponder = (state.player && state.player.priorTransponderId)
+        || (state.meta && state.meta.priorTransponderId)
+        || 'PRIOR-XPD-UNKNOWN';
+      s.kurtzLedgerRows = [
+        { column: 'BENEFICIARY', name: 'VALE, D.', note: 'ADMINISTRATIVE COUNTERPARTY' },
+        { column: 'COUNTERPARTY', name: callsign, note: `PRIOR TRANSPONDER ${priorXponder} — FILED PRE-B0` },
+        { column: 'COUNTERPARTY', name: 'ELROY', note: 'DECEASED (B2) — MAINTENANCE / PIT ENGINEERING' },
+      ];
+    }
+    if (action === 'takeLedger' || action === 'openLedger') {
       // Add the ledger as a persistent cargo item (PERSONAL EFFECTS — 1 UNIT / 0.4t).
       this._addPersistentCargo(KURTZ.ledgerCargoId, KURTZ.ledgerName, 1, KURTZ.ledgerMass);
-      state.story.flags.hasLedger = true;
+      s.flags.hasLedger = true;
       this._markVergeEvidence('kurtzLedger', 'kurtz:takeLedger');
       this._fireComms({
         id: 'kurtz_dialog_take', sender: 'THE KURTZ FIGURE', text: KURTZ.dialogue[1],
         category: 'story', ttl: 9, persist: false,
       });
+      this.bus.emit('story:kurtzLedger', { rows: s.kurtzLedgerRows.slice() });
     } else if (action === 'takeCoords') {
       this._addPersistentCargo(KURTZ.coordsCargoId, KURTZ.coordsName, 1, KURTZ.coordsMass);
-      state.story.flags.hasCoords = true;
+      s.flags.hasCoords = true;
       this._showGraffiti(GRAFFITI.COORDINATES_DONT_MATCH, 'bulkhead', 7);
-    } else if (action === 'approach') {
+    } else if (action === 'approach' || action === 'desk' || !action) {
       // Repeated approaches get progressively terser dialogue.
-      const visited = (state.story.flags.kurtzVisits || 0);
+      const visited = (s.flags.kurtzVisits || 0);
       const line = visited === 0 ? KURTZ.dialogue[0] : (visited === 1 ? KURTZ.dialogue[2] : KURTZ.dialogue[3]);
-      state.story.flags.kurtzVisits = visited + 1;
+      s.flags.kurtzVisits = visited + 1;
       this._fireComms({ id: `kurtz_dialog_${visited}`, sender: 'THE KURTZ FIGURE', text: line, category: 'story', ttl: 9 });
+      this.bus.emit('story:kurtzLedger', { rows: (s.kurtzLedgerRows || []).slice() });
     }
+    this._maybeOfferEndgame();
   },
 
   _addPersistentCargo(id, name, qty, mass) {
     const state = this.state;
     const cargo = state.player && state.player.cargo;
     if (!cargo) return;
-    cargo.items = cargo.items || {};
-    cargo.items[id] = (cargo.items[id] || 0) + qty;
+    // Prefer cargo writer so volume/mass caches stay consistent.
+    try {
+      if (typeof addCargo === 'function') addCargo(state, id, qty || 1);
+      else {
+        cargo.items = cargo.items || {};
+        cargo.items[id] = (cargo.items[id] || 0) + (qty || 1);
+      }
+    } catch (_) {
+      cargo.items = cargo.items || {};
+      cargo.items[id] = (cargo.items[id] || 0) + (qty || 1);
+    }
     // mark persistent so it can't be sold/jettisoned (cargo system checks a persistent set)
     if (!state.story.persistentCargo) state.story.persistentCargo = [];
     if (!state.story.persistentCargo.includes(id)) state.story.persistentCargo.push(id);
@@ -1028,12 +1161,30 @@ export const story = {
     }
   },
 
+  _onHeliosBay7Scan() {
+    const s = this.state && this.state.story;
+    if (!s) return;
+    s.flags = s.flags || {};
+    if (s.flags.helios_bay7_scanned) return;
+    s.flags.helios_bay7_scanned = true;
+    this._fireComms({
+      id: 'helios_bay7_ticket',
+      sender: 'HELIOS MAINTENANCE',
+      text: HELIOS_BAY7.scanLine,
+      category: 'story',
+      ttl: 10,
+      persist: true,
+    });
+    this._showGraffiti(GRAFFITI.HELIOS_NOT_NEEDED, 'airlock', s.beatIndex || 0);
+  },
+
   // =========================================================================================
   // SECTOR ENTRY — surface graffiti on arrival; Ashfall POI override.
   // =========================================================================================
   _onSectorEnter({ sectorId, firstVisit }) {
     const s = this.state.story;
     if (!s) return;
+    s.flags = s.flags || {};
     // Re-surface bulkhead graffiti on every sector entry (it's on the player's own ship).
     const content = BEAT_CONTENT[s.beatIndex];
     if (content) {
@@ -1042,12 +1193,28 @@ export const story = {
       }
     }
     // Ashfall Reach: the late-game "long-form transmission" popup persists until the player visits.
-    if (sectorId === ASHFALL && firstVisit && s.beatIndex >= 6) {
-      this._fireComms({
-        id: 'ashfall_arrival', sender: ASHFALL.toUpperCase().replace(/_/g, ' '),
-        text: 'SIGNAL DETECTED: LONG-FORM TRANSMISSION. SOURCE: DERELICT STATION. CONTENTS: ADMINISTRATIVE LOG \u2014 11 YEARS. RECEIVING?',
-        category: 'late', ttl: 0, persist: true,
-      });
+    if (sectorId === ASHFALL) {
+      s.flags.ashfall_visited = true;
+      // Climate recognition — one ambient line, not a cutscene.
+      if (!s.flags.ashfall_climate_noted) {
+        s.flags.ashfall_climate_noted = true;
+        this._fireComms({
+          id: 'ashfall_climate',
+          sender: 'ENVIRONMENTAL',
+          text: 'CABIN: 14°C. AIR: HYDRAULIC OVER ORGANIC. MATCHES PRIOR LOG — SECTOR 0 BASELINE.',
+          category: 'ambient',
+          ttl: 8,
+          persist: false,
+        });
+      }
+      if (firstVisit && s.beatIndex >= 6) {
+        this._fireComms({
+          id: 'ashfall_arrival', sender: ASHFALL.toUpperCase().replace(/_/g, ' '),
+          text: 'SIGNAL DETECTED: LONG-FORM TRANSMISSION. SOURCE: DERELICT STATION. CONTENTS: ADMINISTRATIVE LOG \u2014 11 YEARS. RECEIVING?',
+          category: 'late', ttl: 0, persist: true,
+        });
+      }
+      this._maybeOfferEndgame();
     }
   },
 
@@ -1056,6 +1223,8 @@ export const story = {
   // =========================================================================================
   _onNewGame() {
     this._ensureState(true);
+    // Re-install Thread-B fragment after narrative reset clears persistentCargo.
+    this._ensureThreadBFragment();
     this._rescheduleAmbient();
     // First-hour pacing (spec2/03): while the staged tutorial owns the one-voice channel, the cold-
     // start comms + bulkhead graffiti are deferred so the open teaches ONE verb at a time. They are
@@ -1065,6 +1234,18 @@ export const story = {
       this._coldStartDeferred = true;
     } else {
       this._fireColdStart();
+    }
+  },
+
+  _ensureThreadBFragment() {
+    const state = this.state;
+    if (!state || !state.player || !state.player.cargo) return;
+    const s = state.story || (state.story = {});
+    const locked = s.persistentCargo || (s.persistentCargo = []);
+    if (!locked.includes(THREAD_B_FRAGMENT_ID)) locked.push(THREAD_B_FRAGMENT_ID);
+    const have = Number(state.player.cargo.items && state.player.cargo.items[THREAD_B_FRAGMENT_ID]) || 0;
+    if (have < 1) {
+      try { addCargo(state, THREAD_B_FRAGMENT_ID, 1); } catch (_) { /* best-effort */ }
     }
   },
 

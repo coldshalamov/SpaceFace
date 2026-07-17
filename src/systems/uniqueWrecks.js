@@ -919,6 +919,49 @@ export const uniqueWrecks = {
     return requested;
   },
 
+  /** Claim-path complications (bounty admirers, shrine guards) after unique hardware is taken. */
+  _triggerClaimComplications(def, bearing, choice) {
+    if (!def || !bearing || !choice || choice.outcome !== 'claimed') return 0;
+    let requested = 0;
+    for (const complication of Array.isArray(def.complications) ? def.complications : []) {
+      if (!complication) continue;
+      const trigger = String(complication.trigger || '');
+      if (trigger !== 'salvaged' && trigger !== 'unique_drop_claimed' && trigger !== 'claim_hardware') continue;
+      // Handover leaves the shrine intact — admirers only rise when the hardware is stolen.
+      if (complication.claimOnly === false) continue;
+      const encounterId = complication.encounterRef || complication.encounterId
+        || complicationEncounterId(def, complication.kind);
+      if (encounterId && this._requestEncounter(def, encounterId, bearing, complication.kind || 'bounty_escalation')) {
+        requested++;
+      } else if (!encounterId && (complication.kind === 'bounty_escalation' || complication.kind === 'ace_return')) {
+        // Durable heat/receipt when no encounter shape is authored yet.
+        const own = this._ensureState();
+        const key = `${def.id}:claim:${complication.id || complication.kind}`;
+        if (!own.complications[key]) {
+          own.complications[key] = {
+            id: key,
+            wreckId: def.id,
+            kind: complication.kind,
+            trigger: trigger || 'unique_drop_claimed',
+            status: 'active',
+            factionId: complication.factionId || def.factionId,
+            triggeredAt: Math.max(0, finite(this.state.simTime, 0)),
+          };
+          this._receipt('claim_complication', def.id);
+          this.bus.emit('uniqueWreck:complicationTriggered', {
+            wreckId: def.id,
+            sectorId: def.sectorId,
+            kind: complication.kind,
+            trigger: 'unique_drop_claimed',
+            factionId: complication.factionId || def.factionId,
+          });
+          requested++;
+        }
+      }
+    }
+    return requested;
+  },
+
   _syncSector(sectorId) {
     if (!sectorId) return;
     const own = this._ensureState();
@@ -1268,6 +1311,9 @@ export const uniqueWrecks = {
     }
     const uniqueDropGranted = uniqueDropIds.includes(def.uniqueDropId);
     this._triggerStoryRewardComplications(def, record, storyRewardIds);
+    if (uniqueDropGranted || choice.outcome === 'claimed') {
+      this._triggerClaimComplications(def, record, choice);
+    }
 
     if (choice.credits > 0) this.bus.emit('economy:grantCredits', {
       amount: choice.credits,
@@ -1277,6 +1323,16 @@ export const uniqueWrecks = {
       factionId: def.factionId,
       delta: choice.repDelta,
       reason: `unique-wreck:${def.id}:${choice.id}`,
+    });
+    // Durable graffiti receipt: bulkhead remembers the disposition, not only the news ticker.
+    this.bus.emit('graffiti:show', {
+      line: choice.outcome === 'claimed'
+        ? `${def.name}: CLAIMED UNDER YOUR NAME.`
+        : `${def.name}: LEFT WHOLE. THE RECEIPT IS THEIRS.`,
+      where: 'bulkhead',
+      wreckId: def.id,
+      choiceId: choice.id,
+      source: 'unique_wreck',
     });
 
     record.rewardReceipt = {

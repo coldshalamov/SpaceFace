@@ -937,9 +937,9 @@ function injectStyle() {
 .drill-hud {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0,1fr));
+  grid-template-columns: repeat(6, minmax(0,1fr));
   gap: 1px;
-  max-width: 900px;
+  max-width: 960px;
   border: 1px solid rgba(57,208,255,.14);
   background: rgba(5,9,18,.88);
   font-size: 11px;
@@ -952,7 +952,7 @@ function injectStyle() {
 .drill-hud .v { color:var(--accent); }
 .drill-hud .warn { color:var(--warn); }
 .drill-hud .bad { color:var(--danger); }
-.drill-cargo-banner {
+.drill-status-banner {
   display:flex; align-items:center; gap:9px;
   width:100%; max-width:900px; box-sizing:border-box;
   padding:8px 12px; margin-top:2px;
@@ -961,20 +961,33 @@ function injectStyle() {
   color:var(--danger); font-size:11px; letter-spacing:.06em; line-height:1.35;
   animation:drill-cargo-pulse 1.6s ease-in-out infinite;
 }
-.drill-cargo-banner[hidden] { display:none; }
-.drill-cargo-banner-icon {
+.drill-status-banner[hidden] { display:none; }
+.drill-status-banner.warn {
+  border-color:rgba(255,179,92,0.55); background:rgba(255,179,92,0.12); color:var(--warn);
+  animation:drill-warn-pulse 1.8s ease-in-out infinite;
+}
+.drill-status-banner.warn .drill-status-banner-icon { background:var(--warn); color:#1a1206; }
+.drill-status-banner-icon {
   flex:0 0 auto; width:16px; height:16px; display:flex; align-items:center; justify-content:center;
   font-weight:700; font-size:11px; border-radius:50%;
   background:var(--danger); color:#160808;
 }
-.drill-cargo-banner-text { min-width:0; overflow-wrap:anywhere; }
+.drill-status-banner-text { min-width:0; overflow-wrap:anywhere; }
+/* legacy class kept for any external CSS hooks */
+.drill-cargo-banner { /* alias */ }
 @keyframes drill-cargo-pulse {
   0%,100% { background:rgba(255,92,92,0.1); }
   50% { background:rgba(255,92,92,0.2); }
 }
-@media (prefers-reduced-motion: reduce) { .drill-cargo-banner { animation:none; } }
-html.sf-reduce-motion .drill-cargo-banner { animation:none; }
-.drill-screen.reduce-motion .drill-cargo-banner { animation:none; }
+@keyframes drill-warn-pulse {
+  0%,100% { background:rgba(255,179,92,0.1); }
+  50% { background:rgba(255,179,92,0.2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drill-status-banner { animation:none; }
+}
+html.sf-reduce-motion .drill-status-banner { animation:none; }
+.drill-screen.reduce-motion .drill-status-banner { animation:none; }
 .drill-legend {
   display:flex;
   flex-direction:column;
@@ -1291,21 +1304,24 @@ export const drillScreen = {
       '<span>YIELD: <span class="v" data-yield>0</span></span>' +
       '<span>GAS HITS: <span class="warn" data-gas>0</span></span>' +
       '<span>CARGO: <span class="v" data-cargo>0%</span></span>' +
+      '<span>ROCK LEFT: <span class="v" data-rock-budget>—</span></span>' +
       '<span>TEMP: <span class="v" data-temp>0%</span></span>' +
       '<span>ENERGY: <span class="v" data-energy>100%</span></span>';
     centerPanel.appendChild(hud);
 
-    // Persistent cargo-full banner. Hidden until holds are maxed; stays visible (not a toast) so
-    // the player understands continued mining wastes ore and knows the way out.
-    const cargoBanner = document.createElement('div');
-    cargoBanner.className = 'drill-cargo-banner';
-    cargoBanner.setAttribute('role', 'alert');
-    cargoBanner.setAttribute('aria-live', 'off');
-    cargoBanner.hidden = true;
-    cargoBanner.innerHTML =
-      '<span class="drill-cargo-banner-icon">!</span>' +
-      '<span class="drill-cargo-banner-text">CARGO HOLDS FULL — mining now wastes ore. Retract the rig to offload.</span>';
-    centerPanel.appendChild(cargoBanner);
+    // Persistent status banner (cargo full / rock depleted). Stays visible — not a vanishing toast —
+    // so "I'm drilling and nothing happens" always has a reason on-screen.
+    const statusBanner = document.createElement('div');
+    statusBanner.className = 'drill-status-banner';
+    statusBanner.setAttribute('role', 'alert');
+    statusBanner.setAttribute('aria-live', 'polite');
+    statusBanner.hidden = true;
+    statusBanner.innerHTML =
+      '<span class="drill-status-banner-icon">!</span>' +
+      '<span class="drill-status-banner-text" data-status-banner-text></span>';
+    const statusBannerText = statusBanner.querySelector('[data-status-banner-text]');
+    centerPanel.appendChild(statusBanner);
+    let statusBannerKind = null; // 'cargo' | 'depleted' | null
 
     // Legend — uses the same SVG tile icons as the field, scoped to this deposit.
     const legend = document.createElement('div');
@@ -1775,16 +1791,47 @@ export const drillScreen = {
       announce(`Gas pocket breached. Hull damage ${p.dmg}.`);
     }));
 
+    function showStatusBanner(kind, text) {
+      statusBannerKind = kind;
+      statusBanner.classList.toggle('warn', kind === 'depleted');
+      if (statusBannerText) statusBannerText.textContent = text;
+      statusBanner.hidden = false;
+    }
+
     unsubs.push(ctx.bus.on('drill:warn', (p) => {
-      pushActivity(p.text, 'warn');
+      pushActivity(p.text, p.reason === 'cargoFull' ? 'bad' : 'warn');
+      if (p.reason === 'tier' && p.pos) {
+        const px = (p.pos.col ?? 0) * TILE + TILE / 2;
+        const py = (p.pos.row ?? 0) * TILE + TILE / 2;
+        spawnParticleBurst(particles, {
+          x: px, y: py - 6, count: 2, color: COL.warn, life: 1.0, size: 1.5,
+          speed: 6, kind: 'floater', text: `MK${p.tierReq || 2} LOCKED`, vy0: -16,
+        });
+      }
+      if (p.reason === 'depleted' && p.pos) {
+        const px = (p.pos.col ?? 0) * TILE + TILE / 2;
+        const py = (p.pos.row ?? 0) * TILE + TILE / 2;
+        spawnParticleBurst(particles, {
+          x: px, y: py - 6, count: 2, color: COL.warn, life: 1.1, size: 1.5,
+          speed: 6, kind: 'floater', text: 'ROCK EMPTY', vy0: -16,
+        });
+      }
       canvasDirty = true;
       announce(p.text);
+      updateHud();
+    }));
+
+    unsubs.push(ctx.bus.on('drill:rockDepleted', (p) => {
+      showStatusBanner('depleted',
+        p?.text || 'This rock is played out — veins break but pay no ore until it recovers.');
+      pushActivity(p?.text || 'Rock deep-core yield exhausted', 'warn');
+      canvasDirty = true;
+      announce(p?.text || 'Rock deep-core yield exhausted.');
+      updateHud();
     }));
 
     unsubs.push(ctx.bus.on('drill:cargoFull', (p) => {
-      // A vein broke but the holds were full — ore wasted. Immediate per-tile feedback: a red
-      // "CARGO FULL" floater at the tile and a brief amber edge vignette, plus an activity entry
-      // that stays distinct from the routine yield receipts.
+      // A vein broke but the holds could not take the ore. Immediate per-tile feedback + sticky banner.
       const px = (p.pos?.col ?? 0) * TILE + TILE / 2;
       const py = (p.pos?.row ?? 0) * TILE + TILE / 2;
       const name = commodityName(p.commodityId);
@@ -1793,10 +1840,12 @@ export const drillScreen = {
         speed: 8, kind: 'floater', text: 'CARGO FULL', vy0: -18,
       });
       cargoFullFlash.t = motionReduce ? 0.4 : 1.0;
+      showStatusBanner('cargo',
+        'CARGO HOLDS FULL — mining now wastes ore. Retract the rig to offload.');
       pushActivity(`${name} vein mined — cargo full, ore wasted`, 'bad');
       canvasDirty = true;
       announce(`Cargo holds full. ${name} ore could not be stored.`);
-      updateHud(); // flip the HUD readout + banner immediately
+      updateHud();
     }));
 
     unsubs.push(ctx.bus.on('drill:scanPulse', (p) => {
@@ -2592,11 +2641,37 @@ export const drillScreen = {
       setText(hudEls.yield, 'yield', total);
       setText(hudEls.gas, 'gas', d.gasHits);
       const cargo = state.player.cargo;
-      const cargoUsed = cargo ? Math.round((cargo.usedVolume / cargo.capVolume) * 100) : 0;
-      const cargoFull = cargoUsed >= 100;
-      setText(hudEls.cargo, 'cargo', cargoFull ? '100% FULL' : cargoUsed + '%');
+      const cap = cargo && cargo.capVolume > 0 ? cargo.capVolume : 0;
+      const used = cargo ? Number(cargo.usedVolume) || 0 : 0;
+      const freeU = cap > 0 ? Math.max(0, Math.floor(cap - used)) : 0;
+      const cargoUsed = cap > 0 ? Math.round((used / cap) * 100) : 0;
+      const cargoFull = cargoUsed >= 100 || (cap > 0 && freeU <= 0);
+      setText(hudEls.cargo, 'cargo',
+        cargoFull ? '100% FULL' : `${cargoUsed}% · ${freeU}u free`);
       setClassName(hudEls.cargo, 'cargoCn', cargoFull ? 'bad' : 'v');
-      if (hudEls.cargoBanner) hudEls.cargoBanner.hidden = !cargoFull;
+      if (cargoFull) {
+        showStatusBanner('cargo',
+          'CARGO HOLDS FULL — mining now wastes ore. Retract the rig to offload.');
+      } else if (statusBannerKind === 'cargo') {
+        statusBanner.hidden = true;
+        statusBannerKind = null;
+      }
+      // Rock deep-core budget (finite when the asteroid tracks depletion).
+      if (hudEls.rockBudget) {
+        const budget = d.rockBudget;
+        const max = d.rockBudgetMax;
+        if (Number.isFinite(budget) && Number(max) > 0) {
+          setText(hudEls.rockBudget, 'rockBudget', budget <= 0 ? '0 (EMPTY)' : String(Math.floor(budget)));
+          setClassName(hudEls.rockBudget, 'rockBudgetCn', budget <= 0 ? 'bad' : 'v');
+          if (budget <= 0 && statusBannerKind !== 'cargo') {
+            showStatusBanner('depleted',
+              'This rock is played out — veins break but pay no ore until it recovers.');
+          }
+        } else {
+          setText(hudEls.rockBudget, 'rockBudget', '—');
+          setClassName(hudEls.rockBudget, 'rockBudgetCn', 'v');
+        }
+      }
       if (hudEls.temp && d.drillTemp !== undefined) {
         setText(hudEls.temp, 'temp', Math.round(d.drillTemp) + '%');
         setClassName(hudEls.temp, 'tempCn', d.overheated ? 'warn' : 'v');
@@ -2681,21 +2756,27 @@ export const drillScreen = {
           } else if (t.type === 'empty') {
             html = '<span style="color:var(--ink-mute);">Target</span><br>Open bore';
           } else if (t.type === 'dirt') {
-            html = '<strong>SOFT REGOLITH</strong><br>Integrity ' + Math.ceil(t.hp) + '/' + t.maxHp + workLine + '<br>Risk low';
+            html = '<strong>SOFT REGOLITH</strong><br>Integrity ' + Math.ceil(t.hp) + '/' + t.maxHp + workLine
+              + '<br><span style="color:var(--ink-mute);">Bore only — no cargo yield</span>';
           } else if (t.type === 'rock') {
-            html = '<strong>SOLID BASALT</strong><br>Integrity ' + Math.ceil(t.hp) + '/' + t.maxHp + workLine + `<br>Risk ${t.risk || 'low'}`;
+            html = '<strong>SOLID BASALT</strong><br>Integrity ' + Math.ceil(t.hp) + '/' + t.maxHp + workLine
+              + `<br>Risk ${t.risk || 'low'} · <span style="color:var(--ink-mute);">No ore — clears path only</span>`;
           } else if (t.type === 'gas') {
-            html = '<strong style="color:#ff5c5c;">HAZARD — COMPRESSED GAS</strong><br>Risk critical · route around this cell';
+            html = '<strong style="color:#ff5c5c;">HAZARD — COMPRESSED GAS</strong><br>Risk critical · damages hull, yields no cargo · route around';
           } else if (t.type === 'vein' && t.ore) {
             const name = commodityName(t.ore);
             const basePrice = COMMODITY_BY_ID.get(t.ore)?.basePrice || 0;
             const req = t.tierReq || drillTierReqForOre(t.ore);
             const tier = drillScreen._drillTier || 1;
             const blocked = tier < req;
+            const rockEmpty = Number.isFinite(d.rockBudget) && d.rockBudget <= 0 && Number(d.rockBudgetMax) > 0;
             const tierLine = blocked
-              ? `<strong style="color:#ff5c5c;">LOCKED — DRILL MK${req}</strong>`
+              ? `<strong style="color:#ff5c5c;">LOCKED — needs Drill MK${req}</strong>`
               : `Drill MK${req}`;
-            html = `<strong>${name.toUpperCase()} VEIN</strong><br>Estimate ${basePrice} Cr/u · yield ${t.yieldU || 0}u${workLine}<br>Risk ${t.risk || 'low'} · ${tierLine}`;
+            const payLine = rockEmpty
+              ? '<br><strong style="color:var(--warn);">ROCK PLAYED OUT — this vein pays 0 until recovery</strong>'
+              : '';
+            html = `<strong>${name.toUpperCase()} VEIN</strong><br>Estimate ${basePrice} Cr/u · yield ${t.yieldU || 0}u${workLine}<br>Risk ${t.risk || 'low'} · ${tierLine}${payLine}`;
           }
         } else {
           html = '<span style="color:var(--ink-mute);">Target</span><br>Asteroid boundary';
@@ -2709,8 +2790,8 @@ export const drillScreen = {
       if (state.ui) state.ui.pendingDrillAsteroidId = null;
       if (!asteroidId || !drillSys) return;
 
-      drillSys.begin(asteroidId);
-      renderDrillLegend(legendGrid, state.drill?.field, drillSys.getDrillTier());
+      // Reset session UI *before* begin() so drill:rockDepleted / drill:warn land on a clean feed
+      // and are not wiped by later activityFeed/banner resets.
       inputController.cancel();
       drillTheta = 0;
       viewY = undefined;
@@ -2722,13 +2803,12 @@ export const drillScreen = {
         motionReduce: !!(state.settings && state.settings.video && state.settings.video.motionReduce),
       });
       wrap.classList.toggle('reduce-motion', motionReduce);
-      // Reset HUD write-cache so values re-sync on the first frame of the new session.
       for (const k of Object.keys(hudCache)) delete hudCache[k];
 
-      // Cache HUD handles once per session (was ~10 querySelector/getElementById per frame).
       hudEls.yield = hud.querySelector('[data-yield]');
       hudEls.gas = hud.querySelector('[data-gas]');
       hudEls.cargo = hud.querySelector('[data-cargo]');
+      hudEls.rockBudget = hud.querySelector('[data-rock-budget]');
       hudEls.temp = hud.querySelector('[data-temp]');
       hudEls.energy = hud.querySelector('[data-energy]');
       hudEls.tension = leftPanel.querySelector('[data-tension]');
@@ -2738,16 +2818,25 @@ export const drillScreen = {
       hudEls.scan = document.getElementById('drill-scan-target');
       hudEls.manifest = document.getElementById('drill-cargo-manifest-list');
       hudEls.scanState = scanBtn.querySelector('[data-scan-state]');
-      hudEls.cargoBanner = cargoBanner;
-      cargoBanner.hidden = true; // reset per session
+      statusBannerKind = null;
+      statusBanner.hidden = true;
+      if (statusBannerText) statusBannerText.textContent = '';
+      gasHitFlash.t = 0;
+      gasHitShake.t = 0;
+      gasHitShake.elapsed = 0;
+      yieldFlash.t = 0;
+      cargoFullFlash.t = 0;
+      activityFeed.innerHTML = '<div class="drill-activity-empty">Bore events will appear here.</div>';
+      lastActivity = null;
 
-      // Resolve --mono once. It never changes mid-session; reading it per-frame forced a layout.
       const monoVar = (typeof window !== 'undefined' && window.getComputedStyle)
         ? window.getComputedStyle(document.body).getPropertyValue('--mono')
         : '';
       monoFamily = (monoVar && monoVar.trim()) || 'monospace';
 
-      // Pre-render static overlays once. Rebuild only if the canvas backing store changes.
+      drillSys.begin(asteroidId);
+      renderDrillLegend(legendGrid, state.drill?.field, drillSys.getDrillTier());
+
       overlayCanvas = buildOverlay(canvas.width, canvas.height);
       headlightSprite = buildHeadlightSprite();
       strataCanvas = null;
@@ -2767,13 +2856,6 @@ export const drillScreen = {
         });
       }
 
-      gasHitFlash.t = 0;
-      gasHitShake.t = 0;
-      gasHitShake.elapsed = 0;
-      yieldFlash.t = 0;
-      cargoFullFlash.t = 0;
-      activityFeed.innerHTML = '<div class="drill-activity-empty">Bore events will appear here.</div>';
-      lastActivity = null;
       inputController.cancel();
       canvasDirty = true;
       cameraSettling = true;

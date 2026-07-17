@@ -85,6 +85,53 @@ export const WRECK_MISSIONS = [
     reward_cr: 980,
     tag: 'wreck_salvage',
   },
+  {
+    id: 'wm_mine_wake_map',
+    title: 'Map of the Salted Wake',
+    type: 'recon_scan',
+    giver: 'Hauler nav core',
+    log: 'They seeded the exit vector. Every buoy we trusted was a mine. The map still has the drop points if you can stand to look.',
+    summary: 'Recover the nav core and scan the marked mine drop bearings before another convoy dies in the wake.',
+    reward_cr: 860,
+    tag: 'wreck_salvage',
+  },
+  {
+    id: 'wm_pd_curtain_blackbox',
+    title: 'Curtain Black Box',
+    type: 'salvage_retrieval',
+    giver: 'Escort flight recorder',
+    log: 'Point-defense held for nine minutes. Missiles died. The freighter did not. Bring the box — insurers want the curtain timing.',
+    summary: 'Pull the escort black box so insurers can price PD screens against raider missile racks.',
+    reward_cr: 920,
+    tag: 'wreck_salvage',
+  },
+  {
+    id: 'wm_pattern_offering',
+    title: 'Unfinished Offering',
+    type: 'cargo_delivery',
+    giver: 'Choir cargo beacon',
+    log: 'Tithe incomplete. Pattern incomplete. Whoever finishes the delivery is counted. Whoever opens the hold is corrected.',
+    summary: 'A sealed Choir offering drifts free of a wreck. Deliver it unopened — or open it and live with the Pattern.',
+    reward_cr: 1040,
+    choice: {
+      prompt: 'The hold seals are ritual-waxed. What do you do?',
+      options: [
+        { id: 'deliver', label: 'Deliver sealed', blurb: 'Choir goodwill; no look inside.' },
+        { id: 'open', label: 'Break the wax', blurb: 'Knowledge and heat. Possibly both.' },
+      ],
+    },
+    tag: 'wreck_salvage',
+  },
+  {
+    id: 'wm_ghost_contract',
+    title: 'Contract Without a Name',
+    type: 'bounty_hunt',
+    giver: 'Blank Quiet chip',
+    log: 'Target: redacted. Bearing: last known. Payment: already half-loaded. Do not ask who wrote the other half.',
+    summary: 'A Quiet bounty chip names a bearing, not a face. Hunt the ghost before the contract expires.',
+    reward_cr: 1250,
+    tag: 'wreck_salvage',
+  },
 ];
 
 const BY_ID = new Map(WRECK_MISSIONS.map((m) => [m.id, m]));

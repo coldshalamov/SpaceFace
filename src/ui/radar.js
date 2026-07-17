@@ -1,10 +1,17 @@
 // Radar / minimap (ARCHITECTURE §5, spec "Radar/minimap") — a 180px <canvas> in the HUD
 // corner redrawn at ~20Hz. Player fixed at center; world entities projected via radarRange.
-// Blips colored by team/faction; off-range contacts clamp to the edge as hollow chevrons;
-// the current target gets a ring. Canvas is DPI-scaled so blips stay crisp on 4K/Retina.
+//
+// Identity language (shape + color; amber reserved for mission waypoints only):
+//   cyan-blue HEX    = station / dock (always; not faction-tinted)
+//   violet double-ring = jump gate
+//   red TRIANGLE     = hostile ship
+//   grey diamond     = asteroid (dim background clutter)
+//   amber DIAMOND    = active waypoint ONLY
+// Off-range hostiles → hollow chevron on the rim; off-range stations → edge hex pip.
+// Target ring + DPI scale keep blips crisp on HiDPI.
 //
 // Click to expand: click the dial to toggle a 340px tactical view showing 2× range.
-// Motion trails show recent ship movement paths. All blips use shadowBlur glow.
+// Motion trails show recent ship movement paths.
 //
 // Formulas (§ spec): bx = C - (e.x-p.x)/range*R ; by = C - (e.z-p.z)/range*R.
 // NOTE: BOTH axes are negated vs. a naïve projection. The chase cam sits at +Y/-Z looking toward
@@ -27,6 +34,12 @@ const EXPAND_C     = EXPAND_SIZE / 2;
 const EXPAND_R     = 165;
 
 // ── colors ──────────────────────────────────────────────────────────────────────────────────
+// IFF language (keep amber/yellow reserved for mission waypoints only — see COL.objective):
+//   cyan-blue hex  = station / dock (infrastructure, always same identity)
+//   violet ring    = jump gate
+//   red triangle   = hostile ship
+//   grey diamond   = asteroid (background clutter — dim on purpose)
+//   amber diamond  = active waypoint ONLY
 const FACTION_COLOR = {
   faction_scn: '#4DA8FF', faction_mts: '#46E08A', faction_dmc: '#C9772E',
   faction_reach: '#FF4D5E', faction_quiet: '#B06CFF', faction_vael: '#2FCFA0',
@@ -34,7 +47,13 @@ const FACTION_COLOR = {
 };
 const COL = {
   player: '#00F0FF', hostile: '#ff5470', neutral: '#9aa8bc',
-  asteroid: '#6e7b8c', pickup: '#ffe36b', station: '#7af7d0', gate: '#b99cff',
+  // Asteroids stay cool-grey and dim so they never compete with stations or hostiles.
+  asteroid: '#4a5564',
+  pickup: '#ffe36b',
+  // Station identity is always cyan-blue infrastructure — not faction-tinted grey squares.
+  // Faction color used to make SCN docks look like generic blue ship blips.
+  station: '#3ecbff',
+  gate: '#c4a6ff',
   objective: '#ffb35c', ring: '#1d3350',
 };
 
@@ -62,8 +81,10 @@ function blipColor(e, playerTeam, mode, state) {
   if (e.type === 'asteroid') return COL.asteroid;
   if (e.type === 'pickup')   return COL.pickup;
   if (e.type === 'station') {
+    // Gates keep a violet ring identity; all docks share one cyan-blue hex so players can
+    // learn "blue hex = place I can dock" without reading faction palette first.
     if (e.data && e.data.isGate) return COL.gate;
-    return e.factionId && FACTION_COLOR[e.factionId] ? FACTION_COLOR[e.factionId] : COL.station;
+    return COL.station;
   }
   // Faction tint for friendly/neutral traffic when known (role/intent still carried by shape).
   if (!isHostileToPlayer(e, playerTeam, state) && e.factionId && FACTION_COLOR[e.factionId]) {
@@ -154,7 +175,85 @@ function drawTrail(g, e, px, pz, scale, C, col) {
 }
 
 function drawAsteroidBlip(g, bx, by) {
-  g.beginPath(); g.moveTo(bx, by - 2.5); g.lineTo(bx + 2.5, by); g.lineTo(bx, by + 2.5); g.lineTo(bx - 2.5, by); g.closePath(); g.fill();
+  // Tiny dim diamond — background mass only. Must not read as station (hex) or ship (tri/square).
+  g.beginPath();
+  g.moveTo(bx, by - 1.6); g.lineTo(bx + 1.6, by); g.lineTo(bx, by + 1.6); g.lineTo(bx - 1.6, by);
+  g.closePath();
+  g.fill();
+}
+
+/** Station / dock pad: flat-top hexagon + inner berth square. Gates: double ring. */
+function drawStationBlip(g, bx, by, col, isGate) {
+  if (isGate) {
+    g.strokeStyle = col;
+    g.lineWidth = 1.7;
+    g.beginPath(); g.arc(bx, by, 5.2, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 1.2;
+    g.beginPath(); g.arc(bx, by, 2.6, 0, Math.PI * 2); g.stroke();
+    // Portal ticks — readable without relying on color alone.
+    g.beginPath();
+    g.moveTo(bx - 1.4, by - 5.2); g.lineTo(bx - 1.4, by - 3.4);
+    g.moveTo(bx + 1.4, by - 5.2); g.lineTo(bx + 1.4, by - 3.4);
+    g.moveTo(bx - 1.4, by + 3.4); g.lineTo(bx - 1.4, by + 5.2);
+    g.moveTo(bx + 1.4, by + 3.4); g.lineTo(bx + 1.4, by + 5.2);
+    g.stroke();
+    return;
+  }
+  // Flat-top hex (r≈5.4) — larger and differently shaped from ship squares / asteroid diamonds.
+  const r = 5.4;
+  g.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 3) * i - Math.PI / 6;
+    const x = bx + Math.cos(a) * r;
+    const y = by + Math.sin(a) * r;
+    if (i === 0) g.moveTo(x, y);
+    else g.lineTo(x, y);
+  }
+  g.closePath();
+  g.fillStyle = col;
+  g.fill();
+  g.strokeStyle = 'rgba(232,251,255,0.95)';
+  g.lineWidth = 1.35;
+  g.stroke();
+  // Inner berth: dark square so the glyph never collapses to a filled blob at a glance.
+  g.fillStyle = 'rgba(4,14,22,0.88)';
+  g.fillRect(bx - 1.8, by - 1.8, 3.6, 3.6);
+  g.strokeStyle = col;
+  g.lineWidth = 1;
+  g.strokeRect(bx - 1.8, by - 1.8, 3.6, 3.6);
+}
+
+/** Edge chevron for an off-range station (always shown — docks stay navigable). */
+function drawStationEdgeMarker(g, bx, by, angle, col, isGate) {
+  g.save();
+  g.translate(bx, by);
+  g.rotate(angle);
+  g.strokeStyle = col;
+  g.fillStyle = col;
+  g.lineWidth = 1.4;
+  if (isGate) {
+    g.beginPath(); g.arc(0, 0, 4, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.moveTo(2, 0); g.lineTo(6, 0); g.stroke();
+  } else {
+    // Mini hex + direction tick so off-range docks don't look like hostile chevrons.
+    const r = 4.2;
+    g.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 3) * i - Math.PI / 6;
+      const x = Math.cos(a) * r;
+      const y = Math.sin(a) * r;
+      if (i === 0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    }
+    g.closePath();
+    g.fill();
+    g.strokeStyle = 'rgba(232,251,255,0.9)';
+    g.lineWidth = 1;
+    g.stroke();
+    g.strokeStyle = col;
+    g.beginPath(); g.moveTo(r + 0.5, 0); g.lineTo(r + 4.5, 0); g.stroke();
+  }
+  g.restore();
 }
 
 function drawTargetRing(g, bx, by, C) {
@@ -337,9 +436,11 @@ export function createRadar(ctx) {
 
   // Canvas pair: main draw surface + pre-rendered static background. Normal flight keeps these at
   // compact HUD size; tactical expansion opts into the larger surface on demand.
-  const dpr      = Math.min(window.devicePixelRatio || 1, 2);
+  // Cap DPR high enough for crisp blips on modern HiDPI without ballooning the always-on buffer.
+  const dpr      = Math.min(window.devicePixelRatio || 1, 2.5);
   const canvas   = document.createElement('canvas');
   const bgCanvas = document.createElement('canvas');
+  // Prefer crisp geometry over soft filters — radar readability is shape/color, not bloom.
   const g  = canvas.getContext('2d');
   const bg = bgCanvas.getContext('2d');
   let configuredSize = 0;
@@ -358,6 +459,9 @@ export function createRadar(ctx) {
     canvas.style.height = size + 'px';
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     bg.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // Avoid bilinear soft-edges on the blip pass; the pre-baked bg is already smooth.
+    g.imageSmoothingEnabled = false;
+    bg.imageSmoothingEnabled = true;
     drawBackground(bg, C, R);
   }
   configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
@@ -568,9 +672,12 @@ export function createRadar(ctx) {
     }
 
     let targetAsteroidBlip = false, targetAsteroidX = 0, targetAsteroidY = 0;
+    // Asteroids: no glow, low alpha — field texture only. Stations/ships must stay legible on top.
     const asteroidCol = COL.asteroid;
-    g.fillStyle = asteroidCol; g.strokeStyle = asteroidCol;
-    glow(g, asteroidCol, 3);
+    g.save();
+    g.globalAlpha = 0.42;
+    g.fillStyle = asteroidCol;
+    noGlow(g);
     for (let i = 0; i < asteroidSource.length; i++) {
       const e = asteroidSource[i];
       if (!e.alive || e === p || e.type !== 'asteroid' || state.entities.get(e.id) !== e) continue;
@@ -586,7 +693,7 @@ export function createRadar(ctx) {
         targetAsteroidY = by;
       }
     }
-    noGlow(g);
+    g.restore();
     if (targetAsteroidBlip) drawTargetRing(g, targetAsteroidX, targetAsteroidY, C);
 
     let nearestOffScreenHostile = null;
@@ -605,10 +712,16 @@ export function createRadar(ctx) {
       }
     }
 
+    // Two-pass draw: ships/pickups/wrecks first, then stations on top so docks never hide under traffic.
     let trailUpdates = 0;
+    const stationPass = [];
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e.alive || e === p) continue;
+      if (e.type === 'station') {
+        stationPass.push(e);
+        continue;
+      }
       const type = e.type;
       const dx = e.pos.x - px, dz = e.pos.z - pz;
       const distSq = dx * dx + dz * dz;
@@ -665,20 +778,10 @@ export function createRadar(ctx) {
         g.moveTo(bx - 2.5, by + 2.5); g.lineTo(bx + 2.5, by - 2.5);
         g.stroke();
 
-      } else if (type === 'station') {
-        if (e.data && e.data.isGate) {
-          g.strokeStyle = col;
-          g.lineWidth = 1.5;
-          g.beginPath();
-          g.arc(bx, by, 2.5, 0, Math.PI * 2);
-          g.stroke();
-        } else {
-          g.fillRect(bx - 2.5, by - 2.5, 5, 5);
-        }
-
       } else {
         const isHostile = isHostileToPlayer(e, playerTeam, state);
-        const glowBlur  = isHostile ? 7 + 3 * Math.sin(now * 0.004) : 5;
+        // Compact flight: keep hostiles readable with a light pulse; avoid heavy blur that softens edges.
+        const glowBlur  = isHostile ? (expanded ? 7 + 3 * Math.sin(now * 0.004) : 4) : (expanded ? 5 : 2.5);
         glow(g, col, glowBlur);
         const named = !!(e.data && e.data.namedLaneContactId);
         drawShipShape(g, bx, by, contactBlipShape(e, playerTeam, state), named ? 1.35 : 1);
@@ -694,6 +797,43 @@ export function createRadar(ctx) {
       }
 
       // target ring
+      if (e.id === targetId) {
+        drawTargetRing(g, bx, by, C);
+      }
+    }
+
+    // Stations last: distinctive cyan hex / violet gate ring, including off-range edge markers.
+    for (let i = 0; i < stationPass.length; i++) {
+      const e = stationPass[i];
+      const dx = e.pos.x - px, dz = e.pos.z - pz;
+      const distSq = dx * dx + dz * dz;
+      const isGate = !!(e.data && e.data.isGate);
+      const col = blipColor(e, playerTeam, cbMode, state);
+      let bx, by, off = false, offAngle = 0;
+
+      if (distSq > rangeSq) {
+        off = true;
+        offAngle = Math.atan2(-dz, -dx);
+        bx = C + Math.cos(offAngle) * R;
+        by = C + Math.sin(offAngle) * R;
+      } else {
+        bx = C - dx * radarScale;
+        by = C - dz * radarScale;
+      }
+
+      if (off) {
+        // All docks/gates get an edge pip (not only the nearest) — navigation affordance.
+        glow(g, col, expanded ? 6 : 3);
+        drawStationEdgeMarker(g, bx, by, offAngle, col, isGate);
+        noGlow(g);
+        continue;
+      }
+
+      // Soft halo only — stroke edges stay sharp (imageSmoothing off + limited blur).
+      glow(g, col, expanded ? 8 : 3.5);
+      drawStationBlip(g, bx, by, col, isGate);
+      noGlow(g);
+
       if (e.id === targetId) {
         drawTargetRing(g, bx, by, C);
       }
@@ -859,12 +999,12 @@ export function createRadar(ctx) {
 function drawBackground(g, C, R) {
   g.clearRect(0, 0, C * 2, C * 2);
 
-  // Soft central wash (legibility against bright backgrounds) — much lighter than a panel fill,
-  // fading fully to transparent before the edge so there is no visible disc rim.
+  // Soft central wash (legibility against bright backgrounds) — slightly denser than the old
+  // wash so cyan station hexes and red hostiles separate from starfield/nebula, still no hard disc.
   const grad = g.createRadialGradient(C, C, 0, C, C, R);
-  grad.addColorStop(0,   'rgba(4,28,38,0.54)');
-  grad.addColorStop(0.72, 'rgba(5,23,36,0.22)');
-  grad.addColorStop(1,   'rgba(18,90,96,0.08)');
+  grad.addColorStop(0,   'rgba(3,18,28,0.62)');
+  grad.addColorStop(0.68, 'rgba(4,20,32,0.30)');
+  grad.addColorStop(1,   'rgba(10,48,58,0.10)');
   g.fillStyle = grad;
   g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.fill();
 
@@ -872,8 +1012,8 @@ function drawBackground(g, C, R) {
   g.save();
   g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.clip();
 
-  // faint Cartesian grid (every R/3)
-  g.strokeStyle = 'rgba(57,208,255,0.08)';
+  // Cartesian grid — a bit more structure so distance/bearing reads without a full dial bezel.
+  g.strokeStyle = 'rgba(57,208,255,0.11)';
   g.lineWidth   = 1;
   const step = R / 3;
   for (let d = step; d <= R; d += step) {
@@ -885,12 +1025,12 @@ function drawBackground(g, C, R) {
 
   // concentric range rings at 25 / 50 / 100% — outer ring slightly brighter
   for (const f of [0.25, 0.5, 1.0]) {
-    g.strokeStyle = f === 1.0 ? 'rgba(0,240,255,0.12)' : 'rgba(0,240,255,0.06)';
-    g.lineWidth   = 1;
+    g.strokeStyle = f === 1.0 ? 'rgba(0,240,255,0.18)' : 'rgba(0,240,255,0.09)';
+    g.lineWidth   = f === 1.0 ? 1.25 : 1;
     g.beginPath(); g.arc(C, C, R * f, 0, Math.PI * 2); g.stroke();
   }
   // crosshair axes
-  g.strokeStyle = 'rgba(0,240,255,0.08)';
+  g.strokeStyle = 'rgba(0,240,255,0.12)';
   g.beginPath(); g.moveTo(C, C - R); g.lineTo(C, C + R); g.moveTo(C - R, C); g.lineTo(C + R, C); g.stroke();
   g.restore();
 }

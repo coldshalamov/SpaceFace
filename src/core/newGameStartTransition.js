@@ -56,7 +56,16 @@ export async function runNewGameStartTransition(options = {}) {
       );
     }
 
-    if (typeof waitForWarmup === 'function') await waitForWarmup();
+    if (typeof waitForWarmup === 'function') {
+      const warmupReady = await waitForWarmup();
+      if (warmupReady === false) {
+        throw new GameStartReadinessError(
+          'RENDER_PIPELINE_UNAVAILABLE',
+          'render-pipeline',
+          'Authored render pipelines did not finish preparing; refusing to enter flight with first-use shader stalls.',
+        );
+      }
+    }
     if (!current()) return stale();
     const enteredFlight = guard.commit(token, enterFlight);
     return enteredFlight ? { stale: false, enteredFlight: true } : stale();
@@ -78,6 +87,8 @@ export function describeGameStartFailure(error) {
     text = 'The authored starter ship could not be loaded. Retry Launch; saved games are unchanged.';
   } else if (code === 'AUTHORED_VISUALS_UNAVAILABLE') {
     text = 'The starter ship did not finish preparing. Retry Launch; saved games are unchanged.';
+  } else if (code === 'RENDER_PIPELINE_UNAVAILABLE') {
+    text = 'The flight renderer did not finish preparing. Retry Launch; saved games are unchanged.';
   }
   return { code, stage, retryable, text };
 }

@@ -84,6 +84,7 @@ export const BARKS = {
       'Concord Patrol on station. Keep your transponder lit and pass.',
       'Routine patrol. Nothing to see. Move along.',
       'Lawful transit acknowledged. Safe passage.',
+      'Customs net is live this shift. Keep your manifests honest.',
     ],
   },
 
@@ -186,16 +187,19 @@ export const BARKS = {
       'Crimson Reach. We been watching your heat signature for a while, friend.',
       'Nice hull. Bet it carries nice things. Sizing you up.',
       'Reach picket. Don’t mind us. We’re just... counting.',
+      'Weigh-slip open. Your mass is already on the board.',
     ],
     warn: [
       'This is our lane now. Turn around while you still can.',
       'You wandered into the wrong dark. Last warning.',
       'The Reach owns this stretch. Pay the crossing or don’t cross.',
+      'Wake is salted. Turn now or fly through our work.',
     ],
     'demand-cargo': [
       'Everything in the hold, right now, and maybe you keep the ship.',
       'Cargo or your life. We’ll take the cargo either way.',
       'Drop it all. We’re not asking twice, and we barely asked once.',
+      'Tithe the hold. Curtain stays up either way.',
     ],
     attack: [
       'Should’ve given us the cargo! Take him apart!',
@@ -261,11 +265,13 @@ export const BARKS = {
       'Loud ones die first.',
       'You talk too much.',
       'Predictable.',
+      'Ghost already has the shot.',
     ],
     'patrol-greeting': [
       'Pass. Say nothing.',
       'We didn’t see you.',
       'Keep it quiet.',
+      'No log. No wave. Go.',
     ],
   },
 
@@ -293,6 +299,7 @@ export const BARKS = {
       'Corrected. Hold still.',
       'The Pattern demands. It is given.',
       'Unmade. Remade cleaner.',
+      'Refrain. Fire is the answer.',
     ],
     flee: [
       'Recorded. Distance changes nothing.',
@@ -303,11 +310,13 @@ export const BARKS = {
       'Choir, converge.',
       'More voices. Complete the chorus.',
       'The faithful gather. Sing him silent.',
+      'Third refrain. Form the ring.',
     ],
     taunt: [
       'You are already in the Pattern.',
       'The void has filed you.',
       'Hold still. It is faster.',
+      'Your colors are already counted.',
     ],
     'patrol-greeting': [
       'The Choir passes.',

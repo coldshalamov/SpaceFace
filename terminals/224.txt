@@ -1,8 +1,0 @@
----
-pid: 9596
-cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
-command: "Start-Sleep -Seconds 120; Get-Process -Id 30548 -ErrorAction SilentlyContinue | Select-Object Id; $building = (Get-ChildItem \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\release.__building\\parts\" -Recurse -Filter *.glb -EA SilentlyContinue).Count; Write-Output \"building=$building lock=$(Test-Path 'C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\release.__lock')\""
-started_at: 2026-07-07T17:31:20.457Z
-running_for_ms: 9755004  
----
-building=0 lock=False

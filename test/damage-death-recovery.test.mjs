@@ -350,6 +350,68 @@ test('standard death freezes once, emits one recoverable defeat, and applies con
   assert.equal(state.combat.lastPlayerDefeat, null);
 });
 
+test('Continue re-arms recovery from lastPlayerDefeat when the in-memory latch was lost', () => {
+  const state = makeState();
+  const events = [];
+  const listeners = new Map();
+  const bus = {
+    on(event, fn) {
+      if (!listeners.has(event)) listeners.set(event, []);
+      listeners.get(event).push(fn);
+      return () => {};
+    },
+    emit(event, payload) {
+      events.push({ event, payload });
+      for (const fn of listeners.get(event) || []) fn(payload);
+    },
+  };
+  combat.init({ state, bus, helpers: {}, registry: { get() { return null; } } });
+  const player = state.entities.get(1);
+
+  combat.kill(player, 9, { origin: { kind: 'weapon', id: 'wpn_autocannon_s' } });
+  assert.equal(player.alive, false);
+  assert.ok(state.combat.lastPlayerDefeat, 'after-action receipt is durable');
+  // Simulate the player-facing bug: UI still has lastPlayerDefeat, but combat dropped the latch.
+  combat._pendingPlayerRecovery = null;
+
+  bus.emit('player:recoveryRequested', { source: 'after_action' });
+
+  assert.equal(events.filter((e) => e.event === 'player:respawn').length, 1,
+    'Continue must recover from the receipt when the wreck is still present');
+  assert.equal(player.alive, true);
+  assert.equal(state.combat.lastPlayerDefeat, null);
+  assert.equal(events.filter((e) => e.event === 'player:recoveryFailed').length, 0);
+});
+
+test('recovery without a wreck surfaces a toast instead of a silent no-op', () => {
+  const state = makeState();
+  const events = [];
+  const listeners = new Map();
+  const bus = {
+    on(event, fn) {
+      if (!listeners.has(event)) listeners.set(event, []);
+      listeners.get(event).push(fn);
+      return () => {};
+    },
+    emit(event, payload) {
+      events.push({ event, payload });
+      for (const fn of listeners.get(event) || []) fn(payload);
+    },
+  };
+  combat.init({ state, bus, helpers: {}, registry: { get() { return null; } } });
+
+  bus.emit('player:recoveryRequested', { source: 'after_action' });
+
+  assert.equal(events.filter((e) => e.event === 'player:respawn').length, 0);
+  const failed = events.find((e) => e.event === 'player:recoveryFailed');
+  assert.ok(failed, 'combat must publish a recovery failure signal');
+  assert.equal(failed.payload.reason, 'no_pending_defeat');
+  const toast = events.find((e) => e.event === 'toast');
+  assert.ok(toast, 'player must get visible feedback');
+  assert.match(String(toast.payload.text || ''), /Recovery/i);
+  assert.equal(toast.payload.kind, 'error');
+});
+
 test('every recoverable difficulty waits for explicit recovery before respawning', () => {
   for (const difficulty of ['casual', 'standard', 'veteran']) {
     const state = makeState();
@@ -465,10 +527,19 @@ test('after-action screen offers recovery-berth continue and load routes with po
   const source = readFileSync(new URL('../src/ui/screens/gameOver.js', import.meta.url), 'utf8');
   assert.match(source, /Continue from recovery berth/);
   assert.match(source, /player:recoveryRequested/);
+  assert.match(source, /player:recoveryFailed/);
   assert.match(source, /Load save/);
   assert.match(source, /receipt\.cause/);
   assert.match(source, /_defaultButton/);
   assert.match(source, /data:\s*\{\s*locked:\s*true\s*\}/);
+});
+
+test('combat recovery path re-arms from the durable receipt and never silently no-ops', () => {
+  const source = readFileSync(new URL('../src/systems/combat.js', import.meta.url), 'utf8');
+  assert.match(source, /rearmPendingRecoveryFromReceipt/);
+  assert.match(source, /notifyRecoveryFailure/);
+  assert.match(source, /player:recoveryFailed/);
+  assert.match(source, /toast/);
 });
 
 test('after-action DOM locks focus, emits retry intent, and only closes on successful respawn', () => {

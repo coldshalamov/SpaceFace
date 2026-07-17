@@ -5,10 +5,17 @@ dist/
 /nul
 .campaign/
 
-# Root-local agent scratch and temporary comparison trees. Historical, intentionally committed
-# evidence under .tmp/, scratch/, terminals/, agent-tools/, and advisor-artifacts/ is unaffected.
+# Root-local agent scratch, transcripts, diagnostics, and temporary comparison trees.
+# Durable conclusions belong in maintained docs/evidence records; prior tracked copies remain in Git history.
 /.tmp*
 /.grok-scratch/
+/terminals/
+/agent-tools/
+/advisor-artifacts/
+/scratch/
+/check-assets-live.log
+/tools/agy-*
+/tools/antigravity-state*.jpg
 
 # Local agent/tool scratch artifacts (never production source)
 /-

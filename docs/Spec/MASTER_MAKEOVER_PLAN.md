@@ -1,13 +1,13 @@
 # SpaceFace Master Makeover Build Plan
 
-> **Current status (2026-07-04):** Historical foundation/commissioning plan. Do not treat this as
-> the live build order or merge gate. Current implementation authority is `design/GDD_2_0.md`,
-> `design/BUILD_PLAN_2_0.md`, `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*`.
+> **Current status:** Historical foundation/commissioning plan. Do not treat this as the live build
+> order, status surface, or merge gate. Start at `design/program/README.md`; use
+> `design/PLAN_REGISTRY.md` to route any still-valuable outcome to current authority.
 >
 > **Source:** Produced by the supergenius (commissioned master-plan prompt, 2026-06-21). Preserved
 > as the original north-star document for the project. Agents may mine it for rationale and historical
-> context, but must follow the current 2.0 docs above for build order, convergence targets, and merge
-> gates.
+> context, but must re-derive implementation against `ARCHITECTURE.md`, `design/GDD_2_0.md`, the
+> current program, live code, and current checks/player-route evidence.
 >
 > **Status notes (added by resident on integration):**
 > - Several Phase 0 foundations are **already integrated on master** as of this writing:

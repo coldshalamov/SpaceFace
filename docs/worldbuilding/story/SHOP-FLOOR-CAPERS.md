@@ -117,7 +117,7 @@ The comedy rule (Stanhope + Scorsese): every joke about the scheme must also be 
 
 ## HALE — the sacrament (the caper is the absence of one)
 
-**The caper:** Hale has no caper. This is the point. Hale initials the second fine because REG 44-C requires it and Hale has never, in seventeen years, failed to initial a legally required entry. The priest does not look in the hold. The priest administers the sacrament. The hold is someone else's department.
+**The caper:** Hale has no caper. Hale initials the second fine because REF 44-C requires it and Hale has never, in seventeen years, failed to initial a legally required entry. The priest does not look in the hold. The priest administers the sacrament. The hold is someone else's department.
 
 **What Hale thinks the story is:** the honest man. Seventeen years of unbroken signatures. The regulation says what the regulation says. Hale does what Hale does. The system is not Hale's problem. Hale is not the system.
 

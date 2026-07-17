@@ -15,8 +15,8 @@ because it is large or machine-generated.
 | `docs/worldbuilding/sheets/` | discovery index | yes | no, by itself | Locate prose and runtime records; prose owns voice, runtime code owns implementation truth. |
 | `assets/**/evidence/`, `.devshots/` | acceptance evidence | selective | yes, when hash-bound/current | Preserve accepted evidence; `.devshots/` is local by default and should be promoted deliberately. |
 | `.campaign/` | active controller state | no by default | yes, for the active campaign | Local/ignored. Never read SAFE review bodies; follow `design/production/ORCHESTRATOR_GOAL.md`. |
-| `terminals/`, `agent-tools/` | forensic transcripts | legacy snapshots only | no | Useful for reconstructing an agent action, never policy or acceptance. Do not add routine new transcripts. |
-| `advisor-artifacts/`, `scratch/`, committed `.tmp/` | historical diagnostics | only when uniquely useful | no | Existing records may support archaeology; new transient output belongs outside Git. |
+| `terminals/`, `agent-tools/` | local transcripts | no | no | Ignored. Preserve a durable conclusion in a maintained document; use Git history for old tracked snapshots. |
+| `advisor-artifacts/`, `scratch/`, `.tmp/` | local diagnostics | no | no | Ignored. Promote only a named, reproducible result required by an acceptance record. |
 | root `/.tmp*`, `/.grok-scratch/`, build outputs | local scratch | no | no | Disposable and ignored. Never cite as durable proof. |
 | `skills/` | vendored generic guidance | yes while intentionally vendored | no | Not SpaceFace policy; root and nested `AGENTS.md` files win. |
 | `design/_ARCHIVE/` | historical reference | yes | no, unless revived explicitly | Never a build order or current status source. |
@@ -29,8 +29,11 @@ it outside the repository or under an ignored path.
 
 ## Cleanup rule
 
-- Do not bulk-delete tracked evidence during feature work.
-- Do not treat file size, age, or agent authorship alone as a deletion reason.
+- Routine transcripts, tool dumps, and regenerable diagnostics do not belong in Git. A dedicated
+  cleanup may remove previously tracked residue when the path has no current work or maintained
+  consumer; Git history remains the archaeology surface.
+- Do not treat file size, age, or agent authorship alone as a deletion reason for product source,
+  authored media, accepted evidence, or maintained specifications.
 - Remove or archive a document only after its useful intent is represented by a stronger authority.
 - Prefer a short status banner and a canonical pointer when old content remains valuable for context.
 - A transcript is never a substitute for a live check, player-route capture, or inspected code.

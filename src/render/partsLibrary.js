@@ -240,12 +240,37 @@ const AUTHORED_BOOTSTRAP_PLAN = Object.freeze({
   hull: Object.freeze(['wholeships/kestrel.glb']),
   place: Object.freeze(['places/place_station_trade_hub.glb']),
 });
+// The active-sector renderer already keeps a 5.2k world-unit seam runway resident. Ship visuals in
+// that same runway must cross the authored boundary while the route is loading; deferring them made
+// target cycling decode GLBs and poll new HDR programs during combat, producing measured 500ms
+// stalls and the visible fallback-to-authored swaps this boundary was meant to hide.
+const INITIAL_SHIP_COMPOSITION_RADIUS = 5200;
+const INITIAL_PLACE_COMPOSITION_RADIUS = 700;
 const REGULAR_HULL_FILES = Object.freeze(
   PART_LIBRARY_CONTRACT.slots.hull.filter((file) => !String(file).startsWith('wholeships/')),
 );
 
 export function authoredBootstrapPreloadPlan() {
   return clonePreloadPlan(AUTHORED_BOOTSTRAP_PLAN);
+}
+
+/** Opening-shot quality gate: nearby actors settle behind loading, distant world stays on-demand. */
+export function isInitialAuthoredCompositionEntity(entity, state) {
+  if (!entity || entity.alive === false || !state) return false;
+  if (entity.id === state.playerId || entity.isPlayer === true || isCriticalStartingHub(entity)) return true;
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : (state.entityList || []).find((candidate) => candidate && candidate.id === state.playerId);
+  if (!player || !player.pos || !entity.pos) return false;
+  const dx = Number(entity.pos.x) - Number(player.pos.x);
+  const dz = Number(entity.pos.z) - Number(player.pos.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return false;
+  const radius = entity.type === 'ship'
+    ? INITIAL_SHIP_COMPOSITION_RADIUS
+    : ((entity.type === 'station' || entity.type === 'fx') && placeFileForEntity(entity)
+      ? INITIAL_PLACE_COMPOSITION_RADIUS
+      : 0);
+  return radius > 0 && dx * dx + dz * dz <= radius * radius;
 }
 
 /** Pure per-entity residency plan. Complete authored bodies need one GLB. Modular ships predict the
@@ -570,6 +595,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
   trigger.onBeforeRender = function authoredAssetTrigger(renderer, scene, ...rest) {
     if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
+    if (!shouldAutoTriggerAuthoredUpgrade(entity, scene)) return;
     startAuthoredUpgrade(renderer, scene);
   };
 
@@ -715,7 +741,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   boundary.userData.hull = fallbackRoot;
   const trigger = firstRenderable(fallbackRoot);
   const startAuthoredUpgrade = (renderer, scene) => {
-    if (!renderer || !scene || boundary.userData.authoredAssetState === 'loading' || boundary.userData.authoredAssetState === 'authored') return;
+    if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return;
     boundary.userData.authoredAssetState = 'loading';
     enqueueBoundaryUpgrade(scene, {
       boundary,
@@ -739,6 +765,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     trigger.onBeforeRender = function authoredStationTrigger(renderer, scene, ...rest) {
       if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
       if (!armed) return;
+      if (!shouldAutoTriggerAuthoredUpgrade(options.liveEntity || entity, scene)) return;
       armed = false;
       trigger.onBeforeRender = previousBeforeRender;
       startAuthoredUpgrade(renderer, scene);
@@ -773,7 +800,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.hull = fallbackRoot;
   const trigger = firstRenderable(fallbackRoot);
   const startAuthoredUpgrade = (renderer, scene) => {
-    if (!renderer || !scene || boundary.userData.authoredAssetState === 'loading' || boundary.userData.authoredAssetState === 'authored') return;
+    if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return;
     boundary.userData.authoredAssetState = 'loading';
     enqueueBoundaryUpgrade(scene, {
       boundary,
@@ -797,6 +824,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     trigger.onBeforeRender = function authoredPlaceTrigger(renderer, scene, ...rest) {
       if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
       if (!armed) return;
+      if (!shouldAutoTriggerAuthoredUpgrade(entity, scene)) return;
       armed = false;
       trigger.onBeforeRender = previousBeforeRender;
       startAuthoredUpgrade(renderer, scene);
@@ -804,6 +832,13 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   }
 
   return boundary;
+}
+
+function authoredAdmissionStarted(state) {
+  return state === 'loading'
+    || state === 'compiling-pipelines'
+    || state === 'authored'
+    || state === 'authored-with-cleanup-error';
 }
 
 async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, options, setActive) {
@@ -833,6 +868,29 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     return false;
   }
 
+  boundary.userData.authoredAssetState = 'compiling-pipelines';
+  const completeAdmission = async () => {
+    await prepareAuthoredVisualPipelines(authored.root, options);
+    if (!boundary.parent) {
+      releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-pipeline-compile');
+      return false;
+    }
+    return commitAuthoredPlaceBoundary(boundary, fallbackRoot, authored, setActive);
+  };
+  if (options.overlapAuthoredPipelineCompile === true) {
+    const pending = completeAdmission().catch((error) => {
+      releaseBoundaryResidency(renderer, boundary, 'place-pipeline-compile-failed');
+      boundary.userData.authoredAssetState = 'fallback-after-error';
+      console.warn('[partsLibrary] authored place pipeline admission failed; retaining fallback', error);
+      return false;
+    });
+    boundary.userData.authoredPipelineReady = pending;
+    return true;
+  }
+  return completeAdmission();
+}
+
+function commitAuthoredPlaceBoundary(boundary, fallbackRoot, authored, setActive) {
   // A validated place record is the readability authority. Keep the procedural shell only while
   // loading or after failure; successful world-place upgrades must not double-render both bodies.
   boundary.remove(fallbackRoot);
@@ -1087,6 +1145,22 @@ function authoredRuntimeState() {
     : null;
 }
 
+/**
+ * First-render is a useful demand signal for isolated previews, but the main scene is rendered and
+ * precompiled while a run is still loading. Main-scene auto-demand is therefore limited to startup
+ * invariants while loading, and to genuinely focused/onscreen entities in flight. Renderer-owned
+ * spatial prefetch can still call requestAuthoredUpgrade directly before an entity becomes visible.
+ */
+export function shouldAutoTriggerAuthoredUpgrade(entity, scene, liveState = authoredRuntimeState()) {
+  if (!liveState || !liveState.render || liveState.render.scene !== scene) return true;
+  if (!entity || entity.alive === false) return false;
+  if (entity.isPlayer === true || isCriticalStartingHub(entity)) return true;
+  if (liveState.mode !== 'flight') return false;
+  if (liveState.player && liveState.player.targetId === entity.id) return true;
+  if (entity.team === 1) return true;
+  return entityIsOnscreen(entity, liveState);
+}
+
 function residencyOptionsForBoundary(entity, boundary, renderer) {
   const liveState = authoredRuntimeState();
   const data = entity && entity.data || {};
@@ -1103,6 +1177,11 @@ function residencyOptionsForBoundary(entity, boundary, renderer) {
     residencyRole: entity && entity.isPlayer === true ? 'player' : 'current-sector',
     sectorId,
     isResidencyOwnerActive: () => !!boundary && !!boundary.parent && entity && entity.alive !== false,
+    prepareAuthoredPipelines: liveState && liveState.render
+      && typeof liveState.render.compileObjectPipelines === 'function'
+      ? (root) => liveState.render.compileObjectPipelines(root)
+      : null,
+    overlapAuthoredPipelineCompile: !!(liveState && liveState.mode !== 'flight'),
   };
 }
 
@@ -1208,11 +1287,11 @@ function scheduleNextUpgradeFrame(state) {
 
 function admitNextUpgradeJob(state) {
   state.frameScheduled = false;
-  primeBackgroundAssetPlans(state);
   state.jobs.sort((a, b) => {
     const priorityDelta = authoredUpgradePriority(a) - authoredUpgradePriority(b);
     return priorityDelta || a.sequence - b.sequence;
   });
+  primeNextAuthoredAssetPlan(state);
   const job = state.jobs.shift();
   if (!job) {
     state.running = state.inFlight > 0;
@@ -1266,10 +1345,14 @@ function authoredUpgradeConcurrencyLimit() {
   return 1;
 }
 
-function primeBackgroundAssetPlans(state) {
+function primeNextAuthoredAssetPlan(state) {
   const liveState = authoredRuntimeState();
   if (!state || !liveState || liveState.mode !== 'flight') return;
-  for (const job of [...state.jobs]) {
+  // Only prepare the job that is about to be admitted. The old loop started a preload Promise for
+  // every queued ship, which effectively asked the serial decode lane to process the whole live
+  // galaxy while the player was already flying. One-job lookahead keeps the same authored asset and
+  // exact composition, but bounds decode/GPU residency demand to the next relevant boundary.
+  for (const job of state.jobs) {
     if (!jobStillNeeded(state, job)) {
       const index = state.jobs.indexOf(job);
       if (index >= 0) state.jobs.splice(index, 1);
@@ -1281,6 +1364,7 @@ function primeBackgroundAssetPlans(state) {
     job.prefetchPromise.catch((error) => {
       job.prefetchError = error && error.message ? error.message : String(error);
     });
+    break;
   }
 }
 
@@ -1432,13 +1516,36 @@ export function authoredCriticalVisualReadiness(state) {
     : []);
   const hub = needsStartingHub ? entityList.find(isCriticalStartingHub) : null;
   const hubStatus = needsStartingHub ? authoredAssetState(hub) : 'not-required';
+  const openingAssets = entityList
+    .filter((entity) => isInitialAuthoredCompositionEntity(entity, state))
+    .map((entity) => ({ id: entity.id, type: entity.type, status: authoredAssetState(entity) }));
+  const openingPending = openingAssets.filter((entry) => entry.status !== 'authored');
+  const openingPipelinePending = openingAssets.filter((entry) => !authoredPipelineStaged(entry.status));
+  const playerPipelineStaged = authoredPipelineStaged(playerStatus);
+  const hubPipelineStaged = !needsStartingHub || authoredPipelineStaged(hubStatus);
   return {
-    ready: playerStatus === 'authored' && (!needsStartingHub || hubStatus === 'authored'),
+    // CPU composition reaches `compiling-pipelines` before the one combined exact-target GPU gate.
+    // Keep committed readiness separate so callers can prove the first displayed frame is authored.
+    pipelineReady: playerPipelineStaged
+      && hubPipelineStaged
+      && openingPipelinePending.length === 0,
+    ready: playerStatus === 'authored'
+      && (!needsStartingHub || hubStatus === 'authored')
+      && openingPending.length === 0,
     playerId: player && player.id,
     playerStatus,
     startingHubId: hub && hub.id,
     startingHubStatus: hubStatus,
+    openingAssets,
+    openingPending,
+    openingPipelinePending,
   };
+}
+
+function authoredPipelineStaged(status) {
+  return status === 'compiling-pipelines'
+    || status === 'authored'
+    || status === 'authored-with-cleanup-error';
 }
 
 function authoredAssetState(entity) {
@@ -1459,6 +1566,15 @@ export function preloadAuthoredAssetsForEntity(renderer, entity, options = {}) {
   return ensureEntityLibrary(renderer, entity, options);
 }
 
+/** GPU admission gate shared by ships and authored world places. Composition may finish on the CPU
+ * while the driver's exact HDR material programs are still absent; do not publish that object until
+ * this promise settles. Preview/test harnesses without a live pipeline compiler remain supported. */
+export async function prepareAuthoredVisualPipelines(root, options = {}) {
+  const prepare = options && options.prepareAuthoredPipelines;
+  if (typeof prepare !== 'function') return { skipped: true, reason: 'pipeline compiler unavailable' };
+  return prepare(root);
+}
+
 export async function retryAuthoredPartLibrary(renderer, options = {}) {
   const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
   const promises = renderer && libraryByRenderer.get(renderer);
@@ -1473,18 +1589,44 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
   let swapped = false;
   try {
     const library = await (prefetchedLibrary || preloadAuthoredAssetsForEntity(renderer, entity, options));
-    swapped = commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive);
-    if (!swapped) releaseBoundaryResidency(renderer, boundary, 'authored-swap-not-committed');
-  } catch (error) {
-    if (!swapped) {
-      releaseBoundaryResidency(renderer, boundary, 'authored-swap-failed');
-      releaseOwnerInstances(boundary);
-      boundary.userData.authoredAssetState = 'fallback-after-error';
-      console.warn('[partsLibrary] authored composition failed; retaining procedural ship', error);
-    } else {
-      boundary.userData.authoredAssetState = 'authored-with-cleanup-error';
-      console.warn('[partsLibrary] authored ship is live, but post-swap bookkeeping failed', error);
+    const authored = buildComposedShip(entity, library, scene, boundary, options);
+    if (!authored) {
+      boundary.userData.authoredAssetState = 'unavailable';
+      releaseBoundaryResidency(renderer, boundary, 'authored-composition-unavailable');
+      return;
     }
+    boundary.userData.authoredAssetState = 'compiling-pipelines';
+    const completeAdmission = async () => {
+      await prepareAuthoredVisualPipelines(authored.root, options);
+      swapped = commitAuthoredBoundary(
+        boundary, fallbackRoot, entity, library, scene, options, setActive, authored,
+      );
+      if (!swapped) releaseBoundaryResidency(renderer, boundary, 'authored-swap-not-committed');
+      return swapped;
+    };
+    if (options.overlapAuthoredPipelineCompile === true) {
+      const pending = completeAdmission().catch((error) => {
+        handleAuthoredBoundaryAdmissionError(boundary, renderer, swapped, error);
+        return false;
+      });
+      boundary.userData.authoredPipelineReady = pending;
+      return;
+    }
+    await completeAdmission();
+  } catch (error) {
+    handleAuthoredBoundaryAdmissionError(boundary, renderer, swapped, error);
+  }
+}
+
+function handleAuthoredBoundaryAdmissionError(boundary, renderer, swapped, error) {
+  if (!swapped) {
+    releaseBoundaryResidency(renderer, boundary, 'authored-swap-failed');
+    releaseOwnerInstances(boundary);
+    boundary.userData.authoredAssetState = 'fallback-after-error';
+    console.warn('[partsLibrary] authored composition failed; retaining procedural ship', error);
+  } else {
+    boundary.userData.authoredAssetState = 'authored-with-cleanup-error';
+    console.warn('[partsLibrary] authored ship is live, but post-swap bookkeeping failed', error);
   }
 }
 
@@ -1494,6 +1636,19 @@ function installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene
   boundary.userData.authoredAssetState = 'loading';
   try {
     retainLibraryPlan(renderer, library, authoredPreloadPlanForEntity(entity, options), options);
+    if (typeof options.prepareAuthoredPipelines === 'function') {
+      enqueueBoundaryUpgrade(scene, {
+        boundary,
+        fallbackRoot,
+        entity,
+        renderer,
+        scene,
+        options,
+        setActive,
+        prefetchPromise: Promise.resolve(library),
+      });
+      return true;
+    }
     const swapped = commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive);
     if (!swapped) releaseBoundaryResidency(renderer, boundary, 'resolved-swap-not-committed');
   } catch (error) {
@@ -1505,10 +1660,15 @@ function installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene
   return true;
 }
 
-function commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive) {
-  if (!boundary.parent) return false; // destroyed while assets were in flight
+function commitAuthoredBoundary(
+  boundary, fallbackRoot, entity, library, scene, options, setActive, preparedAuthored = null,
+) {
+  if (!boundary.parent) {
+    if (preparedAuthored) releaseOwnerInstances(boundary);
+    return false; // destroyed while assets or GPU programs were in flight
+  }
 
-  const authored = buildComposedShip(entity, library, scene, boundary, options);
+  const authored = preparedAuthored || buildComposedShip(entity, library, scene, boundary, options);
   if (!authored) {
     boundary.userData.authoredAssetState = 'unavailable';
     return false;

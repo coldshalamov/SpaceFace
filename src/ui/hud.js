@@ -3239,8 +3239,8 @@ export function createHud(ctx, alerts) {
       const primary = nGuns === 1 ? (ws[0].name || ws[0].defId || '1 gun') : (nGuns + ' guns');
       setText(elWeapons, primary + (auto ? ' · AUTO-TGT' : ''));
       setClass(elWeapons, 'sf-warn', auto);
-      // Reticle reflects aim mode: amber ring when auto-target is engaged (guns track locked hostiles),
-      // cyan when you're aiming/firing manually. Purely a visual cue.
+      // Reticle reflects control mode: amber gesture-stick cursor while auto-target guns track the
+      // separate lock diamond/lead pip; cyan when aiming/firing manually. Purely a visual cue.
       if (elReticle) setClass(elReticle, 'autofire', auto);
       // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
       // expands the crosshair (1 -> 1.25); it contracts as you stop. Purely cosmetic readability.

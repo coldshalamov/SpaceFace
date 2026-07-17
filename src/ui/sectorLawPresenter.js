@@ -158,6 +158,7 @@ export function createSectorLawPresenter(ctx) {
   }
 
   function renderIncident(payload) {
+    if (drillUiOpen()) return false;
     const view = authorityIncidentReadout(payload, state, state.simTime);
     if (!view) return false;
     active = { mode: view.mode, incident: { ...payload }, hideAt: view.mode === 'receipt' ? Number(state.simTime || 0) + RECEIPT_TTL_S : Infinity };
@@ -174,6 +175,7 @@ export function createSectorLawPresenter(ctx) {
   }
 
   function showDirectReceipt(receipt) {
+    if (drillUiOpen()) return false;
     const receiptText = directLawReceiptText(receipt);
     if (!receiptText) return false;
     active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
@@ -188,9 +190,15 @@ export function createSectorLawPresenter(ctx) {
     return true;
   }
 
+  function drillUiOpen() {
+    // Deep-core extraction freezes flight but keeps mode:'flight'; the law card must not sit
+    // over the drill feed while the sim is paused behind that screen.
+    return !!(state && state.drill && state.drill.active);
+  }
+
   function tick() {
     if (!active) return;
-    if (state.mode !== 'flight' || state.ui && state.ui.docked) { hide(); return; }
+    if (state.mode !== 'flight' || state.ui && state.ui.docked || drillUiOpen()) { hide(); return; }
     const now = Number(state.simTime || 0);
     if (active.hideAt <= now) { hide(); return; }
     if (active.mode === 'incident' && active.incident && active.incident.status === 'distress') {
@@ -208,6 +216,8 @@ export function createSectorLawPresenter(ctx) {
   bus.on('law:dispatchStarted', renderIncident);
   bus.on('law:incidentResolved', renderIncident);
   bus.on('law:incidentReceipt', showDirectReceipt);
+  bus.on('drill:start', hide);
+  bus.on('drill:end', hide);
   bus.on('pirateParley:demand', () => { if (active && active.mode === 'entry') hide(); });
   bus.on('signal:scanResults', () => { if (active && active.mode === 'entry') hide(); });
   bus.on('recovery:started', () => { if (active && active.mode === 'entry') hide(); });

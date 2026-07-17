@@ -103,8 +103,8 @@ assert.match(inputSrc, /this\._heldExcept\(state, 'yawRight', 'ArrowRight'\)/,
   'Classic yaw bindings must exclude ArrowRight so W+ArrowRight can strafe instead');
 assert.match(inputSrc, /this\._heldExcept\(state, 'yawLeft', 'ArrowLeft'\)/,
   'Classic yaw bindings must exclude ArrowLeft so W+ArrowLeft can strafe instead');
-assert.match(inputSrc, /syncPointerScreen\(this\.state, e\.clientX, e\.clientY\)/,
-  'pointer movement must update state.input.pointerScreen immediately so the software reticle tracks the OS cursor');
+assert.match(inputSrc, /syncPointerScreen\(this\.state, this\._screen\.x, this\._screen\.y\)/,
+  'pointer movement must publish the bounded software pointer instead of the escaping OS cursor');
 assert.match(stylesSrc, /body\.sf-flight-cursor[\s\S]*cursor:\s*none/,
   'flight cursor mode must hide the OS cursor so the software bullseye is the cursor');
 assert.match(inputSrc, /G auto-target/,
@@ -123,8 +123,14 @@ assert.match(autoTargetModeSrc, /ui:targetNearestHostileToPlayer/,
   'autoTargetMode must request the hostile nearest the player');
 assert.match(autoTargetModeSrc, /quiet:\s*true/,
   'autoTargetMode must keep quietly refreshing nearest-hostile lock while active');
-assert.match(autoTargetModeSrc, /inp\.autoFire[\s\S]*cursorAngle[\s\S]*inp\.turnIntent/,
-  'auto-target must steer the ship toward the cursor while weapons aim at the locked hostile');
+assert.match(autoTargetModeSrc, /autoTargetStick[\s\S]*inp\.turnIntent[\s\S]*stick\.x[\s\S]*inp\.moveZ[\s\S]*stick\.y/,
+  'auto-target must map explicit ship-local joystick yaw/throttle axes while weapons aim at the lock');
+assert.match(autoTargetAssistSrc, /requestPointerLock/,
+  'auto-target must capture relative trackpad and mouse motion inside the game window');
+assert.match(inputSrc, /AUTO_TARGET_NEW_GESTURE_MS/,
+  'a new trackpad gesture must start from neutral so an opposite swipe flips immediately');
+assert.doesNotMatch(inputSrc, /performance\.now\(\) - this\._lastAutoTargetMotionMs > AUTO_TARGET_NEW_GESTURE_MS\)[\s\S]{0,260}syncPointerScreen\(state/,
+  'idle update ticks must not release a held joystick deflection before the ship can turn');
 assert.match(autoTargetModeSrc, /inp\.autoFire = !inp\.autoFire/,
   'auto-target toggle must always flip auto-target without autopursuit guards');
 assert.match(autoTargetAssistSrc, /toggleAutoTarget/,

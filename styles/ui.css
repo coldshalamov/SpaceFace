@@ -409,14 +409,12 @@ button:active { transform: translateY(1px); }
 #control-hints { color:#eaf6ff; background:rgba(3,7,14,.86); border-color:rgba(122,247,208,.32); }
 
 /* ============================================================================================
-   CONSOLE LANGUAGE — strategy-command-console direction (UI full-pass Slice 1: foundation)
+   CURRENT CONSOLE COMPATIBILITY TOKENS (UI full-pass Slice 1 foundation)
    ============================================================================================
-   The flight HUD was originally a "cockpit visor" (diegetic helmet projection: saturated neon
-   primaries --visor-* + drop-shadow glow, no panels). That fights the top-down 60° chase camera and
-   reads as "HTML Myspace bars" — full-brightness rainbow primaries with no cohesion. This layer
-   reframes the HUD/UI as a STRATEGY COMMAND CONSOLE: persistent resource strip (RTS-style),
-   restricted desaturated palette, cut-corner panels, mono values everywhere. It matches the actual
-   camera (you look DOWN at the ship from above, like StarCraft — you're commanding, not piloting).
+   These tokens support the existing non-diegetic HUD and several current screen primitives. They
+   document the implementation that is on disk; they are not a command-console art-direction
+   constitution for new work. New surfaces may use a different coherent visual language when normal
+   player-route evidence, accessibility, and measured performance support it.
 
    Tokens here are ADDITIVE and semantic. They coexist with the existing --ink*/--accent* text
    tokens (which the WCAG audit reads); screens and the flight HUD adopt them slice-by-slice without
@@ -429,9 +427,9 @@ button:active { transform: translateY(1px); }
    This inverts the old "full-brightness always." The eye goes to what needs attention because
    everything else is quiet — how Elite/Star Citizen health rings read.
 
-   Palette discipline: TWO hue families carry the identity (steel-blue structure + cyan active
-   systems). Amber = heat (only bright when climbing). Red = danger (only bright on damage).
-   Mint = cargo/income. That is the whole vocabulary — no rainbow.
+   The current tokens use steel/cyan for structure and active systems, amber for heat, red for
+   danger, and mint for cargo/income. Those mappings describe existing semantics, not a universal
+   palette ceiling.
    ============================================================================================ */
 :root {
   /* Structure / hull — desaturated steel-blue. Calm "this is the ship itself."
@@ -457,11 +455,10 @@ button:active { transform: translateY(1px); }
   --console-edge-strong:rgba(132,160,200,.45); /* focused/active edge */
 }
 
-/* ---- console primitives (additive — coexist with .panel / .sf-card / .sf-btn, nothing breaks) ----
+/* ---- Current console primitives (additive compatibility variants) ----------------------------
 
-   Panel: cut-corner (the universal sci-fi command-console tell — StarCraft II / Stellaris / every
-   modern 4X) instead of border-radius. The asymmetric cut (top-right + bottom-left) reads as
-   "command console," not "rounded web card." */
+   This panel uses the existing asymmetric cut treatment. It is one available component treatment,
+   not a universal replacement for other panel geometry. */
 
 /* General-purpose variant for screens/modals — MAY use shadow + transition (not flight-mounted). */
 .sf-console-panel {
@@ -479,7 +476,7 @@ button:active { transform: translateY(1px); }
   clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
 }
 
-/* Button: cut-corner, uppercase, letter-spaced — the command-console affordance. */
+/* Current console-button variant: cut-corner, uppercase, and letter-spaced. */
 .sf-console-btn {
   font-family: inherit; cursor: pointer; pointer-events: auto;
   background: var(--console-bg-solid); color: var(--ink);
@@ -667,6 +664,56 @@ button:active { transform: translateY(1px); }
   font-size: 10px;
   line-height: 1.25;
   letter-spacing: 0.05em;
+}
+
+/* Auto-target helm: a fixed joystick gate plus a bounded ship-control puck. Target markers remain
+   separate weapon overlays, so this intentionally avoids crosshair/diamond shapes and hostile red. */
+#auto-target-stick-base {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(144px, 56vmin);
+  height: max(144px, 56vmin);
+  transform: translate(-50%, -50%);
+  border: 1px solid color-mix(in srgb, var(--cyan, #39d0ff) 38%, transparent);
+  border-radius: 50%;
+  box-shadow: inset 0 0 28px rgba(57, 208, 255, 0.035);
+  pointer-events: none;
+  z-index: 14;
+  display: none;
+}
+#auto-target-stick-base::before,
+#auto-target-stick-base::after {
+  content: '';
+  position: absolute;
+  background: rgba(57, 208, 255, 0.18);
+}
+#auto-target-stick-base::before { left: 50%; top: 0; width: 1px; height: 100%; }
+#auto-target-stick-base::after { left: 0; top: 50%; width: 100%; height: 1px; }
+#auto-target-stick-base > span {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  color: rgba(126, 225, 255, 0.72);
+  font-size: 10px;
+  letter-spacing: .18em;
+}
+#auto-target-stick-puck {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  transform: translate3d(50vw, 50vh, 0) translate(-50%, -50%);
+  border: 2px solid #7ee1ff;
+  border-radius: 50%;
+  background: rgba(57, 208, 255, 0.22);
+  box-shadow: 0 0 12px rgba(57, 208, 255, 0.65);
+  pointer-events: none;
+  z-index: 15;
+  will-change: transform;
+  display: none;
 }
 /* Contacts strip v2: one-word state chip, threat-tier pips, derelict manifest line. */
 .sf-overview-row { flex-wrap: wrap; }

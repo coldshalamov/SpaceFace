@@ -8,13 +8,13 @@ Read alongside the mechanic spec. Do not replace it.
 
 **B0: COLD START**
 
-Mechanic: mine 10u Veldspar, deliver to home station.
+Mechanic: sample the 47-A mass discrepancy (mine/recover the marked assay), dock Helios, settle. Mining remains the tutorial verb; the **logged** story is mass 12.4t → 0 / payment withheld.
 
-Narrative: This is Contract 47-A. The player doesn't know that yet. They know the weight on accept (12.4t) and they know the weight on delivery (0kg) and the HUD never reconciles the difference. Payment withheld. Board still lists 47-A as open.
+Narrative: This is Contract 47-A. The player doesn't know that yet. Full contract text (optional deep-read): mass on accept **12.4t**, authorization **VALE, D. / REF 44-C** (code VALE-ALA-47A). On delivery the sample is gone, payment is withheld, status stays PENDING/OPEN. Board still lists 47-A. Persistent cargo **UNCLASSIFIED COMPOSITE — 3.1 kg** is already in the hold as PERSONAL EFFECTS.
 
-Graffiti at home station airlock: THEY KNEW THE MASS. (First appearance.)
+Graffiti at home station airlock: THEY KNEW THE MASS. (First appearance.) Optional foreshadow: HELIOS DIDN'T NEED IT. THEY TOOK IT ANYWAY.
 
-What the player learns mechanically: how to mine. What the player learns narratively: the weight that gets logged is not the weight that gets paid. The HUD calls it "STABLE LOAD" until it doesn't.
+What the player learns mechanically: recover + deliver. What the player learns narratively: the weight that gets logged is not the weight that gets paid. The HUD calls it "STABLE LOAD" until it doesn't.
 
 HUD behavior: Phase 1. The "STABLE LOAD" line stays on screen after the cargo is gone. The player can toggle it off. The line stays.
 
@@ -82,7 +82,7 @@ Graffiti at the clearing station: EVERY MAN PAYS TWICE. FIRST IN FLESH. THEN IN 
 
 What the player learns: the factions are distinct. The system they operate in is not.
 
-HUD behavior: Phase 1. No anomalies. The branch choice sets the story.branch flag cleanly.
+HUD behavior: Phase 2 begins (complicit). Admin field on accept shows V. DIRECTOR, ACTING / REF 44-C once. The branch choice sets the story.branch flag cleanly.
 
 Vale: the clearing station administrator field. If the player reads it, this is the second Vale sighting. The name "V. Director, acting" is designed to be parseable if you're looking for it.
 
@@ -100,7 +100,7 @@ Graffiti at the mission chain's final destination: THE WALLS WERE NEVER THE REAL
 
 What the player learns: they have been in more stories than they knew about. The "ADMINISTRATIVE RECORDS" cargo is the first concrete thread of the Vale network that the player is now carrying in their own manifest history.
 
-HUD behavior: Phase 2 begins. The manifest self-correction (from "INDUSTRIAL COMPONENTS" to "ADMINISTRATIVE RECORDS — 3 YEARS / SEALED") happens silently. The player's manifest history shows only the final description.
+HUD behavior: Phase 2 (complicit). The manifest self-correction (from "INDUSTRIAL COMPONENTS" to "ADMINISTRATIVE RECORDS — 3 YEARS / SEALED") happens silently. The player's manifest history shows only the final description.
 
 Vale: the "VALE HOLDINGS LLC" registry. Third sighting. The pattern is now visible if the player has been tracking the references.
 
@@ -110,7 +110,7 @@ Vale: the "VALE HOLDINGS LLC" registry. Third sighting. The pattern is now visib
 
 Mechanic: deploy first passive asset.
 
-Narrative: The passive asset (mining drone, NPC trader, or outpost plot) begins generating income. The income is real. The first deposit arrives with a note in the transaction record: "REMITTANCE FROM ASSET DEPLOYMENT / CLEARED: VALE HOLDINGS LLC." The player's asset income is being processed through Vale's clearing system. This was always the case. The player just started generating enough income for the line to appear in their ledger.
+Narrative: The passive asset (mining drone, NPC trader, or outpost plot) begins generating income. The income is real. The first deposit arrives with a note in the transaction record: "REMITTANCE FROM ASSET DEPLOYMENT / CLEARED: VALE HOLDINGS LLC." Deploying the asset made the clearing relationship visible.
 
 Comms popup: CONTRACT 47-A — PAYMENT PENDING. PLEASE ADVISE AVAILABILITY. *(This is the first run. The payment amount is correct. If the player accepts: they are added to the Vale roster, which appears in the Ashfall Reach ledger. If the player declines: nothing changes. The income from their passive asset continues to clear through Vale's system regardless.)*
 
@@ -118,7 +118,7 @@ Graffiti on the player's own bulkhead (first appearance of this): THEY KNEW THE 
 
 What the player learns: the system was always going to route the player's success through Vale's clearing system. Deploying the passive asset didn't create this relationship. It made it visible.
 
-HUD behavior: Phase 2. The "CLEARED: VALE HOLDINGS LLC" note in the ledger should be in the secondary log — visible if the player opens the full transaction record, not visible in the summary.
+HUD behavior: Phase 3 begins (absent). The "CLEARED: VALE HOLDINGS LLC" note in the ledger should be in the secondary log — visible if the player opens the full transaction record, not visible in the summary.
 
 Vale: the income clearing note. Fourth sighting. Also: the CONTRACT 47-A payment comms popup. Fifth sighting, first direct contact offer.
 
@@ -126,11 +126,11 @@ Vale: the income clearing note. Fourth sighting. Also: the CONTRACT 47-A payment
 
 **B7: THE DEEP REACH**
 
-Mechanic: reach Ashfall Reach and make the endgame choice.
+Mechanic: complete the Deep Reach physical operation, enter/dock Ashfall Reach (Kurtz desk + ledger), then make the endgame choice. Net-worth/rep gates eligibility; place is required.
 
-Narrative: The Kurtz figure's ledger. Director Vale as a line item under BENEFICIARY. The player's own callsign in the ledger, in the COUNTERPARTY column, filed six weeks before their first contract — under the transponder ID that the ship carried before they bought it. They are already in the record. They were in it before they arrived.
+Narrative: The Kurtz figure's ledger. Director Vale as a line item under BENEFICIARY. Elroy under COUNTERPARTY — DECEASED (B2). The player's own callsign in the ledger, in the COUNTERPARTY column, filed six weeks before their first contract — under the transponder ID that the ship carried before they bought it. They are already in the record. They were in it before they arrived. Optional Thread B: NAVIGATIONAL DATA 0.01t (never decodes).
 
-The four choices (Clean Uniform, Same Silence, Only Honest Option, The Ledger Continues) are not presented as a menu. They are three available contracts on three separate board entries, the graffiti-only option C, and the staying-at-the-desk option D (available only if the player is holding the ledger and declines to leave).
+The five choices (Clean Uniform A, Same Silence B, Only Honest Option C, The Ledger Continues D, The Next Run E) are not a five-button menu. A/B are board contracts; C is jump-without-destination at Ashfall; D is stay-with-ledger; E appears only after declining A–D and returning to the station courier.
 
 Graffiti on the player's bulkhead (reappears, same hand): THEY KNEW THE MASS. THEY ALWAYS KNEW THE MASS.
 

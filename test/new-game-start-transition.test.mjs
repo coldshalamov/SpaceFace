@@ -144,6 +144,28 @@ test('authored-visual failure is distinct from library failure and remains fail-
   assert.equal(flights, 0);
 });
 
+test('render-pipeline failure cannot publish flight after authored visuals load', async () => {
+  const guard = createRunTransitionGuard();
+  const token = guard.begin('new-game');
+  let flights = 0;
+
+  await assert.rejects(
+    runNewGameStartTransition({
+      guard,
+      token,
+      prepareRun() {},
+      waitForLibrary: () => true,
+      waitForVisuals: () => true,
+      waitForWarmup: () => false,
+      enterFlight: () => { flights += 1; },
+    }),
+    (error) => error.code === 'RENDER_PIPELINE_UNAVAILABLE'
+      && error.stage === 'render-pipeline'
+      && error.retryable === true,
+  );
+  assert.equal(flights, 0);
+});
+
 function deferred() {
   let resolve;
   let reject;

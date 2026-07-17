@@ -10,6 +10,7 @@ import * as flavor006 from './060-quiessence.js';
 import * as flavor007 from './070-hush.js';
 import * as flavor008 from './080-landmark-lore.js';
 import * as flavor009 from './090-set-piece-missions.js';
+import * as flavor010 from './100-rim-poi-lore.js';
 
 export const FLAVOR_MODULES = Object.freeze([
   Object.freeze({ sourceFile: '010-wreck-rumors.js', namespace: flavor001 }),
@@ -21,6 +22,7 @@ export const FLAVOR_MODULES = Object.freeze([
   Object.freeze({ sourceFile: '070-hush.js', namespace: flavor007 }),
   Object.freeze({ sourceFile: '080-landmark-lore.js', namespace: flavor008 }),
   Object.freeze({ sourceFile: '090-set-piece-missions.js', namespace: flavor009 }),
+  Object.freeze({ sourceFile: '100-rim-poi-lore.js', namespace: flavor010 }),
 ]);
 export const FLAVOR_PACKS = buildFlavorCatalog(FLAVOR_MODULES);
 export const FLAVOR_SOURCE_BY_REF = buildFlavorSourceIndex(FLAVOR_PACKS);

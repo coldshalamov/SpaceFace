@@ -17,11 +17,15 @@
 //   4. Gravimetric drives are explicitly non-Newtonian and trade cumulative speed for control.
 //   5. Pulse-plate boost is a charged discrete momentum impulse.
 //   6. Every result is deterministic for the same input stream.
+//   7. Coast helm: when main throttle and boost are idle, yaw rate/accel rise so pilots can
+//      let off the thrusters and flip more nimbly (strategic, not free while thrusting).
 
 import { DRIVE_FAMILIES, normalizeProfile } from './propulsionCatalog.js';
 
 export const PROPULSION_RUNTIME_SCHEMA_VERSION = 1;
 export const FLIGHT_ASSIST_MODES = Object.freeze(['assisted', 'drift', 'newtonian']);
+/** Yaw authority multiplier while main thrusters are idle (let-off-and-flip primitive). */
+export const COAST_HELM_YAW_MULT = 1.2;
 
 const EPS = 1e-9;
 const TAU = Math.PI * 2;
@@ -118,6 +122,7 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
       assistReason: assist.reason,
       environmentalAcceleration: environmental,
       targetYawRate: yaw.targetYawRate,
+      coastHelm: !!yaw.coastHelm,
       desiredHeading: null,
       boostFraction: input.boost ? 1 : 0,
       governor,
@@ -219,6 +224,7 @@ function stepGravimetric(body, input, profile, runtime, environment, dt) {
       targetVelocity,
       velocityError: error,
       targetYawRate: yaw.targetYawRate,
+      coastHelm: !!yaw.coastHelm,
       desiredHeading: null,
       boostFraction: input.boost ? 1 : 0,
     },
@@ -301,7 +307,7 @@ function stepPulsePlate(body, input, profile, runtime, environment, dt) {
 
   const yaw = desiredHeading == null
     ? computeYawControl(body, input, profile, dt)
-    : computeHeadingControl(body, desiredHeading, profile, dt);
+    : computeHeadingControl(body, desiredHeading, profile, dt, input);
 
   const chargeEnergy = charging ? positive(profile.resources && profile.resources.energyPerChargeS, 0) * dt : 0;
   const chargeHeat = charging ? positive(profile.resources && profile.resources.heatPerChargeS, 0) * dt : 0;
@@ -340,6 +346,7 @@ function stepPulsePlate(body, input, profile, runtime, environment, dt) {
       desiredHeading,
       headingError: desiredHeading == null ? 0 : wrapAngle(desiredHeading - body.rot),
       targetYawRate: yaw.targetYawRate,
+      coastHelm: !!yaw.coastHelm,
     },
   });
 }
@@ -402,6 +409,7 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
       spool,
       assistLocal: assist.local,
       targetYawRate: yaw.targetYawRate,
+      coastHelm: !!yaw.coastHelm,
       desiredHeading: null,
       governor,
     },
@@ -451,6 +459,7 @@ function stepFieldSail(body, input, profile, runtime, environment, dt) {
       fieldDirection: fieldDir,
       alignment,
       targetYawRate: yaw.targetYawRate,
+      coastHelm: !!yaw.coastHelm,
       desiredHeading: null,
     },
   });
@@ -510,33 +519,46 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
   return { accel: localToWorld(local, axes), local, reason };
 }
 
+/**
+ * Coast helm: idle main drive frees RCS for a ~20% yaw authority bump.
+ * Gated on throttle + boost only — strafe is RCS and must not cancel the flip bonus.
+ */
+function coastHelmYawMultiplier(input, profile) {
+  const dead = positive(profile.assist && profile.assist.deadInput, 0.025);
+  if (Math.abs(finite(input.throttle, 0)) > dead) return 1;
+  if (input.boost) return 1;
+  return COAST_HELM_YAW_MULT;
+}
+
 function computeYawControl(body, input, profile, dt) {
   const mode = normalizeAssistMode(input.assistMode);
   const turn = clamp(finite(input.turn, 0), -1, 1);
   if (mode === 'newtonian' && Math.abs(turn) < 0.001) {
-    return { targetYawRate: body.angVel, angularAcceleration: 0 };
+    return { targetYawRate: body.angVel, angularAcceleration: 0, coastHelm: false };
   }
-  const targetYawRate = turn * positive(profile.maxYawRate, 2.5);
+  const helm = coastHelmYawMultiplier(input, profile);
+  const targetYawRate = turn * positive(profile.maxYawRate, 2.5) * helm;
   const error = targetYawRate - body.angVel;
   const accelerating = Math.abs(targetYawRate) > Math.abs(body.angVel) && Math.sign(targetYawRate) === Math.sign(error);
   const maxAlpha = accelerating
-    ? positive(profile.yawAccel, 8)
-    : positive(profile.yawBrake, positive(profile.yawAccel, 8) * 1.4);
+    ? positive(profile.yawAccel, 8) * helm
+    : positive(profile.yawBrake, positive(profile.yawAccel, 8) * 1.4) * helm;
   const angularAcceleration = clamp(error / Math.max(dt, 1 / 120), -maxAlpha, maxAlpha);
-  return { targetYawRate, angularAcceleration };
+  return { targetYawRate, angularAcceleration, coastHelm: helm > 1 };
 }
 
-function computeHeadingControl(body, desiredHeading, profile, dt) {
+function computeHeadingControl(body, desiredHeading, profile, dt, input = null) {
+  const helm = input ? coastHelmYawMultiplier(input, profile) : COAST_HELM_YAW_MULT;
   const error = wrapAngle(desiredHeading - body.rot);
-  const maxRate = positive(profile.maxYawRate, 2);
+  const maxRate = positive(profile.maxYawRate, 2) * helm;
   const targetYawRate = clamp(error * 3.8, -maxRate, maxRate);
   const rateError = targetYawRate - body.angVel;
   const angularAcceleration = clamp(
     rateError / Math.max(dt, 1 / 120),
-    -positive(profile.yawBrake, 9),
-    positive(profile.yawAccel, 7)
+    -positive(profile.yawBrake, 9) * helm,
+    positive(profile.yawAccel, 7) * helm
   );
-  return { targetYawRate, angularAcceleration };
+  return { targetYawRate, angularAcceleration, coastHelm: helm > 1 };
 }
 
 function reactionLimits(profile, boostMult) {

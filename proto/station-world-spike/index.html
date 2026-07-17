@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base href="/">
+  <title>SpaceFace — Station World Spike</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/vendor/three.module.js",
+      "three/addons/": "/vendor/addons/",
+      "@floating-ui/dom": "/node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs",
+      "@floating-ui/core": "/node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs",
+      "@floating-ui/utils": "/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs"
+    }
+  }
+  </script>
+  <link rel="stylesheet" href="/proto/station-world-spike/station-world.css">
+</head>
+<body>
+  <main id="station-world" data-mode="berth" aria-label="Helios station docking bay">
+    <canvas id="bay-canvas" aria-label="Your ship berthed inside Helios station"></canvas>
+    <div class="bay-architecture" aria-hidden="true"></div>
+    <div class="bay-depth" aria-hidden="true">
+      <div class="bay-threshold"></div>
+      <div class="bay-gantry bay-gantry--port"><i></i><i></i><i></i><i></i></div>
+      <div class="bay-gantry bay-gantry--starboard"><i></i><i></i><i></i><i></i></div>
+      <div class="work-lamp work-lamp--port"></div>
+      <div class="work-lamp work-lamp--starboard"></div>
+      <div class="berth-platen"><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+
+    <div class="projection-volume" aria-hidden="true"></div>
+    <svg id="twin-field" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="spectral" x1="0" x2="1">
+          <stop offset="0" stop-color="#6af7df" stop-opacity="0"/>
+          <stop offset=".42" stop-color="#70e8ff" stop-opacity=".8"/>
+          <stop offset=".72" stop-color="#a58bff" stop-opacity=".55"/>
+          <stop offset="1" stop-color="#6af7df" stop-opacity="0"/>
+        </linearGradient>
+        <filter id="soft-light" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3" result="glow"/>
+          <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <g class="twin-acquire" filter="url(#soft-light)">
+        <path class="crown-spine" d="M170 184 Q500 18 830 184"/>
+        <ellipse class="twin-orbit twin-orbit--wide" cx="500" cy="390" rx="315" ry="142"/>
+        <ellipse class="twin-orbit twin-orbit--tight" cx="500" cy="390" rx="244" ry="104"/>
+        <path class="twin-keel" d="M198 480 C360 425 386 532 500 516 C616 499 654 423 806 480"/>
+        <path class="twin-scan" d="M210 390 H790"/>
+      </g>
+      <g id="umbilical-paths"></g>
+      <g id="mode-trace" filter="url(#soft-light)"></g>
+    </svg>
+
+    <section class="station-mark" aria-label="Current station">
+      <span class="station-mark__authority">SOLAR CONCORD // HELIOS PRIME</span>
+      <h1>HELIOS</h1>
+      <span class="station-mark__berth">ORBITAL EXCHANGE · BERTH 07</span>
+    </section>
+
+    <section class="ship-mark" aria-label="Current ship">
+      <span class="ship-mark__state">DOCKED · SERVICE LINK LIVE</span>
+      <h2>HITCH</h2>
+      <span>KESTREL-CLASS SCOUT</span>
+    </section>
+
+    <section class="station-readout" aria-label="Station status">
+      <div data-readout="credits"><span>CREDITS</span><strong id="credits">5,400</strong><small>LIQUID</small></div>
+      <div data-readout="hold"><span>HOLD</span><strong>21 / 40</strong><small>52% MASS</small></div>
+      <div data-readout="departure"><span>DEPARTURE</span><strong class="ready">READY</strong><small>ALL LOCKS CLEAR</small></div>
+    </section>
+
+    <nav id="service-crown" aria-label="Station operating modes"></nav>
+
+    <section id="ship-services" aria-label="Ship services"></section>
+
+    <div id="mode-instrument" data-instrument="berth" aria-hidden="true">
+      <span class="mode-instrument__orbit mode-instrument__orbit--outer"></span>
+      <span class="mode-instrument__orbit mode-instrument__orbit--inner"></span>
+      <span class="mode-instrument__axis"></span>
+      <span class="mode-instrument__reticle"></span>
+      <span class="mode-instrument__index">07</span>
+    </div>
+
+    <div id="mode-signal" aria-live="polite" aria-atomic="true">
+      <span>ORBITAL TWIN // LIVE</span>
+      <strong>BERTH 07 / HARD-LOCKED</strong>
+      <small>Hitch indexed · four service lines available · departure ready</small>
+    </div>
+
+    <div id="acquisition" role="status" aria-live="polite" aria-label="Docking acquisition sequence">
+      <div class="acquisition__line"></div>
+      <p id="acquisition-text">ACQUIRING STATION TWIN</p>
+    </div>
+
+    <div id="receipt" role="status" aria-live="polite"></div>
+
+    <div class="camera-hint" aria-hidden="true"><kbd>DRAG</kbd> ORBIT SHIP <i></i><kbd>WHEEL</kbd> FOCUS <i></i><kbd>ESC</kbd> RETURN OUTWARD</div>
+  </main>
+  <script type="module" src="/proto/station-world-spike/station-world.js"></script>
+</body>
+</html>

@@ -184,6 +184,7 @@ export const NORTH_SECTORS = Object.freeze([
     pois: Object.freeze([
       Object.freeze({ id: 'poi_haumea_fissure', type: 'anomaly', name: 'Ice Fissure Signal' }),
       Object.freeze({ id: 'poi_haumea_buoy', type: 'beacon', name: 'Rift Range Buoy' }),
+      Object.freeze({ id: 'poi_haumea_probe', type: 'derelict', name: 'Rift Probe Shell' }),
     ]),
   }),
 
@@ -232,6 +233,7 @@ export const NORTH_SECTORS = Object.freeze([
     pois: Object.freeze([
       Object.freeze({ id: 'poi_eris_drop', type: 'cache', name: 'Quiet Drop Point', hidden: true }),
       Object.freeze({ id: 'poi_eris_wreck', type: 'wreck', name: 'Toll-Runner Wreck' }),
+      Object.freeze({ id: 'poi_eris_dead_drop', type: 'cache', name: 'Margin Dead Drop', hidden: true, factionId: 'faction_quiet' }),
     ]),
   }),
 
@@ -361,6 +363,11 @@ export const NORTH_ANCHORS = Object.freeze({
         pos: Object.freeze({ x: -1240, z: -520 }),
         landmarkGlb: 'place_lane_beacon',
       }),
+      Object.freeze({
+        id: 'poi_haumea_probe',
+        pos: Object.freeze({ x: 960, z: -640 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
     ]),
   }),
 
@@ -397,6 +404,11 @@ export const NORTH_ANCHORS = Object.freeze({
         pos: Object.freeze({ x: 1280, z: 720 }),
         landmarkGlb: 'place_dead_hulk',
         landmark: true,
+      }),
+      Object.freeze({
+        id: 'poi_eris_dead_drop',
+        pos: Object.freeze({ x: 420, z: -1100 }),
+        landmarkGlb: 'place_debris_chunk',
       }),
     ]),
   }),

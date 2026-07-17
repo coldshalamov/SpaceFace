@@ -1,5 +1,5 @@
 // src/data/missions.js – mission system canonical data.
-// Exports: MISSION_TYPES (10), SET_PIECE_MISSIONS (3), STORY_BEATS (8), OFFER_MIX, MISSION_TUNING.
+// Exports: MISSION_TYPES (10), SET_PIECE_MISSIONS (5), STORY_BEATS (8), OFFER_MIX, MISSION_TUNING.
 // Pure data, no imports.
 
 export const MISSION_TUNING = {
@@ -201,10 +201,12 @@ export const MISSION_TYPES = [
   },
 ];
 
-// SP1 — three authored set-piece chains compiled into ordinary sequential mission offers.
+// SP1 — authored set-piece chains compiled into ordinary sequential mission offers.
 // These are definitions, not persistent run state: boards, active missions, their cause records,
 // and canonical receipts remain the only save authority. A route consists of commonStages followed
 // by exactly one of two branch stage lists. Every route is intentionally 3-4 accepted missions.
+// Original three (long_read, witness_run, hearing) plus depth-shape expansion (blockade_run,
+// investigation_chain): each multiplies board variety via stage *graphs*, not single-threshold reskins.
 function setPieceCopyRefs(archetypeId, stageId) {
   const root = `mission.sp1.${archetypeId}.${stageId}`;
   return {
@@ -564,9 +566,250 @@ export const SET_PIECE_MISSIONS = [
       },
     ],
   },
+  // ── Depth shapes: multi-stage graphs with distinct verb sequences ──────────
+  {
+    id: 'blockade_run',
+    title: 'The Blockade Run',
+    startStationId: 'station_customs',
+    repeatable: true,
+    commonStages: [
+      {
+        id: 'map_the_cordon',
+        title: 'Map the Cordon',
+        type: 'recon_scan',
+        boardStationId: 'station_customs',
+        destSectorId: 'sector_tethys_junction',
+        factionId: 'faction_scn',
+        riskTier: 2,
+        rewardCr: 720,
+        collateralCr: 0,
+        durationS: 1500,
+        distance: 900,
+        params: {
+          scanTargets: 3,
+          setPieceObjective: 'blockade_map_cordon',
+        },
+        clauseIds: [],
+        ...setPieceCopyRefs('blockade_run', 'map_the_cordon'),
+      },
+      {
+        id: 'hold_course_under_fire',
+        title: 'Hold Course Under Fire',
+        type: 'cargo_delivery',
+        boardStationId: 'station_customs',
+        destStationId: 'station_tethys',
+        destSectorId: 'sector_tethys_junction',
+        factionId: 'faction_mts',
+        riskTier: 2,
+        rewardCr: 1180,
+        collateralCr: 280,
+        durationS: 1800,
+        distance: 1100,
+        preloadedCargo: true,
+        params: {
+          cmdtyId: 'cmdty_classified_salvage',
+          qty: 1,
+          setPieceObjective: 'blockade_hold_course',
+        },
+        clauseIds: ['cargo_intact'],
+        ...setPieceCopyRefs('blockade_run', 'hold_course_under_fire'),
+      },
+    ],
+    branches: [
+      {
+        id: 'pay_the_toll',
+        label: 'Pay the Quiet Toll',
+        tradeoff: 'Lose mass and pride; keep the route legally invisible.',
+        stages: [
+          {
+            id: 'run_the_quiet_tithe',
+            title: 'Run the Quiet Tithe',
+            type: 'smuggling_run',
+            boardStationId: 'station_tethys',
+            destStationId: 'station_smuggler',
+            destSectorId: 'sector_pallas_drift',
+            factionId: 'faction_quiet',
+            riskTier: 3,
+            rewardCr: 1640,
+            collateralCr: 480,
+            durationS: 1600,
+            distance: 2400,
+            preloadedCargo: true,
+            params: {
+              cmdtyId: 'cmdty_classified_salvage',
+              qty: 1,
+              setPieceObjective: 'blockade_quiet_tithe',
+            },
+            clauseIds: ['no_scan'],
+            ...setPieceCopyRefs('blockade_run', 'run_the_quiet_tithe'),
+          },
+        ],
+      },
+      {
+        id: 'break_the_guns',
+        label: 'Break the Guns',
+        tradeoff: 'Clear the cordon ships and force a public arrival.',
+        stages: [
+          {
+            id: 'clear_the_cordon',
+            title: 'Clear the Cordon Screen',
+            type: 'patrol_clear',
+            boardStationId: 'station_tethys',
+            destSectorId: 'sector_tethys_junction',
+            factionId: 'faction_scn',
+            riskTier: 3,
+            rewardCr: 1720,
+            collateralCr: 520,
+            durationS: 1700,
+            distance: 1000,
+            params: {
+              clearCount: 3,
+              targetStrength: 1.3,
+              setPieceObjective: 'blockade_clear_cordon',
+            },
+            clauseIds: [],
+            ...setPieceCopyRefs('blockade_run', 'clear_the_cordon'),
+          },
+          {
+            id: 'dock_through_wreckage',
+            title: 'Dock Through the Wreckage',
+            type: 'cargo_delivery',
+            boardStationId: 'station_tethys',
+            destStationId: 'station_drift',
+            destSectorId: 'sector_pallas_drift',
+            factionId: 'faction_mts',
+            riskTier: 2,
+            rewardCr: 2100,
+            collateralCr: 560,
+            durationS: 1400,
+            distance: 2600,
+            preloadedCargo: true,
+            params: {
+              cmdtyId: 'cmdty_classified_salvage',
+              qty: 1,
+              setPieceObjective: 'blockade_public_dock',
+            },
+            clauseIds: ['cargo_intact'],
+            ...setPieceCopyRefs('blockade_run', 'dock_through_wreckage'),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'investigation_chain',
+    title: 'The Investigation Chain',
+    startStationId: 'station_reach',
+    repeatable: true,
+    commonStages: [
+      {
+        id: 'scan_the_silent_wreck',
+        title: 'Scan the Silent Wreck',
+        type: 'recon_scan',
+        boardStationId: 'station_reach',
+        destSectorId: 'sector_io_reach',
+        factionId: 'faction_free',
+        riskTier: 2,
+        rewardCr: 680,
+        collateralCr: 0,
+        durationS: 1500,
+        distance: 1200,
+        params: {
+          scanTargets: 3,
+          setPieceObjective: 'investigation_scan_wreck',
+        },
+        clauseIds: [],
+        ...setPieceCopyRefs('investigation_chain', 'scan_the_silent_wreck'),
+      },
+      {
+        id: 'recover_the_black_box',
+        title: 'Recover the Black Box',
+        type: 'salvage_retrieval',
+        boardStationId: 'station_reach',
+        destSectorId: 'sector_io_reach',
+        factionId: 'faction_free',
+        riskTier: 2,
+        rewardCr: 1240,
+        collateralCr: 300,
+        durationS: 1800,
+        distance: 900,
+        params: {
+          setPieceObjective: 'investigation_recover_box',
+        },
+        clauseIds: ['no_kills'],
+        ...setPieceCopyRefs('investigation_chain', 'recover_the_black_box'),
+      },
+    ],
+    branches: [
+      {
+        id: 'file_public',
+        label: 'File It Public',
+        tradeoff: 'Hand the log to Concord and make the names legible.',
+        stages: [
+          {
+            id: 'file_the_log',
+            title: 'File the Log at Customs',
+            type: 'cargo_delivery',
+            boardStationId: 'station_reach',
+            destStationId: 'station_customs',
+            destSectorId: 'sector_tethys_junction',
+            factionId: 'faction_scn',
+            riskTier: 2,
+            rewardCr: 1680,
+            collateralCr: 440,
+            durationS: 1500,
+            distance: 2800,
+            preloadedCargo: true,
+            params: {
+              cmdtyId: 'cmdty_classified_salvage',
+              qty: 1,
+              setPieceObjective: 'investigation_file_log',
+            },
+            clauseIds: ['cargo_intact'],
+            ...setPieceCopyRefs('investigation_chain', 'file_the_log'),
+          },
+        ],
+      },
+      {
+        id: 'sell_quiet',
+        label: 'Sell It Quiet',
+        tradeoff: 'Sell the log to Quiet and erase who found it first.',
+        stages: [
+          {
+            id: 'sell_the_log',
+            title: 'Sell the Log Off-Book',
+            type: 'smuggling_run',
+            boardStationId: 'station_reach',
+            destStationId: 'station_nyx_march',
+            destSectorId: 'sector_nyx_march',
+            factionId: 'faction_quiet',
+            riskTier: 3,
+            rewardCr: 2140,
+            collateralCr: 580,
+            durationS: 1600,
+            distance: 2200,
+            preloadedCargo: true,
+            params: {
+              cmdtyId: 'cmdty_classified_salvage',
+              qty: 1,
+              setPieceObjective: 'investigation_sell_log',
+            },
+            clauseIds: ['no_scan'],
+            ...setPieceCopyRefs('investigation_chain', 'sell_the_log'),
+          },
+        ],
+      },
+    ],
+  },
 ];
 
-const SET_PIECE_ARCHETYPE_IDS = ['long_read', 'witness_run', 'hearing'];
+const SET_PIECE_ARCHETYPE_IDS = [
+  'long_read',
+  'witness_run',
+  'hearing',
+  'blockade_run',
+  'investigation_chain',
+];
 const SET_PIECE_CLAUSE_IDS = new Set(['no_kills', 'cargo_intact', 'no_scan']);
 const SET_PIECE_COMMODITY_IDS = new Set(['cmdty_classified_salvage']);
 
@@ -579,7 +822,9 @@ export function validateSetPieceMissionCatalog(catalog = SET_PIECE_MISSIONS) {
   let playableRoutes = 0;
 
   if (!Array.isArray(catalog)) errors.push('SET_PIECE_MISSIONS must be an array.');
-  if (definitions.length !== 3) errors.push(`Expected 3 SP1 archetypes; found ${definitions.length}.`);
+  if (definitions.length !== SET_PIECE_ARCHETYPE_IDS.length) {
+    errors.push(`Expected ${SET_PIECE_ARCHETYPE_IDS.length} SP1 archetypes; found ${definitions.length}.`);
+  }
 
   for (const definition of definitions) {
     const root = definition && definition.id || '<missing-archetype>';
@@ -729,7 +974,7 @@ export const OFFER_MIX = {
 // on-demand context, not the first-flight B0 verb. During B0 the HUD mission tracker owns the
 // single persistent actionable line (onboarding waypoint reason: "Contract 47-A: thrust to the beacon.").
 export const STORY_BEATS = [
-  { beat: 0, id: 'cold_start',     objective: 'Follow the 47-A mass signal, sample the discrepancy, then dock at Helios before the manifest is rewritten.',
+  { beat: 0, id: 'cold_start',     objective: 'Contract 47-A: sample the 12.4t mass discrepancy, dock Helios. Payment withheld. Status pending.',
     reward: { credits: 400, rep: { faction: 'home', amount: 5 }, unlock: 'mod_mining_laser_s' }, introduces: 'mining', next: 1 },
   { beat: 1, id: 'honest_work',    objective: 'Accept a low-risk haul or trade contract, confirm it is TRACKED in Mission Log, then carry the required cargo to the marked station for profit.',
     reward: { credits: 600, unlock: 'trade_tutorial' }, introduces: 'trade', next: 2 },

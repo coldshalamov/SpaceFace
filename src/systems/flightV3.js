@@ -58,6 +58,7 @@ const AUTOPILOT_CAPTURE_SPEED_FRACTION = 0.72;
 const AUTOPILOT_CAPTURE_ALIGNMENT = 0.58;
 const TETHER_HELM_MAX_YAW_RATE_MULT = 1.14;
 const TETHER_HELM_STRAIN_MULT = 1.75;
+const AUTO_TARGET_HELM_MULT = 1.5;
 const TETHER_HELM_PHASE_MULT = Object.freeze({
   capture: 4.2,
   loaded: 6.0,
@@ -196,7 +197,10 @@ export const flightV3 = {
     const runtime = propulsionRuntime(entity, baseProfile);
     let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer, dt);
     const helm = tetherHelmAuthority(state, isPlayer);
-    const profile = helm.mult > 1 ? applyTetherHelmProfile(baseProfile, helm) : baseProfile;
+    const tetherProfile = helm.mult > 1 ? applyTetherHelmProfile(baseProfile, helm) : baseProfile;
+    const profile = isPlayer && state.input && state.input.autoFire
+      ? applyAutoTargetHelmProfile(tetherProfile)
+      : tetherProfile;
     let pursuit = null;
     let autopilot = null;
     if (isPlayer) {
@@ -1031,6 +1035,21 @@ function applyTetherHelmProfile(profile, helm) {
       : profile.maxYawRate,
     yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * mult : profile.yawAccel,
     yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * (mult + 0.65) : profile.yawBrake,
+  };
+}
+
+export function applyAutoTargetHelmProfile(profile) {
+  return {
+    ...profile,
+    maxYawRate: Number.isFinite(profile.maxYawRate)
+      ? profile.maxYawRate * AUTO_TARGET_HELM_MULT
+      : profile.maxYawRate,
+    yawAccel: Number.isFinite(profile.yawAccel)
+      ? profile.yawAccel * AUTO_TARGET_HELM_MULT
+      : profile.yawAccel,
+    yawBrake: Number.isFinite(profile.yawBrake)
+      ? profile.yawBrake * AUTO_TARGET_HELM_MULT
+      : profile.yawBrake,
   };
 }
 

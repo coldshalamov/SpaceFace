@@ -1,5 +1,0 @@
-
-> spaceface@0.1.0 check:asset-reachability
-> node scripts/check-asset-reachability.mjs
-
-asset reachability OK ΓÇö 10 referenced runtime assets exist and are bundled (10 under bundled roots); 10 authoring-only reference sheets held out of the runtime.

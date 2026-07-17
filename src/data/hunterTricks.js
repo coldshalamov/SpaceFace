@@ -68,6 +68,30 @@ export const HUNTER_TRICKS = Object.freeze({
     cooldownS: 30,
     verb: { kind: 'emergency_jump', event: 'jump:arrive' },
   }),
+  'wake-mines': freeze({
+    id: 'wake-mines',
+    label: 'Wake Mines',
+    telegraph: 'Wake mines arming. Break the trail.',
+    counterWindowS: 1.3,
+    cooldownS: 19,
+    verb: { kind: 'mine_drop', event: 'combat:fire' },
+  }),
+  'pd-curtain': freeze({
+    id: 'pd-curtain',
+    label: 'PD Curtain',
+    telegraph: 'Point-defense curtain spinning up. Hold missiles.',
+    counterWindowS: 1.2,
+    cooldownS: 17,
+    verb: { kind: 'pd_screen', event: 'combat:fire' },
+  }),
+  'sensor-ghost': freeze({
+    id: 'sensor-ghost',
+    label: 'Sensor Ghost',
+    telegraph: 'Sensor ghost blooming. Trust the drive flare.',
+    counterWindowS: 1.4,
+    cooldownS: 21,
+    verb: { kind: 'decoy_clone', event: 'countermeasure:deployed' },
+  }),
 });
 
 export const HUNTER_TRICK_IDS = Object.freeze(Object.keys(HUNTER_TRICKS));

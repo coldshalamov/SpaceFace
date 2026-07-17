@@ -745,10 +745,10 @@ export const audio = {
     });
 
     // Pause respect (V2 §17 anti-pattern: "audio playing behind the pause menu"). When the sim
-    // freezes (pause menu, save-load swap, main menu), we duck music to silence, stop scheduling
-    // alarm beeps, and skip threat/music recomputation so the bed doesn't churn. On resume we
-    // restore the music bus and re-seed the alarm timers. UI cues (clicks) still play so menus
-    // feel responsive.
+    // freezes (pause menu, save-load swap, main menu), duck music + continuous flight beds, stop
+    // alarm scheduling, and skip threat/music recomputation. On resume restore music and re-seed
+    // alarms. UI cues still play so menus feel responsive — but AudioContext unlock itself must
+    // not emit a free "boop" just because the player clicked New Game.
     bus.on('sim:pause', () => this._onPause(true));
     bus.on('sim:resume', () => this._onPause(false));
 
@@ -804,7 +804,10 @@ export const audio = {
     rt.ctx = ctx;
 
     // master -> limiter -> destination
+    // Start the graph silent: createGain() defaults to 1.0, and the first gesture often lands on
+    // the main menu. Ramping down from full volume after oscillators start is the classic "boop".
     const master = ctx.createGain();
+    master.gain.value = 0.0001;
     const limiter = ctx.createDynamicsCompressor();
     try {
       limiter.threshold.value = -6; limiter.knee.value = 6; limiter.ratio.value = 12;
@@ -812,6 +815,7 @@ export const audio = {
     } catch (_) {}
     const sfxBus = ctx.createGain();
     const musicBus = ctx.createGain();
+    musicBus.gain.value = 0.0001;
     const engineBus = ctx.createGain();
     const ambientBus = ctx.createGain();
     const combatBus = ctx.createGain();
@@ -850,9 +854,13 @@ export const audio = {
     this._setBulletTimeAudio(!!rt._bulletTimeAudioActive);
     try { if (ctx.state === 'suspended') ctx.resume(); } catch (_) {}
 
-    // Continuous layers must start once the graph exists (P0.1 — ensure paths were dead).
-    this._ensureContinuousSources();
+    // Continuous flight layers belong in flight. Starting them on the first menu click hard-starts
+    // oscillators into a live graph and produces a one-shot "boop" with no gameplay reason.
+    // Build the music graph so pause/resume can own it, but re-apply pause silence afterward —
+    // sim:pause may have fired before AudioContext existed (main menu at boot).
+    if (!rt._paused) this._ensureContinuousSources();
     this._buildMusic();
+    if (rt._paused) this._onPause(true);
     this._startFrameLoop();
     return ctx;
   },
@@ -906,8 +914,8 @@ export const audio = {
     return cat === 'comms';
   },
 
-  // Pause/resume handler. Ducks music to silence and stops alarm scheduling so the pause menu is
-  // quiet; SFX one-shots and UI cues keep working (menus need feedback). Idempotent.
+  // Pause/resume handler. Ducks music + continuous flight beds so the pause/main menu is quiet;
+  // SFX one-shots and UI cues keep working (menus need feedback). Idempotent.
   _onPause(paused) {
     const rt = this.rt;
     rt._paused = !!paused;
@@ -917,13 +925,15 @@ export const audio = {
     const ctx = rt.ctx;
     if (!ctx) return;
     if (paused) {
-      // duck music to ~0 over 80ms so the cutoff is smooth, not a hard cut
+      // Instant silence on pause/menu — no audible ramp-out blip when the first gesture unlocks audio.
       try {
         const t = ctx.currentTime;
-        rt.musicBus.gain.cancelScheduledValues(t);
-        rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), t);
-        rt.musicBus.gain.linearRampToValueAtTime(0.0001, t + 0.08);
+        if (rt.musicBus) {
+          rt.musicBus.gain.cancelScheduledValues(t);
+          rt.musicBus.gain.setValueAtTime(0.0001, t);
+        }
       } catch (_) {}
+      this._silenceContinuousSources();
     } else {
       // restore to the configured music base
       try {
@@ -933,6 +943,8 @@ export const audio = {
         rt.musicBus.gain.linearRampToValueAtTime(
           Math.max(0.0001, (rt._musicBase || 0.5) * (rt._bulletTimeMusicMult || 1)), t + 0.4);
       } catch (_) {}
+      // Flight beds may not exist yet if the first unlock was on the main menu.
+      this._ensureContinuousSources();
       // re-seed alarm timers so they don't dump a backlog burst on resume
       rt._alarmNext.lowShield = ctx.currentTime;
       rt._alarmNext.lowHull = ctx.currentTime;
@@ -941,22 +953,55 @@ export const audio = {
     }
   },
 
+  /** Hard-silence continuous flight beds (engine/brake/tether). Used on pause and graph boot. */
+  _silenceContinuousSources() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const silence = (gainNode) => {
+      if (!gainNode || !gainNode.gain) return;
+      try {
+        gainNode.gain.cancelScheduledValues(t);
+        gainNode.gain.setValueAtTime(0.0001, t);
+      } catch (_) { try { gainNode.gain.value = 0.0001; } catch (__) {} }
+    };
+    silence(rt.engineHumGain);
+    silence(rt.engineNoiseGain);
+    silence(rt.engineSubGain);
+    silence(rt.brakeGain);
+    silence(rt.tetherHum);
+    silence(rt.tetherOverloadGain);
+    if (rt.heliosTrafficBed) silence(rt.heliosTrafficBed.gain);
+    rt._heliosTrafficTarget = 0.0001;
+  },
+
+  _isMuted() {
+    const a = this.state && this.state.settings && this.state.settings.audio;
+    return !!(a && a.muted);
+  },
+
   _applySettings() {
     const rt = this.rt; if (!rt.ctx) return;
     const a = (this.state.settings && this.state.settings.audio) || {};
     const muted = !!a.muted;
     const t = rt.ctx.currentTime;
-    const ramp = (param, target) => {
+    const ramp = (param, target, instant) => {
+      const safe = Math.max(0.0001, target);
       try {
         param.cancelScheduledValues(t);
+        // Mute / silence targets snap immediately so unlock + mute never leak a 50ms ramp blip.
+        if (instant || muted || safe <= 0.0001) {
+          param.setValueAtTime(safe, t);
+          return;
+        }
         param.setValueAtTime(Math.max(0.0001, param.value), t);
-        param.linearRampToValueAtTime(Math.max(0.0001, target), t + 0.05);
-      } catch (_) { try { param.value = target; } catch (__) {} }
+        param.linearRampToValueAtTime(safe, t + 0.05);
+      } catch (_) { try { param.value = safe; } catch (__) {} }
     };
 
     const masterVal = a.master == null ? 0.55 : a.master;
     const masterTarget = muted ? 0.0001 : linearGain(masterVal) * 0.501187;
-    ramp(rt.masterGain.gain, masterTarget);
+    ramp(rt.masterGain.gain, masterTarget, true);
 
     const sfxVal = a.sfx == null ? 0.7 : a.sfx;
 
@@ -983,7 +1028,11 @@ export const audio = {
 
     const musicVal = a.music == null ? 0.32 : a.music;
     rt._musicBase = linearGain(musicVal) * 0.05012 * sidechain;
-    ramp(rt.musicBus.gain, rt._musicBase * (rt._bulletTimeMusicMult || 1));
+    // Pause/main-menu must keep music bus silent even though _frame re-applies settings every tick.
+    const musicTarget = (muted || rt._paused)
+      ? 0.0001
+      : rt._musicBase * (rt._bulletTimeMusicMult || 1);
+    ramp(rt.musicBus.gain, musicTarget, muted || rt._paused);
   },
 
   // ---- one-shot SFX API ----
@@ -991,6 +1040,7 @@ export const audio = {
     const rt = this.rt;
     const ctx = rt.ctx;
     if (!ctx || ctx.state !== 'running') return null; // graceful skip when suspended
+    if (this._isMuted()) return null; // mute is hard silence — no unlock-ramp leak
     const recipe = AUDIO_RECIPE_BY_ID[recipeId];
     if (!recipe) return null;
     opts = opts || {};
@@ -2130,8 +2180,9 @@ export const audio = {
     // Priority duck continuous loops before engine/weapon gain writes
     this._updatePriorityDuckGains();
 
-    // Ensure continuous graphs once context is running (gesture may land after first events).
-    if (ctx.state === 'running' && !rt.engineOsc1) this._ensureContinuousSources();
+    // Ensure continuous graphs once context is running in an unpaused flight session.
+    // Do not start engine/brake/tether beds on the main-menu gesture unlock — that is the boop.
+    if (ctx.state === 'running' && !rt._paused && !rt.engineOsc1) this._ensureContinuousSources();
 
     // Update continuous procedural sources
     this._updateEngineHum();
@@ -2270,8 +2321,10 @@ export const audio = {
 
     // Layered propulsion bus: osc1 saw + osc2 sine (detune 6 ct) + sub sine + noise air.
     // Gain master for priority duck; voice peak lives on engineBus budgets.
+    // Soft-start at near-silence — _updateEngineHum ramps to the live idle/thrust target.
+    // Starting at 0.8 produced a hard one-shot click on first unlock.
     const humGain = ctx.createGain();
-    humGain.gain.value = 0.8;
+    humGain.gain.value = 0.0001;
 
     const osc1 = ctx.createOscillator();
     osc1.type = 'sawtooth';
@@ -2286,7 +2339,7 @@ export const audio = {
     sub.type = 'sine';
     sub.frequency.value = 27.5;
     const subGain = ctx.createGain();
-    subGain.gain.value = 0.12;
+    subGain.gain.value = 0.0001;
 
     const noise = ctx.createBufferSource();
     noise.buffer = getNoiseBuffer(ctx, rt._caches);

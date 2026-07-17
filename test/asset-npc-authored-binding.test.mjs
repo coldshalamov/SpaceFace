@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import * as rendererModule from '../src/render/renderer.js';
+import { shouldAutoTriggerAuthoredUpgrade } from '../src/render/partsLibrary.js';
 
 const enqueueMissingMeshBuilds = rendererModule.enqueueMissingMeshBuilds;
+const isEntityRenderRelevant = rendererModule.isEntityRenderRelevant;
+const isEntityAuthoredUpgradeRelevant = rendererModule.isEntityAuthoredUpgradeRelevant;
 
 test('cold-start mesh queue admits all ships before bulk world geometry', () => {
   assert.equal(
@@ -64,4 +67,85 @@ test('queue seam preserves existing mesh, no-mesh, and idempotency rules', () =>
 
   // Dead entries remain queued exactly as before and are discarded by _drainMeshBuildQueue.
   assert.deepEqual(queue, [alreadyQueued.id, dead.id, pending.id, rock.id]);
+});
+
+test('render residency keeps the active sector and a seam runway without building distant sectors', () => {
+  assert.equal(typeof isEntityRenderRelevant, 'function');
+  const state = {
+    playerId: 1,
+    player: { targetId: 9 },
+    entities: new Map([[1, { id: 1, pos: { x: 0, z: 0 }, vel: { x: 160, z: 0 } }]]),
+    world: { currentSectorId: 'sector_helios_prime' },
+  };
+  const player = { id: 1, type: 'ship', pos: { x: 0, z: 0 } };
+  const currentFar = {
+    id: 2, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 9000, z: 0 },
+  };
+  const neighborNear = {
+    id: 3, type: 'station', homeSectorId: 'sector_ceres_belt', pos: { x: 4900, z: 0 },
+  };
+  const neighborFar = {
+    id: 4, type: 'station', homeSectorId: 'sector_ceres_belt', pos: { x: 14000, z: 0 },
+  };
+  const targetedFar = {
+    id: 9, type: 'ship', homeSectorId: 'sector_ceres_belt', pos: { x: 14000, z: 0 },
+  };
+
+  assert.equal(isEntityRenderRelevant(player, state), true, 'player is always resident');
+  assert.equal(isEntityRenderRelevant(currentFar, state), true, 'the active sector stays complete');
+  assert.equal(isEntityRenderRelevant(neighborNear, state), true, 'nearby corridor content gets a streaming runway');
+  assert.equal(isEntityRenderRelevant(neighborFar, state), false, 'a distant reduced sector does not own live meshes');
+  assert.equal(isEntityRenderRelevant(targetedFar, state), true, 'an explicit target remains renderable');
+
+  const queue = [];
+  enqueueMissingMeshBuilds(
+    [player, currentFar, neighborNear, neighborFar, targetedFar],
+    new Map(),
+    new Set(),
+    queue,
+    (entity) => isEntityRenderRelevant(entity, state),
+  );
+  assert.deepEqual(queue, [player.id, targetedFar.id, currentFar.id, neighborNear.id]);
+});
+
+test('authored assets preload ahead of visibility without decoding the whole active sector', () => {
+  assert.equal(typeof isEntityAuthoredUpgradeRelevant, 'function');
+  const state = {
+    playerId: 1,
+    player: { targetId: null },
+    entities: new Map([[1, { id: 1, pos: { x: 0, z: 0 }, vel: { x: 160, z: 0 } }]]),
+    world: { currentSectorId: 'sector_helios_prime' },
+  };
+  const immediate = { id: 2, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 900, z: 0 } };
+  const approaching = { id: 3, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 2100, z: 0 } };
+  const offAxis = { id: 4, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 0, z: 2100 } };
+  const far = { id: 5, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 2900, z: 0 } };
+  assert.equal(isEntityAuthoredUpgradeRelevant(immediate, state), true, 'near content gets an immediate quality runway');
+  assert.equal(isEntityAuthoredUpgradeRelevant(approaching, state), true, 'approaching content preloads before entry');
+  assert.equal(isEntityAuthoredUpgradeRelevant(offAxis, state), false, 'stationary/off-axis content does not decode speculatively');
+  assert.equal(isEntityAuthoredUpgradeRelevant(far, state), false, 'offscreen current-sector content stays dormant');
+});
+
+test('main-scene first renders do not decode every loading-screen entity', () => {
+  assert.equal(typeof shouldAutoTriggerAuthoredUpgrade, 'function');
+  const mainScene = {};
+  const previewScene = {};
+  const liveState = { mode: 'loading', render: { scene: mainScene } };
+  const npc = { id: 7, type: 'ship', alive: true };
+  const player = { id: 1, type: 'ship', alive: true, isPlayer: true };
+  const hub = {
+    id: 2,
+    type: 'station',
+    alive: true,
+    data: { stationId: 'station_helios', sectorId: 'sector_helios_prime' },
+  };
+
+  assert.equal(shouldAutoTriggerAuthoredUpgrade(npc, mainScene, liveState), false,
+    'loading-screen traversal must not enqueue unrelated NPC assets');
+  assert.equal(shouldAutoTriggerAuthoredUpgrade(player, mainScene, liveState), true,
+    'the player remains a startup quality invariant');
+  assert.equal(shouldAutoTriggerAuthoredUpgrade(hub, mainScene, liveState), true,
+    'the starting landmark remains a startup quality invariant');
+  assert.equal(shouldAutoTriggerAuthoredUpgrade(npc, previewScene, liveState), true,
+    'isolated preview scenes retain their first-render upgrade trigger');
 });

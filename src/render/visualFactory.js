@@ -2355,18 +2355,38 @@ function buildDrone(e) {
 }
 
 function buildWreck(e) {
+  // Salvage wreckage — charred hull plates, not a molten blob. Cool steel + a thin heat halo
+  // so it still reads as "fresh kill debris" without looking like a lava marble.
   const R = e.radius || 6;
   const g = new THREE.Group();
-  const charred = getMaterial('wreck:mat', () => new THREE.MeshStandardMaterial({ color: 0x2a241e, roughness: 0.95, metalness: 0.25, emissive: 0x180a04, emissiveIntensity: 0.2 }));
+  const charred = getMaterial('wreck:mat', () => new THREE.MeshStandardMaterial({
+    color: 0x2a2e34, roughness: 0.92, metalness: 0.55, emissive: 0x1a1008, emissiveIntensity: 0.12,
+  }));
+  const plating = getMaterial('wreck:plate', () => new THREE.MeshStandardMaterial({
+    color: 0x3a424c, roughness: 0.78, metalness: 0.72, emissive: 0x0a0c10, emissiveIntensity: 0.08,
+  }));
   const rnd = mulberryLite(hashId(e.id));
-  for (let i = 0; i < 5; i++) {
-    const chunk = new THREE.Mesh(getGeometry(`wreck:c${i}`, () => new THREE.BoxGeometry(0.5 + i * 0.05, 0.4, 0.6)), charred);
-    chunk.position.set((rnd() - 0.5) * R, (rnd() - 0.5) * R * 0.5, (rnd() - 0.5) * R);
+  // Spine fragment — elongated so the silhouette reads as broken hull, not a sphere.
+  const spine = new THREE.Mesh(
+    getGeometry('wreck:spine', () => new THREE.BoxGeometry(1.6, 0.35, 0.55)),
+    charred,
+  );
+  spine.scale.set(R * 0.95, R * 0.55, R * 0.7);
+  spine.rotation.set(0.15, rnd() * Math.PI, 0.35);
+  g.add(spine);
+  for (let i = 0; i < 6; i++) {
+    const long = i % 2 === 0;
+    const chunk = new THREE.Mesh(
+      getGeometry(`wreck:c${i}`, () => new THREE.BoxGeometry(long ? 1.1 : 0.55, 0.22, long ? 0.4 : 0.7)),
+      i < 3 ? charred : plating,
+    );
+    chunk.position.set((rnd() - 0.5) * R * 1.1, (rnd() - 0.5) * R * 0.35, (rnd() - 0.5) * R * 1.1);
     chunk.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
-    chunk.scale.setScalar(R * (0.4 + rnd() * 0.5)); g.add(chunk);
+    chunk.scale.setScalar(R * (0.35 + rnd() * 0.4));
+    g.add(chunk);
   }
-  // a faint ember spark
-  g.add(makeHalo('#ff7a3c', R * 1.2));
+  // Cool residual heat — grey-amber, not neon lava.
+  g.add(makeHalo('#c48a5a', R * 0.85));
   g.userData.kind = 'wreck';
   return g;
 }

@@ -1,9 +1,9 @@
 // src/ui/hudMeta.js — the HUD meta-arc (the three phases of complicity).
 //
-// CANONICAL SOURCE: docs/worldbuilding/story/HUD-META-ARC.md.
-//   Phase 1 (Protective, B0–B2): the HUD's lies read as malfunctions. CARGO shows "STABLE LOAD"
+// CANONICAL SOURCE: docs/worldbuilding/story/HUD-META-ARC.md + STORY-SPINE-NARRATIVE-OVERLAY.
+//   Phase 1 (Protective, B0–B3): the HUD's lies read as malfunctions. CARGO shows "STABLE LOAD"
 //     after the cargo is gone. The civilian tag flickers 0.5s before the kill feed overwrites it.
-//   Phase 2 (Complicit, B3–B5): manifest self-corrects silently. No announcement.
+//   Phase 2 (Complicit, B4–B5): manifest self-corrects silently. No announcement.
 //   Phase 3 (Absent, B6–B7): tags freeze on last-known state. CONTRACT 47-A shows PENDING forever.
 //
 // This is a HUD SUB-COMPONENT: createHud() mounts it (like the death banner / cargo panel). It

@@ -193,6 +193,11 @@ export const EAST_SECTORS = Object.freeze([
         type: 'derelict',
         name: 'Well-Mouth Hulk',
       }),
+      Object.freeze({
+        id: 'poi_proteus_buoy',
+        type: 'beacon',
+        name: 'Well Range Buoy',
+      }),
     ]),
   }),
 
@@ -252,6 +257,11 @@ export const EAST_SECTORS = Object.freeze([
         id: 'poi_triton_beacon',
         type: 'beacon',
         name: 'Wake Marker',
+      }),
+      Object.freeze({
+        id: 'poi_triton_wreck',
+        type: 'wreck',
+        name: 'Wake-Runner Hull',
       }),
     ]),
   }),
@@ -373,6 +383,11 @@ export const EAST_ANCHORS = Object.freeze({
         landmarkGlb: 'place_dead_hulk',
         landmark: true,
       }),
+      Object.freeze({
+        id: 'poi_proteus_buoy',
+        pos: Object.freeze({ x: 320, z: -980 }),
+        landmarkGlb: 'place_lane_beacon',
+      }),
     ]),
   }),
 
@@ -421,6 +436,11 @@ export const EAST_ANCHORS = Object.freeze({
         id: 'poi_triton_beacon',
         pos: Object.freeze({ x: -1260, z: -540 }),
         landmarkGlb: 'place_lane_beacon',
+      }),
+      Object.freeze({
+        id: 'poi_triton_wreck',
+        pos: Object.freeze({ x: 1080, z: 720 }),
+        landmarkGlb: 'place_dead_hulk',
       }),
     ]),
   }),

@@ -62,6 +62,10 @@ import {
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
 import { addCargo, removeCargo } from './cargo.js';
+import {
+  CONTRACT_47A_B0_BODY,
+  THREAD_B_FRAGMENT_ID,
+} from '../data/narrative.js';
 // Campaign 47-A sidecar: observe/gate/receipt only — never owns beatIndex/branch/rewards.
 import {
   ensureCampaign47aState,
@@ -859,6 +863,9 @@ export const missions = {
     offer.storyTag = STORY_BRANCH_INTRO_TAG;
     offer.storyBranch = intro.branch;
     offer.title = intro.title;
+    // B4 paperwork: one clearing administrator for all three doors.
+    offer.adminField = 'V. DIRECTOR, ACTING / REF 44-C';
+    offer.authorization = 'CLEARING: V. DIRECTOR, ACTING / REF 44-C';
     if (!legacy) {
       offer.storyStake = stake.id;
       offer.title = stake.label;
@@ -1247,6 +1254,9 @@ export const missions = {
       storyOperation: offer.storyOperation || null,
       title: offer.title,
       summary: offer.summary || null,
+      description: offer.description || null,
+      authorization: offer.authorization || null,
+      adminField: offer.adminField || null,
       source: offer.source || null,
       sourceRef: offer.sourceRef || null,
       wreckId: offer.wreckId || null,
@@ -2604,6 +2614,22 @@ export const missions = {
     if (m.storyTag === CONTRACT_47A_B0_TAG) {
       state.story.flags = state.story.flags || {};
       state.story.flags.contract_47a_b0_delivered = true;
+      // Canon: payment withheld / 47-A remains PENDING even when a settlement credit posts for balance.
+      state.story.flags.contract_47a_payment_withheld = true;
+      state.story.flags.contract_47a_pending = true;
+      this.bus.emit('toast', {
+        text: 'PAYMENT WITHHELD — CONTRACT 47-A STATUS: PENDING / OPEN',
+        kind: 'warn',
+        ttl: 5,
+      });
+      this.bus.emit('comms:popup', {
+        id: 'b0_payment_withheld',
+        sender: 'CONCORD ADMIN',
+        text: 'CONTRACT 47-A: PAYMENT WITHHELD. STATUS: PENDING. MASS RECONCILED TO LOG.',
+        category: 'story',
+        ttl: 10,
+        persist: true,
+      });
     }
 
     // ── clean-clause honor + reward credits + collateral refund ──
@@ -3043,7 +3069,16 @@ export const missions = {
       const want = m.type === 'patrol_clear' ? remaining : Math.min(1, remaining);
       const n = Math.max(0, want - adopted);
       if (n <= 0) return;
-      const pool = ['reaver_pirate', 'corsair_raider', 'wasp_swarmer'];
+      // Early boards must not roll mid-tier corsairs. Risk-tier pools keep first-hour TTK fair
+      // with the starter Pulse Laser S; higher risk opens tougher hulls.
+      const riskTier = Math.max(0, Math.round(Number(m.riskTier) || 0));
+      const pool = riskTier <= 1
+        ? ['wasp_swarmer', 'wasp_swarmer', 'reaver_pirate']
+        : riskTier <= 2
+          ? ['wasp_swarmer', 'reaver_pirate', 'reaver_pirate']
+          : riskTier <= 3
+            ? ['reaver_pirate', 'reaver_pirate', 'corsair_raider', 'wasp_swarmer']
+            : ['reaver_pirate', 'corsair_raider', 'corsair_raider', 'bruiser_brawler'];
       for (let i = 0; i < n; i++) {
         const storyTarget = i === 0 && m.storyTarget ? m.storyTarget : null;
         const typeId = storyTarget && storyTarget.archetype || pool[Math.floor(rng() * pool.length)];
@@ -3065,8 +3100,26 @@ export const missions = {
           spec.data.registry = storyTarget.registry || null;
           spec.data.name = storyTarget.name || null;
           spec.data.scanLabel = storyTarget.label || storyTarget.name || 'UNKNOWN';
+          if (storyTarget.lastRegisteredOwner) {
+            spec.data.lastRegisteredOwner = storyTarget.lastRegisteredOwner;
+          }
+          if (storyTarget.salvageCargo) {
+            spec.data.salvageCargo = storyTarget.salvageCargo;
+          }
           spec.data.ai = spec.data.ai || {};
           spec.data.ai.name = storyTarget.name || storyTarget.label || null;
+        }
+        // B5 paperwork plant: first proving-chain hostile always carries Vale Holdings salvage,
+        // including embodied patrol captains that ship a named storyTarget.
+        if (i === 0 && m.storyTag && String(m.storyTag).startsWith('campaign47a:b5:')) {
+          if (!spec.data.lastRegisteredOwner) spec.data.lastRegisteredOwner = 'VALE HOLDINGS LLC';
+          if (!spec.data.salvageCargo) {
+            spec.data.salvageCargo = 'ADMINISTRATIVE RECORDS — 3 YEARS / SEALED';
+          }
+          if (!spec.data.registry || spec.data.registry === storyTarget?.registry) {
+            // Prefer owner stamp for inspect; keep scan label identity from captain if present.
+            if (!storyTarget) spec.data.registry = 'VALE HOLDINGS LLC';
+          }
         }
         const ent = helpers.spawnEntity(spec);
         if (ent) {
@@ -3620,6 +3673,16 @@ export const missions = {
   // =========================================================================================
   // newGame / save-load (§4.5 — missions + story serialize; live target ids do NOT)
   // =========================================================================================
+  _installThreadBFragment() {
+    const state = this.state;
+    if (!state || !state.player || !state.player.cargo) return;
+    state.story = state.story || {};
+    const locked = state.story.persistentCargo || (state.story.persistentCargo = []);
+    if (!locked.includes(THREAD_B_FRAGMENT_ID)) locked.push(THREAD_B_FRAGMENT_ID);
+    const have = Number(state.player.cargo.items && state.player.cargo.items[THREAD_B_FRAGMENT_ID]) || 0;
+    if (have < 1) addCargo(state, THREAD_B_FRAGMENT_ID, 1);
+  },
+
   _installContract47aColdStart() {
     if ((this.state.missions.active || []).some((m) => m && m.storyTag === CONTRACT_47A_B0_TAG)) return;
     const offer = {
@@ -3627,7 +3690,17 @@ export const missions = {
       type: 'salvage_retrieval',
       stationId: 'station_helios',
       factionId: null,
-      params: { cmdtyId: CONTRACT_47A_SAMPLE_ID, qty: 1, sampleRecovered: false, samplePos: null },
+      params: {
+        cmdtyId: CONTRACT_47A_SAMPLE_ID,
+        qty: 1,
+        sampleRecovered: false,
+        samplePos: null,
+        massAcceptT: CONTRACT_47A_B0_BODY.massAcceptT,
+        massDeliverT: CONTRACT_47A_B0_BODY.massDeliverT,
+        authorization: CONTRACT_47A_B0_BODY.authorization,
+        code: CONTRACT_47A_B0_BODY.code,
+        contractId: CONTRACT_47A_B0_BODY.contractId,
+      },
       reward_cr: 0,
       collateral_cr: 0,
       riskTier: 0,
@@ -3636,11 +3709,15 @@ export const missions = {
       distance: 600,
       storyTag: CONTRACT_47A_B0_TAG,
       campaign47aBeat: 0,
-      title: 'Contract 47-A: Recover the Sample',
-      summary: 'Recover the marked assay sample. Deliver it to Helios Station.',
+      title: CONTRACT_47A_B0_BODY.title,
+      summary: CONTRACT_47A_B0_BODY.summary,
+      description: CONTRACT_47A_B0_BODY.fullText,
+      authorization: CONTRACT_47A_B0_BODY.authorization,
     };
     const mission = this._instanceFromOffer(offer);
     mission.chainNextSeed = null;
+    mission.description = CONTRACT_47A_B0_BODY.fullText;
+    mission.authorization = CONTRACT_47A_B0_BODY.authorization;
     this.state.missions.active.push(mission);
     this.state.ui = this.state.ui || {};
     this.state.ui.trackedMissionId = mission.id;
@@ -3689,8 +3766,9 @@ export const missions = {
     state.missions.nextId = 1;
     state.missions.config = MISSION_TUNING;
     // Clear story spine + any prior campaign47a sidecar (nested under state.story).
-    state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 };
+    state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0, persistentCargo: [] };
     initCampaignSidecar(state, state.simTime || 0);
+    this._installThreadBFragment();
     this._installContract47aColdStart();
     this._spawnSeq = 0;
     this._navRefreshT = 0;

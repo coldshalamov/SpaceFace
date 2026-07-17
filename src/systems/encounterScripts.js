@@ -27,6 +27,7 @@ import { massline2Flag } from '../data/featureFlags.js';
 import {
   uniqueWreckCassandraHardliners,
   uniqueWreckHeldMass,
+  uniqueWreckNestbreakerAdmirers,
   uniqueWreckPingElite,
   uniqueWreckSilverDraftCleaner,
 } from './uniqueWreckEncounterScripts.js';
@@ -902,4 +903,5 @@ export const ENCOUNTER_SCRIPTS = Object.freeze({
   uniqueWreckPingElite,
   uniqueWreckSilverDraftCleaner,
   uniqueWreckCassandraHardliners,
+  uniqueWreckNestbreakerAdmirers,
 });

@@ -21,6 +21,7 @@ product status. For the current whole-program position, start at
 | Decide whether a generated folder/file belongs in Git | [`ARTIFACT_RETENTION.md`](./ARTIFACT_RETENTION.md) |
 | Understand which files can direct an agent | [`POLICY_MANIFEST.md`](./POLICY_MANIFEST.md) |
 | Search without ingesting snapshots and transcripts | [`SEARCH_CONTEXT.md`](./SEARCH_CONTEXT.md) |
+| Continue a deferred repository/context cleanup | [`REPOSITORY_HYGIENE.md`](./REPOSITORY_HYGIENE.md) |
 
 ## Documentation classes
 

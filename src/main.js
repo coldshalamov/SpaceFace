@@ -16,9 +16,14 @@ import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { createTimeEffects } from './core/timeEffects.js';
 import { resetFreshRunSystems } from './core/runReset.js';
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
-import { describeGameStartFailure, runNewGameStartTransition } from './core/newGameStartTransition.js';
+import {
+  describeGameStartFailure,
+  GameStartReadinessError,
+  runNewGameStartTransition,
+} from './core/newGameStartTransition.js';
 import { applyAccessibility } from './ui/accessibility.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
+import { waitForCurrentRenderPipelines as waitForRenderPipelineWarmup } from './render/pipelineReadiness.js';
 import {
   SCENARIO_47A_CONTRACT_PATH,
   mark47aPlayerActor,
@@ -255,7 +260,12 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
       () => runTransitionGuard.isCurrent(transitionToken),
     ),
-    waitForWarmup: () => waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS),
+    waitForWarmup: async () => {
+      const pipelinesReady = await waitForRenderPipelineWarmup(
+        state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+      );
+      return pipelinesReady && authoredVisualReadiness(state).ready;
+    },
     enterFlight() {
       enterFlightMode(state, bus);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
@@ -307,7 +317,23 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     if (!visualsReady) {
       throw new Error('Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
     }
-    await waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+    const pipelinesReady = await waitForRenderPipelineWarmup(
+      state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+    );
+    if (!pipelinesReady) {
+      throw new GameStartReadinessError(
+        'RENDER_PIPELINE_UNAVAILABLE',
+        'render-pipeline',
+        'Loaded authored render pipelines did not finish preparing.',
+      );
+    }
+    if (!authoredVisualReadiness(state).ready) {
+      throw new GameStartReadinessError(
+        'AUTHORED_VISUALS_UNAVAILABLE',
+        'authored-visuals',
+        'Loaded authored visuals failed to commit after render-pipeline preparation.',
+      );
+    }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     runTransitionGuard.commit(transitionToken, () => {
       enterFlightMode(state, bus);
@@ -404,25 +430,14 @@ async function waitForAuthoredPartLibrary(state, timeoutMs = 20000) {
 async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000, isCurrent = null) {
   const started = nowMs();
   let readiness = authoredVisualReadiness(state);
-  while (!readiness.ready && nowMs() - started < timeoutMs) {
+  while (!readiness.pipelineReady && nowMs() - started < timeoutMs) {
     await nextFrame();
     if (isCurrent && !isCurrent()) return false;
     readiness = authoredVisualReadiness(state);
   }
-  if (readiness.ready) return true;
-  console.warn('[SpaceFace] initial authored visuals were not ready before flight start', readiness);
+  if (readiness.pipelineReady) return true;
+  console.warn('[SpaceFace] initial authored visuals were not staged before pipeline preparation', readiness);
   return false;
-}
-
-async function waitForRenderPipelineWarmup(state, timeoutMs = 20000) {
-  const ready = state && state.render && state.render.pipelinePrecompileReady;
-  if (!ready || typeof ready.then !== 'function') return true;
-  const result = await Promise.race([
-    ready.then(() => true, () => false),
-    delay(timeoutMs).then(() => false),
-  ]);
-  if (!result) console.warn('[SpaceFace] render pipeline warm-up did not finish before flight start');
-  return result;
 }
 
 function authoredVisualReadiness(state) {

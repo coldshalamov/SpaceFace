@@ -24,6 +24,13 @@ const NO_DYNRES = !!(argv.noDynres || argv['no-dynres']);
 // Diagnostic bisect: freeze the deep-field background (hide + stop updates) to separate its
 // bake/rebuild costs from the rest of the frame.
 const NO_BG = !!(argv.noBg || argv['no-bg']);
+// Diagnostic-only split of --no-bg. These flags preserve the other half of the subsystem so the
+// probe can distinguish CPU-side backdrop updates from GPU/full-screen background submission.
+const NO_BG_UPDATE = !!(argv.noBgUpdate || argv['no-bg-update']);
+const NO_BG_DRAW = !!(argv.noBgDraw || argv['no-bg-draw']);
+const NO_BG_TILES = !!(argv.noBgTiles || argv['no-bg-tiles']);
+const NO_BG_STARS = !!(argv.noBgStars || argv['no-bg-stars']);
+const NO_BG_HEROES = !!(argv.noBgHeroes || argv['no-bg-heroes']);
 const { chromium } = await loadPlaywright();
 
 let server = null;
@@ -40,6 +47,7 @@ try {
   });
   await page.goto(withDebugFlight(server.baseUrl), { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.state.render && window.SF.state.render.renderer, null, { timeout: 90000 });
+  console.log('[hitch-budget] renderer ready');
   await page.waitForFunction(() => {
     const overlay = document.getElementById('boot-overlay');
     return !overlay || overlay.classList.contains('hidden') || getComputedStyle(overlay).visibility === 'hidden';
@@ -48,20 +56,42 @@ try {
     window.SF.bus.emit('game:new', { name: 'Hitch Budget', seed });
     window.SF.bus.emit('ui:closeAll', {});
   }, SEED);
+  console.log('[hitch-budget] new-game transition requested');
   if (NO_DYNRES) {
     await page.evaluate(() => {
       window.SF.state.settings.video.dynamicResolution = false;
       window.SF.bus.emit('settings:changed', { section: 'video', key: 'dynamicResolution' });
     });
   }
-  if (NO_BG) {
-    await page.evaluate(() => {
+  if (NO_BG || NO_BG_UPDATE || NO_BG_DRAW || NO_BG_TILES || NO_BG_STARS || NO_BG_HEROES) {
+    await page.evaluate((flags) => {
       const bg = window.SF.state.render.spaceBg;
       if (bg) {
-        if (bg.group) bg.group.visible = false;
-        bg.update = () => {};
-        bg.onResize = () => {};
+        if ((flags.noBg || flags.noBgDraw) && bg.group) bg.group.visible = false;
+        if (flags.noBgTiles) {
+          for (const layer of bg.layers || []) if (layer && layer.mesh) layer.mesh.visible = false;
+        }
+        if (flags.noBgStars) {
+          if (bg.stars && bg.stars.pts) bg.stars.pts.visible = false;
+          if (bg.flares && bg.flares.mesh) bg.flares.mesh.visible = false;
+        }
+        if (flags.noBgHeroes) {
+          for (const planet of bg.planets || []) if (planet && planet.sprite) planet.sprite.visible = false;
+          if (bg.wormhole && bg.wormhole.mesh) bg.wormhole.mesh.visible = false;
+          if (bg.comet && bg.comet.sprite) bg.comet.sprite.visible = false;
+        }
+        if (flags.noBg || flags.noBgUpdate) {
+          bg.update = () => {};
+          bg.onResize = () => {};
+        }
       }
+    }, {
+      noBg: NO_BG,
+      noBgUpdate: NO_BG_UPDATE,
+      noBgDraw: NO_BG_DRAW,
+      noBgTiles: NO_BG_TILES,
+      noBgStars: NO_BG_STARS,
+      noBgHeroes: NO_BG_HEROES,
     });
   }
   await page.waitForFunction(() => {
@@ -70,6 +100,7 @@ try {
     const player = state && state.entities && state.entities.get(state.playerId);
     return !!(state && state.mode === 'flight' && player && player.alive !== false && player.mesh);
   }, null, { timeout: 90000 });
+  console.log('[hitch-budget] flight route ready');
   await dismissOnboarding(page);
   // Attribute between-frame stalls: longtask entries prove main-thread blockage (GC, GLB parse,
   // JSON work); their absence during a long rAF gap means the stall is GPU/compositor-side.
@@ -94,9 +125,13 @@ try {
     } catch (_) {}
   });
   const stress = await installStressScenario(page);
+  console.log('[hitch-budget] stress scenario installed');
   await waitForStressAssets(page);
+  console.log('[hitch-budget] relevant stress assets ready');
   const renderWarmup = await waitForRenderWarmup(page);
+  console.log('[hitch-budget] render warm-up ready');
   await warmStressPipelines(page);
+  console.log('[hitch-budget] stress pipelines ready');
   await waitForStressAssets(page);
   const sample = await sampleHitches(page, { warmupMs: WARMUP_MS, durationMs: DURATION_MS, frameBudgetMs: FRAME_BUDGET_MS });
   const attribution = await page.evaluate(() => ({
@@ -108,15 +143,37 @@ try {
 
   const pageErrors = issues.errorIssues();
   const pageWarnings = issues.warningIssues().slice(0, 12);
-  const pass = sample.frameMs.overBudget === 0 && pageErrors.length === 0;
+  const pass = sample.settleWait === 'settled'
+    && sample.frameMs.samples > 0
+    && sample.frameMs.overBudget === 0
+    && pageErrors.length === 0;
   const report = {
     schema: 'spaceface.hitchBudget.v1',
     generatedAt: new Date().toISOString(),
-    runner: { width: WIDTH, height: HEIGHT, seed: SEED, warmupMs: WARMUP_MS, durationMs: DURATION_MS, frameBudgetMs: FRAME_BUDGET_MS, headless: !HEADED },
+    runner: {
+      width: WIDTH,
+      height: HEIGHT,
+      seed: SEED,
+      warmupMs: WARMUP_MS,
+      durationMs: DURATION_MS,
+      frameBudgetMs: FRAME_BUDGET_MS,
+      headless: !HEADED,
+      diagnostics: {
+        noDynres: NO_DYNRES,
+        noBg: NO_BG,
+        noBgUpdate: NO_BG_UPDATE,
+        noBgDraw: NO_BG_DRAW,
+        noBgTiles: NO_BG_TILES,
+        noBgStars: NO_BG_STARS,
+        noBgHeroes: NO_BG_HEROES,
+      },
+    },
     scenario: stress,
     frameMs: sample.frameMs,
+    settleWait: sample.settleWait,
     histogram: sample.histogram,
     spikes: sample.spikes.slice(0, 20),
+    programEvents: sample.programEvents,
     topSpikeSources: sample.topSpikeSources,
     renderWarmup,
     diagnostics: sample.diagnostics,
@@ -124,6 +181,7 @@ try {
     failureEvidence: buildFailureEvidence({
       frameBudgetMs: FRAME_BUDGET_MS,
       frameMs: sample.frameMs,
+      settleWait: sample.settleWait,
       spikes: sample.spikes,
       topSpikeSources: sample.topSpikeSources,
       pageErrors,
@@ -196,7 +254,10 @@ async function waitForStressAssets(page) {
     if (!sf || !stress) return false;
     const state = sf.state;
     const render = sf.registry && sf.registry.get && sf.registry.get('render');
-    if (render && render._meshBuildQueue && render._meshBuildQueue.length > 0) return false;
+    const meshQueueRemaining = render && Array.isArray(render._meshBuildQueue)
+      ? Math.max(0, render._meshBuildQueue.length - (render._meshBuildQueueHead || 0))
+      : 0;
+    if (meshQueueRemaining > 0) return false;
     if (render && render._meshReconcileDirty) return false;
     const renderState = state && state.render || {};
     const promiseStatus = async (promise) => {
@@ -208,7 +269,8 @@ async function waitForStressAssets(page) {
     };
     const authoredPartLibrary = await promiseStatus(renderState.authoredPartLibraryReady);
     const pipelinePrecompile = await promiseStatus(renderState.pipelinePrecompileReady);
-    if (!authoredPartLibrary.settled || !pipelinePrecompile.settled) return false;
+    const exactPipelineWarmup = await promiseStatus(renderState.exactPipelineWarmupReady);
+    if (!authoredPartLibrary.settled || !pipelinePrecompile.settled || !exactPipelineWarmup.settled) return false;
     const scene = state && state.render && state.render.scene;
     let queue = { pending: 0, running: false };
     try {
@@ -216,6 +278,8 @@ async function waitForStressAssets(page) {
       if (partsLibrary && typeof partsLibrary.getAuthoredUpgradeQueueStats === 'function') {
         queue = partsLibrary.getAuthoredUpgradeQueueStats(scene);
       }
+      const rendererModule = await import('./src/render/renderer.js');
+      window.__SF_IS_AUTHORED_UPGRADE_RELEVANT__ = rendererModule.isEntityAuthoredUpgradeRelevant;
     } catch (_) {}
     if (queue.pending > 0 || queue.running) return false;
     for (const id of stress.enemyIds || []) {
@@ -224,7 +288,10 @@ async function waitForStressAssets(page) {
       const mesh = entity.mesh;
       if (!mesh) return false;
       const assetState = mesh.userData && mesh.userData.authoredAssetState;
-      if (assetState && assetState !== 'authored') return false;
+      const relevant = typeof window.__SF_IS_AUTHORED_UPGRADE_RELEVANT__ === 'function'
+        ? window.__SF_IS_AUTHORED_UPGRADE_RELEVANT__(entity, state)
+        : entity.id === state.playerId || state.player && state.player.targetId === entity.id;
+      if (relevant && assetState && assetState !== 'authored') return false;
     }
     return true;
   }, null, { timeout: 90000 });
@@ -250,8 +317,11 @@ async function waitForRenderWarmup(page) {
     };
     const authoredPartLibrary = await wait(render && render.authoredPartLibraryReady, 'authoredPartLibraryReady');
     const pipelinePrecompile = await wait(render && render.pipelinePrecompileReady, 'pipelinePrecompileReady');
-    window.__SF_RENDER_WARMUP_READY__ = authoredPartLibrary.settled && pipelinePrecompile.settled;
-    return { authoredPartLibrary, pipelinePrecompile };
+    const exactPipelineWarmup = await wait(render && render.exactPipelineWarmupReady, 'exactPipelineWarmupReady');
+    window.__SF_RENDER_WARMUP_READY__ = authoredPartLibrary.settled
+      && pipelinePrecompile.settled
+      && exactPipelineWarmup.settled;
+    return { authoredPartLibrary, pipelinePrecompile, exactPipelineWarmup };
   });
   await page.waitForFunction(async () => {
     const sf = window.SF;
@@ -300,9 +370,6 @@ async function warmStressPipelines(page) {
     const sf = window.SF;
     const state = sf && sf.state;
     const render = state && state.render;
-    const renderer = render && render.renderer;
-    const scene = render && render.scene;
-    const camera = render && render.camera;
     const wait = async (promise) => {
       if (promise && typeof promise.then === 'function') {
         await promise.catch(() => null);
@@ -310,8 +377,9 @@ async function warmStressPipelines(page) {
     };
     await wait(render && render.authoredPartLibraryReady);
     await wait(render && render.pipelinePrecompileReady);
-    if (renderer && scene && camera && typeof renderer.compileAsync === 'function') {
-      await renderer.compileAsync(scene, camera, scene).catch(() => null);
+    await wait(render && render.exactPipelineWarmupReady);
+    if (render && typeof render.compileCurrentPipelines === 'function') {
+      await render.compileCurrentPipelines().catch(() => null);
     }
     if (render && typeof render.warmPostProcess === 'function') {
       render.warmPostProcess();
@@ -329,10 +397,19 @@ async function sampleHitches(page, opts) {
     let sampleStart = null;
     let finished = false;
     let watchdog = null;
+    let settleWait = 'warmup';
+    let previousProgramCount = 0;
+    let previousProgramKeys = new Set();
+    const programEvents = [];
 
     function resetRuntimeProbes() {
       try { if (window.__THREE_GAME_DIAGNOSTICS__ && window.__THREE_GAME_DIAGNOSTICS__.reset) window.__THREE_GAME_DIAGNOSTICS__.reset(); } catch (_) {}
       try { if (window.__SPACEFACE_PERF__ && window.__SPACEFACE_PERF__.reset) window.__SPACEFACE_PERF__.reset(); } catch (_) {}
+      const renderer = window.SF && window.SF.state && window.SF.state.render && window.SF.state.render.renderer;
+      const programs = renderer && renderer.info && Array.isArray(renderer.info.programs)
+        ? renderer.info.programs : [];
+      previousProgramCount = programs.length;
+      previousProgramKeys = new Set(programs.map(programKey));
     }
 
     function pumpStress(now) {
@@ -391,6 +468,8 @@ async function sampleHitches(page, opts) {
       const diagnostics = readDiagnostics();
       resolve({
         frameMs,
+        settleWait,
+        programEvents,
         histogram: histogram(frames),
         spikes: spikes.sort((a, b) => b.ms - a.ms),
         topSpikeSources: topSpikeSources(diagnostics.perf),
@@ -414,6 +493,7 @@ async function sampleHitches(page, opts) {
         }
       } else {
         pumpStress(now);
+        monitorPrograms(now);
         const dt = now - last;
         frames.push(dt);
         if (dt > frameBudgetMs) {
@@ -429,6 +509,7 @@ async function sampleHitches(page, opts) {
       else requestAnimationFrame(tick);
     }
 
+    watchdog = setTimeout(finish, warmupMs + durationMs + 5000);
     requestAnimationFrame(tick);
 
     function readDiagnostics() {
@@ -446,29 +527,98 @@ async function sampleHitches(page, opts) {
       };
     }
 
+    function monitorPrograms(now) {
+      const state = window.SF && window.SF.state;
+      const renderer = state && state.render && state.render.renderer;
+      const programs = renderer && renderer.info && Array.isArray(renderer.info.programs)
+        ? renderer.info.programs : [];
+      if (programs.length === previousProgramCount) return;
+      const keys = programs.map(programKey);
+      const addedKeys = keys.filter((key) => !previousProgramKeys.has(key));
+      const owners = [];
+      const addedSet = new Set(addedKeys);
+      const scene = state && state.render && state.render.scene;
+      if (scene && typeof scene.traverse === 'function') {
+        scene.traverse((object) => {
+          if (owners.length >= 24) return;
+          const materials = Array.isArray(object.material)
+            ? object.material : object.material ? [object.material] : [];
+          for (const material of materials) {
+            const properties = renderer.properties && renderer.properties.get
+              ? renderer.properties.get(material) : null;
+            const currentKey = properties && properties.currentProgram
+              ? programKey(properties.currentProgram) : null;
+            if (!currentKey || !addedSet.has(currentKey)) continue;
+            owners.push({
+              object: object.name || object.type,
+              objectType: object.type,
+              material: material.name || material.type,
+              materialType: material.type,
+              transparent: !!material.transparent,
+              blending: material.blending,
+              side: material.side,
+              depthWrite: material.depthWrite,
+            });
+          }
+        });
+      }
+      programEvents.push({
+        atMs: round(sampleStart == null ? 0 : now - sampleStart),
+        count: programs.length,
+        addedKeys,
+        owners,
+      });
+      previousProgramCount = programs.length;
+      previousProgramKeys = new Set(keys);
+    }
+
+    function programKey(program) {
+      return String(program && (program.cacheKey || program.name || program.id));
+    }
+
     function runtimeSettled() {
       const sf = window.SF;
       const state = sf && sf.state;
       const render = sf && sf.registry && typeof sf.registry.get === 'function' ? sf.registry.get('render') : null;
-      if (!state || !render) return false;
-      if (render._meshBuildQueue && render._meshBuildQueue.length > 0) return false;
-      if (render._meshReconcileDirty) return false;
-      if (window.__SF_RENDER_WARMUP_READY__ === false) return false;
+      if (!state || !render) { settleWait = 'runtime-missing'; return false; }
+      const meshQueueRemaining = Array.isArray(render._meshBuildQueue)
+        ? Math.max(0, render._meshBuildQueue.length - (render._meshBuildQueueHead || 0))
+        : 0;
+      if (meshQueueRemaining > 0) { settleWait = `mesh-queue:${meshQueueRemaining}`; return false; }
+      if (render._meshReconcileDirty) { settleWait = 'mesh-reconcile'; return false; }
+      if (window.__SF_RENDER_WARMUP_READY__ === false) { settleWait = 'render-warmup'; return false; }
       try {
         const queueStats = window.__SF_GET_AUTHORED_UPGRADE_QUEUE_STATS__;
         const queue = typeof queueStats === 'function'
           ? queueStats(state.render && state.render.scene)
           : { pending: 0, running: false };
-        if (queue.pending > 0 || queue.running) return false;
+        if (queue.pending > 0 || queue.running) {
+          settleWait = `authored-queue:${queue.pending}:${queue.running ? 1 : 0}`;
+          return false;
+        }
       } catch (_) {}
-      for (const entity of state.entityList || []) {
-        if (!entity || entity.alive === false || entity._noMesh || entity.type === 'fx') continue;
-        if (!entity.mesh) return false;
+      const stress = window.__SF_HITCH_STRESS__ || {};
+      const requiredIds = new Set([
+        state.playerId,
+        ...(stress.enemyIds || []),
+        ...(stress.asteroidIds || []),
+      ]);
+      for (const id of requiredIds) {
+        const entity = state.entities && state.entities.get(id);
+        if (!entity || entity.alive === false || entity._noMesh) continue;
+        if (!entity.mesh) { settleWait = `mesh-missing:${entity.type || 'unknown'}:${entity.id}`; return false; }
         if (entity.type === 'ship') {
           const assetState = entity.mesh.userData && entity.mesh.userData.authoredAssetState;
-          if (assetState && assetState !== 'authored') return false;
+          const relevant = typeof window.__SF_IS_AUTHORED_UPGRADE_RELEVANT__ === 'function'
+            ? window.__SF_IS_AUTHORED_UPGRADE_RELEVANT__(entity, state)
+            : entity.id === state.playerId || state.player && state.player.targetId === entity.id;
+          if (relevant && assetState && assetState !== 'authored') {
+            settleWait = `authored-state:${entity.id}:${assetState}`;
+            return false;
+          }
         }
       }
+      settleWait = 'settled';
       return true;
     }
 
@@ -531,7 +681,15 @@ async function dismissOnboarding(page) {
 function printReport(report) {
   console.log(`[hitch-budget] scenario=${report.scenario.baseScenario} enemies=${report.scenario.enemies} asteroids=${report.scenario.asteroids}`);
   console.log(`[hitch-budget] frames=${report.frameMs.samples} avg=${report.frameMs.avg}ms p95=${report.frameMs.p95}ms p99=${report.frameMs.p99}ms worst=${report.frameMs.max}ms`);
+  console.log(`[hitch-budget] settle=${report.settleWait}`);
   console.log(`[hitch-budget] >${report.runner.frameBudgetMs}ms=${report.frameMs.overBudget} >40ms=${report.frameMs.over40} >50ms=${report.frameMs.over50}`);
+  if (report.programEvents.length) {
+    console.log('[hitch-budget] new GPU programs during sample:');
+    for (const event of report.programEvents) {
+      const owners = event.owners.map((owner) => `${owner.object}/${owner.material}`).join(', ') || 'unresolved';
+      console.log(`  +${event.atMs}ms programs=${event.count} owners=${owners}`);
+    }
+  }
   console.log('[hitch-budget] histogram:');
   for (const bin of report.histogram) console.log(`  ${bin.label.padEnd(8)} ${bin.count}`);
   if (!report.pass) {
@@ -553,8 +711,10 @@ function printReport(report) {
   console.log(`[hitch-budget] report: ${OUT}`);
 }
 
-function buildFailureEvidence({ frameBudgetMs, frameMs, spikes, topSpikeSources, pageErrors, out }) {
+function buildFailureEvidence({ frameBudgetMs, frameMs, settleWait, spikes, topSpikeSources, pageErrors, out }) {
   const reasons = [];
+  if (settleWait !== 'settled') reasons.push(`runtime did not settle before sampling: ${settleWait}`);
+  if (frameMs.samples === 0) reasons.push('no post-warmup frames were sampled');
   if (frameMs.overBudget > 0) reasons.push(`${frameMs.overBudget} post-warmup frames exceeded ${frameBudgetMs} ms`);
   if (pageErrors.length > 0) reasons.push(`${pageErrors.length} browser page errors were reported`);
   if (!reasons.length) reasons.push('no failure recorded');

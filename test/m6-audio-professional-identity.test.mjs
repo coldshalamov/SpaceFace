@@ -164,3 +164,134 @@ test('live combat receipts route armor separately and pan player urgency', () =>
   assert(calls[1].opts.pan > 0.8);
   assert.equal(calls.some((call) => call.recipeId === 'sfx.hullHit'), false);
 });
+
+function param(value = 0) {
+  return {
+    value,
+    cancelScheduledValues() {},
+    setValueAtTime(next) { this.value = next; },
+    linearRampToValueAtTime(next) { this.value = next; },
+    exponentialRampToValueAtTime(next) { this.value = next; },
+    setTargetAtTime(next) { this.value = next; },
+  };
+}
+
+function fakeAudioContext() {
+  const node = () => ({ connect() {}, disconnect() {} });
+  const source = () => ({
+    ...node(),
+    loop: false,
+    playbackRate: param(1),
+    start() {},
+    stop() {},
+    onended: null,
+  });
+  return {
+    currentTime: 0.25,
+    sampleRate: 48000,
+    state: 'running',
+    destination: node(),
+    resume() { this.state = 'running'; return Promise.resolve(); },
+    createOscillator() {
+      return { ...source(), type: 'sine', frequency: param(440), detune: param(0) };
+    },
+    createGain() { return { ...node(), gain: param(1) }; },
+    createBiquadFilter() {
+      return { ...node(), type: 'lowpass', frequency: param(1000), Q: param(0.7) };
+    },
+    createStereoPanner() { return { ...node(), pan: param(0) }; },
+    createBufferSource() { return { ...source(), buffer: null }; },
+    createDynamicsCompressor() {
+      return {
+        ...node(),
+        threshold: param(-6), knee: param(6), ratio: param(12),
+        attack: param(0.003), release: param(0.25),
+      };
+    },
+    createDelay() { return { ...node(), delayTime: param(0.25) }; },
+    createBuffer(_channels, length) {
+      const channel = new Float32Array(length);
+      return { sampleRate: 48000, getChannelData() { return channel; } };
+    },
+  };
+}
+
+test('first AudioContext unlock on paused menu does not start flight beds or free boops', () => {
+  // audioSystem looks at window.AudioContext (browser autoplay path), not globalThis alone.
+  const previousWindow = globalThis.window;
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousCancel = globalThis.cancelAnimationFrame;
+  const timers = [];
+  const realSetTimeout = globalThis.setTimeout;
+  const realClearTimeout = globalThis.clearTimeout;
+  globalThis.window = {
+    AudioContext: function AudioContext() { return fakeAudioContext(); },
+    addEventListener() {},
+    removeEventListener() {},
+  };
+  globalThis.requestAnimationFrame = () => 1;
+  globalThis.cancelAnimationFrame = () => {};
+  // Music stems schedule setTimeout loops; capture and clear them so the test process can exit.
+  globalThis.setTimeout = (fn, ms, ...args) => {
+    const id = realSetTimeout(fn, ms, ...args);
+    timers.push(id);
+    return id;
+  };
+
+  const harness = Object.create(audio);
+  try {
+    const bus = {
+      on() { return () => {}; },
+      emit() {},
+    };
+    const state = {
+      mode: 'menu',
+      playerId: 0,
+      entities: new Map(),
+      entityList: [],
+      settings: { audio: { master: 0.55, sfx: 0.7, music: 0.32, muted: false }, video: {} },
+      ui: { docked: false },
+      world: {},
+      input: { actions: {} },
+    };
+    harness.init({ state, bus, helpers: {} });
+    harness.rt._paused = true; // main menu already emitted sim:pause before first gesture
+
+    const ctx = harness._ensureContext();
+    assert.ok(ctx, 'gesture unlock creates the audio graph');
+    assert.equal(!!harness.rt.engineOsc1, false, 'paused menu unlock must not hard-start the engine bed');
+    assert.equal(!!harness.rt.brakeGain, false, 'paused menu unlock must not start brake hiss');
+    assert.ok(harness.rt.musicBus.gain.value <= 0.0001 + 1e-9, 'music bus stays silent while paused');
+
+    // Mute hard-gates one-shots even if a recipe is requested during unlock.
+    state.settings.audio.muted = true;
+    assert.equal(harness.play('sfx_ui_click', { gain: 1 }), null);
+
+    // Entering flight (resume) may build continuous beds, but they soft-start near silence.
+    state.settings.audio.muted = false;
+    harness._onPause(false);
+    assert.ok(harness.rt.engineOsc1, 'resume builds the engine bed for flight');
+    assert.ok(harness.rt.engineHumGain.gain.value <= 0.0001 + 1e-9, 'engine bed soft-starts silent');
+  } finally {
+    try {
+      if (harness.rt && harness.rt.stems) {
+        for (const key of ['A', 'B', 'C', 'D']) {
+          const stem = harness.rt.stems[key];
+          if (stem && typeof stem.stop === 'function') stem.stop();
+        }
+      }
+      if (harness.rt && harness.rt._rafId && typeof globalThis.cancelAnimationFrame === 'function') {
+        globalThis.cancelAnimationFrame(harness.rt._rafId);
+        harness.rt._rafId = 0;
+      }
+    } catch (_) {}
+    for (const id of timers) realClearTimeout(id);
+    globalThis.setTimeout = realSetTimeout;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+    if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousRaf;
+    if (previousCancel === undefined) delete globalThis.cancelAnimationFrame;
+    else globalThis.cancelAnimationFrame = previousCancel;
+  }
+});

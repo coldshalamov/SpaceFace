@@ -48,6 +48,98 @@ const DEFAULT_COLOR_GRADE = 0.55;
 // this before uStrength scales the halo perceptually (0.02 ≈ subtle, 0.40 ≈ default).
 const BLOOM_PYRAMID_NORM = 1.5;
 
+/**
+ * Compile one Object3D subtree against the exact output target used by the live renderer.
+ *
+ * Three.js includes the active render target's output color space in its shader-program key. A
+ * screen-target compile therefore does not prepare the linear-HDR variants used by the bloom scene
+ * pass. Keep target selection around compileAsync so authored assets cannot appear "ready" while
+ * their first real HDR frame still has to synchronously compile on the driver.
+ */
+export async function compileScenePipelinesForRenderTarget(
+  renderer, renderTarget, subject, camera, lightingScene = subject,
+) {
+  if (!renderer || typeof renderer.compileAsync !== 'function') {
+    return { skipped: true, reason: 'compileAsync unavailable' };
+  }
+  const previousTarget = typeof renderer.getRenderTarget === 'function'
+    ? renderer.getRenderTarget()
+    : null;
+  try {
+    renderer.setRenderTarget(renderTarget || null);
+    await renderer.compileAsync(subject, camera, lightingScene || subject);
+    return {
+      skipped: false,
+      programCount: Array.isArray(renderer.info && renderer.info.programs)
+        ? renderer.info.programs.length
+        : null,
+    };
+  } finally {
+    renderer.setRenderTarget(previousTarget || null);
+  }
+}
+
+/**
+ * Force one exact-target draw while the application is still on its loading route.
+ *
+ * Some WebGL drivers expose shader-program readiness through a query that is nominally asynchronous
+ * but still performs a blocking command-buffer wait for every material polled by compileAsync(). A
+ * single batched draw lets the driver link and admit the same programs in one submission instead of
+ * multiplying those waits per authored object. The authored roots are staged only for this offscreen
+ * draw; ownership, visibility, culling flags, and the renderer target are restored before returning.
+ */
+export async function warmScenePipelinesForRenderTarget(
+  renderer, renderTarget, subject, camera, lightingScene,
+) {
+  if (!renderer || typeof renderer.render !== 'function') {
+    return { skipped: true, reason: 'render unavailable' };
+  }
+  if (!subject || !lightingScene || typeof lightingScene.add !== 'function') {
+    return { skipped: true, reason: 'pipeline staging scene unavailable' };
+  }
+  const previousTarget = typeof renderer.getRenderTarget === 'function'
+    ? renderer.getRenderTarget()
+    : null;
+  const previousParent = subject.parent || null;
+  const previousIndex = previousParent && Array.isArray(previousParent.children)
+    ? previousParent.children.indexOf(subject)
+    : -1;
+  const objectState = [];
+  if (typeof subject.traverse === 'function') {
+    subject.traverse((object) => {
+      objectState.push({ object, visible: object.visible, frustumCulled: object.frustumCulled });
+      if ('frustumCulled' in object) object.frustumCulled = false;
+    });
+  }
+  try {
+    if (subject !== lightingScene && subject.parent !== lightingScene) lightingScene.add(subject);
+    renderer.setRenderTarget(renderTarget || null);
+    renderer.render(lightingScene, camera);
+    return {
+      skipped: false,
+      programCount: Array.isArray(renderer.info && renderer.info.programs)
+        ? renderer.info.programs.length
+        : null,
+      mode: 'forced-render',
+    };
+  } finally {
+    if (subject.parent && subject.parent !== previousParent) subject.parent.remove(subject);
+    if (previousParent && subject.parent !== previousParent) {
+      previousParent.add(subject);
+      if (previousIndex >= 0 && previousIndex < previousParent.children.length - 1) {
+        const currentIndex = previousParent.children.indexOf(subject);
+        previousParent.children.splice(currentIndex, 1);
+        previousParent.children.splice(previousIndex, 0, subject);
+      }
+    }
+    for (const entry of objectState) {
+      entry.object.visible = entry.visible;
+      entry.object.frustumCulled = entry.frustumCulled;
+    }
+    renderer.setRenderTarget(previousTarget || null);
+  }
+}
+
 // Immutable fullscreen triangle-strip geometry shared across every createBloom() instance.
 // Geometry has no per-instance state; materials/scenes stay private so uniforms never cross.
 let sharedQuadGeo = null;
@@ -469,6 +561,18 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     renderer.setRenderTarget(null);
   }
 
+  function compileScenePipelines(subject, camera, lightingScene = subject) {
+    return compileScenePipelinesForRenderTarget(
+      renderer, rtScene, subject, camera, lightingScene,
+    );
+  }
+
+  function warmScenePipelines(subject, camera, lightingScene = subject) {
+    return warmScenePipelinesForRenderTarget(
+      renderer, rtScene, subject, camera, lightingScene,
+    );
+  }
+
   function rebuild() {
     // WebGL context restore: the old render-target GPU textures are invalid. Dispose them and
     // recreate the whole pyramid at the current size so the next frame can render cleanly.
@@ -585,6 +689,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
   return {
     render,
+    compileScenePipelines,
+    warmScenePipelines,
     setSize,
     setOptions,
     setInstrumentation,

@@ -86,6 +86,24 @@ assert.deepEqual(shieldPosition.toArray().map((value) => Number(value.toFixed(3)
 assert.equal(meshes.get(1).userData.shieldBubble.visible, false);
 assert.equal(meshes.get(1).getObjectByName('GLTFKit_Nav_Lights').visible, false);
 
+const staticVersions = {
+  shieldMatrix: pool.shield.mesh.instanceMatrix.version,
+  shieldColor: pool.shield.mesh.instanceColor.version,
+  shieldFlash: pool.shield.mesh.geometry.getAttribute('instanceFlash').version,
+  shieldBase: pool.shield.mesh.geometry.getAttribute('instanceBase').version,
+  navMatrix: pool.nav.mesh.instanceMatrix.version,
+  navColor: pool.nav.mesh.instanceColor.version,
+};
+syncShipAuxPools(pool, entities, meshes);
+assert.deepEqual({
+  shieldMatrix: pool.shield.mesh.instanceMatrix.version,
+  shieldColor: pool.shield.mesh.instanceColor.version,
+  shieldFlash: pool.shield.mesh.geometry.getAttribute('instanceFlash').version,
+  shieldBase: pool.shield.mesh.geometry.getAttribute('instanceBase').version,
+  navMatrix: pool.nav.mesh.instanceMatrix.version,
+  navColor: pool.nav.mesh.instanceColor.version,
+}, staticVersions, 'unchanged auxiliary instances must not re-upload GPU buffers');
+
 syncShipAuxPools(pool, entities.slice(0, 2), meshes);
 assert.equal(pool.shield.mesh.count, 2);
 assert.equal(pool.nav.mesh.count, 4);

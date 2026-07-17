@@ -183,6 +183,8 @@ export const gameOverScreen = {
     bRetry.title = 'Apply the shown recovery receipt and continue beside the named lawful dock';
     bRetry.setAttribute('aria-label', 'Continue from the recovery berth with the shown consequences');
     bRetry.addEventListener('click', () => {
+      // Combat owns success/failure. Success closes via player:respawn; failure surfaces a toast
+      // (and player:recoveryFailed) so a dead latch never looks like a no-op button.
       ctx.bus.emit('player:recoveryRequested', { source: 'after_action' });
     });
     this._retryButton = bRetry;
@@ -243,6 +245,11 @@ export const gameOverScreen = {
       if (!mgr || typeof mgr.top !== 'function' || mgr.top() !== 'gameOver') return;
       ctx.bus.emit('game:over:dismissed', {});
       if (mgr.popScreen) mgr.popScreen();
+    });
+    // Failed recovery stays on this modal. Refresh copy so Load/New paths appear if the receipt
+    // was cleared, and keep the primary button available when combat re-armed from the receipt.
+    ctx.bus.on('player:recoveryFailed', () => {
+      this._refreshSummary(ctx);
     });
 
     rootEl.appendChild(foot);

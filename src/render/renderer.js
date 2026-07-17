@@ -6,10 +6,15 @@ import { createChaseCamera } from './camera.js';
 import { createSpaceBackground } from './spaceBackground.js';
 import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
-import { createBloom } from './bloom.js';
+import {
+  createBloom,
+  compileScenePipelinesForRenderTarget,
+  warmScenePipelinesForRenderTarget,
+} from './bloom.js';
 import { SpaceRenderGraph } from './post/spaceRenderGraph.js';
 import {
   getAuthoredInstancePoolDiagnostics,
+  isInitialAuthoredCompositionEntity,
   preloadAuthoredPartLibrary,
   retryAuthoredPartLibrary,
   syncAuthoredInstancePools,
@@ -42,6 +47,7 @@ import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { getAssetResidency } from './assetResidency.js';
+import { createPipelineAdmissionTracker } from './pipelineReadiness.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -56,6 +62,19 @@ const SECTOR_PALETTE_LERP_SECONDS = 1.5;
 const SECTOR_LIGHT_INTENSITIES = { ambient: 0.85, key: 1.7, rim: 0.7, fill: 0.35 };
 const ENTITY_VIEW_CULL_MIN_MARGIN = 900;
 const ENTITY_VIEW_CULL_ZOOM_MARGIN = 8;
+// World simulation deliberately keeps the current corridor sector plus reduced neighbours alive.
+// Render residency is narrower: build the whole active sector, and only admit neighbour-sector
+// meshes once they enter a generous travel runway. This keeps seamless approach quality without
+// constructing, traversing, or decoding another sector while it is still ~15k world units away.
+const RENDER_STREAM_PREFETCH_RADIUS = 5200;
+const RENDER_STREAM_EVICT_RADIUS = 6400;
+// Start authored decode well before the normal camera can see the boundary. At the fastest early
+// ship speeds this provides several seconds of runway, while current-sector objects farther away
+// remain dormant instead of replacing procedural placeholders during unrelated play.
+const AUTHORED_ASSET_PREFETCH_RADIUS = 2400;
+const AUTHORED_ASSET_IMMEDIATE_RADIUS = 1000;
+const AUTHORED_ASSET_LOOKAHEAD_SECONDS = 10;
+const RENDER_RESIDENCY_POLL_SECONDS = 0.25;
 
 function isDebugRuntime() {
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
@@ -96,16 +115,97 @@ function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
  * bounded per-frame build budget. New Game can spawn hundreds of asteroids/props before its late
  * traffic and 47-A ships; FIFO entity order otherwise strands those ships behind non-gating meshes.
  */
-export function enqueueMissingMeshBuilds(entityList, meshes, queuedIds, queue) {
+export function enqueueMissingMeshBuilds(entityList, meshes, queuedIds, queue, shouldQueue = null) {
   for (const entity of entityList) {
-    if (entity && entity.type === 'ship') {
+    if (entity && entity.type === 'ship' && (!shouldQueue || shouldQueue(entity))) {
       enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
     }
   }
   for (const entity of entityList) {
     if (!entity || entity.type === 'ship') continue;
+    if (shouldQueue && !shouldQueue(entity)) continue;
     enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
   }
+}
+
+function entitySectorId(entity) {
+  const data = entity && entity.data || {};
+  return entity && entity.homeSectorId || data.homeSectorId || data.sectorId || null;
+}
+
+function playerEntityForRenderState(state) {
+  return state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+}
+
+function entityIsExplicitRenderFocus(entity, state) {
+  if (!entity || !state) return false;
+  if (entity.id === state.playerId || entity.isPlayer === true) return true;
+  if (entity.flags && (entity.flags.forceRender || entity.flags.neverCull)) return true;
+  const playerEntity = playerEntityForRenderState(state);
+  const targetId = state.player && state.player.targetId != null
+    ? state.player.targetId
+    : playerEntity && playerEntity.targetId;
+  return targetId != null && entity.id === targetId;
+}
+
+function entityWithinPlayerRadius(entity, state, radius) {
+  if (!entity || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
+  const player = playerEntityForRenderState(state);
+  if (!player || !player.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return false;
+  const dx = entity.pos.x - player.pos.x;
+  const dz = entity.pos.z - player.pos.z;
+  return dx * dx + dz * dz <= radius * radius;
+}
+
+function isCriticalStartingHub(entity) {
+  if (!entity || entity.type !== 'station') return false;
+  const data = entity.data || {};
+  if (entity.id === 'station_helios' || data.stationId === 'station_helios') return true;
+  const token = String(data.archetypeGlb || data.placeId || '')
+    .replace(/^places\//, '')
+    .replace(/\.glb$/, '');
+  return token === 'place_station_trade_hub' && data.sectorId === 'sector_helios_prime';
+}
+
+function entityIsOnApproachVector(entity, state, radius) {
+  const player = playerEntityForRenderState(state);
+  if (!player || !player.pos || !player.vel || !entity || !entity.pos) return false;
+  const dx = entity.pos.x - player.pos.x;
+  const dz = entity.pos.z - player.pos.z;
+  const distance = Math.hypot(dx, dz);
+  if (!Number.isFinite(distance) || distance <= 0 || distance > radius) return false;
+  const closingSpeed = (dx * (Number(player.vel.x) || 0) + dz * (Number(player.vel.z) || 0)) / distance;
+  if (closingSpeed <= 1) return false;
+  const projectedDistance = distance - closingSpeed * AUTHORED_ASSET_LOOKAHEAD_SECONDS;
+  return projectedDistance <= AUTHORED_ASSET_IMMEDIATE_RADIUS;
+}
+
+/** Pure render-streaming policy used by reconciliation and focused tests. */
+export function isEntityRenderRelevant(entity, state, radius = RENDER_STREAM_PREFETCH_RADIUS) {
+  if (!entity || entity.alive === false || entity._noMesh) return false;
+  if (entityIsExplicitRenderFocus(entity, state)) return true;
+  const sectorId = entitySectorId(entity);
+  const currentSectorId = state && state.world && state.world.currentSectorId;
+  if (sectorId && currentSectorId && sectorId === currentSectorId) return true;
+  return entityWithinPlayerRadius(entity, state, radius);
+}
+
+/** Pure authored-admission policy: spatial runway, explicit focus, never whole-sector eagerness. */
+export function isEntityAuthoredUpgradeRelevant(entity, state, radius = AUTHORED_ASSET_PREFETCH_RADIUS) {
+  if (!entity || entity.alive === false) return false;
+  if (entityIsExplicitRenderFocus(entity, state)) return true;
+  if (isCriticalStartingHub(entity)) return true;
+  if (state && state.mode === 'loading' && isInitialAuthoredCompositionEntity(entity, state)) return true;
+  if (entityWithinPlayerRadius(entity, state, AUTHORED_ASSET_IMMEDIATE_RADIUS)) return true;
+  return entityIsOnApproachVector(entity, state, radius);
+}
+
+function clearEntityMeshReference(entity, mesh) {
+  if (!entity) return;
+  if (entity.mesh === mesh) entity.mesh = null;
+  if (entity.view && entity.view.root === mesh) entity.view = null;
 }
 
 function getContactShadowTex() {
@@ -374,6 +474,12 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
   if (!Array.isArray(entities)) return;
   let shieldCount = 0;
   let navCount = 0;
+  let shieldMatrixDirty = false;
+  let shieldColorDirty = false;
+  let shieldFlashDirty = false;
+  let shieldBaseDirty = false;
+  let navMatrixDirty = false;
+  let navColorDirty = false;
   let entitiesVisited = classifiedFrame ? classifiedFrame.entitiesVisited : 0;
   for (const item of entities) {
     if (!classifiedFrame) entitiesVisited++;
@@ -390,12 +496,18 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
         const flashAttr = shieldMesh.geometry.getAttribute('instanceFlash');
         const baseAttr = shieldMesh.geometry.getAttribute('instanceBase');
         bubble.updateWorldMatrix(true, false);
-        shieldMesh.setMatrixAt(shieldCount, bubble.matrixWorld);
+        if (writeInstanceMatrixIfChanged(shieldMesh, shieldCount, bubble.matrixWorld)) shieldMatrixDirty = true;
         const uniforms = bubble.material && bubble.material.uniforms;
         const color = uniforms && uniforms.uColor && uniforms.uColor.value;
-        shieldMesh.setColorAt(shieldCount, color && color.isColor ? color : SHIP_AUX_COLOR.set(0x5fd0ff));
-        flashAttr.setX(shieldCount, uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0);
-        baseAttr.setX(shieldCount, uniforms && uniforms.uBase ? uniforms.uBase.value || 0.22 : 0.22);
+        if (writeInstanceColorIfChanged(
+          shieldMesh, shieldCount, color && color.isColor ? color : SHIP_AUX_COLOR.set(0x5fd0ff),
+        )) shieldColorDirty = true;
+        if (writeScalarAttributeIfChanged(
+          flashAttr, shieldCount, uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0,
+        )) shieldFlashDirty = true;
+        if (writeScalarAttributeIfChanged(
+          baseAttr, shieldCount, uniforms && uniforms.uBase ? uniforms.uBase.value || 0.22 : 0.22,
+        )) shieldBaseDirty = true;
         shieldCount++;
       }
     }
@@ -416,8 +528,8 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
       for (let i = 0; i < sourceCount; i++) {
         source.getMatrixAt(i, SHIP_AUX_LOCAL_MATRIX);
         SHIP_AUX_WORLD_MATRIX.multiplyMatrices(source.matrixWorld, SHIP_AUX_LOCAL_MATRIX);
-        navMesh.setMatrixAt(navCount, SHIP_AUX_WORLD_MATRIX);
-        navMesh.setColorAt(navCount, SHIP_AUX_COLOR);
+        if (writeInstanceMatrixIfChanged(navMesh, navCount, SHIP_AUX_WORLD_MATRIX)) navMatrixDirty = true;
+        if (writeInstanceColorIfChanged(navMesh, navCount, SHIP_AUX_COLOR)) navColorDirty = true;
         navCount++;
       }
     }
@@ -428,19 +540,51 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
   const baseAttr = shieldMesh.geometry.getAttribute('instanceBase');
   if (shieldMesh.count !== shieldCount) shieldMesh.count = shieldCount;
   shieldMesh.visible = shieldCount > 0;
-  shieldMesh.instanceMatrix.needsUpdate = true;
-  if (shieldMesh.instanceColor) shieldMesh.instanceColor.needsUpdate = true;
-  flashAttr.needsUpdate = true;
-  baseAttr.needsUpdate = true;
+  if (shieldMatrixDirty) shieldMesh.instanceMatrix.needsUpdate = true;
+  if (shieldColorDirty && shieldMesh.instanceColor) shieldMesh.instanceColor.needsUpdate = true;
+  if (shieldFlashDirty) flashAttr.needsUpdate = true;
+  if (shieldBaseDirty) baseAttr.needsUpdate = true;
 
   const navMesh = pool.nav.mesh;
   if (navMesh.count !== navCount) navMesh.count = navCount;
   navMesh.visible = navCount > 0;
-  navMesh.instanceMatrix.needsUpdate = true;
-  if (navMesh.instanceColor) navMesh.instanceColor.needsUpdate = true;
+  if (navMatrixDirty) navMesh.instanceMatrix.needsUpdate = true;
+  if (navColorDirty && navMesh.instanceColor) navMesh.instanceColor.needsUpdate = true;
 
   pool.entityPasses = 1;
   pool.entitiesVisited = entitiesVisited;
+}
+
+function writeInstanceMatrixIfChanged(mesh, index, matrix, epsilon = 1e-6) {
+  const target = mesh && mesh.instanceMatrix && mesh.instanceMatrix.array;
+  const source = matrix && matrix.elements;
+  if (!target || !source) return false;
+  const offset = index * 16;
+  for (let i = 0; i < 16; i++) {
+    if (Math.abs(target[offset + i] - source[i]) > epsilon) {
+      mesh.setMatrixAt(index, matrix);
+      return true;
+    }
+  }
+  return false;
+}
+
+function writeInstanceColorIfChanged(mesh, index, color, epsilon = 1e-6) {
+  const target = mesh && mesh.instanceColor && mesh.instanceColor.array;
+  if (!target || !color) return false;
+  const offset = index * 3;
+  if (Math.abs(target[offset] - color.r) <= epsilon
+      && Math.abs(target[offset + 1] - color.g) <= epsilon
+      && Math.abs(target[offset + 2] - color.b) <= epsilon) return false;
+  mesh.setColorAt(index, color);
+  return true;
+}
+
+function writeScalarAttributeIfChanged(attribute, index, value, epsilon = 1e-6) {
+  if (!attribute || !attribute.array) return false;
+  if (Math.abs(attribute.array[index] - value) <= epsilon) return false;
+  attribute.setX(index, value);
+  return true;
 }
 
 function getPooledNavLightSources(root) {
@@ -785,6 +929,7 @@ export const render = {
     this._hazardVisuals = []; // hazard zone visual meshes for the current sector
     this._meshReconcileDirty = true;
     this._initialMeshReconcileComplete = false;
+    this._renderResidencyPollS = 0;
     // Renderer diagnostics: window.__THREE_GAME_DIAGNOSTICS__ (draw calls/tris/memory + frame timing).
     try {
       this.diag = installDiagnostics(renderer, {
@@ -894,6 +1039,44 @@ export const render = {
     state.render.cameraCtrl = cam;   // controller (addTrauma/pushZoom) — exposed for feel.js / ui
     state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
     state.render.warmPostProcess = () => (this.bloom && state.settings.video.bloom !== false ? this.bloom.render(scene, cam.obj) : renderer.render(scene, cam.obj));
+    const compileForCurrentTarget = (subjects) => {
+      const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
+      if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'empty pipeline batch' });
+      const subject = batch.length === 1 ? batch[0] : new THREE.Group();
+      if (batch.length > 1) {
+        subject.name = 'SF_AuthoredPipelineAdmissionBatch';
+        for (const root of batch) subject.add(root);
+      }
+      const video = state.settings && state.settings.video || {};
+      const loadingAdmission = state.mode === 'loading';
+      let preparation;
+      if (video.renderGraph && this._ensureRenderGraph()) {
+        preparation = loadingAdmission
+          ? warmScenePipelinesForRenderTarget(
+            renderer, this._renderGraph.sceneTarget, subject, cam.obj, scene,
+          )
+          : compileScenePipelinesForRenderTarget(
+            renderer, this._renderGraph.sceneTarget, subject, cam.obj, scene,
+          );
+      } else if (this.bloom && video.bloom !== false) {
+        preparation = loadingAdmission
+          ? this.bloom.warmScenePipelines(subject, cam.obj, scene)
+          : this.bloom.compileScenePipelines(subject, cam.obj, scene);
+      } else {
+        preparation = loadingAdmission
+          ? warmScenePipelinesForRenderTarget(renderer, null, subject, cam.obj, scene)
+          : compileScenePipelinesForRenderTarget(renderer, null, subject, cam.obj, scene);
+      }
+      return Promise.resolve(preparation).finally(() => {
+        if (batch.length > 1) subject.clear();
+      });
+    };
+    const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
+      deferAutoFlush: () => state.mode === 'loading',
+    });
+    state.render.compileObjectPipelines = (subject) => pipelineAdmissions.compile(subject);
+    state.render.compileCurrentPipelines = () => pipelineAdmissions.waitForPending();
+    state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
     // Collision/socket/landing debug toggle (spec §12.5), bound to F7 in ui/input.js. Capture the
     // render-system `this` once so the handle closures resolve the live collisionDebug regardless of
     // how they're invoked (method `this` would otherwise bind to the debug handle object itself).
@@ -916,6 +1099,7 @@ export const render = {
     );
 
     bus.on('entity:spawned', () => { this._meshReconcileDirty = true; });
+    bus.on('world:residency', () => { this._meshReconcileDirty = true; });
     bus.on('entity:destroyed', ({ id }) => {
       const m = this._meshes.get(id);
       if (m) {
@@ -993,8 +1177,14 @@ export const render = {
       if (this._assetResidency) this._assetResidency.rotateSector(sectorId || sector && sector.id);
       this._publishAssetResidencyDiagnostics();
       this._meshReconcileDirty = true;
-      // Kick any station/place boundaries that spawned before the GLB cache was warm.
-      for (const mesh of this._meshes.values()) requestAuthoredUpgrade(mesh, renderer, scene);
+      // Kick only boundaries inside the authored prefetch runway. Reduced neighbour sectors remain
+      // structurally alive in simulation, but do not decode merely because membership changed.
+      for (const [id, mesh] of this._meshes) {
+        const entity = state.entities.get(id);
+        if (isEntityAuthoredUpgradeRelevant(entity, state)) {
+          requestAuthoredUpgrade(mesh, renderer, scene);
+        }
+      }
       if (cam.snapToPlayer) cam.snapToPlayer();
       this._beginSectorPaletteTransition(sector);
       // Per-sector sky: rebake the deep-field background with this sector's seed +
@@ -1003,6 +1193,7 @@ export const render = {
       this._updateHazardVisuals(sector);
       const warmup = precompilePipelines(renderer, scene, cam.obj, {
         sector,
+        preparePipelines: compileForCurrentTarget,
         warmPostProcess: state.render.warmPostProcess,
         video: state.settings && state.settings.video,
       }).catch((error) => {
@@ -1138,23 +1329,34 @@ export const render = {
   reconcileMeshes() {
     const state = this.state;
     const buildBudget = this._initialMeshReconcileComplete ? RUNTIME_MESH_BUILD_BUDGET : Infinity;
-    // remove meshes whose entity no longer exists or has died
+    // Remove dead ownership and evict distant reduced-sector views. Simulation residency remains
+    // untouched; only the render-owned Object3D boundary and its authored residency are released.
     for (const [id, m] of this._meshes) {
       const e = state.entities.get(id);
-      if (!e || e.alive === false) {
+      if (!e || e.alive === false || !isEntityRenderRelevant(e, state, RENDER_STREAM_EVICT_RADIUS)) {
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(m); disposeObject(m); this._meshes.delete(id); this._shadowReceiversDirty = true;
+        clearEntityMeshReference(e, m);
       }
     }
-    // Queue authored-readiness-critical ships first, then every remaining world entity. The drain
-    // budget stays bounded; this changes admission order only and does not drop or downgrade visuals.
+    // Queue relevant ships first, then relevant world geometry. Distant reduced-sector entities
+    // continue to exist in state and are admitted automatically as the player approaches.
     enqueueMissingMeshBuilds(
       state.entityList,
       this._meshes,
       this._meshBuildQueuedIds,
       this._meshBuildQueue,
+      (entity) => isEntityRenderRelevant(entity, state),
     );
     const built = this._drainMeshBuildQueue(buildBudget);
+    // Existing fallback boundaries may have crossed the authored prefetch radius since the last
+    // reconciliation. Requesting is idempotent; resolved bootstrap assets install synchronously.
+    for (const [id, mesh] of this._meshes) {
+      const entity = state.entities.get(id);
+      if (isEntityAuthoredUpgradeRelevant(entity, state)) {
+        requestAuthoredUpgrade(mesh, this.renderer, this.scene);
+      }
+    }
     this._meshReconcileDirty = this._meshBuildQueueHead < this._meshBuildQueue.length;
     if (!this._meshReconcileDirty) this._initialMeshReconcileComplete = true;
     this._publishAssetResidencyDiagnostics();
@@ -1167,7 +1369,8 @@ export const render = {
       const id = this._meshBuildQueue[this._meshBuildQueueHead++];
       this._meshBuildQueuedIds.delete(id);
       const e = this.state.entities.get(id);
-      if (!e || e.alive === false || e._noMesh || this._meshes.has(id)) continue;
+      if (!e || e.alive === false || e._noMesh || this._meshes.has(id)
+          || !isEntityRenderRelevant(e, this.state)) continue;
       const m = this.vf.build(e);
       if (!m) { e._noMesh = true; continue; }
       const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
@@ -1178,7 +1381,9 @@ export const render = {
       this._meshes.set(e.id, m);
       this.scene.add(m);
       registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
-      requestAuthoredUpgrade(m, this.renderer, this.scene);
+      if (isEntityAuthoredUpgradeRelevant(e, this.state)) {
+        requestAuthoredUpgrade(m, this.renderer, this.scene);
+      }
       this._shadowReceiversDirty = true;
       built++;
     }
@@ -1215,7 +1420,9 @@ export const render = {
     e.mesh = m; e.view = { root: m };
     this._meshes.set(id, m);
     this.scene.add(m);
-    requestAuthoredUpgrade(m, this.renderer, this.scene);
+    if (isEntityAuthoredUpgradeRelevant(e, this.state)) {
+      requestAuthoredUpgrade(m, this.renderer, this.scene);
+    }
     this._shadowReceiversDirty = true;
   },
 
@@ -1571,6 +1778,14 @@ export const render = {
     // Dynamic resolution: measure real frame time and nudge the internal render scale to hold a smooth
     // framerate on weak/software GPUs (adaptiveQuality.js). Cheap; only resizes targets on a change.
     if (this._adaptive) this._adaptive.update(frameDt);
+    // Existing neighbour-sector entities do not emit a spawn event when the player simply flies
+    // toward them. A low-frequency residency poll admits/evicts views and starts authored prefetch
+    // as distance thresholds are crossed without putting a full entity scan in every frame.
+    this._renderResidencyPollS -= Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
+    if (this._renderResidencyPollS <= 0) {
+      this._renderResidencyPollS = RENDER_RESIDENCY_POLL_SECONDS;
+      this._meshReconcileDirty = true;
+    }
     if (this._meshReconcileDirty) this.reconcileMeshes();
     this._updateShipPitch(frameDt);
     this.syncEntityViews(alpha);

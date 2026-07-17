@@ -17,11 +17,11 @@
                 "items": {
                   "type": "string"
                 },
-                "description": "Array of data source URLs to query. These are obtained from the fetch tool in the format: collection://f336d0bc-b841-465b-8045-024475c079dd"
+                "description": "Notion data source URLs whose SQLite tables are available to the query; each data source is exposed as a table named by its URL. Obtain them from the fetch tool, in the format: collection://f336d0bc-b841-465b-8045-024475c079dd"
               },
               "query": {
                 "type": "string",
-                "description": "SQLite query to execute against the data sources. Use the data source URL as the table name in your query. Example: SELECT * FROM \"collection://...\" WHERE ..."
+                "description": "Read-only SQLite query to execute against the data sources. Use a data source URL as the table name, e.g. SELECT * FROM \"collection://...\" WHERE .... Include every needed filter in WHERE (filters on views of the data source are not automatically applied). For time comparisons or ordering, normalize text timestamps with datetime(...) or date(...)."
               },
               "mode": {
                 "type": "string",
@@ -30,11 +30,24 @@
                 ]
               },
               "params": {
-                "description": "Optional array of parameter values for parameterized queries. For example, if query contains WHERE status = ?, provide the value here. Use \"__YES__\" for checked checkboxes and \"__NO__\" for unchecked checkboxes.",
+                "description": "Positional parameters bound to `?` placeholders in the query. Prefer parameterized queries over string interpolation. Use \"__YES__\" for checked checkboxes and \"__NO__\" for unchecked checkboxes.",
                 "maxItems": 100,
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               }
             },

@@ -118,7 +118,29 @@ test('world-place upgrades share the same bounded authored admission queue', () 
   assert.match(source, /typeof job\.run === 'function'/);
 });
 
-test('startup readiness gates only the authored player and critical starting place', () => {
+test('authored visual admission awaits the exact GPU pipeline compiler when available', async () => {
+  assert.equal(typeof partsLibrary.prepareAuthoredVisualPipelines, 'function');
+  const root = new THREE.Group();
+  const calls = [];
+
+  const result = await partsLibrary.prepareAuthoredVisualPipelines(root, {
+    prepareAuthoredPipelines: async (subject) => {
+      calls.push(subject);
+      return { skipped: false, programCount: 12 };
+    },
+  });
+
+  assert.deepEqual(calls, [root]);
+  assert.deepEqual(result, { skipped: false, programCount: 12 });
+  await assert.rejects(
+    partsLibrary.prepareAuthoredVisualPipelines(root, {
+      prepareAuthoredPipelines: async () => { throw new Error('pipeline rejected'); },
+    }),
+    /pipeline rejected/,
+  );
+});
+
+test('startup readiness gates the authored opening composition without waiting on distant NPCs', () => {
   assert.equal(typeof partsLibrary.authoredCriticalVisualReadiness, 'function');
   const player = { id: 1, type: 'ship', alive: true, mesh: { userData: { authoredAssetState: 'authored' } } };
   const hub = {
@@ -137,9 +159,29 @@ test('startup readiness gates only the authored player and critical starting pla
     'noncritical NPC upgrades must not hold the flight gate');
   player.mesh.userData.authoredAssetState = 'loading';
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false);
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).pipelineReady, false);
+  player.mesh.userData.authoredAssetState = 'compiling-pipelines';
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false);
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).pipelineReady, true,
+    'staged authored roots may advance to the combined GPU admission gate without entering flight');
   player.mesh.userData.authoredAssetState = 'authored';
   hub.mesh.userData.authoredAssetState = 'procedural-fallback';
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false);
+  hub.mesh.userData.authoredAssetState = 'authored';
+  player.pos = { x: 0, z: 0 };
+  npc.pos = { x: 1200, z: 0 };
+  npc.mesh.userData.authoredAssetState = 'loading';
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false,
+    'a ship in the opening flight composition must settle before control begins');
+  npc.mesh.userData.authoredAssetState = 'compiling-pipelines';
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).pipelineReady, true);
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false);
+  npc.mesh.userData.authoredAssetState = 'authored';
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true);
+  npc.pos.x = 7000;
+  npc.mesh.userData.authoredAssetState = 'loading';
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true,
+    'a distant NPC remains an on-demand asset and must not extend startup');
 });
 
 test('a departed boundary is discarded before its asset can load', async () => {

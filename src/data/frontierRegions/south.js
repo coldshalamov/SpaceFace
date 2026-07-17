@@ -141,6 +141,17 @@ export const SOUTH_SECTORS = Object.freeze([
         type: 'derelict',
         name: 'Gulf Hulk',
       }),
+      Object.freeze({
+        id: 'poi_eunomia_ledger',
+        type: 'beacon',
+        name: 'Gulf Ledger Plate',
+        factionId: 'faction_vael',
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_debris',
+        type: 'wreck',
+        name: 'Paint-Scar Debris',
+      }),
     ]),
   }),
 
@@ -189,6 +200,12 @@ export const SOUTH_SECTORS = Object.freeze([
         type: 'cache',
         name: 'Sedna Vault',
         hidden: true,
+      }),
+      Object.freeze({
+        id: 'poi_sedna_cadence',
+        type: 'beacon',
+        name: 'Dark Cadence Beacon',
+        factionId: 'faction_vael',
       }),
     ]),
   }),
@@ -277,6 +294,16 @@ export const SOUTH_ANCHORS = Object.freeze({
         landmarkGlb: 'place_dead_hulk',
         landmark: true,
       }),
+      Object.freeze({
+        id: 'poi_eunomia_ledger',
+        pos: Object.freeze({ x: -920, z: 480 }),
+        landmarkGlb: 'place_nav_buoy',
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_debris',
+        pos: Object.freeze({ x: 640, z: -880 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
     ]),
   }),
 
@@ -314,6 +341,12 @@ export const SOUTH_ANCHORS = Object.freeze({
         id: 'poi_sedna_vault',
         pos: Object.freeze({ x: -1320, z: 280 }),
         landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        id: 'poi_sedna_cadence',
+        pos: Object.freeze({ x: 860, z: -640 }),
+        landmarkGlb: 'place_nav_buoy',
+        landmark: true,
       }),
     ]),
   }),

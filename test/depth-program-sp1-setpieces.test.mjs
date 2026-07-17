@@ -16,7 +16,7 @@ import { missionPreflight, missionUpfrontCost } from '../src/ui/missionPreflight
  * SP1's intentionally small public seam:
  *
  * Data (`src/data/missions.js`)
- *   - SET_PIECE_MISSIONS: three definitions using
+ *   - SET_PIECE_MISSIONS: authored definitions using
  *       { id, title, commonStages, branches:[{ id, label, stages }] }.
  *   - validateSetPieceMissionCatalog(): structured validation result.
  *
@@ -32,7 +32,13 @@ import { missionPreflight, missionUpfrontCost } from '../src/ui/missionPreflight
  * the save authority. Tests deliberately avoid private methods of the new runtime helper.
  */
 
-const EXPECTED_ARCHETYPES = new Set(['long_read', 'witness_run', 'hearing']);
+const EXPECTED_ARCHETYPES = new Set([
+  'long_read',
+  'witness_run',
+  'hearing',
+  'blockade_run',
+  'investigation_chain',
+]);
 const STATION_TO_SECTOR = new Map();
 for (const sector of SECTORS) {
   for (const station of sector.stations || []) STATION_TO_SECTOR.set(station.id, sector.id);
@@ -225,18 +231,18 @@ function walkRoute(api, state, definition, branchId, startEpoch = 4) {
   assert.fail(`${definition.id}/${branchId}: route did not resolve within the 3-4 stage contract`);
 }
 
-test('SP1 catalog has exactly three authored archetypes, one branch point each, and six valid 3-4 stage routes', () => {
+test('SP1 catalog has five authored archetypes, one branch point each, and ten valid 3-4 stage routes', () => {
   const definitions = missionData.SET_PIECE_MISSIONS;
   assert.ok(Array.isArray(definitions), 'missions data exports SET_PIECE_MISSIONS');
-  assert.equal(definitions.length, 3);
+  assert.equal(definitions.length, 5);
   assert.deepEqual(new Set(definitions.map((entry) => entry.id)), EXPECTED_ARCHETYPES);
   assert.equal(typeof missionData.validateSetPieceMissionCatalog, 'function',
     'missions data exports validateSetPieceMissionCatalog()');
   const validation = missionData.validateSetPieceMissionCatalog();
   assert.equal(validation.ok, true, (validation.errors || []).join('\n'));
   assert.deepEqual(validation.errors || [], []);
-  assert.equal(validation.archetypes, 3);
-  assert.equal(validation.playableRoutes, 6);
+  assert.equal(validation.archetypes, 5);
+  assert.equal(validation.playableRoutes, 10);
 
   for (const definition of definitions) {
     assert.ok(definition.title && definition.title.length >= 8, `${definition.id}: authored title`);

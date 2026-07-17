@@ -1,8 +1,0 @@
----
-pid: 9180
-cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
-command: "node \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\cdp-probe.mjs\" 8160"
-started_at: 2026-07-07T08:40:23.395Z
-running_for_ms: 41619989 
----
-{"title":"SpaceFace","scriptCount":2,"moduleScript":["importmap:inline","module:http://localhost:8160/src/main.js"],"hasCanvas":true,"hasSF":false}

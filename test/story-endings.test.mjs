@@ -63,7 +63,14 @@ function makeB7State(seed = 47, extra = {}) {
   }
   state.story.beatIndex = 7;
   state.story.branch = 'patrol';
-  state.story.flags = { endgame: true };
+  // Place gate (shipped): op complete + Ashfall presence required before offer.
+  state.story.flags = {
+    endgame: true,
+    deep_reach_operation_complete: true,
+    ashfall_visited: true,
+    deep_reach_ashfall_docked: true,
+    kurtz_desk_opened: true,
+  };
   state.story.endgameOffered = true;
   state.story.endgameChoice = null;
   state.story.endgameResolved = false;
@@ -298,7 +305,12 @@ check('offer surfaces sandbox when no final disposition is currently fileable', 
   h.state.player.cargo.usedVolume = 0;
   h.state.player.cargo.items = {};
   h.state.story.endgameDeclined = [];
-  h.story._maybeOfferEndgame();
+  // Satisfy shipped place gate via real dock path (not flag-only cheat past desk).
+  h.state.world.currentSectorId = 'sector_ashfall_reach';
+  h.state.story.flags.deep_reach_operation_complete = true;
+  h.bus.emit('dock:docked', { stationId: 'station_ashcache' });
+  if (!h.state.story.endgameOffered) h.story._maybeOfferEndgame();
+  assert.equal(h.state.story.endgameOffered, true);
   assert.equal(h.events.promptSandbox.length, 1);
 });
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { PROPULSION_PROFILES } from '../src/core/flight/propulsionCatalog.js';
-import { createPropulsionRuntime, stepPropulsion } from '../src/core/flight/propulsionKernel.js';
+import { COAST_HELM_YAW_MULT, createPropulsionRuntime, stepPropulsion } from '../src/core/flight/propulsionKernel.js';
 import { applyMasslineFlightModifiers, MASSLINE_FLIGHT_TUNING } from '../src/systems/flightV3.js';
 import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 import { advanceFixedTimestep, LOOP_FIXED_DT } from '../src/core/loop.js';
@@ -112,6 +112,60 @@ function simulate({ profile, b, input, ticks, runtime }) {
   assert.ok(Math.abs(sim.body.rot) > 0.4, 'ship should yaw');
   assert.ok(Math.abs(sim.body.vel.z) < 1e-9, 'yaw alone must not bend the velocity vector');
   assert.ok(Math.abs(sim.body.vel.x - 80) < 1e-9, 'yaw alone must conserve linear speed');
+}
+
+// 3b. Coast helm: idle main thrusters unlock ~20% more yaw authority than while thrusting.
+{
+  const profile = PROPULSION_PROFILES.drive_reaction_s;
+  const coast = stepPropulsion({
+    dt: DT,
+    body: body(),
+    input: { turn: 1, assistMode: 'newtonian' },
+    profile,
+    runtime: createPropulsionRuntime(profile),
+  });
+  const thrusting = stepPropulsion({
+    dt: DT,
+    body: body(),
+    input: { turn: 1, throttle: 1, assistMode: 'newtonian' },
+    profile,
+    runtime: createPropulsionRuntime(profile),
+  });
+  assert.equal(COAST_HELM_YAW_MULT, 1.2, 'coast helm mult is the authored strategic primitive');
+  assert.equal(coast.telemetry.coastHelm, true, 'neutral throttle should arm coast helm');
+  assert.equal(thrusting.telemetry.coastHelm, false, 'main throttle should lock out coast helm');
+  assert.ok(
+    Math.abs(coast.telemetry.targetYawRate) > Math.abs(thrusting.telemetry.targetYawRate) * 1.15,
+    'coast target yaw rate should be about 20% higher than thrusting'
+  );
+  assert.ok(
+    Math.abs(coast.torque.y) > Math.abs(thrusting.torque.y) * 1.15,
+    'coast yaw torque should be about 20% higher than thrusting'
+  );
+
+  // Strafe is RCS: it must not cancel the flip bonus (let off main drive, still nimble).
+  const strafing = stepPropulsion({
+    dt: DT,
+    body: body(),
+    input: { turn: 1, strafe: 1, assistMode: 'newtonian' },
+    profile,
+    runtime: createPropulsionRuntime(profile),
+  });
+  assert.equal(strafing.telemetry.coastHelm, true, 'strafe alone should keep coast helm');
+  assert.ok(
+    Math.abs(strafing.telemetry.targetYawRate - coast.telemetry.targetYawRate) < 1e-9,
+    'strafe should not change coast-helm yaw target'
+  );
+
+  // Sustained: coasting nose reaches more heading than thrusting over the same window.
+  const coastBody = body();
+  const thrustBody = body();
+  simulate({ profile, b: coastBody, input: { turn: 1, assistMode: 'newtonian' }, ticks: 45 });
+  simulate({ profile, b: thrustBody, input: { turn: 1, throttle: 1, assistMode: 'newtonian' }, ticks: 45 });
+  assert.ok(
+    Math.abs(coastBody.rot) > Math.abs(thrustBody.rot) * 1.1,
+    'coast flip should accumulate meaningfully more heading than thrusting turn'
+  );
 }
 
 // 4. Conscious reverse thrust brakes harder than neutral assist.

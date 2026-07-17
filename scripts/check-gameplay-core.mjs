@@ -884,14 +884,16 @@ function restoreBrowserStubs(saved) {
   globalThis.performance = saved.performance;
 }
 
-function initShippedAutoTargetSystems(state, bus, cursorWorld = { x: 0, z: 300 }) {
+function initShippedAutoTargetSystems(state, bus) {
   const inputSys = Object.create(inputSystem);
   inputSystem.init.call(inputSys, {
     state,
     bus,
-    helpers: { raycastToPlane: () => ({ x: cursorWorld.x, z: cursorWorld.z }) },
+    helpers: { raycastToPlane: (ndc) => ({ x: ndc.x * 300, z: ndc.y * 300 }) },
   });
-  inputSys._screen = { x: 400, y: 300, active: true };
+  inputSys._screen = { x: 520, y: 200, active: true };
+  inputSys._ndc = { x: 0.3, y: 1 / 3 };
+  inputSys._autoTargetPointerMode = true;
   inputSys._lastKbmMs = performance.now();
   inputSys._keys = Object.create(null);
   const assistSys = Object.create(autoTargetAssist);
@@ -990,7 +992,7 @@ function checkAutoTargetInputSteersShipAndAimsHostile() {
     state.player.targetId = 2;
     state.input.autoFire = true;
     state.input.turnIntent = 0.8;
-    state.input.pointerScreen = { x: 400, y: 300, active: true };
+    state.input.pointerScreen = { x: 520, y: 200, active: true };
     const player = {
       id: 1, type: 'ship', alive: true, team: 0,
       pos: { x: 0, z: 0 }, rot: 0, vel: { x: 0, z: 0 },
@@ -1011,7 +1013,7 @@ function checkAutoTargetInputSteersShipAndAimsHostile() {
     bus.emit = (event, payload) => { emits.push({ event, payload }); return origEmit(event, payload); };
     bus.on('ui:targetNearestHostileToPlayer', () => {});
 
-    const ctx = initShippedAutoTargetSystems(state, bus, { x: 0, z: 300 });
+    const ctx = initShippedAutoTargetSystems(state, bus);
     runShippedAutoTargetTick(state, 1 / 60, ctx);
 
     const hostileAim = Math.atan2(hostile.pos.z - player.pos.z, hostile.pos.x - player.pos.x);
@@ -1023,25 +1025,20 @@ function checkAutoTargetInputSteersShipAndAimsHostile() {
     assert(Math.abs(wrapAngle(state.input.aimAngle - cursorAngle)) > 0.5,
       'auto-target aimAngle must diverge from cursor bearing when hostile is elsewhere');
     assert(Math.abs(state.input.turnIntent) > 0.01,
-      'auto-target should publish non-zero turnIntent toward the cursor bearing');
+      'auto-target should publish non-zero ship-local yaw from horizontal stick deflection');
+    assert(state.input.moveZ > 0.01,
+      'auto-target should publish forward thrust from upward stick deflection');
     assert.equal(emits.filter((e) => e.event === 'ui:targetNearestHostileToCursor').length, 0,
       'shipped auto-target tick must never emit cursor-nearest refresh');
 
     state.input.turnIntent = 0.8;
     runShippedAutoTargetTick(state, 1 / 60, ctx);
-    const expectedTurn = Math.max(-1, Math.min(1, wrapAngle(cursorAngle - player.rot) / 0.55));
-    assert(Math.abs(state.input.turnIntent - expectedTurn) < 0.05,
-      'auto-target cursor steering must override keyboard yaw in pilot scheme');
+    assert.equal(state.input.turnIntent, state.input.autoTargetStick.x,
+      'auto-target joystick must override keyboard yaw with its horizontal local axis');
+    assert.equal(state.input.moveZ, state.input.autoTargetStick.y,
+      'auto-target joystick must drive throttle with its vertical local axis');
 
-    const reticle = projectLockedReticle(state, (v) => ({
-      x: 2000,
-      y: 2000,
-      onScreen: false,
-    }), { width: 800, height: 600 });
-    assert(reticle && reticle.x < 800 && reticle.y < 600,
-      'shipped auto-target path must feed uiRoot reticle helper with edge-clamped off-screen coords');
-
-    console.log(`[PASS] shipped-auto-target-input aimAngle=${state.input.aimAngle.toFixed(3)} turnIntent=${state.input.turnIntent.toFixed(3)} hostileAim=${hostileAim.toFixed(3)} reticle=(${reticle.x.toFixed(1)},${reticle.y.toFixed(1)})`);
+    console.log(`[PASS] shipped-auto-target-input aimAngle=${state.input.aimAngle.toFixed(3)} turnIntent=${state.input.turnIntent.toFixed(3)} moveZ=${state.input.moveZ.toFixed(3)} hostileAim=${hostileAim.toFixed(3)} stick=${state.input.autoTargetStick.magnitude.toFixed(3)}`);
   } finally {
     restoreBrowserStubs(saved);
   }
@@ -1115,7 +1112,7 @@ function checkTargetCycleHostilesOnly() {
   console.log(`[PASS] target-cycle scannerRange=${SCANNER_CONTACT_RANGE} preservedTab=5 then refresh->${state.player.targetId}`);
 }
 
-function checkAutoTargetFToggleAlwaysFlips() {
+function checkAutoTargetGToggleAlwaysFlips() {
   const state = createGameState(203);
   state.playerId = 1;
   state.input.autoFire = false;
@@ -1126,10 +1123,11 @@ function checkAutoTargetFToggleAlwaysFlips() {
 
   toggleAutoTarget(state, bus, createAutoTargetRuntime());
   assert.equal(state.input.autoFire, true, 'toggleAutoTarget must enable auto-target');
-  assert(toasts.some((t) => t.text === 'Auto-target ON'), 'toggle must toast ON without autopursuit guard');
+  assert(toasts.some((t) => /Auto-target ON.*swipe to steer/.test(t.text)),
+    'toggle must explain gesture steering without an autopursuit guard');
   toggleAutoTarget(state, bus, createAutoTargetRuntime());
   assert.equal(state.input.autoFire, false, 'second toggle must disable auto-target');
-  console.log('[PASS] f-toggle-always-flips without autopursuit guard');
+  console.log('[PASS] g-toggle-always-flips without autopursuit guard');
 }
 
 function checkAutoTargetRefreshPreservesTabLockViaInput() {
@@ -6317,7 +6315,7 @@ checkProjectLockedReticleOffScreen();
 checkAutoTargetAssistReinitNoListenerLeak();
 checkAutoTargetInputSteersShipAndAimsHostile();
 checkTargetCycleHostilesOnly();
-checkAutoTargetFToggleAlwaysFlips();
+checkAutoTargetGToggleAlwaysFlips();
 checkAutoTargetRefreshPreservesTabLockViaInput();
 checkWeaponHeatHudSummary();
 

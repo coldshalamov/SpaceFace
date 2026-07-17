@@ -51,6 +51,7 @@ captures.
 |---|---|
 | `TOP50_WONDER_BUILD_PLAN.md` | Ranked visual priority and slice exits |
 | `FULL_GRAPHICS_REVAMP_GOAL.md` | Full authored-asset coverage and professional outcome bar |
+| `CLI_ASSET_FOUNDRY_EXECUTION_PLAN.md` | Zero-cost CLI pipeline and six independently shippable checkpoints |
 | `QUALITY_RITUAL.md` | Optional evidence/critique structure |
 | `00_ORCHESTRATION.md` | Concurrent lanes, ownership, and lifecycle |
 | `THREAD_A_...` through `THREAD_E_...` | Scoped lane briefs |

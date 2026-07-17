@@ -72,6 +72,8 @@ const CORE_SECTOR_ANCHORS = {
     ],
     pois: [
       { id: 'poi_blackmkt', pos: { x: -1380, z: 420 }, landmarkGlb: 'place_nav_buoy' },
+      { id: 'poi_tethys_weigh', pos: { x: 720, z: -980 }, landmarkGlb: 'place_lane_beacon' },
+      { id: 'poi_tethys_customs_log', pos: { x: -920, z: -640 }, landmarkGlb: 'place_nav_buoy' },
     ],
   },
   sector_vesta_forge: {
@@ -91,6 +93,8 @@ const CORE_SECTOR_ANCHORS = {
     ],
     pois: [
       { id: 'poi_freighter', pos: { x: 860, z: -1240 }, landmarkGlb: 'place_dead_hulk', landmark: true },
+      { id: 'poi_vesta_slag_relay', pos: { x: -980, z: 420 }, landmarkGlb: 'place_nav_buoy' },
+      { id: 'poi_vesta_ore_cache', pos: { x: 540, z: 1100 }, landmarkGlb: 'place_debris_chunk' },
     ],
   },
   sector_pallas_drift: {
@@ -149,6 +153,8 @@ const CORE_SECTOR_ANCHORS = {
     ],
     pois: [
       { id: 'poi_colony', pos: { x: -620, z: 1420 }, landmarkGlb: 'place_conveyor_barge', landmark: true },
+      { id: 'poi_charon_lung_marker', pos: { x: 480, z: -1100 }, landmarkGlb: 'place_lane_beacon' },
+      { id: 'poi_charon_tether_wreck', pos: { x: -1280, z: 360 }, landmarkGlb: 'place_dead_hulk' },
     ],
   },
   sector_sker_haven: {

@@ -85,11 +85,63 @@ const REACH_CULTURE_ROSTER = Object.freeze([
   }),
 ]);
 
+// Variety aces (append-only). Kept off CORE_ROSTER so B10 NAMED_ACE_IDS stays three entries.
+const VARIETY_ROSTER = Object.freeze([
+  Object.freeze({
+    id: 'ace_jex_wake_salt',
+    name: 'Jex Wake-Salt',
+    crew: 'The Salt Wake',
+    factionId: 'faction_reach',
+    gimmickTag: 'wake-mines',
+    returnArchetype: 'mine_layer_jackal',
+    escortArchetype: 'pd_screen_escort',
+    baseReturnLevel: 4,
+    signatureBark: 'SALT WAKE: leave the trail. We already seeded it.',
+  }),
+  Object.freeze({
+    id: 'ace_noll_curtain',
+    name: 'Noll of the Curtain',
+    crew: 'Curtain Company',
+    factionId: 'faction_reach',
+    gimmickTag: 'pd-curtain',
+    returnArchetype: 'pd_screen_escort',
+    escortArchetype: 'corsair_raider',
+    baseReturnLevel: 5,
+    signatureBark: 'CURTAIN COMPANY: your missiles are a polite request. Denied.',
+  }),
+  Object.freeze({
+    id: 'ace_ves_no_face',
+    name: 'Ves No-Face',
+    crew: 'Blank Ledger',
+    factionId: 'faction_quiet',
+    gimmickTag: 'sensor-ghost',
+    returnArchetype: 'quiet_ghost',
+    escortArchetype: 'lancer_sniper',
+    baseReturnLevel: 5,
+    signatureBark: 'BLANK LEDGER: you never saw this ship. File that.',
+  }),
+  Object.freeze({
+    id: 'ace_sere_pattern',
+    name: 'Sere of the Pattern',
+    crew: 'Third Refrains',
+    factionId: 'faction_choir',
+    gimmickTag: 'slash-and-run',
+    returnArchetype: 'choir_zealot',
+    escortArchetype: 'choir_zealot',
+    baseReturnLevel: 4,
+    signatureBark: 'THIRD REFRAINS: the Pattern names you. Answer in fire.',
+  }),
+]);
+
 export const NAMED_ACE_IDS = Object.freeze(CORE_ROSTER.map((ace) => ace.id));
 export const NAMED_ACES = Object.freeze(Object.fromEntries(CORE_ROSTER.map((ace) => [ace.id, ace])));
 export const REACH_CULTURE_ACE_IDS = Object.freeze(REACH_CULTURE_ROSTER.map((ace) => ace.id));
 export const REACH_CULTURE_ACES = Object.freeze(Object.fromEntries(
   REACH_CULTURE_ROSTER.map((ace) => [ace.id, ace]),
+));
+export const VARIETY_ACE_IDS = Object.freeze(VARIETY_ROSTER.map((ace) => ace.id));
+export const VARIETY_ACES = Object.freeze(Object.fromEntries(
+  VARIETY_ROSTER.map((ace) => [ace.id, ace]),
 ));
 
 const CAPTAIN_ALIASES = Object.freeze(NAMED_CAPTAINS.map((cap) => Object.freeze({
@@ -105,7 +157,7 @@ const CAPTAIN_ALIASES = Object.freeze(NAMED_CAPTAINS.map((cap) => Object.freeze(
   encounterCaptain: true,
 })));
 
-const ALL_KNOWN_ACES = Object.freeze([...CORE_ROSTER, ...REACH_CULTURE_ROSTER, ...CAPTAIN_ALIASES]);
+const ALL_KNOWN_ACES = Object.freeze([...CORE_ROSTER, ...REACH_CULTURE_ROSTER, ...VARIETY_ROSTER, ...CAPTAIN_ALIASES]);
 const ACE_BY_ID = new Map(ALL_KNOWN_ACES.map((ace) => [ace.id, ace]));
 const ACE_BY_NAME = new Map(ALL_KNOWN_ACES.map((ace) => [normalizeName(ace.name), ace]));
 

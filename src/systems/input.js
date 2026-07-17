@@ -2,7 +2,7 @@
 // state.input each tick. THREE control schemes, picked by settings.gameplay.controlScheme
 // ('pilot' default | 'helm-assist' | 'classic'):
 //
-//   PILOT (default) — KEYBOARD FLIES, MOUSE FIGHTS. The mouse never steers the nose: it aims
+//   PILOT (default) — KEYBOARD FLIES, MOUSE FIGHTS. Outside auto-target, the mouse never steers the nose: it aims
 //   weapons, picks targets and throws the tether. W/↑ thrust, S/↓ retro, Space brake-to-stop.
 //   A/D and ←/→ are CONTEXTUAL — one rule: while coasting they YAW the nose (line up a retro
 //   burn, whip the nose around mid-drift); while forward thrust is held they STRAFE, with a
@@ -22,7 +22,7 @@
 //   bare ←/→ yaw, W/↑ + ←/→ strafe.
 //
 //   ALL schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · G auto-target
-//   toggle (owned by autoTargetAssist — guns track lock, mouse steers ship) · F tether latch/cut · Q charge throw (helm) · R detonate
+//   toggle (owned by autoTargetAssist — guns track lock, captured motion drives a virtual joystick) · F tether latch/cut · Q charge throw (helm) · R detonate
 //   charges · C scanner pulse · V cruise.
 //   MMB TAP = pursuit/approach toggle: ship target → sustained autopursuit (tail + speed-match,
 //   fight with the mouse while the flight computer flies); station/other target → goto autopilot.
@@ -56,6 +56,13 @@ const BRAKE_SOFT_SPEED = 24;   // wu/s — counter-thrust ramps down below this 
 const TETHER_ORBIT_SOFT_ANGLE = 0.46;  // latched/coasting: favor guns-in orbit over drift-facing
 const PILOT_CARVE_TURN = 0.35; // pilot scheme: fraction of yaw blended in while strafing under
                                // forward thrust — the ship banks and carves instead of crab-sliding
+const AUTO_TARGET_STICK_RADIUS_FRACTION = 0.28;
+const AUTO_TARGET_STICK_DEADZONE = 0.1;
+// Chromium exposes trackpads as relative mouse motion, not absolute finger position or lift events.
+// Preserve the last deflection like a held joystick, then start the next gesture from neutral after
+// a short pause. That lets a lifted finger keep the turn engaged and an opposite swipe flip it
+// immediately without traversing an invisible screen-sized cursor path.
+const AUTO_TARGET_NEW_GESTURE_MS = 120;
 
 // Verb keys shared by both schemes (GDD 2.0 physics verbs + sensors).
 const VERB_BINDINGS = {
@@ -225,6 +232,36 @@ function syncPointerScreen(state, x, y) {
   pointerScreen.active = true;
 }
 
+function viewportSize() {
+  return {
+    width: typeof innerWidth === 'number' ? Math.max(1, innerWidth) : 1,
+    height: typeof innerHeight === 'number' ? Math.max(1, innerHeight) : 1,
+  };
+}
+
+function stickGeometry() {
+  const { width, height } = viewportSize();
+  return {
+    width,
+    height,
+    cx: width * 0.5,
+    cy: height * 0.5,
+    radius: Math.max(72, Math.min(width, height) * AUTO_TARGET_STICK_RADIUS_FRACTION),
+  };
+}
+
+function clampToStick(x, y, geometry = stickGeometry()) {
+  const dx = x - geometry.cx;
+  const dy = y - geometry.cy;
+  const distance = Math.hypot(dx, dy);
+  const scale = distance > geometry.radius ? geometry.radius / distance : 1;
+  return {
+    x: geometry.cx + dx * scale,
+    y: geometry.cy + dy * scale,
+    active: true,
+  };
+}
+
 export const input = {
   name: 'input',
   init(ctx) {
@@ -272,12 +309,41 @@ export const input = {
     const pointerSurface = this._canvas || window;
     const handlePointerMove = (e) => {
       if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
-      this._ndc.x = (e.clientX / innerWidth) * 2 - 1;
-      this._ndc.y = -(e.clientY / innerHeight) * 2 + 1;
-      this._screen.x = e.clientX;
-      this._screen.y = e.clientY;
-      this._screen.active = true;
-      syncPointerScreen(this.state, e.clientX, e.clientY);
+      const geometry = stickGeometry();
+      const pointerLocked = typeof document !== 'undefined'
+        && this._canvas && document.pointerLockElement === this._canvas;
+      if (this.state && this.state.input && this.state.input.autoFire) {
+        // Pointer lock reports relative motion while clientX/Y stay pinned. Keep one bounded
+        // software pointer so a trackpad can act like a centered joystick without hitting the
+        // Electron/window edge. Browsers may also dispatch pointermove for the same locked sample;
+        // mousemove is the single relative-motion authority in that mode.
+        if (pointerLocked && e.type === 'pointermove') return;
+        const now = performance.now();
+        const movementX = Number.isFinite(e.movementX) ? e.movementX : 0;
+        const movementY = Number.isFinite(e.movementY) ? e.movementY : 0;
+        // A click/tap used for firing is not a joystick gesture and must not recenter the helm.
+        if (pointerLocked && movementX === 0 && movementY === 0) return;
+        if (pointerLocked && Number.isFinite(this._lastAutoTargetMotionMs)
+          && now - this._lastAutoTargetMotionMs > AUTO_TARGET_NEW_GESTURE_MS) {
+          this._screen.x = geometry.cx;
+          this._screen.y = geometry.cy;
+        }
+        const nextX = pointerLocked
+          ? this._screen.x + movementX
+          : e.clientX;
+        const nextY = pointerLocked
+          ? this._screen.y + movementY
+          : e.clientY;
+        Object.assign(this._screen, clampToStick(nextX, nextY, geometry));
+        this._lastAutoTargetMotionMs = now;
+      } else {
+        this._screen.x = e.clientX;
+        this._screen.y = e.clientY;
+        this._screen.active = true;
+      }
+      this._ndc.x = (this._screen.x / geometry.width) * 2 - 1;
+      this._ndc.y = -(this._screen.y / geometry.height) * 2 + 1;
+      syncPointerScreen(this.state, this._screen.x, this._screen.y);
       this._lastKbmMs = performance.now();
     };
     // Capture pointer truth before overlays can consume the event. Electron focus/activation can
@@ -323,6 +389,19 @@ export const input = {
     if (tp) tp.tick(dt);
 
     const inp = state.input;
+    const autoTargetPointer = !!inp.autoFire;
+    if (autoTargetPointer !== !!this._autoTargetPointerMode) {
+      this._autoTargetPointerMode = autoTargetPointer;
+      const geometry = stickGeometry();
+      this._screen.x = geometry.cx;
+      this._screen.y = geometry.cy;
+      this._screen.active = autoTargetPointer;
+      this._ndc.x = 0;
+      this._ndc.y = 0;
+      syncPointerScreen(state, this._screen.x, this._screen.y);
+      inp.pointerScreen.active = autoTargetPointer;
+      inp.autoTargetStick = { active: false, x: 0, y: 0, magnitude: 0 };
+    }
     // The LOCKED input contract (BUILD_PLAN_2_0 §0): consumer systems read these each tick.
     const acts = inp.actions || (inp.actions = {
       brake: false, cruise: false, tetherFire: false, tetherCut: false, reelDelta: 0,
@@ -476,6 +555,7 @@ export const input = {
       inp.aimWorld.z = p.pos.z + Math.sin(angle) * dist;
       inp.mouseNdc.x = ax;
       inp.mouseNdc.y = ay;
+      inp.autoTargetStick = { active: false, x: 0, y: 0, magnitude: 0 };
     } else {
       // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).
       const w = this.helpers.raycastToPlane ? this.helpers.raycastToPlane(this._ndc) : { x: 0, z: 0 };
@@ -486,6 +566,25 @@ export const input = {
       pointerScreen.x = this._screen.x;
       pointerScreen.y = this._screen.y;
       pointerScreen.active = this._screen.active;
+      if (inp.autoFire) {
+        const geometry = stickGeometry();
+        const dx = this._screen.x - geometry.cx;
+        const dy = this._screen.y - geometry.cy;
+        const rawMagnitude = Math.min(1, Math.hypot(dx, dy) / geometry.radius);
+        const active = rawMagnitude > AUTO_TARGET_STICK_DEADZONE;
+        const magnitude = active
+          ? (rawMagnitude - AUTO_TARGET_STICK_DEADZONE) / (1 - AUTO_TARGET_STICK_DEADZONE)
+          : 0;
+        const axisScale = active && rawMagnitude > 0 ? magnitude / rawMagnitude : 0;
+        inp.autoTargetStick = {
+          active,
+          x: (dx / geometry.radius) * axisScale,
+          y: (-dy / geometry.radius) * axisScale,
+          magnitude,
+        };
+      } else {
+        inp.autoTargetStick = { active: false, x: 0, y: 0, magnitude: 0 };
+      }
     }
 
     // --- Pursuit / approach toggle (MMB tap or bound key) -----------------------------------

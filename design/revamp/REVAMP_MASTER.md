@@ -1,16 +1,17 @@
 # SPACEFACE REVAMP — MASTER PLAN (2.1)
 
-> **The only doc every agent must read before starting a lane.** It sets the vision, the document map,
-> the wave sequencing, the stable contracts you must not violate, and the reconciliation ledger.
+> **Current role:** retained revamp north star and detail map. It is not automatic reading, the
+> current backlog, or a status authority. Start at `design/program/README.md` and
+> `design/revamp/README.md`; activate one bounded packet only after checking live owners and evidence.
 >
 > **Provenance:** distilled from the design brief, the GDD 2.0 pillars, a four-part codebase recon
 > (systems maturity · specced-but-unbuilt inventory · story spine · visual-asset pipeline), the shipped
 > `design/WORLD_OVERHAUL_2_1.md` (Sector Zones), and a Fable-5 architecture pass. Authored by the lead
 > orchestration session.
 >
-> **Authority:** `ARCHITECTURE.md` (technical) > `design/GDD_2_0.md` (design) > this doc and the
-> `design/revamp/BP-*.md` build plans (the build authority) > the frozen `design/spec3/` & `design/spec2/`
-> threads (reference; each BP names what it extends/supersedes). Never edit spec3/spec2 retroactively.
+> **Authority:** user direction > `ARCHITECTURE.md` > `design/GDD_2_0.md` > `design/program/` > the
+> activated packet. This file and its old wave/ownership language are supporting context only; live
+> code, checks, public routes, and evidence decide implementation truth.
 
 ---
 
@@ -43,8 +44,8 @@ when the player arrives.
 | Doc | Purpose | Owner lane |
 |---|---|---|
 | **REVAMP_MASTER.md** (this) | Vision, contracts, wave sequencing, reconciliation ledger | orchestrator |
-| **PROGRESS.md** | **The single source of truth for task state** (DONE/IN-FLIGHT/NEXT/BLOCKED per task). Every session reads this first; every task updates it first+last. Supersedes `STATUS.md` + memory for task state. | orchestrator |
-| **WAVE4_PROMPT.md** | The dispatch prompt for the unified execution track (T1–T9). Paste into a fresh session to run a task; it self-continues via the ledger. | orchestrator |
+| **PROGRESS.md** | Historical/subordinate check ledger. Current status lives only in `design/program/`. | reference |
+| **WAVE4_PROMPT.md** | Historical manual dispatch prompt; inactive unless a lead explicitly reactivates and updates it. | reference |
 | **BP-01_WORLD_ALIVE.md** | Deepen the encounter director: named bosses, NPC miners contending belts, patrol respond-to-distress, faction-war pulses, POI behaviors | extends SPEC2/04, SPEC3-F7 |
 | **BP-02_COMBAT_CEILING.md** | Damage-triangle surfacing, scanning weak-point loop, wingman tactics, boss mechanics, remaining feel | extends SPEC3-F4 |
 | **BP-03_ONE_MAP.md** | Galaxy-map parity checklist, territory/fog rules, old-map retirement criteria | extends WORLD_NAVIGATION_SPEC |
@@ -55,10 +56,13 @@ when the player arrives.
 | **BP-08_VISUAL_ASSET_SPEC.md** | The Blender agent's ordered manifest + per-asset contracts. **Written first — longest lead time** | extends SPEC3-F8/F9 |
 | **BP-09_SHIPS_FITTING.md** | Nested outfit budgets, mount size/type gating, engine/thruster split, register authored engines/weapons | extends SPEC3-F5 |
 | **BP-10_POLISH_UX.md** | Tooltips everywhere, text-scale, colorblind palette, PBR heroes, drone logs, remaining graphics/audio | extends SPEC3-F10, SPEC3-F8 |
+| **BP-11_SECTOR_ATMOSPHERE.md** | Sector atmosphere and station-life outcome packet | retained detail |
+| **BP-12_CAUSAL_ECONOMY.md** | Cause-visible economy, missions, and contracts outcome packet | retained detail |
+| **BP-13_PIRATE_ECOLOGY.md** | Pirate ecology, named characters, and doctrine outcome packet | retained detail |
 
 ---
 
-## 3. STABLE CONTRACTS — every lane obeys these (do not "fix" them)
+## 3. HISTORICAL CONTRACT SNAPSHOT — revalidate against current owners
 
 1. **Determinism.** The sim NEVER calls `Math.random()`. Randomness derives from a seeded RNG domain
    (`state.<domain>.rng`) or `hash32(state.meta.seed, key)` (`src/core/rng.js`). Cosmetic/VFX code guarded
@@ -69,18 +73,19 @@ when the player arrives.
 3. **`spawnBudget.js` is the single ship-cap arbiter.** Zone ambient, the encounter director, and mission
    spawns all `request()`/`release()` slots against the ~10–14 live-ship cap. No system spawns hostiles
    without going through it. (Zone ambient in `world.js` becomes a budget client — an orchestrator-only edit.)
-4. **`voiceArbiter` enforces pillar 3.** Toasts, barks, news, and story comms go through one priority
+4. **`src/ui/voiceArbiter.js` enforces pillar 3.** Toasts, barks, news, and story comms go through one priority
    queue (`ctx.helpers.voice.say`). Only one voice surfaces at a time.
-5. **`sectorZones.js` is the placement substrate.** Encounters, missions, salvage, and base defense consume
+5. **`src/data/sectorZones.js` is the placement substrate.** Encounters, missions, salvage, and base defense consume
    named zones (`zonesForSector`, `zoneAt`, `planZoneSpawns`) — no system reinvents placement geometry.
 6. **Squads form via `ai.squadId`.** Spawn a coherent group by giving its members a shared
    `spec.data.ai.squadId` and clustering them; the SG-06 roster (`aiPorts.js:262`) forms them up. The AI
    brains (`src/ai/`) are already good — do not rebuild squads/formations/tactics.
 7. **Additive + guarded.** Never hard-require new data; degrade gracefully. A sector with no zones keeps
    the legacy ring spawner. New GLBs fall back to procedural meshes.
-8. **Merge protocol for parallel lanes.** A lane creates only its own NEW files and returns registration
-   instructions; the orchestrator does all edits to shared files (`registry.js`, `world.js`, `combat.js`,
-   `uiRoot.js`, `bindings.js`, `input.js`) sequentially at merge. New systems take a seeded RNG at construction.
+8. **Coordinate concurrent writers.** Ordinary tasks may edit every required integration seam after
+   checking the shared-tree diff and nearest `AGENTS.md`. Explicitly activated parallel campaigns may
+   assign temporary owners; they do not create permanent file prohibitions. New systems take a seeded
+   RNG at construction.
 
 ---
 
@@ -93,8 +98,8 @@ truthful factions + zone-entry cue + steady mining. Verified.
 47-A/perf baseline for regression attribution.
 
 **Wave 1 (parallel fleet, new-file systems — collision-free):**
-`voiceArbiter.js` · `marketNews.js`+`newsTemplates.js` · `barks.js`+`dockDeny.js` · `salvage.js`+`wreckMissions.js`
-· `spawnBudget.js`+`encounterDirector.js`+`encounters.js` · `galaxyMap.js`. Orchestrator integrates + verifies,
+`src/ui/voiceArbiter.js` · `marketNews.js`+`newsTemplates.js` · `src/data/barks.js`+`src/data/dockDeny.js` · `salvage.js`+`wreckMissions.js`
+· `spawnBudget.js`+`encounterDirector.js`+`encounters.js` · `src/ui/galaxyMap.js`. Orchestrator integrates + verifies,
 then re-consults the Fable advisor before Wave 2.
 
 **Wave 2 (hot-file single-owner lanes):** Combat (velocity-lead + projectile momentum + beam pipeline +

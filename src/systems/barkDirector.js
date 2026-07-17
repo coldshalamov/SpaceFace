@@ -4,6 +4,7 @@
 // routes faction-specific lines through voiceArbiter's bark channel, and writes only its own
 // state.barkDirector receipt cache so combat/AI/economy behavior stays unchanged.
 import { BARK_SITUATIONS, barkFor } from '../data/barks.js';
+import { contactGrammarFor } from '../data/factionContactGrammar.js';
 import { hash32 } from '../core/rng.js';
 import { isHostileToPlayer } from './scanner.js';
 
@@ -173,11 +174,25 @@ export function classifyBarkSituation(entity, state) {
   const fsm = String(ai.fsm || ai.state || ai.mode || '').toLowerCase();
   if (FLEE_FSMS.has(fsm) || ai.forceFlee === true) return 'flee';
   if (ai.requestingReinforcement || ai.reinforcing || data.reinforcements) return 'reinforce';
+  // Demand: explicit AI flags OR faction contact grammar demand types that open with a tithe/cargo ask.
   if (ai.demandCargo || data.demandCargo || data.pirateDemand) return 'demand-cargo';
+  const grammar = contactGrammarFor(factionFor(entity));
+  if (grammar && grammar.demandType === 'tithe'
+    && (WARN_FSMS.has(fsm) || SCAN_FSMS.has(fsm) || ai.openingContact || data.openingContact)) {
+    return 'demand-cargo';
+  }
   if (WARN_FSMS.has(fsm) || ai.warning || data.zoneWarning || data.customsWarning) return 'warn';
   if (isAttackingPlayer(entity, state, fsm)) return 'attack';
-  if (isScanningPlayer(entity, state, fsm)) return 'scan';
+  if (isScanningPlayer(entity, state, fsm)) {
+    // Concord grammar: first contact is paperwork (scan), not a taunt.
+    if (grammar && grammar.primaryBark === 'scan') return 'scan';
+    return 'scan';
+  }
   if (ai.taunting || data.taunt) return 'taunt';
+  // First passive contact: faction primary bark situation (Quiet terse scan, Reach demand, etc.).
+  if (grammar && (ai.openingContact || data.openingContact || ai.firstContact)) {
+    return normalizeSituation(grammar.primaryBark) || grammar.primaryBark;
+  }
   return null;
 }
 

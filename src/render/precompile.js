@@ -88,7 +88,11 @@ async function precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPi
     }
     const authoredQueue = getAuthoredUpgradeQueueStats(scene);
     staging.updateMatrixWorld(true);
-    await renderer.compileAsync(staging, camera, scene);
+    if (typeof options.preparePipelines === 'function') {
+      await options.preparePipelines(staging);
+    } else {
+      await renderer.compileAsync(staging, camera, scene);
+    }
     if (includeGlobalPipelines && typeof options.warmPostProcess === 'function') {
       await options.warmPostProcess();
     }

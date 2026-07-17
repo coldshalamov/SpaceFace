@@ -20,7 +20,10 @@ import { MODULES } from '../data/modules.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 
 export const MAGNET_RANGE = 420; // wu pull radius for Mining 2.0's stronger ore vacuum
-export const MAGNET_ACCEL = 520; // wu/s² pull toward ship inside magnetRange
+export const MAGNET_ACCEL = 900; // wu/s² authority toward the seek velocity (not absolute thrust)
+// Relative approach speed while magnetized (added on top of the player's velocity so flybys collect).
+export const MAGNET_APPROACH_MIN = 100;
+export const MAGNET_APPROACH_MAX = 280;
 export const RICH_CORE_CHANCE = 0.15;
 export const RICH_CORE_DURATION_S = 3.5;
 export const RICH_CORE_WINDOW_LO = 0.12;
@@ -28,8 +31,8 @@ export const RICH_CORE_WINDOW_HI = 0.22;
 export const BULK_HAUL_MIN_U = 20;
 export const BULK_HAUL_PAY_MULT = 0.8;
 export const BULK_HAUL_REFINERY_FEE = 0.06;
-const MAGNET_MAX_SPEED = 210;   // wu/s cap on pulled pickups
 const PICKUP_RADIUS = 2.2;      // wu collectible radius
+const PICKUP_COLLECT_PAD = 14;  // ship-radius pad for scoop contact (generous so flybys don't miss)
 const PICKUP_TTL = 90;          // s before an uncollected pickup despawns
 const SALVAGE_TIME_DEFAULT = 6; // s to fully drain a wreck if combat didn't set one
 const MINEABLE_QUERY_RADIUS_PAD = 64;
@@ -331,7 +334,8 @@ export const mining = {
     const player = state.entities.get(state.playerId);
     if (!player) return;
     const magnet = Math.max(MAGNET_RANGE, state.player.magnetRange || 0);
-    const collectRadius = (player.radius || 6) + 4;
+    // Generous scoop so scrap doesn't require golf-putting the nose onto a gem.
+    const collectRadius = (player.radius || 6) + PICKUP_COLLECT_PAD;
     const queryRadius = Math.max(magnet, collectRadius) + PICKUP_RADIUS;
     const emptyPickupDomain = hasAuthoritativeEmptyPickupIndex(state);
     const pickups = emptyPickupDomain
@@ -342,6 +346,8 @@ export const mining = {
     this._diag.pickupCandidates = pickups.length;
     this._diag.pickupsMagnetized = 0;
     this._diag.pickupsCollected = 0;
+    const pvx = finiteNum(player.vel && player.vel.x);
+    const pvz = finiteNum(player.vel && player.vel.z);
     for (const e of pickups) {
       if (!e.alive || e.type !== 'pickup') continue;
       const pickupData = e.data || {};
@@ -360,10 +366,29 @@ export const mining = {
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-4;
       if (dist <= magnet) {
-        e.vel.x += (dx / dist) * MAGNET_ACCEL * dt;
-        e.vel.z += (dz / dist) * MAGNET_ACCEL * dt;
-        const sp = Math.hypot(e.vel.x, e.vel.z);
-        if (sp > MAGNET_MAX_SPEED) { const s = MAGNET_MAX_SPEED / sp; e.vel.x *= s; e.vel.z *= s; }
+        // Homing vacuum: inherit player velocity, then accelerate relative approach.
+        // An absolute speed cap used to make combat flybys miss (player ~combatSpeed, pickups
+        // clamped below the ship's speed so they couldn't catch up). Cap relative approach only.
+        const nx = dx / dist, nz = dz / dist;
+        const rangeT = clamp01(dist / Math.max(1, magnet));
+        const approach = MAGNET_APPROACH_MIN + (MAGNET_APPROACH_MAX - MAGNET_APPROACH_MIN) * rangeT;
+        // Closer scrap rushes in harder so final scoop doesn't feel floaty.
+        const closeBoost = dist < collectRadius * 2.5 ? 1.35 : 1;
+        const desiredVx = pvx + nx * approach * closeBoost;
+        const desiredVz = pvz + nz * approach * closeBoost;
+        const dvx = desiredVx - finiteNum(e.vel && e.vel.x);
+        const dvz = desiredVz - finiteNum(e.vel && e.vel.z);
+        const need = Math.hypot(dvx, dvz);
+        const maxDv = MAGNET_ACCEL * dt * (closeBoost > 1 ? 1.6 : 1);
+        if (!(e.vel)) e.vel = { x: 0, z: 0 };
+        if (need <= maxDv || need < 1e-6) {
+          e.vel.x = desiredVx;
+          e.vel.z = desiredVz;
+        } else {
+          const s = maxDv / need;
+          e.vel.x = finiteNum(e.vel.x) + dvx * s;
+          e.vel.z = finiteNum(e.vel.z) + dvz * s;
+        }
         this._diag.pickupsMagnetized++;
       }
       // direct collect on overlap (physics also emits pickup:collected on contact; idempotent via alive guard)
@@ -393,6 +418,9 @@ export const mining = {
   },
 
   // ---- wreck salvage --------------------------------------------------------
+  // Combat kills leave a SALVAGE WRECK (the glowing debris mass) with a beam-drain pool.
+  // Pocket scrap also spawns as magnetized pickups via loot:drop / lootShards — those fly in.
+  // The wreck itself stays put; hold mining beam on it to strip the remaining salvagePool.
   _onShipDestroyed(p) {
     if (!p) return;
     const isShip = p.type === 'ship' || p.victimClass === 'ship';
@@ -401,7 +429,16 @@ export const mining = {
     this.helpers.spawnEntity({
       type: 'wreck', pos: { x: pos.x, z: pos.z }, radius: 7, mass: 1e6,
       hull: 1, hullMax: 1,
-      data: { parentType: 'ship', loot: [], salvagePool: this._lootToPool(), salvageTimeLeft: SALVAGE_TIME_DEFAULT },
+      data: {
+        parentType: 'ship',
+        kind: 'wreck',
+        label: 'Salvage Wreck',
+        scanLabel: 'Salvage Wreck',
+        name: 'Salvage Wreck',
+        loot: [],
+        salvagePool: this._lootToPool(),
+        salvageTimeLeft: SALVAGE_TIME_DEFAULT,
+      },
     });
   },
 
@@ -828,6 +865,14 @@ function resetMiningDiagnostics(diag) {
 
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, Number(n) || 0));
+}
+
+function clamp01(n) {
+  return clamp(n, 0, 1);
+}
+
+function finiteNum(n, fallback = 0) {
+  return Number.isFinite(n) ? n : fallback;
 }
 
 function beamLineFor(player, target) {

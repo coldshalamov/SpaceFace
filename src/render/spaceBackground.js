@@ -164,6 +164,65 @@ const QUAD_VERT = /* glsl */`
   }
 `;
 
+// Submit the three already-baked deep-field textures in one opaque pass. The old graph drew
+// three screen-filling planes (opaque + alpha + additive), paying the fill/blend cost three times.
+// This shader intersects the camera ray with each original layer depth, so the visual parallax,
+// independent tiling, drift, tint, and blend semantics survive without the redundant overdraw.
+const LAYER_COMPOSITE_VERT = /* glsl */`
+  varying vec3 vWorldPosition;
+  void main() {
+    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPosition.xyz;
+    gl_Position = projectionMatrix * viewMatrix * worldPosition;
+  }
+`;
+const LAYER_COMPOSITE_FRAG = /* glsl */`
+  precision highp float;
+  uniform sampler2D uL0;
+  uniform sampler2D uL1;
+  uniform sampler2D uL2;
+  uniform vec2 uRepeat0;
+  uniform vec2 uRepeat1;
+  uniform vec2 uRepeat2;
+  uniform vec2 uOffset0;
+  uniform vec2 uOffset1;
+  uniform vec2 uOffset2;
+  uniform vec3 uGroupOrigin;
+  uniform vec3 uDepths;
+  uniform float uPlaneSize;
+  uniform float uBiasZ;
+  uniform vec3 uTintA;
+  uniform vec3 uTintB;
+  uniform float uIntensity;
+  varying vec3 vWorldPosition;
+
+  vec2 uvAtDepth(float depth, vec2 repeatUv, vec2 offsetUv) {
+    vec3 ray = vWorldPosition - cameraPosition;
+    float safeY = abs(ray.y) > 0.00001 ? ray.y : (ray.y < 0.0 ? -0.00001 : 0.00001);
+    float t = (uGroupOrigin.y + depth - cameraPosition.y) / safeY;
+    vec3 localPoint = cameraPosition + ray * t - uGroupOrigin;
+    vec2 planeUv = vec2(
+      localPoint.x / uPlaneSize + 0.5,
+      -(localPoint.z - uBiasZ) / uPlaneSize + 0.5
+    );
+    return planeUv * repeatUv + offsetUv;
+  }
+
+  void main() {
+    vec4 l0 = texture2D(uL0, uvAtDepth(uDepths.x, uRepeat0, uOffset0));
+    vec4 l1 = texture2D(uL1, uvAtDepth(uDepths.y, uRepeat1, uOffset1));
+    vec4 l2 = texture2D(uL2, uvAtDepth(uDepths.z, uRepeat2, uOffset2));
+
+    float nebulaAlpha = clamp(l1.a * uIntensity, 0.0, 1.0);
+    float wispsAlpha = clamp(l2.a * uIntensity, 0.0, 1.0);
+    vec3 color = mix(l0.rgb, l1.rgb * uTintA, nebulaAlpha);
+    color += l2.rgb * uTintB * wispsAlpha;
+    gl_FragColor = vec4(max(color, vec3(0.0)), 1.0);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
 // ----------------------------------------------------------------------------
 // L0 — deep field base: void gradient, milky galaxy band, micro-stars, galaxies.
 // The band uses sin^2(pi * dot(p, ivec)) so it tiles exactly; integer direction
@@ -644,6 +703,8 @@ export class SpaceBackground {
 
     this.layers = [];
     this.layerGeometry = null;
+    this.layerMaterial = null;
+    this.layerMesh = null;
     this.stars = null;
     this.flares = null;
     this.planets = [];
@@ -1003,39 +1064,63 @@ export class SpaceBackground {
   }
 
   _buildLayers() {
-    for (const L of this.layers) {
-      if (L.mesh) { this.group.remove(L.mesh); L.mesh.material.dispose(); }
-    }
+    if (this.layerMesh) this.group.remove(this.layerMesh);
+    if (this.layerMaterial) this.layerMaterial.dispose();
     if (this.layerGeometry) this.layerGeometry.dispose();
     this.layers = [];
+    this.layerMesh = null;
+    this.layerMaterial = null;
     const targets = { L0_void: this.l0Target, L1_nebula: this.l1Target, L2_wisps: this.l2Target };
 
     this.layerGeometry = new THREE.PlaneGeometry(this.quadSize, this.quadSize);
-    let order = -95;
     for (const def of LAYER_DEFS) {
       const tile = def.tileH * this.H;
       const size = this.quadSize;
       const tex = targets[def.name].texture;
       tex.repeat.set(size / tile, size / tile);
-      const mat = new THREE.MeshBasicMaterial({
-        map: tex,
-        blending: def.blend === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending,
-        transparent: def.blend !== 'opaque',
-        depthWrite: false,
-        depthTest: true,
-        fog: false,
-      });
-      const mesh = new THREE.Mesh(this.layerGeometry, mat);
-      mesh.name = def.name;
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.position.y = def.depth;
-      // bias the quad toward where the tilted camera actually looks (+Z, it never yaws)
-      mesh.position.z = size * 0.14;
-      mesh.renderOrder = order++;
-      mesh.frustumCulled = false;
-      this.group.add(mesh);
-      this.layers.push({ mesh, tex, par: def.par, tile, def });
+      this.layers.push({ mesh: null, tex, par: def.par, tile, def, offset: new THREE.Vector2() });
     }
+
+    const [l0, l1, l2] = this.layers;
+    this.layerMaterial = new THREE.ShaderMaterial({
+      vertexShader: LAYER_COMPOSITE_VERT,
+      fragmentShader: LAYER_COMPOSITE_FRAG,
+      uniforms: {
+        uL0: { value: l0.tex },
+        uL1: { value: l1.tex },
+        uL2: { value: l2.tex },
+        uRepeat0: { value: new THREE.Vector2(this.quadSize / l0.tile, this.quadSize / l0.tile) },
+        uRepeat1: { value: new THREE.Vector2(this.quadSize / l1.tile, this.quadSize / l1.tile) },
+        uRepeat2: { value: new THREE.Vector2(this.quadSize / l2.tile, this.quadSize / l2.tile) },
+        uOffset0: { value: l0.offset },
+        uOffset1: { value: l1.offset },
+        uOffset2: { value: l2.offset },
+        uGroupOrigin: { value: this.group.position.clone() },
+        uDepths: { value: new THREE.Vector3(l0.def.depth, l1.def.depth, l2.def.depth) },
+        uPlaneSize: { value: this.quadSize },
+        uBiasZ: { value: this.quadSize * 0.14 },
+        uTintA: { value: this._tintA },
+        uTintB: { value: this._tintB },
+        uIntensity: { value: this.bgIntensity },
+      },
+      transparent: false,
+      blending: THREE.NoBlending,
+      depthWrite: false,
+      depthTest: true,
+      fog: false,
+      toneMapped: true,
+    });
+    const mesh = new THREE.Mesh(this.layerGeometry, this.layerMaterial);
+    mesh.name = 'L0-L2_deep-field-composite';
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = l0.def.depth;
+    // bias the quad toward where the tilted camera actually looks (+Z, it never yaws)
+    mesh.position.z = this.quadSize * 0.14;
+    mesh.renderOrder = -95;
+    mesh.frustumCulled = false;
+    this.group.add(mesh);
+    this.layerMesh = mesh;
+    for (const layer of this.layers) layer.mesh = mesh;
   }
 
   // --------------------------------------------------------------------------
@@ -1516,7 +1601,12 @@ export class SpaceBackground {
       else if (i === 2) { du = -this.bgTime * (0.0045 / 60); dv = this.bgTime * (-0.0028 / 60); }
       const u = (cx * L.par / L.tile + du) % 1;
       const v = (-cz * L.par / L.tile + dv) % 1;
-      L.tex.offset.set(u < 0 ? u + 1 : u, v < 0 ? v + 1 : v);
+      L.offset.set(u < 0 ? u + 1 : u, v < 0 ? v + 1 : v);
+    }
+    if (this.layerMaterial) {
+      const un = this.layerMaterial.uniforms;
+      un.uGroupOrigin.value.copy(this.group.position);
+      un.uIntensity.value = this.bgIntensity;
     }
 
     // pixel scale can change with dynamic resolution — one scalar, cheap to refresh
@@ -1578,15 +1668,7 @@ export class SpaceBackground {
     this._tintB.setRGB(1, 1, 1).lerp(this._c0, strength * 0.7);
     this._starTint.setRGB(1, 1, 1).lerp(this._c0, strength * 0.35);
 
-    for (const L of this.layers) {
-      if (L.def.name === 'L1_nebula') {
-        L.mesh.material.color.copy(this._tintA);
-        L.mesh.material.opacity = this.bgIntensity;
-      } else if (L.def.name === 'L2_wisps') {
-        L.mesh.material.color.copy(this._tintB);
-        L.mesh.material.opacity = this.bgIntensity;
-      }
-    }
+    if (this.layerMaterial) this.layerMaterial.uniforms.uIntensity.value = this.bgIntensity;
   }
 
   _valueNoise(x, z) {
@@ -1703,7 +1785,7 @@ export class SpaceBackground {
       H_world: this.H,
       quadSize: this.quadSize,
       bakeMs: this.bakeTimer,
-      drawCalls: 3 + 1 + 1 + this.planets.length + (this.wormhole ? 1 : 0) +
+      drawCalls: 1 + 1 + 1 + this.planets.length + (this.wormhole ? 1 : 0) +
         (this.comet && this.comet.sprite.visible ? 1 : 0),
       layerGeometries: this.layerGeometry ? 1 : 0,
       stars: this.stars ? this.stars.count : 0,
@@ -1743,6 +1825,8 @@ export class SpaceBackground {
     });
     if (layerGeometry) layerGeometry.dispose();
     this.layerGeometry = null;
+    this.layerMaterial = null;
+    this.layerMesh = null;
     this.scene.remove(this.group);
     if (this.bakePlane) this.bakePlane.geometry.dispose();
   }

@@ -60,7 +60,7 @@ In Choice A (the Clean Uniform ending), the player signs their first document as
 
 In Choice B (the Same Silence ending), Vale's contracts stop appearing for the player. Not because of anything that happened. Because the player has become a routing problem and routing problems don't receive direct comms from Administrative Oversight. They receive indirect comms, through four stations, the way everyone does eventually.
 
-In Choice C (the Only Honest Option), Vale is not mentioned. Nothing about the ending involves Vale. This is also the point. The ending that opts out of the system is the only one that doesn't require a relationship with the system's administrator.
+In Choice C (the Only Honest Option), Vale is not mentioned. Nothing about the ending involves Vale. The ending that opts out of the system is the only one that doesn't require a relationship with the system's administrator.
 
 ---
 

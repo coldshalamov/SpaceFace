@@ -1,7 +1,11 @@
-// src/ui/station/screens/contracts.js — "Contracts" ops board.
+// src/ui/station/screens/contracts.js — station Missions board (internal id remains contracts).
 // Board list · briefing dossier (centerpiece) · active operations. Progressive disclosure:
 // the list is scannable, the dossier is the full brief, no wall of text. Emits
 // ui:acceptMission / ui:trackMission / ui:abandonMission {missionId}.
+//
+// When the station shell passes attention / missionId (from missionDockAttention), that job is
+// sorted first, selected, and given a glowing "needs action" treatment so turn-in / accept is
+// not a scavenger hunt under an old "Contracts" label.
 import { COMMODITIES } from '../../../data/commodities.js';
 import { FACTION_META } from '../../../data/factions.js';
 import { MISSION_TUNING, missionMinRepForRisk } from '../../../data/missions.js';
@@ -26,8 +30,8 @@ const reward = (m) => num(m.reward != null ? m.reward : (m.reward_cr != null ? m
 const risk = (m) => num(m.riskTier != null ? m.riskTier : m.risk);
 const collateral = (m) => num(m.collateral_cr != null ? m.collateral_cr : (m.collateralCr != null ? m.collateralCr : m.collateral));
 const upfront = (m) => num(m.upfrontCostCr);
-const typeLabel = (t) => String(t || 'contract').replace(/_/g, ' ');
-const facName = (m) => { const f = FAC.get(m.factionId); return (f && f.name) || (m.factionName) || 'Open contract'; };
+const typeLabel = (t) => String(t || 'mission').replace(/_/g, ' ');
+const facName = (m) => { const f = FAC.get(m.factionId); return (f && f.name) || (m.factionName) || 'Open mission'; };
 const facTint = (m) => FAC_TINT[m.factionId] || '#4aa8ff';
 function riskColor(r) { return r <= 1 ? 'var(--gain)' : r === 2 ? 'var(--warn)' : 'var(--loss)'; }
 function destName(m) {
@@ -55,18 +59,51 @@ function riskPips(r, size) {
   return `<span class="sx-pips${size ? ' sx-pips--' + size : ''}">${s}</span>`;
 }
 
+function sortFocusFirst(list, focusId) {
+  if (!focusId || !list.length) return list.slice();
+  const fid = String(focusId);
+  return list.slice().sort((a, b) => {
+    const aHit = String(mid(a)) === fid ? 0 : 1;
+    const bHit = String(mid(b)) === fid ? 0 : 1;
+    return aHit - bHit;
+  });
+}
+
+function attentionBannerHtml(attention) {
+  if (!attention) return '';
+  const kind = attention.kind || 'active';
+  const verb = kind === 'accept' ? 'ACCEPT'
+    : kind === 'turn_in' ? 'TURN IN'
+      : kind === 'pickup' ? 'LOAD / PICK UP'
+        : 'ACTIVE';
+  return (
+    `<div class="sx-ct__attention" data-attention-kind="${escapeHtml(kind)}" role="status">` +
+      `<span class="sx-ct__attention-pulse" aria-hidden="true"></span>` +
+      `<span class="sx-ct__attention-verb">${verb}</span>` +
+      `<span class="sx-ct__attention-body">` +
+        `<strong>${escapeHtml(attention.title || 'Mission')}</strong>` +
+        `<em>${escapeHtml(attention.reason || 'Needs attention at this berth')}</em>` +
+      `</span>` +
+    `</div>`
+  );
+}
+
 export function createContractsScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'sx-ct';
   el.innerHTML =
-    `<nav class="sx-ct__board" aria-label="Available contracts"></nav>` +
+    `<div class="sx-ct__attention-host" aria-live="polite"></div>` +
+    `<nav class="sx-ct__board" aria-label="Available missions"></nav>` +
     `<section class="sx-ct__dossier" aria-live="polite"></section>` +
-    `<aside class="sx-ct__active" aria-label="Active operations"></aside>`;
+    `<aside class="sx-ct__active" aria-label="Active missions"></aside>`;
+  const attentionHost = el.querySelector('.sx-ct__attention-host');
   const boardEl = el.querySelector('.sx-ct__board');
   const dossierEl = el.querySelector('.sx-ct__dossier');
   const activeEl = el.querySelector('.sx-ct__active');
 
   let selectedId = null;
+  /** @type {null|{ focusMissionId?: string, kind?: string, reason?: string, title?: string, surface?: string }} */
+  let attention = null;
   boardEl.setAttribute('role', 'tablist');
 
   function offers(state) {
@@ -80,20 +117,35 @@ export function createContractsScreen(ctx) {
     return (Array.isArray(a) ? a : []).filter((m) => m && (m.status == null || m.status === 'active'));
   }
 
+  function focusId() {
+    return attention && attention.focusMissionId != null
+      ? String(attention.focusMissionId)
+      : (selectedId != null ? String(selectedId) : null);
+  }
+
+  function renderAttention() {
+    attentionHost.innerHTML = attentionBannerHtml(attention);
+  }
+
   function renderBoard(state) {
-    const list = offers(state);
+    const list = sortFocusFirst(offers(state), focusId());
     if (!selectedId && list.length) selectedId = String(mid(list[0]));
-    if (!list.length) { boardEl.innerHTML = `<div class="sx-empty">${icon('contracts', 30)}<h4>Board is quiet</h4><p>No contracts posted at this berth. Try a station with a mission desk or a black-market contact.</p></div>`; return; }
+    if (!list.length) {
+      boardEl.innerHTML = `<div class="sx-empty">${icon('contracts', 30)}<h4>Board is quiet</h4><p>No missions posted at this berth. Try a station with a mission desk or a black-market contact.</p></div>`;
+      return;
+    }
     boardEl.innerHTML =
-      `<span class="sx-ct-dispatch__label" aria-hidden="true">LIVE DISPATCH / SELECT AN OPERATION</span>` +
+      `<span class="sx-ct-dispatch__label" aria-hidden="true">LIVE DISPATCH / SELECT A MISSION</span>` +
       list.map((m, index) => {
       const id = String(mid(m));
       const active = id === selectedId ? ' is-active' : '';
+      const needs = attention && String(attention.focusMissionId) === id && attention.surface === 'board'
+        ? ' is-attention' : '';
       const r = risk(m);
       return (
-        `<button type="button" class="sx-ct-row${active}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${id === selectedId}" title="${escapeHtml(m.title || typeLabel(m.type))}"` +
+        `<button type="button" class="sx-ct-row${active}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${id === selectedId}" title="${escapeHtml(m.title || typeLabel(m.type))}"` +
           ` style="--signal:${facTint(m)}"` +
-          ` aria-label="${escapeHtml(m.title || typeLabel(m.type))}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk">` +
+          ` aria-label="${escapeHtml(m.title || typeLabel(m.type))}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${needs ? ', needs attention' : ''}">` +
           `<span class="sx-ct-row__seq" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>` +
           `<span class="sx-ct-row__ic" style="--tint:${facTint(m)}">${icon(TYPE_ICON[m.type] || 'contracts', 18)}</span>` +
           `<span class="sx-ct-row__mid">` +
@@ -103,15 +155,16 @@ export function createContractsScreen(ctx) {
           `<span class="sx-ct-row__route" aria-hidden="true"><i></i><b></b><i></i></span>` +
           `<span class="sx-ct-row__risk">${RISK_LABEL[Math.min(r, 5)]} ${riskPips(r, 'xs')}</span>` +
           `<span class="sx-ct-row__rew">${reward(m).toLocaleString('en-US')}<i> cr</i></span>` +
+          (needs ? `<span class="sx-ct-row__flag">ACT</span>` : '') +
         `</button>`
       );
     }).join('');
   }
 
   function renderDossier(state) {
-    const list = offers(state);
+    const list = sortFocusFirst(offers(state), focusId());
     const m = list.find((x) => String(mid(x)) === selectedId) || list[0];
-    if (!m) { dossierEl.innerHTML = `<div class="sx-empty">${icon('contracts', 34)}<h4>No contract selected</h4><p>Pick a job from the board to open its briefing.</p></div>`; return; }
+    if (!m) { dossierEl.innerHTML = `<div class="sx-empty">${icon('contracts', 34)}<h4>No mission selected</h4><p>Pick a job from the board to open its briefing.</p></div>`; return; }
     const r = risk(m);
     const tint = facTint(m);
     const cargo = cargoRequirement(m);
@@ -136,9 +189,11 @@ export function createContractsScreen(ctx) {
     const readiness = !standingOk ? `${facName(m)} ${requiredRep > 0 ? '+' : ''}${requiredRep} standing required`
       : !fundsOk ? `${acceptCost.toLocaleString('en-US')} cr required to bind`
         : !cargoOk ? `${Math.ceil(cargoVolume)}u free hold required` : 'Ship and account ready';
+    const focusAccept = attention && attention.kind === 'accept'
+      && String(attention.focusMissionId) === String(mid(m));
 
     dossierEl.innerHTML =
-      `<div class="sx-dossier">` +
+      `<div class="sx-dossier${focusAccept ? ' is-attention' : ''}">` +
         `<header class="sx-dossier__head">` +
           `<span class="sx-dossier__crest" style="--tint:${tint}">${icon(TYPE_ICON[m.type] || 'contracts', 26)}</span>` +
           `<div class="sx-dossier__id">` +
@@ -152,7 +207,7 @@ export function createContractsScreen(ctx) {
           `<div class="sx-dossier__risk"><span>Risk assessment</span><div class="sx-dossier__riskrow">${riskPips(r, 'lg')}<em style="color:${riskColor(r)}">${RISK_LABEL[Math.min(r, 5)]}</em></div></div>` +
         `</div>` +
 
-        `<div class="sx-dossier__route" aria-label="Contract operation route">` +
+        `<div class="sx-dossier__route" aria-label="Mission operation route">` +
           `<div class="sx-route">` +
             `<span class="sx-route__node"><i></i>${escapeHtml(origin)}</span>` +
             `<span class="sx-route__line"><span class="sx-route__jumps">${jumps > 0 ? jumps + ' jump' + (jumps > 1 ? 's' : '') : 'in-sector'}</span></span>` +
@@ -171,15 +226,15 @@ export function createContractsScreen(ctx) {
           (clauses.length ? `<div class="sx-dossier__clauses">${clauses.map((c) => `<span class="sx-tag" title="${escapeHtml(c.prose || '')}">${escapeHtml(c.label || c.id || 'clause')}</span>`).join('')}</div>` : '') +
         `</div>` +
 
-        `<div class="sx-contract-sim" aria-label="Previewed contract consequences">` +
+        `<div class="sx-contract-sim" aria-label="Previewed mission consequences">` +
           `<span class="sx-contract-sim__label">OUTCOME PREVIEW</span>` +
           `<div><span>SUCCESS</span><b>+${reward(m).toLocaleString('en-US')} cr</b><em>+${repPreview.gain} ${escapeHtml((FAC.get(m.factionId) || {}).short || 'faction')} rep</em></div>` +
           `<div><span>FAILURE</span><b>${collateral(m) ? `−${collateral(m).toLocaleString('en-US')} cr collateral` : 'No collateral loss'}</b><em>${repPreview.loss} faction rep</em></div>` +
           `<div class="${ready ? 'is-ready' : 'is-blocked'}"><span>READINESS</span><b>${ready ? 'ROUTE CLEAR' : 'BLOCKED'}</b><em>${escapeHtml(readiness)}</em></div>` +
         `</div>` +
         `<div class="sx-dossier__foot">` +
-          `<button type="button" class="sx-btn-primary sx-ct-commit" data-accept="${escapeHtml(String(mid(m)))}"${ready ? '' : ' disabled'}>` +
-            `<span>${ready ? 'Accept + Bind Route' : 'Resolve Readiness'}</span><em>${escapeHtml(readiness)}</em>` +
+          `<button type="button" class="sx-btn-primary sx-ct-commit${focusAccept && ready ? ' is-attention' : ''}" data-accept="${escapeHtml(String(mid(m)))}"${ready ? '' : ' disabled'}>` +
+            `<span>${ready ? (focusAccept ? 'Accept Mission + Bind Route' : 'Accept + Bind Route') : 'Resolve Readiness'}</span><em>${escapeHtml(readiness)}</em>` +
           `</button>` +
         `</div>` +
       `</div>`;
@@ -190,27 +245,57 @@ export function createContractsScreen(ctx) {
   }
 
   function renderActive(state) {
-    const jobs = activeJobs(state);
+    const jobs = sortFocusFirst(activeJobs(state), focusId());
     const trackedId = state && state.ui && state.ui.trackedMissionId;
+    const sid = state && state.ui && state.ui.dockedStationId;
     activeEl.innerHTML =
-      `<div class="sx-panel__head">${icon('spark', 15)}<span>Active Operations</span><em class="sx-ct__count">${jobs.length}</em></div>` +
+      `<div class="sx-panel__head">${icon('spark', 15)}<span>Active Missions</span><em class="sx-ct__count">${jobs.length}</em></div>` +
       (jobs.length
         ? jobs.map((m) => {
             const id = String(mid(m));
             const tracked = trackedId != null && String(trackedId) === id;
+            const needs = attention && String(attention.focusMissionId) === id
+              && (attention.surface === 'active' || attention.kind === 'turn_in' || attention.kind === 'pickup');
+            const atDest = sid && m.destStationId === sid;
+            const status = needs && attention.kind === 'turn_in'
+              ? 'Ready at this berth'
+              : (needs && attention.kind === 'pickup'
+                ? 'Starts here'
+                : (atDest ? 'Destination berth' : destName(m)));
             return (
-              `<div class="sx-job${tracked ? ' is-tracked' : ''}">` +
+              `<div class="sx-job${tracked ? ' is-tracked' : ''}${needs ? ' is-attention' : ''}" data-active-mid="${escapeHtml(id)}">` +
                 `<span class="sx-job__ic">${icon(TYPE_ICON[m.type] || 'contracts', 16)}</span>` +
                 `<span class="sx-job__body"><span class="sx-job__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
-                  `<span class="sx-job__meta">${reward(m).toLocaleString('en-US')} cr · ${escapeHtml(destName(m))}</span></span>` +
+                  `<span class="sx-job__meta">${reward(m).toLocaleString('en-US')} cr · ${escapeHtml(status)}</span></span>` +
+                (needs ? `<span class="sx-job__flag">${attention.kind === 'turn_in' ? 'HERE' : 'ACT'}</span>` : '') +
                 `<button type="button" class="sx-job__track" data-track="${escapeHtml(id)}" title="${tracked ? 'Tracked' : 'Track this job'}">${tracked ? '◆' : '◇'}</button>` +
               `</div>`
             );
           }).join('')
-        : `<p class="sx-muted" style="padding:10px 4px">No active operations. Accept a contract to begin.</p>`);
+        : `<p class="sx-muted" style="padding:10px 4px">No active missions. Accept a job from the board to begin.</p>`);
   }
 
-  function renderAll(state) { renderBoard(state); renderDossier(state); renderActive(state); }
+  function renderAll(state) {
+    renderAttention();
+    renderBoard(state);
+    renderDossier(state);
+    renderActive(state);
+  }
+
+  function applyShowOptions(options = {}) {
+    if (options.attention) attention = options.attention;
+    else if (options.missionId != null) {
+      attention = {
+        focusMissionId: String(options.missionId),
+        kind: options.focusSurface === 'board' ? 'accept' : 'active',
+        reason: options.reason || 'Focused mission',
+        title: options.title || 'Mission',
+        surface: options.focusSurface || 'board',
+      };
+    }
+    if (options.missionId != null) selectedId = String(options.missionId);
+    else if (attention && attention.focusMissionId != null) selectedId = String(attention.focusMissionId);
+  }
 
   boardEl.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-mid]');
@@ -239,10 +324,14 @@ export function createContractsScreen(ctx) {
     el,
     onShow(c) {
       const next = c || ctx;
-      if (next.missionId != null) selectedId = String(next.missionId);
+      applyShowOptions(next || {});
       renderAll(next.state || {});
     },
-    refresh(c) { renderAll((c || ctx).state || {}); },
+    refresh(c) {
+      const next = c || ctx;
+      if (next && (next.attention || next.missionId != null)) applyShowOptions(next);
+      renderAll((next && next.state) || ctx.state || {});
+    },
     dispose() {
       if (ctx.bus && ctx.bus.off) ctx.bus.off('mission:updated', onMissionChanged);
     },

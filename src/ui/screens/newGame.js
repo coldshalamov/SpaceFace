@@ -12,10 +12,10 @@ const STARTER_SHIP = 'ship_kestrel';
 const FITTABLE_BY_ID = new Map();
 for (const item of [...WEAPONS, ...MODULES]) FITTABLE_BY_ID.set(item.id, item);
 const DIFFICULTIES = [
-  ['casual', 'Casual', 'Softer damage. Friendlier prices.'],      // 4 words
-  ['standard', 'Standard', 'Balanced hazards. Standard payouts.'],   // 4 words
-  ['veteran', 'Veteran', 'Harder hits. Steeper prices.'],          // 4 words
-  ['ironman', 'Ironman', 'One save. Death ends the run.'],         // 6 words
+  ['casual', 'Casual', 'Much softer combat for learning and QA.'],
+  ['standard', 'Standard', 'Softer hits on you; slightly easier kills.'],
+  ['veteran', 'Veteran', 'Full combat baseline. No damage padding.'],
+  ['ironman', 'Ironman', 'Veteran combat. Death ends the run.'],
 ];
 
 function getManager(ctx) {

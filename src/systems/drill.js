@@ -9,6 +9,7 @@
 import { addCargo } from './cargo.js';
 import { ORES } from '../data/mining.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { recordFieldExtraction, fieldMemoryReadout } from './fieldDepletion.js';
 
 const ORE_TIER_BY_ID = new Map(ORES.map((o) => [o.id, o.tier]));
 
@@ -53,6 +54,138 @@ export const DIRT_HARDNESS = 0.7;
 // cargo load still slows movement proportionally (up to +0.05s when holds are full).
 export const MOVE_COOLDOWN_BASE = 0.06;
 export const MOVE_COOLDOWN_CARGO = 0.05;
+
+// Deep-core rocks remember being drilled. Each asteroid tracks:
+//   • drillDepletion / drillYieldMax — how much ore still *pays*
+//   • drillCleared[] — which tiles were already bored (so re-entry does not rebuild a pristine
+//     cross-section as if nothing happened)
+// Both recover slowly while you are away. Budget ~10 min full refill; tunnel geometry ~30 min so a
+// 5-minute hop still shows the scars (immersion) without permanent eternal holes forever.
+const DRILL_ROCK_RECOVERY_PER_S = 1 / 600; // depletion fraction healed per second → ~10 min full refill
+/** Fraction of cleared tunnels that "settle" per second of real sim time away (~30 min full fill-in). */
+export const DRILL_GEOMETRY_RECOVERY_PER_S = 1 / 1800;
+// Surface yieldU is the flight-beam rock total (~8–22u). The minigame field is dense with veins, so
+// deep-core uses a larger pool derived from that base. Without this, 3–4 veins empty the rock and
+// every later real silicate break pays 0 with no cargo change — the "I mined 10 veins, nothing"
+// report. Field richness may soft-scale the pool but must never floor a still-bearing rock to 0.
+export const DEEP_CORE_YIELD_MULT = 4;
+const EMPTY_TILE = () => ({ type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 });
+const clamp01 = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0; };
+
+export function tileIndex(col, row) {
+  return (Math.trunc(row) * COLS) + Math.trunc(col);
+}
+
+export function entryShaftIndex() {
+  return tileIndex(Math.floor(COLS / 2), 0);
+}
+
+export function normalizeClearedTiles(raw) {
+  if (!Array.isArray(raw) || !raw.length) return [];
+  const out = [];
+  const seen = new Set();
+  for (const value of raw) {
+    const idx = Math.trunc(Number(value));
+    if (!Number.isFinite(idx) || idx < 0 || idx >= COLS * ROWS || seen.has(idx)) continue;
+    seen.add(idx);
+    out.push(idx);
+  }
+  out.sort((a, b) => a - b);
+  return out;
+}
+
+/**
+ * Cheap geometry recovery: drop a time-proportional share of cleared cells (deepest first).
+ * Storage is just an int list (usually dozens of entries) — not a full field bitmap.
+ * At 5 minutes away only ~17% of holes fill; full settle is ~30 minutes.
+ */
+export function recoverClearedGeometry(cleared, elapsedS, recoveryPerS = DRILL_GEOMETRY_RECOVERY_PER_S) {
+  const list = normalizeClearedTiles(cleared);
+  if (!list.length) return list;
+  const elapsed = Math.max(0, Number(elapsedS) || 0);
+  if (!(elapsed > 0) || !(recoveryPerS > 0)) return list;
+  const healFrac = clamp01(elapsed * recoveryPerS);
+  if (healFrac <= 0) return list;
+  if (healFrac >= 1) {
+    // Fully settled — keep only the surface entry so a re-bore always has a legal spawn cell.
+    return [entryShaftIndex()];
+  }
+  // Deep voids collapse first; shallow scars linger (reads as settling rock, not a teleport reset).
+  const byDepth = [...list].sort((a, b) => {
+    const ra = Math.floor(a / COLS);
+    const rb = Math.floor(b / COLS);
+    return rb - ra || b - a;
+  });
+  const dropCount = Math.floor(byDepth.length * healFrac);
+  if (dropCount <= 0) return list;
+  const keep = new Set(byDepth.slice(dropCount));
+  keep.add(entryShaftIndex());
+  return [...keep].sort((a, b) => a - b);
+}
+
+/** Apply previously bored cells onto a freshly seeded field (empty holes stay empty). */
+export function applyClearedTiles(field, cleared) {
+  const list = normalizeClearedTiles(cleared);
+  if (!field || !list.length) return list;
+  for (const idx of list) {
+    const col = idx % COLS;
+    const row = Math.floor(idx / COLS);
+    if (!field[col] || row < 0 || row >= ROWS) continue;
+    field[col][row] = EMPTY_TILE();
+  }
+  return list;
+}
+
+function ensureAsteroidDeepCore(data) {
+  if (!data || typeof data !== 'object') return null;
+  if (!Array.isArray(data.drillCleared)) data.drillCleared = [];
+  return data;
+}
+
+function recordClearedTile(data, col, row) {
+  const d = ensureAsteroidDeepCore(data);
+  if (!d) return;
+  const idx = tileIndex(col, row);
+  if (idx < 0 || idx >= COLS * ROWS) return;
+  if (!d.drillCleared.includes(idx)) d.drillCleared.push(idx);
+}
+
+/**
+ * Pure budget math for deep-core sessions.
+ * @returns {{ budget: number, max: number, remaining: number, richness: number }}
+ */
+export function computeDeepCoreBudget({
+  surfaceYieldU = 0,
+  drillYieldMax = null,
+  drillDepletion = 0,
+  lastDrillT = 0,
+  simTime = 0,
+  richnessMult = 1,
+} = {}) {
+  const surface = Math.max(0, Math.floor(Number(surfaceYieldU) || 0));
+  const stored = drillYieldMax != null ? Math.max(0, Math.floor(Number(drillYieldMax) || 0)) : 0;
+  // Prefer the larger of stored pool and surface×mult so older saves that locked drillYieldMax to
+  // the tiny surface total still get a playable deep-core pool.
+  const seeded = surface > 0 ? Math.max(surface, Math.floor(surface * DEEP_CORE_YIELD_MULT)) : 0;
+  const max = Math.max(stored, seeded);
+  if (max <= 0) return { budget: Number.POSITIVE_INFINITY, max: 0, remaining: Number.POSITIVE_INFINITY, richness: 1 };
+
+  let depletion = clamp01(drillDepletion);
+  const now = Number(simTime) || 0;
+  const lastT = Number(lastDrillT) || 0;
+  if (Number.isFinite(lastT) && now > lastT) {
+    depletion = clamp01(depletion - (now - lastT) * DRILL_ROCK_RECOVERY_PER_S);
+  }
+
+  const remaining = Math.max(0, Math.floor(max * (1 - depletion) + 1e-9));
+  const richness = Number.isFinite(richnessMult) && richnessMult > 0 ? richnessMult : 1;
+  // Soft-scale by field richness, but never floor a rock that still has remaining capacity to 0.
+  // Bug this kills: floor(smallMax * richness≈0.45) === 0 → every real vein break paid nothing.
+  let budget = Math.floor(remaining * richness + 1e-9);
+  if (remaining > 0) budget = Math.max(1, budget);
+  else budget = 0;
+  return { budget, max, remaining, richness, depletion };
+}
 
 /** Cargo-weighted move interval (seconds). loadFactor is usedVolume/capVolume in [0,1]. */
 export function moveCooldownForLoad(loadFactor) {
@@ -219,6 +352,8 @@ function sessionResult(d, reason) {
     aborted: reason === 'aborted',
     yieldLog,
     yieldUnits: Object.values(yieldLog).reduce((sum, qty) => sum + (Number(qty) || 0), 0),
+    rockBudgetRemaining: Number.isFinite(d.rockBudget) ? Math.max(0, Math.floor(d.rockBudget)) : null,
+    rockBudgetMax: Math.max(0, Math.floor(Number(d.rockBudgetMax) || 0)),
     gasHits: Number(d.gasHits) || 0,
     tilesCleared: Number(d.tilesCleared) || 0,
     maxDepth: Number(d.maxDepth) || 0,
@@ -237,27 +372,99 @@ export const drill = {
     this.state.drill = null;
   },
 
+  // Each rock remembers how much deep-core yield remains and refills slowly over sim time, so
+  // re-entering a drilled rock pays out less (and nothing once played out) instead of fully
+  // refreshing on every visit. Field richness soft-scales the pool but never floors a still-bearing
+  // rock to zero (that made real silicate veins clear with no cargo). Persists remainder on entity.
+  // Returns { budget, max, fieldId, sectorId }; budget is Infinity when the rock has no yield
+  // metadata (legacy rocks simply aren't depletion-tracked rather than yielding nothing).
+  _computeRockBudget(asteroidId) {
+    const state = this.state;
+    const ent = state && state.entities && typeof state.entities.get === 'function' ? state.entities.get(asteroidId) : null;
+    const data = (ent && ent.data) || null;
+    const fieldId = (data && data.fieldId) || null;
+    const sectorId = (state && state.world && state.world.currentSectorId) || null;
+    const richness = (fieldId && fieldMemoryReadout(state, fieldId).richnessMult) || 1;
+    const computed = computeDeepCoreBudget({
+      surfaceYieldU: data && data.yieldU,
+      drillYieldMax: data && data.drillYieldMax,
+      drillDepletion: data && data.drillDepletion,
+      lastDrillT: data && data.lastDrillT,
+      simTime: state && state.simTime,
+      richnessMult: richness,
+    });
+    if (data && computed.max > 0) {
+      data.drillYieldMax = computed.max;
+      data.drillDepletion = computed.depletion;
+      data.lastDrillT = Number(state && state.simTime) || 0;
+    }
+    return {
+      budget: computed.budget,
+      max: computed.max,
+      fieldId,
+      sectorId,
+    };
+  },
+
   // Begin a drilling session on an asteroid. Seeds the field from the asteroid's stable id so the
-  // same rock yields the same layout every visit (V2 §32). Emits drill:start so the screen opens.
+  // same rock has the same *undrilled* layout (V2 §32), then re-applies any previously cleared
+  // cells so exit→re-enter resumes the bore instead of handing back a pristine rock.
   begin(asteroidId) {
     if (!asteroidId) return false;
+    const ent = this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(asteroidId)
+      : null;
+    const data = ensureAsteroidDeepCore(ent && ent.data);
+
+    // Time away heals budget (in _computeRockBudget) and slowly settles tunnels (here).
+    const now = Number(this.state.simTime) || 0;
+    const lastT = Number(data && data.lastDrillT) || 0;
+    const awayS = Number.isFinite(lastT) && now > lastT ? now - lastT : 0;
+    if (data) {
+      data.drillCleared = recoverClearedGeometry(data.drillCleared, awayS);
+    }
+
     const rng = this._seededRng(asteroidId);
     const field = [];
     for (let c = 0; c < COLS; c++) {
       field[c] = [];
       for (let r = 0; r < ROWS; r++) field[c][r] = tileFor(c, r, rng);
     }
-    // Carve an entry shaft at the surface center so the avatar starts in a cleared tile.
+    // Carve an entry shaft at the surface center so the avatar always has a legal start cell.
     const startCol = Math.floor(COLS / 2);
-    field[startCol][0] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 };
+    field[startCol][0] = EMPTY_TILE();
+    if (data) recordClearedTile(data, startCol, 0);
+
+    // Resume prior bore: empty every tile this rock still remembers as dug after geometry recovery.
+    const cleared = applyClearedTiles(field, data && data.drillCleared);
+    if (data) data.drillCleared = cleared;
+
+    const rock = this._computeRockBudget(asteroidId);
+
+    // Prefer last known empty cell so re-entry drops the rig back into the existing tunnel.
+    let spawnCol = startCol;
+    let spawnRow = 0;
+    if (data && Number.isFinite(data.drillAvatarCol) && Number.isFinite(data.drillAvatarRow)) {
+      const ac = Math.trunc(data.drillAvatarCol);
+      const ar = Math.trunc(data.drillAvatarRow);
+      if (ac >= 0 && ac < COLS && ar >= 0 && ar < ROWS && field[ac][ar] && field[ac][ar].type === 'empty') {
+        spawnCol = ac;
+        spawnRow = ar;
+      }
+    }
+
     this.state.drill = {
       asteroidId,
       field,
+      fieldId: rock.fieldId,
+      _sectorId: rock.sectorId,
+      rockBudget: rock.budget,
+      rockBudgetMax: rock.max,
       avatar: {
-        col: startCol,
-        row: 0,
-        fromCol: startCol,
-        fromRow: 0,
+        col: spawnCol,
+        row: spawnRow,
+        fromCol: spawnCol,
+        fromRow: spawnRow,
         moveDuration: 0,
         moveElapsed: 0,
         faceDir: 'down',
@@ -270,12 +477,12 @@ export const drill = {
       overheated: false,      // is drill overheated?
       drillEnergy: DRILL_ENERGY_MAX,
       energyDepleted: false,
-      cableTrail: [{ col: startCol, row: 0 }], // active massline cable path trail
+      cableTrail: [{ col: spawnCol, row: spawnRow }], // active massline cable path trail
       accumulator: 0,         // fractional ore carry + drill damage carry
       gasHits: 0,             // how many gas pockets the player has triggered
       yieldLog: {},           // commodityId -> total units extracted this session (for the HUD + log)
-      tilesCleared: 0,
-      maxDepth: 0,
+      tilesCleared: cleared.length,
+      maxDepth: Math.max(0, ...cleared.map((idx) => Math.floor(idx / COLS)), spawnRow),
       sessionElapsed: 0,
       scan: {
         cooldown: 0,
@@ -285,19 +492,87 @@ export const drill = {
       },
       active: true,
     };
-    this.bus.emit('drill:start', { asteroidId });
+    this.bus.emit('drill:start', {
+      asteroidId,
+      rockBudget: rock.budget,
+      rockBudgetMax: rock.max,
+      resumedCleared: cleared.length,
+    });
+    // Played-out rocks still show veins, but every break pays 0 until recovery — tell the pilot now.
+    if (Number.isFinite(rock.budget) && rock.budget <= 0 && rock.max > 0) {
+      this.bus.emit('drill:rockDepleted', {
+        asteroidId,
+        budget: 0,
+        max: rock.max,
+        text: 'This rock is played out — veins break but pay no ore until it recovers.',
+      });
+      this.bus.emit('drill:warn', {
+        text: 'This rock is played out — veins break but pay no ore until it recovers.',
+        reason: 'depleted',
+      });
+    } else if (cleared.length > 1) {
+      this.bus.emit('drill:warn', {
+        text: `Resuming prior bore — ${cleared.length} cells already cleared on this rock.`,
+        reason: 'resume',
+      });
+    }
     return true;
   },
 
   // End the session (player exits the screen). Keeps the yieldLog so a summary can show on exit.
+  // Flushes budget remaining + avatar pose onto the asteroid so the next begin() resumes cleanly.
   end({ reason = 'retracted' } = {}) {
     const d = this.state.drill;
     if (!d) return null;
     d.active = false;
+    this._persistSessionProgress(d);
     const result = sessionResult(d, reason);
+    // Share extraction with the field-depletion ledger so drill + flight mining accumulate against
+    // one field richness/recovery curve (a single receipt per session, by total units extracted).
+    if (d.fieldId && Number(result.yieldUnits) > 0) {
+      try { recordFieldExtraction(this.state, { fieldId: d.fieldId, sectorId: d._sectorId, extractedU: result.yieldUnits }); }
+      catch (_) { /* field memory is best-effort; it must never block session end */ }
+    }
     this.state.drill = null;
     this.bus.emit('drill:end', result);
     return result;
+  },
+
+  /** Write budget remaining, avatar pose, and cleared-tile memory back onto the asteroid entity. */
+  _persistSessionProgress(d) {
+    if (!d || d.asteroidId == null) return;
+    const ent = this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(d.asteroidId)
+      : null;
+    const data = ensureAsteroidDeepCore(ent && ent.data);
+    if (!data) return;
+
+    // Authoritative depletion from remaining session budget (covers mid-session extracts).
+    if (Number.isFinite(d.rockBudget) && Number(d.rockBudgetMax) > 0) {
+      const remaining = Math.max(0, Math.floor(d.rockBudget));
+      const max = Math.max(1, Math.floor(d.rockBudgetMax));
+      data.drillYieldMax = max;
+      data.drillDepletion = clamp01(1 - (remaining / max));
+      data.lastDrillT = Number(this.state.simTime) || 0;
+    }
+
+    if (d.avatar) {
+      data.drillAvatarCol = d.avatar.col;
+      data.drillAvatarRow = d.avatar.row;
+    }
+
+    // Scan the live field so any empty cell is remembered even if a write was missed mid-tick.
+    if (Array.isArray(d.field)) {
+      const merged = new Set(normalizeClearedTiles(data.drillCleared));
+      for (let c = 0; c < COLS; c++) {
+        const col = d.field[c];
+        if (!col) continue;
+        for (let r = 0; r < ROWS; r++) {
+          if (col[r] && col[r].type === 'empty') merged.add(tileIndex(c, r));
+        }
+      }
+      data.drillCleared = [...merged].sort((a, b) => a - b);
+    }
   },
 
   abort() {
@@ -516,7 +791,13 @@ export const drill = {
         recoverRig(d, dt);
         if (d.moveCooldown <= 0) {
           const names = { 2: 'Drill MK2', 3: 'Drill MK3', 4: 'Industrial Drill' };
-          this.bus.emit('drill:warn', { text: `Upgrade required! Need ${names[req] || 'a better drill'}.` });
+          const need = names[req] || 'a better drill';
+          this.bus.emit('drill:warn', {
+            text: `Upgrade required! Need ${need}.`,
+            reason: 'tier',
+            tierReq: req,
+            pos: { col: nc, row: nr },
+          });
           d.moveCooldown = 1.2; // throttle warnings
         }
         return;
@@ -556,7 +837,10 @@ export const drill = {
         const ore = target.ore;
         const yieldU = target.yieldU || 0;
 
-        d.field[nc][nr] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false };
+        d.field[nc][nr] = EMPTY_TILE();
+        // Persist immediately so a crash/retract mid-session still leaves the hole next visit.
+        const rockEnt = this.state.entities && this.state.entities.get && this.state.entities.get(d.asteroidId);
+        if (rockEnt && rockEnt.data) recordClearedTile(rockEnt.data, nc, nr);
         d.avatar.isDrilling = false;
         d.avatar.drillTarget = null;
         commitAvatarMove(d, nc, nr, cooldownVal);
@@ -573,17 +857,62 @@ export const drill = {
         });
 
         if (wasVein && ore) {
-          const added = addCargo(this.state, ore, yieldU);
-          if (added > 0) {
-            d.yieldLog[ore] = (d.yieldLog[ore] || 0) + added;
-            this.bus.emit('drill:yield', { commodityId: ore, qty: added, pos: { col: nc, row: nr } });
-          } else {
-            // Dedicated signal so the screen can flag a wasted break at the tile (red floater) and
-            // hold a persistent "holds full" banner until the player offloads — not a vanishing toast.
-            this.bus.emit('drill:cargoFull', {
-              commodityId: ore, qty: yieldU, pos: { col: nc, row: nr },
+          const budget = Number.isFinite(d.rockBudget) ? d.rockBudget : Infinity;
+          if (budget <= 0) {
+            // Rock played out: the vein tile clears, but it pays nothing until the rock recovers.
+            // Surface (flight) mining can still destroy the rock normally.
+            this.bus.emit('drill:rockDepleted', {
+              asteroidId: d.asteroidId,
+              budget: 0,
+              commodityId: ore,
+              pos: { col: nc, row: nr },
+              text: 'Vein played out — this rock has no deep-core yield left.',
             });
-            this.bus.emit('drill:warn', { text: 'Cargo holds are full!' });
+            this.bus.emit('drill:warn', {
+              text: 'Vein played out — this rock has no deep-core yield left.',
+              reason: 'depleted',
+              commodityId: ore,
+              pos: { col: nc, row: nr },
+            });
+          } else {
+            const avail = Math.min(yieldU, Math.floor(budget));
+            const added = avail > 0 ? addCargo(this.state, ore, avail) : 0;
+            if (added > 0) {
+              d.yieldLog[ore] = (d.yieldLog[ore] || 0) + added;
+              d.rockBudget = Math.max(0, budget - added);
+              const ent = this.state.entities && this.state.entities.get(d.asteroidId);
+              if (ent && ent.data && Number(d.rockBudgetMax) > 0) {
+                ent.data.drillDepletion = clamp01((Number(ent.data.drillDepletion) || 0) + added / Number(d.rockBudgetMax));
+                ent.data.lastDrillT = Number(this.state.simTime) || 0;
+              }
+              this.bus.emit('drill:yield', { commodityId: ore, qty: added, pos: { col: nc, row: nr } });
+              if (Number.isFinite(d.rockBudget) && d.rockBudget <= 0 && Number(d.rockBudgetMax) > 0) {
+                this.bus.emit('drill:rockDepleted', {
+                  asteroidId: d.asteroidId,
+                  budget: 0,
+                  text: 'Rock deep-core yield exhausted for this visit.',
+                });
+              }
+            } else if (avail > 0) {
+              // Holds have volume free in percent, but this unit would not fit (or cargo writer
+              // rejected it). Same player-facing "full" path so the wasted break is not silent.
+              this.bus.emit('drill:cargoFull', {
+                commodityId: ore, qty: avail, pos: { col: nc, row: nr },
+              });
+              this.bus.emit('drill:warn', {
+                text: 'Cargo holds cannot take this ore — free volume is too tight or holds are full.',
+                reason: 'cargoFull',
+                commodityId: ore,
+                pos: { col: nc, row: nr },
+              });
+            } else {
+              this.bus.emit('drill:warn', {
+                text: 'Vein played out — this rock has no deep-core yield left.',
+                reason: 'depleted',
+                commodityId: ore,
+                pos: { col: nc, row: nr },
+              });
+            }
           }
         }
 

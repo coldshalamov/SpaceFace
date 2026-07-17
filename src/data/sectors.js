@@ -103,6 +103,8 @@ const CORE_SECTORS = [
     hazards: [],
     pois: [
       { id: 'poi_blackmkt', type: 'cache', name: 'Black Market Contact', hidden: true, factionId: 'faction_quiet' },
+      { id: 'poi_tethys_weigh', type: 'beacon', name: 'Weigh-Slip Buoy', factionId: 'faction_mts' },
+      { id: 'poi_tethys_customs_log', type: 'beacon', name: 'Customs Log Relay', factionId: 'faction_scn' },
     ],
   },
   {
@@ -121,7 +123,11 @@ const CORE_SECTORS = [
       { id: 'f_vesta_3', type: 'ast_crystalline', countWeight: 0.6 },
     ],
     hazards: [ { type: 'radiation', center: { x: -800, z: 500 }, radius: 600, intensity: 0.4 } ],
-    pois: [ { id: 'poi_freighter', type: 'derelict', name: 'Derelict Freighter' } ],
+    pois: [
+      { id: 'poi_freighter', type: 'derelict', name: 'Derelict Freighter' },
+      { id: 'poi_vesta_slag_relay', type: 'beacon', name: 'Slag-Choir Relay', factionId: 'faction_choir' },
+      { id: 'poi_vesta_ore_cache', type: 'cache', name: 'Shift-End Ore Cache', hidden: true, factionId: 'faction_dmc' },
+    ],
   },
   {
     id: 'sector_pallas_drift', name: 'Pallas Drift', tier: 2, security: 0.42, charted: true,
@@ -186,7 +192,11 @@ const CORE_SECTORS = [
       { type: 'radiation',      center: { x: 300,  z: -700 }, radius: 700, intensity: 0.5 },
       { type: 'dense_asteroid', center: { x: -600, z: 500  }, radius: 650, intensity: 0.5 },
     ],
-    pois: [ { id: 'poi_colony', type: 'colony', name: 'Abandoned Mining Colony', claimable: true, size: 'S' } ],
+    pois: [
+      { id: 'poi_colony', type: 'colony', name: 'Abandoned Mining Colony', claimable: true, size: 'S' },
+      { id: 'poi_charon_lung_marker', type: 'beacon', name: 'Lung Marker', factionId: 'faction_dmc' },
+      { id: 'poi_charon_tether_wreck', type: 'wreck', name: 'Snapped-Tether Hull' },
+    ],
   },
   {
     id: 'sector_sker_haven', name: 'Sker Haven', tier: 3, security: 0.08, charted: false,

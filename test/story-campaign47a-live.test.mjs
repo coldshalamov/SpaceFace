@@ -446,11 +446,17 @@ check('B7 offers endgame; five endings with distinct consequences (fresh state e
     advanceToB7(h, 'traders');
     // Force endgame offered path + empire stake (capital/claim)
     h.state.story.flags.endgame = true;
+    assert.equal(h.state.story.flags.deep_reach_operation_complete, true, 'B7 op complete from physical route');
     h.state.player.credits = 100000;
     h.state.factions.faction_mts.rep = 50;
     h.state.player.ownedShips = [{ defId: 'ship_bastion', fittings: [] }];
     h.state.claims = { bodies: [{ id: 'claim_test' }] };
     h.state.mode = 'flight';
+    // Place gate: Deep Reach offer requires Ashfall dock/desk, not credits alone.
+    h.state.world = h.state.world || {};
+    h.state.world.currentSectorId = 'sector_ashfall_reach';
+    h.bus.emit('dock:docked', { stationId: 'station_ashcache' });
+    assert.equal(h.state.story.flags.deep_reach_ashfall_docked, true);
     // Prep per-ending causal requirements
     if (endingId === 'A') {
       h.state.player.heat = 0.5;
@@ -464,23 +470,18 @@ check('B7 offers endgame; five endings with distinct consequences (fresh state e
     if (endingId === 'D') {
       h.state.player.cargo.items.cmdty_personal_ledger = 1;
       h.state.story.flags.hasLedger = true;
-      h.state.world = h.state.world || {};
-      h.state.world.currentSectorId = 'sector_ashfall_reach';
     }
     if (endingId === 'E') {
       h.state.story.endgameDeclined = ['A', 'B', 'C', 'D'];
       assert.equal(COND.declinedAll(h.state, ['A', 'B', 'C', 'D']), true);
-      h.state.world = h.state.world || {};
-      h.state.world.currentSectorId = 'sector_ashfall_reach';
     }
     if (endingId === 'C') {
-      h.state.world = h.state.world || {};
-      h.state.world.currentSectorId = 'sector_ashfall_reach';
       h.state.missions.active = [];
       h.state.player.cargo.usedVolume = h.state.player.cargo.capVolume;
     }
 
-    h.story._maybeOfferEndgame();
+    // Dock may already have offered; re-call is idempotent once offered.
+    if (!h.state.story.endgameOffered) h.story._maybeOfferEndgame();
     assert.equal(h.state.story.endgameOffered, true);
     assert.equal(h.endgameOffers.length, 0, 'B7 must not reopen the legacy five-card modal');
     const ashfall = h.state.missions.boards.station_ashcache;

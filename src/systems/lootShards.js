@@ -1,12 +1,12 @@
 // Loot shards (Wave M2 §4.3, design/revamp/MASSLINE_PHYSICS_IDENTITY.md).
 //
 // The finding that reframed this feature: pickup MAGNETISM already ships (mining._updatePickups —
-// range 420, accel 520, pickups only). The real chore was that a ship kill drops ONLY a salvage
-// wreck you must sit on with the beam. So: on a player kill of a hostile ship, ALSO emit the
-// shipped `loot:drop` seam with a small shard pool — mining spawns the pickups, the shipped
-// magnet pulls them in, cargo collects them. The bulk salvage wreck (and the whole salvage
-// career) is untouched; shards are pocket change that keeps the fun verbs (fling/tumble/throw)
-// from ending in a parking chore.
+// homing vacuum: inherits player velocity + relative approach, pickups only). The real chore was
+// that a ship kill drops ONLY a salvage wreck you must sit on with the beam. So: on a player kill
+// of a hostile ship, ALSO emit the shipped `loot:drop` seam with a small shard pool — mining
+// spawns the pickups, the magnet flies them into the hull, cargo collects them. The bulk salvage
+// wreck (and the whole salvage career) is untouched; shards are pocket change that keeps the fun
+// verbs (fling/tumble/throw) from ending in a parking chore.
 //
 // Deterministic: own mulberry32 stream (never the core sim PRNG), flag-gated, not in the sim
 // harness.

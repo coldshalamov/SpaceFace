@@ -516,6 +516,7 @@ const REGION_ORCUS = freezeRegion({
     pois: [
       { id: 'poi_orcus_anomaly', type: 'anomaly', name: 'Orcus Signal' },
       { id: 'poi_orcus_vault', type: 'cache', name: 'Shadow Vault', hidden: true },
+      { id: 'poi_orcus_plinth', type: 'beacon', name: 'Shadow Plinth', factionId: 'faction_vael' },
     ],
   },
   anchors: {
@@ -545,6 +546,11 @@ const REGION_ORCUS = freezeRegion({
         id: 'poi_orcus_vault',
         pos: { x: -1480, z: 320 },
         landmarkGlb: 'place_debris_chunk',
+      },
+      {
+        id: 'poi_orcus_plinth',
+        pos: { x: 980, z: -540 },
+        landmarkGlb: 'place_nav_buoy',
       },
     ],
   },

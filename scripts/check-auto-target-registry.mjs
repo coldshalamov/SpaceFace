@@ -8,6 +8,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRegistry } from '../src/core/registry.js';
 import { wrapAngle } from '../src/core/rng.js';
+import { ensurePhysicsBodySpec } from '../src/core/physicsAuthority.js';
 import { autoTargetAssist } from '../src/systems/autoTargetAssist.js';
 import { targetNearestHostileToPlayer } from '../src/ui/uiRoot.js';
 
@@ -36,10 +37,12 @@ try {
   state.mode = 'flight';
   state.input.autoFire = true;
   state.input.turnIntent = 0.8;
-  state.input.pointerScreen = { x: 400, y: 300, active: true };
+  state.input.pointerScreen = { x: 520, y: 200, active: true };
   state.entities.set(1, player);
   state.entities.set(2, hostile);
   state.entityList.push(player, hostile);
+  ensurePhysicsBodySpec(player);
+  ensurePhysicsBodySpec(hostile);
 
   bus.on('ui:targetNearestHostileToPlayer', ({ quiet } = {}) => {
     targetNearestHostileToPlayer(state, bus, { quiet });
@@ -47,17 +50,19 @@ try {
 
   const inputSys = registry.get('input');
   assert(inputSys && typeof inputSys.update === 'function', 'registry must expose the live input system');
-  inputSys._screen = { x: 400, y: 300, active: true };
+  inputSys._screen = { x: 520, y: 200, active: true };
+  inputSys._ndc = { x: 0.3, y: 1 / 3 };
+  inputSys._autoTargetPointerMode = true;
   inputSys._lastKbmMs = performance.now();
   inputSys._keys = Object.create(null);
   if (inputSys.helpers) {
-    inputSys.helpers.raycastToPlane = () => ({ x: 0, z: 300 });
+    inputSys.helpers.raycastToPlane = (ndc) => ({ x: ndc.x * 300, z: ndc.y * 300 });
   }
 
   registry.step(DT);
 
   const hostileAim = Math.atan2(hostile.pos.z - player.pos.z, hostile.pos.x - player.pos.x);
-  const cursorAngle = Math.atan2(300, 0);
+  const cursorAngle = Math.atan2(100, 90);
   assert.equal(state.input.aimWorld.x, hostile.pos.x, 'registry.step must publish lock aimWorld.x after assist');
   assert.equal(state.input.aimWorld.z, hostile.pos.z, 'registry.step must publish lock aimWorld.z after assist');
   assert(Math.abs(wrapAngle(state.input.aimAngle - hostileAim)) < 0.02,
@@ -65,11 +70,23 @@ try {
   assert(Math.abs(wrapAngle(state.input.aimAngle - cursorAngle)) > 0.5,
     'registry.step aimAngle must diverge from cursor bearing');
   assert(Math.abs(state.input.turnIntent) > 0.01,
-    'registry.step must publish non-zero turnIntent toward cursor in auto-target mode');
-  console.log(`[PASS] registry-step-auto-target aimAngle=${state.input.aimAngle.toFixed(3)} turnIntent=${state.input.turnIntent.toFixed(3)}`);
+    'registry.step must publish non-zero turnIntent from the center-relative stick');
+  assert.equal(state.input.turnIntent, state.input.autoTargetStick.x,
+    'registry.step must map horizontal stick deflection directly to ship-local yaw');
+  assert.equal(state.input.moveZ, state.input.autoTargetStick.y,
+    'registry.step must map vertical stick deflection directly to forward/reverse thrust');
+  const physicsSys = registry.get('physics');
+  if (physicsSys && physicsSys._sg02Init) await physicsSys._sg02Init;
+  assert(physicsSys && physicsSys._sg02,
+    'registry proof must wait for the real Rapier dynamic authority before judging ship rotation');
+  const initialRot = player.rot;
+  for (let i = 0; i < 45; i++) registry.step(DT);
+  assert(Math.abs(wrapAngle(player.rot - initialRot)) > 0.08,
+    `real Flight V3 + physics ticks must rotate the player ship; start=${initialRot} end=${player.rot} turn=${state.input.turnIntent} stick=${JSON.stringify(state.input.autoTargetStick)} auto=${state.input.autoFire} mode=${state.mode}`);
+  console.log(`[PASS] registry-step-auto-target aimAngle=${state.input.aimAngle.toFixed(3)} turnIntent=${state.input.turnIntent.toFixed(3)} rotDelta=${wrapAngle(player.rot - initialRot).toFixed(3)}`);
 
   const assist = registry.get('autoTargetAssist');
-  assert(assist._onKeyDown && assist._onKeyUp, 'registry init must attach autoTargetAssist F-key handlers');
+  assert(assist._onKeyDown && assist._onKeyUp, 'registry init must attach autoTargetAssist G-key handlers');
   const keydownBeforeDestroy = listeners.get('keydown')?.size || 0;
   const keyupBeforeDestroy = listeners.get('keyup')?.size || 0;
   registry.destroy();
@@ -81,7 +98,7 @@ try {
     'registry.destroy must remove at least the autoTargetAssist keyup listener');
 
   autoTargetAssist.init.call(assist, ctx);
-  assert(assist._onKeyDown && assist._onKeyUp, 'autoTargetAssist re-init after destroy must reattach F-key handlers');
+  assert(assist._onKeyDown && assist._onKeyUp, 'autoTargetAssist re-init after destroy must reattach G-key handlers');
   const keydownAfterReinit = listeners.get('keydown')?.size || 0;
   autoTargetAssist.destroy.call(assist);
   assert.equal(assist._onKeyDown, null, 'second destroy must clear re-attached keydown handler');

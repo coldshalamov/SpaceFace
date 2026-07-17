@@ -59,6 +59,7 @@ function validateCorpus() {
     'hush',
     'landmark_lore',
     'set_piece_missions',
+    'rim_poi_lore',
   ];
   if (FLAVOR_MODULES.length !== expectedPacks.length) {
     add('flavor.pack-count', 'FLAVOR_MODULES', `Expected ${expectedPacks.length} packs, found ${FLAVOR_MODULES.length}.`);

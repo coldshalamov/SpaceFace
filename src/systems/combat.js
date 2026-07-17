@@ -21,6 +21,7 @@ import {
   normalizeCombatDoctrineId,
 } from '../ai/combatDoctrine.js';
 import { MIN_AI_RESPONSE_WINDOW_S } from '../ai/engagementAuthority.js';
+import { contactGrammarFor } from '../data/factionContactGrammar.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
@@ -163,6 +164,24 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   // draws the enemy as its OWN hostile family instead of the player ship-def's family. Gameplay
   // stats still come from shipId; only the appearance changes.
   if (def.silhouette) spec.data.silhouette = def.silhouette;
+  // Ecology roles: durable telegraph + counter hints for HUD/comms (presentation consumers).
+  if (def.telegraph) spec.data.telegraph = { ...def.telegraph };
+  if (def.counterHint) spec.data.counterHint = def.counterHint;
+  if (def.telegraph && def.telegraph.cue && !opts.approachTelegraph) {
+    // Prefer role cue when doctrine telegraph is generic.
+    spec.data.ai.approachTelegraph = def.telegraph.cue;
+  }
+  // Faction contact grammar (Package D): attach scan/demand/contact words for bark/HUD consumers.
+  const grammar = contactGrammarFor(factionId);
+  if (grammar) {
+    spec.data.contactWord = grammar.contactWord;
+    spec.data.demandType = grammar.demandType;
+    spec.data.scanPolicy = grammar.scanPolicy;
+    spec.data.lootLegality = grammar.lootLegality;
+    if (!spec.data.ai.barkSituation && grammar.primaryBark) {
+      spec.data.ai.barkSituation = grammar.primaryBark;
+    }
+  }
   spec.factionId = factionId;
   return spec;
 }
@@ -279,6 +298,7 @@ export const combat = {
     this.rng = mulberry32(hash32(ctx.state.meta.seed, 'combat'));
     this.kernel = getCombatKernel(ctx, { onKill: (target, killerId, lethal) => this.kill(target, killerId, lethal) });
     this._pendingPlayerRecovery = null;
+    this._recoveryInFlight = false;
     this._beamCandidateScratch = [];
     this._beamQueryCenter = { x: 0, z: 0 };
     this._diag = {
@@ -295,6 +315,7 @@ export const combat = {
     ctx.bus.on('player:recoveryRequested', (payload) => this.recoverPendingPlayer(payload || {}));
     const clearPendingDefeat = () => {
       this._pendingPlayerRecovery = null;
+      this._recoveryInFlight = false;
       if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
     };
     ctx.bus.on('game:started', clearPendingDefeat);
@@ -458,41 +479,108 @@ export const combat = {
     return true;
   },
 
-  recoverPendingPlayer(payload = {}) {
-    const pending = this._pendingPlayerRecovery;
-    if (!pending) return { ok: false, reason: 'no_pending_defeat' };
-    const player = this.state.entities && this.state.entities.get(pending.playerId);
-    if (!player) return { ok: false, reason: 'player_missing' };
+  /**
+   * Rebuild the in-memory recovery latch from the durable after-action receipt when the wreck is
+   * still present. The UI reads lastPlayerDefeat; combat previously only honored _pendingPlayerRecovery
+   * (cleared on re-init / partial failure), so Continue could no-op with no feedback.
+   */
+  rearmPendingRecoveryFromReceipt() {
+    if (this._pendingPlayerRecovery) return this._pendingPlayerRecovery;
+    const state = this.state;
+    if (!state) return null;
+    const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
+    if (difficulty === 'ironman') return null;
+    const receipt = state.combat && state.combat.lastPlayerDefeat;
+    if (!receipt) return null;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player) return null;
+    const defeated = player.alive === false || !!(player.flags && player.flags.defeated);
+    if (!defeated) return null;
+    this._pendingPlayerRecovery = { playerId: player.id, receipt };
+    return this._pendingPlayerRecovery;
+  },
 
-    // Clear before emitting any consequence events. A synchronous duplicate button/controller event
-    // cannot charge the deductible or remove cargo twice.
-    this._pendingPlayerRecovery = null;
-    const receipt = pending.receipt || {};
-    const plan = receipt.recovery || buildRecoveryPlan(this.state, player);
-    let cargoLostQty = 0;
-    for (const loss of plan.cargoLosses || []) {
-      cargoLostQty += removeCargo(this.state, loss.commodityId, loss.qty);
-    }
-    if (plan.costCr > 0) {
-      this.bus.emit('economy:chargeCredits', { amount: plan.costCr, reason: 'recovery:deductible' });
-    }
-
-    this.restorePlayerAtRecoveryDock(player, plan);
-    const recoveryReceipt = {
-      stationId: plan.stationId,
-      stationName: plan.stationName,
-      shipId: player.data && player.data.defId,
-      costCr: plan.costCr,
-      insuranceStatus: plan.insuranceStatus,
-      cargoLost: cargoLostQty > 0,
-      cargoLostQty,
-      cause: receipt.cause || null,
-      source: payload.source || 'after_action',
+  notifyRecoveryFailure(reason) {
+    const messages = {
+      no_pending_defeat: 'Recovery is not available for this wreck. Load a save or start a new run.',
+      player_missing: 'Recovery failed: ship record missing. Load a save or start a new run.',
+      recovery_in_flight: 'Recovery is already in progress.',
+      recovery_failed: 'Recovery failed. Try again, or load a save.',
     };
-    if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
-    this.bus.emit('player:respawn', recoveryReceipt);
-    this.bus.emit('camera:shake', { amount: 0.45 });
-    return { ok: true, ...recoveryReceipt };
+    const text = messages[reason] || messages.no_pending_defeat;
+    if (this.bus) {
+      this.bus.emit('toast', { text, kind: 'error', ttl: 4.5 });
+      this.bus.emit('player:recoveryFailed', { reason: reason || 'no_pending_defeat' });
+    }
+  },
+
+  recoverPendingPlayer(payload = {}) {
+    if (this._recoveryInFlight) {
+      this.notifyRecoveryFailure('recovery_in_flight');
+      return { ok: false, reason: 'recovery_in_flight' };
+    }
+
+    // Prefer the live latch; if it was lost while the after-action receipt still describes a
+    // recoverable wreck, re-arm from lastPlayerDefeat so Continue is not a silent no-op.
+    const pending = this._pendingPlayerRecovery || this.rearmPendingRecoveryFromReceipt();
+    if (!pending) {
+      this.notifyRecoveryFailure('no_pending_defeat');
+      return { ok: false, reason: 'no_pending_defeat' };
+    }
+    const player = this.state.entities && typeof this.state.entities.get === 'function'
+      ? (this.state.entities.get(pending.playerId) || this.state.entities.get(this.state.playerId))
+      : null;
+    if (!player) {
+      this.notifyRecoveryFailure('player_missing');
+      return { ok: false, reason: 'player_missing' };
+    }
+
+    // Block re-entry for the duration of this call so a double-click cannot charge twice.
+    // Keep the latch until placement succeeds — if restore throws, the player can retry without
+    // losing the receipt and without a silent dead button.
+    this._recoveryInFlight = true;
+    try {
+      const receipt = pending.receipt || {};
+      const plan = receipt.recovery || buildRecoveryPlan(this.state, player);
+
+      // Place first. Cargo/credit consequences apply only after the berth is committed so a
+      // failed cross-sector restore cannot strip inventory and leave the after-action modal stuck.
+      this.restorePlayerAtRecoveryDock(player, plan);
+
+      let cargoLostQty = 0;
+      for (const loss of plan.cargoLosses || []) {
+        cargoLostQty += removeCargo(this.state, loss.commodityId, loss.qty);
+      }
+      if (plan.costCr > 0) {
+        this.bus.emit('economy:chargeCredits', { amount: plan.costCr, reason: 'recovery:deductible' });
+      }
+
+      this._pendingPlayerRecovery = null;
+      if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
+
+      const recoveryReceipt = {
+        stationId: plan.stationId,
+        stationName: plan.stationName,
+        shipId: player.data && player.data.defId,
+        costCr: plan.costCr,
+        insuranceStatus: plan.insuranceStatus,
+        cargoLost: cargoLostQty > 0,
+        cargoLostQty,
+        cause: receipt.cause || null,
+        source: payload.source || 'after_action',
+      };
+      this.bus.emit('player:respawn', recoveryReceipt);
+      this.bus.emit('camera:shake', { amount: 0.45 });
+      return { ok: true, ...recoveryReceipt };
+    } catch (err) {
+      console.error('[combat] player recovery failed', err);
+      this.notifyRecoveryFailure('recovery_failed');
+      return { ok: false, reason: 'recovery_failed' };
+    } finally {
+      this._recoveryInFlight = false;
+    }
   },
 
   restorePlayerAtRecoveryDock(t, plan) {

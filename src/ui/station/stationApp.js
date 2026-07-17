@@ -29,6 +29,7 @@ import {
   setStationExitOwner,
   stationExitNeedsConfirm,
 } from '../screens/stationHub.js';
+import { missionDockAttention } from './missionDockAttention.js';
 
 const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
@@ -63,7 +64,8 @@ const DESTINATIONS = [
   { id: 'market', label: 'Market', icon: 'market', tagline: 'Live prices · demand · trade', create: createMarketScreen },
   { id: 'shipworks', label: 'Shipworks', icon: 'shipworks', tagline: 'Buy ships · fit modules · compare', create: createShipworksScreen },
   { id: 'industry', label: 'Industry', icon: 'industry', tagline: 'Refine ore · fabricate modules', create: createIndustryScreen },
-  { id: 'contracts', label: 'Contracts', icon: 'contracts', tagline: 'Jobs · bounties · station leads', create: createContractsScreen },
+  // Player-facing label is Missions (contracts is the stable internal rail id + TARGET_MAP alias).
+  { id: 'contracts', label: 'Missions', icon: 'contracts', tagline: 'Jobs · turn-ins · station leads', create: createContractsScreen },
   { id: 'factions', label: 'Factions', icon: 'factions', tagline: 'Standing & relations', create: createFactionsScreen },
   { id: 'bar', label: 'Bar', icon: 'bar', tagline: 'Rumors · contacts · leads', create: createBarScreen },
 ];
@@ -191,6 +193,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   let receiptTimer = 0;
   let commsOpen = false;
   let commsUnread = 0;
+  /** @type {null|ReturnType<typeof missionDockAttention>} */
+  let lastMissionAttention = null;
+  /** One auto-open per dock session so refresh/mission updates do not yank the player mid-flow. */
+  let missionAutoOpenedThisDock = false;
   const receiptHistory = [];
   const subscriptions = [];
 
@@ -440,9 +446,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     market: ['Trade scope', 'Select a commodity to inspect price, demand and station pressure. Buy or sell against your credits and hold.'],
     shipworks: ['Shipworks bay', 'Select a ship or a physical system slot, preview compatible equipment, then install through the real fitting system.'],
     industry: ['Production line', 'Trace raw stock into refined goods and fabricated modules. Broken paths identify the exact missing input.'],
-    contracts: ['Contract plotting', 'Choose a job to see its route, preparation, faction consequence and payout before accepting it.'],
+    contracts: ['Missions board', 'Accept jobs, track routes, and settle objectives that complete at this berth. Highlighted rows need your attention first.'],
     factions: ['Authority network', 'Select a faction to expose its standing thresholds, relationships, recent change and immediate unlocks.'],
-    bar: ['Station contacts', 'Contacts turn rumors and local knowledge into actionable leads, survey data and contracts.'],
+    bar: ['Station contacts', 'Contacts turn rumors and local knowledge into actionable leads, survey data and missions.'],
   };
   helpEl.addEventListener('click', () => {
     const help = HELP[activeId] || ['Station operation', 'Select an operation from the command dock.'];
@@ -528,7 +534,16 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   subscribe('module:equipped', () => showReceipt('SHIPWORKS', 'FIT COMMITTED', 'LOADOUT RECALCULATED'));
   subscribe('module:unequipped', () => showReceipt('SHIPWORKS', 'MODULE RETURNED', 'INVENTORY UPDATED'));
   subscribe('ship:purchased', (p = {}) => showReceipt('SHIPWORKS', 'SHIP ACQUIRED', p.price ? `−${fmtCr(p.price)} cr` : 'FABRICATION COMPLETE'));
-  subscribe('mission:accepted', () => showReceipt('CONTRACT BOUND', 'ROUTE ADDED TO NAVIGATION', 'STAGE 01 ACTIVE'));
+  subscribe('mission:accepted', () => showReceipt('MISSION BOUND', 'ROUTE ADDED TO NAVIGATION', 'STAGE 01 ACTIVE'));
+  subscribe('mission:completed', (p = {}) => {
+    const reward = Number(p.rewardCr);
+    const delta = Number.isFinite(reward) && reward > 0 ? `+${fmtCr(reward)} cr` : 'OBJECTIVE SETTLED';
+    showReceipt('MISSION COMPLETE', String(p.type || 'JOB').replace(/_/g, ' ').toUpperCase(), delta);
+  });
+  subscribe('mission:updated', () => {
+    // Board/active list can change while docked (accept, auto turn-in). Refresh rail attention.
+    applyMissionAttention({ allowAutoOpen: false });
+  });
   subscribe('credits:changed', (p = {}) => {
     const reason = String(p.reason || '');
     if (!reason.startsWith('service:')) return;
@@ -637,12 +652,55 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     openHoldPop(b);
   });
 
+  function applyMissionAttention({ allowAutoOpen = false } = {}) {
+    const s = state();
+    const attention = missionDockAttention(s, stationId());
+    lastMissionAttention = attention;
+    if (attention) {
+      const why = attention.kind === 'accept'
+        ? `Missions — ${attention.reason}`
+        : `Missions — ${attention.title}: ${attention.reason}`;
+      dock.setAttention('contracts', { badge: attention.badge, title: why });
+    } else {
+      dock.setAttention(null);
+    }
+    if (allowAutoOpen && attention && attention.autoOpen && !missionAutoOpenedThisDock) {
+      missionAutoOpenedThisDock = true;
+      navigate('contracts', {
+        missionId: attention.focusMissionId,
+        attention,
+        focusSurface: attention.surface,
+      });
+      return attention;
+    }
+    // If already on Missions, re-focus the attention row without changing tab.
+    if (activeId === 'contracts' && attention) {
+      const screen = screenCache.get('contracts');
+      if (screen && typeof screen.onShow === 'function') {
+        screen.onShow({
+          ...ctx,
+          missionId: attention.focusMissionId,
+          attention,
+          focusSurface: attention.surface,
+        });
+      }
+    }
+    return attention;
+  }
+
   function refresh() {
     renderStatus();
+    applyMissionAttention({ allowAutoOpen: false });
     const dest = DESTINATIONS.find((d) => d.id === activeId);
     if (dest) {
       const screen = screenCache.get(dest.id);
-      if (screen && typeof screen.refresh === 'function') screen.refresh(ctx);
+      if (screen && typeof screen.refresh === 'function') {
+        screen.refresh({
+          ...ctx,
+          missionId: lastMissionAttention && lastMissionAttention.focusMissionId,
+          attention: lastMissionAttention,
+        });
+      }
     }
   }
 
@@ -664,7 +722,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   renderStatus();
+  // Default desk is Market, then mission attention may immediately re-route to Missions.
   navigate('market');
+  applyMissionAttention({ allowAutoOpen: true });
 
   function activeScreen() {
     const dest = DESTINATIONS.find((d) => d.id === activeId);
@@ -676,12 +736,27 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     refresh,
     navigate,
     onShow() {
-      const scr = activeScreen();
-      if (scr && typeof scr.onShow === 'function') { try { scr.onShow(ctx); } catch (_) {} }
+      // Fresh dock session: allow one auto-open to Missions when an objective needs the desk.
+      missionAutoOpenedThisDock = false;
       renderStatus();
+      const attention = applyMissionAttention({ allowAutoOpen: true });
+      if (!(attention && attention.autoOpen)) {
+        const scr = activeScreen();
+        if (scr && typeof scr.onShow === 'function') {
+          try {
+            scr.onShow({
+              ...ctx,
+              missionId: lastMissionAttention && lastMissionAttention.focusMissionId,
+              attention: lastMissionAttention,
+            });
+          } catch (_) {}
+        }
+      }
     },
     onHide() {
       closePop();
+      dock.setAttention(null);
+      lastMissionAttention = null;
       const scr = activeScreen();
       if (scr && typeof scr.onHide === 'function') { try { scr.onHide(); } catch (_) {} }
     },

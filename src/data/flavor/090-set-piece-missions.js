@@ -33,7 +33,7 @@ function travelLine(actorId, sequence, text) {
 export default defineFlavorPack({
   id: flavorId,
   kind: flavorKind,
-  description: 'Instructions, witness transit lines, and house-voice receipts for the three SP1 set-piece mission chains.',
+  description: 'Instructions, witness transit lines, and house-voice receipts for SP1 set-piece mission chains (including depth shape expansions).',
   entries: [
     ...stageCopy('long_read', 'rumor_survey', {
       instruction: 'Pay Drift’s broker; fly the bearing, then harden ring to point.',
@@ -126,6 +126,62 @@ export default defineFlavorPack({
       success: 'FIRING CORRECTIONS FILED. STATION RESPONSE ENTERED AS SILENCE.',
       failure: 'CORRECTIONS REJECTED. THE STATION RESPONSE REMAINS PENDING IMPACT.',
       recovery: 'TWO APERTURES REMAIN ON RECORD. THE THIRD MAY STILL BE MADE PRECISE.',
+    }),
+
+    ...stageCopy('blockade_run', 'map_the_cordon', {
+      instruction: 'Scan three cordon anchors and enter their ranges into the approach brief.',
+      success: 'CORDON MAPPED. THE LANE NOW HAS A COST AND A ROUTE.',
+      failure: 'CORDON UNREAD. THE LANE REMAINS SOMEONE ELSE’S PROPERTY.',
+      recovery: 'CUSTOMS KEPT TWO ANCHOR PINGS. THE THIRD MAY STILL BE BOUGHT.',
+    }),
+    ...stageCopy('blockade_run', 'hold_course_under_fire', {
+      instruction: 'Carry the sealed crate through the cordon approach without losing the lot.',
+      success: 'COURSE HELD. THE CRATE REACHED THE INNER MARK UNDER FIRE.',
+      failure: 'COURSE BROKEN. THE CRATE IS A DEBRIS ENTRY NOW.',
+      recovery: 'A THINNER CRATE IS PRELOADED. THE INNER MARK STILL ACCEPTS IT.',
+    }),
+    ...stageCopy('blockade_run', 'run_the_quiet_tithe', {
+      instruction: 'Move the crate to the Smuggler Den without submitting to a scan.',
+      success: 'TITHE PAID. ARRIVAL FILED UNDER A QUIETER AUTHORITY.',
+      failure: 'TITHE EXPOSED. THE QUIET ROUTE HAS BECOME A PUBLIC STORY.',
+      recovery: 'NYX REPRICED THE BLIND WINDOW. THE DEN STILL HAS A SLOT.',
+    }),
+    ...stageCopy('blockade_run', 'clear_the_cordon', {
+      instruction: 'Clear three marked cordon ships. Leave unmarked traffic alone.',
+      success: 'CORDON SCREEN BROKEN. THE PUBLIC LANE IS TEMPORARILY HONEST.',
+      failure: 'CORDON HOLDS. PUBLIC ARRIVAL REMAINS A THEORETICAL RIGHT.',
+      recovery: 'CUSTOMS REFILED THE THREE MARKS. THE GUNS MAY BE CALLED AGAIN.',
+    }),
+    ...stageCopy('blockade_run', 'dock_through_wreckage', {
+      instruction: 'Deliver the crate to Drift Market with the cargo still sealed.',
+      success: 'PUBLIC DOCK COMPLETE. THE BLOCKADE LEFT A RECEIPT WITH YOUR NAME.',
+      failure: 'DELIVERY LOST IN WRECKAGE. PUBLIC MEMORY KEEPS THE FAILURE.',
+      recovery: 'DRIFT HOLDS A REDUCED BERTH. THE SAME LOT MAY STILL ARRIVE.',
+    }),
+
+    ...stageCopy('investigation_chain', 'scan_the_silent_wreck', {
+      instruction: 'Scan three wreck signatures and isolate the silent black-box ping.',
+      success: 'WRECK ISOLATED. THE SILENT BOX IS NOW A BEARING, NOT A RUMOR.',
+      failure: 'SCAN CLOSED. THE SILENT BOX REMAINS AN UNCLAIMED NOISE.',
+      recovery: 'REACH KEPT TWO SIGNATURES. THE THIRD MAY BE READ AGAIN.',
+    }),
+    ...stageCopy('investigation_chain', 'recover_the_black_box', {
+      instruction: 'Recover the black box without adding a kill to the wreck’s log.',
+      success: 'BOX RECOVERED. THE LOG NOW REQUIRES A NAMED READER.',
+      failure: 'RECOVERY FAILED. THE BOX STILL OWNS THE BETTER STORY.',
+      recovery: 'THE WRECK REMAINS FIXED. A SMALLER EXTRACTION WINDOW IS OPEN.',
+    }),
+    ...stageCopy('investigation_chain', 'file_the_log', {
+      instruction: 'Carry the sealed log to Customs Gate without losing integrity.',
+      success: 'LOG FILED. NAMES ARE NOW PUBLIC AND SOMEBODY WILL ANSWER.',
+      failure: 'FILING LOST. THE NAMES REMAIN PRIVATE AND DANGEROUS.',
+      recovery: 'CUSTOMS HOLDS A THINNER DOCKET. PUBLICATION MAY BE RETRIED.',
+    }),
+    ...stageCopy('investigation_chain', 'sell_the_log', {
+      instruction: 'Move the sealed log to Nyx March without inspection.',
+      success: 'LOG SOLD QUIET. THE FINDER NAME HAS BEEN ERASED FROM THE STORY.',
+      failure: 'SALE EXPOSED. THE QUIET BUYER HAS BECOME A PUBLIC INTEREST.',
+      recovery: 'NYX REOPENED A NARROWER BLIND WINDOW FOR THE SAME LOT.',
     }),
 
     travelLine('dorin', '01', 'They made the seal clean after they made the corridor quiet.'),

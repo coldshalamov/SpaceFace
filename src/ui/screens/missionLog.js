@@ -239,8 +239,20 @@ function stripNextPrefix(text) {
 
 function missionPurposeText(m) {
   if (!m) return 'Complete the contract and secure its payout.';
+  // Paperwork deep-read: authorization / admin field / full contract body (B0 mass story).
+  if (m.description && String(m.description).includes('MASS ON ACCEPT')) {
+    return String(m.description).trim();
+  }
+  if (m.authorization) {
+    const base = m.summary || m.brief || m.instruction || '';
+    return String(`${base}\n${m.authorization}`).trim();
+  }
+  if (m.adminField) {
+    const base = m.summary || m.brief || m.instruction || m.title || '';
+    return String(`${base}\nADMINISTRATOR: ${m.adminField}`).trim();
+  }
   const authored = m.why || m.motive || m.brief || m.description || m.instruction || m.summary
-    || (m.params && (m.params.why || m.params.reason));
+    || (m.params && (m.params.why || m.params.reason || m.params.authorization));
   if (authored) return String(authored).trim();
   switch (m.type) {
     case 'cargo_delivery': return 'Protect chain of custody and complete the contracted handoff.';

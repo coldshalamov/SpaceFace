@@ -2,6 +2,7 @@ import { selectHitSubsystem } from './geometry.js';
 import { ensureCombatant, syncCombatantBounds } from './runtime.js';
 import { damageSubsystem } from './subsystems.js';
 import { appendCombatTrace } from './trace.js';
+import { difficultyDamageScale } from '../data/difficulty.js';
 
 export function createDamageRouter(context, statusService, options = {}) {
   const { state, catalog, bus, helpers } = context;
@@ -19,6 +20,15 @@ export function createDamageRouter(context, statusService, options = {}) {
 
   function routeDamage(input) {
     const packet = normalizeDamagePacket(input && input.packet, catalog.damageModel.channelOrder);
+    // Run difficulty only scales hits involving the local player (outgoing or incoming). Ambient
+    // NPC brawls stay on the authored baseline so sector ecology is not difficulty-rewritten.
+    const diffScale = difficultyDamageScale(state, input && input.attackerId, input && input.targetId);
+    if (diffScale !== 1) {
+      for (const channel of catalog.damageModel.channelOrder) {
+        packet.channels[channel] = (packet.channels[channel] || 0) * diffScale;
+      }
+      packet.heat = (packet.heat || 0) * diffScale;
+    }
     const target = entity(input && input.targetId);
     const attacker = entity(input && input.attackerId);
     const origin = input && input.origin || null;

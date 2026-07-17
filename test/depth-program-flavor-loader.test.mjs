@@ -35,6 +35,7 @@ const PACK_IDS = [
   'hush',
   'landmark_lore',
   'set_piece_missions',
+  'rim_poi_lore',
 ];
 
 const RUMOR_SOURCE_REFS = new Map([
@@ -244,7 +245,8 @@ test('flavor corpus CLI emits a deterministic human taste-review artifact', () =
     assert.match(firstText, /^# SpaceFace V2 Corpus Review/m);
     assert.match(firstText, /## Wreck Rumors/);
     assert.match(firstText, /## Landmark Lore/);
-    assert.match(firstText, /354 authored lines/);
+    assert.match(firstText, /414 authored lines/);
+    assert.match(firstText, /## Rim Poi Lore/);
     const second = run();
     assert.equal(second.status, 0, `${second.stdout}\n${second.stderr}`);
     assert.equal(readFileSync(review, 'utf8'), firstText);

@@ -86,7 +86,7 @@ export function createGameState(seed) {
     tick: 0,
     days: 0,
     rng: mulberry32(seed),
-    input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, fire: false, fireGroup: null, autoFire: false, deployCountermeasure: false, aimWorld: { x: 0, z: 0 }, aimAngle: 0, mouseNdc: { x: 0, y: 0 }, pointerScreen: { x: 0, y: 0, active: false } },
+    input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, fire: false, fireGroup: null, autoFire: false, deployCountermeasure: false, aimWorld: { x: 0, z: 0 }, aimAngle: 0, mouseNdc: { x: 0, y: 0 }, pointerScreen: { x: 0, y: 0, active: false }, autoTargetStick: { active: false, x: 0, y: 0, magnitude: 0 } },
     flight: { mode: 'manual', previousMode: 'manual', modeReason: 'boot', modeChangedTick: 0 },
     camera: { obj: null, tilt: 60, zoom: 72, trauma: 0, shakeOffset: null, focus: null, lerp: 6.0, lookAhead: 26 },
     bounds: { radius: 2600, hardRadius: 3000, center: { x: 0, z: 0 } },

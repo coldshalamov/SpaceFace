@@ -544,4 +544,63 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   console.log(JSON.stringify({ ok: true, section: 'struct-sys' }));
 }
 
+// --- 12. Deep-core rocks remember being drilled and refill over sim time (not instant refresh) ---
+{
+  const { state } = setup();
+  const astId = 2000001;
+  state.entities.set(astId, { id: astId, data: { typeId: 'ast_rock', yieldU: 30 } });
+
+  drill.begin(astId);
+  let d = state.drill;
+  assert.equal(d.rockBudgetMax, 30, 'rock budget max is seeded from the entity yieldU');
+  assert.equal(d.rockBudget, 30, 'a fresh rock pays its full budget');
+  const col = d.avatar.col;
+  d.field[col][1] = { type: 'vein', hp: 1, maxHp: 1, ore: 'cmdty_silicate', yieldU: 12, hazard: false, tierReq: 1 };
+  drill.tickInput({ left: false, right: false, up: false, down: true }, 1.0);
+  assert.equal(state.player.cargo.items.cmdty_silicate, 12, 'vein grants ore through the canonical cargo writer');
+  assert.equal(d.rockBudget, 18, 'session budget is deducted by the units extracted');
+  assert.ok(Math.abs(state.entities.get(astId).data.drillDepletion - 12 / 30) < 1e-9,
+    'the entity remembers the depletion fraction across sessions');
+
+  // Re-enter the SAME rock without waiting: it must NOT fully refresh.
+  drill.end(); drill.begin(astId);
+  assert.equal(state.drill.rockBudget, 18, 're-entering a drilled rock does not fully refresh it');
+
+  // Play it out: a fresh vein on an exhausted rock pays nothing.
+  state.drill.rockBudget = 0;
+  state.drill.avatar.row = 0; state.drill.avatar.col = col; state.drill.moveCooldown = 0;
+  state.drill.field[col][1] = { type: 'vein', hp: 1, maxHp: 1, ore: 'cmdty_silicate', yieldU: 5, hazard: false, tierReq: 1 };
+  const beforePlayedOut = state.player.cargo.items.cmdty_silicate;
+  drill.tickInput({ left: false, right: false, up: false, down: true }, 1.0);
+  assert.equal(state.player.cargo.items.cmdty_silicate, beforePlayedOut, 'a played-out rock pays nothing');
+
+  // Wait past the recovery window: the rock refills.
+  state.entities.get(astId).data.drillDepletion = 1;
+  state.entities.get(astId).data.lastDrillT = state.simTime || 0;
+  state.simTime = (state.simTime || 0) + 601;
+  drill.end(); drill.begin(astId);
+  assert.equal(state.drill.rockBudget, 30, 'an exhausted rock refills over sim time');
+  console.log(JSON.stringify({ ok: true, section: 'rock-memory' }));
+}
+
+// --- 13. Drill extraction shares the field-depletion ledger with flight-mode mining ---
+{
+  const { state } = setup();
+  const astId = 2000002;
+  state.entities.set(astId, { id: astId, data: { typeId: 'ast_rock', yieldU: 20, fieldId: 'field_share_99' } });
+
+  drill.begin(astId);
+  const d = state.drill;
+  assert.equal(d.fieldId, 'field_share_99', 'session carries the field id for shared depletion');
+  const col = d.avatar.col;
+  d.field[col][1] = { type: 'vein', hp: 1, maxHp: 1, ore: 'cmdty_silicate', yieldU: 8, hazard: false, tierReq: 1 };
+  drill.tickInput({ left: false, right: false, up: false, down: true }, 1.0);
+  const result = drill.end();
+  assert.equal(result.yieldUnits, 8, 'session result totals the extracted units');
+  const fd = state.fieldDepletion && state.fieldDepletion.fields && state.fieldDepletion.fields.field_share_99;
+  assert.ok(fd && fd.depletion > 0 && fd.extractedU >= 8,
+    'a drill session records one receipt in the shared field-depletion ledger');
+  console.log(JSON.stringify({ ok: true, section: 'field-share', depletion: fd && fd.depletion }));
+}
+
 console.log('check-drill-smooth: PASS');

@@ -28,7 +28,10 @@ export const DAMAGE_MODEL = Object.freeze({
   shieldMultipliers: Object.freeze({ kinetic: 0.82, thermal: 1.0, ion: 1.35, plasma: 1.15, phase: 0.35 }),
   armorMultipliers: Object.freeze({ kinetic: 0.92, thermal: 0.78, ion: 0.28, plasma: 1.20, phase: 0.55 }),
   hullMultipliers: Object.freeze({ kinetic: 1.0, thermal: 1.0, ion: 0.55, plasma: 1.08, phase: 1.0 }),
-  subsystemShare: 0.75,
+  // Default guns primarily kill hull. High share made starter pulse lasers take hundreds of hits
+  // because 75% of post-armor damage only chipped subsystems. EMP/disable verbs still set
+  // subsystemShare: 1.0 on the weapon packet.
+  subsystemShare: 0.35,
   subsystemArmorMultipliers: Object.freeze({ kinetic: 0.95, thermal: 0.85, ion: 1.20, plasma: 1.05, phase: 1.0 }),
 });
 
