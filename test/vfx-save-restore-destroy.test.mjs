@@ -37,6 +37,10 @@ function snapshot(system) {
   };
 }
 
+function advanceExplosion(system, dt = 0.2) {
+  system._explosions.update(dt, system._explosionEmitter);
+}
+
 const asteroidPayload = {
   id: 42,
   type: 'asteroid',
@@ -61,6 +65,7 @@ for (let i = 0; i < 40; i++) {
     reason: 'save_restore',
   });
 }
+advanceExplosion(restoreSys);
 const afterRestore = snapshot(restoreSys);
 assert.equal(afterRestore.liveParticles, 0,
   'save_restore must spawn zero particles (F9 clear is not a combat destroy)');
@@ -89,6 +94,7 @@ combatSys._onDestroyed({
   ...asteroidPayload,
   // no reason, or an explicit gameplay reason — either must explode
 });
+advanceExplosion(combatSys);
 const afterCombat = snapshot(combatSys);
 assert.ok(afterCombat.liveParticles > beforeCombat.liveParticles,
   `normal entity:destroyed must spawn particles (got ${afterCombat.liveParticles})`);
@@ -104,6 +110,7 @@ combatSys2._onDestroyed({
   id: 99,
   reason: 'combat',
 });
+advanceExplosion(combatSys2);
 const afterCombat2 = snapshot(combatSys2);
 assert.ok(afterCombat2.liveParticles > 0, 'reason:combat must still explode');
 assert.ok(afterCombat2.liveSprites > 0, 'reason:combat must still spawn sprites');

@@ -194,6 +194,8 @@ export function createDamageRouter(context, statusService, options = {}) {
         shieldAbsorbed: shieldDamage > 0,
         isPlayer: target.id === state.playerId,
         pos: packet.hit && packet.hit.pos || { x: target.pos.x, z: target.pos.z },
+        approach: packet.hit && packet.hit.approach || null,
+        normal: packet.hit && packet.hit.normal || null,
         factionId: target.factionId || null,
         factionLawful,
         subsystemId,
@@ -410,8 +412,21 @@ function normalizeHit(hit) {
   if (!hit || typeof hit !== 'object') return null;
   const out = {};
   if (hit.pos) out.pos = { x: Number(hit.pos.x) || 0, z: Number(hit.pos.z) || 0 };
+  const approach = normalizeHitDirection(hit.approach);
+  const normal = normalizeHitDirection(hit.normal);
+  if (approach) out.approach = approach;
+  if (normal) out.normal = normal;
   if (typeof hit.subsystemId === 'string') out.subsystemId = hit.subsystemId;
   return Object.keys(out).length ? out : null;
+}
+
+function normalizeHitDirection(value) {
+  if (!value || typeof value !== 'object') return null;
+  const x = Number(value.x) || 0;
+  const z = Number(value.z) || 0;
+  const length = Math.hypot(x, z);
+  if (length < 1e-8) return null;
+  return { x: x / length, z: z / length };
 }
 
 function snapshotVitals(entity, runtime) {
