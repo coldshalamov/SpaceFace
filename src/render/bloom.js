@@ -41,12 +41,53 @@ const BALANCED_BLOOM_MAX_LEVELS = 2;
 const BALANCED_BLOOM_MSAA_SAMPLES = 0;
 const FILM_GRAIN_FPS = 12;
 const DEFAULT_BLOOM_STRENGTH = 0.35;
-const DEFAULT_FILM_GRAIN = 0.35;
-const DEFAULT_VIGNETTE = 0.85;
-const DEFAULT_COLOR_GRADE = 0.55;
+export const DEFAULT_POST_PRESENTATION = Object.freeze({ grain: 0, vignette: 0, grade: 0 });
+
+export function resolvePostPresentation(options = {}) {
+  return Object.freeze({
+    grain: clamp01(options.grain, DEFAULT_POST_PRESENTATION.grain),
+    vignette: clamp01(options.vignette, DEFAULT_POST_PRESENTATION.vignette),
+    grade: clamp01(options.grade, DEFAULT_POST_PRESENTATION.grade),
+  });
+}
+
+function clamp01(value, fallback) {
+  return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback;
+}
 // Multi-scale pyramid energy runs hotter than a single separable blur; composite multiplies by
 // this before uStrength scales the halo perceptually (0.02 ≈ subtle, 0.40 ≈ default).
 const BLOOM_PYRAMID_NORM = 1.5;
+
+/**
+ * Compile one Object3D subtree against the exact output target used by the live renderer.
+ *
+ * Three.js includes the active render target's output color space in its shader-program key. A
+ * screen-target compile therefore does not prepare the linear-HDR variants used by the bloom scene
+ * pass. Keep target selection around compileAsync so authored assets cannot appear "ready" while
+ * their first real HDR frame still has to synchronously compile on the driver.
+ */
+export async function compileScenePipelinesForRenderTarget(
+  renderer, renderTarget, subject, camera, lightingScene = subject,
+) {
+  if (!renderer || typeof renderer.compileAsync !== 'function') {
+    return { skipped: true, reason: 'compileAsync unavailable' };
+  }
+  const previousTarget = typeof renderer.getRenderTarget === 'function'
+    ? renderer.getRenderTarget()
+    : null;
+  try {
+    renderer.setRenderTarget(renderTarget || null);
+    await renderer.compileAsync(subject, camera, lightingScene || subject);
+    return {
+      skipped: false,
+      programCount: Array.isArray(renderer.info && renderer.info.programs)
+        ? renderer.info.programs.length
+        : null,
+    };
+  } finally {
+    renderer.setRenderTarget(previousTarget || null);
+  }
+}
 
 // Immutable fullscreen triangle-strip geometry shared across every createBloom() instance.
 // Geometry has no per-instance state; materials/scenes stay private so uniforms never cross.
@@ -135,11 +176,9 @@ const BLOOM_COARSE_WEIGHT = 0.36;
 // before ACES saturated highlights and made the strength slider appear dead (1% looked like 100%).
 // Pyramid energy runs hot, so uBloomNorm reins it in before uStrength scales the halo perceptually.
 // Coarser pyramid levels are sampled directly (hardware bilinear) — no intermediate upsample target.
-// (color grade → atmospheric vignette → animated film grain) and sRGB encode. ACES lives here (not
+// Optional color grade, vignette, and film grain are independent presentation controls. They default
+// off: selective bloom must never imply a full-screen color or texture treatment. ACES lives here (not
 // on renderer.toneMapping) so the bloom-on/off paths stay in sync — see COLOR-MANAGEMENT INVARIANT.
-// The post grade is the single highest-value graphics lever: it touches EVERY asset at once, giving
-// the whole frame a cohesive cyberpunk-noir mood (teal shadows, warm highlights, soft corner fall-off,
-// subtle film grain) instead of a flat render-engine default.
 const COMPOSITE_FRAG = /* glsl */`
   precision highp float;
   varying vec2 vUv;
@@ -188,9 +227,8 @@ const COMPOSITE_FRAG = /* glsl */`
     c += bloom * uStrength * uBloomNorm;
     c = max(c, vec3(0.0));
 
-    // ---- CINEMATIC COLOR GRADE (cyberpunk-noir): teal pushed shadows + warm amber highlights +
-    //      a slight magenta lift in the mids, blended by uGrade. This is the "soul" pass — it
-    //      unifies every asset (ships, stations, asteroids, planets, nebula, VFX) under one mood.
+    // Optional legacy color grade. Default uGrade is zero; sector identity belongs to world lighting
+    // and authored surfaces, not a tint over every pixel.
     vec3 graded = c;
     {
       float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
@@ -204,8 +242,7 @@ const COMPOSITE_FRAG = /* glsl */`
     }
     c = mix(c, graded, uGrade);
 
-    // ---- ATMOSPHERIC VIGNETTE: soft corner darkening for focus + a cinematic "shot through a lens"
-    //      feel. Cheaper than a real lens model but reads instantly as "movie" not "game engine".
+    // Optional vignette. Default uVignette is zero.
     {
       vec2 d = vUv - vec2(0.5);
       float dist = dot(d, d) * 2.2;            // 0 center → ~1.1 corners
@@ -253,9 +290,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   const knee = 0.12;
   let exposure = 1.0;
   let aces = 1.0; // 1 = ACES filmic by default
-  let grain = DEFAULT_FILM_GRAIN;
-  let vignette = DEFAULT_VIGNETTE;
-  let grade = DEFAULT_COLOR_GRADE;
+  const defaultPresentation = resolvePostPresentation();
+  let grain = defaultPresentation.grain;
+  let vignette = defaultPresentation.vignette;
+  let grade = defaultPresentation.grade;
 
   // ---- render targets ----
   // rtScene is full-res (needs a depth buffer for the scene render). The pyramid targets halve each
@@ -369,15 +407,13 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   });
 
   function postStyleScale() {
-    if (!enabled || strength <= 0.0001) return 0;
-    return Math.max(0, Math.min(1, strength / DEFAULT_BLOOM_STRENGTH));
+    return Math.max(grain, vignette, grade);
   }
 
   function applyPostStyleUniforms() {
-    const s = postStyleScale();
-    compositeMat.uniforms.uGrain.value = grain * s;
-    compositeMat.uniforms.uVignette.value = vignette * s;
-    compositeMat.uniforms.uGrade.value = grade * s;
+    compositeMat.uniforms.uGrain.value = grain;
+    compositeMat.uniforms.uVignette.value = vignette;
+    compositeMat.uniforms.uGrade.value = grade;
   }
   applyPostStyleUniforms();
 
@@ -469,6 +505,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     renderer.setRenderTarget(null);
   }
 
+  function compileScenePipelines(subject, camera, lightingScene = subject) {
+    return compileScenePipelinesForRenderTarget(
+      renderer, rtScene, subject, camera, lightingScene,
+    );
+  }
+
   function rebuild() {
     // WebGL context restore: the old render-target GPU textures are invalid. Dispose them and
     // recreate the whole pyramid at the current size so the next frame can render cleanly.
@@ -538,7 +580,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       aces = Math.max(0, Math.min(1, o.aces));
       compositeMat.uniforms.uAces.value = aces;
     }
-    // cinematic post grade (cyberpunk-noir) — adjustable via settings.video.*
+    // Optional full-screen presentation controls. These are independent of selective bloom.
     if (typeof o.grain === 'number') grain = Math.max(0, Math.min(1, o.grain));
     if (typeof o.vignette === 'number') vignette = Math.max(0, Math.min(1, o.vignette));
     if (typeof o.grade === 'number') grade = Math.max(0, Math.min(1, o.grade));
@@ -585,6 +627,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
   return {
     render,
+    compileScenePipelines,
     setSize,
     setOptions,
     setInstrumentation,
