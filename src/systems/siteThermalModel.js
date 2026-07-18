@@ -152,9 +152,18 @@ function nz(n) {
   return n === 0 ? 0 : n;
 }
 
-/** Coerce to a finite number, else `fallback`. Never NaN, never Infinity, never -0. */
+/**
+ * Number() that cannot throw. `Number(Symbol())` raises TypeError, which would break the kernel's
+ * "malformed input never throws" contract through every public numeric path — the reviewed
+ * 4c367cd7 defect. Symbols carry no numeric claim, so they read as NaN like any other non-number.
+ */
+function toNumber(v) {
+  return typeof v === 'symbol' ? NaN : Number(v);
+}
+
+/** Coerce to a finite number, else `fallback`. Never NaN, never Infinity, never -0, never a throw. */
 function num(v, fallback = 0) {
-  const n = Number(v);
+  const n = toNumber(v);
   return Number.isFinite(n) ? nz(n) : fallback;
 }
 
@@ -173,7 +182,7 @@ function nonNegative(v, fallback = 0) {
  * claim of magnitude at all.
  */
 function hotNum(v) {
-  const n = Number(v);
+  const n = toNumber(v);
   if (Number.isNaN(n)) return 0;
   if (n === Infinity) return SITE_THERMAL.maxEnergy;
   if (!Number.isFinite(n)) return 0; // -Infinity: a negative magnitude is no magnitude here
@@ -383,11 +392,19 @@ export function heatPerMachine(def, profile, powerRatio, mode) {
   return sum > SITE_THERMAL.maxEnergy ? SITE_THERMAL.maxEnergy : nonNegative(sum);
 }
 
-/** Thermal mass of a machine, in heat units. Reported for A07; never decides a band. */
+/**
+ * Thermal mass of a machine, in heat units. Reported for A07; never decides a band.
+ *
+ * Saturates UPWARD at the finite stored-heat ceiling when the multiply overflows or exceeds it.
+ * The previous fallback returned capacityBase on a non-finite product, so raising installed power
+ * from 1e307 to 1e308 COLLAPSED capacity from 8e307 to 6 — non-monotone at the top of the range
+ * (the reviewed 4c367cd7 defect). More power can now never report less capacity.
+ */
 export function thermalCapacityFor(def) {
   const mw = def && typeof def === 'object' ? Math.abs(num(def.power, 0)) : 0;
   const cap = SITE_THERMAL.capacityBase + mw * SITE_THERMAL.capacityPerMW;
-  return Number.isFinite(cap) && cap > 0 ? cap : SITE_THERMAL.capacityBase;
+  if (!Number.isFinite(cap) || cap > SITE_THERMAL.maxStored) return SITE_THERMAL.maxStored;
+  return cap > 0 ? cap : SITE_THERMAL.capacityBase;
 }
 
 // --- Band classification ------------------------------------------------------------------------
@@ -401,13 +418,22 @@ export function thermalCapacityFor(def) {
  *     to put its heat, and that is precisely the case the law exists to price.
  */
 export function thermalLoad(heatRate, sinkRate) {
+  // An UNBOUNDED heat claim fails HOT before any coercion can flatten it to zero: +Infinity heat
+  // is the loudest possible reading, not an absent one. (An unreadable/infinite SINK claim earns
+  // no cooling credit — absence of information is not a heatsink — so it falls through num() to 0
+  // and the h>0 path reads 1.) Both directions were reviewed 4c367cd7 defects.
+  if (toNumber(heatRate) === Infinity) return 1;
   const h = nonNegative(heatRate);
   const s = nonNegative(sinkRate);
   if (h === 0) return 0;
   if (s === 0) return 1;
-  const denom = h + s;
-  if (!Number.isFinite(denom) || denom <= 0) return 1;
-  return clamp01(h / denom);
+  // Normalise both rates by the larger before forming the ratio: load is scale-invariant by
+  // construction and the denominator can never overflow (hn + sn <= 2). The previous h + s sum
+  // reached Infinity at extreme finite magnitudes, silently turning a balanced 0.5 into 1.
+  const m = h > s ? h : s;
+  const hn = h / m;
+  const sn = s / m;
+  return clamp01(hn / (hn + sn));
 }
 
 /** Map a load in [0,1] onto THERMAL_BANDS. Walks descending, so the highest satisfied band wins. */
@@ -518,16 +544,26 @@ export function machineThermalState(input) {
  * Canonical sort key for a machine. Content-derived, never the array index — an index-derived key
  * would make the whole result depend on caller order, which is the thing being disproved.
  *
- * KNOWN, ACCEPTED EDGE: two ANONYMOUS machines (no id, no col/row) sharing a defId and mode collide
- * on this key, so a stable sort preserves their input order and permuting them could reorder
- * machines[]. Unreachable in practice — installed machines always carry an id, and two machines
- * cannot occupy one cell — and it mirrors the A08 machineIdentity precedent deliberately. Tightening
- * the key to include storedHeat would diverge from that precedent for no reachable gain.
+ * The key is a TOTAL order over every normalized observable input: identity fields first, then a
+ * canonical projection of the thermal content (powerRatio, storedHeat, coolingRate, contact
+ * counts). Two entries can therefore only tie when their normalized content is IDENTICAL, and
+ * identical content produces an identical record — so which one a stable sort visits first is
+ * unobservable, and permuting the caller's array can never change the output. (An earlier revision
+ * keyed identity fields only and documented the anonymous collision as unreachable; the 4c367cd7
+ * review proved it reachable through accepted plain-data inputs, and the same hole let the
+ * duplicate-id survivor depend on caller order.)
  */
 function machineKey(m) {
   const id = typeof m.id === 'string' && m.id.length > 0 ? m.id : '';
   const defId = typeof m.defId === 'string' ? m.defId : '';
-  return `${id}\u0000${defId}\u0000${num(m.col, -1)}\u0000${num(m.row, -1)}\u0000${typeof m.mode === 'string' ? m.mode : ''}`;
+  const prof = readContacts(m.profile);
+  const ores = Object.keys(prof.ores).sort().map((k) => k + ':' + prof.ores[k]).join(',');
+  const content = [
+    num(m.powerRatio, -1), nonNegative(m.storedHeat), nonNegative(m.coolingRate),
+    prof.matrix, prof.basalt, prof.gas, ores,
+  ].join('|');
+  return [id, defId, num(m.col, -1), num(m.row, -1), typeof m.mode === 'string' ? m.mode : '', content]
+    .join('\u0000');
 }
 
 function sortRejected(list) {
@@ -554,9 +590,22 @@ export function stepSiteThermal(snapshot) {
   const snap = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) ? snapshot : {};
   const rejected = [];
 
+  // Optional def source override. A snapshot may carry its own {defId -> def} map, which SHADOWS
+  // the live SITE_MACHINE_BY_ID catalog. This is the injection seam that lets contract tests run
+  // fully self-contained synthetic machines (the 4c367cd7 review's fixture-self-containment
+  // finding) and lets a future A07 rewiring feed staged defs without touching this kernel.
+  const defSource = snap.defs && typeof snap.defs === 'object' && !Array.isArray(snap.defs)
+    ? snap.defs : null;
+  const defFor = (defId) => {
+    if (!defId) return null;
+    const injected = defSource && defSource[defId];
+    if (injected && typeof injected === 'object') return injected;
+    return SITE_MACHINE_BY_ID.get(defId) || null;
+  };
+
   // dt is validated once, at site scope. A negative dt is meaningless rather than malformed-per-
   // machine, so it degrades the step to a no-op (dt 0) and says so, instead of throwing.
-  const dtRaw = Number(snap.dtS);
+  const dtRaw = toNumber(snap.dtS);
   let dtS = 0;
   if (snap.dtS === undefined || snap.dtS === null) {
     dtS = 0;
@@ -594,7 +643,7 @@ export function stepSiteThermal(snapshot) {
     }
     if (id !== null) seenIds.add(id);
 
-    const def = defId ? SITE_MACHINE_BY_ID.get(defId) : null;
+    const def = defFor(defId);
     if (!def) {
       rejected.push({ id, defId, reason: 'unknown-def' });
       continue;
