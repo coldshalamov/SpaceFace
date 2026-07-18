@@ -1,0 +1,86 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>html,body{margin:0;overflow:hidden;background:#080c12}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const query = new URLSearchParams(location.search);
+const width = Number(query.get('w')) || 960;
+const height = Number(query.get('h')) || 960;
+const mode = query.get('mode') || 'close';
+const azimuth = THREE.MathUtils.degToRad(Number(query.get('az')) || -38);
+const activeLod = Math.max(0, Number(query.get('lod')) || 0);
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(width, height, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+document.body.append(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080c12);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.add(new THREE.HemisphereLight(0xd7e4ed, 0x24282d, 0.75));
+const key = new THREE.DirectionalLight(0xffdfbd, 2.3); key.position.set(18, 20, -16); scene.add(key);
+const fill = new THREE.DirectionalLight(0x79bce8, 0.8); fill.position.set(-15, 8, 18); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xff9c5e, 0.45); rim.position.set(-18, 10, -14); scene.add(rim);
+
+const ktx2 = new KTX2Loader().setTranscoderPath('/node_modules/three/examples/jsm/libs/basis/').detectSupport(renderer);
+const loader = new GLTFLoader().setKTX2Loader(ktx2).setMeshoptDecoder(MeshoptDecoder);
+loader.load(query.get('asset'), (gltf) => {
+  const root = gltf.scene;
+  const hiddenLods = [];
+  root.traverse((object) => {
+    const name = object.name || '';
+    const match = name.match(/^LOD(\d+)(?:_|$)/i);
+    if (match && Number(match[1]) !== activeLod) {
+      object.visible = false;
+      hiddenLods.push(name);
+    }
+    if (object.isMesh && /collision/i.test(name)) object.visible = false;
+  });
+  scene.add(root);
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  let meshes = 0;
+  let draws = 0;
+  root.traverse((object) => {
+    if (!object.isMesh || !effectivelyVisible(object)) return;
+    box.union(new THREE.Box3().setFromObject(object));
+    meshes++;
+    draws += Array.isArray(object.material) ? object.material.length : 1;
+  });
+  if (box.isEmpty()) throw new Error(`no visible meshes for LOD${activeLod}`);
+  const center = box.getCenter(new THREE.Vector3());
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  const camera = new THREE.PerspectiveCamera(38, width / height, 0.02, 5000);
+  const direction = new THREE.Vector3(Math.cos(azimuth), 0.44, Math.sin(azimuth)).normalize();
+  const fillFraction = mode === 'close' ? 0.82 : mode === 'mid' ? 0.56 : 0.44;
+  const halfFov = THREE.MathUtils.degToRad(camera.fov * 0.5);
+  const distance = sphere.radius / Math.max(0.1, Math.sin(halfFov) * fillFraction);
+  camera.position.copy(center).addScaledVector(direction, distance);
+  camera.lookAt(center);
+  camera.near = Math.max(0.02, distance / 500);
+  camera.far = distance * 20;
+  camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+  window.__SF = {
+    ready: true, activeLod, hiddenLods, meshes, draws,
+    size: box.getSize(new THREE.Vector3()).toArray(),
+  };
+}, undefined, (error) => { window.__SF = { ready: false, error: String(error) }; });
+
+function effectivelyVisible(object) {
+  for (let current = object; current; current = current.parent) {
+    if (!current.visible) return false;
+  }
+  return true;
+}
+</script>
