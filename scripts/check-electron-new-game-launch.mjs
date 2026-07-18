@@ -10,6 +10,7 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const REPORT_PATH = '.devshots/electron-new-game-launch.json';
 const FLIGHT_TIMEOUT_MS = 120000;
+const AUTHORED_DRAIN_TIMEOUT_MS = 90000;
 
 const { _electron: electron } = await loadPlaywright();
 
@@ -35,6 +36,7 @@ try {
     return !!(state && state.mode === 'flight' && player && player.alive !== false && player.hull > 0 && gpu && gpu.renderer);
   }, null, { timeout: FLIGHT_TIMEOUT_MS });
   await page.waitForTimeout(1200);
+  await waitForAllShipsAuthored(page);
 
   const report = await page.evaluate(() => {
     function isVisible(el) {
@@ -149,6 +151,34 @@ function captureElectronProcess(target) {
   };
   if (proc.stdout) proc.stdout.on('data', capture('stdout'));
   if (proc.stderr) proc.stderr.on('data', capture('stderr'));
+}
+
+async function waitForAllShipsAuthored(page) {
+  await page.waitForFunction(() => {
+    const state = window.SF && window.SF.state;
+    const render = state && state.render;
+    if (!state || !render || !render.renderer || !render.scene) return false;
+
+    let shipCount = 0;
+    let authoredShipCount = 0;
+    for (const entity of state.entityList || []) {
+      if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.mesh) continue;
+      shipCount += 1;
+      entity.mesh.traverse((object) => {
+        const requestAuthoredUpgrade = object && object.userData
+          ? object.userData.requestAuthoredUpgrade
+          : null;
+        if (typeof requestAuthoredUpgrade === 'function') {
+          requestAuthoredUpgrade(render.renderer, render.scene);
+        }
+      });
+      if (entity.mesh.userData.authoredAssetState === 'authored'
+        && entity.mesh.userData.authoredAssetMode === 'release') {
+        authoredShipCount += 1;
+      }
+    }
+    return shipCount > 0 && authoredShipCount === shipCount;
+  }, null, { timeout: AUTHORED_DRAIN_TIMEOUT_MS, polling: 50 });
 }
 
 function writeReport(report) {

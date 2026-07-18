@@ -208,6 +208,35 @@ export function resolveAsteroidInstanceEntityId(pool, object, instanceId) {
   return bucket.entityIds[instanceId] ?? null;
 }
 
+// Read-only acceptance surface for diagnosing the old source-mesh/instance handoff flicker. The
+// payload identifies both ownership sides and the exact submitted slot; it never changes culling,
+// matrices, residency, or simulation state and is only allocated when an external diagnostic asks.
+export function asteroidInstanceMembership(pool, entityId) {
+  const owned = pool && pool.byEntity.get(entityId);
+  if (!owned) return {
+    entityId,
+    registered: false,
+    adopted: false,
+    submitted: false,
+    submittedIndex: -1,
+  };
+  const { bucket, record } = owned;
+  const submittedIndex = bucket.entityIds.indexOf(entityId);
+  return {
+    entityId,
+    registered: true,
+    variant: bucket.variant,
+    adopted: record.leaf?.userData?.asteroidInstanceAdopted === true,
+    sourceRootUuid: record.ownerRoot?.uuid || null,
+    sourceLeafUuid: record.leaf?.uuid || null,
+    sourceGeometryUuid: record.leaf?.geometry?.uuid || null,
+    sourceMaterialUuid: record.leaf?.material?.uuid || null,
+    poolMeshUuid: bucket.mesh?.uuid || null,
+    submitted: submittedIndex >= 0,
+    submittedIndex,
+  };
+}
+
 export function clearAsteroidInstancePool(pool) {
   if (!pool) return;
   for (const bucket of pool.variants) {

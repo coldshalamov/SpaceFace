@@ -4,17 +4,23 @@
 import * as THREE from 'three';
 import { createChaseCamera } from './camera.js';
 import { createSpaceBackground } from './spaceBackground.js';
+import {
+  createSpaceReflectionEnvironment,
+  SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
+} from './spaceReflectionEnvironment.js';
 import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
-import { createBloom } from './bloom.js';
+import { createBloom, compileScenePipelinesForRenderTarget } from './bloom.js';
 import { SpaceRenderGraph } from './post/spaceRenderGraph.js';
 import {
   getAuthoredInstancePoolDiagnostics,
+  isInitialAuthoredCompositionEntity,
   preloadAuthoredPartLibrary,
   retryAuthoredPartLibrary,
   syncAuthoredInstancePools,
 } from './partsLibrary.js';
 import {
+  asteroidInstanceMembership,
   createAsteroidInstancePool,
   invalidateAsteroidInstancePool,
   registerAsteroidBaseLeaf,
@@ -40,8 +46,14 @@ import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
+import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
 import { getAssetResidency } from './assetResidency.js';
+import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
+import {
+  detectRenderCapabilityProfile,
+  shouldEagerlyWarmPipelines,
+} from './renderCapabilityProfile.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -53,9 +65,24 @@ const _socketGlobalXZ = { x: 0, z: 0 };
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const SECTOR_PALETTE_LERP_SECONDS = 1.5;
-const SECTOR_LIGHT_INTENSITIES = { ambient: 0.85, key: 1.7, rim: 0.7, fill: 0.35 };
 const ENTITY_VIEW_CULL_MIN_MARGIN = 900;
 const ENTITY_VIEW_CULL_ZOOM_MARGIN = 8;
+// World simulation deliberately keeps the current corridor sector plus reduced neighbours alive.
+// Render residency is narrower: build the whole active sector, and only admit neighbour-sector
+// meshes once they enter a generous travel runway. This keeps seamless approach quality without
+// constructing, traversing, or decoding another sector while it is still ~15k world units away.
+const RENDER_STREAM_PREFETCH_RADIUS = 5200;
+const RENDER_STREAM_EVICT_RADIUS = 6400;
+// Start authored decode well before the normal camera can see the boundary. At the fastest early
+// ship speeds this provides several seconds of runway, while current-sector objects farther away
+// remain dormant instead of replacing procedural placeholders during unrelated play.
+const AUTHORED_ASSET_PREFETCH_RADIUS = 2400;
+const AUTHORED_ASSET_IMMEDIATE_RADIUS = 1000;
+// Ships share the render-stream seam runway. Opening-pocket traffic lives outside the tighter
+// place/station admission radius, but it must still leave procedural fallback before contact.
+const AUTHORED_SHIP_COMPOSITION_RADIUS = RENDER_STREAM_PREFETCH_RADIUS;
+const AUTHORED_ASSET_LOOKAHEAD_SECONDS = 10;
+const RENDER_RESIDENCY_POLL_SECONDS = 0.25;
 
 function isDebugRuntime() {
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
@@ -85,6 +112,18 @@ const SOCKET_WORLD_SCALE = new THREE.Vector3();
 const SOCKET_FORWARD = new THREE.Vector3();
 const RUNTIME_MESH_BUILD_BUDGET = 2;
 
+export function entityVisualCullRadius(entity, mesh = null) {
+  const simRadius = Math.max(0, Number(entity && entity.radius) || 0);
+  const hull = mesh && mesh.userData && mesh.userData.hull;
+  const bounds = hull && hull.userData && hull.userData.visualBounds
+    || mesh && mesh.userData && mesh.userData.visualBounds;
+  const size = bounds && bounds.size;
+  if (!Array.isArray(size)) return simRadius;
+  const x = Math.max(0, Number(size[0]) || 0);
+  const z = Math.max(0, Number(size[2]) || 0);
+  return Math.max(simRadius, Math.hypot(x, z) * 0.5);
+}
+
 function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
   if (!entity || entity._noMesh || meshes.has(entity.id) || queuedIds.has(entity.id)) return;
   queue.push(entity.id);
@@ -96,16 +135,112 @@ function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
  * bounded per-frame build budget. New Game can spawn hundreds of asteroids/props before its late
  * traffic and 47-A ships; FIFO entity order otherwise strands those ships behind non-gating meshes.
  */
-export function enqueueMissingMeshBuilds(entityList, meshes, queuedIds, queue) {
+export function enqueueMissingMeshBuilds(entityList, meshes, queuedIds, queue, shouldQueue = null) {
   for (const entity of entityList) {
-    if (entity && entity.type === 'ship') {
+    if (entity && entity.type === 'ship' && (!shouldQueue || shouldQueue(entity))) {
       enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
     }
   }
   for (const entity of entityList) {
     if (!entity || entity.type === 'ship') continue;
+    if (shouldQueue && !shouldQueue(entity)) continue;
     enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
   }
+}
+
+function entitySectorId(entity) {
+  const data = entity && entity.data || {};
+  return entity && entity.homeSectorId || data.homeSectorId || data.sectorId || null;
+}
+
+function playerEntityForRenderState(state) {
+  return state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+}
+
+function entityIsExplicitRenderFocus(entity, state) {
+  if (!entity || !state) return false;
+  if (entity.id === state.playerId || entity.isPlayer === true) return true;
+  if (entity.flags && (entity.flags.forceRender || entity.flags.neverCull)) return true;
+  const playerEntity = playerEntityForRenderState(state);
+  const targetId = state.player && state.player.targetId != null
+    ? state.player.targetId
+    : playerEntity && playerEntity.targetId;
+  return targetId != null && entity.id === targetId;
+}
+
+function entityWithinPlayerRadius(entity, state, radius) {
+  if (!entity || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
+  const player = playerEntityForRenderState(state);
+  if (!player || !player.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return false;
+  const dx = entity.pos.x - player.pos.x;
+  const dz = entity.pos.z - player.pos.z;
+  return dx * dx + dz * dz <= radius * radius;
+}
+
+function isCriticalStartingHub(entity) {
+  if (!entity || entity.type !== 'station') return false;
+  const data = entity.data || {};
+  if (entity.id === 'station_helios' || data.stationId === 'station_helios') return true;
+  const token = String(data.archetypeGlb || data.placeId || '')
+    .replace(/^places\//, '')
+    .replace(/\.glb$/, '');
+  return token === 'place_station_trade_hub' && data.sectorId === 'sector_helios_prime';
+}
+
+function entityIsOnApproachVector(entity, state, radius) {
+  const player = playerEntityForRenderState(state);
+  if (!player || !player.pos || !player.vel || !entity || !entity.pos) return false;
+  const dx = entity.pos.x - player.pos.x;
+  const dz = entity.pos.z - player.pos.z;
+  const distance = Math.hypot(dx, dz);
+  if (!Number.isFinite(distance) || distance <= 0 || distance > radius) return false;
+  const closingSpeed = (dx * (Number(player.vel.x) || 0) + dz * (Number(player.vel.z) || 0)) / distance;
+  if (closingSpeed <= 1) return false;
+  const projectedDistance = distance - closingSpeed * AUTHORED_ASSET_LOOKAHEAD_SECONDS;
+  return projectedDistance <= AUTHORED_ASSET_IMMEDIATE_RADIUS;
+}
+
+/** Pure render-streaming policy used by reconciliation and focused tests. */
+export function isEntityRenderRelevant(entity, state, radius = RENDER_STREAM_PREFETCH_RADIUS) {
+  if (!entity || entity.alive === false || entity._noMesh) return false;
+  if (entityIsExplicitRenderFocus(entity, state)) return true;
+  const sectorId = entitySectorId(entity);
+  const currentSectorId = state && state.world && state.world.currentSectorId;
+  if (sectorId && currentSectorId && sectorId === currentSectorId) return true;
+  return entityWithinPlayerRadius(entity, state, radius);
+}
+
+/** Pure authored-admission policy: spatial runway, explicit focus, never whole-sector eagerness. */
+export function isEntityAuthoredUpgradeRelevant(entity, state, radius = AUTHORED_ASSET_PREFETCH_RADIUS) {
+  if (!entity || entity.alive === false) return false;
+  if (entityIsExplicitRenderFocus(entity, state)) return true;
+  if (isCriticalStartingHub(entity)) return true;
+  if (state && state.mode === 'loading' && isInitialAuthoredCompositionEntity(entity, state)) return true;
+  if (entity.type === 'ship'
+      && entityWithinPlayerRadius(entity, state, AUTHORED_SHIP_COMPOSITION_RADIUS)) {
+    return true;
+  }
+  if (entityWithinPlayerRadius(entity, state, AUTHORED_ASSET_IMMEDIATE_RADIUS)) return true;
+  return entityIsOnApproachVector(entity, state, radius);
+}
+
+/** Keep optional surface-family readiness observable without allowing it to reject opening assets. */
+export function separateOpeningVisualPreloads(authoredRequest, optionalSurfaceRequest, onOptionalFailure) {
+  return {
+    authoredRequest,
+    optionalSurfaceRequest: Promise.resolve(optionalSurfaceRequest).catch((error) => {
+      if (typeof onOptionalFailure === 'function') onOptionalFailure(error);
+      return null;
+    }),
+  };
+}
+
+function clearEntityMeshReference(entity, mesh) {
+  if (!entity) return;
+  if (entity.mesh === mesh) entity.mesh = null;
+  if (entity.view && entity.view.root === mesh) entity.view = null;
 }
 
 function getContactShadowTex() {
@@ -261,6 +396,13 @@ const SHIELD_POOL_FRAG = /* glsl */`
   }
 `;
 
+const SHIELD_PRESENTATION_EPSILON = 0.015;
+
+/** Shields are readable on impact, not as a permanent translucent ball around every healthy ship. */
+export function shouldPresentShieldBubble(shield, flash) {
+  return Number(shield) > 0 && Number(flash) > SHIELD_PRESENTATION_EPSILON;
+}
+
 export function createShipAuxPool(scene) {
   const pool = {
     scene,
@@ -384,14 +526,15 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
     const bubble = root.userData.shieldBubble;
     if (bubble) {
       bubble.visible = false;
-      if (entity.shield > 0) {
+      const uniforms = bubble.material && bubble.material.uniforms;
+      const flash = uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0;
+      if (shouldPresentShieldBubble(entity.shield, flash)) {
         ensureShieldAuxCapacity(pool.shield, shieldCount + 1, pool.scene, shieldCount);
         const shieldMesh = pool.shield.mesh;
         const flashAttr = shieldMesh.geometry.getAttribute('instanceFlash');
         const baseAttr = shieldMesh.geometry.getAttribute('instanceBase');
         bubble.updateWorldMatrix(true, false);
         shieldMesh.setMatrixAt(shieldCount, bubble.matrixWorld);
-        const uniforms = bubble.material && bubble.material.uniforms;
         const color = uniforms && uniforms.uColor && uniforms.uColor.value;
         shieldMesh.setColorAt(shieldCount, color && color.isColor ? color : SHIP_AUX_COLOR.set(0x5fd0ff));
         flashAttr.setX(shieldCount, uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0);
@@ -504,16 +647,20 @@ export const render = {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: devShot });
     renderer.setClearColor(0x060912, 1);
     const drawSize = applyRendererSize(renderer, state);
+    const capabilityProfile = detectRenderCapabilityProfile(renderer);
+    state.render.capabilityProfile = capabilityProfile;
 
     const scene = new THREE.Scene();
     const corePalette = SECTOR_PALETTE_CLASSES.core;
+    const coreVisualProfile = resolveSectorVisualProfile(null);
+    this._sectorVisualProfile = coreVisualProfile;
     // Thin fog for gentle depth cueing only — the old 0.00085 erased the entire backdrop, leaving a
     // black void. This keeps the nebula + far stars visible while still fading the deep distance.
     scene.fog = new THREE.FogExp2(corePalette.fog, corePalette.fogDensity);
-    const ambient = new THREE.AmbientLight(corePalette.ambient, SECTOR_LIGHT_INTENSITIES.ambient); scene.add(ambient);
-    const key = new THREE.DirectionalLight(corePalette.key, SECTOR_LIGHT_INTENSITIES.key); key.position.set(60, 140, 40); scene.add(key);
-    const rim = new THREE.DirectionalLight(corePalette.rim, SECTOR_LIGHT_INTENSITIES.rim); rim.position.set(-70, 50, -60); scene.add(rim);
-    const fill = new THREE.DirectionalLight(corePalette.fill, SECTOR_LIGHT_INTENSITIES.fill); fill.position.set(20, 30, 120); scene.add(fill);
+    const ambient = new THREE.AmbientLight(corePalette.ambient, coreVisualProfile.lighting.ambient); scene.add(ambient);
+    const key = new THREE.DirectionalLight(corePalette.key, coreVisualProfile.lighting.key); key.position.set(60, 140, 40); scene.add(key);
+    const rim = new THREE.DirectionalLight(corePalette.rim, coreVisualProfile.lighting.rim); rim.position.set(-70, 50, -60); scene.add(rim);
+    const fill = new THREE.DirectionalLight(corePalette.fill, coreVisualProfile.lighting.fill); fill.position.set(20, 30, 120); scene.add(fill);
 
     // Real shadow maps (graphics spec Workstream G). Keep one reusable key light regardless of the
     // boot setting; _ensureKeyLightShadows configures it once and _syncShadowMapEnabled gates work.
@@ -522,22 +669,25 @@ export const render = {
 
     const cam = createChaseCamera(state);
     const spaceBg = createSpaceBackground(scene, state, { renderer, camera: cam.obj, debug: SF_DEBUG });
+    spaceBg.setIntensity(coreVisualProfile.background.intensity);
     state.render.spaceBg = spaceBg;
     const vf = createVisualFactory();
     // Hero-asset registry (spec §17.3): wraps the factory's build() so the bespoke player Kestrel is
     // intercepted before the procedural visualFactory. Narrow + failure-isolated — any throw falls
     // back to the original procedural builder, so non-Kestrel entities are completely unaffected.
     installVisualOverrides(vf, {
+      // The complete authored catalog is resident before control. Mount exact ship compositions
+      // directly instead of constructing, hiding, and disposing a procedural/bespoke ship first.
+      directAuthoredMount: true,
       onAuthoredAssetSwap: ({ boundary, root } = {}) => {
         configureRealtimeCanopyMaterials(boundary || root);
         this._shadowReceiversDirty = true;
       },
     });
 
-    // Bake a PMREM environment map from the nebula backdrop (scene.background) so chrome/authority
-    // hulls can mirror the actual space around them — real reflections of the nebula + stars rather
-    // than a canned gradient. Done once after the starfield sets scene.background; the resulting
-    // envMap is exposed on state.render for the visual factory to attach to high-metalness hulls.
+    // Bake a PMREM environment map from the real sector backdrop plus an invisible area-source rig.
+    // Visible space remains black; the reflection-only cards give roughness, metalness, clearcoat,
+    // bevels and normal detail enough structured radiance to read at the gameplay camera.
     // Factored into a method (_bakeEnv) so WebGL context-loss recovery can re-bake it: a lost GL
     // context invalidates the envMap GPU texture, and without re-baking chrome hulls go matte after
     // a driver/GPU hiccup.
@@ -649,11 +799,21 @@ export const render = {
       this._publishAssetResidencyDiagnostics();
     }
     const beginAuthoredPartLibraryPreload = (retry = false) => {
-      const request = retry
+      const authoredRequest = retry
         ? retryAuthoredPartLibrary(renderer)
         : preloadAuthoredPartLibrary(renderer);
-      this.authoredPartLibraryReady = request.catch((error) => {
-        console.warn('[render] authored part library preload failed', error);
+      // Common-rock maps enrich a non-critical world family. Their decode must not make the exact
+      // Hitch/Helios startup admission fail closed; otherwise one optional regolith texture can
+      // block New Game even though both opening identities are fully authored.
+      const preloads = separateOpeningVisualPreloads(
+        authoredRequest,
+        preloadRockSurfaceLibrary(renderer),
+        (error) => console.warn('[render] optional common-rock surface preload failed', error),
+      );
+      this.rockSurfaceLibraryReady = preloads.optionalSurfaceRequest;
+      state.render.rockSurfaceLibraryReady = this.rockSurfaceLibraryReady;
+      this.authoredPartLibraryReady = preloads.authoredRequest.catch((error) => {
+        console.warn('[render] startup visual library preload failed', error);
         return null;
       });
       state.render.authoredPartLibraryReady = this.authoredPartLibraryReady;
@@ -785,6 +945,7 @@ export const render = {
     this._hazardVisuals = []; // hazard zone visual meshes for the current sector
     this._meshReconcileDirty = true;
     this._initialMeshReconcileComplete = false;
+    this._renderResidencyPollS = 0;
     // Renderer diagnostics: window.__THREE_GAME_DIAGNOSTICS__ (draw calls/tris/memory + frame timing).
     try {
       this.diag = installDiagnostics(renderer, {
@@ -894,6 +1055,21 @@ export const render = {
     state.render.cameraCtrl = cam;   // controller (addTrauma/pushZoom) — exposed for feel.js / ui
     state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
     state.render.warmPostProcess = () => (this.bloom && state.settings.video.bloom !== false ? this.bloom.render(scene, cam.obj) : renderer.render(scene, cam.obj));
+    state.render.compileCurrentPipelines = (subject = scene) => {
+      if (!shouldEagerlyWarmPipelines(capabilityProfile)) {
+        return Promise.resolve({ skipped: true, reason: 'lazy capability profile' });
+      }
+      const video = state.settings && state.settings.video || {};
+      if (video.renderGraph && this._ensureRenderGraph()) {
+        return compileScenePipelinesForRenderTarget(
+          renderer, this._renderGraph.sceneTarget, subject, cam.obj, scene,
+        );
+      }
+      if (this.bloom && video.bloom !== false) {
+        return this.bloom.compileScenePipelines(subject, cam.obj, scene);
+      }
+      return compileScenePipelinesForRenderTarget(renderer, null, subject, cam.obj, scene);
+    };
     // Collision/socket/landing debug toggle (spec §12.5), bound to F7 in ui/input.js. Capture the
     // render-system `this` once so the handle closures resolve the live collisionDebug regardless of
     // how they're invoked (method `this` would otherwise bind to the debug handle object itself).
@@ -914,8 +1090,12 @@ export const render = {
     ctx.helpers.resolveAsteroidInstanceEntityId = (object, instanceId) => (
       resolveAsteroidInstanceEntityId(this._asteroidInstancePool, object, instanceId)
     );
+    ctx.helpers.asteroidInstanceMembership = (entityId) => (
+      asteroidInstanceMembership(this._asteroidInstancePool, entityId)
+    );
 
     bus.on('entity:spawned', () => { this._meshReconcileDirty = true; });
+    bus.on('world:residency', () => { this._meshReconcileDirty = true; });
     bus.on('entity:destroyed', ({ id }) => {
       const m = this._meshes.get(id);
       if (m) {
@@ -993,28 +1173,36 @@ export const render = {
       if (this._assetResidency) this._assetResidency.rotateSector(sectorId || sector && sector.id);
       this._publishAssetResidencyDiagnostics();
       this._meshReconcileDirty = true;
-      // Kick any station/place boundaries that spawned before the GLB cache was warm.
-      for (const mesh of this._meshes.values()) requestAuthoredUpgrade(mesh, renderer, scene);
+      // Kick only boundaries inside the authored prefetch runway. Reduced neighbour sectors remain
+      // structurally alive in simulation, but do not decode merely because membership changed.
+      for (const [id, mesh] of this._meshes) {
+        const entity = state.entities.get(id);
+        if (isEntityAuthoredUpgradeRelevant(entity, state)) {
+          requestAuthoredUpgrade(mesh, renderer, scene);
+        }
+      }
       if (cam.snapToPlayer) cam.snapToPlayer();
       this._beginSectorPaletteTransition(sector);
       // Per-sector sky: rebake the deep-field background with this sector's seed +
       // palette class (no-op when re-entering the same sector).
-      if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector);
+      if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector, this._sectorVisualProfile);
       this._updateHazardVisuals(sector);
-      const warmup = precompilePipelines(renderer, scene, cam.obj, {
-        sector,
-        warmPostProcess: state.render.warmPostProcess,
-        video: state.settings && state.settings.video,
-      }).catch((error) => {
-        console.warn('[render] sector pipeline precompile failed', error);
-        return null;
-      });
+      const warmup = shouldEagerlyWarmPipelines(capabilityProfile)
+        ? precompilePipelines(renderer, scene, cam.obj, {
+          sector,
+          warmPostProcess: state.render.warmPostProcess,
+          video: state.settings && state.settings.video,
+        }).catch((error) => {
+          console.warn('[render] sector pipeline precompile failed', error);
+          return null;
+        })
+        : Promise.resolve({ skipped: true, reason: 'lazy capability profile' });
       state.render.pipelinePrecompileReady = warmup;
     });
     bus.on('jump:arrive', ({ sectorId } = {}) => {
       const sector = sectorId && state.world && state.world.sectors ? state.world.sectors[sectorId] : null;
       this._beginSectorPaletteTransition(sector);
-      if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector);
+      if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector, this._sectorVisualProfile);
     });
     bus.on('save:loaded', () => { this._meshReconcileDirty = true; });
 
@@ -1029,13 +1217,17 @@ export const render = {
     // Slider is 0..1 (percent). Legacy profiles may still carry the old 0..2 scale — halve once.
     let bloomStrength = typeof vd.bloomStrength === 'number' ? vd.bloomStrength : 0.35;
     if (bloomStrength > 1) bloomStrength *= 0.5;
-    bloomStrength = Math.max(0, Math.min(1, bloomStrength));
-    const bloomThreshold = typeof vd.bloomThreshold === 'number' ? vd.bloomThreshold : 0.72;
+    const profile = this._sectorVisualProfile || resolveSectorVisualProfile(null);
+    bloomStrength = Math.max(0, Math.min(1, bloomStrength * profile.post.bloomStrengthScale));
+    const bloomThreshold = Math.max(0, Math.min(1,
+      (typeof vd.bloomThreshold === 'number' ? vd.bloomThreshold : 0.72)
+        + profile.post.bloomThresholdBias));
+    const exposure = (typeof vd.exposure === 'number' ? vd.exposure : 1) * profile.post.exposure;
     return {
       bloom: vd.bloom,
       bloomStrength,
       bloomThreshold,
-      exposure: vd.exposure,
+      exposure,
       acesToneMapping: vd.acesToneMapping !== false,
     };
   },
@@ -1104,7 +1296,8 @@ export const render = {
     this._publishAssetResidencyDiagnostics();
   },
 
-  // Bake (or re-bake) the PMREM environment map from the current nebula backdrop. Called once at
+  // Bake (or re-bake) the PMREM environment map from the current backdrop plus invisible broad
+  // reflection sources. Called once at
   // init after the starfield background decodes, AND on WebGL context restore (a lost GL context
   // invalidates the envMap GPU texture — without re-baking, chrome hulls go matte after recovery).
   _bakeEnv(options = {}) {
@@ -1115,9 +1308,20 @@ export const render = {
         : this._envMap;
       const disposePrevious = options.disposePrevious !== false;
       const pmrem = new THREE.PMREMGenerator(renderer);
-      const envMap = scene.background && scene.background.isTexture
-        ? pmrem.fromEquirectangular(scene.background).texture
-        : pmrem.fromScene(scene, 0, 0.1, 1000).texture;
+      const reflection = createSpaceReflectionEnvironment(THREE, {
+        background: scene.background || null,
+        keyColor: SECTOR_PALETTE_CLASSES.core.key,
+        rimColor: SECTOR_PALETTE_CLASSES.core.rim,
+        fillColor: SECTOR_PALETTE_CLASSES.core.fill,
+      });
+      const envMap = pmrem.fromScene(
+        reflection.scene,
+        SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
+        0.1,
+        100,
+      ).texture;
+      state.render.reflectionEnvironment = reflection.diagnostics;
+      reflection.dispose();
       pmrem.dispose();
       // Dispose the previous env GPU texture if we're re-baking (context restore path).
       if (disposePrevious && previousEnvMap && previousEnvMap !== envMap) {
@@ -1138,23 +1342,34 @@ export const render = {
   reconcileMeshes() {
     const state = this.state;
     const buildBudget = this._initialMeshReconcileComplete ? RUNTIME_MESH_BUILD_BUDGET : Infinity;
-    // remove meshes whose entity no longer exists or has died
+    // Remove dead ownership and evict distant reduced-sector views. Simulation residency remains
+    // untouched; only the render-owned Object3D boundary and its authored residency are released.
     for (const [id, m] of this._meshes) {
       const e = state.entities.get(id);
-      if (!e || e.alive === false) {
+      if (!e || e.alive === false || !isEntityRenderRelevant(e, state, RENDER_STREAM_EVICT_RADIUS)) {
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(m); disposeObject(m); this._meshes.delete(id); this._shadowReceiversDirty = true;
+        clearEntityMeshReference(e, m);
       }
     }
-    // Queue authored-readiness-critical ships first, then every remaining world entity. The drain
-    // budget stays bounded; this changes admission order only and does not drop or downgrade visuals.
+    // Queue relevant ships first, then relevant world geometry. Distant reduced-sector entities
+    // continue to exist in state and are admitted automatically as the player approaches.
     enqueueMissingMeshBuilds(
       state.entityList,
       this._meshes,
       this._meshBuildQueuedIds,
       this._meshBuildQueue,
+      (entity) => isEntityRenderRelevant(entity, state),
     );
     const built = this._drainMeshBuildQueue(buildBudget);
+    // Existing fallback boundaries may have crossed the authored prefetch radius since the last
+    // reconciliation. Requesting is idempotent; resolved bootstrap assets install synchronously.
+    for (const [id, mesh] of this._meshes) {
+      const entity = state.entities.get(id);
+      if (isEntityAuthoredUpgradeRelevant(entity, state)) {
+        requestAuthoredUpgrade(mesh, this.renderer, this.scene);
+      }
+    }
     this._meshReconcileDirty = this._meshBuildQueueHead < this._meshBuildQueue.length;
     if (!this._meshReconcileDirty) this._initialMeshReconcileComplete = true;
     this._publishAssetResidencyDiagnostics();
@@ -1167,7 +1382,8 @@ export const render = {
       const id = this._meshBuildQueue[this._meshBuildQueueHead++];
       this._meshBuildQueuedIds.delete(id);
       const e = this.state.entities.get(id);
-      if (!e || e.alive === false || e._noMesh || this._meshes.has(id)) continue;
+      if (!e || e.alive === false || e._noMesh || this._meshes.has(id)
+          || !isEntityRenderRelevant(e, this.state)) continue;
       const m = this.vf.build(e);
       if (!m) { e._noMesh = true; continue; }
       const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
@@ -1178,7 +1394,9 @@ export const render = {
       this._meshes.set(e.id, m);
       this.scene.add(m);
       registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
-      requestAuthoredUpgrade(m, this.renderer, this.scene);
+      if (isEntityAuthoredUpgradeRelevant(e, this.state)) {
+        requestAuthoredUpgrade(m, this.renderer, this.scene);
+      }
       this._shadowReceiversDirty = true;
       built++;
     }
@@ -1215,7 +1433,9 @@ export const render = {
     e.mesh = m; e.view = { root: m };
     this._meshes.set(id, m);
     this.scene.add(m);
-    requestAuthoredUpgrade(m, this.renderer, this.scene);
+    if (isEntityAuthoredUpgradeRelevant(e, this.state)) {
+      requestAuthoredUpgrade(m, this.renderer, this.scene);
+    }
     this._shadowReceiversDirty = true;
   },
 
@@ -1246,12 +1466,12 @@ export const render = {
     };
   },
 
-  _isEntityViewCulled(e, bounds) {
+  _isEntityViewCulled(e, bounds, mesh = null) {
     if (!e || !bounds || e.id === this.state.playerId) return false;
     if (e.flags && (e.flags.forceRender || e.flags.neverCull)) return false;
     if (!e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) return false;
     const local = this._frameMembrane.toLocal(e.pos, _cullLocalXZ);
-    const radius = Math.max(0, Number(e.radius) || 0);
+    const radius = entityVisualCullRadius(e, mesh);
     return Math.abs(local.x - bounds.x) > bounds.halfX + radius
       || Math.abs(local.z - bounds.z) > bounds.halfZ + radius;
   },
@@ -1310,7 +1530,7 @@ export const render = {
       const e = this.state.entities.get(id);
       if (!e || e.alive === false || !m) continue;
       if (this.collisionDebug && this.collisionDebug.on) m.userData.__lastEntity = e; // read-only debug overlay
-      const viewCulled = this._isEntityViewCulled(e, bounds);
+      const viewCulled = this._isEntityViewCulled(e, bounds, m);
       if (m.userData && m.userData.asteroidInstanceBody) {
         m.userData.asteroidInstanceViewCulled = viewCulled;
       }
@@ -1368,12 +1588,12 @@ export const render = {
       if (m.userData.updateDamageState) m.userData.updateDamageState(e, now);
       if (m.userData.updateDriveState) m.userData.updateDriveState(e, now);
 
-      // GR-5: persistent 3D shield bubble visibility + impact flash. Shown while shields hold; the
-      // flash decays each frame and is punched up whenever the entity's shield value drops (impact).
+      // Shields answer damage with a short surface flash. Keeping the sphere hidden at idle preserves
+      // the ship silhouette and makes the response meaningful instead of permanent screen clutter.
       const sb = m.userData.shieldBubble;
       if (sb) {
         const up = e.shield > 0;
-        if (sb.visible !== up) sb.visible = up;
+        let flash = 0;
         if (up) {
           const u = sb.material.uniforms;
           // detect shield loss since last frame -> punch the fresnel flash
@@ -1384,7 +1604,10 @@ export const render = {
           const dt = Math.min(0.1, now - (sb.userData._prevFlashT != null ? sb.userData._prevFlashT : now));
           sb.userData._prevFlashT = now;
           u.uFlash.value *= Math.pow(0.05, dt);
+          flash = u.uFlash.value;
         }
+        const visible = shouldPresentShieldBubble(e.shield, flash);
+        if (sb.visible !== visible) sb.visible = visible;
       }
     }
     endRenderEntityFrame(this._entityFrame);
@@ -1528,12 +1751,19 @@ export const render = {
     const rig = this._sectorPaletteRig;
     if (!rig) return;
     const palette = sector && sector.palette ? sector.palette : SECTOR_PALETTE_CLASSES.core;
+    const visualProfile = resolveSectorVisualProfile(sector);
+    this._sectorVisualProfile = visualProfile;
     this.state.render.sectorPalette = palette;
-    if (palette === this._sectorPaletteTarget) return;
+    this.state.render.sectorVisualProfile = visualProfile;
+    if (this.spaceBg) this.spaceBg.setIntensity(visualProfile.background.intensity);
+    this._invalidatePostOptionsCache();
+    this._syncPostOptions(true);
+    if (palette === this._sectorPaletteTarget && visualProfile === this._sectorVisualProfileTarget) return;
 
     this._sectorPaletteTarget = palette;
+    this._sectorVisualProfileTarget = visualProfile;
     writeRigToSectorPaletteFrame(rig.start, rig);
-    writePaletteToSectorPaletteFrame(rig.target, palette);
+    writePaletteToSectorPaletteFrame(rig.target, palette, visualProfile);
     rig.elapsed = 0;
     rig.active = true;
 
@@ -1571,6 +1801,14 @@ export const render = {
     // Dynamic resolution: measure real frame time and nudge the internal render scale to hold a smooth
     // framerate on weak/software GPUs (adaptiveQuality.js). Cheap; only resizes targets on a change.
     if (this._adaptive) this._adaptive.update(frameDt);
+    // Existing neighbour-sector entities do not emit a spawn event when the player simply flies
+    // toward them. A low-frequency residency poll admits/evicts views and starts authored prefetch
+    // as distance thresholds are crossed without putting a full entity scan in every frame.
+    this._renderResidencyPollS -= Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
+    if (this._renderResidencyPollS <= 0) {
+      this._renderResidencyPollS = RENDER_RESIDENCY_POLL_SECONDS;
+      this._meshReconcileDirty = true;
+    }
     if (this._meshReconcileDirty) this.reconcileMeshes();
     this._updateShipPitch(frameDt);
     this.syncEntityViews(alpha);
@@ -2015,16 +2253,16 @@ function writeRigToSectorPaletteFrame(frame, rig) {
   frame.fogDensity = rig.scene.fog.density;
 }
 
-function writePaletteToSectorPaletteFrame(frame, palette) {
+function writePaletteToSectorPaletteFrame(frame, palette, visualProfile = resolveSectorVisualProfile(null)) {
   frame.colors.ambient.setHex(palette.ambient);
   frame.colors.key.setHex(palette.key);
   frame.colors.rim.setHex(palette.rim);
   frame.colors.fill.setHex(palette.fill);
   frame.colors.fog.setHex(palette.fog);
-  frame.intensities.ambient = SECTOR_LIGHT_INTENSITIES.ambient;
-  frame.intensities.key = SECTOR_LIGHT_INTENSITIES.key;
-  frame.intensities.rim = SECTOR_LIGHT_INTENSITIES.rim;
-  frame.intensities.fill = SECTOR_LIGHT_INTENSITIES.fill;
+  frame.intensities.ambient = visualProfile.lighting.ambient;
+  frame.intensities.key = visualProfile.lighting.key;
+  frame.intensities.rim = visualProfile.lighting.rim;
+  frame.intensities.fill = visualProfile.lighting.fill;
   frame.fogDensity = palette.fogDensity;
 }
 

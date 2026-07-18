@@ -4,6 +4,7 @@ import { makeEntity } from './entity.js';
 import { isDynamicPhysicsBodyEntity, shouldSyncPhysicsBodyEntity } from './physicsAuthority.js';
 import { mulberry32, hash32, wrapAngle } from './rng.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
+import { initializePresentationAdmission } from './presentationAdmission.js';
 
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
@@ -20,6 +21,7 @@ export const core = {
       const index = ensureEntityIndex(state);
       reconcileEntityIndexSource(index, state.entityList);
       const e = makeEntity(spec);
+      initializePresentationAdmission(e);
       const id = state.freeIds.length ? state.freeIds.pop() : state.nextEntityId++;
       e.id = id;
       state.entities.set(id, e);
@@ -390,6 +392,12 @@ function refreshVolatileEntityIndex(index) {
 }
 
 function isMovableEntity(e) {
+  // Render interpolation must share the physics authority's dynamic classification. Wrecks and
+  // authored dynamic debris are Rapier-owned bodies; omitting them here leaves prevPos/prevRot at
+  // the spawn pose, so render alpha repeatedly lerps the live body backward and produces the
+  // characteristic object-width jump/flicker. The explicit presentation types below preserve
+  // interpolation for non-physics cosmetic motion as well.
+  if (isDynamicPhysicsBodyEntity(e)) return true;
   switch (e.type) {
     case 'ship':
     case 'drone':

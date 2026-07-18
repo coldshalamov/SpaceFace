@@ -139,8 +139,8 @@ function evaluateContract(row, manifestPart) {
 
   if (HULL_FILES.has(path)) {
     if (!lod.lod0 || !lod.lod1 || !lod.lod2) {
-      pushIssue(row, 'required', 'missing-hull-lods',
-        `hull requires LOD0/LOD1/LOD2 markers; got ${lod.lod0}/${lod.lod1}/${lod.lod2}`);
+      pushIssue(row, 'advisory', 'missing-hull-lods',
+        `hull exposes ${lod.lod0}/${lod.lod1}/${lod.lod2} embedded LOD markers; add a retained-detail LOD family when measured load, memory, or draw cost justifies it`);
     }
   }
 
@@ -394,7 +394,7 @@ function printReport(assets, requiredFailures, advisories) {
   const disciplineHints = [
     'Prefer KTX2/BasisU textures + meshopt/Draco geometry in release builds.',
     'Share material roles across primitives; duplicate signatures are merge candidates.',
-    'Ship hulls require authored LOD0/LOD1/LOD2 chains — not fewer triangles by default.',
+    'Ship hull LOD chains are a measured optimization option, not a reason to reject authored LOD0 quality.',
     'Station-scale assets should add distance LODs; do not delete detail to pass this check.',
   ];
   console.log('\n[runtime-assets] discipline (not downgrade)');

@@ -1,12 +1,12 @@
-// GLTFKit: authored ship-part composition over the synchronous procedural visual boundary.
+// GLTFKit: authored ship-part composition behind a stable entity root.
 //
-// The renderer must receive an Object3D immediately. We therefore return a stable boundary root,
-// then install the authored payload once the real renderer/scene is available. Static opaque authored
-// pieces are merged into ship-local batches; stateful pieces such as glass, thrusters, sockets,
-// damage lights, and LOD hooks stay as normal objects.
+// Pending authored boundaries fail closed: temporary procedural geometry is retained only as an
+// off-scene diagnostic/build substrate and is never player-visible. The renderer requests admission
+// immediately after mounting the stable root; a resident authored plan commits synchronously.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FACTION_PALETTES } from '../data/palettes.js';
+import { paletteWithShipAppearance } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
@@ -14,6 +14,10 @@ import { getAssetResidency } from './assetResidency.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 import { attachStationHlod } from './hlod.js';
+import {
+  PRESENTATION_ADMISSION,
+  setPresentationAdmission,
+} from '../core/presentationAdmission.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
@@ -165,6 +169,7 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       // trafficRole so the courier can share ship_kestrel gameplay stats without replacing the
       // player's Borrowed Time body; blocked accessory exports remain omitted.
       'wholeships/kestrel.glb',
+      'wholeships/wasp_production_v1.glb',
       'wholeships/ashline_dart.glb',
       'wholeships/ashline_lode.glb',
       'wholeships/ashline_rig.glb',
@@ -227,15 +232,15 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
     mutableHooks: 'per-ship meshes sharing immutable geometry/textures',
     authoredMounts: 'MOUNT_COCKPIT / MOUNT_ENGINE_* / MOUNT_FIN_* on hull parts',
     authoredSlots: 'hull / cockpit / engine / fin / weapon / greeble / gear / pod / place',
-    missingPart: 'procedural slot fallback; never blank an entity',
+    missingPart: 'fail-closed authored admission; diagnostics may retain hidden procedural substrate',
   }),
 });
 
-// The player-facing boot gate used to decode every authored file in the catalog at once. Keep the
-// gate honest, but scope it to the assets that are guaranteed to be visible in the first frame:
-// the player's production Kestrel and the Helios starting hub. Every other ship is admitted through
-// the existing scene upgrade queue when its entity exists; world places already have a one-file
-// on-demand boundary. This preserves authored quality while bounding renderer/GPU residency.
+// Boot residency is the opening shot, not the entire galaxy. The player and Helios hub are the only
+// identities that must be decoded before control on the default route. Every other authored boundary is
+// geometry-free and action-ineligible until its exact per-entity plan is resident, so background loading
+// cannot expose a blue box, clay proxy, or armed placeholder. Preloading the full catalog made New Game
+// wait on dozens of distant ships/places and cost more CPU/GPU residency than the swaps it replaced.
 const AUTHORED_BOOTSTRAP_PLAN = Object.freeze({
   hull: Object.freeze(['wholeships/kestrel.glb']),
   place: Object.freeze(['places/place_station_trade_hub.glb']),
@@ -246,6 +251,13 @@ const REGULAR_HULL_FILES = Object.freeze(
 
 export function authoredBootstrapPreloadPlan() {
   return clonePreloadPlan(AUTHORED_BOOTSTRAP_PLAN);
+}
+
+/** Startup quality gate: only identities present in the opening shot settle before control. */
+export function isInitialAuthoredCompositionEntity(entity, state) {
+  if (!entity || entity.alive === false || !state) return false;
+  if (entity.id === state.playerId || entity.isPlayer === true || isCriticalStartingHub(entity)) return true;
+  return entity.data?.openingFrameCritical === true;
 }
 
 /** Pure per-entity residency plan. Complete authored bodies need one GLB. Modular ships predict the
@@ -304,7 +316,7 @@ export function isAuthoredPartLibraryUsable(library) {
 
 function assertCanonicalLibraryUsable(library) {
   if (!isAuthoredPartLibraryUsable(library)) {
-    throw new Error('Authored boot library is incomplete: the player hull and starting-sector landmark must load before flight.');
+    throw new Error('Authored boot library is incomplete: the runtime catalog must load before flight.');
   }
   return library;
 }
@@ -488,9 +500,9 @@ export function resolveRequiredWholeShipRecord(entity, records, options = {}) {
 }
 
 /**
- * Wrap one already-built ship in the authored-asset boundary. This call is synchronous and cannot
- * remove the supplied fallback. The renderer asks the boundary to upgrade as soon as it joins the
- * scene; first render remains a fallback trigger for preview harnesses that do not own the main scene.
+ * Wrap a ship admission substrate in the authored-asset boundary. The live renderer supplies a
+ * geometry-free substrate and requests admission as soon as the boundary joins the scene. Preview
+ * harnesses may supply a hidden procedural root; its first render remains an optional trigger.
  */
 export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   if (!fallbackRoot || !fallbackRoot.isObject3D || !entity || entity.type !== 'ship') return fallbackRoot;
@@ -498,23 +510,27 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   // turn shader warm-up into authored GLB residency demand for ships that may never enter the world.
   if (entity.data && entity.data.precompileProbe === true) return fallbackRoot;
   const releaseMode = isReleaseAssetMode(options);
+  setPresentationAdmission(entity, PRESENTATION_ADMISSION.pending);
 
   const boundary = new THREE.Group();
   boundary.name = `${fallbackRoot.name || 'Ship'}_AuthoredAssetBoundary`;
+  fallbackRoot.visible = false;
   boundary.add(fallbackRoot);
 
   // Preserve the public inspection surface used by diagnostics/checks while making lifecycle hooks
   // indirect through `active`, so the renderer never needs to know that a payload was replaced.
   Object.assign(boundary.userData, fallbackRoot.userData || {});
   boundary.userData.kind = 'ship';
-  boundary.userData.authoredAssetState = 'procedural-fallback';
+  boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
   boundary.userData.authoredSlots = {};
+  boundary.userData.authoredReadableFallbackRetained = false;
+  boundary.userData.authoredVisualRoot = 'none-pending-admission';
   boundary.userData.renderContract = {
     ...((fallbackRoot.userData && fallbackRoot.userData.renderContract) || {}),
-    assetBoundary: 'GLTFKit v1 — stable-root hot swap',
-    gracefulFallback: true,
+    assetBoundary: 'GLTFKit v2 — resolve, prepare, admit',
+    gracefulFallback: false,
   };
 
   let active = fallbackRoot;
@@ -533,15 +549,13 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   syncActiveSurface(boundary, active);
 
   const trigger = firstRenderable(fallbackRoot);
-  if (!trigger) return boundary;
-
-  const previousBeforeRender = trigger.onBeforeRender;
+  const previousBeforeRender = trigger && trigger.onBeforeRender;
   let armed = true;
   const startAuthoredUpgrade = (renderer, scene) => {
     if (!armed) return;
     if (!renderer || !scene) return;
     armed = false;
-    trigger.onBeforeRender = previousBeforeRender;
+    if (trigger) trigger.onBeforeRender = previousBeforeRender;
     const upgradeOptions = {
       releaseMode,
       requiredWholeShip: options.requiredWholeShip === true,
@@ -568,10 +582,13 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
     });
   };
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
-  trigger.onBeforeRender = function authoredAssetTrigger(renderer, scene, ...rest) {
-    if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
-    startAuthoredUpgrade(renderer, scene);
-  };
+  if (trigger) {
+    trigger.onBeforeRender = function authoredAssetTrigger(renderer, scene, ...rest) {
+      if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
+      if (!shouldAutoTriggerAuthoredUpgrade(entity, scene)) return;
+      startAuthoredUpgrade(renderer, scene);
+    };
+  }
 
   return boundary;
 }
@@ -592,7 +609,7 @@ export function buildAuthoredStationArchetype(entity, options = {}) {
     data: {
       ...(entity.data || {}),
       placeId,
-      placeScale: stationArchetypePlaceScale(entity),
+      placeTargetRadius: stationArchetypeTargetRadius(entity),
     },
   };
   const fallbackRoot = buildFallbackStationArchetype(loadEntity, placeFile);
@@ -620,12 +637,11 @@ export const STATION_ARCHETYPE_PLACE_IDS = Object.freeze(
   STATION_ARCHETYPE_FILES.map((file) => file.replace(/^places\//, '').replace(/\.glb$/, '')),
 );
 
-function stationArchetypePlaceScale(entity) {
+function stationArchetypeTargetRadius(entity) {
   const data = entity && entity.data || {};
-  const raw = Number(data.placeScale);
+  const raw = Number(data.placeTargetRadius);
   if (Number.isFinite(raw) && raw > 0) return raw;
-  const radius = stationVisualRadius(entity);
-  return radius / 14;
+  return stationVisualRadius(entity);
 }
 
 function stationVisualRadius(entity) {
@@ -691,25 +707,27 @@ function buildFallbackStationArchetype(entity, placeFile) {
 function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, options = {}) {
   if (!fallbackRoot || !fallbackRoot.isObject3D || !entity || entity.type !== 'station' || !placeFile) return fallbackRoot;
   const releaseMode = isReleaseAssetMode(options);
+  setPresentationAdmission(options.liveEntity || entity, PRESENTATION_ADMISSION.pending);
   const placeId = placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
 
   const boundary = new THREE.Group();
   boundary.name = `${fallbackRoot.name || 'StationArchetype'}_AuthoredAssetBoundary`;
+  fallbackRoot.visible = false;
   boundary.add(fallbackRoot);
   Object.assign(boundary.userData, fallbackRoot.userData || {});
   boundary.userData.kind = 'station';
   boundary.userData.placeId = placeId;
   boundary.userData.archetypeGlb = entity.data && entity.data.archetypeGlb || placeId;
-  boundary.userData.authoredAssetState = 'procedural-fallback';
+  boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
   boundary.userData.authoredSlots = {};
-  boundary.userData.authoredReadableFallbackRetained = true;
-  boundary.userData.authoredVisualRoot = 'readable-fallback';
+  boundary.userData.authoredReadableFallbackRetained = false;
+  boundary.userData.authoredVisualRoot = 'none-pending-admission';
   boundary.userData.renderContract = {
     ...((fallbackRoot.userData && fallbackRoot.userData.renderContract) || {}),
     assetBoundary: 'GLTFKit v1 — authored station archetype',
-    gracefulFallback: true,
+    gracefulFallback: false,
   };
 
   boundary.userData.hull = fallbackRoot;
@@ -723,6 +741,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
       run: () => upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, {
         releaseMode,
         loadAuthoredPart: options.loadAuthoredPart,
+        admissionEntity: options.liveEntity || entity,
         ...residencyOptionsForBoundary(options.liveEntity || entity, boundary, renderer),
       }, (next) => {
         boundary.userData.hull = next;
@@ -739,6 +758,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     trigger.onBeforeRender = function authoredStationTrigger(renderer, scene, ...rest) {
       if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
       if (!armed) return;
+      if (!shouldAutoTriggerAuthoredUpgrade(options.liveEntity || entity, scene)) return;
       armed = false;
       trigger.onBeforeRender = previousBeforeRender;
       startAuthoredUpgrade(renderer, scene);
@@ -751,23 +771,25 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
 function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options = {}) {
   if (!fallbackRoot || !fallbackRoot.isObject3D || !entity || entity.type !== 'fx' || !placeFile) return fallbackRoot;
   const releaseMode = isReleaseAssetMode(options);
+  setPresentationAdmission(entity, PRESENTATION_ADMISSION.pending);
 
   const boundary = new THREE.Group();
   boundary.name = `${fallbackRoot.name || 'PlaceProp'}_AuthoredAssetBoundary`;
+  fallbackRoot.visible = false;
   boundary.add(fallbackRoot);
   Object.assign(boundary.userData, fallbackRoot.userData || {});
   boundary.userData.kind = 'place';
   boundary.userData.placeId = entity.data && entity.data.placeId || placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
-  boundary.userData.authoredAssetState = 'procedural-fallback';
+  boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
   boundary.userData.authoredSlots = {};
-  boundary.userData.authoredReadableFallbackRetained = true;
-  boundary.userData.authoredVisualRoot = 'readable-fallback';
+  boundary.userData.authoredReadableFallbackRetained = false;
+  boundary.userData.authoredVisualRoot = 'none-pending-admission';
   boundary.userData.renderContract = {
     ...((fallbackRoot.userData && fallbackRoot.userData.renderContract) || {}),
     assetBoundary: 'GLTFKit v1 — authored world-place prop',
-    gracefulFallback: true,
+    gracefulFallback: false,
   };
 
   boundary.userData.hull = fallbackRoot;
@@ -797,6 +819,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     trigger.onBeforeRender = function authoredPlaceTrigger(renderer, scene, ...rest) {
       if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
       if (!armed) return;
+      if (!shouldAutoTriggerAuthoredUpgrade(entity, scene)) return;
       armed = false;
       trigger.onBeforeRender = previousBeforeRender;
       startAuthoredUpgrade(renderer, scene);
@@ -824,6 +847,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   if (!record || !boundary.parent) {
     releaseBoundaryResidency(renderer, boundary, record ? 'place-orphaned-before-swap' : 'place-unavailable');
     boundary.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
+    if (!record) setPresentationAdmission(options.admissionEntity || entity, PRESENTATION_ADMISSION.unavailable);
     return false;
   }
 
@@ -833,12 +857,20 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     return false;
   }
 
+  boundary.userData.authoredAssetState = 'compiling-pipelines';
+  await prepareAuthoredVisualPipelines(authored.root, options);
+  if (!boundary.parent) {
+    releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-pipeline-compile');
+    return false;
+  }
+
   // A validated place record is the readability authority. Keep the procedural shell only while
   // loading or after failure; successful world-place upgrades must not double-render both bodies.
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
   setActive(authored.root);
   boundary.userData.authoredAssetState = 'authored';
+  setPresentationAdmission(options.admissionEntity || entity, PRESENTATION_ADMISSION.ready);
   boundary.userData.authoredReadableFallbackRetained = false;
   boundary.userData.authoredVisualRoot = 'authored-root';
   boundary.userData.authoredParts = authored.authoredParts;
@@ -869,7 +901,14 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
   const staticBatches = createStaticBatchCollector(root, bindings);
   const authoredLength = Math.max(record.bounds && record.bounds.size && record.bounds.size[0] || 1, 1e-6);
   const rawScale = Number(data.placeScale);
-  const scale = Number.isFinite(rawScale) && rawScale > 0 ? rawScale : 1;
+  const targetRadius = Number(data.placeTargetRadius);
+  const authoredEnvelope = Math.max(
+    1e-6,
+    ...(record.bounds && Array.isArray(record.bounds.size) ? record.bounds.size.map((value) => Number(value) || 0) : [authoredLength]),
+  );
+  const scale = Number.isFinite(targetRadius) && targetRadius > 0
+    ? (targetRadius * 2) / authoredEnvelope
+    : (Number.isFinite(rawScale) && rawScale > 0 ? rawScale : 1);
   instantiatePart(record, root, {
     position: [0, 0, 0],
     rotation: [0, 0, 0],
@@ -881,6 +920,9 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
   canonicalizeMaplessHullMaterials(root, palette);
   normalizePlacePropBindings(bindings);
   centerAuthoredPlaceRoot(root, record, scale);
+  root.userData.authoredSourceEnvelope = authoredEnvelope;
+  root.userData.authoredWorldScale = scale;
+  root.userData.placeTargetRadius = Number.isFinite(targetRadius) && targetRadius > 0 ? targetRadius : null;
 
   root.userData.renderContract = {
     version: 1,
@@ -1087,6 +1129,22 @@ function authoredRuntimeState() {
     : null;
 }
 
+/**
+ * First-render is a useful demand signal for isolated previews, but the main scene is rendered and
+ * precompiled while a run is still loading. Main-scene auto-demand is therefore limited to startup
+ * invariants while loading, and to genuinely focused/onscreen entities in flight. Renderer-owned
+ * spatial prefetch can still call requestAuthoredUpgrade directly before an entity becomes visible.
+ */
+export function shouldAutoTriggerAuthoredUpgrade(entity, scene, liveState = authoredRuntimeState()) {
+  if (!liveState || !liveState.render || liveState.render.scene !== scene) return true;
+  if (!entity || entity.alive === false) return false;
+  if (entity.isPlayer === true || isCriticalStartingHub(entity)) return true;
+  if (liveState.mode !== 'flight') return isInitialAuthoredCompositionEntity(entity, liveState);
+  if (liveState.player && liveState.player.targetId === entity.id) return true;
+  if (entity.team === 1) return true;
+  return entityIsOnscreen(entity, liveState);
+}
+
 function residencyOptionsForBoundary(entity, boundary, renderer) {
   const liveState = authoredRuntimeState();
   const data = entity && entity.data || {};
@@ -1103,6 +1161,10 @@ function residencyOptionsForBoundary(entity, boundary, renderer) {
     residencyRole: entity && entity.isPlayer === true ? 'player' : 'current-sector',
     sectorId,
     isResidencyOwnerActive: () => !!boundary && !!boundary.parent && entity && entity.alive !== false,
+    prepareAuthoredPipelines: liveState && liveState.render
+      && typeof liveState.render.compileCurrentPipelines === 'function'
+      ? (root) => liveState.render.compileCurrentPipelines(root)
+      : null,
   };
 }
 
@@ -1208,11 +1270,11 @@ function scheduleNextUpgradeFrame(state) {
 
 function admitNextUpgradeJob(state) {
   state.frameScheduled = false;
-  primeBackgroundAssetPlans(state);
   state.jobs.sort((a, b) => {
     const priorityDelta = authoredUpgradePriority(a) - authoredUpgradePriority(b);
     return priorityDelta || a.sequence - b.sequence;
   });
+  primeNextAuthoredAssetPlan(state);
   const job = state.jobs.shift();
   if (!job) {
     state.running = state.inFlight > 0;
@@ -1247,11 +1309,13 @@ function admitNextUpgradeJob(state) {
       ? job.boundary.userData.authoredAssetState || 'completed'
       : 'completed';
   }).catch((error) => {
-    diagnostic.status = 'fallback-after-error';
+    diagnostic.status = 'unavailable';
     diagnostic.error = error && error.message ? error.message : String(error);
     releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
-    job.boundary.userData.authoredAssetState = 'fallback-after-error';
-    console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
+    job.boundary.userData.authoredAssetState = 'unavailable';
+    job.boundary.userData.authoredVisualRoot = 'none-build-failed';
+    setPresentationAdmission(job.entity, PRESENTATION_ADMISSION.unavailable);
+    console.warn('[partsLibrary] queued authored composition failed; no substitute visual published', error);
   })
     .finally(() => {
       state.inFlight--;
@@ -1266,10 +1330,14 @@ function authoredUpgradeConcurrencyLimit() {
   return 1;
 }
 
-function primeBackgroundAssetPlans(state) {
+function primeNextAuthoredAssetPlan(state) {
   const liveState = authoredRuntimeState();
   if (!state || !liveState || liveState.mode !== 'flight') return;
-  for (const job of [...state.jobs]) {
+  // Only prepare the job that is about to be admitted. The old loop started a preload Promise for
+  // every queued ship, which effectively asked the serial decode lane to process the whole live
+  // galaxy while the player was already flying. One-job lookahead keeps the same authored asset and
+  // exact composition, but bounds decode/GPU residency demand to the next relevant boundary.
+  for (const job of state.jobs) {
     if (!jobStillNeeded(state, job)) {
       const index = state.jobs.indexOf(job);
       if (index >= 0) state.jobs.splice(index, 1);
@@ -1281,6 +1349,7 @@ function primeBackgroundAssetPlans(state) {
     job.prefetchPromise.catch((error) => {
       job.prefetchError = error && error.message ? error.message : String(error);
     });
+    break;
   }
 }
 
@@ -1416,9 +1485,9 @@ export function preloadAuthoredPartLibrary(renderer, options = {}) {
   return loadCanonicalLibrary(renderer, options);
 }
 
-/** Flight may start when the visuals guaranteed to be in the opening composition are authored.
- * Other traffic and hostile ships remain quality-preserving on-demand upgrades and cannot hold the
- * player behind a global queue drain. */
+/** Flight may start when the real player and opening landmark are authored and pipeline-ready.
+ * Noncritical boundaries stay geometry-free and action-ineligible until their exact assets are resident;
+ * they never render a substitute object and never hold New Game on off-camera world population. */
 export function authoredCriticalVisualReadiness(state) {
   const entities = state && state.entities;
   const player = entities && typeof entities.get === 'function'
@@ -1432,19 +1501,28 @@ export function authoredCriticalVisualReadiness(state) {
     : []);
   const hub = needsStartingHub ? entityList.find(isCriticalStartingHub) : null;
   const hubStatus = needsStartingHub ? authoredAssetState(hub) : 'not-required';
+  const openingAssets = entityList
+    .filter((entity) => isInitialAuthoredCompositionEntity(entity, state))
+    .map((entity) => ({ id: entity.id, type: entity.type, status: authoredAssetState(entity) }));
+  const openingPending = openingAssets.filter((entry) => entry.status !== 'authored');
   return {
-    ready: playerStatus === 'authored' && (!needsStartingHub || hubStatus === 'authored'),
+    ready: playerStatus === 'authored'
+      && (!needsStartingHub || hubStatus === 'authored')
+      && openingPending.length === 0,
     playerId: player && player.id,
     playerStatus,
     startingHubId: hub && hub.id,
     startingHubStatus: hubStatus,
+    openingAssets,
+    openingPending,
   };
 }
 
 function authoredAssetState(entity) {
-  return entity && entity.mesh && entity.mesh.userData
+  const state = entity && entity.mesh && entity.mesh.userData
     ? entity.mesh.userData.authoredAssetState
-    : 'missing';
+    : null;
+  return typeof state === 'string' && state ? state : 'missing';
 }
 
 function isCriticalStartingHub(entity) {
@@ -1457,6 +1535,15 @@ function isCriticalStartingHub(entity) {
 
 export function preloadAuthoredAssetsForEntity(renderer, entity, options = {}) {
   return ensureEntityLibrary(renderer, entity, options);
+}
+
+/** GPU admission gate shared by ships and authored world places. Composition may finish on the CPU
+ * while the driver's exact HDR material programs are still absent; do not publish that object until
+ * this promise settles. Preview/test harnesses without a live pipeline compiler remain supported. */
+export async function prepareAuthoredVisualPipelines(root, options = {}) {
+  const prepare = options && options.prepareAuthoredPipelines;
+  if (typeof prepare !== 'function') return { skipped: true, reason: 'pipeline compiler unavailable' };
+  return prepare(root);
 }
 
 export async function retryAuthoredPartLibrary(renderer, options = {}) {
@@ -1473,14 +1560,27 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
   let swapped = false;
   try {
     const library = await (prefetchedLibrary || preloadAuthoredAssetsForEntity(renderer, entity, options));
-    swapped = commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive);
+    const authored = buildComposedShip(entity, library, scene, boundary, options);
+    if (!authored) {
+      boundary.userData.authoredAssetState = 'unavailable';
+      setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+      releaseBoundaryResidency(renderer, boundary, 'authored-composition-unavailable');
+      return;
+    }
+    boundary.userData.authoredAssetState = 'compiling-pipelines';
+    await prepareAuthoredVisualPipelines(authored.root, options);
+    swapped = commitAuthoredBoundary(
+      boundary, fallbackRoot, entity, library, scene, options, setActive, authored,
+    );
     if (!swapped) releaseBoundaryResidency(renderer, boundary, 'authored-swap-not-committed');
   } catch (error) {
     if (!swapped) {
       releaseBoundaryResidency(renderer, boundary, 'authored-swap-failed');
       releaseOwnerInstances(boundary);
-      boundary.userData.authoredAssetState = 'fallback-after-error';
-      console.warn('[partsLibrary] authored composition failed; retaining procedural ship', error);
+      boundary.userData.authoredAssetState = 'unavailable';
+      boundary.userData.authoredVisualRoot = 'none-build-failed';
+      setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+      console.warn('[partsLibrary] authored composition failed; no substitute visual published', error);
     } else {
       boundary.userData.authoredAssetState = 'authored-with-cleanup-error';
       console.warn('[partsLibrary] authored ship is live, but post-swap bookkeeping failed', error);
@@ -1494,23 +1594,34 @@ function installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene
   boundary.userData.authoredAssetState = 'loading';
   try {
     retainLibraryPlan(renderer, library, authoredPreloadPlanForEntity(entity, options), options);
+    // A resident plan is already decoded and validated. Commit it in the same task that mounts the
+    // entity root, before the browser can render an intermediate frame. Sector precompile owns
+    // proactive program warmup; it must not hold visual identity behind a procedural body.
     const swapped = commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive);
     if (!swapped) releaseBoundaryResidency(renderer, boundary, 'resolved-swap-not-committed');
   } catch (error) {
     releaseBoundaryResidency(renderer, boundary, 'resolved-swap-failed');
     releaseOwnerInstances(boundary);
-    boundary.userData.authoredAssetState = 'fallback-after-error';
-    console.warn('[partsLibrary] authored composition failed; retaining procedural ship', error);
+    boundary.userData.authoredAssetState = 'unavailable';
+    boundary.userData.authoredVisualRoot = 'none-build-failed';
+    setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+    console.warn('[partsLibrary] authored composition failed; no substitute visual published', error);
   }
   return true;
 }
 
-function commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive) {
-  if (!boundary.parent) return false; // destroyed while assets were in flight
+function commitAuthoredBoundary(
+  boundary, fallbackRoot, entity, library, scene, options, setActive, preparedAuthored = null,
+) {
+  if (!boundary.parent) {
+    if (preparedAuthored) releaseOwnerInstances(boundary);
+    return false; // destroyed while assets or GPU programs were in flight
+  }
 
-  const authored = buildComposedShip(entity, library, scene, boundary, options);
+  const authored = preparedAuthored || buildComposedShip(entity, library, scene, boundary, options);
   if (!authored) {
     boundary.userData.authoredAssetState = 'unavailable';
+    setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
     return false;
   }
   if (!boundary.parent) {
@@ -1540,6 +1651,7 @@ function commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, 
   setActive(activeRoot);
 
   boundary.userData.authoredAssetState = 'authored';
+  setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
   boundary.userData.authoredReadableFallbackRetained = retainFallback;
   boundary.userData.authoredVisualRoot = retainFallback ? 'readable-fallback' : 'authored-root';
   boundary.userData.authoredParts = authored.authoredParts;
@@ -1547,6 +1659,10 @@ function commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, 
   boundary.userData.proceduralFallbackParts = authored.fallbackParts;
   boundary.userData.authoredCompositionId = authored.root.userData.assetId;
   boundary.userData.authoredRenderContract = authored.root.userData.renderContract;
+  // Once admission commits, the stable boundary must describe the visual it exposes rather than
+  // the invisible zero-draw substrate that existed only while the authored asset was prepared.
+  boundary.userData.assetId = authored.root.userData.assetId;
+  boundary.userData.renderContract = authored.root.userData.renderContract;
   boundary.userData.__socketCache = new Map(); // invalidate renderer socket lookups across the swap
   if (typeof options.onSwap === 'function') {
     try { options.onSwap({ boundary, root: activeRoot, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts }); }
@@ -1722,21 +1838,33 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
   const loadPart = options && typeof options.loadAuthoredPart === 'function'
     ? options.loadAuthoredPart
     : loadAuthoredPart;
-  // Deliberately serial. GLB fetch is local and cheap; meshopt/KTX2 decode and GPU upload are the
-  // expensive resident operations. Serial admission prevents renderer + GPU memory from rising by
-  // hundreds of megabytes in one task while preserving the exact source assets.
+  // Exact entity plans are intentionally small. A bounded three-lane admission overlaps local fetch,
+  // decode, and upload without the old whole-catalog memory spike or the equally harmful one-file-at-a-
+  // time startup stall. Results are committed to each slot in contract order after all workers settle,
+  // so scheduling cannot change deterministic ship composition.
+  const bySlot = new Map();
+  const tasks = [];
   for (const [slot, files] of Object.entries(plan || {})) {
-    const records = Array.isArray(library.get(slot)) ? library.get(slot).filter(recordIsResident) : [];
-    for (const file of files || []) {
-      if (records.some((record) => recordUrlEndsWith(record, file))) continue;
-      if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) break;
-      const url = `${partRoot}${file}`;
-      const diagnostic = beginDecodeAdmission(renderer, url, slot);
+    const existing = Array.isArray(library.get(slot)) ? library.get(slot).filter(recordIsResident) : [];
+    const requested = [...new Set(files || [])];
+    bySlot.set(slot, { existing, requested, loaded: new Map() });
+    for (const file of requested) {
+      if (!existing.some((record) => recordUrlEndsWith(record, file))) tasks.push({ slot, file });
+    }
+  }
+  let cursor = 0;
+  const workerCount = Math.min(3, tasks.length);
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (cursor < tasks.length) {
+      const task = tasks[cursor++];
+      if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return;
+      const url = `${partRoot}${task.file}`;
+      const diagnostic = beginDecodeAdmission(renderer, url, task.slot);
       let record;
       try {
         record = await loadPart(url, {
           renderer,
-          slot,
+          slot: task.slot,
           optional: true,
           residencyOwner: options.residencyOwner,
           residencyRole: options.residencyRole,
@@ -1746,11 +1874,28 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
       } finally {
         finishDecodeAdmission(renderer, diagnostic);
       }
-      if (record) records.push(record);
+      if (record) bySlot.get(task.slot).loaded.set(task.file, record);
     }
-    library.set(slot, records);
+  }));
+  for (const [slot, state] of bySlot) {
+    const existingUnrequested = state.existing.filter((record) => (
+      !state.requested.some((file) => recordUrlEndsWith(record, file))
+    ));
+    const ordered = state.requested.map((file) => (
+      state.existing.find((record) => recordUrlEndsWith(record, file)) || state.loaded.get(file)
+    )).filter(Boolean);
+    library.set(slot, [...existingUnrequested, ...ordered]);
   }
   return library;
+}
+
+function entityBelongsToCurrentSector(entity, state) {
+  const currentSectorId = state && state.world && state.world.currentSectorId;
+  if (!currentSectorId) return true;
+  const data = entity && entity.data || {};
+  const sectorId = entity && (entity.homeSectorId || entity.sectorId)
+    || data.homeSectorId || data.sectorId || null;
+  return !sectorId || sectorId === currentSectorId;
 }
 
 function decodeAdmissionDiagnostics(renderer) {
@@ -1930,10 +2075,6 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     authoredSlots[slot].push(record.url);
   };
 
-  // A low-poly pressure shell is always retained as the close-range readability silhouette. The
-  // authored GLB parts remain the ship's detail layer, but this shell prevents a loaded ship from
-  // reading as a few dark fragments or only an aft rocket when the current authored hull is sparse.
-  const safetyCore = buildSafetyCore(hull, materials, palette);
   const hullRecord = selected.get('hull');
   if (hullRecord) {
     instantiatePart(hullRecord, hull, {
@@ -1944,11 +2085,14 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     fallbackParts.push('hull');
   }
   const authoredHullLevels = hullRecord ? authoredLevels(hullRecord) : new Set();
-  // A conforming authored hull is the silhouette authority. Keeping the larger emergency pressure
-  // shell visible at LOD0 covered its panel work with one flat grey surface (most obvious on the
-  // Wasp). The shell remains available only when the requested authored hull level is genuinely
-  // absent; it is continuity geometry, not a second skin.
-  safetyCore.visible = !wholeShip && authoredHullLevels.size === 0;
+  // Emergency geometry is created only when no authored hull level exists. Constructing an opaque
+  // second skin for every good GLB wastes geometry/material work and risks hiding the exact surface
+  // detail the authored asset is meant to provide.
+  let safetyCore = null;
+  if (shouldBuildReadabilitySafetyCore({
+    wholeShip,
+    authoredHullLevelCount: authoredHullLevels.size,
+  })) safetyCore = buildSafetyCore(hull, materials, palette);
   // Snapshot only mounts supplied by the hull. Parts may themselves contain internal markers, but
   // assembly topology belongs to the hull grammar and must not change as later slots are mounted.
   const hullMounts = snapshotMounts(bindings.mounts);
@@ -2444,7 +2588,7 @@ function dedicatedBatchKey(primitive) {
     geometryBatchSignature(primitive.geometry),
     tags.lod || 'always',
     tags.canopy ? 'canopy' : '',
-    tintRole(tags),
+    authoredSurfaceTintRole(tags, primitive.material),
     tags.drive || '',
     matrixBatchSignature(tags.driveAnchorMatrix),
   ].join('|');
@@ -2462,7 +2606,7 @@ function pooledBatchKey(primitive) {
     materialBatchSignature(primitive.material),
     geometryBatchSignature(primitive.geometry),
     tags.lod || 'always',
-    tintRole(tags),
+    authoredSurfaceTintRole(tags, primitive.material),
     tags.damageRole || '',
     tags.instance === false ? 'unique' : 'pooled',
   ].join('|');
@@ -2721,6 +2865,7 @@ function normalizeStaticBatchGeometries(geometries) {
     if (!next.getAttribute('normal') && typeof next.computeVertexNormals === 'function') {
       next.computeVertexNormals();
     }
+    normalizeStaticShaderAttributes(next);
     return next;
   }).filter(Boolean);
 
@@ -2756,11 +2901,26 @@ function normalizeStaticBatchGeometries(geometries) {
   return normalized;
 }
 
+function normalizeStaticShaderAttributes(geometry) {
+  for (const name of ['position', 'normal', 'tangent', 'uv', 'uv1', 'uv2']) {
+    const attr = geometry.getAttribute(name);
+    if (!attr) continue;
+    const expected = {
+      itemSize: attr.itemSize,
+      normalized: false,
+      ArrayType: Float32Array,
+      gpuType: THREE.FloatType,
+    };
+    if (!attr.isInterleavedBufferAttribute && sameAttributeSpec(attributeSpec(attr), expected)) continue;
+    geometry.setAttribute(name, convertAttributeToFloat(attr, attr.itemSize));
+  }
+}
+
 function normalizeStaticAttributeConflicts(geometries, specs, conflicts) {
   for (const name of [...conflicts]) {
     if (!isPromotableStaticAttribute(name)) continue;
     const itemSize = firstAttributeItemSize(geometries, name) || defaultAttributeItemSize(name);
-    const spec = { itemSize, normalized: false, ArrayType: Float32Array };
+    const spec = { itemSize, normalized: false, ArrayType: Float32Array, gpuType: THREE.FloatType };
     for (const geometry of geometries) {
       const attr = geometry.getAttribute(name);
       if (!attr) continue;
@@ -2773,7 +2933,8 @@ function normalizeStaticAttributeConflicts(geometries, specs, conflicts) {
 }
 
 function isPromotableStaticAttribute(name) {
-  return name === 'position' || name === 'normal' || name === 'uv' || name === 'uv1' || name === 'uv2';
+  return name === 'position' || name === 'normal' || name === 'tangent'
+    || name === 'uv' || name === 'uv1' || name === 'uv2';
 }
 
 function firstAttributeItemSize(geometries, name) {
@@ -2786,6 +2947,7 @@ function firstAttributeItemSize(geometries, name) {
 
 function defaultAttributeItemSize(name) {
   if (name === 'position' || name === 'normal') return 3;
+  if (name === 'tangent') return 4;
   return 2;
 }
 
@@ -2806,21 +2968,8 @@ function normalizedAttributeComponent(attr, index, component) {
   else if (component === 1 && typeof attr.getY === 'function') value = attr.getY(index);
   else if (component === 2 && typeof attr.getZ === 'function') value = attr.getZ(index);
   else if (component === 3 && typeof attr.getW === 'function') value = attr.getW(index);
-  const array = attributeArray(attr);
-  if (!attr.normalized || !array) return value;
-  const scale = normalizedAttributeScale(array);
-  if (!scale) return value;
-  return scale.signed ? Math.max(-1, value / scale.max) : value / scale.max;
-}
-
-function normalizedAttributeScale(array) {
-  if (array instanceof Int8Array) return { max: 127, signed: true };
-  if (array instanceof Int16Array) return { max: 32767, signed: true };
-  if (array instanceof Int32Array) return { max: 2147483647, signed: true };
-  if (array instanceof Uint8Array || array instanceof Uint8ClampedArray) return { max: 255, signed: false };
-  if (array instanceof Uint16Array) return { max: 65535, signed: false };
-  if (array instanceof Uint32Array) return { max: 4294967295, signed: false };
-  return null;
+  // Attribute getters already de-normalize quantized integer storage.
+  return value;
 }
 
 function canMergeStaticBatchGeometries(geometries) {
@@ -2852,11 +3001,16 @@ function attributeSpec(attr) {
     itemSize: attr.itemSize || 1,
     normalized: !!attr.normalized,
     ArrayType,
+    gpuType: attr.gpuType ?? THREE.FloatType,
   };
 }
 
 function sameAttributeSpec(a, b) {
-  return !!(a && b && a.itemSize === b.itemSize && a.normalized === b.normalized && a.ArrayType === b.ArrayType);
+  return !!(a && b
+    && a.itemSize === b.itemSize
+    && a.normalized === b.normalized
+    && a.ArrayType === b.ArrayType
+    && a.gpuType === b.gpuType);
 }
 
 function createEmptyAttribute(name, spec, count) {
@@ -2868,7 +3022,9 @@ function createEmptyAttribute(name, spec, count) {
   } else if (name === 'tangent' && spec.itemSize >= 4) {
     for (let i = 3; i < array.length; i += spec.itemSize) array[i] = 1;
   }
-  return new THREE.BufferAttribute(array, spec.itemSize, spec.normalized);
+  const attribute = new THREE.BufferAttribute(array, spec.itemSize, spec.normalized);
+  attribute.gpuType = spec.gpuType ?? THREE.FloatType;
+  return attribute;
 }
 
 function integerAttributeMax(ArrayType, normalized) {
@@ -3126,7 +3282,9 @@ function installAuthoredLod(root, bindings, safetyCore, authoredHullLevels, whol
       object.visible = baseVisible && requested !== 'lod2';
     }
     const visibleAuthoredHullLevel = closestAvailableLod(requested, authoredHullLevels);
-    safetyCore.visible = !wholeShip && !authoredHullLevels.has(visibleAuthoredHullLevel);
+    if (safetyCore) {
+      safetyCore.visible = !wholeShip && !authoredHullLevels.has(visibleAuthoredHullLevel);
+    }
     if (root.userData.damageState === 'critical') {
       for (const secondary of bindings.secondary) secondary.visible = false;
     }
@@ -3720,12 +3878,19 @@ export function runAuthoredInstanceFrameContractProbe() {
 // whose material uniforms are actually mutated at runtime receive ship-local clones.
 // -------------------------------------------------------------------------------------------------
 function sharedMaterialFor(base, tags, palette) {
-  const role = tintRole(tags, base);
+  const role = authoredSurfaceTintRole(tags, base);
   const tint = tintHex(palette, role);
-  const key = `${materialShareSignature(base, tags)}|${role}|${tint}`;
+  const explicitTint = appearanceOverrideForRole(palette, role);
+  const finish = palette.finish || 'authored';
+  const wear = Number.isFinite(Number(palette.wear)) ? Number(palette.wear).toFixed(2) : '-';
+  const key = `${materialShareSignature(base, tags)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}`;
   let material = sharedMaterialVariants.get(key);
   if (!material) {
-    material = boundAuthoredEmission(tintMaterial(base.clone(), tint, role), base, role);
+    material = applyAppearanceFinish(
+      boundAuthoredEmission(
+        applyAuthoredSurfaceTint(base.clone(), tint, role, explicitTint), base, role,
+      ), palette, role,
+    );
     material.name = authoredMaterialName(base, tags, role, tint, false);
     const canonical = resolveCanonicalHullMaterial(material);
     if (canonical !== material) {
@@ -3749,12 +3914,19 @@ function materialNeedsShipLocalMutation(tags = {}) {
 }
 
 function mutableMaterialFor(base, tags, palette, cache, instanceKey) {
-  const role = tintRole(tags, base);
+  const role = authoredSurfaceTintRole(tags, base);
   const tint = tintHex(palette, role);
-  const key = `${materialBatchSignature(base)}|${role}|${tint}|${materialMutationScope(tags, instanceKey)}`;
+  const explicitTint = appearanceOverrideForRole(palette, role);
+  const finish = palette.finish || 'authored';
+  const wear = Number.isFinite(Number(palette.wear)) ? Number(palette.wear).toFixed(2) : '-';
+  const key = `${materialBatchSignature(base)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}|${materialMutationScope(tags, instanceKey)}`;
   let material = cache.get(key);
   if (!material) {
-    material = boundAuthoredEmission(tintMaterial(base.clone(), tint, role), base, role);
+    material = applyAppearanceFinish(
+      boundAuthoredEmission(
+        applyAuthoredSurfaceTint(base.clone(), tint, role, explicitTint), base, role,
+      ), palette, role,
+    );
     material.name = authoredMaterialName(base, tags, role, tint, true);
     cache.set(key, material);
   }
@@ -3787,59 +3959,114 @@ function authoredMaterialFamily(base, tags = {}, role = 'hull') {
   return role || 'authored';
 }
 
-function tintMaterial(material, hex, role) {
+/**
+ * Applies identity or player paint as a color multiplier only. Authored texture maps and calibrated
+ * PBR factors remain the surface authority; faction identity must not turn every hull into the same
+ * smooth colored plastic.
+ */
+export function applyAuthoredSurfaceTint(material, hex, role, explicitOverride = false) {
   if (role === 'none') return material;
   const tint = new THREE.Color(hex);
   if (material.color) {
-    if (role === 'accent' || role === 'thruster') {
+    if (explicitOverride && (role === 'hull' || role === 'accent')) {
+      material.color.copy(tint);
+    } else if (role === 'accent' || role === 'thruster') {
       const sourceLuminance = 0.2126 * material.color.r + 0.7152 * material.color.g + 0.0722 * material.color.b;
       material.color.copy(tint).multiplyScalar(Math.max(0.72, Math.min(1.08, 0.62 + sourceLuminance * 0.52)));
+    } else if (role === 'hull') {
+      // A faint cool/warm identity bias survives without overwriting the albedo baked in Blender.
+      const identityBias = tint.clone().lerp(new THREE.Color(0xffffff), 0.86);
+      material.color.multiply(identityBias);
+    } else if (role === 'dark') {
+      // Machinery is a material family, not a faction-color panel. Keep only the faintest identity
+      // cast so mechanical albedo and roughness variation remain legible.
+      const identityBias = tint.clone().lerp(new THREE.Color(0xffffff), 0.92);
+      material.color.multiply(identityBias);
     } else {
       material.color.multiply(tint);
     }
-    if (role === 'hull') {
-      material.color.lerp(tint, 0.58);
-      liftColorFloor(material.color, 0.34);
-    }
-  }
-  if (role === 'hull') {
-    if (Number.isFinite(material.metalness)) material.metalness = Math.min(material.metalness, 0.26);
-    if (Number.isFinite(material.roughness)) material.roughness = Math.max(material.roughness, 0.58);
   }
   if (material.emissive && material.emissive.getHex() !== 0 && (role === 'accent' || role === 'thruster')) {
     material.emissive.copy(tint);
-  }
-  if (role === 'hull' && material.emissive && material.emissive.getHex() === 0) {
-    material.emissive.copy(tint).multiplyScalar(0.11);
-    material.emissiveIntensity = Math.max(Number(material.emissiveIntensity) || 0, 0.42);
   }
   material.needsUpdate = true;
   return material;
 }
 
-function liftColorFloor(color, floor) {
-  const min = Number(floor) || 0;
-  color.r = Math.max(color.r, min);
-  color.g = Math.max(color.g, min);
-  color.b = Math.max(color.b, min);
+function appearanceOverrideForRole(palette, role) {
+  if (role === 'hull') return palette && palette.appearanceHullOverride === true;
+  if (role === 'accent') return palette && palette.appearanceAccentOverride === true;
+  return false;
 }
 
-function tintRole(tags = {}, material = null) {
+const AUTHORED_SEMANTIC_TINT_ROLES = Object.freeze({
+  // Paintable authored surfaces. Only these roles may consume player hull/accent overrides.
+  hull: 'hull',
+  painted_hull: 'hull',
+  painted_armor: 'hull',
+  coated_hull: 'hull',
+  accent: 'accent',
+  livery: 'accent',
+  painted_accent: 'accent',
+
+  // Machinery may receive the existing faint faction identity bias, but never a paint override.
+  mechanical: 'dark',
+  dark_composite: 'dark',
+  recessed_mechanical: 'dark',
+
+  // Functional/material identities own their authored color and may not collapse into hull paint.
+  glass: 'none',
+  canopy_glass: 'none',
+  exposed_alloy: 'none',
+  sensor_lens: 'none',
+  signal: 'none',
+  warning: 'none',
+  geology: 'none',
+  radiator: 'none',
+  docking: 'none',
+  ceramic: 'none',
+  engine_ceramic: 'none',
+  heat_affected_alloy: 'none',
+  copper_coil: 'none',
+  service: 'none',
+  maintenance_mark: 'none',
+  rubber: 'none',
+  repair: 'none',
+
+  // Powered drive surfaces retain the established faction-thruster behavior.
+  drive: 'thruster',
+  thruster: 'thruster',
+});
+
+function exportedSurfaceTintRole(material) {
+  const raw = material && material.userData && material.userData.spacefaceMaterialRole;
+  if (typeof raw !== 'string') return null;
+  const semantic = raw.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  return AUTHORED_SEMANTIC_TINT_ROLES[semantic] || null;
+}
+
+export function authoredSurfaceTintRole(tags = {}, material = null) {
   if (tags.canopy) return 'none';
   // Engine exports historically inherited `tint: hull` from their structural parent. A plume is
   // never hull paint: honoring that inherited tag turns its emissive disk neutral-white after tone
   // mapping. Give the live exhaust the faction thruster role before considering inherited tags.
   if (tags.drive === 'plume') return 'thruster';
   if (tags.damageRole === 'navLight' || tags.damageRole === 'sensor') return 'accent';
+  // Material extras are the long-term authoring contract. Resolve known semantics before legacy
+  // names/tags so paint overrides cannot recolor alloy, ceramic, thermal, optical, or service roles.
+  // Unknown values deliberately fall through to the established compatibility heuristics.
+  const semanticRole = exportedSurfaceTintRole(material);
+  if (semanticRole) return semanticRole;
   const source = String(material && material.name || '').toLowerCase();
   if (/(?:glass|canopy|windscreen)/.test(source)) return 'none';
-  if (/(?:thruster|drive[_ -]?aperture)/.test(source)) return 'thruster';
+  if (/(?:thruster|drive[_ -]?(?:aperture|core)|engine[_ -]?(?:glow|core))/.test(source)) return 'thruster';
   // Older modular exports also stamped their whole LOD subtree as `tint: hull`, even where authored
   // material names carry a stronger semantic role. Preserve those authored material families so a
   // fighter keeps dark machinery and accent panels instead of collapsing to one flat grey value.
-  if (/(?:accent|trim|livery|stripe|warning)/.test(source)) return 'accent';
+  if (/(?:warning|hazard)/.test(source)) return 'none';
+  if (/(?:accent|trim|livery|stripe)/.test(source)) return 'accent';
   if (/(?:armor|armour|mechanical|machinery|mech|interior|rib|clamp|frame)/.test(source)) return 'dark';
-  if (/(?:energy|emit|glow|nav)/.test(source)) return 'accent';
+  if (/(?:energy|emiss|emit|glow|nav|display|sensor|mining.?lens)/.test(source)) return 'none';
   if (tags.tint) return String(tags.tint).toLowerCase();
   if (tags.drive) return 'thruster';
   return 'hull';
@@ -3852,6 +4079,23 @@ function boundAuthoredEmission(material, base, role) {
   material.emissiveIntensity = Math.min(Number.isFinite(material.emissiveIntensity)
     ? material.emissiveIntensity : 0.62, 0.62);
   material.userData = { ...(material.userData || {}), spacefaceBoundedDriveAperture: true };
+  material.needsUpdate = true;
+  return material;
+}
+
+function applyAppearanceFinish(material, palette, role) {
+  if (!material || !palette || !Number.isFinite(Number(material.roughness))) return material;
+  if (!['hull', 'accent', 'dark'].includes(role)) return material;
+  const wear = Math.max(0, Math.min(1, Number(palette.wear) || 0));
+  if (palette.finish === 'polished') {
+    material.roughness = Math.max(0.22, material.roughness * 0.72 + wear * 0.06);
+  } else if (palette.finish === 'worn') {
+    material.roughness = Math.min(1, material.roughness * 1.04 + wear * 0.05);
+    if (Number.isFinite(Number(material.metalness))) material.metalness *= 0.97;
+  } else if (palette.finish === 'satin') {
+    material.roughness = Math.max(0.34, Math.min(0.9, material.roughness + wear * 0.02));
+  }
+  material.userData = { ...(material.userData || {}), spacefaceAppearanceFinish: palette.finish };
   material.needsUpdate = true;
   return material;
 }
@@ -4024,6 +4268,13 @@ function buildSafetyCore(hull, materials, palette) {
   return mesh;
 }
 
+export function shouldBuildReadabilitySafetyCore({
+  wholeShip = false,
+  authoredHullLevelCount = 0,
+} = {}) {
+  return !wholeShip && Number(authoredHullLevelCount) <= 0;
+}
+
 function readabilityShellMaterial(base, palette = {}) {
   const hullTint = normalizeTintHex(palette.hull || '#8a94a8');
   const accentTint = normalizeTintHex(palette.accent || '#7ee8ff');
@@ -4043,14 +4294,13 @@ function readabilityShellMaterial(base, palette = {}) {
     material.name = 'SF_Readability_PressureShell';
     if (material.color) {
       const hull = new THREE.Color(hullTint);
-      material.color.lerp(hull, 0.58);
-      liftColorFloor(material.color, 0.66);
+      material.color.multiply(hull.clone().lerp(new THREE.Color(0xffffff), 0.72));
     }
-    if ('metalness' in material) material.metalness = Math.min(Number(material.metalness) || 0, 0.16);
-    if ('roughness' in material) material.roughness = Math.max(Number(material.roughness) || 0, 0.62);
+    if ('metalness' in material) material.metalness = Math.min(Number(material.metalness) || 0, 0.24);
+    if ('roughness' in material) material.roughness = Math.max(Number(material.roughness) || 0, 0.72);
     if (material.emissive) {
-      material.emissive.copy(new THREE.Color(accentTint)).multiplyScalar(0.075);
-      material.emissiveIntensity = Math.max(Number(material.emissiveIntensity) || 0, 0.32);
+      material.emissive.setHex(0x000000);
+      material.emissiveIntensity = 0;
     }
     material.transparent = false;
     material.opacity = 1;
@@ -4162,22 +4412,23 @@ function ensureStandardSockets(hull) {
 
 function paletteFor(entity) {
   const faction = entity.factionId && FACTION_PALETTES[entity.factionId];
+  let base;
   if (faction) {
-    return {
+    base = {
       hull: faction.hull || faction.primary,
       accent: faction.accent || faction.primary,
       thruster: faction.thruster || faction.emissive || faction.accent || faction.primary,
       dark: faction.secondary || '#111820',
     };
-  }
-  if (entity.team === 0) {
+  } else if (entity.team === 0) {
     const free = FACTION_PALETTES.faction_free;
-    return { hull: free.hull, accent: free.accent, thruster: free.thruster, dark: free.secondary };
+    base = { hull: free.hull, accent: free.accent, thruster: free.thruster, dark: free.secondary };
+  } else if (entity.team === 1) {
+    base = { hull: '#7a3540', accent: '#ff5470', thruster: '#ff7a3c', dark: '#241116' };
+  } else {
+    base = { hull: '#6b7280', accent: '#b0b8c4', thruster: '#aebfd6', dark: '#171c24' };
   }
-  if (entity.team === 1) {
-    return { hull: '#7a3540', accent: '#ff5470', thruster: '#ff7a3c', dark: '#241116' };
-  }
-  return { hull: '#6b7280', accent: '#b0b8c4', thruster: '#aebfd6', dark: '#171c24' };
+  return paletteWithShipAppearance(entity, base);
 }
 
 function snapshotMounts(mounts) {

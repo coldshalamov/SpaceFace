@@ -72,7 +72,9 @@ export function setEnvMapForShips(env) { SHIP_ENV_MAP = env; }
 // self-applies to every NPC. The PLAYER (team 0 / faction_free) gets the haunted ex-gangster profile.
 function resolvePalette(e) {
   const personality = (e.factionId && FACTION_PERSONALITY.get(e.factionId)) || 'independent';
-  const profile = paintProfileFor(personality);
+  // paintProfileFor returns shared faction recipe data. Entity wear is presentation state, so keep
+  // it local instead of leaking one ship's wear into every later ship from the same manufacturer.
+  const profile = { ...paintProfileFor(personality) };
   let colors;
   if (e.team === 0) colors = PLAYER_PAL;
   else if (e.team === 1) colors = HOSTILE_PAL;
@@ -1879,6 +1881,13 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
 
 const COMMON_ROCK_PBR_SHADER_KEY = 'spaceface-common-rock-geology-pbr-v4';
 
+function replaceRequiredShaderSource(source, needle, replacement, label) {
+  if (typeof source !== 'string' || !source.includes(needle)) {
+    throw new Error(`[render] common-rock PBR shader contract changed: missing ${label}`);
+  }
+  return source.replace(needle, replacement);
+}
+
 function configureCommonRockPbr(material) {
   material.name = 'SF_CommonRock_GeologicalPBR_v4';
   material.userData.spacefaceMaterialRoles = Object.keys(COMMON_ROCK_MATERIAL_ROLES);
@@ -1890,50 +1899,67 @@ function configureCommonRockPbr(material) {
     // Preserve Three's current tangent-space normal implementation, but scale its XY perturbation
     // with the geological role stored in sfGeologyPbr.a. Fracture walls carry a sharper response;
     // ferrite and accumulated regolith remain calmer instead of sharing one plastic normal strength.
-    const geologyNormalChunk = THREE.ShaderChunk.normal_fragment_maps.replace(
+    const geologyNormalChunk = replaceRequiredShaderSource(
+      THREE.ShaderChunk.normal_fragment_maps,
       'mapN.xy *= normalScale;',
       'mapN.xy *= normalScale * vSfGeologyPbr.a;',
+      'normal-map scale hook',
     );
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        '#include <common>',
-        '#include <common>\nattribute vec4 sfGeologyPbr;\nvarying vec4 vSfGeologyPbr;',
-      )
-      .replace(
-        '#include <begin_vertex>',
-        '#include <begin_vertex>\nvSfGeologyPbr = sfGeologyPbr;',
-      );
-    shader.fragmentShader = shader.fragmentShader
-      .replace(
-        '#include <common>',
-        '#include <common>\nvarying vec4 vSfGeologyPbr;',
-      )
-      .replace('#include <normal_fragment_maps>', geologyNormalChunk)
-      .replace(
+    shader.vertexShader = replaceRequiredShaderSource(
+      shader.vertexShader,
+      '#include <common>',
+      '#include <common>\nattribute vec4 sfGeologyPbr;\nvarying vec4 vSfGeologyPbr;',
+      'vertex common chunk',
+    );
+    shader.vertexShader = replaceRequiredShaderSource(
+      shader.vertexShader,
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\nvSfGeologyPbr = sfGeologyPbr;',
+      'vertex position hook',
+    );
+    shader.fragmentShader = replaceRequiredShaderSource(
+      shader.fragmentShader,
+      '#include <common>',
+      '#include <common>\nvarying vec4 vSfGeologyPbr;',
+      'fragment common chunk',
+    );
+    shader.fragmentShader = replaceRequiredShaderSource(
+      shader.fragmentShader,
+      '#include <normal_fragment_maps>',
+      geologyNormalChunk,
+      'fragment normal chunk',
+    );
+    shader.fragmentShader = replaceRequiredShaderSource(
+      shader.fragmentShader,
+      '#include <roughnessmap_fragment>',
+      [
         '#include <roughnessmap_fragment>',
-        [
-          '#include <roughnessmap_fragment>',
-          '// Blend the micro roughness map toward the object-space geological role response.',
-          'roughnessFactor = clamp(mix(roughnessFactor, vSfGeologyPbr.g, 0.84), 0.24, 1.0);',
-        ].join('\n'),
-      )
-      .replace(
+        '// Blend the micro roughness map toward the object-space geological role response.',
+        'roughnessFactor = clamp(mix(roughnessFactor, vSfGeologyPbr.g, 0.84), 0.24, 1.0);',
+      ].join('\n'),
+      'fragment roughness chunk',
+    );
+    shader.fragmentShader = replaceRequiredShaderSource(
+      shader.fragmentShader,
+      '#include <metalnessmap_fragment>',
+      [
         '#include <metalnessmap_fragment>',
-        [
-          '#include <metalnessmap_fragment>',
-          '// Sparse ferrite can become metallic; matrix/fracture/regolith remain dielectric.',
-          'metalnessFactor = clamp(mix(metalnessFactor, vSfGeologyPbr.b, 0.9), 0.0, 1.0);',
-        ].join('\n'),
-      )
-      .replace(
+        '// Sparse ferrite can become metallic; matrix/fracture/regolith remain dielectric.',
+        'metalnessFactor = clamp(mix(metalnessFactor, vSfGeologyPbr.b, 0.9), 0.0, 1.0);',
+      ].join('\n'),
+      'fragment metalness chunk',
+    );
+    shader.fragmentShader = replaceRequiredShaderSource(
+      shader.fragmentShader,
+      '#include <aomap_fragment>',
+      [
         '#include <aomap_fragment>',
-        [
-          '#include <aomap_fragment>',
-          '// Recess-linked macro occlusion supplements the packed micro AO without a screen pass.',
-          'reflectedLight.indirectDiffuse *= vSfGeologyPbr.r;',
-          'reflectedLight.indirectSpecular *= mix(0.72, 1.0, vSfGeologyPbr.r);',
-        ].join('\n'),
-      );
+        '// Recess-linked macro occlusion supplements the packed micro AO without a screen pass.',
+        'reflectedLight.indirectDiffuse *= vSfGeologyPbr.r;',
+        'reflectedLight.indirectSpecular *= mix(0.72, 1.0, vSfGeologyPbr.r);',
+      ].join('\n'),
+      'fragment AO chunk',
+    );
   };
   return material;
 }

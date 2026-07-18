@@ -28,6 +28,13 @@ const AUTHORED_BODY_PROOF = Object.freeze({
 // Must exceed main.js' authored-visual startup wait so this probe observes the same no-fallback
 // default path instead of racing the loading gate.
 const PLAYABLE_TIMEOUT_MS = readPositiveIntArg('--playable-timeout', Number(process.env.SF_ASSETS_LIVE_TIMEOUT_MS) || 90000);
+// The opening route only demands the player, hub, and relevant traffic. This exhaustive probe then
+// asks every live boundary to prove that the deferred assets can also load through the same serial
+// admission lane. Keep that drain bounded separately from the much smaller playable-start budget.
+const AUTHORED_DRAIN_TIMEOUT_MS = readPositiveIntArg(
+  '--authored-drain-timeout',
+  Number(process.env.SF_ASSETS_LIVE_DRAIN_TIMEOUT_MS) || 90000,
+);
 
 let server = null;
 let chrome = null;
@@ -100,6 +107,8 @@ try {
     `expected at least ${MIN_AUTHORED_SHIPS} authored live ships; got ${report.authoredShipCount}`);
   assert.equal(report.authoredShipCount, report.shipCount,
     `all live ships should be authored in playable flight: ${JSON.stringify(report.ships.filter((ship) => ship.state !== 'authored').map(summarizeShip))}`);
+  assert.deepEqual(report.ships.filter((ship) => ship.presentationAdmission !== 'ready').map(summarizeShip), [],
+    'all live ships must hold the same ready receipt used to permit player-facing combat action');
   assert.deepEqual(report.ships.filter((ship) => !(ship.authoredBodyProof && ship.authoredBodyProof.ok)).map(summarizeShip), [],
     'all live authored ships should include a main hull/body-sized authored surface');
   assert.deepEqual(report.ships.filter((ship) => ship.state === 'authored' && ship.mode !== 'release').map(summarizeShip), [],
@@ -123,8 +132,8 @@ try {
     `all declared authored GLB parts should pass the live runtime loader: ${JSON.stringify(report.loaderDiagnostics.failures || [])}`);
   assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.maxConcurrentJobs <= 1,
     `authored composition admission must stay serial: ${JSON.stringify(report.authoredUpgradeDiagnostics)}`);
-  assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.maxConcurrentDecode <= 1,
-    `authored asset decode admission must remain serial: ${JSON.stringify(report.authoredUpgradeDiagnostics)}`);
+  assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.maxConcurrentDecode <= 3,
+    `authored asset decode admission must remain inside the bounded three-lane plan loader: ${JSON.stringify(report.authoredUpgradeDiagnostics)}`);
   assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.peakActivePlannedBytes < 3 * 1024 * 1024 * 1024,
     `authored admission memory proxy must remain below 3 GiB: ${JSON.stringify(report.authoredUpgradeDiagnostics)}`);
   assert.deepEqual(pageIssues.errorIssues(), [], 'browser page should not report runtime errors during the asset probe');
@@ -181,7 +190,7 @@ try {
 
 async function waitForAuthoredShips(cdp) {
   const deadline = await waitForAuthoredAssetDeadline({
-    timeoutMs: 45000,
+    timeoutMs: AUTHORED_DRAIN_TIMEOUT_MS,
     pollIntervalMs: 50,
     onPoll: () => forceShipRender(cdp),
     sample: () => collectAuthoredGateSnapshot(cdp),
@@ -342,6 +351,7 @@ async function collectAuthoredReport(cdp) {
         team: entity.team,
         factionId: entity.factionId || null,
         state: data.authoredAssetState || 'unknown',
+        presentationAdmission: entity.presentationAdmission || null,
         mode: data.authoredAssetMode || null,
         compositionId: data.authoredCompositionId || null,
         childNames,
@@ -690,7 +700,14 @@ async function forceShipRender(cdp) {
     if (!state || !render || !render.scene || !render.renderer || !render.camera) return;
     for (const entity of state.entityList || []) {
       if (!entity || entity.type !== 'ship' || !entity.mesh) continue;
-      entity.mesh.traverse((object) => { if (object) object.frustumCulled = false; });
+      entity.mesh.traverse((object) => {
+        if (!object) return;
+        object.frustumCulled = false;
+        const requestAuthoredUpgrade = object.userData && object.userData.requestAuthoredUpgrade;
+        if (typeof requestAuthoredUpgrade === 'function') {
+          requestAuthoredUpgrade(render.renderer, render.scene);
+        }
+      });
     }
     try {
       const partsLibrary = await import('./src/render/partsLibrary.js');
@@ -799,7 +816,13 @@ function collectPageIssues(cdp) {
       issues.push({ type: 'pageerror', text });
     } else if (msg.method === 'Runtime.consoleAPICalled' && msg.params && msg.params.type === 'error') {
       const text = (msg.params.args || []).map((arg) => arg.value || arg.description || '').join(' ');
-      const issue = { type: 'error', text };
+      const stack = (msg.params.stackTrace?.callFrames || []).slice(0, 4).map((frame) => ({
+        functionName: frame.functionName || '<anonymous>',
+        url: frame.url || '',
+        lineNumber: Number(frame.lineNumber) + 1,
+        columnNumber: Number(frame.columnNumber) + 1,
+      }));
+      const issue = { type: 'error', text, ...(stack.length ? { stack } : {}) };
       if (!isIgnorablePageIssue(issue)) issues.push(issue);
     } else if (msg.method === 'Runtime.consoleAPICalled' && msg.params && msg.params.type === 'warning') {
       const text = (msg.params.args || []).map((arg) => arg.value || arg.description || '').join(' ');
@@ -1091,6 +1114,7 @@ function summarizeShip(ship) {
     defId: ship.defId,
     scenarioActorId: ship.scenarioActorId,
     state: ship.state,
+    presentationAdmission: ship.presentationAdmission,
     requiredSlotMode: ship.requiredSlotMode,
     slots: ship.slots,
     wholeShipBodyUrls: ship.wholeShipBodyUrls,

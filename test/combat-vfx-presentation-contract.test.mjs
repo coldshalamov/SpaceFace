@@ -124,6 +124,25 @@ test('projectile hit payload carries normalized approach and contact normal', ()
   assert.ok(payload.normal.x < 0 && payload.normal.z > 0);
 });
 
+test('axis-aligned projectile impacts preserve legitimate zero velocity components', () => {
+  const target = { id: 8, pos: { x: 10, z: 0 } };
+  const vertical = projectileHitPayload({
+    ownerId: 1,
+    rot: 0,
+    vel: { x: 0, z: 12 },
+    data: { damage: 2 },
+  }, target, { x: 10, z: -2 });
+  assert.deepEqual(vertical.approach, { x: 0, z: 1 });
+
+  const horizontal = projectileHitPayload({
+    ownerId: 1,
+    rot: Math.PI / 2,
+    vel: { x: -12, z: 0 },
+    data: { damage: 2 },
+  }, target, { x: 8, z: 0 });
+  assert.deepEqual(horizontal.approach, { x: -1, z: 0 });
+});
+
 test('continuous beam emits begin/update/end presentation phases without muzzle respawn ambiguity', () => {
   const events = [];
   const host = Object.create(weapons);

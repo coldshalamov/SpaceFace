@@ -9,7 +9,7 @@ test('authored boundary admission exposes the runtime queue seam', () => {
   assert.equal(typeof partsLibrary.enqueueBoundaryUpgrade, 'function');
 });
 
-test('player and Helios hub outrank NPCs without waiting for queue idle', async () => {
+test('player and Helios hub outrank NPCs while readiness ignores the deferred active-sector queue', async () => {
   const scheduledFrames = [];
   const previousRaf = globalThis.requestAnimationFrame;
   globalThis.requestAnimationFrame = (callback) => {
@@ -86,12 +86,14 @@ test('player and Helios hub outrank NPCs without waiting for queue idle', async 
     await runNextFrame();
     assert.deepEqual(starts, ['player-1', 'station_helios']);
     assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true,
-      'critical visual readiness must become ready while ordinary NPC jobs remain queued');
+      'flight may start once the opening-shot identities are authored');
     assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 12, running: true });
     assert.equal(starts.some((id) => id.startsWith('npc-')), false,
       'no NPC loader may begin before the player and critical hub complete');
 
     while (scheduledFrames.length > 0) await runNextFrame();
+    assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true,
+      'draining deferred NPC work does not change opening-shot readiness');
     assert.deepEqual(starts.slice(2), npcs.map((entity) => entity.id),
       'equal-priority NPC work must retain FIFO order');
     assert.equal(maxInFlight, 1, 'the queue must never overlap authored decodes');
@@ -101,6 +103,30 @@ test('player and Helios hub outrank NPCs without waiting for queue idle', async 
     if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = previousRaf;
   }
+});
+
+test('an explicitly critical opening identity cannot disappear from readiness when its mesh is missing', () => {
+  const playerMesh = new THREE.Group();
+  playerMesh.userData.authoredAssetState = 'authored';
+  const player = { id: 'player-1', type: 'ship', alive: true, isPlayer: true, mesh: playerMesh };
+  const missingCritical = {
+    id: 'opening-escort',
+    type: 'ship',
+    alive: true,
+    data: { openingFrameCritical: true },
+  };
+  const state = {
+    playerId: player.id,
+    entities: new Map([[player.id, player], [missingCritical.id, missingCritical]]),
+    entityList: [player, missingCritical],
+    world: { currentSectorId: 'sector_ceres_belt' },
+  };
+
+  const readiness = partsLibrary.authoredCriticalVisualReadiness(state);
+  assert.equal(readiness.ready, false);
+  assert.deepEqual(readiness.openingPending, [
+    { id: missingCritical.id, type: missingCritical.type, status: 'missing' },
+  ]);
 });
 
 test('post-flight admission is priority-aware, frame-staggered, and serial at composition', async () => {
