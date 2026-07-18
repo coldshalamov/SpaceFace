@@ -452,3 +452,72 @@ test('A08: the record reports the detail A09 needs to attribute a reading to a c
   const deduped = buildSiteSignature({ cleared: [5, 5, 5, 6] });
   assert.equal(deduped.detail.exposedCells, 2);
 });
+
+// --- 491b0726 repair contracts (adversarial-review findings P0-1 / P1-1 / P1-2) -----------------
+
+// Independent hard-coded copies of the grid extent. 28 × 45 = 1260 cells, so the last valid
+// cleared index is 1259 and the first invalid one is 1260. Deliberately NOT derived from
+// SIGNATURE_GRID at assertion time — deriving the boundary from the module under test is exactly
+// the hole that let the upper-bound guard be deleted while the suite stayed green.
+const CLEARED_LAST_VALID = 1259;
+const CLEARED_FIRST_INVALID = 1260;
+
+test('A08: conflicting duplicate machines aggregate order-independently, loudest survives', () => {
+  const loud = { id: 'dup', defId: 'sm_massline_core', powerRatio: 1, status: { state: 'running' } };
+  const quiet = { id: 'dup', defId: 'sm_massline_core', powerRatio: 0, status: { state: 'no-power' } };
+  const ab = buildSiteSignature({ machines: [loud, quiet] });
+  const ba = buildSiteSignature({ machines: [quiet, loud] });
+  assert.equal(JSON.stringify(ab), JSON.stringify(ba),
+    'reversing two same-id records must be byte-identical');
+  // Both sides of the resolution rule: the pair equals the LOUD record alone, not the quiet one.
+  const loudSolo = buildSiteSignature({ machines: [loud] });
+  const quietSolo = buildSiteSignature({ machines: [quiet] });
+  assert.equal(ab.total, loudSolo.total, 'the conflicting pair must resolve to the loud record');
+  assert.notEqual(ab.total, quietSolo.total, 'the quiet record must be the one dropped');
+  assert.ok(loudSolo.total > quietSolo.total, 'fixture sanity: loud actually louder than quiet');
+
+  // Same law for ANONYMOUS identities (defId+cell key): caller order must not pick the survivor.
+  const anonLoud = { defId: 'sm_extractor', col: 3, row: 4, powerRatio: 1, status: { state: 'running' } };
+  const anonQuiet = { defId: 'sm_extractor', col: 3, row: 4, powerRatio: 0, status: { state: 'no-power' } };
+  const anonAB = buildSiteSignature({ machines: [anonLoud, anonQuiet] });
+  const anonBA = buildSiteSignature({ machines: [anonQuiet, anonLoud] });
+  assert.equal(JSON.stringify(anonAB), JSON.stringify(anonBA),
+    'anonymous same-identity records must also be order-independent');
+  assert.equal(anonAB.total, buildSiteSignature({ machines: [anonLoud] }).total,
+    'anonymous conflict must also resolve loud');
+});
+
+test('A08: only an actual finite number is power telemetry; every coercible non-number fails loud', () => {
+  const running = (powerRatio, missing = false) => buildSiteSignature({
+    machines: [{ id: 'm', defId: 'sm_extractor', ...(missing ? {} : { powerRatio }), status: { state: 'running' } }],
+  });
+  const missing = running(0, true);
+  // Number(null) === 0 and Number('') === 0: without a typeof gate these read as deliberately
+  // unpowered and grant free stealth. They must be treated as UNREADABLE, i.e. exactly like a
+  // missing/NaN reading.
+  for (const [label, value] of [['null', null], ['empty-string', ''], ['singleton-array', [5]],
+    ['object', {}], ['boolean', true], ['numeric-string', '0.5']]) {
+    assert.equal(JSON.stringify(running(value)), JSON.stringify(missing),
+      `${label} telemetry must fail loud exactly like missing telemetry`);
+  }
+  // Both sides, with the expected magnitudes pinned as independent literals:
+  // unreadable running extractor -> activity 0.9 (running state 0.9 × defaultPowerRatio 1);
+  // deliberate powered-off (numeric 0) -> activity 0.18 (running 0.9 × dormant floor path).
+  assert.equal(missing.detail.machineActivity, 0.9,
+    'unreadable telemetry must be assumed turning at the default ratio (literal 0.9)');
+  assert.equal(running(0).detail.machineActivity, 0.18,
+    'numeric zero stays the deliberate powered-off reading (literal 0.18)');
+  assert.ok(missing.sources.machinery > running(0).sources.machinery,
+    'an unreadable machine must always read louder than a deliberately unpowered one');
+});
+
+test('A08: cleared-cell acceptance is pinned from both sides of both bounds', () => {
+  const exposed = (cell) => buildSiteSignature({ cleared: [cell] }).detail.exposedCells;
+  assert.equal(exposed(-1), 0, 'below the lower bound must be rejected');
+  assert.equal(exposed(0), 1, 'the first cell must be accepted');
+  assert.equal(exposed(CLEARED_LAST_VALID), 1, 'the last valid cell (1259) must be accepted');
+  assert.equal(exposed(CLEARED_FIRST_INVALID), 0, 'the first invalid cell (1260) must be rejected');
+  // The literals above are only honest while the grid is really 28 × 45.
+  assert.equal(SIGNATURE_GRID.cols * SIGNATURE_GRID.rows, CLEARED_FIRST_INVALID,
+    'grid extent changed — update the independent boundary literals in this suite');
+});

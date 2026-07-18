@@ -369,40 +369,48 @@ function stateMultiplier(status) {
   return Number.isFinite(mult) ? mult : SIGNATURE_MACHINERY.defaultStateMult;
 }
 
+/**
+ * Loudness term for one machine record. Fail LOUD on telemetry: powerRatio is a ratio only when
+ * it is an actual finite number. null, '', arrays, singleton arrays — anything Number() would
+ * silently coerce — is unreadable telemetry, and an unreadable machine is assumed to be turning
+ * at defaultPowerRatio. Numeric 0 remains the one deliberate powered-off reading.
+ */
+function machineTerm(m) {
+  const def = typeof m.defId === 'string' ? SITE_MACHINE_BY_ID.get(m.defId) : null;
+  const defPower = def ? Math.abs(num(def.power, 0)) : 0;
+  const base = SIGNATURE_MACHINERY.baseLoudness + SIGNATURE_MACHINERY.perMW * defPower;
+
+  const ratio = typeof m.powerRatio === 'number' && Number.isFinite(m.powerRatio)
+    ? clamp01(m.powerRatio)
+    : clamp01(SIGNATURE_MACHINERY.defaultPowerRatio);
+  const activity = clamp01(stateMultiplier(m.status)) * ratio;
+
+  const dormant = clamp01(SIGNATURE_MACHINERY.dormantShare);
+  return base * (dormant + (1 - dormant) * activity);
+}
+
 function machinerySource(snapshot) {
   const raw = asArray(snapshot.machines).filter((m) => m && typeof m === 'object');
 
-  // Canonical order first, then dedupe — so which duplicate survives never depends on caller order.
-  const keyed = raw.map((m) => ({ m, key: machineIdentity(m) }));
-  keyed.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
-
-  const seen = new Set();
-  const terms = [];
-  let count = 0;
-  for (const { m, key } of keyed) {
-    if (seen.has(key)) continue;
-    seen.add(key);
-    count++;
-
-    const def = typeof m.defId === 'string' ? SITE_MACHINE_BY_ID.get(m.defId) : null;
-    const defPower = def ? Math.abs(num(def.power, 0)) : 0;
-    const base = SIGNATURE_MACHINERY.baseLoudness + SIGNATURE_MACHINERY.perMW * defPower;
-
-    // Fail LOUD: a machine whose power telemetry is unreadable is assumed to be turning.
-    const ratioRaw = Number(m.powerRatio);
-    const ratio = Number.isFinite(ratioRaw)
-      ? clamp01(ratioRaw)
-      : clamp01(SIGNATURE_MACHINERY.defaultPowerRatio);
-    const activity = clamp01(stateMultiplier(m.status)) * ratio;
-
-    const dormant = clamp01(SIGNATURE_MACHINERY.dormantShare);
-    terms.push(base * (dormant + (1 - dormant) * activity));
+  // Dedupe by identity, keeping the LOUDEST term for each key. Conflicting same-key duplicates
+  // are a telemetry fault, and faults fail LOUD: the quieter record is the one that gets dropped.
+  // max() is also order-independent, so which duplicate the caller listed first can never change
+  // the aggregate. (A stable sort on key alone kept first-in-input for equal keys, which made the
+  // result caller-order-dependent — the reviewed 491b0726 defect.)
+  const byKey = new Map();
+  for (const m of raw) {
+    const key = machineIdentity(m);
+    const term = machineTerm(m);
+    const prev = byKey.get(key);
+    if (prev === undefined || term > prev) byKey.set(key, term);
   }
 
+  const keys = Array.from(byKey.keys()).sort();
+  const terms = keys.map((key) => byKey.get(key));
   const score = stableSum(terms);
   return {
     value: saturate(score, SIGNATURE_MACHINERY.halfActivity),
-    machineCount: count,
+    machineCount: byKey.size,
     activityScore: score,
   };
 }
