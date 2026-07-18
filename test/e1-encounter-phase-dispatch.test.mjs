@@ -441,6 +441,111 @@ test('W01 single-shot: choose after resolve is a no-op', () => {
   assert.equal((t.state.story.playerChoiceLines || []).length, linesLen);
 });
 
+test('W01 single-shot: re-entrant nested choose from waitStarted does not double-dispatch', () => {
+  // Latch must be written BEFORE script.choose: a handler that synchronously emits
+  // encounter:choose again (nested) must see offerConsumed and stay inert.
+  const t = boot(47914);
+  const id = force(t, 'depth_h6_patrol_ambush', 'reenter');
+  const rows = record(t);
+  let nestedFires = 0;
+  t.bus.on('encounter:waitStarted', () => {
+    nestedFires += 1;
+    // Nested same-tick choose (concord would otherwise leave waiting_battle).
+    choose(t, id, 'concord');
+  });
+
+  choose(t, id, 'wait');
+  assert.equal(nestedFires, 1, 'precondition: waitStarted fired and nested choose ran');
+  assert.equal(liveOf(t, id)?.phase, 'waiting_battle',
+    'nested concord must not re-route after wait consumed the offer');
+  assert.equal(liveOf(t, id)?.offerConsumed, true);
+  assert.equal(countOf(rows, 'encounter:waitStarted'), 1);
+  assert.equal(countOf(rows, 'encounter:resolved'), 0,
+    'nested choose must not resolve the encounter on the same tick');
+  assert.equal(countOf(rows, 'story:playerChoiceRecorded'), 1,
+    'exactly one player choice line for the outer accepted wait');
+  assert.equal(completionOf(t, 'depth_h6_patrol_ambush'), null);
+});
+
+test('W01 single-shot: consumed offer stays consumed in every non-terminal phase (not only waiting_battle)', () => {
+  // Phase-independent latch: offerConsumed blocks regardless of phase name.
+  // First legitimate choose is forced while phase is a non-offer non-terminal value so a
+  // `live.phase !== 'offer'` guard mutant cannot masquerade as the consumption latch.
+  const t = boot(47915);
+  const id = force(t, 'depth_h2_drifting_bloom', 'phase-gate');
+  const live = liveOf(t, id);
+  assert.equal(live.phase, 'offer');
+  // Advance the live record into a non-offer non-terminal phase without consuming.
+  live.phase = 'waiting_battle';
+  assert.equal(live.offerConsumed, undefined);
+
+  const rows = record(t);
+  choose(t, id, 'hail');
+  assert.equal(countOf(rows, 'encounter:resolved'), 1,
+    'first accepted choose must dispatch even when phase is not the string "offer"');
+  assert.equal(completionOf(t, 'depth_h2_drifting_bloom')?.outcome, 'hailed');
+  assert.equal(liveOf(t, id), undefined);
+
+  // Second concurrent encounter: consume in offer, then force another non-terminal phase name
+  // and prove a later choose is still blocked by offerConsumed (not by phase string).
+  const id2 = force(t, 'depth_h6_patrol_ambush', 'phase-gate-2');
+  choose(t, id2, 'wait');
+  assert.equal(liveOf(t, id2)?.offerConsumed, true);
+  assert.equal(liveOf(t, id2)?.phase, 'waiting_battle');
+  // Rename the phase to something other than waiting_battle / offer while still live.
+  liveOf(t, id2).phase = 'telegraph';
+  const rows2 = record(t);
+  const waitStartedBefore = countOf(rows, 'encounter:waitStarted');
+  choose(t, id2, 'concord');
+  choose(t, id2, 'wait');
+  assert.equal(liveOf(t, id2)?.phase, 'telegraph',
+    'post-consumption choose must remain inert in any non-terminal phase name');
+  assert.equal(liveOf(t, id2)?.offerConsumed, true);
+  assert.equal(countOf(rows2, 'encounter:resolved'), 0);
+  assert.equal(completionOf(t, 'depth_h6_patrol_ambush'), null);
+  // waitStarted was recorded on the first wait only (rows, not rows2).
+  assert.equal(countOf(rows, 'encounter:waitStarted'), waitStartedBefore);
+});
+
+test('W01 single-shot: empty/missing choices array consumes on first dispatch and ignores the second', () => {
+  // Shapes with no choices: first dispatch consumes; second is inert.
+  // Force a live record then strip choices so the suite owns the branch without catalog coupling.
+  const t = boot(47916);
+  const id = force(t, 'depth_h2_drifting_bloom', 'no-choice');
+  const live = liveOf(t, id);
+  // Minimal synthetic shape surface: empty choices array on the live record.
+  live.shape = { ...live.shape, choices: [] };
+  const rows = record(t);
+
+  choose(t, id, 'any-id');
+  assert.equal(liveOf(t, id)?.offerConsumed, true,
+    'first dispatch against a no-choice shape must consume the offer');
+  // script.choose still runs; h2 may not resolve on unknown ids — consumption is the contract.
+  const phaseAfterFirst = liveOf(t, id)?.phase;
+  const resolvedAfterFirst = countOf(rows, 'encounter:resolved');
+  const linesAfterFirst = countOf(rows, 'story:playerChoiceRecorded');
+
+  choose(t, id, 'hail');
+  choose(t, id, 'any-id');
+  assert.equal(liveOf(t, id)?.offerConsumed, true);
+  assert.equal(liveOf(t, id)?.phase, phaseAfterFirst,
+    'second dispatch must not re-enter the handler after no-choice consumption');
+  assert.equal(countOf(rows, 'encounter:resolved'), resolvedAfterFirst);
+  assert.equal(countOf(rows, 'story:playerChoiceRecorded'), linesAfterFirst);
+
+  // Missing choices (not an array) is treated the same as empty: consume on first dispatch.
+  const id2 = force(t, 'depth_h6_patrol_ambush', 'no-choice-missing');
+  const live2 = liveOf(t, id2);
+  live2.shape = { ...live2.shape, choices: undefined };
+  choose(t, id2, 'wait');
+  assert.equal(liveOf(t, id2)?.offerConsumed, true);
+  const phase2 = liveOf(t, id2)?.phase;
+  choose(t, id2, 'wait');
+  choose(t, id2, 'concord');
+  assert.equal(liveOf(t, id2)?.phase, phase2);
+  assert.equal(liveOf(t, id2)?.offerConsumed, true);
+});
+
 test('W01 single-shot bound: the non-terminal phase still terminates exactly once under its own tick', () => {
   const t = boot(47909);
   const id = force(t, 'depth_h6_patrol_ambush', 'seam-tick');

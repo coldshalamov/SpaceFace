@@ -454,6 +454,7 @@ test('A08: the record reports the detail A09 needs to attribute a reading to a c
 });
 
 // --- 491b0726 repair contracts (adversarial-review findings P0-1 / P1-1 / P1-2) -----------------
+// --- Round-2 residuals: synthetic defIds only (unknown to catalog → base loudness, no live power) -
 
 // Independent hard-coded copies of the grid extent. 28 × 45 = 1260 cells, so the last valid
 // cleared index is 1259 and the first invalid one is 1260. Deliberately NOT derived from
@@ -462,9 +463,27 @@ test('A08: the record reports the detail A09 needs to attribute a reading to a c
 const CLEARED_LAST_VALID = 1259;
 const CLEARED_FIRST_INVALID = 1260;
 
+// Synthetic machines: defIds intentionally absent from SITE_MACHINES so catalog power cannot
+// contribute. Unknown defId → baseLoudness only (0.6). Powered-off path: base * dormantShare.
+// Independent literals for activityScore of a single synthetic running machine:
+//   ratio 1 (or unreadable default): 0.6 * (0.2 + 0.8 * 1) = 0.6
+//   ratio 0:                         0.6 * (0.2 + 0.8 * 0) = 0.12
+const SYN_DEF = 'syn_a08_fixture';
+const SYN_ACTIVITY_POWERED = 0.6;
+const SYN_ACTIVITY_OFF = 0.12;
+
+function synMachine(over = {}) {
+  return {
+    defId: SYN_DEF,
+    powerRatio: 1,
+    status: { state: 'running' },
+    ...over,
+  };
+}
+
 test('A08: conflicting duplicate machines aggregate order-independently, loudest survives', () => {
-  const loud = { id: 'dup', defId: 'sm_massline_core', powerRatio: 1, status: { state: 'running' } };
-  const quiet = { id: 'dup', defId: 'sm_massline_core', powerRatio: 0, status: { state: 'no-power' } };
+  const loud = synMachine({ id: 'dup', powerRatio: 1, status: { state: 'running' } });
+  const quiet = synMachine({ id: 'dup', powerRatio: 0, status: { state: 'no-power' } });
   const ab = buildSiteSignature({ machines: [loud, quiet] });
   const ba = buildSiteSignature({ machines: [quiet, loud] });
   assert.equal(JSON.stringify(ab), JSON.stringify(ba),
@@ -475,23 +494,100 @@ test('A08: conflicting duplicate machines aggregate order-independently, loudest
   assert.equal(ab.total, loudSolo.total, 'the conflicting pair must resolve to the loud record');
   assert.notEqual(ab.total, quietSolo.total, 'the quiet record must be the one dropped');
   assert.ok(loudSolo.total > quietSolo.total, 'fixture sanity: loud actually louder than quiet');
+  // Deduped machineCount: same-key conflict collapses to one identity.
+  assert.equal(ab.detail.machineCount, 1, 'conflicting same-key pair must report machineCount 1');
+  assert.equal(ba.detail.machineCount, 1);
 
   // Same law for ANONYMOUS identities (defId+cell key): caller order must not pick the survivor.
-  const anonLoud = { defId: 'sm_extractor', col: 3, row: 4, powerRatio: 1, status: { state: 'running' } };
-  const anonQuiet = { defId: 'sm_extractor', col: 3, row: 4, powerRatio: 0, status: { state: 'no-power' } };
+  const anonLoud = synMachine({ col: 3, row: 4, powerRatio: 1, status: { state: 'running' } });
+  const anonQuiet = synMachine({ col: 3, row: 4, powerRatio: 0, status: { state: 'no-power' } });
   const anonAB = buildSiteSignature({ machines: [anonLoud, anonQuiet] });
   const anonBA = buildSiteSignature({ machines: [anonQuiet, anonLoud] });
   assert.equal(JSON.stringify(anonAB), JSON.stringify(anonBA),
     'anonymous same-identity records must also be order-independent');
   assert.equal(anonAB.total, buildSiteSignature({ machines: [anonLoud] }).total,
     'anonymous conflict must also resolve loud');
+  assert.equal(anonAB.detail.machineCount, 1, 'anonymous same-cell conflict is one identity');
+});
+
+test('A08: non-conflicting distinct-id machines both count; identical content is order-independent', () => {
+  // Two DIFFERENT ids with identical content: non-conflicting, both contribute.
+  const a = synMachine({ id: 'alpha', powerRatio: 1, status: { state: 'running' } });
+  const b = synMachine({ id: 'bravo', powerRatio: 1, status: { state: 'running' } });
+  const ab = buildSiteSignature({ machines: [a, b] });
+  const ba = buildSiteSignature({ machines: [b, a] });
+  assert.equal(JSON.stringify(ab), JSON.stringify(ba),
+    'reversing two different-id identical machines must be byte-identical');
+  assert.equal(ab.detail.machineCount, 2, 'distinct ids must both count');
+  assert.equal(ab.detail.machineActivity, SYN_ACTIVITY_POWERED * 2,
+    'two synthetic running machines double the activity score');
+  const solo = buildSiteSignature({ machines: [a] });
+  assert.ok(ab.sources.machinery > solo.sources.machinery,
+    'two distinct machines must read louder than one');
+});
+
+test('A08: identical same-key duplicates equal the solo record (deduped machineCount 1)', () => {
+  // Non-conflicting equal terms under the same identity: keep one, do not double.
+  const rec = synMachine({ id: 'same', powerRatio: 1, status: { state: 'running' } });
+  const pair = buildSiteSignature({ machines: [rec, { ...rec }] });
+  const solo = buildSiteSignature({ machines: [rec] });
+  assert.equal(JSON.stringify(pair), JSON.stringify(solo),
+    'identical duplicate pair must be byte-equal to the solo record');
+  assert.equal(pair.detail.machineCount, 1, 'deduped machineCount must be 1, not raw.length');
+  assert.equal(pair.detail.machineActivity, SYN_ACTIVITY_POWERED);
+  assert.equal(solo.detail.machineActivity, SYN_ACTIVITY_POWERED);
+});
+
+test('A08: numeric powerRatio clamps at both sides of [0,1]', () => {
+  // Hard-coded probes: -1 behaves exactly as 0; 2 behaves exactly as 1.
+  const at0 = buildSiteSignature({ machines: [synMachine({ id: 'r', powerRatio: 0 })] });
+  const below = buildSiteSignature({ machines: [synMachine({ id: 'r', powerRatio: -1 })] });
+  const at1 = buildSiteSignature({ machines: [synMachine({ id: 'r', powerRatio: 1 })] });
+  const above = buildSiteSignature({ machines: [synMachine({ id: 'r', powerRatio: 2 })] });
+  assert.equal(JSON.stringify(below), JSON.stringify(at0),
+    'powerRatio -1 must clamp to the same record as powerRatio 0');
+  assert.equal(JSON.stringify(above), JSON.stringify(at1),
+    'powerRatio 2 must clamp to the same record as powerRatio 1');
+  assert.equal(below.detail.machineActivity, SYN_ACTIVITY_OFF);
+  assert.equal(above.detail.machineActivity, SYN_ACTIVITY_POWERED);
+  assert.ok(at1.total > at0.total, 'fixture sanity: powered beats unpowered');
+});
+
+test('A08: anonymous identity includes cell; present vs absent and distinct cells do not collapse', () => {
+  // Present col/row vs absent: num(missing) defaults to -1, so keys differ → count 2.
+  const present = synMachine({ col: 3, row: 4, powerRatio: 1 });
+  const absent = synMachine({ powerRatio: 1 }); // no col/row
+  const mixed = buildSiteSignature({ machines: [present, absent] });
+  const mixedRev = buildSiteSignature({ machines: [absent, present] });
+  assert.equal(JSON.stringify(mixed), JSON.stringify(mixedRev),
+    'present-cell vs absent-cell pair must be order-independent');
+  assert.equal(mixed.detail.machineCount, 2,
+    'col/row present vs absent must be distinct anonymous identities');
+
+  // Two distinct cells with same defId: both count, equal to sum of solos under stable aggregation.
+  const cellA = synMachine({ col: 1, row: 2, powerRatio: 1 });
+  const cellB = synMachine({ col: 5, row: 6, powerRatio: 1 });
+  const twoCells = buildSiteSignature({ machines: [cellA, cellB] });
+  const twoCellsRev = buildSiteSignature({ machines: [cellB, cellA] });
+  assert.equal(JSON.stringify(twoCells), JSON.stringify(twoCellsRev));
+  assert.equal(twoCells.detail.machineCount, 2, 'distinct cells must not collapse');
+  assert.equal(twoCells.detail.machineActivity, SYN_ACTIVITY_POWERED * 2);
+
+  // Same anonymous cell still collapses (control).
+  const sameCell = buildSiteSignature({
+    machines: [synMachine({ col: 1, row: 2, powerRatio: 1 }), synMachine({ col: 1, row: 2, powerRatio: 1 })],
+  });
+  assert.equal(sameCell.detail.machineCount, 1);
 });
 
 test('A08: only an actual finite number is power telemetry; every coercible non-number fails loud', () => {
   const running = (powerRatio, missing = false) => buildSiteSignature({
-    machines: [{ id: 'm', defId: 'sm_extractor', ...(missing ? {} : { powerRatio }), status: { state: 'running' } }],
+    machines: [synMachine({ id: 'm', ...(missing ? { powerRatio: undefined } : { powerRatio }) })],
   });
-  const missing = running(0, true);
+  // Explicit omit of powerRatio for missing path (synMachine default would set 1).
+  const missing = buildSiteSignature({
+    machines: [{ id: 'm', defId: SYN_DEF, status: { state: 'running' } }],
+  });
   // Number(null) === 0 and Number('') === 0: without a typeof gate these read as deliberately
   // unpowered and grant free stealth. They must be treated as UNREADABLE, i.e. exactly like a
   // missing/NaN reading.
@@ -500,13 +596,12 @@ test('A08: only an actual finite number is power telemetry; every coercible non-
     assert.equal(JSON.stringify(running(value)), JSON.stringify(missing),
       `${label} telemetry must fail loud exactly like missing telemetry`);
   }
-  // Both sides, with the expected magnitudes pinned as independent literals:
-  // unreadable running extractor -> activity 0.9 (running state 0.9 × defaultPowerRatio 1);
-  // deliberate powered-off (numeric 0) -> activity 0.18 (running 0.9 × dormant floor path).
-  assert.equal(missing.detail.machineActivity, 0.9,
-    'unreadable telemetry must be assumed turning at the default ratio (literal 0.9)');
-  assert.equal(running(0).detail.machineActivity, 0.18,
-    'numeric zero stays the deliberate powered-off reading (literal 0.18)');
+  // Synthetic unknown defId: unreadable → activity 0.6; numeric 0 → activity 0.12.
+  // Literals are independent of live catalog machine power.
+  assert.equal(missing.detail.machineActivity, SYN_ACTIVITY_POWERED,
+    'unreadable telemetry must assume defaultPowerRatio on base loudness (literal 0.6)');
+  assert.equal(running(0).detail.machineActivity, SYN_ACTIVITY_OFF,
+    'numeric zero stays the deliberate powered-off reading (literal 0.12)');
   assert.ok(missing.sources.machinery > running(0).sources.machinery,
     'an unreadable machine must always read louder than a deliberately unpowered one');
 });
