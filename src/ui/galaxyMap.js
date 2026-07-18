@@ -3312,6 +3312,9 @@ export const galaxyMapScreen = {
   _localIntelSectorId: null,
   // Release handle for the entity:killed subscription (see _subscribeKills).
   _killUnsub: null,
+  // Offscreen tile for the static table (see _paintGround); invalidated on resize.
+  _groundTile: null,
+  _groundKey: '',
   // simTime of the last intel sync, so a paused sim does not re-observe identical tracks per frame.
   _localIntelSyncedAtS: -1,
   // Motion preference, sampled at show time (see _syncReduceMotion).
@@ -4655,28 +4658,40 @@ export const galaxyMapScreen = {
     if (this._g) this._g.setTransform(dpr, 0, 0, dpr, 0, 0);
   },
 
-  _draw() {
-    const g = this._g;
-    if (!g || !this._canvas) return;
-    const state = this._ctx && this._ctx.state;
-    const w = this._canvas.width / this._dpr, h = this._canvas.height / this._dpr;
-    g.clearRect(0, 0, w, h);
-    g.fillStyle = INK.bg; g.fillRect(0, 0, w, h);
-    this._clickTargets.length = 0;
-    if (!state) return;
-
-    // Worklight. A plotting table is lit from a lamp over its middle, so the ground is not one flat
-    // value — it falls off toward the edges. This is what makes the marks read as objects sitting ON
-    // a surface rather than shapes floating in a void, and it costs one gradient fill per frame.
-    {
-      const cx = w / 2, cy = h / 2;
-      const lamp = g.createRadialGradient(cx, cy * 0.92, Math.min(w, h) * 0.05, cx, cy, Math.max(w, h) * 0.62);
-      lamp.addColorStop(0, 'rgba(232, 163, 61, 0.050)');
-      lamp.addColorStop(0.55, 'rgba(232, 163, 61, 0.016)');
-      lamp.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      g.fillStyle = lamp;
-      g.fillRect(0, 0, w, h);
+  /**
+   * Paint the static table: worklight falloff, survey graticule, corner registration.
+   *
+   * Cached to an offscreen canvas keyed by viewport size and invalidated only when that size
+   * changes. Falls back to drawing straight onto the target when no document is available (the
+   * headless model tests) so the pure-render path never depends on a DOM.
+   */
+  _paintGround(target, w, h) {
+    const key = `${Math.round(w)}x${Math.round(h)}`;
+    if (HAS_DOC && this._groundTile && this._groundKey === key) {
+      target.drawImage(this._groundTile, 0, 0, w, h);
+      return;
     }
+    let g = target;
+    let tile = null;
+    if (HAS_DOC && typeof document !== 'undefined' && typeof document.createElement === 'function') {
+      const dpr = this._dpr || 1;
+      tile = document.createElement('canvas');
+      tile.width = Math.max(1, Math.round(w * dpr));
+      tile.height = Math.max(1, Math.round(h * dpr));
+      const tg = tile.getContext('2d');
+      if (tg) { tg.setTransform(dpr, 0, 0, dpr, 0, 0); g = tg; } else { tile = null; g = target; }
+    }
+
+    // Worklight: a plotting table is lit from a lamp over its middle, so the ground is not one flat
+    // value — it falls off toward the edges. This is what makes marks read as objects sitting ON a
+    // surface instead of shapes floating in a void.
+    const cx0 = w / 2, cy0 = h / 2;
+    const lamp = g.createRadialGradient(cx0, cy0 * 0.92, Math.min(w, h) * 0.05, cx0, cy0, Math.max(w, h) * 0.62);
+    lamp.addColorStop(0, 'rgba(232, 163, 61, 0.050)');
+    lamp.addColorStop(0.55, 'rgba(232, 163, 61, 0.016)');
+    lamp.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = lamp;
+    g.fillRect(0, 0, w, h);
 
     // Survey-table graticule: warm hairlines, a heavier rule every fifth line.
     const grid = 50;
@@ -4707,6 +4722,30 @@ export const galaxyMapScreen = {
       g.lineTo(cx, cy + dy * markLen);
       g.stroke();
     }
+
+    if (tile) {
+      this._groundTile = tile;
+      this._groundKey = key;
+      target.drawImage(tile, 0, 0, w, h);
+    }
+  },
+
+  _draw() {
+    const g = this._g;
+    if (!g || !this._canvas) return;
+    const state = this._ctx && this._ctx.state;
+    const w = this._canvas.width / this._dpr, h = this._canvas.height / this._dpr;
+    g.clearRect(0, 0, w, h);
+    g.fillStyle = INK.bg; g.fillRect(0, 0, w, h);
+    this._clickTargets.length = 0;
+    if (!state) return;
+
+    // The table itself — worklight, graticule and registration marks — is a pure function of the
+    // viewport, so it is rendered once to an offscreen tile and blitted thereafter. This matters:
+    // `_draw` is the SHARED path and at LOCAL it runs at display refresh, not the 64 ms cadence, so
+    // the alternative is recomputing a full-canvas radial gradient plus ~40 stroke calls every
+    // frame — on a machine that may be running a software renderer.
+    this._paintGround(g, w, h);
 
     const level = levelForZoom(this._zoom);
 
@@ -6709,24 +6748,43 @@ function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity) {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return;
   const text = `GOAL · ${String(label || 'OBJECTIVE').toUpperCase().slice(0, 22)}`;
   g.save();
-  // Dark acquisition plate + filled amber diamond + white keyline: high salience without a rest
-  // pulse or permanent bloom. Context nodes remain smaller and never get the white keyline.
-  g.fillStyle = INK.plateHard;
-  g.beginPath(); g.arc(x, y, 18, 0, Math.PI * 2); g.fill();
+  // An acquisition BEZEL, not a lid. This used to fill an opaque plate and a solid amber diamond
+  // straight over the node, which meant the one sector the player cares most about was the one
+  // sector whose sigil they could not read — the goal hid the very thing it was pointing at. The
+  // ring now frames the sigil at a radius that clears it, and the diamond rides the top of that
+  // ring as a badge. Salience is unchanged (same amber, same white keyline, same footprint); it is
+  // simply arranged around the node instead of on top of it.
+  const ringR = 17;
+  g.strokeStyle = INK.plateHard;
+  g.lineWidth = 5;
+  g.beginPath(); g.arc(x, y, ringR, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = INK.amberHot;
+  g.lineWidth = 2;
+  g.beginPath(); g.arc(x, y, ringR, 0, Math.PI * 2); g.stroke();
+  // Acquisition ticks on the diagonals — reads as a locked reticle rather than a plain circle.
+  g.lineWidth = 2;
+  for (let i = 0; i < 4; i += 1) {
+    const a = Math.PI / 4 + i * (Math.PI / 2);
+    const ca = Math.cos(a), sa = Math.sin(a);
+    g.beginPath();
+    g.moveTo(x + ca * (ringR - 3.5), y + sa * (ringR - 3.5));
+    g.lineTo(x + ca * (ringR + 3.5), y + sa * (ringR + 3.5));
+    g.stroke();
+  }
+  // The badge: a filled amber diamond sitting on the crown of the bezel.
+  const by = y - ringR;
+  const d = 6.5;
   g.fillStyle = INK.amberHot;
   g.strokeStyle = 'rgba(237, 232, 216, 0.95)';
-  g.lineWidth = 2;
+  g.lineWidth = 1.6;
   g.beginPath();
-  g.moveTo(x, y - 11);
-  g.lineTo(x + 11, y);
-  g.lineTo(x, y + 11);
-  g.lineTo(x - 11, y);
+  g.moveTo(x, by - d);
+  g.lineTo(x + d, by);
+  g.lineTo(x, by + d);
+  g.lineTo(x - d, by);
   g.closePath();
   g.fill();
   g.stroke();
-  g.strokeStyle = INK.amberHot;
-  g.lineWidth = 2;
-  g.beginPath(); g.arc(x, y, 16, 0, Math.PI * 2); g.stroke();
   g.font = FONT_MONO(700, 10);
   g.textAlign = 'left';
   g.textBaseline = 'middle';
