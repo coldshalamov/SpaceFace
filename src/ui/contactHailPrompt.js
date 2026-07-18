@@ -148,9 +148,9 @@ function injectStyle() {
   const style = document.createElement('style');
   style.id = STYLE_ID;
   style.textContent = `
-  #sf-contact-hail { position:absolute; left:55px; top:20px; z-index:1061;
+  #sf-contact-hail { position:absolute; left:85px; top:20px; z-index:1061;
     font-family:"IBM Plex Sans","Segoe UI",sans-serif; contain:layout paint style; }
-  .sf-contact-hail__button { width:66px; height:32px; padding:0 8px; border-radius:2px;
+  .sf-contact-hail__button { width:66px; height:32px; padding:0 8px; border-radius:0 2px 2px 0;
     border:1px solid rgba(147,174,195,.34); background:linear-gradient(180deg,rgba(20,29,41,.88),rgba(8,13,21,.9)); color:#718298;
     font:700 10px "Saira SemiCondensed",sans-serif; letter-spacing:.1em; cursor:default; }
   .sf-contact-hail--ready .sf-contact-hail__button { color:#e7edf5; border-color:rgba(131,206,216,.62);
@@ -158,8 +158,8 @@ function injectStyle() {
   .sf-contact-hail__button:hover:not(:disabled), .sf-contact-hail__button:focus-visible,
   .sf-contact-hail__actions button:hover, .sf-contact-hail__actions button:focus-visible {
     outline:2px solid #39d0ff; outline-offset:1px; background:rgba(57,208,255,.12); }
-  .sf-contact-hail__button:disabled { opacity:.52; }
-  .sf-contact-hail__panel { position:absolute; left:-35px; top:38px; width:min(300px, calc(100vw - 28px));
+  .sf-contact-hail__button:disabled { opacity:.72; }
+  .sf-contact-hail__panel { position:absolute; left:-65px; top:38px; width:min(300px, calc(100vw - 28px));
     box-sizing:border-box; padding:9px 10px; background:linear-gradient(112deg,rgba(18,27,39,.96),rgba(7,12,20,.94)); color:#e7edf5;
     border:1px solid rgba(147,174,195,.32); border-top:2px solid #83ced8; border-radius:2px; box-shadow:0 14px 30px rgba(0,0,0,.32); }
   .sf-contact-hail__panel[hidden] { display:none !important; }
@@ -174,8 +174,8 @@ function injectStyle() {
     font:9px var(--mono, Consolas, monospace); letter-spacing:.08em; }
   body.ui-modal-open #sf-contact-hail { opacity:0; visibility:hidden; pointer-events:none; }
   @media (max-width:900px), (max-height:620px) {
-    #sf-contact-hail { left:55px; top:12px; }
-    .sf-contact-hail__panel { left:-35px; }
+    #sf-contact-hail { left:85px; top:12px; }
+    .sf-contact-hail__panel { left:-65px; }
   }
   @media (prefers-reduced-motion:reduce) {
     #sf-contact-hail, .sf-contact-hail__button, .sf-contact-hail__panel { transition:none; }

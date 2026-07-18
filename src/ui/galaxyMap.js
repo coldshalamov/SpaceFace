@@ -3509,6 +3509,7 @@ export const galaxyMapScreen = {
     if (galaxyMapScreen._visible) {
       galaxyMapScreen._draw();
       galaxyMapScreen._updateInspector();
+      galaxyMapScreen._syncScaleButtons();
     }
   },
 

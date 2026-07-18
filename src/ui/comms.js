@@ -238,7 +238,7 @@ export function createComms(ctx) {
   backlogBtn.id = 'sf-comm-backlog-btn';
   backlogBtn.title = 'Comms log (' + BINDINGS.comms.label + ')';
   backlogBtn.setAttribute('aria-label', 'Open comms log');
-  backlogBtn.textContent = '\u2261';  // trigram — "the channel"
+  backlogBtn.textContent = 'COMMS';
   document.getElementById('ui-root').appendChild(backlogBtn);
 
   const backlogView = document.createElement('div');
@@ -522,17 +522,17 @@ function injectCommsCss() {
   .sf-comm__body { line-height:1.38; color:var(--hud-paper,#e7edf5); }
   .sf-comm--personal .sf-comm__body, .sf-comm--late .sf-comm__body, .sf-comm--story .sf-comm__body { color:#eaf4ff; }
 
-  /* comms backlog button (the ≡) — dedicated top-left anchor, chromeless thin outline */
-  .sf-comm-backlog-btn { position:absolute; left:20px; top:20px; width:36px; height:32px; z-index:1060;
+  /* Joined top-left utility rail: explicit words beat another ambiguous glyph. */
+  .sf-comm-backlog-btn { position:absolute; left:20px; top:20px; width:66px; height:32px; z-index:1060;
     display:flex; align-items:center; justify-content:center;
     background:linear-gradient(180deg,rgba(20,29,41,.88),rgba(8,13,21,.9));
-    border:1px solid rgba(147,174,195,.34); border-radius:2px; color:#aebdce;
-    font-family:var(--hud-data,"IBM Plex Mono",monospace); font-size:16px; cursor:pointer; pointer-events:auto;
+    border:1px solid rgba(147,174,195,.34); border-radius:2px 0 0 2px; color:#aebdce;
+    font:700 10px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.09em; cursor:pointer; pointer-events:auto;
     transition:color .12s, border-color .12s; text-shadow:none; }
   .sf-comm-backlog-btn:hover { border-color:#83ced8; color:#e7edf5; }
-  .sf-comm-backlog-btn--pulse { color:var(--accent-3); border-color:var(--accent-3);
+  .sf-comm-backlog-btn--pulse { color:#e7edf5; border-color:#83ced8;
     animation:sf-commpulse 1.3s ease-in-out infinite alternate; }
-  @keyframes sf-commpulse { from { box-shadow:0 0 0 0 rgba(192,139,255,0); } to { box-shadow:0 0 10px 1px rgba(192,139,255,.5); } }
+  @keyframes sf-commpulse { from { box-shadow:inset 0 -2px rgba(131,206,216,.15); } to { box-shadow:inset 0 -2px #83ced8; } }
   .sf-comm-backlog { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.97);
     width:min(620px, 92vw); max-height:78vh; display:none; flex-direction:column; z-index:2400;
     background:rgba(4,9,18,.96); border:1px solid var(--accent); border-radius:9px; box-shadow:0 10px 50px rgba(0,0,0,.7);

@@ -129,36 +129,37 @@ try {
   };
 
   await wait((s) => s.sfReady, 15000, 'boot');
+  const click = async (label) => {
+    for (let a = 0; a < 8; a++) {
+      const r = await evalJson(`JSON.stringify((()=>{const b=[...document.querySelectorAll('button')].find(x=>(x.textContent||'').trim()===${JSON.stringify(label)});if(!b)return{ok:false};b.click();return{ok:true};})())`);
+      if (r && r.ok) return true;
+      await sleep(250);
+    }
+    return false;
+  };
+  const screenVisible = async (id) => {
+    const r = await evalJson(`JSON.stringify({ visible: !!(document.querySelector('[data-screen="${id}"]') && document.querySelector('[data-screen="${id}"]').classList.contains('sf-screen--visible')) })`);
+    return !!r.visible;
+  };
+  // Proven boot choreography (mirrors check-galaxy-map-search-pointer): cinematic → main menu →
+  // New Game → Launch → mode 'flight'. Existence checks alone race the boot and leave the map
+  // staring at an unspawned menu-mode world.
+  await evalJson(`(() => { if (document.querySelector('#cinematic-splash')) { document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true })); document.body.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true })); } })()`);
   let snap = await evalJson(snapExpr);
-  if (snap.mainMenuVisible) {
-    const click = async (label) => {
-      for (let a = 0; a < 8; a++) {
-        const r = await evalJson(`JSON.stringify((()=>{const b=[...document.querySelectorAll('button')].find(x=>(x.textContent||'').trim()===${JSON.stringify(label)});if(!b)return{ok:false};b.click();return{ok:true};})())`);
-        if (r && r.ok) return true;
-        await sleep(250);
-      }
-      return false;
-    };
-    await sleep(400);
+  if (snap.mainMenuVisible && !snap.flightPlayable) {
+    for (let i = 0; i < 40 && !(await screenVisible('mainMenu')); i += 1) await sleep(250);
     await click('New Game');
-
-    // Wait for New Game screen to load or launch
-    const ngExpr = `JSON.stringify({ visible: !!document.querySelector('[data-screen="newGame"]') })`;
-    for (let i = 0; i < 60; i++) {
-      const ng = JSON.parse((await cdp.send('Runtime.evaluate', { expression: ngExpr, returnByValue: true })).result?.value || '{}');
-      snap = await evalJson(snapExpr);
-      if (snap.flightPlayable || ng.visible) break;
-      await sleep(200);
-    }
-
-    snap = await evalJson(snapExpr);
-    if (!snap.flightPlayable) {
-      await click('Launch');
-      await wait((s) => s.flightPlayable, 45000, 'flight');
-    }
+    for (let i = 0; i < 40 && !(await screenVisible('newGame')); i += 1) await sleep(250);
+    await click('Launch');
+    await wait((s) => s.flightPlayable, 60000, 'flight');
   }
 
-  await sleep(2000); // Let entities spawn
+  // Wait for the live near-field to populate so the LOCAL capture is honest evidence.
+  for (let i = 0; i < 60; i += 1) {
+    const pop = await evalJson(`JSON.stringify({ n: (window.SF && SF.state && SF.state.entityList ? SF.state.entityList.length : 0) })`);
+    if ((pop.n || 0) > 5) break;
+    await sleep(300);
+  }
 
   // Dismiss intro modal if present
   await evalJson(`(() => {
