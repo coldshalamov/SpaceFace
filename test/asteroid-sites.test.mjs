@@ -12,6 +12,7 @@ import {
 import {
   connectivityMask, buildComponents, reconcileStores, podLossChance, fleetEstimate, laneCapacity,
 } from '../src/systems/siteLogistics.js';
+import { automation } from '../src/systems/automation.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
 import { SITE_MACHINE_BY_ID, SITE_BALANCE, CONTACT_YIELD } from '../src/data/sites.js';
 import { COMMODITIES } from '../src/data/commodities.js';
@@ -227,8 +228,9 @@ function makeHarness({ credits = true } = {}) {
       if (name === 'automation' && credits) {
         return {
           creditPassive(gross, source) {
-            passiveCalls.push({ gross, source });
-            return { credited: Math.round(gross * 0.5) }; // pretend the cap halves it
+            const credited = Math.round(gross * 0.5); // mirror automation's numeric return contract
+            passiveCalls.push({ gross, source, credited });
+            return credited;
           },
         };
       }
@@ -238,6 +240,25 @@ function makeHarness({ credits = true } = {}) {
   const sys = Object.create(asteroidSites);
   sys.init({ state, bus, helpers, registry });
   return { sys, state, bus, entities, helpers, spawned, passiveCalls };
+}
+
+function makeRealPassiveBridge(capBudget) {
+  const events = [];
+  const automationSys = Object.create(automation);
+  automationSys.state = {
+    automation: { meta: {} },
+    player: { stats: {} },
+  };
+  automationSys.bus = {
+    emit(name, payload) { events.push({ name, payload }); },
+  };
+  automationSys._capBudget = capBudget;
+
+  const siteSys = Object.create(asteroidSites);
+  siteSys._registry = {
+    get(name) { return name === 'automation' ? automationSys : null; },
+  };
+  return { siteSys, automationSys, events };
 }
 
 function addAsteroid(h, id = 42) {
@@ -408,10 +429,29 @@ test('§9 milestone: extract → refine → fabricate → launch → deliver thr
   if (delivered.length) {
     assert.ok(h.passiveCalls.length >= delivered.length, 'every delivery routed through creditPassive');
     assert.ok(h.passiveCalls.every((c) => c.source === 'site:courier'));
+    assert.equal(site.stats.creditedCr,
+      h.passiveCalls.reduce((sum, call) => sum + call.credited, 0),
+      'site receipts must record the numeric amount actually credited by automation');
     assert.ok(site.stats.creditedCr <= site.stats.grossCr, 'cap can only shrink gross');
   }
   // Courier visuals spawned for in-sector launches.
   assert.ok(h.spawned.some((e) => e.data && e.data.kind === 'site_courier'));
+});
+
+test('site receipts preserve an unsaturated automation credit settlement', () => {
+  const h = makeRealPassiveBridge(100);
+  assert.equal(h.siteSys._creditPassive(40), 40);
+  assert.equal(h.automationSys._capBudget, 60);
+  assert.deepEqual(h.events.find((event) => event.name === 'economy:grantCredits')?.payload,
+    { amount: 40, reason: 'automation:site:courier' });
+});
+
+test('site receipts preserve a saturated automation credit settlement', () => {
+  const h = makeRealPassiveBridge(25);
+  assert.equal(h.siteSys._creditPassive(100), 25);
+  assert.equal(h.automationSys._capBudget, 0);
+  assert.deepEqual(h.events.find((event) => event.name === 'economy:grantCredits')?.payload,
+    { amount: 25, reason: 'automation:site:courier' });
 });
 
 test('determinism: identical harness runs produce identical outcomes', () => {

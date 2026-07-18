@@ -1033,9 +1033,8 @@ export const asteroidSites = {
     if (!(gross > 0)) return 0;
     const automationSys = this._registry && this._registry.get ? this._registry.get('automation') : null;
     if (automationSys && typeof automationSys.creditPassive === 'function') {
-      const res = automationSys.creditPassive(gross, 'site:courier');
-      if (res && Number.isFinite(res.credited)) return res.credited;
-      return gross;
+      const credited = automationSys.creditPassive(gross, 'site:courier');
+      return Number.isFinite(credited) ? Math.max(0, credited) : 0;
     }
     // No automation system (minimal harnesses): drop the income rather than bypass the cap.
     return 0;
