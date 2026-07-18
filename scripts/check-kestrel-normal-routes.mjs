@@ -8,11 +8,12 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const PORT = 8526;
+const PORT = Number(process.argv[2] || process.env.PORT || 41732);
+assert.ok(Number.isInteger(PORT) && PORT > 0 && PORT <= 65_535, `invalid capture port: ${PORT}`);
 const BASE = `http://127.0.0.1:${PORT}/`;
 const OUT = resolve(ROOT, '.devshots/k0-kestrel/normal-routes.json');
-const MID_SHOT = resolve(ROOT, '.devshots/k0-kestrel/v4-player-route-mid.png');
-const CLOSE_SHOT = resolve(ROOT, '.devshots/k0-kestrel/v4-player-route-close.png');
+const MID_SHOT = resolve(ROOT, '.devshots/k0-kestrel/v5-player-route-mid.png');
+const CLOSE_SHOT = resolve(ROOT, '.devshots/k0-kestrel/v5-player-route-close.png');
 const SLOT = 'k0-old-save-route';
 
 const server = spawn(process.execPath, ['server.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
@@ -21,6 +22,7 @@ try {
   await waitForServer();
   browser = await chromium.launch({ channel: 'chrome', headless: true });
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+  await page.addInitScript(() => sessionStorage.setItem('sf.cinematicSeen', '1'));
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(String(error)));
 
@@ -28,10 +30,11 @@ try {
   assert.equal(new URL(page.url()).search, '', 'proof must use the canonical player route without query flags');
   await waitForSf(page);
   await page.evaluate(() => {
-    sessionStorage.setItem('sf.cinematicSeen', '1');
     window.SF.bus.emit('game:new', { name: 'K0 Normal Route', seed: 47 });
+    window.SF.bus.emit('ui:closeAll', {});
   });
   const newGame = await waitForPlayerWholeShip(page);
+  await page.waitForSelector('#cinematic-splash', { state: 'detached', timeout: 5_000 });
   assert.equal(newGame.isPlayer, true, 'new-game player must carry explicit player identity');
   await mkdir(dirname(OUT), { recursive: true });
   await page.screenshot({ path: MID_SHOT });
@@ -147,12 +150,12 @@ try {
   assert.deepEqual(pageErrors, [], `canonical route must remain free of page errors: ${pageErrors.join('; ')}`);
 
   const report = {
-    schema: 'spaceface.k0KestrelNormalRoutes.v2',
+    schema: 'spaceface.k0KestrelNormalRoutes.v3',
     route: BASE,
     assetId: 'SF_K0_KESTREL_BORROWED_TIME_V4',
     screenshots: [
-      '.devshots/k0-kestrel/v4-player-route-mid.png',
-      '.devshots/k0-kestrel/v4-player-route-close.png',
+      '.devshots/k0-kestrel/v5-player-route-mid.png',
+      '.devshots/k0-kestrel/v5-player-route-close.png',
     ],
     newGame,
     oldSaveFixture,

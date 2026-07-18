@@ -8,9 +8,10 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const PORT = 8524;
+const PORT = Number(process.argv[2] || process.env.PORT || 41731);
+assert.ok(Number.isInteger(PORT) && PORT > 0 && PORT <= 65_535, `invalid capture port: ${PORT}`);
 const BASE = `http://127.0.0.1:${PORT}/`;
-const OUT = resolve(ROOT, '.devshots/k0-kestrel');
+const OUT = resolve(ROOT, process.env.SF_KESTREL_CAPTURE_DIR || '.devshots/k0-kestrel');
 const shots = [
   { name: 'live-3q-close.png', distance: 33, height: 15, lod: 'lod0' },
   { name: 'live-3q-120px.png', distance: 120, height: 44, lod: 'lod1' },
@@ -24,11 +25,11 @@ try {
   await waitForServer();
   browser = await chromium.launch({ channel: 'chrome', headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+  await page.addInitScript(() => sessionStorage.setItem('sf.cinematicSeen', '1'));
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   assert.equal(new URL(page.url()).search, '', 'three-scale proof must use the canonical player route');
   await page.waitForFunction(() => window.SF && window.SF.bus && window.SF.state, null, { timeout: 20_000 });
   await page.evaluate(() => {
-    try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
     window.SF.bus.emit('game:new', { name: 'K0 Kestrel Live Capture', seed: 47 });
     window.SF.bus.emit('ui:closeAll', {});
   });

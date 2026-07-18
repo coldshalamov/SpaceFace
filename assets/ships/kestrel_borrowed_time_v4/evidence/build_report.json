@@ -6,8 +6,8 @@
   "sourceEntry": "SpaceFace_SF-K0_Borrowed-Time_Revamp/SF_K0_Borrowed_Time_Revamp.blend",
   "sourceBlendSha256": "C48BCD2CD7AA9B8DAF4AC253221ED259DB781A1BF0602EDB7286D916191D6502",
   "productionBlend": "blender/kestrel_borrowed_time_v4_production.blend",
-  "productionBlendBytes": 21461271,
-  "productionBlendSha256": "0663CA8BAA29C11BA3CF5C3C85523E5B444006997891FF695391344EA8257A37",
+  "productionBlendBytes": 43345036,
+  "productionBlendSha256": "CE830C5D6FA50902DC9A9C629C95378698168F24844C5938218E58793E1B1CD4",
   "removedObjects": [
     "CAM_beauty_front_34",
     "CAM_beauty_rear_34",
@@ -111,6 +111,1169 @@
       "action": "assigned existing V4 material; visible source geometry preserved"
     }
   ],
+  "surfaceRemasterId": "kestrel-role-surface-v5",
+  "surfaceRemaster": [
+    {
+      "image": "hull_basecolor.png",
+      "role": "hull",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.2841273844242096,
+        0.30580341815948486,
+        0.32288312911987305
+      ],
+      "std": [
+        0.018044838681817055,
+        0.016583923250436783,
+        0.01515517570078373
+      ],
+      "directionality": 1.001784968718256,
+      "metallicTarget": null,
+      "macroWaviness": 0.12,
+      "orangePeel": 0.16,
+      "scratchDensity": 18,
+      "chipDensity": 0.014,
+      "recessDust": 0.12
+    },
+    {
+      "image": "hull_orm.png",
+      "role": "hull",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9768794178962708,
+        0.4315521717071533,
+        0.03504248708486557
+      ],
+      "std": [
+        0.013840685598552227,
+        0.06578980386257172,
+        0.07609179615974426
+      ],
+      "directionality": 1.0041183847985524,
+      "metallicTarget": 0.025,
+      "macroWaviness": 0.12,
+      "orangePeel": 0.16,
+      "scratchDensity": 18,
+      "chipDensity": 0.014,
+      "recessDust": 0.12
+    },
+    {
+      "image": "hull_normal.png",
+      "role": "hull",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5000188946723938,
+        0.49999701976776123,
+        0.999963641166687
+      ],
+      "std": [
+        0.019880104809999466,
+        0.019806183874607086,
+        0.0010883889626711607
+      ],
+      "directionality": 0.8212395061212423,
+      "metallicTarget": null,
+      "macroWaviness": 0.12,
+      "orangePeel": 0.16,
+      "scratchDensity": 18,
+      "chipDensity": 0.014,
+      "recessDust": 0.12
+    },
+    {
+      "image": "mechanical_basecolor.png",
+      "role": "mechanical",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.2052394449710846,
+        0.2261461615562439,
+        0.24230708181858063
+      ],
+      "std": [
+        0.011727053672075272,
+        0.005855526775121689,
+        0.0020659598521888256
+      ],
+      "directionality": 1.3324073950087418,
+      "metallicTarget": null,
+      "macroWaviness": 0.05,
+      "orangePeel": 0.03,
+      "scratchDensity": 34,
+      "chipDensity": 0.0,
+      "recessDust": 0.16
+    },
+    {
+      "image": "mechanical_orm.png",
+      "role": "mechanical",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9768909215927124,
+        0.47301408648490906,
+        0.7795298099517822
+      ],
+      "std": [
+        0.013885537162423134,
+        0.07236822694540024,
+        0.01947595551609993
+      ],
+      "directionality": 1.3107671865876989,
+      "metallicTarget": 0.78,
+      "macroWaviness": 0.05,
+      "orangePeel": 0.03,
+      "scratchDensity": 34,
+      "chipDensity": 0.0,
+      "recessDust": 0.16
+    },
+    {
+      "image": "mechanical_normal.png",
+      "role": "mechanical",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5000090003013611,
+        0.49999764561653137,
+        0.9995052218437195
+      ],
+      "std": [
+        0.03896486759185791,
+        0.03805503621697426,
+        0.003833005204796791
+      ],
+      "directionality": 1.153595923701797,
+      "metallicTarget": null,
+      "macroWaviness": 0.05,
+      "orangePeel": 0.03,
+      "scratchDensity": 34,
+      "chipDensity": 0.0,
+      "recessDust": 0.16
+    },
+    {
+      "image": "armor_dark_basecolor.png",
+      "role": "armor_dark",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.25355637073516846,
+        0.2799678146839142,
+        0.3103981912136078
+      ],
+      "std": [
+        0.015459057874977589,
+        0.013608342967927456,
+        0.011973993852734566
+      ],
+      "directionality": 1.0034789442217302,
+      "metallicTarget": null,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.1,
+      "scratchDensity": 12,
+      "chipDensity": 0.008,
+      "recessDust": 0.1
+    },
+    {
+      "image": "armor_dark_orm.png",
+      "role": "armor_dark",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9770995378494263,
+        0.6817735433578491,
+        0.3038051724433899
+      ],
+      "std": [
+        0.013952639885246754,
+        0.06708407402038574,
+        0.037151314318180084
+      ],
+      "directionality": 1.0005051832218808,
+      "metallicTarget": 0.3,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.1,
+      "scratchDensity": 12,
+      "chipDensity": 0.008,
+      "recessDust": 0.1
+    },
+    {
+      "image": "armor_dark_normal.png",
+      "role": "armor_dark",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4999953806400299,
+        0.49999403953552246,
+        0.9999533295631409
+      ],
+      "std": [
+        0.021073924377560616,
+        0.0210487712174654,
+        0.001221245969645679
+      ],
+      "directionality": 0.7877624323769484,
+      "metallicTarget": null,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.1,
+      "scratchDensity": 12,
+      "chipDensity": 0.008,
+      "recessDust": 0.1
+    },
+    {
+      "image": "brushed_metal_basecolor.png",
+      "role": "brushed_metal",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.47179317474365234,
+        0.4914637506008148,
+        0.5002151727676392
+      ],
+      "std": [
+        0.008885800838470459,
+        0.006958113517612219,
+        0.005018523428589106
+      ],
+      "directionality": 1.3921225717045749,
+      "metallicTarget": null,
+      "macroWaviness": 0.035,
+      "orangePeel": 0.015,
+      "scratchDensity": 42,
+      "chipDensity": 0.0,
+      "recessDust": 0.06
+    },
+    {
+      "image": "brushed_metal_orm.png",
+      "role": "brushed_metal",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9769647121429443,
+        0.4105052053928375,
+        0.9207088351249695
+      ],
+      "std": [
+        0.01391970831900835,
+        0.06311073899269104,
+        0.022976307198405266
+      ],
+      "directionality": 1.3084714870371734,
+      "metallicTarget": 0.92,
+      "macroWaviness": 0.035,
+      "orangePeel": 0.015,
+      "scratchDensity": 42,
+      "chipDensity": 0.0,
+      "recessDust": 0.06
+    },
+    {
+      "image": "brushed_metal_normal.png",
+      "role": "brushed_metal",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4999990165233612,
+        0.4999954104423523,
+        0.9996268153190613
+      ],
+      "std": [
+        0.0362720713019371,
+        0.035494063049554825,
+        0.003370005637407303
+      ],
+      "directionality": 1.1532105138321147,
+      "metallicTarget": null,
+      "macroWaviness": 0.035,
+      "orangePeel": 0.015,
+      "scratchDensity": 42,
+      "chipDensity": 0.0,
+      "recessDust": 0.06
+    },
+    {
+      "image": "frontier_cyan_basecolor.png",
+      "role": "frontier_cyan",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.14441557228565216,
+        0.43687698245048523,
+        0.47068485617637634
+      ],
+      "std": [
+        0.021985428407788277,
+        0.006102715153247118,
+        0.005144031718373299
+      ],
+      "directionality": 0.9999217965859499,
+      "metallicTarget": null,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.13,
+      "scratchDensity": 10,
+      "chipDensity": 0.006,
+      "recessDust": 0.08
+    },
+    {
+      "image": "frontier_cyan_orm.png",
+      "role": "frontier_cyan",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9771232008934021,
+        0.5013486742973328,
+        0.03975324705243111
+      ],
+      "std": [
+        0.013881774619221687,
+        0.06134523078799248,
+        0.051525987684726715
+      ],
+      "directionality": 1.001203728664581,
+      "metallicTarget": 0.035,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.13,
+      "scratchDensity": 10,
+      "chipDensity": 0.006,
+      "recessDust": 0.08
+    },
+    {
+      "image": "frontier_cyan_normal.png",
+      "role": "frontier_cyan",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5000019669532776,
+        0.4999995231628418,
+        0.9999706149101257
+      ],
+      "std": [
+        0.018865924328565598,
+        0.018864717334508896,
+        0.000985975144430995
+      ],
+      "directionality": 0.8045643033532777,
+      "metallicTarget": null,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.13,
+      "scratchDensity": 10,
+      "chipDensity": 0.006,
+      "recessDust": 0.08
+    },
+    {
+      "image": "warning_orange_basecolor.png",
+      "role": "warning_orange",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.6004205942153931,
+        0.3137494623661041,
+        0.1150328516960144
+      ],
+      "std": [
+        0.010646611452102661,
+        0.012167771346867085,
+        0.027142668142914772
+      ],
+      "directionality": 0.9963119404973511,
+      "metallicTarget": null,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.14,
+      "scratchDensity": 14,
+      "chipDensity": 0.009,
+      "recessDust": 0.1
+    },
+    {
+      "image": "warning_orange_orm.png",
+      "role": "warning_orange",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9771553874015808,
+        0.5417270064353943,
+        0.03593498840928078
+      ],
+      "std": [
+        0.013931366614997387,
+        0.06392195075750351,
+        0.057952605187892914
+      ],
+      "directionality": 1.0014092862334618,
+      "metallicTarget": 0.03,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.14,
+      "scratchDensity": 14,
+      "chipDensity": 0.009,
+      "recessDust": 0.1
+    },
+    {
+      "image": "warning_orange_normal.png",
+      "role": "warning_orange",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4999971091747284,
+        0.5000073909759521,
+        0.9999606013298035
+      ],
+      "std": [
+        0.020276468247175217,
+        0.020259803161025047,
+        0.0011336898896843195
+      ],
+      "directionality": 0.8085753450254153,
+      "metallicTarget": null,
+      "macroWaviness": 0.08,
+      "orangePeel": 0.14,
+      "scratchDensity": 14,
+      "chipDensity": 0.009,
+      "recessDust": 0.1
+    },
+    {
+      "image": "repair_green_basecolor.png",
+      "role": "repair_green",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.20779773592948914,
+        0.35754814743995667,
+        0.2535783350467682
+      ],
+      "std": [
+        0.024767788127064705,
+        0.01311054639518261,
+        0.019623804837465286
+      ],
+      "directionality": 1.0020675599838533,
+      "metallicTarget": null,
+      "macroWaviness": 0.15,
+      "orangePeel": 0.19,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.2
+    },
+    {
+      "image": "repair_green_orm.png",
+      "role": "repair_green",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9770467281341553,
+        0.6735849976539612,
+        0.033671677112579346
+      ],
+      "std": [
+        0.013897736556828022,
+        0.069339819252491,
+        0.07066125422716141
+      ],
+      "directionality": 1.0002540037041758,
+      "metallicTarget": 0.025,
+      "macroWaviness": 0.15,
+      "orangePeel": 0.19,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.2
+    },
+    {
+      "image": "repair_green_normal.png",
+      "role": "repair_green",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5000007152557373,
+        0.5000087022781372,
+        0.9999087452888489
+      ],
+      "std": [
+        0.024936990812420845,
+        0.02491568960249424,
+        0.0016934226732701063
+      ],
+      "directionality": 0.8332508441842338,
+      "metallicTarget": null,
+      "macroWaviness": 0.15,
+      "orangePeel": 0.19,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.2
+    },
+    {
+      "image": "rubber_basecolor.png",
+      "role": "rubber",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.12120655179023743,
+        0.14249330759048462,
+        0.1514682024717331
+      ],
+      "std": [
+        0.021883955225348473,
+        0.006901174783706665,
+        0.00581787945702672
+      ],
+      "directionality": 1.0037930357173752,
+      "metallicTarget": null,
+      "macroWaviness": 0.04,
+      "orangePeel": 0.25,
+      "scratchDensity": 6,
+      "chipDensity": 0.0,
+      "recessDust": 0.08
+    },
+    {
+      "image": "rubber_orm.png",
+      "role": "rubber",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9770095348358154,
+        0.8417215943336487,
+        0.0
+      ],
+      "std": [
+        0.013907077722251415,
+        0.04950854554772377,
+        0.0
+      ],
+      "directionality": 1.0022769718370783,
+      "metallicTarget": 0.0,
+      "macroWaviness": 0.04,
+      "orangePeel": 0.25,
+      "scratchDensity": 6,
+      "chipDensity": 0.0,
+      "recessDust": 0.08
+    },
+    {
+      "image": "rubber_normal.png",
+      "role": "rubber",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.499994158744812,
+        0.5000043511390686,
+        0.9993478655815125
+      ],
+      "std": [
+        0.04123474285006523,
+        0.041178591549396515,
+        0.004327530041337013
+      ],
+      "directionality": 0.8543204288922285,
+      "metallicTarget": null,
+      "macroWaviness": 0.04,
+      "orangePeel": 0.25,
+      "scratchDensity": 6,
+      "chipDensity": 0.0,
+      "recessDust": 0.08
+    },
+    {
+      "image": "engine_ceramic_basecolor.png",
+      "role": "engine_ceramic",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.2595512568950653,
+        0.23656469583511353,
+        0.21839022636413574
+      ],
+      "std": [
+        0.007831227965652943,
+        0.00471245963126421,
+        0.0015473118983209133
+      ],
+      "directionality": 0.9930853434182328,
+      "metallicTarget": null,
+      "macroWaviness": 0.065,
+      "orangePeel": 0.11,
+      "scratchDensity": 8,
+      "chipDensity": 0.0,
+      "recessDust": 0.14
+    },
+    {
+      "image": "engine_ceramic_orm.png",
+      "role": "engine_ceramic",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9767000675201416,
+        0.7434656023979187,
+        0.019965076819062233
+      ],
+      "std": [
+        0.013858706690371037,
+        0.051196955144405365,
+        0.0005005559069104493
+      ],
+      "directionality": 0.9991923299900995,
+      "metallicTarget": 0.02,
+      "macroWaviness": 0.065,
+      "orangePeel": 0.11,
+      "scratchDensity": 8,
+      "chipDensity": 0.0,
+      "recessDust": 0.14
+    },
+    {
+      "image": "engine_ceramic_normal.png",
+      "role": "engine_ceramic",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.49999523162841797,
+        0.5000082850456238,
+        0.9999227523803711
+      ],
+      "std": [
+        0.024171454831957817,
+        0.02413424849510193,
+        0.001591795589774847
+      ],
+      "directionality": 0.7913591785428321,
+      "metallicTarget": null,
+      "macroWaviness": 0.065,
+      "orangePeel": 0.11,
+      "scratchDensity": 8,
+      "chipDensity": 0.0,
+      "recessDust": 0.14
+    },
+    {
+      "image": "radiator_basecolor.png",
+      "role": "radiator",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.17492377758026123,
+        0.19260446727275848,
+        0.20475226640701294
+      ],
+      "std": [
+        0.012041239999234676,
+        0.0048370398581027985,
+        0.002822209382429719
+      ],
+      "directionality": 1.3334079685397677,
+      "metallicTarget": null,
+      "macroWaviness": 0.035,
+      "orangePeel": 0.02,
+      "scratchDensity": 26,
+      "chipDensity": 0.0,
+      "recessDust": 0.11
+    },
+    {
+      "image": "radiator_orm.png",
+      "role": "radiator",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.9772685170173645,
+        0.5620992183685303,
+        0.6807308793067932
+      ],
+      "std": [
+        0.013959243893623352,
+        0.06142089143395424,
+        0.016990728676319122
+      ],
+      "directionality": 1.311143539040441,
+      "metallicTarget": 0.68,
+      "macroWaviness": 0.035,
+      "orangePeel": 0.02,
+      "scratchDensity": 26,
+      "chipDensity": 0.0,
+      "recessDust": 0.11
+    },
+    {
+      "image": "radiator_normal.png",
+      "role": "radiator",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4999912679195404,
+        0.49999338388442993,
+        0.9997689127922058
+      ],
+      "std": [
+        0.032052796334028244,
+        0.031214522197842598,
+        0.0026580272242426872
+      ],
+      "directionality": 1.15600908438501,
+      "metallicTarget": null,
+      "macroWaviness": 0.035,
+      "orangePeel": 0.02,
+      "scratchDensity": 26,
+      "chipDensity": 0.0,
+      "recessDust": 0.11
+    }
+  ],
+  "goldenPassId": "kestrel-golden-asset-v5",
+  "goldenAsset": {
+    "schema": "spaceface.kestrelGoldenAsset.v1",
+    "goldenPassId": "kestrel-golden-asset-v5",
+    "surfaceRemasterId": "kestrel-role-surface-v5",
+    "objectsAdded": 54,
+    "lod0OnlyMicroObjects": 12,
+    "lod0AndLod1MesoObjects": 38,
+    "allLodMacroObjects": 4,
+    "materialsAdded": [
+      "Material_EngineCeramic",
+      "Material_Radiator"
+    ],
+    "pbrExtensions": {
+      "coating": {
+        "Material_Hull": {
+          "weight": 0.2,
+          "roughness": 0.34
+        },
+        "Material_ArmorDark": {
+          "weight": 0.07,
+          "roughness": 0.46
+        },
+        "Material_Accent_FrontierCyan": {
+          "weight": 0.24,
+          "roughness": 0.3
+        },
+        "Material_Accent_WarningOrange": {
+          "weight": 0.18,
+          "roughness": 0.38
+        },
+        "Material_RepairGreen": {
+          "weight": 0.055,
+          "roughness": 0.58
+        },
+        "Material_EngineCeramic": {
+          "weight": 0.035,
+          "roughness": 0.62
+        }
+      },
+      "anisotropy": {
+        "Material_Mechanical": 0.22,
+        "Material_BrushedMetal": 0.52,
+        "Material_Radiator": 0.7
+      },
+      "glass": {
+        "ior": 1.47,
+        "transmission": 0.7,
+        "coatWeight": 0.34,
+        "roughness": 0.14,
+        "wholeSurfaceEmission": 0.0
+      }
+    },
+    "reassigned": [
+      {
+        "object": "Engine_HeatVane_-1_0",
+        "from": [
+          "Material_ArmorDark"
+        ],
+        "to": "Material_Radiator",
+        "role": "radiator"
+      },
+      {
+        "object": "Engine_HeatVane_-1_1",
+        "from": [
+          "Material_ArmorDark"
+        ],
+        "to": "Material_Radiator",
+        "role": "radiator"
+      },
+      {
+        "object": "Engine_HeatVane_-1_2",
+        "from": [
+          "Material_ArmorDark"
+        ],
+        "to": "Material_Radiator",
+        "role": "radiator"
+      },
+      {
+        "object": "Engine_HeatVane_-1_3",
+        "from": [
+          "Material_ArmorDark"
+        ],
+        "to": "Material_Radiator",
+        "role": "radiator"
+      },
+      {
+        "object": "Engine_HeatVane_1_0",
+        "from": [
+          "Material_ArmorDark"
+        ],
+        "to": "Material_Radiator",
+        "role": "radiator"
+      },
+      {
+        "object": "Engine_HeatVane_1_1",
+        "from": [
+          "Material_ArmorDark"
+        ],
+        "to": "Material_Radiator",
+        "role": "radiator"
+      },
+      {
+        "object": "Engine_HeatVane_1_2",
+        "from": [
+          "Material_ArmorDark"
+        ],
+        "to": "Material_Radiator",
+        "role": "radiator"
+      },
+      {
+        "object": "Engine_HeatVane_1_3",
+        "from": [
+          "Material_ArmorDark"
+        ],
+        "to": "Material_Radiator",
+        "role": "radiator"
+      },
+      {
+        "object": "Engine_NozzlePetal_00",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_01",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_02",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_03",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_04",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_05",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_06",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_07",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_08",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_09",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_10",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_11",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_12",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_13",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_14",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Engine_NozzlePetal_15",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_EngineCeramic",
+        "role": "engine ceramic"
+      },
+      {
+        "object": "Radiator_Fin_Array_Source",
+        "from": [
+          "Material_BrushedMetal"
+        ],
+        "to": "Material_Radiator",
+        "role": "radiator"
+      }
+    ],
+    "objects": [
+      "V5_ShoulderOverlay_Port",
+      "V5_ShoulderOverlay_Starboard",
+      "V5_EngineHeatShield_Port",
+      "V5_EngineHeatShield_Starboard",
+      "V5_DorsalHatch_Port",
+      "V5_DorsalHatch_Starboard",
+      "V5_ShoulderRoot_Port",
+      "V5_ShoulderRoot_Starboard",
+      "V5_DorsalHatchRecess_Port",
+      "V5_DorsalHatchRecess_Starboard",
+      "V5_ServiceStripe_Port",
+      "V5_ServiceStripe_Starboard",
+      "V5_RadiatorFace_Port",
+      "V5_RadiatorFace_Starboard",
+      "V5_CanopyRail_Port",
+      "V5_CanopyRail_Starboard",
+      "V5_UtilityPodTopCap",
+      "V5_UtilityPodClamp_Aft",
+      "V5_UtilityPodClamp_Fore",
+      "V5_ShoulderInlay_Port",
+      "V5_ShoulderInlay_Starboard",
+      "V5_ShoulderBridge_Aft_Port",
+      "V5_ShoulderBridge_Aft_Starboard",
+      "V5_ShoulderBridge_Fore_Port",
+      "V5_ShoulderBridge_Fore_Starboard",
+      "V5_ThermalIntakeRecess_Port",
+      "V5_ThermalIntakeRecess_Starboard",
+      "V5_ThermalIntakeFace_Port",
+      "V5_ThermalIntakeFace_Starboard",
+      "V5_NoseServiceKeel",
+      "V5_DriveVent_Port_00",
+      "V5_DriveVent_Port_01",
+      "V5_DriveVent_Port_02",
+      "V5_DriveVent_Port_03",
+      "V5_DriveVent_Port_04",
+      "V5_DriveVent_Starboard_00",
+      "V5_DriveVent_Starboard_01",
+      "V5_DriveVent_Starboard_02",
+      "V5_DriveVent_Starboard_03",
+      "V5_DriveVent_Starboard_04",
+      "V5_DriveManifold_Port",
+      "V5_DriveManifold_Starboard",
+      "V5_ServiceFastener_00",
+      "V5_ServiceFastener_01",
+      "V5_ServiceFastener_02",
+      "V5_ServiceFastener_03",
+      "V5_ServiceFastener_04",
+      "V5_ServiceFastener_05",
+      "V5_ServiceFastener_06",
+      "V5_ServiceFastener_07",
+      "V5_ServiceFastener_08",
+      "V5_ServiceFastener_09",
+      "V5_ServiceFastener_10",
+      "V5_ServiceFastener_11"
+    ]
+  },
+  "socketContract": [
+    {
+      "name": "SOCKET_Weapon_Front",
+      "position": [
+        12.62,
+        1.43,
+        0.0
+      ],
+      "role": "weapon_muzzle",
+      "forward": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Mining_Front",
+      "position": [
+        12.26,
+        -1.08,
+        0.0
+      ],
+      "role": "mining_emitter",
+      "forward": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Engine_Main",
+      "position": [
+        -13.85,
+        0.0,
+        0.0
+      ],
+      "role": "engine_exhaust",
+      "forward": [
+        -1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Trail_Main",
+      "position": [
+        -14.05,
+        0.0,
+        0.0
+      ],
+      "role": "engine_trail",
+      "forward": [
+        -1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Utility_Dorsal",
+      "position": [
+        -1.45,
+        1.95,
+        -3.8
+      ],
+      "role": "utility_dorsal",
+      "forward": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Cargo_Ventral",
+      "position": [
+        -0.8,
+        -2.1,
+        0.0
+      ],
+      "role": "cargo_ventral",
+      "forward": [
+        0.0,
+        -1.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Camera_Focus",
+      "position": [
+        0.0,
+        0.35,
+        0.0
+      ],
+      "role": "camera_focus",
+      "forward": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_RCS_Port",
+      "position": [
+        1.6,
+        0.45,
+        -6.6
+      ],
+      "role": "rcs_port",
+      "forward": [
+        0.0,
+        0.0,
+        -1.0
+      ]
+    },
+    {
+      "name": "SOCKET_RCS_Starboard",
+      "position": [
+        1.6,
+        0.45,
+        6.6
+      ],
+      "role": "rcs_starboard",
+      "forward": [
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ],
   "preservedGeometryPolicy": "source macro/meso retained; only technique-card exclusions removed",
   "visibleBoundsBlenderXYZ": {
     "min": [
@@ -137,39 +1300,59 @@
   "lods": [
     {
       "lod": 0,
-      "triangles": 19906,
-      "draws": 15,
+      "triangles": 27318,
+      "draws": 17,
       "animatedRoleException": 0,
       "collisionTriangles": 22,
+      "tangentRepairs": [
+        {
+          "object": "LOD0_static_BrushedMetal",
+          "removedDegenerateTriangles": 60,
+          "patchedTriangles": 1,
+          "badBefore": 1,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false
+        },
+        {
+          "object": "LOD0_static_Glass_Canopy",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 1,
+          "badBefore": 1,
+          "badAfter": 0,
+          "tangentAttributeOmitted": true
+        }
+      ],
       "path": "source/wholeships/kestrel_borrowed_time_v4_lod0.glb",
-      "bytes": 22895964,
-      "sha256": "2EAC62E9796707D910938A474A73AD86F0DC51606797C0D0BBBB0A5814888B9D"
+      "bytes": 44914320,
+      "sha256": "2647FCBF0A8910F23C42FA25821C8977ABD19CAA5E5BF3315CEA87B6C5E5A664"
     },
     {
       "lod": 1,
-      "triangles": 13962,
+      "triangles": 17126,
       "draws": 12,
       "animatedRoleException": 0,
       "collisionTriangles": 22,
+      "tangentRepairs": [],
       "path": "source/wholeships/kestrel_borrowed_time_v4_lod1.glb",
-      "bytes": 22238900,
-      "sha256": "33BE2EBB0D5274DF4D28CD324926C99F4E8EE6740C6D0F499266B6FCC7BCE3E0"
+      "bytes": 34890684,
+      "sha256": "1826CEEFC55C0264846462BCB5DCBADE065088DC921FBFA605563E4A5925BC6F"
     },
     {
       "lod": 2,
-      "triangles": 12584,
+      "triangles": 13288,
       "draws": 8,
       "animatedRoleException": 0,
       "collisionTriangles": 22,
+      "tangentRepairs": [],
       "path": "source/wholeships/kestrel_borrowed_time_v4_lod2.glb",
-      "bytes": 18766040,
-      "sha256": "1F19E69C16FB4FA15E1BC731A80C615D669337A10B0BD6ECD42A9F067BE48241"
+      "bytes": 30742452,
+      "sha256": "4AC9AEA52AAAA1E0DAFA760B6F7ACEBEE300FAAE55F5C35556F1876F8B1FB555"
     }
   ],
   "outputs": [
-    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\kestrel_borrowed_time_v4\\source\\wholeships\\kestrel_borrowed_time_v4_lod0.glb",
-    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\kestrel_borrowed_time_v4\\source\\wholeships\\kestrel_borrowed_time_v4_lod1.glb",
-    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\kestrel_borrowed_time_v4\\source\\wholeships\\kestrel_borrowed_time_v4_lod2.glb"
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\source\\wholeships\\kestrel_borrowed_time_v4_lod0.glb",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\source\\wholeships\\kestrel_borrowed_time_v4_lod1.glb",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace-graphics-overhaul\\assets\\ships\\kestrel_borrowed_time_v4\\source\\wholeships\\kestrel_borrowed_time_v4_lod2.glb"
   ],
   "candidateOnly": true,
   "livePromotion": false
