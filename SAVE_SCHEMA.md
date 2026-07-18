@@ -23,6 +23,8 @@ Current save version: `11`
 - `crafting`
 - `sectorSim`
 - `claims`
+- `sites`
+- `formations`
 - `aceMemory`
 - `lossLedger`
 - `factionPresence`
@@ -159,6 +161,7 @@ Current save version: `11`
 | `$.flight.modeChangedTick` | number | 0 |
 | `$.flight.modeReason` | string | save |
 | `$.flight.previousMode` | string | manual |
+| `$.formations` | object | {} |
 | `$.livingPoiBehaviors` | object | {} |
 | `$.lossLedger` | object | {} |
 | `$.meta` | object | {} |
@@ -321,5 +324,6 @@ Current save version: `11`
 | `$.settings.video.shadows` | boolean | false |
 | `$.settings.video.vsync` | boolean | true |
 | `$.signalInvestigation` | object | {} |
+| `$.sites` | object | {} |
 | `$.v2Flavor` | object | {} |
 | `$.world` | object | {} |
