@@ -144,10 +144,18 @@ function nz(n) {
   return n === 0 ? 0 : n;
 }
 
-/** Round to 4dp and normalise -0. Guarantees byte-stable, finite output. */
+/**
+ * Round to 4dp and normalise -0. Guarantees byte-stable, finite output.
+ *
+ * The finiteness check must be re-applied AFTER the scale-round-unscale, not only before it:
+ * `n * 1e4` overflows to Infinity for finite inputs above ~1.8e304, so an input-only guard would
+ * return Infinity from a function documented to return finite values. Coordinates that large are
+ * degenerate rather than meaningful, so they fail closed to 0 like any other rejected value.
+ */
 function r4(n) {
   if (!Number.isFinite(n)) return 0;
-  return nz(Math.round(n * 1e4) / 1e4);
+  const v = nz(Math.round(n * 1e4) / 1e4);
+  return Number.isFinite(v) ? v : 0;
 }
 
 function clamp01(n) {

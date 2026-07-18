@@ -1177,14 +1177,25 @@ async function closeAnyOpenScreen(page, act) {
 }
 
 async function openStationService(page, act, timeoutMs) {
-  // Public station surface: click a visible service command in the docked station UI.
-  const candidates = ['Market', 'Trade', 'Services', 'Refuel', 'Repair', 'Outfitting', 'Shipyard'];
-  for (const label of candidates) {
-    const button = page.getByRole('button', { name: new RegExp(`^${label}$`, 'i') }).first();
-    const visible = await button.isVisible().catch(() => false);
+  // Public station surface. The command dock renders its destinations as a real ARIA tablist
+  // (src/ui/station/dock.js: `<button role="tab" data-nav="...">`), so an explicit role="tab"
+  // shadows the implicit button role — getByRole('button') can NOT reach them. Drive the tablist
+  // first, then fall back to the plain action buttons (Repair/Refuel/Resupply).
+  const tabs = ['market', 'shipworks', 'industry', 'missions', 'factions', 'bar'];
+  const actions = ['Repair', 'Refuel', 'Resupply', 'Outfitting', 'Shipyard'];
+  const candidates = [
+    ...tabs.map((id) => ({ label: id, locator: page.locator(`.sx-dock [data-nav="${id}"]`).first() })),
+    ...tabs.map((id) => ({ label: id, locator: page.getByRole('tab', { name: new RegExp(id, 'i') }).first() })),
+    ...actions.map((label) => ({
+      label,
+      locator: page.getByRole('button', { name: new RegExp(`^${label}$`, 'i') }).first(),
+    })),
+  ];
+  for (const { label, locator } of candidates) {
+    const visible = await locator.isVisible().catch(() => false);
     if (!visible) continue;
-    act('click', label, 'station');
-    await button.click({ timeout: Math.min(timeoutMs, 10_000) });
+    act('click', label, 'station-dock');
+    await locator.click({ timeout: Math.min(timeoutMs, 10_000) });
     await page.waitForTimeout(600);
     const settled = await page.evaluate(() => ({
       screens: Array.from(document.querySelectorAll('[data-screen]'))

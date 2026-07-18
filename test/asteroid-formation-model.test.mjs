@@ -363,6 +363,24 @@ test('OVERLAPPING bodies at identical positions do not produce NaN', () => {
   for (const c of f.approachCorridors) assert.equal(c.clearance, 1);
 });
 
+test('DEGENERATE input: coords near the float ceiling stay finite (r4 overflow regression)', () => {
+  // r4() scales by 1e4 before rounding, so a finite input above ~1.8e304 overflows to Infinity
+  // during the round trip. Guarding only the INPUT let that escape a function documented to
+  // return finite values. The 1e12 fixture below is far too small to reach it.
+  const field = [
+    rock('h1', 1e305, -1e305, 1e305),
+    rock('h2', 0, 0, 0),
+    rock('h3', Number.MAX_VALUE, Number.MAX_VALUE, -Number.MAX_VALUE),
+  ];
+  const m = buildAsteroidFormations(field, { seed: 91 });
+  assertAllFinite(m);
+  for (const f of m.formations) {
+    for (const v of [f.centroid.x, f.centroid.z, f.spanRadius]) {
+      assert.ok(Number.isFinite(v), `expected finite, got ${v}`);
+    }
+  }
+});
+
 test('DEGENERATE input: zero radius, zero coords, and huge coords stay finite', () => {
   const field = [
     rock('g1', 0, 0, 0),
