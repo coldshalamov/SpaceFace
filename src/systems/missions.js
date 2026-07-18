@@ -810,6 +810,7 @@ export const missions = {
       destStationId, destSectorId, distance,
       params,
       title: this._titleFor(typeId, params, dest),
+      brief: this._briefFor(typeId, params, dest, info),
       expiresAtEpoch: epoch + 1,
       storyTag: null,
     };
@@ -843,6 +844,7 @@ export const missions = {
       distance,
       params: { cmdtyId, massU, basePrice, expectedPayout, fValue: 1, taskTime },
       title: `Tether-haul ${massU}u ${commodity ? commodity.name : 'Ore'} to ${dest.name}`,
+      brief: `${massU}u on the tether to ${dest.name}. Paid on mass landed, not mass hooked.`,
       expiresAtEpoch: epoch + 1,
       storyTag: null,
       hotTip: false,
@@ -986,6 +988,55 @@ export const missions = {
       case 'passenger_transport': return `Transport a passenger to ${destName}`;
       default: return `Contract at ${destName}`;
     }
+  },
+
+  /**
+   * One dry line of leg prose stamped onto the offer as `brief`. The title says what the contract is
+   * called; the brief says what the leg is actually for. Composed from the same commodity/destination
+   * material rather than hand-authored, so generated work reads like authored work. Working-space
+   * voice, clamped to 90 chars. Read by src/ui/galaxyMap.js (`missionChartBrief`) and the mission log.
+   */
+  _briefFor(typeId, p, dest, origin) {
+    const destName = dest && dest.name ? dest.name : 'the destination';
+    const fromName = origin && origin.name ? origin.name : 'here';
+    const cName = (id) => { const c = CMDTY_BY_ID.get(id); return c ? c.name : 'cargo'; };
+    const clamp90 = (line) => (line.length <= 90 ? line : `${line.slice(0, 87).trimEnd()}...`);
+    let line;
+    switch (typeId) {
+      case 'cargo_delivery':
+        line = `${p.qty}u ${cName(p.cmdtyId)} out of ${fromName}. ${destName} signs for it or nobody eats.`;
+        break;
+      case 'bulk_trade':
+        line = `Move ${p.qty}u ${cName(p.cmdtyId)} across ${destName}. Their books, your margin.`;
+        break;
+      case 'mining_quota':
+        line = `${p.qty}u ${cName(p.cmdtyId)} out of the rock. Nobody asks which rock.`;
+        break;
+      case 'salvage_retrieval':
+        line = `${p.qty}u ${cName(p.cmdtyId)} off a dead hull. ${destName} wants it back on the books.`;
+        break;
+      case 'smuggling_run':
+        line = `${p.qty}u ${cName(p.cmdtyId)} into ${destName}. Customs is the whole job.`;
+        break;
+      case 'bounty_hunt':
+        line = `Someone working near ${destName} is worth more dead. Paperwork is already filed.`;
+        break;
+      case 'escort':
+        line = `Convoy runs to ${destName}. Paid on arrivals, not on kills.`;
+        break;
+      case 'patrol_clear':
+        line = `${p.clearCount} hostiles sitting on the lanes near ${destName}. Clear the lane.`;
+        break;
+      case 'recon_scan':
+        line = `${p.scanTargets} site(s) near ${destName} need a real reading, not a rumor.`;
+        break;
+      case 'passenger_transport':
+        line = `One passenger to ${destName}. Quiet trip, quiet fee.`;
+        break;
+      default:
+        line = `Work out of ${fromName}. Terms are on the contract.`;
+    }
+    return clamp90(line);
   },
 
   // =========================================================================================
@@ -1253,6 +1304,8 @@ export const missions = {
       storyStake: offer.storyStake || null,
       storyOperation: offer.storyOperation || null,
       title: offer.title,
+      // Chart brief: one dry line of leg prose the star chart prints under the mission title.
+      brief: offer.brief || null,
       summary: offer.summary || null,
       description: offer.description || null,
       authorization: offer.authorization || null,
