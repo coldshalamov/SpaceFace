@@ -1,27 +1,50 @@
 // A10 — "Power and material lanes remain topology-driven networks with explicit ownership and
-// storage semantics." CHARACTERIZATION, not red-first: the gap analysis found no defect on the
-// primary path, and every assertion below passes against unmodified HEAD. These tests pin the
-// eight invariants A10's outcome statement asserts but which nothing exercised today.
+// storage semantics." Primary-path invariants plus the design rulings (ownership-scoped funding,
+// refuse-then-confirm spills, exact over-capacity diagnostics, numeric-safety ceiling).
 //
 // The required proofs, mapped to tests:
-//   SPLIT            → §1 pure + §2 system
-//   MERGE            → §3 pure (the summing branch at siteLogistics.js:118-121) + §4 system
-//   REBUILD          → §5
-//   DUPLICATE INIT   → §7
-//   SAVE ORDER       → §8
-//   NO ITEM-SIM DRIFT→ §9
-// plus TIE DETERMINISM (§6), KEY CONTAINMENT (§10), and two characterizations of
-// correct-but-unspecified behaviour (§11 merge over-capacity, §12 site-wide material pool).
+//   SPLIT             → §1 pure + §2 system
+//   MERGE             → §3 pure + §4 system
+//   REBUILD           → §5 (refuse-then-confirm spill flow)
+//   TIE DETERMINISM   → §6
+//   DUPLICATE INIT    → §7
+//   SAVE ORDER        → §8
+//   NO ITEM-SIM DRIFT → §9 (exact integer ledger)
+//   KEY CONTAINMENT   → §10
+//   MERGE OVER-CAP    → §11 (lossless, unclamped; hard-coded capacity literals)
+//   OWNERSHIP (−)     → §12 disconnected install cell → ship cargo only
+//   OWNERSHIP (+)     → §13 adjacent/bridged install cell → owning store first
+//   INTAKE BLOCK      → §14 over-capacity blocks intake; exact overCapacity; drain works
+//   EXTREME MERGE     → §15 STORE_NUMERIC_CEILING saturation
+//   PREFLIGHT API     → §16 previewOverlayRemoval non-mutating + matches confirm
 //
 // Determinism rules (test/AGENTS.md): no DOM, no wall clock, no Math.random — seeded state only.
+// Catalog decoupling: harness boots with live COMMODITIES (drives the real system), but no
+// assertion may derive its expected value from SITE_BALANCE / COMMODITIES / live catalog imports.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { generateDrillField, tileIndex, DRILL_CONST } from '../src/systems/drill.js';
-import { buildComponents, reconcileStores, laneCapacity, storeTotal } from '../src/systems/siteLogistics.js';
+import {
+  buildComponents, reconcileStores, laneCapacity, storeTotal,
+  wouldOwnComponent, STORE_NUMERIC_CEILING,
+} from '../src/systems/siteLogistics.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
-import { SITE_BALANCE } from '../src/data/sites.js';
 import { COMMODITIES } from '../src/data/commodities.js';
+
+// Hand-copied from SITE_BALANCE (src/data/sites.js). NOT imported — assertions must not track
+// live catalog drift silently. Update consciously if the shipped balance changes.
+const LANE_STORE_BASE = 80;
+const LANE_STORE_PER_CELL = 12;
+// 1-cell pure-overlay network: 80 + 12 = 92. 3-cell: 80 + 36 = 116.
+const CAP_1CELL = 92;
+const CAP_3CELL = 116;
+// Hand-copied cargo-port install cost (sm_cargo_port in SITE_MACHINES).
+const PORT_COST_REGOCRETE = 5;
+const PORT_COST_CONTROL_UNIT = 1;
+const PORT_COST_ELECTRONICS = 1;
+// Number.MAX_SAFE_INTEGER — independent literal of STORE_NUMERIC_CEILING.
+const SAFE_INTEGER_CEILING = 9007199254740991;
 
 const { COLS } = DRILL_CONST;
 const EPS = 1e-9;
@@ -468,7 +491,23 @@ test('NO ITEM-SIM DRIFT: a closed book of units survives store → export buffer
     + site.fleet.inFlight.reduce((sum, pod) => sum + storeTotal(pod.cargo), 0)
     + deliveredU + lostU;
 
-  let worstDrift = 0;
+  // Bounded-error contract (not the soft 1e-6 epsilon the round-1 review rejected).
+  // The chain floors to whole units; residual is IEEE noise on summed scalars (~1e-12 observed).
+  // BOOK_RESIDUAL_BOUND is the MAXIMUM permitted |book() - N| at any sample — hard-coded literal.
+  // Mutation probes (finish protocol), applied as a one-shot storeTotal deletion while store == N:
+  //   • at-bound (delete exactly 1e-9): stays GREEN — "inside contract"
+  //     (IEEE: |96 - (96 - 1e-9)| is ~1.0000036e-9; withinBound admits relative 1e-5 of the bound
+  //     so the exact-bound deletion is inside, while 2×bound stays outside).
+  //   • beyond-bound (delete 2e-9 = 2× bound): REDS.
+  //   • 1e-7 deletion: REDS (the classic soft-epsilon escape the review rejected).
+  // Samples include the SEED (before any transfer) so a seed-time deletion cannot hide.
+  const BOOK_RESIDUAL_BOUND = 1e-9;
+  const withinBound = (drift) => (
+    drift <= BOOK_RESIDUAL_BOUND
+    || Math.abs(drift - BOOK_RESIDUAL_BOUND) / BOOK_RESIDUAL_BOUND < 1e-5
+  );
+  let worstDrift = Math.abs(book() - N);
+  assert.ok(withinBound(worstDrift), `seeded book closed within bound (drift ${worstDrift})`);
   for (let i = 0; i < 1400; i++) {
     h.state.simTime += 1;
     h.state.tick += 1;
@@ -477,8 +516,14 @@ test('NO ITEM-SIM DRIFT: a closed book of units survives store → export buffer
   }
 
   // Checked at EVERY tick, not just the end: no stage of the chain leaks or duplicates.
-  assert.ok(worstDrift < 1e-6, `units conserved at every tick (worst drift ${worstDrift})`);
-  assert.ok(Math.abs(book() - N) < 1e-6, 'the book closes on the seeded quantity');
+  assert.ok(
+    withinBound(worstDrift),
+    `units conserved within BOOK_RESIDUAL_BOUND=${BOOK_RESIDUAL_BOUND} (worst drift ${worstDrift})`,
+  );
+  assert.ok(
+    withinBound(Math.abs(book() - N)),
+    'the book closes on the seeded quantity within the residual bound',
+  );
 
   // The run must actually have moved goods, or the conservation above is vacuous.
   assert.ok(site.fleet.launches >= 2, `expected several launches, got ${site.fleet.launches}`);
@@ -542,22 +587,20 @@ test('KEY CONTAINMENT: component keys track the minimum cell index and shift und
   assert.equal(laneWith(site, idx(5, 20)).store.cmdty_silicate, 20, 'stock survived the key rename');
 });
 
-// ===================================== 11. CHARACTERIZATION: merge over-capacity
+// ===================================== 11. MERGE OVER-CAPACITY (lossless, unclamped)
 
-test('CHARACTERIZATION: merging two full networks produces a store ABOVE the merged capacity (no clamp, no ruling)', () => {
+test('A10 RULING: merging two full networks produces a store ABOVE the merged capacity (no clamp)', () => {
   const { h, siteId, site } = anchoredSite();
-  // Two isolated single-cell lane networks, each capacity laneStoreBase + 1 cell = 92u.
+  // Two isolated single-cell lane networks, each capacity CAP_1CELL = 92u (hand-copied math).
   for (const [c, r] of [[4, 20], [6, 20]]) {
     assert.equal(h.sys.setOverlay(siteId, 'lane', c, r, true).ok, true);
   }
   h.sys._runtime(site);
   const rt = h.sys._rt.get(siteId);
-  const capOne = SITE_BALANCE.laneStoreBase + SITE_BALANCE.laneStorePerCell;
-  assert.equal(capOne, 92);
   for (const cell of [idx(4, 20), idx(6, 20)]) {
     const comp = rt.laneComps.find((c) => c.cells.length === 1 && c.cells[0] === cell);
-    assert.equal(rt.capacity[comp.key], capOne);
-    laneWith(site, cell).store.cmdty_silicate = capOne; // filled to the brim
+    assert.equal(rt.capacity[comp.key], CAP_1CELL);
+    laneWith(site, cell).store.cmdty_silicate = CAP_1CELL; // filled to the brim
   }
 
   assert.equal(h.sys.setOverlay(siteId, 'lane', 5, 20, true).ok, true); // bridge them
@@ -565,18 +608,17 @@ test('CHARACTERIZATION: merging two full networks produces a store ABOVE the mer
   const rt2 = h.sys._rt.get(siteId);
   const merged = rt2.laneComps.find((c) => c.cells.includes(idx(4, 20)));
   const capMerged = laneCapacity(merged, () => 0);
-  assert.equal(capMerged, SITE_BALANCE.laneStoreBase + 3 * SITE_BALANCE.laneStorePerCell);
-  assert.equal(capMerged, 116);
+  assert.equal(capMerged, CAP_3CELL, '3-cell pure network = 80 + 3*12 = 116');
   assert.equal(laneWith(site, idx(4, 20)).store.cmdty_silicate, 184, '92 + 92, unclamped');
   assert.ok(storeTotal(laneWith(site, idx(4, 20)).store) > capMerged,
     '68u over cap — reconcileStores never consults laneCapacity');
 
-  // Consequence is graceful, not lossy: roomFor() reports zero, so machines report backlogged
-  // until a port drains it. PINNED AS-IS — clamping here would destroy stock and no design
-  // ruling exists. See sharedChangeRequests.
+  // Lossless merge, explicit pressure: projection reports exact over-capacity (never silent clamp).
   const proj = h.sys.projection(siteId);
   const net = proj.lanes.find((n) => n.cells.includes(idx(4, 20)));
   assert.equal(net.stored, 184);
+  assert.equal(net.capacity, CAP_3CELL);
+  assert.equal(net.overCapacity, 184 - CAP_3CELL, 'exact overCapacity = stored - capacity');
   assert.ok(net.stored > net.capacity, 'the projection reports the over-capacity honestly');
 });
 
@@ -602,11 +644,314 @@ test('A10 RULING: construction may draw only from ship cargo plus the lane compo
   const res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_cargo_port', col: 14, row: 3 });
   assert.equal(res.ok, true);
 
-  // Independent literal: the cargo port costs 5u regocrete (copied by hand from the shipped
-  // def; a balance change must consciously update this).
-  const PORT_COST_REGOCRETE = 5;
+  // PORT_COST_REGOCRETE is the file-level hand-copied literal (catalog-decoupled).
   assert.equal(h.state.player.cargo.items.cmdty_regocrete, cargoBefore - PORT_COST_REGOCRETE,
     'the ship hold pays the FULL cost when no lane would own the install cell');
   assert.equal(far.store.cmdty_regocrete, 50,
     'the disconnected network keeps every unit — remote funding is dead');
+});
+
+// ===================================== 13. POSITIVE OWNERSHIP LAW
+
+test('A10 RULING (+): construction draws from the owning lane store first, then ship cargo; a non-owning network is untouched', () => {
+  // Mirror of §12: an install cell 4-adjacent to a lane (or bridged to it by the hypothetical
+  // machine — machines conduct) IS funded by that component's store first, then ship cargo.
+  const { h, siteId, site } = anchoredSite();
+  paintCorridor(h, siteId);
+  // Owning stub: lane at (14,2) is 4-adjacent to the install cell (14,3). Machines at (13,2)
+  // and (14,1) also conduct into this component, but the FAR corridor remains a separate net.
+  assert.equal(h.sys.setOverlay(siteId, 'lane', 14, 2, true).ok, true);
+  h.sys._runtime(site);
+
+  const far = laneWith(site, idx(4, 20));
+  const near = laneWith(site, idx(14, 2));
+  assert.notEqual(far, near, 'corridor and machine-side lane are distinct networks');
+  assert.ok(!far.cells.some((cell) => near.cells.includes(cell)), 'genuinely disjoint');
+
+  far.store.cmdty_regocrete = 50;
+  // Partial fill: owning store covers control + electronics + 3 of 5 regocrete; ship pays the rest.
+  near.store.cmdty_regocrete = 3;
+  near.store.cmdty_control_unit = PORT_COST_CONTROL_UNIT;
+  near.store.cmdty_electronics = PORT_COST_ELECTRONICS;
+
+  const cargoRegBefore = h.state.player.cargo.items.cmdty_regocrete;
+  const cargoCuBefore = h.state.player.cargo.items.cmdty_control_unit;
+  const cargoElBefore = h.state.player.cargo.items.cmdty_electronics;
+
+  const res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_cargo_port', col: 14, row: 3 });
+  assert.equal(res.ok, true, 'install succeeds on a funded adjacent cell');
+
+  assert.equal(near.store.cmdty_regocrete, 0, 'owning store paid its regocrete first');
+  assert.equal(near.store.cmdty_control_unit, 0, 'owning store paid the control unit');
+  assert.equal(near.store.cmdty_electronics, 0, 'owning store paid the electronics');
+  assert.equal(
+    h.state.player.cargo.items.cmdty_regocrete,
+    cargoRegBefore - (PORT_COST_REGOCRETE - 3),
+    'ship cargo pays only the residual regocrete the owning store could not cover',
+  );
+  assert.equal(h.state.player.cargo.items.cmdty_control_unit, cargoCuBefore,
+    'ship cargo is not charged for goods the owning store already covered');
+  assert.equal(h.state.player.cargo.items.cmdty_electronics, cargoElBefore,
+    'ship cargo is not charged for electronics the owning store already covered');
+  assert.equal(far.store.cmdty_regocrete, 50,
+    'the non-owning network on the same site is untouched');
+});
+
+test('wouldOwnComponent: machines conduct, isolated cells are null, hypothetical-only is null', () => {
+  // Direct pure pin of the ownership predicate (import wouldOwnComponent).
+  // 1) Fully isolated cell — no lane, no neighbor machine → null.
+  assert.equal(
+    wouldOwnComponent(new Set(), new Map(), COLS, idx(4, 20)),
+    null,
+    'a fully isolated cell owns no lane component',
+  );
+
+  // 2) Hypothetical-only component: insert cell alone becomes a 1-cell component of the
+  // hypothetical machine — that reaches no lane, so ownership is null (ship cargo only).
+  assert.equal(
+    wouldOwnComponent(new Set(), new Map(), COLS, idx(14, 3)),
+    null,
+    'hypothetical machine alone is not an owning network',
+  );
+
+  // 3) Machines conduct: lane at (13,3) + existing extractor at (13,2); install at (14,3) is
+  // not itself on a painted lane, but the hypothetical machine bridges through the extractor
+  // into the lane cell — so the returned component includes the lane.
+  const laneOnly = new Set([idx(13, 3)]);
+  const machines = new Map([[idx(13, 2), 'ext']]);
+  const owned = wouldOwnComponent(laneOnly, machines, COLS, idx(14, 3));
+  assert.ok(owned, 'hypothetical install reaches a lane through a conducting machine');
+  assert.ok(owned.cells.includes(idx(13, 3)), 'the reached component includes the lane cell');
+  assert.ok(owned.cells.includes(idx(14, 3)), 'the install cell is in the component');
+  assert.ok(owned.cells.includes(idx(13, 2)), 'the conducting machine cell is in the component');
+});
+
+// ===================================== 14. INTAKE-BLOCK PIN
+
+test('A10 RULING: over-capacity blocks intake (backlog + deposit refuse), reports exact overCapacity, and drains cleanly', () => {
+  // Capacity math is hard-coded from shipped constants BY HAND (not derived from SITE_BALANCE
+  // at assert time). CAP_1CELL=92, CAP_3CELL=116. Boundary fixtures: 115 / 116 / 117.
+  const { h, siteId, site } = anchoredSite();
+  const extractor = site.machines.find((m) => m.defId === 'sm_extractor');
+  assert.ok(extractor, 'anchored site has the extractor');
+
+  // --- (A) Merge two full pure-overlay nets into one small-capacity net -------------------
+  for (const [c, r] of [[4, 20], [6, 20]]) {
+    assert.equal(h.sys.setOverlay(siteId, 'lane', c, r, true).ok, true);
+  }
+  h.sys._runtime(site);
+  laneWith(site, idx(4, 20)).store.cmdty_silicate = CAP_1CELL;
+  laneWith(site, idx(6, 20)).store.cmdty_silicate = CAP_1CELL;
+  assert.equal(h.sys.setOverlay(siteId, 'lane', 5, 20, true).ok, true);
+  h.sys._runtime(site);
+
+  const mergedStored = CAP_1CELL + CAP_1CELL; // 184
+  const mergedOver = mergedStored - CAP_3CELL; // 68
+  assert.equal(laneWith(site, idx(4, 20)).store.cmdty_silicate, mergedStored);
+  let proj = h.sys.projection(siteId);
+  let net = proj.lanes.find((n) => n.cells.includes(idx(4, 20)));
+  assert.equal(net.capacity, CAP_3CELL);
+  assert.equal(net.stored, mergedStored);
+  assert.equal(net.overCapacity, mergedOver, 'exact overCapacity after lossless merge');
+  assert.equal(net.intakeRoom, 0);
+
+  // Boundary fixtures (independent literals 115 / 116 / 117 against capacity 116).
+  // Re-fetch the live store each iteration: _runtime rebuilds laneStores and detaches old refs.
+  for (const [qty, expectOver, expectRoom] of [
+    [115, 0, 1],
+    [116, 0, 0],
+    [117, 1, 0],
+  ]) {
+    laneWith(site, idx(4, 20)).store.cmdty_silicate = qty;
+    h.sys._markDirty(siteId, { net: true });
+    h.sys._runtime(site);
+    proj = h.sys.projection(siteId);
+    net = proj.lanes.find((n) => n.cells.includes(idx(4, 20)));
+    assert.equal(net.capacity, CAP_3CELL, `cap stable at qty=${qty}`);
+    assert.equal(net.stored, qty);
+    assert.equal(net.overCapacity, expectOver, `overCapacity at stored=${qty}`);
+    assert.equal(net.intakeRoom, expectRoom, `intakeRoom at stored=${qty}`);
+  }
+  // Restore the merge overfill for later projection sanity.
+  laneWith(site, idx(4, 20)).store.cmdty_silicate = mergedStored;
+  h.sys._markDirty(siteId, { net: true });
+  h.sys._runtime(site);
+
+  // --- (B) Producing machine on an over-capacity network → backlogged / export ------------
+  // Power + lane spine so the extractor can run; then overfill its lane store.
+  assert.equal(h.sys.setOverlay(siteId, 'power', 14, 2, true).ok, true);
+  assert.equal(h.sys.setOverlay(siteId, 'lane', 14, 2, true).ok, true);
+  h.sys._runtime(site);
+  const rt = h.sys._rt.get(siteId);
+  const extKey = rt.laneCompByMachine[extractor.id];
+  assert.ok(extKey, 'extractor is on a lane network');
+  const extCap = rt.capacity[extKey];
+  const OVERFILL = 50;
+  rt.stores[extKey].cmdty_silicate = extCap + OVERFILL;
+  // Persist the same quantity onto the laneStores record the runtime re-homes from.
+  const extLane = site.laneStores.find((ls) => {
+    const comp = rt.laneComps.find((c) => c.key === extKey);
+    return comp && ls.cells.some((c) => comp.cells.includes(c));
+  });
+  assert.ok(extLane, 'persisted lane record for the extractor network');
+  extLane.store.cmdty_silicate = extCap + OVERFILL;
+
+  const totalBefore = storeTotal(rt.stores[extKey]);
+  assert.equal(totalBefore, extCap + OVERFILL);
+  for (let i = 0; i < 12; i++) {
+    h.state.simTime += 1;
+    h.state.tick += 1;
+    h.sys.update(1, h.state);
+  }
+  const st = h.sys.projection(siteId).machines.find((m) => m.id === extractor.id);
+  assert.equal(st.status.state, 'backlogged', 'producing machine backs up when intake room is 0');
+  assert.equal(st.status.limit, 'export');
+  assert.equal(storeTotal(h.sys._rt.get(siteId).stores[extKey]), totalBefore,
+    'backlogged production does NOT grow the store');
+
+  // Deposit refuses while over capacity (roomFor → 0; a roomFor→Infinity mutant would accept).
+  const dep = h.sys.transferGoods(siteId, extractor.id, 'cmdty_silicate', 5, 'deposit');
+  assert.equal(dep.ok, false, 'deposit refused on an over-capacity network');
+  assert.equal(dep.moved, 0);
+  assert.equal(dep.reason, 'no-room-or-cargo');
+  assert.equal(storeTotal(h.sys._rt.get(siteId).stores[extKey]), totalBefore,
+    'refused deposit leaves the store unchanged');
+
+  // --- (C) Drain via withdrawal → overCapacity falls to 0 exactly at stored == capacity ---
+  const wd = h.sys.transferGoods(siteId, extractor.id, 'cmdty_silicate', OVERFILL, 'withdraw');
+  assert.equal(wd.ok, true);
+  assert.equal(wd.moved, OVERFILL);
+  const rtAfter = h.sys._rt.get(siteId);
+  const storedAfter = storeTotal(rtAfter.stores[extKey]);
+  assert.equal(storedAfter, extCap, 'stored == capacity after draining the exact overfill');
+  proj = h.sys.projection(siteId);
+  const extNet = proj.lanes.find((n) => n.machineIds.includes(extractor.id));
+  assert.ok(extNet);
+  assert.equal(extNet.stored, extCap);
+  assert.equal(extNet.capacity, extCap);
+  assert.equal(extNet.overCapacity, 0, 'overCapacity is 0 exactly when stored == capacity');
+  assert.equal(extNet.intakeRoom, 0);
+
+  // One more unit of room: withdraw 1 more → intakeRoom 1, still overCapacity 0.
+  const wd2 = h.sys.transferGoods(siteId, extractor.id, 'cmdty_silicate', 1, 'withdraw');
+  assert.equal(wd2.ok, true);
+  assert.equal(wd2.moved, 1);
+  proj = h.sys.projection(siteId);
+  const extNet2 = proj.lanes.find((n) => n.machineIds.includes(extractor.id));
+  assert.equal(extNet2.overCapacity, 0);
+  assert.equal(extNet2.intakeRoom, 1);
+  assert.equal(extNet2.stored, extCap - 1);
+});
+
+// ===================================== 15. EXTREME MERGE
+
+test('EXTREME MERGE: stores at the numeric edge saturate at STORE_NUMERIC_CEILING; sub-ceiling sums stay exact', () => {
+  // Independent literal pins the constant — import AND hard-code so a constant rename/rewrite
+  // that changes the value cannot silently re-green the suite.
+  assert.equal(STORE_NUMERIC_CEILING, SAFE_INTEGER_CEILING);
+  assert.equal(SAFE_INTEGER_CEILING, 9007199254740991);
+
+  // Two 9e307 stores → sum far above the ceiling → saturate.
+  const huge = reconcileStores(
+    [
+      { cells: [40], store: { cmdty_silicate: 9e307 } },
+      { cells: [50], store: { cmdty_silicate: 9e307 } },
+    ],
+    [{ key: 'net40', cells: [40, 50] }],
+  );
+  assert.equal(huge.net40.cmdty_silicate, STORE_NUMERIC_CEILING);
+  assert.equal(huge.net40.cmdty_silicate, 9007199254740991);
+  assert.ok(Number.isFinite(huge.net40.cmdty_silicate), 'saturated value is finite');
+
+  // 8e307 + 8e307 = 1.6e308, which ALSO exceeds the ceiling (and is past Number range for exact
+  // sum). The defined result is saturation, not Infinity and not a "exact 1.6e308" claim.
+  const alsoHuge = reconcileStores(
+    [
+      { cells: [40], store: { cmdty_silicate: 8e307 } },
+      { cells: [50], store: { cmdty_silicate: 8e307 } },
+    ],
+    [{ key: 'net40', cells: [40, 50] }],
+  );
+  assert.equal(alsoHuge.net40.cmdty_silicate, STORE_NUMERIC_CEILING);
+  assert.ok(Number.isFinite(alsoHuge.net40.cmdty_silicate));
+
+  // Two 3e15 stores → exact sum (well below the ceiling).
+  const mid = reconcileStores(
+    [
+      { cells: [40], store: { cmdty_silicate: 3e15 } },
+      { cells: [50], store: { cmdty_silicate: 3e15 } },
+    ],
+    [{ key: 'net40', cells: [40, 50] }],
+  );
+  assert.equal(mid.net40.cmdty_silicate, 6e15);
+  assert.ok(Number.isFinite(mid.net40.cmdty_silicate));
+
+  // Number.isFinite on every store value in every populated stage of the system path too.
+  const { h, siteId, site } = anchoredSite();
+  paintCorridor(h, siteId, [[4, 20], [6, 20]]);
+  h.sys._runtime(site);
+  laneWith(site, idx(4, 20)).store.cmdty_silicate = 3e15;
+  laneWith(site, idx(6, 20)).store.cmdty_silicate = 3e15;
+  for (const lane of site.laneStores) {
+    for (const qty of Object.values(lane.store)) {
+      assert.ok(Number.isFinite(qty), 'pre-merge store values are finite');
+    }
+  }
+  assert.equal(h.sys.setOverlay(siteId, 'lane', 5, 20, true).ok, true);
+  h.sys._runtime(site);
+  const merged = laneWith(site, idx(4, 20));
+  assert.equal(merged.store.cmdty_silicate, 6e15);
+  for (const lane of site.laneStores) {
+    for (const qty of Object.values(lane.store)) {
+      assert.ok(Number.isFinite(qty), 'post-merge store values are finite');
+    }
+  }
+  const blob = h.sys.serialize();
+  for (const lane of blob.byId[siteId].laneStores) {
+    for (const qty of Object.values(lane.store)) {
+      assert.ok(Number.isFinite(qty), 'serialized store values are finite');
+    }
+  }
+});
+
+// ===================================== 16. PREFLIGHT API CONTRACT
+
+test('PREFLIGHT: previewOverlayRemoval is non-mutating, matches confirmed spill, and zeros power/non-overlay', () => {
+  const { h, siteId, site } = anchoredSite();
+  paintCorridor(h, siteId);
+  h.sys._runtime(site);
+  laneWith(site, idx(4, 20)).store.cmdty_silicate = 40;
+
+  // Strip every corridor cell but the last so the final clear would spill.
+  for (const [c, r] of CORRIDOR.slice(0, -1)) {
+    assert.equal(h.sys.setOverlay(siteId, 'lane', c, r, false).ok, true);
+  }
+  const [lastC, lastR] = CORRIDOR[CORRIDOR.length - 1];
+  assert.ok(site.overlays.lane.includes(idx(lastC, lastR)));
+
+  // NON-MUTATING: byte-equal site state before/after preview.
+  const before = JSON.stringify(site);
+  const preview = h.sys.previewOverlayRemoval(siteId, 'lane', lastC, lastR);
+  assert.equal(JSON.stringify(site), before, 'previewOverlayRemoval must not mutate site state');
+  assert.equal(preview.spilledTotal, 40, 'preview names the exact would-spill total');
+  assert.ok(site.overlays.lane.includes(idx(lastC, lastR)), 'overlay cell still present after preview');
+  assert.equal(laneWith(site, idx(lastC, lastR)).store.cmdty_silicate, 40);
+
+  // Matches what a confirmed removal then does.
+  const confirmed = h.sys.setOverlay(siteId, 'lane', lastC, lastR, false, { confirmSpill: true });
+  assert.equal(confirmed.ok, true);
+  assert.equal(confirmed.spilled, preview.spilledTotal,
+    'preview.spilledTotal === confirmed.spilled');
+
+  // Power-kind and non-overlay cells return zeros.
+  assert.equal(h.sys.setOverlay(siteId, 'power', 14, 2, true).ok, true);
+  const powerPrev = h.sys.previewOverlayRemoval(siteId, 'power', 14, 2);
+  assert.equal(powerPrev.spilledTotal, 0);
+  assert.deepEqual(powerPrev.spilled, []);
+  assert.deepEqual(powerPrev.placed, []);
+
+  const missing = h.sys.previewOverlayRemoval(siteId, 'lane', 4, 20); // already cleared
+  assert.equal(missing.spilledTotal, 0);
+  assert.deepEqual(missing.spilled, []);
+  assert.deepEqual(missing.placed, []);
 });
