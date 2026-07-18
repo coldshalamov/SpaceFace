@@ -871,16 +871,29 @@ export const encounterDirector = {
     });
   },
 
+  // Offer consumption semantics for encounter:choose:
+  // - An offer dispatches at most ONE accepted choice for its lifetime (single-shot),
+  //   regardless of which non-terminal phase the handler moved to.
+  // - An unknown choiceId for a shape that HAS choices is ignored and does NOT
+  //   consume the offer (garbage input cannot burn the player's choice) — this
+  //   preserves current behavior for invalid ids.
+  // - A shape with NO choices consumes on first dispatch.
+  // - `offerConsumed` is a plain serializable field on the live record.
+  // - Handler-internal direct calls (timeoutChoice -> script.choose) are NOT
+  //   routed through _onChoose and are unaffected.
   _onChoose(p) {
     if (!p || !p.encounterId) return;
     const dir = ensureDirectorState(this.state);
     const live = dir.live[p.encounterId];
     if (!live || live.phase === 'done') return;
+    if (live.offerConsumed) return;
     const script = encounterScriptFor(live);
-    if (script && typeof script.choose === 'function') {
-      this._recordPlayerChoiceLine(live, p.choiceId);
-      script.choose(this, live, this.state, p.choiceId);
-    }
+    if (!script || typeof script.choose !== 'function') return;
+    const choices = live.shape && Array.isArray(live.shape.choices) ? live.shape.choices : [];
+    if (choices.length && !choices.some((c) => c && c.id === p.choiceId)) return;
+    live.offerConsumed = true;
+    this._recordPlayerChoiceLine(live, p.choiceId);
+    script.choose(this, live, this.state, p.choiceId);
   },
 
   _recordPlayerChoiceLine(live, choiceId) {

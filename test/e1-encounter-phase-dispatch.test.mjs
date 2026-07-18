@@ -338,9 +338,12 @@ test('W01 resume: save:loaded drops in-flight encounters without resolving them'
   assert.equal(rows.length, 0, 'a dropped encounter must stay undispatchable, not half-live');
 });
 
-// ─── NON-TERMINAL PHASE SEAM (characterization — see receipt finding W01-1) ──────────────────────
+// ─── NON-TERMINAL PHASE / SINGLE-SHOT OFFER (normative — was W01 SEAM characterization) ──────────
+//
+// Formerly characterization of an unresolved defect (second wait re-emitted waitStarted / count 2).
+// Converted to the normative single-shot offer contract: one accepted choose per offer lifetime.
 
-test('W01 SEAM: a non-terminal phase advance does not close the offer', () => {
+test('W01 single-shot: second wait after non-terminal advance emits no waitStarted and keeps deadline', () => {
   const t = boot(47908);
   const id = force(t, 'depth_h6_patrol_ambush', 'seam');
   const rows = record(t);
@@ -350,30 +353,95 @@ test('W01 SEAM: a non-terminal phase advance does not close the offer', () => {
   const firstDeadline = liveOf(t, id).vars.h6Battle.waitDeadlineAt;
   assert.equal(countOf(rows, 'encounter:waitStarted'), 1);
 
-  // SEAM: _onChoose guards only `phase === 'done'`, so an encounter that advanced to a
-  // non-terminal internal phase still accepts choices against its already-consumed offer.
-  // Repeating 'wait' re-enters the branch: a second encounter:waitStarted is emitted and the
-  // deterministic vulture deadline is pushed back. Reported, not corrected — the fix lives in
-  // encounterDirector.js / e1EncounterRuntime.js, both outside this packet's allowed files.
+  // Single-shot: offer is consumed on first accepted choose. A second encounter:choose with the
+  // same choiceId must not re-enter h6.choose, re-emit waitStarted, or defer the deadline.
   t.sim.step(1);
   choose(t, id, 'wait');
-  assert.equal(countOf(rows, 'encounter:waitStarted'), 2, 'SEAM: the consumed offer re-dispatches');
-  assert.ok(liveOf(t, id).vars.h6Battle.waitDeadlineAt > firstDeadline,
-    'SEAM: repeating the choice defers the deterministic timeout');
-  assert.equal(countOf(rows, 'story:playerChoiceRecorded'), 2,
-    'SEAM: the player line is recorded once per dispatch, not once per decision');
+  assert.equal(countOf(rows, 'encounter:waitStarted'), 1,
+    'second wait must not re-emit encounter:waitStarted');
+  assert.equal(liveOf(t, id).vars.h6Battle.waitDeadlineAt, firstDeadline,
+    'second wait must not change live.vars.h6Battle.waitDeadlineAt');
+  assert.equal(countOf(rows, 'story:playerChoiceRecorded'), 1,
+    'player line is recorded once per accepted decision, not once per re-dispatch');
 
-  // A different choice is likewise still honored and settles the encounter down the other branch.
+  // A different choice after consumption is also ignored (offer already spent).
   choose(t, id, 'concord');
-  assert.equal(completionOf(t, 'depth_h6_patrol_ambush')?.outcome, 'concord');
-  assert.equal(liveOf(t, id), undefined);
+  assert.equal(liveOf(t, id)?.phase, 'waiting_battle', 'post-consumption choose must not re-route');
+  assert.equal(completionOf(t, 'depth_h6_patrol_ambush'), null);
+  assert.ok(liveOf(t, id), 'live record remains until the wait path settles on its own');
 
-  // The seam is bounded: it never breaks exactly-once at the TERMINAL boundary.
+  // Terminal boundary remains exactly-once once the wait path settles.
+  for (const entityId of liveOf(t, id).ids.filter((entityId) => liveOf(t, id).roles[entityId] === 'escort')) {
+    const entity = t.state.entities.get(entityId);
+    if (entity) entity.alive = false;
+  }
+  for (let s = 0; s < 8; s++) t.sim.step(1);
   assert.equal(countOf(rows, 'encounter:resolved'), 1);
   assert.equal(historyOf(t).length, 1);
 });
 
-test('W01 SEAM bound: the non-terminal phase still terminates exactly once under its own tick', () => {
+test('W01 single-shot: playerChoiceLines and story:playerChoiceRecorded fire exactly once', () => {
+  const t = boot(47911);
+  const id = force(t, 'depth_h6_patrol_ambush', 'choice-line');
+  const rows = record(t);
+  const linesBefore = (t.state.story.playerChoiceLines || []).length;
+
+  choose(t, id, 'wait');
+  assert.equal(countOf(rows, 'story:playerChoiceRecorded'), 1);
+  assert.equal((t.state.story.playerChoiceLines || []).length, linesBefore + 1);
+
+  choose(t, id, 'wait');
+  assert.equal(countOf(rows, 'story:playerChoiceRecorded'), 1,
+    'second identical choose must not re-record the player line');
+  assert.equal((t.state.story.playerChoiceLines || []).length, linesBefore + 1,
+    'playerChoiceLines gains exactly one entry for one accepted decision');
+});
+
+test('W01 single-shot: unknown choiceId does not consume the offer', () => {
+  const t = boot(47912);
+  const id = force(t, 'depth_h6_patrol_ambush', 'garbage');
+  const rows = record(t);
+
+  choose(t, id, 'garbage');
+  assert.equal(liveOf(t, id)?.phase, 'offer', 'garbage choice must leave the offer open');
+  assert.equal(countOf(rows, 'encounter:waitStarted'), 0);
+  assert.equal(countOf(rows, 'story:playerChoiceRecorded'), 0);
+  assert.equal(liveOf(t, id)?.offerConsumed, undefined);
+
+  // A subsequent valid choose still dispatches exactly once.
+  choose(t, id, 'wait');
+  assert.equal(liveOf(t, id)?.phase, 'waiting_battle');
+  assert.equal(liveOf(t, id)?.offerConsumed, true);
+  assert.equal(countOf(rows, 'encounter:waitStarted'), 1);
+  assert.equal(countOf(rows, 'story:playerChoiceRecorded'), 1);
+
+  choose(t, id, 'wait');
+  assert.equal(countOf(rows, 'encounter:waitStarted'), 1, 'offer remains single-shot after valid choose');
+});
+
+test('W01 single-shot: choose after resolve is a no-op', () => {
+  const t = boot(47913);
+  const id = force(t, 'depth_h2_drifting_bloom', 'post-resolve');
+  const rows = record(t);
+
+  choose(t, id, 'hail');
+  assert.equal(liveOf(t, id), undefined);
+  assert.equal(countOf(rows, 'encounter:resolved'), 1);
+  const historyLen = historyOf(t).length;
+  const recorded = countOf(rows, 'story:playerChoiceRecorded');
+  const linesLen = (t.state.story.playerChoiceLines || []).length;
+
+  choose(t, id, 'hail');
+  choose(t, id, 'scan');
+  for (let s = 0; s < 3; s++) t.sim.step(1);
+
+  assert.equal(countOf(rows, 'encounter:resolved'), 1, 'post-resolve choose must not re-resolve');
+  assert.equal(historyOf(t).length, historyLen);
+  assert.equal(countOf(rows, 'story:playerChoiceRecorded'), recorded);
+  assert.equal((t.state.story.playerChoiceLines || []).length, linesLen);
+});
+
+test('W01 single-shot bound: the non-terminal phase still terminates exactly once under its own tick', () => {
   const t = boot(47909);
   const id = force(t, 'depth_h6_patrol_ambush', 'seam-tick');
   const live = liveOf(t, id);
