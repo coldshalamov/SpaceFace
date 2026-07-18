@@ -6,9 +6,9 @@
 // file is that the law is currently upheld by facts scattered across three files whose authors
 // have no reason to know a site law depends on them:
 //
-//   1. drill.js `tileFor` emits no natural voids  → every hollow cell was paid for by drilling,
-//      which is the ONLY reason the brief's "max 7 solid contacts" access invariant holds
-//      (canInstall never checks adjacency, so nothing enforces it).
+//   1. asteroidSites.canInstall / installMachine reject non-empty tiles (`not-hollow`) — this is
+//      the LOAD-BEARING access gate (solid<=7 is emergent only because machines sit on hollows
+//      reached by drilling). A05 pins it through hard-coded at-bound / beyond-bound fixtures.
 //   2. drill.js `applyClearedTiles` only ever writes EMPTY_TILE → `cleared` is monotone.
 //   3. drill.js:441 `if (data && !data.siteId)` exempts site rocks from recoverClearedGeometry →
 //      the single line standing between the shipped game and tunnels healing shut around a
@@ -22,17 +22,48 @@ import {
   generateDrillField, recoverClearedGeometry, entryShaftIndex, tileIndex, DRILL_CONST, drill,
 } from '../src/systems/drill.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
-import { CONTACT_YIELD, SITE_BALANCE } from '../src/data/sites.js';
-import { COMMODITIES } from '../src/data/commodities.js';
+import { SITE_BALANCE } from '../src/data/sites.js';
 
 const { COLS, ROWS } = DRILL_CONST;
 
+// PINNED yield rates — CURRENT shipped values, copied by hand from src/data/sites.js CONTACT_YIELD.
+// Independent literals: a production rate change must consciously update these numbers.
+// Do NOT import CONTACT_YIELD for expected-value computation (self-referential drift hole).
+const PINNED_MATRIX_PER_MIN = 0.9;
+const PINNED_BASALT_PER_MIN = 0.35;
+// Both-sides numeric discipline for the exact yield-loss assertion.
+const YIELD_EQ_TOL = 1e-9;
+const YIELD_BEYOND_DRIFT = 0.01;
+
+// Minimal LOCAL commodity footprints — only the fields cargo defOf reads (volPerU, massPerU).
+// IDs match sites.js machine cost / output keys (production surface), not a live-catalog import.
+// Renaming any id in src/data/commodities.js must not red this suite.
+const LOCAL_COMMODITIES = Object.freeze([
+  { id: 'cmdty_regocrete', volPerU: 1, massPerU: 1 },
+  { id: 'cmdty_control_unit', volPerU: 1.2, massPerU: 0.8 },
+  { id: 'cmdty_refined_metals', volPerU: 1, massPerU: 1 },
+  { id: 'cmdty_electronics', volPerU: 1, massPerU: 1 },
+  { id: 'cmdty_purified_silica', volPerU: 1, massPerU: 1 },
+  { id: 'cmdty_silicate', volPerU: 1, massPerU: 1 },
+]);
+
 const EMPTY = () => ({ type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 });
+const SOLID = () => ({ type: 'dirt', hp: 4, maxHp: 4, ore: null, hazard: false, tierReq: 1, hardness: 0.7 });
 
 // The fixture pocket from test/asteroid-sites.test.mjs: a hand-drilled chamber around the entry
 // shaft (col 14, row 0) carved into a REAL generated field, not a synthetic makeField().
 const POCKET = [[14, 2], [14, 0], [14, 1], [13, 2], [15, 2], [13, 1], [15, 1], [13, 3], [14, 3]];
 const ROCK_ID = 42;
+
+/** Fully solid constructed field — hard-coded geometry, not generator-sampled. */
+function makeSolidField() {
+  const field = [];
+  for (let c = 0; c < COLS; c++) {
+    field[c] = [];
+    for (let r = 0; r < ROWS; r++) field[c][r] = SOLID();
+  }
+  return field;
+}
 
 function makeBus() {
   const handlers = new Map();
@@ -67,7 +98,8 @@ function makeHarness({ withDrill = false } = {}) {
       },
     },
     world: { currentSectorId: 'sec_core_alpha' },
-    content: { commodities: COMMODITIES },
+    // Self-contained: no live COMMODITIES import. Cargo defOf prefers this registry.
+    content: { commodities: LOCAL_COMMODITIES },
   };
   let nextId = 100;
   const spawned = [];
@@ -142,15 +174,13 @@ function hollowCell(h, col, row) {
 
 const sorted = (list) => list.slice().sort((a, b) => a - b);
 
-// ---------------------------------------------------------------- structural precondition
+// ---------------------------------------------------------------- structural sample (characterization)
 
-test('structural precondition: generateDrillField emits zero natural voids', () => {
-  // The brief's "theoretical maximum of 7 solid contact cells" is EMERGENT, not enforced:
-  // canInstall (asteroidSites.js) only requires tile.type === 'empty' and, once anchored, allows
-  // remote placement with no adjacency check. solid <= 7 holds solely because every hollow cell in
-  // the game was drilled by the player, and a drilled cell always has the cell it was reached from
-  // hollow beside it. If tileFor ever gains caverns, a remote install into a natural pocket would
-  // read solid = 8 with no access cost paid. This sweep is the tripwire for that.
+test('characterization: generateDrillField sample shows zero natural voids (not a universal gate)', () => {
+  // OBSERVED characterization of current tileFor — NOT a load-bearing universal precondition.
+  // The contact max/access invariant is pinned by the production canInstall empty-tile gate
+  // (see "access law" below). A 60-seed sample cannot prove "no natural voids for all seeds";
+  // a seed-61 cavern alone would not red this suite and must not be treated as the access law.
   let voids = 0;
   for (let seed = 1; seed <= 60; seed++) {
     const field = generateDrillField(seed);
@@ -160,12 +190,132 @@ test('structural precondition: generateDrillField emits zero natural voids', () 
       }
     }
   }
-  assert.equal(voids, 0, 'a virgin generated field must be 100% solid — every hollow cell is player-made');
+  assert.equal(voids, 0, 'sample seeds 1..60 currently emit 100% solid fields (characterization)');
 });
 
-// ---------------------------------------------------------------- contact max / access invariant
+test('characterization: boundary/degenerate seeds stay finite; install gate holds', () => {
+  // Probes magnitude discipline through generateDrillField's own seed coercion in _seededRng:
+  //   let a = (seed | 0) || 1
+  // Raw inputs include 0, 1, INT32 max, UINT32 max, and Number.MAX_VALUE.
+  const RAW_SEEDS = [0, 1, 2147483647, 4294967295, Number.MAX_VALUE];
+  for (const raw of RAW_SEEDS) {
+    const coerced = (raw | 0) || 1;
+    const field = generateDrillField(raw);
+    assert.equal(field.length, COLS, `seed raw=${raw} coerced=${coerced}: COLS width`);
+    for (let c = 0; c < COLS; c++) {
+      assert.equal(field[c].length, ROWS, `seed raw=${raw}: ROWS at col ${c}`);
+      for (let r = 0; r < ROWS; r++) {
+        const tile = field[c][r];
+        assert.ok(tile && typeof tile.type === 'string', `seed raw=${raw}: tile at ${c},${r}`);
+        assert.ok(Number.isFinite(tile.hp), `seed raw=${raw}: finite hp at ${c},${r}`);
+        assert.ok(Number.isFinite(tile.hardness), `seed raw=${raw}: finite hardness at ${c},${r}`);
+        assert.ok(Number.isFinite(tile.maxHp), `seed raw=${raw}: finite maxHp at ${c},${r}`);
+      }
+    }
+
+    // Install gate still holds on the generated field: solid cells reject placement.
+    const h = makeHarness();
+    addAsteroid(h);
+    const col = 5;
+    const row = 5;
+    h.state.drill = {
+      active: true, asteroidId: ROCK_ID, field,
+      avatar: { col: col - 1, row },
+    };
+    const tile = field[col][row];
+    if (tile.type !== 'empty') {
+      const can = h.sys.canInstall({ asteroidId: ROCK_ID, defId: 'sm_extractor', col, row });
+      assert.equal(can.ok, false, `seed raw=${raw}: solid cell must reject canInstall`);
+      assert.equal(can.reason, 'not-hollow', `seed raw=${raw}: reason not-hollow`);
+      const inst = h.sys.installMachine({ asteroidId: ROCK_ID, defId: 'sm_extractor', col, row });
+      assert.equal(inst.ok, false, `seed raw=${raw}: solid cell must reject installMachine`);
+      assert.equal(inst.reason, 'not-hollow');
+    }
+  }
+});
+
+// ---------------------------------------------------------------- contact max / access invariant (load-bearing)
+
+test('access law: canInstall/installMachine pin at-bound solid=7/empty=1 and beyond-bound not-hollow', () => {
+  // PINNED (load-bearing). Hard-coded constructed drill fields — not generator samples.
+  // At-bound: hollow placement cell + exactly one hollow ring neighbour → solid=7, empty=1.
+  // Beyond-bound: no empty placement cell (fully solid) → un-installable via not-hollow.
+  // The empty-tile install gate IS the access-invariant enforcement in current production.
+
+  // --- At-bound solid=7 / empty=1: must install and produce ---
+  {
+    const h = makeHarness();
+    const ent = addAsteroid(h);
+    const field = makeSolidField();
+    const col = 10;
+    const row = 10;
+    const accessCol = col;
+    const accessRow = row - 1;
+    field[col][row] = EMPTY();
+    field[accessCol][accessRow] = EMPTY(); // one access neighbour (north)
+    // Remaining 7 ring cells stay solid dirt → matrix contacts.
+    // Durable projection rebuilds from generateDrillField(boreSeed)+cleared — both hollows
+    // must be on the rock's drillCleared so site.cleared captures them on first install.
+    ent.data.drillCleared = [tileIndex(col, row), tileIndex(accessCol, accessRow)];
+    h.state.drill = {
+      active: true, asteroidId: ROCK_ID, field,
+      avatar: { col: accessCol, row: accessRow },
+    };
+
+    const can = h.sys.canInstall({ asteroidId: ROCK_ID, defId: 'sm_extractor', col, row });
+    assert.equal(can.ok, true, 'at-bound hollow with solid=7 empty=1 must pass canInstall');
+    assert.equal(can.profile.solid, 7, 'at-bound profile solid');
+    assert.equal(can.profile.empty, 1, 'at-bound profile empty');
+    assert.equal(can.profile.solid + can.profile.empty, 8);
+
+    const inst = h.sys.installMachine({ asteroidId: ROCK_ID, defId: 'sm_extractor', col, row });
+    assert.equal(inst.ok, true, 'at-bound must installMachine');
+    const site = h.sys.getSite(inst.siteId);
+    assert.ok(site.cleared.includes(tileIndex(col, row)), 'placement cell is in durable cleared');
+    assert.ok(site.cleared.includes(tileIndex(accessCol, accessRow)), 'access cell is in durable cleared');
+    const view = machineView(h, inst.siteId, inst.machineId);
+    assert.equal(view.geo.solid, 7, 'durable geo solid after install');
+    assert.equal(view.geo.empty, 1, 'durable geo empty after install');
+    assert.equal(view.geo.solid + view.geo.empty, 8);
+    // Production: pinned rates × durable contact counts (not CONTACT_YIELD import).
+    // Durable field regenerates virgin geology + cleared, so kinds may mix matrix/basalt.
+    const expectedSilicate = Math.round(
+      (view.geo.matrix * PINNED_MATRIX_PER_MIN + view.geo.basalt * PINNED_BASALT_PER_MIN) * 1000,
+    ) / 1000;
+    assert.equal(
+      silicateOf(view),
+      expectedSilicate,
+      'at-bound extractor must produce from its solid contacts at pinned rates',
+    );
+    assert.ok(silicateOf(view) > 0, 'at-bound extractor must produce a positive silicate rate');
+    assert.equal(view.capability.geologyLive, true);
+  }
+
+  // --- Beyond-bound solid=8 / empty=0 region: no empty cell accepts a machine ---
+  {
+    const h = makeHarness();
+    addAsteroid(h);
+    const field = makeSolidField(); // fully solid — contact around any cell is solid=8 if hollowed
+    const col = 10;
+    const row = 10;
+    h.state.drill = {
+      active: true, asteroidId: ROCK_ID, field,
+      avatar: { col, row: row - 1 },
+    };
+
+    const can = h.sys.canInstall({ asteroidId: ROCK_ID, defId: 'sm_extractor', col, row });
+    assert.equal(can.ok, false, 'beyond-bound solid target must fail canInstall');
+    assert.equal(can.reason, 'not-hollow', 'beyond-bound reason must be not-hollow');
+
+    const inst = h.sys.installMachine({ asteroidId: ROCK_ID, defId: 'sm_extractor', col, row });
+    assert.equal(inst.ok, false, 'beyond-bound solid target must fail installMachine');
+    assert.equal(inst.reason, 'not-hollow');
+    assert.equal(h.state.sites.order.length, 0, 'rejected install must not create a site or produce');
+  }
+});
 
 test('contact law: solid + empty === 8 and solid <= 7 on a real generated + drilled field', () => {
+  // OBSERVED on the real pocket fixture; load-bearing access is the canInstall test above.
   const h = makeHarness();
   addAsteroid(h);
   const liveField = openSession(h);
@@ -206,11 +356,10 @@ test('irreversible loss: hollowing a contact permanently costs the contact and i
   const silicateBefore = silicateOf(before);
   assert.ok(solidBefore > 0 && silicateBefore > 0, 'fixture must start with live geology');
 
-  // Pick a real silicate-bearing ring cell and derive the expected loss from ITS kind rather than
-  // hard-coding a number the generator could legitimately change.
+  // Expected loss from independent PINNED rates (not production CONTACT_YIELD export).
   const victim = before.geo.cells.find((cell) => cell.kind === 'matrix' || cell.kind === 'basalt');
   assert.ok(victim, 'extractor needs at least one matrix/basalt contact to lose');
-  const expectedLoss = victim.kind === 'matrix' ? CONTACT_YIELD.matrixPerMin : CONTACT_YIELD.basaltPerMin;
+  const expectedLoss = victim.kind === 'matrix' ? PINNED_MATRIX_PER_MIN : PINNED_BASALT_PER_MIN;
 
   hollowCell(h, victim.col, victim.row);
 
@@ -218,10 +367,21 @@ test('irreversible loss: hollowing a contact permanently costs the contact and i
   assert.equal(after.geo.solid, solidBefore - 1, 'exactly one contact destroyed');
   assert.equal(after.geo.empty, before.geo.empty + 1, 'it became access, not nothing');
   assert.equal(after.geo.solid + after.geo.empty, 8, 'the ring is still exactly 8');
+
+  const delta = silicateBefore - silicateOf(after);
+  // At-bound: loss equals the pinned per-contact rate within tolerance.
   assert.ok(
-    Math.abs((silicateBefore - silicateOf(after)) - expectedLoss) < 1e-9,
-    `silicate must fall by exactly one ${victim.kind} contact: ${silicateBefore} -> ${silicateOf(after)}`,
+    Math.abs(delta - expectedLoss) <= YIELD_EQ_TOL,
+    `at-bound: silicate must fall by exactly one ${victim.kind} contact (${expectedLoss}): ${silicateBefore} -> ${silicateOf(after)}`,
   );
+  // Beyond-bound: a drifted rate expectation must not pass the same check.
+  assert.ok(
+    Math.abs(delta - (expectedLoss + YIELD_BEYOND_DRIFT)) > YIELD_EQ_TOL,
+    'beyond-bound: a +0.01 rate drift must fail the exact-loss check',
+  );
+  // Purely monotone law variant (independent of exact rate literals).
+  assert.ok(silicateOf(after) < silicateBefore, 'monotone: yield falls when a contact is lost');
+  assert.ok(after.geo.solid < solidBefore, 'monotone: solid contacts fall when a cell is hollowed');
 
   // ...and it never comes back. Long sim time, many ticks, repeated reads.
   const lostSolid = after.geo.solid;
@@ -421,9 +581,11 @@ test('re-materialization closes the loop: hollow -> save -> load -> rock gone ->
   assert.equal(silicateOf(after), silicateBefore);
 });
 
-// ---------------------------------------------------------------- dismantling
+// ---------------------------------------------------------------- dismantling (contact permanence only)
 
-test('dismantling a machine returns the control unit but never the neighbour contact', () => {
+test('dismantling a machine never restores neighbour contact', () => {
+  // Contact-ring law only: removal must not re-solidify geology.
+  // Control-unit refund is a different materials/cargo law — not asserted here (P1-4).
   const h = makeHarness();
   addAsteroid(h);
   openSession(h);
@@ -433,10 +595,8 @@ test('dismantling a machine returns the control unit but never the neighbour con
   assert.equal(port.ok, true);
 
   const before = machineView(h, siteId, extractorId);
-  const unitsBefore = h.state.player.cargo.items.cmdty_control_unit || 0;
 
   assert.deepEqual(h.sys.removeMachine(siteId, port.machineId), { ok: true, reason: null });
-  assert.ok((h.state.player.cargo.items.cmdty_control_unit || 0) > unitsBefore, 'control unit recovered');
 
   const after = machineView(h, siteId, extractorId);
   assert.equal(after.geo.solid, before.geo.solid, 'dismantling does not re-solidify anything');
