@@ -253,6 +253,77 @@ on them here:
 
 ---
 
+## 9b. Art direction — the sector sigil
+
+The §1 concept ("the rendering language is the *technical drawing*") was written but never actually
+executed on the canvas. What shipped was a bubble chart: a sector was `g.arc(x, y, 13)` filled with
+a faction colour, and every additional fact — owner, security, selection, contested, you-are-here —
+became **another concentric ring at another radius**. Five facts, five rings, one bullseye. 46
+`arc()` calls, 20 of them full circles, everything at ~5px with a ~1.4px stroke. The marks were not
+ugly; they were *undifferentiated*, all whispering at one volume.
+
+**The move: a sector is a star system, so draw it as one.** `drawSectorSigil` replaces the disc with
+a primary, an inclined orbit, and the berths riding that orbit:
+
+| encoding | carries |
+|---|---|
+| orbit hue (lifted toward light via `liftHue`) | who holds the sector |
+| bead count (0–4, gates excluded) | berths you can actually dock at |
+| broken/dashed orbit | lawless space — the lane itself is not intact |
+| unrest arc, sweep **and** weight | danger — and **silent below threshold** |
+
+Two principles are doing the real work:
+
+1. **Facts are carried by different FORMS, not stacked radii.** That is the whole fix. A ring can
+   only ever say one thing, so a ring per fact was always going to converge on a bullseye.
+2. **Silence is information.** Real charts mark hazards, not safety. A calm sector draws nothing
+   extra, so the eye stops only where there is trouble. An earlier iteration encoded security as a
+   24-tick gauge rim; it was the loudest element on the glyph for the least important fact, and it
+   read as a loading spinner. Killed.
+
+Inclination, ellipse squash and bead phase are all seeded from the sector id through
+`cosmeticHash01`, so two dozen sigils read as a hand-plotted survey rather than one icon stamped 24
+times. Deterministic and cosmetic — never fed into sim.
+
+**Sized for the real thing, not the specimen sheet.** The first version was refined at 4× and
+invisible at 1×: the well was the same value as the table, so the glyphs dissolved. The fix was a
+*lit dish* well (a value above the ground) plus `liftHue` on the faction colour. Radius stays at
+**13** — the existing footprint — so label geometry and the `radiusPx: r + 8` click target are
+untouched. Every change is craft, not scale.
+
+**Composed per active layer.** With the faction layer off the orbit falls to neutral ink; with the
+security layer off the unrest arc is suppressed entirely. Each encoding has to read alone, which is
+both the legibility win and the reason five signals never pile onto one 13px glyph at once.
+
+**Not cached, deliberately.** GALAXY draws ~24 sigils on the 64 ms inspector cadence — the
+display-refresh path is LOCAL-only — so an offscreen tile cache would cost more bookkeeping than it
+saves. If GALAXY ever joins the rAF path, revisit.
+
+Propagated to the rest of the mark family:
+
+- **Station** — was a chamfered square with a pip ("generic facility"). Now a berth ring with four
+  mooring stubs on the **diagonals**, kept off the axes so they never collide with the label plate.
+- **Gate** — was a plain teal circle with one tick, which read as "small planet" as often as "door".
+  Now two opposing arcs with the mouth open on the travel axis plus a direction tick. An
+  intermediate version hung jaws off one end; at 6× it read as a portal pointing down but a slashed
+  circle pointing right, so it was cut — **the mark has to survive rotation.**
+- **POI** — was a bare plus, the single most generic mark available. Now a broken cross with end
+  serifs: a surveyor's register mark, matching the table's own corner registration.
+- **Ground** — a worklight falloff over the table centre, so marks read as objects sitting on a
+  surface rather than shapes in a void. One gradient fill per frame.
+- **Lanes** — charted links are now engraved (a wide soft rule with a dark score cut down the
+  middle) rather than a single wire. Uncharted stays one faint dash: rumour has no groove.
+
+**Method.** Four look-dev iterations in a standalone harness rendered headlessly through Playwright
+(the `_plumelab.html` pattern), judging every candidate at **true size and 4× side by side**, and as
+a **constellation** rather than a specimen row — a glyph that looks good alone can still fail as a
+field of two dozen. Five directions were built and discarded before this one (faceted plate,
+aperture/iris, survey cartouche, and two security encodings). The identity guards
+(`check:ui-identity`, `check:wcag-contrast`) were the tripwire for "still in the world": boldness
+went into engraving, weight hierarchy and composed glyphs — never into a new colour story.
+
+---
+
 ## 10. Review ledger (this session)
 
 Multi-agent adversarial review: 25 findings raised across render-safety, perf, determinism,

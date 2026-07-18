@@ -801,6 +801,22 @@ function sectorRecordById(state, id) {
   return SECTOR_BY_ID.get(id) || null;
 }
 
+/**
+ * How many berths a sector offers — the bead count on its sigil.
+ *
+ * Gates are excluded on purpose: a bead reads as "somewhere you can dock and trade", and a gate is
+ * a door, not a destination. Capped by the caller at four, past which extra beads stop being
+ * countable at glyph scale and just read as texture.
+ */
+function sectorBerthCount(state, sectorId) {
+  const record = sectorRecordById(state, sectorId);
+  const stations = record && Array.isArray(record.stations) ? record.stations : null;
+  if (!stations) return 0;
+  let n = 0;
+  for (const st of stations) if (st && !st.isGate) n += 1;
+  return n;
+}
+
 /** A sector is "charted" (not fog) if flagged in data, is the current sector, or is discovered. */
 export function isSectorCharted(state, sector) {
   if (!sector) return false;
@@ -4649,6 +4665,19 @@ export const galaxyMapScreen = {
     this._clickTargets.length = 0;
     if (!state) return;
 
+    // Worklight. A plotting table is lit from a lamp over its middle, so the ground is not one flat
+    // value — it falls off toward the edges. This is what makes the marks read as objects sitting ON
+    // a surface rather than shapes floating in a void, and it costs one gradient fill per frame.
+    {
+      const cx = w / 2, cy = h / 2;
+      const lamp = g.createRadialGradient(cx, cy * 0.92, Math.min(w, h) * 0.05, cx, cy, Math.max(w, h) * 0.62);
+      lamp.addColorStop(0, 'rgba(232, 163, 61, 0.050)');
+      lamp.addColorStop(0.55, 'rgba(232, 163, 61, 0.016)');
+      lamp.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      g.fillStyle = lamp;
+      g.fillRect(0, 0, w, h);
+    }
+
     // Survey-table graticule: warm hairlines, a heavier rule every fifth line.
     const grid = 50;
     g.lineWidth = 1;
@@ -4793,13 +4822,30 @@ export const galaxyMapScreen = {
     const nodeById = new Map(model.nodes.map((n) => [n.id, n]));
 
     // Sector-graph edges: warm hairlines for charted lanes, faint dashes at the frontier.
+    // Lanes. A charted lane is engraved rather than merely drawn: a wide soft rule with a dark
+    // score cut down its middle, which reads as a channel incised into the table instead of a wire
+    // laid across it. Uncharted links stay a single faint dash — rumour has no groove.
     for (const e of model.edges) {
       if (!this._layers.discovery && !e.charted) continue;
-      g.beginPath(); g.moveTo(sx(e.ax), sy(e.ay)); g.lineTo(sx(e.bx), sy(e.by));
-      g.strokeStyle = e.charted ? 'rgba(216, 190, 150, 0.20)' : 'rgba(142, 134, 117, 0.08)';
-      g.lineWidth = e.charted ? 1.2 : 0.8;
-      if (!e.charted) g.setLineDash([4, 6]);
-      g.stroke(); g.setLineDash([]);
+      const ax = sx(e.ax), ay = sy(e.ay), bx = sx(e.bx), by = sy(e.by);
+      if (e.charted) {
+        g.save();
+        g.strokeStyle = 'rgba(216, 190, 150, 0.155)';
+        g.lineWidth = 2.8;
+        g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+        g.strokeStyle = 'rgba(10, 12, 13, 0.92)';
+        g.lineWidth = 1.15;
+        g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+        g.restore();
+      } else {
+        g.save();
+        g.strokeStyle = 'rgba(142, 134, 117, 0.09)';
+        g.lineWidth = 0.8;
+        g.setLineDash([4, 6]);
+        g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+        g.setLineDash([]);
+        g.restore();
+      }
     }
 
     // Route beam: amber marching dashes with a traveling bead, timed by the screen's own clock.
@@ -4994,25 +5040,13 @@ export const galaxyMapScreen = {
         g.restore();
       }
 
-      // Selection: a white double keyline — the only white ring on the table.
-      if (this._selectedTarget && this._selectedTarget.id === n.id) {
-        g.save();
-        g.strokeStyle = 'rgba(237, 232, 216, 0.92)';
-        g.lineWidth = 2;
-        g.beginPath(); g.arc(x, y, r + 6, 0, Math.PI * 2); g.stroke();
-        g.strokeStyle = 'rgba(237, 232, 216, 0.45)';
-        g.lineWidth = 0.8;
-        g.beginPath(); g.arc(x, y, r + 9, 0, Math.PI * 2); g.stroke();
-        g.restore();
-      }
-
       // Current sector: brass corner brackets, the "you are here" clamp.
       if (n.current) {
         g.save();
         g.strokeStyle = INK.brass;
         g.lineWidth = 1.8;
-        const b = r + 7;
-        const t = 5;
+        const b = r + 7.5;
+        const t = 5.5;
         for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
           g.beginPath();
           g.moveTo(x + dx * b - dx * t, y + dy * b);
@@ -5021,15 +5055,6 @@ export const galaxyMapScreen = {
           g.stroke();
         }
         g.restore();
-      }
-
-      // Security / danger ring (security layer)
-      if (this._layers.security && n.security != null) {
-        const danger = 1 - n.security;
-        if (danger > 0.15) {
-          g.beginPath(); g.arc(x, y, r + 10, 0, Math.PI * 2);
-          g.strokeStyle = hexToRgba(dangerColor(danger), 0.85); g.lineWidth = 2; g.stroke();
-        }
       }
 
       // Contested-sector badge (faction layer): a violet contest diamond, not a glow.
@@ -5046,22 +5071,31 @@ export const galaxyMapScreen = {
         }
       }
 
-      // Node disc: faction-keyed fill, confidence-weighted ink.
-      g.save();
-      if (this._layers.faction) {
-        g.fillStyle = n.color;
-        g.globalAlpha = stale ? 0.45 : 0.88;
-      } else {
-        g.fillStyle = stale ? 'rgba(88, 82, 68, 0.55)' : 'rgba(96, 90, 74, 0.9)';
-        g.globalAlpha = 1;
+      // The sector sigil. Composed per ACTIVE layer rather than all at once: with the faction layer
+      // off the orbit falls back to neutral ink, and with the security layer off the unrest arc is
+      // suppressed entirely. That keeps each encoding readable on its own instead of stacking five
+      // signals onto one 13px glyph.
+      drawSectorSigil(g, x, y, {
+        radius: r,
+        seedId: n.id,
+        factionColor: this._layers.faction ? n.color : 'rgba(150,144,126,1)',
+        berths: sectorBerthCount(state, n.id),
+        security: n.security != null ? n.security : 1,
+        showUnrest: !!this._layers.security,
+        stale,
+      });
+
+      // Selection: a white double keyline over the sigil — still the only white ring on the table.
+      if (this._selectedTarget && this._selectedTarget.id === n.id) {
+        g.save();
+        g.strokeStyle = 'rgba(237, 232, 216, 0.94)';
+        g.lineWidth = 1.7;
+        g.beginPath(); g.arc(x, y, r + 5.5, 0, Math.PI * 2); g.stroke();
+        g.strokeStyle = 'rgba(237, 232, 216, 0.30)';
+        g.lineWidth = 0.7;
+        g.beginPath(); g.arc(x, y, r + 8, 0, Math.PI * 2); g.stroke();
+        g.restore();
       }
-      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
-      g.fill();
-      g.globalAlpha = 1;
-      g.strokeStyle = 'rgba(237, 232, 216, 0.22)';
-      g.lineWidth = 1.1;
-      g.stroke();
-      g.restore();
 
       // Sector label + its presence rows, as ONE solver-managed block.
       //
@@ -6111,55 +6145,98 @@ function drawUniqueWreckBearingMarker(g, x, y, radiusPx, options = {}) {
 // ---------------------------------------------------------------------------------------------
 
 /** Station: chamfered brass plate with a center pip — a building, never a dot. */
+/**
+ * Station: a berth ring with mooring arms.
+ *
+ * Was a chamfered square with a centre pip — legible, but it said "generic facility", and at 11px
+ * it was the same visual weight as everything else on the table. A station is a place you dock, so
+ * it is drawn as a hub with arms you could tie up to: a brass ring, a dark core, and four short
+ * mooring stubs on the diagonals. The diagonals matter — they keep the arms clear of the label
+ * plate, which always sits on an axis.
+ */
 function drawStationMark(g, x, y) {
-  const s = 5.5;
-  const c = 1.8;
+  const r = 4.6;
   g.save();
-  g.fillStyle = hexToRgba(INK.brass, 0.18);
+  // Mooring arms first, so the ring overlaps their inner ends cleanly.
   g.strokeStyle = INK.brass;
-  g.lineWidth = 1.4;
-  g.beginPath();
-  g.moveTo(x - s + c, y - s);
-  g.lineTo(x + s - c, y - s);
-  g.lineTo(x + s, y - s + c);
-  g.lineTo(x + s, y + s - c);
-  g.lineTo(x + s - c, y + s);
-  g.lineTo(x - s + c, y + s);
-  g.lineTo(x - s, y + s - c);
-  g.lineTo(x - s, y - s + c);
-  g.closePath();
-  g.fill(); g.stroke();
+  g.lineWidth = 1.5;
+  g.lineCap = 'butt';
+  for (let i = 0; i < 4; i += 1) {
+    const a = Math.PI / 4 + i * (Math.PI / 2);
+    const ca = Math.cos(a), sa = Math.sin(a);
+    g.beginPath();
+    g.moveTo(x + ca * (r - 0.4), y + sa * (r - 0.4));
+    g.lineTo(x + ca * (r + 3.1), y + sa * (r + 3.1));
+    g.stroke();
+  }
+  // Hub: a filled well so the ring reads as a rim, not an outline.
+  g.fillStyle = 'rgba(10, 12, 13, 0.92)';
+  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = INK.brass;
+  g.lineWidth = 1.7;
+  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
   g.fillStyle = INK.brass;
-  g.beginPath(); g.arc(x, y, 1.4, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(x, y, 1.5, 0, Math.PI * 2); g.fill();
   g.restore();
 }
 
-/** Gate: open teal ring with a radial tick — a door that points somewhere. */
-function drawGateMark(g, x, y, angle = 0) {
+/**
+ * Gate: an aperture with jaws, opening along its link.
+ *
+ * Was a plain teal circle with one tick, which read as "small planet" as often as "door". A gate is
+ * a threshold you pass THROUGH, so the ring is now broken on the axis of travel and two jaws frame
+ * the opening — the mark itself shows you the way through, and the direction is legible without the
+ * tick having to carry it alone.
+ */
+function drawGateMark(g, g_x, g_y, angle = 0) {
+  const x = g_x, y = g_y, r = 5.4;
+  const gap = 0.66; // half-width of the mouth, in radians
   g.save();
   g.strokeStyle = INK.teal;
+  g.lineWidth = 1.7;
+  g.lineCap = 'round';
+  // Two opposing arcs with the mouth open on the travel axis — a threshold seen edge-on. Rotating
+  // this is safe because both halves are symmetric about that axis; an earlier version hung jaws
+  // off one end only, which read as a portal pointing down but as a slashed circle pointing right.
+  g.beginPath(); g.arc(x, y, r, angle + gap, angle + Math.PI - gap); g.stroke();
+  g.beginPath(); g.arc(x, y, r, angle + Math.PI + gap, angle + Math.PI * 2 - gap); g.stroke();
+  // Direction: one tick leaving the mouth along the link. The arcs say "aperture", this says
+  // "and it goes that way".
+  const ca = Math.cos(angle), sa = Math.sin(angle);
   g.lineWidth = 1.5;
-  g.beginPath(); g.arc(x, y, 5.5, 0, Math.PI * 2); g.stroke();
-  const ax = Math.cos(angle), ay = Math.sin(angle);
-  g.lineWidth = 1.8;
   g.beginPath();
-  g.moveTo(x + ax * 5.5, y + ay * 5.5);
-  g.lineTo(x + ax * 9, y + ay * 9);
+  g.moveTo(x + ca * 2.6, y + sa * 2.6);
+  g.lineTo(x + ca * (r + 3.2), y + sa * (r + 3.2));
   g.stroke();
-  g.fillStyle = hexToRgba(INK.teal, 0.9);
-  g.beginPath(); g.arc(x, y, 1.3, 0, Math.PI * 2); g.fill();
   g.restore();
 }
 
-/** Point of interest: a small amber survey cross. */
+/**
+ * Point of interest: a survey cross with an open centre.
+ *
+ * A bare plus sign is the single most generic mark available. Breaking the centre and adding fine
+ * end serifs turns it into a surveyor's register mark — the same drafting vocabulary as the corner
+ * registration on the table, so the family reads as one instrument.
+ */
 function drawPoiMark(g, x, y) {
+  const arm = 4.6, inner = 1.5;
   g.save();
   g.strokeStyle = INK.amber;
-  g.lineWidth = 1.4;
-  g.beginPath();
-  g.moveTo(x - 4, y); g.lineTo(x + 4, y);
-  g.moveTo(x, y - 4); g.lineTo(x, y + 4);
-  g.stroke();
+  g.lineWidth = 1.2;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    g.beginPath();
+    g.moveTo(x + dx * inner, y + dy * inner);
+    g.lineTo(x + dx * arm, y + dy * arm);
+    g.stroke();
+  }
+  // End serifs across the two horizontal arms — enough to key it, not enough to shout.
+  g.lineWidth = 1;
+  for (const dx of [1, -1]) {
+    g.beginPath();
+    g.moveTo(x + dx * arm, y - 1.5);
+    g.lineTo(x + dx * arm, y + 1.5);
+    g.stroke();
+  }
   g.restore();
 }
 
@@ -6210,6 +6287,123 @@ function drawAsteroidMark(g, x, y, seedId) {
   g.closePath();
   g.fill(); g.stroke();
   g.restore();
+}
+
+/**
+ * Pull a keyed hue toward light so it survives at glyph scale.
+ *
+ * Faction colours were authored to read as broad fills. As a 1.9px orbit line they lose most of
+ * their identity against the near-black table — deep blues in particular go to mud. Lifting them
+ * keeps the faction legible without touching the authored palette itself.
+ */
+function liftHue(hex, amount) {
+  const s = String(hex || '').replace('#', '');
+  if (s.length !== 6) return INK.ink1;
+  const t = Math.max(0, Math.min(1, amount));
+  const up = (c) => Math.round(c + (255 - c) * t);
+  const r = parseInt(s.slice(0, 2), 16);
+  const gg = parseInt(s.slice(2, 4), 16);
+  const b = parseInt(s.slice(4, 6), 16);
+  if (![r, gg, b].every(Number.isFinite)) return INK.ink1;
+  const hx = (v) => up(v).toString(16).padStart(2, '0');
+  return '#' + hx(r) + hx(gg) + hx(b);
+}
+
+/**
+ * SECTOR SIGIL — a sector is a star system, so it is drawn as one.
+ *
+ * Replaces the flat faction-coloured disc. The disc could only ever say one thing at a time, so
+ * every additional fact (owner, security, selection, "you are here") became another concentric ring
+ * at another radius, and the node degenerated into a bullseye. Here the facts are carried by
+ * different FORMS instead of stacked radii:
+ *
+ *   orbit hue      → who holds the sector
+ *   bead count     → berths the pilot can actually dock at
+ *   broken orbit   → lawless space; the lane itself is not intact
+ *   unrest arc     → danger, drawn ONLY above the threshold. Chart convention is to mark hazards,
+ *                    not safety, so a calm sector is silent and the eye stops only at trouble.
+ *
+ * Inclination, ellipse squash and bead phase are all seeded from the sector id via `cosmeticHash01`,
+ * so a field of two dozen reads as a hand-plotted survey rather than the same icon stamped 24 times.
+ * Deterministic and cosmetic — never fed into sim.
+ *
+ * Not cached: GALAXY draws ~24 of these on the 64 ms inspector cadence (the display-refresh path is
+ * LOCAL-only), so an offscreen tile cache would cost more in bookkeeping than it saves.
+ */
+function drawSectorSigil(g, x, y, opts) {
+  const o = opts || {};
+  const r = Number.isFinite(o.radius) ? o.radius : 13;
+  const seedId = String(o.seedId || 'sector');
+  const stale = !!o.stale;
+  const dim = stale ? 0.45 : 1;
+  const security = Math.max(0, Math.min(1, Number.isFinite(o.security) ? o.security : 1));
+
+  // The well. It must sit a value ABOVE the table or the whole sigil dissolves into the ground —
+  // a lit dish, not a hole.
+  g.save();
+  const dish = g.createRadialGradient(x, y - r * 0.3, 1, x, y, r + 1);
+  dish.addColorStop(0, 'rgba(34, 39, 44, 0.97)');
+  dish.addColorStop(1, 'rgba(22, 26, 29, 0.97)');
+  g.fillStyle = dish;
+  g.beginPath(); g.arc(x, y, r + 1, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = 'rgba(190, 178, 152, 0.30)';
+  g.lineWidth = 1; g.stroke();
+  g.restore();
+
+  const incl = -0.28 - cosmeticHash01(seedId + ':incl') * 0.60;
+  const squash = 0.28 + cosmeticHash01(seedId + ':squash') * 0.24;
+  const orbR = r - 2.4;
+  const orbitColor = o.factionColor ? liftHue(o.factionColor, 0.22) : INK.ink1;
+
+  g.save();
+  g.translate(x, y);
+  g.rotate(incl);
+  // A dark rule under the orbit gives it engraved relief against the dish.
+  g.strokeStyle = 'rgba(6, 8, 9, 0.90)';
+  g.lineWidth = 3.3;
+  g.beginPath(); g.ellipse(0, 0, orbR, orbR * squash, 0, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = hexToRgba(orbitColor, 0.95 * dim);
+  g.lineWidth = 1.9;
+  if (security < 0.28) g.setLineDash([2.4, 2.2]);
+  g.beginPath(); g.ellipse(0, 0, orbR, orbR * squash, 0, 0, Math.PI * 2); g.stroke();
+  g.setLineDash([]);
+  const beads = Math.max(0, Math.min(4, Math.round(Number(o.berths) || 0)));
+  for (let i = 0; i < beads; i += 1) {
+    const a = cosmeticHash01(seedId + ':berth' + i) * Math.PI * 2;
+    const bx = Math.cos(a) * orbR;
+    const by = Math.sin(a) * (orbR * squash);
+    g.fillStyle = 'rgba(6, 8, 9, 0.95)';
+    g.beginPath(); g.arc(bx, by, 2.6, 0, Math.PI * 2); g.fill();
+    g.fillStyle = stale ? hexToRgba(INK.brass, 0.5) : INK.brass;
+    g.beginPath(); g.arc(bx, by, 1.7, 0, Math.PI * 2); g.fill();
+  }
+  g.restore();
+
+  // The primary: a dense pip with a hairline corona. Deliberately quiet — the orbit carries the eye,
+  // and an oversized starburst here reads as a generic sparkle rather than a sun.
+  g.save();
+  g.fillStyle = 'rgba(6, 8, 9, 0.90)';
+  g.beginPath(); g.arc(x, y, 3.3, 0, Math.PI * 2); g.fill();
+  g.fillStyle = stale ? 'rgba(160, 156, 144, 0.90)' : INK.ink0;
+  g.beginPath(); g.arc(x, y, 2.2, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = hexToRgba(INK.amberHot, 0.38 * dim);
+  g.lineWidth = 0.75;
+  g.beginPath(); g.arc(x, y, 4.1, 0, Math.PI * 2); g.stroke();
+  g.restore();
+
+  // Unrest: silent below the threshold, then an arc whose sweep AND weight both track severity.
+  if (o.showUnrest !== false) {
+    const danger = 1 - security;
+    if (danger > 0.20) {
+      g.save();
+      g.strokeStyle = hexToRgba(danger > 0.66 ? INK.red : INK.warn, 0.92 * dim);
+      g.lineWidth = 1.2 + danger * 1.8;
+      g.beginPath();
+      g.arc(x, y, r + 3.4, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, danger));
+      g.stroke();
+      g.restore();
+    }
+  }
 }
 
 /** Edge tick: a small keyed tab pinned to the frame for an important off-view object. */
