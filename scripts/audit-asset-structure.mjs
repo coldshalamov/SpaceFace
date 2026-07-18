@@ -13,6 +13,11 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const PART_MANIFEST_PATH = resolve(ROOT, 'assets/ships/parts/parts_manifest.json');
+const PART_MANIFEST = existsSync(PART_MANIFEST_PATH)
+  ? JSON.parse(readFileSync(PART_MANIFEST_PATH, 'utf8'))
+  : { parts: [] };
+const MANIFEST_BY_FILE = new Map((PART_MANIFEST.parts || []).map((part) => [normalizeSlash(part.file), part]));
 const argv = parseArgs(process.argv.slice(2));
 const DEFAULT_ROOTS = [
   'assets/ships/release',
@@ -90,23 +95,24 @@ async function auditGlb(absPath, auditRoot) {
           materialRole: materialRole(material),
           triangles,
           mode: primitive.getMode(),
+          attributes: {
+            uv0: !!primitive.getAttribute('TEXCOORD_0'),
+            uv1: !!primitive.getAttribute('TEXCOORD_1'),
+            tangent: !!primitive.getAttribute('TANGENT'),
+            normal: !!primitive.getAttribute('NORMAL'),
+          },
         });
       }
     }
 
-    const materialRows = materials.map((material) => ({
-      name: materialName(material),
-      role: materialRole(material),
-      signature: materialSignature(material),
-      alphaMode: safeCall(() => material.getAlphaMode(), 'OPAQUE'),
-      doubleSided: !!safeCall(() => material.getDoubleSided(), false),
-      textures: materialTextureSlots(material),
-    }));
+    const materialRows = materials.map((material) => materialSurfaceRow(material));
     const materialNameCounts = countBy(materialRows, (row) => row.name);
     const materialRoleCounts = countBy(materialRows, (row) => row.role);
     const primitiveMaterialCounts = countBy(primitiveRows, (row) => row.material);
     const primitiveRoleCounts = countBy(primitiveRows, (row) => row.materialRole);
     const semanticNodeCounts = countSemanticNodes(nodes);
+    const surfaceAudit = auditSurfaces(materialRows, primitiveRows);
+    const catalog = catalogEntryForPath(rel);
     const kind = classifyAsset(rel);
     const primitiveBudget = kind === 'wholeship' ? MAX_PRIMITIVES_PER_WHOLESHIP : MAX_PRIMITIVES_PER_PART;
     const genericMaterialNames = materialRows
@@ -139,6 +145,7 @@ async function auditGlb(absPath, auditRoot) {
       path: rel,
       auditRoot,
       kind,
+      catalog,
       bytes: stats.size,
       meshes: meshes.length,
       primitives: primitiveCount,
@@ -153,6 +160,7 @@ async function auditGlb(absPath, auditRoot) {
       primitiveRoles: topCounts(primitiveRoleCounts, 16),
       duplicateMaterialNames: topCounts(materialNameCounts, 12).filter((entry) => entry.count > 1),
       materialSignatures: topCounts(countBy(materialRows, (row) => row.signature), 12),
+      surfaceAudit,
       primitiveSamples: primitiveRows
         .sort((a, b) => b.triangles - a.triangles || a.mesh.localeCompare(b.mesh))
         .slice(0, 16),
@@ -205,6 +213,8 @@ function summarize(assets) {
     totalTriangles: sum(loaded, 'triangles'),
     totalMaterials: sum(loaded, 'materials'),
     totalTextures: sum(loaded, 'textures'),
+    completeOpaquePbrAssets: loaded.filter((asset) => asset.surfaceAudit?.completeOpaquePbr).length,
+    surfaceRemasterRequiredAssets: loaded.filter((asset) => asset.surfaceAudit?.sourceRemasterRequired).length,
     averagePrimitivesPerAsset: round(avg(loaded.map((asset) => asset.primitives))),
     averageMaterialsPerAsset: round(avg(loaded.map((asset) => asset.materials))),
     worstByPrimitives: loaded.slice().sort((a, b) => b.primitives - a.primitives).slice(0, 12)
@@ -214,6 +224,12 @@ function summarize(assets) {
     topMaterialNames: topCounts(mergeCounts(loaded.map((asset) => asset.materialNames)), 20),
     topMaterialRoles: topCounts(mergeCounts(loaded.map((asset) => asset.materialRoles)), 20),
     genericMaterialAssets: genericMaterialAssets.map(assetSummary),
+    weakestSurfaces: loaded.slice()
+      .sort((a, b) => (b.surfaceAudit?.riskScore || 0) - (a.surfaceAudit?.riskScore || 0)
+        || a.path.localeCompare(b.path))
+      .slice(0, 24)
+      .map(surfaceSummary),
+    recommendedRemasterOrder: remasterOrder(loaded),
     requiredFailures,
     advisoryIssues: advisoryIssues.slice(0, 50),
   };
@@ -267,6 +283,11 @@ function printSummary(result) {
   for (const entry of summary.topMaterialRoles.slice(0, 10)) {
     console.log(`  - ${entry.key}: ${entry.count}`);
   }
+  console.log(`[asset-structure] surface remaster candidates: ${summary.surfaceRemasterRequiredAssets}; complete opaque PBR assets: ${summary.completeOpaquePbrAssets}`);
+  console.log('[asset-structure] weakest surface candidates:');
+  for (const asset of summary.weakestSurfaces.slice(0, 10)) {
+    console.log(`  - ${asset.path}: risk ${asset.riskScore}; ${asset.risks.join(', ') || 'no structural risk flags'}`);
+  }
 }
 
 function listGlbs(root) {
@@ -299,15 +320,107 @@ function materialName(material) {
 }
 
 function materialRole(material) {
+  const exported = safeCall(() => material.getExtras(), null)?.spacefaceMaterialRole;
+  if (typeof exported === 'string' && exported.trim()) return exported.trim().toLowerCase();
   const name = materialName(material);
   if (/^DTL_/i.test(name)) return name.replace(/_(?:hull|thruster|none)(?:_[0-9A-Fa-f]{6})?(?:_mutable)?$/i, '');
-  if (/^Material_/i.test(name)) return name.replace(/_(?:hull|thruster|none)(?:_[0-9A-Fa-f]{6})?(?:_mutable)?$/i, '');
   if (/Glass|Canopy/i.test(name)) return 'glass/canopy';
-  if (/Emit|Glow|Nav/i.test(name)) return 'emissive';
+  if (/Emit|Emission|Glow|Nav|Thruster|Drive.?Core/i.test(name)) return 'emissive';
   if (/Hull/i.test(name)) return 'hull';
+  if (/Armor/i.test(name)) return 'armor';
   if (/Accent/i.test(name)) return 'accent';
+  if (/Warning|Hazard/i.test(name)) return 'warning';
   if (/Mech|Mechanical/i.test(name)) return 'mechanical';
+  if (/^Material_/i.test(name)) return name.replace(/_(?:hull|thruster|none)(?:_[0-9A-Fa-f]{6})?(?:_mutable)?$/i, '');
   return name;
+}
+
+function materialSurfaceRow(material) {
+  const textures = materialTextureSlots(material);
+  const role = materialRole(material);
+  const alphaMode = safeCall(() => material.getAlphaMode(), 'OPAQUE');
+  const emissive = safeCall(() => material.getEmissiveFactor(), [0, 0, 0]);
+  const structuralOpaque = alphaMode === 'OPAQUE'
+    && !/emissive|emission|signal|drive|thruster|glow|glass|canopy|decal/i.test(role);
+  return {
+    name: materialName(material),
+    role,
+    signature: materialSignature(material),
+    alphaMode,
+    doubleSided: !!safeCall(() => material.getDoubleSided(), false),
+    textures,
+    factors: {
+      baseColor: safeCall(() => material.getBaseColorFactor(), [1, 1, 1, 1]).map((value) => round(value, 4)),
+      roughness: round(safeCall(() => material.getRoughnessFactor(), 1), 4),
+      metallic: round(safeCall(() => material.getMetallicFactor(), 1), 4),
+      emissive: emissive.map((value) => round(value, 4)),
+    },
+    structuralOpaque,
+    pbr: {
+      baseColor: textures.includes('baseColor'),
+      normal: textures.includes('normal'),
+      metallicRoughness: textures.includes('metallicRoughness'),
+      occlusion: textures.includes('occlusion'),
+      emissive: textures.includes('emissive'),
+    },
+  };
+}
+
+function auditSurfaces(materials, primitives) {
+  const opaque = materials.filter((material) => material.structuralOpaque);
+  const byName = new Map(materials.map((material) => [material.name, material]));
+  const mappedPrimitives = primitives.filter((primitive) => {
+    const material = byName.get(primitive.material);
+    return material?.structuralOpaque && material.textures.length > 0;
+  });
+  const normalPrimitives = primitives.filter((primitive) => byName.get(primitive.material)?.pbr.normal);
+  const complete = opaque.filter((material) => (
+    material.pbr.baseColor && material.pbr.normal && material.pbr.metallicRoughness
+  ));
+  const riskCodes = [];
+  let riskScore = 0;
+  const addRisk = (code, weight) => {
+    if (riskCodes.includes(code)) return;
+    riskCodes.push(code);
+    riskScore += weight;
+  };
+  if (opaque.length > 0 && complete.length < opaque.length) addRisk('incomplete-opaque-pbr', 4);
+  if (opaque.some((material) => !material.pbr.normal)) addRisk('missing-normal-detail', 3);
+  if (opaque.some((material) => !material.pbr.metallicRoughness)) addRisk('constant-roughness-metalness', 4);
+  if (opaque.some((material) => !material.pbr.baseColor)) addRisk('factor-only-base-color', 2);
+  if (opaque.some((material) => !material.pbr.occlusion)) addRisk('missing-ao', 1);
+  if (mappedPrimitives.some((primitive) => !primitive.attributes.uv0)) addRisk('mapped-primitive-missing-uv0', 6);
+  if (normalPrimitives.some((primitive) => !primitive.attributes.tangent)) addRisk('normal-mapped-primitive-missing-tangent', 5);
+  const roughnessValues = [...new Set(opaque.map((material) => material.factors.roughness))];
+  if (opaque.length > 1 && roughnessValues.length === 1
+    && opaque.every((material) => !material.pbr.metallicRoughness)) {
+    addRisk('uniform-roughness-across-roles', 3);
+  }
+  const roleTokens = new Set(opaque.map((material) => material.role));
+  if (opaque.length > 1 && roleTokens.size <= 1) addRisk('single-structural-material-language', 3);
+  if (opaque.some((material) => /^(?:material|default|none|\(unnamed material\))$/i.test(material.role))) {
+    addRisk('missing-semantic-material-role', 2);
+  }
+  return {
+    opaqueMaterialCount: opaque.length,
+    completeOpaqueMaterialCount: complete.length,
+    completeOpaquePbr: opaque.length > 0 && complete.length === opaque.length,
+    sourceRemasterRequired: riskCodes.length > 0,
+    riskScore,
+    risks: riskCodes,
+    uv: {
+      mappedPrimitiveCount: mappedPrimitives.length,
+      mappedMissingUv0: mappedPrimitives.filter((primitive) => !primitive.attributes.uv0).length,
+      normalMappedPrimitiveCount: normalPrimitives.length,
+      normalMappedMissingTangents: normalPrimitives.filter((primitive) => !primitive.attributes.tangent).length,
+    },
+    roles: opaque.map((material) => ({
+      name: material.name,
+      role: material.role,
+      pbr: material.pbr,
+      factors: material.factors,
+    })),
+  };
 }
 
 function materialSignature(material) {
@@ -365,6 +478,73 @@ function assetSummary(asset) {
     bytes: asset.bytes || 0,
     issues: (asset.issues || []).map((issue) => issue.code),
   };
+}
+
+function catalogEntryForPath(relPath) {
+  const normalized = normalizeSlash(relPath);
+  const marker = '/parts/';
+  const index = normalized.lastIndexOf(marker);
+  if (index < 0) return null;
+  const file = normalized.slice(index + marker.length).replace(/_lod[12](?=\.glb$)/i, '');
+  const part = MANIFEST_BY_FILE.get(file);
+  if (!part) return null;
+  return {
+    id: part.id,
+    category: part.category,
+    priority: part.priority || null,
+    file: part.file,
+  };
+}
+
+function surfaceSummary(asset) {
+  return {
+    path: asset.path,
+    kind: asset.kind,
+    catalog: asset.catalog || null,
+    riskScore: asset.surfaceAudit?.riskScore || 0,
+    risks: asset.surfaceAudit?.risks || [],
+    opaqueMaterials: asset.surfaceAudit?.opaqueMaterialCount || 0,
+    completeOpaqueMaterials: asset.surfaceAudit?.completeOpaqueMaterialCount || 0,
+    triangles: asset.triangles || 0,
+    bytes: asset.bytes || 0,
+  };
+}
+
+function remasterOrder(assets) {
+  const grouped = new Map();
+  for (const asset of assets) {
+    const key = asset.catalog?.id || asset.path;
+    let row = grouped.get(key);
+    if (!row) {
+      row = {
+        id: asset.catalog?.id || key,
+        priority: asset.catalog?.priority || null,
+        category: asset.catalog?.category || asset.kind,
+        paths: [],
+        riskScore: 0,
+        risks: new Set(),
+      };
+      grouped.set(key, row);
+    }
+    row.paths.push(asset.path);
+    row.riskScore = Math.max(row.riskScore, asset.surfaceAudit?.riskScore || 0);
+    for (const risk of asset.surfaceAudit?.risks || []) row.risks.add(risk);
+  }
+  const priorityWeight = { P0: 12, P1: 7, P2: 3 };
+  return [...grouped.values()]
+    .map((row) => ({
+      id: row.id,
+      priority: row.priority,
+      category: row.category,
+      remasterScore: row.riskScore + (priorityWeight[row.priority] || 0),
+      surfaceRiskScore: row.riskScore,
+      risks: [...row.risks],
+      paths: row.paths.sort(),
+    }))
+    .filter((row) => row.surfaceRiskScore > 0)
+    .sort((a, b) => b.remasterScore - a.remasterScore
+      || b.surfaceRiskScore - a.surfaceRiskScore
+      || a.id.localeCompare(b.id));
 }
 
 function countBy(items, keyFn) {

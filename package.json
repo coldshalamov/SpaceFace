@@ -82,6 +82,7 @@
     "check:mining:2": "node scripts/check-mining-2.mjs",
     "check:mining:bulk-guidance": "node scripts/check-mining-bulk-guidance.mjs",
     "check:presentation": "npm run check:vfx:trail-instancing && node scripts/check-presentation-cues.mjs && node scripts/check-sg08-golden-trace.mjs && node scripts/check-sg08-mix-profile.mjs && node scripts/check-sg08-render-vfx.mjs",
+    "check:vfx:combat-structure": "node test/muzzle-structural-vfx.test.mjs && node test/projectile-visual-family-shapes.test.mjs && node test/combat-vfx-presentation-contract.test.mjs && node scripts/check-combat-hit-vfx-pack.mjs && node scripts/check-phased-explosion-vfx.mjs",
     "check:vfx:trail-instancing": "node test/trail-streak-instancing.test.mjs && node scripts/check-trail-streak-instancing-webgl.mjs",
     "check:camera": "node scripts/check-camera-composition.mjs && node scripts/check-camera-director.mjs && node --test test/camera-focus-separation.test.mjs",
     "check:camera:director": "node scripts/check-camera-director.mjs",
@@ -263,6 +264,12 @@
     "bench:combat": "node scripts/bench-combat.mjs",
     "build:whole-ships": "node tools/art/finalize_whole_ship.mjs",
     "build:sg04:release-assets": "node scripts/build-sg04-release-assets.mjs",
+    "graphics:kestrel:promote": "node scripts/promote-kestrel-surface-remaster.mjs --apply",
+    "graphics:surfaces:check": "python scripts/check-m4-surface-foundry.py",
+    "graphics:rock:generate": "python tools/art/build_m4_surface_maps.py --output-dir assets/ships/m4_helios_hub/textures --size 1024 --roles rock",
+    "capture:graphics:identity": "node scripts/capture-object-identity-acceptance.mjs",
+    "capture:graphics:thruster": "node scripts/capture-thruster-acceptance.mjs",
+    "capture:graphics:combat-vfx": "node scripts/capture-combat-vfx-acceptance.mjs",
     "build:dock-interiors": "node scripts/build-dock-interiors.mjs",
     "build:dock-release": "node scripts/build-dock-release-assets.mjs",
     "author:place-archetype": "node scripts/author-place-archetype.mjs",
@@ -423,8 +430,10 @@
     "jpeg-js": "^0.4.4",
     "ktx2-encoder": "^0.5.3",
     "meshoptimizer": "^1.2.0",
+    "mikktspace": "^1.1.1",
     "playwright": "^1.61.1",
-    "pngjs": "^7.0.0"
+    "pngjs": "^7.0.0",
+    "spectorjs": "^0.9.30"
   },
   "build": {
     "appId": "com.spaceface.game",
