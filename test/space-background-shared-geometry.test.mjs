@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { SpaceBackground } from '../src/render/spaceBackground.js';
+import { buildSignatureHeroAnchor, SpaceBackground } from '../src/render/spaceBackground.js';
 
 function harness() {
   const background = Object.create(SpaceBackground.prototype);
@@ -21,6 +21,18 @@ function harness() {
 }
 
 const background = harness();
+
+const signature = buildSignatureHeroAnchor({
+  signatureHero: {
+    kind: 'planet', type: 'gas', ring: true, frac: 0.17,
+    offset: [-0.26, 0.22], lightAngle: -0.7, ringTilt: 0.24,
+  },
+}, { x: 1000, z: -500 }, { screenHeight: 100 }, 42, 'helios');
+assert.ok(Math.abs(signature.bx - 1000 * 0.055) < 30,
+  'signature X offset is expressed in measured screen units, not the huge tiled quad');
+assert.ok(Math.abs(signature.bz - (-500 * 0.055)) < 25,
+  'signature Z offset remains inside the initial gameplay composition');
+
 background._buildLayers();
 assert.equal(background.layers.length, 3);
 assert.equal(background.group.children.length, 1,
