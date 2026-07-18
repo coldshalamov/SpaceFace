@@ -30,6 +30,7 @@ import {
 } from './siteProduction.js';
 import {
   buildComponents, laneCapacity, storeTotal, reconcileStores, podLossChance, podTravelS,
+  previewStoreReconciliation, wouldOwnComponent, storePressure,
 } from './siteLogistics.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -99,6 +100,12 @@ export const asteroidSites = {
 
     this._accum = 0;
     this._rt = new Map(); // siteId -> transient runtime caches (field, networks, geo, status)
+
+    // Subscriptions are idempotent per bus: a second init(ctx) against the SAME bus (a re-boot
+    // path re-entering init) must not double every listener — doubled drill:break handlers would
+    // double-record cleared cells' side effects. A fresh bus (new simulation) wires fresh.
+    if (this._wiredBus === this.bus) return;
+    this._wiredBus = this.bus;
 
     // Stamp machine housings onto the live drill field the moment a session opens, so the rover
     // is blocked by them and the screen can draw them. tile.structure is the ONE documented write
@@ -361,20 +368,38 @@ export const asteroidSites = {
       return { ok: false, reason: 'needs-gas-contact', missing: {}, profile };
     }
 
-    const missing = this._missingMaterials(site, def.cost);
+    const missing = this._missingMaterials(site, def.cost, this._fundingStoresFor(site, col, row));
     if (Object.keys(missing).length) return { ok: false, reason: 'materials', missing, profile };
     return { ok: true, reason: null, missing: {}, profile };
   },
 
-  /** What part of `cost` cannot be covered by lane stores + ship hold right now. */
-  _missingMaterials(site, cost) {
+  /**
+   * The persisted lane stores CONSTRUCTION AT (col,row) MAY DRAW FROM — the A10 ownership ruling.
+   * Only the lane component that would own/reach the installation cell after the hypothetical
+   * machine is inserted may fund the build (machines conduct, so the new cell can bridge lanes);
+   * a disconnected network's stock is physically elsewhere and must never silently pay for it.
+   * No lane reaching the cell -> [] -> ship cargo only.
+   */
+  _fundingStoresFor(site, col, row) {
+    if (!site) return [];
+    const machineCells = new Map();
+    for (const m of site.machines) machineCells.set(tileIndex(m.col, m.row), m.id);
+    const comp = wouldOwnComponent(
+      new Set(site.overlays.lane), machineCells, COLS, tileIndex(col, row),
+    );
+    if (!comp) return [];
+    const owned = new Set(comp.cells);
+    return site.laneStores.filter((ls) => (ls.cells || []).some((c) => owned.has(c)));
+  },
+
+  /** What part of `cost` cannot be covered by the ELIGIBLE lane stores + ship hold right now. */
+  _missingMaterials(site, cost, fundingStores) {
     const missing = {};
     const cargo = this.state.player && this.state.player.cargo;
+    const stores = Array.isArray(fundingStores) ? fundingStores : [];
     for (const goodId of Object.keys(cost || {}).sort()) {
       let need = cost[goodId];
-      if (site) {
-        for (const ls of site.laneStores) need -= Math.floor(Math.max(0, Number(ls.store[goodId]) || 0));
-      }
+      for (const ls of stores) need -= Math.floor(Math.max(0, Number(ls.store[goodId]) || 0));
       const held = cargo && cargo.items ? Math.max(0, Math.floor(Number(cargo.items[goodId]) || 0)) : 0;
       need -= held;
       if (need > 0) missing[goodId] = need;
@@ -382,17 +407,16 @@ export const asteroidSites = {
     return missing;
   },
 
-  /** Consume install materials: site lane stores first (they're physically here), then ship hold. */
-  _consumeMaterials(site, cost) {
+  /** Consume install materials: the OWNING network's stores first (physically here), then ship hold. */
+  _consumeMaterials(site, cost, fundingStores) {
+    const stores = Array.isArray(fundingStores) ? fundingStores : [];
     for (const goodId of Object.keys(cost || {}).sort()) {
       let need = cost[goodId];
-      if (site) {
-        for (const ls of site.laneStores) {
-          if (need <= 0) break;
-          const have = Math.floor(Math.max(0, Number(ls.store[goodId]) || 0));
-          const take = Math.min(have, need);
-          if (take > 0) { ls.store[goodId] = (Number(ls.store[goodId]) || 0) - take; need -= take; }
-        }
+      for (const ls of stores) {
+        if (need <= 0) break;
+        const have = Math.floor(Math.max(0, Number(ls.store[goodId]) || 0));
+        const take = Math.min(have, need);
+        if (take > 0) { ls.store[goodId] = (Number(ls.store[goodId]) || 0) - take; need -= take; }
       }
       if (need > 0) removeCargo(this.state, goodId, need);
     }
@@ -428,7 +452,7 @@ export const asteroidSites = {
       this._ledger(site, 'info', 'Claim opened — machines on an unanchored rock are lost if you leave the sector before a Massline Core is installed.');
     }
 
-    this._consumeMaterials(site, def.cost);
+    this._consumeMaterials(site, def.cost, this._fundingStoresFor(site, col, row));
 
     const machine = {
       id: `m${site.nextMachineNum++}`,
@@ -505,8 +529,31 @@ export const asteroidSites = {
     return { ok: true, reason: null };
   },
 
-  /** Paint or clear one overlay cell (kind: 'power' | 'lane'). Free — the corridor was the cost. */
-  setOverlay(siteId, kind, col, row, on) {
+  /**
+   * NON-MUTATING preflight for clearing one lane cell: exactly what stock would spill if the
+   * removal went ahead. The A10 destructive-removal ruling's read side — UI and automation call
+   * this (or receive the same preview from a refused setOverlay) before asking for confirmation.
+   */
+  previewOverlayRemoval(siteId, kind, col, row) {
+    const site = this.getSite(siteId);
+    if (!site || kind !== 'lane') return { spilledTotal: 0, spilled: [], placed: [] };
+    const idx = tileIndex(col, row);
+    if (!site.overlays.lane.includes(idx)) return { spilledTotal: 0, spilled: [], placed: [] };
+    const machineCells = new Map();
+    for (const m of site.machines) machineCells.set(tileIndex(m.col, m.row), m.id);
+    const nextLane = new Set(site.overlays.lane);
+    nextLane.delete(idx);
+    const nextComps = buildComponents(nextLane, machineCells, COLS);
+    return previewStoreReconciliation(site.laneStores, nextComps);
+  },
+
+  /**
+   * Paint or clear one overlay cell (kind: 'power' | 'lane'). Painting is free — the corridor was
+   * the cost. CLEARING a lane cell whose removal would spill network stock is REFUSED unless the
+   * caller passes { confirmSpill: true } after seeing the preview (A10 ruling: destructive lane
+   * removal must never silently spill; a confirmed loss gets a deterministic receipt).
+   */
+  setOverlay(siteId, kind, col, row, on, opts) {
     const site = this.getSite(siteId);
     if (!site || (kind !== 'power' && kind !== 'lane')) return { ok: false, reason: 'bad-args' };
     if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return { ok: false, reason: 'out-of-bounds' };
@@ -517,13 +564,42 @@ export const asteroidSites = {
     const idx = tileIndex(col, row);
     const list = site.overlays[kind];
     const has = list.includes(idx);
+
+    let confirmedSpill = null;
+    if (!on && has && kind === 'lane') {
+      const preview = this.previewOverlayRemoval(siteId, kind, col, row);
+      if (preview.spilledTotal > 0) {
+        if (!(opts && opts.confirmSpill)) {
+          return { ok: false, reason: 'would-spill', spill: preview };
+        }
+        confirmedSpill = preview;
+      }
+    }
+
     if (on && !has) list.push(idx);
     else if (!on && has) list.splice(list.indexOf(idx), 1);
     else return { ok: true, reason: 'no-change' };
     site.overlays[kind] = normalizeClearedTiles(list);
+
+    if (confirmedSpill) {
+      // Deterministic receipt BEFORE the reconcile executes the drop: exact goods, exact cells.
+      const goods = {};
+      for (const s of confirmedSpill.spilled) {
+        for (const g of Object.keys(s.store).sort()) {
+          const q = Math.max(0, Number(s.store[g]) || 0);
+          if (q > 0) goods[g] = (goods[g] || 0) + q;
+        }
+      }
+      const summary = Object.keys(goods).sort().map((g) => `${Math.floor(goods[g])}u ${g}`).join(', ');
+      this._ledger(site, 'warn', `Lane dismantled under load — spilled ${summary}.`);
+      this.bus.emit('site:laneSpilled', {
+        siteId, col, row, spilledTotal: confirmedSpill.spilledTotal, goods,
+      });
+    }
+
     this._markDirty(site.id, { net: true });
     this.bus.emit('site:overlayChanged', { siteId, kind, col, row, on: !!on });
-    return { ok: true, reason: null };
+    return { ok: true, reason: null, spilled: confirmedSpill ? confirmedSpill.spilledTotal : 0 };
   },
 
   setMachineMode(siteId, machineId, mode) {
@@ -1080,16 +1156,25 @@ export const asteroidSites = {
       });
     }
 
-    const lanes = rt.laneComps.map((comp) => ({
-      key: comp.key,
-      cells: comp.cells,
-      overlayCells: comp.overlayCells,
-      machineIds: comp.machineIds,
-      capacity: rt.capacity[comp.key],
-      stored: round3(storeTotal(rt.stores[comp.key])),
-      store: rt.stores[comp.key],
-      throughputPerMin: SITE_BALANCE.laneThroughputPerMin,
-    }));
+    const lanes = rt.laneComps.map((comp) => {
+      const stored = storeTotal(rt.stores[comp.key]);
+      const capacity = rt.capacity[comp.key];
+      return {
+        key: comp.key,
+        cells: comp.cells,
+        overlayCells: comp.overlayCells,
+        machineIds: comp.machineIds,
+        capacity,
+        stored: round3(stored),
+        store: rt.stores[comp.key],
+        throughputPerMin: SITE_BALANCE.laneThroughputPerMin,
+        // A10 over-capacity diagnostics: a merge may legally exceed capacity (stock is NEVER
+        // clamped or deleted); these report the exact pressure so the operator — and A11's
+        // bottleneck presenter — see precisely how much must drain before intake resumes.
+        overCapacity: round3(Math.max(0, stored - capacity)),
+        intakeRoom: round3(Math.max(0, capacity - stored)),
+      };
+    });
 
     const machines = site.machines.map((m) => {
       const def = SITE_MACHINE_BY_ID.get(m.defId);

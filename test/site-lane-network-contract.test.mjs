@@ -245,8 +245,36 @@ test('REBUILD: stripping every lane cell keeps machine-anchored stock and spills
 
   // Strip EVERY lane overlay cell. Machines still stand, and machines conduct, so each machine
   // keeps a one-cell network of its own; the corridor has nothing left to stand on.
-  for (const [c, r] of [...CORRIDOR, [13, 1], [13, 3]]) {
+  //
+  // A10 RULING FLOW: removals that leave the corridor store SOME cell to live on succeed
+  // freely, but the removal that would orphan its last cell is REFUSED with the exact would-
+  // spill preview, preserves all state, and needs an explicit confirmSpill — the confirmed
+  // loss then lands a deterministic receipt (site:laneSpilled + a ledger line).
+  const corridorButLast = CORRIDOR.slice(0, -1);
+  for (const [c, r] of corridorButLast) {
     assert.equal(h.sys.setOverlay(siteId, 'lane', c, r, false).ok, true);
+  }
+  const [lastC, lastR] = CORRIDOR[CORRIDOR.length - 1];
+  const refused = h.sys.setOverlay(siteId, 'lane', lastC, lastR, false);
+  assert.equal(refused.ok, false, 'the spilling removal is refused without confirmation');
+  assert.equal(refused.reason, 'would-spill');
+  assert.equal(refused.spill.spilledTotal, 40, 'the preview names the exact would-spill amount');
+  assert.ok(site.overlays.lane.includes(idx(lastC, lastR)),
+    'a refused removal leaves the overlay cell in place');
+  assert.equal(laneTotal(site), 65, 'a refused removal spills nothing');
+
+  const spillEvents = [];
+  h.bus.on('site:laneSpilled', (p) => spillEvents.push(p));
+  const confirmed = h.sys.setOverlay(siteId, 'lane', lastC, lastR, false, { confirmSpill: true });
+  assert.equal(confirmed.ok, true, 'the confirmed removal proceeds');
+  assert.equal(confirmed.spilled, 40, 'the receipt totals the confirmed loss');
+  assert.equal(spillEvents.length, 1, 'exactly one deterministic spill receipt');
+  assert.equal(spillEvents[0].spilledTotal, 40);
+  assert.deepEqual(spillEvents[0].goods, { cmdty_silicate: 40 });
+
+  for (const [c, r] of [[13, 1], [13, 3]]) {
+    assert.equal(h.sys.setOverlay(siteId, 'lane', c, r, false).ok, true,
+      'machine-welded cells never orphan the machine-anchored store (machines conduct)');
   }
   h.sys._runtime(site);
 
@@ -316,7 +344,7 @@ test('TIE: an exact vote tie resolves to the lowest LEXICOGRAPHIC key — net11 
 
 // ==================================================== 7. DUPLICATE-INIT NO-OP
 
-test('DUPLICATE INIT: init() twice over live site state is a stock no-op (and re-subscribes the bus — characterized, not endorsed)', () => {
+test('DUPLICATE INIT: init() twice over live site state is a stock no-op AND a listener no-op (A10 repair)', () => {
   const { h, siteId, site } = anchoredSite();
   paintCorridor(h, siteId);
   h.sys._runtime(site);
@@ -342,13 +370,12 @@ test('DUPLICATE INIT: init() twice over live site state is a stock no-op (and re
   assert.equal(JSON.stringify(h.state.sites), before, 'reconcile after re-init changes nothing');
   assert.equal(laneWith(reSite, idx(4, 20)).store.cmdty_silicate, 33, 'stock intact');
 
-  // CHARACTERIZATION of the latent leak the gap analysis flagged: init() re-subscribes without
-  // unsubscribing, so every bus listener count DOUBLES. Harmless today (all five handlers are
-  // idempotent and registry.init() runs once per process), but it is real — pinned here so a
-  // future hot-reload/scenario-restart path cannot introduce it silently a second time.
+  // The latent leak the round-1 review flagged is REPAIRED: subscriptions are idempotent per
+  // bus (init against the SAME bus wires nothing new; a fresh bus wires fresh). A re-init must
+  // leave every listener count exactly where it was.
   for (const [name, count] of listenersBefore) {
-    assert.equal(h.bus.handlers.get(name).length, count * 2,
-      `re-init doubles the '${name}' listener — latent leak, see notes`);
+    assert.equal(h.bus.handlers.get(name).length, count,
+      `re-init must not change the '${name}' listener count`);
   }
 });
 
@@ -555,12 +582,12 @@ test('CHARACTERIZATION: merging two full networks produces a store ABOVE the mer
 
 // ============================== 12. CHARACTERIZATION: site-wide construction pool
 
-test('CHARACTERIZATION: install materials are drawn from ANY lane network on the site, including a fully disconnected one', () => {
-  // Most on-point for A10's "explicit ownership" wording. _missingMaterials / _consumeMaterials
-  // iterate ALL site.laneStores regardless of connectivity, so a network on the far side of the
-  // asteroid — sharing no cell, no cable and no lane with the build site — silently funds the
-  // build. Recorded as today's behaviour; whether this is an intended site-wide construction pool
-  // or an ownership violation needs a ruling. See sharedChangeRequests.
+test('A10 RULING: construction may draw only from ship cargo plus the lane component that would own the install cell', () => {
+  // The ruled behaviour (formerly a characterization of the reviewed defect, when
+  // _missingMaterials / _consumeMaterials iterated ALL site.laneStores regardless of
+  // connectivity): a network on the far side of the asteroid — sharing no cell, no cable and no
+  // lane with the build site — must NEVER silently fund the build. The install cell here reaches
+  // no lane at all, so the ship hold pays the full cost and the disconnected stock is untouched.
   const { h, siteId, site } = anchoredSite();
   paintCorridor(h, siteId);
   h.sys._runtime(site);
@@ -575,9 +602,11 @@ test('CHARACTERIZATION: install materials are drawn from ANY lane network on the
   const res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_cargo_port', col: 14, row: 3 });
   assert.equal(res.ok, true);
 
-  assert.equal(h.state.player.cargo.items.cmdty_regocrete, cargoBefore,
-    'the ship hold was not touched');
-  assert.ok(far.store.cmdty_regocrete < 50,
-    'the DISCONNECTED network paid for a machine it has no connection to');
-  assert.equal(far.store.cmdty_regocrete, 45, 'exactly the cargo port cost, drawn remotely');
+  // Independent literal: the cargo port costs 5u regocrete (copied by hand from the shipped
+  // def; a balance change must consciously update this).
+  const PORT_COST_REGOCRETE = 5;
+  assert.equal(h.state.player.cargo.items.cmdty_regocrete, cargoBefore - PORT_COST_REGOCRETE,
+    'the ship hold pays the FULL cost when no lane would own the install cell');
+  assert.equal(far.store.cmdty_regocrete, 50,
+    'the disconnected network keeps every unit — remote funding is dead');
 });

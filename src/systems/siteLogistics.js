@@ -84,23 +84,66 @@ export function storeTotal(store) {
 }
 
 /**
- * Re-home persisted network stores onto freshly computed components after a topology change.
- * Each old store lands on the new component holding the most of its old cells (merges sum per
- * good). Stock on cells that vanished entirely (network fully dismantled) is lost — dismantling
- * a loaded lane spills its buffer, and the UI warns before that happens.
+ * Numeric-safety ceiling for a single good's quantity in a store. This is NOT a gameplay
+ * capacity — capacity limits INTAKE and never destroys stock (see the A10 ruling in
+ * previewStoreReconciliation) — it is the bound past which unit arithmetic itself stops being
+ * exact. Any legal gameplay quantity is dozens of orders of magnitude below it; reaching it
+ * means corrupted input, and the defined overflow result is saturation at this ceiling rather
+ * than a silent Infinity in a save file.
+ */
+export const STORE_NUMERIC_CEILING = Number.MAX_SAFE_INTEGER;
+
+/** The component (from buildComponents) whose cells include `cellIdx`, or null. */
+export function componentForCell(components, cellIdx) {
+  for (const comp of components) {
+    if (comp.cells.includes(cellIdx)) return comp;
+  }
+  return null;
+}
+
+/**
+ * The lane component that WOULD own an installation cell after a machine is hypothetically
+ * inserted there (machines conduct, so the new cell can bridge lanes). Returns null when no lane
+ * would reach the cell — and per the A10 construction ruling, a null here means construction may
+ * draw from SHIP CARGO ONLY: a disconnected lane network must never silently fund a build.
+ */
+export function wouldOwnComponent(overlayCells, machineCells, cols, insertCellIdx) {
+  const withInsert = new Map(machineCells);
+  if (!withInsert.has(insertCellIdx)) withInsert.set(insertCellIdx, '__hypothetical__');
+  const components = buildComponents(overlayCells, withInsert, cols);
+  const comp = componentForCell(components, insertCellIdx);
+  if (!comp) return null;
+  // A component that is ONLY the hypothetical machine itself reaches no lane and no neighbor:
+  // that is a disconnected build site, not an owning network.
+  if (comp.cells.length === 1 && comp.cells[0] === insertCellIdx) return null;
+  return comp;
+}
+
+/**
+ * NON-MUTATING preflight for a topology change: where every persisted store would land, and
+ * exactly what would spill. `reconcileStores` is implemented ON TOP of this so the executed
+ * reconciliation can never diverge from the preview a caller confirmed.
+ *
+ * A10 destructive-removal ruling: a topology change that would spill stock must be REFUSED by
+ * the mutation seam (asteroidSites.setOverlay) until the caller explicitly confirms it with this
+ * preview in hand; a confirmed loss emits a deterministic receipt. Nothing in this module — and
+ * nothing anywhere else — may delete inventory silently.
+ *
  * @param {Array<{cells:number[], store:Object}>} prevStores
  * @param {Array<{key:string, cells:number[]}>} components
- * @returns {Object<string,Object>} componentKey -> merged store
+ * @returns {{ placed: Array<{cells:number[], toKey:string, store:Object}>,
+ *             spilled: Array<{cells:number[], store:Object, total:number}>,
+ *             spilledTotal: number }}
  */
-export function reconcileStores(prevStores, components) {
-  const byKey = {};
-  for (const comp of components) byKey[comp.key] = {};
-  if (!Array.isArray(prevStores) || !prevStores.length) return byKey;
+export function previewStoreReconciliation(prevStores, components) {
   const cellToComp = new Map();
   for (const comp of components) {
     for (const idx of comp.cells) cellToComp.set(idx, comp.key);
   }
-  for (const prev of prevStores) {
+  const placed = [];
+  const spilled = [];
+  let spilledTotal = 0;
+  for (const prev of Array.isArray(prevStores) ? prevStores : []) {
     if (!prev || !prev.store) continue;
     const votes = new Map();
     for (const idx of prev.cells || []) {
@@ -113,14 +156,63 @@ export function reconcileStores(prevStores, components) {
     for (const [key, count] of [...votes.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
       if (count > bestVotes) { bestKey = key; bestVotes = count; }
     }
-    if (!bestKey) continue; // every cell gone → stock spilled
-    const target = byKey[bestKey];
-    for (const goodId of Object.keys(prev.store).sort()) {
-      const qty = Math.max(0, Number(prev.store[goodId]) || 0);
-      if (qty > 0) target[goodId] = (target[goodId] || 0) + qty;
+    if (!bestKey) {
+      const total = storeTotal(prev.store);
+      if (total > 0) {
+        spilled.push({ cells: (prev.cells || []).slice(), store: { ...prev.store }, total });
+        spilledTotal += total;
+      }
+      continue;
+    }
+    placed.push({ cells: (prev.cells || []).slice(), toKey: bestKey, store: prev.store });
+  }
+  return { placed, spilled, spilledTotal };
+}
+
+/**
+ * Re-home persisted network stores onto freshly computed components after a topology change.
+ * Each old store lands on the new component holding the most of its old cells; merges SUM per
+ * good — a merge is LOSSLESS even when the merged total exceeds the new network's capacity.
+ * Over-capacity stock is never clamped or deleted: capacity blocks further INTAKE (production
+ * backlogs, deposits refuse) until the excess is drained, and the projection reports the exact
+ * over-capacity amount. Stores whose every cell vanished are DROPPED here — which is precisely
+ * why the mutation seam must refuse an unconfirmed spilling removal (see
+ * previewStoreReconciliation); this executor trusts that the refusal already happened.
+ * @param {Array<{cells:number[], store:Object}>} prevStores
+ * @param {Array<{key:string, cells:number[]}>} components
+ * @returns {Object<string,Object>} componentKey -> merged store
+ */
+export function reconcileStores(prevStores, components) {
+  const byKey = {};
+  for (const comp of components) byKey[comp.key] = {};
+  const preview = previewStoreReconciliation(prevStores, components);
+  for (const placement of preview.placed) {
+    const target = byKey[placement.toKey];
+    for (const goodId of Object.keys(placement.store).sort()) {
+      const qty = Math.max(0, Number(placement.store[goodId]) || 0);
+      if (qty > 0) {
+        const sum = (target[goodId] || 0) + qty;
+        target[goodId] = sum > STORE_NUMERIC_CEILING ? STORE_NUMERIC_CEILING : sum;
+      }
     }
   }
   return byKey;
+}
+
+/**
+ * Exact storage pressure of one lane network — the A10 over-capacity diagnostics contract.
+ * `overCapacity` is the amount that must drain before intake resumes; `intakeRoom` is what
+ * roomFor()-style intake gating sees. Both are exact, never clamped views of each other.
+ */
+export function storePressure(component, store, storeBonusByMachineId, balance = SITE_BALANCE) {
+  const capacity = laneCapacity(component, storeBonusByMachineId, balance);
+  const stored = storeTotal(store);
+  return {
+    capacity,
+    stored,
+    overCapacity: Math.max(0, stored - capacity),
+    intakeRoom: Math.max(0, capacity - stored),
+  };
 }
 
 /** Seeded-stochastic courier loss chance for a route (brief §6: probabilities, not fixed tolls). */

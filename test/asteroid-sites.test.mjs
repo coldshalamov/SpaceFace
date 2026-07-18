@@ -316,20 +316,28 @@ test('install law: hollow + rover adjacency + materials; core anchors and freeze
   assert.equal(res.ok, true);
 });
 
-test('materials pull from lane stores before the ship hold', () => {
+test('construction draws only from the lane component that would own the install cell (A10 ruling)', () => {
   const h = makeHarness();
   addAsteroid(h);
   openSession(h, 42, POCKET);
   const res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_extractor', col: 13, row: 2 });
   const site = h.sys.getSite(res.siteId);
-  // Seed a lane store with regocrete, then install another machine: store drains first.
+  // Seed the extractor's network store. The core install cell (14,1) is NOT 4-adjacent to the
+  // extractor and no lane bridges them, so that stock is physically elsewhere: under the A10
+  // ownership ruling it must NOT fund this build — the ship hold pays the full cost and the
+  // disconnected store is untouched. (The old behavior drained EVERY lane store on the site;
+  // that was the reviewed defect, and this test used to pin it.)
   h.sys._runtime(site);
   site.laneStores[0].store.cmdty_regocrete = 2;
   const cargoBefore = h.state.player.cargo.items.cmdty_regocrete;
   const res2 = h.sys.installMachine({ asteroidId: 42, defId: 'sm_massline_core', col: 14, row: 1 });
   assert.equal(res2.ok, true);
   const coreCost = SITE_MACHINE_BY_ID.get('sm_massline_core').cost.cmdty_regocrete;
-  assert.equal(h.state.player.cargo.items.cmdty_regocrete, cargoBefore - (coreCost - 2));
+  assert.equal(h.state.player.cargo.items.cmdty_regocrete, cargoBefore - coreCost,
+    'the ship hold pays the FULL cost — a disconnected network cannot fund construction');
+  const totalRegoInStores = h.sys.getSite(res.siteId).laneStores
+    .reduce((s, ls) => s + Math.max(0, Number(ls.store.cmdty_regocrete) || 0), 0);
+  assert.equal(totalRegoInStores, 2, 'the disconnected store keeps its 2u untouched');
 });
 
 test('unanchored sites die with their rock; anchored sites re-materialize it', () => {

@@ -333,6 +333,26 @@ export const asteroidScreen = {
       updateHud();
     }
 
+    // A10 spill confirmation. The system REFUSES to clear a lane cell whose removal would spill
+    // network stock; the first attempt announces the exact amount and ARMS the cell, and a second
+    // clear on the same cell confirms the loss (the deterministic receipt lands in the site
+    // ledger via site:laneSpilled). Arming resets on any other action.
+    let armedSpill = null; // { kind, idx }
+    function attemptOverlayChange(kind, cursor, on) {
+      const idx = tileIndex(cursor.col, cursor.row);
+      const confirmed = !on && armedSpill && armedSpill.kind === kind && armedSpill.idx === idx;
+      const res = siteSys.setOverlay(currentSiteId, kind, cursor.col, cursor.row, on,
+        confirmed ? { confirmSpill: true } : undefined);
+      if (!res.ok && res.reason === 'would-spill') {
+        armedSpill = { kind, idx };
+        const total = res.spill ? Math.floor(res.spill.spilledTotal) : 0;
+        announce(`Clearing this lane would spill ${total}u of stored goods — clear it again to confirm the loss.`);
+        return res;
+      }
+      armedSpill = null;
+      return res;
+    }
+
     function commitPlacement(cursor) {
       const item = palette.selected;
       const astId = asteroidId();
@@ -344,11 +364,12 @@ export const asteroidScreen = {
           return;
         }
         const on = !overlaySetFor(item.id).has(tileIndex(cursor.col, cursor.row));
-        const res = siteSys.setOverlay(currentSiteId, item.id, cursor.col, cursor.row, on);
+        const res = attemptOverlayChange(item.id, cursor, on);
         if (res.ok) {
           projDirty = true;
-          announce(`${item.name} ${on ? 'laid' : 'cleared'} at ${cursor.col},${cursor.row}.`);
-        } else {
+          announce(`${item.name} ${on ? 'laid' : 'cleared'} at ${cursor.col},${cursor.row}.`
+            + (res.spilled > 0 ? ` Spilled ${Math.floor(res.spilled)}u.` : ''));
+        } else if (res.reason !== 'would-spill') {
           announce(placementReason({ reason: res.reason }));
         }
         return;
@@ -381,9 +402,12 @@ export const asteroidScreen = {
       // No machine: clear whichever overlay is present (lane first, then cable).
       for (const kind of ['lane', 'power']) {
         if (overlaySetFor(kind).has(tileIndex(cursor.col, cursor.row))) {
-          siteSys.setOverlay(currentSiteId, kind, cursor.col, cursor.row, false);
-          announce(`${kind === 'lane' ? 'Material lane' : 'Power cable'} cleared.`);
-          projDirty = true;
+          const res = attemptOverlayChange(kind, cursor, false);
+          if (res.ok) {
+            announce(`${kind === 'lane' ? 'Material lane' : 'Power cable'} cleared.`
+              + (res.spilled > 0 ? ` Spilled ${Math.floor(res.spilled)}u.` : ''));
+            projDirty = true;
+          }
           return;
         }
       }
