@@ -229,3 +229,19 @@ test('T03 §9: only the sanctioned consumers import this module', () => {
     assert.ok(allowed.has(f), `unsanctioned importer: ${f}`);
   }
 });
+
+// ── §10 paint beats latch alone (round-3 gap: §3 only ever tested them combined) ───────────────
+
+test('T03 §10: an explicit painted target beats latch stickiness with no intent vector in play', () => {
+  const a = T('aa', 200, 0, { vz: 60 });
+  const b = T('bb', -200, 0, { vz: -60 });
+  // Symmetric candidates; aa holds the latch (+0.08), bb holds the paint (+0.15).
+  const ranked = rankMasslineTargets(P(), [a, b], {
+    isLatched: (t) => t.id === 'aa',
+    preferredId: 'bb',
+  });
+  assert.equal(ranked[0].id, 'bb', 'paint (0.15) must beat the latched tiebreak (0.08)');
+  // Both sides of the constant ordering: latch alone still beats a clean tie.
+  const latchedOnly = rankMasslineTargets(P(), [a, b], { isLatched: (t) => t.id === 'aa' });
+  assert.equal(latchedOnly[0].id, 'aa', 'latch alone wins a symmetric tie');
+});
