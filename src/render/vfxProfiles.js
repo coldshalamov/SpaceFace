@@ -1,7 +1,6 @@
 // Elite VFX profile resolver — maps authored part IDs + weapon defs to presentation lanes.
 // Cosmetic only; sim never imports this module.
 import { WEAPONS } from '../data/weapons.js';
-import { resolveWeaponCueTable } from '../data/combatDefs.js';
 import { SHIPS } from '../data/ships.js';
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
@@ -251,14 +250,94 @@ export function resolveEngineProfile(meta, factionThruster) {
   };
 }
 
-function muzzleLaneFromWeapon(weaponId) {
-  const w = weaponId ? WEAPON_BY_ID.get(weaponId) : null;
-  if (!w) return 'ballistic';
-  if (w.continuous || w.projSpeed === Infinity || String(w.tracking || '') === 'hitscan') return 'beam';
-  const cue = resolveWeaponCueTable(weaponId, WEAPONS);
-  const muzzle = cue && cue.muzzle ? String(cue.muzzle) : '';
-  if (muzzle.includes('energy')) return 'energy';
-  if (muzzle.includes('explosive') || muzzle.includes('missile')) return 'explosive';
+const WEAPON_PRESENTATION = Object.freeze({
+  beam: Object.freeze({ family: 'beam', variant: 'continuous-beam' }),
+  missile: Object.freeze({ family: 'missile', variant: 'missile' }),
+  torpedo: Object.freeze({ family: 'missile', variant: 'torpedo' }),
+  emp: Object.freeze({ family: 'emp', variant: 'disruptor' }),
+  rail: Object.freeze({ family: 'rail', variant: 'railgun' }),
+  siegeRail: Object.freeze({ family: 'rail', variant: 'siege-lance' }),
+  thermal: Object.freeze({ family: 'plasma', variant: 'thermal-bolt' }),
+  pulse: Object.freeze({ family: 'plasma', variant: 'pulse-bolt' }),
+  flak: Object.freeze({ family: 'kinetic', variant: 'flak' }),
+  kinetic: Object.freeze({ family: 'kinetic', variant: 'autocannon' }),
+});
+
+export function resolveWeaponPresentationFamily(weaponId, weaponData = null, fallbackData = null) {
+  const fallback = fallbackData || (weaponId ? WEAPON_BY_ID.get(weaponId) : null) || null;
+  const data = weaponData || fallback;
+  const id = String(weaponId || (data && data.id) || (fallback && fallback.id) || '').toLowerCase();
+  const tracking = String((data && data.tracking) ?? (fallback && fallback.tracking) ?? '').toLowerCase();
+  const damageType = String(
+    (data && (data.damageType ?? data.dmgType))
+      ?? (fallback && (fallback.damageType ?? fallback.dmgType))
+      ?? '',
+  ).toLowerCase();
+  const continuous = (data && data.continuous) ?? (fallback && fallback.continuous);
+  const projSpeed = (data && data.projSpeed) ?? (fallback && fallback.projSpeed);
+
+  if (continuous || projSpeed === Infinity || tracking === 'hitscan') {
+    return WEAPON_PRESENTATION.beam;
+  }
+  if (tracking === 'homing' || id.includes('missile') || id.includes('torpedo') || id.includes('rack')) {
+    return id.includes('torpedo') ? WEAPON_PRESENTATION.torpedo : WEAPON_PRESENTATION.missile;
+  }
+  if (damageType === 'emp' || id.includes('emp') || id.includes('disruptor')) {
+    return WEAPON_PRESENTATION.emp;
+  }
+  if (id.includes('railgun') || id.includes('siege_lance') || id.includes('siege-lance')) {
+    return id.includes('siege') ? WEAPON_PRESENTATION.siegeRail : WEAPON_PRESENTATION.rail;
+  }
+  if (damageType === 'thermal' || damageType === 'plasma' || id.includes('plasma')) {
+    return WEAPON_PRESENTATION.thermal;
+  }
+  if (damageType === 'energy' || id.includes('pulse_laser')) {
+    return WEAPON_PRESENTATION.pulse;
+  }
+  if (id.includes('flak')) return WEAPON_PRESENTATION.flak;
+  return WEAPON_PRESENTATION.kinetic;
+}
+
+const IMPACT_PRESENTATION_PROFILES = Object.freeze({
+  kinetic: Object.freeze({
+    mode: 'directional-fragments', primaryShape: 'spray', life: 0.18, fragmentCount: 12,
+    coreColor: '#fff3d2', accentColor: '#ff9c48', lightPeak: 2.2,
+  }),
+  rail: Object.freeze({
+    mode: 'penetration-streak', primaryShape: 'line', life: 0.11, fragmentCount: 7,
+    coreColor: '#ffffff', accentColor: '#9edcff', lightPeak: 3.4,
+  }),
+  plasma: Object.freeze({
+    mode: 'thermal-splash', primaryShape: 'tendrils', life: 0.42, fragmentCount: 9,
+    coreColor: '#fff1c8', accentColor: '#ff6a28', lightPeak: 3.0,
+  }),
+  beam: Object.freeze({
+    mode: 'sustained-contact', primaryShape: 'contact-line', life: 0.08, fragmentCount: 3,
+    coreColor: '#f4fbff', accentColor: '#56cfff', lightPeak: 1.2,
+  }),
+  missile: Object.freeze({
+    mode: 'combustion-burst', primaryShape: 'irregular-burst', life: 0.62, fragmentCount: 15,
+    coreColor: '#fff0c0', accentColor: '#ff7028', lightPeak: 4.6,
+  }),
+  emp: Object.freeze({
+    mode: 'disruption-arcs', primaryShape: 'forks', life: 0.28, fragmentCount: 6,
+    coreColor: '#f2ffff', accentColor: '#668cff', lightPeak: 2.0,
+  }),
+});
+
+export function resolveImpactPresentationProfile(weaponId, weaponData = null) {
+  const presentation = resolveWeaponPresentationFamily(weaponId, weaponData);
+  const base = IMPACT_PRESENTATION_PROFILES[presentation.family] || IMPACT_PRESENTATION_PROFILES.kinetic;
+  const scale = presentation.variant === 'siege-lance'
+    ? 1.8
+    : (presentation.variant === 'torpedo' ? 1.5 : 1);
+  return { ...base, family: presentation.family, variant: presentation.variant, scale };
+}
+
+function muzzleLaneForFamily(family) {
+  if (family === 'beam') return 'beam';
+  if (family === 'plasma' || family === 'emp') return 'energy';
+  if (family === 'missile') return 'explosive';
   return 'ballistic';
 }
 
@@ -277,12 +356,15 @@ function muzzleColorsForLane(lane) {
 
 export function resolveMuzzleProfile(weaponId, weaponPartId) {
   const partBase = weaponPartId && MUZZLE_PART_PROFILES[weaponPartId] ? MUZZLE_PART_PROFILES[weaponPartId] : null;
-  const lane = (partBase && partBase.lane) || muzzleLaneFromWeapon(weaponId);
+  const presentation = resolveWeaponPresentationFamily(weaponId);
+  const lane = weaponId ? muzzleLaneForFamily(presentation.family) : ((partBase && partBase.lane) || 'ballistic');
   const colors = muzzleColorsForLane(lane);
   return {
     ...DEFAULT_MUZZLE,
     ...partBase,
     lane,
+    family: presentation.family,
+    variant: presentation.variant,
     weaponId: weaponId || null,
     weaponPartId: weaponPartId || null,
     ...colors,
@@ -335,11 +417,11 @@ export const PROJECTILE_TRAIL_PROFILES = Object.freeze({
     class: 'rail',
     mode: 'streak',
     life: 0.14,
-    size0: 0.28,
+    size0: 0.62,
     size1: 0.0,
     stretch: 2.2,
     streakLen: 5.2,
-    streakOpacity: 0.72,
+    streakOpacity: 0.86,
     particleCount: 1,
     coreColor: '#e8f8ff',
     tailColor: '#4a9acc',
@@ -348,87 +430,144 @@ export const PROJECTILE_TRAIL_PROFILES = Object.freeze({
   missile: Object.freeze({
     ...PROJECTILE_TRAIL_BASE,
     class: 'missile',
-    mode: 'smoke',
-    life: 0.48,
-    size0: 2.0,
-    size1: 3.8,
-    stretch: 0,
-    particleCount: 2,
-    spawnMul: 1.15,
-    coreColor: '#4a3830',
-    tailColor: '#1e1a18',
-    drag: 0.58,
+    mode: 'propelled',
+    life: 0.34,
+    size0: 1.45,
+    size1: 3.35,
+    stretch: 2.8,
+    streakLen: 2.9,
+    streakOpacity: 0.70,
+    particleCount: 1,
+    spawnMul: 1,
+    coreColor: '#fff0c8',
+    tailColor: '#302824',
+    drag: 0.64,
   }),
   plasma: Object.freeze({
     ...PROJECTILE_TRAIL_BASE,
     class: 'plasma',
-    mode: 'heat',
-    life: 0.30,
-    size0: 1.55,
-    size1: 0.15,
-    stretch: 0.72,
-    particleCount: 3,
-    coreColor: '#ff9040',
-    tailColor: '#cc3018',
-    drag: 0.34,
+    mode: 'thermal-wake',
+    // A compact, continuously overlapping inner stream plus a broader cooling sheath. Plasma used
+    // to emit three free point particles per cadence, which read as an orange bead chain in motion.
+    life: 0.12,
+    size0: 0.92,
+    size1: 0.0,
+    stretch: 1.25,
+    streakLen: 3.15,
+    streakOpacity: 0.54,
+    particleCount: 1,
+    coreColor: '#ffb05a',
+    tailColor: '#b8321d',
+    drag: 0.28,
+  }),
+  pulse: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'pulse',
+    mode: 'streak',
+    life: 0.085,
+    size0: 0.44,
+    size1: 0.0,
+    stretch: 1.7,
+    streakLen: 2.35,
+    streakOpacity: 0.20,
+    particleCount: 1,
+    coreColor: '#34cfff',
+    tailColor: '#165f9a',
+    drag: 0.18,
   }),
   kinetic: Object.freeze({
     ...PROJECTILE_TRAIL_BASE,
     class: 'kinetic',
-    mode: 'spark',
-    life: 0.07,
-    size0: 0.42,
+    mode: 'tracer',
+    life: 0.075,
+    size0: 0.50,
     size1: 0.0,
-    stretch: 0.28,
+    stretch: 1.45,
+    streakLen: 2.6,
+    streakOpacity: 0.68,
     particleCount: 1,
     coreColor: '#ffd090',
     tailColor: '#6a5040',
     drag: 0.68,
   }),
+  emp: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'emp',
+    mode: 'disruption',
+    life: 0.18,
+    size0: 0.72,
+    size1: 0.08,
+    stretch: 1.35,
+    particleCount: 2,
+    coreColor: '#f4fbff',
+    tailColor: '#3c72a8',
+    drag: 0.22,
+  }),
 });
 
-function isMissileProjectile(data, damageType) {
-  const kind = String((data && data.kind) || '').toLowerCase();
-  if (kind === 'missile') return true;
-  return damageType === 'missile' || damageType === 'rocket' || damageType === 'torpedo';
-}
+const PROJECTILE_TRAIL_VARIANTS = Object.freeze({
+  'continuous-beam': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.kinetic, variant: 'continuous-beam' }),
+  missile: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.missile, variant: 'missile' }),
+  torpedo: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.missile, variant: 'torpedo' }),
+  disruptor: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.emp, variant: 'disruptor' }),
+  railgun: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.rail, variant: 'railgun' }),
+  'siege-lance': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.rail, variant: 'siege-lance' }),
+  'thermal-bolt': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.plasma, variant: 'thermal-bolt' }),
+  'pulse-bolt': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.pulse, variant: 'pulse-bolt' }),
+  flak: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.kinetic, variant: 'flak' }),
+  autocannon: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.kinetic, variant: 'autocannon' }),
+});
 
 export function resolveProjectileTrailProfile(weaponId, projectileData = null) {
-  const data = projectileData || {};
-  const wid = String(weaponId || data.weaponId || '').toLowerCase();
-  const damageType = String(data.damageType || data.dmgType || '').toLowerCase();
-
-  if (wid.includes('railgun')) {
-    return { ...PROJECTILE_TRAIL_PROFILES.rail };
-  }
-  if (isMissileProjectile(data, damageType)) {
-    return { ...PROJECTILE_TRAIL_PROFILES.missile };
-  }
-
-  const cue = resolveWeaponCueTable(weaponId || data.weaponId, WEAPONS);
-  const projCue = cue && cue.projectile ? String(cue.projectile) : '';
-
-  if (projCue.includes('missile')) {
-    return { ...PROJECTILE_TRAIL_PROFILES.missile };
-  }
-  if (projCue.includes('explosive') || damageType === 'explosive' || damageType === 'plasma' || damageType === 'thermal') {
-    return { ...PROJECTILE_TRAIL_PROFILES.plasma };
-  }
-  if (projCue.includes('energy') || damageType === 'energy') {
-    return { ...PROJECTILE_TRAIL_PROFILES.plasma };
-  }
-  if (projCue.includes('kinetic') || damageType === 'kinetic' || !damageType) {
-    return { ...PROJECTILE_TRAIL_PROFILES.kinetic };
-  }
-  return { ...PROJECTILE_TRAIL_PROFILES.kinetic };
+  const data = projectileData || null;
+  const resolvedWeaponId = weaponId || (data && data.weaponId) || '';
+  const weaponDef = WEAPON_BY_ID.get(resolvedWeaponId) || null;
+  const presentation = resolveWeaponPresentationFamily(resolvedWeaponId, data, weaponDef);
+  // A pulse bolt belongs to the energy/plasma weapon family mechanically, but its wake is a short
+  // coherent ion shear. Reusing the thermal-plasma heat plan emitted three orange particle beads
+  // behind every cyan pulse at the real game camera.
+  return PROJECTILE_TRAIL_VARIANTS[presentation.variant] || PROJECTILE_TRAIL_VARIANTS.autocannon;
 }
 
-export function buildProjectileTrailSpawnPlan(profile, entity, burst = 1) {
+export function createProjectileTrailSpawnPlanScratch() {
+  const fallback = { size0: 0, stretch: 0 };
+  return {
+    skip: false,
+    reason: null,
+    class: 'kinetic',
+    mode: 'tracer',
+    emitCount: 0,
+    origin: { x: 0, z: 0 },
+    trailAxis: 0,
+    backVel: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    coreColor: '#ffffff',
+    tailColor: '#ffffff',
+    life: 0,
+    drag: 0,
+    streak: null,
+    sprite: null,
+    particle: null,
+    emitSmoke: false,
+    _streak: { width: 0, length: 0, opacity: 0, fallback },
+    _sprite: { size0: 0, size1: 0, aspect: 1 },
+    _particle: { size0: 0, size1: 0, stretch: 0 },
+  };
+}
+
+export function buildProjectileTrailSpawnPlan(profile, entity, burst = 1, out = null) {
   const prof = profile || PROJECTILE_TRAIL_PROFILES.kinetic;
+  const plan = out || createProjectileTrailSpawnPlanScratch();
   const vx = (entity && entity.vel && entity.vel.x) || 0;
   const vz = (entity && entity.vel && entity.vel.z) || 0;
   const speed = Math.hypot(vx, vz);
-  if (speed < 2) return { skip: true, reason: 'slow' };
+  plan.skip = speed < 2;
+  plan.reason = plan.skip ? 'slow' : null;
+  plan.streak = null;
+  plan.sprite = null;
+  plan.particle = null;
+  plan.emitSmoke = false;
+  if (plan.skip) return plan;
 
   const trailAxis = Math.atan2(vz, vx);
   const backX = -vx / speed;
@@ -438,35 +577,67 @@ export function buildProjectileTrailSpawnPlan(profile, entity, burst = 1) {
   const bz = entity.pos.z + backZ * tailOff;
   const emitCount = Math.max(1, Math.floor((prof.particleCount || 1) * (prof.spawnMul || 1) * burst));
 
-  const plan = {
-    skip: false,
-    class: prof.class || 'kinetic',
-    mode: prof.mode || 'spark',
-    emitCount,
-    origin: { x: bx, z: bz },
-    trailAxis,
-    backVel: { x: backX, z: backZ },
-    vel: { x: vx, z: vz },
-    coreColor: prof.coreColor,
-    tailColor: prof.tailColor,
-    life: prof.life,
-    drag: prof.drag,
-  };
-
-  if (prof.mode === 'streak') {
-    plan.streak = {
-      width: Math.max(0.04, prof.size0 * 0.42),
-      length: prof.streakLen || 5.2,
-      opacity: prof.streakOpacity || 0.72,
-      fallback: { size0: prof.size0, stretch: prof.stretch || 2.2 },
-    };
-  } else if (prof.mode === 'smoke') {
-    plan.sprite = { size0: prof.size0, size1: prof.size1 };
-    plan.particle = { size0: prof.size0 * 0.55, size1: prof.size1, stretch: 0 };
-  } else if (prof.mode === 'heat') {
-    plan.particle = { size0: prof.size0, size1: prof.size1, stretch: prof.stretch || 0.7 };
+  plan.class = prof.class || 'kinetic';
+  plan.mode = prof.mode || 'spark';
+  plan.emitCount = emitCount;
+  plan.origin.x = bx;
+  plan.origin.z = bz;
+  plan.trailAxis = trailAxis;
+  plan.backVel.x = backX;
+  plan.backVel.z = backZ;
+  plan.vel.x = vx;
+  plan.vel.z = vz;
+  if (plan.class === 'plasma') {
+    // Match the authored projectile packet's allegiance-aware plasma palette. The wake remains
+    // structurally identifiable by its broad two-layer thermal shape; this only prevents a green
+    // player plasma body from towing an unrelated fixed-orange filament.
+    const team = entity && entity.team;
+    plan.coreColor = team === 1 ? '#ff7052' : (team === 0 ? '#d8fff0' : prof.coreColor);
+    plan.tailColor = team === 1 ? '#b82c1f' : (team === 0 ? '#188c65' : prof.tailColor);
   } else {
-    plan.particle = { size0: prof.size0, size1: prof.size1, stretch: prof.stretch || 0.3 };
+    plan.coreColor = prof.coreColor;
+    plan.tailColor = prof.tailColor;
+  }
+  plan.life = prof.life;
+  plan.drag = prof.drag;
+
+  if (prof.mode === 'streak' || prof.mode === 'tracer') {
+    const streak = plan._streak;
+    // Rail is a needle-thin electromagnetic trace. Pulse bolts retain a slightly broader ion wake
+    // so the two energy families remain structurally distinct at the game camera.
+    streak.width = Math.max(0.04, prof.size0 * (prof.class === 'rail' ? 0.28
+      : prof.class === 'kinetic' ? 0.24 : 0.42));
+    streak.length = prof.streakLen || 5.2;
+    streak.opacity = prof.streakOpacity || 0.72;
+    streak.fallback.size0 = prof.size0;
+    streak.fallback.stretch = prof.stretch || 2.2;
+    plan.streak = streak;
+  } else if (prof.mode === 'propelled') {
+    const streak = plan._streak;
+    streak.width = Math.max(0.10, prof.size0 * 0.18);
+    streak.length = prof.streakLen || 2.9;
+    streak.opacity = prof.streakOpacity || 0.58;
+    plan.streak = streak;
+    plan._sprite.size0 = prof.size0;
+    plan._sprite.size1 = prof.size1;
+    plan._sprite.aspect = 2.5;
+    plan.sprite = plan._sprite;
+  } else if (prof.mode === 'thermal-wake') {
+    const streak = plan._streak;
+    streak.width = Math.max(0.16, prof.size0 * 0.25);
+    streak.length = prof.streakLen || 3.15;
+    streak.opacity = prof.streakOpacity || 0.52;
+    plan.streak = streak;
+  } else if (prof.mode === 'disruption') {
+    plan._particle.size0 = prof.size0;
+    plan._particle.size1 = prof.size1;
+    plan._particle.stretch = prof.stretch || 0.7;
+    plan.particle = plan._particle;
+  } else {
+    plan._particle.size0 = prof.size0;
+    plan._particle.size1 = prof.size1;
+    plan._particle.stretch = prof.stretch || 0.3;
+    plan.particle = plan._particle;
   }
   return plan;
 }
@@ -485,47 +656,69 @@ export function assertProjectileTrailProfileContracts() {
 
   const kinetic = resolveProjectileTrailProfile('wpn_autocannon_m', { damageType: 'kinetic' });
   _trailAssert(kinetic.class === 'kinetic', 'kinetic weapon must resolve to kinetic class', errors);
-  _trailAssert(kinetic.mode === 'spark', 'kinetic weapon must use spark mode', errors);
+  _trailAssert(kinetic.mode === 'tracer', 'kinetic weapon must use a short tracer mode', errors);
   _trailAssert(kinetic.life < PROJECTILE_TRAIL_PROFILES.plasma.life, 'kinetic life shorter than plasma', errors);
 
   const missile = resolveProjectileTrailProfile('wpn_missile_rack_m', { kind: 'missile', damageType: 'explosive' });
   _trailAssert(missile.class === 'missile', 'missile weapon must resolve to missile class', errors);
-  _trailAssert(missile.mode === 'smoke', 'missile weapon must use smoke mode', errors);
-  _trailAssert(missile.size0 > kinetic.size0, 'missile smoke wider than kinetic spark', errors);
+  _trailAssert(missile.mode === 'propelled', 'missile weapon must use attached propulsion mode', errors);
+  _trailAssert(missile.size0 > kinetic.size0, 'missile vapor wider than kinetic tracer', errors);
 
   const plasma = resolveProjectileTrailProfile('wpn_plasma_cannon_m', { damageType: 'thermal' });
   _trailAssert(plasma.class === 'plasma', 'plasma weapon must resolve to plasma class', errors);
-  _trailAssert(plasma.mode === 'heat', 'plasma weapon must use heat mode', errors);
-  _trailAssert(plasma.size0 > kinetic.size0, 'plasma heat wider than kinetic spark', errors);
+  _trailAssert(plasma.mode === 'thermal-wake', 'plasma weapon must use a connected thermal wake', errors);
+  _trailAssert(plasma.size0 > kinetic.size0, 'plasma wake wider than kinetic tracer', errors);
 
   const rail = resolveProjectileTrailProfile('wpn_railgun_m', { damageType: 'kinetic' });
   _trailAssert(rail.class === 'rail', 'railgun must resolve to rail class', errors);
   _trailAssert(rail.mode === 'streak', 'railgun must use streak mode', errors);
-  _trailAssert(rail.stretch > plasma.stretch, 'rail stretch exceeds plasma heat', errors);
+  _trailAssert(rail.stretch > plasma.stretch, 'rail trace stays more elongated than the plasma wake', errors);
+
+  const pulse = resolveProjectileTrailProfile('wpn_pulse_laser_m', { damageType: 'energy' });
+  _trailAssert(pulse.class === 'pulse', 'pulse laser must resolve to pulse trail class', errors);
+  _trailAssert(pulse.mode === 'streak', 'pulse laser must use a connected streak wake', errors);
+  _trailAssert(pulse.streakLen < rail.streakLen, 'pulse wake shorter than rail trace', errors);
 
   const kineticPlan = buildProjectileTrailSpawnPlan(kinetic, sample, 1);
   const missilePlan = buildProjectileTrailSpawnPlan(missile, sample, 1);
   const plasmaPlan = buildProjectileTrailSpawnPlan(plasma, sample, 1);
+  const pulsePlan = buildProjectileTrailSpawnPlan(pulse, sample, 1);
   const railPlan = buildProjectileTrailSpawnPlan(rail, sample, 1);
 
-  _trailAssert(kineticPlan.mode === 'spark', 'kinetic spawn plan mode spark', errors);
-  _trailAssert(missilePlan.mode === 'smoke', 'missile spawn plan mode smoke', errors);
-  _trailAssert(plasmaPlan.mode === 'heat', 'plasma spawn plan mode heat', errors);
+  _trailAssert(kineticPlan.mode === 'tracer', 'kinetic spawn plan mode tracer', errors);
+  _trailAssert(missilePlan.mode === 'propelled', 'missile spawn plan mode propelled', errors);
+  _trailAssert(plasmaPlan.mode === 'thermal-wake', 'plasma spawn plan mode thermal-wake', errors);
+  _trailAssert(pulsePlan.mode === 'streak', 'pulse spawn plan mode streak', errors);
   _trailAssert(railPlan.mode === 'streak', 'rail spawn plan mode streak', errors);
   _trailAssert(railPlan.streak && railPlan.streak.width < 0.2, 'rail streak width thin', errors);
   _trailAssert(railPlan.streak && railPlan.streak.length > 3, 'rail streak length long', errors);
-  _trailAssert(missilePlan.sprite.size0 > railPlan.streak.width, 'missile puff wider than rail streak', errors);
-  _trailAssert(plasmaPlan.emitCount > kineticPlan.emitCount, 'plasma emits more wisps than kinetic', errors);
-  _trailAssert(kineticPlan.particle.stretch < plasmaPlan.particle.stretch, 'kinetic stretch shorter than plasma', errors);
+  _trailAssert(kineticPlan.streak && kineticPlan.streak.length > 1.5 && kineticPlan.streak.length < railPlan.streak.length,
+    'kinetic tracer must remain brief and shorter than the rail trace', errors);
+  _trailAssert(kineticPlan.particle === null, 'kinetic flight must not fall back to a glowing ball recipe', errors);
+  _trailAssert(missilePlan.sprite.size0 > railPlan.streak.width, 'missile vapor wider than rail streak', errors);
+  _trailAssert(missilePlan.streak.length < railPlan.streak.length,
+    'missile exhaust stays shorter than a rail trace', errors);
+  _trailAssert(plasmaPlan.streak && plasmaPlan.streak.width > railPlan.streak.width,
+    'plasma wake must remain wider than the rail trace', errors);
+  _trailAssert(plasmaPlan.streak && plasmaPlan.streak.length < railPlan.streak.length,
+    'plasma wake must remain shorter than the rail trace', errors);
+  _trailAssert(plasmaPlan.particle === null, 'plasma wake must not emit detached particle beads', errors);
 
   if (errors.length) throw new Error(`projectile trail profile contracts failed:\n${errors.join('\n')}`);
   return {
     ok: true,
-    classes: { kinetic: kinetic.class, missile: missile.class, plasma: plasma.class, rail: rail.class },
+    classes: {
+      kinetic: kinetic.class,
+      missile: missile.class,
+      plasma: plasma.class,
+      pulse: pulse.class,
+      rail: rail.class,
+    },
     plans: {
       kinetic: kineticPlan.mode,
       missile: missilePlan.mode,
       plasma: plasmaPlan.mode,
+      pulse: pulsePlan.mode,
       rail: railPlan.mode,
     },
   };
