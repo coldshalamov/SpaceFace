@@ -167,6 +167,7 @@ export const save = {
       ['sectorSim', () => this._callSerialize('sectorSim') || {}],
       ['claims', () => this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] })],
       ['sites', () => this._callSerialize('asteroidSites') || clonePlain(state.sites || {})],
+      ['formations', () => this._callSerialize('asteroidFormations') || clonePlain(state.formations || {})],
       ['aceMemory', () => this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {})],
       ['lossLedger', () => this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {})],
       ['factionPresence', () => this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {})],
@@ -207,6 +208,7 @@ export const save = {
     data.sectorSim = this._callSerialize('sectorSim') || {};
     data.claims = this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] });
     data.sites = this._callSerialize('asteroidSites') || clonePlain(state.sites || {});
+    data.formations = this._callSerialize('asteroidFormations') || clonePlain(state.formations || {});
     data.aceMemory = this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {});
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
     data.factionPresence = this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {});
@@ -1948,6 +1950,7 @@ export const save = {
       // Claimed bases (after world so sectorId/poiId resolve to real sectors/POIs).
       this._callDeserialize('claims', data.claims);
       this._callDeserialize('asteroidSites', data.sites);
+      this._callDeserialize('asteroidFormations', data.formations);
       this._callDeserialize('aceMemory', data.aceMemory);
       this._callDeserialize('lossLedger', data.lossLedger);
       this._callDeserialize('aftermathWrecks', data.aftermathWrecks);

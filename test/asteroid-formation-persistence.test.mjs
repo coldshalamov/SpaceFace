@@ -262,3 +262,23 @@ test('A02 §10: compactFormationRecord keeps exactly the strategic field list an
   compact.yieldTotal = -1;
   assert.notEqual(f.yieldTotal, -1);
 });
+
+// ── §11-§12 wiring pins (applied by the lead in the A02 wiring slice) ──────────────────────────
+
+test('A02 §11: the save owner carries the formations key end-to-end', () => {
+  const src = readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
+  assert.ok(src.includes("['formations', () => this._callSerialize('asteroidFormations')"),
+    'capture plan entry present');
+  assert.ok(src.includes("data.formations = this._callSerialize('asteroidFormations')"),
+    'serializeData entry present');
+  assert.ok(src.includes("this._callDeserialize('asteroidFormations', data.formations)"),
+    'restore entry present');
+});
+
+test('A02 §12: the registry runs asteroidFormations immediately after asteroidSites', () => {
+  const src = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
+  assert.ok(/asteroidSites, asteroidFormations, wingmen, intervention/.test(src),
+    'SYSTEMS places the knowledge owner beside the site owner');
+  assert.ok(/asteroidSites, asteroidFormations, wingmen, crafting/.test(src),
+    'UPDATE_ORDER places it beside the site owner');
+});
