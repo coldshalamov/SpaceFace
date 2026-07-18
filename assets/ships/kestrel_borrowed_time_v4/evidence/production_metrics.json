@@ -6,63 +6,63 @@
   "lods": [
     {
       "lod": 0,
-      "triangles": 19906,
-      "draws": 15,
+      "triangles": 27318,
+      "draws": 17,
       "animatedRoleException": 0,
-      "staticDraws": 15,
-      "bytes": 21539320,
-      "sha256": "8D42C4AD66656C4A87809BDB77F9C3B4B1DC67C34E74A1912FFB40B01C562291"
+      "staticDraws": 17,
+      "bytes": 31799176,
+      "sha256": "70DA3992DE98FAE65E3C2C274355B7D51AAABB613D95E623EEB645A820504BAC"
     },
     {
       "lod": 1,
-      "triangles": 13962,
+      "triangles": 17126,
       "draws": 12,
       "animatedRoleException": 0,
       "staticDraws": 12,
-      "bytes": 21236988,
-      "sha256": "D33E2143E67F68B8D392576CFFA245856BF5FD6358C0F681BEA86FACFD8AA594"
+      "bytes": 25347424,
+      "sha256": "BEE5928062F55211A45F9E35E4FB91D2C10D0110DF57C994284461CAEF5D2689"
     },
     {
       "lod": 2,
-      "triangles": 12584,
+      "triangles": 13288,
       "draws": 8,
       "animatedRoleException": 0,
       "staticDraws": 8,
-      "bytes": 18395984,
-      "sha256": "766A7C115A03F81CBD387F14AEB1C5F016C22FF51106D5EA66008588C3553892"
+      "bytes": 22258696,
+      "sha256": "A92BA3F714CC0BD726CB1D836C65F84EBFF8798CFEF3D7D167437EAEB1045016"
     }
   ],
   "silhouette": [
     {
       "view": "top",
-      "iou": 0.9981673544743701,
+      "iou": 0.9928711267130224,
       "xor": "assets/ships/kestrel_borrowed_time_v4/evidence/failure_masks/source_vs_v4_top_xor.png",
-      "xorSha256": "9E72F189C738E0D7C831C64F5637B798B9C1E7C3AE0C271F0605E8E9D72CC00C"
+      "xorSha256": "0C1352CE49821BC7F331704C195964B8A917C5BE637EA3C303816649C05F4306"
     },
     {
       "view": "front3q",
-      "iou": 0.9988356862174356,
+      "iou": 0.9984724310169245,
       "xor": "assets/ships/kestrel_borrowed_time_v4/evidence/failure_masks/source_vs_v4_front3q_xor.png",
-      "xorSha256": "CF2AE495B999C77CCE6B1A01AA000096EFC4095D96497A359FB21806A80B021E"
+      "xorSha256": "3B34EA0595E3A7E5F30CE2BE16DA854BAAD28D77119CF035C19E18023CC08A81"
     },
     {
       "view": "rear3q",
-      "iou": 0.9989622550439231,
+      "iou": 0.9988657753752594,
       "xor": "assets/ships/kestrel_borrowed_time_v4/evidence/failure_masks/source_vs_v4_rear3q_xor.png",
-      "xorSha256": "CB6C7A8C2ED51E7D417C013F3C348A4EC7C39D2F8DB99D457309D672B4CBDA32"
+      "xorSha256": "6D728EE7DA0C59022EE607DE60EB0DB8A0ED9D624B60EAC6B412C9EE7093AE22"
     },
     {
       "view": "side",
-      "iou": 0.987109375,
+      "iou": 0.9886949090465145,
       "xor": "assets/ships/kestrel_borrowed_time_v4/evidence/failure_masks/source_vs_v4_side_xor.png",
-      "xorSha256": "D46FF26FBC27BD53C2377B0AABF62930DD85AAF67FCBF47EDC97C4860236B081"
+      "xorSha256": "7CB5EBA55417890EB63BC50D19FEC56C3E5C1F395CBF8C13D6D7ADC6381525B8"
     }
   ],
   "lod1": [
     {
       "az": 0,
       "deviationPx": 1,
-      "iou": 0.9985352584222641
+      "iou": 0.9989565943238731
     },
     {
       "az": 45,
@@ -72,42 +72,42 @@
     {
       "az": 90,
       "deviationPx": 1,
-      "iou": 0.9981110691348697
+      "iou": 0.9992435703479576
     },
     {
       "az": 135,
       "deviationPx": 1,
-      "iou": 0.9995454545454545
+      "iou": 0.9990909090909091
     },
     {
       "az": 180,
       "deviationPx": 1,
-      "iou": 0.9991874873044891
+      "iou": 0.9987834549878345
     },
     {
       "az": 225,
-      "deviationPx": 0,
-      "iou": 1
+      "deviationPx": 1,
+      "iou": 0.9995489400090212
     },
     {
       "az": 270,
       "deviationPx": 1,
-      "iou": 0.9977469019902365
+      "iou": 0.9988721804511278
     },
     {
       "az": 315,
       "deviationPx": 1,
-      "iou": 0.998166819431714
+      "iou": 0.9986251145737856
     }
   ],
   "lod2": [
     {
       "az": 0,
-      "iou": 0.9808695652173913
+      "iou": 0.9878260869565217
     },
     {
       "az": 45,
-      "iou": 0.9849624060150376
+      "iou": 0.981203007518797
     },
     {
       "az": 90,
@@ -115,11 +115,11 @@
     },
     {
       "az": 135,
-      "iou": 0.9844961240310077
+      "iou": 0.9806949806949807
     },
     {
       "az": 180,
-      "iou": 0.9776632302405498
+      "iou": 0.988013698630137
     },
     {
       "az": 225,
@@ -131,14 +131,14 @@
     },
     {
       "az": 315,
-      "iou": 0.9847328244274809
+      "iou": 0.9885496183206107
     }
   ],
   "islands": [
     {
       "az": 0,
       "components": [
-        4778
+        4792
       ],
       "unintendedIslandPixels": 0
     },
@@ -152,35 +152,35 @@
     {
       "az": 90,
       "components": [
-        2645
+        2642
       ],
       "unintendedIslandPixels": 0
     },
     {
       "az": 135,
       "components": [
-        2200
+        2199
       ],
       "unintendedIslandPixels": 0
     },
     {
       "az": 180,
       "components": [
-        4923
+        4932
       ],
       "unintendedIslandPixels": 0
     },
     {
       "az": 225,
       "components": [
-        2215
+        2217
       ],
       "unintendedIslandPixels": 0
     },
     {
       "az": 270,
       "components": [
-        2660
+        2657
       ],
       "unintendedIslandPixels": 0
     },
@@ -193,32 +193,32 @@
     }
   ],
   "neutralClipping": {
-    "visiblePixels": 145976,
-    "clippedDark": 0.009796130870828082,
-    "clippedWhite": 0.000020551323505233737
+    "visiblePixels": 146154,
+    "clippedDark": 0,
+    "clippedWhite": 0
   },
   "collisionRatios": [
     0.920031944402243,
     0.9197120186605939,
-    0.9201631596459119
+    0.9200060797557046
   ],
   "determinism": [
     {
       "lod": 0,
-      "firstSha256": "8D42C4AD66656C4A87809BDB77F9C3B4B1DC67C34E74A1912FFB40B01C562291",
-      "secondSha256": "8D42C4AD66656C4A87809BDB77F9C3B4B1DC67C34E74A1912FFB40B01C562291",
+      "firstSha256": "70DA3992DE98FAE65E3C2C274355B7D51AAABB613D95E623EEB645A820504BAC",
+      "secondSha256": "70DA3992DE98FAE65E3C2C274355B7D51AAABB613D95E623EEB645A820504BAC",
       "equal": true
     },
     {
       "lod": 1,
-      "firstSha256": "D33E2143E67F68B8D392576CFFA245856BF5FD6358C0F681BEA86FACFD8AA594",
-      "secondSha256": "D33E2143E67F68B8D392576CFFA245856BF5FD6358C0F681BEA86FACFD8AA594",
+      "firstSha256": "BEE5928062F55211A45F9E35E4FB91D2C10D0110DF57C994284461CAEF5D2689",
+      "secondSha256": "BEE5928062F55211A45F9E35E4FB91D2C10D0110DF57C994284461CAEF5D2689",
       "equal": true
     },
     {
       "lod": 2,
-      "firstSha256": "766A7C115A03F81CBD387F14AEB1C5F016C22FF51106D5EA66008588C3553892",
-      "secondSha256": "766A7C115A03F81CBD387F14AEB1C5F016C22FF51106D5EA66008588C3553892",
+      "firstSha256": "A92BA3F714CC0BD726CB1D836C65F84EBFF8798CFEF3D7D167437EAEB1045016",
+      "secondSha256": "A92BA3F714CC0BD726CB1D836C65F84EBFF8798CFEF3D7D167437EAEB1045016",
       "equal": true
     }
   ]
