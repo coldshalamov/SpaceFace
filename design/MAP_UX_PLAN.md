@@ -1,7 +1,26 @@
 # MAP_UX_PLAN — "Surveyor's Table" (galaxyMap refactor)
 
-**Status:** activated plan for the live map refactor. Companion: `MAP_DATA_HANDOFF.md` (grunt-work
-content/data tasks for a second agent). Context audit: `MAP_OVERHAUL_BRIEF.md`.
+**Status:** implemented in `src/ui/galaxyMap.js` (survey-table material, strategy deck, semantic
+zoom rail/iris, keyed glyphs, transit forecast, trade lanes, edge ticks, scan overlays). All eight
+parity gaps closed (§8). Companion: `MAP_DATA_HANDOFF.md` (content tasks — H1–H4 and H6 landed).
+Context audit: `MAP_OVERHAUL_BRIEF.md`.
+
+**Polish pass (later session)** added on top of the above: contact memory with confidence decay at
+LOCAL, multi-point mission geometry, authored mission briefs and station chart notes, hover
+pre-selection, numbered route legs with a current-leg marker, pressure-scaled flow beads with a
+travel envelope, foreign-sector gate/station recession, a chart-mark legend, and canvas-side
+reduced-motion handling. It also fixed a live defect: the inspector read `mission.name`, which no
+mission instance ever carries, so every active contract rendered the placeholder
+`Contract Objective`.
+
+**Review + legibility pass (this session)** — adversarial multi-agent review of the above, then the
+fixes it justified. See §10 for the full ledger. The headline: **continuous residency was leaking
+neighbouring sectors into both spatial levels.** `buildSystemModel`'s live-entity loop had no sector
+predicate at all, so a SYSTEM survey of Helios Prime listed ~10 foreign gates — including
+`Gate → Helios Prime` — and, because those twins sit a lattice hop away, the auto-fit blew the span
+out ~8x and squeezed the sector's own furniture into an unreadable dot. The same leak drove the
+LOCAL span to ~27,900u. One filter at the source fixed the SYSTEM view, its span, its label
+crowding and the spurious compass-octant suffixes at once.
 
 **Scope:** `src/ui/galaxyMap.js` only (the one live map — GALAXY / SYSTEM / LOCAL). Menus are already
 on the fascia; station is explicitly out of scope; other drifted screens (missionLog, gameOver, base)
@@ -201,12 +220,12 @@ read-only over sim (three intents only).
 |---|---|
 | 1. Scan pings | **closes** (LOCAL) |
 | 2. Scan-highlighted asteroids | **closes** (LOCAL) |
-| 3. Remembered-contact decay | follow-up — `MAP_DATA_HANDOFF.md` (needs LocalSpaceIntel port) |
+| 3. Remembered-contact decay | **closes** (LOCAL — screen-owned `LocalSpaceIntel`, `options.intel`) |
 | 4. Trade-route ranking | **closes** (strategy deck) |
 | 5. Commodity-flow beads | **closes** (GALAXY market layer) |
 | 6. Transit forecast comparison | **closes** (sector inspector) |
 | 7. Territory wash | **closes** (faction layer: owner color underlay on nodes) |
-| 8. Multi-point mission geometry | follow-up — `MAP_DATA_HANDOFF.md` (needs mission target shape) |
+| 8. Multi-point mission geometry | **closes** (`missionMapGeometry` — LOCAL + SYSTEM) |
 
 ---
 
@@ -221,3 +240,63 @@ read-only over sim (three intents only).
 6. `npm run check:ui:perf` (perf budget + frame sleep + radar perf + identity)
 7. `node scripts/capture-maps.mjs` → current player-route screenshots of all three levels.
 8. `npm run check:sim:compare` (no sim drift — the map stays read-only).
+
+**Two reds in this suite are pre-existing and proven not to come from map work.** Do not spend time
+on them here:
+
+- `check:m2:map-cutover` → `check-m2b-region-data` — "original story anchor XZ drift". A/B'd by
+  reverting `src/data/sectors.js` to HEAD: the *actual* hash is byte-identical either way
+  (`68fcd1e1…`), so the H2 `chartNote` authoring is not the cause. The pinned anchor fingerprint
+  drifted upstream of this work.
+- `check:ui:perf` → `check-vfx-frame-sleep` — `ERR_MODULE_NOT_FOUND: 'three'`. Environment only
+  (`node_modules/three` absent); the `check:perf-summary` half of that script passes.
+
+---
+
+## 10. Review ledger (this session)
+
+Multi-agent adversarial review: 25 findings raised across render-safety, perf, determinism,
+correctness, UX and contract axes; 10 survived refutation; deduped to 8.
+
+**Fixed.**
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | `buildSystemModel` live-entity loop had **no sector predicate** — foreign gates flooded SYSTEM, blew the span ~8x, ate the label budget (gates outrank stations at 760) and triggered meaningless octant suffixes | New `entityHomeSector(e)` helper (reads `e.homeSectorId` **and** `e.data.homeSectorId`/`sectorId` — the old LOCAL check read only the `data` side and silently misclassified); filter at the source in the loop. One change, four symptoms |
+| 2 | Killed ships lingered as dead-reckoned ghosts for up to ~142 s | Subscribe to **`entity:killed`**, not `entity:destroyed`. `entity:destroyed` fires for every removal incl. despawn/TTL/projectiles — deleting on it would forget exactly the despawns the memory layer exists to render. Subscribed in `onShow`, released in `onHide` |
+| 3 | `Marked points N/M cleared` was pinned at 0 while the denominator shrank per kill (a killed target is filtered out of `targetEntityIds` *and* swap-removed from the entity list, so `done` is structurally unreachable) | Row now reads `N on chart` — the question the geometry can actually answer. `done` documented as unreachable for kill targets |
+| 4 | LOCAL span set by a single far outlier (~27,900 u); the edge-tick path it documents was consequently dead code | Fit on **p85** of navigationally-significant marks, excluding foreign, remembered and asteroids (a belt's hundreds of rocks otherwise frame the scenery and push every station off-frame). Rings went 13,947 u → 734 u; edge ticks now fire |
+| 5 | `disambiguateGateLabel` counted foreign gates that can never claim a label, so a lone unambiguous local gate wore a bearing suffix to distinguish it from a twin the pilot cannot see | Count only label-eligible gates |
+| 6 | `compassOctant` doc claimed `+Z` is north; the math returns N for `dz = -1` | Comment corrected (the math was right — verified at all eight octants plus the 2π wrap) |
+| 7 | `_syncLocalIntel` walked every entity at display refresh rate, rewriting byte-identical tracks (decay is a pure function of `timeS - lastSeenS`, so re-observing at one simTime cannot change any output) | Early-return when `simTime` is unchanged |
+| 8 | **Test gap that let the `mission.name` defect ship**: the only test pinning the inspector's no-churn contract used a fixture with `missions.active: []` and no `state.ui`, so the mission block was never rendered and never asserted on | Fixture gained an active tracked contract + title assertions. **Verified by reintroducing the defect** — the old test passed with it, the new one fails |
+
+**Verified clean, no change needed** (checked because the review suspected them): `localMemoryBand`
+at every boundary incl. `NaN`/`null`/out-of-range; `mutedZoneColor`'s hex guard (`parseInt` → `NaN`
+→ `Number.isFinite` catches it); `compassOctant` octant math and wrap; `projectTrack`'s options
+threading; `save`/`restore` balance in the new draw paths.
+
+**Also fixed (pre-existing, surfaced by the review).**
+
+| # | Finding | Fix |
+|---|---|---|
+| 9 | **GALAXY bypassed `layoutMapLabels` entirely** — `_drawGalaxy` drew sector names with a bare `fillText` and pushed zero candidates, so the densest part of the chart was the one place with no collision handling. Neither label priority nor span tuning could ever have fixed it | Name + faction presence rows + `STALE` now travel as lines of a single `makeMapLabelCandidate`, so the block moves as a unit and rows cannot orphan from their name. The goal plate's rectangle is `reserved` so a node label is never placed under it. Side benefit: GALAXY now uses the same plated label language as SYSTEM/LOCAL instead of bare text |
+| 10 | **Hostility latched permanently** into contact-memory tracks — `observeContact` OR'd against the previous track, so a lawful patrol seen during a WANTED window stayed red as a ghost after heat cleared. It also selects the decay half-life (18 s vs 35 s), so a mis-latched track faded ~2x fast | An explicit reading now wins; OR-inheritance is kept only for callers that omit the field. Verified back-compatible against the other consumer (`src/ui/screens/localmap.js`), which passes a real boolean for ships and omits it for stations/asteroids — so this fixes the latch there too |
+
+**Still open (documented, not attempted).**
+
+- **`buildSystemModel` mixes coordinate frames** — the live loop pushes global `e.pos` while the
+  static station/gate/POI fallbacks push authored sector-local `anchor`. Invisible at Helios
+  (origin `0,0`); will surface at any sector with a non-zero origin. Deliberately not folded into
+  the foreign-gate fix — it is a separate correctness question with its own blast radius.
+- **Recycled-id bleed into contact memory.** `tracks` is keyed on the raw runtime id, and
+  `coreSystem` recycles ids LIFO through `state.freeIds`. Finding #2's `entity:killed` deletion
+  closes the common case; the residue needs a generation/spawn counter in the key. Narrow enough
+  that it needs four events inside one decay window to reproduce.
+- **`missionMapGeometry` / `trackedMissionOf` / `localMemoryBand` / `projectTrack` are unpinned** —
+  they appear only in `src/`, never in `test/` or `scripts/`. `capture-maps.mjs` sets no tracked
+  mission, so the `drawMissionPoint` loops are unexercised by the render smoke too.
+- **The `entity:killed` subscription is unpinned.** It is the first bus subscription this file has
+  ever had. The inspector-stability test asserts remount disposal for the rAF loop and the Set
+  Course button, but nothing counts bus listeners across a show/hide/show cycle, so a future leak
+  there would not be caught. Worth an assertion alongside the fixture work above.

@@ -88,6 +88,17 @@ assert.strictEqual(documentRef.activeElement, firstButton,
 assert.equal(firstButton.listenerCount('click'), 1,
   'the persistent action button must have exactly one activation handler');
 
+// The mission block must render the contract's real identity. Mission instances are stamped with
+// `title` and never with `name`, so a reader that consults `name` first silently degrades every
+// live contract to the placeholder — a defect that shipped precisely because this fixture used to
+// carry no active mission for the block to render.
+assert.match(details.innerHTML, /Active Mission/,
+  'a station holding the tracked contract surfaces its mission block');
+assert.match(details.innerHTML, /Vesta Ore Run/,
+  'the mission block prints the instance title rather than a placeholder');
+assert.doesNotMatch(details.innerHTML, /Contract Objective/,
+  'a titled mission must never fall through to the generic placeholder');
+
 const writesAfterFirstHeliosRender = details.innerHTMLWrites;
 galaxyMapScreen._updateInspector();
 assert.equal(details.innerHTMLWrites, writesAfterFirstHeliosRender,
@@ -398,7 +409,25 @@ function createStateFixture() {
         services: ['trade', 'shipyard', 'missions'],
       },
     }],
-    missions: { active: [] },
+    // An active, tracked contract bound to the fixture station. Without this the inspector's
+    // `if (relevantMission)` guards never fire, the mission block is never concatenated into the
+    // cached HTML, and the no-churn assertions below cannot see inside it — which is exactly how a
+    // live defect shipped where the block read `mission.name` (a field no instance ever carries)
+    // and every real contract rendered the placeholder "Contract Objective".
+    missions: {
+      active: [{
+        id: 'm_helios_run',
+        status: 'active',
+        title: 'Vesta Ore Run',
+        type: 'bulk_haul',
+        destStationId: 'station_helios',
+        destSectorId: 'sector_helios',
+        objectiveProgress: 12,
+        objectiveTarget: 37,
+        targetEntityIds: [],
+      }],
+    },
+    ui: { trackedMissionId: 'm_helios_run' },
   };
 }
 

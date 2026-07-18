@@ -146,8 +146,12 @@ try {
   // staring at an unspawned menu-mode world.
   await evalJson(`(() => { if (document.querySelector('#cinematic-splash')) { document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true })); document.body.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true })); } })()`);
   let snap = await evalJson(snapExpr);
-  if (snap.mainMenuVisible && !snap.flightPlayable) {
-    for (let i = 0; i < 40 && !(await screenVisible('mainMenu')); i += 1) await sleep(250);
+  // The main menu mounts a couple of seconds after SF first reports ready — race it vs flight.
+  for (let i = 0; i < 60 && !snap.flightPlayable && !(await screenVisible('mainMenu')); i += 1) {
+    await sleep(250);
+    snap = await evalJson(snapExpr);
+  }
+  if (!snap.flightPlayable && (await screenVisible('mainMenu'))) {
     await click('New Game');
     for (let i = 0; i < 40 && !(await screenVisible('newGame')); i += 1) await sleep(250);
     await click('Launch');
@@ -155,11 +159,28 @@ try {
   }
 
   // Wait for the live near-field to populate so the LOCAL capture is honest evidence.
-  for (let i = 0; i < 60; i += 1) {
-    const pop = await evalJson(`JSON.stringify({ n: (window.SF && SF.state && SF.state.entityList ? SF.state.entityList.length : 0) })`);
-    if ((pop.n || 0) > 5) break;
+  //
+  // A bare entity count races the spawn order: rocks and drifting traffic arrive before the
+  // sector's stations do, so `n > 5` could be satisfied by six asteroids and the LOCAL shot would
+  // photograph a chart reading "CLEAR SKIES — no local contacts". Hold until at least one station
+  // contact exists, which is the thing the LOCAL level is actually evidence of, then give the rest
+  // of the field one more beat to arrive.
+  let population = { n: 0, stations: 0 };
+  for (let i = 0; i < 90; i += 1) {
+    population = await evalJson(`JSON.stringify((() => {
+      const list = (window.SF && SF.state && SF.state.entityList) || [];
+      let stations = 0;
+      for (const e of list) { if (e && e.type === 'station' && e.alive !== false) stations += 1; }
+      return { n: list.length, stations };
+    })())`);
+    if ((population.stations || 0) >= 1 && (population.n || 0) > 5) break;
     await sleep(300);
   }
+  console.log('Near-field population before capture:', population);
+  if (!population.stations) {
+    console.warn('WARNING: no station contact spawned before the deadline — the LOCAL capture may read CLEAR SKIES and is not usable as evidence.');
+  }
+  await sleep(600);
 
   // Dismiss intro modal if present
   await evalJson(`(() => {

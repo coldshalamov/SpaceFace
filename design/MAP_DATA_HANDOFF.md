@@ -1,5 +1,24 @@
 # MAP_DATA_HANDOFF — content/data tasks for a second agent
 
+> **Landed (polish pass).** H1, H2, H3, H4 and H6 are done; the sections below are kept as the
+> record of what the seams are and where they live. What genuinely remains:
+>
+> - **H5** — territory ownership still needs live verification across all 24 sectors in real play.
+>   The only gameplay writer is `factions.js` `_warAccumDays` (emits `conflict:flip`); everything
+>   else seeds `owner` from the static `factionId`. If ownership lags, fix the writer, not the map.
+> - **`stepBriefs`** — the map reads it (`missionChartBrief`), keyed by `mission.stepId ||
+>   mission.stageId`. No generator writes it yet. A set-piece can light it up with no map change.
+> - **Set-piece and career missions** do not yet carry `brief`; only ambient/bulk-haul offers do.
+>   `_briefFor` in `src/systems/missions.js` is the pattern to follow.
+> - **`chartNote`** is authored for the 14 distinctive core stations. Frontier-region stations
+>   (`src/data/frontierRegions/*.js`) have none.
+>
+> One caution for whoever picks this up: mission instances and station `entity.data` are both
+> snapshotted **wholesale** by `src/core/simSnapshot.js`. Adding a field to either is invisible to
+> the 47a authoritative hash today only because that headless scenario spawns no stations and never
+> docks. If the scenario ever gains a dock beat, new fields will drift the pinned hash and the
+> failure will not look like it came from here.
+
 **Why this exists:** the map refactor (`MAP_UX_PLAN.md`) makes the chart a strategy surface. Some of
 its value depends on content/data the map does not own. Those tasks are queued here for a grunt-work
 agent so the map work stays UX-only. Each task lists the exact contract the map already reads (or

@@ -33,7 +33,7 @@ import { mapFactionPresenceNodes } from '../data/factionPresence.js';
 import { sectorSignalFor, forecastTransitFor } from '../systems/sectorSim.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { bestKnownSellAtStations, knownStationQuotes } from './marketIntelligence.js';
-import { rankTradeRoutes } from './navigation/localSpaceMapModel.js';
+import { rankTradeRoutes, LocalSpaceIntel, projectTrack } from './navigation/localSpaceMapModel.js';
 
 // ---------------------------------------------------------------------------------------------
 // Static catalogs (pure — safe at import time).
@@ -99,6 +99,23 @@ export const ZOOM_MIN = 0.35;
 export const ZOOM_MAX = 22;
 export const LEVEL_SYSTEM_AT = 1.6;   // zoom >= this  -> SYSTEM (or LOCAL)
 export const LEVEL_LOCAL_AT = 2.8;    // zoom >= this  -> LOCAL
+
+// Remembered-contact memory (LOCAL level). Below the floor a track is noise rather than memory and
+// the scope drops it; the bands drive how far a remembered mark fades toward the ground. Mirrors the
+// freshness bands `memoryTint` uses for market memory so one grammar covers both kinds of "stale".
+export const LOCAL_MEMORY_MIN_CONFIDENCE = 0.06;
+const LOCAL_MEMORY_BANDS = [
+  { at: 0.62, alpha: 0.72, key: 'fresh' },
+  { at: 0.28, alpha: 0.46, key: 'mid' },
+  { at: 0, alpha: 0.26, key: 'old' },
+];
+
+/** Fade band for a remembered contact's confidence (1 = just seen, 0 = forgotten). */
+export function localMemoryBand(confidence) {
+  const c = Math.max(0, Math.min(1, Number(confidence) || 0));
+  for (const band of LOCAL_MEMORY_BANDS) if (c >= band.at) return band;
+  return LOCAL_MEMORY_BANDS[LOCAL_MEMORY_BANDS.length - 1];
+}
 
 /** Map a continuous zoom scalar to a discrete level label. */
 export function levelForZoom(zoom) {
@@ -418,6 +435,70 @@ export function activeMapGoal(state) {
       || 'Route destination',
     ).replace(/\s+/g, ' ').trim(),
   };
+}
+
+/** The mission the player is currently tracking, or null. */
+export function trackedMissionOf(state) {
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  if (!trackedId) return null;
+  const active = (state.missions && state.missions.active) || [];
+  return active.find((m) => m && m.status === 'active' && m.id === trackedId) || null;
+}
+
+/**
+ * Every live world position a mission wants the pilot at — not just the single tracked goal
+ * (parity gap 8).
+ *
+ * `patrol_clear` spawns two to four tagged hostiles and `bounty_hunt`/`escort` spawn their own;
+ * POI follow-ups and the 47a sample leg carry an explicit fix in params. Drawing only
+ * `activeMapGoal` made every one of these read as a single-point errand. Each entry becomes a small
+ * keyed mark when the mission layer is on.
+ *
+ * Pure: resolves live entities by id and copies coordinates out. Never mutates, never allocates
+ * into state. Returns [] for the many mission types that carry no positional geometry at all.
+ *
+ * @returns {Array<{ id:string, kind:string, x:number, z:number, label:string, done:boolean }>}
+ */
+export function missionMapGeometry(state, mission) {
+  if (!state || !mission || mission.status !== 'active') return [];
+  const out = [];
+  const seen = new Set();
+  const push = (id, kind, x, z, label, done) => {
+    const nx = Number(x);
+    const nz = Number(z);
+    if (!Number.isFinite(nx) || !Number.isFinite(nz)) return;
+    const key = `${kind}:${id}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ id: key, kind, x: nx, z: nz, label: String(label || 'Objective'), done: !!done });
+  };
+
+  // Spawn-tagged targets. These are runtime entity ids, so a target that has already been killed
+  // simply stops resolving — the mark disappears rather than lingering as a lie.
+  const ids = Array.isArray(mission.targetEntityIds) ? mission.targetEntityIds : [];
+  if (ids.length) {
+    const wanted = new Set(ids.map((id) => String(id)));
+    for (const e of entityIterator(state)) {
+      if (!e || !e.pos || !wanted.has(String(e.id))) continue;
+      // `done` is always false for a spawn-tagged target, and that is correct rather than lazy: a
+      // killed target is removed from `mission.targetEntityIds` by systems/missions.js and
+      // swap-removed from the entity list at end-of-step, so a resolved-but-dead target cannot be
+      // observed here at a frame boundary. The mark disappears; it never becomes a struck-through
+      // one. Only the survey `sample` point below can genuinely report done.
+      push(e.id, 'target', e.pos.x, e.pos.z,
+        (e.data && e.data.name) || e.name || e.role || 'Target', false);
+    }
+  }
+
+  const params = mission.params || {};
+  if (params.samplePos) {
+    push('sample', 'sample', params.samplePos.x, params.samplePos.z, 'Sample site', !!params.bearingFixed);
+  }
+  const followup = params.poiSignalFollowup;
+  if (followup && followup.targetPos) {
+    push('signal', 'signal', followup.targetPos.x, followup.targetPos.z, 'Signal source', false);
+  }
+  return out;
 }
 
 /** Pick a hit by semantic priority first, distance second, then source order for determinism. */
@@ -802,6 +883,20 @@ function entityIterator(state) {
   return [];
 }
 
+/**
+ * Which sector an entity belongs to, or null when it is unstamped.
+ *
+ * `_stampHomeSector` (src/systems/world.js) writes the id to BOTH `ent.homeSectorId` and
+ * `ent.data.homeSectorId`, but other spawn paths set only one of the two — reading a single field
+ * silently classifies continuous-residency furniture as local. Every caller must agree on the
+ * chain, so it lives here rather than being re-inlined per builder.
+ */
+function entityHomeSector(e) {
+  if (!e) return null;
+  const d = e.data;
+  return (d && (d.homeSectorId || d.sectorId)) || e.homeSectorId || null;
+}
+
 function whole(value) {
   return Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-US');
 }
@@ -1030,6 +1125,15 @@ export function buildSystemModel(state, sectorId, options = {}) {
   if (isCurrent) {
     for (const e of entityIterator(state)) {
       if (!e || e.alive === false || !e.pos) continue;
+      // Continuous residency materializes neighbouring sectors' structural entities, and the
+      // iterator is world-wide. Without this predicate a SYSTEM survey of Helios Prime listed every
+      // adjacent system's gates — including "Gate → Helios Prime", which is nonsense while you are
+      // standing in Helios Prime. Worse than the clutter: those twins sit a lattice-hop away, so
+      // the auto-fit below (`m * 2.2` over point extents) blew the span out by ~8x and squeezed the
+      // sector's own furniture into an unreadable dot at the centre. Drop them at the source rather
+      // than fading them — a fade leaves the ruined span intact.
+      const home = entityHomeSector(e);
+      if (home && home !== sid) continue;
       if (e.type === 'station') {
         const data = e.data || {};
         const isGate = !!data.isGate;
@@ -1067,6 +1171,32 @@ export function buildSystemModel(state, sectorId, options = {}) {
         sectorId: sid,
         targetSectorId: null,
       });
+    }
+  }
+  // Static gate fallback — live entities win; catalog gates fill empty/non-current surveys.
+  if (record && Array.isArray(record.gates)) {
+    for (const gate of record.gates) {
+      if (!gate || !gate.to) continue;
+      const destId = gate.to;
+      const alreadyLive = points.some((p) => p.kind === 'gate' && p.targetSectorId === destId);
+      if (alreadyLive) continue;
+      const dest = SECTOR_BY_ID.get(destId);
+      const anchor = gate.pos || gate.anchor || gate.position || null;
+      const gateId = gate.id || `gate:${sid}:${destId}`;
+      if (seenIds.has(gateId)) continue;
+      points.push({
+        id: gateId,
+        kind: 'gate',
+        name: `Gate → ${(dest && dest.name) || destId}`,
+        x: anchor ? (Number(anchor.x) || 0) : null,
+        z: anchor ? (Number(anchor.z != null ? anchor.z : anchor.y) || 0) : null,
+        entityId: null,
+        stationId: null,
+        factionId: null,
+        sectorId: sid,
+        targetSectorId: destId,
+      });
+      seenIds.add(gateId);
     }
   }
   // POIs (beacons/derelicts/etc.) — labels only unless an anchor position is merged in.
@@ -1119,6 +1249,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
     const mapKind = e.type === 'station' && e.data && e.data.isGate
       ? 'gate'
       : (kind === 'drone' ? 'ship' : kind);
+    const homeSectorId = entityHomeSector(e);
     contacts.push({
       id: e.id,
       kind: mapKind,
@@ -1135,8 +1266,62 @@ export function buildLocalModel(state, isHostile, options = {}) {
       scanOre: kind === 'asteroid'
         ? String((e.data && e.data.scanOreGlyph) || asteroidOreGlyph(e.data && e.data.typeId))
         : null,
+      // Continuous residency keeps neighbouring sectors' furniture alive, so the LOCAL scope can
+      // see gates and stations that belong to somewhere else. Flag them rather than hide them:
+      // they are real and worth knowing about, but they should not compete with local marks.
+      homeSectorId,
+      foreign: !!(homeSectorId && sectorId && homeSectorId !== sectorId),
+      // Live sensor return: full confidence, zero age. The remembered pass below fills the rest.
+      remembered: false,
+      ageS: 0,
+      confidence: 1,
     });
   }
+
+  // Remembered contacts (parity gap 3). Anything the intel still holds a track for but that is no
+  // longer a live entity — it left sensor range, or the sector unloaded it — is emitted as a faded
+  // dead-reckoned mark instead of vanishing between frames. The scope should forget gradually.
+  //
+  // Purity: this only READS the intel. Advancing the clock and recording observations belongs to
+  // the screen (`_syncLocalIntel`), so the model stays a pure function of (state, options).
+  const intel = options.intel;
+  if (intel && intel.tracks && typeof intel.tracks.values === 'function') {
+    const liveIds = new Set();
+    for (const c of contacts) liveIds.add(String(c.id));
+    const nowS = Number(intel.timeS) || 0;
+    for (const track of intel.tracks.values()) {
+      // A restored snapshot can yield a track without a velocity vector; dead-reckoning one would
+      // produce NaN coordinates rather than throw, which is worse — it draws nothing and explains
+      // nothing. Require both halves of the fix before projecting.
+      if (!track || !track.position || !track.velocity || liveIds.has(String(track.id))) continue;
+      const projected = projectTrack(track, nowS, intel.options);
+      // Below the prune floor the mark is noise, not memory.
+      if (!(projected.confidence > LOCAL_MEMORY_MIN_CONFIDENCE)) continue;
+      const kind = projected.kind === 'hostile' ? 'ship' : projected.kind;
+      if (kind !== 'ship' && kind !== 'station' && kind !== 'gate' && kind !== 'asteroid') continue;
+      contacts.push({
+        id: track.id,
+        kind,
+        name: projected.name || kind,
+        x: projected.position.x, z: projected.position.z,
+        vx: 0, vz: 0,
+        rot: Number(projected.heading) || 0,
+        hostile: !!projected.hostile,
+        factionId: projected.factionId || null,
+        entityId: null,
+        stationId: null,
+        named: false,
+        scanHighlightUntil: 0,
+        scanOre: null,
+        homeSectorId: null,
+        foreign: false,
+        remembered: true,
+        ageS: Math.max(0, Number(projected.ageS) || 0),
+        confidence: Math.max(0, Math.min(1, Number(projected.confidence) || 0)),
+      });
+    }
+  }
+
   return {
     level: 'local',
     sectorId,
@@ -1869,6 +2054,8 @@ const CSS = `
   flex: 0 0 auto;
 }
 #sf-galaxymap .gm-legend-row .gm-legend-ico svg { width: 13px; height: 13px; display: block; }
+/* Chart marks are navigation grammar, so they carry the amber action hue, not infrastructure teal. */
+#sf-galaxymap .gm-legend-row .gm-legend-ico--mark { color: var(--accent); }
 
 #sf-galaxymap .gm-rail-footer {
   margin-top: auto;
@@ -2192,6 +2379,48 @@ const CSS = `
   font-size: 10px;
   color: var(--ink-mute);
 }
+/* The leg currently under way reads as the live one; the rest are record. */
+#sf-galaxymap .gm-route-leg.is-current {
+  color: var(--ink);
+  border-left: 2px solid var(--accent);
+  margin-left: -6px;
+  padding-left: 4px;
+}
+#sf-galaxymap .gm-route-leg-n {
+  display: inline-block;
+  min-width: 12px;
+  margin-right: 5px;
+  color: var(--ink-mute);
+  font-size: 9px;
+}
+#sf-galaxymap .gm-route-leg.is-current .gm-route-leg-n { color: var(--accent); }
+
+/* Mission block — authored leg prose plus a countable-objective meter. */
+#sf-galaxymap .gm-mission-name {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 12px;
+}
+#sf-galaxymap .gm-mission-brief {
+  color: var(--accent-3);
+  font-size: 10px;
+  margin-top: 2px;
+  font-family: var(--mono);
+  line-height: 1.45;
+}
+#sf-galaxymap .gm-mission-meter {
+  position: relative;
+  height: 3px;
+  margin-top: 7px;
+  background: #0e1113;
+  border: 1px solid var(--mf-line-1);
+  overflow: hidden;
+}
+#sf-galaxymap .gm-mission-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, var(--accent), var(--accent-3));
+}
 
 /* Compact windows keep one canvas and one inspector; layers become a horizontal tool rail. */
 #sf-galaxymap[data-layout="compact"] .gm-head {
@@ -2367,6 +2596,23 @@ export function serviceIconSvg(service) {
 }
 
 const LEGEND_SERVICES = Object.freeze(['trade', 'shipyard', 'repair', 'refuel', 'refine', 'missions']);
+
+// Chart marks that are not service pictograms. Anything the canvas invents a silhouette for should
+// be readable off the rail without a manual — otherwise the shape is decoration, not language.
+const LEGEND_MARKS = Object.freeze([
+  {
+    name: 'Mission point',
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="6" y="6" width="12" height="12"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/></svg>',
+  },
+  {
+    name: 'Survey site',
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="6"/><path d="M8 12h8M12 8v8"/></svg>',
+  },
+  {
+    name: 'Last known fix',
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="7.5" stroke-dasharray="2.4 2.6"/><path d="M12 8.5l3.2 6.4H8.8z"/></svg>',
+  },
+]);
 
 const HINT_ROWS = Object.freeze([
   ['Zoom / pan the table', 'Wheel · Drag'],
@@ -2621,6 +2867,77 @@ function missionSummary(mission) {
   if (mission.type === 'patrol_clear') return `Clear ${progress}/${target} hostiles`;
   if (mission.type === 'recon_scan') return `Scan ${progress}/${target} sites`;
   return mission.objectiveProgress ? `${progress}/${target}` : 'Proceed to the objective';
+}
+
+/**
+ * Chart title for a mission. Instances are stamped with `title` (systems/missions.js
+ * `_instanceFromOffer`) and never with `name`, so the older `mission.name` read fell through to the
+ * placeholder on every live contract. `name` stays in the chain for authored/legacy shapes.
+ */
+function missionChartTitle(mission) {
+  if (!mission) return 'Contract Objective';
+  const title = String(mission.title || mission.name || '').trim();
+  return title || 'Contract Objective';
+}
+
+/**
+ * One dry line of leg prose for the inspector. Prefers an authored `brief`, then a per-step brief
+ * for multi-stage contracts, then the mechanical progress summary. Defensive by design: a mission
+ * that carries none of these still reads correctly.
+ */
+function missionChartBrief(mission) {
+  if (!mission) return '';
+  let brief = mission.brief;
+  // Multi-stage contracts may carry per-stage prose keyed by stage id. No generator writes this
+  // yet — it is a reader seam so a set-piece can light it up without touching the map — so the
+  // key must be a real stage identity, never the offer id it was rolled from.
+  if (!brief && mission.stepBriefs && typeof mission.stepBriefs === 'object') {
+    const stepId = mission.stepId || mission.stageId;
+    if (stepId) brief = mission.stepBriefs[stepId];
+  }
+  const text = String(brief || '').trim();
+  return text || missionSummary(mission);
+}
+
+/**
+ * Mission block for the inspector — record title, one dry line of leg prose, and a progress meter
+ * when the contract has a countable objective. Deliberately free of elapsed/remaining clocks: the
+ * inspector caches on rendered HTML, so per-frame text would force a DOM write every refresh and
+ * break the no-churn contract.
+ */
+function missionChartBlockHtml(mission, sectionTitle, geometry) {
+  if (!mission) return '';
+  const progress = Math.max(0, Number(mission.objectiveProgress) || 0);
+  const target = Math.max(0, Number(mission.objectiveTarget) || 0);
+  let meter = '';
+  if (target > 0) {
+    const pct = Math.max(0, Math.min(100, Math.round((progress / target) * 100)));
+    meter = `
+          <div class="gm-mission-meter" role="img" aria-label="Objective ${pct} percent complete">
+            <span class="gm-mission-meter-fill" style="width:${pct}%"></span>
+          </div>`;
+  }
+  // Multi-point contracts say so: a patrol with four marks reads very differently from an errand.
+  //
+  // The count is deliberately "still on the chart", NOT "cleared". A cleared count cannot be derived
+  // from this geometry: a killed target is filtered out of `mission.targetEntityIds` by
+  // systems/missions.js AND swap-removed from the entity list end-of-step, so its point does not
+  // survive to be counted as done — it simply stops existing. Reading `done` here reported 0 cleared
+  // forever while the denominator shrank with each kill, which inverts the truth. The meter above
+  // already carries progress from the mission's own counters; this row answers the different
+  // question of how many marks the pilot is still looking at.
+  let pointsRow = '';
+  if (Array.isArray(geometry) && geometry.length > 1) {
+    pointsRow = `
+          <div class="gm-ins-row"><span>Marked points</span><span class="gm-ins-row-val">${geometry.length} on chart</span></div>`;
+  }
+  return `
+        <div class="gm-ins-section">
+          <div class="gm-ins-title" style="color:${INK.amberHot};">${escapeMapHtml(sectionTitle)}</div>
+          <div class="gm-mission-name">${escapeMapHtml(missionChartTitle(mission))}</div>
+          <div class="gm-mission-brief">${escapeMapHtml(missionChartBrief(mission))}</div>${meter}${pointsRow}
+        </div>
+      `;
 }
 
 function securityPips(sec) {
@@ -2974,6 +3291,15 @@ export const galaxyMapScreen = {
   _inspectorDetailsHtml: null,
   _setCourseHandler: null,
   _scaleButtons: [],
+  // LOCAL contact memory. Cosmetic, screen-owned, never written into sim state.
+  _localIntel: null,
+  _localIntelSectorId: null,
+  // Release handle for the entity:killed subscription (see _subscribeKills).
+  _killUnsub: null,
+  // simTime of the last intel sync, so a paused sim does not re-observe identical tracks per frame.
+  _localIntelSyncedAtS: -1,
+  // Motion preference, sampled at show time (see _syncReduceMotion).
+  _reduceMotion: false,
 
   _claimsSystem() {
     const registry = this._ctx && this._ctx.registry;
@@ -3030,6 +3356,11 @@ export const galaxyMapScreen = {
               <span class="gm-legend-ico" aria-hidden="true">${serviceIconSvg(svc)}</span>
               <span>${svc === 'ore_buy' ? 'Ore buy' : svc[0].toUpperCase() + svc.slice(1)}</span>
             </div>`).join('');
+    const markLegendHtml = LEGEND_MARKS.map((mark) => `
+            <div class="gm-legend-row">
+              <span class="gm-legend-ico gm-legend-ico--mark" aria-hidden="true">${mark.svg}</span>
+              <span>${mark.name}</span>
+            </div>`).join('');
     const hintRowsHtml = HINT_ROWS.map(([label, keys]) => `
           <div class="gm-hint-row"><span>${label}</span><kbd>${keys}</kbd></div>`).join('');
     rootEl.innerHTML = `
@@ -3071,6 +3402,9 @@ export const galaxyMapScreen = {
           </div>
           <div class="gm-rail-legend">
             <div class="gm-rail-title">Service marks</div>${legendHtml}
+          </div>
+          <div class="gm-rail-legend">
+            <div class="gm-rail-title">Chart marks</div>${markLegendHtml}
           </div>
           <div class="gm-rail-footer">
             <div class="gm-hint-title">Survey table</div>
@@ -3280,6 +3614,8 @@ export const galaxyMapScreen = {
     this._selectedTarget = null;
     this._hoverTarget = null;
     this._scanRings = [];
+    this._syncReduceMotion();
+    this._subscribeKills();
 
     // Consume map-authority open intent (LOCAL vs STAR/GALAXY focus + optional target fix).
     const state = this._ctx && this._ctx.state;
@@ -3382,6 +3718,49 @@ export const galaxyMapScreen = {
       cancelAnimationFrame(this._animFrame);
     }
     this._animFrame = null;
+    this._unsubscribeKills();
+  },
+
+  /**
+   * Forget a contact the moment it dies.
+   *
+   * The remembered-contact layer exists so a contact that STOPS BEING OBSERVABLE fades over its
+   * half-life instead of popping off the glass. A kill is not that: the ship is not somewhere the
+   * pilot can no longer see, it is gone, and dead-reckoning a corpse forward for the next two
+   * minutes draws a lie.
+   *
+   * Why `entity:killed` and not `entity:destroyed`: `entity:destroyed` (coreSystem `lifetimeSweep`)
+   * fires for EVERY removal — TTL expiry, scoped sector despawn, projectiles, pickups. Deleting on
+   * it would forget exactly the despawns this feature was built to remember and the layer would
+   * render nothing. `entity:killed` (systems/combat.js) is emitted only on a real defeat, which is
+   * precisely the case that should be forgotten.
+   *
+   * Subscribed on show and released on hide so a re-show cannot stack handlers — the same discipline
+   * the rAF loop and the Set Course button already follow.
+   */
+  _subscribeKills() {
+    this._unsubscribeKills();
+    const bus = this._ctx && this._ctx.bus;
+    if (!bus || typeof bus.on !== 'function') return;
+    const handler = (payload) => {
+      const id = payload && payload.id;
+      const intel = galaxyMapScreen._localIntel;
+      if (id == null || !intel || !intel.tracks) return;
+      intel.tracks.delete(String(id));
+    };
+    const off = bus.on('entity:killed', handler);
+    // Bus implementations differ on whether `on` returns a disposer; keep whichever we got so the
+    // release path works either way rather than assuming one shape.
+    this._killUnsub = typeof off === 'function'
+      ? off
+      : (typeof bus.off === 'function' ? () => bus.off('entity:killed', handler) : null);
+  },
+
+  _unsubscribeKills() {
+    if (typeof this._killUnsub === 'function') {
+      try { this._killUnsub(); } catch (_) { /* a disposed bus is not an error on the way out */ }
+    }
+    this._killUnsub = null;
   },
 
   _setScaleFocus(focus, { draw = true, animate = true } = {}) {
@@ -3420,11 +3799,32 @@ export const galaxyMapScreen = {
     }
   },
 
+  /**
+   * Read the motion preference once per show rather than per frame. The global CSS rule in
+   * styles/accessibility.css kills DOM transitions, but canvas animation is drawn by hand and has
+   * to opt out itself — so flow beads, the sweep and the iris all consult this.
+   */
+  _syncReduceMotion() {
+    let reduced = false;
+    if (typeof window !== 'undefined') {
+      if (window.matchMedia) {
+        try { reduced = !!window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { reduced = false; }
+      }
+      // The in-game setting is authoritative when present: a player who ticked it in Settings
+      // expects it honoured even if the OS preference is unset.
+      const doc = typeof document !== 'undefined' ? document : null;
+      if (doc && doc.documentElement && doc.documentElement.classList
+        && doc.documentElement.classList.contains('sf-reduce-motion')) {
+        reduced = true;
+      }
+    }
+    this._reduceMotion = reduced;
+    return reduced;
+  },
+
   _triggerIris(level) {
     if (!HAS_DOC) return;
-    const reduceMotion = typeof window !== 'undefined' && window.matchMedia
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduceMotion) return;
+    if (this._reduceMotion) return;
     this._iris = { t: 0, maxT: 26, label: String(level || '').toUpperCase() };
   },
 
@@ -3521,6 +3921,70 @@ export const galaxyMapScreen = {
 
   _activeLevel() {
     return levelForZoom(this._zoom);
+  },
+
+  /**
+   * Feed the LOCAL contact-memory track and hand it back for the model builder to read.
+   *
+   * This instance is the only mutable state the map owns, and it is purely cosmetic: it records
+   * what the scope has already seen so a contact that leaves sensor range fades out over its
+   * half-life instead of popping off the glass. It is deliberately kept out of the pure model
+   * builders — they read it, never write it — and it is never persisted into sim state, so the
+   * map stays read-only over the simulation.
+   *
+   * Only ships and drones are tracked. Stations, gates and rocks are static furniture that stays
+   * live for as long as the sector is loaded, so remembering them would add tracks that never
+   * decay and never tell the pilot anything.
+   */
+  _syncLocalIntel(state) {
+    if (!state) return null;
+    if (!this._localIntel) this._localIntel = new LocalSpaceIntel();
+    const intel = this._localIntel;
+    const nowS = Math.max(0, Number(state.simTime) || 0);
+    const sectorId = currentSectorId(state);
+
+    // Memory is per-sector, and a load/new-game rewinds sim time. In either case the old tracks
+    // describe a place the pilot is no longer in — drop them rather than dead-reckon across.
+    if (sectorId !== this._localIntelSectorId || nowS + 1 < intel.timeS) {
+      intel.tracks.clear();
+      intel.landmarks.clear();
+      intel.timeS = 0;
+      this._localIntelSectorId = sectorId;
+      this._localIntelSyncedAtS = -1;
+    }
+
+    // The draw loop runs at display refresh, not the 64 ms inspector cadence, so at LOCAL this used
+    // to walk every entity and rewrite byte-identical tracks ~60x/second. Decay is a pure function
+    // of (timeS - lastSeenS), so re-observing at the same simTime cannot change any output — while
+    // the chart is up over a paused sim that work was entirely wasted. Skip it.
+    if (nowS === this._localIntelSyncedAtS) return intel;
+    this._localIntelSyncedAtS = nowS;
+
+    intel.advance(nowS);
+    const player = playerEntity(state);
+    const playerTeam = player && player.team;
+    const hostileFn = typeof this._isHostile === 'function' ? this._isHostile : null;
+    for (const e of entityIterator(state)) {
+      if (!e || e.alive === false || !e.pos) continue;
+      if (player && e.id === player.id) continue;
+      if (e.type !== 'ship' && e.type !== 'drone') continue;
+      let hostile = !!(e.data && e.data.hostile);
+      if (hostileFn) {
+        try { hostile = !!hostileFn(e, playerTeam, state); } catch (_) { /* keep the flag fallback */ }
+      }
+      intel.observeContact({
+        id: e.id,
+        type: 'ship',
+        name: (e.data && e.data.name) || e.name || e.role || 'contact',
+        factionId: e.factionId || null,
+        hostile,
+        pos: e.pos,
+        vel: e.vel,
+        rot: e.rot,
+        radius: e.radius,
+      }, { timeS: nowS, source: 'chart-sensor' });
+    }
+    return intel;
   },
 
   _highlightSearchItem() {
@@ -3663,11 +4127,13 @@ export const galaxyMapScreen = {
         ? plotted.legs[plotted.legs.length - 1].to : null;
       let routeLegsHtml = '';
       if (plotted && plottedDest === t.id) {
-        const legRows = plotted.legs.map((leg) => {
+        const legRows = plotted.legs.map((leg, idx) => {
           const fromName = (sectorRecordById(state, leg.from) || {}).name || leg.from;
           const toName = (sectorRecordById(state, leg.to) || {}).name || leg.to;
           const interdict = leg.interdict ? ` <span style="color:${INK.red}">[interdict]</span>` : '';
-          return `<div class="gm-route-leg"><b>${escapeMapHtml(fromName)}</b> → <b>${escapeMapHtml(toName)}</b> · ${Math.round(leg.fuel)}F${interdict}</div>`;
+          // The leg departing the sector the player actually occupies is the one under way.
+          const current = leg.from === curSec ? ' is-current' : '';
+          return `<div class="gm-route-leg${current}"><span class="gm-route-leg-n">${idx + 1}</span><b>${escapeMapHtml(fromName)}</b> → <b>${escapeMapHtml(toName)}</b> · ${Math.round(leg.fuel)}F${interdict}</div>`;
         }).join('');
         routeLegsHtml = `${legRows}<div class="gm-route-total">Σ ${Math.round(plotted.totalFuel || 0)} fuel · ${plotted.totalHops || plotted.legs.length} hops</div>`;
       }
@@ -3753,13 +4219,8 @@ export const galaxyMapScreen = {
       }
 
       if (relevantMission) {
-        html += `
-          <div class="gm-ins-section">
-            <div class="gm-ins-title" style="color:${INK.amberHot};">Active Mission</div>
-            <div style="font-weight:600; color:var(--ink); font-size:12px;">${escapeMapHtml(relevantMission.name || 'Contract Objective')}</div>
-            <div style="color:${INK.amberHot}; font-size:10px; margin-top:2px; font-family:var(--mono);">${escapeMapHtml(relevantMission.brief || missionSummary(relevantMission))}</div>
-          </div>
-        `;
+        html += missionChartBlockHtml(relevantMission, 'Active Mission',
+          missionMapGeometry(state, relevantMission));
       }
 
       // Sector market memory: show the best quote the pilot actually knows, regardless of station order.
@@ -3881,13 +4342,8 @@ export const galaxyMapScreen = {
       }
 
       if (relevantMission) {
-        html += `
-          <div class="gm-ins-section">
-            <div class="gm-ins-title" style="color:${INK.amberHot};">Active Mission Target</div>
-            <div style="font-weight:600; color:var(--ink); font-size:12px;">${escapeMapHtml(relevantMission.name || 'Contract Objective')}</div>
-            <div style="color:${INK.amberHot}; font-size:10px; margin-top:2px; font-family:var(--mono);">${escapeMapHtml(relevantMission.brief || missionSummary(relevantMission))}</div>
-          </div>
-        `;
+        html += missionChartBlockHtml(relevantMission, 'Active Mission Target',
+          missionMapGeometry(state, relevantMission));
       }
 
       {
@@ -4237,9 +4693,38 @@ export const galaxyMapScreen = {
     const scaleEl = this._root.querySelector('[data-level]');
     if (scaleEl) scaleEl.textContent = level.toUpperCase();
 
+    // Contact memory accrues whenever the chart is reading the near field, not only while LOCAL
+    // happens to be the level on screen — otherwise zooming out for a moment silently resets what
+    // the scope remembers. GALAXY is excluded: at that scale nothing is reading local contacts.
+    if (level !== 'galaxy') this._syncLocalIntel(state);
+
     if (level === 'galaxy') this._drawGalaxy(g, state, w, h);
     else if (level === 'system') this._drawSystem(g, state, w, h);
     else this._drawLocal(g, state, w, h);
+
+    // Hover pre-selection. Resolved against THIS frame's click targets rather than the coordinates
+    // captured when the pointer last moved, so the ring cannot lag a pan or a zoom by a frame.
+    // Selection keeps the solid white keyline; hover is deliberately quieter and dashed — it says
+    // "this is what you would get", not "this is chosen".
+    if (this._hoverTarget) {
+      const hoverId = this._hoverTarget.id;
+      const selectedId = this._selectedTarget ? this._selectedTarget.id : null;
+      if (hoverId != null && hoverId !== selectedId) {
+        for (const target of this._clickTargets) {
+          if (!target || target.id !== hoverId) continue;
+          g.save();
+          g.strokeStyle = 'rgba(237, 232, 216, 0.40)';
+          g.lineWidth = 1;
+          g.setLineDash([2.5, 3]);
+          g.beginPath();
+          g.arc(target.sx, target.sy, (target.radiusPx || 14) + 3, 0, Math.PI * 2);
+          g.stroke();
+          g.setLineDash([]);
+          g.restore();
+          break;
+        }
+      }
+    }
 
     // Draw active scan rings
     for (const ring of this._scanRings || []) {
@@ -4415,28 +4900,42 @@ export const galaxyMapScreen = {
         const to = gradient > 0 ? { x: bx, y: by } : { x: ax, y: ay };
         const color = pressureColor(gradient);
         const phase = cosmeticHash01(e.from + '|' + e.to);
-        const speed = 0.05 + Math.min(0.09, Math.abs(gradient) * 0.14);
+        // Speed, bead count and bead size all scale with the gradient. Previously every lane ran
+        // exactly two beads at near-identical speed, so the market layer showed *where* flow
+        // existed but never *how hard* it was pushing — the one thing the layer is for.
+        const strength = Math.min(1, Math.abs(gradient) / 0.35);
+        const speed = 0.07 + strength * 0.13;
+        const beads = 1 + Math.round(strength * 2);
+        const reduced = this._reduceMotion;
         g.save();
-        for (let k = 0; k < 2; k += 1) {
-          const t = (this._animT * speed + phase + k * 0.5) % 1;
-          const eased = 0.16 + t * 0.68; // keep beads on the lane, off the nodes
+        for (let k = 0; k < beads; k += 1) {
+          const t = reduced ? (phase + k / beads) % 1 : (this._animT * speed + phase + k / beads) % 1;
+          const eased = 0.14 + t * 0.72; // keep beads on the lane, off the nodes
+          // Fade in at the tail and out at the head. Without this the bead blinked into existence
+          // at a fixed point on the lane and blinked out at another, which reads as a rendering
+          // stutter rather than as flow.
+          // Under reduced motion the bead is frozen, so the travel envelope would permanently mute
+          // any lane whose seed happened to land near an end of the track. A static bead should be
+          // fully visible — it is the only thing left saying the lane carries flow.
+          const envelope = reduced ? 1 : Math.min(1, Math.min(t, 1 - t) / 0.14);
           const px = from.x + (to.x - from.x) * eased;
           const py = from.y + (to.y - from.y) * eased;
-          const trailT = Math.max(0.16, eased - 0.035);
-          g.strokeStyle = hexToRgba(color, 0.30);
+          const trailT = Math.max(0.14, eased - 0.045);
+          g.strokeStyle = hexToRgba(color, 0.26 * envelope);
           g.lineWidth = 1.2;
           g.beginPath();
           g.moveTo(from.x + (to.x - from.x) * trailT, from.y + (to.y - from.y) * trailT);
           g.lineTo(px, py);
           g.stroke();
-          g.fillStyle = hexToRgba(color, 0.85);
-          g.beginPath(); g.arc(px, py, 1.8, 0, Math.PI * 2); g.fill();
+          g.fillStyle = hexToRgba(color, 0.82 * envelope);
+          g.beginPath(); g.arc(px, py, 1.7 + strength * 0.6, 0, Math.PI * 2); g.fill();
         }
         g.restore();
       }
     }
 
     // Draw Nodes
+    const labelCandidates = [];
     for (const n of model.nodes) {
       const x = sx(n.x), y = sy(n.y);
       const r = 13;
@@ -4564,42 +5063,38 @@ export const galaxyMapScreen = {
       g.stroke();
       g.restore();
 
-      // Sector label: live ink for known space, muted italic once the intel goes stale.
-      g.save();
-      g.font = n.current
-        ? FONT_UI(600, 11)
-        : (stale ? `italic ${FONT_UI(500, 11)}` : FONT_UI(500, 11));
-      g.fillStyle = n.current ? INK.ink0 : (stale ? INK.ink2 : 'rgba(237, 232, 216, 0.85)');
-      g.textAlign = 'center'; g.textBaseline = 'top';
-      g.fillText(n.name, x, y + r + 4);
-      if (stale) {
-        g.font = FONT_MONO(400, 8);
-        g.fillStyle = INK.ink2;
-        g.fillText('STALE', x, y + r + 17);
-      }
-      g.restore();
-
-      if (this._layers.faction && n.presence && n.presence.length) {
-        g.save();
-        g.font = FONT_MONO(500, 8);
-        g.textAlign = 'left';
-        g.textBaseline = 'middle';
-        for (const row of galaxyPresenceMarkerRows(n.presence)) {
-          const textWidth = g.measureText(row.label).width;
-          const startX = x - (textWidth + 10) / 2;
-          const rowY = y + r + 18 + row.offsetY;
-          g.fillStyle = row.color;
-          g.beginPath();
-          g.moveTo(startX + 3, rowY - 3);
-          g.lineTo(startX + 6, rowY);
-          g.lineTo(startX + 3, rowY + 3);
-          g.lineTo(startX, rowY);
-          g.closePath();
-          g.fill();
-          g.fillText(row.label, startX + 10, rowY);
-        }
-        g.restore();
-      }
+      // Sector label + its presence rows, as ONE solver-managed block.
+      //
+      // These used to be bare `fillText` calls anchored under the ring, so GALAXY was the only level
+      // that never reached `layoutMapLabels` — the charted core is the densest part of the chart and
+      // it was the one place with no collision handling at all, which is why "Helios Prime" sat on
+      // top of "Tethys Junction". Neither label priority nor span tuning could fix that; nothing was
+      // asking the solver anything. Name, staleness and faction presence travel together as lines of
+      // a single candidate so the whole block moves as a unit and the rows can never orphan from the
+      // name they belong to.
+      const nodeLines = [n.name];
+      const presenceRows = this._layers.faction && n.presence && n.presence.length
+        ? galaxyPresenceMarkerRows(n.presence)
+        : [];
+      for (const row of presenceRows) nodeLines.push(`◆ ${row.label}`);
+      if (stale) nodeLines.push('STALE');
+      labelCandidates.push(makeMapLabelCandidate(g, {
+        id: `sector:${n.id}`,
+        // The current sector outranks its neighbours for a label slot; charted space outranks
+        // rumour. 'gate'/'station' tiers are reused rather than invented so one priority table
+        // still governs every level.
+        kind: n.current ? 'gate' : 'station',
+        selected: !!(this._selectedTarget && this._selectedTarget.id === n.id),
+        text: n.name,
+        lines: nodeLines,
+        x,
+        y,
+        anchorRadius: r + 4,
+        color: n.current ? INK.ink0 : (stale ? INK.ink2 : 'rgba(237, 232, 216, 0.85)'),
+        // Only the final line can carry its own hue, so give it to the presence row when that row
+        // is the last thing in the block — the faction colour is the whole point of that line.
+        secondaryColor: (!stale && presenceRows.length === 1) ? presenceRows[0].color : null,
+      }));
 
       // Security overlay pip
       if (this._layers.security && n.security != null) {
@@ -4657,12 +5152,38 @@ export const galaxyMapScreen = {
       }
     }
 
+    // Resolve every sector block against the others before any of them paints. The goal plate is
+    // reserved first (below) so a node label can never be placed under it.
+    const goal = activeMapGoal(state);
+    let goalNode = null;
+    if (goal && goal.sectorId && (this._layers.route || this._layers.mission)) {
+      goalNode = model.nodes.find((n) => n.id === goal.sectorId && n.charted) || null;
+    }
+    const galaxyReserved = [];
+    if (goalNode) {
+      // The goal plate is drawn by drawMapGoalMarker at a fixed offset from its node; block that
+      // rectangle so the solver routes the sector's own name around it instead of under it.
+      const gx = sx(goalNode.x), gy = sy(goalNode.y);
+      const goalText = `GOAL · ${String(goal.label || 'OBJECTIVE').toUpperCase().slice(0, 22)}`;
+      g.save();
+      g.font = FONT_MONO(700, 9);
+      const goalWidth = g.measureText(goalText).width + 16;
+      g.restore();
+      galaxyReserved.push({ x: gx + 10, y: gy - 9, width: goalWidth, height: 18 });
+    }
+    const galaxyLabelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
+      reserved: galaxyReserved,
+    });
+    this._lastLabelLayout = galaxyLabelLayout;
+    for (const placement of galaxyLabelLayout) {
+      if (placement.visible) drawMapLabelBlock(g, placement);
+    }
+
     // The current goal is the final galaxy paint and strongest hit target. It is intentionally
     // larger/brighter than station, sector, route, and untracked-mission context.
-    const goal = activeMapGoal(state);
-    if (goal && goal.sectorId && (this._layers.route || this._layers.mission)) {
-      const node = model.nodes.find((n) => n.id === goal.sectorId && n.charted);
-      if (node) {
+    if (goalNode) {
+      const node = goalNode;
+      {
         const gx = sx(node.x), gy = sy(node.y);
         drawMapGoalMarker(g, gx, gy, goal.label, w);
         this._clickTargets.push({
@@ -4784,12 +5305,13 @@ export const galaxyMapScreen = {
           color: '#ff5c5c',
         }));
       } else {
+        const zoneInk = mutedZoneColor(z.color);
         g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2);
         if (this._layers.faction) {
-          g.fillStyle = hexToRgba(z.color, 0.05); g.fill();
-          g.strokeStyle = hexToRgba(z.color, 0.32);
+          g.fillStyle = hexToRgba(zoneInk, 0.05); g.fill();
+          g.strokeStyle = hexToRgba(zoneInk, 0.32);
         } else {
-          g.strokeStyle = 'rgba(120,140,170,0.18)';
+          g.strokeStyle = 'rgba(142, 134, 117, 0.20)';
         }
         g.lineWidth = 1.2; g.stroke();
         labelCandidates.push(makeMapLabelCandidate(g, {
@@ -4800,7 +5322,7 @@ export const galaxyMapScreen = {
           x,
           y,
           anchorRadius: 4,
-          color: z.color,
+          color: zoneInk,
         }));
       }
     }
@@ -4868,17 +5390,28 @@ export const galaxyMapScreen = {
       }
     }
 
+    // Gate-name multiplicity (continuous residency can park neighbour twins on-screen).
+    const systemGateNameCounts = new Map();
+    for (const p of model.points) {
+      if (p.kind !== 'gate' || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
+      const base = String(p.name || 'Gate');
+      systemGateNameCounts.set(base, (systemGateNameCounts.get(base) || 0) + 1);
+    }
+
     // Points of interest
     for (const p of model.points) {
       if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
       const x = sx(p.x), y = sz(p.z);
       const isGate = p.kind === 'gate';
       const isStation = p.kind === 'station';
+      const displayName = isGate
+        ? disambiguateGateLabel(p.name, p.x, p.z, 0, 0, systemGateNameCounts)
+        : p.name;
 
       this._clickTargets.push({
         sx: x, sy: y, radiusPx: 18, kind: p.kind, id: p.id, x: p.x, z: p.z,
         entityId: p.entityId, stationId: p.stationId, targetSectorId: p.targetSectorId,
-        name: p.name, factionId: p.factionId,
+        name: displayName, factionId: p.factionId,
         detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}`
       });
 
@@ -4893,7 +5426,7 @@ export const galaxyMapScreen = {
       else if (isStation) drawStationMark(g, x, y);
       else drawPoiMark(g, x, y);
 
-      const pointLines = [p.name];
+      const pointLines = [displayName];
       let marketTint = null;
       let services = [];
       if (this._layers.services && (isStation || isGate)) {
@@ -4911,7 +5444,7 @@ export const galaxyMapScreen = {
       labelCandidates.push(makeMapLabelCandidate(g, {
         id: `point:${p.id}`,
         kind: p.kind,
-        text: p.name,
+        text: displayName,
         lines: pointLines,
         x,
         y,
@@ -5011,6 +5544,16 @@ export const galaxyMapScreen = {
       else drawMapLabelBlock(g, placement);
     }
 
+    // Secondary mission points before the goal: a patrol contract's other targets, a survey site,
+    // a signal source. Drawn under the pin so the tracked objective still owns the eye.
+    if (this._layers.mission) {
+      for (const point of missionMapGeometry(state, trackedMissionOf(state))) {
+        const mx = sx(point.x), my = sz(point.z);
+        if (mx < 8 || my < 8 || mx > w - 8 || my > h - 8) continue;
+        drawMissionPoint(g, mx, my, point.kind, point.done);
+      }
+    }
+
     // Objective marker renders last, with the first label reservation and strongest contrast.
     if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
       drawWaypointPin(g, sx(wp.pos.x), sz(wp.pos.z), waypointMapLabel(wp), w, objectivePlacement);
@@ -5019,7 +5562,9 @@ export const galaxyMapScreen = {
 
   // --- LOCAL DRAW ---
   _drawLocal(g, state, w, h) {
-    const model = buildLocalModel(state, this._isHostile, { claimsSystem: this._claimsSystem() });
+    // Fed by _draw before dispatch, so memory survives a trip out to SYSTEM and back.
+    const intel = this._localIntel;
+    const model = buildLocalModel(state, this._isHostile, { claimsSystem: this._claimsSystem(), intel });
     const cam = this._cams.local;
     const wp = state.nav && state.nav.waypoint;
     const nowS = Math.max(0, Number(state && state.simTime) || 0);
@@ -5032,17 +5577,46 @@ export const galaxyMapScreen = {
     // room, and important objects beyond the frame collapse into edge ticks instead of forcing
     // everything into a packed center cluster.
     let span = 1500;
-    let m = 0;
-    for (const c of model.contacts) m = Math.max(m, Math.hypot(c.x - px, c.z - pz));
-    for (const marker of model.ownership) m = Math.max(m, Math.hypot(marker.x - px, marker.z - pz));
+    // Fit on a high percentile of what is worth seeing rather than on the single furthest thing.
+    //
+    // A plain max hands the zoom to whichever object happens to be furthest out, and one such object
+    // is always present: continuous residency parks a neighbouring sector's station a lattice hop
+    // (~14,700u) away, which blew the span past 27,000u and squeezed every real local mark into an
+    // unreadable knot at the centre while the rest of the table sat empty. It also quietly defeated
+    // the edge-tick path below — a max fit guarantees every contributor is already in frame, so the
+    // ticks written for exactly these objects could never fire.
+    //
+    // Three exclusions and a percentile, in that order:
+    //  - foreign furniture never votes; it belongs to another sector and recedes on the glass anyway.
+    //  - remembered contacts never vote; they dead-reckon forward forever, so the scope would slowly
+    //    zoom out chasing a ship that is long gone.
+    //  - asteroids never vote. A belt carries hundreds of rocks, so letting them in hands the
+    //    percentile to the field and frames the scenery instead of the things a pilot steers by,
+    //    pushing every station and gate off-frame. Rocks are texture; they follow the scale, they
+    //    do not set it.
+    //  - of what remains, take p85 so a lone straggler falls off-frame into an edge tick instead of
+    //    setting the scale for everything else. With few objects p85 lands on the max, so a sparse
+    //    field behaves exactly as before.
+    const fitSpans = [];
+    for (const c of model.contacts) {
+      if (c.remembered || c.foreign || c.kind === 'asteroid') continue;
+      fitSpans.push(Math.hypot(c.x - px, c.z - pz));
+    }
+    for (const marker of model.ownership) fitSpans.push(Math.hypot(marker.x - px, marker.z - pz));
     for (const bearing of model.bearings) {
       const point = bearing.fixedPos || bearing.center;
       if (!point) continue;
       const uncertainty = bearing.fixedPos ? 0 : bearing.radius;
-      m = Math.max(m, Math.hypot(point.x - px, point.z - pz) + uncertainty);
+      fitSpans.push(Math.hypot(point.x - px, point.z - pz) + uncertainty);
     }
+    // The tracked objective always votes: it is the one mark the pilot opened the chart to find.
     if (wp && wp.pos && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z)) {
-      m = Math.max(m, Math.hypot(wp.pos.x - px, wp.pos.z - pz));
+      fitSpans.push(Math.hypot(wp.pos.x - px, wp.pos.z - pz));
+    }
+    let m = 0;
+    if (fitSpans.length) {
+      fitSpans.sort((a, b) => a - b);
+      m = fitSpans[Math.min(fitSpans.length - 1, Math.ceil(fitSpans.length * 0.85) - 1)] || 0;
     }
     if (m > 0) span = Math.max(700, m * 1.55);
 
@@ -5149,19 +5723,77 @@ export const galaxyMapScreen = {
       g.restore();
     }
 
+    // Rock thinning: dense belts collapse into a faint texture of the nearest rocks rather than
+    // a mush of overlapping marks at the frame edge.
+    let asteroidDrawSet = null;
+    {
+      const rocks = [];
+      for (const c of model.contacts) {
+        if (c.kind === 'asteroid') rocks.push({ id: c.id, d: Math.hypot(c.x - px, c.z - pz) });
+      }
+      if (rocks.length > 80) {
+        rocks.sort((a, b) => a.d - b.d);
+        asteroidDrawSet = new Set(rocks.slice(0, 80).map((rock) => rock.id));
+      }
+    }
+
+    // Only gates that can actually claim a label may force a disambiguating octant. Foreign gates
+    // are drawn faded and are denied a label slot below, so counting them made a lone unambiguous
+    // local gate wear a bearing suffix to distinguish it from a twin the pilot cannot even see —
+    // noise justified by nothing on screen. Two visible same-named gates still earn the suffix.
+    const localGateNameCounts = new Map();
+    for (const c of model.contacts) {
+      if (c.kind !== 'gate' || c.foreign || c.remembered) continue;
+      const base = String(c.name || 'Gate');
+      localGateNameCounts.set(base, (localGateNameCounts.get(base) || 0) + 1);
+    }
+
     // Contacts: keyed silhouettes, constant screen size. Rocks declutter off-frame silently;
     // infrastructure, hostiles and waypoints collapse into edge ticks instead.
     for (const c of model.contacts) {
+      if (c.kind === 'asteroid' && asteroidDrawSet && !asteroidDrawSet.has(c.id)) continue;
       const x = sx(c.x), y = sz(c.z);
       const off = offView(x, y);
+      const displayName = c.kind === 'gate'
+        ? disambiguateGateLabel(c.name, c.x, c.z, px, pz, localGateNameCounts)
+        : c.name;
+
+      // Remembered contacts are memory, not sensor return. They draw faded at the dead-reckoned
+      // position inside a dashed uncertainty ring — hairline dashes are this table's grammar for
+      // "not confirmed" — and they claim neither an edge tick nor a click target, because a course
+      // laid to a ghost is a course laid to nothing.
+      if (c.remembered) {
+        if (off) continue;
+        const band = localMemoryBand(c.confidence);
+        const memColor = c.hostile ? INK.red : INK.ink2;
+        g.save();
+        g.globalAlpha = band.alpha;
+        if (c.hostile) drawHostileMark(g, x, y, c.rot || 0);
+        else drawShipChevron(g, x, y, c.rot || 0, memColor);
+        g.strokeStyle = memColor;
+        g.lineWidth = 0.8;
+        g.setLineDash([1.5, 2.5]);
+        g.beginPath(); g.arc(x, y, 9, 0, Math.PI * 2); g.stroke();
+        g.setLineDash([]);
+        g.restore();
+        continue;
+      }
+
+      // Furniture belonging to a neighbouring sector recedes. Without this the gate ring of every
+      // adjacent system sits at full contrast in the local scope and the sector you are actually
+      // in stops being the loudest thing on the glass.
+      const foreignFade = c.foreign && (c.kind === 'gate' || c.kind === 'station');
 
       if (off) {
-        if (c.kind === 'station' || c.kind === 'gate' || c.hostile) {
+        // Off-view foreign furniture gets no edge tick at all. The ticks exist to say "something
+        // that matters is just out of frame"; a gate two sectors over does not qualify, and the
+        // 24-tick budget is better spent on local infrastructure and hostiles.
+        if (!foreignFade && (c.kind === 'station' || c.kind === 'gate' || c.hostile)) {
           pushEdgeTick(x, y, c.kind === 'gate' ? INK.teal : c.kind === 'station' ? INK.brass : INK.red, c.kind === 'gate' ? 'gate' : c.kind === 'station' ? 'station' : 'hostile', {
             kind: c.kind, id: c.id, x: c.x, z: c.z,
-            entityId: c.entityId, stationId: c.stationId, name: c.name, factionId: c.factionId,
+            entityId: c.entityId, stationId: c.stationId, name: displayName, factionId: c.factionId,
             hostile: c.hostile,
-            detail: `Contact · ${c.name} · off-view ${c.kind.toUpperCase()}`,
+            detail: `Contact · ${displayName} · off-view ${c.kind.toUpperCase()}`,
           });
         }
         continue; // nothing important enough to draw leaves the frame
@@ -5169,9 +5801,9 @@ export const galaxyMapScreen = {
 
       this._clickTargets.push({
         sx: x, sy: y, radiusPx: 14, kind: c.kind, id: c.id, x: c.x, z: c.z,
-        entityId: c.entityId, stationId: c.stationId, name: c.name, factionId: c.factionId,
+        entityId: c.entityId, stationId: c.stationId, name: displayName, factionId: c.factionId,
         hostile: c.hostile,
-        detail: `Contact · ${c.name} · ${c.kind.toUpperCase()}`
+        detail: `Contact · ${displayName} · ${c.kind.toUpperCase()}`
       });
 
       // Selection: white keyline.
@@ -5179,6 +5811,8 @@ export const galaxyMapScreen = {
         g.beginPath(); g.arc(x, y, 14, 0, Math.PI * 2);
         g.strokeStyle = 'rgba(237, 232, 216, 0.9)'; g.lineWidth = 1.8; g.stroke();
       }
+
+      if (foreignFade) { g.save(); g.globalAlpha = 0.42; }
 
       if (c.kind === 'asteroid') {
         drawAsteroidMark(g, x, y, c.id);
@@ -5217,14 +5851,18 @@ export const galaxyMapScreen = {
         const col = this._layers.faction && c.factionId ? factionColorOf(c.factionId) : INK.ink1;
         drawShipChevron(g, x, y, c.rot || 0, col);
       }
+      if (foreignFade) g.restore();
 
       const selected = !!(this._selectedTarget && this._selectedTarget.id === c.id);
-      if (c.kind === 'station' || c.kind === 'gate' || selected || c.hostile || c.named) {
+      // A faded foreign gate does not also get to claim a label slot unless it is selected — the
+      // label layout is the scarcer resource, and local marks should win it.
+      if ((c.kind === 'station' || c.kind === 'gate' || selected || c.hostile || c.named)
+        && (!foreignFade || selected)) {
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `contact:${c.id}`,
           kind: c.kind,
-          text: c.name,
-          lines: [c.name],
+          text: displayName,
+          lines: [displayName],
           x,
           y,
           anchorRadius: c.kind === 'station' || c.kind === 'gate' ? 8 : 6,
@@ -5284,13 +5922,22 @@ export const galaxyMapScreen = {
       g.fillText(label, w / 2 + rrPx + 4, h / 2);
     }
 
-    // Empty-space reassurance
-    if (model.contacts.length === 0 && model.ownership.length === 0 && model.bearings.length === 0) {
+    // Empty-space reassurance. Remembered marks do not count as company — the skies really are
+    // clear when only memory is left — but the pilot is told the scope is still holding fixes so a
+    // faded chevron on an otherwise empty table reads as memory rather than as a rendering fault.
+    const liveContacts = model.contacts.reduce((n, c) => (c.remembered ? n : n + 1), 0);
+    const rememberedContacts = model.contacts.length - liveContacts;
+    if (liveContacts === 0 && model.ownership.length === 0 && model.bearings.length === 0) {
       g.save();
       g.fillStyle = 'rgba(142, 134, 117, 0.6)';
       g.font = FONT_UI(500, 11);
       g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText('CLEAR SKIES — no local contacts', w / 2, h / 2 + 30);
+      if (rememberedContacts > 0) {
+        g.fillStyle = 'rgba(142, 134, 117, 0.42)';
+        g.font = FONT_MONO(500, 9);
+        g.fillText(`${rememberedContacts} REMEMBERED ${rememberedContacts === 1 ? 'FIX' : 'FIXES'} FADING`, w / 2, h / 2 + 46);
+      }
       g.restore();
     }
 
@@ -5382,6 +6029,16 @@ export const galaxyMapScreen = {
       if (!placement.visible) continue;
       if (placement.objective) objectivePlacement = placement;
       else drawMapLabelBlock(g, placement);
+    }
+
+    // Secondary mission points sit under the objective: at LOCAL scale a patrol contract's other
+    // targets are the difference between "fly here" and "this is the shape of the job".
+    if (this._layers.mission) {
+      for (const point of missionMapGeometry(state, trackedMissionOf(state))) {
+        const mx = sx(point.x), my = sz(point.z);
+        if (mx < 8 || my < 8 || mx > w - 8 || my > h - 8) continue;
+        drawMissionPoint(g, mx, my, point.kind, point.done);
+      }
     }
 
     // The tracked objective owns the final paint and the strongest label reservation.
@@ -5538,8 +6195,8 @@ function drawAsteroidMark(g, x, y, seedId) {
   const seed = cosmeticHash01(String(seedId || 'rock'));
   const verts = 5 + Math.floor(seed * 3);
   g.save();
-  g.fillStyle = 'rgba(142, 134, 117, 0.55)';
-  g.strokeStyle = 'rgba(142, 134, 117, 0.85)';
+  g.fillStyle = 'rgba(142, 134, 117, 0.40)';
+  g.strokeStyle = 'rgba(142, 134, 117, 0.70)';
   g.lineWidth = 0.8;
   g.beginPath();
   for (let i = 0; i < verts; i += 1) {
@@ -5720,6 +6377,40 @@ function hexToRgba(hex, alpha) {
   return 'rgba(' + r + ',' + gg + ',' + b + ',' + alpha + ')';
 }
 
+/** Blend a keyed hue toward the warm ink so classification survives without primary-color glare. */
+function mutedZoneColor(hex, amount = 0.45) {
+  const s = String(hex || '').replace('#', '');
+  if (s.length !== 6) return INK.ink1;
+  const r = parseInt(s.slice(0, 2), 16), gg = parseInt(s.slice(2, 4), 16), b = parseInt(s.slice(4, 6), 16);
+  if (![r, gg, b].every(Number.isFinite)) return INK.ink1;
+  const t = Math.max(0, Math.min(1, amount));
+  const mix = (c, d) => Math.round(c + (d - c) * t);
+  const toHex = (v) => v.toString(16).padStart(2, '0');
+  return '#' + toHex(mix(r, 179)) + toHex(mix(gg, 175)) + toHex(mix(b, 162));
+}
+
+/** Octant bearing for disambiguating same-named gates on the survey table (N/NE/E…). */
+function compassOctant(dx, dz) {
+  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return '';
+  // North is -Z, matching the chart rather than the world: `sz()` maps world +Z to increasing screen
+  // y, so -Z is the top of the table and that is the bearing a pilot reads as "north" here.
+  const angle = Math.atan2(dx, -dz);
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const idx = Math.round(((angle + Math.PI * 2) % (Math.PI * 2)) / (Math.PI / 4)) % 8;
+  return dirs[idx];
+}
+
+/**
+ * When several gates share a display name (continuous residency can keep neighbour-sector twins
+ * on-screen), append a compass octant so the table stays legible without inventing new names.
+ */
+function disambiguateGateLabel(name, x, z, originX, originZ, nameCounts) {
+  const base = String(name || 'Gate');
+  if (!nameCounts || (nameCounts.get(base) || 0) < 2) return base;
+  const bearing = compassOctant((Number(x) || 0) - (Number(originX) || 0), (Number(z) || 0) - (Number(originZ) || 0));
+  return bearing ? `${base} · ${bearing}` : base;
+}
+
 function makeMapLabelCandidate(g, candidate) {
   const lines = (Array.isArray(candidate.lines) ? candidate.lines : [candidate.text])
     .map((line) => String(line || '').replace(/\s+/g, ' ').trim().slice(0, 36))
@@ -5775,6 +6466,49 @@ function waypointMapLabel(wp) {
   const raw = wp && (wp.mapLabel || wp.label || wp.reason || wp.sectorName || 'Waypoint');
   const label = String(raw || 'Waypoint').replace(/\s+/g, ' ').trim();
   return (label || 'Waypoint').slice(0, 28);
+}
+
+/**
+ * Secondary mission mark — one of several points a contract wants visited (`missionMapGeometry`).
+ *
+ * Deliberately smaller and quieter than the goal pin so a multi-point contract reads as "the
+ * objective, plus these" instead of a field of competing objectives. Keyed by role so the pilot can
+ * tell a spawned target from a survey site from a signal source without a label. Completed points
+ * hollow out and take a strike rather than disappearing, so progress stays legible.
+ */
+function drawMissionPoint(g, x, y, kind, done) {
+  const r = 5;
+  g.save();
+  g.lineWidth = 1.1;
+  g.strokeStyle = done ? INK.ink2 : INK.amber;
+  g.fillStyle = g.strokeStyle;
+  if (done) g.globalAlpha = 0.5;
+  if (kind === 'signal') {
+    // Signal source: broadcast arcs opening away from the mark.
+    for (let i = 1; i <= 2; i += 1) {
+      g.beginPath();
+      g.arc(x, y, r * i * 0.72, -Math.PI * 0.78, -Math.PI * 0.22);
+      g.stroke();
+    }
+    g.beginPath(); g.arc(x, y, 1.3, 0, Math.PI * 2); g.fill();
+  } else if (kind === 'sample') {
+    // Survey site: cross inside a ring.
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
+    g.beginPath();
+    g.moveTo(x - r + 1.6, y); g.lineTo(x + r - 1.6, y);
+    g.moveTo(x, y - r + 1.6); g.lineTo(x, y + r - 1.6);
+    g.stroke();
+  } else {
+    // Spawn-tagged target: open square with a centre pip.
+    g.strokeRect(x - r, y - r, r * 2, r * 2);
+    g.beginPath(); g.arc(x, y, 1.3, 0, Math.PI * 2); g.fill();
+  }
+  if (done) {
+    g.beginPath();
+    g.moveTo(x - r - 1, y + r + 1); g.lineTo(x + r + 1, y - r - 1);
+    g.stroke();
+  }
+  g.restore();
 }
 
 function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity) {

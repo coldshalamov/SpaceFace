@@ -43,7 +43,20 @@ export class LocalSpaceIntel {
       kind: classify(contact),
       name: String(contact.name || previous && previous.name || id),
       factionId: contact.factionId ?? contact.faction ?? (previous ? previous.factionId : null),
-      hostile: !!(contact.hostile || observation.hostile || previous && previous.hostile),
+      // An explicit reading wins; inheritance is only for callers that do not report hostility.
+      //
+      // This used to OR against the previous track, which made hostility a one-way latch. Hostility
+      // is genuinely transient — a lawful patrol reads hostile only while the player is WANTED
+      // (systems/scanner.js) — so once heat cleared, the live mark reverted to neutral while the
+      // remembered mark stayed red forever. Worse, `hostile` also selects the decay half-life
+      // (18s vs 35s), so a mis-latched track silently faded twice as fast as it should.
+      //
+      // Both live callers (the star chart's _syncLocalIntel and the legacy localmap) always pass a
+      // real boolean for ships and omit the field entirely for stations/asteroids, so OR-inheritance
+      // survives exactly where it was load-bearing.
+      hostile: contact.hostile != null
+        ? !!contact.hostile
+        : !!(observation.hostile || (previous && previous.hostile)),
       position: quantizeVec(contact.pos || contact.position, this.options.positionQuantum),
       velocity: quantizeVec(contact.vel || contact.velocity, this.options.velocityQuantum),
       radius: Math.max(0, finite(contact.radius, previous && previous.radius || 0)),
@@ -135,7 +148,7 @@ export class LocalSpaceIntel {
     const contacts = [];
 
     for (const track of this.tracks.values()) {
-      const projected = projectTrack(track, now);
+      const projected = projectTrack(track, now, this.options);
       if (inferredRange != null && distance(projected.position, center) > inferredRange) continue;
       contacts.push(projected);
     }
@@ -271,13 +284,28 @@ export function computeMapBounds(center, contacts = [], landmarks = [], fixedRan
   return { minX:minX-pad,maxX:maxX+pad,minZ:minZ-pad,maxZ:maxZ+pad };
 }
 
-function projectTrack(track, now) {
+/**
+ * Project a remembered track forward to `now`: dead-reckon its position along the last known
+ * velocity and decay confidence on the half-life for its class.
+ *
+ * Exported so other surfaces (the unified star chart's LOCAL level) read the same decay curve
+ * instead of duplicating it. `options` defaults to DEFAULTS so an omitted argument reproduces the
+ * previous behaviour exactly; it used to be three hardcoded literals here, which meant a
+ * LocalSpaceIntel built with custom half-lives decayed on one curve for pruning and a different
+ * one for display.
+ */
+export function projectTrack(track, now, options = DEFAULTS) {
   const dt = Math.max(0, now - track.lastSeenS);
+  const halfLife = track.static
+    ? finite(options.staticHalfLifeS, DEFAULTS.staticHalfLifeS)
+    : track.hostile
+      ? finite(options.hostileHalfLifeS, DEFAULTS.hostileHalfLifeS)
+      : finite(options.contactHalfLifeS, DEFAULTS.contactHalfLifeS);
   return {
     ...copyTrack(track),
     position: { x:track.position.x+track.velocity.x*dt, z:track.position.z+track.velocity.z*dt },
     ageS:dt,
-    confidence:clamp(track.confidence*Math.pow(0.5,dt/(track.static?3600:track.hostile?18:35)),0,1),
+    confidence:clamp(track.confidence*Math.pow(0.5,dt/Math.max(halfLife,0.001)),0,1),
     stale:dt>(track.static?180:12),
   };
 }
