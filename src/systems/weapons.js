@@ -386,7 +386,7 @@ export const weapons = {
       const def = this._byId.get(w.defId) || {};
       const continuous = w.continuous != null ? w.continuous : def.continuous;
       if (continuous) {
-        capLeft = this._serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle, fireGate);
+        capLeft = this._serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle, forceTarget, fireGate);
       } else if (firing) {
         capLeft = this._serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate);
       }
@@ -397,7 +397,7 @@ export const weapons = {
 
   // Continuous beam: drain cap/heat while firing, push a transient ray, emit combat:fire/beamStop.
   // Damage application is combat's responsibility (we only mark the ray + spend resources).
-  _serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle, fireGate = null) {
+  _serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle, forceTarget = null, fireGate = null) {
     const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0; // cap/s
     const heatPerSec = w.heatPerSec != null ? w.heatPerSec : def.heatPerSec || 0;
     const heatMax = w.heatMax != null ? w.heatMax : def.heatMax || Infinity;
@@ -405,7 +405,11 @@ export const weapons = {
     const overheated = (w._heat || 0) >= heatMax;
     let beamAim = aimAngle;
     let solutionBlocked = false;
-    if (fireGate && fireGate.target && fireGate.target.pos) {
+    if (!fireGate && forceTarget && forceTarget.pos) {
+      // Hitscan has no travel time. A mixed battery may have computed the ship-level aim angle for
+      // a slow projectile; carrying that lead into a beam knowingly fires ahead of the target.
+      beamAim = Math.atan2(forceTarget.pos.z - e.pos.z, forceTarget.pos.x - e.pos.x);
+    } else if (fireGate && fireGate.target && fireGate.target.pos) {
       beamAim = Math.atan2(fireGate.target.pos.z - e.pos.z, fireGate.target.pos.x - e.pos.x);
       const bareDir = this._hardpointDir(e, w, beamAim, 0);
       solutionBlocked = Math.abs(wrapAngle(bareDir - beamAim)) > fireGate.tolRad;
@@ -528,7 +532,17 @@ export const weapons = {
       // FIXED mount: base direction = nose + hardpoint facing offset, then gimbal-assist toward the
       // aim direction within the mount's gimbal arc. Spread is layered on last. This is the
       // Freelancer feel — front guns track the cursor up to a cone, then fire straight.
-      const fixedAim = mountGate ? mountGate.angle : (aimAngle != null ? aimAngle : e.rot);
+      let fixedAim = mountGate ? mountGate.angle : (aimAngle != null ? aimAngle : e.rot);
+      if (!mountGate && forceTarget && forceTarget.pos) {
+        let targetForLead = forceTarget;
+        if (forceTarget.id != null && this._autoLeadVel) {
+          const smoothed = this._autoLeadVel.get(String(forceTarget.id));
+          if (smoothed) {
+            targetForLead = { pos: forceTarget.pos, vel: smoothed, radius: forceTarget.radius };
+          }
+        }
+        fixedAim = this._leadAngle(e, targetForLead, mountProjSpeed);
+      }
       dir = this._hardpointDir(e, w, fixedAim, def.spreadDeg != null ? def.spreadDeg : 0);
     }
 
@@ -758,24 +772,42 @@ export const weapons = {
 void DEG2;
 void TWO_PI;
 
-// Iterative lead/intercept solver (2 passes), extracted so BOTH the sim fire path (weapons._leadAngle)
-// and the player HUD lead pip (src/ai/gunnery.js) share ONE ballistic model. Pure; no RNG, no state.
-// Returns the world-space angle to aim so a shot at `projSpeed` intercepts `tgt` given both velocities.
+// Exact lead/intercept solver for the shipped aim-true projectile model. Flight time is solved in
+// the shooter's inertial frame, where projectile speed relative to the shooter is `projSpeed`, but
+// the returned angle points at the target's WORLD future position because spawned bullets travel on
+// that world-space line (aimTrueProjectileVelocity). Returning the relative-frame angle here made a
+// strafing player's rounds lead in the opposite direction and miss moving targets by whole hulls.
 export function solveLeadAngle(shooter, tgt, projSpeed) {
   const sp = (shooter && shooter.pos) || { x: 0, z: 0 };
   const sv = (shooter && shooter.vel) || { x: 0, z: 0 };
   const tp = (tgt && tgt.pos) || { x: 0, z: 0 };
   const tv = (tgt && tgt.vel) || { x: 0, z: 0 };
   const px = tp.x - sp.x, pz = tp.z - sp.z;
+  if (!Number.isFinite(projSpeed)) return Math.atan2(pz, px);
   const rvx = tv.x - sv.x, rvz = tv.z - sv.z;
-  let t = 0;
   const ps = Math.max(1, Number.isFinite(projSpeed) ? projSpeed : 1);
-  for (let i = 0; i < 2; i++) {
-    const aimx = px + rvx * t, aimz = pz + rvz * t;
-    const dist = Math.hypot(aimx, aimz);
-    t = dist / ps;
+  const a = rvx * rvx + rvz * rvz - ps * ps;
+  const b = 2 * (px * rvx + pz * rvz);
+  const c = px * px + pz * pz;
+  let t = 0;
+  if (c > 1e-9) {
+    if (Math.abs(a) < 1e-9) {
+      const linearT = Math.abs(b) > 1e-9 ? -c / b : -1;
+      if (linearT > 0) t = linearT;
+    } else {
+      const disc = b * b - 4 * a * c;
+      if (disc >= 0) {
+        const root = Math.sqrt(disc);
+        const t0 = (-b - root) / (2 * a);
+        const t1 = (-b + root) / (2 * a);
+        if (t0 > 0 && t1 > 0) t = Math.min(t0, t1);
+        else if (t0 > 0) t = t0;
+        else if (t1 > 0) t = t1;
+      }
+    }
   }
-  const aimx = px + rvx * t, aimz = pz + rvz * t;
+  const aimx = px + tv.x * t;
+  const aimz = pz + tv.z * t;
   return Math.atan2(aimz, aimx);
 }
 

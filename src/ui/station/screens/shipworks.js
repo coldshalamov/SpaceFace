@@ -475,6 +475,11 @@ export function createShipworksScreen(ctx) {
     const stageRect = stageEl.getBoundingClientRect();
     const nodes = [...slotfieldEl.querySelectorAll('[data-spatial-slot]')];
     const rows = Math.max(1, Math.ceil(nodes.length / 2));
+    const nodeRadius = 17;
+    const calloutWidth = 172;
+    const calloutHeight = 36;
+    const calloutGap = 12;
+    const edgeInset = 8;
     nodes.forEach((node, order) => {
       const index = Number(node.getAttribute('data-spatial-slot'));
       const local = spatialAnchors.get(index);
@@ -488,13 +493,20 @@ export function createShipworksScreen(ctx) {
       // Labels fan into a stable schematic constellation while each reticle remains tied to its
       // projected physical/system point. That preserves spatial truth without producing a knot of
       // overlapping text on compact hulls.
-      const onLeft = order % 2 === 0;
       const row = Math.floor(order / 2);
       const desiredY = (row - (rows - 1) / 2) * 52 - 10;
-      const absoluteLabelY = Math.max(8, Math.min(stageRect.height - 40, y + desiredY));
-      const calloutY = absoluteLabelY - y;
-      node.classList.toggle('is-callout-left', onLeft);
-      node.style.setProperty('--callout-x', onLeft ? '-184px' : '34px');
+      const absoluteLabelY = Math.max(edgeInset, Math.min(stageRect.height - calloutHeight - edgeInset, y + desiredY));
+      const calloutY = absoluteLabelY - (y - nodeRadius);
+      const preferLeft = x > stageRect.width / 2;
+      const desiredLabelX = preferLeft
+        ? x - nodeRadius - calloutWidth - calloutGap
+        : x + nodeRadius + calloutGap;
+      const absoluteLabelX = Math.max(edgeInset,
+        Math.min(stageRect.width - calloutWidth - edgeInset, desiredLabelX));
+      const calloutX = absoluteLabelX - (x - nodeRadius);
+      const calloutLeft = absoluteLabelX + calloutWidth / 2 < x;
+      node.classList.toggle('is-callout-left', calloutLeft);
+      node.style.setProperty('--callout-x', `${calloutX}px`);
       node.style.setProperty('--callout-y', `${calloutY}px`);
       if (index === selectedSlot) {
         const line = el.querySelector('.sx-sw__focusline');

@@ -30,9 +30,10 @@ import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
-import { sectorSignalFor } from '../systems/sectorSim.js';
+import { sectorSignalFor, forecastTransitFor } from '../systems/sectorSim.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { bestKnownSellAtStations, knownStationQuotes } from './marketIntelligence.js';
+import { rankTradeRoutes } from './navigation/localSpaceMapModel.js';
 
 // ---------------------------------------------------------------------------------------------
 // Static catalogs (pure — safe at import time).
@@ -49,6 +50,47 @@ for (const f of FACTION_META) {
 export function factionColorOf(id) { return FACTION_COLOR.get(id) || '#9aa8bc'; }
 export function factionNameOf(id) {
   return FACTION_NAME.get(id) || (id ? String(id).replace(/^faction_/, '') : 'Unaffiliated');
+}
+
+// ---------------------------------------------------------------------------------------------
+// SURVEY TABLE design tokens — the map's canvas grammar. One warm worklight palette shared with
+// the menu fascia / station workbench; faction hues are the only saturated accents on the table.
+// Action = amber, infrastructure = teal/brass, danger = red, archive/discovery = gold.
+// ---------------------------------------------------------------------------------------------
+const INK = Object.freeze({
+  bg: '#0c0e10',
+  gridMinor: 'rgba(216, 190, 150, 0.040)',
+  gridMajor: 'rgba(216, 190, 150, 0.075)',
+  ink0: '#ede8d8',
+  ink1: '#b3afa2',
+  ink2: '#8a877d',
+  amber: '#e8a33d',
+  amberHot: '#ffc064',
+  brass: '#d8b26a',
+  teal: '#56bbb2',
+  red: '#ed6961',
+  warn: '#e3a13d',
+  good: '#58c98a',
+  gold: '#e6bf6a',
+  plate: 'rgba(12, 14, 15, 0.92)',
+  plateHard: 'rgba(12, 14, 15, 0.97)',
+  plateEdge: 'rgba(190, 178, 152, 0.30)',
+});
+
+// Canvas type trio — mirrors the DOM fascia (self-hosted in styles/fonts.css, loaded at boot).
+const FONT_MONO = (weight, px) => `${weight} ${px}px "IBM Plex Mono", ui-monospace, monospace`;
+const FONT_UI = (weight, px) => `${weight} ${px}px "IBM Plex Sans", "Segoe UI", system-ui, sans-serif`;
+const FONT_DISPLAY = (weight, px) => `${weight} ${px}px "Saira SemiCondensed", "IBM Plex Sans", system-ui, sans-serif`;
+
+/** Stable 0..1 hash for cosmetic phase offsets (deterministic, never fed into sim). */
+function cosmeticHash01(text) {
+  const s = String(text || '');
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 10000) / 10000;
 }
 
 // Continuous zoom is a single scalar; these thresholds pick which "level" the model builder emits.
@@ -84,8 +126,8 @@ export function resolveGalaxyMapLayout(width, height) {
   const h = Math.max(480, Number(height) || 0);
   if (w >= 1180) {
     const headerH = 58;
-    const layersW = 190;
-    const inspectorW = 300;
+    const layersW = 236;
+    const inspectorW = 320;
     return {
       mode: 'wide',
       header: { x: 0, y: 0, width: w, height: headerH },
@@ -886,12 +928,14 @@ export function buildGalaxyModel(state) {
     const confidence = mapConfidenceForSector(state, s);
     const bearingCount = uniqueWreckMapReadouts(state, s.id).length;
     const presence = charted ? (presenceBySector.get(s.id) || []) : [];
+    const liveOwner = state && state.world && state.world.sectors && state.world.sectors[s.id];
     const node = {
       id: s.id,
       name: s.name || s.id,
       x: Number(pos.x) || 0,
       y: Number(pos.y) || 0,
       factionId: s.factionId || null,
+      ownerId: (liveOwner && liveOwner.owner) || s.factionId || null,
       color: factionColorOf(s.factionId),
       charted,
       ...confidence,
@@ -1087,6 +1131,10 @@ export function buildLocalModel(state, isHostile, options = {}) {
       entityId: e.id,
       stationId: (e.type === 'station' && e.data && e.data.stationId) || null,
       named: !!(e.data && (e.data.namedLaneContactId || e.data.callsign || e.data.name)),
+      scanHighlightUntil: kind === 'asteroid' ? (Number(e.data && e.data.scanHighlightUntil) || 0) : 0,
+      scanOre: kind === 'asteroid'
+        ? String((e.data && e.data.scanOreGlyph) || asteroidOreGlyph(e.data && e.data.typeId))
+        : null,
     });
   }
   return {
@@ -1308,296 +1356,541 @@ const HAS_DOC = typeof document !== 'undefined';
 const STYLE_ID = 'sf-galaxymap-style';
 
 const CSS = `
+/* SURVEY TABLE — the map adopts the menu-fascia / station-workbench material (opaque warm
+   near-black, hairline steel edges, amber worklight) as a full-bleed instrument layout.
+   Related, not identical (GDD §9.4). Token values mirror styles/menu.css §1 — keep in sync. */
 #sf-galaxymap {
+  --panel: #121518;
+  --panel-2: #171b1f;
+  --panel-edge: #3b403f;
+  --panel-edge-2: #66645d;
+  --ink: #f1ede2;
+  --ink-dim: #b3afa2;
+  --ink-mute: #8a877d;
+  --accent: #db9838;
+  --accent-2: #56bbb2;
+  --accent-3: #ffc064;
+  --good: #58c98a;
+  --warn: #e3a13d;
+  --danger: #ed6961;
+  --mono: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  --mf-display: "Saira SemiCondensed", "Segoe UI", system-ui, sans-serif;
+  --mf-ui: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mf-line-1: #292d2e;
+  --mf-line-2: #3b403f;
+  --mf-line-3: #66645d;
+  --mf-stamp: #8a857a;
+  --mf-worklight-dim: rgba(219, 152, 56, .12);
+
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: rgba(4, 8, 16, 0.98);
-  color: var(--ink, #cfe3ff);
-  font-family: var(--mono, monospace);
+  background:
+    radial-gradient(ellipse at 50% 118%, rgba(219, 152, 56, .04), transparent 55%),
+    linear-gradient(180deg, #14171a 0%, #0e1113 30%, #0b0d0f 100%);
+  color: var(--ink);
+  font-family: var(--mf-ui);
   user-select: none;
 }
 
+/* ---- Header: machined strip with worklight edge -------------------------------------------- */
 #sf-galaxymap .gm-head {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--panel-edge, #1d3350);
-  background: rgba(8, 14, 26, 0.85);
+  gap: 14px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--mf-line-2);
+  background:
+    repeating-linear-gradient(112deg, rgba(255, 255, 255, .008) 0 1px, transparent 1px 7px),
+    linear-gradient(180deg, #191d20 0%, #121518 70%, #101315 100%);
   min-height: var(--gm-header-h, 58px);
   box-sizing: border-box;
 }
+#sf-galaxymap .gm-head::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 22px;
+  width: 30%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), #6b4a26 68%, transparent);
+  pointer-events: none;
+}
 
+#sf-galaxymap .gm-title-lockup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+}
 #sf-galaxymap .gm-title {
-  font-size: 0.95rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--ink, #cfe3ff);
+  font-family: var(--mf-display);
+  font-size: 15px;
   font-weight: 600;
-  opacity: 0.92;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+#sf-galaxymap .gm-stamp {
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--mf-stamp);
 }
 
 #sf-galaxymap .gm-search-container {
   position: relative;
   flex: 1;
-  max-width: 320px;
+  max-width: 340px;
 }
-
 #sf-galaxymap .gm-search-input {
   width: 100%;
-  background: rgba(6, 12, 24, 0.8);
-  border: 1px solid var(--panel-edge, #1d3350);
-  border-radius: 4px;
-  color: #fff;
-  padding: 6px 12px;
-  font-family: inherit;
-  font-size: 0.75rem;
-  transition: border-color 0.15s ease;
+  box-sizing: border-box;
+  background: #0c0e10;
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  color: var(--ink);
+  padding: 7px 30px 7px 10px;
+  font-family: var(--mf-ui);
+  font-size: 12px;
+  transition: border-color .12s ease;
 }
-
+#sf-galaxymap .gm-search-input::placeholder { color: var(--ink-mute); }
 #sf-galaxymap .gm-search-input:focus {
   outline: none;
-  border-color: var(--accent, #39d0ff);
-  box-shadow: 0 0 8px rgba(57, 208, 255, 0.25);
+  border-color: var(--accent-3);
+  box-shadow: inset 0 0 0 1px var(--accent-3);
 }
-
+#sf-galaxymap .gm-search-kbd {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-mute);
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  padding: 1px 5px;
+  pointer-events: none;
+}
 #sf-galaxymap .gm-search-results {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 6px);
   left: 0;
   right: 0;
-  background: rgba(8, 13, 24, 0.96);
-  border: 1px solid var(--panel-edge, #1d3350);
-  border-radius: 4px;
-  max-height: 250px;
+  background:
+    linear-gradient(180deg, #191d20 0%, #121518 60%, #0e1113 100%);
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  max-height: 260px;
   overflow-y: auto;
   z-index: 100;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, .55));
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
 }
-
 #sf-galaxymap .gm-search-item {
-  padding: 8px 12px;
+  position: relative;
+  padding: 8px 12px 8px 18px;
   cursor: pointer;
-  border-bottom: 1px solid rgba(29, 51, 80, 0.4);
-  font-size: 0.7rem;
-  transition: background 0.15s ease;
+  border-bottom: 1px solid var(--mf-line-1);
+  transition: background .12s ease;
 }
-
+#sf-galaxymap .gm-search-item::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  width: 6px;
+  height: 2px;
+  transform: translateY(-50%);
+  background: #5a574f;
+}
 #sf-galaxymap .gm-search-item:hover,
 #sf-galaxymap .gm-search-item.selected {
-  background: rgba(57, 208, 255, 0.15);
-  color: #fff;
+  background: var(--mf-worklight-dim);
 }
-
+#sf-galaxymap .gm-search-item:hover::before,
+#sf-galaxymap .gm-search-item.selected::before { background: var(--accent-3); }
 #sf-galaxymap .gm-search-item-name {
-  font-weight: 700;
-  color: var(--accent, #39d0ff);
+  font-family: var(--mf-ui);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--ink);
 }
-
 #sf-galaxymap .gm-search-item-detail {
-  color: var(--ink-dim, #7e93b3);
-  font-size: 0.65rem;
+  font-family: var(--mono);
+  color: var(--ink-mute);
+  font-size: 10px;
   margin-top: 2px;
 }
 
-#sf-galaxymap .gm-level {
-  font-size: 0.7rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-dim, #7e93b3);
+/* ---- Continuity rail: one instrument, three stations --------------------------------------- */
+#sf-galaxymap .gm-rail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
 }
-
-#sf-galaxymap .gm-level b {
-  color: var(--accent, #39d0ff);
+#sf-galaxymap .gm-rail-track {
+  position: relative;
+  width: 96px;
+  height: 2px;
+  background: var(--mf-line-2);
 }
-
+#sf-galaxymap .gm-rail-track::before,
+#sf-galaxymap .gm-rail-track::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 6px;
+  background: var(--mf-line-3);
+}
+#sf-galaxymap .gm-rail-track::before { left: 0; }
+#sf-galaxymap .gm-rail-track::after { right: 0; }
+#sf-galaxymap .gm-rail-marker {
+  position: absolute;
+  top: -3px;
+  left: 100%;
+  width: 8px;
+  height: 8px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--accent);
+  transition: left .18s ease;
+}
 #sf-galaxymap .gm-scale-buttons {
   display: flex;
   gap: 4px;
-  padding: 2px;
-  border: 1px solid rgba(57, 208, 255, 0.18);
-  border-radius: 5px;
 }
-
 #sf-galaxymap .gm-scale-btn {
-  min-width: 54px;
-  padding: 5px 7px;
+  min-width: 58px;
+  padding: 5px 9px;
   background: transparent;
-  border-color: transparent;
-  color: var(--ink-dim, #7e93b3);
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
+  border: 1px solid var(--mf-line-1);
+  border-radius: 2px;
+  color: var(--ink-mute);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .12em;
   text-transform: uppercase;
+  transition: border-color .12s ease, color .12s ease, background .12s ease;
 }
-
+#sf-galaxymap .gm-scale-btn:hover { color: var(--ink); border-color: var(--mf-line-3); }
+#sf-galaxymap .gm-scale-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent-3);
+  box-shadow: inset 0 0 0 1px var(--accent-3);
+  color: var(--ink);
+}
 #sf-galaxymap .gm-scale-btn.is-current,
 #sf-galaxymap .gm-scale-btn[aria-pressed="true"] {
-  border-color: var(--accent, #39d0ff);
-  color: #fff;
-  background: rgba(57, 208, 255, 0.18);
-  box-shadow: 0 0 10px rgba(57, 208, 255, 0.25);
-  font-weight: 700;
+  color: var(--accent-3);
+  border-color: #8a6a3c;
+  background: var(--mf-worklight-dim);
+  font-weight: 500;
 }
-
-#sf-galaxymap .gm-close {
-  background: transparent;
-  border: 1px solid var(--panel-edge, #1d3350);
-  color: inherit;
-  padding: 6px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
+#sf-galaxymap .gm-level {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .14em;
   text-transform: uppercase;
-  transition: all 0.15s ease;
+  color: var(--ink-mute);
+  white-space: nowrap;
 }
+#sf-galaxymap .gm-level b { color: var(--accent); font-weight: 500; }
 
-#sf-galaxymap .gm-close:hover,
+#sf-galaxymap .gm-hint-btn {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  color: var(--ink-mute);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1;
+  transition: border-color .12s ease, color .12s ease;
+}
+#sf-galaxymap .gm-hint-btn:hover { border-color: var(--mf-line-3); color: var(--ink); }
+#sf-galaxymap .gm-hint-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent-3);
+  box-shadow: inset 0 0 0 1px var(--accent-3);
+  color: var(--ink);
+}
+#sf-galaxymap .gm-hint-btn[aria-expanded="true"] {
+  color: var(--accent-3);
+  border-color: #8a6a3c;
+  background: var(--mf-worklight-dim);
+}
+#sf-galaxymap .gm-close {
+  flex: 0 0 auto;
+  background: linear-gradient(180deg, #1b1f22, #131618);
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  color: var(--ink-dim);
+  padding: 6px 14px;
+  cursor: pointer;
+  font-family: var(--mf-ui);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  transition: border-color .12s ease, color .12s ease, background .12s ease;
+}
+#sf-galaxymap .gm-close:hover { border-color: #8a6a3c; color: var(--ink); background: linear-gradient(180deg, #23272a, #17191c); }
 #sf-galaxymap .gm-close:focus-visible {
-  border-color: var(--accent, #39d0ff);
-  color: #fff;
-  box-shadow: 0 0 10px rgba(57, 208, 255, 0.2);
+  outline: none;
+  border-color: var(--accent-3);
+  box-shadow: inset 0 0 0 1px var(--accent-3);
+  color: var(--ink);
 }
 
+/* ---- Hints popover (on demand, never persistent) ------------------------------------------- */
+#sf-galaxymap .gm-hints {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 14px;
+  width: 252px;
+  z-index: 120;
+  background:
+    radial-gradient(ellipse at 50% 112%, rgba(219, 152, 56, .05), transparent 52%),
+    linear-gradient(180deg, #191d20 0%, #121518 60%, #0e1113 100%);
+  border: 1px solid var(--mf-line-2);
+  border-top-color: #4c4a44;
+  border-radius: 2px;
+  padding: 12px 14px;
+  filter: drop-shadow(0 16px 26px rgba(0, 0, 0, .55));
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+#sf-galaxymap .gm-hints-title {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 8px;
+}
+#sf-galaxymap .gm-hint-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+#sf-galaxymap .gm-hint-row kbd {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--accent-3);
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  padding: 1px 5px;
+  background: #0c0e10;
+}
+#sf-galaxymap .gm-hints-note {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--mf-line-1);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--ink-mute);
+}
+
+/* ---- Body ----------------------------------------------------------------------------------- */
 #sf-galaxymap .gm-body-container {
   display: flex;
   flex: 1;
   min-height: 0;
 }
 
+/* ---- Left rail: overlays + market intel ----------------------------------------------------- */
 #sf-galaxymap .gm-left-rail {
-  width: 190px;
+  width: 236px;
   box-sizing: border-box;
-  border-right: 1px solid var(--panel-edge, #1d3350);
-  background: rgba(6, 11, 22, 0.75);
+  border-right: 1px solid var(--mf-line-2);
+  background:
+    repeating-linear-gradient(112deg, rgba(255, 255, 255, .006) 0 1px, transparent 1px 7px),
+    linear-gradient(180deg, #14171a 0%, #101315 100%);
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  gap: 12px;
+  padding: 14px;
+  gap: 10px;
   overflow-y: auto;
 }
-
 #sf-galaxymap .gm-rail-title {
-  font-size: 0.75rem;
-  letter-spacing: 0.15em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .22em;
   text-transform: uppercase;
-  color: var(--accent, #39d0ff);
-  border-bottom: 1px solid rgba(57, 208, 255, 0.2);
-  padding-bottom: 6px;
-  margin-bottom: 4px;
-  font-weight: 700;
+  color: var(--ink-mute);
+  padding-bottom: 2px;
 }
-
+#sf-galaxymap .gm-rail-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--mf-line-2), transparent);
+}
 #sf-galaxymap .gm-layer-buttons {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
-
 #sf-galaxymap .gm-layer-btn {
-  background: rgba(29, 51, 80, 0.2);
-  border: 1px solid var(--panel-edge, #1d3350);
-  color: var(--ink-dim, #7e93b3);
-  padding: 8px 12px;
-  border-radius: 4px;
+  display: grid;
+  grid-template-columns: 16px 1fr 12px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  background: linear-gradient(180deg, #15181b, #101315);
+  border: 1px solid var(--mf-line-1);
+  border-radius: 2px;
   cursor: pointer;
   text-align: left;
-  font-family: inherit;
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
-  font-weight: 600;
-  transition: all 0.15s ease;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  font-family: var(--mf-ui);
+  transition: border-color .12s ease, background .12s ease;
 }
-
-#sf-galaxymap .gm-layer-btn:hover {
-  border-color: rgba(57, 208, 255, 0.5);
-  color: #fff;
-  background: rgba(57, 208, 255, 0.05);
+#sf-galaxymap .gm-layer-btn:hover { border-color: var(--mf-line-3); }
+#sf-galaxymap .gm-layer-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent-3);
+  box-shadow: inset 0 0 0 1px var(--accent-3);
 }
-
-#sf-galaxymap .gm-layer-btn.active {
-  color: #fff;
-  font-weight: 700;
+#sf-galaxymap .gm-layer-btn .gm-layer-ico {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  color: var(--ink-mute);
+  transition: color .12s ease;
 }
-#sf-galaxymap .gm-layer-btn[data-layer="route"].active   { border-color: #ffd24a; background: rgba(255, 210, 74, 0.14); box-shadow: 0 0 10px rgba(255, 210, 74, 0.22); }
-#sf-galaxymap .gm-layer-btn[data-layer="mission"].active { border-color: #ffb35c; background: rgba(255, 179, 92, 0.14); box-shadow: 0 0 10px rgba(255, 179, 92, 0.22); }
-#sf-galaxymap .gm-layer-btn[data-layer="market"].active  { border-color: #62e08a; background: rgba(98, 224, 138, 0.14); box-shadow: 0 0 10px rgba(98, 224, 138, 0.22); }
-#sf-galaxymap .gm-layer-btn[data-layer="security"].active{ border-color: #ff5c5c; background: rgba(255, 92, 92, 0.14); box-shadow: 0 0 10px rgba(255, 92, 92, 0.22); }
-#sf-galaxymap .gm-layer-btn[data-layer="faction"].active { border-color: #c08bff; background: rgba(192, 139, 255, 0.14); box-shadow: 0 0 10px rgba(192, 139, 255, 0.22); }
-#sf-galaxymap .gm-layer-btn[data-layer="hazard"].active  { border-color: #ff8a4d; background: rgba(255, 138, 77, 0.14); box-shadow: 0 0 10px rgba(255, 138, 77, 0.22); }
-#sf-galaxymap .gm-layer-btn[data-layer="services"].active{ border-color: #39d0ff; background: rgba(57, 208, 255, 0.14); box-shadow: 0 0 10px rgba(57, 208, 255, 0.22); }
-#sf-galaxymap .gm-layer-btn[data-layer="discovery"].active{ border-color: #7a9fff; background: rgba(122, 159, 255, 0.14); box-shadow: 0 0 10px rgba(122, 159, 255, 0.22); }
-
-#sf-galaxymap .gm-layer-btn.active::after {
-  content: "●";
-  font-size: 0.6rem;
+#sf-galaxymap .gm-layer-btn .gm-layer-ico svg { width: 14px; height: 14px; display: block; }
+#sf-galaxymap .gm-layer-btn .gm-layer-name {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  transition: color .12s ease;
 }
-#sf-galaxymap .gm-layer-btn[data-layer="route"].active::after   { color: #ffd24a; }
-#sf-galaxymap .gm-layer-btn[data-layer="mission"].active::after { color: #ffb35c; }
-#sf-galaxymap .gm-layer-btn[data-layer="market"].active::after  { color: #62e08a; }
-#sf-galaxymap .gm-layer-btn[data-layer="security"].active::after{ color: #ff5c5c; }
-#sf-galaxymap .gm-layer-btn[data-layer="faction"].active::after { color: #c08bff; }
-#sf-galaxymap .gm-layer-btn[data-layer="hazard"].active::after  { color: #ff8a4d; }
-#sf-galaxymap .gm-layer-btn[data-layer="services"].active::after{ color: #39d0ff; }
-#sf-galaxymap .gm-layer-btn[data-layer="discovery"].active::after{ color: #7a9fff; }
+#sf-galaxymap .gm-layer-btn .gm-layer-state {
+  width: 8px;
+  height: 8px;
+  justify-self: end;
+  transform: rotate(45deg);
+  border: 1px solid var(--mf-line-3);
+  background: transparent;
+  transition: background .12s ease, border-color .12s ease;
+}
+#sf-galaxymap .gm-layer-btn.active { border-color: #8a6a3c; background: linear-gradient(180deg, #1a1d20, #131614); }
+#sf-galaxymap .gm-layer-btn.active .gm-layer-ico { color: var(--accent-3); }
+#sf-galaxymap .gm-layer-btn.active .gm-layer-name { color: var(--ink); }
+#sf-galaxymap .gm-layer-btn[data-layer="route"] .gm-layer-state    { border-color: #e8a33d; }
+#sf-galaxymap .gm-layer-btn[data-layer="mission"] .gm-layer-state  { border-color: #ffc064; }
+#sf-galaxymap .gm-layer-btn[data-layer="market"] .gm-layer-state   { border-color: #58c98a; }
+#sf-galaxymap .gm-layer-btn[data-layer="security"] .gm-layer-state { border-color: #ed6961; }
+#sf-galaxymap .gm-layer-btn[data-layer="faction"] .gm-layer-state  { border-color: #b092e8; }
+#sf-galaxymap .gm-layer-btn[data-layer="hazard"] .gm-layer-state   { border-color: #e0763d; }
+#sf-galaxymap .gm-layer-btn[data-layer="services"] .gm-layer-state { border-color: #56bbb2; }
+#sf-galaxymap .gm-layer-btn[data-layer="discovery"] .gm-layer-state{ border-color: #8ea6c8; }
+#sf-galaxymap .gm-layer-btn[data-layer="route"].active .gm-layer-state    { background: #e8a33d; }
+#sf-galaxymap .gm-layer-btn[data-layer="mission"].active .gm-layer-state  { background: #ffc064; }
+#sf-galaxymap .gm-layer-btn[data-layer="market"].active .gm-layer-state   { background: #58c98a; }
+#sf-galaxymap .gm-layer-btn[data-layer="security"].active .gm-layer-state { background: #ed6961; }
+#sf-galaxymap .gm-layer-btn[data-layer="faction"].active .gm-layer-state  { background: #b092e8; }
+#sf-galaxymap .gm-layer-btn[data-layer="hazard"].active .gm-layer-state   { background: #e0763d; }
+#sf-galaxymap .gm-layer-btn[data-layer="services"].active .gm-layer-state { background: #56bbb2; }
+#sf-galaxymap .gm-layer-btn[data-layer="discovery"].active .gm-layer-state{ background: #8ea6c8; }
 
 #sf-galaxymap .gm-rail-commodity {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 10px;
+  margin-top: 6px;
 }
-
 #sf-galaxymap .gm-rail-commodity label {
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
-  color: var(--ink-dim, #7e93b3);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .18em;
+  color: var(--ink-mute);
   text-transform: uppercase;
 }
-
 #sf-galaxymap .gm-rail-commodity select {
-  background: rgba(6, 12, 24, 0.9);
-  border: 1px solid var(--panel-edge, #1d3350);
-  border-radius: 4px;
-  color: #fff;
-  padding: 6px;
-  font-family: inherit;
-  font-size: 0.68rem;
+  background: #0c0e10;
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  color: var(--ink);
+  padding: 6px 8px;
+  font-family: var(--mono);
+  font-size: 11px;
   outline: none;
 }
-
-#sf-galaxymap .gm-rail-commodity select:focus {
-  border-color: var(--accent, #39d0ff);
+#sf-galaxymap .gm-rail-commodity select:focus-visible {
+  border-color: var(--accent-3);
+  box-shadow: inset 0 0 0 1px var(--accent-3);
 }
+
+#sf-galaxymap .gm-rail-legend {
+  border-top: 1px solid var(--mf-line-1);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+#sf-galaxymap .gm-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+#sf-galaxymap .gm-legend-row .gm-legend-ico {
+  display: inline-flex;
+  width: 13px;
+  height: 13px;
+  color: var(--accent-2);
+  flex: 0 0 auto;
+}
+#sf-galaxymap .gm-legend-row .gm-legend-ico svg { width: 13px; height: 13px; display: block; }
 
 #sf-galaxymap .gm-rail-footer {
   margin-top: auto;
-  border-top: 1px solid var(--panel-edge, #1d3350);
-  padding-top: 12px;
+  border-top: 1px solid var(--mf-line-1);
+  padding-top: 10px;
 }
-
 #sf-galaxymap .gm-hint-title {
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .18em;
   text-transform: uppercase;
-  color: var(--ink-dim, #7e93b3);
-  font-weight: 700;
-  margin-bottom: 6px;
+  color: var(--ink-mute);
+  margin-bottom: 5px;
 }
-
 #sf-galaxymap .gm-hint-text {
-  font-size: 0.6rem;
-  color: var(--ink-mute, #5e7393);
-  line-height: 1.5;
+  font-size: 10px;
+  color: var(--ink-mute);
+  line-height: 1.55;
 }
+#sf-galaxymap .gm-hint-text b { color: var(--ink-dim); font-weight: 500; }
 
+/* ---- Viewport -------------------------------------------------------------------------------- */
 #sf-galaxymap .gm-viewport {
   flex: 1;
   position: relative;
@@ -1605,7 +1898,6 @@ const CSS = `
   min-height: 0;
   overflow: hidden;
 }
-
 #sf-galaxymap canvas {
   position: absolute;
   inset: 0;
@@ -1615,103 +1907,290 @@ const CSS = `
   cursor: crosshair;
 }
 
+/* ---- Right inspector ------------------------------------------------------------------------- */
 #sf-galaxymap .gm-right-inspector {
-  width: 300px;
+  width: 320px;
   box-sizing: border-box;
-  border-left: 1px solid var(--panel-edge, #1d3350);
-  background: rgba(6, 11, 22, 0.75);
+  border-left: 1px solid var(--mf-line-2);
+  background:
+    repeating-linear-gradient(112deg, rgba(255, 255, 255, .006) 0 1px, transparent 1px 7px),
+    linear-gradient(180deg, #14171a 0%, #101315 100%);
   display: flex;
   flex-direction: column;
   padding: 16px;
   gap: 12px;
   overflow-y: auto;
 }
-
 #sf-galaxymap .gm-inspector-header {
-  font-size: 0.75rem;
-  letter-spacing: 0.15em;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--mf-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .18em;
   text-transform: uppercase;
-  color: var(--accent, #39d0ff);
-  border-bottom: 1px solid rgba(57, 208, 255, 0.2);
-  padding-bottom: 6px;
-  font-weight: 700;
-  text-shadow: 0 0 6px rgba(57, 208, 255, 0.3);
+  color: var(--ink);
+  border-bottom: 1px solid var(--mf-line-1);
+  padding-bottom: 8px;
 }
-
+#sf-galaxymap .gm-inspector-header::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  clip-path: polygon(0 0, 78% 0, 100% 22%, 100% 100%, 22% 100%, 0 78%);
+}
 #sf-galaxymap .gm-inspector-content {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  font-size: 0.72rem;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.45;
 }
-
 #sf-galaxymap .gm-inspector-details {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-
 #sf-galaxymap .gm-inspector-empty {
-  color: var(--ink-mute, #5e7393);
-  font-style: italic;
-  text-align: center;
-  padding-top: 30px;
+  color: var(--ink-mute);
+  font-size: 11px;
+  line-height: 1.6;
 }
-
+#sf-galaxymap .gm-inspector-empty b { color: var(--ink-dim); font-weight: 500; }
 #sf-galaxymap .gm-ins-section {
-  border-bottom: 1px solid rgba(29, 51, 80, 0.4);
-  padding-bottom: 8px;
+  border-bottom: 1px solid var(--mf-line-1);
+  padding-bottom: 10px;
 }
-
-#sf-galaxymap .gm-ins-section:last-child {
-  border-bottom: none;
-}
-
+#sf-galaxymap .gm-ins-section:last-child { border-bottom: none; }
 #sf-galaxymap .gm-ins-title {
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .2em;
   text-transform: uppercase;
-  color: var(--accent, #39d0ff);
-  margin-bottom: 4px;
-  font-weight: 700;
+  color: var(--ink-mute);
+  margin-bottom: 6px;
 }
-
+#sf-galaxymap .gm-ins-kind {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--mf-stamp);
+}
+#sf-galaxymap .gm-ins-target-name {
+  font-family: var(--mf-display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
 #sf-galaxymap .gm-ins-row {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
   padding: 2px 0;
+  font-size: 11.5px;
+  color: var(--ink-dim);
 }
-
 #sf-galaxymap .gm-ins-row-val {
-  font-weight: 600;
-  color: #fff;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: right;
 }
-
-#sf-galaxymap .gm-ins-row-val.fresh { color: #39d0ff; }
-#sf-galaxymap .gm-ins-row-val.mid { color: #fff; }
-#sf-galaxymap .gm-ins-row-val.old { color: #5e7393; font-style: italic; }
+#sf-galaxymap .gm-ins-row-val.fresh { color: var(--accent-3); }
+#sf-galaxymap .gm-ins-row-val.mid { color: var(--ink); }
+#sf-galaxymap .gm-ins-row-val.old { color: var(--ink-mute); font-style: italic; }
+#sf-galaxymap .gm-ins-note {
+  color: var(--ink-mute);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+#sf-galaxymap .gm-ins-note b { color: var(--ink-dim); }
 
 #sf-galaxymap .gm-ins-btn {
+  position: relative;
   width: 100%;
-  background: rgba(57, 208, 255, 0.12);
-  border: 1px solid var(--accent, #39d0ff);
-  color: #fff;
-  padding: 8px;
-  border-radius: 4px;
+  padding: 10px 14px;
+  margin-top: 2px;
+  background: linear-gradient(180deg, #ffc064, #db9838);
+  border: 1px solid #6b4a26;
+  border-radius: 2px;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+  color: #1c1206;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
+  font-family: var(--mf-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .1em;
   text-transform: uppercase;
-  font-weight: 700;
-  transition: all 0.15s ease;
-  margin-top: 10px;
+  transition: background .12s ease, transform .1s ease;
 }
+#sf-galaxymap .gm-ins-btn:hover:not(:disabled) { background: linear-gradient(180deg, #ffd284, #e6a643); }
+#sf-galaxymap .gm-ins-btn:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px #1c1206;
+}
+#sf-galaxymap .gm-ins-btn:active:not(:disabled) { transform: translateY(1px); }
+#sf-galaxymap .gm-ins-btn:disabled { opacity: .42; cursor: default; }
 
-#sf-galaxymap .gm-ins-btn:hover {
-  background: rgba(57, 208, 255, 0.2);
-  box-shadow: 0 0 12px rgba(57, 208, 255, 0.3);
+/* Service chips: pictogram + label, keyed teal */
+#sf-galaxymap .gm-svc-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+#sf-galaxymap .gm-svc {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  background: #0e1113;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+#sf-galaxymap .gm-svc .gm-svc-ico {
+  display: inline-flex;
+  width: 11px;
+  height: 11px;
+  color: var(--accent-2);
+}
+#sf-galaxymap .gm-svc .gm-svc-ico svg { width: 11px; height: 11px; display: block; }
+
+/* Thin meter bars under condition rows */
+#sf-galaxymap .gm-meter {
+  height: 3px;
+  margin: 3px 0 5px;
+  background: var(--mf-line-1);
+  border-radius: 1px;
+  overflow: hidden;
+}
+#sf-galaxymap .gm-meter > i { display: block; height: 100%; }
+
+/* Trade lanes + best-known sell (strategy deck) */
+#sf-galaxymap .gm-tl-row {
+  position: relative;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  padding: 7px 9px 7px 16px;
+  margin-bottom: 4px;
+  background: #0e1113;
+  border: 1px solid var(--mf-line-1);
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: var(--mf-ui);
+  transition: border-color .12s ease, background .12s ease;
+}
+#sf-galaxymap .gm-tl-row::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  width: 6px;
+  height: 2px;
+  transform: translateY(-50%);
+  background: #5a574f;
+  transition: background .12s ease;
+}
+#sf-galaxymap .gm-tl-row:hover { border-color: #8a6a3c; background: #121518; }
+#sf-galaxymap .gm-tl-row:hover::before { background: var(--accent-3); }
+#sf-galaxymap .gm-tl-row:focus-visible {
+  outline: none;
+  border-color: var(--accent-3);
+  box-shadow: inset 0 0 0 1px var(--accent-3);
+}
+#sf-galaxymap .gm-tl-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--ink);
+  font-weight: 500;
+}
+#sf-galaxymap .gm-tl-profit { font-family: var(--mono); font-size: 11px; font-weight: 500; }
+#sf-galaxymap .gm-tl-sub {
+  margin-top: 2px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#sf-galaxymap .gm-bk-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+#sf-galaxymap .gm-bk-station {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#sf-galaxymap .gm-bk-val { font-family: var(--mono); font-size: 11px; }
+
+/* Transit forecast comparison */
+#sf-galaxymap .gm-transit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+#sf-galaxymap .gm-transit-card {
+  border: 1px solid var(--mf-line-1);
+  border-radius: 2px;
+  background: #0e1113;
+  padding: 7px 8px;
+}
+#sf-galaxymap .gm-transit-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 5px;
+}
+#sf-galaxymap .gm-transit-head b { font-size: 10px; font-weight: 500; letter-spacing: 0; }
+#sf-galaxymap .gm-transit-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink-mute);
+  padding: 1px 0;
+}
+#sf-galaxymap .gm-transit-row b { color: var(--ink-dim); font-weight: 400; }
+
+/* Route legs */
+#sf-galaxymap .gm-route-leg {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-dim);
+  padding: 2px 0;
+}
+#sf-galaxymap .gm-route-leg b { color: var(--accent-3); font-weight: 500; }
+#sf-galaxymap .gm-route-total {
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-mute);
 }
 
 /* Compact windows keep one canvas and one inspector; layers become a horizontal tool rail. */
@@ -1720,9 +2199,12 @@ const CSS = `
   box-sizing: border-box;
   gap: 8px;
   padding: 9px 12px;
+  flex-wrap: wrap;
 }
-#sf-galaxymap[data-layout="compact"] .gm-title { font-size: .9rem; }
+#sf-galaxymap[data-layout="compact"] .gm-title { font-size: 13px; }
+#sf-galaxymap[data-layout="compact"] .gm-stamp { display: none; }
 #sf-galaxymap[data-layout="compact"] .gm-search-container { max-width: 220px; }
+#sf-galaxymap[data-layout="compact"] .gm-rail-track { display: none; }
 #sf-galaxymap[data-layout="compact"] .gm-level { display: none; }
 #sf-galaxymap[data-layout="compact"] .gm-body-container {
   display: grid;
@@ -1740,9 +2222,10 @@ const CSS = `
   gap: 8px;
   overflow: hidden;
   border-right: 0;
-  border-bottom: 1px solid var(--panel-edge, #1d3350);
+  border-bottom: 1px solid var(--mf-line-2);
 }
-#sf-galaxymap[data-layout="compact"] .gm-rail-title { margin: 0; padding: 0; border: 0; flex: 0 0 auto; }
+#sf-galaxymap[data-layout="compact"] .gm-rail-title { margin: 0; padding: 0; flex: 0 0 auto; }
+#sf-galaxymap[data-layout="compact"] .gm-rail-title::after { display: none; }
 #sf-galaxymap[data-layout="compact"] .gm-layer-buttons {
   min-width: 0;
   flex: 1 1 auto;
@@ -1750,9 +2233,10 @@ const CSS = `
   overflow-x: auto;
   scrollbar-width: thin;
 }
-#sf-galaxymap[data-layout="compact"] .gm-layer-btn { min-width: 96px; padding: 7px 9px; }
+#sf-galaxymap[data-layout="compact"] .gm-layer-btn { min-width: 96px; padding: 6px 8px; }
 #sf-galaxymap[data-layout="compact"] .gm-rail-commodity { margin: 0; min-width: 132px; }
 #sf-galaxymap[data-layout="compact"] .gm-rail-commodity label,
+#sf-galaxymap[data-layout="compact"] .gm-rail-legend,
 #sf-galaxymap[data-layout="compact"] .gm-rail-footer { display: none; }
 #sf-galaxymap[data-layout="compact"] .gm-viewport { grid-column: 1; grid-row: 2; }
 #sf-galaxymap[data-layout="compact"] .gm-right-inspector {
@@ -1770,9 +2254,13 @@ const CSS = `
   gap: 7px;
   padding: 8px 10px;
 }
-#sf-galaxymap[data-layout="narrow"] .gm-title { font-size: .82rem; flex: 1 1 auto; }
+#sf-galaxymap[data-layout="narrow"] .gm-title { font-size: 12px; }
+#sf-galaxymap[data-layout="narrow"] .gm-title-lockup { flex: 1 1 auto; }
+#sf-galaxymap[data-layout="narrow"] .gm-stamp { display: none; }
+#sf-galaxymap[data-layout="narrow"] .gm-rail { order: 3; }
+#sf-galaxymap[data-layout="narrow"] .gm-rail-track { display: none; }
+#sf-galaxymap[data-layout="narrow"] .gm-hint-btn { order: 2; }
 #sf-galaxymap[data-layout="narrow"] .gm-close { order: 2; }
-#sf-galaxymap[data-layout="narrow"] .gm-scale-buttons { order: 3; }
 #sf-galaxymap[data-layout="narrow"] .gm-search-container { order: 4; flex-basis: 100%; max-width: none; }
 #sf-galaxymap[data-layout="narrow"] .gm-level { display: none; }
 #sf-galaxymap[data-layout="narrow"] .gm-body-container {
@@ -1790,10 +2278,11 @@ const CSS = `
   gap: 8px;
   overflow: hidden;
   border-right: 0;
-  border-bottom: 1px solid var(--panel-edge, #1d3350);
+  border-bottom: 1px solid var(--mf-line-2);
 }
 #sf-galaxymap[data-layout="narrow"] .gm-rail-title,
 #sf-galaxymap[data-layout="narrow"] .gm-rail-commodity,
+#sf-galaxymap[data-layout="narrow"] .gm-rail-legend,
 #sf-galaxymap[data-layout="narrow"] .gm-rail-footer { display: none; }
 #sf-galaxymap[data-layout="narrow"] .gm-layer-buttons {
   min-width: 0;
@@ -1801,16 +2290,27 @@ const CSS = `
   flex-direction: row;
   overflow-x: auto;
 }
-#sf-galaxymap[data-layout="narrow"] .gm-layer-btn { min-width: 94px; padding: 7px 8px; }
+#sf-galaxymap[data-layout="narrow"] .gm-layer-btn { min-width: 94px; padding: 6px 8px; }
 #sf-galaxymap[data-layout="narrow"] .gm-viewport { grid-row: 2; }
 #sf-galaxymap[data-layout="narrow"] .gm-right-inspector {
   grid-row: 3;
   width: auto;
   padding: 10px 12px;
   border-left: 0;
-  border-top: 1px solid var(--panel-edge, #1d3350);
+  border-top: 1px solid var(--mf-line-2);
 }
 #sf-galaxymap[data-layout="narrow"] .gm-inspector-content { gap: 7px; }
+
+/* Accessibility hooks: dyslexia swaps proportional stacks; forced colors flattens chamfers. */
+html.sf-dyslexia #sf-galaxymap {
+  --mf-display: "OpenDyslexic", "Atkinson Hyperlegible", "Comic Sans MS", "Verdana", system-ui, sans-serif;
+  --mf-ui: "OpenDyslexic", "Atkinson Hyperlegible", "Comic Sans MS", "Verdana", system-ui, sans-serif;
+}
+@media (forced-colors: active) {
+  html.sf-forced-colors #sf-galaxymap .gm-ins-btn,
+  html.sf-forced-colors #sf-galaxymap .gm-search-results,
+  html.sf-forced-colors #sf-galaxymap .gm-hints { clip-path: none !important; filter: none !important; }
+}
 `;
 
 let _styleInjected = false;
@@ -1822,6 +2322,60 @@ function injectStyle() {
   document.head.appendChild(el);
   _styleInjected = true;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Overlay rail + service iconography (inline SVG for DOM; stroke twins drawn on canvas below).
+// Every overlay owns a distinct mark; every station service owns a pictogram that always travels
+// with its full label in DOM contexts (icons are never the only carrier of meaning).
+// ---------------------------------------------------------------------------------------------
+const LAYER_DEFS = Object.freeze([
+  { id: 'route', name: 'Route', icon: '<path d="M4 19 L10 12 L15 15 L20 5"/><circle cx="4" cy="19" r="1.8"/><circle cx="20" cy="5" r="1.8"/>' },
+  { id: 'mission', name: 'Mission', icon: '<path d="M12 3 L21 12 L12 21 L3 12 Z"/><circle cx="12" cy="12" r="2"/>' },
+  { id: 'market', name: 'Market', icon: '<path d="M4 20h16"/><path d="M7.5 16v-5M12 16V7M16.5 16v-8"/>' },
+  { id: 'security', name: 'Security', icon: '<path d="M12 3 L19 6 V11 C19 16 15.5 19.5 12 21 C8.5 19.5 5 16 5 11 V6 Z"/>' },
+  { id: 'faction', name: 'Faction', icon: '<path d="M6 21V4"/><path d="M6 4h11l-3 4 3 4H6"/>' },
+  { id: 'hazard', name: 'Hazard', icon: '<path d="M12 4 L21 20 H3 Z"/><path d="M12 10v4.5M12 17.4v.4"/>' },
+  { id: 'services', name: 'Services', icon: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6.2 6.2l2 2M15.8 15.8l2 2M17.8 6.2l-2 2M8.2 15.8l-2 2"/>' },
+  { id: 'discovery', name: 'Discovery', icon: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>' },
+]);
+
+const SERVICE_ICON_PATHS = Object.freeze({
+  trade: '<path d="M7 8h10l-3-3M17 16H7l3 3"/>',
+  shipyard: '<path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/>',
+  repair: '<path d="M15.5 5.5a4.2 4.2 0 0 0-5.7 5L5 15.3 8.7 19l4.8-4.8a4.2 4.2 0 0 0 5-5.7l-3 3-2.6-2.6Z"/>',
+  refuel: '<path d="M12 3 C8 9 6 12 6 15 a6 6 0 0 0 12 0 C18 12 16 9 12 3Z"/>',
+  refine: '<path d="M4 8h16l-6 12h-4Z"/><path d="M12 8V3"/>',
+  missions: '<path d="M12 3 L20 12 L12 21 L4 12 Z"/><path d="M9 12l2 2 4-4"/>',
+  ore_buy: '<path d="M12 3 L20 7.5 V16.5 L12 21 L4 16.5 V7.5 Z"/>',
+  black_market: '<path d="M3 5h18l-9 14Z"/>',
+  module_craft: '<rect x="4" y="4" width="16" height="16"/><path d="M12 8v8M8 12h8"/>',
+  toll: '<path d="M5 5h14M12 5v15"/>',
+  scan: '<circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+});
+
+function strokeSvg(paths) {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+}
+
+/** DOM service chip icon: keyed pictogram, always paired with its label beside it. */
+export function serviceIconSvg(service) {
+  const key = String(service || '').toLowerCase();
+  const paths = SERVICE_ICON_PATHS[key];
+  if (paths) return strokeSvg(paths);
+  const letter = String(key || '?')[0].toUpperCase();
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16"/><text x="12" y="16" text-anchor="middle" font-size="11" fill="currentColor" stroke="none">${letter}</text></svg>`;
+}
+
+const LEGEND_SERVICES = Object.freeze(['trade', 'shipyard', 'repair', 'refuel', 'refine', 'missions']);
+
+const HINT_ROWS = Object.freeze([
+  ['Zoom / pan the table', 'Wheel · Drag'],
+  ['Inspect a mark', 'Click'],
+  ['Lay a course', 'Dbl-click'],
+  ['Cycle overlays', 'Tab'],
+  ['Search the chart', '/'],
+  ['Close the chart', 'Esc'],
+]);
 
 function popCurrentScreen(ctx) {
   const sm = ctx && ctx.screenManager;
@@ -1889,9 +2443,9 @@ export function bestKnownSectorMarket(state, sector, commodityId) {
 }
 
 function memoryTint(ageS) {
-  if (ageS < 600) return { key: 'fresh', color: '#39d0ff', italic: false };
-  if (ageS < 3600) return { key: 'mid', color: '#ffffff', italic: false };
-  return { key: 'old', color: '#5e7393', italic: true };
+  if (ageS < 600) return { key: 'fresh', color: INK.amberHot, italic: false };
+  if (ageS < 3600) return { key: 'mid', color: INK.ink0, italic: false };
+  return { key: 'old', color: INK.ink2, italic: true };
 }
 
 function ageText(ageS) {
@@ -1923,6 +2477,140 @@ function findStationRecord(state, stationId) {
   return null;
 }
 
+/** Live/static world position for a station id (live entity first, then the static record). */
+function stationPositionById(state, stationId) {
+  if (!state || !stationId) return null;
+  const byStationId = state.entityIndex && state.entityIndex.byStationId;
+  const indexed = byStationId && typeof byStationId.get === 'function' ? byStationId.get(stationId) : null;
+  if (indexed && indexed.alive !== false && indexed.pos) return { x: indexed.pos.x, z: indexed.pos.z };
+  for (const e of entityIterator(state)) {
+    if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+    const data = e.data || {};
+    if (data.stationId === stationId || e.id === stationId) return { x: e.pos.x, z: e.pos.z };
+  }
+  const rec = findStationRecord(state, stationId);
+  const anchor = rec && (rec.pos || rec.anchor || rec.position);
+  if (anchor && Number.isFinite(Number(anchor.x))) {
+    return { x: Number(anchor.x) || 0, z: Number(anchor.z != null ? anchor.z : anchor.y) || 0 };
+  }
+  return null;
+}
+
+/** Home sector id for a station id, from the sector catalog. */
+function stationSectorIdById(state, stationId) {
+  for (const s of sectorRecords(state)) {
+    if (!s || !Array.isArray(s.stations)) continue;
+    for (const st of s.stations) {
+      if (st && st.id === stationId) return s.id || null;
+    }
+  }
+  return null;
+}
+
+function stationNameById(state, stationId) {
+  const rec = findStationRecord(state, stationId);
+  return (rec && (rec.name || rec.stationName)) || stationId || 'Station';
+}
+
+const COMMODITY_NAME_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c.name]));
+
+/**
+ * Ranked trade lanes from remembered market intel (pure, headless-safe). Mirrors the legacy
+ * localmap beacon model: quotes the pilot actually scanned/docked, reliability-decayed with age,
+ * straight-line travel estimate at cruise speed. Returns top lanes with display names resolved.
+ */
+export function buildTradeLanesModel(state, limit = 5) {
+  const economy = state && state.economy;
+  const intel = economy && economy.marketIntel;
+  if (!intel || typeof intel !== 'object') return [];
+  const beacons = [];
+  for (const stationId of Object.keys(intel)) {
+    const entry = intel[stationId];
+    if (!entry || !entry.snapshot) continue;
+    const quotes = {};
+    for (const cid of Object.keys(entry.snapshot)) {
+      const q = entry.snapshot[cid] || {};
+      quotes[cid] = {
+        buy: q.buy || q.mid || 0,
+        sell: q.sell || q.mid || 0,
+        stock: q.stock || 0,
+        demand: q.role === 'consume' ? 100 : 0,
+      };
+    }
+    beacons.push({ stationId, quotes, capturedAtS: entry.seenAtT || 0, reliability: 1.0 });
+  }
+  if (beacons.length < 2) return [];
+  const player = playerEntity(state);
+  const cargoState = state.player && state.player.cargo;
+  const cargo = Math.max(1, Number(cargoState && cargoState.capVolume)
+    || (player && player.data && player.data.cargoCap) || 40);
+  const speed = Math.max(50, (player && player.maxSpeed) || 200);
+  const travelEstimator = (a, b) => {
+    const pa = stationPositionById(state, a);
+    const pb = stationPositionById(state, b);
+    const dist = (pa && pb) ? Math.hypot(pa.x - pb.x, pa.z - pb.z) : 1000;
+    return { timeS: dist / speed, fuel: dist * 0.01 };
+  };
+  let routes = [];
+  try {
+    routes = rankTradeRoutes({
+      beacons,
+      cargoCapacity: cargo,
+      travelEstimator,
+      riskEstimator: () => 0,
+      nowS: Math.max(0, Number(state && state.simTime) || 0),
+    }) || [];
+  } catch (_) {
+    routes = [];
+  }
+  return routes.slice(0, Math.max(1, limit)).map((route) => ({
+    ...route,
+    originName: stationNameById(state, route.originId),
+    destinationName: stationNameById(state, route.destinationId),
+    commodityName: COMMODITY_NAME_BY_ID.get(route.commodityId) || route.commodityId,
+    destSectorId: stationSectorIdById(state, route.destinationId),
+  }));
+}
+
+/** Resolve a trade-lane destination station into a click-target for the course intents. */
+export function tradeLaneTarget(state, stationId) {
+  if (!state || !stationId) return null;
+  const pos = stationPositionById(state, stationId);
+  const sectorId = stationSectorIdById(state, stationId)
+    || (pos ? currentSectorId(state) : null);
+  const rec = findStationRecord(state, stationId);
+  return {
+    id: stationId,
+    kind: 'station',
+    name: stationNameById(state, stationId),
+    x: pos ? pos.x : null,
+    z: pos ? pos.z : null,
+    entityId: null,
+    stationId,
+    factionId: (rec && rec.factionId) || null,
+    sectorId,
+  };
+}
+
+/**
+ * Best remembered sell offers for one commodity across every station the pilot has priced.
+ * Pure; age-tinted by quote freshness. Used by the strategy deck's market intel section.
+ */
+export function bestKnownSellOffers(state, commodityId, limit = 3) {
+  if (!state || !commodityId) return [];
+  const memory = state.player && state.player.marketMemory;
+  const nowS = Math.max(0, Number(state.simTime) || 0);
+  const quotes = knownStationQuotes(memory, commodityId, nowS) || [];
+  return quotes
+    .slice()
+    .sort((a, b) => (b.sell - a.sell) || (a.ageS - b.ageS))
+    .slice(0, Math.max(1, limit))
+    .map((quote) => ({
+      ...quote,
+      stationName: stationNameById(state, quote.stationId),
+    }));
+}
+
 function missionSummary(mission) {
   if (!mission) return 'Proceed to the objective';
   const progress = Math.max(0, Number(mission.objectiveProgress) || 0);
@@ -1936,21 +2624,21 @@ function missionSummary(mission) {
 }
 
 function securityPips(sec) {
-  if (sec >= 0.7) return '<span style="color:#62e08a; letter-spacing: 2px;">●●●</span>';
-  if (sec >= 0.4) return '<span style="color:#ffd84a; letter-spacing: 2px;">●●○</span>';
-  if (sec >= 0.15) return '<span style="color:#ffb347; letter-spacing: 2px;">●○○</span>';
-  return '<span style="color:#ff5c5c; letter-spacing: 2px;">○○○</span>';
+  if (sec >= 0.7) return `<span style="color:${INK.good}; letter-spacing: 2px;">●●●</span>`;
+  if (sec >= 0.4) return `<span style="color:#e3c25c; letter-spacing: 2px;">●●○</span>`;
+  if (sec >= 0.15) return `<span style="color:${INK.warn}; letter-spacing: 2px;">●○○</span>`;
+  return `<span style="color:${INK.red}; letter-spacing: 2px;">○○○</span>`;
 }
 function dangerColor(v) {
-  if (v < 0.28) return '#62e08a';
-  if (v < 0.50) return '#ffd84a';
-  if (v < 0.72) return '#ffb347';
-  return '#ff5c5c';
+  if (v < 0.28) return INK.good;
+  if (v < 0.50) return '#e3c25c';
+  if (v < 0.72) return INK.warn;
+  return INK.red;
 }
 function pressureColor(v) {
-  if (v > 0.08) return '#ffb347';
-  if (v < -0.08) return '#64ffda';
-  return '#9aa8bc';
+  if (v > 0.08) return INK.warn;
+  if (v < -0.08) return INK.teal;
+  return INK.ink2;
 }
 
 function mapPercent(value, signed = false) {
@@ -1999,19 +2687,20 @@ export function mapSearchItemHtml(target, index = 0) {
 /** Safe claim-inspector markup. Claim names are persisted and may originate in imported saves. */
 export function claimInspectorHtml(target) {
   const t = target || {};
-  const color = t.color || '#ffd24a'; // specialization data owns this value; saves do not.
+  const color = t.color || INK.amberHot; // specialization data owns this value; saves do not.
   return `
     <div class="gm-ins-section">
-      <div class="gm-title" style="color:${color}; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${escapeMapHtml(t.name)}</div>
-      <div style="color:var(--ink-dim); font-size: 0.65rem;">PLAYER-OWNED ${escapeMapHtml(t.role || 'BASE')} · ${escapeMapHtml(t.status || 'ACTIVE')}</div>
+      <div class="gm-ins-kind">Claim record · ${escapeMapHtml(t.status || 'ACTIVE')}</div>
+      <div class="gm-ins-target-name" style="color:${color};">${escapeMapHtml(t.name)}</div>
+      <div class="gm-ins-note">PLAYER-OWNED ${escapeMapHtml(t.role || 'BASE')}</div>
     </div>
 
     <div class="gm-ins-section">
       <div class="gm-ins-title">Operations</div>
-      <div style="color:#fff; font-size:.68rem; line-height:1.4;">${escapeMapHtml(t.statusLine || 'No live operating telemetry.')}</div>
-      <div style="margin-top:7px; color:var(--ink); font-size:.68rem; line-height:1.4;">${escapeMapHtml(t.playerVerb || 'Fly to the base.')}</div>
-      <div style="margin-top:5px; color:var(--ink-dim); font-size:.64rem; line-height:1.4;">${escapeMapHtml(t.consequence || '')}</div>
-      <div style="margin-top:5px; color:${color}; font-size:.64rem; line-height:1.4;">${escapeMapHtml(t.riskLine || '')}</div>
+      <div class="gm-ins-row"><span class="gm-ins-row-val" style="text-align:left;">${escapeMapHtml(t.statusLine || 'No live operating telemetry.')}</span></div>
+      <div class="gm-ins-note" style="margin-top:7px; color:var(--ink);">${escapeMapHtml(t.playerVerb || 'Fly to the base.')}</div>
+      <div class="gm-ins-note" style="margin-top:5px;">${escapeMapHtml(t.consequence || '')}</div>
+      <div class="gm-ins-note" style="margin-top:5px; color:${color};">${escapeMapHtml(t.riskLine || '')}</div>
     </div>
   `;
 }
@@ -2072,6 +2761,7 @@ function sectorCauseIntelHtml(cause) {
   const trend = cause.trend || {};
   const controlName = factionNameOf(cause.dominantFactionId || cause.ownerId);
   const receipts = (cause.receipts || []).slice(0, 3);
+  const clamp01 = (v) => Math.max(0, Math.min(1, Number(v) || 0));
   let html = `
     <div class="gm-ins-section">
       <div class="gm-ins-title">Current Conditions</div>
@@ -2079,6 +2769,7 @@ function sectorCauseIntelHtml(cause) {
         <span>Danger</span>
         <span class="gm-ins-row-val" style="color:${dangerColor(cause.danger)}">${mapPercent(cause.danger)} · ${mapTrendWord('danger', trend.danger)}</span>
       </div>
+      <div class="gm-meter"><i style="width:${Math.round(clamp01(cause.danger) * 100)}%; background:${dangerColor(cause.danger)};"></i></div>
       <div class="gm-ins-row">
         <span>Price pressure</span>
         <span class="gm-ins-row-val">${mapPressureLabel(cause.pricePressure)} ${mapPercent(cause.pricePressure, true)} · ${mapTrendWord('pricePressure', trend.pricePressure)}</span>
@@ -2087,13 +2778,14 @@ function sectorCauseIntelHtml(cause) {
         <span>Control</span>
         <span class="gm-ins-row-val" style="color:${factionColorOf(cause.dominantFactionId || cause.ownerId)}">${escapeMapHtml(controlName)} · ${mapPercent(cause.dominantInfluence)} · ${mapTrendWord('influence', trend.influence)}</span>
       </div>
+      <div class="gm-meter"><i style="width:${Math.round(clamp01(cause.dominantInfluence) * 100)}%; background:${factionColorOf(cause.dominantFactionId || cause.ownerId)};"></i></div>
     </div>
   `;
   if (receipts.length) {
     html += `
       <div class="gm-ins-section">
         <div class="gm-ins-title">Why it changed</div>
-        ${receipts.map((receipt) => `<div style="color:var(--ink-dim); font-size:.65rem; line-height:1.35; margin-top:4px;">${escapeMapHtml(receipt.line)}</div>`).join('')}
+        ${receipts.map((receipt) => `<div class="gm-ins-note" style="margin-top:4px;">${escapeMapHtml(receipt.line)}</div>`).join('')}
       </div>
     `;
   }
@@ -2313,6 +3005,9 @@ export const galaxyMapScreen = {
   _currentLayerFocus: 'route',
   _lastRouteDest: null,
   _routeAnimTime: 0,
+  _animT: 0,
+  _iris: null,
+  _railMarker: null,
 
   mount(rootEl, ctx) {
     injectStyle();
@@ -2324,49 +3019,62 @@ export const galaxyMapScreen = {
     if (!HAS_DOC || !rootEl) return this;
 
     rootEl.id = 'sf-galaxymap';
+    const layerButtonsHtml = LAYER_DEFS.map((layer) => `
+            <button class="gm-layer-btn${this._layers[layer.id] ? ' active' : ''}" type="button" data-layer="${layer.id}" aria-pressed="${this._layers[layer.id] ? 'true' : 'false'}">
+              <span class="gm-layer-ico" aria-hidden="true">${strokeSvg(layer.icon)}</span>
+              <span class="gm-layer-name">${layer.name}</span>
+              <span class="gm-layer-state" aria-hidden="true"></span>
+            </button>`).join('');
+    const legendHtml = LEGEND_SERVICES.map((svc) => `
+            <div class="gm-legend-row">
+              <span class="gm-legend-ico" aria-hidden="true">${serviceIconSvg(svc)}</span>
+              <span>${svc === 'ore_buy' ? 'Ore buy' : svc[0].toUpperCase() + svc.slice(1)}</span>
+            </div>`).join('');
+    const hintRowsHtml = HINT_ROWS.map(([label, keys]) => `
+          <div class="gm-hint-row"><span>${label}</span><kbd>${keys}</kbd></div>`).join('');
     rootEl.innerHTML = `
       <div class="gm-head">
-        <div class="gm-title">STAR CHART</div>
+        <div class="gm-title-lockup">
+          <div class="gm-title">Star Chart</div>
+          <div class="gm-stamp">Nav chart / Survey table</div>
+        </div>
         <div class="gm-search-container">
-          <input type="text" class="gm-search-input" placeholder="Search galaxy... (Press /)" aria-label="Search map" tabindex="-1" />
+          <input type="text" class="gm-search-input" placeholder="Search galaxy… (Press /)" aria-label="Search map" tabindex="-1" />
+          <span class="gm-search-kbd" aria-hidden="true">/</span>
           <div class="gm-search-results" hidden></div>
         </div>
-        <div class="gm-scale-buttons" role="group" aria-label="Map scale">
-          <button class="gm-scale-btn" type="button" data-focus="local" aria-pressed="false">Local</button>
-          <button class="gm-scale-btn" type="button" data-focus="system" aria-pressed="false">System</button>
-          <button class="gm-scale-btn" type="button" data-focus="galaxy" aria-pressed="false">Galaxy</button>
+        <div class="gm-rail">
+          <span class="gm-rail-track" aria-hidden="true"><span class="gm-rail-marker"></span></span>
+          <div class="gm-scale-buttons" role="group" aria-label="Map scale">
+            <button class="gm-scale-btn" type="button" data-focus="local" aria-pressed="false">Local</button>
+            <button class="gm-scale-btn" type="button" data-focus="system" aria-pressed="false">System</button>
+            <button class="gm-scale-btn" type="button" data-focus="galaxy" aria-pressed="false">Galaxy</button>
+          </div>
+          <span class="gm-level">Scale <b data-level>GALAXY</b></span>
         </div>
-        <div class="gm-level">Scale <b data-level>GALAXY</b></div>
+        <button class="gm-hint-btn" type="button" aria-label="Map controls" aria-expanded="false">?</button>
         <button class="gm-close" type="button" aria-label="Close Map">Close</button>
+        <div class="gm-hints" hidden>
+          <div class="gm-hints-title">Chart controls</div>${hintRowsHtml}
+          <div class="gm-hints-note">Edge ticks mark stations, gates, claims and hostiles that fall outside the current view. Click a tick to inspect it.</div>
+        </div>
       </div>
       <div class="gm-body-container">
         <!-- Left Rail -->
         <div class="gm-left-rail">
-          <div class="gm-rail-title">Layers</div>
-          <div class="gm-layer-buttons">
-            <button class="gm-layer-btn active" data-layer="route">ROUTE</button>
-            <button class="gm-layer-btn active" data-layer="mission">MISSION</button>
-            <button class="gm-layer-btn active" data-layer="market">MARKET</button>
-            <button class="gm-layer-btn active" data-layer="security">SECURITY</button>
-            <button class="gm-layer-btn active" data-layer="faction">FACTION</button>
-            <button class="gm-layer-btn active" data-layer="hazard">HAZARD</button>
-            <button class="gm-layer-btn active" data-layer="services">SERVICES</button>
-            <button class="gm-layer-btn active" data-layer="discovery">DISCOVERY</button>
+          <div class="gm-rail-title">Overlays</div>
+          <div class="gm-layer-buttons">${layerButtonsHtml}
           </div>
           <div class="gm-rail-commodity">
-            <label for="gm-commodity-select">Market Intel</label>
+            <label for="gm-commodity-select">Market intel</label>
             <select id="gm-commodity-select" aria-label="Select Commodity"></select>
           </div>
+          <div class="gm-rail-legend">
+            <div class="gm-rail-title">Service marks</div>${legendHtml}
+          </div>
           <div class="gm-rail-footer">
-            <div class="gm-hint-title">Controls</div>
-            <div class="gm-hint-text">
-              Scroll: Zoom<br/>
-              Drag: Pan<br/>
-              Click: Inspect<br/>
-              Dbl-Click: Course<br/>
-              Tab: Cycle Layers<br/>
-              /: Focus Search
-            </div>
+            <div class="gm-hint-title">Survey table</div>
+            <div class="gm-hint-text">A working instrument, not a picture: <b>double-click any mark to lay a course</b>. The <b>?</b> key in the header shows the full control key.</div>
           </div>
         </div>
 
@@ -2380,7 +3088,7 @@ export const galaxyMapScreen = {
           <div class="gm-inspector-header">Inspector</div>
           <div class="gm-inspector-content">
             <div class="gm-inspector-details">
-              <div class="gm-inspector-empty">No target selected. Click a sector, station, or contact to inspect.</div>
+              <div class="gm-inspector-empty">No target selected. <b>Click</b> a sector, station or contact to inspect it — <b>double-click</b> to lay a course.</div>
             </div>
             <button class="gm-ins-btn" id="gm-set-course-btn" type="button" hidden disabled>Set Waypoint</button>
           </div>
@@ -2399,6 +3107,16 @@ export const galaxyMapScreen = {
     }
     if (this._setCourseButton) {
       this._setCourseButton.addEventListener('click', this._setCourseHandler);
+    }
+    // Strategy-deck trade-lane activation, delegated on the persistent details node so the
+    // cached innerHTML refresh never strands the handler.
+    if (this._inspectorDetails && typeof this._inspectorDetails.addEventListener === 'function') {
+      this._inspectorDetails.addEventListener('click', (ev) => {
+        const target = ev && ev.target;
+        const row = target && typeof target.closest === 'function' ? target.closest('[data-gm-lane]') : null;
+        if (!row) return;
+        galaxyMapScreen._activateTradeLane(row.getAttribute('data-gm-lane'));
+      });
     }
     this._scaleButtons = Array.from(rootEl.querySelectorAll('.gm-scale-btn'));
     this._scaleButtons.forEach((button) => {
@@ -2426,14 +3144,27 @@ export const galaxyMapScreen = {
         this._layers[layer] = !this._layers[layer];
         if (this._layers[layer]) btn.classList.add('active');
         else btn.classList.remove('active');
+        btn.setAttribute('aria-pressed', this._layers[layer] ? 'true' : 'false');
 
         // Trigger scan ring center
         const w = this._canvas.width / this._dpr;
         const h = this._canvas.height / this._dpr;
-        this.triggerScanRing(w / 2, h / 2, '#39d0ff');
+        this.triggerScanRing(w / 2, h / 2, INK.amber);
         this.refresh();
       });
     });
+
+    // Hints popover: the full control key stays on demand, never permanently on glass.
+    const hintBtn = rootEl.querySelector('.gm-hint-btn');
+    const hintsPanel = rootEl.querySelector('.gm-hints');
+    if (hintBtn && hintsPanel && typeof hintBtn.addEventListener === 'function') {
+      hintBtn.addEventListener('click', () => {
+        const willOpen = hintsPanel.hidden;
+        hintsPanel.hidden = !willOpen;
+        hintBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      });
+    }
+    this._railMarker = rootEl.querySelector('.gm-rail-marker');
 
     // Wire search bar listeners
     const searchInput = rootEl.querySelector('.gm-search-input');
@@ -2599,10 +3330,12 @@ export const galaxyMapScreen = {
     const loop = () => {
       if (!galaxyMapScreen._visible) return;
       const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const dtSec = Math.max(0, (now - galaxyMapScreen._lastTime) / 1000);
+      // Cosmetic clock for dash/bead/iris motion. Monotonic per show; never read by sim code.
+      galaxyMapScreen._animT = (galaxyMapScreen._animT || 0) + dtSec;
       let zoomChanged = false;
       if (Math.abs(galaxyMapScreen._zoom - galaxyMapScreen._targetZoom) > 0.0005) {
-        const dt = (now - galaxyMapScreen._lastTime) / 1000;
-        const alpha = 1 - Math.exp(-dt / 0.10);
+        const alpha = 1 - Math.exp(-dtSec / 0.10);
         galaxyMapScreen._zoom += (galaxyMapScreen._targetZoom - galaxyMapScreen._zoom) * Math.min(1, alpha);
         zoomChanged = true;
       }
@@ -2616,6 +3349,13 @@ export const galaxyMapScreen = {
           return ring.t < ring.maxT;
         });
         zoomChanged = true; // Force redraw to animate ring
+      }
+
+      // Advance the level-transition iris
+      if (galaxyMapScreen._iris) {
+        galaxyMapScreen._iris.t += 1;
+        if (galaxyMapScreen._iris.t >= galaxyMapScreen._iris.maxT) galaxyMapScreen._iris = null;
+        zoomChanged = true;
       }
 
       // Advance local scan sweep phase
@@ -2645,9 +3385,11 @@ export const galaxyMapScreen = {
   },
 
   _setScaleFocus(focus, { draw = true, animate = true } = {}) {
+    const before = levelForZoom(this._zoom);
     const zoom = zoomForMapFocus(focus);
     this._targetZoom = zoom;
     if (!animate) this._zoom = zoom;
+    if (animate && levelForZoom(zoom) !== before) this._triggerIris(levelForZoom(zoom));
     this._syncScaleButtons();
     if (draw && HAS_DOC) this._draw();
     return levelForZoom(zoom);
@@ -2666,6 +3408,24 @@ export const galaxyMapScreen = {
       }
       button.setAttribute('aria-pressed', current ? 'true' : 'false');
     }
+    // Continuity marker: the eased zoom value slides along one track, so LOCAL/SYSTEM/GALAXY
+    // reads as stations on a single instrument rather than three separate screens.
+    const marker = this._railMarker;
+    if (marker && marker.style) {
+      const span = Math.log(ZOOM_MAX) - Math.log(ZOOM_MIN);
+      const t = span > 0
+        ? (Math.log(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._zoom))) - Math.log(ZOOM_MIN)) / span
+        : 1;
+      marker.style.left = `${(Math.max(0, Math.min(1, t)) * 100).toFixed(1)}%`;
+    }
+  },
+
+  _triggerIris(level) {
+    if (!HAS_DOC) return;
+    const reduceMotion = typeof window !== 'undefined' && window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return;
+    this._iris = { t: 0, maxT: 26, label: String(level || '').toUpperCase() };
   },
 
   _applyResponsiveLayout(width, height) {
@@ -2732,7 +3492,7 @@ export const galaxyMapScreen = {
 
       const w = this._canvas.width / this._dpr;
       const h = this._canvas.height / this._dpr;
-      this.triggerScanRing(w / 2, h / 2, '#8d66ff');
+      this.triggerScanRing(w / 2, h / 2, INK.teal);
 
       this.refresh();
       return true;
@@ -2752,7 +3512,7 @@ export const galaxyMapScreen = {
     }
   },
 
-  triggerScanRing(x, y, color = '#39d0ff') {
+  triggerScanRing(x, y, color = INK.amberHot) {
     this._scanRings.push({
       x, y, r: 0, maxR: 120, t: 0, maxT: 35, color
     });
@@ -2784,17 +3544,59 @@ export const galaxyMapScreen = {
     const heat = state.player && state.player.heat ? Math.round(state.player.heat * 100) : 0;
     const hull = player && player.hull != null ? Math.round(player.hull) : 0;
     const hullMax = player && player.hullMax != null ? Math.round(player.hullMax) : 0;
+
+    // Strategy deck: the inspector is a planning instrument even with nothing selected.
+    const lanes = buildTradeLanesModel(state, 5);
+    let lanesHtml = '';
+    if (lanes.length) {
+      lanesHtml = lanes.map((lane) => {
+        const reliability = Number.isFinite(Number(lane.reliability)) ? Number(lane.reliability) : 1;
+        const relColor = reliability >= 0.8 ? INK.good : reliability >= 0.5 ? INK.warn : INK.ink2;
+        const profit = Math.max(0, Math.round(Number(lane.expectedProfit) || 0)).toLocaleString('en-US');
+        const perMin = Math.max(0, Math.round(Number(lane.profitPerMinute) || 0));
+        return `
+        <button class="gm-tl-row" type="button" data-gm-lane="${escapeMapHtml(lane.destinationId)}">
+          <span class="gm-tl-head"><span>${escapeMapHtml(lane.commodityName)}</span><span class="gm-tl-profit" style="color:${relColor}">+${profit} cr</span></span>
+          <span class="gm-tl-sub">${escapeMapHtml(lane.originName)} → ${escapeMapHtml(lane.destinationName)} · ${Math.max(0, Math.floor(lane.units))}u · ${perMin}/min</span>
+        </button>`;
+      }).join('');
+    } else {
+      const anyIntel = !!(state && state.economy && state.economy.marketIntel
+        && Object.keys(state.economy.marketIntel).length);
+      lanesHtml = `<div class="gm-ins-note">${anyIntel
+        ? 'No profitable lanes in current intel. Fresh quotes at two or more stations will rank routes here.'
+        : 'Dock at stations to record market intel. Ranked lanes will appear here.'}</div>`;
+    }
+
+    const offers = bestKnownSellOffers(state, this._selectedCommodity, 3);
+    const commodityLabel = String(this._selectedCommodity || '').replace('cmdty_', '').replace(/_/g, ' ').toUpperCase();
+    const offersHtml = offers.length
+      ? offers.map((offer) => {
+        const tint = memoryTint(offer.ageS);
+        return `<div class="gm-bk-row"><span class="gm-bk-station">${escapeMapHtml(offer.stationName)}</span><span class="gm-bk-val ${tint.key}">${offer.sell} cr · ${ageText(offer.ageS)}</span></div>`;
+      }).join('')
+      : `<div class="gm-ins-note">No remembered quotes for ${escapeMapHtml(commodityLabel)}. Prices appear after you dock and trade.</div>`;
+
     return `
       <div class="gm-ins-section">
-        <div class="gm-ins-title">Command Status</div>
+        <div class="gm-ins-kind">Survey table / Command</div>
+        <div class="gm-ins-target-name">Command Status</div>
         <div class="gm-ins-row"><span>Sector</span><span class="gm-ins-row-val">${escapeMapHtml(sectorName)}</span></div>
         <div class="gm-ins-row"><span>Credits</span><span class="gm-ins-row-val">${credits} cr</span></div>
         <div class="gm-ins-row"><span>Cargo</span><span class="gm-ins-row-val">${cargo}/${cargoCap} u</span></div>
-        <div class="gm-ins-row"><span>Heat</span><span class="gm-ins-row-val" style="color:${heat > 15 ? '#ff5c5c' : '#62e08a'}">${heat}%</span></div>
+        <div class="gm-ins-row"><span>Heat</span><span class="gm-ins-row-val" style="color:${heat > 15 ? INK.red : INK.good}">${heat}%</span></div>
         <div class="gm-ins-row"><span>Hull</span><span class="gm-ins-row-val">${hull}/${hullMax}</span></div>
       </div>
       <div class="gm-ins-section">
-        <div style="color:var(--ink-dim); font-size:.65rem; line-height:1.4;">Select a sector, station, or contact for detailed intel.</div>
+        <div class="gm-ins-title">Trade lanes · profit/min</div>
+        ${lanesHtml}
+      </div>
+      <div class="gm-ins-section">
+        <div class="gm-ins-title">Best known sell · ${escapeMapHtml(commodityLabel)}</div>
+        ${offersHtml}
+      </div>
+      <div class="gm-ins-section">
+        <div class="gm-ins-note">Select a sector, station, or contact for detailed intel. <b>Double-click</b> any mark to lay a course.</div>
       </div>
     `;
   },
@@ -2827,7 +3629,8 @@ export const galaxyMapScreen = {
     if (t.kind === 'sector') {
       const sectorId = t.sectorId || t.id;
       const record = sectorRecordById(state, sectorId);
-      const cause = record && isSectorCharted(state, record) ? causeFor(state, sectorId) : null;
+      const charted = record && isSectorCharted(state, record);
+      const cause = charted ? causeFor(state, sectorId) : null;
       const faction = factionNameOf(t.factionId);
       const color = factionColorOf(t.factionId);
       const sec = t.security != null ? t.security : 0.5;
@@ -2853,10 +3656,25 @@ export const galaxyMapScreen = {
         routeInfo = 'Current Sector';
       }
 
+      // Plotted route legs, when the world's route already ends here.
+      const plotted = state.nav && state.nav.route;
+      const plottedDest = plotted && Array.isArray(plotted.legs) && plotted.legs.length
+        ? plotted.legs[plotted.legs.length - 1].to : null;
+      let routeLegsHtml = '';
+      if (plotted && plottedDest === t.id) {
+        const legRows = plotted.legs.map((leg) => {
+          const fromName = (sectorRecordById(state, leg.from) || {}).name || leg.from;
+          const toName = (sectorRecordById(state, leg.to) || {}).name || leg.to;
+          const interdict = leg.interdict ? ` <span style="color:${INK.red}">[interdict]</span>` : '';
+          return `<div class="gm-route-leg"><b>${escapeMapHtml(fromName)}</b> → <b>${escapeMapHtml(toName)}</b> · ${Math.round(leg.fuel)}F${interdict}</div>`;
+        }).join('');
+        routeLegsHtml = `${legRows}<div class="gm-route-total">Σ ${Math.round(plotted.totalFuel || 0)} fuel · ${plotted.totalHops || plotted.legs.length} hops</div>`;
+      }
+
       html += `
         <div class="gm-ins-section">
-          <div class="gm-title" style="color:#fff; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${t.name}</div>
-          <div style="color:var(--ink-dim); font-size: 0.65rem;">SECTOR COORDINATES: [${Math.round(t.x || 0)}, ${Math.round(t.y || 0)}]</div>
+          <div class="gm-ins-kind">Sector record · [${Math.round(t.x || 0)}, ${Math.round(t.y || 0)}]</div>
+          <div class="gm-ins-target-name">${escapeMapHtml(t.name)}</div>
         </div>
 
         <div class="gm-ins-section">
@@ -2879,8 +3697,8 @@ export const galaxyMapScreen = {
             <span>Jurisdiction</span>
             <span class="gm-ins-row-val">${law.authority}</span>
           </div>
-          <div style="margin-top:6px; color:var(--ink-dim); font-size:.65rem; line-height:1.35;"><b style="color:var(--ink);">ILLEGAL:</b> ${law.illegal}</div>
-          <div style="margin-top:4px; color:var(--ink-dim); font-size:.65rem; line-height:1.35;"><b style="color:var(--ink);">RESPONSE:</b> ${law.response}</div>
+          <div class="gm-ins-note" style="margin-top:6px;"><b style="color:var(--ink);">ILLEGAL:</b> ${law.illegal}</div>
+          <div class="gm-ins-note" style="margin-top:4px;"><b style="color:var(--ink);">RESPONSE:</b> ${law.response}</div>
         </div>
 
         <div class="gm-ins-section">
@@ -2889,8 +3707,35 @@ export const galaxyMapScreen = {
             <span>Route</span>
             <span class="gm-ins-row-val">${routeInfo}</span>
           </div>
+          ${routeLegsHtml}
         </div>
       `;
+
+      // Gate-vs-drive transit comparison: the "which way do I cross" decision, side by side.
+      if (charted && curSec && curSec !== t.id) {
+        const gateF = forecastTransitFor(state, t.id, { fromSectorId: curSec, via: 'gate' });
+        const driveF = forecastTransitFor(state, t.id, { fromSectorId: curSec, via: 'drive' });
+        const transitCard = (label, risk) => {
+          const incidentColor = risk.incidentChance > 0.55 ? INK.red : risk.incidentChance > 0.25 ? INK.warn : INK.good;
+          const marginColor = risk.survivalMargin < 0 ? INK.red : INK.good;
+          const margin = Math.round(risk.survivalMargin);
+          return `
+            <div class="gm-transit-card">
+              <div class="gm-transit-head"><span>${label}</span><b style="color:${incidentColor}">${Math.round(risk.incidentChance * 100)}% incident</b></div>
+              <div class="gm-transit-row"><span>Impact</span><b>~${risk.expectedDamage} HP</b></div>
+              <div class="gm-transit-row"><span>Margin</span><b style="color:${marginColor}">${margin >= 0 ? '+' : ''}${margin} HP</b></div>
+            </div>`;
+        };
+        html += `
+          <div class="gm-ins-section">
+            <div class="gm-ins-title">Transit Forecast · from here</div>
+            <div class="gm-transit">
+              ${transitCard('Gate', gateF)}
+              ${transitCard('Drive', driveF)}
+            </div>
+          </div>
+        `;
+      }
 
       html += sectorCauseIntelHtml(cause);
 
@@ -2909,9 +3754,9 @@ export const galaxyMapScreen = {
       if (relevantMission) {
         html += `
           <div class="gm-ins-section">
-            <div class="gm-ins-title" style="color:#ffd24a;">Active Mission</div>
-            <div style="font-weight:bold; color:#fff;">${relevantMission.name || 'Contract Objective'}</div>
-            <div style="color:#ffd24a; font-size:0.65rem; margin-top:2px;">${missionSummary(relevantMission)}</div>
+            <div class="gm-ins-title" style="color:${INK.amberHot};">Active Mission</div>
+            <div style="font-weight:600; color:var(--ink); font-size:12px;">${escapeMapHtml(relevantMission.name || 'Contract Objective')}</div>
+            <div style="color:${INK.amberHot}; font-size:10px; margin-top:2px; font-family:var(--mono);">${escapeMapHtml(relevantMission.brief || missionSummary(relevantMission))}</div>
           </div>
         `;
       }
@@ -2958,13 +3803,14 @@ export const galaxyMapScreen = {
       const isGate = t.kind === 'gate';
       const record = findStationRecord(state, t.stationId || t.id);
       const services = record && record.services ? record.services : [];
+      const chartNote = record && record.chartNote ? String(record.chartNote) : '';
       const activeMissions = state.missions && state.missions.active || [];
       const relevantMission = activeMissions.find(m => m.status === 'active' && m.destStationId === (t.stationId || t.id));
 
       html += `
         <div class="gm-ins-section">
-          <div class="gm-title" style="color:#fff; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${t.name}</div>
-          <div style="color:var(--ink-dim); font-size: 0.65rem;">${t.kind.toUpperCase()} OBJECT</div>
+          <div class="gm-ins-kind">${t.kind.toUpperCase()} OBJECT</div>
+          <div class="gm-ins-target-name">${escapeMapHtml(t.name)}</div>
         </div>
 
         <div class="gm-ins-section">
@@ -2989,9 +3835,16 @@ export const galaxyMapScreen = {
         html += `
           <div class="gm-ins-section">
             <div class="gm-ins-title">Available Services</div>
-            <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
-              ${services.map(s => `<span style="background:rgba(57,208,255,0.1); border:1px solid rgba(57,208,255,0.3); padding:2px 6px; border-radius:3px; font-size:0.6rem; color:#cfe3ff;">${serviceGlyph(s)} ${s.toUpperCase()}</span>`).join('')}
+            <div class="gm-svc-list">
+              ${services.map(s => `<span class="gm-svc"><span class="gm-svc-ico" aria-hidden="true">${serviceIconSvg(s)}</span>${String(s).replace(/_/g, ' ').toUpperCase()}</span>`).join('')}
             </div>
+            ${chartNote ? `<div class="gm-ins-note" style="margin-top:6px;">${escapeMapHtml(chartNote)}</div>` : ''}
+          </div>
+        `;
+      } else if (chartNote) {
+        html += `
+          <div class="gm-ins-section">
+            <div class="gm-ins-note">${escapeMapHtml(chartNote)}</div>
           </div>
         `;
       }
@@ -3005,7 +3858,7 @@ export const galaxyMapScreen = {
               <div class="gm-ins-title">Market Memory</div>
               <div class="gm-ins-row">
                 <span>Commodity</span>
-                <span style="color:#fff; font-weight:600;">${this._selectedCommodity.replace('cmdty_', '').replace('_', ' ').toUpperCase()}</span>
+                <span class="gm-ins-row-val">${this._selectedCommodity.replace('cmdty_', '').replace('_', ' ').toUpperCase()}</span>
               </div>
               <div class="gm-ins-row">
                 <span>Buy / Sell</span>
@@ -3029,9 +3882,9 @@ export const galaxyMapScreen = {
       if (relevantMission) {
         html += `
           <div class="gm-ins-section">
-            <div class="gm-ins-title" style="color:#ffd24a;">Active Mission Target</div>
-            <div style="font-weight:bold; color:#fff;">${relevantMission.name || 'Contract Objective'}</div>
-            <div style="color:#ffd24a; font-size:0.65rem; margin-top:2px;">${missionSummary(relevantMission)}</div>
+            <div class="gm-ins-title" style="color:${INK.amberHot};">Active Mission Target</div>
+            <div style="font-weight:600; color:var(--ink); font-size:12px;">${escapeMapHtml(relevantMission.name || 'Contract Objective')}</div>
+            <div style="color:${INK.amberHot}; font-size:10px; margin-top:2px; font-family:var(--mono);">${escapeMapHtml(relevantMission.brief || missionSummary(relevantMission))}</div>
           </div>
         `;
       }
@@ -3047,19 +3900,19 @@ export const galaxyMapScreen = {
     } else if (t.kind === 'zone') {
       html += `
         <div class="gm-ins-section">
-          <div class="gm-title" style="color:#fff; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${t.name}</div>
-          <div style="color:var(--ink-dim); font-size: 0.65rem;">SECTOR ZONE REGION</div>
+          <div class="gm-ins-kind">Zone record</div>
+          <div class="gm-ins-target-name">${escapeMapHtml(t.name)}</div>
         </div>
 
         <div class="gm-ins-section">
           <div class="gm-ins-title">Zone Classification</div>
           <div class="gm-ins-row">
             <span>Type</span>
-            <span class="gm-ins-row-val">${t.detail || 'Generic Region'}</span>
+            <span class="gm-ins-row-val">${escapeMapHtml(t.detail || 'Generic Region')}</span>
           </div>
           <div class="gm-ins-row">
             <span>Threat Index</span>
-            <span class="gm-ins-row-val" style="color:${t.threat ? '#ff5c5c' : '#62e08a'}">Level ${t.threat || 0}</span>
+            <span class="gm-ins-row-val" style="color:${t.threat ? INK.red : INK.good}">Level ${t.threat || 0}</span>
           </div>
         </div>
 
@@ -3072,15 +3925,15 @@ export const galaxyMapScreen = {
         : null;
       html += `
         <div class="gm-ins-section">
-          <div class="gm-title" style="color:#ffd24a; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${t.name}</div>
-          <div style="color:var(--ink-dim); font-size: 0.65rem;">ACTIVE WAYPOINT</div>
+          <div class="gm-ins-kind" style="color:${INK.amberHot};">ACTIVE WAYPOINT</div>
+          <div class="gm-ins-target-name" style="color:${INK.amberHot};">${escapeMapHtml(t.name)}</div>
         </div>
 
         <div class="gm-ins-section">
           <div class="gm-ins-title">Navigation</div>
           <div class="gm-ins-row">
             <span>Reason</span>
-            <span class="gm-ins-row-val">${t.detail || 'Tracked objective'}</span>
+            <span class="gm-ins-row-val">${escapeMapHtml(t.detail || 'Tracked objective')}</span>
           </div>
           <div class="gm-ins-row">
             <span>Range</span>
@@ -3098,15 +3951,15 @@ export const galaxyMapScreen = {
       const contactFaction = factionNameOf(t.factionId);
       html += `
         <div class="gm-ins-section">
-          <div class="gm-title" style="color:#fff; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${t.name}</div>
-          <div style="color:var(--ink-dim); font-size: 0.65rem;">LOCAL CONTACT INTEL</div>
+          <div class="gm-ins-kind">Contact record</div>
+          <div class="gm-ins-target-name">${escapeMapHtml(t.name)}</div>
         </div>
 
         <div class="gm-ins-section">
           <div class="gm-ins-title">Object Class</div>
           <div class="gm-ins-row"><span>Type</span><span class="gm-ins-row-val">${t.kind ? t.kind.toUpperCase() : 'UNKNOWN'}</span></div>
           <div class="gm-ins-row"><span>Faction</span><span class="gm-ins-row-val" style="color:${factionColorOf(t.factionId)}">${contactFaction}</span></div>
-          <div class="gm-ins-row"><span>Hostile</span><span class="gm-ins-row-val" style="color:${t.hostile ? '#ff5c5c' : '#62e08a'}">${t.hostile ? 'YES' : 'NO'}</span></div>
+          <div class="gm-ins-row"><span>Hostile</span><span class="gm-ins-row-val" style="color:${t.hostile ? INK.red : INK.good}">${t.hostile ? 'YES' : 'NO'}</span></div>
           <div class="gm-ins-row"><span>Distance</span><span class="gm-ins-row-val">${contactDist != null ? contactDist + ' u' : 'Unknown'}</span></div>
           <div class="gm-ins-row"><span>Speed</span><span class="gm-ins-row-val">${contactSpeed} u/s</span></div>
         </div>
@@ -3126,6 +3979,18 @@ export const galaxyMapScreen = {
   _activateSelectedCourse() {
     if (!this._ctx || !this._ctx.bus) return;
     const action = resolveGalaxyMapPrimaryAction(this._ctx.state, this._selectedTarget);
+    if (!action) return;
+    if (!emitGalaxyMapPrimaryAction(this._ctx.bus, action)) return;
+    popCurrentScreen(this._ctx);
+  },
+
+  // A trade-lane row resolves its destination station through the same course intents as any
+  // other map mark — the strategy deck never opens a parallel mutation path.
+  _activateTradeLane(stationId) {
+    if (!this._ctx || !this._ctx.bus || !stationId) return;
+    const target = tradeLaneTarget(this._ctx.state, stationId);
+    if (!target) return;
+    const action = resolveGalaxyMapPrimaryAction(this._ctx.state, target);
     if (!action) return;
     if (!emitGalaxyMapPrimaryAction(this._ctx.bus, action)) return;
     popCurrentScreen(this._ctx);
@@ -3171,7 +4036,7 @@ export const galaxyMapScreen = {
     // Trigger ring at target center
     const w = this._canvas.width / this._dpr;
     const h = this._canvas.height / this._dpr;
-    this.triggerScanRing(w / 2, h / 2, '#39d0ff');
+    this.triggerScanRing(w / 2, h / 2, INK.amberHot);
   },
 
   _onMouseDown(ev) {
@@ -3255,7 +4120,8 @@ export const galaxyMapScreen = {
       cam.cx = wx - sign * (mx - w/2) / (baseScale * nextZoom);
       cam.cy = wy - sign * (my - h/2) / (baseScale * nextZoom);
     } else {
-      this.triggerScanRing(w / 2, h / 2, '#8d66ff');
+      // Threshold crossing reads as passing through a membrane, not a hard clip.
+      this._triggerIris(newLevel);
     }
 
     this._draw();
@@ -3270,7 +4136,7 @@ export const galaxyMapScreen = {
 
     if (best) {
       this._selectedTarget = best;
-      this.triggerScanRing(best.sx, best.sy, '#39d0ff');
+      this.triggerScanRing(best.sx, best.sy, INK.amberHot);
     } else {
       this._selectedTarget = null;
     }
@@ -3322,16 +4188,39 @@ export const galaxyMapScreen = {
     const state = this._ctx && this._ctx.state;
     const w = this._canvas.width / this._dpr, h = this._canvas.height / this._dpr;
     g.clearRect(0, 0, w, h);
-    g.fillStyle = 'rgba(6,11,21,0.95)'; g.fillRect(0, 0, w, h);
+    g.fillStyle = INK.bg; g.fillRect(0, 0, w, h);
     this._clickTargets.length = 0;
     if (!state) return;
 
-    // Subtle background grid
-    g.strokeStyle = 'rgba(57, 208, 255, 0.018)';
-    g.lineWidth = 1;
+    // Survey-table graticule: warm hairlines, a heavier rule every fifth line.
     const grid = 50;
-    for (let gx = 0; gx < w; gx += grid) { g.beginPath(); g.moveTo(gx, 0); g.lineTo(gx, h); g.stroke(); }
-    for (let gy = 0; gy < h; gy += grid) { g.beginPath(); g.moveTo(0, gy); g.lineTo(w, gy); g.stroke(); }
+    g.lineWidth = 1;
+    for (let gx = 0; gx < w; gx += grid) {
+      g.strokeStyle = (gx % (grid * 5) === 0) ? INK.gridMajor : INK.gridMinor;
+      g.beginPath(); g.moveTo(gx + 0.5, 0); g.lineTo(gx + 0.5, h); g.stroke();
+    }
+    for (let gy = 0; gy < h; gy += grid) {
+      g.strokeStyle = (gy % (grid * 5) === 0) ? INK.gridMajor : INK.gridMinor;
+      g.beginPath(); g.moveTo(0, gy + 0.5); g.lineTo(w, gy + 0.5); g.stroke();
+    }
+
+    // Corner registration marks — drafting-table framing, not a viewport frame.
+    g.strokeStyle = 'rgba(190, 178, 152, 0.32)';
+    g.lineWidth = 1;
+    const markInset = 10;
+    const markLen = 13;
+    for (const [cx, cy, dx, dy] of [
+      [markInset, markInset, 1, 1],
+      [w - markInset, markInset, -1, 1],
+      [markInset, h - markInset, 1, -1],
+      [w - markInset, h - markInset, -1, -1],
+    ]) {
+      g.beginPath();
+      g.moveTo(cx + dx * markLen, cy);
+      g.lineTo(cx, cy);
+      g.lineTo(cx, cy + dy * markLen);
+      g.stroke();
+    }
 
     const level = levelForZoom(this._zoom);
 
@@ -3361,6 +4250,34 @@ export const galaxyMapScreen = {
       g.stroke();
       g.restore();
     }
+
+    // Level-transition iris: a double hairline ring and the scale name, gone in under half a
+    // second, so threshold crossings read as travel through one continuous instrument.
+    if (this._iris) {
+      const iris = this._iris;
+      const p = Math.max(0, Math.min(1, iris.t / iris.maxT));
+      const alpha = 1 - p;
+      const radius = Math.min(w, h) * (0.07 + p * 0.55);
+      g.save();
+      g.globalAlpha = alpha;
+      g.strokeStyle = INK.amberHot;
+      g.lineWidth = 1.6;
+      g.beginPath(); g.arc(w / 2, h / 2, radius, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = INK.ink0;
+      g.lineWidth = 0.8;
+      g.beginPath(); g.arc(w / 2, h / 2, radius * 0.92, 0, Math.PI * 2); g.stroke();
+      if (p < 0.72) {
+        g.font = FONT_DISPLAY(600, 22);
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillStyle = INK.ink0;
+        g.fillText(iris.label, w / 2, h / 2);
+        g.font = FONT_MONO(500, 9);
+        g.fillStyle = INK.ink2;
+        g.fillText('SCALE TRANSIT', w / 2, h / 2 + 20);
+      }
+      g.restore();
+    }
   },
 
   // --- GALAXY DRAW ---
@@ -3387,18 +4304,19 @@ export const galaxyMapScreen = {
     this._view = { level: 'galaxy', baseScale };
     const sx = (x) => w / 2 + (x - cam.cx) * baseScale * cam.zoom;
     const sy = (y) => h / 2 + (y - cam.cy) * baseScale * cam.zoom;
+    const nodeById = new Map(model.nodes.map((n) => [n.id, n]));
 
-    // Draw basic/undiscovered edges
+    // Sector-graph edges: warm hairlines for charted lanes, faint dashes at the frontier.
     for (const e of model.edges) {
       if (!this._layers.discovery && !e.charted) continue;
       g.beginPath(); g.moveTo(sx(e.ax), sy(e.ay)); g.lineTo(sx(e.bx), sy(e.by));
-      g.strokeStyle = e.charted ? 'rgba(57,208,255,0.22)' : 'rgba(90,110,150,0.06)';
-      g.lineWidth = e.charted ? 1.5 : 0.8;
+      g.strokeStyle = e.charted ? 'rgba(216, 190, 150, 0.20)' : 'rgba(142, 134, 117, 0.08)';
+      g.lineWidth = e.charted ? 1.2 : 0.8;
       if (!e.charted) g.setLineDash([4, 6]);
       g.stroke(); g.setLineDash([]);
     }
 
-    // Route Beam animation
+    // Route beam: amber marching dashes with a traveling bead, timed by the screen's own clock.
     const route = state.nav && state.nav.route;
     const routeDest = route && route.legs && route.legs.length ? route.legs[route.legs.length - 1].to : null;
     if (routeDest !== this._lastRouteDest) {
@@ -3406,28 +4324,51 @@ export const galaxyMapScreen = {
       this._routeAnimTime = 1500;
     }
 
-    // Draw active planned route
     if (route && route.legs && this._layers.route) {
-      g.save();
-      g.strokeStyle = '#39d0ff';
-      g.lineWidth = 3.5;
-      const isAnimating = this._routeAnimTime > 0;
-      if (isAnimating) {
-        g.setLineDash([8, 6]);
-        g.lineDashOffset = -(Date.now() / 80) % 14;
-      }
-      g.beginPath();
-      let first = true;
+      const pts = [];
       for (const leg of route.legs) {
-        const fromNode = model.nodes.find(n => n.id === leg.from);
-        const toNode = model.nodes.find(n => n.id === leg.to);
-        if (fromNode && toNode) {
-          if (first) { g.moveTo(sx(fromNode.x), sy(fromNode.y)); first = false; }
-          g.lineTo(sx(toNode.x), sy(toNode.y));
-        }
+        const fromNode = nodeById.get(leg.from);
+        const toNode = nodeById.get(leg.to);
+        if (!fromNode || !toNode) continue;
+        if (!pts.length) pts.push({ x: sx(fromNode.x), y: sy(fromNode.y) });
+        pts.push({ x: sx(toNode.x), y: sy(toNode.y) });
       }
-      g.stroke();
-      g.restore();
+      if (pts.length > 1) {
+        g.save();
+        g.strokeStyle = INK.amber;
+        g.lineWidth = 2.4;
+        g.setLineDash([10, 7]);
+        g.lineDashOffset = -((this._animT * 42) % 17);
+        g.beginPath();
+        g.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i += 1) g.lineTo(pts[i].x, pts[i].y);
+        g.stroke();
+        g.setLineDash([]);
+
+        // Traveling bead along the polyline.
+        let total = 0;
+        const segLens = [];
+        for (let i = 1; i < pts.length; i += 1) {
+          const len = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+          segLens.push(len);
+          total += len;
+        }
+        if (total > 0) {
+          let run = ((this._animT * 0.22) % 1) * total;
+          let bi = 0;
+          while (bi < segLens.length - 1 && run > segLens[bi]) { run -= segLens[bi]; bi += 1; }
+          const segLen = segLens[bi] || 1;
+          const bt = run / segLen;
+          const bx = pts[bi].x + (pts[bi + 1].x - pts[bi].x) * bt;
+          const by = pts[bi].y + (pts[bi + 1].y - pts[bi].y) * bt;
+          g.fillStyle = INK.amberHot;
+          g.beginPath(); g.arc(bx, by, 3, 0, Math.PI * 2); g.fill();
+          g.strokeStyle = hexToRgba(INK.amberHot, 0.35);
+          g.lineWidth = 1;
+          g.beginPath(); g.arc(bx, by, 6, 0, Math.PI * 2); g.stroke();
+        }
+        g.restore();
+      }
     }
 
     // Draw hover preview route
@@ -3438,13 +4379,13 @@ export const galaxyMapScreen = {
         const previewPath = computePreviewRoute(state, startSector, endSector);
         if (previewPath) {
           g.save();
-          g.strokeStyle = 'rgba(255,255,255,0.6)';
-          g.lineWidth = 2;
+          g.strokeStyle = 'rgba(237, 232, 216, 0.6)';
+          g.lineWidth = 1.6;
           g.setLineDash([4, 4]);
           g.beginPath();
           let first = true;
           for (const sid of previewPath) {
-            const node = model.nodes.find(n => n.id === sid);
+            const node = nodeById.get(sid);
             if (node) {
               if (first) { g.moveTo(sx(node.x), sy(node.y)); first = false; }
               else g.lineTo(sx(node.x), sy(node.y));
@@ -3456,7 +4397,7 @@ export const galaxyMapScreen = {
       }
     }
 
-    // Trade-flow arrows (market layer): point from surplus toward scarcity.
+    // Trade-flow beads (market layer): seeded beads ride each edge from surplus toward scarcity.
     if (this._layers.market) {
       for (const e of model.edges) {
         if (!e.charted) continue;
@@ -3465,20 +4406,31 @@ export const galaxyMapScreen = {
         if (!sa || !sb) continue;
         const gradient = sb.pricePressure - sa.pricePressure;
         if (Math.abs(gradient) < 0.03) continue;
-        const a = model.nodes.find(n => n.id === e.from);
-        const b = model.nodes.find(n => n.id === e.to);
+        const a = nodeById.get(e.from);
+        const b = nodeById.get(e.to);
         if (!a || !b) continue;
         const ax = sx(a.x), ay = sy(a.y), bx = sx(b.x), by = sy(b.y);
         const from = gradient > 0 ? { x: ax, y: ay } : { x: bx, y: by };
         const to = gradient > 0 ? { x: bx, y: by } : { x: ax, y: ay };
-        const angle = Math.atan2(to.y - from.y, to.x - from.x);
-        const midX = (from.x + to.x) / 2, midY = (from.y + to.y) / 2;
-        const arrowLen = 6 + Math.min(6, Math.abs(gradient) * 12);
+        const color = pressureColor(gradient);
+        const phase = cosmeticHash01(e.from + '|' + e.to);
+        const speed = 0.05 + Math.min(0.09, Math.abs(gradient) * 0.14);
         g.save();
-        g.strokeStyle = pressureColor(gradient); g.fillStyle = pressureColor(gradient);
-        g.lineWidth = 1.5;
-        g.beginPath(); g.moveTo(midX, midY); g.lineTo(midX - arrowLen * Math.cos(angle - 0.45), midY - arrowLen * Math.sin(angle - 0.45)); g.stroke();
-        g.beginPath(); g.moveTo(midX, midY); g.lineTo(midX - arrowLen * Math.cos(angle + 0.45), midY - arrowLen * Math.sin(angle + 0.45)); g.stroke();
+        for (let k = 0; k < 2; k += 1) {
+          const t = (this._animT * speed + phase + k * 0.5) % 1;
+          const eased = 0.16 + t * 0.68; // keep beads on the lane, off the nodes
+          const px = from.x + (to.x - from.x) * eased;
+          const py = from.y + (to.y - from.y) * eased;
+          const trailT = Math.max(0.16, eased - 0.035);
+          g.strokeStyle = hexToRgba(color, 0.30);
+          g.lineWidth = 1.2;
+          g.beginPath();
+          g.moveTo(from.x + (to.x - from.x) * trailT, from.y + (to.y - from.y) * trailT);
+          g.lineTo(px, py);
+          g.stroke();
+          g.fillStyle = hexToRgba(color, 0.85);
+          g.beginPath(); g.arc(px, py, 1.8, 0, Math.PI * 2); g.fill();
+        }
         g.restore();
       }
     }
@@ -3487,42 +4439,40 @@ export const galaxyMapScreen = {
     for (const n of model.nodes) {
       const x = sx(n.x), y = sy(n.y);
       const r = 13;
+      const stale = n.confidence === 'stale';
 
       // R1 read knowledge: a rumor marks the sector without disclosing a world-space point.
       // This rides the existing DISCOVERY layer instead of inventing another map toggle.
       if (this._layers.discovery && n.bearingCount > 0) {
         g.save();
-        g.strokeStyle = 'rgba(230,191,106,0.82)';
-        g.fillStyle = 'rgba(230,191,106,0.11)';
+        g.strokeStyle = hexToRgba(INK.gold, 0.82);
+        g.fillStyle = hexToRgba(INK.gold, 0.10);
         g.lineWidth = 1.4;
         g.setLineDash([5, 4]);
         g.beginPath(); g.arc(x, y, r + 9, 0, Math.PI * 2); g.fill(); g.stroke();
         g.setLineDash([]);
         const count = String(n.bearingCount);
-        g.font = 'bold 8px monospace';
+        g.font = FONT_MONO(700, 8);
         const countWidth = Math.max(12, g.measureText(count).width + 7);
-        g.fillStyle = 'rgba(4,8,16,0.94)';
-        g.strokeStyle = 'rgba(230,191,106,0.82)';
+        g.fillStyle = INK.plateHard;
+        g.strokeStyle = hexToRgba(INK.gold, 0.82);
         g.beginPath(); g.rect(x + r + 5, y - r - 11, countWidth, 13); g.fill(); g.stroke();
-        g.fillStyle = '#e6bf6a'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillStyle = INK.gold; g.textAlign = 'center'; g.textBaseline = 'middle';
         g.fillText(count, x + r + 5 + countWidth / 2, y - r - 4.5);
         g.restore();
       }
 
-      // Check charted status
+      // Uncharted frontier: a quiet dashed socket with a survey mark, never a colored node.
       if (!n.charted) {
         if (this._layers.discovery) {
           g.save();
           g.beginPath(); g.arc(x, y, r - 3, 0, Math.PI * 2);
-          g.fillStyle = 'rgba(30,45,65,0.35)'; g.fill();
-          g.strokeStyle = 'rgba(100,120,150,0.28)'; g.lineWidth = 1; g.setLineDash([3, 4]); g.stroke(); g.setLineDash([]);
-          if (n.bearingCount > 0) {
-            g.fillStyle = 'rgba(230,191,106,0.55)'; g.font = 'bold 9px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-            g.fillText('?', x, y);
-          } else {
-            g.fillStyle = 'rgba(120,140,170,0.35)'; g.font = 'bold 10px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-            g.fillText('?', x, y);
-          }
+          g.fillStyle = 'rgba(56, 52, 42, 0.30)'; g.fill();
+          g.strokeStyle = 'rgba(142, 134, 117, 0.30)'; g.lineWidth = 1; g.setLineDash([3, 4]); g.stroke(); g.setLineDash([]);
+          g.fillStyle = n.bearingCount > 0 ? hexToRgba(INK.gold, 0.65) : 'rgba(142, 134, 117, 0.45)';
+          g.font = FONT_UI(700, n.bearingCount > 0 ? 9 : 10);
+          g.textAlign = 'center'; g.textBaseline = 'middle';
+          g.fillText('?', x, y);
           g.restore();
         }
         continue;
@@ -3535,16 +4485,42 @@ export const galaxyMapScreen = {
         detail: `Sector · ${factionNameOf(n.factionId)} · Sec: ${n.security ? n.security.toFixed(2) : '0.00'}`
       });
 
-      // Selection highlight
-      if (this._selectedTarget && this._selectedTarget.id === n.id) {
-        g.beginPath(); g.arc(x, y, r + 6, 0, Math.PI * 2);
-        g.strokeStyle = 'rgba(57,208,255,0.85)'; g.lineWidth = 2.5; g.stroke();
+      // Territory wash (faction layer): the live owner underlays the node as a broad soft ring.
+      if (this._layers.faction && n.ownerId) {
+        g.save();
+        g.strokeStyle = hexToRgba(factionColorOf(n.ownerId), 0.30);
+        g.lineWidth = 4;
+        g.beginPath(); g.arc(x, y, r + 6, 0, Math.PI * 2); g.stroke();
+        g.restore();
       }
 
-      // Current sector halo
+      // Selection: a white double keyline — the only white ring on the table.
+      if (this._selectedTarget && this._selectedTarget.id === n.id) {
+        g.save();
+        g.strokeStyle = 'rgba(237, 232, 216, 0.92)';
+        g.lineWidth = 2;
+        g.beginPath(); g.arc(x, y, r + 6, 0, Math.PI * 2); g.stroke();
+        g.strokeStyle = 'rgba(237, 232, 216, 0.45)';
+        g.lineWidth = 0.8;
+        g.beginPath(); g.arc(x, y, r + 9, 0, Math.PI * 2); g.stroke();
+        g.restore();
+      }
+
+      // Current sector: brass corner brackets, the "you are here" clamp.
       if (n.current) {
-        g.beginPath(); g.arc(x, y, r + 5, 0, Math.PI * 2);
-        g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 1.5; g.stroke();
+        g.save();
+        g.strokeStyle = INK.brass;
+        g.lineWidth = 1.8;
+        const b = r + 7;
+        const t = 5;
+        for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+          g.beginPath();
+          g.moveTo(x + dx * b - dx * t, y + dy * b);
+          g.lineTo(x + dx * b, y + dy * b);
+          g.lineTo(x + dx * b, y + dy * b - dy * t);
+          g.stroke();
+        }
+        g.restore();
       }
 
       // Security / danger ring (security layer)
@@ -3552,39 +4528,59 @@ export const galaxyMapScreen = {
         const danger = 1 - n.security;
         if (danger > 0.15) {
           g.beginPath(); g.arc(x, y, r + 10, 0, Math.PI * 2);
-          g.strokeStyle = dangerColor(danger); g.lineWidth = 2; g.stroke();
+          g.strokeStyle = hexToRgba(dangerColor(danger), 0.85); g.lineWidth = 2; g.stroke();
         }
       }
 
-      // Contested-sector badge (faction layer)
+      // Contested-sector badge (faction layer): a violet contest diamond, not a glow.
       if (this._layers.faction) {
         const sig = sectorSignalFor(state, n.id);
         if (sig && sig.contestMargin < 0.16) {
           g.save();
-          g.fillStyle = '#c08bff'; g.font = 'bold 10px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
-          g.fillText('⚔', x + r + 6, y - r - 4);
+          g.fillStyle = '#b092e8';
+          const bx = x + r + 7, by = y - r - 5;
+          g.beginPath();
+          g.moveTo(bx, by - 4); g.lineTo(bx + 4, by); g.lineTo(bx, by + 4); g.lineTo(bx - 4, by);
+          g.closePath(); g.fill();
           g.restore();
         }
       }
 
-      // Draw node circle
-      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
+      // Node disc: faction-keyed fill, confidence-weighted ink.
+      g.save();
       if (this._layers.faction) {
-        g.fillStyle = n.color; g.globalAlpha = 0.85;
+        g.fillStyle = n.color;
+        g.globalAlpha = stale ? 0.45 : 0.88;
       } else {
-        g.fillStyle = 'rgba(60,80,110,0.9)'; g.globalAlpha = 1;
+        g.fillStyle = stale ? 'rgba(88, 82, 68, 0.55)' : 'rgba(96, 90, 74, 0.9)';
+        g.globalAlpha = 1;
       }
-      g.fill(); g.globalAlpha = 1;
-      g.strokeStyle = 'rgba(255,255,255,0.2)'; g.lineWidth = 1.2; g.stroke();
+      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
+      g.fill();
+      g.globalAlpha = 1;
+      g.strokeStyle = 'rgba(237, 232, 216, 0.22)';
+      g.lineWidth = 1.1;
+      g.stroke();
+      g.restore();
 
-      // Sector label
-      g.fillStyle = n.current ? '#fff' : 'rgba(211,230,255,0.9)';
-      g.font = (n.current ? 'bold ' : '') + '11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
+      // Sector label: live ink for known space, muted italic once the intel goes stale.
+      g.save();
+      g.font = n.current
+        ? FONT_UI(600, 11)
+        : (stale ? `italic ${FONT_UI(500, 11)}` : FONT_UI(500, 11));
+      g.fillStyle = n.current ? INK.ink0 : (stale ? INK.ink2 : 'rgba(237, 232, 216, 0.85)');
+      g.textAlign = 'center'; g.textBaseline = 'top';
       g.fillText(n.name, x, y + r + 4);
+      if (stale) {
+        g.font = FONT_MONO(400, 8);
+        g.fillStyle = INK.ink2;
+        g.fillText('STALE', x, y + r + 17);
+      }
+      g.restore();
 
       if (this._layers.faction && n.presence && n.presence.length) {
         g.save();
-        g.font = '8px monospace';
+        g.font = FONT_MONO(500, 8);
         g.textAlign = 'left';
         g.textBaseline = 'middle';
         for (const row of galaxyPresenceMarkerRows(n.presence)) {
@@ -3604,23 +4600,24 @@ export const galaxyMapScreen = {
         g.restore();
       }
 
-      // Security overlay
+      // Security overlay pip
       if (this._layers.security && n.security != null) {
         g.fillStyle = dangerColor(n.security);
         g.beginPath(); g.arc(x - r - 2, y, 3, 0, Math.PI * 2); g.fill();
       }
 
-      // Market price overlay
+      // Market price flag: a small plated quote keyed by intel freshness.
       if (this._layers.market) {
         const record = sectorRecordById(state, n.id);
         const marketData = bestKnownSectorMarket(state, record, this._selectedCommodity);
         if (marketData) {
           const tint = memoryTint(marketData.ageS);
           g.save();
-          g.fillStyle = 'rgba(8,14,26,0.85)';
-          g.strokeStyle = tint.color; g.lineWidth = 1;
+          g.fillStyle = INK.plateHard;
+          g.strokeStyle = hexToRgba(tint.color, 0.65);
+          g.lineWidth = 1;
           const text = `BEST ${marketData.sell}`;
-          g.font = '9px monospace';
+          g.font = FONT_MONO(500, 9);
           const tw = g.measureText(text).width;
           g.beginPath(); g.rect(x + r + 3, y - 6, tw + 6, 12); g.fill(); g.stroke();
           g.fillStyle = tint.color; g.textAlign = 'left'; g.textBaseline = 'middle';
@@ -3636,8 +4633,11 @@ export const galaxyMapScreen = {
         const isMissionDest = activeMissions.some(m => m.status === 'active' && (m.destSectorId === n.id || (m.params && m.params.sectorId === n.id)));
         if (isMissionDest) {
           g.save();
-          g.fillStyle = 'rgba(255,179,92,0.72)';
-          g.beginPath(); g.arc(x, y - r - 6, 2.5, 0, Math.PI * 2); g.fill();
+          g.fillStyle = hexToRgba(INK.amberHot, 0.85);
+          const mx = x, my = y - r - 6;
+          g.beginPath();
+          g.moveTo(mx, my - 3); g.lineTo(mx + 3, my); g.lineTo(mx, my + 3); g.lineTo(mx - 3, my);
+          g.closePath(); g.fill();
           g.restore();
         }
       }
@@ -3646,8 +4646,12 @@ export const galaxyMapScreen = {
       if (this._layers.hazard) {
         const hasHazards = zonesForSector(n.id).some(z => zoneTypeMeta(z.type).hazard);
         if (hasHazards) {
-          g.fillStyle = '#ff5c5c'; g.font = 'bold 11px sans-serif';
+          g.save();
+          g.fillStyle = INK.red;
+          g.font = FONT_UI(700, 11);
+          g.textAlign = 'left'; g.textBaseline = 'middle';
           g.fillText('⚠', x + r + 4, y - r - 4);
+          g.restore();
         }
       }
     }
@@ -3710,18 +4714,32 @@ export const galaxyMapScreen = {
     const labelCandidates = [];
     setMapCanvasAriaLabel(this._canvas, 'system', model.ownership);
 
-    // Header sector label
-    g.fillStyle = 'rgba(207,227,255,0.75)'; g.font = 'bold 13px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
-    g.fillText(model.sectorName, 16, 16);
+    // Header sector plate: brass index tick + Saira name, quiet and machined.
+    g.save();
+    g.fillStyle = INK.brass;
+    g.beginPath();
+    g.moveTo(16, 15); g.lineTo(22, 18); g.lineTo(16, 21); g.closePath();
+    g.fill();
+    g.fillStyle = 'rgba(237, 232, 216, 0.85)';
+    g.font = FONT_DISPLAY(600, 13);
+    g.textAlign = 'left'; g.textBaseline = 'top';
+    g.fillText(String(model.sectorName || '').toUpperCase(), 27, 13);
+    g.font = FONT_MONO(500, 8);
+    g.fillStyle = INK.ink2;
+    g.fillText('SYSTEM SURVEY', 27, 30);
+    g.restore();
 
-    // Player position marker on the system map
+    // Player position marker on the system map: amber heading triangle with a white keyline.
     const player = playerEntity(state);
     if (player && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z)) {
       const px = sx(player.pos.x), py = sz(player.pos.z);
       g.save();
-      g.fillStyle = '#39d0ff'; g.strokeStyle = '#39d0ff'; g.shadowColor = '#39d0ff'; g.shadowBlur = 8;
       g.translate(px, py); g.rotate(Math.PI + (player.rot || 0));
-      g.beginPath(); g.moveTo(7, 0); g.lineTo(-5, -4); g.lineTo(-5, 4); g.closePath(); g.fill();
+      g.fillStyle = INK.amber;
+      g.strokeStyle = 'rgba(237, 232, 216, 0.85)';
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(7, 0); g.lineTo(-5, -4); g.lineTo(-5, 4); g.closePath();
+      g.fill(); g.stroke();
       g.restore();
     }
 
@@ -3730,7 +4748,7 @@ export const galaxyMapScreen = {
       const player = playerEntity(state);
       if (player) {
         g.save();
-        g.strokeStyle = '#ffd24a'; g.lineWidth = 1.8; g.setLineDash([5, 5]);
+        g.strokeStyle = INK.amber; g.lineWidth = 1.8; g.setLineDash([5, 5]);
         g.beginPath(); g.moveTo(sx(player.pos.x), sz(player.pos.z)); g.lineTo(sx(wp.pos.x), sz(wp.pos.z)); g.stroke();
         g.restore();
       }
@@ -3747,11 +4765,11 @@ export const galaxyMapScreen = {
       // Boundary field hazards (explicit dashed red border lines, cross-hatch, not glow)
       if (z.hazard && this._layers.hazard) {
         g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2);
-        g.strokeStyle = '#ff5c5c'; g.lineWidth = 2.0; g.setLineDash([8, 6]); g.stroke(); g.setLineDash([]);
-        g.fillStyle = 'rgba(255,92,92,0.04)'; g.fill();
+        g.strokeStyle = INK.red; g.lineWidth = 1.8; g.setLineDash([8, 6]); g.stroke(); g.setLineDash([]);
+        g.fillStyle = hexToRgba(INK.red, 0.05); g.fill();
         const hazardGlyph = hazardTypeGlyph(z.type);
         g.save();
-        g.fillStyle = '#ff8a8a'; g.font = 'bold 12px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillStyle = '#f0908a'; g.font = FONT_UI(700, 12); g.textAlign = 'center'; g.textBaseline = 'middle';
         g.fillText(hazardGlyph, x, y);
         g.restore();
         labelCandidates.push(makeMapLabelCandidate(g, {
@@ -3797,12 +4815,12 @@ export const galaxyMapScreen = {
         const fx = sx(cx), fy = sz(cz), fr = radius * baseScale * cam.zoom;
         const glyph = asteroidOreGlyph(f.type);
         g.save();
-        g.strokeStyle = 'rgba(255,177,61,0.28)';
-        g.fillStyle = 'rgba(255,177,61,0.04)';
+        g.strokeStyle = hexToRgba(INK.brass, 0.30);
+        g.fillStyle = hexToRgba(INK.brass, 0.045);
         g.setLineDash([2, 4]); g.lineWidth = 1;
         g.beginPath(); g.arc(fx, fy, fr, 0, Math.PI * 2); g.fill(); g.stroke(); g.setLineDash([]);
-        g.fillStyle = 'rgba(255,177,61,0.75)';
-        g.font = 'bold 9px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillStyle = hexToRgba(INK.brass, 0.8);
+        g.font = FONT_UI(700, 9); g.textAlign = 'center'; g.textBaseline = 'middle';
         g.fillText(glyph, fx, fy);
         g.restore();
       }
@@ -3863,24 +4881,16 @@ export const galaxyMapScreen = {
         detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}`
       });
 
-      // Highlight selected target
+      // Selection: white keyline, the only selection language on the table.
       if (this._selectedTarget && this._selectedTarget.id === p.id) {
-        g.beginPath(); g.arc(x, y, 16, 0, Math.PI * 2);
-        g.strokeStyle = 'rgba(57,208,255,0.8)'; g.lineWidth = 2; g.stroke();
+        g.beginPath(); g.arc(x, y, 15, 0, Math.PI * 2);
+        g.strokeStyle = 'rgba(237, 232, 216, 0.9)'; g.lineWidth = 1.8; g.stroke();
       }
 
-      g.save();
-      const col = isGate ? '#8d66ff' : isStation ? '#39d0ff' : '#ffb35c';
-      g.fillStyle = col; g.strokeStyle = col; g.shadowColor = col; g.shadowBlur = 6;
-
-      if (isGate) {
-        g.beginPath(); g.moveTo(x, y - 6); g.lineTo(x + 6, y); g.lineTo(x, y + 6); g.lineTo(x - 6, y); g.closePath(); g.stroke();
-      } else if (isStation) {
-        g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.fill();
-      } else {
-        g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.stroke();
-      }
-      g.shadowBlur = 0;
+      const col = isGate ? INK.teal : isStation ? INK.brass : INK.amber;
+      if (isGate) drawGateMark(g, x, y, Math.atan2(p.z || 0, p.x || 1));
+      else if (isStation) drawStationMark(g, x, y);
+      else drawPoiMark(g, x, y);
 
       const pointLines = [p.name];
       let marketTint = null;
@@ -3905,13 +4915,13 @@ export const galaxyMapScreen = {
         x,
         y,
         anchorRadius: isGate ? 8 : isStation ? 7 : 5,
-        color: isGate ? '#8d66ff' : isStation ? '#39d0ff' : '#ffb35c',
+        color: col,
         secondaryColor: marketTint,
         selected: !!(this._selectedTarget && this._selectedTarget.id === p.id),
       }));
 
       if (isStation && services.length > 0) {
-        drawServiceGlyphs(g, x, y + 13, services);
+        drawServicePictograms(g, x, y + 13, services);
       }
 
       // Mission relevance overlay
@@ -3919,12 +4929,10 @@ export const galaxyMapScreen = {
         const activeMissions = state.missions && state.missions.active || [];
         const isMissionDest = activeMissions.some(m => m.status === 'active' && m.destStationId === p.stationId);
         if (isMissionDest) {
-          g.strokeStyle = '#ffd24a'; g.lineWidth = 1.5;
+          g.strokeStyle = INK.amberHot; g.lineWidth = 1.5;
           g.beginPath(); g.arc(x, y, 11, 0, Math.PI * 2); g.stroke();
         }
       }
-
-      g.restore();
     }
 
     // Player-owned bases: permanent operating landmarks, visually distinct from neutral POIs.
@@ -3952,7 +4960,7 @@ export const galaxyMapScreen = {
       g.beginPath();
       g.arc(x, y, selected ? 13 : 11, 0, Math.PI * 2);
       g.stroke();
-      g.font = '700 15px monospace';
+      g.font = FONT_MONO(700, 15);
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.fillText(marker.glyph, x, y);
@@ -3986,14 +4994,14 @@ export const galaxyMapScreen = {
         x: wx,
         y: wy,
         anchorRadius: 16,
-        color: '#ffb35c',
+        color: INK.amberHot,
       }));
       const target = waypointClickTarget(wp, wx, wy);
       if (target) this._clickTargets.push(target);
     }
-    const headerWidth = Math.min(w - 24, Math.max(80, model.sectorName.length * 8 + 16));
+    const headerWidth = Math.min(w - 24, Math.max(80, model.sectorName.length * 8 + 26));
     const labelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
-      reserved: [{ x: 8, y: 8, width: headerWidth, height: 24 }],
+      reserved: [{ x: 8, y: 8, width: headerWidth, height: 40 }],
     });
     this._lastLabelLayout = labelLayout;
     for (const placement of labelLayout) {
@@ -4013,12 +5021,16 @@ export const galaxyMapScreen = {
     const model = buildLocalModel(state, this._isHostile, { claimsSystem: this._claimsSystem() });
     const cam = this._cams.local;
     const wp = state.nav && state.nav.waypoint;
+    const nowS = Math.max(0, Number(state && state.simTime) || 0);
 
     const player = playerEntity(state);
     const px = player ? player.pos.x : 0;
     const pz = player ? player.pos.z : 0;
 
-    let span = 1600;
+    // The local scope favors the immediate field: a tighter span gives near contacts breathing
+    // room, and important objects beyond the frame collapse into edge ticks instead of forcing
+    // everything into a packed center cluster.
+    let span = 1500;
     let m = 0;
     for (const c of model.contacts) m = Math.max(m, Math.hypot(c.x - px, c.z - pz));
     for (const marker of model.ownership) m = Math.max(m, Math.hypot(marker.x - px, marker.z - pz));
@@ -4031,17 +5043,27 @@ export const galaxyMapScreen = {
     if (wp && wp.pos && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z)) {
       m = Math.max(m, Math.hypot(wp.pos.x - px, wp.pos.z - pz));
     }
-    if (m > 0) span = Math.max(600, m * 2.2);
+    if (m > 0) span = Math.max(700, m * 1.55);
 
     const baseScale = (Math.min(w, h) * 0.85) / span;
     this._view = { level: 'local', baseScale };
     const sx = (x) => w / 2 - (x - cam.cx) * baseScale * cam.zoom;
     const sz = (z) => h / 2 - (z - cam.cy) * baseScale * cam.zoom;
     const labelCandidates = [];
+    const edgeTicks = [];
     setMapCanvasAriaLabel(this._canvas, 'local', model.ownership);
 
-    // Range rings
-    g.strokeStyle = 'rgba(57,208,255,0.08)'; g.setLineDash([3, 5]);
+    const offView = (x, y) => x < 20 || y < 20 || x > w - 20 || y > h - 20;
+    const pushEdgeTick = (x, y, color, shape, target) => {
+      if (edgeTicks.length >= 24) return;
+      const tx = Math.max(14, Math.min(w - 14, x));
+      const ty = Math.max(14, Math.min(h - 14, y));
+      edgeTicks.push({ x: tx, y: ty, color, shape, target });
+    };
+
+    // Range rings: warm dashed survey circles.
+    g.strokeStyle = 'rgba(216, 190, 150, 0.10)';
+    g.setLineDash([3, 5]);
     for (const rr of [0.33, 0.66, 1.0]) {
       g.beginPath(); g.arc(w / 2, h / 2, Math.min(w, h) * 0.42 * rr, 0, Math.PI * 2); g.stroke();
     }
@@ -4053,6 +5075,17 @@ export const galaxyMapScreen = {
         const point = bearing.fixedPos || bearing.center;
         if (!point) continue;
         const x = sx(point.x), y = sz(point.z);
+        if (offView(x, y)) {
+          pushEdgeTick(x, y, INK.gold, 'bearing', {
+            ...(bearing.courseTarget || {}),
+            kind: 'bearing',
+            id: bearing.wreckId,
+            name: bearing.name,
+            sectorId: bearing.sectorId,
+            detail: 'Read bearing · off-view survey fix',
+          });
+          continue;
+        }
         const radiusPx = fixed ? 0 : bearing.radius * baseScale * cam.zoom;
         const selected = !!(this._selectedTarget && this._selectedTarget.id === bearing.wreckId);
         drawUniqueWreckBearingMarker(g, x, y, radiusPx, { fixed, selected, phase: bearing.phase });
@@ -4079,65 +5112,110 @@ export const galaxyMapScreen = {
           x: labelX,
           y,
           anchorRadius: fixed ? 10 : 5,
-          color: '#e6bf6a',
+          color: INK.gold,
           selected,
           named: true,
         }));
+      }
+
+      // Scanner pings: transient gold diamonds where the sweep found something unclassified.
+      const pings = state.world && state.world.scanPings && state.world.scanPings[model.sectorId];
+      if (Array.isArray(pings)) {
+        for (const ping of pings) {
+          if (!ping || !ping.pos) continue;
+          const x = sx(ping.pos.x), y = sz(ping.pos.z);
+          if (offView(x, y)) continue;
+          g.save();
+          g.strokeStyle = hexToRgba(INK.gold, 0.75);
+          g.lineWidth = 1.2;
+          g.setLineDash([3, 3]);
+          g.beginPath();
+          g.moveTo(x, y - 6); g.lineTo(x + 6, y); g.lineTo(x, y + 6); g.lineTo(x - 6, y);
+          g.closePath(); g.stroke();
+          g.setLineDash([]);
+          g.fillStyle = hexToRgba(INK.gold, 0.9);
+          g.beginPath(); g.arc(x, y, 1.4, 0, Math.PI * 2); g.fill();
+          g.restore();
+        }
       }
     }
 
     // Draw active waypoint line
     if (wp && wp.pos && this._layers.route) {
       g.save();
-      g.strokeStyle = '#ffd24a'; g.lineWidth = 2; g.setLineDash([6, 5]);
+      g.strokeStyle = INK.amber; g.lineWidth = 2; g.setLineDash([6, 5]);
       g.beginPath(); g.moveTo(sx(px), sz(pz)); g.lineTo(sx(wp.pos.x), sz(wp.pos.z)); g.stroke();
       g.restore();
     }
-    // Contacts
+
+    // Contacts: keyed silhouettes, constant screen size. Rocks declutter off-frame silently;
+    // infrastructure, hostiles and waypoints collapse into edge ticks instead.
     for (const c of model.contacts) {
       const x = sx(c.x), y = sz(c.z);
+      const off = offView(x, y);
+
+      if (off) {
+        if (c.kind === 'station' || c.kind === 'gate' || c.hostile) {
+          pushEdgeTick(x, y, c.kind === 'gate' ? INK.teal : c.kind === 'station' ? INK.brass : INK.red, c.kind === 'gate' ? 'gate' : c.kind === 'station' ? 'station' : 'hostile', {
+            kind: c.kind, id: c.id, x: c.x, z: c.z,
+            entityId: c.entityId, stationId: c.stationId, name: c.name, factionId: c.factionId,
+            hostile: c.hostile,
+            detail: `Contact · ${c.name} · off-view ${c.kind.toUpperCase()}`,
+          });
+        }
+        continue; // nothing important enough to draw leaves the frame
+      }
 
       this._clickTargets.push({
         sx: x, sy: y, radiusPx: 14, kind: c.kind, id: c.id, x: c.x, z: c.z,
         entityId: c.entityId, stationId: c.stationId, name: c.name, factionId: c.factionId,
+        hostile: c.hostile,
         detail: `Contact · ${c.name} · ${c.kind.toUpperCase()}`
       });
 
-      // Selected highlight
+      // Selection: white keyline.
       if (this._selectedTarget && this._selectedTarget.id === c.id) {
         g.beginPath(); g.arc(x, y, 14, 0, Math.PI * 2);
-        g.strokeStyle = 'rgba(57,208,255,0.85)'; g.lineWidth = 1.8; g.stroke();
+        g.strokeStyle = 'rgba(237, 232, 216, 0.9)'; g.lineWidth = 1.8; g.stroke();
       }
 
-      g.save();
       if (c.kind === 'asteroid') {
-        g.fillStyle = '#6e7b8c'; g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill();
+        drawAsteroidMark(g, x, y, c.id);
+        // Scan-highlighted rock: amber assay ring + ore grade above.
+        if (c.scanHighlightUntil > nowS) {
+          g.save();
+          g.strokeStyle = INK.amberHot;
+          g.lineWidth = 1.2;
+          g.beginPath(); g.arc(x, y, 6, 0, Math.PI * 2); g.stroke();
+          g.fillStyle = INK.amberHot;
+          g.font = FONT_MONO(700, 8);
+          g.textAlign = 'center'; g.textBaseline = 'bottom';
+          g.fillText(c.scanOre || '·', x, y - 7);
+          g.restore();
+        }
       } else if (c.kind === 'gate') {
-        g.strokeStyle = '#8d66ff'; g.shadowColor = '#8d66ff'; g.shadowBlur = 6; g.lineWidth = 1.6;
-        g.beginPath(); g.moveTo(x, y - 6); g.lineTo(x + 6, y); g.lineTo(x, y + 6); g.lineTo(x - 6, y); g.closePath(); g.stroke();
+        drawGateMark(g, x, y, Math.atan2(c.z - pz, c.x - px));
       } else if (c.kind === 'station') {
-        g.fillStyle = '#39d0ff'; g.shadowColor = '#39d0ff'; g.shadowBlur = 6;
-        g.beginPath(); g.arc(x, y, 6, 0, Math.PI * 2); g.fill();
-      } else {
-        const col = c.hostile ? '#ff5c5c' : (this._layers.faction && c.factionId ? factionColorOf(c.factionId) : '#39d0ff');
-        g.fillStyle = col; g.shadowColor = col; g.shadowBlur = 6;
-
-        // Hostile velocity vector tick
-        if (c.hostile && c.vx != null) {
+        drawStationMark(g, x, y);
+      } else if (c.hostile) {
+        // Hostile: red open diamond + velocity vector tick.
+        if (c.vx != null) {
           const pvx = -(c.vx / 3) * baseScale * cam.zoom;
           const pvz = -(c.vz / 3) * baseScale * cam.zoom;
           const len = Math.hypot(pvx, pvz);
           if (len > 0.1) {
             const mult = len > 24 ? 24 / len : 1;
-            g.strokeStyle = '#ff5c5c'; g.lineWidth = 1.2;
+            g.save();
+            g.strokeStyle = INK.red; g.lineWidth = 1.2;
             g.beginPath(); g.moveTo(x, y); g.lineTo(x + pvx * mult, y + pvz * mult); g.stroke();
+            g.restore();
           }
         }
-
-        g.translate(x, y); g.rotate(Math.PI + (c.rot || 0));
-        g.beginPath(); g.moveTo(5, 0); g.lineTo(-4, -3.2); g.lineTo(-4, 3.2); g.closePath(); g.fill();
+        drawHostileMark(g, x, y, c.rot || 0);
+      } else {
+        const col = this._layers.faction && c.factionId ? factionColorOf(c.factionId) : INK.ink1;
+        drawShipChevron(g, x, y, c.rot || 0, col);
       }
-      g.restore();
 
       const selected = !!(this._selectedTarget && this._selectedTarget.id === c.id);
       if (c.kind === 'station' || c.kind === 'gate' || selected || c.hostile || c.named) {
@@ -4149,9 +5227,9 @@ export const galaxyMapScreen = {
           x,
           y,
           anchorRadius: c.kind === 'station' || c.kind === 'gate' ? 8 : 6,
-          color: c.kind === 'gate' ? '#8d66ff'
-            : c.kind === 'station' ? '#39d0ff'
-              : c.hostile ? '#ff5c5c' : '#d7e6ff',
+          color: c.kind === 'gate' ? INK.teal
+            : c.kind === 'station' ? INK.brass
+              : c.hostile ? INK.red : INK.ink0,
           hostile: c.hostile,
           named: c.named,
           selected,
@@ -4159,11 +5237,14 @@ export const galaxyMapScreen = {
       }
     }
 
-    // Player position
+    // Player: amber heading triangle with a white keyline.
     g.save();
-    g.fillStyle = '#39d0ff'; g.shadowColor = '#39d0ff'; g.shadowBlur = 10;
     g.translate(w / 2, h / 2); g.rotate(Math.PI + (player ? player.rot : 0));
-    g.beginPath(); g.moveTo(8, 0); g.lineTo(-6, -5.5); g.lineTo(-6, 5.5); g.closePath(); g.fill();
+    g.fillStyle = INK.amber;
+    g.strokeStyle = 'rgba(237, 232, 216, 0.9)';
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(8, 0); g.lineTo(-6, -5.5); g.lineTo(-6, 5.5); g.closePath();
+    g.fill(); g.stroke();
     g.restore();
 
     // Velocity vector
@@ -4173,7 +5254,7 @@ export const galaxyMapScreen = {
         const vLen = Math.min(80, Math.max(18, speed * 0.25));
         const angle = Math.atan2(-player.vel.z, -player.vel.x);
         g.save();
-        g.strokeStyle = 'rgba(255,210,74,0.75)'; g.lineWidth = 1.5; g.setLineDash([4, 3]);
+        g.strokeStyle = hexToRgba(INK.amber, 0.75); g.lineWidth = 1.5; g.setLineDash([4, 3]);
         g.beginPath(); g.moveTo(w / 2, h / 2); g.lineTo(w / 2 + Math.cos(angle) * vLen, h / 2 + Math.sin(angle) * vLen); g.stroke();
         g.restore();
       }
@@ -4183,7 +5264,7 @@ export const galaxyMapScreen = {
     const reduceMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!reduceMotion && this._scanPhase != null) {
       g.save();
-      g.strokeStyle = 'rgba(57,208,255,0.18)';
+      g.strokeStyle = hexToRgba(INK.amber, 0.16);
       g.lineWidth = 1.5;
       g.translate(w / 2, h / 2); g.rotate(this._scanPhase);
       g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.min(w, h) * 0.42, 0); g.stroke();
@@ -4191,7 +5272,9 @@ export const galaxyMapScreen = {
     }
 
     // Range ring labels
-    g.fillStyle = 'rgba(120,145,175,0.65)'; g.font = '8px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle';
+    g.fillStyle = 'rgba(142, 134, 117, 0.75)';
+    g.font = FONT_MONO(500, 8);
+    g.textAlign = 'left'; g.textBaseline = 'middle';
     const ringUnits = Math.round(span / 2);
     for (let i = 0; i < 3; i++) {
       const frac = [0.33, 0.66, 1.0][i];
@@ -4203,8 +5286,9 @@ export const galaxyMapScreen = {
     // Empty-space reassurance
     if (model.contacts.length === 0 && model.ownership.length === 0 && model.bearings.length === 0) {
       g.save();
-      g.fillStyle = 'rgba(120,145,175,0.45)';
-      g.font = '11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = 'rgba(142, 134, 117, 0.6)';
+      g.font = FONT_UI(500, 11);
+      g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText('CLEAR SKIES — no local contacts', w / 2, h / 2 + 30);
       g.restore();
     }
@@ -4212,6 +5296,16 @@ export const galaxyMapScreen = {
     // Player-owned bases remain labeled at local scale and can arm autopilot with a pointer action.
     for (const marker of model.ownership) {
       const x = sx(marker.x), y = sz(marker.z);
+      if (offView(x, y)) {
+        pushEdgeTick(x, y, marker.color, 'claim', {
+          ...marker,
+          kind: 'claim',
+          entityId: marker.targetEntityId,
+          sectorId: model.sectorId,
+          detail: `Owned base · off-view · ${marker.statusLine}`,
+        });
+        continue;
+      }
       const selected = !!(this._selectedTarget && this._selectedTarget.id === marker.id);
       this._clickTargets.push({
         ...marker,
@@ -4231,7 +5325,7 @@ export const galaxyMapScreen = {
       g.beginPath();
       g.arc(x, y, selected ? 13 : 11, 0, Math.PI * 2);
       g.stroke();
-      g.font = '700 15px monospace';
+      g.font = FONT_MONO(700, 15);
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.fillText(marker.glyph, x, y);
@@ -4251,6 +5345,15 @@ export const galaxyMapScreen = {
       }));
     }
 
+    // The waypoint's edge tick rides even the off-frame goal so the objective never vanishes.
+    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
+      const wx = sx(wp.pos.x);
+      const wy = sz(wp.pos.z);
+      if (offView(wx, wy)) {
+        pushEdgeTick(wx, wy, INK.amberHot, 'waypoint', waypointClickTarget(wp, wx, wy) || undefined);
+      }
+    }
+
     let objectivePlacement = null;
     if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
       const wx = sx(wp.pos.x);
@@ -4265,10 +5368,10 @@ export const galaxyMapScreen = {
         x: wx,
         y: wy,
         anchorRadius: 16,
-        color: '#ffb35c',
+        color: INK.amberHot,
       }));
       const target = waypointClickTarget(wp, wx, wy);
-      if (target) this._clickTargets.push(target);
+      if (target && !offView(wx, wy)) this._clickTargets.push(target);
     }
     const labelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
       reserved: [{ x: w / 2 - 13, y: h / 2 - 13, width: 26, height: 26 }],
@@ -4284,6 +5387,21 @@ export const galaxyMapScreen = {
     if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
       drawWaypointPin(g, sx(wp.pos.x), sz(wp.pos.z), waypointMapLabel(wp), w, objectivePlacement);
     }
+
+    // Edge ticks: keyed marks pinned to the frame edge in the true direction of anything
+    // important outside the view. Each is a live click target (inspect without panning).
+    for (const tick of edgeTicks) {
+      drawEdgeTick(g, tick.x, tick.y, tick.color, tick.shape);
+      if (tick.target && tick.target.kind) {
+        this._clickTargets.push({
+          ...tick.target,
+          sx: tick.x,
+          sy: tick.y,
+          radiusPx: 13,
+          edgeTick: true,
+        });
+      }
+    }
   },
 };
 
@@ -4292,10 +5410,10 @@ function drawUniqueWreckBearingMarker(g, x, y, radiusPx, options = {}) {
   const fixed = options.fixed === true;
   const salvaged = options.phase === 'salvaged';
   const selected = options.selected === true;
-  const color = salvaged ? 'rgba(230,191,106,0.58)' : '#e6bf6a';
+  const color = salvaged ? hexToRgba(INK.gold, 0.58) : INK.gold;
   g.save();
   g.strokeStyle = color;
-  g.fillStyle = salvaged ? 'rgba(230,191,106,0.08)' : 'rgba(230,191,106,0.11)';
+  g.fillStyle = salvaged ? hexToRgba(INK.gold, 0.08) : hexToRgba(INK.gold, 0.11);
 
   if (!fixed) {
     const rr = Math.max(12, Math.min(Math.abs(Number(radiusPx) || 0), 4096));
@@ -4328,6 +5446,249 @@ function drawUniqueWreckBearingMarker(g, x, y, radiusPx, options = {}) {
   g.restore();
 }
 
+// ---------------------------------------------------------------------------------------------
+// Keyed silhouettes — the survey table's glyph language. Constant screen size, stroke-drawn,
+// deterministic. Each object class reads at a glance: brass plate = station, teal ring = gate,
+// amber cross = point of interest, chevron = ship, open red diamond = hostile, rock = asteroid.
+// ---------------------------------------------------------------------------------------------
+
+/** Station: chamfered brass plate with a center pip — a building, never a dot. */
+function drawStationMark(g, x, y) {
+  const s = 5.5;
+  const c = 1.8;
+  g.save();
+  g.fillStyle = hexToRgba(INK.brass, 0.18);
+  g.strokeStyle = INK.brass;
+  g.lineWidth = 1.4;
+  g.beginPath();
+  g.moveTo(x - s + c, y - s);
+  g.lineTo(x + s - c, y - s);
+  g.lineTo(x + s, y - s + c);
+  g.lineTo(x + s, y + s - c);
+  g.lineTo(x + s - c, y + s);
+  g.lineTo(x - s + c, y + s);
+  g.lineTo(x - s, y + s - c);
+  g.lineTo(x - s, y - s + c);
+  g.closePath();
+  g.fill(); g.stroke();
+  g.fillStyle = INK.brass;
+  g.beginPath(); g.arc(x, y, 1.4, 0, Math.PI * 2); g.fill();
+  g.restore();
+}
+
+/** Gate: open teal ring with a radial tick — a door that points somewhere. */
+function drawGateMark(g, x, y, angle = 0) {
+  g.save();
+  g.strokeStyle = INK.teal;
+  g.lineWidth = 1.5;
+  g.beginPath(); g.arc(x, y, 5.5, 0, Math.PI * 2); g.stroke();
+  const ax = Math.cos(angle), ay = Math.sin(angle);
+  g.lineWidth = 1.8;
+  g.beginPath();
+  g.moveTo(x + ax * 5.5, y + ay * 5.5);
+  g.lineTo(x + ax * 9, y + ay * 9);
+  g.stroke();
+  g.fillStyle = hexToRgba(INK.teal, 0.9);
+  g.beginPath(); g.arc(x, y, 1.3, 0, Math.PI * 2); g.fill();
+  g.restore();
+}
+
+/** Point of interest: a small amber survey cross. */
+function drawPoiMark(g, x, y) {
+  g.save();
+  g.strokeStyle = INK.amber;
+  g.lineWidth = 1.4;
+  g.beginPath();
+  g.moveTo(x - 4, y); g.lineTo(x + 4, y);
+  g.moveTo(x, y - 4); g.lineTo(x, y + 4);
+  g.stroke();
+  g.restore();
+}
+
+/** Neutral ship: a heading chevron in quiet ink. */
+function drawShipChevron(g, x, y, rot, color) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(Math.PI + (rot || 0));
+  g.fillStyle = color || INK.ink1;
+  g.beginPath();
+  g.moveTo(5, 0); g.lineTo(-4, -3.2); g.lineTo(-2.4, 0); g.lineTo(-4, 3.2);
+  g.closePath(); g.fill();
+  g.restore();
+}
+
+/** Hostile: a red open diamond, rotated to heading — threat reads before color-blind shape. */
+function drawHostileMark(g, x, y, rot) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(Math.PI + (rot || 0));
+  g.strokeStyle = INK.red;
+  g.fillStyle = hexToRgba(INK.red, 0.16);
+  g.lineWidth = 1.5;
+  g.beginPath();
+  g.moveTo(5.5, 0); g.lineTo(0, -4); g.lineTo(-5.5, 0); g.lineTo(0, 4);
+  g.closePath();
+  g.fill(); g.stroke();
+  g.restore();
+}
+
+/** Asteroid: a deterministic irregular polygon keyed by id — a rock, never a circle. */
+function drawAsteroidMark(g, x, y, seedId) {
+  const seed = cosmeticHash01(String(seedId || 'rock'));
+  const verts = 5 + Math.floor(seed * 3);
+  g.save();
+  g.fillStyle = 'rgba(142, 134, 117, 0.55)';
+  g.strokeStyle = 'rgba(142, 134, 117, 0.85)';
+  g.lineWidth = 0.8;
+  g.beginPath();
+  for (let i = 0; i < verts; i += 1) {
+    const a = (i / verts) * Math.PI * 2 + seed * Math.PI;
+    const r = 2.4 + cosmeticHash01(String(seedId) + ':' + i) * 1.8;
+    const vx = x + Math.cos(a) * r;
+    const vy = y + Math.sin(a) * r;
+    if (i === 0) g.moveTo(vx, vy);
+    else g.lineTo(vx, vy);
+  }
+  g.closePath();
+  g.fill(); g.stroke();
+  g.restore();
+}
+
+/** Edge tick: a small keyed tab pinned to the frame for an important off-view object. */
+function drawEdgeTick(g, x, y, color, shape) {
+  g.save();
+  g.strokeStyle = color;
+  g.fillStyle = hexToRgba(color, 0.16);
+  g.lineWidth = 1.3;
+  if (shape === 'gate') {
+    g.beginPath(); g.arc(x, y, 4, 0, Math.PI * 2); g.stroke();
+  } else if (shape === 'station') {
+    const s = 3.4;
+    g.beginPath();
+    g.moveTo(x - s + 1, y - s); g.lineTo(x + s - 1, y - s); g.lineTo(x + s, y - s + 1);
+    g.lineTo(x + s, y + s - 1); g.lineTo(x + s - 1, y + s); g.lineTo(x - s + 1, y + s);
+    g.lineTo(x - s, y + s - 1); g.lineTo(x - s, y - s + 1);
+    g.closePath(); g.fill(); g.stroke();
+  } else if (shape === 'claim') {
+    g.beginPath();
+    g.moveTo(x, y - 4.4); g.lineTo(x + 4.4, y); g.lineTo(x, y + 4.4); g.lineTo(x - 4.4, y);
+    g.closePath(); g.fill(); g.stroke();
+  } else if (shape === 'waypoint') {
+    g.beginPath();
+    g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y);
+    g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.arc(x, y, 7, 0, Math.PI * 2); g.stroke();
+  } else if (shape === 'bearing') {
+    g.setLineDash([2, 2]);
+    g.beginPath(); g.arc(x, y, 4.4, 0, Math.PI * 2); g.stroke();
+    g.setLineDash([]);
+  } else {
+    // hostile / contact: open diamond
+    g.beginPath();
+    g.moveTo(x + 4.4, y); g.lineTo(x, y - 3.2); g.lineTo(x - 4.4, y); g.lineTo(x, y + 3.2);
+    g.closePath(); g.fill(); g.stroke();
+  }
+  g.restore();
+}
+
+/** Service pictograms under stations: tiny stroke icons sharing the DOM chip language. */
+function drawServicePictograms(g, cx, cy, services) {
+  if (!g || !services || !services.length) return;
+  const size = 10;
+  const gap = 2;
+  const totalW = services.length * size + (services.length - 1) * gap;
+  let x = cx - totalW / 2 + size / 2;
+  g.save();
+  for (const svc of services) {
+    g.strokeStyle = 'rgba(86, 187, 178, 0.55)';
+    g.fillStyle = INK.plateHard;
+    g.lineWidth = 0.8;
+    g.beginPath(); g.rect(x - size / 2, cy - size / 2, size, size); g.fill(); g.stroke();
+    drawServicePictogram(g, svc, x, cy, 3.4, INK.teal);
+    x += size + gap;
+  }
+  g.restore();
+}
+
+/** One service pictogram, canvas twin of the DOM chip SVGs. */
+function drawServicePictogram(g, svc, x, y, r, color) {
+  const key = String(svc || '').toLowerCase();
+  g.save();
+  g.strokeStyle = color;
+  g.fillStyle = color;
+  g.lineWidth = 1;
+  switch (key) {
+    case 'trade':
+      g.beginPath(); g.arc(x, y, r * 0.8, 0, Math.PI * 2); g.stroke();
+      g.beginPath(); g.moveTo(x, y - r * 0.45); g.lineTo(x, y + r * 0.45); g.stroke();
+      break;
+    case 'shipyard':
+      g.beginPath();
+      g.moveTo(x - r, y + r * 0.6); g.lineTo(x - r, y - r * 0.4); g.lineTo(x, y - r);
+      g.lineTo(x + r, y - r * 0.4); g.lineTo(x + r, y + r * 0.6);
+      g.stroke();
+      break;
+    case 'repair':
+      g.beginPath(); g.moveTo(x - r * 0.7, y + r * 0.7); g.lineTo(x + r * 0.7, y - r * 0.7); g.stroke();
+      g.beginPath(); g.arc(x + r * 0.55, y - r * 0.55, r * 0.4, 0, Math.PI * 2); g.stroke();
+      break;
+    case 'refuel':
+      g.beginPath();
+      g.moveTo(x, y - r);
+      g.lineTo(x + r * 0.7, y + r * 0.3);
+      g.arc(x, y + r * 0.3, r * 0.7, 0, Math.PI, false);
+      g.closePath(); g.stroke();
+      break;
+    case 'refine':
+      g.beginPath();
+      g.moveTo(x - r, y - r * 0.5); g.lineTo(x + r, y - r * 0.5); g.lineTo(x + r * 0.4, y + r); g.lineTo(x - r * 0.4, y + r);
+      g.closePath(); g.stroke();
+      break;
+    case 'missions':
+      g.beginPath();
+      g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y);
+      g.closePath(); g.stroke();
+      break;
+    case 'ore_buy':
+      g.beginPath();
+      for (let i = 0; i < 6; i += 1) {
+        const a = (i / 6) * Math.PI * 2 - Math.PI / 6;
+        const vx = x + Math.cos(a) * r * 0.9;
+        const vy = y + Math.sin(a) * r * 0.9;
+        if (i === 0) g.moveTo(vx, vy);
+        else g.lineTo(vx, vy);
+      }
+      g.closePath(); g.stroke();
+      break;
+    case 'black_market':
+      g.beginPath();
+      g.moveTo(x - r, y - r * 0.6); g.lineTo(x + r, y - r * 0.6); g.lineTo(x, y + r);
+      g.closePath(); g.stroke();
+      break;
+    case 'module_craft':
+      g.beginPath(); g.rect(x - r * 0.8, y - r * 0.8, r * 1.6, r * 1.6); g.stroke();
+      g.beginPath();
+      g.moveTo(x, y - r * 0.45); g.lineTo(x, y + r * 0.45);
+      g.moveTo(x - r * 0.45, y); g.lineTo(x + r * 0.45, y);
+      g.stroke();
+      break;
+    case 'scan':
+      g.beginPath(); g.arc(x, y, r * 0.7, 0, Math.PI * 2); g.stroke();
+      g.beginPath();
+      g.moveTo(x, y - r); g.lineTo(x, y - r * 0.4);
+      g.moveTo(x, y + r * 0.4); g.lineTo(x, y + r);
+      g.moveTo(x - r, y); g.lineTo(x - r * 0.4, y);
+      g.moveTo(x + r * 0.4, y); g.lineTo(x + r, y);
+      g.stroke();
+      break;
+    default:
+      g.font = FONT_MONO(700, 7);
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(String(key || '?')[0].toUpperCase(), x, y + 0.5);
+  }
+  g.restore();
+}
+
 // glyph helpers
 function hazardTypeGlyph(type) {
   switch (type) {
@@ -4350,43 +5711,6 @@ function asteroidOreGlyph(typeId) {
   }
 }
 
-function serviceGlyph(service) {
-  switch (String(service || '').toLowerCase()) {
-    case 'trade': return '$';
-    case 'shipyard': return '⚙';
-    case 'refuel': return '⛽';
-    case 'repair': return '🔧';
-    case 'missions': return '!';
-    case 'ore_buy': return '◈';
-    case 'refine': return '♨';
-    case 'black_market': return '⚠';
-    case 'module_craft': return '✚';
-    case 'toll': return 'T';
-    case 'scan': return 'S';
-    default: return String(service || '?')[0].toUpperCase();
-  }
-}
-
-function drawServiceGlyphs(g, cx, cy, services) {
-  if (!g || !services || !services.length) return;
-  const size = 10, gap = 3;
-  const totalW = services.length * size + (services.length - 1) * gap;
-  let x = cx - totalW / 2 + size / 2;
-  g.save();
-  g.font = 'bold 8px sans-serif';
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  for (const svc of services) {
-    g.fillStyle = 'rgba(4,8,16,0.85)';
-    g.strokeStyle = 'rgba(57,208,255,0.45)';
-    g.beginPath(); g.rect(x - size / 2, cy - size / 2, size, size); g.fill(); g.stroke();
-    g.fillStyle = '#cfe3ff';
-    g.fillText(serviceGlyph(svc), x, cy + 0.5);
-    x += size + gap;
-  }
-  g.restore();
-}
-
 function hexToRgba(hex, alpha) {
   const s = String(hex || '').replace('#', '');
   if (s.length !== 6) return 'rgba(136,153,170,' + alpha + ')';
@@ -4403,7 +5727,7 @@ function makeMapLabelCandidate(g, candidate) {
   let width = 0;
   if (g && g.measureText) {
     g.save();
-    g.font = 'bold 9px monospace';
+    g.font = FONT_MONO(700, 9);
     for (const line of lines) width = Math.max(width, g.measureText(line).width);
     g.restore();
   } else {
@@ -4423,10 +5747,10 @@ function drawMapLabelBlock(g, placement) {
   const lines = Array.isArray(placement.lines) && placement.lines.length
     ? placement.lines
     : [placement.text];
-  const color = placement.color || '#d7e6ff';
+  const color = placement.color || INK.ink0;
   g.save();
-  g.fillStyle = placement.objective ? 'rgba(4,8,16,0.96)' : 'rgba(4,8,16,0.88)';
-  g.strokeStyle = placement.objective ? '#ffffff' : hexToRgba(color, 0.52);
+  g.fillStyle = placement.objective ? INK.plateHard : INK.plate;
+  g.strokeStyle = placement.objective ? 'rgba(237, 232, 216, 0.9)' : hexToRgba(color, 0.55);
   g.lineWidth = placement.objective ? 1.4 : 1;
   g.beginPath();
   g.rect(placement.x, placement.y, placement.width, placement.height);
@@ -4435,12 +5759,12 @@ function drawMapLabelBlock(g, placement) {
   g.textAlign = 'left';
   g.textBaseline = 'top';
   for (let index = 0; index < lines.length; index += 1) {
-    g.font = index === 0 ? 'bold 9px monospace' : '8px monospace';
+    g.font = index === 0 ? FONT_MONO(700, 9) : FONT_MONO(400, 8);
     g.fillStyle = index === 0
       ? color
       : (index === lines.length - 1 && placement.secondaryColor
         ? placement.secondaryColor
-        : 'rgba(155,177,208,0.82)');
+        : 'rgba(179, 175, 162, 0.85)');
     g.fillText(lines[index], placement.x + 5, placement.y + 3 + index * 11);
   }
   g.restore();
@@ -4458,10 +5782,10 @@ function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity) {
   g.save();
   // Dark acquisition plate + filled amber diamond + white keyline: high salience without a rest
   // pulse or permanent bloom. Context nodes remain smaller and never get the white keyline.
-  g.fillStyle = 'rgba(4,8,16,0.9)';
+  g.fillStyle = INK.plateHard;
   g.beginPath(); g.arc(x, y, 18, 0, Math.PI * 2); g.fill();
-  g.fillStyle = '#ffb35c';
-  g.strokeStyle = '#ffffff';
+  g.fillStyle = INK.amberHot;
+  g.strokeStyle = 'rgba(237, 232, 216, 0.95)';
   g.lineWidth = 2;
   g.beginPath();
   g.moveTo(x, y - 11);
@@ -4471,20 +5795,20 @@ function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity) {
   g.closePath();
   g.fill();
   g.stroke();
-  g.strokeStyle = '#ffb35c';
+  g.strokeStyle = INK.amberHot;
   g.lineWidth = 2;
   g.beginPath(); g.arc(x, y, 16, 0, Math.PI * 2); g.stroke();
-  g.font = 'bold 10px monospace';
+  g.font = FONT_MONO(700, 10);
   g.textAlign = 'left';
   g.textBaseline = 'middle';
   const width = g.measureText ? g.measureText(text).width : 0;
   const labelX = Number.isFinite(viewportWidth)
     ? clampMapLabelX(width, x + 21, viewportWidth, 8)
     : x + 21;
-  g.strokeStyle = 'rgba(4,8,16,0.95)';
+  g.strokeStyle = INK.plateHard;
   g.lineWidth = 4;
   g.strokeText(text, labelX, y);
-  g.fillStyle = '#ffb35c';
+  g.fillStyle = INK.amberHot;
   g.fillText(text, labelX, y);
   g.restore();
 }
@@ -4492,10 +5816,8 @@ function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity) {
 function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacement = null) {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return;
   g.save();
-  g.strokeStyle = '#ffb35c';
-  g.fillStyle = 'rgba(255,179,92,0.22)';
-  g.shadowColor = '#ffb35c';
-  g.shadowBlur = 8;
+  g.strokeStyle = INK.amberHot;
+  g.fillStyle = hexToRgba(INK.amberHot, 0.22);
   g.lineWidth = 2;
   g.beginPath();
   g.moveTo(x, y - 8);
@@ -4505,17 +5827,16 @@ function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacemen
   g.closePath();
   g.fill();
   g.stroke();
-  g.shadowBlur = 0;
   g.beginPath();
   g.arc(x, y, 13, 0, Math.PI * 2);
-  g.strokeStyle = 'rgba(255,179,92,0.88)';
+  g.strokeStyle = hexToRgba(INK.amberHot, 0.88);
   g.lineWidth = 1;
   g.stroke();
-  g.strokeStyle = '#ffffff';
+  g.strokeStyle = 'rgba(237, 232, 216, 0.9)';
   g.lineWidth = 1;
   g.stroke();
-  g.fillStyle = '#ffb35c';
-  g.font = 'bold 10px monospace';
+  g.fillStyle = INK.amberHot;
+  g.font = FONT_MONO(700, 10);
   g.textAlign = 'left';
   g.textBaseline = 'middle';
   if (!labelPlacement) {
@@ -4523,7 +5844,7 @@ function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacemen
     const labelX = Number.isFinite(viewportWidth)
       ? clampMapLabelX(textWidth, x + 12, viewportWidth, 8)
       : x + 12;
-    g.strokeStyle = 'rgba(4,8,16,0.9)';
+    g.strokeStyle = INK.plateHard;
     g.lineWidth = 3;
     g.strokeText(label, labelX, y);
     g.fillText(label, labelX, y);

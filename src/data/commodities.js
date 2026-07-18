@@ -48,6 +48,11 @@ export const COMMODITIES = [
   { id: 'cmdty_polymers',           name: 'Polymers',              category: 'refined',   basePrice: 70,  volatility: 0.24, elasticity: 0.40, legality: 'legal',      volPerU: 1.2, massPerU: 0.7, fineMult: 0,   producedBy: ['refinery'],                       consumedBy: ['fab','trade_hub'] },
   { id: 'cmdty_fuel_cells',         name: 'Fuel Cells',            category: 'refined',   basePrice: 95,  volatility: 0.26, elasticity: 0.50, legality: 'legal',      volPerU: 0.8, massPerU: 0.6, fineMult: 0,   producedBy: ['refinery'],                       consumedBy: ['trade_hub','military','mining'] },
 
+  // --- SITE INDUSTRY (asteroid-site chain; design/ASTEROID_SITES_BRIEF.md) ---
+  { id: 'cmdty_purified_silica',    name: 'Purified Silica',       category: 'refined',   basePrice: 45,  volatility: 0.24, elasticity: 0.42, legality: 'legal',      volPerU: 0.8, massPerU: 0.9, fineMult: 0,   producedBy: ['refinery','fab'],                 consumedBy: ['fab','research'] },
+  { id: 'cmdty_regocrete',          name: 'Regocrete',             category: 'component', basePrice: 30,  volatility: 0.18, elasticity: 0.35, legality: 'legal',      volPerU: 1.5, massPerU: 1.8, fineMult: 0,   producedBy: ['fab','trade_hub'],                consumedBy: ['mining','fab'] },
+  { id: 'cmdty_control_unit',       name: 'Machine Control Unit',  category: 'tech',      basePrice: 450, volatility: 0.30, elasticity: 0.45, legality: 'legal',      volPerU: 1.2, massPerU: 0.8, fineMult: 0,   producedBy: ['fab','trade_hub'],                consumedBy: ['mining','fab'] },
+
   // --- COMPONENT ---
   { id: 'cmdty_comp_hullplate',     name: 'Hull Plate',            category: 'component', basePrice: 165, volatility: 0.28, elasticity: 0.40, legality: 'legal',      volPerU: 0.7, massPerU: 1.0, fineMult: 0,   producedBy: ['fab','refinery'],                 consumedBy: ['military','fab'] },
   { id: 'cmdty_comp_circuitry',     name: 'Circuitry',             category: 'component', basePrice: 200, volatility: 0.36, elasticity: 0.40, legality: 'legal',      volPerU: 0.6, massPerU: 0.3, fineMult: 0,   producedBy: ['fab'],                            consumedBy: ['research','military'] },

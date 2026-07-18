@@ -891,9 +891,21 @@ function initShippedAutoTargetSystems(state, bus) {
     bus,
     helpers: { raycastToPlane: (ndc) => ({ x: ndc.x * 300, z: ndc.y * 300 }) },
   });
-  inputSys._screen = { x: 520, y: 200, active: true };
-  inputSys._ndc = { x: 0.3, y: 1 / 3 };
+  inputSys._screen = { x: 400, y: 300, active: true };
+  inputSys._ndc = { x: 0, y: 0 };
   inputSys._autoTargetPointerMode = true;
+  const player = state.entities.get(state.playerId);
+  state.input.autoTargetPath = {
+    active: true,
+    drawing: false,
+    cursorX: 460,
+    cursorY: 220,
+    pointIndex: 1,
+    points: [
+      { x: player.pos.x, z: player.pos.z },
+      { x: player.pos.x + 180, z: player.pos.z + 240 },
+    ],
+  };
   inputSys._lastKbmMs = performance.now();
   inputSys._keys = Object.create(null);
   const assistSys = Object.create(autoTargetAssist);
@@ -1024,21 +1036,25 @@ function checkAutoTargetInputSteersShipAndAimsHostile() {
       'auto-target aimAngle should track the locked hostile, not the cursor');
     assert(Math.abs(wrapAngle(state.input.aimAngle - cursorAngle)) > 0.5,
       'auto-target aimAngle must diverge from cursor bearing when hostile is elsewhere');
-    assert(Math.abs(state.input.turnIntent) > 0.01,
-      'auto-target should publish non-zero ship-local yaw from horizontal stick deflection');
-    assert(state.input.moveZ > 0.01,
-      'auto-target should publish forward thrust from upward stick deflection');
+    assert(state.input.autoTargetPath.active,
+      'auto-target should retain the drawn camera-projected world route');
+    assert(state.input.moveX > 0.01 && state.input.moveZ > 0.01,
+      'a top-right flick should request both +Z lateral and +X forward thrust while facing +X');
+    assert(state.input.turnIntent > 0.01,
+      'auto-target should turn the nose toward the requested world travel heading');
     assert.equal(emits.filter((e) => e.event === 'ui:targetNearestHostileToCursor').length, 0,
       'shipped auto-target tick must never emit cursor-nearest refresh');
 
     state.input.turnIntent = 0.8;
     runShippedAutoTargetTick(state, 1 / 60, ctx);
-    assert.equal(state.input.turnIntent, state.input.autoTargetStick.x,
-      'auto-target joystick must override keyboard yaw with its horizontal local axis');
-    assert.equal(state.input.moveZ, state.input.autoTargetStick.y,
-      'auto-target joystick must drive throttle with its vertical local axis');
+    const routeTarget = state.input.autoTargetPath.points[state.input.autoTargetPath.pointIndex];
+    const routeLength = Math.hypot(routeTarget.x - player.pos.x, routeTarget.z - player.pos.z);
+    assert(Math.abs(state.input.moveZ - (routeTarget.x - player.pos.x) / routeLength) < 1e-9,
+      'world +X route component must decompose to forward thrust for a ship facing +X');
+    assert(Math.abs(state.input.moveX - (routeTarget.z - player.pos.z) / routeLength) < 1e-9,
+      'world +Z route component must decompose to lateral thrust for a ship facing +X');
 
-    console.log(`[PASS] shipped-auto-target-input aimAngle=${state.input.aimAngle.toFixed(3)} turnIntent=${state.input.turnIntent.toFixed(3)} moveZ=${state.input.moveZ.toFixed(3)} hostileAim=${hostileAim.toFixed(3)} stick=${state.input.autoTargetStick.magnitude.toFixed(3)}`);
+    console.log(`[PASS] shipped-auto-target-input aimAngle=${state.input.aimAngle.toFixed(3)} turnIntent=${state.input.turnIntent.toFixed(3)} move=(${state.input.moveX.toFixed(3)},${state.input.moveZ.toFixed(3)}) hostileAim=${hostileAim.toFixed(3)} routePoints=${state.input.autoTargetPath.points.length}`);
   } finally {
     restoreBrowserStubs(saved);
   }

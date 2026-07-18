@@ -4,6 +4,7 @@
 // pickMasslineAutoTarget() below consumes the pure scorer from masslineTargetScoring.js.
 import { solveLeadAngle } from '../systems/weapons.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { wrapAngle } from '../core/rng.js';
 import { rankMasslineTargets } from './masslineTargetScoring.js';
 
 export const AUTO_TARGET_REFRESH_S = 0.12;
@@ -11,6 +12,11 @@ export const AUTO_TARGET_REFRESH_S = 0.12;
 // tether latches onto anything physical. Weapons-only targeting stays hostiles-only elsewhere.
 const MASSLINE_CANDIDATE_TYPES = new Set(['ship', 'drone', 'asteroid']);
 const RETICLE_EDGE_MARGIN = 28;
+const AUTO_TARGET_HEADING_SOFT_ANGLE = 0.42;
+const AUTO_TARGET_PATH_POINT_RADIUS = 20;
+const AUTO_TARGET_PATH_ARRIVAL_RADIUS = 18;
+const AUTO_TARGET_PATH_FULL_THRUST_DISTANCE = 100;
+const AUTO_TARGET_PATH_SETTLE_SPEED = 8;
 
 export function createAutoTargetRuntime() {
   return { refreshT: 0 };
@@ -28,7 +34,7 @@ export function toggleAutoTarget(state, bus, runtime = createAutoTargetRuntime()
   }
   if (bus) {
     bus.emit('toast', {
-      text: inp.autoFire ? 'Auto-target ON · trackpad joystick' : 'Auto-target OFF',
+      text: inp.autoFire ? 'Auto-target ON · draw to fly' : 'Auto-target OFF',
       kind: 'info',
       ttl: 2,
     });
@@ -92,13 +98,37 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
     inp.aimWorld.z = leadPt.z;
   }
 
-  // Auto-target owns weapon aim only. The captured trackpad is a ship-local joystick: horizontal
-  // deflection is yaw, vertical deflection is forward/reverse thrust. Neither axis depends on the
-  // target, cursor raycast, camera, or current ship heading.
-  const stick = inp.autoTargetStick;
-  if (stick && stick.active) {
-    if (Number.isFinite(stick.x)) inp.turnIntent = Math.max(-1, Math.min(1, stick.x));
-    if (Number.isFinite(stick.y)) inp.moveZ = Math.max(-1, Math.min(1, stick.y));
+  // Auto-target owns weapon aim independently from flight. Relative trackpad motion draws a short
+  // world-space route that survives finger lift. Following a position path gives every gesture a
+  // visible endpoint, lets curves retain their shape, and prevents an unfinished yaw-rate command
+  // from turning into unexplained spin.
+  const pathApplied = followAutoTargetPath(inp, player);
+
+  // Transitional fallback for non-pointer callers that still publish a direct world vector.
+  const vector = inp.autoTargetVector;
+  if (!pathApplied && vector && vector.active) {
+    const rawX = Number.isFinite(vector.worldX) ? vector.worldX : 0;
+    const rawZ = Number.isFinite(vector.worldZ) ? vector.worldZ : 0;
+    const length = Math.hypot(rawX, rawZ);
+    const magnitude = Math.max(0, Math.min(1,
+      Number.isFinite(vector.magnitude) ? vector.magnitude : length));
+    if (length > 1e-6 && magnitude > 0) {
+      const worldX = rawX / length;
+      const worldZ = rawZ / length;
+      const rot = Number.isFinite(player.rot) ? player.rot : 0;
+      const forwardX = Math.cos(rot);
+      const forwardZ = Math.sin(rot);
+      const rightX = -forwardZ;
+      const rightZ = forwardX;
+      inp.moveZ = Math.max(-1, Math.min(1,
+        (worldX * forwardX + worldZ * forwardZ) * magnitude));
+      inp.moveX = Math.max(-1, Math.min(1,
+        (worldX * rightX + worldZ * rightZ) * magnitude));
+      const desiredHeading = Math.atan2(worldZ, worldX);
+      const headingError = wrapAngle(desiredHeading - rot);
+      inp.turnIntent = Math.max(-1, Math.min(1,
+        headingError / AUTO_TARGET_HEADING_SOFT_ANGLE)) * magnitude;
+    }
   }
 
   runtime.refreshT = Math.max(0, (runtime.refreshT || 0) - dt);
@@ -106,6 +136,97 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
     runtime.refreshT = AUTO_TARGET_REFRESH_S;
     if (bus) bus.emit('ui:targetNearestHostileToPlayer', { quiet: true });
   }
+}
+
+function followAutoTargetPath(inp, player) {
+  const route = inp && inp.autoTargetPath;
+  if (!route || !route.active || !Array.isArray(route.points) || route.points.length < 2) return false;
+
+  const lastIndex = route.points.length - 1;
+  let index = Number.isFinite(route.pointIndex)
+    ? Math.max(1, Math.min(lastIndex, Math.floor(route.pointIndex)))
+    : 1;
+  let target = route.points[index];
+  let dx = finite(target && target.x) - finite(player.pos && player.pos.x);
+  let dz = finite(target && target.z) - finite(player.pos && player.pos.z);
+  let distance = Math.hypot(dx, dz);
+
+  while (index < lastIndex && (
+    distance <= AUTO_TARGET_PATH_POINT_RADIUS
+    || hasPassedRoutePoint(player.pos, route.points[index - 1], target)
+  )) {
+    index += 1;
+    target = route.points[index];
+    dx = finite(target && target.x) - finite(player.pos && player.pos.x);
+    dz = finite(target && target.z) - finite(player.pos && player.pos.z);
+    distance = Math.hypot(dx, dz);
+  }
+  route.pointIndex = index;
+
+  const speed = Math.hypot(finite(player.vel && player.vel.x), finite(player.vel && player.vel.z));
+  const finalPoint = index >= lastIndex;
+  if (finalPoint && distance <= AUTO_TARGET_PATH_ARRIVAL_RADIUS && speed < AUTO_TARGET_PATH_SETTLE_SPEED) {
+    route.active = false;
+    route.drawing = false;
+    inp.moveX = 0;
+    inp.moveZ = 0;
+    inp.turnIntent = 0;
+    inp.brake = false;
+    if (inp.actions) inp.actions.brake = false;
+    return true;
+  }
+
+  const directionLength = Math.max(distance, 1e-6);
+  const pathX = dx / directionLength;
+  const pathZ = dz / directionLength;
+  const stoppingWindow = Math.max(42, speed * 1.15);
+  const braking = finalPoint && speed > 4 && distance < stoppingWindow;
+  let commandX = pathX;
+  let commandZ = pathZ;
+  let magnitude = finalPoint
+    ? Math.max(0.22, Math.min(1, distance / AUTO_TARGET_PATH_FULL_THRUST_DISTANCE))
+    : 1;
+  if (braking) {
+    commandX = -finite(player.vel && player.vel.x) / Math.max(speed, 1e-6);
+    commandZ = -finite(player.vel && player.vel.z) / Math.max(speed, 1e-6);
+    magnitude = Math.max(0.35, Math.min(1, speed / 32));
+  }
+
+  applyWorldFlightCommand(inp, player, commandX, commandZ, magnitude, pathX, pathZ);
+  inp.brake = braking;
+  if (inp.actions) inp.actions.brake = braking;
+  return true;
+}
+
+function hasPassedRoutePoint(position, previous, target) {
+  if (!position || !previous || !target) return false;
+  const segmentX = finite(target.x) - finite(previous.x);
+  const segmentZ = finite(target.z) - finite(previous.z);
+  const segmentLengthSq = segmentX * segmentX + segmentZ * segmentZ;
+  if (segmentLengthSq <= 1e-6) return true;
+  const playerX = finite(position.x) - finite(previous.x);
+  const playerZ = finite(position.z) - finite(previous.z);
+  return playerX * segmentX + playerZ * segmentZ >= segmentLengthSq;
+}
+
+function applyWorldFlightCommand(inp, player, worldX, worldZ, magnitude, headingX = worldX, headingZ = worldZ) {
+  const rot = finite(player.rot);
+  const forwardX = Math.cos(rot);
+  const forwardZ = Math.sin(rot);
+  const rightX = -forwardZ;
+  const rightZ = forwardX;
+  inp.moveZ = Math.max(-1, Math.min(1,
+    (worldX * forwardX + worldZ * forwardZ) * magnitude));
+  inp.moveX = Math.max(-1, Math.min(1,
+    (worldX * rightX + worldZ * rightZ) * magnitude));
+  const desiredHeading = Math.atan2(headingZ, headingX);
+  const headingError = wrapAngle(desiredHeading - rot);
+  inp.turnIntent = Math.max(-1, Math.min(1,
+    headingError / AUTO_TARGET_HEADING_SOFT_ANGLE));
+}
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
 }
 
 export function projectLockedReticle(state, w2s, viewport = {}) {

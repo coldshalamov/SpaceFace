@@ -69,34 +69,13 @@ function sortFocusFirst(list, focusId) {
   });
 }
 
-function attentionBannerHtml(attention) {
-  if (!attention) return '';
-  const kind = attention.kind || 'active';
-  const verb = kind === 'accept' ? 'ACCEPT'
-    : kind === 'turn_in' ? 'TURN IN'
-      : kind === 'pickup' ? 'LOAD / PICK UP'
-        : 'ACTIVE';
-  return (
-    `<div class="sx-ct__attention" data-attention-kind="${escapeHtml(kind)}" role="status">` +
-      `<span class="sx-ct__attention-pulse" aria-hidden="true"></span>` +
-      `<span class="sx-ct__attention-verb">${verb}</span>` +
-      `<span class="sx-ct__attention-body">` +
-        `<strong>${escapeHtml(attention.title || 'Mission')}</strong>` +
-        `<em>${escapeHtml(attention.reason || 'Needs attention at this berth')}</em>` +
-      `</span>` +
-    `</div>`
-  );
-}
-
 export function createContractsScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'sx-ct';
   el.innerHTML =
-    `<div class="sx-ct__attention-host" aria-live="polite"></div>` +
     `<nav class="sx-ct__board" aria-label="Available missions"></nav>` +
     `<section class="sx-ct__dossier" aria-live="polite"></section>` +
     `<aside class="sx-ct__active" aria-label="Active missions"></aside>`;
-  const attentionHost = el.querySelector('.sx-ct__attention-host');
   const boardEl = el.querySelector('.sx-ct__board');
   const dossierEl = el.querySelector('.sx-ct__dossier');
   const activeEl = el.querySelector('.sx-ct__active');
@@ -121,10 +100,6 @@ export function createContractsScreen(ctx) {
     return attention && attention.focusMissionId != null
       ? String(attention.focusMissionId)
       : (selectedId != null ? String(selectedId) : null);
-  }
-
-  function renderAttention() {
-    attentionHost.innerHTML = attentionBannerHtml(attention);
   }
 
   function renderBoard(state) {
@@ -262,13 +237,18 @@ export function createContractsScreen(ctx) {
               : (needs && attention.kind === 'pickup'
                 ? 'Starts here'
                 : (atDest ? 'Destination berth' : destName(m)));
+            const actionFlag = attention && attention.kind === 'turn_in' ? 'TURN IN'
+              : attention && attention.kind === 'pickup' ? 'PICK UP'
+                : 'ACTIVE';
             return (
               `<div class="sx-job${tracked ? ' is-tracked' : ''}${needs ? ' is-attention' : ''}" data-active-mid="${escapeHtml(id)}">` +
                 `<span class="sx-job__ic">${icon(TYPE_ICON[m.type] || 'contracts', 16)}</span>` +
                 `<span class="sx-job__body"><span class="sx-job__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
                   `<span class="sx-job__meta">${reward(m).toLocaleString('en-US')} cr · ${escapeHtml(status)}</span></span>` +
-                (needs ? `<span class="sx-job__flag">${attention.kind === 'turn_in' ? 'HERE' : 'ACT'}</span>` : '') +
-                `<button type="button" class="sx-job__track" data-track="${escapeHtml(id)}" title="${tracked ? 'Tracked' : 'Track this job'}">${tracked ? '◆' : '◇'}</button>` +
+                (needs ? `<span class="sx-job__flag">${actionFlag}</span>` : '') +
+                `<button type="button" class="sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}" title="${tracked ? 'Tracked mission' : 'Track this mission'}">` +
+                  `<span aria-hidden="true">${tracked ? '◆' : '◇'}</span><b>${tracked ? 'Tracked' : 'Track'}</b>` +
+                `</button>` +
               `</div>`
             );
           }).join('')
@@ -276,7 +256,6 @@ export function createContractsScreen(ctx) {
   }
 
   function renderAll(state) {
-    renderAttention();
     renderBoard(state);
     renderDossier(state);
     renderActive(state);

@@ -62,6 +62,10 @@ const BASELINE = [
   { id: 'cmdty_weapons', name: 'Weapon Systems', category: 'military', basePrice: 280, volatility: 0.40, elasticity: 0.48, legality: 'restricted', volPerU: 0.9, massPerU: 1.5, fineMult: 1.2, producedBy: ['military'], consumedBy: ['military', 'blackmarket'] },
   { id: 'cmdty_munitions', name: 'Munitions', category: 'military', basePrice: 115, volatility: 0.32, elasticity: 0.48, legality: 'restricted', volPerU: 0.6, massPerU: 1.1, fineMult: 0.8, producedBy: ['military', 'fab'], consumedBy: ['military', 'blackmarket'] },
   { id: 'cmdty_impulse_charge', name: 'Impulse Charge', category: 'military', basePrice: 180, volatility: 0.25, elasticity: 0.50, legality: 'restricted', volPerU: 2.0, massPerU: 2.0, fineMult: 1.0, producedBy: ['military', 'fab'], consumedBy: ['military', 'blackmarket'] },
+  // Asteroid-site industry chain (deliberate catalog extension, 2026-07-17 — design/ASTEROID_SITES_BRIEF.md).
+  { id: 'cmdty_purified_silica', name: 'Purified Silica', category: 'refined', basePrice: 45, volatility: 0.24, elasticity: 0.42, legality: 'legal', volPerU: 0.8, massPerU: 0.9, fineMult: 0, producedBy: ['refinery', 'fab'], consumedBy: ['fab', 'research'] },
+  { id: 'cmdty_regocrete', name: 'Regocrete', category: 'component', basePrice: 30, volatility: 0.18, elasticity: 0.35, legality: 'legal', volPerU: 1.5, massPerU: 1.8, fineMult: 0, producedBy: ['fab', 'trade_hub'], consumedBy: ['mining', 'fab'] },
+  { id: 'cmdty_control_unit', name: 'Machine Control Unit', category: 'tech', basePrice: 450, volatility: 0.30, elasticity: 0.45, legality: 'legal', volPerU: 1.2, massPerU: 0.8, fineMult: 0, producedBy: ['fab', 'trade_hub'], consumedBy: ['mining', 'fab'] },
 ];
 
 const EXPECTED_COMMODITY_COUNT = BASELINE.length;

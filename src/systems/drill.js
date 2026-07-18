@@ -337,6 +337,22 @@ function tileFor(col, row, rng) {
   };
 }
 
+/**
+ * Generate the full undrilled cross-section for a seed. Pure given the seed — this is the single
+ * source of truth for strata layout, shared by live drill sessions and the asteroid-site system
+ * (which regenerates fields from a site's frozen boreSeed to recompute machine contact rings
+ * without a live session). Uses the same mulberry32 stream as drill.begin() always has.
+ */
+export function generateDrillField(seed) {
+  const rng = drill._seededRng(seed);
+  const field = [];
+  for (let c = 0; c < COLS; c++) {
+    field[c] = [];
+    for (let r = 0; r < ROWS; r++) field[c][r] = tileFor(c, r, rng);
+  }
+  return field;
+}
+
 function recoverRig(d, dt) {
   d.drillTemp = Math.max(0, d.drillTemp - DRILL_HEAT_COOLING * dt);
   d.drillEnergy = Math.min(DRILL_ENERGY_MAX, d.drillEnergy + DRILL_ENERGY_RECOVERY * dt);
@@ -417,19 +433,18 @@ export const drill = {
     const data = ensureAsteroidDeepCore(ent && ent.data);
 
     // Time away heals budget (in _computeRockBudget) and slowly settles tunnels (here).
+    // Site-anchored rocks (Massline Core installed — asteroidSites.js) never settle: a permanent
+    // claim with machines inside must not heal shut around them.
     const now = Number(this.state.simTime) || 0;
     const lastT = Number(data && data.lastDrillT) || 0;
     const awayS = Number.isFinite(lastT) && now > lastT ? now - lastT : 0;
-    if (data) {
+    if (data && !data.siteId) {
       data.drillCleared = recoverClearedGeometry(data.drillCleared, awayS);
     }
 
-    const rng = this._seededRng(asteroidId);
-    const field = [];
-    for (let c = 0; c < COLS; c++) {
-      field[c] = [];
-      for (let r = 0; r < ROWS; r++) field[c][r] = tileFor(c, r, rng);
-    }
+    // Sites freeze their layout: data.boreSeed (stamped at core install) survives the asteroid
+    // entity re-rolling its id across sector visits, so the same interior comes back every time.
+    const field = generateDrillField((data && Number.isFinite(data.boreSeed)) ? data.boreSeed : asteroidId);
     // Carve an entry shaft at the surface center so the avatar always has a legal start cell.
     const startCol = Math.floor(COLS / 2);
     field[startCol][0] = EMPTY_TILE();
@@ -750,6 +765,24 @@ export const drill = {
     const cooldownVal = moveCooldownForLoad(loadFactor);
 
     const target = d.field[nc][nr];
+    // Installed site machines occupy hollow cells (asteroidSites.js stamps tile.structure on
+    // drill:start). They block the rover and the bore alike — removal goes through the build
+    // console, never the drill head.
+    if (target.type === 'empty' && target.structure) {
+      d.avatar.isDrilling = false;
+      d.avatar.drillTarget = { col: nc, row: nr };
+      d.avatar.drillBlocked = true;
+      recoverRig(d, dt);
+      if (d.moveCooldown <= 0) {
+        this.bus.emit('drill:warn', {
+          text: 'Machine housing ahead — dismantle it from the build console to reclaim the cell.',
+          reason: 'structure',
+          pos: { col: nc, row: nr },
+        });
+        d.moveCooldown = 1.0;
+      }
+      return;
+    }
     if (target.type === 'empty') {
       d.avatar.isDrilling = false;
       d.avatar.drillTarget = null;

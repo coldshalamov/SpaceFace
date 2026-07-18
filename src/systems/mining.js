@@ -206,6 +206,13 @@ export const mining = {
     const ast = state.entities.get(targetId);
     if (!ast || !ast.alive || ast.type !== 'asteroid') return 0;
     const d = ast.data || (ast.data = {});
+    // Core-anchored site rocks are beam-locked (ASTEROID_SITES_BRIEF §2): a developed asteroid
+    // moves cargo through its physical port, never back out through the mining laser. Destroying
+    // the rock would also orphan the machines inside it. asteroidSites.js stamps siteAnchored.
+    if (d.siteAnchored) {
+      this.bus.emit('mining:beamLocked', { asteroidId: ast.id, siteId: d.siteId || null });
+      return 0;
+    }
     this._ensureAsteroidSeams(ast);
 
     // Normalize ore-HP fields from whatever the spawner gave us (bootstrap uses oreHP/oreHPMax).

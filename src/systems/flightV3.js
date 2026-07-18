@@ -59,6 +59,7 @@ const AUTOPILOT_CAPTURE_ALIGNMENT = 0.58;
 const TETHER_HELM_MAX_YAW_RATE_MULT = 1.14;
 const TETHER_HELM_STRAIN_MULT = 1.75;
 const AUTO_TARGET_HELM_MULT = 1.5;
+const AUTO_TARGET_PATH_OVERDRIVE_MULT = 1.6;
 const TETHER_HELM_PHASE_MULT = Object.freeze({
   capture: 4.2,
   loaded: 6.0,
@@ -198,9 +199,13 @@ export const flightV3 = {
     let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer, dt);
     const helm = tetherHelmAuthority(state, isPlayer);
     const tetherProfile = helm.mult > 1 ? applyTetherHelmProfile(baseProfile, helm) : baseProfile;
-    const profile = isPlayer && state.input && state.input.autoFire
+    let profile = isPlayer && state.input && state.input.autoFire
       ? applyAutoTargetHelmProfile(tetherProfile)
       : tetherProfile;
+    if (isPlayer && state.input && state.input.autoFire
+      && state.input.autoTargetPath && state.input.autoTargetPath.active) {
+      profile = applyAutoTargetPathProfile(profile);
+    }
     let pursuit = null;
     let autopilot = null;
     if (isPlayer) {
@@ -1050,6 +1055,21 @@ export function applyAutoTargetHelmProfile(profile) {
     yawBrake: Number.isFinite(profile.yawBrake)
       ? profile.yawBrake * AUTO_TARGET_HELM_MULT
       : profile.yawBrake,
+  };
+}
+
+export function applyAutoTargetPathProfile(profile) {
+  const scale = (value) => Number.isFinite(value)
+    ? value * AUTO_TARGET_PATH_OVERDRIVE_MULT
+    : value;
+  return {
+    ...profile,
+    mainAccel: scale(profile.mainAccel),
+    strafeAccel: scale(profile.strafeAccel),
+    reverseAccel: scale(profile.reverseAccel),
+    maxSpeed: scale(profile.maxSpeed),
+    combatSpeed: scale(profile.combatSpeed),
+    precisionSpeed: scale(profile.precisionSpeed),
   };
 }
 

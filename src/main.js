@@ -176,6 +176,18 @@ async function boot() {
       const { runShipShot } = await import('./render/shipShot.js');
       setTimeout(() => { runShipShot({ state, registry, THREE }).catch((e) => console.error('[shipShot]', e)); }, 500);
     }
+    // Dev-only asteroid-interior LOOK LAB: renders the drill/works cutaway in the real 3D engine to
+    // judge congruence vs the flat Canvas2D playfield. Exposed as a callable so a capture harness can
+    // start a run first (for the baked nebula env), and auto-run on ?dev=astlab for hand inspection.
+    SF_DEBUG_ONLY: if (SF_DEBUG) {
+      window.SF = Object.assign(window.SF || {}, {
+        runAsteroidLab: () => import('./render/asteroidInteriorPreview.js')
+          .then((m) => m.runAsteroidInteriorLab({ state })).catch((e) => { console.error('[astlab]', e); return null; }),
+      });
+      if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'astlab') {
+        setTimeout(() => { window.SF.runAsteroidLab(); }, 800);
+      }
+    }
   } catch (err) {
     showBootError(err);
     throw err;

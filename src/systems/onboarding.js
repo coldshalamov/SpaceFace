@@ -1128,30 +1128,35 @@ export const onboarding = {
     const s = document.createElement('style');
     s.id = STYLE_ID;
     s.textContent = `
-    #${PANEL_ID} { position:absolute; left:16px; top:150px; width:306px; z-index:60; pointer-events:none;
-      font-family:var(--font, "Segoe UI", system-ui, sans-serif); }
-    /* Chromeless objective card — glowing left-edge marker, hard text-shadow, no panel. */
-    #${PANEL_ID} .sf-ob-card { padding:6px 0 6px 12px;
-      border-left:2px solid var(--accent, #39d0ff); box-shadow:-1px 0 8px -2px rgba(57,208,255,.4); }
-    #${PANEL_ID} .sf-ob-kicker { font-family:var(--mono,monospace); font-size:10px; letter-spacing:.22em;
-      text-transform:uppercase; color:var(--accent,#39d0ff); margin-bottom:5px; display:flex; justify-content:space-between;
-      text-shadow:var(--text-shadow-hard); }
-    #${PANEL_ID} .sf-ob-title { font-size:14px; color:#fff; font-weight:600; margin-bottom:5px; text-shadow:var(--text-shadow-hard); }
+    #${PANEL_ID} { position:relative; width:100%; z-index:60; pointer-events:none;
+      font-family:var(--hud-body, "IBM Plex Sans", "Segoe UI", system-ui, sans-serif); }
+    #ui-root > #${PANEL_ID} { position:absolute; left:20px; top:150px; width:340px; }
+    #${PANEL_ID} .sf-ob-card { padding:8px 10px 9px;
+      background:linear-gradient(108deg, rgba(17,25,36,.91), rgba(7,12,20,.78));
+      border:1px solid rgba(147,174,195,.24); border-top:2px solid rgba(131,206,216,.62); border-radius:2px;
+      box-shadow:0 10px 24px rgba(0,0,0,.22); }
+    #${PANEL_ID} .sf-ob-kicker { font:700 9px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.12em;
+      text-transform:uppercase; color:var(--hud-cyan,#83ced8); margin-bottom:4px; display:flex; justify-content:space-between;
+      text-shadow:none; }
+    #${PANEL_ID} .sf-ob-title { font-size:13px; color:var(--hud-paper,#e7edf5); font-weight:500; margin-bottom:4px; text-shadow:none; }
     #${PANEL_ID} .sf-ob-hint { font-size:12px; line-height:1.45; color:var(--text-secondary,#84a0c8); text-shadow:var(--text-shadow-hard); }
     #${PANEL_ID} .sf-ob-flavor { font-size:11.5px; line-height:1.45; color:var(--ink-mute,#6b7d99);
       font-style:italic; margin-top:7px; border-top:1px dashed rgba(132,160,200,.18); padding-top:6px; text-shadow:var(--text-shadow-hard); }
     #${PANEL_ID} .sf-ob-progress { margin-top:7px; font-family:var(--mono,monospace); font-size:11px; color:var(--accent-2,#7af7d0); }
-    #${PANEL_ID} .sf-ob-steps { display:flex; gap:5px; margin-top:9px; }
-    #${PANEL_ID} .sf-ob-dot { flex:1; height:3px; border-radius:2px; background:rgba(132,160,200,.25); }
-    #${PANEL_ID} .sf-ob-dot.done { background:var(--accent-2,#7af7d0); box-shadow:0 0 6px rgba(122,247,208,.5); }
-    #${PANEL_ID} .sf-ob-dot.curr { background:var(--accent,#39d0ff); box-shadow:0 0 6px rgba(57,208,255,.6); }
+    #${PANEL_ID} .sf-ob-steps { display:flex; gap:3px; margin-top:7px; }
+    #${PANEL_ID} .sf-ob-dot { flex:1; height:2px; border-radius:0; background:rgba(132,160,200,.2); }
+    #${PANEL_ID} .sf-ob-dot.done { background:#789da6; box-shadow:none; }
+    #${PANEL_ID} .sf-ob-dot.curr { background:var(--hud-cyan,#83ced8); box-shadow:0 0 4px rgba(131,206,216,.35); }
+    @media (max-width:760px), (max-height:620px) {
+      .sf-leftcontext > #${PANEL_ID} { left:auto !important; top:auto !important; width:100% !important; }
+    }
     `;
     document.head.appendChild(s);
   },
 
   _buildPanel() {
     if (this._panel) this._panel.remove();
-    const root = document.getElementById('ui-root') || document.body;
+    const root = document.querySelector('.sf-leftcontext') || document.getElementById('ui-root') || document.body;
     const el = document.createElement('div');
     el.id = PANEL_ID;
     el.setAttribute('role', 'region');
@@ -1183,7 +1188,8 @@ export const onboarding = {
     card.appendChild(body);
     card.appendChild(steps);
     el.appendChild(card);
-    root.appendChild(el);
+    if (root.classList && root.classList.contains('sf-leftcontext')) root.prepend(el);
+    else root.appendChild(el);
 
     this._panel = el;
     this._kickerLabelEl = kickerLabel;

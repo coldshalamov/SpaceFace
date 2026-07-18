@@ -148,6 +148,21 @@ export const COMMODITY_FLAVOR = {
     desc: 'Assembled modules: relays, boards, and harness bundles.',
     lore: 'Ceres trade standard means shelf-ready boxes. Military requisitions tag priority SKUs before retail lots list.',
   },
+  cmdty_purified_silica: {
+    displayName: 'Furnace-Grade Silica, Bore Standard',
+    desc: 'Vitrified silicate pucks, kiln-sealed against regolith dust.',
+    lore: 'Claim refineries fuse it from crushed matrix inside the rock. Meridian fabs print substrate from it without a second assay.',
+  },
+  cmdty_regocrete: {
+    displayName: 'Regocrete Castings, Claim Standard',
+    desc: 'Pressed regolith-and-metal structural blocks on pallet skids.',
+    lore: 'Every Ceres claim starts with a hold full of it. The ones that last learn to cast their own inside the rock.',
+  },
+  cmdty_control_unit: {
+    displayName: 'Sealed Machine Control Unit, Concord Pattern',
+    desc: 'One rated controller stack in a shock-isolated transit case.',
+    lore: 'The part no claim fabricates on day one. Concord outfitters price them knowing your extractor is a crate until it ships.',
+  },
   cmdty_quantum_cores: {
     displayName: 'Coherence Core, Reach Research Annex',
     desc: 'Stabilized quantum matrices in magnetically damped housings.',

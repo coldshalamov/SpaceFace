@@ -106,9 +106,8 @@ export function createFloatingText(ctx) {
     });
   });
   bus.on('loot:drop', (p) => { if (p && p.pos && p.credits > 0) spawn('+' + p.credits + ' cr', 'sf-ft--credits', p.pos.x, p.pos.z, null, { life: 1.4, vy: 36 }); });
-  // Phase 3/6: confirm a dash fired (violet, matches the boost bar) — only the player's, so a fleet
-  // of dashing NPCs doesn't spam text.
-  bus.on('ship:dash', (p) => { if (p && p.shipId === state.playerId) { const e = state.entities.get(p.shipId); if (e) spawn('DASH', 'sf-ft--dash', e.pos.x, e.pos.z, null, { life: 0.7, vy: 50 }); } });
+  // Dash feedback is pure world VFX (violet afterburner burst in render/vfx.js) — no floating
+  // "DASH" label; word-pop combat juice reads as arcade-corny for a thruster impulse.
 
   // ---- bounty / kill credits ----------------------------------------------------------------
   bus.on('entity:killed', (p) => {
@@ -226,7 +225,6 @@ function injectStyle() {
   .sf-ft--weak { color:#ffd24a; font-size:13px; font-weight:800; letter-spacing:.1em; text-shadow:0 0 9px rgba(255,200,60,.8),0 0 4px #000; }
   .sf-ft--ore { color:#7af7d0; }
   .sf-ft--credits { color:#ffd84a; font-size:15px; }
-  .sf-ft--dash { color:#c98cff; font-size:14px; letter-spacing:.18em; text-shadow:0 0 10px rgba(170,90,255,.8),0 0 4px #000; }
   .sf-ft--bounty { color:#ffd84a; font-size:18px; font-weight:900; letter-spacing:.06em;
     text-shadow:0 0 12px rgba(255,216,74,.7),0 0 4px #000; }
   .sf-ft--exotic { color:#c98cff; font-size:15px; text-shadow:0 0 8px rgba(170,90,255,.6),0 0 4px #000; }

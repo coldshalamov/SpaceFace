@@ -56,7 +56,10 @@ const SCREEN_MODULES = [
   { path: './screens/localmap.js', load: () => import('./screens/localmap.js'), name: 'localmapScreen' },
   { path: './screens/techTree.js', load: () => import('./screens/techTree.js'), name: 'techTreeScreen' },
   { path: './screens/automationPanel.js', load: () => import('./screens/automationPanel.js'), name: 'automationScreen' },
-  { path: './screens/drill.js', load: () => import('./screens/drill.js'), name: 'drillScreen' },
+  // Asteroid works: the drill lens grown into the site-engineering surface (screen id stays
+  // 'drill'; src/ui/asteroid/ supersedes screens/drill.js as the live module — that file remains
+  // for its exported input-controller/particle helpers and checks, like stationHub before it).
+  { path: './asteroid/asteroidScreen.js', load: () => import('./asteroid/asteroidScreen.js'), name: 'asteroidScreen' },
   { path: './screens/base.js', load: () => import('./screens/base.js'), name: 'baseScreen' },
   { path: './screens/mainMenu.js', load: () => import('./screens/mainMenu.js'), name: 'mainMenuScreen' },
   { path: './screens/newGame.js', load: () => import('./screens/newGame.js'), name: 'newGameScreen' },
@@ -320,19 +323,19 @@ export const ui = {
     reticle.innerHTML = RETICLE_SVG;
     const hudRoot = document.getElementById('hud');
     hudRoot.appendChild(reticle);
-    // Auto-target uses a ship-local virtual joystick, not a cursor heading. A fixed base makes the
-    // neutral point explicit; the simple puck moves inside it while target diamonds remain weapons.
-    const autoTargetStickBase = document.createElement('div');
-    autoTargetStickBase.id = 'auto-target-stick-base';
-    autoTargetStickBase.setAttribute('aria-hidden', 'true');
-    autoTargetStickBase.innerHTML = '<span>HELM</span>';
-    const autoTargetStickPuck = document.createElement('div');
-    autoTargetStickPuck.id = 'auto-target-stick-puck';
-    autoTargetStickPuck.setAttribute('aria-hidden', 'true');
-    hudRoot.appendChild(autoTargetStickBase);
-    hudRoot.appendChild(autoTargetStickPuck);
+    // Auto-target trackpad motion draws the route the ship will actually fly. The endpoint marker
+    // and projected curve are one feedback channel; target diamonds/lead pips remain weapon aim.
+    const autoTargetFlightPath = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    autoTargetFlightPath.id = 'auto-target-flight-path';
+    autoTargetFlightPath.setAttribute('aria-hidden', 'true');
+    autoTargetFlightPath.innerHTML = '<polyline class="sf-flight-path__route" points=""></polyline><circle class="sf-flight-path__endpoint-ring" r="11"></circle><circle class="sf-flight-path__endpoint" r="3.5"></circle>';
+    hudRoot.appendChild(autoTargetFlightPath);
+    const autoTargetRouteLine = autoTargetFlightPath.querySelector('.sf-flight-path__route');
+    const autoTargetEndpointRing = autoTargetFlightPath.querySelector('.sf-flight-path__endpoint-ring');
+    const autoTargetEndpoint = autoTargetFlightPath.querySelector('.sf-flight-path__endpoint');
     let lastReticleX = NaN;
     let lastReticleY = NaN;
+    let lastFlightPathPoints = '';
 
     // Always-visible (when in flight) control hints. The default text below is the open-flight set;
     // the onboarding system's _updateControlBar() replaces it each frame with context-sensitive
@@ -377,23 +380,60 @@ export const ui = {
       const pointer = st && st.input && st.input.pointerScreen;
       const active = !!(visible && pointer && pointer.active);
       const autoTarget = !!(visible && st && st.input && st.input.autoFire);
+      const flightPath = st && st.input && st.input.autoTargetPath;
+      const pathActive = !!(autoTarget && flightPath && flightPath.active
+        && Array.isArray(flightPath.points) && flightPath.points.length >= 2);
       document.body.classList.toggle('sf-flight-cursor', active);
       const reticleEl = document.getElementById('aim-reticle') || reticle;
       reticleEl.style.display = visible && !autoTarget ? 'block' : 'none';
-      autoTargetStickBase.style.display = autoTarget ? 'block' : 'none';
-      autoTargetStickPuck.style.display = autoTarget ? 'block' : 'none';
+      autoTargetFlightPath.style.display = autoTarget ? 'block' : 'none';
+      autoTargetFlightPath.style.opacity = pathActive ? '1' : '0';
       if (!visible) return;
       const fallbackX = typeof innerWidth === 'number' ? innerWidth * 0.5 : 0;
       const fallbackY = typeof innerHeight === 'number' ? innerHeight * 0.5 : 0;
+      if (autoTarget) {
+        if (!pathActive || !this.helpers || typeof this.helpers.worldToScreen !== 'function') return;
+        const projectedPoints = [];
+        const player = st.entities && st.entities.get ? st.entities.get(st.playerId) : null;
+        if (player && player.pos) projectedPoints.push(player.pos);
+        const startIndex = Math.max(1, Number.isFinite(flightPath.pointIndex)
+          ? Math.floor(flightPath.pointIndex)
+          : 1);
+        for (let i = startIndex; i < flightPath.points.length; i++) {
+          projectedPoints.push(flightPath.points[i]);
+        }
+        const screenPoints = [];
+        for (const point of projectedPoints) {
+          const projected = this.helpers.worldToScreen({ x: point.x, y: 0, z: point.z });
+          if (projected && Number.isFinite(projected.x) && Number.isFinite(projected.y)) {
+            screenPoints.push(projected);
+          }
+        }
+        const pointsValue = screenPoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
+        if (pointsValue !== lastFlightPathPoints) {
+          autoTargetRouteLine.setAttribute('points', pointsValue);
+          lastFlightPathPoints = pointsValue;
+        }
+        const endpoint = screenPoints.length ? screenPoints[screenPoints.length - 1] : null;
+        if (endpoint) {
+          const x = endpoint.x.toFixed(1);
+          const y = endpoint.y.toFixed(1);
+          autoTargetEndpointRing.setAttribute('cx', x);
+          autoTargetEndpointRing.setAttribute('cy', y);
+          autoTargetEndpoint.setAttribute('cx', x);
+          autoTargetEndpoint.setAttribute('cy', y);
+        }
+        autoTargetFlightPath.classList.toggle('is-drawing', !!flightPath.drawing);
+        return;
+      }
       let x = active && Number.isFinite(pointer.x) ? pointer.x : fallbackX;
       let y = active && Number.isFinite(pointer.y) ? pointer.y : fallbackY;
       if (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1
         || !Number.isFinite(lastReticleY) || Math.abs(y - lastReticleY) > 0.1) {
         const next = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) translate(-50%,-50%)`;
-        const movingEl = autoTarget ? autoTargetStickPuck : reticleEl;
-        if (movingEl._sfHudTransform !== next) {
-          movingEl._sfHudTransform = next;
-          movingEl.style.transform = next;
+        if (reticleEl._sfHudTransform !== next) {
+          reticleEl._sfHudTransform = next;
+          reticleEl.style.transform = next;
         }
         lastReticleX = x;
         lastReticleY = y;
@@ -1522,6 +1562,273 @@ function injectHudCss() {
     .sf-mt-title { font-size:10px; }
     .sf-mt-obj { font-size:9px; }
     .sf-mt-time { font-size:9px; }
+  }
+
+  /* ===== Flight HUD finish pass =====
+     A small number of joined instruments replaces the previous field of unrelated floating cards.
+     Cyan is now an active-state accent; neutral graphite and warm white do most of the work. */
+  #hud {
+    --hud-display:"Saira SemiCondensed", "Arial Narrow", sans-serif;
+    --hud-body:"IBM Plex Sans", "Segoe UI", sans-serif;
+    --hud-data:"IBM Plex Mono", Consolas, monospace;
+    --hud-paper:#e7edf5;
+    --hud-copy:#aebdce;
+    --hud-muted:#718298;
+    --hud-line:rgba(151,183,205,.28);
+    --hud-line-strong:rgba(154,205,221,.52);
+    --hud-surface:rgba(9,15,24,.86);
+    --hud-surface-soft:rgba(13,21,32,.72);
+    --hud-cyan:#83ced8;
+    --hud-amber:#d8a45d;
+    --hud-danger:#ee6c75;
+    font-family:var(--hud-body);
+    color:var(--hud-paper);
+  }
+
+  .sf-leftstack {
+    left:20px; bottom:20px; width:340px; max-width:calc(100vw - 40px); gap:9px;
+    align-items:stretch;
+  }
+  .sf-leftcontext {
+    width:100%; max-width:none; gap:6px; align-items:stretch;
+  }
+  .sf-bars {
+    width:340px; max-width:100%; display:grid;
+    grid-template-columns:118px minmax(0, 1fr); grid-template-rows:auto repeat(4, 20px);
+    gap:5px 14px; align-items:center; padding:11px 13px 12px;
+    background:linear-gradient(112deg, rgba(18,28,41,.94), rgba(7,12,20,.78));
+    border:1px solid var(--hud-line); border-top-color:var(--hud-line-strong); border-radius:2px;
+    box-shadow:0 16px 34px rgba(0,0,0,.34), inset 0 1px rgba(255,255,255,.035);
+    backdrop-filter:blur(7px); overflow:hidden;
+  }
+  .sf-bars::after {
+    content:''; position:absolute; left:13px; right:13px; top:35px; height:1px;
+    background:linear-gradient(90deg, var(--hud-line-strong), rgba(151,183,205,.06));
+  }
+  .sf-condition-head {
+    grid-column:1 / -1; min-height:19px; display:flex; align-items:center; justify-content:space-between;
+    font-family:var(--hud-display); font-size:10px; font-weight:700; letter-spacing:.14em;
+    color:var(--hud-copy);
+  }
+  .sf-condition-state {
+    font-family:var(--hud-data); font-size:8px; font-weight:500; letter-spacing:.1em; color:var(--hud-cyan);
+  }
+  .sf-condition-critical .sf-condition-state { color:var(--hud-danger); }
+  .sf-condition-shield-low .sf-condition-state { color:var(--hud-amber); }
+  .sf-schematic {
+    grid-column:1; grid-row:2 / span 4; width:112px; height:112px; align-self:center; justify-self:center;
+    display:grid; place-items:center; isolation:isolate;
+  }
+  .sf-schematic .sf-sch-ring { position:absolute; inset:3px; width:106px; height:106px; overflow:visible; z-index:1; }
+  .sf-schematic .sf-sch-track { fill:rgba(7,12,20,.22); stroke:rgba(137,170,192,.18); stroke-width:1.2; }
+  .sf-schematic .sf-sch-shield {
+    fill:none; stroke:var(--hud-cyan); stroke-width:2; stroke-linecap:butt; opacity:.9;
+    filter:drop-shadow(0 0 4px rgba(131,206,216,.35)); transition:stroke-dashoffset .15s linear;
+  }
+  .sf-schematic .sf-sch-ship {
+    width:80px; height:96px; object-fit:contain; z-index:2; opacity:1;
+    filter:drop-shadow(0 5px 5px rgba(0,0,0,.65)) saturate(.86) brightness(1.2) contrast(1.05);
+    transition:filter .22s ease, opacity .22s ease;
+  }
+  .sf-schematic.sf-sch-critical .sf-sch-ship {
+    opacity:.76; filter:drop-shadow(0 0 7px rgba(238,108,117,.58)) saturate(.6) brightness(.96);
+    animation:sf-schpulse 1s ease-in-out infinite alternate;
+  }
+  .sf-schematic.sf-sch-hit .sf-sch-ship { animation:sf-schhit .34s ease-out; }
+  @keyframes sf-schhit {
+    0% { filter:drop-shadow(0 0 11px rgba(255,255,255,.9)) brightness(1.65); }
+    100% { filter:drop-shadow(0 5px 5px rgba(0,0,0,.65)) saturate(.86) brightness(1.2) contrast(1.05); }
+  }
+  .sf-sch-hull {
+    left:7px; top:auto; bottom:5px; transform:none; z-index:3;
+    display:flex; flex-direction:column; align-items:flex-start; gap:0;
+    color:var(--hud-paper); text-shadow:0 1px 3px #000;
+  }
+  .sf-sch-hull strong { font-family:var(--hud-data); font-size:15px; line-height:1; font-weight:500; }
+  .sf-sch-hull span, .sf-sch-shield-readout span {
+    font-family:var(--hud-display); font-size:7px; font-weight:700; letter-spacing:.12em; color:var(--hud-muted);
+  }
+  .sf-sch-shield-readout {
+    position:absolute; right:5px; top:6px; z-index:3; display:flex; flex-direction:column; align-items:flex-end;
+    color:var(--hud-cyan); text-shadow:0 1px 3px #000;
+  }
+  .sf-sch-shield-readout strong { font-family:var(--hud-data); font-size:11px; font-weight:500; line-height:1.1; }
+  .sf-schematic.sf-sch-critical .sf-sch-hull strong { color:var(--hud-danger); }
+  .sf-barrow {
+    grid-column:2; width:100%; display:grid; grid-template-columns:42px minmax(70px, 1fr) 34px;
+    align-items:center; gap:8px; min-height:20px;
+  }
+  .sf-barrow__label {
+    width:auto; font-family:var(--hud-display); font-size:9px; font-weight:600; letter-spacing:.09em;
+    color:var(--hud-muted); text-shadow:none;
+  }
+  .sf-barrow__num {
+    width:auto; font-family:var(--hud-data); font-size:9px; font-weight:500; color:var(--hud-copy); text-shadow:none;
+  }
+  .sf-bar { width:100%; height:4px; background:rgba(164,181,197,.14); overflow:hidden; }
+  .sf-bar__fill { box-shadow:none !important; }
+  .sf-bar--energy .sf-bar__fill { background:#8dbdca; }
+  .sf-bar--boost .sf-bar__fill { background:#a9a2cb; }
+  .sf-bar--heat .sf-bar__fill { background:#c99563; }
+  .sf-bar--fuel .sf-bar__fill { background:#70aaa9; }
+  .sf-wpn-heats {
+    position:relative; left:auto; bottom:auto !important; grid-column:1 / -1; width:100%;
+    flex-direction:column; gap:4px; padding-top:7px; border-top:1px solid rgba(145,173,194,.14);
+  }
+  .sf-wpn-heat { display:grid; grid-template-columns:72px minmax(0, 1fr); gap:8px; align-items:center; }
+  .sf-wpn-heat__label {
+    width:auto; font-family:var(--hud-display); font-size:8px; font-weight:600; letter-spacing:.06em;
+    color:var(--hud-muted); text-shadow:none;
+  }
+  .sf-wpn-heat__bar { width:100%; height:3px; background:rgba(164,181,197,.14); overflow:hidden; }
+  .sf-wpn-heat__fill { box-shadow:none; background:#c99563; }
+
+  .sf-command-deck {
+    position:absolute; left:50%; bottom:18px; transform:translateX(-50%); width:min(620px, calc(100vw - 760px));
+    min-width:520px; padding:8px 10px 9px;
+    background:linear-gradient(180deg, rgba(17,25,36,.82), rgba(6,11,18,.9));
+    border:1px solid var(--hud-line); border-top-color:var(--hud-line-strong); border-radius:2px;
+    box-shadow:0 18px 36px rgba(0,0,0,.36), inset 0 1px rgba(255,255,255,.035);
+    backdrop-filter:blur(7px);
+  }
+  .sf-command-deck::before {
+    content:'FLIGHT CONTROL'; position:absolute; left:11px; top:-8px; padding:0 6px;
+    background:rgba(8,14,22,.94); color:var(--hud-muted); font-family:var(--hud-display);
+    font-size:8px; font-weight:700; letter-spacing:.15em;
+  }
+  #action-bar { position:relative; left:auto; bottom:auto; transform:none; display:grid; grid-template-columns:repeat(5, 1fr); gap:0; }
+  .action-slot {
+    position:relative; min-width:0; min-height:43px; display:grid; grid-template-columns:auto 1fr; align-items:center; gap:8px;
+    padding:5px 11px; border-left:1px solid rgba(145,173,194,.18); color:var(--hud-copy);
+    transition:background .12s ease, color .12s ease;
+  }
+  .action-slot:first-child { border-left:0; }
+  .action-slot .bind {
+    min-width:28px; font-family:var(--hud-data); font-size:8px; font-weight:500; letter-spacing:.04em;
+    color:var(--hud-muted); text-shadow:none;
+  }
+  .action-command { display:flex; min-width:0; flex-direction:column; gap:1px; }
+  .action-command strong {
+    font-family:var(--hud-display); font-size:12px; line-height:1; font-weight:700; letter-spacing:.06em; color:var(--hud-paper);
+  }
+  .action-command small {
+    font-family:var(--hud-display); font-size:7px; line-height:1.1; font-weight:600; letter-spacing:.12em; color:var(--hud-muted);
+  }
+  .action-slot.sf-act-active { background:linear-gradient(180deg, rgba(100,180,193,.15), rgba(100,180,193,.045)); }
+  .action-slot.sf-act-active::after {
+    content:''; position:absolute; left:8px; right:8px; bottom:0; height:2px; background:var(--hud-cyan);
+    box-shadow:0 0 7px rgba(131,206,216,.5);
+  }
+  .action-slot.sf-act-active .bind, .action-slot.sf-act-active .action-command small { color:var(--hud-cyan); }
+  .sf-cluster {
+    position:relative; left:auto; bottom:auto; transform:none; max-width:none; min-height:24px;
+    display:flex; flex-wrap:nowrap; justify-content:center; align-items:baseline; gap:18px;
+    margin:0 7px 5px; padding:0 0 7px; border-bottom:1px solid rgba(145,173,194,.18);
+  }
+  .sf-stat { font-family:var(--hud-data); gap:5px; }
+  .sf-stat__k { font-family:var(--hud-display); font-size:8px; font-weight:700; color:var(--hud-muted); letter-spacing:.1em; text-shadow:none; }
+  .sf-stat__v, .sf-stat--speed .sf-stat__v { font-size:12px; color:var(--hud-paper); text-shadow:none; }
+  .sf-stat--speed .sf-stat__v { font-size:16px; }
+
+  .sf-mission-tracker, .sf-nav-readout, .sf-obj {
+    width:100%; max-width:none; border:1px solid var(--hud-line); border-radius:2px;
+    background:linear-gradient(108deg, rgba(17,25,36,.9), rgba(7,12,20,.76)); box-shadow:none;
+  }
+  .sf-mission-tracker { padding:10px 12px 11px; border-top:2px solid rgba(216,164,93,.72); border-left:1px solid var(--hud-line); }
+  .sf-mt-title {
+    font-family:var(--hud-display) !important; font-size:9px; font-weight:700; letter-spacing:.12em;
+    color:var(--hud-amber); margin-bottom:4px;
+  }
+  .sf-mt-obj { font-family:var(--hud-body) !important; font-size:13px; line-height:1.35; font-weight:500; color:var(--hud-paper); margin-bottom:5px; }
+  .sf-mt-time { font-family:var(--hud-data) !important; font-size:9px; letter-spacing:.04em; color:#c4a77e; }
+  .sf-nav-readout { padding:8px 11px; }
+  .sf-nav-label { font-family:var(--hud-display); font-size:11px; font-weight:700; letter-spacing:.08em; color:var(--hud-cyan); }
+  .sf-nav-meta { font-family:var(--hud-data); font-size:9px; letter-spacing:.035em; color:var(--hud-muted); }
+
+  .sf-rightdock { right:20px; bottom:20px; width:270px; align-items:stretch; gap:6px; }
+  .sf-rightdock > * { flex:0 0 auto; }
+  .sf-overview {
+    width:270px; gap:0; padding:5px 0;
+    background:linear-gradient(120deg, rgba(15,23,34,.88), rgba(6,11,18,.76));
+    border:1px solid var(--hud-line); border-top-color:var(--hud-line-strong); border-radius:2px;
+    font-family:var(--hud-data); font-size:11px; box-shadow:0 12px 28px rgba(0,0,0,.25);
+  }
+  .sf-overview::before {
+    content:'LOCAL CONTACTS'; display:block; padding:3px 10px 7px; color:var(--hud-muted);
+    font-family:var(--hud-display); font-size:10px; font-weight:700; letter-spacing:.12em;
+    border-bottom:1px solid rgba(145,173,194,.16);
+  }
+  .sf-overview-row {
+    min-height:34px; padding:6px 9px; background:transparent; border-left:0; border-bottom:1px solid rgba(145,173,194,.1);
+  }
+  .sf-overview-row:hover { background:rgba(131,206,216,.07); border-left:0; }
+  .sf-overview-row.selected {
+    background:linear-gradient(90deg, rgba(131,206,216,.16), rgba(131,206,216,.025));
+    border-left:0; box-shadow:inset 2px 0 var(--hud-cyan);
+  }
+  .sf-overview-row__name { max-width:112px; color:var(--hud-paper); }
+  .sf-overview-row__right { color:var(--hud-muted); }
+  .sf-overview-row__detail { color:var(--hud-muted); padding-left:18px; }
+  .sf-overview-footer { background:transparent; color:var(--hud-muted); }
+  .sf-target {
+    width:270px; padding:9px 11px 10px; text-align:left; gap:6px;
+    background:linear-gradient(120deg, rgba(17,25,36,.9), rgba(7,12,20,.76));
+    border:1px solid var(--hud-line); border-top:2px solid rgba(238,108,117,.65); border-radius:2px;
+  }
+  .sf-target__head, .sf-target__meta { justify-content:space-between; }
+  .sf-target__name { font-family:var(--hud-display); font-size:13px; font-weight:700; letter-spacing:.045em; color:var(--hud-paper); }
+  .sf-target__faction, .sf-target__meta, .sf-target__identity, .sf-target__intent { font-family:var(--hud-data); }
+  .sf-target__meta { font-size:9px; color:var(--hud-muted); }
+  .sf-target .sf-bar--sm, .sf-target .sf-bar { height:4px; background:rgba(164,181,197,.14); }
+  .sf-radar-wrap { align-items:flex-end; }
+  .sf-radar { border:1px solid rgba(137,170,192,.24); box-shadow:0 12px 28px rgba(0,0,0,.24); }
+  .sf-radar-objective-key { width:220px; color:var(--hud-amber); font-family:var(--hud-display); font-weight:700; }
+
+  .sf-toast {
+    width:320px; padding:10px 13px; border:1px solid rgba(147,174,195,.3); border-top-color:rgba(147,196,211,.56);
+    border-left-width:1px; border-radius:2px;
+    background:linear-gradient(112deg, rgba(18,27,39,.95), rgba(8,13,21,.92));
+    color:var(--hud-paper); font-family:var(--hud-body); font-size:13px; line-height:1.35;
+    box-shadow:0 15px 32px rgba(0,0,0,.34); backdrop-filter:blur(7px);
+  }
+  .sf-toast__icon { font-family:var(--hud-data); color:var(--hud-cyan); }
+  .sf-toast--success, .sf-toast--good, .sf-toast--error, .sf-toast--danger, .sf-toast--warn { border-left-width:1px; }
+  .sf-alert {
+    min-width:220px; justify-content:center; padding:7px 18px; border-radius:2px;
+    font-family:var(--hud-display); font-size:11px; font-weight:700; letter-spacing:.1em;
+    background:linear-gradient(90deg, rgba(9,15,24,.68), rgba(18,27,39,.92), rgba(9,15,24,.68));
+    border:1px solid rgba(147,174,195,.28); border-top-color:rgba(147,196,211,.5);
+    box-shadow:0 10px 26px rgba(0,0,0,.28);
+  }
+  .sf-alert--dock { font-size:14px; padding:9px 24px; border-radius:2px; }
+
+  @media (max-width:1180px) {
+    .sf-command-deck { width:min(500px, calc(100vw - 660px)); min-width:420px; }
+    .action-slot { padding-inline:7px; gap:5px; }
+    .action-command small { display:none; }
+  }
+  @media (max-width:900px), (max-height:650px) {
+    .sf-leftstack { left:10px; bottom:88px; width:290px; }
+    .sf-bars { width:290px; grid-template-columns:94px minmax(0, 1fr); padding:9px 10px 10px; }
+    .sf-schematic { width:88px; height:88px; }
+    .sf-schematic .sf-sch-ring { inset:0; width:88px; height:88px; }
+    .sf-schematic .sf-sch-ship { width:55px; height:68px; }
+    .sf-sch-hull { left:2px; bottom:1px; }
+    .sf-sch-shield-readout { right:1px; top:2px; }
+    .sf-rightdock { right:10px; bottom:88px; width:210px; }
+    .sf-overview, .sf-target { width:210px; }
+    .sf-overview-row__name { max-width:70px; }
+    .sf-command-deck { bottom:8px; width:min(500px, calc(100vw - 24px)); min-width:0; }
+    .sf-cluster { position:relative; left:auto; bottom:auto; width:auto; transform:none; }
+  }
+  @media (max-width:760px) {
+    .sf-command-deck { padding:7px 9px; }
+    .sf-command-deck::before { display:none; }
+    .sf-cluster { margin:0; padding:0; border-bottom:0; }
+    .sf-mission-tracker { max-width:none; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    .sf-schematic.sf-sch-critical .sf-sch-ship, .sf-schematic.sf-sch-hit .sf-sch-ship { animation:none; }
   }
 
   /* ===== dock transition overlay ===== */

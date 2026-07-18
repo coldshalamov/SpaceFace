@@ -108,6 +108,28 @@ function resolveStation(ctx) {
   };
 }
 
+function setTextIfChanged(node, value) {
+  const next = String(value == null ? '' : value);
+  if (node && node.textContent !== next) node.textContent = next;
+}
+
+function departureChipIntent(chip) {
+  if (!chip) return null;
+  const signal = [
+    chip.getAttribute('data-departure-check'),
+    chip.getAttribute('data-check'),
+    chip.getAttribute('aria-label'),
+    chip.textContent,
+  ].filter(Boolean).join(' ').toLowerCase();
+  if (/\b(hull|armor|repair)\b/.test(signal)) return { service: 'repair' };
+  if (/\b(fuel|refuel)\b/.test(signal)) return { service: 'refuel' };
+  if (/\b(ammo|ammunition|rearm|resupply)\b/.test(signal)) return { service: 'resupply' };
+  if (/\b(hold|cargo|capacity|contraband)\b/.test(signal)) return { surface: 'hold' };
+  if (/\b(route|track|mission|objective|contract)\b/.test(signal)) return { navigate: 'contracts' };
+  const explicitNav = chip.getAttribute('data-pop-nav');
+  return explicitNav ? { navigate: explicitNav } : null;
+}
+
 export function createStationApp(rootEl, ctx, opts = {}) {
   ensureStylesheet();
   const state = () => (ctx && ctx.state) || {};
@@ -193,6 +215,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   let receiptTimer = 0;
   let commsOpen = false;
   let commsUnread = 0;
+  let readoutsSignature = '';
+  let handoffSignature = '';
   /** @type {null|ReturnType<typeof missionDockAttention>} */
   let lastMissionAttention = null;
   /** One auto-open per dock session so refresh/mission updates do not yank the player mid-flow. */
@@ -354,6 +378,24 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   popEl.addEventListener('click', (ev) => {
+    const departureChip = ev.target.closest('.sx-pop--dep .sx-depchip');
+    if (departureChip) {
+      const intent = departureChipIntent(departureChip);
+      if (intent && intent.service) {
+        const applied = runAction(intent.service);
+        if (applied !== false) closePop();
+        return;
+      }
+      if (intent && intent.surface === 'hold') {
+        openHoldPop(readoutsEl.querySelector('[data-hold]'));
+        return;
+      }
+      if (intent && intent.navigate) {
+        navigate(intent.navigate);
+        closePop();
+        return;
+      }
+    }
     const holdItem = ev.target.closest('[data-hold-item]');
     if (holdItem) {
       navigate('market', { tradeMode: 'sell', commodityId: holdItem.getAttribute('data-hold-item') });
@@ -374,9 +416,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     try { visible = !!firstDockHandoffVisible(s, stationId()); } catch (_) { visible = false; }
     let steps = [];
     if (visible) { try { steps = firstDockHandoffSteps(s) || []; } catch (_) { steps = []; } }
-    if (!visible || !steps.length) { handoffEl.hidden = true; handoffEl.innerHTML = ''; return; }
-    handoffEl.hidden = false;
-    handoffEl.innerHTML =
+    if (!visible || !steps.length) {
+      if (!handoffEl.hidden) handoffEl.hidden = true;
+      if (handoffSignature) handoffEl.replaceChildren();
+      handoffSignature = '';
+      return;
+    }
+    const html =
       `<span class="sx-handoff__k">First Dock Handoff</span>` +
       steps.map((st) => {
         const dest = TARGET_MAP[st.targetTab] || 'market';
@@ -388,6 +434,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
           `<span class="sx-hstep__n">${escapeHtml(st.label)}</span>` +
           `<span class="sx-hstep__t">${escapeHtml(st.title)}</span></button>`;
       }).join('');
+    if (handoffEl.hidden) handoffEl.hidden = false;
+    if (html !== handoffSignature) {
+      handoffEl.innerHTML = html;
+      handoffSignature = html;
+    }
   }
   handoffEl.addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-handoff]');
@@ -597,9 +648,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const bus = ctx && ctx.bus;
     if (id === 'undock') {
       const dep = departureNow();
-      if (dep.state !== 'ready') { openDeparturePop(); return; } // surface the risk, don't strand them
+      if (dep.state !== 'ready') { openDeparturePop(); return false; } // surface the risk, don't strand them
       commitUndock();
-      return;
+      return true;
     }
     const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo' };
     const type = typeMap[id];
@@ -608,17 +659,18 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (typeof opts.serviceQuote === 'function') {
         try { quote = opts.serviceQuote(type, state(), playerEntity(state())); } catch (_) { quote = null; }
       }
-      if (quote && quote.disabled) return;
+      if (quote && quote.disabled) return false;
       bus.emit('ui:service', { type, amount: quote && Number.isFinite(Number(quote.amount)) ? Number(quote.amount) : undefined });
       bus.emit('audio:cue', { id: 'ui_click' });
     }
     setTimeout(refresh, 60);
+    return true;
   }
 
   // ---------- status strip ----------
   function renderStatus() {
     const s = state();
-    creditsEl.textContent = fmtCr(credits(s));
+    setTextIfChanged(creditsEl, fmtCr(credits(s)));
     const ship = playerEntity(s);
     const fuel = s && s.fuel || {};
     const cargo = s && s.player && s.player.cargo || {};
@@ -627,7 +679,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       { k: 'fuel', ic: 'fuel', label: 'Fuel', frac: fuelFrac(s), value: `${(fuelFrac(s) * 100).toFixed(0)}%`, detail: `${fmtCr(fuel.current)} / ${fmtCr(fuel.max)}` },
       { k: 'cargo', ic: 'cargo', label: 'Hold', frac: cargoFrac(s), value: `${fmtCr(cargo.usedVolume)} / ${fmtCr(cargo.capVolume)} u`, detail: `${(cargoFrac(s) * 100).toFixed(0)}% occupied` },
     ];
-    readoutsEl.innerHTML = meters.map((m) => {
+    const readoutsHtml = meters.map((m) => {
       const pct = (m.frac * 100).toFixed(0);
       const inner =
         `<span class="sx-readout__ico">${icon(m.ic, 16)}</span>` +
@@ -638,9 +690,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         ? `<button type="button" class="sx-readout sx-readout--cargo sx-readout--btn" data-hold title="Cargo hold ${pct}% — open manifest" aria-label="Cargo hold ${fmtCr(cargo.usedVolume)} of ${fmtCr(cargo.capVolume)} units, ${pct} percent. Open manifest.">${inner}</button>`
         : `<div class="sx-readout sx-readout--${m.k}" title="${m.label} ${pct}%" aria-label="${m.label} ${m.value}, ${m.detail}">${inner}</div>`;
     }).join('');
+    if (readoutsHtml !== readoutsSignature) {
+      readoutsEl.innerHTML = readoutsHtml;
+      readoutsSignature = readoutsHtml;
+    }
     const st = resolveStation(ctx);
-    crestName.textContent = st.name || 'Station';
-    crestMeta.textContent = [st.typeLabel, st.factionName].filter(Boolean).join(' · ');
+    setTextIfChanged(crestName, st.name || 'Station');
+    setTextIfChanged(crestMeta, [st.typeLabel, st.factionName].filter(Boolean).join(' · '));
     const costs = actionCosts();
     for (const a of ACTIONS) dock.setActionCost(a.id, costs[a.id]);
     renderHandoff();
@@ -652,7 +708,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     openHoldPop(b);
   });
 
-  function applyMissionAttention({ allowAutoOpen = false } = {}) {
+  function applyMissionAttention({ allowAutoOpen = false, refreshActive = true } = {}) {
     const s = state();
     const attention = missionDockAttention(s, stationId());
     lastMissionAttention = attention;
@@ -674,7 +730,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       return attention;
     }
     // If already on Missions, re-focus the attention row without changing tab.
-    if (activeId === 'contracts' && attention) {
+    if (refreshActive && activeId === 'contracts' && attention) {
       const screen = screenCache.get('contracts');
       if (screen && typeof screen.onShow === 'function') {
         screen.onShow({
@@ -688,9 +744,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     return attention;
   }
 
-  function refresh() {
+  function refresh(_nextCtx, options = {}) {
     renderStatus();
-    applyMissionAttention({ allowAutoOpen: false });
+    applyMissionAttention({ allowAutoOpen: false, refreshActive: !options.periodic });
+    // The global UI loop calls this every 18 frames so live hull/fuel/credit readouts stay current.
+    // Station operation screens are event-driven and contain real pointer targets. Rebuilding them
+    // on that cadence replaces hovered nodes and briefly leaves new Shipworks labels at their
+    // unprojected/default position until the following animation frame.
+    if (options.periodic) return;
     const dest = DESTINATIONS.find((d) => d.id === activeId);
     if (dest) {
       const screen = screenCache.get(dest.id);

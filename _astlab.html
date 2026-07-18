@@ -1,0 +1,283 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Asteroid Works — Build Lab</title>
+<style>
+  html,body{margin:0;height:100%;background:#04060c;overflow:hidden;font-family:ui-monospace,Menlo,Consolas,monospace}
+  #hud{position:fixed;left:14px;top:12px;color:#bfe0ff;font-size:12px;line-height:1.55;white-space:pre;pointer-events:none;text-shadow:0 1px 3px #000}
+  #hud b{color:#fff}
+  #palette{position:fixed;left:14px;bottom:14px;display:flex;gap:8px;pointer-events:auto}
+  .pal{padding:7px 11px;border:1px solid #2a3850;border-radius:7px;background:rgba(12,20,34,.82);color:#9fb6d4;font-size:12px;cursor:pointer;user-select:none}
+  .pal b{display:block;color:#dbe9ff;font-size:12px}
+  .pal small{color:#7d93b4}
+  .pal.sel{border-color:#39d0ff;box-shadow:0 0 0 1px #39d0ff, 0 0 18px rgba(57,208,255,.35);background:rgba(20,40,60,.9)}
+  #view{position:fixed;right:14px;top:12px;color:#8fb0d6;font-size:12px;text-align:right;text-shadow:0 1px 3px #000}
+  #view b{color:#fff}
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+</script>
+</head>
+<body>
+<div id="hud"></div>
+<div id="view"></div>
+<div id="palette"></div>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import {
+  INTERIOR_COLS as COLS, INTERIOR_ROWS as ROWS, cellToWorld,
+  buildLayout, makeRockMaterials, buildRock, buildOre, buildGas, makeMachine,
+} from './src/render/asteroidInteriorPreview.js';
+
+const q = new URLSearchParams(location.search);
+const S = 2.4, depth = S * 1.5, floorZ = 0;
+
+// ---- renderer / scene ----
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.98;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070e);
+
+// ---- lights (mirror the look lab's rig) ----
+scene.add(new THREE.AmbientLight(0x556072, 0.5));
+const key = new THREE.DirectionalLight(0xfff0dc, 2.5);
+key.position.set(-COLS * S * 0.3, ROWS * S * 0.5, depth * 6 + 50);
+key.castShadow = true; key.shadow.mapSize.set(2048, 2048);
+{ const c = key.shadow.camera; c.left = -COLS * S * 0.7; c.right = COLS * S * 0.7; c.top = ROWS * S * 0.7; c.bottom = -ROWS * S * 0.7; c.near = 1; c.far = depth * 24 + 160; c.updateProjectionMatrix(); }
+scene.add(key); scene.add(key.target);
+const rim = new THREE.DirectionalLight(0x6a86ff, 0.7); rim.position.set(COLS * S * 0.5, -ROWS * S * 0.4, -depth * 4); scene.add(rim);
+const fill = new THREE.DirectionalLight(0xbfd0ff, 0.45); fill.position.set(0, 0, depth * 8 + 60); scene.add(fill);
+const work = new THREE.PointLight(0xffcf9a, 14, S * 22, 2); work.position.set(0, 0, depth * 3); scene.add(work);
+
+// ---- rock cutaway (reuse the look-lab builders) ----
+const grid = buildLayout();
+const mats = makeRockMaterials(null);
+const rockGroup = new THREE.Group(); scene.add(rockGroup);
+const { oreCells, gasCells } = buildRock(rockGroup, grid, S, depth, mats);
+const pulses = [];
+buildOre(rockGroup, oreCells, S, depth, null, pulses);
+buildGas(rockGroup, gasCells, S, depth, pulses);
+
+// ---- build floor: clean snap-grid tiles on every open (carved) cell ----
+const openCells = [];
+for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (grid[r][c] === 0) openCells.push([c, r]);
+const isOpen = (c, r) => r >= 0 && r < ROWS && c >= 0 && c < COLS && grid[r][c] === 0;
+const tileGeo = new THREE.BoxGeometry(S * 0.94, S * 0.94, S * 0.14);
+const tileMat = new THREE.MeshStandardMaterial({ color: 0x141a24, roughness: 0.55, metalness: 0.5 });
+const edgeMat = new THREE.LineBasicMaterial({ color: 0x2f6f9a, transparent: true, opacity: 0.55 });
+const edgeGeo = new THREE.EdgesGeometry(new THREE.PlaneGeometry(S * 0.94, S * 0.94));
+const floorGroup = new THREE.Group(); scene.add(floorGroup);
+for (const [c, r] of openCells) {
+  const w = cellToWorld(c, r, S);
+  const tile = new THREE.Mesh(tileGeo, tileMat);
+  tile.position.set(w.x, w.y, floorZ - S * 0.07); tile.receiveShadow = true; floorGroup.add(tile);
+  const edge = new THREE.LineSegments(edgeGeo, edgeMat); edge.position.set(w.x, w.y, floorZ + 0.02); floorGroup.add(edge);
+}
+
+// ---- placement state ----
+const KINDS = [
+  { id: 'core', key: '1', label: 'Massline Core', hint: 'anchor' },
+  { id: 'extractor', key: '2', label: 'Extractor', hint: 'mines contact faces' },
+  { id: 'fabricator', key: '3', label: 'Fabricator', hint: 'builds goods' },
+  { id: 'cargo_port', key: '4', label: 'Cargo Port', hint: 'ships couriers' },
+  { id: 'conduit', key: '5', label: 'Conduit', hint: 'power / lane' },
+];
+let selKind = 'extractor';
+const placed = new Map();            // "c,r" -> { kind, group }
+const spinners = [];
+let cursor = { c: 14, r: 8 };
+let ghost = null, ghostKind = null;
+
+function keyOf(c, r) { return c + ',' + r; }
+function canPlace(c, r) { return isOpen(c, r) && !placed.has(keyOf(c, r)); }
+
+function place(c, r, kind) {
+  if (!canPlace(c, r)) return false;
+  const m = makeMachine(kind, S, null);
+  const w = cellToWorld(c, r, S);
+  m.group.position.set(w.x, w.y, floorZ);
+  m.group.traverse((o) => { if (o.isMesh && o.geometry && o.geometry.type.includes('Box')) o.castShadow = true; });
+  scene.add(m.group);
+  for (const p of m.pulses) pulses.push(p);
+  if (m.group.userData.spin) spinners.push(m.group.userData.spin);
+  placed.set(keyOf(c, r), { kind, group: m.group });
+  return true;
+}
+function removeAt(c, r) {
+  const e = placed.get(keyOf(c, r));
+  if (!e) return false;
+  scene.remove(e.group);
+  if (e.group.userData.spin) { const i = spinners.indexOf(e.group.userData.spin); if (i >= 0) spinners.splice(i, 1); }
+  placed.delete(keyOf(c, r));
+  return true;
+}
+
+// ghost preview of the selected machine at the cursor
+function refreshGhost() {
+  if (ghostKind === selKind && ghost) return;
+  if (ghost) scene.remove(ghost);
+  const m = makeMachine(selKind, S, null);
+  m.group.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.4; o.material.depthWrite = false; } });
+  ghost = m.group; ghostKind = selKind; scene.add(ghost);
+}
+
+// cursor highlight frame (green valid / red invalid), snapped to the cell
+const hlGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(S, S, S * 0.5));
+const hlMat = new THREE.LineBasicMaterial({ color: 0x54ff9a });
+const highlight = new THREE.LineSegments(hlGeo, hlMat); scene.add(highlight);
+
+// ---- camera: orthographic, toggles between straight-on BUILD view and angled BEAUTY view ----
+let aspect = window.innerWidth / window.innerHeight;
+const halfH = ROWS * S * 0.62;
+const cam = new THREE.OrthographicCamera(-halfH * aspect, halfH * aspect, halfH, -halfH, -400, 2000);
+cam.zoom = 1;
+let viewMode = 'build';      // 'build' | 'beauty'
+let viewT = 0;               // 0 build, 1 beauty (smoothed)
+const camDist = 260;
+
+function resize() {
+  aspect = window.innerWidth / window.innerHeight;
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  cam.left = -halfH * aspect; cam.right = halfH * aspect; cam.top = halfH; cam.bottom = -halfH; cam.updateProjectionMatrix();
+  composer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', resize);
+
+// ---- composer ----
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, cam));
+const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.75, 0.55, 0.5);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+// ---- input ----
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const buildPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -floorZ);
+const hitPt = new THREE.Vector3();
+let haveMouse = false;
+
+function pickCell(ev) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  ndc.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+  ndc.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(ndc, cam);
+  if (!raycaster.ray.intersectPlane(buildPlane, hitPt)) return null;
+  const c = Math.floor(hitPt.x / S + COLS / 2);
+  const r = Math.floor(ROWS / 2 - hitPt.y / S);
+  return { c, r };
+}
+renderer.domElement.addEventListener('mousemove', (ev) => { const cell = pickCell(ev); if (cell) { cursor = cell; haveMouse = true; } });
+renderer.domElement.addEventListener('mousedown', (ev) => {
+  const cell = pickCell(ev); if (!cell) return;
+  if (ev.button === 2) { removeAt(cell.c, cell.r); }
+  else { place(cell.c, cell.r, selKind); }
+});
+renderer.domElement.addEventListener('contextmenu', (ev) => ev.preventDefault());
+renderer.domElement.addEventListener('wheel', (ev) => { ev.preventDefault(); cam.zoom = Math.max(0.5, Math.min(2.6, cam.zoom * (ev.deltaY < 0 ? 1.1 : 0.9))); cam.updateProjectionMatrix(); }, { passive: false });
+window.addEventListener('keydown', (ev) => {
+  const k = ev.key;
+  if (k === 'ArrowLeft') cursor.c--; else if (k === 'ArrowRight') cursor.c++;
+  else if (k === 'ArrowUp') cursor.r--; else if (k === 'ArrowDown') cursor.r++;
+  else if (k === 'Enter' || k === ' ') place(cursor.c, cursor.r, selKind);
+  else if (k === 'Delete' || k === 'x' || k === 'X') removeAt(cursor.c, cursor.r);
+  else if (k === 'v' || k === 'V') { viewMode = viewMode === 'build' ? 'beauty' : 'build'; }
+  else { const kind = KINDS.find((m) => m.key === k); if (kind) selKind = kind.id; }
+  cursor.c = Math.max(0, Math.min(COLS - 1, cursor.c)); cursor.r = Math.max(0, Math.min(ROWS - 1, cursor.r));
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(k)) ev.preventDefault();
+});
+
+// palette UI
+const paletteEl = document.getElementById('palette');
+function renderPalette() {
+  paletteEl.innerHTML = '';
+  for (const m of KINDS) {
+    const el = document.createElement('div');
+    el.className = 'pal' + (m.id === selKind ? ' sel' : '');
+    el.innerHTML = `<b>${m.key} · ${m.label}</b><small>${m.hint}</small>`;
+    el.addEventListener('click', () => { selKind = m.id; });
+    paletteEl.appendChild(el);
+  }
+}
+
+// pre-place a starter cluster so it isn't barren
+place(14, 8, 'core'); place(11, 8, 'extractor'); place(17, 8, 'fabricator'); place(14, 6, 'cargo_port');
+place(12, 8, 'conduit'); place(13, 8, 'conduit'); place(15, 8, 'conduit'); place(16, 8, 'conduit');
+
+const hud = document.getElementById('hud');
+const viewEl = document.getElementById('view');
+let ready = false;
+
+function frame(tms) {
+  requestAnimationFrame(frame);
+  const t = tms / 1000;
+  // camera lerp between build (straight-on) and beauty (angled)
+  const target = viewMode === 'beauty' ? 1 : 0;
+  viewT += (target - viewT) * 0.12;
+  const yaw = 0.5 * viewT, pitch = 0.42 * viewT;
+  cam.position.set(Math.sin(yaw) * camDist, Math.sin(pitch) * camDist, Math.cos(yaw) * Math.cos(pitch) * camDist);
+  cam.up.set(0, 1, 0); cam.lookAt(0, 0, 0);
+  key.target.position.set(0, 0, 0); key.target.updateMatrixWorld();
+
+  // cursor highlight + ghost
+  refreshGhost();
+  const w = cellToWorld(cursor.c, cursor.r, S);
+  const ok = canPlace(cursor.c, cursor.r);
+  highlight.position.set(w.x, w.y, floorZ + S * 0.25);
+  hlMat.color.setHex(ok ? 0x54ff9a : 0xff5a5a);
+  if (ghost) {
+    ghost.visible = ok;
+    ghost.position.set(w.x, w.y, floorZ);
+  }
+  work.position.set(w.x * 0.3, w.y * 0.3, depth * 3);
+
+  // breathe emissives + spin cores
+  for (const p of pulses) p.mat.emissiveIntensity = p.base + Math.sin(t * 1.6 + p.base * 3) * p.amp;
+  for (const s of spinners) s.rotation.z = t * 0.6;
+
+  composer.render();
+  hud.textContent =
+    `ASTEROID WORKS — BUILD LAB\n` +
+    `move: mouse / arrows   place: click / Enter   remove: right-click / X\n` +
+    `select: 1-5 or click palette   zoom: wheel   toggle view: V\n` +
+    `cell ${cursor.c},${cursor.r}  ${ok ? 'buildable' : (isOpen(cursor.c, cursor.r) ? 'occupied' : 'solid rock')}   ·   machines placed: ${placed.size}`;
+  viewEl.innerHTML = `view: <b>${viewMode === 'build' ? 'BUILD (top-down)' : 'BEAUTY (angled)'}</b><br>press V to toggle`;
+  if (!ready) { ready = true; try { window.__labReady = true; } catch (_) {} }
+}
+renderPalette();
+requestAnimationFrame(frame);
+
+// programmatic API for headless verification / console poking
+window.__lab = {
+  get ready() { return ready; },
+  select: (k) => { selKind = k; },
+  cursor: (c, r) => { cursor = { c, r }; },
+  place: (c, r, k) => place(c, r, k || selKind),
+  removeAt: (c, r) => removeAt(c, r),
+  toggleView: () => { viewMode = viewMode === 'build' ? 'beauty' : 'build'; },
+  count: () => placed.size,
+};
+
+// capture hook (?cap=name): POST the canvas to the dev server's /__shot sink after warmup
+if (q.get('cap')) {
+  const name = q.get('cap');
+  setTimeout(async () => {
+    try { await fetch('/__shot?name=' + encodeURIComponent(name), { method: 'POST', body: renderer.domElement.toDataURL('image/png') }); } catch (_) {}
+    window.__captured = true;
+  }, 1400);
+}
+</script>
+</body>
+</html>

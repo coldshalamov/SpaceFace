@@ -1,0 +1,519 @@
+/* ============================================================================
+   SpaceFace · MENU FASCIA — title / pause / system-menu surfaces.
+   "The station is an operating machine, not a stack of translucent web cards."
+
+   The menu screens were the last holdout of the legacy blue matte-plastic style
+   (translucent navy .panel + cyan glow + soft rounded cards + one mono font). This
+   sheet moves them onto the station workbench material — opaque warm near-black
+   fascia, hairline steel edges, amber worklight accent, chamfered plates, and the
+   Saira / IBM Plex type trio — while keeping the menu's own silhouette: a centered
+   plate, not a full-bleed instrument layout. Related, not identical (GDD §9.4).
+
+   Token values mirror styles/station-workbench.css (the live station reskin). Keep
+   the two in sync when the workbench palette moves. Legacy token NAMES are remapped
+   under the menu scope so older per-screen rules that still reference
+   --panel/--accent/--ink/--mono follow the new material without a rewrite.
+
+   Specificity discipline:
+   · `.screen.sf-menu` (0,2,0) beats the legacy `.panel` (0,1,0) and `.sf-btn`
+     (0,1,0) bases in ui.css, but ties with intentional per-screen specializations
+     such as `.sf-menu.sf-ng-shell` (0,2,0) — those inject at runtime, after this
+     sheet, so the screen always wins its own exceptions.
+   · `#screens .sf-menu h1` (1,1,1) outranks the legacy `#screens h1` (1,0,1) glow.
+   · `#sf-confirm-root …` (1,x,x) outranks confirm.js's runtime-injected base.
+   · Decorative layers use empty-content pseudo-elements with pointer-events:none —
+     no generated text inside controls (accessible names must stay the live label).
+   ============================================================================ */
+
+/* ---- 1. Token remap: workbench values under the menu scope ------------------ */
+
+.screen.sf-menu,
+#sf-confirm-root .sf-confirm {
+  /* surfaces + lines (warm near-black fascia) */
+  --panel: #121518;
+  --panel-2: #171b1f;
+  --panel-edge: #3b403f;
+  --panel-edge-2: #66645d;
+  /* ink (warm) */
+  --ink: #f1ede2;
+  --ink-dim: #b3afa2;
+  --ink-mute: #8a877d;
+  /* accent: amber worklight + signal cyan secondary */
+  --accent: #db9838;
+  --accent-2: #56bbb2;
+  --accent-3: #ffc064;
+  --good: #58c98a;
+  --warn: #e3a13d;
+  --danger: #ed6961;
+  /* type */
+  --mono: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  --mf-display: "Saira SemiCondensed", "Segoe UI", system-ui, sans-serif;
+  --mf-ui: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  /* fascia-only aliases */
+  --mf-line-1: #292d2e;
+  --mf-line-2: #3b403f;
+  --mf-line-3: #66645d;
+  --mf-ink-3: #656760;
+  --mf-stamp: #8a857a;
+  --mf-worklight-dim: rgba(219, 152, 56, .12);
+}
+
+/* ---- 2. The plate ------------------------------------------------------------
+   Opaque machined plate: near-black warm gradient, diagonal hatch, bottom worklight
+   glow, hairline edge, chamfered corners. clip-path swallows box-shadow, so the drop
+   shadow is a filter (it also follows the chamfer). */
+
+.screen.sf-menu {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px 28px 22px;
+  min-width: 360px;
+  max-width: min(92vw, 920px);
+  max-height: 88vh;
+  overflow: auto;
+  pointer-events: auto;
+  font-family: var(--mf-ui);
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 50% 112%, rgba(219, 152, 56, .05), transparent 52%),
+    repeating-linear-gradient(112deg, rgba(255, 255, 255, .008) 0 1px, transparent 1px 7px),
+    linear-gradient(180deg, #191d20 0%, #121518 34%, #0e1113 100%);
+  border: 1px solid var(--mf-line-2);
+  border-top-color: #4c4a44;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .03),
+    inset 0 -1px 0 rgba(0, 0, 0, .6);
+  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, .55)) drop-shadow(0 3px 8px rgba(0, 0, 0, .4));
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+}
+
+/* Diegetic stamp burned into the fascia (each screen sets data-stamp). */
+.screen.sf-menu::before {
+  content: attr(data-stamp);
+  position: absolute;
+  top: 8px;
+  right: 16px;
+  font: 500 8px/1 var(--mono);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--mf-stamp);
+  pointer-events: none;
+}
+.screen.sf-menu:not([data-stamp])::before { display: none; }
+
+/* Amber worklight edge across the top of the plate. */
+.screen.sf-menu::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 26px;
+  width: 34%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), #6b4a26 68%, transparent);
+  pointer-events: none;
+}
+
+/* Width variants (previously re-declared in every screen's injected block). */
+.screen.sf-menu.sf-menu-narrow { min-width: 320px; width: 380px; }
+.screen.sf-menu.sf-menu-wide { width: min(92vw, 860px); }
+
+/* ---- 3. Headings --------------------------------------------------------------
+   Saira display title with a chamfered worklight marker and a hairline rule; the
+   main-menu logo (h1.sf-title-logo) is a different lockup — see §7. */
+
+#screens .sf-menu h1:not(.sf-title-logo) {
+  margin: 6px 0 2px;
+  padding-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mf-display);
+  font-weight: 600;
+  font-size: 19px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--ink);
+  text-shadow: none;
+  border-bottom: 1px solid var(--mf-line-1);
+}
+#screens .sf-menu h1:not(.sf-title-logo)::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  background: var(--accent);
+  clip-path: polygon(0 0, 78% 0, 100% 22%, 100% 100%, 22% 100%, 0 78%);
+}
+/* New Game keeps its own padded header band with a bottom rule — no double line. */
+#screens .sf-menu .sf-ng-header h1:not(.sf-title-logo) { border-bottom: 0; padding-bottom: 0; }
+
+.screen.sf-menu h2 {
+  margin: 14px 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.screen.sf-menu h2::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--mf-line-2), transparent);
+}
+
+/* ---- 4. Buttons ---------------------------------------------------------------
+   Ghost rail: hairline outline, left "index notch" that lights amber on hover/focus.
+   Focus is an inset line + border so it survives the chamfer clip. No text-bearing
+   pseudo content — accessible names stay exactly the button label. */
+
+.screen.sf-menu button.sf-btn {
+  position: relative;
+  width: 100%;
+  padding: 10px 14px 10px 26px;
+  font-family: var(--mf-ui);
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  text-align: left;
+  color: #d3cfc5;
+  background: linear-gradient(180deg, #1b1f22, #131618);
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+  transition: border-color .12s ease, color .12s ease, background .12s ease, transform .1s ease;
+}
+.screen.sf-menu button.sf-btn::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 8px;
+  height: 2px;
+  transform: translateY(-50%);
+  background: #5a574f;
+  transition: background .12s ease;
+}
+.screen.sf-menu button.sf-btn:hover:not(:disabled) {
+  border-color: #8a6a3c;
+  color: var(--ink);
+  background: linear-gradient(180deg, #23272a, #17191c);
+}
+.screen.sf-menu button.sf-btn:hover:not(:disabled)::before,
+.screen.sf-menu button.sf-btn:focus-visible::before { background: var(--accent-3); }
+.screen.sf-menu button.sf-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent-3);
+  box-shadow: inset 0 0 0 1px var(--accent-3);
+  color: var(--ink);
+}
+.screen.sf-menu button.sf-btn:active:not(:disabled) { transform: translateY(1px); }
+.screen.sf-menu button.sf-btn:disabled { opacity: .42; cursor: default; }
+
+/* Primary action (Continue / Resume / Launch): solid amber worklight. */
+.screen.sf-menu button.sf-btn--primary {
+  background: linear-gradient(180deg, #ffc064, #db9838);
+  border-color: #6b4a26;
+  color: #1c1206;
+  font-weight: 600;
+}
+.screen.sf-menu button.sf-btn--primary::before { background: rgba(28, 18, 6, .55); }
+.screen.sf-menu button.sf-btn--primary:hover:not(:disabled),
+.screen.sf-menu button.sf-btn--primary:focus-visible {
+  background: linear-gradient(180deg, #ffd284, #e6a643);
+  border-color: #8a6a3c;
+  color: #120b03;
+  box-shadow: none;
+}
+.screen.sf-menu button.sf-btn--primary:focus-visible { box-shadow: inset 0 0 0 2px #1c1206; }
+.screen.sf-menu button.sf-btn--primary:hover:not(:disabled)::before,
+.screen.sf-menu button.sf-btn--primary:focus-visible::before { background: #1c1206; }
+
+/* Destructive action (quit / overwrite paths). */
+.screen.sf-menu button.sf-btn--danger {
+  background: linear-gradient(180deg, rgba(237, 105, 97, .16), rgba(237, 105, 97, .08));
+  border-color: rgba(237, 105, 97, .45);
+  color: #f0a9a4;
+}
+.screen.sf-menu button.sf-btn--danger:hover:not(:disabled),
+.screen.sf-menu button.sf-btn--danger:focus-visible {
+  border-color: var(--danger);
+  color: #ffd9d6;
+  background: linear-gradient(180deg, rgba(237, 105, 97, .22), rgba(237, 105, 97, .1));
+}
+
+/* ---- 5. Layout primitives -----------------------------------------------------
+   These lived, copy-pasted, inside each screen's injected style block. One home now. */
+
+.screen.sf-menu .sf-col { display: flex; flex-direction: column; gap: 8px; }
+.screen.sf-menu .sf-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.screen.sf-menu .sf-row > label { color: var(--ink-dim); font-size: 13px; flex: 0 0 38%; }
+.screen.sf-menu .sf-row > .sf-ctl { flex: 1; display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+.screen.sf-menu input[type=range] { flex: 1; accent-color: var(--accent); }
+.screen.sf-menu select,
+.screen.sf-menu input[type=text],
+.screen.sf-menu input[type=number] {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: #0c0e10;
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  padding: 6px 8px;
+  pointer-events: auto;
+}
+.screen.sf-menu select:focus-visible,
+.screen.sf-menu input[type=text]:focus-visible,
+.screen.sf-menu input[type=number]:focus-visible {
+  outline: none;
+  border-color: var(--accent-3);
+  box-shadow: inset 0 0 0 1px var(--accent-3);
+}
+.screen.sf-menu .sf-val { font-family: var(--mono); color: var(--accent); min-width: 46px; text-align: right; }
+.screen.sf-menu .sf-grid2 { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; align-items: center; font-size: 13px; }
+.screen.sf-menu .sf-grid2 .k { color: var(--ink-dim); font-family: var(--mono); letter-spacing: .05em; }
+.screen.sf-menu .sf-grid2 .v { color: var(--ink); }
+.screen.sf-menu .sf-foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+.screen.sf-menu .sf-muted { color: var(--ink-mute); font-size: 12px; }
+
+/* Tabs (Settings / Help / Codex): machined selector strip, no glow. */
+.screen.sf-menu .sf-tabbar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--mf-line-2);
+  padding-bottom: 8px;
+  flex-wrap: wrap;
+}
+.screen.sf-menu button.sf-tab {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  background: transparent;
+  border: 1px solid var(--mf-line-1);
+  border-radius: 2px;
+  padding: 6px 12px;
+}
+.screen.sf-menu button.sf-tab:hover { color: var(--ink); border-color: var(--mf-line-3); }
+.screen.sf-menu button.sf-tab:focus-visible {
+  outline: none;
+  border-color: var(--accent-3);
+  box-shadow: inset 0 0 0 1px var(--accent-3);
+  color: var(--ink);
+}
+.screen.sf-menu button.sf-tab.active {
+  color: var(--accent-3);
+  border-color: #8a6a3c;
+  background: var(--mf-worklight-dim);
+  box-shadow: none;
+}
+
+/* Slots (pause flight brief, save slots, help cards): instrument readout rows. */
+.screen.sf-menu .sf-slot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #0e1113;
+  border: 1px solid var(--mf-line-1);
+  border-radius: 2px;
+}
+.screen.sf-menu .sf-slot.sel {
+  border-color: #8a6a3c;
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.screen.sf-menu .sf-slot-main { flex: 1; min-width: 0; }
+.screen.sf-menu .sf-slot-name { font-size: 14px; color: var(--ink); }
+.screen.sf-menu .sf-slot-sub { font-size: 11px; color: var(--ink-mute); font-family: var(--mono); }
+.screen.sf-menu .sf-slot.empty .sf-slot-name { color: var(--ink-mute); font-style: italic; }
+
+/* ---- 6. Title-screen continue readout ------------------------------------------ */
+
+.screen.sf-menu .sf-menu-save-summary {
+  border: 1px solid var(--mf-line-1);
+  border-left: 2px solid var(--mf-line-2);
+  border-radius: 2px;
+  padding: 9px 11px;
+  background: #0c0e10;
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.screen.sf-menu .sf-menu-save-summary.has-save {
+  color: var(--ink);
+  border-left-color: var(--accent);
+}
+
+/* ---- 7. Title lockup ------------------------------------------------------------
+   The wordmark is the one place the plate opens up: big Saira caps, warm white, an
+   amber rule under it. No glow — the worklight edge above carries the accent. */
+
+#screens .sf-menu h1.sf-title-logo {
+  margin: 6px 0 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+  font-family: var(--mf-display);
+  font-weight: 700;
+  font-size: clamp(34px, 5.4vw, 50px);
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--ink);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .55);
+}
+#screens .sf-menu h1.sf-title-logo::after {
+  content: "";
+  display: block;
+  height: 3px;
+  width: 64%;
+  margin: 12px auto 0;
+  background: linear-gradient(90deg, transparent, var(--accent) 22%, #6b4a26 78%, transparent);
+}
+.screen.sf-menu .sf-title-tag {
+  margin: 10px 0 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--ink-mute);
+}
+
+/* ---- 8. Confirm dialog -----------------------------------------------------------
+   The shared gate for irreversible actions gets the same fascia plate so Pause →
+   Main Menu / Load reads as one machine. Behavior + focus order live in confirm.js. */
+
+#sf-confirm-root { background: rgba(4, 5, 6, .86); }
+#sf-confirm-root .sf-confirm {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 50% 112%, rgba(219, 152, 56, .05), transparent 52%),
+    repeating-linear-gradient(112deg, rgba(255, 255, 255, .008) 0 1px, transparent 1px 7px),
+    linear-gradient(180deg, #191d20 0%, #121518 34%, #0e1113 100%);
+  border: 1px solid var(--mf-line-2);
+  border-top-color: #4c4a44;
+  border-radius: 3px;
+  padding: 22px 24px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03), inset 0 -1px 0 rgba(0, 0, 0, .6);
+  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, .55));
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+}
+#sf-confirm-root .sf-confirm::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 22px;
+  width: 30%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), #6b4a26 68%, transparent);
+  pointer-events: none;
+}
+#sf-confirm-root .sf-confirm__title {
+  margin: 2px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--mf-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow: none;
+}
+#sf-confirm-root .sf-confirm__title::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  clip-path: polygon(0 0, 78% 0, 100% 22%, 100% 100%, 22% 100%, 0 78%);
+}
+#sf-confirm-root .sf-confirm__title.sf-confirm__title--danger { color: #f0a9a4; text-shadow: none; }
+#sf-confirm-root .sf-confirm__title.sf-confirm__title--danger::before { background: var(--danger); }
+#sf-confirm-root .sf-confirm__body {
+  color: var(--ink-dim);
+  font-family: var(--mf-ui);
+  font-size: 13px;
+  line-height: 1.55;
+}
+#sf-confirm-root .sf-confirm__body b { color: var(--ink); }
+#sf-confirm-root .sf-confirm__btns button.sf-btn {
+  min-width: 104px;
+  padding: 9px 14px;
+  font-family: var(--mf-ui);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #d3cfc5;
+  background: linear-gradient(180deg, #1b1f22, #131618);
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+}
+#sf-confirm-root .sf-confirm__btns button.sf-btn:hover:not(:disabled) {
+  border-color: #8a6a3c;
+  color: var(--ink);
+  background: linear-gradient(180deg, #23272a, #17191c);
+}
+#sf-confirm-root .sf-confirm__btns button.sf-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent-3);
+  box-shadow: inset 0 0 0 1px var(--accent-3);
+  color: var(--ink);
+}
+#sf-confirm-root .sf-confirm__btns button.sf-btn--primary {
+  background: linear-gradient(180deg, #ffc064, #db9838);
+  border-color: #6b4a26;
+  color: #1c1206;
+  font-weight: 600;
+}
+#sf-confirm-root .sf-confirm__btns button.sf-btn--primary:hover:not(:disabled),
+#sf-confirm-root .sf-confirm__btns button.sf-btn--primary:focus-visible {
+  background: linear-gradient(180deg, #ffd284, #e6a643);
+  color: #120b03;
+  box-shadow: none;
+}
+#sf-confirm-root .sf-confirm__btns button.sf-btn--primary:focus-visible { box-shadow: inset 0 0 0 2px #1c1206; }
+#sf-confirm-root .sf-confirm__btns button.sf-btn--danger {
+  background: linear-gradient(180deg, rgba(237, 105, 97, .16), rgba(237, 105, 97, .08));
+  border-color: rgba(237, 105, 97, .45);
+  color: #f0a9a4;
+}
+#sf-confirm-root .sf-confirm__btns button.sf-btn--danger:hover:not(:disabled),
+#sf-confirm-root .sf-confirm__btns button.sf-btn--danger:focus-visible {
+  border-color: var(--danger);
+  color: #ffd9d6;
+  box-shadow: none;
+}
+#sf-confirm-root .sf-confirm__btns button.sf-btn--danger:focus-visible { box-shadow: inset 0 0 0 1px var(--danger); }
+
+/* ---- 9. Accessibility hooks -------------------------------------------------------
+   Dyslexia mode swaps the proportional stacks (mono telemetry stays put, matching
+   the existing accessibility.css policy). Forced colors flattens the chamfers so
+   system borders read clean. The .screen/.panel/.sf-menu class hooks that
+   accessibility.css already keys off are unchanged by this redesign. */
+
+html.sf-dyslexia .screen.sf-menu,
+html.sf-dyslexia #sf-confirm-root .sf-confirm {
+  --mf-display: "OpenDyslexic", "Atkinson Hyperlegible", "Comic Sans MS", "Verdana", system-ui, sans-serif;
+  --mf-ui: "OpenDyslexic", "Atkinson Hyperlegible", "Comic Sans MS", "Verdana", system-ui, sans-serif;
+}
+
+@media (forced-colors: active) {
+  html.sf-forced-colors .screen.sf-menu,
+  html.sf-forced-colors #sf-confirm-root .sf-confirm,
+  html.sf-forced-colors .screen.sf-menu button.sf-btn { clip-path: none !important; filter: none !important; }
+}

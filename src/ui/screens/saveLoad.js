@@ -26,48 +26,17 @@ function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
+  // Save/Load–specific slot anatomy only. The shared menu fascia (plate, buttons, headings,
+  // slot rows, form primitives) lives in styles/menu.css — previously a copy of that whole
+  // block was pasted here and into every other menu screen.
   s.textContent = `
-  .sf-menu { display:flex; flex-direction:column; gap:14px; padding:26px 30px; min-width:360px;
-    max-width:min(92vw,920px); max-height:88vh; overflow:auto; pointer-events:auto; }
-  .sf-menu-narrow { min-width:300px; width:340px; }
-  .sf-menu-wide { width:min(92vw,820px); }
-  .sf-menu h1 { margin:0 0 4px; font-family:var(--mono); letter-spacing:.32em; font-size:20px;
-    color:var(--accent); text-shadow:0 0 18px rgba(57,208,255,.45); text-transform:uppercase; text-align:center; }
-  .sf-menu h2 { margin:14px 0 4px; font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-dim); }
-  .sf-menu .sf-col { display:flex; flex-direction:column; gap:8px; }
-  .sf-menu button.sf-btn { width:100%; text-align:center; padding:11px 14px; font-size:14px; letter-spacing:.06em; }
-  .sf-menu .sf-row { display:flex; align-items:center; justify-content:space-between; gap:14px; }
-  .sf-menu .sf-row > label { color:var(--ink-dim); font-size:13px; flex:0 0 38%; }
-  .sf-menu .sf-row > .sf-ctl { flex:1; display:flex; align-items:center; gap:10px; justify-content:flex-end; }
-  .sf-menu input[type=range] { flex:1; accent-color:var(--accent); }
-  .sf-menu select, .sf-menu input[type=text], .sf-menu input[type=number] {
-    font-family:inherit; font-size:13px; color:var(--ink); background:var(--panel); border:1px solid var(--panel-edge);
-    border-radius:5px; padding:6px 8px; pointer-events:auto; }
-  .sf-menu .sf-val { font-family:var(--mono); color:var(--accent); min-width:46px; text-align:right; }
-  .sf-tabbar { display:flex; gap:6px; border-bottom:1px solid var(--panel-edge); padding-bottom:8px; flex-wrap:wrap; }
-  .sf-tabbar button.sf-tab.active { border-color:var(--accent); color:#fff; box-shadow:0 0 10px rgba(57,208,255,.35); }
-  .sf-menu .sf-grid2 { display:grid; grid-template-columns:auto 1fr; gap:6px 18px; align-items:center; font-size:13px; }
-  .sf-menu .sf-grid2 .k { color:var(--ink-dim); font-family:var(--mono); letter-spacing:.05em; }
-  .sf-menu .sf-grid2 .v { color:var(--ink); }
-  .sf-menu .sf-foot { display:flex; gap:10px; justify-content:flex-end; margin-top:8px; }
-  .sf-menu .sf-muted { color:var(--ink-mute); font-size:12px; }
-  .sf-slot { display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--panel-edge);
-    border-radius:6px; background:var(--panel); }
-  .sf-slot.sel { border-color:var(--accent); box-shadow:0 0 10px rgba(57,208,255,.3); }
-  .sf-slot .sf-slot-main { flex:1; min-width:0; }
   .sf-slot .sf-slot-head { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:2px; }
-  .sf-slot .sf-slot-name { font-size:14px; color:var(--ink); }
   .sf-slot .sf-slot-badge { font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase;
-    color:var(--accent); border:1px solid rgba(57,208,255,.45); border-radius:4px; padding:1px 5px;
-    background:rgba(57,208,255,.08); }
+    color:var(--accent); border:1px solid rgba(219,152,56,.45); border-radius:2px; padding:1px 5px;
+    background:rgba(219,152,56,.08); }
   .sf-slot .sf-slot-context { font-size:12px; color:var(--ink-dim); margin-top:2px; overflow-wrap:anywhere; }
   .sf-slot .sf-slot-detail { font-size:11px; color:var(--ink-mute); font-family:var(--mono); margin-top:2px;
     overflow-wrap:anywhere; }
-  .sf-slot .sf-slot-sub { font-size:11px; color:var(--ink-mute); font-family:var(--mono); }
-  .sf-slot.empty .sf-slot-name { color:var(--ink-mute); font-style:italic; }
-  .sf-title-logo { font-family:var(--mono); letter-spacing:.5em; font-size:46px; color:var(--accent);
-    text-shadow:0 0 40px rgba(57,208,255,.5); text-align:center; margin:0; }
-  .sf-title-tag { text-align:center; color:var(--ink-dim); letter-spacing:.28em; font-size:12px; margin-bottom:18px; }
   `;
   document.head.appendChild(s);
 }
@@ -75,6 +44,8 @@ function shell(rootEl, title, extraClass) {
   rootEl.innerHTML = '';
   rootEl.classList.add('panel', 'sf-menu');
   if (extraClass) rootEl.classList.add(extraClass);
+  // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
+  rootEl.dataset.stamp = 'FLIGHT RECORDER / SAVE-LOAD';
   const h = document.createElement('h1'); h.textContent = title; rootEl.appendChild(h);
   return rootEl;
 }

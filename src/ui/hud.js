@@ -654,29 +654,32 @@ export function createHud(ctx, alerts) {
   leftContext.className = 'sf-leftcontext';
   leftStack.appendChild(leftContext);
 
-  // Tactical-Visor §3C: the clunky stacked bars become a top-down structural schematic. Hull is the
-  // tint + centered numeric; shield is the glowing ring (stroke-dashoffset). Energy/heat/boost — which
-  // the arcs/schematic don't cover — live on as thin 2px glowing micro-lines below it.
+  // Ship condition is built around a production raster silhouette, not a hand-drawn glyph. The
+  // shield remains a live vector ring because it carries state; the authored ship cutout carries
+  // shape, material, and visual identity at the small size this instrument actually occupies.
   const bars = document.createElement('div');
   bars.className = 'sf-bars';
+
+  const conditionHead = document.createElement('div');
+  conditionHead.className = 'sf-condition-head';
+  conditionHead.innerHTML = '<span>SHIP CONDITION</span><span class="sf-condition-state">NOMINAL</span>';
+  bars.appendChild(conditionHead);
 
   const schematic = document.createElement('div');
   schematic.className = 'sf-schematic';
   schematic.innerHTML =
-    '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">' +
-      '<circle class="sf-sch-shield" cx="50" cy="50" r="44" transform="rotate(-90 50 50)"/>' +
-      '<g class="sf-sch-ship">' +
-        '<path d="M50 20 L53 32 L62 50 L75 66 L58 63 L56 75 L50 71 L44 75 L42 63 L25 66 L38 50 L47 32 Z" stroke-linejoin="round"/>' +
-        '<path d="M50 28 L53 38 L50 45 L47 38 Z" stroke-width="1.2"/>' +
-        '<line x1="50" y1="45" x2="50" y2="71" stroke-width="1.2" stroke-dasharray="1.5,1.5"/>' +
-        '<path d="M38 50 L31 60 L41 58 M62 50 L69 60 L59 58" stroke-width="1.2"/>' +
-        '<path d="M43 64 L43 75 L48 75 M57 64 L57 75 L52 75" stroke-width="1.2"/>' +
-      '</g>' +
+    '<svg class="sf-sch-ring" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<circle class="sf-sch-track" cx="50" cy="50" r="46"/>' +
+      '<circle class="sf-sch-shield" cx="50" cy="50" r="46" transform="rotate(-90 50 50)"/>' +
     '</svg>' +
-    '<div class="sf-sch-hull">0</div>';
+    '<img class="sf-sch-ship" src="./assets/ui/hud/ship-condition-scout.png" alt="" draggable="false">' +
+    '<div class="sf-sch-hull"><strong>0</strong><span>HULL</span></div>' +
+    '<div class="sf-sch-shield-readout"><span>SHD</span><strong>0</strong></div>';
   bars.appendChild(schematic);
   const schShield = schematic.querySelector('.sf-sch-shield');
-  const schHull = schematic.querySelector('.sf-sch-hull');
+  const schHull = schematic.querySelector('.sf-sch-hull strong');
+  const schShieldValue = schematic.querySelector('.sf-sch-shield-readout strong');
+  const schState = conditionHead.querySelector('.sf-condition-state');
 
   // Thin micro-bars. Hull + shield are on the schematic; energy/boost/weapon-heat/fuel live here.
   const barDefs = [
@@ -700,9 +703,13 @@ export function createHud(ctx, alerts) {
   }
   leftStack.appendChild(bars);   // bars below the contextual column
   root.appendChild(leftStack);
+  // Comms is initialized a few lines before createHud() by uiRoot. Adopt the existing feed into the
+  // context rail now that its stable home exists; the module keeps an absolute fallback for boot.
+  const existingComms = document.getElementById('sf-comms');
+  if (existingComms) leftContext.prepend(existingComms);
   // Shield ring: dasharray = full circumference, dashoffset grows as shields drop (erasing the ring).
   // Measured after mount so getTotalLength() reads the live geometry (the fallback equals 2πr anyway).
-  const SHIELD_RING_LEN = (() => { try { return schShield.getTotalLength() || 2 * Math.PI * 44; } catch (e) { return 2 * Math.PI * 44; } })();
+  const SHIELD_RING_LEN = (() => { try { return schShield.getTotalLength() || 2 * Math.PI * 46; } catch (e) { return 2 * Math.PI * 46; } })();
   schShield.style.strokeDasharray = String(SHIELD_RING_LEN);
   schShield.style.strokeDashoffset = '0';
 
@@ -710,32 +717,33 @@ export function createHud(ctx, alerts) {
   //  first-person cockpit/windshield motif, which is wrong for this third-person chase-cam game.
   //  Shield now lives on the schematic ring; energy on the ENGY micro-bar.)
 
-  // ---- bottom-center: action bar (key → ability map) (§3B) ----
-  const ACTION_ICONS = {
-    'pulse-laser': '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>',
-    'mass-sample': '<svg viewBox="0 0 24 24"><path d="M12 3l5 6-5 12-5-12z"/><path d="M7 9h10"/></svg>',
-    'boost': '<svg viewBox="0 0 24 24"><path d="M5 19l7-13 7 13"/><path d="M5 13l7-7 7 7"/></svg>',
-    'dock': '<svg viewBox="0 0 24 24"><path d="M12 3v13M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>',
-    'drill': '<svg viewBox="0 0 24 24"><path d="M12 2l4 6h-8z"/><path d="M12 8v10M9 14l3 3 3-3"/><path d="M5 21h14"/></svg>',
-  };
+  // ---- bottom-center: continuous command rail (binding → action) ----
+  // These are state readouts, not five fake square buttons. Plain action words scan faster than
+  // tiny bespoke symbols and stay honest when the binding or fitted equipment changes.
   const ACTION_SLOTS = [
-    ['LMB', 'pulse-laser'],
-    ['RMB', 'mass-sample'],
-    ['SHIFT', 'boost'],
-    [BINDINGS.dock.label, 'dock'],
-    [BINDINGS.drill.label, 'drill'],
+    ['LMB', 'pulse-laser', 'FIRE', 'PRIMARY'],
+    ['RMB', 'mass-sample', 'SAMPLE', 'UTILITY'],
+    ['SHIFT', 'boost', 'BOOST', 'DRIVE'],
+    [BINDINGS.dock.label, 'dock', 'DOCK', 'SERVICE'],
+    [BINDINGS.drill.label, 'drill', 'DRILL', 'EXTRACT'],
   ];
+  const commandDeck = document.createElement('div');
+  commandDeck.className = 'sf-command-deck';
   const actionBar = document.createElement('div');
   actionBar.id = 'action-bar';
   const actionBoxes = {};
-  for (const [bind, icon] of ACTION_SLOTS) {
+  for (const [bind, action, label, family] of ACTION_SLOTS) {
     const slot = document.createElement('div');
     slot.className = 'action-slot';
-    slot.innerHTML = `<span class="bind">${bind}</span><div class="icon-box ${icon}">${ACTION_ICONS[icon]}</div>`;
+    slot.dataset.action = action;
+    slot.innerHTML =
+      `<span class="bind">${bind}</span>` +
+      `<span class="action-command"><strong>${label}</strong><small>${family}</small></span>`;
     actionBar.appendChild(slot);
-    actionBoxes[icon] = slot.querySelector('.icon-box');
+    actionBoxes[action] = slot;
   }
-  root.appendChild(actionBar);
+  commandDeck.appendChild(actionBar);
+  root.appendChild(commandDeck);
   // Dock availability (physics emits dock:range as the player nears a station) → highlight the dock slot.
   let dockInRange = false;
   ctx.bus.on('dock:range', (p) => { dockInRange = !!(p && p.inRange); });
@@ -798,7 +806,7 @@ export function createHud(ctx, alerts) {
     <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="cargo"><span class="sf-stat__k">CARGO</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="credits"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" id="sf-rolestat" data-chip="role"><span class="sf-stat__k">CLASS</span><span class="sf-stat__v mono" data-k="role">—</span></div>`;
-  root.appendChild(center);
+  commandDeck.prepend(center);
   const elSpeed = center.querySelector('[data-k=speed]');
   const elCargo = center.querySelector('[data-k=cargo]');
   const elCredits = center.querySelector('[data-k=credits]');
@@ -930,6 +938,10 @@ export function createHud(ctx, alerts) {
   const radar = createRadar(ctx);
   rightDock.append(targetPanel.el, elOverview, radar.el);
   root.appendChild(rightDock);
+  // Sector law is created with comms before the HUD. Moving the same live node avoids a second card
+  // competing with toasts in the upper-right corner while preserving all presenter state/listeners.
+  const existingSectorLaw = document.getElementById('sf-sector-law');
+  if (existingSectorLaw) rightDock.prepend(existingSectorLaw);
 
   // Target Arcs Overlay (§3)
   const targetArcs = document.createElement('div');
@@ -1024,7 +1036,7 @@ export function createHud(ctx, alerts) {
   const wpnHeatsWrap = document.createElement('div');
   wpnHeatsWrap.className = 'sf-wpn-heats';
   wpnHeatsWrap.style.display = 'none';
-  root.appendChild(wpnHeatsWrap);
+  bars.appendChild(wpnHeatsWrap);
   let wpnHeatEls = []; // [{fill, row, lastHeat}]
   let wpnHeatShipId = null;
 
@@ -2622,12 +2634,9 @@ export function createHud(ctx, alerts) {
         const overheated = hCur >= hMax && hMax > 0;
         setClass(el.row, 'overheated', overheated);
       }
-      // Position above the status bars panel (recalc on slow ticks to track layout changes).
-      if (slow) {
-        const barsRect = bars.getBoundingClientRect();
-        setStyle(wpnHeatsWrap, 'bottom', (window.innerHeight - barsRect.top + 6) + 'px');
-      }
-      setStyle(wpnHeatsWrap, 'display', 'flex');
+      // Aggregate weapon heat already lives in the condition panel. Individual bars earn the extra
+      // row only on a multi-weapon fit, where the player can act on the difference between guns.
+      setStyle(wpnHeatsWrap, 'display', weapons.length > 1 ? 'flex' : 'none');
     } else {
       setStyle(wpnHeatsWrap, 'display', 'none');
     }
@@ -3102,6 +3111,8 @@ export function createHud(ctx, alerts) {
       // Ship schematic (hull tint + centered numeric; shield ring via stroke-dashoffset).
       setStyle(schShield, 'strokeDashoffset', (SHIELD_RING_LEN * (1 - shieldFrac)).toFixed(1));
       setClass(schematic, 'sf-sch-critical', hullFrac < 0.25);
+      setClass(bars, 'sf-condition-critical', hullFrac < 0.25);
+      setClass(bars, 'sf-condition-shield-low', shieldFrac < 0.25 && hullFrac >= 0.25);
 
       setScaleX(fillEls.energy, capFrac);
       setScaleX(fillEls.heat, heatFrac);
@@ -3134,6 +3145,11 @@ export function createHud(ctx, alerts) {
 
       if (slow) {
         setText(schHull, Math.max(0, Math.round(p.hull)) + '');
+        setText(schShieldValue, Math.max(0, Math.round(p.shield)) + '');
+        setText(schState,
+          hullFrac < 0.25 ? 'CRITICAL' :
+          shieldFrac < 0.25 ? 'SHIELD LOW' :
+          heatFrac > 0.85 ? 'HEAT HIGH' : 'NOMINAL');
         setText(numEls.energy, Math.max(0, Math.round(p.cap)) + '');
         setText(numEls.heat, wpnHeat.pct + '%');
         // Phase 4 fuel gauge: low fuel flashes a warning.
@@ -3239,8 +3255,8 @@ export function createHud(ctx, alerts) {
       const primary = nGuns === 1 ? (ws[0].name || ws[0].defId || '1 gun') : (nGuns + ' guns');
       setText(elWeapons, primary + (auto ? ' · AUTO-TGT' : ''));
       setClass(elWeapons, 'sf-warn', auto);
-      // Reticle reflects control mode: amber gesture-stick cursor while auto-target guns track the
-      // separate lock diamond/lead pip; cyan when aiming/firing manually. Purely a visual cue.
+      // Reticle reflects control mode: hidden while the separate auto-target travel vector and
+      // lock diamond/lead pip are active; cyan when aiming/firing manually. Purely a visual cue.
       if (elReticle) setClass(elReticle, 'autofire', auto);
       // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
       // expands the crosshair (1 -> 1.25); it contracts as you stop. Purely cosmetic readability.
@@ -3486,7 +3502,13 @@ export function createHud(ctx, alerts) {
       return;
     }
     arrow.classList.add('sf-objarrow--edge');
-    arrow.classList.remove('sf-objarrow--onscreen', 'sf-objarrow--compact');
+    arrow.classList.remove('sf-objarrow--onscreen');
+    const edgeOverlapsLeftAnchor = edgePlacement.x < 370 && edgePlacement.y > h - 400;
+    const edgeOverlapsRightAnchor = edgePlacement.x > w - 300 && edgePlacement.y > h - 520;
+    const edgeOverlapsActionAnchor = edgePlacement.y > h - 135
+      && edgePlacement.x > w * 0.27 && edgePlacement.x < w * 0.73;
+    arrow.classList.toggle('sf-objarrow--compact',
+      edgeOverlapsLeftAnchor || edgeOverlapsRightAnchor || edgeOverlapsActionAnchor);
     arrow.dataset.edge = edgePlacement.edge;
     arrow.style.setProperty('--sf-arrow-angle', `${edgePlacement.angleRad}rad`);
     setDisplay(arrow, true);

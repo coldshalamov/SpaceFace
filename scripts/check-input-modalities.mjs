@@ -123,14 +123,18 @@ assert.match(autoTargetModeSrc, /ui:targetNearestHostileToPlayer/,
   'autoTargetMode must request the hostile nearest the player');
 assert.match(autoTargetModeSrc, /quiet:\s*true/,
   'autoTargetMode must keep quietly refreshing nearest-hostile lock while active');
-assert.match(autoTargetModeSrc, /autoTargetStick[\s\S]*inp\.turnIntent[\s\S]*stick\.x[\s\S]*inp\.moveZ[\s\S]*stick\.y/,
-  'auto-target must map explicit ship-local joystick yaw/throttle axes while weapons aim at the lock');
+assert.match(autoTargetModeSrc, /autoTargetPath[\s\S]*route\.points[\s\S]*pointIndex[\s\S]*inp\.moveZ[\s\S]*inp\.moveX[\s\S]*desiredHeading/,
+  'auto-target must follow retained world-route points with translation plus nose acquisition');
 assert.match(autoTargetAssistSrc, /requestPointerLock/,
   'auto-target must capture relative trackpad and mouse motion inside the game window');
-assert.match(inputSrc, /AUTO_TARGET_NEW_GESTURE_MS/,
-  'a new trackpad gesture must start from neutral so an opposite swipe flips immediately');
-assert.doesNotMatch(inputSrc, /performance\.now\(\) - this\._lastAutoTargetMotionMs > AUTO_TARGET_NEW_GESTURE_MS\)[\s\S]{0,260}syncPointerScreen\(state/,
-  'idle update ticks must not release a held joystick deflection before the ship can turn');
+assert.match(inputSrc, /AUTO_TARGET_GESTURE_IDLE_MS/,
+  'captured relative motion must detect gesture pauses without needing unavailable finger-lift events');
+assert.match(inputSrc, /idle gap is a clutch, not a clear[\s\S]*route\.points/,
+  'trackpad re-contact must extend the retained route instead of erasing earlier curve segments');
+assert.match(inputSrc, /route\.drawing = false/,
+  'idle trackpad motion must end drawing while preserving route flight authority');
+assert.doesNotMatch(inputSrc, /stickGeometry|autoTargetStick/,
+  'auto-target input must not reconstruct the rejected virtual joystick');
 assert.match(autoTargetModeSrc, /inp\.autoFire = !inp\.autoFire/,
   'auto-target toggle must always flip auto-target without autopursuit guards');
 assert.match(autoTargetAssistSrc, /toggleAutoTarget/,

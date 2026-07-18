@@ -50,9 +50,17 @@ try {
 
   const inputSys = registry.get('input');
   assert(inputSys && typeof inputSys.update === 'function', 'registry must expose the live input system');
-  inputSys._screen = { x: 520, y: 200, active: true };
-  inputSys._ndc = { x: 0.3, y: 1 / 3 };
+  inputSys._screen = { x: 400, y: 300, active: true };
+  inputSys._ndc = { x: 0, y: 0 };
   inputSys._autoTargetPointerMode = true;
+  state.input.autoTargetPath = {
+    active: true,
+    drawing: false,
+    cursorX: 400,
+    cursorY: 120,
+    pointIndex: 1,
+    points: [{ x: 0, z: 0 }, { x: 0, z: 300 }],
+  };
   inputSys._lastKbmMs = performance.now();
   inputSys._keys = Object.create(null);
   if (inputSys.helpers) {
@@ -69,21 +77,40 @@ try {
     'registry.step aimAngle must track locked hostile, not cursor');
   assert(Math.abs(wrapAngle(state.input.aimAngle - cursorAngle)) > 0.5,
     'registry.step aimAngle must diverge from cursor bearing');
-  assert(Math.abs(state.input.turnIntent) > 0.01,
-    'registry.step must publish non-zero turnIntent from the center-relative stick');
-  assert.equal(state.input.turnIntent, state.input.autoTargetStick.x,
-    'registry.step must map horizontal stick deflection directly to ship-local yaw');
-  assert.equal(state.input.moveZ, state.input.autoTargetStick.y,
-    'registry.step must map vertical stick deflection directly to forward/reverse thrust');
+  assert(state.input.autoTargetPath.active,
+    'registry.step must retain the drawn world route after captured motion stops');
+  assert(state.input.autoTargetPath.points.at(-1).z === 300,
+    'the drawn route endpoint must remain the flight authority');
+  assert(state.input.moveX > 0.9,
+    'world +Z must produce immediate right/lateral thrust while the ship faces +X');
+  assert(Math.abs(state.input.moveZ) < 0.02,
+    'world +Z must not be reinterpreted as ship-local forward throttle');
+  assert(state.input.turnIntent > 0.9,
+    'the nose must concurrently turn toward the requested world +Z travel direction');
   const physicsSys = registry.get('physics');
   if (physicsSys && physicsSys._sg02Init) await physicsSys._sg02Init;
   assert(physicsSys && physicsSys._sg02,
-    'registry proof must wait for the real Rapier dynamic authority before judging ship rotation');
+    'registry proof must wait for the real Rapier dynamic authority before judging ship travel');
+  const initialX = player.pos.x;
+  const initialZ = player.pos.z;
   const initialRot = player.rot;
   for (let i = 0; i < 45; i++) registry.step(DT);
+  const travelX = player.pos.x - initialX;
+  const travelZ = player.pos.z - initialZ;
+  assert(travelZ > 0.2 && travelZ > Math.abs(travelX) * 2,
+    `real Flight V3 + physics must accelerate mainly along requested world +Z; dx=${travelX} dz=${travelZ}`);
   assert(Math.abs(wrapAngle(player.rot - initialRot)) > 0.08,
-    `real Flight V3 + physics ticks must rotate the player ship; start=${initialRot} end=${player.rot} turn=${state.input.turnIntent} stick=${JSON.stringify(state.input.autoTargetStick)} auto=${state.input.autoFire} mode=${state.mode}`);
-  console.log(`[PASS] registry-step-auto-target aimAngle=${state.input.aimAngle.toFixed(3)} turnIntent=${state.input.turnIntent.toFixed(3)} rotDelta=${wrapAngle(player.rot - initialRot).toFixed(3)}`);
+    `real Flight V3 + physics must also turn the nose; start=${initialRot} end=${player.rot} turn=${state.input.turnIntent} route=${JSON.stringify(state.input.autoTargetPath)} auto=${state.input.autoFire} mode=${state.mode}`);
+
+  globalThis.__setRegistryNow(1300);
+  registry.step(DT);
+  assert.equal(state.input.autoTargetPath.active, true,
+    'finger lift must not discard an unfinished route');
+  assert(Math.hypot(state.input.moveX, state.input.moveZ) > 0.1,
+    'the flight computer must keep traversing the retained route after idle');
+  assert.equal(state.input.boost, false,
+    'path overdrive must not consume or impersonate the resource-gated boost input');
+  console.log(`[PASS] registry-step-auto-target aimAngle=${state.input.aimAngle.toFixed(3)} travel=(${travelX.toFixed(3)},${travelZ.toFixed(3)}) rotDelta=${wrapAngle(player.rot - initialRot).toFixed(3)} routeActive=true`);
 
   const assist = registry.get('autoTargetAssist');
   assert(assist._onKeyDown && assist._onKeyUp, 'registry init must attach autoTargetAssist G-key handlers');
@@ -197,9 +224,22 @@ function installHeadlessBrowserStubs() {
   };
   globalThis.innerWidth = 800;
   globalThis.innerHeight = 600;
-  globalThis.performance = { now: () => 1000 };
+  let now = 1000;
+  globalThis.performance = { now: () => now };
+  globalThis.__setRegistryNow = (value) => { now = value; };
+  const elementStub = () => ({
+    style: {},
+    dataset: {},
+    classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+    appendChild() {},
+    remove() {},
+    setAttribute() {},
+    addEventListener() {},
+    removeEventListener() {},
+  });
   globalThis.document = {
-    getElementById: () => ({ addEventListener() {}, removeEventListener() {} }),
+    getElementById: elementStub,
+    createElement: elementStub,
     addEventListener() {},
     removeEventListener() {},
     body: { classList: { contains: () => false } },
@@ -214,5 +254,6 @@ function installHeadlessBrowserStubs() {
     globalThis.window = previous.window;
     globalThis.performance = previous.performance;
     delete globalThis.__sfListenerMap;
+    delete globalThis.__setRegistryNow;
   };
 }

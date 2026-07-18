@@ -222,8 +222,8 @@ try {
   writeFileSync(GALAXY_SHOT, Buffer.from(shot.data, 'base64'));
   console.log('Saved GALAXY screenshot:', GALAXY_SHOT);
 
-  // Set zoom to SYSTEM level (3.5)
-  await setMapScale('SYSTEM', 3.5);
+  // Set zoom to SYSTEM level (2.0 — inside [LEVEL_SYSTEM_AT 1.6, LEVEL_LOCAL_AT 2.8))
+  await setMapScale('SYSTEM', 2.0);
   shot = await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 90 });
   writeFileSync(SYSTEM_SHOT, Buffer.from(shot.data, 'base64'));
   console.log('Saved SYSTEM screenshot:', SYSTEM_SHOT);

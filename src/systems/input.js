@@ -22,7 +22,7 @@
 //   bare ←/→ yaw, W/↑ + ←/→ strafe.
 //
 //   ALL schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · G auto-target
-//   toggle (owned by autoTargetAssist — guns track lock, captured motion drives a virtual joystick) · F tether latch/cut · Q charge throw (helm) · R detonate
+//   toggle (owned by autoTargetAssist — guns track lock, captured motion draws the flight route) · F tether latch/cut · Q charge throw (helm) · R detonate
 //   charges · C scanner pulse · V cruise.
 //   MMB TAP = pursuit/approach toggle: ship target → sustained autopursuit (tail + speed-match,
 //   fight with the mouse while the flight computer flies); station/other target → goto autopilot.
@@ -56,13 +56,12 @@ const BRAKE_SOFT_SPEED = 24;   // wu/s — counter-thrust ramps down below this 
 const TETHER_ORBIT_SOFT_ANGLE = 0.46;  // latched/coasting: favor guns-in orbit over drift-facing
 const PILOT_CARVE_TURN = 0.35; // pilot scheme: fraction of yaw blended in while strafing under
                                // forward thrust — the ship banks and carves instead of crab-sliding
-const AUTO_TARGET_STICK_RADIUS_FRACTION = 0.28;
-const AUTO_TARGET_STICK_DEADZONE = 0.1;
-// Chromium exposes trackpads as relative mouse motion, not absolute finger position or lift events.
-// Preserve the last deflection like a held joystick, then start the next gesture from neutral after
-// a short pause. That lets a lifted finger keep the turn engaged and an opposite swipe flip it
-// immediately without traversing an invisible screen-sized cursor path.
-const AUTO_TARGET_NEW_GESTURE_MS = 120;
+const AUTO_TARGET_GESTURE_IDLE_MS = 110;
+const AUTO_TARGET_PATH_MIN_SCREEN_PX = 8;
+// Soft storage target. Never delete unflown intent merely to meet it; completed points can be
+// pruned once the follower has moved pointIndex beyond them.
+const AUTO_TARGET_PATH_SOFT_MAX_POINTS = 256;
+const AUTO_TARGET_PATH_EDGE_MARGIN = 24;
 
 // Verb keys shared by both schemes (GDD 2.0 physics verbs + sensors).
 const VERB_BINDINGS = {
@@ -239,27 +238,152 @@ function viewportSize() {
   };
 }
 
-function stickGeometry() {
+function centeredPointer() {
   const { width, height } = viewportSize();
   return {
     width,
     height,
     cx: width * 0.5,
     cy: height * 0.5,
-    radius: Math.max(72, Math.min(width, height) * AUTO_TARGET_STICK_RADIUS_FRACTION),
   };
 }
 
-function clampToStick(x, y, geometry = stickGeometry()) {
-  const dx = x - geometry.cx;
-  const dy = y - geometry.cy;
-  const distance = Math.hypot(dx, dy);
-  const scale = distance > geometry.radius ? geometry.radius / distance : 1;
+function neutralAutoTargetVector() {
+  return { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
+}
+
+function neutralAutoTargetPath() {
   return {
-    x: geometry.cx + dx * scale,
-    y: geometry.cy + dy * scale,
-    active: true,
+    active: false,
+    drawing: false,
+    cursorX: 0,
+    cursorY: 0,
+    pointIndex: 1,
+    points: [],
   };
+}
+
+function resetAutoTargetPath(host, state = host && host.state) {
+  host._autoTargetGesture = {
+    cursorX: 0,
+    cursorY: 0,
+    lastSampleX: 0,
+    lastSampleY: 0,
+    lastMs: -Infinity,
+  };
+  if (state && state.input) state.input.autoTargetPath = neutralAutoTargetPath();
+}
+
+function worldScreenPoint(host, point) {
+  const project = host.helpers && host.helpers.worldToScreen;
+  if (point && typeof project === 'function') {
+    const screen = project({ x: point.x, y: 0, z: point.z });
+    if (screen && Number.isFinite(screen.x) && Number.isFinite(screen.y)) {
+      return { x: screen.x, y: screen.y };
+    }
+  }
+  return null;
+}
+
+function playerScreenOrigin(host, state, width, height) {
+  const player = state && state.entities && state.entities.get
+    ? state.entities.get(state.playerId)
+    : null;
+  const projected = worldScreenPoint(host, player && player.pos);
+  if (projected) return projected;
+  return { x: width * 0.5, y: height * 0.5 };
+}
+
+function screenPointToWorld(host, x, y, width, height) {
+  const raycast = host.helpers && host.helpers.raycastToPlane;
+  if (typeof raycast !== 'function') return null;
+  const point = raycast({
+    x: (x / Math.max(1, width)) * 2 - 1,
+    y: -(y / Math.max(1, height)) * 2 + 1,
+  });
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return null;
+  return { x: point.x, z: point.z };
+}
+
+function recordAutoTargetPath(host, movementX, movementY, now) {
+  const state = host.state;
+  const inp = state && state.input;
+  if (!inp) return;
+  const { width, height } = viewportSize();
+  const gesture = host._autoTargetGesture || (host._autoTargetGesture = {
+    cursorX: 0,
+    cursorY: 0,
+    lastSampleX: 0,
+    lastSampleY: 0,
+    lastMs: -Infinity,
+  });
+  const elapsed = Number.isFinite(gesture.lastMs) ? now - gesture.lastMs : Infinity;
+  let route = inp.autoTargetPath;
+  if (!route || !route.active) {
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const origin = playerScreenOrigin(host, state, width, height);
+    const start = player && player.pos
+      ? { x: player.pos.x, z: player.pos.z }
+      : screenPointToWorld(host, origin.x, origin.y, width, height);
+    route = inp.autoTargetPath = neutralAutoTargetPath();
+    route.active = !!start;
+    route.drawing = !!start;
+    route.points = start ? [start] : [];
+    route.pointIndex = 1;
+    gesture.cursorX = origin.x;
+    gesture.cursorY = origin.y;
+    gesture.lastSampleX = origin.x;
+    gesture.lastSampleY = origin.y;
+  } else if (elapsed > AUTO_TARGET_GESTURE_IDLE_MS) {
+    // Electron cannot report finger lift/re-contact, so an idle gap is a clutch, not a clear.
+    // Rebase the relative pen on the existing world endpoint and keep every earlier segment.
+    const endpoint = route.points.length ? route.points[route.points.length - 1] : null;
+    const origin = worldScreenPoint(host, endpoint)
+      || { x: route.cursorX, y: route.cursorY };
+    gesture.cursorX = Number.isFinite(origin.x) ? origin.x : width * 0.5;
+    gesture.cursorY = Number.isFinite(origin.y) ? origin.y : height * 0.5;
+    gesture.lastSampleX = gesture.cursorX;
+    gesture.lastSampleY = gesture.cursorY;
+  }
+
+  const marginX = Math.min(AUTO_TARGET_PATH_EDGE_MARGIN, width * 0.2);
+  const marginY = Math.min(AUTO_TARGET_PATH_EDGE_MARGIN, height * 0.2);
+  gesture.cursorX = Math.max(marginX, Math.min(width - marginX, gesture.cursorX + movementX));
+  gesture.cursorY = Math.max(marginY, Math.min(height - marginY, gesture.cursorY + movementY));
+  gesture.lastMs = now;
+  route.active = true;
+  route.drawing = true;
+  route.cursorX = gesture.cursorX;
+  route.cursorY = gesture.cursorY;
+
+  const sampleDistance = Math.hypot(
+    gesture.cursorX - gesture.lastSampleX,
+    gesture.cursorY - gesture.lastSampleY
+  );
+  if (sampleDistance >= AUTO_TARGET_PATH_MIN_SCREEN_PX || route.points.length < 2) {
+    const point = screenPointToWorld(host, gesture.cursorX, gesture.cursorY, width, height);
+    if (point) {
+      route.points.push(point);
+      if (route.points.length > AUTO_TARGET_PATH_SOFT_MAX_POINTS && route.pointIndex > 1) {
+        const excess = route.points.length - AUTO_TARGET_PATH_SOFT_MAX_POINTS;
+        const completed = Math.max(0, route.pointIndex - 1);
+        const pruneCount = Math.min(excess, completed);
+        route.points.splice(0, pruneCount);
+        route.pointIndex -= pruneCount;
+      }
+      gesture.lastSampleX = gesture.cursorX;
+      gesture.lastSampleY = gesture.cursorY;
+    }
+  }
+}
+
+function updateAutoTargetPathDrawing(host, now) {
+  const route = host.state && host.state.input && host.state.input.autoTargetPath;
+  const gesture = host._autoTargetGesture;
+  if (!route || !route.active || !route.drawing || !gesture) return;
+  if (!Number.isFinite(gesture.lastMs) || now - gesture.lastMs > AUTO_TARGET_GESTURE_IDLE_MS) {
+    route.drawing = false;
+  }
 }
 
 export const input = {
@@ -273,6 +397,7 @@ export const input = {
     const viewportW = typeof innerWidth === 'number' ? innerWidth : 0;
     const viewportH = typeof innerHeight === 'number' ? innerHeight : 0;
     this._screen = { x: Math.floor(viewportW * 0.5), y: Math.floor(viewportH * 0.5), active: false };
+    resetAutoTargetPath(this, this.state);
     this._m0 = false; this._m1 = false; this._m2 = false;
     this._lastKbmMs = performance.now();
     this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
@@ -309,40 +434,32 @@ export const input = {
     const pointerSurface = this._canvas || window;
     const handlePointerMove = (e) => {
       if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
-      const geometry = stickGeometry();
+      const geometry = centeredPointer();
       const pointerLocked = typeof document !== 'undefined'
         && this._canvas && document.pointerLockElement === this._canvas;
       if (this.state && this.state.input && this.state.input.autoFire) {
-        // Pointer lock reports relative motion while clientX/Y stay pinned. Keep one bounded
-        // software pointer so a trackpad can act like a centered joystick without hitting the
-        // Electron/window edge. Browsers may also dispatch pointermove for the same locked sample;
-        // mousemove is the single relative-motion authority in that mode.
+        // Chromium exposes an ordinary one-finger trackpad gesture as relative motion. Integrate
+        // those deltas into a screen-space pen that starts on the ship for each gesture, then store
+        // its camera-projected world points. The ship follows the resulting curve after finger lift.
         if (pointerLocked && e.type === 'pointermove') return;
         const now = performance.now();
         const movementX = Number.isFinite(e.movementX) ? e.movementX : 0;
         const movementY = Number.isFinite(e.movementY) ? e.movementY : 0;
-        // A click/tap used for firing is not a joystick gesture and must not recenter the helm.
-        if (pointerLocked && movementX === 0 && movementY === 0) return;
-        if (pointerLocked && Number.isFinite(this._lastAutoTargetMotionMs)
-          && now - this._lastAutoTargetMotionMs > AUTO_TARGET_NEW_GESTURE_MS) {
-          this._screen.x = geometry.cx;
-          this._screen.y = geometry.cy;
-        }
-        const nextX = pointerLocked
-          ? this._screen.x + movementX
-          : e.clientX;
-        const nextY = pointerLocked
-          ? this._screen.y + movementY
-          : e.clientY;
-        Object.assign(this._screen, clampToStick(nextX, nextY, geometry));
-        this._lastAutoTargetMotionMs = now;
+        // A click/tap used for firing is not a flight gesture.
+        if (movementX === 0 && movementY === 0) return;
+        recordAutoTargetPath(this, movementX, movementY, now);
+        this._screen.x = geometry.cx;
+        this._screen.y = geometry.cy;
+        this._screen.active = true;
+        this._ndc.x = 0;
+        this._ndc.y = 0;
       } else {
         this._screen.x = e.clientX;
         this._screen.y = e.clientY;
         this._screen.active = true;
+        this._ndc.x = (this._screen.x / geometry.width) * 2 - 1;
+        this._ndc.y = -(this._screen.y / geometry.height) * 2 + 1;
       }
-      this._ndc.x = (this._screen.x / geometry.width) * 2 - 1;
-      this._ndc.y = -(this._screen.y / geometry.height) * 2 + 1;
       syncPointerScreen(this.state, this._screen.x, this._screen.y);
       this._lastKbmMs = performance.now();
     };
@@ -392,15 +509,16 @@ export const input = {
     const autoTargetPointer = !!inp.autoFire;
     if (autoTargetPointer !== !!this._autoTargetPointerMode) {
       this._autoTargetPointerMode = autoTargetPointer;
-      const geometry = stickGeometry();
+      const geometry = centeredPointer();
       this._screen.x = geometry.cx;
       this._screen.y = geometry.cy;
       this._screen.active = autoTargetPointer;
       this._ndc.x = 0;
       this._ndc.y = 0;
+      resetAutoTargetPath(this, state);
       syncPointerScreen(state, this._screen.x, this._screen.y);
       inp.pointerScreen.active = autoTargetPointer;
-      inp.autoTargetStick = { active: false, x: 0, y: 0, magnitude: 0 };
+      inp.autoTargetVector = neutralAutoTargetVector();
     }
     // The LOCKED input contract (BUILD_PLAN_2_0 §0): consumer systems read these each tick.
     const acts = inp.actions || (inp.actions = {
@@ -417,6 +535,8 @@ export const input = {
       acts.deployBeacon = false;
       acts.bulletTime = false; acts.cloakToggle = false; acts.throwArm = false;
       inp.tetherMode = null;
+      resetAutoTargetPath(this, state);
+      inp.autoTargetVector = neutralAutoTargetVector();
       this._m0 = false; this._m1 = false; this._m2 = false;
       this._prevM1 = false;
       this._pursuitToggle = false;   // docking/menus always drop back to manual flight
@@ -555,7 +675,7 @@ export const input = {
       inp.aimWorld.z = p.pos.z + Math.sin(angle) * dist;
       inp.mouseNdc.x = ax;
       inp.mouseNdc.y = ay;
-      inp.autoTargetStick = { active: false, x: 0, y: 0, magnitude: 0 };
+      inp.autoTargetVector = neutralAutoTargetVector();
     } else {
       // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).
       const w = this.helpers.raycastToPlane ? this.helpers.raycastToPlane(this._ndc) : { x: 0, z: 0 };
@@ -566,25 +686,9 @@ export const input = {
       pointerScreen.x = this._screen.x;
       pointerScreen.y = this._screen.y;
       pointerScreen.active = this._screen.active;
-      if (inp.autoFire) {
-        const geometry = stickGeometry();
-        const dx = this._screen.x - geometry.cx;
-        const dy = this._screen.y - geometry.cy;
-        const rawMagnitude = Math.min(1, Math.hypot(dx, dy) / geometry.radius);
-        const active = rawMagnitude > AUTO_TARGET_STICK_DEADZONE;
-        const magnitude = active
-          ? (rawMagnitude - AUTO_TARGET_STICK_DEADZONE) / (1 - AUTO_TARGET_STICK_DEADZONE)
-          : 0;
-        const axisScale = active && rawMagnitude > 0 ? magnitude / rawMagnitude : 0;
-        inp.autoTargetStick = {
-          active,
-          x: (dx / geometry.radius) * axisScale,
-          y: (-dy / geometry.radius) * axisScale,
-          magnitude,
-        };
-      } else {
-        inp.autoTargetStick = { active: false, x: 0, y: 0, magnitude: 0 };
-      }
+      inp.autoTargetVector = neutralAutoTargetVector();
+      if (inp.autoFire) updateAutoTargetPathDrawing(this, performance.now());
+      else resetAutoTargetPath(this, state);
     }
 
     // --- Pursuit / approach toggle (MMB tap or bound key) -----------------------------------

@@ -666,54 +666,48 @@ button:active { transform: translateY(1px); }
   letter-spacing: 0.05em;
 }
 
-/* Auto-target helm: a fixed joystick gate plus a bounded ship-control puck. Target markers remain
-   separate weapon overlays, so this intentionally avoids crosshair/diamond shapes and hostile red. */
-#auto-target-stick-base {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: max(144px, 56vmin);
-  height: max(144px, 56vmin);
-  transform: translate(-50%, -50%);
-  border: 1px solid color-mix(in srgb, var(--cyan, #39d0ff) 38%, transparent);
-  border-radius: 50%;
-  box-shadow: inset 0 0 28px rgba(57, 208, 255, 0.035);
-  pointer-events: none;
-  z-index: 14;
-  display: none;
-}
-#auto-target-stick-base::before,
-#auto-target-stick-base::after {
-  content: '';
-  position: absolute;
-  background: rgba(57, 208, 255, 0.18);
-}
-#auto-target-stick-base::before { left: 50%; top: 0; width: 1px; height: 100%; }
-#auto-target-stick-base::after { left: 0; top: 50%; width: 100%; height: 1px; }
-#auto-target-stick-base > span {
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 8px);
-  transform: translateX(-50%);
-  color: rgba(126, 225, 255, 0.72);
-  font-size: 10px;
-  letter-spacing: .18em;
-}
-#auto-target-stick-puck {
+/* Auto-target flight director: the curve is the remaining world route and the ring is its endpoint.
+   It is deliberately separate from hostile diamonds/lead pips, which remain weapon feedback. */
+#auto-target-flight-path {
   position: absolute;
   left: 0;
   top: 0;
-  width: 22px;
-  height: 22px;
-  transform: translate3d(50vw, 50vh, 0) translate(-50%, -50%);
-  border: 2px solid #7ee1ff;
-  border-radius: 50%;
-  background: rgba(57, 208, 255, 0.22);
-  box-shadow: 0 0 12px rgba(57, 208, 255, 0.65);
+  width: 100%;
+  height: 100%;
+  overflow: visible;
   pointer-events: none;
   z-index: 15;
-  will-change: transform;
   display: none;
+  opacity: 0;
+  transition: opacity 90ms linear;
+}
+#auto-target-flight-path .sf-flight-path__route {
+  fill: none;
+  stroke: rgba(126, 225, 255, 0.66);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 3 7;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 4px rgba(57, 208, 255, 0.55));
+}
+#auto-target-flight-path .sf-flight-path__endpoint-ring {
+  fill: rgba(57, 208, 255, 0.06);
+  stroke: rgba(126, 225, 255, 0.78);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 5px rgba(57, 208, 255, 0.64));
+}
+#auto-target-flight-path .sf-flight-path__endpoint {
+  fill: #7ee1ff;
+  filter: drop-shadow(0 0 5px rgba(57, 208, 255, 0.85));
+}
+#auto-target-flight-path.is-drawing .sf-flight-path__route {
+  stroke: rgba(126, 225, 255, 0.9);
+}
+@media (prefers-reduced-motion: reduce) {
+  #auto-target-flight-path { transition: none; }
 }
 /* Contacts strip v2: one-word state chip, threat-tier pips, derelict manifest line. */
 .sf-overview-row { flex-wrap: wrap; }

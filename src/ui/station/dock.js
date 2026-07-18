@@ -156,14 +156,16 @@ export function createCommandDock(cfg) {
     const tile = el.querySelector(`[data-act="${id}"]`);
     const label = el.querySelector(`[data-cost="${id}"]`);
     if (!tile || !label) return;
-    label.textContent = (cost && cost.text != null) ? cost.text : '—';
+    const text = (cost && cost.text != null) ? String(cost.text) : '—';
+    if (label.textContent !== text) label.textContent = text;
     tile.classList.toggle('is-disabled', !!(cost && cost.disabled));
-    tile.setAttribute('aria-disabled', cost && cost.disabled ? 'true' : 'false');
-    if (cost && cost.title) { tile.setAttribute('title', cost.title); tile.setAttribute('aria-label', cost.title); }
-    label.classList.remove('is-warn', 'is-gain', 'is-loss');
-    if (cost && cost.tone === 'warn') label.classList.add('is-warn');
-    if (cost && cost.tone === 'gain') label.classList.add('is-gain');
-    if (cost && cost.tone === 'loss') label.classList.add('is-loss');
+    setAttributeIfChanged(tile, 'aria-disabled', cost && cost.disabled ? 'true' : 'false');
+    if (cost && cost.title) {
+      setAttributeIfChanged(tile, 'title', cost.title);
+      setAttributeIfChanged(tile, 'aria-label', cost.title);
+    }
+    const tone = cost && ['warn', 'gain', 'loss'].includes(cost.tone) ? `is-${cost.tone}` : '';
+    for (const name of ['is-warn', 'is-gain', 'is-loss']) label.classList.toggle(name, name === tone);
   }
 
   /**
@@ -179,15 +181,16 @@ export function createCommandDock(cfg) {
       const badge = tile.querySelector(`[data-badge="${navId}"]`);
       if (!badge) return;
       if (on && opts && opts.badge != null && opts.badge !== '') {
-        badge.hidden = false;
-        badge.textContent = String(opts.badge);
+        if (badge.hidden) badge.hidden = false;
+        const badgeText = String(opts.badge);
+        if (badge.textContent !== badgeText) badge.textContent = badgeText;
       } else {
-        badge.hidden = true;
-        badge.textContent = '';
+        if (!badge.hidden) badge.hidden = true;
+        if (badge.textContent) badge.textContent = '';
       }
       if (on && opts && opts.title) {
-        tile.setAttribute('title', opts.title);
-        tile.setAttribute('aria-label', opts.title);
+        setAttributeIfChanged(tile, 'title', opts.title);
+        setAttributeIfChanged(tile, 'aria-label', opts.title);
       }
     });
   }
@@ -201,4 +204,9 @@ export function createCommandDock(cfg) {
   }
 
   return { el, setActive, setActionCost, setAttention, dispose };
+}
+
+function setAttributeIfChanged(node, name, value) {
+  const next = String(value);
+  if (node.getAttribute(name) !== next) node.setAttribute(name, next);
 }

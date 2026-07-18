@@ -321,6 +321,8 @@
     "check:station-departure": "node scripts/check-station-departure-readiness.mjs",
     "check:station-egress": "node scripts/check-station-egress-runtime.mjs",
     "check:station-tabs": "node scripts/check-station-tab-navigation-runtime.mjs",
+    "check:station-missions-layout": "node scripts/check-station-missions-layout.mjs",
+    "check:station-ui-stability": "node scripts/check-station-ui-temporal-stability.mjs",
     "check:station-interact-undock": "node scripts/check-station-interact-undock.mjs",
     "check:faction-standings": "node scripts/check-faction-standings-guidance.mjs",
     "check:mission-standing-ladder": "node scripts/check-mission-standing-ladder.mjs",

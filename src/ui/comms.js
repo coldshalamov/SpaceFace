@@ -87,7 +87,9 @@ export function createComms(ctx) {
   feed.id = 'sf-comms';
   feed.setAttribute('aria-live', 'polite');
   feed.setAttribute('aria-label', 'Comms channel');
-  document.getElementById('ui-root').appendChild(feed);
+  const flightContext = document.querySelector('.sf-leftcontext');
+  if (flightContext) flightContext.prepend(feed);
+  else document.getElementById('ui-root').appendChild(feed);
   const live = [];        // { el, rec, born, ttl, persist }
   const backlog = [];     // full history for the backlog view
   let nextSweepAt = Infinity;
@@ -496,32 +498,38 @@ function injectCommsCss() {
   const s = document.createElement('style');
   s.id = COMMS_STYLE_ID;
   s.textContent = `
-  /* ===== comms feed (left edge) — chromeless thin-line cards above the ship schematic (§3C) ===== */
-  #sf-comms { position:absolute; left:16px; top:118px; bottom:170px; width:300px; display:flex;
-    flex-direction:column-reverse; gap:8px; pointer-events:none; z-index:1050; overflow:hidden; }
+  /* ===== comms feed — joined to the flight context rail when the HUD is present ===== */
+  #sf-comms { position:relative; width:100%; max-height:124px; display:flex;
+    flex-direction:column-reverse; gap:4px; pointer-events:none; z-index:1050; overflow:hidden;
+    font-family:var(--hud-body, "IBM Plex Sans", "Segoe UI", sans-serif); }
+  #ui-root > #sf-comms { position:absolute; left:20px; top:118px; width:340px; }
   #sf-comms .sf-comm { pointer-events:auto; }
   body.ui-modal-open #sf-comms { opacity:0; pointer-events:none; }
   body.ui-modal-open .sf-comm-backlog-btn { opacity:0; visibility:hidden; pointer-events:none; }
-  .sf-comm { --comm-color:var(--text-secondary); --comm-glow:none; position:relative; padding:6px 11px;
-    border-left:2px solid var(--comm-color); box-shadow:-1px 0 8px -2px var(--comm-color);
-    color:var(--text-primary); font-size:12px; text-shadow:var(--text-shadow-hard);
+  .sf-comm { --comm-color:var(--text-secondary); --comm-glow:none; position:relative; padding:7px 10px 8px;
+    border:1px solid rgba(147,174,195,.24); border-top-color:rgba(147,196,211,.42); border-radius:2px;
+    background:linear-gradient(108deg, rgba(17,25,36,.91), rgba(7,12,20,.78)); box-shadow:0 10px 24px rgba(0,0,0,.22);
+    color:var(--hud-paper,#e7edf5); font-size:12px; text-shadow:none;
     cursor:pointer; transform:translateX(-130%); opacity:0; transition:transform .18s ease, opacity .18s ease; }
   .sf-comm--in { transform:translateX(0); opacity:1; }
   .sf-comm--out { transform:translateX(-130%); opacity:0; }
   .sf-comm__head { display:flex; align-items:baseline; gap:7px; margin-bottom:3px; }
-  .sf-comm__tag { font-size:9px; letter-spacing:.14em; color:var(--comm-color); text-shadow:var(--text-shadow-hard), var(--comm-glow); }
-  .sf-comm__sender { font-size:9px; letter-spacing:.06em; color:var(--text-secondary); text-transform:uppercase;
+  .sf-comm__tag { padding:1px 4px; background:color-mix(in srgb, var(--comm-color) 13%, transparent);
+    font:700 8px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.11em; color:var(--comm-color); text-shadow:none; }
+  .sf-comm__sender { font:600 9px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.07em;
+    color:var(--hud-muted,#718298); text-transform:uppercase;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .sf-comm__body { line-height:1.4; color:var(--text-primary); }
+  .sf-comm__body { line-height:1.38; color:var(--hud-paper,#e7edf5); }
   .sf-comm--personal .sf-comm__body, .sf-comm--late .sf-comm__body, .sf-comm--story .sf-comm__body { color:#eaf4ff; }
 
   /* comms backlog button (the ≡) — dedicated top-left anchor, chromeless thin outline */
-  .sf-comm-backlog-btn { position:absolute; left:16px; top:54px; width:32px; height:32px; z-index:1060;
+  .sf-comm-backlog-btn { position:absolute; left:20px; top:20px; width:36px; height:32px; z-index:1060;
     display:flex; align-items:center; justify-content:center;
-    background:none; border:1px solid var(--visor-cyan-dim); border-radius:6px; color:var(--text-secondary);
-    font-family:var(--mono); font-size:18px; cursor:pointer; pointer-events:auto; transition:color .12s, border-color .12s;
-    text-shadow:var(--text-shadow-hard); }
-  .sf-comm-backlog-btn:hover { border-color:var(--visor-cyan); color:var(--visor-cyan); }
+    background:linear-gradient(180deg,rgba(20,29,41,.88),rgba(8,13,21,.9));
+    border:1px solid rgba(147,174,195,.34); border-radius:2px; color:#aebdce;
+    font-family:var(--hud-data,"IBM Plex Mono",monospace); font-size:16px; cursor:pointer; pointer-events:auto;
+    transition:color .12s, border-color .12s; text-shadow:none; }
+  .sf-comm-backlog-btn:hover { border-color:#83ced8; color:#e7edf5; }
   .sf-comm-backlog-btn--pulse { color:var(--accent-3); border-color:var(--accent-3);
     animation:sf-commpulse 1.3s ease-in-out infinite alternate; }
   @keyframes sf-commpulse { from { box-shadow:0 0 0 0 rgba(192,139,255,0); } to { box-shadow:0 0 10px 1px rgba(192,139,255,.5); } }
@@ -558,7 +566,9 @@ function injectCommsCss() {
     color:#b9c4d6; text-transform:uppercase; text-shadow:0 0 12px rgba(0,0,0,.85), 0 1px 2px #000;
     transform:rotate(-1.5deg); }
   @media (max-width: 760px) { .sf-bulkhead { left:18px; right:18px; bottom:150px; max-width:none; } .sf-bulkhead__line { font-size:11px; letter-spacing:.08em; }
-    #sf-comms { width:220px; top:88px; bottom:140px; } .sf-comm { font-size:11px; padding:6px 9px; } }
+    #ui-root > #sf-comms { width:260px; top:88px; }
+    .sf-comm-backlog-btn { top:12px; }
+    .sf-comm { font-size:11px; padding:6px 9px; } }
 
   /* ===== endgame choice modal ===== */
   .sf-endgame { position:fixed; inset:0; z-index:2600; display:none; align-items:center; justify-content:center;

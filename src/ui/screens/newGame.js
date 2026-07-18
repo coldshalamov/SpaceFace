@@ -35,53 +35,22 @@ function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
+  // New Game–specific styles only. The shared menu fascia (plate, buttons, headings, slot
+  // rows, form primitives) lives in styles/menu.css — previously a copy of that whole block
+  // was pasted here and into every other menu screen.
   s.textContent = `
-  .sf-menu { display:flex; flex-direction:column; gap:14px; padding:26px 30px; min-width:360px;
-    max-width:min(92vw,920px); max-height:88vh; overflow:auto; pointer-events:auto; }
-  .sf-menu-narrow { min-width:300px; width:340px; }
-  .sf-menu-wide { width:min(92vw,820px); }
-  .sf-menu h1 { margin:0 0 4px; font-family:var(--mono); letter-spacing:.32em; font-size:20px;
-    color:var(--accent); text-shadow:0 0 18px rgba(57,208,255,.45); text-transform:uppercase; text-align:center; }
-  .sf-menu h2 { margin:14px 0 4px; font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-dim); }
-  .sf-menu .sf-col { display:flex; flex-direction:column; gap:8px; }
-  .sf-menu button.sf-btn { width:100%; text-align:center; padding:11px 14px; font-size:14px; letter-spacing:.06em; }
-  .sf-menu .sf-row { display:flex; align-items:center; justify-content:space-between; gap:14px; }
-  .sf-menu .sf-row > label { color:var(--ink-dim); font-size:13px; flex:0 0 38%; }
-  .sf-menu .sf-row > .sf-ctl { flex:1; display:flex; align-items:center; gap:10px; justify-content:flex-end; }
-  .sf-menu input[type=range] { flex:1; accent-color:var(--accent); }
-  .sf-menu select, .sf-menu input[type=text], .sf-menu input[type=number] {
-    font-family:inherit; font-size:13px; color:var(--ink); background:var(--panel); border:1px solid var(--panel-edge);
-    border-radius:5px; padding:6px 8px; pointer-events:auto; }
-  .sf-menu .sf-val { font-family:var(--mono); color:var(--accent); min-width:46px; text-align:right; }
-  .sf-tabbar { display:flex; gap:6px; border-bottom:1px solid var(--panel-edge); padding-bottom:8px; flex-wrap:wrap; }
-  .sf-tabbar button.sf-tab.active { border-color:var(--accent); color:#fff; box-shadow:0 0 10px rgba(57,208,255,.35); }
-  .sf-menu .sf-grid2 { display:grid; grid-template-columns:auto 1fr; gap:6px 18px; align-items:center; font-size:13px; }
-  .sf-menu .sf-grid2 .k { color:var(--ink-dim); font-family:var(--mono); letter-spacing:.05em; }
-  .sf-menu .sf-grid2 .v { color:var(--ink); }
-  .sf-menu .sf-foot { display:flex; gap:10px; justify-content:flex-end; margin-top:8px; }
-  .sf-menu .sf-muted { color:var(--ink-mute); font-size:12px; }
-  .sf-slot { display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--panel-edge);
-    border-radius:6px; background:var(--panel); }
-  .sf-slot.sel { border-color:var(--accent); box-shadow:0 0 10px rgba(57,208,255,.3); }
-  .sf-slot .sf-slot-main { flex:1; min-width:0; }
-  .sf-slot .sf-slot-name { font-size:14px; color:var(--ink); }
-  .sf-slot .sf-slot-sub { font-size:11px; color:var(--ink-mute); font-family:var(--mono); }
-  .sf-slot.empty .sf-slot-name { color:var(--ink-mute); font-style:italic; }
-  .sf-title-logo { font-family:var(--mono); letter-spacing:.5em; font-size:46px; color:var(--accent);
-    text-shadow:0 0 40px rgba(57,208,255,.5); text-align:center; margin:0; }
-  .sf-title-tag { text-align:center; color:var(--ink-dim); letter-spacing:.28em; font-size:12px; margin-bottom:18px; }
   /* ship history lore block on new game screen */
   .sf-ng-lore { margin-top:10px; padding:10px 12px; border-left:2px solid var(--danger);
-    background:rgba(255,84,112,.04); border-radius:0 5px 5px 0; display:flex; flex-direction:column; gap:4px; }
+    background:rgba(237,105,97,.05); border-radius:0 2px 2px 0; display:flex; flex-direction:column; gap:4px; }
   .sf-ng-lore__line { font-size:11px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.06em; }
   .sf-ng-lore__quote { font-size:12px; color:var(--ink); font-style:italic; line-height:1.5; }
   .sf-ng-lore__attr { font-size:10px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.1em; text-align:right; }
-  .sf-ng-route { margin-top:10px; padding:10px 12px; border:1px solid var(--panel-edge); border-radius:6px;
-    background:rgba(57,208,255,.05); display:grid; gap:8px; }
+  .sf-ng-route { margin-top:10px; padding:10px 12px; border:1px solid var(--panel-edge); border-radius:2px;
+    background:rgba(219,152,56,.05); display:grid; gap:8px; }
   .sf-ng-route__title { font-family:var(--mono); font-size:10px; color:var(--accent); letter-spacing:.14em; text-transform:uppercase; }
   .sf-ng-route__steps { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
-  .sf-ng-route__step { min-width:0; border:1px solid rgba(57,208,255,.16); border-radius:5px; padding:7px 8px;
-    background:rgba(10,18,32,.6); }
+  .sf-ng-route__step { min-width:0; border:1px solid rgba(219,152,56,.18); border-radius:2px; padding:7px 8px;
+    background:rgba(12,14,16,.6); }
   .sf-ng-route__step b { display:block; font-size:12px; color:var(--ink); margin-bottom:2px; overflow-wrap:anywhere; }
   .sf-ng-route__step span { display:block; font-size:11px; color:var(--ink-dim); line-height:1.35; overflow-wrap:anywhere; }
   @media (max-width:520px) { .sf-ng-route__steps { grid-template-columns:1fr; } }
@@ -93,16 +62,17 @@ function injectStyle() {
   .sf-menu .sf-ng-body { flex:1 1 auto; min-height:0; overflow-x:hidden; overflow-y:auto;
     display:flex; flex-direction:column; gap:14px; padding:16px 30px; scrollbar-gutter:stable; }
   .sf-menu .sf-ng-footer { flex:0 0 auto; margin:0; padding:14px 30px 18px;
-    border-top:1px solid var(--panel-edge); background:rgba(5,9,18,.96); }
+    border-top:1px solid var(--panel-edge); background:rgba(12,14,15,.96); }
   /* UX-1: rotating 3D preview of the starter ship. Sits above the stat grid so the hull reads as a
-     real object (with a history), not a table of numbers. */
-  .sf-ng-preview { position: relative; height: 150px; margin: 6px 0 10px; border: 1px solid var(--panel-edge);
-    border-radius: var(--r-md); overflow: hidden; background: radial-gradient(ellipse at 50% 70%, #0a1426, #05070d 80%); }
+     real object (with a history), not a table of numbers. flex:0 0 auto keeps the scrolling body's
+     flex pressure from crushing the canvas wrap to its border height (the body scrolls instead). */
+  .sf-ng-preview { position: relative; flex: 0 0 auto; height: 150px; margin: 6px 0 10px; border: 1px solid var(--panel-edge);
+    border-radius: 2px; overflow: hidden; background: radial-gradient(ellipse at 50% 70%, #171a1d, #0a0c0d 80%); }
   .sf-ng-preview__canvas { width: 100%; height: 100%; display: block; }
   /* Warmup veil (spec2/03 §3): the Launch disabled-state never shows >300ms — async warmup
      happens behind this veil, not a bare disabled button. */
   .sf-ng-warmup { position:absolute; inset:0; display:flex; flex-direction:column; gap:12px;
-    align-items:center; justify-content:center; background:rgba(5,9,18,.92); border-radius:8px;
+    align-items:center; justify-content:center; background:rgba(11,13,14,.92); border-radius:3px;
     opacity:0; pointer-events:none; transition:opacity .15s ease; z-index:5; }
   .sf-ng-warmup.open { opacity:1; pointer-events:auto; }
   .sf-ng-warmup__spin { width:22px; height:22px; border-radius:50%; border:2px solid var(--panel-edge);
@@ -115,8 +85,9 @@ function injectStyle() {
     align-items:center; justify-content:center; opacity:0; transition:opacity .5s ease;
     pointer-events:auto; }
   .sf-firstrun-splash.open { opacity:1; }
-  .sf-firstrun-splash__line { font-family:var(--mono); font-size:15px; letter-spacing:.16em;
-    color:#d7e6ff; text-align:center; max-width:80vw; line-height:1.6; text-transform:sentence; }
+  .sf-firstrun-splash__line { font-family:"IBM Plex Mono","Consolas",ui-monospace,monospace;
+    font-size:15px; letter-spacing:.16em;
+    color:#f1ede2; text-align:center; max-width:80vw; line-height:1.6; text-transform:sentence; }
   `;
   document.head.appendChild(s);
 }
@@ -124,6 +95,8 @@ function shell(rootEl, title, extraClass) {
   rootEl.innerHTML = '';
   rootEl.classList.add('panel', 'sf-menu');
   if (extraClass) rootEl.classList.add(extraClass);
+  // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
+  rootEl.dataset.stamp = 'CONTRACT INTAKE / NEW OPERATOR';
   const header = document.createElement('header'); header.className = 'sf-ng-header';
   const h = document.createElement('h1'); h.textContent = title; header.appendChild(h);
   rootEl.appendChild(header);
@@ -302,7 +275,7 @@ export const newGameScreen = {
     const foot = el('footer', 'sf-foot sf-ng-footer');
     const back = el('button', 'sf-btn'); back.textContent = coreText('back'); back.style.width = 'auto';
     back.addEventListener('click', () => nav(ctx, 'popScreen'));
-    const launch = el('button', 'sf-btn'); launch.textContent = coreText('launch'); launch.style.width = 'auto';
+    const launch = el('button', 'sf-btn sf-btn--primary'); launch.textContent = coreText('launch'); launch.style.width = 'auto';
     let launching = false;
     let veilTimer = null;
     // The disabled state must never be the visible resting state for >300ms (spec2/03 §3): async

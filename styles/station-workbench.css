@@ -705,13 +705,6 @@ button.sx-fab-in { cursor:pointer; }
   height:100%; min-height:0; display:grid; grid-template-columns:minmax(0,1fr);
   grid-template-rows:auto 78px minmax(0,1fr) 82px; gap:10px;
 }
-.sx-ct__attention-host { grid-row:1; min-width:0; }
-.sx-ct__attention {
-  border-radius:0; border-color:rgba(212,176,98,.55);
-  background:linear-gradient(90deg, rgba(212,176,98,.18), rgba(62,203,255,.06));
-  box-shadow:inset 0 0 0 1px rgba(212,176,98,.2);
-}
-.sx-ct__attention-verb { border-radius:0; background:var(--sx-worklight, #d4b062); color:#0a0c0c; }
 .sx-ct__board {
   grid-row:2; min-width:0; min-height:0; display:flex; flex-direction:row; gap:3px;
   overflow-x:auto; overflow-y:hidden; padding:0 0 7px; border-bottom:1px solid #303230;
@@ -989,20 +982,27 @@ button.sx-fab-in { cursor:pointer; }
 .sx-tile__label { font-size:10px; }
 .sx-tile__cost { font-size:8.5px; }
 
-/* The first-dock loop is a temporary objective ribbon floating over the lower
-   playfield edge, never a permanent navigation band. */
+/* The first-dock loop is a temporary objective ribbon in the command chrome.
+   Keeping it in flow prevents it from covering operation controls at the bottom of the workspace. */
 .sx-handoff {
-  position:fixed;
-  z-index:24;
-  left:50%; bottom:14px;
+  position:relative;
+  z-index:5;
   width:max-content; max-width:calc(100vw - 40px);
-  transform:translateX(-50%);
+  margin:-3px auto 8px;
   padding:5px;
   border:1px solid rgba(107,209,223,.18);
   border-radius:12px;
   background:#061019;
   box-shadow:0 14px 38px rgba(0,0,0,.55),0 0 20px rgba(50,191,211,.05);
 }
+/* The default dock deliberately shares the top status row. A visible handoff needs actual layout
+   space, so temporarily restore a dedicated command row instead of overlaying any operation. */
+.sx-app:has(> .sx-dockzone > .sx-handoff:not([hidden])) {
+  grid-template-rows:64px auto minmax(0,1fr);
+}
+.sx-app:has(> .sx-dockzone > .sx-handoff:not([hidden])) > .sx-topbar { grid-row:1; }
+.sx-app:has(> .sx-dockzone > .sx-handoff:not([hidden])) > .sx-dockzone { grid-row:2; }
+.sx-app:has(> .sx-dockzone > .sx-handoff:not([hidden])) > .sx-workspace { grid-row:3; }
 .sx-handoff__k { padding:0 10px; font-size:8px; }
 .sx-hstep { min-height:38px; padding:6px 12px; background:transparent; border-left-color:rgba(103,206,221,.14); }
 .sx-hstep:last-child { border-right-color:rgba(103,206,221,.14); }
@@ -2280,7 +2280,7 @@ button.sx-fab-in { cursor:pointer; }
 .sx-ind__console { top:198px; }
 
 /* Contract offers are dispatch tickets attached to the route simulator, not mystery beacons. */
-.sx-ct { grid-template-rows:106px minmax(0,1fr) 66px; }
+.sx-ct { grid-template-rows:106px minmax(0,1fr) 82px; }
 .sx-ct__board {
   position:relative; grid-row:1; width:calc(100% - 198px); min-height:106px; margin-left:198px;
   display:flex; align-items:end; gap:7px;
@@ -2288,6 +2288,8 @@ button.sx-fab-in { cursor:pointer; }
   background:linear-gradient(180deg,rgba(7,20,28,.83),rgba(4,13,19,.38));
   scrollbar-width:none; scroll-snap-type:x proximity; scroll-padding-left:12px;
 }
+.sx-ct__dossier { grid-row:2; }
+.sx-ct__active { grid-row:3; }
 .sx-ct__board::-webkit-scrollbar { display:none; }
 .sx-ct-dispatch__label { position:absolute; left:12px; top:9px; color:#70999d; font:600 7px/1 var(--sx-mono); letter-spacing:.14em; }
 .sx-ct-row,

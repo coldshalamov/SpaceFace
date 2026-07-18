@@ -591,7 +591,7 @@ export const vfx = {
     add('ship:thrust', (p) => this._onThrust(p));
     add('ship:boostStart', (p) => this._onBoost(p, true));
     add('ship:boostStop', (p) => this._onBoost(p, false));
-    add('ship:dash', (p) => this._onDash(p));                      // Phase 3 dash impulse — violet shock cone
+    add('ship:dash', (p) => this._onDash(p));                      // Phase 3 dash impulse — violet afterburner burst
     add('cruise:charging', (p) => this._onCruiseCharging(p));
     add('cruise:engaged', (p) => this._onCruiseEngaged(p));
     add('cruise:dropped', (p) => this._onCruiseDropped(p));
@@ -3221,34 +3221,41 @@ export const vfx = {
     }
   },
 
-  // Phase 3 dash: a distinct, punchy motion kick. A forward-facing violet shock ring expands from
-  // the nose (the "launch" moment) and a violet afterburner streak trails behind — color-matched to
-  // the boost bar so it reads as the same energy system, but visually distinct from sustained boost.
+  // Phase 3 dash: pure thruster juice — hot violet afterburner kick at the nozzles, brief energy
+  // flash, no HUD word-pop. Distinct from sustained boost (whiter core, longer rear streak, punch).
   _onDash(p) {
     const e = this._ent(p && p.shipId);
     if (!e || !this._scene) return;
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
-    const nx = e.pos.x + cf * (e.radius + 1);   // nose
-    const nz = e.pos.z + sf * (e.radius + 1);
     const sock = this._trailSocketWorldPose(e);
-    const bx = sock ? sock.x : e.pos.x - cf * (e.radius + 2);   // rear
+    const exhaustX = sock ? sock.forwardX : -cf;
+    const exhaustZ = sock ? sock.forwardZ : -sf;
+    const bx = sock ? sock.x : e.pos.x - cf * (e.radius + 2);
     const bz = sock ? sock.z : e.pos.z - sf * (e.radius + 2);
-    const VIOLET = '#c98cff', VIOLET2 = '#7a3df0';
+    // Hot energy palette: white-hot core → violet plasma → deep purple falloff
+    const HOT = '#f0e8ff', VIOLET = '#c98cff', PLASMA = '#9b4dff', DEEP = '#5a1fb8';
     const svx = (e.vel && e.vel.x) || 0;
     const svz = (e.vel && e.vel.z) || 0;
-    // expanding shock ring at the nose
-    this._spawnSprite(SPR_RING, nx, 0, nz, 0.32, 3.0, 11.0, 0.85, 0.0, VIOLET, cf * 6, sf * 6);
-    this._spawnSprite(SPR_FLASH, nx, 0, nz, 0.16, 5, 9, 0.9, 0.0, VIOLET, 0, 0);
-    // violet afterburner streak behind (longer + faster than the white boost streak)
-    this._c0.set('#ffffff'); this._c1.set(VIOLET2);
+    // Nozzle ignition — hot flash + expanding energy ring at thrusters (not the nose)
+    this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.18, 5.5, 11, 0.95, 0.0, HOT, 0, 0);
+    this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.28, 4.0, 12, 0.7, 0.0, VIOLET, 0, 0);
+    this._spawnSprite(SPR_RING, bx, 0, bz, 0.26, 2.5, 10, 0.75, 0.0, VIOLET, exhaustX * 7, exhaustZ * 7);
+    this._flashLight({ x: bx, z: bz }, VIOLET, 2.8, 16, 95);
+    // Afterburner streak: fast rear particles (hot core → purple exhaust)
+    this._c0.set(HOT); this._c1.set(DEEP);
     const baseA = sock ? sock.angle : Math.atan2(-sf, -cf);
-    const n = Math.max(8, Math.round(22 * (this._burst || 1)));
+    const n = Math.max(12, Math.round(28 * (this._burst || 1)));
     for (let k = 0; k < n; k++) {
-      const a = baseA + (Math.random() - 0.5) * 0.45;
-      const sp = 90 + Math.random() * 90;
-      this._spawnParticle(bx, bz, svx + Math.cos(a) * sp, svz + Math.sin(a) * sp, 0.45, 3.0, 0.0, this._c0, this._c1, 1.2, 0, 0);
+      const a = baseA + (Math.random() - 0.5) * 0.38;
+      const sp = 110 + Math.random() * 100;
+      const life = 0.38 + Math.random() * 0.22;
+      const size = 2.6 + Math.random() * 1.4;
+      // Alternate hot-white→violet and violet→deep for a layered plasma look
+      if (k & 1) { this._c0.set(HOT); this._c1.set(PLASMA); }
+      else { this._c0.set(VIOLET); this._c1.set(DEEP); }
+      this._spawnParticle(bx, bz, svx + Math.cos(a) * sp, svz + Math.sin(a) * sp, life, size, 0.0, this._c0, this._c1, 1.35, 0, 0);
     }
-    if (e.id === this.state.playerId) this.helpers.camera && this.helpers.camera.addTrauma(0.28);  // punch
+    if (e.id === this.state.playerId) this.helpers.camera && this.helpers.camera.addTrauma(0.28);
   },
 
   _onPickup(p) {
