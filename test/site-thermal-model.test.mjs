@@ -10,7 +10,9 @@
 //   DEGENERATE NETWORKS    → §5
 // plus the law's own design statements: §6 zero-rock ring, §7 gas is not a heatsink, §8 solid = 8
 // accepted, §9 full-ring saturation, §10 dt edge cases, §11 purity, §12 the authored-constant
-// invariants that keep this suite honest, and §13 the unwired proof.
+// invariants that keep this suite honest, §13 the unwired proof, and §14 the kernel-repair
+// contracts (total-order machineKey, capacity/load extremes, throw-free coercion, band bounds,
+// ceiling/precision pins, self-contained fixtures).
 //
 // WHY §12 EXISTS — THE INVENTED-THRESHOLD TRAP. No thermal balance data ships anywhere in this
 // codebase: SITE_BALANCE (src/data/sites.js:134-158) has no heat term, and the cooling machines are
@@ -20,6 +22,10 @@
 // asserts ORDERING, MONOTONICITY, RATIOS and STRUCTURAL claims instead. The one class of magnitude
 // it does pin is the design document's own consequences — a conservative mine runs cool, a hollow
 // hall does not — because those are quoted design statements, not invented numbers.
+//
+// FIXTURE SELF-CONTAINMENT. Whole-site and per-machine laws use local frozen synthetic defs (and
+// snapshot.defs injection for stepSiteThermal). A single §14h catalog-integration smoke is the only
+// test that walks live SITE_MACHINES, and it asserts shape only — no id, count, or prose pins.
 //
 // Determinism rules (test/AGENTS.md): no DOM, no wall clock, no Math.random — fixtures only.
 import test from 'node:test';
@@ -32,6 +38,7 @@ import {
   SITE_THERMAL,
   THERMAL_BANDS,
   THERMAL_MODEL_VERSION,
+  THERMAL_PRECISION,
   classifyBand,
   heatPerMachine,
   machineThermalState,
@@ -40,7 +47,7 @@ import {
   thermalCapacityFor,
   thermalLoad,
 } from '../src/systems/siteThermalModel.js';
-import { SITE_MACHINE_BY_ID, SITE_MACHINES } from '../src/data/sites.js';
+import { SITE_MACHINES } from '../src/data/sites.js';
 import { contactProfile } from '../src/systems/siteProduction.js';
 import { generateDrillField, DRILL_CONST } from '../src/systems/drill.js';
 
@@ -60,11 +67,53 @@ const ORE_7 = ring({ ores: { cmdty_ore_iron: 7 } });
 /** A breached gas pocket and nothing else. Solid by contactProfile's reckoning; not a heatsink. */
 const GAS_7 = ring({ gas: 7 });
 
-const DEF = (id) => SITE_MACHINE_BY_ID.get(id);
-const EXTRACTOR = DEF('sm_extractor');
-const FABRICATOR = DEF('sm_fabricator');
-const CARGO_PORT = DEF('sm_cargo_port');
-const CORE = DEF('sm_massline_core');
+// Local frozen synthetic defs. Power figures match the shipped balance table so design-consequence
+// and proportional-heat laws stay meaningful, but nothing is looked up from SITE_MACHINE_BY_ID.
+// A rename of every sm_* id in src/data/sites.js must leave this suite green (except the single
+// catalog-integration smoke, which never hard-codes those ids).
+const EXTRACTOR = Object.freeze({
+  id: 'syn_extractor', name: 'Extractor', power: -6, usesGeology: true,
+});
+const FABRICATOR = Object.freeze({
+  id: 'syn_fabricator', name: 'Fabricator', power: -10, usesGeology: false,
+});
+const CARGO_PORT = Object.freeze({
+  id: 'syn_cargo_port', name: 'Cargo Port', power: -4, usesGeology: false,
+});
+const CORE = Object.freeze({
+  id: 'syn_massline_core', name: 'Core', power: 12, usesGeology: false,
+});
+const REFINERY = Object.freeze({
+  id: 'syn_refinery', name: 'Refinery', power: -8, usesGeology: false,
+});
+// machineCapability branches gas modes on def.id === 'sm_gas_tap' (a production-code string key on
+// the def object, not a catalog lookup). Keeping that id on the synthetic def is required for the
+// mode→heat law; renaming catalog entries does not break it.
+const GAS_TAP = Object.freeze({
+  id: 'sm_gas_tap',
+  name: 'Gas Tap',
+  power: 0,
+  usesGeology: true,
+  modes: Object.freeze(['generate', 'feedstock', 'split']),
+  defaultMode: 'generate',
+});
+
+/** Synthetic catalog used by whole-site and multi-def laws in place of live SITE_MACHINES. */
+const SYN_CATALOG = Object.freeze([
+  EXTRACTOR, FABRICATOR, CARGO_PORT, CORE, REFINERY, GAS_TAP,
+]);
+
+/** defId → def map injected via snapshot.defs so stepSiteThermal never needs SITE_MACHINE_BY_ID. */
+const SYN_DEFS = Object.freeze(Object.fromEntries(SYN_CATALOG.map((d) => [d.id, d])));
+
+/**
+ * Whole-site step with synthetic defs always available. Callers may still pass snap.defs to
+ * override; the default is SYN_DEFS so contract tests stay self-contained.
+ */
+function step(snapshot) {
+  const snap = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) ? snapshot : {};
+  return stepSiteThermal({ ...snap, defs: snap.defs !== undefined ? snap.defs : SYN_DEFS });
+}
 
 const clone = (v) => structuredClone(v);
 
@@ -124,15 +173,15 @@ test('§1 site-wide energy balance closes across a mixed site', () => {
   const snapshot = {
     dtS: 45,
     machines: [
-      { id: 'm1', defId: 'sm_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 12 },
-      { id: 'm2', defId: 'sm_fabricator', profile: HOLLOW, powerRatio: 1, storedHeat: 0 },
-      { id: 'm3', defId: 'sm_refinery', profile: MATRIX_7, powerRatio: 0.4, storedHeat: 90 },
-      { id: 'm4', defId: 'sm_massline_core', profile: ORE_7, powerRatio: 1, storedHeat: 3 },
+      { id: 'm1', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 12 },
+      { id: 'm2', defId: 'syn_fabricator', profile: HOLLOW, powerRatio: 1, storedHeat: 0 },
+      { id: 'm3', defId: 'syn_refinery', profile: MATRIX_7, powerRatio: 0.4, storedHeat: 90 },
+      { id: 'm4', defId: 'syn_massline_core', profile: ORE_7, powerRatio: 1, storedHeat: 3 },
       { id: 'm5', defId: 'sm_gas_tap', profile: GAS_7, powerRatio: 1, mode: 'generate', storedHeat: 7 },
-      { id: 'm6', defId: 'sm_cargo_port', profile: ring({ basalt: 3, matrix: 2 }), powerRatio: 0.9, storedHeat: 0 },
+      { id: 'm6', defId: 'syn_cargo_port', profile: ring({ basalt: 3, matrix: 2 }), powerRatio: 0.9, storedHeat: 0 },
     ],
   };
-  const r = stepSiteThermal(snapshot);
+  const r = step(snapshot);
   const t = r.totals;
 
   assert.equal(t.machineCount, 6);
@@ -172,10 +221,10 @@ test('§1 a machine cannot shed more than it holds', () => {
 
 // ========================================================= 2. BOUNDS & FINITENESS
 
-test('§2 heat and sink are non-negative and finite across the whole machine catalog', () => {
+test('§2 heat and sink are non-negative and finite across the synthetic catalog', () => {
   const rings = [HOLLOW, BASALT_7, MATRIX_7, ORE_7, GAS_7, ring({ matrix: 2, basalt: 3, gas: 2 })];
   const ratios = [0, 0.25, 1];
-  for (const def of SITE_MACHINES) {
+  for (const def of SYN_CATALOG) {
     for (const profile of rings) {
       for (const powerRatio of ratios) {
         const heat = heatPerMachine(def, profile, powerRatio);
@@ -213,12 +262,12 @@ test('§2 malformed input is rejected with a reason and never throws', () => {
   }
 
   // NaN/Infinity in the numeric fields must not leak to any output field.
-  const poisoned = stepSiteThermal({
+  const poisoned = step({
     dtS: 30,
     machines: [
-      { id: 'p1', defId: 'sm_extractor', profile: ring({ basalt: NaN, matrix: Infinity }), powerRatio: NaN, storedHeat: NaN },
-      { id: 'p2', defId: 'sm_refinery', profile: ring({ basalt: 4 }), powerRatio: Infinity, storedHeat: -Infinity },
-      { id: 'p3', defId: 'sm_fabricator', profile: { ores: { x: NaN } }, powerRatio: 0.5, coolingRate: NaN },
+      { id: 'p1', defId: 'syn_extractor', profile: ring({ basalt: NaN, matrix: Infinity }), powerRatio: NaN, storedHeat: NaN },
+      { id: 'p2', defId: 'syn_refinery', profile: ring({ basalt: 4 }), powerRatio: Infinity, storedHeat: -Infinity },
+      { id: 'p3', defId: 'syn_fabricator', profile: { ores: { x: NaN } }, powerRatio: 0.5, coolingRate: NaN },
     ],
   });
   assertAllFinite(poisoned, 'poisoned');
@@ -226,11 +275,11 @@ test('§2 malformed input is rejected with a reason and never throws', () => {
 });
 
 test('§2 non-object machines and unknown defs land in rejected[] rather than throwing', () => {
-  const r = stepSiteThermal({
+  const r = step({
     dtS: 1,
     machines: [
       null, 42, 'ship',
-      { id: 'ok', defId: 'sm_extractor', profile: BASALT_7, powerRatio: 1 },
+      { id: 'ok', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1 },
       { id: 'ghost', defId: 'sm_not_a_machine', profile: BASALT_7, powerRatio: 1 },
     ],
   });
@@ -243,9 +292,9 @@ test('§2 non-object machines and unknown defs land in rejected[] rather than th
 });
 
 test('§2 the emitted record is deeply frozen and JSON-safe', () => {
-  const r = stepSiteThermal({
+  const r = step({
     dtS: 5,
-    machines: [{ id: 'a', defId: 'sm_extractor', profile: BASALT_7, powerRatio: 1 }],
+    machines: [{ id: 'a', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1 }],
   });
   assert.ok(Object.isFrozen(r) && Object.isFrozen(r.machines) && Object.isFrozen(r.machines[0]));
   assert.ok(Object.isFrozen(r.machines[0].step) && Object.isFrozen(r.totals));
@@ -346,17 +395,17 @@ test('§4 permuting site.machines[] yields a byte-identical record', () => {
   // single-pass, steady-state formulation and forbids iterative thermal relaxation outright: a
   // relaxation loop's answer depends on the order machines are visited, so it could never pass here.
   const machines = [
-    { id: 'm1', defId: 'sm_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 12 },
-    { id: 'm2', defId: 'sm_fabricator', profile: HOLLOW, powerRatio: 1, storedHeat: 0 },
-    { id: 'm3', defId: 'sm_refinery', profile: MATRIX_7, powerRatio: 0.4, storedHeat: 90.5 },
-    { id: 'm4', defId: 'sm_massline_core', profile: ORE_7, powerRatio: 1, storedHeat: 3.25 },
+    { id: 'm1', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 12 },
+    { id: 'm2', defId: 'syn_fabricator', profile: HOLLOW, powerRatio: 1, storedHeat: 0 },
+    { id: 'm3', defId: 'syn_refinery', profile: MATRIX_7, powerRatio: 0.4, storedHeat: 90.5 },
+    { id: 'm4', defId: 'syn_massline_core', profile: ORE_7, powerRatio: 1, storedHeat: 3.25 },
     { id: 'm5', defId: 'sm_gas_tap', profile: GAS_7, powerRatio: 1, mode: 'split', storedHeat: 7 },
   ];
-  const baseline = stepSiteThermal({ dtS: 33, machines });
+  const baseline = step({ dtS: 33, machines });
 
   let checked = 0;
   for (const perm of permutations(machines)) {
-    assert.deepStrictEqual(stepSiteThermal({ dtS: 33, machines: perm }), baseline);
+    assert.deepStrictEqual(step({ dtS: 33, machines: perm }), baseline);
     checked++;
   }
   assert.equal(checked, 120, 'all 5! permutations exercised');
@@ -393,16 +442,16 @@ test('§4 ore key insertion order cannot move the result', () => {
 test('§4 each machine is solved independently of its neighbours', () => {
   // A machine's reading must not depend on what else is installed — that independence is what makes
   // the single-pass formulation legitimate rather than an approximation of a coupled system.
-  const solo = stepSiteThermal({
+  const solo = step({
     dtS: 20,
-    machines: [{ id: 'm1', defId: 'sm_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 5 }],
+    machines: [{ id: 'm1', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 5 }],
   });
-  const crowded = stepSiteThermal({
+  const crowded = step({
     dtS: 20,
     machines: [
-      { id: 'm1', defId: 'sm_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 5 },
-      { id: 'm2', defId: 'sm_fabricator', profile: HOLLOW, powerRatio: 1, storedHeat: 800 },
-      { id: 'm3', defId: 'sm_massline_core', profile: ORE_7, powerRatio: 1, storedHeat: 0 },
+      { id: 'm1', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 5 },
+      { id: 'm2', defId: 'syn_fabricator', profile: HOLLOW, powerRatio: 1, storedHeat: 800 },
+      { id: 'm3', defId: 'syn_massline_core', profile: ORE_7, powerRatio: 1, storedHeat: 0 },
     ],
   });
   assert.deepStrictEqual(
@@ -414,7 +463,7 @@ test('§4 each machine is solved independently of its neighbours', () => {
 // ========================================================== 5. DEGENERATE NETWORKS
 
 test('§5 empty machine list', () => {
-  const r = stepSiteThermal({ dtS: 60, machines: [] });
+  const r = step({ dtS: 60, machines: [] });
   assert.deepStrictEqual(r.machines, []);
   assert.equal(r.totals.machineCount, 0);
   assert.equal(r.totals.generated, 0);
@@ -425,14 +474,14 @@ test('§5 empty machine list', () => {
 });
 
 test('§5 a missing machines key behaves exactly like an empty list', () => {
-  assert.deepStrictEqual(stepSiteThermal({ dtS: 60 }), stepSiteThermal({ dtS: 60, machines: [] }));
+  assert.deepStrictEqual(step({ dtS: 60 }), step({ dtS: 60, machines: [] }));
 });
 
 test('§5 a single machine with no network still reads a band', () => {
   // No power component, no lane, no neighbours — the isolated case A07 has to render something for.
-  const r = stepSiteThermal({
+  const r = step({
     dtS: 60,
-    machines: [{ id: 'lonely', defId: 'sm_extractor', profile: BASALT_7, powerRatio: 0 }],
+    machines: [{ id: 'lonely', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 0 }],
   });
   assert.equal(r.machines.length, 1);
   assert.equal(r.machines[0].heat, 0, 'an unpowered machine generates no draw heat');
@@ -451,13 +500,13 @@ test('§5 a machine with no power component falls to powerRatio 0 and generates 
 });
 
 test('§5 duplicate machine ids: one survives, the rest are reported', () => {
-  const r = stepSiteThermal({
+  const r = step({
     dtS: 10,
     machines: [
-      { id: 'dup', defId: 'sm_extractor', profile: BASALT_7, powerRatio: 1 },
-      { id: 'dup', defId: 'sm_fabricator', profile: HOLLOW, powerRatio: 1 },
-      { id: 'dup', defId: 'sm_refinery', profile: MATRIX_7, powerRatio: 1 },
-      { id: 'unique', defId: 'sm_cargo_port', profile: BASALT_7, powerRatio: 1 },
+      { id: 'dup', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1 },
+      { id: 'dup', defId: 'syn_fabricator', profile: HOLLOW, powerRatio: 1 },
+      { id: 'dup', defId: 'syn_refinery', profile: MATRIX_7, powerRatio: 1 },
+      { id: 'unique', defId: 'syn_cargo_port', profile: BASALT_7, powerRatio: 1 },
     ],
   });
   assert.equal(r.machines.length, 2, 'the ambiguous copies are not silently double-counted');
@@ -467,22 +516,22 @@ test('§5 duplicate machine ids: one survives, the rest are reported', () => {
 
 test('§5 duplicate resolution is order-independent', () => {
   const machines = [
-    { id: 'dup', defId: 'sm_extractor', profile: BASALT_7, powerRatio: 1 },
-    { id: 'dup', defId: 'sm_fabricator', profile: HOLLOW, powerRatio: 1 },
-    { id: 'dup', defId: 'sm_refinery', profile: MATRIX_7, powerRatio: 1 },
+    { id: 'dup', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1 },
+    { id: 'dup', defId: 'syn_fabricator', profile: HOLLOW, powerRatio: 1 },
+    { id: 'dup', defId: 'syn_refinery', profile: MATRIX_7, powerRatio: 1 },
   ];
-  const baseline = stepSiteThermal({ dtS: 10, machines });
+  const baseline = step({ dtS: 10, machines });
   for (const perm of permutations(machines)) {
-    assert.deepStrictEqual(stepSiteThermal({ dtS: 10, machines: perm }), baseline);
+    assert.deepStrictEqual(step({ dtS: 10, machines: perm }), baseline);
   }
 });
 
 test('§5 anonymous machines (no id) are all solved, never collapsed together', () => {
-  const r = stepSiteThermal({
+  const r = step({
     dtS: 10,
     machines: [
-      { defId: 'sm_extractor', profile: BASALT_7, powerRatio: 1, col: 3, row: 4 },
-      { defId: 'sm_extractor', profile: HOLLOW, powerRatio: 1, col: 9, row: 4 },
+      { defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1, col: 3, row: 4 },
+      { defId: 'syn_extractor', profile: HOLLOW, powerRatio: 1, col: 9, row: 4 },
     ],
   });
   assert.equal(r.machines.length, 2, 'id-less machines are distinct installs, not duplicates');
@@ -527,7 +576,7 @@ test('§6 a fully hollowed hall has no heatsink and reaches the worst band', () 
   assert.equal(rockSinkFor(HOLLOW), 0, 'a hollow ring conducts nothing');
 
   const worst = THERMAL_BANDS[THERMAL_BANDS.length - 1].id;
-  for (const def of SITE_MACHINES) {
+  for (const def of SYN_CATALOG) {
     const r = machineThermalState({ def, profile: HOLLOW, powerRatio: 1, dtS: 60 });
     if (r.heat === 0) continue; // a machine that makes no heat is legitimately fine anywhere
     assert.equal(r.sink, 0, `${def.id}: hollow ring must give zero sink`);
@@ -572,14 +621,14 @@ test('§7 a gas tap on a gas-only ring is the hottest thing on the site', () => 
   // Emergent, and exactly the design intent: the gas tap converts gas contacts into megawatts
   // (CONTACT_YIELD.gasPowerPerContact) while those same contacts conduct nothing away. It is the
   // machine that most needs the unbuilt Coolant Loop, and it says so without any special-casing.
-  const tap = machineThermalState({ def: DEF('sm_gas_tap'), profile: GAS_7, powerRatio: 1, mode: 'generate', dtS: 60 });
+  const tap = machineThermalState({ def: GAS_TAP, profile: GAS_7, powerRatio: 1, mode: 'generate', dtS: 60 });
   assert.ok(tap.heat > 0, 'generating from gas makes heat');
   assert.equal(tap.sink, 0, 'and the gas it sits in cannot take it back');
   assert.equal(tap.band, THERMAL_BANDS[THERMAL_BANDS.length - 1].id);
 
   // Mode is real: feedstock mode makes no power, and therefore runs cooler than generate mode.
-  const feed = machineThermalState({ def: DEF('sm_gas_tap'), profile: GAS_7, powerRatio: 1, mode: 'feedstock', dtS: 60 });
-  const split = machineThermalState({ def: DEF('sm_gas_tap'), profile: GAS_7, powerRatio: 1, mode: 'split', dtS: 60 });
+  const feed = machineThermalState({ def: GAS_TAP, profile: GAS_7, powerRatio: 1, mode: 'feedstock', dtS: 60 });
+  const split = machineThermalState({ def: GAS_TAP, profile: GAS_7, powerRatio: 1, mode: 'split', dtS: 60 });
   assert.ok(feed.heat < split.heat, 'feedstock < split');
   assert.ok(split.heat < tap.heat, 'split < generate');
 });
@@ -608,7 +657,7 @@ test('§8 a ring with 8 solid contacts is accepted, not asserted away', () => {
 // ====================================================== 9. FULL RING SATURATION
 
 test('§9 a full rock ring pins the cool end against the hollow-hall hot end', () => {
-  for (const def of SITE_MACHINES) {
+  for (const def of SYN_CATALOG) {
     const hot = machineThermalState({ def, profile: HOLLOW, powerRatio: 1, dtS: 60 });
     if (hot.heat === 0) continue;
     for (const cool of [BASALT_7, MATRIX_7, ORE_7]) {
@@ -662,6 +711,7 @@ test('§9 the design consequence holds: a conservative mine runs cool, a dense h
   // cool by nature", while "dense machine halls are an engineering achievement". If a rebalance ever
   // makes a lone extractor in a full ring uncomfortable, that is a design change and should be a
   // conscious one — this is the tripwire, and it is the only place a band value is pinned.
+  // Self-contained: synthetic extractor/fabricator with the same power figures the design assumes.
   const mine = machineThermalState({ def: EXTRACTOR, profile: BASALT_7, powerRatio: 1, dtS: 60 });
   assert.equal(mine.band, 'nominal', 'a lone extractor in solid rock must be comfortable');
 
@@ -684,9 +734,9 @@ test('§10 dt = 0 is a no-op that still classifies', () => {
 });
 
 test('§10 a negative dt is rejected and degrades to a no-op', () => {
-  const r = stepSiteThermal({
+  const r = step({
     dtS: -60,
-    machines: [{ id: 'a', defId: 'sm_fabricator', profile: HOLLOW, powerRatio: 1, storedHeat: 20 }],
+    machines: [{ id: 'a', defId: 'syn_fabricator', profile: HOLLOW, powerRatio: 1, storedHeat: 20 }],
   });
   assert.ok(r.rejected.some((x) => x.reason === 'negative-dt'), 'must report the bad dt');
   assert.equal(r.dtS, 0, 'and must not run time backwards');
@@ -697,7 +747,7 @@ test('§10 a negative dt is rejected and degrades to a no-op', () => {
 
 test('§10 a non-finite dt is rejected', () => {
   for (const bad of [NaN, Infinity, -Infinity, 'soon']) {
-    const r = stepSiteThermal({ dtS: bad, machines: [] });
+    const r = step({ dtS: bad, machines: [] });
     assert.ok(r.rejected.some((x) => x.reason === 'invalid-dt'), `dtS=${String(bad)}`);
     assert.equal(r.dtS, 0);
   }
@@ -710,7 +760,7 @@ test('§10 one large catch-up step lands in the same band as many small steps', 
   const TOTAL = 600;
   const STEPS = 600;
 
-  for (const def of SITE_MACHINES) {
+  for (const def of SYN_CATALOG) {
     for (const profile of [HOLLOW, BASALT_7, MATRIX_7, ORE_7]) {
       const big = machineThermalState({ def, profile, powerRatio: 1, storedHeat: 0, dtS: TOTAL });
 
@@ -755,8 +805,9 @@ test('§11 every entry point leaves its inputs untouched', () => {
   const def = clone(EXTRACTOR);
   const snapshot = {
     dtS: 42,
+    defs: SYN_DEFS,
     machines: [
-      { id: 'm1', defId: 'sm_extractor', profile: clone(profile), powerRatio: 0.8, storedHeat: 11, carry: { a: 1 } },
+      { id: 'm1', defId: 'syn_extractor', profile: clone(profile), powerRatio: 0.8, storedHeat: 11, carry: { a: 1 } },
       { id: 'm2', defId: 'sm_gas_tap', profile: clone(profile), powerRatio: 1, mode: 'split', storedHeat: 4 },
       { id: 'm3', defId: 'sm_unknown', profile: clone(profile), powerRatio: 1 },
       null,
@@ -780,26 +831,26 @@ test('§11 every entry point leaves its inputs untouched', () => {
   assert.deepStrictEqual(snapshot, beforeSnapshot, 'stepSiteThermal mutated its snapshot');
 });
 
-test('§11 the shipped catalog is never mutated by a thermal pass', () => {
-  const before = clone(SITE_MACHINES);
-  stepSiteThermal({
+test('§11 the synthetic def map is never mutated by a thermal pass', () => {
+  const before = clone(SYN_DEFS);
+  step({
     dtS: 60,
-    machines: SITE_MACHINES.map((d, i) => ({
+    machines: SYN_CATALOG.map((d, i) => ({
       id: `m${i}`, defId: d.id, profile: BASALT_7, powerRatio: 1,
     })),
   });
-  assert.deepStrictEqual(clone(SITE_MACHINES), before);
+  assert.deepStrictEqual(clone(SYN_DEFS), before);
 });
 
 test('§11 repeated calls with the same input return equal records', () => {
   const snapshot = {
     dtS: 17,
     machines: [
-      { id: 'a', defId: 'sm_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 5 },
-      { id: 'b', defId: 'sm_refinery', profile: MATRIX_7, powerRatio: 0.3, storedHeat: 0 },
+      { id: 'a', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 5 },
+      { id: 'b', defId: 'syn_refinery', profile: MATRIX_7, powerRatio: 0.3, storedHeat: 0 },
     ],
   };
-  assert.deepStrictEqual(stepSiteThermal(snapshot), stepSiteThermal(clone(snapshot)));
+  assert.deepStrictEqual(step(snapshot), step(clone(snapshot)));
 });
 
 // ============================================ 12. AUTHORED-CONSTANT INVARIANTS
@@ -837,7 +888,7 @@ test('§12 classifyBand covers [0,1] and agrees with the reported load', () => {
 
   // The band a record reports must be exactly what its own reported load classifies to — no drift
   // between the rounded display value and the label.
-  for (const def of SITE_MACHINES) {
+  for (const def of SYN_CATALOG) {
     for (const profile of [HOLLOW, BASALT_7, MATRIX_7, ORE_7, GAS_7]) {
       const r = machineThermalState({ def, profile, powerRatio: 1, dtS: 10 });
       assert.equal(r.band, classifyBand(r.load), `${def.id} band/load disagreement`);
@@ -870,11 +921,13 @@ test('§12 generation runs cooler per MW than draw, and heat is anchored to the 
 });
 
 test('§12 heat is proportional to real installed power, not a per-machine table', () => {
-  // The anti-invention proof: heat ordering across the catalog must follow |def.power| ordering,
-  // which is shipped data. No machine may carry a bespoke thermal fudge.
-  const draws = SITE_MACHINES
-    .filter((d) => d.power < 0)
-    .map((d) => ({ id: d.id, mw: Math.abs(d.power), heat: heatPerMachine(d, HOLLOW, 1) }));
+  // The anti-invention proof: heat ordering across drawing machines must follow |def.power|
+  // ordering. Self-contained synthetic draws — no live catalog ids or counts.
+  const draws = [
+    Object.freeze({ id: 'syn_draw_4', name: 'd4', power: -4 }),
+    Object.freeze({ id: 'syn_draw_6', name: 'd6', power: -6 }),
+    Object.freeze({ id: 'syn_draw_10', name: 'd10', power: -10 }),
+  ].map((d) => ({ id: d.id, mw: Math.abs(d.power), heat: heatPerMachine(d, HOLLOW, 1) }));
   assert.ok(draws.length >= 3, 'precondition: several drawing machines exist');
 
   for (const a of draws) {
@@ -884,7 +937,7 @@ test('§12 heat is proportional to real installed power, not a per-machine table
       const cooler = a.mw > b.mw ? b : a;
       assert.ok(hotter.heat > cooler.heat, `${hotter.id} draws more MW than ${cooler.id} but is not hotter`);
     }
-    // Exact proportionality to the shipped power figure.
+    // Exact proportionality to the installed power figure.
     assert.ok(Math.abs(a.heat - a.mw * SITE_THERMAL.heatPerMWDraw) <= EPS, `${a.id} heat is not derived from def.power`);
   }
 });
@@ -943,4 +996,181 @@ test('§13 the kernel imports no Three.js, no DOM and no clock', () => {
   }
   // And it must not reach for the player's wanted-level heat system.
   assert.ok(!body.includes("systems/heat.js"), 'must not import the player heat scalar');
+});
+
+// ================================================= 14. KERNEL REPAIR CONTRACTS
+// Pins for 53452e84: total-order machineKey (P0-1), overflow-safe capacity (P1-2), scale-invariant
+// thermalLoad with +Infinity-heat-fails-HOT (P1-3), throw-free toNumber (P1-6), band bounds (P1-1),
+// ceiling/precision (P1-5), and fixture self-containment via snapshot.defs (P1-4).
+
+test('§14a P0 permutation: anonymous extractors differing in profile/storedHeat are order-independent', () => {
+  // Review repro: two anonymous machines, same defId, no id/col/row, differing thermal content.
+  // Under the pre-repair identity-only key they collided and stable-sort preserved caller order.
+  const a = { defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 10 };
+  const b = { defId: 'syn_extractor', profile: HOLLOW, powerRatio: 1, storedHeat: 3 };
+  const forward = JSON.stringify(step({ dtS: 10, machines: [a, b] }));
+  const reverse = JSON.stringify(step({ dtS: 10, machines: [b, a] }));
+  assert.equal(forward, reverse, 'byte-equal under reversal');
+  assert.equal(step({ dtS: 10, machines: [a, b] }).totals.machineCount, 2);
+});
+
+test('§14a P0 permutation: duplicate-id pair differing only in storedHeat has a deterministic survivor', () => {
+  const low = { id: 'dup', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 3 };
+  const high = { id: 'dup', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 10 };
+  const forward = step({ dtS: 10, machines: [low, high] });
+  const reverse = step({ dtS: 10, machines: [high, low] });
+  assert.equal(JSON.stringify(forward), JSON.stringify(reverse), 'byte-equal under reversal');
+  assert.equal(forward.machines.length, 1, 'exactly one survivor');
+  assert.equal(forward.rejected.filter((x) => x.reason === 'duplicate-id').length, 1);
+  // Survivor is content-keyed, not caller-order-keyed: storedHeat must match across both orders.
+  assert.equal(forward.machines[0].step.storedBefore, reverse.machines[0].step.storedBefore);
+});
+
+test('§14a P0 permutation: fully identical anonymous machines are both processed (no silent dedupe)', () => {
+  const m = { defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1, storedHeat: 5 };
+  const a = { ...m };
+  const b = { ...m };
+  const forward = step({ dtS: 10, machines: [a, b] });
+  const reverse = step({ dtS: 10, machines: [b, a] });
+  assert.equal(JSON.stringify(forward), JSON.stringify(reverse), 'byte-equal under reversal');
+  assert.equal(forward.totals.machineCount, 2, 'interchangeable — both processed, none deduped');
+  assert.deepStrictEqual(forward.rejected, []);
+});
+
+test('§14b capacity extremes with independent literals (P1-2)', () => {
+  // Independent of SITE_THERMAL exports — if the authored table drifts, these pins still name the
+  // repair's contract against the numbers the review exercised.
+  const CAP_BASE = 6;
+  const CAP_PER_MW = 8;
+  const CEILING = 1e290;
+
+  // Within-the-ceiling exact: at 1e288, base is lost to FP so result equals CAP_PER_MW * power.
+  assert.equal(thermalCapacityFor({ power: 1e288 }), CAP_PER_MW * 1e288);
+  // Finite-but-over-ceiling saturates.
+  assert.equal(thermalCapacityFor({ power: 2e289 }), CEILING);
+  // Overflow saturates.
+  assert.equal(thermalCapacityFor({ power: 1e308 }), CEILING);
+  assert.equal(thermalCapacityFor({ power: Number.MAX_VALUE }), CEILING);
+  // Zero power is the base floor.
+  assert.equal(thermalCapacityFor({ power: 0 }), CAP_BASE);
+
+  // Monotone non-decreasing across the extreme ladder.
+  const ladder = [
+    thermalCapacityFor({ power: 1e288 }),
+    thermalCapacityFor({ power: 2e289 }),
+    thermalCapacityFor({ power: 1e308 }),
+    thermalCapacityFor({ power: Number.MAX_VALUE }),
+  ];
+  for (let i = 1; i < ladder.length; i++) {
+    assert.ok(ladder[i] >= ladder[i - 1], `capacity non-decreasing at ladder[${i}]`);
+  }
+});
+
+test('§14c thermalLoad extremes: scale invariance, Infinity HOT, NaN/negative cold (P1-3)', () => {
+  assert.equal(thermalLoad(1, 1), 0.5);
+  assert.equal(thermalLoad(1e308, 1e308), 0.5, 'scale invariance at the representable ceiling');
+  // Same ratio across three magnitude decades (and tiny scales): scale-invariant, not equal to 0.5.
+  assert.equal(thermalLoad(3, 6), thermalLoad(3e300, 6e300));
+  assert.equal(thermalLoad(3, 6), thermalLoad(3e-300, 6e-300));
+  assert.equal(thermalLoad(3, 6), 0.3333333333333333);
+
+  assert.equal(thermalLoad(Infinity, 1), 1, '+Infinity heat fails HOT');
+  assert.equal(thermalLoad(1, Infinity), 1, 'infinite sink claim earns no cooling credit');
+  assert.equal(thermalLoad(NaN, 1), 0, 'NaN heat → 0');
+  assert.equal(thermalLoad(-5, 1), 0, 'negative heat → 0');
+});
+
+test('§14d Symbol/throw-free pins across public entry points (P1-6)', () => {
+  const cases = [
+    () => thermalLoad(Symbol('heat'), 1),
+    () => thermalCapacityFor({ power: Symbol('mw') }),
+    () => stepSiteThermal({ dtS: Symbol('dt'), machines: [] }),
+    () => machineThermalState({ def: { power: Symbol('p') }, dtS: 1 }),
+  ];
+  for (const fn of cases) {
+    assert.doesNotThrow(fn, 'must not throw on Symbol input');
+    const a = fn();
+    const b = fn();
+    // Deterministic: two calls with the same non-numeric claim yield byte-equal output.
+    assert.equal(JSON.stringify(a), JSON.stringify(b));
+  }
+});
+
+test('§14e P1-1 band bounds with independent literals (inclusive at-bound, both sides)', () => {
+  const WARM = 0.45;
+  const THROTTLE = 0.65;
+  const FAULT = 0.85;
+
+  // At-bound INCLUSIVE (comparator is >=).
+  assert.equal(classifyBand(WARM), 'warm');
+  assert.equal(classifyBand(THROTTLE), 'throttle');
+  assert.equal(classifyBand(FAULT), 'fault');
+
+  // Both sides of each boundary.
+  assert.equal(classifyBand(0.4499), 'nominal');
+  assert.equal(classifyBand(0.4501), 'warm');
+  assert.equal(classifyBand(0.6499), 'warm');
+  assert.equal(classifyBand(0.6501), 'throttle');
+  assert.equal(classifyBand(0.8499), 'throttle');
+  assert.equal(classifyBand(0.8501), 'fault');
+});
+
+test('§14f P1-5 ceiling/precision pins with independent literals', () => {
+  assert.equal(SITE_THERMAL.maxEnergy, 1e290);
+  assert.equal(SITE_THERMAL.maxStored, 1e290);
+  assert.equal(THERMAL_PRECISION, 6);
+
+  // OBSERVABLE 6th-decimal ratio: heat:sink = 1:2 → load 1/3 → exactly 0.333333 at precision 6.
+  const third = machineThermalState({
+    def: { id: 'syn_third', name: 'x', power: -1 },
+    profile: HOLLOW,
+    powerRatio: 1,
+    coolingRate: 2, // sink = 2, heat = 1 → load = 1/3
+    dtS: 1,
+  });
+  assert.equal(third.load, 0.333333);
+
+  // Energy path that hits the ceiling exactly: rate 1e290 × dtMin 1 → generated === 1e290.
+  const ceil = machineThermalState({
+    def: { id: 'syn_ceil', name: 'x', power: -1e290 },
+    profile: HOLLOW,
+    powerRatio: 1,
+    storedHeat: 0,
+    dtS: 60,
+  });
+  assert.equal(ceil.step.generated, 1e290);
+});
+
+test('§14h catalog integration smoke: every live SITE_MACHINES def yields a finite record and valid band', () => {
+  // THE ONLY live-catalog integration. Shape only — no id pins, no count pins, no design prose.
+  // A rename of every sm_* id must leave this test green because it never hard-codes those ids.
+  assert.ok(Array.isArray(SITE_MACHINES) && SITE_MACHINES.length > 0, 'catalog is a non-empty array');
+  for (const def of SITE_MACHINES) {
+    assert.equal(typeof def, 'object');
+    assert.equal(typeof def.id, 'string');
+    const r = machineThermalState({ def, profile: BASALT_7, powerRatio: 1, dtS: 10 });
+    assertAllFinite(r, `catalog:${def.id}`);
+    assert.ok(THERMAL_BANDS.some((b) => b.id === r.band), `catalog:${def.id} band ${r.band}`);
+    assert.ok(Number.isFinite(r.heat) && r.heat >= 0);
+    assert.ok(Number.isFinite(r.sink) && r.sink >= 0);
+  }
+});
+
+test('§14h snapshot.defs injection shadows the live catalog for synthetic machines', () => {
+  // Without defs, an unknown id is rejected; with injection, the same id solves.
+  const bare = stepSiteThermal({
+    dtS: 5,
+    machines: [{ id: 'x', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1 }],
+  });
+  assert.equal(bare.machines.length, 0);
+  assert.ok(bare.rejected.some((x) => x.reason === 'unknown-def'));
+
+  const injected = stepSiteThermal({
+    dtS: 5,
+    defs: SYN_DEFS,
+    machines: [{ id: 'x', defId: 'syn_extractor', profile: BASALT_7, powerRatio: 1 }],
+  });
+  assert.equal(injected.machines.length, 1);
+  assert.equal(injected.machines[0].defId, 'syn_extractor');
+  assertAllFinite(injected, 'defs injection');
 });
