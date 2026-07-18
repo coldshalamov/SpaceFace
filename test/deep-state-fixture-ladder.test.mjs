@@ -30,8 +30,23 @@ test('canonical deep-state ladder names all thirteen public-route states without
     'pre-ending',
     'post-ending-sandbox',
   ]);
-  assert(manifest.fixtures.every((fixture) => fixture.status === 'planned'));
-  assert(manifest.fixtures.every((fixture) => fixture.artifact === null));
+
+  // G02/G03 captured the first two rungs through the public capture harness
+  // (scripts/check-deep-state-capture.mjs); every later rung remains honestly planned.
+  const CAPTURED = new Set(['fresh-start', 'first-station']);
+  for (const fixture of manifest.fixtures) {
+    if (CAPTURED.has(fixture.id)) {
+      assert.equal(fixture.status, 'captured', `${fixture.id} is captured`);
+      assert.match(fixture.artifact, /^test\/fixtures\/deep-state-ladder\/artifacts\//,
+        `${fixture.id} artifact is a durable tracked path`);
+      assert.match(fixture.sha256, /^[0-9a-f]{64}$/, `${fixture.id} carries a real digest`);
+      assert.match(fixture.capture?.commit || '', /^[0-9a-f]{40}$/, `${fixture.id} is commit-bound`);
+      assert.ok(fixture.capture?.publicRouteReceipt, `${fixture.id} names its route receipt`);
+    } else {
+      assert.equal(fixture.status, 'planned', `${fixture.id} stays honestly planned`);
+      assert.equal(fixture.artifact, null, `${fixture.id} has no fake artifact`);
+    }
+  }
 });
 
 test('ladder validation rejects forward dependencies and dishonest capture claims', () => {

@@ -1,0 +1,77 @@
+{
+  "schema": "spaceface.deepStateRestore.v1",
+  "fixtureId": "first-station",
+  "commit": "61e840714d4250ea5b353a12897d4f814791e045",
+  "seededKey": "sf.save.quick",
+  "restoredThrough": "public-menu-continue + public-KeyE-redock (docked is a shipped transient flag)",
+  "steps": [
+    {
+      "name": "boot",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "menu-visible",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "continue-clicked",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "restored",
+      "ok": true,
+      "note": "playable mode reached"
+    },
+    {
+      "name": "re-docked",
+      "ok": true,
+      "note": "public E hold"
+    }
+  ],
+  "restoreSnapshot": {
+    "mode": "flight",
+    "hasPlayerEntity": true,
+    "playerShipDefId": null,
+    "pilotName": "Wren",
+    "careers": {
+      "hasOrigins": true,
+      "hasLadders": true
+    },
+    "activeMissionCount": 2,
+    "currentSectorId": "sector_helios_prime",
+    "docked": true,
+    "dockedStationId": "station_helios",
+    "dockTabCount": 6,
+    "undockControlPresent": true
+  },
+  "claims": [
+    {
+      "text": "docked station identity restores",
+      "ok": true,
+      "evidence": {
+        "stationId": [
+          "station_helios",
+          "station_helios"
+        ]
+      }
+    },
+    {
+      "text": "station services remain reachable",
+      "ok": true,
+      "evidence": {
+        "dockTabs": 6
+      }
+    },
+    {
+      "text": "undock remains available",
+      "ok": true,
+      "evidence": {
+        "undockControl": true
+      }
+    }
+  ],
+  "claimsOk": true
+}

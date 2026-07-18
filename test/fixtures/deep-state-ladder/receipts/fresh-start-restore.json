@@ -1,0 +1,85 @@
+{
+  "schema": "spaceface.deepStateRestore.v1",
+  "fixtureId": "fresh-start",
+  "commit": "61e840714d4250ea5b353a12897d4f814791e045",
+  "seededKey": "sf.save.quick",
+  "restoredThrough": "public-menu-continue",
+  "steps": [
+    {
+      "name": "boot",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "menu-visible",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "continue-clicked",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "restored",
+      "ok": true,
+      "note": "playable mode reached"
+    }
+  ],
+  "restoreSnapshot": {
+    "mode": "flight",
+    "hasPlayerEntity": true,
+    "playerShipDefId": null,
+    "pilotName": "Wren",
+    "careers": {
+      "hasOrigins": true,
+      "hasLadders": true
+    },
+    "activeMissionCount": 1,
+    "currentSectorId": "sector_helios_prime",
+    "docked": false,
+    "dockedStationId": null,
+    "dockTabCount": 0,
+    "undockControlPresent": false
+  },
+  "claims": [
+    {
+      "text": "player entity and career are restorable",
+      "ok": true,
+      "evidence": {
+        "restoredPlayer": true,
+        "careersSubtree": {
+          "hasOrigins": true,
+          "hasLadders": true
+        },
+        "pilotName": [
+          "Wren",
+          "Wren"
+        ],
+        "ship": [
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "text": "starter objective is reachable",
+      "ok": true,
+      "evidence": {
+        "activeMissions": [
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "text": "save contains no injected support state",
+      "ok": true,
+      "evidence": {
+        "producer": "runGoldCorridorPublicPilot",
+        "injectedState": false
+      }
+    }
+  ],
+  "claimsOk": true
+}
