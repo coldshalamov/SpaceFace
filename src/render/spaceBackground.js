@@ -1,7 +1,8 @@
 // SpaceFace SPEC3-F8b — "Painted Deep-Field" background.
 //
 // One THREE.Group locked to the camera's X/Z, floating at a fixed depth below the play plane.
-// Layers (all depthTest/depthWrite off, explicit renderOrder, render-side only — never touches sim):
+// Runtime layers depth-test against gameplay geometry but never write depth; explicit negative group
+// order keeps them behind transparent canopies, shields, and VFX. Offscreen bake passes stay depthless.
 //   L0  clean near-black void                                           (baked tile, opaque)
 //   L1  rare sector-owned nebula structure                              (baked tile, alpha blend)
 //   L2  anomaly-only glow wisps                                         (baked tile, additive)
@@ -113,11 +114,20 @@ const LAYER_DEFS = [
   { name: 'L1_nebula', par: 0.08, tileH: 18.0, depth: -18, blend: 'normal' },
   { name: 'L2_wisps',  par: 0.13, tileH: 11.0, depth: -8,  blend: 'additive' },
 ];
+export const SPACE_BACKGROUND_GROUP_ORDER = -100;
 const STAR_DEPTH = 6;       // group-local y for star/flare/hero planes (above the tiles)
 const HERO_DEPTH = 12;
 const PLANET_PAR = 0.055;   // single parallax factor for planet placement (bg-space grid)
 const WORM_PAR = 0.10;
 const LOOK_BIAS_Z = 0.30;   // camera never yaws; view center sits ahead (+Z) of the camera point
+
+export function applySpaceBackgroundRootContract(group, bgY) {
+  if (!group) return group;
+  group.name = 'SpaceBackground';
+  group.renderOrder = SPACE_BACKGROUND_GROUP_ORDER;
+  group.position.y = bgY;
+  return group;
+}
 
 /**
  * Cast an authored safe NDC point through the matched camera onto the hero plane, then convert
@@ -906,7 +916,7 @@ export class SpaceBackground {
     this._resolveTier();
 
     this.group = new THREE.Group();
-    this.group.name = 'SpaceBackground';
+    applySpaceBackgroundRootContract(this.group, this.bgY);
     scene.add(this.group);
 
     this.layers = [];
@@ -926,7 +936,9 @@ export class SpaceBackground {
     this.camZ = 0;
     // single user-facing dial for backdrop strength (also SF.bg.setIntensity in debug)
     this.bgIntensity = 0.75;
-    this.nebulaOpacity = 0.025;
+    // The first frame must preserve the same black-space contract as resolved sector profiles.
+    // Sector-owned structure is applied explicitly; loading must never start with a global veil.
+    this.nebulaOpacity = 0;
     this.currentPaletteName = 'EMBER';
     this.backgroundComposition = resolveBackgroundComposition(null);
     this.backgroundStructure = resolveBackgroundStructure(null);
@@ -1508,7 +1520,7 @@ export class SpaceBackground {
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
       fog: false,
     });
     const pts = new THREE.Points(geo, mat);
@@ -1551,7 +1563,7 @@ export class SpaceBackground {
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
       fog: false,
     });
     const mesh = new THREE.InstancedMesh(geo, mat, count);
@@ -1690,7 +1702,7 @@ export class SpaceBackground {
       map: tex,
       transparent: true,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
       fog: false,
     });
     const sprite = new THREE.Sprite(mat);
@@ -1792,7 +1804,7 @@ export class SpaceBackground {
       },
       transparent: true,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
       blending: THREE.NormalBlending,
       side: THREE.DoubleSide,
       fog: false,
@@ -1821,6 +1833,7 @@ export class SpaceBackground {
 
     const group = new THREE.Group();
     group.name = `L1b_authored_${recipe.id}`;
+    group.renderOrder = SPACE_BACKGROUND_GROUP_ORDER;
     group.userData.deepFieldRecipeId = recipe.id;
     const geometries = [];
     const materials = [];
@@ -1982,7 +1995,7 @@ export class SpaceBackground {
       },
       transparent: true,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
       fog: false,
     });
     const mesh = new THREE.Mesh(geo, mat);
@@ -2019,7 +2032,7 @@ export class SpaceBackground {
     tex.colorSpace = THREE.SRGBColorSpace;
     const mat = new THREE.SpriteMaterial({
       map: tex, transparent: true, blending: THREE.AdditiveBlending,
-      depthWrite: false, depthTest: false, fog: false,
+      depthWrite: false, depthTest: true, fog: false,
     });
     const sprite = new THREE.Sprite(mat);
     sprite.name = 'L6_comet';
@@ -2304,6 +2317,7 @@ export class SpaceBackground {
   onResize() {
     this.H = measureScreenHeightWorld(this.camera);
     this.bgY = -this.H * 2.2;
+    this.group.position.y = this.bgY;
     this.regionNoiseScale = 1 / (this.H * 55);
     this._measureGeometry();
     this._buildLayers();
