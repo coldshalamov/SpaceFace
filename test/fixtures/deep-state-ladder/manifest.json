@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "artifactFormat": "spaceface-save",
+  "capturePolicy": "Public-input route first; injected setup may diagnose but cannot populate this ladder.",
+  "fixtures": [
+    {
+      "id": "fresh-start",
+      "ordinal": 1,
+      "status": "planned",
+      "dependsOn": [],
+      "publicRoute": ["Title", "New Game", "Choose career", "Enter flight"],
+      "requiredClaims": ["player entity and career are restorable", "starter objective is reachable", "save contains no injected support state"],
+      "artifact": null
+    },
+    {
+      "id": "first-station",
+      "ordinal": 2,
+      "status": "planned",
+      "dependsOn": ["fresh-start"],
+      "publicRoute": ["Travel to first station", "Dock", "Open station services", "Save"],
+      "requiredClaims": ["docked station identity restores", "station services remain reachable", "undock remains available"],
+      "artifact": null
+    },
+    {
+      "id": "first-upgrade",
+      "ordinal": 3,
+      "status": "planned",
+      "dependsOn": ["first-station"],
+      "publicRoute": ["Earn credits", "Buy a compatible module", "Fit module", "Save"],
+      "requiredClaims": ["actual credits charged", "inventory and fitted slot agree", "derived ship stats rebuild after restore"],
+      "artifact": null
+    },
+    {
+      "id": "post-combat",
+      "ordinal": 4,
+      "status": "planned",
+      "dependsOn": ["first-upgrade"],
+      "publicRoute": ["Accept or encounter combat", "Survive engagement", "Save after threat clears"],
+      "requiredClaims": ["damage and ammunition restore", "combat rewards have one receipt", "combat trace digest remains deterministic"],
+      "artifact": null
+    },
+    {
+      "id": "post-recovery",
+      "ordinal": 5,
+      "status": "planned",
+      "dependsOn": ["post-combat"],
+      "publicRoute": ["Lose a ship or trigger lawful recovery", "Complete recovery", "Save at safe berth"],
+      "requiredClaims": ["Game Over is cleared", "player is collision-clear", "recovery costs and retained property restore"],
+      "artifact": null
+    },
+    {
+      "id": "active-market",
+      "ordinal": 6,
+      "status": "planned",
+      "dependsOn": ["first-station"],
+      "publicRoute": ["Open market", "Buy cargo", "Travel", "Sell cargo", "Save"],
+      "requiredClaims": ["cargo and credits have matching receipts", "market epoch restores", "known and live prices remain distinct"],
+      "artifact": null
+    },
+    {
+      "id": "asteroid-entry",
+      "ordinal": 7,
+      "status": "planned",
+      "dependsOn": ["first-upgrade"],
+      "publicRoute": ["Travel to asteroid field", "Enter asteroid operation", "Survey cells", "Save"],
+      "requiredClaims": ["site identity and geology seed restore", "survey visibility restores", "unmined resources remain deterministic"],
+      "artifact": null
+    },
+    {
+      "id": "productive-site",
+      "ordinal": 8,
+      "status": "planned",
+      "dependsOn": ["asteroid-entry"],
+      "publicRoute": ["Hollow access", "Place machines", "Connect logistics", "Run production", "Save"],
+      "requiredClaims": ["contact loss is permanent", "machine and network state restore", "offline credit is capped and receipt-exact"],
+      "artifact": null
+    },
+    {
+      "id": "route-loss",
+      "ordinal": 9,
+      "status": "planned",
+      "dependsOn": ["active-market"],
+      "publicRoute": ["Commit to a multi-sector route", "Lose or abandon the route", "Recover navigation", "Save"],
+      "requiredClaims": ["failed objective state is explicit", "navigation has a lawful recovery action", "no orphan mission marker remains"],
+      "artifact": null
+    },
+    {
+      "id": "faction-threshold",
+      "ordinal": 10,
+      "status": "planned",
+      "dependsOn": ["active-market"],
+      "publicRoute": ["Complete faction work", "Cross a reputation threshold", "Observe response", "Save"],
+      "requiredClaims": ["faction system is the reputation writer", "threshold consequence is visible", "standing and consequence restore together"],
+      "artifact": null
+    },
+    {
+      "id": "discovered-wreck",
+      "ordinal": 11,
+      "status": "planned",
+      "dependsOn": ["route-loss"],
+      "publicRoute": ["Hear or find a wreck lead", "Travel to bearing", "Scan wreck", "Make salvage decision", "Save"],
+      "requiredClaims": ["discovery provenance restores", "wreck decision cannot duplicate", "unique loot cannot leak"],
+      "artifact": null
+    },
+    {
+      "id": "pre-ending",
+      "ordinal": 12,
+      "status": "planned",
+      "dependsOn": ["faction-threshold", "discovered-wreck"],
+      "publicRoute": ["Progress B0-B7", "Reach an ending decision", "Save before committing"],
+      "requiredClaims": ["story continuity is complete", "available endings match prior choices", "Continue returns to the decision state"],
+      "artifact": null
+    },
+    {
+      "id": "post-ending-sandbox",
+      "ordinal": 13,
+      "status": "planned",
+      "dependsOn": ["pre-ending"],
+      "publicRoute": ["Choose an ending", "Complete denouement", "Continue into sandbox", "Save"],
+      "requiredClaims": ["ending receipt is durable", "sandbox systems remain playable", "ownership economy and travel continue"],
+      "artifact": null
+    }
+  ]
+}
