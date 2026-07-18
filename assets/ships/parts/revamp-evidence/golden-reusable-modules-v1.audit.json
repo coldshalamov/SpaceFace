@@ -1,0 +1,493 @@
+{
+  "schema": "spaceface.goldenReusableModules.recipeAudit.v1",
+  "packetStatus": "recipe_prepared_unrendered",
+  "recipeId": "golden-reusable-modules-v1",
+  "recipe": {
+    "path": "assets/ships/parts/scripts/golden_reusable_modules_v1.py",
+    "bytes": 49950,
+    "sha256": "E18E000F25598228BAD482AC79B78AB910392F5A5E2A9CBDC4B9724EB1418415",
+    "syntax": "pass"
+  },
+  "spec": {
+    "path": "assets/ships/parts/scripts/golden_reusable_modules_v1.spec.json",
+    "bytes": 12052,
+    "sha256": "4F85B32B3794250C4400753F43506FD5798BA65D2102CE7D816AF21C0B320F3D"
+  },
+  "safety": {
+    "productionGlbsMutated": false,
+    "productionBlendFilesMutated": false,
+    "manifestsMutated": false,
+    "releaseOutputsMutated": false,
+    "blenderLaunchedByPacket": false,
+    "browserOrGpuCaptureLaunchedByPacket": false,
+    "outputGuard": "Recipe rejects assets/ships/parts and release output trees.",
+    "inputContract": "Recipe requires immutable scratch copies whose size and SHA-256 match this spec."
+  },
+  "sourceAudit": [
+    {
+      "moduleId": "cockpit_slab",
+      "path": "assets/ships/parts/cockpits/cockpit_slab.glb",
+      "bytes": 1522876,
+      "sha256": "896BA2488FC32F3A66638EBD84513883BA89666AE6AC25EEDC4906F8524C2482",
+      "triangles": 1564,
+      "meshes": 3,
+      "primitives": 3,
+      "nodes": 19,
+      "textures": 12,
+      "materials": [
+        {
+          "name": "Material_Hull",
+          "baseColor": true,
+          "normal": true,
+          "orm": true,
+          "ao": true,
+          "roughnessFactor": 1,
+          "metallicFactor": 1
+        },
+        {
+          "name": "Material_Accent",
+          "baseColor": true,
+          "normal": true,
+          "orm": true,
+          "ao": true,
+          "roughnessFactor": 1,
+          "metallicFactor": 1
+        },
+        {
+          "name": "Material_Mechanical",
+          "baseColor": true,
+          "normal": true,
+          "orm": true,
+          "ao": true,
+          "roughnessFactor": 1,
+          "metallicFactor": 1
+        },
+        {
+          "name": "Material_Glass",
+          "baseColor": true,
+          "normal": true,
+          "orm": true,
+          "ao": true,
+          "roughnessFactor": 1,
+          "metallicFactor": 1
+        }
+      ],
+      "semanticNodes": [
+        "HOOK_Emissive"
+      ],
+      "baselineBounds": {
+        "min": [
+          -0.8,
+          -0.045,
+          -1.85
+        ],
+        "max": [
+          4.055,
+          1.81,
+          1.85
+        ]
+      }
+    },
+    {
+      "moduleId": "engine_industrial",
+      "path": "assets/ships/parts/engines/engine_industrial.glb",
+      "bytes": 1635844,
+      "sha256": "1A9BA24FEAF6DC8E041BC6D557BA34625F31FA80AB80C628AD9DD2F6E1AC57A5",
+      "triangles": 4000,
+      "meshes": 6,
+      "primitives": 6,
+      "nodes": 36,
+      "textures": 12,
+      "materials": [
+        {
+          "name": "Material_Hull",
+          "baseColor": true,
+          "normal": true,
+          "orm": true,
+          "ao": true,
+          "roughnessFactor": 1,
+          "metallicFactor": 1
+        },
+        {
+          "name": "Material_Accent",
+          "baseColor": true,
+          "normal": true,
+          "orm": true,
+          "ao": true,
+          "roughnessFactor": 1,
+          "metallicFactor": 1
+        },
+        {
+          "name": "Material_Mechanical",
+          "baseColor": true,
+          "normal": true,
+          "orm": true,
+          "ao": true,
+          "roughnessFactor": 1,
+          "metallicFactor": 1
+        },
+        {
+          "name": "Material_Glass",
+          "baseColor": true,
+          "normal": true,
+          "orm": true,
+          "ao": true,
+          "roughnessFactor": 1,
+          "metallicFactor": 1
+        }
+      ],
+      "semanticNodes": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "HOOK_DRIVE_PLUME"
+      ],
+      "baselineBounds": {
+        "min": [
+          -0.22,
+          -1.4396,
+          -1.4396
+        ],
+        "max": [
+          3.3,
+          1.47102,
+          1.4396
+        ]
+      }
+    },
+    {
+      "moduleId": "weapon_railgun",
+      "path": "assets/ships/parts/weapons/weapon_railgun.glb",
+      "bytes": 1531008,
+      "sha256": "792AED12C3359391357D8B12B80E729EFADE58F800B9FF16BD1A4D9239FFF170",
+      "triangles": 1788,
+      "meshes": 3,
+      "primitives": 3,
+      "nodes": 20,
+      "textures": 12,
+      "materials": [
+        {
+          "name": "Material_Hull",
+          "baseColor": true,
+          "normal": true,
+          "orm": true,
+          "ao": true,
+          "roughnessFactor": 1,
+          "metallicFactor": 1
+        },
+        {
+          "name": "Material_Accent",
+          "baseColor": true,
+          "normal": true,
+          "orm": true,
+          "ao": true,
+          "roughnessFactor": 1,
+          "metallicFactor": 1
+        },
+        {
+          "name": "Material_Mechanical",
+          "baseColor": true,
+          "normal": true,
+          "orm": true,
+          "ao": true,
+          "roughnessFactor": 1,
+          "metallicFactor": 1
+        },
+        {
+          "name": "Material_Glass",
+          "baseColor": true,
+          "normal": true,
+          "orm": true,
+          "ao": true,
+          "roughnessFactor": 1,
+          "metallicFactor": 1
+        }
+      ],
+      "semanticNodes": [
+        "HOOK_Emissive",
+        "SOCKET_Muzzle"
+      ],
+      "baselineBounds": {
+        "min": [
+          -0.2,
+          -0.45,
+          -0.4628
+        ],
+        "max": [
+          6.1,
+          0.52,
+          0.4628
+        ]
+      }
+    }
+  ],
+  "candidateContract": {
+    "cockpit_slab": {
+      "macroObjects": [
+        "DorsalArmorLayer",
+        "PortCheekArmor",
+        "StarboardCheekArmor",
+        "CanopyGlazingBank",
+        "ServiceSpine"
+      ],
+      "mesoObjects": [
+        "CanopyTopRail",
+        "CanopyBottomRail",
+        "CanopyFramePort",
+        "CanopyFrameStarboard",
+        "CanopyMullionCluster",
+        "DorsalAccessRecess",
+        "DorsalAccessHatch",
+        "SensorBar",
+        "SensorPodPair",
+        "SideServicePanelPair"
+      ],
+      "microObjects": [
+        "HatchLatchPair",
+        "FrameFastenerBank",
+        "MaintenanceStripePair",
+        "ServiceStencilPlate"
+      ],
+      "materialRoles": [
+        "painted_armor",
+        "exposed_alloy",
+        "dark_composite",
+        "canopy_glass",
+        "recessed_mechanical",
+        "sensor_lens",
+        "maintenance_mark"
+      ],
+      "expectedCandidateBand": {
+        "addedObjects": 19,
+        "addedTrianglesMin": 1800,
+        "addedTrianglesMax": 7500,
+        "note": "Measured Blender output must replace this planning band before promotion; the band is not a fleet-wide ceiling."
+      },
+      "preservedHooks": [
+        "HOOK_Emissive"
+      ],
+      "preservedSockets": [],
+      "preservedBounds": {
+        "min": [
+          -0.8,
+          -0.045,
+          -1.85
+        ],
+        "max": [
+          4.055,
+          1.81,
+          1.85
+        ]
+      }
+    },
+    "engine_industrial": {
+      "macroObjects": [
+        "NozzleThroat",
+        "CeramicThroatRing",
+        "HeatShieldDorsal",
+        "HeatShieldVentral",
+        "HeatShieldPort",
+        "HeatShieldStarboard",
+        "StructuralCradle"
+      ],
+      "mesoObjects": [
+        "InjectorCluster",
+        "InjectorManifold",
+        "ServiceHatchRecess",
+        "ServiceHatch",
+        "MaintenanceRailPair",
+        "CableTrunkPair",
+        "HeatBandAft",
+        "HeatBandFore"
+      ],
+      "microObjects": [
+        "InjectorClampBank",
+        "HeatShieldFastenerBank",
+        "PipeClampBank",
+        "WarningStripePair",
+        "ServiceStencilPlate"
+      ],
+      "materialRoles": [
+        "painted_armor",
+        "exposed_alloy",
+        "recessed_mechanical",
+        "maintenance_mark",
+        "engine_ceramic",
+        "heat_affected_alloy"
+      ],
+      "expectedCandidateBand": {
+        "addedObjects": 20,
+        "addedTrianglesMin": 2600,
+        "addedTrianglesMax": 9500,
+        "note": "Measured Blender output must replace this planning band before promotion; the band is not a fleet-wide ceiling."
+      },
+      "preservedHooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "HOOK_DRIVE_PLUME"
+      ],
+      "preservedSockets": [],
+      "preservedBounds": {
+        "min": [
+          -0.22,
+          -1.4396,
+          -1.4396
+        ],
+        "max": [
+          3.3,
+          1.47102,
+          1.4396
+        ]
+      }
+    },
+    "weapon_railgun": {
+      "macroObjects": [
+        "PortRail",
+        "StarboardRail",
+        "ChannelRecess",
+        "BreechArmorLayer",
+        "MountShoe",
+        "MuzzleBridge"
+      ],
+      "mesoObjects": [
+        "PortInnerWearFace",
+        "StarboardInnerWearFace",
+        "PortCapacitorBank",
+        "StarboardCapacitorBank",
+        "CopperBusPair",
+        "BreechAccessPair",
+        "RecoilBracePair",
+        "ChargeConduit",
+        "ThermalBreakPair"
+      ],
+      "microObjects": [
+        "AbrasionStripPair",
+        "FastenerBank",
+        "ServiceStripe",
+        "ChargeIndicator",
+        "SerialPlate"
+      ],
+      "materialRoles": [
+        "painted_armor",
+        "exposed_alloy",
+        "dark_composite",
+        "recessed_mechanical",
+        "sensor_lens",
+        "maintenance_mark",
+        "engine_ceramic",
+        "heat_affected_alloy",
+        "copper_coil"
+      ],
+      "expectedCandidateBand": {
+        "addedObjects": 20,
+        "addedTrianglesMin": 1900,
+        "addedTrianglesMax": 7800,
+        "note": "Measured Blender output must replace this planning band before promotion; the band is not a fleet-wide ceiling."
+      },
+      "preservedHooks": [
+        "HOOK_Emissive"
+      ],
+      "preservedSockets": [
+        "SOCKET_Muzzle"
+      ],
+      "preservedBounds": {
+        "min": [
+          -0.2,
+          -0.45,
+          -0.4628
+        ],
+        "max": [
+          6.1,
+          0.52,
+          0.4628
+        ]
+      }
+    }
+  },
+  "opticalMaterialTruth": {
+    "canopy_glass": {
+      "metallicRange": [
+        0,
+        0.012
+      ],
+      "ior": 1.47,
+      "transmissionWeight": 0.62,
+      "thicknessM": 0.018,
+      "attenuationColorRgb": [
+        0.42,
+        0.78,
+        0.92
+      ],
+      "attenuationDistanceM": 1.8,
+      "runtimeSinglePassTransmission": 0,
+      "wholeMaterialEmission": false
+    },
+    "sensor_lens": {
+      "metallicRange": [
+        0,
+        0.015
+      ],
+      "ior": 1.5,
+      "transmissionWeight": 0.16,
+      "thicknessM": 0.006,
+      "attenuationColorRgb": [
+        0.32,
+        0.82,
+        1
+      ],
+      "attenuationDistanceM": 0.42,
+      "runtimeSinglePassTransmission": 0,
+      "wholeMaterialEmission": "confined sensor element only"
+    }
+  },
+  "cliBoundaryProof": {
+    "catches": "BaseException",
+    "tracebackTo": "stderr",
+    "forcedFailureExitCode": 1,
+    "failureTraceObserved": true,
+    "successExitCode": 0,
+    "successReceiptObserved": true,
+    "completionOrder": [
+      "candidate artifact hash verification",
+      "atomic final report write",
+      "final report and artifact re-verification",
+      "success receipt print"
+    ]
+  },
+  "integrationCommands": {
+    "snapshot": [
+      "New-Item -ItemType Directory -Force '.devshots/graphics/golden-reusable-input-v1/cockpits','.devshots/graphics/golden-reusable-input-v1/engines','.devshots/graphics/golden-reusable-input-v1/weapons' | Out-Null",
+      "Copy-Item -LiteralPath 'assets/ships/parts/cockpits/cockpit_slab.glb' -Destination '.devshots/graphics/golden-reusable-input-v1/cockpits/cockpit_slab.glb'",
+      "Copy-Item -LiteralPath 'assets/ships/parts/engines/engine_industrial.glb' -Destination '.devshots/graphics/golden-reusable-input-v1/engines/engine_industrial.glb'",
+      "Copy-Item -LiteralPath 'assets/ships/parts/weapons/weapon_railgun.glb' -Destination '.devshots/graphics/golden-reusable-input-v1/weapons/weapon_railgun.glb'"
+    ],
+    "recipeCheck": "node scripts/check-golden-reusable-modules-v1.mjs",
+    "blenderBuild": "& \"C:/Program Files/Blender Foundation/Blender 5.1/blender.exe\" -b --factory-startup --python assets/ships/parts/scripts/golden_reusable_modules_v1.py -- --module all --input-root .devshots/graphics/golden-reusable-input-v1 --output-dir .devshots/graphics/golden-reusable-modules-v1 --texture-size 256 --lods 0,1,2",
+    "postBuildStructureAudit": "node scripts/audit-asset-structure.mjs --root .devshots/graphics/golden-reusable-modules-v1 --out .devshots/graphics/golden-reusable-modules-v1/asset-structure.json",
+    "productionValidationAfterReviewedPromotion": [
+      "node scripts/check-parts-manifest.mjs",
+      "npm run check:asset-status",
+      "npm run check:asset-reachability",
+      "npm run check:assets:live",
+      "npm run check:visual-stability"
+    ]
+  },
+  "requiredBeforeIntegration": [
+    "Run the recipe against copied immutable inputs and inspect blender-run-report.json.",
+    "Run Khronos glTF Validator on every LOD candidate and verify zero errors/warnings or document each exception.",
+    "Inspect wireframe, base-color, normal, ORM, neutral lookdev, and matched game-camera captures.",
+    "Reject detail that shimmers, reads as pasted-on greeble, or disappears without useful aggregate response.",
+    "Verify generated PNG texture color spaces and KTX2 conversion before release promotion.",
+    "Verify separate-file modular LOD runtime selection before wiring LOD1/LOD2.",
+    "Only then adapt candidates to the live parts pipeline and run player-route proof."
+  ],
+  "knownDefects": [
+    "No Blender execution or render was allowed while the release build owned the asset pipeline.",
+    "No GLB candidate, image capture, turntable, or gameplay proof exists yet.",
+    "KHR_materials_transmission, IOR, and volume-thickness extension output is authored but remains unconfirmed until Blender exports and the candidate GLBs are inspected.",
+    "Expected triangle bands are planning estimates and are not measured candidate results.",
+    "Generated role textures are PNG source candidates; final KTX2 quality and mip stability are unresolved.",
+    "The recipe does not claim current modular-part runtime LOD selection is enabled."
+  ],
+  "visualAcceptance": "not_assessed",
+  "productionReady": false
+}
