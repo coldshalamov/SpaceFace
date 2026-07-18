@@ -58,6 +58,47 @@ Snapshot update, later on 2026-07-18:
 - Recoverable graphics commit `dacc4a23` now preserves the Wasp hero candidate recipe, specification,
   deterministic raw/KTX2 pipeline, validators, matched-camera capture harness, and reporting tools.
   It contains no promoted GLB, release-manifest, runtime-map, or master-checkout change.
+- Additional recoverable commits now preserve independently reviewable foundations:
+  - `4ece012b` — de-hazed sector background substrate and focused checks;
+  - `6b0b6914` — production thruster/RCS recipes, textures, generation, and runtime substrate;
+  - `c3ba4490` — pooled combat beam/sprite/explosion substrates with lifecycle tests;
+  - `dc4ab552` — authored presentation admission, capability policy, and exact pipeline warmup;
+  - `11f9668c` — semantic authored PBR material profiles and coverage tests.
+
+Latest checkpoint update:
+
+- `master` is now `b642611a92c6dd31ba7b806e7077740445af5a13`, 43 commits beyond the common
+  base. It is still an active read-only target until the user confirms the three Claude tasks are
+  finished.
+- The graphics implementation tip immediately before this receipt update is
+  `7fead19a813cab8eb103a94deea3f21aa803d285`, comprising 17 recoverable commits beyond the
+  common base. Against the recorded master it is 43 commits behind and 17 commits ahead; this is
+  donor history, not a branch to merge wholesale.
+- Dirty paths have fallen from roughly 496 to 237 because the graphics implementation and source
+  assets have been partitioned into commits. The remaining tree is still intentionally dirty:
+  generated catalog GLBs/manifests, UI/mining overlaps, candidate outputs, and unsafe release
+  deletions remain quarantined.
+- Kimi's paused Helios worktree is
+  `C:\Users\93rob\Documents\GitHub\SpaceFace-oc-helios-golden`, at `4c367cd7`, with its work
+  preserved under untracked `.scratch/helios-golden/`. It has no unique committed implementation yet.
+- The full current recovery stack after `9921f1a0` is:
+  - `dacc4a23` — Wasp hero candidate recipe/tooling/evidence, no runtime promotion;
+  - `d44d602e` — original resumable merge checkpoint;
+  - `4ece012b` — de-hazed sector background substrate;
+  - `6b0b6914` — production thruster/RCS substrate;
+  - `c3ba4490` — pooled combat and explosion substrates;
+  - `dc4ab552` — presentation admission/capability/pipeline gates;
+  - `11f9668c` — semantic authored PBR profiles;
+  - `71d3416f` — thruster and combat-family runtime wiring;
+  - `e9397641` — geology and interaction identities;
+  - `c84c2318` — ship appearance identity schema;
+  - `6cdbfe4a` — authored fallback identities;
+  - `29ccbf09` — direct authored presentation, interpolation stability, and launch/probe contracts;
+  - `f94449b1` — depth-correct celestial background layers;
+  - `93a02d9e` — Kestrel V5 authoring source, role maps, and evidence;
+  - `56670a0d` — Helios Golden V4 source, functional PBR maps, and export tools;
+  - `3b1b6c14` — reusable Blender/PBR foundry sources;
+  - `7fead19a` — repeatable release, Spector, and surface-receipt tooling.
 
 High-risk current graphics state:
 
@@ -65,6 +106,8 @@ High-risk current graphics state:
   - `assets/ships/release/parts/wholeships/pelican.glb`
   - `assets/ships/release/parts/wholeships/wasp.glb`
   - `assets/ships/release/parts/wholeships/wasp_production_v1_lod1.glb`
+  - `assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb` (Git may display this as a
+    false rename to a Kestrel contact sheet)
 - `src/systems/mining.js`, `src/ui/input.js`, `src/systems/world.js`, and the drilling/minigame lane
   include concurrent work. Graphics integration must not replace them wholesale.
 - `active_sessions.json`, `active_sessions.lock`, `docs/user-guide/`, and unrelated untracked work are
@@ -76,28 +119,28 @@ High-risk current graphics state:
 
 | Vertical | State | Durable implementation/evidence |
 |---|---|---|
-| Kestrel/Hitch starter | Wired and player-route accepted in this worktree | `.devshots/k0-kestrel/v5-plus-live/`, `.devshots/graphics/kestrel-v5-plus-runtime-parity/` |
-| Thruster and RCS | Wired, visible, throttle-responsive, reduced-settings evidence present | `.devshots/graphics/thruster-acceptance/` |
+| Kestrel/Hitch starter | Advanced V5+ source and live-route donor are preserved; not yet final-accepted at normal/default camera | `93a02d9e`, `.devshots/k0-kestrel/v5-plus-live/`, `.devshots/graphics/kestrel-v5-plus-runtime-parity/` |
+| Thruster and RCS | Substrate, recipes, textures, and runtime bindings are preserved; final synthesized browser/Electron route must still prove a visible plume | `6b0b6914`, `71d3416f`, `.devshots/graphics/thruster-acceptance/` |
 | Authored admission | Focused tests prove no temporary blue box/procedural starter publication | `src/core/presentationAdmission.js`, relevant admission tests |
 | Combat families | Implemented and focused capture/check accepted; global final pass remains | `.devshots/graphics/combat-vfx-acceptance-r23/` |
 | Geology landmarks | Wired and stable; identity cues can still improve | `.devshots/graphics/geology-landmark-live/` |
-| Background de-haze | R3 captured with black space/localized structure; R4 code focused-green but not recaptured | `.devshots/graphics/background-authored/`, `src/render/spaceBackground.js` |
+| Background de-haze | R3 captured with black space/localized structure; transparent celestial overdraw was repaired and structurally tested; final master-based recapture remains | `4ece012b`, `f94449b1`, `.devshots/graphics/background-authored/` |
 
 ### Candidate-only work that must not be represented as integrated
 
 | Candidate | State | Evidence/input |
 |---|---|---|
 | Wasp fleet hero | Candidate pipeline complete and recoverably committed at `dacc4a23`; controller promotion and live wiring remain | `.devshots/graphics/wasp-fleet-hero-v1/` |
-| Helios golden station | Scratch candidate is Khronos-clean and structurally consolidated; no visual acceptance or live wiring | `C:\Users\93rob\AppData\Local\Temp\spaceface-station-golden-02-20260718-155559\` |
-| Lane beacon/nav buoy | Repaired candidates are strict/Khronos-clean; final turntables/controller review and promotion remain | `.devshots/graphics/navigation-infrastructure-v1/` |
+| Helios golden station | Golden V4 source/PBR base is recoverably committed; Kimi's structurally consolidated alternative remains paused and visually unaccepted | `56670a0d`, `C:\Users\93rob\Documents\GitHub\SpaceFace-oc-helios-golden\.scratch\helios-golden\` |
+| Lane beacon/nav buoy | Evidence complete: buoy is a strong conditional donor; beacon is rejected at gameplay distance pending silhouette repair | `.devshots/graphics/navigation-infrastructure-v1/` |
 
 ## 4. Overlap verdict: background, lighting, bloom, and renderer
 
 This is not an `ours` versus `theirs` merge. Use the following subsystem verdicts.
 
-### 4.1 Background composition — graphics implementation is the base
+### 4.1 Background composition — graphics presentation is the donor, master control flow is the base
 
-Keep the graphics worktree architecture from:
+Rebase the graphics presentation architecture from:
 
 - `src/render/spaceBackground.js`
 - `src/render/deepFieldStructureRecipes.js`
@@ -110,7 +153,13 @@ Reasons:
 - It retains dark negative space and localizes sector structure.
 - It separates density, structure, lighting, palette, and post behavior instead of tinting one field.
 - It has matched multi-sector still/motion evidence and focused geometry/profile checks.
+- Commit `f94449b1` repairs the previously hidden transparent-pass defect: stars, flares, planets,
+  localized ribbons, wormholes, and comets now depth-test behind opaque gameplay geometry, never
+  write depth, and remain ordered behind gameplay transparencies.
 
+Do not copy `spaceBackground.js` or `renderer.js` wholesale. Current master remains the base for
+renderer control flow, pipeline tracking, upload/write-if-changed optimizations, and newer sector
+content. Port the declarative profiles and repaired background implementation into those seams.
 R4 remains visually unaccepted until recaptured. Do not treat code/check success as the final verdict.
 
 ### 4.2 Master bloom/lighting work — donor, not wholesale winner
@@ -133,8 +182,9 @@ Port those ideas into the graphics architecture as follows:
 2. Replace the optional legacy grade math with master's black-preserving multiplicative balance and
    non-negative/NaN-safe saturation implementation.
 3. Evaluate a base bloom threshold of `1.0` under matched captures; retain sector profile biasing.
-4. Keep two bloom levels as the accepted default. Master's four-level wide halo is not admitted until
-   matched captures show localized emissive response without screen-wide softness or excess cost.
+4. Keep two bloom levels as the accepted default. Reject master's four-level wide-halo experiment:
+   its explicit goal is broader screen-space glow and it conflicts with the required black-space,
+   localized-emissive presentation.
 5. Put master's warm-key/cool-fill and low-ambient values into the declarative core sector visual
    profile, not a new static global lighting constant.
 6. Evaluate `scene.environmentIntensity = 1.1` with the graphics reflection environment. Retain only
@@ -159,6 +209,19 @@ features to preserve:
 Master-side gameplay/UI changes win outside those presentation seams unless a focused regression
 demonstrates otherwise.
 
+Renderer preflight blockers that the final synthesis must preserve explicitly:
+
+- keep master's `createPipelineAdmissionTracker`, current-generation pipeline ownership, and
+  write-if-changed instance upload helpers;
+- reapply the bounded 5.2k ship-authoring seam from `29ccbf09`, but do not restore whole-sector
+  authored decode eagerness;
+- keep optional common-rock texture readiness separate from critical Hitch/Helios launch readiness;
+- start from current master for `renderer.js`, `assetLoader.js`, `partsLibrary.js`,
+  `pipelineReadiness.js`, `visualFactory.js`, and `sectors.js`; use the graphics files as hunk-level
+  donors only;
+- validate any reflection-environment intensity and black-point change with matched material and
+  black-ramp captures rather than carrying over constants.
+
 ## 5. Asset winner policy
 
 Never merge binary GLBs by branch preference. Select one source candidate per asset, then rebuild its
@@ -176,6 +239,36 @@ For every competing asset:
    or validation from the losing candidate.
 8. Rebuild raw and Meshopt/KTX2 release GLBs from the resulting canonical source.
 9. Validate source/release visual parity before changing manifests.
+
+### 5.1 Controller visual decisions at this checkpoint
+
+- **Background:** R3 de-haze is the integration foundation. It wins on black negative space,
+  localized composition, and silhouette readability. Remaining defects are flat/cutout dust ribbons,
+  abstract Veil strokes, simple planet bands/rings, and oversized repeated plus-shaped stars.
+- **Wasp:** the committed candidate pipeline is the conditional integration base. Before final
+  acceptance, strengthen meso-scale structural normals, broad-panel roughness contrast, localized
+  engine/nose wear, and a few identity features that survive the default camera; then prove it on the
+  real browser/Electron route.
+- **Kestrel/Hitch V5+:** source and reproducible role maps are preserved at `93a02d9e`. The current
+  close live capture is a material/readability improvement, but broad pale panels still converge
+  toward one value and most surface richness collapses at the 120px/default-gameplay view. Treat it
+  as the correct advanced construction base, not a finished hero asset. Its final pass needs larger
+  meso-scale value/roughness breaks, controlled edge highlights/wear, stronger functional grouping,
+  and a real throttle/RCS capture without detached celestial points painting over the hull.
+- **Helios:** existing Golden v4 is the strongest visually demonstrated base at this checkpoint.
+  STATION-GOLDEN-02 is a structural donor for primitive consolidation, exact sockets/bounds,
+  supported service bays, and tangent repair. Kimi's interrupted candidate is preserved but visually
+  unaccepted until its copper/orange material collapse, nearly uniform roughness, weak normal/AO, size,
+  and release packaging are repaired.
+- **Navigation buoy:** conditional promotion candidate after live-route proof and wear/plastic-sheen
+  cleanup.
+- **Lane beacon:** do not promote. Its thin mast silhouette collapses into a low-contrast line at
+  default/far distance; broaden the upper/mid mass or add lateral range arms first.
+
+Direct inspection note: Golden V4's overall silhouette and functional zoning are substantially
+better than the live station, but its close approach still reveals flat broad cylinders, coarse
+faceting, and several near-uniform grey surfaces. Kimi must beat or repair those exact weaknesses;
+the comparison is not merely Golden V4 versus Kimi's current copper/orange candidate.
 
 ## 6. External and owned asset integration slots
 
@@ -214,13 +307,13 @@ Do not start by merging the dirty graphics branch. Use serial, independently ver
    - Record the master bloom/renderer owner's final return before editing those files.
    - Keep mining/drilling and master UI/content WIP outside graphics staging.
 
-2. **Create recoverable graphics commits on `codex/graphics-overhaul`**
-   - GFX-C1: admission, identity, interpolation, asset pipeline/readiness.
-   - GFX-C2: background, sector profiles, reflection environment, restrained bloom contract.
-   - GFX-C3: Kestrel source/release, authored material profiles, thruster/RCS.
-   - GFX-C4: projectiles, beams, impacts, phased explosions, accessibility/lifecycle.
-   - GFX-C5: common rocks, geology landmarks, accepted navigation infrastructure.
-   - Exclude candidate Wasp/Helios binaries and unsafe release deletions until their winner pass.
+2. **Recoverable graphics history — complete for the current donor set**
+   - The 17-commit stack listed in section 2 now preserves the background, VFX, admission,
+     materials, identities, Kestrel/Helios/Wasp sources, Blender foundry, and evidence tooling.
+   - It deliberately excludes bulk-generated catalog GLBs, both manifests, Kimi scratch outputs,
+     live Wasp/Helios promotion, and unsafe release deletions.
+   - Do not squash this stack before synthesis; the vertical boundaries are the rollback and
+     selection surface.
 
 3. **Create a fresh integration branch from current `master`**
    - Do this only after all three user-owned sequential master tasks have returned and their commits,
@@ -293,6 +386,26 @@ npm run check:launch-policy
 Also require current browser and Electron captures, Khronos validation for every promoted GLB, source
 versus KTX2/Meshopt parity, accessibility comparisons, and measured frame/draw/transparent-pass evidence.
 
+### Current focused receipts
+
+- Authored admission, direct preview, pipeline gate, surface tint, dynamic interpolation, rock PBR,
+  LOD policy, and launch checks: 44/44 green in the owning combined run; the later edge-case run was
+  35/35 green.
+- Background depth/negative-space contract: 3/3 new occlusion tests, shared-composite script pass,
+  and 11/11 deep-field/profile/post-restraint tests green.
+- Kestrel surface V5 verification passed with ten semantically distinct role receipts. The legacy
+  `finalize_v4.mjs` end-to-end command is externally blocked by its missing downloaded runtime ZIP;
+  source/release promotion is therefore intentionally not in this checkpoint.
+- Helios Golden V4: 13/13 recipe-contract tests, surface-foundry receipt, and export/tangent contract
+  all green.
+- Reusable foundry: frigate, geology, reusable module, and Warden triad contract checks all green.
+  Their own output correctly states that runtime visual acceptance is not implied.
+- Release/GPU evidence tooling: 8/8 focused tests green; release-builder `--help` exits before lock
+  acquisition.
+
+These receipts prove recoverability and narrow contracts. They do not replace the final normal-route
+browser/Electron captures, motion/LOD/flicker evidence, or the Kimi/Golden Helios comparison.
+
 ## 10. Resume procedure
 
 At pickup:
@@ -323,12 +436,19 @@ At pickup:
 
 The graphics worktree is **not merge-ready** at this snapshot because:
 
-- only the Wasp candidate pipeline has been converted into a recoverable graphics commit so far;
-- master was 26 commits newer at the original audit and reached 39 commits newer during checkpointing;
-- 35 files overlap;
-- three release whole-ship files are deleted;
-- background R4, navigation, Wasp, and Helios lack final integrated acceptance;
-- Kimi Helios is still incoming, while Codex Wasp still requires final acceptance and promotion;
+- the donor implementation is now safely partitioned, but current master is still moving and is 43
+  commits beyond the common base;
+- overlap counts must be recalculated from the user's confirmed final Claude commit rather than the
+  stale original count of 35;
+- four release whole-ship files are missing or false-renamed;
+- bulk catalog GLBs/manifests remain quarantined because several generated replacements appear
+  visually weaker and the release set has unsafe deletions/false rename detection;
+- background R4, final Hitch surfacing/thrusters, navigation, Wasp, and Helios still lack matched
+  browser/Electron acceptance on the synthesized master route;
+- Kimi Helios is paused in scratch, while Codex Wasp and Golden V4 still require winner comparison,
+  final acceptance, and promotion;
+- the graphics renderer donor cannot be copied wholesale because current master owns newer pipeline
+  tracking, instance-write optimization, sector content, and gameplay control flow;
 - final browser/Electron/performance/accessibility synthesis has not run.
 
 Do not convert this stop line into a claim that the existing accepted verticals are disposable. They
