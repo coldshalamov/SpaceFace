@@ -21,10 +21,14 @@ import {
   asteroidFormations,
   makeDefaultFormations,
   formationSeedFor,
+  formationBodyKey,
   compactFormationRecord,
   DISCOVERED_RECORD_FIELDS,
   FORMATIONS_SCHEMA_VERSION,
 } from '../src/systems/asteroidFormations.js';
+
+// Independent literal for §13b: hash32(47, 'sector_test_alpha', 0, 'formations').
+const SEED_LITERAL_47_ALPHA_0 = 232166868;
 
 // ── stub harness (no full sim boot; the system only needs state + bus) ─────────────────────────
 
@@ -222,12 +226,20 @@ test('A02 §8: the system source is clock-free, RNG-free, DOM-free and NUL-free'
     "from 'three'", 'document.', 'window.']) {
     assert.ok(!src.includes(banned), `source must not contain ${banned}`);
   }
-  assert.ok(!src.includes(' '), 'no raw NUL bytes');
+  assert.equal(src.split(String.fromCharCode(0)).length - 1, 0, 'no raw NUL bytes');
 });
 
-// ── §9 the asteroid-entry claim surface (contract level) ───────────────────────────────────────
+// ── §9 the asteroid-entry claim surface (FORMATION-layer contract only) ────────────────────────
+//
+// HONESTY BOUNDARY: the deep-state ladder's asteroid-entry claims speak about the asteroid
+// INTERIOR — site identity, drill-cell survey visibility, unmined cell resources. That interior
+// half is owned by the ALREADY-SHIPPED asteroidSites persistence (boreSeed + cleared + anchor
+// recipe; see src/systems/asteroidSites.js serialize/deserialize) and is NOT re-proved here.
+// What A02 adds to the claim surface is the FORMATION layer — the field-level identity and
+// geology reads — and that is all this test claims. The ladder fixture CAPTURE itself (a real
+// public-route save artifact) is G-lane work and stays 'planned' until then.
 
-test('A02 §9: the deep-state asteroid-entry claims hold at contract level', () => {
+test('A02 §9: the formation-layer half of the asteroid-entry claims holds at contract level', () => {
   // Claim 1 — "site identity and geology seed restore": id + observed seed round-trip.
   const a = boot({ seed: 91, epoch: 2 });
   const id = a.sys.currentModel().formations[0].id;
@@ -281,4 +293,55 @@ test('A02 §12: the registry runs asteroidFormations immediately after asteroidS
     'SYSTEMS places the knowledge owner beside the site owner');
   assert.ok(/asteroidSites, asteroidFormations, wingmen, crafting/.test(src),
     'UPDATE_ORDER places it beside the site owner');
+});
+
+// ── §13 stable physical identity (the 4891099a..edca7c7e review's central finding) ─────────────
+
+test('A02 §13: entity-id re-rolls do NOT re-label formations — identity is physical, and restored discoveries re-link', () => {
+  // The same physical field under two completely different sets of entity ids (a reload
+  // rematerializes durable records under fresh ids; a repaired anchor rock gets a new id).
+  const a = boot();
+  const rerolled = testField().map((e, i) => ({ ...e, id: `zz_${i}_${e.id}` }));
+  const b = boot({ entities: rerolled });
+  const idsA = a.sys.currentModel().formations.map((f) => f.id);
+  const idsB = b.sys.currentModel().formations.map((f) => f.id);
+  assert.deepEqual(idsB, idsA, 'formation ids must survive an entity-id re-roll');
+
+  // A discovery made before the re-roll re-links to the live field after it.
+  const target = idsA[0];
+  a.sys.discover(target);
+  const c = boot({ entities: rerolled });
+  c.sys.deserialize(a.sys.serialize());
+  assert.ok(c.sys.liveFormationFor(target),
+    'restored discovery must re-link to the same physical rock under new entity ids');
+});
+
+test('A02 §13b: the derivation seed value is pinned as an independent literal', () => {
+  // Hard-coded from hash32(47, 'sector_test_alpha', 0, 'formations'). Changing the salt, the
+  // argument order, or the hash recipe re-labels every formation in every save — that must be a
+  // conscious versioned decision, so this literal has to red first.
+  assert.equal(formationSeedFor(47, 'sector_test_alpha', 0), SEED_LITERAL_47_ALPHA_0);
+});
+
+test('A02 §13c: mining out members changes the live model honestly without touching knowledge', () => {
+  const a = boot();
+  const model = a.sys.currentModel();
+  // Find a multi-member formation; remove one NON-anchor member from the live field.
+  const multi = model.formations.find((f) => f.count > 1);
+  assert.ok(multi, 'fixture sanity: a multi-member formation exists');
+  const victimKey = multi.memberIds.find((k) => k !== multi.anchorAsteroidId);
+  const durable = JSON.stringify(a.sys.discover(multi.id));
+
+  // Rebuild the field without the body whose formationBodyKey matches the victim member.
+  const remaining = testField().filter((e) => formationBodyKey(e) !== victimKey);
+  assert.equal(remaining.length, testField().length - 1, 'exactly one body removed');
+  const b = boot({ entities: remaining });
+  const after = b.sys.currentModel();
+  const same = after.formations.find((f) => f.id === multi.id);
+  if (same) {
+    assert.ok(same.count < multi.count, 'surviving formation must report the smaller live count');
+  }
+  // Either way the durable discovered record is untouched by the loss.
+  assert.equal(JSON.stringify(a.sys.discoveredRecord(multi.id)), durable,
+    'mined-out members never mutate discovered knowledge');
 });

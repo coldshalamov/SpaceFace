@@ -54,6 +54,29 @@ export function formationSeedFor(metaSeed, sectorId, epoch) {
   return hash32(metaSeed >>> 0, String(sectorId || ''), (epoch >>> 0) || 0, 'formations') >>> 0;
 }
 
+/**
+ * SAVE-STABLE anchor key for one asteroid body. The A01 kernel's own JSDoc warns that the default
+ * `a.id` key is only safe "if entity ids re-roll" never happens — and they DO: world.enterSector
+ * rematerializes durable records under fresh entity ids, and asteroidSites._repairAnchors respawns
+ * an anchored rock with a new id. Keying formations by entity id therefore re-labelled the SAME
+ * physical rock after a reload (the 4891099a..edca7c7e review's central finding). Identity here is
+ * physical instead: the durable world record when the body carries one, else the rock's quantized
+ * pose + type + size — the same fields asteroidSites' anchor recipe treats as the durable truth of
+ * "which rock this is". Two rocks inside one world unit with identical type and radius are
+ * physically indistinguishable as anchors, so colliding there is correct rather than risky.
+ */
+export function formationBodyKey(body) {
+  if (!body || typeof body !== 'object') return 'invalid';
+  const data = body.data && typeof body.data === 'object' ? body.data : {};
+  if (data.worldRecordId != null) return `rec:${data.worldRecordId}`;
+  const pos = body.pos && typeof body.pos === 'object' ? body.pos : body;
+  const x = Number.isFinite(pos.x) ? Math.round(pos.x) : 0;
+  const z = Number.isFinite(pos.z) ? Math.round(pos.z) : 0;
+  const typeId = typeof data.typeId === 'string' ? data.typeId : '?';
+  const radius = Number.isFinite(body.radius) ? Math.round(body.radius) : 0;
+  return `pos:${x}|${z}|${typeId}|${radius}`;
+}
+
 /** Compact, JSON-safe copy of one kernel formation record (strategic subset only). Pure. */
 export function compactFormationRecord(formation) {
   if (!formation || typeof formation !== 'object') return null;
@@ -165,7 +188,7 @@ export const asteroidFormations = {
       if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
       asteroids.push(e);
     }
-    const model = buildAsteroidFormations(asteroids, { seed });
+    const model = buildAsteroidFormations(asteroids, { seed, keyOf: formationBodyKey });
     this._rt = { model, sectorId, epoch, seed };
     return model;
   },
