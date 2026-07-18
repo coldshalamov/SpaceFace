@@ -95,8 +95,17 @@ checkout and on the dirty tree, then repair whichever of the game or the old har
 names. Do **not** fund autopilot repair against this row: the autopilot acceptance surface is green
 and the public route now docks.
 
-`G04` is `ATTEMPTED_STILL_RED` rather than complete — the diagnosis landed and inverted the row's
-stated cause, but no repair was made and no clean-tree attribution exists.
+**Wave-01 update (2026-07-18, at `fb9a0c82`): the clean-checkout half of that measurement is
+DONE.** The G01 pilot passed `--stop=first-station` on a fully clean detached checkout of
+`fb9a0c82` (status empty before the run): dock at 96s, `station_helios`, closest approach
+154.166 WU, one public KeyE hold, `injectedState: false` — plus four more public dock successes
+the same day on the working tree (87s/91s/107s routes and a restore-then-re-dock). The dirty-tree
+map/nav WIP is therefore NOT what makes the approach work; the route belongs to committed code.
+`G04` is promoted to `ROUTE_ACCEPTED` on this evidence (see the acceptance matrix). What still
+separates `M1-ROUTE` from exit is unchanged in kind: an Electron pilot run (the pilot driver is
+browser-only today — G18/M1 debt) and the two stale harnesses
+(`check:professional-travel:public-route:browser`, `check:wave15-flight-boot`), which remain
+harness-drift suspects, not game defects.
 
 ## Depth Program roll-up
 

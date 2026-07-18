@@ -16,7 +16,27 @@ carry their own evidence and do not promote any milestone row.
 | `A03`, `G07` | `BLOCKED_BY_LEASE` | write-set needs `src/render/renderer.js` / `bloom.js`, both dirty | — | `MAP-2026-07-18` |
 | `W05` | `BLOCKED_BY_LEASE` | write-set needs HUD/map; `galaxyMap.js` observed changing twice mid-sprint | — | `MAP-2026-07-18` |
 | `G08` | `NOT_STARTED (dependency)` | depends on `G07` (blocked), `A04`, `A05` | — | via `G07` |
-| `G02`, `G03`, `G05`, `G06`, `T02`, `T03`, `T04`, `A02`, `A04`, `A05`, `W02`, `W03`, `W04`, `W06` | `READY` / `READY-PENDING`, not started | contracts expanded in `roadmap/05_SPRINT2_READY_CONTRACTS.md` | — | save-schema mutex for `A02`/`G02`/`G03` |
+| `G02`, `G03`, `G05`, `G06`, `T02`, `T03`, `T04`, `A02`, `A04`, `A05`, `W02`, `W03`, `W04`, `W06` | superseded for `G02,G03,T02,T03,A02,A05,W02` by the Wave-01 rows below; `G05,G06,T04,A04,W03,W04,W06` remain `READY`/`PLANNED` for Wave-02 | contracts in `roadmap/05_SPRINT2_READY_CONTRACTS.md` | — | save-schema mutex resolved by `edca7c7e` (clean-worktree regeneration) |
+
+## Wave-01 — PROGRAM-WAVE-01-RECOVERY-ROOTS packet rows (2026-07-18, commits on `master` at `c751b9a9`)
+
+Every row carries its own commit-bound evidence; review-round history in `NOW.md`. `pending R3`
+means integrated with focused proof, awaiting the final independent review verdict.
+
+| Packet | Terminal state | Evidence at commit | Commits |
+|---|---|---|---|
+| `T02` | `FOCUSED_GREEN`+`INTEGRATED` (pending R3) | massline-invariants 47/47; tolerances grounded in shipped constants, validator strict, catalog-decoupled | `1a9f98e5`,`f7e8a4fd` |
+| `T03` | `FOCUSED_GREEN`+`INTEGRATED` (pending R3) | contract suite 9/9; legacy path byte-identical (hard-coded rung-07 pins); `check:massline:target-scoring` green | `6d411cf5` |
+| `A02` | `FOCUSED_GREEN`+`INTEGRATED` (pending R3) | persistence 17/17; physical-identity anchor keys; save-family 71/71; clean-tree `check:save-schema` GREEN; goldens stable | `b29dd72c`,`cdf2484b`,`edca7c7e`,`80a8e846` |
+| `A05` | `FOCUSED_GREEN`+`INTEGRATED`, rerun post-A02 | contact-ring-law green at `c751b9a9` (252-test family); access law through production canInstall/installMachine | `936be4f2`,`f1a210cf`,`9584053c` |
+| `A06` | `FOCUSED_GREEN`+`INTEGRATED`, rerun post-A05 | site-thermal 62/62; order-independence proven over accepted colliding inputs; overflow-safe capacity/load | `4c367cd7`,`53452e84`,`ce4dddee` |
+| `A08` | `FOCUSED_GREEN`+`INTEGRATED`, rerun post-A05 | site-signature green; duplicate aggregation order-independent, telemetry type-gated | `491b0726`,`fd47884e`,`9584053c` |
+| `A10` | `FOCUSED_GREEN`+`INTEGRATED` | lane-network 32/32 incl. ownership/intake-block/drift/extreme/preflight ruling pins | `7a250289`,`61e84071`,`c751b9a9` |
+| `W01` repairs | both OPEN defects CLOSED | e1-dispatch green; single-shot offers, no duplicate choice lines; 47a goldens unmoved | `4891099a`,`9584053c` |
+| `W02` | `FOCUSED_GREEN`+`INTEGRATED` | trace contract green incl. real serialize/restore traversal and independently recomputed digests | `ae423dd7`,`9584053c` |
+| `G02` | captured+restored, `INTEGRATED` (pending R3) | `fresh-start` sha256-bound artifact + receipts; ladder validator green | `fb9a0c82` |
+| `G03` | captured+restored, `INTEGRATED` (pending R3) | `first-station` 11-milestone public route; restore + public re-dock proves all claims literally | `fb9a0c82` |
+| `G04` | `ROUTE_ACCEPTED` | autopilot fully green; sim compares ok; five public dock successes incl. **clean-checkout** run (96s, closest 154.166 WU, 1 KeyE hold) — attribution to committed code CLOSED | measurement only |
 
 **4 of the sprint's 23 packets reached a declared terminal state.** With `F01–F17` that is 21/113
 (18.58%) of the packet program — not the 40/113 the sprint scoped. No packet is claimed beyond its

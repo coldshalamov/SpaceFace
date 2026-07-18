@@ -1,203 +1,94 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-18, refreshed at the start of the Sprint 2 Corridor Contract Wave. Foundation
-integrated by `77a09790`, `32596ec7`, and `bfb23570`.
+**Snapshot:** 2026-07-18 (late), refreshed at the close of **PROGRAM-WAVE-01-RECOVERY-ROOTS**.
+Master is `c751b9a9`, 34 commits ahead of `origin/master` (nothing pushed). The Sprint-2 branch
+anomaly is RESOLVED: `feat/map-ux-polish-pass` was merged forward by its owner and `master` now
+contains the Sprint-2 packets, the map-lane commits (`1309b5b4` …), and all sixteen Wave-01
+commits below. Every claim in this board is bound to a reachable commit.
 
-**Observed tree at refresh:** base `bfb23570`, index empty, 3 commits ahead of `origin/master`,
-**29** dirty foreign paths totalling +4540/-1670 (foreign `git diff` object `4028ca7b`). That digest is
-the tamper detector for this sprint: if it changes, a lease owner is live and the lead re-reviews
-before staging anything.
+**Observed tree at refresh:** 23 foreign dirty paths plus untracked `design/program/_review/`
+preserved untouched throughout the wave (the foreign digest is generational — a live visual-asset
+agent was observed writing `tools/art` + gltf-transform output mid-wave at 17:29). Index empty.
+No lock. Two zero-byte stale `.git/index.lock` files appeared at background-reviewer teardown
+moments and were removed only after the full liveness protocol (no live writer, stable across
+probes, empty staged inventory).
 
-> **A lease owner is LIVE.** At 07:52 and again at 07:58 on 2026-07-18, `src/ui/galaxyMap.js` changed
-> under the sprint — +80 lines adding an `entityHomeSector()` helper, suppressing foreign-sector gate
-> twins from SYSTEM survey (a "Gate → Helios Prime" listed while standing in Helios Prime, which also
-> blew the auto-fit span out ~8x), a kill subscription, and intel-sync throttling. This is map-domain
-> work by the `MAP-2026-07-18` owner, not sprint work. It is preserved untouched and was never staged.
-> Consequence: the foreign digest is generational, not fixed. Re-derive it before every staging
-> decision rather than comparing against a stale pin. `A03`, `G07`, `W05`, and `R03` are confirmed
-> `BLOCKED_BY_LEASE` by observation, not merely by the board.
+## Wave-01 integration record (all on `master`)
 
-This is the volatile pickup board. It answers only: what is being integrated, which paths are occupied,
-and what may be claimed next. Scope and dependencies live in [`roadmap/README.md`](./roadmap/README.md);
-completion truth remains split across the verified, remaining-work, and acceptance pages.
-
-Before acting, refresh `git log -1 --oneline`, `git status --short`, and
-`git rev-list --left-right --count origin/master...HEAD`. This snapshot never licenses an agent to
-overwrite newer work.
-
-## Integration and occupied lanes
-
-| Lease | State | Owner | Allowed paths | Base / handoff |
-|---|---|---|---|---|
-| `FND-2026-07-18` | `INTEGRATED` | lead/status integrator | Closed foundation lease: program docs, narrow plan routing, CI/census/catalog/fixture/physics diagnostics, focused tests, and package wiring | Runtime repair `77a09790`; diagnostic implementation `32596ec7`; program/history integration is the commit containing this board. |
-| `MAP-2026-07-18` | `EXTERNAL / OCCUPIED` | concurrent map/render lane; owner must identify itself before handoff | `design/MAP_UX_PLAN.md`, `scripts/capture-maps.mjs`, `scripts/check-bloom-structural-perf.mjs`, `src/core/gameState.js`, `src/data/sectors.js`, `src/render/bloom.js`, `src/render/renderer.js`, `src/systems/world.js`, `src/ui/galaxyMap.js`, `src/ui/navigation/localSpaceMapModel.js` | These edits predate or appeared outside `FND-2026-07-18`. Do not stage, edit, move, or claim them from the foundation lane. Current `check:m2:map-cutover` is 13/14; the dirty region-data palette hash is the known red edge. |
-| `HUD-ASSETS-2026-07-18` | `EXTERNAL / OCCUPIED` | user-confirmed HUD and visual-asset agents | `scripts/capture-gameplay.mjs`, `src/ui/bandHud.js`, `src/ui/uiRoot.js`, and any subsequently dirty HUD, render, asset, manifest, capture, or visual-check path not explicitly created by `FND-2026-07-18` | Preserve in place. Foundation validation may read these paths but must not edit, stage, reformat, revert, or use their current state as final acceptance. |
-| `MISSION-2026-07-18` | `EXTERNAL / OCCUPIED` | concurrent owner not yet identified | `src/systems/missions.js` | Appeared outside the foundation lane. Preserve and require an owner/handoff before staging or cross-seam integration. |
-| `CONTENT-2026-07-18` | `EXTERNAL / OCCUPIED` | concurrent content/narrative lane; **newly recorded at this refresh** | `src/data/barks.js`, `src/data/flavor/020-ad-board.js`, `src/data/flavor/030-graffiti.js`, `src/data/flavor/040-band.js`, `src/data/flavor/080-landmark-lore.js`, `src/data/laneContacts.js`, `src/data/moralTraps.js`, `src/data/namedAces.js`, `src/data/narrative.js`, `src/data/wreckMissions.js`, `src/localization/catalogs/en-US.generated.js` | These were dirty but undocumented by the previous board. `en-US.generated.js` is a 4588-line regeneration and is a generated-index mutex besides. No Sprint 2 packet may author encounter/wreck/contact/bark prose while this lane is open. |
-| `SCREENS-2026-07-18` | `EXTERNAL / OCCUPIED` | folded into the HUD/visual-asset lane at this refresh | `src/ui/screens/base.js`, `src/ui/screens/gameOver.js`, `src/ui/screens/missionLog.js`, `design/MAP_DATA_HANDOFF.md` | Screen lifecycle and Game Over/mission-log presentation are live foreign work. `missionLog.js` also overlaps the map lane. Read-only for Sprint 2. |
-| `SPRINT2-CORRIDOR-2026-07-18` | `CLAIMED` | lead/status integrator (this sprint) | New files only under `scripts/lib/goldCorridor*`, `scripts/check-gold-corridor-*`, `src/combat/masslineOrbitTelemetry.js`, `src/systems/asteroidFormationModel.js`, `src/systems/e1EncounterPhases.js`, matching `test/*` contracts, `design/program/**` status, and `package.json` script entries applied by the lead | Base `bfb23570`. Write-set is disjoint from every `EXTERNAL / OCCUPIED` lease above. Any packet whose write-set or evidence-set intersects an occupied lease is returned `BLOCKED_BY_LEASE`, not rearchitected around. |
-
-If another path becomes dirty, treat it as occupied until its owner and intent are proven. Add it here in
-the next integration pass; do not silently absorb it.
-
-## Lease-blocked packet classes
-
-Sprint 2 uses four distinct non-terminal verdicts so a blocked packet stays legible to the next lead.
-These are reporting classes, not new protocol states; the protocol state remains `BLOCKED`.
-
-| Class | Meaning |
+| Commit | What it is |
 |---|---|
-| `BLOCKED_BY_LEASE` | The packet's write-set intersects an `EXTERNAL / OCCUPIED` path. |
-| `EVIDENCE_BLOCKED` | Implementable, but its required player-route evidence is produced by a runtime whose current output is defined by foreign uncommitted code, so the capture would not prove the packet. |
-| `ATTEMPTED_STILL_RED` | Work was done and measured; the declared terminal state was not reached. Before/after numbers required. |
-| `NOT_STARTED (dependency)` | Held only by an unmet packet dependency, with the blocking ID named. |
+| `fd47884e` | fix(A08) — order-independent duplicate-machine aggregation, typed telemetry gate (review round 1 P0) |
+| `ae423dd7` | test(W02) — combat-trace contract suite (21 tests, hard-coded FNV vectors) |
+| `4891099a` | fix(W01) — single-shot `offerConsumed` gate; the two OPEN encounterDirector defects from the previous board are CLOSED |
+| `b29dd72c` `cdf2484b` `edca7c7e` | feat(A02) — discovered-formation persistence owner, registry + save-key wiring, SAVE_SCHEMA regenerated from a CLEAN worktree (adds `$.formations` **and** the missing `$.sites` row — the committed half of the save-schema red is closed) |
+| `f1a210cf` | test(A05) — review-driven suite repair (production install-gate probes, independent literals, catalog decoupling) |
+| `f7e8a4fd` | fix(T02) — pump/escape tolerances grounded in shipped constants (winch-efficiency ceiling law, debounce stacking law, masslineThreats contest copies); validator strictness; builder refactor |
+| `6d411cf5` | feat(T03) — intent/obstruction/ownership axes on the rung-07 target scorer; legacy path byte-identical |
+| `53452e84` `ce4dddee` | fix/test(A06) — total-order machine key, overflow-safe capacity/load, throw-free coercion, defs seam; suite self-contained (62 tests) |
+| `61e84071` `c751b9a9` | feat/test(A10) — the four design rulings implemented and pinned (ownership-scoped construction, refuse-then-confirm lane spills with deterministic receipts, exact over-capacity diagnostics, characterization→normative conversion) |
+| `fb9a0c82` | feat(G02,G03) — deep-state capture harness; `fresh-start` and `first-station` CAPTURED and RESTORE-PROVEN through the public route; ladder 2 captured / 11 planned |
+| `9584053c` | test(A08,A05,W01,W02) — round-2 residual findings closed |
 
-Before declaring any of these, compute the packet's write-set and evidence-set and intersect it with
-the union of the occupied paths above. Blanket-blocking a whole lane is itself status dishonesty: a
-packet that only *reads* an occupied module is not blocked.
+## Wave-01 packet status
 
-## Sprint 2 — Corridor Contract Wave
+Terminal classes per `roadmap/README.md`. "R1/R2/R3" = independent fresh-context adversarial
+review rounds (gpt-5.6-sol, xhigh); every R1/R2 finding was reproduced by the lead before repair.
+R3 verdicts land asynchronously; a packet listed `pending R3` is INTEGRATED with focused proof and
+awaits that final verdict before its terminal stamp is unconditional.
 
-The active sprint owns 23 of the 113 packets (20.35%): `G01–G08`, `T01–T04`, `A01–A05`, `W01–W06`.
-Completing all 23 on top of `F01–F17` would reach 40/113 (35.40%). Packet count is a scope
-denominator only.
-
-**Baseline at `bfb23570`:** `npm run check:foundation` exit 0; content census `ok:true` with 0
-duplicate/missing IDs, 0 identity mismatches, 0 dangling references; deep-state ladder 13 contracts /
-0 captured / 13 planned.
-
-**Wave-0 path confirmation:** all four Wave-1 expected new files are free — `scripts/lib/goldCorridorPublicPilot.mjs`,
-`scripts/check-gold-corridor-public-pilot.mjs`, `test/gold-corridor-public-pilot-contract.test.mjs`,
-`src/combat/masslineOrbitTelemetry.js`, `test/massline-orbit-telemetry.test.mjs`,
-`src/systems/asteroidFormationModel.js`, `test/asteroid-formation-model.test.mjs`,
-`test/e1-encounter-phase-dispatch.test.mjs`, `src/systems/e1EncounterPhases.js`. Their research
-anchors (`src/combat/trace.js`, `src/systems/e1EncounterRuntime.js`, `src/systems/masslineTelemetry.js`,
-`src/systems/tetherGameplay.js`, `src/systems/asteroidSites.js`, `src/data/sites.js`,
-`scripts/lib/professionalTravelPublicRoute.mjs`) all exist and are clean.
-
-**Execution isolation:** Sprint 2 workers run in dedicated git worktrees cut from `bfb23570` and hold
-no Git authority whatsoever. Only the lead writes to the primary worktree. This is a preservation
-measure, not a convenience: the 28 foreign paths are uncommitted and unrecoverable, so a single
-worker-side `checkout`/`clean`/`stash` would destroy another lane's work with no backup.
-
-## Sprint 2 packet status
-
-Integrated this sprint, at the commits named. Terminal states are not collapsed into "done".
-
-| Packet | State | Commit | Proof at that commit |
+| Packet | State | Commits | Proof |
 |---|---|---|---|
-| `G01` | `FOCUSED_GREEN` + `INTEGRATED` | `d5e0d6e7` | `node --test test/gold-corridor-public-pilot-contract.test.mjs` 31/31; `npm run check:launch-policy` OK |
-| `T01` | `FOCUSED_GREEN` + `INTEGRATED` | `cd784532` | `node --test test/massline-orbit-telemetry.test.mjs` 26/26 |
-| `A01` | `FOCUSED_GREEN` + `INTEGRATED` | `cd784532` | `node --test test/asteroid-formation-model.test.mjs` 31/31 |
-| `W01` | `FOCUSED_GREEN` + `INTEGRATED` | `cd784532` | `node --test test/e1-encounter-phase-dispatch.test.mjs` 14/14; no extraction required |
-| `G04` | `ATTEMPTED_STILL_RED` | diagnosis only | Inverted the row's stated cause. `check:autopilot` fully green; `G01` docks Helios at 152.1/155.2 WU through public input. No repair, no clean-tree attribution. |
+| `T02` | `FOCUSED_GREEN`+`INTEGRATED` (R1 REJECT→repaired; pending R3) | `1a9f98e5`+`f7e8a4fd` | massline-invariants 47/47; orbit-telemetry 26/26 unchanged |
+| `T03` | `FOCUSED_GREEN`+`INTEGRATED` (pending R3) | `6d411cf5` | contract suite 9/9; `check:massline:target-scoring` green (legacy byte-compat pinned) |
+| `A02` | `FOCUSED_GREEN`+`INTEGRATED` (R2 full-packet REJECT→repaired; pending R3) | `b29dd72c`,`cdf2484b`,`edca7c7e`,`80a8e846` | persistence suite 17/17; save-family 71/71; goldens stable; clean-tree `check:save-schema` GREEN |
+| `A05` | `FOCUSED_GREEN`+`INTEGRATED`, rerun at post-A02 HEAD (R1 REJECT→repaired; R2 residuals→closed `9584053c`) | `936be4f2`+`f1a210cf`+`9584053c` | contact-ring-law green in the 252-test family run at `c751b9a9` |
+| `A06` | `FOCUSED_GREEN`+`INTEGRATED`, rerun post-A05 (R1 REJECT→kernel+suite repaired) | `4c367cd7`+`53452e84`+`ce4dddee` | site-thermal 62/62 |
+| `A08` | `FOCUSED_GREEN`+`INTEGRATED`, rerun post-A05 (R1 P0→repaired; R2 residuals→closed) | `491b0726`+`fd47884e`+`9584053c` | site-signature green in family run |
+| `A10` | `FOCUSED_GREEN`+`INTEGRATED`, rulings implemented (R1 P0 characterization-conflict→converted) | `7a250289`+`61e84071`+`c751b9a9` | lane-network 32/32 incl. §12–§16 ruling pins |
+| `W01` repairs | CLOSED (both defects; R2 residuals→closed) | `4891099a`+`9584053c` | e1-dispatch suite green; goldens unmoved (47a excludes encounterDirector) |
+| `W02` | `FOCUSED_GREEN`+`INTEGRATED` (R2 residuals→closed) | `ae423dd7`+`9584053c` | trace contract green incl. real persistence traversal |
+| `G02` | captured+restored, `INTEGRATED` (pending R3) | `fb9a0c82` | ladder validator green; sha256-bound artifact + capture/restore receipts committed |
+| `G03` | captured+restored, `INTEGRATED` (pending R3) | `fb9a0c82` | 11-milestone public route; restore + public re-dock proves all three claims literally |
+| `G04` | `ROUTE_ACCEPTED` evidence complete | measurement, no code change | `check:autopilot` fully green; both sim compares ok; **five** public dock successes today incl. one on a **clean checkout** at `fb9a0c82` (dock 96s, `station_helios`, closest 154.166 WU, one KeyE hold, injectedState:false) |
 
-Each of the four green packets was independently adversarially reviewed by a separate agent that
-re-ran the acceptance commands, audited the write-set against the foreign path list, grepped for
-`Math.random`/`Date.now`/`three` imports, confirmed no `*.expected.json` was touched, and mutation-
-tested the subject where applicable. `A01` was returned `CONFIRMED_FOCUSED_GREEN` **with a must-fix**;
-that fix landed in `5c1d9c0c` and raised its suite from 31 to 33.
+The **clean-checkout attribution question is CLOSED**: the corridor dock route belongs to
+committed code. The earlier hypothesis that dirty foreign map/nav files were carrying the
+approach is falsified. Electron pilot support remains a recorded debt owned by `G18`/M1-ROUTE,
+not by `G04`.
 
-`W01` is explicitly coverage-only: the existing `encounterDirector` / `e1EncounterRuntime` seam held
-under adversarial probing, so `src/systems/e1EncounterPhases.js` was NOT created. The protocol requires
-saying so rather than implying the characterization exposed a defect.
+## Occupied lanes (unchanged, preserved)
 
-None of the four is wired into the runtime. That is deliberate and is what makes them provably
-hash-inert: `grep` over `src/`, `scripts/`, `test/`, and `package.json` finds no reference to any of
-them outside their own tests. Runtime consumption begins at `T03`/`T04`, `A02`/`A03`, and `W03`–`W06`.
+| Lease | State | Paths |
+|---|---|---|
+| `MAP-2026-07-18` (remnant) | `EXTERNAL / OCCUPIED` | `src/core/gameState.js`, `src/data/sectors.js`, `src/render/bloom.js`, `src/render/renderer.js`, `src/systems/world.js`, `scripts/check-bloom-structural-perf.mjs` |
+| `CONTENT-2026-07-18` | `EXTERNAL / OCCUPIED` | 10 `src/data/` content files + `src/localization/catalogs/en-US.generated.js` |
+| `HUD-ASSETS-2026-07-18` | `EXTERNAL / OCCUPIED`, **owner observed LIVE** (Wasp-art build 17:29) | `src/ui/bandHud.js`, `src/ui/uiRoot.js`, `scripts/capture-gameplay.mjs`, `tools/art` output |
+| `SCREENS-2026-07-18` | `EXTERNAL / OCCUPIED` | `src/ui/screens/base.js`, `gameOver.js`, `missionLog.js` |
+| `WAVE01-2026-07-18` | `CLOSED / INTEGRATED` | every Wave-01 path above; write-sets verified disjoint from all occupied leases at each staging |
 
-## Returned integration requests — real defects found, deliberately NOT fixed
-
-`W01` probed the encounter dispatch seam and found two genuine defects in `encounterDirector.js`.
-That file is outside `W01`'s write-set, so they were returned as integration requests rather than
-fixed inside the packet, exactly as the protocol requires. They remain OPEN:
-
-1. `_onChoose` guards only on `live.phase === 'done'`. A consumed offer therefore re-dispatches once a
-   handler advances to a non-terminal internal phase (e.g. h6 `waiting_battle`).
-2. `_recordPlayerChoiceLine` runs before `handler.choose` and unconditionally, so any accepted
-   re-dispatch appends a duplicate entry to `state.story.playerChoiceLines`.
-
-Optional hardening, lead's call: h6's `choose` `wait` branch could no-op when `live.phase` is already
-`waiting_battle`, and `finish()` could early-return on an already-resolved live record.
-
-These are single-writer/duplicate-event defects in a live runtime owner. Fixing them changes
-simulation behavior and must be sequenced with its own golden-safety review — not folded into a
-contract packet.
-
-`A01` had one real defect of its own, found by adversarial review and fixed in `5c1d9c0c`: `r4()`
-returned `Infinity` for finite inputs above ~1.8e304 because it validated the input rather than the
-rounded result, and the degenerate-input fixture capped at 1e12 — 292 orders of magnitude short of
-the overflow. The lesson generalizes: a fail-closed contract is only as good as the magnitude its
-fixtures actually reach.
-
-## Sprint 2 branch anomaly — read before assuming where the work is
-
-At `07:40:44` on 2026-07-18, mid-sprint, the working tree moved from `master` to a new branch
-`feat/map-ux-polish-pass` (reflog: `checkout: moving from master to feat/map-ux-polish-pass` at
-`2a355195`). Sprint 2 did not do this; the branch name matches the `MAP-2026-07-18` lane, whose owner
-was independently observed editing `src/ui/galaxyMap.js` at 07:52, 07:58, and 08:26.
-
-Consequence: `master` still points at `2a355195` (the Wave-0 reconciliation), while the four later
-Sprint 2 commits sit on `feat/map-ux-polish-pass`. Nothing is lost — that branch is exactly
-`master` + Sprint 2's commits, and the foreign lane has committed nothing — but Sprint 2 work is
-**not reachable from `master`**.
-
-The lead deliberately did not move any ref. Fast-forwarding `master` would be trivially reversible,
-but the branch was created by another live lane and re-pointing a shared ref is that lane's decision,
-not this sprint's. Resolve the ownership question first, then fast-forward or cherry-pick.
-
-## Pre-existing reds — measured, attributed, and NOT caused by Sprint 2
+## Known reds — measured, attributed, NOT Wave-01 regressions
 
 | Check | State | Attribution |
 |---|---|---|
-| `check:encounter-director` | RED | `two-day soak should produce encounters (got 2)` at `check-encounter-director.mjs:171`. This is the `W06` outcome. `CONTENT-2026-07-18` is concurrently editing `narrative.js` (+64), `wreckMissions.js` (+38), and four flavor packs. `W01` names this command in its acceptance and must neither be blamed for it nor "fix" it. |
-| `check:save-schema` | RED | Two independent causes. (a) `$.sites` — pre-existing **committed** debt: `sites` is absent from `gameState.js` at HEAD and in the tree; it enters via the save payload from the asteroid-sites feature, which shipped without regenerating `SAVE_SCHEMA.md` (last written 2026-07-14, `850c80f3`). (b) `$.settings.video.bloomThreshold` 0.72→1 — **foreign dirty**: `git diff -w --ignore-blank-lines src/core/gameState.js` shows that value is the file's ONLY real change; the rest of its diff is line-ending churn. |
-| `check:sim:compare`, `check:sim:v3:compare` | `ok`/`hashEqual` true, stale expected envelopes | Pre-existing. Unchanged by Sprint 2 — see the golden gate below. |
+| `npm run check` (broad chain) | DEAD ON ARRIVAL in `precheck` | `check-m1-tether-mass-grounding.mjs:24` asserts `check:ci` inlines the tether-mass command; `check:ci` was refactored (foundation) to delegate to the complete runner. `package.json` is byte-identical since `4c367cd7`, so this predates the wave on every tree. Standalone fix task spawned. |
+| `check:encounter-director` | RED, unchanged (`got 2` at `:171`) | Soak-harness sector-local coords vs global zone anchors + content-catalog selection (measured R1). The `W06` outcome; concurrent CONTENT lane. Not the phase bugs — those are fixed and the soak count did not move, as predicted. |
+| `check:save-schema` (dirty tree) | RED, one cause left | Foreign uncommitted `bloomThreshold` 0.72→1 only. The committed `$.sites` half is CLOSED (`edca7c7e`). GREEN on any clean checkout. |
+| `check:sim:v3` vs expected envelope | stale expected, actual stable | Unchanged; do not re-record from this lane. |
 
-> **Do not run `node scripts/generate-save-schema.mjs --write` to clear the save-schema red.**
-> Regenerating would bake the MAP/render lane's *uncommitted* `bloomThreshold` value into a committed
-> artifact, silently capturing another lane's WIP. `A02`, `G02`, and `G03` must treat this as a known
-> red with the attribution above and must not touch `SAVE_SCHEMA.md` while `gameState.js` is leased.
+**Golden gate held through the entire wave:** `check:sim:compare` ok/deterministic and
+`check:sim:v3:compare` ok/hashEqual verified after every runtime-touching integration (W01
+repair, A02 wiring, A10 rulings). The gate remains the ACTUAL column.
 
-## Ready to claim
+## Ready to claim next — Wave-02 (PROGRAM-WAVE-02-FIRST-PLAYABLE-SYSTEMS)
 
-These packets can run in parallel after each agent refreshes the tree and returns a path claim to the lead:
-
-| Packet | Lane | Default path budget | Must not overlap |
-|---|---|---|---|
-| `G01` | Gold-corridor public pilot | `scripts/lib/goldCorridorPublicPilot.mjs`, `scripts/check-gold-corridor-public-pilot.mjs`, `test/gold-corridor-public-pilot-contract.test.mjs`, ignored evidence | map/render lease, save internals |
-| `T01` | Massline orbit telemetry kernel | `src/combat/masslineOrbitTelemetry.js`, `test/massline-orbit-telemetry.test.mjs` | flight input, physics owner, tether gameplay until interface review |
-| `A01` | Asteroid formation model | `src/systems/asteroidFormationModel.js`, `test/asteroid-formation-model.test.mjs` | asteroid UI shell and active map/render files |
-| `W01` | Encounter phase-dispatch contract | `test/e1-encounter-phase-dispatch.test.mjs`; provisional extraction only at `src/systems/e1EncounterPhases.js` | encounter content catalog edits |
-
-`package.json`, `src/core/registry.js`, `src/core/gameState.js`, `src/systems/input.js`, save/load owners,
-shared CSS, and generated indexes are integration mutexes. Feature agents return the requested shared
-change; the lead applies it after collision review.
-
-## Blocked or deliberately parked
-
-- The attachment available in this run is a roadmap summary that references a separate 113-packet
-  Markdown file not present in the attachment directory or repository. The executable 113-packet
-  decomposition in `roadmap/` is therefore a live-tree reconstruction, not a verbatim import. This does
-  not block work; if the source file arrives, reconcile outcomes and retain stable IDs.
-- Map cutover and its planning cleanup stay with the occupied map lane.
-- `check:sim:v3` is red against its expected hash. The V3 and legacy reload compares currently prove
-  uninterrupted/reload equality but report stale expected envelopes. Do not re-record either golden from
-  this lane; coordinate source attribution and review with the occupied `gameState`/HUD work first.
-  Measured at `bfb23570` and pinned as the Sprint 2 golden-safety gate:
-
-  | Compare | `ok` | `hashEqual` | Stale expected vs actual |
-  |---|---|---|---|
-  | `check:sim:compare` | true | true | `presentation:caption` 3→4, `presentation:cueApplied` 14→15, `presentation:cue` 14→15, `audio:cue` 3→4 |
-  | `check:sim:v3:compare` | true | true | `authoritativeHash` expected `a6c96aad…0ff1`, actual `7e3e114e…d50f` |
-
-  The gate is on the **actual** column. Any Sprint 2 change that moves an actual value is a regression
-  in this sprint. Any change to an expected value is a forbidden re-record.
-- No deep-state fixture is called captured yet. The thirteen contracts exist; public-route artifacts are
-  still work.
+`G05,G06,G07,G08,T04,A03,A04,W03,W04,W05,W06,W07,R01,R02`. Several were `BLOCKED_BY_LEASE` at the
+Sprint-2 refresh (`A03`/`G07` need `renderer.js`/`bloom.js`; `W05` needs HUD/map): **re-derive
+lease liveness at claim time** — the map lane has been committing (its dirty remnant is smaller
+than at the Sprint-2 snapshot) and the HUD/assets owner is demonstrably live. Dependencies now
+satisfied by Wave-01: `T04` (←T03), `A03`/`A04` (←A02), `W03`/`W04`/`W05` (←W01+W02),
+`G05` (←G04), `G08`'s `A05` leg.
 
 ## Handoff rule
 
-Only the lead/status integrator edits this board during concurrent execution. Agents return a receipt in
-the format in [`roadmap/00_EXECUTION_PROTOCOL.md`](./roadmap/00_EXECUTION_PROTOCOL.md); the lead updates
-the lease and program truth in the same integration pass.
+Only the lead/status integrator edits this board during concurrent execution. Receipts follow
+`roadmap/00_EXECUTION_PROTOCOL.md`; the lead updates lease and program truth in one pass.

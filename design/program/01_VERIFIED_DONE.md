@@ -13,6 +13,17 @@ requirement only if the controller explicitly adopts the draft production policy
 M2’s architecture was previously marked complete, but its current combined browser/Electron check
 exited red during Electron launch and must be revalidated.
 
+## Wave-01 (PROGRAM-WAVE-01-RECOVERY-ROOTS, 2026-07-18) — verified at `c751b9a9`
+
+| Area | Verified result | Acceptance level |
+|---|---|---|
+| Signature-kernel family (T02, A05, A06, A08, A10 + A02) | 252 tests green in one family run at `c751b9a9`; every packet independently adversarially reviewed (REJECT verdicts round 1), every accepted finding reproduced by the lead, repaired in narrow commits, and re-reviewed | Focused green + integrated; final R3 verdicts recorded in `NOW.md` |
+| A10 design rulings | Ownership-scoped construction funding, refuse-then-confirm lane spills with deterministic receipts, exact over-capacity diagnostics — implemented at the owning seams and pinned normatively (`61e84071`, `c751b9a9`) | Behavior change reviewed; goldens stable |
+| W01 dispatch defects | Both OPEN defects from the prior board closed by the single-shot `offerConsumed` gate (`4891099a`); 47a compares unmoved (curated systems list excludes encounterDirector — verified, then measured) | Runtime repair with golden safety |
+| Deep-state ladder rungs 1–2 | `fresh-start` and `first-station` captured through the PUBLIC pilot route, sha256-bound, restore-proven in fresh contexts (`fb9a0c82`); ladder validator green at 2 captured / 11 planned | First real fixtures; capture harness now exists (`scripts/check-deep-state-capture.mjs`) |
+| Corridor dock attribution | The G01 pilot docks `station_helios` on a **fully clean checkout** at `fb9a0c82` (closest 154.166 WU, one public KeyE hold) — the route belongs to committed code, not foreign WIP | Clean-tree attribution CLOSED; Electron remains G18/M1 debt |
+| Save-schema committed debt | `SAVE_SCHEMA.md` regenerated from a clean worktree (`edca7c7e`): `$.sites` and `$.formations` recorded; check GREEN on clean checkouts | The dirty-tree red now has exactly one (foreign) cause |
+
 ## Freshly verified foundations and packets
 
 | Area | Verified result | Acceptance level |
