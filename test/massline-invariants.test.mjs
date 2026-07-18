@@ -14,6 +14,10 @@
 //                  function applies it cheaply). We assert only that every such value is disclosed
 //                  in MASSLINE_UNPINNED_COPIES. Asserting the literal against itself would be a
 //                  self-consistency test wearing a drift-detection costume, so we do not do it.
+//
+// INDEPENDENT FULL TABLE: EXPECTED_TOLERANCES hard-codes every resolved term.key -> {value, space}
+// as literals. ANY drift — including in an imported source module — reds the suite. Band bounds
+// are pinned the same way in DECLARED_BOUNDS.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,8 +32,11 @@ import {
   MASSLINE_INVARIANTS_VERSION,
   MASSLINE_KNOWN_COLLISIONS,
   MASSLINE_QUANTITY_SPACES,
+  MASSLINE_REQUIRED_TERMS,
+  MASSLINE_REQUIRED_TOP_LEVEL_KEYS,
   MASSLINE_TERMS,
   MASSLINE_UNPINNED_COPIES,
+  buildMasslineInvariants,
   classifyMassline,
   isUnresolved,
   pendingTerms,
@@ -38,18 +45,15 @@ import {
   validateMasslineInvariants,
 } from '../src/combat/masslineInvariants.js';
 
-// Live sources, imported so the "imported" claims are checked against the real thing.
+// Live sources used for imported-spot-checks and behavioural pinning against real implementations.
+// Catalog IDs (tether_standard / attachment_massline) are NOT pinned as expectations here.
 import { MASSLINE_ORBIT_DEFAULTS, MASSLINE_ORBIT_REASONS } from '../src/combat/masslineOrbitTelemetry.js';
 import { DEFAULT_MASSLINE_DEF } from '../src/core/constraints/masslineController.js';
-import { ATTACHMENT_DEFS } from '../src/data/combatDefs.js';
 import { computeTetherLoad, rateRelease } from '../src/systems/tetherGameplay.js';
 
 // ---------------------------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------------------------
-
-const TETHER_STANDARD = ATTACHMENT_DEFS.find((d) => d.id === 'tether_standard');
-const ATTACHMENT_MASSLINE = ATTACHMENT_DEFS.find((d) => d.id === 'attachment_massline');
 
 /** The declaration classifyMassline() demands for a given band set. */
 function declFor(setId) {
@@ -73,6 +77,98 @@ function releaseState(strain, { tangentialSpeed = 100, radialSpeed = 0 } = {}) {
 }
 
 const EPS = 1e-9;
+const BOUND_PROBE = 0.001;
+
+// ---------------------------------------------------------------------------------------------
+// INDEPENDENT FULL TABLE (P1-1) — hard-coded literals; copy values BY HAND from live sources.
+// Editing a threshold in the vocabulary OR in an imported module cannot keep this table in sync.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Every resolved term.key -> {value, space}.
+ * Literals written by hand from the live grounding at base f1a210cf + T02 repair:
+ *   - orbit defaults from masslineOrbitTelemetry
+ *   - efficiency / catastrophic / grace from DEFAULT_MASSLINE_DEF
+ *   - attachment windows / denominators as observed at grounding time
+ *   - pump/escape grounded constants from the lead's rulings
+ */
+const EXPECTED_TOLERANCES = Object.freeze({
+  'capture.captureWindowStandardS': { value: 0.35, space: 'timeS' },
+  'capture.captureWindowMasslineS': { value: 0.3, space: 'timeS' },
+  'capture.slackBeforeCaptureS': { value: 0.1, space: 'timeS' },
+  'capture.stretchEpsilonWu': { value: 0.05, space: 'lengthWu' },
+  'capture.snapCatchWindowS': { value: 1, space: 'timeS' },
+  'capture.snapCatchMinSpeedWu': { value: 25, space: 'speedWu' },
+  'stableOrbit.tangentQualityMin': { value: 0.85, space: 'quality01' },
+  'stableOrbit.tensionBalanceAbsMax': { value: 0.25, space: 'balanceSigned' },
+  'stableOrbit.demandEpsilon': { value: 1e-9, space: 'tensionForce' },
+  'pumpGain.pumpArmStrength': { value: 0.55, space: 'quality01' },
+  'pumpGain.pumpResetStrength': { value: 0.15, space: 'quality01' },
+  'pumpGain.reelIntentDeadzone': { value: 0.001, space: 'quality01' },
+  'pumpGain.winchEfficiency': { value: 0.72, space: 'quality01' },
+  'pumpGain.gainBudgetPerStroke': { value: 0.72, space: 'quality01' },
+  'pumpGain.gainStackingLimit': { value: 1, space: 'count' },
+  'releaseQuality.usefulLoad': { value: 0.65, space: 'breakFraction01' },
+  'releaseQuality.overloadKnee': { value: 0.85, space: 'breakFraction01' },
+  'releaseQuality.overloadSpan': { value: 0.35, space: 'breakFraction01' },
+  'releaseQuality.adviseScore': { value: 0.65, space: 'quality01' },
+  'break.overloadRatioEdge': { value: 1, space: 'overloadRatio' },
+  'break.catastrophicRatio': { value: 1.75, space: 'overloadRatio' },
+  'break.overloadGraceDefaultS': { value: 0.22, space: 'timeS' },
+  'break.overloadGraceTetherStandardS': { value: 1.1, space: 'timeS' },
+  'break.hardenMax': { value: 0.85, space: 'quality01' },
+  'break.nearBreakStrain': { value: 0.75, space: 'breakFraction01' },
+  'escape.responseWindowS': { value: 8, space: 'timeS' },
+  'escape.collisionHorizonS': { value: 1.5, space: 'timeS' },
+  'escape.escapeRadiusWu': { value: 260, space: 'distanceWu' },
+  'escape.escapeClosingMaxWu': { value: 12.5, space: 'speedWu' },
+});
+
+// Band-tier bounds (the 11 non-floor thresholds). Independent of the schema's tier.min fields.
+const DECLARED_BOUNDS = Object.freeze({
+  'release.quality': [0.85, 0.65, 0.35],
+  'snapCatch.quality': [0.85, 0.55],
+  'orbit.load': [0.75, 0.25],
+  'reel.risk': [0.75, 0.45],
+  'break.overload': [1.75, 1],
+});
+
+/** Frozen local calibration fixture for builder contract tests. No live catalog IDs. */
+const FIXTURE_CALIBRATION = Object.freeze({
+  orbit: Object.freeze({
+    breakTension: 6000,
+    slackEpsilon: 0.05,
+    loadedLoadRatio: 0.25,
+    overloadLoadRatio: 0.75,
+    stableTangentQuality: 0.85,
+    stableTensionBalance: 0.25,
+    reelRiskHighLoad: 0.75,
+    reelRiskMediumLoad: 0.45,
+    reelIntentDeadzone: 0.001,
+    releaseUsefulLoad: 0.65,
+    releaseOverloadKnee: 0.85,
+    releaseOverloadSpan: 0.35,
+    releaseRazorScore: 0.85,
+    releaseCleanScore: 0.65,
+    releaseGoodScore: 0.35,
+    releaseAdviseScore: 0.65,
+    demandEpsilon: 1e-9,
+  }),
+  masslineDef: Object.freeze({
+    efficiency: 0.72,
+    catastrophicRatio: 1.75,
+    overloadGraceS: 0.22,
+  }),
+  tetherStandard: Object.freeze({
+    breakTension: 1_050_000,
+    captureS: 0.35,
+    overloadGraceS: 1.1,
+  }),
+  attachmentMassline: Object.freeze({
+    maxTension: 10_250,
+    captureS: 0.3,
+  }),
+});
 
 // ---------------------------------------------------------------------------------------------
 // machine-readable schema
@@ -128,11 +224,37 @@ test('the module is pure: no clock, no RNG, no state, byte-identical repeat read
 });
 
 // ---------------------------------------------------------------------------------------------
-// imported tolerances are genuinely single-sourced
+// independent full table (P1-1)
+// ---------------------------------------------------------------------------------------------
+
+test('every resolved tolerance matches the independent hard-coded table (value + space + key set)', () => {
+  const actualKeys = [];
+  for (const [termId, term] of Object.entries(MASSLINE_TERMS)) {
+    for (const [key, tol] of Object.entries(term.tolerances)) {
+      if (isUnresolved(tol)) {
+        assert.fail(`${termId}.${key} is unresolved — the independent table expects all resolved`);
+      }
+      actualKeys.push(`${termId}.${key}`);
+      const expected = EXPECTED_TOLERANCES[`${termId}.${key}`];
+      assert.ok(expected, `unexpected tolerance ${termId}.${key} not in EXPECTED_TOLERANCES`);
+      assert.equal(toleranceOf(termId, key), expected.value, `${termId}.${key} value`);
+      assert.equal(tol.space, expected.space, `${termId}.${key} space`);
+    }
+  }
+  assert.deepEqual(
+    actualKeys.sort(),
+    Object.keys(EXPECTED_TOLERANCES).sort(),
+    'resolved tolerance key set must match the independent table exactly',
+  );
+});
+
+// ---------------------------------------------------------------------------------------------
+// imported tolerances are genuinely single-sourced (non-catalog)
 // ---------------------------------------------------------------------------------------------
 
 test('every tolerance marked imported matches its live exported source', () => {
   // Spot-check the load-bearing ones against the real modules, not against copies.
+  // Catalog attachment IDs are NOT asserted here (see integration smoke + independent table).
   assert.equal(toleranceOf('stableOrbit', 'tangentQualityMin'), MASSLINE_ORBIT_DEFAULTS.stableTangentQuality);
   assert.equal(toleranceOf('stableOrbit', 'tensionBalanceAbsMax'), MASSLINE_ORBIT_DEFAULTS.stableTensionBalance);
   assert.equal(toleranceOf('stableOrbit', 'demandEpsilon'), MASSLINE_ORBIT_DEFAULTS.demandEpsilon);
@@ -144,13 +266,11 @@ test('every tolerance marked imported matches its live exported source', () => {
 
   assert.equal(toleranceOf('break', 'catastrophicRatio'), DEFAULT_MASSLINE_DEF.catastrophicRatio);
   assert.equal(toleranceOf('break', 'overloadGraceDefaultS'), DEFAULT_MASSLINE_DEF.overloadGraceS);
-  assert.equal(toleranceOf('break', 'overloadGraceTetherStandardS'), TETHER_STANDARD.massline.overloadGraceS);
 
-  assert.equal(toleranceOf('capture', 'captureWindowStandardS'), TETHER_STANDARD.spring.captureS);
-  assert.equal(toleranceOf('capture', 'captureWindowMasslineS'), ATTACHMENT_MASSLINE.spring.captureS);
   assert.equal(toleranceOf('capture', 'stretchEpsilonWu'), MASSLINE_ORBIT_DEFAULTS.slackEpsilon);
 
   assert.equal(toleranceOf('pumpGain', 'winchEfficiency'), DEFAULT_MASSLINE_DEF.efficiency);
+  assert.equal(toleranceOf('pumpGain', 'gainBudgetPerStroke'), DEFAULT_MASSLINE_DEF.efficiency);
   assert.equal(toleranceOf('pumpGain', 'reelIntentDeadzone'), MASSLINE_ORBIT_DEFAULTS.reelIntentDeadzone);
 });
 
@@ -171,16 +291,21 @@ test('imported band tiers match their live exported source', () => {
   assert.equal(MASSLINE_BAND_SETS['break.overload'].tiers[0].min, DEFAULT_MASSLINE_DEF.catastrophicRatio);
 });
 
-test('the live calibration denominators come from the defs, not from T01 placeholders', () => {
+test('breakFraction01 calibrations disclose clamp path property (P1-5)', () => {
   const cals = MASSLINE_QUANTITY_SPACES.breakFraction01.calibrations;
-  assert.equal(cals.tetherStandard.denominator, TETHER_STANDARD.breakTension);
-  assert.equal(cals.attachmentMassline.denominator, ATTACHMENT_MASSLINE.break.maxTension);
-  assert.equal(cals.t01Placeholder.denominator, MASSLINE_ORBIT_DEFAULTS.breakTension);
-
-  // The placeholder must be labelled as such so it can never be laundered into balance truth.
+  assert.equal(MASSLINE_QUANTITY_SPACES.breakFraction01.domain[0], 0);
+  assert.equal(MASSLINE_QUANTITY_SPACES.breakFraction01.domain[1], null);
+  assert.equal(cals.t01Placeholder.clamped, true);
+  assert.equal(cals.tetherStandard.clamped, false);
+  assert.equal(cals.attachmentMassline.clamped, false);
   assert.equal(cals.t01Placeholder.status, 'placeholder');
   assert.equal(cals.tetherStandard.status, 'live');
   assert.equal(cals.attachmentMassline.status, 'live');
+  // Denominators must be positive finite (shape); values are pinned by EXPECTED_TOLERANCES
+  // and the fixture builder path, not by live catalog IDs.
+  for (const cal of Object.values(cals)) {
+    assert.ok(Number.isFinite(cal.denominator) && cal.denominator > 0);
+  }
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -225,26 +350,7 @@ test('the specific declared thresholds land where the vocabulary says they do', 
   assert.equal(bandOf('break.overload', 0.999), 'nominal');
 });
 
-// The fixture above probes only AT each boundary, and the inclusivity sweep before it derives its
-// probe FROM the tier it is checking. Neither can catch a threshold that MOVES DOWN: classification
-// is inclusive-lower, so lowering snapCatch.quality/clean from 0.85 to 0.80 still classifies 0.85 as
-// 'clean' and still passes a self-derived edge probe. T02's deliverable IS the threshold vocabulary,
-// so every declared boundary is pinned here from BOTH sides.
-//
-// The BOUNDS below are hard-coded deliberately. An independent copy living in the test file is what
-// makes this a pin at all: editing a threshold in the vocabulary cannot keep this table in sync, so
-// the edit surfaces. The expected TIER NAMES, by contrast, are read positionally out of the
-// vocabulary (tiers[i] / tiers[i + 1]) rather than by matching a probe value back to a `min` —
-// value-matching would re-introduce exactly the self-reference this test exists to remove.
-const DECLARED_BOUNDS = {
-  'release.quality': [0.85, 0.65, 0.35],
-  'snapCatch.quality': [0.85, 0.55],
-  'orbit.load': [0.75, 0.25],
-  'reel.risk': [0.75, 0.45],
-  'break.overload': [1.75, 1],
-};
-
-test('every declared threshold is pinned from both sides, not merely met at the bound', () => {
+test('every declared threshold is pinned from both sides through classifyMassline (±0.001)', () => {
   // Completeness, both halves: a NEW band set, or a new tier inside an existing one, must fail here
   // rather than quietly enter the vocabulary unpinned.
   assert.deepEqual(
@@ -266,11 +372,17 @@ test('every declared threshold is pinned from both sides, not merely met at the 
       const lower = set.tiers[i + 1].id;
       // AT the declared number the upper tier wins (>=, not >). Catches a threshold RAISED.
       assert.equal(bandOf(setId, bound), upper, `${setId} at ${bound} must be '${upper}'`);
-      // A hair BELOW it must fall through. Catches a threshold LOWERED — the half that was missing.
+      // A hair BELOW it must fall through. Catches a threshold LOWERED.
       assert.equal(
-        bandOf(setId, bound - EPS),
+        bandOf(setId, bound - BOUND_PROBE),
         lower,
         `${setId} just below ${bound} must be '${lower}': the declared threshold has moved`,
+      );
+      // A hair ABOVE it must still be the upper tier (or higher if multi-tier, but at least not lower).
+      assert.equal(
+        bandOf(setId, bound + BOUND_PROBE),
+        upper,
+        `${setId} just above ${bound} must still be '${upper}'`,
       );
     }
   }
@@ -279,12 +391,12 @@ test('every declared threshold is pinned from both sides, not merely met at the 
 test('band ordering is monotone under a sweep, not merely ordered in the table', () => {
   for (const set of Object.values(MASSLINE_BAND_SETS)) {
     const decl = declFor(set.id);
-    const [lo, hi] = set.space === 'overloadRatio' ? [0, 3] : [0, 1];
+    const [lo, hi] = set.space === 'overloadRatio' || set.space === 'breakFraction01' ? [0, 3] : [0, 1];
     let previousIndex = set.tiers.length;
     for (let step = 0; step <= 300; step += 1) {
       const value = lo + ((hi - lo) * step) / 300;
       const result = classifyMassline(set.id, value, decl);
-      assert.equal(result.ok, true);
+      assert.equal(result.ok, true, `${set.id} @ ${value}: ${result.reason}`);
       const index = set.tiers.findIndex((t) => t.id === result.band);
       assert.ok(index >= 0, `${set.id} produced an off-alphabet band '${result.band}'`);
       // Tiers are listed best/highest first, so a rising value may only move the index DOWN.
@@ -354,7 +466,7 @@ test('computeTetherLoad proves presentationLoad01 is not a break fraction', () =
 });
 
 // ---------------------------------------------------------------------------------------------
-// the unit-space / calibration guard
+// the unit-space / calibration / domain guard
 // ---------------------------------------------------------------------------------------------
 
 test('classifyMassline refuses an undeclared or mismatched quantity space', () => {
@@ -365,6 +477,82 @@ test('classifyMassline refuses an undeclared or mismatched quantity space', () =
   assert.equal(classifyMassline('nope.missing', 1, { space: 'quality01' }).reason, 'unknown-band-set');
   for (const bad of [NaN, Infinity, -Infinity, null, undefined, '0.9']) {
     assert.equal(classifyMassline('release.quality', bad, declFor('release.quality')).reason, 'non-finite-value');
+  }
+});
+
+test('classifyMassline rejects out-of-domain values and accepts domain edges (P1-2)', () => {
+  // quality01 is [0, 1] — bounded both sides.
+  const qDecl = declFor('release.quality');
+  assert.equal(classifyMassline('release.quality', -1e308, qDecl).reason, 'out-of-domain');
+  assert.equal(classifyMassline('release.quality', 1e308, qDecl).reason, 'out-of-domain');
+  assert.equal(classifyMassline('release.quality', -0.001, qDecl).reason, 'out-of-domain');
+  assert.equal(classifyMassline('release.quality', 1.001, qDecl).reason, 'out-of-domain');
+  assert.equal(classifyMassline('release.quality', 0, qDecl).ok, true);
+  assert.equal(classifyMassline('release.quality', 1, qDecl).ok, true);
+
+  // overloadRatio is [0, null] — unbounded above; extremes must classify deterministically.
+  const oDecl = declFor('break.overload');
+  assert.equal(classifyMassline('break.overload', -1e308, oDecl).reason, 'out-of-domain');
+  assert.equal(classifyMassline('break.overload', -0.001, oDecl).reason, 'out-of-domain');
+  assert.equal(classifyMassline('break.overload', 0, oDecl).ok, true);
+  const hugeA = classifyMassline('break.overload', 1e308, oDecl);
+  const hugeB = classifyMassline('break.overload', Number.MAX_VALUE, oDecl);
+  assert.equal(hugeA.ok, true);
+  assert.equal(hugeB.ok, true);
+  assert.equal(hugeA.band, hugeB.band);
+  assert.equal(hugeA.band, 'catastrophic');
+
+  // breakFraction01 is now unbounded above: overload strain 1.7 is legitimate.
+  const loadDecl = declFor('orbit.load');
+  assert.equal(classifyMassline('orbit.load', -0.1, loadDecl).reason, 'out-of-domain');
+  const strain = classifyMassline('orbit.load', 1.7, loadDecl);
+  assert.equal(strain.ok, true);
+  assert.equal(strain.band, 'overload');
+  // Still rejects negative extreme.
+  assert.equal(classifyMassline('orbit.load', -1e308, loadDecl).reason, 'out-of-domain');
+  // Extreme positive is in-domain for unbounded breakFraction01.
+  const bfHuge = classifyMassline('orbit.load', 1e308, loadDecl);
+  assert.equal(bfHuge.ok, true);
+  assert.equal(bfHuge.band, 'overload');
+});
+
+test('magnitude fixtures for every quantity space used by a band set', () => {
+  for (const set of Object.values(MASSLINE_BAND_SETS)) {
+    const space = MASSLINE_QUANTITY_SPACES[set.space];
+    const decl = declFor(set.id);
+    const [lo, hi] = space.domain;
+
+    if (Number.isFinite(lo)) {
+      // Below lower bound is out-of-domain.
+      assert.equal(
+        classifyMassline(set.id, lo - Math.max(1, Math.abs(lo)), decl).reason,
+        'out-of-domain',
+        `${set.id} below domain lower`,
+      );
+      // At lower edge is accepted.
+      assert.equal(classifyMassline(set.id, lo, decl).ok, true, `${set.id} at lower domain edge`);
+    }
+    if (Number.isFinite(hi)) {
+      assert.equal(
+        classifyMassline(set.id, hi + Math.max(1, Math.abs(hi)), decl).reason,
+        'out-of-domain',
+        `${set.id} above domain upper`,
+      );
+      assert.equal(classifyMassline(set.id, hi, decl).ok, true, `${set.id} at upper domain edge`);
+      // Extreme magnitude out of bound.
+      assert.equal(classifyMassline(set.id, 1e308, decl).reason, 'out-of-domain');
+      assert.equal(classifyMassline(set.id, -1e308, decl).reason, 'out-of-domain');
+    } else {
+      // Unbounded above: 1e308 and MAX_VALUE classify, never reject.
+      const a = classifyMassline(set.id, 1e308, decl);
+      const b = classifyMassline(set.id, Number.MAX_VALUE, decl);
+      assert.equal(a.ok, true, `${set.id} 1e308 must classify`);
+      assert.equal(b.ok, true, `${set.id} MAX_VALUE must classify`);
+      assert.equal(a.band, b.band);
+      if (Number.isFinite(lo)) {
+        assert.equal(classifyMassline(set.id, -1e308, decl).reason, 'out-of-domain');
+      }
+    }
   }
 });
 
@@ -475,44 +663,48 @@ test('every terminal cut reason is enumerated', () => {
 });
 
 // ---------------------------------------------------------------------------------------------
-// provisional / forward-referenced terms
+// grounded pump gain + escape (P0-1)
 // ---------------------------------------------------------------------------------------------
 
-test('pump gain and escape are unresolved with a named owner, never a silent zero', () => {
-  for (const [termId, key, owner] of [
-    ['pumpGain', 'gainBudgetPerStroke', 'T06'],
-    ['pumpGain', 'gainStackingLimit', 'T06'],
-    ['escape', 'responseWindowS', 'T09'],
-    ['escape', 'contestRadiusWu', 'T09'],
-    ['escape', 'escapeSuccessThreshold', 'T10'],
+test('pump gain and escape tolerances are grounded (no unresolved placeholders)', () => {
+  for (const [termId, key] of [
+    ['pumpGain', 'gainBudgetPerStroke'],
+    ['pumpGain', 'gainStackingLimit'],
+    ['escape', 'responseWindowS'],
+    ['escape', 'collisionHorizonS'],
+    ['escape', 'escapeRadiusWu'],
+    ['escape', 'escapeClosingMaxWu'],
   ]) {
     const raw = MASSLINE_TERMS[termId].tolerances[key];
-    assert.equal(isUnresolved(raw), true, `${termId}.${key} must be unresolved`);
-    assert.equal(raw.owner, owner);
-    assert.equal('value' in raw, false, 'an unresolved tolerance must carry no value at all');
-
-    assert.throws(() => toleranceOf(termId, key), /unresolved/, `${termId}.${key} must refuse to resolve`);
-    assert.equal(toleranceOrNull(termId, key), null);
-    assert.notEqual(toleranceOrNull(termId, key), 0, 'null is not zero: a zero would be an invented threshold');
+    assert.equal(isUnresolved(raw), false, `${termId}.${key} must be resolved`);
+    assert.ok(Number.isFinite(toleranceOf(termId, key)), `${termId}.${key} must resolve to a number`);
+    assert.equal(toleranceOrNull(termId, key), EXPECTED_TOLERANCES[`${termId}.${key}`].value);
   }
+  // escapeSuccessThreshold removed: predicate lives in summary/laws text.
+  assert.equal('escapeSuccessThreshold' in MASSLINE_TERMS.escape.tolerances, false);
+  assert.ok(
+    MASSLINE_TERMS.escape.summary.includes('contest predicate')
+      || MASSLINE_TERMS.escape.laws?.includes('contest predicate'),
+  );
 });
 
-test('escape is fully provisional and pump gain is only partly live', () => {
-  assert.equal(MASSLINE_TERMS.escape.status, 'provisional');
+test('escape is live with grounded contest copies; pump gain remains partial', () => {
+  assert.equal(MASSLINE_TERMS.escape.status, 'live');
   assert.equal(MASSLINE_TERMS.escape.quantitySpace, null);
   assert.deepEqual(MASSLINE_TERMS.escape.bandSets, []);
   for (const tol of Object.values(MASSLINE_TERMS.escape.tolerances)) {
-    assert.equal(isUnresolved(tol), true, 'a provisional term must not smuggle in a number');
+    assert.equal(isUnresolved(tol), false);
+    assert.ok(Number.isFinite(tol.value));
   }
 
-  // Pump DETECTION is live; pump GAIN is not.
+  // Pump DETECTION is live; gain ceiling is grounded but status stays partial (T06 owns authored budgets).
   assert.equal(MASSLINE_TERMS.pumpGain.status, 'partial');
   assert.ok(Number.isFinite(toleranceOf('pumpGain', 'pumpArmStrength')));
-  assert.equal(toleranceOrNull('pumpGain', 'gainBudgetPerStroke'), null);
+  assert.ok(Number.isFinite(toleranceOf('pumpGain', 'gainBudgetPerStroke')));
+  assert.equal(toleranceOf('pumpGain', 'gainStackingLimit'), 1);
 
   assert.deepEqual(pendingTerms(), [
     { id: 'pumpGain', status: 'partial', owner: 'T06' },
-    { id: 'escape', status: 'provisional', owner: 'T09' },
   ]);
 });
 
@@ -565,6 +757,44 @@ test('the schema declares a derivation for every value it carries', () => {
 });
 
 // ---------------------------------------------------------------------------------------------
+// catalog decoupling (P1-4) — builder + local fixture
+// ---------------------------------------------------------------------------------------------
+
+test('buildMasslineInvariants accepts a frozen local fixture and validates', () => {
+  const doc = buildMasslineInvariants(FIXTURE_CALIBRATION);
+  const result = validateMasslineInvariants(doc);
+  assert.equal(result.ok, true, result.errors.join('; '));
+  assert.equal(doc.terms.pumpGain.tolerances.gainBudgetPerStroke.value, 0.72);
+  assert.equal(doc.terms.escape.tolerances.escapeRadiusWu.value, 260);
+  assert.equal(doc.quantitySpaces.count.id, 'count');
+  assert.equal(doc.quantitySpaces.distanceWu.id, 'distanceWu');
+  // Fixture denominators flow into calibrations without live catalog lookup.
+  assert.equal(doc.quantitySpaces.breakFraction01.calibrations.tetherStandard.denominator, 1_050_000);
+  assert.equal(doc.quantitySpaces.breakFraction01.calibrations.attachmentMassline.denominator, 10_250);
+});
+
+test('live document integration smoke: shape only (no catalog ID / balance pins)', () => {
+  // Shape honesty for the production document. Does NOT pin catalog IDs or balance numbers.
+  const result = validateMasslineInvariants(MASSLINE_INVARIANTS);
+  assert.equal(result.ok, true, result.errors.join('; '));
+  const cals = MASSLINE_QUANTITY_SPACES.breakFraction01.calibrations;
+  for (const cal of Object.values(cals)) {
+    assert.ok(Number.isFinite(cal.denominator) && cal.denominator > 0);
+  }
+  for (const term of Object.values(MASSLINE_TERMS)) {
+    for (const tol of Object.values(term.tolerances)) {
+      if (isUnresolved(tol)) continue;
+      assert.ok(Number.isFinite(tol.value));
+    }
+  }
+  assert.deepEqual(Object.keys(MASSLINE_TERMS), [...MASSLINE_REQUIRED_TERMS]);
+  assert.deepEqual(
+    Object.keys(MASSLINE_INVARIANTS).sort(),
+    [...MASSLINE_REQUIRED_TOP_LEVEL_KEYS].sort(),
+  );
+});
+
+// ---------------------------------------------------------------------------------------------
 // validator: degenerate and malformed documents
 // ---------------------------------------------------------------------------------------------
 
@@ -597,11 +827,17 @@ test('the validator rejects non-finite, negative, and zero tolerance values', ()
     const result = validateMasslineInvariants(doc);
     assert.equal(result.ok, false, `value ${String(bad)} must be rejected`);
   }
-  // Out of the declared 0..1 domain, in both directions.
-  for (const bad of [-0.5, 1.5]) {
+  // Out of the declared breakFraction01 domain lower bound.
+  for (const bad of [-0.5]) {
     const doc = clone(MASSLINE_INVARIANTS);
     doc.terms.releaseQuality.tolerances.usefulLoad.value = bad;
     assert.equal(validateMasslineInvariants(doc).ok, false, `value ${bad} escapes the space domain`);
+  }
+  // quality01 is still [0,1]; 1.5 is out of domain for adviseScore.
+  {
+    const doc = clone(MASSLINE_INVARIANTS);
+    doc.terms.releaseQuality.tolerances.adviseScore.value = 1.5;
+    assert.equal(validateMasslineInvariants(doc).ok, false, 'value 1.5 escapes quality01 domain');
   }
   // A zero denominator would make every fraction infinite.
   const doc = clone(MASSLINE_INVARIANTS);
@@ -684,14 +920,83 @@ test('the validator rejects dangling space, calibration, and band-set references
   assert.equal(validateMasslineInvariants(badTolSpace).ok, false);
 });
 
+test('the validator enforces exact v1 term set and top-level keys (P1-3)', () => {
+  // Deletion of terms.escape -> not ok
+  const noEscape = clone(MASSLINE_INVARIANTS);
+  delete noEscape.terms.escape;
+  {
+    const r = validateMasslineInvariants(noEscape);
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes('escape')));
+  }
+
+  // Extra term -> not ok
+  const extra = clone(MASSLINE_INVARIANTS);
+  extra.terms.bonus = {
+    id: 'bonus',
+    status: 'live',
+    owner: 'T99',
+    quantitySpace: null,
+    bandSets: [],
+    summary: 'An extra term that must not be accepted by the v1 required set.',
+    sources: [{ path: 'x', symbol: 'y', derivation: 'copied' }],
+    tolerances: {
+      x: { value: 1, space: 'count', derivation: 'structural', source: 'fixture' },
+    },
+  };
+  {
+    const r = validateMasslineInvariants(extra);
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes('bonus') || e.includes('unexpected term')));
+  }
+
+  // Band rename (dangling reference) -> not ok
+  const renamed = clone(MASSLINE_INVARIANTS);
+  renamed.bandSets['release.qualityRenamed'] = renamed.bandSets['release.quality'];
+  renamed.bandSets['release.qualityRenamed'].id = 'release.qualityRenamed';
+  delete renamed.bandSets['release.quality'];
+  renamed.terms.releaseQuality.bandSets = ['release.qualityRenamed'];
+  // Original band set missing; also unreferenced check may fire depending on structure.
+  {
+    const r = validateMasslineInvariants(renamed);
+    // Renaming is ok IF both directions update — so rename without updating term refs:
+    const dangling = clone(MASSLINE_INVARIANTS);
+    dangling.bandSets['release.quality'].id = 'release.quality.moved';
+    // id mismatch is already an error
+    assert.equal(validateMasslineInvariants(dangling).ok, false);
+    // And pure rename of key without term update:
+    const keyRename = clone(MASSLINE_INVARIANTS);
+    keyRename.bandSets['release.quality.moved'] = {
+      ...keyRename.bandSets['release.quality'],
+      id: 'release.quality.moved',
+    };
+    delete keyRename.bandSets['release.quality'];
+    // term still points at old name
+    const r2 = validateMasslineInvariants(keyRename);
+    assert.equal(r2.ok, false);
+    assert.ok(
+      r2.errors.some((e) => e.includes('release.quality') || e.includes('not referenced')),
+      r2.errors.join('; '),
+    );
+  }
+
+  // Top-level section deletion -> not ok
+  for (const key of ['collisions', 'unpinnedCopies', 'alphabets', 'bandSets']) {
+    const doc = clone(MASSLINE_INVARIANTS);
+    delete doc[key];
+    const r = validateMasslineInvariants(doc);
+    assert.equal(r.ok, false, `missing ${key} must fail`);
+    assert.ok(r.errors.some((e) => e.includes(key)), r.errors.join('; '));
+  }
+
+  // Canonical document -> ok
+  assert.equal(validateMasslineInvariants(MASSLINE_INVARIANTS).ok, true);
+});
+
 test('the validator rejects a provisional term that smuggles in a number', () => {
   const doc = clone(MASSLINE_INVARIANTS);
-  doc.terms.escape.tolerances.responseWindowS = {
-    value: 2.5,
-    space: 'timeS',
-    derivation: 'copied',
-    source: 'invented from prose',
-  };
+  // Inject a provisional term status onto a live term that already has resolved numbers.
+  doc.terms.escape.status = 'provisional';
   const result = validateMasslineInvariants(doc);
   assert.equal(result.ok, false);
   assert.ok(result.errors.some((e) => e.includes('provisional')));
@@ -699,10 +1004,22 @@ test('the validator rejects a provisional term that smuggles in a number', () =>
 
 test('the validator rejects an unresolved tolerance with no owner, note, or a stray value', () => {
   for (const mutate of [
-    (d) => { delete d.terms.escape.tolerances.responseWindowS.owner; },
-    (d) => { d.terms.escape.tolerances.responseWindowS.owner = 'somebody'; },
-    (d) => { delete d.terms.escape.tolerances.responseWindowS.note; },
-    (d) => { d.terms.escape.tolerances.responseWindowS.value = 0; },
+    (d) => {
+      d.terms.pumpGain.tolerances.gainBudgetPerStroke = { unresolved: true, note: 'x' };
+    },
+    (d) => {
+      d.terms.pumpGain.tolerances.gainBudgetPerStroke = {
+        unresolved: true, owner: 'somebody', note: 'x',
+      };
+    },
+    (d) => {
+      d.terms.pumpGain.tolerances.gainBudgetPerStroke = { unresolved: true, owner: 'T06' };
+    },
+    (d) => {
+      d.terms.pumpGain.tolerances.gainBudgetPerStroke = {
+        unresolved: true, owner: 'T06', note: 'x', value: 0,
+      };
+    },
   ]) {
     const doc = clone(MASSLINE_INVARIANTS);
     mutate(doc);
@@ -771,4 +1088,11 @@ test('every declared collision names what it affects and who owns it', () => {
       assert.ok(known.has(ref), `collision '${collision.id}' references unknown '${ref}'`);
     }
   }
+});
+
+test('new quantity spaces count and distanceWu are declared', () => {
+  assert.equal(MASSLINE_QUANTITY_SPACES.count.unit, 'count');
+  assert.deepEqual(MASSLINE_QUANTITY_SPACES.count.domain, [0, null]);
+  assert.equal(MASSLINE_QUANTITY_SPACES.distanceWu.unit, 'world-units');
+  assert.deepEqual(MASSLINE_QUANTITY_SPACES.distanceWu.domain, [0, null]);
 });

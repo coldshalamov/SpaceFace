@@ -38,6 +38,9 @@
 //
 //   'imported'    — the value is read at import time from the live exported source. Schema and
 //                   source cannot diverge; there is exactly one copy.
+//   'derived'     — the value is a live constant applied through a named physical or control law
+//                   (e.g. conservation through the winch). Schema and source share a number, but
+//                   the MEANING is the law; tests pin the literal independently.
 //   'behavioural' — the number is a private literal, but the function that applies it IS exported,
 //                   so the test calls the real function at the band edge and asserts the
 //                   classification flips. Drift in the source fails the test.
@@ -52,14 +55,16 @@
 // pin behaviourally where a function exists, and copy only where neither does — under disclosure.
 //
 // ---------------------------------------------------------------------------------------------
-// WHAT IS DELIBERATELY NOT NUMBERED
+// GROUNDING NOTES (pump gain + escape)
 //
-// pump GAIN (energy actually delivered to a swing) and ESCAPE (breaking free of a hostile line) do
-// not exist as quantities anywhere in live code. The roadmap assigns them to T06 and T09/T10. This
-// module therefore represents them as EXPLICITLY UNRESOLVED with a named owning packet rather than
-// inventing a plausible number — 03_SIGNATURE_SYSTEMS.md forbids choosing thresholds from prose,
-// and a silently-defaulted 0 is exactly how an invented threshold sneaks into a contract.
-// Reading an unresolved tolerance THROWS; it never returns 0.
+// Pump GAIN is not yet a live measured quantity (T06 owns authored stroke budgets), but the
+// physical ceiling is: conservation through the winch says a stroke cannot bank more swing energy
+// than the winch's own efficiency of what the player paid. The stacking law is already live as the
+// REEL_PUMP_ARM / REEL_PUMP_RESET debounce (one stroke per arm->reset cycle).
+//
+// Escape tolerances are COPIES of the live masslineThreats contest predicate numbers. T09 may
+// refine the mechanics; the numbers here are live copies, not inventions. Terminal-reason
+// consistency for "escaped" remains T10's job.
 
 import { MASSLINE_ORBIT_DEFAULTS } from './masslineOrbitTelemetry.js';
 import { DEFAULT_MASSLINE_DEF } from '../core/constraints/masslineController.js';
@@ -69,13 +74,41 @@ export const MASSLINE_INVARIANTS_SCHEMA = 'spaceface.masslineInvariants.v1';
 export const MASSLINE_INVARIANTS_VERSION = 1;
 
 /** Derivation classes, ordered from strongest drift protection to weakest. */
-export const DERIVATIONS = Object.freeze(['imported', 'behavioural', 'structural', 'copied']);
+export const DERIVATIONS = Object.freeze([
+  'imported',
+  'derived',
+  'behavioural',
+  'structural',
+  'copied',
+]);
 
 /** Packet ids allowed to own an unresolved tolerance. */
 const OWNER_PATTERN = /^[A-Z]\d{2}$/;
 
+/** Exact v1 term set. Missing or extra is a validation error. */
+export const MASSLINE_REQUIRED_TERMS = Object.freeze([
+  'capture',
+  'stableOrbit',
+  'pumpGain',
+  'releaseQuality',
+  'break',
+  'escape',
+]);
+
+/** Exact v1 top-level document keys. */
+export const MASSLINE_REQUIRED_TOP_LEVEL_KEYS = Object.freeze([
+  'schema',
+  'version',
+  'quantitySpaces',
+  'alphabets',
+  'bandSets',
+  'terms',
+  'collisions',
+  'unpinnedCopies',
+]);
+
 // ---------------------------------------------------------------------------------------------
-// live source lookups (imported, never copied)
+// live source lookups (imported, never copied) — only for the production calibrationSource
 // ---------------------------------------------------------------------------------------------
 
 function attachmentDef(id) {
@@ -84,10 +117,50 @@ function attachmentDef(id) {
   return def;
 }
 
-const TETHER_STANDARD = attachmentDef('tether_standard');
-const ATTACHMENT_MASSLINE = attachmentDef('attachment_massline');
-
-const D = MASSLINE_ORBIT_DEFAULTS;
+/**
+ * Live calibration drawn from the content catalog + exported sim defaults.
+ * Contract tests MUST NOT import this; they pass a frozen local fixture into the builder.
+ */
+export function liveCalibrationSource() {
+  const tetherStandard = attachmentDef('tether_standard');
+  const attachmentMassline = attachmentDef('attachment_massline');
+  const D = MASSLINE_ORBIT_DEFAULTS;
+  return {
+    orbit: {
+      breakTension: D.breakTension,
+      slackEpsilon: D.slackEpsilon,
+      loadedLoadRatio: D.loadedLoadRatio,
+      overloadLoadRatio: D.overloadLoadRatio,
+      stableTangentQuality: D.stableTangentQuality,
+      stableTensionBalance: D.stableTensionBalance,
+      reelRiskHighLoad: D.reelRiskHighLoad,
+      reelRiskMediumLoad: D.reelRiskMediumLoad,
+      reelIntentDeadzone: D.reelIntentDeadzone,
+      releaseUsefulLoad: D.releaseUsefulLoad,
+      releaseOverloadKnee: D.releaseOverloadKnee,
+      releaseOverloadSpan: D.releaseOverloadSpan,
+      releaseRazorScore: D.releaseRazorScore,
+      releaseCleanScore: D.releaseCleanScore,
+      releaseGoodScore: D.releaseGoodScore,
+      releaseAdviseScore: D.releaseAdviseScore,
+      demandEpsilon: D.demandEpsilon,
+    },
+    masslineDef: {
+      efficiency: DEFAULT_MASSLINE_DEF.efficiency,
+      catastrophicRatio: DEFAULT_MASSLINE_DEF.catastrophicRatio,
+      overloadGraceS: DEFAULT_MASSLINE_DEF.overloadGraceS,
+    },
+    tetherStandard: {
+      breakTension: tetherStandard.breakTension,
+      captureS: tetherStandard.spring.captureS,
+      overloadGraceS: tetherStandard.massline.overloadGraceS,
+    },
+    attachmentMassline: {
+      maxTension: attachmentMassline.break.maxTension,
+      captureS: attachmentMassline.spring.captureS,
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------------------------
 // unresolved tolerances
@@ -107,624 +180,702 @@ export function isUnresolved(value) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// quantity spaces
+// pure document builder
 //
-// A "space" is a DIMENSIONAL identity: what kind of number this is. Two values in the same space
-// are comparable only if they also share a CALIBRATION (see breakFraction01, where they often do
-// not).
+// Contract tests exercise this with a frozen LOCAL fixture so concurrent content-lane balance
+// edits cannot break the pure-contract suite. The live document is built once at import from
+// liveCalibrationSource() and re-exported as MASSLINE_INVARIANTS / MASSLINE_TERMS / …
 // ---------------------------------------------------------------------------------------------
 
-export const MASSLINE_QUANTITY_SPACES = Object.freeze({
-  breakFraction01: {
-    id: 'breakFraction01',
-    unit: 'ratio',
-    domain: [0, 1],
-    description:
-      'Fraction of the line break budget: tension / breakTension, clamped to 0..1. Dimensionless, '
-      + 'but only meaningful alongside the calibration that supplies the denominator.',
-    calibrations: {
-      t01Placeholder: {
-        id: 't01Placeholder',
-        denominator: D.breakTension,
-        status: 'placeholder',
-        source: 'src/combat/masslineOrbitTelemetry.js MASSLINE_ORBIT_DEFAULTS.breakTension',
-        note: 'Self-documented placeholder ("pass the def value"), NOT balance truth.',
-      },
-      tetherStandard: {
-        id: 'tetherStandard',
-        denominator: TETHER_STANDARD.breakTension,
-        status: 'live',
-        source: "src/data/combatDefs.js ATTACHMENT_DEFS['tether_standard'].breakTension",
-        note: 'The denominator tetherGameplay actually divides by to produce tether.strain.',
-      },
-      attachmentMassline: {
-        id: 'attachmentMassline',
-        denominator: ATTACHMENT_MASSLINE.break.maxTension,
-        status: 'live',
-        source: "src/data/combatDefs.js ATTACHMENT_DEFS['attachment_massline'].break.maxTension",
-        note: 'The short massline attachment carries a far smaller budget than the standard tether.',
+/**
+ * Build a complete massline-invariants document from a self-contained calibration source.
+ *
+ * @param {object} cal calibration numbers (orbit defaults, massline def, attachment denominators)
+ * @returns {object} deep-frozen document matching MASSLINE_INVARIANTS shape
+ */
+export function buildMasslineInvariants(cal) {
+  if (!cal || typeof cal !== 'object') {
+    throw new Error('masslineInvariants: calibrationSource must be a plain object');
+  }
+  const D = cal.orbit;
+  const M = cal.masslineDef;
+  const TS = cal.tetherStandard;
+  const AM = cal.attachmentMassline;
+  for (const [name, obj] of [
+    ['orbit', D],
+    ['masslineDef', M],
+    ['tetherStandard', TS],
+    ['attachmentMassline', AM],
+  ]) {
+    if (!obj || typeof obj !== 'object') {
+      throw new Error(`masslineInvariants: calibrationSource.${name} is required`);
+    }
+  }
+
+  const quantitySpaces = {
+    breakFraction01: {
+      id: 'breakFraction01',
+      unit: 'ratio',
+      domain: [0, null],
+      description:
+        'Fraction of the line break budget: tension / breakTension. Dimensionless, but only '
+        + 'meaningful alongside the calibration that supplies the denominator. The domain is '
+        + 'UNBOUNDED above: the T01 telemetry path clamps loadRatio to 0..1, but the live '
+        + 'tetherGameplay strain path (Math.max(0, lastTension / threshold)) does NOT clamp — '
+        + 'overload strain legitimately exceeds 1. Clamping is a PATH property, not a space '
+        + 'property; see each calibration\'s `clamped` flag.',
+      calibrations: {
+        t01Placeholder: {
+          id: 't01Placeholder',
+          denominator: D.breakTension,
+          status: 'placeholder',
+          clamped: true,
+          source: 'src/combat/masslineOrbitTelemetry.js MASSLINE_ORBIT_DEFAULTS.breakTension',
+          note:
+            'Self-documented placeholder ("pass the def value"), NOT balance truth. T01 clamps '
+            + 'loadRatio to 0..1 on this path.',
+        },
+        tetherStandard: {
+          id: 'tetherStandard',
+          denominator: TS.breakTension,
+          status: 'live',
+          clamped: false,
+          source: "src/data/combatDefs.js ATTACHMENT_DEFS['tether_standard'].breakTension",
+          note:
+            'The denominator tetherGameplay actually divides by to produce tether.strain. Unclamped: '
+            + 'overload strain may exceed 1.',
+        },
+        attachmentMassline: {
+          id: 'attachmentMassline',
+          denominator: AM.maxTension,
+          status: 'live',
+          clamped: false,
+          source: "src/data/combatDefs.js ATTACHMENT_DEFS['attachment_massline'].break.maxTension",
+          note:
+            'The short massline attachment carries a far smaller budget than the standard tether. '
+            + 'Unclamped strain path, same as tetherStandard.',
+        },
       },
     },
-  },
-  presentationLoad01: {
-    id: 'presentationLoad01',
-    unit: 'ratio',
-    domain: [0, 1],
-    calibrations: {},
-    description:
-      'HUD/VFX "how worked does the line look" value. Carries per-phase FLOORS, so it is NOT a '
-      + 'physical break fraction and must never be fed to a breakFraction01 band set.',
-  },
-  quality01: {
-    id: 'quality01',
-    unit: 'ratio',
-    domain: [0, 1],
-    calibrations: {},
-    description:
-      'Dimensionless conversion/goodness fraction: tangent quality, release score, snap-catch '
-      + 'quality. 0 is worst, 1 is best.',
-  },
-  overloadRatio: {
-    id: 'overloadRatio',
-    unit: 'ratio',
-    domain: [0, null],
-    calibrations: {},
-    description:
-      'max(tensionRatio, impulseRatio, yankRatio) against the def budgets. UNBOUNDED above: 1.0 is '
-      + 'the budget edge by definition, not a tuned threshold.',
-  },
-  balanceSigned: {
-    id: 'balanceSigned',
-    unit: 'ratio',
-    domain: [null, null],
-    calibrations: {},
-    description:
-      '(tension - centripetalDemand) / centripetalDemand. Zero-centred and signed: positive means '
-      + 'the line over-pulls (orbit tightens), negative means it under-pulls (orbit widens).',
-  },
-  tensionForce: {
-    id: 'tensionForce',
-    unit: 'sim-force',
-    domain: [0, null],
-    calibrations: {},
-    description:
-      'An ABSOLUTE force in the simulation\'s own force units (mass * length / time^2), not a '
-      + 'fraction of anything: line tension and centripetal demand before either is divided by a '
-      + 'break budget. Deliberately distinct from breakFraction01 — dividing by a denominator is '
-      + 'what turns this space into that one, and the denominator is the thing that collides.',
-  },
-  timeS: {
-    id: 'timeS',
-    unit: 'seconds',
-    domain: [0, null],
-    calibrations: {},
-    description: 'Simulation seconds. Sourced from state.simTime, never wall clock.',
-  },
-  speedWu: {
-    id: 'speedWu',
-    unit: 'world-units-per-second',
-    domain: [0, null],
-    calibrations: {},
-    description: 'Scalar speed in world units per second, XZ plane.',
-  },
-  lengthWu: {
-    id: 'lengthWu',
-    unit: 'world-units',
-    domain: [0, null],
-    calibrations: {},
-    description: 'Scalar length in world units, XZ plane.',
-  },
-});
+    presentationLoad01: {
+      id: 'presentationLoad01',
+      unit: 'ratio',
+      domain: [0, 1],
+      calibrations: {},
+      description:
+        'HUD/VFX "how worked does the line look" value. Carries per-phase FLOORS, so it is NOT a '
+        + 'physical break fraction and must never be fed to a breakFraction01 band set.',
+    },
+    quality01: {
+      id: 'quality01',
+      unit: 'ratio',
+      domain: [0, 1],
+      calibrations: {},
+      description:
+        'Dimensionless conversion/goodness fraction: tangent quality, release score, snap-catch '
+        + 'quality. 0 is worst, 1 is best.',
+    },
+    overloadRatio: {
+      id: 'overloadRatio',
+      unit: 'ratio',
+      domain: [0, null],
+      calibrations: {},
+      description:
+        'max(tensionRatio, impulseRatio, yankRatio) against the def budgets. UNBOUNDED above: 1.0 is '
+        + 'the budget edge by definition, not a tuned threshold.',
+    },
+    balanceSigned: {
+      id: 'balanceSigned',
+      unit: 'ratio',
+      domain: [null, null],
+      calibrations: {},
+      description:
+        '(tension - centripetalDemand) / centripetalDemand. Zero-centred and signed: positive means '
+        + 'the line over-pulls (orbit tightens), negative means it under-pulls (orbit widens).',
+    },
+    tensionForce: {
+      id: 'tensionForce',
+      unit: 'sim-force',
+      domain: [0, null],
+      calibrations: {},
+      description:
+        'An ABSOLUTE force in the simulation\'s own force units (mass * length / time^2), not a '
+        + 'fraction of anything: line tension and centripetal demand before either is divided by a '
+        + 'break budget. Deliberately distinct from breakFraction01 — dividing by a denominator is '
+        + 'what turns this space into that one, and the denominator is the thing that collides.',
+    },
+    timeS: {
+      id: 'timeS',
+      unit: 'seconds',
+      domain: [0, null],
+      calibrations: {},
+      description: 'Simulation seconds. Sourced from state.simTime, never wall clock.',
+    },
+    speedWu: {
+      id: 'speedWu',
+      unit: 'world-units-per-second',
+      domain: [0, null],
+      calibrations: {},
+      description: 'Scalar speed in world units per second, XZ plane.',
+    },
+    lengthWu: {
+      id: 'lengthWu',
+      unit: 'world-units',
+      domain: [0, null],
+      calibrations: {},
+      description: 'Scalar length in world units, XZ plane.',
+    },
+    count: {
+      id: 'count',
+      unit: 'count',
+      domain: [0, null],
+      calibrations: {},
+      description:
+        'Discrete occurrence count. Integer-valued by convention; the schema does not enforce '
+        + 'integrality.',
+    },
+    distanceWu: {
+      id: 'distanceWu',
+      unit: 'world-units',
+      domain: [0, null],
+      calibrations: {},
+      description: 'Scalar distance in world units, XZ plane.',
+    },
+  };
 
-// ---------------------------------------------------------------------------------------------
-// alphabets
-//
-// Two different subtrees answer "what phase is the line in" with two different word sets. A
-// consumer that switches on "the phase" gets a different alphabet depending on which it read.
-// ---------------------------------------------------------------------------------------------
+  const alphabets = {
+    tetherPhase: {
+      id: 'tetherPhase',
+      source: 'src/systems/tetherGameplay.js _phaseFor',
+      members: ['slack', 'capture', 'loaded', 'overload'],
+      note: "'capture' is TEMPORAL: the first captureS seconds after the line goes taut.",
+    },
+    orbitLoadBand: {
+      id: 'orbitLoadBand',
+      source: 'src/combat/masslineOrbitTelemetry.js loadBand',
+      members: ['slack', 'taut', 'loaded', 'overload'],
+      note:
+        "'capture' is deliberately absent (it cannot be derived from instantaneous state); 'taut' "
+        + 'fills the "touching but not yet doing real work" slot instead.',
+    },
+    cutReason: {
+      id: 'cutReason',
+      source: 'src/core/constraints/masslineController.js cutReason',
+      members: ['pilot', 'snap', 'catastrophic-overload', 'integrity-failure', 'sustained-overload'],
+      note: 'Terminal reasons a line stops existing. T10 owns making these consistent for AI too.',
+    },
+    observationReason: {
+      id: 'observationReason',
+      source: 'src/combat/masslineOrbitTelemetry.js MASSLINE_ORBIT_REASONS',
+      members: [
+        'missing-host',
+        'missing-target',
+        'non-finite-input',
+        'invalid-rest-length',
+        'degenerate-distance',
+        'zero-mass',
+      ],
+      note: 'Fail-closed reasons. null (nominal) is the absence of a reason, not a member.',
+    },
+  };
 
-export const MASSLINE_ALPHABETS = Object.freeze({
-  tetherPhase: {
-    id: 'tetherPhase',
-    source: 'src/systems/tetherGameplay.js _phaseFor',
-    members: ['slack', 'capture', 'loaded', 'overload'],
-    note: "'capture' is TEMPORAL: the first captureS seconds after the line goes taut.",
-  },
-  orbitLoadBand: {
-    id: 'orbitLoadBand',
-    source: 'src/combat/masslineOrbitTelemetry.js loadBand',
-    members: ['slack', 'taut', 'loaded', 'overload'],
-    note:
-      "'capture' is deliberately absent (it cannot be derived from instantaneous state); 'taut' "
-      + 'fills the "touching but not yet doing real work" slot instead.',
-  },
-  cutReason: {
-    id: 'cutReason',
-    source: 'src/core/constraints/masslineController.js cutReason',
-    members: ['pilot', 'snap', 'catastrophic-overload', 'integrity-failure', 'sustained-overload'],
-    note: 'Terminal reasons a line stops existing. T10 owns making these consistent for AI too.',
-  },
-  observationReason: {
-    id: 'observationReason',
-    source: 'src/combat/masslineOrbitTelemetry.js MASSLINE_ORBIT_REASONS',
-    members: [
-      'missing-host',
-      'missing-target',
-      'non-finite-input',
-      'invalid-rest-length',
-      'degenerate-distance',
-      'zero-mass',
-    ],
-    note: 'Fail-closed reasons. null (nominal) is the absence of a reason, not a member.',
-  },
-});
+  const bandSets = {
+    'release.quality': {
+      id: 'release.quality',
+      term: 'releaseQuality',
+      space: 'quality01',
+      calibration: null,
+      edge: 'inclusive-lower',
+      source: 'src/combat/masslineOrbitTelemetry.js release.classification',
+      mirrors: 'src/systems/tetherGameplay.js rateRelease (identical bands, re-declared inline)',
+      tiers: [
+        { id: 'razor', min: D.releaseRazorScore, derivation: 'imported' },
+        { id: 'clean', min: D.releaseCleanScore, derivation: 'imported' },
+        { id: 'good', min: D.releaseGoodScore, derivation: 'imported' },
+        { id: 'messy', min: null, derivation: 'structural' },
+      ],
+    },
+    'snapCatch.quality': {
+      id: 'snapCatch.quality',
+      term: 'capture',
+      space: 'quality01',
+      calibration: null,
+      edge: 'inclusive-lower',
+      source: 'src/systems/masslineTelemetry.js SNAP_CATCH_CLEAN / SNAP_CATCH_GOOD',
+      mirrors: null,
+      tiers: [
+        { id: 'clean', min: 0.85, derivation: 'copied' },
+        { id: 'good', min: 0.55, derivation: 'copied' },
+        { id: 'rough', min: null, derivation: 'structural' },
+      ],
+    },
+    'orbit.load': {
+      id: 'orbit.load',
+      term: 'stableOrbit',
+      space: 'breakFraction01',
+      calibration: 't01Placeholder',
+      edge: 'inclusive-lower',
+      source: 'src/combat/masslineOrbitTelemetry.js loadBand',
+      mirrors: 'src/systems/tetherGameplay.js _phaseFor (0.75 loaded -> overload)',
+      // NOTE: 'slack' is in the orbitLoadBand ALPHABET but is NOT a tier here. Slack is decided by
+      // stretch vs slackEpsilon (a lengthWu comparison), not by the load fraction. A consumer that
+      // classifies loadRatio alone can never obtain 'slack', and that is correct.
+      tiers: [
+        { id: 'overload', min: D.overloadLoadRatio, derivation: 'imported' },
+        { id: 'loaded', min: D.loadedLoadRatio, derivation: 'imported' },
+        { id: 'taut', min: null, derivation: 'structural' },
+      ],
+    },
+    'reel.risk': {
+      id: 'reel.risk',
+      term: 'pumpGain',
+      space: 'breakFraction01',
+      calibration: 't01Placeholder',
+      edge: 'inclusive-lower',
+      source: 'src/combat/masslineOrbitTelemetry.js reelRisk',
+      mirrors:
+        'src/systems/masslineTelemetry.js REEL_PUMP_RISK_HIGH / REEL_PUMP_RISK_MED, which read '
+        + 'tether.strain (tetherStandard calibration) rather than a T01 loadRatio — see collisions.',
+      tiers: [
+        { id: 'high', min: D.reelRiskHighLoad, derivation: 'imported' },
+        { id: 'medium', min: D.reelRiskMediumLoad, derivation: 'imported' },
+        { id: 'low', min: null, derivation: 'structural' },
+      ],
+    },
+    'break.overload': {
+      id: 'break.overload',
+      term: 'break',
+      space: 'overloadRatio',
+      calibration: null,
+      edge: 'inclusive-lower',
+      source: 'src/core/constraints/masslineController.js stepMassline overloadRatio',
+      mirrors: null,
+      tiers: [
+        { id: 'catastrophic', min: M.catastrophicRatio, derivation: 'imported' },
+        { id: 'overload', min: 1, derivation: 'structural' },
+        { id: 'nominal', min: null, derivation: 'structural' },
+      ],
+    },
+  };
 
-// ---------------------------------------------------------------------------------------------
-// band sets
-//
-// Band sets are NAMESPACED and first-class rather than nested under terms, because the same word
-// appears in more than one ladder with a different tolerance ('good' is 0.35 for a release and
-// 0.55 for a snap-catch). A bare band name is ambiguous; 'release.quality/good' is not.
-//
-// Edge rule, uniform across every set: `value >= min` selects the tier. Tiers are listed from the
-// highest threshold down, and the last tier is the floor (min: null) which always matches.
-// ---------------------------------------------------------------------------------------------
-
-export const MASSLINE_BAND_SETS = Object.freeze({
-  'release.quality': {
-    id: 'release.quality',
-    term: 'releaseQuality',
-    space: 'quality01',
-    calibration: null,
-    edge: 'inclusive-lower',
-    source: 'src/combat/masslineOrbitTelemetry.js release.classification',
-    mirrors: 'src/systems/tetherGameplay.js rateRelease (identical bands, re-declared inline)',
-    tiers: [
-      { id: 'razor', min: D.releaseRazorScore, derivation: 'imported' },
-      { id: 'clean', min: D.releaseCleanScore, derivation: 'imported' },
-      { id: 'good', min: D.releaseGoodScore, derivation: 'imported' },
-      { id: 'messy', min: null, derivation: 'structural' },
-    ],
-  },
-  'snapCatch.quality': {
-    id: 'snapCatch.quality',
-    term: 'capture',
-    space: 'quality01',
-    calibration: null,
-    edge: 'inclusive-lower',
-    source: 'src/systems/masslineTelemetry.js SNAP_CATCH_CLEAN / SNAP_CATCH_GOOD',
-    mirrors: null,
-    tiers: [
-      { id: 'clean', min: 0.85, derivation: 'copied' },
-      { id: 'good', min: 0.55, derivation: 'copied' },
-      { id: 'rough', min: null, derivation: 'structural' },
-    ],
-  },
-  'orbit.load': {
-    id: 'orbit.load',
-    term: 'stableOrbit',
-    space: 'breakFraction01',
-    calibration: 't01Placeholder',
-    edge: 'inclusive-lower',
-    source: 'src/combat/masslineOrbitTelemetry.js loadBand',
-    mirrors: 'src/systems/tetherGameplay.js _phaseFor (0.75 loaded -> overload)',
-    // NOTE: 'slack' is in the orbitLoadBand ALPHABET but is NOT a tier here. Slack is decided by
-    // stretch vs slackEpsilon (a lengthWu comparison), not by the load fraction. A consumer that
-    // classifies loadRatio alone can never obtain 'slack', and that is correct.
-    tiers: [
-      { id: 'overload', min: D.overloadLoadRatio, derivation: 'imported' },
-      { id: 'loaded', min: D.loadedLoadRatio, derivation: 'imported' },
-      { id: 'taut', min: null, derivation: 'structural' },
-    ],
-  },
-  'reel.risk': {
-    id: 'reel.risk',
-    term: 'pumpGain',
-    space: 'breakFraction01',
-    calibration: 't01Placeholder',
-    edge: 'inclusive-lower',
-    source: 'src/combat/masslineOrbitTelemetry.js reelRisk',
-    mirrors:
-      'src/systems/masslineTelemetry.js REEL_PUMP_RISK_HIGH / REEL_PUMP_RISK_MED, which read '
-      + 'tether.strain (tetherStandard calibration) rather than a T01 loadRatio — see collisions.',
-    tiers: [
-      { id: 'high', min: D.reelRiskHighLoad, derivation: 'imported' },
-      { id: 'medium', min: D.reelRiskMediumLoad, derivation: 'imported' },
-      { id: 'low', min: null, derivation: 'structural' },
-    ],
-  },
-  'break.overload': {
-    id: 'break.overload',
-    term: 'break',
-    space: 'overloadRatio',
-    calibration: null,
-    edge: 'inclusive-lower',
-    source: 'src/core/constraints/masslineController.js stepMassline overloadRatio',
-    mirrors: null,
-    tiers: [
-      { id: 'catastrophic', min: DEFAULT_MASSLINE_DEF.catastrophicRatio, derivation: 'imported' },
-      { id: 'overload', min: 1, derivation: 'structural' },
-      { id: 'nominal', min: null, derivation: 'structural' },
-    ],
-  },
-});
-
-// ---------------------------------------------------------------------------------------------
-// terms — the six T02 nouns
-// ---------------------------------------------------------------------------------------------
-
-export const MASSLINE_TERMS = Object.freeze({
-  capture: {
-    id: 'capture',
-    status: 'live',
-    owner: 'T04',
-    quantitySpace: 'timeS',
-    bandSets: ['snapCatch.quality'],
-    summary:
-      'The line latching and taking hold. TEMPORAL, not instantaneous: capture is the first '
-      + 'captureS seconds after a slack line goes taut, so it cannot be derived from a single '
-      + 'frame of state. Snap-catch is the trick variant — taut fast, on a genuinely moving catch, '
-      + 'and it LANDS (reaches loaded/overload rather than falling back to slack).',
-    sources: [
-      { path: 'src/systems/tetherGameplay.js', symbol: '_phaseFor', derivation: 'copied' },
-      { path: 'src/systems/masslineTelemetry.js', symbol: '_stepSnapCatch', derivation: 'copied' },
-      { path: 'src/data/combatDefs.js', symbol: 'ATTACHMENT_DEFS[].spring.captureS', derivation: 'imported' },
-    ],
-    tolerances: {
-      captureWindowStandardS: {
-        value: TETHER_STANDARD.spring.captureS,
-        space: 'timeS',
-        derivation: 'imported',
-        source: "ATTACHMENT_DEFS['tether_standard'].spring.captureS",
-      },
-      captureWindowMasslineS: {
-        value: ATTACHMENT_MASSLINE.spring.captureS,
-        space: 'timeS',
-        derivation: 'imported',
-        source: "ATTACHMENT_DEFS['attachment_massline'].spring.captureS",
-      },
-      slackBeforeCaptureS: {
-        value: 0.1,
-        space: 'timeS',
-        derivation: 'copied',
-        source: 'src/systems/tetherGameplay.js CAPTURE_SLACK_S (module-private)',
-      },
-      stretchEpsilonWu: {
-        value: D.slackEpsilon,
-        space: 'lengthWu',
-        derivation: 'imported',
-        source: 'MASSLINE_ORBIT_DEFAULTS.slackEpsilon, which mirrors tetherGameplay STRETCH_EPSILON',
-      },
-      snapCatchWindowS: {
-        value: 1.0,
-        space: 'timeS',
-        derivation: 'copied',
-        source: 'src/systems/masslineTelemetry.js SNAP_CATCH_WINDOW_S (module-private)',
-      },
-      snapCatchMinSpeedWu: {
-        value: 25,
-        space: 'speedWu',
-        derivation: 'copied',
-        source: 'src/systems/masslineTelemetry.js SNAP_CATCH_MIN_SPEED (module-private)',
+  const terms = {
+    capture: {
+      id: 'capture',
+      status: 'live',
+      owner: 'T04',
+      quantitySpace: 'timeS',
+      bandSets: ['snapCatch.quality'],
+      summary:
+        'The line latching and taking hold. TEMPORAL, not instantaneous: capture is the first '
+        + 'captureS seconds after a slack line goes taut, so it cannot be derived from a single '
+        + 'frame of state. Snap-catch is the trick variant — taut fast, on a genuinely moving catch, '
+        + 'and it LANDS (reaches loaded/overload rather than falling back to slack).',
+      sources: [
+        { path: 'src/systems/tetherGameplay.js', symbol: '_phaseFor', derivation: 'copied' },
+        { path: 'src/systems/masslineTelemetry.js', symbol: '_stepSnapCatch', derivation: 'copied' },
+        { path: 'src/data/combatDefs.js', symbol: 'ATTACHMENT_DEFS[].spring.captureS', derivation: 'imported' },
+      ],
+      tolerances: {
+        captureWindowStandardS: {
+          value: TS.captureS,
+          space: 'timeS',
+          derivation: 'imported',
+          source: "ATTACHMENT_DEFS['tether_standard'].spring.captureS",
+        },
+        captureWindowMasslineS: {
+          value: AM.captureS,
+          space: 'timeS',
+          derivation: 'imported',
+          source: "ATTACHMENT_DEFS['attachment_massline'].spring.captureS",
+        },
+        slackBeforeCaptureS: {
+          value: 0.1,
+          space: 'timeS',
+          derivation: 'copied',
+          source: 'src/systems/tetherGameplay.js CAPTURE_SLACK_S (module-private)',
+        },
+        stretchEpsilonWu: {
+          value: D.slackEpsilon,
+          space: 'lengthWu',
+          derivation: 'imported',
+          source: 'MASSLINE_ORBIT_DEFAULTS.slackEpsilon, which mirrors tetherGameplay STRETCH_EPSILON',
+        },
+        snapCatchWindowS: {
+          value: 1.0,
+          space: 'timeS',
+          derivation: 'copied',
+          source: 'src/systems/masslineTelemetry.js SNAP_CATCH_WINDOW_S (module-private)',
+        },
+        snapCatchMinSpeedWu: {
+          value: 25,
+          space: 'speedWu',
+          derivation: 'copied',
+          source: 'src/systems/masslineTelemetry.js SNAP_CATCH_MIN_SPEED (module-private)',
+        },
       },
     },
-  },
 
-  stableOrbit: {
-    id: 'stableOrbit',
-    status: 'live',
-    owner: 'T01',
-    quantitySpace: 'balanceSigned',
-    bandSets: ['orbit.load'],
-    summary:
-      'The line is holding a radius rather than yanking the host through a radial pass. Two '
-      + 'conditions, both required: motion is swing-dominant (tangentQuality at/above the '
-      + 'threshold) AND the line pulls close to what the orbit demands (|tensionBalance| at/below '
-      + 'the tolerance). Forced closed when there is no centripetal demand to balance against.',
-    sources: [
-      { path: 'src/combat/masslineOrbitTelemetry.js', symbol: 'stableOrbit', derivation: 'imported' },
-    ],
-    tolerances: {
-      tangentQualityMin: {
-        value: D.stableTangentQuality,
-        space: 'quality01',
-        derivation: 'imported',
-        source: 'MASSLINE_ORBIT_DEFAULTS.stableTangentQuality',
-      },
-      tensionBalanceAbsMax: {
-        value: D.stableTensionBalance,
-        space: 'balanceSigned',
-        derivation: 'imported',
-        source: 'MASSLINE_ORBIT_DEFAULTS.stableTensionBalance',
-      },
-      demandEpsilon: {
-        value: D.demandEpsilon,
-        space: 'tensionForce',
-        derivation: 'imported',
-        source:
-          'MASSLINE_ORBIT_DEFAULTS.demandEpsilon — floor on centripetalDemand, which is a FORCE '
-          + '(reducedMass * tangentialSpeed^2 / distance), not a ratio. Below it there is no orbit '
-          + 'to balance against, so tensionBalance is defined as 0 rather than a bogus infinity.',
+    stableOrbit: {
+      id: 'stableOrbit',
+      status: 'live',
+      owner: 'T01',
+      quantitySpace: 'balanceSigned',
+      bandSets: ['orbit.load'],
+      summary:
+        'The line is holding a radius rather than yanking the host through a radial pass. Two '
+        + 'conditions, both required: motion is swing-dominant (tangentQuality at/above the '
+        + 'threshold) AND the line pulls close to what the orbit demands (|tensionBalance| at/below '
+        + 'the tolerance). Forced closed when there is no centripetal demand to balance against.',
+      sources: [
+        { path: 'src/combat/masslineOrbitTelemetry.js', symbol: 'stableOrbit', derivation: 'imported' },
+      ],
+      tolerances: {
+        tangentQualityMin: {
+          value: D.stableTangentQuality,
+          space: 'quality01',
+          derivation: 'imported',
+          source: 'MASSLINE_ORBIT_DEFAULTS.stableTangentQuality',
+        },
+        tensionBalanceAbsMax: {
+          value: D.stableTensionBalance,
+          space: 'balanceSigned',
+          derivation: 'imported',
+          source: 'MASSLINE_ORBIT_DEFAULTS.stableTensionBalance',
+        },
+        demandEpsilon: {
+          value: D.demandEpsilon,
+          space: 'tensionForce',
+          derivation: 'imported',
+          source:
+            'MASSLINE_ORBIT_DEFAULTS.demandEpsilon — floor on centripetalDemand, which is a FORCE '
+            + '(reducedMass * tangentialSpeed^2 / distance), not a ratio. Below it there is no orbit '
+            + 'to balance against, so tensionBalance is defined as 0 rather than a bogus infinity.',
+        },
       },
     },
-  },
 
-  pumpGain: {
-    id: 'pumpGain',
-    status: 'partial',
-    owner: 'T06',
-    quantitySpace: 'breakFraction01',
-    bandSets: ['reel.risk'],
-    summary:
-      'DETECTION is live: a pump stroke is a sustained reel-in against a genuinely loaded line, '
-      + 'armed and debounced so a held reel is one pump rather than one per tick, with the strain '
-      + 'at the pump moment reported as risk. GAIN is not live: no quantity anywhere in the '
-      + 'codebase measures the energy a pump actually delivers to the swing. The nearest existing '
-      + 'reads are COST-side (radialWork / mechanicalEnergy / workJ), not gain-side. T06 owns '
-      + 'defining the gain budget; this module refuses to invent one.',
-    sources: [
-      { path: 'src/systems/masslineTelemetry.js', symbol: '_stepReelPump', derivation: 'copied' },
-      { path: 'src/combat/masslineOrbitTelemetry.js', symbol: 'reelRisk', derivation: 'imported' },
-      { path: 'src/core/constraints/masslineController.js', symbol: 'workJ (cost-side only)', derivation: 'imported' },
-    ],
-    tolerances: {
-      pumpArmStrength: {
-        value: 0.55,
-        space: 'quality01',
-        derivation: 'copied',
-        source: 'src/systems/masslineTelemetry.js REEL_PUMP_ARM (module-private)',
-      },
-      pumpResetStrength: {
-        value: 0.15,
-        space: 'quality01',
-        derivation: 'copied',
-        source: 'src/systems/masslineTelemetry.js REEL_PUMP_RESET (module-private)',
-      },
-      reelIntentDeadzone: {
-        value: D.reelIntentDeadzone,
-        space: 'quality01',
-        derivation: 'imported',
-        source: 'MASSLINE_ORBIT_DEFAULTS.reelIntentDeadzone',
-      },
-      winchEfficiency: {
-        value: DEFAULT_MASSLINE_DEF.efficiency,
-        space: 'quality01',
-        derivation: 'imported',
-        source: 'DEFAULT_MASSLINE_DEF.efficiency — COST side: mechanicalEnergy = radialWork / this',
-      },
-      gainBudgetPerStroke: unresolved(
-        'T06',
-        'Energy a single pump stroke may add to the swing. No live quantity exists; T06 defines it.',
-      ),
-      gainStackingLimit: unresolved(
-        'T06',
-        'How much repeated pumping may compound before it stops paying. Roadmap calls this the '
-        + '"non-stacking spool" requirement. Not yet a number.',
-      ),
-    },
-  },
-
-  releaseQuality: {
-    id: 'releaseQuality',
-    status: 'live',
-    owner: 'T07',
-    quantitySpace: 'quality01',
-    bandSets: ['release.quality'],
-    summary:
-      'How well a cut converts the swing into exit velocity. score = tangentQuality * usefulLoad * '
-      + '(1 - overloadPenalty): you are rewarded for swinging rather than being dragged, for '
-      + 'having real load to release, and penalised for cutting an overloaded line.',
-    sources: [
-      { path: 'src/combat/masslineOrbitTelemetry.js', symbol: 'release', derivation: 'imported' },
-      { path: 'src/systems/tetherGameplay.js', symbol: 'rateRelease', derivation: 'behavioural' },
-    ],
-    tolerances: {
-      usefulLoad: {
-        value: D.releaseUsefulLoad,
-        space: 'breakFraction01',
-        derivation: 'imported',
-        source: 'MASSLINE_ORBIT_DEFAULTS.releaseUsefulLoad',
-      },
-      overloadKnee: {
-        value: D.releaseOverloadKnee,
-        space: 'breakFraction01',
-        derivation: 'imported',
-        source: 'MASSLINE_ORBIT_DEFAULTS.releaseOverloadKnee',
-      },
-      overloadSpan: {
-        value: D.releaseOverloadSpan,
-        space: 'breakFraction01',
-        derivation: 'imported',
-        source: 'MASSLINE_ORBIT_DEFAULTS.releaseOverloadSpan',
-      },
-      adviseScore: {
-        value: D.releaseAdviseScore,
-        space: 'quality01',
-        derivation: 'imported',
-        source: 'MASSLINE_ORBIT_DEFAULTS.releaseAdviseScore',
+    pumpGain: {
+      id: 'pumpGain',
+      status: 'partial',
+      owner: 'T06',
+      quantitySpace: 'breakFraction01',
+      bandSets: ['reel.risk'],
+      summary:
+        'DETECTION is live: a pump stroke is a sustained reel-in against a genuinely loaded line, '
+        + 'armed and debounced so a held reel is one pump rather than one per tick, with the strain '
+        + 'at the pump moment reported as risk. GAIN measurement is not live (no quantity records '
+        + 'energy delivered to the swing), but the PHYSICAL CEILING is grounded: a stroke cannot bank '
+        + 'more swing energy than the winch efficiency of mechanical energy paid. The stacking law is '
+        + 'the live REEL_PUMP_ARM/RESET debounce (one stroke per arm->reset cycle). T06 owns authored '
+        + 'budgets that must sit at or below that ceiling.',
+      sources: [
+        { path: 'src/systems/masslineTelemetry.js', symbol: '_stepReelPump', derivation: 'copied' },
+        { path: 'src/combat/masslineOrbitTelemetry.js', symbol: 'reelRisk', derivation: 'imported' },
+        { path: 'src/core/constraints/masslineController.js', symbol: 'workJ (cost-side only)', derivation: 'imported' },
+      ],
+      tolerances: {
+        pumpArmStrength: {
+          value: 0.55,
+          space: 'quality01',
+          derivation: 'copied',
+          source: 'src/systems/masslineTelemetry.js REEL_PUMP_ARM (module-private)',
+        },
+        pumpResetStrength: {
+          value: 0.15,
+          space: 'quality01',
+          derivation: 'copied',
+          source: 'src/systems/masslineTelemetry.js REEL_PUMP_RESET (module-private)',
+        },
+        reelIntentDeadzone: {
+          value: D.reelIntentDeadzone,
+          space: 'quality01',
+          derivation: 'imported',
+          source: 'MASSLINE_ORBIT_DEFAULTS.reelIntentDeadzone',
+        },
+        winchEfficiency: {
+          value: M.efficiency,
+          space: 'quality01',
+          derivation: 'imported',
+          source: 'DEFAULT_MASSLINE_DEF.efficiency — COST side: mechanicalEnergy = radialWork / this',
+        },
+        gainBudgetPerStroke: {
+          value: M.efficiency,
+          space: 'quality01',
+          derivation: 'derived',
+          source:
+            'src/core/constraints/masslineController.js workJ and DEFAULT_MASSLINE_DEF.efficiency',
+          note:
+            'Per-stroke swing energy gained over mechanical energy paid. Conservation through the '
+            + 'winch: the swing cannot bank more than the winch\'s own efficiency of what the player '
+            + 'paid (mechanicalEnergy = radialWork / efficiency on the cost side, so '
+            + 'gain <= paid * efficiency). T06\'s authored budget must sit at or below this physical '
+            + 'ceiling; above it is perpetual motion.',
+        },
+        gainStackingLimit: {
+          value: 1,
+          space: 'count',
+          derivation: 'behavioural',
+          source:
+            'src/systems/masslineTelemetry.js _stepReelPump REEL_PUMP_ARM/RESET debounce',
+          note:
+            'Strokes per arm->reset cycle. The shipped debounce law: a held reel fires ONE stroke '
+            + 'when reelStrength crosses 0.55 while loaded and cannot fire again until it decays '
+            + 'below 0.15. This IS the roadmap\'s non-stacking spool invariant, already live in '
+            + 'telemetry.',
+        },
       },
     },
-  },
 
-  break: {
-    id: 'break',
-    status: 'live',
-    owner: 'T10',
-    quantitySpace: 'overloadRatio',
-    bandSets: ['break.overload'],
-    summary:
-      'The line ceasing to exist. Overload is the max of the tension, impulse, and yank ratios '
-      + 'against their budgets, so 1.0 is the budget edge by construction. A ratio above 1 '
-      + 'accumulates overload time and eats integrity; crossing the grace window, exhausting '
-      + 'integrity, or hitting the catastrophic ratio cuts the line. The sustained-load harden '
-      + 'term only ever RAISES the yank budget, so it can never introduce a break that would not '
-      + 'have happened at rest.',
-    sources: [
-      { path: 'src/core/constraints/masslineController.js', symbol: 'stepMassline', derivation: 'imported' },
-      { path: 'src/data/combatDefs.js', symbol: 'ATTACHMENT_DEFS[].break', derivation: 'imported' },
-    ],
-    tolerances: {
-      overloadRatioEdge: {
-        value: 1,
-        space: 'overloadRatio',
-        derivation: 'structural',
-        source: 'Definition of a ratio-to-budget; not a tuned threshold.',
-      },
-      catastrophicRatio: {
-        value: DEFAULT_MASSLINE_DEF.catastrophicRatio,
-        space: 'overloadRatio',
-        derivation: 'imported',
-        source: 'DEFAULT_MASSLINE_DEF.catastrophicRatio',
-      },
-      overloadGraceDefaultS: {
-        value: DEFAULT_MASSLINE_DEF.overloadGraceS,
-        space: 'timeS',
-        derivation: 'imported',
-        source: 'DEFAULT_MASSLINE_DEF.overloadGraceS',
-      },
-      overloadGraceTetherStandardS: {
-        value: TETHER_STANDARD.massline.overloadGraceS,
-        space: 'timeS',
-        derivation: 'imported',
-        source: "ATTACHMENT_DEFS['tether_standard'].massline.overloadGraceS",
-      },
-      hardenMax: {
-        value: 0.85,
-        space: 'quality01',
-        derivation: 'copied',
-        source: 'src/core/constraints/masslineController.js harden clamp ceiling (inline literal)',
-      },
-      nearBreakStrain: {
-        value: 0.75,
-        space: 'breakFraction01',
-        derivation: 'copied',
-        source:
-          'src/systems/masslineThreats.js THREAT_NEAR_BREAK_STRAIN (module-private). Applied to '
-          + 'tether.strain, i.e. the tetherStandard calibration — see collisions.',
+    releaseQuality: {
+      id: 'releaseQuality',
+      status: 'live',
+      owner: 'T07',
+      quantitySpace: 'quality01',
+      bandSets: ['release.quality'],
+      summary:
+        'How well a cut converts the swing into exit velocity. score = tangentQuality * usefulLoad * '
+        + '(1 - overloadPenalty): you are rewarded for swinging rather than being dragged, for '
+        + 'having real load to release, and penalised for cutting an overloaded line.',
+      sources: [
+        { path: 'src/combat/masslineOrbitTelemetry.js', symbol: 'release', derivation: 'imported' },
+        { path: 'src/systems/tetherGameplay.js', symbol: 'rateRelease', derivation: 'behavioural' },
+      ],
+      tolerances: {
+        usefulLoad: {
+          value: D.releaseUsefulLoad,
+          space: 'breakFraction01',
+          derivation: 'imported',
+          source: 'MASSLINE_ORBIT_DEFAULTS.releaseUsefulLoad',
+        },
+        overloadKnee: {
+          value: D.releaseOverloadKnee,
+          space: 'breakFraction01',
+          derivation: 'imported',
+          source: 'MASSLINE_ORBIT_DEFAULTS.releaseOverloadKnee',
+        },
+        overloadSpan: {
+          value: D.releaseOverloadSpan,
+          space: 'breakFraction01',
+          derivation: 'imported',
+          source: 'MASSLINE_ORBIT_DEFAULTS.releaseOverloadSpan',
+        },
+        adviseScore: {
+          value: D.releaseAdviseScore,
+          space: 'quality01',
+          derivation: 'imported',
+          source: 'MASSLINE_ORBIT_DEFAULTS.releaseAdviseScore',
+        },
       },
     },
-  },
 
-  escape: {
-    id: 'escape',
-    status: 'provisional',
-    owner: 'T09',
-    quantitySpace: null,
-    bandSets: [],
-    summary:
-      'Breaking free of a line that something else put on you, and the player-readable response '
-      + 'window for doing so. NOT LIVE. A repo-wide search for escape/contest/response-window '
-      + 'vocabulary in the tether subtree returns only encounter-domain hits (pirate parley, '
-      + 'encounter scripts, heat) which belong to a different system family and must not be '
-      + 'borrowed. The closest massline adjacency is the CONTEST vocabulary in masslineThreats '
-      + '(hostiles inside a radius can contest a swing), which telegraphs a threat but defines no '
-      + 'escape. T09 owns counter-tether; T10 owns making escape consistent for player and AI.',
-    sources: [
-      { path: 'src/systems/masslineThreats.js', symbol: 'contest vocabulary (adjacent, not escape)', derivation: 'copied' },
-    ],
-    tolerances: {
-      responseWindowS: unresolved(
-        'T09',
-        'How long the player gets to react to a hostile latch before it takes hold. No live value.',
-      ),
-      contestRadiusWu: unresolved(
-        'T09',
-        'masslineThreats has a 260 wu "can contest the swing" radius, but that is a threat-'
-        + 'telegraph radius, not an escape rule. T09 must decide whether to reuse or replace it.',
-      ),
-      escapeSuccessThreshold: unresolved(
-        'T10',
-        'What counts as having escaped. T10 owns terminal-reason consistency across player and AI.',
-      ),
+    break: {
+      id: 'break',
+      status: 'live',
+      owner: 'T10',
+      quantitySpace: 'overloadRatio',
+      bandSets: ['break.overload'],
+      summary:
+        'The line ceasing to exist. Overload is the max of the tension, impulse, and yank ratios '
+        + 'against their budgets, so 1.0 is the budget edge by construction. A ratio above 1 '
+        + 'accumulates overload time and eats integrity; crossing the grace window, exhausting '
+        + 'integrity, or hitting the catastrophic ratio cuts the line. The sustained-load harden '
+        + 'term only ever RAISES the yank budget, so it can never introduce a break that would not '
+        + 'have happened at rest.',
+      sources: [
+        { path: 'src/core/constraints/masslineController.js', symbol: 'stepMassline', derivation: 'imported' },
+        { path: 'src/data/combatDefs.js', symbol: 'ATTACHMENT_DEFS[].break', derivation: 'imported' },
+      ],
+      tolerances: {
+        overloadRatioEdge: {
+          value: 1,
+          space: 'overloadRatio',
+          derivation: 'structural',
+          source: 'Definition of a ratio-to-budget; not a tuned threshold.',
+        },
+        catastrophicRatio: {
+          value: M.catastrophicRatio,
+          space: 'overloadRatio',
+          derivation: 'imported',
+          source: 'DEFAULT_MASSLINE_DEF.catastrophicRatio',
+        },
+        overloadGraceDefaultS: {
+          value: M.overloadGraceS,
+          space: 'timeS',
+          derivation: 'imported',
+          source: 'DEFAULT_MASSLINE_DEF.overloadGraceS',
+        },
+        overloadGraceTetherStandardS: {
+          value: TS.overloadGraceS,
+          space: 'timeS',
+          derivation: 'imported',
+          source: "ATTACHMENT_DEFS['tether_standard'].massline.overloadGraceS",
+        },
+        hardenMax: {
+          value: 0.85,
+          space: 'quality01',
+          derivation: 'copied',
+          source: 'src/core/constraints/masslineController.js harden clamp ceiling (inline literal)',
+        },
+        nearBreakStrain: {
+          value: 0.75,
+          space: 'breakFraction01',
+          derivation: 'copied',
+          source:
+            'src/systems/masslineThreats.js THREAT_NEAR_BREAK_STRAIN (module-private). Applied to '
+            + 'tether.strain, i.e. the tetherStandard calibration — see collisions.',
+        },
+      },
     },
-  },
-});
 
-// ---------------------------------------------------------------------------------------------
-// known collisions — the drift/ambiguity surface, stated rather than silently carried
-// ---------------------------------------------------------------------------------------------
+    escape: {
+      id: 'escape',
+      status: 'live',
+      owner: 'T09',
+      quantitySpace: null,
+      bandSets: [],
+      summary:
+        'Breaking free of a line that something else put on you, and the player-readable response '
+        + 'window for doing so. Tolerances below are COPIES of the LIVE masslineThreats contest '
+        + 'predicate (THREAT_HOSTILE_ETA_S / THREAT_COLLISION_HORIZON_S / THREAT_HOSTILE_RADIUS / '
+        + 'THREAT_HOSTILE_CLOSING_MIN) — T09 may refine the mechanics; the numbers are live copies, '
+        + 'not inventions. Escaped when the live contest predicate de-asserts: every contesting '
+        + 'hostile is beyond escapeRadiusWu OR closing below escapeClosingMaxWu. T10 still owns '
+        + 'making terminal reasons consistent for player and AI.',
+      sources: [
+        {
+          path: 'src/systems/masslineThreats.js',
+          symbol: 'contest predicate (THREAT_* live copies)',
+          derivation: 'copied',
+        },
+      ],
+      tolerances: {
+        responseWindowS: {
+          value: 8,
+          space: 'timeS',
+          derivation: 'copied',
+          source: 'src/systems/masslineThreats.js THREAT_HOSTILE_ETA_S',
+          note: 'The horizon within which a closing hostile is telegraphed as actionable.',
+        },
+        collisionHorizonS: {
+          value: 1.5,
+          space: 'timeS',
+          derivation: 'copied',
+          source: 'src/systems/masslineThreats.js THREAT_COLLISION_HORIZON_S',
+          note: 'Predicted-impact look-ahead.',
+        },
+        escapeRadiusWu: {
+          value: 260,
+          space: 'distanceWu',
+          derivation: 'copied',
+          source: 'src/systems/masslineThreats.js THREAT_HOSTILE_RADIUS',
+          note: 'A hostile beyond this cannot contest the swing.',
+        },
+        escapeClosingMaxWu: {
+          value: 12.5,
+          space: 'speedWu',
+          derivation: 'copied',
+          source: 'src/systems/masslineThreats.js THREAT_HOSTILE_CLOSING_MIN',
+          note: 'Below this closing speed a hostile is not genuinely closing.',
+        },
+      },
+      laws:
+        'Escaped when the live contest predicate de-asserts — every contesting hostile is beyond '
+        + 'escapeRadiusWu OR closing below escapeClosingMaxWu. T10 owns terminal-reason consistency.',
+    },
+  };
 
-export const MASSLINE_KNOWN_COLLISIONS = Object.freeze([
-  {
-    id: 'denominator-mismatch',
-    kind: 'calibration',
-    severity: 'high',
-    summary:
-      'The same breakFraction01 band literals are applied to values calibrated against denominators '
-      + `that differ by ~${Math.round(TETHER_STANDARD.breakTension / D.breakTension)}x.`,
-    detail:
-      `T01 loadRatio divides by ${D.breakTension} (a self-documented placeholder) while live `
-      + `tether.strain divides by ${TETHER_STANDARD.breakTension}. A 0.75 in one is not a 0.75 in `
-      + 'the other. classifyMassline() therefore REQUIRES the caller to declare the calibration '
-      + 'whenever the band set has one.',
-    affects: ['orbit.load', 'reel.risk'],
-    owner: 'T06',
-  },
-  {
-    id: 'good-word-reuse',
-    kind: 'vocabulary',
-    severity: 'medium',
-    summary: "The word 'good' names two different tolerances in two different ladders.",
-    detail:
-      "release.quality/good is 0.35; snapCatch.quality/good is 0.55. Both are quality01, so the "
-      + 'space guard cannot separate them — only the namespace can. Never pass a bare band name '
-      + 'across a module boundary.',
-    affects: ['release.quality', 'snapCatch.quality'],
-    owner: 'T07',
-  },
-  {
-    id: 'phase-alphabet-split',
-    kind: 'vocabulary',
-    severity: 'medium',
-    summary: "'capture' and 'taut' occupy the same slot in two different phase alphabets.",
-    detail:
-      'tetherPhase has slack/capture/loaded/overload; orbitLoadBand has slack/taut/loaded/overload. '
-      + 'A consumer switching on "the phase" gets a different alphabet depending on which subtree '
-      + 'it read. The split is intentional (capture is temporal, taut is instantaneous) but it is '
-      + 'nowhere declared, so it reads as a bug to anyone who meets it cold.',
-    affects: ['tetherPhase', 'orbitLoadBand'],
-    owner: 'T04',
-  },
-  {
-    id: 'triplicated-release-ladder',
-    kind: 'duplication',
-    severity: 'medium',
-    summary: 'The release/catch quality ladder exists in three independent copies.',
-    detail:
-      'masslineOrbitTelemetry (razor .85 / clean .65 / good .35), tetherGameplay.rateRelease (the '
-      + 'same bands re-declared as inline literals), and masslineTelemetry snap-catch (clean .85 / '
-      + 'good .55 / rough). T02 documents this without editing any of the three; consolidation is '
-      + 'a gameplay write and belongs to T07.',
-    affects: ['release.quality', 'snapCatch.quality'],
-    owner: 'T07',
-  },
-  {
-    id: 'presentation-load-is-not-strain',
-    kind: 'calibration',
-    severity: 'high',
-    summary: 'tether.load carries phase FLOORS and is not a physical break fraction.',
-    detail:
-      'computeTetherLoad returns max(strain * 2.5, phaseFloor), so a freshly-captured line reads '
-      + '0.35 at essentially zero physical tension. Feeding it to a breakFraction01 band set would '
-      + 'report load the line is not carrying. presentationLoad01 is a separate space for exactly '
-      + 'this reason.',
-    affects: ['orbit.load', 'reel.risk'],
-    owner: 'T15',
-  },
-]);
+  const collisions = [
+    {
+      id: 'denominator-mismatch',
+      kind: 'calibration',
+      severity: 'high',
+      summary:
+        'The same breakFraction01 band literals are applied to values calibrated against denominators '
+        + `that differ by ~${Math.round(TS.breakTension / D.breakTension)}x.`,
+      detail:
+        `T01 loadRatio divides by ${D.breakTension} (a self-documented placeholder) while live `
+        + `tether.strain divides by ${TS.breakTension}. A 0.75 in one is not a 0.75 in `
+        + 'the other. classifyMassline() therefore REQUIRES the caller to declare the calibration '
+        + 'whenever the band set has one.',
+      affects: ['orbit.load', 'reel.risk'],
+      owner: 'T06',
+    },
+    {
+      id: 'good-word-reuse',
+      kind: 'vocabulary',
+      severity: 'medium',
+      summary: "The word 'good' names two different tolerances in two different ladders.",
+      detail:
+        "release.quality/good is 0.35; snapCatch.quality/good is 0.55. Both are quality01, so the "
+        + 'space guard cannot separate them — only the namespace can. Never pass a bare band name '
+        + 'across a module boundary.',
+      affects: ['release.quality', 'snapCatch.quality'],
+      owner: 'T07',
+    },
+    {
+      id: 'phase-alphabet-split',
+      kind: 'vocabulary',
+      severity: 'medium',
+      summary: "'capture' and 'taut' occupy the same slot in two different phase alphabets.",
+      detail:
+        'tetherPhase has slack/capture/loaded/overload; orbitLoadBand has slack/taut/loaded/overload. '
+        + 'A consumer switching on "the phase" gets a different alphabet depending on which subtree '
+        + 'it read. The split is intentional (capture is temporal, taut is instantaneous) but it is '
+        + 'nowhere declared, so it reads as a bug to anyone who meets it cold.',
+      affects: ['tetherPhase', 'orbitLoadBand'],
+      owner: 'T04',
+    },
+    {
+      id: 'triplicated-release-ladder',
+      kind: 'duplication',
+      severity: 'medium',
+      summary: 'The release/catch quality ladder exists in three independent copies.',
+      detail:
+        'masslineOrbitTelemetry (razor .85 / clean .65 / good .35), tetherGameplay.rateRelease (the '
+        + 'same bands re-declared as inline literals), and masslineTelemetry snap-catch (clean .85 / '
+        + 'good .55 / rough). T02 documents this without editing any of the three; consolidation is '
+        + 'a gameplay write and belongs to T07.',
+      affects: ['release.quality', 'snapCatch.quality'],
+      owner: 'T07',
+    },
+    {
+      id: 'presentation-load-is-not-strain',
+      kind: 'calibration',
+      severity: 'high',
+      summary: 'tether.load carries phase FLOORS and is not a physical break fraction.',
+      detail:
+        'computeTetherLoad returns max(strain * 2.5, phaseFloor), so a freshly-captured line reads '
+        + '0.35 at essentially zero physical tension. Feeding it to a breakFraction01 band set would '
+        + 'report load the line is not carrying. presentationLoad01 is a separate space for exactly '
+        + 'this reason.',
+      affects: ['orbit.load', 'reel.risk'],
+      owner: 'T15',
+    },
+  ];
 
-/** Every tolerance that is an unpinned copy of a module-private literal, i.e. the drift surface. */
-export const MASSLINE_UNPINNED_COPIES = Object.freeze(collectUnpinnedCopies());
+  const unpinnedCopies = collectUnpinnedCopies(terms, bandSets);
 
-function collectUnpinnedCopies() {
+  return deepFreeze({
+    schema: MASSLINE_INVARIANTS_SCHEMA,
+    version: MASSLINE_INVARIANTS_VERSION,
+    quantitySpaces,
+    alphabets,
+    bandSets,
+    terms,
+    collisions,
+    unpinnedCopies,
+  });
+}
+
+function collectUnpinnedCopies(terms, bandSets) {
   const out = [];
-  for (const term of Object.values(MASSLINE_TERMS)) {
+  for (const term of Object.values(terms)) {
     for (const [key, tol] of Object.entries(term.tolerances)) {
       if (isUnresolved(tol)) continue;
       if (tol.derivation === 'copied') out.push({ term: term.id, tolerance: key, source: tol.source });
     }
   }
-  for (const set of Object.values(MASSLINE_BAND_SETS)) {
+  for (const set of Object.values(bandSets)) {
     for (const tier of set.tiers) {
       if (tier.derivation === 'copied') {
         out.push({ bandSet: set.id, tier: tier.id, source: set.source });
@@ -735,19 +886,16 @@ function collectUnpinnedCopies() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// the assembled machine-readable document
+// the assembled machine-readable document (live calibration)
 // ---------------------------------------------------------------------------------------------
 
-export const MASSLINE_INVARIANTS = deepFreeze({
-  schema: MASSLINE_INVARIANTS_SCHEMA,
-  version: MASSLINE_INVARIANTS_VERSION,
-  quantitySpaces: MASSLINE_QUANTITY_SPACES,
-  alphabets: MASSLINE_ALPHABETS,
-  bandSets: MASSLINE_BAND_SETS,
-  terms: MASSLINE_TERMS,
-  collisions: MASSLINE_KNOWN_COLLISIONS,
-  unpinnedCopies: MASSLINE_UNPINNED_COPIES,
-});
+export const MASSLINE_INVARIANTS = buildMasslineInvariants(liveCalibrationSource());
+export const MASSLINE_QUANTITY_SPACES = MASSLINE_INVARIANTS.quantitySpaces;
+export const MASSLINE_ALPHABETS = MASSLINE_INVARIANTS.alphabets;
+export const MASSLINE_BAND_SETS = MASSLINE_INVARIANTS.bandSets;
+export const MASSLINE_TERMS = MASSLINE_INVARIANTS.terms;
+export const MASSLINE_KNOWN_COLLISIONS = MASSLINE_INVARIANTS.collisions;
+export const MASSLINE_UNPINNED_COPIES = MASSLINE_INVARIANTS.unpinnedCopies;
 
 // ---------------------------------------------------------------------------------------------
 // accessors
@@ -761,7 +909,9 @@ export const MASSLINE_INVARIANTS = deepFreeze({
  * silently applied to a value from another is the defect class this module exists to name.
  *
  * Fail-closed and total: never throws, never returns undefined. Non-finite input is a rejection,
- * not a NaN comparison that quietly lands in the floor tier.
+ * not a NaN comparison that quietly lands in the floor tier. Values outside the declared quantity
+ * space domain are rejected with reason 'out-of-domain' before band lookup. Values inside an
+ * unbounded domain (e.g. overloadRatio at Number.MAX_VALUE) classify deterministically.
  *
  * @returns {{ok: boolean, band: string|null, reason: string|null, bandSet: string|null}}
  */
@@ -784,6 +934,14 @@ export function classifyMassline(bandSetId, value, declared = {}) {
   }
 
   if (!Number.isFinite(value)) return reject('non-finite-value', bandSetId);
+
+  // Domain enforcement BEFORE band lookup. Fail-closed: out-of-domain never reaches a tier.
+  const space = MASSLINE_QUANTITY_SPACES[set.space];
+  if (space && Array.isArray(space.domain)) {
+    const [lo, hi] = space.domain;
+    if (Number.isFinite(lo) && value < lo) return reject('out-of-domain', bandSetId);
+    if (Number.isFinite(hi) && value > hi) return reject('out-of-domain', bandSetId);
+  }
 
   for (const tier of set.tiers) {
     if (tier.min === null) return { ok: true, band: tier.id, reason: null, bandSet: bandSetId };
@@ -850,6 +1008,19 @@ export function validateMasslineInvariants(doc) {
   if (!doc || typeof doc !== 'object' || Array.isArray(doc)) {
     return { ok: false, errors: ['document must be a plain object'] };
   }
+
+  // Exact top-level key set: missing OR extra is an error.
+  const topKeys = Object.keys(doc).sort();
+  const requiredTop = [...MASSLINE_REQUIRED_TOP_LEVEL_KEYS].sort();
+  for (const key of requiredTop) {
+    if (!(key in doc)) push(`missing required top-level key '${key}'`);
+  }
+  for (const key of topKeys) {
+    if (!MASSLINE_REQUIRED_TOP_LEVEL_KEYS.includes(key)) {
+      push(`unexpected top-level key '${key}'`);
+    }
+  }
+
   if (doc.schema !== MASSLINE_INVARIANTS_SCHEMA) push(`schema must be '${MASSLINE_INVARIANTS_SCHEMA}'`);
   if (!Number.isInteger(doc.version) || doc.version < 1) push('version must be a positive integer');
 
@@ -868,6 +1039,29 @@ export function validateMasslineInvariants(doc) {
   const terms = plainObject(doc.terms);
   if (!terms) push('terms must be a plain object');
   else validateTerms(terms, spaces || {}, bandSets || {}, push);
+
+  // Both directions: every band set must be referenced by at least one term.
+  if (terms && bandSets) {
+    const referenced = new Set();
+    for (const term of Object.values(terms)) {
+      if (Array.isArray(term.bandSets)) {
+        for (const id of term.bandSets) referenced.add(id);
+      }
+    }
+    for (const id of Object.keys(bandSets)) {
+      if (!referenced.has(id)) {
+        push(`bandSets.${id} is not referenced by any term`);
+      }
+    }
+  }
+
+  if (!Array.isArray(doc.collisions)) {
+    push('collisions must be an array');
+  }
+
+  if (!Array.isArray(doc.unpinnedCopies)) {
+    push('unpinnedCopies must be an array');
+  }
 
   return { ok: errors.length === 0, errors };
 }
@@ -983,6 +1177,18 @@ function validateBandSets(bandSets, spaces, push) {
 
 function validateTerms(terms, spaces, bandSets, push) {
   const STATUSES = new Set(['live', 'partial', 'provisional']);
+
+  // Exact v1 term set: missing OR extra is an error.
+  const termKeys = Object.keys(terms);
+  for (const required of MASSLINE_REQUIRED_TERMS) {
+    if (!(required in terms)) push(`missing required term '${required}'`);
+  }
+  for (const key of termKeys) {
+    if (!MASSLINE_REQUIRED_TERMS.includes(key)) {
+      push(`unexpected term '${key}' (v1 requires exactly: ${MASSLINE_REQUIRED_TERMS.join(', ')})`);
+    }
+  }
+
   for (const [key, term] of Object.entries(terms)) {
     const at = `terms.${key}`;
     if (!plainObject(term)) { push(`${at} must be a plain object`); continue; }
@@ -1086,11 +1292,5 @@ function deepFreeze(value, visited = new WeakSet()) {
   return value;
 }
 
-// Freeze the exported sub-documents too: a consumer holding MASSLINE_TERMS directly must get the
-// same immutability guarantee as one holding MASSLINE_INVARIANTS.
-deepFreeze(MASSLINE_QUANTITY_SPACES);
-deepFreeze(MASSLINE_ALPHABETS);
-deepFreeze(MASSLINE_BAND_SETS);
-deepFreeze(MASSLINE_TERMS);
-deepFreeze(MASSLINE_KNOWN_COLLISIONS);
-deepFreeze(MASSLINE_UNPINNED_COPIES);
+// unresolved() is kept for the validator's unresolved-tolerance path and for future forward refs.
+void unresolved;
