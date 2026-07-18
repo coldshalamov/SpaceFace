@@ -13,7 +13,7 @@ Program. Detailed behavior remains in the linked source plans; this file owns st
 | M0-ASSET-INTEGRITY | OPEN | Reconcile the 15 source-manifest residuals and every existing graphics candidate; remove evaluator/self-score weaknesses; enforce provenance, required views, LOD, collision, wiring, and performance receipts. | Asset-status/reachability/live checks, classification records, durable source/license evidence, and normal-route visual review. |
 | M0-CALIBRATION | OPEN | Calibrate the available image/model/Blender generation and review capabilities against the professional visual bar, recording which workflows reliably produce shippable results. | Reproducible capability trials with retained inputs/outputs, independent visual verdicts, and explicit pipeline decisions. |
 | M0-PRODUCTION | OPTIONAL DEBT | SAFE remains supervised/controller-waived, not accepted; automated hash-bound integration/controller machinery remains unfinished. | Only required for fully autonomous external mutation, not supervised game work. |
-| M1-ROUTE | RED | Repair ordinary autopilot so the strict route reaches and holds the Helios dock prompt. Current best 294.777 WU, final 324.520 WU. | Complete uninjected New Game→objective→map→flight→dock route. |
+| M1-ROUTE | RED — **re-measured 2026-07-18, the stated cause is wrong** | The "repair ordinary autopilot / best 294.777 WU, final 324.520 WU" description no longer matches observed behavior. See the re-measurement note below this table before acting on this row. | Complete uninjected New Game→objective→map→flight→dock route. |
 | M1-FOCUS | PARTIAL | Five cluttered exact-target flybys with correct 50% timing, deterministic target ownership, and escape/counterplay. | Held-out public keyboard/gamepad routes and media. |
 | M1-CAMERA | PARTIAL | Capture and review current two-ship composition, ease, overflow, reduced-motion, and tether framing. | Fresh before/after media plus `check:camera`. |
 | M1-TETHER | PARTIAL | Prove standard +30% limits, operational mass, non-stacking spools, and starter survivability naturally. | `check:m1:tether-mass`, tether floor, sim compare, public benchmark. |
@@ -35,6 +35,68 @@ Program. Detailed behavior remains in the linked source plans; this file owns st
 | M6-PERFORMANCE | RED | Repair 49.4 ms p95, 75 hitches, 22.9 ms callback p95, 6.9 ms sim p95, launch delay, missing autosave completion, high heap trajectories, and the remaining multiple-KTX2-loader lifecycle warning without reducing quality. | Fresh headed frame/startup/memory profiles on target and floor hardware, including decoder/loader lifecycle evidence. |
 | M6-VISUAL-DEFECTS | OPEN | Repair accepted-presentation defects still visible in current routes: Hitch engine glare destroys the silhouette and Helios contains opaque/unshaded geometry. | Same-framing browser/Electron captures, independent visual acceptance, asset/live/visual/perf checks. |
 | M6-RELEASE | PARTIAL | Real browser/Electron store capture, parity, localization, accessibility, corrupt-save/migration, resize/alt-tab, platform soak, visual/audio coverage. | Full release matrix and, if the draft production policy is adopted, five clean waves. |
+
+### M1-ROUTE re-measurement (2026-07-18, at `2a355195`, dependencies verified present)
+
+The row above attributes the failure to autopilot and quotes a distance short of the dock. Neither
+survives re-measurement. Three observations, in the order they were taken:
+
+1. **The autopilot is not the defect.** `npm run check:autopilot` exits 0 and prints
+   `--- ALL V3 AUTOPILOT CHECKS PASSED ---`. That includes the live V3 + Rapier case
+   ("clears centered corridors/dense fields, reaccelerates, and arrives":
+   `completionTick` 1197–1210, `maxLateral` 345–354, `finalDistance` 37.84–37.87 WU), halfway reverse
+   burn, obstacle avoidance with side-commit and order-independent escape, the avoidance lifecycle,
+   assisted/drift/newtonian modes, and `ui:setCourse → nav.autopilot`.
+2. **The route no longer reaches flight at all.**
+   `npm run check:professional-travel:public-route:browser` marks `observers-armed`,
+   `intro-dismissed`, `main-menu-visible`, `new-game-visible` — then clicks Launch and dies on
+   `page.waitForFunction: Timeout 150000ms exceeded` waiting for flight-ready. The next milestone,
+   `authored-flight-ready`, never fires. A 294 WU distance-to-dock cannot be produced by a run that
+   never enters flight, so that figure is stale, not current.
+3. **A second harness fails even earlier.** `npm run check:wave15-flight-boot` fails at
+   `AssertionError: New Game button` — the click helper returns false.
+
+4. **A fourth observation overturns 2 and 3.** The `G01` public pilot — written fresh against verified
+   game seams and forbidden by its own static contract from injecting state — **completes the corridor
+   through ordinary public input**, three times (two by its author, one independently by the lead):
+
+   | Run | Armed from | Closest approach | Dock | Result |
+   |---|---|---|---|---|
+   | author, `--stop=first-station` | 1328.586 WU | **152.111 WU** | `station_helios`, 1 public KeyE hold | PASS |
+   | author, `--stop=full` | 1283.341 WU | **155.158 WU** | 1 public KeyE hold | PASS, 13/13 milestones |
+   | lead, independent | — | — | first-dock @78.1s | PASS, clean teardown |
+
+   The `--stop=full` run reached `service-used` (market, 2 service events), `save-written`
+   (slot `quick`), `continue-restored` (flight, `sector_helios_prime`), and `clean-teardown`, with
+   0 console errors, 0 page errors, and no leaked resources. The dock is not a selector
+   false-positive: the capture shows the full Helios Station UI (HELIOS STATION / Trade Hub Class L,
+   FIRST DOCK HANDOFF banner, UNDOCK READY, 2 active missions).
+
+   Both closest approaches are far **inside** the 294.777 WU the row calls a RED best.
+
+**Revised conclusion.** The corridor route is reachable on the current tree. Observations 2 and 3 are
+therefore most likely **stale harness predicates and selectors**, not a game defect — `G01`'s author
+records that their own first draft guessed `KeyF` and invented selectors before being corrected
+against source to `KeyE` and `.sf-alert--dock`, which is exactly the failure mode an older harness
+would exhibit. That the two old harnesses fail at two *different* points supports harness drift over a
+single hard break.
+
+This is not yet proof that the old harnesses are wrong, and it is not a promotion of `M1-ROUTE`:
+
+- All runs were on a dirty tree. `G01`'s author notes the dirty foreign map/nav files
+  (`src/ui/galaxyMap.js`, `src/ui/navigation/localSpaceMapModel.js`, `src/systems/world.js`) may
+  themselves be what makes the approach work, in which case the improvement belongs to the
+  `MAP-2026-07-18` lane and is uncommitted.
+- No run was done against a clean `bfb23570` checkout, so HEAD-vs-dirty attribution stays open.
+- No Electron run was attempted.
+
+**Required next action is measurement, not repair.** Re-measure `M1-ROUTE` with `G01` on a clean
+checkout and on the dirty tree, then repair whichever of the game or the old harnesses the delta
+names. Do **not** fund autopilot repair against this row: the autopilot acceptance surface is green
+and the public route now docks.
+
+`G04` is `ATTEMPTED_STILL_RED` rather than complete — the diagnosis landed and inverted the row's
+stated cause, but no repair was made and no clean-tree attribution exists.
 
 ## Depth Program roll-up
 

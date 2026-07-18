@@ -4,9 +4,18 @@
 integrated by `77a09790`, `32596ec7`, and `bfb23570`.
 
 **Observed tree at refresh:** base `bfb23570`, index empty, 3 commits ahead of `origin/master`,
-28 dirty foreign paths totalling +4540/-1670 (foreign `git diff` object `4028ca7b`). That digest is
+**29** dirty foreign paths totalling +4540/-1670 (foreign `git diff` object `4028ca7b`). That digest is
 the tamper detector for this sprint: if it changes, a lease owner is live and the lead re-reviews
 before staging anything.
+
+> **A lease owner is LIVE.** At 07:52 and again at 07:58 on 2026-07-18, `src/ui/galaxyMap.js` changed
+> under the sprint — +80 lines adding an `entityHomeSector()` helper, suppressing foreign-sector gate
+> twins from SYSTEM survey (a "Gate → Helios Prime" listed while standing in Helios Prime, which also
+> blew the auto-fit span out ~8x), a kill subscription, and intel-sync throttling. This is map-domain
+> work by the `MAP-2026-07-18` owner, not sprint work. It is preserved untouched and was never staged.
+> Consequence: the foreign digest is generational, not fixed. Re-derive it before every staging
+> decision rather than comparing against a stale pin. `A03`, `G07`, `W05`, and `R03` are confirmed
+> `BLOCKED_BY_LEASE` by observation, not merely by the board.
 
 This is the volatile pickup board. It answers only: what is being integrated, which paths are occupied,
 and what may be claimed next. Scope and dependencies live in [`roadmap/README.md`](./roadmap/README.md);
@@ -70,6 +79,85 @@ anchors (`src/combat/trace.js`, `src/systems/e1EncounterRuntime.js`, `src/system
 no Git authority whatsoever. Only the lead writes to the primary worktree. This is a preservation
 measure, not a convenience: the 28 foreign paths are uncommitted and unrecoverable, so a single
 worker-side `checkout`/`clean`/`stash` would destroy another lane's work with no backup.
+
+## Sprint 2 packet status
+
+Integrated this sprint, at the commits named. Terminal states are not collapsed into "done".
+
+| Packet | State | Commit | Proof at that commit |
+|---|---|---|---|
+| `G01` | `FOCUSED_GREEN` + `INTEGRATED` | `d5e0d6e7` | `node --test test/gold-corridor-public-pilot-contract.test.mjs` 31/31; `npm run check:launch-policy` OK |
+| `T01` | `FOCUSED_GREEN` + `INTEGRATED` | `cd784532` | `node --test test/massline-orbit-telemetry.test.mjs` 26/26 |
+| `A01` | `FOCUSED_GREEN` + `INTEGRATED` | `cd784532` | `node --test test/asteroid-formation-model.test.mjs` 31/31 |
+| `W01` | `FOCUSED_GREEN` + `INTEGRATED` | `cd784532` | `node --test test/e1-encounter-phase-dispatch.test.mjs` 14/14; no extraction required |
+| `G04` | `ATTEMPTED_STILL_RED` | diagnosis only | Inverted the row's stated cause. `check:autopilot` fully green; `G01` docks Helios at 152.1/155.2 WU through public input. No repair, no clean-tree attribution. |
+
+Each of the four green packets was independently adversarially reviewed by a separate agent that
+re-ran the acceptance commands, audited the write-set against the foreign path list, grepped for
+`Math.random`/`Date.now`/`three` imports, confirmed no `*.expected.json` was touched, and mutation-
+tested the subject where applicable. `A01` was returned `CONFIRMED_FOCUSED_GREEN` **with a must-fix**;
+that fix landed in `5c1d9c0c` and raised its suite from 31 to 33.
+
+`W01` is explicitly coverage-only: the existing `encounterDirector` / `e1EncounterRuntime` seam held
+under adversarial probing, so `src/systems/e1EncounterPhases.js` was NOT created. The protocol requires
+saying so rather than implying the characterization exposed a defect.
+
+None of the four is wired into the runtime. That is deliberate and is what makes them provably
+hash-inert: `grep` over `src/`, `scripts/`, `test/`, and `package.json` finds no reference to any of
+them outside their own tests. Runtime consumption begins at `T03`/`T04`, `A02`/`A03`, and `W03`–`W06`.
+
+## Returned integration requests — real defects found, deliberately NOT fixed
+
+`W01` probed the encounter dispatch seam and found two genuine defects in `encounterDirector.js`.
+That file is outside `W01`'s write-set, so they were returned as integration requests rather than
+fixed inside the packet, exactly as the protocol requires. They remain OPEN:
+
+1. `_onChoose` guards only on `live.phase === 'done'`. A consumed offer therefore re-dispatches once a
+   handler advances to a non-terminal internal phase (e.g. h6 `waiting_battle`).
+2. `_recordPlayerChoiceLine` runs before `handler.choose` and unconditionally, so any accepted
+   re-dispatch appends a duplicate entry to `state.story.playerChoiceLines`.
+
+Optional hardening, lead's call: h6's `choose` `wait` branch could no-op when `live.phase` is already
+`waiting_battle`, and `finish()` could early-return on an already-resolved live record.
+
+These are single-writer/duplicate-event defects in a live runtime owner. Fixing them changes
+simulation behavior and must be sequenced with its own golden-safety review — not folded into a
+contract packet.
+
+`A01` had one real defect of its own, found by adversarial review and fixed in `5c1d9c0c`: `r4()`
+returned `Infinity` for finite inputs above ~1.8e304 because it validated the input rather than the
+rounded result, and the degenerate-input fixture capped at 1e12 — 292 orders of magnitude short of
+the overflow. The lesson generalizes: a fail-closed contract is only as good as the magnitude its
+fixtures actually reach.
+
+## Sprint 2 branch anomaly — read before assuming where the work is
+
+At `07:40:44` on 2026-07-18, mid-sprint, the working tree moved from `master` to a new branch
+`feat/map-ux-polish-pass` (reflog: `checkout: moving from master to feat/map-ux-polish-pass` at
+`2a355195`). Sprint 2 did not do this; the branch name matches the `MAP-2026-07-18` lane, whose owner
+was independently observed editing `src/ui/galaxyMap.js` at 07:52, 07:58, and 08:26.
+
+Consequence: `master` still points at `2a355195` (the Wave-0 reconciliation), while the four later
+Sprint 2 commits sit on `feat/map-ux-polish-pass`. Nothing is lost — that branch is exactly
+`master` + Sprint 2's commits, and the foreign lane has committed nothing — but Sprint 2 work is
+**not reachable from `master`**.
+
+The lead deliberately did not move any ref. Fast-forwarding `master` would be trivially reversible,
+but the branch was created by another live lane and re-pointing a shared ref is that lane's decision,
+not this sprint's. Resolve the ownership question first, then fast-forward or cherry-pick.
+
+## Pre-existing reds — measured, attributed, and NOT caused by Sprint 2
+
+| Check | State | Attribution |
+|---|---|---|
+| `check:encounter-director` | RED | `two-day soak should produce encounters (got 2)` at `check-encounter-director.mjs:171`. This is the `W06` outcome. `CONTENT-2026-07-18` is concurrently editing `narrative.js` (+64), `wreckMissions.js` (+38), and four flavor packs. `W01` names this command in its acceptance and must neither be blamed for it nor "fix" it. |
+| `check:save-schema` | RED | Two independent causes. (a) `$.sites` — pre-existing **committed** debt: `sites` is absent from `gameState.js` at HEAD and in the tree; it enters via the save payload from the asteroid-sites feature, which shipped without regenerating `SAVE_SCHEMA.md` (last written 2026-07-14, `850c80f3`). (b) `$.settings.video.bloomThreshold` 0.72→1 — **foreign dirty**: `git diff -w --ignore-blank-lines src/core/gameState.js` shows that value is the file's ONLY real change; the rest of its diff is line-ending churn. |
+| `check:sim:compare`, `check:sim:v3:compare` | `ok`/`hashEqual` true, stale expected envelopes | Pre-existing. Unchanged by Sprint 2 — see the golden gate below. |
+
+> **Do not run `node scripts/generate-save-schema.mjs --write` to clear the save-schema red.**
+> Regenerating would bake the MAP/render lane's *uncommitted* `bloomThreshold` value into a committed
+> artifact, silently capturing another lane's WIP. `A02`, `G02`, and `G03` must treat this as a known
+> red with the attribution above and must not touch `SAVE_SCHEMA.md` while `gameState.js` is leased.
 
 ## Ready to claim
 

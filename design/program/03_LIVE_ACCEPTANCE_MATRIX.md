@@ -1,13 +1,40 @@
 # Live Acceptance Matrix
 
-**Audit date:** 2026-07-14
+**Audit date:** 2026-07-14 for the M0–M6 and Depth rows below.
+**Sprint 2 packet rows appended 2026-07-18** at commits `4f750412`, `cd784532`, `d5e0d6e7`; those rows
+carry their own evidence and do not promote any milestone row.
+
+## Sprint 2 — Corridor Contract Wave packet rows
+
+| Packet | Terminal state | Evidence at commit | Commit | Blocking lease |
+|---|---|---|---|---|
+| `G01` | `FOCUSED_GREEN` + `INTEGRATED` | contract test 31/31; `check:launch-policy` OK | `d5e0d6e7` | — |
+| `T01` | `FOCUSED_GREEN` + `INTEGRATED` | `test/massline-orbit-telemetry.test.mjs` 26/26 | `cd784532` | — |
+| `A01` | `FOCUSED_GREEN` + `INTEGRATED` | `test/asteroid-formation-model.test.mjs` 33/33 after the `5c1d9c0c` r4 overflow fix (31/31 as first landed) | `cd784532`, `5c1d9c0c` | — |
+| `W01` | `FOCUSED_GREEN` + `INTEGRATED` (coverage-only) | `test/e1-encounter-phase-dispatch.test.mjs` 14/14; seam held, no extraction | `cd784532` | — |
+| `G04` | `ATTEMPTED_STILL_RED` | Diagnosis landed and **inverted the row's stated cause**: autopilot is fully green, and the `G01` pilot docks Helios through public input at 152.1 / 155.2 WU — inside the 294.777 WU the ledger calls a RED best. No repair made; no clean-tree attribution. | — | measurement, not lease |
+| `A03`, `G07` | `BLOCKED_BY_LEASE` | write-set needs `src/render/renderer.js` / `bloom.js`, both dirty | — | `MAP-2026-07-18` |
+| `W05` | `BLOCKED_BY_LEASE` | write-set needs HUD/map; `galaxyMap.js` observed changing twice mid-sprint | — | `MAP-2026-07-18` |
+| `G08` | `NOT_STARTED (dependency)` | depends on `G07` (blocked), `A04`, `A05` | — | via `G07` |
+| `G02`, `G03`, `G05`, `G06`, `T02`, `T03`, `T04`, `A02`, `A04`, `A05`, `W02`, `W03`, `W04`, `W06` | `READY` / `READY-PENDING`, not started | contracts expanded in `roadmap/05_SPRINT2_READY_CONTRACTS.md` | — | save-schema mutex for `A02`/`G02`/`G03` |
+
+**4 of the sprint's 23 packets reached a declared terminal state.** With `F01–F17` that is 21/113
+(18.58%) of the packet program — not the 40/113 the sprint scoped. No packet is claimed beyond its
+proved state, and no blocked packet was substituted with an easier one.
+
+The four green packets are contracts and a harness. None is wired into the runtime, so none of them
+moves any player-facing acceptance row below. `M1-ROUTE` in particular is **not** improved by this
+sprint; it is re-measured and re-attributed (see `02_REMAINING_WORK.md`), which changes what the next
+lane should repair, not whether it is repaired.
+
+**Audit date (original rows):** 2026-07-14
 
 **Purpose:** prevent implemented code or focused checks from being mistaken for a finished milestone.
 
 | Track | Implementation | Fresh focused/current check | Public-route truth | Evidence truth | Conditional clean waves | Exit status |
 |---|---|---|---|---|---:|---|
 | M0 | Broad evidence/observatory foundations | Contract self-test green; live corpus RED: 13 issues / 20 records | Current-revision baseline not rerun | Old baselines exist; corpus invalid | 0 recorded | NOT EXITED |
-| M1 | Focus, camera, tether, doctrines, autopilot substantially built | Doctrines 23/23; tether/mass green | Strict Helios route RED before dock; Focus/camera/counterplay incomplete | Partial/stale media | 0 recorded | NOT EXITED |
+| M1 | Focus, camera, tether, doctrines, autopilot substantially built | Doctrines 23/23; tether/mass green; `check:autopilot` fully green 2026-07-18 | Strict Helios route row is **contradicted pending re-measurement** — the `G01` public pilot docks Helios at 152.1/155.2 WU (see Red-or-incomplete note); Focus/camera/counterplay incomplete | Partial/stale media | 0 recorded | NOT EXITED |
 | M2 | 24-region/global-coordinate architecture substantially built | Combined run RED on Electron websocket reset; browser portion reached save/Continue | Browser path passed during run; Electron incomplete | Existing receipt present but current combined result red | 0 recorded | REVALIDATION REQUIRED |
 | M3 | Origins, cohorts, Hunter intent, damage/death substantially built | Career origins green | Natural damage/Game Over proven; recovery and three full 90-minute routes open | Damage/after-action images exist | 0 recorded | NOT EXITED |
 | M4 | Regional ecology/POI foundations built | RED 8/9 on registry/save initialization order | Sparse/normal/crowded diversity routes open | Art/classification incomplete | 0 recorded | NOT EXITED |
@@ -34,7 +61,19 @@
 ### Red or incomplete
 
 - `npm run check:alpha:evidence` — 13 issues across 20 records.
-- Strict M1 Helios route — best 294.777 WU, final 324.520 WU, no dock prompt.
+- ~~Strict M1 Helios route — best 294.777 WU, final 324.520 WU, no dock prompt.~~ **Contradicted
+  2026-07-18, pending re-measurement.** `check:autopilot` is fully green (finalDistance 37.84–37.87
+  WU), and the new `G01` public pilot docks `station_helios` through ordinary public input on three
+  runs at closest approach 152.111 / 155.158 WU — inside the quoted RED best — one of which also
+  completed service use, save, and Continue. Two older harnesses still fail
+  (`check:professional-travel:public-route:browser` before flight-ready,
+  `check:wave15-flight-boot` at the New Game button) but at *different* points, which points at
+  harness drift rather than one game break. All runs were on a dirty tree; clean-`bfb23570`
+  attribution is not established. Measure before repairing. See `02_REMAINING_WORK.md`.
+- `npm run check:encounter-director` — RED, `two-day soak should produce encounters (got 2)`.
+  Concurrent `CONTENT-2026-07-18` lease is editing encounter/flavor content.
+- `npm run check:save-schema` — RED from two causes: committed `$.sites` debt plus a foreign
+  uncommitted `bloomThreshold` change. Must not be cleared by regenerating `SAVE_SCHEMA.md`.
 - `npm run check:m2:seamless-world` — browser section completed, Electron websocket reset,
   process exited 1.
 - `npm run check:m4:regional-ecology` — 8/9; registry/save initialization-order assertion.
@@ -46,8 +85,14 @@
 ## Route qualification
 
 `npm run check:demo-opening` and the strict M1 route are different acceptance surfaces. The demo route
-has previously docked and opened the station. The stricter M1 route currently fails its ordinary
-Helios approach. A green demo must never be used to close M1-ROUTE.
+has previously docked and opened the station. A green demo must never be used to close M1-ROUTE.
+
+The `G01` pilot is a third surface and must not be conflated with either. It is stricter than the demo
+route — no state injection, enforced by a static contract over its own source, ordinary keyboard and
+pointer input only — but it is newer than the strict M1 harness and has only been run on a dirty tree,
+in browser, never in Electron. Its three passing runs are strong evidence that the corridor is
+reachable; they are not by themselves an M1-ROUTE exit. Close M1-ROUTE only after `G01` passes on a
+clean checkout and in Electron, or after the strict harness is repaired and agrees.
 
 Depth captures that use `window.SF` to compress travel, eligibility, timing, or story gates are useful
 integration evidence, but they do not close an unassisted player-route requirement.
