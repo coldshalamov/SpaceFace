@@ -1,6 +1,6 @@
 # SpaceFace Professional Alpha Completion Program
 
-**Status:** ACTIVE · unified audit snapshot 2026-07-14
+**Status:** ACTIVE · execution reset 2026-07-18; acceptance rows retain their own audit dates
 
 **Overall task:** turn SpaceFace into a professional-feeling solo space game with a polished first
 ninety minutes, a seamless persistent galaxy, deep readable world content, complete B0–B7 story and
@@ -19,22 +19,24 @@ not have to reconcile several conflicting handoffs before working.
 
 ## Read this set in order
 
-1. **This index** — overall goal, present position, and current order.
-2. [`01_VERIFIED_DONE.md`](./01_VERIFIED_DONE.md) — what is actually committed or freshly proven.
-3. [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md) — every open Alpha and Depth item.
-4. [`03_LIVE_ACCEPTANCE_MATRIX.md`](./03_LIVE_ACCEPTANCE_MATRIX.md) — current checks, public routes,
-   evidence, and milestone-exit truth.
-5. [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md) — current repository identity,
-   checkpoint recoverability, and residual shared-tree work.
-6. [`05_RESUME_AND_FINAL_REVIEW.md`](./05_RESUME_AND_FINAL_REVIEW.md) — exact pickup and final review
-   procedure.
-7. [`06_RETAINED_FUTURE_BACKLOG.md`](./06_RETAINED_FUTURE_BACKLOG.md) — valuable partial/future
-   outcomes that are preserved but not committed until admitted here.
+1. [`NOW.md`](./NOW.md) — volatile active leases, occupied paths, and packets ready to claim.
+2. [`roadmap/README.md`](./roadmap/README.md) — the 113-packet work order and dependency spine.
+3. [`roadmap/00_EXECUTION_PROTOCOL.md`](./roadmap/00_EXECUTION_PROTOCOL.md) — mandatory autonomous
+   workflow, collision control, proof, receipts, and integration.
+4. [`01_VERIFIED_DONE.md`](./01_VERIFIED_DONE.md) — committed or freshly proved outcomes.
+5. [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md) — milestone-level Alpha/Depth remaining-work roll-up.
+6. [`03_LIVE_ACCEPTANCE_MATRIX.md`](./03_LIVE_ACCEPTANCE_MATRIX.md) — checks, public routes, evidence,
+   and milestone-exit truth at its stated audit revision.
+7. [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md) and
+   [`05_RESUME_AND_FINAL_REVIEW.md`](./05_RESUME_AND_FINAL_REVIEW.md) — recoverability and review.
+8. [`06_RETAINED_FUTURE_BACKLOG.md`](./06_RETAINED_FUTURE_BACKLOG.md) — only valuable outcomes not yet
+   mapped to an `F/G/T/A/W/R` packet.
+9. [`07_HISTORICAL_BUILDS.md`](./07_HISTORICAL_BUILDS.md) — finished handoffs and later verification.
 
-The distinction between steps 3 and 6 is deliberate: `02_REMAINING_WORK.md` is committed program
-scope; `06_RETAINED_FUTURE_BACKLOG.md` is the deduplicated reservoir of plans worth keeping. A
-retained item becomes work only when the lead admits a bounded slice with dependencies and acceptance
-to `02_REMAINING_WORK.md`.
+The roadmap owns **packet work order**, not completion truth. Files `01–05` own verified/remaining/
+acceptance/integration truth at their stated evidence revision. `06` is not a competing queue: when an
+outcome maps to a roadmap packet, update the packet; when it does not, retain it in `06` until the lead
+assigns a packet ID and milestone roll-up. This split prevents two “next work” systems.
 
 ## Authority and source plans
 
@@ -85,27 +87,20 @@ These levels must never be collapsed into a single “done” label.
 
 | Track | Current audited truth |
 |---|---|
-| Repository | Recovery checkpoint `850c80f3` is on `origin/master`; follow-up contract/policy work begins at `50bd5505`. This document's own commit is necessarily newer, so refresh identity and tree counts with `git log -1`, `git status --short`, and `git rev-list --left-right --count origin/master...HEAD` rather than copying this snapshot forward. |
-| M0 | Validator contract and Observatory Phase A are green; the live Alpha evidence corpus is red with 13 issues across 20 records, and the asset-classification corpus currently accepts 0 visual candidates. |
-| M1 | Core mechanics are substantially implemented and focused combat/tether checks pass; the strict Helios public route still fails before docking, and the starter/Helios/feedback visual family is not accepted. |
-| M2 | Seamless-world architecture is substantially built; the fresh combined acceptance run exited red during Electron launch, so current milestone exit is unconfirmed. |
-| M3 | Origins, cohorts, Hunter intent, damage, and Game Over are implemented; natural recovery and complete unassisted ninety-minute routes remain. |
-| M4 | Regional ecology implementation is broad, but its fresh gate is 8/9 and player-facing art/diversity acceptance remains. |
-| M5 | Story/role/ownership systems are substantial and role continuity is green; ordinary B0–B7, ending, sandbox, and ownership routes remain. |
-| M6 | Capture machinery and Wasp routing exist; performance is red, store capture is absent, Wasp lacks the classification record required for canonical acceptance, and visible Hitch-glare/Helios-material defects remain. |
-| Depth | 0 chunks are DONE. After correcting W1’s existing data groundwork: 16 implementation slices are preserved by checkpoint `850c80f3` and 15 remain TODO. The pre-checkpoint aggregate green has not been rerun at current HEAD, and ignored Depth media is still not recoverable from Git. |
+| Repository | Foundation runtime repair `77a09790` and diagnostic implementation `32596ec7` are committed; the containing program commit closes the planning/history slice. Concurrent map/render/game-state and user-confirmed HUD/visual-asset work remains occupied and excluded; refresh identity/status before every claim. |
+| Foundation | `F01–F17` are integrated: focused foundation tests are 68/68, census/data references are clean, the 113-packet graph and links are clean, and the stale sim envelopes remain explicit debt rather than an unreviewed re-record. |
+| Gold corridor | `G01` is the first READY route-harness packet. No corridor completion or ninety-minute acceptance is newly claimed by this reset. |
+| Massline / Asteroid Ops / encounters | `T01`, `A01`, and `W01` are READY pure/focused contracts with separate path budgets. Later player-visible packets remain PLANNED. |
+| Alpha / Depth acceptance | Existing `01–03` rows remain the acceptance truth at their stated audit revisions. This roadmap does not promote M0–M6 or any Depth chunk. Refresh those matrices after packet integration and player-route evidence. |
+| Historical builds | The 7/17 menu and 3D-drill implementation handoffs are retired behind tombstones and listed in `07_HISTORICAL_BUILDS.md`; their deferred browser/Electron/visual/perf verification remains explicit. The map handoff stays active and occupied. |
 
 ## Current order
 
-1. Audit checkpoint `850c80f3` at current HEAD: rerun its focused gates, review high-risk inclusions,
-   and create durable evidence manifests without folding residual concurrent WIP into the checkpoint.
-2. Repair the 20-record Alpha evidence corpus and bind baselines to the current revision.
-3. Restore the strict M1 Helios public route; then finish Focus/camera/tether/doctrine acceptance.
-4. Close M3 natural recovery and the three unassisted career routes.
-5. Restore M4 ecology to green and complete its real sparse/normal/crowded visual routes.
-6. Repair crowded-flight/startup performance without reducing visual quality.
-7. Finish M5 story/ownership routes, remaining Depth chunks, and M6 release/store acceptance.
+1. Claim `G01`, `T01`, `A01`, and `W01` in parallel; serialize browser/Electron and Git-index ownership.
+2. Use the G01 diagnosis and pure interfaces to complete the Helios→Ceres→Tethys corridor.
+3. Deepen Massline/Asteroid Ops and early encounter doctrines while corridor producers/carriers are known.
+4. Embody world/story packets, then close cross-feature UX, accessibility, performance, platform, and
+   release evidence.
 
-No new broad feature wave should hide unfinished integration. Parallel work is still appropriate when
-lanes do not overlap, but every lane must end in a recoverable logical commit and a current acceptance
-record.
+No broad wave may hide unfinished integration. Every shared-worktree lane returns an uncommitted diff and
+receipt; the lead owns staging and atomic commits unless a verified isolated worktree was assigned.

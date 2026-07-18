@@ -7,7 +7,8 @@ folder indexes.
 ## Status and authority rules
 
 1. `ARCHITECTURE.md` owns technical contracts; `design/GDD_2_0.md` owns game design.
-2. `design/program/**` is the **only cross-program status roll-up**.
+2. `design/program/**` is the **only cross-program status roll-up**. Within it, `program/roadmap/**`
+   owns packet work order while `program/01–05` own verified/remaining/acceptance/integration truth.
 3. `design/vision/ALPHA_PROGRAM.md` and `design/depth-program/BUILD_PLAN.md` own scope/order for their
    programs. They do not override live implementation evidence.
 4. A task's activated spec owns detailed intent. Code, current checks, public routes, evidence, and
@@ -22,7 +23,9 @@ folder indexes.
 | Family | Canonical role | Current disposition | Status owner |
 |---|---|---|---|
 | [`program/`](./program/README.md) | Unified Alpha + Depth pickup, verified done, remaining work, acceptance, integration | **ACTIVE — sole global status** | Lead/status integrator only |
-| [`program/06_RETAINED_FUTURE_BACKLOG.md`](./program/06_RETAINED_FUTURE_BACKLOG.md) | Stable-ID reservoir for valuable future/partial outcomes not yet admitted to the active queue | **RETAINED — not committed scope** | Lead/status integrator admits bounded slices into `02_REMAINING_WORK.md` |
+| [`program/roadmap/`](./program/roadmap/README.md) | 113 stable execution packets, dependencies, agent workflow, and collision-safe work order | **ACTIVE WORK ORDER — no completion authority** | Lead activates leases in `program/NOW.md`; proof projects into `program/01–05` |
+| [`program/06_RETAINED_FUTURE_BACKLOG.md`](./program/06_RETAINED_FUTURE_BACKLOG.md) | Reservoir only for valuable outcomes not yet mapped to an active roadmap packet | **RETAINED — not a second queue** | Lead assigns a roadmap ID before execution and updates milestone roll-up |
+| [`program/07_HISTORICAL_BUILDS.md`](./program/07_HISTORICAL_BUILDS.md) | Finished handoffs, recent build provenance, and deferred verification | **HISTORY — verification queue only** | Lead reopens defects through stable roadmap IDs |
 | [`vision/ALPHA_PROGRAM.md`](./vision/ALPHA_PROGRAM.md) | M0–M6 Alpha scope, order, leases, evidence contract | **ACTIVE SCOPE** | Alpha design lead; completion projected into `program/` |
 | [`depth-program/`](./depth-program/README.md) | 31-chunk Depth scope, sequencing, research provenance, and worked actualization pipelines | **ACTIVE SCOPE** | Depth design lead; detail in `PROGRESS_LEDGER.md`, roll-up in `program/` |
 | [`production/`](./production/README.md) | Production controller, evidence, capability, observatory, and hard-gate machinery | **PARTIAL / FUTURE CONTROL PLANE** | Packet evidence only; `08_IMPLEMENTATION_BACKLOG.md` is subordinate |
@@ -33,6 +36,9 @@ folder indexes.
 | [`needed-assets.md`](../needed-assets.md), [`assets/QUEUE.md`](../assets/QUEUE.md), live manifests, and [`production/asset-classifications/`](./production/asset-classifications/) | Asset-production coverage, authoring queue, runtime declarations, and acceptance candidates | **PARTIAL / FUTURE ASSET PRODUCTION** | Graphics/asset owner under active locks; acceptance and status roll into `program/` |
 | [`world-identity/`](./world-identity/PIPELINE.md) | Sector identity, navigation, place specs, and asset/content pipeline | **ACTIVE CONTENT AUTHORITY** | World-content owner; implementation proof required |
 | [`worldbuilding/`](../docs/worldbuilding/) | Narrative canon, sheets, discovery indexes, and future story branches | **ACTIVE CANON + FUTURE** | Canon files own prose; runtime code owns implementation truth |
+| [`ASTEROID_OPS_VISION.md`](./ASTEROID_OPS_VISION.md), [`ASTEROID_OPS_UI_BRIEF.md`](./ASTEROID_OPS_UI_BRIEF.md), [`ASTEROID_SITES_BRIEF.md`](./ASTEROID_SITES_BRIEF.md) | Active Asteroid Ops mechanics roadmap, implemented shell contract, and retained original contact-ring design | **ACTIVE DETAIL / RETAINED REFERENCE** | Roadmap `A01–A20` owns order/status; these documents own design detail only |
+| [`MAP_UX_PLAN.md`](./MAP_UX_PLAN.md), [`MAP_DATA_HANDOFF.md`](./MAP_DATA_HANDOFF.md), [`MAP_OVERHAUL_BRIEF.md`](./MAP_OVERHAUL_BRIEF.md) | Occupied map implementation, remaining content/data packet, and research dossier | **ACTIVE LEASE / ACTIVE DETAIL / RESEARCH** | Current map owner; status rolls into `program/` |
+| [`POLISH_BRIEFING.md`](./POLISH_BRIEFING.md) | Code-derived 2026-07-16 findings | **RETAINED RESEARCH — not build order** | Map valid outcomes to roadmap IDs before execution |
 | [`revamp/_history/`](./revamp/_history/) and [`_ARCHIVE/`](./_ARCHIVE/README.md) | Superseded plans, reviews, and historical handoffs | **HISTORY — DO NOT IMPLEMENT BY DEFAULT** | None |
 
 ## Frequently mistaken standalone documents
@@ -60,16 +66,18 @@ folder indexes.
 
 ## Updating status without drift
 
-1. For uncommitted scope, start at `program/06_RETAINED_FUTURE_BACKLOG.md`, deduplicate the stable
-   item against live code and active Alpha/Depth rows, then admit only a bounded slice to
-   `program/02_REMAINING_WORK.md`.
-2. Update the owning feature/packet/chunk ledger with exact code, check, public-route, evidence, and
+1. Deduplicate an outcome against live code, Alpha/Depth scope, and `program/roadmap/**`. If mapped,
+   update that packet. If unmapped, retain it in `program/06_RETAINED_FUTURE_BACKLOG.md` until the lead
+   assigns a stable roadmap ID and projects it into the milestone-level `program/02_REMAINING_WORK.md`.
+2. Activate only a bounded READY packet through `program/NOW.md` with dependencies, exact path lease,
+   focused commands, and terminal proof.
+3. Update the owning feature/packet/chunk ledger with exact code, check, public-route, evidence, and
    git identity.
-3. Return the packet to the lead/status integrator.
-4. Update `program/01_VERIFIED_DONE.md`, `program/02_REMAINING_WORK.md`, and
+4. Return the packet receipt to the lead/status integrator.
+5. Update `program/01_VERIFIED_DONE.md`, `program/02_REMAINING_WORK.md`, and
    `program/03_LIVE_ACCEPTANCE_MATRIX.md` together.
-5. Update `program/04_WORKTREE_AND_INTEGRATION.md` if recoverability changed.
-6. Treat clean-wave counts as conditional unless a controller record explicitly adopts
+6. Update `program/04_WORKTREE_AND_INTEGRATION.md` if recoverability changed.
+7. Treat clean-wave counts as conditional unless a controller record explicitly adopts
    `production/01_BUILD_PROGRAM.md` for the named release run.
 
 This registry describes document roles, not implementation truth. When it disagrees with current

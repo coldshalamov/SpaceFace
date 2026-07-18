@@ -1,8 +1,9 @@
 # Worktree and Integration Inventory
 
-**Audit snapshot:** 2026-07-14 after commits `850c80f3` and `50bd5505`, revalidated after concurrent
+**Historical audit snapshot:** 2026-07-14 after commits `850c80f3` and `50bd5505`, revalidated after concurrent
 upstream and working-tree movement during reconciliation. This file's containing commit is newer by
 definition. Treat the values below as checkpoint history and re-run the commands before acting.
+Use [`NOW.md`](./NOW.md), not this snapshot, for current leases and dirty-path ownership.
 
 ## Repository checkpoint
 

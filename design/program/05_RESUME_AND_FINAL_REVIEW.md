@@ -1,34 +1,42 @@
 # Resume and Final Review Procedure
 
 This is the pickup contract for a new agent and the final acceptance procedure when implementation
-appears complete.
+appears complete. [`NOW.md`](./NOW.md) and the active
+[`roadmap/`](./roadmap/README.md) own current work order; the Alpha/Depth pages below remain acceptance
+truth and milestone roll-ups.
 
 ## Resume: first fifteen minutes
 
-1. Read `AGENTS.md` and [`README.md`](./README.md).
-2. Read [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md) and
+1. Read `AGENTS.md`, [`README.md`](./README.md), and [`NOW.md`](./NOW.md).
+2. Read the active [`roadmap`](./roadmap/README.md), its
+   [`execution protocol`](./roadmap/00_EXECUTION_PROTOCOL.md), then
+   [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md) and
    [`03_LIVE_ACCEPTANCE_MATRIX.md`](./03_LIVE_ACCEPTANCE_MATRIX.md).
 3. Confirm branch, upstream, staging, and live dirty counts using
    [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md).
 4. Do not reset, stash, clean, restore, or bulk-stage the shared worktree.
 5. Check active station/input/asset/render ownership before touching those lanes.
 6. Re-run the narrow check for the item selected; never inherit a green result from prose.
-7. Work one coherent acceptance unit to a logical commit. Parallelize only non-overlapping lanes.
-8. Workers return exact check results, evidence paths, tree identity, and review verdict to the lead.
-   Only the lead/status integrator edits `design/program/**`, preventing parallel status races.
+7. Work one roadmap packet or coherent acceptance unit. Parallelize only non-overlapping lanes.
+8. Shared-tree workers do not stage product files or commit. They return exact changed paths, check
+   results, evidence paths, tree identity, and review verdict to the lead; the lead owns the Git index,
+   exact staging, commits, `NOW.md`, and other `design/program/**` updates. A verified isolated worktree
+   may commit its own packet only when the lead explicitly assigned that worktree.
 
 ## Current pickup order
 
-1. **Checkpoint reconciliation:** rerun the Depth aggregate and high-risk review at current HEAD;
-   create durable evidence manifests; keep the small residual shared-tree WIP separate.
-2. **M0 evidence:** repair the 20-record Alpha corpus and current-revision baselines.
-3. **M1:** restore strict Helios docking, then close Focus/camera/tether/doctrine/HUD acceptance.
-4. **M3:** close natural recovery and all three unassisted career routes.
-5. **M4:** restore ecology 9/9 and complete living-galaxy/visual-family routes.
-6. **M6 performance:** repair startup/crowded-flight behavior with full visual parity.
-7. **M5 and Depth completion:** ordinary story/endings/ownership routes plus all remaining chunks.
-8. **M6 release:** parity, localization, accessibility, platform/soak, store capture, and clean waves
-   if the draft production policy is adopted.
+1. **Foundation checkpoint (`F01–F17`):** confirm `77a09790`, `32596ec7`, and the containing program
+   commit, preserve occupied work, and carry the stale sim envelopes as explicit verification debt rather
+   than redoing the sprint or editing goldens.
+2. **Four-lane start:** run `G01`, `T01`, `A01`, and `W01` in parallel under their exact path budgets.
+3. **Corridor spine:** build `G02–G07`; land Asteroid `A02–A05` before `G08` and Massline `T02–T04`
+   before the ninety-minute `G18` pilot.
+4. **Gold corridor:** close `G08–G20`, projecting each accepted outcome into the applicable Alpha M1/M3/M4
+   row rather than creating a second acceptance claim.
+5. **Signature and embodiment:** deepen `T05–T18`, `A06–A20`, and `W02–W20` along the packet dependencies,
+   keeping pure kernels parallel and shared runtime/UI wiring serialized.
+6. **UX/release (`R01–R18`):** close accessibility, performance, parity, platform, and store evidence only
+   after the routes they measure exist.
 
 This order can be parallelized where ownership is disjoint. It must not be reordered in a way that
 loses checkpoint or residual-WIP recoverability, conflates a bulk commit with acceptance, or claims a
@@ -36,9 +44,9 @@ later release gate while an earlier player-visible P0/P1 remains red.
 
 ## Per-item completion ritual
 
-For every Alpha packet or Depth chunk:
+For every roadmap packet, Alpha packet, or Depth chunk:
 
-1. Identify the exact acceptance row in `02_REMAINING_WORK.md`.
+1. Identify the roadmap packet and any corresponding acceptance row in `02_REMAINING_WORK.md`.
 2. Verify implementation is reachable through default browser and Electron gameplay.
 3. Run the named focused checks and determinism/no-regression floor.
 4. Run the natural public-input route without state/entity injection when primary acceptance requires it.
@@ -80,7 +88,8 @@ and `design/production/01_BUILD_PROGRAM.md`.
 
 The overall task is complete only when all of the following are true:
 
-- `02_REMAINING_WORK.md` contains no open product or integration item.
+- All 113 roadmap packets have reached their declared terminal state and
+  `02_REMAINING_WORK.md` contains no open product or integration item.
 - Every Depth chunk is DONE with committed implementation and durable evidence.
 - M0–M6 each have current browser and Electron evidence and, if the controller adopted the draft
   production policy, their clean-wave requirement.

@@ -1,5 +1,10 @@
 # Asteroid Sites — Design Brief (working, not final)
 
+> **Routing note (2026-07-18):** this preserves the original contact-ring thesis and early design
+> exploration; it is not current status or build order. The active mechanics roadmap is
+> `design/ASTEROID_OPS_VISION.md`, the implemented shell contract is `design/ASTEROID_OPS_UI_BRIEF.md`,
+> and the earlier “stay 2D” assumption in this brief has been superseded by the shipped 3D playfield.
+
 > Status: brainstorm capture. The strong spine is locked; most everything else is
 > open latitude for whoever implements. Treat examples as *e.g.*, not *you must*.
 > Find identity. Don't literal-copy the inspirations named at the bottom.

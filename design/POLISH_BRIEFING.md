@@ -1,5 +1,10 @@
 # SpaceFace — Polish/Improvement Briefing (evidence-first)
 
+> **Routing note (2026-07-18):** retained code-research snapshot, not current build order or status.
+> Admit still-valid findings through stable IDs in `design/program/roadmap/` or
+> `design/program/06_RETAINED_FUTURE_BACKLOG.md`; do not dispatch its ranked list in parallel with the
+> active program without a fresh live-tree check and path lease.
+
 > **Read this paragraph twice.** This briefing is built from **code analysis**, not status docs. Every
 > target below is traced to a provable code fact: a file:line, a quoted snippet, or a measured metric
 > (import counts, commit churn, line spans). The reason is deliberate: this repo's `design/` and

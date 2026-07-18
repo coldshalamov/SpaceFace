@@ -1,14 +1,14 @@
 # Retained Future Backlog
 
-This is the pickup index for valuable SpaceFace scope that is **not currently admitted** to the
-Alpha + Depth execution backlog. It prevents good ideas from disappearing without allowing every
-old plan, brainstorm, or asset list to become a second roadmap.
+This is the retention index for valuable SpaceFace scope that is **not mapped into an active roadmap
+packet or admitted Alpha/Depth acceptance row**. It prevents good ideas from disappearing without
+allowing every old plan, brainstorm, or asset list to become a second roadmap.
 
-The committed work queue remains [`02_REMAINING_WORK.md`](02_REMAINING_WORK.md). An item in this
-file is **not a promise, milestone requirement, or completion claim** until the lead/status
-integrator admits a concrete slice to that queue with dependencies, an owner, and player-facing
-acceptance. If a row below points to an existing Alpha/Depth row, execute it there; do not create a
-duplicate task here.
+The active packet order is [`roadmap/README.md`](./roadmap/README.md);
+[`02_REMAINING_WORK.md`](02_REMAINING_WORK.md) remains the Alpha/Depth milestone and acceptance roll-up.
+An item in this file is **not a promise, milestone requirement, or completion claim** until the
+lead/status integrator maps a concrete slice to a stable roadmap ID and any applicable acceptance row,
+with dependencies, an owner, and player-facing acceptance. Do not create a duplicate task here.
 
 ## Retention and admission rules
 
@@ -34,7 +34,8 @@ and current quality bar when a slice is admitted. In particular:
 
 ## Already represented by the active program
 
-These families are retained through the existing queue and are intentionally not restated here:
+These families are retained through active roadmap packets and Alpha/Depth acceptance rows and are
+intentionally not restated here:
 
 | Stable ID | Source | Maturity | Admission / activation rule | Next acceptance outcome |
 |---|---|---|---|---|
@@ -124,8 +125,9 @@ global status and its historical file/ownership claims must be rechecked.
 2. Audit live code, normal player route, current checks, git diff, and overlapping Alpha/Depth rows.
 3. Write the smallest coherent deliverable, current owner/files, dependencies, and explicit non-goals.
 4. Define deterministic/save/performance checks plus public-route and visual/audio evidence as needed.
-5. Add or cross-link the admitted row in [`02_REMAINING_WORK.md`](02_REMAINING_WORK.md); do not
-   silently convert this whole source document into scope.
+5. Assign or alias a stable packet in [`roadmap/README.md`](./roadmap/README.md), then add or cross-link
+   the applicable acceptance row in [`02_REMAINING_WORK.md`](02_REMAINING_WORK.md); do not silently
+   convert this whole source document into scope.
 6. On completion, update the source ledger, verified-done/acceptance/integration records, and this
    row's provenance together. Retain the stable ID even if the source document is later archived.
 

@@ -7,7 +7,8 @@ status, subsystem detail, and design technique belong in the linked owner docume
 
 | Task | Start here |
 |---|---|
-| What is done or next? | `design/program/README.md` |
+| What is active or occupied now? | `design/program/NOW.md` → `design/program/README.md` |
+| Claim a multi-week roadmap packet | `design/program/roadmap/README.md` → `design/program/roadmap/00_EXECUTION_PROTOCOL.md` |
 | Implement a feature/fix | Activated plan/spec → `docs/MODULE_MAP.md` → owning nested `AGENTS.md` |
 | Recurring bug | `docs/COMMON_BUGS.md` |
 | Event or update-order trace | Generated `docs/EVENT_ROUTING.md` / `docs/SYSTEM_REGISTRY.md` |
