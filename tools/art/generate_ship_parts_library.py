@@ -557,51 +557,185 @@ def png_rgba(width: int, height: int, rows: Iterable[bytes]) -> bytes:
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(bytes(raw), 9)) + chunk(b'IEND', b'')
 
 
-def make_texture_set(style: str, size: int = 1024) -> dict[str, bytes]:
-    style_seed = sum((i + 1) * ord(c) for i, c in enumerate(style)) & 0xffff
-    cell = {'cockpit': 128, 'engine': 96, 'weapon': 112, 'fin': 144, 'greeble': 80, 'gear': 128, 'pod': 96, 'place': 160}.get(style, 128)
-    seam = 3 if style != 'greeble' else 2
+MATERIAL_ROLE_ORDER = ('hull', 'accent', 'mechanical', 'glass')
 
-    def wave(x: int, y: int) -> int:
-        return int(5 * math.sin((x + style_seed) * .021) + 4 * math.cos((y - style_seed) * .017) + 2 * math.sin((x + y) * .008))
+# These are physical response families, not palette swaps. Frequency, roughness,
+# metallic response, bump depth, scratches, dust, and edge treatment differ by role.
+ROLE_SURFACE_RECIPES = {
+    'hull': {
+        'base': (170, 174, 180), 'rough': .49, 'rough_var': .13, 'metal': .045,
+        'normal': .32, 'macro': .46, 'micro': .22, 'scratch': .006,
+        'panel': False, 'coated': True, 'dust': .18,
+    },
+    'accent': {
+        'base': (205, 212, 216), 'rough': .38, 'rough_var': .17, 'metal': .035,
+        'normal': .24, 'macro': .28, 'micro': .31, 'scratch': .003,
+        'panel': False, 'coated': True, 'dust': .08,
+    },
+    'mechanical': {
+        'base': (82, 88, 94), 'rough': .43, 'rough_var': .15, 'metal': .84,
+        'normal': .27, 'macro': .16, 'micro': .42, 'scratch': .020,
+        'panel': False, 'coated': False, 'dust': .23,
+    },
+    'glass': {
+        'base': (150, 182, 194), 'rough': .13, 'rough_var': .055, 'metal': .015,
+        'normal': .075, 'macro': .10, 'micro': .08, 'scratch': .0015,
+        'panel': False, 'coated': False, 'dust': .025,
+    },
+}
+
+STYLE_SURFACE_RECIPES = {
+    'cockpit': {'cell': 144, 'macro': 1.08, 'micro': .82, 'wear': .70, 'direction': .18},
+    'engine': {'cell': 92, 'macro': .82, 'micro': 1.32, 'wear': 1.35, 'direction': .92},
+    'weapon': {'cell': 112, 'macro': .76, 'micro': 1.18, 'wear': 1.18, 'direction': .74},
+    'fin': {'cell': 168, 'macro': 1.34, 'micro': .86, 'wear': .82, 'direction': .42},
+    'greeble': {'cell': 72, 'macro': .62, 'micro': 1.52, 'wear': 1.26, 'direction': .66},
+    'gear': {'cell': 104, 'macro': .74, 'micro': 1.24, 'wear': 1.55, 'direction': .78},
+    'pod': {'cell': 128, 'macro': 1.18, 'micro': .94, 'wear': 1.10, 'direction': .38},
+    'place': {'cell': 184, 'macro': 1.56, 'micro': .74, 'wear': 1.42, 'direction': .56},
+    'hull': {'cell': 152, 'macro': 1.22, 'micro': .92, 'wear': .92, 'direction': .30},
+}
+
+
+def _surface_hash(x: int, y: int, seed: int) -> float:
+    value = (x * 0x1f123bb5) ^ (y * 0x5f356495) ^ seed
+    value = ((value ^ (value >> 16)) * 0x45d9f3b) & 0xffffffff
+    value = ((value ^ (value >> 16)) * 0x45d9f3b) & 0xffffffff
+    return ((value ^ (value >> 16)) & 0xffff) / 65535.0
+
+
+def _surface_fields(style: str, role: str, x: int, y: int, size: int, seed: int) -> tuple[float, float, float, bool, bool, bool]:
+    style_recipe = STYLE_SURFACE_RECIPES.get(style, STYLE_SURFACE_RECIPES['hull'])
+    role_recipe = ROLE_SURFACE_RECIPES[role]
+    u, v = x / size, y / size
+    phase = (seed % 997) / 997.0 * TAU
+    macro = (
+        math.sin(TAU * (u * 2.0 + v * 1.0) + phase)
+        + .55 * math.cos(TAU * (u * 1.0 - v * 3.0) - phase * .61)
+        + .28 * math.sin(TAU * (u * 5.0 + v * 2.0) + phase * .27)
+    ) / 1.83
+    micro_frequency = 34.0 + style_recipe['micro'] * 18.0 + MATERIAL_ROLE_ORDER.index(role) * 7.0
+    micro = (
+        math.sin(TAU * (u * micro_frequency + v * 3.0) + phase * .33)
+        + .62 * math.cos(TAU * (v * (micro_frequency * .73) - u * 5.0) - phase)
+    ) / 1.62
+    directional = math.sin(TAU * (v * (58.0 + style_recipe['direction'] * 62.0) + u * 4.0) + phase)
+    cell = max(24, int(style_recipe['cell'] * (.84 if role == 'accent' else 1.0)))
+    seam_width = 2 if style in ('greeble', 'engine', 'weapon') else 3
+    gx, gy = x % cell, y % cell
+    dx, dy = min(gx, cell - gx), min(gy, cell - gy)
+    seam = bool(role_recipe['panel'] and (dx < seam_width or dy < seam_width))
+    rivet = bool(role_recipe['panel'] and ((x + cell // 5) % cell < 5) and ((y + cell // 5) % cell < 5))
+    # Sparse scratches occupy irregular local cells rather than marching as
+    # repeated horizontal dashes. Panel boundaries remain geometry/UV-authoring
+    # work: a tileable surface map must not emboss a fake universal grid.
+    scratch_cell = max(7, int(22 / max(.2, style_recipe['wear'])))
+    cell_x, cell_y = x // scratch_cell, y // scratch_cell
+    local_x, local_y = x % scratch_cell, y % scratch_cell
+    scratch_noise = _surface_hash(cell_x, cell_y, seed ^ 0x53524348)
+    scratch_origin = .18 + _surface_hash(cell_x, cell_y, seed ^ 0x4f524947) * .64
+    scratch_slope = (_surface_hash(cell_x, cell_y, seed ^ 0x534c4f50) - .5) * .42
+    scratch_length = int(scratch_cell * (.28 + _surface_hash(cell_x, cell_y, seed ^ 0x4c454e47) * .62))
+    scratch_y = int(scratch_cell * scratch_origin + scratch_slope * local_x)
+    scratch = bool(
+        scratch_noise > 1.0 - role_recipe['scratch'] * style_recipe['wear']
+        and local_x < scratch_length
+        and abs(local_y - scratch_y) <= 1
+    )
+    return macro, micro, directional, seam, rivet, scratch
+
+
+def _make_role_texture_set(style: str, role: str, size: int, style_seed: int) -> dict[str, bytes]:
+    recipe = ROLE_SURFACE_RECIPES[role]
+    style_recipe = STYLE_SURFACE_RECIPES.get(style, STYLE_SURFACE_RECIPES['hull'])
+    heights = [0.0] * (size * size)
+    fields: list[tuple[float, float, float, bool, bool, bool]] = []
+    for y in range(size):
+        for x in range(size):
+            field = _surface_fields(style, role, x, y, size, style_seed)
+            fields.append(field)
+            macro, micro, directional, seam, rivet, scratch = field
+            height = macro * recipe['macro'] * style_recipe['macro'] + micro * recipe['micro']
+            if role == 'mechanical': height += directional * .16
+            if seam: height -= .82
+            if rivet: height += .58
+            if scratch: height -= .28
+            heights[y * size + x] = height
 
     base_rows, normal_rows, orm_rows = [], [], []
     for y in range(size):
-        b = bytearray(size * 4); n = bytearray(size * 4); o = bytearray(size * 4)
-        gy = y % cell; dy = min(gy, cell - gy)
+        base_row = bytearray(size * 4)
+        normal_row = bytearray(size * 4)
+        orm_row = bytearray(size * 4)
         for x in range(size):
-            gx = x % cell; dx = min(gx, cell - gx)
-            is_seam = dx < seam or dy < seam
-            rivet = ((x + cell // 4) % cell < 5 and (y + cell // 4) % cell < 5)
-            w = wave(x, y)
-            base = 164 + w
-            if is_seam: base -= 52
-            if rivet: base += 38
-            # subtle serialized stripe; neutral enough for faction multiplication
-            stripe = ((x - y // 2 + style_seed) % (cell * 4)) < 10
-            r = base + (12 if stripe else 0); g = base + (8 if stripe else 0); bl = base
             idx = x * 4
-            b[idx:idx+4] = bytes((max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, bl)), 255))
+            field_idx = y * size + x
+            macro, micro, directional, seam, rivet, scratch = fields[field_idx]
+            chip = bool(
+                recipe['coated']
+                and scratch
+                and _surface_hash(x // 3, y // 3, style_seed ^ 0x43484950) > .54
+            )
+            recess = max(0.0, -macro * .55 - micro * .08)
+            broad_color = macro * .045 * style_recipe['macro'] + micro * .012
+            warm_shift = macro * 2.2
+            color = [
+                recipe['base'][0] * (1.0 + broad_color) + warm_shift,
+                recipe['base'][1] * (1.0 + broad_color * .72),
+                recipe['base'][2] * (1.0 + broad_color * .45) - warm_shift * .42,
+            ]
+            if seam:
+                color = [channel * (1.0 - recipe['dust'] * .42) for channel in color]
+            if scratch:
+                color = [channel * (.86 if role != 'mechanical' else 1.12) for channel in color]
+            if chip:
+                color = [104 + micro * 6, 111 + micro * 5, 117 + micro * 4]
+            base_row[idx:idx + 4] = bytes(tuple(max(0, min(255, int(channel))) for channel in color) + (255,))
 
-            nx = 0; ny = 0
-            if dx < seam * 2: nx = int((gx - seam) / max(1, seam) * 38)
-            if dy < seam * 2: ny = int((gy - seam) / max(1, seam) * 38)
-            if rivet:
-                nx += int((2 - ((x + cell // 4) % cell)) * 5)
-                ny += int((2 - ((y + cell // 4) % cell)) * 5)
-            nz = int(math.sqrt(max(0, 127 * 127 - min(126, nx) ** 2 - min(126, ny) ** 2)))
-            n[idx:idx+4] = bytes((max(0, min(255, 128 + nx)), max(0, min(255, 128 + ny)), max(128, min(255, 128 + nz)), 255))
+            left = heights[y * size + ((x - 1) % size)]
+            right = heights[y * size + ((x + 1) % size)]
+            up = heights[((y - 1) % size) * size + x]
+            down = heights[((y + 1) % size) * size + x]
+            nx = (left - right) * recipe['normal']
+            ny = (up - down) * recipe['normal']
+            inv = 1.0 / math.sqrt(nx * nx + ny * ny + 1.0)
+            normal_row[idx:idx + 4] = bytes((
+                max(0, min(255, int((nx * inv * .5 + .5) * 255))),
+                max(0, min(255, int((ny * inv * .5 + .5) * 255))),
+                max(128, min(255, int((inv * .5 + .5) * 255))),
+                255,
+            ))
 
-            ao = 104 if is_seam else (215 if rivet else 245)
-            rough = max(80, min(245, 168 + w * 2 + (38 if is_seam else 0)))
-            metallic = 64 if style in ('cockpit', 'pod') else 112
-            if rivet: metallic = 220
-            o[idx:idx+4] = bytes((ao, rough, metallic, 255))
-        base_rows.append(bytes(b)); normal_rows.append(bytes(n)); orm_rows.append(bytes(o))
+            roughness = recipe['rough'] + macro * recipe['rough_var'] * .52 + micro * recipe['rough_var'] * .22
+            roughness += recess * recipe['dust'] * .22
+            if seam: roughness += recipe['rough_var'] * .62
+            if scratch: roughness += -.075 if role == 'mechanical' else .055
+            if chip: roughness -= .13
+            metallic = recipe['metal'] + macro * min(.055, recipe['metal'] * .045)
+            if rivet: metallic = max(metallic, .82)
+            if chip: metallic = .86
+            ao = .975 - recess * recipe['dust'] * .18 - (.16 if seam else 0.0)
+            orm_row[idx:idx + 4] = bytes((
+                max(0, min(255, int(ao * 255))),
+                max(0, min(255, int(roughness * 255))),
+                max(0, min(255, int(metallic * 255))),
+                255,
+            ))
+        base_rows.append(bytes(base_row))
+        normal_rows.append(bytes(normal_row))
+        orm_rows.append(bytes(orm_row))
     return {
         'baseColor': png_rgba(size, size, base_rows),
         'normal': png_rgba(size, size, normal_rows),
         'orm': png_rgba(size, size, orm_rows),
+    }
+
+
+def make_texture_set(style: str, size: int = 1024) -> dict[str, dict[str, bytes]]:
+    style_seed = sum((i + 1) * ord(c) for i, c in enumerate(style)) & 0xffff
+    return {
+        role: _make_role_texture_set(style, role, size, style_seed + index * 1613)
+        for index, role in enumerate(MATERIAL_ROLE_ORDER)
     }
 
 
@@ -1264,7 +1398,7 @@ def srgb_to_linear_channel(v: float) -> float:
     return v / 12.92 if v <= .04045 else ((v + .055) / 1.055) ** 2.4
 
 
-def write_glb(path: Path, spec: PartSpec, root: Node, textures: dict[str, bytes], texture_size: int) -> dict[str, Any]:
+def write_glb(path: Path, spec: PartSpec, root: Node, textures: dict[str, dict[str, bytes]], texture_size: int) -> dict[str, Any]:
     binary = bytearray()
     buffer_views: list[dict[str, Any]] = []
     accessors: list[dict[str, Any]] = []
@@ -1332,37 +1466,65 @@ def write_glb(path: Path, spec: PartSpec, root: Node, textures: dict[str, bytes]
 
     root_id=add_node(root)
     image_views=[]
-    for key in ('baseColor','normal','orm'):
-        image_views.append(append_blob(textures[key]))
+    image_names=[]
+    for role in MATERIAL_ROLE_ORDER:
+        for key in ('baseColor','normal','orm'):
+            image_views.append(append_blob(textures[role][key]))
+            image_names.append(f'{role}_{key}')
+
+    def material_texture_indices(role: str) -> tuple[int, int, int]:
+        offset = MATERIAL_ROLE_ORDER.index(role) * 3
+        return offset, offset + 1, offset + 2
+
+    hull_base, hull_normal, hull_orm = material_texture_indices('hull')
+    accent_base, accent_normal, accent_orm = material_texture_indices('accent')
+    mechanical_base, mechanical_normal, mechanical_orm = material_texture_indices('mechanical')
+    glass_base, glass_normal, glass_orm = material_texture_indices('glass')
 
     # Neutral hull is multiplied by faction color at runtime; accent is independently tintable.
     materials: list[dict[str, Any]] = [
         {
             'name':'Material_Hull',
             'pbrMetallicRoughness':{
-                'baseColorFactor':[1,1,1,1], 'baseColorTexture':{'index':0},
-                'metallicFactor':.32,'roughnessFactor':.72,'metallicRoughnessTexture':{'index':2},
+                'baseColorFactor':[1,1,1,1], 'baseColorTexture':{'index':hull_base},
+                'metallicFactor':1.0,'roughnessFactor':1.0,'metallicRoughnessTexture':{'index':hull_orm},
             },
-            'normalTexture':{'index':1,'scale':.9}, 'occlusionTexture':{'index':2,'strength':1.0},
+            'normalTexture':{'index':hull_normal,'scale':.9}, 'occlusionTexture':{'index':hull_orm,'strength':1.0},
+            'extras':{'spacefaceMaterialRole':'hull','spacefaceSurfaceRecipe':'catalog-layered-pbr-v3'},
         },
         {
             'name':'Material_Accent',
-            'pbrMetallicRoughness':{'baseColorFactor':[.10,.42,.48,1],'metallicFactor':.08,'roughnessFactor':.28},
+            'pbrMetallicRoughness':{
+                'baseColorFactor':[.10,.42,.48,1], 'baseColorTexture':{'index':accent_base},
+                'metallicFactor':1.0,'roughnessFactor':1.0,'metallicRoughnessTexture':{'index':accent_orm},
+            },
+            'normalTexture':{'index':accent_normal,'scale':.75}, 'occlusionTexture':{'index':accent_orm,'strength':.85},
             'emissiveFactor':[.08,.65,.75], 'extensions':{'KHR_materials_emissive_strength':{'emissiveStrength':2.2}},
+            'extras':{'spacefaceMaterialRole':'accent','spacefaceSurfaceRecipe':'catalog-layered-pbr-v3'},
         },
         {
             'name':'Material_Mechanical',
-            'pbrMetallicRoughness':{'baseColorFactor':[.055,.07,.09,1],'metallicFactor':.82,'roughnessFactor':.38},
+            'pbrMetallicRoughness':{
+                'baseColorFactor':[.32,.35,.38,1], 'baseColorTexture':{'index':mechanical_base},
+                'metallicFactor':1.0,'roughnessFactor':1.0,'metallicRoughnessTexture':{'index':mechanical_orm},
+            },
+            'normalTexture':{'index':mechanical_normal,'scale':1.0}, 'occlusionTexture':{'index':mechanical_orm,'strength':1.0},
+            'extras':{'spacefaceMaterialRole':'mechanical','spacefaceSurfaceRecipe':'catalog-layered-pbr-v3'},
         },
         {
             'name':'Material_Glass',
-            'pbrMetallicRoughness':{'baseColorFactor':[.025,.085,.11,.72],'metallicFactor':0,'roughnessFactor':.08},
+            'pbrMetallicRoughness':{
+                'baseColorFactor':[.08,.22,.28,.72], 'baseColorTexture':{'index':glass_base},
+                'metallicFactor':1.0,'roughnessFactor':1.0,'metallicRoughnessTexture':{'index':glass_orm},
+            },
+            'normalTexture':{'index':glass_normal,'scale':.32}, 'occlusionTexture':{'index':glass_orm,'strength':.35},
             'alphaMode':'BLEND','doubleSided':True,
             'extensions':{
                 'KHR_materials_transmission':{'transmissionFactor':.62},
                 'KHR_materials_ior':{'ior':1.4},
                 'KHR_materials_clearcoat':{'clearcoatFactor':1.0,'clearcoatRoughnessFactor':.12},
             },
+            'extras':{'spacefaceMaterialRole':'glass','spacefaceSurfaceRecipe':'catalog-layered-pbr-v3'},
         },
     ]
     tri=triangle_count(root)
@@ -1377,10 +1539,11 @@ def write_glb(path: Path, spec: PartSpec, root: Node, textures: dict[str, bytes]
         'extensionsUsed':['KHR_materials_transmission','KHR_materials_ior','KHR_materials_clearcoat','KHR_materials_emissive_strength'],
         'scene':0,'scenes':[{'name':spec.id,'nodes':[root_id]}], 'nodes':gltf_nodes,'meshes':gltf_meshes,
         'materials':materials,'samplers':[{'magFilter':9729,'minFilter':9987,'wrapS':10497,'wrapT':10497}],
-        'images':[{'name':'baseColor','bufferView':image_views[0],'mimeType':'image/png'},
-                  {'name':'normal','bufferView':image_views[1],'mimeType':'image/png'},
-                  {'name':'orm','bufferView':image_views[2],'mimeType':'image/png'}],
-        'textures':[{'sampler':0,'source':0},{'sampler':0,'source':1},{'sampler':0,'source':2}],
+        'images':[
+            {'name':name,'bufferView':view,'mimeType':'image/png'}
+            for name, view in zip(image_names, image_views)
+        ],
+        'textures':[{'sampler':0,'source':index,'name':image_names[index]} for index in range(len(image_views))],
         'buffers':[{'byteLength':len(binary)}], 'bufferViews':buffer_views,'accessors':accessors,
     }
     json_bytes=bytearray(json.dumps(doc,separators=(',',':'),ensure_ascii=False).encode('utf-8'))
@@ -1416,11 +1579,33 @@ def historical_profile_diagnostics(asset_id: str, triangles: int, byte_size: int
 
 PRESERVE_MANIFEST_IDS = frozenset()
 
+# Modular pieces occupy a fraction of a ship on the real game camera. Keeping
+# their layered maps at 512 preserves more than a texel per displayed pixel in
+# normal flight/Shipworks views without multiplying 1024 maps across every
+# assembled hull. Large authored places/hulls keep the higher profile.
+DEFAULT_TEXTURE_SIZE = 512
+CATEGORY_TEXTURE_SIZES = {
+    'hulls': 1024,
+    'places': 1024,
+}
 
-def build_all(output: Path, texture_size: int, only_ids: frozenset[str] | None = None) -> dict[str, Any]:
-    if not isinstance(texture_size, int) or texture_size <= 0:
+
+def texture_size_for(spec: PartSpec, override: int | None) -> int:
+    return override or CATEGORY_TEXTURE_SIZES.get(spec.category, DEFAULT_TEXTURE_SIZE)
+
+
+def build_all(output: Path, texture_size: int | None, only_ids: frozenset[str] | None = None) -> dict[str, Any]:
+    if texture_size is not None and (not isinstance(texture_size, int) or texture_size <= 0):
         raise ValueError('texture_size must be a positive integer')
-    texture_cache={style:make_texture_set(style,texture_size) for style in sorted({p.texture_style for p in PARTS})}
+    selected_specs = [spec for spec in PARTS if only_ids is None or spec.id in only_ids]
+    texture_profiles = sorted({
+        (spec.texture_style, texture_size_for(spec, texture_size))
+        for spec in selected_specs
+    })
+    texture_cache = {
+        (style, size): make_texture_set(style, size)
+        for style, size in texture_profiles
+    }
     manifest_path = output / 'parts_manifest.json'
     preserved_parts: list[dict[str, Any]] = []
     if manifest_path.exists():
@@ -1429,9 +1614,7 @@ def build_all(output: Path, texture_size: int, only_ids: frozenset[str] | None =
             if part.get('category') == 'hulls' or part.get('id') in PRESERVE_MANIFEST_IDS:
                 preserved_parts.append(part)
     rows=[]
-    for spec in PARTS:
-        if only_ids is not None and spec.id not in only_ids:
-            continue
+    for spec in selected_specs:
         if spec.id in PRESERVE_MANIFEST_IDS:
             continue
         b=PartBuilder(spec); spec.build(b)
@@ -1440,7 +1623,14 @@ def build_all(output: Path, texture_size: int, only_ids: frozenset[str] | None =
         if tri <= 0:
             raise RuntimeError(f'{spec.id}: generated geometry is empty or non-triangular')
         path=output/spec.category/f'{spec.id}.glb'
-        stats=write_glb(path,spec,b.root,texture_cache[spec.texture_style],texture_size)
+        part_texture_size = texture_size_for(spec, texture_size)
+        stats=write_glb(
+            path,
+            spec,
+            b.root,
+            texture_cache[(spec.texture_style, part_texture_size)],
+            part_texture_size,
+        )
         if stats['bytes'] <= 0:
             raise RuntimeError(f'{spec.id}: generated GLB is empty')
         if not all(math.isfinite(value) for value in (*stats['boundsMin'], *stats['boundsMax'], *stats['dimensionsM'])):
@@ -1453,7 +1643,7 @@ def build_all(output: Path, texture_size: int, only_ids: frozenset[str] | None =
         rows.append({
             'id':spec.id,'category':spec.category,'priority':spec.priority,
             'file':f'{spec.category}/{spec.id}.glb','tris':stats['triangles'],'bytes':stats['bytes'],
-            'textureSize':texture_size,
+            'textureSize':part_texture_size,
             'tintable':{'hull':'Material_Hull','accent':'Material_Accent'},
             'factionAccentVariants':{
                 'core':{'accent':'#39d0ff','thruster':'#88aaff'},
@@ -1475,12 +1665,25 @@ def build_all(output: Path, texture_size: int, only_ids: frozenset[str] | None =
         merged_parts.extend(by_id.values())
         manifest = existing
         manifest['parts'] = merged_parts
+        manifest['textureContract'] = {
+            'baseColor':'sRGB',
+            'normal':'tangent OpenGL green-up',
+            'orm':'R=AO G=roughness B=metallic',
+            'resolution':DEFAULT_TEXTURE_SIZE,
+            'resolutionByCategory':CATEGORY_TEXTURE_SIZES,
+        }
     else:
         manifest={
             'schemaVersion':1,
             'libraryId':'SF_SHIP_PARTS_V1',
             'coordinateSystem':{'handedness':'right','forward':'+X','up':'+Y','starboard':'+Z','unit':'metre','origin':'mount point'},
-            'textureContract':{'baseColor':'sRGB','normal':'tangent OpenGL green-up','orm':'R=AO G=roughness B=metallic','resolution':texture_size},
+            'textureContract':{
+                'baseColor':'sRGB',
+                'normal':'tangent OpenGL green-up',
+                'orm':'R=AO G=roughness B=metallic',
+                'resolution':DEFAULT_TEXTURE_SIZE,
+                'resolutionByCategory':CATEGORY_TEXTURE_SIZES,
+            },
             'budgets':{
                 'trianglesPerPart':list(HISTORICAL_TRIANGLE_PROFILE),
                 'maxBytesPerPart':HISTORICAL_BYTE_PROFILE_MAX,
@@ -1496,13 +1699,19 @@ def build_all(output: Path, texture_size: int, only_ids: frozenset[str] | None =
 def main() -> int:
     parser=argparse.ArgumentParser()
     parser.add_argument('--output',type=Path,default=Path(__file__).resolve().parents[2]/'assets'/'ships'/'parts')
-    parser.add_argument('--texture-size',type=int,default=1024)
+    parser.add_argument(
+        '--texture-size',
+        type=int,
+        default=None,
+        help='Override the category-aware texture profile for every selected part',
+    )
     parser.add_argument('--only',type=str,default='',help='Comma-separated part ids to regenerate without touching other GLBs')
     args=parser.parse_args()
-    if args.texture_size <= 0: parser.error('--texture-size must be a positive integer')
+    if args.texture_size is not None and args.texture_size <= 0:
+        parser.error('--texture-size must be a positive integer')
     only_ids = frozenset(x.strip() for x in args.only.split(',') if x.strip()) or None
     manifest=build_all(args.output,args.texture_size,only_ids=only_ids)
-    total=sum(p['bytes'] for p in manifest['parts'])
+    total=sum(int(p.get('bytes') or 0) for p in manifest['parts'])
     print(json.dumps({'parts':len(manifest['parts']),'p0':sum(p['priority']=='P0' for p in manifest['parts']),'bytes':total,'output':str(args.output)},indent=2))
     return 0
 
