@@ -26,8 +26,10 @@ import {
   classifyPresentEvidence,
   summarizeGpuTimerReport,
 } from './lib/perf-present-evidence.mjs';
+import { strictWorktreeFingerprint } from './lib/releaseSoakContracts.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const START_WORKTREE = await strictWorktreeFingerprint(ROOT);
 const argv = parseArgs(process.argv.slice(2));
 const RENDER_SCALE_REQUESTED = parseRenderScaleRequest(argv.renderScale ?? argv['render-scale']);
 
@@ -125,6 +127,14 @@ const report = {
       'physicsSimplification',
     ],
   },
+  worktree: {
+    commit: START_WORKTREE.head,
+    branch: START_WORKTREE.branch,
+    dirty: START_WORKTREE.changedFileCount !== 0,
+    stable: false,
+    start: START_WORKTREE,
+    end: null,
+  },
   environment: detectExternalPerfEnvironment(),
   scenarios: [],
   summary: null,
@@ -177,7 +187,23 @@ try {
   }
   report.scenarios.push(scenario);
 
+  const endWorktree = await strictWorktreeFingerprint(ROOT);
+  report.worktree.end = endWorktree;
+  report.worktree.stable = START_WORKTREE.digest === endWorktree.digest
+    && START_WORKTREE.head === endWorktree.head
+    && START_WORKTREE.branch === endWorktree.branch
+    && START_WORKTREE.changedFileCount === 0
+    && endWorktree.changedFileCount === 0;
   report.summary = summarizeReport(report.scenarios);
+  if (!report.worktree.stable) {
+    report.summary.pass = false;
+    report.summary.failedBudgets.push({
+      scenario: 'evidence',
+      budget: 'worktree.cleanAndStable',
+      value: false,
+      limit: true,
+    });
+  }
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify(report, null, 2));
   const summaryPath = performanceProfileMarkdownPath(OUT);

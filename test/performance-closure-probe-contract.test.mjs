@@ -71,6 +71,10 @@ test('profile and closure probes share scene metrics and bounded measurement gat
   assert.match(profile, /collectPerformanceSceneStructure/);
   assert.match(profile, /authoredAssetStatus\(state\)/);
   assert.match(profile, /rafHitches: sampled\.raf\.hitches \|\| \[\]/);
+  assert.match(profile, /strictWorktreeFingerprint\(ROOT\)/,
+    'the strict player-route profile must bind evidence to the exact clean worktree');
+  assert.match(profile, /budget:\s*'worktree\.cleanAndStable'/,
+    'worktree drift or dirt must fail the strict player-route profile');
   assert.match(profile,
     /name:\s*'raf\.frame\.p95\.target'[\s\S]{0,520}pass:\s*Number\.isFinite\(rafFrameP95\)\s*&&\s*rafFrameP95\s*<=\s*FRAME_TARGET_MS/,
     'the measured environment floor must never waive the literal 16.7ms acceptance target');
