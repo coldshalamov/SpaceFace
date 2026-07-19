@@ -351,15 +351,20 @@ test('reload mid-step preserves active step and receipts', () => {
   assert.equal(state.careers.ladders.fixture_runner.status, LADDER_STATUS.ACTIVE);
 
   const blob = system.serialize();
+  assert.equal(system.saveSnapshotOwned, true);
   assert.equal(blob.schemaId, CAREER_LADDERS_SCHEMA_ID);
   assert.equal(blob.schemaVersion, CAREER_LADDERS_SCHEMA_VERSION);
+  blob.ladders.fixture_runner.stepId = 'mutated_snapshot';
+  assert.equal(state.careers.ladders.fixture_runner.stepId, 'step_b',
+    'owned career-ladder snapshots must not retain live leaf references');
+  const pristineBlob = system.serialize();
 
   const restored = createGameState(777);
   restored.simTime = 100;
   restored.careers = { origins: { hauler: { status: 'completed' } }, guildRank: { x: 1 } };
   const system2 = createCareerLaddersSystem();
   system2.init({ state: restored, bus: createBus(), registry: { get: () => null } });
-  system2.deserialize(structuredClone(blob));
+  system2.deserialize(structuredClone(pristineBlob));
 
   assert.equal(restored.careers.ladders.fixture_runner.stepId, 'step_b');
   assert.equal(restored.careers.ladders.fixture_runner.status, LADDER_STATUS.ACTIVE);

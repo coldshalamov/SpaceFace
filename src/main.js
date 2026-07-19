@@ -296,6 +296,10 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // renderer real entity boundaries to upgrade while the route remains frozen in loading.
       bootstrapScene(state, helpers, bus, registry);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      const saveSystem = registry.get('save');
+      if (saveSystem && typeof saveSystem.primeAutosaveCapture === 'function') {
+        saveSystem.primeAutosaveCapture();
+      }
       if (opts.name) state.player.name = opts.name;
       if (opts.difficulty) state.settings.gameplay.difficulty = opts.difficulty;
     },
