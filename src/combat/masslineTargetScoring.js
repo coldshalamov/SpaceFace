@@ -31,6 +31,11 @@
 //     throw what you are); an ally is ELIGIBLE (rescue/tow, T11) but damped by ALLY_FACTOR so it
 //     never outranks a comparable hostile; neutral/hostile multiply by 1 (the existing hostility
 //     BONUS stays the separate axis it always was).
+//   • REACH ALLOWANCE (opts.reachAllowance / opts.reachAllowanceOf -> non-negative WU): optional
+//     extra latch range per candidate so a caller can restore surface-reach contracts
+//     (centerDistance <= maxRange + radius) without changing range-comfort semantics. Absent or
+//     zero allowance keeps the legacy center-distance gate byte-identical. Comfort still uses
+//     raw distance / maxRange (clamped), never (distance - allowance).
 //   • NO WEAPON-AIM COUPLING: this module reads no weapon or reticle state of any kind. A locked
 //     gun must never steer massline target choice — pinned by the contract suite, which also
 //     forbids this file from even naming those seams.
@@ -83,6 +88,7 @@ const OWNERSHIP_GATED = Object.freeze(new Set(['own', 'station']));
  * @param {object} target   - { id, pos:{x,z}, vel?:{x,z}, radius?, mass?, type? }
  * @param {object} [opts]
  * @param {number} [opts.maxRange=390]        - tether latch range (caller passes def.maxLength).
+ * @param {number} [opts.reachAllowance=0]    - non-negative extra range (surface reach); opt-in.
  * @param {boolean} [opts.hostile=false]      - caller-resolved isHostileToPlayer flag.
  * @param {boolean} [opts.currentlyLatched=false] - small bonus to hold the target you already have.
  * @returns {{ id, score:0..1, rating:'clean'|'good'|'rough'|'poor'|'out', reasons:object }}
@@ -90,6 +96,7 @@ const OWNERSHIP_GATED = Object.freeze(new Set(['own', 'station']));
  */
 export function scoreMasslineTarget(player, target, opts = {}) {
   const maxRange = positiveFinite(opts.maxRange, DEFAULT_MAX_RANGE);
+  const reachAllowance = nonNegativeFinite(opts.reachAllowance, 0);
   const id = target && target.id != null ? target.id : null;
 
   if (!player || !player.pos || !target || !target.pos) {
@@ -111,9 +118,11 @@ export function scoreMasslineTarget(player, target, opts = {}) {
   const dz = finite(target.pos.z, 0) - finite(player.pos.z, 0);
   const distance = Math.hypot(dx, dz);
 
-  // Reachability gate: outside latch range is not a candidate at all.
-  if (!(distance <= maxRange) || !(distance > 1e-6)) {
-    return zero(id, distance > maxRange ? 'out of range' : 'degenerate distance');
+  // Reachability gate: outside latch range (+ optional surface allowance) is not a candidate.
+  // Comfort still uses raw center distance / maxRange so allowance does not inflate "ideal mid-band".
+  const reachLimit = maxRange + reachAllowance;
+  if (!(distance <= reachLimit) || !(distance > 1e-6)) {
+    return zero(id, distance > reachLimit ? 'out of range' : 'degenerate distance');
   }
 
   const swing = scoreSwingGeometry(player, target, dx, dz, distance);
@@ -185,6 +194,7 @@ export function rankMasslineTargets(player, candidates, opts = {}) {
   const isLatchedFn = typeof opts.isLatched === 'function' ? opts.isLatched : null;
   const isObstructedFn = typeof opts.isObstructed === 'function' ? opts.isObstructed : null;
   const ownershipOfFn = typeof opts.ownershipOf === 'function' ? opts.ownershipOf : null;
+  const reachAllowanceOfFn = typeof opts.reachAllowanceOf === 'function' ? opts.reachAllowanceOf : null;
   const out = [];
   for (const c of candidates) {
     const subOpts = { ...opts };
@@ -194,6 +204,10 @@ export function rankMasslineTargets(player, candidates, opts = {}) {
     if (ownershipOfFn) {
       const o = ownershipOfFn(c);
       if (typeof o === 'string') subOpts.ownership = o;
+    }
+    if (reachAllowanceOfFn) {
+      const a = reachAllowanceOfFn(c);
+      if (Number.isFinite(a) && a >= 0) subOpts.reachAllowance = a;
     }
     const rec = scoreMasslineTarget(player, c, subOpts);
     if (rec) out.push(rec);
@@ -280,6 +294,10 @@ function finite(v, fb) { return Number.isFinite(v) ? v : fb; }
 
 function positiveFinite(v, fb) {
   return Number.isFinite(v) && v > 0 ? v : fb;
+}
+
+function nonNegativeFinite(v, fb) {
+  return Number.isFinite(v) && v >= 0 ? v : fb;
 }
 
 function compareId(a, b) {

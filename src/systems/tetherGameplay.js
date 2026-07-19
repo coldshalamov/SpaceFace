@@ -71,7 +71,13 @@ export const tetherGameplay = {
 
     const kernel = combatKernel(this);
     const attachments = kernel && kernel.attachments;
-    if (!attachments) return;
+    if (!attachments) {
+      // Readable failure: missing attachment authority must not swallow a latch press silently.
+      if (state.input?.actions?.tetherFire) {
+        this.bus.emit('tether:latchDenied', { reason: 'attachment_authority_unavailable' });
+      }
+      return;
+    }
 
     this._reconcileActive(attachments, state);
     this._adoptExisting(attachments, state);
@@ -159,7 +165,11 @@ export const tetherGameplay = {
       return;
     }
     const def = attachmentDef(kernel, TETHER_DEF_ID);
-    if (!def) return;
+    if (!def) {
+      // Attachment authority's established reason when the def is absent from the catalog.
+      this.bus.emit('tether:latchDenied', { reason: 'unknown_attachment_def' });
+      return;
+    }
     this._lastLatchDenial = null;
     const nearestMode = state.input?.tetherMode === 'nearest' || softNearestPreferred(state, player);
     const latch = this._acquireTarget(player, def, state, nearestMode);
@@ -298,6 +308,8 @@ export const tetherGameplay = {
       isHostile: (t) => isHostileToPlayer(t, player.team, state),
       isLatched: latchedId != null ? (t) => t.id === latchedId : null,
       ownershipOf: (t) => resolveMasslineOwnership(t, player, state),
+      // Pre-T04 surface-reach: center may sit beyond maxLength when the hull surface is within.
+      reachAllowanceOf: (t) => Math.max(0, Number(t && t.radius) || 0),
     });
 
     const eligible = ranked.filter((rec) => rec && rec.score > 0);
@@ -309,7 +321,10 @@ export const tetherGameplay = {
       }
       const outRec = ranked.find((rec) => rec && rec.rating === 'out');
       if (outRec) {
-        this._lastLatchDenial = { reason: 'out-of-range', targetId: outRec.id };
+        // Branch on scorer gate reason — 'out' also covers degenerate geometry (overlapping).
+        const gate = outRec.reasons && outRec.reasons.gate;
+        const reason = gate === 'degenerate distance' ? 'invalid-target' : 'out-of-range';
+        this._lastLatchDenial = { reason, targetId: outRec.id };
         return null;
       }
       this._lastLatchDenial = { reason: 'no-target' };
