@@ -43,7 +43,54 @@ test('T03 §1: with no T03 axis supplied, scores are byte-identical to rung 07',
     assert.equal(r.rating, rating, `${target.id} legacy rating`);
     assert.ok(!('intent' in r.reasons) && !('ownership' in r.reasons),
       'no T03 reason fields appear on the legacy path');
+    // Opt-in reachAllowance must be absent-equivalent: zero / omitted leave scores byte-identical.
+    const zeroAllowance = scoreMasslineTarget(P(), target, { ...opts, reachAllowance: 0 });
+    assert.equal(zeroAllowance.score, score, `${target.id} reachAllowance:0 is legacy-identical`);
+    assert.equal(zeroAllowance.rating, rating);
   }
+});
+
+// ── §1b reach-allowance membrane (T04 surface-reach opt-in) ───────────────────────────────────
+
+test('T03 §1b: reachAllowance extends the gate only; comfort still uses raw distance/maxRange', () => {
+  // Independent hard-coded bounds: maxRange 390, allowance 20 → reach limit 410.
+  const maxRange = 390;
+  const allowance = 20;
+  // At maxRange + allowance: eligible (gate open).
+  const atBound = scoreMasslineTarget(P(), T('at', 410, 0, { vz: 60 }), {
+    maxRange, reachAllowance: allowance,
+  });
+  assert.notEqual(atBound.rating, 'out', 'at maxRange+allowance must be in range');
+  assert.ok(atBound.score > 0);
+  // Comfort uses raw distance/maxRange (410/390 > 1 → clamped) — not (410-20)/390.
+  const comfortAt = atBound.reasons.range;
+  const noAllowanceBeyond = scoreMasslineTarget(P(), T('far', 410, 0, { vz: 60 }), { maxRange });
+  assert.equal(noAllowanceBeyond.rating, 'out', 'without allowance, center 410 is out');
+  assert.equal(noAllowanceBeyond.reasons.gate, 'out of range');
+  // Beyond maxRange+allowance: still out.
+  const beyond = scoreMasslineTarget(P(), T('beyond', 410.001, 0, { vz: 60 }), {
+    maxRange, reachAllowance: allowance,
+  });
+  assert.equal(beyond.rating, 'out');
+  assert.equal(beyond.reasons.gate, 'out of range');
+  // rankMasslineTargets resolves reachAllowanceOf per candidate.
+  const ranked = rankMasslineTargets(P(), [
+    { ...T('small', 400, 0, { vz: 60 }), radius: 0 },
+    { ...T('big', 400, 0, { vz: 60 }), radius: 20 },
+  ], {
+    maxRange,
+    reachAllowanceOf: (t) => Math.max(0, Number(t.radius) || 0),
+  });
+  assert.equal(ranked.find((r) => r.id === 'small').rating, 'out', 'radius 0 at 400 is out of 390');
+  assert.notEqual(ranked.find((r) => r.id === 'big').rating, 'out', 'radius 20 at 400 is in (390+20)');
+  // Pin that comfort at a mid-range target is unchanged by a large unused allowance.
+  const mid = scoreMasslineTarget(P(), T('mid', 200, 0, { vz: 60 }), { maxRange });
+  const midAllow = scoreMasslineTarget(P(), T('mid', 200, 0, { vz: 60 }), {
+    maxRange, reachAllowance: 50,
+  });
+  assert.equal(mid.reasons.range, midAllow.reasons.range, 'allowance must not alter range comfort');
+  assert.equal(mid.score, midAllow.score);
+  assert.ok(Number.isFinite(comfortAt));
 });
 
 // ── §2 intent alignment ────────────────────────────────────────────────────────────────────────

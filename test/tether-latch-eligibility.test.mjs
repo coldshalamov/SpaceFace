@@ -308,14 +308,73 @@ test('T04 §1: hostile ranks first among comparable candidates; ally damped but 
     assert.equal(harness.events.latched[0].targetId, ally.id);
   }
 
-  // Runtime: hostile wins over comparable ally in the same aim pool.
+  // Runtime: exact cursor/geometry tie — ally holds the LOWER id so only scorer rank can pick
+  // the hostile (kills the "map every rank to 0" mutant that previously stayed green).
   {
-    const foe = hostileShip(13, { pos: { x: 200, z: 0 }, vel: { x: 0, z: 60 } });
-    const friend = allyShip(14, { pos: { x: 200, z: 5 }, vel: { x: 0, z: 60 } });
+    const foe = hostileShip(1002, { pos: { x: 200, z: 0 }, vel: { x: 0, z: 60 } });
+    const friend = allyShip(1001, { pos: { x: 200, z: 0 }, vel: { x: 0, z: 60 } });
     const harness = buildHarness([friend, foe], { aimWorld: { x: 200, z: 0 } });
     fireLatch(harness);
     assert.equal(harness.events.latched.length, 1);
-    assert.equal(harness.events.latched[0].targetId, foe.id, 'hostile ranks first among comparable');
+    assert.equal(harness.events.latched[0].targetId, foe.id, 'hostile ranks first among exact-tie peers');
+  }
+
+  // Surface-reach contract (pre-T04): center <= maxLength + radius. maxLength=390, radius=20.
+  // Independent hard-coded bounds: center-at-390 latches; surface-within-390 (center 410) latches;
+  // surface-beyond (center 410.001) fails out-of-range.
+  {
+    const rockAt = asteroid(15, { pos: { x: 390, z: 0 }, radius: 20, mass: 640 });
+    const h = buildHarness([rockAt], { aimWorld: { x: 390, z: 0 } });
+    fireLatch(h);
+    assert.equal(h.events.latched.length, 1, 'center exactly at maxLength latches');
+    assert.equal(h.events.latched[0].targetId, rockAt.id);
+  }
+  {
+    const rockSurf = asteroid(16, { pos: { x: 410, z: 0 }, radius: 20, mass: 640 });
+    const h = buildHarness([rockSurf], { aimWorld: { x: 410, z: 0 } });
+    fireLatch(h);
+    assert.equal(h.events.denied.length, 0, `surface-within must latch: ${JSON.stringify(h.events.denied)}`);
+    assert.equal(h.events.latched.length, 1, 'surface exactly at maxLength remains latchable');
+    assert.equal(h.events.latched[0].targetId, rockSurf.id);
+  }
+  {
+    // Surface beyond maxLength: exclusive Focus lease keeps the denial as out-of-range
+    // (ordinary pool pre-filter would drop it as no-target; Focus is exclusive past reach).
+    const foeBeyond = hostileShip(17, { pos: { x: 410.001, z: 0 }, radius: 20, mass: 500 });
+    const h = buildHarness([foeBeyond], {
+      aimWorld: { x: 410.001, z: 0 },
+      playerState: {
+        flybyFocus: { active: true, targetId: foeBeyond.id, until: 99, latchScale: 1 },
+      },
+    });
+    fireLatch(h);
+    assert.equal(h.events.latched.length, 0);
+    assert.equal(h.events.denied[0]?.reason, 'out-of-range');
+    assert.equal(h.events.denied[0]?.targetId, foeBeyond.id);
+  }
+
+  // Nearest-mode matrix: station/own denied; ally-nearest succeeds.
+  {
+    const stn = station(18, { pos: { x: 150, z: 0 } });
+    const h = buildHarness([stn], { aimWorld: { x: 150, z: 0 }, tetherMode: 'nearest' });
+    fireLatch(h);
+    assert.equal(h.events.latched.length, 0, 'nearest mode must not latch protected station');
+    assert.equal(h.events.denied[0]?.reason, 'protected');
+  }
+  {
+    const wing = wingmanShip(19, { pos: { x: 140, z: 0 } });
+    const h = buildHarness([wing], { aimWorld: { x: 140, z: 0 }, tetherMode: 'nearest' });
+    fireLatch(h);
+    assert.equal(h.events.latched.length, 0, 'nearest mode must not latch own wingman');
+    assert.equal(h.events.denied[0]?.reason, 'protected');
+  }
+  {
+    const ally = allyShip(22, { pos: { x: 160, z: 0 }, vel: { x: 0, z: 50 } });
+    const h = buildHarness([ally], { aimWorld: { x: 160, z: 0 }, tetherMode: 'nearest' });
+    fireLatch(h);
+    assert.equal(h.events.denied.length, 0, `ally-nearest should latch: ${JSON.stringify(h.events.denied)}`);
+    assert.equal(h.events.latched.length, 1);
+    assert.equal(h.events.latched[0].targetId, ally.id);
   }
 });
 
@@ -446,6 +505,37 @@ test('T04 §3: denial reasons for cooldown, no-target, protected, out-of-range, 
     h.system._active = null;
     fireLatch(h);
     assert.equal(h.events.denied[0]?.reason, 'physics_port_unavailable');
+    assert.equal(h.events.denied[0]?.targetId, rock.id);
+  }
+
+  // Silent-path repair: missing attachment authority emits attachment_authority_unavailable.
+  {
+    const rock = asteroid(34, { pos: { x: 100, z: 0 } });
+    const h = buildHarness([rock], { aimWorld: { x: 100, z: 0 } });
+    h.system.registry = { get: () => null };
+    fireLatch(h);
+    assert.equal(h.events.latched.length, 0);
+    assert.equal(h.events.denied[0]?.reason, 'attachment_authority_unavailable');
+  }
+
+  // Silent-path repair: missing tether def emits authority's unknown_attachment_def.
+  {
+    const rock = asteroid(35, { pos: { x: 100, z: 0 } });
+    const h = buildHarness([rock], { aimWorld: { x: 100, z: 0 } });
+    h.kernel.catalog.attachments.delete('tether_standard');
+    fireLatch(h);
+    assert.equal(h.events.latched.length, 0);
+    assert.equal(h.events.denied[0]?.reason, 'unknown_attachment_def');
+  }
+
+  // Degenerate geometry (overlapping target) maps to invalid-target, not out-of-range.
+  {
+    const rock = asteroid(36, { pos: { x: 0, z: 0 }, radius: 14 });
+    const h = buildHarness([rock], { aimWorld: { x: 0, z: 0 } });
+    fireLatch(h);
+    assert.equal(h.events.latched.length, 0);
+    assert.equal(h.events.denied[0]?.reason, 'invalid-target',
+      `degenerate distance must not report out-of-range (got ${h.events.denied[0]?.reason})`);
     assert.equal(h.events.denied[0]?.targetId, rock.id);
   }
 });
