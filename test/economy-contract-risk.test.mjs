@@ -43,6 +43,23 @@ import {
 import { missionPreflight, missionSmugglingRisk } from '../src/ui/missionPreflight.js';
 import { SECTORS } from '../src/data/sectors.js';
 
+// Self-contained station fixtures — independent of live catalog order (kills the
+// HOME.stations[0] → stations[1] coverage-erasure mutant from REVIEW-CORRIDOR P1-4).
+const HELIOS_STATION = Object.freeze({
+  id: 'station_helios',
+  name: 'Helios Station',
+  factionId: 'faction_scn',
+  size: 'M',
+  type: 'trade_hub',
+});
+const NON_HELIOS_STATION = Object.freeze({
+  id: 'station_ceres',
+  name: 'Ceres Refinery',
+  factionId: 'faction_scn',
+  size: 'M',
+  type: 'refinery',
+});
+// Live catalog still used for smuggling/preflight tests that need a real sector context.
 const HOME = SECTORS.find((s) => (s.stations || []).length > 0);
 assert.ok(HOME, 'catalog has a sector with stations');
 const STATION = HOME.stations[0];
@@ -93,13 +110,15 @@ function makeBus() {
   };
 }
 
-function makeState(node, { seed = 7, simTime = 100 } = {}) {
+function makeState(node, { seed = 7, simTime = 100, sectorId = null, station = null } = {}) {
+  const sector = sectorId || HOME.id;
+  const st = station || STATION;
   return {
     mode: 'flight',
     simTime,
     playerId: 1,
     meta: { seed },
-    world: { currentSectorId: HOME.id, sectors: {} },
+    world: { currentSectorId: sector, sectors: {} },
     entities: new Map([[1, { id: 1, type: 'ship', hull: 100, hullMax: 100 }]]),
     player: {
       credits: 50000,
@@ -107,13 +126,13 @@ function makeState(node, { seed = 7, simTime = 100 } = {}) {
       efficiencyMods: {},
       stats: {},
     },
-    factions: { [STATION.factionId || HOME.factionId]: { rep: 50 } },
+    factions: { [st.factionId || HOME.factionId || 'faction_scn']: { rep: 50 } },
     nav: {},
     ui: {},
     fuel: { current: 100, max: 100 },
     missions: { active: [], config: { refreshSec: 600, maxActive: 8 } },
     sectorSim: {
-      field: { version: 1, epochDays: 2, nodes: { [HOME.id]: node } },
+      field: { version: 1, epochDays: 2, nodes: { [sector]: node } },
       sectors: {},
       meta: {},
     },
@@ -136,25 +155,43 @@ test('calm field is silent: no template, no offer, no emit', () => {
     assert.equal(selectEconContract(calm), null);
     assert.equal(isCalmField(calm), true);
 
-    const bus = makeBus();
-    const state = makeState(calm);
-    const sys = { ...economyContracts };
-    sys.init({ state, bus, helpers: { voice: { say() { return true; } } } });
-
-    bus.emit('dock:docked', { stationId: STATION.id });
-    const fieldOffers = bus.emitLog.filter((e) => e.evt === 'mission:offered'
-      && e.payload && e.payload.source === 'economyContract');
-    assert.equal(fieldOffers.length, 0, 'calm field emits no field contract');
-    // Helios still may emit the authored G06 first-trade teach offer once; that is not a field contract.
-    const firstTrade = bus.emitLog.filter((e) => e.evt === 'mission:offered'
-      && e.payload && e.payload.source === 'firstTradeContract');
-    if (STATION.id === 'station_helios') {
+    // Unconditional Helios first-trade path (self-contained fixture, not catalog order).
+    {
+      const bus = makeBus();
+      const state = makeState(calm, {
+        sectorId: 'sector_helios_prime',
+        station: HELIOS_STATION,
+      });
+      const sys = { ...economyContracts };
+      sys.init({ state, bus, helpers: { voice: { say() { return true; } } } });
+      bus.emit('dock:docked', { stationId: HELIOS_STATION.id });
+      const fieldOffers = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+        && e.payload && e.payload.source === 'economyContract');
+      assert.equal(fieldOffers.length, 0, 'calm field emits no field contract');
+      const firstTrade = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+        && e.payload && e.payload.source === 'firstTradeContract');
       assert.equal(firstTrade.length, 1, 'Helios posts the authored first-trade teach offer once');
-    } else {
-      assert.equal(firstTrade.length, 0);
+      assert.equal(sys.hasEvaluated(HELIOS_STATION.id), true);
     }
-    // Dedupe still marks the epoch so re-dock stays silent for field evaluation.
-    assert.equal(sys.hasEvaluated(STATION.id), true);
+
+    // Unconditional non-Helios: no first-trade offer.
+    {
+      const bus = makeBus();
+      const state = makeState(calm, {
+        sectorId: 'sector_ceres_belt',
+        station: NON_HELIOS_STATION,
+      });
+      const sys = { ...economyContracts };
+      sys.init({ state, bus, helpers: { voice: { say() { return true; } } } });
+      bus.emit('dock:docked', { stationId: NON_HELIOS_STATION.id });
+      const fieldOffers = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+        && e.payload && e.payload.source === 'economyContract');
+      assert.equal(fieldOffers.length, 0, 'calm field emits no field contract');
+      const firstTrade = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+        && e.payload && e.payload.source === 'firstTradeContract');
+      assert.equal(firstTrade.length, 0, 'non-Helios calm dock never posts first-trade');
+      assert.equal(sys.hasEvaluated(NON_HELIOS_STATION.id), true);
+    }
   });
 });
 
@@ -180,27 +217,55 @@ test('threshold gates are deterministic and field offers dedupe per station+epoc
     assert.equal(a.causeTag, b.causeTag);
     assert.equal(a.strength, b.strength);
 
-    const bus = makeBus();
-    const state = makeState(scarce, { seed: 11, simTime: 100 });
-    const sys = { ...economyContracts };
-    sys.init({ state, bus, helpers: { voice: { say() { return true; } } } });
+    // Helios: field offer + first-trade once (unconditional, self-contained fixture).
+    {
+      const bus = makeBus();
+      const state = makeState(scarce, {
+        seed: 11,
+        simTime: 100,
+        sectorId: 'sector_helios_prime',
+        station: HELIOS_STATION,
+      });
+      const sys = { ...economyContracts };
+      sys.init({ state, bus, helpers: { voice: { say() { return true; } } } });
+      bus.emit('dock:docked', { stationId: HELIOS_STATION.id });
+      bus.emit('dock:docked', { stationId: HELIOS_STATION.id }); // same epoch
+      const fieldOffers = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+        && e.payload && e.payload.source === 'economyContract');
+      assert.equal(fieldOffers.length, 1, 'one field offer per station-epoch');
+      const offer = fieldOffers[0].payload;
+      const epoch = fieldContractEpoch(100, 600);
+      assert.equal(offer.id, stableFieldOfferId(HELIOS_STATION.id, epoch));
+      assert.equal(offer.source, 'economyContract');
+      assert.ok(offer.cause && offer.cause.tag === 'route_scarcity', 'cause-named');
+      assert.match(offer.summary, /scarcity|scarce|premium|route/i);
+      const firstTrade = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+        && e.payload && e.payload.source === 'firstTradeContract');
+      assert.equal(firstTrade.length, 1, 'first-trade teach offer once per run at Helios');
+      assert.equal(state.missions.active.length, 0);
+      assert.equal(state.missions.boards, undefined);
+    }
 
-    bus.emit('dock:docked', { stationId: STATION.id });
-    bus.emit('dock:docked', { stationId: STATION.id }); // same epoch
-    const fieldOffers = bus.emitLog.filter((e) => e.evt === 'mission:offered'
-      && e.payload && e.payload.source === 'economyContract');
-    assert.equal(fieldOffers.length, 1, 'one field offer per station-epoch');
-    const offer = fieldOffers[0].payload;
-    const epoch = fieldContractEpoch(100, 600);
-    assert.equal(offer.id, stableFieldOfferId(STATION.id, epoch));
-    assert.equal(offer.source, 'economyContract');
-    assert.ok(offer.cause && offer.cause.tag === 'route_scarcity', 'cause-named');
-    assert.match(offer.summary, /scarcity|scarce|premium|route/i);
-    // First-trade teach offer (Helios only) is independent of field epoch dedupe and posts once.
-    const firstTrade = bus.emitLog.filter((e) => e.evt === 'mission:offered'
-      && e.payload && e.payload.source === 'firstTradeContract');
-    if (STATION.id === 'station_helios') {
-      assert.equal(firstTrade.length, 1, 'first-trade teach offer once per run');
+    // Non-Helios: field offer only, never first-trade.
+    {
+      const bus = makeBus();
+      const state = makeState(scarce, {
+        seed: 11,
+        simTime: 100,
+        sectorId: 'sector_ceres_belt',
+        station: NON_HELIOS_STATION,
+      });
+      const sys = { ...economyContracts };
+      sys.init({ state, bus, helpers: { voice: { say() { return true; } } } });
+      bus.emit('dock:docked', { stationId: NON_HELIOS_STATION.id });
+      bus.emit('dock:docked', { stationId: NON_HELIOS_STATION.id });
+      const fieldOffers = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+        && e.payload && e.payload.source === 'economyContract');
+      assert.equal(fieldOffers.length, 1, 'non-Helios still posts one field offer per epoch');
+      assert.equal(fieldOffers[0].payload.id, stableFieldOfferId(NON_HELIOS_STATION.id, fieldContractEpoch(100, 600)));
+      const firstTrade = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+        && e.payload && e.payload.source === 'firstTradeContract');
+      assert.equal(firstTrade.length, 0, 'non-Helios never posts first-trade');
     }
 
     // Pure dedupe API
@@ -209,10 +274,6 @@ test('threshold gates are deterministic and field offers dedupe per station+epoc
     markStationEpochEvaluated(bag, 'st_x', 3);
     assert.equal(isStationEpochEvaluated(bag, 'st_x', 3), true);
     assert.equal(isStationEpochEvaluated(bag, 'st_x', 4), false);
-
-    // No missions authority write
-    assert.equal(state.missions.active.length, 0);
-    assert.equal(state.missions.boards, undefined);
   });
 });
 
