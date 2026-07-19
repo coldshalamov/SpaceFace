@@ -154,18 +154,29 @@ landed, the consumer did not — which is the recurring seam in this codebase an
 | W1-5 | Rebindable Travel Burn latch (Num Lock default + laptop + controller); braking breaks it, steering does not | W1-1 | **not started** |
 | W1-6 | Per-family speed ceiling, shown on the velocity tape, approached asymptotically | W1-1 | **partial** `6ec8fa6d` — ceiling derived and exported (`resolveTravelCeiling`); the velocity-tape V-MAX line is not drawn |
 | W1-7 | Route follower **sequences** existing controllers; owns `nav.route`; `nav.autoTravel` finally has a reader (D6) | S0-7, W1-1 | **built, NOT wired** `2fe6d542` |
-| W1-8 | Plot and engage are separate actions, reachable on the default route (wired-features contract) | W1-7 | **not started** — the gate for W1-1/W1-7 becoming `passing` |
+| W1-8 | Plot and engage are separate actions, reachable on the default route (wired-features contract) | W1-7 | **passing** `c2437201` |
 | W1-9 | Manual burn shows stopping arc + BRAKE NOW; overshoot remains possible. Route follower auto-brakes and flip-and-burns when `bestMode` says so | W1-7 | **partial** `2fe6d542` — follower side chooses handoff from `estimateBrakingSolution.bestMode`; the manual-burn HUD half is not done |
 | W1-10 | Route survives save/load in every executor state | W1-7 | **passing** `2fe6d542` — pinned in `check:route-follower`, and an idle nav serializes with no executor key so the default save shape is unchanged |
 
-**Why W1-1, W1-2 and W1-7 are `built, NOT wired` rather than `passing`.** Nothing in production
-emits `nav:engageRoute`, and no latch or HUD consumes the travel-drive axis. Both are producers
-whose consumers were not built: the drive axis is reachable only by a caller passing
-`input.travelDrive`, and the executor is never constructed on the default player route, so **RC-5's
-player symptom — "plotting a cross-sector route does nothing" — is not yet fixed**. Every remaining
-UI entry point (`uiRoot.js`, `src/ui/screens/*`) is held by the concurrent agent. This is the same
-posture as S0-7 and the RCS renderer, and it is now the third instance of this codebase's recurring
-seam. **W1-8 is the single item that converts three rows from `built` to `passing`.**
+**Why W1-1, W1-2 and W1-7 are `built, NOT wired` rather than `passing`.** They are producers whose
+consumers are only partly built.
+
+- **W1-7 (route follower) now has a production trigger.** `c2437201` added the engage control to the
+  map inspector, so `nav:engageRoute` is emitted by a real default-route player action for the first
+  time. Its availability matrix, its plot/engage separation and its two-sided event contract are
+  pinned by `check:route-engage` (14/14). What is *not* yet proven is the end-to-end flight itself —
+  Helios → Tethys under executor control — because the browser harness that would demonstrate it
+  times out at boot (see the boot-budget entry above). So the wiring is proven and the *journey* is
+  not. Under this ledger's own definition (`passing` = proven end-to-end through the default player
+  route) that is short of `passing`, and it stays short until the boot blocker clears. Calling it
+  passing on the strength of unit tests is exactly the move this column exists to prevent.
+- **W1-1/W1-2 (travel-drive axis) still have no consumer at all.** The axis is reachable only by a
+  caller passing `input.travelDrive`, and nothing does: W1-5 (the latch) and the HUD half of W1-6 and
+  W1-9 were not built — their packets died when the session limit terminated the agents mid-wave.
+  The `dashMomentum` half of W1-4 *is* wired at `flightV3.js`.
+
+This is the same posture as S0-7 and the RCS renderer. **W1-5 plus the HUD work is what remains
+before the travel-drive rows can move.**
 
 **Evidence for the rows that are marked passing.** RC-4 was reproduced numerically *before* the fix
 (`drive_reaction_m`, throttle 1, boost held, 400 WU/s against cap 302.25 → `manualLocal.forward =
