@@ -48,7 +48,7 @@ import { SHIPS } from '../data/ships.js';
 import { getAssetResidency } from './assetResidency.js';
 import { createPipelineAdmissionTracker } from './pipelineReadiness.js';
 import { prepareStartupGpuResidency, yieldToBrowser } from './startupGpuResidency.js';
-import { detachStaleWebGlDisposeListeners } from './contextResourceLifecycle.js';
+import { collectContextLossRoots, detachStaleWebGlDisposeListeners } from './contextResourceLifecycle.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -727,13 +727,14 @@ export const render = {
         ev.preventDefault();        // allow restoration
         if (this._contextLost) return;
         this._contextLost = true;
-        const contextRoots = [scene, this._envMap];
-        if (this.spaceBg && typeof this.spaceBg.contextLossResources === 'function') {
-          contextRoots.push(...this.spaceBg.contextLossResources());
-        }
-        for (const entity of state.entityList || []) {
-          if (entity?.mesh) contextRoots.push(entity.mesh);
-        }
+        const contextRoots = collectContextLossRoots({
+          scene,
+          environment: this._envMap,
+          spaceBackground: this.spaceBg,
+          bloom: this.bloom,
+          renderGraph: this._renderGraph,
+          entities: state.entityList,
+        });
         const detachReceipt = detachStaleWebGlDisposeListeners(contextRoots);
         this._contextRecovery.detachedStaleDisposeListeners = detachReceipt.listenersDetached;
         this._contextRecovery.detachedContextResources = detachReceipt;

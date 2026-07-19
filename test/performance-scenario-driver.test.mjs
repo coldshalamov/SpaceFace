@@ -4,8 +4,10 @@ import { test } from 'node:test';
 
 import {
   performanceScenarioExecutionOrder,
+  performanceScenarioHoldsMeasuredPose,
   validateScenarioRestoration,
 } from '../scripts/lib/performanceScenarioDriver.mjs';
+import { PERFORMANCE_SCENARIOS } from '../scripts/lib/performanceClosureContracts.mjs';
 
 test('scenario execution order keeps comparable route states together and context recovery last', () => {
   const order = performanceScenarioExecutionOrder([
@@ -46,9 +48,27 @@ test('browser restoration resolves the live SF authority in every evaluation sco
   assert.match(restoreSource, /const receipt = await page\.evaluate\([\s\S]*const sf = window\.SF;[\s\S]*sf\.registry/);
 });
 
-test('steady synthetic workloads hold a measured pose without changing public steady flight or transitions', async () => {
+test('only injected non-transition workloads hold the measured pose', async () => {
+  const held = PERFORMANCE_SCENARIOS
+    .filter(performanceScenarioHoldsMeasuredPose)
+    .map((definition) => definition.id);
+  assert.deepEqual(held, [
+    'mining_tether_active',
+    'fleet_full_render_10',
+    'fleet_full_render_25',
+    'fleet_full_render_50',
+    'fleet_transparent_heavy',
+    'station_visible_steady',
+    'combat_vfx_burst',
+    'autosave_under_load',
+  ]);
+
+  for (const definition of PERFORMANCE_SCENARIOS.filter((entry) => entry.primaryCapable || entry.transitionWindow)) {
+    if (definition.injectedState && !definition.transitionWindow) continue;
+    assert.equal(performanceScenarioHoldsMeasuredPose(definition), false, `${definition.id} must preserve its public motion truth`);
+  }
+
   const source = await readFile(new URL('../scripts/lib/performanceScenarioDriver.mjs', import.meta.url), 'utf8');
-  assert.match(source, /const holdsMeasuredPose = id !== 'docked_market_ui'[\s\S]*id !== 'flight_steady'[\s\S]*id !== 'station_arrival_approach'[\s\S]*id !== 'jump_asset_admission'/);
   assert.match(source, /if \(holdsMeasuredPose\) \{[\s\S]*player\.vel\.set\(0, 0, 0\);[\s\S]*syncPlayerPhysics/);
   assert.match(source, /player\.vel\.set\(snapshot\.player\.vel\.x, snapshot\.player\.vel\.y, snapshot\.player\.vel\.z\)/);
 });

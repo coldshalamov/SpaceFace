@@ -12,6 +12,7 @@ import {
   createPipelineAdmissionTracker,
   waitForCurrentRenderPipelines,
 } from '../src/render/pipelineReadiness.js';
+import { SpaceRenderGraph } from '../src/render/post/spaceRenderGraph.js';
 
 test('pipeline warm-up compiles against the exact render target and restores renderer state', async () => {
   const previousTarget = { name: 'previous-target' };
@@ -141,7 +142,21 @@ test('bloom instance exposes the loading warm-up contract used by renderer admis
   assert.equal(result.mode, 'forced-render');
   assert.equal(subject.parent, null);
   assert.ok(targets.some(Boolean), 'warm-up selects the bloom HDR scene target');
+  assert.equal(bloom.contextLossResources().length, bloom.diagnostics().renderTargetCount,
+    'context loss exposes every bloom render target before rebuild/resize can dispose it');
   bloom.dispose();
+});
+
+test('render graph exposes every off-scene target to context-loss cleanup', () => {
+  const renderer = {
+    isWebGLRenderer: true,
+    capabilities: { isWebGL2: false },
+  };
+  const graph = new SpaceRenderGraph(renderer, { enabled: false });
+
+  assert.equal(graph.contextLossResources().length, graph.diagnostics().renderTargetCount);
+  assert.ok(graph.contextLossResources().every((target) => target?.isWebGLRenderTarget));
+  graph.dispose();
 });
 
 test('startup waits for procedural warm-up, then compiles the installed authored scene', async () => {
