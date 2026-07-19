@@ -13,7 +13,7 @@ requirement only if the controller explicitly adopts the draft production policy
 M2’s architecture was previously marked complete, but its current combined browser/Electron check
 exited red during Electron launch and must be revalidated.
 
-## Unified graphics/performance checkpoint (2026-07-19) — promoted at `ee9e0ab3`, hardened at `f0b3b154`
+## Graphics checkpoint chain (2026-07-19) — promoted at `ee9e0ab3`, hardened at `f0b3b154`, closed out at `cbdf1589`
 
 | Area | Verified result | Acceptance level |
 |---|---|---|
@@ -24,6 +24,10 @@ exited red during Electron launch and must be revalidated.
 | Golden surfaces | Kestrel, Helios, and geology roles have authored or role-specific PBR material paths. Helios keeps its three-LOD production geometry and function-specific surface maps. | Promoted visual checkpoint; natural approach/undock, representative-rock parity, and fleet-wide PBR expansion remain open. |
 | Combined runtime | Map/Atlas/travel contracts, asset-live, visual-stability, launch-policy, and five strict desktop/mobile flight runs passed. The isolated timing rerun measured 1.02 ms/tick for 240 ships and 0.38 ms/tick for the physics/flight case. | Current integrated proof; no M0–M6 milestone exit is implied. |
 | Context recovery and capture truth | Late performance follow-ups were integrated and repaired so renderer-owned bloom/render-graph targets participate in context cleanup, scenario pose is held only for explicitly injected stable routes, and Market capture follows the visible shell. A live context-loss probe restored the route and authored Kestrel, detached 366 stale listeners, and passed evidence validation. | Focused behavioral and live-route proof at `f0b3b154`; long-soak and floor-hardware exit remain open. |
+| Golden asset receipts | `bd79f2ba` closes reproducible receipts for the exact Helios source (79,717,896 bytes / 1,664,738 triangles), representative rock A (1,970,132 bytes / 1,977 triangles), Wasp candidate (12,797,604 bytes / 11,526 triangles), and RCS source (238,516 bytes / 1,040 triangles). `5863331c` wires `check:graphics:asset-receipts` into `check:art`; the receipt gate passed again on the promoted tree. | Exact artifact identity and focused gate are verified. Wasp remains an accessory-only/unclassified candidate, not an accepted live whole ship. |
+| Truthful authored runtime coverage | `5219491d` extends no-visible-fallback admission, semantic PBR tinting, common-rock surface preload, weapon/projectile/mine/impulse/wreck visual identities, authored bounds handling, and sticky charge orientation through current runtime seams. | Integrated and focused-green. Final natural-route browser/Electron motion, GPU-state, dense-combat, and combined performance acceptance remain open. |
+| Resumable graphics architecture | `98e1e429` plus `1de8a861` records the long-term resolve/prepare/admit, stable-transform, interaction, PBR foundry, chassis/appearance, VFX, and asset-family slices in [`LONG_TERM_GRAPHICS_OVERHAUL.md`](../graphics-sprints/LONG_TERM_GRAPHICS_OVERHAUL.md). The OpenCode Helios replacement is explicitly rejected while its primitive-batching concept is retained as a future measured optimization experiment. | Durable plan and donor decision; no visual completion claim. |
+| Graphics promotion | `cbdf1589` promotes the reviewed graphics closeout and its gate wiring to `master`. | Coherent graphics checkpoint. The newer isolated performance-closure branch and its final combined acceptance are not part of this merge. |
 
 ## Wave-01 (PROGRAM-WAVE-01-RECOVERY-ROOTS, 2026-07-18) — verified at `c751b9a9`
 
@@ -55,9 +59,10 @@ exited red during Electron launch and must be revalidated.
 
 | Commit(s) | Implemented outcome | What remains before final acceptance |
 |---|---|---|
+| `cbdf1589` (including `bd79f2ba`, `5219491d`, `98e1e429`, `1de8a861`, `5863331c`) | Golden graphics artifacts are hash-bound, common-rock PBR maps and runtime surfacing are wired, authored entities fail closed instead of showing blue boxes, combat/world visual identities use typed geometry, and the long-term overhaul has one durable resumption plan. | Integrate the still-isolated performance closure, rerun the combined matrix, and complete natural browser/Electron/GPU visual acceptance before promoting any M6 exit. |
 | `850c80f3` | Bulk July-14 recovery checkpoint: Depth validators/content/runtime/tests, broad gameplay/UI work, asset sources/candidates/tooling, and program documentation are now recoverable from local `master`. | Rerun focused/full gates at current HEAD; audit telemetry goldens and other high-risk inclusions; create durable evidence manifests; complete natural routes and independent visual review. Committed does not mean accepted. |
 | `50bd5505` | Prospector copy tests no longer impose a fixed English word-count taste budget. | No feature acceptance change; this is a follow-up contract cleanup. |
-| `7b0ad557` | Autopilot retains its course after obstacle avoidance. | Strict Helios approach/dock route is still red. |
+| `7b0ad557` | Autopilot retains its course after obstacle avoidance. | Later clean-checkout G04 evidence closes browser-route attribution; current Electron journey acceptance remains open. |
 | `4a6b3f56` | Authored Wasp full/LOD runtime routing, Shipyard/Undock/save/Continue path. | Add canonical asset-classification record and re-run visual/performance acceptance. |
 | `ae1813c9` | Rook Nine uses accepted-mission intent outside sanctuary; interceptor cycles cannot stall forever. | Natural recovery and held-out counterplay route. |
 | `62231ecf` and related career commits | Measured career cohorts, starter builds, origins, and progression infrastructure. | Three complete unassisted ninety-minute routes. |
