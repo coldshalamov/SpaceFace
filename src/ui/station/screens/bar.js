@@ -15,6 +15,7 @@ import {
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
 import { escapeHtml } from '../../comms.js';
+import { stationIdentityFor } from '../stationIdentity.js';
 import { icon } from '../icons.js';
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
@@ -38,8 +39,21 @@ export function createBarScreen(ctx) {
 
   let selectedId = null;
   let saidText = null;   // what the selected contact just said
+  let saidRumor = null;  // unique-wreck rumor receipt, when the reply carried one
 
   const sid = () => (ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId) || null;
+  // The bar is a venue, not a panel: name the berth the player is drinking in.
+  function venueHtml() {
+    const identity = stationIdentityFor(sid());
+    if (!identity) return '';
+    return (
+      `<div class="sx-bar__venue">` +
+        `<span class="sx-bar__venue-k">Dockside Bar</span>` +
+        `<strong>${escapeHtml(identity.name)}</strong>` +
+        `<em>${escapeHtml([identity.typeLabel, identity.factionName].filter(Boolean).join(' · '))}</em>` +
+      `</div>`
+    );
+  }
   function contacts(state) {
     try { return generateContacts(sid(), state) || []; } catch (_) { return []; }
   }
@@ -75,13 +89,23 @@ export function createBarScreen(ctx) {
   // ---------- stage: the conversation ----------
   function renderStage(state) {
     const c = selected(state);
-    if (!c) { stageEl.innerHTML = `<div class="sx-empty">${icon('bar', 34)}<h4>The bar is empty</h4><p>Try a larger station.</p></div>`; return; }
+    if (!c) {
+      stageEl.innerHTML = venueHtml() +
+        `<div class="sx-empty">${icon('bar', 34)}<h4>The bar is empty</h4><p>Try a larger station.</p></div>`;
+      return;
+    }
     const memory = stationContactMemoryFor(state, c.id);
     let memLine = '';
     try { memLine = stationContactMemoryLine(memory, c.line) || c.line || ''; } catch (_) { memLine = c.line || ''; }
     const choices = (() => { try { return getChoices(c.role, c) || []; } catch (_) { return []; } })();
+    // A heard rumor only claims a charted bearing when the wreck system actually recorded it —
+    // the receipt line mirrors durable state, never the hope of it.
+    const bearings = state && state.player && state.player.uniqueWrecks
+      && state.player.uniqueWrecks.bearings;
+    const bearing = saidRumor && bearings ? bearings[saidRumor.wreckId] : null;
 
     stageEl.innerHTML =
+      venueHtml() +
       `<div class="sx-talk">` +
         `<header class="sx-talk__head">` +
           `<span class="sx-talk__avatar" data-bigpic></span>` +
@@ -91,10 +115,18 @@ export function createBarScreen(ctx) {
             (memLine ? `<p class="sx-talk__memory">${escapeHtml(memLine)}</p>` : '') +
           `</div>` +
         `</header>` +
-        `<div class="sx-talk__reply${saidText ? ' is-said' : ''}">` +
+        `<div class="sx-talk__reply${saidText ? ' is-said' : ''}${saidRumor ? ' is-rumor' : ''}">` +
           `<span class="sx-talk__quote">&ldquo;</span>` +
+          (saidRumor ? `<span class="sx-talk__kicker">Wreck lead · overheard at the bar</span>` : '') +
           `<p>${escapeHtml(saidText || 'They look up as you approach. Ask them something.')}</p>` +
         `</div>` +
+        (bearing
+          ? `<div class="sx-talk__receipt" role="status">` +
+            `<span class="sx-talk__receipt-k">Rumor charted</span>` +
+            `<strong>${escapeHtml(bearing.name || 'Unique wreck')}</strong>` +
+            `<em>Amber bearing ring added · tracked in the Ship&rsquo;s Ledger</em>` +
+          `</div>`
+          : '') +
         `<div class="sx-talk__choices">` +
           (choices.length
             ? choices.map((ch) => `<button type="button" class="sx-choice" data-choice="${escapeHtml(ch.id)}">${escapeHtml(ch.label)}</button>`).join('')
@@ -152,7 +184,7 @@ export function createBarScreen(ctx) {
     const b = ev.target.closest('[data-contact]'); if (!b) return;
     const id = b.getAttribute('data-contact');
     if (id === selectedId) return;
-    selectedId = id; saidText = null;
+    selectedId = id; saidText = null; saidRumor = null;
     const st = ctx.state || {};
     renderRail(st); renderStage(st); renderLeads(st);
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
@@ -174,6 +206,7 @@ export function createBarScreen(ctx) {
     try { result = buildReply(c.role, choiceId, ctx, sid(), c); } catch (_) { result = null; }
     if (result && result.uniqueWreckRumor && ctx.bus) ctx.bus.emit('uniqueWreck:rumorHeard', result.uniqueWreckRumor);
     saidText = (result && result.text) || 'They shrug.';
+    saidRumor = (result && result.uniqueWreckRumor) || null;
     renderStage(ctx.state || {});
     renderLeads(ctx.state || {});
   });

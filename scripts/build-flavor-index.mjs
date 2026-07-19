@@ -12,7 +12,9 @@ const args = new Set(process.argv.slice(2));
 const files = authoredFiles();
 const rendered = renderIndex(files);
 if (args.has('--check')) {
-  const current = existsSync(INDEX) ? readFileSync(INDEX, 'utf8') : '';
+  // Git normalizes LF<->CRLF on checkout (core.autocrlf), so the freshness contract compares
+  // content the way git does: line-ending insensitive. Anything more is environment noise.
+  const current = existsSync(INDEX) ? readFileSync(INDEX, 'utf8').replace(/\r\n/g, '\n') : '';
   if (current !== rendered) {
     throw new Error('Flavor import graph is stale. Run: node scripts/build-flavor-index.mjs');
   }

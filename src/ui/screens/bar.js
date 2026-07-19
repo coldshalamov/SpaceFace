@@ -642,16 +642,21 @@ function bestTradeRoute(state, currentStationId) {
  */
 export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
-  const canonical = contact && contact.canonicalKey
-    ? buildCanonicalReply(contact, choiceId, ctx, stationId)
-    : null;
-  if (canonical) return canonical;
 
   const state = ctx.state || {};
+  // The authored bar wreck rumor outranks a canonical barkeep's stock rumor line: at Sker the
+  // proprietor IS the authored source (bar.sker.nestbreaker), and a canonical-first order made
+  // that carrier unreachable. Once the bearing is known the carrier fails closed and the
+  // canonical voice resumes.
   const wreckRumor = role === 'barkeep'
     ? uniqueWreckBarRumor(state, stationId, choiceId)
     : null;
   if (wreckRumor) return { text: wreckRumor.text, uniqueWreckRumor: wreckRumor };
+
+  const canonical = contact && contact.canonicalKey
+    ? buildCanonicalReply(contact, choiceId, ctx, stationId)
+    : null;
+  if (canonical) return canonical;
 
   switch (role) {
     /* ── BARKEEP ───────────────────────────────────────── */

@@ -10,6 +10,8 @@ import { COMMODITIES } from '../../../data/commodities.js';
 import { FACTION_META } from '../../../data/factions.js';
 import { MISSION_TUNING, missionMinRepForRisk } from '../../../data/missions.js';
 import { escapeHtml } from '../../comms.js';
+import { adBoardNoticesForStation } from '../adBoard.js';
+import { stationIdentityFor } from '../stationIdentity.js';
 import { icon } from '../icons.js';
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -93,11 +95,15 @@ export function createContractsScreen(ctx) {
   el.className = 'sx-ct';
   el.innerHTML =
     `<div class="sx-ct__attention-host" aria-live="polite"></div>` +
-    `<nav class="sx-ct__board" aria-label="Available missions"></nav>` +
+    `<div class="sx-ct__left">` +
+      `<nav class="sx-ct__board" aria-label="Available missions"></nav>` +
+      `<section class="sx-ct__notices" aria-label="Dockside notices"></section>` +
+    `</div>` +
     `<section class="sx-ct__dossier" aria-live="polite"></section>` +
     `<aside class="sx-ct__active" aria-label="Active missions"></aside>`;
   const attentionHost = el.querySelector('.sx-ct__attention-host');
   const boardEl = el.querySelector('.sx-ct__board');
+  const noticesEl = el.querySelector('.sx-ct__notices');
   const dossierEl = el.querySelector('.sx-ct__dossier');
   const activeEl = el.querySelector('.sx-ct__active');
 
@@ -161,6 +167,24 @@ export function createContractsScreen(ctx) {
     }).join('');
   }
 
+  // Dockside notice wall: the ad_board flavor pack's only production surface. Deterministic
+  // per berth (see adBoard.js), so the wall is part of the station's identity, not a ticker.
+  function renderNotices(state) {
+    const sid = state && state.ui && state.ui.dockedStationId;
+    const identity = stationIdentityFor(sid);
+    const notices = adBoardNoticesForStation(sid);
+    if (!identity || !notices.length) { noticesEl.hidden = true; noticesEl.innerHTML = ''; return; }
+    noticesEl.hidden = false;
+    noticesEl.innerHTML =
+      `<div class="sx-ct__notices-head">${icon('info', 14)}<span>Dockside Notices</span><em>${escapeHtml(identity.name)}</em></div>` +
+      `<ul class="sx-notice-list">` +
+        notices.map((n) =>
+          `<li class="sx-notice"><span class="sx-notice__sponsor">${escapeHtml(n.sponsor)}</span>` +
+          `<span class="sx-notice__text">${escapeHtml(n.text)}</span></li>`,
+        ).join('') +
+      `</ul>`;
+  }
+
   function renderDossier(state) {
     const list = sortFocusFirst(offers(state), focusId());
     const m = list.find((x) => String(mid(x)) === selectedId) || list[0];
@@ -191,6 +215,11 @@ export function createContractsScreen(ctx) {
         : !cargoOk ? `${Math.ceil(cargoVolume)}u free hold required` : 'Ship and account ready';
     const focusAccept = attention && attention.kind === 'accept'
       && String(attention.focusMissionId) === String(mid(m));
+    // Set-piece offers carry authored operation copy (offer.summary) and a unique-wreck lead
+    // (offer.wreckName/channelId). Ordinary board offers have neither — render only authored
+    // material, never invented briefs.
+    const brief = typeof m.summary === 'string' && m.summary.trim() ? m.summary.trim() : '';
+    const wreckLead = typeof m.wreckName === 'string' && m.wreckName.trim() ? m.wreckName.trim() : '';
 
     dossierEl.innerHTML =
       `<div class="sx-dossier${focusAccept ? ' is-attention' : ''}">` +
@@ -201,6 +230,11 @@ export function createContractsScreen(ctx) {
             `<h2>${escapeHtml(m.title || typeLabel(m.type))}</h2>` +
           `</div>` +
         `</header>` +
+
+        (brief
+          ? `<div class="sx-dossier__brief"><span class="sx-dossier__brief-k">Operation brief</span>` +
+            `<p>${escapeHtml(brief)}</p></div>`
+          : '') +
 
         `<div class="sx-dossier__topline">` +
           `<div class="sx-dossier__reward"><span>Reward</span><b>${reward(m).toLocaleString('en-US')}<i>cr</i></b></div>` +
@@ -220,6 +254,10 @@ export function createContractsScreen(ctx) {
         `<div class="sx-dossier__grid">` +
           (cargoName ? briefCell('cargo', 'Payload', escapeHtml(cargoName), (cargo.qty ? cargo.qty + ' u' : '')) : '') +
           briefCell('clock', 'Time', m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible'), '') +
+          (wreckLead
+            ? briefCell('route', 'Wreck lead', escapeHtml(wreckLead),
+              m.channelId ? `heard via ${String(m.channelId).replace(/_/g, ' ')}` : 'unique salvage')
+            : '') +
           (collateral(m) ? briefCell('info', 'Collateral', collateral(m).toLocaleString('en-US') + ' cr', 'on failure') : '') +
           (upfront(m) ? briefCell('credits', 'Upfront', upfront(m).toLocaleString('en-US') + ' cr', 'to accept') : '') +
           (!standingOk ? `<p class="sx-dossier__gate">${icon('factions', 14)}<span>${escapeHtml(readiness)}</span></p>` : '') +
@@ -278,6 +316,7 @@ export function createContractsScreen(ctx) {
   function renderAll(state) {
     renderAttention();
     renderBoard(state);
+    renderNotices(state);
     renderDossier(state);
     renderActive(state);
   }
