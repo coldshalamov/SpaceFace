@@ -59,7 +59,7 @@ const _socketGlobalXZ = { x: 0, z: 0 };
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const SECTOR_PALETTE_LERP_SECONDS = 1.5;
-const SECTOR_LIGHT_INTENSITIES = { ambient: 0.85, key: 1.7, rim: 0.7, fill: 0.35 };
+const SECTOR_LIGHT_INTENSITIES = { ambient: 0.22, key: 2.1, rim: 0.95, fill: 0.55 };
 const ENTITY_VIEW_CULL_MIN_MARGIN = 900;
 const ENTITY_VIEW_CULL_ZOOM_MARGIN = 8;
 // World simulation deliberately keeps the current corridor sector plus reduced neighbours alive.
@@ -658,6 +658,11 @@ export const render = {
     const key = new THREE.DirectionalLight(corePalette.key, SECTOR_LIGHT_INTENSITIES.key); key.position.set(60, 140, 40); scene.add(key);
     const rim = new THREE.DirectionalLight(corePalette.rim, SECTOR_LIGHT_INTENSITIES.rim); rim.position.set(-70, 50, -60); scene.add(rim);
     const fill = new THREE.DirectionalLight(corePalette.fill, SECTOR_LIGHT_INTENSITIES.fill); fill.position.set(20, 30, 120); scene.add(fill);
+    // Boost image-based lighting from the baked nebula PMREM (three r163+): the env is a cool,
+    // directional, high-quality ambient — richer than the flat AmbientLight, and lets us hold that
+    // AmbientLight low. Hedged to 1.1 (can't verify on this software-GL box); push toward 1.25 on a
+    // GPU if chrome/metalness hulls don't specular-bloom past the 1.0 bloom threshold.
+    scene.environmentIntensity = 1.1;
 
     // Real shadow maps (graphics spec Workstream G). Keep one reusable key light regardless of the
     // boot setting; _ensureKeyLightShadows configures it once and _syncShadowMapEnabled gates work.
@@ -1221,7 +1226,7 @@ export const render = {
     let bloomStrength = typeof vd.bloomStrength === 'number' ? vd.bloomStrength : 0.35;
     if (bloomStrength > 1) bloomStrength *= 0.5;
     bloomStrength = Math.max(0, Math.min(1, bloomStrength));
-    const bloomThreshold = typeof vd.bloomThreshold === 'number' ? vd.bloomThreshold : 0.72;
+    const bloomThreshold = typeof vd.bloomThreshold === 'number' ? vd.bloomThreshold : 1.0;
     return {
       bloom: vd.bloom,
       bloomStrength,
@@ -2155,7 +2160,7 @@ export const render = {
         bloom: true,
         renderScale: Math.min(1, Math.max(0.5, v.renderScale || 0.7)),
         bloomStrength: v.bloomStrength != null ? v.bloomStrength : 0.35,
-        bloomThreshold: v.bloomThreshold != null ? v.bloomThreshold : 0.72,
+        bloomThreshold: v.bloomThreshold != null ? v.bloomThreshold : 1.0,
       });
       this._renderGraph.setSize(drawSize.x, drawSize.y);
       // Expose for diagnostics + the energy-materials depth binding path.

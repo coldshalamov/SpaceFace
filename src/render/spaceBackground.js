@@ -23,6 +23,14 @@
 import * as THREE from 'three';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { CAMERA_ZOOM_MAX, CONTEXT_ZOOM_MAX, SPEED_ZOOM_MAX } from './camera.js';
+import { readVelocityLanguage } from './velocityLanguage.js';
+
+// Largest per-frame camera step the world-streaming accumulator will integrate. A frame rebase
+// (FRAME_REBASE_THRESHOLD_WU = 8192) or a jump relocates the render frame wholesale, producing a
+// delta that is not travel; integrating it would slam the sky sideways. 500 WU is far above any
+// legitimate one-frame displacement (the absolute travel ceiling of 1200 WU/s is 20 WU per tick)
+// and far below the smallest relocation, so the discriminator has two orders of magnitude of margin.
+const STREAM_MAX_STEP_WU = 500;
 
 // ----------------------------------------------------------------------------
 // Seeded PRNG (mulberry32) + string hash — ~15 lines, no deps.
@@ -719,6 +727,11 @@ export class SpaceBackground {
     this.currentPaletteName = 'EMBER';
     this.regionPaletteT = 0;
     this.regionLockUntil = 0;
+    // World-streaming accumulator state (D7 band 2). `_streamPrimed` false means "no previous camera
+    // position yet", so the first frame contributes no delta rather than integrating against 0.
+    this._streamPrimed = false;
+    this._streamCamX = 0;
+    this._streamCamZ = 0;
     this.regionNoiseScale = 1 / (this.H * 55);
 
     // zero-alloc scratch for the per-frame tint math
@@ -1078,7 +1091,13 @@ export class SpaceBackground {
       const size = this.quadSize;
       const tex = targets[def.name].texture;
       tex.repeat.set(size / tile, size / tile);
-      this.layers.push({ mesh: null, tex, par: def.par, tile, def, offset: new THREE.Vector2() });
+      // streamU/streamV: the integrated world-streaming phase (D7 band 2). Starting at 0 on a
+      // rebuild is invisible because a rebuild only happens at a sector bake, which is already a
+      // wholesale visual change.
+      this.layers.push({
+        mesh: null, tex, par: def.par, tile, def,
+        offset: new THREE.Vector2(), streamU: 0, streamV: 0,
+      });
     }
 
     const [l0, l1, l2] = this.layers;
@@ -1592,6 +1611,30 @@ export class SpaceBackground {
     // lock the rig to the camera (X/Z only; fixed depth)
     this.group.position.set(cx, this.bgY, cz);
 
+    // ---- velocity language: the world becomes the speed signal (ADR D7, band 2) ----------------
+    // At 2-5x combat speed the streak overlay deliberately stops growing and the LOAD-BEARING cue
+    // migrates here: the deep-field tile layers stream faster, so what reads as speed is the world
+    // going past rather than particles being drawn. Above 5x this holds at full gain while the
+    // particles fade out entirely — the inversion D7 is built on.
+    //
+    // The gain is INTEGRATED, never multiplied into the closed-form term below. That term is
+    // `camPos * par / tile` — an absolute position, thousands of WU in magnitude — so scaling `par`
+    // by a gain would jump the sky by `camPos * dPar / tile` the instant the gain moved: a violent
+    // snap at exactly the moment the player is going fastest. Accumulating `gain * dCam` instead is
+    // continuous by construction, and a gain returning to 0 simply stops the accumulator growing.
+    const vl = readVelocityLanguage(this.state);
+    const gain = vl && vl.drive && Number.isFinite(vl.drive.parallaxGain) ? vl.drive.parallaxGain : 0;
+    let dcx = 0, dcz = 0;
+    if (this._streamPrimed) {
+      dcx = cx - this._streamCamX;
+      dcz = cz - this._streamCamZ;
+      // A frame rebase relocates the whole render frame by up to FRAME_REBASE_THRESHOLD_WU, and a
+      // jump relocates it arbitrarily. Either produces a delta that is travel-per-frame in name
+      // only, so anything implausible for one frame is discarded rather than integrated.
+      if (Math.abs(dcx) > STREAM_MAX_STEP_WU || Math.abs(dcz) > STREAM_MAX_STEP_WU) { dcx = 0; dcz = 0; }
+    }
+    this._streamCamX = cx; this._streamCamZ = cz; this._streamPrimed = true;
+
     // tile parallax: closed-form UV offset from the absolute camera position, in doubles,
     // wrapped before upload. Slow drift on the nebula layers keeps the sky faintly alive.
     for (let i = 0; i < this.layers.length; i++) {
@@ -1599,8 +1642,14 @@ export class SpaceBackground {
       let du = 0, dv = 0;
       if (i === 1) { du = this.bgTime * (0.0035 / 60); dv = this.bgTime * (0.0022 / 60); }
       else if (i === 2) { du = -this.bgTime * (0.0045 / 60); dv = this.bgTime * (-0.0028 / 60); }
-      const u = (cx * L.par / L.tile + du) % 1;
-      const v = (-cz * L.par / L.tile + dv) % 1;
+      if (gain > 0) {
+        // Same per-WU rate as the natural term, so `gain = 1` reads as exactly "twice the streaming"
+        // rather than as an unrelated second motion the eye can separate out.
+        L.streamU = ((L.streamU || 0) + dcx * L.par / L.tile * gain) % 1;
+        L.streamV = ((L.streamV || 0) - dcz * L.par / L.tile * gain) % 1;
+      }
+      const u = (cx * L.par / L.tile + du + (L.streamU || 0)) % 1;
+      const v = (-cz * L.par / L.tile + dv + (L.streamV || 0)) % 1;
       L.offset.set(u < 0 ? u + 1 : u, v < 0 ? v + 1 : v);
     }
     if (this.layerMaterial) {
@@ -1639,18 +1688,29 @@ export class SpaceBackground {
       this.wormhole.material.uniforms.uIntensity.value = this.bgIntensity;
     }
 
-    this._updateRegionTint(cx, cz, dt);
+    this._updateRegionTint(cx, cz, dt, vl && vl.region);
     this._updateComet(dt);
     this._refreshHeroes(false);
   }
 
   // Region palette drift: a huge-scale world-position noise slides a tint between
   // adjacent palettes so the universe changes hue over tens of screens of travel.
-  _updateRegionTint(cx, cz, dt) {
+  //
+  // REGION VOLUMES (ADR D7). Without the crossfade term below, a region change is a CUT: the sky is
+  // static right up to the Voronoi boundary and then `onSectorEnter` hard-assigns a new palette and
+  // rebakes. `crossfade.blend` runs 0 -> 0.5 -> 1 across a ±1500 WU window centred on the boundary,
+  // so the sky begins moving 1500 WU out and is already in motion when the bake lands — the region
+  // stops being a switch and becomes a volume you approach, enter, cross and leave.
+  _updateRegionTint(cx, cz, dt, crossfade) {
     const names = PALETTE_NAMES;
     const target = this._valueNoise(cx * this.regionNoiseScale, cz * this.regionNoiseScale) * names.length;
     if (!Number.isFinite(this.regionPaletteT)) this.regionPaletteT = target;
-    const k = Math.min(1, dt * 0.35);
+    // Approach rate rises with proximity to the boundary: far inside a region the hue drifts at its
+    // usual geological pace, and inside the crossfade window it converges several times faster so
+    // the transition actually completes across the window rather than lagging behind the player.
+    const blend = crossfade && Number.isFinite(crossfade.blend) ? crossfade.blend : 0;
+    const approach = 0.35 + 1.05 * blend;
+    const k = Math.min(1, dt * approach);
     this.regionPaletteT += (target - this.regionPaletteT) * k;
 
     let t = this.regionPaletteT % names.length;
@@ -1663,7 +1723,14 @@ export class SpaceBackground {
     this._c0.lerp(this._c1, localT);
 
     const locked = this.bgTime < this.regionLockUntil;
-    const strength = locked ? 0.0 : 0.16;
+    // Ambient crossfade through the crossing. The tint eases toward neutral as the boundary is
+    // approached and back out on the far side, so the two regions' ambients MEET rather than cut.
+    // The term is a bell peaking exactly at blend 0.5 (the boundary) and vanishing at both window
+    // edges, which makes it continuous through the crossing — the membership flip that swaps home
+    // and neighbour negates the signed distance, and the bell is symmetric, so it does not notice.
+    const bell = 1 - 4 * (blend - 0.5) * (blend - 0.5);   // 0 at blend 0 and 1, 1 at blend 0.5
+    const crossing = blend > 0 ? Math.max(0, Math.min(1, bell)) : 0;
+    const strength = locked ? 0.0 : 0.16 * (1 - 0.55 * crossing);
     this._tintA.setRGB(1, 1, 1).lerp(this._c0, strength);
     this._tintB.setRGB(1, 1, 1).lerp(this._c0, strength * 0.7);
     this._starTint.setRGB(1, 1, 1).lerp(this._c0, strength * 0.35);

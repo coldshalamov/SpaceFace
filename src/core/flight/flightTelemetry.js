@@ -5,7 +5,8 @@
 // approach, intercept lead and collision warnings. It is pure and can be shared by
 // HUD, AI, replay probes and automated balance tests.
 
-import { COAST_HELM_YAW_MULT } from './propulsionKernel.js';
+import { COAST_HELM_YAW_MULT, resolveTravelCeiling, TRAVEL_DRIVE_STATES } from './propulsionKernel.js';
+import { travelFlag } from '../../data/featureFlags.js';
 
 const EPS = 1e-9;
 const INF = Number.POSITIVE_INFINITY;
@@ -40,8 +41,95 @@ export function computeFlightTelemetry({ body, profile, control = null, target =
     target: null,
   };
 
+  // Travel-drive forwarding (atlas D5 / W1-6). Same seam and same reasoning as S0-6: the kernel
+  // computes this and presentation was left to guess. Shape-gated exactly like the kernel's own
+  // publication — with the axis off not one key is attached, so this module's contribution to any
+  // frozen telemetry hash is unchanged.
+  if (travelFlag('travelBurn')) result.travel = resolveTravelReadout(control, p);
+
   if (target) result.target = computeRelativeTargetTelemetry(b, target, horizonS, p);
   return result;
+}
+
+/**
+ * Assemble the travel-drive readout the velocity tape needs, from the kernel's flat publication.
+ *
+ * The ceiling is taken from the kernel when it published one and otherwise from
+ * `resolveTravelCeiling` — never re-derived from the family table here. One rule, one owner: a
+ * second copy of the ceiling derivation is precisely how the "V-MAX 3,200" fiction in D5 outlived
+ * the catalogue that contradicted it.
+ */
+function resolveTravelReadout(control, profile) {
+  const t = control && control.telemetry && typeof control.telemetry === 'object' ? control.telemetry : null;
+  const published = t && typeof t.travelDrive === 'string' && TRAVEL_DRIVE_STATES.includes(t.travelDrive)
+    ? t.travelDrive
+    : 'off';
+  const ceiling = positive(t && t.travelCeiling, 0) || resolveTravelCeiling(profile);
+  const cap = Math.max(0, finite(t && t.travelCap));
+  return {
+    state: published,
+    cap,
+    ceiling,
+    // Fraction of the ceiling the ramp has currently unlocked. The tape draws the earned span with
+    // this; it is NOT speed/ceiling, which is a different question the tape answers separately.
+    capRatio: ceiling > EPS ? clamp(cap / ceiling, 0, 1) : 0,
+    active: published !== 'off',
+  };
+}
+
+/**
+ * Decide whether a manually-flown ship should be told to BRAKE NOW for an arrival (D5 / W1-9).
+ *
+ * Pure and advisory: it reports, it never commands. **This must never be wired to actually apply
+ * the brake in manual flight** — D9.8 explicitly rejects auto-magic arrival, and the product
+ * direction wants overshoot to remain possible. Ignoring this cue and sailing past the station is
+ * the gameplay, not a bug. The route follower auto-brakes because that is its job; a hand-flown
+ * burn does not.
+ *
+ * `brakeNow` goes true when the stopping distance the ship can still achieve has grown to meet the
+ * remaining distance to the arrival ring — i.e. the last moment a stop is still free. `overshoot`
+ * reports that the moment has already passed, which is information the pilot has earned the right
+ * to see rather than be rescued from.
+ */
+export function evaluateArrivalCue(body, profile = {}, arrival = null) {
+  const b = normalizeBody(body);
+  const braking = estimateBrakingSolution(b, profile);
+  const speed = braking.speed;
+  if (!arrival || !Number.isFinite(arrival.x) || !Number.isFinite(arrival.z) || speed <= EPS) {
+    return {
+      active: false, brakeNow: false, overshoot: false,
+      distance: INF, stopDistance: braking.directDistance, margin: INF,
+      bestMode: braking.bestMode, projectedStop: braking.projectedStop, closing: false,
+    };
+  }
+
+  const radius = Math.max(0, finite(arrival.radius));
+  const dx = arrival.x - b.pos.x;
+  const dz = arrival.z - b.pos.z;
+  const distance = Math.max(0, Math.hypot(dx, dz) - radius);
+  // Only cue when actually heading at the thing. Drifting past a station you are not aimed at must
+  // not scream BRAKE NOW — that is the alarm-fatigue failure that makes pilots ignore real cues.
+  const closingRate = distance > EPS ? (dx * b.vel.x + dz * b.vel.z) / Math.hypot(dx, dz) : 0;
+  const closing = closingRate > EPS;
+  // Use the mode the ship would actually fly. `bestMode` already accounts for the flip turn cost.
+  const stopDistance = Math.min(braking.directDistance, braking.flipBurnDistance);
+  const margin = distance - stopDistance;
+
+  return {
+    active: closing,
+    brakeNow: closing && margin <= 0,
+    overshoot: closing && margin < -Math.max(radius, stopDistance * 0.15),
+    distance,
+    stopDistance,
+    margin,
+    closingRate,
+    closing,
+    bestMode: braking.bestMode,
+    projectedStop: braking.projectedStop,
+    // Seconds of grace left before the stop stops being free, at the current closing rate. The tape
+    // uses this to fade the cue in rather than pop it, so it reads as an approach, not an alarm.
+    timeToBrakeS: closing && closingRate > EPS ? Math.max(0, margin / closingRate) : INF,
+  };
 }
 
 /**

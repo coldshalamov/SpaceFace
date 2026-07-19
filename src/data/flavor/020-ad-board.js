@@ -33,5 +33,11 @@ export default defineFlavorPack({
     { id: 'ad_22', sponsor: 'DMC Canteen', text: 'MEAL BREAKS BEGIN AFTER QUOTA.' },
     { id: 'ad_23', sponsor: 'Helios Dockmaster', text: 'UNATTENDED SHIPS BECOME ATTENDED ASSETS.' },
     { id: 'ad_24', sponsor: 'MTS Futures', text: "LOCK TOMORROW'S ORE PRICE BEFORE TODAY'S SHAFT COLLAPSES." },
+    { id: 'ad_25', sponsor: 'Meridian Clear-Air', text: 'BREATHE EASY. YOUR SECTOR\u2019S INDEX MOVED AGAIN.' },
+    { id: 'ad_26', sponsor: 'Concord ALA', text: 'FILTER RECALL COMPLETE. REPLACEMENTS PENDING ALLOCATION.' },
+    { id: 'ad_27', sponsor: 'DMC Moisture Audit', text: '0.7T LOGGED. INQUIRIES REFERRED TO THE COLUMN.' },
+    { id: 'ad_28', sponsor: 'Tethys Probate', text: 'NEXT OF KIN VERIFIED AGAINST SURVIVING SPOUSE.' },
+    { id: 'ad_29', sponsor: 'Helios Bay Storage', text: 'ODOR IS CONSISTENT WITH TRANSIT. BAY REMAINS OPERATIONAL.' },
+    { id: 'ad_30', sponsor: 'MTS ATMO Tokens', text: 'YOUR BREATH HAS A POSITION. IT IS PERFORMING.' },
   ],
 });

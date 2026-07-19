@@ -1,0 +1,190 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>RCS Lab — signed actuator demand → nozzles</title>
+<style>
+  html,body{margin:0;background:#0b0907;color:#e8dcc6;
+    font:13px/1.45 "Inter","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  header{padding:18px 26px 12px;border-bottom:1px solid #2a2118}
+  h1{margin:0 0 4px;font-size:15px;font-weight:600;letter-spacing:.10em;text-transform:uppercase;color:#d8b45c}
+  p{margin:0;color:#8d8271;max-width:112ch;font-size:12.5px}
+  b{color:#c9a227;font-weight:600}
+  canvas{display:block;margin:0 auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>RCS Lab — the renderer consumes signed actuator demand</h1>
+  <p>Every panel is driven by the real <b>stepPropulsion</b> kernel through the real
+  <b>computeFlightTelemetry</b> seam into the shipped <b>resolveRcsFirings</b> resolver — no
+  hand-written actuator values anywhere. Nose points right (+X); starboard is screen-down (+Z), so a
+  starboard yaw reads clockwise. <b>Amber</b> marks the nozzle; the <b>teal</b> cone is exhaust and
+  its length is the continuous intensity; unlit stations stay visible as grey dots so a silent jet
+  reads as silent. The <b>old:</b> line records what the previous input-key inference drew.</p>
+</header>
+<canvas id="c"></canvas>
+
+<script type="module">
+import { createPropulsionRuntime, stepPropulsion } from './src/core/flight/propulsionKernel.js';
+import { computeFlightTelemetry } from './src/core/flight/flightTelemetry.js';
+import { PROPULSION_PROFILES } from './src/core/flight/propulsionCatalog.js';
+import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand, RCS_GEOMETRY } from './src/render/rcsJets.js';
+
+const DT = 1 / 60;
+const HULL_R = 6;
+
+// `old` describes what the pre-fix input-key inference (flightV3 thrustNozzles) would have drawn:
+// a turn produced NO nozzle at all, and a brake produced both bow retros regardless of demand.
+const SCENARIOS = [
+  { title: 'Coasting',            input: {},                                   body: {},                              note: 'no demand, no jets', old: 'none' },
+  { title: 'Yaw → starboard',     input: { turn: 1 },                          body: {},                              note: 'bow PORT + stern STARBOARD', old: 'nothing — turns drew no jets' },
+  { title: 'Yaw → port',          input: { turn: -1 },                         body: {},                              note: 'bow STARBOARD + stern PORT', old: 'nothing — turns drew no jets' },
+  { title: 'Arrest starboard spin', input: { turn: 0 },                        body: { angVel: 2.4 },                 note: 'NO key held — assist counter-torque', old: 'nothing — no key to read' },
+  { title: 'Strafe → starboard',  input: { strafe: 1 },                        body: {},                              note: 'PORT pair, pure translation', old: 'one generic "strafe-right" role' },
+  { title: 'Strafe → port',       input: { strafe: -1 },                       body: {},                              note: 'STARBOARD pair', old: 'one generic "strafe-left" role' },
+  { title: 'Brake from 40 WU/s',  input: { throttle: 0, brake: true },         body: { vel: { x: 40, z: 0 } },        note: 'symmetric bow retros — the one correct "both"', old: 'both bow retros, always strength 1' },
+  { title: 'Assist slip trim',    input: { throttle: 1 },                      body: { vel: { x: 10, z: 30 } },       note: 'NO strafe key — assist kills the slide', old: 'nothing — no key to read' },
+  { title: 'Strafe + yaw blend',  input: { strafe: 1, turn: 1 },               body: {},                              note: 'bow loaded, stern unloaded', old: 'four jets, two of them opposed' },
+  { title: 'Main thrust',         input: { throttle: 1 },                      body: {},                              note: 'plume only — RCS stays silent', old: 'same' },
+  { title: 'Thrust + yaw → port', input: { throttle: 1, turn: -1 },            body: { vel: { x: 30, z: 0 } },        note: 'plume + attitude couple', old: 'plume only' },
+  { title: 'Torch drive, yaw →stbd', input: { turn: 1 }, drive: 'drive_torch_l', body: {},                            note: 'different family, same truth', old: 'nothing' },
+];
+
+function solve(sc) {
+  const driveId = sc.drive || 'drive_reaction_m';
+  const profile = PROPULSION_PROFILES[driveId];
+  const body = { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, angVel: 0, mass: 20, inertia: 40, radius: HULL_R, ...sc.body };
+  let runtime = createPropulsionRuntime(profile);
+  let result = null;
+  for (let i = 0; i < 6; i++) { // a few ticks so spool/charge drives leave idle
+    result = stepPropulsion({ dt: DT, body, input: sc.input, profile, runtime });
+    runtime = result.runtime;
+  }
+  const actuators = computeFlightTelemetry({ body, profile, control: { telemetry: result.telemetry } }).actuators;
+  const scale = resolveActuatorScale(profile);
+  return {
+    actuators, scale,
+    firings: resolveRcsFirings(actuators, { x: 0, z: 0, rot: 0, radius: HULL_R }, scale),
+    main: mainDriveDemand(actuators, scale),
+  };
+}
+
+// ---- layout -------------------------------------------------------------------------------
+const COLS = 4, ROWS = 3, PW = 380, PH = 330;
+const canvas = document.getElementById('c');
+const dpr = Math.min(2, window.devicePixelRatio || 1);
+canvas.width = COLS * PW * dpr;
+canvas.height = ROWS * PH * dpr;
+canvas.style.width = COLS * PW + 'px';
+canvas.style.height = ROWS * PH + 'px';
+const g = canvas.getContext('2d');
+g.scale(dpr, dpr);
+
+const BRASS = '#c9a227', AMBER = '#e0a33c', TEAL = '#5fb3ab', DIM = '#6d6355', GHOST = '#4a4238';
+const SCALE = 13; // px per world unit — a 6 WU hull draws ~78px, readable at 1:1
+
+function panel(sc, col, row) {
+  const ox = col * PW, oy = row * PH;
+  const cx = ox + PW / 2, cy = oy + PH / 2 + 12;
+  const { actuators, firings, main } = solve(sc);
+
+  g.save();
+  g.beginPath(); g.rect(ox, oy, PW, PH); g.clip();
+
+  g.strokeStyle = '#221b14'; g.lineWidth = 1;
+  g.strokeRect(ox + 0.5, oy + 0.5, PW - 1, PH - 1);
+
+  // Surveyor's graticule
+  g.strokeStyle = '#171208';
+  for (let i = -8; i <= 8; i++) {
+    g.beginPath(); g.moveTo(cx + i * SCALE * 2, oy + 34); g.lineTo(cx + i * SCALE * 2, oy + PH - 8); g.stroke();
+    g.beginPath(); g.moveTo(ox + 8, cy + i * SCALE * 2); g.lineTo(ox + PW - 8, cy + i * SCALE * 2); g.stroke();
+  }
+
+  // Title + note
+  g.fillStyle = BRASS; g.font = '600 12.5px Inter, "Segoe UI", system-ui, sans-serif';
+  g.fillText(sc.title, ox + 14, oy + 22);
+  g.fillStyle = DIM; g.font = '11px Inter, "Segoe UI", system-ui, sans-serif';
+  g.fillText(sc.note, ox + 14, oy + 37);
+
+  // Main plume (drawn first, behind the hull) — the separate, larger vocabulary.
+  if (main && main.main > 0.02) {
+    const len = 16 + main.main * 46;
+    const grad = g.createLinearGradient(cx - HULL_R * SCALE * 0.9, cy, cx - HULL_R * SCALE * 0.9 - len, cy);
+    grad.addColorStop(0, 'rgba(120,190,255,0.62)');
+    grad.addColorStop(1, 'rgba(40,90,170,0)');
+    g.fillStyle = grad;
+    g.beginPath();
+    g.moveTo(cx - HULL_R * SCALE * 0.86, cy - 7);
+    g.lineTo(cx - HULL_R * SCALE * 0.86 - len, cy);
+    g.lineTo(cx - HULL_R * SCALE * 0.86, cy + 7);
+    g.closePath(); g.fill();
+  }
+
+  // Hull: nose to +X
+  g.strokeStyle = BRASS; g.fillStyle = '#171207'; g.lineWidth = 1.6;
+  g.beginPath();
+  g.moveTo(cx + HULL_R * SCALE * 1.05, cy);
+  g.lineTo(cx - HULL_R * SCALE * 0.80, cy - HULL_R * SCALE * 0.56);
+  g.lineTo(cx - HULL_R * SCALE * 0.62, cy);
+  g.lineTo(cx - HULL_R * SCALE * 0.80, cy + HULL_R * SCALE * 0.56);
+  g.closePath(); g.fill(); g.stroke();
+
+  // Nozzle stations, always drawn faint so a silent jet is legibly silent.
+  const stations = [
+    ['bow', -1, RCS_GEOMETRY.bowLong], ['bow', 1, RCS_GEOMETRY.bowLong],
+    ['stern', -1, -RCS_GEOMETRY.sternLong], ['stern', 1, -RCS_GEOMETRY.sternLong],
+  ];
+  for (const [, side, lf] of stations) {
+    const sx = cx + lf * HULL_R * SCALE;
+    const sy = cy + RCS_GEOMETRY.side * HULL_R * SCALE * side;
+    g.fillStyle = GHOST;
+    g.beginPath(); g.arc(sx, sy, 2.6, 0, Math.PI * 2); g.fill();
+  }
+
+  // Live firings
+  for (const j of firings) {
+    const sx = cx + j.x * SCALE, sy = cy + j.z * SCALE;
+    const len = 12 + j.intensity * 40;
+    const ex = sx + j.dirX * len, ey = sy + j.dirZ * len;
+    const nx = -j.dirZ, ny = j.dirX;
+    const w = 3.2 + j.intensity * 5.5;
+
+    const grad = g.createLinearGradient(sx, sy, ex, ey);
+    grad.addColorStop(0, `rgba(168,200,198,${0.30 + j.intensity * 0.55})`);
+    grad.addColorStop(1, 'rgba(22,34,42,0)');
+    g.fillStyle = grad;
+    g.beginPath();
+    g.moveTo(sx + nx * 2.0, sy + ny * 2.0);
+    g.lineTo(ex + nx * w, ey + ny * w);
+    g.lineTo(ex - nx * w, ey - ny * w);
+    g.lineTo(sx - nx * 2.0, sy - ny * 2.0);
+    g.closePath(); g.fill();
+
+    g.fillStyle = AMBER;
+    g.beginPath(); g.arc(sx, sy, 3.4, 0, Math.PI * 2); g.fill();
+    g.fillStyle = TEAL; g.font = '600 10px ui-monospace, Consolas, monospace';
+    g.fillText(j.intensity.toFixed(2), sx + (j.dirX >= 0 ? 7 : -30), sy + (j.dirZ >= 0 ? 15 : -8));
+  }
+
+  // Readout
+  const f = (v) => (v >= 0 ? ' ' : '') + v.toFixed(2);
+  g.font = '10.5px ui-monospace, Consolas, monospace';
+  g.fillStyle = '#7d7264';
+  g.fillText(`fwd${f(actuators.forward)}  lat${f(actuators.lateral)}  yaw${f(actuators.yaw)}`, ox + 14, oy + PH - 40);
+  g.fillText(`jets: ${firings.length ? firings.map((j) => `${j.station}/${j.side < 0 ? 'P' : 'S'}`).join(' ') : '—'}`, ox + 14, oy + PH - 26);
+  g.fillStyle = '#5c5245';
+  g.fillText(`old: ${sc.old}`, ox + 14, oy + PH - 12);
+
+  g.restore();
+  return { title: sc.title, firings: firings.map((j) => ({ station: j.station, side: j.side, intensity: +j.intensity.toFixed(3) })) };
+}
+
+const summary = [];
+SCENARIOS.forEach((sc, i) => summary.push(panel(sc, i % COLS, Math.floor(i / COLS))));
+window.__RCS_LAB__ = { ready: true, summary };
+document.title = 'RCS Lab — ready';
+</script>
+</body>
+</html>
