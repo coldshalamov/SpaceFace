@@ -201,6 +201,136 @@ export function thresholdGate(signal, key) {
   }
 }
 
+// ── G06 first-trade teaching contract (authored, seed-stable) ───────────────────────────────
+// One corridor-facing board-shaped offer that teaches accept → cargo → deliver → receipt.
+// Offered at Helios Station on/after first dock; consumption uses existing missions accept,
+// cargo writer, delivery, economy grant, and mission receipt seams.
+
+export const FIRST_TRADE_CONTRACT_KEY = 'first_trade_loop';
+export const FIRST_TRADE_CONTRACT_SOURCE = 'firstTradeContract';
+export const FIRST_TRADE_CONTRACT_STATION_ID = 'station_helios';
+export const FIRST_TRADE_CONTRACT_DEST_STATION_ID = 'station_ceres';
+export const FIRST_TRADE_CONTRACT_DEST_SECTOR_ID = 'sector_ceres_belt';
+
+/**
+ * Authored first trade contract template.
+ * Fields: reason (why this job exists), terms (pays/clock/risk/stake/miss), cargo manifest,
+ * and receipt shape expectations for completion.
+ */
+export const FIRST_TRADE_CONTRACT = Object.freeze({
+  key: FIRST_TRADE_CONTRACT_KEY,
+  source: FIRST_TRADE_CONTRACT_SOURCE,
+  offerType: 'cargo_delivery',
+  stationId: FIRST_TRADE_CONTRACT_STATION_ID,
+  factionId: 'faction_scn',
+  destStationId: FIRST_TRADE_CONTRACT_DEST_STATION_ID,
+  destSectorId: FIRST_TRADE_CONTRACT_DEST_SECTOR_ID,
+  distance: 1800,
+  title: 'First trade: 8u Fuel Cells to Ceres',
+  brief: 'Sealed fuel for Ceres Refinery. Accept, hold the manifest, dock, collect payment.',
+  reason: 'Helios logistics needs one reliable corridor haul — deliver sealed Fuel Cells to Ceres Refinery so the first trade ledger closes cleanly.',
+  preloadedCargo: true,
+  terms: Object.freeze({
+    paysCr: 420,
+    clockS: 1200,
+    riskTier: 0,
+    stakeCr: 0,
+    miss: 'Board closes the file without payment if the deadline lapses or the run is abandoned.',
+  }),
+  cargo: Object.freeze({
+    cmdtyId: 'cmdty_fuel_cells',
+    qty: 8,
+    preloaded: true,
+    label: 'Fuel Cells',
+  }),
+  receipt: Object.freeze({
+    outcome: 'completed',
+    requiredFields: Object.freeze([
+      'id', 'missionId', 'title', 'type', 'outcome', 'reason', 'at_s',
+      'rewardCr', 'collateralRefundCr', 'collateralLostCr', 'stationId', 'destStationId',
+    ]),
+  }),
+});
+
+/**
+ * Build a deterministic board-shaped first-trade offer.
+ * Same seed ⇒ same offer id and terms (generation determinism).
+ * Pure: does not mutate state.
+ */
+export function buildFirstTradeOffer(seed = 1, options = {}) {
+  const template = FIRST_TRADE_CONTRACT;
+  const seedN = (Number(seed) || 1) >>> 0;
+  const nonce = options && options.nonce != null ? String(options.nonce) : '0';
+  // Stable id: first_trade_<seed> — independent of simTime so re-docks do not re-roll terms.
+  const id = `first_trade_${seedN.toString(16)}_${nonce}`;
+  const qty = template.cargo.qty;
+  const cmdtyId = template.cargo.cmdtyId;
+  const unitVal = 50; // Fuel Cells catalog baseline; value is cosmetic for preflight cargoValue
+  const cargoValue = unitVal * qty;
+  const reward_cr = template.terms.paysCr;
+  const time_limit_s = template.terms.clockS;
+  const collateral_cr = template.terms.stakeCr;
+  const riskTier = template.terms.riskTier;
+  const reason = template.reason;
+  return {
+    id,
+    source: template.source,
+    type: template.offerType,
+    stationId: template.stationId,
+    factionId: template.factionId,
+    reward_cr,
+    time_limit_s,
+    // Instance path reads duration_s for deadline_s; keep both aligned.
+    duration_s: time_limit_s,
+    collateral_cr,
+    riskTier,
+    destStationId: template.destStationId,
+    destSectorId: template.destSectorId,
+    distance: template.distance,
+    preloadedCargo: template.preloadedCargo,
+    params: {
+      cmdtyId,
+      qty,
+      cargoValue,
+      fValue: 1 + cargoValue / 8000,
+      taskTime: 20,
+      passengers: 0,
+    },
+    title: template.title,
+    brief: template.brief,
+    summary: reason,
+    description: reason,
+    cause: {
+      tag: template.key,
+      axis: 'corridor_first_trade',
+      line: reason,
+      fingerprint: `first_trade:${seedN}:${nonce}`,
+    },
+    terms: {
+      paysCr: reward_cr,
+      clockS: time_limit_s,
+      riskTier,
+      stakeCr: collateral_cr,
+      miss: template.terms.miss,
+    },
+    cargo: {
+      cmdtyId,
+      qty,
+      preloaded: true,
+      label: template.cargo.label,
+    },
+    receipt: {
+      outcome: template.receipt.outcome,
+      requiredFields: [...template.receipt.requiredFields],
+    },
+    teach: 'Accept → hold sealed cargo → dock Ceres → collect receipt and payment.',
+    storyTag: null,
+    expiresAtEpoch: Number.isFinite(Number(options.expiresAtEpoch))
+      ? Math.floor(Number(options.expiresAtEpoch))
+      : 999999,
+  };
+}
+
 /** Fill an offer's cause prose. PURE. */
 export function fillCause(template, tokens) {
   return String(template)

@@ -142,9 +142,18 @@ test('calm field is silent: no template, no offer, no emit', () => {
     sys.init({ state, bus, helpers: { voice: { say() { return true; } } } });
 
     bus.emit('dock:docked', { stationId: STATION.id });
-    const offers = bus.emitLog.filter((e) => e.evt === 'mission:offered');
-    assert.equal(offers.length, 0, 'calm field emits nothing');
-    // Dedupe still marks the epoch so re-dock stays silent.
+    const fieldOffers = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+      && e.payload && e.payload.source === 'economyContract');
+    assert.equal(fieldOffers.length, 0, 'calm field emits no field contract');
+    // Helios still may emit the authored G06 first-trade teach offer once; that is not a field contract.
+    const firstTrade = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+      && e.payload && e.payload.source === 'firstTradeContract');
+    if (STATION.id === 'station_helios') {
+      assert.equal(firstTrade.length, 1, 'Helios posts the authored first-trade teach offer once');
+    } else {
+      assert.equal(firstTrade.length, 0);
+    }
+    // Dedupe still marks the epoch so re-dock stays silent for field evaluation.
     assert.equal(sys.hasEvaluated(STATION.id), true);
   });
 });
@@ -178,14 +187,21 @@ test('threshold gates are deterministic and field offers dedupe per station+epoc
 
     bus.emit('dock:docked', { stationId: STATION.id });
     bus.emit('dock:docked', { stationId: STATION.id }); // same epoch
-    const offers = bus.emitLog.filter((e) => e.evt === 'mission:offered');
-    assert.equal(offers.length, 1, 'one offer per station-epoch');
-    const offer = offers[0].payload;
+    const fieldOffers = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+      && e.payload && e.payload.source === 'economyContract');
+    assert.equal(fieldOffers.length, 1, 'one field offer per station-epoch');
+    const offer = fieldOffers[0].payload;
     const epoch = fieldContractEpoch(100, 600);
     assert.equal(offer.id, stableFieldOfferId(STATION.id, epoch));
     assert.equal(offer.source, 'economyContract');
     assert.ok(offer.cause && offer.cause.tag === 'route_scarcity', 'cause-named');
     assert.match(offer.summary, /scarcity|scarce|premium|route/i);
+    // First-trade teach offer (Helios only) is independent of field epoch dedupe and posts once.
+    const firstTrade = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+      && e.payload && e.payload.source === 'firstTradeContract');
+    if (STATION.id === 'station_helios') {
+      assert.equal(firstTrade.length, 1, 'first-trade teach offer once per run');
+    }
 
     // Pure dedupe API
     const bag = ensureFieldContractState({ economyContracts: { evaluatedEpochByStation: {} } });
