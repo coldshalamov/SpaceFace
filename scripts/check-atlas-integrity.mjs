@@ -327,6 +327,15 @@ export function checkAtlasIntegrity(sources = null) {
 
   const manifest = loadManifest();
 
+  // Two of the assertions below cross-reference OTHER live catalogues (the mission tables, the
+  // registration guide) against this atlas. Those cross-references are meaningless when the caller
+  // injected synthetic sources: a two-sector fixture legitimately does not contain the real game's
+  // mission destinations or the documentation's worked example, and failing it for that would make
+  // every fixture-driven test unwritable. So they run only against the live authored data, and say
+  // SKIP rather than a dishonest PASS when they do not.
+  const liveAuthoredData = !(sources && Array.isArray(sources.sectors));
+  const skip = (name, why) => ({ name, pass: true, skipped: true, actual: why });
+
   // 10. Every authored gameplay place reaches the atlas. The count check above proves the TOTALS
   //     agree; this proves the IDENTITIES agree. Both can pass individually while one place is
   //     silently swapped for another, which is exactly the failure a content author would not spot.
@@ -541,46 +550,54 @@ export function checkAtlasIntegrity(sources = null) {
   // 17. Mission destinations resolve to real atlas nodes. A mission that routes to an id the chart
   //     has never heard of is the "destination lacking arrival metadata" failure: the objective
   //     exists, the marker does not, and the player is told to fly to nowhere.
-  const badDestinations = [];
-  for (const { missionId, field, value } of walkMissionDestinations()) {
-    const node = atlas.getNode(value);
-    if (!node) {
-      badDestinations.push(`${missionId}: ${field} '${value}' resolves to no atlas node`);
-      continue;
+  if (!liveAuthoredData) {
+    checks.push(skip('missionDestinationsResolve', 'skipped — synthetic sources carry no mission catalogue'));
+  } else {
+    const badDestinations = [];
+    for (const { missionId, field, value } of walkMissionDestinations()) {
+      const node = atlas.getNode(value);
+      if (!node) {
+        badDestinations.push(`${missionId}: ${field} '${value}' resolves to no atlas node`);
+        continue;
+      }
+      if (!node.hasPosition) {
+        badDestinations.push(`${missionId}: ${field} '${value}' has no surveyed position — cannot be an arrival target`);
+      }
     }
-    if (!node.hasPosition) {
-      badDestinations.push(`${missionId}: ${field} '${value}' has no surveyed position — cannot be an arrival target`);
-    }
+    checks.push({
+      name: 'missionDestinationsResolve',
+      pass: badDestinations.length === 0,
+      details: badDestinations,
+    });
   }
-  checks.push({
-    name: 'missionDestinationsResolve',
-    pass: badDestinations.length === 0,
-    details: badDestinations,
-  });
 
   // 18. The registration doc's worked example still validates. This is what stops the guide rotting:
   //     the doc names a real id, and the gate proves that id is still a live, charted, representable
   //     place. A doc whose example no longer exists is worse than no doc.
   const docProblems = [];
   const exampleId = readDocExampleId();
-  if (exampleId === null) {
-    docProblems.push(`${REGISTRATION_DOC} is missing or declares no "<!-- atlas-example: ID -->" marker`);
+  if (!liveAuthoredData) {
+    checks.push(skip('docExampleValidates', 'skipped — synthetic sources cannot contain the documented example'));
   } else {
-    const node = atlas.getNode(exampleId);
-    if (!node) {
-      docProblems.push(`documentation example '${exampleId}' no longer exists in the atlas`);
+    if (exampleId === null) {
+      docProblems.push(`${REGISTRATION_DOC} is missing or declares no "<!-- atlas-example: ID -->" marker`);
     } else {
-      const proxy = proxies.get(exampleId);
-      if (!proxy) docProblems.push(`documentation example '${exampleId}' has no map representation`);
-      if (!node.hasPosition) docProblems.push(`documentation example '${exampleId}' has no surveyed position`);
+      const node = atlas.getNode(exampleId);
+      if (!node) {
+        docProblems.push(`documentation example '${exampleId}' no longer exists in the atlas`);
+      } else {
+        const proxy = proxies.get(exampleId);
+        if (!proxy) docProblems.push(`documentation example '${exampleId}' has no map representation`);
+        if (!node.hasPosition) docProblems.push(`documentation example '${exampleId}' has no surveyed position`);
+      }
     }
+    checks.push({
+      name: 'docExampleValidates',
+      pass: docProblems.length === 0,
+      actual: exampleId || 'no example declared',
+      details: docProblems,
+    });
   }
-  checks.push({
-    name: 'docExampleValidates',
-    pass: docProblems.length === 0,
-    actual: exampleId || 'no example declared',
-    details: docProblems,
-  });
 
   // ── Report-only findings ────────────────────────────────────────────────────────────────────
   const nonReciprocal = atlas.edges.filter((e) => e.kind === 'gate-link' && !e.reciprocal);
@@ -609,7 +626,9 @@ export function checkAtlasIntegrity(sources = null) {
 }
 
 function formatCheck(check) {
-  let line = `  ${check.name}: ${check.pass ? 'PASS' : 'FAIL'}`;
+  // A skipped assertion prints SKIP, never PASS. It did not run, and reporting it as green would be
+  // the precise kind of false evidence this gate exists to prevent.
+  let line = `  ${check.name}: ${check.skipped ? 'SKIP' : check.pass ? 'PASS' : 'FAIL'}`;
   if (check.actual) line += ` (${check.actual})`;
   if (check.details && check.details.length) {
     const first = check.details.slice(0, 5).join('; ');

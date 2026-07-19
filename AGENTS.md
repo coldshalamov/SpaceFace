@@ -14,6 +14,7 @@ status, subsystem detail, and design technique belong in the linked owner docume
 | Event or update-order trace | Generated `docs/EVENT_ROUTING.md` / `docs/SYSTEM_REGISTRY.md` |
 | Product or system design | `design/GDD_2_0.md` → relevant spec2/spec3 slice |
 | Ship, station, place, portrait | `assets/AGENTS.md`; ship pipeline continues at `assets/ships/AGENTS.md` |
+| Add a map-visible place (planet, station, route, region) | `src/data/PLACE_REGISTRATION.md` — **a new place is not done until `npm run check:atlas-integrity` is green** |
 | UI/HUD | `src/ui/AGENTS.md` and `styles/AGENTS.md` |
 | Render/performance | `src/render/AGENTS.md` and `design/PERF_BUDGET.md` |
 | Tests/checks/tooling | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` |

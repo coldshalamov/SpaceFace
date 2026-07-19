@@ -101,6 +101,7 @@ const SL_BRIGHT_MAX = 0.95;    // × — the largest per-streak brightness `b` _
 
 // Band-3 grain field (D7). A small repeating tile is orders of magnitude cheaper than per-pixel
 // noise and, being baked once from a fixed hash, is byte-identical on every boot.
+const SL_NO_STREAKS = Object.freeze([]);   // iterated when the streak pass is skipped entirely
 const GRAIN_TILE = 96;             // px — tile edge; also the modulo that bounds the scroll offset
 const GRAIN_SCROLL_PX_S = 340;     // px/s — the field shears past at a fixed rate; only its OPACITY
                                    //     tracks speed, because a field that also accelerates reads
@@ -392,7 +393,12 @@ export const feel = {
 
     ctx.globalCompositeOperation = composite;
     ctx.lineCap = 'round';
-    if (this._slOpacity > 0.01) for (const s of this._streaks) {
+    // Band 3 fades the streaks out entirely while the grain field remains, so once the overlay is
+    // below the visibility floor the streak pass is skipped WHOLESALE rather than walking the array
+    // to reject every stroke individually. Iterating a shared frozen empty array keeps the skip
+    // allocation-free and, unlike an `if (...) for (...)` prefix, cannot be misread as guarding only
+    // the first statement of a loop body this long.
+    for (const s of this._slOpacity > 0.01 ? this._streaks : SL_NO_STREAKS) {
       // Advance the streak along the flow direction (opposite to ship travel).
       s.uv += flowSpeed * frameDt * s.v;
 

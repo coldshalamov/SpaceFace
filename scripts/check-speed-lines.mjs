@@ -55,8 +55,10 @@ import {
   VL_PARALLAX_GAIN_MAX,
   VL_TAPER_END,
   REGION_CROSSFADE_WU,
+  isPlausibleCameraStep,
   resolveRegionCrossfade,
   resolveVelocityBand,
+  streamPhaseStep,
   velocityBandDrive,
 } from '../src/render/velocityLanguage.js';
 
@@ -249,14 +251,30 @@ const drive = (ratio, boosting = false, mr = false) =>
   velocityBandDrive(ratio * MAX_SPEED, MAX_SPEED, boosting, mr);
 
 // ---------------------------------------------------------------- band 0 is SILENT, not merely dim
-check('band 0 (<= 1x combat speed) emits nothing at all', () => {
-  for (const ratio of BAND_SAMPLES.band0) {
-    const d = drive(ratio);
-    assert.equal(d.band, VELOCITY_BAND.LOCAL, `ratio=${ratio}: expected band 0, got ${d.band}`);
-    assert.equal(d.count, 0, `ratio=${ratio}: ${d.count} streaks in the combat readout`);
-    assert.equal(d.targetOpacity, 0, `ratio=${ratio}: opacity ${d.targetOpacity} != 0`);
-    assert.equal(d.grain, 0, `ratio=${ratio}: grain ${d.grain} != 0`);
-    assert.equal(d.parallaxGain, 0, `ratio=${ratio}: world streaming active in local space`);
+// BOOSTING IS ASSERTED HERE, NOT ONLY IN THE COMPOSITING TEST. An earlier draft biased the effective
+// ratio by +0.6 while boost was held, which put 14 motes at alpha 0.12 on screen at exactly 1x combat
+// speed — inside the band D7 reserves for silence, during the boost-repositioning that combat is made
+// of. Every band-0 assertion ran `boosting=false`, so nothing caught it: the one input combination
+// that broke the ADR was the one combination untested. Both values of `boosting` now run here.
+check('band 0 (<= 1x combat speed) emits nothing at all, BOOSTING OR NOT', () => {
+  for (const boosting of [false, true]) {
+    for (const ratio of BAND_SAMPLES.band0) {
+      const d = drive(ratio, boosting);
+      const where = `ratio=${ratio} boost=${boosting}`;
+      assert.equal(d.band, VELOCITY_BAND.LOCAL, `${where}: expected band 0, got ${d.band}`);
+      assert.equal(d.count, 0, `${where}: ${d.count} streaks in the combat readout`);
+      assert.equal(d.targetOpacity, 0, `${where}: opacity ${d.targetOpacity} != 0`);
+      assert.equal(d.grain, 0, `${where}: grain ${d.grain} != 0`);
+      assert.equal(d.parallaxGain, 0, `${where}: world streaming active in local space`);
+    }
+  }
+  // The bands are keyed on SPEED ALONE (D7). Holding boost must not shift which band you are in —
+  // boost earns its language by accelerating you across the edges, not by pretending you already did.
+  for (const ratio of [0.3, 0.5, 0.9, 1.0, 1.5, 3, 7.5]) {
+    assert.equal(drive(ratio, true).band, drive(ratio, false).band,
+      `ratio=${ratio}: boost changed the BAND — the language must be speed-keyed`);
+    assert.equal(drive(ratio, true).count, drive(ratio, false).count,
+      `ratio=${ratio}: boost changed the streak count`);
   }
 });
 
@@ -555,6 +573,65 @@ check('region crossfade: degenerate inputs stay finite and silent', () => {
     assert.ok(Number.isFinite(r.blend), `blend ${r.blend} is not finite`);
     assert.ok(r.blend >= 0 && r.blend <= 1, `blend ${r.blend} outside [0,1]`);
   }
+});
+
+// ---------------------------------------------------------------- world streaming (band 2 cue)
+// This pins the integration `spaceBackground.update()` actually calls, not a copy. The defect it
+// guards is specific: scaling the layer's parallax factor by the gain — the obvious implementation —
+// snaps the sky, because the natural term is `camPos * par / tile` and camPos is thousands of WU.
+check('world streaming INTEGRATES the gain instead of scaling the parallax factor', () => {
+  const par = 0.08, tile = 2400, camStart = 250000, stepWU = 4;
+
+  // The shipped path: accumulate, with the gain ramping 0 -> 1 over 20 frames mid-run.
+  let phase = 0, cam = camStart, prevU = null, maxStep = 0;
+  for (let i = 0; i < 400; i++) {
+    const gain = i < 120 ? 0 : i < 140 ? (i - 120) / 20 : 1;
+    cam += stepWU;
+    phase = streamPhaseStep(phase, stepWU, par, tile, gain);
+    const u = (cam * par / tile + phase) % 1;
+    if (prevU !== null) {
+      const d = Math.abs(u - prevU);
+      maxStep = Math.max(maxStep, Math.min(d, 1 - d));   // wrap-aware
+    }
+    prevU = u;
+  }
+
+  // The naive alternative, for contrast: the jump a gain change would produce if it scaled `par`.
+  const naiveAt = (g) => (camStart * par * (1 + g) / tile) % 1;
+  const naiveJump = Math.abs(naiveAt(1) - naiveAt(0));
+
+  assert.ok(maxStep < 0.01,
+    `integrated streaming stepped by ${maxStep} UV in one frame — the sky snaps`);
+  assert.ok(naiveJump > maxStep * 50,
+    `the contrast is the evidence: naive ${naiveJump} vs integrated ${maxStep}`);
+  console.log(`      (integrated ${maxStep.toFixed(6)} UV/frame vs naive par-scaling ${naiveJump.toFixed(6)} UV snap)`);
+
+  // Gain 0 must not advance the phase at all — band 0/1 leave the background alone entirely.
+  assert.equal(streamPhaseStep(0.25, 999, par, tile, 0), 0.25, 'gain 0 advanced the phase');
+  // Non-finite inputs must leave the phase untouched rather than poisoning it forever.
+  for (const bad of [NaN, Infinity, -Infinity]) {
+    assert.equal(streamPhaseStep(0.25, bad, par, tile, 1), 0.25, `deltaWU=${bad} corrupted the phase`);
+    assert.equal(streamPhaseStep(0.25, 4, par, bad, 1), 0.25, `tile=${bad} corrupted the phase`);
+    assert.ok(Number.isFinite(streamPhaseStep(bad, 4, par, tile, 1)), `phase=${bad} stayed non-finite`);
+  }
+  assert.equal(streamPhaseStep(0.25, 4, par, 0, 1), 0.25, 'a zero tile must not divide');
+  // The phase stays wrapped no matter how long the burn lasts.
+  let long = 0;
+  for (let i = 0; i < 200000; i++) long = streamPhaseStep(long, 20, par, tile, 1);
+  assert.ok(Math.abs(long) <= 1 && Number.isFinite(long),
+    `phase escaped its wrap after a long burn: ${long}`);
+});
+
+check('camera-step plausibility rejects a frame rebase but accepts real travel', () => {
+  // 20 WU is one tick at the absolute travel ceiling (1200 WU/s) — the fastest legitimate step.
+  assert.equal(isPlausibleCameraStep(20, 20), true, 'max legitimate travel must be accepted');
+  assert.equal(isPlausibleCameraStep(0, 0), true);
+  assert.equal(isPlausibleCameraStep(-499, 499), true);
+  // FRAME_REBASE_THRESHOLD_WU is 8192; a rebase or jump must never be integrated as travel.
+  assert.equal(isPlausibleCameraStep(8192, 0), false, 'a frame rebase must be rejected');
+  assert.equal(isPlausibleCameraStep(0, -12288), false, 'a sector-scale jump must be rejected');
+  assert.equal(isPlausibleCameraStep(NaN, 0), false, 'NaN must be rejected');
+  assert.equal(isPlausibleCameraStep(0, Infinity), false, 'Infinity must be rejected');
 });
 
 // ---------------------------------------------------------------- the seam actually routes

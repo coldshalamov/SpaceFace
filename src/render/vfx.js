@@ -3943,10 +3943,18 @@ export const vfx = {
   _actuatorsFor(e) {
     if (!e) return null;
     const state = this.state;
-    if (e.id === state.playerId) {
+    const isPlayer = e.id === state.playerId;
+    if (isPlayer) {
+      // Fast path: flightV3 already computed this tick's block. Free, and guaranteed to be the
+      // same numbers the physics used.
       const rt = state.flightRuntime;
       const t = rt && rt.telemetry;
-      return t && t.actuators ? t.actuators : null;
+      if (t && t.actuators) return t.actuators;
+      // Fall through to the _flightFrame compute rather than returning null. flightV3.update()
+      // returns early before `_publishPlayerDiagnostics` whenever the physics backend is not
+      // rapier-dynamic, and the legacy flight controller never publishes flightRuntime at all —
+      // so binding the player's jets to the diagnostics publisher would make the hero ship the one
+      // craft that silently loses them. The player is a single entity and is never budget-skipped.
     }
     if (!e._flightFrame) return null;
 
@@ -3962,9 +3970,10 @@ export const vfx = {
       this._rcsNpcBudget = RCS_NPC_RESOLVE_BUDGET;
     }
     if (cache.has(e.id)) return cache.get(e.id);
-    if (this._rcsNpcBudget <= 0) return null; // not cached: a later frame may afford it
-
-    this._rcsNpcBudget--;
+    if (!isPlayer) {
+      if (this._rcsNpcBudget <= 0) return null; // not cached: a later frame may afford it
+      this._rcsNpcBudget--;
+    }
     const body = this._rcsBodyScratch || (this._rcsBodyScratch = { pos: null, vel: null, rot: 0, angVel: 0 });
     body.pos = e.pos; body.vel = e.vel; body.rot = e.rot || 0; body.angVel = e.angVel || 0;
     // `profile` is omitted deliberately: computeActuatorDemand never reads it, so fetching one per

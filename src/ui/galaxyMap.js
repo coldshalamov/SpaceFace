@@ -2510,6 +2510,55 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) {
   #sf-galaxymap #gm-engage-route-btn { transition: none; }
 }
+
+/* Slice A framing controls. These are NAVIGATION OF THE CHART, not commitments in the world, so
+   they are deliberately the quietest actionable surface in the inspector: steel outline, no gold.
+   Bright gold is reserved for the tracked objective and the active route, and a button that merely
+   recentres the view has not earned it. They sit above the target actions and are never hidden —
+   they are most needed exactly when nothing is selected. */
+#sf-galaxymap .gm-frame-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(190, 178, 152, .16);
+}
+#sf-galaxymap .gm-frame-btn {
+  background: rgba(150, 158, 170, .06);
+  border-color: rgba(178, 186, 198, .34);
+  color: #c3c8d0;
+  font-size: 11px;
+  letter-spacing: .08em;
+  margin-top: 0;
+  padding: 8px 12px;
+}
+#sf-galaxymap .gm-frame-btn:hover:not(:disabled) {
+  background: rgba(170, 180, 196, .14);
+  border-color: rgba(200, 208, 220, .5);
+  color: #e6e9ee;
+}
+/* Unavailable must READ as unavailable, not merely behave that way: the fill drops out, the label
+   dims, and the cursor stops promising a click. The reason line below says why. */
+#sf-galaxymap .gm-frame-btn:disabled {
+  background: transparent;
+  border-color: rgba(178, 186, 198, .18);
+  color: #6f7480;
+  opacity: 1;
+}
+#sf-galaxymap .gm-frame-reason {
+  min-height: 13px;
+  margin-top: 2px;
+  color: #9a8a72;
+  font-family: var(--mf-ui);
+  font-size: 10px;
+  letter-spacing: .05em;
+  line-height: 1.35;
+  text-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  #sf-galaxymap .gm-frame-btn { transition: none; }
+}
 @media (forced-colors: active) {
   #sf-galaxymap #gm-engage-route-btn { border: 1px solid ButtonText; color: ButtonText; }
   #sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"] { border-width: 3px; }
@@ -3617,6 +3666,78 @@ export const galaxyMapScreen = {
   },
 
   /**
+   * Rectangles the label solver must route around, shared by all three levels.
+   *
+   * `layoutMapLabels` already does deterministic decluttering and already accepts `reserved` — the
+   * brief says extend it, not write a second solver, so the new furniture is expressed as more
+   * reserved rectangles rather than as a competing pass. Anything drawn on the shared path after
+   * the level (the cartouche today) belongs here, or labels get placed underneath it and the
+   * overlap defect comes back wearing new geometry.
+   */
+  _reservedLabelRects(w, h, extra = []) {
+    const rects = Array.isArray(extra) ? extra.filter(Boolean).slice() : [];
+    const rows = this._lastNavContext && this._lastNavContext.rows;
+    const bounds = navCartoucheBounds(rows ? rows.length : 0, w, h);
+    if (bounds) {
+      rects.push({
+        // A few pixels of breathing room, so a label may not merely avoid overlapping the plate but
+        // must clear its edge — abutting text reads as an overlap even when it technically is not.
+        x: bounds.x - 4,
+        y: bounds.y - 4,
+        width: bounds.width + 8,
+        height: bounds.height + 8,
+      });
+    }
+    return rects;
+  },
+
+  /**
+   * Seed the unified camera from an applied map-open intent.
+   *
+   * `applyMapOpenIntentToView` remains the authority for WHERE the map opens — it is pinned by
+   * `check:map-authority` and is not touched by this wave. This reads the view it produced and
+   * expresses the same destination once, in the global frame.
+   *
+   * The one thing it must not do is trust `view.cams.system` as a global position: that camera lives
+   * in the sector-local draw frame, so lifting it needs the sector origin. Reading it raw would put
+   * the camera 12,288 WU off in Tethys — the defect this program exists to fix, re-entering through
+   * the open path.
+   */
+  _adoptCameraFromLegacyView(state, view) {
+    const level = levelForZoom(view && Number.isFinite(view.zoom) ? view.zoom : this._zoom);
+    const player = state ? playerEntity(state) : null;
+    const playerGlobal = player && player.pos ? { x: player.pos.x, z: player.pos.z } : null;
+    const sid = state ? currentSectorId(state) : null;
+    const cams = (view && view.cams) || this._cams;
+
+    let focusGlobal = null;
+    if (level === 'local' && cams && cams.local
+      && Number.isFinite(cams.local.cx) && Number.isFinite(cams.local.cy)) {
+      // LOCAL's camera is already global.
+      focusGlobal = { x: cams.local.cx, z: cams.local.cy };
+    } else if (level === 'system' && cams && cams.system
+      && Number.isFinite(cams.system.cx) && Number.isFinite(cams.system.cy)) {
+      focusGlobal = sectorLocalToGlobalForSector({ x: cams.system.cx, z: cams.system.cy }, sid);
+    } else if (level === 'galaxy' && cams && cams.galaxy
+      && Number.isFinite(cams.galaxy.cx) && Number.isFinite(cams.galaxy.cy)) {
+      // GALAXY's camera is in authored graph units — one lattice cell per unit.
+      focusGlobal = {
+        x: cams.galaxy.cx * SECTOR_ORIGIN_LATTICE_WU,
+        z: cams.galaxy.cy * SECTOR_ORIGIN_LATTICE_WU,
+      };
+    }
+    const preset = framePreset(level, { playerGlobal, sectorId: sid, focusGlobal });
+    this._camera = createMapCamera({
+      focusGlobal: focusGlobal || preset.focusGlobal,
+      spanWU: preset.spanWU,
+      minSpanWU: MAP_SPAN_MIN_WU,
+      maxSpanWU: MAP_SPAN_MAX_WU,
+    });
+    this._syncLegacyFromCamera();
+    return this._camera;
+  },
+
+  /**
    * The live camera, lazily seeded from whatever the legacy zoom/level state currently says.
    *
    * Seeding FROM the legacy state (rather than from a constant) is what makes this migration
@@ -3701,6 +3822,25 @@ export const galaxyMapScreen = {
     if (!state) return resolveMapNavContext();
     const player = playerEntity(state);
     const nav = state.nav || {};
+
+    // Memoised on the inputs that can change the readout. `_draw` runs at display refresh at LOCAL
+    // scale, and the readout allocates a deeply-frozen address record plus four frozen rows — doing
+    // that 60 times a second to re-render four identical strings is waste on a machine that may be
+    // running a software renderer. The player position is quantised to 1 WU because sub-unit drift
+    // cannot change any displayed value (distances round to whole WU, progress to whole percent).
+    const goal = activeMapGoal(state);
+    const executor = readRouteExecutorForMap(nav.executor);
+    const key = [
+      player && player.pos ? Math.round(player.pos.x) : 'x',
+      player && player.pos ? Math.round(player.pos.z) : 'z',
+      currentSectorId(state),
+      goal ? `${goal.label}|${goal.sectorId}|${goal.pos ? Math.round(goal.pos.x) : ''}|${goal.pos ? Math.round(goal.pos.z) : ''}` : '-',
+      executor ? `${executor.status}|${executor.legIndex}|${executor.legCount}|${executor.destinationSectorId}|${executor.legLabel}` : '-',
+      nav.route && Array.isArray(nav.route.legs) ? nav.route.legs.map((l) => `${l.from}>${l.to}`).join(',') : '-',
+    ].join('#');
+    if (this._navContextKey === key && this._lastNavContext) return this._lastNavContext;
+    this._navContextKey = key;
+
     return resolveMapNavContext({
       playerGlobal: player && player.pos ? { x: player.pos.x, z: player.pos.z } : null,
       playerSectorId: currentSectorId(state),
@@ -4071,6 +4211,15 @@ export const galaxyMapScreen = {
     this._zoom = view.zoom;
     this._targetZoom = view.targetZoom;
     this._openIntent = view.openIntent || intent;
+    // SLICE B — adopt the open intent into the unified camera.
+    //
+    // The camera is rebuilt from the intent on every open rather than persisted across opens. That
+    // is deliberate: `mapAuthority` is the single authority for where the map opens (pinned by
+    // check:map-authority), and a camera that survived the close would silently outrank it. The
+    // camera owns continuity WITHIN a session on the chart; the intent owns where that session
+    // starts.
+    this._camera = null;
+    this._adoptCameraFromLegacyView(state, view);
     // Visible selection/inspector focus from missionId/stationId when resolvable.
     // Focus-only opens leave _selectedTarget null (do not invent a station).
     this._selectedTarget = view.openTarget || null;
@@ -5400,6 +5549,13 @@ export const galaxyMapScreen = {
     // the scope remembers. GALAXY is excluded: at that scale nothing is reading local contacts.
     if (level !== 'galaxy') this._syncLocalIntel(state);
 
+    // Resolved BEFORE the level dispatch so each level can reserve the cartouche's rectangle in the
+    // label solver, and drawn AFTER it so nothing paints over the readout. Both halves matter: the
+    // reservation is what keeps a sector label from being placed under the plate in the first place,
+    // and it needs the row count before any label is laid out.
+    const navContext = this._navContext(state);
+    this._lastNavContext = navContext;
+
     if (level === 'galaxy') this._drawGalaxy(g, state, w, h);
     else if (level === 'system') this._drawSystem(g, state, w, h);
     else this._drawLocal(g, state, w, h);
@@ -5408,8 +5564,6 @@ export const galaxyMapScreen = {
     // present at every scale by construction. Putting it inside the three level draws would let a
     // future edit to any one of them silently drop the readout at that scale, which is exactly the
     // "answered at LOCAL and SYSTEM but not GALAXY" gap this replaces.
-    const navContext = this._navContext(state);
-    this._lastNavContext = navContext;
     drawNavCartouche(g, navContext.rows, w, h, { title: level.toUpperCase() });
     this._syncFramingControls(navContext);
 
@@ -5895,7 +6049,7 @@ export const galaxyMapScreen = {
       galaxyReserved.push({ x: gx + 10, y: gy - 9, width: goalWidth, height: 18 });
     }
     const galaxyLabelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
-      reserved: galaxyReserved,
+      reserved: this._reservedLabelRects(w, h, galaxyReserved),
     });
     this._lastLabelLayout = galaxyLabelLayout;
     for (const placement of galaxyLabelLayout) {
@@ -6325,7 +6479,7 @@ export const galaxyMapScreen = {
     }
     const headerWidth = Math.min(w - 24, Math.max(80, model.sectorName.length * 8 + 26));
     const labelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
-      reserved: [{ x: 8, y: 8, width: headerWidth, height: 40 }],
+      reserved: this._reservedLabelRects(w, h, [{ x: 8, y: 8, width: headerWidth, height: 40 }]),
     });
     this._lastLabelLayout = labelLayout;
     for (const placement of labelLayout) {
@@ -6813,7 +6967,7 @@ export const galaxyMapScreen = {
       if (target && !offView(wx, wy)) this._clickTargets.push(target);
     }
     const labelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
-      reserved: [{ x: w / 2 - 13, y: h / 2 - 13, width: 26, height: 26 }],
+      reserved: this._reservedLabelRects(w, h, [{ x: w / 2 - 15, y: h / 2 - 15, width: 30, height: 30 }]),
     });
     this._lastLabelLayout = labelLayout;
     for (const placement of labelLayout) {
@@ -7084,18 +7238,31 @@ function drawPlayerFixMark(g, x, y, rot, options = {}) {
  *   PLAIN   -> hairline tick + normal ink
  *   MUTED   -> open dash + dimmed ink
  */
-function drawNavCartouche(g, rows, w, h, options = {}) {
-  if (!Array.isArray(rows) || !rows.length) return;
+/**
+ * The cartouche's geometry, derived in ONE place so the drawer and the label declutterer cannot
+ * disagree about where it is. A reserved rectangle that drifted from the plate it describes would
+ * silently reintroduce the marker-overlap defect it exists to prevent.
+ *
+ * Returns null when the chart is too small to carry a cartouche at all.
+ */
+function navCartoucheBounds(rowCount, w, h) {
+  if (!(rowCount > 0)) return null;
   const rowH = 26;
   const padX = 12;
   const padY = 10;
   const boxW = Math.min(300, Math.max(212, w * 0.26));
-  const boxH = padY * 2 + rows.length * rowH;
-  const x0 = 14;
-  const y0 = h - boxH - 14;
+  const boxH = padY * 2 + rowCount * rowH;
   // A chart this narrow has nowhere to put a cartouche without covering the marks it describes.
   // Withholding it is better than occluding the thing the pilot is reading.
-  if (w < 420 || h < boxH + 90) return;
+  if (w < 420 || h < boxH + 90) return null;
+  return { x: 14, y: h - boxH - 14, width: boxW, height: boxH, rowH, padX, padY };
+}
+
+function drawNavCartouche(g, rows, w, h, options = {}) {
+  if (!Array.isArray(rows) || !rows.length) return;
+  const bounds = navCartoucheBounds(rows.length, w, h);
+  if (!bounds) return;
+  const { rowH, padX, padY, width: boxW, height: boxH, x: x0, y: y0 } = bounds;
 
   g.save();
   g.translate(x0, y0);

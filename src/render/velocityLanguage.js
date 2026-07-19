@@ -120,13 +120,23 @@ export const VL_FLOW_MAX = 1400;         // screen-px/s; well under the legacy 2
 export const VL_BAND3_COUNT_FLOOR = 2;
 
 /**
- * Boost bias, in units of effective speed ratio. Boost is a player ACTION and needs feedback, but
- * D7's table is keyed on speed alone and Band 0 says NOTHING at combat speed. Forcing full intensity
- * on boost (which is what the legacy drive did) reintroduces the cartoon at exactly the moment the
- * player is dogfighting. A small bias instead: boosting at combat speed lands mid-band-1, i.e. a
- * whisper of dust. The band language stays monotone in speed, which is what keeps it legible.
+ * BOOST DOES NOT BIAS THE BANDS. Recorded as a constant rather than deleted because the tempting
+ * mistake is specific and worth naming.
+ *
+ * The legacy drive forced `intensity = 1` whenever boost was held, at any speed. An early draft of
+ * this module replaced that with a "small" +0.6 bias on the effective ratio, reasoning that boost is
+ * a player ACTION and deserves feedback. Measured, that bias put **14 motes at alpha 0.12 on screen
+ * at exactly 1x combat speed** — inside the band D7 reserves for silence, and precisely during the
+ * boost-repositioning that combat is made of. "A streak here is noise in the fight readout" is the
+ * ADR's own wording, and a 0.6 bias is not a whisper, it is a two-thirds-of-a-band shove.
+ *
+ * The bands are keyed on SPEED alone, as D7 specifies. Boost earns its language by accelerating you
+ * across the band edges, which it does within a second. The moment of ignition is already carried by
+ * `BOOST_FOV_PUNCH` and `BOOST_TRAUMA` in feel.js — camera response, not particles, which is the
+ * whole thesis of the redesign. `boosting` is still accepted by the drive so the seam signature
+ * matches the legacy branch, and is deliberately unused.
  */
-export const VL_BOOST_BIAS = 0.6;
+export const VL_BOOST_BIAS = 0;
 
 // motionReduce factors, one per channel. Separate factors rather than one folded scale so a future
 // channel cannot inherit a wrong reduction by accident, and so the intent of each is readable.
@@ -239,6 +249,7 @@ export function velocityBandDrive(speed, maxSpeed, boosting, motionReduce) {
   if (!Number.isFinite(speed) || !Number.isFinite(maxSpeed)) return silentRecord(0, 0);
 
   const speedRatio = Math.max(0, speed) / maxSpd;
+  // VL_BOOST_BIAS is 0 — see its doc comment. Boost must NOT manufacture particles below 1x.
   const r = speedRatio + (boosting ? VL_BOOST_BIAS : 0);
   if (!Number.isFinite(r)) return silentRecord(speedRatio, 0);
 
@@ -444,6 +455,58 @@ export function resolveRegionCrossfade(globalPos, options = {}) {
     crossfadeWU: halfWidth,
     approaching: blend > 0,
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// world streaming (the band-2 load-bearing cue)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Largest per-frame camera step the streaming accumulator will integrate.
+ *
+ * A frame rebase (`FRAME_REBASE_THRESHOLD_WU` = 8192) or a jump relocates the render frame wholesale,
+ * producing a delta that is travel in arithmetic only. 500 WU sits two orders of magnitude clear of
+ * both bounds: the absolute travel ceiling of 1200 WU/s displaces 20 WU per 1/60 s tick, and the
+ * smallest relocation is 8192 WU. So the discriminator is never close to either side of its job.
+ */
+export const STREAM_MAX_STEP_WU = 500;
+
+/** True when a per-frame camera delta is plausible travel rather than a frame relocation. */
+export function isPlausibleCameraStep(dx, dz) {
+  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return false;
+  return Math.abs(dx) <= STREAM_MAX_STEP_WU && Math.abs(dz) <= STREAM_MAX_STEP_WU;
+}
+
+/**
+ * Advance one background layer's streaming phase by a frame of travel.
+ *
+ * THE POINT OF THIS FUNCTION IS THAT IT INTEGRATES. The background's natural parallax is a
+ * CLOSED-FORM term, `camPos * par / tile` — an absolute position thousands of WU in magnitude. The
+ * obvious way to make the world stream faster is to scale `par` by the gain, and it is wrong: the
+ * offset would jump by `camPos * dPar / tile` the instant the gain moved. Measured at a
+ * representative camera position that is a **0.387 UV snap**, i.e. the sky lurching a third of a
+ * tile sideways at exactly the moment the player is going fastest. Integrating `gain * dCam` instead
+ * is continuous by construction, and a gain returning to 0 simply stops the phase growing rather
+ * than unwinding it. The same measurement puts the integrated path at 0.000267 UV per frame.
+ *
+ * Extracted as a pure function for the same reason `speedLineDrive` is: so the probe pins the math
+ * the renderer actually runs, rather than a copy in the test that can silently drift from it.
+ *
+ * @param {number} prevPhase accumulated phase, in UV (wrapped to [-1, 1])
+ * @param {number} deltaWU   this frame's camera travel along the axis, in WU
+ * @param {number} par       the layer's parallax factor
+ * @param {number} tile      the layer's tile size in world units
+ * @param {number} gain      0..1 extra streaming, as a multiple of the natural rate
+ * @returns {number} the new wrapped phase; always finite, and unchanged on any bad input
+ */
+export function streamPhaseStep(prevPhase, deltaWU, par, tile, gain) {
+  const prev = Number.isFinite(prevPhase) ? prevPhase : 0;
+  if (!(gain > 0)) return prev;
+  if (!Number.isFinite(deltaWU) || !Number.isFinite(par) || !Number.isFinite(gain)) return prev;
+  if (!Number.isFinite(tile) || tile === 0) return prev;
+  const next = prev + deltaWU * par / tile * gain;
+  if (!Number.isFinite(next)) return prev;
+  return next % 1;
 }
 
 // ---------------------------------------------------------------------------------------------

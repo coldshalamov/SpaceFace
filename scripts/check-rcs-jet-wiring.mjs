@@ -224,18 +224,52 @@ console.log('5. The main plume follows physics, and the retro pair has one owner
   assert.equal(owned.particles.length, 0,
     'with a truthful actuator block the event path must NOT also draw retros (double burn)');
 
-  // ...and must stay live for craft that publish no actuator block.
-  const legacy = harness({ actuators: null, entity: e });
+  // ...and must stay live for craft flown by the LEGACY controller. src/systems/flight.js only
+  // ever READS `_flightFrame` (:258) and never assigns it, so the absence of that field — not the
+  // absence of flightRuntime — is what actually identifies a legacy-controlled craft.
+  const legacyShip = shipAt(0, { vel: { x: 40, z: 0 } });
+  delete legacyShip._flightFrame;
+  const legacy = harness({ actuators: null, entity: legacyShip });
   legacy.ctx.state.flightRuntime = null;
+  assert.equal(legacy.ctx._actuatorsFor(legacyShip), null,
+    'a craft with no _flightFrame publishes no actuator block, so the legacy path must own its retros');
   legacy.ctx._emitEngineTrail = () => ({ particles: 0, streaks: 0 });
-  legacy.ctx._onThrust({ id: e.id, shipId: e.id, reverse: 1, throttle: 0, nozzles: [{ role: 'reverse-left', strength: 1 }, { role: 'reverse-right', strength: 1 }] });
+  legacy.ctx._onThrust({ id: legacyShip.id, shipId: legacyShip.id, reverse: 1, throttle: 0, nozzles: [{ role: 'reverse-left', strength: 1 }, { role: 'reverse-right', strength: 1 }] });
   assert.ok(legacy.particles.length > 0,
     'the legacy event path must still render retros for craft with no actuator block');
   pass('the retro pair has exactly one owner, chosen by whether truthful data exists');
 }
 
 // ---------------------------------------------------------------------------------------------
-console.log('6. The pass is actually wired into the per-frame loop');
+console.log('6. The player never depends on the diagnostics publisher being on');
+{
+  // flightV3.update() returns early before `_publishPlayerDiagnostics` whenever the physics
+  // backend is not rapier-dynamic, and the legacy controller never writes flightRuntime at all.
+  // If the player branch read only that object, the HERO ship would be the one craft that loses
+  // its jets — the precise "producer landed, consumer read nothing" failure this packet closes.
+  const profile = PROPULSION_PROFILES.drive_reaction_m;
+  const body = { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, angVel: 0, mass: 20, inertia: 40, radius: 6 };
+  const stepped = stepPropulsion({ dt: DT, body, input: { turn: 1 }, profile, runtime: createPropulsionRuntime(profile) });
+
+  const e = shipAt(0);
+  e._flightFrame = { driveId: 'drive_reaction_m', ...stepped.telemetry };
+  const h = harness({ actuators: null, entity: e });
+  h.ctx.state.flightRuntime = null; // publisher off, exactly as on a non-rapier backend
+
+  const actuators = h.ctx._actuatorsFor(e);
+  assert.ok(actuators, 'the player must resolve actuators from _flightFrame when flightRuntime is absent');
+  assert.ok(actuators.yaw > 0, 'the fallback must carry real signed demand, not zeros');
+
+  h.ctx._emitRcsJets(e, actuators, false);
+  assert.ok(h.particles.length > 0, 'the player must still fire jets with the diagnostics publisher off');
+  const bowP = h.particles.filter((p) => p.x > 0);
+  assert.ok(bowP.length > 0 && Math.sign(bowP[0].z) === -1,
+    'the fallback path must produce the SAME mapping: yaw→starboard fires the bow PORT jet');
+  pass('the player falls back to _flightFrame, with the mapping preserved');
+}
+
+// ---------------------------------------------------------------------------------------------
+console.log('7. The pass is actually wired into the per-frame loop');
 {
   const src = readFileSync(resolve(ROOT, 'src/render/vfx.js'), 'utf8');
   // Behavioural pin, not a spelling pin: the RCS call must sit BEFORE the idle-drive early-out,

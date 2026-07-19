@@ -23,14 +23,7 @@
 import * as THREE from 'three';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { CAMERA_ZOOM_MAX, CONTEXT_ZOOM_MAX, SPEED_ZOOM_MAX } from './camera.js';
-import { readVelocityLanguage } from './velocityLanguage.js';
-
-// Largest per-frame camera step the world-streaming accumulator will integrate. A frame rebase
-// (FRAME_REBASE_THRESHOLD_WU = 8192) or a jump relocates the render frame wholesale, producing a
-// delta that is not travel; integrating it would slam the sky sideways. 500 WU is far above any
-// legitimate one-frame displacement (the absolute travel ceiling of 1200 WU/s is 20 WU per tick)
-// and far below the smallest relocation, so the discriminator has two orders of magnitude of margin.
-const STREAM_MAX_STEP_WU = 500;
+import { isPlausibleCameraStep, readVelocityLanguage, streamPhaseStep } from './velocityLanguage.js';
 
 // ----------------------------------------------------------------------------
 // Seeded PRNG (mulberry32) + string hash — ~15 lines, no deps.
@@ -1626,12 +1619,12 @@ export class SpaceBackground {
     const gain = vl && vl.drive && Number.isFinite(vl.drive.parallaxGain) ? vl.drive.parallaxGain : 0;
     let dcx = 0, dcz = 0;
     if (this._streamPrimed) {
-      dcx = cx - this._streamCamX;
-      dcz = cz - this._streamCamZ;
+      const rawX = cx - this._streamCamX;
+      const rawZ = cz - this._streamCamZ;
       // A frame rebase relocates the whole render frame by up to FRAME_REBASE_THRESHOLD_WU, and a
       // jump relocates it arbitrarily. Either produces a delta that is travel-per-frame in name
       // only, so anything implausible for one frame is discarded rather than integrated.
-      if (Math.abs(dcx) > STREAM_MAX_STEP_WU || Math.abs(dcz) > STREAM_MAX_STEP_WU) { dcx = 0; dcz = 0; }
+      if (isPlausibleCameraStep(rawX, rawZ)) { dcx = rawX; dcz = rawZ; }
     }
     this._streamCamX = cx; this._streamCamZ = cz; this._streamPrimed = true;
 
@@ -1642,12 +1635,11 @@ export class SpaceBackground {
       let du = 0, dv = 0;
       if (i === 1) { du = this.bgTime * (0.0035 / 60); dv = this.bgTime * (0.0022 / 60); }
       else if (i === 2) { du = -this.bgTime * (0.0045 / 60); dv = this.bgTime * (-0.0028 / 60); }
-      if (gain > 0) {
-        // Same per-WU rate as the natural term, so `gain = 1` reads as exactly "twice the streaming"
-        // rather than as an unrelated second motion the eye can separate out.
-        L.streamU = ((L.streamU || 0) + dcx * L.par / L.tile * gain) % 1;
-        L.streamV = ((L.streamV || 0) - dcz * L.par / L.tile * gain) % 1;
-      }
+      // Same per-WU rate as the natural term, so `gain = 1` reads as exactly "twice the streaming"
+      // rather than as an unrelated second motion the eye can separate out. The step itself lives in
+      // velocityLanguage.js so the probe pins the integration the renderer actually runs.
+      L.streamU = streamPhaseStep(L.streamU, dcx, L.par, L.tile, gain);
+      L.streamV = streamPhaseStep(L.streamV, -dcz, L.par, L.tile, gain);
       const u = (cx * L.par / L.tile + du + (L.streamU || 0)) % 1;
       const v = (-cz * L.par / L.tile + dv + (L.streamV || 0)) % 1;
       L.offset.set(u < 0 ? u + 1 : u, v < 0 ? v + 1 : v);

@@ -27,7 +27,9 @@ import {
   resolveAtlasProxy, PROXY_TIER, MAP_PROXY_TRIANGLE_CAP, generateProxyGeometry,
 } from '../src/core/atlasProxy.js';
 import { checkAtlasIntegrity } from './check-atlas-integrity.mjs';
-import { buildSystemModel, buildGalaxyModel, resolveCourseTarget } from '../src/ui/galaxyMap.js';
+import {
+  buildSystemModel, buildGalaxyModel, buildLocalModel, resolveCourseTarget,
+} from '../src/ui/galaxyMap.js';
 import { ZONE_TETHYS_DRIFTMARK, appendAuthoredZones } from '../src/data/authoredPlaces.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { SECTORS } from '../src/data/sectors.js';
@@ -138,6 +140,19 @@ function testSemanticZoom() {
   const parent = (galaxy.nodes || []).find((n) => n.id === SECTOR_ID);
   assert.ok(parent, 'the parent system must be present at GALAXY scale');
   ok('represented at GALAXY scale through its parent system (concentric scales, D3)');
+
+  // LOCAL scale: `buildLocalModel` returns { level, sectorId, player, contacts, ownership, bearings }
+  // and carries no `zones` array at all — the local chart is a contact/tactical view, and a 480 WU
+  // region disc is not one of its subjects. So "all relevant zoom levels" for a ZONE means System
+  // (its own scale) and Galaxy (through its parent), and this asserts that scoping rather than
+  // leaving the third level silently untested. A different node kind — a station or gate — WOULD be
+  // expected at local scale; if a zones array ever appears in the local model, this assertion fails
+  // and the scoping gets revisited deliberately instead of rotting.
+  const local = buildLocalModel(stateFixture(SECTOR_ID, ZONE_TETHYS_DRIFTMARK.center), () => false);
+  assert.equal(local.zones, undefined,
+    'local model is a contact view with no zone layer — revisit this scoping if that changes');
+  assert.ok(local.player, 'the local model must still place the player while standing in the zone');
+  ok('LOCAL scale carries no zone layer by design (contact view) — scoping asserted, not assumed');
 
   // The label a screen reader / decluttering solver would receive must be non-empty at every scale.
   assert.ok(zone.name && zone.name.trim(), 'zone must carry a non-empty label');
