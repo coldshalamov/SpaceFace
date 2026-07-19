@@ -1,6 +1,6 @@
 # Verified Done and Implemented Work
 
-**Audit date:** 2026-07-14
+**Audit date:** 2026-07-19 for the integration checkpoint below; older rows retain their stated dates.
 
 **Rule:** this document separates accepted outcomes from implemented components. The whole Alpha and
 the whole Depth Program are not finished.
@@ -12,6 +12,17 @@ audit. No milestone has a current clean-wave record either; clean-wave counts be
 requirement only if the controller explicitly adopts the draft production policy for a release run.
 M2’s architecture was previously marked complete, but its current combined browser/Electron check
 exited red during Electron launch and must be revalidated.
+
+## Unified graphics/performance checkpoint (2026-07-19) — verified at `ee9e0ab3`
+
+| Area | Verified result | Acceptance level |
+|---|---|---|
+| Branch reconciliation | Paused Claude Atlas/map/travel state, performance closure, and the multi-day graphics branch were synthesized in `a752702b` and promoted to `master` as `ee9e0ab3`; the tracked trees were identical at promotion. | Integrated, recoverable checkpoint; donor branches are not independent product authorities. |
+| Starter and asset admission | The public route presents the authored 27,318-triangle Kestrel whole ship; 76/76 declared part assets and 2/2 whole ships loaded with zero failures. No visible fallback swap or missing Kestrel root was observed in the current stability probe. | Live browser evidence; broader natural Electron/floor-hardware matrix remains open. |
+| Thruster/RCS substrate | Continuous pooled Kestrel plume and actuator-truth directional RCS pass recipe, wiring, accessibility, settings, save/restore/destroy, and sleep checks. Reduced motion retains feedback. | Focused green plus prior browser/Electron visual evidence; dense/Spector classification remains open. |
+| Background and post | True-black negative space, localized deep-field structure, stable camera-integrated parallax, restrained two-level bloom, and zero default grading offsets pass structural and depth/occlusion tests. | De-hazed foundation accepted; final localized authored phenomena remain open. |
+| Golden surfaces | Kestrel, Helios, and geology roles have authored or role-specific PBR material paths. Helios keeps its three-LOD production geometry and function-specific surface maps. | Promoted visual checkpoint; natural approach/undock, representative-rock parity, and fleet-wide PBR expansion remain open. |
+| Combined runtime | Map/Atlas/travel contracts, asset-live, visual-stability, launch-policy, and five strict desktop/mobile flight runs passed. The isolated timing rerun measured 1.02 ms/tick for 240 ships and 0.38 ms/tick for the physics/flight case. | Current integrated proof; no M0–M6 milestone exit is implied. |
 
 ## Wave-01 (PROGRAM-WAVE-01-RECOVERY-ROOTS, 2026-07-18) — verified at `c751b9a9`
 

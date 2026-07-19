@@ -5,6 +5,24 @@ upstream and working-tree movement during reconciliation. This file's containing
 definition. Treat the values below as checkpoint history and re-run the commands before acting.
 Use [`NOW.md`](./NOW.md), not this snapshot, for current leases and dirty-path ownership.
 
+## Current integration checkpoint — 2026-07-19
+
+- Primary branch: `master` at `ee9e0ab3`.
+- Tracked primary tree: clean at promotion; untracked `design/program/_review/` remains quarantined.
+- Unified donor: `codex/unified-integration-20260719` at `a752702b`; tracked tree matched promoted
+  `master` exactly.
+- Included donors: performance `1bdde6c8`, graphics `e3ad1caf`, and paused Claude snapshot
+  `1905cac8`. Their accepted product changes are reachable from `master`.
+- The graphics, performance, Claude-snapshot, and unified worktrees are cleanup candidates only after
+  a final clean-state, unique-commit, and patch-equivalence audit. The Kimi/OpenCode worktree remains
+  active and must not be removed or merged until its return is classified.
+- The many July context/review/orchestration worktrees are not assumed disposable by name. Remove
+  each only after confirming no dirty paths, no unique product commit, and no accepted patch absent
+  from `master`. Process-only prompt/log/cache artifacts follow `docs/ARTIFACT_RETENTION.md`.
+
+Current graphics continuation and proof boundaries are recorded in
+[`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKPOINT.md).
+
 ## Repository checkpoint
 
 - Branch: `master`.

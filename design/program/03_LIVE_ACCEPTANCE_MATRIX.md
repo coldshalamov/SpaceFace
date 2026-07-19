@@ -4,6 +4,12 @@
 **Sprint 2 packet rows appended 2026-07-18** at commits `4f750412`, `cd784532`, `d5e0d6e7`; those rows
 carry their own evidence and do not promote any milestone row.
 
+**Integration checkpoint appended 2026-07-19:** graphics, performance, and paused Atlas/map/travel
+work were promoted together at `ee9e0ab3`. The old lease/blocker columns below are historical. The
+current tracked tree is clean and has no shared-tree path lease. This checkpoint updates M1/M6
+implementation truth but does not exit either milestone; remaining visual/performance acceptance is
+recorded in `08_GRAPHICS_OVERHAUL_CHECKPOINT.md`.
+
 ## Sprint 2 — Corridor Contract Wave packet rows
 
 | Packet | Terminal state | Evidence at commit | Commit | Blocking lease |
@@ -59,7 +65,7 @@ lane should repair, not whether it is repaired.
 | M3 | Origins, cohorts, Hunter intent, damage/death substantially built | Career origins green | Natural damage/Game Over proven; recovery and three full 90-minute routes open | Damage/after-action images exist | 0 recorded | NOT EXITED |
 | M4 | Regional ecology/POI foundations built | RED 8/9 on registry/save initialization order | Sparse/normal/crowded diversity routes open | Art/classification incomplete | 0 recorded | NOT EXITED |
 | M5 | Story/endings/outposts/role foundations built | Role continuity green | Supporting injected role route only; ordinary story/ownership routes open | Partial | 0 recorded | NOT EXITED |
-| M6 | Capture/release/localization/perf foundations and Wasp routing built | Capture contract/self-test green; perf RED | Real store route absent | Wasp has no accepted classification; localization/capture incomplete; Hitch glare and Helios material defects remain | 0 recorded | NOT EXITED |
+| M6 | Capture/release/localization/perf foundations, loading/admission, de-hazed background, pooled thruster/RCS, golden Kestrel/Helios/geology surfaces, and Wasp routing are integrated at `ee9e0ab3` | Asset-live, visual-stability, launch-policy, focused VFX/background/post checks, and five strict desktop/mobile flight runs green; long-soak/floor-hardware rebaseline open | Authored browser route passes; current packaged store/Electron matrix remains incomplete | Hitch glare and Helios bulk-material defects repaired; Wasp classification, combat-family visual acceptance, natural Helios/rock parity, localized background art, and release evidence remain | 0 recorded | NOT EXITED |
 | Depth | Checkpoint `850c80f3` preserves focused implementations for 16 chunks after W1 correction | Pre-checkpoint aggregate green; not rerun at current HEAD | Many routes compress state/timing; final unassisted routes open | All Depth `.devshots` ignored; no chunk DONE | N/A | 0 / 31 DONE |
 
 ## Fresh audit details

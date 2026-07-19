@@ -2,13 +2,13 @@
 
 **Checkpoint date:** 2026-07-19
 
-**Status:** PARTIAL, VALIDATED IN ISOLATION, NOT YET PROMOTED TO `master`
+**Status:** PROMOTED TO `master`; VERIFIED CHECKPOINT, OVERHAUL STILL PARTIAL
 
-**Integration branch:** `codex/graphics-integration-20260718`
+**Promoted master revision:** `ee9e0ab3`
 
-**Checkpoint revision before the current Helios surface slice:** `e2f097ec`
+**Unified integration revision:** `a752702b` on `codex/unified-integration-20260719`
 
-**Merge base with the active program build:** `91d88d74`
+**Graphics donor revision:** `e3ad1caf` on `codex/graphics-integration-20260718`
 
 This is the durable resumption and promotion record for the multi-day graphics overhaul. It records
 what the current integration tree actually presents, what has only structural evidence, what has
@@ -17,12 +17,11 @@ asset intermediates. It does not promote any `M0-M6` or roadmap row by itself.
 
 ## 1. Integration safety and current topology
 
-At this checkpoint, `master` is still receiving concurrent Atlas/map/travel work and must remain
-read-only to the graphics lane. The graphics integration branch has advanced substantially after
-`91d88d74`; current `master` has also advanced independently. Promotion therefore requires a fresh
-worktree from final `master` and a conflict-aware final-tree squash. Never merge the graphics branch
-history directly: older Helios commits contain oversized intermediate blobs that were removed from
-the final tree by `117e991a`.
+Promotion is complete. Claude's paused Atlas/map/travel work was frozen through `1905cac8`, the
+performance checkpoint `1bdde6c8` and graphics checkpoint `e3ad1caf` were reconciled in the clean
+unified worktree, and that reviewed tree was promoted to `master` in `ee9e0ab3`. The seven overlap
+files were resolved to the already-tested synthesis rather than by selecting an entire donor branch.
+The resulting tracked `master` tree was content-identical to unified revision `a752702b` at merge.
 
 The final integration tree has no file over 100 MiB. Its largest tracked asset is the sanitized
 Helios source GLB at about 79.7 MB. The runtime release GLB is about 79.1 MB. Re-check these facts in
@@ -142,11 +141,10 @@ catalog entries merely to make that broad pre-existing count green.
   controlled browser/Electron surface frames but still needs natural approach/undock motion. The
   seamed and graffiti world-dressing landmarks now have accepted browser evidence but still need
   Electron parity.
-- The `SpaceFace-performance-closure` donor contains useful deterministic scenario/attribution
-  observability but no runtime optimization. Do not cherry-pick it before repairing its undefined
-  restoration variable, replacing ancestor-visibility claims with real draw/pixel evidence, and
-  changing `allShipsAuthored` to fail only on visibly presented fallback identities. Hidden
-  post-flight streaming is intentional and must not be mislabeled as a visual failure.
+- The performance-closure work is integrated. Its scenario/attribution probes were repaired to use
+  actual presented-asset and pixel evidence, and the combined tree passed live asset admission,
+  visual stability, launch policy, and the five-run clean flight route. Fresh long-soak, floor-GPU,
+  memory, and dense-combat measurements remain required before claiming the M6 performance exit.
 - Combat VFX has structural implementation and lifecycle evidence, but no full visual-family
   acceptance packet yet.
 - The current background has a better black-space/value foundation but lacks final localized
@@ -184,34 +182,31 @@ catalog entries merely to make that broad pre-existing count green.
    streaming as the bottleneck. Run dense-combat overdraw, residency/memory soak, accessibility,
    browser/Electron parity, and target/floor-hardware acceptance.
 
-## 6. Promotion to the final `master`
+## 6. Promotion record
 
-1. Wait for the active Atlas/map/travel build to finish and for `master` to be committed or
-   explicitly released. Record final HEAD, branch, staged paths, dirty paths, and worktree inventory.
-2. Record the integration branch HEAD and the status/hashes of every dirty donor. Do not clean or
-   reset them to make promotion convenient.
-3. Create a fresh isolated promotion worktree from final `master`.
-4. Apply `git merge --squash codex/graphics-integration-20260718`. Do not merge its history.
-5. Resolve every overlap against merge base `91d88d74`: preserve newer master gameplay, world,
-   navigation, mission, and travel semantics; adapt rendering/admission/assets around those seams.
-   When both sides contain visual work, compare matched player-route frames and synthesize the
-   stronger parts rather than selecting a branch wholesale.
-6. Verify the staged final tree contains no file over 100 MiB, no stale manifest hashes, no required
-   ignored-only runtime asset, and no obsolete Helios intermediate.
-7. Run the focused gates above, then `npm run check:sim:compare` and `npm run check`. Repeat matched
-   browser/Electron Kestrel, Helios, rock, background, thruster, combat, loading, and accessibility
-   evidence from the promotion revision.
-8. Commit one reviewed graphics-promotion slice. Only then reconcile `NOW.md`,
-   `01_VERIFIED_DONE.md`, `02_REMAINING_WORK.md`, `03_LIVE_ACCEPTANCE_MATRIX.md`, and the roadmap rows
-   to the promoted revision.
+1. Claude's final dirty `master` state was captured in commits `cdca6433`, `e9bc19d5`, and
+   `1905cac8` without reading or importing `design/program/_review/`.
+2. The performance checkpoint `1bdde6c8`, graphics checkpoint `e3ad1caf`, and Claude snapshot were
+   combined in `codex/unified-integration-20260719`.
+3. Background/bloom, sector palette, renderer, and VFX overlaps were resolved by preserving true
+   black negative space, restrained two-level bloom, localized depth, continuous pooled plumes,
+   and actuator-truth RCS while retaining the new map/travel coordinate and velocity contracts.
+4. The unified tree passed the focused map, Atlas, travel, VFX, bloom/background, asset, flight,
+   visual-stability, and launch-policy gates listed above. The timing-sensitive flight benchmark
+   passed alone at 1.02 ms/tick for 240 ships and 0.38 ms/tick for the physics/flight case.
+5. The frozen Claude state was first committed on `master` as `ec6ee835`; the verified unified tree
+   was then promoted as merge commit `ee9e0ab3`. The tracked result matched `a752702b` exactly.
+6. This promotion is a coherent playable checkpoint, not a claim that combat-family, background-
+   authoring, asset-family PBR, long-soak performance, or release parity is complete.
 
 ## 7. Worktree cleanup after promotion
 
 Do not delete a worktree because its folder name looks stale. For each worktree, record dirty paths,
 untracked files, branch tip, unique commits, and patch equivalence to final `master`.
 
-- Keep through promotion: the integration worktree; the active master; dirty graphics, Helios,
-  performance, and Depth donors until their unique product changes are classified.
+- Promotion is complete. The graphics, performance, Claude-snapshot, and unified worktrees are now
+  represented by `master` and may be removed after a final clean/unique-commit/patch-equivalence
+  audit. Do not remove the still-running Kimi worktree until its return is classified.
 - Likely removable after patch-equivalence proof: `sf-bg-polish`, `sf-kv5`, and
   `sf-startup-loading`; the first two are already represented in integration, while startup still
   needs a final-tree comparison.
@@ -224,9 +219,8 @@ untracked files, branch tip, unique commits, and patch equivalence to final `mas
 
 ## 8. Definition of the next coherent checkpoint
 
-The next checkpoint is not “all graphics finished.” It is a clean promoted `master` that boots in
-browser and Electron, shows the authored Kestrel and thrusters immediately after the loading
-presentation, streams only invisible off-camera assets, presents the de-hazed background, loads
-Helios and the representative rock without flicker or identity swaps, and has a current honest list
-of remaining visual-family work. Feature development may continue from that stable base while the
-asset-by-asset PBR and combat/background acceptance program proceeds.
+The promoted-master checkpoint is achieved at `ee9e0ab3`. The next coherent graphics checkpoint is
+current natural-route browser/Electron proof for Helios and the representative rock, visual-family
+acceptance for combat effects and destruction, one localized authored space-structure vertical that
+does not lift the black floor, and the next high-frequency PBR asset family. Feature development may
+continue from `master` while those asset-by-asset slices proceed.

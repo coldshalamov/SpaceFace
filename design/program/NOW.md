@@ -1,17 +1,23 @@
 # NOW — Active Work and Path Leases
 
-**Snapshot:** 2026-07-18 (late), refreshed at the close of **PROGRAM-WAVE-01-RECOVERY-ROOTS**.
-Master is `c751b9a9`, 34 commits ahead of `origin/master` (nothing pushed). The Sprint-2 branch
-anomaly is RESOLVED: `feat/map-ux-polish-pass` was merged forward by its owner and `master` now
-contains the Sprint-2 packets, the map-lane commits (`1309b5b4` …), and all sixteen Wave-01
-commits below. Every claim in this board is bound to a reachable commit.
+**Snapshot:** 2026-07-19, after the graphics/performance/paused-Claude reconciliation.
+Master is `ee9e0ab3`. The tracked working tree is clean; untracked `design/program/_review/` remains
+quarantined and was neither read nor promoted. No active Claude agent or shared-tree path lease
+remains. OpenCode/Kimi is still isolated in `SpaceFace-orch-kimi-v2-present` and does not own files
+in the primary checkout.
 
-**Observed tree at refresh:** 23 foreign dirty paths plus untracked `design/program/_review/`
-preserved untouched throughout the wave (the foreign digest is generational — a live visual-asset
-agent was observed writing `tools/art` + gltf-transform output mid-wave at 17:29). Index empty.
-No lock. Two zero-byte stale `.git/index.lock` files appeared at background-reviewer teardown
-moments and were removed only after the full liveness protocol (no live writer, stable across
-probes, empty staged inventory).
+**Integrated checkpoint:** Claude's final Atlas/map/travel state (`1905cac8`), the performance
+checkpoint (`1bdde6c8`), and the graphics checkpoint (`e3ad1caf`) were synthesized and validated in
+`codex/unified-integration-20260719` at `a752702b`, then promoted to `master` as `ee9e0ab3`. The
+tracked master tree matched the validated unified tree exactly at promotion. Current proof includes
+map/Atlas/travel contracts, VFX pooling/settings/lifecycle/RCS checks, restrained bloom/background
+checks, live authored-asset admission, visual stability, launch policy, and five clean desktop plus
+mobile flight runs. See `08_GRAPHICS_OVERHAUL_CHECKPOINT.md` for visual truth and remaining work.
+
+**Immediate safe work:** feature development may resume from `master`. The highest-return graphics
+work is natural-route Helios/rock parity, combat/destruction visual acceptance, localized authored
+space structure without screen-wide haze, and the next high-frequency PBR family. Kimi's separate
+return must be classified before its worktree is removed or merged.
 
 ## Wave-01 integration record (all on `master`)
 
@@ -81,14 +87,14 @@ All four round-3 reviews returned REJECT with narrow findings; dispositions:
 Post-repair proof at `541a6539`: 314 tests green across the twelve wave suites; both sim
 compares ok/hashEqual; ladder validator green (2 captured / 11 planned) with the hardened gate.
 
-## Occupied lanes (unchanged, preserved)
+## Historical occupied lanes (closed by `ee9e0ab3`)
 
 | Lease | State | Paths |
 |---|---|---|
-| `MAP-2026-07-18` (remnant) | `EXTERNAL / OCCUPIED` | `src/core/gameState.js`, `src/data/sectors.js`, `src/render/bloom.js`, `src/render/renderer.js`, `src/systems/world.js`, `scripts/check-bloom-structural-perf.mjs` |
-| `CONTENT-2026-07-18` | `EXTERNAL / OCCUPIED` | 10 `src/data/` content files + `src/localization/catalogs/en-US.generated.js` |
-| `HUD-ASSETS-2026-07-18` | `EXTERNAL / OCCUPIED`, **owner observed LIVE** (Wasp-art build 17:29) | `src/ui/bandHud.js`, `src/ui/uiRoot.js`, `scripts/capture-gameplay.mjs`, `tools/art` output |
-| `SCREENS-2026-07-18` | `EXTERNAL / OCCUPIED` | `src/ui/screens/base.js`, `gameOver.js`, `missionLog.js` |
+| `MAP-2026-07-18` (remnant) | `CLOSED / INTEGRATED` | Map/travel semantics retained; render overlaps synthesized in unified tree. |
+| `CONTENT-2026-07-18` | `CLOSED / INTEGRATED` | Content and generated localization state captured from paused master. |
+| `HUD-ASSETS-2026-07-18` | `CLOSED / INTEGRATED` | HUD/assets state captured and reconciled; no current shared-tree owner. |
+| `SCREENS-2026-07-18` | `CLOSED / INTEGRATED` | Screen changes captured and promoted. |
 | `WAVE01-2026-07-18` | `CLOSED / INTEGRATED` | every Wave-01 path above; write-sets verified disjoint from all occupied leases at each staging |
 
 ## Known reds — measured, attributed, NOT Wave-01 regressions
@@ -104,14 +110,13 @@ compares ok/hashEqual; ladder validator green (2 captured / 11 planned) with the
 `check:sim:v3:compare` ok/hashEqual verified after every runtime-touching integration (W01
 repair, A02 wiring, A10 rulings). The gate remains the ACTUAL column.
 
-## Ready to claim next — Wave-02 (PROGRAM-WAVE-02-FIRST-PLAYABLE-SYSTEMS)
+## Historical Wave-02 queue (re-derive from current `master` before claim)
 
-`G05,G06,G07,G08,T04,A03,A04,W03,W04,W05,W06,W07,R01,R02`. Several were `BLOCKED_BY_LEASE` at the
-Sprint-2 refresh (`A03`/`G07` need `renderer.js`/`bloom.js`; `W05` needs HUD/map): **re-derive
-lease liveness at claim time** — the map lane has been committing (its dirty remnant is smaller
-than at the Sprint-2 snapshot) and the HUD/assets owner is demonstrably live. Dependencies now
-satisfied by Wave-01: `T04` (←T03), `A03`/`A04` (←A02), `W03`/`W04`/`W05` (←W01+W02),
-`G05` (←G04), `G08`'s `A05` leg.
+The earlier queue was `G05,G06,G07,G08,T04,A03,A04,W03,W04,W05,W06,W07,R01,R02`. Do not reuse its
+old lease labels: the shared-tree leases are closed and later Wave-02 implementation/review commits
+are already ancestors of the current checkpoint. Reconcile packet terminal truth against the
+roadmap and live checks before dispatching the next program wave; visual continuation is ordered in
+`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`.
 
 ## Handoff rule
 
