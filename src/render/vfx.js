@@ -42,8 +42,26 @@ import {
   assertProjectileTrailProfileContracts,
 } from './vfxProfiles.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
+import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
+import { computeFlightTelemetry } from '../core/flight/flightTelemetry.js';
+import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
+
+// ── RCS truth (ledger RC-3) ──────────────────────────────────────────────────────────────────
+// Attitude and translation jets are resolved from the SIGNED actuator demand the flight computer
+// publishes (src/core/flight/flightTelemetry.js `actuators`), never from input keys. See
+// ./rcsJets.js for the sign convention and the bow/stern resolver.
+//
+// Vocabulary note: RCS is deliberately a SMALLER language than the main plume. The main drive owns
+// the authored nozzle and the "liquid blue fire" plume volume; these are cold-gas puffs — short,
+// small, low-alpha, pale teal fading to hull shadow. No white core, no additive bloom bait.
+const RCS_CORE = '#a8c8c6';
+const RCS_TAIL = '#16222a';
+const RCS_MIN_INTENSITY = 0.06;
+// Per-frame ceiling on how many NON-player ships pay for an actuator resolve. The player is always
+// resolved and is not counted here — its block is computed by flightV3 each tick and simply read.
+const RCS_NPC_RESOLVE_BUDGET = 6;
 
 // The event-light pool size is part of the shader-program cache key (three bakes visible light
 // count into every program). precompile.js must warm shaders against exactly this count, so the
@@ -3137,7 +3155,12 @@ export const vfx = {
     if (!e) return;
     const reverse = p && Number.isFinite(p.reverse) ? Math.max(0, Math.min(1, p.reverse)) : 0;
     const nozzles = p && Array.isArray(p.nozzles) ? p.nozzles : EMPTY_TRAIL_SOCKETS;
-    if (reverse > 0) {
+    // The retro pair has ONE owner per ship. When the flight computer publishes signed demand, the
+    // per-frame RCS pass draws the retros with continuous intensity and this key-derived burst
+    // stands down; two owners on one nozzle would double the burn. The event path stays live for
+    // craft flown by the legacy controller, which publish no actuator block.
+    const rcsOwnsRetros = !!this._actuatorsFor(e);
+    if (reverse > 0 && !rcsOwnsRetros) {
       for (let i = 0; i < nozzles.length; i++) {
         const n = nozzles[i];
         if (n && (n.role === 'reverse-left' || n.role === 'reverse-right')) {
@@ -3408,6 +3431,10 @@ export const vfx = {
     if (!(dt > 0)) return;
     if (dt > 0.1) dt = 0.1; // clamp pauses/tab-switches so particles don't teleport
     this._t += dt;
+    // Frame id for the actuator memo. `_engineDriveFor` and the RCS pass both want the same block
+    // and are each called several times per frame from different subsystems; resolving once per
+    // entity per frame keeps them consistent AND keeps the NPC compute budget meaningful.
+    this._vfxFrameId = (this._vfxFrameId || 0) + 1;
     const trailScroll = (this._t * 0.35) % 1;
     if (this._particleMat) {
       if (this._particleMat.uniforms.uTrailScroll) this._particleMat.uniforms.uTrailScroll.value = trailScroll;
@@ -3877,6 +3904,150 @@ export const vfx = {
     this._energy = null;
   },
 
+  // ---------------------------------------------------------------------------------------------
+  // RCS truth (ledger RC-3): the renderer consumes SIGNED actuator demand.
+  //
+  // Slice 0 published the demand; nothing read it. Presentation kept guessing nozzles from input
+  // keys, so a turn fired both bow retros and every jet the pilot did not personally command —
+  // assist drift-kill, autopilot manoeuvres, governor counter-thrust — was invisible. These three
+  // methods are the consumer half. They add no physics and re-derive nothing: the sign, the
+  // per-nozzle magnitudes and the drive-state flags all arrive from the telemetry seam.
+  // ---------------------------------------------------------------------------------------------
+
+  /** Per-drive normalization denominators, cached by driveId (the catalogue is immutable). */
+  _rcsScaleFor(frame) {
+    const driveId = frame && typeof frame.driveId === 'string' ? frame.driveId : null;
+    if (!driveId) return resolveActuatorScale(null);
+    if (!this._rcsScaleCache) this._rcsScaleCache = new Map();
+    let scale = this._rcsScaleCache.get(driveId);
+    if (!scale) {
+      scale = resolveActuatorScale(PROPULSION_PROFILES[driveId] || null);
+      this._rcsScaleCache.set(driveId, scale);
+    }
+    return scale;
+  },
+
+  /**
+   * The signed actuator block for an entity, or null when the flight computer has not produced one.
+   *
+   * The player's block is already computed every tick by flightV3 (`_publishPlayerDiagnostics`
+   * writes `state.flightRuntime.telemetry`), so reading it costs nothing and is guaranteed to be
+   * the same numbers the physics used. Other craft carry the raw kernel telemetry on `_flightFrame`
+   * but nobody derives actuators from it, so we run the same public seam here — under a per-frame
+   * budget, because that call allocates and there is no reason to pay for ships nobody is looking at.
+   *
+   * `profile` is deliberately omitted for non-player craft: `computeActuatorDemand` never reads it
+   * (only the braking/envelope fields do), so fetching a profile per entity would be work for a
+   * value this path discards.
+   */
+  _actuatorsFor(e) {
+    if (!e) return null;
+    const state = this.state;
+    const isPlayer = e.id === state.playerId;
+    if (isPlayer) {
+      // Fast path: flightV3 already computed this tick's block. Free, and guaranteed to be the
+      // same numbers the physics used.
+      const rt = state.flightRuntime;
+      const t = rt && rt.telemetry;
+      if (t && t.actuators) return t.actuators;
+      // Fall through to the _flightFrame compute rather than returning null. flightV3.update()
+      // returns early before `_publishPlayerDiagnostics` whenever the physics backend is not
+      // rapier-dynamic, and the legacy flight controller never publishes flightRuntime at all —
+      // so binding the player's jets to the diagnostics publisher would make the hero ship the one
+      // craft that silently loses them. The player is a single entity and is never budget-skipped.
+    }
+    if (!e._flightFrame) return null;
+
+    // Memoized per entity per frame. Without this the NPC budget would be spent by whichever
+    // subsystem happened to ask first, and two callers in one frame could disagree about what a
+    // ship is doing — the plume saying one thing and the jets another.
+    const frameId = this._vfxFrameId || 0;
+    let cache = this._rcsActuatorCache;
+    if (!cache) cache = this._rcsActuatorCache = new Map();
+    if (this._rcsActuatorFrame !== frameId) {
+      cache.clear();
+      this._rcsActuatorFrame = frameId;
+      this._rcsNpcBudget = RCS_NPC_RESOLVE_BUDGET;
+    }
+    if (cache.has(e.id)) return cache.get(e.id);
+    if (!isPlayer) {
+      if (this._rcsNpcBudget <= 0) return null; // not cached: a later frame may afford it
+      this._rcsNpcBudget--;
+    }
+    const body = this._rcsBodyScratch || (this._rcsBodyScratch = { pos: null, vel: null, rot: 0, angVel: 0 });
+    body.pos = e.pos; body.vel = e.vel; body.rot = e.rot || 0; body.angVel = e.angVel || 0;
+    // `profile` is omitted deliberately: computeActuatorDemand never reads it, so fetching one per
+    // entity would be work for a value this path discards.
+    const actuators = computeFlightTelemetry({ body, control: { telemetry: e._flightFrame } }).actuators;
+    cache.set(e.id, actuators);
+    return actuators;
+  },
+
+  /**
+   * Draw the attitude/translation jets an entity is actually firing this frame.
+   *
+   * Retros are drawn here too, with continuous intensity, which is why `_onThrust` stands down for
+   * any ship that has a truthful actuator block: two owners for one nozzle would double the burn.
+   * The legacy event path stays for craft flown by the old controller and for the `reverse-left` /
+   * `reverse-right` contract pinned at scripts/check-autopilot-v3.mjs:768-774.
+   */
+  _emitRcsJets(e, actuators, lowQuality) {
+    if (!this._scene || !e || !actuators) return 0;
+    const scale = this._rcsScaleFor(e._flightFrame);
+    const pose = this._rcsPoseScratch || (this._rcsPoseScratch = { x: 0, z: 0, rot: 0, radius: 6 });
+    pose.x = (e.pos && e.pos.x) || 0;
+    pose.z = (e.pos && e.pos.z) || 0;
+    pose.rot = e.rot || 0;
+    pose.radius = e.radius || 6;
+    const firings = resolveRcsFirings(actuators, pose, scale, this._rcsFirings || (this._rcsFirings = []));
+    if (!firings.length) return 0;
+
+    const isPlayer = e.id === this.state.playerId;
+    const burst = this._burst || 1;
+    const svx = (e.vel && e.vel.x) || 0;
+    const svz = (e.vel && e.vel.z) || 0;
+    let spawned = 0;
+
+    for (let i = 0; i < firings.length; i++) {
+      const jet = firings[i];
+      if (jet.intensity < RCS_MIN_INTENSITY) continue;
+      const strength = jet.intensity;
+      const dir = Math.atan2(jet.dirZ, jet.dirX);
+      // Cold gas: wide cone, quick stop. High drag is what makes it read as a PUFF rather than a
+      // streak, which is the whole point of keeping RCS distinct from the main plume.
+      const spread = 0.55 - strength * 0.18;
+      const count = lowQuality ? 1 : Math.max(1, Math.round((1 + strength * (isPlayer ? 2.2 : 1.1)) * burst));
+      this._c0.set(RCS_CORE);
+      this._c1.set(RCS_TAIL);
+      for (let k = 0; k < count; k++) {
+        const a = dir + (Math.random() - 0.5) * spread;
+        const sp = 14 + strength * 30 + Math.random() * 10;
+        this._spawnParticle(
+          jet.x + (Math.random() - 0.5) * 0.5,
+          jet.z + (Math.random() - 0.5) * 0.5,
+          svx + Math.cos(a) * sp,
+          svz + Math.sin(a) * sp,
+          0.10 + strength * 0.10,
+          0.34 + strength * 0.5,
+          0.0,
+          this._c0,
+          this._c1,
+          2.4,
+          0,
+          0
+        );
+        spawned++;
+      }
+      // A hard burn gets one small glow so a decisive manoeuvre reads at a glance. Opacity stays
+      // low and the sprite is faction-neutral: no additive white saturation anywhere.
+      if (isPlayer && strength > 0.55 && !lowQuality) {
+        this._spawnSprite(SPR_FLASH, jet.x, 0, jet.z, 0.10, 0.9 + strength * 1.1, 2.2 + strength * 1.6,
+          0.16 + strength * 0.14, 0.0, RCS_CORE, jet.dirX * 3, jet.dirZ * 3);
+      }
+    }
+    return spawned;
+  },
+
   _engineDriveFor(e, out = this._driveScratch) {
     if (!out) out = this._driveScratch = { drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0 };
     if (!e) {
@@ -3897,11 +4068,21 @@ export const vfx = {
       const inp = this.state.input;
       if (inp && Number.isFinite(inp.moveZ) && inp.moveZ > 0) throttle = Math.max(throttle, Math.min(1.15, inp.moveZ));
     }
+    // Physics beats keys. When the flight computer has published signed demand, the plume follows
+    // the thrust the drive is ACTUALLY producing — which includes assist and autopilot thrust the
+    // pilot never commanded, and excludes the key the pilot is holding while the governor ignores it.
+    const md = mainDriveDemand(this._actuatorsFor(e), this._rcsScaleFor(frame));
+    if (md) throttle = Math.max(throttle, md.main);
     const cf = Math.cos(e.rot || 0);
     const sf = Math.sin(e.rot || 0);
     const forwardSpeed = Number.isFinite(frame.forwardSpeed) ? frame.forwardSpeed : (vx * cf + vz * sf);
-    const forwardDrive = Math.min(1.1, Math.max(0, forwardSpeed) / Math.max(35, maxSpeed * 0.75));
-    const speedDrive = Math.min(1, speed / Math.max(40, maxSpeed * 0.75));
+    let forwardDrive = Math.min(1.1, Math.max(0, forwardSpeed) / Math.max(35, maxSpeed * 0.75));
+    let speedDrive = Math.min(1, speed / Math.max(40, maxSpeed * 0.75));
+    // A ship on its retros has a cold main nozzle. The speed-derived glow used to keep the engine
+    // lit while the bow jets fired, which read as accelerating into your own brake — the same class
+    // of lie as firing the wrong RCS jet. Damped rather than hard-zeroed so a hard brake at speed
+    // still shows a residual thermal glow instead of snapping to black.
+    if (md && md.retroOnly) { forwardDrive *= 0.18; speedDrive *= 0.18; }
     const boost = e.flags && e.flags.boosting ? 1 : 0;
     const drive = Math.min(1.35, Math.max(throttle, forwardDrive * 0.85, speedDrive * 0.40) + boost * 0.45);
     out.drive = drive;
@@ -4262,10 +4443,30 @@ export const vfx = {
     const screenChecks = { remaining: TRAIL_SCREEN_CHECK_MAX };
     let reducedEmitted = 0;
     this._trailBudgetDiag.trailCandidates = list.length;
+
+    // RCS gating. motionReduce suppresses attitude jets entirely — they are small, fast,
+    // high-frequency puffs and exactly the wrong thing to show someone who asked for less motion;
+    // the same information is on the HUD, so nothing becomes unreadable.
+    const video = this.state && this.state.settings && this.state.settings.video;
+    const rcsEnabled = !(video && (video.motionReduce || video.engineTrails === false));
+    const rcsLow = !!(video && video.particleQuality === 'low');
+
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
       if (e.flags && e.flags.docked) continue;
+
+      // Attitude jets run BEFORE the idle-drive gate below: a ship coasting with its main engine
+      // cold is still yawing, strafing and being trimmed by assist. That case — thrust idle, RCS
+      // busy — is precisely what the old input-key guess could not see. `_trailTierFor` is the
+      // side-effect-free classifier, so this cannot perturb the trail screen-check budget.
+      if (rcsEnabled) {
+        const rcsTier = this._trailTierFor(e, ctx);
+        if (rcsTier === TRAIL_TIER.FULL || rcsTier === TRAIL_TIER.NORMAL) {
+          this._emitRcsJets(e, this._actuatorsFor(e), rcsLow);
+        }
+      }
+
       const driveInfo = this._engineDriveFor(e);
       if (driveInfo.drive < 0.055) continue; // idle ships emit nothing
       const tier = this._resolveTrailTier(e, ctx, screenChecks);

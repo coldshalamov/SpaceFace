@@ -46,7 +46,8 @@
 import { createGamepad } from './gamepad.js';
 import { createTouch } from './touch.js';
 import { wrapAngle } from '../core/rng.js';
-import { massline2Flag } from '../data/featureFlags.js';
+import { massline2Flag, travelFlag } from '../data/featureFlags.js';
+import { TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
 
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
 // so the ship's own yaw controller (rate caps, banking, class tuning) shapes the actual turn.
@@ -63,6 +64,161 @@ const AUTO_TARGET_PATH_MIN_SCREEN_PX = 8;
 const AUTO_TARGET_PATH_SOFT_MAX_POINTS = 256;
 const AUTO_TARGET_PATH_EDGE_MARGIN = 24;
 
+// ---- Travel Burn latch (atlas D5 / W1-5) ------------------------------------------------------
+// The kernel is PURE and only ever shapes the governor cap; the state machine, its timers and its
+// bindings live here with the input owner (propulsionKernel.js:22-24). `TRAVEL_DRIVE_STATES` is
+// imported rather than redeclared so there is exactly one spelling of the axis in the tree.
+//
+// Spool is a deliberate commitment window, not a loading bar: engaging costs you ~1.6 s during
+// which you are still fully manoeuvrable but not yet gaining cap, so committing to a burn in a
+// hot sector is a real decision. Cooldown is the price of breaking it.
+const TRAVEL_SPOOL_S = 1.6;
+const TRAVEL_COOLDOWN_S = 3;
+// Below this the pilot is not really "braking" — it keeps a feathered retro-touch from dropping a
+// long haul, while a deliberate brake still breaks the latch instantly.
+const TRAVEL_BRAKE_BREAK_EPS = 0.08;
+
+function neutralTravelDrive() {
+  return {
+    // --- kernel-facing contract (propulsionKernel.js normalizeTravelDrive). Extra keys below are
+    // ignored by the kernel, so HUD/diagnostic fields can share this one published address.
+    state: 'off',
+    cap: 0,          // carried ramp state: the kernel advances it, we feed it straight back
+    rampMult: 1,     // lane infrastructure (D8) multiplies this; nothing does yet
+    // --- latch-owned timers and provenance (never read by the kernel)
+    spoolT: 0,
+    cooldownT: 0,
+    engagedT: 0,
+    breakReason: null,
+  };
+}
+
+/**
+ * True when the pilot is actively braking hard enough to break the latch.
+ *
+ * D5's feel rule is an ASYMMETRY and it is the whole point of the feature: **braking breaks the
+ * latch, steering does not.** So this reads the brake actuator and reverse throttle ONLY — it must
+ * never consult `turnIntent` or `moveX`. A pilot correcting course, carving, or spinning the nose
+ * mid-burn keeps the burn; a pilot who reaches for the brake has decided to stop travelling.
+ */
+function travelBrakeBreaks(inp) {
+  if (!inp) return false;
+  if (inp.brake) return true;
+  return finiteOr(inp.moveZ, 0) < -TRAVEL_BRAKE_BREAK_EPS;
+}
+
+/**
+ * Interdiction seam (D5: "Damage or lane disruption forces Cooldown — that is the interdiction
+ * hook"). Wired now, triggered by nothing yet: D8's lane prototype and the damage path are the
+ * intended writers. Both a level flag and a one-shot request are honoured so a future disruptor
+ * can either hold the drive down or knock it out once.
+ */
+function travelDisrupted(state) {
+  const p = state && state.player;
+  if (!p) return false;
+  const drive = p.travelDrive;
+  if (drive && (drive.disrupted === true || drive.disruptRequest === true)) return true;
+  return false;
+}
+
+function clearTravelDisruptRequest(state) {
+  const drive = state && state.player && state.player.travelDrive;
+  if (drive && drive.disruptRequest === true) drive.disruptRequest = false;
+}
+
+function finiteOr(v, fallback) { return Number.isFinite(v) ? v : fallback; }
+
+/**
+ * Advance the travel-drive latch one tick and publish `state.input.travelDrive` for the kernel.
+ *
+ * THE CARRIED-CAP ROUND TRIP IS THE WHOLE RAMP. The kernel is pure: it consumes `travelDrive.cap`,
+ * advances it one step toward the ceiling, and republishes it at `result.telemetry.travelCap`
+ * (kernel :324-325, :871). Nobody persists it in between — we read last tick's published value back
+ * off the player's flight frame and hand it in again. `input` is first in UPDATE_ORDER and
+ * `flightSlot` is later, so "last tick" is exactly right; dropping this feedback would leave the
+ * cap pinned at its seed and the drive would do nothing at all.
+ *
+ * Everything here is gated on `travelFlag('travelBurn')` read at CALL TIME. Under node the flag is
+ * false, so not one key is written and the sim goldens cannot see this system.
+ */
+function stepTravelLatch(host, state, inp, dt) {
+  if (!travelFlag('travelBurn')) {
+    // Flag off: leave no trace at all, and drop any latch state a flag flip mid-session left behind.
+    if (inp.travelDrive) delete inp.travelDrive;
+    host._travel = null;
+    return;
+  }
+
+  const drive = host._travel || (host._travel = neutralTravelDrive());
+  const step = Math.max(0, finiteOr(dt, 0));
+  const pressed = host._travelEdge;
+  const disrupted = travelDisrupted(state);
+  const braking = travelBrakeBreaks(inp);
+
+  // Feed the kernel's published ramp back in. Reading the frame the kernel actually wrote (rather
+  // than re-deriving a ramp here) keeps ONE owner of the ramp maths — the kernel.
+  const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  const frame = player && player._flightFrame;
+  if (frame && Number.isFinite(frame.travelCap)) drive.cap = Math.max(0, frame.travelCap);
+  if (frame && Number.isFinite(frame.travelCeiling)) drive.ceiling = frame.travelCeiling;
+
+  const toCooldown = (reason) => {
+    drive.state = 'cooldown';
+    drive.cooldownT = 0;
+    drive.engagedT = 0;
+    drive.spoolT = 0;
+    drive.breakReason = reason;
+  };
+
+  switch (drive.state) {
+    case 'off':
+      if (disrupted) { toCooldown('disrupted'); break; }
+      if (pressed) { drive.state = 'spooling'; drive.spoolT = 0; drive.breakReason = null; }
+      break;
+
+    case 'spooling':
+      // Disruption and braking both kill a spool. A second press is a CANCEL, not a disengage:
+      // nothing was earned yet, so it costs no cooldown — the punishment is for breaking a burn.
+      if (disrupted) { toCooldown('disrupted'); break; }
+      if (braking) { toCooldown('brake'); break; }
+      if (pressed) { drive.state = 'off'; drive.spoolT = 0; drive.breakReason = 'cancelled'; break; }
+      drive.spoolT += step;
+      if (drive.spoolT >= TRAVEL_SPOOL_S) {
+        drive.state = 'engaged';
+        drive.spoolT = TRAVEL_SPOOL_S;
+        drive.engagedT = 0;
+        drive.breakReason = null;
+      }
+      break;
+
+    case 'engaged':
+      if (disrupted) { toCooldown('disrupted'); break; }
+      if (braking) { toCooldown('brake'); break; }
+      if (pressed) { toCooldown('pilot'); break; }
+      drive.engagedT += step;
+      break;
+
+    case 'cooldown':
+    default:
+      drive.cooldownT += step;
+      // A live disruption holds the drive down rather than letting the timer run out under it.
+      if (disrupted) drive.cooldownT = 0;
+      else if (drive.cooldownT >= TRAVEL_COOLDOWN_S) {
+        drive.state = 'off';
+        drive.cooldownT = 0;
+        drive.breakReason = null;
+      }
+      break;
+  }
+
+  clearTravelDisruptRequest(state);
+  if (!TRAVEL_DRIVE_STATES.includes(drive.state)) drive.state = 'off';
+
+  // One published address, kernel-shaped. Extra keys are ignored by normalizeTravelDrive and are
+  // what the HUD reads, so the latch has a single source of truth.
+  inp.travelDrive = drive;
+}
+
 // Verb keys shared by both schemes (GDD 2.0 physics verbs + sensors).
 const VERB_BINDINGS = {
   tether:         ['KeyF'],   // edge: latch when free, cut when attached (WASD-adjacent)
@@ -77,6 +233,14 @@ const VERB_BINDINGS = {
   // on the free left-pinky cluster next to WASD; both are rebindable like every other action.
   bulletTime:     ['CapsLock'],   // level: hold for time dilation (bulletTime system owns meter)
   cloak:          ['Backquote'],  // edge: toggle the cloak module (cloak system owns energy/gating)
+  // Travel Burn latch (atlas D5, W1-5). Num Lock is the authored default: it is a genuine latch
+  // key on a full keyboard, it is never used for anything else in this game, and it carries a
+  // physical indicator light that matches "the drive is engaged". Many laptops have no Num Lock
+  // key at all (or bury it behind Fn), so a second code ships in the SAME array — the existing
+  // multi-code idiom this table already uses for WASD-and-arrows, not a parallel laptop scheme.
+  // KeyH is free repo-wide (checked against both VERB/scheme tables and ui/bindings.js) and sits
+  // under the right index finger on the home row, so it is reachable on any chassis.
+  travelBurn:     ['NumLock', 'KeyH'],   // edge: toggle the travel drive (latch owns the state machine)
 };
 
 const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
@@ -524,7 +688,7 @@ export const input = {
     const acts = inp.actions || (inp.actions = {
       brake: false, cruise: false, tetherFire: false, tetherCut: false, reelDelta: 0,
       chargeThrow: false, chargeDetonate: false, scanPulse: false, autopursuit: false, deployBeacon: false,
-      bulletTime: false, cloakToggle: false, throwArm: false,
+      bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false,
     });
     if (state.mode !== 'flight' || state.ui.screenStack.length > 0 || modalInputActive()) {
       // No flight input while docked/modal: zero thrust/turn/fire but keep aim so the reticle rests.
@@ -533,7 +697,7 @@ export const input = {
       acts.brake = false; acts.cruise = false; acts.tetherFire = false; acts.tetherCut = false;
       acts.reelDelta = 0; acts.chargeThrow = false; acts.chargeDetonate = false; acts.scanPulse = false; acts.autopursuit = false;
       acts.deployBeacon = false;
-      acts.bulletTime = false; acts.cloakToggle = false; acts.throwArm = false;
+      acts.bulletTime = false; acts.cloakToggle = false; acts.throwArm = false; acts.travelBurn = false;
       inp.tetherMode = null;
       resetAutoTargetPath(this, state);
       inp.autoTargetVector = neutralAutoTargetVector();
@@ -541,6 +705,12 @@ export const input = {
       this._prevM1 = false;
       this._pursuitToggle = false;   // docking/menus always drop back to manual flight
       this._edgePrev = this._edgePrev || {};
+      // Docking or opening a menu drops the travel drive, exactly like pursuit: you cannot be
+      // hand-flying a burn from a station screen. Reset outright rather than into cooldown — the
+      // pilot did not break the latch, the game mode changed underneath it.
+      this._travelEdge = false;
+      if (this._travel) this._travel = neutralTravelDrive();
+      if (inp.travelDrive) inp.travelDrive = this._travel || undefined;
       return;
     }
 
@@ -773,6 +943,13 @@ export const input = {
     acts.bulletTime = this._held(state, 'bulletTime');
     acts.cloakToggle = edge('cloak');
     acts.throwArm = throwArmHeld;
+    // Travel Burn latch (D5/W1-5). Edge-triggered toggle; the state machine below owns what a
+    // press MEANS in each state (arm a spool, cancel a spool, disengage a burn). Stepped after
+    // inp.brake/moveZ are final this tick, because braking is what breaks the latch.
+    const travelPressed = edge('travelBurn') || !!(gp && gp.isConnected() && gp.actions.travelBurn && gp.actions.travelBurn.pressed);
+    this._travelEdge = travelPressed;
+    acts.travelBurn = travelPressed;
+    stepTravelLatch(this, state, inp, dt);
     // Holding F after latch SHORTENS the line. Positive reelDelta = longer rest length in the tether
     // system. Arrow keys stay reserved for flight in Helm Assist.
     const arrowReelDelta = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);

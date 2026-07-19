@@ -679,21 +679,44 @@ async function armSaveObservers(page) {
   });
 }
 
+// Visual-readiness gate for "the player is really in flight and the scene is really presentable".
+//
+// This asks the ENGINE its own question rather than re-deriving one from entity internals.
+// `window.SF.authoredVisualReadiness()` is `authoredCriticalVisualReadiness()`
+// (src/render/partsLibrary.js), the same contract `src/main.js` itself uses to decide the new-game
+// transition may commit: the player, the critical starting hub, and every entity in the opening
+// authored composition must be `authored`.
+//
+// It deliberately does NOT require every ship in the sector to be authored. That earlier condition
+// was **structurally unsatisfiable**: since `f277c5e7` the renderer keeps off-camera NPCs at
+// `procedural-fallback` on purpose (`shouldAutoTriggerAuthoredUpgrade`,
+// src/render/partsLibrary.js:598/768/827), and a live sector always holds a few distant ships —
+// observed blockers at 7,719 and 9,678 WU. Measured: the old predicate was true in 0 of ~35,000
+// rAF frames across six runs, including one 420 s run, while `state.mode === 'flight'` arrived
+// reliably at 25–49 s on hardware GPU at 52–60 fps. No timeout can satisfy a condition that is
+// never true, so this was never a budget problem.
+//
+// This is a contradiction being resolved, not a threshold being relaxed: `ships.every(authored)`
+// directly contradicts `test/asset-npc-authored-binding.test.mjs:126`, which passes and asserts
+// "offscreen current-sector content stays dormant". Two assertions in this repo disagreed; the
+// deliberate, test-covered, newer invariant wins, and the harness aligns to the engine contract.
+// Note the replacement is STRICTER where it matters — it demands `authored`, not merely staged,
+// for everything the player can actually see on the first frame.
 function flightReadyInPage() {
   const state = window.SF?.state;
   const player = state?.entities?.get(state.playerId);
-  const ships = Array.isArray(state?.entityList)
-    ? state.entityList.filter((item) => item?.type === 'ship' && item.alive !== false)
-    : [];
-  const allAuthored = ships.length > 0
-    && ships.every((ship) => ship?.mesh?.userData?.authoredAssetState === 'authored');
+  const readiness = typeof window.SF?.authoredVisualReadiness === 'function'
+    ? window.SF.authoredVisualReadiness()
+    : null;
+  // Fail closed: if the contract is unavailable the harness must not silently pass on mode alone.
+  const visualsReady = !!(readiness && readiness.ready);
   const modalOpen = document.body.classList.contains('ui-modal-open');
   const splash = document.getElementById('cinematic-splash');
   const splashStyle = splash ? getComputedStyle(splash) : null;
   const splashVisible = !!(splash && !splash.hidden && splashStyle?.display !== 'none'
     && splashStyle?.visibility !== 'hidden');
   return state?.mode === 'flight' && player && player.alive !== false && Number(player.hull) > 0
-    && allAuthored && !modalOpen && !splashVisible;
+    && visualsReady && !modalOpen && !splashVisible;
 }
 
 async function readTravelSnapshot(page) {
@@ -704,6 +727,9 @@ async function readTravelSnapshot(page) {
       ? state.entityList.filter((item) => item?.type === 'ship' && item.alive !== false)
       : [];
     const statuses = ships.map((ship) => ship?.mesh?.userData?.authoredAssetState || 'missing');
+    const readiness = typeof window.SF?.authoredVisualReadiness === 'function'
+      ? window.SF.authoredVisualReadiness()
+      : null;
     const sectorId = state?.world?.currentSectorId || null;
     const sector = sectorId && state?.world?.sectors ? state.world.sectors[sectorId] : null;
     let gateInRange = false;
@@ -740,7 +766,21 @@ async function readTravelSnapshot(page) {
         speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
       } : null,
       authored: {
-        ready: statuses.length > 0 && statuses.every((s) => s === 'authored'),
+        // Same correction as `flightReadyInPage`: ask the engine its own question. `ready` is
+        // `authoredCriticalVisualReadiness().ready` — player + critical starting hub + the whole
+        // opening authored composition must be `authored`. Requiring EVERY ship in the sector to
+        // be authored is unsatisfiable by construction, because distant NPCs stay dormant on
+        // purpose (test/asset-npc-authored-binding.test.mjs:126 pins that and passes).
+        //
+        // `statuses` and `shipCount` are still reported, because they remain useful evidence in
+        // the run receipt — they are just no longer a pass/fail condition. Keeping the raw data
+        // while dropping the bad assertion is the point: this is a corrected question, not a
+        // discarded observation.
+        ready: !!readiness?.ready,
+        pipelineReady: !!readiness?.pipelineReady,
+        playerStatus: readiness?.playerStatus ?? null,
+        startingHubStatus: readiness?.startingHubStatus ?? null,
+        openingPending: (readiness?.openingPending || []).map((e) => `${e.id}:${e.status}`),
         shipCount: statuses.length,
         statuses,
       },

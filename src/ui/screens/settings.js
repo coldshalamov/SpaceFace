@@ -77,7 +77,7 @@ const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // and stay out of the rebind grid to keep the model simple.)
 const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
   'brake', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
-  'bulletTime', 'cloak'];
+  'bulletTime', 'cloak', 'travelBurn'];
 const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
@@ -97,6 +97,8 @@ const REBIND_LABELS = {
   reelOut: 'Tether winch out',
   bulletTime: 'Bullet time (hold)',
   cloak: 'Cloak toggle',
+  // W1-5. A latch that is rebindable in data but has no row here is not rebindable to a player.
+  travelBurn: 'Travel drive (burn latch)',
 };
 
 function controlSchemeFor(settings) {
@@ -150,6 +152,9 @@ function humanizeCode(code) {
   if (code === 'ControlLeft') return 'L-Ctrl';
   if (code === 'ControlRight') return 'R-Ctrl';
   if (code === 'AltLeft') return 'L-Alt';
+  if (code === 'NumLock') return 'Num Lock';
+  if (code === 'CapsLock') return 'Caps Lock';
+  if (code === 'Backquote') return '`';
   return code;
 }
 
