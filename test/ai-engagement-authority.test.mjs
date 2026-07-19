@@ -5,6 +5,7 @@ import {
   authorizeAIEngagement,
   inspectFirstSessionAttackerOwnership,
   isOffensiveActionDef,
+  maintainFirstSessionAttackerOwnership,
   protectedStationAt,
   refreshFirstSessionAttackerOwnership,
 } from '../src/ai/engagementAuthority.js';
@@ -207,6 +208,30 @@ test('death and disengage release immediately and promote overflow in stable ord
   });
 });
 
+test('between-decision maintenance releases invalid owners without rebuilding the decision batch', () => {
+  const state = ownershipState([5, 2, 4, 3]);
+  refreshFirstSessionAttackerOwnership(
+    state,
+    [5, 2, 4, 3].map((id) => ownershipDecision(id, 'ingress', null)),
+  );
+
+  state.entities.get(2).alive = false;
+  assert.equal(maintainFirstSessionAttackerOwnership(state), 1);
+  assert.deepEqual(inspectFirstSessionAttackerOwnership(state, state.playerId), {
+    targetId: state.playerId,
+    owners: [3, 4],
+    waiting: [5],
+  });
+
+  state.entities.get(3).data.ai.roe = RulesOfEngagement.HOLD_FIRE;
+  assert.equal(maintainFirstSessionAttackerOwnership(state), 1);
+  assert.deepEqual(inspectFirstSessionAttackerOwnership(state, state.playerId), {
+    targetId: state.playerId,
+    owners: [4, 5],
+    waiting: [],
+  });
+});
+
 test('live deauthorization releases ownership and promotes every queued attacker in order', () => {
   const state = ownershipState([5, 2, 4, 3]);
   const decisions = [5, 2, 4, 3].map((id) => ownershipDecision(id, 'ingress', null));
@@ -291,6 +316,7 @@ test('authorized fire records a deterministic motive and doctrine trace on the a
         reason: 'combat_doctrine:interceptor_flyby:strike',
       },
     },
+    action: { actionId: 'action_burst' },
     combatDoctrine: { doctrineId: 'interceptor_flyby', phase: 'strike', fireWindow: true },
   }, state);
 

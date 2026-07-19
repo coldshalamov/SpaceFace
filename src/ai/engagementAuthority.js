@@ -243,6 +243,28 @@ export function refreshFirstSessionAttackerOwnership(state, decisions = []) {
   return ownershipSnapshot(runtime);
 }
 
+/**
+ * Revalidate the current first-session attacker slots between tactical decision ticks.
+ *
+ * The committed decision batch only changes when tacticalAI produces a new result. Re-reading the
+ * same batch on the two intervening simulation ticks rebuilt actor/target maps and frozen public
+ * snapshots for no semantic change. This maintenance path still releases dead, disabled, or
+ * otherwise ineligible actors immediately and promotes the already-authored waiting queue, while
+ * leaving new candidate discovery to the next decision batch.
+ */
+export function maintainFirstSessionAttackerOwnership(state) {
+  if (!state || typeof state !== 'object') return 0;
+  const tick = Number.isInteger(state.tick) ? state.tick : 0;
+  if (!inFirstSession(state, tick)) {
+    FIRST_SESSION_OWNERSHIP.delete(state);
+    return 0;
+  }
+  const runtime = FIRST_SESSION_OWNERSHIP.get(state);
+  if (!runtime) return 0;
+  reconcileOwnership(state, runtime);
+  return runtime.byTarget.size;
+}
+
 export function inspectFirstSessionAttackerOwnership(state, targetId = null) {
   const runtime = state && FIRST_SESSION_OWNERSHIP.get(state);
   if (!runtime) return targetId == null ? Object.freeze([]) : null;
