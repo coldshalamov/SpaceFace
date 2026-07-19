@@ -126,6 +126,12 @@ test('flight HUD and Mission Log paint one command instead of repeated story/mis
     'an in-camera objective must retain a world-space diamond instead of disappearing');
   assert.match(hud, /sf-objarrow--edge/,
     'an off-camera objective must retain a labelled edge cue');
+  // G05: pre-first-dock corridor idle is part of the one-command hierarchy (see
+  // test/corridor-objective-hierarchy.test.mjs for full priority pin).
+  assert.match(hud, /hasCorridorFirstDock\(state\)/,
+    'tracker idle must gate the corridor Dock-at-Helios objective on first-dock');
+  assert.match(hud, /resolveCorridorOpeningObjective\(state\)/,
+    'tracker idle must resolve the corridor opening objective presenter');
   assert.match(log, /CURRENT ACTION/);
   assert.match(log, /recommendedActions\([^)]*\)\.slice\(0, 1\)/,
     'Mission Log may paint only the highest-priority action');

@@ -38,6 +38,11 @@ import { bestKnownSellFor, applyTradeNavigation } from './screens/market.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
 import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
 import { createHudDragController } from './hudLayout.js';
+import {
+  buildCorridorOpeningWaypoint,
+  hasCorridorFirstDock,
+  resolveCorridorOpeningObjective,
+} from '../systems/missions.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -3308,6 +3313,18 @@ export function createHud(ctx, alerts) {
         setText(mtTitle, coreText(wp.onboarding ? 'tutorialObjective' : 'currentObjective'));
         setText(mtObj, mtObjectiveAction(wp.reason || wp.label || 'Follow the marked route', wp));
         setText(mtTime, mtMarkerLine(state, wp, routeGuide && routeGuide.summary || ''));
+        mtTime.classList.remove('sf-mt-urgent');
+        setDisplay(mtTime, true);
+        setDisplay(missionTracker, true);
+      } else if (!hasCorridorFirstDock(state) && resolveCorridorOpeningObjective(state)) {
+        // G05: pre-first-dock idle → one clear corridor objective (reach/dock Helios) with marker line.
+        // After first dock, priority falls through to the shipped untracked/story/hide order.
+        // Threat slot (target panel) is intentionally untouched.
+        const corridor = resolveCorridorOpeningObjective(state);
+        const wp = buildCorridorOpeningWaypoint(state);
+        setText(mtTitle, coreText('currentObjective'));
+        setText(mtObj, mtObjectiveAction(corridor.action, wp));
+        setText(mtTime, mtMarkerLine(state, wp));
         mtTime.classList.remove('sf-mt-urgent');
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);

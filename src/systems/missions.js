@@ -135,6 +135,109 @@ export const CONTRACT_47A_B0_TAG = 'campaign47a:b0:recovery';
 export const CONTRACT_47A_SAMPLE_ID = 'cmdty_47a_assay_sample';
 export const CONTRACT_47A_B1_TAG = 'campaign47a:b1:honest_work';
 export const CONTRACT_47A_B2_TAG = 'campaign47a:b2:elroy';
+
+// ── G05 corridor opening objective (one clear first-minute command) ───────────────────────────
+// When nothing is tracked and the pilot has not yet first-docked, the HUD idle tracker presents
+// this single corridor objective with the existing marker / distance / ETA machinery.
+export const CORRIDOR_OPENING_STATION_ID = 'station_helios';
+export const CORRIDOR_OPENING_SECTOR_ID = 'sector_helios_prime';
+export const CORRIDOR_OPENING_STATION_LABEL = 'Helios Station';
+/** Immediate-action verb for the pre-first-dock corridor idle objective. */
+export const CORRIDOR_OPENING_ACTION = 'Dock at Helios Station';
+/** Authored fallback world pos for Helios when the live station entity is not yet spawned. */
+export const CORRIDOR_OPENING_FALLBACK_POS = Object.freeze({ x: 280, z: -140 });
+
+/** True once the run has completed at least one dock (corridor first-minute gate). Pure over state. */
+export function hasCorridorFirstDock(state) {
+  if (!state || typeof state !== 'object') return false;
+  if (state.ui && state.ui.corridorFirstDocked === true) return true;
+  const at = state.ui && state.ui.corridorFirstDockAtS;
+  if (at != null && Number.isFinite(Number(at))) return true;
+  return false;
+}
+
+/** True when the tracker has an active tracked mission (not merely a stale id). Pure. */
+export function hasActiveTrackedMission(state) {
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  if (!trackedId) return false;
+  const active = (state.missions && state.missions.active) || [];
+  return active.some((m) => m && m.id === trackedId && m.status === 'active');
+}
+
+/**
+ * Resolve the pre-first-dock corridor idle objective when no mission is tracked.
+ * Returns null after first dock, or when a tracked active mission owns the tracker.
+ * Pure presenter truth for G05 hierarchy tests and the HUD idle path.
+ */
+export function resolveCorridorOpeningObjective(state) {
+  if (!state || typeof state !== 'object') return null;
+  if (hasCorridorFirstDock(state)) return null;
+  if (hasActiveTrackedMission(state)) return null;
+  return {
+    titleKey: 'currentObjective',
+    action: CORRIDOR_OPENING_ACTION,
+    reason: CORRIDOR_OPENING_ACTION,
+    label: CORRIDOR_OPENING_STATION_LABEL,
+    stationId: CORRIDOR_OPENING_STATION_ID,
+    sectorId: CORRIDOR_OPENING_SECTOR_ID,
+    sectorName: 'Helios Prime',
+    kind: 'corridor',
+    markerKind: 'station-dock',
+  };
+}
+
+/** Find a live station entity by stationId (index first, entityList fallback). Pure read. */
+export function findLiveStationEntity(state, stationId) {
+  if (!state || !stationId) return null;
+  const index = state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1) {
+    const byStationId = index.byStationId;
+    const indexed = byStationId && byStationId.get(stationId);
+    if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
+  }
+  for (const e of state.entityList || []) {
+    if (e && e.alive !== false && e.type === 'station' && e.data && e.data.stationId === stationId) {
+      return e;
+    }
+  }
+  return null;
+}
+
+/**
+ * Build a nav-shaped waypoint for the corridor opening objective (marker/distance/ETA).
+ * Returns null when the corridor idle objective is not active.
+ */
+export function buildCorridorOpeningWaypoint(state) {
+  const objective = resolveCorridorOpeningObjective(state);
+  if (!objective) return null;
+  const live = findLiveStationEntity(state, objective.stationId);
+  const pos = live && live.pos
+    ? { x: Number(live.pos.x) || 0, z: Number(live.pos.z) || 0 }
+    : { x: CORRIDOR_OPENING_FALLBACK_POS.x, z: CORRIDOR_OPENING_FALLBACK_POS.z };
+  return {
+    kind: 'corridor',
+    stationId: objective.stationId,
+    sectorId: objective.sectorId,
+    sectorName: objective.sectorName,
+    label: objective.label,
+    mapLabel: objective.label,
+    reason: objective.reason,
+    markerKind: objective.markerKind,
+    pos,
+  };
+}
+
+/** Record first dock for the corridor hierarchy. Idempotent; returns true on first mark. */
+export function markCorridorFirstDock(state, stationId = null, simTime = 0) {
+  if (!state || typeof state !== 'object') return false;
+  state.ui = state.ui || {};
+  if (state.ui.corridorFirstDocked === true) return false;
+  state.ui.corridorFirstDocked = true;
+  state.ui.corridorFirstDockAtS = Math.max(0, Number(simTime) || 0);
+  if (stationId != null) state.ui.corridorFirstDockStationId = String(stationId);
+  return true;
+}
+
 const CONTRACT_47A_REWARD_CR = 400;
 const CONTRACT_47A_B2_SCAN_RADIUS_WU = 1200;
 const CONTRACT_47A_B2_CUSTODY_REEL_WU = 60;
@@ -361,6 +464,16 @@ export const missions = {
       const stationId = p && p.stationId;
       if (!stationId) return;
       this._lastDockedStation = stationId;
+      // G05: first dock closes the corridor idle objective; priority falls through to shipped order.
+      const firstDock = markCorridorFirstDock(this.state, stationId, this.state.simTime || 0);
+      if (firstDock) {
+        const wp = this.state.nav && this.state.nav.waypoint;
+        if (wp && wp.kind === 'corridor') {
+          this.state.nav.waypoint = null;
+          this.bus.emit('nav:waypoint', null);
+        }
+        this._refreshNavigation({ silent: true });
+      }
       this.ensureBoard(stationId);
       this._onDockedObjectives(stationId);
       this._onContract47aB3Docked(stationId);
@@ -1398,6 +1511,13 @@ export const missions = {
       return true;
     }
     if (state.ui) state.ui.trackedMissionId = null;
+    // G05: pre-first-dock corridor idle owns one clear Dock-at-Helios command with marker machinery.
+    // After first dock, fall through to the shipped story/trade waypoint order.
+    const corridorWp = buildCorridorOpeningWaypoint(state);
+    if (corridorWp) {
+      this._setNavWaypoint(corridorWp);
+      return true;
+    }
     return this._ensureStoryWaypoint(options);
   },
 
