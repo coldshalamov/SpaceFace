@@ -223,6 +223,9 @@ function perfBudget() {
   for (let i = 0; i < 240; i++) ships.push(ship({ id: i + 1, rot: i * 0.07, vel: { x: i % 17, z: i % 23 } }));
   const input = { turnIntent: 0.7, moveZ: 1, moveX: 0.25 };
   const profile = resolveFlightProfile(ships[0], state('assisted'));
+  for (let frame = 0; frame < 30; frame++) {
+    for (const s of ships) stepPlayerFlight(s, input, DT, profile);
+  }
   const t0 = performance.now();
   for (let frame = 0; frame < 180; frame++) {
     for (const s of ships) stepPlayerFlight(s, input, DT, profile);
