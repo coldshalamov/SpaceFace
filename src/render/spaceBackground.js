@@ -1247,6 +1247,15 @@ export class SpaceBackground {
   // authored texture reference. Never dispose or rebuild the visible graph here: its dispose
   // listeners were registered by the previous GL generation and deleting through the restored
   // context produces wrong-context errors.
+  contextLossResources() {
+    return [
+      this.l0Target,
+      this.l1Target,
+      this.l2Target,
+      ...this.planetCache.values(),
+    ].filter(Boolean);
+  }
+
   onContextRestore() {
     const p = this._paletteColors(this.currentPaletteName);
     const sizes = this.bakeSizes;
