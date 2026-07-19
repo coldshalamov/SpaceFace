@@ -147,16 +147,56 @@ landed, the consumer did not — which is the recurring seam in this codebase an
 
 | ID | Feature | Depends on | Status |
 |---|---|---|---|
-| W1-1 | Travel drive axis: Off / Spooling / Engaged / Cooldown, orthogonal to assist regime and control owner (D5) | S0-6 | blocked |
-| W1-2 | Governor ramps the cap while Engaged; `physicsEarnedMomentum` decay on disengage — no confiscation | W1-1 | blocked |
-| W1-3 | Boost never commands reverse thrust above cap (clamp commanded forward ≥ 0) | W1-1 | blocked |
-| W1-4 | Dash sets `physicsEarnedMomentum`; dash / boost / burn share one energy pool and one gauge | W1-1 | blocked |
-| W1-5 | Rebindable Travel Burn latch (Num Lock default + laptop + controller); braking breaks it, steering does not | W1-1 | blocked |
-| W1-6 | Per-family speed ceiling, shown on the velocity tape, approached asymptotically | W1-1 | blocked |
-| W1-7 | Route follower **sequences** existing controllers; owns `nav.route`; `nav.autoTravel` finally has a reader (D6) | S0-7, W1-1 | blocked |
-| W1-8 | Plot and engage are separate actions, reachable on the default route (wired-features contract) | W1-7 | blocked |
-| W1-9 | Manual burn shows stopping arc + BRAKE NOW; overshoot remains possible. Route follower auto-brakes and flip-and-burns when `bestMode` says so | W1-7 | blocked |
-| W1-10 | Route survives save/load in every executor state | W1-7 | blocked |
+| W1-1 | Travel drive axis: Off / Spooling / Engaged / Cooldown, orthogonal to assist regime and control owner (D5) | S0-6 | **built, NOT wired** `6ec8fa6d` |
+| W1-2 | Governor ramps the cap while Engaged; `physicsEarnedMomentum` decay on disengage — no confiscation | W1-1 | **built, NOT wired** `6ec8fa6d` |
+| W1-3 | Boost never commands reverse thrust above cap (clamp commanded forward ≥ 0) | W1-1 | **passing** `6ec8fa6d` |
+| W1-4 | Dash sets `physicsEarnedMomentum`; dash / boost / burn share one energy pool and one gauge | W1-1 | **partial** `6ec8fa6d` — decay half done at `flightV3.js` `applyMasslineFlightModifiers`; the shared pool + single gauge is UI work, not done |
+| W1-5 | Rebindable Travel Burn latch (Num Lock default + laptop + controller); braking breaks it, steering does not | W1-1 | **not started** |
+| W1-6 | Per-family speed ceiling, shown on the velocity tape, approached asymptotically | W1-1 | **partial** `6ec8fa6d` — ceiling derived and exported (`resolveTravelCeiling`); the velocity-tape V-MAX line is not drawn |
+| W1-7 | Route follower **sequences** existing controllers; owns `nav.route`; `nav.autoTravel` finally has a reader (D6) | S0-7, W1-1 | **built, NOT wired** `2fe6d542` |
+| W1-8 | Plot and engage are separate actions, reachable on the default route (wired-features contract) | W1-7 | **not started** — the gate for W1-1/W1-7 becoming `passing` |
+| W1-9 | Manual burn shows stopping arc + BRAKE NOW; overshoot remains possible. Route follower auto-brakes and flip-and-burns when `bestMode` says so | W1-7 | **partial** `2fe6d542` — follower side chooses handoff from `estimateBrakingSolution.bestMode`; the manual-burn HUD half is not done |
+| W1-10 | Route survives save/load in every executor state | W1-7 | **passing** `2fe6d542` — pinned in `check:route-follower`, and an idle nav serializes with no executor key so the default save shape is unchanged |
+
+**Why W1-1, W1-2 and W1-7 are `built, NOT wired` rather than `passing`.** Nothing in production
+emits `nav:engageRoute`, and no latch or HUD consumes the travel-drive axis. Both are producers
+whose consumers were not built: the drive axis is reachable only by a caller passing
+`input.travelDrive`, and the executor is never constructed on the default player route, so **RC-5's
+player symptom — "plotting a cross-sector route does nothing" — is not yet fixed**. Every remaining
+UI entry point (`uiRoot.js`, `src/ui/screens/*`) is held by the concurrent agent. This is the same
+posture as S0-7 and the RCS renderer, and it is now the third instance of this codebase's recurring
+seam. **W1-8 is the single item that converts three rows from `built` to `passing`.**
+
+**Evidence for the rows that are marked passing.** RC-4 was reproduced numerically *before* the fix
+(`drive_reaction_m`, throttle 1, boost held, 400 WU/s against cap 302.25 → `manualLocal.forward =
+-6.24` = `-(reverseAccel 26 × overspeedBrakeFraction 0.24)`, i.e. real reverse thrust identical to
+the unboosted brake) and after it commands `0` (coast), while the unboosted overspeed brake still
+commands `-6.24`. `check:travel-drive` 11/11, `check:route-follower` 18/18, `check:flight:v3` PASS,
+`check:actuator-telemetry` 11/11, `check:map-frames` PASS.
+
+**Determinism evidence, and the caveat that matters.** Both goldens are byte-identical to baselines
+captured *before* any edit — `check:sim:compare` actual `809df0f6…`, `check:sim:v3:compare` actual
+`7e3e114e…`. A frozen 23-case pre-change kernel sweep
+(`test/fixtures/travel-drive-kernel-baseline.json`) proves the flags-off path reproduces byte for
+byte, and the publication is *shape*-gated so a drive parked at Off attaches zero new telemetry keys.
+
+---
+
+## Gate defects found while verifying Wave 1 — these weaken evidence repo-wide
+
+| # | Defect | Evidence | Why it matters |
+|---|---|---|---|
+| G-1 | **`check:sim:compare` exits 0 while reporting an `authoritativeHash` mismatch.** | `scripts/sf-sim.mjs:684`: `ok: diffs.length === 0 \|\| expectedEnvelopeStaleOnly`, where `expectedEnvelopeStaleOnly = hashEqual && diffs.every(isPending47aEnvelopeDiff)` and that predicate accepts `expectedHash` *and* `expectedTraceCount`. `hashEqual` is uninterrupted-vs-reload equality, **not** agreement with the frozen golden. Confirmed empirically: `npm run check:sim:compare >/dev/null; echo $?` → **0**, while the run prints a hash mismatch. | The script enforces only *reload determinism*. **Any sim-affecting change that is internally deterministic passes.** Anyone gating on the exit code believes the golden is clean when it has drifted. All determinism claims in this program are therefore made against the **hash string**, never the exit code — and that is the only sound way to read it. |
+| G-2 | **Import-resolves is not a health signal.** | During Wave 1 the kernel briefly called a deleted helper. `import('./src/core/flight/propulsionKernel.js')` **still resolved successfully** while `stepPropulsion` threw `ReferenceError` on every tick — the ship would not fly. Only *invoking* the function exposed it. | Any import-only or syntax-only smoke test would have declared an unplayable game healthy. A cheap `stepPropulsion` invocation smoke test would close this class. |
+| G-3 | `check:ci` no longer reaches `check:art`, so `check:visual-stability` runs in **no gate at all**. | `test/visual-probe-server.test.mjs:36`, `0 !== 1` | Carried from the baseline section above; still open. |
+| G-4 | **More source-text adjacency pins exist on `UPDATE_ORDER` than are documented.** | Registering `routeFollower` between `world` and `regionalEcology` broke a literal adjacency assertion at `scripts/check-m4-regional-ecology.mjs:211`. | Reordering `UPDATE_ORDER` can fail checks that assert on *source text* rather than behaviour. Grep for adjacency pins before reordering. |
+
+**Boot-budget investigation (incomplete — the agent was terminated by a session limit).** One
+confirmed finding before it stopped: `src/main.js:86` seeds the world from wall-clock time
+(`const seed = (Date.now() & 0x7fffffff) >>> 0`), so **every boot generates a different world**.
+That is correct for a game but means boot-to-flight timings are not comparable run to run without
+pinning the seed, which plausibly explains part of the 91 s / 121 s / 134 s spread. The
+regression-vs-environment question remains **open**; do not re-derive any budget until it is answered.
 
 > **CORRECTION (2026-07-19) — W1-7 was never blocked.** An earlier revision recorded the route
 > follower as blocked because "its `UPDATE_ORDER` registration requires `src/systems/world.js`, which

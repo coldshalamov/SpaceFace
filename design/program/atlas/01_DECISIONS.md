@@ -397,6 +397,40 @@ religious use of the MASSLINE2/47a golden-safety recipes and by the ownership ru
 wired-features contract makes the plot → engage UI action on the default route part of Wave 1's
 definition of done, not a follow-up.
 
+> **D10.1 — Post-mortem (2026-07-19): the lead violated D10 and it cost two tree-wide breakages.**
+>
+> During Wave 1, **two agents were executing packet W1-A simultaneously**. The cause was the lead's,
+> not either agent's: resuming a paused packet agent by message created a *second* live instance of
+> a packet that was already running inside the workflow. D10 already said "never two packets in one
+> file, ever" — the rule was right and the dispatcher broke it.
+>
+> Consequences, both in shared files, both detected and repaired by the agents themselves:
+>
+> 1. **`src/data/featureFlags.js`** — both appended a `TRAVEL_FLAGS` block, producing duplicate
+>    `export const TRAVEL_FLAGS` / `export function travelFlag`. A hard `SyntaxError` in a module
+>    imported by `flightV3`, `weapons` and the sim harness, so for ~2 minutes **every check in the
+>    repo failed** with an error pointing at neither packet.
+> 2. **`src/core/flight/propulsionKernel.js`** — one agent removed its own scaffold to hand over a
+>    clean file, in the window after the other had wired `applySpeedGovernor` to *call* that
+>    scaffold. `ReferenceError: normalizeTravelDrive is not defined` on every tick: **the ship would
+>    not fly.**
+>
+> Rules added, all cheap:
+>
+> - **A resumed agent is a new writer.** Before resuming a paused packet agent, confirm the original
+>   instance is not still live. Prefer re-scoping the *running* agent over resuming a stopped one.
+> - **When two writers are found in one file, the lead takes the file** — not one of the agents. The
+>   lead is the only actor guaranteed to see both sides.
+> - **The blast radius rule that would have prevented both:** appending to a shared *module-level
+>   declaration* (a flags object, a registry array, an enum) is never a "small additive edit". It is
+>   a whole-repo edit, because a duplicate declaration is a syntax error for every importer.
+>
+> The agents' handling was the part that worked. Both refused to `git checkout` a shared path to
+> "clean up" — which would have destroyed the other's work — reported the breakage unprompted, and
+> one deliberately declined to fix a defect in the other's file on the grounds that two writers in
+> one function was how the damage happened in the first place. **That restraint is the behaviour to
+> preserve; the dispatch is the thing to fix.**
+
 ---
 
 ## D11 — The finish line
