@@ -570,6 +570,37 @@ async function clickWaypointWithPointer(page, locator) {
 }
 
 async function exerciseMarketRoundtrip(page) {
+  const activeTradeAction = page.locator('.sx-trade__go[data-go]').first();
+  if (await activeTradeAction.isVisible().catch(() => false)) {
+    const buyMode = page.locator('button[data-mode="buy"]').first();
+    if (await buyMode.getAttribute('class').then((value) => !String(value || '').includes('is-on')).catch(() => true)) {
+      await buyMode.click();
+    }
+    const selectedCommodity = page.locator('[data-cmdty][role="tab"][aria-selected="true"]').first();
+    const commodityId = await selectedCommodity.getAttribute('data-cmdty');
+    assert(commodityId, 'active market selection must identify its commodity');
+    const before = await readTradeSnapshot(page, commodityId);
+    const buyButton = page.locator('.sx-trade__go[data-go]:not([disabled])').first();
+    await buyButton.waitFor({ state: 'visible', timeout: 20_000 });
+    await buyButton.click();
+    await page.waitForFunction(({ commodityId, credits, owned }) => {
+      const state = window.SF?.state;
+      return Number(state?.player?.credits) < credits
+        && Number(state?.player?.cargo?.items?.[commodityId] || 0) > owned;
+    }, before, { timeout: 20_000 });
+    const bought = await readTradeSnapshot(page, commodityId);
+
+    await page.locator('button[data-mode="sell"]').first().click();
+    const sellButton = page.locator('.sx-trade__go[data-go]:not([disabled])').first();
+    await sellButton.waitFor({ state: 'visible', timeout: 20_000 });
+    await sellButton.click();
+    await page.waitForFunction(({ commodityId, owned }) => Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) <= owned,
+      before, { timeout: 20_000 });
+    const sold = await readTradeSnapshot(page, commodityId);
+    assert.equal(sold.owned, before.owned, 'active market roundtrip must sell the purchased unit');
+    return { shell: 'orbital-command', commodityId, before, bought, sold };
+  }
+
   // Each cycle leaves the market on Sell after completing the roundtrip. Reset the public
   // trade-mode control explicitly so cycle 2+ cannot time out looking for a hidden Buy button.
   const buyMode = page.locator('[data-trade-mode="buy"]').first();
@@ -607,7 +638,7 @@ async function ensureMarketOpen(page) {
   const marketTab = page.locator('[role="tab"]', { hasText: /market/i }).first();
   await marketTab.waitFor({ state: 'visible', timeout: 20_000 });
   if (await marketTab.getAttribute('aria-selected') !== 'true') await marketTab.click();
-  await page.locator('.st-buy-btn').first().waitFor({ state: 'visible', timeout: 20_000 });
+  await page.locator('.sx-trade__go[data-go], .st-buy-btn').first().waitFor({ state: 'visible', timeout: 20_000 });
 }
 
 async function readTradeSnapshot(page, commodityId) {
