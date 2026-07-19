@@ -56,6 +56,31 @@ committed code. The earlier hypothesis that dirty foreign map/nav files were car
 approach is falsified. Electron pilot support remains a recorded debt owned by `G18`/M1-ROUTE,
 not by `G04`.
 
+## Round-3 closure (final review round, recorded 2026-07-18 late)
+
+All four round-3 reviews returned REJECT with narrow findings; dispositions:
+
+- **Repaired** (`3cd5c5fc`, `1bb71349`, `541a6539`): T03 paint-beats-latch pin; the G-lane
+  claim-evaluator/manifest-route/F13-validator hardening (internal checksum recompute, version
+  bounds, commit-exists, required cross-checked restore receipts — the gate can now reject
+  fabricated captures); A02 anchor-grid quantization (idempotent under the tenth-grid anchor
+  map); A06 injective machine-content key + Infinity-capacity ceiling + boxed-Symbol coercion;
+  A10 lane-on-cell ownership, reconcile-before-funding, and the machine-removal spill gate with
+  its own preview/receipt + UI arming hygiene; W01 null-shape guard.
+- **Reproduced and REJECTED with evidence**: the claim that the T02 hardenMax drift mutant stays
+  green (mutating the tolerance value itself reds the suite 46/1 — the probe most plausibly
+  missed the two-line literal); the massline write-set complaint (a lead briefing artifact — the
+  T02/T03 commits touch exactly their declared files).
+- **Named debt, outside the wave's dependency closure** (suite hygiene whose behavior surface is
+  pinned elsewhere): A06 whole-site fixtures still name `sm_gas_tap` in three places and the
+  catalog smoke asserts a live count; A10's `BOOK_RESIDUAL_BOUND` helper is never exercised at
+  its boundary; T02's debounce stacking law is a documented copy of module-private telemetry
+  constants (behavioral binding lands with T06's runtime wiring). No packet's terminal state
+  depends on these; they are the first items of the next suite-hygiene pass.
+
+Post-repair proof at `541a6539`: 314 tests green across the twelve wave suites; both sim
+compares ok/hashEqual; ladder validator green (2 captured / 11 planned) with the hardened gate.
+
 ## Occupied lanes (unchanged, preserved)
 
 | Lease | State | Paths |
