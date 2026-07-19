@@ -61,8 +61,18 @@ import {
 import {
   resolveMapNavContext,
   resolveMapFramingActions,
+  formatDistanceWU,
   NAV_ROW_TONE,
 } from './map/mapNavContext.js';
+// Slice C — the route ribbon's model. Pure: it joins the plotted route (world.computeRoute) to
+// live execution (nav.executor) so the ribbon, the Travel tab and the engage control cannot
+// disagree about which leg is live. It publishes `visible:false` when there is no route, which is
+// what keeps the ribbon a CONTEXTUAL instrument rather than a new permanent panel (ADR D9.9).
+import {
+  resolveRouteRibbon,
+  RIBBON_LEG_STATE,
+  RIBBON_ACTION_IDS,
+} from './map/mapRouteRibbon.js';
 
 // ---------------------------------------------------------------------------------------------
 // Static catalogs (pure — safe at import time).
@@ -455,6 +465,9 @@ export function readRouteExecutorForMap(executor) {
   const legs = Array.isArray(executor.legs) ? executor.legs : [];
   const legIndex = Number.isFinite(executor.legIndex) ? executor.legIndex : 0;
   const leg = legs[legIndex] || null;
+  const legTarget = leg && leg.target && Number.isFinite(leg.target.x) && Number.isFinite(leg.target.z)
+    ? { x: leg.target.x, z: leg.target.z }
+    : null;
   return {
     status: executor.status || null,
     engaged: executor.engaged === true,
@@ -464,6 +477,29 @@ export function readRouteExecutorForMap(executor) {
     legLabel: leg && leg.label ? leg.label : null,
     legFrom: leg ? leg.fromSectorId : null,
     legTo: leg ? leg.toSectorId : null,
+    // W2-D additions, all straight field reads like the rest of this adapter — no logic, so it
+    // still cannot drift from the follower the way a reimplementation would.
+    //
+    // `interruptReason` is what turns "Interrupted" into a decision the pilot can act on; without
+    // it the ribbon can say a route stopped but not why.
+    interruptReason: executor.interruptReason || null,
+    // The active leg's GLOBAL target (ADR D2.1 — the actionable frame; there is no drawPos here).
+    // This is what makes distance-to-next-waypoint and the at-current-speed ETA real numbers
+    // rather than fabricated ones.
+    legTarget,
+    // The decomposed legs, forwarded shallowly so the ribbon can mark done/active/ahead and warn
+    // about a leg the atlas could not resolve BEFORE the follower turns it into an interruption.
+    legs: legs.map((entry, index) => ({
+      index: Number.isFinite(entry && entry.index) ? entry.index : index,
+      fromSectorId: entry ? entry.fromSectorId : null,
+      toSectorId: entry ? entry.toSectorId : null,
+      label: entry && entry.label ? entry.label : null,
+      resolved: entry ? entry.resolved !== false : true,
+      final: !!(entry && entry.final),
+      target: entry && entry.target && Number.isFinite(entry.target.x) && Number.isFinite(entry.target.z)
+        ? { x: entry.target.x, z: entry.target.z }
+        : null,
+    })),
   };
 }
 
@@ -868,6 +904,15 @@ function sectorRecordById(state, id) {
  * a door, not a destination. Capped by the caller at four, past which extra beads stop being
  * countable at glyph scale and just read as texture.
  */
+/** Display name for a sector id, preferring live world state over the authored catalog. */
+function sectorNameOf(state, sectorId) {
+  if (!sectorId) return '';
+  const live = state && state.world && state.world.sectors && state.world.sectors[sectorId];
+  if (live && live.name) return String(live.name);
+  const authored = SECTOR_BY_ID.get(sectorId);
+  return authored && authored.name ? String(authored.name) : String(sectorId);
+}
+
 function sectorBerthCount(state, sectorId) {
   const record = sectorRecordById(state, sectorId);
   const stations = record && Array.isArray(record.stations) ? record.stations : null;
@@ -1734,30 +1779,53 @@ export function emitGalaxyMapPrimaryAction(bus, action) {
  * testable without a DOM: an unavailable action must be VISIBLY unavailable and must EXPLAIN WHY,
  * never a silent no-op and never a fake success state.
  *
+ * ─── SHAPE CORRECTION (W2-D, 2026-07-19) — this function read a shape nothing writes ───────────
+ *
+ * It previously read a `phase` field off the executor, a `legCount` scalar off the executor, and a
+ * `path` array off the route. **None of those three fields exists at runtime.**
+ * `routeFollower.makeExecutor` (`routeFollower.js:171`) writes `status` and a `legs` ARRAY;
+ * `world.computeRoute` (`world.js:2168`) returns `{ legs, totalFuel, totalHops }` and never a
+ * `path`. The sibling adapter in this very file, `readRouteExecutorForMap`, reads `status`/`legs`
+ * correctly — two adapters, one file, disagreeing about one subtree.
+ *
+ * Reproduced before fixing, driving real `makeExecutor` / `computeRoute` shapes: transiting,
+ * interrupted and merely-plotted all returned the IDENTICAL `{label:'Engage Route',
+ * reason:'Route plotted — ready to fly'}`. So **Disengage and Resume Route were unreachable in
+ * game** — the pilot could engage a route and never call it off from the chart — and the leg count
+ * never appeared. `check:route-engage` stayed green only because its fixtures hand-built
+ * `{phase, legCount, path}`, encoding the wrong contract into the assertion.
+ *
+ * The fix reads what runtime actually writes. It deliberately does NOT accept both shapes: a
+ * tolerant reader would keep a fiction alive that no producer emits, and would let the next drift
+ * pass silently for the same reason this one did.
+ *
  * @returns {{visible:boolean, enabled:boolean, label:string, reason:string, event:string|null}}
  */
 export function resolveRouteEngageAction(state) {
   const nav = state && state.nav;
   const executor = nav && nav.executor;
-  const phase = executor && executor.phase;
+  const status = executor && executor.status;
   const hidden = { visible: false, enabled: false, label: 'Engage Route', reason: '', event: null };
   if (!nav) return hidden;
 
   // Already flying it: the control becomes the way out, so a pilot is never trapped in a route.
-  if (phase && phase !== 'idle' && phase !== 'arrived') {
+  if (status && status !== 'idle' && status !== 'arrived') {
     const leg = executor && Number.isFinite(executor.legIndex) ? executor.legIndex + 1 : null;
-    const total = executor && Number.isFinite(executor.legCount) ? executor.legCount : null;
+    const total = executorLegCount(executor);
     const where = leg && total ? ` (leg ${leg}/${total})` : '';
-    if (phase === 'interrupted') {
-      return { visible: true, enabled: true, label: 'Resume Route', reason: `Interrupted${where} — itinerary kept`, event: 'nav:engageRoute' };
+    if (status === 'interrupted') {
+      const why = executor && executor.interruptReason
+        ? ` — ${String(executor.interruptReason).replace(/[-_]+/g, ' ')}`
+        : '';
+      return { visible: true, enabled: true, label: 'Resume Route', reason: `Interrupted${where}${why} — itinerary kept`, event: 'nav:engageRoute' };
     }
-    return { visible: true, enabled: true, label: 'Disengage', reason: `${titleCasePhase(phase)}${where}`, event: 'nav:abortRoute' };
+    return { visible: true, enabled: true, label: 'Disengage', reason: `${titleCasePhase(status)}${where}`, event: 'nav:abortRoute' };
   }
 
   if (!nav.route) {
     return { visible: true, enabled: false, label: 'Engage Route', reason: 'No route plotted — set a course to a sector first', event: null };
   }
-  const legs = Array.isArray(nav.route.path) ? nav.route.path.length : 0;
+  const legs = routeLegCount(nav.route);
   return {
     visible: true,
     enabled: true,
@@ -1765,6 +1833,16 @@ export function resolveRouteEngageAction(state) {
     reason: legs ? `${legs} leg${legs === 1 ? '' : 's'} plotted — ready to fly` : 'Route plotted — ready to fly',
     event: 'nav:engageRoute',
   };
+}
+
+/** Legs on a plotted route. `world.computeRoute` returns `{legs:[...]}` — there is no `path`. */
+function routeLegCount(route) {
+  return route && Array.isArray(route.legs) ? route.legs.length : 0;
+}
+
+/** Legs on a live executor. `makeExecutor` stores the array; only the emitted summary has a count. */
+function executorLegCount(executor) {
+  return executor && Array.isArray(executor.legs) ? executor.legs.length : 0;
 }
 
 function titleCasePhase(phase) {
@@ -2876,6 +2954,370 @@ html.sf-dyslexia #sf-galaxymap {
   html.sf-forced-colors #sf-galaxymap .gm-search-results,
   html.sf-forced-colors #sf-galaxymap .gm-hints { clip-path: none !important; filter: none !important; }
 }
+
+/* ══ SLICE C — information in depth ═══════════════════════════════════════════════════════════
+   Surveyor's Table identity throughout: warm black, brass hairlines, amber worklight, restrained
+   teal. No harsh cyan wireframe, no cramped monospace slab. Bright gold (--accent-3) stays
+   RESERVED for the tracked objective and the live route; nothing else here spends it. */
+
+/* ---- Left rail: collapsible sections -------------------------------------------------------- */
+#sf-galaxymap .gm-rail-sec {
+  border-bottom: 1px solid var(--mf-line-1);
+}
+#sf-galaxymap .gm-rail-sum {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 2px;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--mf-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  transition: color .12s ease;
+}
+#sf-galaxymap .gm-rail-sum::-webkit-details-marker { display: none; }
+#sf-galaxymap .gm-rail-sum:hover { color: var(--ink); }
+#sf-galaxymap .gm-rail-sum:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* The disclosure caret is a SHAPE, so open/closed never depends on colour alone. */
+#sf-galaxymap .gm-rail-sum-t::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 7px;
+  color: var(--mf-line-3);
+  transition: transform .14s ease;
+}
+#sf-galaxymap .gm-rail-sec[open] > .gm-rail-sum { color: var(--ink); }
+#sf-galaxymap .gm-rail-sec[open] > .gm-rail-sum .gm-rail-sum-t::before {
+  transform: rotate(90deg);
+  color: var(--accent);
+}
+#sf-galaxymap .gm-rail-sum-n {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .08em;
+  color: var(--mf-stamp);
+}
+#sf-galaxymap .gm-rail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 2px 0 11px;
+}
+#sf-galaxymap .gm-rail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  background: var(--panel-2);
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  padding: 7px 9px;
+  color: var(--ink-dim);
+  font-family: var(--mf-ui);
+  cursor: pointer;
+  transition: border-color .12s ease, color .12s ease;
+}
+#sf-galaxymap .gm-rail-item:hover { border-color: var(--mf-line-3); color: var(--ink); }
+#sf-galaxymap .gm-rail-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#sf-galaxymap .gm-rail-item-t { font-size: 11.5px; color: var(--ink); }
+#sf-galaxymap .gm-rail-item-s { font-size: 10px; color: var(--ink-mute); }
+#sf-galaxymap .gm-rail-item-tag {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+}
+/* Tracked mission: bright gold is legitimate here — this IS the tracked objective. It carries a
+   glyph and a left rule as well, so the state never rests on hue alone. */
+#sf-galaxymap .gm-rail-item.is-tracked {
+  border-left: 2px solid var(--accent-3);
+  color: var(--ink);
+}
+#sf-galaxymap .gm-rail-track-g { color: var(--accent-3); margin-right: 5px; }
+#sf-galaxymap .gm-rail-item.is-current { border-color: var(--accent-2); }
+#sf-galaxymap .gm-rail-add { margin-top: 2px; }
+
+/* ---- Inspector tabs ------------------------------------------------------------------------- */
+#sf-galaxymap .gm-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 7px 10px 0;
+  border-bottom: 1px solid var(--mf-line-2);
+  background: linear-gradient(180deg, #15181b, #121518);
+}
+#sf-galaxymap .gm-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 2px 2px 0 0;
+  padding: 6px 9px;
+  color: var(--ink-mute);
+  font-family: var(--mf-ui);
+  font-size: 10.5px;
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: color .12s ease, background .12s ease, border-color .12s ease;
+}
+#sf-galaxymap .gm-tab:hover { color: var(--ink); background: rgba(255, 255, 255, .03); }
+#sf-galaxymap .gm-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+/* Selected tab: colour AND a brass underline AND weight. Three signals, not one. */
+#sf-galaxymap .gm-tab[aria-selected="true"] {
+  color: var(--ink);
+  font-weight: 600;
+  background: var(--panel);
+  border-color: var(--mf-line-2);
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+/* An unavailable tab is dimmed AND dotted-underlined — never dimmed alone. */
+#sf-galaxymap .gm-tab.is-empty {
+  color: var(--mf-stamp);
+  text-decoration: underline dotted var(--mf-line-3) 1px;
+  text-underline-offset: 3px;
+}
+
+/* ---- Nav rows in the Overview tab ----------------------------------------------------------- */
+#sf-galaxymap .gm-nav-row {
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 2px 9px;
+  padding: 5px 0;
+  border-top: 1px solid var(--mf-line-1);
+  font-size: 11.5px;
+}
+#sf-galaxymap .gm-nav-row-k {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--mf-stamp);
+  padding-top: 2px;
+}
+#sf-galaxymap .gm-nav-row-v { color: var(--ink); }
+#sf-galaxymap .gm-nav-row-d { grid-column: 2; color: var(--ink-mute); font-size: 10px; }
+/* TRACKED is the one tone allowed to spend bright gold, and it also gets a left rule. */
+#sf-galaxymap .gm-nav-row[data-tone="tracked"] .gm-nav-row-v {
+  color: var(--accent-3);
+  font-weight: 600;
+}
+#sf-galaxymap .gm-nav-row[data-tone="tracked"] {
+  border-left: 2px solid var(--accent-3);
+  padding-left: 7px;
+}
+#sf-galaxymap .gm-nav-row[data-tone="muted"] .gm-nav-row-v { color: var(--ink-mute); font-style: italic; }
+
+/* ---- Place context actions ------------------------------------------------------------------ */
+#sf-galaxymap .gm-place-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+#sf-galaxymap .gm-place-actions:empty { display: none; }
+#sf-galaxymap .gm-place-btn {
+  flex: 1 1 auto;
+  background: var(--panel-2);
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  padding: 6px 9px;
+  color: var(--ink-dim);
+  font-family: var(--mf-ui);
+  font-size: 10.5px;
+  cursor: pointer;
+  transition: border-color .12s ease, color .12s ease;
+}
+#sf-galaxymap .gm-place-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--ink); }
+#sf-galaxymap .gm-place-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#sf-galaxymap .gm-place-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  border-style: dashed; /* shape, not just opacity */
+}
+
+/* ---- Route ribbon: a CONTEXTUAL overlay, never a permanent panel ----------------------------- */
+#sf-galaxymap .gm-ribbon {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "main actions" "reason reason";
+  gap: 6px 14px;
+  align-items: center;
+  padding: 9px 13px;
+  box-sizing: border-box;
+  /* Opaque enough to read over the chart, warm enough to stay in the table's material world. */
+  background: linear-gradient(180deg, rgba(24, 28, 31, .96), rgba(16, 19, 21, .97));
+  border: 1px solid var(--mf-line-2);
+  border-top: 1px solid var(--mf-line-3);
+  border-radius: 3px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .5);
+  animation: gm-ribbon-in .18s ease-out;
+}
+#sf-galaxymap .gm-ribbon[hidden] { display: none; }
+@keyframes gm-ribbon-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: none; }
+}
+#sf-galaxymap .gm-ribbon-main { grid-area: main; min-width: 0; }
+#sf-galaxymap .gm-ribbon-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 5px;
+}
+#sf-galaxymap .gm-ribbon-status {
+  font-family: var(--mf-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+/* Live route earns the reserved gold; plotted-but-not-engaged deliberately does not. Each state
+   also changes the leading rule, so the distinction survives forced-colors and colour blindness. */
+#sf-galaxymap .gm-ribbon-status[data-ribbon-state="live"] { color: var(--accent-3); }
+#sf-galaxymap .gm-ribbon-status[data-ribbon-state="plotted"] { color: var(--ink-dim); }
+#sf-galaxymap .gm-ribbon-status[data-ribbon-state="interrupted"] {
+  color: var(--danger);
+  text-decoration: underline wavy var(--danger) 1px;
+  text-underline-offset: 3px;
+}
+#sf-galaxymap .gm-ribbon-arrival {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  color: var(--ink-dim);
+}
+#sf-galaxymap .gm-ribbon-legs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0 0 5px;
+  padding: 0;
+  list-style: none;
+}
+#sf-galaxymap .gm-ribbon-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  font-size: 10.5px;
+  color: var(--ink-mute);
+  background: rgba(255, 255, 255, .015);
+}
+/* Leg state is carried by a glyph (✓ / ▶ / ·) AND border weight AND colour. */
+#sf-galaxymap .gm-ribbon-leg[data-leg-state="done"] { opacity: .55; }
+#sf-galaxymap .gm-ribbon-leg[data-leg-state="active"] {
+  border-color: var(--accent-3);
+  border-left-width: 3px;
+  color: var(--ink);
+}
+#sf-galaxymap .gm-ribbon-leg-g { color: var(--accent); font-size: 9px; }
+#sf-galaxymap .gm-ribbon-leg[data-leg-state="active"] .gm-ribbon-leg-g { color: var(--accent-3); }
+#sf-galaxymap .gm-ribbon-leg-c { font-family: var(--mono); font-size: 9.5px; color: var(--mf-stamp); }
+#sf-galaxymap .gm-ribbon-haz {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+#sf-galaxymap .gm-ribbon-haz[data-haz="watched"] { color: var(--warn); }
+#sf-galaxymap .gm-ribbon-haz[data-haz="contested"] { color: var(--danger); }
+#sf-galaxymap .gm-ribbon-warn { color: var(--danger); font-size: 9.5px; }
+#sf-galaxymap .gm-ribbon-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 14px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .05em;
+  color: var(--ink-mute);
+}
+#sf-galaxymap .gm-ribbon-actions { grid-area: actions; display: flex; gap: 5px; }
+#sf-galaxymap .gm-ribbon-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  padding: 7px 12px;
+  color: var(--ink-dim);
+  font-family: var(--mf-ui);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color .12s ease, color .12s ease;
+}
+#sf-galaxymap .gm-ribbon-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--ink); }
+#sf-galaxymap .gm-ribbon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#sf-galaxymap .gm-ribbon-btn:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+#sf-galaxymap .gm-ribbon-reason {
+  grid-area: reason;
+  font-size: 10px;
+  color: var(--ink-mute);
+  font-style: italic;
+}
+#sf-galaxymap .gm-ribbon-reason:empty { display: none; }
+
+/* ---- Services chips ------------------------------------------------------------------------- */
+#sf-galaxymap .gm-svc-row { display: flex; flex-wrap: wrap; gap: 5px; }
+#sf-galaxymap .gm-svc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--mf-line-2);
+  border-radius: 2px;
+  font-size: 10px;
+  color: var(--ink-dim);
+  text-transform: capitalize;
+}
+
+/* ---- Narrow layouts: the ribbon stacks rather than crushing the action row ------------------- */
+@media (max-width: 900px) {
+  #sf-galaxymap .gm-ribbon {
+    grid-template-columns: 1fr;
+    grid-template-areas: "main" "actions" "reason";
+    left: 8px;
+    right: 8px;
+  }
+  #sf-galaxymap .gm-ribbon-actions { flex-wrap: wrap; }
+}
+
+/* ---- Reduced motion: suppress the ANIMATION, never the INFORMATION -------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  #sf-galaxymap .gm-ribbon { animation: none; }
+  #sf-galaxymap .gm-rail-sum-t::before,
+  #sf-galaxymap .gm-tab,
+  #sf-galaxymap .gm-rail-item,
+  #sf-galaxymap .gm-place-btn,
+  #sf-galaxymap .gm-ribbon-btn { transition: none; }
+}
+
+/* ---- Forced colors / high contrast ---------------------------------------------------------- */
+@media (forced-colors: active) {
+  #sf-galaxymap .gm-ribbon,
+  #sf-galaxymap .gm-ribbon-leg,
+  #sf-galaxymap .gm-rail-item,
+  #sf-galaxymap .gm-svc-chip { border: 1px solid CanvasText; box-shadow: none; }
+  #sf-galaxymap .gm-tab[aria-selected="true"] { border: 2px solid Highlight; }
+  /* Disabled state must survive the palette flattening, so keep it a SHAPE. */
+  #sf-galaxymap .gm-ribbon-btn:disabled,
+  #sf-galaxymap .gm-place-btn:disabled { border-style: dashed; opacity: 1; }
+  #sf-galaxymap .gm-ribbon-leg[data-leg-state="active"] { border-left-width: 4px; }
+}
 `;
 
 let _styleInjected = false;
@@ -2955,9 +3397,75 @@ const HINT_ROWS = Object.freeze([
   ['Inspect a mark', 'Click'],
   ['Lay a course', 'Dbl-click'],
   ['Cycle overlays', 'Tab'],
+  ['Inspector tabs', '← →'],
   ['Search the chart', '/'],
   ['Close the chart', 'Esc'],
 ]);
+
+// ---------------------------------------------------------------------------------------------
+// SLICE C — inspector tabs. Depth on demand (ADR D9.9).
+// ---------------------------------------------------------------------------------------------
+//
+// The panel shows ONE of these at a time. That is the whole point: the brief asks for eight kinds
+// of depth, and rendering eight kinds of depth simultaneously is how the density paradox was
+// built. Overview is the default and always answers the navigation questions, so the panel is
+// never empty and never opens on a wall of numbers.
+//
+// HONESTY RULE FOR TABS: a tab whose data source does not exist yet renders an explicit empty
+// state that says so. It does not get filled with invented content, and it does not get a new
+// data system built behind it — D2/D9 reject growing a registry to feed a panel.
+
+export const MAP_INSPECTOR_TABS = Object.freeze([
+  { id: 'overview', label: 'Overview' },
+  { id: 'travel', label: 'Travel' },
+  { id: 'missions', label: 'Missions' },
+  { id: 'economy', label: 'Economy' },
+  { id: 'threat', label: 'Threat' },
+  { id: 'services', label: 'Services' },
+  { id: 'discovery', label: 'Discovery' },
+  { id: 'history', label: 'History' },
+]);
+
+export const MAP_INSPECTOR_TAB_IDS = Object.freeze(MAP_INSPECTOR_TABS.map((t) => t.id));
+
+/**
+ * Which tabs carry something for the current selection/state.
+ *
+ * Returns availability plus a REASON for every tab, in the same contract the framing and engage
+ * controls already use: a tab with nothing behind it is visibly unavailable and says why, rather
+ * than opening onto a blank panel and leaving the player to wonder whether it is broken.
+ *
+ * Pure — no DOM. `check:map-information-depth` drives this directly.
+ */
+export function resolveInspectorTabAvailability(state, target) {
+  const nav = (state && state.nav) || {};
+  const hasRoute = !!(nav.route && Array.isArray(nav.route.legs) && nav.route.legs.length);
+  const executor = readRouteExecutorForMap(nav.executor);
+  const missions = (state && state.missions && state.missions.active) || [];
+  const liveMissions = missions.filter((m) => m && m.status === 'active');
+  const kind = target && target.kind;
+  const out = {};
+
+  const set = (id, available, reason) => { out[id] = Object.freeze({ id, available: !!available, reason }); };
+
+  set('overview', true, 'Where you are, what you are tracking, and what is selected');
+  set('travel', hasRoute || !!executor,
+    hasRoute || executor ? 'Route legs, cost, hazards and arrival' : 'No route plotted — set a course to a sector first');
+  set('missions', liveMissions.length > 0,
+    liveMissions.length ? `${liveMissions.length} active` : 'No active missions');
+  set('economy', true, 'Trade lanes and remembered quotes');
+  set('threat', !!(target || currentSectorId(state)),
+    target ? 'Security and hostility for the selection' : 'Security for your current sector');
+  set('services', kind === 'station' || kind === 'sector',
+    (kind === 'station' || kind === 'sector') ? 'Docking services' : 'Select a station or sector to list services');
+  set('discovery', true, 'Survey confidence and charted status');
+  // HISTORY HAS NO SOURCE. There is no per-place visit/event log anywhere in state, and inventing
+  // one — or building a logging system to fill this tab — is exactly the "new data system to feed
+  // a panel" that D2/D9 reject. It ships unavailable and says so. Naming the gap is the honest
+  // move; a tab full of plausible-looking fabricated history is not.
+  set('history', false, 'Not recorded yet — the game keeps no per-place visit log');
+  return Object.freeze(out);
+}
 
 function popCurrentScreen(ctx) {
   const sm = ctx && ctx.screenManager;
@@ -3661,6 +4169,25 @@ export const galaxyMapScreen = {
   // Motion preference, sampled at show time (see _syncReduceMotion).
   _reduceMotion: false,
 
+  // --- SLICE C: information in depth --------------------------------------------------------
+  // Which inspector tab is showing. Exactly one at a time — that is the disclosure mechanism.
+  _activeTab: 'overview',
+  _tabButtons: [],
+  _tabPanel: null,
+  _lastTabHtml: null,
+  _placeActionsEl: null,
+  _lastPlaceActionsHtml: null,
+  // Camera bookmarks. SCREEN-OWNED and deliberately not sim state: a bookmark is a saved view of
+  // the chart, not a fact about the universe, and writing it into gameState would widen the save
+  // shape and the golden surface for a purely cosmetic convenience. Same posture as `_localIntel`.
+  _bookmarks: [],
+  _ribbonEl: null,
+  _lastRibbonKey: null,
+  // Separate, coarser key for the action row so live ETA churn cannot steal keyboard focus from
+  // the Disengage button mid-transit. See the note in _updateRibbon.
+  _lastRibbonActionKey: null,
+  _ribbonHandler: null,
+
   _claimsSystem() {
     const registry = this._ctx && this._ctx.registry;
     return registry && typeof registry.get === 'function' ? registry.get('claims') : null;
@@ -3940,35 +4467,99 @@ export const galaxyMapScreen = {
         </div>
       </div>
       <div class="gm-body-container">
-        <!-- Left Rail -->
+        <!-- ═══ LEFT RAIL ═══════════════════════════════════════════════════════════════════════
+             SLICE C — PROGRESSIVE DISCLOSURE (ADR D9.9). This rail used to be four always-open
+             stacked blocks (overlays, market intel, two legends) plus a footer. Every one of them
+             was on glass at all times, including two pure reference legends the player consults
+             perhaps twice — which is the reported density paradox exactly: "too little useful
+             information, yet crowded".
+
+             They are now disclosure sections and only ONE (Lenses, the primary tool) is open by
+             default. Native details/summary elements are deliberate over a hand-rolled accordion:
+             they are keyboard-operable, expose expanded/collapsed state to screen readers, and
+             survive forced-colors without any JavaScript of ours. The information did not shrink;
+             the default view did. -->
         <div class="gm-left-rail">
-          <div class="gm-rail-title">Overlays</div>
-          <div class="gm-layer-buttons">${layerButtonsHtml}
-          </div>
-          <div class="gm-rail-commodity">
-            <label for="gm-commodity-select">Market intel</label>
-            <select id="gm-commodity-select" aria-label="Select Commodity"></select>
-          </div>
-          <div class="gm-rail-legend">
-            <div class="gm-rail-title">Service marks</div>${legendHtml}
-          </div>
-          <div class="gm-rail-legend">
-            <div class="gm-rail-title">Chart marks</div>${markLegendHtml}
-          </div>
-          <div class="gm-rail-footer">
-            <div class="gm-hint-title">Survey table</div>
-            <div class="gm-hint-text">A working instrument, not a picture: <b>double-click any mark to lay a course</b>. The <b>?</b> key in the header shows the full control key.</div>
-          </div>
+          <details class="gm-rail-sec" data-rail-sec="lenses" open>
+            <summary class="gm-rail-sum"><span class="gm-rail-sum-t">Lenses</span><span class="gm-rail-sum-n" data-lens-count></span></summary>
+            <div class="gm-rail-body">
+              <div class="gm-layer-buttons">${layerButtonsHtml}
+              </div>
+              <div class="gm-rail-commodity">
+                <label for="gm-commodity-select">Market lens · commodity</label>
+                <select id="gm-commodity-select" aria-label="Select Commodity"></select>
+              </div>
+            </div>
+          </details>
+
+          <details class="gm-rail-sec" data-rail-sec="missions">
+            <summary class="gm-rail-sum"><span class="gm-rail-sum-t">Missions</span><span class="gm-rail-sum-n" data-mission-count></span></summary>
+            <div class="gm-rail-body" id="gm-rail-missions"></div>
+          </details>
+
+          <details class="gm-rail-sec" data-rail-sec="bookmarks">
+            <summary class="gm-rail-sum"><span class="gm-rail-sum-t">Bookmarks</span><span class="gm-rail-sum-n" data-bookmark-count></span></summary>
+            <div class="gm-rail-body" id="gm-rail-bookmarks"></div>
+          </details>
+
+          <details class="gm-rail-sec" data-rail-sec="alternatives">
+            <summary class="gm-rail-sum"><span class="gm-rail-sum-t">Route alternatives</span></summary>
+            <div class="gm-rail-body" id="gm-rail-alternatives"></div>
+          </details>
+
+          <details class="gm-rail-sec" data-rail-sec="key">
+            <summary class="gm-rail-sum"><span class="gm-rail-sum-t">Chart key</span></summary>
+            <div class="gm-rail-body">
+              <div class="gm-rail-legend">
+                <div class="gm-rail-title">Service marks</div>${legendHtml}
+              </div>
+              <div class="gm-rail-legend">
+                <div class="gm-rail-title">Chart marks</div>${markLegendHtml}
+              </div>
+              <div class="gm-hint-text">A working instrument, not a picture: <b>double-click any mark to lay a course</b>. The <b>?</b> button in the header shows the full control key.</div>
+            </div>
+          </details>
         </div>
 
         <!-- Viewport -->
         <div class="gm-viewport" style="flex: 1; position: relative;">
           <canvas aria-label="Galaxy navigation map"></canvas>
+          <!-- ═══ ROUTE RIBBON ═══════════════════════════════════════════════════════════════
+               CONTEXTUAL, NOT PERMANENT. Ships with the hidden attribute set and is revealed only
+               while a route exists (ADR D9.9, and the D5 Amendment-2 ruling that an instrument may
+               appear exactly when its information becomes load-bearing).
+
+               It is an ABSOLUTE OVERLAY inside the viewport rather than a flex child on purpose:
+               a flex child would resize the canvas every time a route armed, which fires the
+               ResizeObserver and re-projects the chart. A chart that jumps when you plot a route
+               reads as a bug — and at Tethys, where the frames are 12,288 WU apart, it would be
+               indistinguishable from a projection defect. -->
+          <div class="gm-ribbon" id="gm-route-ribbon" role="region" aria-label="Route" hidden>
+            <div class="gm-ribbon-main">
+              <div class="gm-ribbon-head">
+                <span class="gm-ribbon-status" id="gm-ribbon-status"></span>
+                <span class="gm-ribbon-arrival" id="gm-ribbon-arrival"></span>
+              </div>
+              <ol class="gm-ribbon-legs" id="gm-ribbon-legs"></ol>
+              <div class="gm-ribbon-meta" id="gm-ribbon-meta"></div>
+            </div>
+            <div class="gm-ribbon-actions" id="gm-ribbon-actions" role="group" aria-label="Route control"></div>
+            <div class="gm-ribbon-reason" id="gm-ribbon-reason" aria-live="polite"></div>
+          </div>
         </div>
 
-        <!-- Right Inspector -->
+        <!-- ═══ RIGHT INSPECTOR ═════════════════════════════════════════════════════════════════
+             SLICE C — DEPTH ON DEMAND. The inspector previously rendered its whole no-selection
+             payload at once (command status + trade lanes + best-known quotes + a note). Now one
+             tab is visible at a time and Overview is the default, so the panel answers the
+             navigation questions first and everything else is one keystroke away rather than
+             permanently stacked underneath.
+
+             The tablist is a real ARIA tablist with roving tabindex and arrow-key traversal — see
+             the _onTabKey handler. Tabs are NOT links and NOT divs-with-click. -->
         <div class="gm-right-inspector">
           <div class="gm-inspector-header">Inspector</div>
+          <div class="gm-tabs" id="gm-tabs" role="tablist" aria-label="Inspector detail"></div>
           <div class="gm-inspector-content">
             <!-- Slice A: the two "never lost" framing controls. They live ABOVE the target actions
                  and are never hidden, because their whole job is to be reachable at the moment the
@@ -3980,13 +4571,16 @@ export const galaxyMapScreen = {
               <button class="gm-ins-btn gm-frame-btn" id="gm-frame-both-btn" type="button" data-framing="frame-both" disabled aria-disabled="true">Frame ship + destination</button>
               <div class="gm-frame-reason" id="gm-frame-reason" aria-live="polite"></div>
             </div>
-            <div class="gm-inspector-details">
+            <div class="gm-inspector-details" id="gm-tabpanel" role="tabpanel" tabindex="0">
               <div class="gm-inspector-empty">No target selected. <b>Click</b> a sector, station or contact to inspect it — <b>double-click</b> to lay a course.</div>
             </div>
             <button class="gm-ins-btn" id="gm-set-course-btn" type="button" hidden disabled>Set Waypoint</button>
             <!-- W1-8: engage is a SEPARATE control from plot, never the same button. -->
             <button class="gm-ins-btn" id="gm-engage-route-btn" type="button" hidden disabled>Engage Route</button>
             <div class="gm-engage-reason" id="gm-engage-reason" aria-live="polite"></div>
+            <!-- Place context actions for the current selection. Each one is resolved from real
+                 state and ships disabled-with-a-reason when it has no consumer. -->
+            <div class="gm-place-actions" id="gm-place-actions" role="group" aria-label="Place actions"></div>
           </div>
         </div>
       </div>
@@ -4040,6 +4634,97 @@ export const galaxyMapScreen = {
         this._setScaleFocus(button.getAttribute('data-focus'));
       });
     });
+
+    // ─── SLICE C wiring ──────────────────────────────────────────────────────────────────────
+    this._tabPanel = rootEl.querySelector('#gm-tabpanel');
+    this._placeActionsEl = rootEl.querySelector('#gm-place-actions');
+    this._ribbonEl = rootEl.querySelector('#gm-route-ribbon');
+    this._tabButtons = [];
+    // The screen object is a singleton, so every render cache MUST be cleared on mount: the new
+    // root's DOM is empty while the cached key still says "already rendered". Leaving these set
+    // means the ribbon's legs and action row never populate after a remount — the controls would
+    // simply be missing, with no error anywhere to say why.
+    this._lastRibbonKey = null;
+    this._lastRibbonActionKey = null;
+    this._lastPlaceActionsHtml = null;
+    this._lastTabHtml = null;
+    this._renderTabs(this._ctx && this._ctx.state);
+
+    // Route control. Delegated on the ribbon so re-rendering the action row never strands it.
+    if (this._ribbonEl && typeof this._ribbonEl.addEventListener === 'function') {
+      this._ribbonEl.addEventListener('click', (ev) => {
+        const el = ev && ev.target && typeof ev.target.closest === 'function'
+          ? ev.target.closest('[data-ribbon-action]') : null;
+        if (!el) return;
+        galaxyMapScreen._activateRibbonAction(el.getAttribute('data-ribbon-action'));
+      });
+    }
+
+    // Place context actions, delegated for the same reason.
+    if (this._placeActionsEl && typeof this._placeActionsEl.addEventListener === 'function') {
+      this._placeActionsEl.addEventListener('click', (ev) => {
+        const el = ev && ev.target && typeof ev.target.closest === 'function'
+          ? ev.target.closest('[data-place-action]') : null;
+        if (!el) return;
+        galaxyMapScreen._activatePlaceAction(el.getAttribute('data-place-action'));
+      });
+    }
+
+    // Left-rail sections: render lazily on open (a collapsed section costs nothing) and handle
+    // every item click in one delegated listener on the rail.
+    const leftRail = rootEl.querySelector('.gm-left-rail');
+    if (leftRail && typeof leftRail.addEventListener === 'function') {
+      leftRail.addEventListener('toggle', () => {
+        galaxyMapScreen._updateRailSections(galaxyMapScreen._ctx && galaxyMapScreen._ctx.state);
+      }, true);
+      leftRail.addEventListener('click', (ev) => {
+        const target = ev && ev.target;
+        const closest = (sel) => (target && typeof target.closest === 'function' ? target.closest(sel) : null);
+        const state = galaxyMapScreen._ctx && galaxyMapScreen._ctx.state;
+
+        if (closest('[data-rail-bookmark-add]')) { galaxyMapScreen._addBookmark(); return; }
+
+        const bm = closest('[data-rail-bookmark]');
+        if (bm) {
+          const entry = galaxyMapScreen._bookmarks[Number(bm.getAttribute('data-rail-bookmark'))];
+          if (entry) galaxyMapScreen._setCameraFraming({ focusGlobal: entry.focusGlobal, spanWU: entry.spanWU });
+          return;
+        }
+
+        const missionBtn = closest('[data-rail-mission]');
+        if (missionBtn && state) {
+          // Track the mission through the SHIPPED intent rather than writing ui.trackedMissionId
+          // here — `systems/missions.js` owns tracking and this screen is a reader.
+          //
+          // The event name is `ui:trackMission`, verified against its listener
+          // (`missions.js:456` → `trackMission`) and against the other shipped emitter
+          // (`missionLog.js:1547`). An earlier draft of this handler emitted `mission:track`,
+          // which has NO listener anywhere in the tree — it would have been a button that looked
+          // like it worked and silently did nothing, i.e. exactly the faked action this packet is
+          // forbidden to ship. Checked rather than assumed.
+          const id = missionBtn.getAttribute('data-rail-mission');
+          if (galaxyMapScreen._ctx.bus) galaxyMapScreen._ctx.bus.emit('ui:trackMission', { missionId: id });
+          const mission = ((state.missions && state.missions.active) || []).find((m) => m && m.id === id);
+          // `missionMapGeometry` returns a flat ARRAY of objective points (each already GLOBAL,
+          // ADR D2.1) — not a `{points}` wrapper. Read from the array directly.
+          const geo = mission ? missionMapGeometry(state, mission) : null;
+          const fix = Array.isArray(geo) ? geo.find((p) => p && Number.isFinite(p.x) && Number.isFinite(p.z)) : null;
+          if (fix) galaxyMapScreen._setCameraFraming({ focusGlobal: { x: fix.x, z: fix.z }, spanWU: MAP_PRESET_SPAN_WU.local });
+          return;
+        }
+
+        const alt = closest('[data-rail-alt]');
+        if (alt && state && galaxyMapScreen._ctx.bus) {
+          const route = state.nav && state.nav.route;
+          const dest = route && Array.isArray(route.legs) && route.legs.length
+            ? route.legs[route.legs.length - 1].to : null;
+          // Re-plot only. Engaging stays a separate, explicit act (ADR D6) — selecting a cheaper
+          // path must never silently start flying it.
+          if (dest) galaxyMapScreen._ctx.bus.emit('world:requestRoute', { targetSectorId: dest, mode: alt.getAttribute('data-rail-alt') });
+          galaxyMapScreen._updateRailSections(state);
+        }
+      });
+    }
 
     // Populate commodity dropdown
     const commSelect = rootEl.querySelector('#gm-commodity-select');
@@ -4612,73 +5297,6 @@ export const galaxyMapScreen = {
     });
   },
 
-  _defaultInspectorHtml(state) {
-    const cur = currentSectorId(state);
-    const sectorName = (cur && ((state.world && state.world.sectors && state.world.sectors[cur] && state.world.sectors[cur].name) || (SECTOR_BY_ID.get(cur) && SECTOR_BY_ID.get(cur).name))) || cur || 'Unknown';
-    const player = playerEntity(state);
-    const credits = state.player && state.player.credits ? Math.round(state.player.credits).toLocaleString() : '0';
-    const cargo = state.player && state.player.cargo ? (state.player.cargo.volume || 0) : 0;
-    const cargoCap = state.player && state.player.cargo ? (state.player.cargo.capVolume || 1) : 1;
-    const heat = state.player && state.player.heat ? Math.round(state.player.heat * 100) : 0;
-    const hull = player && player.hull != null ? Math.round(player.hull) : 0;
-    const hullMax = player && player.hullMax != null ? Math.round(player.hullMax) : 0;
-
-    // Strategy deck: the inspector is a planning instrument even with nothing selected.
-    const lanes = buildTradeLanesModel(state, 5);
-    let lanesHtml = '';
-    if (lanes.length) {
-      lanesHtml = lanes.map((lane) => {
-        const reliability = Number.isFinite(Number(lane.reliability)) ? Number(lane.reliability) : 1;
-        const relColor = reliability >= 0.8 ? INK.good : reliability >= 0.5 ? INK.warn : INK.ink2;
-        const profit = Math.max(0, Math.round(Number(lane.expectedProfit) || 0)).toLocaleString('en-US');
-        const perMin = Math.max(0, Math.round(Number(lane.profitPerMinute) || 0));
-        return `
-        <button class="gm-tl-row" type="button" data-gm-lane="${escapeMapHtml(lane.destinationId)}">
-          <span class="gm-tl-head"><span>${escapeMapHtml(lane.commodityName)}</span><span class="gm-tl-profit" style="color:${relColor}">+${profit} cr</span></span>
-          <span class="gm-tl-sub">${escapeMapHtml(lane.originName)} → ${escapeMapHtml(lane.destinationName)} · ${Math.max(0, Math.floor(lane.units))}u · ${perMin}/min</span>
-        </button>`;
-      }).join('');
-    } else {
-      const anyIntel = !!(state && state.economy && state.economy.marketIntel
-        && Object.keys(state.economy.marketIntel).length);
-      lanesHtml = `<div class="gm-ins-note">${anyIntel
-        ? 'No profitable lanes in current intel. Fresh quotes at two or more stations will rank routes here.'
-        : 'Dock at stations to record market intel. Ranked lanes will appear here.'}</div>`;
-    }
-
-    const offers = bestKnownSellOffers(state, this._selectedCommodity, 3);
-    const commodityLabel = String(this._selectedCommodity || '').replace('cmdty_', '').replace(/_/g, ' ').toUpperCase();
-    const offersHtml = offers.length
-      ? offers.map((offer) => {
-        const tint = memoryTint(offer.ageS);
-        return `<div class="gm-bk-row"><span class="gm-bk-station">${escapeMapHtml(offer.stationName)}</span><span class="gm-bk-val ${tint.key}">${offer.sell} cr · ${ageText(offer.ageS)}</span></div>`;
-      }).join('')
-      : `<div class="gm-ins-note">No remembered quotes for ${escapeMapHtml(commodityLabel)}. Prices appear after you dock and trade.</div>`;
-
-    return `
-      <div class="gm-ins-section">
-        <div class="gm-ins-kind">Survey table / Command</div>
-        <div class="gm-ins-target-name">Command Status</div>
-        <div class="gm-ins-row"><span>Sector</span><span class="gm-ins-row-val">${escapeMapHtml(sectorName)}</span></div>
-        <div class="gm-ins-row"><span>Credits</span><span class="gm-ins-row-val">${credits} cr</span></div>
-        <div class="gm-ins-row"><span>Cargo</span><span class="gm-ins-row-val">${cargo}/${cargoCap} u</span></div>
-        <div class="gm-ins-row"><span>Heat</span><span class="gm-ins-row-val" style="color:${heat > 15 ? INK.red : INK.good}">${heat}%</span></div>
-        <div class="gm-ins-row"><span>Hull</span><span class="gm-ins-row-val">${hull}/${hullMax}</span></div>
-      </div>
-      <div class="gm-ins-section">
-        <div class="gm-ins-title">Trade lanes · profit/min</div>
-        ${lanesHtml}
-      </div>
-      <div class="gm-ins-section">
-        <div class="gm-ins-title">Best known sell · ${escapeMapHtml(commodityLabel)}</div>
-        ${offersHtml}
-      </div>
-      <div class="gm-ins-section">
-        <div class="gm-ins-note">Select a sector, station, or contact for detailed intel. <b>Double-click</b> any mark to lay a course.</div>
-      </div>
-    `;
-  },
-
   _updateInspector() {
     if (!HAS_DOC || !this._root) return;
     const state = this._ctx && this._ctx.state;
@@ -4690,9 +5308,16 @@ export const galaxyMapScreen = {
     this._updateEngageControl();
     if (!detailsEl || !btn) return;
 
+    // SLICE C: the tablist and the place actions track the selection, so they refresh here too.
+    this._renderTabs(state);
+    this._renderPlaceActions(state);
+
     const t = this._selectedTarget;
     if (!t) {
-      const defaultHtml = this._defaultInspectorHtml(state);
+      // NO SELECTION IS NOT AN EMPTY PANEL. The active tab renders with a null selection —
+      // Overview falls through to the four always-present navigation answers, so the inspector
+      // always says where you are, what you are tracking and what the next leg is.
+      const defaultHtml = this._tabHtml(state, null);
       if (this._inspectorDetailsHtml !== defaultHtml) {
         detailsEl.innerHTML = defaultHtml;
         this._inspectorDetailsHtml = defaultHtml;
@@ -5040,13 +5665,680 @@ export const galaxyMapScreen = {
       buttonLabel = 'Track Target';
     }
 
-    if (this._inspectorDetailsHtml !== html) {
-      detailsEl.innerHTML = html;
-      this._inspectorDetailsHtml = html;
+    // SLICE C: the per-kind detail above is the OVERVIEW body. Every other tab renders its own
+    // depth for the same selection, one at a time — the selection detail is no longer the only
+    // thing the panel can show, and it is no longer stacked underneath everything else either.
+    const tabbed = this._tabHtml(state, html);
+    if (this._inspectorDetailsHtml !== tabbed) {
+      detailsEl.innerHTML = tabbed;
+      this._inspectorDetailsHtml = tabbed;
     }
     if (btn.textContent !== buttonLabel) btn.textContent = buttonLabel;
     if (btn.hidden) btn.hidden = false;
     if (btn.disabled) btn.disabled = false;
+  },
+
+  // ═══ SLICE C — tab bodies ══════════════════════════════════════════════════════════════════
+  //
+  // Each returns HTML for ONE tab. `selectionHtml` is the existing per-kind detail block, passed
+  // in rather than recomputed — the shipped inspector markup for sectors/stations/contacts is
+  // working, checked content and this packet reorganises where it appears, not what it says.
+
+  _tabHtml(state, selectionHtml) {
+    const avail = resolveInspectorTabAvailability(state, this._selectedTarget);
+    const info = avail[this._activeTab];
+    if (info && !info.available) {
+      // A tab with nothing behind it says so in words. This is the same contract as a disabled
+      // action carrying its reason: an empty panel that explains itself teaches, a blank one does
+      // not, and a fabricated one lies.
+      return `<div class="gm-ins-section"><div class="gm-ins-title">${escapeMapHtml(
+        (MAP_INSPECTOR_TABS.find((t) => t.id === this._activeTab) || {}).label || '')}</div>
+        <div class="gm-ins-note">${escapeMapHtml(info.reason)}</div></div>`;
+    }
+    switch (this._activeTab) {
+      case 'travel': return this._travelTabHtml(state);
+      case 'missions': return this._missionsTabHtml(state);
+      case 'economy': return this._economyTabHtml(state);
+      case 'threat': return this._threatTabHtml(state);
+      case 'services': return this._servicesTabHtml(state);
+      case 'discovery': return this._discoveryTabHtml(state);
+      case 'overview':
+      default:
+        return this._overviewTabHtml(state, selectionHtml);
+    }
+  },
+
+  /**
+   * OVERVIEW — never empty, and never a wall.
+   *
+   * With a selection it shows that selection's detail. With NO selection it shows the four
+   * always-present navigation answers from `resolveMapNavContext` — the SAME object the on-canvas
+   * cartouche and the framing buttons read, so the panel and the chart cannot contradict each
+   * other about where the player is or where they are going. That reuse is the point: the old
+   * no-selection body re-derived a different set of facts (credits, cargo, heat, hull, trade
+   * lanes, quotes) and showed all of them at once.
+   */
+  _overviewTabHtml(state, selectionHtml) {
+    if (selectionHtml) return selectionHtml;
+    const ctx = this._navContext(state);
+    const rows = (ctx && ctx.rows) || [];
+    const rowsHtml = rows.map((row) => `
+      <div class="gm-nav-row" data-tone="${escapeMapHtml(row.tone)}">
+        <span class="gm-nav-row-k">${escapeMapHtml(row.label)}</span>
+        <span class="gm-nav-row-v">${escapeMapHtml(row.value)}</span>
+        ${row.detail ? `<span class="gm-nav-row-d">${escapeMapHtml(row.detail)}</span>` : ''}
+      </div>`).join('');
+    return `
+      <div class="gm-ins-section">
+        <div class="gm-ins-kind">Survey table / Navigation</div>
+        <div class="gm-ins-target-name">Where you are</div>
+        ${rowsHtml}
+      </div>
+      <div class="gm-ins-section">
+        <div class="gm-ins-note">Click a sector, station or contact to inspect it. <b>Double-click</b> any mark to lay a course. Other tabs hold trade, threat and survey depth.</div>
+      </div>`;
+  },
+
+  /** TRAVEL — the ribbon's detail view. Same model object, so the two cannot disagree. */
+  _travelTabHtml(state) {
+    const ribbon = this._ribbonModel(state);
+    if (!ribbon.visible) {
+      return `<div class="gm-ins-section"><div class="gm-ins-title">Travel</div>
+        <div class="gm-ins-note">${escapeMapHtml(ribbon.reason)}</div></div>`;
+    }
+    const legs = ribbon.legs.map((leg) => `
+      <div class="gm-ins-row" data-leg-state="${leg.state}">
+        <span>${leg.state === RIBBON_LEG_STATE.ACTIVE ? '<b>' : ''}${escapeMapHtml(leg.fromName)} → ${escapeMapHtml(leg.toName)}${leg.state === RIBBON_LEG_STATE.ACTIVE ? '</b>' : ''}</span>
+        <span class="gm-ins-row-val">${Math.round(leg.fuel)}F · ${escapeMapHtml(leg.hazardLabel)}${leg.resolved ? '' : ' · unresolved'}</span>
+      </div>`).join('');
+    const interruption = ribbon.interruption
+      ? `<div class="gm-ins-note"><b style="color:var(--ink);">INTERRUPTED:</b> ${escapeMapHtml(ribbon.interruption.label)}. The itinerary is kept — Resume picks it up on the same leg.</div>`
+      : '';
+    return `
+      <div class="gm-ins-section">
+        <div class="gm-ins-kind">Route</div>
+        <div class="gm-ins-target-name">${escapeMapHtml(ribbon.arrival ? ribbon.arrival.label : 'Route')}</div>
+        <div class="gm-ins-row"><span>Status</span><span class="gm-ins-row-val">${escapeMapHtml(ribbon.reason)}</span></div>
+        ${interruption}
+      </div>
+      <div class="gm-ins-section">
+        <div class="gm-ins-title">Legs</div>
+        ${legs}
+      </div>
+      <div class="gm-ins-section">
+        <div class="gm-ins-title">Cost &amp; time</div>
+        <div class="gm-ins-row"><span>Fuel remaining</span><span class="gm-ins-row-val">${Math.round(ribbon.totals.fuelRemaining)} of ${Math.round(ribbon.totals.fuel)}</span></div>
+        <div class="gm-ins-row"><span>Align time</span><span class="gm-ins-row-val">${escapeMapHtml(ribbon.totals.chargeLabel)}</span></div>
+        <div class="gm-ins-row"><span>Next waypoint</span><span class="gm-ins-row-val">${ribbon.nextWaypoint ? escapeMapHtml(ribbon.nextWaypoint.distanceLabel) : '—'}</span></div>
+        <div class="gm-ins-row"><span>ETA</span><span class="gm-ins-row-val">${escapeMapHtml(ribbon.eta.available ? ribbon.eta.label : '—')}</span></div>
+        <div class="gm-ins-note">${escapeMapHtml(ribbon.eta.reason)}</div>
+      </div>`;
+  },
+
+  _missionsTabHtml(state) {
+    const missions = ((state.missions && state.missions.active) || []).filter((m) => m && m.status === 'active');
+    const trackedId = state.ui && state.ui.trackedMissionId;
+    if (!missions.length) {
+      return '<div class="gm-ins-section"><div class="gm-ins-title">Missions</div><div class="gm-ins-note">No active missions.</div></div>';
+    }
+    return missions.map((m) => missionChartBlockHtml(
+      m,
+      m.id === trackedId ? 'Tracked mission' : 'Active mission',
+      missionMapGeometry(state, m),
+    )).join('');
+  },
+
+  /** ECONOMY — the old always-on no-selection dump, now behind a tab where it belongs. */
+  _economyTabHtml(state) {
+    const lanes = buildTradeLanesModel(state, 5);
+    const lanesHtml = lanes.length
+      ? lanes.map((lane) => {
+        const reliability = Number.isFinite(Number(lane.reliability)) ? Number(lane.reliability) : 1;
+        const relColor = reliability >= 0.8 ? INK.good : reliability >= 0.5 ? INK.warn : INK.ink2;
+        const profit = Math.max(0, Math.round(Number(lane.expectedProfit) || 0)).toLocaleString('en-US');
+        const perMin = Math.max(0, Math.round(Number(lane.profitPerMinute) || 0));
+        return `
+        <button class="gm-tl-row" type="button" data-gm-lane="${escapeMapHtml(lane.destinationId)}">
+          <span class="gm-tl-head"><span>${escapeMapHtml(lane.commodityName)}</span><span class="gm-tl-profit" style="color:${relColor}">+${profit} cr</span></span>
+          <span class="gm-tl-sub">${escapeMapHtml(lane.originName)} → ${escapeMapHtml(lane.destinationName)} · ${Math.max(0, Math.floor(lane.units))}u · ${perMin}/min</span>
+        </button>`;
+      }).join('')
+      : `<div class="gm-ins-note">${(state && state.economy && state.economy.marketIntel && Object.keys(state.economy.marketIntel).length)
+        ? 'No profitable lanes in current intel. Fresh quotes at two or more stations will rank routes here.'
+        : 'Dock at stations to record market intel. Ranked lanes will appear here.'}</div>`;
+
+    const offers = bestKnownSellOffers(state, this._selectedCommodity, 3);
+    const commodityLabel = String(this._selectedCommodity || '').replace('cmdty_', '').replace(/_/g, ' ').toUpperCase();
+    const offersHtml = offers.length
+      ? offers.map((offer) => {
+        const tint = memoryTint(offer.ageS);
+        return `<div class="gm-bk-row"><span class="gm-bk-station">${escapeMapHtml(offer.stationName)}</span><span class="gm-bk-val ${tint.key}">${offer.sell} cr · ${ageText(offer.ageS)}</span></div>`;
+      }).join('')
+      : `<div class="gm-ins-note">No remembered quotes for ${escapeMapHtml(commodityLabel)}. Prices appear after you dock and trade.</div>`;
+
+    const credits = state.player && state.player.credits ? Math.round(state.player.credits).toLocaleString() : '0';
+    const cargo = state.player && state.player.cargo ? (state.player.cargo.volume || 0) : 0;
+    const cargoCap = state.player && state.player.cargo ? (state.player.cargo.capVolume || 1) : 1;
+
+    return `
+      <div class="gm-ins-section">
+        <div class="gm-ins-title">Hold</div>
+        <div class="gm-ins-row"><span>Credits</span><span class="gm-ins-row-val">${credits} cr</span></div>
+        <div class="gm-ins-row"><span>Cargo</span><span class="gm-ins-row-val">${cargo}/${cargoCap} u</span></div>
+      </div>
+      <div class="gm-ins-section">
+        <div class="gm-ins-title">Trade lanes · profit/min</div>
+        ${lanesHtml}
+      </div>
+      <div class="gm-ins-section">
+        <div class="gm-ins-title">Best known sell · ${escapeMapHtml(commodityLabel)}</div>
+        ${offersHtml}
+      </div>`;
+  },
+
+  _threatTabHtml(state) {
+    const t = this._selectedTarget;
+    const sectorId = (t && (t.sectorId || (t.kind === 'sector' ? t.id : null))) || currentSectorId(state);
+    const record = sectorRecordById(state, sectorId);
+    const sec = record && record.security != null ? record.security : 0.5;
+    const law = sectorLawProfile(state, sectorId, sec);
+    const player = playerEntity(state);
+    const hull = player && player.hull != null ? Math.round(player.hull) : 0;
+    const hullMax = player && player.hullMax != null ? Math.round(player.hullMax) : 0;
+    const heat = state.player && state.player.heat ? Math.round(state.player.heat * 100) : 0;
+    const hazards = (record && record.hazards && record.hazards.length)
+      ? record.hazards.map((h) => `${hazardTypeGlyph(h.type)} ${escapeMapHtml(String(h.type))}`).join(' · ')
+      : 'None recorded';
+    return `
+      <div class="gm-ins-section">
+        <div class="gm-ins-kind">Threat assessment</div>
+        <div class="gm-ins-target-name">${escapeMapHtml(sectorNameOf(state, sectorId))}</div>
+        <div class="gm-ins-row"><span>Security</span><span class="gm-ins-row-val">${law.level} · ${securityPips(sec)}</span></div>
+        <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val">${law.authority}</span></div>
+        <div class="gm-ins-row"><span>Hazards</span><span class="gm-ins-row-val">${hazards}</span></div>
+      </div>
+      <div class="gm-ins-section">
+        <div class="gm-ins-title">Your readiness</div>
+        <div class="gm-ins-row"><span>Hull</span><span class="gm-ins-row-val">${hull}/${hullMax}</span></div>
+        <div class="gm-ins-row"><span>Heat</span><span class="gm-ins-row-val">${heat}%</span></div>
+        <div class="gm-ins-note"><b style="color:var(--ink);">RESPONSE:</b> ${law.response}</div>
+      </div>`;
+  },
+
+  _servicesTabHtml(state) {
+    const t = this._selectedTarget;
+    const stations = [];
+    if (t && t.kind === 'station') {
+      stations.push({ name: t.name, services: t.services || [] });
+    } else {
+      const sectorId = (t && (t.sectorId || t.id)) || currentSectorId(state);
+      const record = sectorRecordById(state, sectorId);
+      for (const s of (record && record.stations) || []) {
+        stations.push({ name: s.name || s.id, services: s.services || [] });
+      }
+    }
+    if (!stations.length) {
+      return '<div class="gm-ins-section"><div class="gm-ins-title">Services</div><div class="gm-ins-note">No berths recorded here.</div></div>';
+    }
+    return stations.map((s) => `
+      <div class="gm-ins-section">
+        <div class="gm-ins-title">${escapeMapHtml(s.name)}</div>
+        ${s.services.length
+          ? `<div class="gm-svc-row">${s.services.map((svc) => `<span class="gm-svc-chip"><span aria-hidden="true">${serviceIconSvg(svc)}</span>${escapeMapHtml(svc === 'ore_buy' ? 'Ore buy' : svc)}</span>`).join('')}</div>`
+          : '<div class="gm-ins-note">No services listed.</div>'}
+      </div>`).join('');
+  },
+
+  _discoveryTabHtml(state) {
+    const t = this._selectedTarget;
+    const sectorId = (t && (t.sectorId || (t.kind === 'sector' ? t.id : null))) || currentSectorId(state);
+    const record = sectorRecordById(state, sectorId);
+    const charted = record ? isSectorCharted(state, record) : false;
+    const confidence = record ? mapConfidenceForSector(state, record) : null;
+    const disc = discoveryForSector(state, sectorId);
+    const pct = confidence && Number.isFinite(confidence.value) ? Math.round(confidence.value * 100) : null;
+    return `
+      <div class="gm-ins-section">
+        <div class="gm-ins-kind">Survey record</div>
+        <div class="gm-ins-target-name">${escapeMapHtml(sectorNameOf(state, sectorId))}</div>
+        <div class="gm-ins-row"><span>Charted</span><span class="gm-ins-row-val">${charted ? 'Yes' : 'No'}</span></div>
+        <div class="gm-ins-row"><span>Confidence</span><span class="gm-ins-row-val">${pct == null ? 'Unknown' : `${pct}%`}${confidence && confidence.band ? ` · ${escapeMapHtml(String(confidence.band))}` : ''}</span></div>
+        <div class="gm-ins-row"><span>Scanned</span><span class="gm-ins-row-val">${disc && disc.scanned ? 'Yes' : 'No'}</span></div>
+      </div>
+      <div class="gm-ins-section">
+        <div class="gm-ins-note">Confidence decays with time since survey. Re-scan a sector to refresh what the chart is willing to assert about it.</div>
+      </div>`;
+  },
+
+  // ═══ SLICE C — place context actions ═══════════════════════════════════════════════════════
+
+  /**
+   * The verbs available on the current selection.
+   *
+   * Every one is resolved from real state and carries a reason in both states. `plot` reuses the
+   * shipped primary action; `frame` and `bookmark` are camera verbs with real consumers in this
+   * screen; `open-system` changes scale to the selection's own sector. Nothing here invents a
+   * consumer, and nothing here duplicates the engage control (route control lives on the ribbon).
+   */
+  _renderPlaceActions(state) {
+    if (!HAS_DOC || !this._root) return;
+    const host = this._placeActionsEl || this._root.querySelector('#gm-place-actions');
+    if (!host) return;
+    const t = this._selectedTarget;
+    if (!t) {
+      if (host.innerHTML !== '') { host.innerHTML = ''; this._lastPlaceActionsHtml = ''; }
+      return;
+    }
+    const primary = resolveGalaxyMapPrimaryAction(state, t);
+    const sectorId = t.sectorId || (t.kind === 'sector' ? t.id : null);
+    const acts = [
+      { id: 'plot', label: 'Plot course', available: !!primary, reason: primary ? 'Lay a course to this mark' : 'This mark cannot be a course target' },
+      { id: 'frame', label: 'Frame', available: true, reason: 'Centre the chart on this mark' },
+      { id: 'open-system', label: 'Open system', available: !!sectorId, reason: sectorId ? 'Zoom to this mark\'s own sector' : 'This mark has no parent sector' },
+      { id: 'bookmark', label: 'Bookmark', available: true, reason: 'Save this view to the left rail' },
+    ];
+    const html = acts.map((a) => `<button class="gm-place-btn" type="button" data-place-action="${a.id}"
+      ${a.available ? '' : 'disabled'} aria-disabled="${!a.available}" title="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`).join('');
+    if (this._lastPlaceActionsHtml !== html) {
+      host.innerHTML = html;
+      this._lastPlaceActionsHtml = html;
+    }
+  },
+
+  _activatePlaceAction(id) {
+    const state = this._ctx && this._ctx.state;
+    const t = this._selectedTarget;
+    if (!state || !t || !id) return false;
+    if (id === 'plot') {
+      const action = resolveGalaxyMapPrimaryAction(state, t);
+      if (!action) return false;
+      if (!emitGalaxyMapPrimaryAction(this._ctx.bus, action)) return false;
+      popCurrentScreen(this._ctx);
+      return true;
+    }
+    if (id === 'bookmark') return this._addBookmark();
+    if (id === 'frame' || id === 'open-system') {
+      // Both are camera moves in the GLOBAL frame (ADR D2.1). A search-style target carries global
+      // x/z; a galaxy sector node carries GRAPH coordinates, so its global position is derived from
+      // its authored origin rather than from the node's draw position.
+      const sectorId = t.sectorId || (t.kind === 'sector' ? t.id : null);
+      let focus = null;
+      if (t.kind === 'sector' && sectorId) {
+        const origin = sectorGlobalOrigin(sectorId);
+        focus = { x: origin.x, z: origin.z };
+      } else if (Number.isFinite(t.x) && Number.isFinite(t.z)) {
+        focus = { x: t.x, z: t.z };
+      } else if (sectorId) {
+        const origin = sectorGlobalOrigin(sectorId);
+        focus = { x: origin.x, z: origin.z };
+      }
+      if (!focus) return false;
+      const spanWU = id === 'open-system' ? MAP_PRESET_SPAN_WU.system : MAP_PRESET_SPAN_WU.local;
+      return this._setCameraFraming({ focusGlobal: focus, spanWU });
+    }
+    return false;
+  },
+
+  // ═══ SLICE C — inspector tabs ══════════════════════════════════════════════════════════════
+
+  /**
+   * Build the tablist once, then keep its selected state in sync.
+   *
+   * ROVING TABINDEX: exactly one tab is in the sequential tab order at a time (`tabindex="0"`);
+   * the rest are `-1` and reached with the arrow keys. That is the ARIA authoring practice for a
+   * tablist and it is what stops eight tabs from adding eight stops to every Tab traversal of the
+   * screen — the keyboard equivalent of the density problem this packet is fixing.
+   */
+  _renderTabs(state) {
+    if (!HAS_DOC || !this._root) return;
+    const host = this._root.querySelector('#gm-tabs');
+    if (!host) return;
+    const avail = resolveInspectorTabAvailability(state, this._selectedTarget);
+
+    if (!this._tabButtons.length) {
+      host.innerHTML = MAP_INSPECTOR_TABS.map((tab) => `
+        <button class="gm-tab" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
+                aria-controls="gm-tabpanel" aria-selected="false" tabindex="-1">${tab.label}</button>`).join('');
+      this._tabButtons = Array.from(host.querySelectorAll('.gm-tab'));
+      for (const btn of this._tabButtons) {
+        btn.addEventListener('click', () => this._setTab(btn.getAttribute('data-tab')));
+        btn.addEventListener('keydown', (ev) => this._onTabKey(ev));
+      }
+    }
+
+    // NOTE — deliberately NO auto-fallback when the active tab becomes unavailable.
+    //
+    // An earlier revision bounced the selection back to Overview whenever `available` was false.
+    // That is worse on both counts it was meant to help: a player who deliberately opens History
+    // gets silently teleported somewhere else (and can never read why it is empty), and a player
+    // sitting on Travel when a route clears gets yanked mid-read. `_tabHtml` already renders the
+    // tab's own reason, which is the honest answer in both situations — the panel explains itself
+    // instead of the selection moving under the player.
+    for (const btn of this._tabButtons) {
+      const id = btn.getAttribute('data-tab');
+      const info = avail[id] || { available: true, reason: '' };
+      const selected = id === this._activeTab;
+      if (btn.getAttribute('aria-selected') !== String(selected)) {
+        btn.setAttribute('aria-selected', String(selected));
+      }
+      // Roving tabindex: only the selected tab is a tab stop.
+      const tabindex = selected ? '0' : '-1';
+      if (btn.getAttribute('tabindex') !== tabindex) btn.setAttribute('tabindex', tabindex);
+      // Unavailable tabs stay REACHABLE (aria-disabled, not `disabled`) so a screen-reader user
+      // can hear the reason instead of finding a tab that silently does not exist. The reason
+      // travels on the control itself as well.
+      if (btn.getAttribute('aria-disabled') !== String(!info.available)) {
+        btn.setAttribute('aria-disabled', String(!info.available));
+      }
+      if (btn.getAttribute('title') !== info.reason) btn.setAttribute('title', info.reason);
+      btn.classList.toggle('is-empty', !info.available);
+      btn.classList.toggle('active', selected);
+    }
+    const panel = this._tabPanel || this._root.querySelector('#gm-tabpanel');
+    if (panel) panel.setAttribute('aria-labelledby', `gm-tab-${this._activeTab}`);
+  },
+
+  /** Arrow-key traversal across the tablist, plus Home/End. Wraps, as the ARIA pattern expects. */
+  _onTabKey(ev) {
+    if (!ev || !ev.key) return;
+    const ids = MAP_INSPECTOR_TAB_IDS;
+    const cur = ids.indexOf(this._activeTab);
+    let next = -1;
+    if (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') next = (cur + 1) % ids.length;
+    else if (ev.key === 'ArrowLeft' || ev.key === 'ArrowUp') next = (cur - 1 + ids.length) % ids.length;
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = ids.length - 1;
+    else return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    this._setTab(ids[next], { focus: true });
+  },
+
+  _setTab(id, { focus = false } = {}) {
+    if (!id || MAP_INSPECTOR_TAB_IDS.indexOf(id) < 0) return false;
+    const state = this._ctx && this._ctx.state;
+    const avail = resolveInspectorTabAvailability(state, this._selectedTarget);
+    // An unavailable tab still SELECTS — it renders its reason. Refusing the selection outright
+    // would leave a keyboard user unable to reach the explanation of why it is empty.
+    this._activeTab = id;
+    this._lastTabHtml = null;
+    this._renderTabs(state);
+    this._updateInspector();
+    if (focus && HAS_DOC && this._root) {
+      const btn = this._root.querySelector(`#gm-tab-${id}`);
+      if (btn && typeof btn.focus === 'function') btn.focus();
+    }
+    return avail[id] ? avail[id].available : true;
+  },
+
+  // ═══ SLICE C — the route ribbon ════════════════════════════════════════════════════════════
+
+  /** The live ribbon record, joined from the plotted route and the real executor. */
+  _ribbonModel(state) {
+    if (!state) return resolveRouteRibbon();
+    const nav = state.nav || {};
+    const player = playerEntity(state);
+    const vel = player && player.vel;
+    return resolveRouteRibbon({
+      route: nav.route || null,
+      executor: readRouteExecutorForMap(nav.executor),
+      playerGlobal: player && player.pos ? { x: player.pos.x, z: player.pos.z } : null,
+      // Real current speed. The ribbon turns this into an at-current-speed ETA, and refuses to
+      // show one at all when the ship is not making way — never a fabricated arrival time.
+      playerSpeedWUs: vel ? Math.hypot(vel.x || 0, vel.z || 0) : 0,
+      sectorNames: SECTOR_NAME_BY_ID,
+    });
+  },
+
+  /**
+   * Reveal / hide / refresh the ribbon.
+   *
+   * The `hidden` attribute (not opacity, not a class) is what makes absence real: a hidden ribbon
+   * is out of the accessibility tree and out of the tab order, so a route that is not plotted
+   * costs a keyboard user nothing.
+   */
+  _updateRibbon(state) {
+    if (!HAS_DOC || !this._root) return null;
+    const el = this._ribbonEl || this._root.querySelector('#gm-route-ribbon');
+    if (!el) return null;
+    const ribbon = this._ribbonModel(state);
+
+    if (!ribbon.visible) {
+      if (!el.hidden) el.hidden = true;
+      this._lastRibbonKey = null;
+      this._lastRibbonActionKey = null;
+      return ribbon;
+    }
+    if (el.hidden) el.hidden = false;
+
+    // Cheap change key — the ribbon is refreshed from `_draw`, which runs at display refresh at
+    // LOCAL scale. Re-writing identical innerHTML 60 times a second would blow away focus inside
+    // the action group every frame, which is an accessibility bug, not just waste.
+    const key = [
+      ribbon.status, ribbon.activeLegIndex, ribbon.legs.length,
+      ribbon.eta.label, ribbon.nextWaypoint ? ribbon.nextWaypoint.distanceLabel : '-',
+      ribbon.interruption ? ribbon.interruption.label : '-',
+      ribbon.totals.fuelRemaining, ribbon.totals.legsRemaining,
+    ].join('#');
+    if (this._lastRibbonKey === key) return ribbon;
+    this._lastRibbonKey = key;
+
+    const statusEl = el.querySelector('#gm-ribbon-status');
+    const arrivalEl = el.querySelector('#gm-ribbon-arrival');
+    const legsEl = el.querySelector('#gm-ribbon-legs');
+    const metaEl = el.querySelector('#gm-ribbon-meta');
+    const actionsEl = el.querySelector('#gm-ribbon-actions');
+    const reasonEl = el.querySelector('#gm-ribbon-reason');
+
+    if (statusEl) {
+      statusEl.textContent = ribbon.interruption ? ribbon.interruption.label : ribbon.reason;
+      // Non-colour semantics: state is an attribute the CSS keys shape and border style off, so
+      // the ribbon still reads under forced-colors and for colour-blind players.
+      statusEl.setAttribute('data-ribbon-state', ribbon.interruption ? 'interrupted' : (ribbon.live ? 'live' : 'plotted'));
+    }
+    if (arrivalEl) arrivalEl.textContent = ribbon.arrival ? ribbon.arrival.label : '';
+
+    if (legsEl) {
+      legsEl.innerHTML = ribbon.legs.map((leg) => {
+        const glyph = leg.state === RIBBON_LEG_STATE.DONE ? '✓'
+          : leg.state === RIBBON_LEG_STATE.ACTIVE ? '▶' : '·';
+        const unresolved = leg.resolved ? '' : ' <span class="gm-ribbon-warn">no flyable endpoint</span>';
+        // The hazard band is a WORD, never only a hue.
+        const hazard = leg.hazard === 'calm' ? '' : ` <span class="gm-ribbon-haz" data-haz="${leg.hazard}">${escapeMapHtml(leg.hazardLabel)}</span>`;
+        return `<li class="gm-ribbon-leg" data-leg-state="${leg.state}">
+          <span class="gm-ribbon-leg-g" aria-hidden="true">${glyph}</span>
+          <span class="gm-ribbon-leg-n">${escapeMapHtml(leg.toName)}</span>
+          <span class="gm-ribbon-leg-c">${Math.round(leg.fuel)}F</span>${hazard}${unresolved}
+        </li>`;
+      }).join('');
+    }
+
+    if (metaEl) {
+      const bits = [];
+      if (ribbon.nextWaypoint) bits.push(`Next: ${escapeMapHtml(ribbon.nextWaypoint.label)} · ${escapeMapHtml(ribbon.nextWaypoint.distanceLabel)}`);
+      // ETA is shown with its qualifier attached, or its refusal reason. Never a bare number that
+      // implies more certainty than the source supports.
+      bits.push(ribbon.eta.available
+        ? `ETA ${escapeMapHtml(ribbon.eta.label)} (${escapeMapHtml(ribbon.eta.reason)})`
+        : `ETA — ${escapeMapHtml(ribbon.eta.reason)}`);
+      bits.push(`${ribbon.totals.legsRemaining}/${ribbon.totals.legs} legs · ${Math.round(ribbon.totals.fuelRemaining)}F left · ${escapeMapHtml(ribbon.totals.chargeLabel)} align`);
+      metaEl.innerHTML = bits.map((b) => `<span>${b}</span>`).join('');
+    }
+
+    if (actionsEl) {
+      // THE ACTION ROW GETS ITS OWN, MUCH COARSER CHANGE KEY — and this is an accessibility fix,
+      // not an optimisation.
+      //
+      // The ribbon key above deliberately includes the live distance and ETA, both of which change
+      // on essentially every frame while the ship is making way. Rewriting `innerHTML` here on that
+      // key would therefore rebuild these buttons every frame during transit, detaching whichever
+      // one the player had focused — so a keyboard user could not operate Disengage at exactly the
+      // moment they most need it, which is while a route is running.
+      //
+      // Availability depends only on status / engagement / interruption, so keying on those three
+      // rebuilds the row when it actually changes and leaves the focused button alone otherwise.
+      const actionKey = `${ribbon.status || '-'}#${ribbon.engaged}#${!!ribbon.interruption}`;
+      if (this._lastRibbonActionKey !== actionKey) {
+        this._lastRibbonActionKey = actionKey;
+        actionsEl.innerHTML = RIBBON_ACTION_IDS.map((id) => {
+          const a = ribbon.actions[id];
+          if (!a) return '';
+          return `<button class="gm-ribbon-btn" type="button" data-ribbon-action="${a.id}"
+            ${a.available ? '' : 'disabled'} aria-disabled="${!a.available}"
+            title="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`;
+        }).join('');
+      }
+    }
+    if (reasonEl) {
+      // Surface the blocked explanation the player is most likely to be asking about.
+      const blocked = RIBBON_ACTION_IDS.map((id) => ribbon.actions[id]).find((a) => a && !a.available && a.id === 'pause');
+      reasonEl.textContent = ribbon.interruption
+        ? `${ribbon.interruption.label} — the itinerary is kept; Resume picks it up on the same leg.`
+        : (blocked ? blocked.reason : '');
+    }
+    return ribbon;
+  },
+
+  /**
+   * Fire a ribbon action.
+   *
+   * Every path here goes through the SAME bus events the shipped engage control uses, so the
+   * ribbon can never open a second mutation path into the route follower. An unavailable action
+   * refuses and says why — it never fakes a success state.
+   */
+  _activateRibbonAction(id) {
+    const state = this._ctx && this._ctx.state;
+    const bus = this._ctx && this._ctx.bus;
+    if (!state || !bus || !id) return false;
+    const ribbon = this._ribbonModel(state);
+    const action = ribbon.actions[id];
+    if (!action || !action.available || !action.event) {
+      if (HAS_DOC && this._root) {
+        const reasonEl = this._root.querySelector('#gm-ribbon-reason');
+        if (reasonEl && action) reasonEl.textContent = action.reason;
+      }
+      return false;
+    }
+    bus.emit(action.event, action.event === 'nav:abortRoute' ? { reason: 'manual' } : {});
+    this._lastRibbonKey = null;
+    this._updateEngageControl();
+    this._updateRibbon(state);
+    return true;
+  },
+
+  // ═══ SLICE C — left-rail contextual sections ═══════════════════════════════════════════════
+
+  /** Missions, bookmarks and route alternatives. Rendered only when their section is OPEN — a
+   *  collapsed section costs nothing, which is what makes disclosure cheap enough to default to. */
+  _updateRailSections(state) {
+    if (!HAS_DOC || !this._root || !state) return;
+    const openOf = (name) => {
+      const sec = this._root.querySelector(`[data-rail-sec="${name}"]`);
+      return sec && sec.open ? sec : null;
+    };
+
+    const missions = ((state.missions && state.missions.active) || []).filter((m) => m && m.status === 'active');
+    const trackedId = state.ui && state.ui.trackedMissionId;
+    const countEl = this._root.querySelector('[data-mission-count]');
+    if (countEl) countEl.textContent = missions.length ? String(missions.length) : '';
+    const bmCountEl = this._root.querySelector('[data-bookmark-count]');
+    if (bmCountEl) bmCountEl.textContent = this._bookmarks.length ? String(this._bookmarks.length) : '';
+    const lensCountEl = this._root.querySelector('[data-lens-count]');
+    if (lensCountEl) {
+      const on = LAYER_DEFS.filter((l) => this._layers[l.id]).length;
+      lensCountEl.textContent = `${on}/${LAYER_DEFS.length}`;
+    }
+
+    const missionsHost = openOf('missions') && this._root.querySelector('#gm-rail-missions');
+    if (missionsHost) {
+      const html = missions.length
+        ? missions.map((m) => {
+          const tracked = m.id === trackedId;
+          const dest = m.destSectorId || (m.params && m.params.sectorId) || null;
+          const destName = dest ? escapeMapHtml(sectorNameOf(state, dest)) : 'No fixed destination';
+          return `<button class="gm-rail-item${tracked ? ' is-tracked' : ''}" type="button" data-rail-mission="${escapeMapHtml(m.id)}"${tracked ? ' aria-current="true"' : ''}>
+            <span class="gm-rail-item-t">${tracked ? '<span class="gm-rail-track-g" aria-hidden="true">◆</span>' : ''}${escapeMapHtml(missionSummary(m))}</span>
+            <span class="gm-rail-item-s">${destName}${tracked ? ' · tracked' : ''}</span>
+          </button>`;
+        }).join('')
+        : '<div class="gm-ins-note">No active missions. Accept one at a station to see its destination on the chart.</div>';
+      if (missionsHost.innerHTML !== html) missionsHost.innerHTML = html;
+    }
+
+    const bmHost = openOf('bookmarks') && this._root.querySelector('#gm-rail-bookmarks');
+    if (bmHost) {
+      const html = `${this._bookmarks.length
+        ? this._bookmarks.map((b, i) => `<button class="gm-rail-item" type="button" data-rail-bookmark="${i}">
+            <span class="gm-rail-item-t">${escapeMapHtml(b.label)}</span>
+            <span class="gm-rail-item-s">${Math.round(b.focusGlobal.x)}, ${Math.round(b.focusGlobal.z)} · ${escapeMapHtml(formatDistanceWU(b.spanWU))} span</span>
+          </button>`).join('')
+        : '<div class="gm-ins-note">No bookmarks. Bookmark the current view to come back to it.</div>'}
+        <button class="gm-ins-btn gm-rail-add" type="button" data-rail-bookmark-add>Bookmark this view</button>`;
+      if (bmHost.innerHTML !== html) bmHost.innerHTML = html;
+    }
+
+    const altHost = openOf('alternatives') && this._root.querySelector('#gm-rail-alternatives');
+    if (altHost) {
+      const html = this._routeAlternativesHtml(state);
+      if (altHost.innerHTML !== html) altHost.innerHTML = html;
+    }
+  },
+
+  /**
+   * Route alternatives — REAL, and free.
+   *
+   * `world.computeRoute` already takes a `mode` and already scores 'fuel' vs 'hops' differently.
+   * The alternatives are therefore the same planner run under its other objective, not a second
+   * route planner (ADR D6 forbids new steering/planning math). Where the two agree, that is worth
+   * saying too: "cheapest is also shortest" is a real answer, not an empty state.
+   */
+  _routeAlternativesHtml(state) {
+    const route = state.nav && state.nav.route;
+    const dest = route && Array.isArray(route.legs) && route.legs.length
+      ? route.legs[route.legs.length - 1].to : null;
+    if (!dest) {
+      return '<div class="gm-ins-note">No route plotted. Set a course to a sector and its alternatives appear here.</div>';
+    }
+    const cur = currentSectorId(state);
+    const world = this._ctx && this._ctx.registry && typeof this._ctx.registry.get === 'function'
+      ? this._ctx.registry.get('world') : null;
+    if (!world || typeof world.computeRoute !== 'function') {
+      return '<div class="gm-ins-note">Route planner unavailable — alternatives cannot be compared right now.</div>';
+    }
+    const rows = [];
+    for (const [mode, label] of [['fuel', 'Cheapest'], ['hops', 'Fewest jumps']]) {
+      let alt = null;
+      try { alt = world.computeRoute(dest, mode); } catch { alt = null; }
+      if (!alt || !Array.isArray(alt.legs) || !alt.legs.length) continue;
+      const same = alt.legs.length === route.legs.length
+        && alt.legs.every((l, i) => l.to === route.legs[i].to);
+      const worst = alt.legs.reduce((m, l) => Math.max(m, Number(l.interdict) || 0), 0);
+      rows.push(`<button class="gm-rail-item${same ? ' is-current' : ''}" type="button" data-rail-alt="${mode}">
+        <span class="gm-rail-item-t">${label}${same ? ' <span class="gm-rail-item-tag">plotted</span>' : ''}</span>
+        <span class="gm-rail-item-s">${alt.legs.length} hop${alt.legs.length === 1 ? '' : 's'} · ${Math.round(alt.totalFuel || 0)}F · worst leg ${Math.round(worst * 100)}% interdict</span>
+      </button>`);
+    }
+    if (!rows.length) return '<div class="gm-ins-note">No alternative path to that sector through charted space.</div>';
+    rows.push(`<div class="gm-ins-note">Selecting an alternative re-plots the route. It does not engage it — plot and engage stay separate acts.</div>`);
+    return rows.join('');
+  },
+
+  /** Save the current camera as a named bookmark. Screen-owned, never written to sim state. */
+  _addBookmark() {
+    const state = this._ctx && this._ctx.state;
+    const cam = this._cameraOrInit();
+    if (!cam) return false;
+    const level = this._activeLevel();
+    const sid = state ? currentSectorId(state) : null;
+    const label = `${level.toUpperCase()} · ${sid ? sectorNameOf(state, sid) : 'Chart'}`;
+    this._bookmarks = this._bookmarks
+      .filter((b) => !(Math.abs(b.focusGlobal.x - cam.focusGlobal.x) < 1
+        && Math.abs(b.focusGlobal.z - cam.focusGlobal.z) < 1
+        && Math.abs(b.spanWU - cam.spanWU) < 1))
+      .concat([{ label, focusGlobal: { x: cam.focusGlobal.x, z: cam.focusGlobal.z }, spanWU: cam.spanWU }])
+      .slice(-8);
+    this._updateRailSections(state);
+    return true;
   },
 
   _activateSelectedCourse() {
@@ -5567,6 +6859,12 @@ export const galaxyMapScreen = {
     // "answered at LOCAL and SYSTEM but not GALAXY" gap this replaces.
     drawNavCartouche(g, navContext.rows, w, h, { title: level.toUpperCase() });
     this._syncFramingControls(navContext);
+
+    // SLICE C: the ribbon rides the shared draw path for the same reason the cartouche does — so
+    // it cannot silently stop tracking the executor at one scale. It is internally change-keyed,
+    // so being called every frame does not mean re-rendering every frame.
+    this._updateRibbon(state);
+    this._updateRailSections(state);
 
     // Hover pre-selection. Resolved against THIS frame's click targets rather than the coordinates
     // captured when the pointer last moved, so the ring cannot lag a pan or a zoom by a frame.

@@ -33,7 +33,12 @@ import {
   sampleAuthoredWidth,
 } from './deepFieldStructureRecipes.js';
 import { CAMERA_ZOOM_MAX, CONTEXT_ZOOM_MAX, SPEED_ZOOM_MAX } from './camera.js';
-import { isPlausibleCameraStep, readVelocityLanguage, streamPhaseStep } from './velocityLanguage.js';
+import {
+  isPlausibleCameraStep,
+  readVelocityLanguage,
+  smearStretch,
+  streamPhaseStep,
+} from './velocityLanguage.js';
 
 // ----------------------------------------------------------------------------
 // Seeded PRNG (mulberry32) + string hash — ~15 lines, no deps.
@@ -579,16 +584,54 @@ const STAR_VERT = /* glsl */`
   uniform vec3 uTint;
   uniform float uIntensity;
   uniform float uPerspScale;    // 0.5 * drawBufferHeight * proj[1][1]
+  // ---- ADR D7 band 2: along-flow smear on bright background points ----
+  // uFlowWorld is a NORMALIZED world-space XZ travel direction; uSmearStretch is 1.0 (off) upward.
+  // Both are inert at 1.0/(0,0), so band 0 and band 1 render byte-identically to the pre-smear
+  // shader — the cue is additive on top of the landed starfield, not a restyling of it.
+  uniform vec2 uFlowWorld;
+  uniform float uSmearStretch;
   varying vec3 vColor;
   varying float vAlpha;
+  varying vec2 vFlowView;       // flow axis in VIEW space, normalized
+  varying float vStretch;       // the stretch actually applied (may be < uSmearStretch, see below)
   void main() {
     vec2 off = uCamPos * aPar;
     vec2 wrapped = mod(position.xz - off + uCellSize * 0.5, uCellSize) - uCellSize * 0.5 + uWindowBias;
     vec4 mvPosition = modelViewMatrix * vec4(wrapped.x, position.y, wrapped.y, 1.0);
     float sizePx = aSize * uPerspScale / max(1.0, -mvPosition.z);
-    gl_PointSize = clamp(sizePx, 1.0, 24.0);
+    float baseSize = clamp(sizePx, 1.0, 24.0);
+
+    // Resolve the flow axis by TRANSFORMING the world direction into view space rather than
+    // assuming a camera orientation. The chase camera's tilt and any future pose change are then
+    // handled for free; a hardcoded "world +Z maps to screen -Y" would silently smear along the
+    // wrong axis the first time the camera lane moves the rig, and nothing headless would see it.
+    // w = 0 so only the rotation applies.
+    float stretch = uSmearStretch;
+    vec2 fv = vec2(0.0, 1.0);
+    if (stretch > 1.0) {
+      vec3 flowView = (modelViewMatrix * vec4(uFlowWorld.x, 0.0, uFlowWorld.y, 0.0)).xyz;
+      float fl = length(flowView.xy);
+      if (fl > 1e-5) fv = flowView.xy / fl; else stretch = 1.0;
+    }
+
+    // gl_PointSize has a driver-dependent ceiling, so the requested size is capped and the EFFECTIVE
+    // stretch is re-derived from what we actually got. Passing the requested stretch to the fragment
+    // while the quad was clamped would slice the ellipse off at the quad edge — a hard-edged
+    // rectangle where a soft smear was intended.
+    float finalSize = min(baseSize * stretch, 64.0);
+    float effStretch = finalSize / baseSize;
+    gl_PointSize = finalSize;
+    vFlowView = fv;
+    vStretch = effStretch;
+
     float tw = sin(uTime * aTwinkleSpeed + aTwinklePhase);
-    vAlpha = aBase * (0.82 + 0.18 * tw) * uIntensity;
+    // Divided by the stretch: these points composite ADDITIVELY, so spreading one over effStretch
+    // times the area without dimming would brighten the whole sky by that factor at high speed.
+    // Energy is conserved — the star smears, it does not glow. (See smearStretch() in
+    // velocityLanguage.js, which owns this factor and is pinned by check:speed-lines.)
+    // NOTE: no backticks in this block — it lives inside a JS template literal, and one would
+    // terminate the string and turn the whole shader into a syntax error.
+    vAlpha = aBase * (0.82 + 0.18 * tw) * uIntensity / effStretch;
     vColor = aColor * uTint;
     gl_Position = projectionMatrix * mvPosition;
   }
@@ -597,8 +640,20 @@ const STAR_FRAG = /* glsl */`
   precision highp float;
   varying vec3 vColor;
   varying float vAlpha;
+  varying vec2 vFlowView;
+  varying float vStretch;
   void main() {
-    vec2 c = gl_PointCoord * 2.0 - 1.0;
+    // Y is flipped into a Y-UP frame so this coordinate agrees with the view-space flow axis above.
+    // For an unsmeared (circular) point the flip is a no-op; it matters only once the profile is
+    // anisotropic, where a mirrored axis would tilt the smear the wrong way across the diagonal.
+    vec2 c = vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y) * 2.0 - 1.0;
+    if (vStretch > 1.0) {
+      // Elongate ALONG flow while preserving the across-flow width: the quad grew by vStretch in
+      // both axes, so scaling the perpendicular component back up by vStretch leaves the drawn
+      // ellipse exactly as wide as the original point and vStretch times as long.
+      vec2 perp = vec2(-vFlowView.y, vFlowView.x);
+      c = vec2(dot(c, vFlowView), dot(c, perp) * vStretch);
+    }
     float r2 = dot(c, c);
     if (r2 > 1.0) discard;
     // Tight core + soft halo so magnitude steps read without lifting the whole frame.
@@ -622,9 +677,15 @@ const FLARE_VERT = /* glsl */`
   uniform float uCellSize;
   uniform vec2 uWindowBias;
   uniform float uPerspScale;
+  // ADR D7 band 2 — same along-flow smear as the star points. Hero flares are the BRIGHTEST
+  // background points, so exempting them would leave the one class of point the eye actually
+  // tracks sitting perfectly round while the field around it shears.
+  uniform vec2 uFlowWorld;
+  uniform float uSmearStretch;
   varying vec2 vUv;
   varying vec3 vColor;
   varying float vRotation;
+  varying float vDim;
   void main() {
     vec3 inst = vec3(instanceMatrix[3].x, instanceMatrix[3].y, instanceMatrix[3].z);
     vec2 off = uCamPos * aPar;
@@ -632,11 +693,30 @@ const FLARE_VERT = /* glsl */`
     vec4 viewCenter = modelViewMatrix * vec4(wrapped.x, inst.y, wrapped.y, 1.0);
     // pixel-true quad: world size = px * dist / perspScale
     float worldSize = aSizePx * max(1.0, -viewCenter.z) / uPerspScale;
-    vec4 viewPos = viewCenter + vec4(position.xy * worldSize, 0.0, 0.0);
+
+    // Stretch the QUAD in view space, not the UVs: vUv stays tied to the undeformed corner, so the
+    // atlas sample (and its per-instance rotation) is unchanged and the flare's own optical response
+    // is carried along by the geometry rather than being resampled into a different shape.
+    vec2 q = position.xy;
+    float stretch = uSmearStretch;
+    if (stretch > 1.0) {
+      vec3 flowView = (modelViewMatrix * vec4(uFlowWorld.x, 0.0, uFlowWorld.y, 0.0)).xyz;
+      float fl = length(flowView.xy);
+      if (fl > 1e-5) {
+        vec2 f = flowView.xy / fl;
+        vec2 perp = vec2(-f.y, f.x);
+        q = f * (dot(q, f) * stretch) + perp * dot(q, perp);
+      } else {
+        stretch = 1.0;
+      }
+    }
+    vec4 viewPos = viewCenter + vec4(q * worldSize, 0.0, 0.0);
     gl_Position = projectionMatrix * viewPos;
     vUv = position.xy * 0.5 + 0.5;
     vColor = aColor;
     vRotation = aRotation;
+    // Additive blending again: conserve energy so a smeared flare spreads instead of blooming.
+    vDim = 1.0 / stretch;
   }
 `;
 const FLARE_FRAG = /* glsl */`
@@ -647,13 +727,14 @@ const FLARE_FRAG = /* glsl */`
   varying vec2 vUv;
   varying vec3 vColor;
   varying float vRotation;
+  varying float vDim;
   void main() {
     vec2 p = vUv - 0.5;
     float c = cos(vRotation), s0 = sin(vRotation);
     vec2 uv = mat2(c, -s0, s0, c) * p + 0.5;
     vec4 s = texture2D(uMap, uv);
     if (s.a < 0.01) discard;
-    gl_FragColor = vec4(vColor * uTint * s.rgb, s.a * uIntensity);
+    gl_FragColor = vec4(vColor * uTint * s.rgb, s.a * uIntensity * vDim);
   }
 `;
 
@@ -954,6 +1035,13 @@ export class SpaceBackground {
     this._streamPrimed = false;
     this._streamCamX = 0;
     this._streamCamZ = 0;
+    // Latched along-flow smear axis (D7 band 2). Deliberately NOT reset by `onSectorEnter` alongside
+    // the streaming accumulator: re-priming the accumulator prevents an arrival delta from shoving
+    // the background, but the smear axis is a pure direction with no accumulated history, and
+    // zeroing it would make the starfield pivot for one frame on every sector entry — reintroducing
+    // the cut that region volumes exist to remove.
+    this._flowX = 0;
+    this._flowZ = 1;
     this.regionNoiseScale = 1 / (this.H * 55);
 
     // zero-alloc scratch for the per-frame tint math
@@ -1537,6 +1625,10 @@ export class SpaceBackground {
         uTint: { value: this._starTint },
         uIntensity: { value: this.bgIntensity },
         uPerspScale: { value: this.perspScale },
+        // Inert defaults: stretch 1.0 is "no smear", so a freshly built starfield renders exactly
+        // as it did before this cue existed until update() raises it.
+        uFlowWorld: { value: new THREE.Vector2(0, 1) },
+        uSmearStretch: { value: 1 },
       },
       transparent: true,
       blending: THREE.AdditiveBlending,
@@ -1580,6 +1672,8 @@ export class SpaceBackground {
         uPerspScale: { value: this.perspScale },
         uTint: { value: this._starTint },
         uIntensity: { value: this.bgIntensity },
+        uFlowWorld: { value: new THREE.Vector2(0, 1) },
+        uSmearStretch: { value: 1 },
       },
       transparent: true,
       blending: THREE.AdditiveBlending,
@@ -2136,18 +2230,40 @@ export class SpaceBackground {
     // pixel scale can change with dynamic resolution — one scalar, cheap to refresh
     this.perspScale = this._computePerspScale();
 
+    // ---- velocity language: along-flow smear on bright points (ADR D7, band 2, cue b) -----------
+    // The flow AXIS comes from the same plausibility-screened camera delta the streaming
+    // accumulator uses, so a frame rebase or a jump can never spin the smear direction: an
+    // implausible step contributes nothing here exactly as it contributes nothing there.
+    //
+    // The direction is LATCHED rather than recomputed from scratch each frame. `dcx/dcz` is zero on
+    // the priming frame, on any rejected step, and whenever the ship is briefly stationary, and a
+    // smear axis that snapped back to a default on those frames would make the whole starfield pivot
+    // for one frame. Holding the last real heading means the axis only ever changes when the ship
+    // actually turns.
+    const stepLen = Math.hypot(dcx, dcz);
+    if (stepLen > 1e-6) { this._flowX = dcx / stepLen; this._flowZ = dcz / stepLen; }
+    const smear = vl && vl.drive && Number.isFinite(vl.drive.smear) ? vl.drive.smear : 0;
+    // `drive.smear` is already motionReduce-scaled inside velocityBandDrive, so reading the record
+    // rather than the raw band gets reduced-motion handling for free — and, more to the point, makes
+    // it impossible for this consumer to drift from the reduction the rest of the language applies.
+    const smearFit = smearStretch(smear);
+
     if (this.stars) {
       const un = this.stars.mat.uniforms;
       un.uCamPos.value.set(cx, cz);
       un.uTime.value = this.bgTime;
       un.uIntensity.value = this.bgIntensity;
       un.uPerspScale.value = this.perspScale;
+      un.uFlowWorld.value.set(this._flowX || 0, this._flowZ || 1);
+      un.uSmearStretch.value = smearFit.stretch;
     }
     if (this.flares) {
       const un = this.flares.mat.uniforms;
       un.uCamPos.value.set(cx, cz);
       un.uIntensity.value = this.bgIntensity * 0.9;
       un.uPerspScale.value = this.perspScale;
+      un.uFlowWorld.value.set(this._flowX || 0, this._flowZ || 1);
+      un.uSmearStretch.value = smearFit.stretch;
     }
 
     // hero parallax: render offset = bgCoord - camPos*par (stable by construction)

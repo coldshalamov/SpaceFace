@@ -61,6 +61,7 @@ import { asteroidFormations } from '../systems/asteroidFormations.js'; // discov
 import { wingmen } from '../systems/wingmen.js';
 import { world } from '../systems/world.js';
 import { routeFollower } from '../systems/routeFollower.js';         // reader for nav.autoTravel (RC-5)
+import { travelLanes } from '../systems/travelLanes.js';             // D8 lane infrastructure: multiplies the pilot's own travel drive
 import { factions } from '../systems/factions.js';
 import { sectorSim } from '../systems/sectorSim.js';   // ADR-0002 / V2 §33 — offscreen stat sim
 import { missions } from '../systems/missions.js';
@@ -140,7 +141,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, voiceArbiter, input, autoTargetAssist, flybyFocus, bulletTime, cloak, scanner, scanReveal, buildIdentity, lawSecurity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, physics, aiPorts, tumbleStates, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, mines, uniqueLootAbilities, combat, combatOutcome, aftermathWrecks, uniqueWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, economy,
-    automation, asteroidSites, asteroidFormations, wingmen, intervention, lossLedger, factionPresence, spawnBudget, world, regionalEcology, encounterDirector, routeFollower, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, stationContacts, stationContactLoadBoundary, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, careerOrigins, careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts, postEndingReplay, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, bandRadio, v2FlavorRuntime, onboarding, masslineHud, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
+    automation, asteroidSites, asteroidFormations, wingmen, intervention, lossLedger, factionPresence, spawnBudget, world, regionalEcology, encounterDirector, routeFollower, travelLanes, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, stationContacts, stationContactLoadBoundary, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, careerOrigins, careerLadders, liveCareerLadderBranches, missions, careerContracts, economyContracts, postEndingReplay, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, bandRadio, v2FlavorRuntime, onboarding, masslineHud, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // scanReveal, buildIdentity, and pirateDisguise subscribe to scanner's scan:pulse seam. scanReveal
@@ -219,8 +220,25 @@ export function createRegistry(ctx) {
   // director run is a contiguous sequence other contracts read as a unit — a new system belongs on
   // the end of it, not through the middle. (An earlier draft did splice it and broke the adjacency
   // assertion at scripts/check-m4-regional-ecology.mjs:211.)
+  // travelLanes sits between beacons and flightSlot, and that slot is forced from BOTH sides — it is
+  // the only window in this order where the system can do its job at all (ADR D8, packet W3-C).
+  //   • It must run AFTER input. `input` is index 0 (pinned by check-input-modalities.mjs:46) and it
+  //     is what publishes `state.input.travelDrive`. There is no block to modify before it runs, and
+  //     fabricating one would make travelLanes a second owner of an axis the latch owns.
+  //   • It must run BEFORE flightSlot, because flightSlot forwards that same block into
+  //     stepPropulsion. One slot later and the lane multiplier would always be a tick stale — the
+  //     boost would apply to where the ship WAS, which on a lane is the one place it never is.
+  // Within that window the position is otherwise free, so it goes last, immediately ahead of its
+  // consumer: this is the same "final writer on the flight-command membrane" idiom beacons already
+  // uses two slots earlier (its lure overrides intent for this tick), and tumbleStates states
+  // explicitly further down. Being the last writer before the kernel reads is the property that
+  // makes the modifier deterministic rather than order-sensitive.
+  // It writes ONLY `state.input.travelDrive.{ceiling,rampMult}` (never `cap` — that is the carried
+  // ramp state of the input↔kernel round trip), one boolean at `state.player.travelDrive.disrupted`
+  // which input.js already reads, and its own `state.travelLanes` readout. It is a strict no-op
+  // unless `travelFlag('laneBoost')` is on AND a player exists, so it costs two reads otherwise.
   const UPDATE_ORDER = [
-    input, autoTargetAssist, flybyFocus, bulletTime, cloak, lawSecurity, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, factionPresence, aiSlot, barkDirector, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, tumbleStates, weapons, countermeasures, impulseCharges, mines, uniqueLootAbilities, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, automation, asteroidSites, asteroidFormations, wingmen, crafting,
+    input, autoTargetAssist, flybyFocus, bulletTime, cloak, lawSecurity, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, factionPresence, aiSlot, barkDirector, aiEncounter, actions, beacons, travelLanes, flightSlot, cruise, aiPorts, tumbleStates, weapons, countermeasures, impulseCharges, mines, uniqueLootAbilities, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, surrenderRecovery, custodyConsequences, masslineTelemetry, masslineThreats, masslineImpacts, masslineThrow, masslineImpactDamage, lootShards, terrainAnchors, jettisonImpulse, mining, fieldDepletion, cargo, fragileCargo, automation, asteroidSites, asteroidFormations, wingmen, crafting,
     economy, intervention, world, regionalEcology, encounterDirector, routeFollower, livingPoiBehaviors, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, recoveryEncounter, factions, sectorSim, missions, careerOrigins, careerLadders, liveCareerLadderBranches, story, scenarioRuntime, heat, traffic, drill, claims, bandRadio, onboarding, masslineHud, voiceArbiter,
   ];
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether

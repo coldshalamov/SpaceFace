@@ -124,6 +124,13 @@ export const TRAVEL_FLAGS = {
   // `queuePhysicsImpulse` before the kernel ever sees it), which sits on the
   // `check:sim:v3:compare` golden path — so this gate is load-bearing there.
   dashMomentum: IS_BROWSER,
+  // Lane infrastructure (Wave 3 W3-C, ADR D8): inside a lane segment volume with the drive Engaged,
+  // the lane multiplies the pilot's OWN drive ceiling and ramp rate; a disrupted segment holds the
+  // drive down so the existing `physicsEarnedMomentum` decay spends the excess velocity into the
+  // ambush. Owned by src/systems/travelLanes.js, which is a strict no-op while this reads false.
+  // Belt-and-suspenders rather than load-bearing: travelLanes is absent from sf-sim.mjs's curated
+  // systems array, so it cannot reach either golden even with the flag forced on.
+  laneBoost: IS_BROWSER,
 };
 
 /** Read a travel flag by name; unknown names read false. Pure. */
